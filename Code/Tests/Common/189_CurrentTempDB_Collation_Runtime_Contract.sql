@@ -171,8 +171,8 @@ BEGIN TRY
    IF COALESCE(@Before,N'[]') COLLATE Latin1_General_100_BIN2<>COALESCE(@After,N'[]') COLLATE Latin1_General_100_BIN2 THROW 59205,N'TEMPDB_NATIVE_SESSION_DRIFT',1;
   END;
   IF ISNULL(ISJSON(@Json),0)<>1 OR ISNULL(JSON_VALUE(@Json,'$.meta.statusCode'),'')<>'AVAILABLE' THROW 59206,N'TEMPDB_STATUS',1;
-  IF (SELECT COUNT(*) FROM OPENJSON(@Json))<>5 OR EXISTS(SELECT [key] FROM OPENJSON(@Json) GROUP BY [key] HAVING COUNT(*)<>1)
-   OR EXISTS(SELECT [key] COLLATE Latin1_General_100_BIN2,type FROM OPENJSON(@Json) EXCEPT SELECT k,type FROM(VALUES(N'meta',5),(N'sessions',4),(N'tempdbFiles',4),(N'tempdbGovernance',4),(N'warnings',4)) v(k,type)) THROW 59207,N'TEMPDB_TOP_KEYS',1;
+  IF (SELECT COUNT(*) FROM OPENJSON(@Json))<>6 OR EXISTS(SELECT [key] FROM OPENJSON(@Json) GROUP BY [key] HAVING COUNT(*)<>1)
+   OR EXISTS(SELECT [key] COLLATE Latin1_General_100_BIN2,type FROM OPENJSON(@Json) EXCEPT SELECT k,type FROM(VALUES(N'meta',5),(N'sessions',4),(N'tempdbFiles',4),(N'tempdbGovernance',4),(N'versionStore',4),(N'warnings',4)) v(k,type)) THROW 59207,N'TEMPDB_TOP_KEYS',1;
   IF (SELECT COUNT(*) FROM OPENJSON(@Json,'$.meta'))<>11 OR EXISTS(SELECT [key] FROM OPENJSON(@Json,'$.meta') GROUP BY [key] HAVING COUNT(*)<>1)
    OR EXISTS(SELECT [key] COLLATE Latin1_General_100_BIN2 FROM OPENJSON(@Json,'$.meta') EXCEPT SELECT k COLLATE Latin1_General_100_BIN2 FROM(VALUES(N'resultName'),(N'schemaVersion'),(N'generatedAtUtc'),(N'evidenceSnapshotStartedAtUtc'),(N'evidenceSnapshotId'),(N'statusCode'),(N'isPartial'),(N'productMajorVersion'),(N'requestedMaxRows'),(N'returnedRows'),(N'hasMoreRows')) v(k))
    OR ISNULL(TRY_CONVERT(int,JSON_VALUE(@Json,'$.meta.schemaVersion')),-1)<>3 OR ISNULL(JSON_VALUE(@Json,'$.meta.resultName'),'')<>N'CurrentTempDB'
@@ -342,9 +342,10 @@ BEGIN TRY
   DELETE #ExampleCurrentTempDBEmptyConsole;SET @Parent=NEWID();
   INSERT #ExampleCurrentTempDBEmptyConsole EXEC monitor.USP_CurrentTempDB @SessionIds=N'32767',@MitDateien=0,@MaxZeilen=@C,
    @ResultSetArt='CONSOLE',@JsonErzeugen=1,@Json=@Json OUTPUT,@PrintMeldungen=0,@ParentCurrentStateSnapshotId=@Parent;
-  IF (SELECT COUNT(*) FROM #ExampleCurrentTempDBEmptyConsole)<>2
+  IF (SELECT COUNT(*) FROM #ExampleCurrentTempDBEmptyConsole)<>3
    OR NOT EXISTS(SELECT 1 FROM #ExampleCurrentTempDBEmptyConsole WHERE Ergebnis=N'Keine aktive TempDB-Nutzung' AND Status IS NULL AND Hinweis IS NULL)
    OR NOT EXISTS(SELECT 1 FROM #ExampleCurrentTempDBEmptyConsole WHERE Ergebnis=N'Keine TempDB-Governance-Evidenz' AND Status IS NULL AND Hinweis IS NULL)
+   OR NOT EXISTS(SELECT 1 FROM #ExampleCurrentTempDBEmptyConsole WHERE Ergebnis=N'Keine Version-Store-Evidenz' AND Status IS NULL AND Hinweis IS NULL)
    OR ISNULL(JSON_VALUE(@Json,'$.meta.statusCode'),'')<>'INVALID_PARENT_SNAPSHOT' OR @@LOCK_TIMEOUT<>731 THROW 59222,N'TEMPDB_EMPTY_CONSOLE',1;
   SET @EmptyConsole+=1;SET @C+=1;
  END;

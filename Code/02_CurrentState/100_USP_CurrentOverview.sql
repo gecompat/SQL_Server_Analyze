@@ -13,7 +13,7 @@ CONSOLE      : SUMMARY ist der Default. RELEVANT und ALL ergänzen ausschließli
                nicht leere Childdetails; Children erhalten niemals CONSOLE.
 TABLE-Namen  : moduleStatus, snapshotStatus, sessions, requests, requestContext,
                statements, batches, inputBuffers, blocking, waits, transactions,
-               memoryGrants, tempdbSessions, tempdbGovernance, io, logs und warnings.
+               memoryGrants, tempdbSessions, tempdbGovernance, versionStore, io, logs und warnings.
 ===============================================================================
 */
 CREATE OR ALTER PROCEDURE [monitor].[USP_CurrentOverview]
@@ -73,7 +73,7 @@ BEGIN
     BEGIN
         EXEC [monitor].[InternalPrepareResultTables]
               @ResultTablesJson=@ResultTablesJson
-            , @AllowedResultNames=N'moduleStatus|snapshotStatus|sessions|requests|requestContext|statements|batches|inputBuffers|blocking|waits|transactions|memoryGrants|tempdbSessions|tempdbGovernance|io|logs|warnings'
+            , @AllowedResultNames=N'moduleStatus|snapshotStatus|sessions|requests|requestContext|statements|batches|inputBuffers|blocking|waits|transactions|memoryGrants|tempdbSessions|tempdbGovernance|versionStore|io|logs|warnings'
             , @MappingTable=N'#CurrentOverview_ResultTableMap'
             , @StatusCode=@StatusCode OUTPUT
             , @ErrorMessage=@ErrorMessage OUTPUT
@@ -90,7 +90,7 @@ BEGIN
         PRINT N'@MaxObjektAufloesungen begrenzt die Blocking-Ressourcenauflösung auf 1 bis 1000 Kandidaten.';
         PRINT N'Children werden genau einmal und nie mit CONSOLE aufgerufen.';
         PRINT N'@ResultSetArt=CONSOLE|RAW|TABLE|NONE; TABLE verwendet ausschließlich @ResultTablesJson.';
-        PRINT N'TABLE-Namen: moduleStatus, snapshotStatus, sessions, requests, requestContext, statements, batches, inputBuffers, blocking, waits, transactions, memoryGrants, tempdbSessions, tempdbGovernance, io, logs, warnings.';
+        PRINT N'TABLE-Namen: moduleStatus, snapshotStatus, sessions, requests, requestContext, statements, batches, inputBuffers, blocking, waits, transactions, memoryGrants, tempdbSessions, tempdbGovernance, versionStore, io, logs, warnings.';
         SET @RestoreLockTimeoutSql=N'SET LOCK_TIMEOUT '+CONVERT(nvarchar(20),@OriginalLockTimeout)+N';';
         EXEC [sys].[sp_executesql] @RestoreLockTimeoutSql;
         RETURN;
@@ -117,6 +117,7 @@ BEGIN
     DECLARE @CaptureSchedulers bit=0;
     DECLARE @CaptureTransactions bit=0;
     DECLARE @CaptureTempDbUsage bit=0;
+    DECLARE @CaptureVersionStore bit=0;
     DECLARE @CaptureSqlText bit=0;
     DECLARE @MaxSqlTextHandles int=0;
 
@@ -167,6 +168,7 @@ BEGIN
     CREATE TABLE [#CurrentOverview_MemoryGrants]([Seed] bit NULL);
     CREATE TABLE [#CurrentOverview_TempDBSessions]([Seed] bit NULL);
     CREATE TABLE [#CurrentOverview_TempDBGovernance]([Seed] bit NULL);
+    CREATE TABLE [#CurrentOverview_VersionStore]([Seed] bit NULL);
     CREATE TABLE [#CurrentOverview_IO]([Seed] bit NULL);
     CREATE TABLE [#CurrentOverview_Logs]([Seed] bit NULL);
 
@@ -494,6 +496,24 @@ BEGIN
         , [internal_objects_alloc_page_count] bigint NOT NULL
         , [internal_objects_dealloc_page_count] bigint NOT NULL
     );
+    CREATE TABLE [#CurrentOverview_CurrentStateSnapshot_VersionStoreSpaceUsage]
+    (
+          [SnapshotId] uniqueidentifier NOT NULL
+        , [CapturedAtUtc] datetime2(3) NOT NULL
+        , [database_id] int NOT NULL
+        , [reserved_page_count] bigint NOT NULL
+        , PRIMARY KEY ([SnapshotId],[database_id])
+    );
+    CREATE TABLE [#CurrentOverview_CurrentStateSnapshot_PersistentVersionStore]
+    (
+          [SnapshotId] uniqueidentifier NOT NULL
+        , [CapturedAtUtc] datetime2(3) NOT NULL
+        , [database_id] int NOT NULL
+        , [pvs_filegroup_id] smallint NULL
+        , [persistent_version_store_size_kb] bigint NULL
+        , [online_index_version_store_size_kb] bigint NULL
+        , PRIMARY KEY ([SnapshotId],[database_id])
+    );
     CREATE TABLE [#CurrentOverview_CurrentStateSnapshot_SqlText]
     (
           [SnapshotId] uniqueidentifier NOT NULL
@@ -556,6 +576,7 @@ BEGIN
     SET @CaptureSchedulers=CASE WHEN @MitRequests=1 OR @MitIO=1 THEN 1 ELSE 0 END;
     SET @CaptureTransactions=CASE WHEN @MitRequests=1 OR @MitTransactions=1 THEN 1 ELSE 0 END;
     SET @CaptureTempDbUsage=CASE WHEN @MitRequests=1 OR @MitTempDB=1 THEN 1 ELSE 0 END;
+    SET @CaptureVersionStore=CASE WHEN @MitTempDB=1 THEN 1 ELSE 0 END;
     SET @CaptureSqlText=CASE
         WHEN @MitSessions=1 AND @MitSqlText=1 THEN 1
         WHEN @MitRequests=1 AND (@MitSqlText=1 OR @GesamtenSqlTextEinbeziehen=1 OR @ModulInfoEinbeziehen=1) THEN 1
@@ -587,6 +608,7 @@ BEGIN
                 , @CaptureSchedulers=@CaptureSchedulers
                 , @CaptureTransactions=@CaptureTransactions
                 , @CaptureTempDbUsage=@CaptureTempDbUsage
+                , @CaptureVersionStore=@CaptureVersionStore
                 , @CaptureSqlText=@CaptureSqlText
                 , @MaxSqlTextHandles=@MaxSqlTextHandles;
 
@@ -832,7 +854,7 @@ BEGIN
                   @SessionIds=@SessionIds
                 , @MaxZeilen=@MaxZeilen
                 , @ResultSetArt='TABLE'
-                , @ResultTablesJson=N'{"sessions":"#CurrentOverview_TempDBSessions","tempdbGovernance":"#CurrentOverview_TempDBGovernance"}'
+                , @ResultTablesJson=N'{"sessions":"#CurrentOverview_TempDBSessions","tempdbGovernance":"#CurrentOverview_TempDBGovernance","versionStore":"#CurrentOverview_VersionStore"}'
                 , @JsonErzeugen=1
                 , @Json=@ChildJson OUTPUT
                 , @PrintMeldungen=@PrintMeldungen
@@ -1133,10 +1155,12 @@ BuildOutputs:
                       WHEN @ExportResultName=N'batches' THEN N'#CurrentOverview_Batches'
                       WHEN @ExportResultName=N'inputBuffers' THEN N'#CurrentOverview_InputBuffers'
                       WHEN @ExportResultName=N'tempdbGovernance' THEN N'#CurrentOverview_TempDBGovernance'
+                      WHEN @ExportResultName=N'versionStore' THEN N'#CurrentOverview_VersionStore'
                       WHEN @ExportResultName=N'warnings' THEN N'#CurrentOverview_Warnings'
                       ELSE NULL END
                 , @CanExport=CASE
                     WHEN @ExportResultName=N'tempdbGovernance' THEN @MitTempDB
+                    WHEN @ExportResultName=N'versionStore' THEN @MitTempDB
                     WHEN @ExportResultName IN
                          (N'moduleStatus',N'snapshotStatus',N'requestContext',
                           N'statements',N'batches',N'inputBuffers',N'warnings')

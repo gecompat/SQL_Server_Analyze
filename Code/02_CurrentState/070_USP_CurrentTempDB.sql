@@ -4,20 +4,21 @@ GO
 /*
 ===============================================================================
 Objekt       : monitor.USP_CurrentTempDB
-Version      : 4.0.0
+Version      : 4.1.0
 Stand        : 2026-07-23
 Zweck        : Zeigt aktuellen TempDB-Verbrauch je Session, optional Dateien
-               und SQL-Server-2025-TempDB-Governance je Workload Group.
+               und SQL-Server-2025-TempDB-Governance je Workload Group sowie
+               den traditionellen und persistenten Version Store je Datenbank.
 SQL-Version  : SQL Server 2019 oder neuer; Governance ab 2025 (17.x).
 Datenquellen : sys.dm_exec_sessions, tempdb.sys.dm_db_session_space_usage,
                tempdb.sys.database_files, Resource-Governor-Katalog/DMV und
                master.sys.master_files; im Parentpfad gemeinsame Materialisierung.
-Output       : sessions, tempdbFiles, tempdbGovernance und warnings;
+Output       : sessions, tempdbFiles, tempdbGovernance, versionStore und warnings;
                RAW, CONSOLE, NONE, JSON und benannte TABLE-Ziele.
 Locking      : LOCK_TIMEOUT 0 für Quellen; vorheriger Sessionwert wird
                auch nach TABLE- und CONSOLE-Ausgabe wiederhergestellt.
 Datenschutz  : Laufzeitwerte werden nur ausgegeben, nicht persistiert.
-Änderungen   : 4.0.0 - SQL25-003 TempDB Resource Governance.
+Änderungen   : 4.1.0 - WI-0002 TempDB-ADR- und PVS-Diagnostik.
 ===============================================================================
 */
 CREATE OR ALTER PROCEDURE [monitor].[USP_CurrentTempDB]
@@ -61,7 +62,7 @@ BEGIN
         PRINT N'@MitDateien=1 liefert tempdbFiles.';
         PRINT N'@MaxZeilen positiv = begrenzt; NULL/0 = unbegrenzt.';
         PRINT N'@ResultSetArt=CONSOLE (Default)|RAW|TABLE|NONE; JSON über @JsonErzeugen=1.';
-        PRINT N'TABLE erlaubt sessions und tempdbGovernance.';
+        PRINT N'TABLE erlaubt sessions, tempdbGovernance und versionStore.';
         PRINT N'tempdbGovernance trennt Limit, Wirksamkeit, aktuelle Nutzung, Peak und Verletzungszähler.';
         RETURN;
     END;
@@ -79,6 +80,12 @@ BEGIN
     DECLARE @TablePreflightStatus varchar(40);
     DECLARE @TablePreflightError nvarchar(2048);
     DECLARE @Sql nvarchar(max);
+    DECLARE @TraditionalVersionStoreStatus varchar(40)='AVAILABLE';
+    DECLARE @TraditionalVersionStoreErrorNumber int=NULL;
+    DECLARE @TraditionalVersionStoreErrorMessage nvarchar(2048)=NULL;
+    DECLARE @PersistentVersionStoreStatus varchar(40)='AVAILABLE';
+    DECLARE @PersistentVersionStoreErrorNumber int=NULL;
+    DECLARE @PersistentVersionStoreErrorMessage nvarchar(2048)=NULL;
 
     CREATE TABLE [#CurrentTempDB_ResultTableMap]
     (
@@ -142,6 +149,20 @@ BEGIN
         , [EvidenceLimit] nvarchar(1000) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
     );
 
+    CREATE TABLE [#CurrentTempDB_VersionStore]
+    (
+          [DatabaseName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [TraditionalVersionStoreReservedPages] bigint NULL
+        , [TraditionalVersionStoreReservedMb] decimal(19,2) NULL
+        , [PersistentVersionStoreSizeKb] bigint NULL
+        , [OnlineIndexVersionStoreSizeKb] bigint NULL
+        , [PersistentVersionStoreFilegroupId] smallint NULL
+        , [CollectionTimeUtc] datetime2(3) NOT NULL
+        , [SourceStatus] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [ErrorNumber] int NULL
+        , [ErrorMessage] nvarchar(2048) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+    );
+
     CREATE TABLE [#CurrentTempDB_Warnings]
     (
           [StatusCode] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
@@ -166,6 +187,22 @@ BEGIN
         , [user_objects_dealloc_page_count] bigint NOT NULL
         , [internal_objects_alloc_page_count] bigint NOT NULL
         , [internal_objects_dealloc_page_count] bigint NOT NULL
+    );
+
+    CREATE TABLE [#CurrentTempDB_SourceTraditionalVersionStore]
+    (
+          [database_id] int NOT NULL PRIMARY KEY
+        , [reserved_page_count] bigint NOT NULL
+        , [CapturedAtUtc] datetime2(3) NOT NULL
+    );
+
+    CREATE TABLE [#CurrentTempDB_SourcePersistentVersionStore]
+    (
+          [database_id] int NOT NULL PRIMARY KEY
+        , [pvs_filegroup_id] smallint NULL
+        , [persistent_version_store_size_kb] bigint NULL
+        , [online_index_version_store_size_kb] bigint NULL
+        , [CapturedAtUtc] datetime2(3) NOT NULL
     );
 
     CREATE TABLE [#CurrentTempDB_SourceGroupCatalog]
@@ -250,7 +287,7 @@ BEGIN
     BEGIN
         EXEC [monitor].[InternalPrepareResultTables]
               @ResultTablesJson=@ResultTablesJson
-            , @AllowedResultNames=N'sessions|tempdbGovernance'
+            , @AllowedResultNames=N'sessions|tempdbGovernance|versionStore'
             , @MappingTable=N'#CurrentTempDB_ResultTableMap'
             , @StatusCode=@TablePreflightStatus OUTPUT
             , @ErrorMessage=@TablePreflightError OUTPUT
@@ -284,6 +321,8 @@ BEGIN
                 SELECT @Probe=0 FROM [#CurrentOverview_CurrentStateSnapshot_SourceStatus] WHERE 1=0;
                 SELECT @Probe=0 FROM [#CurrentOverview_CurrentStateSnapshot_Sessions] WHERE 1=0;
                 SELECT @Probe=0 FROM [#CurrentOverview_CurrentStateSnapshot_TempDbSessionUsage] WHERE 1=0;
+                SELECT @Probe=0 FROM [#CurrentOverview_CurrentStateSnapshot_VersionStoreSpaceUsage] WHERE 1=0;
+                SELECT @Probe=0 FROM [#CurrentOverview_CurrentStateSnapshot_PersistentVersionStore] WHERE 1=0;
                 SELECT @Probe=0 FROM [#CurrentOverview_CurrentStateSnapshot_WorkloadGroups] WHERE 1=0;
                 SELECT @Probe=0 FROM [#CurrentOverview_CurrentStateSnapshot_ResourcePools] WHERE 1=0;';
 
@@ -308,6 +347,34 @@ BEGIN
                 , [internal_objects_alloc_page_count],[internal_objects_dealloc_page_count]
             FROM [#CurrentOverview_CurrentStateSnapshot_TempDbSessionUsage]
             WHERE [SnapshotId]=@ParentCurrentStateSnapshotId;
+
+            INSERT [#CurrentTempDB_SourceTraditionalVersionStore]
+            SELECT [database_id],[reserved_page_count],[CapturedAtUtc]
+            FROM [#CurrentOverview_CurrentStateSnapshot_VersionStoreSpaceUsage]
+            WHERE [SnapshotId]=@ParentCurrentStateSnapshotId;
+
+            INSERT [#CurrentTempDB_SourcePersistentVersionStore]
+            SELECT
+                  [database_id],[pvs_filegroup_id],[persistent_version_store_size_kb]
+                , [online_index_version_store_size_kb],[CapturedAtUtc]
+            FROM [#CurrentOverview_CurrentStateSnapshot_PersistentVersionStore]
+            WHERE [SnapshotId]=@ParentCurrentStateSnapshotId;
+
+            SELECT TOP (1)
+                  @TraditionalVersionStoreStatus=[StatusCode]
+                , @TraditionalVersionStoreErrorNumber=[ErrorNumber]
+                , @TraditionalVersionStoreErrorMessage=[ErrorMessage]
+            FROM [#CurrentOverview_CurrentStateSnapshot_SourceStatus]
+            WHERE [SnapshotId]=@ParentCurrentStateSnapshotId
+              AND [SourceCode]='TRADITIONAL_VERSION_STORE';
+
+            SELECT TOP (1)
+                  @PersistentVersionStoreStatus=[StatusCode]
+                , @PersistentVersionStoreErrorNumber=[ErrorNumber]
+                , @PersistentVersionStoreErrorMessage=[ErrorMessage]
+            FROM [#CurrentOverview_CurrentStateSnapshot_SourceStatus]
+            WHERE [SnapshotId]=@ParentCurrentStateSnapshotId
+              AND [SourceCode]='PERSISTENT_VERSION_STORE';
 
             INSERT [#CurrentTempDB_TempdbGovernance]
             (
@@ -411,7 +478,8 @@ BEGIN
                 , @EvidenceIsPartial=CONVERT(bit,MAX(CONVERT(int,[IsPartial])))
             FROM [#CurrentOverview_CurrentStateSnapshot_SourceStatus]
             WHERE [SnapshotId]=@ParentCurrentStateSnapshotId
-              AND [SourceCode] IN ('SESSIONS','TEMPDB_SESSION_USAGE');
+              AND [SourceCode] IN
+                  ('SESSIONS','TEMPDB_SESSION_USAGE','TRADITIONAL_VERSION_STORE','PERSISTENT_VERSION_STORE');
 
             IF @ProductMajorVersion>=17
                AND EXISTS
@@ -420,6 +488,19 @@ BEGIN
                        FROM [#CurrentTempDB_TempdbGovernance]
                        WHERE [SourceStatusCode] NOT IN ('AVAILABLE','AVAILABLE_EMPTY_OR_RESTRICTED')
                    )
+            BEGIN
+                SET @EvidenceIsPartial=1;
+                IF @StatusCode='AVAILABLE' SET @StatusCode='AVAILABLE_LIMITED';
+            END;
+
+            IF EXISTS
+               (
+                   SELECT 1
+                   FROM [#CurrentOverview_CurrentStateSnapshot_SourceStatus]
+                   WHERE [SnapshotId]=@ParentCurrentStateSnapshotId
+                     AND [SourceCode] IN ('TRADITIONAL_VERSION_STORE','PERSISTENT_VERSION_STORE')
+                     AND [StatusCode]<>'AVAILABLE'
+               )
             BEGIN
                 SET @EvidenceIsPartial=1;
                 IF @StatusCode='AVAILABLE' SET @StatusCode='AVAILABLE_LIMITED';
@@ -440,6 +521,36 @@ BEGIN
                       [session_id],[user_objects_alloc_page_count],[user_objects_dealloc_page_count]
                     , [internal_objects_alloc_page_count],[internal_objects_dealloc_page_count]
                 FROM [sys].[dm_db_session_space_usage] WITH (NOLOCK);';
+
+            BEGIN TRY
+                INSERT [#CurrentTempDB_SourceTraditionalVersionStore]
+                SELECT [database_id],[reserved_page_count],SYSUTCDATETIME()
+                FROM [sys].[dm_tran_version_store_space_usage] WITH (NOLOCK);
+            END TRY
+            BEGIN CATCH
+                SELECT
+                      @TraditionalVersionStoreErrorNumber=ERROR_NUMBER()
+                    , @TraditionalVersionStoreErrorMessage=ERROR_MESSAGE()
+                    , @TraditionalVersionStoreStatus=CASE WHEN ERROR_NUMBER()=1222 THEN 'TIMEOUT'
+                         WHEN ERROR_NUMBER() IN (229,262,297,300,371,916) THEN 'DENIED_PERMISSION'
+                         ELSE 'ERROR_HANDLED' END;
+            END CATCH;
+
+            BEGIN TRY
+                INSERT [#CurrentTempDB_SourcePersistentVersionStore]
+                SELECT
+                      [database_id],[pvs_filegroup_id],[persistent_version_store_size_kb]
+                    , [online_index_version_store_size_kb],SYSUTCDATETIME()
+                FROM [sys].[dm_tran_persistent_version_store_stats] WITH (NOLOCK);
+            END TRY
+            BEGIN CATCH
+                SELECT
+                      @PersistentVersionStoreErrorNumber=ERROR_NUMBER()
+                    , @PersistentVersionStoreErrorMessage=ERROR_MESSAGE()
+                    , @PersistentVersionStoreStatus=CASE WHEN ERROR_NUMBER()=1222 THEN 'TIMEOUT'
+                         WHEN ERROR_NUMBER() IN (229,262,297,300,371,916) THEN 'DENIED_PERMISSION'
+                         ELSE 'ERROR_HANDLED' END;
+            END CATCH;
 
             IF @ProductMajorVersion IS NULL OR @ProductMajorVersion<17
             BEGIN
@@ -795,6 +906,56 @@ BEGIN
             END;
         END;
 
+        INSERT [#CurrentTempDB_VersionStore]
+        (
+              [DatabaseName],[TraditionalVersionStoreReservedPages]
+            , [TraditionalVersionStoreReservedMb],[PersistentVersionStoreSizeKb]
+            , [OnlineIndexVersionStoreSizeKb],[PersistentVersionStoreFilegroupId]
+            , [CollectionTimeUtc],[SourceStatus],[ErrorNumber],[ErrorMessage]
+        )
+        SELECT
+              [d].[name]
+            , [t].[reserved_page_count]
+            , CONVERT(decimal(19,2),[t].[reserved_page_count]*8.0/1024.0)
+            , [p].[persistent_version_store_size_kb]
+            , [p].[online_index_version_store_size_kb]
+            , [p].[pvs_filegroup_id]
+            , COALESCE([t].[CapturedAtUtc],[p].[CapturedAtUtc],@Now)
+            , CASE WHEN @TraditionalVersionStoreStatus='AVAILABLE'
+                         AND @PersistentVersionStoreStatus='AVAILABLE' THEN 'AVAILABLE'
+                   ELSE 'AVAILABLE_LIMITED' END
+            , COALESCE(@TraditionalVersionStoreErrorNumber,@PersistentVersionStoreErrorNumber)
+            , COALESCE(@TraditionalVersionStoreErrorMessage,@PersistentVersionStoreErrorMessage)
+        FROM [#CurrentTempDB_SourceTraditionalVersionStore] AS [t]
+        FULL OUTER JOIN [#CurrentTempDB_SourcePersistentVersionStore] AS [p]
+          ON [p].[database_id]=[t].[database_id]
+        LEFT JOIN [sys].[databases] AS [d] WITH (NOLOCK)
+          ON [d].[database_id]=COALESCE([t].[database_id],[p].[database_id]);
+
+        IF NOT EXISTS (SELECT 1 FROM [#CurrentTempDB_VersionStore])
+           AND (@TraditionalVersionStoreStatus<>'AVAILABLE' OR @PersistentVersionStoreStatus<>'AVAILABLE')
+            INSERT [#CurrentTempDB_VersionStore]
+            VALUES
+            (
+                  NULL,NULL,NULL,NULL,NULL,NULL,@Now,'AVAILABLE_LIMITED'
+                , COALESCE(@TraditionalVersionStoreErrorNumber,@PersistentVersionStoreErrorNumber)
+                , COALESCE(@TraditionalVersionStoreErrorMessage,@PersistentVersionStoreErrorMessage)
+            );
+
+        IF @TraditionalVersionStoreStatus<>'AVAILABLE'
+           OR @PersistentVersionStoreStatus<>'AVAILABLE'
+        BEGIN
+            SET @EvidenceIsPartial=1;
+            IF @StatusCode='AVAILABLE' SET @StatusCode='AVAILABLE_LIMITED';
+            INSERT [#CurrentTempDB_Warnings]
+            VALUES
+            (
+                  'AVAILABLE_LIMITED'
+                , COALESCE(@TraditionalVersionStoreErrorNumber,@PersistentVersionStoreErrorNumber)
+                , COALESCE(@TraditionalVersionStoreErrorMessage,@PersistentVersionStoreErrorMessage)
+            );
+        END;
+
         INSERT [#CurrentTempDB_Sessions]
         (
               [SessionId],[LoginName],[HostName],[ProgramName],[SessionStatus]
@@ -949,6 +1110,13 @@ ORDER BY [df].[file_id];';
             ORDER BY [GroupId]
             FOR JSON PATH,INCLUDE_NULL_VALUES
         );
+        DECLARE @VersionStoreJson nvarchar(max)=
+        (
+            SELECT *
+            FROM [#CurrentTempDB_VersionStore]
+            ORDER BY [DatabaseName]
+            FOR JSON PATH,INCLUDE_NULL_VALUES
+        );
         DECLARE @WarningsJson nvarchar(max)=
         (
             SELECT *
@@ -962,6 +1130,7 @@ ORDER BY [df].[file_id];';
             , N',"sessions":',COALESCE(@SessionsJson,N'[]')
             , N',"tempdbFiles":',COALESCE(@FilesJson,N'[]')
             , N',"tempdbGovernance":',COALESCE(@GovernanceJson,N'[]')
+            , N',"versionStore":',COALESCE(@VersionStoreJson,N'[]')
             , N',"warnings":',COALESCE(@WarningsJson,N'[]')
             , N'}'
         );
@@ -989,6 +1158,7 @@ ORDER BY [df].[file_id];';
             SELECT * FROM [#CurrentTempDB_Files] ORDER BY [FileId];
 
         SELECT * FROM [#CurrentTempDB_TempdbGovernance] ORDER BY [GroupId];
+        SELECT * FROM [#CurrentTempDB_VersionStore] ORDER BY [DatabaseName];
         SELECT * FROM [#CurrentTempDB_Warnings] ORDER BY [StatusCode],[ErrorNumber];
     END;
 
@@ -1008,6 +1178,10 @@ ORDER BY [df].[file_id];';
                   @SourceTable=N'#CurrentTempDB_TempdbGovernance'
                 , @ResultLabel=N'TempDB Resource Governance'
                 , @EmptyMessage=N'Keine TempDB-Governance-Evidenz';
+            EXEC [monitor].[InternalEmitConsoleResult]
+                  @SourceTable=N'#CurrentTempDB_VersionStore'
+                , @ResultLabel=N'TempDB Version Store'
+                , @EmptyMessage=N'Keine Version-Store-Evidenz';
         END;
 
         IF @TableResultRequested=1
@@ -1025,6 +1199,14 @@ ORDER BY [df].[file_id];';
             IF @TableTarget IS NOT NULL
                 EXEC [monitor].[InternalWriteResultTable]
                       @SourceTable=N'#CurrentTempDB_TempdbGovernance'
+                    , @TargetTable=@TableTarget
+                    , @ThrowOnError=1;
+
+            SET @TableTarget=NULL;
+            SELECT @TableTarget=[TargetTable] FROM [#CurrentTempDB_ResultTableMap] WHERE [ResultName]=N'versionStore';
+            IF @TableTarget IS NOT NULL
+                EXEC [monitor].[InternalWriteResultTable]
+                      @SourceTable=N'#CurrentTempDB_VersionStore'
                     , @TargetTable=@TableTarget
                     , @ThrowOnError=1;
         END;

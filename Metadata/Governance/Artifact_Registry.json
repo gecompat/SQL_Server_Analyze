@@ -32,7 +32,7 @@
       "kind": "work_item",
       "title": "TempDB-ADR- und PVS-Diagnostik",
       "registration_state": "REGISTERED",
-      "status": "RESEARCHED_NOT_IMPLEMENTED",
+      "status": "IMPLEMENTED_ACTIONS_GATE",
       "priority": "P2",
       "acceptance_criteria": "Traditioneller Version Store und TempDB-PVS werden versionsadaptiv mit getrenntem Größen-, Cleanup-, Reset- und Quellenstatus analysiert, ohne ADR oder eine Kapazitätsursache automatisch zu empfehlen.",
       "aliases": [],

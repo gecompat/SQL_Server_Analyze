@@ -55,6 +55,16 @@ TABLES={'#CurrentTempDB_ResultTableMap': [('ResultName',
                                      ('IsPartial', 'bit NOT NULL'),
                                      ('EvidenceLimit',
                                       'nvarchar(1000) COLLATE SQL_Latin1_General_CP1_CS_AS NULL')],
+ '#CurrentTempDB_VersionStore': [('DatabaseName', 'sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL'),
+                                 ('TraditionalVersionStoreReservedPages', 'bigint NULL'),
+                                 ('TraditionalVersionStoreReservedMb', 'decimal(19,2) NULL'),
+                                 ('PersistentVersionStoreSizeKb', 'bigint NULL'),
+                                 ('OnlineIndexVersionStoreSizeKb', 'bigint NULL'),
+                                 ('PersistentVersionStoreFilegroupId', 'smallint NULL'),
+                                 ('CollectionTimeUtc', 'datetime2(3) NOT NULL'),
+                                 ('SourceStatus', 'varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL'),
+                                 ('ErrorNumber', 'int NULL'),
+                                 ('ErrorMessage', 'nvarchar(2048) COLLATE SQL_Latin1_General_CP1_CS_AS NULL')],
  '#CurrentTempDB_Warnings': [('StatusCode', 'varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL'),
                              ('ErrorNumber', 'int NULL'),
                              ('ErrorMessage', 'nvarchar(2048) COLLATE SQL_Latin1_General_CP1_CS_AS NULL')],
@@ -71,6 +81,14 @@ TABLES={'#CurrentTempDB_ResultTableMap': [('ResultName',
                                        ('user_objects_dealloc_page_count', 'bigint NOT NULL'),
                                        ('internal_objects_alloc_page_count', 'bigint NOT NULL'),
                                        ('internal_objects_dealloc_page_count', 'bigint NOT NULL')],
+ '#CurrentTempDB_SourceTraditionalVersionStore': [('database_id', 'int NOT NULL PRIMARY KEY'),
+                                                   ('reserved_page_count', 'bigint NOT NULL'),
+                                                   ('CapturedAtUtc', 'datetime2(3) NOT NULL')],
+ '#CurrentTempDB_SourcePersistentVersionStore': [('database_id', 'int NOT NULL PRIMARY KEY'),
+                                                  ('pvs_filegroup_id', 'smallint NULL'),
+                                                  ('persistent_version_store_size_kb', 'bigint NULL'),
+                                                  ('online_index_version_store_size_kb', 'bigint NULL'),
+                                                  ('CapturedAtUtc', 'datetime2(3) NOT NULL')],
  '#CurrentTempDB_SourceGroupCatalog': [('GroupId', 'int NOT NULL PRIMARY KEY'),
                                        ('GroupName', 'sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL'),
                                        ('PoolId', 'int NOT NULL'),
@@ -90,7 +108,7 @@ TABLES={'#CurrentTempDB_ResultTableMap': [('ResultName',
                                       ('MaxSizePages', 'bigint NOT NULL'),
                                       ('GrowthPagesOrPercent', 'bigint NOT NULL')]}
 PARAMETERS=[('@SessionIds', 'nvarchar(max) = NULL'), ('@AktuelleSessionEinbeziehen', 'bit = 0'), ('@MinNettoMb', 'decimal(19,2) = 0'), ('@SystemSessionsEinbeziehen', 'bit = 0'), ('@MitDateien', 'bit = 1'), ('@MaxZeilen', 'int = 1000'), ('@ResultSetArt', "varchar(16) = 'CONSOLE'"), ('@ResultTablesJson', 'nvarchar(max) = NULL'), ('@JsonErzeugen', 'bit = 0'), ('@Json', 'nvarchar(max) = NULL OUTPUT'), ('@PrintMeldungen', 'bit = 1'), ('@Hilfe', 'bit = 0'), ('@ParentCurrentStateSnapshotId', 'uniqueidentifier = NULL')]
-TOKENS={'Version      : 4.0.0': 1, 'Stand        : 2026-07-23': 1, '3 AS [schemaVersion]': 1, '[ContractVersion]=2': 1, '[OwnerSessionId]=CONVERT(smallint,@@SPID)': 1, '[SnapshotId]=@ParentCurrentStateSnapshotId': 8, 'THROW 51011,@ErrorMessage,1;': 1, 'SELECT TOP (@Candidates)': 1, 'SELECT TOP (@Limit)': 3, 'SELECT @RowCount=COUNT_BIG(*)': 1, 'SET @HasMoreRows=CONVERT': 1, "@AllowedResultNames=N'sessions|tempdbGovernance'": 1, 'HAVING COUNT(*)>1': 1, '[NumberValue] NOT BETWEEN 0 AND 32767': 1, "@SourceTable=N'#CurrentTempDB_Sessions'": 2, "@SourceTable=N'#CurrentTempDB_Files'": 1, "@SourceTable=N'#CurrentTempDB_TempdbGovernance'": 2, 'ORDER BY [TotalNetMb] DESC,[SessionId]': 3, 'ORDER BY [GroupId]': 3, '@MinNettoMb<0': 1, '@MaxZeilen<0': 1, '@MitDateien IS NULL': 1, '[p].[SnapshotId]=[g].[SnapshotId]': 1}
+TOKENS={'Version      : 4.1.0': 1, 'Stand        : 2026-07-23': 1, '3 AS [schemaVersion]': 1, '[ContractVersion]=2': 1, '[OwnerSessionId]=CONVERT(smallint,@@SPID)': 1, '[SnapshotId]=@ParentCurrentStateSnapshotId': 13, 'THROW 51011,@ErrorMessage,1;': 1, 'SELECT TOP (@Candidates)': 1, 'SELECT TOP (@Limit)': 3, 'SELECT @RowCount=COUNT_BIG(*)': 1, 'SET @HasMoreRows=CONVERT': 1, "@AllowedResultNames=N'sessions|tempdbGovernance|versionStore'": 1, 'HAVING COUNT(*)>1': 1, '[NumberValue] NOT BETWEEN 0 AND 32767': 1, "@SourceTable=N'#CurrentTempDB_Sessions'": 2, "@SourceTable=N'#CurrentTempDB_Files'": 1, "@SourceTable=N'#CurrentTempDB_TempdbGovernance'": 2, "@SourceTable=N'#CurrentTempDB_VersionStore'": 2, 'ORDER BY [TotalNetMb] DESC,[SessionId]': 3, 'ORDER BY [GroupId]': 3, 'ORDER BY [DatabaseName]': 2, '@MinNettoMb<0': 1, '@MaxZeilen<0': 1, '@MitDateien IS NULL': 1, '[p].[SnapshotId]=[g].[SnapshotId]': 1, 'LEFT JOIN [sys].[databases] AS [d] WITH (NOLOCK)': 1, 'COALESCE([t].[CapturedAtUtc],[p].[CapturedAtUtc],@Now)': 1}
 REFERENCE_CAP='    IF @MaxZeilen IS NOT NULL AND @MaxZeilen>0\n    BEGIN\n        ;WITH [R] AS\n        (\n            SELECT *,ROW_NUMBER() OVER(ORDER BY [TotalNetMb] DESC,[SessionId]) AS [rn]\n            FROM [#CurrentTempDB_Sessions]\n        )\n        DELETE FROM [R] WHERE [rn]>@Limit;\n\n        ;WITH [R] AS\n        (\n            SELECT *,ROW_NUMBER() OVER(ORDER BY [GroupId]) AS [rn]\n            FROM [#CurrentTempDB_TempdbGovernance]\n        )\n        DELETE FROM [R] WHERE [rn]>@Limit;\n    END;\n\n'
 
 def normalize(value:str)->str:return re.sub(r"\s+"," ",value).strip()
@@ -149,5 +167,5 @@ def main()->int:
  if a.self_test:print(f'CurrentTempDB self-test passed: mutations={self_test(source)}');return 0
  errors=findings(source)
  if errors:print('CurrentTempDB contract failed: '+', '.join(errors));return 1
- print('CurrentTempDB contract passed: tables=12 fields=78 texts=23 parameters=13 sessions=12 governance=21');return 0
+ print('CurrentTempDB contract passed: tables=15 fields=94 texts=25 parameters=13 sessions=12 governance=21 versionStore=10');return 0
 if __name__=='__main__':raise SystemExit(main())

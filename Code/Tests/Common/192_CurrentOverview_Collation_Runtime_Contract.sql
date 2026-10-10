@@ -97,7 +97,7 @@ CREATE TABLE #ExampleOverviewOracle_requests
  [ToolBackgroundCategory] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,
  [ToolBackgroundDetection] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,
  [ToolBackgroundConfidence] varchar(16) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,
- [StartTime] datetime NULL,
+ [StartTime] datetime2(3) NULL,
  [ElapsedMs] int NULL,
  [CpuMs] int NULL,
  [LogicalReads] bigint NULL,
@@ -544,6 +544,20 @@ CREATE TABLE #ExampleOverviewOracle_tempdbGovernance
         , [EvidenceLimit] nvarchar(1000) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
     );
 
+CREATE TABLE #ExampleOverviewOracle_versionStore
+(
+          [DatabaseName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [TraditionalVersionStoreReservedPages] bigint NULL
+        , [TraditionalVersionStoreReservedMb] decimal(19,2) NULL
+        , [PersistentVersionStoreSizeKb] bigint NULL
+        , [OnlineIndexVersionStoreSizeKb] bigint NULL
+        , [PersistentVersionStoreFilegroupId] smallint NULL
+        , [CollectionTimeUtc] datetime2(3) NOT NULL
+        , [SourceStatus] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [ErrorNumber] int NULL
+        , [ErrorMessage] nvarchar(2048) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+    );
+
 CREATE TABLE [#ExampleOverviewOracle_io]
 (
     [DatabaseId] int NOT NULL
@@ -643,6 +657,7 @@ INSERT #ExampleOverviewMaps VALUES
 (512,N'memoryGrants',N'#ExampleOverviewOut_memoryGrants',N'#ExampleOverviewOracle_memoryGrants',N'$.memoryGrants.memoryGrants',63,N'SessionId|RequestId|SchedulerId|Dop|RequestTime|GrantTime|WaitTimeMs|IsWaiting|IsSmall|RequestedMemoryMb|RequiredMemoryMb|GrantedMemoryMb|UsedMemoryMb|MaxUsedMemoryMb|IdealMemoryMb|GroupId|WorkloadGroupName|PoolId|PoolName|ResourceSemaphoreId|RequestMaxMemoryGrantPercent|PoolMaxWorkspaceMemoryMb|PoolTargetWorkspaceMemoryMb|PoolUsedWorkspaceMemoryMb|ConfiguredRequestMaxGrantMemoryMb|TargetRequestMaxGrantMemoryMb|HistoricalMaxRequestGrantMemoryMb|RequestedOfRequestMaxPercent|GrantedOfRequestMaxPercent|UsedOfRequestMaxPercent|MaxUsedOfRequestMaxPercent|IdealOfRequestMaxPercent|RequestedOfTargetMaxPercent|GrantedOfTargetMaxPercent|UsedOfGrantedPercent|MaxUsedOfGrantedPercent|SemaphoreTargetMemoryMb|SemaphoreMaxTargetMemoryMb|SemaphoreTotalMemoryMb|SemaphoreAvailableMemoryMb|SemaphoreGrantedMemoryMb|SemaphoreUsedMemoryMb|SemaphoreGranteeCount|SemaphoreWaiterCount|ReservedWorkerCount|UsedWorkerCount|MaxUsedWorkerCount|QueueId|WaitOrder|LoginName|HostName|ProgramName|DatabaseId|DatabaseName|RequestStatus|Command|ElapsedMs|CpuMs|LogicalReads|CurrentStatementCharacters|CurrentStatementBytes|CurrentStatementIsTruncated|CurrentStatement',NULL,32),
 (1024,N'tempdbSessions',N'#ExampleOverviewOut_tempdbSessions',N'#ExampleOverviewOracle_tempdbSessions',N'$.tempdbSessions.sessions',12,N'SessionId|LoginName|HostName|ProgramName|SessionStatus|UserObjectsAllocatedMb|UserObjectsDeallocatedMb|UserObjectsNetMb|InternalObjectsAllocatedMb|InternalObjectsDeallocatedMb|InternalObjectsNetMb|TotalNetMb',NULL,64),
 (2048,N'tempdbGovernance',N'#ExampleOverviewOut_tempdbGovernance',N'#ExampleOverviewOracle_tempdbGovernance',N'$.tempdbSessions.tempdbGovernance',21,N'GroupId|GroupName|PoolId|PoolName|ConfiguredGroupMaxTempdbDataMb|ConfiguredGroupMaxTempdbDataPercent|TempdbMaximumSizeMb|EffectiveGroupMaxTempdbDataMb|EffectiveLimitSource|IsPercentLimitEffective|TempdbDataSpaceMb|PeakTempdbDataSpaceMb|EffectiveLimitUtilizationPercent|TotalTempdbDataLimitViolationCount|HasRecordedLimitViolation|StatisticsStartTime|IsResourceGovernorEnabled|ReconfigurationPending|SourceStatusCode|IsPartial|EvidenceLimit',NULL,64),
+(131072,N'versionStore',N'#ExampleOverviewOut_versionStore',N'#ExampleOverviewOracle_versionStore',N'$.tempdbSessions.versionStore',10,N'DatabaseName|TraditionalVersionStoreReservedPages|TraditionalVersionStoreReservedMb|PersistentVersionStoreSizeKb|OnlineIndexVersionStoreSizeKb|PersistentVersionStoreFilegroupId|CollectionTimeUtc|SourceStatus|ErrorNumber|ErrorMessage',NULL,64),
 (4096,N'io',N'#ExampleOverviewOut_io',N'#ExampleOverviewOracle_io',N'$.io.files',19,N'DatabaseId|DatabaseName|FileId|LogicalName|PhysicalName|FileTypeDesc|SampleSeconds|Reads|ReadBytes|ReadStallMs|Writes|WriteBytes|WriteStallMs|ReadLatencyMs|WriteLatencyMs|OverallLatencyMs|ReadThroughputMbPerSecond|WriteThroughputMbPerSecond|SizeOnDiskMb',NULL,128),
 (8192,N'logs',N'#ExampleOverviewOut_logs',N'#ExampleOverviewOracle_logs',N'$.logs.logs',19,N'DatabaseId|DatabaseName|RecoveryModel|LogReuseWaitDesc|TotalLogSizeMb|UsedLogSizeMb|UsedLogPercent|LogSinceLastBackupMb|ActiveVlfCount|TotalVlfCount|LogTruncationHoldupReason|LogBackupTime|LogRecoverySizeMb|IsAdrEnabled|PersistentVersionStoreMb|SpaceStatus|StatsStatus|VlfStatus|PvsStatus',NULL,256),
 (16384,N'moduleStatus',N'#ExampleOverviewOut_moduleStatus',N'#ExampleOverviewOracle_moduleStatus',N'$.moduleStatus',8,N'ResultName|ModuleName|StatusCode|IsPartial|ReturnedRowCount|DurationMs|ErrorMessage',NULL,0),
@@ -652,8 +667,8 @@ CREATE TABLE #ExampleOverviewCases(CaseNumber int NOT NULL,NativeCase bit NOT NU
  MapMask int NOT NULL,MaximumRows int NULL,TextLimit int NULL,Sample tinyint NULL,Detail varchar(16) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,
  Help bit NOT NULL,JsonBit bit NULL,BadParameter int NOT NULL,Tools bit NOT NULL,Ids nvarchar(max) COLLATE SQL_Latin1_General_CP1_CS_AS NULL);
 INSERT #ExampleOverviewCases VALUES
- (0,0,0,131071,NULL,0,0,'SUMMARY',0,1,0,1,N'32767'),
- (1,0,0,131071,0,0,0,'SUMMARY',0,1,0,1,N'32767'),
+ (0,0,0,262143,NULL,0,0,'SUMMARY',0,1,0,1,N'32767'),
+ (1,0,0,262143,0,0,0,'SUMMARY',0,1,0,1,N'32767'),
  (2,0,0,131071,1,0,0,'SUMMARY',0,1,0,1,N'32767'),
  (3,0,0,131071,2,0,0,'SUMMARY',0,1,0,1,N'32767'),
  (4,0,0,131071,2147483647,NULL,NULL,'ALL',0,1,0,1,N'32767'),
@@ -666,11 +681,11 @@ INSERT #ExampleOverviewCases VALUES
  (11,0,0,131071,0,0,0,'SUMMARY',0,1,2,1,N'32767'),
  (12,0,0,131071,0,0,0,'SUMMARY',1,1,0,1,N'32767'),
  (13,0,0,131071,0,0,0,'SUMMARY',0,0,0,1,N'32767'),
- (14,0,511,131071,1,0,0,'SUMMARY',0,1,0,1,N'32767|32767');
+ (14,0,511,262143,1,0,0,'SUMMARY',0,1,0,1,N'32767|32767');
 DECLARE @N int=0;
 WHILE @N<9
 BEGIN
- INSERT #ExampleOverviewCases VALUES(20+@N,0,CONVERT(int,POWER(2,@N)),131071,1,0,0,'SUMMARY',0,1,0,1,N'32767');
+ INSERT #ExampleOverviewCases VALUES(20+@N,0,CONVERT(int,POWER(2,@N)),262143,1,0,0,'SUMMARY',0,1,0,1,N'32767');
  SET @N+=1;
 END;
 SET @N=0;
@@ -700,7 +715,7 @@ BEGIN
  BEGIN
   SET @FixtureStatus='PENDING';
   INSERT #ExampleOverviewCases VALUES
-   (100,1,511,131071,NULL,0,0,'SUMMARY',0,1,0,1,@FixtureIds),
+   (100,1,511,262143,NULL,0,0,'SUMMARY',0,1,0,1,@FixtureIds),
    (101,1,511,131071,0,0,0,'SUMMARY',0,1,0,1,@FixtureIds),
    (102,1,511,131071,1,0,0,'SUMMARY',0,1,0,1,@FixtureIds),
    (103,1,511,131071,2,0,0,'SUMMARY',0,1,0,1,@FixtureIds),
@@ -713,7 +728,7 @@ BEGIN
    (110,1,4,131071,0,0,0,'SUMMARY',0,1,0,1,@FixtureIds),
    (111,1,8,131071,0,0,0,'SUMMARY',0,1,0,1,@FixtureIds),
    (112,1,16,131071,0,0,0,'SUMMARY',0,1,0,1,@FixtureIds),
-   (113,1,64,131071,0,0,0,'SUMMARY',0,1,0,1,@FixtureIds);
+   (113,1,64,262143,0,0,0,'SUMMARY',0,1,0,1,@FixtureIds);
  END;
 END;
 CREATE TABLE #ExampleOverviewCanonical(Side bit NOT NULL,CanonicalRow nvarchar(max) COLLATE Latin1_General_100_BIN2 NOT NULL);
@@ -738,6 +753,7 @@ BEGIN TRY
   CREATE TABLE #ExampleOverviewOut_memoryGrants([Seed] bit NULL);
   CREATE TABLE #ExampleOverviewOut_tempdbSessions([Seed] bit NULL);
   CREATE TABLE #ExampleOverviewOut_tempdbGovernance([Seed] bit NULL);
+  CREATE TABLE #ExampleOverviewOut_versionStore([Seed] bit NULL);
   CREATE TABLE #ExampleOverviewOut_io([Seed] bit NULL);
   CREATE TABLE #ExampleOverviewOut_logs([Seed] bit NULL);
   CREATE TABLE #ExampleOverviewOut_moduleStatus([Seed] bit NULL);
@@ -770,9 +786,9 @@ BEGIN TRY
   END
   ELSE
   BEGIN
-   IF ISJSON(@Json)<>1 OR (SELECT COUNT(*) FROM OPENJSON(@Json))<>4+CASE WHEN @Invalid=1 THEN 0 ELSE (SELECT COUNT(*) FROM #ExampleOverviewMaps WHERE ModuleBit<>0 AND ResultName NOT IN(N'requestContext',N'statements',N'batches',N'inputBuffers',N'tempdbGovernance') AND (ModuleBit & @Mask)<>0) END
+   IF ISJSON(@Json)<>1 OR (SELECT COUNT(*) FROM OPENJSON(@Json))<>4+CASE WHEN @Invalid=1 THEN 0 ELSE (SELECT COUNT(*) FROM #ExampleOverviewMaps WHERE ModuleBit<>0 AND ResultName NOT IN(N'requestContext',N'statements',N'batches',N'inputBuffers',N'tempdbGovernance',N'versionStore') AND (ModuleBit & @Mask)<>0) END
     OR EXISTS(SELECT 1 FROM OPENJSON(@Json) GROUP BY [key] HAVING COUNT(*)<>1)
-    OR EXISTS(SELECT 1 FROM OPENJSON(@Json)p WHERE p.[key] COLLATE Latin1_General_100_BIN2 NOT IN(N'meta',N'moduleStatus',N'snapshotStatus',N'warnings') AND NOT EXISTS(SELECT 1 FROM #ExampleOverviewMaps m WHERE @Invalid=0 AND m.ModuleBit<>0 AND m.ResultName NOT IN(N'requestContext',N'statements',N'batches',N'inputBuffers',N'tempdbGovernance') AND(m.ModuleBit&@Mask)<>0 AND m.ResultName COLLATE Latin1_General_100_BIN2=p.[key] COLLATE Latin1_General_100_BIN2))
+    OR EXISTS(SELECT 1 FROM OPENJSON(@Json)p WHERE p.[key] COLLATE Latin1_General_100_BIN2 NOT IN(N'meta',N'moduleStatus',N'snapshotStatus',N'warnings') AND NOT EXISTS(SELECT 1 FROM #ExampleOverviewMaps m WHERE @Invalid=0 AND m.ModuleBit<>0 AND m.ResultName NOT IN(N'requestContext',N'statements',N'batches',N'inputBuffers',N'tempdbGovernance',N'versionStore') AND(m.ModuleBit&@Mask)<>0 AND m.ResultName COLLATE Latin1_General_100_BIN2=p.[key] COLLATE Latin1_General_100_BIN2))
     THROW 59504,N'OVERVIEW_TOP_KEYS',1;
    IF (SELECT COUNT(*) FROM OPENJSON(@Json,N'$.meta'))<>10 OR EXISTS(SELECT 1 FROM OPENJSON(@Json,N'$.meta') GROUP BY [key] HAVING COUNT(*)<>1)
     OR JSON_VALUE(@Json,N'$.meta.resultName')<>N'CurrentOverview' OR ISNULL(TRY_CONVERT(int,JSON_VALUE(@Json,N'$.meta.schemaVersion')),-1)<>4
@@ -792,15 +808,23 @@ BEGIN TRY
   OPEN Maps192;FETCH NEXT FROM Maps192 INTO @Bit,@Result,@Target,@Schema,@Path,@Fields,@Keys,@Extra,@ModuleBit;
   WHILE @@FETCH_STATUS=0
   BEGIN
+   IF @Native=0 AND @ModuleBit<>0
+   BEGIN
+    FETCH NEXT FROM Maps192 INTO @Bit,@Result,@Target,@Schema,@Path,@Fields,@Keys,@Extra,@ModuleBit;
+    CONTINUE;
+   END;
    SET @Object=OBJECT_ID(N'tempdb..'+@Target);SET @Template=OBJECT_ID(N'tempdb..'+@Schema);
    SET @Materialized=CASE WHEN (@Bit & @MapMask)=0 OR @Help=1 THEN 0
      WHEN @ModuleBit=0 THEN 1
      WHEN @Invalid=1 THEN 0
+    WHEN @Native=0 AND @ModuleBit<>0
+      AND EXISTS(SELECT 1 FROM tempdb.sys.columns WHERE object_id=@Object AND name<>N'Seed') THEN 1
+    WHEN @Native=0 THEN 0
      WHEN @Result IN(N'requestContext',N'statements',N'batches',N'inputBuffers') AND (@Mask&2)=0 THEN 0
-     WHEN @Result=N'tempdbGovernance' AND (@Mask&64)=0 THEN 0
+    WHEN @Result IN(N'tempdbGovernance',N'versionStore') AND (@Mask&64)=0 THEN 0
      WHEN (@ModuleBit&@Mask)=0 THEN 0
      WHEN @JsonBit=1 AND @Invalid=0 AND @Result NOT IN(N'requestContext',N'statements',N'batches',N'inputBuffers')
-       AND JSON_QUERY(@Json,N'$.'+CASE WHEN @Result=N'tempdbGovernance' THEN N'tempdbSessions' ELSE @Result END) IS NULL THEN 0
+       AND JSON_QUERY(@Json,N'$.'+CASE WHEN @Result IN(N'tempdbGovernance',N'versionStore') THEN N'tempdbSessions' ELSE @Result END) IS NULL THEN 0
      ELSE 1 END;
    IF @Materialized=0
    BEGIN
@@ -857,7 +881,7 @@ BEGIN TRY
    END
    ELSE
    BEGIN
-    DECLARE @ExecCount int=(SELECT COUNT(*) FROM #ExampleOverviewMaps WHERE ModuleBit<>0 AND ResultName NOT IN(N'requestContext',N'statements',N'batches',N'inputBuffers',N'tempdbGovernance') AND (ModuleBit&@Mask)<>0);
+    DECLARE @ExecCount int=(SELECT COUNT(*) FROM #ExampleOverviewMaps WHERE ModuleBit<>0 AND ResultName NOT IN(N'requestContext',N'statements',N'batches',N'inputBuffers',N'tempdbGovernance',N'versionStore') AND (ModuleBit&@Mask)<>0);
     DECLARE @Failed int=(SELECT COUNT(*) FROM OPENJSON(@Json,N'$.moduleStatus')WITH(StatusCode varchar(40) '$.StatusCode')x WHERE StatusCode NOT IN('AVAILABLE','AVAILABLE_LIMITED','SKIPPED'));
     DECLARE @Partial int=(SELECT COUNT(*) FROM OPENJSON(@Json,N'$.moduleStatus')WITH(IsPartial bit '$.IsPartial')x WHERE IsPartial=1);
     DECLARE @SnapPartial bit=CASE WHEN EXISTS(SELECT 1 FROM OPENJSON(@Json,N'$.snapshotStatus')WITH(StatusCode varchar(40) '$.StatusCode',IsPartial bit '$.IsPartial')x WHERE IsPartial=1 OR StatusCode NOT IN('AVAILABLE','NOT_COLLECTED'))THEN 1 ELSE 0 END;
@@ -906,6 +930,7 @@ BEGIN TRY
   DROP TABLE #ExampleOverviewOut_memoryGrants;
   DROP TABLE #ExampleOverviewOut_tempdbSessions;
   DROP TABLE #ExampleOverviewOut_tempdbGovernance;
+  DROP TABLE #ExampleOverviewOut_versionStore;
   DROP TABLE #ExampleOverviewOut_io;
   DROP TABLE #ExampleOverviewOut_logs;
   DROP TABLE #ExampleOverviewOut_moduleStatus;
