@@ -1,11 +1,17 @@
 # Objektindex der eigenständigen Analysebeschreibungen
 
 **Stand:** 23. Juli 2026
-**Abdeckung:** alle 104 inventarisierten `USP_*`-Procedures des Frameworks einschließlich der optionalen Pakete
+**Abdeckung:** alle 106 inventarisierten `USP_*`-Procedures des Frameworks einschließlich der optionalen Pakete
 
 Jeder Link führt zu einer in sich geschlossenen Procedure-Seite. Dort stehen sicherer Einstieg, Zeilengranularität, Leserichtung, technische Problembegründung, unkritischer Gegenkontext, synthetisches Beispiel, Folgeanalyse und der Link zur vollständigen technischen Spaltenreferenz.
 
 Für einen Einstieg nach beobachtetem Problem verwenden Sie [Hier beginnen](Start_Here.md) oder den installierten `USP_AnalysisNavigator`. Unbekannte Begriffe erklärt das [Glossar](Glossary.md). Die ergänzende [detaillierte Referenz der 69 unterstützenden Frameworkobjekte](../Reference/Object_Reference.md) führt jede View, TVF, interne Procedure und Tabelle einzeln auf und beschreibt Aufgabe, Schnittstelle, Verwendung, Last-/Sperrverhalten sowie Stabilitätsgrenze. Scalar-Valued Functions (SVFs) sind im aktuellen Inventory nicht vorhanden.
+
+## SSIS
+
+| Objekt | Eigenständige Beschreibung |
+|---|---|
+| `[monitor].[USP_SsisPackageAnalysis]` | [Statisches DTSX-v2-Paket- und Executable-Inventar](Procedures/USP_SsisPackageAnalysis.md) |
 
 ## Common
 

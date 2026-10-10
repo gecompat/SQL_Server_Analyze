@@ -1416,6 +1416,25 @@ USP_SpecialFeatureInventory,StatusCodeOut,varchar(40),NULL OUTPUT
 USP_SpecialFeatureInventory,IsPartialOut,bit,NULL OUTPUT
 USP_SpecialFeatureInventory,ErrorNumberOut,int,NULL OUTPUT
 USP_SpecialFeatureInventory,ErrorMessageOut,nvarchar(2048),NULL OUTPUT
+USP_SsisPackageAnalysis,PackageXml,xml,NULL
+USP_SsisPackageAnalysis,PackageParametersJson,nvarchar(max),NULL
+USP_SsisPackageAnalysis,AnalysisDepth,varchar(16),'STANDARD'
+USP_SsisPackageAnalysis,ResolveSqlMetadata,bit,0
+USP_SsisPackageAnalysis,CheckLookupData,bit,0
+USP_SsisPackageAnalysis,HighImpactConfirmed,bit,0
+USP_SsisPackageAnalysis,MaxZeilen,int,1000
+USP_SsisPackageAnalysis,MaxDurationSeconds,int,30
+USP_SsisPackageAnalysis,LockTimeoutMs,int,0
+USP_SsisPackageAnalysis,ResultSetArt,varchar(16),'CONSOLE'
+USP_SsisPackageAnalysis,ResultTablesJson,nvarchar(max),NULL
+USP_SsisPackageAnalysis,JsonErzeugen,bit,0
+USP_SsisPackageAnalysis,Json,nvarchar(max),NULL OUTPUT
+USP_SsisPackageAnalysis,PrintMeldungen,bit,1
+USP_SsisPackageAnalysis,Hilfe,bit,0
+USP_SsisPackageAnalysis,StatusCodeOut,varchar(40),NULL OUTPUT
+USP_SsisPackageAnalysis,IsPartialOut,bit,NULL OUTPUT
+USP_SsisPackageAnalysis,ErrorNumberOut,int,NULL OUTPUT
+USP_SsisPackageAnalysis,ErrorMessageOut,nvarchar(2048),NULL OUTPUT
 USP_InMemoryOltpAnalysis,DatabaseNames,nvarchar(max),NULL
 USP_InMemoryOltpAnalysis,SystemdatenbankenEinbeziehen,bit,0
 USP_InMemoryOltpAnalysis,DatabaseNamePattern,nvarchar(4000),NULL
