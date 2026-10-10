@@ -80,6 +80,20 @@ Die Validierung folgt der verbindlichen CI-Teststrategie. Ein Statuswechsel setz
 | 5 | Strategische Pakete und externe Evidenz | `SSIS-001`, `RUNTIME-001`, `SC-024`, `SC-025` | erforderliche Plattformen, Zuständigkeiten und Sicherheitsgrenzen sind freigegeben | der jeweils abgegrenzte Produkt- oder externe Evidence-Vertrag ist nachweislich erfüllt |
 | kontinuierlicher Intake | Abdeckungslücken sichtbar und priorisierbar | `WI-0010` | aktuelle Inventare und offizielle Primärquellen sind verfügbar | Kandidaten sind als bestehend, partiell, geplant, extern oder ausgeschlossen klassifiziert und werden erst nach eigener Registrierung in eine Entwicklungswelle übernommen |
 
+## Aktivierungsfolge nach dem Reifeabschluss
+
+Diese Reihenfolge plant die bereits registrierten Arbeitselemente. Sie autorisiert keine Implementierung, keine neue öffentliche Procedure und keinen externen Zugriff. Vor jedem Element bleiben der Dossierprozess, die jeweils erforderliche funktionsbezogene Freigabe und die Eintrittsbedingung der zugehörigen Welle verbindlich.
+
+1. Der Reifeabschluss der Welle 1 wird mit dem von `SQL_Server_Lab` bereitgestellten und passend nachgewiesenen SMTP-Pfad abgeschlossen. Offene externe Security-Cloud-Evidenz wird getrennt als Liefergate behandelt und nicht als Produktfunktion ausgegeben.
+2. `WI-0002` beginnt Welle 2 mit einer Analyse der TempDB-ADR- und PVS-Diagnostik. Das Thema erweitert einen vorhandenen Current-State-Pfad und prüft deshalb zuerst Schema-, Quellen-, Kosten- und Snapshotgrenzen.
+3. `WI-0003` folgt als abgegrenzte Backupmetadatenanalyse. Die Dossieranalyse trennt Konfigurationswert, dokumentierten Backupalgorithmus und SQL-Server-2025-Capability, bevor eine Resultsetentscheidung getroffen wird.
+4. `WI-0004`, `WI-0005` und `WI-0006` folgen in dieser Reihenfolge. Sie betreffen jeweils vorhandene Analyseflächen für Columnstore, Extended Events und Compile-Kontext und sollen deshalb vor neuen Inventarflächen bewertet werden.
+5. `WI-0007` wird vor `WI-0009` bearbeitet, weil die External-Model-Inventur die ausdrücklich dokumentierte fachliche Abhängigkeit der External-Data-Analyse bildet.
+6. Nach dem Abschluss von Welle 2 wird `WI-0008` anhand seines bereits implementierten read-only Vertrags gegen seine noch erforderlichen Wellen- und Liefergates geprüft. `WI-0009` folgt erst nach `WI-0007`, abgeschlossenem API- und Kostenreview sowie einer eigenen Freigabe für seine öffentliche Analysefläche.
+7. `SC-023-EXPANSION`, `SSIS-001`, `RUNTIME-001`, `SC-024` und `SC-025` bleiben nachrangige, separat freizugebende Pakete. Sie werden nicht durch die bloße Planung aktiviert, weil sie zusätzliche Zuständigkeits-, Plattform- oder Datenschutzgrenzen haben.
+
+`WI-0010` bleibt parallel ein reiner Intake. Neue Matrixkandidaten werden erst nach Überschneidungsprüfung, Priorisierungsentscheidung und Registryvergabe in diese Reihenfolge aufgenommen.
+
 ## Welle 1: Reifeabschluss vorhandener Funktionen
 
 Jeder nachfolgende Abschnitt der Wellen 1 bis 5 ist ein eigenes Dossier. Er muss die vier Schritte Analyse, Spezifikation, vertikale Implementierung sowie Evidenz und Statuswechsel getrennt durchlaufen. Auch gemeinsam priorisierte Themen dürfen diese Schritte nicht als Sammeländerung überspringen.
