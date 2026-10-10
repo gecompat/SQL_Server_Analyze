@@ -4,7 +4,7 @@ SET NOCOUNT ON;
 SET QUOTED_IDENTIFIER ON;
 IF DB_ID(N'ExampleObjectIndexSource') IS NOT NULL
     THROW 55780,N'Der eigene Fixture-Datenbankname ist bereits belegt.',1;
-DECLARE @DatabaseCreated bit=0, @Json nvarchar(max), @FailureMessage nvarchar(2048);
+DECLARE @DatabaseCreated bit=0, @Json nvarchar(max), @FailureMessage nvarchar(2048), @ProductMajorVersion int=TRY_CONVERT(int,SERVERPROPERTY(N'ProductMajorVersion'));
 BEGIN TRY
     EXEC(N'CREATE DATABASE [ExampleObjectIndexSource] COLLATE Latin1_General_100_CI_AS;');
     SET @DatabaseCreated=1;
@@ -12,9 +12,13 @@ BEGIN TRY
         CREATE TABLE [dbo].[ExampleObjectIndexÄ]([Id] int NOT NULL PRIMARY KEY, [Code] int NOT NULL);
         INSERT [dbo].[ExampleObjectIndexÄ] VALUES(1,10),(2,10),(3,20);
         CREATE STATISTICS [ExampleCodeStatistics] ON [dbo].[ExampleObjectIndexÄ]([Code]) WITH FULLSCAN;
-        CREATE TABLE [dbo].[ExampleColumnstoreÄ]([Id] int NOT NULL);
+        CREATE TABLE [dbo].[ExampleColumnstoreÄ]([Id] int NOT NULL,[OrderValue] int NOT NULL);
         CREATE CLUSTERED COLUMNSTORE INDEX [ExampleColumnstoreIndex] ON [dbo].[ExampleColumnstoreÄ];
-        INSERT [dbo].[ExampleColumnstoreÄ] VALUES(1),(2),(3);';
+        INSERT [dbo].[ExampleColumnstoreÄ] VALUES(1,10),(2,20),(3,30);';
+    IF @ProductMajorVersion>=16
+        EXEC [ExampleObjectIndexSource].[sys].[sp_executesql] N'
+            DROP INDEX [ExampleColumnstoreIndex] ON [dbo].[ExampleColumnstoreÄ];
+            CREATE CLUSTERED COLUMNSTORE INDEX [ExampleColumnstoreIndex] ON [dbo].[ExampleColumnstoreÄ] ORDER([OrderValue]);';
     CREATE TABLE [#ExampleObjectIndexExport1]([Dummy] int NULL);
     SET @Json=NULL;
     EXEC [monitor].[USP_MissingIndexes] @DatabaseNames=N'ExampleObjectIndexSource', @HighImpactConfirmed=1, @MaxZeilen=10, @SchemaNames=N'dbo', @ObjectNames=N'ExampleObjectIndexÄ',
@@ -51,18 +55,41 @@ BEGIN TRY
                   AND [collation_name] COLLATE SQL_Latin1_General_CP1_CS_AS<>N'SQL_Latin1_General_CP1_CS_AS')
         THROW 55782,N'USP_StatisticsDistributionAnalysis.findings: Der TABLE-Export übernimmt eine fremde Collation.',1;
     CREATE TABLE [#ExampleObjectIndexExport4]([Dummy] int NULL);
+    CREATE TABLE [#ExampleObjectIndexOrdering]([Dummy] int NULL);
     SET @Json=NULL;
     EXEC [monitor].[USP_Columnstore] @DatabaseNames=N'ExampleObjectIndexSource', @HighImpactConfirmed=1, @MaxZeilen=10, @SchemaNames=N'dbo', @ObjectNames=N'ExampleColumnstoreÄ',
-        @ResultSetArt='TABLE', @ResultTablesJson=N'{"rowgroups":"#ExampleObjectIndexExport4"}',
+        @ResultSetArt='TABLE', @ResultTablesJson=N'{"rowgroups":"#ExampleObjectIndexExport4","ordering":"#ExampleObjectIndexOrdering"}',
         @JsonErzeugen=1, @Json=@Json OUTPUT, @PrintMeldungen=0;
     IF COALESCE(ISJSON(@Json),0)<>1 OR COALESCE(JSON_VALUE(@Json,N'$.meta.isPartial'),N'')<>N'false' OR COALESCE(JSON_VALUE(@Json,N'$.meta.statusCode'),N'') NOT IN (N'AVAILABLE',N'AVAILABLE_WITH_FINDING',N'NOT_APPLICABLE')
         THROW 55781,N'USP_Columnstore: Der gezielte JSON-Vertrag ist verletzt.',1;
     IF NOT EXISTS(SELECT 1 FROM [#ExampleObjectIndexExport4] WHERE [DatabaseName]=N'ExampleObjectIndexSource' AND [SchemaName]=N'dbo' AND [ObjectName]=N'ExampleColumnstoreÄ')
         THROW 55783,N'Die kontrollierte Fixture liefert keine erwarteten Datenzeilen.',1;
+    IF @ProductMajorVersion<16
+    BEGIN
+        IF NOT EXISTS(SELECT 1 FROM [#ExampleObjectIndexOrdering] WHERE [SourceStatus]='UNAVAILABLE_VERSION')
+           OR NOT EXISTS(SELECT 1 FROM OPENJSON(@Json,N'$.ordering') WITH ([SourceStatus] varchar(40) N'$.SourceStatus') WHERE [SourceStatus]='UNAVAILABLE_VERSION')
+            THROW 55785,N'USP_Columnstore.ordering: Der SQL-Server-2019-Fallback ist verletzt.',1;
+    END
+    ELSE
+    BEGIN
+        IF NOT EXISTS(SELECT 1 FROM [#ExampleObjectIndexOrdering] WHERE [ColumnName]=N'OrderValue' AND [ColumnStoreOrderOrdinal]=1 AND [SourceStatus]='AVAILABLE')
+           OR NOT EXISTS(SELECT 1 FROM OPENJSON(@Json,N'$.ordering') WITH ([ColumnName] sysname N'$.ColumnName',[ColumnStoreOrderOrdinal] tinyint N'$.ColumnStoreOrderOrdinal',[SourceStatus] varchar(40) N'$.SourceStatus') WHERE [ColumnName]=N'OrderValue' AND [ColumnStoreOrderOrdinal]=1 AND [SourceStatus]='AVAILABLE')
+            THROW 55785,N'USP_Columnstore.ordering: Der TABLE-/JSON-Vertrag ist verletzt.',1;
+        IF @ProductMajorVersion>=17
+        BEGIN
+            IF NOT EXISTS(SELECT 1 FROM [#ExampleObjectIndexOrdering] WHERE [ColumnName]=N'OrderValue' AND [DataClusteringOrdinal] IS NOT NULL)
+               OR NOT EXISTS(SELECT 1 FROM OPENJSON(@Json,N'$.ordering') WITH ([ColumnName] sysname N'$.ColumnName',[DataClusteringOrdinal] tinyint N'$.DataClusteringOrdinal') WHERE [ColumnName]=N'OrderValue' AND [DataClusteringOrdinal] IS NOT NULL)
+                THROW 55786,N'USP_Columnstore.ordering: Der SQL-Server-2025-Data-Clustering-Vertrag ist verletzt.',1;
+        END;
+    END;
     IF (SELECT COUNT_BIG(*) FROM [tempdb].[sys].[columns] WHERE [object_id]=OBJECT_ID(N'tempdb..#ExampleObjectIndexExport4') AND [collation_name] IS NOT NULL)<>9
        OR EXISTS (SELECT 1 FROM [tempdb].[sys].[columns] WHERE [object_id]=OBJECT_ID(N'tempdb..#ExampleObjectIndexExport4') AND [collation_name] IS NOT NULL
                   AND [collation_name] COLLATE SQL_Latin1_General_CP1_CS_AS<>N'SQL_Latin1_General_CP1_CS_AS')
         THROW 55782,N'USP_Columnstore.rowgroups: Der TABLE-Export übernimmt eine fremde Collation.',1;
+    IF (SELECT COUNT_BIG(*) FROM [tempdb].[sys].[columns] WHERE [object_id]=OBJECT_ID(N'tempdb..#ExampleObjectIndexOrdering') AND [collation_name] IS NOT NULL)<>8
+       OR EXISTS (SELECT 1 FROM [tempdb].[sys].[columns] WHERE [object_id]=OBJECT_ID(N'tempdb..#ExampleObjectIndexOrdering') AND [collation_name] IS NOT NULL
+                  AND [collation_name] COLLATE SQL_Latin1_General_CP1_CS_AS<>N'SQL_Latin1_General_CP1_CS_AS')
+        THROW 55782,N'USP_Columnstore.ordering: Der TABLE-Export übernimmt eine fremde Collation.',1;
     CREATE TABLE [#ExampleObjectIndexExport5]([Dummy] int NULL);
     SET @Json=NULL;
     EXEC [monitor].[USP_IndexPhysicalStats] @DatabaseNames=N'ExampleObjectIndexSource', @HighImpactConfirmed=1, @MaxZeilen=10, @SchemaNames=N'dbo', @ObjectNames=N'ExampleObjectIndexÄ', @MinPageCount=0,

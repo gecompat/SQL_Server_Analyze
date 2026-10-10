@@ -22304,12 +22304,12 @@ GO
 /*
 ===============================================================================
 Objekt       : monitor.USP_Columnstore
-Version      : 1.0.0
-Stand        : 2026-07-14
+Version      : 1.1.0
+Stand        : 2026-10-10
 Typ          : Stored Procedure
 Zweck        : Analysiert Columnstore-Indizes, Rowgroups und Deleted Rows; Physical Stats, Segmente und Dictionaries sind explizite gruppengeschützte Vertiefungen.
 SQL-Version  : SQL Server 2019 oder neuer.
-Datenquellen : Je Datenbank sys.column_store_row_groups, optional sys.dm_db_column_store_row_group_physical_stats, sys.column_store_segments, sys.column_store_dictionaries sowie Systemkataloge.
+Datenquellen : Je Datenbank sys.column_store_row_groups, sys.index_columns (geordnete Metadaten), optional sys.dm_db_column_store_row_group_physical_stats, sys.column_store_segments, sys.column_store_dictionaries sowie Systemkataloge.
 Parameter    :
   @DatabaseName                  sysname        = NULL  - Zieldatenbank; bei Einzelmodus Pflicht.
   @CrossDatabaseRequestedInternal               bit            = 0     - sichtbare Online-Datenbanken analysieren.
@@ -22327,7 +22327,7 @@ Parameter    :
   @MitDictionaries bit=0 - Dictionaries; benötigt COLUMNSTORE_DEEP.
   @MinDeletedPercent decimal(9,2)=0 - Rowgroup-Filter.
   @NurProblematisch bit=0 - OPEN/CLOSED/TOMBSTONE oder Deleted Rows.
-Resultsets   : 1. Modulstatus. 2. Status je Datenbank. 3. Katalog-Rowgroups. 4. Physical Rowgroups. 5. Segmente. 6. Dictionaries.
+Resultsets   : 1. Modulstatus. 2. Status je Datenbank. 3. Katalog-Rowgroups. 4. geordnete Columnstore-Metadaten. 5. Physical Rowgroups. 6. Segmente. 7. Dictionaries.
 Berechtigung : Basis gemäß Metadata Visibility/VIEW DEFINITION; Physical Stats SQL 2019 VIEW DATABASE STATE plus CONTROL, SQL 2022+ VIEW DATABASE PERFORMANCE STATE; Detailwerte können SELECT erfordern.
 Eigenlast    : Basis moderat; Segmentanzahl entspricht Rowgroups × Spalten und ist daher nur opt-in, gruppengeschützt und TOP-begrenzt.
 Locking      : READUNCOMMITTED-Kataloge, LOCK_TIMEOUT; keine Wartungs-DDL.
@@ -22338,7 +22338,8 @@ Beispiele    :
   EXEC monitor.USP_Columnstore @DatabaseNames=N'[SampleDatabase]', @ObjectNamePattern=N'like:Fact%', @MinDeletedPercent=10, @NurProblematisch=1;
   EXEC monitor.USP_Columnstore @DatabaseNames=N'SampleDatabase', @AnalyseModus='VOLL', @MitPhysicalStats=1, @MitSegmenten=1;
   EXEC monitor.USP_Columnstore @Hilfe=1;
-Änderungen   : 1.0.0 - Erstfassung Phase 2.
+Änderungen   : 1.1.0 - Additive, versionsadaptive geordnete Columnstore-Metadaten.
+               1.0.0 - Erstfassung Phase 2.
 ===============================================================================
 */
 CREATE OR ALTER PROCEDURE [monitor].[USP_Columnstore]
@@ -22373,9 +22374,15 @@ BEGIN
     DECLARE @ResultSetArtNormalisiert varchar(16)=UPPER(LTRIM(RTRIM(COALESCE(@ResultSetArt,''))));
     DECLARE @TableResultRequested bit = CASE WHEN @ResultSetArtNormalisiert = 'TABLE' THEN 1 ELSE 0 END;
     DECLARE @ConsoleResultRequested bit = CASE WHEN @ResultSetArtNormalisiert = 'CONSOLE' THEN 1 ELSE 0 END;
-    DECLARE @TableTarget sysname=NULL;
+    DECLARE @TableTarget sysname=NULL,@OrderingTableTarget sysname=NULL;
     IF @TableResultRequested=0 AND NULLIF(LTRIM(RTRIM(COALESCE(@ResultTablesJson,N''))),N'') IS NOT NULL THROW 51011,N'@ResultTablesJson ist ausschließlich mit @ResultSetArt=TABLE zulässig.',1;
-    IF @TableResultRequested=1 EXEC [monitor].[InternalPrepareSingleResultTable] @ResultTablesJson=@ResultTablesJson,@ResultName=N'rowgroups',@TargetTable=@TableTarget OUTPUT,@ThrowOnError=1;
+    IF @TableResultRequested=1
+    BEGIN
+        CREATE TABLE [#Columnstore_ResultTableMap]([ResultName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL PRIMARY KEY,[TargetTable] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL UNIQUE);
+        EXEC [monitor].[InternalPrepareResultTables] @ResultTablesJson=@ResultTablesJson,@AllowedResultNames=N'rowgroups|ordering',@MappingTable=N'#Columnstore_ResultTableMap',@ThrowOnError=1;
+        SELECT @TableTarget=[TargetTable] FROM [#Columnstore_ResultTableMap] WHERE [ResultName]=N'rowgroups';
+        SELECT @OrderingTableTarget=[TargetTable] FROM [#Columnstore_ResultTableMap] WHERE [ResultName]=N'ordering';
+    END;
     IF @TableResultRequested = 1 OR @ConsoleResultRequested = 1 SET @ResultSetArtNormalisiert = 'NONE';
     DECLARE @DatabaseName sysname=NULL,@CrossDatabaseRequestedInternal bit=0,@DatenbankNameLike nvarchar(4000)=NULL;
     DECLARE @SchemaNameLike nvarchar(4000)=NULL,@ObjectNameLike nvarchar(4000)=NULL;
@@ -22429,6 +22436,7 @@ BEGIN
         PRINT N'@MitPhysicalStats/@MitSegmenten/@MitDictionaries: jeweils opt-in und COLUMNSTORE_DEEP-geschützt.';
         PRINT N'@MinDeletedPercent: Filter 0 bis 100.';
         PRINT N'@NurProblematisch: Rowgroups mit Status ungleich COMPRESSED oder gelöschten Zeilen.';
+        PRINT N'Geordnete Columnstore-Metadaten werden separat als ordering ausgegeben; sie bewerten weder Sortierqualität noch Abfragewirkung.';
         PRINT N'@Hilfe bit = 0: 1 zeigt diese Hilfe und führt keine Analyse aus.';
         RETURN;
  END;
@@ -22505,6 +22513,10 @@ IF @MaxZeilen<0 OR @LockTimeoutMs NOT BETWEEN 0 AND 60000
   [DatabaseName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,[SchemaName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,[ObjectName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,[IndexId] int NOT NULL,[PartitionNumber] int NOT NULL,[ColumnId] int NOT NULL,[ColumnName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL,
   [DictionaryId] int NOT NULL,[DictionaryType] int NULL,[DictionaryTypeDesc] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,[EntryCount] bigint NULL,[OnDiskSizeMb] decimal(19,4) NULL
  );
+ CREATE TABLE [#Columnstore_Ordering]
+ (
+  [DatabaseName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL,[SchemaName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL,[ObjectName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL,[ObjectId] int NULL,[IndexId] int NULL,[IndexName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL,[IndexTypeDesc] nvarchar(60) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,[ColumnId] int NULL,[ColumnName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL,[ColumnStoreOrderOrdinal] tinyint NULL,[DataClusteringOrdinal] tinyint NULL,[SourceStatus] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,[ErrorNumber] int NULL,[ErrorMessage] nvarchar(2048) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,[CollectionTimeUtc] datetime2(3) NOT NULL
+ );
  IF @OverallStatus='AVAILABLE' AND (@MinDeletedPercent<0 OR @MinDeletedPercent>100)
  BEGIN SET @OverallStatus='INVALID_PARAMETER'; SET @ErrorMessage=N'@MinDeletedPercent muss zwischen 0 und 100 liegen.'; INSERT [#Columnstore_DatabaseStatus] VALUES(@DatabaseName,@OverallStatus,1,0,NULL,NULL,@ErrorMessage,NULL); END
  ELSE IF @OverallStatus='AVAILABLE' AND @AnalyseModus NOT IN ('GEZIELT','VOLL')
@@ -22549,6 +22561,31 @@ OPTION (MAXDOP 1,RECOMPILE);';
    END TRY
    BEGIN CATCH
     INSERT [#Columnstore_DatabaseStatus] VALUES(@DbName,CASE WHEN ERROR_NUMBER() IN (229,262,297,300,371,916) THEN 'DENIED_PERMISSION' WHEN ERROR_NUMBER()=1222 THEN 'TIMEOUT' WHEN ERROR_NUMBER() IN (207,208) THEN 'UNAVAILABLE_OBJECT' ELSE 'ERROR_HANDLED' END,1,0,N'VIEW DEFINITION / Metadata Visibility',ERROR_NUMBER(),ERROR_MESSAGE(),N'Quelle COLUMNSTORE_CATALOG fehlgeschlagen; optionale Teilquellen werden dennoch versucht.');
+   END CATCH;
+
+   IF TRY_CONVERT(int,SERVERPROPERTY(N'ProductMajorVersion'))<16
+       INSERT [#Columnstore_Ordering]
+       VALUES(@DbName,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,'UNAVAILABLE_VERSION',NULL,N'Geordnete Columnstore-Metadaten sind ab SQL Server 2022 verfügbar.',@CollectionTimeUtc);
+   ELSE
+   BEGIN TRY
+     SET @Sql=N'SET LOCK_TIMEOUT '+CONVERT(nvarchar(11),@LockTimeoutMs)+N'; USE '+QUOTENAME(@DbName)+N';
+INSERT #Columnstore_Ordering
+SELECT TOP (@pMaxRows) @pDbName,[s].[name],[o].[name],[o].[object_id],[i].[index_id],[i].[name],[i].[type_desc],[c].[column_id],[c].[name],[ic].[column_store_order_ordinal],'+
+CASE WHEN TRY_CONVERT(int,SERVERPROPERTY(N'ProductMajorVersion'))>=17 THEN N'[ic].[data_clustering_ordinal]' ELSE N'CONVERT(tinyint,NULL)' END+N',
+ ''AVAILABLE'',NULL,NULL,@pCollectionTimeUtc
+FROM sys.index_columns AS [ic] WITH (NOLOCK)
+JOIN sys.columns AS [c] WITH (NOLOCK) ON [c].[object_id]=[ic].[object_id] AND [c].[column_id]=[ic].[column_id]
+JOIN sys.indexes AS [i] WITH (NOLOCK) ON [i].[object_id]=[ic].[object_id] AND [i].[index_id]=[ic].[index_id]
+JOIN sys.objects AS [o] WITH (NOLOCK) ON [o].[object_id]=[i].[object_id]
+JOIN sys.schemas AS [s] WITH (NOLOCK) ON [s].[schema_id]=[o].[schema_id]
+WHERE [i].[type] IN (5,6) AND [ic].[column_store_order_ordinal]>0'+@SchemaPredicateS+@ObjectPredicateO+@FullObjectPredicateSO+N'
+ORDER BY [s].[name],[o].[name],[i].[index_id],[ic].[column_store_order_ordinal]
+OPTION (MAXDOP 1,RECOMPILE);';
+     EXEC [sys].[sp_executesql] @Sql,N'@pDbName sysname,@pMaxRows bigint,@pCollectionTimeUtc datetime2(3)',@pDbName=@DbName,@pMaxRows=@EffectiveMaxZeilen,@pCollectionTimeUtc=@CollectionTimeUtc;
+   END TRY
+   BEGIN CATCH
+       INSERT [#Columnstore_Ordering]
+       VALUES(@DbName,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,CASE WHEN ERROR_NUMBER() IN(229,262,297,300,371,916) THEN 'DENIED_PERMISSION' WHEN ERROR_NUMBER()=1222 THEN 'TIMEOUT' ELSE 'ERROR_HANDLED' END,ERROR_NUMBER(),ERROR_MESSAGE(),@CollectionTimeUtc);
    END CATCH;
 
    IF @MitPhysicalStats=1
@@ -22640,7 +22677,7 @@ ORDER BY [d].[on_disk_size] DESC OPTION (MAXDOP 1,RECOMPILE);';
 
 
 
-    SELECT @TotalRows=(SELECT COUNT_BIG(*) FROM [#Columnstore_Result])+(SELECT COUNT_BIG(*) FROM [#Columnstore_Physical])+(SELECT COUNT_BIG(*) FROM [#Columnstore_Segments])+(SELECT COUNT_BIG(*) FROM [#Columnstore_Dictionaries]);
+    SELECT @TotalRows=(SELECT COUNT_BIG(*) FROM [#Columnstore_Result])+(SELECT COUNT_BIG(*) FROM [#Columnstore_Ordering])+(SELECT COUNT_BIG(*) FROM [#Columnstore_Physical])+(SELECT COUNT_BIG(*) FROM [#Columnstore_Segments])+(SELECT COUNT_BIG(*) FROM [#Columnstore_Dictionaries]);
 
     IF @OverallStatus = 'AVAILABLE'
     BEGIN
@@ -22666,6 +22703,7 @@ END;
         SELECT @ModuleName [ModuleName],@CollectionTimeUtc [CollectionTimeUtc],@OverallStatus [StatusCode],@IsPartial [IsPartial],@TotalRows [RowCount],@ErrorNumber [ErrorNumber],@ErrorMessage [ErrorMessage],@Detail [Detail];
         SELECT [DatabaseName],[StatusCode],[IsPartial],[RowCount],[RequiredPermission],[ErrorNumber],[ErrorMessage],[Detail] FROM [#Columnstore_DatabaseStatus] ORDER BY [DatabaseName];
         IF @ResultSetArtNormalisiert='RAW' SELECT * FROM [#Columnstore_Result] ORDER BY [DeletedPercent] DESC,[DatabaseName],[SchemaName],[ObjectName],[IndexId],[PartitionNumber],[RowGroupId]; ELSE SELECT N'Columnstore Rowgroup' [Ergebnis],[r].* FROM [#Columnstore_Result] [r] ORDER BY [DeletedPercent] DESC,[DatabaseName],[SchemaName],[ObjectName],[IndexId],[PartitionNumber],[RowGroupId];
+        IF @ResultSetArtNormalisiert='RAW' SELECT * FROM [#Columnstore_Ordering] ORDER BY [DatabaseName],[SchemaName],[ObjectName],[IndexId],[ColumnStoreOrderOrdinal];
         IF @ResultSetArtNormalisiert='RAW' SELECT * FROM [#Columnstore_Physical] ORDER BY [DeletedPercent] DESC,[DatabaseName],[SchemaName],[ObjectName],[IndexId],[PartitionNumber],[RowGroupId]; ELSE SELECT N'Columnstore Rowgroup' [Ergebnis],[r].* FROM [#Columnstore_Physical] [r] ORDER BY [DeletedPercent] DESC,[DatabaseName],[SchemaName],[ObjectName],[IndexId],[PartitionNumber],[RowGroupId];
         IF @ResultSetArtNormalisiert='RAW' SELECT * FROM [#Columnstore_Segments] ORDER BY [OnDiskSizeMb] DESC,[DatabaseName],[SchemaName],[ObjectName],[IndexId],[PartitionNumber],[RowGroupId],[ColumnId]; ELSE SELECT N'Columnstore Rowgroup' [Ergebnis],[r].* FROM [#Columnstore_Segments] [r] ORDER BY [OnDiskSizeMb] DESC,[DatabaseName],[SchemaName],[ObjectName],[IndexId],[PartitionNumber],[RowGroupId],[ColumnId];
         IF @ResultSetArtNormalisiert='RAW' SELECT * FROM [#Columnstore_Dictionaries] ORDER BY [OnDiskSizeMb] DESC,[DatabaseName],[SchemaName],[ObjectName],[IndexId],[PartitionNumber],[ColumnId],[DictionaryId]; ELSE SELECT N'Columnstore Rowgroup' [Ergebnis],[r].* FROM [#Columnstore_Dictionaries] [r] ORDER BY [OnDiskSizeMb] DESC,[DatabaseName],[SchemaName],[ObjectName],[IndexId],[PartitionNumber],[ColumnId],[DictionaryId];
@@ -22674,10 +22712,11 @@ END;
         DECLARE @JsonMeta nvarchar(max)=(SELECT @ModuleName [resultName],1 [schemaVersion],@CollectionTimeUtc [generatedAtUtc],@OverallStatus [statusCode],@IsPartial [isPartial],@TotalRows [rowCount] FOR JSON PATH,WITHOUT_ARRAY_WRAPPER,INCLUDE_NULL_VALUES);
         DECLARE @JsonDatabaseStatus nvarchar(max)=(SELECT * FROM [#Columnstore_DatabaseStatus] ORDER BY [DatabaseName] FOR JSON PATH,INCLUDE_NULL_VALUES);
         DECLARE @JsonData1 nvarchar(max)=(SELECT * FROM [#Columnstore_Result] ORDER BY [DeletedPercent] DESC,[DatabaseName],[SchemaName],[ObjectName],[IndexId],[PartitionNumber],[RowGroupId] FOR JSON PATH,INCLUDE_NULL_VALUES);
+        DECLARE @JsonOrdering nvarchar(max)=(SELECT * FROM [#Columnstore_Ordering] ORDER BY [DatabaseName],[SchemaName],[ObjectName],[IndexId],[ColumnStoreOrderOrdinal] FOR JSON PATH,INCLUDE_NULL_VALUES);
         DECLARE @JsonData2 nvarchar(max)=(SELECT * FROM [#Columnstore_Physical] ORDER BY [DeletedPercent] DESC,[DatabaseName],[SchemaName],[ObjectName],[IndexId],[PartitionNumber],[RowGroupId] FOR JSON PATH,INCLUDE_NULL_VALUES);
         DECLARE @JsonData3 nvarchar(max)=(SELECT * FROM [#Columnstore_Segments] ORDER BY [OnDiskSizeMb] DESC,[DatabaseName],[SchemaName],[ObjectName],[IndexId],[PartitionNumber],[RowGroupId],[ColumnId] FOR JSON PATH,INCLUDE_NULL_VALUES);
         DECLARE @JsonData4 nvarchar(max)=(SELECT * FROM [#Columnstore_Dictionaries] ORDER BY [OnDiskSizeMb] DESC,[DatabaseName],[SchemaName],[ObjectName],[IndexId],[PartitionNumber],[ColumnId],[DictionaryId] FOR JSON PATH,INCLUDE_NULL_VALUES);
-        SET @Json=CONCAT(N'{"meta":',COALESCE(@JsonMeta,N'{}'),N',"rowgroups":',COALESCE(@JsonData1,N'[]'),N',"physicalStats":',COALESCE(@JsonData2,N'[]'),N',"segments":',COALESCE(@JsonData3,N'[]'),N',"dictionaries":',COALESCE(@JsonData4,N'[]'),N',"databaseStatus":',COALESCE(@JsonDatabaseStatus,N'[]'),N'}');
+        SET @Json=CONCAT(N'{"meta":',COALESCE(@JsonMeta,N'{}'),N',"rowgroups":',COALESCE(@JsonData1,N'[]'),N',"ordering":',COALESCE(@JsonOrdering,N'[]'),N',"physicalStats":',COALESCE(@JsonData2,N'[]'),N',"segments":',COALESCE(@JsonData3,N'[]'),N',"dictionaries":',COALESCE(@JsonData4,N'[]'),N',"databaseStatus":',COALESCE(@JsonDatabaseStatus,N'[]'),N'}');
     END;
     IF @ConsoleResultRequested = 1
     BEGIN
@@ -22688,10 +22727,8 @@ END;
     END;
     IF @TableResultRequested = 1
     BEGIN
-        EXEC [monitor].[InternalWriteResultTable]
-              @SourceTable = N'#Columnstore_Result'
-            , @TargetTable=@TableTarget
-            , @ThrowOnError = 1;
+        IF @TableTarget IS NOT NULL EXEC [monitor].[InternalWriteResultTable] @SourceTable=N'#Columnstore_Result',@TargetTable=@TableTarget,@ThrowOnError=1;
+        IF @OrderingTableTarget IS NOT NULL EXEC [monitor].[InternalWriteResultTable] @SourceTable=N'#Columnstore_Ordering',@TargetTable=@OrderingTableTarget,@ThrowOnError=1;
     END;
 END;
 GO

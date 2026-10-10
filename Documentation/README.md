@@ -87,6 +87,8 @@ Kostenklasse, High-Impact-Bestätigung und SQL-Server-Berechtigung sind getrennt
 - [WI-0002: öffentliche Spezifikation](Architecture/WI0002_TempDB_ADR_PVS_Public_Specification.md)
 - [WI-0003: Backup-Kompressionsalgorithmus- und ZSTD-Evidenz](Architecture/WI0003_Backup_Compression_Analysis.md)
 - [WI-0003: öffentliche Spezifikation](Architecture/WI0003_Backup_Compression_Public_Specification.md)
+- [WI-0004: geordnete Columnstore-Diagnostik](Architecture/WI0004_Ordered_Columnstore_Analysis.md)
+- [WI-0004: öffentliche Spezifikation](Architecture/WI0004_Ordered_Columnstore_Public_Specification.md)
 - [SQL-Server-2025-Statistiken auf lesbaren Secondaries](Architecture/SQL_Server_2025_Readable_Secondary_Statistics.md)
 - [RUNTIME-001: External Runtime und SQL CLR](Architecture/External_Runtime_CLR_Analysis_Plan.md)
 - [Geplantes SubProject SSIS-001: SSIS Package- und Execution-Analyse](Architecture/SSIS_Package_and_Execution_Analysis_Plan.md)

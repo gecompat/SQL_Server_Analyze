@@ -148,7 +148,7 @@ Primärquellen: [Backup compression algorithm](https://learn.microsoft.com/en-us
 
 ### `WI-0004`: Geordnete Columnstore-Diagnostik
 
-Die spätere Analyse prüft eine Erweiterung von `USP_Columnstore` um geordnete gruppierte und nicht gruppierte Columnstore-Indizes, Order-Spalten und versionsabhängige Clusteringmetadaten. Eine optionale Segmentüberlappungsanalyse muss vor dem breiten Segmentzugriff begrenzt werden. Unvollständige Ordnung ist kein automatischer Defekt.
+Die [Analyse](../../../Documentation/Architecture/WI0004_Ordered_Columnstore_Analysis.md) prüft eine Erweiterung von `USP_Columnstore` um geordnete gruppierte und nicht gruppierte Columnstore-Indizes, Order-Spalten und versionsabhängige Clusteringmetadaten. Eine optionale Segmentüberlappungsanalyse muss vor dem breiten Segmentzugriff begrenzt werden. Unvollständige Ordnung ist kein automatischer Defekt.
 
 Primärquelle: [What's new in columnstore indexes](https://learn.microsoft.com/en-us/sql/relational-databases/indexes/columnstore-indexes-what-s-new?view=sql-server-ver17).
 
