@@ -33,4 +33,4 @@ Dieses Arbeitselement aktiviert oder deaktiviert ADR nicht, startet keine Berein
 
 ## Nächster zulässiger Schritt
 
-Als Nächstes wird die öffentliche Spezifikation erstellt. Sie benötigt eine funktionsbezogene Freigabe, bevor ein Resultsetinventar, SQL-Code, Installer oder Runtimefixture geändert werden.
+Die öffentliche Spezifikation liegt unter [WI-0002: TempDB-ADR- und PVS-Diagnostik – öffentliche Spezifikation](WI0002_TempDB_ADR_PVS_Public_Specification.md). Der folgende Implementierungsslice benötigt weiterhin eine funktionsbezogene Freigabe und ergänzt erst dann Resultsetinventar, SQL-Code, Installer und Runtimefixture.
