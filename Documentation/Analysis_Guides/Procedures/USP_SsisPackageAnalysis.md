@@ -1,7 +1,7 @@
 # [monitor].[USP_SsisPackageAnalysis]
 
 **Bereich:** Integration<br>
-**Zweck:** Inventarisiert Paket, Executables und direkte Parent-Container eines direkt übergebenen DTSX-v2-Dokuments.<br>
+**Zweck:** Inventarisiert Paket, Executables mit direkten Parent-Containern und direkte Precedence Constraints eines direkt übergebenen DTSX-v2-Dokuments.<br>
 **Beobachtungsart:** Statische XML-Analyse<br>
 **Kostenklasse:** LOW
 
@@ -21,17 +21,17 @@ Der Aufruf akzeptiert ausschließlich `@AnalysisDepth = 'STANDARD'`. `@ResolveSq
 
 ## Resultsets und Leserichtung
 
-Die RAW-Resultsetfolge lautet `moduleStatus`, `package`, `executables`, `dataFlowComponents`, `connections`, `parameters`, `expressions`, `lineage`, `findings`, `sourceStatus` und `warnings`. Der erste Slice füllt Paket und Executables einschließlich ihres direkten Parent-Containers. Die übrigen Resultsets bleiben leer und `AVAILABLE_LIMITED` weist ihre noch nicht implementierte Analyse aus. `CONSOLE` rendert die zusammenfassende Modulzeile; `TABLE` verwendet benannte Ziele aus `@ResultTablesJson`; JSON enthält denselben begrenzten Kern.
+Die RAW-Resultsetfolge lautet `moduleStatus`, `package`, `executables`, `controlFlowConstraints`, `dataFlowComponents`, `connections`, `parameters`, `expressions`, `lineage`, `findings`, `sourceStatus` und `warnings`. Der erste Slice füllt Paket, Executables einschließlich ihres direkten Parent-Containers und direkte Precedence Constraints. Die übrigen Resultsets bleiben leer und `AVAILABLE_LIMITED` weist ihre noch nicht implementierte Analyse aus. `CONSOLE` rendert die zusammenfassende Modulzeile; `TABLE` verwendet benannte Ziele aus `@ResultTablesJson`; JSON enthält denselben begrenzten Kern.
 
 Lesen Sie zuerst `moduleStatus` und `sourceStatus`. `UNSUPPORTED_PACKAGE_FORMAT` bedeutet, dass das Dokument nicht als unterstütztes DTSX-v2-Paket erkannt wurde; daraus folgt keine Aussage über die Gültigkeit anderer XML- oder Paketformate.
 
 ## Eine Zeile bedeutet
 
-Eine Zeile in `package` beschreibt das erkannte Wurzelpaket. Eine Zeile in `executables` beschreibt ein in der XML-Struktur vorhandenes Executable. `ParentExecutableName` bezeichnet ausschließlich dessen direkten XML-Container; die Zeile enthält keine Laufzeit- oder Erfolgsinformation.
+Eine Zeile in `package` beschreibt das erkannte Wurzelpaket. Eine Zeile in `executables` beschreibt ein in der XML-Struktur vorhandenes Executable. `ParentExecutableName` bezeichnet ausschließlich dessen direkten XML-Container; die Zeile enthält keine Laufzeit- oder Erfolgsinformation. Eine Zeile in `controlFlowConstraints` beschreibt eine direkte statische Kante innerhalb eines Parent-Executables. `EvaluationOperation`, `OutcomeValue` und `LogicalAnd` bilden DTSX-Attribute ab; `HasExpression` zeigt nur das Vorhandensein eines Ausdrucks. Der Ausdruckstext wird nicht ausgegeben. Kann ein Endpunkt nicht einem sichtbaren Executable zugeordnet werden, lautet `SourceStatus` `PARTIAL_LINEAGE`.
 
 ## So lesen
 
-`AVAILABLE_LIMITED` bestätigt den begrenzten Paket- und Executable-Scope. Leere spätere Parserresultsets bedeuten in diesem Slice keine Abwesenheit von Data-Flow- oder Connection-Metadaten.
+`AVAILABLE_LIMITED` bestätigt den begrenzten Paket-, Executable- und direkten Constraint-Scope. Leere spätere Parserresultsets bedeuten in diesem Slice keine Abwesenheit von Data-Flow- oder Connection-Metadaten.
 
 ## Warum kann das problematisch sein?
 
@@ -55,7 +55,7 @@ DTSX verwendet ein `Executable`-Wurzelelement im SQL-Server-DTS-Namespace. Der P
 
 ### Datenkette
 
-`@PackageXml` wird im Aufruf verarbeitet. Das Paketresultset liest den Wurzelknoten; das Executable-Resultset erfasst untergeordnete `DTS:Executable`-Elemente und ihren direkten Container. Keine Server- oder externe Datenquelle ergänzt diese Kette.
+`@PackageXml` wird im Aufruf verarbeitet. Das Paketresultset liest den Wurzelknoten; das Executable-Resultset erfasst untergeordnete `DTS:Executable`-Elemente und ihren direkten Container. Constraints werden über ihre Referenzen auf diese Executables zugeordnet. Keine Server- oder externe Datenquelle ergänzt diese Kette.
 
 ### Source Select
 
@@ -73,7 +73,7 @@ Die Analyse ist eine Momentaufnahme des beim Aufruf übergebenen XML-Dokuments. 
 
 ### Bewertung und Gegenprobe
 
-Vergleichen Sie `package`, `executables` und den Quellenstatus mit dem bereitgestellten Paketartefakt. Eine Ausführung, SSISDB- oder Dateiadapterprüfung benötigt einen getrennten, dafür vorgesehenen Nachweis.
+Vergleichen Sie `package`, `executables`, `controlFlowConstraints` und den Quellenstatus mit dem bereitgestellten Paketartefakt. Eine Ausführung, SSISDB- oder Dateiadapterprüfung benötigt einen getrennten, dafür vorgesehenen Nachweis.
 
 ### Typische Fehlinterpretation
 
@@ -81,7 +81,7 @@ Eine sichtbare Executable-Zeile bedeutet nicht, dass das Executable ausgeführt 
 
 ### Folgeanalyse
 
-Nachfolgende Slices ergänzen Precedence Constraints und weitere Control-Flow-Informationen, Data-Flow-Komponenten, Parameter, Expressions und Lineage. Laufzeitdaten bleiben den getrennten Legacy- und SSISDB-Analyzern vorbehalten.
+Nachfolgende Slices ergänzen weitere Control-Flow-Informationen, Data-Flow-Komponenten, Parameter, Expressions und Lineage. Laufzeitdaten bleiben den getrennten Legacy- und SSISDB-Analyzern vorbehalten.
 
 ## Datenquellen, Datenschutz und Nebenwirkungen
 
@@ -89,7 +89,7 @@ Die Procedure liest ausschließlich die übergebene XML-Instanz. Sie liest und e
 
 ## Grenzen und Gegenprüfung
 
-Precedence Constraints und weitere Control-Flow-Beziehungen, Komponentenprofile, Verbindungen, Parameter, Expressions, Lineage, Regelengine sowie Legacy- und SSISDB-Laufzeitadapter gehören zu späteren Slices. Eine vorhandene Executable-Zeile beweist weder ihre Ausführung noch ihren Erfolg. Prüfen Sie einen auffälligen Paketabschnitt mit einer getrennt autorisierten Paket- oder Laufzeituntersuchung.
+Weitere Control-Flow-Beziehungen, Komponentenprofile, Verbindungen, Parameter, Expressions, Lineage, Regelengine sowie Legacy- und SSISDB-Laufzeitadapter gehören zu späteren Slices. Direkte Precedence Constraints bilden weder eine Ausführung noch ihren Erfolg ab. Prüfen Sie einen auffälligen Paketabschnitt mit einer getrennt autorisierten Paket- oder Laufzeituntersuchung.
 
 Der isolierte SQL-Server-2025-Vertrag prüft direktes DTSX-v2-XML, TABLE- und JSON-Ausgabe sowie `UNSUPPORTED_PACKAGE_FORMAT`. Windows-, SSISDB- und weitere Paketformatnachweise bleiben offen.
 

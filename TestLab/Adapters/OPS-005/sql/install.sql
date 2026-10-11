@@ -60214,7 +60214,7 @@ GO
 /*
 ===============================================================================
 Objekt       : monitor.USP_SsisPackageAnalysis
-Version      : 1.0.1
+Version      : 1.1.0
 Stand        : 2026-10-10
 Typ          : Stored Procedure
 Zweck        : Inventarisiert ein direkt übergebenes DTSX-v2-Paket statisch.
@@ -60225,7 +60225,8 @@ Datenschutz  : Keine Connection Strings, Secret-, Binary-, Host-, Login- oder
 Abgrenzung   : Dieser erste Slice stabilisiert Paket-, Executable- und direkte
                Parent-Container-Inventare.
                Data-Flow, Parameter, Expressions, Lineage und Regeln bleiben
-               als leere, ausdrücklich begrenzte Resultsets sichtbar.
+               als leere, ausdrücklich begrenzte Resultsets sichtbar. Direkte
+               Precedence Constraints werden ohne Ausdruckstext inventarisiert.
 ===============================================================================
 */
 CREATE OR ALTER PROCEDURE [monitor].[USP_SsisPackageAnalysis]
@@ -60273,7 +60274,7 @@ BEGIN
     BEGIN
         PRINT N'monitor.USP_SsisPackageAnalysis';
         PRINT N'Analysiert ausschließlich direkt übergebenes DTSX-v2-XML. Der Aufruf öffnet weder Dateien noch SSISDB, führt keine Pakete und kein Paket-SQL aus.';
-        PRINT N'Der erste Parser-Slice inventarisiert Paket, Executables und direkte Parent-Container. Data Flow, Constraints, Parameter, Expressions, Lineage und Regelengine werden als begrenzte Resultsets ausgegeben.';
+        PRINT N'Der erste Parser-Slice inventarisiert Paket, Executables, direkte Parent-Container und Precedence Constraints ohne Ausdruckstext. Data Flow, Parameter, Expressions, Lineage und Regelengine werden als begrenzte Resultsets ausgegeben.';
         PRINT N'@ResultSetArt=CONSOLE|RAW|TABLE|NONE; TABLE verwendet eine benannte Zuordnung für jedes Resultset.';
         RETURN;
     END;
@@ -60286,7 +60287,7 @@ BEGIN
     IF @TableRequested = 1
         EXEC [monitor].[InternalPrepareResultTables]
               @ResultTablesJson = @ResultTablesJson
-            , @AllowedResultNames = N'moduleStatus|package|executables|dataFlowComponents|connections|parameters|expressions|lineage|findings|sourceStatus|warnings'
+            , @AllowedResultNames = N'moduleStatus|package|executables|controlFlowConstraints|dataFlowComponents|connections|parameters|expressions|lineage|findings|sourceStatus|warnings'
             , @MappingTable = N'#SsisPackageAnalysis_ResultTables'
             , @ThrowOnError = 1;
 
@@ -60324,6 +60325,24 @@ BEGIN
         , [IsDisabled] bit NULL
         , [SourceStatus] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
         , PRIMARY KEY ([ExecutableOrdinal])
+    );
+    CREATE TABLE [#SsisPackageAnalysis_ControlFlowConstraints]
+    (
+          [ConstraintOrdinal] int NOT NULL
+        , [ParentExecutableName] nvarchar(256) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [FromExecutableName] nvarchar(256) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [ToExecutableName] nvarchar(256) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [EvaluationOperation] tinyint NULL
+        , [OutcomeValue] tinyint NULL
+        , [LogicalAnd] bit NULL
+        , [HasExpression] bit NOT NULL
+        , [SourceStatus] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , PRIMARY KEY ([ConstraintOrdinal])
+    );
+    CREATE TABLE [#SsisPackageAnalysis_ExecutableReferences]
+    (
+          [ReferenceId] nvarchar(4000) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL PRIMARY KEY
+        , [ExecutableName] nvarchar(256) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
     );
     CREATE TABLE [#SsisPackageAnalysis_DataFlowComponents]
     (
@@ -60426,6 +60445,17 @@ BEGIN
 
     IF @StatusCode = 'AVAILABLE_LIMITED'
     BEGIN
+        INSERT [#SsisPackageAnalysis_ExecutableReferences]([ReferenceId],[ExecutableName])
+        SELECT [r].[ReferenceId],[r].[ExecutableName]
+        FROM
+        (
+            SELECT NULLIF(@PackageXml.value('declare namespace DTS="www.microsoft.com/SqlServer/Dts"; string((/DTS:Executable/@DTS:refId)[1])','nvarchar(4000)'),N'') AS [ReferenceId],@PackageName AS [ExecutableName]
+            UNION ALL
+            SELECT NULLIF([n].[value]('declare namespace DTS="www.microsoft.com/SqlServer/Dts"; string((@DTS:refId)[1])','nvarchar(4000)'),N''),[n].[value]('declare namespace DTS="www.microsoft.com/SqlServer/Dts"; string((@DTS:ObjectName)[1])','nvarchar(256)')
+            FROM @PackageXml.nodes('declare namespace DTS="www.microsoft.com/SqlServer/Dts"; /DTS:Executable//DTS:Executable') AS [x]([n])
+        ) AS [r]
+        WHERE [r].[ReferenceId] IS NOT NULL;
+
         INSERT [#SsisPackageAnalysis_Executables]
         ([ExecutableOrdinal],[ParentExecutableName],[ExecutableName],[ExecutableType],[CreationName],[IsPackageRoot],[IsDisabled],[SourceStatus])
         SELECT 1,NULL,@PackageName,@PackageType,
@@ -60442,25 +60472,49 @@ BEGIN
                0,TRY_CONVERT(bit,[n].[value]('declare namespace DTS="www.microsoft.com/SqlServer/Dts"; string((@DTS:Disabled)[1])','nvarchar(8)')),'AVAILABLE_LIMITED'
         FROM @PackageXml.nodes('declare namespace DTS="www.microsoft.com/SqlServer/Dts"; /DTS:Executable//DTS:Executable') AS [x]([n]);
 
+        INSERT [#SsisPackageAnalysis_ControlFlowConstraints]
+        ([ConstraintOrdinal],[ParentExecutableName],[FromExecutableName],[ToExecutableName],[EvaluationOperation],[OutcomeValue],[LogicalAnd],[HasExpression],[SourceStatus])
+        SELECT CONVERT(int,ROW_NUMBER() OVER (ORDER BY (SELECT 1))),
+               [c].[n].value('declare namespace DTS="www.microsoft.com/SqlServer/Dts"; string((../../@DTS:ObjectName)[1])','nvarchar(256)'),
+               [f].[ExecutableName],[t].[ExecutableName],
+               TRY_CONVERT(tinyint,[c].[n].value('declare namespace DTS="www.microsoft.com/SqlServer/Dts"; string((@DTS:EvalOp)[1])','nvarchar(16)')),
+               TRY_CONVERT(tinyint,[c].[n].value('declare namespace DTS="www.microsoft.com/SqlServer/Dts"; string((@DTS:Value)[1])','nvarchar(16)')),
+               CASE LOWER([c].[n].value('declare namespace DTS="www.microsoft.com/SqlServer/Dts"; string((@DTS:LogicalAnd)[1])','nvarchar(16)')) WHEN N'true' THEN 1 WHEN N'1' THEN 1 WHEN N'-1' THEN 1 WHEN N'false' THEN 0 WHEN N'0' THEN 0 ELSE NULL END,
+               CASE WHEN [c].[n].exist('declare namespace DTS="www.microsoft.com/SqlServer/Dts"; @DTS:Expression') = 1 THEN 1 ELSE 0 END,
+               CASE WHEN [f].[ExecutableName] IS NULL OR [t].[ExecutableName] IS NULL THEN 'PARTIAL_LINEAGE' ELSE 'AVAILABLE' END
+        FROM @PackageXml.nodes('declare namespace DTS="www.microsoft.com/SqlServer/Dts"; /DTS:Executable//DTS:PrecedenceConstraint') AS [c]([n])
+        OUTER APPLY
+        (
+            SELECT [ExecutableName]
+            FROM [#SsisPackageAnalysis_ExecutableReferences]
+            WHERE [ReferenceId]=NULLIF([c].[n].value('declare namespace DTS="www.microsoft.com/SqlServer/Dts"; string((@DTS:From)[1])','nvarchar(4000)'),N'')
+        ) AS [f]
+        OUTER APPLY
+        (
+            SELECT [ExecutableName]
+            FROM [#SsisPackageAnalysis_ExecutableReferences]
+            WHERE [ReferenceId]=NULLIF([c].[n].value('declare namespace DTS="www.microsoft.com/SqlServer/Dts"; string((@DTS:To)[1])','nvarchar(4000)'),N'')
+        ) AS [t];
+
         INSERT [#SsisPackageAnalysis_Package]
         ([PackageName],[PackageFormatVersion],[RootExecutableType],[ProtectionLevel],[ExecutableCount],[AnalysisStatus],[EvidenceLimit])
         SELECT @PackageName,@PackageFormatVersion,@PackageType,NULLIF(@ProtectionLevel,N''),COUNT(*),'AVAILABLE_LIMITED',
-               N'Der erste Parser-Slice inventarisiert Paket, Executables und direkte Parent-Container; er liest keine Verbindungszeichenfolgen oder sensiblen Paketwerte.'
+               N'Der erste Parser-Slice inventarisiert Paket, Executables, direkte Parent-Container und Precedence Constraints ohne Ausdruckstext; er liest keine Verbindungszeichenfolgen oder sensiblen Paketwerte.'
         FROM [#SsisPackageAnalysis_Executables];
 
         INSERT [#SsisPackageAnalysis_Warnings]([WarningCode],[WarningSeverity],[Detail])
-        VALUES ('PARSER_SCOPE_LIMITED','INFO',N'Data-Flow-Komponenten, Precedence Constraints, Connections, Parameter, Expressions, Lineage und Regelengine folgen in getrennten Parser-Slices.');
+        VALUES ('PARSER_SCOPE_LIMITED','INFO',N'Data-Flow-Komponenten, Connections, Parameter, Expressions, Lineage und Regelengine folgen in getrennten Parser-Slices.');
     END;
 
     INSERT [#SsisPackageAnalysis_SourceStatus]([SourceName],[StatusCode],[IsPartial],[ReturnedRowCount],[Detail])
     SELECT N'Direkt übergebenes DTSX-XML',@StatusCode,@IsPartial,COUNT(*),
-           CASE WHEN @StatusCode = 'AVAILABLE_LIMITED' THEN N'Paket-, Executable- und Parent-Container-Inventar aus direkt übergebenem XML; keine externe Quelle wurde geöffnet.'
+           CASE WHEN @StatusCode = 'AVAILABLE_LIMITED' THEN N'Paket-, Executable-, Parent-Container- und Precedence-Constraint-Inventar aus direkt übergebenem XML; keine externe Quelle wurde geöffnet.'
                 ELSE COALESCE(@ErrorMessage,N'Die Quelle konnte nicht im unterstützten Format analysiert werden.') END
     FROM [#SsisPackageAnalysis_Executables];
 
     INSERT [#SsisPackageAnalysis_ModuleStatus]
     ([ModuleName],[CollectionTimeUtc],[SchemaVersion],[StatusCode],[IsPartial],[PackageCount],[ExecutableCount],[FindingCount],[ErrorNumber],[ErrorMessage])
-    SELECT N'USP_SsisPackageAnalysis',@Now,1,@StatusCode,@IsPartial,
+    SELECT N'USP_SsisPackageAnalysis',@Now,2,@StatusCode,@IsPartial,
            (SELECT COUNT(*) FROM [#SsisPackageAnalysis_Package]),
            (SELECT COUNT(*) FROM [#SsisPackageAnalysis_Executables]),0,@ErrorNumber,@ErrorMessage;
 
@@ -60471,6 +60525,13 @@ BEGIN
               JSON_QUERY((SELECT * FROM [#SsisPackageAnalysis_ModuleStatus] FOR JSON PATH)) AS [moduleStatus]
             , JSON_QUERY((SELECT * FROM [#SsisPackageAnalysis_Package] FOR JSON PATH)) AS [package]
             , JSON_QUERY((SELECT * FROM [#SsisPackageAnalysis_Executables] FOR JSON PATH)) AS [executables]
+            , JSON_QUERY((SELECT * FROM [#SsisPackageAnalysis_ControlFlowConstraints] FOR JSON PATH)) AS [controlFlowConstraints]
+            , JSON_QUERY((SELECT * FROM [#SsisPackageAnalysis_DataFlowComponents] FOR JSON PATH)) AS [dataFlowComponents]
+            , JSON_QUERY((SELECT * FROM [#SsisPackageAnalysis_Connections] FOR JSON PATH)) AS [connections]
+            , JSON_QUERY((SELECT * FROM [#SsisPackageAnalysis_Parameters] FOR JSON PATH)) AS [parameters]
+            , JSON_QUERY((SELECT * FROM [#SsisPackageAnalysis_Expressions] FOR JSON PATH)) AS [expressions]
+            , JSON_QUERY((SELECT * FROM [#SsisPackageAnalysis_Lineage] FOR JSON PATH)) AS [lineage]
+            , JSON_QUERY((SELECT * FROM [#SsisPackageAnalysis_Findings] FOR JSON PATH)) AS [findings]
             , JSON_QUERY((SELECT * FROM [#SsisPackageAnalysis_SourceStatus] FOR JSON PATH)) AS [sourceStatus]
             , JSON_QUERY((SELECT * FROM [#SsisPackageAnalysis_Warnings] FOR JSON PATH)) AS [warnings]
             FOR JSON PATH, WITHOUT_ARRAY_WRAPPER);
@@ -60481,6 +60542,7 @@ BEGIN
         SELECT @TargetTable=[TargetTable] FROM [#SsisPackageAnalysis_ResultTables] WHERE [ResultName]=N'moduleStatus'; IF @TargetTable IS NOT NULL EXEC [monitor].[InternalWriteResultTable] N'#SsisPackageAnalysis_ModuleStatus',@TargetTable,@ThrowOnError=1;
         SELECT @TargetTable=[TargetTable] FROM [#SsisPackageAnalysis_ResultTables] WHERE [ResultName]=N'package'; IF @TargetTable IS NOT NULL EXEC [monitor].[InternalWriteResultTable] N'#SsisPackageAnalysis_Package',@TargetTable,@ThrowOnError=1;
         SELECT @TargetTable=[TargetTable] FROM [#SsisPackageAnalysis_ResultTables] WHERE [ResultName]=N'executables'; IF @TargetTable IS NOT NULL EXEC [monitor].[InternalWriteResultTable] N'#SsisPackageAnalysis_Executables',@TargetTable,@ThrowOnError=1;
+        SELECT @TargetTable=[TargetTable] FROM [#SsisPackageAnalysis_ResultTables] WHERE [ResultName]=N'controlFlowConstraints'; IF @TargetTable IS NOT NULL EXEC [monitor].[InternalWriteResultTable] N'#SsisPackageAnalysis_ControlFlowConstraints',@TargetTable,@ThrowOnError=1;
         SELECT @TargetTable=[TargetTable] FROM [#SsisPackageAnalysis_ResultTables] WHERE [ResultName]=N'dataFlowComponents'; IF @TargetTable IS NOT NULL EXEC [monitor].[InternalWriteResultTable] N'#SsisPackageAnalysis_DataFlowComponents',@TargetTable,@ThrowOnError=1;
         SELECT @TargetTable=[TargetTable] FROM [#SsisPackageAnalysis_ResultTables] WHERE [ResultName]=N'connections'; IF @TargetTable IS NOT NULL EXEC [monitor].[InternalWriteResultTable] N'#SsisPackageAnalysis_Connections',@TargetTable,@ThrowOnError=1;
         SELECT @TargetTable=[TargetTable] FROM [#SsisPackageAnalysis_ResultTables] WHERE [ResultName]=N'parameters'; IF @TargetTable IS NOT NULL EXEC [monitor].[InternalWriteResultTable] N'#SsisPackageAnalysis_Parameters',@TargetTable,@ThrowOnError=1;
@@ -60496,6 +60558,7 @@ BEGIN
         SELECT * FROM [#SsisPackageAnalysis_ModuleStatus];
         SELECT * FROM [#SsisPackageAnalysis_Package];
         SELECT * FROM [#SsisPackageAnalysis_Executables] WHERE [ExecutableOrdinal] <= @Limit ORDER BY [ExecutableOrdinal];
+        SELECT * FROM [#SsisPackageAnalysis_ControlFlowConstraints] WHERE [ConstraintOrdinal] <= @Limit ORDER BY [ConstraintOrdinal];
         SELECT * FROM [#SsisPackageAnalysis_DataFlowComponents] WHERE [ComponentOrdinal] <= @Limit ORDER BY [ComponentOrdinal];
         SELECT * FROM [#SsisPackageAnalysis_Connections] WHERE [ConnectionOrdinal] <= @Limit ORDER BY [ConnectionOrdinal];
         SELECT * FROM [#SsisPackageAnalysis_Parameters] WHERE [ParameterOrdinal] <= @Limit ORDER BY [ParameterOrdinal];
