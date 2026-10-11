@@ -552,6 +552,35 @@ Der Nachweis betrifft einen lokalen Fehlerfall; erfolgreiche SMTP-Annahme,
 Zustellung, ein bestimmter SMTP-Fehlergrund, Retryverhalten und automatische
 Retention bleiben getrennte Nachweise.
 
+`-Scenario MailExecutionSuccess` ist ein noch nicht ausgeführter Kandidat
+(`NOT_EXECUTED`). Der öffentliche Lab-Stand sperrt aktiviertes SMTP weiterhin
+mit `SMTP_TEST_BACKEND_UNADMITTED`; die Implementierung liegt im offenen
+Draft-PR #738. Der folgende Aufruf darf erst nach öffentlicher Integration
+auf `SQL_Server_Lab`-`origin/main` und dessen tatsächlicher Lab-Abnahme
+ausgeführt werden. Ein Draft- oder Worktree-Fallback ist ausgeschlossen.
+
+Der Kandidat ist für den öffentlichen run-gebundenen SMTP-Testdienst von
+`SQL_Server_Lab` vorgesehen. Die Fixture
+übergibt keine SMTP-Adresse, keine Zugangsdaten und kein Receiver-Image an
+Analyze. Sie sendet eine einzelne synthetische Nachricht über das vom Lab
+gelieferte Database-Mail-Profil und wartet auf dessen nativen `sent`-Status.
+Die drei Analyzer-Consumer `NONE`, `TABLE` und `CONSOLE` prüfen anschließend
+die unveränderte Mailquelle, ihre Ausgabeparität und die Wiederherstellung des
+Callerzustands. Der `sent`-Status ist ausschließlich die native
+Database-Mail-Bestätigung; er ist kein zusätzlicher Nachweis des
+Receiver-Inhalts. Die Zustellanzeige und das Löschen des Testdiensts bleiben beim
+Lab; der Runner entfernt nur seinen eigenen Lab-Run.
+
+```powershell
+pwsh -File ./TestLab/Invoke-Ops008MsdbHistoryScenario.ps1 `
+  -Scenario MailExecutionSuccess `
+  -LabRepositoryRoot ../SQL_Server_Lab
+```
+
+Der Nachweis erfordert die öffentliche SMTP-Lab-Konfiguration. Er erweitert
+weder den Analyzerquellenvertrag noch den Receiver- oder Infrastrukturvertrag
+von `SQL_Server_Lab`.
+
 Mit `-Scenario MailLogRetention` erzeugt eine weitere Fixture drei eigene
 native lokale Mailfehler unter denselben Lab-, Konto- und Adressgrenzen.
 Sie wählt pro Mail einen gebundenen Fehlerlogeintrag aus und verlangt mindestens

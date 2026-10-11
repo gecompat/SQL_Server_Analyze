@@ -1068,6 +1068,28 @@ mit sichtbaren Nachrichten und Inhalten sowie verhindertem Versand nach außen.
 Analyze implementiert dafür keine SMTP-Infrastruktur und beschafft keine Images.
 Ein Plan, offener PR oder ungeprüfter Code erfüllt die Lieferbedingung nicht.
 
+Der am 12. Oktober 2026 übernommene SMTP-Consumer-Kandidat umfasst
+`MailExecutionSuccess` im OPS-008-Runner und eine synthetische SQL-Fixture.
+Die Vorbereitung bleibt `NOT_EXECUTED`. Der erste unabhängige Review fand
+eine ungültige skalare Collationdeklaration, NULL-offene Vergleiche,
+unvollständige native Mailorakel und eine fehlende Statusgrenze in der
+TestLab-Dokumentation. Die Korrekturen binden Mail und Profil samt
+Zeitfeldern und synthetischem Inhalt, vergleichen die Mailprojektion mit
+nativen Aggregaten und verwenden NULL-sichere Status- und Paritätsprüfungen.
+Der Runner verlangt vor Hosttoolinitialisierung einen unveränderten
+Lab-Arbeitsbaum auf dessen öffentlichem `origin/main`.
+Die PowerShell-Syntaxprüfung und ein gezielter negativer Preflight bestehen;
+der ältere ausgewählte Lab-Checkout wird vor Hosttools, Secrets und
+Provisionierung abgelehnt. Der Korrekturreview besitzt keine offenen Befunde
+im statisch geprüften Umfang und erteilt keine Laufzeitfreigabe.
+
+Die Vorbereitung wird getrennt von der offenen Runtimeabnahme gesichert.
+Vor Ausführung sind der endgültige öffentliche Profilvertrag, die
+verhinderte Imagebeschaffung, die tatsächlich ausgeführte Lab-Abnahme sowie
+Analyze-Versand-, Consumer- und Cleanup-Nachweise zu bestätigen. Der weiterhin
+offene Lab-Draft-PR #738 und die öffentliche Barriere
+`SMTP_TEST_BACKEND_UNADMITTED` werden weder umgangen noch als Erfolg gewertet.
+
 Die zuvor vorbereitete COLL-001-Abnahme für die Metadatensichtbarkeit eines
 eigenen TDE-Zertifikats ist am 11. Oktober 2026 im begrenzten Umfang bestanden.
 Der frühere Laneguard-Ausgang `DEFERRED_NO_PROVISIONING` bleibt ein nicht

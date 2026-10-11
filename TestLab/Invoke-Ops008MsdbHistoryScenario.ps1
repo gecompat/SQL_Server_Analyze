@@ -1,7 +1,7 @@
 [CmdletBinding()]
 param(
     [string] $LabRepositoryRoot,
-    [ValidateSet('HistoryRestore', 'AgentHistory', 'MailMaintenance', 'AgentExecution', 'AgentRetention', 'AgentCallerOptions', 'BackupRestoreRetention', 'MailRetention', 'MaintenanceRetention', 'MaintenanceDetailRetention', 'MaintenancePlanRetention', 'MaintenanceSubplanRetention', 'MaintenanceFilterBoundary', 'MaintenanceCallerOptions', 'MailCallerOptions', 'MailStatusRetention', 'MailExecutionFailure', 'MailLogRetention', 'MailAttachmentRetention')]
+    [ValidateSet('HistoryRestore', 'AgentHistory', 'MailMaintenance', 'AgentExecution', 'AgentRetention', 'AgentCallerOptions', 'BackupRestoreRetention', 'MailRetention', 'MaintenanceRetention', 'MaintenanceDetailRetention', 'MaintenancePlanRetention', 'MaintenanceSubplanRetention', 'MaintenanceFilterBoundary', 'MaintenanceCallerOptions', 'MailCallerOptions', 'MailStatusRetention', 'MailExecutionFailure', 'MailExecutionSuccess', 'MailLogRetention', 'MailAttachmentRetention')]
     [string] $Scenario = 'HistoryRestore'
 )
 
@@ -10,6 +10,18 @@ $ErrorActionPreference = 'Stop'
 . (Join-Path $PSScriptRoot 'AnalyzeExample.Common.ps1')
 $repositoryRoot = Get-AnalyzeRepositoryRoot
 $labRoot = Resolve-SqlServerLabRepositoryRoot -LabRepositoryRoot $LabRepositoryRoot
+if ($Scenario -eq 'MailExecutionSuccess') {
+    $publicLabHead = (& git -C $labRoot rev-parse --verify 'refs/remotes/origin/main^{commit}' 2>$null)
+    if ($LASTEXITCODE -ne 0) { throw 'OPS-008: Die öffentliche Lab-Revision fehlt; SMTP bleibt NOT_EXECUTED.' }
+    $selectedLabHead = (& git -C $labRoot rev-parse --verify 'HEAD^{commit}' 2>$null)
+    if ($LASTEXITCODE -ne 0 -or $selectedLabHead -cne $publicLabHead) {
+        throw 'OPS-008: SMTP erfordert den öffentlichen origin/main-Stand; kein Draft- oder Worktree-Fallback.'
+    }
+    $selectedLabChanges = @(& git -C $labRoot status --porcelain 2>$null)
+    if ($LASTEXITCODE -ne 0 -or $selectedLabChanges.Count -ne 0) {
+        throw 'OPS-008: Der ausgewählte öffentliche Lab-Arbeitsbaum ist nicht unverändert.'
+    }
+}
 $null = & (Join-Path $labRoot 'Tools/Initialize-SqlServerLabHostTools.ps1') -Name docker
 $labModule = Import-Module (Join-Path $labRoot 'SqlServerLab.psd1') -Force -PassThru
 . (Join-Path $labRoot 'Tests/Common/OwnedHostTestScope.ps1')
@@ -32,9 +44,28 @@ try {
     if (-not $mutexHeld) { throw 'OPS-008: Eigene Runtime-Testlane ist belegt.' }
     $null = Initialize-OwnedHostTestRoot -Module $labModule -StateRoot $stateRoot `
         -Providers @('docker') -ParentOperationId ([guid]::NewGuid().ToString('N'))
-    $lab = New-SqlServerLab -Version 2025 -Provider docker -Profile standard `
-        -Collation 'Latin1_General_100_CS_AS' -SaPassword $saPassword `
-        -StateRoot $stateRoot -LabName 'analyze-ops008-history' -NonInteractive
+    if ($Scenario -eq 'MailExecutionSuccess') {
+        $manifestPath = Join-Path $stateRoot 'smtp-lab-manifest.json'
+        $manifest = [ordered]@{
+            name = 'analyze-ops008-smtp'
+            instances = @([ordered]@{
+                id = 'primary'; version = '2025'; provider = 'docker'; os = 'linux'
+                profile = 'standard'; collation = 'Latin1_General_100_CS_AS'
+            })
+            smtpTestService = [ordered]@{}
+        }
+        [IO.File]::WriteAllText($manifestPath, ($manifest | ConvertTo-Json -Depth 8), [Text.UTF8Encoding]::new($false))
+        $lab = New-SqlServerLab -Manifest $manifestPath -SaPassword $saPassword `
+            -StateRoot $stateRoot -NonInteractive
+        if ($null -eq $lab.smtpTestService -or [string]::IsNullOrWhiteSpace([string]$lab.smtpTestService.ProfileName)) {
+            throw 'OPS-008: Der öffentliche SMTP-Testdienst lieferte kein Database-Mail-Profil.'
+        }
+    }
+    else {
+        $lab = New-SqlServerLab -Version 2025 -Provider docker -Profile standard `
+            -Collation 'Latin1_General_100_CS_AS' -SaPassword $saPassword `
+            -StateRoot $stateRoot -LabName 'analyze-ops008-history' -NonInteractive
+    }
     Start-Sleep -Seconds 60
     $framework = New-AnalyzeFrameworkInstaller -RunDirectory $stateRoot
     foreach ($script in @($framework.Prepare, $framework.Installer)) {
@@ -77,6 +108,9 @@ EXEC sys.sp_addextendedproperty @name=N'SQLANALYZE.Ops008Disposable', @value=1;
     elseif ($Scenario -eq 'MailExecutionFailure') {
         $scripts += 'TestLab/Scenarios/OPS-008/mail-execution-failure.sql'
     }
+    elseif ($Scenario -eq 'MailExecutionSuccess') {
+        $scripts += 'TestLab/Scenarios/OPS-008/mail-execution-success.sql'
+    }
     elseif ($Scenario -eq 'MailLogRetention') {
         $scripts += 'TestLab/Scenarios/OPS-008/mail-log-retention.sql'
     }
@@ -117,7 +151,15 @@ EXEC sys.sp_addextendedproperty @name=N'SQLANALYZE.Ops008Disposable', @value=1;
     foreach ($relative in $scripts) {
         $rendered = Join-Path $stateRoot ([IO.Path]::GetFileName($relative))
         $content = [IO.File]::ReadAllText((Join-Path $repositoryRoot $relative), [Text.Encoding]::UTF8)
-        [IO.File]::WriteAllText($rendered, $content.Replace('[DeineDatenbank]', '[LabAnalyze]'), [Text.UTF8Encoding]::new($false))
+        $content = $content.Replace('[DeineDatenbank]', '[LabAnalyze]')
+        if ($Scenario -eq 'MailExecutionSuccess' -and $relative -eq 'TestLab/Scenarios/OPS-008/mail-execution-success.sql') {
+            $profileName = [string]$lab.smtpTestService.ProfileName
+            if ($profileName -notmatch '^[A-Za-z0-9_.-]{1,128}$') {
+                throw 'OPS-008: Das SMTP-Testprofil enthält keine zulässige technische Kennung.'
+            }
+            $content = $content.Replace('__SMTP_PROFILE_NAME__', $profileName)
+        }
+        [IO.File]::WriteAllText($rendered, $content, [Text.UTF8Encoding]::new($false))
         $null = Invoke-AnalyzeLabScript -ScriptPath $rendered -RunId $lab.RunId -StateRoot $stateRoot -SaPassword $saPassword
     }
     $endpoint = Get-AnalyzeLabConnection -RunId $lab.RunId -StateRoot $stateRoot
