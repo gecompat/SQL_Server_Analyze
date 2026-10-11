@@ -7918,3 +7918,74 @@ keinen Git-Inhaltsdiff; der gezielte Adaptercheck bestand danach. Der
 Runtimeversuch und erfolgreiche unveränderte Prüfungen wurden nicht wiederholt.
 Dokumentationsstil und Datenschutz werden am abschließenden Lieferstand geprüft;
 erfolgreiche erforderliche Head-CI und Integration bleiben Liefergates.
+
+## PlanDetails: Positiver Last-Actual-Plan am 12. Oktober 2026
+
+Der zusätzliche Nachweis schließt die bisher unbelegte positive
+Last-Actual-Quelle für einen bekannten eigenen Planhandle. Die Produktquellen
+des integrierten Stands `74cdcc3d5e8660684b0c9dc1f4ae8fa54842d7c8`, alle
+18 Parameter, Version 2.0.0 und JSON-Schemaversion 1 bleiben unverändert.
+Der normalisierte SHA256 von Source040 ist weiterhin
+`771748480acb5839d01dfa742ec3f1f96fc4412b50f80c52d3b1f97a4349096c`.
+
+Die native Abnahme verwendet SQL Server 2025, Build 17.0.4075.5, im eigenen
+Linux-Docker-Lab mit Compatibility Level 170. Eine synthetische eigene
+case-insensitive Unicodequelle enthält 512 durch einen Primärschlüssel
+gebundene Zeilen und eine eigene Procedure mit einer begrenzten Joinabfrage
+und MAXDOP 1. Ausschließlich diese Quelldatenbank aktiviert
+`LAST_QUERY_PLAN_STATS`; das Framework aktiviert keine Profilingoption.
+Die Abnahme erfolgt als sysadmin. Framework-Smoke und die Erzeugung der
+Fixture bestehen. Das öffentliche Lab-Modul verwendet das zuvor geprüfte
+lokale Image; eine Imagebeschaffung wird nicht ausgeführt.
+
+Vier SqlClient-Aufrufe prüfen NONE, TABLE, RAW und CONSOLE mit Max1,
+aktivierter Last-Actual-Quelle und deaktivierten Attribut-, Compile-, Text-
+und Live-Planquellen. Jede JSON-Ausgabe enthält einen Kandidaten, einen Plan
+und keine Attribute. Modul und Plan melden AVAILABLE; die Planquelle ist
+LAST_ACTUAL_XML. Vier native RunTimeCountersPerThread-Knoten besitzen
+positive ActualRows. Alle zehn Planfelder werden gegen
+sys.dm_exec_query_plan_stats desselben eigenen Handles geprüft.
+XML-Darstellungen werden nach dem Laden in ein XML-Dokument über dessen
+OuterXml verglichen; eine allgemeine XML-Kanonisierung wird nicht behauptet.
+Die native Plan-XML bleibt in den Messklammern unverändert.
+
+TABLE bestätigt zusätzlich den aus dem eigenen Exportziel gelesenen
+Zehnfeldvertrag und dessen JSON-Wertparität; RAW bestätigt dieselben Felder
+im physischen Planresultset. NONE liefert keine fachlichen Grids, RAW drei
+und CONSOLE eines. Der TABLE-Prüfer liest ein Exportgrid selbst aus seiner
+Temp-Tabelle. Zwei zusätzliche Callergrids pro Aufruf gehören ausschließlich
+zum privaten Harness und werden nicht als Produktausgabe gezählt. Die
+CONSOLE-Probe bestätigt das vorhandene einzelne Kandidatengrid und den
+positiven Last-Actual-Plan im zugehörigen JSON; ein physischer
+CONSOLE-Planexport wird nicht behauptet.
+
+Identische SELECT-Projektionen vor und nach jedem Aufruf bestätigen
+LOCK_TIMEOUT 137, TRANCOUNT 0, XACT_ABORT OFF und den unveränderten
+beobachteten XACT_STATE-Wert 1. Eine getrennte eigene SET-Scope-Probe liefert
+dieselben Werte ohne Analyze-Aufruf. Die frühere pauschale Erwartung
+XACT_STATE 0 war eine falsche Harnessannahme. Der erste native Fehlversuch
+scheiterte außerdem an GetInt32 für die Boolean-Konfigurationsoption;
+der private Typadapter projiziert diese Option und die DMV-Datenbankkennung
+nun explizit als int. Zwei weitere Fehlversuche bewahren die unzutreffende
+Callerannahme und bleiben getrennt erhalten. Sie zählen nicht als
+erfolgreiche Vier-Modi-Abnahme.
+
+Der unabhängige Review korrigiert zuvor eine Kollision zwischen privaten
+Plan- und Fremdressourcen-Snapshotvariablen sowie eine unvollständige
+Datenerhaltungsprüfung. Der endgültige Prüfer bestätigt die eigene
+Datenbankidentität, CL170, die unveränderte Last-Actual-Option sowie alle
+512 Quellzeilen anhand von Anzahl, Primärschlüsselgrenzen, ID-Summe und
+Unicodewerten. Die ausgewählten Produkt- und Smokequellen sowie die privaten
+Fixturedateien sind vor und nach dem Lauf hashgebunden. Die identitätsgeprüfte eigene Quelle, das eigene
+Lab samt Volume und der eigene State sind entfernt. Der abschließende
+Inventarvergleich bestätigt unveränderte fremde Dockerressourcen.
+Handles, XML, Runtimeidentitäten, Zugangsdaten und vollständige Captures
+bleiben außerhalb des Repositorys.
+
+Positive Live-Pläne, eingeschränkte Rollen, systematische Timeout- und
+weitere Quellenfehler, zusätzliche Engines und CL150/160 bleiben unbelegt.
+Der Nachweis qualifiziert einen eigenen Last-Actual-Handle und keine
+allgemeine Planpersistenz. COLL-001 und vorhandene Maturityflags bleiben
+partiell beziehungsweise unverändert. Dokumentations-, Privacy- und
+Commitprüfungen sowie erfolgreiche erforderliche Head-CI und Integration
+bleiben Liefergates.
