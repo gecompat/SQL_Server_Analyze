@@ -60381,6 +60381,12 @@ BEGIN
         , [TargetComponent] nvarchar(256) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
         , [SourceStatus] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
     );
+    CREATE TABLE [#SsisPackageAnalysis_PipelineEndpoints]
+    (
+          [PipelineId] nvarchar(4000) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [EndpointId] nvarchar(4000) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [ComponentName] nvarchar(256) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+    );
     CREATE TABLE [#SsisPackageAnalysis_Findings]
     (
           [RuleId] varchar(64) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
@@ -60522,6 +60528,22 @@ BEGIN
                'AVAILABLE'
         FROM @PackageXml.nodes('declare namespace DTS="www.microsoft.com/SqlServer/Dts"; /DTS:Executable//DTS:Executable/DTS:ObjectData/*[local-name(.)="pipeline" and namespace-uri(.)=""]/*[local-name(.)="components" and namespace-uri(.)=""]/*[local-name(.)="component" and namespace-uri(.)=""]') AS [x]([n]);
 
+        INSERT [#SsisPackageAnalysis_PipelineEndpoints]([PipelineId],[EndpointId],[ComponentName])
+        SELECT [c].[n].value('declare namespace DTS="www.microsoft.com/SqlServer/Dts"; string((../../../../@DTS:refId)[1])','nvarchar(4000)'),
+               [e].[n].value('string((@refId)[1])','nvarchar(4000)'),
+               [c].[n].value('string((@name)[1])','nvarchar(256)')
+        FROM @PackageXml.nodes('declare namespace DTS="www.microsoft.com/SqlServer/Dts"; /DTS:Executable//DTS:Executable/DTS:ObjectData/*[local-name(.)="pipeline" and namespace-uri(.)=""]/*[local-name(.)="components" and namespace-uri(.)=""]/*[local-name(.)="component" and namespace-uri(.)=""]') AS [c]([n])
+        CROSS APPLY [c].[n].nodes('*[namespace-uri(.)="" and (local-name(.)="inputs" or local-name(.)="outputs")]/*[namespace-uri(.)="" and (local-name(.)="input" or local-name(.)="output")]') AS [e]([n]);
+
+        INSERT [#SsisPackageAnalysis_Lineage]
+        ([LineageOrdinal],[SourceComponent],[TargetComponent],[SourceStatus])
+        SELECT CONVERT(int,ROW_NUMBER() OVER (ORDER BY (SELECT 1))),
+               [s].[ComponentName],[t].[ComponentName],
+               CASE WHEN [s].[ComponentName] IS NULL OR [t].[ComponentName] IS NULL THEN 'PARTIAL_LINEAGE' ELSE 'AVAILABLE' END
+        FROM @PackageXml.nodes('declare namespace DTS="www.microsoft.com/SqlServer/Dts"; /DTS:Executable//DTS:Executable/DTS:ObjectData/*[local-name(.)="pipeline" and namespace-uri(.)=""]/*[local-name(.)="paths" and namespace-uri(.)=""]/*[local-name(.)="path" and namespace-uri(.)=""]') AS [p]([n])
+        OUTER APPLY (SELECT TOP (1) [ComponentName] FROM [#SsisPackageAnalysis_PipelineEndpoints] WHERE [PipelineId] = [p].[n].value('declare namespace DTS="www.microsoft.com/SqlServer/Dts"; string((../../../../@DTS:refId)[1])','nvarchar(4000)') AND [EndpointId] = [p].[n].value('string((@startId)[1])','nvarchar(4000)')) AS [s]
+        OUTER APPLY (SELECT TOP (1) [ComponentName] FROM [#SsisPackageAnalysis_PipelineEndpoints] WHERE [PipelineId] = [p].[n].value('declare namespace DTS="www.microsoft.com/SqlServer/Dts"; string((../../../../@DTS:refId)[1])','nvarchar(4000)') AND [EndpointId] = [p].[n].value('string((@endId)[1])','nvarchar(4000)')) AS [t];
+
         INSERT [#SsisPackageAnalysis_Expressions]
         ([ExpressionOrdinal],[ExpressionScope],[PropertyName],[SourceStatus])
         SELECT CONVERT(int,ROW_NUMBER() OVER (ORDER BY (SELECT 1))),
@@ -60533,16 +60555,16 @@ BEGIN
         INSERT [#SsisPackageAnalysis_Package]
         ([PackageName],[PackageFormatVersion],[RootExecutableType],[ProtectionLevel],[ExecutableCount],[AnalysisStatus],[EvidenceLimit])
         SELECT @PackageName,@PackageFormatVersion,@PackageType,NULLIF(@ProtectionLevel,N''),COUNT(*),'AVAILABLE_LIMITED',
-               N'Der erste Parser-Slice inventarisiert Paket, Executables, direkte Parent-Container, Precedence Constraints, Connection Manager, Paketparameter, Pipeline-Komponenten und Property-Expressions ohne Ausdrucks-, Connection-String-, Parameter-, Komponenteneigenschafts- oder Expressionwerte.'
+               N'Der erste Parser-Slice inventarisiert Paket, Executables, direkte Parent-Container, Precedence Constraints, Connection Manager, Paketparameter, Pipeline-Komponenten, Property-Expressions und Pipeline-Komponentenlinien ohne Ausdrucks-, Connection-String-, Parameter-, Komponenteneigenschafts- oder Expressionwerte.'
         FROM [#SsisPackageAnalysis_Executables];
 
         INSERT [#SsisPackageAnalysis_Warnings]([WarningCode],[WarningSeverity],[Detail])
-        VALUES ('PARSER_SCOPE_LIMITED','INFO',N'Lineage und Regelengine folgen in getrennten Parser-Slices.');
+        VALUES ('PARSER_SCOPE_LIMITED','INFO',N'Weitergehende Lineage und Regelengine folgen in getrennten Parser-Slices.');
     END;
 
     INSERT [#SsisPackageAnalysis_SourceStatus]([SourceName],[StatusCode],[IsPartial],[ReturnedRowCount],[Detail])
     SELECT N'Direkt übergebenes DTSX-XML',@StatusCode,@IsPartial,COUNT(*),
-           CASE WHEN @StatusCode = 'AVAILABLE_LIMITED' THEN N'Paket-, Executable-, Parent-Container-, Precedence-Constraint-, Connection-Manager-, Paketparameter-, Pipeline-Komponenten- und Property-Expression-Inventar aus direkt übergebenem XML; keine externe Quelle wurde geöffnet.'
+           CASE WHEN @StatusCode = 'AVAILABLE_LIMITED' THEN N'Paket-, Executable-, Parent-Container-, Precedence-Constraint-, Connection-Manager-, Paketparameter-, Pipeline-Komponenten-, Property-Expression- und Pipeline-Linien-Inventar aus direkt übergebenem XML; keine externe Quelle wurde geöffnet.'
                 ELSE COALESCE(@ErrorMessage,N'Die Quelle konnte nicht im unterstützten Format analysiert werden.') END
     FROM [#SsisPackageAnalysis_Executables];
 

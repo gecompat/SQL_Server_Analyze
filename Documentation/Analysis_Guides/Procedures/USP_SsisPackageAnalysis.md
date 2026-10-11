@@ -21,13 +21,13 @@ Der Aufruf akzeptiert ausschließlich `@AnalysisDepth = 'STANDARD'`. `@ResolveSq
 
 ## Resultsets und Leserichtung
 
-Die RAW-Resultsetfolge lautet `moduleStatus`, `package`, `executables`, `controlFlowConstraints`, `dataFlowComponents`, `connections`, `parameters`, `expressions`, `lineage`, `findings`, `sourceStatus` und `warnings`. Der erste Slice füllt Paket, Executables einschließlich ihres direkten Parent-Containers, direkte Precedence Constraints, Paket-Connection-Manager, Paketparameter, Pipeline-Komponenten und direkte Property-Expressions. Die übrigen Resultsets bleiben leer und `AVAILABLE_LIMITED` weist ihre noch nicht implementierte Analyse aus. `CONSOLE` rendert die zusammenfassende Modulzeile; `TABLE` verwendet benannte Ziele aus `@ResultTablesJson`; JSON enthält denselben begrenzten Kern.
+Die RAW-Resultsetfolge lautet `moduleStatus`, `package`, `executables`, `controlFlowConstraints`, `dataFlowComponents`, `connections`, `parameters`, `expressions`, `lineage`, `findings`, `sourceStatus` und `warnings`. Der erste Slice füllt Paket, Executables einschließlich ihres direkten Parent-Containers, direkte Precedence Constraints, Paket-Connection-Manager, Paketparameter, Pipeline-Komponenten, direkte Property-Expressions und direkte Pipeline-Komponentenlinien. Die übrigen Resultsets bleiben leer und `AVAILABLE_LIMITED` weist ihre noch nicht implementierte Analyse aus. `CONSOLE` rendert die zusammenfassende Modulzeile; `TABLE` verwendet benannte Ziele aus `@ResultTablesJson`; JSON enthält denselben begrenzten Kern.
 
 Lesen Sie zuerst `moduleStatus` und `sourceStatus`. `UNSUPPORTED_PACKAGE_FORMAT` bedeutet, dass das Dokument nicht als unterstütztes DTSX-v2-Paket erkannt wurde; daraus folgt keine Aussage über die Gültigkeit anderer XML- oder Paketformate.
 
 ## Eine Zeile bedeutet
 
-Eine Zeile in `package` beschreibt das erkannte Wurzelpaket. Eine Zeile in `executables` beschreibt ein in der XML-Struktur vorhandenes Executable. `ParentExecutableName` bezeichnet ausschließlich dessen direkten XML-Container; die Zeile enthält keine Laufzeit- oder Erfolgsinformation. Eine Zeile in `controlFlowConstraints` beschreibt eine direkte statische Kante innerhalb eines Parent-Executables. `EvaluationOperation`, `OutcomeValue` und `LogicalAnd` bilden DTSX-Attribute ab; `HasExpression` zeigt nur das Vorhandensein eines Ausdrucks. Der Ausdruckstext wird nicht ausgegeben. Kann ein Endpunkt nicht einem sichtbaren Executable zugeordnet werden, lautet `SourceStatus` `PARTIAL_LINEAGE`. Eine Zeile in `dataFlowComponents` beschreibt Name und Klassenkennung einer Pipeline-Komponente. Eigenschaften, Ein- und Ausgänge, Spaltenmetadaten sowie Werte werden nicht gelesen oder ausgegeben. Eine Zeile in `expressions` beschreibt Scope und Eigenschaftsname einer direkten `PropertyExpression`; ihr Text wird nicht gelesen oder ausgegeben. Eine Zeile in `connections` beschreibt Name und `CreationName` eines Paket-Connection-Managers; Connection Strings werden nicht gelesen oder ausgegeben. Eine Zeile in `parameters` beschreibt Name und Scope eines Paketparameters; seine Werte und Eigenschaften werden nicht gelesen oder ausgegeben.
+Eine Zeile in `package` beschreibt das erkannte Wurzelpaket. Eine Zeile in `executables` beschreibt ein in der XML-Struktur vorhandenes Executable. `ParentExecutableName` bezeichnet ausschließlich dessen direkten XML-Container; die Zeile enthält keine Laufzeit- oder Erfolgsinformation. Eine Zeile in `controlFlowConstraints` beschreibt eine direkte statische Kante innerhalb eines Parent-Executables. `EvaluationOperation`, `OutcomeValue` und `LogicalAnd` bilden DTSX-Attribute ab; `HasExpression` zeigt nur das Vorhandensein eines Ausdrucks. Der Ausdruckstext wird nicht ausgegeben. Kann ein Endpunkt nicht einem sichtbaren Executable zugeordnet werden, lautet `SourceStatus` `PARTIAL_LINEAGE`. Eine Zeile in `dataFlowComponents` beschreibt Name und Klassenkennung einer Pipeline-Komponente. Eigenschaften, Ein- und Ausgänge, Spaltenmetadaten sowie Werte werden nicht gelesen oder ausgegeben. Eine Zeile in `expressions` beschreibt Scope und Eigenschaftsname einer direkten `PropertyExpression`; ihr Text wird nicht gelesen oder ausgegeben. Eine Zeile in `lineage` beschreibt eine direkte Pipeline-Verbindung zwischen den über `startId` und `endId` zugeordneten Komponenten. Nicht zuordenbare Endpunkte erhalten `PARTIAL_LINEAGE`; Ein-/Ausgangs- und Spaltenmetadaten werden nicht ausgegeben. Eine Zeile in `connections` beschreibt Name und `CreationName` eines Paket-Connection-Managers; Connection Strings werden nicht gelesen oder ausgegeben. Eine Zeile in `parameters` beschreibt Name und Scope eines Paketparameters; seine Werte und Eigenschaften werden nicht gelesen oder ausgegeben.
 
 ## So lesen
 
@@ -81,7 +81,7 @@ Eine sichtbare Executable-Zeile bedeutet nicht, dass das Executable ausgeführt 
 
 ### Folgeanalyse
 
-Nachfolgende Slices ergänzen weitere Control-Flow-Informationen, Data-Flow-Details, Parameter, Expressionauflösung und Lineage. Laufzeitdaten bleiben den getrennten Legacy- und SSISDB-Analyzern vorbehalten.
+Nachfolgende Slices ergänzen weitere Control-Flow-Informationen, Data-Flow-Details, Parameter, Expressionauflösung und weitergehende Lineage. Laufzeitdaten bleiben den getrennten Legacy- und SSISDB-Analyzern vorbehalten.
 
 ## Datenquellen, Datenschutz und Nebenwirkungen
 
@@ -89,7 +89,7 @@ Die Procedure liest ausschließlich die übergebene XML-Instanz. Sie liest und e
 
 ## Grenzen und Gegenprüfung
 
-Weitere Control-Flow-Beziehungen, Komponentenprofile, Data-Flow-Ein- und Ausgänge, Spaltenmetadaten, Verbindungen, Parameter, Expressionauflösung, Lineage, Regelengine sowie Legacy- und SSISDB-Laufzeitadapter gehören zu späteren Slices. Direkte Precedence Constraints bilden weder eine Ausführung noch ihren Erfolg ab. Prüfen Sie einen auffälligen Paketabschnitt mit einer getrennt autorisierten Paket- oder Laufzeituntersuchung.
+Weitere Control-Flow-Beziehungen, Komponentenprofile, Data-Flow-Ein- und Ausgänge, Spaltenmetadaten, Verbindungen, Parameter, Expressionauflösung, weitergehende Lineage, Regelengine sowie Legacy- und SSISDB-Laufzeitadapter gehören zu späteren Slices. Direkte Precedence Constraints und Pipeline-Linien bilden weder eine Ausführung noch ihren Erfolg ab. Prüfen Sie einen auffälligen Paketabschnitt mit einer getrennt autorisierten Paket- oder Laufzeituntersuchung.
 
 Der isolierte SQL-Server-2025-Vertrag prüft direktes DTSX-v2-XML, TABLE- und JSON-Ausgabe sowie `UNSUPPORTED_PACKAGE_FORMAT`. Windows-, SSISDB- und weitere Paketformatnachweise bleiben offen.
 
