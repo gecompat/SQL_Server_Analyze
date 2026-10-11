@@ -55,13 +55,16 @@ Schemaversion.
 
 - DTSX: Der direkte Kern projiziert Paketkopf, Executables, statische
   Precedence Constraints, Paket-Connection-Manager, Paketparameter, Namen
-  sowie Klassenkennungen von Pipeline-Komponenten und Scope sowie
-  Eigenschaftsnamen direkter Property-Expressions. Constraints ordnen `From` und `To` den sichtbaren
+  sowie Klassenkennungen von Pipeline-Komponenten, Scope sowie
+  Eigenschaftsnamen direkter Property-Expressions und direkte Pipeline-Linien
+  zwischen zugeordneten Komponenten. Constraints ordnen `From` und `To` den sichtbaren
   Executable-Namen zu und geben nur `HasExpression` aus, nie den Ausdruckstext.
   Nicht zuordenbare Endpunkte erhalten `PARTIAL_LINEAGE`. Weitere Projektionen
   Connection Strings, Parameterwerte und andere sensitive Werte werden nicht
   gelesen oder ausgegeben. Komponenteneigenschaften, Ein-/Ausgaben,
-  Spaltenmetadaten und Werte werden nicht gelesen oder ausgegeben. Weitere
+  Spaltenmetadaten und Werte werden nicht gelesen oder ausgegeben. Direkte
+  Pipeline-Linien lesen ausschließlich `startId` und `endId`; weitere
+  Ein-/Ausgangs- und Spaltenmetadaten bleiben ausgeschlossen. Weitere
   Projektionen umfassen künftig Event Handler, weitere Connection Managers,
   Parameter-/Variablendefinitionen und Expressionauflösung. Expressiontexte,
   Script-/Assembly-Binärdaten
