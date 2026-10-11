@@ -52,13 +52,15 @@ Schemaversion.
 ## Quellenprojektionen
 
 - DTSX: Der direkte Kern projiziert Paketkopf, Executables, statische
-  Precedence Constraints, Paket-Connection-Manager und Paketparameter. Constraints ordnen `From` und `To` den sichtbaren
+  Precedence Constraints, Paket-Connection-Manager, Paketparameter und Namen
+  sowie Klassenkennungen von Pipeline-Komponenten. Constraints ordnen `From` und `To` den sichtbaren
   Executable-Namen zu und geben nur `HasExpression` aus, nie den Ausdruckstext.
   Nicht zuordenbare Endpunkte erhalten `PARTIAL_LINEAGE`. Weitere Projektionen
   Connection Strings, Parameterwerte und andere sensitive Werte werden nicht
-  gelesen oder ausgegeben. Weitere Projektionen umfassen künftig Event Handler,
-  Connection Managers, Parameter-/Variablendefinitionen, Pipelinekomponenten,
-  Ein-/Ausgaben, Spaltenmetadaten und Expressions. Script-/Assembly-Binärdaten
+  gelesen oder ausgegeben. Komponenteneigenschaften, Ein-/Ausgaben,
+  Spaltenmetadaten und Werte werden nicht gelesen oder ausgegeben. Weitere
+  Projektionen umfassen künftig Event Handler, weitere Connection Managers,
+  Parameter-/Variablendefinitionen und Expressions. Script-/Assembly-Binärdaten
   sowie sensitive Werte werden nicht gelesen oder ausgegeben.
 - Legacy Log: ausschließlich die dokumentierten `sysssislog`-Spalten der
   explizit benannten Tabelle und Execution ID.
