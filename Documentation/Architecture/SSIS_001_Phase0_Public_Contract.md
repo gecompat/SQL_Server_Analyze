@@ -21,9 +21,11 @@ Schemaversion.
 1. Der erste Parser unterstützt ausschließlich DTSX Version 2. Andere gültige
    XML-Formate liefern `UNSUPPORTED_PACKAGE_FORMAT`, keine heuristische
    Vollanalyse.
-2. Expressions werden nur als direkte Literal-, Variablen- und
-   Parameterreferenzen aufgelöst. Verkettung, Funktionen, Typkonvertierung und
-   bedingte Ausdrücke bleiben sichtbar als `EXPRESSION_NOT_EVALUATED`.
+2. Der direkte Kern inventarisiert Property-Expressions ausschließlich über
+   Scope und Eigenschaftsname. Expressiontexte werden weder gelesen noch
+   aufgelöst. Eine spätere Auflösung direkter Literal-, Variablen- und
+   Parameterreferenzen sowie die Kennzeichnung komplexer Ausdrücke als
+   `EXPRESSION_NOT_EVALUATED` benötigt einen eigenen Parser-Slice.
 3. Komponentenprofile besitzen `componentCode`, `componentKind`,
    `implementationOwner`, `synchronousKind`, `knownInputs`, `knownOutputs`,
    `riskTags` und `profileVersion`. Unbekannte Komponenten bleiben als
@@ -52,15 +54,17 @@ Schemaversion.
 ## Quellenprojektionen
 
 - DTSX: Der direkte Kern projiziert Paketkopf, Executables, statische
-  Precedence Constraints, Paket-Connection-Manager, Paketparameter und Namen
-  sowie Klassenkennungen von Pipeline-Komponenten. Constraints ordnen `From` und `To` den sichtbaren
+  Precedence Constraints, Paket-Connection-Manager, Paketparameter, Namen
+  sowie Klassenkennungen von Pipeline-Komponenten und Scope sowie
+  Eigenschaftsnamen direkter Property-Expressions. Constraints ordnen `From` und `To` den sichtbaren
   Executable-Namen zu und geben nur `HasExpression` aus, nie den Ausdruckstext.
   Nicht zuordenbare Endpunkte erhalten `PARTIAL_LINEAGE`. Weitere Projektionen
   Connection Strings, Parameterwerte und andere sensitive Werte werden nicht
   gelesen oder ausgegeben. Komponenteneigenschaften, Ein-/Ausgaben,
   Spaltenmetadaten und Werte werden nicht gelesen oder ausgegeben. Weitere
   Projektionen umfassen künftig Event Handler, weitere Connection Managers,
-  Parameter-/Variablendefinitionen und Expressions. Script-/Assembly-Binärdaten
+  Parameter-/Variablendefinitionen und Expressionauflösung. Expressiontexte,
+  Script-/Assembly-Binärdaten
   sowie sensitive Werte werden nicht gelesen oder ausgegeben.
 - Legacy Log: ausschließlich die dokumentierten `sysssislog`-Spalten der
   explizit benannten Tabelle und Execution ID.

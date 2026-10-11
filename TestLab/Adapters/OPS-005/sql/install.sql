@@ -60224,10 +60224,11 @@ Datenschutz  : Keine Connection Strings, Secret-, Binary-, Host-, Login- oder
                vollständigen Pfadwerte werden gelesen oder ausgegeben.
 Abgrenzung   : Dieser erste Slice stabilisiert Paket-, Executable- und direkte
                Parent-Container-Inventare.
-               Expressions, Lineage und Regeln bleiben als leere, ausdrücklich
-               begrenzte Resultsets sichtbar. Direkte
-               Precedence Constraints und Connection Manager werden ohne
-               Ausdrucks- oder Connection-String-Werte inventarisiert.
+               Lineage und Regeln bleiben als leere, ausdrücklich begrenzte
+               Resultsets sichtbar. Direkte
+               Precedence Constraints, Connection Manager und
+               Property-Expressions werden ohne Ausdrucks- oder
+               Connection-String-Werte inventarisiert.
 ===============================================================================
 */
 CREATE OR ALTER PROCEDURE [monitor].[USP_SsisPackageAnalysis]
@@ -60275,7 +60276,7 @@ BEGIN
     BEGIN
         PRINT N'monitor.USP_SsisPackageAnalysis';
         PRINT N'Analysiert ausschließlich direkt übergebenes DTSX-v2-XML. Der Aufruf öffnet weder Dateien noch SSISDB, führt keine Pakete und kein Paket-SQL aus.';
-        PRINT N'Der erste Parser-Slice inventarisiert Paket, Executables, direkte Parent-Container, Precedence Constraints, Connection Manager, Paketparameter und Pipeline-Komponenten ohne Wertausgabe. Expressions, Lineage und Regelengine werden als begrenzte Resultsets ausgegeben.';
+        PRINT N'Der erste Parser-Slice inventarisiert Paket, Executables, direkte Parent-Container, Precedence Constraints, Connection Manager, Paketparameter, Pipeline-Komponenten und Property-Expressions ohne Wertausgabe. Lineage und Regelengine werden als begrenzte Resultsets ausgegeben.';
         PRINT N'@ResultSetArt=CONSOLE|RAW|TABLE|NONE; TABLE verwendet eine benannte Zuordnung für jedes Resultset.';
         RETURN;
     END;
@@ -60521,19 +60522,27 @@ BEGIN
                'AVAILABLE'
         FROM @PackageXml.nodes('declare namespace DTS="www.microsoft.com/SqlServer/Dts"; /DTS:Executable//DTS:Executable/DTS:ObjectData/*[local-name(.)="pipeline" and namespace-uri(.)=""]/*[local-name(.)="components" and namespace-uri(.)=""]/*[local-name(.)="component" and namespace-uri(.)=""]') AS [x]([n]);
 
+        INSERT [#SsisPackageAnalysis_Expressions]
+        ([ExpressionOrdinal],[ExpressionScope],[PropertyName],[SourceStatus])
+        SELECT CONVERT(int,ROW_NUMBER() OVER (ORDER BY (SELECT 1))),
+               [n].value('declare namespace DTS="www.microsoft.com/SqlServer/Dts"; string((../@DTS:ObjectName)[1])','nvarchar(256)'),
+               [n].value('declare namespace DTS="www.microsoft.com/SqlServer/Dts"; string((@DTS:Name)[1])','nvarchar(256)'),
+               'AVAILABLE'
+        FROM @PackageXml.nodes('declare namespace DTS="www.microsoft.com/SqlServer/Dts"; /DTS:Executable//DTS:PropertyExpression') AS [x]([n]);
+
         INSERT [#SsisPackageAnalysis_Package]
         ([PackageName],[PackageFormatVersion],[RootExecutableType],[ProtectionLevel],[ExecutableCount],[AnalysisStatus],[EvidenceLimit])
         SELECT @PackageName,@PackageFormatVersion,@PackageType,NULLIF(@ProtectionLevel,N''),COUNT(*),'AVAILABLE_LIMITED',
-               N'Der erste Parser-Slice inventarisiert Paket, Executables, direkte Parent-Container, Precedence Constraints, Connection Manager, Paketparameter und Pipeline-Komponenten ohne Ausdrucks-, Connection-String-, Parameter- oder Komponenteneigenschaftswerte.'
+               N'Der erste Parser-Slice inventarisiert Paket, Executables, direkte Parent-Container, Precedence Constraints, Connection Manager, Paketparameter, Pipeline-Komponenten und Property-Expressions ohne Ausdrucks-, Connection-String-, Parameter-, Komponenteneigenschafts- oder Expressionwerte.'
         FROM [#SsisPackageAnalysis_Executables];
 
         INSERT [#SsisPackageAnalysis_Warnings]([WarningCode],[WarningSeverity],[Detail])
-        VALUES ('PARSER_SCOPE_LIMITED','INFO',N'Expressions, Lineage und Regelengine folgen in getrennten Parser-Slices.');
+        VALUES ('PARSER_SCOPE_LIMITED','INFO',N'Lineage und Regelengine folgen in getrennten Parser-Slices.');
     END;
 
     INSERT [#SsisPackageAnalysis_SourceStatus]([SourceName],[StatusCode],[IsPartial],[ReturnedRowCount],[Detail])
     SELECT N'Direkt übergebenes DTSX-XML',@StatusCode,@IsPartial,COUNT(*),
-           CASE WHEN @StatusCode = 'AVAILABLE_LIMITED' THEN N'Paket-, Executable-, Parent-Container-, Precedence-Constraint-, Connection-Manager-, Paketparameter- und Pipeline-Komponenten-Inventar aus direkt übergebenem XML; keine externe Quelle wurde geöffnet.'
+           CASE WHEN @StatusCode = 'AVAILABLE_LIMITED' THEN N'Paket-, Executable-, Parent-Container-, Precedence-Constraint-, Connection-Manager-, Paketparameter-, Pipeline-Komponenten- und Property-Expression-Inventar aus direkt übergebenem XML; keine externe Quelle wurde geöffnet.'
                 ELSE COALESCE(@ErrorMessage,N'Die Quelle konnte nicht im unterstützten Format analysiert werden.') END
     FROM [#SsisPackageAnalysis_Executables];
 
