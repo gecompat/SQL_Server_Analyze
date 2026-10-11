@@ -1100,6 +1100,22 @@ ausgeführten Fälle und den unabhängigen Ergebnisreview. COLL-001 bleibt
 partiell. Andere Berechtigungspfade, Fehlercleanup-Gegenproben, ältere native
 Engines, Restore und Hostbackingbytes bleiben unbelegt.
 
+Die zusätzliche PlanDetails-Abnahme vom 12. Oktober 2026 bestätigt einen
+positiven eigenen Last-Actual-Plan auf SQL Server 2025 mit CL170. Vier
+Consumeraufrufe in NONE, TABLE, RAW und CONSOLE bestehen; alle zehn Planfelder
+und XML werden gegen die native Quelle geprüft. Positive ActualRows,
+TABLE-/RAW-JSON-Parität, Produktgridcounts und unveränderte Callerwerte
+sowie die Erhaltung der eigenen 512 Quellzeilen und ihrer Konfiguration
+sind belegt. Die drei vorherigen privaten Fehlversuche wegen eines
+Typadapters und einer falschen XACT_STATE-Annahme bleiben Fehlversuche.
+Produktcode, ABI, Versionen und Maturityflags bleiben unverändert.
+Eigene Quelle, Lab, Volume und State sind entfernt; fremde Dockerressourcen
+bleiben unverändert. Der [Nachweis](COLLB006_Mixed_Runtime_Evidence_2026-09-19.md)
+grenzt den geprüften einzelnen Handle von offenen positiven Live-Plänen,
+Rollen-, Quellenfehler-, Timeout- und weiteren Plattformnachweisen ab.
+COLL-001 bleibt partiell. Die SMTP-Welle wartet weiterhin auf ihre
+öffentliche Lab-Integration samt tatsächlicher Abnahme.
+
 Der Benutzer hat am 5. Oktober 2026 die autonome Entwicklung beauftragt und
 die bereits in SQL_Server_Toolbelt und SQL_Server_Lab verwendeten
 Autonomieregeln ausdrücklich herangezogen. Die Arbeit verwendet weiterhin
