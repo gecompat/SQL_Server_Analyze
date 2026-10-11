@@ -1012,12 +1012,38 @@ ersetzt keine Analyze-Abnahme.
 Der neue Benutzerauftrag vom 11. Oktober 2026 nimmt die autonome Entwicklung
 nach den bestehenden Projektregeln wieder auf und ersetzt die nachfolgend
 beschriebene Abschlussbegrenzung vom 9. Oktober. Begonnene Wellen haben Vorrang.
-Der bestehende DTSX-v2-Stand ist bis PR #361 integriert. Die Untersuchung eines
-separaten Variable-Inventars hat noch keine Produktänderung erzeugt; ein neues
-Resultset und Schema v3 benötigen einen konkret freigegebenen öffentlichen
-Vertrag. Dieser Slice bleibt bis dahin `ON_HOLD`. Der bestätigte native
+Der bestehende DTSX-v2-Stand ist bis PR #361 integriert. Der Benutzer hat den separaten Variablenvertrag mit Schema v3 und `variables`
+als dreizehntem RAW-Resultset ausdrücklich freigegeben. Die Umsetzung umfasst
+Paket-, Container- und Taskdefinitionen mit gemeinsamem RAW-/TABLE-/JSON-Export;
+Event-Handler-Scope und Variablenwerte bleiben ausgeschlossen. Der freigegebene Variablenvertrag ist implementiert und auf SQL Server 2025
+mit Compatibility Level 170 nativ geprüft. Der bestätigte native
 SMTP-Versand ist eine vorhandene Lab-Fähigkeit; Analyze prüft die öffentliche
 Integration und seine eigenen Consumer getrennt.
+
+
+Die SSIS-001-Abnahme vom 11. Oktober 2026 bestätigt den erweiterten
+Integrationstest 200 im Gesamtframework und im separaten SSIS-Installer.
+Geprüft sind Scopezuordnung, gleichnamige Variablen, Unicode, Metadatendefaults,
+NULL-Felder, gemeinsame positive sowie NULL-/0-Limits, leere und ungültige
+Eingaben sowie die partielle Behandlung von Event Handlern und fehlenden
+Executable-Kennungen. Sechs zusätzliche SqlClient-Aufrufe bestätigen die
+dreizehn RAW-Schemas, die acht Variablentypen und RAW-/JSON-Wertparität sowie
+ein CONSOLE-Resultset und keine NONE-Resultsets. Die ersten zwölf Schemas und
+ihre Reihenfolge sind gegenüber der Basis unverändert. Framework-Smoke und
+alle 75 statischen Validatoren bestehen; der unabhängige fachliche Review
+besitzt keine offenen Befunde.
+
+Das eigene Lab einschließlich Container und Volume ist entfernt; der
+abschließende Inventarvergleich bestätigt unveränderte fremde Dockerressourcen.
+Die zuvor fehlgeschlagenen Versuche wegen einer nicht unterstützten
+Labcollation, eines nicht Unicode-fähigen Fixtureliterals und des verletzten
+TABLE-Seedvertrags bleiben Fehlversuche und sind keine Erfolgsnachweise.
+Ein zusätzlicher Capturebefund zeigte ein fehlendes JSON-Array bei leerem
+Variablenexport. Die explizite leere Projektion und gegen fehlende Schlüssel
+verschärfte Regressionen beheben diesen Vertragsfehler.
+Weitere Paketformate, Event-Handler-Variablen, Ausdrucksauflösung, SSISDB und
+ältere native Engines bleiben unbelegt. Der allgemeine SSIS-Reifestatus
+bleibt partiell.
 
 
 Der Benutzer hat den laufenden Orchestrator am 9. Oktober 2026 auf die

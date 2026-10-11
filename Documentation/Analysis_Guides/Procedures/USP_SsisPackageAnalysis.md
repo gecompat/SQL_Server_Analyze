@@ -1,7 +1,7 @@
 # [monitor].[USP_SsisPackageAnalysis]
 
 **Bereich:** Integration<br>
-**Zweck:** Inventarisiert Paket, Executables mit direkten Parent-Containern, direkte Precedence Constraints, Paket-Connection-Manager, Paketparameter, Pipeline-Komponenten und direkte Property-Expressions eines direkt übergebenen DTSX-v2-Dokuments.<br>
+**Zweck:** Inventarisiert Paket, Executables mit direkten Parent-Containern, direkte Precedence Constraints, Paket-Connection-Manager, Paketparameter, Variablendefinitionen, Pipeline-Komponenten und direkte Property-Expressions eines direkt übergebenen DTSX-v2-Dokuments.<br>
 **Beobachtungsart:** Statische XML-Analyse<br>
 **Kostenklasse:** LOW
 
@@ -21,7 +21,7 @@ Der Aufruf akzeptiert ausschließlich `@AnalysisDepth = 'STANDARD'`. `@ResolveSq
 
 ## Resultsets und Leserichtung
 
-Die RAW-Resultsetfolge lautet `moduleStatus`, `package`, `executables`, `controlFlowConstraints`, `dataFlowComponents`, `connections`, `parameters`, `expressions`, `lineage`, `findings`, `sourceStatus` und `warnings`. Der erste Slice füllt Paket, Executables einschließlich ihres direkten Parent-Containers, direkte Precedence Constraints, Paket-Connection-Manager, Paketparameter, Pipeline-Komponenten, direkte Property-Expressions und direkte Pipeline-Komponentenlinien. Die übrigen Resultsets bleiben leer und `AVAILABLE_LIMITED` weist ihre noch nicht implementierte Analyse aus. `CONSOLE` rendert die zusammenfassende Modulzeile; `TABLE` verwendet benannte Ziele aus `@ResultTablesJson`; JSON enthält denselben begrenzten Kern.
+Die RAW-Resultsetfolge lautet `moduleStatus`, `package`, `executables`, `controlFlowConstraints`, `dataFlowComponents`, `connections`, `parameters`, `expressions`, `lineage`, `findings`, `sourceStatus`, `warnings` und `variables`. Der erste Slice füllt Paket, Executables einschließlich ihres direkten Parent-Containers, direkte Precedence Constraints, Paket-Connection-Manager, Paketparameter, Variablendefinitionen, Pipeline-Komponenten, direkte Property-Expressions und direkte Pipeline-Komponentenlinien. Die übrigen Resultsets bleiben leer und `AVAILABLE_LIMITED` weist ihre noch nicht implementierte Analyse aus. `CONSOLE` rendert die zusammenfassende Modulzeile; `TABLE` verwendet benannte Ziele aus `@ResultTablesJson`; JSON enthält denselben begrenzten Kern.
 
 Lesen Sie zuerst `moduleStatus` und `sourceStatus`. `UNSUPPORTED_PACKAGE_FORMAT` bedeutet, dass das Dokument nicht als unterstütztes DTSX-v2-Paket erkannt wurde; daraus folgt keine Aussage über die Gültigkeit anderer XML- oder Paketformate.
 
@@ -29,9 +29,34 @@ Lesen Sie zuerst `moduleStatus` und `sourceStatus`. `UNSUPPORTED_PACKAGE_FORMAT`
 
 Eine Zeile in `package` beschreibt das erkannte Wurzelpaket. Eine Zeile in `executables` beschreibt ein in der XML-Struktur vorhandenes Executable. `ParentExecutableName` bezeichnet ausschließlich dessen direkten XML-Container; die Zeile enthält keine Laufzeit- oder Erfolgsinformation. Eine Zeile in `controlFlowConstraints` beschreibt eine direkte statische Kante innerhalb eines Parent-Executables. `EvaluationOperation`, `OutcomeValue` und `LogicalAnd` bilden DTSX-Attribute ab; `HasExpression` zeigt nur das Vorhandensein eines Ausdrucks. Der Ausdruckstext wird nicht ausgegeben. Kann ein Endpunkt nicht einem sichtbaren Executable zugeordnet werden, lautet `SourceStatus` `PARTIAL_LINEAGE`. Eine Zeile in `dataFlowComponents` beschreibt Name und Klassenkennung einer Pipeline-Komponente. Eigenschaften, Ein- und Ausgänge, Spaltenmetadaten sowie Werte werden nicht gelesen oder ausgegeben. Eine Zeile in `expressions` beschreibt Scope und Eigenschaftsname einer direkten `PropertyExpression`; ihr Text wird nicht gelesen oder ausgegeben. Eine Zeile in `lineage` beschreibt eine direkte Pipeline-Verbindung zwischen den über `startId` und `endId` zugeordneten Komponenten. Nicht zuordenbare Endpunkte erhalten `PARTIAL_LINEAGE`; Ein-/Ausgangs- und Spaltenmetadaten werden nicht ausgegeben. Eine Zeile in `connections` beschreibt Name und `CreationName` eines Paket-Connection-Managers; Connection Strings werden nicht gelesen oder ausgegeben. Eine Zeile in `parameters` beschreibt Name und Scope eines Paketparameters; seine Werte und Eigenschaften werden nicht gelesen oder ausgegeben.
 
+Eine Zeile in `variables` beschreibt eine direkte Definition in Paket-,
+Container- oder Taskscope. `ScopeExecutableOrdinal` ordnet sie dem
+`executables`-Inventar desselben Aufrufs zu. Namespace, Name, Datentypcode,
+Schreibschutz und Ausdruckskennzeichen enthalten ausschließlich Metadaten.
+Variablenwerte und Ausdruckstexte werden nicht gelesen oder ausgegeben.
+Gleichnamige Variablen in unterschiedlichen Scopes bleiben getrennt.
+
+Schema v3 hängt `variables` als dreizehntes RAW-Resultset an. TABLE verwendet
+das Ziel `variables`; JSON enthält dasselbe begrenzte Array einschließlich
+NULL-Feldern. NULL und 0 für `@MaxZeilen` sind unbegrenzt. Ein positives Limit
+erzeugt bei abgeschnittenem Variableninventar `VARIABLES_TRUNCATED` und den
+Quellenstatus TRUNCATED. CONSOLE bleibt die Modulübersicht. Die bisherigen
+Limitverträge der anderen Resultsets bleiben erhalten.
+
+Event-Handler-Scope einschließlich untergeordneter Executables bleibt
+ausgeschlossen und wird bei vorhandenem Event Handler ausdrücklich
+gekennzeichnet. Fehlende Executable-Kennungen verhindern die Scopezuordnung
+und liefern `VARIABLES_SCOPE_UNRESOLVED`. Lesen Sie den Quellenstatus
+`DTSX variables` und IsPartial, bevor Sie ein leeres Inventar als Abwesenheit
+von Variablen interpretieren. Fehlende oder nicht konvertierbare Metadaten
+bleiben NULL; die spezifizierten fehlenden Namespace- und Booleanattribute
+verwenden dagegen die Defaults leer beziehungsweise False. Der
+[öffentliche Vertrag](../../Architecture/SSIS_001_Phase0_Public_Contract.md)
+beschreibt alle acht Spalten und die Scopegrenzen.
+
 ## So lesen
 
-`AVAILABLE_LIMITED` bestätigt den begrenzten Paket-, Executable-, direkten Constraint-, Pipeline-Komponenten-, Property-Expression-, Connection-Manager- und Paketparameter-Scope. Leere spätere Parserresultsets bedeuten in diesem Slice keine Abwesenheit weiterer Data-Flow-Metadaten.
+`AVAILABLE_LIMITED` bestätigt den begrenzten Paket-, Executable-, direkten Constraint-, Pipeline-Komponenten-, Property-Expression-, Connection-Manager-, Paketparameter- und Variablendefinitionsscope. Leere spätere Parserresultsets bedeuten in diesem Slice keine Abwesenheit weiterer Data-Flow-Metadaten.
 
 ## Warum kann das problematisch sein?
 
