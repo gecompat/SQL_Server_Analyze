@@ -1,7 +1,7 @@
 # [monitor].[USP_SsisPackageAnalysis]
 
 **Bereich:** Integration<br>
-**Zweck:** Inventarisiert Paket, Executables mit direkten Parent-Containern und direkte Precedence Constraints eines direkt übergebenen DTSX-v2-Dokuments.<br>
+**Zweck:** Inventarisiert Paket, Executables mit direkten Parent-Containern, direkte Precedence Constraints und Paket-Connection-Manager eines direkt übergebenen DTSX-v2-Dokuments.<br>
 **Beobachtungsart:** Statische XML-Analyse<br>
 **Kostenklasse:** LOW
 
@@ -21,17 +21,17 @@ Der Aufruf akzeptiert ausschließlich `@AnalysisDepth = 'STANDARD'`. `@ResolveSq
 
 ## Resultsets und Leserichtung
 
-Die RAW-Resultsetfolge lautet `moduleStatus`, `package`, `executables`, `controlFlowConstraints`, `dataFlowComponents`, `connections`, `parameters`, `expressions`, `lineage`, `findings`, `sourceStatus` und `warnings`. Der erste Slice füllt Paket, Executables einschließlich ihres direkten Parent-Containers und direkte Precedence Constraints. Die übrigen Resultsets bleiben leer und `AVAILABLE_LIMITED` weist ihre noch nicht implementierte Analyse aus. `CONSOLE` rendert die zusammenfassende Modulzeile; `TABLE` verwendet benannte Ziele aus `@ResultTablesJson`; JSON enthält denselben begrenzten Kern.
+Die RAW-Resultsetfolge lautet `moduleStatus`, `package`, `executables`, `controlFlowConstraints`, `dataFlowComponents`, `connections`, `parameters`, `expressions`, `lineage`, `findings`, `sourceStatus` und `warnings`. Der erste Slice füllt Paket, Executables einschließlich ihres direkten Parent-Containers, direkte Precedence Constraints und Paket-Connection-Manager. Die übrigen Resultsets bleiben leer und `AVAILABLE_LIMITED` weist ihre noch nicht implementierte Analyse aus. `CONSOLE` rendert die zusammenfassende Modulzeile; `TABLE` verwendet benannte Ziele aus `@ResultTablesJson`; JSON enthält denselben begrenzten Kern.
 
 Lesen Sie zuerst `moduleStatus` und `sourceStatus`. `UNSUPPORTED_PACKAGE_FORMAT` bedeutet, dass das Dokument nicht als unterstütztes DTSX-v2-Paket erkannt wurde; daraus folgt keine Aussage über die Gültigkeit anderer XML- oder Paketformate.
 
 ## Eine Zeile bedeutet
 
-Eine Zeile in `package` beschreibt das erkannte Wurzelpaket. Eine Zeile in `executables` beschreibt ein in der XML-Struktur vorhandenes Executable. `ParentExecutableName` bezeichnet ausschließlich dessen direkten XML-Container; die Zeile enthält keine Laufzeit- oder Erfolgsinformation. Eine Zeile in `controlFlowConstraints` beschreibt eine direkte statische Kante innerhalb eines Parent-Executables. `EvaluationOperation`, `OutcomeValue` und `LogicalAnd` bilden DTSX-Attribute ab; `HasExpression` zeigt nur das Vorhandensein eines Ausdrucks. Der Ausdruckstext wird nicht ausgegeben. Kann ein Endpunkt nicht einem sichtbaren Executable zugeordnet werden, lautet `SourceStatus` `PARTIAL_LINEAGE`.
+Eine Zeile in `package` beschreibt das erkannte Wurzelpaket. Eine Zeile in `executables` beschreibt ein in der XML-Struktur vorhandenes Executable. `ParentExecutableName` bezeichnet ausschließlich dessen direkten XML-Container; die Zeile enthält keine Laufzeit- oder Erfolgsinformation. Eine Zeile in `controlFlowConstraints` beschreibt eine direkte statische Kante innerhalb eines Parent-Executables. `EvaluationOperation`, `OutcomeValue` und `LogicalAnd` bilden DTSX-Attribute ab; `HasExpression` zeigt nur das Vorhandensein eines Ausdrucks. Der Ausdruckstext wird nicht ausgegeben. Kann ein Endpunkt nicht einem sichtbaren Executable zugeordnet werden, lautet `SourceStatus` `PARTIAL_LINEAGE`. Eine Zeile in `connections` beschreibt Name und `CreationName` eines Paket-Connection-Managers; Connection Strings werden nicht gelesen oder ausgegeben.
 
 ## So lesen
 
-`AVAILABLE_LIMITED` bestätigt den begrenzten Paket-, Executable- und direkten Constraint-Scope. Leere spätere Parserresultsets bedeuten in diesem Slice keine Abwesenheit von Data-Flow- oder Connection-Metadaten.
+`AVAILABLE_LIMITED` bestätigt den begrenzten Paket-, Executable-, direkten Constraint- und Connection-Manager-Scope. Leere spätere Parserresultsets bedeuten in diesem Slice keine Abwesenheit von Data-Flow-Metadaten.
 
 ## Warum kann das problematisch sein?
 
