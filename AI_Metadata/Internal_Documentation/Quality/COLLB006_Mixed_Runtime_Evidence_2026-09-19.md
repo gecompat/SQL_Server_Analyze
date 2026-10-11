@@ -7809,3 +7809,112 @@ charakterisiert Diagnosemetadaten und empfiehlt keinen produktiven Einsatz
 dieses Algorithmus.
 Lookback, weitere Backupvarianten, Berechtigungskontexte und Restore bleiben
 offen. COLL-001 bleibt partiell; Statusflags bleiben unverändert.
+
+
+## Eingeschränkte Sichtbarkeit eines eigenen TDE-Zertifikats am 11. Oktober 2026
+
+Ein neuer eigener SQL-Server-2025-Docker-Lauf bestätigte auf Produktstand
+`0aa2fac66c0bf48fa5175b719bba898024ccc148` den bestehenden Befund TDE_PROTECTOR_NOT_VISIBLE von
+USP_EncryptionAnalysis. Installation, CL170-Smoke und installierter
+Procedurebody bestanden auf 17.0.4075.5. Server, tempdb und drei leere eigene
+Unicode-/Case-Quellen verwendeten Latin1_General_100_CS_AS; das Framework
+verwendete SQL_Latin1_General_CP1_CS_AS. Zwei eigene AES128-TDE-Quellen
+bei CL160/170 verwendeten getrennte Zertifikate bis 2099-12-31 und einen neuen
+DMK. Zustand 3, Scanstatus 4, PercentComplete 0 und KeyLength 128 blieben
+unverändert. Die Kontrollquelle besaß keinen DEK und genau ein natives,
+nicht Copy-only, unverschlüsseltes CHECKSUM-Full-Backup im eigenen Volume.
+CMK, CEK, verschlüsselte Spalten, Ledger und Benutzerobjekte blieben leer;
+private Zertifikatexportzeiten waren NULL.
+
+Ein neuer eigener minimaler SQL-Login und sechs receiptgebundene Benutzer
+besaßen VIEW SERVER SECURITY STATE, VIEW ANY DATABASE, CONNECT, die benötigten
+EXECUTE-/SELECT-Rechte und VIEW DEFINITION auf beide eigenen Zertifikate
+sowie eigene Quelldatenbanken. Keine privilegierte Rolle wurde vergeben.
+Zwischen den Phasen wurde ausschließlich VIEW DEFINITION auf das erste
+eigene master-Zertifikat verweigert. Direkte Proben innerhalb jedes
+EXECUTE-AS-LOGIN-Aufrufs bestätigten Zertifikatsichtbarkeit 1/1 in der Baseline
+und 0/1 final. Zwei eigene DEKs, das Serversecurityrecht und der einzelne
+Backuprecord blieben sichtbar. Es trat kein Backup-SELECT-Fehler auf.
+Ein lokaler Cookie mit varbinary(8000) und REVERT stellten den ursprünglichen
+Kontext im Normalpfad wieder her; Secret und Cookie wurden nicht ausgegeben.
+Ein CATCH-Pfad war vorbereitet; eine Fehlerpfadgegenprobe bleibt unbelegt.
+
+Alle 30 TABLE-/RAW-/CONSOLE-Aufrufe prüften alle 26 Fachfelder,
+JSON-/Direktparität, Schemas, sysname-Aliase, elf Frameworktextcollations und
+260 physische TABLE-Schemarecords. Fünf Auswahlfälle lieferten baseline
+3/3/2/1/0 und final 3/3/2/1/1 Zeilen. Das feste eigene ID-Orakel bestätigte
+final bei Default-Allscope erste TDE, Kontrolle, zweite TDE; im
+Default-Problemscope ausschließlich die erste TDE. Die Warnfensterfälle
+behielten erste TDE, zweite TDE, Kontrolle beziehungsweise beide TDE-Quellen;
+Limit 1 wählte die erste TDE. RAW und JSON wurden geordnet, TABLE und CONSOLE
+auf ID-gebundene Mengen- und Werteparität geprüft.
+
+Die privilegierten nativen Beobachtungen blieben über alle 26 Fachfelder vor
+und nach jedem Aufruf sowie über 15 Phasenpaare unverändert. Nur die
+zugängliche Projektion der ersten TDE-Quelle änderte ProtectorName und
+ProtectorExpiryDate zu NULL sowie FindingCode zu TDE_PROTECTOR_NOT_VISIBLE
+und FindingSeverity zu MEDIUM. Im Warnfenster war die Severity bereits
+MEDIUM. PrivateExport war weiterhin NULL; der bestehende Exporthinweis
+blieb erhalten. Andere Fachfelder und beide anderen Quellen blieben
+unverändert. Alle drei Quellen waren AVAILABLE mit IsPartial 0; das Modul
+lieferte final AVAILABLE_WITH_FINDING. OUTPUT-Fehler und JSON-Warnungen
+blieben leer. Der separate Audit bestätigte 4134
+Wertvergleiche ohne Defekt. Ein erster Auditversuch scheiterte an der
+Stringdarstellung von EncryptionScanModifyDate. Alle 18 betroffenen Werte
+waren native zeitgleiche Datumswerte; der finale Audit gleicht ausschließlich
+deren Darstellung nach typisiertem Gleichheitsnachweis an. Der strikte
+Gesamtvergleich und sämtliche Fachorakel bleiben erhalten. Drei tatsächliche
+Capturemutationen für einen geänderten Zeitwert, eine andere Datenbank-ID und
+ein fehlendes Fachfeld wurden durch denselben finalen Audit zurückgewiesen.
+Der unabhängige Ergebnisreview besitzt keine offenen Befunde.
+Callerwerte 137/OFF/TRANCOUNT 0/XACT_STATE 0
+blieben erhalten; ursprüngliche -1/OFF/0/0 wurden vor Cleanup bestätigt.
+
+Eigene Backuphistorie, sechs Benutzer, Login, drei Datenbanken, zwei Zertifikate
+und DMK wurden identitätsgebunden entfernt. Der öffentliche Lab-Abbau bestand;
+eigener Container und Volume samt Backupdatei waren am selben Providerpin
+abwesend, bevor der eigene State entfernt wurde. Frische Vor-/Nachinventuren
+bestätigten unveränderte erreichbare vorbestehende Dockerressourcen
+einschließlich Images und Tags. Der unabhängige Paketreview ergänzte vor
+Ausführung die Bindung des
+öffentlichen 2025-latest-Katalogtags an das geprüfte Cacheimage und den
+unmittelbaren Imagevergleich des neu gestarteten eigenen Containers.
+Ressourcenbereitschaft, Host-/Daemon-RAM,
+CPU und eigener Gastspeicher wurden geprüft. Physische Host- oder
+Backingdateibytes wurden nicht auf Invarianz geprüft.
+Der Lauf endete um `2026-10-11T20:41:54.2211220+00:00` UTC.
+
+| Quelle | SHA-256 |
+|---|---|
+| Encryption080 UTF-8/LF | `5B8962A9EB84ABC981C84E34C2B2621DC5F9D9FF80A45D439F5406F8FB45EDD2` |
+| Installierter Procedurebody UTF-8/LF | `56F863B6D8C74D17A4D6E65F823C6CCF3175340FC58F995C2BB64C84D6ECD5FD` |
+| Privater Runner | `DBF6270AF21DDFA25E5BF36FC6A3561EB4D0D2DE56E52BAF51E848900AED16F6` |
+| Privates Sichtbarkeits-DENY-SQL | `89AFA7C4B21C6E7F09CEA6BF56E553CDC8F544DA0DDDE82D0817629AA16208FF` |
+| Privater Consumer | `07ADBB68D1E541ABCB4A42D354C562885061F6014A990F458C677AB41BAA4269` |
+| Privater nativer Beobachter | `F4B41343B29D2095EA4EFC5D3627F35FB5956609FD89A451C2DDDA62FF0506CD` |
+| Privates Cleanup-SQL | `919C1778576E2F2070B8D55AD46D427DA4CF39B7F3637BF94857D421AD8A1B5F` |
+| Privater Schutzguard | `3BC51425C567C8B27FD7FC75ACDB8A78224D809B9328F40B7D1D60BC60013F53` |
+| Privater Ergebnisaudit | `1B332E6A0EAC32971154E91B40E1FED9983DBB33FEBC45F4EE412E87BB30AC11` |
+| Privater Lauf-Log | `62742B27DF19FFAFCA1255CA926CB986688CD9533E07CB94232CB33AE16CFCD4` |
+| Privates PASS-Ergebnis | `0B674D2ECA8B1F36ACE976C271EC627970BFA0A68D3B08ACFA9FF3B4992B6D7E` |
+
+Private Paket-, Log- und Ergebnishashes beziehen sich auf physische Bytes.
+Die am 11. Oktober 2026 erneut gelesene Microsoft-Primärquelle beschreibt
+[begrenzte Zertifikatsmetadatensichtbarkeit](https://learn.microsoft.com/en-us/sql/relational-databases/system-catalog-views/sys-certificates-transact-sql?view=sql-server-ver17).
+Die unsichtbare Katalogzeile war kein Quellenzugriffsfehler. Es wurden keine
+Benutzerinhalte gelesen oder geschrieben und keine DML auf Benutzerinhalten,
+SMTP-Operation oder Imagebeschaffung ausgeführt. Schlüsselmaterial wurde
+weder abgefragt noch ausgegeben oder exportiert. Der Client verwendete keine
+Always-Encrypted-Schlüsselprovider. Der Nachweis betrifft SQL2025;
+CL160/170 sind keine älteren nativen Engine-Nachweise. Dateiintegrität,
+Wiederherstellbarkeit, weitere Berechtigungskontexte und Restore bleiben
+offen. COLL-001 bleibt partiell; Statusflags bleiben unverändert.
+
+Die übrigen ausgeführten Prüfungen des vollständigen statischen Laufs bestanden;
+der OPS-005-Adaptervergleich scheiterte zunächst an genau einer CRLF-/LF-
+Abweichung des lokalen generierten Installers. Der normalisierte kanonische
+Inhalt war identisch. Die lokale Übernahme der Generatorausgabe erzeugte
+keinen Git-Inhaltsdiff; der gezielte Adaptercheck bestand danach. Der
+Runtimeversuch und erfolgreiche unveränderte Prüfungen wurden nicht wiederholt.
+Dokumentationsstil und Datenschutz werden am abschließenden Lieferstand geprüft;
+erfolgreiche erforderliche Head-CI und Integration bleiben Liefergates.
