@@ -1,12 +1,12 @@
 # SSIS-001 Phase 0 – öffentlicher Vertrag
 
-Status: Vertragsphase abgeschlossen, noch keine öffentliche T-SQL-Procedure.
+Status: Vertragsphase abgeschlossen; der direkte DTSX-v2-Kern ist teilweise implementiert.
 
 ## Öffentliche Procedures und Resultsets
 
 | Procedure | Resultsetreihenfolge | Schemaversion |
 |---|---|---|
-| `USP_SsisPackageAnalysis` | `moduleStatus`, `package`, `executables`, `dataFlowComponents`, `connections`, `parameters`, `expressions`, `lineage`, `findings`, `sourceStatus`, `warnings` | `1` |
+| `USP_SsisPackageAnalysis` | `moduleStatus`, `package`, `executables`, `controlFlowConstraints`, `dataFlowComponents`, `connections`, `parameters`, `expressions`, `lineage`, `findings`, `sourceStatus`, `warnings` | `2` |
 | `USP_SsisLegacyLogAnalysis` | `moduleStatus`, `execution`, `timeline`, `errorChain`, `iterations`, `loggingQuality`, `findings`, `sourceStatus`, `warnings` | `1` |
 | `USP_SsisCatalogExecutionAnalysis` | `moduleStatus`, `execution`, `executables`, `messages`, `parameters`, `phases`, `rowFlow`, `findings`, `sourceStatus`, `warnings` | `1` |
 
@@ -51,7 +51,11 @@ Schemaversion.
 
 ## Quellenprojektionen
 
-- DTSX: Paketkopf, Executables, Precedence Constraints, Event Handler,
+- DTSX: Der direkte Kern projiziert Paketkopf, Executables sowie statische
+  Precedence Constraints. Constraints ordnen `From` und `To` den sichtbaren
+  Executable-Namen zu und geben nur `HasExpression` aus, nie den Ausdruckstext.
+  Nicht zuordenbare Endpunkte erhalten `PARTIAL_LINEAGE`. Weitere Projektionen
+  umfassen künftig Event Handler,
   Connection Managers, Parameter-/Variablendefinitionen, Pipelinekomponenten,
   Ein-/Ausgaben, Spaltenmetadaten und Expressions. Script-/Assembly-Binärdaten
   sowie sensitive Werte werden nicht gelesen oder ausgegeben.
