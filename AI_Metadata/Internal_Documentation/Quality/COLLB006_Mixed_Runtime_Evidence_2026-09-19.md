@@ -8655,3 +8655,105 @@ Produktparameter, ABI, Versionen und Maturityflags bleiben unverändert;
 COLL-001 bleibt partiell. Unabhängiger Ergebnisreview, betroffene
 Dokumentations-, Privacy- und Commitprüfungen, erfolgreiche exakte Head-CI
 und Integration bleiben Liefergates.
+### PlanDetails: Native Unicode-Textprojektion am 12. Oktober 2026
+
+Ein eigenes Linux-Docker-Lab mit SQL Server 2025, ProductVersion
+17.0.4075.5 und CL170 bestätigt 24 QueryHash-only-Consumerfälle mit
+BMP- und Supplementary-Zeichen im eigenen Proceduretext. Die CI_AS-Quelle
+enthält 512 Primärschlüsselzeilen mit konstantem Unicodewert. Eine endliche
+MAXDOP-1-Procedure enthält die eigenen Zeichen in einem Kommentar und
+einem SELECT-Literal und wird genau einmal ausgeführt. Ihre vollständige
+Definition endet mit genau zwei U+0020-Zeichen. Während der Beobachtung
+erfolgt keine erneute Ausführung. Alle optionalen Attribut-, Compile-,
+Textplan-, Last-Actual- und Livequellen sind ausgeschaltet;
+MaxAnalyseobjekte bleibt 1. Die eigene LAST_QUERY_PLAN_STATS-Option bleibt
+eingeschaltet, ohne in diesem Slice vom Consumer abgefragt zu werden.
+
+Die globale native QueryStats-Auswahl muss genau eine Zeile desselben
+eigenen Planhandles liefern. Datenbank, Procedureobjekt, Definition,
+Cachezeit, letzte Ausführungszeit und Ausführungsanzahl 1 bleiben vor und
+nach jedem Consumer an die ursprüngliche Quelle gebunden. Native
+QueryStats- und Textgegenproben laufen unter derselben ursprünglich
+gebundenen privilegierten Identität mit sysadmin und VIEW SERVER
+PERFORMANCE STATE. Eine eingeschränkte Rolle oder ein Identitätswechsel
+wird hier nicht geprüft.
+
+Die sechs Textgrenzen werden jeweils in NONE, TABLE, RAW und CONSOLE
+ausgeführt. Alle Fälle liefern AVAILABLE ohne Partialität, einen
+Kandidaten, leere Attribut- und Planmengen sowie NULL-Modulfehlerfelder.
+Die native Statementquelle enthält ein Supplementary-Zeichen; der
+vollständige Batch enthält zusätzlich das Zeichen im Kommentar.
+
+| MaxSqlTextZeichen | Geprüfte Projektion, je vier Modi | Truncationbits |
+|---|---|---|
+| NULL | Vollständiger Statement- und Batchtext | Beide false |
+| 0 | Vollständiger Statement- und Batchtext | Beide false |
+| 19 | Statementpräfix unmittelbar vor dem ersten Supplementary-Zeichen | Beide true |
+| 20 | Statementpräfix einschließlich des vollständigen Surrogate-Paars | Beide true |
+| 95 | Batchpräfix unmittelbar vor dem ersten Supplementary-Zeichen | Beide true |
+| 96 | Batchpräfix einschließlich des vollständigen Surrogate-Paars | Beide true |
+
+Die unabhängige UTF-16-Byteextraktion mit nativen Offsets 212/884 ergibt
+den vollständigen Statementtext mit 336 Zeichen und 674 Bytes. Der
+vollständige Batch besitzt 449 Zeichen und 902 Bytes. Diese ursprünglichen
+Metriken bleiben in allen sechs Projektionen erhalten; sie beschreiben
+die vollständige Quelle, nicht die Länge des gekürzten Ausgabetexts.
+Ein unabhängiges Clientorakel schneidet nach Unicode-Scalars und prüft
+sämtliche projizierten Werte gegen beide nativen Messpunkte. Kein
+geprüfter Ausgabetext enthält ein getrenntes Surrogate-Paar.
+Die tatsächlich gemessene Anzahl abschließender U+0020-Zeichen muss
+initial sowie in jeder nativen Textgegenprobe genau zwei sein. Der
+Ergebnisnachweis übernimmt diesen Messwert. Die Originalmetriken zählen
+diese Leerzeichen mit.
+
+Alle 23 Kandidatenfelder stimmen mit den eigenen Auswahl-, Text- und
+Projektionsorakeln überein. CandidateId bleibt 1; SessionId und RequestId
+bleiben NULL. TABLE und RAW stimmen in ihren Fachzeilen mit JSON
+desselben Aufrufs überein. CONSOLE liefert Ergebnislabel plus sämtliche
+23 Kandidatenfelder; diese Fachwerte werden ebenfalls gegen JSON geprüft.
+Die Produktgridcounts für NONE, TABLE, RAW und CONSOLE betragen 0, 0, 2
+und 1. Drei private TABLE-Exportgrids, zwei Callergrids und der separate
+Capture-JSON-Grid gehören zum Harness. Callerbaseline und Abschluss
+bleiben bei LOCK_TIMEOUT 137, TRANCOUNT 0, XACT_STATE 1 und ausgeschaltetem
+XACT_ABORT. Die ursprünglich gebundene SID bleibt nach jedem Aufruf erhalten.
+
+Acht tatsächliche Capturemutationen für Status, Handle, Statementtext,
+Batchtext, ursprüngliche Zeichen- und Bytemetrik, Truncationflag und
+Surrogate-Paar werden abgewiesen. Jede unveränderte Kopie besteht zuvor
+denselben Prüfer. 45 getrennte lokale synthetische Fälle bestätigen die
+24 Konfigurationen, zwölf Manipulationsablehnungen und neun direkte
+Unicode-/Offset-/Leerzeichenproben. Diese lokalen Fälle sind keine
+nativen Consumeraufrufe.
+
+Ein PREEXEC-Befund zeigte, dass eine Prüfung auf mindestens zwei
+Endleerzeichen noch keinen festen Messwert zwei begründet. Die tatsächliche
+U+0020-Zählung und exakte Bindung beheben diese Nachweislücke vor Runtime;
+der unabhängige Korrekturreview schließt den Befund. Die verschärfte
+Prüfung deckt einen lokalen Testdouble mit vier statt zwei Endleerzeichen
+auf. Dieser lokale Fehlversuch bleibt erhalten und wird ausschließlich
+im Testdouble korrigiert. Der frühere lokale 42-Fälle-Erfolg gehört zur
+schwächeren Prüfung und ersetzt den finalen 45-Fälle-Nachweis nicht.
+Der erste tatsächliche native Runtimeversuch besteht den Abschluss.
+
+Die Beobachtung dauert 2,413 Sekunden innerhalb eines
+120-Sekunden-Checkpointbudgets; begrenzte Einzelkommandos und Messpunkte
+begründen keine garantierte Echtzeitdeadline. Datenbankidentität,
+CL170, Last-Actual-Option, Proceduredefinition und Objektzeiten sowie
+Zeilenanzahl, Primärschlüsselgrenzen, ID-Summe und binär gleiche
+Unicodewerte aller 512 Quellzeilen bleiben vor dem eigenen Cleanup
+unverändert. Sechs Produkt-/Helper-/CONSOLE-/Smokequellen und drei private
+Fixtures sind vor und nach dem Lauf hashgebunden. Die eigene Quelle ist
+nativ abwesend; eigenes Lab, Volume und State sind entfernt. Fremde
+Dockerressourcen bleiben im Vorher-/Nachhervergleich unverändert.
+Runtimeidentitäten, Handles, vollständige Texte, Secrets und Captures
+bleiben privat.
+
+Der Nachweis qualifiziert weder andere Collations und beliebige
+Unicodefolgen noch mehrere Hash-Treffer, eingeschränkte Rollen,
+Cache-Eviction, Textquellenfehler, systematische Timeouts, ältere Engines
+oder CL150/160. Frühere erfolgreiche Planquellen- und Berechtigungsnachweise
+werden nicht wiederholt. Produktcode, Parameter, ABI, Versionen und
+Maturityflags bleiben unverändert; COLL-001 bleibt partiell.
+Unabhängiger Ergebnisreview, betroffene Dokumentations-, Privacy- und
+Commitprüfungen, erfolgreiche exakte Head-CI und Integration bleiben
+Liefergates.
