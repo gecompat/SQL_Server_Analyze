@@ -1267,6 +1267,40 @@ unbelegt. Produktcode, ABI, Versionen und Maturityflags bleiben unverändert.
 COLL-001 bleibt partiell; SMTP wartet weiterhin auf seine öffentliche
 Lab-Integration und tatsächliche Abnahme.
 
+Die zusätzliche PlanDetails-Abnahme am 12. Oktober 2026 bestätigt zwei
+unterschiedliche Statements in derselben einmalig ausgeführten eigenen
+Cacheprocedure auf SQL2025 mit CL170. 24 Consumeraufrufe prüfen SqlHandle
+mit Limit 1 und 2, jeden QueryHash einzeln und beide SqlHandle-/QueryHash-
+Kombinationen. Ein Plan, zwei unterschiedliche Hashes und UTF-16-Offsets,
+strikte native Workerrangfolge, alle 23 Kandidatenfelder, vollständige Texte
+und ihre ursprünglichen Metriken sowie physische JSON-Parität sind belegt.
+Callerbaseline 137/0/1/0 und die eigene SA-SID bleiben erhalten. Neun
+tatsächliche Capturemutationen und 43 getrennte lokale Proben bestehen.
+Ein lokaler Erwartungstypfehler und eine vor Runtime im unabhängigen Review
+korrigierte XACT_STATE-Annahme bleiben dokumentiert. Der erste native
+Versuch besteht; Quelle, Lab, Volume und State sind entfernt,
+Fremdressourcen unverändert. Der unabhängige Ergebnisreview besitzt keine
+offenen Befunde; alle 75 statischen Validatoren bestehen. Der
+[Nachweis](COLLB006_Mixed_Runtime_Evidence_2026-09-19.md) charakterisiert
+die bestehende Statementgranularität und erweitert keinen öffentlichen
+Auswahlvertrag. Gleichstände, weitere Cachevarianten, Rollen,
+Sessionkombinationen und Timeouts bleiben unbelegt. Produktcode, ABI,
+Versionen und Maturityflags bleiben unverändert; COLL-001 bleibt partiell.
+
+Lab-PR #744 ist inzwischen auf dem öffentlichen Stand
+`abf5cc099b4200f8c3b6d7d65dd15b33c0016bac` integriert. Die dortige
+`LOCAL_VALIDATION_STRATEGY.md` dokumentiert den ausgeführten vollständigen
+Docker-Database-Mail-Lifecycle. Die frühere öffentliche SMTP-Barriere ist
+damit abgelöst. Der vorhandene Analyze-Kandidat in Draft-PR #364 bleibt
+dennoch `NOT_EXECUTED`: Die öffentliche SMTP-Provisionierung lehnt seine
+OwnedHost-Policy mit `SMTP_TEST_OWNED_HOST_UNSUPPORTED` ab und baut das
+Gatewayimage bei jeder Provisionierung. Der Receiverstart erzwingt keine
+ausschließliche Verwendung vorhandener Images. Ein passender öffentlicher
+Pfad mit verhinderter Imagebeschaffung sowie eigene Analyze-Versand-,
+Consumer- und Cleanup-Nachweise bleiben Voraussetzungen. Analyze
+implementiert keine SMTP-Infrastruktur und übersteuert keine privaten
+Lab-Funktionen. Unveränderte Voraussetzungen lösen keinen Runtimeversuch aus.
+
 Der Benutzer hat am 5. Oktober 2026 die autonome Entwicklung beauftragt und
 die bereits in SQL_Server_Toolbelt und SQL_Server_Lab verwendeten
 Autonomieregeln ausdrücklich herangezogen. Die Arbeit verwendet weiterhin

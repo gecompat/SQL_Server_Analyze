@@ -8880,3 +8880,97 @@ wiederholt. ABI, Versionen und Maturityflags bleiben unverändert;
 COLL-001 bleibt partiell. Unabhängiger Ergebnisreview, betroffene
 Dokumentations-, Privacy- und Commitprüfungen, erfolgreiche exakte Head-CI
 und Integration bleiben Liefergates.
+
+### PlanDetails: Zwei Statements in derselben Cacheprocedure
+
+Am 12. Oktober 2026 besteht ein zusätzlicher begrenzter Nachweis auf
+SQL Server 2025 mit ProductVersion 17.0.4075.5 und CL170. Produktcode,
+18 Parameter, drei Fachschemata, Versionen und Maturityflags bleiben
+unverändert. Der eigene öffentliche Lab-Clone ist an den integrierten
+Stand `abf5cc099b4200f8c3b6d7d65dd15b33c0016bac` gebunden. Der Lauf
+verwendet den generischen Ad-hoc-Pfad ohne SMTP, eine eigene OwnedHost-Policy
+und das bereits vorhandene unveränderliche SQL-Image. Der geteilte
+Lab-Arbeitsbaum mit fremden ungeprüften Änderungen wird nicht verwendet.
+
+Eine eigene CI_AS-Datenbank enthält 512 synthetische Zeilen und eine
+einmalig ausgeführte endliche MAXDOP-1-Procedure mit zwei unterschiedlichen
+SELECT-Statements. Die vorhandene Last-Actual-Option ist eingeschaltet;
+sämtliche optionalen Planquellen bleiben im Analyze-Aufruf ausgeschaltet.
+Native ProcedureStats binden genau einen Cacheplan an Datenbank, Objekt,
+Cachezeit, letzte Ausführungszeit und Ausführungsanzahl 1. Native QueryStats
+liefern für den globalen SqlHandle genau zwei eigene Statementzeilen und
+für jeden der zwei unterschiedlichen QueryHashes genau eine eigene Zeile.
+Diese Mengen, sämtliche Handles, Hashes, Zeitfelder, Ausführungsanzahlen,
+Offsets und Workerwerte bleiben vor und nach jedem Consumeraufruf gebunden.
+
+Die beiden Statementbereiche besitzen UTF-16-Byteoffsets 164 bis 744 und
+752 bis 972. Ihre unabhängig aus den nativen Batchbytes dekodierten Texte
+umfassen 291 beziehungsweise 111 Zeichen und 582 beziehungsweise 222 Bytes.
+Der gemeinsame vollständige Batch umfasst 494 Zeichen und 988 Bytes.
+Native Textquelle, Proceduredefinition, Datenbank- und Objektkennung stimmen
+überein. Die zwei gemessenen Workerwerte 780 und 35 begründen im eigenen
+unveränderten Cache eine strikte Rangfolge; eine allgemeine Reihenfolge bei
+gleichen oder volatilen Workerwerten wird nicht behauptet.
+
+24 Consumeraufrufe umfassen sechs Konfigurationen in NONE, TABLE, RAW und
+CONSOLE. Der alleinige SqlHandle wird mit MaxAnalyseobjekte 1 und 2 geprüft;
+jeder einzelne QueryHash wird mit Limit 1 geprüft. Zwei weitere
+Konfigurationen kombinieren den SqlHandle mit jeweils einem QueryHash und
+Limit 2. Der SqlHandle liefert beim Limit 1 das erste Statement der nativen
+Workerrangfolge und beim Limit 2 beide Statements. Jeder einzelne QueryHash
+liefert das zugehörige Statement. Beide kombinierten Konfigurationen behalten
+genau zwei Kandidaten mit demselben Planhandle und unterschiedlichen
+Statementoffsets; der zusätzlich ausgewählte QueryHash erzeugt keine dritte
+Zeile. Dies charakterisiert den vorhandenen Code an dieser eigenen Quelle
+und legt keinen neuen öffentlichen Union-, Dedup- oder Prioritätsvertrag fest.
+
+Alle 23 Kandidatenfelder werden gegen die nativen Quellen geprüft,
+einschließlich der neun QueryStats-Felder, NULL-Session-/Requestfelder,
+Textquellenkennung, vollständigen Texte, ursprünglichen Zeichen-/Bytemetriken
+und nicht gesetzten Trunkierungsflags. TABLE und RAW stimmen innerhalb
+desselben Aufrufs mit den vollständigen JSON-Kandidaten überein. CONSOLE
+besitzt das Ergebnislabel `PlanDetails` und sämtliche 23 Fachfelder.
+Attribut-, Plan- und Warningarrays bleiben leer; sämtliche Modulstatus sind
+AVAILABLE ohne Partialität oder Modulfehler. NONE besitzt keinen Produktgrid,
+RAW den Modulstatus- und Kandidatengrid, TABLE drei Harness-Exportgrids und
+CONSOLE einen vollständigen Fachgrid. Die getrennten Capture-JSON- und
+Callergrids gehören zum Harness. LOCK_TIMEOUT 137, TRANCOUNT 0, direkt
+gemessener XACT_STATE 1 und ausgeschalteter XACT_ABORT bleiben erhalten;
+die ursprünglich gebundene SA-SID bleibt nach jedem Aufruf unverändert.
+
+Neun tatsächliche Capturemutationen für Status, Anzahl, Handle, QueryHash,
+Offset, Statementtext, ursprüngliche Bytemetrik, Kandidatenrang und nativen
+Workerwert werden abgewiesen. Jede unveränderte Kopie besteht zuvor
+denselben Prüfer. Die Rangmutation tauscht die beiden Statementkandidaten
+bei weiterhin fortlaufenden CandidateId-Werten. 43 getrennte lokale Proben
+umfassen 24 unveränderte Konfigurationen, dreizehn Manipulationsablehnungen
+und sechs Prüfungen der tatsächlichen typisierten Selektorzuweisungen samt
+echten SqlClient-Parameterobjekten. Die Parameterproben verwenden eine
+absichtlich geschlossene Verbindung und führen keine native SQL-Abfrage aus.
+
+Ein erster lokaler Testdoublefehler bei untypisierten erwarteten Bytearrays
+bleibt als Fehlversuch erhalten; ausschließlich die lokalen Erwartungstypen
+werden korrigiert. Der PREEXEC-Review findet zusätzlich eine zu starre
+XACT_STATE-0-Erwartung im privaten Prüfer. Der direkte Baseline-/Postvergleich
+ersetzt diese Erwartung vor Runtime; 43 lokale Proben bestehen am geänderten
+Stand. Der geänderte öffentliche Lab-Bezug wird ebenfalls vor Runtime
+unabhängig geprüft. Der erste tatsächliche native Runtimeversuch besteht.
+
+Die erfolgreiche Beobachtung dauert 2,869 Sekunden innerhalb eines
+120-Sekunden-Checkpointbudgets; Messpunkte und begrenzte Einzelkommandos
+begründen keine garantierte Echtzeitdeadline. Datenbankidentität, CL170,
+Last-Actual-Option, Objektzeiten und Definition sowie Zeilenanzahl,
+Primärschlüsselgrenzen, ID-Summe und binär gleiche Unicodewerte aller
+512 Quellzeilen bleiben bis zum eigenen Cleanup unverändert. Sechs
+Produkt-/Helper-/CONSOLE-/Smokequellen und drei private Fixtures sind vor
+und nach dem Lauf hashgebunden. Eigene Quelle, Lab, Volume und State sind
+entfernt; Fremdressourcen bleiben im Vorher-/Nachhervergleich unverändert.
+Runtimeidentitäten, Handles, vollständige Texte, Secrets und Captures
+bleiben privat.
+
+Weitere Cachevarianten, Gleichstände, Rollen, Sessionkombinationen,
+Cache-Eviction, Quellenfehler, systematische Timeouts, ältere Engines und
+CL150/160 bleiben unbelegt. COLL-001 bleibt partiell. Der unabhängige
+Ergebnisreview besitzt keine offenen Befunde; alle 75 statischen Validatoren
+bestehen. Finale betroffene Schreibstil-, Privacy- und Commitprüfungen,
+erfolgreiche exakte Head-CI und Integration bleiben Liefergates.
