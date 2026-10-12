@@ -1227,6 +1227,26 @@ und Timeouts bleiben unbelegt. Produktcode, ABI, Versionen und Maturityflags
 bleiben unverändert. COLL-001 bleibt partiell; SMTP wartet weiterhin auf
 seine öffentliche Lab-Integration und tatsächliche Abnahme.
 
+Die zusätzliche native PlanDetails-Textprojektion vom 12. Oktober 2026
+bestätigt 24 Consumerfälle auf SQL Server 2025 mit CL170. Eigene BMP- und
+Supplementary-Zeichen bleiben bei NULL/0 vollständig erhalten; positive
+Grenzen vor und einschließlich eines Surrogate-Paars bestätigen exakte
+Scalarprojektion bei unveränderten ursprünglichen Zeichen-/Bytemetriken
+und korrekten Truncationbits. Zwei tatsächliche Batch-Endleerzeichen,
+alle 23 Kandidatenfelder, TABLE-/RAW-/CONSOLE-JSON-Parität, Caller/SID,
+acht Capturemutationen und stabile Quellenbindungen bestehen.
+45 lokale synthetische Orakelproben bleiben getrennt; ein vor Runtime
+geschlossener Leerzeichen-PREEXEC-Befund und der dadurch aufgefundene
+lokale Testdoublefehler bleiben dokumentiert. Der erste native
+Runtimeversuch besteht; eigene Quelle, Lab, Volume und State sind entfernt,
+Fremdressourcen unverändert. Der
+[Nachweis](COLLB006_Mixed_Runtime_Evidence_2026-09-19.md) begrenzt die
+Beobachtung auf die eigene unveränderte Definition; andere Collations,
+Unicodefolgen, Rollen, Quellenfehler und Timeouts bleiben unbelegt.
+Produktcode, ABI, Versionen und Maturityflags bleiben unverändert.
+COLL-001 bleibt partiell; SMTP wartet weiterhin auf seine öffentliche
+Lab-Integration und tatsächliche Abnahme.
+
 Der Benutzer hat am 5. Oktober 2026 die autonome Entwicklung beauftragt und
 die bereits in SQL_Server_Toolbelt und SQL_Server_Lab verwendeten
 Autonomieregeln ausdrücklich herangezogen. Die Arbeit verwendet weiterhin
