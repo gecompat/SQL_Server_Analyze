@@ -8449,3 +8449,96 @@ deren erfolgreiche unveränderte Fälle erneut auszuführen. COLL-001 bleibt
 partiell. Unabhängiger Ergebnisreview, betroffene Dokumentations-, Privacy-
 und Commitprüfungen, erfolgreiche exakte Head-CI und Integration bleiben
 Liefergates.
+### PlanDetails: Begrenzter QueryHash-Berechtigungsnachweis am 12. Oktober 2026
+
+Ein eigenes Linux-Docker-Lab mit SQL Server 2025, ProductVersion
+17.0.4075.5 und CL170 bestätigt zwölf QueryHash-only-Consumerfälle.
+Alle optionalen Attribut-, Compile-, Textplan-, Last-Actual- und
+Livequellen sind ausgeschaltet. Produktcode, 18 Parameter, Version 2.0.0,
+JSON-schemaVersion 1 und Maturityflags bleiben unverändert. Die eigene
+CI_AS-Quelle enthält 512 Primärschlüsselzeilen mit konstantem Unicodewert.
+Eine endliche MAXDOP-1-Procedure wird genau einmal ausgeführt. Ihre
+LAST_QUERY_PLAN_STATS-Option bleibt eingeschaltet; der Consumer fordert
+in diesem Slice keine Last-Actual-Quelle an.
+
+NONE, TABLE, RAW und CONSOLE werden mit nicht erteiltem, erteiltem und
+ausdrücklich verweigertem VIEW SERVER PERFORMANCE STATE kombiniert.
+EXECUTE auf Schema monitor und SELECT auf monitor.TVF_ProjectUnicodeText
+bleiben konstant. Katalog, HAS_PERMS_BY_NAME, Helperzugriff und exakt
+impersonierte SID binden jede Phase. Der eigene Login ist kein sysadmin
+und besitzt keine explizite Serverrollenmitgliedschaft. Diese Rechte
+qualifizieren keine allgemeine oder minimale Frameworkrolle.
+
+| Serverberechtigung | Native Auswahl, je vier Modi | PlanDetails, je vier Modi |
+|---|---|---|
+| Nicht erteilt | QueryStats-Auswahl meldet Fehler 300 | DENIED_PERMISSION, IsPartial true, Fehler 300 und keine Kandidaten |
+| GRANT | Genau ein eigener Kandidat; Textquelle verfügbar | AVAILABLE, IsPartial false und ein Kandidat ohne Modulfehler |
+| DENY | QueryStats-Auswahl meldet Fehler 300 | DENIED_PERMISSION, IsPartial true, Fehler 300 und keine Kandidaten |
+
+Die globale native QueryHash-Auswahl muss vor der Matrix genau eine
+Zeile desselben eigenen Planhandles liefern. Ein zusätzlicher Treffer
+würde den Lauf abbrechen; fremde Treffer werden nicht ausgefiltert.
+Privilegierte Cacheproben binden jeden Fall an Datenbank, Procedureobjekt,
+Planhandle, Cachezeit, letzte Ausführungszeit und Ausführungsanzahl 1.
+Direkte QueryStats-Gegenproben laufen vor und nach jedem Consumer unter
+derselben eingeschränkten Identität. In den acht negativen Fällen stimmen
+Modulfehlernummer und Fehlertext mit beiden nativen Messpunkten überein.
+Die Auswahl endet vor einer Textgegenprobe; eine zusätzliche Textquelle
+unter eingeschränkten Rechten wird hier nicht qualifiziert.
+
+Die vier positiven Fälle bestätigen alle neun nativen Auswahlfelder:
+PlanHandle, SqlHandle, QueryHash, QueryPlanHash, StatementStartOffset,
+StatementEndOffset, CreationTime, LastExecutionTime und ExecutionCount.
+Beide Messpunkte stimmen zusätzlich mit der ursprünglich gebundenen
+Auswahl überein. CandidateId bleibt 1; SessionId und RequestId bleiben NULL.
+Native Textmetadaten binden den vollständigen Batch an die eigene
+Datenbank, das eigene Objekt und die unveränderte Proceduredefinition.
+Ein unabhängiges Clientorakel extrahiert Statementtext aus UTF-16-Bytes
+mit den nativen Byteoffsets. Startoffset 164 und Endoffset 744 ergeben
+291 Zeichen beziehungsweise 582 Bytes; der vollständige Batch umfasst
+380 Zeichen beziehungsweise 760 Bytes. Zeichen- und Bytemetriken stimmen
+für beide Textfelder überein; beide Truncationbits bleiben false bei
+MaxSqlTextZeichen 0. Damit sind sämtliche 23 Kandidatenfelder innerhalb
+dieser eigenen Quelle gegengeprüft. Cacheänderungen zwischen Messpunkten
+oder atomare Aussagen über andere Workloads werden nicht qualifiziert.
+
+TABLE und RAW stimmen innerhalb desselben Aufrufs in ihren Fachzeilen
+mit JSON überein. Die Produktgridcounts für NONE, TABLE, RAW und CONSOLE
+betragen 0, 0, 2 und 1. Drei private TABLE-Exportgrids, zwei Callergrids
+und der separate Capture-JSON-Grid gehören zum Harness. Attribut- und
+Planmengen bleiben leer; RAW emittiert bei ausgeschalteten Flags keinen
+Attribut- oder Plangrid. CONSOLE liefert seinen generischen Exportgrid.
+Callerbaseline und Abschluss bleiben bei LOCK_TIMEOUT 137, TRANCOUNT 0,
+XACT_STATE 1 und ausgeschaltetem XACT_ABORT. REVERT stellt nach jedem
+Aufruf den ursprünglich gebundenen Login wieder her.
+
+Sieben tatsächliche Capturemutationen für Status, Handle, QueryHash,
+Offset, Textmetrik, Fehlernummer und Fehlertext werden abgewiesen; jede
+unveränderte Kopie besteht zuvor denselben Prüfer. 18 getrennte lokale
+synthetische Orakelproben bestätigen positive und negative Prüffälle,
+Manipulationsablehnungen sowie NULL-, Offset-, inklusive Endoffset-,
+Trailing-Space- und Unicodegrenzen. Supplementary-Zeichenmetriken sind
+ausschließlich lokal synthetisch geprüft. Der native Textnachweis bleibt
+auf die ASCII-/BMP-Zeichen der eigenen Proceduredefinition begrenzt.
+
+Der erste tatsächliche Runtimeversuch besteht nach atomarer Reservierung
+der gemeinsamen Lane. Die Beobachtung dauert 0,974 Sekunden innerhalb
+des 120-Sekunden-Checkpointbudgets; Einzelkommandos und Messpunkte
+begründen keine garantierte Echtzeitdeadline. Datenbankidentität,
+CL170, Last-Actual-Option, Proceduredefinition und Objektzeiten sowie
+Zeilenanzahl, Primärschlüsselgrenzen, ID-Summe und binär gleiche
+Unicodewerte aller 512 Quellzeilen bleiben vor dem eigenen Cleanup
+unverändert. Fünf Produkt-/Helper-/Smokequellen und drei private Fixtures
+sind vor und nach dem Lauf hashgebunden. Eigener Benutzer, Login und
+Quelle sind nativ abwesend; eigenes Lab, Volume und State sind entfernt.
+Fremde Dockerressourcen bleiben im Vorher-/Nachhervergleich unverändert.
+Runtimeidentitäten, Handles, Batchtexte, Secrets und vollständige Captures
+bleiben privat.
+
+Der Nachweis qualifiziert weder mehrere Treffer je QueryHash noch weitere
+Rollen, Textfehler nach erfolgreicher Auswahl, Cache-Eviction,
+systematische Timeouts, ältere Engines oder CL150/160. Frühere erfolgreiche
+Actual-, Live-, Handle- und Sessionnachweise werden nicht wiederholt.
+COLL-001 bleibt partiell. Unabhängiger Ergebnisreview, betroffene
+Dokumentations-, Privacy- und Commitprüfungen, erfolgreiche exakte Head-CI
+und Integration bleiben Liefergates.
