@@ -1365,6 +1365,20 @@ Fremdressourcen sind belegt. Details und Grenzen stehen in
 Verträge und Maturityflags bleiben unverändert; andere Evictionpfade,
 Quellenfehler und systematische Timeouts bleiben offen.
 
+Der begrenzte PlanDetails-Nachweis für Sessionselektorkombinationen besteht
+auf SQL2025 17.0.4075.5 und CL170 mit 24 Consumerfällen, acht tatsächlichen
+Capturemutationen und 43 getrennten lokalen Proben. Eine eigene endliche
+aktive Request wird mit ihrem PlanHandle oder getrennten eigenen
+Procedure-Cachequellen kombiniert. Native Request- und Cachebindungen,
+alle 23 Kandidatenfelder, gleichaufrufbezogene physische JSON-Parität,
+Mengenlimits und Callerzustand bestehen. Eigene Session, Quelle, Lab,
+Volume und State sind entfernt; Fremdressourcen sind unverändert. Ein
+lokaler Testdoublefehler und der vor Runtime korrigierte PREEXEC-Befund
+zur Capturespeicherung bleiben erhalten. Details und Grenzen stehen in
+[COLLB006](COLLB006_Mixed_Runtime_Evidence_2026-09-19.md). Produktcode,
+Verträge und Maturityflags bleiben unverändert; weitere Kontexte,
+Quellenfehler und systematische Timeouts bleiben offen.
+
 Der Benutzer hat am 5. Oktober 2026 die autonome Entwicklung beauftragt und
 die bereits in SQL_Server_Toolbelt und SQL_Server_Lab verwendeten
 Autonomieregeln ausdrücklich herangezogen. Die Arbeit verwendet weiterhin
