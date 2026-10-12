@@ -1116,6 +1116,21 @@ Rollen-, Quellenfehler-, Timeout- und weiteren Plattformnachweisen ab.
 COLL-001 bleibt partiell. Die SMTP-Welle wartet weiterhin auf ihre
 öffentliche Lab-Integration samt tatsächlicher Abnahme.
 
+Die zusätzliche positive Live-Plan-Abnahme vom 12. Oktober 2026 bestätigt
+die vorhandene PlanDetails-Quelle an einer eigenen aktiven Session auf
+SQL Server 2025 mit CL170. Vier Consumerfälle bestehen; native
+Identitätsprüfungen, positive ActualRows innerhalb der Messklammern,
+TABLE-/RAW-JSON-Parität, Gridcounts und unveränderte Callerwerte sind belegt.
+Vier tatsächliche Capturemutationen werden abgewiesen. Der frühere
+Fehlversuch wegen der fehlenden StatementText-XMLeigenschaft bleibt getrennt
+erhalten. Produktcode, ABI, Versionen und Maturityflags bleiben unverändert.
+Die eigene Workloadsession ist nativ abwesend; Quellzeilen und Konfiguration
+bleiben erhalten. Quelle, Lab, Volume und State sind entfernt; fremde
+Dockerressourcen bleiben unverändert. Der [Nachweis](COLLB006_Mixed_Runtime_Evidence_2026-09-19.md)
+grenzt den endlichen eigenen Stream von anderen Workloads, Rollen-,
+Quellenfehler-, Timeout- und weiteren Plattformnachweisen ab. COLL-001 bleibt
+partiell; SMTP wartet weiterhin auf seine öffentliche Lab-Abnahme.
+
 Der Benutzer hat am 5. Oktober 2026 die autonome Entwicklung beauftragt und
 die bereits in SQL_Server_Toolbelt und SQL_Server_Lab verwendeten
 Autonomieregeln ausdrücklich herangezogen. Die Arbeit verwendet weiterhin
