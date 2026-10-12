@@ -1207,6 +1207,26 @@ Timeouts bleiben unbelegt. Produktcode, ABI, Versionen und Maturityflags
 bleiben unverändert. COLL-001 bleibt partiell; SMTP wartet weiterhin auf
 seine öffentliche Lab-Integration und tatsächliche Abnahme.
 
+Die zusätzliche PlanDetails-Abnahme mit zwei eigenen QueryHash-Cacheplänen
+am 12. Oktober 2026 bestätigt 24 Consumerfälle auf SQL Server 2025 mit
+CL170. NULL/0/2 liefern beide eigenen Kandidaten, Limit 1 den nativen
+Worker-Rang 1. Negatives Limit und unbestätigtes NULL-Limit bestätigen
+INVALID_PARAMETER beziehungsweise HIGH_IMPACT_CONFIRMATION_REQUIRED mit
+leerer Auswahl ohne Partialität. Der privilegierte Caller bleibt gebunden;
+alle 23 Kandidatenfelder, UTF-16-Offsets, Textmetriken und TABLE-/RAW-JSON-
+Parität stimmen mit stabilen nativen Vor- und Nachproben überein.
+Acht tatsächliche Capturemutationen und 36 getrennte lokale synthetische
+Orakelproben bestehen. Drei lokale Fehlaufrufe und ein vor Runtime
+geschlossener PREEXEC-Wrapperbefund bleiben dokumentiert. Der erste
+tatsächliche Runtimeversuch besteht; eigene Quelle, Lab, Volume und State
+sind entfernt, Fremdressourcen unverändert. Der
+[Nachweis](COLLB006_Mixed_Runtime_Evidence_2026-09-19.md) begrenzt die
+Beobachtung auf genau zwei eigene Pläne mit strikter Worker-Rangfolge;
+weitere Varianten, Sortgleichstände, eingeschränkte Rollen, Cache-Eviction
+und Timeouts bleiben unbelegt. Produktcode, ABI, Versionen und Maturityflags
+bleiben unverändert. COLL-001 bleibt partiell; SMTP wartet weiterhin auf
+seine öffentliche Lab-Integration und tatsächliche Abnahme.
+
 Der Benutzer hat am 5. Oktober 2026 die autonome Entwicklung beauftragt und
 die bereits in SQL_Server_Toolbelt und SQL_Server_Lab verwendeten
 Autonomieregeln ausdrücklich herangezogen. Die Arbeit verwendet weiterhin

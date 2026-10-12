@@ -8542,3 +8542,116 @@ Actual-, Live-, Handle- und Sessionnachweise werden nicht wiederholt.
 COLL-001 bleibt partiell. Unabhängiger Ergebnisreview, betroffene
 Dokumentations-, Privacy- und Commitprüfungen, erfolgreiche exakte Head-CI
 und Integration bleiben Liefergates.
+### PlanDetails: Zwei eigene QueryHash-Pläne und Mengenlimits am 12. Oktober 2026
+
+Ein eigenes Linux-Docker-Lab mit SQL Server 2025, ProductVersion
+17.0.4075.5 und CL170 bestätigt 24 QueryHash-only-Consumerfälle auf
+unverändertem Produktcode. Die eigene CI_AS-Quelle enthält 512
+Primärschlüsselzeilen mit konstantem Unicodewert. Zwei eigene
+Procedureobjekte enthalten dasselbe endliche MAXDOP-1-SELECT und werden
+mit unterschiedlichen eigenen Parameterwerten genau einmal ausgeführt.
+Beide Cachepläne besitzen denselben QueryHash. Während der Beobachtung
+werden die Procedures nicht erneut ausgeführt. Alle optionalen Attribut-,
+Compile-, Textplan-, Last-Actual- und Livequellen sind ausgeschaltet.
+Die eigene LAST_QUERY_PLAN_STATS-Option bleibt eingeschaltet; der Consumer
+fordert in diesem Slice keine Last-Actual-Quelle an.
+
+Die globale native QueryStats-Auswahl muss genau zwei Treffer liefern,
+die beide an eigene Planhandles und unterschiedliche Procedureobjekte
+gebunden sind. Zusätzliche oder fremde Hash-Treffer, fehlende Cachezeilen
+und Worker-Zeitgleichstände würden den Lauf abbrechen. Die vorhandene
+Rangfolge nach total_worker_time ist zwischen allen Messpunkten strikt
+und unverändert. Ein allgemeiner Vertrag für Sortgleichstände oder
+zusätzliche QueryHash-Varianten wird daraus nicht abgeleitet.
+
+Jede der sechs Konfigurationen wird in NONE, TABLE, RAW und CONSOLE
+ausgeführt. Der Caller bleibt der ursprünglich gebundene privilegierte
+Login mit sysadmin und VIEW SERVER PERFORMANCE STATE; eine eingeschränkte
+Rolle oder ein Identitätswechsel wird hier nicht geprüft. NULL und 0
+werden für den vorhandenen Deep-Pfad ausdrücklich bestätigt. Die
+Gegenprobe ohne Bestätigung verwendet ausschließlich das NULL-Limit.
+
+| Mengenlimit und Bestätigung | Status, je vier Modi | Kandidaten |
+|---|---|---|
+| NULL mit HighImpactConfirmed 1 | AVAILABLE ohne Partialität | Beide eigenen Cachepläne |
+| 0 mit HighImpactConfirmed 1 | AVAILABLE ohne Partialität | Beide eigenen Cachepläne |
+| 1 | AVAILABLE ohne Partialität | Eigener Cacheplan auf nativem Worker-Rang 1 |
+| 2 | AVAILABLE ohne Partialität | Beide eigenen Cachepläne in nativer Worker-Reihenfolge |
+| -1 | INVALID_PARAMETER ohne Partialität | Keine |
+| NULL mit HighImpactConfirmed 0 | HIGH_IMPACT_CONFIRMATION_REQUIRED ohne Partialität | Keine |
+
+Die acht leeren Fälle besitzen NULL in ErrorNumber. Das negative Limit
+bewahrt den bestehenden Parameterfehlertext. Die unbestätigte Auswahl
+stimmt in Status und Fehlertext mit direkten Aufrufen von
+InternalCheckAnalysisPath vor und nach dem Consumer unter derselben
+Identität überein. Eine zusätzliche Berechtigungs- oder
+Gruppenverweigerung wird nicht qualifiziert.
+
+Privilegierte Procedure-Cacheproben binden jeden Fall an die eigene
+Datenbank, beide Objekte, Planhandles, Cachezeiten, letzte Ausführungszeiten
+und Ausführungsanzahl 1. Native QueryStats-Gegenproben binden vor und nach
+jedem Consumer alle neun Auswahlfelder sowie die für die Rangfolge
+verwendete Workerzeit an die ursprünglichen zwei Zeilen. Native Textquellen
+stimmen mit Datenbank, Objekt und vollständiger Proceduredefinition
+überein. Alle 23 Kandidatenfelder werden gegen beide Messpunkte geprüft;
+CandidateId bildet die Ausgabeordnung, SessionId und RequestId bleiben NULL.
+
+Ein unabhängiges Clientorakel extrahiert Statementtext aus UTF-16-Bytes.
+Die eigenen Offsetpaare 164/744 und 166/746 ergeben jeweils 291 Zeichen
+beziehungsweise 582 Bytes. Die unterschiedlichen vollständigen Batchtexte
+umfassen 380/760 beziehungsweise 381/762 Zeichen/Bytes. Beide Textmetriken
+und unveränderte Truncationbits bestehen bei MaxSqlTextZeichen 0. Die
+nativen Definitionstexte begrenzen den Nachweis auf die beobachteten
+ASCII-Zeichen; weitergehende Unicodegrenzen werden hier nicht nativ
+qualifiziert. Eine atomare Beobachtung wechselnder Cachegenerationen oder
+fremder Workloads wird nicht behauptet.
+
+TABLE und RAW stimmen in ihren Fachzeilen mit JSON desselben Aufrufs
+überein. Die Produktgridcounts für NONE, TABLE, RAW und CONSOLE betragen
+0, 0, 2 und 1. Drei private TABLE-Exportgrids, zwei Callergrids und der
+separate Capture-JSON-Grid gehören zum Harness. Attribut- und Planmengen
+bleiben leer. CONSOLE liefert je nach Auswahl zwei oder eine Kandidatenzeile
+beziehungsweise seine einzelne Leerzeile. Callerbaseline und Abschluss
+bleiben bei LOCK_TIMEOUT 137, TRANCOUNT 0, XACT_STATE 1 und ausgeschaltetem
+XACT_ABORT; die ursprünglich gebundene SID bleibt nach jedem Aufruf erhalten.
+
+Acht tatsächliche Capturemutationen für Status, Anzahl, Handle,
+Rangfolge, Offset, Textmetrik, native Workerzeit und Gatetext werden
+abgewiesen; jede unveränderte Kopie besteht zuvor denselben Prüfer.
+Die Rangmutation tauscht Kandidaten bei weiterhin fortlaufenden
+CandidateId-Werten und wird gegen die unveränderte native Reihenfolge
+abgewiesen. 36 getrennte lokale synthetische Fälle umfassen die
+24 unveränderten Konfigurationen und zwölf Manipulationsablehnungen.
+Sie sind keine nativen Consumerfälle.
+
+Drei vorherige lokale Aufrufe scheitern an zwei Harnessfehlern:
+Eine JSON-Kopie verliert den nativen Bytearraytyp; ein leerer synthetischer
+Kandidatenexport wird als NULL angelegt. Der dritte Aufruf reproduziert
+den zweiten Fehler zur begrenzten Diagnose. Typbewahrende private Kopien
+und ein explizites leeres Array beheben diese Fehler. Ein unabhängiger
+PREEXEC-Befund zur versehentlichen zweiten Smoke-Pfadersetzung im Wrapper
+wird vor Provisionierung gezielt behoben und anschließend geschlossen.
+Diese Befunde sind keine fehlgeschlagenen nativen Consumerfälle.
+Der erste tatsächliche Runtimeversuch besteht den Abschluss.
+
+Die Beobachtung dauert 2,199 Sekunden innerhalb eines
+120-Sekunden-Checkpointbudgets; begrenzte Einzelkommandos und Messpunkte
+begründen keine garantierte Echtzeitdeadline. Datenbankidentität,
+CL170, Last-Actual-Option, beide Proceduredefinitionen und Objektzeiten
+sowie Zeilenanzahl, Primärschlüsselgrenzen, ID-Summe und binär gleiche
+Unicodewerte aller 512 Quellzeilen bleiben vor dem eigenen Cleanup
+unverändert. Sechs Produkt-/Helper-/Gate-/Smokequellen und drei private
+Fixtures sind vor und nach dem Lauf hashgebunden. Die eigene Quelle ist
+nativ abwesend; eigenes Lab, Volume und State sind entfernt. Fremde
+Dockerressourcen bleiben im Vorher-/Nachhervergleich unverändert.
+Runtimeidentitäten, Handles, vollständige Texte, Secrets und Captures
+bleiben privat.
+
+Der Nachweis qualifiziert weder weitere Cachevarianten oder
+Sortgleichstände noch eingeschränkte Rollen, Cache-Eviction, Textfehler,
+systematische Timeouts, ältere Engines oder CL150/160. Frühere erfolgreiche
+Berechtigungs- und Planquellennachweise werden nicht wiederholt.
+Produktparameter, ABI, Versionen und Maturityflags bleiben unverändert;
+COLL-001 bleibt partiell. Unabhängiger Ergebnisreview, betroffene
+Dokumentations-, Privacy- und Commitprüfungen, erfolgreiche exakte Head-CI
+und Integration bleiben Liefergates.
