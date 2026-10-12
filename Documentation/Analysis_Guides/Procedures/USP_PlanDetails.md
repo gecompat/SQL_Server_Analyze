@@ -36,6 +36,8 @@ Die Serverquellen verwenden `VIEW SERVER STATE` beziehungsweise ab SQL Server 20
 
 Die native Requestquelle kann andere Sessions bei fehlender oder ausdrücklich verweigerter Serverberechtigung ohne Fehler ausblenden. Eine begrenzte SQL-Server-2025-Abnahme bestätigt beim Sessionselektor in diesem Fall `AVAILABLE` mit leerer Auswahl und ohne Partialität. Dieser Status bestätigt den fehlerfreien Quellenzugriff innerhalb der sichtbaren Menge; er belegt keine Berechtigung zur Sicht auf eine andere Session.
 
+Ein separat aktivierter Livezugriff kann trotz leerer Requestauswahl einen Berechtigungsfehler liefern. Die begrenzte SQL-Server-2025-Abnahme beobachtet hierfür `PARTIAL` und eine `LIVE_XML`-Planzeile mit `CandidateId = NULL`, `ERROR_HANDLED` und Fehler 300. Die bestehenden Modulfelder `ErrorNumber` und `ErrorMessage` bleiben bei diesem isolierten Livefehler NULL; der konkrete Fehler steht in der Planzeile. Prüfen Sie deshalb zusätzlich zum Modulstatus die Planzeilen in RAW, TABLE oder JSON.
+
 ## Resultsets und Leserichtung
 
 TABLE registriert `candidates`, `attributes` und `plans` mit 23, vier und zehn Feldern. Die neun Textfelder sind explizit mit der Frameworkcollation versehen; keines dieser Exportschemas erzeugt Identitywerte. RAW liefert zuerst neun Modulstatusfelder, danach Kandidaten und die angeforderten Attribut-/Planresultsets. Die aktive CONSOLE zeigt ausschließlich den generischen Kandidatenexport mit 24 Feldern einschließlich Label oder eine dreifeldrige Leerzeile. JSON enthält `meta`, die drei Arrays und das bestehende leere `warnings`-Array; alle Fachfelder einschließlich NULL-Werten bleiben enthalten. Unterschiedliche Zeilengranularitäten dürfen nicht ungeprüft vereinigt oder summiert werden.

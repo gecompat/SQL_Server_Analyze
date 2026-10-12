@@ -1169,6 +1169,27 @@ Timeout- und Plattformnachweisen ab. Produktcode, ABI, Versionen und
 Maturityflags bleiben unverändert. COLL-001 bleibt partiell; SMTP wartet
 weiterhin auf seine öffentliche Lab-Integration und tatsächliche Abnahme.
 
+Die zusätzliche Live-Plan-Berechtigungsabnahme von PlanDetails am
+12. Oktober 2026 bestätigt zwölf Consumerfälle auf SQL Server 2025 mit
+CL170. Acht eingeschränkte Fälle verbinden native leere Requestsichtbarkeit
+mit Livefehler 300: Die LIVE_XML-Planzeile erhält ERROR_HANDLED, CandidateId
+NULL und den konkreten Fehler, während PARTIAL ohne Modulfehlerfelder
+bestehen bleibt. Vier positive Fälle bestätigen dieselbe eigene endliche
+aktive Anfrage, native Live-XML-Identitäten, ActualRows-Messklammern und
+TABLE-/RAW-JSON-Parität. Schema-EXECUTE und Helper-SELECT bleiben konstant;
+Callerzustand, REVERT und sechs tatsächliche Mutationsablehnungen bestehen.
+Zwölf lokale synthetische Orakelproben und ein korrigierter erster
+Testdoublefehler bleiben getrennt von der nativen Abnahme. Eigene Session,
+Principals, Quelle, Lab, Volume und State sind entfernt; Fremdressourcen
+bleiben unverändert. Der
+[Nachweis](COLLB006_Mixed_Runtime_Evidence_2026-09-19.md) charakterisiert
+die vorhandene Livefehlerdarstellung und ihre Grenzen, ohne einen neuen
+öffentlichen Fehlervertrag festzulegen. Produktcode, ABI, Versionen und
+Maturityflags bleiben unverändert. COLL-001 bleibt partiell; Last-Actual-
+Berechtigungs-, weitere Rollen-, Timeout- und Plattformnachweise bleiben
+offen. SMTP wartet weiterhin auf seine öffentliche Lab-Integration und
+tatsächliche Abnahme.
+
 Der Benutzer hat am 5. Oktober 2026 die autonome Entwicklung beauftragt und
 die bereits in SQL_Server_Toolbelt und SQL_Server_Lab verwendeten
 Autonomieregeln ausdrücklich herangezogen. Die Arbeit verwendet weiterhin
