@@ -1269,6 +1269,26 @@ Produktcode, ABI, Versionen und Maturityflags bleiben unverändert.
 COLL-001 bleibt partiell; SMTP wartet weiterhin auf seine öffentliche
 Lab-Integration und tatsächliche Abnahme.
 
+Die begrenzte Charakterisierung vorhandener PlanDetails-Selektorkombinationen
+vom 12. Oktober 2026 bestätigt 24 Consumerfälle auf SQL Server 2025 mit
+CL170. PlanHandle plus SqlHandle beziehungsweise QueryHash liefert bei
+Limit 2 eine direkte Handlezeile und eine Statementzeile desselben eigenen
+Plans; Limit 1 behält die Handlezeile. SqlHandle plus QueryHash liefert
+in beiden Limits eine Statementzeile. Alle 23 Felder, nullable Metadaten,
+Textgranularität, TABLE-/RAW-/CONSOLE-JSON-Parität und Caller/SID stimmen
+mit gebundenen nativen Vor- und Nachproben überein. Acht Capturemutationen
+und 42 getrennte lokale Fälle bestehen. Ein lokaler Testdoublefehler und
+der erste native Adapterfehlversuch ohne Consumer-Capture bleiben erhalten;
+der korrigierte private Parameterpfad wird separat geprüft. Der zweite
+native Versuch besteht; eigene Quelle, Lab, Volume und State sind entfernt,
+Fremdressourcen unverändert. Der
+[Nachweis](COLLB006_Mixed_Runtime_Evidence_2026-09-19.md) ist kein neuer
+allgemeiner Union-, Dedup- oder Prioritätsvertrag. Sessionkombinationen,
+mehrere Statements, weitere Cachevarianten, Rollen und Timeouts bleiben
+unbelegt. Produktcode, ABI, Versionen und Maturityflags bleiben unverändert.
+COLL-001 bleibt partiell; SMTP wartet weiterhin auf seine öffentliche
+Lab-Integration und tatsächliche Abnahme.
+
 Der Benutzer hat am 5. Oktober 2026 die autonome Entwicklung beauftragt und
 die bereits in SQL_Server_Toolbelt und SQL_Server_Lab verwendeten
 Autonomieregeln ausdrücklich herangezogen. Die Arbeit verwendet weiterhin

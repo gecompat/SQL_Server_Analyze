@@ -8757,3 +8757,126 @@ Maturityflags bleiben unverändert; COLL-001 bleibt partiell.
 Unabhängiger Ergebnisreview, betroffene Dokumentations-, Privacy- und
 Commitprüfungen, erfolgreiche exakte Head-CI und Integration bleiben
 Liefergates.
+### PlanDetails: Begrenzte Selektorkombinationen am 12. Oktober 2026
+
+Ein eigenes Linux-Docker-Lab mit SQL Server 2025, ProductVersion
+17.0.4075.5 und CL170 bestätigt 24 Consumerfälle der vorhandenen
+Selektorkombinationen auf unverändertem Produktcode. Die CI_AS-Quelle
+enthält 512 Primärschlüsselzeilen mit konstantem Unicodewert. Eine eigene
+endliche MAXDOP-1-Procedure wird genau einmal ausgeführt. Globale native
+QueryHash- und SqlHandle-Auswahl liefern jeweils genau eine Zeile
+desselben eigenen Cacheplans. Zusätzliche Treffer würden den Lauf
+abbrechen; fremde Treffer werden nicht ausgefiltert. Die tatsächlich
+gemessene Anzahl unterschiedlicher nativer Planhandles beträgt eins.
+
+PlanHandle plus SqlHandle, PlanHandle plus QueryHash und SqlHandle plus
+QueryHash werden mit MaxAnalyseobjekte 1 beziehungsweise 2 in NONE,
+TABLE, RAW und CONSOLE kombiniert. Alle optionalen Attribut-, Compile-,
+Textplan-, Last-Actual- und Livequellen sind ausgeschaltet;
+MaxSqlTextZeichen bleibt 0. Die eigene LAST_QUERY_PLAN_STATS-Option bleibt
+eingeschaltet, ohne vom Consumer in diesem Slice abgefragt zu werden.
+Der Caller bleibt die ursprünglich gebundene privilegierte Identität
+mit sysadmin und VIEW SERVER PERFORMANCE STATE.
+
+| Selektorkombination | Limit 1, je vier Modi | Limit 2, je vier Modi |
+|---|---|---|
+| PlanHandle und SqlHandle | Eine direkte Handlezeile | Direkte Handlezeile und Statementzeile desselben eigenen Plans |
+| PlanHandle und QueryHash | Eine direkte Handlezeile | Direkte Handlezeile und Statementzeile desselben eigenen Plans |
+| SqlHandle und QueryHash | Eine Statementzeile | Dieselbe eine Statementzeile |
+
+Alle Fälle liefern AVAILABLE ohne Partialität und ohne Modulfehler.
+Attribut-, Plan- und Warnungsarrays bleiben leer. Die beiden Kombinationen mit
+PlanHandle bestätigen bei Limit 2 unterschiedliche Zeilengranularitäten:
+CandidateId 1 enthält den direkt eingesetzten Handle. SqlHandle,
+QueryHash, QueryPlanHash, StatementStartOffset, StatementEndOffset,
+CreationTime, LastExecutionTime und ExecutionCount bleiben dort NULL.
+Die Textquelle liefert trotzdem die eigene Datenbank, das eigene Objekt
+und den vollständigen Modultext. StatementText entspricht wegen der
+fehlenden Offsets ebenfalls dem vollständigen Batch mit 380 Zeichen
+beziehungsweise 760 Bytes.
+
+CandidateId 2 enthält dieselbe Planidentität mit nativen Statement-
+und Cachemetadaten. Die unabhängige UTF-16-Byteextraktion mit Offsets
+164/744 ergibt 291 Zeichen beziehungsweise 582 Bytes; der vollständige
+Batch bleibt bei 380/760. Bei Limit 1 bleibt in diesen beiden
+Kombinationen ausschließlich die zuerst eingesetzte direkte Handlezeile
+erhalten. SqlHandle plus QueryHash liefert in beiden Limits nur die
+Statementzeile mit CandidateId 1. In dieser eigenen Quelle verhindert
+der bestehende Vergleich von Planhandle und Statementoffset eine zweite
+identische Statementzeile. Zwei Kandidatenzeilen werden nicht als zwei
+unterschiedliche native Pläne interpretiert.
+
+Diese Beobachtung charakterisiert ausschließlich die vorhandene Auswahl
+für die eigene Cachequelle. Sie definiert keinen neuen allgemeinen
+Union-, Dedup- oder Prioritätsvertrag und begründet keine Empfehlung,
+mehrere Selektoren gemeinsam zu verwenden. Sessionkombinationen,
+mehrere Statements eines Moduls und weitere Cachevarianten sind nicht
+Teil dieses Nachweises. Produktparameter und Verhalten bleiben unverändert.
+
+Native QueryStats-Gegenproben für beide Filter und direkte Textgegenproben
+für PlanHandle beziehungsweise SqlHandle laufen vor und nach jedem
+Consumer unter derselben Identität. Sämtliche neun Auswahlfelder bleiben
+an die ursprüngliche Statementzeile gebunden. Privilegierte Cacheproben
+binden Datenbank, Procedureobjekt, Planhandle, Cachezeit, letzte
+Ausführungszeit und Ausführungsanzahl 1. Die beiden Textzugriffe stimmen
+mit Datenbank, Objekt und unveränderter vollständiger Definition überein.
+Alle 23 Kandidatenfelder werden einschließlich nullable Rohmetadaten,
+Textgranularität, ursprünglicher Zeichen-/Bytemetriken und unveränderter
+Truncationbits geprüft. SessionId und RequestId bleiben NULL.
+
+TABLE und RAW stimmen in ihren Fachzeilen mit JSON desselben Aufrufs
+überein. CONSOLE liefert Ergebnislabel plus sämtliche 23 Kandidatenfelder;
+deren Fachwerte stimmen ebenfalls mit JSON überein. Die Produktgridcounts
+für NONE, TABLE, RAW und CONSOLE betragen 0, 0, 2 und 1. Drei private
+TABLE-Exportgrids, zwei Callergrids und der separate Capture-JSON-Grid
+gehören zum Harness. Callerbaseline und Abschluss bleiben bei
+LOCK_TIMEOUT 137, TRANCOUNT 0, XACT_STATE 1 und ausgeschaltetem XACT_ABORT.
+Die ursprünglich gebundene SID bleibt nach jedem Aufruf erhalten.
+
+Acht tatsächliche Capturemutationen für Status, Anzahl, Handle,
+nullable Rohmetadaten, Statementoffset, Textgranularität, ursprüngliche
+Bytemetrik und Reihenfolge werden abgewiesen. Jede unveränderte Kopie
+besteht zuvor denselben Prüfer. Die Reihenfolgemutation tauscht beide
+Granularitäten bei weiterhin fortlaufenden CandidateId-Werten.
+42 getrennte lokale Fälle umfassen 24 unveränderte Konfigurationen,
+zwölf Manipulationsablehnungen, drei Prüfungen der tatsächlichen
+typisierten Selektorzuweisungen und drei lokale SqlParameter-Proben.
+Die letzten drei Proben verwenden echte SqlClient-Parameterobjekte
+bei absichtlich geschlossener Verbindung; sie führen keine native
+SQL-Abfrage aus.
+
+Ein erster lokaler Testdoubleaufruf scheitert an fehlender Klammerung
+eines Booleanwerts im Prüftupel und bleibt als Fehlversuch erhalten.
+Der erste tatsächliche Runtimeversuch scheitert vor der ersten
+Consumer-Capture: Der inaktive QueryHash-Parameter wird vom privaten
+Adapter als NVARCHAR-NULL statt VARBINARY-NULL gebunden; die native
+implizite Konversion wird abgewiesen. Dieser Versuch qualifiziert keinen
+Consumerfall. Eigener SQL-/Lab-/Volume-/State-Cleanup und
+Fremdressourcenschutz laufen trotzdem durch; State-Abwesenheit wird
+zusätzlich lokal geprüft. Ausschließlich der private Adapter wird
+korrigiert. Die neuen tatsächlichen Parameterproben prüfen ausdrücklich
+VARBINARY und DBNull für sämtliche aktiven und inaktiven Handle-/Hash-
+Parameter. Der unabhängige Korrekturreview schließt den Adapterbefund.
+Der zweite und letzte zugelassene native Runtimeversuch besteht die Matrix.
+
+Die erfolgreiche Beobachtung dauert 2,139 Sekunden innerhalb eines
+120-Sekunden-Checkpointbudgets; begrenzte Einzelkommandos und Messpunkte
+begründen keine garantierte Echtzeitdeadline. Datenbankidentität,
+CL170, Last-Actual-Option, Proceduredefinition und Objektzeiten sowie
+Zeilenanzahl, Primärschlüsselgrenzen, ID-Summe und binär gleiche
+Unicodewerte aller 512 Quellzeilen bleiben vor dem eigenen Cleanup
+unverändert. Sechs Produkt-/Helper-/CONSOLE-/Smokequellen und drei private
+Fixtures sind vor und nach dem erfolgreichen Lauf hashgebunden. Die
+eigene Quelle ist nativ abwesend; eigenes Lab, Volume und State sind
+entfernt. Fremde Dockerressourcen bleiben im Vorher-/Nachhervergleich
+unverändert. Runtimeidentitäten, Handles, vollständige Texte, Secrets
+und Captures bleiben privat.
+
+Weitere Rollen, Sessionkombinationen, mehrere Statements, zusätzliche
+Cachevarianten, Cache-Eviction, Quellenfehler, systematische Timeouts,
+ältere Engines und CL150/160 bleiben unbelegt. Frühere erfolgreiche
+Einzelselektor-, Planquellen- und Berechtigungsnachweise werden nicht
+wiederholt. ABI, Versionen und Maturityflags bleiben unverändert;
+COLL-001 bleibt partiell. Unabhängiger Ergebnisreview, betroffene
+Dokumentations-, Privacy- und Commitprüfungen, erfolgreiche exakte Head-CI
+und Integration bleiben Liefergates.
