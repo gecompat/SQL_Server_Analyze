@@ -1086,9 +1086,26 @@ im statisch geprüften Umfang und erteilt keine Laufzeitfreigabe.
 Die Vorbereitung wird getrennt von der offenen Runtimeabnahme gesichert.
 Vor Ausführung sind der endgültige öffentliche Profilvertrag, die
 verhinderte Imagebeschaffung, die tatsächlich ausgeführte Lab-Abnahme sowie
-Analyze-Versand-, Consumer- und Cleanup-Nachweise zu bestätigen. Der weiterhin
-offene Lab-Draft-PR #738 und die öffentliche Barriere
-`SMTP_TEST_BACKEND_UNADMITTED` werden weder umgangen noch als Erfolg gewertet.
+Analyze-Versand-, Consumer- und Cleanup-Nachweise zu bestätigen. Die frühere
+Barriere `SMTP_TEST_BACKEND_UNADMITTED` ist am 12. Oktober 2026 durch die
+Integration von Lab-PR #744 auf dem öffentlichen Lab-Stand
+`abf5cc099b4200f8c3b6d7d65dd15b33c0016bac` abgelöst. Die dortige
+`LOCAL_VALIDATION_STRATEGY.md` dokumentiert die ausgeführte Docker-Abnahme
+mit `New-SqlServerLab`, run-spezifischem Database-Mail-Profil, Zustellung an
+Mailpit und erfolgreichem `Remove-SqlServerLab`.
+
+Die lesende Prüfung dieses öffentlichen Stands zeigt zwei verbleibende
+Voraussetzungen für den vorhandenen Analyze-Kandidaten. Die SMTP-Provisionierung
+lehnt dessen OwnedHost-Policy mit `SMTP_TEST_OWNED_HOST_UNSUPPORTED` ab.
+Außerdem baut sie das Gatewayimage bei jeder Provisionierung; der
+Receiverstart erzwingt keine ausschließliche Verwendung vorhandener Images.
+Ein öffentlicher SMTP-Pfad mit verhinderter Imagebeschaffung ist damit für
+diesen Kandidaten nicht bestätigt. Analyze startet weder Provisionierung
+noch Versand, übersteuert keine privaten Lab-Funktionen und bleibt
+`NOT_EXECUTED`. Die öffentliche Lab-Abnahme ersetzt keine eigene
+Analyze-Versand-, Consumer- oder Cleanup-Abnahme. Eine Fortsetzung benötigt
+einen passenden öffentlichen Lab-Vertrag und prüft diese geänderten
+Voraussetzungen vor jedem eigenen Runtimeversuch.
 
 Die zuvor vorbereitete COLL-001-Abnahme für die Metadatensichtbarkeit eines
 eigenen TDE-Zertifikats ist am 11. Oktober 2026 im begrenzten Umfang bestanden.
