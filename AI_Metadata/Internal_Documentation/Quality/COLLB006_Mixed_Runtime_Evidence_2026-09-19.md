@@ -8069,3 +8069,101 @@ Engines oder CL150/160 bleiben unbelegt. COLL-001 und vorhandene
 Maturityflags bleiben partiell beziehungsweise unverändert. Abschließende
 Dokumentations-, Privacy-, Commit- und erfolgreiche Head-CI-Prüfungen sowie
 Integration bleiben Liefergates.
+
+### PlanDetails: Begrenzter Serverberechtigungsnachweis am 12. Oktober 2026
+
+Ein eigenes Linux-Docker-Lab mit SQL Server 2025, ProductVersion
+17.0.4075.5 und CL170 bestätigt die bestehenden PlanDetails-Ausgaben für
+einen eigenen Login und einen eigenen Cacheeintrag. Produktquellen,
+18 Parameter, Version 2.0.0, JSON-schemaVersion 1 und Maturityflags bleiben
+unverändert. Die eigene CI_AS-Quelle enthält 64 Primärschlüsselzeilen mit
+konstantem Unicodewert und abschließendem Leerzeichen. Eine endliche
+Aggregatabfrage erzeugt den Cacheeintrag; Compile-Plan-Datenbank-ID und
+exakter übergebener Batchtext binden beide Handles an diese Quelle.
+
+Die 24 Consumerfälle kombinieren PlanHandle und SqlHandle mit NONE, TABLE,
+RAW und CONSOLE in drei Serverberechtigungsphasen. Zunächst fehlt
+VIEW SERVER PERFORMANCE STATE; danach wird die Berechtigung in master
+erteilt und schließlich ausdrücklich verweigert. Native Katalogzeilen,
+HAS_PERMS_BY_NAME und die exakte impersonierte SID bestätigen jede Phase.
+Der Login ist kein sysadmin und besitzt keine explizite
+Serverrollenmitgliedschaft. EXECUTE auf Schema monitor und SELECT auf
+monitor.TVF_ProjectUnicodeText bleiben in allen 24 Fällen konstant.
+Dieser Nachweis beschreibt genau diese Datenbankrechte, keine allgemeine
+oder minimale Frameworkrolle.
+
+| Serverberechtigung | PlanHandle, je vier Modi | SqlHandle, je vier Modi |
+|---|---|---|
+| Nicht erteilt | PARTIAL; ein Rohkandidat, keine Attribute und eine COMPILE_XML-Zeile mit ERROR_HANDLED | DENIED_PERMISSION; keine Kandidaten, Attribute oder Pläne |
+| GRANT | AVAILABLE; ein Kandidat mit nativen Attributen, Textmetadaten und verfügbarem Compile-XML | AVAILABLE; ein Kandidat mit nativen Auswahlwerten, Attributen, Textmetadaten und verfügbarem Compile-XML |
+| DENY | PARTIAL; ein Rohkandidat, keine Attribute und eine COMPILE_XML-Zeile mit ERROR_HANDLED | DENIED_PERMISSION; keine Kandidaten, Attribute oder Pläne |
+
+Direkte Gegenproben für Planattribute, Compile-Plan, SQL-Text und Query-Stats
+laufen vor und nach jedem Aufruf unter derselben impersonierten Identität.
+Planattribute, Compile-Plan und Query-Stats liefern den tatsächlichen Fehler
+300; die Textquelle meldet dagegen 371. Je Quelle stimmen Fehler und Text
+vor und nach dem Aufruf überein. Der Modulfehler bleibt 300 aus der ersten
+maßgeblichen Quelle. Die Textgegenprobe liefert zunächst einen leeren
+Datagrid und anschließend den abgefangenen Fehlergrid 371; beide bleiben im
+privaten Capture erhalten. Der Prüfer verwendet keinen leeren ersten Grid
+als Ersatz für den nachfolgenden Fehler. Verweigerte Plan- und Textwerte
+bleiben NULL; Rohhandle und beide false-Truncationbits bleiben erhalten.
+Die positiven Fälle bestätigen beide Handles, Auswahlwerte, Batchtext,
+nullable Textmetadaten, alle Compile-Planfelder und normalisiertes XML.
+Die vollständige eindeutige Attributmenge und ihre Werte stimmen mit beiden
+nativen Messpunkten überein. Ad-hoc-Textmetadaten aus dem SqlHandle behalten
+ihre nativen NULL-Werte; die Quelldatenbank wird unabhängig über den Plan
+gebunden.
+
+TABLE und RAW stimmen innerhalb desselben Aufrufs in den drei Facharrays
+mit JSON überein. Die Produktgridcounts für NONE, TABLE, RAW und CONSOLE
+betragen 0, 0, 4 und 1. TABLE wird durch drei zusätzliche private Exportgrids
+geprüft; zwei Callergrids und der separate Capture-JSON-Grid gehören zum
+Harness. CONSOLE bestätigt eine Kandidaten- oder Leerzeile. Die direkte
+Callerbaseline und der Abschlusswert bleiben bei LOCK_TIMEOUT 137,
+TRANCOUNT 0, XACT_STATE 1 und ausgeschaltetem XACT_ABORT. Jeder Aufruf
+beendet die Impersonation durch REVERT zum ursprünglich gebundenen Login.
+Fünf tatsächliche Capturemutationen für Modulstatus, Handle, XML,
+Attributwert und doppelte Attributidentität werden durch denselben positiven
+Prüfer abgewiesen. Die Duplikatmutation verändert JSON und physische
+Attributausgabe gemeinsam; die unabhängige native Mengenkontrolle weist
+sie zurück. Jede unveränderte Mutationskopie besteht zuvor.
+
+Eine getrennte negative Probe bestätigt die zusätzliche Helpergrenze:
+Schema-EXECUTE allein führt beim dynamischen Unicode-Helper zu Fehler 229.
+Direkter dynamischer TVF-Zugriff und ein NONE-Produktaufruf liefern unter
+derselben SID denselben Fehler samt Text. Callerwerte und REVERT bestehen.
+Erst danach wird das gezielte Helper-SELECT erteilt. Diese Probe zählt
+nicht zu den 24 Serverberechtigungsfällen und behauptet keinen normalisierten
+Modulstatus für den unkontrollierten Helperfehler.
+
+Sieben frühere native Versuche bleiben gescheitert. Die ersten vier enden
+vor vollständigen Consumer-Captures an der Ad-hoc-Datenbankbindung, zwei
+Binärarrayübergaben und dem SQL-Typ eines NULL-Handles. Der fünfte beobachtet
+den fehlenden Helperzugriff. Der sechste scheitert nach einem Consumer-Capture
+an der unvollständigen nativen Gridaufnahme; der siebte besteht die acht
+Fälle ohne Serverberechtigung und scheitert anschließend am außerhalb von
+master versuchten Server-GRANT. Erst der achte Lauf besteht die vollständige
+Matrix und den Abschluss. Originale Logs und der erste Teilcapture bleiben
+privat erhalten. Sechs lokale Prüfungen des tatsächlichen SqlClient-Adapters
+mit gemocktem Transport bestätigen Binärwerte, binäre und textuelle NULLs,
+Gridwerte und Normalisierung am finalen Fixturestand; sie ersetzen keine
+native Abnahme. Ein erster lokaler Testdoublefehler bleibt getrennt erhalten.
+
+Initiale und finale Prüfungen bestätigen Datenbankidentität, CL170,
+Zeilenanzahl, Primärschlüsselgrenzen, ID-Summe und binär gleiche Unicodewerte
+aller 64 Quellzeilen einschließlich Leerzeichen. Fünf ausgewählte
+Produkt-/Helper-/Smokequellen und beide privaten Fixtures sind vor und nach
+dem Lauf hashgebunden. Eigener Benutzer, Login und Quelle sind nativ
+abwesend; eigenes Lab, Volume und State sind entfernt. Fremde
+Dockerressourcen bleiben im Vorher-/Nachhervergleich unverändert.
+Runtimeidentitäten, Handles, XML, Batchtext, Secrets und vollständige
+Captures bleiben privat.
+
+Der Nachweis qualifiziert weder zusätzliche Frameworkrollen noch
+Sessionselektoren, Actual-/Live-Pläne unter eingeschränkten Rechten,
+systematische Timeouts, weitere Quellenfehler oder ältere Engines und
+CL150/160. Die früheren positiven Actual-/Live-Nachweise werden nicht erneut
+ausgeführt. COLL-001 bleibt partiell. Abschließender unabhängiger
+Ergebnisreview, Dokumentations-, Privacy-, Commit- und exakte erfolgreiche
+Head-CI-Prüfungen sowie Integration bleiben Liefergates.

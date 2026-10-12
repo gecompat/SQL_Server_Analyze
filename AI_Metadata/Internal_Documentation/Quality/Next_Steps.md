@@ -1109,6 +1109,25 @@ grenzt den endlichen eigenen Stream von anderen Workloads, Rollen-,
 Quellenfehler-, Timeout- und weiteren Plattformnachweisen ab. COLL-001 bleibt
 partiell; SMTP wartet weiterhin auf seine öffentliche Lab-Abnahme.
 
+Die zusätzliche PlanDetails-Abnahme vom 12. Oktober 2026 bestätigt 24
+Consumerfälle für einen eigenen Login und Cacheeintrag auf SQL Server 2025
+mit CL170. PlanHandle und SqlHandle werden in vier Ausgabemodi bei fehlendem,
+erteiltem und ausdrücklich verweigertem VIEW SERVER PERFORMANCE STATE
+geprüft. Konstante Datenbankrechte sind Schema-EXECUTE und gezieltes SELECT
+auf TVF_ProjectUnicodeText. Modulfehler 300, Textquellenfehler 371, PARTIAL
+beziehungsweise DENIED_PERMISSION und die acht positiven AVAILABLE-Ausgänge bestehen;
+native Mengen-/Wertvergleiche, TABLE-/RAW-JSON-Parität, fünf tatsächliche
+Mutationsablehnungen, Callerwerte und REVERT sind belegt. Eine getrennte
+negative Probe bestätigt Fehler 229 ohne Helper-SELECT. Sieben frühere
+native Fehlversuche bleiben erhalten; erst der achte Lauf besteht die
+vollständige Matrix. Produktcode, ABI, Versionen und Maturityflags bleiben
+unverändert. Eigene Principals, Quelle, Lab, Volume und State sind entfernt;
+fremde Dockerressourcen bleiben unverändert. Der
+[Nachweis](COLLB006_Mixed_Runtime_Evidence_2026-09-19.md) grenzt diesen Caller
+von weiteren Rollen-, Session-, Actual-/Live-Berechtigungs-, Timeout- und
+Plattformnachweisen ab. COLL-001 bleibt partiell; SMTP wartet weiterhin auf
+seine öffentliche Lab-Integration und tatsächliche Abnahme.
+
 Der Benutzer hat am 5. Oktober 2026 die autonome Entwicklung beauftragt und
 die bereits in SQL_Server_Toolbelt und SQL_Server_Lab verwendeten
 Autonomieregeln ausdrücklich herangezogen. Die Arbeit verwendet weiterhin
