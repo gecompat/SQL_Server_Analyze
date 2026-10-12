@@ -8974,3 +8974,85 @@ CL150/160 bleiben unbelegt. COLL-001 bleibt partiell. Der unabhängige
 Ergebnisreview besitzt keine offenen Befunde; alle 75 statischen Validatoren
 bestehen. Finale betroffene Schreibstil-, Privacy- und Commitprüfungen,
 erfolgreiche exakte Head-CI und Integration bleiben Liefergates.
+
+### PlanDetails: Gezielte Eviction des eigenen Cacheplans
+
+Am 12. Oktober 2026 besteht ein begrenzter Nachweis auf SQL Server 2025
+mit ProductVersion 17.0.4075.5 und CL170. Produktcode, ABI, Versionen und
+Maturityflags bleiben unverändert. Der eigene öffentliche Lab-Clone ist
+an den integrierten Stand `abf5cc099b4200f8c3b6d7d65dd15b33c0016bac`
+gebunden. Der generische Ad-hoc-Pfad verwendet ohne SMTP eine eigene
+OwnedHost-Policy und das bereits vorhandene unveränderliche SQL-Image.
+
+Eine eigene CI_AS-Datenbank enthält 512 synthetische Zeilen und eine
+einmalig ausgeführte endliche MAXDOP-1-Procedure mit zwei SELECT-Statements.
+LAST_QUERY_PLAN_STATS ist eingeschaltet; alle optionalen Planquellen im
+Analyze-Aufruf bleiben ausgeschaltet. Vor der Eviction binden native
+ProcedureStats und CachedPlans genau einen Plan an die eigene Datenbank,
+Procedure, Cachegeneration und Ausführungsanzahl 1. Der globale SqlHandle
+liefert zwei eigene QueryStats-Zeilen, der erste QueryHash eine eigene Zeile.
+Acht positive Consumerfälle prüfen SqlHandle und QueryHash in NONE, TABLE,
+RAW und CONSOLE gegen diese unmittelbar davor und danach gelesenen Quellen.
+
+Der vollständig kopierte native Planhandle wird als `varbinary(64)`
+übergeben. Im selben SQL-Batch werden Datenbank, Procedure, Handle und
+Ausführungsanzahl erneut gebunden, bevor `DBCC FREEPROCCACHE` ausschließlich
+diesen Plan entfernt. Die ursprüngliche Cachegeneration wird unmittelbar
+vorher zusätzlich geprüft. Es gibt keine globale Cacheleerung und keine
+erneute Ausführung der eigenen Quelle. Danach sind die gebundenen
+ProcedureStats-, CachedPlans-, SqlHandle- und QueryHash-Mengen leer.
+
+Sechzehn anschließende Consumerfälle prüfen PlanHandle, SqlHandle, QueryHash
+und die Kombination aus PlanHandle und SqlHandle in den vier Ausgabemodi.
+Der explizite PlanHandle und die Kombination liefern jeweils einen
+Rohkandidaten; alleiniger SqlHandle und QueryHash liefern keine Kandidaten.
+Alle 24 Modulstatus sind AVAILABLE ohne Partialität oder Modulfehler.
+Die native Textquelle für den entfernten Planhandle liefert keine Zeile
+und keinen Fehler. Sein Rohkandidat bewahrt den Handle, besitzt NULL für
+die übrigen Cachemetadaten, Texte und Textmetriken und keine Trunkierungsflags.
+Die direkte SqlHandle-Textprobe liefert weiterhin die gebundene eigene
+Proceduredefinition; die leere QueryStats-Auswahl erzeugt daraus keinen
+Analyze-Kandidaten. Diese Beobachtung an einer eigenen Cachegeneration
+begründet keinen allgemeinen Vertrag für Textretention oder stale Handles.
+
+Alle 23 Kandidatenfelder, unabhängige UTF-16-Textdekodierung und vollständige
+physische TABLE-/RAW-Parität mit JSON werden geprüft. Leere Exporte behalten
+ihre Spalten ohne künstliche Datenzeile. Die leere CONSOLE-Ausgabe besitzt
+die bestehende Zeile `Keine fachlichen Ergebnisse` mit NULL für Status und
+Hinweis. Attribut-, Plan- und Warningarrays bleiben leer. LOCK_TIMEOUT 137,
+TRANCOUNT 0, direkt gemessener XACT_STATE 1 und ausgeschalteter XACT_ABORT
+sowie die ursprüngliche SA-SID bleiben nach jedem Aufruf erhalten.
+
+Neun tatsächliche Capturemutationen für Status, Anzahl, Handle,
+Rohmetadaten, Textbytes, native Cachebindung, Callerzustand, leeres Schema
+und leere Zeilen werden abgewiesen; jede unveränderte Kopie besteht zuvor
+denselben Prüfer. 58 getrennte lokale Proben prüfen Orakel, Reader,
+typisierte Selektorparameter, abschließenden Zeitguard und Handlelängen.
+Lokale Testdoublefehler bleiben als Fehlversuche erhalten.
+
+Der erste tatsächliche native Versuch scheitert nach acht Vorher-Captures
+vor der Eviction an einem privaten Guard, der genau 64 Handlebytes verlangt.
+Der gebundene native Handle besitzt 44 Bytes. Dieser gesamte Versuch bleibt
+nicht qualifiziert; eigener Cleanup und Fremdressourcenschutz bestehen.
+Die Korrektur akzeptiert nichtleere Handles mit 1 bis 64 Bytes und erhält
+die vollständige Byte- und Zielbindung. Sechs lokale Guardproben und ein
+enger unabhängiger PREEXEC-Review bestätigen die Änderung. Zurückgestellte
+atomare Starts wegen belegter Runtime-Lane erzeugen keine Provisionierung
+und zählen nicht als native Versuche. Der zweite tatsächliche native
+Versuch besteht; ein dritter wird nicht ausgeführt.
+
+Die erfolgreiche Beobachtung dauert 2,218 Sekunden innerhalb eines
+120-Sekunden-Checkpointbudgets; begrenzte Kommandos und Messpunkte begründen
+keine garantierte Echtzeitdeadline. Datenbankidentität, CL170,
+Last-Actual-Option, Objektzeiten und Definition sowie alle 512 synthetischen
+Quellzeilen bleiben bis zum eigenen Cleanup unverändert. Sechs Produkt-,
+Helper-, CONSOLE- und Smokequellen sowie drei private Fixtures bleiben
+vor und nach dem Lauf hashgebunden. Eigene Quelle, Lab, Volume und State
+sind entfernt; fremde Dockerressourcen bleiben im Vorher-/Nachhervergleich
+unverändert. Runtimeidentitäten, Handles, Texte, Secrets und Captures bleiben
+privat. Weitere Cachegenerationen, Rollen, Sessionkombinationen,
+Quellenfehler, systematische Timeouts, ältere Engines und CL150/160 bleiben
+unbelegt. COLL-001 bleibt partiell. Der unabhängige Ergebnisreview besitzt
+keine offenen Befunde; alle 75 statischen Validatoren bestehen. Finale
+betroffene Schreibstil-, Privacy- und Commitprüfungen, erfolgreiche exakte
+Head-CI und Integration bleiben Liefergates.
