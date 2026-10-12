@@ -553,11 +553,22 @@ Zustellung, ein bestimmter SMTP-Fehlergrund, Retryverhalten und automatische
 Retention bleiben getrennte Nachweise.
 
 `-Scenario MailExecutionSuccess` ist ein noch nicht ausgeführter Kandidat
-(`NOT_EXECUTED`). Der öffentliche Lab-Stand sperrt aktiviertes SMTP weiterhin
-mit `SMTP_TEST_BACKEND_UNADMITTED`; die Implementierung liegt im offenen
-Draft-PR #738. Der folgende Aufruf darf erst nach öffentlicher Integration
-auf `SQL_Server_Lab`-`origin/main` und dessen tatsächlicher Lab-Abnahme
-ausgeführt werden. Ein Draft- oder Worktree-Fallback ist ausgeschlossen.
+(`NOT_EXECUTED`). Lab-PR #744 hat die SMTP-Funktion öffentlich integriert;
+die Lab-Validierungsstrategie dokumentiert deren ausgeführte Docker-Abnahme
+mit Database Mail, Zustellung und Cleanup. Die frühere Barriere
+`SMTP_TEST_BACKEND_UNADMITTED` ist damit abgelöst.
+
+Für den vorhandenen Analyze-Kandidaten fehlen weiterhin passende öffentliche
+Voraussetzungen: Der geprüfte Lab-Stand lehnt seine OwnedHost-Policy mit
+`SMTP_TEST_OWNED_HOST_UNSUPPORTED` ab, baut das Gatewayimage bei jeder
+Provisionierung und erzwingt beim Receiverstart keine ausschließliche
+Verwendung vorhandener Images. Der folgende Aufruf darf erst nach öffentlicher
+Integration eines passenden OwnedHost-SMTP-Pfads auf
+`SQL_Server_Lab`-`origin/main`, bestätigter Verhinderung von Imagebeschaffung
+und tatsächlicher Lab-Abnahme dieses Pfads ausgeführt werden. Anschließend
+stehen die eigenen Analyze-Versand-, Consumer- und Cleanup-Nachweise aus.
+Analyze beschafft keine Images und übersteuert keine privaten Lab-Funktionen.
+Ein Draft- oder Worktree-Fallback ist ausgeschlossen.
 
 Der Kandidat ist für den öffentlichen run-gebundenen SMTP-Testdienst von
 `SQL_Server_Lab` vorgesehen. Die Fixture
