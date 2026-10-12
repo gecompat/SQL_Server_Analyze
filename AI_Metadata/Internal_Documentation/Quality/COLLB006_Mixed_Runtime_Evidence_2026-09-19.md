@@ -7989,3 +7989,83 @@ allgemeine Planpersistenz. COLL-001 und vorhandene Maturityflags bleiben
 partiell beziehungsweise unverändert. Dokumentations-, Privacy- und
 Commitprüfungen sowie erfolgreiche erforderliche Head-CI und Integration
 bleiben Liefergates.
+
+## PlanDetails: Positiver Live-Plan am 12. Oktober 2026
+
+Der zusätzliche Nachweis prüft die vorhandene LIVE_XML-Quelle an genau
+einer eigenen aktiven Session. Die Produktquellen des integrierten Stands
+`677802023ce03409bdc55a719abfa1f1a9eccccb`, alle 18 Parameter, Version 2.0.0
+und JSON-Schemaversion 1 bleiben unverändert. Source040 besitzt weiterhin
+den normalisierten SHA256
+`771748480acb5839d01dfa742ec3f1f96fc4412b50f80c52d3b1f97a4349096c`.
+
+Die native Abnahme verwendet SQL Server 2025, Build 17.0.4075.5, mit CL170
+im eigenen Linux-Docker-Lab. Eine eigene case-insensitive Unicodequelle
+enthält 128 durch einen Primärschlüssel gebundene Zeilen. Ihre endliche
+CROSS-JOIN-Abfrage liefert höchstens 16.384 Zeilen mit MAXDOP 1 und dem
+abfragelokalen Hint QUERY_PLAN_PROFILE. Der private SqlClient liest eine
+Zeile und hält seinen ungepoolten Reader offen. Der native Request bestätigt
+ASYNC_NETWORK_IO; die Rückstauwirkung stammt aus diesem eigenen Client.
+Es werden keine fremde Session, globale Profilingoption oder neue
+Extended-Events-Session verändert. LAST_QUERY_PLAN_STATS bleibt in dieser
+Quelle deaktiviert. Die Abnahme erfolgt als sysadmin; Framework-Smoke besteht.
+
+Vier Consumeraufrufe prüfen NONE, TABLE, RAW und CONSOLE mit Max1, genau
+einer Session sowie ausschließlich aktivierter Live-Planquelle. Jeder Aufruf
+liefert einen Kandidaten und eine verfügbare LIVE_XML-Planzeile im JSON.
+Attribute bleiben leer; Modul und Plan melden AVAILABLE ohne Quellenfehler.
+Native Messungen vor und nach jedem Aufruf binden Session, Loginzeit,
+Verbindung, Request, Startzeit, beide Handles und den tatsächlich
+ausgeführten Batchtext. Kandidatenidentität, Handles und Batchtext werden
+gegen diese eigenen nativen Werte geprüft.
+
+Das native Live-XML enthält in dieser Probe kein StatementText-Attribut;
+QueryHash und QueryPlanHash sind vorhanden. Der erste private Lauf scheitert
+an der unzutreffenden Pflichtannahme für StatementText, bevor Consumerfälle
+ausgeführt werden. Sein Log bleibt ein Fehlversuch. Die korrigierte
+XML-Gegenprüfung erhält Anwesenheit und Werte dieser Attribute, vergleicht
+die statische Operator-, Objekt- und Spaltenidentität und bindet die
+ActualRows je Operator und Thread an die nativen Vorher-/Nachher-Grenzen.
+Vier RuntimeCounter-Knoten besitzen positive ActualRows. Vollständige
+unabhängige Formeln für sämtliche XML-Laufzeitattribute und eine atomare
+Gleichheit unterschiedlicher Live-Snapshots werden nicht behauptet.
+
+Die zehn Planfelder besitzen den bestehenden Vertrag; DatabaseId,
+ObjectId, IsEncrypted, QueryPlanText und beide Fehlerfelder bleiben in der
+Live-Zeile NULL. TABLE und RAW bestätigen zusätzlich ihre vollständige
+gleichaufrufbezogene Feld- und XML-Parität zum JSON. Die Produktgridcounts
+betragen für NONE, RAW und CONSOLE null, drei und eins. Der private TABLE-
+Prüfer liest ein Exportgrid aus seinem eigenen Ziel; zwei weitere Callergrids
+je Aufruf werden nicht als Produktausgabe gezählt. CONSOLE bleibt der
+generische Kandidatenexport und enthält keinen physischen Live-Planexport.
+Vier echte Capturemutationen für SourceType, QueryHash, ActualRows außerhalb
+der Messklammer und leeres XML werden durch denselben positiven Prüfer
+abgewiesen. Acht zusätzliche synthetische Orakelproben sind lokale
+Prüfernachweise und keine nativen Consumerfälle.
+
+Die Caller-Messklammer bestätigt unveränderte Werte 137, 0, 1 und 0 für
+LOCK_TIMEOUT, TRANCOUNT, XACT_STATE und den XACT_ABORT-Bitwert. Der private
+Prüfer verwendet ein 90-Sekunden-Beobachtungsbudget mit Checkpunkten,
+abschließender Überschreitungsablehnung und separaten Calltimeouts; eine
+harte Echtzeit-Abbruchgarantie wird nicht behauptet. Die tatsächlich
+gemessene Beobachtungsphase einschließlich eigenem Readerabbau dauert rund
+0,74 Sekunden. Cancel und Dispose verwenden ausschließlich die eigenen
+Objektreferenzen; anschließend ist die eigene Workloadsession nativ abwesend.
+
+Initiale und finale Prüfungen bestätigen die eigene Datenbankidentität,
+CL170, beide unveränderten Profilingoptionen sowie Anzahl, PK-Grenzen,
+ID-Summe und binär identische Unicodewerte aller 128 Quellzeilen einschließlich
+abschließendem Leerzeichen. Die ausgewählten Produkt-/Smokequellen und
+privaten Fixtures sind vor und nach dem Lauf hashgebunden. Eigene Quelle,
+Lab, Volume und State sind entfernt; fremde Dockerressourcen bleiben im
+abschließenden Inventarvergleich unverändert. Runtimeidentitäten, Handles,
+XML, Batchtext, Zugangsdaten und vollständige Captures bleiben privat.
+
+Der unabhängige Review korrigiert die ursprüngliche Deadlineaussage und
+prüft den geänderten Identitätsadapter ohne offene Befunde. Der Nachweis
+betrifft einen eigenen endlichen Stream mit Rückstau; andere Live-Workloads,
+eingeschränkte Rollen, systematische Quellenfehler/Timeouts und zusätzliche
+Engines oder CL150/160 bleiben unbelegt. COLL-001 und vorhandene
+Maturityflags bleiben partiell beziehungsweise unverändert. Abschließende
+Dokumentations-, Privacy-, Commit- und erfolgreiche Head-CI-Prüfungen sowie
+Integration bleiben Liefergates.
