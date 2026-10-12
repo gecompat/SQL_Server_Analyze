@@ -8257,3 +8257,100 @@ Quellenfehler, ältere Engines oder CL150/160. COLL-001 bleibt partiell.
 Unabhängiger Ergebnisreview, betroffene Dokumentations-, Privacy- und
 Commitprüfungen, erfolgreiche exakte Head-CI und Integration bleiben
 Liefergates.
+
+### PlanDetails: Begrenzter Live-Plan-Berechtigungsnachweis am 12. Oktober 2026
+
+Ein eigenes Linux-Docker-Lab mit SQL Server 2025, ProductVersion
+17.0.4075.5 und CL170 bestätigt zwölf Consumerfälle mit ausschließlich
+aktivierter Live-Planquelle. Produktquellen, 18 Parameter, Version 2.0.0,
+JSON-schemaVersion 1 und Maturityflags bleiben unverändert. Die eigene
+CI_AS-Quelle enthält 64 Primärschlüsselzeilen mit konstantem Unicodewert
+und abschließendem Leerzeichen. Eine eigene ungepoolte Verbindung führt
+eine endliche 64x64-Abfrage mit MAXDOP 1 und querybezogenem
+QUERY_PLAN_PROFILE aus. Der offene Reader hält dieselbe Anfrage durch
+ASYNC_NETWORK_IO beobachtbar. Datenbankweite Last-Actual- und
+Profilingoptionen werden nicht geändert; Last Actual, Compile-, Textplan-
+und Attributausgabe sind ausgeschaltet.
+
+Die Fälle kombinieren NONE, TABLE, RAW und CONSOLE mit nicht erteiltem,
+erteiltem und ausdrücklich verweigertem VIEW SERVER PERFORMANCE STATE.
+EXECUTE auf Schema monitor und SELECT auf monitor.TVF_ProjectUnicodeText
+bleiben konstant. Native Kataloge, HAS_PERMS_BY_NAME, Helperzugriff und
+exakte impersonierte SID binden jede Phase. Der eigene Login ist kein
+sysadmin und besitzt keine explizite Serverrollenmitgliedschaft. Die
+Konfiguration qualifiziert keine allgemeine oder minimale Frameworkrolle.
+
+| Serverberechtigung | Native Quellen, je vier Modi | PlanDetails, je vier Modi |
+|---|---|---|
+| Nicht erteilt | Requestquelle leer ohne Fehler; Live-TVF meldet Fehler 300 | PARTIAL, kein Kandidat, eine LIVE_XML-Zeile mit ERROR_HANDLED und Fehler 300 |
+| GRANT | Eine gebundene Anfrage und eine positive Live-XML-Zeile | AVAILABLE, ein Kandidat und eine verfügbare LIVE_XML-Zeile |
+| DENY | Requestquelle leer ohne Fehler; Live-TVF meldet Fehler 300 | PARTIAL, kein Kandidat, eine LIVE_XML-Zeile mit ERROR_HANDLED und Fehler 300 |
+
+Direkte Request- und Live-TVF-Gegenproben laufen vor und nach jedem
+Aufruf unter derselben eingeschränkten Identität. In den acht
+eingeschränkten Fällen stimmen der Livefehler 300 und sein Text mit
+beiden nativen Messpunkten überein. Die Planzeile besitzt CandidateId NULL
+und erhält den konkreten Fehler; die bestehenden Modulfelder ErrorNumber
+und ErrorMessage bleiben dagegen NULL. IsPartial ist true. Diese
+unveränderte Live-Catchdarstellung wird begrenzt charakterisiert und
+nicht als allgemeiner oder empfohlener Fehlervertrag festgelegt.
+Eine leere Requestauswahl unterdrückt den separat aktivierten Livezugriff
+nicht. Ohne Livezugriff bleibt die bereits belegte leere Auswahl AVAILABLE.
+
+Privilegierte Vor- und Nachproben binden alle zwölf Fälle an Session-ID,
+Loginzeit, Connection-ID, Request-ID, Startzeit, beide Handles,
+Quelldatenbank, exakten übergebenen Batchtext und DOP 1. Direkte positive
+Livezeilen stimmen zusätzlich in Session-ID, Request-ID und Handles mit
+der aktiven Anfrage überein. Die vier positiven Fälle bestätigen elf
+native Requestfelder, Textmetadaten und sämtliche zehn Live-Ausgabefelder.
+Die XML-Gegenprüfung erhält die tatsächliche Attributanwesenheit,
+vergleicht Statement-, Operator-, Objekt- und Spaltenidentitäten und
+begrenzt ActualRows je Node-/Threadschlüssel durch die beiden nativen
+Messpunkte sowie die endliche Obergrenze 4096. Positive Laufzeitzähler
+sind vorhanden. Andere volatile Zähler und atomare Cross-call-XML-Werte
+werden nicht behauptet.
+
+TABLE und RAW stimmen innerhalb desselben Aufrufs in ihren Fachzeilen
+mit JSON überein. Die Produktgridcounts für NONE, TABLE, RAW und CONSOLE
+betragen 0, 0, 3 und 1. Drei private TABLE-Exportgrids, zwei Callergrids
+und der separate Capture-JSON-Grid gehören zum Harness. Die Attributmenge
+bleibt leer; RAW emittiert bei ausgeschaltetem Attributflag keinen
+Attributgrid. CONSOLE bestätigt ausschließlich eine Kandidaten- oder
+Leerzeile; die Liveplanzeile wird in JSON und den technischen Planexporten
+geprüft.
+
+Callerbaseline und Abschlusswert bleiben bei LOCK_TIMEOUT 137,
+TRANCOUNT 0, XACT_STATE 1 und ausgeschaltetem XACT_ABORT. REVERT stellt
+nach jedem Aufruf den ursprünglich gebundenen Login wieder her. Sechs
+tatsächliche Capturemutationen für Modulstatus, Session-ID, Handle,
+XML-QueryHash, ActualRows und leeres XML werden durch denselben positiven
+Prüfer abgewiesen; jede unveränderte Kopie besteht zuvor. Zwölf lokale
+synthetische Orakelproben bestätigen unveränderte Leer-, Fehler- und
+Positivfälle sowie manipulierte Status-, Fehler-, XML-, Counter-, Handle-
+und Sessionwerte. Sie sind keine nativen Consumerfälle. Ein erster lokaler
+Testdoublefehler durch eine zu NULL entfaltete leere Array-Subexpression
+bleibt erhalten und wird ausschließlich im Testdouble korrigiert.
+
+Der erste native Versuch besteht Matrix und Abschluss. Die Beobachtung
+dauert 1,013 Sekunden innerhalb eines 120-Sekunden-Checkpointbudgets;
+begrenzte Einzelkommandos und Messpunkte begründen keine garantierte
+Echtzeitdeadline. Der Cleanup verwendet ausschließlich eigene Reader-,
+Command- und Connectionreferenzen und bestätigt die eigene Session
+anschließend mit Session-ID und Loginzeit als abwesend. KILL wird nicht
+verwendet. Datenbankidentität, CL170, Last-Actual-/Profilingoptionen,
+Zeilenanzahl, Primärschlüsselgrenzen, ID-Summe und binär gleiche
+Unicodewerte aller 64 Quellzeilen bleiben vor dem eigenen Quellcleanup
+unverändert. Fünf Produkt-/Helper-/Smokequellen und drei private Fixtures
+sind vor und nach dem Lauf hashgebunden. Eigener Benutzer, Login und Quelle
+sind nativ abwesend; eigenes Lab, Volume und State sind entfernt. Fremde
+Dockerressourcen bleiben im Vorher-/Nachhervergleich unverändert.
+Runtimeidentitäten, Handles, XML, Batchtext, Secrets und vollständige
+Captures bleiben privat.
+
+Der Nachweis qualifiziert weder weitere Rollen noch Last-Actual-Pläne
+unter eingeschränkten Rechten, systematische Timeouts, zusätzliche
+Quellenfehler, ältere Engines oder CL150/160. Frühere erfolgreiche
+Actual-/Live-/Handle-/Sessionnachweise werden nicht wiederholt. COLL-001
+bleibt partiell. Unabhängiger Ergebnisreview, betroffene Dokumentations-,
+Privacy- und Commitprüfungen, erfolgreiche exakte Head-CI und Integration
+bleiben Liefergates.
