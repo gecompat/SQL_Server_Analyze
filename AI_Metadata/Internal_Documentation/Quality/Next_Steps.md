@@ -1210,6 +1210,25 @@ Quellenfehler- und Plattformnachweisen ab. Produktcode, ABI, Versionen und
 Maturityflags bleiben unverändert. COLL-001 bleibt partiell; SMTP wartet
 weiterhin auf seine öffentliche Lab-Integration und tatsächliche Abnahme.
 
+Die zusätzliche QueryHash-Berechtigungsabnahme von PlanDetails am
+12. Oktober 2026 bestätigt zwölf Consumerfälle auf SQL Server 2025 mit
+CL170. Acht eingeschränkte Fälle entsprechen dem nativen Auswahlfehler
+300 mit DENIED_PERMISSION und leeren Kandidatenmengen. Vier GRANTED-Fälle
+bestätigen die global eindeutige eigene Auswahl, alle 23 Kandidatenfelder,
+UTF-16-Byteoffsets und Textmetriken sowie TABLE-/RAW-JSON-Parität.
+Schema-EXECUTE und Helper-SELECT bleiben konstant; Callerzustand, REVERT,
+sieben tatsächliche Capturemutationen und eigene Quellenbindungen
+bestehen. 18 lokale synthetische Orakelproben bleiben von der nativen
+ASCII-/BMP-Textabnahme getrennt. Der erste tatsächliche Runtimeversuch
+besteht; eigene Principals, Quelle, Lab, Volume und State sind entfernt,
+Fremdressourcen unverändert. Der
+[Nachweis](COLLB006_Mixed_Runtime_Evidence_2026-09-19.md) begrenzt die
+Beobachtung auf einen stabilen eigenen Cacheeintrag; mehrere Hash-Treffer,
+weitere Rollen, Cache-Eviction, Textfehler nach positiver Auswahl und
+Timeouts bleiben unbelegt. Produktcode, ABI, Versionen und Maturityflags
+bleiben unverändert. COLL-001 bleibt partiell; SMTP wartet weiterhin auf
+seine öffentliche Lab-Integration und tatsächliche Abnahme.
+
 Der Benutzer hat am 5. Oktober 2026 die autonome Entwicklung beauftragt und
 die bereits in SQL_Server_Toolbelt und SQL_Server_Lab verwendeten
 Autonomieregeln ausdrücklich herangezogen. Die Arbeit verwendet weiterhin
