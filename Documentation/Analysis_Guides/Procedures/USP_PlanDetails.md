@@ -30,6 +30,10 @@ Die Session-ID ist vollständig synthetisch. Arbeiten Sie alternativ gezielt mit
 
 Alle `Example*`-Werte im Aufruf sind synthetisch.
 
+### Berechtigungen des Aufrufers
+
+Die Serverquellen verwenden `VIEW SERVER STATE` beziehungsweise ab SQL Server 2022 `VIEW SERVER PERFORMANCE STATE`. Bei eingeschränkten Frameworkrechten muss außerdem der dynamische Unicodepfad zugänglich sein. Die begrenzte SQL-Server-2025-Abnahme verwendete `EXECUTE` auf Schema `monitor` und zusätzlich `SELECT` auf `[monitor].[TVF_ProjectUnicodeText]`. Schema-`EXECUTE` allein deckte den dynamischen TVF-Zugriff nicht ab; der fehlende Helperzugriff führte zu Fehler 229 außerhalb der quellenspezifischen Planstatuszeilen. Diese geprüfte Konfiguration ist kein Vertrag für eine minimale oder allgemeine Frameworkrolle.
+
 ## Resultsets und Leserichtung
 
 TABLE registriert `candidates`, `attributes` und `plans` mit 23, vier und zehn Feldern. Die neun Textfelder sind explizit mit der Frameworkcollation versehen; keines dieser Exportschemas erzeugt Identitywerte. RAW liefert zuerst neun Modulstatusfelder, danach Kandidaten und die angeforderten Attribut-/Planresultsets. Die aktive CONSOLE zeigt ausschließlich den generischen Kandidatenexport mit 24 Feldern einschließlich Label oder eine dreifeldrige Leerzeile. JSON enthält `meta`, die drei Arrays und das bestehende leere `warnings`-Array; alle Fachfelder einschließlich NULL-Werten bleiben enthalten. Unterschiedliche Zeilengranularitäten dürfen nicht ungeprüft vereinigt oder summiert werden.
