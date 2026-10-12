@@ -1349,6 +1349,22 @@ Evictionpfaden, systematischen Fehlern, Timeouts und zusätzlichen Kontexten.
 `PARTIAL_PRODUCT_FUNCTION` bleibt unverändert; aus diesen Nachweisen folgt
 kein allgemeiner Auswahl-, Fehler- oder atomarer Cross-call-Vertrag.
 
+Der begrenzte eigene Cache-Eviction-Nachweis von USP_PlanDetails besteht
+auf SQL2025 17.0.4075.5 und CL170 mit 24 Consumerfällen, neun tatsächlichen
+Capturemutationen und 58 getrennten lokalen Proben. Nach gezielter Entfernung
+des einmalig ausgeführten eigenen Plans sind seine gebundenen Cache- und
+QueryStats-Mengen leer. PlanHandle und PlanHandle mit SqlHandle behalten
+je einen Rohkandidaten ohne Text; alleiniger SqlHandle und QueryHash liefern
+keine Kandidaten. Alle Modulstatus sind AVAILABLE. Die native SqlHandle-
+Textquelle behält die eigene Definition; daraus folgt bei leerer Auswahl
+kein Kandidat. Der erste native Versuch bleibt wegen eines korrigierten
+privaten Handlelängenguards nicht qualifiziert; der zweite besteht.
+Callerzustand, eigene Quelle, sichere Ressourcenbereinigung und unveränderte
+Fremdressourcen sind belegt. Details und Grenzen stehen in
+[COLLB006](COLLB006_Mixed_Runtime_Evidence_2026-09-19.md). Produktcode,
+Verträge und Maturityflags bleiben unverändert; andere Evictionpfade,
+Quellenfehler und systematische Timeouts bleiben offen.
+
 Der Benutzer hat am 5. Oktober 2026 die autonome Entwicklung beauftragt und
 die bereits in SQL_Server_Toolbelt und SQL_Server_Lab verwendeten
 Autonomieregeln ausdrücklich herangezogen. Die Arbeit verwendet weiterhin
