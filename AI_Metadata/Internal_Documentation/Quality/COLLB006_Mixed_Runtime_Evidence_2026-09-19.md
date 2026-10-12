@@ -9056,3 +9056,87 @@ unbelegt. COLL-001 bleibt partiell. Der unabhängige Ergebnisreview besitzt
 keine offenen Befunde; alle 75 statischen Validatoren bestehen. Finale
 betroffene Schreibstil-, Privacy- und Commitprüfungen, erfolgreiche exakte
 Head-CI und Integration bleiben Liefergates.
+
+### PlanDetails: Eigene Session mit getrennten Cachekandidaten
+
+Am 12. Oktober 2026 besteht ein zusätzlicher begrenzter Nachweis auf
+SQL Server 2025 mit ProductVersion 17.0.4075.5 und CL170. Produktcode,
+18 Parameter, drei Fachschemata, Versionen und Maturityflags bleiben
+unverändert. Der eigene öffentliche Lab-Clone ist an den integrierten
+Stand `abf5cc099b4200f8c3b6d7d65dd15b33c0016bac` gebunden. Der generische
+Ad-hoc-Pfad verwendet ohne SMTP eine eigene OwnedHost-Policy und das
+bereits vorhandene unveränderliche SQL-Image.
+
+Eine eigene CI_AS-Datenbank enthält 64 synthetische Zeilen. Eine getrennte
+einmalig ausgeführte endliche MAXDOP-1-Procedure erzeugt genau einen eigenen
+Cacheplan und eine QueryStats-Zeile. Native ProcedureStats binden Datenbank,
+Objekt, Cachezeit, letzte Ausführungszeit und Ausführungsanzahl 1. Globale
+SqlHandle- und QueryHash-Gegenproben liefern jeweils genau diese eine Zeile.
+Eine zweite eigene Verbindung führt eine endliche MAXDOP-1-Abfrage über
+64 mal 64 Zeilen aus. Ein nicht weiter gelesener SqlClient-Reader hält diese
+Request im beobachteten ASYNC_NETWORK_IO-Zustand. Die Abfrage besitzt eine
+Obergrenze von 4.096 Ergebniszeilen; sie ist keine unendliche Lastquelle.
+
+24 Consumerfälle prüfen sechs Konfigurationen in NONE, TABLE, RAW und
+CONSOLE. Der Sessionselektor zusammen mit ihrem eigenen PlanHandle behält
+einen Requestkandidaten. Zusammen mit dem PlanHandle der getrennten eigenen
+Procedure liefert er zwei Kandidaten: die aktive Request und einen
+Rohkandidaten mit NULL-Cachemetadaten und dem nativ gebundenen vollständigen
+Proceduretext. Session mit dem SqlHandle beziehungsweise QueryHash der
+Procedure liefert die aktive Request und die Cachezeile der Procedure.
+Die gemeinsame SqlHandle-/QueryHash-Auswahl mit Session und Limit 2 liefert
+ebenfalls genau diese zwei Kandidaten. Beim Limit 1 bleibt in dieser
+Konfiguration nur die aktive Request erhalten. Dies charakterisiert den
+bestehenden Code an diesen eigenen Quellen; ein allgemeiner Union-, Dedup-,
+Prioritäts- oder atomarer Cross-call-Vertrag wird nicht festgelegt.
+
+Direkte native Quellenprüfungen rahmen jeden Consumeraufruf ein. Die aktive
+Request bleibt an eigene Session, Loginzeit, Verbindungskennung, Request-ID,
+Startzeit, Datenbank, MAXDOP 1, Handles, Hashes, Offsets und vollständigen
+Batch gebunden. Die getrennte Proceduregeneration, globalen Selektormengen
+und neun QueryStats-Felder samt Workerwert bleiben erhalten. Native Textwerte
+werden direkt verglichen; ein NULL-Datenbankwert der Ad-hoc-Textquelle wird
+nicht durch eine angenommene Datenbankkennung ersetzt. Proceduredefinition
+und native Textquellen bleiben der eigenen Quelle zugeordnet.
+
+Alle 23 Kandidatenfelder, unabhängige UTF-16-Textdekodierung, vollständige
+Zeichen-/Bytemetriken und nicht gesetzte Trunkierungsflags werden geprüft.
+TABLE und RAW stimmen mit dem vollständigen Kandidaten-JSON desselben
+Aufrufs überein. Die positive CONSOLE-Ausgabe besitzt das Label `PlanDetails`
+und alle 23 Fachfelder. Alle optionalen Detailquellen bleiben ausgeschaltet;
+Attribut-, Plan- und Warningarrays sind leer. Sämtliche Modulstatus sind
+AVAILABLE ohne Partialität oder Modulfehler. LOCK_TIMEOUT 137, TRANCOUNT 0,
+direkt gemessener XACT_STATE 1 und ausgeschalteter XACT_ABORT sowie die
+ursprüngliche SA-SID bleiben nach jedem Aufruf erhalten.
+
+Acht tatsächliche Capturemutationen für Status, Anzahl, Sessionkennung,
+Requestzeit, Cachehandle, Offset, Textbytes und Kandidatenordinal werden
+abgewiesen. Jede unveränderte Kopie besteht zuvor denselben Prüfer.
+42 getrennte lokale Proben umfassen 24 synthetische Consumerfälle,
+zwölf Manipulationsablehnungen und sechs Auswertungen der tatsächlichen
+Selektorzuweisungen im privaten Switch. Ein erster lokaler Fehler im
+erwarteten Bytearraytyp bleibt erhalten; ausschließlich der Testdoublecast
+wird korrigiert. Der unabhängige PREEXEC-Review findet eine Speicherung
+des Captures nach der Assertion. Der Capture wird vor Runtime vor die
+Assertion verschoben, damit auch ein fehlgeschlagener Fall erhalten bleibt.
+Eine zusätzliche tatsächliche AST-Probe bestätigt diese Reihenfolge;
+insgesamt bestehen 43 lokale Proben. Der enge Korrekturreview besitzt keine
+offenen Befunde. Erfolgreiche unveränderte Orakel werden nicht wiederholt.
+
+Der erste tatsächliche native Versuch besteht. Die erfolgreiche Beobachtung
+dauert 2,472 Sekunden innerhalb eines 120-Sekunden-Checkpointbudgets;
+begrenzte Kommandos und Messpunkte begründen keine garantierte Echtzeitdeadline.
+Datenbankidentität, CL170, Objektzeiten und Proceduredefinition sowie alle
+64 synthetischen Zeilen bleiben bis zum eigenen Cleanup unverändert.
+Sechs Produkt-, Helper-, CONSOLE- und Smokequellen und drei private Fixtures
+bleiben vor und nach dem Lauf hashgebunden. Die eigene aktive Abfrage wird
+abgebrochen und ihre Verbindung geschlossen; die eigene Session ist nativ
+abwesend. Eigene Quelle, Lab, Volume und State sind entfernt; fremde
+Dockerressourcen bleiben im Vorher-/Nachhervergleich unverändert.
+Runtimeidentitäten, Handles, Texte, Secrets und Captures bleiben privat.
+Weitere Sessions und Cachegenerationen, Rollen, Quellenfehler, systematische
+Timeouts, ältere Engines und CL150/160 bleiben unbelegt. COLL-001 bleibt
+partiell. Der unabhängige Ergebnisreview besitzt keine offenen Befunde;
+alle 75 statischen Validatoren bestehen. Finale betroffene Schreibstil-,
+Privacy- und Commitprüfungen, erfolgreiche exakte Head-CI und Integration
+bleiben Liefergates.
