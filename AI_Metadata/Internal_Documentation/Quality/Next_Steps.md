@@ -1301,6 +1301,15 @@ Consumer- und Cleanup-Nachweise bleiben Voraussetzungen. Analyze
 implementiert keine SMTP-Infrastruktur und übersteuert keine privaten
 Lab-Funktionen. Unveränderte Voraussetzungen lösen keinen Runtimeversuch aus.
 
+Die kanonische COLL-001-Zeile in
+[Implementation_Status.csv](../../../Metadata/Quality/Implementation_Status.csv)
+enthält zusätzlich die am 12. Oktober 2026 qualifizierten begrenzten
+PlanDetails-Nachweise. DeliveredScope und OpenScope trennen die nachgewiesenen
+Quellen-, Berechtigungs-, Text- und Selektorfälle von weiteren Cachegenerationen,
+Evictionpfaden, systematischen Fehlern, Timeouts und zusätzlichen Kontexten.
+`PARTIAL_PRODUCT_FUNCTION` bleibt unverändert; aus diesen Nachweisen folgt
+kein allgemeiner Auswahl-, Fehler- oder atomarer Cross-call-Vertrag.
+
 Der Benutzer hat am 5. Oktober 2026 die autonome Entwicklung beauftragt und
 die bereits in SQL_Server_Toolbelt und SQL_Server_Lab verwendeten
 Autonomieregeln ausdrücklich herangezogen. Die Arbeit verwendet weiterhin
