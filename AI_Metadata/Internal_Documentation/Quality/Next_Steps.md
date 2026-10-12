@@ -1150,6 +1150,25 @@ von weiteren Rollen-, Session-, Actual-/Live-Berechtigungs-, Timeout- und
 Plattformnachweisen ab. COLL-001 bleibt partiell; SMTP wartet weiterhin auf
 seine öffentliche Lab-Integration und tatsächliche Abnahme.
 
+Die zusätzliche PlanDetails-Abnahme vom 12. Oktober 2026 bestätigt zwölf
+Sessionselektor-Consumerfälle auf SQL Server 2025 mit CL170. Eine eigene
+endliche aktive Anfrage bleibt durch einen offenen Reader beobachtbar;
+Actual und Live sind ausgeschaltet. Die vier Modi bestätigen bei fehlendem
+oder ausdrücklich verweigertem Serverrecht die native leere Sichtbarkeit
+ohne Fehler und AVAILABLE ohne Kandidaten. Mit erteiltem Recht bestehen
+ein exakt gebundener Kandidat, 29 native Attribute, Compile-XML,
+TABLE-/RAW-JSON-Parität und sechs tatsächliche Mutationsablehnungen.
+Schema-EXECUTE und Helper-SELECT bleiben konstant; Callerzustand und
+REVERT bestehen. Zwei Starts bleiben vor Provisionierung zurückgestellt;
+erst der dritte atomar reservierte Lauf besteht Matrix und Abschluss.
+Eigene Session, Principals, Quelle, Lab, Volume und State sind entfernt;
+fremde Dockerressourcen bleiben unverändert. Der
+[Nachweis](COLLB006_Mixed_Runtime_Evidence_2026-09-19.md) grenzt die
+beobachtete Requestgeneration von weiteren Rollen-, Actual-/Live-Rechte-,
+Timeout- und Plattformnachweisen ab. Produktcode, ABI, Versionen und
+Maturityflags bleiben unverändert. COLL-001 bleibt partiell; SMTP wartet
+weiterhin auf seine öffentliche Lab-Integration und tatsächliche Abnahme.
+
 Der Benutzer hat am 5. Oktober 2026 die autonome Entwicklung beauftragt und
 die bereits in SQL_Server_Toolbelt und SQL_Server_Lab verwendeten
 Autonomieregeln ausdrücklich herangezogen. Die Arbeit verwendet weiterhin

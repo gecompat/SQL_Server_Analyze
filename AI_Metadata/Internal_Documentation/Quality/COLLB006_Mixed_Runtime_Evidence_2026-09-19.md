@@ -8167,3 +8167,93 @@ CL150/160. Die früheren positiven Actual-/Live-Nachweise werden nicht erneut
 ausgeführt. COLL-001 bleibt partiell. Abschließender unabhängiger
 Ergebnisreview, Dokumentations-, Privacy-, Commit- und exakte erfolgreiche
 Head-CI-Prüfungen sowie Integration bleiben Liefergates.
+
+### PlanDetails: Begrenzter Sessionselektor-Berechtigungsnachweis am 12. Oktober 2026
+
+Ein eigenes Linux-Docker-Lab mit SQL Server 2025, ProductVersion
+17.0.4075.5 und CL170 bestätigt zwölf Consumerfälle des bestehenden
+Sessionselektors. Produktquellen, 18 Parameter, Version 2.0.0,
+JSON-schemaVersion 1 und Maturityflags bleiben unverändert. Die eigene
+CI_AS-Quelle enthält 64 Primärschlüsselzeilen mit konstantem Unicodewert
+und abschließendem Leerzeichen. Eine eigene ungepoolte Verbindung führt
+eine endliche 64x64-Abfrage mit MAXDOP 1 aus. Der offene Reader hält diese
+Anfrage durch ASYNC_NETWORK_IO beobachtbar; Actual- und Live-Pläne sind
+ausgeschaltet. Die Session des Callers ist von der Quellsession getrennt.
+
+Die Fälle kombinieren NONE, TABLE, RAW und CONSOLE mit nicht erteiltem,
+erteiltem und ausdrücklich verweigertem VIEW SERVER PERFORMANCE STATE.
+Der eigene Login besitzt konstant EXECUTE auf Schema monitor und SELECT
+auf monitor.TVF_ProjectUnicodeText. Native Berechtigungskataloge,
+HAS_PERMS_BY_NAME, Helperzugriff und exakte impersonierte SID bestätigen
+die drei Phasen. Der Login ist kein sysadmin und besitzt keine explizite
+Serverrollenmitgliedschaft. Dies bleibt eine genau begrenzte Konfiguration
+und qualifiziert keine allgemeine oder minimale Frameworkrolle.
+
+| Serverberechtigung | Native Requestquelle, je vier Modi | PlanDetails, je vier Modi |
+|---|---|---|
+| Nicht erteilt | Keine Zeile und kein Fehler | AVAILABLE, keine Partialität, keine Kandidaten, Attribute oder Pläne |
+| GRANT | Genau eine gebundene eigene Anfrage | AVAILABLE, ein Kandidat, 29 Attribute und eine verfügbare COMPILE_XML-Zeile |
+| DENY | Keine Zeile und kein Fehler | AVAILABLE, keine Partialität, keine Kandidaten, Attribute oder Pläne |
+
+Direkte Requestgegenproben laufen vor und nach jedem Aufruf unter
+derselben eingeschränkten Identität. Sie bestätigen die tatsächlich
+stille Metadatensichtbarkeit in den acht eingeschränkten Fällen;
+DENIED_PERMISSION oder ein nativer Fehler werden hierfür nicht behauptet.
+AVAILABLE mit leerer Auswahl bestätigt somit keine Berechtigung zur
+Sicht auf die andere Session. Privilegierte Gegenproben vor und nach jedem
+Fall binden die trotzdem vorhandene eigene Anfrage an Session-ID,
+Loginzeit, Connection-ID, Request-ID, Startzeit, beide Handles,
+Quelldatenbank, exakten übergebenen Batchtext und DOP 1. Die gesamte
+Matrix beobachtet dieselbe Requestgeneration.
+
+Die vier positiven Fälle vergleichen elf Requestfelder mit beiden nativen
+Messpunkten, darunter Handles, Hashes, Statementoffsets und Startzeit.
+Die nativen NULL-Werte für CreationTime und ExecutionCount bleiben
+erhalten. Direkte Text-, Attribut- und Compile-Gegenproben bestätigen
+Batchtext, nullable Textmetadaten, die vollständige eindeutige
+29-Attributmenge und sämtliche zehn Compile-Ausgabefelder einschließlich
+normalisiertem XML. TABLE und RAW stimmen innerhalb desselben Aufrufs in
+allen drei Facharrays mit JSON überein; ein atomarer Vergleich verschiedener
+Aufrufe wird nicht behauptet. Die Produktgridcounts für NONE, TABLE, RAW
+und CONSOLE sind 0, 0, 4 und 1. Drei private TABLE-Exportgrids, zwei
+Callergrids und der separate Capture-JSON-Grid gehören zum Harness.
+CONSOLE bestätigt eine Kandidaten- oder Leerzeile.
+
+Die Callerbaseline und der Abschlusswert bleiben bei LOCK_TIMEOUT 137,
+TRANCOUNT 0, XACT_STATE 1 und ausgeschaltetem XACT_ABORT. REVERT führt
+nach jedem Aufruf zum ursprünglich gebundenen Login zurück. Sechs
+tatsächliche Capturemutationen für Modulstatus, Session-ID, Requeststart,
+Handle, XML und Attributwert werden durch denselben positiven Prüfer
+abgewiesen; jede unveränderte Kopie besteht zuvor. Vier lokale synthetische
+Orakelproben prüfen leere Sichtbarkeit und einen expliziten Fehler 300
+jeweils mit Statusmutation. Sie sind keine nativen Fehlerfälle und ersetzen
+keine Laufzeitabnahme.
+
+Die Beobachtung dauert 1,247 Sekunden innerhalb eines 120-Sekunden-
+Checkpointbudgets. Begrenzte Einzelkommandos und Messpunkte begründen
+keine garantierte Echtzeitdeadline. Zwei erste Startversuche enden bei
+belegter gemeinsamer Runtime-Lane vor Provisionierung mit
+DEFERRED_NO_PROVISIONING. Erst der dritte, atomar reservierte Versuch
+führt die Matrix aus und besteht den Abschluss. Die privaten Logs bleiben
+erhalten; erfolgreiche ältere Actual-/Live-/Handleberechtigungsnachweise
+werden nicht wiederholt.
+
+Der Cleanup verwendet ausschließlich die eigenen Reader-, Command- und
+Connectionreferenzen. Eine begrenzte native Nachprüfung bestätigt die
+Abwesenheit der eigenen Session anhand von Session-ID und Loginzeit;
+KILL wird nicht verwendet. Datenbankidentität, CL170, Zeilenanzahl,
+Primärschlüsselgrenzen, ID-Summe und binär gleiche Unicodewerte aller
+64 Quellzeilen sind vor dem eigenen Quellcleanup unverändert. Fünf
+Produkt-/Helper-/Smokequellen und drei private Fixtures sind vor und nach
+dem Lauf hashgebunden. Eigener Benutzer, Login und Quelle sind nativ
+abwesend; eigenes Lab, Volume und State sind entfernt. Fremde
+Dockerressourcen bleiben im Vorher-/Nachhervergleich unverändert.
+Runtimeidentitäten, Handles, XML, Batchtext, Secrets und vollständige
+Captures bleiben privat.
+
+Der Nachweis qualifiziert weder weitere Rollen noch Actual-/Live-Pläne
+unter eingeschränkten Rechten, systematische Timeouts, zusätzliche
+Quellenfehler, ältere Engines oder CL150/160. COLL-001 bleibt partiell.
+Unabhängiger Ergebnisreview, betroffene Dokumentations-, Privacy- und
+Commitprüfungen, erfolgreiche exakte Head-CI und Integration bleiben
+Liefergates.
