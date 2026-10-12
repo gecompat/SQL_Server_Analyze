@@ -8354,3 +8354,98 @@ Actual-/Live-/Handle-/Sessionnachweise werden nicht wiederholt. COLL-001
 bleibt partiell. Unabhängiger Ergebnisreview, betroffene Dokumentations-,
 Privacy- und Commitprüfungen, erfolgreiche exakte Head-CI und Integration
 bleiben Liefergates.
+
+### PlanDetails: Begrenzter Last-Actual-Berechtigungsnachweis am 12. Oktober 2026
+
+Ein eigenes Linux-Docker-Lab mit SQL Server 2025, ProductVersion
+17.0.4075.5 und CL170 bestätigt zwölf PlanHandle-Consumerfälle mit
+ausschließlich aktivierter Last-Actual-Planquelle. Produktquellen,
+18 Parameter, Version 2.0.0, JSON-schemaVersion 1 und Maturityflags bleiben
+unverändert. Eine eigene CI_AS-Quelle enthält 512 Primärschlüsselzeilen
+mit konstantem Unicodewert. LAST_QUERY_PLAN_STATS ist für diese eigene
+Quelle eingeschaltet. Eine endliche MAXDOP-1-Procedure wird genau einmal
+ausgeführt und erzeugt den kontrollierten abgeschlossenen Cacheplan.
+Während der Consumerbeobachtung wird sie nicht erneut ausgeführt;
+Attribute, Compile-, Textplan- und Liveausgabe sind ausgeschaltet.
+
+Die Fälle kombinieren NONE, TABLE, RAW und CONSOLE mit nicht erteiltem,
+erteiltem und ausdrücklich verweigertem VIEW SERVER PERFORMANCE STATE.
+EXECUTE auf Schema monitor und SELECT auf monitor.TVF_ProjectUnicodeText
+bleiben konstant. Native Kataloge, HAS_PERMS_BY_NAME, Helperzugriff und
+exakte impersonierte SID binden jede Phase. Der eigene Login ist kein
+sysadmin und besitzt keine explizite Serverrollenmitgliedschaft. Diese
+Konfiguration qualifiziert keine allgemeine oder minimale Frameworkrolle.
+
+| Serverberechtigung | Native Quellen, je vier Modi | PlanDetails, je vier Modi |
+|---|---|---|
+| Nicht erteilt | Last-Actual-Quelle meldet Fehler 300; Textquelle meldet Fehler 371 | PARTIAL mit Modulfehler 300; ein Rohkandidat und eine LAST_ACTUAL_XML-Zeile mit ERROR_HANDLED und Fehler 300 |
+| GRANT | Ein positiver Last-Actual-Plan und verfügbare Textmetadaten | AVAILABLE; ein Kandidat und eine verfügbare LAST_ACTUAL_XML-Zeile |
+| DENY | Last-Actual-Quelle meldet Fehler 300; Textquelle meldet Fehler 371 | PARTIAL mit Modulfehler 300; ein Rohkandidat und eine LAST_ACTUAL_XML-Zeile mit ERROR_HANDLED und Fehler 300 |
+
+Direkte Last-Actual- und Textgegenproben laufen vor und nach jedem
+Aufruf unter derselben eingeschränkten Identität. In den acht
+eingeschränkten Fällen stimmen Fehlernummer und Text je Quelle mit
+beiden nativen Messpunkten überein. Der erste Last-Actual-Fehler 300
+bleibt in Modul und Planzeile erhalten; der spätere Textfehler 371
+ersetzt ihn nicht. Die Textgegenprobe liefert zunächst einen leeren
+Datagrid und danach den abgefangenen Fehlergrid. Beide bleiben im
+privaten Capture erhalten; die leere erste Menge wird nicht als
+fehlerfreie Quelle interpretiert. Der Rohhandle und CandidateId 1
+bleiben erhalten. Nicht verfügbare Plan- und Textwerte sowie Textmetriken
+bleiben NULL, beide Truncationbits bleiben false.
+
+Privilegierte Vor- und Nachproben binden jeden Fall an die eigene
+Datenbank, das eigene Procedureobjekt und denselben Planhandle.
+Cachezeit, letzte Ausführungszeit und Ausführungsanzahl 1 bleiben
+unverändert. Die Datenbank- und Objektkennungen des positiven nativen
+Last-Actual-Plans stimmen zusätzlich mit dieser Bindung überein.
+Die vier positiven Fälle bestätigen sämtliche zehn Planfelder und
+normalisiertes XML mit positiven ActualRows-Zählern gegen beide
+nativen Messpunkte. Text und Textmetadaten stimmen ebenfalls mit den
+beiden direkten Quellen überein. Die nullbaren Rohmetadaten des
+PlanHandle-only-Kandidaten bleiben erhalten. Ein atomarer Vergleich
+unterschiedlicher Workloads oder Cachegenerationen wird nicht behauptet.
+
+TABLE und RAW stimmen innerhalb desselben Aufrufs in ihren Fachzeilen
+mit JSON überein. Die Produktgridcounts für NONE, TABLE, RAW und CONSOLE
+betragen 0, 0, 3 und 1. Drei private TABLE-Exportgrids, zwei Callergrids
+und der separate Capture-JSON-Grid gehören zum Harness. Die Attributmenge
+bleibt leer; RAW emittiert bei ausgeschaltetem Attributflag keinen
+Attributgrid. CONSOLE bestätigt den generischen Kandidatenexport;
+der Last-Actual-Plan wird in JSON und den technischen Planexporten geprüft.
+
+Callerbaseline und Abschlusswert bleiben bei LOCK_TIMEOUT 137,
+TRANCOUNT 0, XACT_STATE 1 und ausgeschaltetem XACT_ABORT. REVERT stellt
+nach jedem Aufruf den ursprünglich gebundenen Login wieder her.
+Fünf tatsächliche Capturemutationen für Modulstatus, Handle, XML,
+Fehlernummer und Fehlertext werden durch denselben positiven Prüfer
+abgewiesen; jede unveränderte Kopie besteht zuvor. Die beiden
+Fehlermutationen verändern Modul- und Planfehler gemeinsam, während die
+unabhängige native Quelle unverändert bleibt. Zehn lokale synthetische
+Orakelproben bestätigen Positiv- und Negativfälle sowie manipulierte
+Status-, Handle-, XML-, Counter-, Objekt- und erste Fehlerwerte. Diese
+Proben sind keine nativen Consumerfälle.
+
+Frühere Starts bleiben vor Provisionierung wegen der belegten gemeinsamen
+Runtime-Lane zurückgestellt. Erst nach deren Freigabe führt der erste
+tatsächliche native Runtimeversuch die Matrix aus und besteht den
+Abschluss. Die Beobachtung dauert 0,991 Sekunden innerhalb eines
+120-Sekunden-Checkpointbudgets; begrenzte Einzelkommandos und Messpunkte
+begründen keine garantierte Echtzeitdeadline. Datenbankidentität,
+CL170, Last-Actual-Option, Proceduredefinition und Objektzeiten,
+Zeilenanzahl, Primärschlüsselgrenzen, ID-Summe und binär gleiche
+Unicodewerte aller 512 Quellzeilen bleiben vor dem eigenen Quellcleanup
+unverändert. Fünf Produkt-/Helper-/Smokequellen und drei private Fixtures
+sind vor und nach dem Lauf hashgebunden. Eigener Benutzer, Login und
+Quelle sind nativ abwesend; eigenes Lab, Volume und State sind entfernt.
+Fremde Dockerressourcen bleiben im Vorher-/Nachhervergleich unverändert.
+Runtimeidentitäten, Handles, XML, Batchtext, Secrets und vollständige
+Captures bleiben privat.
+
+Der Nachweis qualifiziert weder weitere Rollen noch systematische
+Timeouts, zusätzliche Quellenfehler, ältere Engines oder CL150/160.
+Er ergänzt die bestehenden positiven und Berechtigungsnachweise, ohne
+deren erfolgreiche unveränderte Fälle erneut auszuführen. COLL-001 bleibt
+partiell. Unabhängiger Ergebnisreview, betroffene Dokumentations-, Privacy-
+und Commitprüfungen, erfolgreiche exakte Head-CI und Integration bleiben
+Liefergates.

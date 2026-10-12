@@ -1190,6 +1190,26 @@ Berechtigungs-, weitere Rollen-, Timeout- und Plattformnachweise bleiben
 offen. SMTP wartet weiterhin auf seine öffentliche Lab-Integration und
 tatsächliche Abnahme.
 
+Die zusätzliche Last-Actual-Berechtigungsabnahme von PlanDetails am
+12. Oktober 2026 bestätigt zwölf PlanHandle-Consumerfälle auf SQL Server
+2025 mit CL170. Acht eingeschränkte Fälle bewahren den Rohkandidaten,
+LAST_ACTUAL_XML mit ERROR_HANDLED und den ersten Modulfehler 300;
+der getrennte native Textfehler 371 ersetzt diesen Fehler nicht.
+Vier positive Fälle bestätigen denselben eigenen Procedure-Cacheplan,
+zehn Planfelder, XML mit ActualRows-Zählern, Textmetadaten und
+TABLE-/RAW-JSON-Parität. Schema-EXECUTE und Helper-SELECT bleiben konstant;
+Callerzustand, REVERT und fünf tatsächliche Mutationsablehnungen bestehen.
+Zehn lokale synthetische Orakelproben bleiben von der nativen Abnahme
+getrennt. Frühere Starts bleiben vor Provisionierung zurückgestellt;
+der erste tatsächliche Runtimeversuch nach Freigabe der Lane besteht.
+Eigene Principals, Quelle, Lab, Volume und State sind entfernt;
+Fremdressourcen bleiben unverändert. Der
+[Nachweis](COLLB006_Mixed_Runtime_Evidence_2026-09-19.md) grenzt den
+kontrollierten abgeschlossenen Cacheplan von weiteren Rollen-, Timeout-,
+Quellenfehler- und Plattformnachweisen ab. Produktcode, ABI, Versionen und
+Maturityflags bleiben unverändert. COLL-001 bleibt partiell; SMTP wartet
+weiterhin auf seine öffentliche Lab-Integration und tatsächliche Abnahme.
+
 Der Benutzer hat am 5. Oktober 2026 die autonome Entwicklung beauftragt und
 die bereits in SQL_Server_Toolbelt und SQL_Server_Lab verwendeten
 Autonomieregeln ausdrücklich herangezogen. Die Arbeit verwendet weiterhin
