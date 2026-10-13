@@ -3,6 +3,24 @@
 **Stand:** 13. Oktober 2026
 **Zweck:** aktuelle ausführbare Entwicklungswelle für `gecompat/SQL_Server_Analyze`
 
+Die ergänzende private Retentionsfixture bestätigt auf SQL Server 2025
+17.0.4075.5/CL170 genau eine tatsächlich gesendete eigene Mail. Zwei native
+Purges mit ihrem unveränderten Requestzeitpunkt und derselben Grenze plus
+einer Sekunde ergeben Mengen von eins, eins und null. Neun gespeicherte
+NONE-/TABLE-/CONSOLE-Captures bestätigen native Aggregate, gleichaufrufbezogene
+Parität und erhaltene Quellen; Rollback restauriert die ursprüngliche Mail
+und den Caller. Vierzehn vor Assertion gespeicherte Evidenzzeilen sowie neun
+abgewiesene tatsächliche Capturemutationen binden den begrenzten Nachweis.
+Der einzige native Versuch besteht einschließlich eigenem Cleanup und
+unveränderten Docker-/Statebeständen. Die private Baselinekorrektur und die
+Aussagegrenzen stehen im kanonischen OPS-008-Laufzeitnachweis. Produktcode,
+ABI, Versionen und Maturityflags bleiben unverändert; OPS-008 bleibt partiell.
+Das neue Retentionsbudget ist mit einem von einem Versuch abgeschlossen.
+Der frühere SMTP-Erfolg mit drei von drei Versuchen und das nicht qualifizierte
+Multiple-Session-Budget mit zwei von zwei bleiben unverändert. Weitere
+Mailfälle und tatsächliche Maintenance-Ausführung sind eigenständige offene
+Teilumfänge; öffentliche neue Funktionsverträge bleiben freigabepflichtig.
+
 ## Wiederaufnahme nach der Entwicklungspause
 
 Der Benutzer hat nach Abschluss von WI-0011 einschließlich PR-Merge nach
