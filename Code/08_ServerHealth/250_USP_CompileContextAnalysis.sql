@@ -41,6 +41,7 @@ BEGIN
         @Limit bigint=CASE WHEN @MaxZeilen IS NULL OR @MaxZeilen=0 THEN CONVERT(bigint,9223372036854775807) ELSE @MaxZeilen END,
         @Major int=TRY_CONVERT(int,SERVERPROPERTY(N'ProductMajorVersion')),@PreviousLockTimeout int=@@LOCK_TIMEOUT,
         @RestoreLock nvarchar(100),@CrossDatabaseRequested bit=0,@PreviousXactAbort bit=CASE WHEN (@@OPTIONS & 16384)=16384 THEN 1 ELSE 0 END;
+    DECLARE @ConsoleResultRequested bit=CASE WHEN @Mode='CONSOLE' THEN 1 ELSE 0 END;
     SET @RestoreLock=N'SET LOCK_TIMEOUT '+CONVERT(nvarchar(20),@PreviousLockTimeout)+N';';
     IF @Hilfe=1
     BEGIN
@@ -369,7 +370,7 @@ BEGIN
             END;
             CLOSE [CompileContextOutput]; DEALLOCATE [CompileContextOutput];
         END
-        ELSE IF @Mode='CONSOLE'
+        ELSE IF @ConsoleResultRequested=1
         BEGIN
             CREATE TABLE [#CompileContextAnalysis_Console]([Scope] nvarchar(300) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,[Context] nvarchar(128) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,[Value] nvarchar(128) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,[StatusCode] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL);
             INSERT [#CompileContextAnalysis_Console] SELECT CONCAT(N'DATABASE: ',[DatabaseName]),[ConfigurationName],CONVERT(nvarchar(128),[Enabled]),[SourceStatus] FROM [#CompileContextAnalysis_configurations];
