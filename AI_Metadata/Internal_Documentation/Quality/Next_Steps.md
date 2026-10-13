@@ -1107,6 +1107,26 @@ Analyze-Versand-, Consumer- oder Cleanup-Abnahme. Eine Fortsetzung benötigt
 einen passenden öffentlichen Lab-Vertrag und prüft diese geänderten
 Voraussetzungen vor jedem eigenen Runtimeversuch.
 
+Am 13. Oktober 2026 ist Lab-PR #745 auf dem öffentlichen Stand
+`5a7b28a32c0383d1f9bb04bb701c5f1d2cab3121` integriert. Der dortige
+Manifestvertrag und die Implementierung ergänzen
+`imageProvisioning=require-existing`: Vor SMTP-Ressourcenmutationen werden
+Receiver und Gateway an vorhandene lokale unveränderliche Image-IDs gebunden;
+beide Starts verwenden `--pull=never`, ohne Gateway-Build. Der OwnedHost-Pfad
+verwendet das vorhandene Sendernetz und eigene Container-Intents und Receipts.
+Die vorherige OwnedHost-Ablehnung ist für diesen Modus abgelöst.
+
+Die veröffentlichte Validierungsstrategie dokumentiert weiterhin den älteren
+Docker-Database-Mail-Lifecycle. Die PR-Beschreibung nennt statische Prüfungen,
+jedoch keine ausgeführte Abnahme des neuen `require-existing`-/OwnedHost-Pfads.
+Die allgemeine erfolgreiche Provider-CI belegt diesen SMTP-Umfang ebenfalls
+nicht. Eine Chatmeldung über lokale erfolgreiche Abnahmen ersetzt das
+öffentliche Nachweisgate nicht. Der Analyze-Kandidat bleibt `NOT_EXECUTED`;
+sein Manifest ist noch nicht auf den neuen Modus umgestellt. Eine Fortsetzung
+benötigt den veröffentlichten passenden Lab-Abnahmenachweis und danach die
+eigene Adapter-, Versand-, Consumer- und Cleanup-Abnahme. Analyze beschafft
+keine Images und erzeugt keine SMTP-Infrastruktur.
+
 Die zuvor vorbereitete COLL-001-Abnahme für die Metadatensichtbarkeit eines
 eigenen TDE-Zertifikats ist am 11. Oktober 2026 im begrenzten Umfang bestanden.
 Der frühere Laneguard-Ausgang `DEFERRED_NO_PROVISIONING` bleibt ein nicht
@@ -1331,14 +1351,16 @@ Lab-PR #744 ist inzwischen auf dem öffentlichen Stand
 `LOCAL_VALIDATION_STRATEGY.md` dokumentiert den ausgeführten vollständigen
 Docker-Database-Mail-Lifecycle. Die frühere öffentliche SMTP-Barriere ist
 damit abgelöst. Der vorhandene Analyze-Kandidat in Draft-PR #364 bleibt
-dennoch `NOT_EXECUTED`: Die öffentliche SMTP-Provisionierung lehnt seine
-OwnedHost-Policy mit `SMTP_TEST_OWNED_HOST_UNSUPPORTED` ab und baut das
-Gatewayimage bei jeder Provisionierung. Der Receiverstart erzwingt keine
-ausschließliche Verwendung vorhandener Images. Ein passender öffentlicher
-Pfad mit verhinderter Imagebeschaffung sowie eigene Analyze-Versand-,
-Consumer- und Cleanup-Nachweise bleiben Voraussetzungen. Analyze
-implementiert keine SMTP-Infrastruktur und übersteuert keine privaten
-Lab-Funktionen. Unveränderte Voraussetzungen lösen keinen Runtimeversuch aus.
+dennoch `NOT_EXECUTED`. Lab-PR #745 ergänzt auf dem öffentlichen Stand
+`5a7b28a32c0383d1f9bb04bb701c5f1d2cab3121` den passenden
+`imageProvisioning=require-existing`-Vertrag mit lokalen unveränderlichen
+Image-IDs, `--pull=never`, fehlendem Gateway-Build und OwnedHost-Bindung über
+das vorhandene Sendernetz. Die veröffentlichten Nachweise enthalten noch
+keine ausgeführte Abnahme dieses neuen Pfads. Diese Lab-Abnahme, die
+anschließende Manifestanpassung und eigene Analyze-Versand-, Consumer- und
+Cleanup-Nachweise bleiben Voraussetzungen. Analyze implementiert keine
+SMTP-Infrastruktur und übersteuert keine privaten Lab-Funktionen.
+Unveränderte Voraussetzungen lösen keinen Runtimeversuch aus.
 
 Die kanonische COLL-001-Zeile in
 [Implementation_Status.csv](../../../Metadata/Quality/Implementation_Status.csv)

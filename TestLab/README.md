@@ -558,15 +558,21 @@ die Lab-Validierungsstrategie dokumentiert deren ausgeführte Docker-Abnahme
 mit Database Mail, Zustellung und Cleanup. Die frühere Barriere
 `SMTP_TEST_BACKEND_UNADMITTED` ist damit abgelöst.
 
-Für den vorhandenen Analyze-Kandidaten fehlen weiterhin passende öffentliche
-Voraussetzungen: Der geprüfte Lab-Stand lehnt seine OwnedHost-Policy mit
-`SMTP_TEST_OWNED_HOST_UNSUPPORTED` ab, baut das Gatewayimage bei jeder
-Provisionierung und erzwingt beim Receiverstart keine ausschließliche
-Verwendung vorhandener Images. Der folgende Aufruf darf erst nach öffentlicher
-Integration eines passenden OwnedHost-SMTP-Pfads auf
-`SQL_Server_Lab`-`origin/main`, bestätigter Verhinderung von Imagebeschaffung
-und tatsächlicher Lab-Abnahme dieses Pfads ausgeführt werden. Anschließend
-stehen die eigenen Analyze-Versand-, Consumer- und Cleanup-Nachweise aus.
+Lab-PR #745 hat zusätzlich den OwnedHost-SMTP-Vertrag mit
+`imageProvisioning=require-existing` auf `origin/main` integriert. Dieser
+Modus bindet vorhandene Receiver- und Gatewayimages an lokale unveränderliche
+Image-IDs, verwendet `--pull=never` und führt keinen Gateway-Build aus.
+Der OwnedHost-Pfad verwendet das vorhandene Sendernetz und bindet beide
+SMTP-Container über eigene Intents und Receipts an Run und Scope.
+
+Die am 13. Oktober 2026 geprüften veröffentlichten Lab-Nachweise dokumentieren
+noch keine ausgeführte Abnahme dieses neuen Modus und seines OwnedHost-Pfads.
+Die ältere Docker-Abnahme und allgemeine erfolgreiche Provider-CI ersetzen
+diesen Nachweis nicht. Der folgende Aufruf bleibt deshalb gesperrt. Vor seiner
+Ausführung sind die veröffentlichte passende Lab-Abnahme und die Ausrichtung
+des Analyze-Manifests auf `imageProvisioning=require-existing` erforderlich.
+Anschließend stehen die eigenen Analyze-Versand-, Consumer- und
+Cleanup-Nachweise aus.
 Analyze beschafft keine Images und übersteuert keine privaten Lab-Funktionen.
 Ein Draft- oder Worktree-Fallback ist ausgeschlossen.
 
