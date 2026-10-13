@@ -10,6 +10,7 @@ SET NOCOUNT ON;
 DECLARE @Db sysname=N'ExampleExternalModels_'+REPLACE(CONVERT(nvarchar(36),NEWID()),N'-',N''),
     @Model sysname=N'ExampleExternalModel_'+REPLACE(CONVERT(nvarchar(36),NEWID()),N'-',N''),
     @OwnDbId int=NULL,@OwnModelId int=NULL,@Major int=TRY_CONVERT(int,SERVERPROPERTY(N'ProductMajorVersion')),
+    @CallerCompatibility int=(SELECT [compatibility_level] FROM [sys].[databases] WITH(NOLOCK) WHERE [database_id]=DB_ID()),
     @OriginalLock int=@@LOCK_TIMEOUT,@OriginalAbort bit=CASE WHEN (@@OPTIONS&16384)=16384 THEN 1 ELSE 0 END,
     @Sql nvarchar(max),@Restore nvarchar(100),@SourceCount bigint,@AfterCount bigint,@AfterModelId int,
     @Case int=0,@Limit int,@OnlyDetected bit,@Json nvarchar(max),@TableJson nvarchar(max),
@@ -44,9 +45,13 @@ WITH(LOCATION=''https://example.invalid/api/embed'',API_FORMAT=''Ollama'',MODEL_
 SELECT @pId=[external_model_id] FROM [sys].[external_models] WITH(NOLOCK) WHERE [name]=@pName COLLATE SQL_Latin1_General_CP1_CS_AS;';
         EXEC [sys].[sp_executesql] @Sql,N'@pCount bigint OUTPUT,@pId int OUTPUT,@pName sysname',
             @pCount=@SourceCount OUTPUT,@pId=@OwnModelId OUTPUT,@pName=@Model;
-        SELECT N'OWN_MODEL_SOURCE_BEFORE_ASSERTION' [FrameType],@OwnDbId [DatabaseId],@OwnModelId [OwnModelId],@SourceCount [VisibleModelCount];
+        SELECT N'OWN_MODEL_SOURCE_BEFORE_ASSERTION' [FrameType],@OwnDbId [DatabaseId],@OwnModelId [OwnModelId],@SourceCount [VisibleModelCount],@CallerCompatibility [CallerCompatibilityLevel];
         IF @OwnModelId IS NULL OR COALESCE(@SourceCount,-1)<>1 THROW 56902,N'WI-0007: Own native model source mismatch.',1;
     END;
+    SET @Sql=N'ALTER DATABASE '+QUOTENAME(@Db)+N' SET COMPATIBILITY_LEVEL = '+CONVERT(nvarchar(10),@CallerCompatibility)+N';';
+    EXEC [sys].[sp_executesql] @Sql;
+    IF NOT EXISTS(SELECT 1 FROM [sys].[databases] WITH(NOLOCK) WHERE [database_id]=@OwnDbId AND [compatibility_level]=@CallerCompatibility)
+        THROW 56912,N'WI-0007: Own source compatibility binding failed.',1;
     SELECT @ExpectedCount=CASE WHEN @Major>=17 THEN 1 END,
         @ExpectedStatus=CASE WHEN @Major>=17 THEN 'DETECTED' ELSE 'UNAVAILABLE_VERSION' END;
     WHILE @Case<4
