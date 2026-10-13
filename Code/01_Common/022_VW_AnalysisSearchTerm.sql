@@ -208,6 +208,8 @@ AS
         , (N'USP_DatabaseCapacityAnalysis',N'Datenbank voll Volume Platz','de',100,N'Bewertet Datei- und Volumekapazität.')
         , (N'USP_DatabaseCapacityAnalysis',N'database capacity disk volume free space','en',95,N'Kapazitäts- und Wachstumsspielraum.')
         , (N'USP_PerformanceCounters',N'Performance Counter Delta','de',100,N'Liest typisierte Counter und berechnet Samples.')
+        , (N'USP_CompileContextAnalysis',N'Compile Konfiguration Optimized sp_executesql','de',100,N'Lokale Capability und getrennte serverweite Compile-Evidenz.')
+        , (N'USP_CompileContextAnalysis',N'compile compilation optimized sp_executesql context','en',100,N'Bounded configuration counters waits and memory cache context.')
         , (N'USP_PerformanceCounters',N'performance counters sample delta','en',95,N'Countertyp- und Deltaanalyse.')
         , (N'USP_CriticalEngineEvents',N'kritische Engine Fehler system_health','de',100,N'Liest schwere erhaltene Engine-Ereignisse.')
         , (N'USP_CriticalEngineEvents',N'critical engine events system health','en',95,N'Kritische XE- und Diagnostikevidenz.')

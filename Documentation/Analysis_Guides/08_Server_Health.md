@@ -855,3 +855,12 @@ Auditlog-Payloads, Ereignisinhalte, Dateien und Zielpfade werden nicht gelesen. 
 
 - [SQL Server Audit](https://learn.microsoft.com/en-us/sql/relational-databases/security/auditing/sql-server-audit-database-engine?view=sql-server-ver17)
 - [sys.server_audits](https://learn.microsoft.com/en-us/sql/relational-databases/system-catalog-views/sys-server-audits-transact-sql?view=sql-server-ver17)
+
+## [monitor].[USP_CompileContextAnalysis]
+
+Die [Analysebeschreibung](Procedures/USP_CompileContextAnalysis.md) trennt lokale
+OPTIMIZED_SP_EXECUTESQL-Capability von serverweiten Countern, Compile-Waits
+und zwei aggregierten Memory-Cache-Klassen. Standardmäßig werden nur
+Momentaufnahmen gelesen. Ein aktiviertes Sample verwendet genau ein
+begrenztes WAITFOR mit getrennten Quellenintervallen. Keine Ausgabe
+identifiziert automatisch eine Query, Datenbank oder Compileursache.

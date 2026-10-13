@@ -384,6 +384,7 @@ AS
         , (N'USP_DatabaseIntegrityAnalysis',N'Datenbankintegritäts-Evidenz','SERVER',N'CPU, Memory, Worker und Server Health','ENTRY','MULTI_DATABASE','PERSISTED_HISTORY','LOW_MEDIUM','HA_DR_CURRENT',0,0,0,'CORE',13,N'Korrelierte Integritätsevidenz aus Datenbankstatus, CHECKDB-Historie, suspect pages, Backups und HADR.',N'Führt kein DBCC aus; fehlende negative Evidenz ist kein Integritätsbeweis.',N'EXEC [monitor].[USP_DatabaseIntegrityAnalysis] @DatabaseNames = N''[ExampleDatabase]'', @MitPageDetails = 0, @ResultSetArt = ''CONSOLE'';',N'Documentation/Analysis_Guides/Procedures/USP_DatabaseIntegrityAnalysis.md',N'Documentation/Analysis_Guides/Runbooks/09_Backup_Integrity_Risk.md')
         , (N'USP_DatabaseCapacityAnalysis',N'Datenbank- und Volumekapazität','SERVER',N'CPU, Memory, Worker und Server Health','ENTRY','MULTI_DATABASE','LIVE_SNAPSHOT','LOW_MEDIUM','SERVER_HEALTH_CURRENT',0,0,0,'CORE',16,N'Bewertet Dateien, Volumes, freien Platz, Autogrowth, MaxSize und Wachstumsspielraum.',N'Punktueller Kapazitätssnapshot ohne Wachstumsprognose; Verlauf aus Monitoring oder Snapshotpaket ergänzen.',N'EXEC [monitor].[USP_DatabaseCapacityAnalysis] @DatabaseNames = N''[ExampleDatabase]'', @ResultSetArt = ''CONSOLE'';',N'Documentation/Analysis_Guides/Procedures/USP_DatabaseCapacityAnalysis.md',NULL)
         , (N'USP_PerformanceCounters',N'Typisierte Performance Counter','SERVER',N'CPU, Memory, Worker und Server Health','FOLLOW_UP','SERVER','SAMPLE_DELTA','LOW_MEDIUM','SERVER_HEALTH_CURRENT',0,0,0,'CORE',NULL,N'Liest typisierte SQL-Server-Performance-Counter und berechnet bei Bedarf Sample- und Delta-Werte.',N'Countertyp, Basiswert, Reset und Sampleintervall vor Schwelleninterpretation prüfen.',N'EXEC [monitor].[USP_PerformanceCounters] @SampleSeconds = 5, @MaxZeilen = 100, @ResultSetArt = ''CONSOLE'';',N'Documentation/Analysis_Guides/Procedures/USP_PerformanceCounters.md',NULL)
+        , (N'USP_CompileContextAnalysis',N'Compile-Kontext und Konfiguration','SERVER',N'CPU, Memory, Worker und Server Health','FOLLOW_UP','MULTI_DATABASE','SAMPLE_DELTA','LOW_MEDIUM','SERVER_HEALTH_CURRENT',0,0,0,'CORE',NULL,N'Trennt lokale OPTIMIZED_SP_EXECUTESQL-Konfiguration von serverweiten Compile-Countern, Compile-Waits und aggregierten Cachemetadaten.',N'Sampleintervalle, Quellenstatus und Resethinweise begrenzen die Aussage; keine automatische Query- oder Ursachenzuordnung.',N'EXEC [monitor].[USP_CompileContextAnalysis] @SampleSeconds = 0, @MaxZeilen = 200, @ResultSetArt = ''CONSOLE'';',N'Documentation/Analysis_Guides/Procedures/USP_CompileContextAnalysis.md',NULL)
         , (N'USP_CriticalEngineEvents',N'Kritische Engine-Ereignisse','SERVER',N'CPU, Memory, Worker und Server Health','ENTRY','EVENT_HISTORY','EVENT_HISTORY','MEDIUM','SERVER_HEALTH_CURRENT',0,0,0,'CORE',NULL,N'Liest schwere Engine-Ereignisse aus system_health und optionalen Diagnosequellen.',N'Nur erhaltene Ereignisse sind sichtbar; Event-XML und weitere Quellen bleiben opt-in.',N'EXEC [monitor].[USP_CriticalEngineEvents] @MitEventXml = 0, @MaxZeilen = 100, @ResultSetArt = ''CONSOLE'';',N'Documentation/Analysis_Guides/Procedures/USP_CriticalEngineEvents.md',NULL)
         , (N'USP_InternalContentionAnalysis',N'Interne Latch- und Spinlock-Contention','SERVER',N'CPU, Memory, Worker und Server Health','FOLLOW_UP','SERVER','SAMPLE_DELTA','LOW_MEDIUM','SERVER_HEALTH_CURRENT',0,0,0,'CORE',NULL,N'Analysiert Spinlocks, Latches und Hot Pages über ein begrenztes Sample.',N'Stichprobe wiederholen und konkrete Workload-/Page-Evidenz ergänzen; kein Einzelwert ist Root Cause.',N'EXEC [monitor].[USP_InternalContentionAnalysis] @SampleSeconds = 5, @MitPageDetails = 0, @MaxZeilen = 50, @ResultSetArt = ''CONSOLE'';',N'Documentation/Analysis_Guides/Procedures/USP_InternalContentionAnalysis.md',NULL)
         , (N'USP_BufferPoolAnalysis',N'Buffer Pool und Memory Clerks','SERVER',N'CPU, Memory, Worker und Server Health','FOLLOW_UP','SERVER','LIVE_SNAPSHOT','LOW_HIGH_OPT_IN','SERVER_HEALTH_CURRENT',0,0,1,'CORE',NULL,N'Zeigt Buffer-Pool-Verteilung, Memory Clerks und Pressure-Kontext.',N'Breite Datenbankverteilung bleibt opt-in; Clerkgrößen ohne Workload- und Target-Memory-Kontext nicht bewerten.',N'EXEC [monitor].[USP_BufferPoolAnalysis] @MitMemoryClerks = 1, @MitBufferPoolVerteilung = 0, @ResultSetArt = ''CONSOLE'';',N'Documentation/Analysis_Guides/Procedures/USP_BufferPoolAnalysis.md',NULL)
@@ -633,6 +634,8 @@ AS
         , (N'USP_DatabaseCapacityAnalysis',N'Datenbank voll Volume Platz','de',100,N'Bewertet Datei- und Volumekapazität.')
         , (N'USP_DatabaseCapacityAnalysis',N'database capacity disk volume free space','en',95,N'Kapazitäts- und Wachstumsspielraum.')
         , (N'USP_PerformanceCounters',N'Performance Counter Delta','de',100,N'Liest typisierte Counter und berechnet Samples.')
+        , (N'USP_CompileContextAnalysis',N'Compile Konfiguration Optimized sp_executesql','de',100,N'Lokale Capability und getrennte serverweite Compile-Evidenz.')
+        , (N'USP_CompileContextAnalysis',N'compile compilation optimized sp_executesql context','en',100,N'Bounded configuration counters waits and memory cache context.')
         , (N'USP_PerformanceCounters',N'performance counters sample delta','en',95,N'Countertyp- und Deltaanalyse.')
         , (N'USP_CriticalEngineEvents',N'kritische Engine Fehler system_health','de',100,N'Liest schwere erhaltene Engine-Ereignisse.')
         , (N'USP_CriticalEngineEvents',N'critical engine events system health','en',95,N'Kritische XE- und Diagnostikevidenz.')
@@ -3529,8 +3532,8 @@ GO
 /*
 ===============================================================================
 Objekt       : monitor.USP_PrepareDatabaseCandidates
-Version      : 2.0.0
-Stand        : 2026-07-20
+Version      : 2.0.1
+Stand        : 2026-10-13
 Typ          : Interne Stored Procedure
 Zweck        : Validiert die frameworkweite Datenbankauswahl, prüft den
                tatsächlich aktivierten Analysepfad und befüllt lokale
@@ -3735,7 +3738,9 @@ FROM [#PrepareDatabaseCandidates_Work];';
     IF @WarningTable IS NOT NULL
     BEGIN
         BEGIN TRY
-            SET @Sql = N'SELECT TOP (0) [RequestedName],[StatusCode],[ErrorMessage] FROM ' + @WarningTableQuoted + N';';
+            SET @Sql = N'DECLARE @RequestedName sysname,@WarningStatus varchar(40),@WarningError nvarchar(2048);
+SELECT TOP (0) @RequestedName=[RequestedName],@WarningStatus=[StatusCode],@WarningError=[ErrorMessage]
+FROM ' + @WarningTableQuoted + N';';
             EXEC [sys].[sp_executesql] @Sql;
             SET @WarningTableAvailable = 1;
         END TRY
@@ -49518,6 +49523,403 @@ BEGIN
 END;
 GO
 -- END SOURCE: Code/08_ServerHealth/240_USP_AuditConfigurationAnalysis.sql
+
+-- BEGIN SOURCE: Code/08_ServerHealth/250_USP_CompileContextAnalysis.sql
+/*
+===============================================================================
+Objekt       : monitor.USP_CompileContextAnalysis
+Version      : 1.0.0
+Stand        : 2026-10-13
+Zweck        : Trennt lokale OPTIMIZED_SP_EXECUTESQL-Konfiguration von
+               serverweiten Compile-Countern, Compile-Waits und Cachemetadaten.
+Quellen      : Sichtbare Datenbankkataloge; Performance-Counter, Waitstatistik,
+               Serverstartzeit und zwei Memory-Cache-Klassen.
+Eigenlast    : Kleine Katalogabfragen; Sampling ist standardmäßig aus und
+               verwendet optional genau ein WAITFOR von einer bis 60 Sekunden.
+Grenzen      : Keine Queryzuordnung, Ursachenbehauptung, SQL- oder Planinhalte.
+               Zwei Aufnahmen erkennen nicht jeden zwischenzeitlichen Reset.
+===============================================================================
+*/
+CREATE OR ALTER PROCEDURE [monitor].[USP_CompileContextAnalysis]
+      @DatabaseNames nvarchar(max)=NULL
+    , @SystemdatenbankenEinbeziehen bit=0
+    , @DatabaseNamePattern nvarchar(4000)=NULL
+    , @SampleSeconds tinyint=0
+    , @MaxZeilen int=2000
+    , @ResultSetArt varchar(16)='CONSOLE'
+    , @ResultTablesJson nvarchar(max)=NULL
+    , @JsonErzeugen bit=0
+    , @Json nvarchar(max)=NULL OUTPUT
+    , @PrintMeldungen bit=1
+    , @Hilfe bit=0
+    , @StatusCodeOut varchar(40)=NULL OUTPUT
+    , @IsPartialOut bit=NULL OUTPUT
+    , @ErrorNumberOut int=NULL OUTPUT
+    , @ErrorMessageOut nvarchar(2048)=NULL OUTPUT
+AS
+BEGIN
+    SET NOCOUNT ON;
+    SET @Json=NULL;
+    DECLARE @CapturedAtUtc datetime2(3)=SYSUTCDATETIME(),@Mode varchar(16)=UPPER(LTRIM(RTRIM(COALESCE(@ResultSetArt,'')))),
+        @Status varchar(40)='AVAILABLE',@Partial bit=0,@Error int=NULL,@Message nvarchar(2048)=NULL,
+        @Limit bigint=CASE WHEN @MaxZeilen IS NULL OR @MaxZeilen=0 THEN CONVERT(bigint,9223372036854775807) ELSE @MaxZeilen END,
+        @Major int=TRY_CONVERT(int,SERVERPROPERTY(N'ProductMajorVersion')),@PreviousLockTimeout int=@@LOCK_TIMEOUT,
+        @RestoreLock nvarchar(100),@CrossDatabaseRequested bit=0,@PreviousXactAbort bit=CASE WHEN (@@OPTIONS & 16384)=16384 THEN 1 ELSE 0 END;
+    SET @RestoreLock=N'SET LOCK_TIMEOUT '+CONVERT(nvarchar(20),@PreviousLockTimeout)+N';';
+    IF @Hilfe=1
+    BEGIN
+        PRINT N'monitor.USP_CompileContextAnalysis';
+        PRINT N'Datenbankfilter verwenden den bestehenden Namens-/Patternvertrag; Serversamples sind keiner Datenbank zugeordnet.';
+        PRINT N'@SampleSeconds=0 liefert Momentaufnahmen; 1..60 aktiviert genau ein gemeinsames WAITFOR mit getrennten Quellenintervallen.';
+        PRINT N'RAW/TABLE: moduleStatus, configurations, counters, waits, cache, sourceStatus, warnings. JSON hat Schema 1.';
+        PRINT N'Keine SQL-/Planinhalte, Konfigurationsänderungen oder automatische Compileursachenbewertung.';
+        SELECT @StatusCodeOut='AVAILABLE',@IsPartialOut=0,@ErrorNumberOut=NULL,@ErrorMessageOut=NULL;
+        RETURN;
+    END;
+    CREATE TABLE [#CompileContextAnalysis_moduleStatus]
+    (
+        [ModuleName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,
+        [CapturedAtUtc] datetime2(3) NOT NULL,
+        [StatusCode] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,
+        [IsPartial] bit NOT NULL,
+        [RowCount] bigint NOT NULL,
+        [RequiredPermission] nvarchar(128) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,
+        [ErrorNumber] int NULL,
+        [ErrorMessage] nvarchar(2048) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,
+        [Detail] nvarchar(1000) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+    );
+    CREATE TABLE [#CompileContextAnalysis_configurations]
+    (
+        [DatabaseId] int NOT NULL,
+        [DatabaseName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,
+        [CompatibilityLevel] tinyint NULL,
+        [ConfigurationName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,
+        [CapabilityStatus] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,
+        [Enabled] bit NULL,
+        [ValueForSecondary] int NULL,
+        [IsValueDefault] bit NULL,
+        [SourceStatus] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,
+        [CapturedAtUtc] datetime2(3) NOT NULL,
+        [EvidenceLimit] nvarchar(1000) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+    );
+    CREATE TABLE [#CompileContextAnalysis_counters]
+    (
+        [ObjectName] nvarchar(128) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,
+        [CounterName] nvarchar(128) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,
+        [InstanceName] nvarchar(128) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,
+        [CounterType] int NOT NULL,
+        [BeforeValue] bigint NULL,
+        [AfterValue] bigint NOT NULL,
+        [DeltaValue] bigint NULL,
+        [RatePerSecond] decimal(38,6) NULL,
+        [Interpretation] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,
+        [SampleStartUtc] datetime2(7) NULL,
+        [SampleEndUtc] datetime2(7) NOT NULL,
+        [ElapsedSeconds] decimal(19,6) NULL,
+        [ResetDetected] bit NOT NULL,
+        [SqlServerStartTime] datetime2(3) NULL,
+        [SourceStatus] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,
+        [EvidenceLimit] nvarchar(1000) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+    );
+    CREATE TABLE [#CompileContextAnalysis_waits]
+    (
+        [WaitType] nvarchar(120) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,
+        [BeforeWaitingTasksCount] bigint NULL,
+        [AfterWaitingTasksCount] bigint NOT NULL,
+        [DeltaWaitingTasksCount] bigint NULL,
+        [BeforeWaitTimeMs] bigint NULL,
+        [AfterWaitTimeMs] bigint NOT NULL,
+        [DeltaWaitTimeMs] bigint NULL,
+        [BeforeSignalWaitTimeMs] bigint NULL,
+        [AfterSignalWaitTimeMs] bigint NOT NULL,
+        [DeltaSignalWaitTimeMs] bigint NULL,
+        [SampleStartUtc] datetime2(7) NULL,
+        [SampleEndUtc] datetime2(7) NOT NULL,
+        [ElapsedSeconds] decimal(19,6) NULL,
+        [ResetDetected] bit NOT NULL,
+        [SourceStatus] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,
+        [EvidenceLimit] nvarchar(1000) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+    );
+    CREATE TABLE [#CompileContextAnalysis_cache]
+    (
+        [CacheType] nvarchar(60) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,
+        [EntriesCount] bigint NULL,
+        [PagesKb] bigint NULL,
+        [CapturedAtUtc] datetime2(3) NOT NULL,
+        [SourceStatus] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,
+        [EvidenceLimit] nvarchar(1000) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+    );
+    CREATE TABLE [#CompileContextAnalysis_sourceStatus]
+    (
+        [SourceKey] varchar(64) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,
+        [DatabaseId] int NULL,
+        [DatabaseName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL,
+        [SourceObject] nvarchar(256) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,
+        [CapturedAtUtc] datetime2(3) NOT NULL,
+        [StatusCode] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,
+        [IsPartial] bit NOT NULL,
+        [RowCount] bigint NOT NULL,
+        [ErrorNumber] int NULL,
+        [ErrorMessage] nvarchar(2048) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,
+        [EvidenceLimit] nvarchar(1000) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+    );
+    CREATE TABLE [#CompileContextAnalysis_warnings]
+    (
+        [WarningCode] varchar(80) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,
+        [DatabaseId] int NULL,
+        [DatabaseName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL,
+        [Detail] nvarchar(1000) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+    );
+    CREATE TABLE [#CompileContextAnalysis_Map]([ResultName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL PRIMARY KEY,[TargetTable] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL UNIQUE);
+    CREATE TABLE [#CompileContextAnalysis_Databases]
+    ([DatabaseId] int NOT NULL PRIMARY KEY,[DatabaseName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,
+     [StateDesc] nvarchar(60) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,[UserAccessDesc] nvarchar(60) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,
+     [IsReadOnly] bit NULL,[CompatibilityLevel] tinyint NULL,[CollationName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL,
+     [RecoveryModelDesc] nvarchar(60) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,[IsSystemDatabase] bit NULL,[RequestedOrdinal] int NULL);
+    CREATE TABLE [#CompileContextAnalysis_CandidateWarnings]
+    ([RequestedName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL,[StatusCode] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,[ErrorMessage] nvarchar(2048) COLLATE SQL_Latin1_General_CP1_CS_AS NULL);
+    SELECT TOP(0) *,CONVERT(int,0) [SourceRank],IDENTITY(int,1,1) [ObservationOrdinal] INTO [#CompileContextAnalysis_Observations] FROM [#CompileContextAnalysis_sourceStatus];
+    CREATE TABLE [#CompileContextAnalysis_CounterRaw]
+    ([Phase] tinyint NOT NULL,[ObjectName] nvarchar(128) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,
+     [CounterName] nvarchar(128) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,[InstanceName] nvarchar(128) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,
+     [CounterType] int NOT NULL,[CounterValue] bigint NOT NULL,PRIMARY KEY([Phase],[ObjectName],[CounterName],[InstanceName],[CounterType]));
+    CREATE TABLE [#CompileContextAnalysis_WaitRaw]
+    ([Phase] tinyint NOT NULL,[WaitType] nvarchar(120) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,[WaitingTasksCount] bigint NOT NULL,[WaitTimeMs] bigint NOT NULL,[SignalWaitTimeMs] bigint NOT NULL,PRIMARY KEY([Phase],[WaitType]));
+    DECLARE @ConfigLimit nvarchar(1000)=N'Lokale aktuelle Konfiguration; kein Compileursachen- oder Gesundheitsurteil.',
+        @CounterLimit nvarchar(1000)=N'Serverweite kumulative Counter einschließlich Eigenaktivität. Eigene Quellenklammer; keine Datenbank- oder Queryzuordnung.',
+        @WaitLimit nvarchar(1000)=N'Serverweite kumulative Compile-Waits. Ein Reset mit anschließendem Anwachsen kann zwischen zwei Aufnahmen unentdeckt bleiben.',
+        @CacheLimit nvarchar(1000)=N'Aggregierte Memory-Cache-Metadaten; Einträge sind weder ausgeführte Queries noch Single-use-Pläne.',
+        @CounterStart datetime2(7)=NULL,@CounterEnd datetime2(7)=NULL,@WaitStart datetime2(7)=NULL,@WaitEnd datetime2(7)=NULL,
+        @ServerStartBefore datetime2(3)=NULL,@ServerStartAfter datetime2(3)=NULL,@CounterElapsed decimal(19,6)=NULL,@WaitElapsed decimal(19,6)=NULL,
+        @ServerComparable bit=0,@ServerReset bit=0,@Phase tinyint=CASE WHEN @SampleSeconds>0 THEN 0 ELSE 1 END,
+        @SourceKey varchar(64),@SourceObject nvarchar(256),@SourceStatus varchar(40),@SourceError int,@SourceMessage nvarchar(2048),@SourceRows bigint,@SourceTime datetime2(3);
+    BEGIN TRY
+        SET XACT_ABORT OFF;
+        IF @Mode NOT IN('RAW','TABLE','CONSOLE','NONE') OR @SampleSeconds IS NULL OR @SampleSeconds>60 OR @MaxZeilen<0
+            OR @SystemdatenbankenEinbeziehen IS NULL OR @JsonErzeugen IS NULL OR @PrintMeldungen IS NULL
+            SELECT @Status='INVALID_PARAMETER',@Partial=1,@Message=N'Ungültiger Ausgabe-, Mengen-, Sample- oder Bitparameter.';
+        IF @Mode<>'TABLE' AND NULLIF(LTRIM(RTRIM(COALESCE(@ResultTablesJson,N''))),N'') IS NOT NULL
+            THROW 51011,N'@ResultTablesJson ist ausschließlich mit TABLE zulässig.',1;
+        IF @Status='AVAILABLE' AND @Mode='TABLE'
+            EXEC [monitor].[InternalPrepareResultTables] @ResultTablesJson=@ResultTablesJson,
+                @AllowedResultNames=N'moduleStatus|configurations|counters|waits|cache|sourceStatus|warnings',
+                @MappingTable=N'#CompileContextAnalysis_Map',@StatusCode=@Status OUTPUT,@ErrorMessage=@Message OUTPUT,@ThrowOnError=1;
+        IF @Status='AVAILABLE'
+        BEGIN TRY
+            EXEC [monitor].[USP_PrepareDatabaseCandidates] @DatabaseNames=@DatabaseNames,@SystemdatenbankenEinbeziehen=@SystemdatenbankenEinbeziehen,
+                @DatabaseNamePattern=@DatabaseNamePattern,@AnalysisClass='STANDARD_CURRENT',@StatusCode=@Status OUTPUT,@ErrorMessage=@Message OUTPUT,
+                @CrossDatabaseRequested=@CrossDatabaseRequested OUTPUT,@CandidateTable=N'#CompileContextAnalysis_Databases',@WarningTable=N'#CompileContextAnalysis_CandidateWarnings';
+        END TRY
+        BEGIN CATCH
+            DELETE FROM [#CompileContextAnalysis_Databases];
+            INSERT [#CompileContextAnalysis_Observations] VALUES('DATABASE_SELECTION',NULL,NULL,N'master.sys.databases',SYSUTCDATETIME(),
+                CASE WHEN ERROR_NUMBER() IN(229,262,297,300,371) THEN 'DENIED_PERMISSION' ELSE 'ERROR_HANDLED' END,1,0,ERROR_NUMBER(),ERROR_MESSAGE(),N'Die Datenbankauswahl ist nicht verfügbar; serverweite Quellen bleiben unabhängig.',1);
+            SELECT @Status='AVAILABLE',@Partial=1;
+        END CATCH;
+        SET LOCK_TIMEOUT 0;
+        IF @Status='AVAILABLE'
+        BEGIN
+            DECLARE @DatabaseId int,@DatabaseName sysname,@CompatibilityLevel tinyint,@Found bit,@Value int,@Secondary int,@Default bit,@Capability varchar(40),@Sql nvarchar(max);
+            DECLARE [CompileContextDatabases] CURSOR LOCAL FAST_FORWARD FOR SELECT [DatabaseId],[DatabaseName],[CompatibilityLevel] FROM [#CompileContextAnalysis_Databases] ORDER BY [DatabaseName],[DatabaseId];
+            OPEN [CompileContextDatabases]; FETCH NEXT FROM [CompileContextDatabases] INTO @DatabaseId,@DatabaseName,@CompatibilityLevel;
+            WHILE @@FETCH_STATUS=0
+            BEGIN
+                SELECT @Found=0,@Value=NULL,@Secondary=NULL,@Default=NULL,@SourceError=NULL,@SourceMessage=NULL,@SourceTime=SYSUTCDATETIME(),
+                    @Capability=CASE WHEN @Major<17 THEN 'UNAVAILABLE_VERSION' ELSE 'SOURCE_UNAVAILABLE' END,@SourceStatus=CASE WHEN @Major<17 THEN 'UNAVAILABLE_VERSION' ELSE 'SOURCE_UNAVAILABLE' END;
+                IF @Major>=17
+                BEGIN TRY
+                    SET @Sql=N'SELECT @Found=1,@Value=TRY_CONVERT(int,[value]),@Secondary=TRY_CONVERT(int,[value_for_secondary]),@Default=[is_value_default] FROM '+QUOTENAME(@DatabaseName)+N'.[sys].[database_scoped_configurations] WHERE [name] COLLATE SQL_Latin1_General_CP1_CS_AS=N''OPTIMIZED_SP_EXECUTESQL'';';
+                    EXEC [sys].[sp_executesql] @Sql,N'@Found bit OUTPUT,@Value int OUTPUT,@Secondary int OUTPUT,@Default bit OUTPUT',@Found=@Found OUTPUT,@Value=@Value OUTPUT,@Secondary=@Secondary OUTPUT,@Default=@Default OUTPUT;
+                    IF @Found=1 SET @Capability='AVAILABLE';
+                    IF @Found=1 AND @Value IN(0,1) SET @SourceStatus='AVAILABLE';
+                END TRY
+                BEGIN CATCH
+                    SELECT @SourceError=ERROR_NUMBER(),@SourceMessage=ERROR_MESSAGE(),@SourceStatus=CASE WHEN ERROR_NUMBER() IN(229,262,297,300,371) THEN 'DENIED_PERMISSION' ELSE 'ERROR_HANDLED' END;
+                END CATCH;
+                INSERT [#CompileContextAnalysis_configurations] VALUES(@DatabaseId,@DatabaseName,@CompatibilityLevel,N'OPTIMIZED_SP_EXECUTESQL',@Capability,
+                    CASE WHEN @SourceStatus='AVAILABLE' THEN CONVERT(bit,@Value) END,CASE WHEN @SourceStatus='AVAILABLE' THEN @Secondary END,CASE WHEN @SourceStatus='AVAILABLE' THEN @Default END,@SourceStatus,@SourceTime,@ConfigLimit);
+                INSERT [#CompileContextAnalysis_Observations] VALUES('CONFIGURATION',@DatabaseId,@DatabaseName,N'sys.database_scoped_configurations',@SourceTime,@SourceStatus,
+                    CONVERT(bit,CASE WHEN @SourceStatus IN('AVAILABLE','UNAVAILABLE_VERSION') THEN 0 ELSE 1 END),CONVERT(bigint,CASE WHEN @SourceError IS NULL THEN @Found ELSE 0 END),@SourceError,@SourceMessage,@ConfigLimit,1);
+                FETCH NEXT FROM [CompileContextDatabases] INTO @DatabaseId,@DatabaseName,@CompatibilityLevel;
+            END;
+            CLOSE [CompileContextDatabases]; DEALLOCATE [CompileContextDatabases];
+            WHILE @Phase<=1
+            BEGIN
+                SELECT @SourceKey=CASE WHEN @Phase=0 THEN 'SERVER_START_BEFORE' ELSE 'SERVER_START_AFTER' END,@SourceStatus='AVAILABLE',@SourceError=NULL,@SourceMessage=NULL,@SourceRows=0,@SourceTime=SYSUTCDATETIME();
+                BEGIN TRY
+                    IF @Phase=0 SELECT @ServerStartBefore=[sqlserver_start_time] FROM [sys].[dm_os_sys_info];
+                    ELSE SELECT @ServerStartAfter=[sqlserver_start_time] FROM [sys].[dm_os_sys_info];
+                    SET @SourceRows=@@ROWCOUNT;
+                    IF @SourceRows<>1 OR (@Phase=0 AND @ServerStartBefore IS NULL) OR (@Phase=1 AND @ServerStartAfter IS NULL) SET @SourceStatus='SOURCE_UNAVAILABLE';
+                END TRY
+                BEGIN CATCH
+                    SELECT @SourceStatus=CASE WHEN ERROR_NUMBER() IN(229,262,297,300,371) THEN 'DENIED_PERMISSION' ELSE 'ERROR_HANDLED' END,@SourceError=ERROR_NUMBER(),@SourceMessage=ERROR_MESSAGE();
+                END CATCH;
+                INSERT [#CompileContextAnalysis_Observations] VALUES(@SourceKey,NULL,NULL,N'sys.dm_os_sys_info',@SourceTime,@SourceStatus,CONVERT(bit,CASE WHEN @SourceStatus='AVAILABLE' THEN 0 ELSE 1 END),@SourceRows,@SourceError,@SourceMessage,N'Native Serverstartzeit bindet ausschließlich die Vergleichbarkeit der getrennten Samples.',2);
+                SELECT @SourceKey=CASE WHEN @Phase=0 THEN 'COUNTERS_BEFORE' ELSE 'COUNTERS_AFTER' END,@SourceStatus='AVAILABLE',@SourceError=NULL,@SourceMessage=NULL,@SourceRows=0;
+                BEGIN TRY
+                    INSERT [#CompileContextAnalysis_CounterRaw]
+                    SELECT @Phase,[object_name],[counter_name],[instance_name],[cntr_type],[cntr_value] FROM [sys].[dm_os_performance_counters]
+                    WHERE RTRIM([object_name]) COLLATE SQL_Latin1_General_CP1_CS_AS LIKE N'%:SQL Statistics'
+                      AND [counter_name] COLLATE SQL_Latin1_General_CP1_CS_AS IN(N'Batch Requests/sec',N'SQL Compilations/sec',N'SQL Re-Compilations/sec');
+                    SET @SourceRows=@@ROWCOUNT;
+                    IF @SourceRows<>3 SET @SourceStatus='SOURCE_UNAVAILABLE';
+                END TRY
+                BEGIN CATCH
+                    DELETE FROM [#CompileContextAnalysis_CounterRaw] WHERE [Phase]=@Phase;
+                    SELECT @SourceStatus=CASE WHEN ERROR_NUMBER() IN(229,262,297,300,371) THEN 'DENIED_PERMISSION' ELSE 'ERROR_HANDLED' END,@SourceError=ERROR_NUMBER(),@SourceMessage=ERROR_MESSAGE();
+                END CATCH;
+                IF @Phase=0 SET @CounterStart=SYSUTCDATETIME(); ELSE SET @CounterEnd=SYSUTCDATETIME();
+                INSERT [#CompileContextAnalysis_Observations] VALUES(@SourceKey,NULL,NULL,N'sys.dm_os_performance_counters',COALESCE(@CounterEnd,@CounterStart),@SourceStatus,CONVERT(bit,CASE WHEN @SourceStatus='AVAILABLE' THEN 0 ELSE 1 END),@SourceRows,@SourceError,@SourceMessage,@CounterLimit,2);
+                SELECT @SourceKey=CASE WHEN @Phase=0 THEN 'WAITS_BEFORE' ELSE 'WAITS_AFTER' END,@SourceStatus='AVAILABLE',@SourceError=NULL,@SourceMessage=NULL,@SourceRows=0;
+                BEGIN TRY
+                    INSERT [#CompileContextAnalysis_WaitRaw] SELECT @Phase,[wait_type],[waiting_tasks_count],[wait_time_ms],[signal_wait_time_ms] FROM [sys].[dm_os_wait_stats] WHERE [wait_type] COLLATE SQL_Latin1_General_CP1_CS_AS=N'RESOURCE_SEMAPHORE_QUERY_COMPILE';
+                    SET @SourceRows=@@ROWCOUNT;
+                    IF @SourceRows<>1 SET @SourceStatus='SOURCE_UNAVAILABLE';
+                END TRY
+                BEGIN CATCH
+                    DELETE FROM [#CompileContextAnalysis_WaitRaw] WHERE [Phase]=@Phase;
+                    SELECT @SourceStatus=CASE WHEN ERROR_NUMBER() IN(229,262,297,300,371) THEN 'DENIED_PERMISSION' ELSE 'ERROR_HANDLED' END,@SourceError=ERROR_NUMBER(),@SourceMessage=ERROR_MESSAGE();
+                END CATCH;
+                IF @Phase=0 SET @WaitStart=SYSUTCDATETIME(); ELSE SET @WaitEnd=SYSUTCDATETIME();
+                INSERT [#CompileContextAnalysis_Observations] VALUES(@SourceKey,NULL,NULL,N'sys.dm_os_wait_stats',COALESCE(@WaitEnd,@WaitStart),@SourceStatus,CONVERT(bit,CASE WHEN @SourceStatus='AVAILABLE' THEN 0 ELSE 1 END),@SourceRows,@SourceError,@SourceMessage,@WaitLimit,3);
+                IF @Phase=0
+                BEGIN
+                    DECLARE @Delay char(8)=CONVERT(char(8),DATEADD(second,@SampleSeconds,CONVERT(datetime2(0),'19000101')),108);
+                    WAITFOR DELAY @Delay;
+                END;
+                SET @Phase+=1;
+            END;
+            SET @ServerComparable=CASE WHEN @SampleSeconds>0 AND @ServerStartBefore IS NOT NULL AND @ServerStartAfter=@ServerStartBefore THEN 1 ELSE 0 END;
+            SET @ServerReset=CASE WHEN @SampleSeconds>0 AND @ServerStartBefore IS NOT NULL AND @ServerStartAfter IS NOT NULL AND @ServerStartAfter<>@ServerStartBefore THEN 1 ELSE 0 END;
+            IF @SampleSeconds>0
+            BEGIN
+                SET @CounterElapsed=CONVERT(decimal(19,6),DATEDIFF_BIG(microsecond,@CounterStart,@CounterEnd)/1000000.0);
+                SET @WaitElapsed=CONVERT(decimal(19,6),DATEDIFF_BIG(microsecond,@WaitStart,@WaitEnd)/1000000.0);
+            END;
+            INSERT [#CompileContextAnalysis_counters]
+            SELECT [a].[ObjectName],[a].[CounterName],[a].[InstanceName],[a].[CounterType],[b].[CounterValue],[a].[CounterValue],
+                CASE WHEN [v].[Comparable]=1 THEN TRY_CONVERT(bigint,CONVERT(decimal(38,0),[a].[CounterValue])-CONVERT(decimal(38,0),[b].[CounterValue])) END,
+                CASE WHEN [v].[Comparable]=1 AND [a].[CounterType] IN(272696320,272696576) THEN [typed].[MetricValue] END,[typed].[Interpretation],
+                @CounterStart,@CounterEnd,@CounterElapsed,[v].[ResetDetected],@ServerStartAfter,
+                CASE WHEN @SampleSeconds>0 AND [v].[Comparable]=0 THEN 'AVAILABLE_LIMITED' ELSE 'AVAILABLE' END,@CounterLimit
+            FROM [#CompileContextAnalysis_CounterRaw] AS [a]
+            LEFT JOIN [#CompileContextAnalysis_CounterRaw] AS [b] ON [b].[Phase]=0 AND [b].[ObjectName]=[a].[ObjectName] AND [b].[CounterName]=[a].[CounterName] AND [b].[InstanceName]=[a].[InstanceName] AND [b].[CounterType]=[a].[CounterType]
+            CROSS APPLY(SELECT CONVERT(bit,CASE WHEN @ServerReset=1 OR [a].[CounterValue]<[b].[CounterValue] THEN 1 ELSE 0 END) [ResetDetected],
+                CONVERT(bit,CASE WHEN @ServerComparable=1 AND @CounterElapsed>0 AND [b].[CounterValue] IS NOT NULL AND [a].[CounterValue]>=[b].[CounterValue] AND [a].[CounterType] IN(272696320,272696576) THEN 1 ELSE 0 END) [Comparable]) AS [v]
+            CROSS APPLY [monitor].[TVF_InterpretPerformanceCounter]([a].[CounterType],CASE WHEN [v].[Comparable]=1 THEN [b].[CounterValue] END,[a].[CounterValue],NULL,NULL,CASE WHEN [v].[Comparable]=1 THEN @CounterElapsed END) AS [typed]
+            WHERE [a].[Phase]=1;
+            INSERT [#CompileContextAnalysis_waits]
+            SELECT [a].[WaitType],[b].[WaitingTasksCount],[a].[WaitingTasksCount],CASE WHEN [v].[Comparable]=1 THEN [a].[WaitingTasksCount]-[b].[WaitingTasksCount] END,
+                [b].[WaitTimeMs],[a].[WaitTimeMs],CASE WHEN [v].[Comparable]=1 THEN [a].[WaitTimeMs]-[b].[WaitTimeMs] END,
+                [b].[SignalWaitTimeMs],[a].[SignalWaitTimeMs],CASE WHEN [v].[Comparable]=1 THEN [a].[SignalWaitTimeMs]-[b].[SignalWaitTimeMs] END,
+                @WaitStart,@WaitEnd,@WaitElapsed,[v].[ResetDetected],CASE WHEN @SampleSeconds>0 AND [v].[Comparable]=0 THEN 'AVAILABLE_LIMITED' ELSE 'AVAILABLE' END,@WaitLimit
+            FROM [#CompileContextAnalysis_WaitRaw] AS [a]
+            LEFT JOIN [#CompileContextAnalysis_WaitRaw] AS [b] ON [b].[Phase]=0 AND [b].[WaitType]=[a].[WaitType]
+            CROSS APPLY(SELECT CONVERT(bit,CASE WHEN @ServerReset=1 OR [a].[WaitingTasksCount]<[b].[WaitingTasksCount] OR [a].[WaitTimeMs]<[b].[WaitTimeMs] OR [a].[SignalWaitTimeMs]<[b].[SignalWaitTimeMs] THEN 1 ELSE 0 END) [ResetDetected],
+                CONVERT(bit,CASE WHEN @ServerComparable=1 AND @WaitElapsed>0 AND [b].[WaitType] IS NOT NULL AND [a].[WaitingTasksCount]>=[b].[WaitingTasksCount] AND [a].[WaitTimeMs]>=[b].[WaitTimeMs] AND [a].[SignalWaitTimeMs]>=[b].[SignalWaitTimeMs] THEN 1 ELSE 0 END) [Comparable]) AS [v]
+            WHERE [a].[Phase]=1;
+            SELECT @SourceStatus='AVAILABLE',@SourceError=NULL,@SourceMessage=NULL,@SourceRows=0,@SourceTime=SYSUTCDATETIME();
+            BEGIN TRY
+                INSERT [#CompileContextAnalysis_cache]
+                SELECT [type] COLLATE SQL_Latin1_General_CP1_CS_AS,SUM(CONVERT(bigint,[entries_count])),SUM(CONVERT(bigint,[pages_kb])),@SourceTime,'AVAILABLE',@CacheLimit FROM [sys].[dm_os_memory_cache_counters]
+                WHERE [type] COLLATE SQL_Latin1_General_CP1_CS_AS IN(N'CACHESTORE_SQLCP',N'CACHESTORE_OBJCP') GROUP BY [type] COLLATE SQL_Latin1_General_CP1_CS_AS;
+                SET @SourceRows=@@ROWCOUNT;
+                IF @SourceRows<>2 SET @SourceStatus='SOURCE_UNAVAILABLE';
+            END TRY
+            BEGIN CATCH
+                DELETE FROM [#CompileContextAnalysis_cache];
+                SELECT @SourceStatus=CASE WHEN ERROR_NUMBER() IN(229,262,297,300,371) THEN 'DENIED_PERMISSION' ELSE 'ERROR_HANDLED' END,@SourceError=ERROR_NUMBER(),@SourceMessage=ERROR_MESSAGE();
+            END CATCH;
+            INSERT [#CompileContextAnalysis_Observations] VALUES('CACHE',NULL,NULL,N'sys.dm_os_memory_cache_counters',@SourceTime,@SourceStatus,CONVERT(bit,CASE WHEN @SourceStatus='AVAILABLE' THEN 0 ELSE 1 END),@SourceRows,@SourceError,@SourceMessage,@CacheLimit,4);
+        END;
+        INSERT [#CompileContextAnalysis_sourceStatus] SELECT [SourceKey],[DatabaseId],[DatabaseName],[SourceObject],[CapturedAtUtc],[StatusCode],[IsPartial],[RowCount],[ErrorNumber],[ErrorMessage],[EvidenceLimit] FROM [#CompileContextAnalysis_Observations] ORDER BY [SourceRank],[ObservationOrdinal];
+        INSERT [#CompileContextAnalysis_warnings] SELECT 'DATABASE_SELECTION',NULL,[RequestedName],LEFT(COALESCE([ErrorMessage],N'Datenbank nicht verarbeitet.'),1000) FROM [#CompileContextAnalysis_CandidateWarnings];
+        INSERT [#CompileContextAnalysis_warnings] SELECT 'SOURCE_PARTIAL',[DatabaseId],[DatabaseName],LEFT(CONCAT([SourceKey],N': ',[StatusCode],N'. ',COALESCE([ErrorMessage],[EvidenceLimit])),1000) FROM [#CompileContextAnalysis_sourceStatus] WHERE [IsPartial]=1;
+        INSERT [#CompileContextAnalysis_warnings] VALUES('SERVER_SCOPE',NULL,NULL,N'Counter, Waits und Cache gelten serverweit und sind den ausgewählten Datenbanken nicht zugeordnet. Eigenaktivität ist enthalten.');
+        IF @SampleSeconds>0
+        BEGIN
+            INSERT [#CompileContextAnalysis_warnings] VALUES('SAMPLE_SCOPE',NULL,NULL,N'Counter und Waits besitzen getrennte nach ihrer jeweiligen Aufnahme gebundene Zeitklammern. Zwei Aufnahmen schließen zwischenzeitliche Resets nicht aus.');
+            IF EXISTS(SELECT 1 FROM [#CompileContextAnalysis_counters] WHERE [SourceStatus]='AVAILABLE_LIMITED') OR EXISTS(SELECT 1 FROM [#CompileContextAnalysis_waits] WHERE [SourceStatus]='AVAILABLE_LIMITED')
+                INSERT [#CompileContextAnalysis_warnings] VALUES('SAMPLE_NOT_COMPARABLE',NULL,NULL,N'Mindestens ein Sample ist nicht vergleichbar; die betroffenen Deltas und Raten bleiben NULL.');
+        END;
+        IF EXISTS(SELECT 1 FROM [#CompileContextAnalysis_counters] WHERE [Interpretation]='RAW_UNINTERPRETED')
+            INSERT [#CompileContextAnalysis_warnings] VALUES('COUNTER_TYPE_UNINTERPRETED',NULL,NULL,N'Unbekannte Countertypen bleiben Rohwerte; aus ihrem Namen wird keine Rate abgeleitet.');
+        IF EXISTS(SELECT 1 FROM [#CompileContextAnalysis_sourceStatus] WHERE [IsPartial]=1) OR EXISTS(SELECT 1 FROM [#CompileContextAnalysis_CandidateWarnings])
+            OR EXISTS(SELECT 1 FROM [#CompileContextAnalysis_counters] WHERE [SourceStatus]='AVAILABLE_LIMITED') OR EXISTS(SELECT 1 FROM [#CompileContextAnalysis_waits] WHERE [SourceStatus]='AVAILABLE_LIMITED') SET @Partial=1;
+        SELECT TOP(1) @Error=[ErrorNumber],@Message=[ErrorMessage] FROM [#CompileContextAnalysis_Observations] WHERE [ErrorNumber] IS NOT NULL ORDER BY [SourceRank],[ObservationOrdinal];
+        IF @Status='AVAILABLE' AND @Partial=1 SET @Status='AVAILABLE_LIMITED';
+        ;WITH [Bounded] AS(SELECT *,ROW_NUMBER() OVER(ORDER BY [DatabaseName],[DatabaseId]) [OutputOrdinal] FROM [#CompileContextAnalysis_configurations]) DELETE FROM [Bounded] WHERE [OutputOrdinal]>@Limit;
+        ;WITH [Bounded] AS(SELECT *,ROW_NUMBER() OVER(ORDER BY [ObjectName],[CounterName],[InstanceName],[CounterType]) [OutputOrdinal] FROM [#CompileContextAnalysis_counters]) DELETE FROM [Bounded] WHERE [OutputOrdinal]>@Limit;
+        ;WITH [Bounded] AS(SELECT *,ROW_NUMBER() OVER(ORDER BY [WaitType]) [OutputOrdinal] FROM [#CompileContextAnalysis_waits]) DELETE FROM [Bounded] WHERE [OutputOrdinal]>@Limit;
+        ;WITH [Bounded] AS(SELECT *,ROW_NUMBER() OVER(ORDER BY [CacheType]) [OutputOrdinal] FROM [#CompileContextAnalysis_cache]) DELETE FROM [Bounded] WHERE [OutputOrdinal]>@Limit;
+        ;WITH [Bounded] AS(SELECT *,ROW_NUMBER() OVER(ORDER BY [SourceKey],[DatabaseName],[DatabaseId]) [OutputOrdinal] FROM [#CompileContextAnalysis_sourceStatus]) DELETE FROM [Bounded] WHERE [OutputOrdinal]>@Limit;
+        ;WITH [Bounded] AS(SELECT *,ROW_NUMBER() OVER(ORDER BY [WarningCode],[DatabaseName],[DatabaseId],[Detail]) [OutputOrdinal] FROM [#CompileContextAnalysis_warnings]) DELETE FROM [Bounded] WHERE [OutputOrdinal]>@Limit;
+        DECLARE @RowCount bigint=(SELECT COUNT_BIG(*) FROM [#CompileContextAnalysis_configurations])+(SELECT COUNT_BIG(*) FROM [#CompileContextAnalysis_counters])+(SELECT COUNT_BIG(*) FROM [#CompileContextAnalysis_waits])+(SELECT COUNT_BIG(*) FROM [#CompileContextAnalysis_cache]);
+        INSERT [#CompileContextAnalysis_moduleStatus] VALUES(N'USP_CompileContextAnalysis',@CapturedAtUtc,@Status,@Partial,@RowCount,
+            CASE WHEN @Major>=16 THEN N'VIEW SERVER PERFORMANCE STATE; visible database configuration' ELSE N'VIEW SERVER STATE; visible database configuration' END,@Error,@Message,N'Lokale Capability und getrennte serverweite Momentaufnahmen oder Samples; keine automatische Ursachen- oder Reparaturbewertung.');
+        IF @JsonErzeugen=1
+        BEGIN
+            DECLARE @Meta nvarchar(max)=(SELECT N'CompileContextAnalysis' [resultName],1 [schemaVersion],@CapturedAtUtc [generatedAtUtc],@Status [statusCode],@Partial [isPartial],@Error [errorNumber],@Message [errorMessage] FOR JSON PATH,WITHOUT_ARRAY_WRAPPER,INCLUDE_NULL_VALUES);
+            DECLARE @Json_moduleStatus nvarchar(max)=(SELECT * FROM [#CompileContextAnalysis_moduleStatus] FOR JSON PATH,INCLUDE_NULL_VALUES);
+            DECLARE @Json_configurations nvarchar(max)=(SELECT * FROM [#CompileContextAnalysis_configurations] FOR JSON PATH,INCLUDE_NULL_VALUES);
+            DECLARE @Json_counters nvarchar(max)=(SELECT * FROM [#CompileContextAnalysis_counters] FOR JSON PATH,INCLUDE_NULL_VALUES);
+            DECLARE @Json_waits nvarchar(max)=(SELECT * FROM [#CompileContextAnalysis_waits] FOR JSON PATH,INCLUDE_NULL_VALUES);
+            DECLARE @Json_cache nvarchar(max)=(SELECT * FROM [#CompileContextAnalysis_cache] FOR JSON PATH,INCLUDE_NULL_VALUES);
+            DECLARE @Json_sourceStatus nvarchar(max)=(SELECT * FROM [#CompileContextAnalysis_sourceStatus] FOR JSON PATH,INCLUDE_NULL_VALUES);
+            DECLARE @Json_warnings nvarchar(max)=(SELECT * FROM [#CompileContextAnalysis_warnings] FOR JSON PATH,INCLUDE_NULL_VALUES);
+            SET @Json=CONCAT(N'{"meta":',@Meta,N',"moduleStatus":',COALESCE(@Json_moduleStatus,N'[]'),N',"configurations":',COALESCE(@Json_configurations,N'[]'),N',"counters":',COALESCE(@Json_counters,N'[]'),N',"waits":',COALESCE(@Json_waits,N'[]'),N',"cache":',COALESCE(@Json_cache,N'[]'),N',"sourceStatus":',COALESCE(@Json_sourceStatus,N'[]'),N',"warnings":',COALESCE(@Json_warnings,N'[]'),N'}');
+        END;
+        IF @Mode='RAW'
+        BEGIN
+            SELECT * FROM [#CompileContextAnalysis_moduleStatus];
+            SELECT * FROM [#CompileContextAnalysis_configurations];
+            SELECT * FROM [#CompileContextAnalysis_counters];
+            SELECT * FROM [#CompileContextAnalysis_waits];
+            SELECT * FROM [#CompileContextAnalysis_cache];
+            SELECT * FROM [#CompileContextAnalysis_sourceStatus];
+            SELECT * FROM [#CompileContextAnalysis_warnings];
+        END
+        ELSE IF @Mode='TABLE'
+        BEGIN
+            DECLARE @ResultName sysname,@TargetTable sysname,@SourceTable sysname;
+            DECLARE [CompileContextOutput] CURSOR LOCAL FAST_FORWARD FOR SELECT [ResultName],[TargetTable] FROM [#CompileContextAnalysis_Map] ORDER BY [ResultName];
+            OPEN [CompileContextOutput]; FETCH NEXT FROM [CompileContextOutput] INTO @ResultName,@TargetTable;
+            WHILE @@FETCH_STATUS=0
+            BEGIN
+                SET @SourceTable=N'#CompileContextAnalysis_'+@ResultName;
+                EXEC [monitor].[InternalWriteResultTable] @SourceTable=@SourceTable,@TargetTable=@TargetTable,@ThrowOnError=1;
+                FETCH NEXT FROM [CompileContextOutput] INTO @ResultName,@TargetTable;
+            END;
+            CLOSE [CompileContextOutput]; DEALLOCATE [CompileContextOutput];
+        END
+        ELSE IF @Mode='CONSOLE'
+        BEGIN
+            CREATE TABLE [#CompileContextAnalysis_Console]([Scope] nvarchar(300) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,[Context] nvarchar(128) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,[Value] nvarchar(128) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,[StatusCode] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL);
+            INSERT [#CompileContextAnalysis_Console] SELECT CONCAT(N'DATABASE: ',[DatabaseName]),[ConfigurationName],CONVERT(nvarchar(128),[Enabled]),[SourceStatus] FROM [#CompileContextAnalysis_configurations];
+            INSERT [#CompileContextAnalysis_Console] SELECT N'SERVER',[CounterName],CONVERT(nvarchar(128),[AfterValue]),[SourceStatus] FROM [#CompileContextAnalysis_counters];
+            INSERT [#CompileContextAnalysis_Console] SELECT N'SERVER',[WaitType],CONVERT(nvarchar(128),[AfterWaitTimeMs]),[SourceStatus] FROM [#CompileContextAnalysis_waits];
+            INSERT [#CompileContextAnalysis_Console] SELECT N'SERVER',[CacheType],CONVERT(nvarchar(128),[EntriesCount]),[SourceStatus] FROM [#CompileContextAnalysis_cache];
+            INSERT [#CompileContextAnalysis_Console] VALUES(N'MODULE',N'CompileContextAnalysis',CONVERT(nvarchar(128),@RowCount),@Status);
+            EXEC [monitor].[InternalEmitConsoleResult] @SourceTable=N'#CompileContextAnalysis_Console',@ResultLabel=N'Compile-Kontext: lokale Konfiguration und getrennte Serverscopes',@EmptyMessage=N'Keine sichtbare Compile-Kontextevidenz.';
+        END;
+        IF @PrintMeldungen=1 AND @Status<>'AVAILABLE'
+        BEGIN
+            DECLARE @PrintMessage nvarchar(2048)=LEFT(CONCAT(N'USP_CompileContextAnalysis: ',@Status,N'. ',COALESCE(@Message,N'Siehe sourceStatus und warnings.')),2048);
+            RAISERROR(N'%s',10,1,@PrintMessage) WITH NOWAIT;
+        END;
+        SELECT @StatusCodeOut=@Status,@IsPartialOut=@Partial,@ErrorNumberOut=@Error,@ErrorMessageOut=@Message;
+        EXEC [sys].[sp_executesql] @RestoreLock;
+        IF @PreviousXactAbort=1 SET XACT_ABORT ON;
+    END TRY
+    BEGIN CATCH
+        EXEC [sys].[sp_executesql] @RestoreLock;
+        IF @PreviousXactAbort=1 SET XACT_ABORT ON;
+        THROW;
+    END CATCH;
+END;
+GO
+-- END SOURCE: Code/08_ServerHealth/250_USP_CompileContextAnalysis.sql
 
 -- BEGIN SOURCE: Code/08_ServerHealth/100_USP_ServerHealthAnalysis.sql
 /*

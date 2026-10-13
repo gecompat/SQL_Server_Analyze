@@ -4,8 +4,8 @@ GO
 /*
 ===============================================================================
 Objekt       : monitor.USP_PrepareDatabaseCandidates
-Version      : 2.0.0
-Stand        : 2026-07-20
+Version      : 2.0.1
+Stand        : 2026-10-13
 Typ          : Interne Stored Procedure
 Zweck        : Validiert die frameworkweite Datenbankauswahl, prüft den
                tatsächlich aktivierten Analysepfad und befüllt lokale
@@ -210,7 +210,9 @@ FROM [#PrepareDatabaseCandidates_Work];';
     IF @WarningTable IS NOT NULL
     BEGIN
         BEGIN TRY
-            SET @Sql = N'SELECT TOP (0) [RequestedName],[StatusCode],[ErrorMessage] FROM ' + @WarningTableQuoted + N';';
+            SET @Sql = N'DECLARE @RequestedName sysname,@WarningStatus varchar(40),@WarningError nvarchar(2048);
+SELECT TOP (0) @RequestedName=[RequestedName],@WarningStatus=[StatusCode],@WarningError=[ErrorMessage]
+FROM ' + @WarningTableQuoted + N';';
             EXEC [sys].[sp_executesql] @Sql;
             SET @WarningTableAvailable = 1;
         END TRY

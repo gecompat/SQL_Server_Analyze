@@ -8,12 +8,12 @@ SQL Server Analyze ist ein T-SQL-Diagnoseframework für SQL Server 2019 oder neu
 2. [`USP_AnalysisNavigator`](Reference/Analysis_Navigator.md) – Suche direkt in SSMS, Rollen, Ranking, Kosten, Pakete und Folgebeziehungen.
 3. [Einsteiger-Leseleitfaden](Analysis_Guides/Beginner_Reading_Guide.md) – Status, Scope, Zeitbezug, Nenner, Partialität und Gegenprobe.
 4. [Runbooks](Analysis_Guides/Runbooks/README.md) – konkrete Abläufe für zehn häufige Störungssituationen.
-5. [Procedure-Seiten](Analysis_Guides/Procedures/README.md) – eigenständige Tiefendokumentation für alle 106 öffentlichen Procedures.
+5. [Procedure-Seiten](Analysis_Guides/Procedures/README.md) – eigenständige Tiefendokumentation für alle 107 öffentlichen Procedures.
 6. [Objektreferenz](Reference/Object_Reference.md) – jede unterstützende View, TVF, interne Procedure und Tabelle.
 
-Der aktuelle Inventarvertrag umfasst 178 Objekte: 106 öffentliche Procedures, 8 Views, 28 Table-Valued Functions, 16 interne Procedures und 20 Tabellen.
+Der aktuelle Inventarvertrag umfasst 179 Objekte: 107 öffentliche Procedures, 8 Views, 28 Table-Valued Functions, 16 interne Procedures und 20 Tabellen.
 
-Der Frameworkkern umfasst 159 Objekte mit 103 öffentlichen Procedures und 9 Tabellen. Das optionale Snapshotpaket umfasst 19 Objekte mit 3 öffentlichen Procedures und 11 Tabellen.
+Der Frameworkkern umfasst 160 Objekte mit 104 öffentlichen Procedures und 9 Tabellen. Das optionale Snapshotpaket umfasst 19 Objekte mit 3 öffentlichen Procedures und 11 Tabellen.
 
 Die Bestandszahlen beschreiben das Repositoryinventar; der installierte Umfang
 hängt vom gewählten Paket ab. Scalar-Valued Functions sind derzeit nicht vorhanden.
@@ -88,6 +88,7 @@ Kostenklasse, High-Impact-Bestätigung und SQL-Server-Berechtigung sind getrennt
 - [WI-0003: Backup-Kompressionsalgorithmus- und ZSTD-Evidenz](Architecture/WI0003_Backup_Compression_Analysis.md)
 - [WI-0003: öffentliche Spezifikation](Architecture/WI0003_Backup_Compression_Public_Specification.md)
 - [WI-0005: Zeitgrenzen für Extended Events – Freigabevorlage](Architecture/WI0005_Time_Bound_Extended_Events_Public_Specification.md): Die öffentliche Umsetzung ist noch nicht freigegeben.
+- [WI-0006: freigegebener Compile-Kontext-Vertrag](Architecture/WI0006_Compile_Context_Public_Specification.md): Lokale Konfiguration und getrennte serverweite Evidenz mit optionalem begrenztem Sampling.
 - [WI-0004: geordnete Columnstore-Diagnostik](Architecture/WI0004_Ordered_Columnstore_Analysis.md)
 - [WI-0004: öffentliche Spezifikation](Architecture/WI0004_Ordered_Columnstore_Public_Specification.md)
 - [SQL-Server-2025-Statistiken auf lesbaren Secondaries](Architecture/SQL_Server_2025_Readable_Secondary_Statistics.md)

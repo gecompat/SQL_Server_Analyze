@@ -763,3 +763,12 @@ EXEC [monitor].[USP_FrameworkUsageFromQueryStore]
     , @Json = @UsageJson OUTPUT;
 SELECT @UsageJson;
 ```
+
+## `[monitor].[USP_CompileContextAnalysis]`
+
+```sql
+EXEC [monitor].[USP_CompileContextAnalysis] @Hilfe=1;
+EXEC [monitor].[USP_CompileContextAnalysis] @SampleSeconds=0,@MaxZeilen=200,@ResultSetArt='CONSOLE';
+```
+
+[Analysebeschreibung](../Analysis_Guides/Procedures/USP_CompileContextAnalysis.md)
