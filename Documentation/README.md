@@ -20,6 +20,8 @@ hängt vom gewählten Paket ab. Scalar-Valued Functions sind derzeit nicht vorha
 
 Der öffentliche [SSIS-Phase-0-Vertrag](Architecture/SSIS_001_Phase0_Public_Contract.md) grenzt den schrittweise implementierten Paket-Analysepfad ab. Der erste statische DTSX-Slice inventarisiert Paket und Executables; weitere Parser- und Laufzeitpfade bleiben getrennt offen.
 
+Der freigegebene [External-Model-Inventurvertrag](Architecture/WI0007_External_Model_Inventory_Public_Specification.md) ergänzt die SpecialFeatureInventory um eine aggregierte lokale Katalogzählung ohne Modellinhalte oder Endpunktaufrufe.
+
 ## Installation und erster Betrieb
 
 - [Vollständige Installation](Reference/Installation.md): Voraussetzungen, SQLCMD- und eigenständiger Installer, Smoke-Test, Berechtigungen und Fehlerbehebung.

@@ -22,7 +22,7 @@ BEGIN TRY
     ([FeatureCode] varchar(64) COLLATE SQL_Latin1_General_CP1_CS_AS PRIMARY KEY);
     INSERT [#SpecialFeatureCollationRuntimeContract_Codes] VALUES
       ('IN_MEMORY_OLTP'),('TEMPORAL'),('SERVICE_BROKER'),('FULL_TEXT'),('CHANGE_TRACKING'),('CDC'),
-      ('ENCRYPTION'),('CLR'),('EXTERNAL_TABLES'),('EXTERNAL_RUNTIME'),('EXTERNAL_SCRIPTS'),
+      ('ENCRYPTION'),('CLR'),('EXTERNAL_TABLES'),('EXTERNAL_RUNTIME'),('EXTERNAL_SCRIPTS'),('EXTERNAL_MODELS'),
       ('FILESTREAM_FILETABLE'),('GRAPH'),('SPATIAL'),('XML'),('JSON_NATIVE'),('VECTOR'),('USER_DEFINED_TYPES');
     CREATE TABLE [#SpecialFeatureCollationRuntimeContract_DetectedCounts]
     ([DatabaseName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS PRIMARY KEY,[DetectedRows] bigint NOT NULL);
@@ -68,7 +68,7 @@ BEGIN TRY
            OR COALESCE(@TableJson,N'[]') COLLATE SQL_Latin1_General_CP1_CS_AS<>COALESCE(JSON_QUERY(@Json,'$.features'),N'[]') COLLATE SQL_Latin1_General_CP1_CS_AS
            OR (@Limit=1 AND @Count<>1)
             THROW 56052,N'Special feature shared output filter or limit failed.',1;
-        IF COALESCE(TRY_CONVERT(bigint,JSON_VALUE(@Json,'$.meta.featureRowCount')),-1)<>CASE WHEN @Case=5 THEN 0 ELSE 36 END
+        IF COALESCE(TRY_CONVERT(bigint,JSON_VALUE(@Json,'$.meta.featureRowCount')),-1)<>CASE WHEN @Case=5 THEN 0 ELSE 38 END
            OR (SELECT COUNT_BIG(*) FROM OPENJSON(@Json,'$.databaseStatus'))<>CASE WHEN @Case=5 THEN 1 WHEN @Case=4 THEN 3 ELSE 2 END
            OR COALESCE(@Status,'')<>CASE WHEN @Case=5 THEN 'DATABASE_UNAVAILABLE' WHEN @Case=4 THEN 'AVAILABLE_LIMITED' ELSE 'AVAILABLE' END
            OR COALESCE(CONVERT(int,@Partial),-1)<>CASE WHEN @Case>=4 THEN 1 ELSE 0 END
@@ -124,7 +124,7 @@ BEGIN TRY
                   LEFT JOIN [#SpecialFeatureCollationRuntimeContract_DetectedCounts] [e]
                     ON [e].[DatabaseName]=[j].[DatabaseName] COLLATE SQL_Latin1_General_CP1_CS_AS
                   WHERE ([j].[DatabaseName] COLLATE SQL_Latin1_General_CP1_CS_AS IN(N'ExampleSpecialSourceÄ',N'ExampleSpecialSourceä')
-                         AND (COALESCE([j].[StatusCode],'')<>'AVAILABLE' OR COALESCE([j].[FeatureRows],-1)<>18
+                         AND (COALESCE([j].[StatusCode],'')<>'AVAILABLE' OR COALESCE([j].[FeatureRows],-1)<>19
                               OR COALESCE([j].[DetectedFeatureRows],-1)<>[e].[DetectedRows] OR COALESCE(CONVERT(int,[j].[IsPartial]),-1)<>0))
                      OR ([j].[DatabaseName]=N'ExampleSpecialMissingÖ' AND (COALESCE([j].[StatusCode],'')<>'DATABASE_UNAVAILABLE'
                           OR COALESCE([j].[FeatureRows],-1)<>0 OR COALESCE([j].[DetectedFeatureRows],-1)<>0 OR COALESCE(CONVERT(int,[j].[IsPartial]),-1)<>1)))

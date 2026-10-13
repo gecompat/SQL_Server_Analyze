@@ -1971,6 +1971,8 @@ Quelle: `Code/09_VersionAdaptive/050_USP_ServiceBrokerAnalysis.sql`
 
 Quelle: `Code/09_VersionAdaptive/020_USP_SpecialFeatureInventory.sql`
 
+Die zusätzliche Featurezeile `EXTERNAL_MODELS` liefert nur eine sichtbare Kataloganzahl. Der [freigegebene Vertrag](../Architecture/WI0007_External_Model_Inventory_Public_Specification.md) beschreibt Defaultzähler, NULL-Fallback und Fehlerisolation; Parameter und Ausgabeschemas bleiben erhalten.
+
 ```sql
 @DatabaseNames                    nvarchar(max)  = NULL
     , @SystemdatenbankenEinbeziehen     bit            = 0

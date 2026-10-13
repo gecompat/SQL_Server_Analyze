@@ -51853,8 +51853,8 @@ GO
 /*
 ===============================================================================
 Objekt       : monitor.USP_SpecialFeatureInventory
-Version      : 1.2.0
-Stand        : 2026-07-23
+Version      : 1.3.0
+Stand        : 2026-10-13
 Typ          : Stored Procedure
 Zweck        : Inventarisiert leichtgewichtig die im sichtbaren Metadatenscope
                genutzten oder lediglich konfigurierten SQL-Server-
@@ -51862,7 +51862,7 @@ Zweck        : Inventarisiert leichtgewichtig die im sichtbaren Metadatenscope
 SQL-Version  : SQL Server 2019 oder neuer.
 Datenquellen : Datenbank- und Objektkataloge für In-Memory OLTP, Temporal,
                Service Broker, Full-Text, Data Capture, Verschlüsselung, CLR,
-               External Tables/Runtimes, FILESTREAM, Graph, Spatial, XML,
+               External Tables/Models/Runtimes, FILESTREAM, Graph, Spatial, XML,
                native JSON-/Vector-Typen und benutzerdefinierte Typen.
 Abgrenzung   : Das Ergebnis ist ein Nutzungsinventar, kein Gesundheitsurteil.
                Nicht sichtbare Metadaten können zu Nullzählungen führen.
@@ -51872,7 +51872,9 @@ Kosten       : LOW. Ausschließlich aggregierte Systemkatalogabfragen; keine
                Benutzertabellen-, Payload-, Definitions- oder Datenscans.
 Locking      : Der angeforderte LOCK_TIMEOUT gilt für die Katalogpfade; der
                vorherige Sessionwert wird vor der Ausgabe wiederhergestellt.
-Änderungen   : 1.2.0 - Native-JSON-Erkennung auf das implementierte
+Änderungen   : 1.3.0 - Aggregierte External-Model-Inventur mit isoliertem
+                         Quellenfehler und versionsadaptivem NULL-Fallback.
+               1.2.0 - Native-JSON-Erkennung auf das implementierte
                          JSON-Indexinventar in USP_ObjectInventory geroutet.
 ===============================================================================
 */
@@ -52038,7 +52040,9 @@ BEGIN
 
     IF @StatusCode='AVAILABLE'
     BEGIN
-        DECLARE @DbName sysname,@Sql nvarchar(max);
+        DECLARE @DbName sysname,@Sql nvarchar(max),@ExternalModelSql nvarchar(max),
+            @ExternalModelCount bigint,@ExternalModelDetection varchar(40),
+            @ExternalModelError int,@ExternalModelMessage nvarchar(2048);
         DECLARE [DatabaseCursor] CURSOR LOCAL FAST_FORWARD FOR
             SELECT [DatabaseName]
             FROM [#SpecialFeatureInventory_DatabaseCandidates]
@@ -52184,6 +52188,45 @@ VALUES
                     , @pMajor=@Major
                     , @pExternalScriptsConfigured=@ExternalScriptsConfigured;
 
+                SELECT @ExternalModelCount=NULL,@ExternalModelError=NULL,@ExternalModelMessage=NULL,
+                    @ExternalModelDetection=CASE WHEN @Major IS NULL THEN 'SOURCE_UNAVAILABLE'
+                        WHEN @Major<17 THEN 'UNAVAILABLE_VERSION' ELSE NULL END;
+                IF @Major>=17
+                BEGIN
+                    BEGIN TRY
+                        SET @ExternalModelSql=N'USE '+QUOTENAME(@DbName)+N';
+SELECT @pCount=COUNT_BIG(*) FROM [sys].[external_models] WITH (NOLOCK);';
+                        EXEC [sys].[sp_executesql] @ExternalModelSql,N'@pCount bigint OUTPUT',@pCount=@ExternalModelCount OUTPUT;
+                        SET @ExternalModelDetection=CASE WHEN @ExternalModelCount>0 THEN 'DETECTED' ELSE 'NOT_DETECTED_VISIBLE_SCOPE' END;
+                    END TRY
+                    BEGIN CATCH
+                        SELECT @ExternalModelCount=NULL,@ExternalModelDetection='SOURCE_UNAVAILABLE',
+                            @ExternalModelError=ERROR_NUMBER(),@ExternalModelMessage=ERROR_MESSAGE();
+                    END CATCH;
+                END;
+
+                INSERT [#SpecialFeatureInventory_FeatureInventory]
+                ([DatabaseName],[FeatureCode],[FeatureFamily],[DetectionStatus],[DetectedItemCount],[ConfigurationState],
+                 [SourceObjects],[RecommendedModule],[RecommendedModuleStatus],[EvidenceLimit])
+                VALUES(@DbName,'EXTERNAL_MODELS',N'External Models',@ExternalModelDetection,@ExternalModelCount,NULL,
+                    N'sys.external_models',NULL,'NOT_PLANNED',
+                    N'Gezählt werden ausschließlich sichtbare External-Model-Katalogzeilen; Modellnamen, Locations, Parameter, Besitzer, Credentials und Inhalte bleiben ausgeschlossen. Die Anzahl beweist weder Erreichbarkeit noch Ausführung oder Gesundheit. Ein verfügbarer Vertiefungsanalysepfad besteht noch nicht.');
+
+                IF @ExternalModelDetection='SOURCE_UNAVAILABLE'
+                    UPDATE [#SpecialFeatureInventory_DatabaseStatus]
+                    SET [StatusCode]=CASE WHEN [StatusCode]<>'AVAILABLE' THEN [StatusCode]
+                            WHEN @ExternalModelError IS NULL THEN 'SOURCE_UNAVAILABLE'
+                            WHEN @ExternalModelError IN(229,262,297,300,371,916) THEN 'DENIED_PERMISSION'
+                            WHEN @ExternalModelError=1222 THEN 'TIMEOUT'
+                            WHEN @ExternalModelError IN(207,208) THEN 'UNAVAILABLE_OBJECT' ELSE 'ERROR_HANDLED' END,
+                        [IsPartial]=1,
+                        [ErrorNumber]=CASE WHEN [ErrorNumber] IS NULL THEN @ExternalModelError ELSE [ErrorNumber] END,
+                        [ErrorMessage]=CASE WHEN [ErrorNumber] IS NULL THEN @ExternalModelMessage ELSE [ErrorMessage] END,
+                        [Detail]=CASE WHEN [StatusCode]<>'AVAILABLE' THEN [Detail]
+                            WHEN @Major IS NULL THEN N'Engineversion unbekannt; External Models wurden nicht gelesen. Übrige Featurezeilen bleiben erhalten.'
+                            ELSE N'External-Model-Katalog nicht lesbar; übrige Featurezeilen bleiben erhalten.' END
+                    WHERE [DatabaseName]=@DbName;
+
                 UPDATE [#SpecialFeatureInventory_DatabaseStatus]
                 SET [FeatureRows]=(SELECT COUNT_BIG(*) FROM [#SpecialFeatureInventory_FeatureInventory] [f] WHERE [f].[DatabaseName]=@DbName),
                     [DetectedFeatureRows]=(SELECT COUNT_BIG(*) FROM [#SpecialFeatureInventory_FeatureInventory] [f]
@@ -52193,12 +52236,15 @@ VALUES
             END TRY
             BEGIN CATCH
                 UPDATE [#SpecialFeatureInventory_DatabaseStatus]
-                SET [StatusCode]=CASE WHEN ERROR_NUMBER() IN (229,262,297,300,371,916) THEN 'DENIED_PERMISSION'
+                SET [StatusCode]=CASE WHEN [ErrorNumber] IS NOT NULL THEN [StatusCode]
+                                      WHEN ERROR_NUMBER() IN (229,262,297,300,371,916) THEN 'DENIED_PERMISSION'
                                       WHEN ERROR_NUMBER()=1222 THEN 'TIMEOUT'
                                       WHEN ERROR_NUMBER() IN (207,208) THEN 'UNAVAILABLE_OBJECT'
                                       ELSE 'ERROR_HANDLED' END,
-                    [IsPartial]=1,[ErrorNumber]=ERROR_NUMBER(),[ErrorMessage]=ERROR_MESSAGE(),
-                    [Detail]=N'Featureinventur für diese Datenbank fehlgeschlagen; andere Datenbanken bleiben erhalten.'
+                    [IsPartial]=1,[ErrorNumber]=COALESCE([ErrorNumber],ERROR_NUMBER()),
+                    [ErrorMessage]=CASE WHEN [ErrorNumber] IS NOT NULL THEN [ErrorMessage] ELSE ERROR_MESSAGE() END,
+                    [Detail]=CASE WHEN [ErrorNumber] IS NOT NULL THEN [Detail]
+                        ELSE N'Featureinventur für diese Datenbank fehlgeschlagen; andere Datenbanken bleiben erhalten.' END
                 WHERE [DatabaseName]=@DbName;
             END CATCH;
 
