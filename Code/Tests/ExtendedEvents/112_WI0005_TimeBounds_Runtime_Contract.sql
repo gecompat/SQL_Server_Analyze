@@ -8,6 +8,7 @@ DECLARE @Prefix sysname=N'ExampleWi0005_'+REPLACE(CONVERT(nvarchar(36),NEWID()),
     @Names nvarchar(max),@SelectedNames nvarchar(max),@Pattern nvarchar(4000),@Json nvarchar(max),@Major int=TRY_CONVERT(int,SERVERPROPERTY(N'ProductMajorVersion')),
     @Case int=0,@Runtime bit,@OnlyRunning bit,@Limit int,@Enabled bit,@Expected int,
     @BeforeStart datetime,@AfterStart datetime,@NativeDuration bigint,@ExpectedJson nvarchar(max),@ClockKnown bit=0,
+    @NativeBeforeJson nvarchar(max),@NativeAfterJson nvarchar(max),@RestartPreviousJson nvarchar(max),@GuardJson nvarchar(max),
     @RestoreLock nvarchar(100)=N'SET LOCK_TIMEOUT '+CONVERT(nvarchar(20),@@LOCK_TIMEOUT)+N';';
 SELECT @Run=@Prefix+N'_A',@Stop=@Prefix+N'_B',@Unlimited=@Prefix+N'_C',@Auto=@Prefix+N'_D';
 DECLARE @Owned TABLE([Name] sysname COLLATE SQL_Latin1_General_CP1_CS_AS PRIMARY KEY,[Created] bit NOT NULL);
@@ -42,6 +43,23 @@ BEGIN TRY
             @Pattern=CASE WHEN @Case=7 THEN N'like:'+REPLACE(@Prefix,N'_',N'[_]')+N'[_][ABC]' ELSE NULL END;
         CREATE TABLE [#Wi0005TimeBoundsRuntimeContract_Sessions]([Dummy] int NULL);
         CREATE TABLE [#Wi0005TimeBoundsRuntimeContract_Bounds]([Dummy] int NULL);
+        CREATE TABLE [#Wi0005TimeBoundsRuntimeContract_GuardValues]
+        (
+            [SessionName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,
+            [ConsumerEventSessionId] int NOT NULL,[ConsumerStart] datetime NULL,
+            [NativeEventSessionId] int NULL,[NativeRuntimeName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL,
+            [NativeRuntimeAddress] varbinary(8) NULL,[NativeStart] datetime NULL,[NativeStartBytes] varbinary(8) NULL,
+            [CatalogMissing] bit NOT NULL,[RuntimeOrStartMissing] bit NOT NULL,[ExactStartMismatch] bit NOT NULL
+        );
+        SET @NativeBeforeJson=(SELECT [s].[event_session_id] AS [EventSessionId],[s].[name] AS [SessionName],
+                [r].[address] AS [RuntimeAddress],[r].[create_time] AS [NativeCreateTime],
+                CONVERT(varbinary(8),[r].[create_time]) AS [NativeCreateTimeBytes],
+                CONVERT(nvarchar(128),SQL_VARIANT_PROPERTY(CONVERT(sql_variant,[r].[create_time]),N'BaseType')) AS [NativeCreateTimeType]
+            FROM [sys].[server_event_sessions] AS [s]
+            INNER JOIN @Owned AS [o] ON [o].[Name]=[s].[name] COLLATE SQL_Latin1_General_CP1_CS_AS AND [o].[Created]=1
+            LEFT JOIN [sys].[dm_xe_sessions] AS [r] ON [r].[name] COLLATE SQL_Latin1_General_CP1_CS_AS=[s].[name] COLLATE SQL_Latin1_General_CP1_CS_AS
+            WHERE [s].[name] IN(@Run,@Stop,@Unlimited)
+            ORDER BY [s].[name] FOR JSON PATH,INCLUDE_NULL_VALUES);
         SELECT @BeforeStart=[create_time] FROM [sys].[dm_xe_sessions] WHERE [name]=@Run;
         EXEC [monitor].[USP_ExtendedEventsSessions] @ExtendedEventSessionNames=@SelectedNames,@ExtendedEventSessionNamePattern=@Pattern,
             @NurLaufend=@OnlyRunning,@MitLaufzeitstatus=@Runtime,@MitZeitgrenzen=@Enabled,
@@ -49,6 +67,32 @@ BEGIN TRY
             @ResultSetArt='TABLE',@ResultTablesJson=N'{"sessions":"#Wi0005TimeBoundsRuntimeContract_Sessions","timeBounds":"#Wi0005TimeBoundsRuntimeContract_Bounds"}',
             @JsonErzeugen=1,@Json=@Json OUTPUT,@PrintMeldungen=0;
         SELECT @AfterStart=[create_time] FROM [sys].[dm_xe_sessions] WHERE [name]=@Run;
+        SET @NativeAfterJson=(SELECT [s].[event_session_id] AS [EventSessionId],[s].[name] AS [SessionName],
+                [r].[address] AS [RuntimeAddress],[r].[create_time] AS [NativeCreateTime],
+                CONVERT(varbinary(8),[r].[create_time]) AS [NativeCreateTimeBytes],
+                CONVERT(nvarchar(128),SQL_VARIANT_PROPERTY(CONVERT(sql_variant,[r].[create_time]),N'BaseType')) AS [NativeCreateTimeType]
+            FROM [sys].[server_event_sessions] AS [s]
+            INNER JOIN @Owned AS [o] ON [o].[Name]=[s].[name] COLLATE SQL_Latin1_General_CP1_CS_AS AND [o].[Created]=1
+            LEFT JOIN [sys].[dm_xe_sessions] AS [r] ON [r].[name] COLLATE SQL_Latin1_General_CP1_CS_AS=[s].[name] COLLATE SQL_Latin1_General_CP1_CS_AS
+            WHERE [s].[name] IN(@Run,@Stop,@Unlimited)
+            ORDER BY [s].[name] FOR JSON PATH,INCLUDE_NULL_VALUES);
+        SET @ExpectedJson=(SELECT * FROM [#Wi0005TimeBoundsRuntimeContract_Bounds] ORDER BY [SessionName] FOR JSON PATH,INCLUDE_NULL_VALUES);
+        INSERT [#Wi0005TimeBoundsRuntimeContract_GuardValues]
+        SELECT [b].[SessionName],[b].[EventSessionId],[b].[RunningSince],[s].[event_session_id],
+            [r].[name],[r].[address],[r].[create_time],CONVERT(varbinary(8),[r].[create_time]),
+            CONVERT(bit,CASE WHEN [s].[event_session_id]=[b].[EventSessionId] THEN 0 ELSE 1 END),
+            CONVERT(bit,CASE WHEN @Runtime=1 AND [b].[SessionName]<>@Stop AND ([b].[RunningSince] IS NULL OR [r].[name] IS NULL) THEN 1 ELSE 0 END),
+            CONVERT(bit,CASE WHEN @Runtime=1 AND [b].[SessionName]<>@Stop
+                THEN CASE WHEN [r].[create_time]=[b].[RunningSince] THEN 0 ELSE 1 END ELSE 0 END)
+        FROM [#Wi0005TimeBoundsRuntimeContract_Bounds] AS [b]
+        LEFT JOIN [sys].[server_event_sessions] AS [s] ON [s].[name] COLLATE SQL_Latin1_General_CP1_CS_AS=[b].[SessionName]
+        LEFT JOIN [sys].[dm_xe_sessions] AS [r] ON [r].[name] COLLATE SQL_Latin1_General_CP1_CS_AS=[b].[SessionName];
+        SET @GuardJson=(SELECT * FROM [#Wi0005TimeBoundsRuntimeContract_GuardValues] ORDER BY [SessionName] FOR JSON PATH,INCLUDE_NULL_VALUES);
+        -- Vor jedem fachlichen Guard werden Consumer und eigene native Quellen ausgegeben.
+        -- Der private Captureclient behält diese Zeile auch bei einer nachfolgenden SQL-Assertion.
+        SELECT N'BEFORE_ASSERTION' AS [FrameType],@Case AS [CaseNumber],@Json AS [ConsumerJson],@ExpectedJson AS [TableJson],
+            @BeforeStart AS [BeforeStart],@AfterStart AS [AfterStart],
+            @NativeBeforeJson AS [NativeBeforeJson],@NativeAfterJson AS [NativeAfterJson],@GuardJson AS [GuardValuesJson];
         IF @BeforeStart IS NULL OR @AfterStart IS NULL OR @BeforeStart<>@AfterStart
             THROW 56001,N'WI-0005: Analyzer hat die eigene laufende Quelle verändert.',1;
         IF (SELECT COUNT(*) FROM [#Wi0005TimeBoundsRuntimeContract_Sessions])<>@Expected
@@ -58,7 +102,6 @@ BEGIN TRY
             OR (@Enabled=0 AND EXISTS(SELECT 1 FROM OPENJSON(@Json) WHERE [key]=N'timeBounds'))
             OR (@Enabled=1 AND JSON_QUERY(@Json,N'$.timeBounds') IS NULL)
             THROW 56002,N'WI-0005: Default-, Auswahl-, Schema- oder Statusvertrag verletzt.',1;
-        SET @ExpectedJson=(SELECT * FROM [#Wi0005TimeBoundsRuntimeContract_Bounds] ORDER BY [SessionName] FOR JSON PATH,INCLUDE_NULL_VALUES);
         IF @Enabled=1 AND COALESCE(@ExpectedJson,N'[]') COLLATE SQL_Latin1_General_CP1_CS_AS<>JSON_QUERY(@Json,N'$.timeBounds') COLLATE SQL_Latin1_General_CP1_CS_AS
             THROW 56003,N'WI-0005: Gleichaufrufbezogene physische TABLE-/JSON-Parität fehlt.',1;
         IF (SELECT COUNT(*) FROM [tempdb].[sys].[columns] WHERE [object_id]=OBJECT_ID(N'tempdb..#Wi0005TimeBoundsRuntimeContract_Bounds'))<>12
@@ -73,10 +116,12 @@ BEGIN TRY
                 OR (([SessionName] IN(@Stop,@Unlimited) OR @Major<17) AND [RemainingSecondsEstimate] IS NOT NULL)
                 OR (@Major<17 AND ([MaxDurationSeconds] IS NOT NULL OR [IsTimeBound] IS NOT NULL)))
             THROW 56005,N'WI-0005: Runtime-, Unbegrenzt- oder Versionsfallback fehlerhaft.',1;
-        IF EXISTS(SELECT 1 FROM [#Wi0005TimeBoundsRuntimeContract_Bounds] AS [b]
-            WHERE NOT EXISTS(SELECT 1 FROM [sys].[server_event_sessions] AS [s] WHERE [s].[name] COLLATE SQL_Latin1_General_CP1_CS_AS=[b].[SessionName] AND [s].[event_session_id]=[b].[EventSessionId])
-               OR (@Runtime=1 AND [b].[SessionName]<>@Stop AND ([b].[RunningSince] IS NULL OR NOT EXISTS(SELECT 1 FROM [sys].[dm_xe_sessions] AS [r] WHERE [r].[name] COLLATE SQL_Latin1_General_CP1_CS_AS=[b].[SessionName] AND [r].[create_time]=[b].[RunningSince]))))
-            THROW 56012,N'WI-0005: Native Sessionidentität oder Startzeit fehlt.',1;
+        IF EXISTS(SELECT 1 FROM [#Wi0005TimeBoundsRuntimeContract_GuardValues] WHERE [CatalogMissing]=1)
+            THROW 56012,N'WI-0005: Native Katalogidentität fehlt.',1;
+        IF EXISTS(SELECT 1 FROM [#Wi0005TimeBoundsRuntimeContract_GuardValues] WHERE [RuntimeOrStartMissing]=1)
+            THROW 56013,N'WI-0005: Runtimezeile oder Consumerstartzeit fehlt.',1;
+        IF EXISTS(SELECT 1 FROM [#Wi0005TimeBoundsRuntimeContract_GuardValues] WHERE [ExactStartMismatch]=1)
+            THROW 56014,N'WI-0005: Consumerstartzeit weicht vom nativen Vergleichswert ab.',1;
         IF @Major>=17
         BEGIN
             SET @Sql=N'SELECT @Duration=[max_duration] FROM [sys].[server_event_sessions] WHERE [name]=@Name;';
@@ -92,15 +137,37 @@ BEGIN TRY
         END;
         SELECT @Case AS [CaseNumber],@Json AS [ConsumerJson],@ExpectedJson AS [TableJson];
         DROP TABLE [#Wi0005TimeBoundsRuntimeContract_Sessions]; DROP TABLE [#Wi0005TimeBoundsRuntimeContract_Bounds];
+        DROP TABLE [#Wi0005TimeBoundsRuntimeContract_GuardValues];
         SET @Case+=1;
     END;
+    SET @RestartPreviousJson=@NativeAfterJson;
     SET @Sql=N'ALTER EVENT SESSION '+QUOTENAME(@Run)+N' ON SERVER STATE=STOP;';
     EXEC [master].[sys].[sp_executesql] @Sql;
     WAITFOR DELAY '00:00:00.020';
     SET @Sql=N'ALTER EVENT SESSION '+QUOTENAME(@Run)+N' ON SERVER STATE=START;';
     EXEC [master].[sys].[sp_executesql] @Sql;
     SELECT @AfterStart=[create_time] FROM [sys].[dm_xe_sessions] WHERE [name]=@Run;
+    SET @NativeBeforeJson=(SELECT [s].[event_session_id] AS [EventSessionId],[s].[name] AS [SessionName],
+            [r].[address] AS [RuntimeAddress],[r].[create_time] AS [NativeCreateTime],
+            CONVERT(varbinary(8),[r].[create_time]) AS [NativeCreateTimeBytes],
+            CONVERT(nvarchar(128),SQL_VARIANT_PROPERTY(CONVERT(sql_variant,[r].[create_time]),N'BaseType')) AS [NativeCreateTimeType]
+        FROM [sys].[server_event_sessions] AS [s]
+        INNER JOIN @Owned AS [o] ON [o].[Name]=[s].[name] COLLATE SQL_Latin1_General_CP1_CS_AS AND [o].[Created]=1
+        LEFT JOIN [sys].[dm_xe_sessions] AS [r] ON [r].[name] COLLATE SQL_Latin1_General_CP1_CS_AS=[s].[name] COLLATE SQL_Latin1_General_CP1_CS_AS
+        WHERE [s].[name]=@Run
+        ORDER BY [s].[name] FOR JSON PATH,INCLUDE_NULL_VALUES);
     EXEC [monitor].[USP_ExtendedEventsSessions] @ExtendedEventSessionNames=@Run,@MitZeitgrenzen=1,@MitEvents=0,@MitActions=0,@MitTargets=0,@ResultSetArt='NONE',@JsonErzeugen=1,@Json=@Json OUTPUT,@PrintMeldungen=0;
+    SET @NativeAfterJson=(SELECT [s].[event_session_id] AS [EventSessionId],[s].[name] AS [SessionName],
+            [r].[address] AS [RuntimeAddress],[r].[create_time] AS [NativeCreateTime],
+            CONVERT(varbinary(8),[r].[create_time]) AS [NativeCreateTimeBytes],
+            CONVERT(nvarchar(128),SQL_VARIANT_PROPERTY(CONVERT(sql_variant,[r].[create_time]),N'BaseType')) AS [NativeCreateTimeType]
+        FROM [sys].[server_event_sessions] AS [s]
+        INNER JOIN @Owned AS [o] ON [o].[Name]=[s].[name] COLLATE SQL_Latin1_General_CP1_CS_AS AND [o].[Created]=1
+        LEFT JOIN [sys].[dm_xe_sessions] AS [r] ON [r].[name] COLLATE SQL_Latin1_General_CP1_CS_AS=[s].[name] COLLATE SQL_Latin1_General_CP1_CS_AS
+        WHERE [s].[name]=@Run
+        ORDER BY [s].[name] FOR JSON PATH,INCLUDE_NULL_VALUES);
+    SELECT N'RESTART_BEFORE_ASSERTION' AS [FrameType],@Json AS [ConsumerJson],@BeforeStart AS [PreviousStart],@AfterStart AS [RestartStart],
+        @RestartPreviousJson AS [PreviousNativeJson],@NativeBeforeJson AS [NativeBeforeJson],@NativeAfterJson AS [NativeAfterJson];
     IF @AfterStart IS NULL OR @AfterStart<=@BeforeStart
         OR TRY_CONVERT(datetime,JSON_VALUE(@Json,N'$.timeBounds[0].RunningSince')) IS NULL
         OR TRY_CONVERT(datetime,JSON_VALUE(@Json,N'$.timeBounds[0].RunningSince'))<>@AfterStart

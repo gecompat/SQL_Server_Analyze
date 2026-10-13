@@ -55,6 +55,38 @@ Die übrigen neuen Verträge werden mit
 Quellen-, Kosten-, Datenschutz- und Abnahmegrenzen vorgelegt; bereits
 freigegebene Verträge werden nicht erneut zur Zustimmung gestellt.
 
+Die lokale WI-0005-Implementierung ist noch nicht nativ qualifiziert oder
+integriert. Im ersten SQL-Server-2025-Lauf bestanden die acht ausgewählten
+Testdateien einschließlich der elf neuen TABLE-/JSON-Fälle, Neustart und
+automatischer Beendigung. Danach scheiterte der private Adapter an einer
+SQLCMD-Direktive; der Gesamtlauf bleibt nicht qualifiziert. Nach der engen
+Adapterkorrektur scheiterte der zweite Lauf im ersten aktivierten Zeitgrenzenfall
+an der kombinierten Prüfung von Katalogidentität und Runtime-Startzeit. Seine
+Ursache bleibt unbekannt, weil die betroffene Quellenzeile vor dem Abbruch
+nicht gespeichert wurde. Beide Läufe haben ihre eigenen Runtime-Ressourcen
+entfernt und unveränderte Quellenpins sowie Dockerbestände bestätigt.
+Das ursprüngliche 2025-Budget war mit zwei von zwei Versuchen ausgeschöpft. Die vorbereitete
+Diagnose ergänzt Quellenklammern und Ausgabe vor Assertions, ohne den exakten
+Zeitvergleich zu lockern. Ein weiterer nativer Lauf benötigt eine ausdrückliche
+Budgeterweiterung; es wird kein Produktabschluss aus Teilprüfungen abgeleitet.
+Der Benutzer hat anschließend höchstens sechs Gesamtversuche für WI-0005
+freigegeben. Jeder weitere Versuch setzt einen konkreten Befund oder eine
+gezielte Gegenprüfung mit begründeter Aussicht auf die Problemlösung voraus.
+Die bisherigen zwei Versuche werden nicht zurückgesetzt. Die ergänzte
+Quellenretention und ihre unverändert strengen Fehlerflags sind unabhängig
+geprüft; der nächste Lauf soll die fehlenden Vergleichsdaten sichern oder
+die Abnahme abschließen. Ein automatisches Ausschöpfen der Obergrenze ist
+nicht autorisiert.
+
+Der Benutzer hat auch den konkreten WI-0006-Vertrag unmittelbar freigegeben:
+eine rein lesende `monitor.USP_CompileContextAnalysis` mit ausgewähltem
+Datenbank-Konfigurationskontext sowie getrenntem serverweitem Counter-,
+Compile-Wait- und Cachemetadatenkontext. Die bereits vorhandene generische
+Konfigurationsausgabe und die typisierten Counter-Samples werden wiederverwendet;
+sie sind keine fehlenden Produktfunktionen. Der neue Vertrag erlaubt optionales
+Sampling von einer bis 60 Sekunden, keine SQL- oder Planinhalte und keine
+automatische Ursachenbehauptung.
+
 Die echte SSISDB-Abnahme wartet auf die vom Benutzer in SQL_Server_Lab
 beauftragte Windows-/SSISDB-Testfunktion. Bis dieser öffentliche Pfad
 einschließlich ausgeführtem Nachweis verfügbar ist, wird dieses Thema
