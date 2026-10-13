@@ -32,6 +32,7 @@ $stateRoot = Assert-AnalyzePathUnderRoot `
 $saPassword = New-AnalyzeExampleSecret
 $lab = $null
 $runtimeMetadata = $null
+$smtpProfileName = $null
 $cleanupCompleted = $false
 $mutex = [Threading.Mutex]::new($false, 'Global\SQL_Server_Lab_Runtime_Smoke')
 $mutexHeld = $false
@@ -52,14 +53,24 @@ try {
                 id = 'primary'; version = '2025'; provider = 'docker'; os = 'linux'
                 profile = 'standard'; collation = 'Latin1_General_100_CS_AS'
             })
-            smtpTestService = [ordered]@{}
+            smtpTestService = [ordered]@{ imageProvisioning = 'require-existing' }
         }
         [IO.File]::WriteAllText($manifestPath, ($manifest | ConvertTo-Json -Depth 8), [Text.UTF8Encoding]::new($false))
         $lab = New-SqlServerLab -Manifest $manifestPath -SaPassword $saPassword `
             -StateRoot $stateRoot -NonInteractive
-        if ($null -eq $lab.smtpTestService -or [string]::IsNullOrWhiteSpace([string]$lab.smtpTestService.ProfileName)) {
+        $smtpConnectionPath = Join-Path $stateRoot "runs/$($lab.RunId)/connection-info.json"
+        if (-not (Test-Path -LiteralPath $smtpConnectionPath -PathType Leaf)) {
+            throw 'OPS-008: Der öffentliche SMTP-Verbindungsvertrag fehlt im eigenen Run.'
+        }
+        $smtpConnection = Get-Content -LiteralPath $smtpConnectionPath -Raw -Encoding utf8 | ConvertFrom-Json -Depth 20
+        if ($smtpConnection.runId -cne $lab.RunId -or $smtpConnection.scopeId -cne $lab.ScopeId -or
+            -not $smtpConnection.PSObject.Properties['smtpTestService'] -or $null -eq $smtpConnection.smtpTestService -or
+            @($smtpConnection.smtpTestService.SenderInstanceIds).Count -ne 1 -or
+            [string]$smtpConnection.smtpTestService.SenderInstanceIds[0] -cne 'primary' -or
+            [string]::IsNullOrWhiteSpace([string]$smtpConnection.smtpTestService.ProfileName)) {
             throw 'OPS-008: Der öffentliche SMTP-Testdienst lieferte kein Database-Mail-Profil.'
         }
+        $smtpProfileName = [string]$smtpConnection.smtpTestService.ProfileName
     }
     else {
         $lab = New-SqlServerLab -Version 2025 -Provider docker -Profile standard `
@@ -153,7 +164,7 @@ EXEC sys.sp_addextendedproperty @name=N'SQLANALYZE.Ops008Disposable', @value=1;
         $content = [IO.File]::ReadAllText((Join-Path $repositoryRoot $relative), [Text.Encoding]::UTF8)
         $content = $content.Replace('[DeineDatenbank]', '[LabAnalyze]')
         if ($Scenario -eq 'MailExecutionSuccess' -and $relative -eq 'TestLab/Scenarios/OPS-008/mail-execution-success.sql') {
-            $profileName = [string]$lab.smtpTestService.ProfileName
+            $profileName = $smtpProfileName
             if ($profileName -notmatch '^[A-Za-z0-9_.-]{1,128}$') {
                 throw 'OPS-008: Das SMTP-Testprofil enthält keine zulässige technische Kennung.'
             }

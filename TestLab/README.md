@@ -552,8 +552,9 @@ Der Nachweis betrifft einen lokalen Fehlerfall; erfolgreiche SMTP-Annahme,
 Zustellung, ein bestimmter SMTP-Fehlergrund, Retryverhalten und automatische
 Retention bleiben getrennte Nachweise.
 
-`-Scenario MailExecutionSuccess` ist ein noch nicht ausgeführter Kandidat
-(`NOT_EXECUTED`). Lab-PR #744 hat die SMTP-Funktion öffentlich integriert;
+`-Scenario MailExecutionSuccess` besteht nach zwei erhaltenen Fehlversuchen
+im dritten tatsächlichen Lauf auf SQL Server 2025 `17.0.4075.5` mit CL170.
+Lab-PR #744 hat die SMTP-Funktion öffentlich integriert;
 die Lab-Validierungsstrategie dokumentiert deren ausgeführte Docker-Abnahme
 mit Database Mail, Zustellung und Cleanup. Die frühere Barriere
 `SMTP_TEST_BACKEND_UNADMITTED` ist damit abgelöst.
@@ -565,23 +566,38 @@ Image-IDs, verwendet `--pull=never` und führt keinen Gateway-Build aus.
 Der OwnedHost-Pfad verwendet das vorhandene Sendernetz und bindet beide
 SMTP-Container über eigene Intents und Receipts an Run und Scope.
 
-Die am 13. Oktober 2026 geprüften veröffentlichten Lab-Nachweise dokumentieren
-noch keine ausgeführte Abnahme dieses neuen Modus und seines OwnedHost-Pfads.
-Die ältere Docker-Abnahme und allgemeine erfolgreiche Provider-CI ersetzen
-diesen Nachweis nicht. Der folgende Aufruf bleibt deshalb gesperrt. Vor seiner
-Ausführung sind die veröffentlichte passende Lab-Abnahme und die Ausrichtung
-des Analyze-Manifests auf `imageProvisioning=require-existing` erforderlich.
-Anschließend stehen die eigenen Analyze-Versand-, Consumer- und
-Cleanup-Nachweise aus.
+Lab-PR #747 veröffentlicht die ausgeführten Docker-Abnahmen des strengen
+Modus einschließlich OwnedHost auf dem öffentlichen `origin/main`. Diese Abnahmen bestätigen
+lokale Imageauflösung, `READY` und Cleanup, enthalten aber keine neue
+OwnedHost-Database-Mail-Nachricht. Das Analyze-Manifest verwendet nun
+`imageProvisioning=require-existing`. Der Runner liest das Profil aus der
+öffentlichen eigenen Run-`connection-info.json` und prüft Run, Scope sowie
+genau den Sender `primary`.
+
+Der erste Analyze-Versuch scheiterte an der zuvor falschen Annahme, das Profil
+stehe direkt im Rückgabeobjekt von `New-SqlServerLab`. Nach der Adapterkorrektur
+scheiterte der zweite Versuch an zwei nativen Syntaxfehlern bei der
+Locktimeout-Wiederherstellung in der SQL-Fixture. Beide Stellen verwenden nun
+das vom Eintrittsguard verlangte Literal `-1`. Neun lokale Profilgegenproben
+und die engen unabhängigen Korrekturreviews bestehen. Der lokale SQL-Parser
+erkennt den ursprünglichen nativen Syntaxfehler nicht und ersetzt daher keine
+Runtimeabnahme. Nach ausdrücklicher Freigabe eines dritten Versuchs bestätigt
+der korrigierte Stand eine eigene synthetische Mail mit nativem `sent`-Status
+und die drei Ausgabeformen. Smoke110, Runtime122, Caller- und Quellenprüfungen
+sowie der eigene Cleanup bestehen. Jeder der drei Runs ist mit fünf
+Cleanupschritten ohne Fehler entfernt; Docker- und Statebestände bleiben
+unverändert. Die beiden Fehlversuche bleiben `FAILED_NOT_QUALIFIED`; der dritte
+Lauf ist im beschriebenen Umfang qualifiziert. Weitere Fälle werden daraus
+nicht abgeleitet.
 Analyze beschafft keine Images und übersteuert keine privaten Lab-Funktionen.
 Ein Draft- oder Worktree-Fallback ist ausgeschlossen.
 
-Der Kandidat ist für den öffentlichen run-gebundenen SMTP-Testdienst von
-`SQL_Server_Lab` vorgesehen. Die Fixture
+Der Szenariolauf verwendet den öffentlichen run-gebundenen SMTP-Testdienst von
+`SQL_Server_Lab`. Die Fixture
 übergibt keine SMTP-Adresse, keine Zugangsdaten und kein Receiver-Image an
 Analyze. Sie sendet eine einzelne synthetische Nachricht über das vom Lab
 gelieferte Database-Mail-Profil und wartet auf dessen nativen `sent`-Status.
-Die drei Analyzer-Consumer `NONE`, `TABLE` und `CONSOLE` prüfen anschließend
+Die drei vorgesehenen Analyzer-Consumer `NONE`, `TABLE` und `CONSOLE` prüfen anschließend
 die unveränderte Mailquelle, ihre Ausgabeparität und die Wiederherstellung des
 Callerzustands. Der `sent`-Status ist ausschließlich die native
 Database-Mail-Bestätigung; er ist kein zusätzlicher Nachweis des

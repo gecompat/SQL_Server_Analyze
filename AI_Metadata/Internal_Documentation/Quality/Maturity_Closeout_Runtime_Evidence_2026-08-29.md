@@ -3552,3 +3552,128 @@ gekreuzten Detailzeiten. Tatsächliche Maintenanceausführung, zeitliche
 Konsistenz realer Ausführungen, allgemeine Detaildatumsregeln, automatische
 Altersretention und weitere Engines bleiben unbelegt. OPS-008 bleibt
 partiell; SMTP wartet weiterhin auf SQL_Server_Lab.
+
+## OPS-008: Nicht qualifizierte SMTP-Versuche vom 13. Oktober 2026
+
+Lab-PR #747 veröffentlicht auf dem integrierten öffentlichen Stand
+`ecd535a7dd96f1307c1f4c20cca3b171b8f9a713` die ausgeführten normalen
+Docker- und OwnedHost-Docker-Abnahmen von `imageProvisioning=require-existing`.
+Sie bestätigen vorhandene gepinnte Images, `--pull=never`, fehlenden Build,
+`READY` und eigenen Cleanup. Die beiden neuen Abnahmen enthalten keine neue
+Database-Mail-End-to-End-Nachricht. Der vorherige normale Docker-Nachweis ist
+kein zusätzlicher OwnedHost-Versandnachweis.
+
+Der eigene Analyze-Slice verwendet den öffentlichen unveränderten Lab-Stand,
+drei vorhandene lokal gebundene Images und das vorhandene nicht interne
+Sendernetz. Das Runner-Manifest und eine ungültige Modusgegenprobe bestehen
+die öffentliche Schemaprüfung. Die tatsächlich geprüfte Mutex-Reentrance
+erlaubt den Stockrunner innerhalb der zuvor atomar erworbenen eigenen Lane.
+Ein Implementierer und derselbe unabhängige Reviewer bearbeiten den Slice;
+Kosten bleiben unbekannt. Die Obergrenze beträgt zwei tatsächliche native
+Versuche mit drei vorgesehenen Consumerfällen.
+
+Der erste Versuch endet nach 54.3842976 Sekunden mit
+`FAILED_NOT_QUALIFIED`. Der Runner erwartet fälschlich `smtpTestService` im
+Rückgabeobjekt von `New-SqlServerLab`. Der öffentliche Vertrag speichert den
+geheimnisfreien Serviceabschnitt stattdessen in der eigenen
+Run-`connection-info.json`. Die gezielte Adapterkorrektur bindet diese Datei
+an Run, Scope, genau den Sender `primary` und das nicht leere Profil; die
+bestehende technische Profilprüfung bleibt erhalten. Neun aus dem aktuellen
+Runnerblock extrahierte lokale Proben bestätigen den positiven Fall sowie
+Ablehnungen für falschen Run oder Scope, fehlenden oder NULL-Service,
+falsche oder mehrfache Sender, leeres Profil und fehlende Datei. Eine noch
+alte aktive Hashbindung wird vor dem zweiten Start aktualisiert; die
+ursprüngliche Bindungsdatei bleibt separat erhalten. Der enge unabhängige
+Delta-Review besitzt nach dieser mechanischen Korrektur keine offenen Befunde.
+
+Der zweite tatsächliche Versuch endet nach 119.0331227 Sekunden ebenfalls
+mit `FAILED_NOT_QUALIFIED`. Nach erfolgreicher Profilbindung erreicht der
+Runner die SQL-Fixture. Die vorausgehenden Aufrufe von Smoke110 und Runtime122
+melden keinen Fehler. Die Fixture meldet zweimal nativ Fehler 102, Level 15,
+bei `SET LOCK_TIMEOUT`. Die beiden Wiederherstellungsstellen verwendeten
+einen Variablenausdruck. Die Korrektur verwendet jetzt jeweils das Literal
+`-1`, das der bestehende Eintrittsguard bereits garantiert. Catch-Rethrow,
+Quell-, Status-, Paritäts- und abschließende Callerprüfungen bleiben erhalten.
+Der unabhängige Review dieses zweizeiligen Deltas besitzt keine offenen
+P1/P2-Befunde. Der lokal vorhandene `TSql170Parser` liefert sowohl vor als auch
+nach der Korrektur null Parserfehler; er erkennt den nativen Defekt nicht und
+belegt deshalb keine erfolgreiche Runtimeausführung.
+
+Beide eigenen Runs sind jeweils mit fünf Cleanupschritten und null Fehlern
+entfernt. Getrennte Vorher-/Nachhervergleiche bestätigen unveränderte Docker-
+Container-, Volume-, Netz- und Imagebestände sowie den unveränderten eigenen
+Stateverzeichnisbestand. Die ausgeführten Quellen bleiben während jedes
+Versuchs hashgebunden. Logs, Fehler, Profilproben, Budget und Inventare werden
+privat erhalten. Die privaten Ergebnisdateien besitzen SHA-256
+`0B870DF666F0C82EB13E16759C91A60C74A96855DCF6944E96327CE122BEC6B7`
+für Versuch eins und
+`9CF80FD36FF1721481D5D7ADFE3AB76C1824EE7361D31FB634987328B328BBDB`
+für Versuch zwei. Konkrete Runtimeidentitäten und Hostdaten werden nicht
+übernommen.
+
+Nach diesen beiden Versuchen waren qualifizierte Consumerfälle, erfolgreiche
+Mailzustellung und eine abschließend erfasste Engine-/Compatibility-Level-
+Kombination nicht belegt. Der
+Stock-Lab-SQL-Aufruf gibt keine SQL-Resultsets zurück; daraus werden keine
+Captures abgeleitet. Der korrigierte Stand war zunächst nativ `NOT_EXECUTED`.
+Mit `NativeAttempts=2` und `NativeAttemptCeiling=2` war das Budget ausgeschöpft;
+ein dritter tatsächlicher Versuch benötigte eine ausdrückliche neue
+Benutzerfreigabe. Produktquellen, öffentliche Verträge und Statusflags blieben
+unverändert. Die Fehlversuche sind kein regulärer Produktabschluss.
+
+## OPS-008: Begrenzte erfolgreiche SMTP-Abnahme vom 13. Oktober 2026
+
+Der Benutzer erlaubt unmittelbar einen dritten Lauf, wenn die konkreten
+Korrekturen einen belastbaren Fortsetzungsweg bilden. Beide Fehler sind
+eingegrenzt und die Deltas eng unabhängig geprüft. Die Obergrenze wird daher
+auf drei erhöht; die beiden vorhandenen Versuche werden nicht zurückgesetzt.
+Das separate ausgeschöpfte Multiple-Session-Budget bleibt unverändert.
+Ein weiterer Review unveränderter Korrekturen wird nicht ausgeführt.
+
+Der dritte tatsächliche Lauf besteht auf SQL Server 2025 `17.0.4075.5` mit
+CL170 nach 124.7115921 Sekunden. Der öffentliche unveränderte Lab-Stand ist
+`ecd535a7dd96f1307c1f4c20cca3b171b8f9a713`. Der strenge Manifestmodus bindet
+drei vorhandene lokale Images; SQL-Sender und SMTP-Sidecars verwenden das
+bereits vorhandene nicht interne Sendernetz. Analyze führt keinen Imagepull,
+Build oder eigene Netzprovisionierung aus. Die Profileinlesung prüft den
+öffentlichen geheimnisfreien Connection-Info-Vertrag des eigenen Runs.
+
+Die ausgeführte Fixture bestätigt genau einen eigenen synthetischen
+Database-Mail-Auftrag mit gebundenem Profil, Mail-ID, nicht leeren Request-
+und Sent-Zeitfeldern sowie unveränderten synthetischen Empfänger-, Betreff-
+und Bodywerten. Die drei NONE-/TABLE-/CONSOLE-Aufrufe verlangen AVAILABLE,
+keine Partialität oder Fehler, sechs Quellbereiche und genau einen
+DATABASE_MAIL-Bereich. Native COUNT-/MIN-/MAX-Aggregate und nicht leere
+EvidenceLimit werden verglichen. TABLE und CONSOLE entsprechen der
+gleichaufrufbezogenen vollständigen JSON-Projektion; die Consolebeschriftung
+ist `msdbHealth`.
+
+Vor und nach jedem Consumer bleiben die vollständigen geordneten
+`sysmail_mailitems`-Werte unverändert. Der Caller bleibt mit XACT_ABORT ON,
+Locktimeout 137 und TX1 schreibfähig; Rollback und Restaurierung des
+ursprünglichen Callers einschließlich Locktimeout `-1` bestehen. Smoke110
+besteht mit drei Batches, Runtime122 mit zwei und die Mailfixture mit zwei.
+Der abschließende Runner bestätigt Enginebuild und Compatibility Level.
+Der eigene öffentliche Labcleanup besteht mit fünf Schritten und null
+Fehlern; das eigene Stateverzeichnis ist danach abwesend. Getrennte
+Docker- und Stateinventare entsprechen ihren Eintrittsbeständen. Die sechs
+ausgeführten Quellenbindungen stimmen vor und nach dem Lauf überein.
+
+Tatsächlicher privater Ergebniszeitpunkt:
+`2026-10-13T15:02:38.3751342Z`. Das PASS-Ergebnis besitzt SHA-256
+`BB5D5EEF542EE656AB092CAB7C9403F2BB970594CFA0A4358F805012B13EDE50`.
+Die ausgeführte SQL-Fixture besitzt SHA-256
+`251AD96C5211EE53AA7CD6619F005098E6B9CF8F73988A35340570CD57AC0E56`.
+Rohlogs, ursprüngliche Fehler, Budget und Runtimeidentitäten bleiben privat.
+Der unabhängige Ergebnisreview besitzt keine offenen P1/P2-Befunde.
+
+Der Stock-Lab-SQL-Aufruf gibt keine SQL-Resultsets zurück. Der Erfolg belegt
+daher drei durch die tatsächlich ausgeführte Fixture assertierte Fälle,
+keine gespeicherten Resultset-Captures. Der native `sent`-Status belegt die
+Database-Mail-Bestätigung, keine zusätzliche Prüfung von Receiverinhalten,
+allgemeine Zustellung oder Retries. Die Mailquelle wird im äußeren eigenen
+Labcleanup entfernt; ein zusätzlicher separater Mailpurge wird nicht behauptet.
+Weitere Engines, Callerbaselines und Mailfälle bleiben offen. OPS-008 bleibt
+`PARTIAL_PRODUCT_FUNCTION`; nur DeliveredScope und OpenScope beschreiben den
+neu belegten Teilumfang. Produktcode, ABI, Versionen und Maturityflags bleiben
+unverändert. NativeAttempts3 und NativeAttemptCeiling3 bleiben erhalten.

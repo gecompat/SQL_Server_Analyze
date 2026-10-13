@@ -1,7 +1,7 @@
 USE [DeineDatenbank];
 GO
 
-/* Entwurf: Die SMTP-Runtime bleibt bis zur öffentlichen Lab-Abnahme NOT_EXECUTED. */
+/* Der korrigierte SMTP-Stand bleibt bis zur eigenen Runtimequalifikation NOT_EXECUTED. */
 SET NOCOUNT ON;
 IF @@TRANCOUNT <> 0 OR COALESCE(IS_SRVROLEMEMBER(N'sysadmin'), 0) <> 1
    OR NOT EXISTS (SELECT 1 FROM [sys].[extended_properties]
@@ -119,11 +119,11 @@ BEGIN TRY
 END TRY
 BEGIN CATCH
     IF XACT_STATE() <> 0 ROLLBACK TRANSACTION;
-    SET LOCK_TIMEOUT @PreviousLockTimeout;
+    SET LOCK_TIMEOUT -1;
     IF @PreviousXactAbort = 0 SET XACT_ABORT OFF; ELSE SET XACT_ABORT ON;
     THROW;
 END CATCH;
-SET LOCK_TIMEOUT @PreviousLockTimeout;
+SET LOCK_TIMEOUT -1;
 IF @PreviousXactAbort = 0 SET XACT_ABORT OFF; ELSE SET XACT_ABORT ON;
 IF @Calls <> 3 OR @@LOCK_TIMEOUT <> @PreviousLockTimeout OR (@@OPTIONS & 16384) <> @PreviousXactAbort
     THROW 55330, N'Die Consumeranzahl oder ursprünglichen Calleroptionen sind verletzt.', 1;
