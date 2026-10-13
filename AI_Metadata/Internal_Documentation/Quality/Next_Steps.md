@@ -1,6 +1,6 @@
 # Nächste Arbeitsschritte
 
-**Stand:** 11. Oktober 2026
+**Stand:** 13. Oktober 2026
 **Zweck:** aktuelle ausführbare Entwicklungswelle für `gecompat/SQL_Server_Analyze`
 
 ## Wiederaufnahme nach der Entwicklungspause
@@ -1059,14 +1059,102 @@ werden vor dem Abschalten im Remote-Repository gesichert.
 
 ### Voraussetzungen und Abnahmen der Fortsetzung
 
-Die SMTP-abhängige OPS-008-Welle bleibt `NOT_EXECUTED`, bis die öffentliche
-SMTP-Lab-Funktion in `SQL_Server_Lab` auf `origin/main` integriert ist und
-passende tatsächliche Abnahmen vorliegen. Eine neue Fortsetzung prüft diese
+Die SMTP-abhängige OPS-008-Welle benötigt die öffentliche
+SMTP-Lab-Funktion in `SQL_Server_Lab` auf `origin/main` und
+passende tatsächliche Abnahmen. Eine neue Fortsetzung prüft diese
 Abhängigkeit lesend und verwendet anschließend ausschließlich die öffentliche
 Lab-Konfiguration. Der separate Lab-Auftrag umfasst einen lokalen Empfänger
 mit sichtbaren Nachrichten und Inhalten sowie verhindertem Versand nach außen.
 Analyze implementiert dafür keine SMTP-Infrastruktur und beschafft keine Images.
 Ein Plan, offener PR oder ungeprüfter Code erfüllt die Lieferbedingung nicht.
+
+Der am 12. Oktober 2026 übernommene SMTP-Consumer-Kandidat umfasst
+`MailExecutionSuccess` im OPS-008-Runner und eine synthetische SQL-Fixture.
+Die Vorbereitung bleibt `NOT_EXECUTED`. Der erste unabhängige Review fand
+eine ungültige skalare Collationdeklaration, NULL-offene Vergleiche,
+unvollständige native Mailorakel und eine fehlende Statusgrenze in der
+TestLab-Dokumentation. Die Korrekturen binden Mail und Profil samt
+Zeitfeldern und synthetischem Inhalt, vergleichen die Mailprojektion mit
+nativen Aggregaten und verwenden NULL-sichere Status- und Paritätsprüfungen.
+Der Runner verlangt vor Hosttoolinitialisierung einen unveränderten
+Lab-Arbeitsbaum auf dessen öffentlichem `origin/main`.
+Die PowerShell-Syntaxprüfung und ein gezielter negativer Preflight bestehen;
+der ältere ausgewählte Lab-Checkout wird vor Hosttools, Secrets und
+Provisionierung abgelehnt. Der Korrekturreview besitzt keine offenen Befunde
+im statisch geprüften Umfang und erteilt keine Laufzeitfreigabe.
+
+Die Vorbereitung wird getrennt von der offenen Runtimeabnahme gesichert.
+Vor Ausführung sind der endgültige öffentliche Profilvertrag, die
+verhinderte Imagebeschaffung, die tatsächlich ausgeführte Lab-Abnahme sowie
+Analyze-Versand-, Consumer- und Cleanup-Nachweise zu bestätigen. Die frühere
+Barriere `SMTP_TEST_BACKEND_UNADMITTED` ist am 12. Oktober 2026 durch die
+Integration von Lab-PR #744 auf dem öffentlichen Lab-Stand
+`abf5cc099b4200f8c3b6d7d65dd15b33c0016bac` abgelöst. Die dortige
+`LOCAL_VALIDATION_STRATEGY.md` dokumentiert die ausgeführte Docker-Abnahme
+mit `New-SqlServerLab`, run-spezifischem Database-Mail-Profil, Zustellung an
+Mailpit und erfolgreichem `Remove-SqlServerLab`.
+
+Die lesende Prüfung dieses öffentlichen Stands zeigt zwei verbleibende
+Voraussetzungen für den vorhandenen Analyze-Kandidaten. Die SMTP-Provisionierung
+lehnt dessen OwnedHost-Policy mit `SMTP_TEST_OWNED_HOST_UNSUPPORTED` ab.
+Außerdem baut sie das Gatewayimage bei jeder Provisionierung; der
+Receiverstart erzwingt keine ausschließliche Verwendung vorhandener Images.
+Ein öffentlicher SMTP-Pfad mit verhinderter Imagebeschaffung ist damit für
+diesen Kandidaten nicht bestätigt. Analyze startet weder Provisionierung
+noch Versand, übersteuert keine privaten Lab-Funktionen und bleibt
+`NOT_EXECUTED`. Die öffentliche Lab-Abnahme ersetzt keine eigene
+Analyze-Versand-, Consumer- oder Cleanup-Abnahme. Eine Fortsetzung benötigt
+einen passenden öffentlichen Lab-Vertrag und prüft diese geänderten
+Voraussetzungen vor jedem eigenen Runtimeversuch.
+
+Am 13. Oktober 2026 ist Lab-PR #745 auf dem öffentlichen Stand
+`5a7b28a32c0383d1f9bb04bb701c5f1d2cab3121` integriert. Der dortige
+Manifestvertrag und die Implementierung ergänzen
+`imageProvisioning=require-existing`: Vor SMTP-Ressourcenmutationen werden
+Receiver und Gateway an vorhandene lokale unveränderliche Image-IDs gebunden;
+beide Starts verwenden `--pull=never`, ohne Gateway-Build. Der OwnedHost-Pfad
+verwendet das vorhandene Sendernetz und eigene Container-Intents und Receipts.
+Die vorherige OwnedHost-Ablehnung ist für diesen Modus abgelöst.
+
+Lab-PR #747 veröffentlicht auf dem öffentlichen Stand
+`ecd535a7dd96f1307c1f4c20cca3b171b8f9a713` die ausgeführten Docker-Abnahmen
+des strengen Modus einschließlich OwnedHost. Diese bestätigen vorhandene
+gepinnte Images, `--pull=never`, den fehlenden Build, `READY` und Cleanup;
+eine neue OwnedHost-Database-Mail-Nachricht ist darin nicht enthalten.
+Der Analyze-Runner verwendet nun den strengen Modus und liest das Profil aus
+der eigenen öffentlichen Run-`connection-info.json` mit Run-, Scope- und
+Einzelsenderbindung.
+
+Zwei tatsächliche Analyze-Versuche am 13. Oktober 2026 bleiben
+`FAILED_NOT_QUALIFIED`. Der erste scheiterte an der falschen Annahme einer
+SMTP-Eigenschaft im `New-SqlServerLab`-Rückgabeobjekt; der zweite nach dieser
+Adapterkorrektur an zwei nativen Syntaxfehlern bei `SET LOCK_TIMEOUT` in der
+SQL-Fixture. Die beiden Wiederherstellungen verwenden jetzt das vom
+Eintrittsguard garantierte Literal `-1`. Neun lokale Profilgegenproben und die
+engen unabhängigen Korrekturreviews bestehen. Eine zunächst noch alte aktive
+Hashbindung ist vor dem zweiten Start korrigiert; die ursprüngliche Datei
+bleibt erhalten. Der lokale SQL-Parser erkennt den ursprünglichen Fehler
+nicht und qualifiziert daher keine native Ausführung.
+
+Nach ausdrücklicher Benutzerfreigabe eines dritten Versuchs besteht der
+korrigierte eigene Lauf auf SQL Server 2025 `17.0.4075.5` mit CL170. Eine
+synthetische Mail erhält den nativen `sent`-Status; drei NONE-/TABLE-/CONSOLE-
+Fälle bestätigen Ausgabeparität, Quellenerhaltung und Callerzustand.
+Smoke110 und Runtime122 bestehen. Jeder der drei eigenen Runs ist mit fünf
+Cleanupschritten ohne Fehler entfernt; getrennte Vergleiche bestätigen
+unveränderte Docker- und Statebestände. Der unabhängige Ergebnisreview besitzt
+keine offenen P1/P2-Befunde. Die Obergrenze von drei bleibt eingehalten;
+das separate ausgeschöpfte Multiple-Session-Budget ist unverändert.
+
+Die kanonische OPS-008-Evidenz erhält beide Fehlversuche und den begrenzten
+Erfolg. DeliveredScope enthält diesen einen erfolgreichen Mailfall;
+OpenScope bleibt für weitere Fälle und übrige Retentionverträge offen.
+Produktcode, öffentliche Verträge und `PARTIAL_PRODUCT_FUNCTION` bleiben
+unverändert. Receiverinhalte, allgemeine Zustellung und Retries sind nicht
+belegt; aus dem Stock-Lab-Aufruf werden keine Resultset-Captures abgeleitet.
+Die Lieferung verlangt die erforderliche exakte Head-CI und Integration von
+PR #364 sowie Synchronisierung und eigenen Cleanup. Analyze beschafft
+keine Images und erzeugt keine SMTP-Infrastruktur.
 
 Die zuvor vorbereitete COLL-001-Abnahme für die Metadatensichtbarkeit eines
 eigenen TDE-Zertifikats ist am 11. Oktober 2026 im begrenzten Umfang bestanden.
@@ -1291,15 +1379,21 @@ Lab-PR #744 ist inzwischen auf dem öffentlichen Stand
 `abf5cc099b4200f8c3b6d7d65dd15b33c0016bac` integriert. Die dortige
 `LOCAL_VALIDATION_STRATEGY.md` dokumentiert den ausgeführten vollständigen
 Docker-Database-Mail-Lifecycle. Die frühere öffentliche SMTP-Barriere ist
-damit abgelöst. Der vorhandene Analyze-Kandidat in Draft-PR #364 bleibt
-dennoch `NOT_EXECUTED`: Die öffentliche SMTP-Provisionierung lehnt seine
-OwnedHost-Policy mit `SMTP_TEST_OWNED_HOST_UNSUPPORTED` ab und baut das
-Gatewayimage bei jeder Provisionierung. Der Receiverstart erzwingt keine
-ausschließliche Verwendung vorhandener Images. Ein passender öffentlicher
-Pfad mit verhinderter Imagebeschaffung sowie eigene Analyze-Versand-,
-Consumer- und Cleanup-Nachweise bleiben Voraussetzungen. Analyze
-implementiert keine SMTP-Infrastruktur und übersteuert keine privaten
-Lab-Funktionen. Unveränderte Voraussetzungen lösen keinen Runtimeversuch aus.
+damit abgelöst. Lab-PR #745 ergänzt auf dem öffentlichen Stand
+`5a7b28a32c0383d1f9bb04bb701c5f1d2cab3121` den passenden
+`imageProvisioning=require-existing`-Vertrag mit lokalen unveränderlichen
+Image-IDs, `--pull=never`, fehlendem Gateway-Build und OwnedHost-Bindung über
+das vorhandene Sendernetz. Lab-PR #747 veröffentlicht die ausgeführten
+begrenzten Docker-/OwnedHost-Abnahmen dieses Pfads auf
+`ecd535a7dd96f1307c1f4c20cca3b171b8f9a713`. Der Analyze-Runner ist angepasst;
+zwei tatsächliche eigene Versuche bleiben nach getrennten Adapter- und
+SQL-Fixturefehlern nicht qualifiziert. Nach den eng geprüften Korrekturen und
+ausdrücklicher Freigabe besteht der dritte Lauf mit einer synthetischen Mail,
+drei Consumerfällen und eigenem Cleanup auf SQL2025 `17.0.4075.5`/CL170.
+Der begrenzte Nachweis erweitert keinen allgemeinen Versandvertrag;
+OPS-008 bleibt partiell. Analyze implementiert keine
+SMTP-Infrastruktur und übersteuert keine privaten Lab-Funktionen.
+Unveränderte Voraussetzungen lösen keinen Runtimeversuch aus.
 
 Die kanonische COLL-001-Zeile in
 [Implementation_Status.csv](../../../Metadata/Quality/Implementation_Status.csv)
