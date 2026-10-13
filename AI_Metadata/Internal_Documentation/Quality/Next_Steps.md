@@ -94,6 +94,26 @@ Eigener Runtime-Cleanup, Quellenpins und Bestandsvergleich bestanden erneut.
 Das Gesamtbudget steht jetzt bei drei von höchstens sechs Versuchen über alle
 Engines; die Zählung bleibt bei einem Versions- oder Lanewechsel erhalten.
 
+Der vierte Lauf besteht die korrigierte Testdatei mit elf TABLE-/JSON-Fällen,
+Neustart und automatischer Beendigung sowie die Regexmatrix und sechs
+RAW-/CONSOLE-/NONE-Fälle. Der Gesamtlauf bleibt nicht qualifiziert, weil die
+private Fehlerprobe mit `RAISERROR(1222, ...)` tatsächlich Fehler 2732 erzeugt
+hat. Der Analyzer hat diesen tatsächlichen Fehler erhalten; die angenommene
+Fehlererzeugung war ungeeignet. Die gezielte private Korrektur verwendet einen
+gehaltenen Lock auf einer eigenen synthetischen Tabelle für Fehler 1222 und
+einen dynamischen Zugriff mit explizitem SELECT-Verbot für Fehler 229.
+Diese Fehler werden in privaten Procedurekopien erzeugt und belegen keine
+tatsächlichen DMV-Berechtigungsfehler. Ein separater eingeschränkter Principal
+prüft den unveränderten Analyzer. Quellen-, Caller- und Cleanupbindungen
+werden vor dem nächsten Lauf eng geprüft. Unveränderte bestandene Testfälle
+aus Lauf vier werden über ihre Quellen, gemeinsame Abhängigkeiten und
+gespeicherten Ausgaben wiederverwendet. Das Gesamtbudget steht bei vier von
+höchstens sechs tatsächlichen Versuchen; Lauf fünf ist noch nicht gestartet.
+Für den versionsabhängigen Fallback ist anschließend ausschließlich eine
+gezielte native SQL-Server-2019-Prüfung vorgesehen. Sie prüft den ältesten
+unterstützten Zweig; SQL Server 2022 erhält keinen zusätzlichen Lauf ohne
+einen eigenständigen Versionsbefund.
+
 Der Benutzer hat auch den konkreten WI-0006-Vertrag unmittelbar freigegeben:
 eine rein lesende `monitor.USP_CompileContextAnalysis` mit ausgewähltem
 Datenbank-Konfigurationskontext sowie getrenntem serverweitem Counter-,
