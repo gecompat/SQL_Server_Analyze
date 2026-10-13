@@ -43,6 +43,7 @@ EXEC [monitor].[USP_ExtendedEventsSessions]
 4. Actions, wenn aktiviert.
 5. Targets, wenn aktiviert.
 6. Felder, wenn aktiviert.
+7. `timeBounds`, ausschließlich mit `@MitZeitgrenzen = 1`. Das Zusatzresultset beschreibt die maximale native Dauer und den Runtimezustand derselben ausgewählten Sessions. JSON verwendet nur im aktivierten Pfad Schemaversion 2; der Default behält Version 1. Die [freigegebene Spezifikation](../Architecture/WI0005_Time_Bound_Extended_Events_Public_Specification.md) definiert Felder, Quellenstatus und Schätzgrenzen.
 
 ### Sessions
 

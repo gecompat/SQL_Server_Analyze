@@ -810,6 +810,7 @@ Quelle: `Code/06_ExtendedEvents/010_USP_ExtendedEventsSessions.sql`
     , @Json                            nvarchar(max)  = NULL OUTPUT
     , @PrintMeldungen       bit           = 1
     , @Hilfe                bit           = 0
+    , @MitZeitgrenzen       bit           = 0
 ```
 
 ## `[monitor].[USP_ExtendedEventsTargetRuntime]`

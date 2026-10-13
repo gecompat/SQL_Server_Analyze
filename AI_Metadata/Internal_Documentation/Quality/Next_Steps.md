@@ -41,7 +41,7 @@ synchronisiert, ohne vorhandene Implementierung erneut zu entwickeln.
 
 | Reihenfolge | Tatsächliche Funktionslücke | Nächster konkreter Abschluss |
 |---|---|---|
-| 1 | WI-0005: Zeitgrenzen bestehender Extended-Events-Sessions fehlen. | Freigabe des vorbereiteten opt-in Resultsets timeBounds, vertikale Implementierung und betroffene Tests. |
+| 1 | WI-0005: Die Zeitgrenzenfunktion wird nach unmittelbarer Benutzerfreigabe implementiert. | Vertikale Änderung und unabhängiger Review sind vorbereitet; die native Abnahme und reguläre Lieferung bleiben erforderlich. |
 | 2 | SSIS-001: Legacy-Log- und SSISDB-Laufzeitanalysatoren fehlen; der direkte Paketparser bleibt begrenzt. | Die bestehenden Phase-0-Namen und Abnahmegrenzen in ausführbare Analyserverträge überführen und implementieren. |
 | 3 | WI-0006: OPTIMIZED_SP_EXECUTESQL-Konfiguration und begrenzter Compile-Kontext fehlen. | Bestehende Capability-/Konfigurationsflächen erweitern; eine Einstellung allein erzeugt kein Finding. |
 | 4 | WI-0007: Aggregierte External-Model-Inventur fehlt. | Bestehende SpecialFeatureInventory um die versionsadaptive Quellenklasse ergänzen. |
@@ -50,9 +50,17 @@ synchronisiert, ohne vorhandene Implementierung erneut zu entwickeln.
 
 Die neue öffentliche Diagnosefläche bleibt konkret freigabepflichtig.
 Für WI-0005 liegt die [Freigabevorlage](../../../Documentation/Architecture/WI0005_Time_Bound_Extended_Events_Public_Specification.md) vor.
-Bis zur Freigabe bleibt sie PROPOSED. Die übrigen neuen Verträge werden mit
+Der Benutzer hat diesen Vertrag am 13. Oktober 2026 unmittelbar freigegeben.
+Die übrigen neuen Verträge werden mit
 Quellen-, Kosten-, Datenschutz- und Abnahmegrenzen vorgelegt; bereits
 freigegebene Verträge werden nicht erneut zur Zustimmung gestellt.
+
+Die echte SSISDB-Abnahme wartet auf die vom Benutzer in SQL_Server_Lab
+beauftragte Windows-/SSISDB-Testfunktion. Bis dieser öffentliche Pfad
+einschließlich ausgeführtem Nachweis verfügbar ist, wird dieses Thema
+zurückgestellt. Es wird keine Ersatzinstanz installiert oder eine Linuxquelle
+als SSISDB-Abnahme ausgegeben. Unabhängige freigegebene Funktionen werden
+weiterentwickelt.
 
 Zusätzliche gemischte Mailstatus-Retention wird zunächst zurückgestellt.
 Der integrierte SMTP-Erfolg mit Budget3/3, die integrierte Retention mit

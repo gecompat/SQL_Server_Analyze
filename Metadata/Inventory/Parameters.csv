@@ -803,6 +803,7 @@ USP_ExtendedEventsSessions,JsonErzeugen,bit,0
 USP_ExtendedEventsSessions,Json,nvarchar(max),NULL OUTPUT
 USP_ExtendedEventsSessions,PrintMeldungen,bit,1
 USP_ExtendedEventsSessions,Hilfe,bit,0
+USP_ExtendedEventsSessions,MitZeitgrenzen,bit,0
 USP_ExtendedEventsReadEvents,SourceExtendedEventSessionName,nvarchar(258),N'system_health'
 USP_ExtendedEventsReadEvents,Quelle,varchar(20),'EVENT_FILE'
 USP_ExtendedEventsReadEvents,FilePath,nvarchar(4000),NULL
