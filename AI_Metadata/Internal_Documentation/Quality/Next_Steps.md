@@ -43,7 +43,7 @@ synchronisiert, ohne vorhandene Implementierung erneut zu entwickeln.
 |---|---|---|
 | 1 | WI-0005: Die Zeitgrenzenfunktion wird nach unmittelbarer Benutzerfreigabe implementiert. | Vertikale Änderung und unabhängiger Review sind vorbereitet; die native Abnahme und reguläre Lieferung bleiben erforderlich. |
 | 2 | SSIS-001: Legacy-Log- und SSISDB-Laufzeitanalysatoren fehlen; der direkte Paketparser bleibt begrenzt. | Die bestehenden Phase-0-Namen und Abnahmegrenzen in ausführbare Analyserverträge überführen und implementieren. |
-| 3 | WI-0006: OPTIMIZED_SP_EXECUTESQL-Konfiguration und begrenzter Compile-Kontext fehlen. | Bestehende Capability-/Konfigurationsflächen erweitern; eine Einstellung allein erzeugt kein Finding. |
+| 3 | WI-0006: Gemeinsamer Capability- und Compile-Kontext fehlt. | Die freigegebene USP_CompileContextAnalysis implementieren und vorhandene Konfigurations- sowie Counterflächen wiederverwenden. |
 | 4 | WI-0007: Aggregierte External-Model-Inventur fehlt. | Bestehende SpecialFeatureInventory um die versionsadaptive Quellenklasse ergänzen. |
 | 5 | WI-0009: Lokale External-Data-Analyse fehlt. | Nach WI-0007 die lokale Kataloganalyse implementieren; keine Remotezugriffe, Locations, Credentials oder Payloads. |
 | 6 | WI-0004: Optionale begrenzte Segmentüberlappung fehlt. | Eigenen opt-in Deep-Vertrag freigeben und ausschließlich erforderliche Segmente prüfen. |
@@ -77,6 +77,22 @@ Quellenretention und ihre unverändert strengen Fehlerflags sind unabhängig
 geprüft; der nächste Lauf soll die fehlenden Vergleichsdaten sichern oder
 die Abnahme abschließen. Ein automatisches Ausschöpfen der Obergrenze ist
 nicht autorisiert.
+
+Der dritte tatsächliche Lauf bleibt ebenfalls nicht qualifiziert. Die ergänzte
+Retention hat diesmal im Defaultfall unveränderte native Session-IDs und
+Runtimeadressen bei geringfügig verschiedenen Startzeitwerten gesichert.
+Der Abbruch entstand an der exakten Vorher-/Nachher-Zeitbedingung der Fixture.
+Dieser Befund begründet einen begrenzten Orakelvergleich entsprechend
+[Common151](../../../Code/Tests/Common/151_XESessions_Collation_Runtime_Contract.sql):
+exakte Identitäts- und Adressbindung, erhaltene NULL-Regeln und höchstens
+zehn Millisekunden Abweichung gegen beide Quellenaufnahmen. Die
+gleichaufrufbezogene physische TABLE-/JSON-Parität bleibt exakt. Die neue
+Korrektur und ihre Grenzproben werden vor weiterer Runtime eng geprüft.
+Die konkrete Ursache des zweiten Laufs bleibt unbekannt; aus dem dritten
+Lauf wird weder dessen Ursache noch eine allgemeine Zeitgarantie abgeleitet.
+Eigener Runtime-Cleanup, Quellenpins und Bestandsvergleich bestanden erneut.
+Das Gesamtbudget steht jetzt bei drei von höchstens sechs Versuchen über alle
+Engines; die Zählung bleibt bei einem Versions- oder Lanewechsel erhalten.
 
 Der Benutzer hat auch den konkreten WI-0006-Vertrag unmittelbar freigegeben:
 eine rein lesende `monitor.USP_CompileContextAnalysis` mit ausgewähltem
