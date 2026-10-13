@@ -9,6 +9,7 @@ IF DB_ID(N'ExampleSpecialSourceÄ') IS NOT NULL OR DB_ID(N'ExampleSpecialSource�
     THROW 56050,N'Special feature fixture already exists.',1;
 DECLARE @OriginalLockTimeout int=@@LOCK_TIMEOUT;
 DECLARE @OwnedUpperId int=NULL,@OwnedLowerId int=NULL;
+DECLARE @OwnCodesCreated bit=0,@OwnCountsCreated bit=0,@OwnCollectedCreated bit=0;
 BEGIN TRY
     CREATE DATABASE [ExampleSpecialSourceÄ] COLLATE Latin1_General_100_CI_AS;
     SET @OwnedUpperId=DB_ID(N'ExampleSpecialSourceÄ');
@@ -20,12 +21,14 @@ BEGIN TRY
     EXEC(N'USE [ExampleSpecialSourceä]; CREATE TABLE [dbo].[ExampleFeatureTable]([ExampleAlias] [dbo].[ExampleAlias], [ExampleXml] xml, [ExampleSpatial] geometry);');
     CREATE TABLE [#SpecialFeatureCollationRuntimeContract_Codes]
     ([FeatureCode] varchar(64) COLLATE SQL_Latin1_General_CP1_CS_AS PRIMARY KEY);
+    SET @OwnCodesCreated=1;
     INSERT [#SpecialFeatureCollationRuntimeContract_Codes] VALUES
       ('IN_MEMORY_OLTP'),('TEMPORAL'),('SERVICE_BROKER'),('FULL_TEXT'),('CHANGE_TRACKING'),('CDC'),
       ('ENCRYPTION'),('CLR'),('EXTERNAL_TABLES'),('EXTERNAL_RUNTIME'),('EXTERNAL_SCRIPTS'),('EXTERNAL_MODELS'),
       ('FILESTREAM_FILETABLE'),('GRAPH'),('SPATIAL'),('XML'),('JSON_NATIVE'),('VECTOR'),('USER_DEFINED_TYPES');
     CREATE TABLE [#SpecialFeatureCollationRuntimeContract_DetectedCounts]
     ([DatabaseName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS PRIMARY KEY,[DetectedRows] bigint NOT NULL);
+    SET @OwnCountsCreated=1;
     DECLARE @Case int=0,@Limit int,@DetectedOnly bit,@Selection nvarchar(max),@Json nvarchar(max);
     DECLARE @TableJson nvarchar(max),@Count bigint,@Status varchar(40),@Partial bit,@FullDetectedCount bigint;
     DECLARE @FirstDatabase sysname,@FirstCode varchar(64);
@@ -43,6 +46,7 @@ BEGIN TRY
                             WHEN @Case=4 THEN N'[ExampleSpecialSourceä]|[ExampleSpecialSourceÄ]|[ExampleSpecialMissingÖ]'
                             ELSE N'[ExampleSpecialSourceä]|[ExampleSpecialSourceÄ]' END;
         CREATE TABLE [#SpecialFeatureCollationRuntimeContract_Collected]([Seed] bit NULL);
+        SET @OwnCollectedCreated=1;
         SET LOCK_TIMEOUT 739;
         EXEC [monitor].[USP_SpecialFeatureInventory]
               @DatabaseNames=@Selection,@NurErkannteFeatures=@DetectedOnly,@MaxZeilen=@Limit,
@@ -131,8 +135,11 @@ BEGIN TRY
                           OR COALESCE([j].[FeatureRows],-1)<>0 OR COALESCE([j].[DetectedFeatureRows],-1)<>0 OR COALESCE(CONVERT(int,[j].[IsPartial]),-1)<>1)))
             THROW 56060,N'Special feature per-database full status failed.',1;
         DROP TABLE [#SpecialFeatureCollationRuntimeContract_Collected];
+        SET @OwnCollectedCreated=0;
         SET @Case+=1;
     END;
+    DROP TABLE [#SpecialFeatureCollationRuntimeContract_DetectedCounts];SET @OwnCountsCreated=0;
+    DROP TABLE [#SpecialFeatureCollationRuntimeContract_Codes];SET @OwnCodesCreated=0;
     IF COALESCE(DB_ID(N'ExampleSpecialSourceä'),-1)<>COALESCE(@OwnedLowerId,-2)
        OR COALESCE(DB_ID(N'ExampleSpecialSourceÄ'),-1)<>COALESCE(@OwnedUpperId,-2)
         THROW 56063,N'Special feature owned database identity changed.',1;
@@ -144,18 +151,52 @@ BEGIN TRY
     EXEC [sys].[sp_executesql] @SuccessRestoreSql;
 END TRY
 BEGIN CATCH
+    SELECT N'ORIGINAL_FEATURE_MATRIX_FAILURE' [FrameType],ERROR_NUMBER() [ErrorNumber],ERROR_MESSAGE() [ErrorMessage];
     DECLARE @RestoreSql nvarchar(64)=N'SET LOCK_TIMEOUT '+CONVERT(nvarchar(20),@OriginalLockTimeout)+N';';
-    EXEC [sys].[sp_executesql] @RestoreSql;
-    IF @OwnedLowerId IS NOT NULL AND DB_ID(N'ExampleSpecialSourceä')=@OwnedLowerId
-    BEGIN
-        ALTER DATABASE [ExampleSpecialSourceä] SET SINGLE_USER WITH ROLLBACK IMMEDIATE;
-        DROP DATABASE [ExampleSpecialSourceä];
-    END;
-    IF @OwnedUpperId IS NOT NULL AND DB_ID(N'ExampleSpecialSourceÄ')=@OwnedUpperId
-    BEGIN
-        ALTER DATABASE [ExampleSpecialSourceÄ] SET SINGLE_USER WITH ROLLBACK IMMEDIATE;
-        DROP DATABASE [ExampleSpecialSourceÄ];
-    END;
+    BEGIN TRY
+        EXEC [sys].[sp_executesql] @RestoreSql;
+    END TRY
+    BEGIN CATCH
+        SELECT N'OWN_FEATURE_MATRIX_CLEANUP_FAILURE' [FrameType],N'CALLER_RESTORE' [CleanupStep],ERROR_NUMBER() [ErrorNumber],ERROR_MESSAGE() [ErrorMessage];
+    END CATCH;
+    BEGIN TRY
+        IF @OwnCollectedCreated=1 DROP TABLE [#SpecialFeatureCollationRuntimeContract_Collected];
+    END TRY
+    BEGIN CATCH
+        SELECT N'OWN_FEATURE_MATRIX_CLEANUP_FAILURE' [FrameType],N'Collected' [CleanupStep],ERROR_NUMBER() [ErrorNumber],ERROR_MESSAGE() [ErrorMessage];
+    END CATCH;
+    BEGIN TRY
+        IF @OwnCountsCreated=1 DROP TABLE [#SpecialFeatureCollationRuntimeContract_DetectedCounts];
+    END TRY
+    BEGIN CATCH
+        SELECT N'OWN_FEATURE_MATRIX_CLEANUP_FAILURE' [FrameType],N'DetectedCounts' [CleanupStep],ERROR_NUMBER() [ErrorNumber],ERROR_MESSAGE() [ErrorMessage];
+    END CATCH;
+    BEGIN TRY
+        IF @OwnCodesCreated=1 DROP TABLE [#SpecialFeatureCollationRuntimeContract_Codes];
+    END TRY
+    BEGIN CATCH
+        SELECT N'OWN_FEATURE_MATRIX_CLEANUP_FAILURE' [FrameType],N'Codes' [CleanupStep],ERROR_NUMBER() [ErrorNumber],ERROR_MESSAGE() [ErrorMessage];
+    END CATCH;
+    BEGIN TRY
+        IF @OwnedLowerId IS NOT NULL AND DB_ID(N'ExampleSpecialSourceä')=@OwnedLowerId
+        BEGIN
+            ALTER DATABASE [ExampleSpecialSourceä] SET SINGLE_USER WITH ROLLBACK IMMEDIATE;
+            DROP DATABASE [ExampleSpecialSourceä];
+        END;
+    END TRY
+    BEGIN CATCH
+        SELECT N'OWN_FEATURE_MATRIX_CLEANUP_FAILURE' [FrameType],N'OwnedLowerId' [CleanupStep],ERROR_NUMBER() [ErrorNumber],ERROR_MESSAGE() [ErrorMessage];
+    END CATCH;
+    BEGIN TRY
+        IF @OwnedUpperId IS NOT NULL AND DB_ID(N'ExampleSpecialSourceÄ')=@OwnedUpperId
+        BEGIN
+            ALTER DATABASE [ExampleSpecialSourceÄ] SET SINGLE_USER WITH ROLLBACK IMMEDIATE;
+            DROP DATABASE [ExampleSpecialSourceÄ];
+        END;
+    END TRY
+    BEGIN CATCH
+        SELECT N'OWN_FEATURE_MATRIX_CLEANUP_FAILURE' [FrameType],N'OwnedUpperId' [CleanupStep],ERROR_NUMBER() [ErrorNumber],ERROR_MESSAGE() [ErrorMessage];
+    END CATCH;
     THROW;
 END CATCH;
 PRINT N'SPECIAL_FEATURE_COLLATION_RUNTIME_CONTRACT PASS';
