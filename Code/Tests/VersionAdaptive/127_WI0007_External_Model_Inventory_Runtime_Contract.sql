@@ -81,17 +81,34 @@ SELECT @pId=[external_model_id] FROM [sys].[external_models] WITH(NOLOCK) WHERE 
         BEGIN
             IF (SELECT COUNT_BIG(*) FROM OPENJSON(@Json,N'$.features') WITH([FeatureCode] varchar(64)) WHERE [FeatureCode]='EXTERNAL_MODELS')<>1
                 THROW 56905,N'WI-0007: External model feature missing.',1;
-            IF EXISTS(SELECT 1 FROM OPENJSON(@Json,N'$.features')
-                WITH([FeatureCode] varchar(64),[DatabaseName] sysname,[DetectionStatus] varchar(40),[DetectedItemCount] bigint,
-                    [ConfigurationState] nvarchar(120),[SourceObjects] nvarchar(1000),[RecommendedModule] sysname,[RecommendedModuleStatus] varchar(40))
-                WHERE [FeatureCode]='EXTERNAL_MODELS' AND
-                    ([DatabaseName] COLLATE SQL_Latin1_General_CP1_CS_AS<>@Db COLLATE SQL_Latin1_General_CP1_CS_AS
-                     OR [DetectionStatus]<>@ExpectedStatus OR [DetectedItemCount]<>@ExpectedCount
-                     OR ([DetectedItemCount] IS NULL AND @ExpectedCount IS NOT NULL)
-                     OR ([DetectedItemCount] IS NOT NULL AND @ExpectedCount IS NULL)
-                     OR [ConfigurationState] IS NOT NULL OR [SourceObjects]<>N'sys.external_models'
-                     OR [RecommendedModule] IS NOT NULL OR [RecommendedModuleStatus]<>'NOT_PLANNED'))
+            SELECT [FeatureCode],[DatabaseName],[DetectionStatus],[DetectedItemCount],
+                [ConfigurationState],[SourceObjects],[RecommendedModule],[RecommendedModuleStatus],
+                CONVERT(bit,CASE WHEN [DatabaseName] IS NULL OR [DatabaseName] COLLATE SQL_Latin1_General_CP1_CS_AS<>@Db COLLATE SQL_Latin1_General_CP1_CS_AS THEN 1 ELSE 0 END) [DatabaseMismatch],
+                CONVERT(bit,CASE WHEN [DetectionStatus] IS NULL OR [DetectionStatus]<>@ExpectedStatus THEN 1 ELSE 0 END) [StatusMismatch],
+                CONVERT(bit,CASE WHEN [DetectedItemCount]<>@ExpectedCount
+                    OR ([DetectedItemCount] IS NULL AND @ExpectedCount IS NOT NULL)
+                    OR ([DetectedItemCount] IS NOT NULL AND @ExpectedCount IS NULL) THEN 1 ELSE 0 END) [CountMismatch],
+                CONVERT(bit,CASE WHEN [ConfigurationState] IS NOT NULL THEN 1 ELSE 0 END) [ConfigurationMismatch],
+                CONVERT(bit,CASE WHEN [SourceObjects] IS NULL OR [SourceObjects]<>N'sys.external_models' THEN 1 ELSE 0 END) [SourceMismatch],
+                CONVERT(bit,CASE WHEN [RecommendedModule] IS NOT NULL THEN 1 ELSE 0 END) [ModuleMismatch],
+                CONVERT(bit,CASE WHEN [RecommendedModuleStatus] IS NULL OR [RecommendedModuleStatus]<>'NOT_PLANNED' THEN 1 ELSE 0 END) [ModuleStatusMismatch]
+            INTO [#ExampleExternalModelGuard]
+            FROM OPENJSON(@Json,N'$.features')
+                WITH([FeatureCode] varchar(64),[DatabaseName] nvarchar(128),[DetectionStatus] varchar(40),[DetectedItemCount] bigint,
+                    [ConfigurationState] nvarchar(120),[SourceObjects] nvarchar(1000),[RecommendedModule] nvarchar(128),[RecommendedModuleStatus] varchar(40))
+            WHERE [FeatureCode]='EXTERNAL_MODELS';
+            SELECT N'TYPED_GUARD_BEFORE_ASSERTION' [FrameType],@Case [CaseNumber],@Db [ExpectedDatabaseName],
+                @ExpectedStatus [ExpectedStatus],@ExpectedCount [ExpectedCount],*
+            FROM [#ExampleExternalModelGuard];
+            SELECT N'ALIAS_PARSE_OBSERVATION' [FrameType],@Case [CaseNumber],[DatabaseName],LEN([DatabaseName]) [ParsedNameLength],[RecommendedModule]
+            FROM OPENJSON(@Json,N'$.features')
+                WITH([FeatureCode] varchar(64),[DatabaseName] sysname,[RecommendedModule] sysname)
+            WHERE [FeatureCode]='EXTERNAL_MODELS';
+            IF EXISTS(SELECT 1 FROM [#ExampleExternalModelGuard]
+                WHERE [DatabaseMismatch]=1 OR [StatusMismatch]=1 OR [CountMismatch]=1 OR [ConfigurationMismatch]=1
+                    OR [SourceMismatch]=1 OR [ModuleMismatch]=1 OR [ModuleStatusMismatch]=1)
                 THROW 56906,N'WI-0007: External model aggregate or fallback mismatch.',1;
+            DROP TABLE [#ExampleExternalModelGuard];
         END;
         IF @OnlyDetected=1 AND @Major<17 AND EXISTS(SELECT 1 FROM OPENJSON(@Json,N'$.features') WITH([FeatureCode] varchar(64)) WHERE [FeatureCode]='EXTERNAL_MODELS')
             THROW 56907,N'WI-0007: Detected-only filter retained unavailable feature.',1;
