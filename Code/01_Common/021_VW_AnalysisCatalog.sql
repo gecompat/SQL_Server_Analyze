@@ -4,8 +4,8 @@ GO
 /*
 ===============================================================================
 Objekt       : monitor.VW_AnalysisCatalog
-Version      : 1.3.0
-Stand        : 2026-07-25
+Version      : 1.4.0
+Stand        : 2026-10-13
 Typ          : View
 Zweck        : Katalogisiert jede öffentliche Framework-Procedure nach
                Anwenderrolle, Themenbereich, Scope, Evidenzart, Kostenprofil,

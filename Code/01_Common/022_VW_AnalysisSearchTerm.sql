@@ -4,8 +4,8 @@ GO
 /*
 ===============================================================================
 Objekt       : monitor.VW_AnalysisSearchTerm
-Version      : 1.2.0
-Stand        : 2026-07-23
+Version      : 1.3.0
+Stand        : 2026-10-13
 Typ          : View
 Zweck        : Liefert deutsch- und englischsprachige Symptome, Ziele,
                Synonyme und technische Suchbegriffe für den Analysis Navigator.

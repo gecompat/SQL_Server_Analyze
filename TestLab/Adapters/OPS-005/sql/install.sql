@@ -255,8 +255,8 @@ GO
 /*
 ===============================================================================
 Objekt       : monitor.VW_AnalysisCatalog
-Version      : 1.3.0
-Stand        : 2026-07-25
+Version      : 1.4.0
+Stand        : 2026-10-13
 Typ          : View
 Zweck        : Katalogisiert jede öffentliche Framework-Procedure nach
                Anwenderrolle, Themenbereich, Scope, Evidenzart, Kostenprofil,
@@ -430,8 +430,8 @@ GO
 /*
 ===============================================================================
 Objekt       : monitor.VW_AnalysisSearchTerm
-Version      : 1.2.0
-Stand        : 2026-07-23
+Version      : 1.3.0
+Stand        : 2026-10-13
 Typ          : View
 Zweck        : Liefert deutsch- und englischsprachige Symptome, Ziele,
                Synonyme und technische Suchbegriffe für den Analysis Navigator.
@@ -707,8 +707,8 @@ GO
 /*
 ===============================================================================
 Objekt       : monitor.VW_AnalysisRelation
-Version      : 1.1.0
-Stand        : 2026-07-23
+Version      : 1.2.0
+Stand        : 2026-10-13
 Typ          : View
 Zweck        : Beschreibt fachlich begründete Übergänge zwischen öffentlichen
                Analyse-Procedures für priorisierte nächste Schritte.
@@ -849,6 +849,7 @@ AS
         , (N'USP_ServerHealthAnalysis','CONFIRM_WITH',N'USP_DiagnosticFindings',1,N'Healthresultsets in normalisierte, priorisierte Findings mit Aussagegrenzen überführen.')
         , (N'USP_DatabaseIntegrityAnalysis','CONFIRM_WITH',N'USP_BackupRecovery',1,N'Integritätsevidenz mit Backupfrische, Recovery-Modell und Restorefähigkeit verbinden.')
         , (N'USP_DatabaseCapacityAnalysis','CONFIRM_WITH',N'USP_CurrentIO',1,N'Kapazität, Wachstum und freien Platz gegen aktuelle Datei- und Volume-I/O-Signale prüfen.')
+        , (N'USP_CompileContextAnalysis','CONFIRM_WITH',N'USP_PlanCacheHealth',1,N'Compile-Counter und Compile-Waits mit der serverweiten Plan-Cache-Sicht einordnen; Datenbankkonfiguration und Serverwerte behalten ihren getrennten Scope.')
         , (N'USP_PerformanceCounters','CONFIRM_WITH',N'USP_CurrentWaits',1,N'Counter-Deltas mit aktuellen Waitklassen und Requests einordnen.')
         , (N'USP_CriticalEngineEvents','CONFIRM_WITH',N'USP_ErrorLogAnalysis',1,N'Kritische Ringbuffer- und Systemsignale mit begrenzten Errorlogmustern abgleichen.')
         , (N'USP_InternalContentionAnalysis','CONFIRM_WITH',N'USP_CurrentWaits',1,N'Interne Latch-/Spinlocksignale gegen aktuelle Waitverteilung prüfen.')
@@ -49747,8 +49748,8 @@ BEGIN
             BEGIN
                 SELECT @SourceKey=CASE WHEN @Phase=0 THEN 'SERVER_START_BEFORE' ELSE 'SERVER_START_AFTER' END,@SourceStatus='AVAILABLE',@SourceError=NULL,@SourceMessage=NULL,@SourceRows=0,@SourceTime=SYSUTCDATETIME();
                 BEGIN TRY
-                    IF @Phase=0 SELECT @ServerStartBefore=[sqlserver_start_time] FROM [sys].[dm_os_sys_info];
-                    ELSE SELECT @ServerStartAfter=[sqlserver_start_time] FROM [sys].[dm_os_sys_info];
+                    IF @Phase=0 SELECT @ServerStartBefore=[sqlserver_start_time] FROM [sys].[dm_os_sys_info] WITH (NOLOCK);
+                    ELSE SELECT @ServerStartAfter=[sqlserver_start_time] FROM [sys].[dm_os_sys_info] WITH (NOLOCK);
                     SET @SourceRows=@@ROWCOUNT;
                     IF @SourceRows<>1 OR (@Phase=0 AND @ServerStartBefore IS NULL) OR (@Phase=1 AND @ServerStartAfter IS NULL) SET @SourceStatus='SOURCE_UNAVAILABLE';
                 END TRY
@@ -49759,7 +49760,7 @@ BEGIN
                 SELECT @SourceKey=CASE WHEN @Phase=0 THEN 'COUNTERS_BEFORE' ELSE 'COUNTERS_AFTER' END,@SourceStatus='AVAILABLE',@SourceError=NULL,@SourceMessage=NULL,@SourceRows=0;
                 BEGIN TRY
                     INSERT [#CompileContextAnalysis_CounterRaw]
-                    SELECT @Phase,[object_name],[counter_name],[instance_name],[cntr_type],[cntr_value] FROM [sys].[dm_os_performance_counters]
+                    SELECT @Phase,[object_name],[counter_name],[instance_name],[cntr_type],[cntr_value] FROM [sys].[dm_os_performance_counters] WITH (NOLOCK)
                     WHERE RTRIM([object_name]) COLLATE SQL_Latin1_General_CP1_CS_AS LIKE N'%:SQL Statistics'
                       AND [counter_name] COLLATE SQL_Latin1_General_CP1_CS_AS IN(N'Batch Requests/sec',N'SQL Compilations/sec',N'SQL Re-Compilations/sec');
                     SET @SourceRows=@@ROWCOUNT;
@@ -49773,7 +49774,7 @@ BEGIN
                 INSERT [#CompileContextAnalysis_Observations] VALUES(@SourceKey,NULL,NULL,N'sys.dm_os_performance_counters',COALESCE(@CounterEnd,@CounterStart),@SourceStatus,CONVERT(bit,CASE WHEN @SourceStatus='AVAILABLE' THEN 0 ELSE 1 END),@SourceRows,@SourceError,@SourceMessage,@CounterLimit,2);
                 SELECT @SourceKey=CASE WHEN @Phase=0 THEN 'WAITS_BEFORE' ELSE 'WAITS_AFTER' END,@SourceStatus='AVAILABLE',@SourceError=NULL,@SourceMessage=NULL,@SourceRows=0;
                 BEGIN TRY
-                    INSERT [#CompileContextAnalysis_WaitRaw] SELECT @Phase,[wait_type],[waiting_tasks_count],[wait_time_ms],[signal_wait_time_ms] FROM [sys].[dm_os_wait_stats] WHERE [wait_type] COLLATE SQL_Latin1_General_CP1_CS_AS=N'RESOURCE_SEMAPHORE_QUERY_COMPILE';
+                    INSERT [#CompileContextAnalysis_WaitRaw] SELECT @Phase,[wait_type],[waiting_tasks_count],[wait_time_ms],[signal_wait_time_ms] FROM [sys].[dm_os_wait_stats] WITH (NOLOCK) WHERE [wait_type] COLLATE SQL_Latin1_General_CP1_CS_AS=N'RESOURCE_SEMAPHORE_QUERY_COMPILE';
                     SET @SourceRows=@@ROWCOUNT;
                     IF @SourceRows<>1 SET @SourceStatus='SOURCE_UNAVAILABLE';
                 END TRY
@@ -49822,7 +49823,7 @@ BEGIN
             SELECT @SourceStatus='AVAILABLE',@SourceError=NULL,@SourceMessage=NULL,@SourceRows=0,@SourceTime=SYSUTCDATETIME();
             BEGIN TRY
                 INSERT [#CompileContextAnalysis_cache]
-                SELECT [type] COLLATE SQL_Latin1_General_CP1_CS_AS,SUM(CONVERT(bigint,[entries_count])),SUM(CONVERT(bigint,[pages_kb])),@SourceTime,'AVAILABLE',@CacheLimit FROM [sys].[dm_os_memory_cache_counters]
+                SELECT [type] COLLATE SQL_Latin1_General_CP1_CS_AS,SUM(CONVERT(bigint,[entries_count])),SUM(CONVERT(bigint,[pages_kb])),@SourceTime,'AVAILABLE',@CacheLimit FROM [sys].[dm_os_memory_cache_counters] WITH (NOLOCK)
                 WHERE [type] COLLATE SQL_Latin1_General_CP1_CS_AS IN(N'CACHESTORE_SQLCP',N'CACHESTORE_OBJCP') GROUP BY [type] COLLATE SQL_Latin1_General_CP1_CS_AS;
                 SET @SourceRows=@@ROWCOUNT;
                 IF @SourceRows<>2 SET @SourceStatus='SOURCE_UNAVAILABLE';

@@ -163,28 +163,36 @@ SET @CounterProjection=SUBSTRING(@Definition,@Start,@End-@Start);
 SET @Start=@End;SET @End=CHARINDEX(N'SELECT @SourceStatus=',@Definition,@Start+1);
 IF @End<=@Start THROW 56874,N'WI-0006: Wait projection binding missing.',1;
 SET @WaitProjection=SUBSTRING(@Definition,@Start,@End-@Start);
-CREATE TABLE [#CompileContextAnalysis_CounterRaw]
+SET @CounterProjection=REPLACE(@CounterProjection,N'[#CompileContextAnalysis_CounterRaw]',N'[#ExampleCompileGuard_CounterRaw]');
+SET @WaitProjection=REPLACE(@WaitProjection,N'[#CompileContextAnalysis_CounterRaw]',N'[#ExampleCompileGuard_CounterRaw]');
+SET @CounterProjection=REPLACE(@CounterProjection,N'[#CompileContextAnalysis_WaitRaw]',N'[#ExampleCompileGuard_WaitRaw]');
+SET @WaitProjection=REPLACE(@WaitProjection,N'[#CompileContextAnalysis_WaitRaw]',N'[#ExampleCompileGuard_WaitRaw]');
+SET @CounterProjection=REPLACE(@CounterProjection,N'[#CompileContextAnalysis_counters]',N'[#ExampleCompileGuard_counters]');
+SET @WaitProjection=REPLACE(@WaitProjection,N'[#CompileContextAnalysis_counters]',N'[#ExampleCompileGuard_counters]');
+SET @CounterProjection=REPLACE(@CounterProjection,N'[#CompileContextAnalysis_waits]',N'[#ExampleCompileGuard_waits]');
+SET @WaitProjection=REPLACE(@WaitProjection,N'[#CompileContextAnalysis_waits]',N'[#ExampleCompileGuard_waits]');
+CREATE TABLE [#ExampleCompileGuard_CounterRaw]
 ([Phase] tinyint,[ObjectName] nvarchar(128) COLLATE SQL_Latin1_General_CP1_CS_AS,[CounterName] nvarchar(128) COLLATE SQL_Latin1_General_CP1_CS_AS,
  [InstanceName] nvarchar(128) COLLATE SQL_Latin1_General_CP1_CS_AS,[CounterType] int,[CounterValue] bigint);
-CREATE TABLE [#CompileContextAnalysis_WaitRaw]
+CREATE TABLE [#ExampleCompileGuard_WaitRaw]
 ([Phase] tinyint,[WaitType] nvarchar(120) COLLATE SQL_Latin1_General_CP1_CS_AS,[WaitingTasksCount] bigint,[WaitTimeMs] bigint,[SignalWaitTimeMs] bigint);
-CREATE TABLE [#CompileContextAnalysis_counters]([ObjectName] nvarchar(128) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL , [CounterName] nvarchar(128) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL , [InstanceName] nvarchar(128) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL , [CounterType] int NOT NULL , [BeforeValue] bigint NULL , [AfterValue] bigint NOT NULL , [DeltaValue] bigint NULL , [RatePerSecond] decimal(38,6) NULL , [Interpretation] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL , [SampleStartUtc] datetime2(7) NULL , [SampleEndUtc] datetime2(7) NOT NULL , [ElapsedSeconds] decimal(19,6) NULL , [ResetDetected] bit NOT NULL , [SqlServerStartTime] datetime2(3) NULL , [SourceStatus] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL , [EvidenceLimit] nvarchar(1000) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL);
-CREATE TABLE [#CompileContextAnalysis_waits]([WaitType] nvarchar(120) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL , [BeforeWaitingTasksCount] bigint NULL , [AfterWaitingTasksCount] bigint NOT NULL , [DeltaWaitingTasksCount] bigint NULL , [BeforeWaitTimeMs] bigint NULL , [AfterWaitTimeMs] bigint NOT NULL , [DeltaWaitTimeMs] bigint NULL , [BeforeSignalWaitTimeMs] bigint NULL , [AfterSignalWaitTimeMs] bigint NOT NULL , [DeltaSignalWaitTimeMs] bigint NULL , [SampleStartUtc] datetime2(7) NULL , [SampleEndUtc] datetime2(7) NOT NULL , [ElapsedSeconds] decimal(19,6) NULL , [ResetDetected] bit NOT NULL , [SourceStatus] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL , [EvidenceLimit] nvarchar(1000) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL);
+CREATE TABLE [#ExampleCompileGuard_counters]([ObjectName] nvarchar(128) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL , [CounterName] nvarchar(128) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL , [InstanceName] nvarchar(128) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL , [CounterType] int NOT NULL , [BeforeValue] bigint NULL , [AfterValue] bigint NOT NULL , [DeltaValue] bigint NULL , [RatePerSecond] decimal(38,6) NULL , [Interpretation] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL , [SampleStartUtc] datetime2(7) NULL , [SampleEndUtc] datetime2(7) NOT NULL , [ElapsedSeconds] decimal(19,6) NULL , [ResetDetected] bit NOT NULL , [SqlServerStartTime] datetime2(3) NULL , [SourceStatus] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL , [EvidenceLimit] nvarchar(1000) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL);
+CREATE TABLE [#ExampleCompileGuard_waits]([WaitType] nvarchar(120) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL , [BeforeWaitingTasksCount] bigint NULL , [AfterWaitingTasksCount] bigint NOT NULL , [DeltaWaitingTasksCount] bigint NULL , [BeforeWaitTimeMs] bigint NULL , [AfterWaitTimeMs] bigint NOT NULL , [DeltaWaitTimeMs] bigint NULL , [BeforeSignalWaitTimeMs] bigint NULL , [AfterSignalWaitTimeMs] bigint NOT NULL , [DeltaSignalWaitTimeMs] bigint NULL , [SampleStartUtc] datetime2(7) NULL , [SampleEndUtc] datetime2(7) NOT NULL , [ElapsedSeconds] decimal(19,6) NULL , [ResetDetected] bit NOT NULL , [SourceStatus] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL , [EvidenceLimit] nvarchar(1000) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL);
 DECLARE @Case int=0,@ExpectedReset bit,@ExpectedDelta bigint,@ExpectedRate decimal(38,6),@Type int,@After bigint;
 WHILE @Case<10
 BEGIN
-    DELETE FROM [#CompileContextAnalysis_CounterRaw];DELETE FROM [#CompileContextAnalysis_counters];
+    DELETE FROM [#ExampleCompileGuard_CounterRaw];DELETE FROM [#ExampleCompileGuard_counters];
     SELECT @Type=CASE WHEN @Case IN(3,4) THEN 999 WHEN @Case=9 THEN 272696576 ELSE 272696320 END,@After=CASE WHEN @Case IN(1,4) THEN 9 ELSE 14 END,
         @ServerReset=CASE WHEN @Case=2 THEN 1 ELSE 0 END,@ServerComparable=CASE WHEN @Case IN(2,8) THEN 0 ELSE 1 END,
         @SampleSeconds=CASE WHEN @Case=7 THEN 0 ELSE 1 END;
-    IF @Case<>5 AND @Case<>7 INSERT [#CompileContextAnalysis_CounterRaw] VALUES(0,CASE WHEN @Case=6 THEN N'ExampleWrongObject' ELSE N'Example:SQL Statistics' END,N'SQL Compilations/sec',N'',CASE WHEN @Case=9 THEN 272696320 ELSE @Type END,10);
-    INSERT [#CompileContextAnalysis_CounterRaw] VALUES(1,N'Example:SQL Statistics',N'SQL Compilations/sec',N'',@Type,@After);
+    IF @Case<>5 AND @Case<>7 INSERT [#ExampleCompileGuard_CounterRaw] VALUES(0,CASE WHEN @Case=6 THEN N'ExampleWrongObject' ELSE N'Example:SQL Statistics' END,N'SQL Compilations/sec',N'',CASE WHEN @Case=9 THEN 272696320 ELSE @Type END,10);
+    INSERT [#ExampleCompileGuard_CounterRaw] VALUES(1,N'Example:SQL Statistics',N'SQL Compilations/sec',N'',@Type,@After);
     SELECT @ExpectedReset=CASE WHEN @Case IN(1,2,4) THEN 1 ELSE 0 END,@ExpectedDelta=CASE WHEN @Case=0 THEN 4 END,@ExpectedRate=CASE WHEN @Case=0 THEN 2 END;
     EXEC [sys].[sp_executesql] @CounterProjection,
         N'@SampleSeconds tinyint,@ServerComparable bit,@ServerReset bit,@CounterElapsed decimal(19,6),@CounterStart datetime2(7),@CounterEnd datetime2(7),@ServerStartAfter datetime2(3),@CounterLimit nvarchar(1000)',
         @SampleSeconds=@SampleSeconds,@ServerComparable=@ServerComparable,@ServerReset=@ServerReset,@CounterElapsed=@CounterElapsed,@CounterStart=@CounterStart,@CounterEnd=@CounterEnd,@ServerStartAfter=@ServerStartAfter,@CounterLimit=@CounterLimit;
-    SELECT N'SYNTHETIC_COUNTER_BEFORE_ASSERTION' [FrameType],@Case [CaseNumber],* FROM [#CompileContextAnalysis_counters];
-    IF (SELECT COUNT(*) FROM [#CompileContextAnalysis_counters])<>1 OR EXISTS(SELECT 1 FROM [#CompileContextAnalysis_counters] WHERE [ResetDetected]<>@ExpectedReset
+    SELECT N'SYNTHETIC_COUNTER_BEFORE_ASSERTION' [FrameType],@Case [CaseNumber],* FROM [#ExampleCompileGuard_counters];
+    IF (SELECT COUNT(*) FROM [#ExampleCompileGuard_counters])<>1 OR EXISTS(SELECT 1 FROM [#ExampleCompileGuard_counters] WHERE [ResetDetected]<>@ExpectedReset
         OR ([DeltaValue] IS NULL AND @ExpectedDelta IS NOT NULL) OR ([DeltaValue] IS NOT NULL AND @ExpectedDelta IS NULL) OR [DeltaValue]<>@ExpectedDelta
         OR ([RatePerSecond] IS NULL AND @ExpectedRate IS NOT NULL) OR ([RatePerSecond] IS NOT NULL AND @ExpectedRate IS NULL) OR [RatePerSecond]<>@ExpectedRate)
         THROW 56875,N'WI-0006: Synthetic counter guard mismatch.',1;
@@ -193,21 +201,21 @@ END;
 SET @Case=0;
 WHILE @Case<7
 BEGIN
-    DELETE FROM [#CompileContextAnalysis_WaitRaw];DELETE FROM [#CompileContextAnalysis_waits];
+    DELETE FROM [#ExampleCompileGuard_WaitRaw];DELETE FROM [#ExampleCompileGuard_waits];
     SELECT @ServerReset=CASE WHEN @Case=4 THEN 1 ELSE 0 END,@ServerComparable=CASE WHEN @Case IN(4,6) THEN 0 ELSE 1 END,@SampleSeconds=1;
-    IF @Case<>5 INSERT [#CompileContextAnalysis_WaitRaw] VALUES(0,N'RESOURCE_SEMAPHORE_QUERY_COMPILE',10,20,5);
-    INSERT [#CompileContextAnalysis_WaitRaw] VALUES(1,N'RESOURCE_SEMAPHORE_QUERY_COMPILE',CASE WHEN @Case=1 THEN 9 ELSE 13 END,CASE WHEN @Case=2 THEN 19 ELSE 28 END,CASE WHEN @Case=3 THEN 4 ELSE 8 END);
+    IF @Case<>5 INSERT [#ExampleCompileGuard_WaitRaw] VALUES(0,N'RESOURCE_SEMAPHORE_QUERY_COMPILE',10,20,5);
+    INSERT [#ExampleCompileGuard_WaitRaw] VALUES(1,N'RESOURCE_SEMAPHORE_QUERY_COMPILE',CASE WHEN @Case=1 THEN 9 ELSE 13 END,CASE WHEN @Case=2 THEN 19 ELSE 28 END,CASE WHEN @Case=3 THEN 4 ELSE 8 END);
     SET @ExpectedReset=CASE WHEN @Case BETWEEN 1 AND 4 THEN 1 ELSE 0 END;
     EXEC [sys].[sp_executesql] @WaitProjection,
         N'@SampleSeconds tinyint,@ServerComparable bit,@ServerReset bit,@WaitElapsed decimal(19,6),@WaitStart datetime2(7),@WaitEnd datetime2(7),@WaitLimit nvarchar(1000)',
         @SampleSeconds=@SampleSeconds,@ServerComparable=@ServerComparable,@ServerReset=@ServerReset,@WaitElapsed=@WaitElapsed,@WaitStart=@WaitStart,@WaitEnd=@WaitEnd,@WaitLimit=@WaitLimit;
-    SELECT N'SYNTHETIC_WAIT_BEFORE_ASSERTION' [FrameType],@Case [CaseNumber],* FROM [#CompileContextAnalysis_waits];
-    IF (SELECT COUNT(*) FROM [#CompileContextAnalysis_waits])<>1 OR EXISTS(SELECT 1 FROM [#CompileContextAnalysis_waits] WHERE [ResetDetected]<>@ExpectedReset
+    SELECT N'SYNTHETIC_WAIT_BEFORE_ASSERTION' [FrameType],@Case [CaseNumber],* FROM [#ExampleCompileGuard_waits];
+    IF (SELECT COUNT(*) FROM [#ExampleCompileGuard_waits])<>1 OR EXISTS(SELECT 1 FROM [#ExampleCompileGuard_waits] WHERE [ResetDetected]<>@ExpectedReset
         OR (@Case=0 AND ([DeltaWaitingTasksCount] IS NULL OR [DeltaWaitingTasksCount]<>3 OR [DeltaWaitTimeMs] IS NULL OR [DeltaWaitTimeMs]<>8 OR [DeltaSignalWaitTimeMs] IS NULL OR [DeltaSignalWaitTimeMs]<>3))
         OR (@Case<>0 AND ([DeltaWaitingTasksCount] IS NOT NULL OR [DeltaWaitTimeMs] IS NOT NULL OR [DeltaSignalWaitTimeMs] IS NOT NULL)))
         THROW 56876,N'WI-0006: Synthetic wait guard mismatch.',1;
     SET @Case+=1;
 END;
-DROP TABLE [#CompileContextAnalysis_counters];DROP TABLE [#CompileContextAnalysis_waits];DROP TABLE [#CompileContextAnalysis_CounterRaw];DROP TABLE [#CompileContextAnalysis_WaitRaw];
+DROP TABLE [#ExampleCompileGuard_counters];DROP TABLE [#ExampleCompileGuard_waits];DROP TABLE [#ExampleCompileGuard_CounterRaw];DROP TABLE [#ExampleCompileGuard_WaitRaw];
 SELECT N'WI-0006' [WorkItem],N'SYNTHETIC_GUARDS_PASS' [Status],10 [SyntheticCounterCases],7 [SyntheticWaitCases];
 GO

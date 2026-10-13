@@ -130,6 +130,7 @@ Jede Seite weist jetzt Entscheidungseinsatz, Nichtziele, Resultset-Leserichtung,
 - [USP_DatabaseIntegrityAnalysis](USP_DatabaseIntegrityAnalysis.md)
 - [USP_DatabaseCapacityAnalysis](USP_DatabaseCapacityAnalysis.md)
 - [USP_PerformanceCounters](USP_PerformanceCounters.md)
+- [USP_CompileContextAnalysis](USP_CompileContextAnalysis.md)
 - [USP_CriticalEngineEvents](USP_CriticalEngineEvents.md)
 - [USP_InternalContentionAnalysis](USP_InternalContentionAnalysis.md)
 - [USP_BufferPoolAnalysis](USP_BufferPoolAnalysis.md)

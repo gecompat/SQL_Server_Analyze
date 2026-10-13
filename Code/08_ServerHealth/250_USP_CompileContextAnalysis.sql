@@ -223,8 +223,8 @@ BEGIN
             BEGIN
                 SELECT @SourceKey=CASE WHEN @Phase=0 THEN 'SERVER_START_BEFORE' ELSE 'SERVER_START_AFTER' END,@SourceStatus='AVAILABLE',@SourceError=NULL,@SourceMessage=NULL,@SourceRows=0,@SourceTime=SYSUTCDATETIME();
                 BEGIN TRY
-                    IF @Phase=0 SELECT @ServerStartBefore=[sqlserver_start_time] FROM [sys].[dm_os_sys_info];
-                    ELSE SELECT @ServerStartAfter=[sqlserver_start_time] FROM [sys].[dm_os_sys_info];
+                    IF @Phase=0 SELECT @ServerStartBefore=[sqlserver_start_time] FROM [sys].[dm_os_sys_info] WITH (NOLOCK);
+                    ELSE SELECT @ServerStartAfter=[sqlserver_start_time] FROM [sys].[dm_os_sys_info] WITH (NOLOCK);
                     SET @SourceRows=@@ROWCOUNT;
                     IF @SourceRows<>1 OR (@Phase=0 AND @ServerStartBefore IS NULL) OR (@Phase=1 AND @ServerStartAfter IS NULL) SET @SourceStatus='SOURCE_UNAVAILABLE';
                 END TRY
@@ -235,7 +235,7 @@ BEGIN
                 SELECT @SourceKey=CASE WHEN @Phase=0 THEN 'COUNTERS_BEFORE' ELSE 'COUNTERS_AFTER' END,@SourceStatus='AVAILABLE',@SourceError=NULL,@SourceMessage=NULL,@SourceRows=0;
                 BEGIN TRY
                     INSERT [#CompileContextAnalysis_CounterRaw]
-                    SELECT @Phase,[object_name],[counter_name],[instance_name],[cntr_type],[cntr_value] FROM [sys].[dm_os_performance_counters]
+                    SELECT @Phase,[object_name],[counter_name],[instance_name],[cntr_type],[cntr_value] FROM [sys].[dm_os_performance_counters] WITH (NOLOCK)
                     WHERE RTRIM([object_name]) COLLATE SQL_Latin1_General_CP1_CS_AS LIKE N'%:SQL Statistics'
                       AND [counter_name] COLLATE SQL_Latin1_General_CP1_CS_AS IN(N'Batch Requests/sec',N'SQL Compilations/sec',N'SQL Re-Compilations/sec');
                     SET @SourceRows=@@ROWCOUNT;
@@ -249,7 +249,7 @@ BEGIN
                 INSERT [#CompileContextAnalysis_Observations] VALUES(@SourceKey,NULL,NULL,N'sys.dm_os_performance_counters',COALESCE(@CounterEnd,@CounterStart),@SourceStatus,CONVERT(bit,CASE WHEN @SourceStatus='AVAILABLE' THEN 0 ELSE 1 END),@SourceRows,@SourceError,@SourceMessage,@CounterLimit,2);
                 SELECT @SourceKey=CASE WHEN @Phase=0 THEN 'WAITS_BEFORE' ELSE 'WAITS_AFTER' END,@SourceStatus='AVAILABLE',@SourceError=NULL,@SourceMessage=NULL,@SourceRows=0;
                 BEGIN TRY
-                    INSERT [#CompileContextAnalysis_WaitRaw] SELECT @Phase,[wait_type],[waiting_tasks_count],[wait_time_ms],[signal_wait_time_ms] FROM [sys].[dm_os_wait_stats] WHERE [wait_type] COLLATE SQL_Latin1_General_CP1_CS_AS=N'RESOURCE_SEMAPHORE_QUERY_COMPILE';
+                    INSERT [#CompileContextAnalysis_WaitRaw] SELECT @Phase,[wait_type],[waiting_tasks_count],[wait_time_ms],[signal_wait_time_ms] FROM [sys].[dm_os_wait_stats] WITH (NOLOCK) WHERE [wait_type] COLLATE SQL_Latin1_General_CP1_CS_AS=N'RESOURCE_SEMAPHORE_QUERY_COMPILE';
                     SET @SourceRows=@@ROWCOUNT;
                     IF @SourceRows<>1 SET @SourceStatus='SOURCE_UNAVAILABLE';
                 END TRY
@@ -298,7 +298,7 @@ BEGIN
             SELECT @SourceStatus='AVAILABLE',@SourceError=NULL,@SourceMessage=NULL,@SourceRows=0,@SourceTime=SYSUTCDATETIME();
             BEGIN TRY
                 INSERT [#CompileContextAnalysis_cache]
-                SELECT [type] COLLATE SQL_Latin1_General_CP1_CS_AS,SUM(CONVERT(bigint,[entries_count])),SUM(CONVERT(bigint,[pages_kb])),@SourceTime,'AVAILABLE',@CacheLimit FROM [sys].[dm_os_memory_cache_counters]
+                SELECT [type] COLLATE SQL_Latin1_General_CP1_CS_AS,SUM(CONVERT(bigint,[entries_count])),SUM(CONVERT(bigint,[pages_kb])),@SourceTime,'AVAILABLE',@CacheLimit FROM [sys].[dm_os_memory_cache_counters] WITH (NOLOCK)
                 WHERE [type] COLLATE SQL_Latin1_General_CP1_CS_AS IN(N'CACHESTORE_SQLCP',N'CACHESTORE_OBJCP') GROUP BY [type] COLLATE SQL_Latin1_General_CP1_CS_AS;
                 SET @SourceRows=@@ROWCOUNT;
                 IF @SourceRows<>2 SET @SourceStatus='SOURCE_UNAVAILABLE';
