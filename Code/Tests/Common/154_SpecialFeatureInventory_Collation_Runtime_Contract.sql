@@ -64,6 +64,7 @@ BEGIN TRY
                SELECT @pJson=(SELECT * FROM [#SpecialFeatureCollationRuntimeContract_Collected]
                               ORDER BY [DatabaseName],[FeatureCode] FOR JSON PATH,INCLUDE_NULL_VALUES);',
              N'@pCount bigint OUTPUT,@pJson nvarchar(max) OUTPUT',@pCount=@Count OUTPUT,@pJson=@TableJson OUTPUT;
+        SELECT N'FEATURE_MATRIX_BEFORE_ASSERTION' [FrameType],@Case [CaseNumber],@Count [PhysicalRowCount],@Status [StatusCode],@Partial [IsPartial],@Json [JsonOutput],@TableJson [PhysicalTableJson];
         IF COALESCE(@Count,-1)<>(SELECT COUNT_BIG(*) FROM OPENJSON(@Json,'$.features'))
            OR COALESCE(@TableJson,N'[]') COLLATE SQL_Latin1_General_CP1_CS_AS<>COALESCE(JSON_QUERY(@Json,'$.features'),N'[]') COLLATE SQL_Latin1_General_CP1_CS_AS
            OR (@Limit=1 AND @Count<>1)
@@ -98,7 +99,7 @@ BEGIN TRY
             THROW 56056,N'Special feature output identity failed.',1;
         IF @Case=0
         BEGIN
-            IF @Count<>36 OR EXISTS
+            IF @Count<>38 OR EXISTS
               (SELECT [d].[DatabaseName],[e].[FeatureCode]
                FROM (VALUES(N'ExampleSpecialSourceÄ'),(N'ExampleSpecialSourceä')) [d]([DatabaseName])
                CROSS JOIN [#SpecialFeatureCollationRuntimeContract_Codes] [e]
