@@ -3677,3 +3677,89 @@ Weitere Engines, Callerbaselines und Mailfälle bleiben offen. OPS-008 bleibt
 `PARTIAL_PRODUCT_FUNCTION`; nur DeliveredScope und OpenScope beschreiben den
 neu belegten Teilumfang. Produktcode, ABI, Versionen und Maturityflags bleiben
 unverändert. NativeAttempts3 und NativeAttemptCeiling3 bleiben erhalten.
+
+
+## OPS-008: Retention einer tatsächlich gesendeten eigenen Mail vom 13. Oktober 2026
+
+Der neue Teilumfang prüft die bestehende Mailretention mit genau einer
+nativ gesendeten eigenen synthetischen Mail. Die früheren injizierten
+Mailfixtures bleiben unverändert. Das eigenständige Budget umfasst einen
+nativen Versuch, neun Consumerfälle und zwei native Purges. Der abgeschlossene
+SMTP-Erfolgsumfang mit drei Versuchen und das separate Multiple-Session-Budget
+werden nicht fortgesetzt oder zurückgesetzt. Ein Implementierer und derselbe
+unabhängige Reviewer bearbeiten den Schritt; Kosten bleiben unbekannt.
+
+Die private Fixture verwendet den unveränderten öffentlichen OwnedHost-
+SMTP-Pfad auf Lab-Stand `ecd535a7dd96f1307c1f4c20cca3b171b8f9a713` mit
+`require-existing`. Vorhandene lokale immutable Images und das vorhandene
+nicht interne Sendernetz werden geprüft. Es gibt keinen Build, Imagepull oder
+zusätzliche Netzprovisionierung. Die eigene öffentliche Connection-Info-
+Profilbindung bleibt an Run, Scope und einzigen Sender gebunden. Ein privater
+SqlClient liest die tatsächlichen Evidenzresultsets; öffentliche Labfunktionen
+werden nicht überschrieben.
+
+Vor der Retention werden genau eine eigene Mail mit nativem `sent`-Status,
+Mail-ID, Profil, Request-/Sent-Zeitfeldern und den festgelegten synthetischen
+Inhaltswerten geprüft. Die vollständige geordnete Mailquelle und ihr natives
+`send_request_date` bilden das Orakel. Der erste öffentliche native
+`sysmail_delete_mailitems_sp`-Aufruf verwendet genau diesen Zeitpunkt und
+Status `sent`; die Mail bleibt erhalten. Der zweite verwendet denselben
+Zeitpunkt plus eine Sekunde; die Mail wird gelöscht. Beide Rückgabewerte
+sind `0`. Die drei Phasen liefern unabhängig bestätigte native Mengen
+von eins, eins und null. Zeitfelder und Status werden nicht injiziert.
+Die native Purgedefinition stimmt vor und nach der Ausführung mit dem
+bereits vorhandenen privaten Definitionsnachweis überein; dessen UTF-8-
+SHA-256 ist `D999F40F4A12BD4E441DC2C1EBB9205D44FCFF3350F01D4AE633E5131C8A2F51`.
+Die Herstellerdefinition bleibt privat.
+
+Je Phase bestehen NONE, TABLE und CONSOLE. Alle neun gespeicherten
+Consumerframes besitzen AVAILABLE ohne Partialität oder Fehler, sechs
+Bereichszeilen und genau einen DATABASE_MAIL-Bereich. Native Mengen und
+Request-Zeitaggregate stimmen mit dem Consumer überein. Die vollständigen
+TABLE- und CONSOLE-Projektionen entsprechen dem JSON desselben Aufrufs.
+Vollständige Mailwerte bleiben zwischen jedem Vorher-/Nachhervergleich
+unverändert; nach dem zweiten Purge bleibt die Quelle leer. Der Caller
+bleibt während der Consumer mit ON, Locktimeout 137 und einer schreibfähigen
+Transaktion erhalten. Rollback restauriert die ursprüngliche vollständige
+Mailquelle und den ursprünglichen Principal.
+
+Der PREEXEC-Review findet zunächst eine falsche feste Annahme im privaten
+Orakel: FINAL verlangt `XactState=0`, ohne gleichförmige Eintrittsbaseline.
+Die Korrektur erfasst BASELINE vor der Retentionstransaktion in derselben
+JSON-SELECT-Form wie FINAL und vergleicht beide Werte. Die festen Guards
+für `TranCount=0`, Locktimeout `-1`, XACT_ABORT OFF und gleiche SID
+bleiben erhalten. Zweiundzwanzig lokale synthetische Proben bestätigen
+beide positiven XactState-Werte und gezielte Baseline-/Finalabweichungen;
+die ersten sechzehn Ergebnisse bleiben separat erhalten. Der enge
+Korrekturreview ist geschlossen. Die tatsächlichen BASELINE-/FINAL-
+Resultsets liefern jeweils `TranCount=0` und `XactState=1`; daraus wird
+keine allgemeine Transaktionszustandsgarantie abgeleitet.
+
+Zwei Laneprüfungen bleiben vor Provisionierung zurückgestellt. Der einzige
+tatsächliche Versuch besteht danach auf SQL Server 2025 `17.0.4075.5` mit
+CL170 nach 118.9703458 Sekunden. Vierzehn native JSON-Zeilen werden vor
+Orakelassertions gespeichert: neun Consumer, drei Phasen sowie BASELINE
+und FINAL. Neun Mutationen dieser tatsächlichen Captures werden abgewiesen;
+die unveränderten synthetischen Proben werden dafür nicht wiederholt.
+Die zwölf PREEXEC-Quellenbindungen stimmen nach der Ausführung überein.
+Smoke110 und Runtime122 bestehen im vorausgehenden eigenen Bootstrap.
+Der öffentliche eigene Cleanup besteht mit fünf Schritten und null Fehlern;
+der eigene Statebestand ist vor und nach dem Lauf leer. Container-, Volume-,
+Netz- und Imageinventare bleiben unverändert.
+
+Das private PASS-Ergebnis besitzt SHA-256
+`087FEAB1175C1FB72E0C054A55706F320BDF1B21C7630C4EE24BB32624E98044`;
+das native Capturejournal besitzt
+`1A5BF94643D01024B4D8F758BD9D39C6794505AC647389542FF34B87EFB8004B`.
+Die private SQL-Vorlage besitzt
+`664595DB1913012C550E9243CC4FBC199759DED8E867C3E2A1600C6AE7EF2D22`.
+Rohwerte, Runtimeidentitäten, Profilwerte, Logs und Budget bleiben privat.
+Der getrennte unabhängige Ergebnisreview besitzt keine offenen P1/P2-Befunde.
+
+Der Nachweis gilt ausschließlich für diese eigene Mail und die zwei
+gebundenen nativen Zeitgrenzen. Receiverinhalte, allgemeine Zustellung,
+Retries, weitere Statuskombinationen, Callerbaselines, Engines und
+Compatibility Levels bleiben offen. Produktcode, öffentliche Verträge,
+Versionen und Maturityflags bleiben unverändert. OPS-008 bleibt
+`PARTIAL_PRODUCT_FUNCTION`. Das Budget steht nach Abschluss auf eins von
+einem tatsächlichen Versuch und wird nicht zurückgesetzt.
