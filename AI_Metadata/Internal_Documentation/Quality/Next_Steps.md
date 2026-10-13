@@ -21,6 +21,53 @@ Multiple-Session-Budget mit zwei von zwei bleiben unverändert. Weitere
 Mailfälle und tatsächliche Maintenance-Ausführung sind eigenständige offene
 Teilumfänge; öffentliche neue Funktionsverträge bleiben freigabepflichtig.
 
+## Aktueller Fertigstellungsauftrag vom 13. Oktober 2026
+
+Der Benutzer verlangt die Fertigstellung und priorisiert tatsächlich fehlende
+Funktionen vor zusätzlichen Nachweisen bereits funktionierender Teilbereiche.
+Dieser Auftrag ersetzt die nachstehende ältere Reife-zuerst-Reihenfolge.
+Er setzt keine Sicherheits-, Datenschutz-, unabhängigen Review- oder
+Liefergates außer Kraft. Die Funktionstests folgen weiterhin ausschließlich
+der kanonischen CI-Teststrategie. Unveränderte erfolgreiche Prüfungen werden
+nicht erneut ausgeführt.
+
+Die Priorisierung beruht auf aktuellem Code und den fachlichen Zielverträgen.
+Die Zahl RESEARCHED_NOT_IMPLEMENTED in der Statusliste ist keine verlässliche
+Zahl fehlender Procedures: WI-0004 besitzt bereits die implementierte
+geordnete Columnstore-Inventur; seine optionale Segmentüberlappung fehlt.
+WI-0010 ist ein Intake, kein noch zu implementierendes Analyseverfahren.
+Die Statusabweichungen werden bei der betroffenen fachlichen Lieferung
+synchronisiert, ohne vorhandene Implementierung erneut zu entwickeln.
+
+| Reihenfolge | Tatsächliche Funktionslücke | Nächster konkreter Abschluss |
+|---|---|---|
+| 1 | WI-0005: Zeitgrenzen bestehender Extended-Events-Sessions fehlen. | Freigabe des vorbereiteten opt-in Resultsets timeBounds, vertikale Implementierung und betroffene Tests. |
+| 2 | SSIS-001: Legacy-Log- und SSISDB-Laufzeitanalysatoren fehlen; der direkte Paketparser bleibt begrenzt. | Die bestehenden Phase-0-Namen und Abnahmegrenzen in ausführbare Analyserverträge überführen und implementieren. |
+| 3 | WI-0006: OPTIMIZED_SP_EXECUTESQL-Konfiguration und begrenzter Compile-Kontext fehlen. | Bestehende Capability-/Konfigurationsflächen erweitern; eine Einstellung allein erzeugt kein Finding. |
+| 4 | WI-0007: Aggregierte External-Model-Inventur fehlt. | Bestehende SpecialFeatureInventory um die versionsadaptive Quellenklasse ergänzen. |
+| 5 | WI-0009: Lokale External-Data-Analyse fehlt. | Nach WI-0007 die lokale Kataloganalyse implementieren; keine Remotezugriffe, Locations, Credentials oder Payloads. |
+| 6 | WI-0004: Optionale begrenzte Segmentüberlappung fehlt. | Eigenen opt-in Deep-Vertrag freigeben und ausschließlich erforderliche Segmente prüfen. |
+
+Die neue öffentliche Diagnosefläche bleibt konkret freigabepflichtig.
+Für WI-0005 liegt die [Freigabevorlage](../../../Documentation/Architecture/WI0005_Time_Bound_Extended_Events_Public_Specification.md) vor.
+Bis zur Freigabe bleibt sie PROPOSED. Die übrigen neuen Verträge werden mit
+Quellen-, Kosten-, Datenschutz- und Abnahmegrenzen vorgelegt; bereits
+freigegebene Verträge werden nicht erneut zur Zustimmung gestellt.
+
+Zusätzliche gemischte Mailstatus-Retention wird zunächst zurückgestellt.
+Der integrierte SMTP-Erfolg mit Budget3/3, die integrierte Retention mit
+Budget1/1 und der nicht qualifizierte Multiple-Session-Versuch mit Budget2/2
+bleiben abgeschlossen beziehungsweise ausgeschöpft. Es gibt keinen
+Budgetreset und keine neue Zählung desselben Versuchs.
+
+Der Fertigstellungsnachweis trennt implementierte Produktfunktionen,
+ausstehende Tests, externe Komponenten und optionale Zukunftsarbeit.
+Fleet-Komponenten, isolierte Restore-/CHECKDB-Hostausführung sowie Datei- und
+ISPAC-Adapter werden nicht stillschweigend in den SQL-Kern aufgenommen.
+Benötigte Plattform- oder Infrastrukturfreigaben werden erst mit benanntem
+Ziel und konkreter Aktion angefragt. Produktstatus wechselt ausschließlich
+nach tatsächlich erfülltem Funktions- und Abnahmevertrag.
+
 ## Wiederaufnahme nach der Entwicklungspause
 
 Der Benutzer hat nach Abschluss von WI-0011 einschließlich PR-Merge nach

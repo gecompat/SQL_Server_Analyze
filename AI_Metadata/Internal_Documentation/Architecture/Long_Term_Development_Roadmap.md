@@ -26,7 +26,7 @@ Diese Ausgangslage begründet eine qualitäts- und evidenzorientierte Reihenfolg
 
 ## Priorisierungsgrundsätze
 
-1. Bereits implementierte Teilfunktionen erhalten vor zusätzlichen Spezialmodulen ihren vorgesehenen Reifegrad.
+1. Der Fertigstellungsauftrag vom 13. Oktober 2026 priorisiert tatsächlich fehlende Funktionen vor zusätzlichen Nachweisen bereits funktionierender Teilbereiche. Die aktuelle Reihenfolge steht in Next_Steps; neue öffentliche Verträge bleiben konkret freigabepflichtig.
 2. Eine Erweiterung bestehender Procedures hat Vorrang vor einer neuen öffentlichen Procedure, wenn Scope, Kostenklasse und Aussagegrenze zusammenpassen.
 3. SQL-Server-2025-Funktionen werden versions- und capability-adaptiv ergänzt. Ein neuer Konfigurationswert ist allein kein Fehlerbefund.
 4. Historische Evidenz wird ausschließlich im optionalen Snapshotpaket persistiert. Der Frameworkkern bleibt zustandslos.
@@ -61,7 +61,7 @@ Die Validierung folgt der verbindlichen CI-Teststrategie. Ein Statuswechsel setz
 | `WI-0001` | `P1` | `ACTIVE` | diese kanonische Roadmap |
 | `WI-0002` | `P2` | `IMPLEMENTED_ACTIONS_GATE` | TempDB-ADR- und PVS-Diagnostik |
 | `WI-0003` | `P2` | `IMPLEMENTED_ACTIONS_GATE` | Backup-Kompressionsalgorithmus- und ZSTD-Evidenz |
-| `WI-0004` | `P2` | `RESEARCHED_NOT_IMPLEMENTED` | geordnete Columnstore-Diagnostik |
+| `WI-0004` | `P2` | `PARTIAL_PRODUCT_FUNCTION` | geordnete Columnstore-Diagnostik |
 | `WI-0005` | `P2` | `RESEARCHED_NOT_IMPLEMENTED` | zeitbegrenzte Extended-Events-Sessions |
 | `WI-0006` | `P2` | `RESEARCHED_NOT_IMPLEMENTED` | `OPTIMIZED_SP_EXECUTESQL` und Compile-Kontext |
 | `WI-0007` | `P2` | `RESEARCHED_NOT_IMPLEMENTED` | External-Model-Inventur |
@@ -81,6 +81,8 @@ Die Validierung folgt der verbindlichen CI-Teststrategie. Ein Statuswechsel setz
 | kontinuierlicher Intake | Abdeckungslücken sichtbar und priorisierbar | `WI-0010` | aktuelle Inventare und offizielle Primärquellen sind verfügbar | Kandidaten sind als bestehend, partiell, geplant, extern oder ausgeschlossen klassifiziert und werden erst nach eigener Registrierung in eine Entwicklungswelle übernommen |
 
 ## Aktivierungsfolge nach dem Reifeabschluss
+
+Die nachfolgende ältere Reife-zuerst-Reihenfolge ist durch den Fertigstellungsauftrag vom 13. Oktober 2026 abgelöst. Maßgeblich ist die konkrete Funktionsreihenfolge in Next_Steps. Unverändert gelten Dossier-, Sicherheits-, Datenschutz- und tatsächliche Liefergates.
 
 Diese Reihenfolge plant die bereits registrierten Arbeitselemente. Sie autorisiert keine Implementierung, keine neue öffentliche Procedure und keinen externen Zugriff. Vor jedem Element bleiben der Dossierprozess, die jeweils erforderliche funktionsbezogene Freigabe und die Eintrittsbedingung der zugehörigen Welle verbindlich.
 

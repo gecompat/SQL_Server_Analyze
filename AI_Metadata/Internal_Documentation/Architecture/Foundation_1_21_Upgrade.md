@@ -41,3 +41,26 @@ Die folgenden lokalen Nachweise wurden am 9. Oktober 2026 ausgeführt:
 | Eigenständige Validatoren und Lieferstand | Datenschutz-Selbsttest und Repositoryscan mit 1118 Dateien, Impact-Selector-Selbsttest, Commit-Selbsttest und Prüfung des neuen Commits bestanden. |
 
 Der Core-Impact-Selector klassifiziert die Änderung des funktionalen Workflows als vollständiges SQL-Server-2025-Gate; der Snapshot-Scope benötigt keinen zusätzlichen Runtimejob. SQL-Produktcode wurde nicht verändert. Ein lokaler SQL-Server-Lauf wurde nicht ausgeführt. Der erforderliche funktionale Remote-Check und die weiteren PR-Checks müssen vor Integration am exakten PR-Head erfolgreich sein. Unbekannte Clientkonfiguration und GitHub-Rulesets werden durch diese lokalen Tests nicht attestiert.
+
+
+## Verarbeitung beim Fertigstellungsauftrag vom 13. Oktober 2026
+
+Der neue Benutzerauftrag priorisiert fehlende Produktfunktionen. Der
+begonnene zusätzliche gemischte Mailstatus-Nachweis wird dafür zurückgestellt;
+er ist kein Eintrittsgate für eine unabhängige Funktionsimplementierung.
+Aktueller Code und fachliche Verträge werden vor einer Statusentscheidung
+abgeglichen. Ein Intake wird nicht als fehlende Procedure gezählt und eine
+vorhandene Implementierung wird wegen eines veralteten Status nicht erneut
+entwickelt. Neue öffentliche Verträge bleiben konkret freigabepflichtig.
+
+Eine kohärente Funktionsänderung besitzt einen Implementierer und bei
+fachlichem Risiko einen unabhängigen Reviewer. Native Tests folgen der
+betroffenen Funktion und ihrer tatsächlichen Versionsabhängigkeit; der
+1+0+N-Standard und die abschließenden Releasegates bleiben erhalten.
+Unveränderte erfolgreiche Nachweise werden nicht wiederholt. Direkte lokale
+Einzelprüfungen werden in einer späteren Suite am selben unveränderten
+Eingabestand nicht erneut gezählt; neue Dateien und geänderte Eingaben
+benötigen ihren eigenen betroffenen Liefercheck. Timer erweitern den
+Prüfumfang nicht. Kosten und Kontingente bleiben unbekannt. Diese Änderung
+betrifft die Reihenfolge und beendet keinen bestehenden Sicherheits- oder
+Validierungsvertrag; eine Foundationinstallation findet nicht statt.
