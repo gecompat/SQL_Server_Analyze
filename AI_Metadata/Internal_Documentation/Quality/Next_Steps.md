@@ -33,7 +33,8 @@ benennt den erhaltenen ersten Fehlversuch und die Wiederverwendung seiner
 fünf bestandenen Einzeltests. Das eigene Budget ist mit drei von drei
 Versuchen abgeschlossen. Positive echte Tabellen- und Referenzdaten benötigen
 eine eigene externe Quelle und geeignete Lab-Funktion; dieses Gate bleibt
-offen. Die reguläre Lieferung folgt nach WI-0006/0007 und den Lieferprüfungen.
+offen. Die reguläre Integration über PR #385 und die Synchronisierung auf
+main sind abgeschlossen.
 
 ## Aktueller WI-0005-Abschluss vom 14. Oktober 2026
 
@@ -55,8 +56,8 @@ Fallbackläufen sowie der gebundenen Wiederverwendung. Die reguläre Integration
 über PR #384 ist abgeschlossen. Die Funktionsquellen 250 und 020 bleiben
 gegenüber der nativen Abnahme unverändert; korrigierte gemeinsame Helfer
 und Testfixtures bestehen das aktuelle funktionale Head-Gate.
-WI-0009 folgt mit qualifiziertem portablem Kern und einem offenen positiven
-External-Table-Gate. SSIS wartet weiterhin auf die angeforderte
+WI-0009 ist mit qualifiziertem portablem Kern regulär geliefert; das positive
+External-Table-Gate bleibt offen. SSIS wartet weiterhin auf die angeforderte
 Windows-/SSISDB-Funktion einschließlich veröffentlichter ausgeführter Abnahme.
 
 ## Aktueller Fertigstellungsauftrag vom 13. Oktober 2026
@@ -83,7 +84,7 @@ synchronisiert, ohne vorhandene Implementierung erneut zu entwickeln.
 | 2 | SSIS-001: Legacy-Log- und SSISDB-Laufzeitanalysatoren fehlen; der direkte Paketparser bleibt begrenzt. | Auf die vom Benutzer angeforderte Windows-/SSISDB-Funktion und veröffentlichte ausgeführte Lab-Abnahme warten; danach die konkreten Analyserverträge fertigstellen. |
 | 3 | WI-0006: Compile-Kontext ist implementiert und nativ qualifiziert. | Über PR #384 regulär integriert; unveränderte erfolgreiche Nachweise werden nicht wiederholt. |
 | 4 | WI-0007: Aggregierte External-Model-Inventur ist implementiert und nativ qualifiziert. | Gemeinsam mit WI-0006 über PR #384 regulär integriert. |
-| 5 | WI-0009: Lokale External-Data-Analyse ist implementiert; der portable Kern ist nativ qualifiziert. | Nach WI-0006/0007 regulär integrieren; das positive External-Table-Gate bleibt bis zu einer geeigneten eigenen Quelle offen. |
+| 5 | WI-0009: Lokale External-Data-Analyse ist implementiert; der portable Kern ist nativ qualifiziert. | Über PR #385 regulär integriert; das positive External-Table-Gate bleibt bis zu einer geeigneten eigenen Quelle offen. |
 | 6 | WI-0004: Optionale begrenzte Segmentüberlappung fehlt. | Eigenen opt-in Deep-Vertrag freigeben und ausschließlich erforderliche Segmente prüfen. |
 
 Die neue öffentliche Diagnosefläche bleibt konkret freigabepflichtig.
