@@ -21,6 +21,25 @@ Multiple-Session-Budget mit zwei von zwei bleiben unverändert. Weitere
 Mailfälle und tatsächliche Maintenance-Ausführung sind eigenständige offene
 Teilumfänge; öffentliche neue Funktionsverträge bleiben freigabepflichtig.
 
+## Aktueller WI-0005-Abschluss vom 14. Oktober 2026
+
+Der freigegebene Zeitgrenzenvertrag ist implementiert und nativ qualifiziert.
+Der siebte SQL-2025-Lauf besteht die fehlenden Fehler-, Berechtigungs- und
+Uhrbasisproben mit gebundener Wiederverwendung früherer erfolgreicher
+Einzeltests. Anschließend besteht der einzige SQL-2019-Fallback. Alle acht
+tatsächlichen Versuche bleiben gezählt; die sechs früheren Primärläufe
+bleiben nicht qualifiziert. Quellen, Caller, eigene SQL-Ressourcen und
+öffentlicher Runtime-Cleanup sind geprüft. Der
+[kanonische Laufzeitnachweis](WI0005_TimeBounds_Runtime_Evidence_2026-10-14.md)
+benennt Bindungen und Aussagegrenzen. Die folgenden älteren Absätze halten
+den Verlauf fest und erteilen keine weitere Runtimefreigabe. Nach lokalen
+Liefergates und exakter Head-CI erfolgt die reguläre Integration.
+
+WI-0006/0007 werden danach geliefert; ihre zusätzlichen Prüfungen verwenden
+das freigegebene gemeinsame Budget bis acht. WI-0009 ist unmittelbar
+freigegeben und wird als lokale Metadatenanalyse umgesetzt. SSIS wartet
+auf die ausdrücklich angeforderte Windows-/SSISDB-Funktion des Lab-Projekts.
+
 ## Aktueller Fertigstellungsauftrag vom 13. Oktober 2026
 
 Der Benutzer verlangt die Fertigstellung und priorisiert tatsächlich fehlende
@@ -41,18 +60,94 @@ synchronisiert, ohne vorhandene Implementierung erneut zu entwickeln.
 
 | Reihenfolge | Tatsächliche Funktionslücke | Nächster konkreter Abschluss |
 |---|---|---|
-| 1 | WI-0005: Zeitgrenzen bestehender Extended-Events-Sessions fehlen. | Freigabe des vorbereiteten opt-in Resultsets timeBounds, vertikale Implementierung und betroffene Tests. |
+| 1 | WI-0005: Der freigegebene Zeitgrenzenvertrag ist implementiert. | Native Abnahme besteht; lokale Liefergates, exakte Head-CI und reguläre Integration schließen den Schritt ab. |
 | 2 | SSIS-001: Legacy-Log- und SSISDB-Laufzeitanalysatoren fehlen; der direkte Paketparser bleibt begrenzt. | Die bestehenden Phase-0-Namen und Abnahmegrenzen in ausführbare Analyserverträge überführen und implementieren. |
-| 3 | WI-0006: OPTIMIZED_SP_EXECUTESQL-Konfiguration und begrenzter Compile-Kontext fehlen. | Bestehende Capability-/Konfigurationsflächen erweitern; eine Einstellung allein erzeugt kein Finding. |
+| 3 | WI-0006: Gemeinsamer Capability- und Compile-Kontext fehlt. | Die freigegebene USP_CompileContextAnalysis implementieren und vorhandene Konfigurations- sowie Counterflächen wiederverwenden. |
 | 4 | WI-0007: Aggregierte External-Model-Inventur fehlt. | Bestehende SpecialFeatureInventory um die versionsadaptive Quellenklasse ergänzen. |
 | 5 | WI-0009: Lokale External-Data-Analyse fehlt. | Nach WI-0007 die lokale Kataloganalyse implementieren; keine Remotezugriffe, Locations, Credentials oder Payloads. |
 | 6 | WI-0004: Optionale begrenzte Segmentüberlappung fehlt. | Eigenen opt-in Deep-Vertrag freigeben und ausschließlich erforderliche Segmente prüfen. |
 
 Die neue öffentliche Diagnosefläche bleibt konkret freigabepflichtig.
 Für WI-0005 liegt die [Freigabevorlage](../../../Documentation/Architecture/WI0005_Time_Bound_Extended_Events_Public_Specification.md) vor.
-Bis zur Freigabe bleibt sie PROPOSED. Die übrigen neuen Verträge werden mit
+Der Benutzer hat diesen Vertrag am 13. Oktober 2026 unmittelbar freigegeben.
+Die übrigen neuen Verträge werden mit
 Quellen-, Kosten-, Datenschutz- und Abnahmegrenzen vorgelegt; bereits
 freigegebene Verträge werden nicht erneut zur Zustimmung gestellt.
+
+Die lokale WI-0005-Implementierung ist noch nicht nativ qualifiziert oder
+integriert. Im ersten SQL-Server-2025-Lauf bestanden die acht ausgewählten
+Testdateien einschließlich der elf neuen TABLE-/JSON-Fälle, Neustart und
+automatischer Beendigung. Danach scheiterte der private Adapter an einer
+SQLCMD-Direktive; der Gesamtlauf bleibt nicht qualifiziert. Nach der engen
+Adapterkorrektur scheiterte der zweite Lauf im ersten aktivierten Zeitgrenzenfall
+an der kombinierten Prüfung von Katalogidentität und Runtime-Startzeit. Seine
+Ursache bleibt unbekannt, weil die betroffene Quellenzeile vor dem Abbruch
+nicht gespeichert wurde. Beide Läufe haben ihre eigenen Runtime-Ressourcen
+entfernt und unveränderte Quellenpins sowie Dockerbestände bestätigt.
+Das ursprüngliche 2025-Budget war mit zwei von zwei Versuchen ausgeschöpft. Die vorbereitete
+Diagnose ergänzt Quellenklammern und Ausgabe vor Assertions, ohne den exakten
+Zeitvergleich zu lockern. Ein weiterer nativer Lauf benötigt eine ausdrückliche
+Budgeterweiterung; es wird kein Produktabschluss aus Teilprüfungen abgeleitet.
+Der Benutzer hat anschließend höchstens sechs Gesamtversuche für WI-0005
+freigegeben. Jeder weitere Versuch setzt einen konkreten Befund oder eine
+gezielte Gegenprüfung mit begründeter Aussicht auf die Problemlösung voraus.
+Die bisherigen zwei Versuche werden nicht zurückgesetzt. Die ergänzte
+Quellenretention und ihre unverändert strengen Fehlerflags sind unabhängig
+geprüft; der nächste Lauf soll die fehlenden Vergleichsdaten sichern oder
+die Abnahme abschließen. Ein automatisches Ausschöpfen der Obergrenze ist
+nicht autorisiert.
+
+Der dritte tatsächliche Lauf bleibt ebenfalls nicht qualifiziert. Die ergänzte
+Retention hat diesmal im Defaultfall unveränderte native Session-IDs und
+Runtimeadressen bei geringfügig verschiedenen Startzeitwerten gesichert.
+Der Abbruch entstand an der exakten Vorher-/Nachher-Zeitbedingung der Fixture.
+Dieser Befund begründet einen begrenzten Orakelvergleich entsprechend
+[Common151](../../../Code/Tests/Common/151_XESessions_Collation_Runtime_Contract.sql):
+exakte Identitäts- und Adressbindung, erhaltene NULL-Regeln und höchstens
+zehn Millisekunden Abweichung gegen beide Quellenaufnahmen. Die
+gleichaufrufbezogene physische TABLE-/JSON-Parität bleibt exakt. Die neue
+Korrektur und ihre Grenzproben werden vor weiterer Runtime eng geprüft.
+Die konkrete Ursache des zweiten Laufs bleibt unbekannt; aus dem dritten
+Lauf wird weder dessen Ursache noch eine allgemeine Zeitgarantie abgeleitet.
+Eigener Runtime-Cleanup, Quellenpins und Bestandsvergleich bestanden erneut.
+Das Gesamtbudget steht jetzt bei drei von höchstens sechs Versuchen über alle
+Engines; die Zählung bleibt bei einem Versions- oder Lanewechsel erhalten.
+
+Der vierte Lauf besteht die korrigierte Testdatei mit elf TABLE-/JSON-Fällen,
+Neustart und automatischer Beendigung sowie die Regexmatrix und sechs
+RAW-/CONSOLE-/NONE-Fälle. Der Gesamtlauf bleibt nicht qualifiziert, weil die
+private Fehlerprobe mit `RAISERROR(1222, ...)` tatsächlich Fehler 2732 erzeugt
+hat. Der Analyzer hat diesen tatsächlichen Fehler erhalten; die angenommene
+Fehlererzeugung war ungeeignet. Die gezielte private Korrektur verwendet einen
+gehaltenen Lock auf einer eigenen synthetischen Tabelle für Fehler 1222 und
+einen dynamischen Zugriff mit explizitem SELECT-Verbot für Fehler 229.
+Diese Fehler werden in privaten Procedurekopien erzeugt und belegen keine
+tatsächlichen DMV-Berechtigungsfehler. Ein separater eingeschränkter Principal
+prüft den unveränderten Analyzer. Quellen-, Caller- und Cleanupbindungen
+werden vor dem nächsten Lauf eng geprüft. Unveränderte bestandene Testfälle
+aus Lauf vier werden über ihre Quellen, gemeinsame Abhängigkeiten und
+gespeicherten Ausgaben wiederverwendet. Das Gesamtbudget steht bei vier von
+höchstens sechs tatsächlichen Versuchen; Lauf fünf ist noch nicht gestartet.
+Für den versionsabhängigen Fallback ist anschließend ausschließlich eine
+gezielte native SQL-Server-2019-Prüfung vorgesehen. Sie prüft den ältesten
+unterstützten Zweig; SQL Server 2022 erhält keinen zusätzlichen Lauf ohne
+einen eigenständigen Versionsbefund.
+
+Der Benutzer hat auch den konkreten WI-0006-Vertrag unmittelbar freigegeben:
+eine rein lesende `monitor.USP_CompileContextAnalysis` mit ausgewähltem
+Datenbank-Konfigurationskontext sowie getrenntem serverweitem Counter-,
+Compile-Wait- und Cachemetadatenkontext. Die bereits vorhandene generische
+Konfigurationsausgabe und die typisierten Counter-Samples werden wiederverwendet;
+sie sind keine fehlenden Produktfunktionen. Der neue Vertrag erlaubt optionales
+Sampling von einer bis 60 Sekunden, keine SQL- oder Planinhalte und keine
+automatische Ursachenbehauptung.
+
+Die echte SSISDB-Abnahme wartet auf die vom Benutzer in SQL_Server_Lab
+beauftragte Windows-/SSISDB-Testfunktion. Bis dieser öffentliche Pfad
+einschließlich ausgeführtem Nachweis verfügbar ist, wird dieses Thema
+zurückgestellt. Es wird keine Ersatzinstanz installiert oder eine Linuxquelle
+als SSISDB-Abnahme ausgegeben. Unabhängige freigegebene Funktionen werden
+weiterentwickelt.
 
 Zusätzliche gemischte Mailstatus-Retention wird zunächst zurückgestellt.
 Der integrierte SMTP-Erfolg mit Budget3/3, die integrierte Retention mit
