@@ -34,9 +34,9 @@ Alle `Example*`-Werte im Aufruf sind synthetisch.
 
 ## Resultsets und Leserichtung
 
-Der typisierte TABLE-Vertrag registriert `sessions`. Status, Scope und Warnings sind vor den Fachergebnissen zu lesen. CONSOLE dient der interaktiven Triage; RAW und JSON erhalten den technischen Kontext, während TABLE nur die ausdrücklich benannten stabilen Resultsets schreibt. Resultsets mit unterschiedlicher Zeilengranularität dürfen nicht ungeprüft vereinigt oder summiert werden.
+Der typisierte TABLE-Vertrag registriert `sessions` und das optionale `timeBounds`. Mit `@MitZeitgrenzen = 1` wird `timeBounds` als letztes RAW-Resultset sowie als zusätzliches JSON-Array mit Schemaversion 2 ausgegeben. Bei deaktiviertem Pfad bleiben die alten RAW-Resultsets und JSON-Version 1 erhalten; ein explizites TABLE-Ziel `timeBounds` bleibt typisiert leer. CONSOLE behält die Sessionübersicht. Status, Scope und Warnings sind vor den Fachergebnissen zu lesen. CONSOLE dient der interaktiven Triage; RAW und JSON erhalten den technischen Kontext, während TABLE nur die ausdrücklich benannten stabilen Resultsets schreibt. Resultsets mit unterschiedlicher Zeilengranularität dürfen nicht ungeprüft vereinigt oder summiert werden.
 
-Alle 26 lokalen Textspalten einschließlich der Namensfilter verwenden die
+Alle lokalen Textspalten einschließlich der Namensfilter verwenden die
 Frameworkcollation `SQL_Latin1_General_CP1_CS_AS`. Die sechs Textspalten des
 Session-TABLE-Exports behalten diese Collation auch bei abweichender
 `tempdb`-Collation. Die nativen Sessionnamenvergleiche einschließlich des
@@ -136,6 +136,24 @@ leer. Aktivierte Detailinventare prüfen laufende Sessions weiterhin direkt
 über die native DMV und können in dieser Kombination Zeilen enthalten.
 Dieser vorhandene Vertrag trennt die optionale Sessionprojektion von den
 separaten Detailabfragen; Status und Zeilenzahl beziehen sich auf Sessions.
+
+Mit `@MitZeitgrenzen = 1` beschreibt `timeBounds` dieselben ausgewählten
+Sessions mit nativer Dauer, Runtimezustand, Startzeit und Quellenstatus.
+`MaxDurationSeconds = 0` bedeutet unbegrenzt; auf SQL Server 2019 und 2022
+bleiben Dauer und `IsTimeBound` NULL und `SourceStatus` lautet
+UNAVAILABLE_VERSION. Eine deaktivierte Runtimeerfassung liefert
+NOT_COLLECTED. STOPPED setzt eine tatsächlich erfasste Runtimequelle voraus.
+Konfigurationswerte bleiben bei isoliertem Runtimefehler erhalten; tatsächliche
+Fehler und unerwartet fehlende Quellen setzen die Modulpartialität.
+
+Die Restzeitschätzung wird nur für eine positive Dauer und einen verfügbaren
+nativen Startwert mit geprüftem festem UTC-Serverzeitbezug berechnet. Andere
+oder unbekannte Zeitzonen, künftige Startwerte, unbegrenzte Dauer und fehlende
+Runtime liefern NULL. Die Momentaufnahme ist keine garantierte Stopfrist;
+Konfiguration und Runtime können während des Aufrufs auseinanderlaufen.
+Der Zusatzpfad liest keine Targetdaten und führt keine XE-DDL aus.
+Das [freigegebene Feld- und Fehlerstatusschema](../../Architecture/WI0005_Time_Bound_Extended_Events_Public_Specification.md)
+definiert die zwölf nativen Exportfelder und ihre Grenzen.
 
 ### Bewertung und Gegenprobe
 

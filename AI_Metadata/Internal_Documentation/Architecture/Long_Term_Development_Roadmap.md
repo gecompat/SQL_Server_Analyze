@@ -62,9 +62,9 @@ Die Validierung folgt der verbindlichen CI-Teststrategie. Ein Statuswechsel setz
 | `WI-0002` | `P2` | `IMPLEMENTED_ACTIONS_GATE` | TempDB-ADR- und PVS-Diagnostik |
 | `WI-0003` | `P2` | `IMPLEMENTED_ACTIONS_GATE` | Backup-Kompressionsalgorithmus- und ZSTD-Evidenz |
 | `WI-0004` | `P2` | `PARTIAL_PRODUCT_FUNCTION` | geordnete Columnstore-Diagnostik |
-| `WI-0005` | `P2` | `RESEARCHED_NOT_IMPLEMENTED` | zeitbegrenzte Extended-Events-Sessions |
-| `WI-0006` | `P2` | `RESEARCHED_NOT_IMPLEMENTED` | `OPTIMIZED_SP_EXECUTESQL` und Compile-Kontext |
-| `WI-0007` | `P2` | `RESEARCHED_NOT_IMPLEMENTED` | External-Model-Inventur |
+| `WI-0005` | `P2` | `IMPLEMENTED_ACTIONS_GATE` | zeitbegrenzte Extended-Events-Sessions |
+| `WI-0006` | `P2` | `IMPLEMENTED_ACTIONS_GATE` | `OPTIMIZED_SP_EXECUTESQL` und Compile-Kontext |
+| `WI-0007` | `P2` | `IMPLEMENTED_ACTIONS_GATE` | External-Model-Inventur |
 | `WI-0008` | `P1` | `IMPLEMENTED_ACTIONS_GATE` | SQL-Audit-Konfigurationsanalyse |
 | `WI-0009` | `P2` | `IMPLEMENTED_EXTERNAL_EVIDENCE_PENDING` | External-Data-Analyse |
 | `WI-0010` | `P1` | `RESEARCHED_NOT_IMPLEMENTED` | kontinuierliche Diagnoseabdeckung und Gap-Intake |
@@ -156,19 +156,19 @@ Primärquelle: [What's new in columnstore indexes](https://learn.microsoft.com/e
 
 ### `WI-0005`: Zeitbegrenzte Extended-Events-Sessions
 
-Die spätere Analyse prüft die Erweiterung von `USP_ExtendedEventsSessions` um `MAX_DURATION`, Runtimezustand und Restlaufzeitgrenze. Das Framework erstellt, startet, stoppt oder verändert keine Session. Ein unbegrenzter Wert ist ohne Capturezweck und Lastkontext kein Fehler.
+Der freigegebene opt-in-Pfad von `USP_ExtendedEventsSessions` liefert `MAX_DURATION`, Runtimezustand und begrenzte Restzeitschätzungen. Die native SQL-2025-Abnahme und der gezielte SQL-2019-Fallback stehen im [Laufzeitnachweis](../Quality/WI0005_TimeBounds_Runtime_Evidence_2026-10-14.md). Das Framework erstellt, startet, stoppt oder verändert keine Session. Ein unbegrenzter Wert ist ohne Capturezweck und Lastkontext kein Fehler.
 
 Primärquelle: [Extended Events sessions](https://learn.microsoft.com/en-us/sql/relational-databases/extended-events/sql-server-extended-events-sessions?view=sql-server-ver17).
 
 ### `WI-0006`: `OPTIMIZED_SP_EXECUTESQL` und Compile-Kontext
 
-Die spätere Analyse ergänzt Capability- und Konfigurationssicht und bewertet, ob vorhandene Performance-Counter-, Plan-Cache- und Wait-Evidenz für eine belastbare Compile-Storm-Korrelation ausreicht. Der Konfigurationszustand allein erzeugt kein Finding. Ein erforderliches Sampling bleibt begrenzt und explizit.
+`USP_CompileContextAnalysis` liefert die freigegebene Capability- und Konfigurationssicht mit getrennten serverweiten Countern, Compile-Waits und Cachemetadaten. Der [native Nachweis](../Quality/WI0006_WI0007_Runtime_Evidence_2026-10-14.md) umfasst SQL Server 2025 und den gezielten SQL-2019-Fallback. Der Konfigurationszustand allein erzeugt kein Finding. Ein erforderliches Sampling bleibt begrenzt und explizit.
 
 Primärquelle: [`ALTER DATABASE SCOPED CONFIGURATION`](https://learn.microsoft.com/en-us/sql/t-sql/statements/alter-database-scoped-configuration-transact-sql?view=sql-server-ver17).
 
 ### `WI-0007`: External-Model-Inventur
 
-Die spätere Analyse ergänzt `USP_SpecialFeatureInventory` um eine aggregierte, versionsadaptive Erkennung von External Models. Locations, Parameter, Modellnamen und Credentialbezüge bleiben in der leichten Inventur ausgeschlossen. Eine eigene Gesundheitsanalyse wird dadurch nicht vorweggenommen.
+`USP_SpecialFeatureInventory` enthält die freigegebene aggregierte External-Model-Inventur. Der [native Nachweis](../Quality/WI0006_WI0007_Runtime_Evidence_2026-10-14.md) bindet positive eigene Modellobjekte auf SQL Server 2025 und den SQL-2019-Fallback. Locations, Parameter, Modellnamen und Credentialbezüge bleiben in der leichten Inventur ausgeschlossen. Eine eigene Gesundheitsanalyse wird dadurch nicht vorweggenommen.
 
 Primärquelle: [`sys.external_models`](https://learn.microsoft.com/en-us/sql/relational-databases/system-catalog-views/sys-external-models-transact-sql?view=sql-server-ver17).
 
