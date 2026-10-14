@@ -140,6 +140,12 @@ Review ist geschlossen; der neue Helperstand verlangt frische Primär-CI.
 Der Gesamtlauf bleibt fehlgeschlagen und wird nicht nachträglich als PASS
 verbucht. Die früheren nativen Producerbindungen bleiben unverändert.
 
+Die folgende statische CI entdeckt zusätzlich die noch veraltete generierte
+EXECUTION-PLAN-001-Adapterkopie. Sie wird aus derselben kanonischen
+Standalone-Quelle neu erzeugt; der betroffene Vergleich besteht lokal.
+Diese Korrektur verändert keinen weiteren Analysealgorithmus und ersetzt
+keine erforderliche exakte Head-CI.
+
 Die aktuellen erfolgreichen Läufe bestätigen Callerrestaurierung, eigene
 SQL-Abwesenheit, öffentliche Bereinigung `REMOVED` mit null Fehlern,
 unveränderte Quellenpins und Dockerbestände sowie abwesende eigene States.
