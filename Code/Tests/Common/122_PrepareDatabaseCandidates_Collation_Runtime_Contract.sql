@@ -25,24 +25,68 @@ CREATE TABLE [#PrepareDatabaseCandidates_Warnings]
     , [ErrorMessage] nvarchar(2048) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
 );
 
+-- Die Probe besitzt nur ihren dynamischen SET-Scope; der äußere Caller bleibt erhalten.
+DECLARE @OuterEntryLockTimeout int=@@LOCK_TIMEOUT,@OuterEntryTranCount int=@@TRANCOUNT;
+EXEC [sys].[sp_executesql] N'
 DECLARE @StatusCode varchar(40);
 DECLARE @ErrorMessage nvarchar(2048);
 DECLARE @CrossDatabaseRequested bit;
 DECLARE @DatabaseName sysname = DB_NAME();
 
+SET LOCK_TIMEOUT 0;
 EXEC [monitor].[USP_PrepareDatabaseCandidates]
       @DatabaseNames = @DatabaseName
     , @StatusCode = @StatusCode OUTPUT
     , @ErrorMessage = @ErrorMessage OUTPUT
     , @CrossDatabaseRequested = @CrossDatabaseRequested OUTPUT
-    , @CandidateTable = N'#PrepareDatabaseCandidates_Runtime'
-    , @WarningTable = N'#PrepareDatabaseCandidates_Warnings';
+    , @CandidateTable = N''#PrepareDatabaseCandidates_Runtime''
+    , @WarningTable = N''#PrepareDatabaseCandidates_Warnings''
+WITH RESULT SETS NONE;
 
-IF @StatusCode <> 'AVAILABLE'
+IF @StatusCode IS NULL OR @StatusCode <> ''AVAILABLE''
+   OR @CrossDatabaseRequested IS NULL
    OR @CrossDatabaseRequested <> 0
+   OR @@LOCK_TIMEOUT<>0
    OR NOT EXISTS (SELECT 1 FROM [#PrepareDatabaseCandidates_Runtime])
    OR EXISTS (SELECT 1 FROM [#PrepareDatabaseCandidates_Warnings])
-    THROW 55710, N'USP_PrepareDatabaseCandidates returned an unexpected runtime contract.', 1;
+    THROW 55710, N''USP_PrepareDatabaseCandidates returned an unexpected runtime contract.'', 1;
 
-PRINT N'PrepareDatabaseCandidates collation runtime contract passed.';
+DELETE FROM [#PrepareDatabaseCandidates_Runtime];
+SET LOCK_TIMEOUT 137;
+EXEC [monitor].[USP_PrepareDatabaseCandidates]
+      @DatabaseNames = @DatabaseName
+    , @StatusCode = @StatusCode OUTPUT
+    , @ErrorMessage = @ErrorMessage OUTPUT
+    , @CrossDatabaseRequested = @CrossDatabaseRequested OUTPUT
+    , @CandidateTable = N''#PrepareDatabaseCandidates_Runtime''
+    , @WarningTable = N''#PrepareDatabaseCandidates_Warnings''
+WITH RESULT SETS NONE;
+IF @StatusCode IS NULL OR @StatusCode<>''AVAILABLE''
+   OR @CrossDatabaseRequested IS NULL OR @CrossDatabaseRequested<>0
+   OR @@LOCK_TIMEOUT<>137
+   OR NOT EXISTS(SELECT 1 FROM [#PrepareDatabaseCandidates_Runtime])
+   OR EXISTS(SELECT 1 FROM [#PrepareDatabaseCandidates_Warnings])
+    THROW 55711,N''USP_PrepareDatabaseCandidates changed caller state or candidate output.'',1;
+
+IF EXISTS
+(
+    SELECT 1 FROM [tempdb].[sys].[columns] WITH (NOLOCK)
+    WHERE [object_id] IN
+        (OBJECT_ID(N''tempdb..#PrepareDatabaseCandidates_Runtime''),OBJECT_ID(N''tempdb..#PrepareDatabaseCandidates_Warnings''))
+      AND [name] IN(N''DatabaseName'',N''CollationName'',N''StateDesc'',N''UserAccessDesc'',N''RecoveryModelDesc'',N''RequestedName'',N''StatusCode'',N''ErrorMessage'')
+      AND ([collation_name] IS NULL OR [collation_name]<>N''SQL_Latin1_General_CP1_CS_AS'')
+)
+    THROW 55712,N''USP_PrepareDatabaseCandidates target collation contract mismatch.'',1;
+IF (SELECT COUNT(*) FROM [tempdb].[sys].[columns] WITH (NOLOCK)
+    WHERE [object_id]=OBJECT_ID(N''tempdb..#PrepareDatabaseCandidates_Runtime''))<>10
+ OR (SELECT COUNT(*) FROM [tempdb].[sys].[columns] WITH (NOLOCK)
+    WHERE [object_id]=OBJECT_ID(N''tempdb..#PrepareDatabaseCandidates_Warnings''))<>3
+    THROW 55713,N''USP_PrepareDatabaseCandidates target schema count mismatch.'',1;
+';
+
+IF @@LOCK_TIMEOUT<>@OuterEntryLockTimeout OR @@TRANCOUNT<>@OuterEntryTranCount
+    THROW 55714,N'PrepareDatabaseCandidates runtime probe leaked outer caller state.',1;
+DROP TABLE [#PrepareDatabaseCandidates_Runtime];
+DROP TABLE [#PrepareDatabaseCandidates_Warnings];
+PRINT N'PrepareDatabaseCandidates collation and caller runtime contract passed.';
 GO

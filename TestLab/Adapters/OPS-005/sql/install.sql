@@ -3533,8 +3533,8 @@ GO
 /*
 ===============================================================================
 Objekt       : monitor.USP_PrepareDatabaseCandidates
-Version      : 2.0.1
-Stand        : 2026-10-13
+Version      : 2.0.2
+Stand        : 2026-10-14
 Typ          : Interne Stored Procedure
 Zweck        : Validiert die frameworkweite Datenbankauswahl, prüft den
                tatsächlich aktivierten Analysepfad und befüllt lokale
@@ -3607,6 +3607,10 @@ BEGIN
           @CandidateTableQuoted = QUOTENAME(@CandidateTable)
         , @WarningTableQuoted = QUOTENAME(@WarningTable);
 
+    -- Ausschließlich eigene Temp-Anlagen dürfen je Statement bis zu 100 ms
+    -- auf eine Sperre warten. Fachliche Zugriffe bleiben anschließend NOWAIT.
+    BEGIN TRY
+    SET LOCK_TIMEOUT 100;
     CREATE TABLE [#PrepareDatabaseCandidates_Work]
     (
           [DatabaseId] int NOT NULL
@@ -3626,6 +3630,12 @@ BEGIN
           [NameValue] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL
         , [IsValid] bit NOT NULL
     );
+    SET LOCK_TIMEOUT 0;
+    END TRY
+    BEGIN CATCH
+        SET LOCK_TIMEOUT 0;
+        THROW;
+    END CATCH;
 
     IF @EffectiveDatabaseNames IS NOT NULL
         INSERT [#PrepareDatabaseCandidates_RequestedNames]([NameValue],[IsValid])
