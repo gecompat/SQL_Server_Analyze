@@ -236,7 +236,7 @@
         }
       ],
       "locator": "AI_Metadata/Internal_Documentation/Quality/WI0009_Local_Metadata_Runtime_Evidence_2026-10-14.md#ausstehende-positive-feature-abnahme",
-      "registration_basis_blob": "d472fdeac1d0c8a500ac183f0115c5a1fd10f701",
+      "registration_basis_blob": "08b0fb3ff87a8238cebec25a4e6416e1548f2ada",
       "acceptance_criteria": "Eigene gebundene externe Quelle; positive native Datenquellen-, Dateiformat-, Tabellen-, Schema- und Spaltenreferenzen; kein fremder Endpunkt; Native Capture, Caller- und Own-Cleanup-Nachweis."
     }
   }

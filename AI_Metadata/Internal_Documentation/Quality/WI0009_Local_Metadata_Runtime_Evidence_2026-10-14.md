@@ -69,5 +69,8 @@ Die [Spezifikation](../../../Documentation/Architecture/WI0009_External_Data_Pub
 und der Code implementieren den portablen lesenden Vertrag. Diese begrenzte
 Evidenz behauptet weder positive echte External-Table-Referenzqualifikation
 noch Remotezugriff, Connectivitytests oder ein allgemeines Gesundheitsurteil.
-Die reguläre Lieferung wartet zusätzlich auf die vorgelagerte WI-0006/0007-
-Integration und anschließend auf betroffene lokale Gates und exakte Head-CI.
+WI-0006/0007 sind über PR #384 regulär integriert. Die WI-0009-Lieferung
+verwendet diesen Stand; die später korrigierten gemeinsamen Helfer werden
+durch das aktuelle funktionale Head-Gate geprüft. Die historischen nativen
+Bindungen werden nicht auf geänderte Helfer übertragen. Betroffene lokale
+Gates und exakte Head-CI bleiben Voraussetzung der Integration.

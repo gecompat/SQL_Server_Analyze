@@ -188,3 +188,15 @@ Die freigegebenen [WI-0006](../../../Documentation/Architecture/WI0006_Compile_C
 und [WI-0007](../../../Documentation/Architecture/WI0007_External_Model_Inventory_Public_Specification.md)-
 Verträge bestimmen den Umfang. Automatisches Tuning, Ursachenbehauptungen,
 Konfigurationsänderungen und Modell-Endpunktaufrufe gehören nicht dazu.
+
+## Reguläre Integration
+
+PR #384 ist am 14. Oktober 2026 regulär integriert. Der qualifizierte Head
+`868541d2ecd0902a959605db796b2c615baf3935` besteht die vier statischen
+Liefergates und das funktionale SQL-2025-Gate einschließlich der betroffenen
+Compatibility Levels 150, 160 und 170. Der Merge
+`fba3fe478d3802ee9de4ae36f27e59bccae391ba` besitzt denselben Tree
+`30f2da84df63466807e6f3d0d5e7d0e9b0e35c27`. Main und origin/main sind
+synchronisiert; eigene Worktrees sind archiviert und eigene Branches entfernt.
+Frühere fehlgeschlagene CI-Läufe bleiben fehlgeschlagen. Der erfolgreiche
+aktuelle Lauf erklärt keine zuvor unbekannte Fehlerursache rückwirkend.
