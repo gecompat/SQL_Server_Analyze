@@ -1,6 +1,6 @@
 # WI-0006: Compile-Kontext – freigegebener öffentlicher Vertrag
 
-**Status:** APPROVED; vom Benutzer am 13. Oktober 2026 unmittelbar wie vorgeschlagen freigegeben. Die Implementierung und native Abnahme sind im [Laufzeitnachweis](../../AI_Metadata/Internal_Documentation/Quality/WI0006_WI0007_Runtime_Evidence_2026-10-14.md) dokumentiert.
+**Status:** APPROVED; vom Benutzer am 13. Oktober 2026 unmittelbar wie vorgeschlagen freigegeben. Die Implementierung ist auf SQL Server 2025 und mit dem gezielten SQL-2019-Fallback nativ geprüft.
 **Basis:** Aktueller Codeabgleich vom 13. Oktober 2026.
 
 ## Bestehende Funktion und verbleibende Lücke
