@@ -66,7 +66,7 @@ Die Validierung folgt der verbindlichen CI-Teststrategie. Ein Statuswechsel setz
 | `WI-0006` | `P2` | `RESEARCHED_NOT_IMPLEMENTED` | `OPTIMIZED_SP_EXECUTESQL` und Compile-Kontext |
 | `WI-0007` | `P2` | `RESEARCHED_NOT_IMPLEMENTED` | External-Model-Inventur |
 | `WI-0008` | `P1` | `IMPLEMENTED_ACTIONS_GATE` | SQL-Audit-Konfigurationsanalyse |
-| `WI-0009` | `P2` | `RESEARCHED_NOT_IMPLEMENTED` | External-Data-Analyse |
+| `WI-0009` | `P2` | `IMPLEMENTED_EXTERNAL_EVIDENCE_PENDING` | External-Data-Analyse |
 | `WI-0010` | `P1` | `RESEARCHED_NOT_IMPLEMENTED` | kontinuierliche Diagnoseabdeckung und Gap-Intake |
 
 ## Wellenübersicht
@@ -188,7 +188,7 @@ Primärquelle: [SQL Server Audit](https://learn.microsoft.com/en-us/sql/relation
 
 ### `WI-0009`: External-Data-Analyse
 
-Vorgesehen ist eine neue `USP_ExternalDataAnalysis` für lokale Kataloge externer Datenquellen, Dateiformate, Tabellen und Modelle. Remotezugriff und Connectivitytests sind nicht Bestandteil des Standardvertrags. Verbindungsorte, Credentialnamen und weitere sensible Metadaten benötigen vor einer möglichen Ausgabe eine ausdrückliche Detail- und Datenschutzentscheidung; Secrets und externe Payloads werden niemals gelesen.
+`USP_ExternalDataAnalysis` implementiert den freigegebenen lokalen Metadatenvertrag. Native leere Kataloge auf SQL Server 2025 und 2019 sowie ausdrücklich synthetische Projektionen und Fehlerpfade sind im [begrenzten Nachweis](../Quality/WI0009_Local_Metadata_Runtime_Evidence_2026-10-14.md) qualifiziert; positive echte External-Table-Referenzen bleiben als externes Feature-Gate offen. Remotezugriff und Connectivitytests sind nicht Bestandteil des Standardvertrags. Verbindungsorte, Credentialnamen und weitere sensible Metadaten benötigen vor einer möglichen Ausgabe eine ausdrückliche Detail- und Datenschutzentscheidung; Secrets und externe Payloads werden niemals gelesen.
 
 Primärquelle: [External operations catalog views](https://learn.microsoft.com/en-us/sql/relational-databases/system-catalog-views/external-operations-catalog-views-transact-sql?view=sql-server-ver17).
 

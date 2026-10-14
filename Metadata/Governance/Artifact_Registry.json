@@ -137,7 +137,7 @@
       "kind": "work_item",
       "title": "External-Data-Analyse",
       "registration_state": "REGISTERED",
-      "status": "RESEARCHED_NOT_IMPLEMENTED",
+      "status": "IMPLEMENTED_EXTERNAL_EVIDENCE_PENDING",
       "priority": "P2",
       "acceptance_criteria": "Eine lokale Kataloganalyse trennt externe Datenquellen, Dateiformate, Tabellen und Modelle; der Standardpfad führt keinen Remotezugriff aus und liest keine Secrets oder externen Payloads.",
       "aliases": [],
@@ -221,6 +221,23 @@
       "relations": [],
       "locator": "AI_Metadata/Rule_Context_Cache.md",
       "decision": "Der Foundation-Core-Standard verwendet tatsächlich verfügbare sessionlokale Analyse nach aktueller Autoritäts-, Discovery-, Quellen- und transitiver Abhängigkeitsprüfung. Der Scopeindex trennt Discoverybestand und aufgabenbezogene Leseprofile. Unbekannte Clientkonfiguration wird nicht geraten. Die optionale unveränderte Capability rule-context-cache bleibt für ausdrücklich gewählte persistente Nutzung installiert; exakte Git-/Worktreebindungen, CACHE_MISS, inhaltsfreie lokale Records, Snapshotbindung, Lock und atomare Aufzeichnung bleiben erhalten."
+    },
+    "GATE-0001": {
+      "artifact_uid": "urn:uuid:01a1390f-d0e5-752a-bfd0-9baf560f59b1",
+      "kind": "gate",
+      "title": "Positive native External-Table- und Referenzabnahme",
+      "registration_state": "REGISTERED",
+      "status": "NOT_EXECUTED",
+      "aliases": [],
+      "relations": [
+        {
+          "type": "verifies",
+          "target": "WI-0009"
+        }
+      ],
+      "locator": "AI_Metadata/Internal_Documentation/Quality/WI0009_Local_Metadata_Runtime_Evidence_2026-10-14.md#ausstehende-positive-feature-abnahme",
+      "registration_basis_blob": "d472fdeac1d0c8a500ac183f0115c5a1fd10f701",
+      "acceptance_criteria": "Eigene gebundene externe Quelle; positive native Datenquellen-, Dateiformat-, Tabellen-, Schema- und Spaltenreferenzen; kein fremder Endpunkt; Native Capture, Caller- und Own-Cleanup-Nachweis."
     }
   }
 }

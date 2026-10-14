@@ -21,6 +21,20 @@ Multiple-Session-Budget mit zwei von zwei bleiben unverändert. Weitere
 Mailfälle und tatsächliche Maintenance-Ausführung sind eigenständige offene
 Teilumfänge; öffentliche neue Funktionsverträge bleiben freigabepflichtig.
 
+## WI-0009: qualifizierter portabler Kern und offenes Feature-Gate
+
+Der freigegebene lokale Analyzer ist implementiert. Die native Abnahme auf
+SQL Server 2025 und 2019 bestätigt leere Kataloge, acht Exportschemas und
+Caller-/Quellenerhaltung. Private identitätsgebundene Projektionen prüfen
+Referenzzustände und sechs getrennte Quellenfehlerpfade; sie werden nicht als
+positive echte External-Table-Kataloge ausgegeben. Der
+[begrenzte Nachweis](WI0009_Local_Metadata_Runtime_Evidence_2026-10-14.md)
+benennt den erhaltenen ersten Fehlversuch und die Wiederverwendung seiner
+fünf bestandenen Einzeltests. Das eigene Budget ist mit drei von drei
+Versuchen abgeschlossen. Positive echte Tabellen- und Referenzdaten benötigen
+eine eigene externe Quelle und geeignete Lab-Funktion; dieses Gate bleibt
+offen. Die reguläre Lieferung folgt nach WI-0006/0007 und den Lieferprüfungen.
+
 ## Aktueller Fertigstellungsauftrag vom 13. Oktober 2026
 
 Der Benutzer verlangt die Fertigstellung und priorisiert tatsächlich fehlende
