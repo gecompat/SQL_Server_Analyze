@@ -27618,8 +27618,8 @@ GO
 /*
 ===============================================================================
 Objekt       : monitor.InternalAnalyzeExecutionPlan
-Version      : 1.2.0
-Stand        : 2026-07-23
+Version      : 1.2.1
+Stand        : 2026-10-14
 Typ          : Interne Stored Procedure
 Zweck        : Zerlegt genau ein Showplan-XML einmalig in statementgenaue,
                relationale Plan-, Operator-, Runtime-, Statistik-, Parameter-,
@@ -27713,21 +27713,31 @@ BEGIN
         RETURN;
     END CATCH;
 
-    CREATE TABLE [#InternalAnalyzeExecutionPlan_StatementXml]
-    (
-          [StatementOrdinal] int NOT NULL PRIMARY KEY
-        , [StatementId] int NULL
-        , [StatementCompId] int NULL
-        , [StatementXml] xml NOT NULL
-    );
-    CREATE TABLE [#InternalAnalyzeExecutionPlan_Edges]
-    (
-          [StatementOrdinal] int NOT NULL
-        , [ParentNodeId] int NOT NULL
-        , [ChildNodeId] int NOT NULL
-        , [ChildOrdinal] int NOT NULL
-        , PRIMARY KEY ([StatementOrdinal],[ParentNodeId],[ChildNodeId])
-    );
+    -- Nur eigene Temp-Anlagen erhalten je Statement bis zu 100 ms Lockwartezeit.
+    -- Vor XML- und fachlichen Zugriffen gilt wieder NOWAIT.
+    BEGIN TRY
+        SET LOCK_TIMEOUT 100;
+        CREATE TABLE [#InternalAnalyzeExecutionPlan_StatementXml]
+        (
+              [StatementOrdinal] int NOT NULL PRIMARY KEY
+            , [StatementId] int NULL
+            , [StatementCompId] int NULL
+            , [StatementXml] xml NOT NULL
+        );
+        CREATE TABLE [#InternalAnalyzeExecutionPlan_Edges]
+        (
+              [StatementOrdinal] int NOT NULL
+            , [ParentNodeId] int NOT NULL
+            , [ChildNodeId] int NOT NULL
+            , [ChildOrdinal] int NOT NULL
+            , PRIMARY KEY ([StatementOrdinal],[ParentNodeId],[ChildNodeId])
+        );
+        SET LOCK_TIMEOUT 0;
+    END TRY
+    BEGIN CATCH
+        SET LOCK_TIMEOUT 0;
+        THROW;
+    END CATCH;
 
     BEGIN TRY
         ;WITH [StatementBase] AS

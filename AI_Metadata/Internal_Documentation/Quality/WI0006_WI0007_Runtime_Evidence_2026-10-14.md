@@ -125,6 +125,21 @@ im Zeitfenster und unveränderte Calleroptionen; fehlende Werte oder native
 Fehler erfüllen das Gate nicht. Ein neues exaktes Head-Gate qualifiziert diese
 geänderte Fixture; kein früherer Fehlversuch wird nachträglich erfolgreich.
 
+Der darauf folgende CI-Lauf besteht die drei CL-Gates einschließlich der
+streng gebundenen Ereignisfixture sowie die Berechtigungs- und Regexprüfung.
+Er scheitert anschließend im separaten Standalone-Vertrag mit Fehler 1222 in
+`InternalAnalyzeExecutionPlan`. Die native Zeilennummer gehört zum Ende der
+zweiten eigenen Temp-Anlage. Beide Anlagen erhalten deshalb dasselbe
+getrennte 100-ms-Lockwartefenster; vor der unveränderten XML-Auswertung und
+im Fehlerweg gilt wieder NOWAIT. Fehler werden ohne Retry oder Statusumdeutung
+erneut ausgelöst. Der Standalone-Test ergänzt den eingeschränkten Caller unter
+Timeout0/137, positive Statement-/Operatorcounts sowie inneren und äußeren
+Timeout- und Transaktionsscope. REVERT und eigener User-DROP werden bei einem
+Fehler getrennt versucht und mit dem Originalfehler dokumentiert. Das enge
+Review ist geschlossen; der neue Helperstand verlangt frische Primär-CI.
+Der Gesamtlauf bleibt fehlgeschlagen und wird nicht nachträglich als PASS
+verbucht. Die früheren nativen Producerbindungen bleiben unverändert.
+
 Die aktuellen erfolgreichen Läufe bestätigen Callerrestaurierung, eigene
 SQL-Abwesenheit, öffentliche Bereinigung `REMOVED` mit null Fehlern,
 unveränderte Quellenpins und Dockerbestände sowie abwesende eigene States.

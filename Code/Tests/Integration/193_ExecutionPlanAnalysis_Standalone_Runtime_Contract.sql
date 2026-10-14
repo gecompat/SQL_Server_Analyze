@@ -92,9 +92,17 @@ DECLARE
     , @AnalysisError int
     , @AnalysisMessage nvarchar(2048);
 
+DECLARE @StandaloneIncomingTimeout int=@@LOCK_TIMEOUT,@StandaloneIncomingTranCount int=@@TRANCOUNT;
+BEGIN TRY
+    EXEC [sys].[sp_executesql] N'DECLARE @Case tinyint=0,@IncomingTimeout int;
+WHILE @Case<2
+BEGIN
+    IF @Case=0 SET LOCK_TIMEOUT 0; ELSE SET LOCK_TIMEOUT 137;
+    SET @IncomingTimeout=@@LOCK_TIMEOUT;
+    SELECT @AnalysisJson=NULL,@AnalysisStatus=NULL,@AnalysisPartial=NULL,@AnalysisError=NULL,@AnalysisMessage=NULL;
 EXEC [monitor].[USP_ExecutionPlanAnalysis]
       @PlanXml=@Plan
-    , @ResultSetArt='NONE'
+    , @ResultSetArt=''NONE''
     , @JsonErzeugen=1
     , @Json=@AnalysisJson OUTPUT
     , @PrintMeldungen=0
@@ -103,8 +111,29 @@ EXEC [monitor].[USP_ExecutionPlanAnalysis]
     , @ErrorNumberOut=@AnalysisError OUTPUT
     , @ErrorMessageOut=@AnalysisMessage OUTPUT;
 
-IF @AnalysisStatus NOT IN ('AVAILABLE','PARTIAL') OR ISJSON(@AnalysisJson)<>1
-    THROW 53623,N'Der berechtigungsarme Standalone-Aufruf der Plananalyse ist fehlgeschlagen.',1;
+    IF COALESCE(@AnalysisStatus,'''') NOT IN (''AVAILABLE'',''PARTIAL'') OR COALESCE(ISJSON(@AnalysisJson),0)<>1
+       OR @AnalysisError IS NOT NULL
+       OR (SELECT COUNT_BIG(*) FROM OPENJSON(@AnalysisJson,N''$.statements''))<>1
+       OR (SELECT COUNT_BIG(*) FROM OPENJSON(@AnalysisJson,N''$.operatorTree''))<>1
+       OR @@LOCK_TIMEOUT<>@IncomingTimeout
+        THROW 53623,N''Der berechtigungsarme Standalone-Aufruf oder sein Timeout-Scope ist fehlgeschlagen.'',1;
+    SET @Case+=1;
+END;',
+        N'@Plan xml,@AnalysisJson nvarchar(max) OUTPUT,@AnalysisStatus varchar(40) OUTPUT,
+          @AnalysisPartial bit OUTPUT,@AnalysisError int OUTPUT,@AnalysisMessage nvarchar(2048) OUTPUT',
+        @Plan=@Plan,@AnalysisJson=@AnalysisJson OUTPUT,@AnalysisStatus=@AnalysisStatus OUTPUT,
+        @AnalysisPartial=@AnalysisPartial OUTPUT,@AnalysisError=@AnalysisError OUTPUT,@AnalysisMessage=@AnalysisMessage OUTPUT;
+    IF @@LOCK_TIMEOUT<>@StandaloneIncomingTimeout OR @@TRANCOUNT<>@StandaloneIncomingTranCount
+        THROW 53623,N'Die begrenzten Standalone-Proben haben den äußeren Caller-Scope verändert.',1;
+END TRY
+BEGIN CATCH
+    DECLARE @StandaloneOriginalError int=ERROR_NUMBER(),@StandaloneRevertError int=0,@StandaloneDropError int=0;
+    BEGIN TRY REVERT; END TRY BEGIN CATCH SET @StandaloneRevertError=ERROR_NUMBER(); END CATCH;
+    BEGIN TRY DROP USER [ExampleStandaloneUser]; END TRY BEGIN CATCH SET @StandaloneDropError=ERROR_NUMBER(); END CATCH;
+    RAISERROR(N'STANDALONE_CLEANUP original=%d revert=%d drop=%d',10,1,
+        @StandaloneOriginalError,@StandaloneRevertError,@StandaloneDropError) WITH NOWAIT;
+    THROW;
+END CATCH;
 
 DECLARE
       @EvidenceJson nvarchar(max)
