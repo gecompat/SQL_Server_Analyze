@@ -157,6 +157,7 @@ RAISERROR(N'RELEASE_GATE 35/35: Server Health',10,1) WITH NOWAIT;
 :r ServerHealth/124_WI0008_Audit_Configuration_Runtime_Contract.sql
 :r ServerHealth/134_WI0006_Compile_Context_Runtime_Contract.sql
 :r VersionAdaptive/127_WI0007_External_Model_Inventory_Runtime_Contract.sql
+:r VersionAdaptive/129_WI0004_Segment_Overlap_Runtime_Contract.sql
 
 SELECT CAST('AVAILABLE' AS varchar(40)) AS [StatusCode],
        CAST(0 AS bit) AS [IsPartial],

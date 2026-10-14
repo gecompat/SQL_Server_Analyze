@@ -240,6 +240,8 @@ Quelle: `Code/03_ObjectIndex/060_USP_Columnstore.sql`
     , @Json                          nvarchar(max)  = NULL OUTPUT
     , @PrintMeldungen                 bit           = 1
     , @Hilfe                          bit           = 0
+    , @MitSegmentUeberlappung          bit           = 0
+    , @MaxSegmenteAnalyse             int           = 2000
 ```
 
 ## `[monitor].[USP_CriticalEngineEvents]`

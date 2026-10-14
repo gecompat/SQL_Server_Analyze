@@ -438,6 +438,8 @@ USP_Columnstore,JsonErzeugen,bit,0
 USP_Columnstore,Json,nvarchar(max),NULL OUTPUT
 USP_Columnstore,PrintMeldungen,bit,1
 USP_Columnstore,Hilfe,bit,0
+USP_Columnstore,MitSegmentUeberlappung,bit,0
+USP_Columnstore,MaxSegmenteAnalyse,int,2000
 USP_IndexPhysicalStats,DatabaseNames,nvarchar(max),NULL
 USP_IndexPhysicalStats,SystemdatenbankenEinbeziehen,bit,0
 USP_IndexPhysicalStats,DatabaseNamePattern,nvarchar(4000),NULL

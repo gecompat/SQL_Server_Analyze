@@ -85,7 +85,7 @@ synchronisiert, ohne vorhandene Implementierung erneut zu entwickeln.
 | 3 | WI-0006: Compile-Kontext ist implementiert und nativ qualifiziert. | Über PR #384 regulär integriert; unveränderte erfolgreiche Nachweise werden nicht wiederholt. |
 | 4 | WI-0007: Aggregierte External-Model-Inventur ist implementiert und nativ qualifiziert. | Gemeinsam mit WI-0006 über PR #384 regulär integriert. |
 | 5 | WI-0009: Lokale External-Data-Analyse ist implementiert; der portable Kern ist nativ qualifiziert. | Über PR #385 regulär integriert; das positive External-Table-Gate bleibt bis zu einer geeigneten eigenen Quelle offen. |
-| 6 | WI-0004: Optionale begrenzte Segmentüberlappung fehlt. | Eigenen opt-in Deep-Vertrag freigeben und ausschließlich erforderliche Segmente prüfen. |
+| 6 | WI-0004: Optionale begrenzte Segmentüberlappung fehlt. | Der [opt-in Deep-Vertrag](../../../Documentation/Architecture/WI0004_Segment_Overlap_Public_Specification.md) ist konkret freigegeben; begrenzte Implementierung und gezielte native Abnahme abschließen. |
 
 Die neue öffentliche Diagnosefläche bleibt konkret freigabepflichtig.
 Für WI-0005 liegt die [Freigabevorlage](../../../Documentation/Architecture/WI0005_Time_Bound_Extended_Events_Public_Specification.md) vor.
