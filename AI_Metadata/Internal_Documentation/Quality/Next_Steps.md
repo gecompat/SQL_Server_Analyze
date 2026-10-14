@@ -1,6 +1,6 @@
 # Nächste Arbeitsschritte
 
-**Stand:** 13. Oktober 2026
+**Stand:** 14. Oktober 2026
 **Zweck:** aktuelle ausführbare Entwicklungswelle für `gecompat/SQL_Server_Analyze`
 
 Die ergänzende private Retentionsfixture bestätigt auf SQL Server 2025
@@ -32,13 +32,16 @@ bleiben nicht qualifiziert. Quellen, Caller, eigene SQL-Ressourcen und
 öffentlicher Runtime-Cleanup sind geprüft. Der
 [kanonische Laufzeitnachweis](WI0005_TimeBounds_Runtime_Evidence_2026-10-14.md)
 benennt Bindungen und Aussagegrenzen. Die folgenden älteren Absätze halten
-den Verlauf fest und erteilen keine weitere Runtimefreigabe. Nach lokalen
-Liefergates und exakter Head-CI erfolgt die reguläre Integration.
+den Verlauf fest und erteilen keine weitere Runtimefreigabe. Die reguläre Integration über PR #383 und die Synchronisierung auf main sind abgeschlossen.
 
-WI-0006/0007 werden danach geliefert; ihre zusätzlichen Prüfungen verwenden
-das freigegebene gemeinsame Budget bis acht. WI-0009 ist unmittelbar
-freigegeben und wird als lokale Metadatenanalyse umgesetzt. SSIS wartet
-auf die ausdrücklich angeforderte Windows-/SSISDB-Funktion des Lab-Projekts.
+WI-0006/0007 sind implementiert und mit elf gezählten gemeinsamen Versuchen
+nativ qualifiziert. Der [Nachweis](WI0006_WI0007_Runtime_Evidence_2026-10-14.md)
+trennt neun erhaltene Gesamtfehler von den erfolgreichen Primär- und
+Fallbackläufen sowie der gebundenen Wiederverwendung. Die reguläre Lieferung
+verwendet den integrierten WI-0005-Stand und unveränderte Produktquellen.
+WI-0009 folgt mit qualifiziertem portablem Kern und einem offenen positiven
+External-Table-Gate. SSIS wartet weiterhin auf die angeforderte
+Windows-/SSISDB-Funktion einschließlich veröffentlichter ausgeführter Abnahme.
 
 ## Aktueller Fertigstellungsauftrag vom 13. Oktober 2026
 
@@ -60,10 +63,10 @@ synchronisiert, ohne vorhandene Implementierung erneut zu entwickeln.
 
 | Reihenfolge | Tatsächliche Funktionslücke | Nächster konkreter Abschluss |
 |---|---|---|
-| 1 | WI-0005: Der freigegebene Zeitgrenzenvertrag ist implementiert. | Native Abnahme besteht; lokale Liefergates, exakte Head-CI und reguläre Integration schließen den Schritt ab. |
+| 1 | WI-0005: Der freigegebene Zeitgrenzenvertrag ist regulär geliefert. | Abgeschlossen; unveränderte erfolgreiche Nachweise werden nicht wiederholt. |
 | 2 | SSIS-001: Legacy-Log- und SSISDB-Laufzeitanalysatoren fehlen; der direkte Paketparser bleibt begrenzt. | Die bestehenden Phase-0-Namen und Abnahmegrenzen in ausführbare Analyserverträge überführen und implementieren. |
-| 3 | WI-0006: Gemeinsamer Capability- und Compile-Kontext fehlt. | Die freigegebene USP_CompileContextAnalysis implementieren und vorhandene Konfigurations- sowie Counterflächen wiederverwenden. |
-| 4 | WI-0007: Aggregierte External-Model-Inventur fehlt. | Bestehende SpecialFeatureInventory um die versionsadaptive Quellenklasse ergänzen. |
+| 3 | WI-0006: Compile-Kontext ist implementiert und nativ qualifiziert. | Reguläre Integration mit lokalen und exakten Head-Gates abschließen. |
+| 4 | WI-0007: Aggregierte External-Model-Inventur ist implementiert und nativ qualifiziert. | Gemeinsame Lieferung mit WI-0006 abschließen. |
 | 5 | WI-0009: Lokale External-Data-Analyse fehlt. | Nach WI-0007 die lokale Kataloganalyse implementieren; keine Remotezugriffe, Locations, Credentials oder Payloads. |
 | 6 | WI-0004: Optionale begrenzte Segmentüberlappung fehlt. | Eigenen opt-in Deep-Vertrag freigeben und ausschließlich erforderliche Segmente prüfen. |
 
