@@ -91,6 +91,25 @@ eigene ähnlich benannte Seed-Tabelle prüft die Abgrenzung gegen unabhängige
 Metadaten. Beide eigenen Tabellen werden nach Erfolg entfernt. Das enge
 Review ist geschlossen; der geänderte Test muss im aktuellen Head-Gate neu
 bestehen. Frühere Prüfungen dieser Testdatei werden dafür nicht wiederverwendet.
+Das folgende Gate besteht Test121 bei CL150, bricht aber später im bestehenden
+EV-SEVERE-Fall bei CL160 ab. Seine ursprüngliche Ursache bleibt unbekannt.
+Test169 behält Ereignispredicate und Wartezeiten und ergänzt ausschließlich
+vor Assertion ausgegebene Guardwerte sowie skalare native XEL-Gegenwerte am
+eigenen Pfad. Ein Diagnosetypfehler für RAISERROR wird vor Ausführung korrigiert
+und unabhängig geschlossen. Der nachfolgende Lauf erreicht diesen Fall nicht:
+Er endet zuvor mit tatsächlichem Fehler 1222 bei eigener Temp-Anlage im
+Datenbankselektor. Daraus wird keine Ursache des früheren XE-Abbruchs abgeleitet.
+
+Der gemeinsame Selektor erhält deshalb ein getrenntes Lockwartebudget von
+100 ms je eigener Temp-Anlage. Das Fenster enthält genau zwei CREATEs;
+vor Parser-, Ziel- und Katalogzugriffen sowie im Fehlerweg gilt wieder NOWAIT.
+Ein Fehler wird unverändert erneut ausgelöst; es gibt keine Retry-Schleife
+oder Statusumdeutung und kein Gesamtlaufzeitversprechen. Test122 ergänzt
+Caller0/137, positive Auswahl, Schema, Collation, fehlende Resultsets und
+unveränderten äußeren SET-Scope. Der neue generische Helperstand verlangt
+frische Primär-CI; frühere native Aufnahmen qualifizieren dieses Setupdelta
+nicht. Der erhaltene SQL-2019-Nachweis beschreibt weiterhin die unveränderten
+versionsabhängigen Produktzweige am ausdrücklich genannten Producerstand.
 Die aktuellen erfolgreichen Läufe bestätigen Callerrestaurierung, eigene
 SQL-Abwesenheit, öffentliche Bereinigung `REMOVED` mit null Fehlern,
 unveränderte Quellenpins und Dockerbestände sowie abwesende eigene States.
