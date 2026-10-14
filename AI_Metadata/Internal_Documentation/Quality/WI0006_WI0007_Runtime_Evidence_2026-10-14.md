@@ -146,6 +146,25 @@ Standalone-Quelle neu erzeugt; der betroffene Vergleich besteht lokal.
 Diese Korrektur verändert keinen weiteren Analysealgorithmus und ersetzt
 keine erforderliche exakte Head-CI.
 
+Der nächste funktionale Lauf scheitert zuvor bei CL170 an einer zusätzlichen
+Testannahme: Zwanzig native eigene Ereignisse und der ursprüngliche positive
+Consumerfall sind vorhanden, aber nur neunzehn Ereignisse liegen im zuvor
+mit SYSUTCDATETIME erfassten Fenster. Der erste native Zeitstempel liegt
+knapp vor dessen Anfang. Daraus wird keine allgemeine Ursache oder Uhrgarantie
+abgeleitet. Die unabhängige Gegenprobe liest deshalb die gestoppte eigene
+Quelle vor dem Consumer und bindet die Filtergrenzen an ihr tatsächliches
+Minimum und Maximum plus eine Mikrosekunde. Die ursprünglichen
+Systemuhrwerte bleiben getrennte Beobachtungen. Zwanzig vollständige native
+Zeitwerte, gebundener Pfad, fehlerfreies Lesen und erhaltene Calleroptionen
+sind Voraussetzung des Consumeraufrufs. Alle zwanzig Consumerzeilen müssen
+die exakten Fehler-, Severity-, Finding- und Zeitbedingungen erfüllen;
+fehlende Werte werden abgelehnt. Die aus derselben Lesung erhaltene native
+Zeitzeilenmenge wird vor Assertion ausgegeben und als Timestamp-/Häufigkeits-
+Multimenge beidseitig mit dem Consumer verglichen. Eindeutige Zeitstempel
+werden nicht vorausgesetzt; der enge Befund ist geschlossen. Eine Toleranz
+oder längere Wartezeit wird
+nicht eingeführt. Der geänderte Test verlangt ein neues Head-Gate.
+
 Die aktuellen erfolgreichen Läufe bestätigen Callerrestaurierung, eigene
 SQL-Abwesenheit, öffentliche Bereinigung `REMOVED` mit null Fehlern,
 unveränderte Quellenpins und Dockerbestände sowie abwesende eigene States.
