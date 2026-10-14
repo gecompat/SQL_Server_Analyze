@@ -315,6 +315,7 @@ EXEC [master].[sys].[sp_executesql] @Sql;
 ALTER EVENT SESSION [ExampleP0CriticalEvents] ON SERVER STATE=START;
 DECLARE @EventStartUtc datetime2(7)=SYSUTCDATETIME();
 DECLARE @EventEndUtc datetime2(7)=DATEADD(MINUTE,5,@EventStartUtc);
+DECLARE @EventInitialStartUtc datetime2(7)=@EventStartUtc,@EventInitialEndUtc datetime2(7)=@EventEndUtc;
 DECLARE @SyntheticEventOrdinal tinyint=0;
 WHILE @SyntheticEventOrdinal<20
 BEGIN
@@ -337,13 +338,64 @@ JOIN [sys].[server_event_session_fields] AS [f] WITH (NOLOCK)
   ON [f].[event_session_id]=[t].[event_session_id] AND [f].[object_id]=[t].[target_id] AND [f].[name]=N'filename'
 WHERE [s].[name]=N'ExampleP0CriticalEvents';
 
+DECLARE @EventRawCount bigint=NULL,@EventRawWindowCount bigint=NULL,
+    @EventRawMinUtc datetime2(7)=NULL,@EventRawMaxUtc datetime2(7)=NULL,
+    @EventRawError int=NULL,@EventNativeTimesJson nvarchar(max)=NULL;
+BEGIN TRY
+    -- XML-SET-Optionen gelten nur für die unabhängige native Gegenprobe.
+    SET @Sql=N'SET ANSI_NULLS ON; SET ANSI_PADDING ON; SET ANSI_WARNINGS ON;
+SET ARITHABORT ON; SET CONCAT_NULL_YIELDS_NULL ON;
+SET NUMERIC_ROUNDABORT OFF; SET QUOTED_IDENTIFIER ON;
+DECLARE @NativeOwnEvents TABLE([TimestampUtc] datetime2(7) NULL);
+;WITH [NativeEventRows] AS
+(
+    SELECT [timestamp_utc] [TimestampUtc],TRY_CONVERT(xml,[event_data]) [EventXml]
+    FROM [sys].[fn_xe_file_target_read_file](@Pattern,NULL,NULL,NULL)
+    WHERE [object_name]=N''error_reported''
+), [NativeErrorRows] AS
+(
+    SELECT [TimestampUtc],
+        [EventXml].value(''(event/data[@name="error_number"]/value/text())[1]'',''int'') [ErrorNumber],
+        [EventXml].value(''(event/data[@name="severity"]/value/text())[1]'',''int'') [Severity]
+    FROM [NativeEventRows] WHERE [EventXml] IS NOT NULL
+)
+INSERT @NativeOwnEvents([TimestampUtc])
+SELECT [TimestampUtc] FROM [NativeErrorRows] WHERE [ErrorNumber]=50000 AND [Severity]=16;
+SELECT @RawCount=COUNT_BIG(*),@RawMinUtc=MIN([TimestampUtc]),@RawMaxUtc=MAX([TimestampUtc])
+FROM @NativeOwnEvents;
+SELECT @RawWindowCount=COUNT_BIG(*) FROM @NativeOwnEvents
+WHERE [TimestampUtc]>=@RawMinUtc AND [TimestampUtc]<DATEADD(MICROSECOND,1,@RawMaxUtc);
+SET @NativeTimesJson=(SELECT [TimestampUtc] FROM @NativeOwnEvents ORDER BY [TimestampUtc] FOR JSON PATH,INCLUDE_NULL_VALUES);';
+    EXEC [sys].[sp_executesql] @Sql,
+        N'@Pattern nvarchar(4000),@RawCount bigint OUTPUT,@RawWindowCount bigint OUTPUT,
+          @RawMinUtc datetime2(7) OUTPUT,@RawMaxUtc datetime2(7) OUTPUT,@NativeTimesJson nvarchar(max) OUTPUT',
+        @Pattern=@EventPattern,@RawCount=@EventRawCount OUTPUT,@RawWindowCount=@EventRawWindowCount OUTPUT,
+        @RawMinUtc=@EventRawMinUtc OUTPUT,@RawMaxUtc=@EventRawMaxUtc OUTPUT,@NativeTimesJson=@EventNativeTimesJson OUTPUT;
+END TRY
+BEGIN CATCH
+    SET @EventRawError=ERROR_NUMBER();
+END CATCH;
+DECLARE @EventNativeBoundsReady bit=CASE WHEN @EventRawError IS NULL
+    AND @EventRawCount=20 AND @EventRawWindowCount=20
+    AND @EventRawMinUtc IS NOT NULL AND @EventRawMaxUtc IS NOT NULL
+    AND ISJSON(@EventNativeTimesJson)=1
+    AND (SELECT COUNT_BIG(*) FROM OPENJSON(CASE WHEN ISJSON(@EventNativeTimesJson)=1 THEN @EventNativeTimesJson ELSE N'[]' END))=20
+    AND @EventConfiguredPath COLLATE SQL_Latin1_General_CP1_CS_AS=@EventPath
+    AND @@OPTIONS=@EventCallerOptions THEN 1 ELSE 0 END;
+IF @EventNativeBoundsReady=1
+BEGIN
+    SELECT @EventStartUtc=@EventRawMinUtc,@EventEndUtc=DATEADD(MICROSECOND,1,@EventRawMaxUtc);
+END;
 SET @Json=NULL; SET @Status=NULL; SET @Partial=NULL;
-EXEC [monitor].[USP_CriticalEngineEvents]
-     @SourceExtendedEventSessionName=N'ExampleP0CriticalEvents',@VonUtc=@EventStartUtc,
-     @BisUtc=@EventEndUtc,@MinErrorSeverity=16,@MitSystemHealth=1,
-     @MitServerDiagnostics=0,@MitEventXml=0,@MaxZeilen=20,@ResultSetArt='NONE',
-     @JsonErzeugen=1,@Json=@Json OUTPUT,@PrintMeldungen=0,
-     @StatusCodeOut=@Status OUTPUT,@IsPartialOut=@Partial OUTPUT;
+IF @EventNativeBoundsReady=1
+BEGIN
+    EXEC [monitor].[USP_CriticalEngineEvents]
+         @SourceExtendedEventSessionName=N'ExampleP0CriticalEvents',@VonUtc=@EventStartUtc,
+         @BisUtc=@EventEndUtc,@MinErrorSeverity=16,@MitSystemHealth=1,
+         @MitServerDiagnostics=0,@MitEventXml=0,@MaxZeilen=20,@ResultSetArt='NONE',
+         @JsonErzeugen=1,@Json=@Json OUTPUT,@PrintMeldungen=0,
+         @StatusCodeOut=@Status OUTPUT,@IsPartialOut=@Partial OUTPUT;
+END;
 DROP EVENT SESSION [ExampleP0CriticalEvents] ON SERVER;
 DECLARE @EventJsonValid bit=CASE WHEN ISJSON(@Json)=1 THEN 1 ELSE 0 END;
 DECLARE @EventExpectedMatch bit=CASE WHEN EXISTS
@@ -358,48 +410,16 @@ DECLARE @EventExpectedMatch bit=CASE WHEN EXISTS
       AND [TimestampUtc]>=@EventStartUtc AND [TimestampUtc]<@EventEndUtc
 )
     THEN 1 ELSE 0 END;
-DECLARE @EventRawCount bigint=NULL,@EventRawWindowCount bigint=NULL,
-    @EventRawMinUtc datetime2(7)=NULL,@EventRawMaxUtc datetime2(7)=NULL,
-    @EventRawError int=NULL;
-BEGIN TRY
-    -- XML-SET-Optionen gelten nur für die unabhängige native Gegenprobe.
-    SET @Sql=N'SET ANSI_NULLS ON; SET ANSI_PADDING ON; SET ANSI_WARNINGS ON;
-SET ARITHABORT ON; SET CONCAT_NULL_YIELDS_NULL ON;
-SET NUMERIC_ROUNDABORT OFF; SET QUOTED_IDENTIFIER ON;
-    ;WITH [NativeEventRows] AS
-    (
-        SELECT [timestamp_utc] [TimestampUtc],TRY_CONVERT(xml,[event_data]) [EventXml]
-        FROM [sys].[fn_xe_file_target_read_file](@Pattern,NULL,NULL,NULL)
-        WHERE [object_name]=N''error_reported''
-    ), [NativeErrorRows] AS
-    (
-        SELECT [TimestampUtc],
-            [EventXml].value(''(event/data[@name="error_number"]/value/text())[1]'',''int'') [ErrorNumber],
-            [EventXml].value(''(event/data[@name="severity"]/value/text())[1]'',''int'') [Severity]
-        FROM [NativeEventRows] WHERE [EventXml] IS NOT NULL
-    )
-    SELECT @RawCount=COUNT_BIG(*),
-        @RawWindowCount=COALESCE(SUM(CONVERT(bigint,CASE WHEN [TimestampUtc]>=@StartUtc AND [TimestampUtc]<@EndUtc THEN 1 ELSE 0 END)),0),
-        @RawMinUtc=MIN([TimestampUtc]),@RawMaxUtc=MAX([TimestampUtc])
-    FROM [NativeErrorRows] WHERE [ErrorNumber]=50000 AND [Severity]=16;';
-    EXEC [sys].[sp_executesql] @Sql,
-        N'@Pattern nvarchar(4000),@StartUtc datetime2(7),@EndUtc datetime2(7),
-          @RawCount bigint OUTPUT,@RawWindowCount bigint OUTPUT,
-          @RawMinUtc datetime2(7) OUTPUT,@RawMaxUtc datetime2(7) OUTPUT',
-        @Pattern=@EventPattern,@StartUtc=@EventStartUtc,@EndUtc=@EventEndUtc,
-        @RawCount=@EventRawCount OUTPUT,@RawWindowCount=@EventRawWindowCount OUTPUT,
-        @RawMinUtc=@EventRawMinUtc OUTPUT,@RawMaxUtc=@EventRawMaxUtc OUTPUT;
-END TRY
-BEGIN CATCH
-    SET @EventRawError=ERROR_NUMBER();
-END CATCH;
 DECLARE @EventStatusText nvarchar(40)=COALESCE(CONVERT(nvarchar(40),@Status),N'NULL'),
     @EventPartialText nvarchar(8)=COALESCE(CONVERT(nvarchar(8),@Partial),N'NULL'),
     @EventRawCountText nvarchar(30)=COALESCE(CONVERT(nvarchar(30),@EventRawCount),N'NULL'),
     @EventRawWindowText nvarchar(30)=COALESCE(CONVERT(nvarchar(30),@EventRawWindowCount),N'NULL'),
     @EventRawErrorText nvarchar(12)=COALESCE(CONVERT(nvarchar(12),@EventRawError),N'NULL'),
     @EventStartText nvarchar(33)=CONVERT(nvarchar(33),@EventStartUtc,126),
+    @EventInitialStartText nvarchar(33)=CONVERT(nvarchar(33),@EventInitialStartUtc,126),
+    @EventInitialEndText nvarchar(33)=CONVERT(nvarchar(33),@EventInitialEndUtc,126),
     @EventEndText nvarchar(33)=CONVERT(nvarchar(33),@EventEndUtc,126),
+    @EventNativeTimesText nvarchar(1300)=COALESCE(CONVERT(nvarchar(1300),@EventNativeTimesJson),N'NULL'),
     @EventRawMinText nvarchar(33)=COALESCE(CONVERT(nvarchar(33),@EventRawMinUtc,126),N'NULL'),
     @EventRawMaxText nvarchar(33)=COALESCE(CONVERT(nvarchar(33),@EventRawMaxUtc,126),N'NULL'),
     @EventSourceText nvarchar(1000)=COALESCE(
@@ -413,10 +433,31 @@ DECLARE @EventJsonValidPrint int=CONVERT(int,@EventJsonValid),
     @EventExpectedMatchPrint int=CONVERT(int,@EventExpectedMatch),
     @EventOwnPathBoundPrint int=CONVERT(int,@EventOwnPathBound),
     @EventProbeCallerRestoredPrint int=CONVERT(int,@EventProbeCallerRestored);
-RAISERROR(N'EV_SEVERE_PROBE valid=%d match=%d status=%s partial=%s sources=%s rawAll=%s rawWindow=%s rawError=%s start=%s end=%s rawMin=%s rawMax=%s pathBound=%d callerRestored=%d',10,1,
+RAISERROR(N'EV_SEVERE_PROBE valid=%d match=%d status=%s partial=%s sources=%s rawAll=%s rawWindow=%s rawError=%s start=%s end=%s rawMin=%s rawMax=%s pathBound=%d callerRestored=%d sysStart=%s sysEnd=%s nativeTimes=%s',10,1,
     @EventJsonValidPrint,@EventExpectedMatchPrint,@EventStatusText,@EventPartialText,@EventSourceText,
-    @EventRawCountText,@EventRawWindowText,@EventRawErrorText,@EventStartText,@EventEndText,@EventRawMinText,@EventRawMaxText,@EventOwnPathBoundPrint,@EventProbeCallerRestoredPrint) WITH NOWAIT;
-IF @EventJsonValid=0 OR @EventExpectedMatch=0 OR @EventOwnPathBound=0 OR @EventProbeCallerRestored=0
+    @EventRawCountText,@EventRawWindowText,@EventRawErrorText,@EventStartText,@EventEndText,@EventRawMinText,@EventRawMaxText,@EventOwnPathBoundPrint,@EventProbeCallerRestoredPrint,@EventInitialStartText,@EventInitialEndText,@EventNativeTimesText) WITH NOWAIT;
+IF @EventNativeBoundsReady=0 OR @EventJsonValid=0 OR @EventExpectedMatch=0
+   OR (SELECT COUNT_BIG(*) FROM OPENJSON(CASE WHEN ISJSON(@Json)=1 THEN @Json ELSE N'{}' END,N'$.events'))<>20
+   OR EXISTS
+      (SELECT 1 FROM OPENJSON(CASE WHEN ISJSON(@Json)=1 THEN @Json ELSE N'{}' END,N'$.events')
+       WITH ([TimestampUtc] datetime2(7) N'$.TimestampUtc',[ErrorNumber] int N'$.ErrorNumber',
+             [Severity] int N'$.Severity',[FindingCode] varchar(100) N'$.FindingCode')
+       WHERE [TimestampUtc] IS NULL OR [ErrorNumber] IS NULL OR [Severity] IS NULL OR [FindingCode] IS NULL
+          OR [ErrorNumber]<>50000 OR [Severity]<>16 OR [FindingCode]<>'SEVERE_ERROR_REPORTED'
+          OR [TimestampUtc]<@EventStartUtc OR [TimestampUtc]>=@EventEndUtc)
+   OR EXISTS
+      (SELECT [TimestampUtc],COUNT_BIG(*) FROM OPENJSON(CASE WHEN ISJSON(@EventNativeTimesJson)=1 THEN @EventNativeTimesJson ELSE N'[]' END)
+       WITH ([TimestampUtc] datetime2(7) N'$.TimestampUtc') GROUP BY [TimestampUtc]
+       EXCEPT
+       SELECT [TimestampUtc],COUNT_BIG(*) FROM OPENJSON(CASE WHEN ISJSON(@Json)=1 THEN @Json ELSE N'{}' END,N'$.events')
+       WITH ([TimestampUtc] datetime2(7) N'$.TimestampUtc') GROUP BY [TimestampUtc])
+   OR EXISTS
+      (SELECT [TimestampUtc],COUNT_BIG(*) FROM OPENJSON(CASE WHEN ISJSON(@Json)=1 THEN @Json ELSE N'{}' END,N'$.events')
+       WITH ([TimestampUtc] datetime2(7) N'$.TimestampUtc') GROUP BY [TimestampUtc]
+       EXCEPT
+       SELECT [TimestampUtc],COUNT_BIG(*) FROM OPENJSON(CASE WHEN ISJSON(@EventNativeTimesJson)=1 THEN @EventNativeTimesJson ELSE N'[]' END)
+       WITH ([TimestampUtc] datetime2(7) N'$.TimestampUtc') GROUP BY [TimestampUtc])
+   OR @EventOwnPathBound=0 OR @EventProbeCallerRestored=0
    OR @EventRawError IS NOT NULL OR COALESCE(@EventRawCount,-1)<>20 OR COALESCE(@EventRawWindowCount,-1)<>20
     THROW 54153,N'P0-Vertrag EV-SEVERE fehlgeschlagen.',1;
 INSERT @ExecutedCases VALUES('EV-SEVERE');
