@@ -330,9 +330,10 @@ EXEC [monitor].[USP_CriticalEngineEvents]
      @JsonErzeugen=1,@Json=@Json OUTPUT,@PrintMeldungen=0,
      @StatusCodeOut=@Status OUTPUT,@IsPartialOut=@Partial OUTPUT;
 DROP EVENT SESSION [ExampleP0CriticalEvents] ON SERVER;
-IF ISJSON(@Json)<>1 OR NOT EXISTS
+DECLARE @EventJsonValid bit=CASE WHEN ISJSON(@Json)=1 THEN 1 ELSE 0 END;
+DECLARE @EventExpectedMatch bit=CASE WHEN EXISTS
 (
-    SELECT 1 FROM OPENJSON(@Json,N'$.events')
+    SELECT 1 FROM OPENJSON(CASE WHEN ISJSON(@Json)=1 THEN @Json ELSE N'{}' END,N'$.events')
     WITH
     (
         [TimestampUtc] datetime2(7) N'$.TimestampUtc',[ErrorNumber] int N'$.ErrorNumber',
@@ -341,6 +342,51 @@ IF ISJSON(@Json)<>1 OR NOT EXISTS
     WHERE [ErrorNumber]=50000 AND [Severity]=16 AND [FindingCode]='SEVERE_ERROR_REPORTED'
       AND [TimestampUtc]>=@EventStartUtc AND [TimestampUtc]<@EventEndUtc
 )
+    THEN 1 ELSE 0 END;
+DECLARE @EventRawCount bigint=NULL,@EventRawWindowCount bigint=NULL,
+    @EventRawMinUtc datetime2(7)=NULL,@EventRawMaxUtc datetime2(7)=NULL,
+    @EventRawError int=NULL;
+BEGIN TRY
+    ;WITH [NativeEventRows] AS
+    (
+        SELECT [timestamp_utc] [TimestampUtc],TRY_CONVERT(xml,[event_data]) [EventXml]
+        FROM [sys].[fn_xe_file_target_read_file](N'/tmp/example_p0_critical_events*.xel',NULL,NULL,NULL)
+        WHERE [object_name]=N'error_reported'
+    ), [NativeErrorRows] AS
+    (
+        SELECT [TimestampUtc],
+            [EventXml].value('(event/data[@name="error_number"]/value/text())[1]','int') [ErrorNumber],
+            [EventXml].value('(event/data[@name="severity"]/value/text())[1]','int') [Severity]
+        FROM [NativeEventRows] WHERE [EventXml] IS NOT NULL
+    )
+    SELECT @EventRawCount=COUNT_BIG(*),
+        @EventRawWindowCount=COALESCE(SUM(CONVERT(bigint,CASE WHEN [TimestampUtc]>=@EventStartUtc AND [TimestampUtc]<@EventEndUtc THEN 1 ELSE 0 END)),0),
+        @EventRawMinUtc=MIN([TimestampUtc]),@EventRawMaxUtc=MAX([TimestampUtc])
+    FROM [NativeErrorRows] WHERE [ErrorNumber]=50000 AND [Severity]=16;
+END TRY
+BEGIN CATCH
+    SET @EventRawError=ERROR_NUMBER();
+END CATCH;
+DECLARE @EventStatusText nvarchar(40)=COALESCE(CONVERT(nvarchar(40),@Status),N'NULL'),
+    @EventPartialText nvarchar(8)=COALESCE(CONVERT(nvarchar(8),@Partial),N'NULL'),
+    @EventRawCountText nvarchar(30)=COALESCE(CONVERT(nvarchar(30),@EventRawCount),N'NULL'),
+    @EventRawWindowText nvarchar(30)=COALESCE(CONVERT(nvarchar(30),@EventRawWindowCount),N'NULL'),
+    @EventRawErrorText nvarchar(12)=COALESCE(CONVERT(nvarchar(12),@EventRawError),N'NULL'),
+    @EventStartText nvarchar(33)=CONVERT(nvarchar(33),@EventStartUtc,126),
+    @EventEndText nvarchar(33)=CONVERT(nvarchar(33),@EventEndUtc,126),
+    @EventRawMinText nvarchar(33)=COALESCE(CONVERT(nvarchar(33),@EventRawMinUtc,126),N'NULL'),
+    @EventRawMaxText nvarchar(33)=COALESCE(CONVERT(nvarchar(33),@EventRawMaxUtc,126),N'NULL'),
+    @EventSourceText nvarchar(1000)=COALESCE(
+        (SELECT [SourceName],[StatusCode],[ErrorNumber]
+         FROM OPENJSON(CASE WHEN ISJSON(@Json)=1 THEN @Json ELSE N'{}' END,N'$.sources')
+         WITH ([SourceName] nvarchar(128) N'$.SourceName',[StatusCode] varchar(40) N'$.StatusCode',[ErrorNumber] int N'$.ErrorNumber')
+         FOR JSON PATH,INCLUDE_NULL_VALUES),N'NULL');
+DECLARE @EventJsonValidPrint int=CONVERT(int,@EventJsonValid),
+    @EventExpectedMatchPrint int=CONVERT(int,@EventExpectedMatch);
+RAISERROR(N'EV_SEVERE_PROBE valid=%d match=%d status=%s partial=%s sources=%s rawAll=%s rawWindow=%s rawError=%s start=%s end=%s rawMin=%s rawMax=%s',10,1,
+    @EventJsonValidPrint,@EventExpectedMatchPrint,@EventStatusText,@EventPartialText,@EventSourceText,
+    @EventRawCountText,@EventRawWindowText,@EventRawErrorText,@EventStartText,@EventEndText,@EventRawMinText,@EventRawMaxText) WITH NOWAIT;
+IF @EventJsonValid=0 OR @EventExpectedMatch=0
     THROW 54153,N'P0-Vertrag EV-SEVERE fehlgeschlagen.',1;
 INSERT @ExecutedCases VALUES('EV-SEVERE');
 
