@@ -21,6 +21,20 @@ Multiple-Session-Budget mit zwei von zwei bleiben unverändert. Weitere
 Mailfälle und tatsächliche Maintenance-Ausführung sind eigenständige offene
 Teilumfänge; öffentliche neue Funktionsverträge bleiben freigabepflichtig.
 
+## WI-0009: qualifizierter portabler Kern und offenes Feature-Gate
+
+Der freigegebene lokale Analyzer ist implementiert. Die native Abnahme auf
+SQL Server 2025 und 2019 bestätigt leere Kataloge, acht Exportschemas und
+Caller-/Quellenerhaltung. Private identitätsgebundene Projektionen prüfen
+Referenzzustände und sechs getrennte Quellenfehlerpfade; sie werden nicht als
+positive echte External-Table-Kataloge ausgegeben. Der
+[begrenzte Nachweis](WI0009_Local_Metadata_Runtime_Evidence_2026-10-14.md)
+benennt den erhaltenen ersten Fehlversuch und die Wiederverwendung seiner
+fünf bestandenen Einzeltests. Das eigene Budget ist mit drei von drei
+Versuchen abgeschlossen. Positive echte Tabellen- und Referenzdaten benötigen
+eine eigene externe Quelle und geeignete Lab-Funktion; dieses Gate bleibt
+offen. Die reguläre Lieferung folgt nach WI-0006/0007 und den Lieferprüfungen.
+
 ## Aktueller WI-0005-Abschluss vom 14. Oktober 2026
 
 Der freigegebene Zeitgrenzenvertrag ist implementiert und nativ qualifiziert.
@@ -37,8 +51,10 @@ den Verlauf fest und erteilen keine weitere Runtimefreigabe. Die reguläre Integ
 WI-0006/0007 sind implementiert und mit elf gezählten gemeinsamen Versuchen
 nativ qualifiziert. Der [Nachweis](WI0006_WI0007_Runtime_Evidence_2026-10-14.md)
 trennt neun erhaltene Gesamtfehler von den erfolgreichen Primär- und
-Fallbackläufen sowie der gebundenen Wiederverwendung. Die reguläre Lieferung
-verwendet den integrierten WI-0005-Stand und unveränderte Produktquellen.
+Fallbackläufen sowie der gebundenen Wiederverwendung. Die reguläre Integration
+über PR #384 ist abgeschlossen. Die Funktionsquellen 250 und 020 bleiben
+gegenüber der nativen Abnahme unverändert; korrigierte gemeinsame Helfer
+und Testfixtures bestehen das aktuelle funktionale Head-Gate.
 WI-0009 folgt mit qualifiziertem portablem Kern und einem offenen positiven
 External-Table-Gate. SSIS wartet weiterhin auf die angeforderte
 Windows-/SSISDB-Funktion einschließlich veröffentlichter ausgeführter Abnahme.
@@ -64,10 +80,10 @@ synchronisiert, ohne vorhandene Implementierung erneut zu entwickeln.
 | Reihenfolge | Tatsächliche Funktionslücke | Nächster konkreter Abschluss |
 |---|---|---|
 | 1 | WI-0005: Der freigegebene Zeitgrenzenvertrag ist regulär geliefert. | Abgeschlossen; unveränderte erfolgreiche Nachweise werden nicht wiederholt. |
-| 2 | SSIS-001: Legacy-Log- und SSISDB-Laufzeitanalysatoren fehlen; der direkte Paketparser bleibt begrenzt. | Die bestehenden Phase-0-Namen und Abnahmegrenzen in ausführbare Analyserverträge überführen und implementieren. |
-| 3 | WI-0006: Compile-Kontext ist implementiert und nativ qualifiziert. | Reguläre Integration mit lokalen und exakten Head-Gates abschließen. |
-| 4 | WI-0007: Aggregierte External-Model-Inventur ist implementiert und nativ qualifiziert. | Gemeinsame Lieferung mit WI-0006 abschließen. |
-| 5 | WI-0009: Lokale External-Data-Analyse fehlt. | Nach WI-0007 die lokale Kataloganalyse implementieren; keine Remotezugriffe, Locations, Credentials oder Payloads. |
+| 2 | SSIS-001: Legacy-Log- und SSISDB-Laufzeitanalysatoren fehlen; der direkte Paketparser bleibt begrenzt. | Auf die vom Benutzer angeforderte Windows-/SSISDB-Funktion und veröffentlichte ausgeführte Lab-Abnahme warten; danach die konkreten Analyserverträge fertigstellen. |
+| 3 | WI-0006: Compile-Kontext ist implementiert und nativ qualifiziert. | Über PR #384 regulär integriert; unveränderte erfolgreiche Nachweise werden nicht wiederholt. |
+| 4 | WI-0007: Aggregierte External-Model-Inventur ist implementiert und nativ qualifiziert. | Gemeinsam mit WI-0006 über PR #384 regulär integriert. |
+| 5 | WI-0009: Lokale External-Data-Analyse ist implementiert; der portable Kern ist nativ qualifiziert. | Nach WI-0006/0007 regulär integrieren; das positive External-Table-Gate bleibt bis zu einer geeigneten eigenen Quelle offen. |
 | 6 | WI-0004: Optionale begrenzte Segmentüberlappung fehlt. | Eigenen opt-in Deep-Vertrag freigeben und ausschließlich erforderliche Segmente prüfen. |
 
 Die neue öffentliche Diagnosefläche bleibt konkret freigabepflichtig.

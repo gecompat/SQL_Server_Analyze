@@ -820,3 +820,7 @@ EXEC [monitor].[USP_ClrAnalysis]
 ### Folgeanalyse
 
 Prüfen Sie blockierte Managed-Code-Requests mit `USP_CurrentRequests` und `USP_CurrentBlocking`, Instanzhärtung mit `USP_ServerSecurityConfiguration`, Speicher- und Counterevidenz mit `USP_ServerMemory` und `USP_PerformanceCounters` sowie Lade- oder Hostfehler mit `USP_ErrorLogAnalysis`. Die vollständige Leserichtung steht in der [Procedure-Seite](Procedures/USP_ClrAnalysis.md).
+
+## monitor.USP_ExternalDataAnalysis
+
+[Eigenständige Analysebeschreibung](Procedures/USP_ExternalDataAnalysis.md). Lokale Kataloge, sichtbare Referenzen und aggregierte Modelle bleiben getrennt von externer Nutzbarkeit.

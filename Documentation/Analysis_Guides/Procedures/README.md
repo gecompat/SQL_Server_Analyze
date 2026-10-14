@@ -166,3 +166,7 @@ Jede Seite weist jetzt Entscheidungseinsatz, Nichtziele, Resultset-Leserichtung,
 - [`USP_ConfigureSnapshotTarget`](USP_ConfigureSnapshotTarget.md) – explizite Ziel-, Collector-, Retention- und Budgetpolicy.
 - [`USP_RunSnapshotCollectionCycle`](USP_RunSnapshotCollectionCycle.md) – schedulerneutraler, begrenzter Collection Cycle.
 - [`USP_PurgeSnapshotData`](USP_PurgeSnapshotData.md) – begrenzte Child-first-Retention.
+
+## Lokale externe Datenobjekte
+
+- [USP_ExternalDataAnalysis](USP_ExternalDataAnalysis.md) analysiert sichtbare lokale externe Kataloge ohne Remotezugriff.

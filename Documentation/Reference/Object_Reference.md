@@ -1022,3 +1022,7 @@ Quelle: `Code/10_SnapshotBaseline/030_Snapshot_Target_Schema.sql`
 | Verwendung | Die Tabelle gehört zum optionalen Snapshot-/Baseline-Paket und wird ausschließlich von dessen Installations-, Collection- und Retentionpfaden verwaltet. Direkte DML ist kein unterstützter Betriebsweg. |
 | Last und Sperren | Schreibt pro Retentionlauf eine technische Laufzeile und aktualisiert deren Summen. Diese Metadaten sind klein gegenüber den Sampletabellen; die eigentlichen Löschkosten entstehen in den child-first verarbeiteten Evidenztabellen. |
 | Vertrag | Persistenter interner Paketvertrag. Schemaänderungen erfolgen ausschließlich über den versionierten SC-023-Installer; außerhalb des Pakets besteht keine Kompatibilitätszusage. |
+
+## monitor.USP_ExternalDataAnalysis
+
+Öffentliche Procedure für lokale externe Kataloge. [Parameter und Vertrag](Procedure_Reference.md#monitorusp_externaldataanalysis).
