@@ -80,6 +80,17 @@ Ein neuer erfolgreicher Bestandsvergleich restauriert diesen verlorenen
 Nachweis nicht. Die Wiederverwendung aus Lauf neun ist ausdrücklich auf die
 vollständig abgeschlossenen fachlichen Komponenten begrenzt.
 
+Im Integrationsgate scheitert anschließend ein bestehender DIAG-003-TABLE-Test
+bei CL150 mit Fehler 53648. Ein früherer CI-Lauf mit gleichen ausführbaren
+Produktquellen bestand; die konkrete Fehlerursache bleibt unbekannt, weil
+seine Einzelbedingungen nicht gespeichert wurden. Der betroffene Test 121
+prüfte Temp-Spalten über ein globales Namenspräfix. Die Korrektur bindet den
+caller-sichtbaren eigenen Objektbezeichner, erhält alle sechs Wertbedingungen
+und gibt jede entscheidende Bedingung vor der Assertion aus. Eine zusätzliche
+eigene ähnlich benannte Seed-Tabelle prüft die Abgrenzung gegen unabhängige
+Metadaten. Beide eigenen Tabellen werden nach Erfolg entfernt. Das enge
+Review ist geschlossen; der geänderte Test muss im aktuellen Head-Gate neu
+bestehen. Frühere Prüfungen dieser Testdatei werden dafür nicht wiederverwendet.
 Die aktuellen erfolgreichen Läufe bestätigen Callerrestaurierung, eigene
 SQL-Abwesenheit, öffentliche Bereinigung `REMOVED` mit null Fehlern,
 unveränderte Quellenpins und Dockerbestände sowie abwesende eigene States.

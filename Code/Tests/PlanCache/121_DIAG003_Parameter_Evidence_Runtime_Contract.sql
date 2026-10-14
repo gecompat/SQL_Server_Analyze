@@ -39,6 +39,10 @@ CREATE TABLE [#121_DIAG003_Parameter_Evidence_Runtime_Contract_Parameters]
 (
     [SeedColumn] bit NULL
 );
+CREATE TABLE [#121_DIAG003_Parameter_Evidence_Runtime_Contract_Parameters_Neighbor]
+(
+    [SeedColumn] bit NULL
+);
 
 EXEC [monitor].[USP_ShowplanAnalysis]
       @PlanHandle=@MissingPlanHandle
@@ -48,7 +52,13 @@ EXEC [monitor].[USP_ShowplanAnalysis]
     , @JsonErzeugen=0
     , @PrintMeldungen=0;
 
-IF NOT EXISTS
+DECLARE @ParameterTargetObjectId int=OBJECT_ID(N'tempdb..#121_DIAG003_Parameter_Evidence_Runtime_Contract_Parameters');
+DECLARE @ParameterNeighborObjectId int=OBJECT_ID(N'tempdb..#121_DIAG003_Parameter_Evidence_Runtime_Contract_Parameters_Neighbor');
+DECLARE @ParameterNeighborSeedPresent bit=CASE WHEN EXISTS
+    (SELECT 1 FROM [tempdb].[sys].[columns] WITH (NOLOCK)
+     WHERE [object_id]=@ParameterNeighborObjectId AND [name]=N'SeedColumn')
+    THEN 1 ELSE 0 END;
+DECLARE @ExpectedParameterRowPresent bit=CASE WHEN EXISTS
 (
     SELECT 1
     FROM [#121_DIAG003_Parameter_Evidence_Runtime_Contract_Parameters]
@@ -59,24 +69,44 @@ IF NOT EXISTS
       AND [RuntimeValuePresent]=0
       AND [IsComplete]=0
 )
-   OR EXISTS
+    THEN 1 ELSE 0 END;
+DECLARE @ParameterSeedColumnPresent bit=CASE WHEN EXISTS
       (
           SELECT 1
           FROM [tempdb].[sys].[columns] AS [c] WITH (NOLOCK)
-          JOIN [tempdb].[sys].[tables] AS [t] WITH (NOLOCK)
-            ON [t].[object_id]=[c].[object_id]
-          WHERE [t].[name] LIKE N'#121_DIAG003_Parameter_Evidence_Runtime_Contract_Parameters%'
+          WHERE [c].[object_id]=@ParameterTargetObjectId
             AND [c].[name]=N'SeedColumn'
-      )
-   OR NOT EXISTS
+      ) THEN 1 ELSE 0 END;
+DECLARE @ParameterObservedColumnPresent bit=CASE WHEN EXISTS
       (
           SELECT 1
           FROM [tempdb].[sys].[columns] AS [c] WITH (NOLOCK)
-          JOIN [tempdb].[sys].[tables] AS [t] WITH (NOLOCK)
-            ON [t].[object_id]=[c].[object_id]
-          WHERE [t].[name] LIKE N'#121_DIAG003_Parameter_Evidence_Runtime_Contract_Parameters%'
+          WHERE [c].[object_id]=@ParameterTargetObjectId
             AND [c].[name]=N'SourceObservedAtUtc'
-      )
+      ) THEN 1 ELSE 0 END;
+
+SELECT N'DIAG003_TABLE_BEFORE_ASSERTION' [FrameType],
+    @ParameterTargetObjectId [OwnTargetObjectId],
+    @ParameterNeighborObjectId [OwnNeighborObjectId],
+    @ParameterNeighborSeedPresent [NeighborSeedColumnPresent],
+    @ExpectedParameterRowPresent [ExpectedRowPresent],
+    @ParameterSeedColumnPresent [SeedColumnPresent],
+    @ParameterObservedColumnPresent [ObservedColumnPresent];
+SELECT [CandidateId],[ValueStatus],[ValueSource],[CompiledValuePresent],
+    [RuntimeValuePresent],[IsComplete]
+FROM [#121_DIAG003_Parameter_Evidence_Runtime_Contract_Parameters];
+SELECT [column_id],[name]
+FROM [tempdb].[sys].[columns] WITH (NOLOCK)
+WHERE [object_id]=@ParameterTargetObjectId
+ORDER BY [column_id];
+
+IF @ParameterTargetObjectId IS NULL
+   OR @ParameterNeighborObjectId IS NULL
+   OR @ParameterTargetObjectId=@ParameterNeighborObjectId
+   OR @ParameterNeighborSeedPresent=0
+   OR @ExpectedParameterRowPresent=0
+   OR @ParameterSeedColumnPresent=1
+   OR @ParameterObservedColumnPresent=0
     THROW 53648,N'Der TABLE-Vertrag der aggregierten DIAG-003-Parameterevidenz ist fehlgeschlagen.',1;
 
 SELECT
@@ -84,4 +114,6 @@ SELECT
     , N'PASS' AS [StatusCode]
     , COUNT_BIG(*) AS [EvidenceRowCount]
 FROM [#121_DIAG003_Parameter_Evidence_Runtime_Contract_Parameters];
+DROP TABLE [#121_DIAG003_Parameter_Evidence_Runtime_Contract_Parameters];
+DROP TABLE [#121_DIAG003_Parameter_Evidence_Runtime_Contract_Parameters_Neighbor];
 GO
