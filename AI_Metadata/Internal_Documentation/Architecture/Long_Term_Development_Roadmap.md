@@ -62,7 +62,7 @@ Die Validierung folgt der verbindlichen CI-Teststrategie. Ein Statuswechsel setz
 | `WI-0002` | `P2` | `IMPLEMENTED_ACTIONS_GATE` | TempDB-ADR- und PVS-Diagnostik |
 | `WI-0003` | `P2` | `IMPLEMENTED_ACTIONS_GATE` | Backup-Kompressionsalgorithmus- und ZSTD-Evidenz |
 | `WI-0004` | `P2` | `PARTIAL_PRODUCT_FUNCTION` | geordnete Columnstore-Diagnostik |
-| `WI-0005` | `P2` | `RESEARCHED_NOT_IMPLEMENTED` | zeitbegrenzte Extended-Events-Sessions |
+| `WI-0005` | `P2` | `IMPLEMENTED_ACTIONS_GATE` | zeitbegrenzte Extended-Events-Sessions |
 | `WI-0006` | `P2` | `RESEARCHED_NOT_IMPLEMENTED` | `OPTIMIZED_SP_EXECUTESQL` und Compile-Kontext |
 | `WI-0007` | `P2` | `RESEARCHED_NOT_IMPLEMENTED` | External-Model-Inventur |
 | `WI-0008` | `P1` | `IMPLEMENTED_ACTIONS_GATE` | SQL-Audit-Konfigurationsanalyse |
@@ -156,7 +156,7 @@ Primärquelle: [What's new in columnstore indexes](https://learn.microsoft.com/e
 
 ### `WI-0005`: Zeitbegrenzte Extended-Events-Sessions
 
-Die spätere Analyse prüft die Erweiterung von `USP_ExtendedEventsSessions` um `MAX_DURATION`, Runtimezustand und Restlaufzeitgrenze. Das Framework erstellt, startet, stoppt oder verändert keine Session. Ein unbegrenzter Wert ist ohne Capturezweck und Lastkontext kein Fehler.
+Der freigegebene opt-in-Pfad von `USP_ExtendedEventsSessions` liefert `MAX_DURATION`, Runtimezustand und begrenzte Restzeitschätzungen. Die native SQL-2025-Abnahme und der gezielte SQL-2019-Fallback stehen im [Laufzeitnachweis](../Quality/WI0005_TimeBounds_Runtime_Evidence_2026-10-14.md). Das Framework erstellt, startet, stoppt oder verändert keine Session. Ein unbegrenzter Wert ist ohne Capturezweck und Lastkontext kein Fehler.
 
 Primärquelle: [Extended Events sessions](https://learn.microsoft.com/en-us/sql/relational-databases/extended-events/sql-server-extended-events-sessions?view=sql-server-ver17).
 

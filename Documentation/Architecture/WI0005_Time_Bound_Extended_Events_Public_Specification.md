@@ -1,6 +1,6 @@
 # WI-0005: Zeitbegrenzte Extended-Events-Sessions – Freigabevorlage
 
-**Status:** PROPOSED; öffentliche Implementierung wartet auf Benutzerfreigabe.
+**Status:** APPROVED; am 13. Oktober 2026 unmittelbar durch den Benutzer freigegeben. Implementierung und native SQL-2025-/SQL-2019-Abnahme sind abgeschlossen; die regulären Liefergates bleiben erforderlich.
 **Referenz:** WI-0005.
 **Basis:** Integrierter Stand vom 13. Oktober 2026.
 
