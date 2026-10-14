@@ -78,10 +78,10 @@ synchronisiert, ohne vorhandene Implementierung erneut zu entwickeln.
 | Reihenfolge | Tatsächliche Funktionslücke | Nächster konkreter Abschluss |
 |---|---|---|
 | 1 | WI-0005: Der freigegebene Zeitgrenzenvertrag ist regulär geliefert. | Abgeschlossen; unveränderte erfolgreiche Nachweise werden nicht wiederholt. |
-| 2 | SSIS-001: Legacy-Log- und SSISDB-Laufzeitanalysatoren fehlen; der direkte Paketparser bleibt begrenzt. | Die bestehenden Phase-0-Namen und Abnahmegrenzen in ausführbare Analyserverträge überführen und implementieren. |
+| 2 | SSIS-001: Legacy-Log- und SSISDB-Laufzeitanalysatoren fehlen; der direkte Paketparser bleibt begrenzt. | Auf die vom Benutzer angeforderte Windows-/SSISDB-Funktion und veröffentlichte ausgeführte Lab-Abnahme warten; danach die konkreten Analyserverträge fertigstellen. |
 | 3 | WI-0006: Compile-Kontext ist implementiert und nativ qualifiziert. | Reguläre Integration mit lokalen und exakten Head-Gates abschließen. |
 | 4 | WI-0007: Aggregierte External-Model-Inventur ist implementiert und nativ qualifiziert. | Gemeinsame Lieferung mit WI-0006 abschließen. |
-| 5 | WI-0009: Lokale External-Data-Analyse fehlt. | Nach WI-0007 die lokale Kataloganalyse implementieren; keine Remotezugriffe, Locations, Credentials oder Payloads. |
+| 5 | WI-0009: Lokale External-Data-Analyse ist implementiert; der portable Kern ist nativ qualifiziert. | Nach WI-0006/0007 regulär integrieren; das positive External-Table-Gate bleibt bis zu einer geeigneten eigenen Quelle offen. |
 | 6 | WI-0004: Optionale begrenzte Segmentüberlappung fehlt. | Eigenen opt-in Deep-Vertrag freigeben und ausschließlich erforderliche Segmente prüfen. |
 
 Die neue öffentliche Diagnosefläche bleibt konkret freigabepflichtig.
