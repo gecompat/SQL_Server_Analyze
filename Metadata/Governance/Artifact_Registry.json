@@ -77,7 +77,7 @@
       "kind": "work_item",
       "title": "Zeitbegrenzte Extended-Events-Sessions",
       "registration_state": "REGISTERED",
-      "status": "RESEARCHED_NOT_IMPLEMENTED",
+      "status": "IMPLEMENTED_ACTIONS_GATE",
       "priority": "P2",
       "acceptance_criteria": "MAX_DURATION und Runtimezustand werden versionsadaptiv analysiert; das Framework erstellt, startet, stoppt oder verändert keine Extended-Events-Session.",
       "aliases": [],

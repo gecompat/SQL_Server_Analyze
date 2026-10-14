@@ -21,6 +21,25 @@ Multiple-Session-Budget mit zwei von zwei bleiben unverändert. Weitere
 Mailfälle und tatsächliche Maintenance-Ausführung sind eigenständige offene
 Teilumfänge; öffentliche neue Funktionsverträge bleiben freigabepflichtig.
 
+## Aktueller WI-0005-Abschluss vom 14. Oktober 2026
+
+Der freigegebene Zeitgrenzenvertrag ist implementiert und nativ qualifiziert.
+Der siebte SQL-2025-Lauf besteht die fehlenden Fehler-, Berechtigungs- und
+Uhrbasisproben mit gebundener Wiederverwendung früherer erfolgreicher
+Einzeltests. Anschließend besteht der einzige SQL-2019-Fallback. Alle acht
+tatsächlichen Versuche bleiben gezählt; die sechs früheren Primärläufe
+bleiben nicht qualifiziert. Quellen, Caller, eigene SQL-Ressourcen und
+öffentlicher Runtime-Cleanup sind geprüft. Der
+[kanonische Laufzeitnachweis](WI0005_TimeBounds_Runtime_Evidence_2026-10-14.md)
+benennt Bindungen und Aussagegrenzen. Die folgenden älteren Absätze halten
+den Verlauf fest und erteilen keine weitere Runtimefreigabe. Nach lokalen
+Liefergates und exakter Head-CI erfolgt die reguläre Integration.
+
+WI-0006/0007 werden danach geliefert; ihre zusätzlichen Prüfungen verwenden
+das freigegebene gemeinsame Budget bis acht. WI-0009 ist unmittelbar
+freigegeben und wird als lokale Metadatenanalyse umgesetzt. SSIS wartet
+auf die ausdrücklich angeforderte Windows-/SSISDB-Funktion des Lab-Projekts.
+
 ## Aktueller Fertigstellungsauftrag vom 13. Oktober 2026
 
 Der Benutzer verlangt die Fertigstellung und priorisiert tatsächlich fehlende
@@ -41,7 +60,7 @@ synchronisiert, ohne vorhandene Implementierung erneut zu entwickeln.
 
 | Reihenfolge | Tatsächliche Funktionslücke | Nächster konkreter Abschluss |
 |---|---|---|
-| 1 | WI-0005: Die Zeitgrenzenfunktion wird nach unmittelbarer Benutzerfreigabe implementiert. | Vertikale Änderung und unabhängiger Review sind vorbereitet; die native Abnahme und reguläre Lieferung bleiben erforderlich. |
+| 1 | WI-0005: Der freigegebene Zeitgrenzenvertrag ist implementiert. | Native Abnahme besteht; lokale Liefergates, exakte Head-CI und reguläre Integration schließen den Schritt ab. |
 | 2 | SSIS-001: Legacy-Log- und SSISDB-Laufzeitanalysatoren fehlen; der direkte Paketparser bleibt begrenzt. | Die bestehenden Phase-0-Namen und Abnahmegrenzen in ausführbare Analyserverträge überführen und implementieren. |
 | 3 | WI-0006: Gemeinsamer Capability- und Compile-Kontext fehlt. | Die freigegebene USP_CompileContextAnalysis implementieren und vorhandene Konfigurations- sowie Counterflächen wiederverwenden. |
 | 4 | WI-0007: Aggregierte External-Model-Inventur fehlt. | Bestehende SpecialFeatureInventory um die versionsadaptive Quellenklasse ergänzen. |
