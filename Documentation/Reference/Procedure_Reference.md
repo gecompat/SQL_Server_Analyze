@@ -2606,3 +2606,24 @@ RAW und TABLE verwenden moduleStatus, configurations, counters, waits, cache,
 sourceStatus und warnings; JSON verwendet Schema 1.
 
 [Analysebeschreibung](../Analysis_Guides/Procedures/USP_CompileContextAnalysis.md)
+
+## `[monitor].[USP_ExternalDataAnalysis]`
+
+Quelle: `Code/09_VersionAdaptive/110_USP_ExternalDataAnalysis.sql`
+
+```sql
+      @DatabaseNames nvarchar(max)=NULL
+    , @DatabaseNamePattern nvarchar(4000)=NULL
+    , @SystemdatenbankenEinbeziehen bit=0
+    , @MaxZeilen int=2000
+    , @ResultSetArt varchar(16)='CONSOLE'
+    , @ResultTablesJson nvarchar(max)=NULL
+    , @JsonErzeugen bit=0
+    , @Json nvarchar(max)=NULL OUTPUT
+    , @PrintMeldungen bit=1
+    , @Hilfe bit=0
+    , @StatusCodeOut varchar(40)=NULL OUTPUT
+    , @IsPartialOut bit=NULL OUTPUT
+```
+
+Lokale sichtbare externe Kataloge und Referenzen ohne Remotezugriff. [Analysebeschreibung](../Analysis_Guides/Procedures/USP_ExternalDataAnalysis.md).

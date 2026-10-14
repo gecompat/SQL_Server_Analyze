@@ -203,3 +203,9 @@ Für einen Einstieg nach beobachtetem Problem verwenden Sie [Hier beginnen](Star
 | Procedure | Analyse |
 |---|---|
 | `[monitor].[USP_CompileContextAnalysis]` | [Lokale Konfiguration und getrennte Serversamples](Procedures/USP_CompileContextAnalysis.md) |
+
+## Lokale externe Datenobjekte
+
+| Procedure | Analyse |
+|---|---|
+| `[monitor].[USP_ExternalDataAnalysis]` | [Lokale Kataloge und Referenzen](Procedures/USP_ExternalDataAnalysis.md) |

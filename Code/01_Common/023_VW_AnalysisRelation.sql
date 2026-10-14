@@ -147,6 +147,7 @@ AS
         , (N'USP_DatabaseIntegrityAnalysis','CONFIRM_WITH',N'USP_BackupRecovery',1,N'Integritätsevidenz mit Backupfrische, Recovery-Modell und Restorefähigkeit verbinden.')
         , (N'USP_DatabaseCapacityAnalysis','CONFIRM_WITH',N'USP_CurrentIO',1,N'Kapazität, Wachstum und freien Platz gegen aktuelle Datei- und Volume-I/O-Signale prüfen.')
         , (N'USP_CompileContextAnalysis','CONFIRM_WITH',N'USP_PlanCacheHealth',1,N'Compile-Counter und Compile-Waits mit der serverweiten Plan-Cache-Sicht einordnen; Datenbankkonfiguration und Serverwerte behalten ihren getrennten Scope.')
+        , (N'USP_ExternalDataAnalysis','CONFIRM_WITH',N'USP_SpecialFeatureInventory',1,N'Lokale Detailkataloge mit der aggregierten Featureinventur einordnen; Sichtbarkeit und Datenbankscope erhalten.')
         , (N'USP_PerformanceCounters','CONFIRM_WITH',N'USP_CurrentWaits',1,N'Counter-Deltas mit aktuellen Waitklassen und Requests einordnen.')
         , (N'USP_CriticalEngineEvents','CONFIRM_WITH',N'USP_ErrorLogAnalysis',1,N'Kritische Ringbuffer- und Systemsignale mit begrenzten Errorlogmustern abgleichen.')
         , (N'USP_InternalContentionAnalysis','CONFIRM_WITH',N'USP_CurrentWaits',1,N'Interne Latch-/Spinlocksignale gegen aktuelle Waitverteilung prüfen.')

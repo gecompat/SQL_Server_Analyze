@@ -106,3 +106,4 @@ USP_SystemDatabaseObjectInventory,DEEP_REVIEWED,2026-08-28,3
 USP_AuditConfigurationAnalysis,BASELINE,,1
 USP_SsisPackageAnalysis,BASELINE,,1
 USP_CompileContextAnalysis,BASELINE,,1
+USP_ExternalDataAnalysis,BASELINE,,1

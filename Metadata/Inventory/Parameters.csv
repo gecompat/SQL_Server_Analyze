@@ -1912,3 +1912,15 @@ USP_CompileContextAnalysis,StatusCodeOut,varchar(40),NULL OUTPUT
 USP_CompileContextAnalysis,IsPartialOut,bit,NULL OUTPUT
 USP_CompileContextAnalysis,ErrorNumberOut,int,NULL OUTPUT
 USP_CompileContextAnalysis,ErrorMessageOut,nvarchar(2048),NULL OUTPUT
+USP_ExternalDataAnalysis,DatabaseNames,nvarchar(max),NULL
+USP_ExternalDataAnalysis,DatabaseNamePattern,nvarchar(4000),NULL
+USP_ExternalDataAnalysis,SystemdatenbankenEinbeziehen,bit,0
+USP_ExternalDataAnalysis,MaxZeilen,int,2000
+USP_ExternalDataAnalysis,ResultSetArt,varchar(16),'CONSOLE'
+USP_ExternalDataAnalysis,ResultTablesJson,nvarchar(max),NULL
+USP_ExternalDataAnalysis,JsonErzeugen,bit,0
+USP_ExternalDataAnalysis,Json,nvarchar(max),NULL OUTPUT
+USP_ExternalDataAnalysis,PrintMeldungen,bit,1
+USP_ExternalDataAnalysis,Hilfe,bit,0
+USP_ExternalDataAnalysis,StatusCodeOut,varchar(40),NULL OUTPUT
+USP_ExternalDataAnalysis,IsPartialOut,bit,NULL OUTPUT

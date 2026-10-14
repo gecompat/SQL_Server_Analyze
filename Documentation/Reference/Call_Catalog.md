@@ -772,3 +772,12 @@ EXEC [monitor].[USP_CompileContextAnalysis] @SampleSeconds=0,@MaxZeilen=200,@Res
 ```
 
 [Analysebeschreibung](../Analysis_Guides/Procedures/USP_CompileContextAnalysis.md)
+
+## `[monitor].[USP_ExternalDataAnalysis]`
+
+```sql
+EXEC [monitor].[USP_ExternalDataAnalysis] @Hilfe=1;
+EXEC [monitor].[USP_ExternalDataAnalysis] @MaxZeilen=200, @ResultSetArt='CONSOLE';
+```
+
+[Analysebeschreibung](../Analysis_Guides/Procedures/USP_ExternalDataAnalysis.md).

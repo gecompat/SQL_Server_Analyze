@@ -373,6 +373,7 @@
     ]
   },
   "excluded_references": [
+    {"source": "AI_Metadata/Internal_Documentation/Quality/Next_Steps.md", "target": "Code/Tests/Common/151_XESessions_Collation_Runtime_Contract.sql", "classification": "product-reference"},
     {"source": "AI_Metadata/Internal_Documentation/Quality/Next_Steps.md", "target": "Documentation/Architecture/WI0005_Time_Bound_Extended_Events_Public_Specification.md", "classification": "product-reference"},
     {
       "source": ".ai/foundation/ARTIFACT_REGISTRATION_POLICY.md",
