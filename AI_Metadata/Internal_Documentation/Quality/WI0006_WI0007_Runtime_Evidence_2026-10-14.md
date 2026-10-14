@@ -165,6 +165,16 @@ werden nicht vorausgesetzt; der enge Befund ist geschlossen. Eine Toleranz
 oder längere Wartezeit wird
 nicht eingeführt. Der geänderte Test verlangt ein neues Head-Gate.
 
+Das folgende Head-Gate bricht bei CL160 im allgemeinen Filter-/JSON-Test ab.
+Ein öffentlicher Procedurefall scheitert, 101 Fälle liefern gültiges JSON.
+Der erhaltene Fehlerausschnitt benennt den betroffenen Fall und seine native
+Ursache nicht; beides bleibt unbekannt. Test165 ergänzt deshalb ausschließlich
+native ErrorProcedure-/ErrorLine-Aufnahme und begrenzte technische
+Failure-Marker vor derselben Assertion. Die Marker enthalten weder
+SQL-/JSON-Nutzlast noch Fehlertext. Ihr Error-Präfix wird vom vorhandenen
+CI-Logfilter erfasst; Workflow, Testumfang und Laufzeitbudgets bleiben
+unverändert. Die ursprünglichen Testbedingungen werden nicht abgeschwächt.
+
 Die aktuellen erfolgreichen Läufe bestätigen Callerrestaurierung, eigene
 SQL-Abwesenheit, öffentliche Bereinigung `REMOVED` mit null Fehlern,
 unveränderte Quellenpins und Dockerbestände sowie abwesende eigene States.
