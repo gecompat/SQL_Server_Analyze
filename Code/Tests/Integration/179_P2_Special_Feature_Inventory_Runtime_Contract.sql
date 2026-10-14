@@ -48,7 +48,7 @@ BEGIN TRY
          @HighImpactConfirmed=1;
 
     IF ISJSON(@Json)<>1 OR @Status NOT IN('AVAILABLE','AVAILABLE_LIMITED')
-       OR (SELECT COUNT_BIG(*) FROM OPENJSON(@Json,N'$.features'))<>18
+       OR (SELECT COUNT_BIG(*) FROM OPENJSON(@Json,N'$.features'))<>19
        OR EXISTS
           (
               SELECT 1
@@ -196,7 +196,7 @@ BEGIN TRY
          @HighImpactConfirmed=1;
     IF ISJSON(@Json)<>1
        OR (SELECT COUNT_BIG(*) FROM OPENJSON(@Json,N'$.features'))>1
-       OR TRY_CONVERT(int,JSON_VALUE(@Json,N'$.meta.featureRowCount'))<>18
+       OR TRY_CONVERT(int,JSON_VALUE(@Json,N'$.meta.featureRowCount'))<>19
         THROW 55305,N'P2-Vertrag FEATURE-BOUNDED fehlgeschlagen.',1;
     INSERT @ExecutedCases VALUES('FEATURE-BOUNDED');
 

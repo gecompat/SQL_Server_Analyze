@@ -1972,6 +1972,8 @@ Quelle: `Code/09_VersionAdaptive/050_USP_ServiceBrokerAnalysis.sql`
 
 Quelle: `Code/09_VersionAdaptive/020_USP_SpecialFeatureInventory.sql`
 
+Die zusätzliche Featurezeile `EXTERNAL_MODELS` liefert nur eine sichtbare Kataloganzahl. Der [freigegebene Vertrag](../Architecture/WI0007_External_Model_Inventory_Public_Specification.md) beschreibt Defaultzähler, NULL-Fallback und Fehlerisolation; Parameter und Ausgabeschemas bleiben erhalten.
+
 ```sql
 @DatabaseNames                    nvarchar(max)  = NULL
     , @SystemdatenbankenEinbeziehen     bit            = 0
@@ -2575,3 +2577,33 @@ Quelle: `Code/05_QueryStore/100_USP_QueryStoreReplicaAnalysis.sql`
     , @ErrorNumberOut                   int            = NULL OUTPUT
     , @ErrorMessageOut                  nvarchar(2048) = NULL OUTPUT
 ```
+
+## `[monitor].[USP_CompileContextAnalysis]`
+
+Quelle: `Code/08_ServerHealth/250_USP_CompileContextAnalysis.sql`
+
+```sql
+@DatabaseNames nvarchar(max)=NULL
+    , @SystemdatenbankenEinbeziehen bit=0
+    , @DatabaseNamePattern nvarchar(4000)=NULL
+    , @SampleSeconds tinyint=0
+    , @MaxZeilen int=2000
+    , @ResultSetArt varchar(16)='CONSOLE'
+    , @ResultTablesJson nvarchar(max)=NULL
+    , @JsonErzeugen bit=0
+    , @Json nvarchar(max)=NULL OUTPUT
+    , @PrintMeldungen bit=1
+    , @Hilfe bit=0
+    , @StatusCodeOut varchar(40)=NULL OUTPUT
+    , @IsPartialOut bit=NULL OUTPUT
+    , @ErrorNumberOut int=NULL OUTPUT
+    , @ErrorMessageOut nvarchar(2048)=NULL OUTPUT
+```
+
+Die Procedure liest lokale OPTIMIZED_SP_EXECUTESQL-Konfiguration und getrennte
+serverweite Compile-Counter, Compile-Waits und aggregierte Memory-Cache-Metadaten.
+Sampling ist standardmäßig aus und optional auf eine bis 60 Sekunden begrenzt.
+RAW und TABLE verwenden moduleStatus, configurations, counters, waits, cache,
+sourceStatus und warnings; JSON verwendet Schema 1.
+
+[Analysebeschreibung](../Analysis_Guides/Procedures/USP_CompileContextAnalysis.md)

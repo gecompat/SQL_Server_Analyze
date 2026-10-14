@@ -197,3 +197,9 @@ Für einen Einstieg nach beobachtetem Problem verwenden Sie [Hier beginnen](Star
 - [Unterstützende Frameworkobjekte](../Reference/Object_Reference.md)
 
 - [USP_QueryStoreReplicaAnalysis](Procedures/USP_QueryStoreReplicaAnalysis.md) – Query-Store-Evidenz nach beobachteter Replica-Rolle.
+
+## Compile-Kontext
+
+| Procedure | Analyse |
+|---|---|
+| `[monitor].[USP_CompileContextAnalysis]` | [Lokale Konfiguration und getrennte Serversamples](Procedures/USP_CompileContextAnalysis.md) |

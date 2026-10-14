@@ -31,6 +31,8 @@ CREATE TABLE [#Filter_Output_Contract_PublicProcedureResult]
     , [JsonStatus] varchar(32) NULL
     , [ErrorNumber] int NULL
     , [ErrorMessage] nvarchar(2048) NULL
+    , [ErrorProcedure] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+    , [ErrorLine] int NULL
 );
 
 /* Bracket-aware Pipe-Listen: Trennung nur außerhalb von [ ... ]. */
@@ -388,8 +390,8 @@ BEGIN TRY
     VALUES(N'''+REPLACE(@ProcedureName,N'''',N'''''')+N''',''PASS'',CASE WHEN ISJSON(@Json)=1 THEN ''VALID_JSON'' ELSE ''MISSING_OR_INVALID_JSON'' END);
 END TRY
 BEGIN CATCH
-    INSERT [#Filter_Output_Contract_PublicProcedureResult]([ProcedureName],[TestStatus],[ErrorNumber],[ErrorMessage])
-    VALUES(N'''+REPLACE(@ProcedureName,N'''',N'''''')+N''',''FAIL'',ERROR_NUMBER(),ERROR_MESSAGE());
+    INSERT [#Filter_Output_Contract_PublicProcedureResult]([ProcedureName],[TestStatus],[ErrorNumber],[ErrorMessage],[ErrorProcedure],[ErrorLine])
+    VALUES(N'''+REPLACE(@ProcedureName,N'''',N'''''')+N''',''FAIL'',ERROR_NUMBER(),ERROR_MESSAGE(),ERROR_PROCEDURE(),ERROR_LINE());
 END CATCH;';
     EXEC [sys].[sp_executesql] @Sql;
     FETCH NEXT FROM [ProcedureCursor] INTO @ProcedureName,@ObjectId;
@@ -438,5 +440,48 @@ GROUP BY [TestStatus],[JsonStatus]
 ORDER BY [TestStatus],[JsonStatus];
 
 IF EXISTS(SELECT 1 FROM [#Filter_Output_Contract_Failure])
+BEGIN
+    DECLARE @FailureProcedure sysname,@FailureStatus varchar(16),@FailureJsonStatus varchar(32),
+        @FailureError int,@FailureErrorProcedure sysname,@FailureLine int,
+        @FailureStatusText nvarchar(16),@FailureJsonText nvarchar(32),
+        @FailureErrorText nvarchar(12),@FailureErrorProcedureText nvarchar(128),@FailureLineText nvarchar(12);
+    DECLARE [FailureResultCursor] CURSOR LOCAL FAST_FORWARD FOR
+    SELECT [ProcedureName],[TestStatus],[JsonStatus],[ErrorNumber],[ErrorProcedure],[ErrorLine]
+    FROM [#Filter_Output_Contract_PublicProcedureResult]
+    WHERE [TestStatus]<>'PASS' OR [JsonStatus]<>'VALID_JSON'
+    ORDER BY [ProcedureName];
+    OPEN [FailureResultCursor];
+    FETCH NEXT FROM [FailureResultCursor] INTO @FailureProcedure,@FailureStatus,@FailureJsonStatus,
+        @FailureError,@FailureErrorProcedure,@FailureLine;
+    WHILE @@FETCH_STATUS=0
+    BEGIN
+        SELECT @FailureStatusText=COALESCE(CONVERT(nvarchar(16),@FailureStatus),N'NULL'),
+            @FailureJsonText=COALESCE(CONVERT(nvarchar(32),@FailureJsonStatus),N'NULL'),
+            @FailureErrorText=COALESCE(CONVERT(nvarchar(12),@FailureError),N'NULL'),
+            @FailureErrorProcedureText=COALESCE(CONVERT(nvarchar(128),@FailureErrorProcedure),N'NULL'),
+            @FailureLineText=COALESCE(CONVERT(nvarchar(12),@FailureLine),N'NULL');
+        RAISERROR(N'Error: FILTER_OUTPUT_PUBLIC_FAILURE procedure=%s status=%s jsonStatus=%s error=%s errorProcedure=%s errorLine=%s',10,1,
+            @FailureProcedure,@FailureStatusText,@FailureJsonText,@FailureErrorText,@FailureErrorProcedureText,@FailureLineText) WITH NOWAIT;
+        FETCH NEXT FROM [FailureResultCursor] INTO @FailureProcedure,@FailureStatus,@FailureJsonStatus,
+            @FailureError,@FailureErrorProcedure,@FailureLine;
+    END;
+    CLOSE [FailureResultCursor];
+    DEALLOCATE [FailureResultCursor];
+    DECLARE @FailureTestName sysname;
+    DECLARE [FailureCaseCursor] CURSOR LOCAL FAST_FORWARD FOR
+    SELECT [f].[TestName] FROM [#Filter_Output_Contract_Failure] AS [f]
+    WHERE NOT EXISTS(SELECT 1 FROM [#Filter_Output_Contract_PublicProcedureResult] AS [p]
+                     WHERE [p].[ProcedureName] COLLATE SQL_Latin1_General_CP1_CS_AS=[f].[TestName] COLLATE SQL_Latin1_General_CP1_CS_AS)
+    ORDER BY [f].[TestName];
+    OPEN [FailureCaseCursor];
+    FETCH NEXT FROM [FailureCaseCursor] INTO @FailureTestName;
+    WHILE @@FETCH_STATUS=0
+    BEGIN
+        RAISERROR(N'Error: FILTER_OUTPUT_CASE_FAILURE case=%s',10,1,@FailureTestName) WITH NOWAIT;
+        FETCH NEXT FROM [FailureCaseCursor] INTO @FailureTestName;
+    END;
+    CLOSE [FailureCaseCursor];
+    DEALLOCATE [FailureCaseCursor];
     THROW 54130,N'Der Filter-, Ausgabe- oder JSON-Vertrag ist verletzt.',1;
+END;
 GO

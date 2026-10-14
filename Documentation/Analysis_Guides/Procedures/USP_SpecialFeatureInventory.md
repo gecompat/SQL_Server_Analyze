@@ -39,6 +39,14 @@ die vollständige Inventur vor dem Ausgabefilter. Die 21 Textspalten der vier
 lokalen Quelltabellen und die neun TABLE-Textspalten verwenden ausdrücklich
 `SQL_Latin1_General_CP1_CS_AS`; die öffentliche Feldstruktur bleibt erhalten.
 
+## External Models
+
+Die zusätzliche Featurezeile `EXTERNAL_MODELS` enthält ab SQL Server 2025 ausschließlich die sichtbare Anzahl aus `sys.external_models`. Modellnamen, Locations, Parameter, Besitzer, Credentialbezüge und Inhalte werden nicht gelesen. Die Procedure ruft keine AI-Funktion oder externe Verbindung auf. Ein positiver Katalogwert beweist weder Erreichbarkeit noch Ausführung oder Gesundheit.
+
+Auf älteren Engines lautet der DetectionStatus `UNAVAILABLE_VERSION` mit einer unbekannten Anzahl. Eine unbekannte Engineversion oder ein tatsächlicher Quellenfehler erzeugt `SOURCE_UNAVAILABLE`, erhält andere Featurezeilen und macht den Datenbankstatus partiell. Tatsächliche Fehler bleiben mit ihrem ersten nativen Fehlerpaar an die betroffene Datenbank gebunden. Ein erfolgreicher Nullwert gilt ausschließlich für sichtbare Metadaten.
+
+Die zusätzliche Defaultzeile verändert die Featurezähler und kann bei begrenzter Ausgabe andere Featurezeilen aus dem Ausschnitt verdrängen. `@NurErkannteFeatures=1` behält sie nur bei `DETECTED`; Sortierung, Felder, Ausgabearten und JSON-Schema 1 bleiben erhalten. Der vollständige Vertrag steht in der [WI-0007-Spezifikation](../../Architecture/WI0007_External_Model_Inventory_Public_Specification.md).
+
 ## Eine Zeile bedeutet
 
 Im Feature-Resultset identifiziert `(DatabaseName, FeatureCode)` eine Zeile. `DetectedItemCount` kann je Code verschiedene Dinge addieren – etwa Tabellen plus Dateigruppen oder Kataloge plus Indizes – und darf daher nur innerhalb der dokumentierten Featuresemantik interpretiert werden. Im Datenbankstatus steht eine Zeile für den Auswertungsversuch einer Datenbank, nicht für ein Feature.
@@ -93,11 +101,11 @@ Welche besonderen oder versionsabhängigen Datenbankfeatures und Objektarten sin
 
 ### Technischer Hintergrund
 
-Der Datenbankcursor führt einen festen Satz aggregierter Katalogzählungen für In-Memory OLTP, Temporal, Service Broker, Full-Text, Change Tracking, CDC, Verschlüsselung, CLR, External Tables/Runtimes, FILESTREAM/FileTable, Graph, Spatial, XML, native JSON-/Vector-Typen und benutzerdefinierte Typen aus. Er liest keine Objektdefinition oder Nutzdaten. Jede Featurezeile trägt ihre konkrete Quellliste und Aussagegrenze selbst.
+Der Datenbankcursor führt einen festen Satz aggregierter Katalogzählungen für In-Memory OLTP, Temporal, Service Broker, Full-Text, Change Tracking, CDC, Verschlüsselung, CLR, External Tables/Models/Runtimes, FILESTREAM/FileTable, Graph, Spatial, XML, native JSON-/Vector-Typen und benutzerdefinierte Typen aus. Er liest keine Objektdefinition oder Nutzdaten. Jede Featurezeile trägt ihre konkrete Quellliste und Aussagegrenze selbst.
 
 ### Datenkette
 
-`sys.assemblies`, `sys.change_tracking_databases`, `sys.change_tracking_tables`, `sys.column_encryption_keys`, `sys.column_master_keys`, `sys.columns`, `sys.configurations`, `sys.databases`, `sys.external_data_sources`, `sys.external_languages`, `sys.external_libraries`, `sys.external_tables`, `sys.filegroups`, `sys.fulltext_catalogs`, `sys.fulltext_indexes`, `sys.objects`, `sys.service_queues`, `sys.services`, `sys.sp_executesql`, `sys.tables`, `sys.types`, `sys.xml_indexes`.
+`sys.assemblies`, `sys.change_tracking_databases`, `sys.change_tracking_tables`, `sys.column_encryption_keys`, `sys.column_master_keys`, `sys.columns`, `sys.configurations`, `sys.databases`, `sys.external_data_sources`, `sys.external_languages`, `sys.external_libraries`, `sys.external_models`, `sys.external_tables`, `sys.filegroups`, `sys.fulltext_catalogs`, `sys.fulltext_indexes`, `sys.objects`, `sys.service_queues`, `sys.services`, `sys.sp_executesql`, `sys.tables`, `sys.types`, `sys.xml_indexes`.
 
 ### Source Select
 
