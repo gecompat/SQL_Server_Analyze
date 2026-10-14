@@ -110,6 +110,21 @@ unveränderten äußeren SET-Scope. Der neue generische Helperstand verlangt
 frische Primär-CI; frühere native Aufnahmen qualifizieren dieses Setupdelta
 nicht. Der erhaltene SQL-2019-Nachweis beschreibt weiterhin die unveränderten
 versionsabhängigen Produktzweige am ausdrücklich genannten Producerstand.
+Das nächste Head-Gate besteht CL150 und CL160, bricht aber bei CL170 erneut
+im EV-SEVERE-Fall ab. Die gespeicherten Werte zeigen gültiges JSON ohne
+passendes Ereignis und einen unabhängigen XML-Lesefehler 1934. Das feste
+SourceName-Label ist kein Nachweis eines falschen Dateipfads; die Ursache des
+fehlenden Ereignisses bleibt unbekannt. Die Fixture erhält eine eigene
+GUID-Datei, eine native Konfigurationspfadbindung und eine XE-Quelle, die nur
+Fehler 50000 mit Severity16 des eigenen Callers erfasst. Die zwanzig erzeugten
+Fehler, Wartezeiten, UTC-Grenzen und positive Consumerassertion bleiben
+erhalten. Die unabhängige XML-Gegenprobe verwendet die von Microsoft
+[vorgeschriebenen SET-Optionen](https://learn.microsoft.com/en-us/sql/relational-databases/xml/retrieve-and-query-xml-data?view=sql-server-ver17)
+in einem eigenen dynamischen Scope. Sie verlangt zwanzig native Ereignisse
+im Zeitfenster und unveränderte Calleroptionen; fehlende Werte oder native
+Fehler erfüllen das Gate nicht. Ein neues exaktes Head-Gate qualifiziert diese
+geänderte Fixture; kein früherer Fehlversuch wird nachträglich erfolgreich.
+
 Die aktuellen erfolgreichen Läufe bestätigen Callerrestaurierung, eigene
 SQL-Abwesenheit, öffentliche Bereinigung `REMOVED` mit null Fehlern,
 unveränderte Quellenpins und Dockerbestände sowie abwesende eigene States.
