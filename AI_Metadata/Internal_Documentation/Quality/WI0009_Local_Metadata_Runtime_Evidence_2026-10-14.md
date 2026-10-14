@@ -73,4 +73,16 @@ WI-0006/0007 sind über PR #384 regulär integriert. Die WI-0009-Lieferung
 verwendet diesen Stand; die später korrigierten gemeinsamen Helfer werden
 durch das aktuelle funktionale Head-Gate geprüft. Die historischen nativen
 Bindungen werden nicht auf geänderte Helfer übertragen. Betroffene lokale
-Gates und exakte Head-CI bleiben Voraussetzung der Integration.
+Gates und exakte Head-CI waren Voraussetzung der Integration.
+
+## Reguläre Integration
+
+PR #385 ist am 14. Oktober 2026 regulär integriert. Der qualifizierte Head
+`624c8e24325e94fa28ad2e3c52e1713db4a2b931` besteht die vier statischen
+Liefergates und das funktionale SQL-2025-Gate einschließlich der betroffenen
+Compatibility Levels 150, 160 und 170. Der Merge
+`31989a68dc4705862bfe464b3b3f5a7b87028a09` besitzt denselben Tree
+`60deaf623aefba1066d24f05f470dad7562b8783`. Main und origin/main sind
+synchronisiert; der eigene Worktree ist archiviert und der eigene lokale
+und entfernte Branch sind abwesend. Das positive Feature-Gate bleibt
+`NOT_EXECUTED`; der Produktstatus bleibt `IMPLEMENTED_EXTERNAL_EVIDENCE_PENDING`.
