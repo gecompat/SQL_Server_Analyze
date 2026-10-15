@@ -64,7 +64,8 @@ SELECT @ObjectId=OBJECT_ID(N''dbo.ExampleOverlap'');';
     IF @OwnObject IS NULL OR @OwnObject<=0 THROW 56992,N'Own object identity absent',1;
     SET @Sql=N'USE '+QUOTENAME(@OwnDb)+N';
 INSERT #129_WI4_Native
-SELECT p.object_id,p.index_id,p.partition_number,s.column_id,s.segment_id,c.name,t.name,s.encoding_type,s.row_count,s.collation_id,s.min_data_id,s.max_data_id,'
+SELECT p.object_id,p.index_id,p.partition_number,s.column_id,s.segment_id,c.name,t.name,s.encoding_type,s.row_count,'
+        +CASE WHEN @Major>=16 THEN N's.collation_id' ELSE N'CONVERT(int,NULL)' END+N',s.min_data_id,s.max_data_id,'
         +CASE WHEN @Major>=16 THEN N's.min_deep_data,s.max_deep_data' ELSE N'CONVERT(varbinary(18),NULL),CONVERT(varbinary(18),NULL)' END+N'
 FROM sys.column_store_segments s JOIN sys.partitions p ON p.partition_id=s.partition_id AND p.hobt_id=s.hobt_id
 JOIN sys.columns c ON c.object_id=p.object_id AND c.column_id=s.column_id
