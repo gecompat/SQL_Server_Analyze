@@ -117,6 +117,18 @@ erneute konkrete Autorität.
 
 ## Liefergates und Aussagegrenze
 
+Das erste funktionale Head-Gate endet vor dem neuen Fachtest an dessen
+kombinierter Eintrittsprüfung für Transaktion, Locktimeout und XACT_ABORT.
+Die einzelnen damaligen Callerwerte wurden nicht separat gespeichert;
+ihre genaue Abweichung bleibt unbekannt. Der Testkörper läuft deshalb
+für die Suite in einer eigenen Procedure der isolierten Frameworkdatenbank.
+Die Procedure stellt ausschließlich ihren inneren Optionskontext her;
+der vollständige bisherige Fachtest bleibt erhalten. Vor und nach dem
+Aufruf werden der äußere Caller und seine Optionen exakt verglichen.
+Die eigene Procedure wird datenbank- und objektidentitätsgebunden entfernt,
+auch im Fehlerweg. Das verändert keine Produktquelle und setzt das
+abgeschlossene private Runtimebudget nicht zurück.
+
 Kanonischer Code, generierter Installer, Parameter-/Resultsetinventare,
 Referenzen und Produktstatus werden gemeinsam geliefert. Die reguläre
 Integration verlangt die exakte Head-CI mit funktionalem Gate, MatchHead,

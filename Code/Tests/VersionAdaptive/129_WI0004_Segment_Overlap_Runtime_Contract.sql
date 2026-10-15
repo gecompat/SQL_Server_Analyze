@@ -4,6 +4,16 @@ GO
 Zweck: Prüft den freigegebenen Segmentvertrag an eigenen synthetischen Columnstore-Quellen.
 Grenzen: Keine fremden Objekte, keine Workload-/Sortierqualitätsbehauptung; originale native Metadaten vor Assertion.
 */
+IF @@TRANCOUNT<>0
+    THROW 56990,N'Own columnstore fixture requires no caller transaction',1;
+IF OBJECT_ID(N'dbo.ExampleWI4FixtureScope') IS NOT NULL
+    THROW 56991,N'Own columnstore fixture procedure name is occupied',1;
+GO
+CREATE PROCEDURE [dbo].[ExampleWI4FixtureScope]
+AS
+BEGIN
+SET LOCK_TIMEOUT -1;
+SET XACT_ABORT OFF;
 SET NOCOUNT ON;
 IF @@TRANCOUNT<>0 OR @@LOCK_TIMEOUT<>-1 OR (@@OPTIONS&16384)<>0
     THROW 56990,N'Own columnstore fixture requires a clean caller',1;
@@ -256,6 +266,43 @@ BEGIN CATCH
     BEGIN TRY DROP TABLE IF EXISTS [#129_WI4_Oracle]; END TRY BEGIN CATCH SET @CleanupError=ERROR_NUMBER(); END CATCH;
     BEGIN TRY DROP TABLE IF EXISTS [#129_WI4_Native]; END TRY BEGIN CATCH SET @CleanupError=ERROR_NUMBER(); END CATCH;
     SELECT N'OWN_COLUMNSTORE_FAILURE' EvidenceKind,@OriginalError OriginalErrorNumber,@CleanupError CleanupErrorNumber,DB_ID(@OwnDb) RemainingDatabaseId;
+    THROW;
+END CATCH;
+END;
+GO
+DECLARE @OuterLock int=@@LOCK_TIMEOUT,@OuterOptions int=@@OPTIONS,@OuterSid int=@@SPID,
+    @OuterDb int=DB_ID(),@OwnProcedureId int=OBJECT_ID(N'dbo.ExampleWI4FixtureScope'),@OuterCleanupError int=NULL;
+SELECT N'OWN_COLUMNSTORE_OUTER_BEFORE' EvidenceKind,@OuterLock LockTimeout,@OuterOptions CallerOptions,
+    @OuterSid CallerSid,@OuterDb CallerDatabaseId,@OwnProcedureId OwnedProcedureId,@@TRANCOUNT TranCount;
+BEGIN TRY
+    IF @OwnProcedureId IS NULL THROW 56992,N'Own fixture procedure identity absent',1;
+    EXEC [dbo].[ExampleWI4FixtureScope];
+    SELECT N'OWN_COLUMNSTORE_OUTER_AFTER' EvidenceKind,@@LOCK_TIMEOUT LockTimeout,@@OPTIONS CallerOptions,
+        @@SPID CallerSid,DB_ID() CallerDatabaseId,@@TRANCOUNT TranCount;
+    IF @@LOCK_TIMEOUT<>@OuterLock OR @@OPTIONS<>@OuterOptions OR @@SPID<>@OuterSid OR DB_ID()<>@OuterDb OR @@TRANCOUNT<>0
+        THROW 56998,N'Outer fixture caller not restored',1;
+    IF DB_ID()<>@OuterDb OR OBJECT_ID(N'dbo.ExampleWI4FixtureScope') IS NULL OR OBJECT_ID(N'dbo.ExampleWI4FixtureScope')<>@OwnProcedureId
+        THROW 56992,N'Own fixture procedure cleanup identity changed',1;
+    DROP PROCEDURE [dbo].[ExampleWI4FixtureScope];
+    IF OBJECT_ID(N'dbo.ExampleWI4FixtureScope') IS NOT NULL
+        THROW 56999,N'Own fixture procedure remains',1;
+END TRY
+BEGIN CATCH
+    DECLARE @OuterOriginalError int=ERROR_NUMBER();
+    BEGIN TRY
+        IF OBJECT_ID(N'dbo.ExampleWI4FixtureScope') IS NOT NULL
+        BEGIN
+            IF DB_ID()<>@OuterDb OR @OwnProcedureId IS NULL OR OBJECT_ID(N'dbo.ExampleWI4FixtureScope')<>@OwnProcedureId
+                THROW 56992,N'Own fixture procedure failure cleanup identity changed',1;
+            DROP PROCEDURE [dbo].[ExampleWI4FixtureScope];
+        END;
+        IF OBJECT_ID(N'dbo.ExampleWI4FixtureScope') IS NOT NULL
+            THROW 56999,N'Own fixture procedure remains after failure cleanup',1;
+    END TRY
+    BEGIN CATCH SET @OuterCleanupError=ERROR_NUMBER(); END CATCH;
+    SELECT N'OWN_COLUMNSTORE_OUTER_FAILURE' EvidenceKind,@OuterOriginalError OriginalErrorNumber,
+        @OuterCleanupError CleanupErrorNumber,OBJECT_ID(N'dbo.ExampleWI4FixtureScope') RemainingProcedureId,
+        @@LOCK_TIMEOUT LockTimeout,@@OPTIONS CallerOptions,@@SPID CallerSid,DB_ID() CallerDatabaseId,@@TRANCOUNT TranCount;
     THROW;
 END CATCH;
 GO
