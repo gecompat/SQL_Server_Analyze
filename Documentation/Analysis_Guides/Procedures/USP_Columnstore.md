@@ -177,6 +177,8 @@ Echtzeitdeadline. Andere Teilquellen bleiben erhalten.
 Im aktivierten Pfad ergänzt RAW eine Menge, TABLE erlaubt segmentOverlap,
 JSON verwendet Schema 2 und CONSOLE zeigt diese Menge in genau einem
 Resultset. Ohne Opt-in bleiben die bisherigen Ausgaben und JSON-Schema 1
-erhalten. Die Implementierung muss vor einem Lieferabschluss durch die
-gezielten nativen Export-, Bereichs-, Fallback- und Callerproben qualifiziert
-werden; diese Dokumentation behauptet noch keinen neuen Runtimeerfolg.
+erhalten. Die gezielten nativen Export-, Bereichs-, Fallback- und
+Callerproben sind auf SQL Server 2025 und 2022 sowie für den
+SQL-2019-Fallback abgeschlossen. Die positiven Metadatenfälle belegen
+beobachtete Encodings 2 und 3; synthetische Grenzfälle sind davon getrennt.
+Daraus folgt keine allgemeine Berechtigungs- oder Performancegarantie.
