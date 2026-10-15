@@ -14,7 +14,7 @@ DECLARE @OwnDb sysname=N'ExampleColumnstoreOverlap_'+REPLACE(CONVERT(nvarchar(36
     @Major int=TRY_CONVERT(int,SERVERPROPERTY(N'ProductMajorVersion')),@Sql nvarchar(max),@Selection nvarchar(max),
     @Json nvarchar(max),@Physical nvarchar(max),@Case int=0,@Limit int,@ExpectedRows bigint,
     @OriginalError int=NULL,@CleanupError int=NULL,@SourceCount bigint,@NativeStrict bigint,@NativeTouch bigint,
-    @SentinelJson nvarchar(max),@DefaultJson nvarchar(max),@DeepColumn int=NULL,@DeepIndex int=NULL,@DeepPartition int=NULL,
+    @SentinelJson nvarchar(max),@DefaultJson nvarchar(max),@DeepColumn int=NULL,@DeepIndex int=NULL,@DeepPartition int=NULL,@PhysicalRows bigint,@PhysicalComparison nvarchar(max),
     @CallerOptions int=@@OPTIONS,@SnapshotSql nvarchar(max),@OracleLimit int,
     @FixtureCL int=(SELECT compatibility_level FROM sys.databases WHERE database_id=DB_ID());
 CREATE TABLE [#129_WI4_Native]
@@ -124,8 +124,12 @@ WHERE p.object_id=@ObjectId;';
         IF COALESCE(ISJSON(@Json),0)<>1 OR COALESCE(JSON_VALUE(@Json,N'$.meta.schemaVersion'),N'')<>N'2'
            OR NOT EXISTS(SELECT 1 FROM OPENJSON(@Json) WHERE [key] COLLATE SQL_Latin1_General_CP1_CS_AS=N'segmentOverlap')
             THROW 56994,N'Activated JSON schema contract changed',1;
-        EXEC sys.sp_executesql N'SELECT @Physical=(SELECT * FROM #129_WI4_Export ORDER BY DatabaseName,SchemaName,ObjectName,IndexId,PartitionNumber,ColumnId FOR JSON PATH,INCLUDE_NULL_VALUES);',N'@Physical nvarchar(max) OUTPUT',@Physical=@Physical OUTPUT;
-        IF COALESCE(@Physical,N'') COLLATE SQL_Latin1_General_CP1_CS_AS<>COALESCE(JSON_QUERY(@Json,N'$.segmentOverlap'),N'') COLLATE SQL_Latin1_General_CP1_CS_AS
+        SET @Physical=NULL; SET @PhysicalRows=NULL;
+        EXEC sys.sp_executesql N'SELECT @PhysicalRows=COUNT_BIG(*) FROM #129_WI4_Export; SELECT @Physical=(SELECT * FROM #129_WI4_Export ORDER BY DatabaseName,SchemaName,ObjectName,IndexId,PartitionNumber,ColumnId FOR JSON PATH,INCLUDE_NULL_VALUES);',N'@Physical nvarchar(max) OUTPUT,@PhysicalRows bigint OUTPUT',@Physical=@Physical OUTPUT,@PhysicalRows=@PhysicalRows OUTPUT;
+        SET @PhysicalComparison=CASE WHEN @Major<16 AND @PhysicalRows=0 AND @Physical IS NULL THEN N'[]' ELSE @Physical END;
+        SELECT N'ORIGINAL_PHYSICAL_PARITY_INPUTS' EvidenceKind,@Case CaseOrdinal,@Major NativeMajor,@PhysicalRows PhysicalRowCount,@Physical PhysicalJson,JSON_QUERY(@Json,N'$.segmentOverlap') JsonArray,@PhysicalComparison ComparedPhysicalJson;
+        IF @PhysicalRows IS NULL OR (@Physical IS NULL AND NOT(@Major<16 AND @PhysicalRows=0)) OR JSON_QUERY(@Json,N'$.segmentOverlap') IS NULL
+           OR COALESCE(@PhysicalComparison,N'') COLLATE SQL_Latin1_General_CP1_CS_AS<>JSON_QUERY(@Json,N'$.segmentOverlap') COLLATE SQL_Latin1_General_CP1_CS_AS
             THROW 56995,N'Physical TABLE and same-call JSON differ',1;
         SELECT N'ORIGINAL_EXPORT_COLUMN_SCHEMA' EvidenceKind,[column_id],ROW_NUMBER() OVER(ORDER BY [column_id]) LogicalOrdinal,[name],[system_type_id],[max_length],[precision],[scale],[is_nullable],[collation_name]
         FROM tempdb.sys.columns WHERE object_id=OBJECT_ID(N'tempdb..#129_WI4_Export') ORDER BY column_id;
