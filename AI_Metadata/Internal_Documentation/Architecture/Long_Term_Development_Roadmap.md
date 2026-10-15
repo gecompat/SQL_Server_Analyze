@@ -61,7 +61,7 @@ Die Validierung folgt der verbindlichen CI-Teststrategie. Ein Statuswechsel setz
 | `WI-0001` | `P1` | `ACTIVE` | diese kanonische Roadmap |
 | `WI-0002` | `P2` | `IMPLEMENTED_ACTIONS_GATE` | TempDB-ADR- und PVS-Diagnostik |
 | `WI-0003` | `P2` | `IMPLEMENTED_ACTIONS_GATE` | Backup-Kompressionsalgorithmus- und ZSTD-Evidenz |
-| `WI-0004` | `P2` | `PARTIAL_PRODUCT_FUNCTION` | geordnete Columnstore-Diagnostik |
+| `WI-0004` | `P2` | `IMPLEMENTED_ACTIONS_GATE` | geordnete Columnstore-Diagnostik |
 | `WI-0005` | `P2` | `IMPLEMENTED_ACTIONS_GATE` | zeitbegrenzte Extended-Events-Sessions |
 | `WI-0006` | `P2` | `IMPLEMENTED_ACTIONS_GATE` | `OPTIMIZED_SP_EXECUTESQL` und Compile-Kontext |
 | `WI-0007` | `P2` | `IMPLEMENTED_ACTIONS_GATE` | External-Model-Inventur |
@@ -150,7 +150,7 @@ Primärquellen: [Backup compression algorithm](https://learn.microsoft.com/en-us
 
 ### `WI-0004`: Geordnete Columnstore-Diagnostik
 
-Die [Analyse](../../../Documentation/Architecture/WI0004_Ordered_Columnstore_Analysis.md) prüft eine Erweiterung von `USP_Columnstore` um geordnete gruppierte und nicht gruppierte Columnstore-Indizes, Order-Spalten und versionsabhängige Clusteringmetadaten. Eine optionale Segmentüberlappungsanalyse muss vor dem breiten Segmentzugriff begrenzt werden. Unvollständige Ordnung ist kein automatischer Defekt.
+`USP_Columnstore` liefert die bestehende geordnete Inventur und die freigegebene begrenzte Segmentüberlappung. Der [native Nachweis](../Quality/WI0004_Segment_Overlap_Runtime_Evidence_2026-10-15.md) trennt positive SQL-2025-/SQL-2022-Metadaten, SQL-2019-Fallback und synthetische Bereichsproben. Der Opt-in-Pfad erzeugt weder Datenwerte noch ein automatisches Qualitäts- oder DDL-Urteil.
 
 Primärquelle: [What's new in columnstore indexes](https://learn.microsoft.com/en-us/sql/relational-databases/indexes/columnstore-indexes-what-s-new?view=sql-server-ver17).
 

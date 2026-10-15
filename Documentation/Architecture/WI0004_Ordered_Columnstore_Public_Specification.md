@@ -27,5 +27,8 @@ Auf unterstützten Versionen ohne sichtbare geordnete Columnstore-Spalte ist
 `ordering` leer; das ist kein Qualitätsurteil. `SourceStatus = 'AVAILABLE'`
 steht nur an einer tatsächlich ausgegebenen Metadatenzeile.
 
-Eine Segmentüberlappung bleibt ein getrenntes späteres Opt-in und wird durch
-diese Spezifikation nicht eingeführt.
+Eine Segmentüberlappung wird durch diesen Ordering-Vertrag nicht eingeführt.
+Das getrennte, konkret freigegebene
+[Opt-in](WI0004_Segment_Overlap_Public_Specification.md) beschreibt die neue
+begrenzte Diagnosefläche; ihre Laufzeitqualifikation bleibt ein eigener
+Lieferumfang.

@@ -115,6 +115,21 @@ EXEC [monitor].[USP_CheckFrameworkCapabilities] @Hilfe = 1;
 EXEC [monitor].[USP_Columnstore] @Hilfe = 1;
 ```
 
+Die begrenzte Segmentüberlappung ist ein getrenntes Opt-in. Der Aufruf
+verlangt eine einzelne exakte Datenbank und ein zweigliedriges Objekt;
+Gruppen- und High-Impact-Policy bleiben verbindlich.
+
+```sql
+EXEC [monitor].[USP_Columnstore]
+      @DatabaseNames=N'[ExampleDatabase]',
+      @FullObjectNames=N'[ExampleSchema].[ExampleObject]',
+      @HighImpactConfirmed=1,
+      @MitSegmentUeberlappung=1,
+      @MaxSegmenteAnalyse=2000,
+      @ResultSetArt='CONSOLE';
+```
+
+
 ## `[monitor].[USP_CriticalEngineEvents]`
 
 ```sql

@@ -62,7 +62,7 @@
       "kind": "work_item",
       "title": "Geordnete Columnstore-Diagnostik",
       "registration_state": "REGISTERED",
-      "status": "PARTIAL_PRODUCT_FUNCTION",
+      "status": "IMPLEMENTED_ACTIONS_GATE",
       "priority": "P2",
       "acceptance_criteria": "Geordnete gruppierte und nicht gruppierte Columnstore-Indizes werden versionsadaptiv inventarisiert; eine optionale Segmentüberlappungsanalyse ist begrenzt und erzeugt kein automatisches DDL-Urteil.",
       "aliases": [],

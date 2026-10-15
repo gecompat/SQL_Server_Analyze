@@ -146,3 +146,39 @@ Die folgenden Quellen ergänzen die Produktspezifikation um Praxis- oder Tooling
 - [Ola Hallengren: Index and Statistics Maintenance – betriebliche Wartungsperspektive](https://ola.hallengren.com/sql-server-index-and-statistics-maintenance.html)
 
 [Technische Detailbeschreibung](../03_Object_Index.md#8-monitorusp_columnstore)
+
+## Begrenzte Segmentüberlappung
+
+Der vom Benutzer freigegebene
+[Segmentvertrag](../../Architecture/WI0004_Segment_Overlap_Public_Specification.md)
+ergänzt `@MitSegmentUeberlappung=0` und `@MaxSegmenteAnalyse=2000`. Der neue
+Pfad bleibt standardmäßig ausgeschaltet. Aktiviert verlangt er GEZIELT,
+genau eine exakte Datenbank und ein zweigliedriges FullObjectNames-Objekt
+sowie die bestehenden COLUMNSTORE_DEEP-/High-Impact-Gates. SQL Server 2019
+meldet für diese Quelle UNAVAILABLE_VERSION; die Unterstützung beginnt mit
+SQL Server 2022.
+
+Die neue Menge segmentOverlap beschreibt je Index, Partition und Spalte
+beobachtete, vergleichbare und nicht vergleichbare Segmentcounts. Nur
+vollständig vergleichbare Gruppen erhalten strikte Überlappungs- und
+Grenzberührungspaarzahlen. Interne numerische beziehungsweise binäre Grenzen
+werden nicht ausgegeben. Nicht unterstützte Typen, NULL-Grenzen oder
+inkompatible String-Collationwerte ergeben NULL-Metriken mit
+AVAILABLE_LIMITED. Daraus wird kein Rechtefehler, Qualitätsurteil oder
+Rebuildbedarf abgeleitet.
+
+Es werden höchstens N+1 Segmentzeilen materialisiert. Die zusätzliche Zeile
+weist eine Überschreitung nach; dann entfällt die gesamte Paarberechnung
+und die neue Menge bleibt leer. Doppelte oder unvollständige Identitäten
+verwerfen ebenfalls die gesamte neue Aufnahme. Die Grenze schützt die
+Materialisierung, garantiert aber weder begrenzte Katalogseiten noch eine
+Echtzeitdeadline. Andere Teilquellen bleiben erhalten.
+
+Im aktivierten Pfad ergänzt RAW eine Menge, TABLE erlaubt segmentOverlap,
+JSON verwendet Schema 2 und CONSOLE zeigt diese Menge in genau einem
+Resultset. Ohne Opt-in bleiben die bisherigen Ausgaben und JSON-Schema 1
+erhalten. Die gezielten nativen Export-, Bereichs-, Fallback- und
+Callerproben sind auf SQL Server 2025 und 2022 sowie für den
+SQL-2019-Fallback abgeschlossen. Die positiven Metadatenfälle belegen
+beobachtete Encodings 2 und 3; synthetische Grenzfälle sind davon getrennt.
+Daraus folgt keine allgemeine Berechtigungs- oder Performancegarantie.
