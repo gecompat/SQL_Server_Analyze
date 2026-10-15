@@ -3889,7 +3889,8 @@ BEGIN
     );
 
     BEGIN TRY
-        SET @Sql=N'SELECT TOP (0) [FilterType],[ItemOrdinal],[NameValue],[DatabaseName],[SchemaName],[ObjectName] FROM '+@FilterTableQuoted+N';';
+        SET @Sql=N'DECLARE @ProbeType varchar(20),@ProbeOrdinal int,@ProbeName sysname,@ProbeDatabase sysname,@ProbeSchema sysname,@ProbeObject sysname;
+SELECT TOP (0) @ProbeType=[FilterType],@ProbeOrdinal=[ItemOrdinal],@ProbeName=[NameValue],@ProbeDatabase=[DatabaseName],@ProbeSchema=[SchemaName],@ProbeObject=[ObjectName] FROM '+@FilterTableQuoted+N';';
         EXEC [sys].[sp_executesql] @Sql;
     END TRY
     BEGIN CATCH

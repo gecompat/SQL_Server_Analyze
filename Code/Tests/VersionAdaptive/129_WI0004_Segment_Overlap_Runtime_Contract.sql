@@ -7,7 +7,7 @@ Grenzen: Keine fremden Objekte, keine Workload-/Sortierqualitätsbehauptung; ori
 SET NOCOUNT ON;
 IF @@TRANCOUNT<>0 OR @@LOCK_TIMEOUT<>-1 OR (@@OPTIONS&16384)<>0
     THROW 56990,N'Own columnstore fixture requires a clean caller',1;
-IF OBJECT_ID(N'tempdb..#129_WI4_Export') IS NOT NULL OR OBJECT_ID(N'tempdb..#129_WI4_Native') IS NOT NULL OR OBJECT_ID(N'tempdb..#129_WI4_After') IS NOT NULL OR OBJECT_ID(N'tempdb..#129_WI4_Oracle') IS NOT NULL
+IF OBJECT_ID(N'tempdb..#129_WI4_Export') IS NOT NULL OR OBJECT_ID(N'tempdb..#129_WI4_Native') IS NOT NULL OR OBJECT_ID(N'tempdb..#129_WI4_After') IS NOT NULL OR OBJECT_ID(N'tempdb..#129_WI4_Oracle') IS NOT NULL OR OBJECT_ID(N'tempdb..#129_WI4_Prototype') IS NOT NULL
     THROW 56991,N'Own columnstore fixture temp names are occupied',1;
 DECLARE @OwnDb sysname=N'ExampleColumnstoreOverlap_'+REPLACE(CONVERT(nvarchar(36),NEWID()),N'-',N''),
     @OwnId int=NULL,@OwnObject int=NULL,@Created bit=0,@CallerDb int=DB_ID(),@CallerSid int=@@SPID,
@@ -24,6 +24,14 @@ CREATE TABLE [#129_WI4_Native]
     [EncodingType] int NULL,[NativeRowCount] int NULL,[CollationId] int NULL,[MinNumber] bigint NULL,[MaxNumber] bigint NULL,[MinBinary] varbinary(18) NULL,[MaxBinary] varbinary(18) NULL
 );
 BEGIN TRY
+    CREATE TABLE [#129_WI4_Prototype]
+    (
+      [DatabaseName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,[SchemaName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,[ObjectName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,
+      [ObjectId] int NOT NULL,[IndexId] int NOT NULL,[IndexName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL,[PartitionNumber] int NOT NULL,[ColumnId] int NOT NULL,
+      [ColumnName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL,[SystemTypeName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL,
+      [ObservedSegmentCount] bigint NOT NULL,[ComparableSegmentCount] bigint NOT NULL,[UncomparableSegmentCount] bigint NOT NULL,[StrictOverlapPairCount] bigint NULL,[BoundaryTouchPairCount] bigint NULL,
+      [SourceStatus] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,[IsPartial] bit NOT NULL,[ReasonCode] varchar(60) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,[CollectionTimeUtc] datetime2(3) NOT NULL
+    );
     IF DB_ID(@OwnDb) IS NOT NULL THROW 56991,N'Own columnstore database collision',1;
     SET @Sql=N'CREATE DATABASE '+QUOTENAME(@OwnDb)+N' COLLATE SQL_Latin1_General_CP1_CS_AS;'; EXEC sys.sp_executesql @Sql;
     SELECT @Created=1,@OwnId=DB_ID(@OwnDb),@Selection=QUOTENAME(@OwnDb);
@@ -118,30 +126,21 @@ WHERE p.object_id=@ObjectId;';
         EXEC sys.sp_executesql N'SELECT @Physical=(SELECT * FROM #129_WI4_Export ORDER BY DatabaseName,SchemaName,ObjectName,IndexId,PartitionNumber,ColumnId FOR JSON PATH,INCLUDE_NULL_VALUES);',N'@Physical nvarchar(max) OUTPUT',@Physical=@Physical OUTPUT;
         IF COALESCE(@Physical,N'') COLLATE SQL_Latin1_General_CP1_CS_AS<>COALESCE(JSON_QUERY(@Json,N'$.segmentOverlap'),N'') COLLATE SQL_Latin1_General_CP1_CS_AS
             THROW 56995,N'Physical TABLE and same-call JSON differ',1;
+        SELECT N'ORIGINAL_EXPORT_COLUMN_SCHEMA' EvidenceKind,[column_id],ROW_NUMBER() OVER(ORDER BY [column_id]) LogicalOrdinal,[name],[system_type_id],[max_length],[precision],[scale],[is_nullable],[collation_name]
+        FROM tempdb.sys.columns WHERE object_id=OBJECT_ID(N'tempdb..#129_WI4_Export') ORDER BY column_id;
+        SELECT N'INDEPENDENT_DECLARED_CONTRACT_SCHEMA' EvidenceKind,[column_id],ROW_NUMBER() OVER(ORDER BY [column_id]) LogicalOrdinal,[name],[system_type_id],[max_length],[precision],[scale],[is_nullable],[collation_name]
+        FROM tempdb.sys.columns WHERE object_id=OBJECT_ID(N'tempdb..#129_WI4_Prototype') ORDER BY column_id;
         IF (SELECT COUNT_BIG(*) FROM tempdb.sys.columns WHERE object_id=OBJECT_ID(N'tempdb..#129_WI4_Export'))<>19
            OR EXISTS(SELECT 1 FROM tempdb.sys.columns WHERE object_id=OBJECT_ID(N'tempdb..#129_WI4_Export') AND collation_name IS NOT NULL AND collation_name COLLATE SQL_Latin1_General_CP1_CS_AS<>N'SQL_Latin1_General_CP1_CS_AS')
             THROW 56995,N'Native export schema or collation mismatch',1;
-        IF EXISTS(SELECT [column_id],[name],[system_type_id],[max_length],[scale],[is_nullable]
-            FROM tempdb.sys.columns WHERE object_id=OBJECT_ID(N'tempdb..#129_WI4_Export')
-            EXCEPT SELECT * FROM(VALUES (1,N'DatabaseName',231,256,0,0),
-            (2,N'SchemaName',231,256,0,0),
-            (3,N'ObjectName',231,256,0,0),
-            (4,N'ObjectId',56,4,0,0),
-            (5,N'IndexId',56,4,0,0),
-            (6,N'IndexName',231,256,0,1),
-            (7,N'PartitionNumber',56,4,0,0),
-            (8,N'ColumnId',56,4,0,0),
-            (9,N'ColumnName',231,256,0,1),
-            (10,N'SystemTypeName',231,256,0,1),
-            (11,N'ObservedSegmentCount',127,8,0,0),
-            (12,N'ComparableSegmentCount',127,8,0,0),
-            (13,N'UncomparableSegmentCount',127,8,0,0),
-            (14,N'StrictOverlapPairCount',127,8,0,1),
-            (15,N'BoundaryTouchPairCount',127,8,0,1),
-            (16,N'SourceStatus',167,40,0,0),
-            (17,N'IsPartial',104,1,0,0),
-            (18,N'ReasonCode',167,60,0,1),
-            (19,N'CollectionTimeUtc',42,7,3,0)) e(Ordinal,Name,TypeId,MaxLength,Scale,Nullable))
+        IF EXISTS(SELECT ROW_NUMBER() OVER(ORDER BY [column_id]),[name],[system_type_id],[max_length],[precision],[scale],[is_nullable],[collation_name]
+          FROM tempdb.sys.columns WHERE object_id=OBJECT_ID(N'tempdb..#129_WI4_Export')
+          EXCEPT SELECT ROW_NUMBER() OVER(ORDER BY [column_id]),[name],[system_type_id],[max_length],[precision],[scale],[is_nullable],[collation_name]
+          FROM tempdb.sys.columns WHERE object_id=OBJECT_ID(N'tempdb..#129_WI4_Prototype'))
+          OR EXISTS(SELECT ROW_NUMBER() OVER(ORDER BY [column_id]),[name],[system_type_id],[max_length],[precision],[scale],[is_nullable],[collation_name]
+          FROM tempdb.sys.columns WHERE object_id=OBJECT_ID(N'tempdb..#129_WI4_Prototype')
+          EXCEPT SELECT ROW_NUMBER() OVER(ORDER BY [column_id]),[name],[system_type_id],[max_length],[precision],[scale],[is_nullable],[collation_name]
+          FROM tempdb.sys.columns WHERE object_id=OBJECT_ID(N'tempdb..#129_WI4_Export'))
             THROW 56995,N'Native ordered export types/nullability mismatch',1;
         IF @Major<16
         BEGIN
@@ -231,6 +230,7 @@ IF EXISTS(SELECT IndexId,PartitionNumber,ColumnId FROM #129_WI4_Export GROUP BY 
     IF DB_ID(@OwnDb)<>@OwnId OR DB_ID(@OwnDb) IS NULL THROW 56992,N'Own cleanup database binding changed',1;
     SET @Sql=N'DROP DATABASE '+QUOTENAME(@OwnDb)+N';';EXEC sys.sp_executesql @Sql;
     IF DB_ID(@OwnDb) IS NOT NULL THROW 56999,N'Own database remains after cleanup',1;
+    DROP TABLE [#129_WI4_Prototype];
     DROP TABLE [#129_WI4_Oracle];
     DROP TABLE [#129_WI4_Native];
     SELECT N'OWN_COLUMNSTORE_CLEANUP' EvidenceKind,DB_ID(@OwnDb) RemainingDatabaseId,@@SPID CallerSid,@@TRANCOUNT TranCount,@@LOCK_TIMEOUT LockTimeout;
@@ -247,6 +247,7 @@ BEGIN CATCH
     END TRY BEGIN CATCH SET @CleanupError=ERROR_NUMBER(); END CATCH;
     BEGIN TRY DROP TABLE IF EXISTS [#129_WI4_Export]; END TRY BEGIN CATCH SET @CleanupError=ERROR_NUMBER(); END CATCH;
     BEGIN TRY DROP TABLE IF EXISTS [#129_WI4_After]; END TRY BEGIN CATCH SET @CleanupError=ERROR_NUMBER(); END CATCH;
+    BEGIN TRY DROP TABLE IF EXISTS [#129_WI4_Prototype]; END TRY BEGIN CATCH SET @CleanupError=ERROR_NUMBER(); END CATCH;
     BEGIN TRY DROP TABLE IF EXISTS [#129_WI4_Oracle]; END TRY BEGIN CATCH SET @CleanupError=ERROR_NUMBER(); END CATCH;
     BEGIN TRY DROP TABLE IF EXISTS [#129_WI4_Native]; END TRY BEGIN CATCH SET @CleanupError=ERROR_NUMBER(); END CATCH;
     SELECT N'OWN_COLUMNSTORE_FAILURE' EvidenceKind,@OriginalError OriginalErrorNumber,@CleanupError CleanupErrorNumber,DB_ID(@OwnDb) RemainingDatabaseId;
