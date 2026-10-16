@@ -694,12 +694,28 @@ BEGIN
     END;
     IF @ConsoleResultRequested=1
     BEGIN
-        SELECT N'SSISDB-Ausführung' AS [Ergebnis],@StatusCode AS [Status],@IsPartial AS [Unvollständig],
+        CREATE TABLE [#SsisCatalogExecutionAnalysis_Console]
+        (
+            [Status] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,
+            [Unvollständig] bit NOT NULL,
+            [ExecutionId] bigint NULL,
+            [PackageName] nvarchar(260) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,
+            [ExecutionStatus] int NULL,
+            [StartTime] datetimeoffset(7) NULL,
+            [EndTime] datetimeoffset(7) NULL,
+            [Hinweis] nvarchar(200) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        );
+        INSERT [#SsisCatalogExecutionAnalysis_Console]
+            ([Status],[Unvollständig],[ExecutionId],[PackageName],[ExecutionStatus],[StartTime],[EndTime],[Hinweis])
+        SELECT @StatusCode,@IsPartial,
                [m].[ExecutionId],[e].[PackageName],[e].[ExecutionStatus],[e].[StartTime],[e].[EndTime],
                CASE WHEN [e].[ExecutionId] IS NULL THEN N'Keine sichtbare Ausführung; Quellenstatus und Fehlergrenzen beachten.'
                     ELSE N'Native Metadaten; Fehlerstatus und leere Loggingquellen sind keine Ursachendiagnose.' END AS [Hinweis]
         FROM [#SsisCatalogExecutionAnalysis_ModuleStatus] AS [m]
         LEFT JOIN [#SsisCatalogExecutionAnalysis_Execution] AS [e] ON [e].[ExecutionId]=[m].[ExecutionId];
+        EXEC [monitor].[InternalEmitConsoleResult]
+            @SourceTable=N'#SsisCatalogExecutionAnalysis_Console',
+            @ResultLabel=N'SSISDB-Ausführung',@EmptyMessage=N'Keine sichtbare SSISDB-Ausführung';
     END;
 END;
 GO

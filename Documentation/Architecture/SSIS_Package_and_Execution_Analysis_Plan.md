@@ -793,14 +793,28 @@ Vor der Implementierung sind verbindlich zu entscheiden:
 Der Benutzer hat den konkreten Katalogvertrag mit 17 Parametern und zehn
 Ergebnisschemas sowie eine separate eigene Framework-Testdatenbank freigegeben.
 Der [konkrete Vertrag](SSIS_001_Phase0_Public_Contract.md#konkreter-katalogvertrag-vom-16-oktober-2026)
-konkretisiert für diesen Analyzer die zuvor geplante API. Die kanonische Quelle
+konkretisiert für diesen Analyzer die zuvor geplante API. Der in den drei
+Windowsversuchen verwendete Stand der Quelle
 `Code/10_SSIS/030_USP_SsisCatalogExecutionAnalysis.sql` besitzt Version 1.0.0
-und für die Windows-Quelldatei mit CRLF-Zeilenenden SHA256
+und für die damalige Windows-Quelldatei mit CRLF-Zeilenenden SHA256
 `92368A3543D1C13C1E3BD4B67070CFAF02CA3AC8CA5B84496332E9EB399DCD09`.
 Der normalisierte Git-Blob mit LF-Zeilenenden besitzt SHA256
 `A5D0F34D0B5F23DEEB9F80762EA60F6C3C1BE8A7549BA6E86DBD76C9F30045F8`.
 Die Zeileninhalte sind identisch; die Windowsquelle blieb über alle drei
 Windowsversuche unverändert. Dieser Vergleich ersetzt keine Head-CI.
+
+Die abschließende Integration bindet ausschließlich den generischen
+CONSOLE-Endblock an den bestehenden `InternalEmitConsoleResult`. Die gleichen
+Status-, Execution- und Hinweiswerte werden dafür in einer eigenen typisierten
+Temp-Tabelle materialisiert. Der gesamte vorausgehende Quellen-, RAW-, TABLE-
+und JSON-Körper ist textidentisch zum Windowsstand. Der finale Windowsdateihash
+ist `7952882C4175FD08F123D013D0AFC97FBCE9F842E97F92719D9F0EC10F7DA4C7`,
+der zugehörige Git-LF-Hash
+`8427B52B5BC7DB6628AC6A557294FBD1C103B83DE334FF219178EFCB471A0CB2`.
+Die gebundene Windows-Fachkernevidenz wird wiederverwendet; der neue Rendererpfad
+wird durch die aktuelle Linux-Head-CI geprüft. Ein zusätzlicher vollständiger
+Windowslauf dieses Gesamtstands wird nicht behauptet; das Windowsbudget bleibt
+geschlossen.
 
 Voraussetzung war die regulär veröffentlichte
 [Windows-/SSISDB-Abnahme des Labs](https://github.com/gecompat/SQL_Server_Lab/blob/main/Documentation/Quality/SSISDB_WINDOWS_RUNTIME_ACCEPTANCE_2026-10-16.md).
