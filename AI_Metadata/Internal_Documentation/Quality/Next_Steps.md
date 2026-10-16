@@ -21,6 +21,26 @@ Multiple-Session-Budget mit zwei von zwei bleiben unverändert. Weitere
 Mailfälle und tatsächliche Maintenance-Ausführung sind eigenständige offene
 Teilumfänge; öffentliche neue Funktionsverträge bleiben freigabepflichtig.
 
+## Aktuelle SSIS-Kataloglieferung vom 16. Oktober 2026
+
+Die veröffentlichte Windows-/SSISDB-Lab-Abnahme liegt vor. Die verwendete
+Lab-Quelle ist auf Commit `6de11919a5b2c6f05552c8b49979d08bd0268d1a` gebunden.
+Der Benutzer hat den konkreten Katalogvertrag und die separate eigene Framework-Testdatenbank
+ausdrücklich freigegeben. Die Katalogprocedure ist implementiert; der
+[begrenzte Windowsnachweis](../../../Documentation/Architecture/SSIS_Package_and_Execution_Analysis_Plan.md#katalogkernabnahme-vom-16-oktober-2026)
+bestätigt neun native Consumerfälle und die Ausgabearten auf SQL Server 2025.
+Zwei private Orakelfehler bleiben FAILED_NOT_QUALIFIED; Versuch 3 besteht.
+Das Budget 3/3 bleibt geschlossen, die eigene Testdatenbank ist entfernt,
+Quelle und übriger Datenbankbestand sind unverändert. Erforderliche exakte
+Head-CI und reguläre Integration gehören weiterhin zum Lieferabschluss.
+
+SSIS-001 bleibt partiell. Legacy-Log-Analyse und positive Task-/Schleifen-,
+Performance-/Verbose-, Phasen-, RowFlow- und Least-Privilege-Nachweise benötigen
+geeignete veröffentlichte Quellen. Dafür wird weder eine Ersatzinstanz noch
+eine eigene Lab-Erweiterung angelegt. WI-0009 GATE-0001 bleibt unverändert offen.
+Bereits abgeschlossene Slices und ihre geschlossenen Budgets werden nicht
+erneut geprüft. Die älteren SSIS-Wartevermerke beschreiben den vorherigen Stand.
+
 ## WI-0009: qualifizierter portabler Kern und offenes Feature-Gate
 
 Der freigegebene lokale Analyzer ist implementiert. Die native Abnahme auf
@@ -81,7 +101,7 @@ synchronisiert, ohne vorhandene Implementierung erneut zu entwickeln.
 | Reihenfolge | Tatsächliche Funktionslücke | Nächster konkreter Abschluss |
 |---|---|---|
 | 1 | WI-0005: Der freigegebene Zeitgrenzenvertrag ist regulär geliefert. | Abgeschlossen; unveränderte erfolgreiche Nachweise werden nicht wiederholt. |
-| 2 | SSIS-001: Legacy-Log- und SSISDB-Laufzeitanalysatoren fehlen; der direkte Paketparser bleibt begrenzt. | Auf die vom Benutzer angeforderte Windows-/SSISDB-Funktion und veröffentlichte ausgeführte Lab-Abnahme warten; danach die konkreten Analyserverträge fertigstellen. |
+| 2 | SSIS-001: Der Katalogkern ist implementiert und begrenzt nativ geprüft; Legacy und weitere Fachnachweise fehlen. | Der freigegebene Katalogkern besitzt einen begrenzten Windowsnachweis; Legacy und positive zusätzliche Loggingquellen bleiben offen. |
 | 3 | WI-0006: Compile-Kontext ist implementiert und nativ qualifiziert. | Über PR #384 regulär integriert; unveränderte erfolgreiche Nachweise werden nicht wiederholt. |
 | 4 | WI-0007: Aggregierte External-Model-Inventur ist implementiert und nativ qualifiziert. | Gemeinsam mit WI-0006 über PR #384 regulär integriert. |
 | 5 | WI-0009: Lokale External-Data-Analyse ist implementiert; der portable Kern ist nativ qualifiziert. | Über PR #385 regulär integriert; das positive External-Table-Gate bleibt bis zu einer geeigneten eigenen Quelle offen. |

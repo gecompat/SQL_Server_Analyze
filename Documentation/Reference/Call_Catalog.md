@@ -796,3 +796,9 @@ EXEC [monitor].[USP_ExternalDataAnalysis] @MaxZeilen=200, @ResultSetArt='CONSOLE
 ```
 
 [Analysebeschreibung](../Analysis_Guides/Procedures/USP_ExternalDataAnalysis.md).
+
+## `[monitor].[USP_SsisCatalogExecutionAnalysis]`
+
+```sql
+EXEC [monitor].[USP_SsisCatalogExecutionAnalysis] @Hilfe=1;
+```

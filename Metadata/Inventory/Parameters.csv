@@ -1927,3 +1927,20 @@ USP_ExternalDataAnalysis,PrintMeldungen,bit,1
 USP_ExternalDataAnalysis,Hilfe,bit,0
 USP_ExternalDataAnalysis,StatusCodeOut,varchar(40),NULL OUTPUT
 USP_ExternalDataAnalysis,IsPartialOut,bit,NULL OUTPUT
+USP_SsisCatalogExecutionAnalysis,ExecutionId,bigint,NULL
+USP_SsisCatalogExecutionAnalysis,IncludeMessages,bit,1
+USP_SsisCatalogExecutionAnalysis,IncludeParameters,bit,1
+USP_SsisCatalogExecutionAnalysis,IncludePerformance,bit,1
+USP_SsisCatalogExecutionAnalysis,MaxZeilen,int,1000
+USP_SsisCatalogExecutionAnalysis,MaxDurationSeconds,int,30
+USP_SsisCatalogExecutionAnalysis,LockTimeoutMs,int,0
+USP_SsisCatalogExecutionAnalysis,ResultSetArt,varchar(16),'CONSOLE'
+USP_SsisCatalogExecutionAnalysis,ResultTablesJson,nvarchar(max),NULL
+USP_SsisCatalogExecutionAnalysis,JsonErzeugen,bit,0
+USP_SsisCatalogExecutionAnalysis,Json,nvarchar(max),NULL
+USP_SsisCatalogExecutionAnalysis,PrintMeldungen,bit,1
+USP_SsisCatalogExecutionAnalysis,Hilfe,bit,0
+USP_SsisCatalogExecutionAnalysis,StatusCodeOut,varchar(40),NULL
+USP_SsisCatalogExecutionAnalysis,IsPartialOut,bit,NULL
+USP_SsisCatalogExecutionAnalysis,ErrorNumberOut,int,NULL
+USP_SsisCatalogExecutionAnalysis,ErrorMessageOut,nvarchar(4000),NULL

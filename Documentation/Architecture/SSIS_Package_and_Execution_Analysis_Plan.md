@@ -787,3 +787,81 @@ Vor der Implementierung sind verbindlich zu entscheiden:
 - [Microsoft: catalog.execution_component_phases](https://learn.microsoft.com/en-us/sql/integration-services/system-views/catalog-execution-component-phases?view=sql-server-ver17)
 - [Microsoft: catalog.execution_data_statistics](https://learn.microsoft.com/en-us/sql/integration-services/system-views/catalog-execution-data-statistics?view=sql-server-ver17)
 - [Microsoft: catalog.get_project](https://learn.microsoft.com/en-us/sql/integration-services/system-stored-procedures/catalog-get-project-ssisdb-database?view=sql-server-ver17)
+
+## Katalogkernabnahme vom 16. Oktober 2026
+
+Der Benutzer hat den konkreten Katalogvertrag mit 17 Parametern und zehn
+Ergebnisschemas sowie eine separate eigene Framework-Testdatenbank freigegeben.
+Der [konkrete Vertrag](SSIS_001_Phase0_Public_Contract.md#konkreter-katalogvertrag-vom-16-oktober-2026)
+konkretisiert für diesen Analyzer die zuvor geplante API. Der in den drei
+Windowsversuchen verwendete Stand der Quelle
+`Code/10_SSIS/030_USP_SsisCatalogExecutionAnalysis.sql` besitzt Version 1.0.0
+und für die damalige Windows-Quelldatei mit CRLF-Zeilenenden SHA256
+`92368A3543D1C13C1E3BD4B67070CFAF02CA3AC8CA5B84496332E9EB399DCD09`.
+Der normalisierte Git-Blob mit LF-Zeilenenden besitzt SHA256
+`A5D0F34D0B5F23DEEB9F80762EA60F6C3C1BE8A7549BA6E86DBD76C9F30045F8`.
+Die Zeileninhalte sind identisch; die Windowsquelle blieb über alle drei
+Windowsversuche unverändert. Dieser Vergleich ersetzt keine Head-CI.
+
+Die abschließende Integration bindet ausschließlich den generischen
+CONSOLE-Endblock an den bestehenden `InternalEmitConsoleResult`. Die gleichen
+Status-, Execution- und Hinweiswerte werden dafür in einer eigenen typisierten
+Temp-Tabelle materialisiert. Der gesamte vorausgehende Quellen-, RAW-, TABLE-
+und JSON-Körper ist textidentisch zum Windowsstand. Der finale Windowsdateihash
+ist `7952882C4175FD08F123D013D0AFC97FBCE9F842E97F92719D9F0EC10F7DA4C7`,
+der zugehörige Git-LF-Hash
+`8427B52B5BC7DB6628AC6A557294FBD1C103B83DE334FF219178EFCB471A0CB2`.
+Die gebundene Windows-Fachkernevidenz wird wiederverwendet; der neue Rendererpfad
+wird durch die aktuelle Linux-Head-CI geprüft. Ein zusätzlicher vollständiger
+Windowslauf dieses Gesamtstands wird nicht behauptet; das Windowsbudget bleibt
+geschlossen.
+
+Voraussetzung war die regulär veröffentlichte
+[Windows-/SSISDB-Abnahme des Labs](https://github.com/gecompat/SQL_Server_Lab/blob/main/Documentation/Quality/SSISDB_WINDOWS_RUNTIME_ACCEPTANCE_2026-10-16.md).
+Die Analyze-Consumerprüfung verwendete ausschließlich den dort erhaltenen
+isolierten Run und den veröffentlichten Zugangsbefehl. Es wurden weder ein Host
+oder eine VM angelegt noch SSIS installiert, Pakete ausgeführt oder Logging,
+Rechte und Retention verändert. Nur die eigene temporäre Frameworkdatenbank
+wurde angelegt, installiert und nach Datenbank-ID, Anlagezeit und Ownership
+gebunden entfernt. Die Quellenausführungen und der übrige Datenbankbestand
+blieben erhalten.
+
+| Versuch | Ergebnis und Grenze |
+|---|---|
+| 1 | FAILED_NOT_QUALIFIED. Installation und Integrationstest 201 liefen erfolgreich. Die erste private Referenzparität scheiterte an einem EXCEPT-Collationkonflikt zwischen SSISDB und Framework. |
+| 2 | FAILED_NOT_QUALIFIED. Nach der ersten Referenzkorrektur blieb ein EXCEPT-Collationkonflikt mit der tempdb-Collation. Die genaue Statementzuordnung wurde in diesen beiden Versuchen nicht gespeichert und bleibt unbekannt. |
+| 3 | PASS auf SQL Server 17.0.1000.7. Die Referenztexte und die private erwartete Statusspalte waren explizit CS_AS-gebunden. Werte-, NULL-, Mengen- und Statusguards blieben erhalten. |
+
+Alle drei Versuche behalten ihre ursprünglichen Ergebnisse und privaten
+Originalartefakte. Das Windowsbudget ist mit drei von drei geschlossen.
+Installation und Integrationstest aus Versuch 1 werden nur bei unveränderten
+Testbytes und den sechs gebundenen Installationsquellen wiederverwendet.
+Ein eigener Quellenreview, die eng geprüften Adapterkorrekturen und der
+Ergebnisreview ersetzen keine erforderliche Head-CI.
+
+Versuch 3 prüfte je drei echte Ausführungen mit nativen Status 7, 4 und 1
+bei Zeilengrenzen 0, 1 und 2. Neun Fälle bestanden die native Referenzparität,
+die physische TABLE-/JSON-Parität aller Felder, den N+1-Count und die unabhängig
+aus nativen Quellenzahlen abgeleiteten Quellen- und Modulstatus.
+Unbegrenzte Sammlungen blieben auch bei einer fehlgeschlagenen oder noch nicht
+gestarteten Ausführung AVAILABLE mit IsPartial=0 und ohne native Fehler.
+Gekappte Sammlungen waren AVAILABLE_LIMITED; Beobachtungszahlen sind dabei
+Untergrenzen. RAW lieferte zehn Mengen, CONSOLE eine und NONE keine fachliche
+Menge. Alle drei Modi lieferten bei angefordertem JSON zehn benannte Arrays.
+Calleroptionen, Locktimeout und Transaktionszahl blieben erhalten.
+
+Die echte Quelle enthielt für Erfolg und Fehler je eine Root-Executable-
+Statistik und zugehörige Namensmetadaten, jeweils vier Ereignisse sowie
+in allen drei Fällen sechs Parameterdefinitionen. Die nicht gestartete
+Ausführung hatte keine Statistik oder Ereignisse. Phasen und Row-Flow waren
+tatsächlich leer. Die positiven Root-Metadaten sind kein Nachweis ausgeführter
+Tasks oder Schleifen. Der bereitgestellte administrative Lab-Zugang ist keine
+Least-Privilege-Abnahme.
+
+Positive Task-/Schleifen-, Performance-/Verbose-, Phasen-, RowFlow-, eingeschränkte
+Berechtigungs- und Legacy-Log-Abnahmen bleiben offen. Der Paketparser bleibt
+in seinem bestehenden Umfang begrenzt. SSIS-001 bleibt PARTIAL_PRODUCT_FUNCTION;
+dieser Katalogkernnachweis ist kein SSIS- oder Gesamtfertigstellungsnachweis.
+Linux prüft ausschließlich den fehlenden Katalog und den Plattformfallback.
+Die Testauswahl folgt der aktuellen CI_Test_Strategy und keiner historischen
+Drei-Versionen-Matrix dieses Planungsdokuments.

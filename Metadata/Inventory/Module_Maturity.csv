@@ -78,3 +78,4 @@ QuickStart HyperV (NetworkSim),Netzwerk-/IO-Profile,REMOVED,NO,NO,NO,,FULL,Migri
 Secondary Replica Query Store,USP_QueryStoreReplicaAnalysis,COMPLETE,YES,YES,YES,,FULL,"SQL25-005 mit versionsadaptiver Replica-Rollen-, Runtime-, Wait- und Forcing-Evidenz"
 SQL Audit Configuration,USP_AuditConfigurationAnalysis,COMPLETE,YES,YES,YES,,FULL,WI-0008 kontrollierte 2019-Linux-Evidenz fuer fehlenden Auditnamen verweigerte Servermetadaten deaktiviertes Audit und aktiven Runtimezustand sowie SQL-2025-Impact-Gate
 External Data Objects,USP_ExternalDataAnalysis,PLANNED,NO,NO,NO,,ARCHITECTURE,WI-0009 Analyse der lokalen Katalog- und Datenschutzgrenzen vor Implementierung erforderlich
+SSIS Catalog Execution,USP_SsisCatalogExecutionAnalysis,PLANNED,NO,NO,NO,,FULL,SSIS-001: Windows SQL17.0.1000.7 Basic-Katalogkern mit 9 Consumerfällen und RAW TABLE JSON CONSOLE NONE geprüft; kein positiver Task Phasen RowFlow oder LeastPrivilege-Nachweis; erforderliches Head-CI separat

@@ -107,3 +107,4 @@ USP_AuditConfigurationAnalysis,BASELINE,,1
 USP_SsisPackageAnalysis,BASELINE,,1
 USP_CompileContextAnalysis,BASELINE,,1
 USP_ExternalDataAnalysis,BASELINE,,1
+USP_SsisCatalogExecutionAnalysis,BASELINE,,1

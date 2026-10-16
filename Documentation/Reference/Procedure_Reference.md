@@ -2630,3 +2630,27 @@ Quelle: `Code/09_VersionAdaptive/110_USP_ExternalDataAnalysis.sql`
 ```
 
 Lokale sichtbare externe Kataloge und Referenzen ohne Remotezugriff. [Analysebeschreibung](../Analysis_Guides/Procedures/USP_ExternalDataAnalysis.md).
+
+## `[monitor].[USP_SsisCatalogExecutionAnalysis]`
+
+Quelle: `Code/10_SSIS/030_USP_SsisCatalogExecutionAnalysis.sql`
+
+```sql
+@ExecutionId bigint = NULL
+    , @IncludeMessages bit = 1
+    , @IncludeParameters bit = 1
+    , @IncludePerformance bit = 1
+    , @MaxZeilen int = 1000
+    , @MaxDurationSeconds int = 30
+    , @LockTimeoutMs int = 0
+    , @ResultSetArt varchar(16) = 'CONSOLE'
+    , @ResultTablesJson nvarchar(max) = NULL
+    , @JsonErzeugen bit = 0
+    , @Json nvarchar(max) = NULL OUTPUT
+    , @PrintMeldungen bit = 1
+    , @Hilfe bit = 0
+    , @StatusCodeOut varchar(40) = NULL OUTPUT
+    , @IsPartialOut bit = NULL OUTPUT
+    , @ErrorNumberOut int = NULL OUTPUT
+    , @ErrorMessageOut nvarchar(4000) = NULL OUTPUT
+```

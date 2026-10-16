@@ -12,6 +12,7 @@ Für einen Einstieg nach beobachtetem Problem verwenden Sie [Hier beginnen](Star
 | Objekt | Eigenständige Beschreibung |
 |---|---|
 | `[monitor].[USP_SsisPackageAnalysis]` | [Statisches DTSX-v2-Paket- und Executable-Inventar](Procedures/USP_SsisPackageAnalysis.md) |
+| `[monitor].[USP_SsisCatalogExecutionAnalysis]` | [Strukturierte SSISDB-Ausführungsmetadaten](Procedures/USP_SsisCatalogExecutionAnalysis.md) |
 
 ## Common
 
