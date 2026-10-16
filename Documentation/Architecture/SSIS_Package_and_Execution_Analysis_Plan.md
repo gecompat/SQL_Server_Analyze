@@ -891,6 +891,15 @@ die beiden Fehlerläufe belegen die späteren Testteile nicht. Die Korrekturen �
 die Inventarzählung und die ausdrücklich nullable Testfacette. Der unabhängige
 Schemavergleich bleibt beidseitig; fachliche Orakel werden nicht abgeschwächt.
 
+Der dritte [Kandidat](https://github.com/gecompat/SQL_Server_Analyze/actions/runs/38926830430)
+bestand diese Metadatenprüfung und die unabhängigen nativen Fehlergegenproben.
+Er stoppte anschließend korrekt mit Frameworkfehler 51011, weil der Test
+seine gefüllten TABLE-Ziele erneut verwendete. Die Testreparatur leert nur
+die neun eigenen Export-Temps unmittelbar vor dem jeweils nächsten TABLE-Aufruf.
+Der Produktguard und alle Schema-, Mengen- und Wertorakel bleiben erhalten.
+Auch dieser Lauf bleibt insgesamt FAILED_NOT_QUALIFIED; seine nachfolgenden
+Testteile sind kein ausgeführter Nachweis.
+
 Zum Liefergate gehören exakte Head-CI und reguläre Integration am abschließenden
 Lieferstand. Eine positive echte Providerabnahme, weitere native
 Engines und weitere Rollen bleiben unabhängig vom synthetischen CI-Ergebnis offen.
