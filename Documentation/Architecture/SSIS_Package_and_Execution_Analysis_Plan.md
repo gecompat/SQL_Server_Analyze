@@ -795,8 +795,12 @@ Ergebnisschemas sowie eine separate eigene Framework-Testdatenbank freigegeben.
 Der [konkrete Vertrag](SSIS_001_Phase0_Public_Contract.md#konkreter-katalogvertrag-vom-16-oktober-2026)
 konkretisiert für diesen Analyzer die zuvor geplante API. Die kanonische Quelle
 `Code/10_SSIS/030_USP_SsisCatalogExecutionAnalysis.sql` besitzt Version 1.0.0
-und SHA256 `92368A3543D1C13C1E3BD4B67070CFAF02CA3AC8CA5B84496332E9EB399DCD09`.
-Die Quelle blieb über alle drei Windowsversuche unverändert.
+und für die Windows-Quelldatei mit CRLF-Zeilenenden SHA256
+`92368A3543D1C13C1E3BD4B67070CFAF02CA3AC8CA5B84496332E9EB399DCD09`.
+Der normalisierte Git-Blob mit LF-Zeilenenden besitzt SHA256
+`A5D0F34D0B5F23DEEB9F80762EA60F6C3C1BE8A7549BA6E86DBD76C9F30045F8`.
+Die Zeileninhalte sind identisch; die Windowsquelle blieb über alle drei
+Windowsversuche unverändert. Dieser Vergleich ersetzt keine Head-CI.
 
 Voraussetzung war die regulär veröffentlichte
 [Windows-/SSISDB-Abnahme des Labs](https://github.com/gecompat/SQL_Server_Lab/blob/6de11919a5b2c6f05552c8b49979d08bd0268d1a/Documentation/Quality/SSISDB_WINDOWS_RUNTIME_ACCEPTANCE_2026-10-16.md).
