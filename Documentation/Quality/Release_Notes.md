@@ -14,9 +14,9 @@ commitbezogenen Laufzeitnachweis.
 | ReleaseDate im Installationskatalog | 27. Juli 2026 |
 | Mindestversion | SQL Server 2019 |
 
-Der aktuelle Inventarvertrag umfasst 180 Objekte: 108 öffentliche Procedures, 8 Views, 28 Table-Valued Functions, 16 interne Procedures und 20 Tabellen.
+Der aktuelle Inventarvertrag umfasst 181 Objekte: 109 öffentliche Procedures, 8 Views, 28 Table-Valued Functions, 16 interne Procedures und 20 Tabellen.
 
-Der Frameworkkern umfasst 161 Objekte mit 105 öffentlichen Procedures und 9 Tabellen. Das optionale Snapshotpaket umfasst 19 Objekte mit 3 öffentlichen Procedures und 11 Tabellen.
+Der Frameworkkern umfasst 162 Objekte mit 106 öffentlichen Procedures und 9 Tabellen. Das optionale Snapshotpaket umfasst 19 Objekte mit 3 öffentlichen Procedures und 11 Tabellen.
 
 Die [Paketgrenzen](../Reference/Scope_and_Limitations.md) unterscheiden
 Diagnose, Installation, lokale TABLE-Ausgabe und persistente Sammlung.
@@ -342,3 +342,13 @@ Der Analysis Navigator gehört zum vollständigen Framework. PLAN-001 bleibt ohn
 Der dokumentierte Kernvertrag ist auf SQL Server 2019, 2022 und 2025 unter der freigegebenen case-sensitive Collation nachgewiesen. Plattform-, Feature- und Lastgrenzen stehen in der [Testmatrix](Test_Matrix.md) und unter [Bekannte Einschränkungen](Known_Issues.md).
 
 `NOT_EXECUTED` ist kein Testnachweis. Feature-Abwesenheit oder eingeschränkte Berechtigung führen nach Möglichkeit zu strukturiertem Status statt zu einem Gesamtabbruch.
+
+## SSIS-Katalogkern vom 16. Oktober 2026
+
+`monitor.USP_SsisCatalogExecutionAnalysis` ergänzt die lesende Analyse einer
+expliziten lokalen SSISDB-Ausführung. Die 17 Parameter und zehn typisierten
+Ergebnismengen enthalten strukturierte Metadaten ohne Meldungs- oder
+Parameterwerte und ohne Aktionen. Der
+[begrenzte Windowsnachweis](../Architecture/SSIS_Package_and_Execution_Analysis_Plan.md#katalogkernabnahme-vom-16-oktober-2026)
+belegt Basic-Consumerparität und Ausgabegrenzen. Weitere Loggingquellen,
+Legacy und eingeschränkte Rollen bleiben offen; SSIS-001 bleibt partiell.
