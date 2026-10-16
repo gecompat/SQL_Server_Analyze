@@ -23,8 +23,9 @@ Teilumfänge; öffentliche neue Funktionsverträge bleiben freigabepflichtig.
 
 ## Aktuelle SSIS-Kataloglieferung vom 16. Oktober 2026
 
-Die veröffentlichte Windows-/SSISDB-Lab-Abnahme liegt vor. Der Benutzer hat
-den konkreten Katalogvertrag und die separate eigene Framework-Testdatenbank
+Die veröffentlichte Windows-/SSISDB-Lab-Abnahme liegt vor. Die verwendete
+Lab-Quelle ist auf Commit `6de11919a5b2c6f05552c8b49979d08bd0268d1a` gebunden.
+Der Benutzer hat den konkreten Katalogvertrag und die separate eigene Framework-Testdatenbank
 ausdrücklich freigegeben. Die Katalogprocedure ist implementiert; der
 [begrenzte Windowsnachweis](../../../Documentation/Architecture/SSIS_Package_and_Execution_Analysis_Plan.md#katalogkernabnahme-vom-16-oktober-2026)
 bestätigt neun native Consumerfälle und die Ausgabearten auf SQL Server 2025.

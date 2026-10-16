@@ -803,7 +803,7 @@ Die Zeileninhalte sind identisch; die Windowsquelle blieb über alle drei
 Windowsversuche unverändert. Dieser Vergleich ersetzt keine Head-CI.
 
 Voraussetzung war die regulär veröffentlichte
-[Windows-/SSISDB-Abnahme des Labs](https://github.com/gecompat/SQL_Server_Lab/blob/6de11919a5b2c6f05552c8b49979d08bd0268d1a/Documentation/Quality/SSISDB_WINDOWS_RUNTIME_ACCEPTANCE_2026-10-16.md).
+[Windows-/SSISDB-Abnahme des Labs](https://github.com/gecompat/SQL_Server_Lab/blob/main/Documentation/Quality/SSISDB_WINDOWS_RUNTIME_ACCEPTANCE_2026-10-16.md).
 Die Analyze-Consumerprüfung verwendete ausschließlich den dort erhaltenen
 isolierten Run und den veröffentlichten Zugangsbefehl. Es wurden weder ein Host
 oder eine VM angelegt noch SSIS installiert, Pakete ausgeführt oder Logging,
