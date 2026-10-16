@@ -900,6 +900,15 @@ Der Produktguard und alle Schema-, Mengen- und Wertorakel bleiben erhalten.
 Auch dieser Lauf bleibt insgesamt FAILED_NOT_QUALIFIED; seine nachfolgenden
 Testteile sind kein ausgeführter Nachweis.
 
+Der vierte [Kandidat](https://github.com/gecompat/SQL_Server_Analyze/actions/runs/38928733729)
+blieb ebenfalls FAILED_NOT_QUALIFIED. TRUNCATE entfernte die Daten, stellte aber
+die vom TABLE-Preflight geforderte einzelne Seed-Spalte nicht wieder her.
+Die engere Testreparatur bindet die neun eigenen Exportobjekte bei der Anlage
+an ihre Objekt-IDs und stellt vor jedem TABLE-Aufruf genau deren Seed-Schema
+wieder her. Die übrigen Spalten werden anhand dieser IDs und quotierter Namen
+entfernt. Die unveränderten Produktguards werden nicht umgangen. Die originale
+Fehlhistorie und die erfolgreichen eigenen Runtime-Cleanups bleiben erhalten.
+
 Zum Liefergate gehören exakte Head-CI und reguläre Integration am abschließenden
 Lieferstand. Eine positive echte Providerabnahme, weitere native
 Engines und weitere Rollen bleiben unabhängig vom synthetischen CI-Ergebnis offen.

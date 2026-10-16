@@ -56,15 +56,41 @@ CREATE TABLE [#ExampleSsisLegacy_loggingQuality]([Seed] int NULL);
 CREATE TABLE [#ExampleSsisLegacy_findings]([Seed] int NULL);
 CREATE TABLE [#ExampleSsisLegacy_sourceStatus]([Seed] int NULL);
 CREATE TABLE [#ExampleSsisLegacy_warnings]([Seed] int NULL);
-TRUNCATE TABLE [#ExampleSsisLegacy_moduleStatus];
-TRUNCATE TABLE [#ExampleSsisLegacy_execution];
-TRUNCATE TABLE [#ExampleSsisLegacy_timeline];
-TRUNCATE TABLE [#ExampleSsisLegacy_errorChain];
-TRUNCATE TABLE [#ExampleSsisLegacy_iterations];
-TRUNCATE TABLE [#ExampleSsisLegacy_loggingQuality];
-TRUNCATE TABLE [#ExampleSsisLegacy_findings];
-TRUNCATE TABLE [#ExampleSsisLegacy_sourceStatus];
-TRUNCATE TABLE [#ExampleSsisLegacy_warnings];
+DECLARE @ExportBindings nvarchar(max)=(SELECT [value] AS TargetTable,OBJECT_ID(N''tempdb..''+[value]) AS TargetObjectId FROM OPENJSON(@Mapping) FOR JSON PATH,INCLUDE_NULL_VALUES);
+DECLARE @ResetExportsSql nvarchar(max)=N''
+DECLARE @Target nvarchar(128),@TargetId int,@Columns nvarchar(max),@Sql nvarchar(max);
+DECLARE [OwnedExportCursor] CURSOR LOCAL FAST_FORWARD FOR
+ SELECT TargetTable,TargetObjectId FROM OPENJSON(@Bindings)
+ WITH(TargetTable nvarchar(128),TargetObjectId int);
+OPEN [OwnedExportCursor];
+FETCH NEXT FROM [OwnedExportCursor] INTO @Target,@TargetId;
+WHILE @@FETCH_STATUS=0
+BEGIN
+ IF @TargetId IS NULL OR OBJECT_ID(N''''tempdb..''''+@Target) IS NULL OR OBJECT_ID(N''''tempdb..''''+@Target)<>@TargetId
+  THROW 56335,N''''LEGACY_OWN_EXPORT_IDENTITY_CHANGED'''',1;
+ SET @Sql=N''''TRUNCATE TABLE ''''+QUOTENAME(@Target)+N'''';'''';
+ EXEC [sys].[sp_executesql] @Sql;
+ IF NOT EXISTS(SELECT 1 FROM tempdb.sys.columns WITH (NOLOCK) WHERE object_id=@TargetId AND name COLLATE SQL_Latin1_General_CP1_CS_AS=N''''Seed'''')
+ BEGIN
+  SET @Sql=N''''ALTER TABLE ''''+QUOTENAME(@Target)+N'''' ADD [Seed] int NULL;'''';
+  EXEC [sys].[sp_executesql] @Sql;
+ END;
+ SELECT @Columns=STUFF((SELECT N'''',''''+QUOTENAME(name) FROM tempdb.sys.columns WITH (NOLOCK)
+  WHERE object_id=@TargetId AND name COLLATE SQL_Latin1_General_CP1_CS_AS<>N''''Seed''''
+  ORDER BY column_id FOR XML PATH(''''''''),TYPE).value(''''.'''',''''nvarchar(max)''''),1,1,N'''''''');
+ IF NULLIF(@Columns,N'''''''') IS NOT NULL
+ BEGIN
+  SET @Sql=N''''ALTER TABLE ''''+QUOTENAME(@Target)+N'''' DROP COLUMN ''''+@Columns+N'''';'''';
+  EXEC [sys].[sp_executesql] @Sql;
+ END;
+ IF (SELECT COUNT_BIG(*) FROM tempdb.sys.columns WITH (NOLOCK) WHERE object_id=@TargetId)<>1
+  THROW 56336,N''''LEGACY_OWN_EXPORT_SEED_SHAPE'''',1;
+ FETCH NEXT FROM [OwnedExportCursor] INTO @Target,@TargetId;
+END;
+CLOSE [OwnedExportCursor];
+DEALLOCATE [OwnedExportCursor];
+'';
+EXEC [sys].[sp_executesql] @ResetExportsSql,N''@Bindings nvarchar(max)'',@Bindings=@ExportBindings;
 EXEC [monitor].[USP_SsisLegacyLogAnalysis] @LoggingDatabase=@Db,@LoggingTable=N''ExampleSsisLegacy.Log]Source'',@ExecutionId=@Id,@ResultSetArt=''TABLE'',@ResultTablesJson=@Mapping,@JsonErzeugen=1,@Json=@Json OUTPUT,@StatusCodeOut=@Status OUTPUT,@IsPartialOut=@Partial OUTPUT,@ErrorNumberOut=@Error OUTPUT,@ErrorMessageOut=@Message OUTPUT;
 IF @Status IS NULL OR @Status IS NULL OR @Status<>''AVAILABLE'' OR @Partial IS NULL OR @Partial IS NULL OR @Partial<>0 OR @Error IS NOT NULL OR @Message IS NOT NULL
     THROW 56304,N''LEGACY_HEAP_ANALYZER_STATUS'',1;
@@ -334,15 +360,7 @@ IF @Status IS NULL OR @Status IS NULL OR @Status<>''DENIED'' OR @Partial IS NULL
 DECLARE @Cap int=1;
 WHILE @Cap<=2
 BEGIN
-TRUNCATE TABLE [#ExampleSsisLegacy_moduleStatus];
-TRUNCATE TABLE [#ExampleSsisLegacy_execution];
-TRUNCATE TABLE [#ExampleSsisLegacy_timeline];
-TRUNCATE TABLE [#ExampleSsisLegacy_errorChain];
-TRUNCATE TABLE [#ExampleSsisLegacy_iterations];
-TRUNCATE TABLE [#ExampleSsisLegacy_loggingQuality];
-TRUNCATE TABLE [#ExampleSsisLegacy_findings];
-TRUNCATE TABLE [#ExampleSsisLegacy_sourceStatus];
-TRUNCATE TABLE [#ExampleSsisLegacy_warnings];
+EXEC [sys].[sp_executesql] @ResetExportsSql,N''@Bindings nvarchar(max)'',@Bindings=@ExportBindings;
 EXEC [monitor].[USP_SsisLegacyLogAnalysis] @LoggingDatabase=@Db,@LoggingTable=N''ExampleSsisLegacy.Log]Source'',@ExecutionId=@Id,@MaxZeilen=@Cap,@ResultSetArt=''TABLE'',@ResultTablesJson=@Mapping,@JsonErzeugen=1,@Json=@Json OUTPUT,@StatusCodeOut=@Status OUTPUT,@IsPartialOut=@Partial OUTPUT,@ErrorNumberOut=@Error OUTPUT,@ErrorMessageOut=@Message OUTPUT;
 
     IF (SELECT COUNT_BIG(*) FROM [#ExampleSsisLegacy_timeline])<>@Cap
@@ -353,53 +371,21 @@ EXEC [monitor].[USP_SsisLegacyLogAnalysis] @LoggingDatabase=@Db,@LoggingTable=N'
     IF (SELECT COUNT_BIG(*) FROM [#ExampleSsisLegacy_warnings])>16 THROW 56310,N''LEGACY_WARNING_FINITE_BOUND'',1;
     SET @Cap+=1;
 END;
-TRUNCATE TABLE [#ExampleSsisLegacy_moduleStatus];
-TRUNCATE TABLE [#ExampleSsisLegacy_execution];
-TRUNCATE TABLE [#ExampleSsisLegacy_timeline];
-TRUNCATE TABLE [#ExampleSsisLegacy_errorChain];
-TRUNCATE TABLE [#ExampleSsisLegacy_iterations];
-TRUNCATE TABLE [#ExampleSsisLegacy_loggingQuality];
-TRUNCATE TABLE [#ExampleSsisLegacy_findings];
-TRUNCATE TABLE [#ExampleSsisLegacy_sourceStatus];
-TRUNCATE TABLE [#ExampleSsisLegacy_warnings];
+EXEC [sys].[sp_executesql] @ResetExportsSql,N''@Bindings nvarchar(max)'',@Bindings=@ExportBindings;
 EXEC [monitor].[USP_SsisLegacyLogAnalysis] @LoggingDatabase=@Db,@LoggingTable=N''ExampleSsisLegacy.Log]Source'',@ExecutionId=@Id,@MaxZeilen=2147483647,@ResultSetArt=''TABLE'',@ResultTablesJson=@Mapping,@JsonErzeugen=1,@Json=@Json OUTPUT,@StatusCodeOut=@Status OUTPUT,@IsPartialOut=@Partial OUTPUT,@ErrorNumberOut=@Error OUTPUT,@ErrorMessageOut=@Message OUTPUT;
 
 IF (SELECT COUNT_BIG(*) FROM [#ExampleSsisLegacy_timeline])<>6 THROW 56311,N''LEGACY_INT_MAX_OVERFLOW'',1;
-TRUNCATE TABLE [#ExampleSsisLegacy_moduleStatus];
-TRUNCATE TABLE [#ExampleSsisLegacy_execution];
-TRUNCATE TABLE [#ExampleSsisLegacy_timeline];
-TRUNCATE TABLE [#ExampleSsisLegacy_errorChain];
-TRUNCATE TABLE [#ExampleSsisLegacy_iterations];
-TRUNCATE TABLE [#ExampleSsisLegacy_loggingQuality];
-TRUNCATE TABLE [#ExampleSsisLegacy_findings];
-TRUNCATE TABLE [#ExampleSsisLegacy_sourceStatus];
-TRUNCATE TABLE [#ExampleSsisLegacy_warnings];
+EXEC [sys].[sp_executesql] @ResetExportsSql,N''@Bindings nvarchar(max)'',@Bindings=@ExportBindings;
 EXEC [monitor].[USP_SsisLegacyLogAnalysis] @LoggingDatabase=@Db,@LoggingTable=N''ExampleSsisLegacy.Log]Source'',@ExecutionId=@Id,@MaxZeilen=0,@HighImpactConfirmed=0,@ResultSetArt=''TABLE'',@ResultTablesJson=@Mapping,@JsonErzeugen=1,@Json=@Json OUTPUT,@StatusCodeOut=@Status OUTPUT,@IsPartialOut=@Partial OUTPUT,@ErrorNumberOut=@Error OUTPUT,@ErrorMessageOut=@Message OUTPUT;
 
 IF @Status IS NULL OR @Status<>''INVALID_PARAMETER'' OR EXISTS(SELECT 1 FROM [#ExampleSsisLegacy_timeline]) THROW 56312,N''LEGACY_UNBOUNDED_GATE'',1;
-TRUNCATE TABLE [#ExampleSsisLegacy_moduleStatus];
-TRUNCATE TABLE [#ExampleSsisLegacy_execution];
-TRUNCATE TABLE [#ExampleSsisLegacy_timeline];
-TRUNCATE TABLE [#ExampleSsisLegacy_errorChain];
-TRUNCATE TABLE [#ExampleSsisLegacy_iterations];
-TRUNCATE TABLE [#ExampleSsisLegacy_loggingQuality];
-TRUNCATE TABLE [#ExampleSsisLegacy_findings];
-TRUNCATE TABLE [#ExampleSsisLegacy_sourceStatus];
-TRUNCATE TABLE [#ExampleSsisLegacy_warnings];
+EXEC [sys].[sp_executesql] @ResetExportsSql,N''@Bindings nvarchar(max)'',@Bindings=@ExportBindings;
 EXEC [monitor].[USP_SsisLegacyLogAnalysis] @LoggingDatabase=@Db,@LoggingTable=N''ExampleSsisLegacy.Log]Source'',@ExecutionId=@Id,@MaxZeilen=NULL,@HighImpactConfirmed=1,@ResultSetArt=''TABLE'',@ResultTablesJson=@Mapping,@JsonErzeugen=1,@Json=@Json OUTPUT,@StatusCodeOut=@Status OUTPUT,@IsPartialOut=@Partial OUTPUT,@ErrorNumberOut=@Error OUTPUT,@ErrorMessageOut=@Message OUTPUT;
 
 IF @Status IS NULL OR @Status<>''AVAILABLE'' OR (SELECT COUNT_BIG(*) FROM [#ExampleSsisLegacy_timeline])<>6 THROW 56313,N''LEGACY_UNBOUNDED_CONFIRMED'',1;
 -- Duplicate sentinel must reject the entire N+1 buffer before its removal.
 INSERT [dbo].[ExampleSsisLegacy.Log]]Source] SELECT * FROM [dbo].[ExampleSsisLegacy.Log]]Source] WHERE id=1;
-TRUNCATE TABLE [#ExampleSsisLegacy_moduleStatus];
-TRUNCATE TABLE [#ExampleSsisLegacy_execution];
-TRUNCATE TABLE [#ExampleSsisLegacy_timeline];
-TRUNCATE TABLE [#ExampleSsisLegacy_errorChain];
-TRUNCATE TABLE [#ExampleSsisLegacy_iterations];
-TRUNCATE TABLE [#ExampleSsisLegacy_loggingQuality];
-TRUNCATE TABLE [#ExampleSsisLegacy_findings];
-TRUNCATE TABLE [#ExampleSsisLegacy_sourceStatus];
-TRUNCATE TABLE [#ExampleSsisLegacy_warnings];
+EXEC [sys].[sp_executesql] @ResetExportsSql,N''@Bindings nvarchar(max)'',@Bindings=@ExportBindings;
 EXEC [monitor].[USP_SsisLegacyLogAnalysis] @LoggingDatabase=@Db,@LoggingTable=N''ExampleSsisLegacy.Log]Source'',@ExecutionId=@Id,@MaxZeilen=1,@ResultSetArt=''TABLE'',@ResultTablesJson=@Mapping,@JsonErzeugen=1,@Json=@Json OUTPUT,@StatusCodeOut=@Status OUTPUT,@IsPartialOut=@Partial OUTPUT,@ErrorNumberOut=@Error OUTPUT,@ErrorMessageOut=@Message OUTPUT;
 
 IF @Status IS NULL OR @Status<>''ERROR_HANDLED'' OR @Error IS NOT NULL OR EXISTS(SELECT 1 FROM [#ExampleSsisLegacy_timeline])
@@ -408,27 +394,11 @@ IF @Status IS NULL OR @Status<>''ERROR_HANDLED'' OR @Error IS NOT NULL OR EXISTS
 DELETE TOP (1) FROM [dbo].[ExampleSsisLegacy.Log]]Source] WHERE id=1;
 ALTER TABLE [dbo].[ExampleSsisLegacy.Log]]Source] ALTER COLUMN [message] nvarchar(max) NULL;
 UPDATE [dbo].[ExampleSsisLegacy.Log]]Source] SET [message]=@Long WHERE id=4;
-TRUNCATE TABLE [#ExampleSsisLegacy_moduleStatus];
-TRUNCATE TABLE [#ExampleSsisLegacy_execution];
-TRUNCATE TABLE [#ExampleSsisLegacy_timeline];
-TRUNCATE TABLE [#ExampleSsisLegacy_errorChain];
-TRUNCATE TABLE [#ExampleSsisLegacy_iterations];
-TRUNCATE TABLE [#ExampleSsisLegacy_loggingQuality];
-TRUNCATE TABLE [#ExampleSsisLegacy_findings];
-TRUNCATE TABLE [#ExampleSsisLegacy_sourceStatus];
-TRUNCATE TABLE [#ExampleSsisLegacy_warnings];
+EXEC [sys].[sp_executesql] @ResetExportsSql,N''@Bindings nvarchar(max)'',@Bindings=@ExportBindings;
 EXEC [monitor].[USP_SsisLegacyLogAnalysis] @LoggingDatabase=@Db,@LoggingTable=N''ExampleSsisLegacy.Log]Source'',@ExecutionId=@Id,@ResultSetArt=''TABLE'',@ResultTablesJson=@Mapping,@JsonErzeugen=1,@Json=@Json OUTPUT,@StatusCodeOut=@Status OUTPUT,@IsPartialOut=@Partial OUTPUT,@ErrorNumberOut=@Error OUTPUT,@ErrorMessageOut=@Message OUTPUT;
 
 IF @Status IS NULL OR @Status<>''INVALID_PARAMETER'' OR EXISTS(SELECT 1 FROM [#ExampleSsisLegacy_timeline]) THROW 56315,N''LEGACY_MAX_TEXT_GATE'',1;
-TRUNCATE TABLE [#ExampleSsisLegacy_moduleStatus];
-TRUNCATE TABLE [#ExampleSsisLegacy_execution];
-TRUNCATE TABLE [#ExampleSsisLegacy_timeline];
-TRUNCATE TABLE [#ExampleSsisLegacy_errorChain];
-TRUNCATE TABLE [#ExampleSsisLegacy_iterations];
-TRUNCATE TABLE [#ExampleSsisLegacy_loggingQuality];
-TRUNCATE TABLE [#ExampleSsisLegacy_findings];
-TRUNCATE TABLE [#ExampleSsisLegacy_sourceStatus];
-TRUNCATE TABLE [#ExampleSsisLegacy_warnings];
+EXEC [sys].[sp_executesql] @ResetExportsSql,N''@Bindings nvarchar(max)'',@Bindings=@ExportBindings;
 EXEC [monitor].[USP_SsisLegacyLogAnalysis] @LoggingDatabase=@Db,@LoggingTable=N''ExampleSsisLegacy.Log]Source'',@ExecutionId=@Id,@HighImpactConfirmed=1,@ResultSetArt=''TABLE'',@ResultTablesJson=@Mapping,@JsonErzeugen=1,@Json=@Json OUTPUT,@StatusCodeOut=@Status OUTPUT,@IsPartialOut=@Partial OUTPUT,@ErrorNumberOut=@Error OUTPUT,@ErrorMessageOut=@Message OUTPUT;
 
 IF NOT EXISTS(SELECT 1 FROM [#ExampleSsisLegacy_execution] WHERE DATALENGTH(FirstErrorMessage)=DATALENGTH(@Long) AND FirstErrorMessage=@Long)
@@ -443,15 +413,7 @@ EXEC [monitor].[USP_SsisLegacyLogAnalysis] @LoggingDatabase=@Db,@LoggingTable=N'
 IF (SELECT COUNT_BIG(*) FROM [#ExampleSsisLegacy_Console])<>1
  OR NOT EXISTS(SELECT 1 FROM [#ExampleSsisLegacy_Console] WHERE ErsteFehlerLogId=4 AND DATALENGTH(ErsterFehlertext)=DATALENGTH(@Long) AND ErsterFehlertext=@Long)
  THROW 56317,N''LEGACY_FULL_CONSOLE_FIRST_ERROR'',1;
-TRUNCATE TABLE [#ExampleSsisLegacy_moduleStatus];
-TRUNCATE TABLE [#ExampleSsisLegacy_execution];
-TRUNCATE TABLE [#ExampleSsisLegacy_timeline];
-TRUNCATE TABLE [#ExampleSsisLegacy_errorChain];
-TRUNCATE TABLE [#ExampleSsisLegacy_iterations];
-TRUNCATE TABLE [#ExampleSsisLegacy_loggingQuality];
-TRUNCATE TABLE [#ExampleSsisLegacy_findings];
-TRUNCATE TABLE [#ExampleSsisLegacy_sourceStatus];
-TRUNCATE TABLE [#ExampleSsisLegacy_warnings];
+EXEC [sys].[sp_executesql] @ResetExportsSql,N''@Bindings nvarchar(max)'',@Bindings=@ExportBindings;
 EXEC [monitor].[USP_SsisLegacyLogAnalysis] @LoggingDatabase=@Db,@LoggingTable=N''ExampleSsisLegacy.Log]Source'',@ExecutionId=@Id,@IncludeMessages=0,@IncludeTimeline=0,@ResultSetArt=''TABLE'',@ResultTablesJson=@Mapping,@JsonErzeugen=1,@Json=@Json OUTPUT,@StatusCodeOut=@Status OUTPUT,@IsPartialOut=@Partial OUTPUT,@ErrorNumberOut=@Error OUTPUT,@ErrorMessageOut=@Message OUTPUT;
 
 IF @Status IS NULL OR @Status<>''AVAILABLE'' OR EXISTS(SELECT 1 FROM [#ExampleSsisLegacy_timeline])
@@ -459,52 +421,20 @@ IF @Status IS NULL OR @Status<>''AVAILABLE'' OR EXISTS(SELECT 1 FROM [#ExampleSs
  OR NOT EXISTS(SELECT 1 FROM [#ExampleSsisLegacy_execution] WHERE FirstErrorLogId=4 AND FirstErrorMessage IS NULL)
  THROW 56318,N''LEGACY_INDEPENDENT_OPTOUTS'',1;
 ALTER TABLE [dbo].[ExampleSsisLegacy.Log]]Source] DROP COLUMN [message];
-TRUNCATE TABLE [#ExampleSsisLegacy_moduleStatus];
-TRUNCATE TABLE [#ExampleSsisLegacy_execution];
-TRUNCATE TABLE [#ExampleSsisLegacy_timeline];
-TRUNCATE TABLE [#ExampleSsisLegacy_errorChain];
-TRUNCATE TABLE [#ExampleSsisLegacy_iterations];
-TRUNCATE TABLE [#ExampleSsisLegacy_loggingQuality];
-TRUNCATE TABLE [#ExampleSsisLegacy_findings];
-TRUNCATE TABLE [#ExampleSsisLegacy_sourceStatus];
-TRUNCATE TABLE [#ExampleSsisLegacy_warnings];
+EXEC [sys].[sp_executesql] @ResetExportsSql,N''@Bindings nvarchar(max)'',@Bindings=@ExportBindings;
 EXEC [monitor].[USP_SsisLegacyLogAnalysis] @LoggingDatabase=@Db,@LoggingTable=N''ExampleSsisLegacy.Log]Source'',@ExecutionId=@Id,@IncludeMessages=0,@ResultSetArt=''TABLE'',@ResultTablesJson=@Mapping,@JsonErzeugen=1,@Json=@Json OUTPUT,@StatusCodeOut=@Status OUTPUT,@IsPartialOut=@Partial OUTPUT,@ErrorNumberOut=@Error OUTPUT,@ErrorMessageOut=@Message OUTPUT;
 
 IF @Status IS NULL OR @Status<>''AVAILABLE'' THROW 56319,N''LEGACY_DISABLED_MESSAGE_COLUMN_ACCESS'',1;
-TRUNCATE TABLE [#ExampleSsisLegacy_moduleStatus];
-TRUNCATE TABLE [#ExampleSsisLegacy_execution];
-TRUNCATE TABLE [#ExampleSsisLegacy_timeline];
-TRUNCATE TABLE [#ExampleSsisLegacy_errorChain];
-TRUNCATE TABLE [#ExampleSsisLegacy_iterations];
-TRUNCATE TABLE [#ExampleSsisLegacy_loggingQuality];
-TRUNCATE TABLE [#ExampleSsisLegacy_findings];
-TRUNCATE TABLE [#ExampleSsisLegacy_sourceStatus];
-TRUNCATE TABLE [#ExampleSsisLegacy_warnings];
+EXEC [sys].[sp_executesql] @ResetExportsSql,N''@Bindings nvarchar(max)'',@Bindings=@ExportBindings;
 EXEC [monitor].[USP_SsisLegacyLogAnalysis] @LoggingDatabase=@Db,@LoggingTable=N''ExampleSsisLegacy.Log]Source'',@ExecutionId=@Id,@ResultSetArt=''TABLE'',@ResultTablesJson=@Mapping,@JsonErzeugen=1,@Json=@Json OUTPUT,@StatusCodeOut=@Status OUTPUT,@IsPartialOut=@Partial OUTPUT,@ErrorNumberOut=@Error OUTPUT,@ErrorMessageOut=@Message OUTPUT;
 
 IF @Status IS NULL OR @Status<>''SOURCE_UNAVAILABLE'' THROW 56320,N''LEGACY_REQUIRED_MESSAGE_COLUMN'',1;
 ALTER TABLE [dbo].[ExampleSsisLegacy.Log]]Source] ADD [message] AS CONVERT(nvarchar(2048),N''Synthetic computed'') PERSISTED;
-TRUNCATE TABLE [#ExampleSsisLegacy_moduleStatus];
-TRUNCATE TABLE [#ExampleSsisLegacy_execution];
-TRUNCATE TABLE [#ExampleSsisLegacy_timeline];
-TRUNCATE TABLE [#ExampleSsisLegacy_errorChain];
-TRUNCATE TABLE [#ExampleSsisLegacy_iterations];
-TRUNCATE TABLE [#ExampleSsisLegacy_loggingQuality];
-TRUNCATE TABLE [#ExampleSsisLegacy_findings];
-TRUNCATE TABLE [#ExampleSsisLegacy_sourceStatus];
-TRUNCATE TABLE [#ExampleSsisLegacy_warnings];
+EXEC [sys].[sp_executesql] @ResetExportsSql,N''@Bindings nvarchar(max)'',@Bindings=@ExportBindings;
 EXEC [monitor].[USP_SsisLegacyLogAnalysis] @LoggingDatabase=@Db,@LoggingTable=N''ExampleSsisLegacy.Log]Source'',@ExecutionId=@Id,@ResultSetArt=''TABLE'',@ResultTablesJson=@Mapping,@JsonErzeugen=1,@Json=@Json OUTPUT,@StatusCodeOut=@Status OUTPUT,@IsPartialOut=@Partial OUTPUT,@ErrorNumberOut=@Error OUTPUT,@ErrorMessageOut=@Message OUTPUT;
 
 IF @Status IS NULL OR @Status<>''SOURCE_UNAVAILABLE'' THROW 56321,N''LEGACY_COMPUTED_MESSAGE_ADMISSION'',1;
-TRUNCATE TABLE [#ExampleSsisLegacy_moduleStatus];
-TRUNCATE TABLE [#ExampleSsisLegacy_execution];
-TRUNCATE TABLE [#ExampleSsisLegacy_timeline];
-TRUNCATE TABLE [#ExampleSsisLegacy_errorChain];
-TRUNCATE TABLE [#ExampleSsisLegacy_iterations];
-TRUNCATE TABLE [#ExampleSsisLegacy_loggingQuality];
-TRUNCATE TABLE [#ExampleSsisLegacy_findings];
-TRUNCATE TABLE [#ExampleSsisLegacy_sourceStatus];
-TRUNCATE TABLE [#ExampleSsisLegacy_warnings];
+EXEC [sys].[sp_executesql] @ResetExportsSql,N''@Bindings nvarchar(max)'',@Bindings=@ExportBindings;
 EXEC [monitor].[USP_SsisLegacyLogAnalysis] @LoggingDatabase=@Db,@LoggingTable=N''ExampleSsisLegacy.Log]Source'',@ExecutionId=@Id,@IncludeMessages=0,@ResultSetArt=''TABLE'',@ResultTablesJson=@Mapping,@JsonErzeugen=1,@Json=@Json OUTPUT,@StatusCodeOut=@Status OUTPUT,@IsPartialOut=@Partial OUTPUT,@ErrorNumberOut=@Error OUTPUT,@ErrorMessageOut=@Message OUTPUT;
 
 IF @Status IS NULL OR @Status<>''AVAILABLE'' THROW 56322,N''LEGACY_IGNORED_COMPUTED_MESSAGE'',1;
@@ -512,45 +442,21 @@ ALTER TABLE [dbo].[ExampleSsisLegacy.Log]]Source] DROP COLUMN [message];
 ALTER TABLE [dbo].[ExampleSsisLegacy.Log]]Source] ADD [message] nvarchar(2048) NULL;
 -- Ambiguous and incomplete streams retain their observed events without invented pairings.
 UPDATE [dbo].[ExampleSsisLegacy.Log]]Source] SET [event]=N''OnPreExecute'' WHERE id=5;
-TRUNCATE TABLE [#ExampleSsisLegacy_moduleStatus];
-TRUNCATE TABLE [#ExampleSsisLegacy_execution];
-TRUNCATE TABLE [#ExampleSsisLegacy_timeline];
-TRUNCATE TABLE [#ExampleSsisLegacy_errorChain];
-TRUNCATE TABLE [#ExampleSsisLegacy_iterations];
-TRUNCATE TABLE [#ExampleSsisLegacy_loggingQuality];
-TRUNCATE TABLE [#ExampleSsisLegacy_findings];
-TRUNCATE TABLE [#ExampleSsisLegacy_sourceStatus];
-TRUNCATE TABLE [#ExampleSsisLegacy_warnings];
+EXEC [sys].[sp_executesql] @ResetExportsSql,N''@Bindings nvarchar(max)'',@Bindings=@ExportBindings;
 EXEC [monitor].[USP_SsisLegacyLogAnalysis] @LoggingDatabase=@Db,@LoggingTable=N''ExampleSsisLegacy.Log]Source'',@ExecutionId=@Id,@ResultSetArt=''TABLE'',@ResultTablesJson=@Mapping,@JsonErzeugen=1,@Json=@Json OUTPUT,@StatusCodeOut=@Status OUTPUT,@IsPartialOut=@Partial OUTPUT,@ErrorNumberOut=@Error OUTPUT,@ErrorMessageOut=@Message OUTPUT;
 
 IF @Status IS NULL OR @Status<>''AVAILABLE_LIMITED'' OR (SELECT COUNT_BIG(*) FROM [#ExampleSsisLegacy_iterations] WHERE PairKind=''EXECUTE'' AND PairStatus=''AMBIGUOUS'')<>2
  OR NOT EXISTS(SELECT 1 FROM [#ExampleSsisLegacy_loggingQuality] WHERE QualityCode=''ERROR_MESSAGE_MISSING'' AND AffectedRowCount=1)
  THROW 56323,N''LEGACY_AMBIGUOUS_PAIRING_AND_MISSING_ERROR_TEXT'',1;
 DELETE FROM [dbo].[ExampleSsisLegacy.Log]]Source] WHERE id=5;
-TRUNCATE TABLE [#ExampleSsisLegacy_moduleStatus];
-TRUNCATE TABLE [#ExampleSsisLegacy_execution];
-TRUNCATE TABLE [#ExampleSsisLegacy_timeline];
-TRUNCATE TABLE [#ExampleSsisLegacy_errorChain];
-TRUNCATE TABLE [#ExampleSsisLegacy_iterations];
-TRUNCATE TABLE [#ExampleSsisLegacy_loggingQuality];
-TRUNCATE TABLE [#ExampleSsisLegacy_findings];
-TRUNCATE TABLE [#ExampleSsisLegacy_sourceStatus];
-TRUNCATE TABLE [#ExampleSsisLegacy_warnings];
+EXEC [sys].[sp_executesql] @ResetExportsSql,N''@Bindings nvarchar(max)'',@Bindings=@ExportBindings;
 EXEC [monitor].[USP_SsisLegacyLogAnalysis] @LoggingDatabase=@Db,@LoggingTable=N''ExampleSsisLegacy.Log]Source'',@ExecutionId=@Id,@ResultSetArt=''TABLE'',@ResultTablesJson=@Mapping,@JsonErzeugen=1,@Json=@Json OUTPUT,@StatusCodeOut=@Status OUTPUT,@IsPartialOut=@Partial OUTPUT,@ErrorNumberOut=@Error OUTPUT,@ErrorMessageOut=@Message OUTPUT;
 
 IF NOT EXISTS(SELECT 1 FROM [#ExampleSsisLegacy_loggingQuality] WHERE QualityCode=''PAIRING_INCOMPLETE'' AND AffectedRowCount=1)
  OR NOT EXISTS(SELECT 1 FROM [#ExampleSsisLegacy_findings] WHERE FindingCode=''PAIRING_INCOMPLETE'' AND EvidenceLevel=''DERIVED'')
  THROW 56324,N''LEGACY_INCOMPLETE_PAIRING'',1;
 DELETE FROM [dbo].[ExampleSsisLegacy.Log]]Source];
-TRUNCATE TABLE [#ExampleSsisLegacy_moduleStatus];
-TRUNCATE TABLE [#ExampleSsisLegacy_execution];
-TRUNCATE TABLE [#ExampleSsisLegacy_timeline];
-TRUNCATE TABLE [#ExampleSsisLegacy_errorChain];
-TRUNCATE TABLE [#ExampleSsisLegacy_iterations];
-TRUNCATE TABLE [#ExampleSsisLegacy_loggingQuality];
-TRUNCATE TABLE [#ExampleSsisLegacy_findings];
-TRUNCATE TABLE [#ExampleSsisLegacy_sourceStatus];
-TRUNCATE TABLE [#ExampleSsisLegacy_warnings];
+EXEC [sys].[sp_executesql] @ResetExportsSql,N''@Bindings nvarchar(max)'',@Bindings=@ExportBindings;
 EXEC [monitor].[USP_SsisLegacyLogAnalysis] @LoggingDatabase=@Db,@LoggingTable=N''ExampleSsisLegacy.Log]Source'',@ExecutionId=@Id,@ResultSetArt=''TABLE'',@ResultTablesJson=@Mapping,@JsonErzeugen=1,@Json=@Json OUTPUT,@StatusCodeOut=@Status OUTPUT,@IsPartialOut=@Partial OUTPUT,@ErrorNumberOut=@Error OUTPUT,@ErrorMessageOut=@Message OUTPUT;
 
 IF @Status IS NULL OR @Status<>''AVAILABLE_EMPTY'' OR @Partial IS NULL OR @Partial<>0 OR EXISTS(SELECT 1 FROM [#ExampleSsisLegacy_execution])
