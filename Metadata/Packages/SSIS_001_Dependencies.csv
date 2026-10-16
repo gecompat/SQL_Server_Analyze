@@ -5,3 +5,4 @@ SSIS-001,Code/01_Common/096_USP_InternalPrepareResultTables.sql,Output helper,TA
 SSIS-001,Code/01_Common/098_USP_InternalEmitConsoleResult.sql,Output helper,CONSOLE module overview
 SSIS-001,Code/10_SSIS/010_USP_SsisPackageAnalysis.sql,Public procedure,Direct DTSX-v2 package and executable and variable inventory
 SSIS-001,Code/10_SSIS/030_USP_SsisCatalogExecutionAnalysis.sql,Public procedure,Local SSISDB execution metadata without payloads or actions
+SSIS-001,Code/10_SSIS/020_USP_SsisLegacyLogAnalysis.sql,Public procedure,Explicit local existing Legacy logging table; stored messages; no source actions

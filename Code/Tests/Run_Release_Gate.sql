@@ -116,6 +116,7 @@ RAISERROR(N'RELEASE_GATE 26/34: Frameworkweiter Ausgabevertrag',10,1) WITH NOWAI
 :r Integration/122_DIAG004_Request_Context_Runtime_Contract.sql
 :r Integration/199_CurrentState_Snapshot_Runtime_Contract.sql
 :r Integration/201_SsisCatalogExecutionAnalysis_Runtime_Contract.sql
+:r Integration/202_SsisLegacyLogAnalysis_Runtime_Contract.sql
 
 RAISERROR(N'RELEASE_GATE 27/34: Common',10,1) WITH NOWAIT;
 :r Common/090_Test_und_Abnahme_Phase1A.sql

@@ -802,3 +802,9 @@ EXEC [monitor].[USP_ExternalDataAnalysis] @MaxZeilen=200, @ResultSetArt='CONSOLE
 ```sql
 EXEC [monitor].[USP_SsisCatalogExecutionAnalysis] @Hilfe=1;
 ```
+
+## `[monitor].[USP_SsisLegacyLogAnalysis]`
+
+```sql
+EXEC [monitor].[USP_SsisLegacyLogAnalysis] @Hilfe=1;
+```

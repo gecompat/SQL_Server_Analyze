@@ -179,4 +179,5 @@ Der Installer beendet die Verarbeitung beim ersten SQL-Fehler.
 :r ../09_VersionAdaptive/110_USP_ExternalDataAnalysis.sql
 :r ../09_VersionAdaptive/500_USP_FrameworkUsageFromQueryStore.sql
 :r ../10_SSIS/010_USP_SsisPackageAnalysis.sql
+:r ../10_SSIS/020_USP_SsisLegacyLogAnalysis.sql
 :r ../10_SSIS/030_USP_SsisCatalogExecutionAnalysis.sql

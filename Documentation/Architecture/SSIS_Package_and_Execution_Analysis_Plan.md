@@ -865,3 +865,7 @@ dieser Katalogkernnachweis ist kein SSIS- oder Gesamtfertigstellungsnachweis.
 Linux prüft ausschließlich den fehlenden Katalog und den Plattformfallback.
 Die Testauswahl folgt der aktuellen CI_Test_Strategy und keiner historischen
 Drei-Versionen-Matrix dieses Planungsdokuments.
+
+## Freigegebener Legacy-Kern vom 16. Oktober 2026
+
+Der [konkrete Legacy-Vertrag](SSIS_001_Phase0_Public_Contract.md#konkreter-legacy-vertrag-vom-16-oktober-2026) konkretisiert die frühere Planung. Implementiert werden eine explizite Datenbank und GUID, alle gespeicherten Meldungen als Default, beratende Indexmetadaten ohne Indexpflicht, begrenzte Ereignissammlung und konservative Zeitpaare. Automatisches Freitextparsing, Looprekonstruktion, Root-Cause- und Propagationsbehauptungen bleiben außerhalb dieses Umfangs. Synthetische Formattests ersetzen keine echte Providerabnahme. SSIS-001 bleibt PARTIAL_PRODUCT_FUNCTION.

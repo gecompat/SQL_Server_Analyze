@@ -1864,3 +1864,7 @@ Erforderliche erfolgreiche Head-CI, Integration, Synchronisierung und eigener
 Cleanup bleiben Liefergates. Die anschließende Benutzerpause wurde durch den
 oben dokumentierten neuen Fortsetzungsauftrag aufgehoben; die übrige Reifewelle
 bleibt innerhalb ihrer bestehenden Grenzen ausführbar.
+
+## Freigegebene SSIS-Legacy-Umsetzung vom 16. Oktober 2026
+
+Der Benutzer hat die geprüfte Revision 3 ausdrücklich freigegeben. Der [Legacy-Vertrag](../../../Documentation/Architecture/SSIS_Package_and_Execution_Analysis_Plan.md#freigegebener-legacy-kern-vom-16-oktober-2026) enthält 20 Parameter, neun Schemas und gespeicherte Meldungstexte als Default. Zusätzliche Quellindizes sind keine Voraussetzung. Der separate Implementierungsschritt umfasst Produkt, synthetische Vertragsprüfung, Installer, Inventare und reguläre Integration. Native Providererzeugung und zusätzliche Rollen benötigen weiterhin veröffentlichte geeignete Lab-Abnahme; keine eigene Labentwicklung. Frühere geschlossene Budgets und WI-0009 GATE-0001 bleiben unverändert.

@@ -2654,3 +2654,30 @@ Quelle: `Code/10_SSIS/030_USP_SsisCatalogExecutionAnalysis.sql`
     , @ErrorNumberOut int = NULL OUTPUT
     , @ErrorMessageOut nvarchar(4000) = NULL OUTPUT
 ```
+
+## `[monitor].[USP_SsisLegacyLogAnalysis]`
+
+Quelle: `Code/10_SSIS/020_USP_SsisLegacyLogAnalysis.sql`
+
+```sql
+@LoggingDatabase sysname = NULL
+    , @LoggingSchema sysname = N'dbo'
+    , @LoggingTable sysname = N'sysssislog'
+    , @ExecutionId uniqueidentifier = NULL
+    , @IncludeTimeline bit = 1
+    , @IncludeMessages bit = 1
+    , @HighImpactConfirmed bit = 0
+    , @MaxZeilen int = 1000
+    , @MaxDurationSeconds int = 30
+    , @LockTimeoutMs int = 0
+    , @ResultSetArt varchar(16) = 'CONSOLE'
+    , @ResultTablesJson nvarchar(max) = NULL
+    , @JsonErzeugen bit = 0
+    , @Json nvarchar(max) = NULL OUTPUT
+    , @PrintMeldungen bit = 1
+    , @Hilfe bit = 0
+    , @StatusCodeOut varchar(40) = NULL OUTPUT
+    , @IsPartialOut bit = NULL OUTPUT
+    , @ErrorNumberOut int = NULL OUTPUT
+    , @ErrorMessageOut nvarchar(4000) = NULL OUTPUT
+```

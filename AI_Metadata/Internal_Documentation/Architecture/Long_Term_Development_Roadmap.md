@@ -198,6 +198,8 @@ Graph, Spatial, XML, FILESTREAM und benutzerdefinierte Typen bleiben zunächst i
 
 ### `SSIS-001`
 
+Der Katalogkern ist geliefert. Die ausdrücklich freigegebene Legacy-Revision 3 wird mit gespeicherten Meldungstexten und ohne zusätzliche Indexpflicht umgesetzt; der konkrete Vertrag im SSIS-Architekturdokument begrenzt diesen Umfang. Echte Legacy-Providerabnahme und zusätzliche Katalogquellen bleiben offen. Die folgenden Prioritätsangaben beschreiben die frühere Ausgangsfolge.
+
 Nach dem abgeschlossenen Phase-0-Vertrag folgt zunächst der statische DTSX-v2-Parser. Inventar, Control-Flow- und Data-Flow-Graphen werden vor Regelengine, SQL-Metadatenprüfung und Laufzeitadaptern stabilisiert. Dateisystem- und ISPAC-Zugriffe bleiben ein getrenntes Paket.
 
 Der statische DTSX-v2-Parser hat nach dem Abschluss des jeweils laufenden Analyze-Strangs Vorrang vor den übrigen geplanten Punkten. Bestätigt `SQL_Server_Lab` den SMTP-Pfad vor Beginn eines DTSX-Entwicklungsslices, wird SMTP nach dem Abschluss des dann laufenden Strangs vorgezogen. Trifft die Bestätigung während eines begonnenen DTSX-Slices ein, wird dieser Slice einschließlich Validierung, Pull Request und Integration nach `origin/main` abgeschlossen; anschließend beginnt SMTP.
