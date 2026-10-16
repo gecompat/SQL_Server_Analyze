@@ -21,6 +21,22 @@ Multiple-Session-Budget mit zwei von zwei bleiben unverändert. Weitere
 Mailfälle und tatsächliche Maintenance-Ausführung sind eigenständige offene
 Teilumfänge; öffentliche neue Funktionsverträge bleiben freigabepflichtig.
 
+## Zurückgestellter SSIS-Backlog vom 16. Oktober 2026
+
+Der Benutzer hat die [vertiefte Legacy-Loganalyse](../../../Documentation/Architecture/SSIS_Package_and_Execution_Analysis_Plan.md#backlog-vertiefte-legacy-loganalyse-vom-16-oktober-2026)
+unter `SSIS-001` ausschließlich für spätere Entwicklung vormerken lassen.
+Der vollständige Plan und der Eintrag in
+`Metadata/Quality/Future_Enhancement_Backlog.csv` umfassen Komponentenphasen,
+Zeilenflüsse, Lookup-/Cachewerte, Provider- und Taskoperationen, Fehlerbezüge,
+Transaktionen, Checkpoints sowie optionale historische Vergleiche und eigene
+strukturierte Kennzahlen. Die bereits vorhandenen Legacy- und Katalogkerne,
+gespeicherte Meldungen als Default, Parameter, Schemas und Statusflags werden
+durch diese Dokumentationsablage nicht geändert. `SSIS-001` bleibt
+`PARTIAL_PRODUCT_FUNCTION`. Dieser Backlogauftrag aktiviert weder Umsetzung
+noch neue Runtimeversuche oder Labentwicklung; bestehende Abnahmegrenzen und
+geschlossene Budgets bleiben erhalten. Die nachfolgenden früheren
+Entwicklungsaufträge erteilen keine Freigabe für diese neue Erweiterung.
+
 ## Aktuelle SSIS-Kataloglieferung vom 16. Oktober 2026
 
 Die veröffentlichte Windows-/SSISDB-Lab-Abnahme liegt vor. Die verwendete

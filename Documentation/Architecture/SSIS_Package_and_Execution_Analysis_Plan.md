@@ -1,8 +1,19 @@
 # SSIS-001 – SSIS Package and Execution Analysis
 
-**Stand:** 22. Juli 2026  
-**Status:** geplantes SubProject; noch nicht implementiert  
+**Stand:** 16. Oktober 2026
+
+**Status:** `PARTIAL_PRODUCT_FUNCTION`; vertiefte Legacy-Interpretation im Backlog
+
 **Zielversionen:** SQL Server 2019, 2022 und 2025
+
+Der direkte DTSX-v2-Parser, der strukturierte SSISDB-Katalogkern und der
+freigegebene Legacy-Logkern sind teilweise beziehungsweise im abgegrenzten
+Vertragsumfang implementiert. Die folgenden nummerierten Zielabschnitte
+enthalten auch frühere Planung; der aktuelle Lieferumfang richtet sich nach
+dem [öffentlichen Vertrag](SSIS_001_Phase0_Public_Contract.md), den konkreten
+Lieferabschnitten am Dokumentende und dem Implementierungsstatus. Die
+[vertiefte Legacy-Loganalyse](#backlog-vertiefte-legacy-loganalyse-vom-16-oktober-2026)
+ist ausschließlich für spätere Entwicklung vorgemerkt.
 
 ## 1. Auftrag und Abgrenzung
 
@@ -912,3 +923,300 @@ Fehlhistorie und die erfolgreichen eigenen Runtime-Cleanups bleiben erhalten.
 Zum Liefergate gehören exakte Head-CI und reguläre Integration am abschließenden
 Lieferstand. Eine positive echte Providerabnahme, weitere native
 Engines und weitere Rollen bleiben unabhängig vom synthetischen CI-Ergebnis offen.
+
+## Backlog: Vertiefte Legacy-Loganalyse vom 16. Oktober 2026
+
+### Auftrag, Ausgangslage und Status
+
+Der Benutzer hat ausschließlich die Ablage dieses Erweiterungsplans für spätere
+Entwicklung beauftragt. Dieser Abschnitt aktiviert weder Implementierung noch
+Runtimeversuche, Instrumentierung, Labentwicklung oder eine Änderung öffentlicher
+Verträge. Er erweitert das bestehende Arbeitselement `SSIS-001`; eine neue
+Kennung wird nicht vergeben. Priorität ist P2, die erwartete Kostenklasse
+`MEDIUM_TO_HIGH`. `SSIS-001` bleibt `PARTIAL_PRODUCT_FUNCTION`.
+
+Ausgangsbasis ist der bereits implementierte Legacy-Kern mit 20 Parametern,
+neun Resultsets, einer expliziten lokalen Loggingquelle und genau einer
+Execution-ID. `@IncludeMessages = 1` liefert dort standardmäßig die vollständigen
+gespeicherten Meldungen. `@IncludeMessages = 0` unterbindet deren fachlichen
+Quellzugriff. Indexhinweise sind beratend; zusätzliche Quellindizes sind keine
+Voraussetzung. Diese Eigenschaften und die bestehende Bedeutung von
+`@MaxZeilen` werden durch den Backlog nicht geändert.
+
+Ziel der Erweiterung ist die strukturierte Auswertung vorhandener nativer
+Ereignisse und Meldungen. Jede Kennzahl soll Quelle, Scope, Zeitbasis,
+Berechnung und Aussagegrenze erkennen lassen. Historische Vergleiche sowie ein
+optionales Format für eigene strukturierte Kennzahlen sind ausdrücklich
+Bestandteil der Planung. Der Analyzer bleibt zustandslos und verändert weder
+Pakete noch Loggingeinstellungen oder Quelltabellen.
+
+### Quellenmatrix und zusätzliche Informationen
+
+Die Quellenmatrix beschreibt Fähigkeiten unter der Voraussetzung, dass die
+benötigten Ereignisse, Identifikatoren und Meldungsdetails tatsächlich vorliegen.
+Ein Ereignisname allein garantiert keinen auswertbaren Payload.
+
+| Analysebereich | Ereignisse beziehungsweise Meldungsfamilien | Geplante Information und Aussagegrenze |
+|---|---|---|
+| Ablauf und Validierung | `PackageStart`, `PackageEnd`, passende Pre-/Post-Execute- und Pre-/Post-Validate-Ereignisse sowie bekannte Phasenmeldungen | Intervalle, Validierungsanteile und wiederholte Ausführungen werden getrennt rekonstruiert. Die Paketdauer benötigt passende Paketgrenzen; sonst wird nur der beobachtete Zeitraum angegeben. |
+| Wiederholungen und Parallelität | Eindeutige Paare je Execution-ID und Source-ID; optional verifizierte Paketstruktur | Vorkommensanzahl, Summe, Mittelwert, Maximum und Streuung werden ausgewertet. Vorkommen beweisen keine Schleifen oder Retries. Überlappende Executables sind keine gemessenen CPU-Threads. |
+| Komponentenphasen | `PipelineComponentTime`, interpretierbare Informationsmeldungen und Pipeline-Abschlussereignisse | Gemeldete Phasenzeiten und passende Meilensteine werden je Data-Flow-Vorkommen und Komponente erfasst. Komponentenzeit ist keine CPU-Zeit; Phasensummen sind keine exklusive Paketlaufzeit. |
+| Zeilenfluss | `OnPipelineRowsSent`, bekannte Schreib- und Dateizeilenmeldungen | Zeilen je Pfad, Input und Vorkommen, Übergabegrößen und zeitliche Verteilung werden ausgegeben. Transportierte, als geschrieben gemeldete und fachlich bestätigte Zeilen bleiben unterschiedliche Messgrößen. |
+| Datenflussstruktur | `PipelineExecutionPlan`, `PipelineExecutionTrees` und eindeutig zuordenbare Pfadkennungen | Beobachtbare Komponentenbeziehungen, Execution Trees und geplante Threadzuordnungen werden rekonstruiert. Die Ausgabe belegt weder vollständige Paketlineage noch tatsächliche Threadauslastung. |
+| Lookup und Cache | Bekannte `DTS_I_TXLOOKUP_CACHE_*`, `DTS_I_TXLOOKUP_PARTIALPERF*` und Cacheaufbau-Meldungen | Cachezeilen, Aufbauzeiten, gemeldeter Speicher, Referenzkommandos und Lookupoperationen werden erfasst. Verhältniszahlen benötigen dieselbe Bezugsmenge; eine universelle Cache-Hit-Rate wird nicht erfunden. |
+| Buffer und Speicher | `BufferSizeTuning`, `PipelineInitialization`, `PipelineBufferLeak` und ausdrückliche Speicherwarnungen | Gemeldete Größen, Zeilenkapazitäten, Anpassungsgründe und Leaks werden zugeordnet. Anpassungen allein beweisen keinen Speichermangel; tatsächliches Spooling benötigt eigene Evidenz. |
+| Provideraufrufe | Bekannte `Diagnostic`-Meldungen mit `ExternalRequest_pre` und `ExternalRequest_post` | Eindeutige Paare liefern Aufrufintervalle und Häufigkeiten je Methode. Offene Paare und wiederholte Verbindungsaufbauten werden sichtbar. Fehlende Gegenereignisse können durch unvollständiges Logging entstehen. |
+| Execute SQL Task | `ExecuteSQLExecutingQuery` und passende Providerdiagnosen | Verbindungs-, Vorbereitungs- und Abschlussmeilensteine werden ausgewertet. Deren Abstände sind keine garantierten reinen Verbindungs-, Compile- oder SQL-Ausführungszeiten. Betroffene SQL-Zeilen benötigen zusätzliche ausdrückliche Meldungen. |
+| Fehler und Datenqualität | `OnError`, `OnTaskFailed`, `OnWarning`, bekannte Fehlercodes und passende `DiagnosticEx`-Spaltenabbildungen | Fehlergruppen, technische Codes und auflösbare Komponenten- und Spaltenbezüge werden ausgegeben. Eine wahrscheinliche Ursprungsmeldung wird von bewiesener Fehlerpropagation und Root Cause getrennt. |
+| Transaktionen und Wiederanlauf | Bekannte Transaktions-, Final-Commit- und Checkpointmeldungen | Gemeldete Aktionen, passende Intervalle und beobachtete Wiederaufnahme werden dargestellt. Ein lokales Abschlussereignis garantiert keinen dauerhaften übergeordneten Commit, keine Idempotenz und keinen erfolgreichen Restore. |
+| Spezielle Tasks | Bulk Insert, Execute Process, File System, FTP, MSMQ, Send Mail, Transfer-, Web-Service-, WMI- und XML-Task-Ereignisse | Operationsart, verfügbare Meilensteine, ausdrücklich gemeldete Ergebnisse und Timeouts werden interpretiert. Reine Startereignisse ergeben weder Dauer noch Erfolg. Ein Prozessende liefert nur bei entsprechendem Payload einen Exitcode. |
+| Fortschritt und Änderungen | `OnProgress`, `OnVariableValueChanged` und `OnExecStatusChanged` | Verwertbarer Fortschritt, Änderungshäufigkeit und ausdrücklich protokollierte Debugzustände werden erfasst. Variablenwerte sind nicht automatisch verfügbar. Eine Ereignislücke beweist keinen Stillstand. |
+
+Die Herstellerreferenz enthält darüber hinaus Hinweise zu ungenutzten Spalten,
+redundanter Sortierung, Rehashing, Lookup-Duplikaten, Typ- und Längenkonflikten
+sowie Fehlerausgängen. Diese Hinweise werden als protokollierte Beobachtungen
+klassifiziert. Ihr Fehlen beweist weder eine passende Konfiguration noch
+fehlerfreie Daten. Insbesondere hängt die Lookup-Duplikatwarnung vom Cachemodus ab.
+
+### Evidenz, Rekonstruktion und Kennzahlen
+
+Die spätere Implementierung erhält einen versionierten Ereignis- und
+Meldungskatalog. Jeder Decoder benennt seine öffentlichen Primärquellen,
+unterstützten Engine-/Komponenten- und Sprachformate, Eingabefelder, Einheiten,
+Zuordnungsschlüssel und Aggregationsart. Zunächst werden belegte englische und
+deutsche Formate unterstützt. Codes werden ereignisbezogen interpretiert;
+`datacode` ist kein universeller Outcome- oder HRESULT-Vertrag. Unbekannte
+Formate bleiben als nicht interpretiert sichtbar.
+
+Jede Kennzahl referenziert Loggingquelle, Execution-ID, Source-ID, zugeordnetes
+Vorkommen und die tatsächlich verwendeten Log-IDs. Quelle, Parserkennung,
+Berechnung, Einheit, ursprünglicher Zeitbezug und Verfügbarkeitsgrund werden
+getrennt ausgegeben. Bestehende Evidenz- und Quellenstatus werden nicht
+umdefiniert. Gemeldeter Wert, berechnetes Intervall und heuristischer Befund
+bleiben nachvollziehbar getrennt.
+
+Fehlende Kennzahlen bleiben NULL. Eine Nullmenge benötigt ausdrückliche
+Evidenz; fehlende Zeilenmeldungen ergeben nicht null verarbeitete Datensätze.
+Deaktiviertes Logging, nicht durchlaufene Zweige, gelöschte Daten und fehlende
+Sichtbarkeit sind ohne weitere Quelle nicht sicher unterscheidbar. Die
+Loggingabdeckung wird deshalb je Task und Kennzahl bewertet. Lückenhafte
+Mengen werden als beobachtete Teilmengen und nicht als vollständige Summen
+ausgegeben. Gleichlautende Meldungen mit verschiedenen Log-IDs werden nicht
+automatisch dedupliziert; eine Gruppierung erhält ihre Ursprungszeilen.
+
+Start-/Endpaare werden zustandsbezogen je Quelle und Vorkommen rekonstruiert.
+Fehlende, überlappende und widersprüchliche Paare bleiben mehrdeutig. Eine
+Log-ID ist eine stabile Ordnungshilfe, kein Beweis einer feingranularen
+Ausführungsreihenfolge. `endtime` bleibt ein Rohfeld und kein Dauerendpunkt.
+Native Zeitstempel werden ohne erfundene Zeitzone oder UTC-Konvertierung
+erhalten. Uhrenrücksprünge und nicht positive Zeitintervalle verhindern die
+betroffene Durchsatz- oder Dauerberechnung.
+
+Zeilen werden je Pfad und Vorkommen aggregiert. Verzweigungen, Multicast,
+Zusammenführungen und Aggregationen werden berücksichtigt, soweit ihre
+Struktur bekannt ist. Es gibt keine Gesamtsumme aller Pfade als vermeintliche
+Zahl eindeutiger Datensätze. `OnPipelineRowsSent` zählt keine physischen Buffer.
+Durchsatz benennt seinen Nenner, beispielsweise die beobachtete Dauer des
+Data Flows. Pipeline-Mengen und gemeldete Zielschreibmengen werden weder
+gleichgesetzt noch addiert.
+
+Zeitliche Überlappungen werden über Intervallvereinigungen berücksichtigt.
+Kindzeiten werden nicht unbereinigt von Containerzeiten subtrahiert.
+Unbekannte Elternbeziehungen bleiben unbekannt. Kandidaten für laufzeitprägende
+Ketten dürfen nur bei ausreichend belegtem Graphen gezeigt werden; der
+Analyzer behauptet ohne weitere Ablauf- und Schedulingevidenz keinen exakten
+kritischen Pfad. `OnQueryCancel` allein belegt keinen Abbruch. Fehlende
+Fehlerereignisse oder ein einzelnes Post-Ereignis ergeben keinen pauschalen
+Erfolgsnachweis.
+
+Optimierungshinweise enthalten Beobachtung, mögliche Auswirkung, Empfehlung,
+Gegenprüfung und Aussagegrenze. Hohe Komponentenzeit oder viele Referenzaufrufe
+können eine gezielte Prüfung begründen; sie beweisen keinen fehlenden Index,
+SQL-Wait, Netzwerkfehler oder Nutzen einer bestimmten Konfigurationsänderung.
+Es gibt keine automatische DDL, Tuningaktion oder Loggingumschaltung.
+
+### Geplante Schnittstellen und Ausgaben
+
+Vor einer späteren Umsetzung wird ein eigener öffentlicher Erweiterungsvertrag
+mit unabhängigem fachlichem Review festgeschrieben. Der heutige Legacy-v1-
+Aufruf und seine neun nativen Schemas bleiben bis dahin unverändert. Der
+Entwurf eines künftigen v2-Datenmodells erhält die bisherigen Resultsetnamen
+und ergänzt strukturierte Mengen für `taskDurations`, `rowFlow`,
+`componentPerformance`, `providerCalls`, `taskOperations`, `metrics`,
+`pipelineGraph` und `history`. Namen und Version sind hier Entwurfsbestand;
+sie werden nicht in aktive Inventare oder den freigegebenen Vertrag übernommen.
+
+`metrics` nimmt typisierte Lookup-, Cache-, Buffer-, Transaktions-, Checkpoint-
+und eigene Kennzahlen auf. Ereignisartige Beobachtungen behalten Ereignistyp
+und Zeitbezug. Zusätzliche native Codes benötigen dadurch kein eigenes
+Resultset. COUNTER-, Zeit- und Zustandswerte dürfen nicht denselben
+Summierungsregeln folgen.
+
+Alle Ausgabearten verwenden denselben pro Aufruf materialisierten Bestand.
+CONSOLE bleibt ein gemeinsames fachliches Resultset mit Übersicht und
+nachvollziehbaren Detailverweisen. RAW, benannter TABLE-Export und JSON
+transportieren dieselben begrenzten Fachmengen. Ausgabelimits und
+Lesebegrenzungen müssen unterscheidbar sein; eine gekürzte Quellmenge erlaubt
+keine als vollständig ausgewiesene Berechnung. Eine spätere Trennung von
+Lese- und Ausgabelimits benötigt eine ausdrückliche Vertragsversionierung,
+weil der heutige Parameter `@MaxZeilen` auch den Ereignispuffer begrenzt.
+
+Die frühere Idee eines zusätzlichen `rawEvents`-Resultsets wird durch die
+vorhandene `timeline` mit vollständigen gespeicherten Meldungen abgedeckt.
+Ein neuer Raw-Payload-Pfad und die entfallenen Parameter `@PackageXml` oder
+`@IncludeRawEvents` werden nicht stillschweigend wieder eingeführt. Optionale
+Paketkorrelation bleibt ein getrennter, später zu versionierender Adapter;
+die Übereinstimmung mit der ausgeführten Paketversion muss belegt werden.
+
+### Historische Vergleiche als Opt-in
+
+Der Standard bleibt die Einzelanalyse. Der Erweiterungsentwurf sieht einen
+getrennten Historienaufruf für eine explizite JSON-Liste von höchstens 100
+Execution-IDs aus derselben Loggingquelle vor. Es gibt keine automatische
+Suche über alle Datenbanken und keine Zusammenführung benachbarter IDs im
+heutigen Einzelaufruf. Wiederholungen innerhalb einer ID und verschiedene
+Paketläufe bleiben unterschiedliche Ebenen.
+
+Verglichen werden Laufzeiten, Mengen, passend normierter Durchsatz,
+Wiederholungen und wiederkehrende Fehlergruppen. Die Ausgabe nennt Zahl
+angefragter, gelesener, eingeschränkter und tatsächlich vergleichbarer Läufe.
+Median und Streuung werden aus den verwertbaren Beobachtungen ermittelt;
+P95 wird erst ab 20 verwertbaren Beobachtungen ausgegeben. Diese Untergrenze
+ist eine Entwurfsentscheidung, kein statistischer Stabilitätsnachweis.
+
+Paketversion, Struktur, Loggingabdeckung und Mengenbasis bestimmen die
+Vergleichbarkeit, soweit sie belegt werden können. Gleiche Namen oder GUIDs
+beweisen keine unveränderte Paketversion. Bei unzureichender Vergleichbarkeit
+bleiben beschreibende Werte mit Einschränkung; ein automatischer
+Regressionsbefund entsteht nicht. Ohne ausdrücklich vorgegebene fachliche
+Schwellen gibt es Rangfolgen und Verteilungen, aber keine SLA-Verletzung und
+keinen universellen Performancealarm. Automatisch ermittelte historische
+Ursachen oder Prognosen sind kein Teil dieses Entwurfs.
+
+### Optionaler Vertrag für eigene Kennzahlen
+
+Für `ScriptTaskLogEntry` wird ein optionales JSON-Format v1 geplant. Ein
+Eintrag enthält eine eindeutige Formatkennung, Schemaversion, Ereignis-ID,
+Taskinstanz, Kennzahl, numerischen Wert, Einheit und Aggregationsart. Bei
+geordneten Zählern kommen Sequenz und explizite Zählerepoche hinzu. Das
+Format muss vor Verwendung als eigener Vertrag mit synthetischen Beispielen
+und positiven sowie negativen Tests beschrieben werden.
+
+| Aggregationsart | Bedeutung |
+|---|---|
+| `DELTA` | Eindeutig identifizierte Beiträge derselben Kennzahl und Taskinstanz werden addiert. |
+| `CUMULATIVE` | Geordnete Zählerstände werden innerhalb derselben Epoche ausgewertet; Stände werden nicht summiert. Ohne passende Vergleichswerte gibt es keine berechnete Rate. |
+| `GAUGE` | Ein zeitbezogener Momentanwert bleibt ein Zustand; er wird nicht zu einer Menge aufsummiert. |
+| `FINAL` | Ein ausdrücklich abschließender Wert bezeichnet die gemeldete Gesamtmenge einer Taskinstanz. Er wird nicht zusätzlich zu ihren Deltas addiert. |
+
+Vorgesehene Standardkennzahlen sind gelesene, eingefügte, aktualisierte,
+gelöschte und verworfene Zeilen, gelesene und geschriebene Bytes sowie
+ausdrücklich gemessene Dauern. Eigene und native Kennzahlen bleiben getrennte
+Quellen. Ein Produzent kann dieselbe fachliche Menge mehrfach melden; ihre
+Addition ist ohne definierte Semantik unzulässig. Eigene Werte sind
+Produzentenmeldungen und kein unabhängiger Beweis fachlicher Korrektheit.
+
+Jede Nachricht muss in die tatsächliche message-Kapazität passen. Für den
+nativen SQL-Logprovider wird ein einzelnes kompaktes JSON-Dokument innerhalb
+der dokumentierten 2048 Zeichen vorgesehen. Eine automatische Fragmentierung
+oder Rekonstruktion abgeschnittener Nachrichten ist nicht geplant.
+Unbekannte Versionen, doppelte Ereignis-IDs, fehlende Sequenzen, Zählerresets
+und unpassende Einheiten werden als eingeschränkt oder nicht interpretierbar
+ausgegeben. Der Analyzer fügt keine Script Tasks hinzu und ändert keine Pakete.
+
+### Zugriff, Eigenlast und Datenschutz
+
+Der Zugriff bleibt auf eine explizite lokale Loggingquelle mit vorhandenen
+Berechtigungen begrenzt. Bezeichner werden vor dynamischem SQL validiert und
+quotiert. Ereignisse werden je ausgewähltem Scope einmal materialisiert;
+Parser und Ausgabewege lesen sie nicht unabhängig erneut. Fehlende Indizes
+bleiben Hinweise ohne automatische DDL oder pauschale Verweigerung.
+
+Als künftiger Entwurfswert wird eine gesonderte Obergrenze von einer Million
+gelesenen Ereignissen je Aufruf mit N-plus-eins-Überlaufprobe vorgesehen.
+Dieser Wert ändert den heutigen Default nicht. Historie teilt dasselbe
+Aufrufbudget über alle IDs. Zusätzliche Max-/Lob- oder unbegrenzte Pfade
+behalten das bestehende High-Impact-Prinzip. Das Zeitbudget ist kooperativ
+und garantiert keinen Abbruch eines bereits laufenden SELECT. Sperrwartezeit,
+Quellmenge, Parserlast und Ausgabemenge werden getrennt dokumentiert.
+
+Die Standarddiagnose behält die bereits freigegebenen vollständigen
+gespeicherten Meldungen. Eine spätere Interpretation darf diesen Text nicht
+anonymisieren, kürzen oder durch eine eigene Zusammenfassung ersetzen.
+Strukturierte Zusammenfassungen werden als zusätzliche Projektionen
+bereitgestellt. Bei `@IncludeMessages = 0` werden weder die Meldungsquelle noch
+darauf angewiesene Decoder fachlich gelesen; daraus folgende Lücken bleiben
+sichtbar. Operator-, Computer-, Login-, Host- und Binärspalten bleiben im
+heutigen Zugriff ausgeschlossen. Ein künftiger Identitätsadapter benötigt
+einen eigenen expliziten Vertrag.
+
+`DiagnosticEx` wird nur für erkannte Spaltenabbildungen ausgewertet. Andere
+XML-Bereiche wie Parameterwerte werden nicht in neue strukturierte
+Resultsets übernommen. Unbekannte DataBytes bleiben ungelesen. Es gibt
+keine persistente Kopie von Paket-XML, Originalmeldungen oder Laufzeitdaten.
+Repositoryartefakte, Fixtures und gespeicherte Nachweise enthalten
+ausschließlich synthetische Daten. Ein vorhandener Laufzeitzugriff ist keine
+Freigabe zur Veröffentlichung realer Logs.
+
+### Spätere Entwicklungsschritte und Abnahme
+
+| Schritt | Geplanter Umfang | Abnahmekriterium |
+|---|---|---|
+| 1 | Ereigniskatalog, Evidenzmodell, zeitliche Rekonstruktion und Fehlergruppen | Eindeutige, unvollständige und mehrdeutige Fälle bleiben unterscheidbar; bisherige Verträge werden separat gegen ihren Originalstand geprüft. |
+| 2 | Zeilenfluss, Komponentenphasen, Lookup-/Cachewerte und Provideraufrufe | Jede Zahl besitzt Quelle, Einheit und Bezugsmenge; positive Beispiele und Gegenbeispiele verhindern Doppelzählungen und unbelegte Kausalität. |
+| 3 | Spezielle Tasks, optionale Strukturkorrelation und eigene Kennzahlen | Unterstützte Formate sind registriert; unbekannte Formen und fehlende Paketbindung bleiben sichtbar; bestehende Meldungstexte bleiben erhalten. |
+| 4 | Historienaufruf, Ausgabeintegration, Dokumentation und Installer des freigegebenen Erweiterungsslices | Vergleichbarkeit, Budget und alle Ausgabeformen sind getestet; aktive Verträge und Inventare werden erst mit dieser Lieferung versioniert. |
+
+Die spätere Testauswahl folgt ausschließlich der
+[CI-Teststrategie](../Quality/CI_Test_Strategy.md). Der Entwicklungsstandard
+ist SQL Server 2025 mit betroffenem Umfang; zusätzliche native Versionen und
+Plattformen benötigen einen konkreten Strategieauslöser. Ein breiteres altes
+Planungsgate löst keine pauschale Drei-Versionen-Wiederholung aus.
+
+Verpflichtende Szenarien des Erweiterungsslices sind:
+
+- Vollständiges, fehlendes und nur taskweise vorhandenes Logging; NULL-Felder,
+  fehlende IDs, identische Namen und getrennte Execution-IDs.
+- Wiederholte Vorkommen, verschachtelte und parallele Intervalle, gleiche
+  Zeitstempel, widersprüchliche Reihenfolgen, Uhrenrücksprünge und offene Paare.
+- Verzweigungen, Multicast, Aggregationen, bekannte Fehlerpfade, ausdrückliche
+  Nullmengen und Zeilenzahlen oberhalb des int-Bereichs.
+- Unterschiedliche Phasen- und Zählersemantiken, Provideraufrufe ohne
+  Gegenereignis, Folgefehler und widersprüchliche Abschlussinformationen.
+- Englische und deutsche akzeptierte Formate, unbekannte Sprachen,
+  abgeschnittene Meldungen, ungültiges XML/JSON und unbekannte Schemaversionen.
+- DELTA-, CUMULATIVE-, GAUGE- und FINAL-Meldungen mit Duplikaten, Lücken,
+  Epochenwechsel, Nullwerten, Überläufen und unpassenden Einheiten.
+- Historie mit Paketwechsel, veränderter Loggingabdeckung, unterschiedlich
+  großen Mengen und unzureichender Stichprobe.
+- Berechtigungs- und Quellenfehler, Sperrwartezeit, kooperative Zeitgrenzen,
+  Lese-/Ausgabelimits, High-Impact-Ablehnung und Parität aller Ausgabeformen.
+- Synthetische sensitive Zusatzspalten und unbekannte XML-Bereiche; der
+  Standardquellzugriff projiziert sie nicht, auch nicht indirekt über
+  berechnete Spalten. Die vorhandene Meldungsoption wird separat geprüft.
+
+Decoder benötigen neben synthetischen Tests kontrollierte echte
+SSIS-Providerprotokolle mit unabhängig bekannten Erwartungswerten, soweit
+eine positive Runtimefähigkeit behauptet wird. Ein synthetischer Parserfall
+belegt keine native Providererzeugung. Eine reine neue Fehler- oder
+Phasenmeldung beweist noch keine Gesamtursache. Bereits geschlossene Budgets
+werden nicht zurückgesetzt. Externe Labfunktionen und die getrennten
+SSISDB-Performance-/Verbose-/RowFlow-Abnahmen bleiben eigene Voraussetzungen;
+ihre Bereitstellung ist nicht Bestandteil dieser Backlogablage.
+
+### Primärquellen und Quellenstand
+
+Die folgenden öffentlichen Microsoft-Quellen wurden am 16. Oktober 2026 für
+die Planung ausgewertet. Die Auswertung ist Quellenrecherche, kein eigener
+SSIS-Runtimeversuch. Decoder müssen später die jeweils tatsächlich
+unterstützte Version und das nachgewiesene Meldungsformat binden.
+
+- [sysssislog](https://learn.microsoft.com/en-us/sql/relational-databases/system-tables/sysssislog-transact-sql?view=sql-server-ver17) beschreibt den SQL-Provider und die endtime-Grenze.
+- [SSIS Logging](https://learn.microsoft.com/en-us/sql/integration-services/performance/integration-services-ssis-logging?view=sql-server-ver17) beschreibt auswählbare Details, Standard- und spezielle Taskereignisse sowie die DiagnosticEx-Kappung.
+- [Data Flow Task](https://learn.microsoft.com/en-us/sql/integration-services/control-flow/data-flow-task?view=sql-server-ver17) beschreibt Pfadzeilen, Pipelineereignisse und Meldungsbeispiele.
+- [SSIS error and message reference](https://learn.microsoft.com/en-us/sql/integration-services/integration-services-error-and-message-reference?view=sql-server-ver17) beschreibt native Informations-, Warn- und Fehlercodes einschließlich Cache-, Schreib-, Transaktions- und Checkpointmeldungen.
+- [Troubleshooting Tools for Package Connectivity](https://learn.microsoft.com/en-us/sql/integration-services/troubleshooting/troubleshooting-tools-for-package-connectivity?view=sql-server-ver17) beschreibt Before-/After-Meldungen externer Provideraufrufe.
+- [Execute SQL Task](https://learn.microsoft.com/en-us/sql/integration-services/control-flow/execute-sql-task?view=sql-server-ver17) beschreibt ExecuteSQLExecutingQuery und dessen Meilensteine.
+- [Data Flow Performance Features](https://learn.microsoft.com/en-us/sql/integration-services/data-flow/data-flow-performance-features?view=sql-server-ver17) trennt Bufferanpassung und zusätzlich benötigte Performance-Counter-Evidenz.
+- [Logging in the Script Task](https://learn.microsoft.com/en-us/sql/integration-services/extending-packages-scripting/task/logging-in-the-script-task?view=sql-server-ver17) beschreibt die freiwillige Ausgabe eigener Messwerte über Dts.Log.
+- [OnQueryCancel](https://learn.microsoft.com/en-us/dotnet/api/microsoft.sqlserver.dts.runtime.wrapper.idtsevents100.onquerycancel?view=sqlserver-2019) beschreibt die Abbruchabfrage und ihre Ergebnisabhängigkeit.
