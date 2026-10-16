@@ -83,10 +83,10 @@ IF COALESCE(ISJSON(@Json),0)<>1 OR JSON_QUERY(@Json,''$.meta'') IS NULL
  THROW 56330,N''LEGACY_JSON_ENVELOPE_ARRAYS'',1;
 CREATE TABLE [#ExampleSsisLegacyActualSchema]
 ([ResultName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS,[ColumnName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS,
- [Ordinal] int,[TypeId] int,[MaxLength] int,[Precision] int,[Scale] int,[Nullable] bit,[IdentityColumn] bit,[CollationName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS);
+ [Ordinal] int NOT NULL,[TypeId] int NOT NULL,[MaxLength] int NOT NULL,[Precision] int NOT NULL,[Scale] int NOT NULL,[Nullable] bit NOT NULL,[IdentityColumn] bit NOT NULL,[CollationName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL);
 CREATE TABLE [#ExampleSsisLegacyExpectedSchema]
 ([ResultName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS,[ColumnName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS,
- [Ordinal] int,[TypeId] int,[MaxLength] int,[Precision] int,[Scale] int,[Nullable] bit,[IdentityColumn] bit,[CollationName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS);
+ [Ordinal] int NOT NULL,[TypeId] int NOT NULL,[MaxLength] int NOT NULL,[Precision] int NOT NULL,[Scale] int NOT NULL,[Nullable] bit NOT NULL,[IdentityColumn] bit NOT NULL,[CollationName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL);
 DECLARE @TableJson nvarchar(max),@ArrayJson nvarchar(max);
 SELECT @TableJson=(SELECT [ModuleName],[SchemaVersion],[LoggingDatabase],[LoggingSchema],[LoggingTable],[ExecutionId],[MessagesIncluded],[StatusCode],[IsPartial],[ErrorNumber],[ErrorMessage],[CollectionTimeUtc] FROM [#ExampleSsisLegacy_moduleStatus] ORDER BY [ModuleName] FOR JSON PATH,INCLUDE_NULL_VALUES),@ArrayJson=JSON_QUERY(@Json,''$.moduleStatus'');
 IF @TableJson IS NULL AND NOT EXISTS(SELECT 1 FROM [#ExampleSsisLegacy_moduleStatus]) SET @TableJson=N''[]'';

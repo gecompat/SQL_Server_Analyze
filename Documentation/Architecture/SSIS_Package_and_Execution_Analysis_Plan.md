@@ -869,3 +869,28 @@ Drei-Versionen-Matrix dieses Planungsdokuments.
 ## Freigegebener Legacy-Kern vom 16. Oktober 2026
 
 Der [konkrete Legacy-Vertrag](SSIS_001_Phase0_Public_Contract.md#konkreter-legacy-vertrag-vom-16-oktober-2026) konkretisiert die frühere Planung. Implementiert werden eine explizite Datenbank und GUID, alle gespeicherten Meldungen als Default, beratende Indexmetadaten ohne Indexpflicht, begrenzte Ereignissammlung und konservative Zeitpaare. Automatisches Freitextparsing, Looprekonstruktion, Root-Cause- und Propagationsbehauptungen bleiben außerhalb dieses Umfangs. Synthetische Formattests ersetzen keine echte Providerabnahme. SSIS-001 bleibt PARTIAL_PRODUCT_FUNCTION.
+
+Die kanonische Quelle ist `Code/10_SSIS/020_USP_SsisLegacyLogAnalysis.sql`
+mit Version 1.0.0, 20 Parametern und neun Schemas mit insgesamt 94 Spalten.
+Integrationstest 202 prüft synthetische kompatible Tabellen, native
+TABLE-Metadaten, alle TABLE-/JSON-Feldwerte, N+1, Meldungs-Opt-outs, lange
+Unicode-Texte, konservative Paarbildung und isolierte echte SQL-Berechtigungsfehler.
+Die Rechtegegenproben verwenden ausschließlich einen eigenen Datenbankbenutzer
+ohne Login und eigene Testobjekte. Das ist keine allgemeine Rollenqualifikation
+für fremde Loggingquellen und kein SSIS-Providerlauf.
+
+Die [Lieferung in PR 389](https://github.com/gecompat/SQL_Server_Analyze/pull/389)
+bindet die jeweiligen exakten CI-Heads. Der erste
+[funktionale Kandidat](https://github.com/gecompat/SQL_Server_Analyze/actions/runs/38924235676)
+scheiterte vor Test 202 am noch unveränderten Navigator-Sollwert 109 statt 110.
+Der zweite [Kandidat](https://github.com/gecompat/SQL_Server_Analyze/actions/runs/38925353954)
+erreichte Test 202 und scheiterte an dessen Hilfsschema: CollationName war als
+sysname ohne ausdrückliches NULL deklariert und wies die zulässigen NULL-Werte
+der Nichttextspalten zurück. Beide Fehlhistorien bleiben unqualifiziert;
+die beiden Fehlerläufe belegen die späteren Testteile nicht. Die Korrekturen ändern
+die Inventarzählung und die ausdrücklich nullable Testfacette. Der unabhängige
+Schemavergleich bleibt beidseitig; fachliche Orakel werden nicht abgeschwächt.
+
+Zum Liefergate gehören exakte Head-CI und reguläre Integration am abschließenden
+Lieferstand. Eine positive echte Providerabnahme, weitere native
+Engines und weitere Rollen bleiben unabhängig vom synthetischen CI-Ergebnis offen.
