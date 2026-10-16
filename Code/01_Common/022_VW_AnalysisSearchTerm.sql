@@ -262,6 +262,8 @@ AS
         , (N'USP_ClrAnalysis',N'SQL CLR Assembly AppDomain Managed Code','de',100,N'SQL-CLR-Katalog-, Host- und Laufzeitanalyse.')
         , (N'USP_ClrAnalysis',N'sql clr assembly appdomain managed code task','en',95,N'SQL-CLR-Tiefenanalyse ohne Assemblyausführung.')
         , (N'USP_SsisCatalogExecutionAnalysis',N'SSISDB Ausführung Katalog Logging','de',100,N'Liest strukturierte Metadaten einer bekannten Ausführung.')
+        , (N'USP_SsisLegacyLogAnalysis',N'SSIS Legacy sysssislog Fehler Meldung Lookup','de',100,N'Liest Ereignisse und unveränderte gespeicherte Meldungstexte.')
+        , (N'USP_SsisLegacyLogAnalysis',N'SSIS legacy log messages timeline lookup','en',100,N'Reads existing log events and complete stored diagnostic messages.')
         , (N'USP_SsisCatalogExecutionAnalysis',N'SSIS catalog execution logging metadata','en',100,N'Reads structured metadata for one explicit execution.')
         , (N'USP_SsisPackageAnalysis',N'SSIS DTSX Paket Executables','de',100,N'Inventarisiert direkt übergebenes DTSX-v2-XML statisch.')
         , (N'USP_SsisPackageAnalysis',N'ssis dtsx package executables','en',95,N'Static DTSX-v2 package and executable inventory.')

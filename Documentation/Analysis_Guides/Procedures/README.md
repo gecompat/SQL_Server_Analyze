@@ -171,3 +171,5 @@ Jede Seite weist jetzt Entscheidungseinsatz, Nichtziele, Resultset-Leserichtung,
 ## Lokale externe Datenobjekte
 
 - [USP_ExternalDataAnalysis](USP_ExternalDataAnalysis.md) analysiert sichtbare lokale externe Kataloge ohne Remotezugriff.
+
+- [USP_SsisLegacyLogAnalysis](USP_SsisLegacyLogAnalysis.md)

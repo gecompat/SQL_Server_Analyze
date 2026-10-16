@@ -190,6 +190,7 @@ AS
         , (N'USP_ClrAnalysis','CONFIRM_WITH',N'USP_ExtendedEventsSessions',4,N'Vorhandene Extended-Events-Evidenz im gleichen Zeitfenster prüfen.')
         , (N'USP_ClrAnalysis','CONFIRM_WITH',N'USP_ErrorLogAnalysis',5,N'CLR-Host- und Ladeprobleme gegen Errorlogevidenz prüfen.')
         , (N'USP_SsisCatalogExecutionAnalysis','CONFIRM_WITH',N'USP_SsisPackageAnalysis',1,N'Direkte DTSX-Metadaten ergänzen die getrennte native Ausführungssicht; keine Datei wird automatisch geöffnet.')
+        , (N'USP_SsisLegacyLogAnalysis','CONFIRM_WITH',N'USP_SsisPackageAnalysis',1,N'Statische Paketmetadaten ergänzen den beobachteten Logausschnitt; keine automatische Paketöffnung.')
         , (N'USP_SsisPackageAnalysis','CONFIRM_WITH',N'USP_ServerFeatureCapabilities',1,N'Den statischen Paketbefund gegen die sichtbare SQL-Server-Featurefähigkeit und den vorgesehenen Laufzeitnachweis abgrenzen.')
 
         , (N'USP_ConfigureSnapshotTarget','PREPARE_WITH',N'USP_RunSnapshotCollectionCycle',1,N'Nach erfolgreicher Ziel- und Policykonfiguration kann ein begrenzter Collection Cycle geplant werden.')

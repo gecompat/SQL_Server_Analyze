@@ -1,6 +1,6 @@
 # Nächste Arbeitsschritte
 
-**Stand:** 14. Oktober 2026
+**Stand:** 16. Oktober 2026
 **Zweck:** aktuelle ausführbare Entwicklungswelle für `gecompat/SQL_Server_Analyze`
 
 Die ergänzende private Retentionsfixture bestätigt auf SQL Server 2025
@@ -34,7 +34,7 @@ Das Budget 3/3 bleibt geschlossen, die eigene Testdatenbank ist entfernt,
 Quelle und übriger Datenbankbestand sind unverändert. Erforderliche exakte
 Head-CI und reguläre Integration gehören weiterhin zum Lieferabschluss.
 
-SSIS-001 bleibt partiell. Legacy-Log-Analyse und positive Task-/Schleifen-,
+SSIS-001 bleibt partiell. Die echte Legacy-Providerabnahme und positive Task-/Schleifen-,
 Performance-/Verbose-, Phasen-, RowFlow- und Least-Privilege-Nachweise benötigen
 geeignete veröffentlichte Quellen. Dafür wird weder eine Ersatzinstanz noch
 eine eigene Lab-Erweiterung angelegt. WI-0009 GATE-0001 bleibt unverändert offen.
@@ -1864,3 +1864,7 @@ Erforderliche erfolgreiche Head-CI, Integration, Synchronisierung und eigener
 Cleanup bleiben Liefergates. Die anschließende Benutzerpause wurde durch den
 oben dokumentierten neuen Fortsetzungsauftrag aufgehoben; die übrige Reifewelle
 bleibt innerhalb ihrer bestehenden Grenzen ausführbar.
+
+## Freigegebene SSIS-Legacy-Umsetzung vom 16. Oktober 2026
+
+Der Benutzer hat die geprüfte Revision 3 ausdrücklich freigegeben. Der [Legacy-Vertrag](../../../Documentation/Architecture/SSIS_Package_and_Execution_Analysis_Plan.md#freigegebener-legacy-kern-vom-16-oktober-2026) enthält 20 Parameter, neun Schemas und gespeicherte Meldungstexte als Default. Zusätzliche Quellindizes sind keine Voraussetzung. Der separate Implementierungsschritt umfasst Produkt, synthetische Vertragsprüfung, Installer, Inventare und reguläre Integration. Native Providererzeugung und zusätzliche Rollen benötigen weiterhin veröffentlichte geeignete Lab-Abnahme; keine eigene Labentwicklung. Frühere geschlossene Budgets und WI-0009 GATE-0001 bleiben unverändert.
