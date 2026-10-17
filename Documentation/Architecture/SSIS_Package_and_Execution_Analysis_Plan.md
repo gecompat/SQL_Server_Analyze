@@ -1,6 +1,6 @@
 # SSIS-001 – SSIS Package and Execution Analysis
 
-**Stand:** 16. Oktober 2026
+**Stand:** 17. Oktober 2026
 
 **Status:** `PARTIAL_PRODUCT_FUNCTION`; vertiefte Legacy-Interpretation im Backlog
 
@@ -1158,14 +1158,59 @@ Repositoryartefakte, Fixtures und gespeicherte Nachweise enthalten
 ausschließlich synthetische Daten. Ein vorhandener Laufzeitzugriff ist keine
 Freigabe zur Veröffentlichung realer Logs.
 
-### Spätere Entwicklungsschritte und Abnahme
+### Priorisierte Entwicklungsreihenfolge und Abnahme
 
-| Schritt | Geplanter Umfang | Abnahmekriterium |
-|---|---|---|
-| 1 | Ereigniskatalog, Evidenzmodell, zeitliche Rekonstruktion und Fehlergruppen | Eindeutige, unvollständige und mehrdeutige Fälle bleiben unterscheidbar; bisherige Verträge werden separat gegen ihren Originalstand geprüft. |
-| 2 | Zeilenfluss, Komponentenphasen, Lookup-/Cachewerte und Provideraufrufe | Jede Zahl besitzt Quelle, Einheit und Bezugsmenge; positive Beispiele und Gegenbeispiele verhindern Doppelzählungen und unbelegte Kausalität. |
-| 3 | Spezielle Tasks, optionale Strukturkorrelation und eigene Kennzahlen | Unterstützte Formate sind registriert; unbekannte Formen und fehlende Paketbindung bleiben sichtbar; bestehende Meldungstexte bleiben erhalten. |
-| 4 | Historienaufruf, Ausgabeintegration, Dokumentation und Installer des freigegebenen Erweiterungsslices | Vergleichbarkeit, Budget und alle Ausgabeformen sind getestet; aktive Verträge und Inventare werden erst mit dieser Lieferung versioniert. |
+Die am 17. Oktober 2026 für den Backlog festgelegte Feinplanung ersetzt die
+bisherige grobe Vier-Schritte-Tabelle. Die Nummern bezeichnen die empfohlene
+Reihenfolge innerhalb von `SSIS-001`; sie sind keine neuen Arbeitselemente.
+Die Priorität P2 und der Status `PARTIAL_PRODUCT_FUNCTION` bleiben erhalten.
+Der Auftrag umfasst ausschließlich diese Planungsablage. Weder die folgende
+Reihenfolge noch ihre Abnahmekriterien erteilen eine Implementierungs-,
+Instrumentierungs-, Lab- oder Runtimefreigabe.
+
+Die vorhandenen Legacy- und SSISDB-Kerne bilden die Ausgangsbasis. Zunächst
+werden verlässliche Einzellaufkennzahlen geplant, anschließend vertiefte
+Diagnosen, Laufvergleiche und eigene Messwerte. Damit beantworten die ersten
+drei Schritte bereits die ursprünglichen Fragen nach Laufzeiten und
+Datensatzmengen. Jeder spätere Umsetzungsschritt benötigt den hierfür
+gesondert freigegebenen fachlichen Umfang.
+
+| Reihenfolge | Entwicklungsumfang | Abhängigkeiten | Abnahmekriterien für eine spätere Lieferung |
+|---|---|---|---|
+| 1 | Erweiterungsvertrag, Ereigniskatalog und Loggingqualität | Der vorhandene Legacy-Kern, dokumentierte Ereignisformate und eine definierte Testdatengrundlage werden verwendet. | Zuordnungsschlüssel, Einheiten, Aggregationen und Ausgabeversionierung sind festgelegt und unabhängig fachlich geprüft. Fehlende, abgeschnittene und unbekannte Informationen erhalten eindeutige Status. Bestehende Aufrufe behalten ihre Bedeutung. |
+| 2 | Tasklaufzeiten, Validierung, Wiederholungen und Fehlerbasis | Schritt 1 ist erforderlich. | Eindeutige Ereignispaare liefern korrekte Intervalle. Parallelität, gleiche Namen, wiederholte Vorkommen und fehlende Endereignisse sind getestet. Mehrdeutige Fälle erhalten keine erfundene Dauer oder Erfolgsmeldung. Fehlergruppen erhalten ihre Ursprungsereignisse. |
+| 3 | Komponentenphasen, Zeilenmengen und Durchsatz | Schritt 1 ist erforderlich; Schritt 2 wird für zeitbezogene Kennzahlen benötigt. Passende Pipelineereignisse müssen vorliegen. | Mengen stimmen je Pfad, Input und Vorkommen. Multicast, Verzweigungen und Aggregationen erzeugen keine falschen Gesamtsummen. Große Zähler, ausdrückliche Nullmengen und fehlende Meldungen bleiben unterscheidbar. Jeder Durchsatz nennt seine Zeitbasis. |
+| 4 | Lookup-/Cachewerte, Buffer, Provideraufrufe und Execute-SQL-Meilensteine | Schritte 1 und 2 sind erforderlich; Schritt 3 wird für volumenbezogene Verhältniszahlen benötigt. | Bekannte Formate liefern nachvollziehbare Werte und Einheiten. Offene Providerpaare und unvollständige Cacheinformationen bleiben sichtbar. Unbekannte Meldungen erzeugen keine Zahlen. Hinweise behaupten keine unbelegten SQL-Waits, Speicherursachen oder Cache-Hit-Raten. |
+| 5 | Spezielle Tasks, Transaktionen, Checkpoints und Fortschritt | Schritte 1 und 2 sowie passende Ereignisse der jeweiligen Taskfamilie sind erforderlich. | Operationsbeginn, Abschluss, Timeout und ausdrücklich gemeldetes Ergebnis bleiben getrennt. Startereignisse ergeben keinen Erfolg. Checkpoints und Commitmeldungen werden korrekt zugeordnet, ohne Wiederanlauffähigkeit oder dauerhafte Transaktionsabschlüsse zu garantieren. Fortschrittslücken gelten nicht automatisch als Stillstand. |
+| 6 | Pipelinegraphen, Fehler-Spaltenzuordnung und optionale Paketkorrelation | Schritt 1 und die Komponenten-/Pfadzuordnung aus Schritt 3 sind erforderlich. DTSX-Korrelation benötigt zusätzlich eine belegte Paketbindung. | Bekannte Graphkanten und Spaltenabbildungen sind korrekt zugeordnet; unbekannte Endpunkte bleiben partiell. Abgeschnittenes DiagnosticEx wird erkannt. Gleiche Namen oder GUIDs gelten nicht als Versionsnachweis. Ein exakter kritischer Pfad wird ohne ausreichende Evidenz nicht behauptet. |
+| 7 | Historische Vergleiche als Opt-in | Verlässliche Einzellaufwerte aus Schritten 2 und 3 sind erforderlich. Zusätzliche Kennzahlen benötigen nur die jeweils verwendeten Decoder aus Schritten 4 bis 6. | Höchstens 100 explizite Execution-IDs teilen ein begrenztes Aufrufbudget. Vergleichbarkeit berücksichtigt Loggingabdeckung, Paketstand und Mengenbasis. Stichprobengröße und Ausschlüsse sind sichtbar; P95 erscheint erst ab 20 verwertbaren Beobachtungen. Ohne fachliche Schwellen entstehen keine SLA-Alarme. |
+| 8 | Eigene strukturierte Kennzahlen als Opt-in | Schritt 1 und ein gesondert festgelegter Produzentenvertrag sind erforderlich. Die übrigen nativen Decoder sind keine Voraussetzung. | DELTA, CUMULATIVE, GAUGE und FINAL werden korrekt verarbeitet. Duplikate, Sequenzlücken, Zählerresets, Epochen und Einheiten sind getestet. Native und eigene Mengen werden nicht doppelt gezählt. Nachrichten passen in die Quellkapazität; der Analyzer verändert keine Pakete. |
+
+Die Abhängigkeiten sind nicht durchgehend linear. Schritt 7 darf bei einer
+späteren gesonderten Umsetzung bereits die belastbar verfügbaren Laufzeit-
+und Mengenkennzahlen vergleichen; er muss nicht auf sämtliche speziellen
+Taskdecoder oder auf eigene JSON-Meldungen warten. Schritt 8 benötigt keine
+vollständig implementierte Historie. Seine spätere Position folgt daraus,
+dass native Logs bereits vorhanden sein können, während eigene Kennzahlen
+zusätzliche Instrumentierung durch den Anwender benötigen.
+
+Für jeden später freigegebenen Lieferabschnitt gelten zusätzlich:
+
+- CONSOLE, RAW, TABLE und JSON liefern konsistente Ergebnisse. Dokumentation,
+  betroffene Inventare und Installer werden im jeweiligen Abschnitt gemeinsam
+  aktualisiert; diese Integration wird nicht bis zum Ende aller acht Schritte
+  aufgeschoben. Änderungen öffentlicher Schemas benötigen vorherige
+  Vertragsversionierung.
+- Synthetische Positiv- und Negativtests prüfen Berechnungen und Aussagegrenzen.
+  Behauptete native Decoderfähigkeiten benötigen zusätzlich kontrollierte echte
+  SSIS-Protokolle mit unabhängig bekannten Erwartungswerten.
+- Fehlende Provider-Testquellen blockieren die jeweilige positive
+  Runtimeabnahme. Die zusätzlichen SSISDB-Performance-/Verbose-/RowFlow-
+  Nachweise bleiben gesonderte Abnahmen und werden durch diese Feinplanung
+  nicht als erfüllt ausgewiesen.
+- Bestehende Meldungsdefaults, Datenschutzgrenzen und geschlossene Budgets
+  bleiben erhalten. Der aktuelle Legacy-v1-Aufruf wird nicht durch die
+  Planung eines Erweiterungsvertrags verändert.
 
 Die spätere Testauswahl folgt ausschließlich der
 [CI-Teststrategie](../Quality/CI_Test_Strategy.md). Der Entwicklungsstandard
