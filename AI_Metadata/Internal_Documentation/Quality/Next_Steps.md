@@ -37,6 +37,15 @@ noch neue Runtimeversuche oder Labentwicklung; bestehende Abnahmegrenzen und
 geschlossene Budgets bleiben erhalten. Die nachfolgenden früheren
 Entwicklungsaufträge erteilen keine Freigabe für diese neue Erweiterung.
 
+Am 17. Oktober 2026 wurde die
+[priorisierte Entwicklungsreihenfolge](../../../Documentation/Architecture/SSIS_Package_and_Execution_Analysis_Plan.md#priorisierte-entwicklungsreihenfolge-und-abnahme)
+mit acht Schritten, ihren Abhängigkeiten und den jeweiligen Abnahmekriterien
+im selben Backlog ergänzt. Sie ersetzt die frühere grobe Vier-Schritte-Tabelle
+und sieht Historie vor eigenen strukturierten Kennzahlen vor. Die tatsächlichen
+Abhängigkeiten sind ausdrücklich nicht durchgehend linear. Auch dieser Auftrag
+gilt ausschließlich für die Planungsablage; er aktiviert keinen der acht
+Entwicklungsschritte und keine neue Runtimeabnahme.
+
 ## Aktuelle SSIS-Kataloglieferung vom 16. Oktober 2026
 
 Die veröffentlichte Windows-/SSISDB-Lab-Abnahme liegt vor. Die verwendete
