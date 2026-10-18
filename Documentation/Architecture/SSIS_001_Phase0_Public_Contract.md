@@ -956,17 +956,17 @@ für die Produktlieferung verbindlich. Die aktive Inventarisierung bleibt auf
 diesen Slice begrenzt. SSIS-001 bleibt PARTIAL_PRODUCT_FUNCTION; weitere
 Backlogfunktionen und WI-0009 GATE-0001 werden dadurch nicht abgeschlossen.
 
-## Entwurf: Legacy-Zeilenfluss aus OnPipelineRowsSent vom 18. Oktober 2026
+## Freigegebene Erweiterung: Legacy-Zeilenfluss aus OnPipelineRowsSent vom 18. Oktober 2026
 
-**Status:** konkreter Vertragsentwurf mit geplantem Abnahmeumfang; keine
-menschliche Freigabe zur Implementierung, Veröffentlichung oder Runtimeabnahme.
+**Status:** konkret menschlich freigegebener Erweiterungsvertrag für die
+begrenzte Implementierung, Abnahme und reguläre PR-Lieferung.
 
 **Zuordnung:** Erweiterung von SSIS-001, begrenzter Mengenanteil aus
 Backlogschritt 3. Der gelieferte Taskintervallvertrag bleibt unverändert.
 
-Die Wörter „liefert“, „prüft“ und „gilt“ bezeichnen in diesem Abschnitt die
-vorgeschlagene spätere Implementierung. Sämtliche neuen fachlichen und nativen
-Abnahmefälle sind NOT_EXECUTED. Ein Vertragsreview ist kein Laufzeitnachweis.
+Die Freigabe bezieht sich auf die nachfolgenden Abschnitte R1–R9. Ein
+Vertragsreview ist kein Laufzeitnachweis. Der tatsächlich ausgeführte
+Abnahmeumfang wird getrennt im kanonischen Analyseplan dokumentiert.
 
 ### R1. Zweck, Quelle und Aussagegrenze
 
@@ -1002,8 +1002,8 @@ deaktiviertes Logging, nicht durchlaufene Zweige oder gelöschte Protokolle.
 ### R2. Signatur und vier kompatible Ausgabeformen
 
 Die 21 gelieferten Parameter behalten ihre Position, Typen, Defaults und
-Bedeutung. Ausschließlich am Ende folgt als Entwurfsparameter Position 22
-`@IncludeRowFlowAnalysis bit = 0`; NULL bedeutet 0. Die vorgeschlagene spätere
+Bedeutung. Ausschließlich am Ende folgt als freigegebener Parameter Position 22
+`@IncludeRowFlowAnalysis bit = 0`; NULL bedeutet 0. Die
 Procedureversion ist 1.2.0. IncludeTaskAnalysis bleibt unabhängig schaltbar.
 
 | IncludeTaskAnalysis | IncludeRowFlowAnalysis | SchemaVersion | RAW-/JSON-/TABLE-Mengen |
@@ -1258,7 +1258,8 @@ Voraussetzung; es gibt weder DDL in fremden Quellen noch globale Änderungen.
 
 ### R7. Geplanter synthetischer Abnahmeumfang
 
-Alle folgenden Gruppen sind NOT_EXECUTED. Die spätere Implementierung prüft
+Die folgenden Gruppen bilden den freigegebenen synthetischen Umfang. Die
+Implementierung prüft
 die unveränderte Gesamtprocedure mit eigenen gespeicherten kompatiblen Quellen.
 Referenzen berechnen sämtliche 44 neuen Felder unabhängig vom Produktdecoder;
 reine TABLE-/JSON-Parität ersetzt dieses Orakel nicht. Genau bekannte Zahlen,
@@ -1289,8 +1290,8 @@ bei relevanter unveränderter Bindung wiederverwendet, nicht pauschal neu gestar
 
 ### R8. Geplante begrenzte native Abnahme
 
-R-N01 und R-N02 sind NOT_EXECUTED und werden ausschließlich nach späterer
-konkreter Implementierungs-/Runtimefreigabe zugelassen. Analyze erstellt
+R-N01 und R-N02 bilden den konkret freigegebenen neuen nativen Umfang.
+Die Ausführung zählt vor Effekten in einer eigenen endlichen Welle. Analyze erstellt
 seine eigenen Pakete und Orakel auf einer dafür qualifizierten verfügbaren
 Windows-/SQL-/SSIS-Umgebung. Es gibt keine Pflicht, dass das Lab zuvor eine
 fachliche Legacy-Fixture erstellt. Neue Labentwicklung, Imagebeschaffung,
@@ -1354,15 +1355,130 @@ Am 18. Oktober 2026 wurden ausschließlich folgende Herstellerseiten gelesen:
 Der bisherige unabhängige Reviewer prüft den konkreten Entwurf einschließlich
 Kompatibilitätsmatrix, PathID-Semantik, strikter Grammatik, Kappungsrisiko,
 Paarzuordnung, Mengenbasis, NULL-/Nullmengen, atomarer Fehlerbehandlung,
-Quellprojektion und unabhängigem Abnahmeorakel. Sein Review aktiviert weder
-Produktänderungen noch Testausführungen. Erst eine konkrete menschliche
-Freigabe dieses geprüften Vertrags kann die spätere Umsetzung und den
-begrenzten Abnahmeumfang autorisieren.
+Quellprojektion und unabhängigem Abnahmeorakel. Der Review wurde ohne offene P1/P2 abgeschlossen. Die konkrete menschliche
+Freigabe zur Umsetzung samt begrenztem Abnahmeumfang und regulärem PR liegt vor.
 
 Eine spätere Lieferung umfasst Produktquelle, betroffene Inventare,
 Installer, Consumerverträge, Guide und Status zusammen. Testauswahl und CI
 folgen der kanonischen CI_Test_Strategy, einschließlich exaktem Head und
-regulärer MatchHead-Integration. Für den jetzigen Entwurfsauftrag sind nur
-betroffene lokale statische Dokumentationsprüfungen vorgesehen, kein Push,
-PR, CI, SDK-, SQL-, Gast- oder nativer Aufruf. SSIS-001 bleibt
+regulärer MatchHead-Integration. Die Freigabe umfasst den begrenzten Slice mit seinen betroffenen
+Prüfungen und der regulären Integration. Historische grüne Abnahmen werden
+nicht erneut als eigene Welle gestartet. SSIS-001 bleibt
 PARTIAL_PRODUCT_FUNCTION; weitere Backlogs und WI-0009 GATE-0001 bleiben offen.
+
+
+## Erforderliche Vertragsentscheidung: beobachtetes natives Zeilenflussformat vom 18. Oktober 2026
+
+**Status:** konkreter Änderungsentwurf; menschliche Freigabe steht aus.
+Dieser Abschnitt erweitert den freigegebenen Parser und seine Runtimezulassung
+noch nicht. Die bestehende Implementierung von ORPS_EN_1 bleibt unverändert.
+
+### Tatsächlicher Unterschied und Liefergrenze
+
+Die zwei tatsächlich ausgeführten eigenen Paketszenarien auf Windows
+SQL/SSIS 17.0.5015.4 mit CL170 erzeugen OnPipelineRowsSent-Meldungen, deren
+gespeicherter Präfix `Rows were provided to a data flow component as input. :  : `
+lautet. Zwischen den beiden Doppelpunkten stehen zwei Leerzeichen. Danach
+folgen zehn Felder sowie ein abschließender Trenner, während ORPS_EN_1 genau
+sieben Felder ohne Suffix und einen anderen Präfix verlangt. Die Quelle
+enthält drei Kandidaten im linearen Szenario und 25 im zweiten Szenario.
+Der unveränderte Decoder klassifiziert diese Texte als UNSUPPORTED_FORMAT;
+rowFlow bleibt leer. Das entspricht der freigegebenen Ablehnungsregel und
+ist keine positive native Pfadsummenabnahme.
+
+Die sechs wiederverwendeten Consumervergleiche mit 682 Prüfungen bestätigen
+die konservative Ausgabe, Status- und Paritätsverträge. Sie qualifizieren
+weder erfolgreich geparste native Payloadfelder noch positive native
+Pfadsummen. Die abschließende positive Profilprüfung schlägt fehl. Beide
+historischen nativen Versuche mit Paket- beziehungsweise Restfortschritt
+bleiben insgesamt FAILED_NOT_QUALIFIED; die ursprünglichen Captures und
+Fehlhistorien werden erhalten. Eigene Laufzeitdatenbanken sind entfernt,
+ihre Inventare restauriert; es wird kein weiterer Paketlauf gestartet.
+
+### Vorgeschlagene enge Ergänzung ORPS_EN_2
+
+Nach konkreter menschlicher Freigabe soll ausschließlich ORPS_EN_2 als
+zweites streng vollständiges Profil ergänzt werden. ORPS_EN_1 und seine
+Ablehnungsregeln bleiben erhalten. Produktziel 1.2.0, Parameterposition 22,
+SchemaVersion 3, RowFlowCatalogVersion 1 sowie alle 19-/25-Feldschemas bleiben
+für diese erste noch nicht veröffentlichte Lieferung unverändert. Die
+ParserId unterscheidet die beiden freigegebenen Profile.
+
+Der neue genaue Unicode-Präfix ist der oben dokumentierte beobachtete Text.
+Nach dem Präfix stehen genau zehn durch ` : ` getrennte Felder in dieser
+Reihenfolge; anschließend ist genau ein abschließender ` : ` erforderlich:
+
+| Position | Inhalt und Zulassung |
+|---|---|
+| 1–7 | PathId, PathName, DestinationComponentId, DestinationComponentName, InputId, InputName und RowsSent behalten die Typ-, Zahlen-, Namens- und Bereichsregeln aus R3. |
+| 8 | Der Text muss ordinal einschließlich aller Leerzeichen mit DestinationComponentName aus Feld 4 übereinstimmen. |
+| 9 | Der Text hat die genaue äußere Form Paths[Inhalt]. Inhalt ist nicht leer und enthält keinen Doppelpunkt, CR, LF, TAB, NUL oder weitere eckige Klammern. Er wird ausschließlich zur vollständigen Formprüfung verwendet und nicht als zusätzliche Lineage ausgegeben. |
+| 10 | Der Text muss ordinal der Verkettung DestinationComponentName + .Inputs[ + InputName + ] entsprechen. |
+
+Leere oder zusätzliche Felder, fehlender oder mehrfacher Endtrenner,
+abweichender Wiederholungstext und sonstiger Suffix werden abgewiesen.
+Nur bei erfolgreicher vollständiger Prüfung aller zehn Felder werden die
+sieben bestehenden Payloadfelder ausgegeben. Die drei Zusatztexte erzeugen
+keine neuen Ergebnisspalten und keine Interpretation als technische Root Cause,
+Quellkomponente oder Graph. Der vorhandene Bytekapazitätsguard gilt vor jeder
+Profilwahl; opt-out, NULL-, Fehler-, Deadline- und Paarregeln bleiben erhalten.
+Die bestehende ParseStatus-Priorität gilt entsprechend; ein erkannter neuer
+Präfix mit fehlerhaftem Gesamtaufbau erhält ORPS_EN_2/MALFORMED_PAYLOAD.
+Syntaktisch gültige Zahlen außerhalb des Bereichs erhalten erst danach
+NUMERIC_OUT_OF_RANGE. Ein anderes Format wird weiterhin nicht heuristisch
+zugelassen. Die Laufzeitquelle qualifiziert ausschließlich das konkret
+beobachtete Profil, keine allgemeine Sprach- oder Versionsmatrix.
+
+### Numerische IDs und unabhängige Gegenprüfung
+
+Die native Meldung enthält andere numerische Path-/Komponenten-/Input-IDs
+als die vor SaveToXml erfassten SDK-Authoringobjekte. Solche Zahlen werden
+nicht gleichgesetzt. Die öffentlichen Felder behalten die tatsächlich
+gespeicherten Laufzeitkennungen; es erfolgt keine Normalisierung auf
+Authoring-IDs und keine Umbenennung von PathId in OutputId.
+
+Die zusätzliche Gegenprüfung bindet die tatsächlichen Providerzeilen über
+ihre Originalhashes, Execution-ID, Source-ID und Log-ID. Die sieben Werte
+werden unabhängig vom Produkt aus dem gespeicherten vollständigen Text
+bestimmt. Die erhaltene Paketdefinition und SDK-Callbacks binden Source,
+eindeutige synthetische Pfad-/Komponenten-/Inputnamen, bekannte Zielmengen,
+Wiederholungen und überlappende Ausführung. Ein gleicher numerischer Wert
+zwischen Authoring und Runtime wird ausdrücklich nicht als Beweis verlangt
+oder behauptet. Zusätzliche oder nicht gebundene beobachtete Pfad-/Input-
+Tupel dürfen nicht allein wegen passender Summen akzeptiert werden.
+
+### Vorgeschlagene begrenzte Fortsetzung nach Freigabe
+
+Die neue Profilergänzung benötigt gezielte synthetische Positiv- und
+Negativfälle für sämtliche Zusatzregeln und den unveränderten Guard. Eine
+unabhängige Gegenprüfung verwirft Mutationen von Präfix, Trennern, Zusatztext,
+Runtime-IDs, Paarzuordnung, Summe, NULL, Evidenz und Callerframe. Bereits
+erfolgreiche unveränderte Fälle werden gebunden wiederverwendet.
+
+Für den positiven Decodervergleich sollen die erhaltenen eigenen nativen
+Originalproviderzeilen samt IDs, Typen und vollständigen Texten hashgebunden
+in eine neue eindeutig eigene isolierte Loggingtesttabelle übernommen
+werden. Das ist eine Wiederherstellung bereits erzeugter synthetischer
+Providerdaten für den Analyzerconsumer, kein frischer SSIS-Providerlauf.
+Die Originalevidenz wird nicht überschrieben. Es wird weder ein Paket erneut
+ausgeführt noch eine VM, Installation oder alte Quelle wiederhergestellt.
+
+Geplant sind höchstens zwei neue Arrange-/Consumer-Versuche mit jeweils
+höchstens acht bereits definierten Consumerkonstellationen; erfolgreiche
+unveränderte Einzelbelege werden nicht erneut ausgeführt. Die Kombinationen
+von R-N01 und R-N02 behalten ihre bekannten 10007-/10-/2-Zielmengen und die
+aktuell gespeicherten ursprünglichen Ereignisgrenzen. Alle 44 neuen Felder,
+physische Schemas, JSON-Parität, Status, Caps und Outputmodi werden gegen
+die gebundenen Originalzeilen unabhängig geprüft. Bericht und Status trennen
+frühere tatsächliche Paketausführung von neuer Consumerabnahme aus
+wiederhergestelltem Material. Ein neuer vollständiger nativer Paketlauf wird
+daraus nicht behauptet. Identitätsgebundenes eigenes Cleanup und Vor-/Nach-
+Inventar gehören zu jedem neuen Versuch.
+
+Die Freigabe soll genau diesen Profil- und Abnahmeänderungsumfang einschließlich
+eines begrenzten unabhängigen Delta-/Ergebnisreviews sowie der erforderlichen
+exakten Head-CI und regulären PR-Integration abdecken. Geschlossene frühere
+Budgets bleiben unverändert; Native3 ist kein Anlass für Native4 oder einen
+Budgetreset. Weitere Decoder, Sprachen und vertiefte SSIS-Funktionen bleiben
+ausgenommen. Ohne Freigabe erfolgen keine Umsetzung von ORPS_EN_2, keine
+weitere Runtime und keine Fertigbehauptung des Row-Flow-Slices.

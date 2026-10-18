@@ -1473,15 +1473,44 @@ Looprekonstruktion, exklusive Zeit, CPU-Zeit, Phasen, Zeilenfluss, Durchsatz,
 Lookup-Decoder, Historie, eigene Kennzahlen und zusätzliche Katalog- oder
 Rollenabnahmen sind hier nicht geliefert. WI-0009 GATE-0001 bleibt offen.
 
-## Entwurf: Legacy-Zeilenfluss vom 18. Oktober 2026
+## Freigegebener Legacy-Zeilenfluss vom 18. Oktober 2026
 
-Nach der gelieferten Taskintervall-Erweiterung liegt der
-[konkrete Vertragsentwurf für OnPipelineRowsSent](SSIS_001_Phase0_Public_Contract.md#entwurf-legacy-zeilenfluss-aus-onpipelinerowssent-vom-18-oktober-2026)
-als begrenzter Mengenanteil aus Backlogschritt 3 vor. Er schlägt ein zusätzliches
-Opt-in mit zwei Mengen für Kandidaten und eindeutig zugeordnete Pfadsummen vor.
-Die erste Kennung des dokumentierten Payloads ist PathID, keine erfundene
-Output-ID. Komponentenphasen und Durchsatz bleiben gesonderte Erweiterungen.
-Der aktuelle Auftrag umfasst ausschließlich Entwurf, Abnahmeplan und Review;
-Produktcode, aktive Inventare und Installer bleiben unverändert. Alle neuen
-synthetischen und nativen Fälle sind NOT_EXECUTED. Eine menschliche Freigabe
-des geprüften Erweiterungsvertrags sowie spätere Runtimeautorität stehen aus.
+Der Benutzer hat den geprüften [Erweiterungsvertrag](SSIS_001_Phase0_Public_Contract.md#freigegebene-erweiterung-legacy-zeilenfluss-aus-onpipelinerowssent-vom-18-oktober-2026)
+für OnPipelineRowsSent samt begrenzter Abnahme und regulärer PR-Lieferung
+freigegeben. Version 1.2.0 ergänzt an Position 22 IncludeRowFlowAnalysis,
+rowFlowEvents mit 19 und rowFlow mit 25 Feldern. Die vier Kombinationen mit
+IncludeTaskAnalysis behalten SchemaVersion 1/2 beziehungsweise ergänzen 3.
+ORPS_EN_1 interpretiert nur das festgelegte englische Profil; PathID ist
+keine OutputId. Potenziell gekappte Texte gehen nicht in Summen ein.
+
+Die 14 synthetischen Gruppen und die beiden neuen nativen Szenarien werden
+gesondert qualifiziert. Eine Abnahme wird erst nach tatsächlicher Ausführung
+als bestanden dokumentiert. Geschlossene Task- und Vierfällebudgets bleiben
+erhalten. Weitere Phasen, Raten, Lookupdecoder, Historie und allgemeine
+Katalog-/Rollenabnahmen bleiben offen; SSIS-001 bleibt PARTIAL_PRODUCT_FUNCTION.
+
+### Tatsächliche Row-Flow-Abnahmegrenze vom 18. Oktober 2026
+
+Die Integration 204 für R-S01 bis R-S12 und fünf gesonderte extrahierte
+R-S08-/R-S13-Stufen bestehen auf SQL Server 2025/CL170. R-S14-Mutationen
+positiver nativer Ergebnismengen sind wegen der fehlenden Profilzulassung
+NOT_EXECUTED. Ein erster Testhelper-Compilefehler
+vor dem Consumer bleibt als fehlgeschlagene Historie erhalten. Zwei eigene
+Paketszenarien wurden tatsächlich auf Windows SQL/SSIS 17.0.5015.4/CL170
+ausgeführt; sechs Consumeraufnahmen des ersten Falls werden getrennt
+wiederverwendet, zwei neue Aufnahmen gehören zum zweiten Fall. Eigene
+Datenbanken sind entfernt und die Vorherinventare restauriert.
+
+Das tatsächliche native Format entspricht jedoch nicht ORPS_EN_1. Alle
+beobachteten Kandidaten bleiben korrekt UNSUPPORTED_FORMAT; eine positive
+native Pfadsummen- oder 44-Feldabnahme liegt nicht vor. Die 682 Vergleiche
+des ersten Falls prüfen konservative Ausgaben und Parität. Die zusätzliche
+positive Profilprüfung schlägt fehl; die Gesamtabnahme bleibt
+FAILED_NOT_QUALIFIED. Frühere Adapterfehler werden nicht rückwirkend als
+bestanden umklassifiziert.
+
+Die [konkrete Vertragsentscheidung](SSIS_001_Phase0_Public_Contract.md#erforderliche-vertragsentscheidung-beobachtetes-natives-zeilenflussformat-vom-18-oktober-2026)
+beschreibt das tatsächlich beobachtete vollständige englische Format und
+einen begrenzten Vorschlag für ORPS_EN_2. Er benötigt konkrete menschliche
+Freigabe; keine Heuristik, Paketwiederholung oder Budgetrücksetzung wird
+dadurch aktiviert. Der Row-Flow-Slice ist noch nicht regulär geliefert.

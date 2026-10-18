@@ -3,18 +3,35 @@
 **Stand:** 18. Oktober 2026
 **Zweck:** aktuelle ausführbare Entwicklungswelle für `gecompat/SQL_Server_Analyze`
 
-## Vertragsentwurf für Legacy-Zeilenfluss vom 18. Oktober 2026
+## Offene konkrete Row-Flow-Vertragsentscheidung vom 18. Oktober 2026
 
-Der Benutzer hat ausschließlich den konkreten Erweiterungsvertrag samt
-Abnahmeplan für OnPipelineRowsSent und die Prüfung durch den bisherigen
-Reviewer beauftragt. Der [Entwurfsstand](../../../Documentation/Architecture/SSIS_Package_and_Execution_Analysis_Plan.md#entwurf-legacy-zeilenfluss-vom-18-oktober-2026)
-ergänzt die gelieferte Taskintervall-Erweiterung um geplante typisierte
-Kandidaten und beobachtete Pfadsummen. Er enthält keine Komponentenphasen
-oder Durchsatzberechnung. Der Entwurf ist keine Implementierungs-,
-Veröffentlichungs- oder Runtimefreigabe. Produktcode, Inventare und Installer
-bleiben unverändert; neue fachliche und native Abnahmen sind NOT_EXECUTED.
-Geschlossene frühere Budgets bleiben erhalten. SSIS-001 bleibt
-PARTIAL_PRODUCT_FUNCTION; WI-0009 GATE-0001 bleibt offen.
+Die freigegebene ORPS_EN_1-Implementierung und gezielte synthetische Abnahme
+sind im eigenen Branch vorbereitet. Beide tatsächlich ausgeführten neuen
+Paketszenarien liefern ein anderes natives Format. Der unveränderte Decoder
+weist es korrekt als UNSUPPORTED_FORMAT ab; keine positive native Pfadsumme
+ist qualifiziert. Die sechs 682-Check-Captures sind keine positive Payload-
+oder 44-Feldabnahme. Native3 bleibt FAILED_NOT_QUALIFIED, eigene Datenbanken
+sind entfernt und Inventare restauriert. Weitere native Zulassung ist geschlossen.
+
+Vor weiterer Umsetzung wird die [konkrete Profil- und Abnahmeänderung](../../../Documentation/Architecture/SSIS_Package_and_Execution_Analysis_Plan.md#tatsächliche-row-flow-abnahmegrenze-vom-18-oktober-2026)
+für ORPS_EN_2 menschlich entschieden. Der Vorschlag verwendet erhaltene eigene
+Originalproviderzeilen für eine neue begrenzte Consumerprüfung; er startet
+keine Pakete erneut. Kein Timer aktiviert die Änderung, Native4, neue Reviews,
+CI oder Veröffentlichung. Der bestehende Worktree bleibt prüfbar erhalten.
+
+## Freigegebene Legacy-Zeilenflusserweiterung vom 18. Oktober 2026
+
+Der Benutzer hat den geprüften konkreten Vertrag für OnPipelineRowsSent
+ausdrücklich freigegeben und Implementierung, begrenzte Abnahme sowie
+reguläre PR-Lieferung beauftragt. Der geprüfte Entwurf ist über SHA-256
+7DE38692D055EAAD9FF675F24D17E723BAB37254C9544326076D37A672E1C802 gebunden.
+Der [freigegebene Vertrag](../../../Documentation/Architecture/SSIS_Package_and_Execution_Analysis_Plan.md#freigegebener-legacy-zeilenfluss-vom-18-oktober-2026)
+begrenzt Position 22 IncludeRowFlowAnalysis, zwei neue Mengen mit 44 Feldern,
+atomare Ableitung, 14 synthetische Gruppen sowie zwei neue native Szenarien
+mit höchstens acht Consumeraufrufen. Der frühere Entwurfs-Wartezustand ist
+abgelöst. Historische Budgets bleiben geschlossen; erfolgreiche unveränderte
+Tests werden nicht wiederholt. SSIS-001 bleibt PARTIAL_PRODUCT_FUNCTION;
+weitere vertiefte SSIS-Funktionen und WI-0009 GATE-0001 bleiben offen.
 
 ## Freigegebene Legacy-Taskerweiterung vom 18. Oktober 2026
 
