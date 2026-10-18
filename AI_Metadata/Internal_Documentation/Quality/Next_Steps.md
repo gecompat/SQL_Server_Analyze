@@ -1953,6 +1953,9 @@ kanonische [Abnahme](../../../Documentation/Architecture/SSIS_Package_and_Execut
 trennt unabhängige neue 48-Feld-Prüfung, Outputparität und historische v1-
 Evidenz. Windows-CL ist im Capture nicht separat erhoben und bleibt UNKNOWN.
 Native Versuch 1 scheiterte vor Execute an der lokalen Hash-Cmdlet-Verfügbarkeit;
-Versuch 2 führte beide neuen Pakete aus. Eigene Ressourcen sind entfernt.
+Versuch 2 führte beide neuen Pakete aus; dessen eigener Cleanup ist bestätigt.
+Der frühe synthetische Arrangefehler besitzt einen separaten ID-/
+Erstellungszeit-gebundenen Empty-DB-Recoverybeleg, ohne darin gespeicherte
+zusätzliche native Nach-Abwesenheitsmenge; sein Originalfehler bleibt erhalten.
 Weitere native Läufe werden aus dem Liefergate nicht abgeleitet. Exakte
 Head-CI und reguläre PR-Integration sind vor dem Lieferabschluss noch offen.

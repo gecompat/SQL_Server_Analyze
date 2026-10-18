@@ -1445,9 +1445,14 @@ Originale Pakete, Callback- und Providerdaten, Aufrufkontexte, Bindungen,
 Fehlhistorien und Ergebnisse bleiben privat. Es wurden nur eigene isolierte
 Testdatenbanken, Pakete und synthetische Quellen verwendet. Callerframes
 sowie Quell- und SQL-Schreibnachweise sind vor und nach den Consumern gleich.
-Die eigenen Datenbanken sind ID-, Erstellungszeit-, Besitzer- und
-Markierungsgebunden entfernt; Datenbankinventar, Quellenpins und Cleanup
-werden getrennt ausgewiesen. Es wurden keine VM, Installation, Images oder
+Die Datenbanken der qualifizierten Läufe sind ID-, Erstellungszeit-,
+Besitzer- und markierungsgebunden entfernt; Datenbankinventar, Quellenpins
+und Cleanup werden getrennt ausgewiesen. Der frühe synthetische
+Arrangefehler entstand vor der Markierung. Ein separater Recoverybeleg
+dokumentiert dafür die Entfernung der leeren eigenen Datenbank anhand von
+ID und Erstellungszeit; eine zusätzliche native Nach-Abwesenheitsmenge wurde
+in diesem Recoverybeleg nicht gespeichert. Der ursprüngliche Fehlerrecord
+bleibt unverändert. Es wurden keine VM, Installation, Images oder
 fremden Testfixtures verändert.
 
 Der erste neue native Versuch bleibt FAILED_NOT_QUALIFIED: Die lokale
