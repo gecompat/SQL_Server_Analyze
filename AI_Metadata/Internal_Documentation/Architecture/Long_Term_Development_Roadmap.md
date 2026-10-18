@@ -198,7 +198,7 @@ Graph, Spatial, XML, FILESTREAM und benutzerdefinierte Typen bleiben zunächst i
 
 ### `SSIS-001`
 
-Der Katalogkern ist geliefert. Die ausdrücklich freigegebene Legacy-Revision 3 wird mit gespeicherten Meldungstexten und ohne zusätzliche Indexpflicht umgesetzt; der konkrete Vertrag im SSIS-Architekturdokument begrenzt diesen Umfang. Echte Legacy-Providerabnahme und zusätzliche Katalogquellen bleiben offen. Die folgenden Prioritätsangaben beschreiben die frühere Ausgangsfolge.
+Der Katalogkern und die freigegebene Legacy-Revision 3 sind geliefert. Die [begrenzte Legacy-Providerabnahme](../../../Documentation/Architecture/SSIS_Package_and_Execution_Analysis_Plan.md#legacy-providerabnahme-vom-18-oktober-2026) bestätigt vier eigene synthetische Fälle mit zwölf gebundenen Cap-Einzelbelegen auf Windows SQL/SSIS 17.0.1000.7. Neun frühere erfolgreiche Einzelbelege werden wiederverwendet; Native11 und Native12 bleiben insgesamt fehlgeschlagen. Weitere Interpretation, zusätzliche Katalogquellen und Rollen bleiben offen; SSIS-001 bleibt PARTIAL_PRODUCT_FUNCTION. Die folgenden Prioritätsangaben beschreiben die frühere Ausgangsfolge.
 
 Nach dem abgeschlossenen Phase-0-Vertrag folgt zunächst der statische DTSX-v2-Parser. Inventar, Control-Flow- und Data-Flow-Graphen werden vor Regelengine, SQL-Metadatenprüfung und Laufzeitadaptern stabilisiert. Dateisystem- und ISPAC-Zugriffe bleiben ein getrenntes Paket.
 
