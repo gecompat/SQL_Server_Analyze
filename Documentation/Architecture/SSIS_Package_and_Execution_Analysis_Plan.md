@@ -1472,3 +1472,97 @@ erhalten. SSIS-001 bleibt PARTIAL_PRODUCT_FUNCTION. Tasktyp- und
 Looprekonstruktion, exklusive Zeit, CPU-Zeit, Phasen, Zeilenfluss, Durchsatz,
 Lookup-Decoder, Historie, eigene Kennzahlen und zusätzliche Katalog- oder
 Rollenabnahmen sind hier nicht geliefert. WI-0009 GATE-0001 bleibt offen.
+
+## Freigegebener Legacy-Zeilenfluss vom 18. Oktober 2026
+
+Der Benutzer hat den geprüften [Erweiterungsvertrag](SSIS_001_Phase0_Public_Contract.md#freigegebene-erweiterung-legacy-zeilenfluss-aus-onpipelinerowssent-vom-18-oktober-2026)
+für OnPipelineRowsSent samt begrenzter Abnahme und regulärer PR-Lieferung
+freigegeben. Version 1.2.0 ergänzt an Position 22 IncludeRowFlowAnalysis,
+rowFlowEvents mit 19 und rowFlow mit 25 Feldern. Die vier Kombinationen mit
+IncludeTaskAnalysis behalten SchemaVersion 1/2 beziehungsweise ergänzen 3.
+ORPS_EN_1 und ORPS_EN_2 interpretieren nur die festgelegten englischen Profile; PathID ist
+keine OutputId. Potenziell gekappte Texte gehen nicht in Summen ein.
+
+Die 14 synthetischen Gruppen und die beiden neuen nativen Szenarien werden
+gesondert qualifiziert. Eine Abnahme wird erst nach tatsächlicher Ausführung
+als bestanden dokumentiert. Geschlossene Task- und Vierfällebudgets bleiben
+erhalten. Weitere Phasen, Raten, Lookupdecoder, Historie und allgemeine
+Katalog-/Rollenabnahmen bleiben offen; SSIS-001 bleibt PARTIAL_PRODUCT_FUNCTION.
+
+### Tatsächliche Row-Flow-Abnahmegrenze vom 18. Oktober 2026
+
+Die folgenden Grenzen dokumentieren den Zustand vor der freigegebenen
+ORPS_EN_2-Ergänzung. Die historischen Paketversuche bleiben unverändert.
+
+Die Integration 204 für R-S01 bis R-S12 und fünf gesonderte extrahierte
+R-S08-/R-S13-Stufen bestehen auf SQL Server 2025/CL170. R-S14-Mutationen
+positiver nativer Ergebnismengen sind wegen der fehlenden Profilzulassung
+NOT_EXECUTED. Ein erster Testhelper-Compilefehler
+vor dem Consumer bleibt als fehlgeschlagene Historie erhalten. Zwei eigene
+Paketszenarien wurden tatsächlich auf Windows SQL/SSIS 17.0.5015.4/CL170
+ausgeführt; sechs Consumeraufnahmen des ersten Falls werden getrennt
+wiederverwendet, zwei neue Aufnahmen gehören zum zweiten Fall. Eigene
+Datenbanken sind entfernt und die Vorherinventare restauriert.
+
+Das tatsächliche native Format entspricht jedoch nicht ORPS_EN_1. Alle
+beobachteten Kandidaten bleiben korrekt UNSUPPORTED_FORMAT; eine positive
+native Pfadsummen- oder 44-Feldabnahme liegt nicht vor. Die 682 Vergleiche
+des ersten Falls prüfen konservative Ausgaben und Parität. Die zusätzliche
+positive Profilprüfung schlägt fehl; die Gesamtabnahme bleibt
+FAILED_NOT_QUALIFIED. Frühere Adapterfehler werden nicht rückwirkend als
+bestanden umklassifiziert.
+
+Die [konkrete Vertragsentscheidung](SSIS_001_Phase0_Public_Contract.md#erforderliche-vertragsentscheidung-beobachtetes-natives-zeilenflussformat-vom-18-oktober-2026)
+beschreibt das tatsächlich beobachtete vollständige englische Format und
+die enge Ergänzung ORPS_EN_2. Der Benutzer hat diese Ergänzung und die
+begrenzte Consumerabnahme ausdrücklich freigegeben. Die neue Abnahme nutzt
+wiederhergestellte hashgebundene Originaldaten; Paketwiederholungen und
+Budgetrücksetzungen sind ausgeschlossen. Der Row-Flow-Slice ist bis zur
+Qualifikation und PR-Integration noch nicht regulär geliefert.
+
+### Qualifizierte ORPS_EN_2-Consumerabnahme vom 18. Oktober 2026
+
+Die freigegebene Profilergänzung besteht die neue begrenzte Consumerabnahme
+auf Windows SQL Server 2025 Version 17.0.5015.4 mit CL170 und beobachtetem
+sysadmin. Dafür wurden ausschließlich die erhaltenen hashgebundenen eigenen
+Originalproviderzeilen der beiden früheren Paketszenarien mit ihren IDs,
+Typen und vollständigen Meldungstexten in eine neue eigene isolierte
+Loggingtabelle übernommen. Es gab keine neue SSIS-Paketausführung und keine
+VM-, Setup- oder Änderung einer früheren Quelle.
+
+Ein Arrange-/Consumerversuch umfasst einen neuen synthetischen EN2-Block
+mit 22 Kandidaten und sechs geänderte Consumerkonstellationen. Der lineare
+Fall liefert drei geparste Kandidaten und eine Pfadgruppe mit der bekannten
+Zielmenge 10007. Der zweite Fall liefert 25 geparste Kandidaten und 13
+beobachtete Gruppen aus Wiederholungen, verschiedenen Pfaden und überlappender
+Ausführung gleichnamiger Sources mit getrennten GUIDs. Die sieben gespeicherten
+Payloadwerte werden aus dem Originaltext unabhängig bestimmt. SDK-Namen,
+Source-IDs, erhaltene Callbacks und bekannte Zielmengen bilden zusätzliche
+Gegenproben; numerische Authoring-IDs werden nicht den Runtime-IDs gleichgesetzt.
+
+Alle 44 neuen Felder werden unabhängig gegen die Originalzeilen geprüft.
+RAW11 beziehungsweise RAW13, TABLE/JSON mit physischem Schema, CONSOLE1,
+NONE0 und der N+1-Präfixfall bestehen. Die Referenzprüfung umfasst 4833
+Prüfschritte einschließlich 14 abgewiesener Mutationen von Format,
+Runtimekennungen, Source, Paar, Menge, NULL, Evidenz und Callerframe.
+Zwei danach gezielt ergänzte Offlinekontrollen entfernen ein Pflichtfeld
+beziehungsweise das Pflichtarray und werden ebenfalls abgewiesen. Diese
+beiden Kontrollen sind getrennt belegt und erfordern keine SUT-Aufrufe.
+Originalzeilen und Callerzustand bleiben vor und nach den Consumeraufrufen
+identisch. Beide eigenen Testdatenbanken sind entfernt, CleanupErrors ist 0
+und das vorherige Datenbankinventar ist restauriert.
+
+Die zwei bereits erfolgreichen Originalcaptures für Meldungs-Opt-out und
+Task-only werden gebunden wiederverwendet. Die Produktlogik außerhalb des
+Zeilenflussblocks ist gegenüber dem vorherigen geprüften Stand textidentisch.
+Unveränderte erfolgreiche synthetische Prüfungen und extrahierte Stufen
+werden nicht lokal wiederholt. R-S14 ist durch die neuen gebundenen
+Mutationsprüfungen erfüllt. Die früheren nativen Gesamtversuche bleiben
+FAILED_NOT_QUALIFIED; die neue positive Aussage betrifft den Analyzerconsumer
+gegen zuvor nativ erzeugtes Material, keinen neuen vollständigen Providerlauf.
+
+Derselbe unabhängige Reviewer prüft die Quellen-, Adapter- und Ergebnisdeltas.
+Die erforderliche exakte Head-CI und reguläre Integration bleiben eigene
+Liefergates. SSIS-001 bleibt PARTIAL_PRODUCT_FUNCTION; zusätzliche Profile,
+Sprachen, Katalog-RowFlow, Phasen, Durchsatz, Looprekonstruktion und allgemeine
+Rollenabnahmen sowie WI-0009 GATE-0001 bleiben offen.

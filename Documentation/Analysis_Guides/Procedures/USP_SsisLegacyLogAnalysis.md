@@ -55,6 +55,16 @@ GueltigeIntervalle und UngeklaerteGrenzereignisse. Ohne erfolgreiche
 Zusatzableitung sind diese Zähler NULL. Die exakten 23-/25-Spaltenschemas
 stehen in der [freigegebenen Erweiterung](../../Architecture/SSIS_001_Phase0_Public_Contract.md#freigegebene-erweiterung-legacy-tasklaufzeiten-und-loggingabdeckung-vom-18-oktober-2026).
 
+Version 1.2.0 ergänzt unabhängig davon an Position 22
+`@IncludeRowFlowAnalysis bit=0`. Bei 1 folgen rowFlowEvents und rowFlow mit
+19 beziehungsweise 25 Feldern; SchemaVersion ist 3. RAW liefert dann elf
+Mengen, bei beiden Opt-ins dreizehn. JSON und TABLE verwenden dieselben Namen.
+sourceStatus ergänzt das feste Ordinal 6 rowFlowAnalysis auch ohne Ordinal 5.
+CONSOLE ergänzt im selben Grid RowFlowMeldungen, RowFlowGeleseneMeldungen und
+RowFlowZugeordneteMeldungen als nullable bigint; dies sind Meldungszähler.
+Die [exakten Verträge](../../Architecture/SSIS_001_Phase0_Public_Contract.md#freigegebene-erweiterung-legacy-zeilenfluss-aus-onpipelinerowssent-vom-18-oktober-2026)
+definieren die vier Kombinationen und alle Felder.
+
 ## Eine Zeile bedeutet
 
 Eine Timelinezeile entspricht einer materialisierten Logzeile. errorChain
@@ -121,6 +131,26 @@ bestätigt keine vollständige Loggingkonfiguration, Loop- oder Retryanzahl.
 EvidenceLogIdsJson enthält einen JSON-Arraystring mit den ursprünglichen
 Log-IDs; der äußere JSON-Vertrag transportiert diesen Wert als String.
 
+Mit `@IncludeRowFlowAnalysis=1` wird jede exakt benannte OnPipelineRowsSent-
+Meldung zunächst als Kandidat mit ParseStatus und GroupingStatus ausgegeben.
+Nur die eng festgelegten englischen Profile ORPS_EN_1 und ORPS_EN_2 werden
+interpretiert. ORPS_EN_2 verlangt zehn Felder und einen Endtrenner; die drei
+Zusatztexte werden vollständig ordinal beziehungsweise auf die festgelegte
+Form geprüft. Die Ausgabe behält die tatsächlichen numerischen Runtime-IDs.
+Eine gespeicherte
+Bytezahl ab der kleineren positiven Spaltenkapazität oder 4096 bleibt
+POTENTIALLY_TRUNCATED; der vollständige Rawtext bleibt bei angefordertem
+Timelineexport erhalten.
+Andere Formate und Sprachen bleiben sichtbar, erhalten aber keine Payloadwerte.
+
+rowFlow summiert ausschließlich erfolgreich geparste, eindeutig einem
+abgeschlossenen EXECUTE-Paar zugeordnete Meldungen je Source, Vorkommen,
+PathId, Zielkomponente und InputId. PathId ist keine OutputId. Gleichnamige
+Sources und verschiedene Multicastpfade bleiben getrennt; ein Paketgesamtwert,
+Commitnachweis oder Durchsatz wird nicht berechnet. Explizite 0 bleibt 0;
+fehlende Meldungen erzeugen keine künstliche Nullsummengruppe. Namenskonflikte
+werden ordinal erkannt und lassen den jeweiligen Gruppennamen NULL.
+
 ## Leere oder partielle Ausgabe
 
 AVAILABLE_EMPTY bedeutet keine sichtbaren Ereignisse für diese GUID; die
@@ -138,6 +168,14 @@ PRIOR_DERIVATION_NOT_COMPLETED wird nicht als erfolgreiche Nullmenge ausgegeben.
 Ein eigener Zusatzfehler verwirft beide neuen Mengen gemeinsam und erhält
 gültige bisherige Ergebnisse sowie das erste tatsächlich erhobene Fehlerpaar.
 Das gemeinsame kooperative Zeitbudget wird vor Beginn und vor Übernahme geprüft.
+
+Die Zeilenflussstufe benötigt eingeschlossene Meldungen und einen gültigen
+Puffer mit vollständig abgeschlossener ursprünglicher Ereignisableitung.
+IncludeMessages=0 ergibt MESSAGES_DISABLED ohne fachlichen message-Zugriff.
+Neue Mengen bleiben bei fehlender Zulassung oder Fehler gemeinsam leer,
+Counts NULL; zuvor gültige Mengen und das erste native Fehlerpaar bleiben
+erhalten. Die gemeinsame kooperative Deadline gilt vor Beginn und Übernahme.
+Fehlende Ereignisse beweisen weder eine Nullmenge noch deaktiviertes Logging.
 
 ## Eigenlast und Grenzen
 

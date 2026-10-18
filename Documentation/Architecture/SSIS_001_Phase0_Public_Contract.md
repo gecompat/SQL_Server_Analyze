@@ -955,3 +955,531 @@ Exakte Head-CI, reguläre MatchHead-Integration und eigenes Cleanup bleiben
 für die Produktlieferung verbindlich. Die aktive Inventarisierung bleibt auf
 diesen Slice begrenzt. SSIS-001 bleibt PARTIAL_PRODUCT_FUNCTION; weitere
 Backlogfunktionen und WI-0009 GATE-0001 werden dadurch nicht abgeschlossen.
+
+## Freigegebene Erweiterung: Legacy-Zeilenfluss aus OnPipelineRowsSent vom 18. Oktober 2026
+
+**Status:** konkret menschlich freigegebener Erweiterungsvertrag für die
+begrenzte Implementierung, Abnahme und reguläre PR-Lieferung.
+
+**Zuordnung:** Erweiterung von SSIS-001, begrenzter Mengenanteil aus
+Backlogschritt 3. Der gelieferte Taskintervallvertrag bleibt unverändert.
+
+Die Freigabe bezieht sich auf die nachfolgenden Abschnitte R1–R9. Ein
+Vertragsreview ist kein Laufzeitnachweis. Der tatsächlich ausgeführte
+Abnahmeumfang wird getrennt im kanonischen Analyseplan dokumentiert.
+
+### R1. Zweck, Quelle und Aussagegrenze
+
+Welche Zeilenübergaben meldet OnPipelineRowsSent für eine explizite lokale
+Legacy-Execution, welche Meldungen sind durch das festgelegte Format lesbar
+und welche beobachteten Summen lassen sich einem eindeutigen Ereignispaar
+und einer Pfad-/Eingabekennung zuordnen?
+
+Die Quelle, Rechteprüfung, neun gespeicherten Eingabefelder, vollständigen
+Meldungstexte und der einzelne N+1-Ereignispuffer bleiben wie in Revision 3.
+Die neue Stufe verwendet ausschließlich diesen geprüften Puffer und den
+vollständig abgeschlossenen internen v1-iterations-Bestand vor Exportkappung.
+Sie ergänzt rowFlowEvents als eine Zeile je Kandidatenmeldung und rowFlow
+als Summe eindeutig zugeordneter, erfolgreich gelesener Meldungen derselben
+beobachteten Pfadgruppe. Sie liest weder eine zweite Quelle noch Pakete,
+SSISDB, Dateien oder databytes. Source-ID und Komponenten-ID sind verschiedene
+Kennungen; aus dem Source-Namen wird kein Executable-Typ abgeleitet.
+
+Microsoft beschreibt das Ereignis als Zeilenübergabe an einen Komponenteneingang
+bei einem ProcessInput-Aufruf. Der dokumentierte erste Zahlenwert heißt
+PathID; ein Feld OutputId und eine Zuordnung zur Quellkomponente werden daraus
+nicht erfunden. RowsSent bezeichnet eine gemeldete Übergabemenge, keine Zahl
+eindeutiger Paketdatensätze, physischer Buffer oder dauerhaft geschriebener
+Zielzeilen. Eine Meldung beweist keinen Commit und keine Datenkorrektheit.
+
+Der Slice enthält keine Komponentenphasen, Raten, Durchsatz-, CPU- oder
+exklusiven Zeiten, Graphrekonstruktion, Lookup-/Cachedecoder, Historie,
+eigene Kennzahlen oder automatische Loggingänderung. Unterschiedliche Pfade
+werden auch bei Multicast oder Aggregationen nicht zu einem Paketgesamtwert
+addiert. Fehlende Ereignisse erlauben keine Nullmenge und keine Aussage über
+deaktiviertes Logging, nicht durchlaufene Zweige oder gelöschte Protokolle.
+
+### R2. Signatur und vier kompatible Ausgabeformen
+
+Die 21 gelieferten Parameter behalten ihre Position, Typen, Defaults und
+Bedeutung. Ausschließlich am Ende folgt als freigegebener Parameter Position 22
+`@IncludeRowFlowAnalysis bit = 0`; NULL bedeutet 0. Die
+Procedureversion ist 1.2.0. IncludeTaskAnalysis bleibt unabhängig schaltbar.
+
+| IncludeTaskAnalysis | IncludeRowFlowAnalysis | SchemaVersion | RAW-/JSON-/TABLE-Mengen |
+|---|---|---|---|
+| 0 oder NULL | 0 oder NULL | 1 | Die bisherigen neun Mengen bleiben erhalten. |
+| 1 | 0 oder NULL | 2 | Die neun Mengen sowie taskDurations und taskLoggingCoverage bleiben erhalten. |
+| 0 oder NULL | 1 | 3 | Nach den neun Mengen folgen rowFlowEvents und rowFlow; insgesamt elf Mengen. |
+| 1 | 1 | 3 | Nach den neun Mengen folgen taskDurations, taskLoggingCoverage, rowFlowEvents und rowFlow; insgesamt dreizehn Mengen. |
+
+SchemaVersion in moduleStatus und JSON-meta stimmt überein. Nur bei neuem
+Opt-in ergänzt meta die JSON-Zahl RowFlowCatalogVersion=1. Die bisherige
+TaskAnalysisCatalogVersion erscheint weiterhin ausschließlich bei Task-Opt-in.
+Beide neuen Arrays bleiben bei angefordertem Opt-in auch bei Fehler oder
+Leermenge als [] vorhanden. NULL-Felder bleiben enthalten. Ohne neues Opt-in
+entstehen weder neue Arrays, Status-/Warningzeilen noch CONSOLE-Spalten;
+die 94 alten und 48 gelieferten Taskfelder werden nicht umdefiniert.
+
+TABLE akzeptiert einen neuen Namen ausschließlich bei neuem Opt-in;
+ausgeschaltete, unbekannte oder ungültig zugeordnete Namen werfen wie bisher
+51011 vor fachlichem Quellzugriff. Hilfe, Ausgabemodus, TABLE-Vorbereitung und
+fachliche Zulassung behalten ihre Reihenfolge. Ein gültiges Mapping erhält
+bei semantisch ungültigen Parametern typisierte leere Ziele. NONE bleibt ohne
+fachliches Grid; angefordertes JSON ist vom Ausgabemodus unabhängig.
+
+CONSOLE bleibt ein Resultset. Nur bei neuem Opt-in folgen nach den jeweils
+bisherigen Spalten RowFlowMeldungen bigint, RowFlowGeleseneMeldungen bigint
+und RowFlowZugeordneteMeldungen bigint; alle drei sind nullable. Sie zählen
+vor Exportkappung Kandidaten, erfolgreich geparste Kandidaten und erfolgreich
+zugeordnete Kandidaten, ausdrücklich keine Zeilensumme über verschiedene
+Pfade. Nach erfolgreicher leerer Ableitung sind sie 0, andernfalls bis zur
+vollständigen Übernahme NULL. Bei beiden Opt-ins stehen die drei bisherigen
+Taskzähler vor diesen drei neuen Zählern. Es gibt kein zusätzliches Grid.
+
+### R3. Kandidaten und versionierte Grammatik
+
+Ein Kandidat besitzt exakt den Eventnamen OnPipelineRowsSent. Eventname und
+Formatpräfix werden ordinal anhand der UTF-16-Bytes verglichen, ohne Trimmen,
+Case-Faltung oder Übersetzung. Varianten des Eventnamens bleiben wie bisher
+in timeline sichtbar, gehören aber nicht zum Kandidatenbestand. Inhalt oder
+datacode eines anderen Ereignisses aktivieren den Decoder nicht.
+
+Parserkennung ORPS_EN_1 bezeichnet ausschließlich das folgende konservative
+Profil des englischen Herstellerbeispiels. Ein Profil ist keine Zusage für
+alle Versionen oder sprachlichen Installationen. Der unterstützte native
+Versionsumfang wird erst durch die später tatsächlich ausgeführte Abnahme
+qualifiziert. SERVERPROPERTY des Analysehosts bestimmt weder Produzenten-
+version noch Sprache historischer Meldungen.
+
+Der genaue Unicode-Präfix lautet `Rows were provided to a data flow component as input. : : `.
+Danach folgen genau sieben durch ` : ` getrennte Felder in dieser Reihenfolge:
+PathId, PathName, DestinationComponentId, DestinationComponentName, InputId,
+InputName und RowsSent. Der gesamte gespeicherte Text muss dem Profil
+entsprechen; Präfix-/Substringtreffer oder übrig gebliebener Suffix genügen
+nicht. Nach dem letzten Zähler ist kein Punkt oder Whitespace zugelassen.
+
+Die drei IDs bestehen aus ASCII-Ziffern ohne Vorzeichen und ohne führende
+Null, passen verlustfrei in int und liegen zwischen 1 und 2147483647.
+RowsSent besteht entweder aus der einzelnen Ziffer 0 oder aus ASCII-Ziffern
+mit einer ersten Ziffer 1–9 und passt in bigint bis 9223372036854775807.
+Vorzeichen, Dezimal-/Tausendertrenner, Exponenten, leere und überlaufende
+Zahlen werden abgewiesen. Namen enthalten mindestens eine und höchstens 4000
+UTF-16-Codeeinheiten; Doppelpunkt, CR, LF, TAB und U+0000 sind darin nicht
+zugelassen. Namen werden nicht normalisiert. Insbesondere bleiben führende
+oder nachfolgende Leerzeichen innerhalb eines Namens und ordinal verschiedene
+Schreibweisen erhalten. Das enge Profil kann legitime, aber mit diesem Profil
+nicht eindeutig zerlegbare Namen ablehnen; der Analyzer rät keine Teilung.
+
+Das native SQL-Logging begrenzt message auf nvarchar(2048). Auch eine formal
+gültige Zahl am Ende eines kapazitätsfüllenden Texts könnte abgeschnitten
+sein. Deshalb wird vor Parsing die UTF-16-Bytezahl DATALENGTH(message) des
+gespeicherten Puffers gegen B=min(deklarierter positiver message.max_length,
+4096) geprüft; bei nvarchar(max) gilt B=4096. Bei Länge >=B bleibt der Kandidat
+POTENTIALLY_TRUNCATED und sämtliche Payloadfelder bleiben NULL. LEN ist dafür
+wegen nachfolgender Leerzeichen ungeeignet. Der konservative 4096-Byte-Deckel
+gilt auch für breitere kompatible Quellen und ändert deren vollständigen
+Timelineexport nicht. Frühere Kürzung unterhalb dieser Grenze ist ohne
+zusätzliche Herkunftsevidenz nicht erkennbar; PARSED garantiert keine
+ursprünglich ungekürzte Produzentenmeldung.
+
+Bei IncludeMessages=0 wird die neue Stufe nicht gestartet: keine fachliche
+Referenz auf message, keine Längenprüfung dieser Spalte und kein versteckter
+erneuter Quellzugriff. Meldungsopt-out bleibt auch bei fehlender oder
+berechneter message-Spalte zulässig. Englische Dokumentation und deutsche
+Übersetzung belegen dasselbe englische Beispielprofil, aber keinen stabilen
+deutschen nativen Präfix. Deutschsprachige und sonstige abweichende Payloads
+erhalten UNSUPPORTED_FORMAT; sie werden nicht per Übersetzungsheuristik
+interpretiert. Weitere Sprachprofile benötigen eigene Quellen und Abnahme.
+
+Die ParseStatus-Auswahl hat folgende feste Priorität:
+
+| Bedingung | ParseStatus | ParserId und sieben Payloadfelder |
+|---|---|---|
+| message ist NULL. | MESSAGE_MISSING | ParserId und Payload sind NULL. |
+| Die gespeicherte Bytezahl erreicht B. | POTENTIALLY_TRUNCATED | ParserId und Payload sind NULL. |
+| Der exakte Präfix fehlt. | UNSUPPORTED_FORMAT | ParserId und Payload sind NULL. |
+| Anzahl oder Form der sieben Felder stimmt nicht, einschließlich leerer Namen oder verbotener Zeichen. | MALFORMED_PAYLOAD | ParserId=ORPS_EN_1; Payload ist NULL. |
+| Ein syntaktisch korrekter Zahlentoken überschreitet seinen Bereich. | NUMERIC_OUT_OF_RANGE | ParserId=ORPS_EN_1; Payload ist NULL. |
+| Alle Prüfungen bestehen. | PARSED | ParserId=ORPS_EN_1; alle sieben Payloadfelder sind vorhanden. |
+
+Eine leere Meldung ist UNSUPPORTED_FORMAT. Ein negativer Zähler ist wegen des
+Vorzeichens MALFORMED_PAYLOAD; 0 ist allein für RowsSent zulässig und eine
+ID 0 ist NUMERIC_OUT_OF_RANGE. Es werden keine teilweise geparsten Zahlen
+oder Namen veröffentlicht. Vollständiger Originaltext und datacode bleiben
+in timeline, soweit deren Export angefordert ist; kein zusätzliches Raw-
+Message-Resultset und kein DataBytes-Pfad werden eingeführt.
+
+### R4. Zuordnung zu beobachteten Ereignispaaren
+
+Die neue Zuordnung ändert weder v1-iterations noch die PR393-Taskaggregate.
+Sie verwendet nur interne EXECUTE-Zeilen mit PairStatus=PAIRED aus vollständig
+abgeschlossener v1-Ableitung. Paargrenzen und Ereigniszeit behalten die
+gespeicherten datetime-Werte; LogId ist nur die vorhandene Ordnungshilfe.
+Ein Kandidat ist eindeutig zugeordnet, wenn SourceId vorhanden ist und genau
+ein solches Paar derselben SourceId die Bedingung StartLogId<LogId<EndLogId
+erfüllt und StartTime<=EventTime<=EndTime gilt. Gleiche gespeicherte Zeitwerte
+sind zulässig. PACKAGE-/VALIDATE-Paare, Namen, benachbarte Source-IDs oder ein
+beliebiges MIN-/MAX-Paar sind kein Ersatz. Es wird kein neuer Paarmatcher
+eingeführt und keine Ausführung eines tatsächlichen Loops behauptet.
+
+GroupingStatus wird in dieser Reihenfolge festgelegt: Nicht-PARSED ergibt
+NOT_PARSED; fehlende SourceId ergibt SOURCE_ID_MISSING; fehlende EventTime
+ergibt EVENT_TIME_MISSING; kein zugelassenes ID-einschließendes Paar ergibt
+NO_OBSERVED_PAIR; mehrere solche Paare ergeben AMBIGUOUS_PAIR; ein nicht
+einschließender Zeitbereich des einzigen Paars ergibt TIME_OUTSIDE_PAIR;
+sonst gilt ASSIGNED. Nur ASSIGNED setzt beide Occurrence-Log-IDs und trägt
+zu rowFlow bei. Jeder andere Zustand behält die Kandidatenzeile und bei
+PARSED den gemeldeten RowsSent-Wert, erhält aber keine Vorkommenssumme.
+
+rowFlow gruppiert ausschließlich nach ExecutionId, SourceId, den beiden
+Occurrence-Log-IDs, PathId, DestinationComponentId und InputId. Verschiedene
+Inputs, Pfade, Source-IDs oder Paare bleiben auch bei gleichen Namen getrennt.
+Jede zugeordnete Meldung gehört genau einer Gruppe an. Der SourceName und
+die drei Payloadnamen einer Gruppe ergeben sich jeweils ausschließlich aus
+den beitragenden Kandidaten: ein einziger ordinaler Nicht-NULL Name bleibt
+erhalten; mehrere ordinale Werte ergeben NULL und das jeweilige Conflict-Bit.
+Sind alle Source-Namen NULL, bleibt SourceName NULL ohne Conflict-Bit.
+Es gibt keine Auswahl eines beliebigen Namenwerts und keinen Paketversionsbeweis.
+
+EventCount zählt beitragende Log-IDs. RowsSentSum addiert die gemeldeten
+RowsSent-Werte nach vorheriger Konvertierung in decimal(38,0). MinRowsSent
+und MaxRowsSent sind Minimum und Maximum dieser bigint-Werte. Ein Nullsummen-
+ergebnis entsteht ausschließlich aus tatsächlich vorhandenen expliziten
+Nullmeldungen; eine leere Gruppe erzeugt keine rowFlow-Zeile. Gleiche Texte
+mit verschiedenen IDs werden nicht dedupliziert. Ihre Summe beschreibt die
+gespeicherten gemeldeten Übergaben, keine unabhängig garantierte Menge realer
+eindeutiger Transfers. Doppelte IDs im N+1-Puffer werden weiterhin vor jeder
+Sentinelverarbeitung nach v1 verworfen.
+
+FirstObservedTime und LastObservedTime sind Minimum und Maximum der
+beitragenden EventTime-Werte, keine Dauer oder Ratenbasis. EvidenceLogIdsJson
+enthält deren aufsteigend sortierte eindeutige ganzzahlige Log-IDs als gültigen
+JSON-Array-String. RAW und TABLE transportieren nvarchar(max); das äußere
+JSON erhält denselben String und macht daraus kein verschachteltes Array.
+Paargrenzen sind gesonderte Evidenz-IDs und keine RowsSent-Beiträge.
+
+### R5. Zwei zusätzliche physische Schemas
+
+NN bedeutet NOT NULL; sonst ist das Feld nullable. Alle neuen Textfelder
+verwenden SQL_Latin1_General_CP1_CS_AS, keine Identity- oder berechneten Spalten.
+Die Feldreihenfolge und Typen sind Teil des vorgeschlagenen Vertrags.
+
+| Menge | Spalten in physischer Reihenfolge |
+|---|---|
+| rowFlowEvents, 19 Spalten | RowFlowEventOrdinal bigint NN; ExecutionId uniqueidentifier NN; LogId int NN; SourceId uniqueidentifier; SourceName nvarchar(4000); EventTime datetime; ParserId varchar(32); ParseStatus varchar(40) NN; PathId int; PathName nvarchar(4000); DestinationComponentId int; DestinationComponentName nvarchar(4000); InputId int; InputName nvarchar(4000); RowsSent bigint; OccurrenceStartLogId int; OccurrenceEndLogId int; GroupingStatus varchar(40) NN; InputIsTruncated bit NN |
+| rowFlow, 25 Spalten | RowFlowOrdinal bigint NN; ExecutionId uniqueidentifier NN; SourceId uniqueidentifier NN; SourceName nvarchar(4000); OccurrenceStartLogId int NN; OccurrenceEndLogId int NN; PathId int NN; PathName nvarchar(4000); DestinationComponentId int NN; DestinationComponentName nvarchar(4000); InputId int NN; InputName nvarchar(4000); EventCount bigint NN; RowsSentSum decimal(38,0) NN; MinRowsSent bigint NN; MaxRowsSent bigint NN; FirstObservedTime datetime NN; LastObservedTime datetime NN; EvidenceLogIdsJson nvarchar(max) NN; SourceNameConflict bit NN; PathNameConflict bit NN; DestinationNameConflict bit NN; InputNameConflict bit NN; InputIsTruncated bit NN; CoverageStatus varchar(40) NN |
+
+rowFlowEvents ist nach LogId geordnet; RowFlowEventOrdinal beginnt pro Aufruf
+bei 1. rowFlow wird nach nativer SQL-uniqueidentifier-Ordnung für SourceId,
+OccurrenceStartLogId, OccurrenceEndLogId, PathId, DestinationComponentId und
+InputId geordnet; RowFlowOrdinal beginnt ebenfalls bei 1. Es sind keine über
+Aufrufe stabilen IDs. ExecutionId ist im Aufruf konstant.
+
+CoverageStatus lautet OBSERVED_NAME_CONFLICT bei mindestens einem Conflict-Bit,
+sonst OBSERVED_PREFIX bei InputIsTruncated=1, sonst OBSERVED_TRANSFERS. Das
+Trunkierungsbit bleibt auch bei Namenskonflikt erhalten. Keiner dieser Werte
+behauptet vollständiges Logging. Es gibt kein RowsPerSecond- oder TotalRows-
+Feld über die Gesamtheit aller Pfade. Ein geparster Kandidat ohne ASSIGNED
+bleibt ausschließlich in rowFlowEvents sichtbar.
+
+### R6. Puffer, Grenzen, Quellenstatus und Fehlerisolation
+
+Die neue Stufe benötigt einen gültigen sourceEvents-Puffer und den nachweislich
+erreichten Abschluss der ganzen v1-eventDerivation. Ein nach deren Fehler
+geleerter iterations-Bestand ist keine erfolgreiche Leermenge. Die separate
+Taskaggregate-Stufe darf für neues Row-Flow-Opt-in ausgeschaltet sein;
+ihr eigener Fehler blockiert einen gültigen v1-Paarbestand nicht. Umgekehrt
+darf ein Row-Flow-Fehler gültige frühere Fachmengen nicht löschen.
+
+Nur bei neuem Opt-in folgt sourceStatus mit SourceOrdinal=6 und
+SourceName=rowFlowAnalysis. Die festen Ordinale 1–4 und das optionale Ordinal 5
+bleiben erhalten; ohne Task-Opt-in ist 5 nicht vorhanden, 6 wird nicht auf 5
+umbenannt. ObservedRowCount und ReturnedRowCount zählen nach erfolgreicher
+Stufe die Summe aus rowFlowEvents- und rowFlow-Zeilen, nicht RowsSentSum.
+Counts und die drei neuen CONSOLE-Werte sind bis zur atomaren Übernahme NULL.
+Detail hat nach Erfolg die Form Candidates=C;Parsed=P;Assigned=A;Groups=G
+mit exakten dezimalen bigint-Counts; ObservedRowCount=ReturnedRowCount=C+G.
+
+Bei erfolgreich leerem Kandidatenbestand gilt AVAILABLE_EMPTY/IsPartial=0,
+Counts 0 und genau eine Warnung ROWFLOW_EVENT_NOT_OBSERVED. Ohne diese
+Ereignisse wird keine echte Null-Transfermenge und keine Ursache behauptet.
+Bei erfolgreicher nichtleerer Stufe gilt AVAILABLE_LIMITED/1, wenn der
+Eingabepuffer gekappt ist, ein Kandidat nicht PARSED/ASSIGNED ist oder ein
+Gruppenname Konflikt besitzt; andernfalls gilt AVAILABLE/0. Solche Partialität
+behauptet keine falsche Produzentenmeldung oder einen Paketfehler.
+
+Die Zulassungsgründe werden in fester Priorität ausgewählt: INVALID_PARAMETER,
+NO_VALID_EVENT_BUFFER, PRIOR_DERIVATION_NOT_COMPLETED, MESSAGES_DISABLED und
+TIME_BUDGET_EXHAUSTED. In diesen Fällen ist Zeile 6 NOT_READ/1 mit NULL-Counts
+und leeren neuen Mengen. MESSAGES_DISABLED ergänzt genau eine Warnung
+ROWFLOW_MESSAGES_DISABLED, führt aber keinen message-Zugriff aus. Hilfe
+liefert keine neue Quellenzeile. Die aufgerufenen übrigen Stufen und ein
+gültiger eigener Taskexport bleiben erhalten.
+
+Der bestehende kooperative Deadlinezeitpunkt wird vor Beginn und vor der
+gemeinsamen Übernahme beider neuen Mengen geprüft. Bei Ablauf nach Beginn
+gilt AVAILABLE_LIMITED/1 mit TIME_BUDGET_EXHAUSTED; beide Mengen werden verworfen,
+Counts und neue CONSOLE-Werte sind NULL. Vor Beginn gilt NOT_READ/1. Genau eine
+Warnung ROWFLOW_TIME_BUDGET_EXHAUSTED entsteht. Das beendet keine laufende
+SQL-Anweisung hart und verlängert das gemeinsame Budget nicht.
+
+Ein tatsächlicher nativer Fehler der neuen Stufe erhält die bestehende native
+Fehlerklassifikation samt echter Nummer und vollständigem Fehlertext in
+Zeile 6; beide neuen Mengen werden verworfen, Counts bleiben NULL und genau
+eine Warnung ROWFLOW_ANALYSIS_ERROR entsteht. Fachliche Parserablehnungen
+sind keine SQL-Exceptions. Bei erfolgreicher Stufe werden zusätzlich höchstens
+je eine Warnung ROWFLOW_PAYLOAD_NOT_PARSED, ROWFLOW_OCCURRENCE_NOT_ASSIGNED
+und ROWFLOW_NAME_CONFLICT für ihre tatsächlich vorhandenen Zustände erzeugt.
+NOT_PARSED zählt nicht zusätzlich als Zuordnungsablehnung. Stufe 6 erzeugt
+keine neuen loggingQuality- oder findings-Zeilen. Warningtexte enthalten nur
+feste Erklärungen und generische Counts, keinen interpolierten Payload.
+
+Neue Partialität setzt IsPartialOut und moduleStatus.IsPartial auf 1. Ein
+bisher AVAILABLE, AVAILABLE_EMPTY oder AVAILABLE_LIMITED lautender Modulstatus
+wird bei begrenzter oder fehlgeschlagener Stufe AVAILABLE_LIMITED; ein schon
+schwererer Status bleibt erhalten. StatusCodeOut folgt dem finalen Modulstatus.
+ErrorNumberOut und ErrorMessageOut behalten das erste tatsächliche native
+Fehlerpaar in der Quellenfolge 1–4, optional 5, dann 6. Parserstatus, Warnungen
+und gespeicherte OnError-Ereignisse erfinden keine native Fehlernummer.
+
+MaxZeilen behält seine gemeinsame Lese-/Exportbedeutung. Positiv N erlaubt
+genau den bestehenden N+1-Präfix; der geprüfte Sentinel wird vor jeder neuen
+Kandidaten-, Zeit-, Namens- oder Evidenzauswertung entfernt. Die Eingabekappung
+steht als InputIsTruncated in jeder neuen Zeile. Beide neuen Mengen enthalten
+je höchstens E Zeilen bei E Ereignissen; deshalb ist bei positivem N kein
+zweiter Fachcap nötig. sourceStatus.IsTruncated ist für vollständig exportierte
+abgeleitete Mengen 0, auch bei gekapptem Eingang. NULL/0 und MAX-Texte behalten
+ihre vorhandenen HighImpact-Gates. IncludeTimeline=0 betrifft nur den Export.
+Kostenklasse bleibt LOW_HIGH_OPT_IN; Parsing, Gruppierung, Sortierung und
+Evidenzstrings benötigen zusätzliche CPU-, Speicher- und tempdb-Arbeit ohne
+feste Ressourcen- oder Performancegarantie. Zusätzliche Indizes sind keine
+Voraussetzung; es gibt weder DDL in fremden Quellen noch globale Änderungen.
+
+### R7. Geplanter synthetischer Abnahmeumfang
+
+Die folgenden Gruppen bilden den freigegebenen synthetischen Umfang. Die
+Implementierung prüft
+die unveränderte Gesamtprocedure mit eigenen gespeicherten kompatiblen Quellen.
+Referenzen berechnen sämtliche 44 neuen Felder unabhängig vom Produktdecoder;
+reine TABLE-/JSON-Parität ersetzt dieses Orakel nicht. Genau bekannte Zahlen,
+IDs und UTF-16-Namen werden vor Ausführung festgelegt.
+
+| Gruppe | Gegenstand und notwendiges Soll |
+|---|---|
+| R-S01 | Exaktes EN-Profil, eine Übergabe mit 7 Zeilen: vollständige 19-/25-Feldwerte, Schemafacetten, Identitäten und Evidenzarray stimmen. |
+| R-S02 | Mehrere Übergaben 3, 0 und 8 im selben Paar/Pfad ergeben EventCount=3, RowsSentSum=11, Min=0, Max=8; verschiedene IDs mit gleichem Text bleiben Beiträge. |
+| R-S03 | Explizite 0, fehlender Kandidat, NULL-/leere Meldung, unbekannter Präfix und abweichender Eventname bleiben unterscheidbar; kein künstlicher Nullsummenpfad. |
+| R-S04 | Drei int-IDs bis zur Obergrenze und bigint-Zähler über int, bis bigint-Max; Summen werden vor Addition decimal(38,0). Überlauf, ID0, Minus, Plus, führende Null, Localezahlen und Exponenten liefern die festgelegte Ablehnung ohne Teilpayload. |
+| R-S05 | UTF-16-Namen, Case-/Trailing-Space-Konflikte und gleiche Anzeigenamen bei verschiedenen IDs bleiben getrennt; Konfliktbits, NULL-Namen und Basis-IDs stimmen. |
+| R-S06 | Zu wenige/zusätzliche Trenner, Doppelpunkt in Namen, CR/LF/TAB/NUL, zusätzliche Endzeichen und eingefügte zweite gültig aussehende Zahl werden nicht teilweise angenommen. |
+| R-S07 | Nachricht an B−2, B und B+2 Bytes, schmale/breite/MAX-Meldungstypen und abschließende Leerzeichen prüfen DATALENGTH, die konservative Kappungsgrenze und unveränderten Rawtext. Ein formal gültiger, abgeschnittener Zahlenrest an B wird nicht summiert. |
+| R-S08 | Mehrere geschlossene EXECUTE-Paare, identische Zeiten, Anfangsende/Endstart, mehrdeutiger Strom, rückläufige/fehlende Zeit, fehlende SourceId und Zeit außerhalb des ID-Paars erlauben nur exakt definierte ASSIGNED-Zeilen. |
+| R-S09 | Getrennte Execution-/Source-IDs, wiederholte Vorkommen und parallele gleichnamige Sources; Multicastpfade mit 10/10 und ein nachfolgender Aggregatpfad mit 2 ergeben getrennte Gruppen, keinen Paketwert 22. |
+| R-S10 | Caps 1, 2 und vollständig mit passenden Grenzreihenfolgen; Sentinel trägt nie bei. Doppelte ID einschließlich Sentinel verwirft den ganzen Puffer. Counts, Eingabekappung und leere nicht zugelassene Exporte stimmen. |
+| R-S11 | Alle vier Opt-in-Kombinationen, NULL wie 0, positionale Altaufrufe, RAW9/11/13, JSON-Zahlenversionen/Arrays, Teilmapping, 51011 vor Zugriff, typisierte Leerziele, CONSOLE1 und NONE0 werden geprüft. |
+| R-S12 | IncludeMessages=0 bei fehlender/ungültiger/berechneter message-Spalte aktiviert keine Decoderreferenz; IncludeTimeline=0 ändert keine Decoderwerte. Computed Pflichtfelder, Quellen-/Berechtigungsfehler und direkte echte Fehlermeldungen bleiben getrennt. |
+| R-S13 | Quellgebundene extrahierte Stufen prüfen Deadline vor Beginn/vor Übernahme, tatsächlichen neuen SQL-Fehler und fehlgeschlagene vorherige v1-Ableitung bei gültigem Puffer: NULL-Counts, leere Zusatzmengen und Originalfehler bleiben korrekt. Diese isolierten Pfadprüfungen sind keine natürlich aufgetretenen Fehler des unveränderten Gesamtprodukts. |
+| R-S14 | Reine Capturemutationen entfernen ein Feld/Array, vertauschen Pfad/Input/Source/Paar, verändern Count/NULL/Evidenzmitgliedschaft oder Callerframe und müssen den unabhängigen Prüfer scheitern lassen. Quellen, Callerzustand und Cleanupidentitäten bleiben aufrufgebunden. |
+
+Fehlerpfade erhalten keine öffentlichen Faultparameter, privaten Produkt-
+schalter oder Lab-/System-Overrides. Gegenproben, die einen Fehler nicht
+kontrolliert am Original erzeugen können, bleiben als extrahierte Stufen
+gekennzeichnet. Bereits geschlossene Task- und Vierfälleabnahmen werden nur
+bei relevanter unveränderter Bindung wiederverwendet, nicht pauschal neu gestartet.
+
+### R8. Geplante begrenzte native Abnahme
+
+R-N01 und R-N02 bilden den konkret freigegebenen neuen nativen Umfang.
+Die Ausführung zählt vor Effekten in einer eigenen endlichen Welle. Analyze erstellt
+seine eigenen Pakete und Orakel auf einer dafür qualifizierten verfügbaren
+Windows-/SQL-/SSIS-Umgebung. Es gibt keine Pflicht, dass das Lab zuvor eine
+fachliche Legacy-Fixture erstellt. Neue Labentwicklung, Imagebeschaffung,
+Installation, allgemeine Rechteänderung oder alte Runtime-Replays folgen
+nicht aus diesem Plan. Die tatsächliche Engine-, SSIS-, Provider-, Sprach-
+und CL-Bindung wird vor einem späteren Versuch erhoben; UNKNOWN bleibt UNKNOWN.
+
+R-N01 verwendet einen eigenen linearen Data Flow mit vorab festgelegten 10007
+synthetischen Zeilen und unabhängig gezähltem Zielbestand. Ein tatsächlich
+ausgeführtes Paket erzeugt native SQL-Providerzeilen. Pro beobachtetem
+Pfad/Input müssen die gemeldeten Übergaben zum bekannten Weg passen. Die
+Anzahl ProcessInput-Ereignisse und eine physische Bufferzahl werden nicht
+vorher aus der Zeilenzahl erfunden.
+
+R-N02 verwendet ein eigenes Paket mit zwei wiederholten Data-Flow-Vorkommen
+derselben Source-ID sowie einer parallel ausgeführten gleichnamigen Source
+mit eigener ID. Eine kleine bekannte Datenmenge von zehn Zeilen wird im
+Multicast auf zwei Pfade verteilt; ein Zweig aggregiert zu zwei Gruppen.
+Ein zusätzlicher leerer Zweig prüft die beobachtete Logginggrenze, ohne eine
+native Nullmeldung vorauszusetzen. Paketdefinition, tatsächliche Source-/
+Path-/Komponenten-/Input-IDs, SDK-Vorkommen und eigene Zielreferenzen werden
+vor Analyzerassertions gespeichert. Nur vorhandene Meldungen und eindeutige
+Paare dürfen die jeweiligen 10-/2-Pfadsummen begründen. Fehlende native
+Ereignisse werden als fehlende Qualifikation ausgewiesen, nicht synthetisch
+nachgetragen oder durch ein anderes Ereignis ersetzt.
+
+Für die spätere Consumerabnahme sind höchstens acht Aufrufe geplant:
+R-N01 mit RAW vollständig, TABLE vollständig, CONSOLE, NONE, neuem Opt-in bei
+Messages=0 und dem unveränderten v1.1-Taskmodus ohne neues Opt-in; R-N02 mit
+RAW vollständig und TABLE unter gezieltem positivem Cap. Jeder Aufruf bindet
+seinen eigenen JSON-/Status-/Callerframe an denselben erfassten Quellstand.
+Vollständige Aufrufe behalten HighImpactConfirmed=1; der gezielte Cap wird
+nach gespeicherten tatsächlichen Log-IDs so festgelegt, dass er eine fachliche
+Grenze schneidet. Ein nicht erreichter Modus bleibt NOT_EXECUTED.
+
+Die Qualifikation braucht Originalproviderzeilen mit exakten IDs und Texten,
+ein unabhängiges Orakel für alle 44 neuen Felder, physischen Schemaabgleich,
+gleichaufrufbezogene TABLE-/JSON-Parität, Versions-/Statusregeln, Caller- und
+Quellenstabilität sowie gebundenes eigenes Cleanup. Erwartungswerte dürfen
+nicht aus dem Analyzerergebnis zurückgerechnet werden. Ein neues natives
+Format außerhalb ORPS_EN_1 führt zu einem erhaltenen fehlgeschlagenen oder
+nicht qualifizierten Versuch und einer konkreten Vertragsentscheidung;
+es wird nicht während derselben Abnahme heuristisch zugelassen.
+
+Vor DDL oder Ausführung werden eigene Ressourcen eindeutig reserviert und
+an Datenbank-/Objekt-ID, Erstellungszeit und eigene Scopekennung gebunden.
+Auch teilweise angelegte eigene Objekte erhalten einen separaten Recoveryplan.
+Primärfehler, Cleanupfehler, Quelleninventar und bewusst erhaltene Ressourcen
+werden getrennt gespeichert. Fremde Runs, Pakete und Loggingquellen bleiben
+unberührt; policyblockierte Löschungen werden nicht über andere APIs wiederholt.
+Native Aufrufe zählen vor ihren Effekten in einer eigenen endlichen späteren
+Welle; historische Budgets und Fehlrecords werden nicht zurückgesetzt.
+
+### R9. Primärquellen, Review und weitere Freigabe
+
+Am 18. Oktober 2026 wurden ausschließlich folgende Herstellerseiten gelesen:
+
+- [Data Flow Task, Meldungsfelder und Beispiele](https://learn.microsoft.com/en-us/sql/integration-services/control-flow/data-flow-task?view=sql-server-ver17) beschreibt PathID, Zielkomponente, Input und Übergabemenge. Die enge Grammatik und alle Ablehnungsregeln sind Entwurfsentscheidungen, keine zusätzliche Herstellerzusage.
+- [SSIS Logging, Ereignis und SQL-Providergrenzen](https://learn.microsoft.com/en-us/sql/integration-services/performance/integration-services-ssis-logging?view=sql-server-ver17) beschreibt selektives Logging und die message-Kapazität des SQL-Providers. Fehlende Meldungen sind deshalb kein Abwesenheitsnachweis.
+
+Der bisherige unabhängige Reviewer prüft den konkreten Entwurf einschließlich
+Kompatibilitätsmatrix, PathID-Semantik, strikter Grammatik, Kappungsrisiko,
+Paarzuordnung, Mengenbasis, NULL-/Nullmengen, atomarer Fehlerbehandlung,
+Quellprojektion und unabhängigem Abnahmeorakel. Der Review wurde ohne offene P1/P2 abgeschlossen. Die konkrete menschliche
+Freigabe zur Umsetzung samt begrenztem Abnahmeumfang und regulärem PR liegt vor.
+
+Eine spätere Lieferung umfasst Produktquelle, betroffene Inventare,
+Installer, Consumerverträge, Guide und Status zusammen. Testauswahl und CI
+folgen der kanonischen CI_Test_Strategy, einschließlich exaktem Head und
+regulärer MatchHead-Integration. Die Freigabe umfasst den begrenzten Slice mit seinen betroffenen
+Prüfungen und der regulären Integration. Historische grüne Abnahmen werden
+nicht erneut als eigene Welle gestartet. SSIS-001 bleibt
+PARTIAL_PRODUCT_FUNCTION; weitere Backlogs und WI-0009 GATE-0001 bleiben offen.
+
+
+## Erforderliche Vertragsentscheidung: beobachtetes natives Zeilenflussformat vom 18. Oktober 2026
+
+**Status:** am 18. Oktober 2026 ausdrücklich menschlich freigegebene Ergänzung.
+Der Benutzer hat ORPS_EN_2 samt begrenzter Folgeabnahme und regulärer
+PR-Lieferung freigegeben. Die folgenden Formatregeln und Abnahmegrenzen sind
+verbindlich; historische fehlgeschlagene Versuche bleiben erhalten.
+
+### Tatsächlicher Unterschied und Liefergrenze
+
+Die zwei tatsächlich ausgeführten eigenen Paketszenarien auf Windows
+SQL/SSIS 17.0.5015.4 mit CL170 erzeugen OnPipelineRowsSent-Meldungen, deren
+gespeicherter Präfix `Rows were provided to a data flow component as input. :  : `
+lautet. Zwischen den beiden Doppelpunkten stehen zwei Leerzeichen. Danach
+folgen zehn Felder sowie ein abschließender Trenner, während ORPS_EN_1 genau
+sieben Felder ohne Suffix und einen anderen Präfix verlangt. Die Quelle
+enthält drei Kandidaten im linearen Szenario und 25 im zweiten Szenario.
+Der unveränderte Decoder klassifiziert diese Texte als UNSUPPORTED_FORMAT;
+rowFlow bleibt leer. Das entspricht der freigegebenen Ablehnungsregel und
+ist keine positive native Pfadsummenabnahme.
+
+Die sechs wiederverwendeten Consumervergleiche mit 682 Prüfungen bestätigen
+die konservative Ausgabe, Status- und Paritätsverträge. Sie qualifizieren
+weder erfolgreich geparste native Payloadfelder noch positive native
+Pfadsummen. Die abschließende positive Profilprüfung schlägt fehl. Beide
+historischen nativen Versuche mit Paket- beziehungsweise Restfortschritt
+bleiben insgesamt FAILED_NOT_QUALIFIED; die ursprünglichen Captures und
+Fehlhistorien werden erhalten. Eigene Laufzeitdatenbanken sind entfernt,
+ihre Inventare restauriert; es wird kein weiterer Paketlauf gestartet.
+
+### Freigegebene enge Ergänzung ORPS_EN_2
+
+ORPS_EN_2 ergänzt als zweites streng vollständiges Profil den Decoder. ORPS_EN_1 und seine
+Ablehnungsregeln bleiben erhalten. Produktziel 1.2.0, Parameterposition 22,
+SchemaVersion 3, RowFlowCatalogVersion 1 sowie alle 19-/25-Feldschemas bleiben
+für diese erste noch nicht veröffentlichte Lieferung unverändert. Die
+ParserId unterscheidet die beiden freigegebenen Profile.
+
+Der neue genaue Unicode-Präfix ist der oben dokumentierte beobachtete Text.
+Nach dem Präfix stehen genau zehn durch ` : ` getrennte Felder in dieser
+Reihenfolge; anschließend ist genau ein abschließender ` : ` erforderlich:
+
+| Position | Inhalt und Zulassung |
+|---|---|
+| 1–7 | PathId, PathName, DestinationComponentId, DestinationComponentName, InputId, InputName und RowsSent behalten die Typ-, Zahlen-, Namens- und Bereichsregeln aus R3. |
+| 8 | Der Text muss ordinal einschließlich aller Leerzeichen mit DestinationComponentName aus Feld 4 übereinstimmen. |
+| 9 | Der Text hat die genaue äußere Form Paths[Inhalt]. Inhalt ist nicht leer und enthält keinen Doppelpunkt, CR, LF, TAB, NUL oder weitere eckige Klammern. Er wird ausschließlich zur vollständigen Formprüfung verwendet und nicht als zusätzliche Lineage ausgegeben. |
+| 10 | Der Text muss ordinal der Verkettung DestinationComponentName + .Inputs[ + InputName + ] entsprechen. |
+
+Leere oder zusätzliche Felder, fehlender oder mehrfacher Endtrenner,
+abweichender Wiederholungstext und sonstiger Suffix werden abgewiesen.
+Nur bei erfolgreicher vollständiger Prüfung aller zehn Felder werden die
+sieben bestehenden Payloadfelder ausgegeben. Die drei Zusatztexte erzeugen
+keine neuen Ergebnisspalten und keine Interpretation als technische Root Cause,
+Quellkomponente oder Graph. Der vorhandene Bytekapazitätsguard gilt vor jeder
+Profilwahl; opt-out, NULL-, Fehler-, Deadline- und Paarregeln bleiben erhalten.
+Die bestehende ParseStatus-Priorität gilt entsprechend; ein erkannter neuer
+Präfix mit fehlerhaftem Gesamtaufbau erhält ORPS_EN_2/MALFORMED_PAYLOAD.
+Syntaktisch gültige Zahlen außerhalb des Bereichs erhalten erst danach
+NUMERIC_OUT_OF_RANGE. Ein anderes Format wird weiterhin nicht heuristisch
+zugelassen. Die Laufzeitquelle qualifiziert ausschließlich das konkret
+beobachtete Profil, keine allgemeine Sprach- oder Versionsmatrix.
+
+### Numerische IDs und unabhängige Gegenprüfung
+
+Die native Meldung enthält andere numerische Path-/Komponenten-/Input-IDs
+als die vor SaveToXml erfassten SDK-Authoringobjekte. Solche Zahlen werden
+nicht gleichgesetzt. Die öffentlichen Felder behalten die tatsächlich
+gespeicherten Laufzeitkennungen; es erfolgt keine Normalisierung auf
+Authoring-IDs und keine Umbenennung von PathId in OutputId.
+
+Die zusätzliche Gegenprüfung bindet die tatsächlichen Providerzeilen über
+ihre Originalhashes, Execution-ID, Source-ID und Log-ID. Die sieben Werte
+werden unabhängig vom Produkt aus dem gespeicherten vollständigen Text
+bestimmt. Die erhaltene Paketdefinition und SDK-Callbacks binden Source,
+eindeutige synthetische Pfad-/Komponenten-/Inputnamen, bekannte Zielmengen,
+Wiederholungen und überlappende Ausführung. Ein gleicher numerischer Wert
+zwischen Authoring und Runtime wird ausdrücklich nicht als Beweis verlangt
+oder behauptet. Zusätzliche oder nicht gebundene beobachtete Pfad-/Input-
+Tupel dürfen nicht allein wegen passender Summen akzeptiert werden.
+
+### Freigegebene begrenzte Fortsetzung
+
+Die neue Profilergänzung benötigt gezielte synthetische Positiv- und
+Negativfälle für sämtliche Zusatzregeln und den unveränderten Guard. Eine
+unabhängige Gegenprüfung verwirft Mutationen von Präfix, Trennern, Zusatztext,
+Runtime-IDs, Paarzuordnung, Summe, NULL, Evidenz und Callerframe. Bereits
+erfolgreiche unveränderte Fälle werden gebunden wiederverwendet.
+
+Für den positiven Decodervergleich sollen die erhaltenen eigenen nativen
+Originalproviderzeilen samt IDs, Typen und vollständigen Texten hashgebunden
+in eine neue eindeutig eigene isolierte Loggingtesttabelle übernommen
+werden. Das ist eine Wiederherstellung bereits erzeugter synthetischer
+Providerdaten für den Analyzerconsumer, kein frischer SSIS-Providerlauf.
+Die Originalevidenz wird nicht überschrieben. Es wird weder ein Paket erneut
+ausgeführt noch eine VM, Installation oder alte Quelle wiederhergestellt.
+
+Geplant sind höchstens zwei neue Arrange-/Consumer-Versuche mit jeweils
+höchstens acht bereits definierten Consumerkonstellationen; erfolgreiche
+unveränderte Einzelbelege werden nicht erneut ausgeführt. Die Kombinationen
+von R-N01 und R-N02 behalten ihre bekannten 10007-/10-/2-Zielmengen und die
+aktuell gespeicherten ursprünglichen Ereignisgrenzen. Alle 44 neuen Felder,
+physische Schemas, JSON-Parität, Status, Caps und Outputmodi werden gegen
+die gebundenen Originalzeilen unabhängig geprüft. Bericht und Status trennen
+frühere tatsächliche Paketausführung von neuer Consumerabnahme aus
+wiederhergestelltem Material. Ein neuer vollständiger nativer Paketlauf wird
+daraus nicht behauptet. Identitätsgebundenes eigenes Cleanup und Vor-/Nach-
+Inventar gehören zu jedem neuen Versuch.
+
+Die Freigabe umfasst genau diesen Profil- und Abnahmeänderungsumfang einschließlich
+eines begrenzten unabhängigen Delta-/Ergebnisreviews sowie der erforderlichen
+exakten Head-CI und regulären PR-Integration abdecken. Geschlossene frühere
+Budgets bleiben unverändert; Native3 ist kein Anlass für Native4 oder einen
+Budgetreset. Weitere Decoder, Sprachen und vertiefte SSIS-Funktionen bleiben
+ausgenommen. Die konkrete Freigabe liegt vor. Die neue Consumerabnahme wird getrennt
+von den geschlossenen historischen Paketversuchen geführt; eine erfolgreiche
+Lieferung wird erst nach Erfüllung der zugehörigen Gates dokumentiert.

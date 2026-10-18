@@ -3,6 +3,41 @@
 **Stand:** 18. Oktober 2026
 **Zweck:** aktuelle ausführbare Entwicklungswelle für `gecompat/SQL_Server_Analyze`
 
+## Freigegebene ORPS_EN_2-Fortsetzung vom 18. Oktober 2026
+
+Der Benutzer hat die konkrete ORPS_EN_2-Ergänzung samt begrenzter Folgeabnahme
+und regulärer PR-Lieferung ausdrücklich freigegeben. Maßgeblich ist die
+[Profilergänzung](../../../Documentation/Architecture/SSIS_Package_and_Execution_Analysis_Plan.md#tatsächliche-row-flow-abnahmegrenze-vom-18-oktober-2026).
+Die Umsetzung verwendet erhaltene hashgebundene eigene Originalproviderzeilen
+für eine neue isolierte Consumerabnahme. Es erfolgen keine erneuten
+Paketausführungen, VM- oder Setupänderungen. Historische native Fehler und
+Budgets bleiben geschlossen; erfolgreiche unveränderte Tests werden nicht
+wiederholt. Die neue Welle hat höchstens zwei Arrange-/Consumerversuche mit
+je höchstens acht definierten Konstellationen, zwei Delta-/Ergebnisreviews
+desselben Reviewers und vier CI-Heads einschließlich Pflicht-Mainlauf.
+Kosten und Kontingente sind UNKNOWN. Die neue Consumerabnahme besteht mit sechs geänderten Konstellationen,
+4833 Prüfschritten, 14 abgewiesenen Mutationen und zwei zusätzlichen
+Offlinekontrollen für fehlendes Feld beziehungsweise Array; neue
+Paketausführungen: 0.
+Eigene Datenbanken sind entfernt und das Inventar restauriert. Der finale
+Ergebnisreview sowie exakte Head-CI, MatchHead-Integration, Treeidentität,
+Main-Folgeprüfung, Synchronisierung und eigenes Cleanup bleiben Liefergates.
+SSIS-001 bleibt insgesamt partiell.
+
+## Freigegebene Legacy-Zeilenflusserweiterung vom 18. Oktober 2026
+
+Der Benutzer hat den geprüften konkreten Vertrag für OnPipelineRowsSent
+ausdrücklich freigegeben und Implementierung, begrenzte Abnahme sowie
+reguläre PR-Lieferung beauftragt. Der geprüfte Entwurf ist über SHA-256
+7DE38692D055EAAD9FF675F24D17E723BAB37254C9544326076D37A672E1C802 gebunden.
+Der [freigegebene Vertrag](../../../Documentation/Architecture/SSIS_Package_and_Execution_Analysis_Plan.md#freigegebener-legacy-zeilenfluss-vom-18-oktober-2026)
+begrenzt Position 22 IncludeRowFlowAnalysis, zwei neue Mengen mit 44 Feldern,
+atomare Ableitung, 14 synthetische Gruppen sowie zwei neue native Szenarien
+mit höchstens acht Consumeraufrufen. Der frühere Entwurfs-Wartezustand ist
+abgelöst. Historische Budgets bleiben geschlossen; erfolgreiche unveränderte
+Tests werden nicht wiederholt. SSIS-001 bleibt PARTIAL_PRODUCT_FUNCTION;
+weitere vertiefte SSIS-Funktionen und WI-0009 GATE-0001 bleiben offen.
+
 ## Freigegebene Legacy-Taskerweiterung vom 18. Oktober 2026
 
 Der Benutzer hat den geprüften konkreten Vertrag für Taskintervalle und
