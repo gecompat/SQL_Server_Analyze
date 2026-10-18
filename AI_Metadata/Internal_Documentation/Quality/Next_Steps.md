@@ -13,6 +13,8 @@ unverändert wiederverwendet; drei Miss-Caps sowie RAW9/CONSOLE1/NONE0 und
 vollständige erste Fehlertexte bestehen in Native13. Native11 und Native12
 bleiben insgesamt FAILED_NOT_QUALIFIED. Ein neuer gemeinsamer Vierfällelauf
 wird nicht behauptet. Produkt v1.0.0 und seine Abhängigkeiten bleiben unverändert.
+Die geprüfte Produktbasis ist Commit `4b607a8e57b55dec3d52a0f69f37b103792319cd`;
+die öffentliche Abnahme bindet die konkrete Produktfassung zusätzlich über SHA-256.
 
 Analyze hat die eigenen Pakete, Referenzen und das Cleanup auf einer ausdrücklich
 freigegebenen eigenen Umgebung verantwortet. Bereitstellung und Lifecycle

@@ -973,8 +973,8 @@ geprüft; sie beweisen weder Schleifen noch den Erfolg einer Paketausführung.
 
 ### Herkunft und erhaltene Fehlhistorie
 
-Die geprüfte Produktbasis ist Commit
-`4b607a8e57b55dec3d52a0f69f37b103792319cd`. Die kanonische Git-LF-Quelle
+Die geprüfte Produktbasis ist der gelieferte Legacy-Kern v1.0.0.
+Die kanonische Git-LF-Quelle
 `Code/10_SSIS/020_USP_SsisLegacyLogAnalysis.sql` besitzt SHA-256
 `7B3F12D1BD715A5D33F8395BE421966B92685D7AD767210917B22BBE792DE3FD`;
 die tatsächlich installierte CRLF-Fassung besitzt
