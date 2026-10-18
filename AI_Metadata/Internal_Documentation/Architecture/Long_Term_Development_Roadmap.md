@@ -206,6 +206,15 @@ Tasktypen, Looprekonstruktion, Phasen, Durchsatz, Historie und weitere
 Katalog-/Rollenabnahmen bleiben offen; SSIS-001 bleibt partiell.
 
 
+Die ergänzende [Komponentenmethoden-Abnahme](../../../Documentation/Architecture/SSIS_Package_and_Execution_Analysis_Plan.md#legacy-komponentenphasenzeiten-begrenzte-abnahme-vom-18-oktober-2026)
+bindet v1.3.0 mit strikten PCT_EN_1-/PCT_EN_2-Profilen für ProcessInput und
+PrimeOutput. Sechs frühere Originaldaten-Consumer und zwei neue P-N02-Consumer
+prüfen die 42 neuen Felder unabhängig; P-N01 wird nicht wiederholt. Berichtete
+Millisekunden und Namensgruppen belegen keine CPU-, exklusive oder eindeutige
+Komponentengesamtzeit. Weitere Methodenprofile und die übrigen Backloggrenzen
+bleiben offen.
+
+
 Der Katalogkern und die freigegebene Legacy-Revision 3 sind geliefert. Die [begrenzte Legacy-Providerabnahme](../../../Documentation/Architecture/SSIS_Package_and_Execution_Analysis_Plan.md#legacy-providerabnahme-vom-18-oktober-2026) bestätigt vier eigene synthetische Fälle mit zwölf gebundenen Cap-Einzelbelegen auf Windows SQL/SSIS 17.0.1000.7. Neun frühere erfolgreiche Einzelbelege werden wiederverwendet; Native11 und Native12 bleiben insgesamt fehlgeschlagen. Weitere Interpretation, zusätzliche Katalogquellen und Rollen bleiben offen; SSIS-001 bleibt PARTIAL_PRODUCT_FUNCTION. Die folgenden Prioritätsangaben beschreiben die frühere Ausgangsfolge.
 
 Nach dem abgeschlossenen Phase-0-Vertrag folgt zunächst der statische DTSX-v2-Parser. Inventar, Control-Flow- und Data-Flow-Graphen werden vor Regelengine, SQL-Metadatenprüfung und Laufzeitadaptern stabilisiert. Dateisystem- und ISPAC-Zugriffe bleiben ein getrenntes Paket.

@@ -2122,3 +2122,14 @@ ersetzt weder die tatsächliche Abnahme noch exakte Head-CI, regulären Merge,
 Treeidentität und Main-Synchronisierung. Bis zur Qualifikation bleiben
 Worktree und Originalevidenz erhalten. SSIS-001 bleibt PARTIAL_PRODUCT_FUNCTION
 und WI-0009 GATE-0001 offen.
+
+### Nachweisgrenze der freigegebenen Komponentenzeit-Ergänzung
+
+Die [kanonische begrenzte Abnahme](SSIS_Package_and_Execution_Analysis_Plan.md#legacy-komponentenphasenzeiten-begrenzte-abnahme-vom-18-oktober-2026)
+trennt sechs wiederverwendete Originaldaten-Consumer von genau zwei neuen
+P-N02-Consumern. Alle 42 zusätzlichen Felder werden unabhängig geprüft;
+berichtete Namensgruppen sind weiterhin keine technische Komponentenidentität.
+Die alte Nichtqualifikation mit Provider-Schreibfehlern und der erhaltene
+Offline-Zielmengenfehler werden nicht überschrieben. Die neue EN1-NUL-
+Regression bleibt bis exakter Head-CI NOT_EXECUTED. Der Nachweis ist keine
+allgemeine Methoden-, Sprach-, Rollen- oder weitere Enginequalifikation.

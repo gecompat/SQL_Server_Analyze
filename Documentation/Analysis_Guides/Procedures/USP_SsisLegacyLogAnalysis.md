@@ -323,3 +323,16 @@ bleiben NULL. Die Gruppen beziehen sich auf binär gleiche berichtete Labels
 im Source-/EXECUTE-Kontext und beweisen keine eindeutige Runtimekomponente.
 PCT_EN_1 behält seine numerischen Gruppenschlüssel; Profile werden nicht
 zusammengeführt. Andere Methoden bleiben sichtbar abgelehnte Kandidaten.
+
+## Abnahme der Komponentenmethodenberichte
+
+Die [begrenzte Phasenabnahme](../../Architecture/SSIS_Package_and_Execution_Analysis_Plan.md#legacy-komponentenphasenzeiten-begrenzte-abnahme-vom-18-oktober-2026)
+prüft die 42 neuen Felder unabhängig gegen native Originalproviderzeilen.
+Sechs gebundene P-N01-Consumer werden unverändert wiederverwendet; genau zwei
+P-N02-Consumer ergänzen Wiederholung, gleiche Anzeigenamen mit getrennten IDs,
+überlappende Ausführung und Präfixgrenzen. Die neue Quelle ist Windows
+SQL/SSIS 17.0.5015.4 mit CL170 und beobachtetem sysadmin. Die Aussage betrifft
+berichtete Methodenwerte und beobachtete Berichtskontexte; weitere Methoden,
+Komponentenintervalle, CPU, exklusive Zeit und allgemeine Rollen sind nicht
+qualifiziert. Historische Fehlversuche bleiben erhalten; exakte Head-CI und
+Integration sind eigene Liefergates.

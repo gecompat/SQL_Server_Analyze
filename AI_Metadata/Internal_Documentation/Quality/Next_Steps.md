@@ -3,23 +3,25 @@
 **Stand:** 18. Oktober 2026
 **Zweck:** aktuelle ausführbare Entwicklungswelle für `gecompat/SQL_Server_Analyze`
 
-## Entscheidung zum verbleibenden P-N02-Nachweis
+## Lieferung der begrenzten Komponentenphasen-Erweiterung
 
-B1–B7 wurde umgesetzt. Die [kanonische Zwischenbilanz](../../../Documentation/Architecture/SSIS_Package_and_Execution_Analysis_Plan.md#pct_en_2-begrenzter-consumer-teilnachweis)
-trennt sechs erfolgreiche P-N01-Consumer gegen unveränderte Originaldaten
-von der weiterhin fehlenden P-N02-Qualifikation. P-N01 wurde nicht erneut
-ausgeführt. Der eine neue P-N02-Lauf scheiterte an der fehlenden nativen
-Log-Provider-Schreibprocedure im eigenen Restoreaufbau. Die Gesamtqualifikation
-bleibt FAILED_NOT_QUALIFIED; beide verbleibenden Consumer sind NOT_EXECUTED.
-Eigene Datenbanken sind entfernt, Inventar restauriert, Cleanupfehler 0.
+Die menschlich freigegebene zusätzliche P-N02-Ausführung und genau zwei offene
+Consumer sind erfolgreich aufgenommen und unabhängig qualifiziert. Die
+[kanonische Abnahme](../../../Documentation/Architecture/SSIS_Package_and_Execution_Analysis_Plan.md#legacy-komponentenphasenzeiten-begrenzte-abnahme-vom-18-oktober-2026)
+bindet sechs unveränderte frühere P-N01-Captures und zwei neue P-N02-Captures.
+P-N01 wurde nicht wiederholt. Der frühere P-N02-Lauf und der spätere
+Offline-Zielmengenfehler bleiben erhaltene Nichtqualifikationen; die korrigierte
+Zielmengenerwartung folgt dem bereits gebundenen Paketfilter und hebt keine
+Produktguards auf. Eigene Datenbanken sind entfernt, Caller und Quellen sind
+erhalten, Cleanup- und Retentionfehler sind 0.
 
-Die vorbereitete Korrektur verwendet eine frische eigene P-N02-Loggingdatenbank
-ohne vorab angelegte Providerobjekte. Genau ein zusätzlicher P-N02-Paketlauf,
-die zwei bislang offenen Consumer und ein zusätzlicher Ergebnisreview durch
-denselben Reviewer bedürfen einer ausdrücklichen menschlichen Erweiterung.
-Bis dahin kein weiterer Paket-/Consumerlauf, Push, PR oder CI. Der aktuelle
-Resttreiber ist am bestehenden Budget gesperrt. Sechs grüne P-N01-Captures,
-die geschlossene Synthetik und frühere Historien werden gebunden erhalten.
+Der eine zusätzliche Abschlussreview ist ausdrücklich freigegeben. Nach seinem
+Abschluss folgen exakte Head-CI einschließlich der neuen EN1-NUL-Regression,
+regulärer MatchHead-Merge, Treeidentität, Mainchecks, origin/main-Synchronisierung
+und nur eigenes Cleanup. Runtime2/2, Paket2/2 und Consumer8/8 sind verbraucht;
+Synthetik2/2 bleibt geschlossen. Das bestehende CI-Budget von vier
+Qualifikations-Heads einschließlich Main wird nicht zurückgesetzt. Weitere
+Paket-/Consumerläufe oder grüne P-N01-Wiederholungen sind nicht autorisiert.
 
 ## Freigegebene PCT_EN_2-Fortsetzung
 
