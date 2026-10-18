@@ -1566,3 +1566,24 @@ Die erforderliche exakte Head-CI und reguläre Integration bleiben eigene
 Liefergates. SSIS-001 bleibt PARTIAL_PRODUCT_FUNCTION; zusätzliche Profile,
 Sprachen, Katalog-RowFlow, Phasen, Durchsatz, Looprekonstruktion und allgemeine
 Rollenabnahmen sowie WI-0009 GATE-0001 bleiben offen.
+
+## Nächster Vertragsentwurf: Legacy-Komponentenphasenzeiten vom 18. Oktober 2026
+
+Nach den gelieferten Taskintervallen und Pfadmengen fehlt im Legacy-Analyzer
+weiterhin die Interpretation gemeldeter Komponentenphasenzeiten. Der konkrete
+[Entwurf mit Abnahmeplan](SSIS_001_Phase0_Public_Contract.md#entwurf-legacy-komponentenphasenzeiten-aus-pipelinecomponenttime-vom-18-oktober-2026)
+begrenzt den nächsten Teilslice aus Backlogschritt 3 auf PipelineComponentTime
+mit den belegten englischen ProcessInput-/PrimeOutput-Textformen. Vorgeschlagen
+sind ein unabhängiges Opt-in an Position 23, zwei Mengen mit 18 und 24 Feldern
+und eine ausdrückliche Trennung von Berichtskontext, gemeldeten Millisekunden,
+CPU-Zeit und exklusiver Laufzeit. Die bestehende Katalogprojektion ist keine
+neue Legacy-Interpretation und wird durch diesen Entwurf nicht geändert.
+
+Der direkte Auftrag umfasst ausschließlich Vertrag, Abnahmeplan und Review
+durch denselben bisherigen Reviewer. Es gibt keine Implementierung, nativen
+Tests, Paketerstellung, SQL-/SDK-Ausführung, CI oder Veröffentlichung. Die
+14 synthetischen Gruppen und zwei nativen Szenarien sind geplant und
+NOT_EXECUTED. Erst konkrete menschliche Freigabe könnte eine gesonderte
+begrenzte Umsetzungswelle autorisieren. Bisherige Lieferungen, Nachweise und
+Budgets bleiben erhalten; SSIS-001 bleibt PARTIAL_PRODUCT_FUNCTION und
+WI-0009 GATE-0001 offen.

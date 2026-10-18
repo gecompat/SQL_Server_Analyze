@@ -3,6 +3,22 @@
 **Stand:** 18. Oktober 2026
 **Zweck:** aktuelle ausführbare Entwicklungswelle für `gecompat/SQL_Server_Analyze`
 
+## Beauftragter Vertragsentwurf für Legacy-Komponentenphasenzeiten
+
+Der Benutzer beauftragt nach PR394 den nächsten fehlenden SSIS-Funktionsumfang
+als konkreten Erweiterungsvertrag mit Abnahmeplan und Review durch denselben
+bisherigen Reviewer. Die Auswahl ist der nächste begrenzte Legacy-Teilslice
+für PipelineComponentTime, zunächst ProcessInput und PrimeOutput. Der
+[Entwurf im kanonischen Analyseplan](../../../Documentation/Architecture/SSIS_Package_and_Execution_Analysis_Plan.md#nächster-vertragsentwurf-legacy-komponentenphasenzeiten-vom-18-oktober-2026)
+legt API, 42 neue Felder, strikte Textformen, Berichtskontexte, Statusgrenzen
+und einen endlichen späteren Abnahmeumfang fest. Der aktuelle Umfang bleibt
+auf drei MD-Dateien, einen Autor, einen Vertragsreview, Native0 und CI0
+beschränkt. Kein Produkt-, Inventar-, Installer- oder Workflowdelta ist
+freigegeben. Die konkrete menschliche Umsetzungsfreigabe steht aus; ein
+Vertragsreview ersetzt sie nicht. Entwurf und Nachweise bleiben lokal erhalten,
+kein Push oder PR. Geschlossene historische Budgets bleiben unverändert;
+Kosten und Kontingente sind UNKNOWN. SSIS-001 bleibt partiell.
+
 ## Freigegebene ORPS_EN_2-Fortsetzung vom 18. Oktober 2026
 
 Der Benutzer hat die konkrete ORPS_EN_2-Ergänzung samt begrenzter Folgeabnahme
