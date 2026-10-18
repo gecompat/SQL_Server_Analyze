@@ -3,6 +3,20 @@
 **Stand:** 18. Oktober 2026
 **Zweck:** aktuelle ausführbare Entwicklungswelle für `gecompat/SQL_Server_Analyze`
 
+## Vertragsauftrag Legacy-Tasklaufzeiten vom 18. Oktober 2026
+
+Der Benutzer hat ausschließlich den konkreten Erweiterungsvertrag samt
+Abnahmeplan und die Prüfung durch den bisherigen unabhängigen Reviewer
+beauftragt. Der [begrenzte Vertragsabschnitt](../../../Documentation/Architecture/SSIS_Package_and_Execution_Analysis_Plan.md#priorisierte-entwicklungsreihenfolge-und-abnahme)
+verknüpft den Entwurf für quellenbezogene Daueraggregate und beobachtete
+Loggingabdeckung. Ein neuer optionaler Parameter sowie zwei neue Resultsets
+sind Vorschläge, keine implementierten Schnittstellen. Die bestehenden
+20 Parameter und neun Schemas bleiben unverändert; der Entwurf verlangt
+ausdrückliche menschliche Vertragsfreigabe vor der Umsetzung. Weder
+Implementierung noch native Tests, Labarbeit oder neue CI-Ausführungen sind
+durch diesen Auftrag freigegeben. Sämtliche neuen Abnahmeszenarien bleiben
+NOT_EXECUTED; die bereits abgeschlossenen Budgets bleiben geschlossen.
+
 ## Abgeschlossene begrenzte Legacy-Providerabnahme vom 18. Oktober 2026
 
 Die [kanonische Providerabnahme](../../../Documentation/Architecture/SSIS_Package_and_Execution_Analysis_Plan.md#legacy-providerabnahme-vom-18-oktober-2026)

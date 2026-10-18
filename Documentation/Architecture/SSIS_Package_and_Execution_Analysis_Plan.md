@@ -1283,6 +1283,14 @@ drei Schritte bereits die ursprünglichen Fragen nach Laufzeiten und
 Datensatzmengen. Jeder spätere Umsetzungsschritt benötigt den hierfür
 gesondert freigegebenen fachlichen Umfang.
 
+Für den ersten begrenzten Laufzeitabschnitt liegt ein
+[konkreter Vertragsentwurf mit Abnahmeplan](SSIS_001_Phase0_Public_Contract.md#entwurf-legacy-tasklaufzeiten-und-loggingabdeckung-vom-18-oktober-2026)
+vor. Er konkretisiert das notwendige Fundament aus Schritt 1 und die
+quellenbezogenen Daueraggregate aus Schritt 2. Der Auftrag vom 18. Oktober
+2026 umfasst ausschließlich Vertragserstellung und unabhängigen Review;
+Implementierung und native Tests sind nicht freigegeben. Die bisherigen
+Legacy-Aufrufe und die abgeschlossene Vierfälle-Providerabnahme bleiben erhalten.
+
 | Reihenfolge | Entwicklungsumfang | Abhängigkeiten | Abnahmekriterien für eine spätere Lieferung |
 |---|---|---|---|
 | 1 | Erweiterungsvertrag, Ereigniskatalog und Loggingqualität | Der vorhandene Legacy-Kern, dokumentierte Ereignisformate und eine definierte Testdatengrundlage werden verwendet. | Zuordnungsschlüssel, Einheiten, Aggregationen und Ausgabeversionierung sind festgelegt und unabhängig fachlich geprüft. Fehlende, abgeschnittene und unbekannte Informationen erhalten eindeutige Status. Bestehende Aufrufe behalten ihre Bedeutung. |

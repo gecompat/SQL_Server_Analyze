@@ -535,3 +535,422 @@ Die Umsetzung bindet eine neue kanonische Einzelquelle unter `Code/10_SSIS/` in 
 
 
 Die synthetische Integrationssuite 202 prüft das kompatible Tabellenformat. Die getrennte [Providerabnahme vom 18. Oktober 2026](SSIS_Package_and_Execution_Analysis_Plan.md#legacy-providerabnahme-vom-18-oktober-2026) bestätigt vier tatsächlich ausgeführte synthetische Paketfälle mit zwölf gebundenen Cap-Einzelbelegen auf Windows SQL/SSIS 17.0.1000.7. Neun Einzelbelege stammen aus insgesamt fehlgeschlagenen früheren Versuchen; ein neuer gemeinsamer Vierfällelauf wird nicht behauptet. Zusätzliche Rollen und ältere native Engines bleiben offen. Der öffentliche Revision-3-Vertrag bleibt unverändert.
+
+## Entwurf: Legacy-Tasklaufzeiten und Loggingabdeckung vom 18. Oktober 2026
+
+**Status:** ENTWURF, menschliche Vertragsfreigabe ausstehend.
+
+**Zuordnung:** begrenzte Erweiterung von `SSIS-001`, Backlogschritt 1 und Laufzeitteil von Schritt 2.
+
+**Liefergegenstand dieses Entwurfs:** Vertrag und Abnahmeplan; keine Implementierung, Installation, Runtimeabnahme oder Produktfreigabe.
+
+Die nachfolgenden Festlegungen sind ein konkret prüfbarer Vorschlag. Sie ändern
+den zuvor freigegebenen Revision-3-Vertrag nicht. Die vorgeschlagene
+Procedureversion ist 1.1.0; die Opt-in-Ausgabe verwendet SchemaVersion 2.
+Beides wird erst nach ausdrücklicher Freigabe und tatsächlicher Umsetzung
+in Produktquelle und Inventare übernommen. Alle nachfolgenden Abnahmeszenarien
+haben den Ausführungsstatus NOT_EXECUTED.
+
+### A. Entscheidungsfrage und begrenzter Umfang
+
+Welche Ausführungs- und Validierungsintervalle sind für beobachtete
+Ausführungsquellen einer bekannten Legacy-Execution gespeichert, welche
+Aggregationen erlauben ihre eindeutigen Zeitpaare und welche Grenzen der
+Loggingabdeckung sind im gelesenen Ausschnitt sichtbar?
+
+Die Erweiterung verwendet dieselbe explizite lokale Loggingquelle und genau
+eine Execution-ID wie v1. Sie liest die Quelle genau einmal in den bestehenden
+N+1-Puffer und verwendet dessen geprüften, gegebenenfalls gekappten Bestand.
+Sie ergänzt die beiden Resultsets `taskDurations` und `taskLoggingCoverage`.
+Einzelintervalle und ihre Log-IDs stehen weiterhin in `iterations`.
+Es wird kein zweiter Paaralgorithmus eingeführt und kein früher mehrdeutiger
+Strom nachträglich zu gültigen Paaren umgedeutet.
+
+Der Name `taskDurations` ist kein Nachweis des Executable-Typs. Eine Source-ID
+kann auch Paket oder Container bezeichnen. Ohne gesonderte Paketbindung bleibt
+SourceType stets `UNRESOLVED`; Task, Container, Elternbeziehung und tatsächliche
+Schleifeniteration werden nicht aus Namen abgeleitet. Ein nicht protokollierter
+Task kann ohne erwartetes Paketinventar nicht als fehlend identifiziert werden.
+Loggingabdeckung bedeutet hier ausschließlich beobachtete Ereignisabdeckung,
+nicht Prüfung der Loggingkonfiguration oder Vollständigkeit eines Paketlaufs.
+
+Freitextdecoder, Fehlerursachen oder Propagationsgruppen, Retry-/Loop-Erkennung,
+exklusive Taskzeiten, CPU-Zeit, kritischer Pfad, Zeilenfluss, Durchsatz,
+Lookup-/Cachewerte, Historie, eigene Kennzahlen und DTSX-/SSISDB-Korrelation
+gehören nicht zu diesem Slice. Der bestehende Meldungsdefault und seine
+vollständigen gespeicherten Texte bleiben erhalten.
+
+### B. Aufruf, Kompatibilität und Ausgabeversionierung
+
+Die bestehenden 20 Parameter behalten Position, Namen, Typ, Default und
+Bedeutung. Ausschließlich am Ende der Signatur wird folgender Parameter
+ergänzt; vorhandene positionale Aufrufe behalten dadurch ihre Zuordnung:
+
+| Position | Parameter | Typ und Default | Bedeutung |
+|---|---|---|---|
+| 21 | `@IncludeTaskAnalysis` | `bit = 0` | Explizites Opt-in für beide neuen Mengen; NULL wird wie 0 behandelt. |
+
+Bei 0 bleiben RAW9, die neun TABLE-Namen, die neun JSON-Arrays,
+SchemaVersion 1, die vier sourceStatus-Zeilen und das bisherige CONSOLE-Schema
+unverändert. Es gibt weder neue leere Zusatzarrays noch zusätzliche Status-
+oder Qualitätszeilen. Unvermeidlich aufrufabhängige Zeitwerte werden bei
+späteren Regressionsvergleichen nur nach dem bestehenden Vertrag verglichen.
+
+Bei 1 liefert RAW die bisherigen neun Resultsets in unveränderter Reihenfolge,
+anschließend `taskDurations` und `taskLoggingCoverage`, insgesamt elf.
+Die 94 Spalten der bisherigen neun Schemas behalten Typ und Reihenfolge.
+moduleStatus.SchemaVersion und die SchemaVersion der JSON-Metadaten sind 2.
+JSON ergänzt genau die beiden gleichnamigen Arrays sowie in den Metadaten
+`TaskAnalysisCatalogVersion` als JSON-Zahl 1. Ein angefordertes Array bleibt
+auch bei Fehler oder Leermenge vorhanden und enthält dann `[]`.
+
+TABLE akzeptiert bei eingeschaltetem Opt-in die elf Namen. Mappings für einen
+neuen Namen bei ausgeschaltetem Opt-in sind ungültig und werfen vor jedem
+Quellzugriff unverändert 51011. Ein gültiger benannter Export erhält auch bei
+semantisch ungültigen Fachparametern seine typisierten leeren Zielschnemas.
+Die übrige Reihenfolge Hilfe, Ausgabemodus, TABLE-Vorbereitung und fachliche
+Parameterprüfung bleibt wie in Revision 3. Hilfe greift auf keine Quelle zu.
+Ein teilweises gültiges Mapping folgt dem bestehenden Frameworkvertrag;
+unbenannte Mengen werden nicht in ein anderes Ziel geschrieben.
+
+CONSOLE bleibt genau ein Resultset. Bei Opt-in werden nach den bestehenden
+Spalten zusätzlich `BeobachteteQuellen bigint`, `GueltigeIntervalle bigint`
+und `UngeklaerteGrenzereignisse bigint` angefügt. Sie zählen den intern
+abgeleiteten Bestand vor Exportbegrenzung: verschiedene nicht-NULL Source-IDs,
+gültige EXECUTE-/VALIDATE-Paare sowie ungepaarte Start-/Endereignisse,
+mehrdeutige Einzelgrenzen und erkannte Paarereignisse ohne Source-ID.
+Ein zeitlich ungültiges, aber zugeordnetes Paar zählt nicht als ungeklärte
+Grenze; es bleibt über die neuen Detailmengen sichtbar. Bei gültigem leerem
+Puffer sind die drei Zähler 0, vor erfolgreicher Zusatzableitung NULL.
+Der erste Fehlertext und die bisherigen Spaltenwerte bleiben erhalten,
+abgesehen von den ausdrücklich erweiterten Modulstatusregeln in Abschnitt F.
+NONE liefert weiterhin kein fachliches Resultset; angefordertes JSON bleibt
+modusunabhängig. Print-Ausgaben erzeugen keine Zusatzgrids.
+
+### C. Ereigniskatalog, Identität und Zeitbasis
+
+Katalogversion 1 enthält exakt die folgenden strukturellen Zuordnungen.
+Die Eventnamen werden unverändert und gemäß CS_AS verglichen. Sprache oder
+Inhalt von message werden weder für Paarbildung noch für Kennzahlen verwendet.
+
+| Eventnamen | Rolle in dieser Erweiterung |
+|---|---|
+| `OnPreExecute`, `OnPostExecute` | Start und Ende der Paarart EXECUTE. |
+| `OnPreValidate`, `OnPostValidate` | Start und Ende der Paarart VALIDATE. |
+| `PackageStart`, `PackageEnd` | Bekannte andere Ereignisse; ihre bestehende PACKAGE-Auswertung bleibt v1 vorbehalten. |
+| `OnError`, `OnTaskFailed`, `OnWarning`, `OnQueryCancel` | Bekannte andere Ereignisse; keine Ableitung von Erfolg, Retry oder Ursache. |
+| Alle übrigen Nicht-NULL Eventnamen | Für diesen Katalog nicht interpretiert; keine Freitext- oder Codeheuristik. |
+| NULL | Fehlender Eventname, getrennt von unbekannten Namen gezählt. |
+
+Ein Daueraggregat wird durch ExecutionId, nicht-NULL SourceId und PairKind
+bestimmt. Verschiedene Source-IDs bleiben auch bei gleichem SourceName getrennt.
+Verschiedene Execution-IDs werden nie verbunden. Namen sind Anzeigeattribute.
+Für eine Source-ID wird der einzige vorhandene nicht-NULL Name verwendet,
+wenn alle nicht-NULL Namen ordinal dieselben UTF-16-Bytes besitzen. Gibt es
+mehrere solche Werte, sind SourceName=NULL und SourceNameConflict=1; fehlen
+alle Namen, sind SourceName=NULL und SourceNameConflict=0. Es gibt keine
+Auswahl eines beliebigen MIN-/MAX-Namens und kein Zusammenführen nach Namen.
+
+Der bestehende iterations-Vertrag bleibt maßgeblich: Nach LogId geordnete,
+streng alternierende Start-/Endströme liefern Paare. Ein anfängliches Ende
+und ein abschließender Start bleiben Einzelereignisse. Zwei aufeinanderfolgende
+Starts oder Ends machen die ganze SourceId/PairKind-Gruppe mehrdeutig; ihre
+Grenzereignisse bleiben ungepaart. NULL SourceId wird nicht durch einen
+synthetischen GUID ersetzt. Fehlende Zeitwerte und rückläufige Paarzeiten
+behalten ihre IDs, liefern aber keine Dauer. Ein gleicher Start- und Endzeitwert
+liefert ein gültiges Intervall mit 0 ms. IDs sind nur die bestehende
+Ordnungshilfe, kein Beweis der tatsächlichen Engineausführungsreihenfolge.
+
+EventTime stammt unverändert aus starttime. Die native endtime-Spalte wird
+nicht als Endpunkt verwendet. Es gibt weder erfundene UTC-Konvertierung noch
+Präzisionsgewinn: DurationMs bleibt DATEDIFF_BIG(millisecond,StartTime,EndTime)
+und damit eine Millisekunden-Grenzzählung auf gespeicherten datetime-Werten.
+Der Hersteller beschreibt Source-ID und selektierbare Loggingereignisse in
+[sysssislog](https://learn.microsoft.com/en-us/sql/relational-databases/system-tables/sysssislog-transact-sql?view=sql-server-ver17)
+und [SSIS Logging](https://learn.microsoft.com/en-us/sql/integration-services/performance/integration-services-ssis-logging?view=sql-server-ver17).
+Der Verzicht auf eine Tasktyp- oder Konfigurationsbehauptung ist die bewusste
+Aussagegrenze dieses Vertrags, keine zusätzliche Herstellerzusage.
+
+### D. Zwei zusätzliche physische Schemas
+
+Die folgenden Spaltenfolgen gelten identisch für RAW und TABLE. `NN` bezeichnet
+NOT NULL; alle anderen Felder sind nullable. Jedes Textfeld besitzt explizit
+COLLATE SQL_Latin1_General_CP1_CS_AS. Es gibt keine Identity-Spalte.
+
+| Resultset | Spalten in Reihenfolge |
+|---|---|
+| `taskDurations` | TaskDurationOrdinal bigint NN; ExecutionId uniqueidentifier NN; SourceId uniqueidentifier NN; SourceName nvarchar(4000); SourceType varchar(24) NN; PairKind varchar(16) NN; BasisFirstLogId int NN; BasisLastLogId int NN; EvidenceLogIdsJson nvarchar(max) NN; PairRowCount bigint NN; ValidPairCount bigint NN; UnknownTimePairCount bigint NN; NonMonotonicPairCount bigint NN; OpenStartCount bigint NN; OpenEndCount bigint NN; AmbiguousBoundaryCount bigint NN; TotalDurationMs decimal(38,0); AverageDurationMs decimal(38,6); MinDurationMs bigint; MaxDurationMs bigint; SourceNameConflict bit NN; InputIsTruncated bit NN; MetricStatus varchar(40) NN |
+| `taskLoggingCoverage` | CoverageOrdinal bigint NN; ExecutionId uniqueidentifier NN; SourceId uniqueidentifier; UnresolvedLogId int; SourceName nvarchar(4000); SourceType varchar(24) NN; BasisFirstLogId int NN; BasisLastLogId int NN; EvidenceLogIdsJson nvarchar(max) NN; ObservedEventCount bigint NN; ExecuteStartCount bigint NN; ExecuteEndCount bigint NN; ValidateStartCount bigint NN; ValidateEndCount bigint NN; KnownOtherEventCount bigint NN; UnknownEventNameCount bigint NN; MissingEventNameCount bigint NN; MissingEventTimeCount bigint NN; AmbiguousBoundaryCount bigint NN; UnresolvedBoundaryCount bigint NN; IncompleteBoundaryCount bigint NN; InvalidTimePairCount bigint NN; SourceNameConflict bit NN; InputIsTruncated bit NN; CoverageStatus varchar(40) NN |
+
+`taskDurations` enthält genau eine Zeile je nicht-NULL SourceId und Paarart
+EXECUTE oder VALIDATE mit mindestens einem entsprechenden Grenzereignis.
+PACKAGE wird hier nicht ausgegeben. TaskDurationOrdinal ordnet nach SourceId
+und danach PairKind CS_AS. PairRowCount zählt die zugehörigen internen
+iterations-Zeilen vor deren Exportkappung. Er ist genau die Summe aus
+ValidPairCount, UnknownTimePairCount, NonMonotonicPairCount, OpenStartCount,
+OpenEndCount und AmbiguousBoundaryCount. Die Counts zählen je nach Namen
+Paare oder einzelne Grenzen; sie werden nicht als Taskausführungsanzahl ausgegeben.
+
+Nur PAIRED-Zeilen mit nicht-NULL und nicht negativer DurationMs gehen in
+TotalDurationMs, AverageDurationMs, MinDurationMs und MaxDurationMs ein.
+Ohne gültiges Paar sind alle vier Werte NULL; eine echte Nullzeit bleibt 0.
+Die Summe wird in decimal(38,0) gebildet. Der Mittelwert ist diese Summe
+geteilt durch ValidPairCount und kaufmännisch auf sechs Nachkommastellen
+gerundet; Nullmengen werden nicht als Nenner verwendet. Maximum und Minimum
+beziehen sich auf dieselbe gültige Teilmenge. Summen mehrerer Vorkommen oder
+Quellen sind weder Paketlaufzeit noch CPU-Zeit oder exklusive Ausführungszeit.
+Es gibt keine Subtraktion von Kindzeiten und keine erfundene Parallelitätskorrektur.
+
+MetricStatus verwendet die erste zutreffende Bedingung in dieser Priorität:
+TRUNCATED_INPUT, AMBIGUOUS_BOUNDARIES, INCOMPLETE_BOUNDARIES,
+INVALID_BOUNDARY_TIME, NO_VALID_PAIRS, OBSERVED_INTERVALS. INVALID_BOUNDARY_TIME
+gilt bei UnknownTimePairCount oder NonMonotonicPairCount größer 0.
+Eine gültige Teilmenge darf trotz unvollständiger Grenzen Zahlen liefern;
+Status und Counts kennzeichnen deren begrenzte Basis. Die Werte werden nicht
+als vollständige Kennzahlen des ursprünglichen Laufs bezeichnet.
+
+`taskLoggingCoverage` enthält eine Zeile je nicht-NULL SourceId des gesamten
+gültigen Ereignispuffers. Jedes Ereignis ohne SourceId erhält dagegen seine
+eigene Zeile mit SourceId=NULL und UnresolvedLogId=LogId. Bei bekannten IDs
+ist UnresolvedLogId=NULL. Dadurch werden unbekannte Quellen nicht miteinander
+verschmolzen. CoverageOrdinal ordnet bekannte Source-IDs zuerst nach SourceId,
+danach unbekannte Quellen nach UnresolvedLogId. SourceType ist in beiden
+Mengen konstant UNRESOLVED. Daueranzeigen übernehmen Name und Konfliktflag
+aus der Coveragezeile derselben Source-ID.
+
+ObservedEventCount zählt alle Pufferereignisse dieser Coveragezeile. Die vier
+Grenzcounts, KnownOtherEventCount, UnknownEventNameCount und MissingEventNameCount
+bilden eine disjunkte Zerlegung dieses Counts nach Abschnitt C. MissingEventTimeCount
+zählt davon unabhängig alle Ereignisse mit EventTime=NULL. AmbiguousBoundaryCount
+zählt EXECUTE-/VALIDATE-Einzelgrenzen mit PairStatus AMBIGUOUS;
+UnresolvedBoundaryCount die erkannten vier Grenzereignisse ohne SourceId;
+IncompleteBoundaryCount die einzelnen START_ONLY-/END_ONLY-Grenzen.
+InvalidTimePairCount zählt PAIRED_TIME_UNKNOWN- und NON_MONOTONIC_TIME-Paare.
+PACKAGE-Grenzen erhöhen diese vier Zusatzcounts nicht.
+
+CoverageStatus verwendet die erste zutreffende Bedingung:
+UNRESOLVED_SOURCE, TRUNCATED_INPUT, AMBIGUOUS_BOUNDARIES,
+INCOMPLETE_BOUNDARIES, INVALID_BOUNDARY_TIME, NO_BOUNDARY_OBSERVED,
+OBSERVED_BOUNDARIES. INVALID_BOUNDARY_TIME erfordert InvalidTimePairCount>0.
+NO_BOUNDARY_OBSERVED bedeutet, dass alle vier Grenzcounts 0 sind. Kein Status
+heißt COMPLETE oder LOGGING_DISABLED. Auch OBSERVED_BOUNDARIES belegt keine
+vollständige Loggingkonfiguration oder vollständige Taskliste.
+
+EvidenceLogIdsJson ist in RAW und TABLE ein nvarchar-Wert mit einem gültigen,
+aufsteigend sortierten JSON-Array eindeutiger ganzzahliger Log-IDs. Im äußeren
+JSON wird derselbe Wert als JSON-String transportiert, nicht automatisch als
+verschachteltes Array. Für taskDurations enthält er die Grenzereignis-IDs
+der jeweiligen SourceId/PairKind-Gruppe; für Coverage alle IDs der jeweiligen
+Gruppe beziehungsweise die eine ungeklärte Log-ID. BasisFirstLogId und
+BasisLastLogId sind deren Minimum und Maximum. Der Namensbeleg einer Dauerzeile
+ist über die Coveragezeile derselben Source-ID nachvollziehbar. Es gibt keine
+Annahme, dass zwischen Minimum und Maximum nur Ereignisse dieser Gruppe liegen.
+
+### E. Materialisierung, Grenzen und Eigenlast
+
+Die neuen Mengen entstehen aus dem internen geprüften Puffer und den internen
+iterations-Zeilen vor allen fachlichen Exportkappungen. IncludeTimeline=0
+unterdrückt weiterhin nur den Timelineexport. IncludeMessages=0 verhindert
+weiterhin den fachlichen message-Zugriff; die neuen Kennzahlen benötigen
+weder message noch datacode, computer, operator oder databytes.
+
+@MaxZeilen bleibt die bestehende gemeinsame Ereignis- und Exportgrenze.
+Cap 0 oder NULL bedeutet unbegrenzt und benötigt weiterhin HighImpactConfirmed=1.
+Ein positiver Cap N liest höchstens N+1 Ereignisse; der Sentinel wird nach
+der bestehenden Duplikatprüfung entfernt. Er nimmt an keinem neuen Count,
+Namen, Zeitwert oder Evidenzarray teil. Bei Trunkierung ist InputIsTruncated=1
+in allen neuen Zeilen; es gibt keine Extrapolation auf ausgelassene Ereignisse.
+
+Bei E gepufferten Ereignissen entstehen höchstens E Dauerzeilen und E
+Coveragezeilen. Jede Log-ID steht höchstens einmal in einer Dauerbasis und
+einmal in einer Coveragebasis. Damit sind beide Zeilenmengen bei positivem
+Ereigniscap bereits höchstens N groß; es wird kein separater neuer Ausgabecap
+eingeführt. Der Vertrag verspricht keine feste Speicher-, CPU- oder Lesemenge.
+Die neuen Sortierungen, Aggregationen und Evidenzarrays benötigen zusätzliche
+tempdb- und Arbeitsspeicherkapazität. Kostenklasse bleibt LOW_HIGH_OPT_IN;
+fehlende Quellindizes bleiben beratend und begründen keine zusätzliche Indexpflicht.
+Ein bestehendes MAX-Text-Gate wird durch das Opt-in nicht abgeschwächt.
+
+### F. Quellenstatus, Fehlerisolation und Zeitbudget
+
+Nur bei Opt-in ergänzt sourceStatus genau die Zeile SourceOrdinal=5,
+SourceName=`taskAnalysis`. Die Zeilen 1–4 behalten ihre jeweilige Bedeutung.
+Nach erfolgreicher Zusatzableitung zählen ObservedRowCount und ReturnedRowCount
+die Summe der beiden neuen Zeilenmengen, nicht die Zahl der Tasks oder
+Ereignisse. IsTruncated ist für diese vollständig exportierten abgeleiteten
+Mengen 0; die Eingabetrunkierung steht separat in den Zeilen und in sourceEvents.
+Vor gültiger vollständiger Ableitung sind beide Counts NULL.
+
+Bei gültiger Leermenge lautet der neue Quellenstatus AVAILABLE_EMPTY/0 mit
+Counts 0. Sonst ist er AVAILABLE_LIMITED/1 bei Eingabetrunkierung,
+mehrdeutigen oder offenen EXECUTE-/VALIDATE-Grenzen, ungültigen Paarzeiten,
+fehlender Source-ID oder SourceNameConflict; andernfalls AVAILABLE/0.
+NO_BOUNDARY_OBSERVED und SourceType=UNRESOLVED sind allein keine neue
+Modulpartialität, weil der zugesagte Umfang nur beobachtete Quellen auswertet.
+Schon bestehende v1-Qualitätsgrenzen bleiben unabhängig davon wirksam.
+
+SourceNameConflict ergänzt bei Opt-in genau einen WarningCode
+TASK_ANALYSIS_SOURCE_NAME_CONFLICT mit SourceName taskAnalysis; er zählt nicht
+als native SQL-Exception. Die bisherigen loggingQuality- und findings-Mengen
+werden durch neue Zusammenfassungswarnungen nicht fachlich umdefiniert.
+
+Der bestehende Deadlinezeitpunkt wird weiterverwendet. Vor Beginn der
+Zusatzableitung und vor deren gemeinsamer Übernahme wird das kooperative
+Budget geprüft. Ist es vorher erschöpft, bleibt Zeile 5 NOT_READ/1 mit Grund
+TIME_BUDGET_EXHAUSTED; ist der Schritt begonnen, aber nicht rechtzeitig
+übernahmefähig, lautet sie AVAILABLE_LIMITED/1 mit demselben Grund. In beiden
+Fällen sind Counts NULL und beide neuen Mengen leer. Eine halb veröffentlichte
+Zusatzableitung ist ausgeschlossen. Eine laufende SQL-Anweisung wird durch
+diese Prüfung nicht hart abgebrochen.
+
+Voraussetzung für den Zusatzschritt sind sowohl ein gültiger v1-Ereignispuffer
+als auch die vollständig abgeschlossene bisherige eventDerivation einschließlich
+des gültigen internen iterations-Bestands. Ein leerer Bestand ist nur nach
+erfolgreich beendeter Ableitung ein gültiger Leerfall; der nach einem Fehler
+geleerte Bestand darf nicht als erfolgreiche Nullmenge verwendet werden.
+Eine nur auf den Puffer oder auf einen Statusnamen beschränkte Zulassung
+genügt nicht; der Zusatzschritt benötigt den nachweislich erreichten
+Abschluss des gesamten bisherigen Ableitungsschritts.
+
+Fehlt ein gültiger v1-Ereignispuffer, lautet der Zusatzstatus NOT_READ/1 mit
+Grund NO_VALID_EVENT_BUFFER. Ist der Puffer gültig, aber die bisherige
+Ableitung nicht vollständig abgeschlossen, gilt NOT_READ/1 mit Grund
+PRIOR_DERIVATION_NOT_COMPLETED. In beiden Fällen sind die Zusatzcounts und
+die drei neuen CONSOLE-Zähler NULL und beide Zusatzmengen leer; insbesondere
+werden keine Null-Paarcounts oder NO_VALID_PAIRS als Erfolg veröffentlicht.
+Der ursprüngliche Modulstatus und das ursprüngliche native Fehlerpaar bleiben
+erhalten. Bei einem semantisch ungültigen Aufruf gilt INVALID_PARAMETER als
+Grund. V1-Hilfe erzeugt auch diese Zeile nicht.
+Ein nativer Fehler nur im Zusatzschritt wird in Zeile 5 mit dem bestehenden
+nativen Klassifikationsvertrag und dem echten Fehlerpaar erhalten; beide
+Zusatzmengen werden verworfen, die schon gültigen bisherigen Fachmengen bleiben
+erhalten. Die erste native Fehlerpaarung aus den Schritten 1–4 hat Vorrang
+vor einer Paarung aus Schritt 5. Die beiden neuen Zeitbudgetfälle ergänzen
+genau einen TASK_ANALYSIS_TIME_BUDGET_EXHAUSTED-Warningeintrag; ein tatsächlicher
+Zusatzfehler genau einen TASK_ANALYSIS_ERROR-Eintrag ohne interpolierten Quelltext.
+
+Zusätzliche Partialität setzt moduleStatus und IsPartialOut auf 1. War der
+bisherige Modulstatus AVAILABLE, AVAILABLE_EMPTY oder AVAILABLE_LIMITED,
+wird er bei einer begrenzten oder fehlgeschlagenen Zusatzableitung
+AVAILABLE_LIMITED; sonst bleibt der schon schwerere v1-Status erhalten.
+StatusCodeOut folgt dem finalen moduleStatus. Die nativen Error-OUTPUTs
+behalten die erste tatsächlich erhobene Fehlerpaarung. Ein gespeichertes
+OnError, ein Namenskonflikt und ein Zeitbudgethinweis erzeugen keine neue
+native Fehlernummer. Die drei neuen CONSOLE-Zähler sind bei verworfener oder
+nicht gestarteter Zusatzableitung NULL. NULL-Fehlerwerte sind kein PASS-Beleg.
+
+### G. Geplanter synthetischer Abnahmeumfang
+
+Alle Fälle sind geplant und NOT_EXECUTED. Die spätere Implementierung muss
+eigene kompatible Quellen verwenden, unabhängige Sollwerte festlegen und die
+neuen Schemas einschließlich Datentypen, Collation, NULL-Eigenschaften und
+Spaltenreihenfolge physisch vergleichen. Alle neuen TABLE-/JSON-Felder werden
+miteinander verglichen. Davon getrennt prüft ein unabhängiges Referenzorakel
+Identitäten, Mitgliedschaft der Evidenz-IDs, Paarcounts, Aggregationen und Status.
+TABLE-/JSON-Gleichheit allein ist kein unabhängiger fachlicher Nachweis.
+
+| Fall | Eingabe und eigenständiges Soll |
+|---|---|
+| S01 Wiederholungen | Eine Source-ID hat VALIDATE 0–1 s sowie EXECUTE 2–4 s und 6–9 s in Log-ID-Reihenfolge. VALIDATE: ein gültiges Paar und 1000 ms. EXECUTE: zwei gültige Paare, Summe 5000, Mittelwert 2500.000000, Minimum 2000, Maximum 3000 ms. Coverage zählt sechs Ereignisse; ExecuteStart/End je 2, ValidateStart/End je 1. |
+| S02 Gleiche Namen und Parallelität | Zwei verschiedene Source-IDs tragen denselben Namen; Intervalle 0–4 s und 1–3 s. Zwei getrennte 4000-/2000-ms-Aggregate; keine Paketdauer von 6000 ms, keine Typ- oder Elternzuordnung. |
+| S03 Offene Grenzen | End vor dem ersten Start und Start nach dem letzten Ende bleiben Einzelgrenzen; vorhandene eindeutige Zwischenpaare behalten ihre beobachteten Dauern. Keine Behauptung eines tatsächlich hängenden Tasks. |
+| S04 Mehrdeutigkeit | Start, Start, End derselben SourceId/Paarart: drei mehrdeutige Einzelgrenzen, kein gültiges Paar und vier NULL-Dauerwerte. Ein anderer gültiger Source-/Paarartstrom bleibt getrennt. |
+| S05 Zeitwerte | Fehlende Paarzeit und rückläufige Paarzeit liefern je keinen Dauerwert; gleiche Zeit ergibt 0 ms. Stundenübergreifende Intervalle und datetime-Grenzen prüfen DATEDIFF_BIG ohne int-Verengung. |
+| S06 Identitäten und Namen | Zwei NULL Source-IDs bleiben zwei Coveragezeilen mit ihren ursprünglichen Log-IDs, ohne Dauerzeile. Andere Execution-ID bleibt ausgeschlossen. Namenskonflikte einschließlich Groß-/Kleinschreibung und nachgestellter Leerzeichen setzen nur bei ordinal verschiedenen nicht-NULL Namen das Konfliktflag. |
+| S07 Logginglücken | Quellen mit ausschließlich OnError, unbekanntem Eventnamen beziehungsweise NULL Eventnamen erhalten ihre zutreffenden Counts und NO_BOUNDARY_OBSERVED; keine frei erfundenen Tasks oder Konfigurationsdiagnosen. Kein Ereignis ergibt leere neue Mengen, gültige Counts 0 und keine Taskliste. |
+| S08 Eingabegrenze | Caps 1, 2 und vollständig: ausschließlich Mitgliedschaft im tatsächlich gelesenen Puffer bestimmt Counts und Namen. Ein Sentinel mit Konfliktname oder Ende darf die neue Ableitung nicht beeinflussen. Doppelte IDs auch im Sentinel verwerfen weiterhin den gesamten Puffer vor jeder Ableitung. |
+| S09 Neue Ausgabe | Opt-in liefert RAW11, elf benannte JSON-Arrays und physische Zielschemas; CONSOLE1 besitzt genau drei neue typisierte Spalten, NONE0 keine Grids. Evidenz-ID-Strings bleiben ordinal gleich und parsebar. |
+| S10 V1-Kompatibilität | Ausgelassener neuer Parameter, 0 und NULL behalten die alte Signaturzuordnung und RAW9/JSON9/TABLE9/CONSOLE1. Bei ausgeschaltetem Opt-in werden die neuen TABLE-Namen mit 51011 zurückgewiesen. |
+| S11 Meldungsopt-out | IncludeMessages=0 benötigt die message-Spalte nicht fachlich und liefert dieselben neuen Kennzahlen; IncludeTimeline=0 ändert nur den bestehenden Timelineexport. Vollständige Meldungen und Erstfehlerzuordnung bleiben bei IncludeMessages=1 unverändert. |
+| S12 Quelle und Berechtigung | Fehlende oder inkompatible Quelle, verweigerter Zugriff und bestehende High-Impact-Gates verhindern die Zusatzableitung ohne Ersatzquelle; keine falschen Nullmengen, kein natives Ersatzfehlerpaar. |
+| S13 Budget und Zusatzfehler | Kontrollierte spätere Testeinbringung vor beziehungsweise innerhalb des Zusatzschritts prüft NOT_READ gegen verworfene begonnene Ableitung, leere Zusatzmengen und Erhaltung der bisherigen gültigen Fachmengen. Eine zusätzliche Gegenprobe lässt sourceEvents bestehen und eventDerivation nativ scheitern: Trotz gültigem Puffer muss taskAnalysis NOT_READ/1 mit PRIOR_DERIVATION_NOT_COMPLETED, NULL-Counts und NULL-CONSOLE-Zählern sowie leeren neuen Arrays bleiben; ursprünglicher Status und Fehler bleiben erhalten. Tatsächlicher eigener SQL-Fehler und synthetischer Zeitbudgethinweis bleiben getrennt. |
+| S14 Caller und Mengenbasis | Originale Calleroptionen, Locktimeout und Transaktionszahl bleiben erhalten. PairRowCount-Zerlegung, disjunkte Coveragecounts, eindeutige Evidenz-IDs, gültige 0-Zeit, NULL statt falscher 0 und dezimale Mittelwertrundung werden unabhängig geprüft. |
+
+Für S13 bleibt die öffentliche Signatur bei genau 21 Parametern. Es werden
+keine Produktions-Faultparameter, versteckten Testschalter oder Produkt-,
+Lab- und System-Overrides eingeführt. Kontrollierte Stufen- und Deadlinefälle
+werden ausschließlich als synthetische Pfadprüfungen in einem getrennten
+privaten Harness mit quellhashgebundenen extrahierten Originalstufen geplant.
+Eine dort tatsächlich ausgelöste eigene SQL-Exception kann durch direkte
+native Gegenprobe ihre Nummer und ihren Text belegen. Sie ist damit kein
+natürlich auftretender Fehler des unveränderten Analyzers und kein Ersatz
+für dessen spätere Original-SUT-Abnahme. Stufenprüfung und Original-SUT-Lauf
+werden in der Ergebnisevidenz ausdrücklich getrennt geführt.
+
+Die spätere Aufrufvorlage ist derzeit ausdrücklich nicht ausführbar, weil
+der zusätzliche Parameter und die Zusatzschemas noch nicht implementiert sind:
+
+```sql
+EXEC [monitor].[USP_SsisLegacyLogAnalysis]
+    @LoggingDatabase=N'ExampleSsisTaskLogs',
+    @ExecutionId='00000000-0000-0000-0000-000000000001',
+    @MaxZeilen=0,
+    @HighImpactConfirmed=1,
+    @ResultSetArt='RAW',
+    @IncludeTaskAnalysis=1;
+```
+
+### H. Geplante begrenzte native Abnahme und Cleanup
+
+Auch N01 und N02 sind NOT_EXECUTED. Sie dürfen erst nach konkreter menschlicher
+Vertrags- und Umsetzungsfreigabe und einem vor Effekten festgelegten eigenen
+endlichen Abnahmebudget begonnen werden. Die historische Vierfälleabnahme
+des v1-Providers und ihre geschlossenen Budgets werden nicht neu gestartet.
+
+| Szenario | Eigene Paketkonstellation | Passkriterium |
+|---|---|---|
+| N01 Serielle Wiederholung | Ein eigenes Paket führt denselben Task in drei kontrollierten Vorkommen aus. VALIDATE- und EXECUTE-Logging werden für die eigenen Objekte aktiviert. | Tatsächliche SDK-Ereignisse und Providerzeilen sind an Paketbytes, Execution-ID und Source-IDs gebunden. Beobachtete Paare und Summen entsprechen einem separat berechneten Orakel auf den gespeicherten Zeiten. Drei Execute-Vorkommen müssen unabhängig belegt sein; die Anzahl der Validierungen wird nicht pauschal als drei angenommen. |
+| N02 Parallelität und selektives Logging | Ein eigenes Paket enthält getrennte parallele Ausführungsquellen mit gleichem Anzeigenamen und einen eigenen Task mit bewusst unterdrücktem Logging. | Gleiche Namen werden nicht verbunden; gültige Dauerwerte sind keine CPU-/Paketzeit. Der nicht protokollierte Task erhält keine erfundene Analyzerzeile. Der Analyzer behauptet weder vollständige Taskabdeckung noch die Ursache fehlender Ereignisse. |
+
+Vor Arrange werden aktuelle öffentliche Lab-Quelle, erreichbare Windows-/SQL-/
+SSIS-Umgebung, Zugangsart, Berechtigungen und Eigentumsbindungen aufgenommen.
+Analyze verantwortet seine eigenen synthetischen Pakete, Logging- und
+Frameworkdatenbanken sowie das unabhängige Orakel. Eine zusätzliche vom Lab
+gelieferte fachliche Fixture wird nicht vorausgesetzt. Falls eine eigene
+Umgebung benötigt wird, verlangt deren konkrete Nutzung die hierfür geltende
+separate Freigabe; dieser Vertragsauftrag startet oder erweitert kein Lab.
+
+Die später auszuführenden Schritte sind: eigene Objektintents und Inventar
+sichern, unveränderte installierte Produkt-/Helperbytes binden, die beiden
+Pakete erzeugen und deren tatsächliche Komponenten-/Source-IDs auslesen,
+N01 und N02 tatsächlich ausführen, Originalcallbacks und Providerzeilen vor
+Assertions speichern, Referenzwerte separat berechnen und die neuen Consumer
+mit den tatsächlich erreichten IDs aufrufen. Vollständiger Puffer und ein
+gezielter Cap prüfen Menge und Trunkierung; alle Ausgabearten verwenden
+jeweils ihren eigenen aufrufgebundenen JSON-Vergleich. Das Caller- und
+Quelleninventar wird vor eigenem Cleanup erneut geprüft.
+
+Die spätere Abnahme liefert Paket-/Source-/Produktbindungen, Originalcounts,
+Referenzformeln, physische neue Schemas, TABLE-/JSON-Parität und ausdrücklich
+ausgewiesene unabhängige Fachprüfungen. Fehlversuche und NOT_EXECUTED-Teile
+bleiben erhalten. Ein beobachteter Native-Ausgang allein qualifiziert keine
+Analyzerkennzahl. Rohwerte und Runtimeidentitäten bleiben privat; für eine
+Repositorylieferung sind ausschließlich abstrahierte synthetische Ergebnisse
+und geeignete Provenienz zulässig.
+
+Im Erfolg und Fehlerfall werden nur eindeutig eigene Datenbankobjekte,
+Pakete und Gasttemporärdaten über ihre vorab gesicherten Identitäten bereinigt.
+Eine eigene VM wird ausschließlich über ihren öffentlichen, exakt gebundenen
+Lab-Lifecycle behandelt. Fremde Runs, Pakete und erhaltene Fixtures werden
+weder geändert noch entfernt. Cleanupfehler bleiben vom Primärfehler getrennt
+und verhindern eine vollständige Abschlussbehauptung. Policyblockierte
+Dateilöschungen werden nicht über eine andere API wiederholt. Ein bewusst
+erhaltenes eigenes Objekt wird mit Grund und sicherem Folgezustand ausgewiesen.
+
+### I. Review, spätere Lieferung und Freigabegrenze
+
+Der Vertragsreview prüft insbesondere Kompatibilität, Identität ohne
+Tasktypraten, konservative Paarbildung, genaue Counts und Evidenzbasis,
+fehlende gegen echte Nullwerte, Fehlerisolation, Zeitgrenzen, Datenschutz und
+die Trennung von Outputparität und unabhängigem Orakel. Ein abgeschlossener
+Review ist keine menschliche Implementierungs- oder Runtimefreigabe.
+
+Erst nach solcher Freigabe folgen Produktcode, neue Tests, Inventare,
+betroffene Installer und Anleitungen als ein eigener Lieferabschnitt.
+Die Testauswahl folgt ausschließlich der CI_Test_Strategy: impact-basierte
+SQL-2025-Prüfung für ausführbare Änderungen und gezieltes Windows-Gate für
+die neuen nativen Fähigkeiten; keine pauschale Wiederholung älterer Engines.
+Exakte Head-CI, reguläre MatchHead-Integration und eigenes Cleanup bleiben
+für die spätere Produktlieferung verbindlich. Dieser Entwurf trägt keine
+neue Fähigkeit in aktive Inventare ein und ändert weder SSIS-001
+PARTIAL_PRODUCT_FUNCTION noch WI-0009 GATE-0001.
