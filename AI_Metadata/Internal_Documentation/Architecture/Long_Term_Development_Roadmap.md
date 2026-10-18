@@ -198,6 +198,14 @@ Graph, Spatial, XML, FILESTREAM und benutzerdefinierte Typen bleiben zunächst i
 
 ### `SSIS-001`
 
+Der zusätzlich freigegebene begrenzte Legacy-Slice v1.1.0 liefert opt-in
+beobachtete EXECUTE-/VALIDATE-Daueraggregate und Ereignisabdeckung. Die
+[Taskintervall-Abnahme](../../../Documentation/Architecture/SSIS_Package_and_Execution_Analysis_Plan.md#taskintervalle-und-loggingabdeckung-abnahme-vom-18-oktober-2026)
+belegt zwei neue Windows-Szenarien und die synthetischen Vertragsfälle.
+Tasktypen, Looprekonstruktion, Phasen, Durchsatz, Historie und weitere
+Katalog-/Rollenabnahmen bleiben offen; SSIS-001 bleibt partiell.
+
+
 Der Katalogkern und die freigegebene Legacy-Revision 3 sind geliefert. Die [begrenzte Legacy-Providerabnahme](../../../Documentation/Architecture/SSIS_Package_and_Execution_Analysis_Plan.md#legacy-providerabnahme-vom-18-oktober-2026) bestätigt vier eigene synthetische Fälle mit zwölf gebundenen Cap-Einzelbelegen auf Windows SQL/SSIS 17.0.1000.7. Neun frühere erfolgreiche Einzelbelege werden wiederverwendet; Native11 und Native12 bleiben insgesamt fehlgeschlagen. Weitere Interpretation, zusätzliche Katalogquellen und Rollen bleiben offen; SSIS-001 bleibt PARTIAL_PRODUCT_FUNCTION. Die folgenden Prioritätsangaben beschreiben die frühere Ausgangsfolge.
 
 Nach dem abgeschlossenen Phase-0-Vertrag folgt zunächst der statische DTSX-v2-Parser. Inventar, Control-Flow- und Data-Flow-Graphen werden vor Regelengine, SQL-Metadatenprüfung und Laufzeitadaptern stabilisiert. Dateisystem- und ISPAC-Zugriffe bleiben ein getrenntes Paket.

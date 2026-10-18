@@ -46,8 +46,14 @@ mit vollständigem erstem beobachtetem Fehlertext. TABLE schreibt ausschließlic
 benannte Ziele; JSON enthält denselben begrenzten Exportstand einschließlich
 NULL-Feldern und leerer Arrays. NONE unterdrückt fachliche Grids.
 
-Die 20 Parameter und neun nativen Schemas stehen im
-[freigegebenen Vertrag](../../Architecture/SSIS_001_Phase0_Public_Contract.md#konkreter-legacy-vertrag-vom-16-oktober-2026).
+Der bisherige Vertrag mit neun Schemas bleibt ohne Opt-in erhalten.
+Version 1.1.0 ergänzt ausschließlich an Position 21 `@IncludeTaskAnalysis bit=0`.
+Bei 1 folgen `taskDurations` und `taskLoggingCoverage`: RAW11, elf TABLE-Namen
+und JSON-Arrays, SchemaVersion 2 und eine fünfte Quellenstatuszeile.
+CONSOLE ergänzt im selben Grid die drei Zähler BeobachteteQuellen,
+GueltigeIntervalle und UngeklaerteGrenzereignisse. Ohne erfolgreiche
+Zusatzableitung sind diese Zähler NULL. Die exakten 23-/25-Spaltenschemas
+stehen in der [freigegebenen Erweiterung](../../Architecture/SSIS_001_Phase0_Public_Contract.md#freigegebene-erweiterung-legacy-tasklaufzeiten-und-loggingabdeckung-vom-18-oktober-2026).
 
 ## Eine Zeile bedeutet
 
@@ -56,6 +62,14 @@ enthält die zeitliche Folge von OnError, OnTaskFailed, OnWarning und OnQueryCan
 execution fasst ausschließlich den analysierten Puffer zusammen. iterations
 enthält konservative Start-/Endpaare oder ausdrücklich ungepaarte Ereignisse.
 loggingQuality beschreibt konkrete Interpretationsgrenzen dieses Ausschnitts.
+
+Eine taskDurations-Zeile fasst die konservativen EXECUTE- oder VALIDATE-Paare
+einer beobachteten Source-ID zusammen. Nur zeitlich gültige Paare gehen in
+Summe, Mittelwert, Minimum und Maximum ein. Echte 0 ms bleiben 0; ohne gültiges
+Paar bleiben die vier Kennzahlen NULL. taskLoggingCoverage beschreibt
+beobachtete Ereignisarten und konkrete Zuordnungsgrenzen. NULL-Source-IDs
+bleiben einzelne ursprüngliche Log-IDs. Namen sind keine Identität;
+ordinal verschiedene Namen einer ID setzen das Konfliktflag.
 
 ## So lesen
 
@@ -99,6 +113,14 @@ Ein fehlender Fehlertext bei eingeschalteten Meldungen wird dagegen sichtbar
 als ERROR_MESSAGE_MISSING ausgewiesen. Fehlende Duplicate-Warnungen beweisen
 keine eindeutigen Lookup-Referenzdaten; die Warnung hängt vom Cachemodus ab.
 
+Mit `@IncludeTaskAnalysis=1` können wiederholte beobachtete Intervalle verglichen
+werden. Ihre Summe ist weder Paket-, CPU- noch exklusive Taskzeit. SourceType
+bleibt UNRESOLVED; die Quelle kann auch ein Container oder Paket sein.
+Ein nicht protokollierter Task erhält keine erfundene Zeile. Die Auswertung
+bestätigt keine vollständige Loggingkonfiguration, Loop- oder Retryanzahl.
+EvidenceLogIdsJson enthält einen JSON-Arraystring mit den ursprünglichen
+Log-IDs; der äußere JSON-Vertrag transportiert diesen Wert als String.
+
 ## Leere oder partielle Ausgabe
 
 AVAILABLE_EMPTY bedeutet keine sichtbaren Ereignisse für diese GUID; die
@@ -108,6 +130,14 @@ getrennt. Indexmetadaten sind beratend; ihr Fehler beendet die gültige
 Ereignissammlung nicht. Das erste tatsächliche native SQL-Fehlerpaar bleibt
 in den Modul-OUTPUTs erhalten. SSIS-Meldungstexte werden nicht als SQL-Exception
 umgedeutet. Ungültige TABLE-Mappings werfen Frameworkfehler 51011.
+
+Der Zusatzschritt verwendet denselben N+1-Puffer und die vollständig
+abgeschlossene bisherige Ableitung. Bei ungültigem Puffer oder gescheiterter
+vorheriger Ableitung bleiben die neuen Mengen leer und ihre Counts NULL;
+PRIOR_DERIVATION_NOT_COMPLETED wird nicht als erfolgreiche Nullmenge ausgegeben.
+Ein eigener Zusatzfehler verwirft beide neuen Mengen gemeinsam und erhält
+gültige bisherige Ergebnisse sowie das erste tatsächlich erhobene Fehlerpaar.
+Das gemeinsame kooperative Zeitbudget wird vor Beginn und vor Übernahme geprüft.
 
 ## Eigenlast und Grenzen
 
@@ -211,3 +241,13 @@ insgesamt FAILED_NOT_QUALIFIED, Native13 besteht. RAW mit neun, CONSOLE mit
 einem und NONE ohne Resultset sowie der vollständige erste Fehlertext sind
 geprüft. Weitere Rollen, native Engines und vertiefte Interpretation bleiben
 offen. SSIS-001 bleibt PARTIAL_PRODUCT_FUNCTION.
+
+## Abnahme der Taskerweiterung
+
+Die [abgegrenzte Abnahme von v1.1.0](../../Architecture/SSIS_Package_and_Execution_Analysis_Plan.md#taskintervalle-und-loggingabdeckung-abnahme-vom-18-oktober-2026)
+bestätigt die neuen synthetischen Vertragsfälle und zwei tatsächlich
+ausgeführte Windows-Szenarien für Wiederholung, gleiche Anzeigenamen,
+Parallelität und selektives Logging. Das unabhängige native Orakel prüft
+die 48 neuen Felder; Ausgabeparität und historische v1-Nachweise bleiben
+getrennte Aussagen. Der Compatibility Level der privaten Windows-Captures
+ist UNKNOWN. Weitere Engines und allgemeine Rollen sind damit nicht qualifiziert.

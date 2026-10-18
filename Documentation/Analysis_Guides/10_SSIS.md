@@ -13,3 +13,10 @@ Der Kataloganalyzer liest genau eine explizite lokale SSISDB-Ausführung. Er tre
 ## [monitor].[USP_SsisLegacyLogAnalysis]
 
 Der Legacy-Analyzer liest eine explizite Datenbank und genau eine GUID aus einer vorhandenen sysssislog-kompatiblen Tabelle. Meldungstexte aller Ereignisarten bleiben standardmäßig erhalten. Zusätzliche Indizes sind keine Voraussetzung. Die [Anleitung](Procedures/USP_SsisLegacyLogAnalysis.md) und der [freigegebene Vertrag](../Architecture/SSIS_001_Phase0_Public_Contract.md#konkreter-legacy-vertrag-vom-16-oktober-2026) trennen beobachtete Ereignisse von konservativen Zeitpaaren. Die [begrenzte Providerabnahme](../Architecture/SSIS_Package_and_Execution_Analysis_Plan.md#legacy-providerabnahme-vom-18-oktober-2026) bestätigt vier synthetische Paketfälle mit zwölf gebundenen Cap-Prüfungen auf Windows SQL/SSIS 17.0.1000.7; neun Einzelbelege werden aus früheren insgesamt fehlgeschlagenen Versuchen wiederverwendet. Weitere Funktionen und Rollen bleiben offen; SSIS-001 bleibt PARTIAL_PRODUCT_FUNCTION.
+
+Version 1.1.0 ergänzt mit `@IncludeTaskAnalysis=1` beobachtete EXECUTE-/VALIDATE-
+Daueraggregate und Ereignisabdeckung je Source-ID. Ohne Opt-in bleiben die
+bisherigen neun Ausgabegruppen erhalten. Die [Taskintervall-Abnahme](../Architecture/SSIS_Package_and_Execution_Analysis_Plan.md#taskintervalle-und-loggingabdeckung-abnahme-vom-18-oktober-2026)
+trennt synthetische Gegenproben, zwei neue native Szenarien und
+Ausgabeparität. SourceType bleibt UNRESOLVED; weder vollständige Tasklisten
+noch Loggingkonfiguration, Schleifenanzahl oder CPU-Zeit werden behauptet.

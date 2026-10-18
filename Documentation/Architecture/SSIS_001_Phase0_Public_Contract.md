@@ -536,20 +536,20 @@ Die Umsetzung bindet eine neue kanonische Einzelquelle unter `Code/10_SSIS/` in 
 
 Die synthetische Integrationssuite 202 prüft das kompatible Tabellenformat. Die getrennte [Providerabnahme vom 18. Oktober 2026](SSIS_Package_and_Execution_Analysis_Plan.md#legacy-providerabnahme-vom-18-oktober-2026) bestätigt vier tatsächlich ausgeführte synthetische Paketfälle mit zwölf gebundenen Cap-Einzelbelegen auf Windows SQL/SSIS 17.0.1000.7. Neun Einzelbelege stammen aus insgesamt fehlgeschlagenen früheren Versuchen; ein neuer gemeinsamer Vierfällelauf wird nicht behauptet. Zusätzliche Rollen und ältere native Engines bleiben offen. Der öffentliche Revision-3-Vertrag bleibt unverändert.
 
-## Entwurf: Legacy-Tasklaufzeiten und Loggingabdeckung vom 18. Oktober 2026
+## Freigegebene Erweiterung: Legacy-Tasklaufzeiten und Loggingabdeckung vom 18. Oktober 2026
 
-**Status:** ENTWURF, menschliche Vertragsfreigabe ausstehend.
+**Status:** Vertrag am 18. Oktober 2026 ausdrücklich menschlich freigegeben; Umsetzung und Abnahme werden getrennt nachgewiesen.
 
 **Zuordnung:** begrenzte Erweiterung von `SSIS-001`, Backlogschritt 1 und Laufzeitteil von Schritt 2.
 
-**Liefergegenstand dieses Entwurfs:** Vertrag und Abnahmeplan; keine Implementierung, Installation, Runtimeabnahme oder Produktfreigabe.
+**Liefergegenstand:** begrenzte Erweiterung um beobachtete Taskintervalle und Ereignisabdeckung, einschließlich Abnahme und regulärer PR-Lieferung.
 
-Die nachfolgenden Festlegungen sind ein konkret prüfbarer Vorschlag. Sie ändern
-den zuvor freigegebenen Revision-3-Vertrag nicht. Die vorgeschlagene
+Die nachfolgenden Festlegungen konkretisieren die freigegebene Erweiterung.
+Der Revision-3-Vertrag bleibt für Aufrufe ohne Opt-in erhalten. Die
 Procedureversion ist 1.1.0; die Opt-in-Ausgabe verwendet SchemaVersion 2.
-Beides wird erst nach ausdrücklicher Freigabe und tatsächlicher Umsetzung
-in Produktquelle und Inventare übernommen. Alle nachfolgenden Abnahmeszenarien
-haben den Ausführungsstatus NOT_EXECUTED.
+Die Freigabe umfasst die Implementierung und den hier begrenzten Abnahmeplan.
+Die Tabellen in G und H beschreiben Sollfälle; ihr Ausführungsnachweis wird
+im Architekturplan getrennt von dieser Spezifikation geführt.
 
 ### A. Entscheidungsfrage und begrenzter Umfang
 
@@ -841,7 +841,7 @@ nicht gestarteter Zusatzableitung NULL. NULL-Fehlerwerte sind kein PASS-Beleg.
 
 ### G. Geplanter synthetischer Abnahmeumfang
 
-Alle Fälle sind geplant und NOT_EXECUTED. Die spätere Implementierung muss
+Die folgenden Fälle definieren die synthetischen Abnahmekriterien. Die Implementierung muss
 eigene kompatible Quellen verwenden, unabhängige Sollwerte festlegen und die
 neuen Schemas einschließlich Datentypen, Collation, NULL-Eigenschaften und
 Spaltenreihenfolge physisch vergleichen. Alle neuen TABLE-/JSON-Felder werden
@@ -877,8 +877,7 @@ natürlich auftretender Fehler des unveränderten Analyzers und kein Ersatz
 für dessen spätere Original-SUT-Abnahme. Stufenprüfung und Original-SUT-Lauf
 werden in der Ergebnisevidenz ausdrücklich getrennt geführt.
 
-Die spätere Aufrufvorlage ist derzeit ausdrücklich nicht ausführbar, weil
-der zusätzliche Parameter und die Zusatzschemas noch nicht implementiert sind:
+Die folgende Aufrufvorlage aktiviert ausschließlich den freigegebenen Zusatzumfang:
 
 ```sql
 EXEC [monitor].[USP_SsisLegacyLogAnalysis]
@@ -892,10 +891,10 @@ EXEC [monitor].[USP_SsisLegacyLogAnalysis]
 
 ### H. Geplante begrenzte native Abnahme und Cleanup
 
-Auch N01 und N02 sind NOT_EXECUTED. Sie dürfen erst nach konkreter menschlicher
-Vertrags- und Umsetzungsfreigabe und einem vor Effekten festgelegten eigenen
-endlichen Abnahmebudget begonnen werden. Die historische Vierfälleabnahme
-des v1-Providers und ihre geschlossenen Budgets werden nicht neu gestartet.
+N01 und N02 bilden den freigegebenen neuen nativen Abnahmeumfang. Vor Effekten
+wird ein eigenes endliches Budget festgelegt; Freigabe und Review allein sind
+kein Laufzeitnachweis. Die historische Vierfälleabnahme des v1-Providers und
+ihre geschlossenen Budgets werden nicht neu gestartet.
 
 | Szenario | Eigene Paketkonstellation | Passkriterium |
 |---|---|---|
@@ -908,7 +907,9 @@ Analyze verantwortet seine eigenen synthetischen Pakete, Logging- und
 Frameworkdatenbanken sowie das unabhängige Orakel. Eine zusätzliche vom Lab
 gelieferte fachliche Fixture wird nicht vorausgesetzt. Falls eine eigene
 Umgebung benötigt wird, verlangt deren konkrete Nutzung die hierfür geltende
-separate Freigabe; dieser Vertragsauftrag startet oder erweitert kein Lab.
+Freigabe für eigene Testressourcen. Eine vorhandene geeignete native Umgebung
+kann mit eigenen isolierten Testobjekten verwendet werden; fremde Quellen
+und globale Einstellungen bleiben unverändert.
 
 Die später auszuführenden Schritte sind: eigene Objektintents und Inventar
 sichern, unveränderte installierte Produkt-/Helperbytes binden, die beiden
@@ -945,12 +946,12 @@ fehlende gegen echte Nullwerte, Fehlerisolation, Zeitgrenzen, Datenschutz und
 die Trennung von Outputparität und unabhängigem Orakel. Ein abgeschlossener
 Review ist keine menschliche Implementierungs- oder Runtimefreigabe.
 
-Erst nach solcher Freigabe folgen Produktcode, neue Tests, Inventare,
-betroffene Installer und Anleitungen als ein eigener Lieferabschnitt.
+Die konkrete menschliche Freigabe liegt vor. Produktcode, neue Tests,
+Inventare, betroffene Installer und Anleitungen bilden einen Lieferabschnitt.
 Die Testauswahl folgt ausschließlich der CI_Test_Strategy: impact-basierte
 SQL-2025-Prüfung für ausführbare Änderungen und gezieltes Windows-Gate für
 die neuen nativen Fähigkeiten; keine pauschale Wiederholung älterer Engines.
 Exakte Head-CI, reguläre MatchHead-Integration und eigenes Cleanup bleiben
-für die spätere Produktlieferung verbindlich. Dieser Entwurf trägt keine
-neue Fähigkeit in aktive Inventare ein und ändert weder SSIS-001
-PARTIAL_PRODUCT_FUNCTION noch WI-0009 GATE-0001.
+für die Produktlieferung verbindlich. Die aktive Inventarisierung bleibt auf
+diesen Slice begrenzt. SSIS-001 bleibt PARTIAL_PRODUCT_FUNCTION; weitere
+Backlogfunktionen und WI-0009 GATE-0001 werden dadurch nicht abgeschlossen.

@@ -3,19 +3,19 @@
 **Stand:** 18. Oktober 2026
 **Zweck:** aktuelle ausführbare Entwicklungswelle für `gecompat/SQL_Server_Analyze`
 
-## Vertragsauftrag Legacy-Tasklaufzeiten vom 18. Oktober 2026
+## Freigegebene Legacy-Taskerweiterung vom 18. Oktober 2026
 
-Der Benutzer hat ausschließlich den konkreten Erweiterungsvertrag samt
-Abnahmeplan und die Prüfung durch den bisherigen unabhängigen Reviewer
-beauftragt. Der [begrenzte Vertragsabschnitt](../../../Documentation/Architecture/SSIS_Package_and_Execution_Analysis_Plan.md#priorisierte-entwicklungsreihenfolge-und-abnahme)
-verknüpft den Entwurf für quellenbezogene Daueraggregate und beobachtete
-Loggingabdeckung. Ein neuer optionaler Parameter sowie zwei neue Resultsets
-sind Vorschläge, keine implementierten Schnittstellen. Die bestehenden
-20 Parameter und neun Schemas bleiben unverändert; der Entwurf verlangt
-ausdrückliche menschliche Vertragsfreigabe vor der Umsetzung. Weder
-Implementierung noch native Tests, Labarbeit oder neue CI-Ausführungen sind
-durch diesen Auftrag freigegeben. Sämtliche neuen Abnahmeszenarien bleiben
-NOT_EXECUTED; die bereits abgeschlossenen Budgets bleiben geschlossen.
+Der Benutzer hat den geprüften konkreten Vertrag für Taskintervalle und
+beobachtete Loggingabdeckung freigegeben und die Implementierung samt
+Abnahmeplan und regulärer PR-Lieferung beauftragt. Der freigegebene Entwurf
+besitzt SHA-256 7F53BD932056BA3F8796A5AE2ECFB9B9AC44D2F8A7F6B267FB650DED9C14321C.
+Die [Erweiterungsspezifikation](../../../Documentation/Architecture/SSIS_Package_and_Execution_Analysis_Plan.md#priorisierte-entwicklungsreihenfolge-und-abnahme)
+begrenzt die Lieferung auf Position 21 IncludeTaskAnalysis, zwei Zusatzmengen
+und ihre Status-/Ausgabeverträge. Die vierzehn synthetischen Fallgruppen und
+die zwei neuen nativen Szenarien sind getrennt zu qualifizieren. Die
+abgeschlossenen Vierfälle-Providerprüfungen und ihre Budgets bleiben erhalten.
+Eine Freigabe weiterer vertiefter Legacy- oder SSISDB-Funktionen folgt daraus
+nicht. SSIS-001 bleibt PARTIAL_PRODUCT_FUNCTION; WI-0009 GATE-0001 bleibt offen.
 
 ## Abgeschlossene begrenzte Legacy-Providerabnahme vom 18. Oktober 2026
 
@@ -1942,3 +1942,17 @@ bleibt innerhalb ihrer bestehenden Grenzen ausführbar.
 ## Freigegebene SSIS-Legacy-Umsetzung vom 16. Oktober 2026
 
 Der Benutzer hat die geprüfte Revision 3 ausdrücklich freigegeben. Der [Legacy-Vertrag](../../../Documentation/Architecture/SSIS_Package_and_Execution_Analysis_Plan.md#freigegebener-legacy-kern-vom-16-oktober-2026) enthält 20 Parameter, neun Schemas und gespeicherte Meldungstexte als Default. Zusätzliche Quellindizes sind keine Voraussetzung. Produkt, synthetische Vertragsprüfung, Installer, Inventare und reguläre Integration sind geliefert. Die spätere begrenzte Providerabnahme vom 18. Oktober ist oben dokumentiert; zusätzliche Rollen und weitere Interpretationsfunktionen bleiben offen. Frühere geschlossene Budgets und WI-0009 GATE-0001 bleiben unverändert.
+
+## Begrenzte Taskerweiterung: lokaler Abnahmeabschluss
+
+Der freigegebene IncludeTaskAnalysis-Slice ist implementiert. Vierzehn
+synthetische Fallgruppen einschließlich vier privater extrahierter S13-Pfade
+und enger S06/S12-Gegenproben bestehen. Native N01/N02 bestehen auf
+SQL/SSIS 17.0.5015.4 mit zehn Consumer-Captures und 1456 Prüfungen. Die
+kanonische [Abnahme](../../../Documentation/Architecture/SSIS_Package_and_Execution_Analysis_Plan.md#taskintervalle-und-loggingabdeckung-abnahme-vom-18-oktober-2026)
+trennt unabhängige neue 48-Feld-Prüfung, Outputparität und historische v1-
+Evidenz. Windows-CL ist im Capture nicht separat erhoben und bleibt UNKNOWN.
+Native Versuch 1 scheiterte vor Execute an der lokalen Hash-Cmdlet-Verfügbarkeit;
+Versuch 2 führte beide neuen Pakete aus. Eigene Ressourcen sind entfernt.
+Weitere native Läufe werden aus dem Liefergate nicht abgeleitet. Exakte
+Head-CI und reguläre PR-Integration sind vor dem Lieferabschluss noch offen.

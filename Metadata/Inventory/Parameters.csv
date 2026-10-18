@@ -1964,3 +1964,4 @@ USP_SsisLegacyLogAnalysis,StatusCodeOut,varchar(40),NULL
 USP_SsisLegacyLogAnalysis,IsPartialOut,bit,NULL
 USP_SsisLegacyLogAnalysis,ErrorNumberOut,int,NULL
 USP_SsisLegacyLogAnalysis,ErrorMessageOut,nvarchar(4000),NULL
+USP_SsisLegacyLogAnalysis,IncludeTaskAnalysis,bit,0
