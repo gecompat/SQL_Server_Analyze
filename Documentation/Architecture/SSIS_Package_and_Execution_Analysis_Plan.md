@@ -1545,6 +1545,9 @@ RAW11 beziehungsweise RAW13, TABLE/JSON mit physischem Schema, CONSOLE1,
 NONE0 und der N+1-Präfixfall bestehen. Die Referenzprüfung umfasst 4833
 Prüfschritte einschließlich 14 abgewiesener Mutationen von Format,
 Runtimekennungen, Source, Paar, Menge, NULL, Evidenz und Callerframe.
+Zwei danach gezielt ergänzte Offlinekontrollen entfernen ein Pflichtfeld
+beziehungsweise das Pflichtarray und werden ebenfalls abgewiesen. Diese
+beiden Kontrollen sind getrennt belegt und erfordern keine SUT-Aufrufe.
 Originalzeilen und Callerzustand bleiben vor und nach den Consumeraufrufen
 identisch. Beide eigenen Testdatenbanken sind entfernt, CleanupErrors ist 0
 und das vorherige Datenbankinventar ist restauriert.

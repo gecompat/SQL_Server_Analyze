@@ -16,7 +16,9 @@ wiederholt. Die neue Welle hat höchstens zwei Arrange-/Consumerversuche mit
 je höchstens acht definierten Konstellationen, zwei Delta-/Ergebnisreviews
 desselben Reviewers und vier CI-Heads einschließlich Pflicht-Mainlauf.
 Kosten und Kontingente sind UNKNOWN. Die neue Consumerabnahme besteht mit sechs geänderten Konstellationen,
-4833 Prüfschritten und 14 abgewiesenen Mutationen; neue Paketausführungen: 0.
+4833 Prüfschritten, 14 abgewiesenen Mutationen und zwei zusätzlichen
+Offlinekontrollen für fehlendes Feld beziehungsweise Array; neue
+Paketausführungen: 0.
 Eigene Datenbanken sind entfernt und das Inventar restauriert. Der finale
 Ergebnisreview sowie exakte Head-CI, MatchHead-Integration, Treeidentität,
 Main-Folgeprüfung, Synchronisierung und eigenes Cleanup bleiben Liefergates.
