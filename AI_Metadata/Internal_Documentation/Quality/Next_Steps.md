@@ -3,6 +3,19 @@
 **Stand:** 18. Oktober 2026
 **Zweck:** aktuelle ausführbare Entwicklungswelle für `gecompat/SQL_Server_Analyze`
 
+## Vertragsentwurf für Legacy-Zeilenfluss vom 18. Oktober 2026
+
+Der Benutzer hat ausschließlich den konkreten Erweiterungsvertrag samt
+Abnahmeplan für OnPipelineRowsSent und die Prüfung durch den bisherigen
+Reviewer beauftragt. Der [Entwurfsstand](../../../Documentation/Architecture/SSIS_Package_and_Execution_Analysis_Plan.md#entwurf-legacy-zeilenfluss-vom-18-oktober-2026)
+ergänzt die gelieferte Taskintervall-Erweiterung um geplante typisierte
+Kandidaten und beobachtete Pfadsummen. Er enthält keine Komponentenphasen
+oder Durchsatzberechnung. Der Entwurf ist keine Implementierungs-,
+Veröffentlichungs- oder Runtimefreigabe. Produktcode, Inventare und Installer
+bleiben unverändert; neue fachliche und native Abnahmen sind NOT_EXECUTED.
+Geschlossene frühere Budgets bleiben erhalten. SSIS-001 bleibt
+PARTIAL_PRODUCT_FUNCTION; WI-0009 GATE-0001 bleibt offen.
+
 ## Freigegebene Legacy-Taskerweiterung vom 18. Oktober 2026
 
 Der Benutzer hat den geprüften konkreten Vertrag für Taskintervalle und

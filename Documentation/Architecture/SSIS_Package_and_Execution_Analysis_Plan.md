@@ -1472,3 +1472,16 @@ erhalten. SSIS-001 bleibt PARTIAL_PRODUCT_FUNCTION. Tasktyp- und
 Looprekonstruktion, exklusive Zeit, CPU-Zeit, Phasen, Zeilenfluss, Durchsatz,
 Lookup-Decoder, Historie, eigene Kennzahlen und zusätzliche Katalog- oder
 Rollenabnahmen sind hier nicht geliefert. WI-0009 GATE-0001 bleibt offen.
+
+## Entwurf: Legacy-Zeilenfluss vom 18. Oktober 2026
+
+Nach der gelieferten Taskintervall-Erweiterung liegt der
+[konkrete Vertragsentwurf für OnPipelineRowsSent](SSIS_001_Phase0_Public_Contract.md#entwurf-legacy-zeilenfluss-aus-onpipelinerowssent-vom-18-oktober-2026)
+als begrenzter Mengenanteil aus Backlogschritt 3 vor. Er schlägt ein zusätzliches
+Opt-in mit zwei Mengen für Kandidaten und eindeutig zugeordnete Pfadsummen vor.
+Die erste Kennung des dokumentierten Payloads ist PathID, keine erfundene
+Output-ID. Komponentenphasen und Durchsatz bleiben gesonderte Erweiterungen.
+Der aktuelle Auftrag umfasst ausschließlich Entwurf, Abnahmeplan und Review;
+Produktcode, aktive Inventare und Installer bleiben unverändert. Alle neuen
+synthetischen und nativen Fälle sind NOT_EXECUTED. Eine menschliche Freigabe
+des geprüften Erweiterungsvertrags sowie spätere Runtimeautorität stehen aus.
