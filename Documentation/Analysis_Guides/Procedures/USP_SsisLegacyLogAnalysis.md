@@ -133,7 +133,11 @@ Log-IDs; der äußere JSON-Vertrag transportiert diesen Wert als String.
 
 Mit `@IncludeRowFlowAnalysis=1` wird jede exakt benannte OnPipelineRowsSent-
 Meldung zunächst als Kandidat mit ParseStatus und GroupingStatus ausgegeben.
-Nur das enge englische ORPS_EN_1-Profil wird interpretiert. Eine gespeicherte
+Nur die eng festgelegten englischen Profile ORPS_EN_1 und ORPS_EN_2 werden
+interpretiert. ORPS_EN_2 verlangt zehn Felder und einen Endtrenner; die drei
+Zusatztexte werden vollständig ordinal beziehungsweise auf die festgelegte
+Form geprüft. Die Ausgabe behält die tatsächlichen numerischen Runtime-IDs.
+Eine gespeicherte
 Bytezahl ab der kleineren positiven Spaltenkapazität oder 4096 bleibt
 POTENTIALLY_TRUNCATED; der vollständige Rawtext bleibt bei angefordertem
 Timelineexport erhalten.

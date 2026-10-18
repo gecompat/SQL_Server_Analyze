@@ -62674,13 +62674,17 @@ BEGIN
                 DECLARE @RowMessageBytes int=(SELECT CASE WHEN MaxLength=-1 OR MaxLength>4096 THEN 4096 ELSE MaxLength END
                     FROM [#SsisLegacyLogAnalysis_Columns] WHERE ColumnName=N'message');
                 DECLARE @RowPrefix nvarchar(100)=N'Rows were provided to a data flow component as input. : : ';
+                DECLARE @RowPrefix2 nvarchar(100)=N'Rows were provided to a data flow component as input. :  : ';
                 INSERT [#SsisLegacyLogAnalysis_RowFlowEvents]
                 SELECT ROW_NUMBER() OVER(ORDER BY LogId),@ExecutionId,LogId,SourceId,SourceName,EventTime,
                     CASE WHEN MessageText IS NOT NULL AND DATALENGTH(MessageText)<@RowMessageBytes
-                        AND CONVERT(varbinary(max),LEFT(MessageText COLLATE Latin1_General_100_BIN2,LEN(@RowPrefix+N'#')-1))=CONVERT(varbinary(max),@RowPrefix) THEN 'ORPS_EN_1' END,
+                        AND CONVERT(varbinary(max),LEFT(MessageText COLLATE Latin1_General_100_BIN2,LEN(@RowPrefix+N'#')-1))=CONVERT(varbinary(max),@RowPrefix) THEN 'ORPS_EN_1'
+                         WHEN MessageText IS NOT NULL AND DATALENGTH(MessageText)<@RowMessageBytes
+                         AND CONVERT(varbinary(max),LEFT(MessageText COLLATE Latin1_General_100_BIN2,LEN(@RowPrefix2+N'#')-1))=CONVERT(varbinary(max),@RowPrefix2) THEN 'ORPS_EN_2' END,
                     CASE WHEN MessageText IS NULL THEN 'MESSAGE_MISSING'
                          WHEN DATALENGTH(MessageText)>=@RowMessageBytes THEN 'POTENTIALLY_TRUNCATED'
-                         WHEN CONVERT(varbinary(max),LEFT(MessageText COLLATE Latin1_General_100_BIN2,LEN(@RowPrefix+N'#')-1))<>CONVERT(varbinary(max),@RowPrefix) THEN 'UNSUPPORTED_FORMAT'
+                         WHEN CONVERT(varbinary(max),LEFT(MessageText COLLATE Latin1_General_100_BIN2,LEN(@RowPrefix+N'#')-1))<>CONVERT(varbinary(max),@RowPrefix)
+                          AND CONVERT(varbinary(max),LEFT(MessageText COLLATE Latin1_General_100_BIN2,LEN(@RowPrefix2+N'#')-1))<>CONVERT(varbinary(max),@RowPrefix2) THEN 'UNSUPPORTED_FORMAT'
                          ELSE 'MALFORMED_PAYLOAD' END,
                     NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,'NOT_PARSED',@Truncated
                 FROM [#SsisLegacyLogAnalysis_Buffer]
@@ -62688,14 +62692,14 @@ BEGIN
 
                 ;WITH tokens AS
                 (
-                    SELECT e.LogId,CONVERT(int,j.[key]) AS TokenOrdinal,j.[value] COLLATE SQL_Latin1_General_CP1_CS_AS AS TokenValue
+                    SELECT e.LogId,e.ParserId,CONVERT(int,j.[key]) AS TokenOrdinal,j.[value] COLLATE SQL_Latin1_General_CP1_CS_AS AS TokenValue
                     FROM [#SsisLegacyLogAnalysis_RowFlowEvents] AS e
                     INNER JOIN [#SsisLegacyLogAnalysis_Buffer] AS b ON b.LogId=e.LogId
-                    CROSS APPLY OPENJSON(N'["'+REPLACE(STRING_ESCAPE(SUBSTRING(b.MessageText COLLATE Latin1_General_100_BIN2,LEN(@RowPrefix+N'#'),2147483647),'json'),N' : ',N'","')+N'"]') AS j
-                    WHERE e.ParserId='ORPS_EN_1'
+                    CROSS APPLY OPENJSON(N'["'+REPLACE(STRING_ESCAPE(SUBSTRING(b.MessageText COLLATE Latin1_General_100_BIN2,CASE WHEN e.ParserId='ORPS_EN_2' THEN LEN(@RowPrefix2+N'#') ELSE LEN(@RowPrefix+N'#') END,2147483647),'json'),N' : ',N'","')+N'"]') AS j
+                    WHERE e.ParserId IN('ORPS_EN_1','ORPS_EN_2')
                 ), payload AS
                 (
-                    SELECT LogId,COUNT_BIG(*) AS TokenCount,
+                    SELECT LogId,ParserId,COUNT_BIG(*) AS TokenCount,
                         MAX(CASE WHEN TokenOrdinal=0 THEN TokenValue END) AS PathToken,
                         MAX(CASE WHEN TokenOrdinal=1 THEN TokenValue END) AS PathTokenName,
                         MAX(CASE WHEN TokenOrdinal=2 THEN TokenValue END) AS ComponentToken,
@@ -62703,13 +62707,17 @@ BEGIN
                         MAX(CASE WHEN TokenOrdinal=4 THEN TokenValue END) AS InputToken,
                         MAX(CASE WHEN TokenOrdinal=5 THEN TokenValue END) AS InputTokenName,
                         MAX(CASE WHEN TokenOrdinal=6 THEN TokenValue END) AS RowsToken,
+                        MAX(CASE WHEN TokenOrdinal=7 THEN TokenValue END) AS RepeatedComponent,
+                        MAX(CASE WHEN TokenOrdinal=8 THEN TokenValue END) AS PathForm,
+                        MAX(CASE WHEN TokenOrdinal=9 THEN TokenValue END) AS InputForm,
+                        MAX(CASE WHEN TokenOrdinal=10 THEN TokenValue END) AS EndToken,
                         MAX(CASE WHEN TokenOrdinal IN(0,2,4,6) AND (DATALENGTH(TokenValue)=0
                             OR TokenValue COLLATE Latin1_General_100_BIN2 LIKE N'%[^0-9]%'
                             OR (DATALENGTH(TokenValue)>2 AND LEFT(TokenValue,1)=N'0')) THEN 1
                             WHEN TokenOrdinal IN(1,3,5) AND (DATALENGTH(TokenValue) NOT BETWEEN 2 AND 8000
                             OR CHARINDEX(N':',TokenValue)>0 OR CHARINDEX(NCHAR(13),TokenValue)>0 OR CHARINDEX(NCHAR(10),TokenValue)>0 OR CHARINDEX(NCHAR(9),TokenValue)>0
                             OR CHARINDEX(N'\u0000',REPLACE(STRING_ESCAPE(TokenValue,'json'),N'\\',N''))>0) THEN 1 ELSE 0 END) AS BadShape
-                    FROM tokens GROUP BY LogId
+                    FROM tokens GROUP BY LogId,ParserId
                 ), parsed AS
                 (
                     SELECT *,TRY_CONVERT(int,PathToken) AS ParsedPath,TRY_CONVERT(int,ComponentToken) AS ParsedComponent,
@@ -62717,7 +62725,18 @@ BEGIN
                     FROM payload
                 ), checked AS
                 (
-                    SELECT *,CASE WHEN TokenCount<>7 OR BadShape=1 THEN 'MALFORMED_PAYLOAD'
+                    SELECT *,CASE WHEN BadShape=1 OR (ParserId='ORPS_EN_1' AND TokenCount<>7)
+                        OR (ParserId='ORPS_EN_2' AND (TokenCount<>11 OR DATALENGTH(EndToken)<>0
+                            OR CONVERT(varbinary(max),RepeatedComponent)<>CONVERT(varbinary(max),ComponentTokenName)
+                            OR DATALENGTH(PathForm)<16
+                            OR CONVERT(varbinary(max),LEFT(PathForm COLLATE Latin1_General_100_BIN2,6))<>CONVERT(varbinary(max),N'Paths[')
+                            OR CONVERT(varbinary(max),RIGHT(PathForm COLLATE Latin1_General_100_BIN2,1))<>CONVERT(varbinary(max),N']')
+                            OR CHARINDEX(N':',PathForm)>0 OR CHARINDEX(NCHAR(13),PathForm)>0 OR CHARINDEX(NCHAR(10),PathForm)>0 OR CHARINDEX(NCHAR(9),PathForm)>0
+                            OR CHARINDEX(N'\u0000',REPLACE(STRING_ESCAPE(PathForm,'json'),N'\\',N''))>0
+                            OR CHARINDEX(N'[',SUBSTRING(PathForm COLLATE Latin1_General_100_BIN2,7,CASE WHEN DATALENGTH(PathForm)>=14 THEN DATALENGTH(PathForm)/2-7 ELSE 0 END))>0
+                            OR CHARINDEX(N']',SUBSTRING(PathForm COLLATE Latin1_General_100_BIN2,7,CASE WHEN DATALENGTH(PathForm)>=14 THEN DATALENGTH(PathForm)/2-7 ELSE 0 END))>0
+                            OR CONVERT(varbinary(max),InputForm)<>CONVERT(varbinary(max),ComponentTokenName+N'.Inputs['+InputTokenName+N']')))
+                        THEN 'MALFORMED_PAYLOAD'
                         WHEN ParsedPath IS NULL OR ParsedPath<1 OR ParsedComponent IS NULL OR ParsedComponent<1 OR ParsedInput IS NULL OR ParsedInput<1 OR ParsedRows IS NULL THEN 'NUMERIC_OUT_OF_RANGE'
                         ELSE 'PARSED' END AS FinalParseStatus FROM parsed
                 )

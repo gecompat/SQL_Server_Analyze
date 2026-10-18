@@ -1369,9 +1369,10 @@ PARTIAL_PRODUCT_FUNCTION; weitere Backlogs und WI-0009 GATE-0001 bleiben offen.
 
 ## Erforderliche Vertragsentscheidung: beobachtetes natives Zeilenflussformat vom 18. Oktober 2026
 
-**Status:** konkreter Änderungsentwurf; menschliche Freigabe steht aus.
-Dieser Abschnitt erweitert den freigegebenen Parser und seine Runtimezulassung
-noch nicht. Die bestehende Implementierung von ORPS_EN_1 bleibt unverändert.
+**Status:** am 18. Oktober 2026 ausdrücklich menschlich freigegebene Ergänzung.
+Der Benutzer hat ORPS_EN_2 samt begrenzter Folgeabnahme und regulärer
+PR-Lieferung freigegeben. Die folgenden Formatregeln und Abnahmegrenzen sind
+verbindlich; historische fehlgeschlagene Versuche bleiben erhalten.
 
 ### Tatsächlicher Unterschied und Liefergrenze
 
@@ -1395,10 +1396,9 @@ bleiben insgesamt FAILED_NOT_QUALIFIED; die ursprünglichen Captures und
 Fehlhistorien werden erhalten. Eigene Laufzeitdatenbanken sind entfernt,
 ihre Inventare restauriert; es wird kein weiterer Paketlauf gestartet.
 
-### Vorgeschlagene enge Ergänzung ORPS_EN_2
+### Freigegebene enge Ergänzung ORPS_EN_2
 
-Nach konkreter menschlicher Freigabe soll ausschließlich ORPS_EN_2 als
-zweites streng vollständiges Profil ergänzt werden. ORPS_EN_1 und seine
+ORPS_EN_2 ergänzt als zweites streng vollständiges Profil den Decoder. ORPS_EN_1 und seine
 Ablehnungsregeln bleiben erhalten. Produktziel 1.2.0, Parameterposition 22,
 SchemaVersion 3, RowFlowCatalogVersion 1 sowie alle 19-/25-Feldschemas bleiben
 für diese erste noch nicht veröffentlichte Lieferung unverändert. Die
@@ -1447,7 +1447,7 @@ zwischen Authoring und Runtime wird ausdrücklich nicht als Beweis verlangt
 oder behauptet. Zusätzliche oder nicht gebundene beobachtete Pfad-/Input-
 Tupel dürfen nicht allein wegen passender Summen akzeptiert werden.
 
-### Vorgeschlagene begrenzte Fortsetzung nach Freigabe
+### Freigegebene begrenzte Fortsetzung
 
 Die neue Profilergänzung benötigt gezielte synthetische Positiv- und
 Negativfälle für sämtliche Zusatzregeln und den unveränderten Guard. Eine
@@ -1475,10 +1475,11 @@ wiederhergestelltem Material. Ein neuer vollständiger nativer Paketlauf wird
 daraus nicht behauptet. Identitätsgebundenes eigenes Cleanup und Vor-/Nach-
 Inventar gehören zu jedem neuen Versuch.
 
-Die Freigabe soll genau diesen Profil- und Abnahmeänderungsumfang einschließlich
+Die Freigabe umfasst genau diesen Profil- und Abnahmeänderungsumfang einschließlich
 eines begrenzten unabhängigen Delta-/Ergebnisreviews sowie der erforderlichen
 exakten Head-CI und regulären PR-Integration abdecken. Geschlossene frühere
 Budgets bleiben unverändert; Native3 ist kein Anlass für Native4 oder einen
 Budgetreset. Weitere Decoder, Sprachen und vertiefte SSIS-Funktionen bleiben
-ausgenommen. Ohne Freigabe erfolgen keine Umsetzung von ORPS_EN_2, keine
-weitere Runtime und keine Fertigbehauptung des Row-Flow-Slices.
+ausgenommen. Die konkrete Freigabe liegt vor. Die neue Consumerabnahme wird getrennt
+von den geschlossenen historischen Paketversuchen geführt; eine erfolgreiche
+Lieferung wird erst nach Erfüllung der zugehörigen Gates dokumentiert.

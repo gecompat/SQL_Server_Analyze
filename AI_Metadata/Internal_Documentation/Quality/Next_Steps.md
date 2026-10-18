@@ -3,21 +3,24 @@
 **Stand:** 18. Oktober 2026
 **Zweck:** aktuelle ausführbare Entwicklungswelle für `gecompat/SQL_Server_Analyze`
 
-## Offene konkrete Row-Flow-Vertragsentscheidung vom 18. Oktober 2026
+## Freigegebene ORPS_EN_2-Fortsetzung vom 18. Oktober 2026
 
-Die freigegebene ORPS_EN_1-Implementierung und gezielte synthetische Abnahme
-sind im eigenen Branch vorbereitet. Beide tatsächlich ausgeführten neuen
-Paketszenarien liefern ein anderes natives Format. Der unveränderte Decoder
-weist es korrekt als UNSUPPORTED_FORMAT ab; keine positive native Pfadsumme
-ist qualifiziert. Die sechs 682-Check-Captures sind keine positive Payload-
-oder 44-Feldabnahme. Native3 bleibt FAILED_NOT_QUALIFIED, eigene Datenbanken
-sind entfernt und Inventare restauriert. Weitere native Zulassung ist geschlossen.
-
-Vor weiterer Umsetzung wird die [konkrete Profil- und Abnahmeänderung](../../../Documentation/Architecture/SSIS_Package_and_Execution_Analysis_Plan.md#tatsächliche-row-flow-abnahmegrenze-vom-18-oktober-2026)
-für ORPS_EN_2 menschlich entschieden. Der Vorschlag verwendet erhaltene eigene
-Originalproviderzeilen für eine neue begrenzte Consumerprüfung; er startet
-keine Pakete erneut. Kein Timer aktiviert die Änderung, Native4, neue Reviews,
-CI oder Veröffentlichung. Der bestehende Worktree bleibt prüfbar erhalten.
+Der Benutzer hat die konkrete ORPS_EN_2-Ergänzung samt begrenzter Folgeabnahme
+und regulärer PR-Lieferung ausdrücklich freigegeben. Maßgeblich ist die
+[Profilergänzung](../../../Documentation/Architecture/SSIS_Package_and_Execution_Analysis_Plan.md#tatsächliche-row-flow-abnahmegrenze-vom-18-oktober-2026).
+Die Umsetzung verwendet erhaltene hashgebundene eigene Originalproviderzeilen
+für eine neue isolierte Consumerabnahme. Es erfolgen keine erneuten
+Paketausführungen, VM- oder Setupänderungen. Historische native Fehler und
+Budgets bleiben geschlossen; erfolgreiche unveränderte Tests werden nicht
+wiederholt. Die neue Welle hat höchstens zwei Arrange-/Consumerversuche mit
+je höchstens acht definierten Konstellationen, zwei Delta-/Ergebnisreviews
+desselben Reviewers und vier CI-Heads einschließlich Pflicht-Mainlauf.
+Kosten und Kontingente sind UNKNOWN. Die neue Consumerabnahme besteht mit sechs geänderten Konstellationen,
+4833 Prüfschritten und 14 abgewiesenen Mutationen; neue Paketausführungen: 0.
+Eigene Datenbanken sind entfernt und das Inventar restauriert. Der finale
+Ergebnisreview sowie exakte Head-CI, MatchHead-Integration, Treeidentität,
+Main-Folgeprüfung, Synchronisierung und eigenes Cleanup bleiben Liefergates.
+SSIS-001 bleibt insgesamt partiell.
 
 ## Freigegebene Legacy-Zeilenflusserweiterung vom 18. Oktober 2026
 
