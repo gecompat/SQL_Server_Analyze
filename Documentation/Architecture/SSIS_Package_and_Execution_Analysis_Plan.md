@@ -1567,23 +1567,48 @@ Liefergates. SSIS-001 bleibt PARTIAL_PRODUCT_FUNCTION; zusätzliche Profile,
 Sprachen, Katalog-RowFlow, Phasen, Durchsatz, Looprekonstruktion und allgemeine
 Rollenabnahmen sowie WI-0009 GATE-0001 bleiben offen.
 
-## Nächster Vertragsentwurf: Legacy-Komponentenphasenzeiten vom 18. Oktober 2026
+## Freigegebene Legacy-Komponentenphasenzeiten vom 18. Oktober 2026
 
-Nach den gelieferten Taskintervallen und Pfadmengen fehlt im Legacy-Analyzer
-weiterhin die Interpretation gemeldeter Komponentenphasenzeiten. Der konkrete
-[Entwurf mit Abnahmeplan](SSIS_001_Phase0_Public_Contract.md#entwurf-legacy-komponentenphasenzeiten-aus-pipelinecomponenttime-vom-18-oktober-2026)
-begrenzt den nächsten Teilslice aus Backlogschritt 3 auf PipelineComponentTime
-mit den belegten englischen ProcessInput-/PrimeOutput-Textformen. Vorgeschlagen
-sind ein unabhängiges Opt-in an Position 23, zwei Mengen mit 18 und 24 Feldern
-und eine ausdrückliche Trennung von Berichtskontext, gemeldeten Millisekunden,
-CPU-Zeit und exklusiver Laufzeit. Die bestehende Katalogprojektion ist keine
-neue Legacy-Interpretation und wird durch diesen Entwurf nicht geändert.
+Nach den gelieferten Taskintervallen und Pfadmengen hat der Benutzer den
+geprüften [P1–P9-Vertrag](SSIS_001_Phase0_Public_Contract.md#freigegebene-erweiterung-legacy-komponentenphasenzeiten-aus-pipelinecomponenttime-vom-18-oktober-2026)
+für PipelineComponentTime ausdrücklich zur Implementierung, begrenzten
+Abnahme und regulären PR-Lieferung freigegeben. Version 1.3.0 ergänzt an
+Position 23 IncludeComponentPhaseAnalysis. Die beiden neuen Mengen haben
+18 und 24 Felder; SchemaVersion4 gilt nur beim neuen Opt-in. Die bisherige
+Task-/RowFlow-API und die separate Katalogprojektion bleiben erhalten.
 
-Der direkte Auftrag umfasst ausschließlich Vertrag, Abnahmeplan und Review
-durch denselben bisherigen Reviewer. Es gibt keine Implementierung, nativen
-Tests, Paketerstellung, SQL-/SDK-Ausführung, CI oder Veröffentlichung. Die
-14 synthetischen Gruppen und zwei nativen Szenarien sind geplant und
-NOT_EXECUTED. Erst konkrete menschliche Freigabe könnte eine gesonderte
-begrenzte Umsetzungswelle autorisieren. Bisherige Lieferungen, Nachweise und
-Budgets bleiben erhalten; SSIS-001 bleibt PARTIAL_PRODUCT_FUNCTION und
-WI-0009 GATE-0001 offen.
+PCT_EN_1 interpretiert ausschließlich die genau festgelegten englischen
+ProcessInput-/PrimeOutput-Berichte. Gespeicherte Millisekunden und eindeutiger
+EXECUTE-Berichtskontext erzeugen keine Methodenintervalle, CPU- oder exklusive
+Zeit. Die 14 synthetischen Gruppen und zwei neuen nativen Szenarien bilden
+einen eigenen endlichen Umfang. Nachweise bleiben bis tatsächlicher Ausführung
+NOT_EXECUTED. Geschlossene frühere Abnahmen werden nicht wiederholt.
+SSIS-001 bleibt PARTIAL_PRODUCT_FUNCTION; weitere Phasenprofile, Katalogabnahmen,
+Durchsatz und WI-0009 GATE-0001 bleiben offen.
+
+
+## Zwischenstand der begrenzten Phasenumsetzung vom 18. Oktober 2026
+
+Die freigegebene PCT_EN_1-Ergänzung ist lokal vorbereitet und nicht geliefert.
+Der dritte gezielte synthetische Versuch bestand den korrigierten und noch
+offenen Umfang, darunter die 11/3-Rundung und fünf getrennte extrahierte
+Stufen. Bereits bestandene Anfangsabschnitte wurden mit ihren Originalcaptures
+gebunden weiterverwendet. Frühere Fehler 8632 und die falsche letzte
+Dezimalstelle bleiben in den ursprünglichen Nachweisen erhalten.
+
+Von drei neuen nativen Arrange-/Runtimeversuchen scheiterten zwei vor Execute
+an eigenen Paketaufbaudetails. Der dritte führte P-N01 erfolgreich aus, erzeugte
+aber User:PipelineComponentTime mit Texten ohne numerische Komponenten- und
+Output-IDs. Keine Zeile entspricht dem exakten bisherigen Ereignisnamen;
+das Positivgate stoppte vor Consumer und P-N02. Die native Gesamtqualifikation
+bleibt FAILED_NOT_QUALIFIED, alle 42-Feld-Consumer-Nachweise und die daran
+gebundenen P-S14-Nativcapturemutationen sind NOT_EXECUTED.
+Eigene Datenbanken sind entfernt, Cleanupfehler 0, Inventar wiederhergestellt.
+Es gab keine neue Infrastruktur oder Änderung fremder Ressourcen.
+
+Der [konkrete Ergänzungsentwurf B1–B7](SSIS_001_Phase0_Public_Contract.md#entwurf-native-legacy-komponentenzeitberichte-ohne-numerische-ids-vom-18-oktober-2026)
+legt die neue Ereignis-/Textform, fehlende IDs, Namensgruppen, ComponentId-
+Nullbarkeit und einen begrenzten Fortsetzungsplan vor. Dafür ist konkrete
+menschliche Freigabe erforderlich. Bis dahin gibt es keine Ergänzungs-
+implementierung, weitere Runtime, Veröffentlichung oder CI. SSIS-001 bleibt
+PARTIAL_PRODUCT_FUNCTION; weitere Phasen- und Katalogabnahmen bleiben offen.

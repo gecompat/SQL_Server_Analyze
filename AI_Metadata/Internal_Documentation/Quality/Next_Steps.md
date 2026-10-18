@@ -3,21 +3,42 @@
 **Stand:** 18. Oktober 2026
 **Zweck:** aktuelle ausführbare Entwicklungswelle für `gecompat/SQL_Server_Analyze`
 
-## Beauftragter Vertragsentwurf für Legacy-Komponentenphasenzeiten
+## Entscheidung nach nativer Phasenquelle
 
-Der Benutzer beauftragt nach PR394 den nächsten fehlenden SSIS-Funktionsumfang
-als konkreten Erweiterungsvertrag mit Abnahmeplan und Review durch denselben
-bisherigen Reviewer. Die Auswahl ist der nächste begrenzte Legacy-Teilslice
-für PipelineComponentTime, zunächst ProcessInput und PrimeOutput. Der
-[Entwurf im kanonischen Analyseplan](../../../Documentation/Architecture/SSIS_Package_and_Execution_Analysis_Plan.md#nächster-vertragsentwurf-legacy-komponentenphasenzeiten-vom-18-oktober-2026)
-legt API, 42 neue Felder, strikte Textformen, Berichtskontexte, Statusgrenzen
-und einen endlichen späteren Abnahmeumfang fest. Der aktuelle Umfang bleibt
-auf drei MD-Dateien, einen Autor, einen Vertragsreview, Native0 und CI0
-beschränkt. Kein Produkt-, Inventar-, Installer- oder Workflowdelta ist
-freigegeben. Die konkrete menschliche Umsetzungsfreigabe steht aus; ein
-Vertragsreview ersetzt sie nicht. Entwurf und Nachweise bleiben lokal erhalten,
-kein Push oder PR. Geschlossene historische Budgets bleiben unverändert;
-Kosten und Kontingente sind UNKNOWN. SSIS-001 bleibt partiell.
+Die freigegebene P1–P9-Umsetzung ist lokal vorbereitet, aber nicht qualifiziert
+oder geliefert. Produktversion 1.3.0 interpretiert weiterhin ausschließlich
+PCT_EN_1. Die neue native Quelle meldet User:PipelineComponentTime ohne
+numerische Komponenten-/Outputkennungen. Das freigegebene Positivgate stoppte
+vor Consumer und P-N02. Native3/3 bleibt FAILED_NOT_QUALIFIED, eine tatsächliche
+Paketausführung und 0 Consumer sind dokumentiert. Synthetic3/3 ist mit gebundener
+Wiederverwendung abgeschlossener Anfangsabschnitte beendet; Fehlhistorien bleiben
+erhalten. Review3/3 prüft den realen Quellen-/Ergebnisdelta und den konkreten
+[Ergänzungsentwurf](../../../Documentation/Architecture/SSIS_Package_and_Execution_Analysis_Plan.md#zwischenstand-der-begrenzten-phasenumsetzung-vom-18-oktober-2026).
+
+Neue konkrete menschliche Freigabe für B1–B7 einschließlich NULL-IDs,
+Namensgruppen und begrenzter Folgeabnahme steht aus. Ohne diese Freigabe keine
+Implementierung des zusätzlichen Profils, keine SQL-/SDK-/Paket-/Consumer-
+Ausführung, kein Push, PR oder CI. Keine Budgetrücksetzung, kein vierter alter
+Versuch, keine Wiederholung grüner Prüfungen wegen des Timers. Worktree und
+Originalevidenz bleiben erhalten; Root/main bleiben auf dem PR394-Lieferstand.
+
+## Freigegebene Legacy-Komponentenphasenzeiten vom 18. Oktober 2026
+
+Der Benutzer hat den geprüften P1–P9-Vertrag samt begrenztem Abnahmeplan
+ausdrücklich zur Implementierung und regulären PR-Lieferung freigegeben.
+Der bisherige Vertragsentwurf ist über SHA-256
+9588CFA6925E7372A2986B59D516C7D169B05C1E7F7CFBC19DCD9E63889C05F3
+gebunden. Der [freigegebene Vertrag](../../../Documentation/Architecture/SSIS_Package_and_Execution_Analysis_Plan.md#freigegebene-legacy-komponentenphasenzeiten-vom-18-oktober-2026)
+begrenzt die Erweiterung auf IncludeComponentPhaseAnalysis an Position 23,
+42 neue Felder und PCT_EN_1 für ProcessInput/PrimeOutput. Der vorherige
+Wartezustand ist abgelöst. Die neue begrenzte Welle hat einen Implementierer,
+denselben Reviewer mit höchstens drei begründeten Prüfungen, drei synthetische
+und drei Arrange-/Runtimeversuche, insgesamt zwei tatsächliche Paketausführungen
+und acht Consumeraufrufe einschließlich Fehlversuchen sowie höchstens vier
+CI-Heads einschließlich Main. Historische Budgets bleiben geschlossen;
+abgeschlossene unveränderte Tests werden nicht wiederholt. Tatsächliche
+Ergebnisse werden getrennt gebunden, Kosten und Kontingente bleiben UNKNOWN.
+SSIS-001 bleibt PARTIAL_PRODUCT_FUNCTION, WI-0009 GATE-0001 offen.
 
 ## Freigegebene ORPS_EN_2-Fortsetzung vom 18. Oktober 2026
 

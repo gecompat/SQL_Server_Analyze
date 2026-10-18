@@ -1484,12 +1484,12 @@ ausgenommen. Die konkrete Freigabe liegt vor. Die neue Consumerabnahme wird getr
 von den geschlossenen historischen Paketversuchen geführt; eine erfolgreiche
 Lieferung wird erst nach Erfüllung der zugehörigen Gates dokumentiert.
 
-## Entwurf: Legacy-Komponentenphasenzeiten aus PipelineComponentTime vom 18. Oktober 2026
+## Freigegebene Erweiterung: Legacy-Komponentenphasenzeiten aus PipelineComponentTime vom 18. Oktober 2026
 
-**Status:** konkreter Erweiterungsvertrag mit Abnahmeplan, noch nicht menschlich
-zur Umsetzung freigegeben. Der aktuelle Auftrag umfasst ausschließlich Entwurf
-und unabhängigen Vertragsreview. Implementierung, Paketerstellung, SDK-/SQL-
-Ausführung, native Tests, CI, Push und PR sind nicht Bestandteil dieses Auftrags.
+**Status:** konkreter menschlich freigegebener P1–P9-Erweiterungsvertrag
+für Implementierung, begrenzte Abnahme und reguläre PR-Lieferung. Der vorherige
+Vertragsreview wurde ohne offene P1/P2 abgeschlossen und bleibt vom
+tatsächlich ausgeführten Abnahmenachweis getrennt.
 
 ### P1. Auswahl und begrenzter Nutzen
 
@@ -1517,7 +1517,7 @@ Herstellerfähigkeit. Geschlossene Abnahmen werden dafür nicht wiederholt.
 
 ### P2. API, Opt-in und Ausgabeversionierung
 
-Vorgeschlagen ist Procedureversion 1.3.0 mit genau einem zusätzlichen Parameter
+Die freigegebene Procedureversion ist 1.3.0 mit genau einem zusätzlichen Parameter
 IncludeComponentPhaseAnalysis bit=0 an Position 23. NULL wird wie 0 behandelt.
 Alle bisherigen 22 Positionen, Defaults, OUTPUTs und Aufrufbedeutungen bleiben
 erhalten. Das neue Opt-in ist unabhängig von IncludeTaskAnalysis und
@@ -1565,7 +1565,7 @@ uninterpretiert in der bestehenden Timeline; zusätzliche Quellspalten werden
 nicht fachlich gelesen. IncludeMessages=0 verhindert wie bisher jeden fachlichen
 message-Zugriff und lässt beide neuen Mengen leer.
 
-Das vorgeschlagene Profil PCT_EN_1 hat genau zwei vollständige Alternativen.
+Das freigegebene Profil PCT_EN_1 hat genau zwei vollständige Alternativen.
 Die geschweiften Variablennamen bezeichnen Felder und sind keine Textbestandteile:
 
 ```text
@@ -1676,8 +1676,8 @@ ObservedTime verwenden die gespeicherten Meldungszeiten, keine Methodenzeiten.
 
 Alle Textspalten verwenden explizit COLLATE SQL_Latin1_General_CP1_CS_AS.
 Typen, Nullbarkeit und Reihenfolge gelten identisch für RAW und TABLE;
-JSON transportiert dieselben Schlüssel und Werte. Neue technische Temp-Namen
-werden erst in einer separat freigegebenen Umsetzung vergeben.
+JSON transportiert dieselben Schlüssel und Werte. Die technischen Mengen verwenden #SsisLegacyLogAnalysis_ComponentPhaseEvents
+und #SsisLegacyLogAnalysis_ComponentPhaseTimes.
 
 componentPhaseEvents besitzt genau 18 Spalten:
 
@@ -1803,7 +1803,8 @@ und verlangt keine zusätzlichen Quellindizes.
 
 ### P7. Geplante synthetische Abnahme
 
-Alle folgenden Gruppen sind NOT_EXECUTED. Eine spätere Umsetzung verwendet
+Die folgenden Gruppen bilden den freigegebenen synthetischen Umfang. Die
+Umsetzung verwendet
 eine eigene kompatible gespeicherte Quelle und die unveränderte Gesamt-SUT.
 Eine unabhängige Referenz bestimmt alle 42 neuen Felder aus vorher festgelegten
 Ereignissen und Sollwerten; reine Parität ist kein Ersatz. Physische Schema-
@@ -1829,12 +1830,12 @@ Nullbarkeit und fehlende Identity-/Computed-Eigenschaften.
 
 ### P8. Geplante native Quelle, Gegenprüfung und endliche Grenzen
 
-Beide geplanten Szenarien sind NOT_EXECUTED. Vor späterer Runtime sind die
+Beide Szenarien bilden den freigegebenen nativen Umfang. Vor Runtime sind die
 aktuelle veröffentlichte beziehungsweise lokal installierte Windows-/SQL-/SSIS-
 Umgebung, Zugangsbindung, Version, Bitness, Rechte und Compatibility Level
-konkret zu prüfen. Dieser Entwurf erlaubt jetzt keine solche Probe. Es werden
+konkret zu prüfen. Jeder Versuch wird vor Effekten gezählt. Es werden
 keine bestehenden fremden Labfixtures, alten Runs oder entfernten Quellen
-restauriert. Eine später gesondert freigegebene Analyze-Testkonstellation darf
+restauriert. Die konkret freigegebene Analyze-Testkonstellation darf
 nur eigene eindeutig gebundene Pakete und eigene isolierte Logging-/Framework-
 Datenbanken auf geeigneter vorhandener Umgebung verwenden. Neue Infrastruktur,
 Installation, Imagebeschaffung, globale Rechte- oder Loggingänderungen sind
@@ -1854,7 +1855,7 @@ der kontrollierten Source-/Namens-/Klassenbindung; Authoringnummern werden
 nicht als Runtimekennungen vorausgesetzt. Zusätzliche oder ungebundene Tupel
 dürfen nicht allein aufgrund passender Summen bestehen.
 
-Vorgeschlagen sind höchstens drei Arrange-/Runtimeversuche innerhalb einer
+Freigegeben sind höchstens drei Arrange-/Runtimeversuche innerhalb einer
 neuen gesonderten Umsetzungswelle, insgesamt höchstens zwei tatsächliche
 Paketausführungen und insgesamt höchstens acht native Consumeraufrufe.
 Auch ein fehlgeschlagener Consumeraufruf verbraucht einen dieser acht Plätze;
@@ -1894,24 +1895,20 @@ Ressourcen und historische policyblockierte Löschungen bleiben unangetastet.
 
 ### P9. Freigabe-, Integrations- und Quellenvertrag
 
-Die aktuelle reine Entwurfswelle hat einen Autor und genau einen separaten
-Vertragsreview durch denselben bisherigen Reviewer, Native0 und CI0. Dieser
-Review ist keine menschliche Umsetzungsfreigabe. Der Entwurf bleibt lokal
-prüfbar erhalten und wird ohne weitere konkrete Freigabe nicht veröffentlicht.
-Alle geplanten P-S-/P-N-Nachweise bleiben bis tatsächlicher Ausführung
-NOT_EXECUTED; kein Reviewer führt sie in dieser Welle aus.
+Der direkte Benutzer hat den geprüften P1–P9-Vertrag einschließlich seiner
+Profil-/Kontextgrenzen und des endlichen Abnahmeumfangs konkret freigegeben.
+Die abgeschlossene Entwurfswelle bleibt mit einem Vertragsreview, Native0 und
+CI0 erhalten. Die Umsetzung hat ein eigenes endliches Budget: ein Autor,
+derselbe unabhängige Reviewer für höchstens drei begründete Prüfungen
+(Produkt-/Vertragsdelta, Adapter-/Orakeldelta vor Runtime und Ergebnis-/
+Lieferdelta), höchstens drei synthetische Versuche, die nativen Grenzen aus P8
+und höchstens vier CI-Qualifikations-Heads einschließlich Pflicht-Mainlauf.
+Unveränderte erfolgreiche Nachweise werden nach aktueller Bindungsprüfung
+weiterverwendet. Kosten und Kontingente bleiben UNKNOWN. Ausführung und
+Qualifikation werden erst nach tatsächlichem Ergebnis dokumentiert;
+bis dahin bleiben die betroffenen Nachweise NOT_EXECUTED.
 
-Eine spätere menschliche Freigabe müsste genau P1–P9 einschließlich der
-genannten Profil-/Kontextgrenzen und des endlichen Abnahmeumfangs umfassen.
-Vorgeschlagen sind dann ein Implementierer und derselbe unabhängige Reviewer
-für höchstens drei getrennt begründete Prüfungen: Produkt-/Vertragsdelta,
-Adapter-/Orakeldelta vor Runtime und abschließendes Ergebnis-/Lieferdelta.
-Gezielte synthetische Versuche sind auf drei begrenzt, native Versuche auf
-die Grenzen aus P8; CI auf höchstens vier Qualifikations-Heads einschließlich
-Pflicht-Mainlauf. Diese vorgeschlagenen späteren Grenzen sind jetzt weder
-reserviert noch gestartet. Kosten und Kontingente bleiben UNKNOWN.
-
-Eine spätere Lieferung müsste Produktversion, Installer, betroffene Inventare,
+Die Lieferung muss Produktversion, Installer, betroffene Inventare,
 Guide, Referenz, kanonischen Plan und Status gemeinsam aktualisieren. Erst
 erfolgreiche betroffene Tests nach der kanonischen CI-Strategie, exakte
 Head-Checks, normaler MatchHead-Merge, Treeidentität, Main-Folgeprüfung,
@@ -1932,3 +1929,196 @@ Die übergeordnete Herstellerliste weiterer Phasen ist keine Vorlage für
 unbelegte zusätzliche Textdecoder. Die hier festgelegten API-, Zahlen-,
 Kapazitäts-, Kontext- und Statusregeln sind Projektentscheidungen; die
 Herstellerbeispiele ersetzen keine native Formatzulassung oder Eigenmessung.
+
+
+## Entwurf: native Legacy-Komponentenzeitberichte ohne numerische IDs vom 18. Oktober 2026
+
+**Status:** konkrete noch nicht menschlich freigegebene Ergänzung B1–B7 zu
+P1–P9. Der freigegebene PCT_EN_1-Produktstand bleibt unverändert. Diese
+Ergänzung ist weder implementiert noch ausgeführt, veröffentlicht oder durch
+den unabhängigen Review zur Umsetzung autorisiert.
+
+### B1. Tatsächliche neue Vertragsgrenze
+
+Die begrenzte neue native Abnahme erzeugte ein eigenes Paket mit Erfolg und
+33 gespeicherten Providerzeilen. Darin sind 15 Meldungen unter dem exakten
+Ereignisnamen User:PipelineComponentTime und keine unter PipelineComponentTime.
+Zwei Texte berichten ProcessInput, einer PrimeOutput; zwölf betreffen bisher
+nicht zugelassene Validate-/PreExecute-/PostExecute-Methoden. Die Originaltexte
+berichten Komponenten- und Outputnamen, aber keine numerischen Komponenten-
+oder Outputkennungen. Ein Outputtext verwendet ComponentName.Outputs[OutputName].
+Die drei für PCT_EN_2 vorgesehenen ProcessInput-/PrimeOutput-Berichte liegen
+in ihrer beobachteten EXECUTE-Source-Klammer. Diese Aussage wird nicht auf
+die übrigen Methodenberichte verallgemeinert. Es handelt sich um eine
+Quellenbeobachtung und noch keine Analyzer-Consumerqualifikation.
+
+Der bisherige exakte Ereignisvertrag lässt diese Zeilen nicht als Kandidaten
+zu. Sein unabhängiges Positivgate stoppte deshalb vor dem ersten Consumeraufruf
+und vor dem zweiten Paketszenario. Drei Arrange-/Runtimeversuche sind verbraucht;
+die ersten zwei scheiterten beim eigenen Paketaufbau vor Execute an einem
+doppelten Geschwisternamen beziehungsweise einem nicht vorhandenen SDK-Typ.
+Das dritte Paket wurde tatsächlich ausgeführt. Alle drei Versuche bleiben
+FAILED_NOT_QUALIFIED. Die eigenen Datenbanken wurden identitätsgebunden entfernt,
+Cleanupfehler waren 0 und das Datenbankinventar ist wiederhergestellt.
+Die neun ursprünglichen Providerfelder stimmen vor und nach der Aufnahme
+überein. Originalevidenz und SDK-/Paketbindungen bleiben privat.
+
+Diese Meldungsformen sind keine Ungenauigkeit, die durch Normalisierung,
+ID-Raten oder ein liberaleres Gate behoben werden dürfte. B2–B7 legen die
+zusätzlich erforderliche fachliche Entscheidung konkret vor.
+
+### B2. Genau ein zusätzliches Ereignis- und Textprofil
+
+PipelineComponentTime bleibt ordinal ausschließlich PCT_EN_1 zugeordnet.
+Zusätzlich würde ausschließlich das ordinal exakte User:PipelineComponentTime
+als Kandidat für PCT_EN_2 zugelassen. Es gibt keinen allgemeinen User:-Alias,
+kein Präfixtrimmen und keine Änderung des gespeicherten Ereignisnamens.
+OnInformation, andere Ereignisse, weitere Sprachen und Methoden werden nicht
+aus Textähnlichkeit zugelassen. Die beiden vollständigen PCT_EN_2-Formen lauten:
+
+```text
+The {ComponentName} spent {ReportedDurationMs} milliseconds in ProcessInput.
+The {ComponentName} spent {ReportedDurationMs} milliseconds in PrimeOutput filling buffers on {ComponentName}.Outputs[{OutputName}].
+```
+
+ComponentName wird in der PrimeOutput-Form ordinal identisch wiederholt.
+Namen bleiben ungetrimmt, einschließlich Case und Endleerzeichen, mit
+1 bis 4000 UTF-16-Codeeinheiten. Beide Namensfelder dürfen weder doppelte
+Anführungszeichen noch CR, LF, TAB, NUL oder eckige Klammern enthalten.
+ComponentName darf zusätzlich weder die vollständige Zeichenfolge
+` spent ` noch `.Outputs[` enthalten. Die Trenner sind dadurch eindeutig;
+es gibt kein Unescape oder mehrdeutiges Rückwärtsraten. Ein Satzpunkt und
+alle festen Leerzeichen sind obligatorisch, nachfolgender Text unzulässig.
+Der Zahlenvertrag bleibt ASCII-kanonisches bigint von 0 bis zum Maximum.
+
+Für dieses zusätzliche Ereignis ist der erkannte Profilanfang exakt `The `.
+Ohne diesen Anfang gilt UNSUPPORTED_FORMAT mit ParserId NULL. Mit erkanntem
+Anfang gilt ParserId=PCT_EN_2 und bei Form-/Namens-/Zahlensyntaxabweichung
+MALFORMED_PAYLOAD, bei formal gültiger Zahl außerhalb bigint
+NUMERIC_OUT_OF_RANGE. Fehlender Text und der bestehende DATALENGTH-Guard haben
+weiter Vorrang. Validate, PreExecute und PostExecute werden als Kandidaten
+mit MALFORMED_PAYLOAD sichtbar, ohne Teilpayload oder Methodenzeitgruppe.
+
+### B3. Fehlende numerische Kennungen bleiben NULL
+
+Nur für ein erfolgreiches PCT_EN_2 werden ComponentName, PhaseName und
+ReportedDurationMs sowie bei PrimeOutput OutputName übernommen. ComponentId
+und OutputId bleiben NULL, weil sie nicht berichtet wurden. ProcessInput
+behält auch OutputName NULL. PARSED bedeutet die vollständig zugelassene
+profilabhängige Projektion und keinen Nachweis numerischer Identität.
+
+SDK-Authoringnummern, RowFlow-PathIds, Reihenfolgen, Hashes oder künstliche
+Ersatznummern werden weder als native IDs eingesetzt noch aus anderen
+Ereignissen hinzugefügt. Der vollständige gespeicherte Text bleibt über den
+bisherigen Timelineexport verfügbar. Die 18 Ereignisfelder ändern ihren
+Typ und ihre Nullbarkeit nicht.
+
+### B4. Benannte Berichtsgruppen statt erfundener Komponentenidentität
+
+Die bisherigen PCT_EN_1-Gruppen bleiben nach den nativen numerischen IDs aus
+P4 gebunden. PCT_EN_2-Gruppen würden ausschließlich ASSIGNED-Berichte nach
+ExecutionId, SourceId, beiden Kontext-Log-IDs, internem ParserId, ordinalem
+ComponentName, PhaseName und ordinalem OutputName zusammenfassen.
+ProcessInput hat einen echten NULL-Outputnamen-Schlüssel. Es gibt kein
+Zusammenführen mit PCT_EN_1 oder über Sources, Kontexte, Methoden oder
+verschiedene berichtete Namen hinweg.
+
+Die Gruppierung belegt nur übereinstimmende berichtete Labels innerhalb eines
+Source-Kontextes, keine eindeutige Runtimekomponente oder Vollständigkeit der
+Komponentenliste. Gleiche Labels dürfen deshalb nicht als technische Identität
+oder Hinweis auf dieselbe Komponente außerhalb dieses Berichtsschlüssels gelten.
+Der Produktdecoder liest hierfür keine Paketdatei oder SDK-Metadaten.
+Die spätere Fixtureabnahme bindet Labels an die eigenen kontrollierten
+Komponenten und Klassen, ohne diese Fixturebindung auf beliebige Quellen
+zu verallgemeinern.
+
+Die 24 Gruppenfelder bleiben erhalten. Ausschließlich ComponentId an Position 7
+ändert sich physisch von int NOT NULL zu int NULL; bei PCT_EN_1 bleibt sein
+Wert obligatorisch, bei PCT_EN_2 sind ComponentId und OutputId NULL.
+Für letzteren Zweig sind ComponentName und bei PrimeOutput OutputName die
+berichteten Gruppenschlüssel; ihre Konfliktbits sind dort 0. Das beweist keine
+globale Namenseindeutigkeit. SourceName-Konflikte bleiben wie bisher sichtbar.
+Die bestehende Ordinalsortierung bleibt erhalten; bei den zusätzlichen
+NULL-ComponentId-/NULL-OutputId-Schlüsseln folgen ComponentName und OutputName
+jeweils binär aufsteigend als eindeutige Sortierergänzung, NULL zuerst.
+
+Summe, Min/Max, exakt auf sechs Stellen kaufmännisch gerundeter Mittelwert,
+EventCount, Evidenz-IDs, beobachtete Meldungszeiten und Coveragewerte behalten
+P4–P6. Identische gespeicherte Texte mit verschiedenen Log-IDs bleiben Beiträge.
+Es entstehen weiterhin keine Methodenintervalle, CPU-, exklusive oder
+Komponenten-/Task-/Paketgesamtzeiten. Erwartet fehlende IDs lösen allein keine
+zusätzliche Partialität aus; abgelehnte Kandidaten und andere Grenzen tun dies
+weiterhin. Weitere API-Parameter, Felder oder Console-Grids entstehen nicht.
+SchemaVersion4 und ComponentPhaseCatalogVersion1 sind noch nicht ausgeliefert
+und würden diesen konkret erweiterten ersten Liefervertrag bezeichnen.
+
+### B5. Status- und Integritätsgrenzen bleiben bestehen
+
+Die Quellenzeile 7 zählt ausschließlich zugelassene Ereignisnamen und behält
+den bestehenden C+G-/Detailvertrag. Der ursprüngliche v1-Puffer, doppelte IDs,
+N+1-Sentinel, Messages-off, Prior-v1-Zulassung, atomare Deadlineübernahme,
+Fehlerisolation und das erste native Fehlerpaar bleiben unverändert.
+ContextStatus folgt P4, unabhängig von optionalen numerischen Payload-IDs.
+Ein PCT_EN_2 ohne SourceId oder eindeutigen zeitlich einschließenden Kontext
+bleibt sichtbar und trägt zu keiner Gruppe bei. Es gibt keinen Namen- oder
+Nachbar-Source-Fallback für die Kontextzuordnung.
+
+### B6. Konkrete begrenzte Folgeabnahme
+
+Alle folgenden Prüfungen sind geplant und NOT_EXECUTED. Der erfolgreiche
+synthetische Restumfang einschließlich fünf klar getrennt ausgewiesener
+extrahierter Stufen bleibt gebunden erhalten. Die erste Fehlerhistorie 8632
+und der ursprüngliche Mittelwert 3.666666 bleiben erhalten; der korrigierte
+P-S04-Wert 3.666667 und die restlichen Abschnitte bestanden im dritten
+synthetischen Versuch. P-S14 an positiven nativen Consumercaptures ist
+NOT_EXECUTED. Bereits abgeschlossene unveränderte Abschnitte werden
+nicht neu als lokale Welle gestartet.
+
+Die neue synthetische Deltaprüfung umfasst beide PCT_EN_2-Formen, genau beide
+Ereigniszuordnungen, Methoden-/Präfix-/Trenner-/Zahlenablehnungen, NULL-IDs,
+physische ComponentId-Nullbarkeit, binäre Namen mit Endspaces und Konflikten,
+gemischte EN1-/EN2-Gruppen ohne Querverknüpfung sowie Feld-/Arrayentfernung und
+Identitäts-/Zeit-/Summen-/NULL-Mutationen. PCT_EN_1-Parser und unveränderte
+historische Provider-/Task-/RowFlow-Abnahmen werden nicht wiederholt.
+
+Die erhaltenen ursprünglichen P-N01-Providerzeilen würden unverändert aus einem
+einmal gelesenen und gehashten Puffer in eine neue eigene isolierte Datenbank
+restauriert. Es gibt keine erneute P-N01-Paketausführung und keine Änderung
+der neun gespeicherten Felder oder ihrer Ereignisnamen. Geplant sind seine
+sechs bislang sämtlich NOT_EXECUTED-Consumer aus P8. Danach ist höchstens
+eine erstmalige tatsächliche P-N02-Paketausführung für den bislang fehlenden
+Mehrfach-/Parallelkontext und dessen zwei Consumer vorgesehen.
+
+Die gesonderte Ergänzungswelle ist auf zwei synthetische und zwei Arrange-/
+Runtimeversuche, insgesamt eine tatsächliche P-N02-Paketausführung und acht
+Consumeraufrufe einschließlich Fehlversuchen begrenzt. Ein gescheiterter
+Paketlauf wird nicht erneut ausgeführt. Die acht Label-/Mode-/Cap-/Options-
+Tupel aus P8 bleiben fest; P-N02-Prefixcap kommt aus einer tatsächlich
+PARSED+ASSIGNED-Originalmeldung und schneidet ihr belegtes Kontextende ab.
+Die Referenz prüft alle 42 Felder unabhängig, inklusive fehlender IDs und
+aller neuen Namensschlüssel, plus TABLE-/JSON-Parität, physische Facetten,
+RAW11/13/15, CONSOLE1, NONE0, Originaltexte und Caller-/Quell-/Inventarklammern.
+Zwei zusätzliche begründete Prüfungen desselben Reviewers sind vorgeschlagen:
+Ergänzungs-/Adapterdelta vor Ausführung und Ergebnis-/Lieferdelta danach.
+
+Die bisherigen Budgets bleiben geschlossen und unverändert; insbesondere
+ist kein vierter Versuch der alten nativen oder synthetischen Welle abgeleitet.
+Das bisher ungenutzte CI-Budget bleibt bis zur fachlichen Qualifikation
+zurückgestellt und wird nicht zurückgesetzt oder verdoppelt. Es gibt keine
+Setup-, Lab-, VM-, Installations- oder Imagewelle. Datenbanken bleiben eigene
+ID-/create_date-/OwnerSID-/Nonce-/Marker-gebundene Objekte mit Cleanup auch auf
+Fehlerpfaden. Ein Cleanupfehler verhindert Erfolg. Neue native Formate oder
+fehlende Positivquellen führen erneut zu erhaltener Nichtqualifikation und
+konkreter Entscheidung; freie Restplätze erlauben keinen blinden Replay.
+
+### B7. Ausstehende menschliche Entscheidung
+
+Erforderlich wäre die konkrete menschliche Freigabe genau dieser Ergänzung
+B1–B7: zusätzliche native Ereignis-/Textform, bewusst fehlende numerische IDs,
+berichtete Namensgruppierung mit ComponentId NULL und der begrenzte Umfang
+aus B6. Erst danach dürfte PCT_EN_2 implementiert, die Folgeabnahme ausgeführt
+und der vollständige v1.3.0-Slice regulär per PR geliefert werden.
+Der vorliegende unabhängige Ergebnis-/Entwurfsreview ersetzt diese Freigabe
+nicht. Bis dahin bleiben Worktree, Entwurf und Originalevidenz lokal erhalten;
+kein Push, PR, CI oder weiterer Runtimeversuch. SSIS-001 bleibt
+PARTIAL_PRODUCT_FUNCTION und WI-0009 GATE-0001 offen.

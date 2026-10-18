@@ -65,6 +65,30 @@ RowFlowZugeordneteMeldungen als nullable bigint; dies sind Meldungszähler.
 Die [exakten Verträge](../../Architecture/SSIS_001_Phase0_Public_Contract.md#freigegebene-erweiterung-legacy-zeilenfluss-aus-onpipelinerowssent-vom-18-oktober-2026)
 definieren die vier Kombinationen und alle Felder.
 
+Version 1.3.0 ergänzt an Position 23 `@IncludeComponentPhaseAnalysis bit=0`.
+Bei 1 folgen componentPhaseEvents mit 18 und componentPhaseTimes mit 24 Feldern
+als letzte Mengen. SchemaVersion4 und ComponentPhaseCatalogVersion1 erscheinen
+nur bei diesem Opt-in; alle acht Kombinationen stehen im
+[freigegebenen Vertrag](../../Architecture/SSIS_001_Phase0_Public_Contract.md#freigegebene-erweiterung-legacy-komponentenphasenzeiten-aus-pipelinecomponenttime-vom-18-oktober-2026).
+sourceStatus ergänzt das feste Ordinal 7 componentPhaseAnalysis unabhängig von
+den optionalen Ordinalen 5/6. CONSOLE ergänzt im selben Grid PhasenMeldungen,
+PhasenGeleseneMeldungen und PhasenKontextMeldungen als nullable bigint-Zähler.
+
+Eine componentPhaseEvents-Zeile entspricht einer exakt benannten gespeicherten
+PipelineComponentTime-Meldung. Nur PCT_EN_1 für ProcessInput/PrimeOutput wird
+interpretiert; andere Formen bleiben ohne Teilpayload sichtbar. Der Byteguard
+gilt wie beim Zeilenfluss auch für Endleerzeichen. componentPhaseTimes gruppiert
+nur geparste Meldungen mit eindeutigem EXECUTE-Berichtskontext je Source,
+Kontext, Runtimekomponente, Methode und Output. ProcessInput hat NULL-Output.
+OutputId ist keine RowFlow-PathId. Zeitwerte sind gemeldete Millisekunden;
+Summen und Mittelwerte sind keine CPU-, exklusive oder Komponentengesamtzeit.
+EventTime ist der Meldungszeitpunkt und erzeugt kein rückgerechnetes Intervall.
+Auch ein passender Berichtskontext beweist keine vollständige Zuordnung der
+gemessenen internen Arbeit zu diesem Vorkommen. Explizite 0 bleibt 0;
+fehlende Meldungen erzeugen keine künstlichen Gruppen. Meldungs-Opt-out,
+fehlende v1-Ableitung, Fehler und Deadline verwerfen beide neuen Mengen
+atomar, behalten zuvor gültige Mengen und setzen neue Zähler NULL.
+
 ## Eine Zeile bedeutet
 
 Eine Timelinezeile entspricht einer materialisierten Logzeile. errorChain
