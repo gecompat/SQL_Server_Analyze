@@ -2680,4 +2680,5 @@ Quelle: `Code/10_SSIS/020_USP_SsisLegacyLogAnalysis.sql`
     , @IsPartialOut bit = NULL OUTPUT
     , @ErrorNumberOut int = NULL OUTPUT
     , @ErrorMessageOut nvarchar(4000) = NULL OUTPUT
+    , @IncludeTaskAnalysis bit = 0
 ```

@@ -1283,6 +1283,14 @@ drei Schritte bereits die ursprünglichen Fragen nach Laufzeiten und
 Datensatzmengen. Jeder spätere Umsetzungsschritt benötigt den hierfür
 gesondert freigegebenen fachlichen Umfang.
 
+Für den ersten begrenzten Laufzeitabschnitt liegt ein
+[konkreter freigegebener Vertrag mit Abnahmeplan](SSIS_001_Phase0_Public_Contract.md#freigegebene-erweiterung-legacy-tasklaufzeiten-und-loggingabdeckung-vom-18-oktober-2026)
+vor. Er konkretisiert das notwendige Fundament aus Schritt 1 und die
+quellenbezogenen Daueraggregate aus Schritt 2. Der Benutzer hat anschließend
+diesen geprüften Vertrag samt begrenzter Implementierung, Abnahmeplan und
+regulärer PR-Lieferung ausdrücklich freigegeben. Die bisherigen
+Legacy-Aufrufe und die abgeschlossene Vierfälle-Providerabnahme bleiben erhalten.
+
 | Reihenfolge | Entwicklungsumfang | Abhängigkeiten | Abnahmekriterien für eine spätere Lieferung |
 |---|---|---|---|
 | 1 | Erweiterungsvertrag, Ereigniskatalog und Loggingqualität | Der vorhandene Legacy-Kern, dokumentierte Ereignisformate und eine definierte Testdatengrundlage werden verwendet. | Zuordnungsschlüssel, Einheiten, Aggregationen und Ausgabeversionierung sind festgelegt und unabhängig fachlich geprüft. Fehlende, abgeschnittene und unbekannte Informationen erhalten eindeutige Status. Bestehende Aufrufe behalten ihre Bedeutung. |
@@ -1373,3 +1381,94 @@ unterstützte Version und das nachgewiesene Meldungsformat binden.
 - [Data Flow Performance Features](https://learn.microsoft.com/en-us/sql/integration-services/data-flow/data-flow-performance-features?view=sql-server-ver17) trennt Bufferanpassung und zusätzlich benötigte Performance-Counter-Evidenz.
 - [Logging in the Script Task](https://learn.microsoft.com/en-us/sql/integration-services/extending-packages-scripting/task/logging-in-the-script-task?view=sql-server-ver17) beschreibt die freiwillige Ausgabe eigener Messwerte über Dts.Log.
 - [OnQueryCancel](https://learn.microsoft.com/en-us/dotnet/api/microsoft.sqlserver.dts.runtime.wrapper.idtsevents100.onquerycancel?view=sqlserver-2019) beschreibt die Abbruchabfrage und ihre Ergebnisabhängigkeit.
+
+## Taskintervalle und Loggingabdeckung: Abnahme vom 18. Oktober 2026
+
+Die freigegebene Erweiterung von `monitor.USP_SsisLegacyLogAnalysis` v1.1.0
+ergänzt an Position 21 ausschließlich IncludeTaskAnalysis bit=0. Ohne Opt-in
+bleiben SchemaVersion 1 und die neun bisherigen Ausgabegruppen erhalten.
+Bei 1 folgen die beiden neuen Mengen taskDurations mit 23 und
+taskLoggingCoverage mit 25 Spalten, SchemaVersion 2 und drei zusätzliche
+CONSOLE-Zähler im selben Grid. Die Kennzahlen verwenden den bisherigen
+geprüften Ereignispuffer und den vollständig abgeschlossenen konservativen
+Paarbestand vor Exportbegrenzungen. SourceType bleibt UNRESOLVED.
+
+Die synthetischen Fallgruppen S01–S14 der freigegebenen Spezifikation sind
+abgegrenzt geprüft. Integration203 prüft unter anderem genaue Sollwerte,
+Identitäten und Evidenz-IDs, vollständige neue TABLE-/JSON-Parität,
+physische Schemas, N+1, Nullwerte und Meldungsopt-out. Ergänzende eigene
+Gegenproben bestätigen ordinal verschiedene Namen, inkompatible Quellen
+und den tatsächlichen nativen Fehler 229 samt gleichem vollständigem
+Fehlertext aus direktem Zugriff und Opt-in-Analyzer. Das ist keine allgemeine
+Rollen- oder Least-Privilege-Qualifikation.
+
+S13 verwendet getrennte private, quellgebundene extrahierte Originalstufen.
+Vier Pfade bestehen: Budgetende vor Beginn, Budgetende vor gemeinsamer
+Übernahme, tatsächlicher Zusatzfehler 547 und tatsächlicher Fehler 547 der
+vorherigen Ableitung bei weiterhin gültigem Puffer. Die neuen Mengen und
+Counts bleiben entsprechend leer beziehungsweise NULL, gültige frühere
+Mengen und das ursprüngliche Fehlerpaar werden erhalten. Die Fehler stammen
+aus eigenen synthetischen Temp-Constraints; ein kontrollierter Zeitübergang
+liegt zwischen unveränderten Stufenfragmenten. Diese Pfadprüfung ist kein
+natürlich aufgetretener Fehler des unveränderten Gesamtanalyzers.
+Öffentliche Faultparameter und Produkt-, Lab- oder System-Overrides wurden
+nicht ergänzt.
+
+Die zwei neuen nativen Szenarien N01 und N02 bestehen auf Windows mit SQL
+Server und SSIS 17.0.5015.4 sowie beobachtetem sysadmin. N01 führt denselben
+SQL-Task tatsächlich dreimal in einem For-Loop aus; SDK-Callbacks und drei
+eigene SQL-Schreibnachweise bestätigen die Vorkommen. Die Zahl der
+Validierungen wird nicht als drei vorausgesetzt. N02 führt zwei getrennte
+Source-IDs mit gleichem Anzeigenamen tatsächlich parallel aus. Ein dritter
+Task wird mit abgeschaltetem Logging ausgeführt und erhält keine erfundene
+Analyzerzeile. Beide nativen Execution-Ausschnitte enthalten jeweils 21
+Providerzeilen; zusätzliche SDK-Callbacks bleiben getrennt erhalten.
+
+Zehn aufrufgebundene Consumer-Captures bestehen mit insgesamt 1456
+Prüfungen. Ein unabhängiges Referenzorakel auf den gespeicherten Providerzeiten
+prüft alle 48 neuen Felder einschließlich Identität, SQL-GUID-Sortierung,
+Evidenzmitgliedschaft, Status, Counts und dezimaler Aggregate. Davon getrennt
+stehen RAW-/TABLE-/JSON-Parität und RAW11/CONSOLE1/NONE0. Ausgelassener,
+ausgeschalteter und NULL-Opt-in-Parameter liefern weiterhin RAW9 und
+SchemaVersion 1. Acht reine Capture-Mutationen werden erwartungsgemäß
+zurückgewiesen; sie starten weder SQL noch SDK oder Pakete.
+Für die 94 bisherigen Felder wird daraus kein neuer unabhängiger nativer
+All-field-Nachweis abgeleitet. Der Compatibility Level der privaten
+Windows-Datenbanken wurde nicht separat im Capture gespeichert und bleibt
+für diese Abnahme UNKNOWN; CI qualifiziert ihre tatsächlich ausgeführte
+Engine-/CL-Kombination separat.
+
+Die Produktquelle `Code/10_SSIS/020_USP_SsisLegacyLogAnalysis.sql` besitzt
+Git-LF-SHA-256 78044AD156186620999B691D5DAB389A713228FC42AAFE14FAEB46F96BF6C774
+und Windows-CRLF-SHA-256 8BE968127D442E9BF918452B6D0C5DEA85F9E643B517E51E42475B576A17B200.
+Originale Pakete, Callback- und Providerdaten, Aufrufkontexte, Bindungen,
+Fehlhistorien und Ergebnisse bleiben privat. Es wurden nur eigene isolierte
+Testdatenbanken, Pakete und synthetische Quellen verwendet. Callerframes
+sowie Quell- und SQL-Schreibnachweise sind vor und nach den Consumern gleich.
+Die Datenbanken der qualifizierten Läufe sind ID-, Erstellungszeit-,
+Besitzer- und markierungsgebunden entfernt; Datenbankinventar, Quellenpins
+und Cleanup werden getrennt ausgewiesen. Der frühe synthetische
+Arrangefehler entstand vor der Markierung. Ein separater Recoverybeleg
+dokumentiert dafür die Entfernung der leeren eigenen Datenbank anhand von
+ID und Erstellungszeit; eine zusätzliche native Nach-Abwesenheitsmenge wurde
+in diesem Recoverybeleg nicht gespeichert. Der ursprüngliche Fehlerrecord
+bleibt unverändert. Es wurden keine VM, Installation, Images oder
+fremden Testfixtures verändert.
+
+Der erste neue native Versuch bleibt FAILED_NOT_QUALIFIED: Die lokale
+Windows-PowerShell-Hülle fand Get-FileHash nicht und stoppte vor Execute.
+Ein mechanischer Wechsel auf SHA-256 desselben Dateipuffers wurde lokal
+gegen Get-FileHash verglichen; erst der zweite Versuch führte N01 und N02
+aus. Der erste synthetische Aufbau scheiterte vor Produktprüfung an einem
+Schema-Batch, ein weiterer vor Abschluss an einem Testinsert nach entfernten
+Meldungsspalten. Ein ergänzender Deltaaufbau fehlte zunächst das eigene
+monitor-Schema; seine korrigierte Fortsetzung prüfte nur die offenen Fälle.
+Alle Fehlversuche und ihre Cleanupnachweise bleiben erhalten. Erfolgreiche
+unveränderte Fälle wurden für diese Reparaturen nicht erneut ausgeführt,
+soweit sie bereits qualifiziert und gebunden waren.
+
+Die abgeschlossene Vierfälle-Providerabnahme des v1-Kerns bleibt unverändert
+erhalten. SSIS-001 bleibt PARTIAL_PRODUCT_FUNCTION. Tasktyp- und
+Looprekonstruktion, exklusive Zeit, CPU-Zeit, Phasen, Zeilenfluss, Durchsatz,
+Lookup-Decoder, Historie, eigene Kennzahlen und zusätzliche Katalog- oder
+Rollenabnahmen sind hier nicht geliefert. WI-0009 GATE-0001 bleibt offen.

@@ -4,8 +4,8 @@ GO
 /*
 ===============================================================================
 Objekt       : monitor.USP_SsisLegacyLogAnalysis
-Version      : 1.0.0
-Stand        : 2026-10-16
+Version      : 1.1.0
+Stand        : 2026-10-18
 Typ          : Stored Procedure
 Zweck        : Liest eine explizite Legacy-Loggingquelle für genau eine GUID.
 Grenze       : Keine Quellaktionen; Meldungstexte bleiben Laufzeitausgaben.
@@ -32,6 +32,7 @@ CREATE OR ALTER PROCEDURE [monitor].[USP_SsisLegacyLogAnalysis]
     , @IsPartialOut bit = NULL OUTPUT
     , @ErrorNumberOut int = NULL OUTPUT
     , @ErrorMessageOut nvarchar(4000) = NULL OUTPUT
+    , @IncludeTaskAnalysis bit = 0
 AS
 BEGIN
     SET NOCOUNT ON;
@@ -41,14 +42,19 @@ BEGIN
         PRINT N'monitor.USP_SsisLegacyLogAnalysis: explizite @LoggingDatabase und @ExecutionId; Default dbo.sysssislog.';
         PRINT N'Alle gespeicherten Meldungen sind standardmäßig eingeschlossen. Keine zusätzlichen Indizes oder Quelländerungen.';
         PRINT N'RAW9, CONSOLE1, TABLE mit @ResultTablesJson, NONE0; optional JSON derselben Mengen.';
+        PRINT N'@IncludeTaskAnalysis=1 ergänzt beobachtete Laufzeiten und Loggingabdeckung: RAW11, SchemaVersion2; keine Tasktyp- oder Konfigurationsbestimmung.';
         PRINT N'@MaxZeilen NULL/0 und eingeschlossenes nvarchar(max) benötigen @HighImpactConfirmed=1. Zeitbudget ist kooperativ.';
         RETURN;
     END;
-    SELECT @IncludeTimeline=COALESCE(@IncludeTimeline,1),@IncludeMessages=COALESCE(@IncludeMessages,1),@HighImpactConfirmed=COALESCE(@HighImpactConfirmed,0);
+    SELECT @IncludeTaskAnalysis=COALESCE(@IncludeTaskAnalysis,0),@IncludeTimeline=COALESCE(@IncludeTimeline,1),@IncludeMessages=COALESCE(@IncludeMessages,1),@HighImpactConfirmed=COALESCE(@HighImpactConfirmed,0);
     DECLARE @OutputMode varchar(16)=UPPER(LTRIM(RTRIM(COALESCE(@ResultSetArt,'')))) COLLATE SQL_Latin1_General_CP1_CS_AS;
     DECLARE @ConsoleResultRequested bit=CASE WHEN @OutputMode='CONSOLE' THEN 1 ELSE 0 END;
     DECLARE @Now datetime2(3)=SYSUTCDATETIME(),@Deadline datetime2(3),@Status varchar(40)='AVAILABLE',@Partial bit=0;
     DECLARE @Error int=NULL,@Message nvarchar(4000)=NULL,@Step int=1,@Continue bit=1,@ValidBuffer bit=0,@Truncated bit=0;
+    DECLARE @DerivationComplete bit=0,@TaskComplete bit=0,@TaskStarted bit=0;
+    DECLARE @TaskSources bigint=NULL,@TaskValid bigint=NULL,@TaskUnresolved bigint=NULL;
+    DECLARE @AllowedNames nvarchar(max)=N'moduleStatus|execution|timeline|errorChain|iterations|loggingQuality|findings|sourceStatus|warnings';
+    IF @IncludeTaskAnalysis=1 SET @AllowedNames+=N'|taskDurations|taskLoggingCoverage';
     DECLARE @Limit bigint=CASE WHEN COALESCE(@MaxZeilen,0)=0 THEN 9223372036854775807 ELSE CONVERT(bigint,@MaxZeilen) END;
     DECLARE @Take bigint=CASE WHEN COALESCE(@MaxZeilen,0)=0 THEN 9223372036854775807 ELSE CONVERT(bigint,@MaxZeilen)+1 END;
     DECLARE @PreviousLock int=@@LOCK_TIMEOUT,@PreviousAbort bit=CASE WHEN (@@OPTIONS & 16384)=16384 THEN 1 ELSE 0 END;
@@ -58,7 +64,7 @@ BEGIN
     ([ResultName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,[TargetTable] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL);
     IF @OutputMode='TABLE'
         EXEC [monitor].[InternalPrepareResultTables] @ResultTablesJson=@ResultTablesJson,
-            @AllowedResultNames=N'moduleStatus|execution|timeline|errorChain|iterations|loggingQuality|findings|sourceStatus|warnings',
+            @AllowedResultNames=@AllowedNames,
             @MappingTable=N'#SsisLegacyLogAnalysis_ResultTables',@ThrowOnError=1;
     CREATE TABLE [#SsisLegacyLogAnalysis_ModuleStatus]
     (
@@ -181,6 +187,60 @@ BEGIN
         [SourceName] nvarchar(160) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,
         [Detail] nvarchar(2000) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
     );
+    CREATE TABLE [#SsisLegacyLogAnalysis_TaskDurations]
+    (
+        [TaskDurationOrdinal] bigint NOT NULL,
+        [ExecutionId] uniqueidentifier NOT NULL,
+        [SourceId] uniqueidentifier NOT NULL,
+        [SourceName] nvarchar(4000) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,
+        [SourceType] varchar(24) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,
+        [PairKind] varchar(16) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,
+        [BasisFirstLogId] int NOT NULL,
+        [BasisLastLogId] int NOT NULL,
+        [EvidenceLogIdsJson] nvarchar(max) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,
+        [PairRowCount] bigint NOT NULL,
+        [ValidPairCount] bigint NOT NULL,
+        [UnknownTimePairCount] bigint NOT NULL,
+        [NonMonotonicPairCount] bigint NOT NULL,
+        [OpenStartCount] bigint NOT NULL,
+        [OpenEndCount] bigint NOT NULL,
+        [AmbiguousBoundaryCount] bigint NOT NULL,
+        [TotalDurationMs] decimal(38,0) NULL,
+        [AverageDurationMs] decimal(38,6) NULL,
+        [MinDurationMs] bigint NULL,
+        [MaxDurationMs] bigint NULL,
+        [SourceNameConflict] bit NOT NULL,
+        [InputIsTruncated] bit NOT NULL,
+        [MetricStatus] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+    );
+    CREATE TABLE [#SsisLegacyLogAnalysis_TaskLoggingCoverage]
+    (
+        [CoverageOrdinal] bigint NOT NULL,
+        [ExecutionId] uniqueidentifier NOT NULL,
+        [SourceId] uniqueidentifier NULL,
+        [UnresolvedLogId] int NULL,
+        [SourceName] nvarchar(4000) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,
+        [SourceType] varchar(24) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,
+        [BasisFirstLogId] int NOT NULL,
+        [BasisLastLogId] int NOT NULL,
+        [EvidenceLogIdsJson] nvarchar(max) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,
+        [ObservedEventCount] bigint NOT NULL,
+        [ExecuteStartCount] bigint NOT NULL,
+        [ExecuteEndCount] bigint NOT NULL,
+        [ValidateStartCount] bigint NOT NULL,
+        [ValidateEndCount] bigint NOT NULL,
+        [KnownOtherEventCount] bigint NOT NULL,
+        [UnknownEventNameCount] bigint NOT NULL,
+        [MissingEventNameCount] bigint NOT NULL,
+        [MissingEventTimeCount] bigint NOT NULL,
+        [AmbiguousBoundaryCount] bigint NOT NULL,
+        [UnresolvedBoundaryCount] bigint NOT NULL,
+        [IncompleteBoundaryCount] bigint NOT NULL,
+        [InvalidTimePairCount] bigint NOT NULL,
+        [SourceNameConflict] bit NOT NULL,
+        [InputIsTruncated] bit NOT NULL,
+        [CoverageStatus] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+    );
     CREATE TABLE [#SsisLegacyLogAnalysis_Buffer]
     ([LogId] int NOT NULL,[EventName] nvarchar(128) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,
      [SourceName] nvarchar(4000) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,[SourceId] uniqueidentifier NULL,
@@ -197,6 +257,10 @@ BEGIN
         ([SourceOrdinal],[SourceName],[StatusCode],[IsPartial],[IsTruncated],[Detail],[CollectionTimeUtc])
     VALUES (1,N'sourceMetadata','NOT_READ',0,0,N'NOT_READ',@Now),(2,N'sourceIndexes','NOT_READ',0,0,N'NOT_READ',@Now),
            (3,N'sourceEvents','NOT_READ',0,0,N'NOT_READ',@Now),(4,N'eventDerivation','NOT_READ',0,0,N'NOT_READ',@Now);
+    IF @IncludeTaskAnalysis=1
+        INSERT [#SsisLegacyLogAnalysis_SourceStatus]
+            ([SourceOrdinal],[SourceName],[StatusCode],[IsPartial],[IsTruncated],[Detail],[CollectionTimeUtc])
+        VALUES(5,N'taskAnalysis','NOT_READ',1,0,N'NOT_READ',@Now);
     IF @IncludeTimeline=0 INSERT [#SsisLegacyLogAnalysis_Warnings] VALUES(0,'TIMELINE_NOT_REQUESTED',NULL,N'Der Timelineexport wurde abgeschaltet.');
     IF @IncludeMessages=0 INSERT [#SsisLegacyLogAnalysis_Warnings] VALUES(0,'MESSAGES_NOT_REQUESTED',NULL,N'Der fachliche Meldungstextzugriff wurde abgeschaltet.');
     IF @OutputMode NOT IN ('CONSOLE','RAW','TABLE','NONE')
@@ -444,6 +508,7 @@ BEGIN
                     DECLARE @DerivedPartial bit=CASE WHEN @Truncated=1 OR EXISTS(SELECT 1 FROM [#SsisLegacyLogAnalysis_LoggingQuality] WHERE Severity='WARNING') THEN 1 ELSE 0 END;
                     UPDATE [#SsisLegacyLogAnalysis_SourceStatus] SET [StatusCode]=CASE WHEN @DerivedPartial=1 THEN 'AVAILABLE_LIMITED' ELSE 'AVAILABLE' END,
                         [IsPartial]=@DerivedPartial,[Detail]=N'DERIVATION_COMPLETE' WHERE SourceOrdinal=4;
+                    SET @DerivationComplete=1;
                 END;
             END TRY
             BEGIN CATCH
@@ -471,6 +536,125 @@ BEGIN
             UPDATE [#SsisLegacyLogAnalysis_SourceStatus] SET CollectionTimeUtc=SYSUTCDATETIME() WHERE SourceOrdinal=@Step;
             SET @Step+=1;
         END;
+        -- BEGIN TASK ANALYSIS: original event derivation must have completed, even for an empty buffer.
+        IF @IncludeTaskAnalysis=1
+        BEGIN
+            DECLARE @TaskReason nvarchar(2000)=CASE WHEN @Status='INVALID_PARAMETER' THEN N'INVALID_PARAMETER'
+                WHEN @ValidBuffer=0 THEN N'NO_VALID_EVENT_BUFFER' WHEN @DerivationComplete=0 THEN N'PRIOR_DERIVATION_NOT_COMPLETED'
+                WHEN SYSUTCDATETIME()>=@Deadline THEN N'TIME_BUDGET_EXHAUSTED' END;
+            IF @TaskReason IS NULL
+            BEGIN TRY
+                SET @TaskStarted=1;
+                ;WITH g AS
+                (
+                    SELECT SourceId,CASE WHEN SourceId IS NULL THEN LogId END AS UnresolvedLogId,
+                        CASE WHEN COUNT(DISTINCT CONVERT(varbinary(8000),SourceName))>1 THEN NULL ELSE MAX(SourceName) END AS SourceName,
+                        CONVERT(bit,CASE WHEN COUNT(DISTINCT CONVERT(varbinary(8000),SourceName))>1 THEN 1 ELSE 0 END) AS NameConflict,
+                        MIN(LogId) AS FirstId,MAX(LogId) AS LastId,
+                        N'['+STRING_AGG(CONVERT(nvarchar(max),LogId),N',') WITHIN GROUP(ORDER BY LogId)+N']' AS EvidenceIds,
+                        COUNT_BIG(*) AS EventCount,
+                        SUM(CONVERT(bigint,CASE WHEN EventName=N'OnPreExecute' THEN 1 ELSE 0 END)) AS ExecuteStarts,
+                        SUM(CONVERT(bigint,CASE WHEN EventName=N'OnPostExecute' THEN 1 ELSE 0 END)) AS ExecuteEnds,
+                        SUM(CONVERT(bigint,CASE WHEN EventName=N'OnPreValidate' THEN 1 ELSE 0 END)) AS ValidateStarts,
+                        SUM(CONVERT(bigint,CASE WHEN EventName=N'OnPostValidate' THEN 1 ELSE 0 END)) AS ValidateEnds,
+                        SUM(CONVERT(bigint,CASE WHEN EventName IN(N'PackageStart',N'PackageEnd',N'OnError',N'OnTaskFailed',N'OnWarning',N'OnQueryCancel') THEN 1 ELSE 0 END)) AS KnownOther,
+                        SUM(CONVERT(bigint,CASE WHEN EventName NOT IN(N'OnPreExecute',N'OnPostExecute',N'OnPreValidate',N'OnPostValidate',N'PackageStart',N'PackageEnd',N'OnError',N'OnTaskFailed',N'OnWarning',N'OnQueryCancel') THEN 1 ELSE 0 END)) AS UnknownNames,
+                        SUM(CONVERT(bigint,CASE WHEN EventName IS NULL THEN 1 ELSE 0 END)) AS MissingNames,
+                        SUM(CONVERT(bigint,CASE WHEN EventTime IS NULL THEN 1 ELSE 0 END)) AS MissingTimes
+                    FROM [#SsisLegacyLogAnalysis_Buffer]
+                    GROUP BY SourceId,CASE WHEN SourceId IS NULL THEN LogId END
+                )
+                INSERT [#SsisLegacyLogAnalysis_TaskLoggingCoverage]
+                SELECT ROW_NUMBER() OVER(ORDER BY CASE WHEN g.SourceId IS NULL THEN 1 ELSE 0 END,g.SourceId,g.UnresolvedLogId),
+                    @ExecutionId,g.SourceId,g.UnresolvedLogId,g.SourceName,'UNRESOLVED',g.FirstId,g.LastId,g.EvidenceIds,
+                    g.EventCount,g.ExecuteStarts,g.ExecuteEnds,g.ValidateStarts,g.ValidateEnds,g.KnownOther,g.UnknownNames,g.MissingNames,g.MissingTimes,
+                    a.Ambiguous,CASE WHEN g.SourceId IS NULL THEN g.ExecuteStarts+g.ExecuteEnds+g.ValidateStarts+g.ValidateEnds ELSE 0 END,
+                    a.Incomplete,a.InvalidTime,g.NameConflict,@Truncated,
+                    CASE WHEN g.SourceId IS NULL THEN 'UNRESOLVED_SOURCE' WHEN @Truncated=1 THEN 'TRUNCATED_INPUT'
+                         WHEN a.Ambiguous>0 THEN 'AMBIGUOUS_BOUNDARIES' WHEN a.Incomplete>0 THEN 'INCOMPLETE_BOUNDARIES'
+                         WHEN a.InvalidTime>0 THEN 'INVALID_BOUNDARY_TIME'
+                         WHEN g.ExecuteStarts+g.ExecuteEnds+g.ValidateStarts+g.ValidateEnds=0 THEN 'NO_BOUNDARY_OBSERVED' ELSE 'OBSERVED_BOUNDARIES' END
+                FROM g OUTER APPLY
+                (
+                    SELECT COALESCE(SUM(CONVERT(bigint,CASE WHEN PairStatus='AMBIGUOUS' THEN 1 ELSE 0 END)),0) AS Ambiguous,
+                        COALESCE(SUM(CONVERT(bigint,CASE WHEN PairStatus IN('START_ONLY','END_ONLY') THEN 1 ELSE 0 END)),0) AS Incomplete,
+                        COALESCE(SUM(CONVERT(bigint,CASE WHEN PairStatus IN('PAIRED_TIME_UNKNOWN','NON_MONOTONIC_TIME') THEN 1 ELSE 0 END)),0) AS InvalidTime
+                    FROM [#SsisLegacyLogAnalysis_Iterations] AS i WHERE i.SourceId=g.SourceId AND i.PairKind IN('EXECUTE','VALIDATE')
+                ) AS a;
+                ;WITH a AS
+                (
+                    SELECT SourceId,PairKind,COUNT_BIG(*) AS PairRows,
+                        SUM(CONVERT(bigint,CASE WHEN PairStatus='PAIRED' AND DurationMs>=0 THEN 1 ELSE 0 END)) AS ValidPairs,
+                        SUM(CONVERT(bigint,CASE WHEN PairStatus='PAIRED_TIME_UNKNOWN' THEN 1 ELSE 0 END)) AS UnknownPairs,
+                        SUM(CONVERT(bigint,CASE WHEN PairStatus='NON_MONOTONIC_TIME' THEN 1 ELSE 0 END)) AS NonMonotonicPairs,
+                        SUM(CONVERT(bigint,CASE WHEN PairStatus='START_ONLY' THEN 1 ELSE 0 END)) AS OpenStarts,
+                        SUM(CONVERT(bigint,CASE WHEN PairStatus='END_ONLY' THEN 1 ELSE 0 END)) AS OpenEnds,
+                        SUM(CONVERT(bigint,CASE WHEN PairStatus='AMBIGUOUS' THEN 1 ELSE 0 END)) AS Ambiguous,
+                        SUM(CASE WHEN PairStatus='PAIRED' AND DurationMs>=0 THEN CONVERT(decimal(38,0),DurationMs) END) AS TotalMs,
+                        MIN(CASE WHEN PairStatus='PAIRED' AND DurationMs>=0 THEN DurationMs END) AS MinMs,
+                        MAX(CASE WHEN PairStatus='PAIRED' AND DurationMs>=0 THEN DurationMs END) AS MaxMs
+                    FROM [#SsisLegacyLogAnalysis_Iterations] WHERE SourceId IS NOT NULL AND PairKind IN('EXECUTE','VALIDATE')
+                    GROUP BY SourceId,PairKind
+                ), e AS
+                (
+                    SELECT SourceId,PairKind,MIN(LogId) AS FirstId,MAX(LogId) AS LastId,
+                        N'['+STRING_AGG(CONVERT(nvarchar(max),LogId),N',') WITHIN GROUP(ORDER BY LogId)+N']' AS EvidenceIds
+                    FROM [#SsisLegacyLogAnalysis_Pairs] WHERE SourceId IS NOT NULL AND PairKind IN('EXECUTE','VALIDATE')
+                    GROUP BY SourceId,PairKind
+                )
+                INSERT [#SsisLegacyLogAnalysis_TaskDurations]
+                SELECT ROW_NUMBER() OVER(ORDER BY a.SourceId,a.PairKind),@ExecutionId,a.SourceId,c.SourceName,'UNRESOLVED',a.PairKind,
+                    e.FirstId,e.LastId,e.EvidenceIds,a.PairRows,a.ValidPairs,a.UnknownPairs,a.NonMonotonicPairs,a.OpenStarts,a.OpenEnds,a.Ambiguous,
+                    a.TotalMs,CONVERT(decimal(38,6),a.TotalMs/NULLIF(CONVERT(decimal(19,0),a.ValidPairs),0)),a.MinMs,a.MaxMs,c.SourceNameConflict,@Truncated,
+                    CASE WHEN @Truncated=1 THEN 'TRUNCATED_INPUT' WHEN a.Ambiguous>0 THEN 'AMBIGUOUS_BOUNDARIES'
+                         WHEN a.OpenStarts+a.OpenEnds>0 THEN 'INCOMPLETE_BOUNDARIES' WHEN a.UnknownPairs+a.NonMonotonicPairs>0 THEN 'INVALID_BOUNDARY_TIME'
+                         WHEN a.ValidPairs=0 THEN 'NO_VALID_PAIRS' ELSE 'OBSERVED_INTERVALS' END
+                FROM a INNER JOIN e ON e.SourceId=a.SourceId AND e.PairKind=a.PairKind
+                INNER JOIN [#SsisLegacyLogAnalysis_TaskLoggingCoverage] AS c ON c.SourceId=a.SourceId;
+                IF SYSUTCDATETIME()>=@Deadline SET @TaskReason=N'TIME_BUDGET_EXHAUSTED';
+                ELSE
+                BEGIN
+                    SELECT @TaskSources=COUNT_BIG(*) FROM [#SsisLegacyLogAnalysis_TaskLoggingCoverage] WHERE SourceId IS NOT NULL;
+                    SELECT @TaskValid=COALESCE(SUM(ValidPairCount),0) FROM [#SsisLegacyLogAnalysis_TaskDurations];
+                    SELECT @TaskUnresolved=COALESCE(SUM(AmbiguousBoundaryCount+UnresolvedBoundaryCount+IncompleteBoundaryCount),0)
+                        FROM [#SsisLegacyLogAnalysis_TaskLoggingCoverage];
+                    DECLARE @TaskLimited bit=CASE WHEN @Truncated=1 OR EXISTS(SELECT 1 FROM [#SsisLegacyLogAnalysis_TaskLoggingCoverage]
+                        WHERE SourceId IS NULL OR SourceNameConflict=1 OR AmbiguousBoundaryCount>0 OR IncompleteBoundaryCount>0 OR InvalidTimePairCount>0) THEN 1 ELSE 0 END;
+                    DECLARE @TaskRows bigint=(SELECT COUNT_BIG(*) FROM [#SsisLegacyLogAnalysis_TaskDurations])+(SELECT COUNT_BIG(*) FROM [#SsisLegacyLogAnalysis_TaskLoggingCoverage]);
+                    UPDATE [#SsisLegacyLogAnalysis_SourceStatus] SET StatusCode=CASE WHEN @TaskRows=0 THEN 'AVAILABLE_EMPTY' WHEN @TaskLimited=1 THEN 'AVAILABLE_LIMITED' ELSE 'AVAILABLE' END,
+                        IsPartial=@TaskLimited,ObservedRowCount=@TaskRows,ReturnedRowCount=@TaskRows,Detail=N'OBSERVED_SOURCE_INTERVALS_ONLY' WHERE SourceOrdinal=5;
+                    IF EXISTS(SELECT 1 FROM [#SsisLegacyLogAnalysis_TaskLoggingCoverage] WHERE SourceNameConflict=1)
+                        INSERT [#SsisLegacyLogAnalysis_Warnings] VALUES(0,'TASK_ANALYSIS_SOURCE_NAME_CONFLICT',N'taskAnalysis',N'Ordinal verschiedene Namen derselben Source-ID; kein Anzeigename ausgewählt.');
+                    SET @TaskComplete=1;
+                END;
+            END TRY
+            BEGIN CATCH
+                DECLARE @TaskError int=ERROR_NUMBER(),@TaskMessage nvarchar(4000)=ERROR_MESSAGE();
+                UPDATE [#SsisLegacyLogAnalysis_SourceStatus] SET StatusCode=CASE WHEN @TaskError IN(229,262,297,300,371) THEN 'DENIED'
+                    WHEN @TaskError IN(207,208,911,916,942) THEN 'SOURCE_UNAVAILABLE' ELSE 'ERROR_HANDLED' END,
+                    IsPartial=1,ErrorNumber=@TaskError,ErrorMessage=@TaskMessage,Detail=N'NATIVE_SOURCE_ERROR' WHERE SourceOrdinal=5;
+                IF @Error IS NULL SELECT @Error=@TaskError,@Message=@TaskMessage;
+                INSERT [#SsisLegacyLogAnalysis_Warnings] VALUES(0,'TASK_ANALYSIS_ERROR',N'taskAnalysis',N'Die Zusatzableitung ist fehlgeschlagen; gültige vorherige Mengen bleiben erhalten.');
+            END CATCH;
+            IF @TaskComplete=0
+            BEGIN
+                DELETE FROM [#SsisLegacyLogAnalysis_TaskDurations];
+                DELETE FROM [#SsisLegacyLogAnalysis_TaskLoggingCoverage];
+                SELECT @TaskSources=NULL,@TaskValid=NULL,@TaskUnresolved=NULL;
+                UPDATE [#SsisLegacyLogAnalysis_SourceStatus] SET ObservedRowCount=NULL,ReturnedRowCount=NULL,IsTruncated=0,
+                    StatusCode=CASE WHEN @TaskReason=N'TIME_BUDGET_EXHAUSTED' AND @TaskStarted=1 THEN 'AVAILABLE_LIMITED' ELSE StatusCode END,
+                    Detail=COALESCE(@TaskReason,Detail) WHERE SourceOrdinal=5;
+                IF @TaskReason=N'TIME_BUDGET_EXHAUSTED'
+                    INSERT [#SsisLegacyLogAnalysis_Warnings] VALUES(0,'TASK_ANALYSIS_TIME_BUDGET_EXHAUSTED',N'taskAnalysis',N'Die Zusatzableitung wurde nicht innerhalb des kooperativen Budgets übernommen.');
+            END;
+            UPDATE [#SsisLegacyLogAnalysis_SourceStatus] SET CollectionTimeUtc=SYSUTCDATETIME() WHERE SourceOrdinal=5;
+            IF EXISTS(SELECT 1 FROM [#SsisLegacyLogAnalysis_SourceStatus] WHERE SourceOrdinal=5 AND IsPartial=1)
+            BEGIN
+                SET @Partial=1;
+                IF @Status IN('AVAILABLE','AVAILABLE_EMPTY','AVAILABLE_LIMITED') SET @Status='AVAILABLE_LIMITED';
+            END;
+        END;
+        -- END TASK ANALYSIS
         EXEC sys.sp_executesql @RestoreLock;
         IF @PreviousAbort=1 SET XACT_ABORT ON;
     END TRY
@@ -544,11 +728,11 @@ BEGIN
     END;
     ;WITH w AS(SELECT *,ROW_NUMBER() OVER(ORDER BY WarningCode,SourceName) AS n FROM [#SsisLegacyLogAnalysis_Warnings]) UPDATE w SET WarningOrdinal=CONVERT(int,n);
     INSERT [#SsisLegacyLogAnalysis_ModuleStatus]
-    VALUES(N'USP_SsisLegacyLogAnalysis',1,@LoggingDatabase,@LoggingSchema,@LoggingTable,@ExecutionId,@IncludeMessages,@Status,@Partial,@Error,@Message,@Now);
+    VALUES(N'USP_SsisLegacyLogAnalysis',CASE WHEN @IncludeTaskAnalysis=1 THEN 2 ELSE 1 END,@LoggingDatabase,@LoggingSchema,@LoggingTable,@ExecutionId,@IncludeMessages,@Status,@Partial,@Error,@Message,@Now);
     SELECT @StatusCodeOut=@Status,@IsPartialOut=@Partial,@ErrorNumberOut=@Error,@ErrorMessageOut=@Message;
     IF COALESCE(@JsonErzeugen,0)=1
         SELECT @Json=(SELECT
-            JSON_QUERY((SELECT N'USP_SsisLegacyLogAnalysis' AS ModuleName,1 AS SchemaVersion,@Now AS CollectionTimeUtc,@Status AS StatusCode,@Partial AS IsPartial FOR JSON PATH,INCLUDE_NULL_VALUES,WITHOUT_ARRAY_WRAPPER)) AS [meta]
+            JSON_QUERY((SELECT N'USP_SsisLegacyLogAnalysis' AS ModuleName,CASE WHEN @IncludeTaskAnalysis=1 THEN 2 ELSE 1 END AS SchemaVersion,@Now AS CollectionTimeUtc,@Status AS StatusCode,@Partial AS IsPartial FOR JSON PATH,INCLUDE_NULL_VALUES,WITHOUT_ARRAY_WRAPPER)) AS [meta]
           , JSON_QUERY(COALESCE((SELECT * FROM [#SsisLegacyLogAnalysis_ModuleStatus] ORDER BY [ModuleName] FOR JSON PATH,INCLUDE_NULL_VALUES),N'[]')) AS [moduleStatus]
           , JSON_QUERY(COALESCE((SELECT * FROM [#SsisLegacyLogAnalysis_Execution] ORDER BY [ExecutionId] FOR JSON PATH,INCLUDE_NULL_VALUES),N'[]')) AS [execution]
           , JSON_QUERY(COALESCE((SELECT * FROM [#SsisLegacyLogAnalysis_Timeline] ORDER BY [TimelineOrdinal] FOR JSON PATH,INCLUDE_NULL_VALUES),N'[]')) AS [timeline]
@@ -559,6 +743,12 @@ BEGIN
           , JSON_QUERY(COALESCE((SELECT * FROM [#SsisLegacyLogAnalysis_SourceStatus] ORDER BY [SourceOrdinal] FOR JSON PATH,INCLUDE_NULL_VALUES),N'[]')) AS [sourceStatus]
           , JSON_QUERY(COALESCE((SELECT * FROM [#SsisLegacyLogAnalysis_Warnings] ORDER BY [WarningOrdinal] FOR JSON PATH,INCLUDE_NULL_VALUES),N'[]')) AS [warnings]
             FOR JSON PATH,WITHOUT_ARRAY_WRAPPER);
+    IF COALESCE(@JsonErzeugen,0)=1 AND @IncludeTaskAnalysis=1
+    BEGIN
+        SET @Json=JSON_MODIFY(@Json,'$.meta.TaskAnalysisCatalogVersion',1);
+        SET @Json=JSON_MODIFY(@Json,'$.taskDurations',JSON_QUERY(COALESCE((SELECT * FROM [#SsisLegacyLogAnalysis_TaskDurations] ORDER BY TaskDurationOrdinal FOR JSON PATH,INCLUDE_NULL_VALUES),N'[]')));
+        SET @Json=JSON_MODIFY(@Json,'$.taskLoggingCoverage',JSON_QUERY(COALESCE((SELECT * FROM [#SsisLegacyLogAnalysis_TaskLoggingCoverage] ORDER BY CoverageOrdinal FOR JSON PATH,INCLUDE_NULL_VALUES),N'[]')));
+    END;
     IF @OutputMode='TABLE'
     BEGIN
         DECLARE @TargetTable sysname;
@@ -571,6 +761,11 @@ BEGIN
         SET @TargetTable=(SELECT TargetTable FROM [#SsisLegacyLogAnalysis_ResultTables] WHERE ResultName=N'findings'); IF @TargetTable IS NOT NULL EXEC [monitor].[InternalWriteResultTable] N'#SsisLegacyLogAnalysis_Findings',@TargetTable,@ThrowOnError=1;
         SET @TargetTable=(SELECT TargetTable FROM [#SsisLegacyLogAnalysis_ResultTables] WHERE ResultName=N'sourceStatus'); IF @TargetTable IS NOT NULL EXEC [monitor].[InternalWriteResultTable] N'#SsisLegacyLogAnalysis_SourceStatus',@TargetTable,@ThrowOnError=1;
         SET @TargetTable=(SELECT TargetTable FROM [#SsisLegacyLogAnalysis_ResultTables] WHERE ResultName=N'warnings'); IF @TargetTable IS NOT NULL EXEC [monitor].[InternalWriteResultTable] N'#SsisLegacyLogAnalysis_Warnings',@TargetTable,@ThrowOnError=1;
+        IF @IncludeTaskAnalysis=1
+        BEGIN
+            SET @TargetTable=(SELECT TargetTable FROM [#SsisLegacyLogAnalysis_ResultTables] WHERE ResultName=N'taskDurations'); IF @TargetTable IS NOT NULL EXEC [monitor].[InternalWriteResultTable] N'#SsisLegacyLogAnalysis_TaskDurations',@TargetTable,@ThrowOnError=1;
+            SET @TargetTable=(SELECT TargetTable FROM [#SsisLegacyLogAnalysis_ResultTables] WHERE ResultName=N'taskLoggingCoverage'); IF @TargetTable IS NOT NULL EXEC [monitor].[InternalWriteResultTable] N'#SsisLegacyLogAnalysis_TaskLoggingCoverage',@TargetTable,@ThrowOnError=1;
+        END;
     END;
     IF @OutputMode='RAW'
     BEGIN
@@ -583,6 +778,11 @@ BEGIN
         SELECT * FROM [#SsisLegacyLogAnalysis_Findings] ORDER BY [FindingOrdinal];
         SELECT * FROM [#SsisLegacyLogAnalysis_SourceStatus] ORDER BY [SourceOrdinal];
         SELECT * FROM [#SsisLegacyLogAnalysis_Warnings] ORDER BY [WarningOrdinal];
+        IF @IncludeTaskAnalysis=1
+        BEGIN
+            SELECT * FROM [#SsisLegacyLogAnalysis_TaskDurations] ORDER BY TaskDurationOrdinal;
+            SELECT * FROM [#SsisLegacyLogAnalysis_TaskLoggingCoverage] ORDER BY CoverageOrdinal;
+        END;
     END;
     IF @ConsoleResultRequested=1
     BEGIN
@@ -595,6 +795,12 @@ BEGIN
         SELECT m.StatusCode,m.IsPartial,m.ExecutionId,e.AnalyzedEventCount,e.ObservedOutcome,e.FirstErrorLogId,e.FirstErrorMessage,e.FirstObservedTime,e.LastObservedTime,
             N'Beobachteter Logausschnitt; Quellenstatus und Grenzen beachten. Kein Nachweis einer technischen Root Cause.'
         FROM [#SsisLegacyLogAnalysis_ModuleStatus] AS m LEFT JOIN [#SsisLegacyLogAnalysis_Execution] AS e ON e.ExecutionId=m.ExecutionId;
+        IF @IncludeTaskAnalysis=1
+        BEGIN
+            ALTER TABLE [#SsisLegacyLogAnalysis_Console] ADD [BeobachteteQuellen] bigint NULL,[GueltigeIntervalle] bigint NULL,[UngeklaerteGrenzereignisse] bigint NULL;
+            EXEC sys.sp_executesql N'UPDATE [#SsisLegacyLogAnalysis_Console] SET [BeobachteteQuellen]=@Sources,[GueltigeIntervalle]=@Valid,[UngeklaerteGrenzereignisse]=@Unresolved;',
+                N'@Sources bigint,@Valid bigint,@Unresolved bigint',@Sources=@TaskSources,@Valid=@TaskValid,@Unresolved=@TaskUnresolved;
+        END;
         EXEC [monitor].[InternalEmitConsoleResult] @SourceTable=N'#SsisLegacyLogAnalysis_Console',@ResultLabel=N'SSIS-Legacy-Ausführung',@EmptyMessage=N'Keine sichtbare Legacy-Ausführung';
     END;
 END;
