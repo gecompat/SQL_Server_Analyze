@@ -921,8 +921,112 @@ entfernt. Die unveränderten Produktguards werden nicht umgangen. Die originale
 Fehlhistorie und die erfolgreichen eigenen Runtime-Cleanups bleiben erhalten.
 
 Zum Liefergate gehören exakte Head-CI und reguläre Integration am abschließenden
-Lieferstand. Eine positive echte Providerabnahme, weitere native
-Engines und weitere Rollen bleiben unabhängig vom synthetischen CI-Ergebnis offen.
+Lieferstand. Die spätere begrenzte Providerabnahme ist nachfolgend getrennt
+vom synthetischen CI-Ergebnis dokumentiert. Weitere native Engines und weitere
+Rollen bleiben offen.
+
+## Legacy-Providerabnahme vom 18. Oktober 2026
+
+Der unveränderte Legacy-Analyzer v1.0.0 besteht die begrenzte Abnahme von vier
+eigenen synthetischen Paketen auf Windows mit SQL Server und SSIS 17.0.1000.7.
+Die Pakete wurden tatsächlich ausgeführt; der SQL-Server-Log-Provider erzeugte
+die untersuchten sysssislog-Zeilen. Die Referenz verwendet native SDK-Callbacks
+und die gespeicherten Providerwerte. In die Loggingquelle wurden keine
+synthetischen Ereigniszeilen als Ersatz für Providererzeugung eingefügt.
+Die beobachtete Berechtigung war sysadmin; daraus folgt keine allgemeine
+Rollen- oder Least-Privilege-Qualifikation.
+
+Die Abnahme kombiniert gebundene Einzelbelege aus drei Versuchen. Sie ist
+kein neuer gemeinsamer Vierfällelauf. Native11 und Native12 bleiben insgesamt
+`FAILED_NOT_QUALIFIED`; ihre bereits erfolgreichen Einzelprüfungen werden
+unverändert wiederverwendet. Native13 besteht mit Exitcode 0 und führt nur
+den SQL-Fehlerfall für die noch offenen Ausgabeprüfungen sowie den Lookup-Miss
+erneut aus. Die vier Pakete wurden weiterhin gemeinsam erzeugt; die früheren
+grünen Basic- und Duplicate-Prüfungen wurden nicht wiederholt.
+
+| Synthetischer Fall | Tatsächlicher Paketausgang | Providerzeilen | Herkunft der drei erfolgreichen Cap-Prüfungen |
+|---|---|---:|---|
+| `ExampleBasicSuccess` | Erfolg | 12 | Native11, erfolgreiche Einzelbelege wiederverwendet |
+| `ExampleSqlFailure` | Erwarteter SQL-Fehler | 16 | Native11, erfolgreiche Einzelbelege wiederverwendet; Ausgabearten separat in Native13 |
+| `ExampleLookupDuplicate` | Erfolg mit Full-Cache-Duplikatwarnung `0x802090E4` | 60 | Native12, erfolgreiche Einzelbelege wiederverwendet |
+| `ExampleLookupMiss` | Erwarteter No-Match-Fehler `0xC020901E` | 61 | Native13, neu ausgeführt |
+
+Jeder Fall besitzt Prüfungen mit Cap 0, 1 und 2. Insgesamt bestehen zwölf
+gebundene Einzelprüfungen: sechs aus Native11, drei aus Native12 und drei neue
+aus Native13. Sie vergleichen alle TABLE-/JSON-Feldwerte mit der nativen
+Referenz und prüfen die N+1-Begrenzung. Die Lookup-Gegenproben binden die
+tatsächliche Komponenten-ID, den Namen, die Klasse und den Task des jeweils
+hashgebundenen Pakets sowie Fehlercode und ordinal gleichen vollständigen
+Providertext. Kontrollierte Zielmengen prüfen die fachlichen Fixtureergebnisse.
+Diese Bindungen gehören zum Testorakel; der Analyzer erhält dadurch keinen
+Freitextparser oder allgemeinen Root-Cause-Vertrag.
+
+Native13 bestätigt außerdem neun RAW-, ein CONSOLE- und null NONE-Resultsets.
+RAW und JSON stimmen in allen Feldern überein. Der vollständige erste
+gespeicherte Fehlertext bleibt in RAW und CONSOLE ordinal identisch zur
+nativen Quelle. Konservative Zeitpaare werden gegen denselben Ereignispuffer
+geprüft; sie beweisen weder Schleifen noch den Erfolg einer Paketausführung.
+
+### Herkunft und erhaltene Fehlhistorie
+
+Die geprüfte Produktbasis ist Commit
+`4b607a8e57b55dec3d52a0f69f37b103792319cd`. Die kanonische Git-LF-Quelle
+`Code/10_SSIS/020_USP_SsisLegacyLogAnalysis.sql` besitzt SHA-256
+`7B3F12D1BD715A5D33F8395BE421966B92685D7AD767210917B22BBE792DE3FD`;
+die tatsächlich installierte CRLF-Fassung besitzt
+`9943A0A6A14F94999BC9112044690E03FC478B13FE129ADBE47CA477D4070E4B`.
+Sieben installierte Produkt- und Helperquellen bleiben zwischen den
+wiederverwendeten Belegen unverändert. Alle 63 final gebundenen Quellen und
+Evidenzeingaben bleiben auch nach Native13 unverändert.
+
+Die Originalergebnisse, Captures und Prüfquellen werden privat aufbewahrt.
+Sie werden wegen ihrer Runtimeidentitäten und Umgebungsdaten nicht in das
+Repository übernommen. Die folgenden SHA-256-Werte identifizieren die
+ausgewerteten privaten Ergebnisdateien; Hashes allein ersetzen weder deren
+Inhalt noch eine unabhängige Wiederholung.
+
+| Privater Beleg | SHA-256 |
+|---|---|
+| Native11, tatsächliche Runtimefortsetzung und sechs erfolgreiche Caps | `9956297BD6446901EB4A0C59D8937F69288AE668A9E17F53E38B4D43AA02E76A` |
+| Native12, insgesamt fehlgeschlagen mit drei erfolgreichen Duplicate-Caps | `C99A0C09A23EC2B89A3D9A8B55D0CD91044E879EA56AE7D23E8CF6CEC81E2741` |
+| Native13, erfolgreiches Ergebnis | `E6A9A4C68BE51CDBC829145A1021C1510E04A4698FF0916D3789E41EE5FCD245` |
+| Abschlussauswertung mit Herkunft und Aussagegrenzen | `AFDD2255954913D1B6685EA4C045414B407F44F671C942420A86D775F3CC3DCD` |
+
+Die früheren Fehlversuche bleiben erhalten. Native11 stoppte am privaten
+Bare-Name-Guard, der den tatsächlichen Komponentennamen mit ID-Suffix
+zurückwies. Native12 stoppte am privaten Meldungsnamenvorfilter: Die originale
+No-Match-Meldung enthält keinen Komponentennamen und wurde deshalb
+ausgeschlossen. Die Korrektur entfernt nur diesen Vorfilter; Komponenten-,
+Task-, Code- und ordinaler Volltextvergleich bleiben erhalten. Die begrenzten
+Runnerkorrekturen wurden unabhängig geprüft; es bestehen keine offenen P1/P2.
+Beide Befunde belegen keinen Produktfehler. Die frühere Ladeursache der
+Standardkomponenten in Native5 bleibt unbekannt. Erfolgreiche spätere
+Providerläufe erklären diesen früheren Fehler nicht nachträglich.
+
+### Cleanup und verbleibender Umfang
+
+Eigene Framework- und Loggingdatenbanken sowie Gasttemporärdaten wurden
+identitätsgebunden entfernt; die Cleanupfehlerzahl ist null und das
+Datenbankinventar wurde restauriert. Die drei geschützten eigenen
+Katalogbaseline-Ausführungen blieben während der Prüfungen stabil.
+Anschließend wurden ausschließlich die eigene VM und ihre eigene virtuelle
+Festplatte über den öffentlichen Lab-Lifecycle entfernt; ihre Abwesenheit
+und der Runstatus REMOVED sind bestätigt. Fremde Runs und erhaltene
+Katalogfixtures wurden nicht verändert; ein neuer vollständiger Fremdhashnachweis
+wird daraus nicht abgeleitet. Eine eigene verschlüsselte Credentialdatei
+bleibt privat erhalten, weil ihre Löschung automatisch durch die Policy
+blockiert wurde. Ein erneuter oder alternativer Löschversuch erfolgte nicht;
+ein vollständiger privater Dateicleanup wird nicht behauptet.
+
+Die Abnahme schließt ausschließlich diese vier Fälle für den unveränderten
+Legacy-Kern. Weitere native Engines, Providerkonfigurationen, Rollen,
+Least Privilege, positive zusätzliche Katalogquellen sowie Task-, Schleifen-,
+Performance-, Verbose-, Phasen- und RowFlow-Auswertung bleiben offen.
+Der zurückgestellte Erweiterungsbacklog wird nicht aktiviert. `SSIS-001`
+bleibt `PARTIAL_PRODUCT_FUNCTION`; WI-0009 GATE-0001 bleibt unverändert offen.
+Die Dokumentationsintegration startet keine weiteren nativen Prüfungen und
+ändert weder öffentliche Parameter und Schemas noch Produktversionen oder
+Maturityflags.
 
 ## Backlog: Vertiefte Legacy-Loganalyse vom 16. Oktober 2026
 

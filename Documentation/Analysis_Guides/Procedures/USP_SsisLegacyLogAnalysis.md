@@ -199,5 +199,12 @@ automatisch miteinander verbunden.
 ## Nachweisgrenze
 
 Integrationstest 202 verwendet ausschließlich synthetische kompatible Tabellen.
-Ein echter SSIS-Providerlauf, weitere Rollen und ältere native Engines benötigen
-eigene geeignete Nachweise. SSIS-001 bleibt PARTIAL_PRODUCT_FUNCTION.
+Die getrennte [Providerabnahme vom 18. Oktober 2026](../../Architecture/SSIS_Package_and_Execution_Analysis_Plan.md#legacy-providerabnahme-vom-18-oktober-2026)
+verwendet tatsächlich ausgeführte eigene Pakete und native SQL-Log-Providerzeilen
+auf Windows SQL/SSIS 17.0.1000.7 mit beobachtetem sysadmin. Vier Fälle besitzen
+zwölf erfolgreiche Cap-Prüfungen gegen die native Referenz und alle TABLE-/JSON-Felder;
+neun davon werden gebunden wiederverwendet. Native11 und Native12 bleiben
+insgesamt FAILED_NOT_QUALIFIED, Native13 besteht. RAW mit neun, CONSOLE mit
+einem und NONE ohne Resultset sowie der vollständige erste Fehlertext sind
+geprüft. Weitere Rollen, native Engines und vertiefte Interpretation bleiben
+offen. SSIS-001 bleibt PARTIAL_PRODUCT_FUNCTION.

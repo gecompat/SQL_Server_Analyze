@@ -1,7 +1,38 @@
 # Nächste Arbeitsschritte
 
-**Stand:** 16. Oktober 2026
+**Stand:** 18. Oktober 2026
 **Zweck:** aktuelle ausführbare Entwicklungswelle für `gecompat/SQL_Server_Analyze`
+
+## Abgeschlossene begrenzte Legacy-Providerabnahme vom 18. Oktober 2026
+
+Die [kanonische Providerabnahme](../../../Documentation/Architecture/SSIS_Package_and_Execution_Analysis_Plan.md#legacy-providerabnahme-vom-18-oktober-2026)
+bestätigt vier tatsächlich ausgeführte eigene synthetische Paketfälle auf
+Windows SQL/SSIS 17.0.1000.7 mit zwölf gebundenen Cap-Einzelprüfungen.
+Sechs erfolgreiche Belege aus Native11 und drei aus Native12 werden
+unverändert wiederverwendet; drei Miss-Caps sowie RAW9/CONSOLE1/NONE0 und
+vollständige erste Fehlertexte bestehen in Native13. Native11 und Native12
+bleiben insgesamt FAILED_NOT_QUALIFIED. Ein neuer gemeinsamer Vierfällelauf
+wird nicht behauptet. Produkt v1.0.0 und seine Abhängigkeiten bleiben unverändert.
+
+Analyze hat die eigenen Pakete, Referenzen und das Cleanup auf einer ausdrücklich
+freigegebenen eigenen Umgebung über öffentliche Lab-Schnittstellen verantwortet.
+Eine zusätzliche vom Lab erstellte fachliche Legacy-Fixture ist keine
+Voraussetzung. Die eigenen Runtimeobjekte, VM und virtuelle Festplatte sind
+entfernt; eine verschlüsselte private Credentialdatei bleibt nach einer
+automatischen Löschblockade ohne weiteren Löschversuch erhalten.
+Originalevidenz und frühere Fehlhistorien bleiben privat erhalten.
+
+Die aktuelle Dokumentationsintegration verändert keine Funktionsverträge,
+Maturityflags oder historischen Abnahmebudgets und startet keine native
+Prüfung. `SSIS-001` bleibt `PARTIAL_PRODUCT_FUNCTION`: weitere Parser- und
+Interpretationsfunktionen, positive Task-/Schleifen-, Performance-/Verbose-,
+Phasen-, RowFlow- und Least-Privilege-Nachweise bleiben offen. Der zurückgestellte
+Backlog wird nicht aktiviert; neue öffentliche Verträge benötigen konkrete
+menschliche Freigabe. WI-0009 GATE-0001 bleibt offen. Frühere Wartevermerke zur
+Legacy-Providerquelle und zur Zuständigkeit für eigene Testfixtures sind für
+die belegte Providererzeugung abgelöst; grüne Einzelprüfungen werden nicht wiederholt.
+
+## Ergänzender abgeschlossener Mail-Retentionsnachweis
 
 Die ergänzende private Retentionsfixture bestätigt auf SQL Server 2025
 17.0.4075.5/CL170 genau eine tatsächlich gesendete eigene Mail. Zwei native
@@ -59,10 +90,10 @@ Das Budget 3/3 bleibt geschlossen, die eigene Testdatenbank ist entfernt,
 Quelle und übriger Datenbankbestand sind unverändert. Erforderliche exakte
 Head-CI und reguläre Integration gehören weiterhin zum Lieferabschluss.
 
-SSIS-001 bleibt partiell. Die echte Legacy-Providerabnahme und positive Task-/Schleifen-,
-Performance-/Verbose-, Phasen-, RowFlow- und Least-Privilege-Nachweise benötigen
-geeignete veröffentlichte Quellen. Dafür wird weder eine Ersatzinstanz noch
-eine eigene Lab-Erweiterung angelegt. WI-0009 GATE-0001 bleibt unverändert offen.
+SSIS-001 bleibt partiell. Die spätere begrenzte Legacy-Providerabnahme ist oben
+getrennt dokumentiert. Positive Task-/Schleifen-, Performance-/Verbose-, Phasen-,
+RowFlow- und Least-Privilege-Nachweise bleiben offen; diese Dokumentationsintegration
+aktiviert keine neuen Umgebungen oder Testwellen. WI-0009 GATE-0001 bleibt offen.
 Bereits abgeschlossene Slices und ihre geschlossenen Budgets werden nicht
 erneut geprüft. Die älteren SSIS-Wartevermerke beschreiben den vorherigen Stand.
 
@@ -126,7 +157,7 @@ synchronisiert, ohne vorhandene Implementierung erneut zu entwickeln.
 | Reihenfolge | Tatsächliche Funktionslücke | Nächster konkreter Abschluss |
 |---|---|---|
 | 1 | WI-0005: Der freigegebene Zeitgrenzenvertrag ist regulär geliefert. | Abgeschlossen; unveränderte erfolgreiche Nachweise werden nicht wiederholt. |
-| 2 | SSIS-001: Der Katalogkern ist implementiert und begrenzt nativ geprüft; Legacy und weitere Fachnachweise fehlen. | Der freigegebene Katalogkern besitzt einen begrenzten Windowsnachweis; Legacy und positive zusätzliche Loggingquellen bleiben offen. |
+| 2 | SSIS-001: Katalog- und Legacy-Kern sind geliefert und begrenzt nativ geprüft; weitere Funktionen und Fachnachweise fehlen. | Die vier Legacy-Providerfälle sind mit zwölf gebundenen Einzelprüfungen abgeschlossen; zusätzliche Loggingquellen und der zurückgestellte Erweiterungsbacklog bleiben offen. |
 | 3 | WI-0006: Compile-Kontext ist implementiert und nativ qualifiziert. | Über PR #384 regulär integriert; unveränderte erfolgreiche Nachweise werden nicht wiederholt. |
 | 4 | WI-0007: Aggregierte External-Model-Inventur ist implementiert und nativ qualifiziert. | Gemeinsam mit WI-0006 über PR #384 regulär integriert. |
 | 5 | WI-0009: Lokale External-Data-Analyse ist implementiert; der portable Kern ist nativ qualifiziert. | Über PR #385 regulär integriert; das positive External-Table-Gate bleibt bis zu einer geeigneten eigenen Quelle offen. |
@@ -1892,4 +1923,4 @@ bleibt innerhalb ihrer bestehenden Grenzen ausführbar.
 
 ## Freigegebene SSIS-Legacy-Umsetzung vom 16. Oktober 2026
 
-Der Benutzer hat die geprüfte Revision 3 ausdrücklich freigegeben. Der [Legacy-Vertrag](../../../Documentation/Architecture/SSIS_Package_and_Execution_Analysis_Plan.md#freigegebener-legacy-kern-vom-16-oktober-2026) enthält 20 Parameter, neun Schemas und gespeicherte Meldungstexte als Default. Zusätzliche Quellindizes sind keine Voraussetzung. Der separate Implementierungsschritt umfasst Produkt, synthetische Vertragsprüfung, Installer, Inventare und reguläre Integration. Native Providererzeugung und zusätzliche Rollen benötigen weiterhin veröffentlichte geeignete Lab-Abnahme; keine eigene Labentwicklung. Frühere geschlossene Budgets und WI-0009 GATE-0001 bleiben unverändert.
+Der Benutzer hat die geprüfte Revision 3 ausdrücklich freigegeben. Der [Legacy-Vertrag](../../../Documentation/Architecture/SSIS_Package_and_Execution_Analysis_Plan.md#freigegebener-legacy-kern-vom-16-oktober-2026) enthält 20 Parameter, neun Schemas und gespeicherte Meldungstexte als Default. Zusätzliche Quellindizes sind keine Voraussetzung. Produkt, synthetische Vertragsprüfung, Installer, Inventare und reguläre Integration sind geliefert. Die spätere begrenzte Providerabnahme vom 18. Oktober ist oben dokumentiert; zusätzliche Rollen und weitere Interpretationsfunktionen bleiben offen. Frühere geschlossene Budgets und WI-0009 GATE-0001 bleiben unverändert.
