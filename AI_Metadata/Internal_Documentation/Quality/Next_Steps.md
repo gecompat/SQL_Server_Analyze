@@ -15,7 +15,9 @@ bleiben insgesamt FAILED_NOT_QUALIFIED. Ein neuer gemeinsamer Vierfällelauf
 wird nicht behauptet. Produkt v1.0.0 und seine Abhängigkeiten bleiben unverändert.
 
 Analyze hat die eigenen Pakete, Referenzen und das Cleanup auf einer ausdrücklich
-freigegebenen eigenen Umgebung über öffentliche Lab-Schnittstellen verantwortet.
+freigegebenen eigenen Umgebung verantwortet. Bereitstellung und Lifecycle
+verwenden öffentliche Lab-Schnittstellen; die Paketausführung verwendet einen
+eigenen PowerShell-Direct-/SDK-Adapter.
 Eine zusätzliche vom Lab erstellte fachliche Legacy-Fixture ist keine
 Voraussetzung. Die eigenen Runtimeobjekte, VM und virtuelle Festplatte sind
 entfernt; eine verschlüsselte private Credentialdatei bleibt nach einer

@@ -953,8 +953,12 @@ grünen Basic- und Duplicate-Prüfungen wurden nicht wiederholt.
 
 Jeder Fall besitzt Prüfungen mit Cap 0, 1 und 2. Insgesamt bestehen zwölf
 gebundene Einzelprüfungen: sechs aus Native11, drei aus Native12 und drei neue
-aus Native13. Sie vergleichen alle TABLE-/JSON-Feldwerte mit der nativen
-Referenz und prüfen die N+1-Begrenzung. Die Lookup-Gegenproben binden die
+aus Native13. Sie vergleichen alle 94 Feldwerte der neun TABLE-Exporte mit
+JSON. Die unabhängige native Gegenprüfung vergleicht die gespeicherten
+Timelinefelder sowie ausgewählte Mengen, Erstfehler- und Diagnosetexte und
+Paarzeiten; sie ist kein unabhängiges Orakel für alle 94 abgeleiteten Felder.
+Die N+1-Begrenzung wird gegen die native Zeilenmenge geprüft.
+Die Lookup-Gegenproben binden die
 tatsächliche Komponenten-ID, den Namen, die Klasse und den Task des jeweils
 hashgebundenen Pakets sowie Fehlercode und ordinal gleichen vollständigen
 Providertext. Kontrollierte Zielmengen prüfen die fachlichen Fixtureergebnisse.
