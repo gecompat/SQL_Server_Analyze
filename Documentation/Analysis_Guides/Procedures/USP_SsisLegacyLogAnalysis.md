@@ -65,6 +65,33 @@ RowFlowZugeordneteMeldungen als nullable bigint; dies sind Meldungszähler.
 Die [exakten Verträge](../../Architecture/SSIS_001_Phase0_Public_Contract.md#freigegebene-erweiterung-legacy-zeilenfluss-aus-onpipelinerowssent-vom-18-oktober-2026)
 definieren die vier Kombinationen und alle Felder.
 
+Version 1.3.0 ergänzt an Position 23 `@IncludeComponentPhaseAnalysis bit=0`.
+Bei 1 folgen componentPhaseEvents mit 18 und componentPhaseTimes mit 24 Feldern
+als letzte Mengen. SchemaVersion4 und ComponentPhaseCatalogVersion1 erscheinen
+nur bei diesem Opt-in; alle acht Kombinationen stehen im
+[freigegebenen Vertrag](../../Architecture/SSIS_001_Phase0_Public_Contract.md#freigegebene-erweiterung-legacy-komponentenphasenzeiten-aus-pipelinecomponenttime-vom-18-oktober-2026).
+sourceStatus ergänzt das feste Ordinal 7 componentPhaseAnalysis unabhängig von
+den optionalen Ordinalen 5/6. CONSOLE ergänzt im selben Grid PhasenMeldungen,
+PhasenGeleseneMeldungen und PhasenKontextMeldungen als nullable bigint-Zähler.
+
+Eine componentPhaseEvents-Zeile entspricht einer exakt benannten gespeicherten
+PipelineComponentTime- oder User:PipelineComponentTime-Meldung. PCT_EN_1 und
+PCT_EN_2 für ProcessInput/PrimeOutput werden
+interpretiert; andere Formen bleiben ohne Teilpayload sichtbar. Der Byteguard
+gilt wie beim Zeilenfluss auch für Endleerzeichen. componentPhaseTimes gruppiert
+nur geparste Meldungen mit eindeutigem EXECUTE-Berichtskontext je Source,
+Kontext, Methode und profilspezifischem Komponenten-/Outputschlüssel.
+PCT_EN_1 verwendet berichtete numerische IDs, PCT_EN_2 binäre berichtete Namen.
+ProcessInput hat NULL-Output.
+OutputId ist keine RowFlow-PathId. Zeitwerte sind gemeldete Millisekunden;
+Summen und Mittelwerte sind keine CPU-, exklusive oder Komponentengesamtzeit.
+EventTime ist der Meldungszeitpunkt und erzeugt kein rückgerechnetes Intervall.
+Auch ein passender Berichtskontext beweist keine vollständige Zuordnung der
+gemessenen internen Arbeit zu diesem Vorkommen. Explizite 0 bleibt 0;
+fehlende Meldungen erzeugen keine künstlichen Gruppen. Meldungs-Opt-out,
+fehlende v1-Ableitung, Fehler und Deadline verwerfen beide neuen Mengen
+atomar, behalten zuvor gültige Mengen und setzen neue Zähler NULL.
+
 ## Eine Zeile bedeutet
 
 Eine Timelinezeile entspricht einer materialisierten Logzeile. errorChain
@@ -289,3 +316,23 @@ Parallelität und selektives Logging. Das unabhängige native Orakel prüft
 die 48 neuen Felder; Ausgabeparität und historische v1-Nachweise bleiben
 getrennte Aussagen. Der Compatibility Level der privaten Windows-Captures
 ist UNKNOWN. Weitere Engines und allgemeine Rollen sind damit nicht qualifiziert.
+
+PCT_EN_2 übernimmt nur die ausdrücklich freigegebenen englischen Namensformen
+unter User:PipelineComponentTime. Nicht berichtete Komponenten- und Output-IDs
+bleiben NULL. Die Gruppen beziehen sich auf binär gleiche berichtete Labels
+im Source-/EXECUTE-Kontext und beweisen keine eindeutige Runtimekomponente.
+PCT_EN_1 behält seine numerischen Gruppenschlüssel; Profile werden nicht
+zusammengeführt. Andere Methoden bleiben sichtbar abgelehnte Kandidaten.
+
+## Abnahme der Komponentenmethodenberichte
+
+Die [begrenzte Phasenabnahme](../../Architecture/SSIS_Package_and_Execution_Analysis_Plan.md#legacy-komponentenphasenzeiten-begrenzte-abnahme-vom-18-oktober-2026)
+prüft die 42 neuen Felder unabhängig gegen native Originalproviderzeilen.
+Sechs gebundene P-N01-Consumer werden unverändert wiederverwendet; genau zwei
+P-N02-Consumer ergänzen Wiederholung, gleiche Anzeigenamen mit getrennten IDs,
+überlappende Ausführung und Präfixgrenzen. Die neue Quelle ist Windows
+SQL/SSIS 17.0.5015.4 mit CL170 und beobachtetem sysadmin. Die Aussage betrifft
+berichtete Methodenwerte und beobachtete Berichtskontexte; weitere Methoden,
+Komponentenintervalle, CPU, exklusive Zeit und allgemeine Rollen sind nicht
+qualifiziert. Historische Fehlversuche bleiben erhalten; exakte Head-CI und
+Integration sind eigene Liefergates.

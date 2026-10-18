@@ -1566,3 +1566,150 @@ Die erforderliche exakte Head-CI und reguläre Integration bleiben eigene
 Liefergates. SSIS-001 bleibt PARTIAL_PRODUCT_FUNCTION; zusätzliche Profile,
 Sprachen, Katalog-RowFlow, Phasen, Durchsatz, Looprekonstruktion und allgemeine
 Rollenabnahmen sowie WI-0009 GATE-0001 bleiben offen.
+
+## Freigegebene Legacy-Komponentenphasenzeiten vom 18. Oktober 2026
+
+Nach den gelieferten Taskintervallen und Pfadmengen hat der Benutzer den
+geprüften [P1–P9-Vertrag](SSIS_001_Phase0_Public_Contract.md#freigegebene-erweiterung-legacy-komponentenphasenzeiten-aus-pipelinecomponenttime-vom-18-oktober-2026)
+für PipelineComponentTime ausdrücklich zur Implementierung, begrenzten
+Abnahme und regulären PR-Lieferung freigegeben. Version 1.3.0 ergänzt an
+Position 23 IncludeComponentPhaseAnalysis. Die beiden neuen Mengen haben
+18 und 24 Felder; SchemaVersion4 gilt nur beim neuen Opt-in. Die bisherige
+Task-/RowFlow-API und die separate Katalogprojektion bleiben erhalten.
+
+PCT_EN_1 interpretiert ausschließlich die genau festgelegten englischen
+ProcessInput-/PrimeOutput-Berichte. Gespeicherte Millisekunden und eindeutiger
+EXECUTE-Berichtskontext erzeugen keine Methodenintervalle, CPU- oder exklusive
+Zeit. Die 14 synthetischen Gruppen und zwei neuen nativen Szenarien bilden
+einen eigenen endlichen Umfang. Nachweise bleiben bis tatsächlicher Ausführung
+NOT_EXECUTED. Geschlossene frühere Abnahmen werden nicht wiederholt.
+SSIS-001 bleibt PARTIAL_PRODUCT_FUNCTION; weitere Phasenprofile, Katalogabnahmen,
+Durchsatz und WI-0009 GATE-0001 bleiben offen.
+
+
+## Zwischenstand der begrenzten Phasenumsetzung vom 18. Oktober 2026
+
+Die freigegebene PCT_EN_1-Ergänzung ist lokal vorbereitet und nicht geliefert.
+Der dritte gezielte synthetische Versuch bestand den korrigierten und noch
+offenen Umfang, darunter die 11/3-Rundung und fünf getrennte extrahierte
+Stufen. Bereits bestandene Anfangsabschnitte wurden mit ihren Originalcaptures
+gebunden weiterverwendet. Frühere Fehler 8632 und die falsche letzte
+Dezimalstelle bleiben in den ursprünglichen Nachweisen erhalten.
+
+Von drei neuen nativen Arrange-/Runtimeversuchen scheiterten zwei vor Execute
+an eigenen Paketaufbaudetails. Der dritte führte P-N01 erfolgreich aus, erzeugte
+aber User:PipelineComponentTime mit Texten ohne numerische Komponenten- und
+Output-IDs. Keine Zeile entspricht dem exakten bisherigen Ereignisnamen;
+das Positivgate stoppte vor Consumer und P-N02. Die native Gesamtqualifikation
+bleibt FAILED_NOT_QUALIFIED, alle 42-Feld-Consumer-Nachweise und die daran
+gebundenen P-S14-Nativcapturemutationen sind NOT_EXECUTED.
+Eigene Datenbanken sind entfernt, Cleanupfehler 0, Inventar wiederhergestellt.
+Es gab keine neue Infrastruktur oder Änderung fremder Ressourcen.
+
+Der Benutzer hat die [konkrete Ergänzung B1–B7](SSIS_001_Phase0_Public_Contract.md#freigegebene-native-legacy-komponentenzeitberichte-ohne-numerische-ids-vom-18-oktober-2026)
+mit PCT_EN_2, fehlenden IDs und berichteten Namensgruppen ausdrücklich freigegeben.
+Die Folgeabnahme restauriert ausschließlich eigene hashgebundene P-N01-
+Originalproviderzeilen; P-N01 wird nicht erneut ausgeführt. Höchstens ein
+erstmaliger P-N02-Paketlauf und acht Consumeraufrufe einschließlich Fehlern
+sowie zwei synthetische und zwei Arrange-/Runtimeversuche bilden die neue
+Grenze. Zwei begründete Prüfungen desselben Reviewers sind vorgesehen.
+Alle früheren Budgets und Nichtqualifikationen bleiben erhalten. Der aktuelle
+Ergänzungsstand ist bis tatsächlicher Ausführung nicht qualifiziert oder geliefert.
+SSIS-001 bleibt PARTIAL_PRODUCT_FUNCTION; weitere Phasen- und Katalogabnahmen
+bleiben offen.
+
+### PCT_EN_2: begrenzter Consumer-Teilnachweis
+
+B1–B7 ist implementiert. Die erste neue synthetische Aufnahme deckte einen
+abschließenden NUL-Wert auf, der einen binären Textvergleich passieren konnte.
+Der ergänzte vollständige Textguard weist NUL zurück. Der zweite synthetische
+Versuch prüfte nur die vorher nicht ausgeführte TABLE-/Schema-/Gruppenmenge
+und den fehlgeschlagenen Guard. Unveränderte Statuspaare und frühere
+synthetische Abschnitte bleiben über ihre Originalcaptures gebunden erhalten;
+die ursprüngliche Nichtqualifikation wird nicht überschrieben.
+
+Die neun ursprünglichen P-N01-Providerfelder wurden aus einem einmal gelesenen,
+gehashten Puffer unverändert in eine neue eigene Datenbank restauriert.
+P-N01 wurde nicht erneut ausgeführt. Sechs neue fest definierte Consumer
+bestehen die unabhängige 42-Feld-Referenz, physische Schemas, TABLE-/JSON-
+Parität, RAW11/13, CONSOLE1, NONE0, Meldungs-Opt-out, Caller und Kontextbindung.
+Die Referenz führt 7779 Prüfschritte aus und weist 19 Mutationen einschließlich
+fehlender Felder und Arrays ab. Die 15 Kandidaten enthalten drei geparste,
+eindeutig zugeordnete Berichte und drei Gruppen; andere Methoden bleiben
+abgelehnt. Ursprüngliche SDK-/Paket-/Komponentenbindungen sind separat geprüft.
+Vorherige und nachfolgende Originalfelder stimmen überein.
+
+Der eine erlaubte neue P-N02-Paketlauf meldete Success, aber die erhaltenen
+SDK-Fehler berichten eine fehlende sp_ssis_addlogentry des SQL-Log-Providers.
+Der eigene Restoreaufbau hatte bereits sysssislog ohne diese Schreibprocedure
+angelegt. Das Source-Bindungsgate stoppte vor beiden P-N02-Consumern; eine
+positive Mehrfach-/Parallel- oder Präfixabnahme liegt nicht vor. Der gesamte
+neue Runtimeversuch bleibt FAILED_NOT_QUALIFIED. Die eigenen Log- und
+Frameworkdatenbanken wurden identitätsgebunden entfernt, Cleanup- und
+Retentionfehler sind 0, das Datenbankinventar ist wiederhergestellt.
+
+Die konkrete Aufbaukorrektur würde P-N02 in einer frischen eigenen Logging-
+Datenbank ohne beide Providerobjekte starten, damit ausschließlich der native
+Provider sie initialisiert. Sie würde keine P-N01-Daten oder sechs bestandenen
+Consumer erneut ausführen und keine Schreibprocedure selbst nachbauen.
+Der eine freigegebene Paketlauf ist verbraucht. Genau ein zusätzlicher
+P-N02-Lauf, die zwei verbleibenden Consumer und ein zusätzlicher Ergebnisreview
+desselben Reviewers benötigen eine konkrete menschliche Erweiterung. Der
+vorbereitete Resttreiber verweigert den Eintritt mit dem aktuellen Budget.
+Bis dahin bleiben PR, CI und Gesamtqualifikation ausstehend; keine weitere
+Paketausführung oder Ausschöpfung des freien Arrangeplatzes wird abgeleitet.
+
+## Legacy-Komponentenphasenzeiten: begrenzte Abnahme vom 18. Oktober 2026
+
+Der ausdrücklich freigegebene zusätzliche P-N02-Lauf und ausschließlich seine
+zwei offenen Consumer sind abgeschlossen. P-N01 wurde weder erneut ausgeführt
+noch als Consumer wiederholt. Die sechs vorher qualifizierten P-N01-Captures
+bleiben hashgebunden wiederverwendet. P-N02 verwendet eine frische eigene
+Loggingdatenbank ohne vorab angelegte Providerobjekte. Der native Provider
+initialisierte seine Quelle, das Paket meldete Success und die erhaltenen
+SDK-Callbacks enthalten keine OnError-Ereignisse. Die frühere erfolgreiche
+Paket-Rückgabe mit 122 Loggingfehlern bleibt FAILED_NOT_QUALIFIED.
+
+P-N02 erzeugte 73 Kandidaten, darunter 18 geparste und eindeutig zugeordnete
+ProcessInput-/PrimeOutput-Berichte mit 18 Gruppen. Die unabhängige Referenz
+prüft alle 42 neuen Felder gegen die gespeicherten Originalproviderzeilen.
+Gleiche Anzeigenamen mit getrennten Source-GUIDs, zwei wiederholte Vorkommen,
+tatsächlich überlappende SDK-Ausführungsfenster und unterschiedliche Outputs
+bleiben getrennt. Die bekannten Zielmengen sind 20 und 4 für die wiederholten
+Zweige sowie 10 und 2 für die parallelen Zweige. Der ausgeführte Geschwistertask
+ohne Phasenlogging erzeugt keine erfundene Phasengruppe.
+
+Der vollständige RAW15-Consumer und ein TABLE-Präfix mit Cap 57 bestehen
+Feldreferenz, physische Schemafacetten, TABLE-/JSON-Parität und N+1. Der
+Präfix schneidet das belegte Ende eines tatsächlich lesbaren Berichtskontextes
+ab; fehlende Kontextgrenzen werden nicht ergänzt. Fünf neue Offline-
+Mutationen von Präfixkontext, Gruppensumme, Name, Pflichtfeld und Pflichtarray
+werden abgewiesen. Die 19 früheren P-N01-Mutationen werden nicht wiederholt.
+
+Ein zusätzlicher Offline-Zielmengenvergleich setzte zunächst irrtümlich die
+10007 Eingangszeilen des linearen P-N01-Falls statt des im gebundenen P-N02-
+Paket ausdrücklich festgelegten KeyValue<=10 an. Die ursprüngliche
+Nichtqualifikation und die davor abgeschlossenen Consumerprüfungen bleiben
+erhalten. Nur die quellengebundene Zielmengenkorrektur, noch offene Bindungen
+und fünf neue Mutationen liefen danach separat; kein Paket oder Consumer
+wurde hierfür erneut gestartet. Die ursprüngliche Zahl vor dem Offlinefehler
+nicht gespeicherter Prüfschritte bleibt UNKNOWN. Der begrenzte Gesamtnachweis
+verwendet sechs ältere P-N01- und zwei neue P-N02-Captures und ist kein neuer
+vollständiger Acht-Consumer- oder Zwei-Paket-Gesamtlauf.
+
+Die native Quelle ist Windows SQL/SSIS 17.0.5015.4 mit beobachtetem sysadmin;
+Logging- und Frameworkdatenbanken haben CL170. Alle neun Providerfelder und
+Callerzustände bleiben erhalten. Die eigenen Log- und Frameworkdatenbanken
+sind identitätsgebunden entfernt, Cleanup- und Retentionfehler sind 0 und das
+Datenbankinventar ist restauriert. Es gibt keine Lab-, VM-, Setup-,
+Installations-, Image- oder fremde Ressourcenänderung.
+
+Ein enger späterer EN1-Volltext-NUL-Guard ändert den qualifizierten EN2-Decoder
+und dessen Kontext-/Gruppen-/Exportfolge nicht. Die sechs P-N01-Belege bleiben
+darum explizit an ihren ursprünglichen SUT gebunden wiederverwendet; P-N02
+verwendet den aktuellen SUT. Die neue EN1-Suffix-NUL-Regression ist lokal
+NOT_EXECUTED und bleibt Pflicht der exakten Head-CI. Quellen-, Ergebnisreview
+und reguläre Integration sind separate Liefergates. SSIS-001 bleibt
+PARTIAL_PRODUCT_FUNCTION; weitere Methodenprofile, Sprachen, CPU-/exklusive
+Zeit, Durchsatz, Looprekonstruktion und allgemeine Katalog-/Rollenabnahmen
+sowie WI-0009 GATE-0001 bleiben offen.

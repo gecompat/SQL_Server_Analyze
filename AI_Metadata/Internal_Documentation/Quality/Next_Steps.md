@@ -3,6 +3,63 @@
 **Stand:** 18. Oktober 2026
 **Zweck:** aktuelle ausführbare Entwicklungswelle für `gecompat/SQL_Server_Analyze`
 
+## Lieferung der begrenzten Komponentenphasen-Erweiterung
+
+Die menschlich freigegebene zusätzliche P-N02-Ausführung und genau zwei offene
+Consumer sind erfolgreich aufgenommen und unabhängig qualifiziert. Die
+[kanonische Abnahme](../../../Documentation/Architecture/SSIS_Package_and_Execution_Analysis_Plan.md#legacy-komponentenphasenzeiten-begrenzte-abnahme-vom-18-oktober-2026)
+bindet sechs unveränderte frühere P-N01-Captures und zwei neue P-N02-Captures.
+P-N01 wurde nicht wiederholt. Der frühere P-N02-Lauf und der spätere
+Offline-Zielmengenfehler bleiben erhaltene Nichtqualifikationen; die korrigierte
+Zielmengenerwartung folgt dem bereits gebundenen Paketfilter und hebt keine
+Produktguards auf. Eigene Datenbanken sind entfernt, Caller und Quellen sind
+erhalten, Cleanup- und Retentionfehler sind 0.
+
+Der eine zusätzliche Abschlussreview ist ausdrücklich freigegeben. Nach seinem
+Abschluss folgen exakte Head-CI einschließlich der neuen EN1-NUL-Regression,
+regulärer MatchHead-Merge, Treeidentität, Mainchecks, origin/main-Synchronisierung
+und nur eigenes Cleanup. Runtime2/2, Paket2/2 und Consumer8/8 sind verbraucht;
+Synthetik2/2 bleibt geschlossen. Das bestehende CI-Budget von vier
+Qualifikations-Heads einschließlich Main wird nicht zurückgesetzt. Weitere
+Paket-/Consumerläufe oder grüne P-N01-Wiederholungen sind nicht autorisiert.
+
+## Freigegebene PCT_EN_2-Fortsetzung
+
+Der Benutzer hat B1–B7 samt begrenzter Folgeabnahme ausdrücklich freigegeben.
+Der [kanonische Plan](../../../Documentation/Architecture/SSIS_Package_and_Execution_Analysis_Plan.md#zwischenstand-der-begrenzten-phasenumsetzung-vom-18-oktober-2026)
+führt Ereignisform, NULL-IDs und berichtete Namensgruppen zusammen. Der alte
+Freigabewartezustand ist abgelöst. P-N01 wird aus seinen erhaltenen Originaldaten
+hashgebunden restauriert und nicht erneut ausgeführt. Die neue Grenze beträgt
+zwei synthetische und zwei Arrange-/Runtimeversuche, insgesamt höchstens einen
+erstmaligen P-N02-Paketlauf, acht Consumeraufrufe einschließlich Fehlern und
+zwei begründete Prüfungen desselben Reviewers. Das bestehende ungenutzte
+CI-Budget von vier Qualifikations-Heads einschließlich Main wird weitergeführt.
+
+Frühere Synthetik3/3- und Native3/3-Historien bleiben geschlossen; die erste
+Welle hat eine tatsächliche Paketausführung und keine Consumerqualifikation.
+Abgeschlossene Tests werden gebunden wiederverwendet. Neue Profile erhalten
+keine geratenen numerischen IDs. Nach begrenzter Qualifikation folgen exakte
+Head-CI, regulärer MatchHead-Merge, Treeidentität, Main-Synchronisierung und nur
+eigenes Cleanup. Weitere Vertragsgrenzen verlangen eine konkrete Entscheidung.
+
+## Freigegebene Legacy-Komponentenphasenzeiten vom 18. Oktober 2026
+
+Der Benutzer hat den geprüften P1–P9-Vertrag samt begrenztem Abnahmeplan
+ausdrücklich zur Implementierung und regulären PR-Lieferung freigegeben.
+Der bisherige Vertragsentwurf ist über SHA-256
+9588CFA6925E7372A2986B59D516C7D169B05C1E7F7CFBC19DCD9E63889C05F3
+gebunden. Der [freigegebene Vertrag](../../../Documentation/Architecture/SSIS_Package_and_Execution_Analysis_Plan.md#freigegebene-legacy-komponentenphasenzeiten-vom-18-oktober-2026)
+begrenzt die Erweiterung auf IncludeComponentPhaseAnalysis an Position 23,
+42 neue Felder und PCT_EN_1 für ProcessInput/PrimeOutput. Der vorherige
+Wartezustand ist abgelöst. Die neue begrenzte Welle hat einen Implementierer,
+denselben Reviewer mit höchstens drei begründeten Prüfungen, drei synthetische
+und drei Arrange-/Runtimeversuche, insgesamt zwei tatsächliche Paketausführungen
+und acht Consumeraufrufe einschließlich Fehlversuchen sowie höchstens vier
+CI-Heads einschließlich Main. Historische Budgets bleiben geschlossen;
+abgeschlossene unveränderte Tests werden nicht wiederholt. Tatsächliche
+Ergebnisse werden getrennt gebunden, Kosten und Kontingente bleiben UNKNOWN.
+SSIS-001 bleibt PARTIAL_PRODUCT_FUNCTION, WI-0009 GATE-0001 offen.
+
 ## Freigegebene ORPS_EN_2-Fortsetzung vom 18. Oktober 2026
 
 Der Benutzer hat die konkrete ORPS_EN_2-Ergänzung samt begrenzter Folgeabnahme

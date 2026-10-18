@@ -1483,3 +1483,653 @@ Budgetreset. Weitere Decoder, Sprachen und vertiefte SSIS-Funktionen bleiben
 ausgenommen. Die konkrete Freigabe liegt vor. Die neue Consumerabnahme wird getrennt
 von den geschlossenen historischen Paketversuchen geführt; eine erfolgreiche
 Lieferung wird erst nach Erfüllung der zugehörigen Gates dokumentiert.
+
+## Freigegebene Erweiterung: Legacy-Komponentenphasenzeiten aus PipelineComponentTime vom 18. Oktober 2026
+
+**Status:** konkreter menschlich freigegebener P1–P9-Erweiterungsvertrag
+für Implementierung, begrenzte Abnahme und reguläre PR-Lieferung. Der vorherige
+Vertragsreview wurde ohne offene P1/P2 abgeschlossen und bleibt vom
+tatsächlich ausgeführten Abnahmenachweis getrennt.
+
+### P1. Auswahl und begrenzter Nutzen
+
+PR393 liefert beobachtete Taskintervalle und Loggingabdeckung, PR394 die
+beobachteten Legacy-Pfadtransfers. Im Legacy-Analyzer fehlt weiterhin die
+strukturierte Interpretation gemeldeter Komponentenphasenzeiten. Der nächste
+empfohlene Teilslice aus Backlogschritt 3 umfasst deshalb PipelineComponentTime,
+zunächst ausschließlich die unten genau festgelegten englischen Meldungen für
+ProcessInput und PrimeOutput. Diese Auswahl erklärt nicht die übrigen Teile
+der Backlogschritte 2 oder 3 für abgeschlossen.
+
+Der Katalogkern projiziert bereits catalog.execution_component_phases. Dieser
+Entwurf erweitert ausschließlich monitor.USP_SsisLegacyLogAnalysis und weder
+den Katalogvertrag noch dessen noch offene Performance-/Verbose-Abnahme.
+Durchsatz, CPU-Zeit, exklusive Zeit, kritischer Pfad, komplette Phasenabdeckung,
+Tasktypen, Looprekonstruktion, Graphkorrelation und historische Vergleiche
+gehören nicht zum Slice. Die bestehende RowFlow-Summe wird nicht durch eine
+gemeldete Komponentenzeit geteilt.
+
+Die beiden erhaltenen Originalquellen der begrenzten Zeilenflussabnahme
+enthalten kein PipelineComponentTime. Ihr damaliger Ereignisfilter forderte
+dieses Ereignis nicht an. Daraus folgt nur eine fehlende positive Quelle in
+diesen zwei Beständen, keine Aussage über andere Datenbestände oder fehlende
+Herstellerfähigkeit. Geschlossene Abnahmen werden dafür nicht wiederholt.
+
+### P2. API, Opt-in und Ausgabeversionierung
+
+Die freigegebene Procedureversion ist 1.3.0 mit genau einem zusätzlichen Parameter
+IncludeComponentPhaseAnalysis bit=0 an Position 23. NULL wird wie 0 behandelt.
+Alle bisherigen 22 Positionen, Defaults, OUTPUTs und Aufrufbedeutungen bleiben
+erhalten. Das neue Opt-in ist unabhängig von IncludeTaskAnalysis und
+IncludeRowFlowAnalysis. Es verwendet dieselbe explizite Loggingquelle,
+Execution-GUID, bestätigte N+1-Eingabe und vorhandene v1-Ableitung.
+
+| Task-Opt-in | RowFlow-Opt-in | Phasen-Opt-in | SchemaVersion | Fachliche RAW-/TABLE-/JSON-Mengen |
+|---|---|---|---|---|
+| 0 | 0 | 0 | 1 | 9 |
+| 1 | 0 | 0 | 2 | 11 |
+| 0 | 1 | 0 | 3 | 11 |
+| 1 | 1 | 0 | 3 | 13 |
+| 0 | 0 | 1 | 4 | 11 |
+| 1 | 0 | 1 | 4 | 13 |
+| 0 | 1 | 1 | 4 | 13 |
+| 1 | 1 | 1 | 4 | 15 |
+
+Die bisherigen technischen Fachmengen behalten ihre Reihenfolge. Bei neuem
+Opt-in folgen componentPhaseEvents und componentPhaseTimes als letzte zwei
+Mengen nach gegebenenfalls vorhandenen Task- und RowFlow-Mengen. Nur dann
+enthält JSON die beiden gleichnamigen Arrays und die numerische Metadatenangabe
+ComponentPhaseCatalogVersion=1. TaskAnalysisCatalogVersion und
+RowFlowCatalogVersion erscheinen weiterhin ausschließlich bei ihrem eigenen
+Opt-in. Ohne neues Opt-in fehlen die neuen Arrays, Metadaten und Quellenzeile;
+die bisherige Schemaauswahl bleibt exakt erhalten.
+
+TABLE erlaubt die beiden Namen nur bei neuem Opt-in. Sie sind vor dem ersten
+fachlichen Quellzugriff in die bestehende Mappingprüfung aufzunehmen.
+Unbekannte, deaktivierte oder kollidierende Ziele behalten Fehler 51011 und die
+bisherigen Temp-Tabellen-/Ownershipregeln. RAW und TABLE liefern native Werte,
+JSON dieselben Werte einschließlich expliziter NULLs. CONSOLE ergänzt im
+bisherigen einzigen Grid als letzte Spalten PhasenMeldungen,
+PhasenGeleseneMeldungen und PhasenKontextMeldungen, jeweils nullable bigint.
+Die Zähler zählen Kandidaten, erfolgreich geparste Kandidaten und Kandidaten
+mit eindeutigem Berichtskontext, niemals Millisekunden. Vor atomarer Übernahme
+sind sie NULL; NONE liefert kein fachliches Grid. Hilfe erzeugt keine neue
+Quellenzeile und ändert keine Lese- oder Fehlerdefaults.
+
+### P3. Exakter Meldungskatalog PCT_EN_1
+
+Ein Kandidat ist ausschließlich eine gespeicherte Zeile mit ordinal exakt
+PipelineComponentTime als event. OnInformation, lokalisierte Ereignisnamen,
+ähnliche Schreibweisen, datacode und DataBytes sind kein Ersatz. datacode bleibt
+uninterpretiert in der bestehenden Timeline; zusätzliche Quellspalten werden
+nicht fachlich gelesen. IncludeMessages=0 verhindert wie bisher jeden fachlichen
+message-Zugriff und lässt beide neuen Mengen leer.
+
+Das freigegebene Profil PCT_EN_1 hat genau zwei vollständige Alternativen.
+Die geschweiften Variablennamen bezeichnen Felder und sind keine Textbestandteile:
+
+```text
+The component "{ComponentName}" ({ComponentId}) spent {ReportedDurationMs} milliseconds in ProcessInput.
+The component "{ComponentName}" ({ComponentId}) spent {ReportedDurationMs} milliseconds in PrimeOutput filling buffers on output "{OutputName}" ({OutputId}).
+```
+
+Jedes Leerzeichen, Anführungszeichen, jede Klammer und der abschließende Punkt
+ist festgelegt. Es gibt weder Präfix-/Suffixtext noch Endleerzeichen,
+Zeilenumbrüche, alternative Einheiten, optionale Teilsätze oder mehrere
+verkettete Meldungen. ComponentName und gegebenenfalls OutputName besitzen
+1 bis 4000 UTF-16-Codeeinheiten und enthalten weder ein doppeltes Anführungszeichen
+noch CR, LF, TAB oder NUL. Namen bleiben einschließlich Case, Leerzeichen und
+sonstiger erlaubter Zeichen ordinal erhalten; es gibt kein Trim, Unescape,
+Namensfallback oder Normalisieren auf Authoringnamen.
+
+Zahlentoken bestehen ausschließlich aus ASCII-Ziffern. Ihre kanonische Form
+ist 0 oder eine Ziffer 1–9 mit nachfolgenden Ziffern; Plus, Minus, führende
+Nullen, Dezimal-/Tausendertrenner, Exponenten und zusätzliche Leerzeichen sind
+unzulässig. ComponentId und OutputId liegen in 1 bis 2147483647,
+ReportedDurationMs in 0 bis 9223372036854775807. Die gespeicherte Runtime-ID
+wird ausgegeben; SDK-Authoring-IDs sind kein numerischer Gleichheitsbeweis.
+ProcessInput setzt OutputId und OutputName auf NULL. PrimeOutput benötigt
+beide Outputfelder; OutputId ist ausdrücklich keine RowFlow-PathId.
+
+Validate, PreExecute, PostExecute, ProcessOutput, andere Methoden, Sprachen und
+Formate bleiben in diesem ersten Profil uninterpretiert. Insbesondere wird
+ProcessOutput nicht als Alias für PrimeOutput zugelassen. Ein späterer Ausbau
+benötigt einen eigenen konkreten Vertrag und passende Primär-/Runtimequellen.
+
+Der bestehende Kapazitätsguard wird vor einer Formatprüfung angewendet.
+B ist die kleinere positive deklarierte message-Bytekapazität und 4096;
+bei nvarchar(max) ist B=4096. DATALENGTH(message)>=B bedeutet mögliche Kappung,
+auch bei abschließenden Leerzeichen. Die Priorität ist:
+
+| Bedingung | ParseStatus | ParserId und Payload |
+|---|---|---|
+| message ist NULL. | MESSAGE_MISSING | Alles ist NULL. |
+| Gespeicherte Bytezahl erreicht B. | POTENTIALLY_TRUNCATED | Alles ist NULL. |
+| Der exakte Anfang The component mit anschließendem Leerzeichen und doppeltem Anführungszeichen fehlt. | UNSUPPORTED_FORMAT | Alles ist NULL. |
+| Keine der zwei Gesamtformen, Feld-/Namens- oder Zahlensyntaxregeln passt. | MALFORMED_PAYLOAD | ParserId=PCT_EN_1, alle sechs Payloadfelder sind NULL. |
+| Vollständige Form ist gültig, aber eine Zahl liegt außerhalb ihres Bereichs. | NUMERIC_OUT_OF_RANGE | ParserId=PCT_EN_1, alle sechs Payloadfelder sind NULL. |
+| Sämtliche Prüfungen bestehen. | PARSED | ParserId=PCT_EN_1, alle formabhängigen Payloadfelder sind vorhanden. |
+
+Die sechs Payloadfelder sind ComponentId, ComponentName, PhaseName,
+ReportedDurationMs, OutputId und OutputName. PhaseName ist ausschließlich
+ProcessInput oder PrimeOutput. Ein formal nicht zugelassener Methodentext
+mit erkanntem Präfix erhält MALFORMED_PAYLOAD, ohne damit einen Hersteller-
+oder Paketfehler zu behaupten. Eine leere Meldung ist UNSUPPORTED_FORMAT.
+Es werden keine teilweise geparsten Kennungen, Namen oder Zeiten übernommen.
+Der vollständige gespeicherte Rawtext bleibt über den bisherigen Timelineexport
+verfügbar; ein weiteres Message- oder DataBytes-Resultset wird nicht eingeführt.
+
+### P4. Berichtskontext und Aggregation
+
+EventTime ist der gespeicherte Zeitpunkt der Meldung. Er ist kein Phasenbeginn
+oder Phasenende. Aus EventTime und ReportedDurationMs wird kein künstliches
+Intervall rekonstruiert. ReportedDurationMs ist eine vom Produzenten berichtete
+Methodenzeit; die Abnahme prüft deren unveränderte Übernahme, nicht die
+Genauigkeit einer herstellerinternen Uhr oder gemessene CPU-Arbeit.
+
+Die bestehende v1-iterations-Ableitung bleibt unverändert. Für einen PARSED-
+Kandidaten wird lediglich ein Berichtskontext bestimmt: Genau ein vorhandenes
+EXECUTE-Paar derselben SourceId mit PairStatus=PAIRED muss
+StartLogId<LogId<EndLogId und StartTime<=EventTime<=EndTime erfüllen.
+Gleiche gespeicherte Zeiten sind erlaubt. Die IDs und Zeiten bezeichnen die
+beobachteten äußeren Grenzen des Kontextes, keine Messgrenzen der Methode.
+Auch ein passender Kontext beweist keine additive, exklusive oder vollständig
+diesem Vorkommen zurechenbare interne Methodenzeit. Spät protokollierte oder
+kumulierte Berichte werden nicht heuristisch einem früheren Vorkommen zugeteilt.
+
+ContextStatus gilt in fester Reihenfolge: Nicht-PARSED ergibt NOT_PARSED;
+fehlende SourceId SOURCE_ID_MISSING; fehlende EventTime EVENT_TIME_MISSING;
+kein ID-einschließendes zugelassenes Paar NO_OBSERVED_PAIR; mehrere solche
+Paare AMBIGUOUS_PAIR; Zeit außerhalb des einzigen Paars TIME_OUTSIDE_PAIR;
+sonst ASSIGNED. Nur ASSIGNED setzt ContextStartLogId und ContextEndLogId.
+PACKAGE-/VALIDATE-Paare, gleiche Namen oder Nachbar-Source-IDs sind kein Ersatz.
+Nicht zugeordnete geparste Kandidaten behalten ihren berichteten Wert, tragen
+aber zu keiner Kontextgruppe bei.
+
+componentPhaseTimes gruppiert ausschließlich ASSIGNED-Kandidaten nach
+ExecutionId, SourceId, beiden Context-Log-IDs, ComponentId, PhaseName und
+OutputId. Für ProcessInput ist OutputId ein eigener NULL-Schlüssel, kein
+erfundener numerischer Sentinel. Unterschiedliche Ausgänge, Methoden, Sources
+oder Kontexte bleiben getrennt. Keine Gruppe vereinigt mehrere Phasen oder
+bildet eine Komponenten-, Task- oder Pakettotalzeit.
+
+EventCount zählt beitragende Log-IDs. ReportedDurationSumMs ist deren Summe
+nach Konvertierung in decimal(38,0), Min/Max das Minimum/Maximum der bigint-
+Werte. AvgReportedDurationMs ist der arithmetische Mittelwert der gemeldeten
+Werte als decimal(38,6), auf sechs Nachkommastellen kaufmännisch gerundet (bei exakter Hälfte aufwärts). Das ist ein
+Mittelwert gespeicherter Berichte, kein Mittelwert einzelner Methodenaufrufe:
+Ein Bericht kann seinerseits mehrere interne Aufrufe zusammenfassen. Der
+Nenner ist exakt EventCount und nie 0. Summe und Mittelwert werden nicht
+stillschweigend in bigint eingeengt oder in eine andere Einheit umgerechnet.
+
+Explizite 0 bleibt 0; eine fehlende Meldung erzeugt weder 0 noch eine künstliche
+Gruppe. Identische Texte mit verschiedenen IDs bleiben Beiträge. Die Summe
+ist ausschließlich die Summe gespeicherter berichteter Werte, keine Zusage
+über disjunkte Messungen oder Deduplizierung kumulativer Meldungen.
+Gruppennamen ergeben sich nur aus den beitragenden Zeilen. Genau ein ordinaler
+Nicht-NULL-Wert bleibt erhalten; mehrere Werte ergeben NULL und das jeweilige
+Conflict-Bit. Nur NULL-Source-Namen ergeben NULL ohne Konflikt. EvidenceLogIdsJson
+ist ein JSON-Arraystring der Log-IDs in aufsteigender Reihenfolge. First/Last-
+ObservedTime verwenden die gespeicherten Meldungszeiten, keine Methodenzeiten.
+
+### P5. Native Ergebnisschemas
+
+Alle Textspalten verwenden explizit COLLATE SQL_Latin1_General_CP1_CS_AS.
+Typen, Nullbarkeit und Reihenfolge gelten identisch für RAW und TABLE;
+JSON transportiert dieselben Schlüssel und Werte. Die technischen Mengen verwenden #SsisLegacyLogAnalysis_ComponentPhaseEvents
+und #SsisLegacyLogAnalysis_ComponentPhaseTimes.
+
+componentPhaseEvents besitzt genau 18 Spalten:
+
+| Position | Spalte | Typ und Nullbarkeit |
+|---|---|---|
+| 1 | PhaseEventOrdinal | bigint NOT NULL |
+| 2 | ExecutionId | uniqueidentifier NOT NULL |
+| 3 | LogId | int NOT NULL |
+| 4 | SourceId | uniqueidentifier NULL |
+| 5 | SourceName | nvarchar(4000) NULL |
+| 6 | EventTime | datetime NULL |
+| 7 | ParserId | varchar(32) NULL |
+| 8 | ParseStatus | varchar(40) NOT NULL |
+| 9 | ComponentId | int NULL |
+| 10 | ComponentName | nvarchar(4000) NULL |
+| 11 | PhaseName | varchar(32) NULL |
+| 12 | ReportedDurationMs | bigint NULL |
+| 13 | OutputId | int NULL |
+| 14 | OutputName | nvarchar(4000) NULL |
+| 15 | ContextStartLogId | int NULL |
+| 16 | ContextEndLogId | int NULL |
+| 17 | ContextStatus | varchar(40) NOT NULL |
+| 18 | InputIsTruncated | bit NOT NULL |
+
+componentPhaseTimes besitzt genau 24 Spalten:
+
+| Position | Spalte | Typ und Nullbarkeit |
+|---|---|---|
+| 1 | PhaseTimeOrdinal | bigint NOT NULL |
+| 2 | ExecutionId | uniqueidentifier NOT NULL |
+| 3 | SourceId | uniqueidentifier NOT NULL |
+| 4 | SourceName | nvarchar(4000) NULL |
+| 5 | ContextStartLogId | int NOT NULL |
+| 6 | ContextEndLogId | int NOT NULL |
+| 7 | ComponentId | int NOT NULL |
+| 8 | ComponentName | nvarchar(4000) NULL |
+| 9 | PhaseName | varchar(32) NOT NULL |
+| 10 | OutputId | int NULL |
+| 11 | OutputName | nvarchar(4000) NULL |
+| 12 | EventCount | bigint NOT NULL |
+| 13 | ReportedDurationSumMs | decimal(38,0) NOT NULL |
+| 14 | MinReportedDurationMs | bigint NOT NULL |
+| 15 | MaxReportedDurationMs | bigint NOT NULL |
+| 16 | AvgReportedDurationMs | decimal(38,6) NOT NULL |
+| 17 | FirstObservedTime | datetime NOT NULL |
+| 18 | LastObservedTime | datetime NOT NULL |
+| 19 | EvidenceLogIdsJson | nvarchar(max) NOT NULL |
+| 20 | SourceNameConflict | bit NOT NULL |
+| 21 | ComponentNameConflict | bit NOT NULL |
+| 22 | OutputNameConflict | bit NOT NULL |
+| 23 | InputIsTruncated | bit NOT NULL |
+| 24 | CoverageStatus | varchar(40) NOT NULL |
+
+PhaseEventOrdinal folgt LogId aufsteigend. PhaseTimeOrdinal folgt SourceId
+nach bestehender SQL-uniqueidentifier-Ordnung, ContextStartLogId,
+ContextEndLogId, ComponentId, PhaseName ordinal und OutputId mit NULL zuerst,
+jeweils aufsteigend. CoverageStatus ist bei Namenskonflikt
+OBSERVED_NAME_CONFLICT, sonst bei Eingabekappung OBSERVED_PREFIX, sonst
+OBSERVED_REPORTS. Es gibt keinen Coveragewert COMPLETE_PHASE_TIME.
+
+### P6. Quellenstatus, Fehler, Deadline und Grenzen
+
+Nur beim neuen Opt-in erscheint sourceStatus mit SourceOrdinal=7 und
+SourceName=componentPhaseAnalysis. Die festen Ordinale 1–4 und optionalen
+5/6 bleiben unverändert; Lücken werden nicht umnummeriert. Die neue Stufe
+benötigt einen gültigen bestehenden Puffer und vollständig abgeschlossene
+v1-eventDerivation. Task- und RowFlow-Opt-in dürfen ausgeschaltet sein;
+ihr eigener Fehler zerstört einen gültigen v1-Bestand nicht.
+
+Zulassungsgründe haben die Reihenfolge INVALID_PARAMETER,
+NO_VALID_EVENT_BUFFER, PRIOR_DERIVATION_NOT_COMPLETED, MESSAGES_DISABLED und
+TIME_BUDGET_EXHAUSTED. Vor Stufenbeginn ergibt jeder dieser Gründe NOT_READ/1
+mit beiden neuen Arrays leer, Counts und CONSOLE-Werten NULL. Vorhandene
+native Fehlerpaare und andere gültige Resultsets bleiben erhalten. Kein
+message-Zugriff wird durch einen anschließenden Parser-Opt-out kaschiert.
+
+Der gemeinsame kooperative Deadlinezeitpunkt wird vor Beginn und vor der
+atomaren Übernahme beider Mengen geprüft. Ablauf nach Beginn verwirft beide
+Mengen und alle drei Zähler; Zeile 7 wird AVAILABLE_LIMITED/1 mit dem Detail
+TIME_BUDGET_EXHAUSTED. Kein Timeout verlängert das Aufrufbudget oder beendet
+eine laufende SQL-Anweisung hart. Fehlerprüfungen erhalten ihre echte native
+Nummer und ihren vollständigen Text in Zeile 7. Die bestehende Klassifikation
+bleibt maßgeblich: 229/262/297/300/371 ergeben DENIED,
+207/208/911/916/942 SOURCE_UNAVAILABLE und sonstige echte Fehler ERROR_HANDLED.
+Ein Fehler verwirft
+beide neuen Mengen und setzt ihre Counts NULL; Parserablehnungen sind keine
+SQL-Exceptions. Es gibt keine Faultparameter, versteckten Testschalter oder
+Produkt-, Lab- oder System-Overrides.
+
+Nach erfolgreicher nichtleerer Übernahme gilt AVAILABLE_LIMITED/1 bei
+Eingabekappung, einem nicht geparsten oder nicht zugeordneten Kandidaten oder
+einem Namenskonflikt; andernfalls AVAILABLE/0. Ohne Kandidaten gilt
+AVAILABLE_EMPTY/0 mit Counts 0. Ein leeres Ergebnis beweist weder fehlende
+Komponentenausführung noch deaktiviertes Logging. ObservedRowCount und
+ReturnedRowCount sind C+G bei C Kandidaten und G Gruppen. Detail lautet
+Candidates=C;Parsed=P;ContextAssigned=A;Groups=G. IsTruncated bleibt bei
+vollständigem Export dieser abgeleiteten Mengen 0; InputIsTruncated beschreibt
+die vorgelagerte Eingabekappung. Jede neue Menge hat höchstens E Zeilen bei
+E freigegebenen Pufferereignissen und benötigt keinen zweiten Fachcap.
+
+Die Warnungscodes sind jeweils höchstens einmal pro tatsächlichem Zustand:
+COMPONENT_PHASE_EVENT_NOT_OBSERVED, COMPONENT_PHASE_MESSAGES_DISABLED,
+COMPONENT_PHASE_TIME_BUDGET_EXHAUSTED, COMPONENT_PHASE_ANALYSIS_ERROR,
+COMPONENT_PHASE_PAYLOAD_NOT_PARSED, COMPONENT_PHASE_CONTEXT_NOT_ASSIGNED und
+COMPONENT_PHASE_NAME_CONFLICT. Ein NOT_PARSED-Kandidat erzeugt keine zusätzliche
+Kontextablehnungswarnung. Warntexte verwenden feste Erklärungen und generische
+Counts, keine interpolierten Meldungswerte. Die neue Stufe erzeugt keine
+loggingQuality- oder findings-Zeilen. Die unveränderte v1-Qualitätsstufe darf
+PipelineComponentTime weiterhin als unbekannt markieren; dann kann der
+Modulstatus trotz AVAILABLE der Zeile 7 AVAILABLE_LIMITED bleiben.
+
+Neue Partialität wird in Modulstatus und OUTPUTs übernommen, ohne einen schon
+schwereren Status herabzustufen. Das erste echte native Fehlerpaar bleibt in
+der Quellenfolge 1–4, optional 5, optional 6, dann 7 erhalten. Bestehende
+OnError-Nutzdaten sind kein erfundener SQL-Fehler. MaxZeilen, HighImpact-Gates,
+LockTimeout, Callerzustand und die vollständige Duplikatprüfung des N+1-Puffers
+bleiben unverändert. Der Sentinel wird vor jedem neuen Fachschritt entfernt.
+IncludeTimeline=0 unterdrückt nur den Timelineexport. Kostenklasse bleibt
+LOW_HIGH_OPT_IN; zusätzlicher Parser-, Sortier-, Evidenz- und Gruppenaufwand
+beansprucht CPU, Speicher und tempdb ohne Laufzeit- oder Eigenlastgarantie.
+Der Analyzer verändert keine Quelle, Pakete, Rechte oder Loggingkonfiguration
+und verlangt keine zusätzlichen Quellindizes.
+
+### P7. Geplante synthetische Abnahme
+
+Die folgenden Gruppen bilden den freigegebenen synthetischen Umfang. Die
+Umsetzung verwendet
+eine eigene kompatible gespeicherte Quelle und die unveränderte Gesamt-SUT.
+Eine unabhängige Referenz bestimmt alle 42 neuen Felder aus vorher festgelegten
+Ereignissen und Sollwerten; reine Parität ist kein Ersatz. Physische Schema-
+Facetten umfassen Reihenfolge, Typ, Länge, Precision, Scale, Collation,
+Nullbarkeit und fehlende Identity-/Computed-Eigenschaften.
+
+| Gruppe | Verbindliches Soll für eine spätere Abnahme |
+|---|---|
+| P-S01 | Beide vollständigen englischen Alternativen liefern alle 18-/24-Feldwerte; ProcessInput hat NULL-Output, PrimeOutput den expliziten Output und eigene Gruppe. |
+| P-S02 | Exakte Präfixe, Satzpunkt, Leerzeichen, Quotes, Klammern und suffixfreies Ende; fehlende/zusätzliche Tokens und nicht zugelassene Methoden oder Sprachen liefern keinen Teilpayload. |
+| P-S03 | IDs bis int-Max, Zeitwerte 0, über int und bis bigint-Max sowie Bereichsüberschreitungen; Vorzeichen, führende Nullen, Localezahlen und Exponenten erhalten die festgelegte Ablehnung. Formfehler haben Vorrang vor Bereichsfehlern. |
+| P-S04 | Berichte 3, 0 und 8 ergeben EventCount=3, Summe=11, Min=0, Max=8 und Mittelwert=3.666667. Zwei bigint-Max-Berichte ergeben eine decimal-Summe oberhalb bigint; gleiche Texte mit verschiedenen IDs bleiben Beiträge. |
+| P-S05 | Getrennte Methoden, Ausgänge, Komponenten, Sources und Berichtskontexte bleiben getrennt; gleiche Anzeigenamen und Runtime-/Design-ID-Unterschiede erzeugen keine Querverknüpfung oder Gesamtlaufzeit. |
+| P-S06 | Nur eindeutiger EXECUTE-Berichtskontext; gleiche Zeitwerte, fehlende IDs/Zeit/Ende, mehrdeutige Paare, rückläufige Zeit und Zeit außerhalb des ID-Paars prüfen jede ContextStatus-Priorität. Der berichtete Wert erzeugt kein errechnetes Phasenintervall. |
+| P-S07 | UTF-16-Namen einschließlich Case und Endleerzeichen, Konflikte und ausschließlich NULL-Source-Namen; verbotene Quotes, CR/LF/TAB/NUL werden abgewiesen. Die tatsächlichen Namen und Konfliktbits sind ordinal geprüft. |
+| P-S08 | DATALENGTH an B−2, B und B+2, schmale/breite/MAX-Meldungsspalten und Endleerzeichen; potenzielle Kappung liefert weder Zeitpayload noch Gruppensumme. |
+| P-S09 | N+1-Präfix schneidet Meldung oder Kontextende; Sentinel beeinflusst keine Namen, Zeiten oder Evidenz. Doppelte IDs auch am Sentinel verwerfen den gesamten Puffer vor der Zusatzstufe. |
+| P-S10 | Alle acht Opt-in-Kombinationen prüfen Parameterpositionen, Schema1/2/3/4, Fachmengenanzahl, Metadaten und lückenhafte feste Source-Ordinale. Deaktivierte TABLE-Namen werfen vor dem Quellzugriff 51011. |
+| P-S11 | Unabhängige 42-Feldreferenz, JSON-Feld-/Arraypflicht und NULLs; RAW/TABLE/JSON-Parität, physische Schemata, CONSOLE genau ein Grid mit drei nullable bigint-Zählern und NONE ohne Fachgrid. |
+| P-S12 | Meldungs-Opt-out ohne fachlichen message-Zugriff, ungültige Quelle, nicht zugelassene berechnete Pflichtspalten, direkte native 229-Gegenprobe und unveränderte erste native Fehlertexte/Callerframes. |
+| P-S13 | Prior-v1-Ableitungsfehler, vor Beginn erschöpftes Budget, Deadline vor atomarer Übernahme und echter Fehler in der neuen Stufe; neue Mengen/Counts werden gemeinsam verworfen. Falls keine deterministische Original-SUT-Erzeugung möglich ist, werden quellgebundene extrahierte Stufen getrennt ausgewiesen, ohne Produktions-Testhooks oder Native-Fehlerbehauptung. |
+| P-S14 | Capturemutationen entfernen ein Pflichtfeld und Array und verändern Komponente, Output, Source, Methode, Zeitwert, Kontext, Summe/Mittelwert, NULL, Evidenz und Caller. Originaltextmutationen prüfen beide vollständigen Grammatikformen. Jede Änderung muss durch das unabhängige Orakel abgewiesen werden. |
+
+### P8. Geplante native Quelle, Gegenprüfung und endliche Grenzen
+
+Beide Szenarien bilden den freigegebenen nativen Umfang. Vor Runtime sind die
+aktuelle veröffentlichte beziehungsweise lokal installierte Windows-/SQL-/SSIS-
+Umgebung, Zugangsbindung, Version, Bitness, Rechte und Compatibility Level
+konkret zu prüfen. Jeder Versuch wird vor Effekten gezählt. Es werden
+keine bestehenden fremden Labfixtures, alten Runs oder entfernten Quellen
+restauriert. Die konkret freigegebene Analyze-Testkonstellation darf
+nur eigene eindeutig gebundene Pakete und eigene isolierte Logging-/Framework-
+Datenbanken auf geeigneter vorhandener Umgebung verwenden. Neue Infrastruktur,
+Installation, Imagebeschaffung, globale Rechte- oder Loggingänderungen sind
+nicht Teil des Vorschlags.
+
+| Szenario | Neue eigene Quelle und verlangte unabhängige Gegenprobe |
+|---|---|
+| P-N01 | Ein neuer einfacher Data Flow mit Quelle, Transformation und Ziel erzeugt PipelineComponentTime für mindestens ProcessInput und PrimeOutput. Paketbytes, tatsächliche Komponentennamen/-klassen, Source-IDs, SDK-Callbacks und native Originalzeilen bleiben gebunden. Ein ausgeführter Geschwistertask ohne Phasenlogging prüft ausschließlich das Fehlen gemeldeter Phasen, keine erfundene 0. |
+| P-N02 | Ein neues Paket mit wiederholtem und parallel ausgeführtem gleichnamigem Data Flow bei getrennten GUIDs und mehreren Ausgängen prüft Kontext-/Komponenten-/Outputtrennung. Unzuordenbare Berichte bleiben korrekt sichtbar; positive Gruppen brauchen tatsächlich belegte eindeutige Berichtskontexte. |
+
+Die Referenz liest die endgültig gespeicherten Originaltexte unabhängig vom
+Produktdecoder und verifiziert alle sechs Payloadwerte. Sie prüft IDs, Namen,
+Einheit und die berichteten Zahlen, aber behauptet keine unabhängig gemessene
+herstellerinterne Methodendauer. Kontext und Aggregate werden aus den
+unveränderten Originalereignissen unabhängig berechnet. SDK-/Paketdaten dienen
+der kontrollierten Source-/Namens-/Klassenbindung; Authoringnummern werden
+nicht als Runtimekennungen vorausgesetzt. Zusätzliche oder ungebundene Tupel
+dürfen nicht allein aufgrund passender Summen bestehen.
+
+Freigegeben sind höchstens drei Arrange-/Runtimeversuche innerhalb einer
+neuen gesonderten Umsetzungswelle, insgesamt höchstens zwei tatsächliche
+Paketausführungen und insgesamt höchstens acht native Consumeraufrufe.
+Auch ein fehlgeschlagener Consumeraufruf verbraucht einen dieser acht Plätze;
+ein Arrangefehler vor dem ersten Consumer verbraucht nur den Runtimeversuch.
+Es gibt keine zusätzliche ungezählte Wiederholung einer Konstellation.
+Die acht vorgesehenen Konstellationen sind P-N01 RAW nur Phasen, TABLE nur die beiden neuen Mengen, CONSOLE mit
+allen drei Opt-ins, NONE mit Phasen, Messages-off mit Phasen und Phasen-off bei
+Task-/RowFlow-Opt-in sowie P-N02 RAW mit allen drei Opt-ins und TABLE mit einem
+gezielt vor dem Kontextende gekappten N+1-Präfix. Die neue Phase-off-Probe
+gegen die neue Quelle prüft die hinzugefügte Option und ist keine Wiederholung
+alter Paketläufe. Bereits bestandene unveränderte Einzelbelege werden nach
+aktueller Quellen-/Abhängigkeitsbindung weiterverwendet.
+
+Die native Positivabnahme verlangt beide Profilalternativen, gespeicherte
+PARSED-Kandidaten, mindestens einen belegten Berichtskontext je Alternative,
+positive korrekt getrennte Gruppen, alle 42 neuen Felder, physische Schemas,
+N+1, JSON-Parität und Outputmodi. Eine native explizite 0 darf nur bei tatsächlich
+gespeicherter Nullmeldung behauptet werden; der garantierte 0-Fall bleibt
+synthetisch. Fehlende Kandidaten, nicht passende Formate oder ausschließlich
+unzuordenbare Berichte ergeben keine bestandene Positivabnahme.
+
+Ein natives Format außerhalb PCT_EN_1 oder eine nicht erfüllbare Kontextannahme
+führt zu erhaltener Nichtqualifikation und konkreter menschlicher
+Vertragsentscheidung. Es gibt keine automatische Alias-/Präfixergänzung,
+Namensheuristik, Guardlockerung, Paketwiederholung oder Budgetrücksetzung.
+Ein fehlgeschlagener Versuch bleibt auch bei späteren Teilerfolgen erhalten.
+Originalevidenz wird privat behalten; Runtimeidentitäten, Logs oder Zugangsdaten
+werden nicht in Repositoryartefakte übernommen.
+
+Vor Mutation werden eigene Creation-Intents und eindeutige Nonces gespeichert;
+Datenbank-ID, create_date, OwnerSID und Marker binden Schreib- und Cleanupziele.
+Fehlanlage oder Identitätsabweichung bleibt Recovery statt Präfixlöschung.
+Caller, Quellzeilen und Datenbankinventar sind vor und nach der Prüfung zu
+vergleichen. Eigene Testdatenbanken/-objekte werden auch auf Fehlerpfaden
+identitätsgebunden bereinigt; Cleanupfehler schließen Erfolg aus. Fremde
+Ressourcen und historische policyblockierte Löschungen bleiben unangetastet.
+
+### P9. Freigabe-, Integrations- und Quellenvertrag
+
+Der direkte Benutzer hat den geprüften P1–P9-Vertrag einschließlich seiner
+Profil-/Kontextgrenzen und des endlichen Abnahmeumfangs konkret freigegeben.
+Die abgeschlossene Entwurfswelle bleibt mit einem Vertragsreview, Native0 und
+CI0 erhalten. Die Umsetzung hat ein eigenes endliches Budget: ein Autor,
+derselbe unabhängige Reviewer für höchstens drei begründete Prüfungen
+(Produkt-/Vertragsdelta, Adapter-/Orakeldelta vor Runtime und Ergebnis-/
+Lieferdelta), höchstens drei synthetische Versuche, die nativen Grenzen aus P8
+und höchstens vier CI-Qualifikations-Heads einschließlich Pflicht-Mainlauf.
+Unveränderte erfolgreiche Nachweise werden nach aktueller Bindungsprüfung
+weiterverwendet. Kosten und Kontingente bleiben UNKNOWN. Ausführung und
+Qualifikation werden erst nach tatsächlichem Ergebnis dokumentiert;
+bis dahin bleiben die betroffenen Nachweise NOT_EXECUTED.
+
+Die Lieferung muss Produktversion, Installer, betroffene Inventare,
+Guide, Referenz, kanonischen Plan und Status gemeinsam aktualisieren. Erst
+erfolgreiche betroffene Tests nach der kanonischen CI-Strategie, exakte
+Head-Checks, normaler MatchHead-Merge, Treeidentität, Main-Folgeprüfung,
+Synchronisierung und eigenes Cleanup schließen diesen Slice. Kein Admin,
+Bypass oder AutoMerge ist vorgesehen. Historische erfolgreiche Abnahmen und
+geschlossene Budgets bleiben erhalten. SSIS-001 bleibt auch danach insgesamt
+PARTIAL_PRODUCT_FUNCTION; zusätzliche Phasenprofile, Katalogabnahmen und
+WI-0009 GATE-0001 bleiben getrennt offen.
+
+Die am 18. Oktober 2026 gelesenen öffentlichen Primärquellen sind
+[Microsoft: SSIS Logging, Abschnitt PipelineComponentTime](https://learn.microsoft.com/en-us/sql/integration-services/performance/integration-services-ssis-logging?view=sql-server-ver17#use-the-pipelinecomponenttime-event)
+und [Microsoft: Data Flow Task, Sample Messages](https://learn.microsoft.com/en-us/sql/integration-services/control-flow/data-flow-task?view=sql-server-ver17#sample-messages-from-a-data-flow-task).
+Sie beschreiben berichtete Millisekunden und zeigen die hier eng ausgewählten
+Textformen. Die zweite Quelle bezeichnet in ihrer Übersicht einen Schritt
+als ProcessOutput, während ihre Beispiele PrimeOutput verwenden. Dieser
+Entwurf folgt ausschließlich den genauen Beispielen und führt keinen Alias ein.
+Die übergeordnete Herstellerliste weiterer Phasen ist keine Vorlage für
+unbelegte zusätzliche Textdecoder. Die hier festgelegten API-, Zahlen-,
+Kapazitäts-, Kontext- und Statusregeln sind Projektentscheidungen; die
+Herstellerbeispiele ersetzen keine native Formatzulassung oder Eigenmessung.
+
+
+## Freigegebene native Legacy-Komponentenzeitberichte ohne numerische IDs vom 18. Oktober 2026
+
+**Status:** B1–B7 wurde vom Benutzer ausdrücklich zur Implementierung,
+begrenzten Folgeabnahme und regulären PR-Lieferung freigegeben. Die Ergänzung
+ändert P1–P9 ausschließlich an den nachfolgenden ausdrücklich beschriebenen
+Ereignis-, Payload- und Gruppengrenzen. Nachweise werden erst nach tatsächlicher
+Ausführung als bestanden ausgewiesen. Die ursprünglichen Freigabe- und
+Fehlhistorien bleiben erhalten.
+
+### B1. Tatsächliche neue Vertragsgrenze
+
+Die begrenzte neue native Abnahme erzeugte ein eigenes Paket mit Erfolg und
+33 gespeicherten Providerzeilen. Darin sind 15 Meldungen unter dem exakten
+Ereignisnamen User:PipelineComponentTime und keine unter PipelineComponentTime.
+Zwei Texte berichten ProcessInput, einer PrimeOutput; zwölf betreffen bisher
+nicht zugelassene Validate-/PreExecute-/PostExecute-Methoden. Die Originaltexte
+berichten Komponenten- und Outputnamen, aber keine numerischen Komponenten-
+oder Outputkennungen. Ein Outputtext verwendet ComponentName.Outputs[OutputName].
+Die drei für PCT_EN_2 vorgesehenen ProcessInput-/PrimeOutput-Berichte liegen
+in ihrer beobachteten EXECUTE-Source-Klammer. Diese Aussage wird nicht auf
+die übrigen Methodenberichte verallgemeinert. Es handelt sich um eine
+Quellenbeobachtung und noch keine Analyzer-Consumerqualifikation.
+
+Der bisherige exakte Ereignisvertrag lässt diese Zeilen nicht als Kandidaten
+zu. Sein unabhängiges Positivgate stoppte deshalb vor dem ersten Consumeraufruf
+und vor dem zweiten Paketszenario. Drei Arrange-/Runtimeversuche sind verbraucht;
+die ersten zwei scheiterten beim eigenen Paketaufbau vor Execute an einem
+doppelten Geschwisternamen beziehungsweise einem nicht vorhandenen SDK-Typ.
+Das dritte Paket wurde tatsächlich ausgeführt. Alle drei Versuche bleiben
+FAILED_NOT_QUALIFIED. Die eigenen Datenbanken wurden identitätsgebunden entfernt,
+Cleanupfehler waren 0 und das Datenbankinventar ist wiederhergestellt.
+Die neun ursprünglichen Providerfelder stimmen vor und nach der Aufnahme
+überein. Originalevidenz und SDK-/Paketbindungen bleiben privat.
+
+Diese Meldungsformen sind keine Ungenauigkeit, die durch Normalisierung,
+ID-Raten oder ein liberaleres Gate behoben werden dürfte. B2–B7 legen die
+zusätzlich erforderliche fachliche Entscheidung konkret vor.
+
+### B2. Genau ein zusätzliches Ereignis- und Textprofil
+
+PipelineComponentTime bleibt ordinal ausschließlich PCT_EN_1 zugeordnet.
+Zusätzlich würde ausschließlich das ordinal exakte User:PipelineComponentTime
+als Kandidat für PCT_EN_2 zugelassen. Es gibt keinen allgemeinen User:-Alias,
+kein Präfixtrimmen und keine Änderung des gespeicherten Ereignisnamens.
+OnInformation, andere Ereignisse, weitere Sprachen und Methoden werden nicht
+aus Textähnlichkeit zugelassen. Die beiden vollständigen PCT_EN_2-Formen lauten:
+
+```text
+The {ComponentName} spent {ReportedDurationMs} milliseconds in ProcessInput.
+The {ComponentName} spent {ReportedDurationMs} milliseconds in PrimeOutput filling buffers on {ComponentName}.Outputs[{OutputName}].
+```
+
+ComponentName wird in der PrimeOutput-Form ordinal identisch wiederholt.
+Namen bleiben ungetrimmt, einschließlich Case und Endleerzeichen, mit
+1 bis 4000 UTF-16-Codeeinheiten. Beide Namensfelder dürfen weder doppelte
+Anführungszeichen noch CR, LF, TAB, NUL oder eckige Klammern enthalten.
+ComponentName darf zusätzlich weder die vollständige Zeichenfolge
+` spent ` noch `.Outputs[` enthalten. Die Trenner sind dadurch eindeutig;
+es gibt kein Unescape oder mehrdeutiges Rückwärtsraten. Ein Satzpunkt und
+alle festen Leerzeichen sind obligatorisch, nachfolgender Text unzulässig.
+Der Zahlenvertrag bleibt ASCII-kanonisches bigint von 0 bis zum Maximum.
+
+Für dieses zusätzliche Ereignis ist der erkannte Profilanfang exakt `The `.
+Ohne diesen Anfang gilt UNSUPPORTED_FORMAT mit ParserId NULL. Mit erkanntem
+Anfang gilt ParserId=PCT_EN_2 und bei Form-/Namens-/Zahlensyntaxabweichung
+MALFORMED_PAYLOAD, bei formal gültiger Zahl außerhalb bigint
+NUMERIC_OUT_OF_RANGE. Fehlender Text und der bestehende DATALENGTH-Guard haben
+weiter Vorrang. Validate, PreExecute und PostExecute werden als Kandidaten
+mit MALFORMED_PAYLOAD sichtbar, ohne Teilpayload oder Methodenzeitgruppe.
+
+### B3. Fehlende numerische Kennungen bleiben NULL
+
+Nur für ein erfolgreiches PCT_EN_2 werden ComponentName, PhaseName und
+ReportedDurationMs sowie bei PrimeOutput OutputName übernommen. ComponentId
+und OutputId bleiben NULL, weil sie nicht berichtet wurden. ProcessInput
+behält auch OutputName NULL. PARSED bedeutet die vollständig zugelassene
+profilabhängige Projektion und keinen Nachweis numerischer Identität.
+
+SDK-Authoringnummern, RowFlow-PathIds, Reihenfolgen, Hashes oder künstliche
+Ersatznummern werden weder als native IDs eingesetzt noch aus anderen
+Ereignissen hinzugefügt. Der vollständige gespeicherte Text bleibt über den
+bisherigen Timelineexport verfügbar. Die 18 Ereignisfelder ändern ihren
+Typ und ihre Nullbarkeit nicht.
+
+### B4. Benannte Berichtsgruppen statt erfundener Komponentenidentität
+
+Die bisherigen PCT_EN_1-Gruppen bleiben nach den nativen numerischen IDs aus
+P4 gebunden. PCT_EN_2-Gruppen würden ausschließlich ASSIGNED-Berichte nach
+ExecutionId, SourceId, beiden Kontext-Log-IDs, internem ParserId, ordinalem
+ComponentName, PhaseName und ordinalem OutputName zusammenfassen.
+ProcessInput hat einen echten NULL-Outputnamen-Schlüssel. Es gibt kein
+Zusammenführen mit PCT_EN_1 oder über Sources, Kontexte, Methoden oder
+verschiedene berichtete Namen hinweg.
+
+Die Gruppierung belegt nur übereinstimmende berichtete Labels innerhalb eines
+Source-Kontextes, keine eindeutige Runtimekomponente oder Vollständigkeit der
+Komponentenliste. Gleiche Labels dürfen deshalb nicht als technische Identität
+oder Hinweis auf dieselbe Komponente außerhalb dieses Berichtsschlüssels gelten.
+Der Produktdecoder liest hierfür keine Paketdatei oder SDK-Metadaten.
+Die spätere Fixtureabnahme bindet Labels an die eigenen kontrollierten
+Komponenten und Klassen, ohne diese Fixturebindung auf beliebige Quellen
+zu verallgemeinern.
+
+Die 24 Gruppenfelder bleiben erhalten. Ausschließlich ComponentId an Position 7
+ändert sich physisch von int NOT NULL zu int NULL; bei PCT_EN_1 bleibt sein
+Wert obligatorisch, bei PCT_EN_2 sind ComponentId und OutputId NULL.
+Für letzteren Zweig sind ComponentName und bei PrimeOutput OutputName die
+berichteten Gruppenschlüssel; ihre Konfliktbits sind dort 0. Das beweist keine
+globale Namenseindeutigkeit. SourceName-Konflikte bleiben wie bisher sichtbar.
+Die bestehende Ordinalsortierung bleibt erhalten; bei den zusätzlichen
+NULL-ComponentId-/NULL-OutputId-Schlüsseln folgen ComponentName und OutputName
+jeweils binär aufsteigend als eindeutige Sortierergänzung, NULL zuerst.
+
+Summe, Min/Max, exakt auf sechs Stellen kaufmännisch gerundeter Mittelwert,
+EventCount, Evidenz-IDs, beobachtete Meldungszeiten und Coveragewerte behalten
+P4–P6. Identische gespeicherte Texte mit verschiedenen Log-IDs bleiben Beiträge.
+Es entstehen weiterhin keine Methodenintervalle, CPU-, exklusive oder
+Komponenten-/Task-/Paketgesamtzeiten. Erwartet fehlende IDs lösen allein keine
+zusätzliche Partialität aus; abgelehnte Kandidaten und andere Grenzen tun dies
+weiterhin. Weitere API-Parameter, Felder oder Console-Grids entstehen nicht.
+SchemaVersion4 und ComponentPhaseCatalogVersion1 sind noch nicht ausgeliefert
+und würden diesen konkret erweiterten ersten Liefervertrag bezeichnen.
+
+### B5. Status- und Integritätsgrenzen bleiben bestehen
+
+Die Quellenzeile 7 zählt ausschließlich zugelassene Ereignisnamen und behält
+den bestehenden C+G-/Detailvertrag. Der ursprüngliche v1-Puffer, doppelte IDs,
+N+1-Sentinel, Messages-off, Prior-v1-Zulassung, atomare Deadlineübernahme,
+Fehlerisolation und das erste native Fehlerpaar bleiben unverändert.
+ContextStatus folgt P4, unabhängig von optionalen numerischen Payload-IDs.
+Ein PCT_EN_2 ohne SourceId oder eindeutigen zeitlich einschließenden Kontext
+bleibt sichtbar und trägt zu keiner Gruppe bei. Es gibt keinen Namen- oder
+Nachbar-Source-Fallback für die Kontextzuordnung.
+
+### B6. Konkrete begrenzte Folgeabnahme
+
+Alle folgenden Prüfungen sind geplant und NOT_EXECUTED. Der erfolgreiche
+synthetische Restumfang einschließlich fünf klar getrennt ausgewiesener
+extrahierter Stufen bleibt gebunden erhalten. Die erste Fehlerhistorie 8632
+und der ursprüngliche Mittelwert 3.666666 bleiben erhalten; der korrigierte
+P-S04-Wert 3.666667 und die restlichen Abschnitte bestanden im dritten
+synthetischen Versuch. P-S14 an positiven nativen Consumercaptures ist
+NOT_EXECUTED. Bereits abgeschlossene unveränderte Abschnitte werden
+nicht neu als lokale Welle gestartet.
+
+Die neue synthetische Deltaprüfung umfasst beide PCT_EN_2-Formen, genau beide
+Ereigniszuordnungen, Methoden-/Präfix-/Trenner-/Zahlenablehnungen, NULL-IDs,
+physische ComponentId-Nullbarkeit, binäre Namen mit Endspaces und Konflikten,
+gemischte EN1-/EN2-Gruppen ohne Querverknüpfung sowie Feld-/Arrayentfernung und
+Identitäts-/Zeit-/Summen-/NULL-Mutationen. PCT_EN_1-Parser und unveränderte
+historische Provider-/Task-/RowFlow-Abnahmen werden nicht wiederholt.
+
+Die erhaltenen ursprünglichen P-N01-Providerzeilen würden unverändert aus einem
+einmal gelesenen und gehashten Puffer in eine neue eigene isolierte Datenbank
+restauriert. Es gibt keine erneute P-N01-Paketausführung und keine Änderung
+der neun gespeicherten Felder oder ihrer Ereignisnamen. Geplant sind seine
+sechs bislang sämtlich NOT_EXECUTED-Consumer aus P8. Danach ist höchstens
+eine erstmalige tatsächliche P-N02-Paketausführung für den bislang fehlenden
+Mehrfach-/Parallelkontext und dessen zwei Consumer vorgesehen.
+
+Die gesonderte Ergänzungswelle ist auf zwei synthetische und zwei Arrange-/
+Runtimeversuche, insgesamt eine tatsächliche P-N02-Paketausführung und acht
+Consumeraufrufe einschließlich Fehlversuchen begrenzt. Ein gescheiterter
+Paketlauf wird nicht erneut ausgeführt. Die acht Label-/Mode-/Cap-/Options-
+Tupel aus P8 bleiben fest; P-N02-Prefixcap kommt aus einer tatsächlich
+PARSED+ASSIGNED-Originalmeldung und schneidet ihr belegtes Kontextende ab.
+Die Referenz prüft alle 42 Felder unabhängig, inklusive fehlender IDs und
+aller neuen Namensschlüssel, plus TABLE-/JSON-Parität, physische Facetten,
+RAW11/13/15, CONSOLE1, NONE0, Originaltexte und Caller-/Quell-/Inventarklammern.
+Zwei zusätzliche begründete Prüfungen desselben Reviewers sind vorgeschlagen:
+Ergänzungs-/Adapterdelta vor Ausführung und Ergebnis-/Lieferdelta danach.
+
+Die bisherigen Budgets bleiben geschlossen und unverändert; insbesondere
+ist kein vierter Versuch der alten nativen oder synthetischen Welle abgeleitet.
+Das bisher ungenutzte CI-Budget bleibt bis zur fachlichen Qualifikation
+zurückgestellt und wird nicht zurückgesetzt oder verdoppelt. Es gibt keine
+Setup-, Lab-, VM-, Installations- oder Imagewelle. Datenbanken bleiben eigene
+ID-/create_date-/OwnerSID-/Nonce-/Marker-gebundene Objekte mit Cleanup auch auf
+Fehlerpfaden. Ein Cleanupfehler verhindert Erfolg. Neue native Formate oder
+fehlende Positivquellen führen erneut zu erhaltener Nichtqualifikation und
+konkreter Entscheidung; freie Restplätze erlauben keinen blinden Replay.
+
+### B7. Menschliche Freigabe und Liefergate
+
+Die konkrete menschliche Freigabe umfasst B1–B7 und den begrenzten Umfang aus
+B6. PCT_EN_2 wird ergänzt und mit den erhaltenen P-N01-Originaldaten sowie
+höchstens einem erstmaligen P-N02-Paketlauf geprüft. Der unabhängige Review
+ersetzt weder die tatsächliche Abnahme noch exakte Head-CI, regulären Merge,
+Treeidentität und Main-Synchronisierung. Bis zur Qualifikation bleiben
+Worktree und Originalevidenz erhalten. SSIS-001 bleibt PARTIAL_PRODUCT_FUNCTION
+und WI-0009 GATE-0001 offen.
+
+### Nachweisgrenze der freigegebenen Komponentenzeit-Ergänzung
+
+Die [kanonische begrenzte Abnahme](SSIS_Package_and_Execution_Analysis_Plan.md#legacy-komponentenphasenzeiten-begrenzte-abnahme-vom-18-oktober-2026)
+trennt sechs wiederverwendete Originaldaten-Consumer von genau zwei neuen
+P-N02-Consumern. Alle 42 zusätzlichen Felder werden unabhängig geprüft;
+berichtete Namensgruppen sind weiterhin keine technische Komponentenidentität.
+Die alte Nichtqualifikation mit Provider-Schreibfehlern und der erhaltene
+Offline-Zielmengenfehler werden nicht überschrieben. Die neue EN1-NUL-
+Regression bleibt bis exakter Head-CI NOT_EXECUTED. Der Nachweis ist keine
+allgemeine Methoden-, Sprach-, Rollen- oder weitere Enginequalifikation.
