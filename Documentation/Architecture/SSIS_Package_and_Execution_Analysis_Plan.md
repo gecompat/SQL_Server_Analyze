@@ -1713,3 +1713,24 @@ und reguläre Integration sind separate Liefergates. SSIS-001 bleibt
 PARTIAL_PRODUCT_FUNCTION; weitere Methodenprofile, Sprachen, CPU-/exklusive
 Zeit, Durchsatz, Looprekonstruktion und allgemeine Katalog-/Rollenabnahmen
 sowie WI-0009 GATE-0001 bleiben offen.
+
+
+## Entwurf: ergänzende Legacy-Lifecycle-Methoden vom 19. Oktober 2026
+
+Nach der regulären Lieferung der begrenzten ProcessInput-/PrimeOutput-Analyse
+ist der nächste belegte Teilslice aus Schritt 3 die Auswertung berichteter
+Validate-, PreExecute- und PostExecute-Werte. Der
+[konkrete Entwurf L1–L9](SSIS_001_Phase0_Public_Contract.md#entwurf-legacy-lifecycle-methodenberichte-vom-19-oktober-2026)
+sieht einen abhängigen Opt-in an Position 24, die bestehenden 42 Felder,
+einen versionierten erweiterten Methodenbestand und die Trennung von
+VALIDATE-/EXECUTE-Berichtskontexten vor. Der freigegebene v1.3.0-Vertrag
+bleibt der Lieferstand. Dieser neue Entwurf ist nicht zur Implementierung
+oder Runtime freigegeben.
+
+Die später vorgeschlagene Consumerabnahme verwendet ausschließlich erhaltene
+eigene Originalproviderzeilen. Alle 14 synthetischen Gruppen und sechs neuen
+Consumer sind geplant und NOT_EXECUTED; neue Paketausführungen sind nicht
+vorgesehen. Ein unabhängiger Vertragsreview und anschließend konkrete
+menschliche Freigabe sind getrennte Schritte. Weitere Methodenprofile,
+Durchsatz, Lookup-/Cache-/Providerdecoder, Historie, eigene Kennzahlen sowie
+Katalog-/Rollenqualifikation bleiben offen. SSIS-001 bleibt partiell.

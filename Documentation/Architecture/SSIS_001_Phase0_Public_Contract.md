@@ -2133,3 +2133,269 @@ Die alte Nichtqualifikation mit Provider-Schreibfehlern und der erhaltene
 Offline-Zielmengenfehler werden nicht überschrieben. Die neue EN1-NUL-
 Regression bleibt bis exakter Head-CI NOT_EXECUTED. Der Nachweis ist keine
 allgemeine Methoden-, Sprach-, Rollen- oder weitere Enginequalifikation.
+
+
+## Entwurf: Legacy-Lifecycle-Methodenberichte vom 19. Oktober 2026
+
+**Status:** DRAFT_PENDING_HUMAN_APPROVAL. Der Auftrag umfasst ausschließlich
+Erweiterungsvertrag und Abnahmeplan mit einem unabhängigen Review. Die
+folgenden Produkt-, Test- und Laufzeitänderungen sind nicht implementiert
+oder ausgeführt. Der freigegebene Vertragspräfix einschließlich P1–P9 und
+B1–B7 bleibt unverändert. Dieser Entwurf konkretisiert den noch fehlenden
+Methodenumfang aus Schritt 3 von SSIS-001; er gibt keine weiteren Backlogteile frei.
+
+### L1. Fehlender Umfang und belastbare Ausgangsbasis
+
+Legacy v1.3.0 liefert ProcessInput und PrimeOutput nach P1–P9/B1–B7. Die
+bereits erhaltenen eigenen Originalproviderdaten enthalten daneben
+Validate, PreExecute und PostExecute. In der linearen Aufnahme sind sechs,
+drei und drei solche Berichte vorhanden; in der Mehrfach-/Parallelaufnahme
+25, 15 und 15. Diese Beobachtung stammt ausschließlich aus lesender Sichtung
+vorhandener Daten. Sie ist weder eine neue Paketausführung noch eine positive
+Qualifikation des hier vorgeschlagenen Decoders.
+
+Microsoft beschreibt PipelineComponentTime als berichtete Millisekunden je
+Verarbeitungsmethode und unterscheidet diese fünf Methoden in der
+[SSIS-Protokollierungsreferenz](https://learn.microsoft.com/en-us/sql/integration-services/performance/integration-services-ssis-logging?view=sql-server-ver17).
+Die Referenz begründet Methodennamen und Einheiten. Das folgende genaue
+User:-Textprofil und seine fehlenden IDs beruhen auf den eigenen erhaltenen
+Originaldaten. Daraus folgt keine allgemeine Format-, Sprach- oder Versionsgarantie.
+
+Vorgeschlagen ist v1.4.0 mit genau den drei zusätzlichen berichteten Methoden.
+Es entstehen keine CPU-, exklusiven, Komponenten-, Task- oder Paketgesamtzeiten,
+keine tatsächlichen Methodenintervalle, Tasktyp- oder Looprekonstruktion,
+Durchsatz-, Lookup-, Provideraufruf-, Historien- oder Katalogauswertung.
+
+### L2. Expliziter Opt-in und unveränderte Standardaufrufe
+
+Genau ein Parameter wird an Position 24 angehängt:
+`@IncludeComponentLifecyclePhases bit = 0`; NULL wird wie 0 behandelt.
+Die bisherigen 23 Positionen, Defaults und Aufrufe bleiben erhalten.
+Der neue Wert 1 ist ausschließlich zusammen mit
+`@IncludeComponentPhaseAnalysis=1` gültig. Er aktiviert diese Analyse nicht
+stillschweigend. Wert 1 bei ausgeschalteter Phasenanalyse ergibt den bestehenden
+INVALID_PARAMETER-Pfad vor jedem fachlichen Quell-, Metadaten- oder Meldungszugriff.
+Help beschreibt die Abhängigkeit; es gibt keinen zweiten Aktivierungsweg.
+
+Wert 0 erhält die bisherigen acht Task-/RowFlow-/Phasen-Kombinationen mit
+SchemaVersion 1/2/3/4, ComponentPhaseCatalogVersion 1 beim Phasen-Opt-in,
+ParserIds, Mengen, Facetten, Status- und Kontextregeln. Es gibt keinen neuen
+JSON-Schlüssel bei Wert 0. Wert 1 mit Phasen-Opt-in verwendet SchemaVersion 5
+und ComponentPhaseCatalogVersion 2. Die vier gültigen Kombinationen mit
+Task-/RowFlow-Auswahl liefern RAW11, RAW13, RAW13 beziehungsweise RAW15.
+Die vier Kombinationen mit Lifecycle=1 und Phase=0 sind ungültig; ihre bisherigen
+Ausgabeschalen folgen den tatsächlich aktivierten alten Opt-ins und erhalten
+keine Phasenmengen. INVALID_PARAMETER wird nicht durch Messages-off übergangen.
+
+### L3. Genaues erweitertes benanntes Profil
+
+Das Ereignis PipelineComponentTime behält in beiden Modi ausschließlich
+PCT_EN_1 mit seinen bisherigen zwei Methoden. Für das ordinal exakte
+User:PipelineComponentTime verwendet der neue Modus PCT_EN_3 anstelle von
+PCT_EN_2. Der Standardmodus behält PCT_EN_2 unverändert. PCT_EN_3 erlaubt die
+beiden vollständigen benannten Formen aus B2 und zusätzlich exakt:
+
+```text
+The {ComponentName} spent {ReportedDurationMs} milliseconds in Validate.
+The {ComponentName} spent {ReportedDurationMs} milliseconds in PreExecute.
+The {ComponentName} spent {ReportedDurationMs} milliseconds in PostExecute.
+```
+
+Alle festen Zeichen, Groß-/Kleinschreibung, Leerzeichen und der letzte Punkt
+sind ordinal erforderlich. Es gelten unverändert die B2-Namensgrenzen,
+1–4000 UTF-16-Codeeinheiten, verbotene Steuer-/Klammer-/Anführungszeichen,
+eindeutige Trenner und ASCII-kanonische nichtnegative bigint-Zahlen.
+Die Ganztext-NUL-Prüfung umfasst auch ein nachfolgendes NUL; kein Teilpayload
+bleibt bei Ablehnung stehen. PrimeOutput behält die identische Wiederholung
+des Komponentennamens und den genauen Outputnamen aus B2. Nur PrimeOutput
+hat einen Outputnamen. ComponentId und OutputId bleiben bei PCT_EN_3 NULL.
+Es gibt keine SDK-, Reihenfolge-, RowFlow- oder Hash-Ersatzkennung.
+
+Die Kandidatenmenge umfasst wie bisher beide exakten Ereignisnamen, in
+aufsteigender LogId-Reihenfolge. Der bestehende Missing-/Bytegrenzenguard hat
+Vorrang. Im erweiterten Modus ergibt User:PipelineComponentTime ohne den
+exakten Anfang `The ` UNSUPPORTED_FORMAT/ParserId NULL. Mit erkanntem Anfang
+ist ParserId PCT_EN_3; eine unbekannte Methode, Form- oder Namensabweichung
+ist MALFORMED_PAYLOAD, eine formal gültige zu große Zahl NUMERIC_OUT_OF_RANGE.
+PARSED übernimmt ComponentName, PhaseName, ReportedDurationMs und ausschließlich
+bei PrimeOutput OutputName; sonstige Payloadfelder bleiben NULL.
+Ein numerisches Validate-/PreExecute-/PostExecute-Format für den bloßen
+Ereignisnamen wird nicht zusätzlich zugelassen. User:-Aliase, andere Sprachen,
+Trimming, Unescape und Methodenraten bleiben ausgeschlossen.
+
+### L4. Methodenspezifische äußere Berichtskontexte
+
+Die vorhandene v1-iterations-Ableitung wird nicht verändert. Ausschließlich
+PARSED-Berichte erhalten einen Kontext nach dieser festen Zuordnung:
+
+| PhaseName | Zugelassene PairKind der vorhandenen iterations |
+|---|---|
+| Validate | VALIDATE |
+| PreExecute, PostExecute, ProcessInput, PrimeOutput | EXECUTE |
+
+Die Zuordnung gilt für PCT_EN_3; PCT_EN_1 behält seine bisherigen EXECUTE-Paare.
+Genau dieselbe SourceId, PairStatus PAIRED und strikt
+StartLogId < LogId < EndLogId sind erforderlich. Zuerst wird die Zahl dieser
+ID-einschließenden Paare der zugelassenen Art ermittelt; erst beim einzigen
+Paar wird StartTime <= EventTime <= EndTime geprüft. Ein zweites ID-Paar
+bleibt AMBIGUOUS_PAIR, auch wenn nur eines zeitlich passen würde.
+Die Statuspriorität aus P4 bleibt exakt: NOT_PARSED, SOURCE_ID_MISSING,
+EVENT_TIME_MISSING, NO_OBSERVED_PAIR, AMBIGUOUS_PAIR, TIME_OUTSIDE_PAIR, ASSIGNED.
+Nur ASSIGNED setzt beide Kontext-IDs und trägt zu einer Gruppe bei.
+
+Ein Validate-Bericht innerhalb eines EXECUTE- und eines VALIDATE-Paars nutzt
+nur VALIDATE. Fehlt dessen Abschluss oder wird erst danach protokolliert,
+entsteht keine EXECUTE-Ersatzzuordnung. PreExecute/PostExecute nutzen keine
+VALIDATE- oder PACKAGE-Ersatzklammer. Namen, nächstes Vorkommen und engstes
+Intervall ersetzen keine fehlende oder mehrdeutige Source-/Paarklammer.
+Gleiche Meldungszeiten bleiben zulässig, strikte Log-ID-Grenzen bleiben nötig.
+Die Paare beschreiben äußere Berichtskontexte; es wird keine Methodenstartzeit
+aus EventTime und ReportedDurationMs zurückgerechnet.
+
+### L5. Bestehende 42 Felder, konservative Gruppen und Ausgabeversionen
+
+componentPhaseEvents behält alle 18 Felder aus P5. componentPhaseTimes behält
+alle 24 Felder mit der in B4 freigegebenen ComponentId-Nullbarkeit. Reihenfolge,
+Typen, Textcollation und alle übrigen Facetten ändern sich nicht. RAW/TABLE
+und JSON enthalten dieselben Felder einschließlich expliziter NULLs. PairKind
+benötigt keine zusätzliche Spalte: Sie folgt im erweiterten Modus ausschließlich
+aus der festgelegten PhaseName-Zuordnung in L4. Bei nicht geparster Methode
+bleiben beide Kontext-IDs NULL. VALIDATE-IDs dürfen deshalb nur bei Validate
+in diesen bestehenden Spalten erscheinen; SchemaVersion 5 macht diese neue
+Semantik sichtbar. Das sind keine Methodenintervallgrenzen.
+
+PCT_EN_3 gruppiert wie die benannten B4-Berichte nach ExecutionId, SourceId,
+beiden Kontext-IDs, internem ParserId, binärem ComponentName, PhaseName und
+binärem OutputName mit echtem NULL-Schlüssel außerhalb PrimeOutput. EN1/EN3,
+Methoden, VALIDATE-Vorkommen, EXECUTE-Vorkommen und verschiedene Namen werden
+nicht zusammengeführt. Identische Labels beweisen weiterhin keine eindeutige
+Runtimekomponente. Die benannten Konfliktbits bleiben innerhalb eines solchen
+Namensschlüssels 0; SourceName-Konflikte bleiben sichtbar. Die bestehende
+Sortierung einschließlich binärer Namensergänzung und NULL zuerst gilt weiter.
+
+EventCount, decimal(38,0)-Summe, Min/Max, exakt auf sechs Stellen kaufmännisch
+gerundeter Mittelwert mit Nenner EventCount und Log-ID-Evidenz bleiben P4/B4.
+Berichte mit verschiedenen Log-IDs bleiben Beiträge, auch bei identischem Text.
+Ausdrückliche 0 bleibt 0; fehlende Berichte erzeugen keine Nullmenge oder Gruppe.
+First/LastObservedTime sind Meldungszeiten. Verschiedene Methoden werden weder
+zu einer Totalzeit addiert noch mit RowFlow-Zählern zu Durchsatz verrechnet.
+
+Es entstehen keine neuen Resultsets, Arrays, Console-Spalten oder Source-Ordinale.
+Zeile 7 und ihre C+G-/Detail-/Partialitätsregeln sowie die drei bisherigen
+nullable Console-Zähler zählen den erweiterten Bestand. Bestehende Task-,
+RowFlow- und v1-Mengen bleiben unverändert. Ohne Phasen-Opt-in entsteht auch
+bei ungültigem Lifecycle-Parameter keine neue Phasenausgabe.
+
+### L6. Zulassung, Fehlerisolation und Eigenlast
+
+Alle P6-Grenzen bleiben maßgeblich: gültiger ursprünglicher N+1-Puffer,
+vollständig abgeschlossene v1-eventDerivation, Messages-off ohne fachlichen
+message-Zugriff, feste Zulassungspriorität, erstes natives Fehlerpaar,
+kooperative gemeinsame Deadline, atomare Übernahme oder Verwerfung beider
+Mengen und aller drei Zähler. Ein Fehler in der optionalen Task- oder
+RowFlow-Stufe ersetzt keinen gültigen v1-Bestand. Parserablehnungen bleiben
+Datenzustände und werden nicht zu SQL-Exceptions umgedeutet.
+
+Das zusätzliche Parsing verwendet denselben freigegebenen Puffer und dieselben
+vorhandenen iterations. Es gibt keine zweite Quellabfrage, Schema-/Indexpflicht,
+Paket-/SDK-Lektüre, persistente Ablage, neue Berechtigung oder High-Impact-Umgehung.
+Jede abgeleitete Menge bleibt durch die Zahl freigegebener Pufferereignisse
+begrenzt. Die Kostenbewertung ist ein Entwurf, keine gemessene Laufzeitgarantie.
+Faultparameter, versteckte Schalter und Produkt-/Lab-/System-Overrides sind ausgeschlossen.
+
+### L7. Geplante synthetische Abnahme
+
+Alle nachfolgenden Prüfungen sind NOT_EXECUTED. Sie werden erst nach konkreter
+menschlicher Freigabe implementiert. Der unabhängige Sollbestand verwendet
+explizite erwartete Werte statt eines zweiten Aufrufs des Produktdecoders.
+
+| Gruppe | Konkreter Umfang und Passbedingung |
+|---|---|
+| L-S01 | Alle 16 Flagkombinationen sowie NULL, Help und Position 24 ergeben die zwölf gültigen bzw. vier ungültigen Fälle aus L2; ungültige Fälle lesen keine Quelle. |
+| L-S02 | Exakte drei neue Formen, bisherige zwei benannte Formen im neuen Profil und unverändertes EN1 liefern alle 42 erwarteten Felder; nur PrimeOutput hat OutputName. |
+| L-S03 | Case, Ereignisalias, Präfix, Trenner, Schlusspunkt, unbekannte Methode, fremde Sprache, CR/LF/TAB/NUL einschließlich Suffix-NUL, Klammern und eingebettete Trenner werden korrekt abgewiesen. |
+| L-S04 | 0, bigint-Maximum, übergroße kanonische Zahlen und ungültige Vorzeichen/Dezimal-/Exponent-/führende-Null-Formen erhalten die genauen Werte oder Ablehnungsstatus. |
+| L-S05 | Validate vor Execute, verschachteltes Validate während Execute und zwei Validate-Vorkommen derselben Source ergeben ausschließlich ihre eigenen VALIDATE-Kontexte. |
+| L-S06 | PreExecute/PostExecute bleiben im EXECUTE-Kontext; gleiche Namen mit getrennten SourceIds und wiederholte/überlappende Ausführungen werden nicht vermischt. |
+| L-S07 | Offene, fehlende, mehrdeutige, zeitlich widersprüchliche und spät gemeldete Validate-Kontexte erhalten keinen EXECUTE-/PACKAGE-Fallback; IDs und Statuspriorität stimmen. |
+| L-S08 | Binäre Namen mit Endspaces, NULL-IDs, benannte/numerische Profile und alle fünf Methoden bleiben getrennt; NULL-Namen und SourceName-Konflikte werden korrekt dargestellt. |
+| L-S09 | Mehrere Log-IDs, 0, große Summen und 11/3 liefern exakte Mengen, Evidenz und Mittelwert 3.666667 ohne Methoden-Totalzeit. |
+| L-S10 | Quellenkapazität minus/equal/plus Grenze, MAX-Guard, vollständiger Rawtext, fehlender Text und Messages-off erhalten den bestehenden Prioritäts- und Zugriffsvertrag. |
+| L-S11 | N+1-Präfix, doppelte IDs, nicht abgeschlossene v1-Ableitung und fehlendes Kontextende erzeugen keine freigegebenen Gruppen aus unzulässigen Daten. |
+| L-S12 | Alle 42 physischen Facetten, Feld-/Arrayanwesenheit, RAW11/13/15, TABLE/JSON-Parität, CONSOLE1 und NONE0 sowie Callerzustand stimmen. |
+| L-S13 | Tatsächliche Quellen-/Berechtigungsfehler und kooperative Deadline erhalten P6; falls gezielte Stufenfehler nur extrahiert erreichbar sind, werden quellgebundene extrahierte Stufen ausdrücklich von Original-SUT-Läufen getrennt. |
+| L-S14 | Offline-Mutationen von Methode, PairKind-Zuordnung, Source, Kontext-IDs, Zeit, Summe, NULL, Pflichtfeld und Pflichtarray müssen durch das unabhängige Orakel abgewiesen werden. |
+
+Unveränderte erfolgreiche historische Provider-, Task-, RowFlow- und
+ProcessInput-/PrimeOutput-Abnahmen werden nicht erneut als lokale Welle gestartet.
+Neue Standardmodus-Regressionsfälle prüfen gezielt die vom zusätzlichen Parameter
+betroffene Kompatibilität; alte Belege bleiben an ihren damaligen SUT gebunden.
+
+### L8. Geplante Consumerabnahme aus erhaltenem Originalmaterial
+
+Eine spätere Abnahme benötigt keine erneute Paketausführung. Ausschließlich
+die erhaltenen eigenen linearen und Mehrfach-/Parallel-Originalproviderzeilen
+werden je einmal als Bytes gelesen, gehasht, streng dekodiert und ohne Änderung
+der neun Providerfelder in frische eigene isolierte Loggingdatenbanken restauriert.
+Vorhandene SDK-/DTSX-Bindungen erklären nur diese kontrollierten Quellen;
+kein Produktdecoder liest sie. Der Adapter enthält keinen Execute-, Authoring-,
+SDK-, VM-, Setup-, Installations- oder Imagepfad. Wiederhergestellte native
+Originaldaten sind eine Consumerquelle, kein neuer nativer Providerlauf.
+
+Fest vorgesehen sind insgesamt genau sechs neue Aufrufkonstellationen:
+
+| Label | Originalquelle, Modus und Auswahl | Erwarteter Beleg |
+|---|---|---|
+| L-N01-raw-full | Linear, RAW, Cap 0, Phase/Lifecycle 1 | RAW11, alle 42 Felder, zusätzliche Methoden, getrennte VALIDATE-/EXECUTE-Evidenz. |
+| L-N01-table-full | Linear, TABLE, Cap 0, Phase/Lifecycle 1 | Zwei physische Schemas und sämtliche TABLE-/JSON-Felder. |
+| L-N01-messages-off | Linear, NONE, Messages 0, Phase/Lifecycle 1 | Keine fachlichen Resultsets, leere Phasenarrays, NULL-Zähler, P6-Grund MESSAGES_DISABLED ohne message-Zugriff. |
+| L-N02-raw-full | Mehrfach/parallel, RAW, Cap 0, Task/RowFlow/Phase/Lifecycle 1 | RAW15, methodenbezogene Namen-/Source-/Vorkommenstrennung und unveränderte alte Mengen. |
+| L-N02-table-prefix | Mehrfach/parallel, TABLE, Phase/Lifecycle 1 | Cap wird vor dem Aufruf aus der ordinalen Position eines neuen Validate-Berichts bestimmt und schneidet dessen belegtes VALIDATE-Ende ab; N+1 und keine erfundene Gruppe. |
+| L-N02-console-full | Mehrfach/parallel, CONSOLE, Cap 0, Task/RowFlow/Phase/Lifecycle 1 | Genau ein Console-Grid und korrekte drei bestehende Phasenzähler; JSON stimmt feldweise. |
+
+Das Orakel muss für alle 42 Felder unabhängig sein, die neuen Methodenanteile
+von den bereits gelieferten unterscheiden und Pflichtfelder/-arrays tatsächlich
+prüfen. Die 12 beziehungsweise 55 vorhandenen neuen Methodenberichte sind
+vor der Consumerqualifikation quellengebunden nachzuzählen; beobachtete Mengen
+sind kein Ersatz für Parse-, Kontext- oder Gruppennachweise. Der Präfix-Cap und
+die erwarteten Gruppen werden vor dem SUT-Aufruf festgelegt. Quellen mit
+fehlenden erforderlichen Positivbelegen bleiben nicht qualifiziert; es erfolgt
+kein Ersatz durch geratenes Format oder eine neue Paketausführung.
+
+Vor Effekten werden Server-/Datenbankbindung und Rechte frisch geprüft. Nur
+eigene Datenbanken mit Abwesenheitsintent, Nonce/Marker, OwnerSID, DB-ID und
+create_date dürfen angelegt bzw. entfernt werden. Original- und Cleanupfehler
+bleiben getrennt; Cleanup-/Retentionfehler verhindern Erfolg. Callerzustand,
+Originalfelder und Datenbankinventar sind vor/nach zu vergleichen. Bei unklarer
+Identität bleibt das Objekt zur gebundenen Recovery erhalten; fremde Quellen,
+Runs, Pakete und Rechte bleiben unverändert. Originalmaterial, alle alten
+Fehler und abgeschlossenen Budgets bleiben erhalten.
+
+### L9. Freigabe, vorgeschlagene Grenzen und Lieferung
+
+Dieser Vertragsauftrag hat einen Autor, genau einen Aufruf des bisherigen
+Reviewers und Native0/CI0. Review ist keine menschliche Freigabe. Der konkrete
+Entwurf L1–L9 und jede spätere Umsetzung/Consumerabnahme benötigen zunächst
+eine ausdrückliche menschliche Zustimmung. Bis dahin keine Produktänderung,
+SQL-/SDK-Ausführung, Consumerwiederherstellung, Push, PR, CI oder Publikation.
+Der eigene lokale Worktree bleibt als prüfbarer Entwurf erhalten.
+
+Für eine spätere genehmigte Umsetzung sind höchstens zwei synthetische und
+zwei Arrange-/Consumerversuche sowie insgesamt sechs neue Consumeraufrufe
+inklusive Fehlversuchen vorgeschlagen; tatsächliche Paketausführungen bleiben 0.
+Ein Fehlversuch verbraucht seine Grenze; erfolgreiche Konstellationen werden
+gebunden erhalten und nicht in einer Wiederholung mit ausgeführt. Zwei
+begründete Reviews desselben Reviewers sind vorgesehen: Produkt-/Adapter-/
+Orakeldelta vor Effekten und Ergebnis-/Lieferdelta danach. Das CI-Budget ist
+mit höchstens vier Qualifikationsversuchen einschließlich Pflicht-Mainlauf
+vorgeschlagen. Diese Grenzen sind heute weder reserviert noch gestartet und
+setzen keine historische Grenze zurück. Kosten und Quoten bleiben UNKNOWN.
+
+Die spätere Testauswahl folgt ausschließlich der kanonischen CI-Teststrategie:
+SQL Server 2025 mit betroffenem Umfang, keine zusätzliche native Engine ohne
+konkretes Versionsrisiko. Erforderliche exakte Head-CI, normaler MatchHead-Merge,
+Treeidentität, Main-Folgeprüfungen, origin/main-Synchronisierung und eigenes
+Cleanup bleiben Liefergates. Installer, Inventare, Guide, Spezifikation,
+OPS-005-Adapter und Statusquellen werden erst mit der freigegebenen Implementierung
+konsistent aktualisiert. SSIS-001 bleibt PARTIAL_PRODUCT_FUNCTION und
+WI-0009 GATE-0001 bleibt offen; die übrigen Backlogteile sind nicht mit freigegeben.

@@ -1,7 +1,27 @@
 # Nächste Arbeitsschritte
 
-**Stand:** 18. Oktober 2026
+**Stand:** 19. Oktober 2026
 **Zweck:** aktuelle ausführbare Entwicklungswelle für `gecompat/SQL_Server_Analyze`
+
+## Vertragsentwurf: Legacy-Lifecycle-Methoden
+
+Der direkte Auftrag vom 19. Oktober umfasst ausschließlich den nächsten
+konkreten Erweiterungsvertrag mit Abnahmeplan und genau einem Review durch
+den bisherigen Reviewer. Der
+[Entwurf L1–L9](../../../Documentation/Architecture/SSIS_Package_and_Execution_Analysis_Plan.md#entwurf-ergänzende-legacy-lifecycle-methoden-vom-19-oktober-2026)
+begrenzt den Umfang auf Validate, PreExecute und PostExecute aus den bereits
+erhaltenen eigenen Originalproviderdaten. Geplant sind ein abhängiger Opt-in
+an Position 24 und methodenspezifische VALIDATE-/EXECUTE-Berichtskontexte
+bei unveränderten 42 Feldern. Neue Paketausführungen sind nicht vorgesehen.
+
+PCT_EN_2 v1.3.0 ist mit PR395 regulär integriert; erforderliche Head- und
+Mainchecks, Treeidentität, Synchronisierung und eigenes Cleanup sind
+abgeschlossen. Dessen Originalevidenz und geschlossene Budgets bleiben
+erhalten. Der neue Vertragsauftrag hat einen Autor, einen Reviewer, Native0
+und CI0. Heute erfolgen keine Implementierung, SQL-/SDK-/Runtimeaufrufe,
+Push oder PR. Der Entwurf bleibt nach Review zur konkreten menschlichen
+Freigabe in einem eigenen lokalen Worktree erhalten. Die nachfolgenden
+Lieferplanungen beschreiben frühere Arbeitsschritte.
 
 ## Lieferung der begrenzten Komponentenphasen-Erweiterung
 
