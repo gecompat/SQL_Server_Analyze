@@ -75,11 +75,14 @@ den optionalen Ordinalen 5/6. CONSOLE ergänzt im selben Grid PhasenMeldungen,
 PhasenGeleseneMeldungen und PhasenKontextMeldungen als nullable bigint-Zähler.
 
 Eine componentPhaseEvents-Zeile entspricht einer exakt benannten gespeicherten
-PipelineComponentTime-Meldung. Nur PCT_EN_1 für ProcessInput/PrimeOutput wird
+PipelineComponentTime- oder User:PipelineComponentTime-Meldung. PCT_EN_1 und
+PCT_EN_2 für ProcessInput/PrimeOutput werden
 interpretiert; andere Formen bleiben ohne Teilpayload sichtbar. Der Byteguard
 gilt wie beim Zeilenfluss auch für Endleerzeichen. componentPhaseTimes gruppiert
 nur geparste Meldungen mit eindeutigem EXECUTE-Berichtskontext je Source,
-Kontext, Runtimekomponente, Methode und Output. ProcessInput hat NULL-Output.
+Kontext, Methode und profilspezifischem Komponenten-/Outputschlüssel.
+PCT_EN_1 verwendet berichtete numerische IDs, PCT_EN_2 binäre berichtete Namen.
+ProcessInput hat NULL-Output.
 OutputId ist keine RowFlow-PathId. Zeitwerte sind gemeldete Millisekunden;
 Summen und Mittelwerte sind keine CPU-, exklusive oder Komponentengesamtzeit.
 EventTime ist der Meldungszeitpunkt und erzeugt kein rückgerechnetes Intervall.
@@ -313,3 +316,10 @@ Parallelität und selektives Logging. Das unabhängige native Orakel prüft
 die 48 neuen Felder; Ausgabeparität und historische v1-Nachweise bleiben
 getrennte Aussagen. Der Compatibility Level der privaten Windows-Captures
 ist UNKNOWN. Weitere Engines und allgemeine Rollen sind damit nicht qualifiziert.
+
+PCT_EN_2 übernimmt nur die ausdrücklich freigegebenen englischen Namensformen
+unter User:PipelineComponentTime. Nicht berichtete Komponenten- und Output-IDs
+bleiben NULL. Die Gruppen beziehen sich auf binär gleiche berichtete Labels
+im Source-/EXECUTE-Kontext und beweisen keine eindeutige Runtimekomponente.
+PCT_EN_1 behält seine numerischen Gruppenschlüssel; Profile werden nicht
+zusammengeführt. Andere Methoden bleiben sichtbar abgelehnte Kandidaten.

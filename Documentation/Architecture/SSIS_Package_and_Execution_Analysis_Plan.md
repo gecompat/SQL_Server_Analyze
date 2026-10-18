@@ -1606,9 +1606,55 @@ gebundenen P-S14-Nativcapturemutationen sind NOT_EXECUTED.
 Eigene Datenbanken sind entfernt, Cleanupfehler 0, Inventar wiederhergestellt.
 Es gab keine neue Infrastruktur oder Änderung fremder Ressourcen.
 
-Der [konkrete Ergänzungsentwurf B1–B7](SSIS_001_Phase0_Public_Contract.md#entwurf-native-legacy-komponentenzeitberichte-ohne-numerische-ids-vom-18-oktober-2026)
-legt die neue Ereignis-/Textform, fehlende IDs, Namensgruppen, ComponentId-
-Nullbarkeit und einen begrenzten Fortsetzungsplan vor. Dafür ist konkrete
-menschliche Freigabe erforderlich. Bis dahin gibt es keine Ergänzungs-
-implementierung, weitere Runtime, Veröffentlichung oder CI. SSIS-001 bleibt
-PARTIAL_PRODUCT_FUNCTION; weitere Phasen- und Katalogabnahmen bleiben offen.
+Der Benutzer hat die [konkrete Ergänzung B1–B7](SSIS_001_Phase0_Public_Contract.md#freigegebene-native-legacy-komponentenzeitberichte-ohne-numerische-ids-vom-18-oktober-2026)
+mit PCT_EN_2, fehlenden IDs und berichteten Namensgruppen ausdrücklich freigegeben.
+Die Folgeabnahme restauriert ausschließlich eigene hashgebundene P-N01-
+Originalproviderzeilen; P-N01 wird nicht erneut ausgeführt. Höchstens ein
+erstmaliger P-N02-Paketlauf und acht Consumeraufrufe einschließlich Fehlern
+sowie zwei synthetische und zwei Arrange-/Runtimeversuche bilden die neue
+Grenze. Zwei begründete Prüfungen desselben Reviewers sind vorgesehen.
+Alle früheren Budgets und Nichtqualifikationen bleiben erhalten. Der aktuelle
+Ergänzungsstand ist bis tatsächlicher Ausführung nicht qualifiziert oder geliefert.
+SSIS-001 bleibt PARTIAL_PRODUCT_FUNCTION; weitere Phasen- und Katalogabnahmen
+bleiben offen.
+
+### PCT_EN_2: begrenzter Consumer-Teilnachweis
+
+B1–B7 ist implementiert. Die erste neue synthetische Aufnahme deckte einen
+abschließenden NUL-Wert auf, der einen binären Textvergleich passieren konnte.
+Der ergänzte vollständige Textguard weist NUL zurück. Der zweite synthetische
+Versuch prüfte nur die vorher nicht ausgeführte TABLE-/Schema-/Gruppenmenge
+und den fehlgeschlagenen Guard. Unveränderte Statuspaare und frühere
+synthetische Abschnitte bleiben über ihre Originalcaptures gebunden erhalten;
+die ursprüngliche Nichtqualifikation wird nicht überschrieben.
+
+Die neun ursprünglichen P-N01-Providerfelder wurden aus einem einmal gelesenen,
+gehashten Puffer unverändert in eine neue eigene Datenbank restauriert.
+P-N01 wurde nicht erneut ausgeführt. Sechs neue fest definierte Consumer
+bestehen die unabhängige 42-Feld-Referenz, physische Schemas, TABLE-/JSON-
+Parität, RAW11/13, CONSOLE1, NONE0, Meldungs-Opt-out, Caller und Kontextbindung.
+Die Referenz führt 7779 Prüfschritte aus und weist 19 Mutationen einschließlich
+fehlender Felder und Arrays ab. Die 15 Kandidaten enthalten drei geparste,
+eindeutig zugeordnete Berichte und drei Gruppen; andere Methoden bleiben
+abgelehnt. Ursprüngliche SDK-/Paket-/Komponentenbindungen sind separat geprüft.
+Vorherige und nachfolgende Originalfelder stimmen überein.
+
+Der eine erlaubte neue P-N02-Paketlauf meldete Success, aber die erhaltenen
+SDK-Fehler berichten eine fehlende sp_ssis_addlogentry des SQL-Log-Providers.
+Der eigene Restoreaufbau hatte bereits sysssislog ohne diese Schreibprocedure
+angelegt. Das Source-Bindungsgate stoppte vor beiden P-N02-Consumern; eine
+positive Mehrfach-/Parallel- oder Präfixabnahme liegt nicht vor. Der gesamte
+neue Runtimeversuch bleibt FAILED_NOT_QUALIFIED. Die eigenen Log- und
+Frameworkdatenbanken wurden identitätsgebunden entfernt, Cleanup- und
+Retentionfehler sind 0, das Datenbankinventar ist wiederhergestellt.
+
+Die konkrete Aufbaukorrektur würde P-N02 in einer frischen eigenen Logging-
+Datenbank ohne beide Providerobjekte starten, damit ausschließlich der native
+Provider sie initialisiert. Sie würde keine P-N01-Daten oder sechs bestandenen
+Consumer erneut ausführen und keine Schreibprocedure selbst nachbauen.
+Der eine freigegebene Paketlauf ist verbraucht. Genau ein zusätzlicher
+P-N02-Lauf, die zwei verbleibenden Consumer und ein zusätzlicher Ergebnisreview
+desselben Reviewers benötigen eine konkrete menschliche Erweiterung. Der
+vorbereitete Resttreiber verweigert den Eintritt mit dem aktuellen Budget.
+Bis dahin bleiben PR, CI und Gesamtqualifikation ausstehend; keine weitere
+Paketausführung oder Ausschöpfung des freien Arrangeplatzes wird abgeleitet.

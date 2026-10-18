@@ -1931,12 +1931,14 @@ Kapazitäts-, Kontext- und Statusregeln sind Projektentscheidungen; die
 Herstellerbeispiele ersetzen keine native Formatzulassung oder Eigenmessung.
 
 
-## Entwurf: native Legacy-Komponentenzeitberichte ohne numerische IDs vom 18. Oktober 2026
+## Freigegebene native Legacy-Komponentenzeitberichte ohne numerische IDs vom 18. Oktober 2026
 
-**Status:** konkrete noch nicht menschlich freigegebene Ergänzung B1–B7 zu
-P1–P9. Der freigegebene PCT_EN_1-Produktstand bleibt unverändert. Diese
-Ergänzung ist weder implementiert noch ausgeführt, veröffentlicht oder durch
-den unabhängigen Review zur Umsetzung autorisiert.
+**Status:** B1–B7 wurde vom Benutzer ausdrücklich zur Implementierung,
+begrenzten Folgeabnahme und regulären PR-Lieferung freigegeben. Die Ergänzung
+ändert P1–P9 ausschließlich an den nachfolgenden ausdrücklich beschriebenen
+Ereignis-, Payload- und Gruppengrenzen. Nachweise werden erst nach tatsächlicher
+Ausführung als bestanden ausgewiesen. Die ursprünglichen Freigabe- und
+Fehlhistorien bleiben erhalten.
 
 ### B1. Tatsächliche neue Vertragsgrenze
 
@@ -2111,14 +2113,12 @@ Fehlerpfaden. Ein Cleanupfehler verhindert Erfolg. Neue native Formate oder
 fehlende Positivquellen führen erneut zu erhaltener Nichtqualifikation und
 konkreter Entscheidung; freie Restplätze erlauben keinen blinden Replay.
 
-### B7. Ausstehende menschliche Entscheidung
+### B7. Menschliche Freigabe und Liefergate
 
-Erforderlich wäre die konkrete menschliche Freigabe genau dieser Ergänzung
-B1–B7: zusätzliche native Ereignis-/Textform, bewusst fehlende numerische IDs,
-berichtete Namensgruppierung mit ComponentId NULL und der begrenzte Umfang
-aus B6. Erst danach dürfte PCT_EN_2 implementiert, die Folgeabnahme ausgeführt
-und der vollständige v1.3.0-Slice regulär per PR geliefert werden.
-Der vorliegende unabhängige Ergebnis-/Entwurfsreview ersetzt diese Freigabe
-nicht. Bis dahin bleiben Worktree, Entwurf und Originalevidenz lokal erhalten;
-kein Push, PR, CI oder weiterer Runtimeversuch. SSIS-001 bleibt
-PARTIAL_PRODUCT_FUNCTION und WI-0009 GATE-0001 offen.
+Die konkrete menschliche Freigabe umfasst B1–B7 und den begrenzten Umfang aus
+B6. PCT_EN_2 wird ergänzt und mit den erhaltenen P-N01-Originaldaten sowie
+höchstens einem erstmaligen P-N02-Paketlauf geprüft. Der unabhängige Review
+ersetzt weder die tatsächliche Abnahme noch exakte Head-CI, regulären Merge,
+Treeidentität und Main-Synchronisierung. Bis zur Qualifikation bleiben
+Worktree und Originalevidenz erhalten. SSIS-001 bleibt PARTIAL_PRODUCT_FUNCTION
+und WI-0009 GATE-0001 offen.

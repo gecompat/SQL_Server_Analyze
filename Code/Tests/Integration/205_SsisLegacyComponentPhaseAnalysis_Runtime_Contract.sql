@@ -1,4 +1,4 @@
-USE [DeineDatenbank];
+﻿USE [DeineDatenbank];
 GO
 /* Synthetic observed-event tests; no provider-generation claim. */
 DECLARE @DbId int=DB_ID(),@ProcId int=NULL,@TableId int=NULL,@UserId int=NULL;
@@ -73,7 +73,7 @@ IF EXISTS(SELECT 1 FROM (VALUES (1,N''PhaseTimeOrdinal'',N''bigint'',8,19,0,0,CO
 (4,N''SourceName'',N''nvarchar'',8000,0,0,1,N''SQL_Latin1_General_CP1_CS_AS''),
 (5,N''ContextStartLogId'',N''int'',4,10,0,0,CONVERT(sysname,NULL)),
 (6,N''ContextEndLogId'',N''int'',4,10,0,0,CONVERT(sysname,NULL)),
-(7,N''ComponentId'',N''int'',4,10,0,0,CONVERT(sysname,NULL)),
+(7,N''ComponentId'',N''int'',4,10,0,1,CONVERT(sysname,NULL)),
 (8,N''ComponentName'',N''nvarchar'',8000,0,0,1,N''SQL_Latin1_General_CP1_CS_AS''),
 (9,N''PhaseName'',N''varchar'',32,0,0,0,N''SQL_Latin1_General_CP1_CS_AS''),
 (10,N''OutputId'',N''int'',4,10,0,1,CONVERT(sysname,NULL)),
@@ -425,6 +425,57 @@ END TRY BEGIN CATCH
 END CATCH;
 IF NOT EXISTS(SELECT 1 WHERE @DirectError=229 AND @Error=229 AND CONVERT(varbinary(max),@Message)=CONVERT(varbinary(max),@DirectMessage) AND JSON_QUERY(@J,''$.componentPhaseTimes'')=N''[]'') THROW 56701,N''PHASE_S12_DENIED'',1;
 IF (SELECT principal_id FROM sys.database_principals WITH(NOLOCK) WHERE name COLLATE SQL_Latin1_General_CP1_CS_AS=N''ExamplePhaseLogReader'')<>@OwnedUserId THROW 56705,N''PHASE_READER_ID_CHANGED'',1;DROP USER ExamplePhaseLogReader;UPDATE #ExampleSsisPhaseOwnership SET UserId=NULL;
+
+-- EN2 delta: strict event mapping, named reports, mixed profile keys and NULL identifiers.
+TRUNCATE TABLE dbo.ExampleSsisPhaseLogSource;
+INSERT dbo.ExampleSsisPhaseLogSource(id,event,source,sourceid,executionid,starttime,message) VALUES
+(1,N''OnPreExecute'',N''ExampleFlow'',@A,@Id,''20260101'',NULL),
+(2,N''User:PipelineComponentTime'',N''ExampleFlow'',@A,@Id,''20260101 00:00:01'',N''The ExampleComponent spent 3 milliseconds in ProcessInput.''),
+(3,N''User:PipelineComponentTime'',N''ExampleFlow'',@A,@Id,''20260101 00:00:01'',N''The ExampleComponent spent 0 milliseconds in ProcessInput.''),
+(4,N''User:PipelineComponentTime'',N''ExampleFlow'',@A,@Id,''20260101 00:00:01'',N''The ExampleComponent spent 8 milliseconds in ProcessInput.''),
+(5,N''User:PipelineComponentTime'',N''ExampleFlow'',@A,@Id,''20260101 00:00:01'',N''The ExampleComponent spent 7 milliseconds in PrimeOutput filling buffers on ExampleComponent.Outputs[ExampleOutput].''),
+(6,N''User:PipelineComponentTime'',N''ExampleFlow'',@A,@Id,''20260101 00:00:01'',N''The exampleComponent spent 1 milliseconds in ProcessInput.''),
+(7,N''User:PipelineComponentTime'',N''ExampleFlow'',@A,@Id,''20260101 00:00:01'',N''The ExampleComponent  spent 2 milliseconds in ProcessInput.''),
+(8,N''User:PipelineComponentTime'',N''ExampleFlow'',@A,@Id,''20260101 00:00:01'',N''The ExampleComponent spent 1 milliseconds in PrimeOutput filling buffers on ExampleComponent.Outputs[ExampleOutput ].''),
+(9,N''PipelineComponentTime'',N''ExampleFlow'',@A,@Id,''20260101 00:00:01'',N''The component "ExampleComponent" (2) spent 7 milliseconds in ProcessInput.''),
+(10,N''User:PipelineComponentTime'',N''ExampleFlow'',@A,@Id,''20260101 00:00:01'',N''The ExampleComponent spent 7 milliseconds in PrimeOutput filling buffers on ExampleOther.Outputs[ExampleOutput].''),
+(11,N''User:PipelineComponentTime'',N''ExampleFlow'',@A,@Id,''20260101 00:00:01'',N''The ExampleComponent spent 01 milliseconds in ProcessInput.''),
+(12,N''User:PipelineComponentTime'',N''ExampleFlow'',@A,@Id,''20260101 00:00:01'',N''The ExampleComponent spent 9223372036854775808 milliseconds in ProcessInput.''),
+(13,N''User:PipelineComponentTime'',N''ExampleFlow'',@A,@Id,''20260101 00:00:01'',N''The ExampleComponent spent 1 milliseconds in Validate.''),
+(14,N''User:PipelineComponentTime'',N''ExampleFlow'',@A,@Id,''20260101 00:00:01'',N''The ExampleComponent spent 1 milliseconds in ProcessInput. ''),
+(15,N''User:PipelineComponentTime'',N''ExampleFlow'',@A,@Id,''20260101 00:00:01'',N''the ExampleComponent spent 1 milliseconds in ProcessInput.''),
+(16,N''PipelineComponentTime'',N''ExampleFlow'',@A,@Id,''20260101 00:00:01'',N''The ExampleComponent spent 1 milliseconds in ProcessInput.''),
+(17,N''User:PipelineComponentTime'',N''ExampleFlow'',@A,@Id,''20260101 00:00:01'',N''The Example[Component] spent 1 milliseconds in ProcessInput.''),
+(18,N''User:PipelineComponentTime'',N''ExampleFlow'',@A,@Id,''20260101 00:00:01'',N''The ExampleComponent spent 1 milliseconds in PrimeOutput filling buffers on ExampleComponent.Outputs[].''),
+(19,N''User:PipelineComponentTime'',N''ExampleFlow'',@A,@Id,''20260101 00:00:01'',N''The ExampleComponent spent +1 milliseconds in ProcessInput.''),
+(20,N''User:PipelineComponentTime'',N''ExampleFlow'',@A,@Id,''20260101 00:00:01'',NULL),
+(21,N''User:PipelineComponentTime'',N''ExampleFlow'',@A,@Id,''20260101 00:00:01'',N''The ExampleΩ😀 spent 9223372036854775807 milliseconds in ProcessInput.''),
+(22,N''User:PipelineComponentTime'',N''ExampleFlow'',@A,@Id,''20260101 00:00:01'',N''The ExampleComponent	 spent 1 milliseconds in ProcessInput.''),
+(23,N''User:PipelineComponentTime'',N''ExampleFlow'',@A,@Id,''20260101 00:00:01'',N''The ExampleComponent spent 1 milliseconds in PrimeOutput filling buffers on ExampleComponent.Outputs[Example"Output].''),
+(24,N''user:PipelineComponentTime'',N''ExampleFlow'',@A,@Id,''20260101 00:00:01'',N''The ExampleComponent spent 1 milliseconds in ProcessInput.''),
+(25,N''User:PipelineComponentTime '',N''ExampleFlow'',@A,@Id,''20260101 00:00:01'',N''The ExampleComponent spent 1 milliseconds in ProcessInput.''),
+(26,N''User:PipelineComponentTime'',N''ExampleFlow'',@A,@Id,''20260101 00:00:01'',N''The component "ExampleComponent" (2) spent 7 milliseconds in ProcessInput.''),
+(27,N''User:PipelineComponentTime'',N''ExampleFlow'',@A,@Id,''20260101 00:00:01'',N''The ExampleComponent spent 1 milliseconds in ProcessInput.''+NCHAR(0)+N''''),
+(28,N''User:PipelineComponentTime'',N''ExampleFlow'',@A,@Id,''20260101 00:00:01'',N''The ExampleComponent''+NCHAR(0)+N'' spent 1 milliseconds in ProcessInput.''),
+(29,N''PipelineComponentTime'',N''ExampleFlow'',@A,@Id,''20260101 00:00:01'',N''The component "ExampleComponent" (2) spent 7 milliseconds in ProcessInput.''+NCHAR(0)),
+(999,N''OnPostExecute'',N''ExampleFlow'',@A,@Id,''20260101 00:00:02'',NULL);
+EXEC [monitor].[USP_SsisLegacyLogAnalysis] @LoggingDatabase=@Db,@LoggingTable=N''ExampleSsisPhaseLogSource'',@ExecutionId=@Id,@IncludeComponentPhaseAnalysis=1,@MaxZeilen=0,@HighImpactConfirmed=1,@ResultSetArt=''NONE'',@JsonErzeugen=1,@Json=@J OUTPUT,@StatusCodeOut=@Status OUTPUT,@IsPartialOut=@Partial OUTPUT,@ErrorNumberOut=@Error OUTPUT,@ErrorMessageOut=@Message OUTPUT;
+SELECT N''P-EN2-Delta'' AS CaptureLabel,@J AS CaptureJson,@Status AS OutputStatus,@Partial AS OutputPartial,@Error AS OutputError,@Message AS OutputMessage,DB_ID() AS FixtureDbId,@OwnedTableId AS FixtureTableId,@@OPTIONS AS CallerOptions,@@LOCK_TIMEOUT AS CallerLockTimeout,@@TRANCOUNT AS CallerTranCount,XACT_STATE() AS CallerXactState;
+IF @Error IS NOT NULL OR @Message IS NOT NULL OR @J IS NULL OR ISJSON(@J)<>1 OR NOT EXISTS(SELECT 1 FROM OPENJSON(@J) WHERE [key]=N''componentPhaseEvents'' AND type=4) OR NOT EXISTS(SELECT 1 FROM OPENJSON(@J) WHERE [key]=N''componentPhaseTimes'' AND type=4) THROW 56730,N''PHASE_EN2_OUTPUT_ERROR'',1;
+IF (SELECT COUNT(*) FROM OPENJSON(@J,''$.componentPhaseEvents''))<>26 THROW 56731,N''PHASE_EN2_EVENT_MAPPING'',1;
+IF EXISTS(SELECT e.LogId,CONVERT(varbinary(max),CONVERT(nvarchar(40),e.ParseStatus)),CONVERT(varbinary(max),CONVERT(nvarchar(32),e.ParserId)) FROM (VALUES (2,N''PARSED'',N''PCT_EN_2''),(3,N''PARSED'',N''PCT_EN_2''),(4,N''PARSED'',N''PCT_EN_2''),(5,N''PARSED'',N''PCT_EN_2''),(6,N''PARSED'',N''PCT_EN_2''),(7,N''PARSED'',N''PCT_EN_2''),(8,N''PARSED'',N''PCT_EN_2''),(9,N''PARSED'',N''PCT_EN_1''),(10,N''MALFORMED_PAYLOAD'',N''PCT_EN_2''),(11,N''MALFORMED_PAYLOAD'',N''PCT_EN_2''),(12,N''NUMERIC_OUT_OF_RANGE'',N''PCT_EN_2''),(13,N''MALFORMED_PAYLOAD'',N''PCT_EN_2''),(14,N''MALFORMED_PAYLOAD'',N''PCT_EN_2''),(15,N''UNSUPPORTED_FORMAT'',NULL),(16,N''UNSUPPORTED_FORMAT'',NULL),(17,N''MALFORMED_PAYLOAD'',N''PCT_EN_2''),(18,N''MALFORMED_PAYLOAD'',N''PCT_EN_2''),(19,N''MALFORMED_PAYLOAD'',N''PCT_EN_2''),(20,N''MESSAGE_MISSING'',NULL),(21,N''PARSED'',N''PCT_EN_2''),(22,N''MALFORMED_PAYLOAD'',N''PCT_EN_2''),(23,N''MALFORMED_PAYLOAD'',N''PCT_EN_2''),(26,N''MALFORMED_PAYLOAD'',N''PCT_EN_2''),(27,N''MALFORMED_PAYLOAD'',N''PCT_EN_2''),(28,N''MALFORMED_PAYLOAD'',N''PCT_EN_2''),(29,N''MALFORMED_PAYLOAD'',N''PCT_EN_1'')) e(LogId,ParseStatus,ParserId) EXCEPT SELECT LogId,CONVERT(varbinary(max),CONVERT(nvarchar(40),ParseStatus)),CONVERT(varbinary(max),CONVERT(nvarchar(32),ParserId)) FROM OPENJSON(@J,''$.componentPhaseEvents'') WITH(LogId int,ParseStatus varchar(40),ParserId varchar(32))) THROW 56732,N''PHASE_EN2_REJECTIONS'',1;
+IF EXISTS(SELECT 1 FROM OPENJSON(@J,''$.componentPhaseEvents'') WITH(ParserId varchar(32),ParseStatus varchar(40),ComponentId int,OutputId int,ComponentName nvarchar(4000),ReportedDurationMs bigint,PhaseName varchar(32),OutputName nvarchar(4000)) WHERE (ParserId=''PCT_EN_2'' AND (ComponentId IS NOT NULL OR OutputId IS NOT NULL)) OR (ParseStatus<>''PARSED'' AND (ComponentId IS NOT NULL OR OutputId IS NOT NULL OR ComponentName IS NOT NULL OR PhaseName IS NOT NULL OR OutputName IS NOT NULL OR ReportedDurationMs IS NOT NULL))) THROW 56733,N''PHASE_EN2_NULL_IDS_ATOMIC_PAYLOAD'',1;
+IF (SELECT COUNT(*) FROM OPENJSON(@J,''$.componentPhaseTimes''))<>7 THROW 56734,N''PHASE_EN2_BINARY_LABEL_GROUPS'',1;
+IF NOT EXISTS(SELECT 1 FROM OPENJSON(@J,''$.componentPhaseTimes'') WITH(ComponentId int,ComponentName nvarchar(4000),PhaseName varchar(32),EventCount bigint,ReportedDurationSumMs decimal(38,0),AvgReportedDurationMs decimal(38,6),EvidenceLogIdsJson nvarchar(max)) WHERE ComponentId IS NULL AND CONVERT(varbinary(max),ComponentName)=CONVERT(varbinary(max),N''ExampleComponent'') AND PhaseName=''ProcessInput'' AND EventCount=3 AND ReportedDurationSumMs=11 AND AvgReportedDurationMs=3.666667 AND EvidenceLogIdsJson=N''[2,3,4]'') THROW 56735,N''PHASE_EN2_AGGREGATE'',1;
+CREATE TABLE #ExampleEn2Events(Seed int NULL);CREATE TABLE #ExampleEn2Times(Seed int NULL);
+EXEC [monitor].[USP_SsisLegacyLogAnalysis] @LoggingDatabase=@Db,@LoggingTable=N''ExampleSsisPhaseLogSource'',@ExecutionId=@Id,@IncludeComponentPhaseAnalysis=1,@MaxZeilen=0,@HighImpactConfirmed=1,@ResultSetArt=''TABLE'',@JsonErzeugen=1,@Json=@J OUTPUT,@StatusCodeOut=@Status OUTPUT,@IsPartialOut=@Partial OUTPUT,@ErrorNumberOut=@Error OUTPUT,@ErrorMessageOut=@Message OUTPUT,@ResultTablesJson=N''{"componentPhaseEvents":"#ExampleEn2Events","componentPhaseTimes":"#ExampleEn2Times"}'';
+SELECT N''P-EN2-Physical'' AS CaptureLabel,@J AS CaptureJson,@Status AS OutputStatus,@Partial AS OutputPartial,@Error AS OutputError,@Message AS OutputMessage;
+IF @Error IS NOT NULL THROW 56736,N''PHASE_EN2_TABLE_ERROR'',1;
+IF NOT EXISTS(SELECT 1 FROM tempdb.sys.columns WHERE object_id=OBJECT_ID(N''tempdb..#ExampleEn2Times'') AND name=N''ComponentId'' AND system_type_id=56 AND is_nullable=1) THROW 56737,N''PHASE_EN2_COMPONENT_NULL_FACET'',1;
+DECLARE @En2Events nvarchar(max),@En2Times nvarchar(max);
+EXEC sys.sp_executesql N''SELECT @E=(SELECT * FROM #ExampleEn2Events ORDER BY PhaseEventOrdinal FOR JSON PATH,INCLUDE_NULL_VALUES),@T=(SELECT * FROM #ExampleEn2Times ORDER BY PhaseTimeOrdinal FOR JSON PATH,INCLUDE_NULL_VALUES)'',N''@E nvarchar(max) OUTPUT,@T nvarchar(max) OUTPUT'',@E=@En2Events OUTPUT,@T=@En2Times OUTPUT;
+IF @En2Events IS NULL OR @En2Times IS NULL OR JSON_QUERY(@J,''$.componentPhaseEvents'') IS NULL OR JSON_QUERY(@J,''$.componentPhaseTimes'') IS NULL OR NOT EXISTS(SELECT 1 FROM OPENJSON(@J) WHERE [key]=N''componentPhaseEvents'' AND type=4) OR NOT EXISTS(SELECT 1 FROM OPENJSON(@J) WHERE [key]=N''componentPhaseTimes'' AND type=4) OR CONVERT(varbinary(max),@En2Events)<>CONVERT(varbinary(max),JSON_QUERY(@J,''$.componentPhaseEvents'')) OR CONVERT(varbinary(max),@En2Times)<>CONVERT(varbinary(max),JSON_QUERY(@J,''$.componentPhaseTimes'')) THROW 56738,N''PHASE_EN2_TABLE_PARITY'',1;
+
 IF NOT EXISTS(SELECT 1 WHERE @@OPTIONS=@Options AND @@LOCK_TIMEOUT=@Lock AND @@TRANCOUNT=@Tran AND XACT_STATE()=@Xact) THROW 56701,N''PHASE_CALLER'',1;
 SELECT N''AVAILABLE'' AS StatusCode,N''SSIS reported component phase synthetic contract'' AS Detail;
 END;');

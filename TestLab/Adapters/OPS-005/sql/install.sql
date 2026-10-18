@@ -62277,7 +62277,7 @@ BEGIN
         [SourceName] nvarchar(4000) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,
         [ContextStartLogId] int NOT NULL,
         [ContextEndLogId] int NOT NULL,
-        [ComponentId] int NOT NULL,
+        [ComponentId] int NULL,
         [ComponentName] nvarchar(4000) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,
         [PhaseName] varchar(32) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,
         [OutputId] int NULL,
@@ -62907,22 +62907,28 @@ BEGIN
                 DECLARE @PhasePrefix nvarchar(32)=N'The component "';
                 INSERT [#SsisLegacyLogAnalysis_ComponentPhaseEvents]
                 SELECT ROW_NUMBER() OVER(ORDER BY LogId),@ExecutionId,LogId,SourceId,SourceName,EventTime,
-                    CASE WHEN MessageText IS NOT NULL AND DATALENGTH(MessageText)<@PhaseMessageBytes
-                        AND CONVERT(varbinary(max),LEFT(MessageText COLLATE Latin1_General_100_BIN2,15))=CONVERT(varbinary(max),@PhasePrefix) THEN 'PCT_EN_1' END,
+                    CASE WHEN MessageText IS NOT NULL AND DATALENGTH(MessageText)<@PhaseMessageBytes THEN
+                        CASE WHEN CONVERT(varbinary(max),EventName)=CONVERT(varbinary(max),N'PipelineComponentTime')
+                                  AND CONVERT(varbinary(max),LEFT(MessageText COLLATE Latin1_General_100_BIN2,15))=CONVERT(varbinary(max),@PhasePrefix) THEN 'PCT_EN_1'
+                             WHEN CONVERT(varbinary(max),EventName)=CONVERT(varbinary(max),N'User:PipelineComponentTime')
+                                  AND CONVERT(varbinary(max),LEFT(MessageText COLLATE Latin1_General_100_BIN2,4))=CONVERT(varbinary(max),N'The ') THEN 'PCT_EN_2' END END,
                     CASE WHEN MessageText IS NULL THEN 'MESSAGE_MISSING'
                          WHEN DATALENGTH(MessageText)>=@PhaseMessageBytes THEN 'POTENTIALLY_TRUNCATED'
-                         WHEN CONVERT(varbinary(max),LEFT(MessageText COLLATE Latin1_General_100_BIN2,15))<>CONVERT(varbinary(max),@PhasePrefix) THEN 'UNSUPPORTED_FORMAT'
-                         ELSE 'MALFORMED_PAYLOAD' END,
+                         WHEN (CONVERT(varbinary(max),EventName)=CONVERT(varbinary(max),N'PipelineComponentTime')
+                                  AND CONVERT(varbinary(max),LEFT(MessageText COLLATE Latin1_General_100_BIN2,15))=CONVERT(varbinary(max),@PhasePrefix))
+                           OR (CONVERT(varbinary(max),EventName)=CONVERT(varbinary(max),N'User:PipelineComponentTime')
+                                  AND CONVERT(varbinary(max),LEFT(MessageText COLLATE Latin1_General_100_BIN2,4))=CONVERT(varbinary(max),N'The ')) THEN 'MALFORMED_PAYLOAD'
+                         ELSE 'UNSUPPORTED_FORMAT' END,
                     NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,'NOT_PARSED',@Truncated
                 FROM [#SsisLegacyLogAnalysis_Buffer]
-                WHERE CONVERT(varbinary(max),EventName)=CONVERT(varbinary(max),N'PipelineComponentTime');
+                WHERE CONVERT(varbinary(max),EventName) IN(CONVERT(varbinary(max),N'PipelineComponentTime'),CONVERT(varbinary(max),N'User:PipelineComponentTime'));
                 CREATE TABLE [#SsisLegacyLogAnalysis_PhasePayload]
                 ([LogId] int NOT NULL,[TokenCount] int NOT NULL,
                  [PrefixToken] nvarchar(max) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,
                  [ComponentTokenName] nvarchar(max) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,
                  [MiddleToken] nvarchar(max) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,
                  [OutputTokenName] nvarchar(max) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,
-                 [EndToken] nvarchar(max) COLLATE SQL_Latin1_General_CP1_CS_AS NULL);
+                 [EndToken] nvarchar(max) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,[ContainsTextNul] bit NOT NULL);
                 ;WITH quotes AS
                 (
                     SELECT e.LogId,b.MessageText COLLATE Latin1_General_100_BIN2 AS TextValue,
@@ -62942,11 +62948,12 @@ BEGIN
                         SUBSTRING(TextValue,Q1+1,CASE WHEN Q2>Q1 THEN Q2-Q1-1 ELSE 0 END) AS ComponentTokenName,
                         SUBSTRING(TextValue,Q2+1,CASE WHEN Q3>Q2 THEN Q3-Q2-1 ELSE DATALENGTH(TextValue)/2 END) AS MiddleToken,
                         CASE WHEN Q4>Q3 THEN SUBSTRING(TextValue,Q3+1,Q4-Q3-1) END AS OutputTokenName,
-                        CASE WHEN Q4>0 THEN SUBSTRING(TextValue,Q4+1,2147483647) END AS EndToken
+                        CASE WHEN Q4>0 THEN SUBSTRING(TextValue,Q4+1,2147483647) END AS EndToken,
+                        CONVERT(bit,CASE WHEN CHARINDEX(N'\u0000',REPLACE(STRING_ESCAPE(TextValue,'json'),N'\\',N''))>0 THEN 1 ELSE 0 END) AS ContainsTextNul
                     FROM quotes
                 )
                 INSERT [#SsisLegacyLogAnalysis_PhasePayload]
-                SELECT LogId,TokenCount,PrefixToken,ComponentTokenName,MiddleToken,OutputTokenName,EndToken FROM payload;
+                SELECT LogId,TokenCount,PrefixToken,ComponentTokenName,MiddleToken,OutputTokenName,EndToken,ContainsTextNul FROM payload;
                 ;WITH positions AS
                 (
                     SELECT *,CHARINDEX(N') spent ',MiddleToken COLLATE Latin1_General_100_BIN2) AS ClosePos,
@@ -62960,7 +62967,7 @@ BEGIN
                     FROM positions
                 ), syntax AS
                 (
-                    SELECT *,CASE WHEN TokenCount NOT IN(3,5)
+                    SELECT *,CASE WHEN ContainsTextNul=1 OR TokenCount NOT IN(3,5)
                         OR CONVERT(varbinary(max),PrefixToken)<>CONVERT(varbinary(max),N'The component ')
                         OR DATALENGTH(ComponentTokenName) NOT BETWEEN 2 AND 8000
                         OR CHARINDEX(NCHAR(13),ComponentTokenName)>0 OR CHARINDEX(NCHAR(10),ComponentTokenName)>0 OR CHARINDEX(NCHAR(9),ComponentTokenName)>0
@@ -62996,6 +63003,60 @@ BEGIN
                     OutputName=CASE WHEN p.FinalParseStatus='PARSED' AND p.TokenCount=5 THEN p.OutputTokenName END
                 FROM [#SsisLegacyLogAnalysis_ComponentPhaseEvents] AS e INNER JOIN checked AS p ON p.LogId=e.LogId;
 
+                -- Named reports do not provide numeric component/output identities.
+                CREATE TABLE [#SsisLegacyLogAnalysis_PhaseNamedPayload]
+                ([LogId] int NOT NULL,[TextValue] nvarchar(max) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,
+                 [ComponentTokenName] nvarchar(max) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,
+                 [TimeToken] nvarchar(max) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,
+                 [MethodTail] nvarchar(max) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,
+                 [OutputTokenName] nvarchar(max) COLLATE SQL_Latin1_General_CP1_CS_AS NULL);
+                ;WITH positions AS
+                (
+                    SELECT e.LogId,b.MessageText COLLATE Latin1_General_100_BIN2 AS TextValue,a.SpentPos,z.TimePos
+                    FROM [#SsisLegacyLogAnalysis_ComponentPhaseEvents] AS e
+                    INNER JOIN [#SsisLegacyLogAnalysis_Buffer] AS b ON b.LogId=e.LogId
+                    CROSS APPLY(SELECT CHARINDEX(N' spent ',b.MessageText COLLATE Latin1_General_100_BIN2,5) AS SpentPos) AS a
+                    CROSS APPLY(SELECT CASE WHEN a.SpentPos>=5 THEN CHARINDEX(N' milliseconds in ',b.MessageText COLLATE Latin1_General_100_BIN2,a.SpentPos+7) ELSE 0 END AS TimePos) AS z
+                    WHERE e.ParserId='PCT_EN_2'
+                )
+                INSERT [#SsisLegacyLogAnalysis_PhaseNamedPayload]
+                SELECT LogId,TextValue,SUBSTRING(TextValue,5,CASE WHEN SpentPos>=5 THEN SpentPos-5 ELSE 0 END),
+                    SUBSTRING(TextValue,SpentPos+7,CASE WHEN TimePos>=SpentPos+7 THEN TimePos-SpentPos-7 ELSE 0 END),
+                    SUBSTRING(TextValue,CASE WHEN TimePos>0 THEN TimePos+17 ELSE 1 END,2147483647),NULL FROM positions;
+                UPDATE [#SsisLegacyLogAnalysis_PhaseNamedPayload]
+                SET OutputTokenName=SUBSTRING(MethodTail COLLATE Latin1_General_100_BIN2,
+                    32+DATALENGTH(ComponentTokenName)/2+9,
+                    CASE WHEN DATALENGTH(MethodTail)/2>=31+DATALENGTH(ComponentTokenName)/2+9+2
+                         THEN DATALENGTH(MethodTail)/2-(31+DATALENGTH(ComponentTokenName)/2+9)-2 ELSE 0 END);
+                ;WITH syntax AS
+                (
+                    SELECT *,CASE WHEN CHARINDEX(N'\u0000',REPLACE(STRING_ESCAPE(TextValue,'json'),N'\\',N''))>0
+                        OR DATALENGTH(ComponentTokenName) NOT BETWEEN 2 AND 8000
+                        OR CHARINDEX(N'"',ComponentTokenName)>0 OR CHARINDEX(N'[',ComponentTokenName)>0 OR CHARINDEX(N']',ComponentTokenName)>0
+                        OR CHARINDEX(NCHAR(13),ComponentTokenName)>0 OR CHARINDEX(NCHAR(10),ComponentTokenName)>0 OR CHARINDEX(NCHAR(9),ComponentTokenName)>0
+                        OR CHARINDEX(N'\u0000',REPLACE(STRING_ESCAPE(ComponentTokenName,'json'),N'\\',N''))>0
+                        OR CHARINDEX(N' spent ',ComponentTokenName COLLATE Latin1_General_100_BIN2)>0 OR CHARINDEX(N'.Outputs[',ComponentTokenName COLLATE Latin1_General_100_BIN2)>0
+                        OR DATALENGTH(TimeToken)=0 OR TimeToken COLLATE Latin1_General_100_BIN2 LIKE N'%[^0-9]%'
+                        OR (DATALENGTH(TimeToken)>2 AND LEFT(TimeToken,1)=N'0')
+                        OR (CONVERT(varbinary(max),MethodTail)<>CONVERT(varbinary(max),N'ProcessInput.') AND
+                            (DATALENGTH(OutputTokenName) NOT BETWEEN 2 AND 8000
+                             OR CHARINDEX(N'"',OutputTokenName)>0 OR CHARINDEX(N'[',OutputTokenName)>0 OR CHARINDEX(N']',OutputTokenName)>0
+                             OR CHARINDEX(NCHAR(13),OutputTokenName)>0 OR CHARINDEX(NCHAR(10),OutputTokenName)>0 OR CHARINDEX(NCHAR(9),OutputTokenName)>0
+                             OR CHARINDEX(N'\u0000',REPLACE(STRING_ESCAPE(OutputTokenName,'json'),N'\\',N''))>0
+                             OR CONVERT(varbinary(max),MethodTail)<>CONVERT(varbinary(max),N'PrimeOutput filling buffers on '+ComponentTokenName+N'.Outputs['+OutputTokenName+N'].')))
+                        OR CONVERT(varbinary(max),TextValue)<>CONVERT(varbinary(max),N'The '+ComponentTokenName+N' spent '+TimeToken+N' milliseconds in '+MethodTail)
+                        THEN 1 ELSE 0 END AS BadShape,TRY_CONVERT(bigint,TimeToken) AS ParsedTime FROM [#SsisLegacyLogAnalysis_PhaseNamedPayload]
+                ), checked AS
+                (
+                    SELECT *,CASE WHEN BadShape=1 THEN 'MALFORMED_PAYLOAD' WHEN ParsedTime IS NULL THEN 'NUMERIC_OUT_OF_RANGE' ELSE 'PARSED' END AS FinalParseStatus FROM syntax
+                )
+                UPDATE e SET ParseStatus=p.FinalParseStatus,
+                    ComponentName=CASE WHEN p.FinalParseStatus='PARSED' THEN p.ComponentTokenName END,
+                    PhaseName=CASE WHEN p.FinalParseStatus='PARSED' THEN CASE WHEN CONVERT(varbinary(max),p.MethodTail)=CONVERT(varbinary(max),N'ProcessInput.') THEN 'ProcessInput' ELSE 'PrimeOutput' END END,
+                    ReportedDurationMs=CASE WHEN p.FinalParseStatus='PARSED' THEN p.ParsedTime END,
+                    OutputName=CASE WHEN p.FinalParseStatus='PARSED' AND CONVERT(varbinary(max),p.MethodTail)<>CONVERT(varbinary(max),N'ProcessInput.') THEN p.OutputTokenName END
+                FROM [#SsisLegacyLogAnalysis_ComponentPhaseEvents] AS e INNER JOIN checked AS p ON p.LogId=e.LogId;
+
                 UPDATE e SET ContextStatus=g.FinalContextStatus,
                     ContextStartLogId=CASE WHEN g.FinalContextStatus='ASSIGNED' THEN p.StartId END,
                     ContextEndLogId=CASE WHEN g.FinalContextStatus='ASSIGNED' THEN p.EndId END
@@ -63024,10 +63085,12 @@ BEGIN
                         CONVERT(bit,CASE WHEN COUNT(DISTINCT CONVERT(varbinary(8000),ComponentName))>1 THEN 1 ELSE 0 END) AS ComponentNameConflict,
                         CONVERT(bit,CASE WHEN COUNT(DISTINCT CONVERT(varbinary(8000),OutputName))>1 THEN 1 ELSE 0 END) AS OutputNameConflict
                     FROM [#SsisLegacyLogAnalysis_ComponentPhaseEvents] WHERE ContextStatus='ASSIGNED'
-                    GROUP BY ExecutionId,SourceId,ContextStartLogId,ContextEndLogId,ComponentId,PhaseName,OutputId
+                    GROUP BY ExecutionId,SourceId,ContextStartLogId,ContextEndLogId,ComponentId,PhaseName,OutputId,ParserId,
+                        CONVERT(varbinary(8000),CASE WHEN ParserId='PCT_EN_2' THEN ComponentName END),
+                        CONVERT(varbinary(8000),CASE WHEN ParserId='PCT_EN_2' THEN OutputName END)
                 )
                 INSERT [#SsisLegacyLogAnalysis_ComponentPhaseTimes]
-                SELECT ROW_NUMBER() OVER(ORDER BY SourceId,ContextStartLogId,ContextEndLogId,ComponentId,PhaseName COLLATE Latin1_General_100_BIN2,OutputId),
+                SELECT ROW_NUMBER() OVER(ORDER BY SourceId,ContextStartLogId,ContextEndLogId,ComponentId,PhaseName COLLATE Latin1_General_100_BIN2,OutputId,CONVERT(varbinary(8000),ComponentName),CONVERT(varbinary(8000),OutputName)),
                     ExecutionId,SourceId,SourceName,ContextStartLogId,ContextEndLogId,ComponentId,ComponentName,PhaseName,OutputId,OutputName,
                     EventCount,ReportedDurationSumMs,MinReportedDurationMs,MaxReportedDurationMs,
                     CONVERT(decimal(38,6),CONVERT(decimal(26,0),

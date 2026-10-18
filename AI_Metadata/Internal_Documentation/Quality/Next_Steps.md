@@ -3,24 +3,42 @@
 **Stand:** 18. Oktober 2026
 **Zweck:** aktuelle ausführbare Entwicklungswelle für `gecompat/SQL_Server_Analyze`
 
-## Entscheidung nach nativer Phasenquelle
+## Entscheidung zum verbleibenden P-N02-Nachweis
 
-Die freigegebene P1–P9-Umsetzung ist lokal vorbereitet, aber nicht qualifiziert
-oder geliefert. Produktversion 1.3.0 interpretiert weiterhin ausschließlich
-PCT_EN_1. Die neue native Quelle meldet User:PipelineComponentTime ohne
-numerische Komponenten-/Outputkennungen. Das freigegebene Positivgate stoppte
-vor Consumer und P-N02. Native3/3 bleibt FAILED_NOT_QUALIFIED, eine tatsächliche
-Paketausführung und 0 Consumer sind dokumentiert. Synthetic3/3 ist mit gebundener
-Wiederverwendung abgeschlossener Anfangsabschnitte beendet; Fehlhistorien bleiben
-erhalten. Review3/3 prüft den realen Quellen-/Ergebnisdelta und den konkreten
-[Ergänzungsentwurf](../../../Documentation/Architecture/SSIS_Package_and_Execution_Analysis_Plan.md#zwischenstand-der-begrenzten-phasenumsetzung-vom-18-oktober-2026).
+B1–B7 wurde umgesetzt. Die [kanonische Zwischenbilanz](../../../Documentation/Architecture/SSIS_Package_and_Execution_Analysis_Plan.md#pct_en_2-begrenzter-consumer-teilnachweis)
+trennt sechs erfolgreiche P-N01-Consumer gegen unveränderte Originaldaten
+von der weiterhin fehlenden P-N02-Qualifikation. P-N01 wurde nicht erneut
+ausgeführt. Der eine neue P-N02-Lauf scheiterte an der fehlenden nativen
+Log-Provider-Schreibprocedure im eigenen Restoreaufbau. Die Gesamtqualifikation
+bleibt FAILED_NOT_QUALIFIED; beide verbleibenden Consumer sind NOT_EXECUTED.
+Eigene Datenbanken sind entfernt, Inventar restauriert, Cleanupfehler 0.
 
-Neue konkrete menschliche Freigabe für B1–B7 einschließlich NULL-IDs,
-Namensgruppen und begrenzter Folgeabnahme steht aus. Ohne diese Freigabe keine
-Implementierung des zusätzlichen Profils, keine SQL-/SDK-/Paket-/Consumer-
-Ausführung, kein Push, PR oder CI. Keine Budgetrücksetzung, kein vierter alter
-Versuch, keine Wiederholung grüner Prüfungen wegen des Timers. Worktree und
-Originalevidenz bleiben erhalten; Root/main bleiben auf dem PR394-Lieferstand.
+Die vorbereitete Korrektur verwendet eine frische eigene P-N02-Loggingdatenbank
+ohne vorab angelegte Providerobjekte. Genau ein zusätzlicher P-N02-Paketlauf,
+die zwei bislang offenen Consumer und ein zusätzlicher Ergebnisreview durch
+denselben Reviewer bedürfen einer ausdrücklichen menschlichen Erweiterung.
+Bis dahin kein weiterer Paket-/Consumerlauf, Push, PR oder CI. Der aktuelle
+Resttreiber ist am bestehenden Budget gesperrt. Sechs grüne P-N01-Captures,
+die geschlossene Synthetik und frühere Historien werden gebunden erhalten.
+
+## Freigegebene PCT_EN_2-Fortsetzung
+
+Der Benutzer hat B1–B7 samt begrenzter Folgeabnahme ausdrücklich freigegeben.
+Der [kanonische Plan](../../../Documentation/Architecture/SSIS_Package_and_Execution_Analysis_Plan.md#zwischenstand-der-begrenzten-phasenumsetzung-vom-18-oktober-2026)
+führt Ereignisform, NULL-IDs und berichtete Namensgruppen zusammen. Der alte
+Freigabewartezustand ist abgelöst. P-N01 wird aus seinen erhaltenen Originaldaten
+hashgebunden restauriert und nicht erneut ausgeführt. Die neue Grenze beträgt
+zwei synthetische und zwei Arrange-/Runtimeversuche, insgesamt höchstens einen
+erstmaligen P-N02-Paketlauf, acht Consumeraufrufe einschließlich Fehlern und
+zwei begründete Prüfungen desselben Reviewers. Das bestehende ungenutzte
+CI-Budget von vier Qualifikations-Heads einschließlich Main wird weitergeführt.
+
+Frühere Synthetik3/3- und Native3/3-Historien bleiben geschlossen; die erste
+Welle hat eine tatsächliche Paketausführung und keine Consumerqualifikation.
+Abgeschlossene Tests werden gebunden wiederverwendet. Neue Profile erhalten
+keine geratenen numerischen IDs. Nach begrenzter Qualifikation folgen exakte
+Head-CI, regulärer MatchHead-Merge, Treeidentität, Main-Synchronisierung und nur
+eigenes Cleanup. Weitere Vertragsgrenzen verlangen eine konkrete Entscheidung.
 
 ## Freigegebene Legacy-Komponentenphasenzeiten vom 18. Oktober 2026
 
