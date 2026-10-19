@@ -1785,3 +1785,35 @@ bleiben getrennte Liefergates. SSIS-001 bleibt PARTIAL_PRODUCT_FUNCTION;
 weitere Methodenprofile, CPU-/exklusive Zeit, Durchsatz, Lookupdecoder,
 Historie und allgemeine Katalog-/Rollenqualifikation sowie WI-0009 GATE-0001
 bleiben offen.
+
+## Lookup-/Cachemeldungen: Vertragsentwurf vom 19. Oktober 2026
+
+Der [nicht freigegebene Erweiterungsentwurf K1–K9](SSIS_001_Phase0_Public_Contract.md#entwurf-legacy-lookup--und-cachemeldungen-vom-19-oktober-2026)
+konkretisiert ausschließlich den Lookup-/Cacheanteil von Schritt 4.
+Ein Opt-in an Position 25 und SchemaVersion=6 sind vorgesehen; die vorhandene
+Produktversion 1.4.0 wird durch diesen Entwurf nicht verändert. Genau eine
+neue Ereignismenge mit 23 Feldern soll sechs originalbelegte englische
+Payloadprofile auswerten. Cachefortschritt, Gesamtmenge, Unique-Menge und
+Verarbeitung mit gemeldeten Sekunden und Byte bleiben voneinander sowie von
+Duplicate-/Missdiagnostik getrennt. Data-Flow- und Paketmeldungen werden
+weder dedupliziert noch addiert. Es entstehen keine Cache-Hit-Raten,
+Konfigurationsgarantien oder Ursachenbehauptungen.
+
+Die vorhandenen Basic-/SQLFailure-/Duplicate-/Miss-Aufnahmen wurden nur
+lesend und hashgebunden untersucht; insbesondere bestimmen die exakten
+CRLF-Enden der erhaltenen JSON-Snapshots die Grammatik. Native11/12 bleiben
+insgesamt FAILED_NOT_QUALIFIED; ihre tragfähigen Einzelbelege werden dadurch
+nicht zu neuen Gesamtabnahmen. Separate Vorbereitungszeit und Partial-Cache-
+Operationen besitzen hier keine positive Originalbasis und bleiben vom
+Decoderumfang ausgeschlossen. Die weitere Planung aktiviert weder Buffer-,
+Provider- noch Execute-SQL-Implementierung.
+
+Der konkrete Abnahmevorschlag enthält 14 synthetische Gruppen und höchstens
+acht neue Restoreconsumer, sämtlich NOT_EXECUTED. Neue Paketausführungen zur
+Beschaffung fehlender Originale sind ausgeschlossen. Die aktuelle Welle ist
+auf einen Autor, einen lesenden Review durch den tatsächlich bisherigen
+Reviewer und Native0/Consumer0/SDK0/CI0 begrenzt. Der hashgebundene
+Vertragsreview ist mit NoOpenP1P2 abgeschlossen. Die konkrete menschliche
+Vertrags- und Implementierungsfreigabe steht weiterhin aus.
+Der lokale Entwurf wird nicht automatisch integriert; SSIS-001 bleibt
+PARTIAL_PRODUCT_FUNCTION und WI-0009 GATE-0001 offen.

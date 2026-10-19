@@ -3,6 +3,28 @@
 **Stand:** 19. Oktober 2026
 **Zweck:** aktuelle ausführbare Entwicklungswelle für `gecompat/SQL_Server_Analyze`
 
+## Lookup-/Cachevertrag: menschliche Freigabe ausstehend
+
+Der direkte Auftrag vom 19. Oktober 2026 umfasst ausschließlich einen
+[konkreten Erweiterungsentwurf K1–K9](../../../Documentation/Architecture/SSIS_001_Phase0_Public_Contract.md#entwurf-legacy-lookup--und-cachemeldungen-vom-19-oktober-2026)
+und dessen Abnahmeplan. Sechs tatsächlich beobachtete englische Formen
+trennen Cacheberichte von Duplicate-/Missdiagnostik. Separate Vorbereitungs-
+und Partial-Cache-Operationsprofile besitzen hier keine positive Originalbasis.
+Die 14 synthetischen Gruppen und acht späteren Restoreconsumer bleiben
+NOT_EXECUTED. Es gibt keine Implementierung oder neue native Ausführung.
+
+Die aktuelle Grenze lautet ein Autor, ein Vertragsreview durch den belegten
+bisherigen Reviewer, Native0, Consumer0, SDK0 und CI0; Kosten und Kontingente
+sind UNKNOWN. Historische Budgets und fehlgeschlagene Gesamtläufe bleiben
+unverändert. Der lokale Entwurf wird nach proportionalen Dokumentationsprüfungen
+zur konkreten menschlichen Freigabe erhalten und nicht automatisch integriert.
+Der bisherige unabhängige Reviewer hat den hashgebundenen K1–K9-Vertrag mit
+NoOpenP1P2 abgeschlossen. Die konkrete menschliche Vertrags- und
+Implementierungsfreigabe steht weiterhin aus. `SSIS-001` bleibt
+PARTIAL_PRODUCT_FUNCTION und WI-0009 GATE-0001 offen. Die Lifecycle-Lieferung
+ist bereits regulär abgeschlossen; frühere nachfolgende Liefergates eröffnen
+keine neue Welle. Der frühere Orchestrator und sein Heartbeat sind beendet.
+
 ## Freigegebene Legacy-Lifecycle-Analyse vom 19. Oktober 2026
 
 Der direkte Benutzer hat L1–L9 samt begrenztem Abnahmeplan freigegeben und die
