@@ -215,6 +215,13 @@ Komponentengesamtzeit. Weitere Methodenprofile und die übrigen Backloggrenzen
 bleiben offen.
 
 
+Die [Lifecycle-Consumerabnahme](../../../Documentation/Architecture/SSIS_Package_and_Execution_Analysis_Plan.md#legacy-lifecycle-methoden-begrenzte-consumerabnahme-vom-19-oktober-2026)
+qualifiziert v1.4.0 mit sechs neuen Aufrufkonstellationen gegen erhaltene eigene
+Originaldaten und unabhängigem 42-Feld-Orakel. Validate, PreExecute und PostExecute
+werden als berichtete Werte in getrennten VALIDATE-/EXECUTE-Kontexten ergänzt;
+es gibt keine neue Paket- oder SDK-Ausführung. Die allgemeine SSIS-001-Reife
+und die übrigen Backloggrenzen bleiben partiell.
+
 Der Katalogkern und die freigegebene Legacy-Revision 3 sind geliefert. Die [begrenzte Legacy-Providerabnahme](../../../Documentation/Architecture/SSIS_Package_and_Execution_Analysis_Plan.md#legacy-providerabnahme-vom-18-oktober-2026) bestätigt vier eigene synthetische Fälle mit zwölf gebundenen Cap-Einzelbelegen auf Windows SQL/SSIS 17.0.1000.7. Neun frühere erfolgreiche Einzelbelege werden wiederverwendet; Native11 und Native12 bleiben insgesamt fehlgeschlagen. Weitere Interpretation, zusätzliche Katalogquellen und Rollen bleiben offen; SSIS-001 bleibt PARTIAL_PRODUCT_FUNCTION. Die folgenden Prioritätsangaben beschreiben die frühere Ausgangsfolge.
 
 Nach dem abgeschlossenen Phase-0-Vertrag folgt zunächst der statische DTSX-v2-Parser. Inventar, Control-Flow- und Data-Flow-Graphen werden vor Regelengine, SQL-Metadatenprüfung und Laufzeitadaptern stabilisiert. Dateisystem- und ISPAC-Zugriffe bleiben ein getrenntes Paket.

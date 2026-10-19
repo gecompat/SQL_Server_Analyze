@@ -4,8 +4,8 @@ GO
 /*
 ===============================================================================
 Objekt       : monitor.USP_SsisLegacyLogAnalysis
-Version      : 1.3.0
-Stand        : 2026-10-18
+Version      : 1.4.0
+Stand        : 2026-10-19
 Typ          : Stored Procedure
 Zweck        : Liest eine explizite Legacy-Loggingquelle für genau eine GUID.
 Grenze       : Keine Quellaktionen; Meldungstexte bleiben Laufzeitausgaben.
@@ -35,6 +35,7 @@ CREATE OR ALTER PROCEDURE [monitor].[USP_SsisLegacyLogAnalysis]
     , @IncludeTaskAnalysis bit = 0
     , @IncludeRowFlowAnalysis bit = 0
     , @IncludeComponentPhaseAnalysis bit = 0
+    , @IncludeComponentLifecyclePhases bit = 0
 AS
 BEGIN
     SET NOCOUNT ON;
@@ -47,10 +48,11 @@ BEGIN
         PRINT N'@IncludeTaskAnalysis=1 ergänzt beobachtete Laufzeiten und Loggingabdeckung: RAW11, SchemaVersion2; keine Tasktyp- oder Konfigurationsbestimmung.';
         PRINT N'@IncludeRowFlowAnalysis=1 ergänzt OnPipelineRowsSent-Pfade: SchemaVersion3, RAW11 oder mit Taskanalyse RAW13; keine Paketgesamtmenge.';
         PRINT N'@IncludeComponentPhaseAnalysis=1 ergänzt PipelineComponentTime-Berichte für ProcessInput/PrimeOutput: SchemaVersion4, zwei letzte Mengen; keine CPU- oder exklusive Zeit.';
+        PRINT N'@IncludeComponentLifecyclePhases=1 benötigt @IncludeComponentPhaseAnalysis=1 und ergänzt Validate/PreExecute/PostExecute: SchemaVersion5; getrennte VALIDATE-/EXECUTE-Berichtskontexte.';
         PRINT N'@MaxZeilen NULL/0 und eingeschlossenes nvarchar(max) benötigen @HighImpactConfirmed=1. Zeitbudget ist kooperativ.';
         RETURN;
     END;
-    SELECT @IncludeComponentPhaseAnalysis=COALESCE(@IncludeComponentPhaseAnalysis,0),@IncludeRowFlowAnalysis=COALESCE(@IncludeRowFlowAnalysis,0),@IncludeTaskAnalysis=COALESCE(@IncludeTaskAnalysis,0),@IncludeTimeline=COALESCE(@IncludeTimeline,1),@IncludeMessages=COALESCE(@IncludeMessages,1),@HighImpactConfirmed=COALESCE(@HighImpactConfirmed,0);
+    SELECT @IncludeComponentLifecyclePhases=COALESCE(@IncludeComponentLifecyclePhases,0),@IncludeComponentPhaseAnalysis=COALESCE(@IncludeComponentPhaseAnalysis,0),@IncludeRowFlowAnalysis=COALESCE(@IncludeRowFlowAnalysis,0),@IncludeTaskAnalysis=COALESCE(@IncludeTaskAnalysis,0),@IncludeTimeline=COALESCE(@IncludeTimeline,1),@IncludeMessages=COALESCE(@IncludeMessages,1),@HighImpactConfirmed=COALESCE(@HighImpactConfirmed,0);
     DECLARE @OutputMode varchar(16)=UPPER(LTRIM(RTRIM(COALESCE(@ResultSetArt,'')))) COLLATE SQL_Latin1_General_CP1_CS_AS;
     DECLARE @ConsoleResultRequested bit=CASE WHEN @OutputMode='CONSOLE' THEN 1 ELSE 0 END;
     DECLARE @Now datetime2(3)=SYSUTCDATETIME(),@Deadline datetime2(3),@Status varchar(40)='AVAILABLE',@Partial bit=0;
@@ -381,6 +383,7 @@ BEGIN
        OR (@OutputMode<>'TABLE' AND NULLIF(LTRIM(RTRIM(@ResultTablesJson)),N'') IS NOT NULL)
        OR NULLIF(LTRIM(RTRIM(@LoggingDatabase)),N'') IS NULL OR NULLIF(LTRIM(RTRIM(@LoggingSchema)),N'') IS NULL OR NULLIF(LTRIM(RTRIM(@LoggingTable)),N'') IS NULL
        OR @ExecutionId IS NULL OR @ExecutionId='00000000-0000-0000-0000-000000000000'
+       OR (@IncludeComponentLifecyclePhases=1 AND @IncludeComponentPhaseAnalysis=0)
        OR @MaxZeilen<0 OR @MaxDurationSeconds IS NULL OR @MaxDurationSeconds NOT BETWEEN 1 AND 60
        OR @LockTimeoutMs IS NULL OR @LockTimeoutMs NOT BETWEEN 0 AND 60000
     BEGIN
@@ -962,7 +965,7 @@ BEGIN
                         CASE WHEN CONVERT(varbinary(max),EventName)=CONVERT(varbinary(max),N'PipelineComponentTime')
                                   AND CONVERT(varbinary(max),LEFT(MessageText COLLATE Latin1_General_100_BIN2,15))=CONVERT(varbinary(max),@PhasePrefix) THEN 'PCT_EN_1'
                              WHEN CONVERT(varbinary(max),EventName)=CONVERT(varbinary(max),N'User:PipelineComponentTime')
-                                  AND CONVERT(varbinary(max),LEFT(MessageText COLLATE Latin1_General_100_BIN2,4))=CONVERT(varbinary(max),N'The ') THEN 'PCT_EN_2' END END,
+                                  AND CONVERT(varbinary(max),LEFT(MessageText COLLATE Latin1_General_100_BIN2,4))=CONVERT(varbinary(max),N'The ') THEN CASE WHEN @IncludeComponentLifecyclePhases=1 THEN 'PCT_EN_3' ELSE 'PCT_EN_2' END END END,
                     CASE WHEN MessageText IS NULL THEN 'MESSAGE_MISSING'
                          WHEN DATALENGTH(MessageText)>=@PhaseMessageBytes THEN 'POTENTIALLY_TRUNCATED'
                          WHEN (CONVERT(varbinary(max),EventName)=CONVERT(varbinary(max),N'PipelineComponentTime')
@@ -1068,7 +1071,7 @@ BEGIN
                     INNER JOIN [#SsisLegacyLogAnalysis_Buffer] AS b ON b.LogId=e.LogId
                     CROSS APPLY(SELECT CHARINDEX(N' spent ',b.MessageText COLLATE Latin1_General_100_BIN2,5) AS SpentPos) AS a
                     CROSS APPLY(SELECT CASE WHEN a.SpentPos>=5 THEN CHARINDEX(N' milliseconds in ',b.MessageText COLLATE Latin1_General_100_BIN2,a.SpentPos+7) ELSE 0 END AS TimePos) AS z
-                    WHERE e.ParserId='PCT_EN_2'
+                    WHERE e.ParserId IN('PCT_EN_2','PCT_EN_3')
                 )
                 INSERT [#SsisLegacyLogAnalysis_PhaseNamedPayload]
                 SELECT LogId,TextValue,SUBSTRING(TextValue,5,CASE WHEN SpentPos>=5 THEN SpentPos-5 ELSE 0 END),
@@ -1089,7 +1092,8 @@ BEGIN
                         OR CHARINDEX(N' spent ',ComponentTokenName COLLATE Latin1_General_100_BIN2)>0 OR CHARINDEX(N'.Outputs[',ComponentTokenName COLLATE Latin1_General_100_BIN2)>0
                         OR DATALENGTH(TimeToken)=0 OR TimeToken COLLATE Latin1_General_100_BIN2 LIKE N'%[^0-9]%'
                         OR (DATALENGTH(TimeToken)>2 AND LEFT(TimeToken,1)=N'0')
-                        OR (CONVERT(varbinary(max),MethodTail)<>CONVERT(varbinary(max),N'ProcessInput.') AND
+                        OR (NOT(CONVERT(varbinary(max),MethodTail)=CONVERT(varbinary(max),N'ProcessInput.')
+                            OR (@IncludeComponentLifecyclePhases=1 AND CONVERT(varbinary(max),MethodTail) IN(CONVERT(varbinary(max),N'Validate.'),CONVERT(varbinary(max),N'PreExecute.'),CONVERT(varbinary(max),N'PostExecute.')))) AND
                             (DATALENGTH(OutputTokenName) NOT BETWEEN 2 AND 8000
                              OR CHARINDEX(N'"',OutputTokenName)>0 OR CHARINDEX(N'[',OutputTokenName)>0 OR CHARINDEX(N']',OutputTokenName)>0
                              OR CHARINDEX(NCHAR(13),OutputTokenName)>0 OR CHARINDEX(NCHAR(10),OutputTokenName)>0 OR CHARINDEX(NCHAR(9),OutputTokenName)>0
@@ -1103,9 +1107,13 @@ BEGIN
                 )
                 UPDATE e SET ParseStatus=p.FinalParseStatus,
                     ComponentName=CASE WHEN p.FinalParseStatus='PARSED' THEN p.ComponentTokenName END,
-                    PhaseName=CASE WHEN p.FinalParseStatus='PARSED' THEN CASE WHEN CONVERT(varbinary(max),p.MethodTail)=CONVERT(varbinary(max),N'ProcessInput.') THEN 'ProcessInput' ELSE 'PrimeOutput' END END,
+                    PhaseName=CASE WHEN p.FinalParseStatus='PARSED' THEN CASE CONVERT(varbinary(max),p.MethodTail)
+                        WHEN CONVERT(varbinary(max),N'ProcessInput.') THEN 'ProcessInput'
+                        WHEN CONVERT(varbinary(max),N'Validate.') THEN 'Validate'
+                        WHEN CONVERT(varbinary(max),N'PreExecute.') THEN 'PreExecute'
+                        WHEN CONVERT(varbinary(max),N'PostExecute.') THEN 'PostExecute' ELSE 'PrimeOutput' END END,
                     ReportedDurationMs=CASE WHEN p.FinalParseStatus='PARSED' THEN p.ParsedTime END,
-                    OutputName=CASE WHEN p.FinalParseStatus='PARSED' AND CONVERT(varbinary(max),p.MethodTail)<>CONVERT(varbinary(max),N'ProcessInput.') THEN p.OutputTokenName END
+                    OutputName=CASE WHEN p.FinalParseStatus='PARSED' AND CONVERT(varbinary(max),p.MethodTail) NOT IN(CONVERT(varbinary(max),N'ProcessInput.'),CONVERT(varbinary(max),N'Validate.'),CONVERT(varbinary(max),N'PreExecute.'),CONVERT(varbinary(max),N'PostExecute.')) THEN p.OutputTokenName END
                 FROM [#SsisLegacyLogAnalysis_ComponentPhaseEvents] AS e INNER JOIN checked AS p ON p.LogId=e.LogId;
 
                 UPDATE e SET ContextStatus=g.FinalContextStatus,
@@ -1115,7 +1123,7 @@ BEGIN
                 (
                     SELECT COUNT_BIG(*) AS PairCount,MIN(StartLogId) AS StartId,MIN(EndLogId) AS EndId,MIN(StartTime) AS PairStart,MIN(EndTime) AS PairEnd
                     FROM [#SsisLegacyLogAnalysis_Iterations] AS i
-                    WHERE i.SourceId=e.SourceId AND i.PairKind='EXECUTE' AND i.PairStatus='PAIRED' AND i.StartLogId<e.LogId AND e.LogId<i.EndLogId
+                    WHERE i.SourceId=e.SourceId AND i.PairKind=CASE WHEN e.ParserId='PCT_EN_3' AND e.PhaseName='Validate' THEN 'VALIDATE' ELSE 'EXECUTE' END AND i.PairStatus='PAIRED' AND i.StartLogId<e.LogId AND e.LogId<i.EndLogId
                 ) AS p CROSS APPLY
                 (
                     SELECT CASE WHEN e.ParseStatus<>'PARSED' THEN 'NOT_PARSED' WHEN e.SourceId IS NULL THEN 'SOURCE_ID_MISSING'
@@ -1137,8 +1145,8 @@ BEGIN
                         CONVERT(bit,CASE WHEN COUNT(DISTINCT CONVERT(varbinary(8000),OutputName))>1 THEN 1 ELSE 0 END) AS OutputNameConflict
                     FROM [#SsisLegacyLogAnalysis_ComponentPhaseEvents] WHERE ContextStatus='ASSIGNED'
                     GROUP BY ExecutionId,SourceId,ContextStartLogId,ContextEndLogId,ComponentId,PhaseName,OutputId,ParserId,
-                        CONVERT(varbinary(8000),CASE WHEN ParserId='PCT_EN_2' THEN ComponentName END),
-                        CONVERT(varbinary(8000),CASE WHEN ParserId='PCT_EN_2' THEN OutputName END)
+                        CONVERT(varbinary(8000),CASE WHEN ParserId IN('PCT_EN_2','PCT_EN_3') THEN ComponentName END),
+                        CONVERT(varbinary(8000),CASE WHEN ParserId IN('PCT_EN_2','PCT_EN_3') THEN OutputName END)
                 )
                 INSERT [#SsisLegacyLogAnalysis_ComponentPhaseTimes]
                 SELECT ROW_NUMBER() OVER(ORDER BY SourceId,ContextStartLogId,ContextEndLogId,ComponentId,PhaseName COLLATE Latin1_General_100_BIN2,OutputId,CONVERT(varbinary(8000),ComponentName),CONVERT(varbinary(8000),OutputName)),
@@ -1166,7 +1174,7 @@ BEGIN
                     WHERE SourceOrdinal=7;
                     IF @PhaseCandidates=0 INSERT [#SsisLegacyLogAnalysis_Warnings] VALUES(0,'COMPONENT_PHASE_EVENT_NOT_OBSERVED',N'componentPhaseAnalysis',N'Keine PipelineComponentTime-Meldung beobachtet; kein Nachweis einer Nullzeit oder Loggingkonfiguration.');
                     IF @PhaseParsed<@PhaseCandidates INSERT [#SsisLegacyLogAnalysis_Warnings] VALUES(0,'COMPONENT_PHASE_PAYLOAD_NOT_PARSED',N'componentPhaseAnalysis',N'Mindestens ein Kandidat entspricht nicht dem zugelassenen vollständigen Zeitprofil.');
-                    IF @PhaseAssigned<@PhaseParsed INSERT [#SsisLegacyLogAnalysis_Warnings] VALUES(0,'COMPONENT_PHASE_CONTEXT_NOT_ASSIGNED',N'componentPhaseAnalysis',N'Mindestens ein lesbarer Bericht besitzt keinen eindeutigen zeitlich einschließenden EXECUTE-Berichtskontext.');
+                    IF @PhaseAssigned<@PhaseParsed INSERT [#SsisLegacyLogAnalysis_Warnings] VALUES(0,'COMPONENT_PHASE_CONTEXT_NOT_ASSIGNED',N'componentPhaseAnalysis',CASE WHEN @IncludeComponentLifecyclePhases=1 THEN N'Mindestens ein lesbarer Bericht besitzt keinen eindeutigen zeitlich einschließenden methodenspezifischen Berichtskontext.' ELSE N'Mindestens ein lesbarer Bericht besitzt keinen eindeutigen zeitlich einschließenden EXECUTE-Berichtskontext.' END);
                     IF @PhaseConflict=1 INSERT [#SsisLegacyLogAnalysis_Warnings] VALUES(0,'COMPONENT_PHASE_NAME_CONFLICT',N'componentPhaseAnalysis',N'Ordinal verschiedene beitragende Namen; der betroffene Gruppenname bleibt NULL.');
                     SET @PhaseComplete=1;
                 END;
@@ -1271,11 +1279,11 @@ BEGIN
     END;
     ;WITH w AS(SELECT *,ROW_NUMBER() OVER(ORDER BY WarningCode,SourceName) AS n FROM [#SsisLegacyLogAnalysis_Warnings]) UPDATE w SET WarningOrdinal=CONVERT(int,n);
     INSERT [#SsisLegacyLogAnalysis_ModuleStatus]
-    VALUES(N'USP_SsisLegacyLogAnalysis',CASE WHEN @IncludeComponentPhaseAnalysis=1 THEN 4 WHEN @IncludeRowFlowAnalysis=1 THEN 3 WHEN @IncludeTaskAnalysis=1 THEN 2 ELSE 1 END,@LoggingDatabase,@LoggingSchema,@LoggingTable,@ExecutionId,@IncludeMessages,@Status,@Partial,@Error,@Message,@Now);
+    VALUES(N'USP_SsisLegacyLogAnalysis',CASE WHEN @IncludeComponentPhaseAnalysis=1 THEN CASE WHEN @IncludeComponentLifecyclePhases=1 THEN 5 ELSE 4 END WHEN @IncludeRowFlowAnalysis=1 THEN 3 WHEN @IncludeTaskAnalysis=1 THEN 2 ELSE 1 END,@LoggingDatabase,@LoggingSchema,@LoggingTable,@ExecutionId,@IncludeMessages,@Status,@Partial,@Error,@Message,@Now);
     SELECT @StatusCodeOut=@Status,@IsPartialOut=@Partial,@ErrorNumberOut=@Error,@ErrorMessageOut=@Message;
     IF COALESCE(@JsonErzeugen,0)=1
         SELECT @Json=(SELECT
-            JSON_QUERY((SELECT N'USP_SsisLegacyLogAnalysis' AS ModuleName,CASE WHEN @IncludeComponentPhaseAnalysis=1 THEN 4 WHEN @IncludeRowFlowAnalysis=1 THEN 3 WHEN @IncludeTaskAnalysis=1 THEN 2 ELSE 1 END AS SchemaVersion,@Now AS CollectionTimeUtc,@Status AS StatusCode,@Partial AS IsPartial FOR JSON PATH,INCLUDE_NULL_VALUES,WITHOUT_ARRAY_WRAPPER)) AS [meta]
+            JSON_QUERY((SELECT N'USP_SsisLegacyLogAnalysis' AS ModuleName,CASE WHEN @IncludeComponentPhaseAnalysis=1 THEN CASE WHEN @IncludeComponentLifecyclePhases=1 THEN 5 ELSE 4 END WHEN @IncludeRowFlowAnalysis=1 THEN 3 WHEN @IncludeTaskAnalysis=1 THEN 2 ELSE 1 END AS SchemaVersion,@Now AS CollectionTimeUtc,@Status AS StatusCode,@Partial AS IsPartial FOR JSON PATH,INCLUDE_NULL_VALUES,WITHOUT_ARRAY_WRAPPER)) AS [meta]
           , JSON_QUERY(COALESCE((SELECT * FROM [#SsisLegacyLogAnalysis_ModuleStatus] ORDER BY [ModuleName] FOR JSON PATH,INCLUDE_NULL_VALUES),N'[]')) AS [moduleStatus]
           , JSON_QUERY(COALESCE((SELECT * FROM [#SsisLegacyLogAnalysis_Execution] ORDER BY [ExecutionId] FOR JSON PATH,INCLUDE_NULL_VALUES),N'[]')) AS [execution]
           , JSON_QUERY(COALESCE((SELECT * FROM [#SsisLegacyLogAnalysis_Timeline] ORDER BY [TimelineOrdinal] FOR JSON PATH,INCLUDE_NULL_VALUES),N'[]')) AS [timeline]
@@ -1300,7 +1308,7 @@ BEGIN
     END;
     IF COALESCE(@JsonErzeugen,0)=1 AND @IncludeComponentPhaseAnalysis=1
     BEGIN
-        SET @Json=JSON_MODIFY(@Json,'$.meta.ComponentPhaseCatalogVersion',1);
+        SET @Json=JSON_MODIFY(@Json,'$.meta.ComponentPhaseCatalogVersion',CASE WHEN @IncludeComponentLifecyclePhases=1 THEN 2 ELSE 1 END);
         SET @Json=JSON_MODIFY(@Json,'$.componentPhaseEvents',JSON_QUERY(COALESCE((SELECT * FROM [#SsisLegacyLogAnalysis_ComponentPhaseEvents] ORDER BY PhaseEventOrdinal FOR JSON PATH,INCLUDE_NULL_VALUES),N'[]')));
         SET @Json=JSON_MODIFY(@Json,'$.componentPhaseTimes',JSON_QUERY(COALESCE((SELECT * FROM [#SsisLegacyLogAnalysis_ComponentPhaseTimes] ORDER BY PhaseTimeOrdinal FOR JSON PATH,INCLUDE_NULL_VALUES),N'[]')));
     END;

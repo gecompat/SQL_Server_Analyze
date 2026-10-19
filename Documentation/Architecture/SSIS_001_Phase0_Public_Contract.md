@@ -2135,14 +2135,12 @@ Regression bleibt bis exakter Head-CI NOT_EXECUTED. Der Nachweis ist keine
 allgemeine Methoden-, Sprach-, Rollen- oder weitere Enginequalifikation.
 
 
-## Entwurf: Legacy-Lifecycle-Methodenberichte vom 19. Oktober 2026
+## Freigegebene Erweiterung: Legacy-Lifecycle-Methodenberichte vom 19. Oktober 2026
 
-**Status:** DRAFT_PENDING_HUMAN_APPROVAL. Der Auftrag umfasst ausschließlich
-Erweiterungsvertrag und Abnahmeplan mit einem unabhängigen Review. Die
-folgenden Produkt-, Test- und Laufzeitänderungen sind nicht implementiert
-oder ausgeführt. Der freigegebene Vertragspräfix einschließlich P1–P9 und
-B1–B7 bleibt unverändert. Dieser Entwurf konkretisiert den noch fehlenden
-Methodenumfang aus Schritt 3 von SSIS-001; er gibt keine weiteren Backlogteile frei.
+**Status:** Der direkte Benutzer hat L1–L9 einschließlich des begrenzten
+Abnahmeplans zur Implementierung und regulären PR-Lieferung freigegeben.
+Der abgeschlossene Vertragsreview bleibt von der tatsächlichen Qualifikation
+getrennt. Die bisherigen P1–P9-/B1–B7-Verträge bleiben erhalten.
 
 ### L1. Fehlender Umfang und belastbare Ausgangsbasis
 
@@ -2161,7 +2159,7 @@ Die Referenz begründet Methodennamen und Einheiten. Das folgende genaue
 User:-Textprofil und seine fehlenden IDs beruhen auf den eigenen erhaltenen
 Originaldaten. Daraus folgt keine allgemeine Format-, Sprach- oder Versionsgarantie.
 
-Vorgeschlagen ist v1.4.0 mit genau den drei zusätzlichen berichteten Methoden.
+Freigegeben ist v1.4.0 mit genau den drei zusätzlichen berichteten Methoden.
 Es entstehen keine CPU-, exklusiven, Komponenten-, Task- oder Paketgesamtzeiten,
 keine tatsächlichen Methodenintervalle, Tasktyp- oder Looprekonstruktion,
 Durchsatz-, Lookup-, Provideraufruf-, Historien- oder Katalogauswertung.
@@ -2305,8 +2303,10 @@ Faultparameter, versteckte Schalter und Produkt-/Lab-/System-Overrides sind ausg
 
 ### L7. Geplante synthetische Abnahme
 
-Alle nachfolgenden Prüfungen sind NOT_EXECUTED. Sie werden erst nach konkreter
-menschlicher Freigabe implementiert. Der unabhängige Sollbestand verwendet
+Die nachfolgenden Gruppen definieren den freigegebenen Umfang. Der konkrete
+[Ausführungs- und Wiederverwendungsnachweis](SSIS_Package_and_Execution_Analysis_Plan.md#legacy-lifecycle-methoden-begrenzte-consumerabnahme-vom-19-oktober-2026)
+trennt Original-SUT, extrahierte Stufen und unveränderte frühere Belege.
+Der unabhängige Sollbestand verwendet
 explizite erwartete Werte statt eines zweiten Aufrufs des Produktdecoders.
 
 | Gruppe | Konkreter Umfang und Passbedingung |
@@ -2331,9 +2331,9 @@ ProcessInput-/PrimeOutput-Abnahmen werden nicht erneut als lokale Welle gestarte
 Neue Standardmodus-Regressionsfälle prüfen gezielt die vom zusätzlichen Parameter
 betroffene Kompatibilität; alte Belege bleiben an ihren damaligen SUT gebunden.
 
-### L8. Geplante Consumerabnahme aus erhaltenem Originalmaterial
+### L8. Consumerabnahme aus erhaltenem Originalmaterial
 
-Eine spätere Abnahme benötigt keine erneute Paketausführung. Ausschließlich
+Die freigegebene Abnahme benötigt keine erneute Paketausführung. Ausschließlich
 die erhaltenen eigenen linearen und Mehrfach-/Parallel-Originalproviderzeilen
 werden je einmal als Bytes gelesen, gehasht, streng dekodiert und ohne Änderung
 der neun Providerfelder in frische eigene isolierte Loggingdatenbanken restauriert.
@@ -2373,29 +2373,27 @@ Fehler und abgeschlossenen Budgets bleiben erhalten.
 
 ### L9. Freigabe, vorgeschlagene Grenzen und Lieferung
 
-Dieser Vertragsauftrag hat einen Autor, genau einen Aufruf des bisherigen
-Reviewers und Native0/CI0. Review ist keine menschliche Freigabe. Der konkrete
-Entwurf L1–L9 und jede spätere Umsetzung/Consumerabnahme benötigen zunächst
-eine ausdrückliche menschliche Zustimmung. Bis dahin keine Produktänderung,
-SQL-/SDK-Ausführung, Consumerwiederherstellung, Push, PR, CI oder Publikation.
-Der eigene lokale Worktree bleibt als prüfbarer Entwurf erhalten.
-
-Für eine spätere genehmigte Umsetzung sind höchstens zwei synthetische und
-zwei Arrange-/Consumerversuche sowie insgesamt sechs neue Consumeraufrufe
-inklusive Fehlversuchen vorgeschlagen; tatsächliche Paketausführungen bleiben 0.
+Die abgeschlossene Entwurfswelle behält ihren einen Vertragsreview und
+Native0/CI0. Der direkte Benutzer hat L1–L9 und die begrenzte Umsetzung
+konkret freigegeben. Die eigenständige Umsetzungswelle hat einen Autor,
+höchstens zwei synthetische Versuche einschließlich extrahierter Stufen,
+zwei Arrange-/Consumerversuche und insgesamt sechs neue Consumeraufrufe
+inklusive Fehlversuchen. Tatsächliche Paketausführungen und SDK-Aufrufe
+bleiben 0. Die Originalproviderzeilen werden nur hashgebunden in eigenen
+isolierten Datenbanken wiederhergestellt.
 Ein Fehlversuch verbraucht seine Grenze; erfolgreiche Konstellationen werden
 gebunden erhalten und nicht in einer Wiederholung mit ausgeführt. Zwei
 begründete Reviews desselben Reviewers sind vorgesehen: Produkt-/Adapter-/
 Orakeldelta vor Effekten und Ergebnis-/Lieferdelta danach. Das CI-Budget ist
 mit höchstens vier Qualifikationsversuchen einschließlich Pflicht-Mainlauf
-vorgeschlagen. Diese Grenzen sind heute weder reserviert noch gestartet und
+freigegeben. Reservierungen erfolgen vor den jeweiligen Effekten und
 setzen keine historische Grenze zurück. Kosten und Quoten bleiben UNKNOWN.
 
-Die spätere Testauswahl folgt ausschließlich der kanonischen CI-Teststrategie:
+Die Testauswahl folgt ausschließlich der kanonischen CI-Teststrategie:
 SQL Server 2025 mit betroffenem Umfang, keine zusätzliche native Engine ohne
 konkretes Versionsrisiko. Erforderliche exakte Head-CI, normaler MatchHead-Merge,
 Treeidentität, Main-Folgeprüfungen, origin/main-Synchronisierung und eigenes
 Cleanup bleiben Liefergates. Installer, Inventare, Guide, Spezifikation,
-OPS-005-Adapter und Statusquellen werden erst mit der freigegebenen Implementierung
+OPS-005-Adapter und Statusquellen werden mit der freigegebenen Implementierung
 konsistent aktualisiert. SSIS-001 bleibt PARTIAL_PRODUCT_FUNCTION und
 WI-0009 GATE-0001 bleibt offen; die übrigen Backlogteile sind nicht mit freigegeben.

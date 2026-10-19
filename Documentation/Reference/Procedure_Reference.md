@@ -2683,4 +2683,5 @@ Quelle: `Code/10_SSIS/020_USP_SsisLegacyLogAnalysis.sql`
     , @IncludeTaskAnalysis bit = 0
     , @IncludeRowFlowAnalysis bit = 0
     , @IncludeComponentPhaseAnalysis bit = 0
+    , @IncludeComponentLifecyclePhases bit = 0
 ```
