@@ -115,3 +115,37 @@ Keiner dieser Punkte erlaubt das Auslassen bestehender Gates. Ein eigener
 begrenzter Implementierungsauftrag mit den in der CI-Strategie festgelegten
 Gegenproben ist die Fortsetzungsbedingung. Die Regelübernahme schließt diese
 technischen Punkte nicht als Effizienzimplementierung ab.
+
+## Begrenzte CI-Sperrdiagnose vom 19. Oktober 2026
+
+Der freigegebene Änderungsschritt ergänzt ausschließlich die CI-Protokollierung
+für Fehler 1222. Die SSIS-Verträge 202 bis 207 erhalten Aufrufmarker; ein
+Beobachter liest Requests und Sperren nur für markierte Sessions und deren
+direkte Blocker. Er verwendet eine zusätzliche Verbindung, frühestens eine
+Abfrage je 250 Millisekunden, höchstens zehn Minuten Laufzeit und einen
+begrenzten Ringpuffer. Die Erfassung hat Eigenlast und garantiert insbesondere
+bei einem sofortigen Timeout keinen Blockernachweis.
+
+Der Workflow sichert bei Fehlern höchstens 50 MiB bereinigte Diagnoseartefakte
+für einen Tag. Erfolgreiche gewöhnliche Läufe übertragen keine vollständigen
+Logs an ein Modell und erzeugen keine Diagnoseartefakte. Die neue synthetische
+Sperrabnahme läuft nur bei betroffener CI-Infrastruktur im vorhandenen
+SQL-Server-2025-Container eines Pull Requests, mit einer Grenze von 60 Sekunden.
+Änderungen an beiden Hilfsdateien sind in Pfadtrigger und Impact-Selector
+eingebunden. Es entsteht keine weitere native Engine oder Release-Matrix.
+
+Die Workflowänderung verlangt gemäß kanonischer Strategie das vollständige
+funktionale Gate auf SQL Server 2025 sowie die betroffenen statischen Gates.
+Unveränderte erfolgreiche Prüfungen werden lokal nicht wiederholt. Das
+freigegebene Budget umfasst zwölf Dateien, einen Implementierer, einen
+unabhängigen Reviewer mit höchstens zwei Reviewdurchgängen, einen
+befundgebundenen Korrekturpass und insgesamt höchstens drei funktionale
+CI-Qualifikationen einschließlich PR und Main. Die Offlineprüfung und die
+synthetische Sperrabnahme erhalten jeweils höchstens eine gezielte
+Fehlernachprüfung. Ein Budgetende lässt fehlende Nachweise offen.
+
+Kosten, Tokenverbrauch und eingesparte CI-Minuten wurden nicht verlässlich
+gemessen. Diese Grenzen sind Aufgaben- und Ausführungsgrenzen; sie behaupten
+keine gemessene Kostenersparnis. Die übrige autonome Verarbeitung bleibt
+pausiert. Die Abnahmeergebnisse werden commitgebunden im Pull Request und
+in den CI-Artefakten ausgewiesen; geplante Prüfungen gelten nicht als bestanden.

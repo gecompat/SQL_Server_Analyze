@@ -15,6 +15,7 @@ on:
       - 'Code/Install/**/*.ps1'
       - 'Code/Install/**/*.py'
       - 'Code/Tests/Integration/Deployment_*.py'
+      - 'Code/Tests/Integration/CI_LockTimeout_Diagnostics*.py'
       - 'Code/**/*.sql'
   push:
     branches:
@@ -25,6 +26,7 @@ on:
       - 'Code/Install/**/*.ps1'
       - 'Code/Install/**/*.py'
       - 'Code/Tests/Integration/Deployment_*.py'
+      - 'Code/Tests/Integration/CI_LockTimeout_Diagnostics*.py'
       - 'Code/**/*.sql'
   workflow_dispatch:
     inputs:
@@ -180,6 +182,7 @@ jobs:
           echo "SQLSERVER_IMAGE_REFERENCE=$image_reference" >> "$GITHUB_ENV"
           echo "SQLSERVER_IMAGE_DIGEST=$image_digest" >> "$GITHUB_ENV"
           docker run --name sqlserver-analyze-impact-2025 \
+            --hostname sqlserver-analyze-ci \
             --detach \
             --env ACCEPT_EULA=Y \
             --env MSSQL_PID=Developer \
@@ -230,6 +233,22 @@ jobs:
             exit 1
           fi
 
+      - name: Qualify changed CI lock diagnostics
+        if: github.event_name == 'pull_request'
+        shell: bash
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -euo pipefail
+          if ! git diff --quiet "$BASE_SHA" "$HEAD_SHA" -- \
+            .github/workflows/ci-functional-impact.yml \
+            Code/Tests/Integration/CI_LockTimeout_Diagnostics.py \
+            Code/Tests/Integration/CI_LockTimeout_Diagnostics_Tests.py; then
+            timeout 60s python3 ./Code/Tests/Integration/CI_LockTimeout_Diagnostics_Tests.py \
+              --sql-probe "$SQLCMD_PATH" --artifacts "$RUNNER_TEMP/ci-lock-probe"
+          fi
+
       - name: Run impacted contracts
         shell: bash
         env:
@@ -270,15 +289,14 @@ jobs:
             fi
 
             if [ "$RUN_RELEASE_TESTS" = 'true' ]; then
-              if ! docker exec \
-                --env SQLCMDPASSWORD="$MSSQL_EPHEMERAL_CREDENTIAL" \
-                --workdir /work/Code/Tests \
-                sqlserver-analyze-impact-2025 \
-                "$SQLCMD_PATH" -S localhost -U sa -C -b -i Run_Impact_Gate.sql \
-                >"${log_prefix}-impact.log" 2>&1; then
+              impact_result=0
+              python3 ./Code/Tests/Integration/CI_LockTimeout_Diagnostics.py \
+                --sqlcmd "$SQLCMD_PATH" --log "${log_prefix}-impact.log" \
+                --artifacts "$RUNNER_TEMP/ci-lock-diagnostics" || impact_result=$?
+              if [ "$impact_result" != '0' ]; then
                 echo "Impact gate failed for compatibility level ${compatibility_level}."
-                grep -B 2 -A 4 -E 'Msg [0-9]+|Sqlcmd: Error|Error:' "${log_prefix}-impact.log" | tail -n 160 || true
-                exit 1
+                grep -B 2 -A 4 -E 'Msg [0-9]+|Sqlcmd: Error|Error:' "$RUNNER_TEMP/ci-lock-diagnostics/impact.log" | tail -n 160 || true
+                exit "$impact_result"
               fi
             fi
 
@@ -399,6 +417,17 @@ jobs:
             echo '- Engine: SQL Server 2025 Developer on Linux; compatibility level 170'
             echo '- Scope: selected Snapshot runtime and concurrency contracts'
           } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Retain bounded sanitized lock diagnostics
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: ci-lock-1222-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            ${{ runner.temp }}/ci-lock-diagnostics/
+            ${{ runner.temp }}/ci-lock-probe/
+          if-no-files-found: ignore
+          retention-days: 1
 
       - name: Stop synthetic SQL Server
         if: always()

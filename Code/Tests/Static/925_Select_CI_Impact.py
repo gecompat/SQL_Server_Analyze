@@ -336,6 +336,8 @@ def force_full_path(path: str, scope: str) -> bool:
         return True
     if path == IMPACT_SCRIPT:
         return True
+    if scope == "core" and path.startswith("Code/Tests/Integration/CI_LockTimeout_Diagnostics") and path.endswith(".py"):
+        return True
     if scope == "snapshot":
         return path.startswith("Code/Install/") and "SnapshotBaseline" in path
     return (
@@ -574,6 +576,9 @@ def run_self_test() -> None:
     assert force_full_path("Code/Install/Build-DeploymentInstaller.ps1", "core")
     assert force_full_path("Code/Install/deployment_generator.py", "core")
     assert force_full_path("Code/Install/deployment_generator.py", "snapshot")
+    for name in ("CI_LockTimeout_Diagnostics.py", "CI_LockTimeout_Diagnostics_Tests.py"):
+        assert force_full_path("Code/Tests/Integration/"+name, "core")
+        assert not force_full_path("Code/Tests/Integration/"+name, "snapshot")
     assert not force_full_path("Documentation/README.md", "core")
     assert requires_compatibility_matrix(
         Change("Code/09_VersionAdaptive/010_Example.sql", "SELECT 1;", "SELECT 2;")
