@@ -1,7 +1,46 @@
 # Nächste Arbeitsschritte
 
-**Stand:** 19. Oktober 2026
+**Stand:** 20. Oktober 2026
 **Zweck:** aktuelle ausführbare Entwicklungswelle für `gecompat/SQL_Server_Analyze`
+
+## Wiederaufnahme und unabhängiger OPS-005-Prüfschritt vom 20. Oktober 2026
+
+Der aktuelle Benutzerauftrag hebt die frühere allgemeine Entwicklungspause
+auf. Vorrangig wird der erhaltene Stand von PR #399 geprüft. Sein erster
+neuer SQL-Abnahmeversuch bleibt FAILED: Der kontrollierte Fehler 1222 und
+Exitcode 1 wurden erkannt, aber null Stichproben erfüllten das Blockeroracle.
+Die elf Offlinecontracts und die Deploymentregression bestehen; das
+vollständige funktionale Gate wurde nicht erreicht. Der Lauf ist in
+[PR #399](https://github.com/gecompat/SQL_Server_Analyze/pull/399) referenziert.
+Die drei historischen SQL-Versuche und drei historischen Reviews bleiben
+verbraucht. Die neue Welle hat zwei abgeschlossene Reviews und einen von
+höchstens zwei PR-Qualifikationsversuchen; ihr Main-Nachlauf ist ungenutzt.
+Ein unveröffentlichter Folgeansatz zur Prozessentpufferung liegt vor.
+Eine zusätzliche unabhängige Prüfung benötigt eine ausdrückliche
+Budgeterweiterung. PR #399 wird bis zur tatsächlichen Abnahme erhalten und
+nicht integriert; der unveränderte Blocker löst keine weitere SQL-Ausführung aus.
+
+Unabhängig davon wird der statische OPS-005-Adaptervergleich korrigiert.
+Die vorhandene Prüfung vergleicht Dateien byteweise, obwohl Git-Checkout
+und Generator unter Windows unterschiedliche CRLF-/LF-Darstellungen erzeugen.
+Die normalisierten Inhalte der beiden Adapterdateien stimmen mit ihren
+kanonischen Quellen überein. Der frühere lokale FAIL bleibt dokumentiert.
+Der neue Vergleich dekodiert strikt als UTF-8 und setzt ausschließlich CRLF
+mit LF gleich. Inhalt, Groß-/Kleinschreibung, einzelne CR-Zeichen, BOM und
+das abschließende Zeilenende bleiben prüfbar. Generierte SQL-Dateien,
+Installerquellen, Produktprocedures und Git-Einstellungen werden nicht geändert.
+
+Dieser getrennte Prüfschritt umfasst zwei Dateien, einen Implementierer,
+einen unabhängigen Reviewer mit höchstens zwei befundgebundenen Prüfungen,
+eine lokale Vertragsprüfung samt höchstens einer gezielten Fehlernachprüfung
+und höchstens zwei PR-Prüfstände sowie einen Main-Nachlauf. Er erweitert keine
+Grenze von PR #399. Acht synthetische Darstellungsfälle sichern den Vergleich;
+die vorhandenen Adapter- und Integritätsprüfungen bleiben erhalten.
+Die Dokumentations-CI führt die statische Gesamtsuite aus. Neue SQL- oder
+Providerläufe sind für diesen statischen Umfang gemäß CI-Teststrategie nicht
+erforderlich. Vollständige grüne Logs werden nicht an ein Modell übertragen;
+Kosten und Kontingente bleiben UNKNOWN. Die reguläre Head-CI, Integration,
+Main-Prüfung, Synchronisierung und eigenes Cleanup bleiben Abschlussgates.
 
 ## Regelübernahme für Testbewertung vom 19. Oktober 2026
 

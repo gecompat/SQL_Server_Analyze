@@ -18,6 +18,14 @@ $runnerPath = Join-Path $repositoryPath 'TestLab/Invoke-AnalyzeOps005LinkedServe
 $generatedInstallPath = Join-Path $adapterRoot 'sql/install.sql'
 $generatedUpdatePath = Join-Path $adapterRoot 'sql/update.sql'
 
+function Read-CanonicalSqlText {
+    param([Parameter(Mandatory)][string] $Path)
+
+    # Nur die Git-Textdarstellung CRLF/LF ist gleichwertig; andere Bytes bleiben relevant.
+    $strictUtf8 = [Text.UTF8Encoding]::new($false, $true)
+    return $strictUtf8.GetString([IO.File]::ReadAllBytes($Path)).Replace("`r`n", "`n")
+}
+
 foreach ($path in @($adapterPath, $builderPath, $runnerPath, $generatedInstallPath, $generatedUpdatePath)) {
     if (-not (Test-Path -LiteralPath $path -PathType Leaf)) {
         throw "Erforderliche OPS-005-Adapterdatei fehlt: $path"
@@ -59,22 +67,58 @@ if ($parseErrors.Count -gt 0) {
 }
 
 $comparisonDirectory = Join-Path ([IO.Path]::GetTempPath()) ("sql-analyze-ops005-{0}" -f [guid]::NewGuid().ToString('N'))
+$comparisonDirectory = [IO.Path]::GetFullPath($comparisonDirectory)
+$comparisonParent = [IO.Path]::TrimEndingDirectorySeparator([IO.Path]::GetFullPath([IO.Path]::GetTempPath()))
+if (-not [string]::Equals([IO.Path]::GetDirectoryName($comparisonDirectory), $comparisonParent, [StringComparison]::Ordinal)) {
+    throw 'Das OPS-005-Vergleichsverzeichnis muss direkt im temporaeren Verzeichnis liegen.'
+}
 try {
     $comparisonInstall = Join-Path $comparisonDirectory 'install.sql'
     $comparisonUpdate = Join-Path $comparisonDirectory 'update.sql'
     & $builderPath -RepositoryRoot $repositoryPath -InstallOutputPath $comparisonInstall -UpdateOutputPath $comparisonUpdate
+
+    $syntheticSql = "USE [ExampleDatabase];`nGO`nSELECT N'Example';`n"
+    $representationCases = @(
+        @{ Name = 'LF'; Content = $syntheticSql; Equal = $true },
+        @{ Name = 'CRLF'; Content = $syntheticSql.Replace("`n", "`r`n"); Equal = $true },
+        @{ Name = 'Content'; Content = $syntheticSql.Replace("N'Example'", "N'Changed'"); Equal = $false },
+        @{ Name = 'Case'; Content = $syntheticSql.Replace("N'Example'", "N'EXAMPLE'"); Equal = $false },
+        @{ Name = 'LoneCR'; Content = $syntheticSql.Replace("`n", "`r"); Equal = $false },
+        @{ Name = 'FinalNewline'; Content = $syntheticSql.TrimEnd("`n"); Equal = $false },
+        @{ Name = 'BOM'; Content = ([string][char]0xfeff) + $syntheticSql; Equal = $false }
+    )
+    $representationPath = Join-Path $comparisonDirectory 'representation.sql'
+    foreach ($case in $representationCases) {
+        [IO.File]::WriteAllText($representationPath, $case.Content, [Text.UTF8Encoding]::new($false))
+        $equal = [string]::Equals((Read-CanonicalSqlText -Path $representationPath), $syntheticSql, [StringComparison]::Ordinal)
+        if ($equal -ne $case.Equal) {
+            throw "Der OPS-005-Textvergleich verletzt den synthetischen Vertrag '$($case.Name)'."
+        }
+    }
+    [IO.File]::WriteAllBytes($representationPath, [byte[]]@(0xff))
+    $invalidUtf8Rejected = $false
+    try { $null = Read-CanonicalSqlText -Path $representationPath }
+    catch [Text.DecoderFallbackException] { $invalidUtf8Rejected = $true }
+    if (-not $invalidUtf8Rejected) {
+        throw 'Der OPS-005-Textvergleich muss ungültiges UTF-8 ablehnen.'
+    }
+
     foreach ($comparison in @(
             @{ Committed = $generatedInstallPath; Expected = $comparisonInstall; Name = 'Installer' },
             @{ Committed = $generatedUpdatePath; Expected = $comparisonUpdate; Name = 'Runtimevertrag' }
         )) {
-        if ((Get-FileHash -LiteralPath $comparison.Committed -Algorithm SHA256).Hash -ne
-            (Get-FileHash -LiteralPath $comparison.Expected -Algorithm SHA256).Hash) {
+        $committedText = Read-CanonicalSqlText -Path $comparison.Committed
+        $expectedText = Read-CanonicalSqlText -Path $comparison.Expected
+        if (-not [string]::Equals($committedText, $expectedText, [StringComparison]::Ordinal)) {
             throw "Der versionierte OPS-005-$($comparison.Name) weicht vom kanonisch erzeugten Inhalt ab."
         }
     }
 }
 finally {
     Remove-Item -LiteralPath $comparisonDirectory -Recurse -Force -ErrorAction SilentlyContinue
+}
+if (Test-Path -LiteralPath $comparisonDirectory) {
+    throw 'Das eigene OPS-005-Vergleichsverzeichnis wurde nicht entfernt.'
 }
 
 $installText = [IO.File]::ReadAllText($generatedInstallPath, [Text.Encoding]::UTF8)
@@ -122,5 +166,6 @@ if (-not [string]::IsNullOrWhiteSpace($LabRepositoryRoot)) {
     AdapterProjectId = $adapter.projectId
     ContractVersion = $adapter.adapterContractVersion
     Entrypoints = 5
+    RepresentationCases = $representationCases.Count + 1
     GeneratedInstallBytes = (Get-Item -LiteralPath $generatedInstallPath).Length
 }
