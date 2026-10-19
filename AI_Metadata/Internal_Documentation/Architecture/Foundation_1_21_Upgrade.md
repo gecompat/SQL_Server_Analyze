@@ -217,3 +217,24 @@ Gesamtsuite scheitert im unveränderten OPS-005-Adapter an einem Bytevergleich
 mit gemischten Windows-Zeilenenden. Die normalisierten Inhalte stimmen mit
 den kanonisch erzeugten Quellen überein. Dieser lokale FAIL bleibt erhalten;
 die erforderliche Linux-CI muss den statischen Vertrag regulär prüfen.
+
+Die erste neue PR-Qualifikation am Commit
+`d9159be7bbf52b057f6f63af7e8efe8457e991f3` bleibt FAILED. Die elf
+Offlinecontracts, Deploymentregression und statischen Linux-Gates bestehen;
+die native positive Sperrprobe liefert weiterhin null Stichproben bei leerer
+Beobachterfehlerliste. Das Blockeroracle und das vollständige funktionale
+Gate sind nicht erfüllt. Der
+[fehlgeschlagene Lauf](https://github.com/gecompat/SQL_Server_Analyze/actions/runs/39340302984)
+bleibt als eigene Nichtqualifikation erhalten. Der ausgeführte
+Container-Cleanup ersetzt keinen vollständigen qualifizierten Cleanupnachweis.
+Die Kanaltrennung allein bestätigt die Ursachenhypothese somit nicht nativ.
+
+Ein unveröffentlichter Folgeansatz startet SQLCMD mit `stdbuf -o0 -e0` im
+Container, um dessen Standardkanalpuffer ausdrücklich abzuschalten. Die
+vorbereitete Kindprozessprobe verlangt diese Konfiguration zusätzlich zur
+getrennten Kanalauswertung. Dieser Ansatz ist noch nicht erneut offline
+oder nativ qualifiziert. Beide Reviewdurchgänge sind verbraucht; ein weiterer
+unabhängiger Review und eine gezielte Offlineprüfung benötigen eine
+ausdrückliche Budgeterweiterung. Ein zweiter PR-Qualifikationsversuch und
+der Main-Nachlauf bleiben reserviert und unausgeführt. Bis zur erforderlichen
+Abnahme erfolgen weder ein weiterer SQL-Lauf noch eine Integration.

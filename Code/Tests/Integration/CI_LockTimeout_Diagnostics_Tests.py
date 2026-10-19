@@ -203,7 +203,8 @@ sys.exit(7)
                 def close(self):
                     return True
             def launch_child(command, **kwargs):
-                live = "-r" in command and command[command.index("-r")+1] == "1"
+                live = ("-r" in command and command[command.index("-r")+1] == "1"
+                        and all(flag in command for flag in ("stdbuf", "-o0", "-e0")))
                 return original_popen([sys.executable, "-c", child, str(ready), CASE,
                                        "live" if live else "buffered"], **kwargs)
             args = SimpleNamespace(container="synthetic", sqlcmd="synthetic", input="synthetic.sql",

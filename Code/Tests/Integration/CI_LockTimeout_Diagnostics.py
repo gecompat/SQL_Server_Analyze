@@ -274,9 +274,11 @@ def run(args):
     log.parent.mkdir(parents=True, exist_ok=True)
     env = dict(os.environ, SQLCMDPASSWORD=ephemeral_value)
     command = ["docker", "exec", "--env", "SQLCMDPASSWORD", "--workdir", "/work/Code/Tests",
-               args.container, args.sqlcmd, "-S", "localhost", "-U", "sa", "-C", "-b", "-r", "1"]
+               args.container, "stdbuf", "-o0", "-e0", args.sqlcmd,
+               "-S", "localhost", "-U", "sa", "-C", "-b", "-r", "1"]
     # NOWAIT flushes the server message, but SQLCMD's redirected stdout can still
-    # buffer it until exit. Keep stderr protocol lines separate from result rows.
+    # buffer it until exit. Disable client stdio buffering inside the container;
+    # keep stderr protocol lines separate from result rows.
     command += ["-Q", args.query] if getattr(args, "query", None) else ["-i", args.input]
     with log.open("wb") as output:
         writer = LogWriter(output, ephemeral_value, getattr(args, "log_limit", LOG_BYTES))
