@@ -47,6 +47,12 @@ vorhandene Schleifenwerte, UTC-Zeit, Session-ID und aktuellen Lock-Timeout
 vor dem Aufruf. Ein Folgemarker kennzeichnet den Eintritt in die Assertions;
 der Dateiende-Marker beendet die Beobachtung. Die Meldungen erzeugen keine
 zusätzlichen fachlichen Resultsets und verändern keine Sessionoptionen.
+Der Testprozess verwendet `sqlcmd -r 1` und liest Meldungen über stderr
+getrennt von stdout-Ergebniszeilen. Serverseitiges NOWAIT allein verhindert
+keine Pufferung durch den umgeleiteten stdout-Kanal des Clients. Lange oder
+unvollständige Ergebniszeilen können deshalb keine Fallmarker verschlucken.
+Beide Kanäle verwenden getrennte Decoder und Geheimnispuffer, aber eine
+gemeinsame Größenbegrenzung für das bereinigte Log.
 
 `CI_LockTimeout_Diagnostics.py` verwendet im isolierten SQL-Server-2025-
 Container eine zusätzliche SQLCMD-Verbindung mit den vorhandenen CI-Rechten.
@@ -81,6 +87,9 @@ und mit einer Grenze von 60 Sekunden. Sie prüft einen bekannten schlafenden
 Lockhalter, Fehler 1222, die Sperrressource, einen Soforttimeout, einen
 erfolgreichen Aufruf und die Bereinigung. Eine zusätzliche Engine, ein
 SSIS-Paket oder eine neue Python-Abhängigkeit wird dafür nicht benötigt.
+Die separate Cleanupverbindung prüft nach dem Schließen des Halters auch bei
+einer fehlgeschlagenen Assertion die Probe-Tabelle und die bekannte Halter-ID.
+Ein solcher Cleanupfehler ersetzt den ursprünglichen Abnahmefehler nicht.
 
 ## Compatibility-Level-Auswahl
 

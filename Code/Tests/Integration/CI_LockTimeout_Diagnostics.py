@@ -233,16 +233,16 @@ class LogWriter:
 
     def __init__(self, output, secret, limit=LOG_BYTES):
         self.output, self.secret, self.limit = output, secret, limit
-        self.tail, self.size, self.incomplete = "", 0, False
+        self.tails, self.size, self.incomplete = {}, 0, False
 
-    def write(self, text, final=False):
-        value = self.tail + text
+    def write(self, text, final=False, stream="stdout"):
+        value = self.tails.get(stream, "") + text
         end = len(value) if final else max(0, len(value)-len(self.secret)+1)
         if self.secret and not final:
             start = value.rfind(self.secret, max(0, end-len(self.secret)+1))
             if start >= 0 and start < end < start+len(self.secret):
                 end = start
-        self.tail = value[end:]
+        self.tails[stream] = value[end:]
         data = redact(value[:end], self.secret).encode("utf-8")
         if self.size+len(data) <= self.limit:
             self.output.write(data)
@@ -274,32 +274,59 @@ def run(args):
     log.parent.mkdir(parents=True, exist_ok=True)
     env = dict(os.environ, SQLCMDPASSWORD=ephemeral_value)
     command = ["docker", "exec", "--env", "SQLCMDPASSWORD", "--workdir", "/work/Code/Tests",
-               args.container, args.sqlcmd, "-S", "localhost", "-U", "sa", "-C", "-b"]
+               args.container, args.sqlcmd, "-S", "localhost", "-U", "sa", "-C", "-b", "-r", "1"]
+    # NOWAIT flushes the server message, but SQLCMD's redirected stdout can still
+    # buffer it until exit. Keep stderr protocol lines separate from result rows.
     command += ["-Q", args.query] if getattr(args, "query", None) else ["-i", args.input]
     with log.open("wb") as output:
         writer = LogWriter(output, ephemeral_value, getattr(args, "log_limit", LOG_BYTES))
-        process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, env=env)
-        # SQLCMD can print very long JSON lines. Bound the reader as well as the stored log.
+        process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, env=env)
+        chunks = queue.Queue(maxsize=32)
+        def read_stream(name, pipe):
+            try:
+                for chunk in iter(lambda: pipe.read1(8192), b""):
+                    chunks.put((name, chunk))
+            except OSError:
+                chunks.put((name, "OUTPUT_READ_FAILED"))
+            finally:
+                pipe.close()
+                chunks.put((name, None))
+        readers = [threading.Thread(target=read_stream, args=(name, pipe), daemon=True)
+                   for name, pipe in (("stdout", process.stdout), ("stderr", process.stderr))]
+        for reader in readers:
+            reader.start()
+        # Result rows never enter the marker parser. Each stream retains its own
+        # decoder and secret tail, while the shared log size cap covers both.
         pending = b""
-        decoder = codecs.getincrementaldecoder("utf-8")(errors="replace")
-        for chunk in iter(lambda: process.stdout.read1(8192), b""):
-            pending += chunk
-            while b"\n" in pending or len(pending) >= 16384:
-                end = pending.find(b"\n") + 1
-                if end == 0:
-                    end = 8192
-                part, pending = pending[:end], pending[end:]
-                line = decoder.decode(part)
-                observer.feed(line)
-                writer.write(line)
-        if pending:
-            line = decoder.decode(pending)
-            observer.feed(line)
-            writer.write(line)
-        writer.write(decoder.decode(b"", final=True), final=True)
-        process.stdout.close()
+        decoders = {name: codecs.getincrementaldecoder("utf-8")(errors="replace")
+                    for name in ("stdout", "stderr")}
+        read_errors = []
+        ended = set()
+        while len(ended) < 2:
+            name, chunk = chunks.get()
+            if chunk is None:
+                ended.add(name)
+                writer.write(decoders[name].decode(b"", final=True), final=True, stream=name)
+                if name == "stderr" and pending:
+                    observer.feed(pending.decode("utf-8", errors="replace"))
+                continue
+            if isinstance(chunk, str):
+                read_errors.append(chunk)
+                continue
+            writer.write(decoders[name].decode(chunk), stream=name)
+            if name == "stderr":
+                pending += chunk
+                while b"\n" in pending or len(pending) >= 16384:
+                    end = pending.find(b"\n") + 1
+                    if end == 0:
+                        end = 8192
+                    part, pending = pending[:end], pending[end:]
+                    observer.feed(part.decode("utf-8", errors="replace"))
+        for reader in readers:
+            reader.join(timeout=2)
         code = process.wait()
     report = observer.finish()
+    report["errors"].extend(read_errors)
     report.update(sqlcmd_exit_code=code, log_incomplete=writer.incomplete,
                   commit=os.environ.get("GITHUB_SHA"), run_id=os.environ.get("GITHUB_RUN_ID"),
                   attempt=os.environ.get("GITHUB_RUN_ATTEMPT"))

@@ -167,3 +167,53 @@ einen weiteren SQL-Abnahmeblock. Die Obergrenze beträgt damit vier
 funktionale CI-Qualifikationen einschließlich Main-Nachlauf; Dateiumfang,
 Größen- und Laufzeitgrenzen sowie die Pause der übrigen Verarbeitung bleiben
 bestehen.
+
+## Wiederaufnahme der CI-Sperrdiagnose vom 20. Oktober 2026
+
+Der neue Benutzerauftrag hebt die Entwicklungspause auf und beauftragt zuerst
+die Prüfung und Korrektur von PR #399. Die drei früheren SQL-Abnahmeversuche
+und drei Reviewdurchgänge bleiben verbraucht. Der letzte SQL-Lauf bleibt
+FAILED: Fehler 1222 und Exitcode wurden erfasst, der Blocker- und
+Ressourcennachweis sowie die unabhängige Cleanupprüfung fehlten. Der damals
+reservierte Main-Nachlauf wurde nicht ausgeführt.
+
+Die neue Korrekturwelle erhält einen getrennten endlichen Umfang: dieselben
+zwölf Dateien, ein Implementierer, ein unabhängiger Reviewer mit höchstens
+zwei befundgebundenen Prüfungen, eine gebündelte Offlineprüfung und höchstens
+eine gezielte Offline-Nachprüfung. Höchstens zwei PR-Qualifikationen mit je
+einer synthetischen SQL-Abnahme und einem vollständigen funktionalen Gate
+sowie ein anschließender Main-Nachlauf sind vorgesehen. Fehlversuche zählen
+mit. Die frühere Historie wird dadurch weder zurückgesetzt noch qualifiziert.
+Neue Produktverträge, Paketausführungen und Änderungen an gemeinsam genutzten
+Labressourcen gehören nicht zu diesem Umfang.
+
+Die Ursachenhypothese ist eine clientseitige Pufferung der Meldungen: Ein
+serverseitiges NOWAIT garantiert keine sofortige Auslieferung über umgeleitetes
+SQLCMD-stdout. Der Korrekturpass leitet Meldungen mit `-r 1` nach stderr und
+wertet diese getrennt von stdout-Ergebniszeilen aus. Der erste Review fand
+einen verbleibenden Vermischungsfall bei einer unvollständigen langen
+stdout-Zeile; die getrennte Verarbeitung behebt diesen Befund. Eine Offlineprobe
+verwendet einen echten Kindprozess mit gepuffertem stdout und einer solchen
+Ergebniszeile und prüft, dass eine Stichprobe vor dem Prozessende eintrifft.
+Getrennte Geheimnispuffer erhalten die Filterung bei verschachtelten
+Kanalausgaben; die gemeinsame Loggrenze bleibt bestehen. Die unabhängige Verbindung
+prüft den entfernten Halter und die Probe-Tabelle auch nach einer gescheiterten
+Assertion, soweit die Halter-ID bereits bekannt ist. Primärfehler bleiben
+erhalten. Die native Bestätigung der Hypothese steht vor der ersten neuen
+CI-Qualifikation noch aus.
+
+Die Größen-, Abfrage- und Zeitgrenzen bleiben erhalten. Die vorhandene
+GitHub-CI führt den SQL-Scope im eigenen Container aus; lokale Labressourcen
+werden nicht verwendet. Erfolgreiche unveränderte lokale Prüfungen werden
+nicht wiederholt. Ein weiterer Review benötigt einen neuen Befund oder die
+noch offene Ergebnisabnahme; eine Reviewkette entsteht nicht. Kosten und
+Kontingente bleiben UNKNOWN. Eine Integration verlangt aktuelle grüne
+Headchecks, die fachliche Abnahme und den nachgewiesenen Cleanup.
+
+Die elf Offlinecontracts bestehen am korrigierten Stand. Der zweite und
+letzte Review bestätigt die Kanalkorrektur ohne offene materielle Befunde;
+die native Abnahme bleibt davon unabhängig ausstehend. Die lokale statische
+Gesamtsuite scheitert im unveränderten OPS-005-Adapter an einem Bytevergleich
+mit gemischten Windows-Zeilenenden. Die normalisierten Inhalte stimmen mit
+den kanonisch erzeugten Quellen überein. Dieser lokale FAIL bleibt erhalten;
+die erforderliche Linux-CI muss den statischen Vertrag regulär prüfen.

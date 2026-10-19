@@ -245,6 +245,7 @@ jobs:
             .github/workflows/ci-functional-impact.yml \
             Code/Tests/Integration/CI_LockTimeout_Diagnostics.py \
             Code/Tests/Integration/CI_LockTimeout_Diagnostics_Tests.py; then
+            python3 ./Code/Tests/Integration/CI_LockTimeout_Diagnostics_Tests.py
             timeout 60s python3 ./Code/Tests/Integration/CI_LockTimeout_Diagnostics_Tests.py \
               --sql-probe "$SQLCMD_PATH" --artifacts "$RUNNER_TEMP/ci-lock-probe"
           fi

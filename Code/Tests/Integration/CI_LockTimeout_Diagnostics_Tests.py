@@ -76,6 +76,12 @@ class Contracts(unittest.TestCase):
         writer.write("abcdef", final=True)
         self.assertTrue(writer.incomplete)
         self.assertLessEqual(len(output.getvalue()), 3)
+        output = io.BytesIO()
+        writer = ci.LogWriter(output, synthetic_canary)
+        writer.write(synthetic_canary[:10], stream="stdout")
+        writer.write("unrelated stderr\n", final=True, stream="stderr")
+        writer.write(synthetic_canary[10:], final=True, stream="stdout")
+        self.assertEqual(output.getvalue(), b"unrelated stderr\n[REDACTED]")
 
     def test_sqlcmd_protocol_failure_keeps_primary_error(self):
         connection = object.__new__(ci.Sqlcmd)
@@ -157,7 +163,8 @@ for line in sys.stdin:
         with tempfile.TemporaryDirectory() as directory:
             args = SimpleNamespace(container="synthetic", sqlcmd="synthetic", input="synthetic.sql",
                                    log=str(Path(directory)/"raw.log"), artifacts=str(Path(directory)/"artifacts"))
-            process = SimpleNamespace(stdout=io.BytesIO((CASE+"\nMsg 1222, Level 16, State 1\nSyntheticCredential\n").encode()), wait=lambda: 7)
+            process = SimpleNamespace(stdout=io.BytesIO(b"SyntheticCredential\n"),
+                                      stderr=io.BytesIO((CASE+"\nMsg 1222, Level 16, State 1\n").encode()), wait=lambda: 7)
             with patch.dict(os.environ, MSSQL_EPHEMERAL_CREDENTIAL="SyntheticCredential"), \
                  patch.object(ci.subprocess, "Popen", return_value=process), \
                  patch.object(ci, "Sqlcmd", side_effect=OSError("synthetic")):
@@ -167,12 +174,75 @@ for line in sys.stdin:
             self.assertEqual(report["sqlcmd_exit_code"], 7)
             self.assertNotIn("SyntheticCredential", (Path(args.artifacts)/"impact.log").read_text())
 
+    def test_live_message_arrives_before_process_exit(self):
+        """Reproduce buffered stdout; only the message channel reaches the observer live."""
+        child = """import pathlib, sys, time
+ready = pathlib.Path(sys.argv[1])
+case = sys.argv[2]
+if sys.argv[3] == 'live':
+    sys.stdout.write('x' * 17000)
+    sys.stdout.flush()
+    print(case, file=sys.stderr, flush=True)
+    deadline = time.monotonic() + 3
+    while not ready.exists() and time.monotonic() < deadline:
+        time.sleep(0.01)
+    time.sleep(0.05)
+else:
+    sys.stdout.write(case + '\\n')
+print('Msg 1222, Level 16, State 1', file=sys.stderr if sys.argv[3] == 'live' else sys.stdout, flush=True)
+sys.exit(7)
+"""
+        original_popen = subprocess.Popen
+        with tempfile.TemporaryDirectory() as directory:
+            ready = Path(directory)/"sample-ready"
+            class Connection:
+                def query(self, sql):
+                    ready.touch()
+                    return ['CI_ROW|'+json.dumps(dict(kind="request", session_id=51,
+                            blocking_session_id=52, wait_type="LCK_M_S"))]
+                def close(self):
+                    return True
+            def launch_child(command, **kwargs):
+                live = "-r" in command and command[command.index("-r")+1] == "1"
+                return original_popen([sys.executable, "-c", child, str(ready), CASE,
+                                       "live" if live else "buffered"], **kwargs)
+            args = SimpleNamespace(container="synthetic", sqlcmd="synthetic", input="synthetic.sql",
+                                   log=str(Path(directory)/"raw.log"), artifacts=str(Path(directory)/"artifacts"))
+            with patch.dict(os.environ, MSSQL_EPHEMERAL_CREDENTIAL="SyntheticCredential"), \
+                 patch.object(ci.subprocess, "Popen", side_effect=launch_child), \
+                 patch.object(ci, "Sqlcmd", return_value=Connection()):
+                self.assertEqual(ci.run(args), 7)
+            report = json.loads((Path(args.artifacts)/"diagnostics.json").read_text())
+            self.assertEqual(report["status"], "BLOCKER_OBSERVED")
+            self.assertTrue(report["samples"])
+            self.assertEqual(report["errors"], [])
+
+    def test_cleanup_verification_preserves_primary_failure(self):
+        for verification_fails in (False, True):
+            with self.subTest(verification_fails=verification_fails), tempfile.TemporaryDirectory() as directory:
+                holder = SimpleNamespace(query=lambda sql: ["CI_HOLDER|51"], close=lambda: True)
+                verified = []
+                def verify(sql):
+                    verified.append(sql)
+                    if verification_fails:
+                        raise RuntimeError("synthetic cleanup failure")
+                    return []
+                verifier = SimpleNamespace(query=verify, close=lambda: True)
+                with patch.object(ci, "Sqlcmd", side_effect=[holder, verifier]), \
+                     patch.object(ci, "run", return_value=1):
+                    with self.assertRaises(FileNotFoundError):
+                        sql_probe("synthetic", directory)
+                self.assertEqual(len(verified), 1)
+                self.assertIn("session_id=51", verified[0])
+                self.assertIn("##ExampleCiLockProbe", verified[0])
+
 
 def sql_probe(sqlcmd, artifacts):
     """Use only the existing isolated CI container; never execute an SSIS package."""
     root = Path(artifacts)
     root.mkdir(parents=True, exist_ok=True)
     holder = ci.Sqlcmd("sqlserver-analyze-impact-2025", sqlcmd)
+    spid = None
     evidence = {}
     started = time.monotonic()
     try:
@@ -230,19 +300,28 @@ SELECT id FROM ##ExampleCiLockProbe;
             evidence[name] = report
         holder.query("DROP TABLE ##ExampleCiLockProbe; RAISERROR(N'CI_SAMPLE_END',10,1) WITH NOWAIT;\nGO\n")
     finally:
+        primary_error = sys.exc_info()[0] is not None
+        cleanup_errors = []
         holder_closed = holder.close()
         if not holder_closed:
-            if sys.exc_info()[0] is None:
-                raise AssertionError("CI_PROBE_HOLDER_CLEANUP")
-            print("CI_PROBE_HOLDER_CLEANUP_FAILED (primary error retained)")
-    verifier = ci.Sqlcmd("sqlserver-analyze-impact-2025", sqlcmd)
-    try:
-        verifier.query(f"""IF OBJECT_ID(N'tempdb..##ExampleCiLockProbe') IS NOT NULL OR EXISTS(SELECT 1 FROM sys.dm_exec_sessions WHERE session_id={spid} AND session_id<>@@SPID) THROW 51001,N'CI_PROBE_CLEANUP',1;
+            cleanup_errors.append("CI_PROBE_HOLDER_CLEANUP")
+        if spid is not None:
+            verifier = None
+            try:
+                verifier = ci.Sqlcmd("sqlserver-analyze-impact-2025", sqlcmd)
+                verifier.query(f"""IF OBJECT_ID(N'tempdb..##ExampleCiLockProbe') IS NOT NULL OR EXISTS(SELECT 1 FROM sys.dm_exec_sessions WHERE session_id={spid} AND session_id<>@@SPID) THROW 51001,N'CI_PROBE_CLEANUP',1;
 RAISERROR(N'CI_SAMPLE_END',10,1) WITH NOWAIT;
 GO
 """)
-    finally:
-        assert verifier.close(), "CI_PROBE_VERIFIER_CLEANUP"
+            except (OSError, RuntimeError, TimeoutError):
+                cleanup_errors.append("CI_PROBE_CLEANUP_VERIFICATION_FAILED")
+            finally:
+                if verifier is not None and not verifier.close():
+                    cleanup_errors.append("CI_PROBE_VERIFIER_CLEANUP")
+        if cleanup_errors:
+            if not primary_error:
+                raise AssertionError(", ".join(cleanup_errors))
+            print(", ".join(cleanup_errors)+" (primary error retained)")
     elapsed = time.monotonic()-started
     assert elapsed < 60, "CI_PROBE_TIME_LIMIT"
     assert sum(p.stat().st_size for p in root.rglob("*") if p.is_file()) < 1024*1024, "CI_PROBE_SIZE_LIMIT"
