@@ -3,6 +3,32 @@
 **Stand:** 19. Oktober 2026
 **Zweck:** aktuelle ausführbare Entwicklungswelle für `gecompat/SQL_Server_Analyze`
 
+## Freigegebene Lookup-/Cacheanalyse vom 19. Oktober 2026
+
+Die vom direkten Benutzer freigegebene Lookup-/Cacheanalyse ist in
+Produktversion 1.5.0 implementiert. Position 25, SchemaVersion 6, sechs
+originalbelegte Profile und eine neue 23-Feld-Menge begrenzen den Umfang.
+Integration207 besteht mit 207 Payloadfällen, 32 Flagkombinationen und
+sieben Ausgabeprüfungen. Zwölf getrennte extrahierte Stufen und genau acht
+Restoreconsumer aus den vier erhaltenen Originalaufnahmen sind qualifiziert.
+Ein privater Fixturefehler 515 und eine mechanische Berichtszählerkorrektur
+bleiben in der Evidenz erhalten; unveränderte bestandene Gruppen wurden
+nicht wiederholt. 142 Offline-Negativkontrollen werden abgewiesen.
+
+Die [begrenzte Abnahme](../../../Documentation/Architecture/SSIS_Package_and_Execution_Analysis_Plan.md#begrenzte-lookup-cacheabnahme-vom-19-oktober-2026)
+trennt vollständige Analyzeraufrufe, restaurierte Originaldaten und
+extrahierte Stufen. Neue Paketausführungen und SDK-Aufrufe sind 0. Alle neun
+Providerwerte, Callerzustände und das Datenbankinventar bleiben erhalten;
+eigene Ressourcen sind entfernt. Native11/12 bleiben insgesamt
+FAILED_NOT_QUALIFIED. Vorbereitungs-/Partial-Cache-Operationsprofile,
+allgemeine Rollen-/Versionsabdeckung und weitere Loggingquellen bleiben
+offen. SSIS-001 bleibt PARTIAL_PRODUCT_FUNCTION; WI-0009 GATE-0001 bleibt offen.
+
+Die neue Welle führt zwei Reviewphasen und die erforderlichen Liefergates.
+Nach Ergebnisreview folgen exakte Head-CI, reguläre PR-Integration,
+Treeidentität, Mainchecks und Synchronisierung. Historische Budgets bleiben
+geschlossen; Kosten und Kontingente sind UNKNOWN.
+
 ## Freigegebene Legacy-Lifecycle-Analyse vom 19. Oktober 2026
 
 Der direkte Benutzer hat L1–L9 samt begrenztem Abnahmeplan freigegeben und die

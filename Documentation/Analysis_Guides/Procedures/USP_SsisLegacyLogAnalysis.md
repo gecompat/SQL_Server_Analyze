@@ -109,6 +109,38 @@ berichtete Labels innerhalb des jeweiligen Kontexts und keine bewiesene
 Runtimekomponentenidentität. Ohne den neuen Opt-in bleibt PCT_EN_2 erhalten;
 der nackte Ereignisname PipelineComponentTime behält ausschließlich PCT_EN_1.
 
+## Lookup- und Cacheberichte als Opt-in
+
+Version 1.5.0 ergänzt an Position 25 `@IncludeLookupCacheAnalysis bit=0`.
+NULL entspricht 0. Der unabhängige Opt-in ergänzt genau eine letzte Menge
+lookupCacheEvents mit 23 Feldern, SchemaVersion6, LookupCacheCatalogVersion1
+und SourceOrdinal8 lookupCacheAnalysis. Die bisherigen 24 Positionen und
+Schemas1–5 bleiben ohne den neuen Opt-in erhalten. RAW liefert dann
+10/12/14/16 Mengen, abhängig von den übrigen Opt-ins. TABLE und JSON
+verwenden denselben Namen; CONSOLE ergänzt im einzigen Grid die drei
+nullable bigint-Zähler LookupCacheMeldungen, LookupCacheGeleseneMeldungen
+und LookupCacheKontextMeldungen. NONE unterdrückt fachliche Grids.
+
+Der [freigegebene K1–K9-Vertrag](../../Architecture/SSIS_001_Phase0_Public_Contract.md#freigegebene-erweiterung-legacy-lookup-und-cachemeldungen-vom-19-oktober-2026)
+begrenzt die Interpretation auf sechs genaue englische Code-/Event-/Textformen
+mit CRLF-Ende. Fortschritt, Gesamtmenge, hinzugefügte Unique-Zeilen und
+verarbeitete Cachezeilen mit gemeldeten Sekunden und Byte bleiben getrennte
+Berichte. Duplicate-/Missdiagnosen erhalten keine erfundenen Zeilenzähler;
+Unique-/Missberichte ohne Namen behalten ComponentName=NULL. Dieselben Texte
+auf Paket- und Data-Flow-Sources werden weder addiert noch dedupliziert.
+SourceId bezeichnet das protokollierende Executable, ein Name nur ein Label.
+
+Ein geparster Bericht kann ohne eindeutiges internes EXECUTE-Paar derselben
+Source sichtbar bleiben; beide Kontext-IDs sind dann NULL. Fehlende Texte,
+Kapazitätsgrenzen, unbekannte Formen und Code-/Eventwidersprüche ergeben
+keine Teilpayloads. Die neue Stufe verwendet den freigegebenen N+1-Puffer,
+prüft die gemeinsame kooperative Deadline und verwirft bei Fehlern atomar
+ihre Menge und Zähler; gültige alte Ausgaben bleiben erhalten. IncludeMessages0
+greift fachlich nicht auf message zu. Separate Vorbereitungszeiten und
+Partial-Cache-Operationen bleiben mangels positiver Originale uninterpretiert.
+Die Ausgabe beweist keine Cache-Hit-Rate, Konfigurationsvollständigkeit,
+Datenqualität, physische Speichermessung oder technische Ursache.
+
 ## Eine Zeile bedeutet
 
 Eine Timelinezeile entspricht einer materialisierten Logzeile. errorChain
@@ -364,3 +396,8 @@ Schemas, TABLE/JSON, Präfixgrenze, Meldungs-Opt-out und Ausgabearten sind gepr�
 Es gibt keine neue Paket- oder SDK-Ausführung. Berichtete Validate-, PreExecute-
 und PostExecute-Werte erweitern den begrenzten Methodenbestand, qualifizieren
 aber keine internen Intervalle, CPU-/exklusive Zeiten oder allgemeinen Rollen.
+
+Die begrenzte [Lookup-/Cacheabnahme](../../Architecture/SSIS_Package_and_Execution_Analysis_Plan.md#begrenzte-lookup-cacheabnahme-vom-19-oktober-2026)
+bestätigt Integration207, zwölf getrennte extrahierte Stufen und acht neue
+Restoreconsumer aus erhaltenen Originaldaten. Neue Paket- und SDK-Aufrufe
+sind 0; dies ist keine frische Provider- oder allgemeine Rollenqualifikation.

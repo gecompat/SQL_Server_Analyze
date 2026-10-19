@@ -1968,3 +1968,4 @@ USP_SsisLegacyLogAnalysis,IncludeTaskAnalysis,bit,0
 USP_SsisLegacyLogAnalysis,IncludeRowFlowAnalysis,bit,0
 USP_SsisLegacyLogAnalysis,IncludeComponentPhaseAnalysis,bit,0
 USP_SsisLegacyLogAnalysis,IncludeComponentLifecyclePhases,bit,0
+USP_SsisLegacyLogAnalysis,IncludeLookupCacheAnalysis,bit,0
