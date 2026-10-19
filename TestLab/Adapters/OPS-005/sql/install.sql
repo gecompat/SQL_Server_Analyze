@@ -61950,9 +61950,6 @@ GO
 -- END SOURCE: Code/10_SSIS/010_USP_SsisPackageAnalysis.sql
 
 -- BEGIN SOURCE: Code/10_SSIS/020_USP_SsisLegacyLogAnalysis.sql
-USE [DeineDatenbank];
-GO
-
 /*
 ===============================================================================
 Objekt       : monitor.USP_SsisLegacyLogAnalysis
