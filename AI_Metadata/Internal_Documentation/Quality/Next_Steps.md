@@ -3,6 +3,23 @@
 **Stand:** 19. Oktober 2026
 **Zweck:** aktuelle ausführbare Entwicklungswelle für `gecompat/SQL_Server_Analyze`
 
+## Regelübernahme für Testbewertung vom 19. Oktober 2026
+
+Die [CI-Teststrategie](../../../Documentation/Quality/CI_Test_Strategy.md)
+ergänzt deterministische lokale Bewertung, kompakte Erfolgsmeldungen,
+Fehlerklassifikation und die Bedingungen einer möglichen lokalen
+Evidenzwiederverwendung. Die [Aufwandsbewertung](../Architecture/Foundation_1_21_Upgrade.md#regelübernahme-vom-19-oktober-2026)
+trennt vorhandene Mechanismen, übernommene Regeln und offene technische Punkte.
+Ein vertrauenswürdiger Local-to-Remote-Pfad ist NOT_IMPLEMENTED; die
+bestehende Remote-CI und die native Releasequalifikation bleiben erhalten.
+
+Dieser Auftrag umfasst die Regelintegration. Er aktiviert weder eine
+technische CI-Optimierung noch den gesondert vorgeschlagenen
+1222-Diagnosebeobachter. Die pausierte autonome Produktarbeit wird durch die
+Regeländerung nicht automatisch gestartet; ihre Fortsetzung verwendet den
+integrierten Regelstand und die konkrete Benutzerfreigabe. Neue öffentliche
+Verträge und bestehende offene Abnahmen behalten ihre bisherigen Grenzen.
+
 ## Freigegebene Lookup-/Cacheanalyse vom 19. Oktober 2026
 
 Die vom direkten Benutzer freigegebene Lookup-/Cacheanalyse ist in

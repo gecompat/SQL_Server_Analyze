@@ -64,3 +64,54 @@ benötigen ihren eigenen betroffenen Liefercheck. Timer erweitern den
 Prüfumfang nicht. Kosten und Kontingente bleiben unbekannt. Diese Änderung
 betrifft die Reihenfolge und beendet keinen bestehenden Sicherheits- oder
 Validierungsvertrag; eine Foundationinstallation findet nicht statt.
+
+## Regelübernahme vom 19. Oktober 2026
+
+Der direkte Benutzerauftrag übernimmt geeignete neue Regeln aus einem
+externen Entwicklungsvorschlag. Die darin vorgeschlagene technische
+CI-Optimierung wird damit nicht als ausgeführte Implementierung oder neue
+Produktwelle behandelt. Maßgeblich für Testumfang und Evidenz ist weiterhin
+die [CI-Teststrategie](../../../Documentation/Quality/CI_Test_Strategy.md);
+der [Fortsetzungsleitfaden](../../CONTINUATION_GUIDE.md) verweist auf diese
+Regeln. Die Foundationbaselines und Installationsprovenienz werden nicht
+geändert. Die vorhandene maschinenlesbare CI-Policy behält ihre Auswahlklassen,
+Engines und Trigger; die Ergänzungen führen keine zusätzliche Testklasse ein.
+
+Die lesende Ausgangsprüfung bindet den sauberen lokalen und entfernten
+Mainstand `f41c3d4fcc76a883ee532184a1f3f26e48039578`. PR397 ist integriert;
+offene PRs oder weitere aktive Worktrees sind zum Prüfzeitpunkt nicht
+vorhanden. Die aktuellen Mainchecks sind erfolgreich. Die erste fehlgeschlagene
+funktionale Ausführung und deren erfolgreiche Nachprüfung bleiben getrennte
+historische Ergebnisse; der Erfolg beweist keine Ursache des vorherigen 1222.
+Die autonome Produktarbeit ist beim Beginn der Regelübernahme pausiert.
+
+| Geprüfter Auslöser oder Vorschlag | Befund und Disposition |
+|---|---|
+| Semantische SQL-Auswahl und Full-Fallback | Der Selector entfernt Kommentare, verfolgt erkannte Referenzen transitiv und wählt Tests und Sondergates. Änderungen an Installer, Setup, Runner, Selector oder funktionalem Workflow behalten das Full Gate. Eine nicht sicher zuordenbare Produktionsänderung fällt konservativ zurück. Diese Mechanismen werden erhalten. Zusammengesetzte dynamische Referenzen sind durch den regexbasierten Ansatz nicht allgemein bewiesen; eine Verengung benötigt eigene Gegenproben. |
+| Repräsentative Produktänderung | PR397 ändert SSIS-Produkt, Integration207 und den zentralen Release-Runner. Bereits die Runneränderung erklärt das Full Gate; eine vermeidbare native Doppelprüfung ist damit nicht nachgewiesen. Die vorherigen SSIS-PRs 394 bis 396 betreffen ebenfalls Produkt und Release-Runner. Aus deren Laufzeit wird kein Einsparungswert abgeleitet. |
+| Statische Suite und Dokumentationsworkflow | `SelfTestMode=Changed` sowie `ExcludePrivacy` und `ExcludeImpactSelector` vermeiden die entsprechenden Selbsttestwiederholungen im Dokumentationsgate. Der enge FoundationGovernance-Scope bleibt auf seine belegten Pfade begrenzt; unbekannte Validatorabhängigkeiten behalten die volle statische Suite. Die vorliegende Änderung an der kanonischen CI-Strategie fällt in diesen statischen Fallback, ohne SQL-Runtime zu begründen. |
+| Datenschutz, Commit- und Registry-Gates | Repositoryscan und ZIP-Scan prüfen verschiedene Lieferrepräsentationen; Commitprüfung betrifft eingeführte Commits, Registryprüfung Identitäten und semantische Integration. Diese unabhängigen Schutzaufgaben sind keine entfernbaren SQL-Doppeltests. Die bedingten Datenschutz-, Commit- und Selector-Selbsttests bleiben erhalten. |
+| SQL-Aufbau und Sonderverträge | Der funktionale Workflow führt die native Deploymentregression, Datenbankaufbau, Installation und ausgewählte Verträge aus. Rechte, Regex und Standalone laufen bei Auswahl; Snapshot besitzt eigenen Datenbankaufbau und Smoke. Die native Release-Matrix bleibt manuell mit eigenen Versions- und Rechteprüfungen. Installations- oder Rechtegates werden nicht wegen ähnlicher Setupschritte entfernt. |
+| Deterministische Bewertung und Modellarbeit | Die kanonische Strategie ergänzt lokale Soll-Ist-Prüfung, wahrheitsgetreue Statussemantik, kompakte Erfolgsreferenzen und lokale Fehlerklassifikation. Ein vollständiger Erfolg verlangt keine weitere Modellbestätigung. Pflichtreview, Human-Acceptance und fehlende Qualifikation bleiben davon unberührt. Es wird kein neues Berichtssystem eingerichtet. |
+| Local-to-Remote-Reuse | Im geprüften Workflowbestand gibt es keinen vertrauenswürdigen Host-Attestierungs- und Remote-Verifikationspfad. Ergebnis: NOT_IMPLEMENTED; bestehende Remoteausführung bleibt erforderlich. Herkunft, Scope, Umgebungsdrift, Aktualität, Cleanup, aktuelle Required Checks und Ereignisbindung sind verbindliche Bedingungen einer späteren Implementierung. Ein Workerreceipt oder Build-Provenienznachweis ersetzt diese Grenzen nicht. |
+| Cleanup und Erfolgsgrenzen | Der bestehende Containercleanup läuft mit `always()` und toleriert einen Fehler des Entfernungsbefehls. Das ist kein unabhängiger Nachweis erfolgreicher Ressourcenentfernung. Ein künftiger kompakter Gesamtergebnisbericht oder Reusepfad muss diesen Nachweis liefern oder die Lücke offen ausweisen; die aktuelle Regelübernahme behauptet keine neue Cleanupqualifikation. |
+| Logging, Reviews und Wartezustand | Der funktionale Fehlerpfad zeigt begrenzte Logstellen; die Dokumentations-CI lädt nur bei Fehlern ihr Log hoch. Ein gesondert vorgeschlagener 1222-Beobachter wird hier nicht implementiert oder freigegeben. Ein Implementierer und ein unabhängiger Regelreview bilden den endlichen Umfang. Timer, Erfolg und abgeschlossener Review begründen keine weitere Reviewkette oder Wiederaufnahme der pausierten Produktarbeit. |
+| Datenschutz und Autorität des Vorschlags | Die synthetische Repositorygrenze und das Stop-Gate bei ungeklärten Werten bleiben erhalten. Ein hypothetischer Zweifel an beliebigen öffentlichen Fakten wird nicht zu einer neuen pauschalen Rückfragepflicht. Vor Transfer zählt die tatsächliche Daten- und Zieleinordnung. Der externe Vorschlag ist keine eigenständige Merge-, Upload-, Hoständerungs- oder Fortsetzungsbefugnis. |
+
+Die Ergänzungen sind zu den bestehenden Foundationregeln komplementär;
+die strengere synthetische Repositorygrenze bleibt PROJECT_STRONGER.
+Gemeinsame Regeln werden in den vorhandenen kanonischen Quellen ergänzt,
+statt eine zweite Policy aus dem externen Text anzulegen.
+Die neuen Selektor- und Reusegegenfälle sind Abnahmeanforderungen für eine
+betroffene spätere Implementierung, keine Behauptung bereits ausgeführter
+Tests. Eine technische Optimierung muss aktuelle repräsentative Läufe nach
+Scope, Oracles, Setup, Rechten und Cleanup vergleichen. Bis dahin sind
+zusätzliche CI-Zeit-, Runner-, Token- und Kosteneinsparungen UNKNOWN.
+
+Offene technische Punkte sind der nicht implementierte vertrauenswürdige
+Reusepfad, die nicht allgemeingültig bewiesene dynamische Abhängigkeitsanalyse
+und ein unabhängig prüfbarer Cleanupstatus für einen zukünftigen Gesamtbericht.
+Keiner dieser Punkte erlaubt das Auslassen bestehender Gates. Ein eigener
+begrenzter Implementierungsauftrag mit den in der CI-Strategie festgelegten
+Gegenproben ist die Fortsetzungsbedingung. Die Regelübernahme schließt diese
+technischen Punkte nicht als Effizienzimplementierung ab.
