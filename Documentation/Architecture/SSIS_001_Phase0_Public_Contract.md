@@ -2398,15 +2398,17 @@ OPS-005-Adapter und Statusquellen werden mit der freigegebenen Implementierung
 konsistent aktualisiert. SSIS-001 bleibt PARTIAL_PRODUCT_FUNCTION und
 WI-0009 GATE-0001 bleibt offen; die übrigen Backlogteile sind nicht mit freigegeben.
 
-## Entwurf: Legacy-Lookup- und Cachemeldungen vom 19. Oktober 2026
+## Freigegebene Erweiterung: Legacy-Lookup- und Cachemeldungen vom 19. Oktober 2026
 
-**Status: NICHT FREIGEGEBEN.** Dieser Abschnitt legt einen prüfbaren
-Erweiterungsvertrag und einen späteren Abnahmeplan fest. Er erteilt keine
-Implementierungs-, Installations-, Paket-, SDK-, Consumer- oder CI-Freigabe.
-Die vorhergehenden freigegebenen Abschnitte bleiben bytegleich erhalten.
-`SSIS-001` bleibt `PARTIAL_PRODUCT_FUNCTION`; WI-0009 GATE-0001 bleibt offen.
-Die Bezeichnungen K1–K9 und die Falllabels sind lokale Abschnittsreferenzen,
-keine neu vergebenen dauerhaften Arbeitselemente.
+Der direkte Benutzer hat K1–K9 samt begrenztem Abnahmeplan am 19. Oktober
+2026 ausdrücklich freigegeben und die Implementierung mit regulärer
+PR-Lieferung beauftragt. Der geprüfte Vertrag ist über SHA-256
+799B4287C49215C5F222C65E8CD85E958317E3C5C10E0AA8D8AE324D5F120D36
+gebunden. Der frühere Freigabewartezustand ist abgelöst. Die vorhergehenden
+freigegebenen Abschnitte bleiben bytegleich erhalten. Ein Vertragsreview
+belegt keine Produkt- oder Laufzeitabnahme; tatsächliche Ergebnisse werden
+im [kanonischen Plan](SSIS_Package_and_Execution_Analysis_Plan.md#lookup-cachemeldungen-vertragsentwurf-vom-19-oktober-2026)
+getrennt fortgeschrieben. SSIS-001 bleibt partiell, WI-0009 GATE-0001 offen.
 
 ### K1. Enger Umfang und tatsächlich gelesene Originale
 
@@ -2452,7 +2454,7 @@ JSON-Snapshots, einschließlich CRLF, ohne Reparatur der Originaldateien.
 
 ### K2. Öffentliche API und Ausgabeversion
 
-Für eine spätere Umsetzung ist Procedureversion `1.5.0` vorgesehen. Genau ein
+Die freigegebene Erweiterung verwendet Procedureversion `1.5.0`. Genau ein
 Parameter wird an Position 25 angehängt:
 `@IncludeLookupCacheAnalysis bit = 0`; NULL entspricht 0. Die vorhandenen
 24 Positionen, Defaults, OUTPUTs und High-Impact-Regeln bleiben erhalten.
@@ -2722,8 +2724,9 @@ versteckten Schalter, DDL-, Index-, Logging- oder Quelländerungen.
 
 ### K7. Endlicher synthetischer Abnahmeplan
 
-**Status sämtlicher nachfolgenden Fälle: NOT_EXECUTED.** Sie sind erst nach
-konkreter menschlicher Implementierungsfreigabe auszuführen. Eine separate
+Die folgenden Fälle bilden den freigegebenen Abnahmeplan. Die unten dokumentierte begrenzte Abnahme
+besteht; extrahierte Stufen bleiben von vollständigen Original-SUT-Nachweisen
+getrennt. Eine separate
 Referenz erstellt vor dem SUT-Aufruf Sollzeilen aus synthetischen Literalen
 und Originalfeldern. Sie ruft keinen Produktparser auf, kopiert keine
 Produktregex und verwendet keine SUT-Ausgabe als Sollquelle. Für K5 sind
@@ -2734,29 +2737,30 @@ Parität allein ist kein fachliches Orakel.
 
 | Fallgruppe | Konkrete Eingaben und Passkriterien | Status |
 |---|---|---|
-| K-S01 | Alle 32 Kombinationen der fünf Opt-ins, einschließlich acht ungültiger Lifecycle-/Phasenkombinationen, erhalten K2; zusätzlich NULL je neuem Flag, Help und genau Position 25. Opt-out liest keine neue Quelle und erzeugt keine neuen Keys/Spalten. | NOT_EXECUTED |
-| K-S02 | Jede der sechs exakten CRLF-Formen mit synthetischem Namen liefert sämtliche 23 Sollfelder. Unique/Miss behalten ComponentName NULL, Diagnosen sämtliche Zahlen NULL. | NOT_EXECUTED |
-| K-S03 | Jede Form wird separat durch Casewechsel, fehlenden/zusätzlichen Punkt, Leerzeichen, fehlendes CRLF, LF, doppeltes CRLF, fremde Sprache und Textsuffix verändert; keine Mutation liefert PARSED. | NOT_EXECUTED |
-| K-S04 | Rows/Bytes 0, 1, bigint-Maximum und Maximum+1 sowie Seconds 0.000, 0.001, höchster decimal(28,3)-Wert und dessen Überschreitung erhalten exakte Werte/Status. Vorzeichen, 00, Komma, Exponent, Unicodeziffern und abweichende Skalen bleiben Syntaxfehler. | NOT_EXECUTED |
-| K-S05 | Namenslängen 1/4000 und 0/4001, Unicode/Case/Endspaces, doppelte Trenner, Anführungszeichen, Klammern, TAB und eingebettetes beziehungsweise nachgestelltes NUL prüfen Namen- und Ganztextregeln; der Byteguard hat Vorrang. Die isolierte Namensgrenze wird getrennt von nicht erreichbaren Ganzpayloadgrenzen ausgewiesen. | NOT_EXECUTED |
-| K-S06 | Für alle elf Codes werden NULL-, Leer-, Guardgrenzen B-2/B/B+2 sowie MAX und kleine deklarierte Kapazität geprüft. Alle sechs Codes erhalten je falsches/NULL-Event, alle fünf nicht unterstützten Codes Zahlenköder. Unbekannter/NULL-Code mit perfektem Text erzeugt keinen Kandidaten. | NOT_EXECUTED |
-| K-S07 | Eindeutiges EXECUTE, offenes Ende, zwei ID-Paare mit nur einem Zeitmatch, gleicher Grenzzeitpunkt, LogId am Rand, NULL-/Null-GUID-Source, NULL-/rückläufige Zeit sowie ausschließlich PACKAGE/VALIDATE prüfen jede K4-Priorität und beide Kontext-IDs. | NOT_EXECUTED |
-| K-S08 | Identische Namen unter anderen Sources/Execution-IDs, wiederholte Kontexte und duplizierter Meldungstext mit verschiedenen IDs bleiben getrennt. Fortschritt, Total, Unique und Verarbeitung werden nie addiert; Duplicate/Miss erzeugen keinen Misszähler oder Konfigurationsbefund. | NOT_EXECUTED |
-| K-S09 | Cap 1, exakt E, E-1, 0 und NULL sowie Kandidat/Paarende ausschließlich im N+1-Sentinel prüfen Counts und InputIsTruncated. Doppelte IDs einschließlich Sentinel verwerfen alle neuen Daten. Interne Paare bleiben unabhängig vom iterations-Exportcap. | NOT_EXECUTED |
-| K-S10 | Leere Quelle, gekappter Präfix ohne Kandidat, IncludeMessages=0 und IncludeTimeline=0 prüfen unterschiedliche Status, NULL-/0-Zähler, fehlenden message-Zugriff und erhaltenen Rawtext in K5. | NOT_EXECUTED |
-| K-S11 | Betroffene Quell-/Metadaten-/Berechtigungsfehler, doppelte IDs, Identitätswechsel und nicht abgeschlossene v1-Ableitung erhalten Zulassungspriorität, alte Daten und erstes natives Fehlerpaar. Fehler der optionalen alten Stufen blockieren einen gültigen K6-Bestand nicht. | NOT_EXECUTED |
-| K-S12 | Deadline vor Eintritt und nach Materialisierung vor Übernahme sowie echte optionale Stufenexception prüfen atomare Verwerfung und NULL-Zähler. Falls nur quellgebundene extrahierte Stufen erreichbar sind, wird dieser Nachweis ausdrücklich vom vollständigen Original-SUT getrennt; keine Produkttestschalter. | NOT_EXECUTED |
-| K-S13 | Alle 23 nativen Namen, Typen, Größen, Präzision, Skala, Nullbarkeit, Collation und Identity=False; RAW10/12/14/16, TABLE samt sechs Mappingablehnungen, JSON-Nulls/Keyanwesenheit, CONSOLE1 mit drei Zählern und NONE0 stimmen gegen die Referenz. Callerframes bleiben gleich. | NOT_EXECUTED |
-| K-S14 | Je eine getrennte Offline-Mutation jedes der 23 Felder sowie fehlendes Pflichtfeld/Array, zusätzlich falsches Sourcepaar, Dezimalskalierung und Diagnosezählung werden vom Orakel verworfen. Fehlender Positivbeleg wird niemals durch eine tolerantere Sollprüfung ersetzt. | NOT_EXECUTED |
+| K-S01 | Alle 32 Kombinationen der fünf Opt-ins, einschließlich acht ungültiger Lifecycle-/Phasenkombinationen, erhalten K2; zusätzlich NULL je neuem Flag, Help und genau Position 25. Opt-out liest keine neue Quelle und erzeugt keine neuen Keys/Spalten. | PASS |
+| K-S02 | Jede der sechs exakten CRLF-Formen mit synthetischem Namen liefert sämtliche 23 Sollfelder. Unique/Miss behalten ComponentName NULL, Diagnosen sämtliche Zahlen NULL. | PASS |
+| K-S03 | Jede Form wird separat durch Casewechsel, fehlenden/zusätzlichen Punkt, Leerzeichen, fehlendes CRLF, LF, doppeltes CRLF, fremde Sprache und Textsuffix verändert; keine Mutation liefert PARSED. | PASS |
+| K-S04 | Rows/Bytes 0, 1, bigint-Maximum und Maximum+1 sowie Seconds 0.000, 0.001, höchster decimal(28,3)-Wert und dessen Überschreitung erhalten exakte Werte/Status. Vorzeichen, 00, Komma, Exponent, Unicodeziffern und abweichende Skalen bleiben Syntaxfehler. | PASS |
+| K-S05 | Namenslängen 1/4000 und 0/4001, Unicode/Case/Endspaces, doppelte Trenner, Anführungszeichen, Klammern, TAB und eingebettetes beziehungsweise nachgestelltes NUL prüfen Namen- und Ganztextregeln; der Byteguard hat Vorrang. Die isolierte Namensgrenze wird getrennt von nicht erreichbaren Ganzpayloadgrenzen ausgewiesen. | PASS |
+| K-S06 | Für alle elf Codes werden NULL-, Leer-, Guardgrenzen B-2/B/B+2 sowie MAX und kleine deklarierte Kapazität geprüft. Alle sechs Codes erhalten je falsches/NULL-Event, alle fünf nicht unterstützten Codes Zahlenköder. Unbekannter/NULL-Code mit perfektem Text erzeugt keinen Kandidaten. | PASS |
+| K-S07 | Eindeutiges EXECUTE, offenes Ende, zwei ID-Paare mit nur einem Zeitmatch, gleicher Grenzzeitpunkt, LogId am Rand, NULL-/Null-GUID-Source, NULL-/rückläufige Zeit sowie ausschließlich PACKAGE/VALIDATE prüfen jede K4-Priorität und beide Kontext-IDs. | PASS |
+| K-S08 | Identische Namen unter anderen Sources/Execution-IDs, wiederholte Kontexte und duplizierter Meldungstext mit verschiedenen IDs bleiben getrennt. Fortschritt, Total, Unique und Verarbeitung werden nie addiert; Duplicate/Miss erzeugen keinen Misszähler oder Konfigurationsbefund. | PASS |
+| K-S09 | Cap 1, exakt E, E-1, 0 und NULL sowie Kandidat/Paarende ausschließlich im N+1-Sentinel prüfen Counts und InputIsTruncated. Doppelte IDs einschließlich Sentinel verwerfen alle neuen Daten. Interne Paare bleiben unabhängig vom iterations-Exportcap. | PASS |
+| K-S10 | Leere Quelle, gekappter Präfix ohne Kandidat, IncludeMessages=0 und IncludeTimeline=0 prüfen unterschiedliche Status, NULL-/0-Zähler, fehlenden message-Zugriff und erhaltenen Rawtext in K5. | PASS |
+| K-S11 | Betroffene Quell-/Metadaten-/Berechtigungsfehler, doppelte IDs, Identitätswechsel und nicht abgeschlossene v1-Ableitung erhalten Zulassungspriorität, alte Daten und erstes natives Fehlerpaar. Fehler der optionalen alten Stufen blockieren einen gültigen K6-Bestand nicht. | PASS |
+| K-S12 | Deadline vor Eintritt und nach Materialisierung vor Übernahme sowie echte optionale Stufenexception prüfen atomare Verwerfung und NULL-Zähler. Falls nur quellgebundene extrahierte Stufen erreichbar sind, wird dieser Nachweis ausdrücklich vom vollständigen Original-SUT getrennt; keine Produkttestschalter. | PASS |
+| K-S13 | Alle 23 nativen Namen, Typen, Größen, Präzision, Skala, Nullbarkeit, Collation und Identity=False; RAW10/12/14/16, TABLE samt sechs Mappingablehnungen, JSON-Nulls/Keyanwesenheit, CONSOLE1 mit drei Zählern und NONE0 stimmen gegen die Referenz. Callerframes bleiben gleich. | PASS |
+| K-S14 | Je eine getrennte Offline-Mutation jedes der 23 Felder sowie fehlendes Pflichtfeld/Array, zusätzlich falsches Sourcepaar, Dezimalskalierung und Diagnosezählung werden vom Orakel verworfen. Fehlender Positivbeleg wird niemals durch eine tolerantere Sollprüfung ersetzt. | PASS |
 
-Der spätere synthetische Umfang ist auf diese 14 Gruppen und höchstens zwei
+Der synthetische Umfang ist auf diese 14 Gruppen und höchstens zwei
 Versuche einschließlich etwaiger extrahierter Stufen begrenzt. Fehlversuche
 zählen; bestandene unveränderte Gruppen werden gebunden wiederverwendet.
-Das ist ein Freigabevorschlag, kein jetzt eröffnetes Testbudget.
+Die freigegebene Umsetzungswelle übernimmt diese Grenzen einschließlich
+fehlgeschlagener Versuche.
 
 ### K8. Spätere Restoreconsumer aus erhaltenen Originaldaten
 
-**Status aller Consumer: NOT_EXECUTED.** Vorgeschlagen sind höchstens zwei
+**Status der acht festgelegten Consumer: PASS.** Freigegeben sind höchstens zwei
 Arrange-/Consumerversuche mit insgesamt acht neuen Aufrufen einschließlich
 Fehlversuchen. Paketausführungen, SDK-, Lab-, VM-, Setup- und Imageaufrufe
 bleiben 0. Der spätere Adapter darf solche Pfade nicht enthalten. Ein
@@ -2775,14 +2779,14 @@ dem ersten SUT-Aufruf fest.
 
 | Label | Quelle und fester Aufrufumfang | Passkriterium | Status |
 |---|---|---|---|
-| K-N01 | Basic, NONE/JSON, Cap0, neuer Opt-in1 | Keine Kandidaten, Source8 AVAILABLE_EMPTY/0 und drei Zähler0; bestehende Modulpartialität bleibt erklärbar. | NOT_EXECUTED |
-| K-N02 | SQLFailure, TABLE/JSON, Cap0, neuer Opt-in1 | Leere neue Menge bei erhaltenem altem Fehler-/Quellenverhalten; Analyzerfehler und Paketfehler bleiben getrennt. | NOT_EXECUTED |
-| K-N03 | Duplicate, RAW/JSON, Cap0, nur neuer Opt-in1 | RAW10, genau zehn PARSED-/ASSIGNED-Berichte und jede der fünf Formen zweimal; 23 unabhängige Felder und getrennte Sources. | NOT_EXECUTED |
-| K-N04 | Duplicate, TABLE/JSON, Cap0, alle gültigen Opt-ins1 | RAW-Mengenmodell16 über benannte Tabellen, zehn neue Berichte, volle 23-Feld-Parität und alte Mengen unverändert. | NOT_EXECUTED |
-| K-N05 | Miss, RAW/JSON, Cap0, alle gültigen Opt-ins1 | RAW16, zwölf geparste Berichte, zwei Missbeobachtungen mit NULL-Name/-Zahlen; Kontextanzahl wird vor SUT unabhängig aus den Originalpaaren festgelegt. | NOT_EXECUTED |
-| K-N06 | Miss, CONSOLE/JSON, Cap0, nur neuer Opt-in1 | Genau ein Grid, C=12, P=12 und unabhängig vorbestimmtes A; unveränderte erste vollständige Fehlermeldung. | NOT_EXECUTED |
-| K-N07 | Duplicate, TABLE/JSON, nur neuer Opt-in1 | Cap vor SUT so bestimmen, dass erster Cachebericht im Puffer und sein Source-EXECUTE-Ende außerhalb liegt; N+1 zählt korrekt, keine erfundene ASSIGNED-Zeile. | NOT_EXECUTED |
-| K-N08 | Miss, NONE/JSON, Cap0, Messages0, neuer Opt-in1 | Keine Grids, Source8 NOT_READ/MESSAGES_DISABLED, neue Menge leer und drei NULL-Zähler ohne fachlichen message-Zugriff. | NOT_EXECUTED |
+| K-N01 | Basic, NONE/JSON, Cap0, neuer Opt-in1 | Keine Kandidaten, Source8 AVAILABLE_EMPTY/0 und drei Zähler0; bestehende Modulpartialität bleibt erklärbar. | PASS |
+| K-N02 | SQLFailure, TABLE/JSON, Cap0, neuer Opt-in1 | Leere neue Menge bei erhaltenem altem Fehler-/Quellenverhalten; Analyzerfehler und Paketfehler bleiben getrennt. | PASS |
+| K-N03 | Duplicate, RAW/JSON, Cap0, nur neuer Opt-in1 | RAW10, genau zehn PARSED-/ASSIGNED-Berichte und jede der fünf Formen zweimal; 23 unabhängige Felder und getrennte Sources. | PASS |
+| K-N04 | Duplicate, TABLE/JSON, Cap0, alle gültigen Opt-ins1 | RAW-Mengenmodell16 über benannte Tabellen, zehn neue Berichte, volle 23-Feld-Parität und alte Mengen unverändert. | PASS |
+| K-N05 | Miss, RAW/JSON, Cap0, alle gültigen Opt-ins1 | RAW16, zwölf geparste Berichte, zwei Missbeobachtungen mit NULL-Name/-Zahlen; Kontextanzahl wird vor SUT unabhängig aus den Originalpaaren festgelegt. | PASS |
+| K-N06 | Miss, CONSOLE/JSON, Cap0, nur neuer Opt-in1 | Genau ein Grid, C=12, P=12 und unabhängig vorbestimmtes A; unveränderte erste vollständige Fehlermeldung. | PASS |
+| K-N07 | Duplicate, TABLE/JSON, nur neuer Opt-in1 | Cap vor SUT so bestimmen, dass erster Cachebericht im Puffer und sein Source-EXECUTE-Ende außerhalb liegt; N+1 zählt korrekt, keine erfundene ASSIGNED-Zeile. | PASS |
+| K-N08 | Miss, NONE/JSON, Cap0, Messages0, neuer Opt-in1 | Keine Grids, Source8 NOT_READ/MESSAGES_DISABLED, neue Menge leer und drei NULL-Zähler ohne fachlichen message-Zugriff. | PASS |
 
 Die exakten 3/2-Zeilenwerte, 0.001 Sekunden und 378 Byte werden gegen den
 Originaltext geprüft; kontrollierte Referenzdaten und native Callbackbindung
@@ -2807,7 +2811,7 @@ Reale Captures, Identitäten, Pfade und Budgets bleiben privat außerhalb von Gi
 
 ### K9. Review, endliche Entwurfswelle und menschliche Freigabe
 
-Die aktuelle Entwurfswelle hat genau einen Autor und einen begründeten
+Die abgeschlossene Entwurfswelle hat genau einen Autor und einen begründeten
 lesenden Vertragsreview durch den tatsächlich bisherigen Reviewer. Seine
 Wiederverwendung wird anhand der ursprünglichen Agent-/Chatbindung und
 seines letzten Abschlusses geprüft; ein identischer Anzeigename genügt nicht.
@@ -2817,14 +2821,19 @@ der unabhängigen Sollprüfung. Konkrete Befunde korrigiert der Autor im selben
 Auftrag; ein abgeschlossener Review startet keinen weiteren Review des Reviews.
 Bis zum belegten Abschluss bleibt der Review ausdrücklich offen.
 
-Die Grenzen dieser Welle lauten Autor1, Vertragsreview1, Native0, Consumer0,
-SDK0 und CI0. Kosten und Kontingente sind UNKNOWN; historische Budgets bleiben
+Die abgeschlossene Entwurfswelle behält Autor1, Vertragsreview1, Native0,
+Consumer0, SDK0 und CI0. Die menschlich freigegebene Umsetzungswelle hat einen
+Autor, denselben Reviewer mit genau zwei begründeten Prüfungen vor Effekten
+und nach Ergebnissen, höchstens zwei synthetische Versuche einschließlich
+extrahierter Stufen und zwei Arrange-/Consumerversuche mit insgesamt acht
+Consumeraufrufen einschließlich Fehlern. Paketausführungen und SDK-Aufrufe
+bleiben 0. Höchstens vier CI-Qualifikationen schließen den Pflicht-Mainlauf ein. Kosten und Kontingente sind UNKNOWN; historische Budgets bleiben
 unverändert geschlossen. Ausgeführt werden nur proportionale lokale
-Dokumentations-, Link-, Präfix-, Scope- und Datenschutzprüfungen. Es gibt
-keine Produkt-, Test-, Installer-, Inventar- oder Workflowimplementierung,
-keinen Push, PR oder Merge. Der saubere lokale Entwurfsworktree bleibt zur
-konkreten menschlichen Vertrags- und anschließenden Implementierungsfreigabe
-erhalten. Diese Freigabe steht aus.
+Dokumentations-, Link-, Präfix-, Scope- und Datenschutzprüfungen. Die Implementierung aktualisiert das kanonische Produkt, neue Suite 207,
+betroffene Inventare, Referenzen und generierte Installer gemeinsam. Nach
+begrenzter Abnahme folgen Ergebnisreview, exakte Head-CI, reguläre Integration,
+Treeidentität, Mainchecks und ausschließlich eigenes Cleanup. Bestandene
+unveränderte Tests und geschlossene frühere Wellen werden nicht wiederholt.
 
 Die Herstellerreferenz bestätigt die Unterscheidung der Cachecodes sowie
 Duplicate-/Missdiagnostik; sie ersetzt keine positiven Originaldaten. Maßgeblich
@@ -2833,3 +2842,62 @@ und die [Lookup-Dokumentation](https://learn.microsoft.com/en-us/sql/integration
 gelesen am 19. Oktober 2026. Die sechs konkreten serialisierten Payloadformen
 und CRLF-Enden stammen aus den eigenen erhaltenen Aufnahmen. Weitere Sprachen,
 Zahlenskalen, Code-/Formatvarianten, Engines und Rollen sind nicht qualifiziert.
+
+
+### Begrenzte Lookup-/Cacheabnahme vom 19. Oktober 2026
+
+Produktversion 1.5.0 ergänzt den freigegebenen Opt-in an Position 25,
+SchemaVersion 6 und genau eine neue Menge `lookupCacheEvents` mit 23 Feldern.
+Die sechs exakten englischen CRLF-Profile liefern einzelne Cacheberichte und
+Duplicate-/Missdiagnosen. Andere oder unvollständige Profile bleiben sichtbar
+und uninterpretierte Evidenz. Es entstehen keine Summen über Berichtsarten,
+Cache-Hit-Raten, Konfigurationsgarantien oder Ursachenbehauptungen.
+
+Integration207 besteht mit 207 unabhängigen Payload-Sollsätzen, allen 32
+Flagkombinationen, sieben Ausgabeprüfungen und acht getrennten Berichten über
+verschiedene Sources und Iterationen. Zwei weitere Quellgrenzen prüfen eine
+fehlende Tabelle und eine fehlende Pflichtspalte. Die TABLE-Prüfung bestätigt
+alle 23 logischen Exportordinalitäten und nativen Schemafacetten einschließlich
+Nullbarkeit, Collation und decimal(28,3). Sechs Mappingablehnungen und eine
+direkte native 229-Gegenprobe sind enthalten.
+
+Zwölf getrennte quellgebundene Stufen prüfen unter anderem Mehrdeutigkeit vor
+Zeitprüfung, strenge LogId-Ränder, fehlende Source-ID, fehlende vorherige
+Ableitung, Deadline und atomare Verwerfung, das erste native Fehlerpaar sowie
+die isolierte UTF-16-Namensgrenze. Diese Stufen sind kein vollständiger
+Original-SUT-Fehler- oder Timingnachweis. Der erste synthetische Versuch
+scheiterte nach bestandener Integration207 und neun Stufen an einer neuen
+Fixture mit fehlendem Pflichtwert Detail und nativem Fehler 515. Nach der
+engen Fixturekorrektur liefen ausschließlich die drei offenen Stufen. Die
+bestandenen unveränderten Gruppen wurden hashgebunden wiederverwendet.
+
+Die acht festgelegten Restoreconsumer bestehen auf Windows SQL Server
+17.0.5015.4 mit CL170 und beobachtetem sysadmin. Die vier einmal gelesenen und
+hashgeprüften Originalaufnahmen enthalten 12/16/60/61 Zeilen und liefern
+0/0/10/12 Kandidaten. Alle zehn beziehungsweise zwölf Lookupberichte sind
+lesbar und kontextzugeordnet. Der vorher festgelegte Duplicate-Cap 23 liefert
+einen lesbaren Bericht ohne beobachtetes Paarende. RAW10/16, TABLE, JSON,
+CONSOLE1, NONE0 und Meldungs-Opt-out sind geprüft. Die Referenz vergleicht
+alle 23 Felder, native Facetten, Sparse-Quellenstatus, unabhängige Modul- und
+OUTPUT-Zustände, drei Console-Zähler und N+1. 121 Feld-/Pflichtfeldmutationen
+und 21 weitere Offline-Negativkontrollen werden abgewiesen.
+
+Alle neun ursprünglichen Providerwerte bleiben in Vorher-/Nachheraufnahmen
+exakt erhalten. Eigene Datenbanken und Quelltabellen sind über native
+Identität, Erstellungszeit und Ownership gebunden; Cleanup- und
+Retentionfehler sind 0 und das ursprüngliche Datenbankinventar ist erhalten.
+Eine ausschließlich private Berichtszählervariable verdeckte zunächst die
+bereits durchlaufenen acht Consumerprüfungen mit dem Wert 2. Die
+Ergebniszahl wurde anhand der zwingenden Acht-Tupel- und Journalguards
+mechanisch korrigiert; bestandene Vergleiche und SQL-Aufrufe wurden nicht
+wiederholt. Originalbeleg und Korrektur bleiben getrennt erhalten.
+
+Neue Paketausführungen und SDK-Aufrufe sind 0. Restoreconsumer sind neue
+Analyzerprüfungen auf erhaltenen Originalen und keine frische
+Providerqualifikation. Native11/12 bleiben insgesamt FAILED_NOT_QUALIFIED.
+Gemeldete Speicherwerte sind keine unabhängige physische Speichermessung;
+Vorbereitungszeit, Partial-Cache-Operationsprofile, weitere Sprachen,
+allgemeine Rollen-/Versionsabdeckung und zusätzliche Loggingquellen bleiben
+offen. SSIS-001 bleibt PARTIAL_PRODUCT_FUNCTION und WI-0009 GATE-0001 offen.
+Der Ergebnisreview und die exakte Head-CI werden als eigene Liefergates
+geführt; nach regulärer Integration folgen Treeidentität und Mainchecks.

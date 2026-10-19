@@ -3,27 +3,31 @@
 **Stand:** 19. Oktober 2026
 **Zweck:** aktuelle ausführbare Entwicklungswelle für `gecompat/SQL_Server_Analyze`
 
-## Lookup-/Cachevertrag: menschliche Freigabe ausstehend
+## Freigegebene Lookup-/Cacheanalyse vom 19. Oktober 2026
 
-Der direkte Auftrag vom 19. Oktober 2026 umfasst ausschließlich einen
-[konkreten Erweiterungsentwurf K1–K9](../../../Documentation/Architecture/SSIS_001_Phase0_Public_Contract.md#entwurf-legacy-lookup--und-cachemeldungen-vom-19-oktober-2026)
-und dessen Abnahmeplan. Sechs tatsächlich beobachtete englische Formen
-trennen Cacheberichte von Duplicate-/Missdiagnostik. Separate Vorbereitungs-
-und Partial-Cache-Operationsprofile besitzen hier keine positive Originalbasis.
-Die 14 synthetischen Gruppen und acht späteren Restoreconsumer bleiben
-NOT_EXECUTED. Es gibt keine Implementierung oder neue native Ausführung.
+Die vom direkten Benutzer freigegebene Lookup-/Cacheanalyse ist in
+Produktversion 1.5.0 implementiert. Position 25, SchemaVersion 6, sechs
+originalbelegte Profile und eine neue 23-Feld-Menge begrenzen den Umfang.
+Integration207 besteht mit 207 Payloadfällen, 32 Flagkombinationen und
+sieben Ausgabeprüfungen. Zwölf getrennte extrahierte Stufen und genau acht
+Restoreconsumer aus den vier erhaltenen Originalaufnahmen sind qualifiziert.
+Ein privater Fixturefehler 515 und eine mechanische Berichtszählerkorrektur
+bleiben in der Evidenz erhalten; unveränderte bestandene Gruppen wurden
+nicht wiederholt. 142 Offline-Negativkontrollen werden abgewiesen.
 
-Die aktuelle Grenze lautet ein Autor, ein Vertragsreview durch den belegten
-bisherigen Reviewer, Native0, Consumer0, SDK0 und CI0; Kosten und Kontingente
-sind UNKNOWN. Historische Budgets und fehlgeschlagene Gesamtläufe bleiben
-unverändert. Der lokale Entwurf wird nach proportionalen Dokumentationsprüfungen
-zur konkreten menschlichen Freigabe erhalten und nicht automatisch integriert.
-Der bisherige unabhängige Reviewer hat den hashgebundenen K1–K9-Vertrag mit
-NoOpenP1P2 abgeschlossen. Die konkrete menschliche Vertrags- und
-Implementierungsfreigabe steht weiterhin aus. `SSIS-001` bleibt
-PARTIAL_PRODUCT_FUNCTION und WI-0009 GATE-0001 offen. Die Lifecycle-Lieferung
-ist bereits regulär abgeschlossen; frühere nachfolgende Liefergates eröffnen
-keine neue Welle. Der frühere Orchestrator und sein Heartbeat sind beendet.
+Die [begrenzte Abnahme](../../../Documentation/Architecture/SSIS_Package_and_Execution_Analysis_Plan.md#begrenzte-lookup-cacheabnahme-vom-19-oktober-2026)
+trennt vollständige Analyzeraufrufe, restaurierte Originaldaten und
+extrahierte Stufen. Neue Paketausführungen und SDK-Aufrufe sind 0. Alle neun
+Providerwerte, Callerzustände und das Datenbankinventar bleiben erhalten;
+eigene Ressourcen sind entfernt. Native11/12 bleiben insgesamt
+FAILED_NOT_QUALIFIED. Vorbereitungs-/Partial-Cache-Operationsprofile,
+allgemeine Rollen-/Versionsabdeckung und weitere Loggingquellen bleiben
+offen. SSIS-001 bleibt PARTIAL_PRODUCT_FUNCTION; WI-0009 GATE-0001 bleibt offen.
+
+Die neue Welle führt zwei Reviewphasen und die erforderlichen Liefergates.
+Nach Ergebnisreview folgen exakte Head-CI, reguläre PR-Integration,
+Treeidentität, Mainchecks und Synchronisierung. Historische Budgets bleiben
+geschlossen; Kosten und Kontingente sind UNKNOWN.
 
 ## Freigegebene Legacy-Lifecycle-Analyse vom 19. Oktober 2026
 

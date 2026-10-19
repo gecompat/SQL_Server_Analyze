@@ -1788,32 +1788,67 @@ bleiben offen.
 
 ## Lookup-/Cachemeldungen: Vertragsentwurf vom 19. Oktober 2026
 
-Der [nicht freigegebene Erweiterungsentwurf K1–K9](SSIS_001_Phase0_Public_Contract.md#entwurf-legacy-lookup--und-cachemeldungen-vom-19-oktober-2026)
-konkretisiert ausschließlich den Lookup-/Cacheanteil von Schritt 4.
-Ein Opt-in an Position 25 und SchemaVersion=6 sind vorgesehen; die vorhandene
-Produktversion 1.4.0 wird durch diesen Entwurf nicht verändert. Genau eine
-neue Ereignismenge mit 23 Feldern soll sechs originalbelegte englische
-Payloadprofile auswerten. Cachefortschritt, Gesamtmenge, Unique-Menge und
-Verarbeitung mit gemeldeten Sekunden und Byte bleiben voneinander sowie von
-Duplicate-/Missdiagnostik getrennt. Data-Flow- und Paketmeldungen werden
-weder dedupliziert noch addiert. Es entstehen keine Cache-Hit-Raten,
-Konfigurationsgarantien oder Ursachenbehauptungen.
+Der direkte Benutzer hat den [geprüften Erweiterungsvertrag K1–K9](SSIS_001_Phase0_Public_Contract.md#freigegebene-erweiterung-legacy-lookup-und-cachemeldungen-vom-19-oktober-2026)
+samt begrenztem Abnahmeplan zur Implementierung und regulären PR-Lieferung
+freigegeben. Dieser Slice betrifft ausschließlich den Lookup-/Cacheanteil
+von Schritt 4. Separate Vorbereitungs-/Partial-Cache-Operationsprofile
+besitzen keine positive Originalbasis und bleiben ausgeschlossen. Die
+weitere Planung aktiviert keine Buffer-, Provider- oder Execute-SQL-Umsetzung.
 
-Die vorhandenen Basic-/SQLFailure-/Duplicate-/Miss-Aufnahmen wurden nur
-lesend und hashgebunden untersucht; insbesondere bestimmen die exakten
-CRLF-Enden der erhaltenen JSON-Snapshots die Grammatik. Native11/12 bleiben
-insgesamt FAILED_NOT_QUALIFIED; ihre tragfähigen Einzelbelege werden dadurch
-nicht zu neuen Gesamtabnahmen. Separate Vorbereitungszeit und Partial-Cache-
-Operationen besitzen hier keine positive Originalbasis und bleiben vom
-Decoderumfang ausgeschlossen. Die weitere Planung aktiviert weder Buffer-,
-Provider- noch Execute-SQL-Implementierung.
+### Begrenzte Lookup-/Cacheabnahme vom 19. Oktober 2026
 
-Der konkrete Abnahmevorschlag enthält 14 synthetische Gruppen und höchstens
-acht neue Restoreconsumer, sämtlich NOT_EXECUTED. Neue Paketausführungen zur
-Beschaffung fehlender Originale sind ausgeschlossen. Die aktuelle Welle ist
-auf einen Autor, einen lesenden Review durch den tatsächlich bisherigen
-Reviewer und Native0/Consumer0/SDK0/CI0 begrenzt. Der hashgebundene
-Vertragsreview ist mit NoOpenP1P2 abgeschlossen. Die konkrete menschliche
-Vertrags- und Implementierungsfreigabe steht weiterhin aus.
-Der lokale Entwurf wird nicht automatisch integriert; SSIS-001 bleibt
-PARTIAL_PRODUCT_FUNCTION und WI-0009 GATE-0001 offen.
+Produktversion 1.5.0 ergänzt den freigegebenen Opt-in an Position 25,
+SchemaVersion 6 und genau eine neue Menge `lookupCacheEvents` mit 23 Feldern.
+Die sechs exakten englischen CRLF-Profile liefern einzelne Cacheberichte und
+Duplicate-/Missdiagnosen. Andere oder unvollständige Profile bleiben sichtbar
+und uninterpretierte Evidenz. Es entstehen keine Summen über Berichtsarten,
+Cache-Hit-Raten, Konfigurationsgarantien oder Ursachenbehauptungen.
+
+Integration207 besteht mit 207 unabhängigen Payload-Sollsätzen, allen 32
+Flagkombinationen, sieben Ausgabeprüfungen und acht getrennten Berichten über
+verschiedene Sources und Iterationen. Zwei weitere Quellgrenzen prüfen eine
+fehlende Tabelle und eine fehlende Pflichtspalte. Die TABLE-Prüfung bestätigt
+alle 23 logischen Exportordinalitäten und nativen Schemafacetten einschließlich
+Nullbarkeit, Collation und decimal(28,3). Sechs Mappingablehnungen und eine
+direkte native 229-Gegenprobe sind enthalten.
+
+Zwölf getrennte quellgebundene Stufen prüfen unter anderem Mehrdeutigkeit vor
+Zeitprüfung, strenge LogId-Ränder, fehlende Source-ID, fehlende vorherige
+Ableitung, Deadline und atomare Verwerfung, das erste native Fehlerpaar sowie
+die isolierte UTF-16-Namensgrenze. Diese Stufen sind kein vollständiger
+Original-SUT-Fehler- oder Timingnachweis. Der erste synthetische Versuch
+scheiterte nach bestandener Integration207 und neun Stufen an einer neuen
+Fixture mit fehlendem Pflichtwert Detail und nativem Fehler 515. Nach der
+engen Fixturekorrektur liefen ausschließlich die drei offenen Stufen. Die
+bestandenen unveränderten Gruppen wurden hashgebunden wiederverwendet.
+
+Die acht festgelegten Restoreconsumer bestehen auf Windows SQL Server
+17.0.5015.4 mit CL170 und beobachtetem sysadmin. Die vier einmal gelesenen und
+hashgeprüften Originalaufnahmen enthalten 12/16/60/61 Zeilen und liefern
+0/0/10/12 Kandidaten. Alle zehn beziehungsweise zwölf Lookupberichte sind
+lesbar und kontextzugeordnet. Der vorher festgelegte Duplicate-Cap 23 liefert
+einen lesbaren Bericht ohne beobachtetes Paarende. RAW10/16, TABLE, JSON,
+CONSOLE1, NONE0 und Meldungs-Opt-out sind geprüft. Die Referenz vergleicht
+alle 23 Felder, native Facetten, Sparse-Quellenstatus, unabhängige Modul- und
+OUTPUT-Zustände, drei Console-Zähler und N+1. 121 Feld-/Pflichtfeldmutationen
+und 21 weitere Offline-Negativkontrollen werden abgewiesen.
+
+Alle neun ursprünglichen Providerwerte bleiben in Vorher-/Nachheraufnahmen
+exakt erhalten. Eigene Datenbanken und Quelltabellen sind über native
+Identität, Erstellungszeit und Ownership gebunden; Cleanup- und
+Retentionfehler sind 0 und das ursprüngliche Datenbankinventar ist erhalten.
+Eine ausschließlich private Berichtszählervariable verdeckte zunächst die
+bereits durchlaufenen acht Consumerprüfungen mit dem Wert 2. Die
+Ergebniszahl wurde anhand der zwingenden Acht-Tupel- und Journalguards
+mechanisch korrigiert; bestandene Vergleiche und SQL-Aufrufe wurden nicht
+wiederholt. Originalbeleg und Korrektur bleiben getrennt erhalten.
+
+Neue Paketausführungen und SDK-Aufrufe sind 0. Restoreconsumer sind neue
+Analyzerprüfungen auf erhaltenen Originalen und keine frische
+Providerqualifikation. Native11/12 bleiben insgesamt FAILED_NOT_QUALIFIED.
+Gemeldete Speicherwerte sind keine unabhängige physische Speichermessung;
+Vorbereitungszeit, Partial-Cache-Operationsprofile, weitere Sprachen,
+allgemeine Rollen-/Versionsabdeckung und zusätzliche Loggingquellen bleiben
+offen. SSIS-001 bleibt PARTIAL_PRODUCT_FUNCTION und WI-0009 GATE-0001 offen.
+Der Ergebnisreview und die exakte Head-CI werden als eigene Liefergates
+geführt; nach regulärer Integration folgen Treeidentität und Mainchecks.

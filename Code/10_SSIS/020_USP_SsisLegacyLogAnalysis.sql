@@ -4,7 +4,7 @@ GO
 /*
 ===============================================================================
 Objekt       : monitor.USP_SsisLegacyLogAnalysis
-Version      : 1.4.0
+Version      : 1.5.0
 Stand        : 2026-10-19
 Typ          : Stored Procedure
 Zweck        : Liest eine explizite Legacy-Loggingquelle für genau eine GUID.
@@ -36,6 +36,7 @@ CREATE OR ALTER PROCEDURE [monitor].[USP_SsisLegacyLogAnalysis]
     , @IncludeRowFlowAnalysis bit = 0
     , @IncludeComponentPhaseAnalysis bit = 0
     , @IncludeComponentLifecyclePhases bit = 0
+    , @IncludeLookupCacheAnalysis bit = 0
 AS
 BEGIN
     SET NOCOUNT ON;
@@ -49,10 +50,11 @@ BEGIN
         PRINT N'@IncludeRowFlowAnalysis=1 ergänzt OnPipelineRowsSent-Pfade: SchemaVersion3, RAW11 oder mit Taskanalyse RAW13; keine Paketgesamtmenge.';
         PRINT N'@IncludeComponentPhaseAnalysis=1 ergänzt PipelineComponentTime-Berichte für ProcessInput/PrimeOutput: SchemaVersion4, zwei letzte Mengen; keine CPU- oder exklusive Zeit.';
         PRINT N'@IncludeComponentLifecyclePhases=1 benötigt @IncludeComponentPhaseAnalysis=1 und ergänzt Validate/PreExecute/PostExecute: SchemaVersion5; getrennte VALIDATE-/EXECUTE-Berichtskontexte.';
+        PRINT N'@IncludeLookupCacheAnalysis=1 ergänzt sechs Lookup-/Cacheprofile als einzelne Berichte: Position25, SchemaVersion6; keine Hit-Rate oder Gesamtmengenaddition.';
         PRINT N'@MaxZeilen NULL/0 und eingeschlossenes nvarchar(max) benötigen @HighImpactConfirmed=1. Zeitbudget ist kooperativ.';
         RETURN;
     END;
-    SELECT @IncludeComponentLifecyclePhases=COALESCE(@IncludeComponentLifecyclePhases,0),@IncludeComponentPhaseAnalysis=COALESCE(@IncludeComponentPhaseAnalysis,0),@IncludeRowFlowAnalysis=COALESCE(@IncludeRowFlowAnalysis,0),@IncludeTaskAnalysis=COALESCE(@IncludeTaskAnalysis,0),@IncludeTimeline=COALESCE(@IncludeTimeline,1),@IncludeMessages=COALESCE(@IncludeMessages,1),@HighImpactConfirmed=COALESCE(@HighImpactConfirmed,0);
+    SELECT @IncludeLookupCacheAnalysis=COALESCE(@IncludeLookupCacheAnalysis,0),@IncludeComponentLifecyclePhases=COALESCE(@IncludeComponentLifecyclePhases,0),@IncludeComponentPhaseAnalysis=COALESCE(@IncludeComponentPhaseAnalysis,0),@IncludeRowFlowAnalysis=COALESCE(@IncludeRowFlowAnalysis,0),@IncludeTaskAnalysis=COALESCE(@IncludeTaskAnalysis,0),@IncludeTimeline=COALESCE(@IncludeTimeline,1),@IncludeMessages=COALESCE(@IncludeMessages,1),@HighImpactConfirmed=COALESCE(@HighImpactConfirmed,0);
     DECLARE @OutputMode varchar(16)=UPPER(LTRIM(RTRIM(COALESCE(@ResultSetArt,'')))) COLLATE SQL_Latin1_General_CP1_CS_AS;
     DECLARE @ConsoleResultRequested bit=CASE WHEN @OutputMode='CONSOLE' THEN 1 ELSE 0 END;
     DECLARE @Now datetime2(3)=SYSUTCDATETIME(),@Deadline datetime2(3),@Status varchar(40)='AVAILABLE',@Partial bit=0;
@@ -61,10 +63,12 @@ BEGIN
     DECLARE @TaskSources bigint=NULL,@TaskValid bigint=NULL,@TaskUnresolved bigint=NULL;
     DECLARE @RowComplete bit=0,@RowStarted bit=0,@RowCandidates bigint=NULL,@RowParsed bigint=NULL,@RowAssigned bigint=NULL;
     DECLARE @PhaseComplete bit=0,@PhaseStarted bit=0,@PhaseCandidates bigint=NULL,@PhaseParsed bigint=NULL,@PhaseAssigned bigint=NULL;
+    DECLARE @LookupComplete bit=0,@LookupStarted bit=0,@LookupCandidates bigint=NULL,@LookupParsed bigint=NULL,@LookupAssigned bigint=NULL;
     DECLARE @AllowedNames nvarchar(max)=N'moduleStatus|execution|timeline|errorChain|iterations|loggingQuality|findings|sourceStatus|warnings';
     IF @IncludeTaskAnalysis=1 SET @AllowedNames+=N'|taskDurations|taskLoggingCoverage';
     IF @IncludeRowFlowAnalysis=1 SET @AllowedNames+=N'|rowFlowEvents|rowFlow';
     IF @IncludeComponentPhaseAnalysis=1 SET @AllowedNames+=N'|componentPhaseEvents|componentPhaseTimes';
+    IF @IncludeLookupCacheAnalysis=1 SET @AllowedNames+=N'|lookupCacheEvents';
     DECLARE @Limit bigint=CASE WHEN COALESCE(@MaxZeilen,0)=0 THEN 9223372036854775807 ELSE CONVERT(bigint,@MaxZeilen) END;
     DECLARE @Take bigint=CASE WHEN COALESCE(@MaxZeilen,0)=0 THEN 9223372036854775807 ELSE CONVERT(bigint,@MaxZeilen)+1 END;
     DECLARE @PreviousLock int=@@LOCK_TIMEOUT,@PreviousAbort bit=CASE WHEN (@@OPTIONS & 16384)=16384 THEN 1 ELSE 0 END;
@@ -349,6 +353,32 @@ BEGIN
         [InputIsTruncated] bit NOT NULL,
         [CoverageStatus] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
     );
+    CREATE TABLE [#SsisLegacyLogAnalysis_LookupCacheEvents]
+    (
+        [LookupEventOrdinal] bigint NOT NULL,
+        [LogId] int NOT NULL,
+        [ExecutionId] uniqueidentifier NOT NULL,
+        [EventName] nvarchar(128) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,
+        [SourceId] uniqueidentifier NULL,
+        [SourceName] nvarchar(4000) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,
+        [EventTime] datetime NULL,
+        [DataCode] int NULL,
+        [ParserId] varchar(32) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,
+        [ParseStatus] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,
+        [ObservationKind] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,
+        [ComponentName] nvarchar(4000) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,
+        [ReportedRows] bigint NULL,
+        [ReportedProcessingSeconds] decimal(28,3) NULL,
+        [ReportedMemoryBytes] bigint NULL,
+        [DiagnosticCode] varchar(64) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,
+        [ContextStatus] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,
+        [ContextStartLogId] int NULL,
+        [ContextEndLogId] int NULL,
+        [InputIsTruncated] bit NOT NULL,
+        [EvidenceLevel] varchar(32) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,
+        [EvidenceSource] nvarchar(160) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,
+        [MessageText] nvarchar(max) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+    );
     CREATE TABLE [#SsisLegacyLogAnalysis_Buffer]
     ([LogId] int NOT NULL,[EventName] nvarchar(128) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,
      [SourceName] nvarchar(4000) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,[SourceId] uniqueidentifier NULL,
@@ -377,6 +407,10 @@ BEGIN
         INSERT [#SsisLegacyLogAnalysis_SourceStatus]
             ([SourceOrdinal],[SourceName],[StatusCode],[IsPartial],[IsTruncated],[Detail],[CollectionTimeUtc])
         VALUES(7,N'componentPhaseAnalysis','NOT_READ',1,0,N'NOT_READ',@Now);
+    IF @IncludeLookupCacheAnalysis=1
+        INSERT [#SsisLegacyLogAnalysis_SourceStatus]
+            ([SourceOrdinal],[SourceName],[StatusCode],[IsPartial],[IsTruncated],[Detail],[CollectionTimeUtc])
+        VALUES(8,N'lookupCacheAnalysis','NOT_READ',1,0,N'NOT_READ',@Now);
     IF @IncludeTimeline=0 INSERT [#SsisLegacyLogAnalysis_Warnings] VALUES(0,'TIMELINE_NOT_REQUESTED',NULL,N'Der Timelineexport wurde abgeschaltet.');
     IF @IncludeMessages=0 INSERT [#SsisLegacyLogAnalysis_Warnings] VALUES(0,'MESSAGES_NOT_REQUESTED',NULL,N'Der fachliche Meldungstextzugriff wurde abgeschaltet.');
     IF @OutputMode NOT IN ('CONSOLE','RAW','TABLE','NONE')
@@ -1206,6 +1240,205 @@ BEGIN
             END;
         END;
         -- END COMPONENT PHASE ANALYSIS
+        -- BEGIN LOOKUP CACHE ANALYSIS: individual reports do not define additive cache totals.
+        IF @IncludeLookupCacheAnalysis=1
+        BEGIN
+            DECLARE @LookupReason nvarchar(2000)=CASE WHEN @Status='INVALID_PARAMETER' THEN N'INVALID_PARAMETER'
+                WHEN @ValidBuffer=0 THEN N'NO_VALID_EVENT_BUFFER' WHEN @DerivationComplete=0 THEN N'PRIOR_DERIVATION_NOT_COMPLETED'
+                WHEN @IncludeMessages=0 THEN N'MESSAGES_DISABLED' WHEN SYSUTCDATETIME()>=@Deadline THEN N'TIME_BUDGET_EXHAUSTED' END;
+            IF @LookupReason IS NULL
+            BEGIN TRY
+                SET @LookupStarted=1;
+                DECLARE @LookupMessageBytes int=(SELECT CASE WHEN MaxLength=-1 OR MaxLength>4096 THEN 4096 ELSE MaxLength END
+                    FROM [#SsisLegacyLogAnalysis_Columns] WHERE ColumnName=N'message');
+                INSERT [#SsisLegacyLogAnalysis_LookupCacheEvents]
+                SELECT ROW_NUMBER() OVER(ORDER BY LogId),LogId,ExecutionId,EventName,SourceId,SourceName,EventTime,DataCode,
+                    NULL,'UNSUPPORTED_FORMAT',NULL,NULL,NULL,NULL,NULL,NULL,'NOT_PARSED',NULL,NULL,@Truncated,
+                    'UNINTERPRETED',N'Legacy event buffer',MessageText
+                FROM [#SsisLegacyLogAnalysis_Buffer]
+                WHERE DataCode IN(1074041076,1074041077,1075876672,1075876066,-2145349404,-1071607778,
+                    1075876065,1075876067,1075876068,1075876628,1075876629);
+                DECLARE @LookupOrdinal bigint=1,@LookupCount bigint=(SELECT COUNT_BIG(*) FROM [#SsisLegacyLogAnalysis_LookupCacheEvents]);
+                DECLARE @LText nvarchar(max),@LEvent nvarchar(128),@LCode int,@LParser varchar(32),@LParse varchar(40),
+                    @LKind varchar(40),@LName nvarchar(max),@LRows nvarchar(max),@LSeconds nvarchar(max),@LBytes nvarchar(max),
+                    @LExpected nvarchar(max),@LDelimiter nvarchar(400),@LEnd nvarchar(400),@LDiagnostic varchar(64),
+                    @LRowsValue bigint,@LSecondsValue decimal(28,3),@LBytesValue bigint,@LBad bit,@LPos int,@LPos2 int,@LPos3 int,
+                    @LChar int,@LUnicode int,@LInteger nvarchar(max),@LCrlf nchar(2)=NCHAR(13)+NCHAR(10);
+                WHILE @LookupOrdinal<=@LookupCount
+                BEGIN
+                    SELECT @LText=MessageText,@LEvent=EventName,@LCode=DataCode FROM [#SsisLegacyLogAnalysis_LookupCacheEvents] WHERE LookupEventOrdinal=@LookupOrdinal;
+                    SELECT @LParser=NULL,@LParse='UNSUPPORTED_FORMAT',@LKind=NULL,@LName=NULL,@LRows=NULL,@LSeconds=NULL,@LBytes=NULL,
+                        @LDiagnostic=NULL,@LExpected=NULL,@LRowsValue=NULL,@LSecondsValue=NULL,@LBytesValue=NULL,@LBad=0;
+                    IF @LText IS NULL SET @LParse='MESSAGE_MISSING';
+                    ELSE IF DATALENGTH(@LText)>=@LookupMessageBytes SET @LParse='POTENTIALLY_TRUNCATED';
+                    ELSE IF @LCode IN(1074041076,1074041077,1075876672,1075876066,-2145349404,-1071607778)
+                    BEGIN
+                        IF @LEvent IS NULL OR CONVERT(varbinary(max),@LEvent)<>CONVERT(varbinary(max),
+                            CASE WHEN @LCode=-2145349404 THEN N'OnWarning' WHEN @LCode=-1071607778 THEN N'OnError' ELSE N'OnInformation' END)
+                            SET @LParse='CODE_EVENT_MISMATCH';
+                        ELSE
+                        BEGIN
+                            SELECT @LParser=CASE @LCode WHEN 1074041076 THEN 'LC_PROGRESS_EN_1' WHEN 1074041077 THEN 'LC_FINAL_EN_1'
+                                WHEN 1075876672 THEN 'LC_UNIQUE_EN_1' WHEN 1075876066 THEN 'LC_PROCESS_EN_1'
+                                WHEN -2145349404 THEN 'LC_DUPLICATE_EN_1' ELSE 'LC_MISS_EN_1' END,
+                                @LKind=CASE @LCode WHEN 1074041076 THEN 'CACHE_PROGRESS' WHEN 1074041077 THEN 'CACHE_TOTAL'
+                                WHEN 1075876672 THEN 'CACHE_UNIQUE_ADDED' WHEN 1075876066 THEN 'CACHE_PROCESSED'
+                                WHEN -2145349404 THEN 'LOOKUP_DUPLICATE' ELSE 'LOOKUP_MISS' END;
+                            IF @LCode IN(1074041076,1074041077)
+                            BEGIN
+                                SELECT @LDelimiter=CASE WHEN @LCode=1074041076 THEN N' has cached ' ELSE N' has cached a total of ' END,@LEnd=N' rows.'+@LCrlf;
+                                SET @LPos=CHARINDEX(@LDelimiter,@LText COLLATE Latin1_General_100_BIN2);
+                                SELECT @LName=LEFT(@LText COLLATE Latin1_General_100_BIN2,CASE WHEN @LPos>0 THEN @LPos-1 ELSE 0 END),
+                                    @LRows=SUBSTRING(@LText COLLATE Latin1_General_100_BIN2,@LPos+DATALENGTH(@LDelimiter)/2,
+                                        CASE WHEN DATALENGTH(@LText)/2>=@LPos+DATALENGTH(@LDelimiter)/2+DATALENGTH(@LEnd)/2-1 THEN DATALENGTH(@LText)/2-@LPos-DATALENGTH(@LDelimiter)/2-DATALENGTH(@LEnd)/2+1 ELSE 0 END);
+                                SET @LExpected=@LName+@LDelimiter+@LRows+@LEnd;
+                                IF @LPos=0 OR CHARINDEX(@LDelimiter,@LText COLLATE Latin1_General_100_BIN2,@LPos+1)>0 SET @LBad=1;
+                            END
+                            ELSE IF @LCode=1075876672
+                            BEGIN
+                                SELECT @LDelimiter=N'The number of unique rows added to the cache is ',@LEnd=N'.'+@LCrlf;
+                                SET @LRows=SUBSTRING(@LText COLLATE Latin1_General_100_BIN2,DATALENGTH(@LDelimiter)/2+1,
+                                    CASE WHEN DATALENGTH(@LText)>=DATALENGTH(@LDelimiter)+DATALENGTH(@LEnd) THEN (DATALENGTH(@LText)-DATALENGTH(@LDelimiter)-DATALENGTH(@LEnd))/2 ELSE 0 END);
+                                SET @LExpected=CONVERT(nvarchar(max),@LDelimiter)+@LRows+@LEnd;
+                            END
+                            ELSE IF @LCode=1075876066
+                            BEGIN
+                                SET @LPos=CHARINDEX(N' processed ',@LText COLLATE Latin1_General_100_BIN2,5);
+                                SET @LPos2=CHARINDEX(N' rows in the cache. The processing time was ',@LText COLLATE Latin1_General_100_BIN2,CASE WHEN @LPos>0 THEN @LPos+11 ELSE 1 END);
+                                SET @LPos3=CHARINDEX(N' seconds. The cache used ',@LText COLLATE Latin1_General_100_BIN2,CASE WHEN @LPos2>0 THEN @LPos2+44 ELSE 1 END);
+                                SELECT @LName=SUBSTRING(@LText COLLATE Latin1_General_100_BIN2,5,CASE WHEN @LPos>=5 THEN @LPos-5 ELSE 0 END),
+                                    @LRows=SUBSTRING(@LText COLLATE Latin1_General_100_BIN2,@LPos+11,CASE WHEN @LPos2>=@LPos+11 THEN @LPos2-@LPos-11 ELSE 0 END),
+                                    @LSeconds=SUBSTRING(@LText COLLATE Latin1_General_100_BIN2,@LPos2+44,CASE WHEN @LPos3>=@LPos2+44 THEN @LPos3-@LPos2-44 ELSE 0 END),
+                                    @LBytes=SUBSTRING(@LText COLLATE Latin1_General_100_BIN2,@LPos3+25,CASE WHEN DATALENGTH(@LText)/2>=@LPos3+25+19 THEN DATALENGTH(@LText)/2-@LPos3-25-19+1 ELSE 0 END);
+                                SET @LExpected=CONVERT(nvarchar(max),N'The ')+@LName+N' processed '+@LRows+N' rows in the cache. The processing time was '+@LSeconds+N' seconds. The cache used '+@LBytes+N' bytes of memory.'+@LCrlf;
+                                IF @LPos<5 OR @LPos2<@LPos+11 OR @LPos3<@LPos2+44
+                                    OR CHARINDEX(N' processed ',@LText COLLATE Latin1_General_100_BIN2,@LPos+1)>0
+                                    OR CHARINDEX(N' rows in the cache. The processing time was ',@LText COLLATE Latin1_General_100_BIN2,@LPos2+1)>0
+                                    OR CHARINDEX(N' seconds. The cache used ',@LText COLLATE Latin1_General_100_BIN2,@LPos3+1)>0 SET @LBad=1;
+                            END
+                            ELSE IF @LCode=-2145349404
+                            BEGIN
+                                SET @LDelimiter=N' encountered duplicate reference key values when caching reference data. This error occurs in Full Cache mode only. Either remove the duplicate key values, or change the cache mode to PARTIAL or NO_CACHE.';
+                                SET @LPos=CHARINDEX(@LDelimiter,@LText COLLATE Latin1_General_100_BIN2,5);
+                                SET @LName=SUBSTRING(@LText COLLATE Latin1_General_100_BIN2,5,CASE WHEN @LPos>=5 THEN @LPos-5 ELSE 0 END);
+                                SET @LExpected=CONVERT(nvarchar(max),N'The ')+@LName+@LDelimiter+@LCrlf;
+                                SET @LDiagnostic='LOOKUP_DUPLICATE_REPORTED';
+                                IF @LPos<5 OR CHARINDEX(@LDelimiter,@LText COLLATE Latin1_General_100_BIN2,@LPos+1)>0 SET @LBad=1;
+                            END
+                            ELSE
+                                SELECT @LExpected=N'Row yielded no match during lookup.'+@LCrlf,@LDiagnostic='LOOKUP_MISS_REPORTED';
+                            IF @LExpected IS NULL OR CONVERT(varbinary(max),@LExpected)<>CONVERT(varbinary(max),@LText) SET @LBad=1;
+                            -- Scan UTF-16 code units explicitly: Windows string comparisons do not reliably detect NUL.
+                            SET @LChar=1;
+                            WHILE @LChar<=DATALENGTH(@LText)/2
+                            BEGIN
+                                IF UNICODE(SUBSTRING(@LText COLLATE Latin1_General_100_BIN2,@LChar,1))=0 SET @LBad=1;
+                                SET @LChar+=1;
+                            END;
+                            IF @LName IS NOT NULL
+                            BEGIN
+                                IF DATALENGTH(@LName) NOT BETWEEN 2 AND 8000 SET @LBad=1;
+                                SET @LChar=1;
+                                WHILE @LChar<=DATALENGTH(@LName)/2
+                                BEGIN
+                                    SET @LUnicode=UNICODE(SUBSTRING(@LName COLLATE Latin1_General_100_BIN2,@LChar,1));
+                                    IF @LUnicode BETWEEN 0 AND 31 OR @LUnicode BETWEEN 127 AND 159 OR @LUnicode IN(34,91,93) SET @LBad=1;
+                                    SET @LChar+=1;
+                                END;
+                            END;
+                            IF @LRows IS NOT NULL
+                            BEGIN
+                                IF DATALENGTH(@LRows)=0 OR @LRows COLLATE Latin1_General_100_BIN2 LIKE N'%[^0-9]%'
+                                    OR (DATALENGTH(@LRows)>2 AND LEFT(@LRows,1)=N'0') SET @LBad=1;
+                                SET @LRowsValue=TRY_CONVERT(bigint,@LRows);
+                            END;
+                            IF @LSeconds IS NOT NULL
+                            BEGIN
+                                SET @LInteger=LEFT(@LSeconds COLLATE Latin1_General_100_BIN2,CASE WHEN DATALENGTH(@LSeconds)>=8 THEN DATALENGTH(@LSeconds)/2-4 ELSE 0 END);
+                                IF DATALENGTH(@LSeconds)<10 OR SUBSTRING(@LSeconds COLLATE Latin1_General_100_BIN2,DATALENGTH(@LSeconds)/2-3,1)<>N'.'
+                                    OR DATALENGTH(@LInteger)=0 OR @LInteger COLLATE Latin1_General_100_BIN2 LIKE N'%[^0-9]%'
+                                    OR RIGHT(@LSeconds,3) COLLATE Latin1_General_100_BIN2 LIKE N'%[^0-9]%'
+                                    OR (DATALENGTH(@LInteger)>2 AND LEFT(@LInteger,1)=N'0') SET @LBad=1;
+                                SET @LSecondsValue=TRY_CONVERT(decimal(28,3),@LSeconds);
+                            END;
+                            IF @LBytes IS NOT NULL
+                            BEGIN
+                                IF DATALENGTH(@LBytes)=0 OR @LBytes COLLATE Latin1_General_100_BIN2 LIKE N'%[^0-9]%'
+                                    OR (DATALENGTH(@LBytes)>2 AND LEFT(@LBytes,1)=N'0') SET @LBad=1;
+                                SET @LBytesValue=TRY_CONVERT(bigint,@LBytes);
+                            END;
+                            SET @LParse=CASE WHEN @LBad=1 THEN 'MALFORMED_PAYLOAD'
+                                WHEN (@LRows IS NOT NULL AND @LRowsValue IS NULL) OR (@LSeconds IS NOT NULL AND @LSecondsValue IS NULL) OR (@LBytes IS NOT NULL AND @LBytesValue IS NULL)
+                                    THEN 'NUMERIC_OUT_OF_RANGE' ELSE 'PARSED' END;
+                        END;
+                    END;
+                    UPDATE [#SsisLegacyLogAnalysis_LookupCacheEvents] SET ParserId=@LParser,ParseStatus=@LParse,
+                        ObservationKind=CASE WHEN @LParse='PARSED' THEN @LKind END,ComponentName=CASE WHEN @LParse='PARSED' THEN @LName END,
+                        ReportedRows=CASE WHEN @LParse='PARSED' THEN @LRowsValue END,ReportedProcessingSeconds=CASE WHEN @LParse='PARSED' THEN @LSecondsValue END,
+                        ReportedMemoryBytes=CASE WHEN @LParse='PARSED' THEN @LBytesValue END,DiagnosticCode=CASE WHEN @LParse='PARSED' THEN @LDiagnostic END,
+                        EvidenceLevel=CASE WHEN @LParse='PARSED' THEN 'RUNTIME_OBSERVED' ELSE 'UNINTERPRETED' END
+                    WHERE LookupEventOrdinal=@LookupOrdinal;
+                    SET @LookupOrdinal+=1;
+                END;
+                UPDATE e SET ContextStatus=c.ContextStatus,
+                    ContextStartLogId=CASE WHEN c.ContextStatus='ASSIGNED' THEN p.StartLogId END,
+                    ContextEndLogId=CASE WHEN c.ContextStatus='ASSIGNED' THEN p.EndLogId END
+                FROM [#SsisLegacyLogAnalysis_LookupCacheEvents] AS e
+                OUTER APPLY(SELECT COUNT_BIG(*) AS PairCount,MIN(i.StartLogId) AS StartLogId,MIN(i.EndLogId) AS EndLogId,MIN(i.StartTime) AS StartTime,MIN(i.EndTime) AS EndTime
+                    FROM [#SsisLegacyLogAnalysis_Iterations] AS i WHERE i.ExecutionId=e.ExecutionId AND i.SourceId=e.SourceId AND i.PairKind='EXECUTE' AND i.PairStatus='PAIRED'
+                        AND i.StartLogId<e.LogId AND e.LogId<i.EndLogId) AS p
+                CROSS APPLY(SELECT CASE WHEN e.ParseStatus<>'PARSED' THEN 'NOT_PARSED'
+                    WHEN e.SourceId IS NULL OR e.SourceId='00000000-0000-0000-0000-000000000000' THEN 'SOURCE_ID_MISSING'
+                    WHEN e.EventTime IS NULL THEN 'EVENT_TIME_MISSING' WHEN p.PairCount=0 THEN 'NO_OBSERVED_PAIR'
+                    WHEN p.PairCount>1 THEN 'AMBIGUOUS_PAIR' WHEN e.EventTime<p.StartTime OR e.EventTime>p.EndTime THEN 'TIME_OUTSIDE_PAIR' ELSE 'ASSIGNED' END AS ContextStatus) AS c;
+                -- BEGIN LOOKUP CACHE ATOMIC DECISION
+                IF SYSUTCDATETIME()>=@Deadline SET @LookupReason=N'TIME_BUDGET_EXHAUSTED';
+                ELSE
+                BEGIN
+                    SELECT @LookupCandidates=COUNT_BIG(*),@LookupParsed=COALESCE(SUM(CONVERT(bigint,CASE WHEN ParseStatus='PARSED' THEN 1 ELSE 0 END)),0),
+                        @LookupAssigned=COALESCE(SUM(CONVERT(bigint,CASE WHEN ContextStatus='ASSIGNED' THEN 1 ELSE 0 END)),0)
+                    FROM [#SsisLegacyLogAnalysis_LookupCacheEvents];
+                    DECLARE @LookupLimited bit=CASE WHEN @Truncated=1 OR @LookupParsed<@LookupCandidates OR @LookupAssigned<@LookupParsed THEN 1 ELSE 0 END;
+                    UPDATE [#SsisLegacyLogAnalysis_SourceStatus] SET StatusCode=CASE WHEN @LookupLimited=1 THEN 'AVAILABLE_LIMITED' WHEN @LookupCandidates=0 THEN 'AVAILABLE_EMPTY' ELSE 'AVAILABLE' END,
+                        IsPartial=@LookupLimited,ObservedRowCount=@LookupCandidates,ReturnedRowCount=@LookupCandidates,IsTruncated=0,
+                        Detail=N'Candidates='+CONVERT(nvarchar(20),@LookupCandidates)+N';Parsed='+CONVERT(nvarchar(20),@LookupParsed)+N';ContextAssigned='+CONVERT(nvarchar(20),@LookupAssigned)
+                    WHERE SourceOrdinal=8;
+                    IF @LookupCandidates=0 INSERT [#SsisLegacyLogAnalysis_Warnings] VALUES(0,'LOOKUP_CACHE_EVENT_NOT_OBSERVED',N'lookupCacheAnalysis',N'Keine Kandidaten im gewählten Puffer; kein Nachweis fehlender Lookupausführung.');
+                    IF @LookupParsed<@LookupCandidates INSERT [#SsisLegacyLogAnalysis_Warnings] VALUES(0,'LOOKUP_CACHE_PAYLOAD_NOT_PARSED',N'lookupCacheAnalysis',N'Mindestens ein Kandidat besitzt kein zugelassenes vollständiges Meldungsprofil.');
+                    IF @LookupAssigned<@LookupParsed INSERT [#SsisLegacyLogAnalysis_Warnings] VALUES(0,'LOOKUP_CACHE_CONTEXT_NOT_ASSIGNED',N'lookupCacheAnalysis',N'Mindestens ein lesbarer Bericht besitzt keinen eindeutigen EXECUTE-Berichtskontext.');
+                    SET @LookupComplete=1;
+                END;
+                -- END LOOKUP CACHE ATOMIC DECISION
+            END TRY
+            BEGIN CATCH
+                DECLARE @LookupNativeError int=ERROR_NUMBER(),@LookupNativeMessage nvarchar(4000)=ERROR_MESSAGE();
+                UPDATE [#SsisLegacyLogAnalysis_SourceStatus] SET StatusCode=CASE WHEN @LookupNativeError IN(229,262,297,300,371) THEN 'DENIED'
+                    WHEN @LookupNativeError IN(207,208,911,916,942) THEN 'SOURCE_UNAVAILABLE' ELSE 'ERROR_HANDLED' END,
+                    IsPartial=1,ErrorNumber=@LookupNativeError,ErrorMessage=@LookupNativeMessage,ObservedRowCount=NULL,ReturnedRowCount=NULL,IsTruncated=0,Detail=N'NATIVE_SOURCE_ERROR' WHERE SourceOrdinal=8;
+                IF @Error IS NULL SELECT @Error=@LookupNativeError,@Message=@LookupNativeMessage;
+                INSERT [#SsisLegacyLogAnalysis_Warnings] VALUES(0,'LOOKUP_CACHE_ANALYSIS_ERROR',N'lookupCacheAnalysis',N'Die optionale Lookupableitung ist fehlgeschlagen; gültige vorherige Mengen bleiben erhalten.');
+            END CATCH;
+            -- BEGIN LOOKUP CACHE DISCARD
+            IF @LookupComplete=0
+            BEGIN
+                DELETE FROM [#SsisLegacyLogAnalysis_LookupCacheEvents];
+                SELECT @LookupCandidates=NULL,@LookupParsed=NULL,@LookupAssigned=NULL;
+                UPDATE [#SsisLegacyLogAnalysis_SourceStatus] SET IsPartial=1,ObservedRowCount=NULL,ReturnedRowCount=NULL,IsTruncated=0,
+                    StatusCode=CASE WHEN @LookupReason=N'TIME_BUDGET_EXHAUSTED' AND @LookupStarted=1 THEN 'AVAILABLE_LIMITED' ELSE StatusCode END,
+                    Detail=COALESCE(@LookupReason,Detail) WHERE SourceOrdinal=8;
+                IF @LookupReason=N'MESSAGES_DISABLED' INSERT [#SsisLegacyLogAnalysis_Warnings] VALUES(0,'LOOKUP_CACHE_MESSAGES_DISABLED',N'lookupCacheAnalysis',N'Der fachliche Meldungstextzugriff und die Lookupinterpretation sind abgeschaltet.');
+                IF @LookupReason=N'TIME_BUDGET_EXHAUSTED' INSERT [#SsisLegacyLogAnalysis_Warnings] VALUES(0,'LOOKUP_CACHE_TIME_BUDGET_EXHAUSTED',N'lookupCacheAnalysis',N'Die optionale Ableitung wurde nicht innerhalb des kooperativen Budgets übernommen.');
+            END;
+            -- END LOOKUP CACHE DISCARD
+            UPDATE [#SsisLegacyLogAnalysis_SourceStatus] SET CollectionTimeUtc=SYSUTCDATETIME() WHERE SourceOrdinal=8;
+            IF EXISTS(SELECT 1 FROM [#SsisLegacyLogAnalysis_SourceStatus] WHERE SourceOrdinal=8 AND IsPartial=1)
+            BEGIN
+                SET @Partial=1;
+                IF @Status IN('AVAILABLE','AVAILABLE_EMPTY','AVAILABLE_LIMITED') SET @Status='AVAILABLE_LIMITED';
+            END;
+        END;
+        -- END LOOKUP CACHE ANALYSIS
+
         EXEC sys.sp_executesql @RestoreLock;
         IF @PreviousAbort=1 SET XACT_ABORT ON;
     END TRY
@@ -1279,11 +1512,11 @@ BEGIN
     END;
     ;WITH w AS(SELECT *,ROW_NUMBER() OVER(ORDER BY WarningCode,SourceName) AS n FROM [#SsisLegacyLogAnalysis_Warnings]) UPDATE w SET WarningOrdinal=CONVERT(int,n);
     INSERT [#SsisLegacyLogAnalysis_ModuleStatus]
-    VALUES(N'USP_SsisLegacyLogAnalysis',CASE WHEN @IncludeComponentPhaseAnalysis=1 THEN CASE WHEN @IncludeComponentLifecyclePhases=1 THEN 5 ELSE 4 END WHEN @IncludeRowFlowAnalysis=1 THEN 3 WHEN @IncludeTaskAnalysis=1 THEN 2 ELSE 1 END,@LoggingDatabase,@LoggingSchema,@LoggingTable,@ExecutionId,@IncludeMessages,@Status,@Partial,@Error,@Message,@Now);
+    VALUES(N'USP_SsisLegacyLogAnalysis',CASE WHEN @IncludeLookupCacheAnalysis=1 THEN 6 WHEN @IncludeComponentPhaseAnalysis=1 THEN CASE WHEN @IncludeComponentLifecyclePhases=1 THEN 5 ELSE 4 END WHEN @IncludeRowFlowAnalysis=1 THEN 3 WHEN @IncludeTaskAnalysis=1 THEN 2 ELSE 1 END,@LoggingDatabase,@LoggingSchema,@LoggingTable,@ExecutionId,@IncludeMessages,@Status,@Partial,@Error,@Message,@Now);
     SELECT @StatusCodeOut=@Status,@IsPartialOut=@Partial,@ErrorNumberOut=@Error,@ErrorMessageOut=@Message;
     IF COALESCE(@JsonErzeugen,0)=1
         SELECT @Json=(SELECT
-            JSON_QUERY((SELECT N'USP_SsisLegacyLogAnalysis' AS ModuleName,CASE WHEN @IncludeComponentPhaseAnalysis=1 THEN CASE WHEN @IncludeComponentLifecyclePhases=1 THEN 5 ELSE 4 END WHEN @IncludeRowFlowAnalysis=1 THEN 3 WHEN @IncludeTaskAnalysis=1 THEN 2 ELSE 1 END AS SchemaVersion,@Now AS CollectionTimeUtc,@Status AS StatusCode,@Partial AS IsPartial FOR JSON PATH,INCLUDE_NULL_VALUES,WITHOUT_ARRAY_WRAPPER)) AS [meta]
+            JSON_QUERY((SELECT N'USP_SsisLegacyLogAnalysis' AS ModuleName,CASE WHEN @IncludeLookupCacheAnalysis=1 THEN 6 WHEN @IncludeComponentPhaseAnalysis=1 THEN CASE WHEN @IncludeComponentLifecyclePhases=1 THEN 5 ELSE 4 END WHEN @IncludeRowFlowAnalysis=1 THEN 3 WHEN @IncludeTaskAnalysis=1 THEN 2 ELSE 1 END AS SchemaVersion,@Now AS CollectionTimeUtc,@Status AS StatusCode,@Partial AS IsPartial FOR JSON PATH,INCLUDE_NULL_VALUES,WITHOUT_ARRAY_WRAPPER)) AS [meta]
           , JSON_QUERY(COALESCE((SELECT * FROM [#SsisLegacyLogAnalysis_ModuleStatus] ORDER BY [ModuleName] FOR JSON PATH,INCLUDE_NULL_VALUES),N'[]')) AS [moduleStatus]
           , JSON_QUERY(COALESCE((SELECT * FROM [#SsisLegacyLogAnalysis_Execution] ORDER BY [ExecutionId] FOR JSON PATH,INCLUDE_NULL_VALUES),N'[]')) AS [execution]
           , JSON_QUERY(COALESCE((SELECT * FROM [#SsisLegacyLogAnalysis_Timeline] ORDER BY [TimelineOrdinal] FOR JSON PATH,INCLUDE_NULL_VALUES),N'[]')) AS [timeline]
@@ -1312,6 +1545,11 @@ BEGIN
         SET @Json=JSON_MODIFY(@Json,'$.componentPhaseEvents',JSON_QUERY(COALESCE((SELECT * FROM [#SsisLegacyLogAnalysis_ComponentPhaseEvents] ORDER BY PhaseEventOrdinal FOR JSON PATH,INCLUDE_NULL_VALUES),N'[]')));
         SET @Json=JSON_MODIFY(@Json,'$.componentPhaseTimes',JSON_QUERY(COALESCE((SELECT * FROM [#SsisLegacyLogAnalysis_ComponentPhaseTimes] ORDER BY PhaseTimeOrdinal FOR JSON PATH,INCLUDE_NULL_VALUES),N'[]')));
     END;
+    IF COALESCE(@JsonErzeugen,0)=1 AND @IncludeLookupCacheAnalysis=1
+    BEGIN
+        SET @Json=JSON_MODIFY(@Json,'$.meta.LookupCacheCatalogVersion',1);
+        SET @Json=JSON_MODIFY(@Json,'$.lookupCacheEvents',JSON_QUERY(COALESCE((SELECT * FROM [#SsisLegacyLogAnalysis_LookupCacheEvents] ORDER BY LookupEventOrdinal FOR JSON PATH,INCLUDE_NULL_VALUES),N'[]')));
+    END;
     IF @OutputMode='TABLE'
     BEGIN
         DECLARE @TargetTable sysname;
@@ -1338,6 +1576,10 @@ BEGIN
         BEGIN
             SET @TargetTable=(SELECT TargetTable FROM [#SsisLegacyLogAnalysis_ResultTables] WHERE ResultName=N'componentPhaseEvents'); IF @TargetTable IS NOT NULL EXEC [monitor].[InternalWriteResultTable] N'#SsisLegacyLogAnalysis_ComponentPhaseEvents',@TargetTable,@ThrowOnError=1;
             SET @TargetTable=(SELECT TargetTable FROM [#SsisLegacyLogAnalysis_ResultTables] WHERE ResultName=N'componentPhaseTimes'); IF @TargetTable IS NOT NULL EXEC [monitor].[InternalWriteResultTable] N'#SsisLegacyLogAnalysis_ComponentPhaseTimes',@TargetTable,@ThrowOnError=1;
+        END;
+        IF @IncludeLookupCacheAnalysis=1
+        BEGIN
+            SET @TargetTable=(SELECT TargetTable FROM [#SsisLegacyLogAnalysis_ResultTables] WHERE ResultName=N'lookupCacheEvents'); IF @TargetTable IS NOT NULL EXEC [monitor].[InternalWriteResultTable] N'#SsisLegacyLogAnalysis_LookupCacheEvents',@TargetTable,@ThrowOnError=1;
         END;
     END;
     IF @OutputMode='RAW'
@@ -1366,6 +1608,7 @@ BEGIN
             SELECT * FROM [#SsisLegacyLogAnalysis_ComponentPhaseEvents] ORDER BY PhaseEventOrdinal;
             SELECT * FROM [#SsisLegacyLogAnalysis_ComponentPhaseTimes] ORDER BY PhaseTimeOrdinal;
         END;
+        IF @IncludeLookupCacheAnalysis=1 SELECT * FROM [#SsisLegacyLogAnalysis_LookupCacheEvents] ORDER BY LookupEventOrdinal;
     END;
     IF @ConsoleResultRequested=1
     BEGIN
@@ -1395,6 +1638,12 @@ BEGIN
             ALTER TABLE [#SsisLegacyLogAnalysis_Console] ADD [PhasenMeldungen] bigint NULL,[PhasenGeleseneMeldungen] bigint NULL,[PhasenKontextMeldungen] bigint NULL;
             EXEC sys.sp_executesql N'UPDATE [#SsisLegacyLogAnalysis_Console] SET [PhasenMeldungen]=@Candidates,[PhasenGeleseneMeldungen]=@Parsed,[PhasenKontextMeldungen]=@Assigned;',
                 N'@Candidates bigint,@Parsed bigint,@Assigned bigint',@Candidates=@PhaseCandidates,@Parsed=@PhaseParsed,@Assigned=@PhaseAssigned;
+        END;
+        IF @IncludeLookupCacheAnalysis=1
+        BEGIN
+            ALTER TABLE [#SsisLegacyLogAnalysis_Console] ADD [LookupCacheMeldungen] bigint NULL,[LookupCacheGeleseneMeldungen] bigint NULL,[LookupCacheKontextMeldungen] bigint NULL;
+            EXEC sys.sp_executesql N'UPDATE [#SsisLegacyLogAnalysis_Console] SET [LookupCacheMeldungen]=@Candidates,[LookupCacheGeleseneMeldungen]=@Parsed,[LookupCacheKontextMeldungen]=@Assigned;',
+                N'@Candidates bigint,@Parsed bigint,@Assigned bigint',@Candidates=@LookupCandidates,@Parsed=@LookupParsed,@Assigned=@LookupAssigned;
         END;
         EXEC [monitor].[InternalEmitConsoleResult] @SourceTable=N'#SsisLegacyLogAnalysis_Console',@ResultLabel=N'SSIS-Legacy-Ausführung',@EmptyMessage=N'Keine sichtbare Legacy-Ausführung';
     END;
