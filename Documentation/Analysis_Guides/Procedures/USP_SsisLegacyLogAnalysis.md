@@ -92,6 +92,23 @@ fehlende Meldungen erzeugen keine künstlichen Gruppen. Meldungs-Opt-out,
 fehlende v1-Ableitung, Fehler und Deadline verwerfen beide neuen Mengen
 atomar, behalten zuvor gültige Mengen und setzen neue Zähler NULL.
 
+Version 1.4.0 ergänzt an Position 24 `@IncludeComponentLifecyclePhases bit=0`.
+Der Wert 1 erfordert IncludeComponentPhaseAnalysis=1; andernfalls gilt
+INVALID_PARAMETER vor jedem Quellenzugriff. NULL entspricht 0. Der
+[freigegebene L1–L9-Vertrag](../../Architecture/SSIS_001_Phase0_Public_Contract.md#freigegebene-erweiterung-legacy-lifecycle-methodenberichte-vom-19-oktober-2026)
+verwendet bei diesem Opt-in SchemaVersion5 und ComponentPhaseCatalogVersion2.
+PCT_EN_3 interpretiert zusätzlich die exakten englischen Validate-, PreExecute-
+und PostExecute-Texte unter User:PipelineComponentTime. Validate benötigt ein
+eindeutiges VALIDATE-Paar derselben Source; die anderen vier Methoden benötigen
+EXECUTE. Zuerst werden einschließende Log-ID-Paare gezählt, danach wird bei
+genau einem Paar die Meldungszeit geprüft. Ein anderer Paartyp ist kein Ersatz.
+
+Die bestehenden 18 Ereignis- und 24 Gruppenfelder, RAW-Mengen und Konsolenzähler
+bleiben unverändert. Nicht berichtete IDs bleiben NULL; binäre Namen kennzeichnen
+berichtete Labels innerhalb des jeweiligen Kontexts und keine bewiesene
+Runtimekomponentenidentität. Ohne den neuen Opt-in bleibt PCT_EN_2 erhalten;
+der nackte Ereignisname PipelineComponentTime behält ausschließlich PCT_EN_1.
+
 ## Eine Zeile bedeutet
 
 Eine Timelinezeile entspricht einer materialisierten Logzeile. errorChain
@@ -322,7 +339,8 @@ unter User:PipelineComponentTime. Nicht berichtete Komponenten- und Output-IDs
 bleiben NULL. Die Gruppen beziehen sich auf binär gleiche berichtete Labels
 im Source-/EXECUTE-Kontext und beweisen keine eindeutige Runtimekomponente.
 PCT_EN_1 behält seine numerischen Gruppenschlüssel; Profile werden nicht
-zusammengeführt. Andere Methoden bleiben sichtbar abgelehnte Kandidaten.
+zusammengeführt. Ohne den gesonderten Lifecycle-Opt-in bleiben andere Methoden sichtbar
+abgelehnte Kandidaten.
 
 ## Abnahme der Komponentenmethodenberichte
 
@@ -336,3 +354,13 @@ berichtete Methodenwerte und beobachtete Berichtskontexte; weitere Methoden,
 Komponentenintervalle, CPU, exklusive Zeit und allgemeine Rollen sind nicht
 qualifiziert. Historische Fehlversuche bleiben erhalten; exakte Head-CI und
 Integration sind eigene Liefergates.
+
+## Abnahme der Lifecycle-Erweiterung
+
+Die [begrenzte Consumerabnahme](../../Architecture/SSIS_Package_and_Execution_Analysis_Plan.md#legacy-lifecycle-methoden-begrenzte-consumerabnahme-vom-19-oktober-2026)
+prüft sechs neue Aufrufkonstellationen anhand unverändert restaurierter eigener
+Originalproviderzeilen. Alle 42 Felder werden unabhängig verglichen; physische
+Schemas, TABLE/JSON, Präfixgrenze, Meldungs-Opt-out und Ausgabearten sind geprüft.
+Es gibt keine neue Paket- oder SDK-Ausführung. Berichtete Validate-, PreExecute-
+und PostExecute-Werte erweitern den begrenzten Methodenbestand, qualifizieren
+aber keine internen Intervalle, CPU-/exklusive Zeiten oder allgemeinen Rollen.

@@ -1713,3 +1713,75 @@ und reguläre Integration sind separate Liefergates. SSIS-001 bleibt
 PARTIAL_PRODUCT_FUNCTION; weitere Methodenprofile, Sprachen, CPU-/exklusive
 Zeit, Durchsatz, Looprekonstruktion und allgemeine Katalog-/Rollenabnahmen
 sowie WI-0009 GATE-0001 bleiben offen.
+
+
+## Freigegebene ergänzende Legacy-Lifecycle-Methoden vom 19. Oktober 2026
+
+Der Benutzer hat den geprüften [L1–L9-Vertrag](SSIS_001_Phase0_Public_Contract.md#freigegebene-erweiterung-legacy-lifecycle-methodenberichte-vom-19-oktober-2026)
+zur Implementierung, begrenzten Consumerabnahme und regulären PR-Lieferung
+freigegeben. Version 1.4.0 ergänzt den abhängigen Parameter
+IncludeComponentLifecyclePhases an Position 24. Er setzt den bestehenden
+Phasen-Opt-in voraus. SchemaVersion5 und ComponentPhaseCatalogVersion2
+kennzeichnen PCT_EN_3 mit Validate, PreExecute und PostExecute; die 42 Felder,
+Ausgabemengen und drei Konsolenzähler bleiben erhalten. Validate-Berichte
+benötigen einen VALIDATE-Kontext, die anderen Methoden einen EXECUTE-Kontext.
+
+Die Abnahme verwendet ausschließlich erhaltene eigene Originalproviderzeilen.
+Vierzehn synthetische Gruppen und sechs neue Consumer bilden den endlichen
+Umfang; neue Paketausführungen und SDK-Aufrufe sind ausgeschlossen. Die tatsächliche begrenzte Qualifikation steht im nachfolgenden Nachweis.
+Geschlossene frühere Nachweise werden gebunden wiederverwendet. SSIS-001 bleibt
+PARTIAL_PRODUCT_FUNCTION; weitere Methodenprofile, Durchsatz, Lookup-/Cache-/
+Providerdecoder, Historie, eigene Kennzahlen und Katalog-/Rollenqualifikation
+sowie WI-0009 GATE-0001 bleiben offen.
+
+## Legacy-Lifecycle-Methoden: begrenzte Consumerabnahme vom 19. Oktober 2026
+
+Die freigegebene Erweiterung v1.4.0 ist gegen erhaltene eigene Originaldaten
+geprüft. Beide Aufnahmen wurden jeweils einmal als Bytepuffer gelesen,
+hashgeprüft und streng dekodiert. Alle neun Providerfelder wurden unverändert
+in einer eigenen isolierten Loggingdatenbank restauriert und vor sowie nach
+der Analyse feldweise mit den Originalen verglichen. Es gab keine neue
+Paketausführung, SDK-, Lab-, VM-, Setup-, Installations- oder Imageoperation.
+Die Quelle stammt aus früheren Windows-SQL/SSIS-17.0.5015.4-Läufen; diese Welle
+qualifiziert Consumer gegen restauriertes Material und keinen neuen Providerlauf.
+
+Die lineare Aufnahme enthält 15 Kandidaten und 15 zugeordnete Gruppen,
+darunter sechs Validate-, drei PreExecute- und drei PostExecute-Berichte.
+Die Mehrfach-/Parallelaufnahme enthält 73 Kandidaten und 73 Gruppen,
+darunter 25 Validate-, 15 PreExecute- und 15 PostExecute-Berichte. Die
+unabhängige Referenz bestimmt Namen, Methoden, Werte, NULLs, Source- und
+Kontextgrenzen, Ordinale, Aggregationen und Evidenz-IDs für alle 42 Felder.
+Validate verwendet ausschließlich VALIDATE-Paare, die übrigen Methoden
+EXECUTE-Paare. Berichtszeit und eingeschlossene Log-IDs beweisen keine
+internen Methodenintervalle oder eindeutige Runtimekomponentenidentität.
+
+Genau die sechs in L8 festgelegten neuen Consumer sind bestanden: RAW11,
+TABLE-Vollausgabe und Meldungs-Opt-out für die lineare Aufnahme sowie RAW15,
+TABLE-Präfix und CONSOLE1 für die Mehrfach-/Parallelaufnahme. Der vor dem
+SUT festgelegte Cap 3 schneidet das Validate-Ende des ersten Berichts ab;
+der Präfix erzeugt dafür keine Kontextgruppe. Die Prüfung umfasst alle
+physischen Schemafacetten, TABLE-/JSON-Parität, N+1, Sparse-Quellenstatus,
+NULL-Zähler und unveränderte Callerzustände. Das unabhängige Orakel enthält
+43157 Vergleiche einschließlich 50 abgewiesener Offline-Mutationen von
+Pflichtfeldern, Arrays und Werten. Dies ist keine Performancekennzahl.
+
+Integration206 besteht im ersten begrenzten synthetischen Versuch mit
+Flag-/Abhängigkeitsmatrix, 33 Payload-/Kontextfällen, unabhängig festgelegten
+18-/24-Feld-Sollsätzen, binären Namen, Aggregationen, RAW13 und direkter
+nativer 229-Gegenprobe. Fünf zusätzliche Fälle prüfen den exakten aktuellen
+Kontext-UPDATE getrennt in extrahierten Stagingtabellen, einschließlich
+Mehrdeutigkeit vor der Zeitprüfung. Vier frühere erfolgreiche extrahierte
+Entry-/Deadline-/Atomic-/Fehlerstufen werden ausschließlich für ihre exakt
+unveränderten Quellfragmente gebunden wiederverwendet und nicht ausgeführt.
+Diese Stufenbelege ersetzen keinen vollständigen Original-SUT-Lauf.
+
+Der aktuelle SQL-Consumer läuft auf Windows SQL17.0.5015.4 mit CL170 und
+beobachtetem sysadmin. Die eigenen Framework-/Loggingdatenbanken sind
+ID-, create_date-, OwnerSID-, Nonce- und Marker-gebunden entfernt; Cleanup-
+und Retentionfehler sind 0 und das Datenbankinventar ist restauriert.
+Historische Fehler und Budgets bleiben unverändert. Ergebnisreview, exakte
+Head-CI mit Integration206, reguläre Integration und Main-Folgeprüfungen
+bleiben getrennte Liefergates. SSIS-001 bleibt PARTIAL_PRODUCT_FUNCTION;
+weitere Methodenprofile, CPU-/exklusive Zeit, Durchsatz, Lookupdecoder,
+Historie und allgemeine Katalog-/Rollenqualifikation sowie WI-0009 GATE-0001
+bleiben offen.

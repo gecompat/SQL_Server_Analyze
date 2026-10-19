@@ -1,7 +1,35 @@
 # Nächste Arbeitsschritte
 
-**Stand:** 18. Oktober 2026
+**Stand:** 19. Oktober 2026
 **Zweck:** aktuelle ausführbare Entwicklungswelle für `gecompat/SQL_Server_Analyze`
+
+## Freigegebene Legacy-Lifecycle-Analyse vom 19. Oktober 2026
+
+Der direkte Benutzer hat L1–L9 samt begrenztem Abnahmeplan freigegeben und die
+Implementierung mit regulärer PR-Lieferung beauftragt. Der bisherige
+Vertragswartevermerk ist abgelöst. Der [freigegebene Umfang](../../../Documentation/Architecture/SSIS_Package_and_Execution_Analysis_Plan.md#freigegebene-ergänzende-legacy-lifecycle-methoden-vom-19-oktober-2026)
+umfasst PCT_EN_3 für Validate, PreExecute und PostExecute, einen abhängigen
+Opt-in an Position 24 und unveränderte 42 Felder mit methodenspezifischem
+VALIDATE-/EXECUTE-Berichtskontext. Erhaltene Originalproviderzeilen werden
+hashgebunden wiederhergestellt; Paketausführungen und SDK-Aufrufe bleiben 0.
+
+Die neue Welle hat einen Autor, denselben Reviewer mit zwei begründeten
+Prüfungen, höchstens zwei synthetische Versuche einschließlich extrahierter
+Stufen, zwei Arrange-/Consumerversuche mit insgesamt sechs Consumeraufrufen
+inklusive Fehlversuchen und vier CI-Qualifikationen einschließlich Pflicht-Main.
+Historische Budgets und Fehler bleiben erhalten. Unveränderte bestandene Tests
+werden nicht wiederholt. Die synthetische Abnahme besteht im ersten Versuch; die sechs neuen
+Restoreconsumer sind mit 42 unabhängigen Feldern und 50 abgewiesenen
+Offline-Mutationen qualifiziert. Originalmaterial, Caller und Datenbankinventar
+sind erhalten; eigene Datenbanken sind entfernt, Cleanup-/Retentionfehler 0.
+Es gab keine Paket- oder SDK-Ausführung. Die [kanonische Abnahme](../../../Documentation/Architecture/SSIS_Package_and_Execution_Analysis_Plan.md#legacy-lifecycle-methoden-begrenzte-consumerabnahme-vom-19-oktober-2026)
+trennt aktuelle SUT-Aufrufe, neue extrahierte Kontextprüfungen und vier
+unverändert wiederverwendete Stufenbelege. Nach dem abschließenden Ergebnisreview
+folgen exakte Head-CI, regulärer MatchHead-Merge, Treeidentität, Mainchecks,
+origin/main-Synchronisierung und nur eigenes Cleanup. Verbrauchte oder bestandene
+Fälle werden nicht erneut gestartet. Kosten und Quoten bleiben UNKNOWN;
+SSIS-001 bleibt partiell und WI-0009 GATE-0001 offen. Die nachfolgenden
+Abschnitte dokumentieren frühere abgeschlossene Lieferungen.
 
 ## Lieferung der begrenzten Komponentenphasen-Erweiterung
 
