@@ -93,6 +93,52 @@ class Contracts(unittest.TestCase):
             command = launch.call_args.args[0]
             self.assertEqual(command[command.index("-y")+1], "4096")
             self.assertEqual(command[command.index("-h")+1], "-1")
+            self.assertNotIn("/dev/stdin", command)
+            self.assertIn("-q", command)
+
+    def test_protocol_context_redacts_before_limit(self):
+        connection = object.__new__(ci.Sqlcmd)
+        connection.process = SimpleNamespace(stdin=io.StringIO())
+        connection.env = {"SQLCMDPASSWORD": "SyntheticCredential"}
+        for eof in (True, False):
+            connection.lines = queue.Queue()
+            connection.lines.put("x"*1010+"SyntheticCredential")
+            if eof:
+                connection.lines.put(None)
+            try:
+                connection.query("synthetic", timeout=0.01)
+            except (RuntimeError, TimeoutError) as error:
+                self.assertIn("[REDACTED]", str(error))
+                self.assertNotIn("Synthetic", str(error))
+            else:
+                self.fail("Missing protocol failure")
+
+    def test_persistent_sqlcmd_stream_handles_prompts_and_deadline(self):
+        child = """import sys
+ordinal = 0
+for line in sys.stdin:
+    if line.strip() == ':QUIT':
+        break
+    if line.strip() == 'GO':
+        ordinal += 1
+        print('1> 2> CI_ROW|' + str(ordinal), flush=True)
+        print('3> CI_SAMPLE_END', flush=True)
+"""
+        original_popen = subprocess.Popen
+        def launch_child(*args, **kwargs):
+            return original_popen([sys.executable, "-u", "-c", child], **kwargs)
+        with patch.dict(os.environ, MSSQL_EPHEMERAL_CREDENTIAL="SyntheticCredential"), \
+             patch.object(ci.subprocess, "Popen", side_effect=launch_child) as launch:
+            connection = ci.Sqlcmd("synthetic", "synthetic")
+            try:
+                self.assertEqual(connection.query("first batch\nGO\n"), ["CI_ROW|1"])
+                self.assertEqual(connection.query("second batch\nGO\n"), ["CI_ROW|2"])
+                self.assertEqual(launch.call_count, 1)
+                self.assertFalse(connection.process.stdin.closed)
+                with self.assertRaisesRegex(TimeoutError, "Observer query deadline exceeded"):
+                    connection.query("incomplete batch\n", timeout=0.05)
+            finally:
+                self.assertTrue(connection.close())
 
     def test_artifact_cap_preserves_failure_and_case(self):
         case = ci.marker(CASE)
@@ -137,14 +183,14 @@ CREATE TABLE ##ExampleCiLockProbe(id int NOT NULL);
 INSERT ##ExampleCiLockProbe VALUES(1);
 BEGIN TRAN; UPDATE ##ExampleCiLockProbe WITH(TABLOCKX) SET id=2;
 SELECT N'CI_HOLDER|'+CONVERT(varchar(12),@@SPID);
-PRINT N'CI_SAMPLE_END';
+RAISERROR(N'CI_SAMPLE_END',10,1) WITH NOWAIT;
 GO
 """)
         spid = int(next(row.split("|")[1] for row in rows if row.startswith("CI_HOLDER|")))
         # The holder is idle between batches and keeps its transaction and lock.
         for name, timeout in (("positive", 2000), ("immediate", 0), ("success", -1)):
             if name == "success":
-                holder.query("ROLLBACK; PRINT N'CI_SAMPLE_END';\nGO\n")
+                holder.query("ROLLBACK; RAISERROR(N'CI_SAMPLE_END',10,1) WITH NOWAIT;\nGO\n")
             query = f"""USE tempdb; SET NOCOUNT ON; SET LOCK_TIMEOUT {timeout};
 DECLARE @m nvarchar(400)=CONCAT(N'CI_CASE|202|Probe|1|',CONVERT(varchar(27),SYSUTCDATETIME(),126),N'Z|',@@SPID,N'|',@@LOCK_TIMEOUT,N'|{name}');
 RAISERROR(N'%s',10,1,@m) WITH NOWAIT;
@@ -182,7 +228,7 @@ SELECT id FROM ##ExampleCiLockProbe;
             else:
                 assert report["status"] in ("BLOCKER_NOT_CAPTURED", "BLOCKER_OBSERVED"), "CI_PROBE_UNKNOWN_STATUS"
             evidence[name] = report
-        holder.query("DROP TABLE ##ExampleCiLockProbe; PRINT N'CI_SAMPLE_END';\nGO\n")
+        holder.query("DROP TABLE ##ExampleCiLockProbe; RAISERROR(N'CI_SAMPLE_END',10,1) WITH NOWAIT;\nGO\n")
     finally:
         holder_closed = holder.close()
         if not holder_closed:
@@ -192,7 +238,7 @@ SELECT id FROM ##ExampleCiLockProbe;
     verifier = ci.Sqlcmd("sqlserver-analyze-impact-2025", sqlcmd)
     try:
         verifier.query(f"""IF OBJECT_ID(N'tempdb..##ExampleCiLockProbe') IS NOT NULL OR EXISTS(SELECT 1 FROM sys.dm_exec_sessions WHERE session_id={spid} AND session_id<>@@SPID) THROW 51001,N'CI_PROBE_CLEANUP',1;
-PRINT N'CI_SAMPLE_END';
+RAISERROR(N'CI_SAMPLE_END',10,1) WITH NOWAIT;
 GO
 """)
     finally:

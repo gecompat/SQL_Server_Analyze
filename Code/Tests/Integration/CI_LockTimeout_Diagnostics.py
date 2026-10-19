@@ -84,7 +84,7 @@ DECLARE @sid int={spid};
  FROM sys.dm_tran_locks l WHERE l.request_session_id IN(SELECT session_id FROM ScopeSessions)
 )
 SELECT TOP ({MAX_ROWS + 1}) N'CI_ROW|'+payload FROM SampleRows ORDER BY priority;
-PRINT N'CI_SAMPLE_END';
+RAISERROR(N'CI_SAMPLE_END',10,1) WITH NOWAIT;
 GO
 """
 
@@ -100,7 +100,7 @@ class Sqlcmd:
         self.base = ["docker", "exec", "-i", "--env", "SQLCMDPASSWORD",
                      "--workdir", "/work/Code/Tests", container, sqlcmd,
                      "-S", "localhost", "-U", "sa", "-C", "-b", "-h", "-1",
-                     "-y", "4096", "-w", "65535", "-t", "2", "-i", "/dev/stdin"]
+                     "-y", "4096", "-w", "65535", "-t", "2", "-q", "SET NOCOUNT ON;"]
         self.env = dict(os.environ, SQLCMDPASSWORD=os.environ["MSSQL_EPHEMERAL_CREDENTIAL"])
         self.process = subprocess.Popen(self.base, stdin=subprocess.PIPE, stdout=subprocess.PIPE,
                                         stderr=subprocess.STDOUT, env=self.env, text=True,
@@ -120,10 +120,16 @@ class Sqlcmd:
         result = []
         deadline = time.monotonic() + timeout
         while True:
-            line = self.lines.get(timeout=max(0.001, deadline - time.monotonic()))
+            try:
+                line = self.lines.get(timeout=max(0.001, deadline - time.monotonic()))
+            except queue.Empty as error:
+                detail = redact(" | ".join(result[-3:]), self.env["SQLCMDPASSWORD"])[:1024]
+                raise TimeoutError("Observer query deadline exceeded: "+detail) from error
             if line is None:
-                raise RuntimeError("Observer connection ended: "+redact(" | ".join(result[-3:])[:1024], self.env["SQLCMDPASSWORD"]))
-            line = line.strip()
+                raise RuntimeError("Observer connection ended: "+redact(" | ".join(result[-3:]), self.env["SQLCMDPASSWORD"])[:1024])
+            # Interactive SQLCMD can prefix the next output line with several prompts.
+            # Read batches from the live command stream, never through /dev/stdin as a file.
+            line = re.sub(r"^(?:\d+>\s*)+", "", line.strip())
             if line == end:
                 return result
             if line:

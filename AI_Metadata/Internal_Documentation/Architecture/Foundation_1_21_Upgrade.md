@@ -157,3 +157,13 @@ gelesenen Wertes und des synthetischen Prüfwertes sowie den SQLCMD-Aufruf
 und die Erhaltung seiner ursprünglichen Startfehlermeldung. Das
 Datenschutzgate, die zwölf Dateien, zwei Reviewdurchgänge und die Grenze
 von insgesamt drei funktionalen CI-Qualifikationen bleiben unverändert.
+
+Nach dem ausgebliebenen Bereitschaftsmarker im zweiten SQL-Abnahmeversuch
+wurde ein letzter gezielter Protokollfix ausdrücklich freigegeben. Er
+verwendet den fortlaufenden SQLCMD-Kommandostrom, sofortige Endmarker und
+berücksichtigt interaktive Prompts. Die Erweiterung erlaubt einen weiteren
+Reviewdurchgang desselben Reviewers, eine gezielte Offlineprüfung und genau
+einen weiteren SQL-Abnahmeblock. Die Obergrenze beträgt damit vier
+funktionale CI-Qualifikationen einschließlich Main-Nachlauf; Dateiumfang,
+Größen- und Laufzeitgrenzen sowie die Pause der übrigen Verarbeitung bleiben
+bestehen.
