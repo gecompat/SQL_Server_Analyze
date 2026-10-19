@@ -12,6 +12,8 @@ A concrete task authorizes ordinary proportionate work inside its envelope; gate
 Foundation validation establishes FOUNDATION_INTEGRITY only. Run affected project semantic/runtime checks and required independent reviews. Use optional routing/execution contracts only for relevant selected operations. Optional capabilities grant no execution authority. Requested models, chat history, fingerprints, and cached analysis are not evidence or durable project truth.
 
 Installation/upgrade and material workflow-rule changes require the processing-overhead assessment: actual test triggers, duplicate checks, logs, review chains, and model calls. Preserve necessary gates; justify bounded stronger exceptions or expose pending decisions. Copying rules alone does not establish efficient integration.
+
+If bounded autonomous orchestration is selected, use the optional control contract in `.ai/foundation/AI_WORK_ORCHESTRATION_POLICY.md`; its configured `HEARTBEAT` meaning adds no authority.
 <!-- AI_REPOSITORY_FOUNDATION:END -->
 
 ## Projektspezifische Governance und Discovery
@@ -34,7 +36,7 @@ ein Link aktiviert weder sämtliche Planungen noch alle technischen Verträge.
 - [`AI_Metadata/ARCHITECTURE_DECISIONS.md`](AI_Metadata/ARCHITECTURE_DECISIONS.md) für dauerhafte Architekturentscheidungen;
 - [`AI_Metadata/ARTIFACT_IDENTITY_AND_NOMENCLATURE.md`](AI_Metadata/ARTIFACT_IDENTITY_AND_NOMENCLATURE.md) für dauerhafte Artefaktkennungen, Arbeitselemente, Wellen und deren Vergabe;
 - [`AI_Metadata/Internal_Documentation/Quality/Next_Steps.md`](AI_Metadata/Internal_Documentation/Quality/Next_Steps.md) für den aktuellen autonomen Entwicklungsauftrag, dessen Grenzen und die ausführbare Entwicklungswelle;
-- [`AI_Metadata/Internal_Documentation/Architecture/Foundation_1_21_Upgrade.md`](AI_Metadata/Internal_Documentation/Architecture/Foundation_1_21_Upgrade.md) für die aktuelle Foundation-Upgradebewertung, Installationsprovenienz und die Prüfung des Verarbeitungsaufwands;
+- [`AI_Metadata/Internal_Documentation/Architecture/Foundation_1_24_Upgrade.md`](AI_Metadata/Internal_Documentation/Architecture/Foundation_1_24_Upgrade.md) für die aktuelle Foundation-Upgradebewertung, Installationsprovenienz und die Prüfung des Verarbeitungsaufwands;
 - die nachfolgend direkt referenzierten Qualitätsrichtlinien für Dokumentationsstil und CI-Testauswahl.
 
 Der öffentliche Fehlerberichts-, Beitrags- und Reviewweg steht in
