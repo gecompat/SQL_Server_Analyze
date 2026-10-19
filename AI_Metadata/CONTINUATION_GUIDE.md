@@ -38,6 +38,33 @@ Eine zusätzlich benötigte allgemeine Lab-Funktion wird nicht stillschweigend i
 - Wählen Sie funktionale Tests ausschließlich gemäß `Documentation/Quality/CI_Test_Strategy.md`. Eine gewöhnliche Änderung verlangt keinen pauschalen Lauf auf SQL Server 2019, 2022 und 2025.
 - Aktualisieren Sie Laufzeitevidenz nur für tatsächlich ausgeführte Kombinationen. Compatibility-Level-Läufe dürfen nicht als native Engine-Nachweise ausgewiesen werden.
 
+## Lokale Bewertung und Evidenzwiederverwendung
+
+Die [CI-Teststrategie](../Documentation/Quality/CI_Test_Strategy.md) regelt
+deterministische Bewertung, kompakte Erfolgsmeldungen, lokale Fehlerdiagnose
+und die Vertrauensgrenze einer möglichen lokalen Evidenzwiederverwendung.
+Ein erfolgreicher vollständiger Testscope benötigt keine modellbasierte
+Wiederbestätigung. Ein fehlender vertrauenswürdiger Remote-Verifikator bleibt
+NOT_IMPLEMENTED; daraus folgt keine Erlaubnis, bestehende CI zu überspringen.
+
+Vor Schreiben, Erstellen, Archivieren, Transfer und Git-Veröffentlichung
+werden Daten und Ziel gemäß [Projektkontext](PROJECT_CONTEXT.md) eingeordnet.
+Private Laufzeitbelege, Secrets, reale Endpunkte, Hostpfade und unbereinigte
+Logs werden weder versioniert noch für eine Remote-Verifikation kopiert.
+Eine automatische Übertragung benötigt eigene Datenschutz- und
+Berechtigungsautorität. Bei ungeklärter Einordnung gilt das bestehende
+Stop-Gate; öffentliche Attribution und die diagnostische Vollständigkeit
+von Resultsets bleiben nach dem Projektvertrag erhalten.
+
+Vor einem neuen technischen Scope werden aktuelles Remote-main, Branches,
+offene PRs und aktive Zuständigkeiten lesend abgeglichen. Eine
+Regelübernahme startet keine fremde pausierte Aufgabe und gibt keinen
+zurückgestellten Produkt- oder Infrastrukturumfang frei. Ein späterer
+Optimierungsschritt verwendet einen kohärenten Branch/PR und dokumentiert
+Ursache, betroffene Verträge, tatsächlich ausgeführte Gates, Evidenzgrenzen
+und offenen Abnahmebedarf. Merge- und Fortsetzungsbefugnis stammen aus dem
+konkreten Benutzerauftrag.
+
 ## Koordination und Budget
 
 Ein Implementierer bearbeitet den kohärenten Umfang. Ein unabhängiger Review erfolgt bei fachlichem Risiko oder verbindlicher Unabhängigkeitsvorgabe. Weitere Reviews benötigen eine konkrete offene Frage. Hashes, Manifestdeckung, Mengen und Revisionsbindungen werden lokal geprüft. Timerbedingte Modellarbeit und unveränderte Testwiederholungen sind kein Fortsetzungsschritt.
