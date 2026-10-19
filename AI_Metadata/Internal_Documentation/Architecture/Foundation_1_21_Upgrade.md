@@ -149,3 +149,11 @@ gemessen. Diese Grenzen sind Aufgaben- und Ausführungsgrenzen; sie behaupten
 keine gemessene Kostenersparnis. Die übrige autonome Verarbeitung bleibt
 pausiert. Die Abnahmeergebnisse werden commitgebunden im Pull Request und
 in den CI-Artefakten ausgewiesen; geplante Prüfungen gelten nicht als bestanden.
+
+Nach der ersten CI-Qualifikation wurde ein zusätzlicher gebündelter
+Korrekturpass mit höchstens einer weiteren gezielten Offline-Nachprüfung
+ausdrücklich freigegeben. Er betrifft die Benennung des aus der Umgebung
+gelesenen Wertes und des synthetischen Prüfwertes sowie den SQLCMD-Aufruf
+und die Erhaltung seiner ursprünglichen Startfehlermeldung. Das
+Datenschutzgate, die zwölf Dateien, zwei Reviewdurchgänge und die Grenze
+von insgesamt drei funktionalen CI-Qualifikationen bleiben unverändert.

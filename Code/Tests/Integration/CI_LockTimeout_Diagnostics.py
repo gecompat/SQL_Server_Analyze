@@ -100,7 +100,7 @@ class Sqlcmd:
         self.base = ["docker", "exec", "-i", "--env", "SQLCMDPASSWORD",
                      "--workdir", "/work/Code/Tests", container, sqlcmd,
                      "-S", "localhost", "-U", "sa", "-C", "-b", "-h", "-1",
-                     "-y", "0", "-w", "65535", "-t", "2", "-i", "/dev/stdin"]
+                     "-y", "4096", "-w", "65535", "-t", "2", "-i", "/dev/stdin"]
         self.env = dict(os.environ, SQLCMDPASSWORD=os.environ["MSSQL_EPHEMERAL_CREDENTIAL"])
         self.process = subprocess.Popen(self.base, stdin=subprocess.PIPE, stdout=subprocess.PIPE,
                                         stderr=subprocess.STDOUT, env=self.env, text=True,
@@ -122,7 +122,7 @@ class Sqlcmd:
         while True:
             line = self.lines.get(timeout=max(0.001, deadline - time.monotonic()))
             if line is None:
-                raise RuntimeError("Observer connection ended")
+                raise RuntimeError("Observer connection ended: "+redact(" | ".join(result[-3:])[:1024], self.env["SQLCMDPASSWORD"]))
             line = line.strip()
             if line == end:
                 return result
@@ -154,6 +154,7 @@ class Observation:
         self.samples = deque(maxlen=40)
         self.frozen = None
         self.errors = []
+        self.details = []
         self.stop = threading.Event()
         self.thread = threading.Thread(target=self._observe, daemon=True)
         self.lock = threading.Lock()
@@ -193,8 +194,9 @@ class Observation:
                     with self.lock:
                         self.samples.append(sample)
                 self.stop.wait(max(0, INTERVAL-(time.monotonic()-tick)))
-        except (OSError, ValueError, RuntimeError, TimeoutError, queue.Empty):
+        except (OSError, ValueError, RuntimeError, TimeoutError, queue.Empty) as error:
             self.errors.append("OBSERVATION_FAILED")
+            self.details.append(str(error)[:1024])
         finally:
             if connection and not connection.close():
                 self.errors.append("OBSERVER_CLEANUP_FAILED")
@@ -207,12 +209,12 @@ class Observation:
                 self.errors.append("OBSERVER_CLEANUP_DEADLINE")
         with self.lock:
             if self.frozen is None:
-                return {"status": "NO_1222", "errors": list(self.errors)}
+                return {"status": "NO_1222", "errors": list(self.errors), "details": list(self.details)}
             case = self.frozen["case"]
             samples = self.frozen["samples"]
             found = bool(case and observed_blocker(samples, case))
             return dict(status="BLOCKER_OBSERVED" if found else "BLOCKER_NOT_CAPTURED",
-                        case=case, samples=samples, errors=list(self.errors),
+                        case=case, samples=samples, errors=list(self.errors), details=list(self.details),
                         truncated=any(s["truncated"] for s in samples))
 
 
@@ -260,16 +262,16 @@ def encode_report(report, secret, limit=REPORT_BYTES):
 
 def run(args):
     """Keep the original test return code even if collection or publication fails."""
-    secret = os.environ["MSSQL_EPHEMERAL_CREDENTIAL"]
+    ephemeral_value = os.environ["MSSQL_EPHEMERAL_CREDENTIAL"]
     observer = Observation(lambda: Sqlcmd(args.container, args.sqlcmd))
     log = Path(args.log)
     log.parent.mkdir(parents=True, exist_ok=True)
-    env = dict(os.environ, SQLCMDPASSWORD=secret)
+    env = dict(os.environ, SQLCMDPASSWORD=ephemeral_value)
     command = ["docker", "exec", "--env", "SQLCMDPASSWORD", "--workdir", "/work/Code/Tests",
                args.container, args.sqlcmd, "-S", "localhost", "-U", "sa", "-C", "-b"]
     command += ["-Q", args.query] if getattr(args, "query", None) else ["-i", args.input]
     with log.open("wb") as output:
-        writer = LogWriter(output, secret, getattr(args, "log_limit", LOG_BYTES))
+        writer = LogWriter(output, ephemeral_value, getattr(args, "log_limit", LOG_BYTES))
         process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, env=env)
         # SQLCMD can print very long JSON lines. Bound the reader as well as the stored log.
         pending = b""
@@ -299,7 +301,7 @@ def run(args):
         try:
             destination = Path(args.artifacts)
             destination.mkdir(parents=True, exist_ok=True)
-            payload = encode_report(report, secret, getattr(args, "report_limit", REPORT_BYTES))
+            payload = encode_report(report, ephemeral_value, getattr(args, "report_limit", REPORT_BYTES))
             (destination / "diagnostics.json").write_bytes(payload)
             # Move the sanitized log; never upload the unbounded runner directory.
             log.replace(destination / "impact.log")

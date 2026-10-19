@@ -8,6 +8,8 @@ import os
 from pathlib import Path
 import re
 import subprocess
+import queue
+import sys
 import tempfile
 import time
 from types import SimpleNamespace
@@ -61,19 +63,36 @@ class Contracts(unittest.TestCase):
         self.assertEqual(observer.finish()["status"], "BLOCKER_NOT_CAPTURED")
 
     def test_stream_redaction_and_size_cap(self):
-        secret = "SyntheticCredential123!"
-        for split in range(len(secret)+1):
+        synthetic_canary = "SyntheticCredential123!"
+        for split in range(len(synthetic_canary)+1):
             output = io.BytesIO()
-            writer = ci.LogWriter(output, secret)
-            writer.write("prefix "+secret[:split])
-            writer.write(secret[split:]+" suffix")
+            writer = ci.LogWriter(output, synthetic_canary)
+            writer.write("prefix "+synthetic_canary[:split])
+            writer.write(synthetic_canary[split:]+" suffix")
             writer.write("", final=True)
             self.assertEqual(output.getvalue(), b"prefix [REDACTED] suffix")
         output = io.BytesIO()
-        writer = ci.LogWriter(output, secret, limit=3)
+        writer = ci.LogWriter(output, synthetic_canary, limit=3)
         writer.write("abcdef", final=True)
         self.assertTrue(writer.incomplete)
         self.assertLessEqual(len(output.getvalue()), 3)
+
+    def test_sqlcmd_protocol_failure_keeps_primary_error(self):
+        connection = object.__new__(ci.Sqlcmd)
+        connection.process = SimpleNamespace(stdin=io.StringIO())
+        connection.env = {"SQLCMDPASSWORD": "SyntheticCredential"}
+        connection.lines = queue.Queue()
+        connection.lines.put("Sqlcmd: invalid option SyntheticCredential")
+        connection.lines.put(None)
+        with self.assertRaisesRegex(RuntimeError, r"invalid option \[REDACTED\]"):
+            connection.query("synthetic")
+        with patch.dict(os.environ, MSSQL_EPHEMERAL_CREDENTIAL="SyntheticCredential"), \
+             patch.object(ci.subprocess, "Popen") as launch, \
+             patch.object(ci.threading.Thread, "start"):
+            ci.Sqlcmd("synthetic", "synthetic")
+            command = launch.call_args.args[0]
+            self.assertEqual(command[command.index("-y")+1], "4096")
+            self.assertEqual(command[command.index("-h")+1], "-1")
 
     def test_artifact_cap_preserves_failure_and_case(self):
         case = ci.marker(CASE)
@@ -165,7 +184,11 @@ SELECT id FROM ##ExampleCiLockProbe;
             evidence[name] = report
         holder.query("DROP TABLE ##ExampleCiLockProbe; PRINT N'CI_SAMPLE_END';\nGO\n")
     finally:
-        assert holder.close(), "CI_PROBE_HOLDER_CLEANUP"
+        holder_closed = holder.close()
+        if not holder_closed:
+            if sys.exc_info()[0] is None:
+                raise AssertionError("CI_PROBE_HOLDER_CLEANUP")
+            print("CI_PROBE_HOLDER_CLEANUP_FAILED (primary error retained)")
     verifier = ci.Sqlcmd("sqlserver-analyze-impact-2025", sqlcmd)
     try:
         verifier.query(f"""IF OBJECT_ID(N'tempdb..##ExampleCiLockProbe') IS NOT NULL OR EXISTS(SELECT 1 FROM sys.dm_exec_sessions WHERE session_id={spid} AND session_id<>@@SPID) THROW 51001,N'CI_PROBE_CLEANUP',1;
