@@ -3,47 +3,39 @@
 **Stand:** 20. Oktober 2026
 **Zweck:** aktuelle ausführbare Entwicklungswelle für `gecompat/SQL_Server_Analyze`
 
-## Aktueller TABLE-Helperblocker vom 20. Oktober 2026
+## Lokal qualifizierte Stabilisierung vom 20. Oktober 2026
 
-Der Benutzer hat die SQLCMD-Transportdiagnose, eine gezielte Nachprüfung und
-anschließend die begrenzte Diagnose und Korrektur von
-`InternalWriteResultTable` freigegeben. Der
-[aktuelle Nachweis](../Architecture/Foundation_1_21_Upgrade.md#freigegebene-table-helperkorrektur-vom-20-oktober-2026)
-erhält sämtliche früheren Fehlversuche und unterscheidet private
-Instrumentierung von kanonischen Produktquellen.
-
-Die native Vierfallprobe des Beobachters besteht einschließlich des
-umverpackten TABLE-Lock-Timeouts und des unabhängigen Cleanups. Fünfzehn
-Offlinecontracts und die statische Gesamtsuite mit 74 Validatoren bestehen.
-Das vollständige funktionale Gate bleibt in Test 202 FAILED. Die vorherige
-Full-Gate-Diagnose grenzt den Fehler auf den Seed-Anpassungsbatch des Helpers
-ein; einzelne DDL-Anweisung und tatsächliche Sperrursache bleiben UNKNOWN.
-23 Samples und `BLOCKER_NOT_CAPTURED` belegen keine Abwesenheit fremder
-Sperren. Der eigene Container ist entfernt; Produkt-Helper und generierte
-Installer sind bisher unverändert.
-
-Der Benutzer hat anschließend die autonome Stabilisierung mit gezielter
-Ursachenanalyse, Korrektur und Bewertung beauftragt. Die historischen Grenzen
-und Fehlversuche bleiben erhalten. Der korrigierte Diagnoseaufbau prüft
-Sessionoptionen und Collation vor dem Test. Beide isolierten Test-202-Läufe
-bestehen; eine frühere Installation mit Collationkonflikt bleibt FAILED.
-Ein vollständiger Diagnosepass scheitert danach in Test 203 bei eigener
-Temp-DDL des Legacy-Moduls. Ein weiterer vollständiger Pass mit begrenzter
-privater Timeoutspur besteht; die frühere Helper-Sperrursache bleibt UNKNOWN.
-
-Die vorbereitete Korrektur v1.5.1 begrenzt ausschließlich eigene Temp-DDL
-bei geerbtem NOWAIT auf bis zu 1000 ms je Anweisung und stellt den Wert vor
-weiteren Operationen sowie im Fehlerpfad wieder her. Quellzugriffe,
-TABLE-Ziele, Schemas und Assertions bleiben erhalten. Der
+Der Benutzer beauftragt die autonome Ursachenanalyse, Korrektur, Prüfung und
+Bewertung bis zu einem stabilen Teststand. Der
 [aktuelle Nachweis](../Architecture/Foundation_1_21_Upgrade.md#autonome-stabilisierung-vom-20-oktober-2026)
-trennt diese Korrektur vom nicht reproduzierten früheren Helpertimeout.
-Kanonische lokale Abnahme und unabhängiger Abschlussreview stehen aus.
-Der eine verbleibende PR-CI-Versuch und der Main-Nachlauf bleiben reserviert.
-[PR #399](https://github.com/gecompat/SQL_Server_Analyze/pull/399) bleibt am
-Remote-Head `ff7a296bab984e8a3943ac7e02fef6ca5ebc7d60` offen und unintegriert.
-Der neue lokale Kandidat wird ohne erfolgreiche Gesamtqualifikation nicht
-erneut veröffentlicht. Die nächste OPS-005-Reifewelle ist ausschließlich
-lesend vorbereitet und beginnt nach dem qualifizierten Streamabschluss.
+erhält frühere Fehlversuche und trennt private Diagnose von kanonischer Abnahme.
+
+Version 1.5.1 schützt ausschließlich eigene Temp-DDL des Legacy-Moduls bei
+geerbtem NOWAIT mit bis zu 1000 ms je Anweisung. Der vorübergehend geänderte
+Wert wird bei Erfolg und im Fehlerpfad wiederhergestellt. Positive und
+unbegrenzte Werte, Quellzugriffe, TABLE-Ziele, Schemas und Assertions bleiben
+erhalten. Der unabhängig geprüfte Guardumfang umfasst 28 eigene
+DDL-Anweisungen in neun Bereichen; der abhängige OPS-005-Installer ist neu
+erzeugt und qualifiziert.
+
+Die kanonische lokale SQL-Server-2025-Abnahme an `88bf926e` besteht auf
+Compatibility Level 170: Deploymentregression, funktionales Full Gate,
+Callerzustände 0, 137 und -1 samt frühem Fehlerpfad, Berechtigungs- und
+Regexmatrix, Plan-Standalone sowie Snapshotlauf und Nebenläufigkeit. Die
+Produktquellen enthalten dabei keine private Helperinstrumentierung. Cleanup
+des eigenen Containers und unabhängiger Abschlussreview bestehen. Alle
+74 statischen Prüfer sind durch die Gesamtsuite und die gezielte
+Adapter-Nachprüfung qualifiziert. Der vorherige Fehler wegen des veralteten
+Adapterinstallers bleibt erhalten. Fünfzehn unveränderte Offlinecontracts und
+die native Vierfallprobe des Diagnosebeobachters bleiben gebunden.
+
+Die frühere Helper-Seed-Sperrursache bleibt UNKNOWN. Nicht reproduzierte
+Befunde und frühere Aufbaufehler werden durch diesen Erfolg nicht
+rückwirkend qualifiziert. Der eine verbleibende PR-CI-Versuch und der
+Main-Nachlauf stehen vor Integration noch aus.
+[PR #399](https://github.com/gecompat/SQL_Server_Analyze/pull/399) bleibt bis zu
+der erforderlichen Head-CI offen. Die nächste OPS-005-Reifewelle ist lesend
+vorbereitet und beginnt nach dem qualifizierten Streamabschluss.
 
 ## Frühere Nichtqualifikation und integrierter OPS-005-Prüfschritt vom 20. Oktober 2026
 

@@ -497,3 +497,22 @@ Die mechanische Rückführung der Guards stellt den vorherigen SQL-Body wieder
 her. Der Nonblocking-Vertrag besteht; Installer sind aus den kanonischen
 Quellen neu erzeugt. Kanonische lokale Abnahme, unabhängiger Abschlussreview,
 letzte PR-CI und Main-Nachlauf stehen für diese Korrektur noch aus.
+
+
+Die anschließende kanonische Abnahme am Commit `88bf926e` besteht auf SQL
+Server 2025, Compatibility Level 170, ohne private Helperinstrumentierung.
+Deploymentregression, funktionales Full Gate, Callerzustände 0, 137 und -1
+samt frühem Mappingfehler, Berechtigungsmatrix, Regexmatrix, Plan-Standalone,
+Snapshotlauf und Snapshot-Nebenläufigkeit sind qualifiziert. Der eigene
+Container ist nachweislich entfernt. Der unabhängige Abschlussreview
+bestätigt keine offenen materiellen Befunde sowie die unveränderten übrigen
+SQL-, Schema- und API-Inhalte nach mechanischer Guardrückführung.
+
+Die statische Gesamtsuite besteht zunächst in 73 Prüfungen und scheitert
+allein am veralteten abhängigen OPS-005-Installer. Nach dessen kanonischer
+Neuerzeugung besteht die gezielte Adapterabnahme einschließlich der acht
+Darstellungsfälle. Unveränderte erfolgreiche Prüfer werden lokal nicht
+wiederholt. Datenschutz-, Dokumentationsstil- und Commitprüfung bestehen.
+Die früheren Fehler bleiben erhalten; die nicht reproduzierte frühere
+Helper-Seed-Sperre bleibt UNKNOWN. Die reguläre CI am endgültigen Head und
+der separate Main-Nachlauf bleiben vor dem Streamabschluss erforderlich.
