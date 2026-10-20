@@ -437,3 +437,28 @@ oder Abnahmelauf benötigt eine neue begrenzte Freigabe. Der verbleibende
 PR-CI-Versuch und der Main-Nachlauf bleiben ungenutzt. PR #399 wird bei
 fehlender lokaler Gesamtqualifikation weder erneut veröffentlicht noch
 integriert; die nächste Produktwelle bleibt lesend vorbereitet.
+
+## Freigegebene Detaildiagnose vom 20. Oktober 2026
+
+Der direkte Benutzer gibt anschließend höchstens zwei zusätzliche lokale
+SQL-Blöcke und genau einen unabhängigen Abschlussreview frei. Der erste
+Block umfasst höchstens zwei Test-202-Ausführungen mit und ohne Beobachter;
+der zweite bleibt der kanonischen Abnahme nach belegter Korrektur
+vorbehalten. Der letzte PR-CI-Versuch und der Main-Nachlauf bleiben reserviert.
+
+Beide Ausführungen des Diagnoseblocks scheitern vor der untersuchten
+Sperrstelle mit Fehler 1934 wegen QUOTED_IDENTIFIER OFF. Der direkte private
+Testaufruf übernimmt den Zustand des kanonischen Full Gates nicht: Dort
+setzt der vorhergehende Vertrag 199 QUOTED_IDENTIFIER ON, bevor Test 202
+seine dynamische Fixtureprocedure erstellt. Das Versäumnis liegt im privaten
+Diagnoseaufbau; die Ergebnisse sind FAILED und qualifizieren weder den
+Helper noch den Vergleich der Beobachterwirkung. Beide eigenen Container
+sind entfernt. Die ursprüngliche Sperrursache bleibt UNKNOWN.
+
+Der korrigierte private Einstieg setzt QUOTED_IDENTIFIER ON ausdrücklich vor
+der Fixtureerstellung und prüft den Wert vor dem unverändert eingebundenen
+Test. Die Python-Syntax, Reihenfolge, einzelne Testeinbindung und unveränderte
+kanonische Testquelle sind offline geprüft; eine native Qualifikation wird
+nicht behauptet. Die zwei zugelassenen Diagnoseausführungen sind verbraucht.
+Eine Wiederholung benötigt eine gezielte zusätzliche Freigabe. Der separate
+Abnahmeblock, Abschlussreview, letzte PR-CI und Main-Nachlauf sind ungenutzt.

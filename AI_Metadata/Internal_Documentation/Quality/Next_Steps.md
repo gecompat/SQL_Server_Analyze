@@ -15,8 +15,8 @@ Instrumentierung von kanonischen Produktquellen.
 Die native Vierfallprobe des Beobachters besteht einschließlich des
 umverpackten TABLE-Lock-Timeouts und des unabhängigen Cleanups. Fünfzehn
 Offlinecontracts und die statische Gesamtsuite mit 74 Validatoren bestehen.
-Das vollständige funktionale Gate bleibt in Test 202 FAILED. Der letzte
-lokale Block grenzt den Fehler auf den Seed-Anpassungsbatch des Helpers
+Das vollständige funktionale Gate bleibt in Test 202 FAILED. Die vorherige
+Full-Gate-Diagnose grenzt den Fehler auf den Seed-Anpassungsbatch des Helpers
 ein; einzelne DDL-Anweisung und tatsächliche Sperrursache bleiben UNKNOWN.
 23 Samples und `BLOCKER_NOT_CAPTURED` belegen keine Abwesenheit fremder
 Sperren. Der eigene Container ist entfernt; Produkt-Helper und generierte
@@ -24,10 +24,19 @@ Installer sind bisher unverändert.
 
 Die drei lokalen SQL-Blöcke und beide Reviewprüfungen der Helpererweiterung
 sind ausgeschöpft. Der abschließende Offline-Review bestätigt keinen
-belegbaren Produktfix. Eine vorbereitete Detailinstrumentierung und
-höchstens zwei gezielte Test-202-Ausführungen mit und ohne Beobachter
-bilden den vorgeschlagenen nächsten Diagnoseschritt. Weitere native
-Diagnose oder Abnahme benötigt eine begrenzte neue Freigabe.
+belegbaren Produktfix. Der Benutzer hat anschließend einen Diagnoseblock
+mit höchstens zwei Test-202-Ausführungen, einen getrennten Abnahmeblock nach
+belegter Korrektur und einen Abschlussreview freigegeben. Beide
+Diagnoseausführungen scheitern vor der Sperrstelle mit Fehler 1934, weil der
+private direkte Einstieg QUOTED_IDENTIFIER ON aus dem vorhergehenden
+kanonischen Test 199 nicht herstellt. Beide Versuche bleiben FAILED; beide
+eigenen Container sind entfernt. Der Einstieg ist offline korrigiert und
+erhält einen Guard vor der unveränderten Testeinbindung. Eine Wiederholung
+benötigt eine zusätzliche begrenzte Freigabe, weil beide zugelassenen
+Diagnoseausführungen verbraucht sind. Abnahmeblock und Abschlussreview
+bleiben ungenutzt. Der
+[Detailnachweis](../Architecture/Foundation_1_21_Upgrade.md#freigegebene-detaildiagnose-vom-20-oktober-2026)
+trennt diesen Aufbaufehler von der weiterhin ungeklärten Sperrursache.
 Der eine verbleibende PR-CI-Versuch und der Main-Nachlauf bleiben reserviert.
 [PR #399](https://github.com/gecompat/SQL_Server_Analyze/pull/399) bleibt am
 Remote-Head `ff7a296bab984e8a3943ac7e02fef6ca5ebc7d60` offen und unintegriert.
