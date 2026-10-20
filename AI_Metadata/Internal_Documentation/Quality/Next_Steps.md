@@ -36,16 +36,39 @@ Main `7359cf48`. Produktprocedures, öffentliche Verträge und Reifeflags
 bleiben unverändert. Gegen Main verbleibt ausschließlich diese Statusnotiz;
 ein neuer PR wurde nicht veröffentlicht.
 
-Der begrenzte Einstieg umfasst einen Implementierer, einen unabhängigen
-Reviewer mit höchstens zwei befundgebundenen Prüfungen und genau einen
-nativen Block. Dieser Block ist verbraucht. Die zweite Reviewprüfung
-untersucht den neuen nativen Befund und den sicheren Folgezustand ohne
-weitere SQL-Ausführung. Der nächste abgegrenzte Diagnoseschritt müsste vor
-dem kombinierten Oracle ausschließlich die synthetische Katalogzeile und
-die genannten Caller-/Consumerwerte erfassen, anschließend eigenes Cleanup
-belegen und bei fehlender Provider-Voraussetzung abbrechen. Dieser Schritt
-ist NOT_EXECUTED. Zusätzliche Plattformen und fremde Labressourcen gehören
-nicht zum Einstiegsumfang. Die offene Providervarianz bleibt unvollständig.
+Der begrenzte Einstieg mit einem nativen Block und zwei befundgebundenen
+Prüfungen eines unabhängigen Reviewers ist ausgeschöpft. Beide Prüfungen
+sind abgeschlossen; die zweite bestätigt die Nichtqualifikation und den
+sicheren Folgezustand ohne weitere SQL-Ausführung.
+
+Der Benutzer hat anschließend genau einen weiteren lokalen Diagnoseblock
+und einen unabhängigen Review freigegeben. Dieser Diagnoseblock besteht
+Installation und die getrennte Vorprüfung von Engine 17 sowie Server-,
+Master- und TempDB-Collation auf SQL Server 2025 mit CL170. Nach dem
+synthetischen `sp_addlinkedserver` findet der Einstieg keine Katalogzeile
+unter dem angeforderten Namen und bricht mit `DIAG_CREATED_ROW_MISSING`
+ab. Der anschließende Cleanup-Guard meldet `DIAG_FIXTURE_IDENTITY_LOST`.
+Der Rückgabecode der Anlage und alternative neue Katalogzeilen fehlen.
+Der Defaultaufruf wurde durch diese zu frühe Vorprüfung nicht erreicht;
+54868 wurde in diesem Lauf nicht erneut ausgeführt. Die genaue Ursache
+bleibt UNKNOWN. SQL-Fixturecleanup ist nicht belegt; die identitätsgebundene
+Entfernung des eigenen Containers ist bestätigt.
+
+Der zusätzliche native Block ist verbraucht. Ein korrigierter privater
+Einstieg erfasst den Anlagerückgabecode, native Fehler und Katalogstände
+vor und nach der Anlage. Er führt auch bei fehlender Fixture genau einen
+Defaultaufruf ohne Remote-Opt-ins aus und erfasst dessen Outputs sowie die
+Oracleprädikate getrennt. Fehlende Fixturevoraussetzungen bleiben als solche
+ausgewiesen. SQL-Cleanup erfordert eine neue, eindeutig eigene Identität;
+unerwartete Zeilen werden nicht übernommen. Dieser Einstieg ist nur offline
+vorbereitet; seine native Ausführung benötigt eine zusätzliche begrenzte
+Freigabe. Der zusätzliche unabhängige Review ist ohne offene materielle
+Befunde abgeschlossen. Seine beiden Treiberbefunde zur Git-Quellbindung und
+zu abschaltbaren Ownershipprüfungen sind behoben. Sieben ausschließlich
+simulierte Treiberfälle bestehen mit normalem und optimiertem Python; sie
+ersetzen keine native Prüfung. Zusätzliche Plattformen und fremde
+Labressourcen bleiben außerhalb des Umfangs. Die offene Providervarianz
+bleibt unvollständig.
 
 ## Abgeschlossene Findings-Stabilisierung vom 20. Oktober 2026
 
