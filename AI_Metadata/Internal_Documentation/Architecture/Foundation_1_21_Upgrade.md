@@ -393,3 +393,47 @@ ergänzt eine tatsächliche 1222-zu-51010-Übersetzung mit demselben bekannten
 Halter und vollständigem Ressourcenvergleich. Fünfzehn Offlinecontracts
 prüfen auch die Negativfälle. Eine erfolgreiche neue native Abnahme wird
 dadurch vor ihrer Ausführung nicht behauptet.
+
+Der dritte und letzte lokale Block verwendet die unabhängig geprüfte
+Instrumentierung und denselben Image-Digest wie die fehlgeschlagene CI.
+Die native Vierfallprobe besteht in 12,09 Sekunden: direkter Timeout,
+umverpackter Timeout, Soforttimeout, Erfolgsfall, vollständige bekannte
+Blockerressource und unabhängiger Cleanup sind qualifiziert. Die separate
+Deploymentregression aus dem zweiten Block bleibt bei unveränderten
+Produkt- und Generatorquellen gebunden; sie wird lokal nicht wiederholt.
+Diese Wiederverwendung ersetzt kein reguläres Remote-Gate.
+
+Das vollständige funktionale Gate bleibt FAILED. Test 202 erreicht diesmal
+C016, den TABLE-Aufruf mit abgeschalteten Nachrichten nach Entfernen der
+Nachrichtenspalte aus der synthetischen Quelle. Der private Marker erreicht
+den Fehlerfang des vierteiligen ALTER-TABLE-Batches zur Anpassung einer
+leeren Seed-Zieltabelle. Welche einzelne Anweisung scheitert und welche
+Ressource den Timeout verursacht, bleibt UNKNOWN. Der Marker identifiziert
+die interne Iterationsquelle und ihr lokales Exportziel. Er belegt keinen
+Fehler speziell beim Entfernen der Dummyspalte.
+
+Der Beobachter erkennt `TABLE_EXPORT_LOCK_TIMEOUT` und erhält 23 Samples.
+Ein Sample liegt nach dem Beginn von C016; frühere Samples bleiben
+unzugeordneter Kontext. Der Status ist `BLOCKER_NOT_CAPTURED`, nicht der
+Nachweis fehlender Fremdsperren. Beobachterfehler und Trunkierung sind 0;
+der SQLCMD-Exitcode ist 1. Der eigene Container wird nachweislich entfernt.
+Die statische Gesamtsuite mit 74 Validatoren und die fünfzehn
+Offlinecontracts bestehen. Ein Produkt-Helperfix ist noch nicht qualifiziert.
+
+Alle drei freigegebenen lokalen SQL-Blöcke und beide Reviewprüfungen sind
+verbraucht. Die zweite Prüfung untersucht ausschließlich die erhaltenen
+Artefakte und den bestehenden Quellstand. Sie bestätigt keinen belegbaren
+Produktfix. Die vorbereitete private Detailinstrumentierung erhält die
+IF-/GOTO-Bindung und trennt die vier dynamischen DDL-Anweisungen durch
+Zeilenumbrüche. ERROR_LINE und ERROR_PROCEDURE im betroffenen Catch sollen
+die Fehlerstelle eingrenzen; 0 oder NULL bleiben nicht entscheidbar.
+Außerhalb eines Catch liefern diese Funktionen keinen Fehlerkontext.
+Höchstens zwei gezielte Ausführungen von Test 202 mit und ohne Beobachter
+bilden den vorgeschlagenen Diagnoseumfang. Ein nicht reproduzierbares
+Ergebnis bleibt INCONCLUSIVE; ein einzelner PASS qualifiziert weder die
+Ursache noch das Full Gate. Dieser Vorschlag ist noch nicht ausgeführt.
+Ein weiterer nativer Diagnose-
+oder Abnahmelauf benötigt eine neue begrenzte Freigabe. Der verbleibende
+PR-CI-Versuch und der Main-Nachlauf bleiben ungenutzt. PR #399 wird bei
+fehlender lokaler Gesamtqualifikation weder erneut veröffentlicht noch
+integriert; die nächste Produktwelle bleibt lesend vorbereitet.

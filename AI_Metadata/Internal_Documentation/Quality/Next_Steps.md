@@ -3,7 +3,39 @@
 **Stand:** 20. Oktober 2026
 **Zweck:** aktuelle ausführbare Entwicklungswelle für `gecompat/SQL_Server_Analyze`
 
-## Nichtqualifizierter CI-Abschluss und integrierter OPS-005-Prüfschritt vom 20. Oktober 2026
+## Aktueller TABLE-Helperblocker vom 20. Oktober 2026
+
+Der Benutzer hat die SQLCMD-Transportdiagnose, eine gezielte Nachprüfung und
+anschließend die begrenzte Diagnose und Korrektur von
+`InternalWriteResultTable` freigegeben. Der
+[aktuelle Nachweis](../Architecture/Foundation_1_21_Upgrade.md#freigegebene-table-helperkorrektur-vom-20-oktober-2026)
+erhält sämtliche früheren Fehlversuche und unterscheidet private
+Instrumentierung von kanonischen Produktquellen.
+
+Die native Vierfallprobe des Beobachters besteht einschließlich des
+umverpackten TABLE-Lock-Timeouts und des unabhängigen Cleanups. Fünfzehn
+Offlinecontracts und die statische Gesamtsuite mit 74 Validatoren bestehen.
+Das vollständige funktionale Gate bleibt in Test 202 FAILED. Der letzte
+lokale Block grenzt den Fehler auf den Seed-Anpassungsbatch des Helpers
+ein; einzelne DDL-Anweisung und tatsächliche Sperrursache bleiben UNKNOWN.
+23 Samples und `BLOCKER_NOT_CAPTURED` belegen keine Abwesenheit fremder
+Sperren. Der eigene Container ist entfernt; Produkt-Helper und generierte
+Installer sind bisher unverändert.
+
+Die drei lokalen SQL-Blöcke und beide Reviewprüfungen der Helpererweiterung
+sind ausgeschöpft. Der abschließende Offline-Review bestätigt keinen
+belegbaren Produktfix. Eine vorbereitete Detailinstrumentierung und
+höchstens zwei gezielte Test-202-Ausführungen mit und ohne Beobachter
+bilden den vorgeschlagenen nächsten Diagnoseschritt. Weitere native
+Diagnose oder Abnahme benötigt eine begrenzte neue Freigabe.
+Der eine verbleibende PR-CI-Versuch und der Main-Nachlauf bleiben reserviert.
+[PR #399](https://github.com/gecompat/SQL_Server_Analyze/pull/399) bleibt am
+Remote-Head `ff7a296bab984e8a3943ac7e02fef6ca5ebc7d60` offen und unintegriert.
+Der neue lokale Kandidat wird ohne erfolgreiche Gesamtqualifikation nicht
+erneut veröffentlicht. Die nächste OPS-005-Reifewelle ist ausschließlich
+lesend vorbereitet und beginnt nach dem qualifizierten Streamabschluss.
+
+## Frühere Nichtqualifikation und integrierter OPS-005-Prüfschritt vom 20. Oktober 2026
 
 Der aktuelle Benutzerauftrag hebt die frühere allgemeine Entwicklungspause
 auf. Der Benutzer hat anschließend den dritten unabhängigen Review und
