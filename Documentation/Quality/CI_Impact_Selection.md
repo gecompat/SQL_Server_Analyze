@@ -48,7 +48,10 @@ vor dem Aufruf. Ein Folgemarker kennzeichnet den Eintritt in die Assertions;
 der Dateiende-Marker beendet die Beobachtung. Die Meldungen erzeugen keine
 zusätzlichen fachlichen Resultsets und verändern keine Sessionoptionen.
 Der Testprozess verwendet `sqlcmd -r 1` und liest Meldungen über stderr
-getrennt von stdout-Ergebniszeilen. Serverseitiges NOWAIT allein verhindert
+getrennt von stdout-Ergebniszeilen. `stdbuf -o0 -e0` deaktiviert die
+Standardkanalpuffer des Clients im vorhandenen Linux-Container. Fehlt dieses
+Werkzeug, bleibt dessen Startfehler als fehlgeschlagener Test sichtbar.
+Serverseitiges NOWAIT allein verhindert
 keine Pufferung durch den umgeleiteten stdout-Kanal des Clients. Lange oder
 unvollständige Ergebniszeilen können deshalb keine Fallmarker verschlucken.
 Beide Kanäle verwenden getrennte Decoder und Geheimnispuffer, aber eine

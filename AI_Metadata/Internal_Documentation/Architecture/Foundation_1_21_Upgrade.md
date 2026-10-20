@@ -238,3 +238,13 @@ unabhängiger Review und eine gezielte Offlineprüfung benötigen eine
 ausdrückliche Budgeterweiterung. Ein zweiter PR-Qualifikationsversuch und
 der Main-Nachlauf bleiben reserviert und unausgeführt. Bis zur erforderlichen
 Abnahme erfolgen weder ein weiterer SQL-Lauf noch eine Integration.
+
+Der direkte Benutzer hat anschließend am 20. Oktober 2026 genau den
+zusätzlichen unabhängigen Review und die gezielte Offlineprüfung freigegeben
+und die Fortsetzung bis zur Integration samt eigenem Cleanup beauftragt.
+Damit sind in dieser Wiederaufnahmewelle drei Reviewdurchgänge zulässig.
+Das SQL-Budget bleibt unverändert: Ein zweiter PR-Qualifikationsversuch
+einschließlich Fehlversuch und der reservierte Main-Nachlauf stehen noch zur
+Verfügung. Die zwölf Dateien sowie alle Diagnose-, Privacy- und Cleanupgrenzen
+bleiben erhalten. Der Stand ist vor Veröffentlichung gegen das inzwischen
+integrierte OPS-005-Prüfupdate aus PR #401 aktualisiert.
