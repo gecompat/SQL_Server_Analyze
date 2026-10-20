@@ -269,3 +269,40 @@ Eine Fortsetzung benötigt einen konkret abgegrenzten Diagnoseplan für die
 tatsächliche SQLCMD-Meldungsübertragung und gesondert freigegebene Review-,
 Offline- und SQL-Abnahmegrenzen. Die bisherigen Testdoubles bestätigen nur
 die Wrapperkonfiguration und ersetzen diesen fehlenden Nachweis nicht.
+
+## Erneute Transportdiagnose vom 20. Oktober 2026
+
+Der direkte Benutzer beauftragt den autonomen Streamabschluss, die Integration
+nach erfolgreichen lokalen Prüfungen und erforderlicher CI sowie anschließend
+die nächste ausführbare Welle. Er gibt dafür einen lokalen SQLCMD-
+Transportvergleich mit höchstens vier kurzen synthetischen Batches, eine
+lokale Sperrabnahme, höchstens zwei PR-CI-Abnahmen, einen Main-Nachlauf und
+einen unabhängigen Reviewer mit höchstens zwei befundgebundenen Prüfungen frei.
+Die früheren Fehlversuche bleiben unverändert erhalten. Der neue Umfang
+verwendet einen eigenen kurzlebigen Container ohne veröffentlichte Ports;
+gemeinsam genutzte Labressourcen werden nicht verändert.
+
+Der tatsächliche Linux-SQLCMD liefert im lokalen Transportvergleich Meldungen
+desselben Batches trotz NOWAIT, `-r 1` und `stdbuf` erst nach der zweisekündigen
+Wartezeit. Auch eine erste RAISERROR-Anweisung oder Severity 0 ändern dieses
+Ergebnis nicht. Ein eigener abgeschlossener Startbatch liefert die Meldung
+dagegen vor der Wartezeit. Der verwendete Container ist anschließend entfernt;
+die lokalen Rohbelege bleiben außerhalb des Repositorys.
+
+Die Korrektur trennt deshalb den Dateistartmarker durch `GO` vom Testbatch.
+Der Beobachter erfasst dieselbe markierte Session bereits vor verspäteten
+Aufrufmeldungen. Die serverseitige UTC-Zeit jeder Stichprobe und die eigene
+UTC-Zeit der Assertionsphase erlauben eine nachträgliche Zuordnung zur
+zuletzt gemeldeten Phase. Frühere Phasen, fremde Sessions und Samples außerhalb
+des bestehenden Zeitfensters werden ausgeschlossen. Die ursprüngliche
+Erfassungsphase bleibt erhalten. Die SQL-Assertions, Produktprocedures,
+Sessionoptionen, Zeilen-, Größen- und Laufzeitgrenzen bleiben unverändert.
+
+Die Offlineprüfung enthält einen Kindprozess, der den Fallmarker erst nach
+einer bereits erfassten Stichprobe liefert, sowie Gegenproben für Session,
+Phasenbeginn, Ablaufzeit und siebenstellige UTC-Präzision. Der Kindprozess
+behauptet keine Emulation des ODBC-Clients. Die unveränderte native
+Blocker-, Ressourcen-, Soforttimeout-, Erfolgs- und Cleanupabnahme bleibt
+erforderlich. Der stabile Stand benötigt anschließend den unabhängigen
+Review und die regulären aktuellen Head- und Mainchecks. Ein weiterer
+Fehlversuch zählt gegen die neue Grenze; fehlende Abnahme bleibt offen.

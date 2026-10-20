@@ -33,7 +33,9 @@ class Contracts(unittest.TestCase):
             self.assertIn("CI_BEGIN|"+path.name[:3], source)
             self.assertIn("CI_END|"+path.name[:3], source)
             self.assertIn("@CiOrdinal+=1", source)
-            self.assertEqual(source.count("N''CI_AFTER|''"), len(calls))
+            self.assertEqual(source.count("N''CI_AFTER|"+path.name[:3]), len(calls))
+            self.assertRegex(source, r"RAISERROR\(N'%s',10,1,@CiFileMarker\) WITH NOWAIT;\s+GO")
+            self.assertNotIn("REPLACE(@CiMarker", source)
             if path.name.startswith("202"):
                 self.assertRegex(source, r"INSERT \[#ExampleSsisLegacy_Console\]\s+EXEC \[monitor\]\.\[USP_SsisLegacyLogAnalysis\]")
         a, b = ci.marker(CASE), ci.marker(CASE.replace("|1|", "|2|"))
@@ -175,21 +177,18 @@ for line in sys.stdin:
             self.assertNotIn("SyntheticCredential", (Path(args.artifacts)/"impact.log").read_text())
 
     def test_live_message_arrives_before_process_exit(self):
-        """Reproduce buffered stdout; only the message channel reaches the observer live."""
+        """Exercise pipe handling; this child does not emulate native ODBC timing."""
         child = """import pathlib, sys, time
 ready = pathlib.Path(sys.argv[1])
 case = sys.argv[2]
-if sys.argv[3] == 'live':
-    sys.stdout.write('x' * 17000)
-    sys.stdout.flush()
-    print(case, file=sys.stderr, flush=True)
-    deadline = time.monotonic() + 3
-    while not ready.exists() and time.monotonic() < deadline:
-        time.sleep(0.01)
-    time.sleep(0.05)
-else:
-    sys.stdout.write(case + '\\n')
-print('Msg 1222, Level 16, State 1', file=sys.stderr if sys.argv[3] == 'live' else sys.stdout, flush=True)
+sys.stdout.write('x' * 17000)
+sys.stdout.flush()
+print(case, file=sys.stderr, flush=True)
+deadline = time.monotonic() + 3
+while not ready.exists() and time.monotonic() < deadline:
+    time.sleep(0.01)
+time.sleep(0.05)
+print('Msg 1222, Level 16, State 1', file=sys.stderr, flush=True)
 sys.exit(7)
 """
         original_popen = subprocess.Popen
@@ -198,15 +197,13 @@ sys.exit(7)
             class Connection:
                 def query(self, sql):
                     ready.touch()
-                    return ['CI_ROW|'+json.dumps(dict(kind="request", session_id=51,
+                    return ['CI_SAMPLE_UTC|2000-01-01T00:00:01Z', 'CI_ROW|'+json.dumps(dict(kind="request", session_id=51,
                             blocking_session_id=52, wait_type="LCK_M_S"))]
                 def close(self):
                     return True
             def launch_child(command, **kwargs):
-                live = ("-r" in command and command[command.index("-r")+1] == "1"
-                        and all(flag in command for flag in ("stdbuf", "-o0", "-e0")))
-                return original_popen([sys.executable, "-c", child, str(ready), CASE,
-                                       "live" if live else "buffered"], **kwargs)
+                self.assertEqual(command[command.index("-r")+1], "1")
+                return original_popen([sys.executable, "-c", child, str(ready), CASE], **kwargs)
             args = SimpleNamespace(container="synthetic", sqlcmd="synthetic", input="synthetic.sql",
                                    log=str(Path(directory)/"raw.log"), artifacts=str(Path(directory)/"artifacts"))
             with patch.dict(os.environ, MSSQL_EPHEMERAL_CREDENTIAL="SyntheticCredential"), \
@@ -217,6 +214,62 @@ sys.exit(7)
             self.assertEqual(report["status"], "BLOCKER_OBSERVED")
             self.assertTrue(report["samples"])
             self.assertEqual(report["errors"], [])
+
+    def test_delayed_case_uses_server_time_and_keeps_phase_boundaries(self):
+        begin = ci.marker(CASE.replace('CI_CASE', 'CI_BEGIN'))
+        case = dict(begin, kind='CASE', utc='2000-01-01T00:00:01.0000002Z')
+        def sample(utc, spid=51, clock=100):
+            return dict(clock=clock, server_utc=utc, case=dict(begin, spid=spid), rows=[])
+        samples = [sample('2000-01-01T00:00:01.0000001Z'),
+                   sample('2000-01-01T00:00:01.0000002Z'),
+                   sample('2000-01-01T00:00:02Z', spid=52),
+                   sample('2000-01-01T00:00:02Z', clock=80)]
+        bound = ci.case_samples(samples, case, 101)
+        self.assertEqual(len(bound), 1)
+        self.assertEqual(bound[0]['case'], case)
+        self.assertEqual(bound[0]['sampled_case'], begin)
+        self.assertEqual(samples[1]['case'], begin)
+        self.assertEqual(ci.case_samples(samples, dict(case, kind='AFTER', utc='2000-01-01T00:00:03Z'), 101), [])
+        self.assertEqual(ci.case_samples(samples, None, 101), [])
+        self.assertRaises(ValueError, ci.utc_key, '2000-01-01T00:00:00+01:00')
+        self.assertRaises(ValueError, ci.utc_key, '2000-02-31T00:00:00Z')
+
+    def test_batch_delayed_marker_rebinds_already_collected_sample(self):
+        child = """import pathlib, sys, time
+ready = pathlib.Path(sys.argv[1])
+print(sys.argv[2], file=sys.stderr, flush=True)
+deadline = time.monotonic()+3
+while not ready.exists() and time.monotonic()<deadline:
+    time.sleep(0.01)
+time.sleep(0.05)
+print(sys.argv[3], file=sys.stderr, flush=True)
+print('Msg 1222, Level 16, State 1', file=sys.stderr, flush=True)
+sys.exit(7)
+"""
+        original_popen = subprocess.Popen
+        with tempfile.TemporaryDirectory() as directory:
+            ready = Path(directory)/'ready'
+            class Connection:
+                def query(self, sql):
+                    ready.touch()
+                    return ['CI_SAMPLE_UTC|2000-01-01T00:00:02Z', 'CI_ROW|'+json.dumps(dict(
+                        kind='request', session_id=51, blocking_session_id=52, wait_type='LCK_M_S'))]
+                def close(self):
+                    return True
+            def launch(command, **kwargs):
+                return original_popen([sys.executable, '-c', child, str(ready),
+                    CASE.replace('CI_CASE', 'CI_BEGIN'), CASE.replace('00:00:00Z', '00:00:01Z')], **kwargs)
+            args = SimpleNamespace(container='synthetic', sqlcmd='synthetic', input='synthetic.sql',
+                log=str(Path(directory)/'raw.log'), artifacts=str(Path(directory)/'artifacts'))
+            with patch.dict(os.environ, MSSQL_EPHEMERAL_CREDENTIAL='SyntheticCredential'), \
+                 patch.object(ci.subprocess, 'Popen', side_effect=launch), \
+                 patch.object(ci, 'Sqlcmd', return_value=Connection()):
+                self.assertEqual(ci.run(args), 7)
+            report = json.loads((Path(args.artifacts)/'diagnostics.json').read_text())
+            self.assertEqual(report['status'], 'BLOCKER_OBSERVED')
+            self.assertEqual(report['samples'][0]['sampled_case']['kind'], 'BEGIN')
+            self.assertEqual(report['samples'][0]['case']['kind'], 'CASE')
+            self.assertEqual(report['errors'], [])
 
     def test_cleanup_verification_preserves_primary_failure(self):
         for verification_fails in (False, True):
@@ -262,7 +315,11 @@ GO
         for name, timeout in (("positive", 2000), ("immediate", 0), ("success", -1)):
             if name == "success":
                 holder.query("ROLLBACK; RAISERROR(N'CI_SAMPLE_END',10,1) WITH NOWAIT;\nGO\n")
-            query = f"""USE tempdb; SET NOCOUNT ON; SET LOCK_TIMEOUT {timeout};
+            query = f"""USE tempdb; SET NOCOUNT ON;
+DECLARE @m nvarchar(400)=CONCAT(N'CI_BEGIN|202|file|0|',CONVERT(varchar(27),SYSUTCDATETIME(),126),N'Z|',@@SPID,N'|',@@LOCK_TIMEOUT,N'|-');
+RAISERROR(N'%s',10,1,@m) WITH NOWAIT;
+GO
+SET LOCK_TIMEOUT {timeout};
 DECLARE @m nvarchar(400)=CONCAT(N'CI_CASE|202|Probe|1|',CONVERT(varchar(27),SYSUTCDATETIME(),126),N'Z|',@@SPID,N'|',@@LOCK_TIMEOUT,N'|{name}');
 RAISERROR(N'%s',10,1,@m) WITH NOWAIT;
 WAITFOR DELAY '00:00:01';

@@ -2,6 +2,7 @@ USE [DeineDatenbank];
 GO
 DECLARE @CiFileMarker nvarchar(400)=CONCAT(N'CI_BEGIN|202|file|0|',CONVERT(varchar(27),SYSUTCDATETIME(),126),N'Z|',@@SPID,N'|',@@LOCK_TIMEOUT,N'|-');
 RAISERROR(N'%s',10,1,@CiFileMarker) WITH NOWAIT;
+GO
 /* Synthetic format tests only; no SSIS execution or provider generation claim. */
 DECLARE @DatabaseId int=DB_ID(),@OwnedProc int=NULL,@OwnedTable int=NULL,@OwnedUser int=NULL;
 DECLARE @OuterOptions int=@@OPTIONS,@OuterLock int=@@LOCK_TIMEOUT,@OuterTran int=@@TRANCOUNT;
@@ -39,14 +40,14 @@ INSERT [dbo].[ExampleSsisLegacy.Log]]Source] VALUES
  (6,N''PackageEnd'',N''ExamplePackage'',@Source,@Id,''20260101 00:00:05'',''20260102'',0,N''Synthetic end''),
  (7,N''OnError'',N''ExampleOtherExecution'',@Source,@Other,''20260101'',''20260101'',9,N''Synthetic excluded other execution'');
 SET @CiOrdinal+=1; SET @CiMarker=CONCAT(N''CI_CASE|202|C001|'',@CiOrdinal,N''|'',CONVERT(varchar(27),SYSUTCDATETIME(),126),N''Z|'',@@SPID,N''|'',@@LOCK_TIMEOUT,N''|'',LEFT(CONCAT(N''-'',N''''),180)); RAISERROR(N''%s'',10,1,@CiMarker) WITH NOWAIT;
-EXEC [monitor].[USP_SsisLegacyLogAnalysis] @Hilfe=1,@ResultSetArt=''TABLE'',@ResultTablesJson=N''invalid'',@JsonErzeugen=1,@Json=@Json OUTPUT; SET @CiMarker=REPLACE(@CiMarker,N''CI_CASE|'',N''CI_AFTER|''); RAISERROR(N''%s'',10,1,@CiMarker) WITH NOWAIT;
+EXEC [monitor].[USP_SsisLegacyLogAnalysis] @Hilfe=1,@ResultSetArt=''TABLE'',@ResultTablesJson=N''invalid'',@JsonErzeugen=1,@Json=@Json OUTPUT; SET @CiMarker=CONCAT(N''CI_AFTER|202|C001|'',@CiOrdinal,N''|'',CONVERT(varchar(27),SYSUTCDATETIME(),126),N''Z|'',@@SPID,N''|'',@@LOCK_TIMEOUT,N''|'',LEFT(CONCAT(N''-'',N''''),180)); RAISERROR(N''%s'',10,1,@CiMarker) WITH NOWAIT;
 IF @Json IS NOT NULL THROW 56301,N''LEGACY_HELP_PRECEDENCE'',1;
 SET @CiOrdinal+=1; SET @CiMarker=CONCAT(N''CI_CASE|202|C002|'',@CiOrdinal,N''|'',CONVERT(varchar(27),SYSUTCDATETIME(),126),N''Z|'',@@SPID,N''|'',@@LOCK_TIMEOUT,N''|'',LEFT(CONCAT(N''-'',N''''),180)); RAISERROR(N''%s'',10,1,@CiMarker) WITH NOWAIT;
-EXEC [monitor].[USP_SsisLegacyLogAnalysis] @ResultSetArt=''NONE'',@JsonErzeugen=1,@Json=@Json OUTPUT,@StatusCodeOut=@Status OUTPUT,@ErrorNumberOut=@Error OUTPUT; SET @CiMarker=REPLACE(@CiMarker,N''CI_CASE|'',N''CI_AFTER|''); RAISERROR(N''%s'',10,1,@CiMarker) WITH NOWAIT;
+EXEC [monitor].[USP_SsisLegacyLogAnalysis] @ResultSetArt=''NONE'',@JsonErzeugen=1,@Json=@Json OUTPUT,@StatusCodeOut=@Status OUTPUT,@ErrorNumberOut=@Error OUTPUT; SET @CiMarker=CONCAT(N''CI_AFTER|202|C002|'',@CiOrdinal,N''|'',CONVERT(varchar(27),SYSUTCDATETIME(),126),N''Z|'',@@SPID,N''|'',@@LOCK_TIMEOUT,N''|'',LEFT(CONCAT(N''-'',N''''),180)); RAISERROR(N''%s'',10,1,@CiMarker) WITH NOWAIT;
 IF @Status IS NULL OR @Status IS NULL OR @Status<>''INVALID_PARAMETER'' OR @Error IS NOT NULL THROW 56302,N''LEGACY_REQUIRED_DATABASE_AND_ID'',1;
 BEGIN TRY
     SET @CiOrdinal+=1; SET @CiMarker=CONCAT(N''CI_CASE|202|C003|'',@CiOrdinal,N''|'',CONVERT(varchar(27),SYSUTCDATETIME(),126),N''Z|'',@@SPID,N''|'',@@LOCK_TIMEOUT,N''|'',LEFT(CONCAT(N''-'',N''''),180)); RAISERROR(N''%s'',10,1,@CiMarker) WITH NOWAIT;
-    EXEC [monitor].[USP_SsisLegacyLogAnalysis] @ResultSetArt=''TABLE'',@ResultTablesJson=N''invalid''; SET @CiMarker=REPLACE(@CiMarker,N''CI_CASE|'',N''CI_AFTER|''); RAISERROR(N''%s'',10,1,@CiMarker) WITH NOWAIT;
+    EXEC [monitor].[USP_SsisLegacyLogAnalysis] @ResultSetArt=''TABLE'',@ResultTablesJson=N''invalid''; SET @CiMarker=CONCAT(N''CI_AFTER|202|C003|'',@CiOrdinal,N''|'',CONVERT(varchar(27),SYSUTCDATETIME(),126),N''Z|'',@@SPID,N''|'',@@LOCK_TIMEOUT,N''|'',LEFT(CONCAT(N''-'',N''''),180)); RAISERROR(N''%s'',10,1,@CiMarker) WITH NOWAIT;
     THROW 56303,N''LEGACY_MAPPING_NOT_REJECTED'',1;
 END TRY
 BEGIN CATCH
@@ -98,7 +99,7 @@ DEALLOCATE [OwnedExportCursor];
 '';
 EXEC [sys].[sp_executesql] @ResetExportsSql,N''@Bindings nvarchar(max)'',@Bindings=@ExportBindings;
 SET @CiOrdinal+=1; SET @CiMarker=CONCAT(N''CI_CASE|202|C004|'',@CiOrdinal,N''|'',CONVERT(varchar(27),SYSUTCDATETIME(),126),N''Z|'',@@SPID,N''|'',@@LOCK_TIMEOUT,N''|'',LEFT(CONCAT(N''-'',N''''),180)); RAISERROR(N''%s'',10,1,@CiMarker) WITH NOWAIT;
-EXEC [monitor].[USP_SsisLegacyLogAnalysis] @LoggingDatabase=@Db,@LoggingTable=N''ExampleSsisLegacy.Log]Source'',@ExecutionId=@Id,@ResultSetArt=''TABLE'',@ResultTablesJson=@Mapping,@JsonErzeugen=1,@Json=@Json OUTPUT,@StatusCodeOut=@Status OUTPUT,@IsPartialOut=@Partial OUTPUT,@ErrorNumberOut=@Error OUTPUT,@ErrorMessageOut=@Message OUTPUT; SET @CiMarker=REPLACE(@CiMarker,N''CI_CASE|'',N''CI_AFTER|''); RAISERROR(N''%s'',10,1,@CiMarker) WITH NOWAIT;
+EXEC [monitor].[USP_SsisLegacyLogAnalysis] @LoggingDatabase=@Db,@LoggingTable=N''ExampleSsisLegacy.Log]Source'',@ExecutionId=@Id,@ResultSetArt=''TABLE'',@ResultTablesJson=@Mapping,@JsonErzeugen=1,@Json=@Json OUTPUT,@StatusCodeOut=@Status OUTPUT,@IsPartialOut=@Partial OUTPUT,@ErrorNumberOut=@Error OUTPUT,@ErrorMessageOut=@Message OUTPUT; SET @CiMarker=CONCAT(N''CI_AFTER|202|C004|'',@CiOrdinal,N''|'',CONVERT(varchar(27),SYSUTCDATETIME(),126),N''Z|'',@@SPID,N''|'',@@LOCK_TIMEOUT,N''|'',LEFT(CONCAT(N''-'',N''''),180)); RAISERROR(N''%s'',10,1,@CiMarker) WITH NOWAIT;
 IF @Status IS NULL OR @Status IS NULL OR @Status<>''AVAILABLE'' OR @Partial IS NULL OR @Partial IS NULL OR @Partial<>0 OR @Error IS NOT NULL OR @Message IS NOT NULL
     THROW 56304,N''LEGACY_HEAP_ANALYZER_STATUS'',1;
 IF (SELECT COUNT_BIG(*) FROM [#ExampleSsisLegacy_timeline])<>6
@@ -311,7 +312,7 @@ BEGIN TRY
   SELECT @IndexNativeError=ERROR_NUMBER(),@IndexNativeMessage=ERROR_MESSAGE();
  END CATCH;
 SET @CiOrdinal+=1; SET @CiMarker=CONCAT(N''CI_CASE|202|C005|'',@CiOrdinal,N''|'',CONVERT(varchar(27),SYSUTCDATETIME(),126),N''Z|'',@@SPID,N''|'',@@LOCK_TIMEOUT,N''|'',LEFT(CONCAT(N''-'',N''''),180)); RAISERROR(N''%s'',10,1,@CiMarker) WITH NOWAIT;
-EXEC [monitor].[USP_SsisLegacyLogAnalysis] @LoggingDatabase=@Db,@LoggingTable=N''ExampleSsisLegacy.Log]Source'',@ExecutionId=@Id,@ResultSetArt=''NONE'',@JsonErzeugen=1,@Json=@Json OUTPUT,@StatusCodeOut=@Status OUTPUT,@IsPartialOut=@Partial OUTPUT,@ErrorNumberOut=@Error OUTPUT,@ErrorMessageOut=@Message OUTPUT; SET @CiMarker=REPLACE(@CiMarker,N''CI_CASE|'',N''CI_AFTER|''); RAISERROR(N''%s'',10,1,@CiMarker) WITH NOWAIT;
+EXEC [monitor].[USP_SsisLegacyLogAnalysis] @LoggingDatabase=@Db,@LoggingTable=N''ExampleSsisLegacy.Log]Source'',@ExecutionId=@Id,@ResultSetArt=''NONE'',@JsonErzeugen=1,@Json=@Json OUTPUT,@StatusCodeOut=@Status OUTPUT,@IsPartialOut=@Partial OUTPUT,@ErrorNumberOut=@Error OUTPUT,@ErrorMessageOut=@Message OUTPUT; SET @CiMarker=CONCAT(N''CI_AFTER|202|C005|'',@CiOrdinal,N''|'',CONVERT(varchar(27),SYSUTCDATETIME(),126),N''Z|'',@@SPID,N''|'',@@LOCK_TIMEOUT,N''|'',LEFT(CONCAT(N''-'',N''''),180)); RAISERROR(N''%s'',10,1,@CiMarker) WITH NOWAIT;
  REVERT;
  SET @Impersonated=0;
 END TRY
@@ -343,7 +344,7 @@ BEGIN TRY
   SELECT @EventNativeError=ERROR_NUMBER(),@EventNativeMessage=ERROR_MESSAGE();
  END CATCH;
 SET @CiOrdinal+=1; SET @CiMarker=CONCAT(N''CI_CASE|202|C006|'',@CiOrdinal,N''|'',CONVERT(varchar(27),SYSUTCDATETIME(),126),N''Z|'',@@SPID,N''|'',@@LOCK_TIMEOUT,N''|'',LEFT(CONCAT(N''-'',N''''),180)); RAISERROR(N''%s'',10,1,@CiMarker) WITH NOWAIT;
-EXEC [monitor].[USP_SsisLegacyLogAnalysis] @LoggingDatabase=@Db,@LoggingTable=N''ExampleSsisLegacy.Log]Source'',@ExecutionId=@Id,@ResultSetArt=''NONE'',@JsonErzeugen=1,@Json=@Json OUTPUT,@StatusCodeOut=@Status OUTPUT,@IsPartialOut=@Partial OUTPUT,@ErrorNumberOut=@Error OUTPUT,@ErrorMessageOut=@Message OUTPUT; SET @CiMarker=REPLACE(@CiMarker,N''CI_CASE|'',N''CI_AFTER|''); RAISERROR(N''%s'',10,1,@CiMarker) WITH NOWAIT;
+EXEC [monitor].[USP_SsisLegacyLogAnalysis] @LoggingDatabase=@Db,@LoggingTable=N''ExampleSsisLegacy.Log]Source'',@ExecutionId=@Id,@ResultSetArt=''NONE'',@JsonErzeugen=1,@Json=@Json OUTPUT,@StatusCodeOut=@Status OUTPUT,@IsPartialOut=@Partial OUTPUT,@ErrorNumberOut=@Error OUTPUT,@ErrorMessageOut=@Message OUTPUT; SET @CiMarker=CONCAT(N''CI_AFTER|202|C006|'',@CiOrdinal,N''|'',CONVERT(varchar(27),SYSUTCDATETIME(),126),N''Z|'',@@SPID,N''|'',@@LOCK_TIMEOUT,N''|'',LEFT(CONCAT(N''-'',N''''),180)); RAISERROR(N''%s'',10,1,@CiMarker) WITH NOWAIT;
  REVERT;
  SET @Impersonated=0;
 END TRY
@@ -371,7 +372,7 @@ WHILE @Cap<=2
 BEGIN
 EXEC [sys].[sp_executesql] @ResetExportsSql,N''@Bindings nvarchar(max)'',@Bindings=@ExportBindings;
 SET @CiOrdinal+=1; SET @CiMarker=CONCAT(N''CI_CASE|202|C007|'',@CiOrdinal,N''|'',CONVERT(varchar(27),SYSUTCDATETIME(),126),N''Z|'',@@SPID,N''|'',@@LOCK_TIMEOUT,N''|'',LEFT(CONCAT(N''Cap='',@Cap,N'';'',N''''),180)); RAISERROR(N''%s'',10,1,@CiMarker) WITH NOWAIT;
-EXEC [monitor].[USP_SsisLegacyLogAnalysis] @LoggingDatabase=@Db,@LoggingTable=N''ExampleSsisLegacy.Log]Source'',@ExecutionId=@Id,@MaxZeilen=@Cap,@ResultSetArt=''TABLE'',@ResultTablesJson=@Mapping,@JsonErzeugen=1,@Json=@Json OUTPUT,@StatusCodeOut=@Status OUTPUT,@IsPartialOut=@Partial OUTPUT,@ErrorNumberOut=@Error OUTPUT,@ErrorMessageOut=@Message OUTPUT; SET @CiMarker=REPLACE(@CiMarker,N''CI_CASE|'',N''CI_AFTER|''); RAISERROR(N''%s'',10,1,@CiMarker) WITH NOWAIT;
+EXEC [monitor].[USP_SsisLegacyLogAnalysis] @LoggingDatabase=@Db,@LoggingTable=N''ExampleSsisLegacy.Log]Source'',@ExecutionId=@Id,@MaxZeilen=@Cap,@ResultSetArt=''TABLE'',@ResultTablesJson=@Mapping,@JsonErzeugen=1,@Json=@Json OUTPUT,@StatusCodeOut=@Status OUTPUT,@IsPartialOut=@Partial OUTPUT,@ErrorNumberOut=@Error OUTPUT,@ErrorMessageOut=@Message OUTPUT; SET @CiMarker=CONCAT(N''CI_AFTER|202|C007|'',@CiOrdinal,N''|'',CONVERT(varchar(27),SYSUTCDATETIME(),126),N''Z|'',@@SPID,N''|'',@@LOCK_TIMEOUT,N''|'',LEFT(CONCAT(N''Cap='',@Cap,N'';'',N''''),180)); RAISERROR(N''%s'',10,1,@CiMarker) WITH NOWAIT;
 
     IF (SELECT COUNT_BIG(*) FROM [#ExampleSsisLegacy_timeline])<>@Cap
        OR NOT EXISTS(SELECT 1 FROM [#ExampleSsisLegacy_sourceStatus] WHERE SourceOrdinal=3 AND ObservedRowCount=@Cap+1 AND ReturnedRowCount=@Cap AND IsTruncated=1)
@@ -383,24 +384,24 @@ EXEC [monitor].[USP_SsisLegacyLogAnalysis] @LoggingDatabase=@Db,@LoggingTable=N'
 END;
 EXEC [sys].[sp_executesql] @ResetExportsSql,N''@Bindings nvarchar(max)'',@Bindings=@ExportBindings;
 SET @CiOrdinal+=1; SET @CiMarker=CONCAT(N''CI_CASE|202|C008|'',@CiOrdinal,N''|'',CONVERT(varchar(27),SYSUTCDATETIME(),126),N''Z|'',@@SPID,N''|'',@@LOCK_TIMEOUT,N''|'',LEFT(CONCAT(N''Cap='',@Cap,N'';'',N''''),180)); RAISERROR(N''%s'',10,1,@CiMarker) WITH NOWAIT;
-EXEC [monitor].[USP_SsisLegacyLogAnalysis] @LoggingDatabase=@Db,@LoggingTable=N''ExampleSsisLegacy.Log]Source'',@ExecutionId=@Id,@MaxZeilen=2147483647,@ResultSetArt=''TABLE'',@ResultTablesJson=@Mapping,@JsonErzeugen=1,@Json=@Json OUTPUT,@StatusCodeOut=@Status OUTPUT,@IsPartialOut=@Partial OUTPUT,@ErrorNumberOut=@Error OUTPUT,@ErrorMessageOut=@Message OUTPUT; SET @CiMarker=REPLACE(@CiMarker,N''CI_CASE|'',N''CI_AFTER|''); RAISERROR(N''%s'',10,1,@CiMarker) WITH NOWAIT;
+EXEC [monitor].[USP_SsisLegacyLogAnalysis] @LoggingDatabase=@Db,@LoggingTable=N''ExampleSsisLegacy.Log]Source'',@ExecutionId=@Id,@MaxZeilen=2147483647,@ResultSetArt=''TABLE'',@ResultTablesJson=@Mapping,@JsonErzeugen=1,@Json=@Json OUTPUT,@StatusCodeOut=@Status OUTPUT,@IsPartialOut=@Partial OUTPUT,@ErrorNumberOut=@Error OUTPUT,@ErrorMessageOut=@Message OUTPUT; SET @CiMarker=CONCAT(N''CI_AFTER|202|C008|'',@CiOrdinal,N''|'',CONVERT(varchar(27),SYSUTCDATETIME(),126),N''Z|'',@@SPID,N''|'',@@LOCK_TIMEOUT,N''|'',LEFT(CONCAT(N''Cap='',@Cap,N'';'',N''''),180)); RAISERROR(N''%s'',10,1,@CiMarker) WITH NOWAIT;
 
 IF (SELECT COUNT_BIG(*) FROM [#ExampleSsisLegacy_timeline])<>6 THROW 56311,N''LEGACY_INT_MAX_OVERFLOW'',1;
 EXEC [sys].[sp_executesql] @ResetExportsSql,N''@Bindings nvarchar(max)'',@Bindings=@ExportBindings;
 SET @CiOrdinal+=1; SET @CiMarker=CONCAT(N''CI_CASE|202|C009|'',@CiOrdinal,N''|'',CONVERT(varchar(27),SYSUTCDATETIME(),126),N''Z|'',@@SPID,N''|'',@@LOCK_TIMEOUT,N''|'',LEFT(CONCAT(N''Cap='',@Cap,N'';'',N''''),180)); RAISERROR(N''%s'',10,1,@CiMarker) WITH NOWAIT;
-EXEC [monitor].[USP_SsisLegacyLogAnalysis] @LoggingDatabase=@Db,@LoggingTable=N''ExampleSsisLegacy.Log]Source'',@ExecutionId=@Id,@MaxZeilen=0,@HighImpactConfirmed=0,@ResultSetArt=''TABLE'',@ResultTablesJson=@Mapping,@JsonErzeugen=1,@Json=@Json OUTPUT,@StatusCodeOut=@Status OUTPUT,@IsPartialOut=@Partial OUTPUT,@ErrorNumberOut=@Error OUTPUT,@ErrorMessageOut=@Message OUTPUT; SET @CiMarker=REPLACE(@CiMarker,N''CI_CASE|'',N''CI_AFTER|''); RAISERROR(N''%s'',10,1,@CiMarker) WITH NOWAIT;
+EXEC [monitor].[USP_SsisLegacyLogAnalysis] @LoggingDatabase=@Db,@LoggingTable=N''ExampleSsisLegacy.Log]Source'',@ExecutionId=@Id,@MaxZeilen=0,@HighImpactConfirmed=0,@ResultSetArt=''TABLE'',@ResultTablesJson=@Mapping,@JsonErzeugen=1,@Json=@Json OUTPUT,@StatusCodeOut=@Status OUTPUT,@IsPartialOut=@Partial OUTPUT,@ErrorNumberOut=@Error OUTPUT,@ErrorMessageOut=@Message OUTPUT; SET @CiMarker=CONCAT(N''CI_AFTER|202|C009|'',@CiOrdinal,N''|'',CONVERT(varchar(27),SYSUTCDATETIME(),126),N''Z|'',@@SPID,N''|'',@@LOCK_TIMEOUT,N''|'',LEFT(CONCAT(N''Cap='',@Cap,N'';'',N''''),180)); RAISERROR(N''%s'',10,1,@CiMarker) WITH NOWAIT;
 
 IF @Status IS NULL OR @Status<>''INVALID_PARAMETER'' OR EXISTS(SELECT 1 FROM [#ExampleSsisLegacy_timeline]) THROW 56312,N''LEGACY_UNBOUNDED_GATE'',1;
 EXEC [sys].[sp_executesql] @ResetExportsSql,N''@Bindings nvarchar(max)'',@Bindings=@ExportBindings;
 SET @CiOrdinal+=1; SET @CiMarker=CONCAT(N''CI_CASE|202|C010|'',@CiOrdinal,N''|'',CONVERT(varchar(27),SYSUTCDATETIME(),126),N''Z|'',@@SPID,N''|'',@@LOCK_TIMEOUT,N''|'',LEFT(CONCAT(N''Cap='',@Cap,N'';'',N''''),180)); RAISERROR(N''%s'',10,1,@CiMarker) WITH NOWAIT;
-EXEC [monitor].[USP_SsisLegacyLogAnalysis] @LoggingDatabase=@Db,@LoggingTable=N''ExampleSsisLegacy.Log]Source'',@ExecutionId=@Id,@MaxZeilen=NULL,@HighImpactConfirmed=1,@ResultSetArt=''TABLE'',@ResultTablesJson=@Mapping,@JsonErzeugen=1,@Json=@Json OUTPUT,@StatusCodeOut=@Status OUTPUT,@IsPartialOut=@Partial OUTPUT,@ErrorNumberOut=@Error OUTPUT,@ErrorMessageOut=@Message OUTPUT; SET @CiMarker=REPLACE(@CiMarker,N''CI_CASE|'',N''CI_AFTER|''); RAISERROR(N''%s'',10,1,@CiMarker) WITH NOWAIT;
+EXEC [monitor].[USP_SsisLegacyLogAnalysis] @LoggingDatabase=@Db,@LoggingTable=N''ExampleSsisLegacy.Log]Source'',@ExecutionId=@Id,@MaxZeilen=NULL,@HighImpactConfirmed=1,@ResultSetArt=''TABLE'',@ResultTablesJson=@Mapping,@JsonErzeugen=1,@Json=@Json OUTPUT,@StatusCodeOut=@Status OUTPUT,@IsPartialOut=@Partial OUTPUT,@ErrorNumberOut=@Error OUTPUT,@ErrorMessageOut=@Message OUTPUT; SET @CiMarker=CONCAT(N''CI_AFTER|202|C010|'',@CiOrdinal,N''|'',CONVERT(varchar(27),SYSUTCDATETIME(),126),N''Z|'',@@SPID,N''|'',@@LOCK_TIMEOUT,N''|'',LEFT(CONCAT(N''Cap='',@Cap,N'';'',N''''),180)); RAISERROR(N''%s'',10,1,@CiMarker) WITH NOWAIT;
 
 IF @Status IS NULL OR @Status<>''AVAILABLE'' OR (SELECT COUNT_BIG(*) FROM [#ExampleSsisLegacy_timeline])<>6 THROW 56313,N''LEGACY_UNBOUNDED_CONFIRMED'',1;
 -- Duplicate sentinel must reject the entire N+1 buffer before its removal.
 INSERT [dbo].[ExampleSsisLegacy.Log]]Source] SELECT * FROM [dbo].[ExampleSsisLegacy.Log]]Source] WHERE id=1;
 EXEC [sys].[sp_executesql] @ResetExportsSql,N''@Bindings nvarchar(max)'',@Bindings=@ExportBindings;
 SET @CiOrdinal+=1; SET @CiMarker=CONCAT(N''CI_CASE|202|C011|'',@CiOrdinal,N''|'',CONVERT(varchar(27),SYSUTCDATETIME(),126),N''Z|'',@@SPID,N''|'',@@LOCK_TIMEOUT,N''|'',LEFT(CONCAT(N''Cap='',@Cap,N'';'',N''''),180)); RAISERROR(N''%s'',10,1,@CiMarker) WITH NOWAIT;
-EXEC [monitor].[USP_SsisLegacyLogAnalysis] @LoggingDatabase=@Db,@LoggingTable=N''ExampleSsisLegacy.Log]Source'',@ExecutionId=@Id,@MaxZeilen=1,@ResultSetArt=''TABLE'',@ResultTablesJson=@Mapping,@JsonErzeugen=1,@Json=@Json OUTPUT,@StatusCodeOut=@Status OUTPUT,@IsPartialOut=@Partial OUTPUT,@ErrorNumberOut=@Error OUTPUT,@ErrorMessageOut=@Message OUTPUT; SET @CiMarker=REPLACE(@CiMarker,N''CI_CASE|'',N''CI_AFTER|''); RAISERROR(N''%s'',10,1,@CiMarker) WITH NOWAIT;
+EXEC [monitor].[USP_SsisLegacyLogAnalysis] @LoggingDatabase=@Db,@LoggingTable=N''ExampleSsisLegacy.Log]Source'',@ExecutionId=@Id,@MaxZeilen=1,@ResultSetArt=''TABLE'',@ResultTablesJson=@Mapping,@JsonErzeugen=1,@Json=@Json OUTPUT,@StatusCodeOut=@Status OUTPUT,@IsPartialOut=@Partial OUTPUT,@ErrorNumberOut=@Error OUTPUT,@ErrorMessageOut=@Message OUTPUT; SET @CiMarker=CONCAT(N''CI_AFTER|202|C011|'',@CiOrdinal,N''|'',CONVERT(varchar(27),SYSUTCDATETIME(),126),N''Z|'',@@SPID,N''|'',@@LOCK_TIMEOUT,N''|'',LEFT(CONCAT(N''Cap='',@Cap,N'';'',N''''),180)); RAISERROR(N''%s'',10,1,@CiMarker) WITH NOWAIT;
 
 IF @Status IS NULL OR @Status<>''ERROR_HANDLED'' OR @Error IS NOT NULL OR EXISTS(SELECT 1 FROM [#ExampleSsisLegacy_timeline])
  OR NOT EXISTS(SELECT 1 FROM [#ExampleSsisLegacy_sourceStatus] WHERE SourceOrdinal=3 AND ObservedRowCount IS NULL AND ReturnedRowCount IS NULL)
@@ -410,12 +411,12 @@ ALTER TABLE [dbo].[ExampleSsisLegacy.Log]]Source] ALTER COLUMN [message] nvarcha
 UPDATE [dbo].[ExampleSsisLegacy.Log]]Source] SET [message]=@Long WHERE id=4;
 EXEC [sys].[sp_executesql] @ResetExportsSql,N''@Bindings nvarchar(max)'',@Bindings=@ExportBindings;
 SET @CiOrdinal+=1; SET @CiMarker=CONCAT(N''CI_CASE|202|C012|'',@CiOrdinal,N''|'',CONVERT(varchar(27),SYSUTCDATETIME(),126),N''Z|'',@@SPID,N''|'',@@LOCK_TIMEOUT,N''|'',LEFT(CONCAT(N''Cap='',@Cap,N'';'',N''''),180)); RAISERROR(N''%s'',10,1,@CiMarker) WITH NOWAIT;
-EXEC [monitor].[USP_SsisLegacyLogAnalysis] @LoggingDatabase=@Db,@LoggingTable=N''ExampleSsisLegacy.Log]Source'',@ExecutionId=@Id,@ResultSetArt=''TABLE'',@ResultTablesJson=@Mapping,@JsonErzeugen=1,@Json=@Json OUTPUT,@StatusCodeOut=@Status OUTPUT,@IsPartialOut=@Partial OUTPUT,@ErrorNumberOut=@Error OUTPUT,@ErrorMessageOut=@Message OUTPUT; SET @CiMarker=REPLACE(@CiMarker,N''CI_CASE|'',N''CI_AFTER|''); RAISERROR(N''%s'',10,1,@CiMarker) WITH NOWAIT;
+EXEC [monitor].[USP_SsisLegacyLogAnalysis] @LoggingDatabase=@Db,@LoggingTable=N''ExampleSsisLegacy.Log]Source'',@ExecutionId=@Id,@ResultSetArt=''TABLE'',@ResultTablesJson=@Mapping,@JsonErzeugen=1,@Json=@Json OUTPUT,@StatusCodeOut=@Status OUTPUT,@IsPartialOut=@Partial OUTPUT,@ErrorNumberOut=@Error OUTPUT,@ErrorMessageOut=@Message OUTPUT; SET @CiMarker=CONCAT(N''CI_AFTER|202|C012|'',@CiOrdinal,N''|'',CONVERT(varchar(27),SYSUTCDATETIME(),126),N''Z|'',@@SPID,N''|'',@@LOCK_TIMEOUT,N''|'',LEFT(CONCAT(N''Cap='',@Cap,N'';'',N''''),180)); RAISERROR(N''%s'',10,1,@CiMarker) WITH NOWAIT;
 
 IF @Status IS NULL OR @Status<>''INVALID_PARAMETER'' OR EXISTS(SELECT 1 FROM [#ExampleSsisLegacy_timeline]) THROW 56315,N''LEGACY_MAX_TEXT_GATE'',1;
 EXEC [sys].[sp_executesql] @ResetExportsSql,N''@Bindings nvarchar(max)'',@Bindings=@ExportBindings;
 SET @CiOrdinal+=1; SET @CiMarker=CONCAT(N''CI_CASE|202|C013|'',@CiOrdinal,N''|'',CONVERT(varchar(27),SYSUTCDATETIME(),126),N''Z|'',@@SPID,N''|'',@@LOCK_TIMEOUT,N''|'',LEFT(CONCAT(N''Cap='',@Cap,N'';'',N''''),180)); RAISERROR(N''%s'',10,1,@CiMarker) WITH NOWAIT;
-EXEC [monitor].[USP_SsisLegacyLogAnalysis] @LoggingDatabase=@Db,@LoggingTable=N''ExampleSsisLegacy.Log]Source'',@ExecutionId=@Id,@HighImpactConfirmed=1,@ResultSetArt=''TABLE'',@ResultTablesJson=@Mapping,@JsonErzeugen=1,@Json=@Json OUTPUT,@StatusCodeOut=@Status OUTPUT,@IsPartialOut=@Partial OUTPUT,@ErrorNumberOut=@Error OUTPUT,@ErrorMessageOut=@Message OUTPUT; SET @CiMarker=REPLACE(@CiMarker,N''CI_CASE|'',N''CI_AFTER|''); RAISERROR(N''%s'',10,1,@CiMarker) WITH NOWAIT;
+EXEC [monitor].[USP_SsisLegacyLogAnalysis] @LoggingDatabase=@Db,@LoggingTable=N''ExampleSsisLegacy.Log]Source'',@ExecutionId=@Id,@HighImpactConfirmed=1,@ResultSetArt=''TABLE'',@ResultTablesJson=@Mapping,@JsonErzeugen=1,@Json=@Json OUTPUT,@StatusCodeOut=@Status OUTPUT,@IsPartialOut=@Partial OUTPUT,@ErrorNumberOut=@Error OUTPUT,@ErrorMessageOut=@Message OUTPUT; SET @CiMarker=CONCAT(N''CI_AFTER|202|C013|'',@CiOrdinal,N''|'',CONVERT(varchar(27),SYSUTCDATETIME(),126),N''Z|'',@@SPID,N''|'',@@LOCK_TIMEOUT,N''|'',LEFT(CONCAT(N''Cap='',@Cap,N'';'',N''''),180)); RAISERROR(N''%s'',10,1,@CiMarker) WITH NOWAIT;
 
 IF NOT EXISTS(SELECT 1 FROM [#ExampleSsisLegacy_execution] WHERE DATALENGTH(FirstErrorMessage)=DATALENGTH(@Long) AND FirstErrorMessage=@Long)
  OR NOT EXISTS(SELECT 1 FROM OPENJSON(@Json,''$.timeline'') WITH(LogId int,MessageText nvarchar(max)) WHERE LogId=4 AND DATALENGTH(MessageText)=DATALENGTH(@Long) AND MessageText=@Long)
@@ -425,14 +426,14 @@ CREATE TABLE [#ExampleSsisLegacy_Console]
  [BeobachteterAusgang] varchar(40),[ErsteFehlerLogId] int,[ErsterFehlertext] nvarchar(max),[ErsterZeitpunkt] datetime,[LetzterZeitpunkt] datetime,[Hinweis] nvarchar(200));
 SET @CiOrdinal+=1; SET @CiMarker=CONCAT(N''CI_CASE|202|C014|'',@CiOrdinal,N''|'',CONVERT(varchar(27),SYSUTCDATETIME(),126),N''Z|'',@@SPID,N''|'',@@LOCK_TIMEOUT,N''|'',LEFT(CONCAT(N''Cap='',@Cap,N'';'',N''''),180)); RAISERROR(N''%s'',10,1,@CiMarker) WITH NOWAIT;
 INSERT [#ExampleSsisLegacy_Console]
-EXEC [monitor].[USP_SsisLegacyLogAnalysis] @LoggingDatabase=@Db,@LoggingTable=N''ExampleSsisLegacy.Log]Source'',@ExecutionId=@Id,@HighImpactConfirmed=1,@ResultSetArt=''CONSOLE''; SET @CiMarker=REPLACE(@CiMarker,N''CI_CASE|'',N''CI_AFTER|''); RAISERROR(N''%s'',10,1,@CiMarker) WITH NOWAIT;
+EXEC [monitor].[USP_SsisLegacyLogAnalysis] @LoggingDatabase=@Db,@LoggingTable=N''ExampleSsisLegacy.Log]Source'',@ExecutionId=@Id,@HighImpactConfirmed=1,@ResultSetArt=''CONSOLE''; SET @CiMarker=CONCAT(N''CI_AFTER|202|C014|'',@CiOrdinal,N''|'',CONVERT(varchar(27),SYSUTCDATETIME(),126),N''Z|'',@@SPID,N''|'',@@LOCK_TIMEOUT,N''|'',LEFT(CONCAT(N''Cap='',@Cap,N'';'',N''''),180)); RAISERROR(N''%s'',10,1,@CiMarker) WITH NOWAIT;
 
 IF (SELECT COUNT_BIG(*) FROM [#ExampleSsisLegacy_Console])<>1
  OR NOT EXISTS(SELECT 1 FROM [#ExampleSsisLegacy_Console] WHERE ErsteFehlerLogId=4 AND DATALENGTH(ErsterFehlertext)=DATALENGTH(@Long) AND ErsterFehlertext=@Long)
  THROW 56317,N''LEGACY_FULL_CONSOLE_FIRST_ERROR'',1;
 EXEC [sys].[sp_executesql] @ResetExportsSql,N''@Bindings nvarchar(max)'',@Bindings=@ExportBindings;
 SET @CiOrdinal+=1; SET @CiMarker=CONCAT(N''CI_CASE|202|C015|'',@CiOrdinal,N''|'',CONVERT(varchar(27),SYSUTCDATETIME(),126),N''Z|'',@@SPID,N''|'',@@LOCK_TIMEOUT,N''|'',LEFT(CONCAT(N''Cap='',@Cap,N'';'',N''''),180)); RAISERROR(N''%s'',10,1,@CiMarker) WITH NOWAIT;
-EXEC [monitor].[USP_SsisLegacyLogAnalysis] @LoggingDatabase=@Db,@LoggingTable=N''ExampleSsisLegacy.Log]Source'',@ExecutionId=@Id,@IncludeMessages=0,@IncludeTimeline=0,@ResultSetArt=''TABLE'',@ResultTablesJson=@Mapping,@JsonErzeugen=1,@Json=@Json OUTPUT,@StatusCodeOut=@Status OUTPUT,@IsPartialOut=@Partial OUTPUT,@ErrorNumberOut=@Error OUTPUT,@ErrorMessageOut=@Message OUTPUT; SET @CiMarker=REPLACE(@CiMarker,N''CI_CASE|'',N''CI_AFTER|''); RAISERROR(N''%s'',10,1,@CiMarker) WITH NOWAIT;
+EXEC [monitor].[USP_SsisLegacyLogAnalysis] @LoggingDatabase=@Db,@LoggingTable=N''ExampleSsisLegacy.Log]Source'',@ExecutionId=@Id,@IncludeMessages=0,@IncludeTimeline=0,@ResultSetArt=''TABLE'',@ResultTablesJson=@Mapping,@JsonErzeugen=1,@Json=@Json OUTPUT,@StatusCodeOut=@Status OUTPUT,@IsPartialOut=@Partial OUTPUT,@ErrorNumberOut=@Error OUTPUT,@ErrorMessageOut=@Message OUTPUT; SET @CiMarker=CONCAT(N''CI_AFTER|202|C015|'',@CiOrdinal,N''|'',CONVERT(varchar(27),SYSUTCDATETIME(),126),N''Z|'',@@SPID,N''|'',@@LOCK_TIMEOUT,N''|'',LEFT(CONCAT(N''Cap='',@Cap,N'';'',N''''),180)); RAISERROR(N''%s'',10,1,@CiMarker) WITH NOWAIT;
 
 IF @Status IS NULL OR @Status<>''AVAILABLE'' OR EXISTS(SELECT 1 FROM [#ExampleSsisLegacy_timeline])
  OR EXISTS(SELECT 1 FROM [#ExampleSsisLegacy_errorChain] WHERE MessageText IS NOT NULL)
@@ -441,23 +442,23 @@ IF @Status IS NULL OR @Status<>''AVAILABLE'' OR EXISTS(SELECT 1 FROM [#ExampleSs
 ALTER TABLE [dbo].[ExampleSsisLegacy.Log]]Source] DROP COLUMN [message];
 EXEC [sys].[sp_executesql] @ResetExportsSql,N''@Bindings nvarchar(max)'',@Bindings=@ExportBindings;
 SET @CiOrdinal+=1; SET @CiMarker=CONCAT(N''CI_CASE|202|C016|'',@CiOrdinal,N''|'',CONVERT(varchar(27),SYSUTCDATETIME(),126),N''Z|'',@@SPID,N''|'',@@LOCK_TIMEOUT,N''|'',LEFT(CONCAT(N''Cap='',@Cap,N'';'',N''''),180)); RAISERROR(N''%s'',10,1,@CiMarker) WITH NOWAIT;
-EXEC [monitor].[USP_SsisLegacyLogAnalysis] @LoggingDatabase=@Db,@LoggingTable=N''ExampleSsisLegacy.Log]Source'',@ExecutionId=@Id,@IncludeMessages=0,@ResultSetArt=''TABLE'',@ResultTablesJson=@Mapping,@JsonErzeugen=1,@Json=@Json OUTPUT,@StatusCodeOut=@Status OUTPUT,@IsPartialOut=@Partial OUTPUT,@ErrorNumberOut=@Error OUTPUT,@ErrorMessageOut=@Message OUTPUT; SET @CiMarker=REPLACE(@CiMarker,N''CI_CASE|'',N''CI_AFTER|''); RAISERROR(N''%s'',10,1,@CiMarker) WITH NOWAIT;
+EXEC [monitor].[USP_SsisLegacyLogAnalysis] @LoggingDatabase=@Db,@LoggingTable=N''ExampleSsisLegacy.Log]Source'',@ExecutionId=@Id,@IncludeMessages=0,@ResultSetArt=''TABLE'',@ResultTablesJson=@Mapping,@JsonErzeugen=1,@Json=@Json OUTPUT,@StatusCodeOut=@Status OUTPUT,@IsPartialOut=@Partial OUTPUT,@ErrorNumberOut=@Error OUTPUT,@ErrorMessageOut=@Message OUTPUT; SET @CiMarker=CONCAT(N''CI_AFTER|202|C016|'',@CiOrdinal,N''|'',CONVERT(varchar(27),SYSUTCDATETIME(),126),N''Z|'',@@SPID,N''|'',@@LOCK_TIMEOUT,N''|'',LEFT(CONCAT(N''Cap='',@Cap,N'';'',N''''),180)); RAISERROR(N''%s'',10,1,@CiMarker) WITH NOWAIT;
 
 IF @Status IS NULL OR @Status<>''AVAILABLE'' THROW 56319,N''LEGACY_DISABLED_MESSAGE_COLUMN_ACCESS'',1;
 EXEC [sys].[sp_executesql] @ResetExportsSql,N''@Bindings nvarchar(max)'',@Bindings=@ExportBindings;
 SET @CiOrdinal+=1; SET @CiMarker=CONCAT(N''CI_CASE|202|C017|'',@CiOrdinal,N''|'',CONVERT(varchar(27),SYSUTCDATETIME(),126),N''Z|'',@@SPID,N''|'',@@LOCK_TIMEOUT,N''|'',LEFT(CONCAT(N''Cap='',@Cap,N'';'',N''''),180)); RAISERROR(N''%s'',10,1,@CiMarker) WITH NOWAIT;
-EXEC [monitor].[USP_SsisLegacyLogAnalysis] @LoggingDatabase=@Db,@LoggingTable=N''ExampleSsisLegacy.Log]Source'',@ExecutionId=@Id,@ResultSetArt=''TABLE'',@ResultTablesJson=@Mapping,@JsonErzeugen=1,@Json=@Json OUTPUT,@StatusCodeOut=@Status OUTPUT,@IsPartialOut=@Partial OUTPUT,@ErrorNumberOut=@Error OUTPUT,@ErrorMessageOut=@Message OUTPUT; SET @CiMarker=REPLACE(@CiMarker,N''CI_CASE|'',N''CI_AFTER|''); RAISERROR(N''%s'',10,1,@CiMarker) WITH NOWAIT;
+EXEC [monitor].[USP_SsisLegacyLogAnalysis] @LoggingDatabase=@Db,@LoggingTable=N''ExampleSsisLegacy.Log]Source'',@ExecutionId=@Id,@ResultSetArt=''TABLE'',@ResultTablesJson=@Mapping,@JsonErzeugen=1,@Json=@Json OUTPUT,@StatusCodeOut=@Status OUTPUT,@IsPartialOut=@Partial OUTPUT,@ErrorNumberOut=@Error OUTPUT,@ErrorMessageOut=@Message OUTPUT; SET @CiMarker=CONCAT(N''CI_AFTER|202|C017|'',@CiOrdinal,N''|'',CONVERT(varchar(27),SYSUTCDATETIME(),126),N''Z|'',@@SPID,N''|'',@@LOCK_TIMEOUT,N''|'',LEFT(CONCAT(N''Cap='',@Cap,N'';'',N''''),180)); RAISERROR(N''%s'',10,1,@CiMarker) WITH NOWAIT;
 
 IF @Status IS NULL OR @Status<>''SOURCE_UNAVAILABLE'' THROW 56320,N''LEGACY_REQUIRED_MESSAGE_COLUMN'',1;
 ALTER TABLE [dbo].[ExampleSsisLegacy.Log]]Source] ADD [message] AS CONVERT(nvarchar(2048),N''Synthetic computed'') PERSISTED;
 EXEC [sys].[sp_executesql] @ResetExportsSql,N''@Bindings nvarchar(max)'',@Bindings=@ExportBindings;
 SET @CiOrdinal+=1; SET @CiMarker=CONCAT(N''CI_CASE|202|C018|'',@CiOrdinal,N''|'',CONVERT(varchar(27),SYSUTCDATETIME(),126),N''Z|'',@@SPID,N''|'',@@LOCK_TIMEOUT,N''|'',LEFT(CONCAT(N''Cap='',@Cap,N'';'',N''''),180)); RAISERROR(N''%s'',10,1,@CiMarker) WITH NOWAIT;
-EXEC [monitor].[USP_SsisLegacyLogAnalysis] @LoggingDatabase=@Db,@LoggingTable=N''ExampleSsisLegacy.Log]Source'',@ExecutionId=@Id,@ResultSetArt=''TABLE'',@ResultTablesJson=@Mapping,@JsonErzeugen=1,@Json=@Json OUTPUT,@StatusCodeOut=@Status OUTPUT,@IsPartialOut=@Partial OUTPUT,@ErrorNumberOut=@Error OUTPUT,@ErrorMessageOut=@Message OUTPUT; SET @CiMarker=REPLACE(@CiMarker,N''CI_CASE|'',N''CI_AFTER|''); RAISERROR(N''%s'',10,1,@CiMarker) WITH NOWAIT;
+EXEC [monitor].[USP_SsisLegacyLogAnalysis] @LoggingDatabase=@Db,@LoggingTable=N''ExampleSsisLegacy.Log]Source'',@ExecutionId=@Id,@ResultSetArt=''TABLE'',@ResultTablesJson=@Mapping,@JsonErzeugen=1,@Json=@Json OUTPUT,@StatusCodeOut=@Status OUTPUT,@IsPartialOut=@Partial OUTPUT,@ErrorNumberOut=@Error OUTPUT,@ErrorMessageOut=@Message OUTPUT; SET @CiMarker=CONCAT(N''CI_AFTER|202|C018|'',@CiOrdinal,N''|'',CONVERT(varchar(27),SYSUTCDATETIME(),126),N''Z|'',@@SPID,N''|'',@@LOCK_TIMEOUT,N''|'',LEFT(CONCAT(N''Cap='',@Cap,N'';'',N''''),180)); RAISERROR(N''%s'',10,1,@CiMarker) WITH NOWAIT;
 
 IF @Status IS NULL OR @Status<>''SOURCE_UNAVAILABLE'' THROW 56321,N''LEGACY_COMPUTED_MESSAGE_ADMISSION'',1;
 EXEC [sys].[sp_executesql] @ResetExportsSql,N''@Bindings nvarchar(max)'',@Bindings=@ExportBindings;
 SET @CiOrdinal+=1; SET @CiMarker=CONCAT(N''CI_CASE|202|C019|'',@CiOrdinal,N''|'',CONVERT(varchar(27),SYSUTCDATETIME(),126),N''Z|'',@@SPID,N''|'',@@LOCK_TIMEOUT,N''|'',LEFT(CONCAT(N''Cap='',@Cap,N'';'',N''''),180)); RAISERROR(N''%s'',10,1,@CiMarker) WITH NOWAIT;
-EXEC [monitor].[USP_SsisLegacyLogAnalysis] @LoggingDatabase=@Db,@LoggingTable=N''ExampleSsisLegacy.Log]Source'',@ExecutionId=@Id,@IncludeMessages=0,@ResultSetArt=''TABLE'',@ResultTablesJson=@Mapping,@JsonErzeugen=1,@Json=@Json OUTPUT,@StatusCodeOut=@Status OUTPUT,@IsPartialOut=@Partial OUTPUT,@ErrorNumberOut=@Error OUTPUT,@ErrorMessageOut=@Message OUTPUT; SET @CiMarker=REPLACE(@CiMarker,N''CI_CASE|'',N''CI_AFTER|''); RAISERROR(N''%s'',10,1,@CiMarker) WITH NOWAIT;
+EXEC [monitor].[USP_SsisLegacyLogAnalysis] @LoggingDatabase=@Db,@LoggingTable=N''ExampleSsisLegacy.Log]Source'',@ExecutionId=@Id,@IncludeMessages=0,@ResultSetArt=''TABLE'',@ResultTablesJson=@Mapping,@JsonErzeugen=1,@Json=@Json OUTPUT,@StatusCodeOut=@Status OUTPUT,@IsPartialOut=@Partial OUTPUT,@ErrorNumberOut=@Error OUTPUT,@ErrorMessageOut=@Message OUTPUT; SET @CiMarker=CONCAT(N''CI_AFTER|202|C019|'',@CiOrdinal,N''|'',CONVERT(varchar(27),SYSUTCDATETIME(),126),N''Z|'',@@SPID,N''|'',@@LOCK_TIMEOUT,N''|'',LEFT(CONCAT(N''Cap='',@Cap,N'';'',N''''),180)); RAISERROR(N''%s'',10,1,@CiMarker) WITH NOWAIT;
 
 IF @Status IS NULL OR @Status<>''AVAILABLE'' THROW 56322,N''LEGACY_IGNORED_COMPUTED_MESSAGE'',1;
 ALTER TABLE [dbo].[ExampleSsisLegacy.Log]]Source] DROP COLUMN [message];
@@ -466,7 +467,7 @@ ALTER TABLE [dbo].[ExampleSsisLegacy.Log]]Source] ADD [message] nvarchar(2048) N
 UPDATE [dbo].[ExampleSsisLegacy.Log]]Source] SET [event]=N''OnPreExecute'' WHERE id=5;
 EXEC [sys].[sp_executesql] @ResetExportsSql,N''@Bindings nvarchar(max)'',@Bindings=@ExportBindings;
 SET @CiOrdinal+=1; SET @CiMarker=CONCAT(N''CI_CASE|202|C020|'',@CiOrdinal,N''|'',CONVERT(varchar(27),SYSUTCDATETIME(),126),N''Z|'',@@SPID,N''|'',@@LOCK_TIMEOUT,N''|'',LEFT(CONCAT(N''Cap='',@Cap,N'';'',N''''),180)); RAISERROR(N''%s'',10,1,@CiMarker) WITH NOWAIT;
-EXEC [monitor].[USP_SsisLegacyLogAnalysis] @LoggingDatabase=@Db,@LoggingTable=N''ExampleSsisLegacy.Log]Source'',@ExecutionId=@Id,@ResultSetArt=''TABLE'',@ResultTablesJson=@Mapping,@JsonErzeugen=1,@Json=@Json OUTPUT,@StatusCodeOut=@Status OUTPUT,@IsPartialOut=@Partial OUTPUT,@ErrorNumberOut=@Error OUTPUT,@ErrorMessageOut=@Message OUTPUT; SET @CiMarker=REPLACE(@CiMarker,N''CI_CASE|'',N''CI_AFTER|''); RAISERROR(N''%s'',10,1,@CiMarker) WITH NOWAIT;
+EXEC [monitor].[USP_SsisLegacyLogAnalysis] @LoggingDatabase=@Db,@LoggingTable=N''ExampleSsisLegacy.Log]Source'',@ExecutionId=@Id,@ResultSetArt=''TABLE'',@ResultTablesJson=@Mapping,@JsonErzeugen=1,@Json=@Json OUTPUT,@StatusCodeOut=@Status OUTPUT,@IsPartialOut=@Partial OUTPUT,@ErrorNumberOut=@Error OUTPUT,@ErrorMessageOut=@Message OUTPUT; SET @CiMarker=CONCAT(N''CI_AFTER|202|C020|'',@CiOrdinal,N''|'',CONVERT(varchar(27),SYSUTCDATETIME(),126),N''Z|'',@@SPID,N''|'',@@LOCK_TIMEOUT,N''|'',LEFT(CONCAT(N''Cap='',@Cap,N'';'',N''''),180)); RAISERROR(N''%s'',10,1,@CiMarker) WITH NOWAIT;
 
 IF @Status IS NULL OR @Status<>''AVAILABLE_LIMITED'' OR (SELECT COUNT_BIG(*) FROM [#ExampleSsisLegacy_iterations] WHERE PairKind=''EXECUTE'' AND PairStatus=''AMBIGUOUS'')<>2
  OR NOT EXISTS(SELECT 1 FROM [#ExampleSsisLegacy_loggingQuality] WHERE QualityCode=''ERROR_MESSAGE_MISSING'' AND AffectedRowCount=1)
@@ -474,7 +475,7 @@ IF @Status IS NULL OR @Status<>''AVAILABLE_LIMITED'' OR (SELECT COUNT_BIG(*) FRO
 DELETE FROM [dbo].[ExampleSsisLegacy.Log]]Source] WHERE id=5;
 EXEC [sys].[sp_executesql] @ResetExportsSql,N''@Bindings nvarchar(max)'',@Bindings=@ExportBindings;
 SET @CiOrdinal+=1; SET @CiMarker=CONCAT(N''CI_CASE|202|C021|'',@CiOrdinal,N''|'',CONVERT(varchar(27),SYSUTCDATETIME(),126),N''Z|'',@@SPID,N''|'',@@LOCK_TIMEOUT,N''|'',LEFT(CONCAT(N''Cap='',@Cap,N'';'',N''''),180)); RAISERROR(N''%s'',10,1,@CiMarker) WITH NOWAIT;
-EXEC [monitor].[USP_SsisLegacyLogAnalysis] @LoggingDatabase=@Db,@LoggingTable=N''ExampleSsisLegacy.Log]Source'',@ExecutionId=@Id,@ResultSetArt=''TABLE'',@ResultTablesJson=@Mapping,@JsonErzeugen=1,@Json=@Json OUTPUT,@StatusCodeOut=@Status OUTPUT,@IsPartialOut=@Partial OUTPUT,@ErrorNumberOut=@Error OUTPUT,@ErrorMessageOut=@Message OUTPUT; SET @CiMarker=REPLACE(@CiMarker,N''CI_CASE|'',N''CI_AFTER|''); RAISERROR(N''%s'',10,1,@CiMarker) WITH NOWAIT;
+EXEC [monitor].[USP_SsisLegacyLogAnalysis] @LoggingDatabase=@Db,@LoggingTable=N''ExampleSsisLegacy.Log]Source'',@ExecutionId=@Id,@ResultSetArt=''TABLE'',@ResultTablesJson=@Mapping,@JsonErzeugen=1,@Json=@Json OUTPUT,@StatusCodeOut=@Status OUTPUT,@IsPartialOut=@Partial OUTPUT,@ErrorNumberOut=@Error OUTPUT,@ErrorMessageOut=@Message OUTPUT; SET @CiMarker=CONCAT(N''CI_AFTER|202|C021|'',@CiOrdinal,N''|'',CONVERT(varchar(27),SYSUTCDATETIME(),126),N''Z|'',@@SPID,N''|'',@@LOCK_TIMEOUT,N''|'',LEFT(CONCAT(N''Cap='',@Cap,N'';'',N''''),180)); RAISERROR(N''%s'',10,1,@CiMarker) WITH NOWAIT;
 
 IF NOT EXISTS(SELECT 1 FROM [#ExampleSsisLegacy_loggingQuality] WHERE QualityCode=''PAIRING_INCOMPLETE'' AND AffectedRowCount=1)
  OR NOT EXISTS(SELECT 1 FROM [#ExampleSsisLegacy_findings] WHERE FindingCode=''PAIRING_INCOMPLETE'' AND EvidenceLevel=''DERIVED'')
@@ -482,7 +483,7 @@ IF NOT EXISTS(SELECT 1 FROM [#ExampleSsisLegacy_loggingQuality] WHERE QualityCod
 DELETE FROM [dbo].[ExampleSsisLegacy.Log]]Source];
 EXEC [sys].[sp_executesql] @ResetExportsSql,N''@Bindings nvarchar(max)'',@Bindings=@ExportBindings;
 SET @CiOrdinal+=1; SET @CiMarker=CONCAT(N''CI_CASE|202|C022|'',@CiOrdinal,N''|'',CONVERT(varchar(27),SYSUTCDATETIME(),126),N''Z|'',@@SPID,N''|'',@@LOCK_TIMEOUT,N''|'',LEFT(CONCAT(N''Cap='',@Cap,N'';'',N''''),180)); RAISERROR(N''%s'',10,1,@CiMarker) WITH NOWAIT;
-EXEC [monitor].[USP_SsisLegacyLogAnalysis] @LoggingDatabase=@Db,@LoggingTable=N''ExampleSsisLegacy.Log]Source'',@ExecutionId=@Id,@ResultSetArt=''TABLE'',@ResultTablesJson=@Mapping,@JsonErzeugen=1,@Json=@Json OUTPUT,@StatusCodeOut=@Status OUTPUT,@IsPartialOut=@Partial OUTPUT,@ErrorNumberOut=@Error OUTPUT,@ErrorMessageOut=@Message OUTPUT; SET @CiMarker=REPLACE(@CiMarker,N''CI_CASE|'',N''CI_AFTER|''); RAISERROR(N''%s'',10,1,@CiMarker) WITH NOWAIT;
+EXEC [monitor].[USP_SsisLegacyLogAnalysis] @LoggingDatabase=@Db,@LoggingTable=N''ExampleSsisLegacy.Log]Source'',@ExecutionId=@Id,@ResultSetArt=''TABLE'',@ResultTablesJson=@Mapping,@JsonErzeugen=1,@Json=@Json OUTPUT,@StatusCodeOut=@Status OUTPUT,@IsPartialOut=@Partial OUTPUT,@ErrorNumberOut=@Error OUTPUT,@ErrorMessageOut=@Message OUTPUT; SET @CiMarker=CONCAT(N''CI_AFTER|202|C022|'',@CiOrdinal,N''|'',CONVERT(varchar(27),SYSUTCDATETIME(),126),N''Z|'',@@SPID,N''|'',@@LOCK_TIMEOUT,N''|'',LEFT(CONCAT(N''Cap='',@Cap,N'';'',N''''),180)); RAISERROR(N''%s'',10,1,@CiMarker) WITH NOWAIT;
 
 IF @Status IS NULL OR @Status<>''AVAILABLE_EMPTY'' OR @Partial IS NULL OR @Partial<>0 OR EXISTS(SELECT 1 FROM [#ExampleSsisLegacy_execution])
  OR (SELECT COUNT_BIG(*) FROM [#ExampleSsisLegacy_loggingQuality])<>1 THROW 56325,N''LEGACY_EMPTY_QUALITY'',1;
@@ -490,11 +491,11 @@ SET XACT_ABORT ON;
 SET LOCK_TIMEOUT 137;
 DECLARE @CallerOptions int=@@OPTIONS;
 SET @CiOrdinal+=1; SET @CiMarker=CONCAT(N''CI_CASE|202|C023|'',@CiOrdinal,N''|'',CONVERT(varchar(27),SYSUTCDATETIME(),126),N''Z|'',@@SPID,N''|'',@@LOCK_TIMEOUT,N''|'',LEFT(CONCAT(N''Cap='',@Cap,N'';'',N''''),180)); RAISERROR(N''%s'',10,1,@CiMarker) WITH NOWAIT;
-EXEC [monitor].[USP_SsisLegacyLogAnalysis] @LoggingDatabase=@Db,@LoggingTable=N''ExampleSsisLegacy.Log]Source'',@ExecutionId=@Id,@ResultSetArt=''NONE'',@StatusCodeOut=@Status OUTPUT WITH RESULT SETS NONE; SET @CiMarker=REPLACE(@CiMarker,N''CI_CASE|'',N''CI_AFTER|''); RAISERROR(N''%s'',10,1,@CiMarker) WITH NOWAIT;
+EXEC [monitor].[USP_SsisLegacyLogAnalysis] @LoggingDatabase=@Db,@LoggingTable=N''ExampleSsisLegacy.Log]Source'',@ExecutionId=@Id,@ResultSetArt=''NONE'',@StatusCodeOut=@Status OUTPUT WITH RESULT SETS NONE; SET @CiMarker=CONCAT(N''CI_AFTER|202|C023|'',@CiOrdinal,N''|'',CONVERT(varchar(27),SYSUTCDATETIME(),126),N''Z|'',@@SPID,N''|'',@@LOCK_TIMEOUT,N''|'',LEFT(CONCAT(N''Cap='',@Cap,N'';'',N''''),180)); RAISERROR(N''%s'',10,1,@CiMarker) WITH NOWAIT;
 
 IF @@OPTIONS<>@CallerOptions OR @@LOCK_TIMEOUT<>137 OR @@TRANCOUNT<>@InitialTran THROW 56326,N''LEGACY_CALLER_STATE'',1;
 SET @CiOrdinal+=1; SET @CiMarker=CONCAT(N''CI_CASE|202|C024|'',@CiOrdinal,N''|'',CONVERT(varchar(27),SYSUTCDATETIME(),126),N''Z|'',@@SPID,N''|'',@@LOCK_TIMEOUT,N''|'',LEFT(CONCAT(N''Cap='',@Cap,N'';'',N''''),180)); RAISERROR(N''%s'',10,1,@CiMarker) WITH NOWAIT;
-EXEC [monitor].[USP_SsisLegacyLogAnalysis] @LoggingDatabase=@Db,@LoggingTable=N''ExampleSsisLegacy.Log]Source'',@ExecutionId=@Id,@ResultSetArt=''RAW''; SET @CiMarker=REPLACE(@CiMarker,N''CI_CASE|'',N''CI_AFTER|''); RAISERROR(N''%s'',10,1,@CiMarker) WITH NOWAIT;
+EXEC [monitor].[USP_SsisLegacyLogAnalysis] @LoggingDatabase=@Db,@LoggingTable=N''ExampleSsisLegacy.Log]Source'',@ExecutionId=@Id,@ResultSetArt=''RAW''; SET @CiMarker=CONCAT(N''CI_AFTER|202|C024|'',@CiOrdinal,N''|'',CONVERT(varchar(27),SYSUTCDATETIME(),126),N''Z|'',@@SPID,N''|'',@@LOCK_TIMEOUT,N''|'',LEFT(CONCAT(N''Cap='',@Cap,N'';'',N''''),180)); RAISERROR(N''%s'',10,1,@CiMarker) WITH NOWAIT;
 
 END;');
     SELECT @OwnedProc=object_id FROM sys.procedures WITH (NOLOCK) WHERE schema_id=1 AND name COLLATE SQL_Latin1_General_CP1_CS_AS=N'ExampleSsisLegacyFixtureScope';
@@ -543,6 +544,6 @@ BEGIN CATCH
     END CATCH;
     THROW;
 END CATCH;
-SET @CiFileMarker=CONCAT(N'CI_END|202|file|0|',CONVERT(varchar(27),SYSUTCDATETIME(),126),N'Z|',@@SPID,N'|',@@LOCK_TIMEOUT,N'|-');
+DECLARE @CiFileMarker nvarchar(400)=CONCAT(N'CI_END|202|file|0|',CONVERT(varchar(27),SYSUTCDATETIME(),126),N'Z|',@@SPID,N'|',@@LOCK_TIMEOUT,N'|-');
 RAISERROR(N'%s',10,1,@CiFileMarker) WITH NOWAIT;
 GO

@@ -44,15 +44,19 @@ Cleanup läuft über den vorhandenen `always()`-Schritt.
 
 Die Verträge 202 bis 207 melden Datei, Aufrufstelle, laufende Aufrufnummer,
 vorhandene Schleifenwerte, UTC-Zeit, Session-ID und aktuellen Lock-Timeout
-vor dem Aufruf. Ein Folgemarker kennzeichnet den Eintritt in die Assertions;
-der Dateiende-Marker beendet die Beobachtung. Die Meldungen erzeugen keine
+vor dem Aufruf. Ein Folgemarker mit eigener UTC-Zeit kennzeichnet den Eintritt
+in die Assertions; der Dateiende-Marker beendet die Beobachtung. Der
+Dateistartmarker steht in einem eigenen, mit `GO` abgeschlossenen Batch.
+Die Meldungen erzeugen keine
 zusätzlichen fachlichen Resultsets und verändern keine Sessionoptionen.
 Der Testprozess verwendet `sqlcmd -r 1` und liest Meldungen über stderr
 getrennt von stdout-Ergebniszeilen. `stdbuf -o0 -e0` deaktiviert die
 Standardkanalpuffer des Clients im vorhandenen Linux-Container. Fehlt dieses
 Werkzeug, bleibt dessen Startfehler als fehlgeschlagener Test sichtbar.
-Serverseitiges NOWAIT allein verhindert
-keine Pufferung durch den umgeleiteten stdout-Kanal des Clients. Lange oder
+Ein lokaler Transportvergleich mit dem tatsächlichen Linux-SQLCMD zeigt,
+dass Meldungen desselben Batches trotz dieser Einstellungen gemeinsam am
+Batchende eintreffen können. Der abgeschlossene Startbatch liefert die
+Session-ID vor dem Testbatch und startet damit die Erfassung. Lange oder
 unvollständige Ergebniszeilen können deshalb keine Fallmarker verschlucken.
 Beide Kanäle verwenden getrennte Decoder und Geheimnispuffer, aber eine
 gemeinsame Größenbegrenzung für das bereinigte Log.
@@ -68,8 +72,16 @@ Die Stichproben sind keine atomare oder vollständige Sperrhistorie.
 
 Abfragen beginnen frühestens alle 250 Millisekunden. Der Beobachter endet
 spätestens nach zehn Minuten und behält höchstens 40 Stichproben der letzten
-zehn Sekunden mit jeweils 200 Zeilen. Bei Fehler 1222 wird dieser Ausschnitt
-dem zuletzt gemeldeten Fall zugeordnet. `BLOCKER_NOT_CAPTURED` bedeutet
+zehn Sekunden mit jeweils 200 Zeilen. Jede Stichprobe enthält zusätzlich die
+UTC-Zeit des SQL-Servers vor der DMV-Abfrage. Bei Fehler 1222 werden nur
+Stichproben derselben Session berücksichtigt, deren Serverzeit mindestens
+der Startzeit der zuletzt gemeldeten Aufruf- oder Assertionsphase entspricht.
+Der Vergleich erhält alle sieben Nachkommastellen. Damit können verspätete
+Fallmarker bereits erfasste Stichproben zuordnen; frühere Phasen, andere
+Sessions und abgelaufene Stichproben werden ausgeschlossen. Die ursprünglich
+beim Erfassen bekannte Phase bleibt als `sampled_case` erkennbar. Ein Sample,
+das eine Phasengrenze überlappt, kann konservativ unberücksichtigt bleiben.
+`BLOCKER_NOT_CAPTURED` bedeutet
 „Blocker nicht erfasst“; insbesondere ein sofortiger oder kurzer Timeout
 kann zwischen Stichproben liegen. Eine fehlende Beobachtung belegt keinen
 fehlenden Blocker. Fehler des Beobachters und abgeschnittene Stichproben

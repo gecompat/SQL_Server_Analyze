@@ -46,6 +46,26 @@ def resource_key(row):
     return tuple(row.get(field) for field in RESOURCE_FIELDS)
 
 
+def utc_key(value):
+    """Compare SQL UTC timestamps without losing their seventh fractional digit."""
+    parts = re.fullmatch(r"(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2})(?:\.(\d{1,7}))?Z", value)
+    if not parts:
+        raise ValueError("Invalid server UTC timestamp")
+    datetime.fromisoformat(value)
+    return parts[1]+"."+(parts[2] or "").ljust(7, "0")+"Z"
+
+
+def case_samples(samples, case, now):
+    """Bind delayed markers to the same session's samples after that phase began."""
+    if not case:
+        return []
+    start = utc_key(case["utc"])
+    return [dict(sample, case=case, sampled_case=sample["case"])
+            for sample in samples
+            if now-sample["clock"] <= WINDOW and sample["case"]["spid"] == case["spid"]
+            and utc_key(sample["server_utc"]) >= start]
+
+
 def observed_blocker(samples, case):
     """A sampled request establishes the direct blocker; lock identity stays complete."""
     for sample in reversed(samples):
@@ -65,6 +85,7 @@ def sample_sql(spid):
     # Each JSON row stays below SQLCMD's line width. No SQL text or identity columns.
     return f"""SET NOCOUNT ON; SET LOCK_TIMEOUT 250; SET DEADLOCK_PRIORITY LOW;
 DECLARE @sid int={spid};
+SELECT N'CI_SAMPLE_UTC|'+CONVERT(varchar(27),SYSUTCDATETIME(),126)+N'Z';
 ;WITH ScopeSessions AS (
  SELECT @sid AS session_id UNION
  SELECT blocking_session_id FROM sys.dm_exec_requests
@@ -176,7 +197,12 @@ class Observation:
                     self.thread.start()
             if re.match(r"^Msg 1222, Level \d+, State \d+", line) and self.frozen is None:
                 now = time.monotonic()
-                self.frozen = {"case": self.case, "samples": [s for s in self.samples if now-s["clock"] <= WINDOW]}
+                try:
+                    samples = case_samples(self.samples, self.case, now)
+                except ValueError:
+                    samples = []
+                    self.errors.append("INVALID_SERVER_TIME")
+                self.frozen = {"case": self.case, "samples": samples}
 
     def _observe(self):
         connection = None
@@ -191,11 +217,14 @@ class Observation:
                     case = self.case
                 if case:
                     lines = connection.query(sample_sql(case["spid"]))
-                    if any(not line.startswith("CI_ROW|") for line in lines):
+                    if not lines or not lines[0].startswith("CI_SAMPLE_UTC|"):
+                        raise RuntimeError("Missing observer server UTC")
+                    server_utc = utc_key(lines[0].split("|", 1)[1])
+                    if any(not line.startswith("CI_ROW|") for line in lines[1:]):
                         raise RuntimeError("Unexpected observer output")
-                    rows = [json.loads(line[7:]) for line in lines]
+                    rows = [json.loads(line[7:]) for line in lines[1:]]
                     sample = dict(clock=time.monotonic(), utc=datetime.now(timezone.utc).isoformat(),
-                                  case=case, rows=rows[:MAX_ROWS],
+                                  server_utc=server_utc, case=case, rows=rows[:MAX_ROWS],
                                   truncated=len(rows) > MAX_ROWS)
                     with self.lock:
                         self.samples.append(sample)
@@ -276,13 +305,26 @@ def run(args):
     command = ["docker", "exec", "--env", "SQLCMDPASSWORD", "--workdir", "/work/Code/Tests",
                args.container, "stdbuf", "-o0", "-e0", args.sqlcmd,
                "-S", "localhost", "-U", "sa", "-C", "-b", "-r", "1"]
-    # NOWAIT flushes the server message, but SQLCMD's redirected stdout can still
-    # buffer it until exit. Disable client stdio buffering inside the container;
-    # keep stderr protocol lines separate from result rows.
-    command += ["-Q", args.query] if getattr(args, "query", None) else ["-i", args.input]
+    # A completed BEGIN batch makes SQLCMD deliver the session marker before
+    # executing the test batch. CASE messages may still arrive after the wait;
+    # the observer's server timestamps retain their phase association.
+    query = getattr(args, "query", None)
+    if query:
+        command.insert(2, "-i")
+        command += ["-q", "SET NOCOUNT ON;"]
+    else:
+        command += ["-i", args.input]
     with log.open("wb") as output:
         writer = LogWriter(output, ephemeral_value, getattr(args, "log_limit", LOG_BYTES))
-        process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, env=env)
+        process = subprocess.Popen(command, stdin=subprocess.PIPE if query else None,
+                                   stdout=subprocess.PIPE, stderr=subprocess.PIPE, env=env)
+        input_errors = []
+        if query:
+            try:
+                process.stdin.write((query+"\nGO\n:QUIT\n").encode("utf-8"))
+                process.stdin.close()
+            except OSError:
+                input_errors.append("INPUT_WRITE_FAILED")
         chunks = queue.Queue(maxsize=32)
         def read_stream(name, pipe):
             try:
@@ -302,7 +344,7 @@ def run(args):
         pending = b""
         decoders = {name: codecs.getincrementaldecoder("utf-8")(errors="replace")
                     for name in ("stdout", "stderr")}
-        read_errors = []
+        read_errors = input_errors
         ended = set()
         while len(ended) < 2:
             name, chunk = chunks.get()
