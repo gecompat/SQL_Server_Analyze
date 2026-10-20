@@ -21,6 +21,13 @@ import CI_LockTimeout_Diagnostics as ci
 CASE = "CI_CASE|202|Probe|1|2000-01-01T00:00:00Z|51|2000|synthetic"
 
 
+def matching_locks(sample, target, holder):
+    locks = [row for row in sample["rows"] if row["kind"] == "lock"]
+    waits = [row for row in locks if row["request_session_id"] == target and row["request_status"] == "WAIT"]
+    owners = [row for row in locks if row["request_session_id"] == holder and row["request_status"] == "GRANT"]
+    return [wait for wait in waits for owner in owners if ci.resource_key(wait) == ci.resource_key(owner)]
+
+
 class Contracts(unittest.TestCase):
     def test_markers_and_callsite_coverage(self):
         root = Path(__file__).resolve().parent
@@ -52,6 +59,16 @@ class Contracts(unittest.TestCase):
         self.assertIn("l.resource_lock_partition", ci.sample_sql(51))
         self.assertNotIn("sql_text", ci.sample_sql(51))
         self.assertRaises(ValueError, ci.sample_sql, 0)
+
+    def test_native_grant_resource_oracle_preserves_all_identity_fields(self):
+        resource = dict(zip(ci.RESOURCE_FIELDS, ("OBJECT", "", 2, "", 42, 0)))
+        wait = dict(resource, kind='lock', request_session_id=51, request_status='WAIT')
+        owner = dict(resource, kind='lock', request_session_id=52, request_status='GRANT')
+        self.assertEqual(matching_locks(dict(rows=[wait, owner]), 51, 52), [wait])
+        for field in ci.RESOURCE_FIELDS:
+            self.assertEqual(matching_locks(dict(rows=[wait, dict(owner, **{field:'different'})]), 51, 52), [])
+        for change in (dict(request_session_id=53), dict(request_status='WAIT'), dict(request_status='GRANTED')):
+            self.assertEqual(matching_locks(dict(rows=[wait, dict(owner, **change)]), 51, 52), [])
 
     def test_unknown_is_not_no_blocker_and_scopes_do_not_mix(self):
         case = ci.marker(CASE)
@@ -147,6 +164,7 @@ for line in sys.stdin:
                     connection.query("incomplete batch\n", timeout=0.05)
             finally:
                 self.assertTrue(connection.close())
+                self.assertFalse(connection.reader.is_alive())
 
     def test_artifact_cap_preserves_failure_and_case(self):
         case = ci.marker(CASE)
@@ -345,13 +363,7 @@ SELECT id FROM ##ExampleCiLockProbe;
                 assert report["status"] == "BLOCKER_OBSERVED", "CI_PROBE_BLOCKER_NOT_CAPTURED"
                 matches = []
                 for sample in report["samples"]:
-                    locks = [row for row in sample["rows"] if row["kind"] == "lock"]
-                    waits = [row for row in locks if row["request_session_id"] == report["case"]["spid"] and row["request_status"] == "WAIT"]
-                    owners = [row for row in locks if row["request_session_id"] == spid and row["request_status"] == "GRANTED"]
-                    for wait in waits:
-                        for owner in owners:
-                            if ci.resource_key(wait) == ci.resource_key(owner):
-                                matches.append(wait)
+                    matches.extend(matching_locks(sample, report["case"]["spid"], spid))
                     assert not any(row.get("kind") == "request" and row["session_id"] == spid for row in sample["rows"]), "CI_PROBE_HOLDER_NOT_IDLE"
                 assert matches, "CI_PROBE_RESOURCE_MISSING"
             else:
@@ -368,12 +380,16 @@ SELECT id FROM ##ExampleCiLockProbe;
             verifier = None
             try:
                 verifier = ci.Sqlcmd("sqlserver-analyze-impact-2025", sqlcmd)
-                verifier.query(f"""IF OBJECT_ID(N'tempdb..##ExampleCiLockProbe') IS NOT NULL OR EXISTS(SELECT 1 FROM sys.dm_exec_sessions WHERE session_id={spid} AND session_id<>@@SPID) THROW 51001,N'CI_PROBE_CLEANUP',1;
+                verifier.query(f"""DECLARE @deadline datetime2=DATEADD(second,1,SYSUTCDATETIME());
+WHILE (OBJECT_ID(N'tempdb..##ExampleCiLockProbe') IS NOT NULL OR EXISTS(SELECT 1 FROM sys.dm_exec_sessions WHERE session_id={spid} AND session_id<>@@SPID)) AND SYSUTCDATETIME()<@deadline
+ WAITFOR DELAY '00:00:00.100';
+IF OBJECT_ID(N'tempdb..##ExampleCiLockProbe') IS NOT NULL OR EXISTS(SELECT 1 FROM sys.dm_exec_sessions WHERE session_id={spid} AND session_id<>@@SPID) THROW 51001,N'CI_PROBE_CLEANUP',1;
 RAISERROR(N'CI_SAMPLE_END',10,1) WITH NOWAIT;
 GO
 """)
-            except (OSError, RuntimeError, TimeoutError):
+            except (OSError, RuntimeError, TimeoutError) as error:
                 cleanup_errors.append("CI_PROBE_CLEANUP_VERIFICATION_FAILED")
+                print("CI probe cleanup detail: "+ci.redact(str(error), os.environ.get("MSSQL_EPHEMERAL_CREDENTIAL", ""))[:1024])
             finally:
                 if verifier is not None and not verifier.close():
                     cleanup_errors.append("CI_PROBE_VERIFIER_CLEANUP")

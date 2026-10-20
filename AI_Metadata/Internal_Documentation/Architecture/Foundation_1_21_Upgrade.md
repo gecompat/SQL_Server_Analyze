@@ -306,3 +306,28 @@ Blocker-, Ressourcen-, Soforttimeout-, Erfolgs- und Cleanupabnahme bleibt
 erforderlich. Der stabile Stand benötigt anschließend den unabhängigen
 Review und die regulären aktuellen Head- und Mainchecks. Ein weiterer
 Fehlversuch zählt gegen die neue Grenze; fehlende Abnahme bleibt offen.
+
+Die lokale Sperrabnahme am Stand `b60b6701` bleibt FAILED. Der Beobachter
+erfasst zwölf Samples und den direkten Blocker. Acht Samples enthalten eine
+wartende Sperre und die gehaltene Sperre des bekannten Halters mit identischen
+vollständigen Ressourcenfeldern. Das bisherige Oracle erwartet jedoch
+`GRANTED`, während die native DMV `GRANT` liefert. Die Offlinegegenprüfung
+des privat erhaltenen Artefakts bestätigt acht passende Ressourcen nach
+Korrektur dieses Vergleichs. Sie ersetzt keine neue native Qualifikation.
+Die separate Fehlerpfad-Cleanupprüfung meldet ebenfalls einen Fehler;
+dessen Ursache bleibt UNKNOWN. Der eigene Container ist entfernt.
+
+Der vorbereitete Folgepass korrigiert ausschließlich das native Statusliteral
+im Ressourcenoracle und prüft fremde Halter, andere Statuswerte sowie jede
+abweichende Ressourcenkomponente negativ. Die Verbindung wartet begrenzt auf
+das Ende ihres Readerthreads. Die unabhängige Cleanupabfrage wartet höchstens
+eine Sekunde auf das Verschwinden der bekannten Session und Probe-Tabelle,
+bevor unverändert ein Fehler entsteht; begrenzte bereinigte Fehlerdetails
+bleiben erhalten. Dieser Ablauf behauptet keine bereits nachgewiesene
+Cleanupursache. Vierzehn Offlinecontracts bestehen. Eine weitere lokale
+Abnahme und ein zusätzlicher unabhängiger Review benötigen eine gezielte
+Freigabe; die beiden PR-CI-Abnahmen und der Main-Nachlauf bleiben ungenutzt.
+
+Der direkte Benutzer gibt anschließend genau einen zusätzlichen unabhängigen
+Review und eine lokale SQL-Nachprüfung dieses Folgepasses frei. Die beiden
+PR-CI-Abnahmen und der Main-Nachlauf bleiben unverändert reserviert.

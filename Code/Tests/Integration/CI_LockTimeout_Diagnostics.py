@@ -170,8 +170,9 @@ class Sqlcmd:
             self.process.wait(timeout=2)
             return False
         finally:
+            self.reader.join(timeout=2)
             self.process.stdout.close()
-        return self.process.returncode == 0
+        return self.process.returncode == 0 and not self.reader.is_alive()
 
 
 class Observation:
