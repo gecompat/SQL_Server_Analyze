@@ -33,7 +33,7 @@ Der nicht qualifizierte Testentwurf bleibt in der lokalen Git-Historie und
 privat mit Quellbindung erhalten. Vertrag 120 und die generierten Adapter
 sind im aktuellen Lieferstand wieder bytegleich mit dem qualifizierten
 Main `7359cf48`. Produktprocedures, öffentliche Verträge und Reifeflags
-bleiben unverändert. Gegen Main verbleibt ausschließlich diese Statusnotiz;
+bleiben unverändert. Gegen Main verbleibt nur dieses Status- und Planungsdokument;
 ein neuer PR wurde nicht veröffentlicht.
 
 Der begrenzte Einstieg mit einem nativen Block und zwei befundgebundenen
@@ -101,8 +101,148 @@ verbraucht. Für die eigentliche Provider-Negativabnahme fehlt eine geeignete,
 gesondert freigegebene Fixture. Weitere unveränderte Linux-Wiederholungen
 werden daraus nicht abgeleitet. Zusätzliche Plattformen und fremde
 Labressourcen bleiben außerhalb des Umfangs; die Providervarianz bleibt
-unvollständig. Die Auswahl der weiteren Fixture oder eine Umordnung der
-Reifeschritte benötigt eine begrenzte Planungsentscheidung.
+unvollständig. Der Benutzer hat anschließend ausschließlich die konkrete
+Planung einer gesondert freizugebenden OPS-005-Fixture ausgewählt. Dieser
+Planungsschritt umfasst keine SQL-, Lab- oder weitere Reviewausführung.
+
+### Geplanter Windows-Fixturepfad für OPS-005
+
+Der vorgeschlagene nächste Umsetzungsschritt prüft den fehlenden Provider
+auf genau einer eigenen Windows-SQL-Server-2025-Instanz. Windows ist ein
+Kandidat für die Anlage der synthetischen Registrierung; deren tatsächlicher
+Erfolg bleibt bis zur Vorprüfung NOT_EXECUTED. Microsoft beschreibt
+[Providerfehler erst beim Zugriff](https://learn.microsoft.com/en-us/troubleshoot/sql/database-engine/linked-servers/ole-db-provider-errors).
+Daraus wird kein garantierter Anlageerfolg für die konkrete Fixture abgeleitet.
+Der Nachweis betrifft ausschließlich den Provider-Negativfall; erfolgreiche
+Verbindungen mit weiteren Providern bleiben offen.
+
+#### Plattform und Zuständigkeit
+
+Die lesend geprüfte Revision `c175c2cf` von `SQL_Server_Lab` besitzt bereits
+einen begrenzten [Hyper-V-Prepared-Image-Pfad](https://github.com/gecompat/SQL_Server_Lab/blob/c175c2cf858a969183d0cbf281416510eabd7503/Providers/HyperV/README.md)
+für Windows Server 2025 und SQL Server 2025 Enterprise Developer.
+Vorgeschlagen wird höchstens ein neuer Run mit einer frischen eigenen VM aus
+einem vorhandenen, hashgebundenen `SQL_PREPARED_SEALED`-Artifact. Das
+Ressourcenprofil soll auf vier vCPUs und acht GiB festen RAM begrenzt sein;
+der vorhandene Host muss zusätzlich seine vorgeschriebene Reserve und den
+Speicherplatz für die eigene differenzierende VHDX nachweisen. Ein passendes
+Artifact, seine gültige Lizenzlaufzeit, die Hostkapazität und ein konkreter
+Run sind derzeit nicht gebunden. Ihre Verfügbarkeit bleibt UNKNOWN.
+
+Die zukünftige Freigabe müsste den neuen Run und dessen vollständigen
+eigenen Cleanup einschließen. Allgemeine Bereitstellung und Lifecycle bleiben
+bei `SQL_Server_Lab`. Imagebau, Downloads, Lizenzaktivierung mit zusätzlichem
+Netzzugang, neue Switches, Reconcile fremder Ressourcen und Änderungen am
+Lab-Repository gehören nicht zu diesem Vorschlag. Es werden keine
+zusätzlichen Daten-VHDX oder persistenten Data-Root-Laufwerke angelegt.
+Der Test verwendet einen vorhandenen isolierten oder ausschließlich
+hostgebundenen Netzpfad mit PowerShell Direct; NAT, LAN und externe NICs
+gehören nicht zum Umfang.
+Fehlt eine Voraussetzung, endet der Schritt vor der betroffenen Mutation.
+Eine dadurch erforderliche allgemeine Lab-Erweiterung benötigt den
+[gesonderten Änderungsvorschlag](../../../Documentation/Architecture/SQL_Server_Lab_Example_Integration_Plan.md#3-freigabegrenze-für-änderungen-an-sql_server_lab).
+
+Der fachliche Runner soll den vorhandenen
+[Windows-Skripttransport](https://github.com/gecompat/SQL_Server_Lab/blob/c175c2cf858a969183d0cbf281416510eabd7503/Public/Invoke-SqlServerLabScript.ps1)
+über `Invoke-SqlServerLabScript`, explizite RunId, InstanceId und StateRoot,
+`WindowsAuthentication` und `KeepConnection` verwenden. Die Ausführung bleibt
+im gebundenen Gast; ein SQL-Auth-Fallback oder eine automatische Wiederholung
+nach Versand ist ausgeschlossen. Vor späterer Ausführung werden die dann
+maßgeblichen Lab-Anweisungen und die verwendete Revision erneut geprüft.
+Der vorhandene OPS-005-Adapter verlangt `container-linux` und erhält durch
+diesen Plan keine Windows-Capability. Der neue manuelle Analyze-Vertrag wird
+getrennt von Vertrag 120 und dessen Linux-Adapter umgesetzt und vor seiner
+Anlage gemäß Artefaktvertrag eingeordnet.
+Produktprocedure, öffentliche Parameter und Statuscodes sowie Reifeflags
+bleiben unverändert. Ein neuer Produktfehler erweitert diesen Umfang nicht
+automatisch.
+
+#### Voraussetzungen vor der Providerprobe
+
+Vor SQL-Mutationen müssen RunId, ScopeId, InstanceId, VMId und die eigenen
+Ressourcenpfade eindeutig gebunden sein. Der Gast muss bereits SQL_READY_RUN,
+gültige Lizenzvoraussetzungen, Major-Version 17 sowie
+`SQL_Latin1_General_CP1_CS_AS` für Server, Master und TempDB bestätigen.
+ProductVersion, Edition und Plattform werden tatsächlich erfasst. Es dürfen
+keine fremden Benutzerdatenbanken und keine Linked Server vorhanden sein.
+Windows-Authentifizierung muss im isolierten Ziel die benötigten Rechte
+besitzen; eine fehlende Berechtigung führt zum Abbruch statt zu einer
+Rechteausweitung.
+
+Der Runner erstellt genau eine eigene, markierte Frameworkdatenbank auf
+CL170 und installiert eine privat gebundene Standalonefassung aus den
+kanonischen Quellen. Der bestehende Standalonebuilder bleibt unverändert;
+SQLCMD-Includes werden nicht als Unterstützung des Windows-Transports
+vorausgesetzt. Quellhashes, installierte Definition und ABI des Analyzers
+werden vor der Probe gebunden.
+
+Ein pro Versuch neu erzeugter synthetischer Providername dient ausschließlich
+diesem Run. Der Zielname und `example-provider.invalid` bleiben synthetisch.
+Es werden weder ein Provider installiert noch Treiberregistrierungen verändert.
+`sp_addlinkedserver` muss Rückgabecode `0` liefern und genau eine neue
+`sys.servers`-Zeile mit passendem Namen, Provider, Produkt, Datenquelle und
+`is_linked=1` erzeugen. Server-ID, `modify_date`, vorheriger Katalogstand und
+Erstellungsintent werden privat erfasst.
+Fehlt diese Voraussetzung, bleibt die Probe nicht qualifiziert und erreicht
+keinen Consumer-Erfolgsstatus. Die ursprünglichen Fehlerbelege bleiben erhalten.
+
+#### Fachlicher Abnahmeblock
+
+Nach gültiger Anlage sind höchstens fünf gezielte Analyzer-Aufrufe und genau
+eine unabhängige native `sp_testlinkedserver`-Vorprobe vorgesehen. Alle
+Analyzer-Aufrufe verwenden JSON und NONE; Caller-Locktimeout, Sessionoptionen
+und Transaktionszahl werden je Aufruf vor und nachher verglichen.
+
+| Schritt | Schalter Connectivity/HighImpact | Erwartung |
+|---|---|---|
+| Sicherer Default | `0/0` | Genau die eigene Zeile, global `AVAILABLE`, Partialität `0`, Zeile `NOT_EXECUTED`/`AVAILABLE` und leere Fehleroutputs. |
+| Nur HighImpact bestätigt | `0/1` | Derselbe sichere Inventarvertrag ohne aktivierten Verbindungstest. |
+| Zweite Bestätigung fehlt | `1/0` | Global `AUTHORIZATION_REQUIRED`, Partialität `1`, Zeile `AUTHORIZATION_REQUIRED`/`AVAILABLE` und NULL als Fehlernummer. |
+| Native Vorprobe und doppeltes Opt-in | `1/1` nach der Vorprobe | Die Vorprobe muss 7302 oder 7403 liefern. Der Analyzer muss dieselbe eigene Zeile als `FAILED`/`SOURCE_UNAVAILABLE`, global `AVAILABLE_LIMITED` und partiell liefern; Fehlernummer und `EvidenceLimit` müssen zur erfassten nativen Fehlernummer passen. |
+| Default nach SQL-Cleanup | `0/0` | Keine Linked Server, global `AVAILABLE_EMPTY`, JSON `[]`, Partialität `0` und leere Fehleroutputs. |
+
+Unmittelbar vor Vorprobe und doppeltem Opt-in muss weiterhin ausschließlich
+die gebundene eigene Linked-Server-Zeile vorhanden sein. `@MaxZeilen` begrenzt
+die Verbindungstests nicht. Timeout, Berechtigungsfehler, eine erfolgreiche
+Vorprobe oder ein anderer Providerfehler erfüllen den Negativnachweis nicht.
+Ein unerwarteter Befund beendet den fachlichen Block ohne automatische
+Korrektur oder Wiederholung. Ein verlorener Transportreply bleibt UNKNOWN.
+
+#### Cleanup, Nachweise und vorgeschlagene Freigabegrenze
+
+Erfolgs- und Fehlerpfad dürfen nur die erneut gegen Server-ID, `modify_date`,
+Namen, Provider, Produkt, Datenquelle und Erstellungsintent bestätigte Fixture
+entfernen. Nach dem Drop werden Rückgabecode und Abwesenheit geprüft.
+Unerwartete oder veränderte Identitäten bleiben unberührt. Die eigene
+Frameworkdatenbank wird nur mit unverändertem Marker entfernt. Anschließend
+erfolgt der [Lab-Cleanup](https://github.com/gecompat/SQL_Server_Lab/blob/c175c2cf858a969183d0cbf281416510eabd7503/Public/Remove-SqlServerLab.ps1)
+mit expliziter RunId und StateRoot; Parent-Images und andere Runs bleiben
+erhalten. Teilfehler bleiben als Recoverybedarf erhalten. SQL-Fixturecleanup,
+Datenbankcleanup und Ressourcencleanup werden getrennt nachgewiesen.
+
+Rohlogs, Zugangsdaten, Run- und Hostidentitäten bleiben privat. Eine spätere
+Repositoryevidenz enthält nur bereinigte synthetische Aussagen mit Commit,
+Engine, Version, Plattform, CL, Umfang, Ergebnis und Cleanupgrenzen.
+
+Zur gesonderten Freigabe wird ein kohärenter Umsetzungsschritt mit einem
+Implementierer, einem unabhängigen Reviewer mit höchstens zwei
+befundgebundenen Prüfungen, höchstens einem neuen vorbereiteten Lab-Run und
+genau einem nativen Windows-Abnahmeblock vorgeschlagen. Der fachliche
+Gastaufruf erhält höchstens 120 Sekunden; Installation und Vorprüfung
+erhalten jeweils höchstens 300 Sekunden. Der vorhandene Lab-Lifecycle muss
+seine eigenen begrenzten Warte- und Recoveryverträge erfüllen. Jeder
+begonnene Versuch zählt auch bei früherem Abbruch; ältere Budgets bleiben
+unverändert verbraucht.
+
+Vor Lieferung sind betroffene Offlineprüfungen, die gezielte native Abnahme
+und aktuelle grüne Head-Gates erforderlich. Vorgeschlagen werden höchstens
+ein PR-CI-Versuch und ein Main-Nachlauf gemäß kanonischer Impact-Auswahl.
+Der reguläre Merge, Main-/Treevergleich, Synchronisierung und die Bereinigung
+ausschließlich eigener integrierter Branches und Worktrees schließen einen
+qualifizierten Slice ab.
+Ein Fehlschlag oder eine fehlende Plattformvoraussetzung erlaubt keine
+weiteren Versuche. Dieser gesamte Ausführungsumfang ist derzeit nur
+vorgeschlagen; freigegeben ist ausschließlich der vorliegende Planungsschritt.
 
 ## Abgeschlossene Findings-Stabilisierung vom 20. Oktober 2026
 
