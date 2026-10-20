@@ -248,3 +248,24 @@ einschließlich Fehlversuch und der reservierte Main-Nachlauf stehen noch zur
 Verfügung. Die zwölf Dateien sowie alle Diagnose-, Privacy- und Cleanupgrenzen
 bleiben erhalten. Der Stand ist vor Veröffentlichung gegen das inzwischen
 integrierte OPS-005-Prüfupdate aus PR #401 aktualisiert.
+
+Der zweite und letzte PR-Qualifikationsversuch am Commit
+`2efabcb0cedbe0bae22129899422aff97d144666` bleibt ebenfalls FAILED. Die elf
+Offlinecontracts und die Deploymentregression bestehen. Die positive native
+Sperrprobe erfasst Fehler 1222, Exitcode 1 und den Testfall mit 2000 ms
+Lock-Timeout, aber null Stichproben bei leerer Beobachterfehlerliste.
+`BLOCKER_NOT_CAPTURED` erfüllt das Blocker- und Ressourcenoracle nicht.
+Der [letzte freigegebene Lauf](https://github.com/gecompat/SQL_Server_Analyze/actions/runs/39387700757)
+führt deshalb weder das vollständige funktionale Gate noch die übrigen
+synthetischen Fälle aus. Die Stdout-/Stderr-Entpufferung allein ist damit
+keine nativ bestätigte Lösung; die verbleibende Ursache ist UNKNOWN.
+
+Das Diagnoseartefakt ist privat erhalten. Der CI-Container-Cleanup besteht,
+ein vollständiger qualifizierter Cleanupnachweis bleibt offen. Beide neuen
+PR-SQL-Versuche und alle drei neuen Reviews sind verbraucht; der Main-Nachlauf
+bleibt ohne erfolgreiche PR-Abnahme unausgeführt. Es erfolgen kein Merge und
+keine Umwidmung des Main-Budgets. Der Stand bleibt wiederherstellbar erhalten.
+Eine Fortsetzung benötigt einen konkret abgegrenzten Diagnoseplan für die
+tatsächliche SQLCMD-Meldungsübertragung und gesondert freigegebene Review-,
+Offline- und SQL-Abnahmegrenzen. Die bisherigen Testdoubles bestätigen nur
+die Wrapperkonfiguration und ersetzen diesen fehlenden Nachweis nicht.
