@@ -11,23 +11,41 @@ Main-Nachlauf bestehen; der Merge-Tree entspricht dem geprüften Head.
 Main ist synchron und sauber. Der eigene Worktree ist wiederherstellbar
 archiviert, die beiden integrierten eigenen Arbeitszweige sind entfernt.
 
-Die nächste Reifewelle ergänzt in Vertrag 120 einen synthetischen nicht
-verfügbaren OLE-DB-Provider. Ein aufrufbezogener Providername und ein nativer
-Fehler 7302 oder 7403 sollen den tatsächlichen Negativzustand belegen. Der
-Consumer muss den Provider im sicheren Default ohne Verbindungstest
-inventarisieren und nach doppeltem Opt-in SOURCE_UNAVAILABLE mit gebundener
-nativer Fehlerevidenz liefern. Die eigene Linked-Server-Fixture erhält
-Kollisionsschutz, identitätsgebundenen Fehlercleanup und Abwesenheitsprüfung.
+Die nächste Reifewelle untersucht einen synthetischen nicht verfügbaren
+OLE-DB-Provider. Der lokale Entwurf `3eec56c4` ergänzt Vertrag 120 und seinen
+kanonischen Updateadapter um Providername, Kollisionsschutz, einen sicheren
+Default, native Vorprobe 7302/7403 und gebundene SOURCE_UNAVAILABLE-Evidenz
+mit identitätsgebundenem Erfolgs- und Fehlercleanup. Der unabhängige erste
+Review sowie Adapterprüfung mit acht Darstellungsfällen, Maturity-,
+Datenschutz-, Stil- und Commitprüfung bestehen.
 
-Der Umfang umfasst ausschließlich Vertrag 120, seinen generierten
-OPS-005-Updateadapter und diese Statusnotiz. Produktprocedures und öffentliche
-Verträge bleiben unverändert. Ein Implementierer, ein unabhängiger Reviewer
-mit höchstens zwei befundgebundenen Prüfungen und ein lokaler SQL-Server-2025-
-Block für Smoke und den betroffenen Vertrag bilden den begrenzten Einstieg.
-PR-Veröffentlichung und ein weiterer Main-Nachlauf gehören noch nicht zu
-diesem Einstieg. Statische Prüfung, Review und native Abnahme stehen aus.
-Der Negativfall belegt keinen weiteren erfolgreichen Provider und schließt
-die offene Providervarianz nicht ab; die Reifeflags bleiben unverändert.
+Die eine lokale SQL-Server-2025-Probe auf CL170 besteht Installation und
+Smoke. Vertrag 120 scheitert anschließend mit 54868, State 1, am neuen
+kombinierten Default-Inventaroracle, noch vor der Provider-Vorprobe. Die
+Default-JSON-Werte, Status, Partialität, ErrorOut und die tatsächliche neue
+Provider-Katalogzeile wurden nicht erfasst. Der Negativzustand ist nicht
+nachgewiesen; die genaue Soll-Ist-Abweichung bleibt UNKNOWN. Ein Provideralias
+oder eine Linux-Plattformursache werden nicht als festgestellt ausgewiesen.
+Die Einstiegsprobe bleibt FAILED_NOT_QUALIFIED. Der eigene Container ist
+identitätsgebunden entfernt; ein Providererfolg wird nicht behauptet.
+
+Der nicht qualifizierte Testentwurf bleibt in der lokalen Git-Historie und
+privat mit Quellbindung erhalten. Vertrag 120 und die generierten Adapter
+sind im aktuellen Lieferstand wieder bytegleich mit dem qualifizierten
+Main `7359cf48`. Produktprocedures, öffentliche Verträge und Reifeflags
+bleiben unverändert. Gegen Main verbleibt ausschließlich diese Statusnotiz;
+ein neuer PR wurde nicht veröffentlicht.
+
+Der begrenzte Einstieg umfasst einen Implementierer, einen unabhängigen
+Reviewer mit höchstens zwei befundgebundenen Prüfungen und genau einen
+nativen Block. Dieser Block ist verbraucht. Die zweite Reviewprüfung
+untersucht den neuen nativen Befund und den sicheren Folgezustand ohne
+weitere SQL-Ausführung. Der nächste abgegrenzte Diagnoseschritt müsste vor
+dem kombinierten Oracle ausschließlich die synthetische Katalogzeile und
+die genannten Caller-/Consumerwerte erfassen, anschließend eigenes Cleanup
+belegen und bei fehlender Provider-Voraussetzung abbrechen. Dieser Schritt
+ist NOT_EXECUTED. Zusätzliche Plattformen und fremde Labressourcen gehören
+nicht zum Einstiegsumfang. Die offene Providervarianz bleibt unvollständig.
 
 ## Abgeschlossene Findings-Stabilisierung vom 20. Oktober 2026
 

@@ -16,8 +16,7 @@ GO
 /*
 ===============================================================================
 Datei        : 120_OPS005_Linked_Server_Runtime_Contract.sql
-Zweck        : Prüft Inventar, sicheren Default, doppeltes Opt-in und einen
-               tatsächlich nicht verfügbaren synthetischen Provider.
+Zweck        : Prüft lokales Inventar, sicheren Default und doppeltes Opt-in.
 Datenschutz  : Ausschließlich feste synthetische Objekt- und Zielnamen.
  Nebenwirkung : Synthetische Linked Server, ein Login und zugehörige Benutzer
                 werden im Fehler- und Erfolgsfall wieder entfernt. Der Test prüft
@@ -29,10 +28,6 @@ SET XACT_ABORT ON;
 
 DECLARE @ServerName sysname = N'ExampleOps005Linked';
 DECLARE @TimeoutServerName sysname = N'ExampleOps005TimeoutLinked';
-DECLARE @ProviderServerName sysname = N'ExampleOps005UnavailableProvider';
-DECLARE @UnavailableProvider nvarchar(128) = N'ExampleUnavailableOleDbProvider_'
-    + REPLACE(CONVERT(nvarchar(36), NEWID()), N'-', N'');
-DECLARE @ExpectedProviderError int = NULL,@ProviderError int = NULL;
 DECLARE @Json nvarchar(max) = NULL;
 DECLARE @Status varchar(40) = NULL;
 DECLARE @Partial bit = NULL;
@@ -45,8 +40,6 @@ IF EXISTS (SELECT 1 FROM [sys].[servers] WHERE [name] = @ServerName)
     THROW 54850, N'Der synthetische Linked-Server-Name ist bereits belegt.', 1;
 IF EXISTS (SELECT 1 FROM [sys].[servers] WHERE [name] = @TimeoutServerName)
     THROW 54854, N'Der synthetische Timeout-Linked-Server-Name ist bereits belegt.', 1;
-IF EXISTS (SELECT 1 FROM [sys].[servers] WHERE [name] = @ProviderServerName)
-    THROW 54866, N'Der synthetische Provider-Linked-Server-Name ist bereits belegt.', 1;
 IF EXISTS (SELECT 1 FROM [sys].[database_principals] WHERE [name] = N'ExampleOps005RestrictedUser')
     THROW 54863, N'Der synthetische Linked-Server-Benutzername ist bereits belegt.', 1;
 IF EXISTS (SELECT 1 FROM [master].[sys].[database_principals] WHERE [name] = N'ExampleOps005RestrictedUser')
@@ -236,91 +229,8 @@ BEGIN TRY
         THROW 54859, N'Der synthetic Linked-Server ''ExampleOps005Linked'' konnte trotz erfolgreichem Lauf nicht bereinigt werden.', 1;
     IF EXISTS (SELECT 1 FROM [sys].[database_principals] WHERE [name] = N'ExampleOps005RestrictedUser')
         THROW 54861, N'Der synthetic Benutzer ''ExampleOps005RestrictedUser'' konnte trotz erfolgreichem Lauf nicht bereinigt werden.', 1;
-
-    EXEC [master].[dbo].[sp_addlinkedserver]
-          @server = @ProviderServerName
-        , @srvproduct = N'ExampleSyntheticUnavailableProvider'
-        , @provider = @UnavailableProvider
-        , @datasrc = N'example-provider.invalid';
-
-    SET @Json=NULL; SET @Status=NULL; SET @Partial=NULL; SET @ProviderError=NULL;
-    EXEC [monitor].[USP_LinkedServerAnalysis]
-          @ConnectivityTestEnabled=0,@HighImpactConfirmed=0,@MaxZeilen=40,
-          @ResultSetArt='NONE',@JsonErzeugen=1,@Json=@Json OUTPUT,@PrintMeldungen=0,
-          @StatusCodeOut=@Status OUTPUT,@IsPartialOut=@Partial OUTPUT,
-          @ErrorNumberOut=@ProviderError OUTPUT;
-    IF @Status IS NULL OR @Status<>'AVAILABLE' OR @Partial IS NULL OR @Partial<>0
-       OR @ProviderError IS NOT NULL OR COALESCE(ISJSON(@Json),0)<>1
-       OR NOT EXISTS
-       (
-           SELECT 1 FROM OPENJSON(@Json) WITH
-           ([ServerName] sysname '$.ServerName',[Provider] nvarchar(128) '$.Provider',
-            [ConnectivityStatus] varchar(40) '$.ConnectivityStatus',[StatusCode] varchar(40) '$.StatusCode') AS [j]
-           WHERE [j].[ServerName]=@ProviderServerName COLLATE SQL_Latin1_General_CP1_CS_AS
-             AND [j].[Provider]=@UnavailableProvider COLLATE SQL_Latin1_General_CP1_CS_AS
-             AND [j].[ConnectivityStatus]='NOT_EXECUTED' AND [j].[StatusCode]='AVAILABLE'
-       )
-        THROW 54868,N'Das lokale Inventar eines nicht verfügbaren Providers verändert den sicheren Default.',1;
-
-    BEGIN TRY
-        EXEC [master].[dbo].[sp_testlinkedserver] @servername=@ProviderServerName;
-        THROW 54867,N'Der synthetische Provider ist unerwartet verfügbar.',1;
-    END TRY
-    BEGIN CATCH
-        SET @ExpectedProviderError=ERROR_NUMBER();
-        IF @ExpectedProviderError NOT IN(7302,7403) THROW;
-    END CATCH;
-
-    SET @Json=NULL; SET @Status=NULL; SET @Partial=NULL;
-    EXEC [monitor].[USP_LinkedServerAnalysis]
-          @ConnectivityTestEnabled=1,@HighImpactConfirmed=1,@MaxZeilen=40,
-          @ResultSetArt='NONE',@JsonErzeugen=1,@Json=@Json OUTPUT,@PrintMeldungen=0,
-          @StatusCodeOut=@Status OUTPUT,@IsPartialOut=@Partial OUTPUT;
-    IF @Status IS NULL OR @Status<>'AVAILABLE_LIMITED' OR @Partial IS NULL OR @Partial<>1
-       OR COALESCE(ISJSON(@Json),0)<>1 OR NOT EXISTS
-       (
-           SELECT 1 FROM OPENJSON(@Json) WITH
-           ([ServerName] sysname '$.ServerName',[Provider] nvarchar(128) '$.Provider',
-            [Product] nvarchar(128) '$.Product',[ConnectivityStatus] varchar(40) '$.ConnectivityStatus',
-            [StatusCode] varchar(40) '$.StatusCode',[EvidenceLimit] nvarchar(1000) '$.EvidenceLimit') AS [j]
-           WHERE [j].[ServerName]=@ProviderServerName COLLATE SQL_Latin1_General_CP1_CS_AS
-             AND [j].[Provider]=@UnavailableProvider COLLATE SQL_Latin1_General_CP1_CS_AS
-             AND [j].[Product]=N'ExampleSyntheticUnavailableProvider'
-             AND [j].[ConnectivityStatus]='FAILED' AND [j].[StatusCode]='SOURCE_UNAVAILABLE'
-             AND [j].[EvidenceLimit] LIKE CONCAT(N'Remote-Testfehler ',@ExpectedProviderError,N':%')
-       )
-        THROW 54868,N'Der native Providerfehler fehlt in der gebundenen SOURCE_UNAVAILABLE-Evidenz.',2;
-
-    IF NOT EXISTS
-    (
-        SELECT 1 FROM [sys].[servers]
-        WHERE [name]=@ProviderServerName
-          AND [provider]=@UnavailableProvider COLLATE SQL_Latin1_General_CP1_CS_AS
-          AND [product]=N'ExampleSyntheticUnavailableProvider'
-          AND [data_source]=N'example-provider.invalid'
-    )
-        THROW 54869,N'Der Provider-Linked-Server hat vor dem Erfolgs-Cleanup seine eigene Identität verloren.',4;
-    EXEC [master].[dbo].[sp_dropserver] @server=@ProviderServerName,@droplogins='droplogins';
-    IF EXISTS (SELECT 1 FROM [sys].[servers] WHERE [name]=@ProviderServerName)
-        THROW 54869,N'Der eigene Provider-Linked-Server ist nach Erfolg nicht bereinigt.',1;
-    PRINT N'OPS005_PROVIDER_UNAVAILABLE_PASS';
 END TRY
 BEGIN CATCH
-    IF EXISTS (SELECT 1 FROM [sys].[servers] WHERE [name]=@ProviderServerName)
-    BEGIN
-        IF NOT EXISTS
-        (
-            SELECT 1 FROM [sys].[servers]
-            WHERE [name]=@ProviderServerName
-              AND [provider]=@UnavailableProvider COLLATE SQL_Latin1_General_CP1_CS_AS
-              AND [product]=N'ExampleSyntheticUnavailableProvider'
-              AND [data_source]=N'example-provider.invalid'
-        )
-            THROW 54869,N'Der Provider-Linked-Server ist keinem eigenen Erstellungsintent zuzuordnen.',2;
-        EXEC [master].[dbo].[sp_dropserver] @server=@ProviderServerName,@droplogins='droplogins';
-        IF EXISTS (SELECT 1 FROM [sys].[servers] WHERE [name]=@ProviderServerName)
-            THROW 54869,N'Der eigene Provider-Linked-Server ist nach Fehlern nicht bereinigt.',3;
-    END;
     IF EXISTS
     (
         SELECT 1
