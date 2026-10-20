@@ -63,7 +63,7 @@ def case_samples(samples, case, now):
     return [dict(sample, case=case, sampled_case=sample["case"])
             for sample in samples
             if now-sample["clock"] <= WINDOW and sample["case"]["spid"] == case["spid"]
-            and utc_key(sample["server_utc"]) >= start]
+            and utc_key(sample["server_utc"]) > start]
 
 
 def observed_blocker(samples, case):

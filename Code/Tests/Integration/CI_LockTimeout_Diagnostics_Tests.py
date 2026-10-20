@@ -222,6 +222,7 @@ sys.exit(7)
             return dict(clock=clock, server_utc=utc, case=dict(begin, spid=spid), rows=[])
         samples = [sample('2000-01-01T00:00:01.0000001Z'),
                    sample('2000-01-01T00:00:01.0000002Z'),
+                   sample('2000-01-01T00:00:01.0000003Z'),
                    sample('2000-01-01T00:00:02Z', spid=52),
                    sample('2000-01-01T00:00:02Z', clock=80)]
         bound = ci.case_samples(samples, case, 101)

@@ -74,8 +74,9 @@ Abfragen beginnen frühestens alle 250 Millisekunden. Der Beobachter endet
 spätestens nach zehn Minuten und behält höchstens 40 Stichproben der letzten
 zehn Sekunden mit jeweils 200 Zeilen. Jede Stichprobe enthält zusätzlich die
 UTC-Zeit des SQL-Servers vor der DMV-Abfrage. Bei Fehler 1222 werden nur
-Stichproben derselben Session berücksichtigt, deren Serverzeit mindestens
-der Startzeit der zuletzt gemeldeten Aufruf- oder Assertionsphase entspricht.
+Stichproben derselben Session berücksichtigt, deren Serverzeit strikt nach
+der Startzeit der zuletzt gemeldeten Aufruf- oder Assertionsphase liegt.
+Gleiche Zeitwerte reichen als Reihenfolgenachweis nicht aus.
 Der Vergleich erhält alle sieben Nachkommastellen. Damit können verspätete
 Fallmarker bereits erfasste Stichproben zuordnen; frühere Phasen, andere
 Sessions und abgelaufene Stichproben werden ausgeschlossen. Die ursprünglich
