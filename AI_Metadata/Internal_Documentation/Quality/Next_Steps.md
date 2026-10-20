@@ -54,21 +54,55 @@ Der Defaultaufruf wurde durch diese zu frühe Vorprüfung nicht erreicht;
 bleibt UNKNOWN. SQL-Fixturecleanup ist nicht belegt; die identitätsgebundene
 Entfernung des eigenen Containers ist bestätigt.
 
-Der zusätzliche native Block ist verbraucht. Ein korrigierter privater
+Der zusätzliche native Block ist verbraucht. Der korrigierte private
 Einstieg erfasst den Anlagerückgabecode, native Fehler und Katalogstände
 vor und nach der Anlage. Er führt auch bei fehlender Fixture genau einen
 Defaultaufruf ohne Remote-Opt-ins aus und erfasst dessen Outputs sowie die
 Oracleprädikate getrennt. Fehlende Fixturevoraussetzungen bleiben als solche
 ausgewiesen. SQL-Cleanup erfordert eine neue, eindeutig eigene Identität;
-unerwartete Zeilen werden nicht übernommen. Dieser Einstieg ist nur offline
-vorbereitet; seine native Ausführung benötigt eine zusätzliche begrenzte
-Freigabe. Der zusätzliche unabhängige Review ist ohne offene materielle
+unerwartete Zeilen werden nicht übernommen. Der zusätzliche unabhängige
+Review ist ohne offene materielle
 Befunde abgeschlossen. Seine beiden Treiberbefunde zur Git-Quellbindung und
 zu abschaltbaren Ownershipprüfungen sind behoben. Sieben ausschließlich
 simulierte Treiberfälle bestehen mit normalem und optimiertem Python; sie
-ersetzen keine native Prüfung. Zusätzliche Plattformen und fremde
-Labressourcen bleiben außerhalb des Umfangs. Die offene Providervarianz
-bleibt unvollständig.
+ersetzen keine native Prüfung.
+
+Der anschließend ausdrücklich freigegebene einzelne Diagnoseblock führt
+diesen unveränderten Einstieg auf SQL Server 2025, Version 17.0.5015.4,
+mit CL170 und der vorgeprüften case-sensitiven Server-/Master-/TempDB-Collation
+aus. Installation und Beobachtungserfassung bestehen. `sp_addlinkedserver`
+liefert `1` ohne Exception; vor und nach der Anlage existiert ausschließlich
+die lokale Katalogzeile mit `server_id=0`. Eine Providerfixture entsteht
+nicht. Genau ein Defaultaufruf liefert `AVAILABLE_EMPTY`, JSON `[]`,
+Partialität `0` und NULL für beide Fehleroutputs. Locktimeout, Sessionoptionen
+und Transaktionszahl bleiben erhalten. Sechs der dreizehn getrennten
+Prädikate scheitern an der Erwartung einer vorhandenen Providerzeile und
+des globalen Status `AVAILABLE`. Es erfolgt kein SQL-Drop ohne eigene
+Identität. Der abschließende Katalog entspricht dem Ausgangsstand; der
+eigene Container ist identitätsgebunden entfernt.
+
+Damit ist ein Fehlerpfad des Entwurfs belegt: Die nicht geprüfte
+Anlagerückgabe lässt das Defaultoracle trotz fehlender Fixture laufen.
+Die erfassten Werte würden dort 54868 auslösen. Der leere Default ist in
+diesem Lauf vertragsgemäß; ein Produktfehler ist damit nicht belegt.
+Die internen Gründe für Anlagerückgabe `1` und die nicht erfassten Werte des
+ursprünglichen Fehlversuchs bleiben UNKNOWN. Microsoft dokumentiert
+`1` als [Fehlerrückgabe der Anlage](https://learn.microsoft.com/en-us/sql/relational-databases/system-stored-procedures/sp-addlinkedserver-transact-sql?view=sql-server-ver17)
+und Nicht-SQL-Server-Datenquellen als [unter Linux nicht unterstützt](https://learn.microsoft.com/en-us/sql/linux/sql-server-linux-editions-and-components-2025?view=sql-server-ver17#unsupported-features-and-services).
+Diese Plattformgrenze ersetzt keinen Nachweis des internen Fehlerpfads.
+
+Ein privater Korrekturvorschlag prüft Anlagerückgabe und exakte Katalogidentität
+vor dem Defaultoracle und meldet fehlende Voraussetzungen gesondert.
+Die bisherigen Orakel und Cleanupbedingungen bleiben darin unverändert.
+Dieser Vorschlag besitzt noch keine native Abnahme und keinen eigenen
+unabhängigen Review; er ist nicht in Vertrag 120 oder seinen Adapter
+übernommen. Der zuletzt freigegebene Diagnoseblock ist abgeschlossen und
+verbraucht. Für die eigentliche Provider-Negativabnahme fehlt eine geeignete,
+gesondert freigegebene Fixture. Weitere unveränderte Linux-Wiederholungen
+werden daraus nicht abgeleitet. Zusätzliche Plattformen und fremde
+Labressourcen bleiben außerhalb des Umfangs; die Providervarianz bleibt
+unvollständig. Die Auswahl der weiteren Fixture oder eine Umordnung der
+Reifeschritte benötigt eine begrenzte Planungsentscheidung.
 
 ## Abgeschlossene Findings-Stabilisierung vom 20. Oktober 2026
 
