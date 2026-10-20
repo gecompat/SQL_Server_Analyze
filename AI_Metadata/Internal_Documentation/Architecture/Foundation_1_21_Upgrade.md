@@ -360,3 +360,36 @@ ist daher als eigener Freigabepunkt vorbereitet. Fremde Sperren, Assertions
 und Nonblocking-Verträge bleiben verbindlich. Die nächste Reifewelle ist
 bisher nur durch lesende OPS-005-Providerabgrenzung vorbereitet; ihre
 Ausführung beginnt nach dem qualifizierten Streamabschluss.
+
+## Freigegebene TABLE-Helperkorrektur vom 20. Oktober 2026
+
+Der direkte Benutzer erweitert den Stream um die gezielte Diagnose und einen
+minimalen Fix von `InternalWriteResultTable` samt abhängigen Tests und
+Installern. Dafür sind höchstens drei lokale SQL-Blöcke und ein unabhängiger
+Reviewer mit zwei befundgebundenen Prüfungen zulässig. Der eine verbleibende
+PR-CI-Versuch und der Main-Nachlauf bleiben reserviert. Fremde Sperren,
+Assertions und Nonblocking-Verträge dürfen nicht abgeschwächt werden.
+
+Der erste lokale Diagnoseblock endet bereits in Integration 165 mit Fehler
+54130 am `CurrentBlocking_chain_runtime`-Vertrag. Der lokale Imagebestand
+weicht vom Digest des fehlgeschlagenen CI-Laufs ab. Auch der zweite Block mit
+exaktem CI-Digest und bestandener Deploymentregression endet an diesem
+früheren Vertrag. Beide Versuche bleiben FAILED und qualifizieren weder
+Test 202 noch den TABLE-Helper. Die private Diagnoseinstrumentierung hat
+einen Steuerflussfehler eingeführt: Bei einem ungekapselten IF bindet sie
+nur die ergänzte Meldung an die Bedingung, während GOTO anschließend
+unbedingt ausgeführt wird. Die Imageabweichung ist damit keine festgestellte
+Ursache dieser beiden Fehler. Die korrigierte Instrumentierung kapselt
+Meldung und ursprüngliches GOTO in einer gemeinsamen BEGIN/END-Anweisung.
+Vor dem letzten lokalen Block wird diese Korrektur unabhängig geprüft.
+Timeouts und Assertions bleiben unverändert.
+
+Der vorbereitete Beobachter erkennt den umverpackten TABLE-Lock-Timeout nur
+aus Meldung 51010 und der unmittelbar zugehörigen festen LOCK_TIMEOUT-
+Meldung. Er kennzeichnet diesen Auslöser getrennt vom direkten Fehler 1222.
+Frühere oder zeitgleiche Samples bleiben unzugeordneter Kontext; sie werden
+nicht zu einem Blockernachweis der fehlerhaften Phase. Die native Abnahme
+ergänzt eine tatsächliche 1222-zu-51010-Übersetzung mit demselben bekannten
+Halter und vollständigem Ressourcenvergleich. Fünfzehn Offlinecontracts
+prüfen auch die Negativfälle. Eine erfolgreiche neue native Abnahme wird
+dadurch vor ihrer Ausführung nicht behauptet.

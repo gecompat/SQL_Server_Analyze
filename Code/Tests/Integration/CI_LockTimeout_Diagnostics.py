@@ -56,14 +56,14 @@ def utc_key(value):
 
 
 def case_samples(samples, case, now):
-    """Bind delayed markers to the same session's samples after that phase began."""
+    """Retain session context; attribute only samples strictly after phase start."""
     if not case:
         return []
     start = utc_key(case["utc"])
-    return [dict(sample, case=case, sampled_case=sample["case"])
+    return [dict(sample, case=case if utc_key(sample["server_utc"]) > start else None,
+                 sampled_case=sample["case"])
             for sample in samples
-            if now-sample["clock"] <= WINDOW and sample["case"]["spid"] == case["spid"]
-            and utc_key(sample["server_utc"]) > start]
+            if now-sample["clock"] <= WINDOW and sample["case"]["spid"] == case["spid"]]
 
 
 def observed_blocker(samples, case):
@@ -181,6 +181,7 @@ class Observation:
         self.case = None
         self.samples = deque(maxlen=40)
         self.frozen = None
+        self.table_error = None
         self.errors = []
         self.details = []
         self.stop = threading.Event()
@@ -196,14 +197,25 @@ class Observation:
                 if self.started is None and item["kind"] != "END":
                     self.started = time.monotonic()
                     self.thread.start()
-            if re.match(r"^Msg 1222, Level \d+, State \d+", line) and self.frozen is None:
+            error = re.match(r"^Msg (\d+), Level \d+, State \d+", line)
+            if error:
+                self.table_error = {"case": self.case} if error[1] == "51010" else None
+            pending_table = self.table_error
+            direct_timeout = bool(error and error[1] == "1222")
+            table_timeout = bool(pending_table is not None and
+                                 line.startswith("TABLE-Ausgabe fehlgeschlagen (LOCK_TIMEOUT): "))
+            if not error and line.strip():
+                self.table_error = None
+            if (direct_timeout or table_timeout) and self.frozen is None:
                 now = time.monotonic()
+                case = pending_table["case"] if table_timeout else self.case
                 try:
-                    samples = case_samples(self.samples, self.case, now)
+                    samples = case_samples(self.samples, case, now)
                 except ValueError:
                     samples = []
                     self.errors.append("INVALID_SERVER_TIME")
-                self.frozen = {"case": self.case, "samples": samples}
+                self.frozen = {"case": case, "samples": samples,
+                               "trigger": "TABLE_EXPORT_LOCK_TIMEOUT" if table_timeout else "SQL_ERROR_1222"}
 
     def _observe(self):
         connection = None
@@ -250,7 +262,8 @@ class Observation:
             samples = self.frozen["samples"]
             found = bool(case and observed_blocker(samples, case))
             return dict(status="BLOCKER_OBSERVED" if found else "BLOCKER_NOT_CAPTURED",
-                        case=case, samples=samples, errors=list(self.errors), details=list(self.details),
+                        trigger=self.frozen["trigger"], case=case, samples=samples,
+                        errors=list(self.errors), details=list(self.details),
                         truncated=any(s["truncated"] for s in samples))
 
 

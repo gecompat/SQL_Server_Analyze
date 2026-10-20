@@ -81,6 +81,29 @@ class Contracts(unittest.TestCase):
         observer.feed("Msg 1222, Level 16, State 1")
         self.assertEqual(observer.finish()["status"], "BLOCKER_NOT_CAPTURED")
 
+    def test_wrapped_table_timeout_requires_header_and_exact_next_message(self):
+        body = 'TABLE-Ausgabe fehlgeschlagen (LOCK_TIMEOUT): synthetic native timeout'
+        for lines in ((body,), ('Msg 51010, Level 16, State 1', 'TABLE-Ausgabe fehlgeschlagen (TABLE_WRITE_ERROR): synthetic'),
+                      ('Msg 51010, Level 16, State 1', 'unrelated message', body),
+                      ('Msg 51010, Level 16, State 1', 'Msg 50000, Level 16, State 1', body)):
+            observer = ci.Observation(lambda: None)
+            for line in lines:
+                observer.feed(line)
+            self.assertEqual(observer.finish()['status'], 'NO_1222')
+        observer = ci.Observation(lambda: None)
+        case = ci.marker(CASE)
+        observer.case = case
+        observer.samples.append(dict(clock=time.monotonic(), server_utc='2000-01-01T00:00:01Z',
+            case=dict(case, kind='BEGIN'), rows=[dict(kind='request', session_id=51,
+            blocking_session_id=52, wait_type='LCK_M_S')], truncated=False))
+        observer.feed('Msg 51010, Level 16, State 1')
+        observer.case = dict(case, ordinal=2)
+        observer.feed(body)
+        report = observer.finish()
+        self.assertEqual(report['trigger'], 'TABLE_EXPORT_LOCK_TIMEOUT')
+        self.assertEqual(report['status'], 'BLOCKER_OBSERVED')
+        self.assertEqual(report['case'], case)
+
     def test_stream_redaction_and_size_cap(self):
         synthetic_canary = "SyntheticCredential123!"
         for split in range(len(synthetic_canary)+1):
@@ -243,12 +266,18 @@ sys.exit(7)
                    sample('2000-01-01T00:00:01.0000003Z'),
                    sample('2000-01-01T00:00:02Z', spid=52),
                    sample('2000-01-01T00:00:02Z', clock=80)]
+        for earlier in samples[:2]:
+            earlier['rows'] = [dict(kind='request', session_id=51, blocking_session_id=52, wait_type='LCK_M_S')]
         bound = ci.case_samples(samples, case, 101)
-        self.assertEqual(len(bound), 1)
-        self.assertEqual(bound[0]['case'], case)
+        self.assertEqual(len(bound), 3)
+        self.assertIsNone(bound[0]['case'])
+        self.assertIsNone(bound[1]['case'])
+        self.assertEqual(bound[2]['case'], case)
+        self.assertFalse(ci.observed_blocker(bound, case))
         self.assertEqual(bound[0]['sampled_case'], begin)
         self.assertEqual(samples[1]['case'], begin)
-        self.assertEqual(ci.case_samples(samples, dict(case, kind='AFTER', utc='2000-01-01T00:00:03Z'), 101), [])
+        self.assertTrue(all(s['case'] is None for s in ci.case_samples(samples,
+            dict(case, kind='AFTER', utc='2000-01-01T00:00:03Z'), 101)))
         self.assertEqual(ci.case_samples(samples, None, 101), [])
         self.assertRaises(ValueError, ci.utc_key, '2000-01-01T00:00:00+01:00')
         self.assertRaises(ValueError, ci.utc_key, '2000-02-31T00:00:00Z')
@@ -331,9 +360,17 @@ GO
 """)
         spid = int(next(row.split("|")[1] for row in rows if row.startswith("CI_HOLDER|")))
         # The holder is idle between batches and keeps its transaction and lock.
-        for name, timeout in (("positive", 2000), ("immediate", 0), ("success", -1)):
+        for name, timeout in (("positive", 2000), ("wrapped", 2000), ("immediate", 0), ("success", -1)):
             if name == "success":
                 holder.query("ROLLBACK; RAISERROR(N'CI_SAMPLE_END',10,1) WITH NOWAIT;\nGO\n")
+            read = "SELECT id FROM ##ExampleCiLockProbe;"
+            if name == "wrapped":
+                read = """BEGIN TRY SELECT id FROM ##ExampleCiLockProbe; END TRY
+BEGIN CATCH
+ IF ERROR_NUMBER()<>1222 THROW;
+ DECLARE @wrappedMessage nvarchar(2048)=CONCAT(N'TABLE-Ausgabe fehlgeschlagen (LOCK_TIMEOUT): ',ERROR_MESSAGE());
+ THROW 51010,@wrappedMessage,1;
+END CATCH;"""
             query = f"""USE tempdb; SET NOCOUNT ON;
 DECLARE @m nvarchar(400)=CONCAT(N'CI_BEGIN|202|file|0|',CONVERT(varchar(27),SYSUTCDATETIME(),126),N'Z|',@@SPID,N'|',@@LOCK_TIMEOUT,N'|-');
 RAISERROR(N'%s',10,1,@m) WITH NOWAIT;
@@ -342,7 +379,7 @@ SET LOCK_TIMEOUT {timeout};
 DECLARE @m nvarchar(400)=CONCAT(N'CI_CASE|202|Probe|1|',CONVERT(varchar(27),SYSUTCDATETIME(),126),N'Z|',@@SPID,N'|',@@LOCK_TIMEOUT,N'|{name}');
 RAISERROR(N'%s',10,1,@m) WITH NOWAIT;
 WAITFOR DELAY '00:00:01';
-SELECT id FROM ##ExampleCiLockProbe;
+{read}
 """
             args = SimpleNamespace(container="sqlserver-analyze-impact-2025", sqlcmd=sqlcmd,
                                    query=query, log=str(root/(name+".log")), artifacts=str(root/name),
@@ -356,10 +393,12 @@ SELECT id FROM ##ExampleCiLockProbe;
                 continue
             report = json.loads((Path(args.artifacts)/"diagnostics.json").read_text())
             assert code != 0 and report["sqlcmd_exit_code"] == code, "CI_PROBE_NATIVE_EXIT"
-            assert "Msg 1222," in (Path(args.artifacts)/"impact.log").read_text(), "CI_PROBE_NATIVE_1222"
+            expected_error = "Msg 51010," if name == "wrapped" else "Msg 1222,"
+            assert expected_error in (Path(args.artifacts)/"impact.log").read_text(), "CI_PROBE_NATIVE_TIMEOUT"
+            assert report["trigger"] == ("TABLE_EXPORT_LOCK_TIMEOUT" if name == "wrapped" else "SQL_ERROR_1222"), "CI_PROBE_TRIGGER"
             assert report["case"]["site"] == "Probe" and report["case"]["variant"] == name, "CI_PROBE_CASE"
             assert not report["errors"] and not report["log_incomplete"], "CI_PROBE_DIAGNOSTIC_FAILURE"
-            if name == "positive":
+            if name in ("positive", "wrapped"):
                 assert report["status"] == "BLOCKER_OBSERVED", "CI_PROBE_BLOCKER_NOT_CAPTURED"
                 matches = []
                 for sample in report["samples"]:
@@ -402,7 +441,7 @@ GO
     assert sum(p.stat().st_size for p in root.rglob("*") if p.is_file()) < 1024*1024, "CI_PROBE_SIZE_LIMIT"
     (root/"qualification.json").write_text(json.dumps(dict(status="PASS", elapsed_seconds=elapsed,
         cases=list(evidence), cleanup="PASS", commit=os.environ.get("GITHUB_SHA")), indent=2), encoding="utf-8")
-    print("CI lock diagnostic qualification: PASS (positive, immediate, success, sleeping holder, resource identity, cleanup)")
+    print("CI lock diagnostic qualification: PASS (positive, wrapped, immediate, success, sleeping holder, resource identity, cleanup)")
 
 
 if __name__ == "__main__":

@@ -73,13 +73,21 @@ Die Stichproben sind keine atomare oder vollständige Sperrhistorie.
 Abfragen beginnen frühestens alle 250 Millisekunden. Der Beobachter endet
 spätestens nach zehn Minuten und behält höchstens 40 Stichproben der letzten
 zehn Sekunden mit jeweils 200 Zeilen. Jede Stichprobe enthält zusätzlich die
-UTC-Zeit des SQL-Servers vor der DMV-Abfrage. Bei Fehler 1222 werden nur
+UTC-Zeit des SQL-Servers vor der DMV-Abfrage. Neben der direkten Meldung 1222
+erkennt der Beobachter den vom TABLE-Writer umverpackten Lock-Timeout:
+Auf Meldung 51010 muss unmittelbar die Fehlermeldung mit dem festen Präfix
+`TABLE-Ausgabe fehlgeschlagen (LOCK_TIMEOUT):` folgen. Der Bericht unterscheidet
+`SQL_ERROR_1222` und `TABLE_EXPORT_LOCK_TIMEOUT` als Auslöser. Andere
+51010-Fehler oder eine isolierte gleichlautende Textzeile reichen nicht aus.
+Für den Blockernachweis werden nur
 Stichproben derselben Session berücksichtigt, deren Serverzeit strikt nach
 der Startzeit der zuletzt gemeldeten Aufruf- oder Assertionsphase liegt.
 Gleiche Zeitwerte reichen als Reihenfolgenachweis nicht aus.
 Der Vergleich erhält alle sieben Nachkommastellen. Damit können verspätete
-Fallmarker bereits erfasste Stichproben zuordnen; frühere Phasen, andere
-Sessions und abgelaufene Stichproben werden ausgeschlossen. Die ursprünglich
+Fallmarker bereits erfasste Stichproben zuordnen. Frühere oder zeitgleiche
+Samples derselben Session bleiben mit `case: null` als unzugeordneter Kontext
+erhalten und begründen keinen Blockernachweis für die letzte Phase.
+Andere Sessions und abgelaufene Stichproben werden ausgeschlossen. Die ursprünglich
 beim Erfassen bekannte Phase bleibt als `sampled_case` erkennbar. Ein Sample,
 das eine Phasengrenze überlappt, kann konservativ unberücksichtigt bleiben.
 `BLOCKER_NOT_CAPTURED` bedeutet
@@ -100,7 +108,8 @@ gewöhnlicher Lauf erzeugt kein Diagnoseartefakt.
 funktionale Gate auf SQL Server 2025. Die synthetische Sperrabnahme läuft nur
 bei betroffener CI-Infrastruktur in Pull Requests, im vorhandenen Container
 und mit einer Grenze von 60 Sekunden. Sie prüft einen bekannten schlafenden
-Lockhalter, Fehler 1222, die Sperrressource, einen Soforttimeout, einen
+Lockhalter, den direkten Fehler 1222, dessen Übersetzung zu Fehler 51010,
+die vollständige Sperrressource, einen Soforttimeout, einen
 erfolgreichen Aufruf und die Bereinigung. Eine zusätzliche Engine, ein
 SSIS-Paket oder eine neue Python-Abhängigkeit wird dafür nicht benötigt.
 Die separate Cleanupverbindung prüft nach dem Schließen des Halters auch bei
