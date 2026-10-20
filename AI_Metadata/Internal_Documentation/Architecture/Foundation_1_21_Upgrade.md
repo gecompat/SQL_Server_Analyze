@@ -562,6 +562,20 @@ Der begrenzte Umfang umfasst diese Korrektur, einen Implementierer, den
 bestehenden unabhängigen Reviewer mit Design- und Abschlussprüfung, die
 ausgeführte gezielte Probe, einen kanonischen Abnahmeblock und einen neuen
 Head-CI-Stand. Der bisher reservierte Main-Nachlauf bleibt ungenutzt.
-Frühere Fehlversuche und ausgeschöpfte Grenzen bleiben erhalten. Statische
-Abnahme, kanonische Laufzeitprüfung und Abschlussreview des neuen Kandidaten
-sowie Head-CI stehen noch aus; eine erfolgreiche Integration wird nicht behauptet.
+Frühere Fehlversuche und ausgeschöpfte Grenzen bleiben erhalten.
+
+Der korrigierte Kandidat `236e2b99` besteht alle 74 statischen Prüfer sowie
+Datenschutz-, Stil- und Commitprüfung. Der unabhängige Abschlussreview
+bestätigt den begrenzten Guard, die drei zusätzlichen Callerfälle, die
+unveränderten sechs bisherigen Fälle und die kanonische Installerbindung.
+Eine zu weit gefasste Aussage zu den Common-Helpern ist auf die beiden
+Produktprocedures begrenzt; Common-Helper behalten ihre vorhandenen Verträge.
+
+Die kanonische lokale SQL-Server-2025-Abnahme auf Compatibility Level 170
+besteht am selben Kandidaten ohne private Produktinstrumentierung:
+Deploymentregression, Full Gate mit allen neun Findings-Fällen,
+SSIS-Callerzustände, Berechtigungs- und Regexmatrix, Plan-Standalone,
+Snapshotlauf und Snapshot-Nebenläufigkeit. Der eigene Container ist entfernt.
+Die reguläre Head-CI und der separate Main-Nachlauf bleiben erforderlich.
+Die früheren unbekannten Sperrursachen werden durch diese begrenzte Abnahme
+nicht rückwirkend qualifiziert.

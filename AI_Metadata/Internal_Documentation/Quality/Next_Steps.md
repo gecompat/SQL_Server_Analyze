@@ -37,9 +37,13 @@ her. Childaufrufe, Quellen und Caller-TABLE-Ziele liegen außerhalb. Vertrag
 die bisherigen sechs Fälle bleiben erhalten. Der abhängige Installer ist
 kanonisch neu erzeugt.
 
-Für diesen befundgebundenen Kandidaten stehen statische Abnahme, genau ein
-kanonischer Abnahmeblock, der unabhängige Abschlussreview und ein neuer
-Head-CI-Stand aus. Frühere Grenzen und Fehlversuche werden nicht zurückgesetzt.
+Der Kandidat `236e2b99` besteht alle 74 statischen Prüfer und den unabhängigen
+Abschlussreview. Die kanonische lokale SQL-Server-2025-Abnahme auf CL170
+besteht Deployment, Full Gate mit allen neun Findings-Fällen, Callerzustände,
+Berechtigungen, Regex, Plan-Standalone sowie Snapshotlauf und Nebenläufigkeit.
+Der eigene Container ist entfernt. Ein neuer Head-CI-Stand und der separate
+Main-Nachlauf bleiben erforderlich. Frühere Grenzen und Fehlversuche werden
+nicht zurückgesetzt.
 [PR #399](https://github.com/gecompat/SQL_Server_Analyze/pull/399) bleibt bis
 zur erfolgreichen Abnahme offen. Die nächste OPS-005-Reifewelle ist lesend
 vorbereitet und beginnt nach dem qualifizierten Streamabschluss.
