@@ -331,3 +331,13 @@ Freigabe; die beiden PR-CI-Abnahmen und der Main-Nachlauf bleiben ungenutzt.
 Der direkte Benutzer gibt anschließend genau einen zusätzlichen unabhängigen
 Review und eine lokale SQL-Nachprüfung dieses Folgepasses frei. Die beiden
 PR-CI-Abnahmen und der Main-Nachlauf bleiben unverändert reserviert.
+
+Die gezielte lokale Nachprüfung am Commit `fb052bb7` besteht in 7,18 Sekunden.
+Zwölf Samples erfassen den direkten Blocker und die vollständige Sperrressource.
+Positiver Timeout, Soforttimeout, erfolgreicher Aufruf, unabhängiger Cleanup
+und das anschließende Entfernen des eigenen Containers bestehen. Vierzehn
+Offlinecontracts sowie der zusätzliche unabhängige Review besitzen keine
+offenen Befunde. Der frühere lokale Fehlversuch bleibt erhalten; die Ursache
+seines Cleanupfehlers wird durch diesen erfolgreichen Abschluss nicht
+rückwirkend bestimmt. Die reguläre Head-CI und der Main-Nachlauf stehen vor
+der Veröffentlichung dieses Kandidaten noch aus.
