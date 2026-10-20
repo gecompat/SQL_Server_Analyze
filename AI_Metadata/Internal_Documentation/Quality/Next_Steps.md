@@ -3,7 +3,33 @@
 **Stand:** 20. Oktober 2026
 **Zweck:** aktuelle ausführbare Entwicklungswelle für `gecompat/SQL_Server_Analyze`
 
-## Aktuelle Findings-Stabilisierung vom 20. Oktober 2026
+## Aktive Welle: OPS-005-Provider-Negativfall
+
+Der vorherige Stream ist über [PR #399](https://github.com/gecompat/SQL_Server_Analyze/pull/399)
+als `7359cf48` integriert. Lokale Abnahme, unabhängige Reviews, Head-CI und
+Main-Nachlauf bestehen; der Merge-Tree entspricht dem geprüften Head.
+Main ist synchron und sauber. Der eigene Worktree ist wiederherstellbar
+archiviert, die beiden integrierten eigenen Arbeitszweige sind entfernt.
+
+Die nächste Reifewelle ergänzt in Vertrag 120 einen synthetischen nicht
+verfügbaren OLE-DB-Provider. Ein aufrufbezogener Providername und ein nativer
+Fehler 7302 oder 7403 sollen den tatsächlichen Negativzustand belegen. Der
+Consumer muss den Provider im sicheren Default ohne Verbindungstest
+inventarisieren und nach doppeltem Opt-in SOURCE_UNAVAILABLE mit gebundener
+nativer Fehlerevidenz liefern. Die eigene Linked-Server-Fixture erhält
+Kollisionsschutz, identitätsgebundenen Fehlercleanup und Abwesenheitsprüfung.
+
+Der Umfang umfasst ausschließlich Vertrag 120, seinen generierten
+OPS-005-Updateadapter und diese Statusnotiz. Produktprocedures und öffentliche
+Verträge bleiben unverändert. Ein Implementierer, ein unabhängiger Reviewer
+mit höchstens zwei befundgebundenen Prüfungen und ein lokaler SQL-Server-2025-
+Block für Smoke und den betroffenen Vertrag bilden den begrenzten Einstieg.
+PR-Veröffentlichung und ein weiterer Main-Nachlauf gehören noch nicht zu
+diesem Einstieg. Statische Prüfung, Review und native Abnahme stehen aus.
+Der Negativfall belegt keinen weiteren erfolgreichen Provider und schließt
+die offene Providervarianz nicht ab; die Reifeflags bleiben unverändert.
+
+## Abgeschlossene Findings-Stabilisierung vom 20. Oktober 2026
 
 Der Benutzer beauftragt die autonome Ursachenanalyse, Korrektur, Prüfung und
 Bewertung bis zu einem stabilen Teststand. Der
@@ -41,12 +67,14 @@ Der Kandidat `236e2b99` besteht alle 74 statischen Prüfer und den unabhängigen
 Abschlussreview. Die kanonische lokale SQL-Server-2025-Abnahme auf CL170
 besteht Deployment, Full Gate mit allen neun Findings-Fällen, Callerzustände,
 Berechtigungen, Regex, Plan-Standalone sowie Snapshotlauf und Nebenläufigkeit.
-Der eigene Container ist entfernt. Ein neuer Head-CI-Stand und der separate
-Main-Nachlauf bleiben erforderlich. Frühere Grenzen und Fehlversuche werden
-nicht zurückgesetzt.
-[PR #399](https://github.com/gecompat/SQL_Server_Analyze/pull/399) bleibt bis
-zur erfolgreichen Abnahme offen. Die nächste OPS-005-Reifewelle ist lesend
-vorbereitet und beginnt nach dem qualifizierten Streamabschluss.
+Der eigene Container ist entfernt. Die
+[Head-CI](https://github.com/gecompat/SQL_Server_Analyze/actions/runs/39443291549)
+und der separate [Main-Nachlauf](https://github.com/gecompat/SQL_Server_Analyze/actions/runs/39444518793)
+bestehen. Die zusätzliche Vierfallprobe ist gemäß Workflow auf Pull Requests
+beschränkt und bleibt für Main NOT_APPLICABLE; ihr Head-Nachweis besteht.
+Frühere Grenzen und Fehlversuche werden nicht zurückgesetzt. PR #399 ist
+integriert; die anschließende OPS-005-Welle beginnt mit dem oben begrenzten
+Provider-Negativfall.
 
 ## Frühere Nichtqualifikation und integrierter OPS-005-Prüfschritt vom 20. Oktober 2026
 
