@@ -22,21 +22,22 @@ ein; einzelne DDL-Anweisung und tatsächliche Sperrursache bleiben UNKNOWN.
 Sperren. Der eigene Container ist entfernt; Produkt-Helper und generierte
 Installer sind bisher unverändert.
 
-Die drei lokalen SQL-Blöcke und beide Reviewprüfungen der Helpererweiterung
-sind ausgeschöpft. Der abschließende Offline-Review bestätigt keinen
-belegbaren Produktfix. Der Benutzer hat anschließend einen Diagnoseblock
-mit höchstens zwei Test-202-Ausführungen, einen getrennten Abnahmeblock nach
-belegter Korrektur und einen Abschlussreview freigegeben. Beide
-Diagnoseausführungen scheitern vor der Sperrstelle mit Fehler 1934, weil der
-private direkte Einstieg QUOTED_IDENTIFIER ON aus dem vorhergehenden
-kanonischen Test 199 nicht herstellt. Beide Versuche bleiben FAILED; beide
-eigenen Container sind entfernt. Der Einstieg ist offline korrigiert und
-erhält einen Guard vor der unveränderten Testeinbindung. Eine Wiederholung
-benötigt eine zusätzliche begrenzte Freigabe, weil beide zugelassenen
-Diagnoseausführungen verbraucht sind. Abnahmeblock und Abschlussreview
-bleiben ungenutzt. Der
-[Detailnachweis](../Architecture/Foundation_1_21_Upgrade.md#freigegebene-detaildiagnose-vom-20-oktober-2026)
-trennt diesen Aufbaufehler von der weiterhin ungeklärten Sperrursache.
+Der Benutzer hat anschließend die autonome Stabilisierung mit gezielter
+Ursachenanalyse, Korrektur und Bewertung beauftragt. Die historischen Grenzen
+und Fehlversuche bleiben erhalten. Der korrigierte Diagnoseaufbau prüft
+Sessionoptionen und Collation vor dem Test. Beide isolierten Test-202-Läufe
+bestehen; eine frühere Installation mit Collationkonflikt bleibt FAILED.
+Ein vollständiger Diagnosepass scheitert danach in Test 203 bei eigener
+Temp-DDL des Legacy-Moduls. Ein weiterer vollständiger Pass mit begrenzter
+privater Timeoutspur besteht; die frühere Helper-Sperrursache bleibt UNKNOWN.
+
+Die vorbereitete Korrektur v1.5.1 begrenzt ausschließlich eigene Temp-DDL
+bei geerbtem NOWAIT auf bis zu 1000 ms je Anweisung und stellt den Wert vor
+weiteren Operationen sowie im Fehlerpfad wieder her. Quellzugriffe,
+TABLE-Ziele, Schemas und Assertions bleiben erhalten. Der
+[aktuelle Nachweis](../Architecture/Foundation_1_21_Upgrade.md#autonome-stabilisierung-vom-20-oktober-2026)
+trennt diese Korrektur vom nicht reproduzierten früheren Helpertimeout.
+Kanonische lokale Abnahme und unabhängiger Abschlussreview stehen aus.
 Der eine verbleibende PR-CI-Versuch und der Main-Nachlauf bleiben reserviert.
 [PR #399](https://github.com/gecompat/SQL_Server_Analyze/pull/399) bleibt am
 Remote-Head `ff7a296bab984e8a3943ac7e02fef6ca5ebc7d60` offen und unintegriert.

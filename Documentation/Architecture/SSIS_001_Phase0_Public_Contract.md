@@ -430,6 +430,14 @@ Metadaten und Ereignisse werden ohne absichtliche lange Sperrhaltung gelesen. NO
 
 Zeitbudget und Locktimeout werden vor jedem neuen Schritt geprüft beziehungsweise gesetzt. Eine noch laufende Quellabfrage wird vom Modul nicht hart abgebrochen. Nach einem Timeout, nativen Fehler oder Identitätswechsel werden keine nur teilweise gefüllten Ereignispuffer als gültige Analyse übernommen. Die ursprünglichen LOCK_TIMEOUT-, XACT_ABORT- und Transaktionszustände bleiben bei Erfolg und Fehler erhalten; Callertransaktionen werden weder committed noch zurückgerollt.
 
+Version 1.5.1 begrenzt bei geerbtem LOCK_TIMEOUT 0 ausschließlich die eigene
+Temp-DDL auf bis zu 1000 ms je Anweisung. Positive und unbegrenzte
+Eingangswerte bleiben für diese DDL erhalten. Direkt danach und auch im
+Fehlerpfad wird ein vorübergehend geänderter Wert wiederhergestellt.
+Quellzugriffe verwenden weiterhin den gewählten @LockTimeoutMs-Wert;
+TABLE-Zieloperationen des gemeinsamen Helpers bleiben NOWAIT. Die Ausnahme
+ändert weder die Quellzulassung noch die Ausgabe- und High-Impact-Verträge.
+
 ### 5. Fachliche Ableitung
 
 ### Zeit und Klassifikation

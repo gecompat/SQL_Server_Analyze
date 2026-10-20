@@ -462,3 +462,38 @@ kanonische Testquelle sind offline geprüft; eine native Qualifikation wird
 nicht behauptet. Die zwei zugelassenen Diagnoseausführungen sind verbraucht.
 Eine Wiederholung benötigt eine gezielte zusätzliche Freigabe. Der separate
 Abnahmeblock, Abschlussreview, letzte PR-CI und Main-Nachlauf sind ungenutzt.
+
+## Autonome Stabilisierung vom 20. Oktober 2026
+
+Der direkte Benutzer beauftragt anschließend die autonome Ursachenanalyse,
+Korrektur, Prüfung und Bewertung bis zu einem stabilen Teststand. Der
+korrigierte private Einstieg stellt die aus dem Full Gate belegten
+Sessionoptionen einschließlich LOCK_TIMEOUT 0 her. Server-, Master- und
+TempDB-Collation werden vor der Installation qualifiziert. Der zuvor
+fehlgeschlagene zweite Installationslauf mit Collationkonflikt bleibt FAILED;
+seine tatsächliche Startursache bleibt UNKNOWN.
+
+Die gezielten Test-202-Läufe mit und ohne Beobachter bestehen. Der Vergleich
+reproduziert die ursprüngliche Sperre nicht und bleibt für deren Ursache
+INCONCLUSIVE. Ein vollständiger Diagnosepass besteht Test 202 und scheitert
+anschließend in Test 203, C004, mit nativem Fehler 1222 bei eigener Temp-DDL
+in USP_SsisLegacyLogAnalysis. Der private Spurabruf scheitert an der nativ
+bestätigten Unverträglichkeit der SQLCMD-Optionen -h und -y 0. Beide Fehler
+bleiben erhalten; der eigene Container ist entfernt.
+
+Ein weiterer vollständiger Diagnosepass mit vorab geprüftem Spurabruf
+besteht. Er verwendet private Helperinstrumentierung und qualifiziert noch
+keinen geänderten Produktstand. Der begrenzte Ringpuffer enthält die letzten
+100 von 114 verarbeiteten Ereignissen; seine Retention ist kein Nachweis
+fehlender vorheriger Timeouts. Die frühere Helper-Sperrursache bleibt UNKNOWN.
+
+Die vorbereitete Produktkorrektur v1.5.1 übernimmt für eigene Temp-DDL des
+Legacy-Moduls die bereits bestehende begrenzte NOWAIT-Ausnahme. Neun
+Guardbereiche umfassen ausschließlich 28 eigene statische DDL-Anweisungen.
+Ein geänderter Eingangswert wird bei Erfolg und Fehler auf 0 zurückgesetzt;
+positive und unbegrenzte Werte bleiben erhalten. Quellzugriffe, Helperaufrufe,
+TABLE-Ziele, Schemas, Assertions und Callertransaktionen bleiben unverändert.
+Die mechanische Rückführung der Guards stellt den vorherigen SQL-Body wieder
+her. Der Nonblocking-Vertrag besteht; Installer sind aus den kanonischen
+Quellen neu erzeugt. Kanonische lokale Abnahme, unabhängiger Abschlussreview,
+letzte PR-CI und Main-Nachlauf stehen für diese Korrektur noch aus.
