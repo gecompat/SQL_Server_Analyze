@@ -4,8 +4,8 @@ GO
 /*
 ===============================================================================
 Objekt       : monitor.USP_DiagnosticFindings
-Version      : 1.2.0
-Stand        : 2026-07-19
+Version      : 1.2.1
+Stand        : 2026-10-20
 Zweck        : Aggregiert normalisierte Befunde aus den zuvor implementierten
                Spezialfallmodulen über deren JSON-Ausgabeverträge.
 Abhängigkeit : DatabaseIntegrityAnalysis, DatabaseCapacityAnalysis,
@@ -115,21 +115,31 @@ BEGIN
         , [ErrorNumber] int NULL
         , [ErrorMessage] nvarchar(2048) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
     );
-    CREATE TABLE [#DiagnosticFindings_Findings]
-    (
-          [FindingOrdinal] bigint IDENTITY(1,1) NOT NULL
-        , [SourceModule] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
-        , [Category] varchar(60) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
-        , [Severity] varchar(16) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
-        , [Confidence] varchar(16) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
-        , [ScopeType] nvarchar(60) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
-        , [ScopeName] nvarchar(512) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
-        , [FindingCode] varchar(120) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
-        , [EvidenceMetric] decimal(38,4) NULL
-        , [Evidence] nvarchar(1000) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
-        , [EvidenceLimit] nvarchar(1000) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
-        , [RecommendedNextCheck] nvarchar(1000) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
-    );
+    -- Nur die eigene Temp-Anlage erhält bei NOWAIT bis zu 1000 ms.
+    DECLARE @OwnDdlEntryLock int=@@LOCK_TIMEOUT;
+    BEGIN TRY
+        IF @OwnDdlEntryLock=0 SET LOCK_TIMEOUT 1000;
+        CREATE TABLE [#DiagnosticFindings_Findings]
+        (
+              [FindingOrdinal] bigint IDENTITY(1,1) NOT NULL
+            , [SourceModule] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+            , [Category] varchar(60) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+            , [Severity] varchar(16) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+            , [Confidence] varchar(16) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+            , [ScopeType] nvarchar(60) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+            , [ScopeName] nvarchar(512) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+            , [FindingCode] varchar(120) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+            , [EvidenceMetric] decimal(38,4) NULL
+            , [Evidence] nvarchar(1000) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+            , [EvidenceLimit] nvarchar(1000) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+            , [RecommendedNextCheck] nvarchar(1000) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        );
+    END TRY
+    BEGIN CATCH
+        IF @OwnDdlEntryLock=0 SET LOCK_TIMEOUT 0;
+        THROW;
+    END CATCH;
+    IF @OwnDdlEntryLock=0 SET LOCK_TIMEOUT 0;
 
     IF @MaxZeilen < 0 OR @ContentionSampleSeconds > 60
        OR @ContentionMinWaitMs < 0

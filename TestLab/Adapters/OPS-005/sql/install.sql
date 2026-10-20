@@ -47564,8 +47564,8 @@ GO
 /*
 ===============================================================================
 Objekt       : monitor.USP_DiagnosticFindings
-Version      : 1.2.0
-Stand        : 2026-07-19
+Version      : 1.2.1
+Stand        : 2026-10-20
 Zweck        : Aggregiert normalisierte Befunde aus den zuvor implementierten
                Spezialfallmodulen über deren JSON-Ausgabeverträge.
 Abhängigkeit : DatabaseIntegrityAnalysis, DatabaseCapacityAnalysis,
@@ -47675,21 +47675,31 @@ BEGIN
         , [ErrorNumber] int NULL
         , [ErrorMessage] nvarchar(2048) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
     );
-    CREATE TABLE [#DiagnosticFindings_Findings]
-    (
-          [FindingOrdinal] bigint IDENTITY(1,1) NOT NULL
-        , [SourceModule] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
-        , [Category] varchar(60) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
-        , [Severity] varchar(16) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
-        , [Confidence] varchar(16) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
-        , [ScopeType] nvarchar(60) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
-        , [ScopeName] nvarchar(512) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
-        , [FindingCode] varchar(120) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
-        , [EvidenceMetric] decimal(38,4) NULL
-        , [Evidence] nvarchar(1000) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
-        , [EvidenceLimit] nvarchar(1000) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
-        , [RecommendedNextCheck] nvarchar(1000) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
-    );
+    -- Nur die eigene Temp-Anlage erhält bei NOWAIT bis zu 1000 ms.
+    DECLARE @OwnDdlEntryLock int=@@LOCK_TIMEOUT;
+    BEGIN TRY
+        IF @OwnDdlEntryLock=0 SET LOCK_TIMEOUT 1000;
+        CREATE TABLE [#DiagnosticFindings_Findings]
+        (
+              [FindingOrdinal] bigint IDENTITY(1,1) NOT NULL
+            , [SourceModule] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+            , [Category] varchar(60) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+            , [Severity] varchar(16) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+            , [Confidence] varchar(16) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+            , [ScopeType] nvarchar(60) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+            , [ScopeName] nvarchar(512) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+            , [FindingCode] varchar(120) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+            , [EvidenceMetric] decimal(38,4) NULL
+            , [Evidence] nvarchar(1000) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+            , [EvidenceLimit] nvarchar(1000) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+            , [RecommendedNextCheck] nvarchar(1000) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        );
+    END TRY
+    BEGIN CATCH
+        IF @OwnDdlEntryLock=0 SET LOCK_TIMEOUT 0;
+        THROW;
+    END CATCH;
+    IF @OwnDdlEntryLock=0 SET LOCK_TIMEOUT 0;
 
     IF @MaxZeilen < 0 OR @ContentionSampleSeconds > 60
        OR @ContentionMinWaitMs < 0
@@ -61953,8 +61963,8 @@ GO
 /*
 ===============================================================================
 Objekt       : monitor.USP_SsisLegacyLogAnalysis
-Version      : 1.5.0
-Stand        : 2026-10-19
+Version      : 1.5.1
+Stand        : 2026-10-20
 Typ          : Stored Procedure
 Zweck        : Liest eine explizite Legacy-Loggingquelle für genau eine GUID.
 Grenze       : Keine Quellaktionen; Meldungstexte bleiben Laufzeitausgaben.
@@ -62023,323 +62033,344 @@ BEGIN
     DECLARE @PreviousLock int=@@LOCK_TIMEOUT,@PreviousAbort bit=CASE WHEN (@@OPTIONS & 16384)=16384 THEN 1 ELSE 0 END;
     DECLARE @RestoreLock nvarchar(64)=N'SET LOCK_TIMEOUT '+CONVERT(nvarchar(20),@@LOCK_TIMEOUT)+N';';
     DECLARE @LockSql nvarchar(64)=N'SET LOCK_TIMEOUT '+CONVERT(nvarchar(20),COALESCE(@LockTimeoutMs,0))+N';';
-    CREATE TABLE [#SsisLegacyLogAnalysis_ResultTables]
-    ([ResultName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,[TargetTable] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL);
+    -- Nur eigene Temp-DDL erhält bei geerbtem NOWAIT bis zu 1000 ms je Anlage.
+    -- Quellzugriffe und TABLE-Ziele behalten ihren bisherigen Timeout.
+    DECLARE @OwnDdlEntryLock int;
+    SET @OwnDdlEntryLock=@@LOCK_TIMEOUT;
+    BEGIN TRY
+        IF @OwnDdlEntryLock=0 SET LOCK_TIMEOUT 1000;
+        CREATE TABLE [#SsisLegacyLogAnalysis_ResultTables]
+        ([ResultName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,[TargetTable] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL);
+    END TRY
+    BEGIN CATCH
+        IF @OwnDdlEntryLock=0 SET LOCK_TIMEOUT 0;
+        THROW;
+    END CATCH;
+    IF @OwnDdlEntryLock=0 SET LOCK_TIMEOUT 0;
     IF @OutputMode='TABLE'
         EXEC [monitor].[InternalPrepareResultTables] @ResultTablesJson=@ResultTablesJson,
             @AllowedResultNames=@AllowedNames,
             @MappingTable=N'#SsisLegacyLogAnalysis_ResultTables',@ThrowOnError=1;
-    CREATE TABLE [#SsisLegacyLogAnalysis_ModuleStatus]
-    (
-        [ModuleName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,
-        [SchemaVersion] int NOT NULL,
-        [LoggingDatabase] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL,
-        [LoggingSchema] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL,
-        [LoggingTable] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL,
-        [ExecutionId] uniqueidentifier NULL,
-        [MessagesIncluded] bit NOT NULL,
-        [StatusCode] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,
-        [IsPartial] bit NOT NULL,
-        [ErrorNumber] int NULL,
-        [ErrorMessage] nvarchar(4000) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,
-        [CollectionTimeUtc] datetime2(3) NOT NULL
-    );
-    CREATE TABLE [#SsisLegacyLogAnalysis_Execution]
-    (
-        [ExecutionId] uniqueidentifier NOT NULL,
-        [AnalyzedEventCount] bigint NOT NULL,
-        [SourceCount] bigint NOT NULL,
-        [FirstObservedTime] datetime NULL,
-        [LastObservedTime] datetime NULL,
-        [ErrorEventCount] bigint NOT NULL,
-        [WarningEventCount] bigint NOT NULL,
-        [TaskFailedEventCount] bigint NOT NULL,
-        [CancelRequestCount] bigint NOT NULL,
-        [BoundaryStatus] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,
-        [PackageStartLogId] int NULL,
-        [PackageEndLogId] int NULL,
-        [PackageDurationMs] bigint NULL,
-        [ObservedOutcome] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,
-        [FirstErrorLogId] int NULL,
-        [FirstErrorMessage] nvarchar(max) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,
-        [IsCompleteSlice] bit NOT NULL
-    );
-    CREATE TABLE [#SsisLegacyLogAnalysis_Timeline]
-    (
-        [TimelineOrdinal] bigint NOT NULL,
-        [LogId] int NOT NULL,
-        [ExecutionId] uniqueidentifier NOT NULL,
-        [EventName] nvarchar(128) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,
-        [SourceName] nvarchar(4000) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,
-        [SourceId] uniqueidentifier NULL,
-        [EventTime] datetime NULL,
-        [RawEndTime] datetime NULL,
-        [DataCode] int NULL,
-        [PreviousLogId] int NULL,
-        [DeltaFromPreviousMs] bigint NULL,
-        [Severity] varchar(16) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,
-        [MessageText] nvarchar(max) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
-    );
-    CREATE TABLE [#SsisLegacyLogAnalysis_ErrorChain]
-    (
-        [ErrorOrdinal] bigint NOT NULL,
-        [LogId] int NOT NULL,
-        [ExecutionId] uniqueidentifier NOT NULL,
-        [EventName] nvarchar(128) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,
-        [SourceName] nvarchar(4000) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,
-        [SourceId] uniqueidentifier NULL,
-        [EventTime] datetime NULL,
-        [DataCode] int NULL,
-        [Severity] varchar(16) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,
-        [PreviousRelevantLogId] int NULL,
-        [RelationKind] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,
-        [MessageText] nvarchar(max) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
-    );
-    CREATE TABLE [#SsisLegacyLogAnalysis_Iterations]
-    (
-        [IterationOrdinal] bigint NOT NULL,
-        [ExecutionId] uniqueidentifier NOT NULL,
-        [SourceId] uniqueidentifier NULL,
-        [SourceName] nvarchar(4000) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,
-        [PairKind] varchar(16) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,
-        [StartLogId] int NULL,
-        [EndLogId] int NULL,
-        [StartTime] datetime NULL,
-        [EndTime] datetime NULL,
-        [DurationMs] bigint NULL,
-        [PairStatus] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,
-        [SampleIsPartial] bit NOT NULL
-    );
-    CREATE TABLE [#SsisLegacyLogAnalysis_LoggingQuality]
-    (
-        [QualityOrdinal] int NOT NULL,
-        [QualityCode] varchar(64) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,
-        [Severity] varchar(16) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,
-        [AffectedRowCount] bigint NULL,
-        [Detail] nvarchar(2000) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
-    );
-    CREATE TABLE [#SsisLegacyLogAnalysis_Findings]
-    (
-        [FindingOrdinal] int NOT NULL,
-        [FindingCode] varchar(64) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,
-        [Severity] varchar(16) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,
-        [ExecutionId] uniqueidentifier NOT NULL,
-        [EvidenceLevel] varchar(32) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,
-        [EvidenceSource] nvarchar(160) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,
-        [LogId] int NULL,
-        [Detail] nvarchar(2000) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
-    );
-    CREATE TABLE [#SsisLegacyLogAnalysis_SourceStatus]
-    (
-        [SourceOrdinal] int NOT NULL,
-        [SourceName] nvarchar(160) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,
-        [StatusCode] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,
-        [IsPartial] bit NOT NULL,
-        [ObservedRowCount] bigint NULL,
-        [ReturnedRowCount] bigint NULL,
-        [IsTruncated] bit NOT NULL,
-        [ErrorNumber] int NULL,
-        [ErrorMessage] nvarchar(4000) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,
-        [Detail] nvarchar(2000) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,
-        [CollectionTimeUtc] datetime2(3) NOT NULL
-    );
-    CREATE TABLE [#SsisLegacyLogAnalysis_Warnings]
-    (
-        [WarningOrdinal] int NOT NULL,
-        [WarningCode] varchar(64) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,
-        [SourceName] nvarchar(160) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,
-        [Detail] nvarchar(2000) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
-    );
-    CREATE TABLE [#SsisLegacyLogAnalysis_TaskDurations]
-    (
-        [TaskDurationOrdinal] bigint NOT NULL,
-        [ExecutionId] uniqueidentifier NOT NULL,
-        [SourceId] uniqueidentifier NOT NULL,
-        [SourceName] nvarchar(4000) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,
-        [SourceType] varchar(24) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,
-        [PairKind] varchar(16) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,
-        [BasisFirstLogId] int NOT NULL,
-        [BasisLastLogId] int NOT NULL,
-        [EvidenceLogIdsJson] nvarchar(max) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,
-        [PairRowCount] bigint NOT NULL,
-        [ValidPairCount] bigint NOT NULL,
-        [UnknownTimePairCount] bigint NOT NULL,
-        [NonMonotonicPairCount] bigint NOT NULL,
-        [OpenStartCount] bigint NOT NULL,
-        [OpenEndCount] bigint NOT NULL,
-        [AmbiguousBoundaryCount] bigint NOT NULL,
-        [TotalDurationMs] decimal(38,0) NULL,
-        [AverageDurationMs] decimal(38,6) NULL,
-        [MinDurationMs] bigint NULL,
-        [MaxDurationMs] bigint NULL,
-        [SourceNameConflict] bit NOT NULL,
-        [InputIsTruncated] bit NOT NULL,
-        [MetricStatus] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
-    );
-    CREATE TABLE [#SsisLegacyLogAnalysis_TaskLoggingCoverage]
-    (
-        [CoverageOrdinal] bigint NOT NULL,
-        [ExecutionId] uniqueidentifier NOT NULL,
-        [SourceId] uniqueidentifier NULL,
-        [UnresolvedLogId] int NULL,
-        [SourceName] nvarchar(4000) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,
-        [SourceType] varchar(24) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,
-        [BasisFirstLogId] int NOT NULL,
-        [BasisLastLogId] int NOT NULL,
-        [EvidenceLogIdsJson] nvarchar(max) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,
-        [ObservedEventCount] bigint NOT NULL,
-        [ExecuteStartCount] bigint NOT NULL,
-        [ExecuteEndCount] bigint NOT NULL,
-        [ValidateStartCount] bigint NOT NULL,
-        [ValidateEndCount] bigint NOT NULL,
-        [KnownOtherEventCount] bigint NOT NULL,
-        [UnknownEventNameCount] bigint NOT NULL,
-        [MissingEventNameCount] bigint NOT NULL,
-        [MissingEventTimeCount] bigint NOT NULL,
-        [AmbiguousBoundaryCount] bigint NOT NULL,
-        [UnresolvedBoundaryCount] bigint NOT NULL,
-        [IncompleteBoundaryCount] bigint NOT NULL,
-        [InvalidTimePairCount] bigint NOT NULL,
-        [SourceNameConflict] bit NOT NULL,
-        [InputIsTruncated] bit NOT NULL,
-        [CoverageStatus] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
-    );
-    CREATE TABLE [#SsisLegacyLogAnalysis_RowFlowEvents]
-    (
-        [RowFlowEventOrdinal] bigint NOT NULL,
-        [ExecutionId] uniqueidentifier NOT NULL,
-        [LogId] int NOT NULL,
-        [SourceId] uniqueidentifier NULL,
-        [SourceName] nvarchar(4000) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,
-        [EventTime] datetime NULL,
-        [ParserId] varchar(32) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,
-        [ParseStatus] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,
-        [PathId] int NULL,
-        [PathName] nvarchar(4000) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,
-        [DestinationComponentId] int NULL,
-        [DestinationComponentName] nvarchar(4000) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,
-        [InputId] int NULL,
-        [InputName] nvarchar(4000) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,
-        [RowsSent] bigint NULL,
-        [OccurrenceStartLogId] int NULL,
-        [OccurrenceEndLogId] int NULL,
-        [GroupingStatus] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,
-        [InputIsTruncated] bit NOT NULL
-    );
-    CREATE TABLE [#SsisLegacyLogAnalysis_RowFlow]
-    (
-        [RowFlowOrdinal] bigint NOT NULL,
-        [ExecutionId] uniqueidentifier NOT NULL,
-        [SourceId] uniqueidentifier NOT NULL,
-        [SourceName] nvarchar(4000) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,
-        [OccurrenceStartLogId] int NOT NULL,
-        [OccurrenceEndLogId] int NOT NULL,
-        [PathId] int NOT NULL,
-        [PathName] nvarchar(4000) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,
-        [DestinationComponentId] int NOT NULL,
-        [DestinationComponentName] nvarchar(4000) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,
-        [InputId] int NOT NULL,
-        [InputName] nvarchar(4000) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,
-        [EventCount] bigint NOT NULL,
-        [RowsSentSum] decimal(38,0) NOT NULL,
-        [MinRowsSent] bigint NOT NULL,
-        [MaxRowsSent] bigint NOT NULL,
-        [FirstObservedTime] datetime NOT NULL,
-        [LastObservedTime] datetime NOT NULL,
-        [EvidenceLogIdsJson] nvarchar(max) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,
-        [SourceNameConflict] bit NOT NULL,
-        [PathNameConflict] bit NOT NULL,
-        [DestinationNameConflict] bit NOT NULL,
-        [InputNameConflict] bit NOT NULL,
-        [InputIsTruncated] bit NOT NULL,
-        [CoverageStatus] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
-    );
-    CREATE TABLE [#SsisLegacyLogAnalysis_ComponentPhaseEvents]
-    (
-        [PhaseEventOrdinal] bigint NOT NULL,
-        [ExecutionId] uniqueidentifier NOT NULL,
-        [LogId] int NOT NULL,
-        [SourceId] uniqueidentifier NULL,
-        [SourceName] nvarchar(4000) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,
-        [EventTime] datetime NULL,
-        [ParserId] varchar(32) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,
-        [ParseStatus] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,
-        [ComponentId] int NULL,
-        [ComponentName] nvarchar(4000) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,
-        [PhaseName] varchar(32) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,
-        [ReportedDurationMs] bigint NULL,
-        [OutputId] int NULL,
-        [OutputName] nvarchar(4000) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,
-        [ContextStartLogId] int NULL,
-        [ContextEndLogId] int NULL,
-        [ContextStatus] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,
-        [InputIsTruncated] bit NOT NULL
-    );
-    CREATE TABLE [#SsisLegacyLogAnalysis_ComponentPhaseTimes]
-    (
-        [PhaseTimeOrdinal] bigint NOT NULL,
-        [ExecutionId] uniqueidentifier NOT NULL,
-        [SourceId] uniqueidentifier NOT NULL,
-        [SourceName] nvarchar(4000) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,
-        [ContextStartLogId] int NOT NULL,
-        [ContextEndLogId] int NOT NULL,
-        [ComponentId] int NULL,
-        [ComponentName] nvarchar(4000) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,
-        [PhaseName] varchar(32) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,
-        [OutputId] int NULL,
-        [OutputName] nvarchar(4000) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,
-        [EventCount] bigint NOT NULL,
-        [ReportedDurationSumMs] decimal(38,0) NOT NULL,
-        [MinReportedDurationMs] bigint NOT NULL,
-        [MaxReportedDurationMs] bigint NOT NULL,
-        [AvgReportedDurationMs] decimal(38,6) NOT NULL,
-        [FirstObservedTime] datetime NOT NULL,
-        [LastObservedTime] datetime NOT NULL,
-        [EvidenceLogIdsJson] nvarchar(max) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,
-        [SourceNameConflict] bit NOT NULL,
-        [ComponentNameConflict] bit NOT NULL,
-        [OutputNameConflict] bit NOT NULL,
-        [InputIsTruncated] bit NOT NULL,
-        [CoverageStatus] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
-    );
-    CREATE TABLE [#SsisLegacyLogAnalysis_LookupCacheEvents]
-    (
-        [LookupEventOrdinal] bigint NOT NULL,
-        [LogId] int NOT NULL,
-        [ExecutionId] uniqueidentifier NOT NULL,
-        [EventName] nvarchar(128) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,
-        [SourceId] uniqueidentifier NULL,
-        [SourceName] nvarchar(4000) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,
-        [EventTime] datetime NULL,
-        [DataCode] int NULL,
-        [ParserId] varchar(32) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,
-        [ParseStatus] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,
-        [ObservationKind] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,
-        [ComponentName] nvarchar(4000) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,
-        [ReportedRows] bigint NULL,
-        [ReportedProcessingSeconds] decimal(28,3) NULL,
-        [ReportedMemoryBytes] bigint NULL,
-        [DiagnosticCode] varchar(64) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,
-        [ContextStatus] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,
-        [ContextStartLogId] int NULL,
-        [ContextEndLogId] int NULL,
-        [InputIsTruncated] bit NOT NULL,
-        [EvidenceLevel] varchar(32) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,
-        [EvidenceSource] nvarchar(160) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,
-        [MessageText] nvarchar(max) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
-    );
-    CREATE TABLE [#SsisLegacyLogAnalysis_Buffer]
-    ([LogId] int NOT NULL,[EventName] nvarchar(128) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,
-     [SourceName] nvarchar(4000) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,[SourceId] uniqueidentifier NULL,
-     [ExecutionId] uniqueidentifier NOT NULL,[EventTime] datetime NULL,[RawEndTime] datetime NULL,[DataCode] int NULL,
-     [MessageText] nvarchar(max) COLLATE SQL_Latin1_General_CP1_CS_AS NULL);
-    CREATE TABLE [#SsisLegacyLogAnalysis_Columns]
-    ([ColumnName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,[TypeId] int NOT NULL,[MaxLength] smallint NOT NULL,[IsNullable] bit NOT NULL,[IsComputed] bit NOT NULL);
-    CREATE TABLE [#SsisLegacyLogAnalysis_Indexes] ([IndexId] int NOT NULL,[Supporting] bit NOT NULL);
-    CREATE TABLE [#SsisLegacyLogAnalysis_Pairs]
-    ([LogId] int NOT NULL,[SourceId] uniqueidentifier NULL,[SourceName] nvarchar(4000) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,
-     [PairKind] varchar(16) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,[IsStart] bit NOT NULL,[EventTime] datetime NULL,
-     [Seq] bigint NOT NULL,[PreviousStart] bit NULL,[NextStart] bit NULL,[NextLogId] int NULL,[NextTime] datetime NULL);
+    SET @OwnDdlEntryLock=@@LOCK_TIMEOUT;
+    BEGIN TRY
+        IF @OwnDdlEntryLock=0 SET LOCK_TIMEOUT 1000;
+        CREATE TABLE [#SsisLegacyLogAnalysis_ModuleStatus]
+        (
+            [ModuleName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,
+            [SchemaVersion] int NOT NULL,
+            [LoggingDatabase] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL,
+            [LoggingSchema] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL,
+            [LoggingTable] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL,
+            [ExecutionId] uniqueidentifier NULL,
+            [MessagesIncluded] bit NOT NULL,
+            [StatusCode] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,
+            [IsPartial] bit NOT NULL,
+            [ErrorNumber] int NULL,
+            [ErrorMessage] nvarchar(4000) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,
+            [CollectionTimeUtc] datetime2(3) NOT NULL
+        );
+        CREATE TABLE [#SsisLegacyLogAnalysis_Execution]
+        (
+            [ExecutionId] uniqueidentifier NOT NULL,
+            [AnalyzedEventCount] bigint NOT NULL,
+            [SourceCount] bigint NOT NULL,
+            [FirstObservedTime] datetime NULL,
+            [LastObservedTime] datetime NULL,
+            [ErrorEventCount] bigint NOT NULL,
+            [WarningEventCount] bigint NOT NULL,
+            [TaskFailedEventCount] bigint NOT NULL,
+            [CancelRequestCount] bigint NOT NULL,
+            [BoundaryStatus] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,
+            [PackageStartLogId] int NULL,
+            [PackageEndLogId] int NULL,
+            [PackageDurationMs] bigint NULL,
+            [ObservedOutcome] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,
+            [FirstErrorLogId] int NULL,
+            [FirstErrorMessage] nvarchar(max) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,
+            [IsCompleteSlice] bit NOT NULL
+        );
+        CREATE TABLE [#SsisLegacyLogAnalysis_Timeline]
+        (
+            [TimelineOrdinal] bigint NOT NULL,
+            [LogId] int NOT NULL,
+            [ExecutionId] uniqueidentifier NOT NULL,
+            [EventName] nvarchar(128) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,
+            [SourceName] nvarchar(4000) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,
+            [SourceId] uniqueidentifier NULL,
+            [EventTime] datetime NULL,
+            [RawEndTime] datetime NULL,
+            [DataCode] int NULL,
+            [PreviousLogId] int NULL,
+            [DeltaFromPreviousMs] bigint NULL,
+            [Severity] varchar(16) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,
+            [MessageText] nvarchar(max) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        );
+        CREATE TABLE [#SsisLegacyLogAnalysis_ErrorChain]
+        (
+            [ErrorOrdinal] bigint NOT NULL,
+            [LogId] int NOT NULL,
+            [ExecutionId] uniqueidentifier NOT NULL,
+            [EventName] nvarchar(128) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,
+            [SourceName] nvarchar(4000) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,
+            [SourceId] uniqueidentifier NULL,
+            [EventTime] datetime NULL,
+            [DataCode] int NULL,
+            [Severity] varchar(16) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,
+            [PreviousRelevantLogId] int NULL,
+            [RelationKind] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,
+            [MessageText] nvarchar(max) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        );
+        CREATE TABLE [#SsisLegacyLogAnalysis_Iterations]
+        (
+            [IterationOrdinal] bigint NOT NULL,
+            [ExecutionId] uniqueidentifier NOT NULL,
+            [SourceId] uniqueidentifier NULL,
+            [SourceName] nvarchar(4000) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,
+            [PairKind] varchar(16) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,
+            [StartLogId] int NULL,
+            [EndLogId] int NULL,
+            [StartTime] datetime NULL,
+            [EndTime] datetime NULL,
+            [DurationMs] bigint NULL,
+            [PairStatus] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,
+            [SampleIsPartial] bit NOT NULL
+        );
+        CREATE TABLE [#SsisLegacyLogAnalysis_LoggingQuality]
+        (
+            [QualityOrdinal] int NOT NULL,
+            [QualityCode] varchar(64) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,
+            [Severity] varchar(16) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,
+            [AffectedRowCount] bigint NULL,
+            [Detail] nvarchar(2000) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        );
+        CREATE TABLE [#SsisLegacyLogAnalysis_Findings]
+        (
+            [FindingOrdinal] int NOT NULL,
+            [FindingCode] varchar(64) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,
+            [Severity] varchar(16) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,
+            [ExecutionId] uniqueidentifier NOT NULL,
+            [EvidenceLevel] varchar(32) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,
+            [EvidenceSource] nvarchar(160) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,
+            [LogId] int NULL,
+            [Detail] nvarchar(2000) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        );
+        CREATE TABLE [#SsisLegacyLogAnalysis_SourceStatus]
+        (
+            [SourceOrdinal] int NOT NULL,
+            [SourceName] nvarchar(160) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,
+            [StatusCode] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,
+            [IsPartial] bit NOT NULL,
+            [ObservedRowCount] bigint NULL,
+            [ReturnedRowCount] bigint NULL,
+            [IsTruncated] bit NOT NULL,
+            [ErrorNumber] int NULL,
+            [ErrorMessage] nvarchar(4000) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,
+            [Detail] nvarchar(2000) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,
+            [CollectionTimeUtc] datetime2(3) NOT NULL
+        );
+        CREATE TABLE [#SsisLegacyLogAnalysis_Warnings]
+        (
+            [WarningOrdinal] int NOT NULL,
+            [WarningCode] varchar(64) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,
+            [SourceName] nvarchar(160) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,
+            [Detail] nvarchar(2000) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        );
+        CREATE TABLE [#SsisLegacyLogAnalysis_TaskDurations]
+        (
+            [TaskDurationOrdinal] bigint NOT NULL,
+            [ExecutionId] uniqueidentifier NOT NULL,
+            [SourceId] uniqueidentifier NOT NULL,
+            [SourceName] nvarchar(4000) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,
+            [SourceType] varchar(24) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,
+            [PairKind] varchar(16) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,
+            [BasisFirstLogId] int NOT NULL,
+            [BasisLastLogId] int NOT NULL,
+            [EvidenceLogIdsJson] nvarchar(max) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,
+            [PairRowCount] bigint NOT NULL,
+            [ValidPairCount] bigint NOT NULL,
+            [UnknownTimePairCount] bigint NOT NULL,
+            [NonMonotonicPairCount] bigint NOT NULL,
+            [OpenStartCount] bigint NOT NULL,
+            [OpenEndCount] bigint NOT NULL,
+            [AmbiguousBoundaryCount] bigint NOT NULL,
+            [TotalDurationMs] decimal(38,0) NULL,
+            [AverageDurationMs] decimal(38,6) NULL,
+            [MinDurationMs] bigint NULL,
+            [MaxDurationMs] bigint NULL,
+            [SourceNameConflict] bit NOT NULL,
+            [InputIsTruncated] bit NOT NULL,
+            [MetricStatus] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        );
+        CREATE TABLE [#SsisLegacyLogAnalysis_TaskLoggingCoverage]
+        (
+            [CoverageOrdinal] bigint NOT NULL,
+            [ExecutionId] uniqueidentifier NOT NULL,
+            [SourceId] uniqueidentifier NULL,
+            [UnresolvedLogId] int NULL,
+            [SourceName] nvarchar(4000) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,
+            [SourceType] varchar(24) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,
+            [BasisFirstLogId] int NOT NULL,
+            [BasisLastLogId] int NOT NULL,
+            [EvidenceLogIdsJson] nvarchar(max) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,
+            [ObservedEventCount] bigint NOT NULL,
+            [ExecuteStartCount] bigint NOT NULL,
+            [ExecuteEndCount] bigint NOT NULL,
+            [ValidateStartCount] bigint NOT NULL,
+            [ValidateEndCount] bigint NOT NULL,
+            [KnownOtherEventCount] bigint NOT NULL,
+            [UnknownEventNameCount] bigint NOT NULL,
+            [MissingEventNameCount] bigint NOT NULL,
+            [MissingEventTimeCount] bigint NOT NULL,
+            [AmbiguousBoundaryCount] bigint NOT NULL,
+            [UnresolvedBoundaryCount] bigint NOT NULL,
+            [IncompleteBoundaryCount] bigint NOT NULL,
+            [InvalidTimePairCount] bigint NOT NULL,
+            [SourceNameConflict] bit NOT NULL,
+            [InputIsTruncated] bit NOT NULL,
+            [CoverageStatus] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        );
+        CREATE TABLE [#SsisLegacyLogAnalysis_RowFlowEvents]
+        (
+            [RowFlowEventOrdinal] bigint NOT NULL,
+            [ExecutionId] uniqueidentifier NOT NULL,
+            [LogId] int NOT NULL,
+            [SourceId] uniqueidentifier NULL,
+            [SourceName] nvarchar(4000) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,
+            [EventTime] datetime NULL,
+            [ParserId] varchar(32) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,
+            [ParseStatus] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,
+            [PathId] int NULL,
+            [PathName] nvarchar(4000) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,
+            [DestinationComponentId] int NULL,
+            [DestinationComponentName] nvarchar(4000) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,
+            [InputId] int NULL,
+            [InputName] nvarchar(4000) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,
+            [RowsSent] bigint NULL,
+            [OccurrenceStartLogId] int NULL,
+            [OccurrenceEndLogId] int NULL,
+            [GroupingStatus] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,
+            [InputIsTruncated] bit NOT NULL
+        );
+        CREATE TABLE [#SsisLegacyLogAnalysis_RowFlow]
+        (
+            [RowFlowOrdinal] bigint NOT NULL,
+            [ExecutionId] uniqueidentifier NOT NULL,
+            [SourceId] uniqueidentifier NOT NULL,
+            [SourceName] nvarchar(4000) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,
+            [OccurrenceStartLogId] int NOT NULL,
+            [OccurrenceEndLogId] int NOT NULL,
+            [PathId] int NOT NULL,
+            [PathName] nvarchar(4000) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,
+            [DestinationComponentId] int NOT NULL,
+            [DestinationComponentName] nvarchar(4000) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,
+            [InputId] int NOT NULL,
+            [InputName] nvarchar(4000) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,
+            [EventCount] bigint NOT NULL,
+            [RowsSentSum] decimal(38,0) NOT NULL,
+            [MinRowsSent] bigint NOT NULL,
+            [MaxRowsSent] bigint NOT NULL,
+            [FirstObservedTime] datetime NOT NULL,
+            [LastObservedTime] datetime NOT NULL,
+            [EvidenceLogIdsJson] nvarchar(max) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,
+            [SourceNameConflict] bit NOT NULL,
+            [PathNameConflict] bit NOT NULL,
+            [DestinationNameConflict] bit NOT NULL,
+            [InputNameConflict] bit NOT NULL,
+            [InputIsTruncated] bit NOT NULL,
+            [CoverageStatus] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        );
+        CREATE TABLE [#SsisLegacyLogAnalysis_ComponentPhaseEvents]
+        (
+            [PhaseEventOrdinal] bigint NOT NULL,
+            [ExecutionId] uniqueidentifier NOT NULL,
+            [LogId] int NOT NULL,
+            [SourceId] uniqueidentifier NULL,
+            [SourceName] nvarchar(4000) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,
+            [EventTime] datetime NULL,
+            [ParserId] varchar(32) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,
+            [ParseStatus] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,
+            [ComponentId] int NULL,
+            [ComponentName] nvarchar(4000) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,
+            [PhaseName] varchar(32) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,
+            [ReportedDurationMs] bigint NULL,
+            [OutputId] int NULL,
+            [OutputName] nvarchar(4000) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,
+            [ContextStartLogId] int NULL,
+            [ContextEndLogId] int NULL,
+            [ContextStatus] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,
+            [InputIsTruncated] bit NOT NULL
+        );
+        CREATE TABLE [#SsisLegacyLogAnalysis_ComponentPhaseTimes]
+        (
+            [PhaseTimeOrdinal] bigint NOT NULL,
+            [ExecutionId] uniqueidentifier NOT NULL,
+            [SourceId] uniqueidentifier NOT NULL,
+            [SourceName] nvarchar(4000) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,
+            [ContextStartLogId] int NOT NULL,
+            [ContextEndLogId] int NOT NULL,
+            [ComponentId] int NULL,
+            [ComponentName] nvarchar(4000) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,
+            [PhaseName] varchar(32) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,
+            [OutputId] int NULL,
+            [OutputName] nvarchar(4000) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,
+            [EventCount] bigint NOT NULL,
+            [ReportedDurationSumMs] decimal(38,0) NOT NULL,
+            [MinReportedDurationMs] bigint NOT NULL,
+            [MaxReportedDurationMs] bigint NOT NULL,
+            [AvgReportedDurationMs] decimal(38,6) NOT NULL,
+            [FirstObservedTime] datetime NOT NULL,
+            [LastObservedTime] datetime NOT NULL,
+            [EvidenceLogIdsJson] nvarchar(max) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,
+            [SourceNameConflict] bit NOT NULL,
+            [ComponentNameConflict] bit NOT NULL,
+            [OutputNameConflict] bit NOT NULL,
+            [InputIsTruncated] bit NOT NULL,
+            [CoverageStatus] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        );
+        CREATE TABLE [#SsisLegacyLogAnalysis_LookupCacheEvents]
+        (
+            [LookupEventOrdinal] bigint NOT NULL,
+            [LogId] int NOT NULL,
+            [ExecutionId] uniqueidentifier NOT NULL,
+            [EventName] nvarchar(128) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,
+            [SourceId] uniqueidentifier NULL,
+            [SourceName] nvarchar(4000) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,
+            [EventTime] datetime NULL,
+            [DataCode] int NULL,
+            [ParserId] varchar(32) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,
+            [ParseStatus] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,
+            [ObservationKind] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,
+            [ComponentName] nvarchar(4000) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,
+            [ReportedRows] bigint NULL,
+            [ReportedProcessingSeconds] decimal(28,3) NULL,
+            [ReportedMemoryBytes] bigint NULL,
+            [DiagnosticCode] varchar(64) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,
+            [ContextStatus] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,
+            [ContextStartLogId] int NULL,
+            [ContextEndLogId] int NULL,
+            [InputIsTruncated] bit NOT NULL,
+            [EvidenceLevel] varchar(32) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,
+            [EvidenceSource] nvarchar(160) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,
+            [MessageText] nvarchar(max) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        );
+        CREATE TABLE [#SsisLegacyLogAnalysis_Buffer]
+        ([LogId] int NOT NULL,[EventName] nvarchar(128) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,
+         [SourceName] nvarchar(4000) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,[SourceId] uniqueidentifier NULL,
+         [ExecutionId] uniqueidentifier NOT NULL,[EventTime] datetime NULL,[RawEndTime] datetime NULL,[DataCode] int NULL,
+         [MessageText] nvarchar(max) COLLATE SQL_Latin1_General_CP1_CS_AS NULL);
+        CREATE TABLE [#SsisLegacyLogAnalysis_Columns]
+        ([ColumnName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,[TypeId] int NOT NULL,[MaxLength] smallint NOT NULL,[IsNullable] bit NOT NULL,[IsComputed] bit NOT NULL);
+        CREATE TABLE [#SsisLegacyLogAnalysis_Indexes] ([IndexId] int NOT NULL,[Supporting] bit NOT NULL);
+        CREATE TABLE [#SsisLegacyLogAnalysis_Pairs]
+        ([LogId] int NOT NULL,[SourceId] uniqueidentifier NULL,[SourceName] nvarchar(4000) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,
+         [PairKind] varchar(16) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,[IsStart] bit NOT NULL,[EventTime] datetime NULL,
+         [Seq] bigint NOT NULL,[PreviousStart] bit NULL,[NextStart] bit NULL,[NextLogId] int NULL,[NextTime] datetime NULL);
+    END TRY
+    BEGIN CATCH
+        IF @OwnDdlEntryLock=0 SET LOCK_TIMEOUT 0;
+        THROW;
+    END CATCH;
+    IF @OwnDdlEntryLock=0 SET LOCK_TIMEOUT 0;
     INSERT [#SsisLegacyLogAnalysis_SourceStatus]
         ([SourceOrdinal],[SourceName],[StatusCode],[IsPartial],[IsTruncated],[Detail],[CollectionTimeUtc])
     VALUES (1,N'sourceMetadata','NOT_READ',0,0,N'NOT_READ',@Now),(2,N'sourceIndexes','NOT_READ',0,0,N'NOT_READ',@Now),
@@ -62959,13 +62990,22 @@ BEGIN
                     NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,'NOT_PARSED',@Truncated
                 FROM [#SsisLegacyLogAnalysis_Buffer]
                 WHERE CONVERT(varbinary(max),EventName) IN(CONVERT(varbinary(max),N'PipelineComponentTime'),CONVERT(varbinary(max),N'User:PipelineComponentTime'));
-                CREATE TABLE [#SsisLegacyLogAnalysis_PhasePayload]
-                ([LogId] int NOT NULL,[TokenCount] int NOT NULL,
-                 [PrefixToken] nvarchar(max) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,
-                 [ComponentTokenName] nvarchar(max) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,
-                 [MiddleToken] nvarchar(max) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,
-                 [OutputTokenName] nvarchar(max) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,
-                 [EndToken] nvarchar(max) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,[ContainsTextNul] bit NOT NULL);
+                SET @OwnDdlEntryLock=@@LOCK_TIMEOUT;
+                BEGIN TRY
+                    IF @OwnDdlEntryLock=0 SET LOCK_TIMEOUT 1000;
+                    CREATE TABLE [#SsisLegacyLogAnalysis_PhasePayload]
+                    ([LogId] int NOT NULL,[TokenCount] int NOT NULL,
+                     [PrefixToken] nvarchar(max) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,
+                     [ComponentTokenName] nvarchar(max) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,
+                     [MiddleToken] nvarchar(max) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,
+                     [OutputTokenName] nvarchar(max) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,
+                     [EndToken] nvarchar(max) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,[ContainsTextNul] bit NOT NULL);
+                END TRY
+                BEGIN CATCH
+                    IF @OwnDdlEntryLock=0 SET LOCK_TIMEOUT 0;
+                    THROW;
+                END CATCH;
+                IF @OwnDdlEntryLock=0 SET LOCK_TIMEOUT 0;
                 ;WITH quotes AS
                 (
                     SELECT e.LogId,b.MessageText COLLATE Latin1_General_100_BIN2 AS TextValue,
@@ -63041,12 +63081,21 @@ BEGIN
                 FROM [#SsisLegacyLogAnalysis_ComponentPhaseEvents] AS e INNER JOIN checked AS p ON p.LogId=e.LogId;
 
                 -- Named reports do not provide numeric component/output identities.
-                CREATE TABLE [#SsisLegacyLogAnalysis_PhaseNamedPayload]
-                ([LogId] int NOT NULL,[TextValue] nvarchar(max) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,
-                 [ComponentTokenName] nvarchar(max) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,
-                 [TimeToken] nvarchar(max) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,
-                 [MethodTail] nvarchar(max) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,
-                 [OutputTokenName] nvarchar(max) COLLATE SQL_Latin1_General_CP1_CS_AS NULL);
+                SET @OwnDdlEntryLock=@@LOCK_TIMEOUT;
+                BEGIN TRY
+                    IF @OwnDdlEntryLock=0 SET LOCK_TIMEOUT 1000;
+                    CREATE TABLE [#SsisLegacyLogAnalysis_PhaseNamedPayload]
+                    ([LogId] int NOT NULL,[TextValue] nvarchar(max) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,
+                     [ComponentTokenName] nvarchar(max) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,
+                     [TimeToken] nvarchar(max) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,
+                     [MethodTail] nvarchar(max) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,
+                     [OutputTokenName] nvarchar(max) COLLATE SQL_Latin1_General_CP1_CS_AS NULL);
+                END TRY
+                BEGIN CATCH
+                    IF @OwnDdlEntryLock=0 SET LOCK_TIMEOUT 0;
+                    THROW;
+                END CATCH;
+                IF @OwnDdlEntryLock=0 SET LOCK_TIMEOUT 0;
                 ;WITH positions AS
                 (
                     SELECT e.LogId,b.MessageText COLLATE Latin1_General_100_BIN2 AS TextValue,a.SpentPos,z.TimePos
@@ -63561,36 +63610,81 @@ BEGIN
     END;
     IF @ConsoleResultRequested=1
     BEGIN
-        CREATE TABLE [#SsisLegacyLogAnalysis_Console]
-        ([Status] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,[Unvollständig] bit NOT NULL,[ExecutionId] uniqueidentifier NULL,
-         [AnalysierteEreignisse] bigint NULL,[BeobachteterAusgang] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,[ErsteFehlerLogId] int NULL,
-         [ErsterFehlertext] nvarchar(max) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,[ErsterZeitpunkt] datetime NULL,[LetzterZeitpunkt] datetime NULL,
-         [Hinweis] nvarchar(200) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL);
+        SET @OwnDdlEntryLock=@@LOCK_TIMEOUT;
+        BEGIN TRY
+            IF @OwnDdlEntryLock=0 SET LOCK_TIMEOUT 1000;
+            CREATE TABLE [#SsisLegacyLogAnalysis_Console]
+            ([Status] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,[Unvollständig] bit NOT NULL,[ExecutionId] uniqueidentifier NULL,
+             [AnalysierteEreignisse] bigint NULL,[BeobachteterAusgang] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,[ErsteFehlerLogId] int NULL,
+             [ErsterFehlertext] nvarchar(max) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,[ErsterZeitpunkt] datetime NULL,[LetzterZeitpunkt] datetime NULL,
+             [Hinweis] nvarchar(200) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL);
+        END TRY
+        BEGIN CATCH
+            IF @OwnDdlEntryLock=0 SET LOCK_TIMEOUT 0;
+            THROW;
+        END CATCH;
+        IF @OwnDdlEntryLock=0 SET LOCK_TIMEOUT 0;
         INSERT [#SsisLegacyLogAnalysis_Console]
         SELECT m.StatusCode,m.IsPartial,m.ExecutionId,e.AnalyzedEventCount,e.ObservedOutcome,e.FirstErrorLogId,e.FirstErrorMessage,e.FirstObservedTime,e.LastObservedTime,
             N'Beobachteter Logausschnitt; Quellenstatus und Grenzen beachten. Kein Nachweis einer technischen Root Cause.'
         FROM [#SsisLegacyLogAnalysis_ModuleStatus] AS m LEFT JOIN [#SsisLegacyLogAnalysis_Execution] AS e ON e.ExecutionId=m.ExecutionId;
         IF @IncludeTaskAnalysis=1
         BEGIN
-            ALTER TABLE [#SsisLegacyLogAnalysis_Console] ADD [BeobachteteQuellen] bigint NULL,[GueltigeIntervalle] bigint NULL,[UngeklaerteGrenzereignisse] bigint NULL;
+            SET @OwnDdlEntryLock=@@LOCK_TIMEOUT;
+            BEGIN TRY
+                IF @OwnDdlEntryLock=0 SET LOCK_TIMEOUT 1000;
+                ALTER TABLE [#SsisLegacyLogAnalysis_Console] ADD [BeobachteteQuellen] bigint NULL,[GueltigeIntervalle] bigint NULL,[UngeklaerteGrenzereignisse] bigint NULL;
+            END TRY
+            BEGIN CATCH
+                IF @OwnDdlEntryLock=0 SET LOCK_TIMEOUT 0;
+                THROW;
+            END CATCH;
+            IF @OwnDdlEntryLock=0 SET LOCK_TIMEOUT 0;
             EXEC sys.sp_executesql N'UPDATE [#SsisLegacyLogAnalysis_Console] SET [BeobachteteQuellen]=@Sources,[GueltigeIntervalle]=@Valid,[UngeklaerteGrenzereignisse]=@Unresolved;',
                 N'@Sources bigint,@Valid bigint,@Unresolved bigint',@Sources=@TaskSources,@Valid=@TaskValid,@Unresolved=@TaskUnresolved;
         END;
         IF @IncludeRowFlowAnalysis=1
         BEGIN
-            ALTER TABLE [#SsisLegacyLogAnalysis_Console] ADD [RowFlowMeldungen] bigint NULL,[RowFlowGeleseneMeldungen] bigint NULL,[RowFlowZugeordneteMeldungen] bigint NULL;
+            SET @OwnDdlEntryLock=@@LOCK_TIMEOUT;
+            BEGIN TRY
+                IF @OwnDdlEntryLock=0 SET LOCK_TIMEOUT 1000;
+                ALTER TABLE [#SsisLegacyLogAnalysis_Console] ADD [RowFlowMeldungen] bigint NULL,[RowFlowGeleseneMeldungen] bigint NULL,[RowFlowZugeordneteMeldungen] bigint NULL;
+            END TRY
+            BEGIN CATCH
+                IF @OwnDdlEntryLock=0 SET LOCK_TIMEOUT 0;
+                THROW;
+            END CATCH;
+            IF @OwnDdlEntryLock=0 SET LOCK_TIMEOUT 0;
             EXEC sys.sp_executesql N'UPDATE [#SsisLegacyLogAnalysis_Console] SET [RowFlowMeldungen]=@Candidates,[RowFlowGeleseneMeldungen]=@Parsed,[RowFlowZugeordneteMeldungen]=@Assigned;',
                 N'@Candidates bigint,@Parsed bigint,@Assigned bigint',@Candidates=@RowCandidates,@Parsed=@RowParsed,@Assigned=@RowAssigned;
         END;
         IF @IncludeComponentPhaseAnalysis=1
         BEGIN
-            ALTER TABLE [#SsisLegacyLogAnalysis_Console] ADD [PhasenMeldungen] bigint NULL,[PhasenGeleseneMeldungen] bigint NULL,[PhasenKontextMeldungen] bigint NULL;
+            SET @OwnDdlEntryLock=@@LOCK_TIMEOUT;
+            BEGIN TRY
+                IF @OwnDdlEntryLock=0 SET LOCK_TIMEOUT 1000;
+                ALTER TABLE [#SsisLegacyLogAnalysis_Console] ADD [PhasenMeldungen] bigint NULL,[PhasenGeleseneMeldungen] bigint NULL,[PhasenKontextMeldungen] bigint NULL;
+            END TRY
+            BEGIN CATCH
+                IF @OwnDdlEntryLock=0 SET LOCK_TIMEOUT 0;
+                THROW;
+            END CATCH;
+            IF @OwnDdlEntryLock=0 SET LOCK_TIMEOUT 0;
             EXEC sys.sp_executesql N'UPDATE [#SsisLegacyLogAnalysis_Console] SET [PhasenMeldungen]=@Candidates,[PhasenGeleseneMeldungen]=@Parsed,[PhasenKontextMeldungen]=@Assigned;',
                 N'@Candidates bigint,@Parsed bigint,@Assigned bigint',@Candidates=@PhaseCandidates,@Parsed=@PhaseParsed,@Assigned=@PhaseAssigned;
         END;
         IF @IncludeLookupCacheAnalysis=1
         BEGIN
-            ALTER TABLE [#SsisLegacyLogAnalysis_Console] ADD [LookupCacheMeldungen] bigint NULL,[LookupCacheGeleseneMeldungen] bigint NULL,[LookupCacheKontextMeldungen] bigint NULL;
+            SET @OwnDdlEntryLock=@@LOCK_TIMEOUT;
+            BEGIN TRY
+                IF @OwnDdlEntryLock=0 SET LOCK_TIMEOUT 1000;
+                ALTER TABLE [#SsisLegacyLogAnalysis_Console] ADD [LookupCacheMeldungen] bigint NULL,[LookupCacheGeleseneMeldungen] bigint NULL,[LookupCacheKontextMeldungen] bigint NULL;
+            END TRY
+            BEGIN CATCH
+                IF @OwnDdlEntryLock=0 SET LOCK_TIMEOUT 0;
+                THROW;
+            END CATCH;
+            IF @OwnDdlEntryLock=0 SET LOCK_TIMEOUT 0;
             EXEC sys.sp_executesql N'UPDATE [#SsisLegacyLogAnalysis_Console] SET [LookupCacheMeldungen]=@Candidates,[LookupCacheGeleseneMeldungen]=@Parsed,[LookupCacheKontextMeldungen]=@Assigned;',
                 N'@Candidates bigint,@Parsed bigint,@Assigned bigint',@Candidates=@LookupCandidates,@Parsed=@LookupParsed,@Assigned=@LookupAssigned;
         END;

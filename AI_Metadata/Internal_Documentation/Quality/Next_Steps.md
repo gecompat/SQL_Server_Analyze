@@ -3,7 +3,52 @@
 **Stand:** 20. Oktober 2026
 **Zweck:** aktuelle ausführbare Entwicklungswelle für `gecompat/SQL_Server_Analyze`
 
-## Nichtqualifizierter CI-Abschluss und integrierter OPS-005-Prüfschritt vom 20. Oktober 2026
+## Aktuelle Findings-Stabilisierung vom 20. Oktober 2026
+
+Der Benutzer beauftragt die autonome Ursachenanalyse, Korrektur, Prüfung und
+Bewertung bis zu einem stabilen Teststand. Der
+[aktuelle Nachweis](../Architecture/Foundation_1_21_Upgrade.md#gezielte-findings-stabilisierung-vom-20-oktober-2026)
+erhält frühere Fehlversuche und trennt Diagnose von kanonischer Abnahme.
+
+Die kanonische lokale Abnahme an `88bf926e` besteht auf SQL Server 2025,
+Compatibility Level 170: Deploymentregression, Full Gate, Callerzustände,
+Berechtigungs- und Regexmatrix, Plan-Standalone sowie Snapshotlauf und
+Nebenläufigkeit. Der unabhängige SSIS-Review und die 74 statischen Prüfer
+sind qualifiziert; der anfänglich veraltete Adapterinstaller ist korrigiert.
+
+Der anschließende [Head-Lauf](https://github.com/gecompat/SQL_Server_Analyze/actions/runs/39437366372)
+an `3fc20ae1` besteht Deployment, native Vierfallprobe und statische Checks,
+scheitert jedoch in Full-Gate-Stufe 15 von 34 mit 1222, State 47, bei der
+eigenen Temp-Anlage in `USP_DiagnosticFindings`. Ohne aktive Samples bleibt
+der Blocker UNKNOWN. Dieser frühere letzte PR-Versuch bleibt verbraucht;
+Main ist unverändert und sein reservierter Nachlauf ungenutzt.
+
+Eine neue private Parallelprobe erfasst weitere Timeouts im EXEC-Kontext
+mit State 71. Sie bleibt FAILED und für den ursprünglichen Mechanismus
+INCONCLUSIVE. Der eigene Container ist entfernt. Die frühere Helper-Seed-
+Sperre bleibt ebenfalls UNKNOWN. Ein lexikalischer Audit ähnlicher Stellen
+begründet keinen pauschalen Eingriff in die übrigen Procedurequellen.
+
+Der unabhängige Designreview bestätigt die gezielte Findings-Korrektur.
+Version 1.2.1 schützt ausschließlich die eigene CREATE-Anweisung bei lokalem
+NOWAIT mit bis zu 1000 ms und stellt den Wert bei Erfolg und Fehler wieder
+her. Childaufrufe, Quellen und Caller-TABLE-Ziele liegen außerhalb. Vertrag
+178 ergänzt drei Callerfälle für 0, 137 und -1 samt frühem Mappingfehler;
+die bisherigen sechs Fälle bleiben erhalten. Der abhängige Installer ist
+kanonisch neu erzeugt.
+
+Der Kandidat `236e2b99` besteht alle 74 statischen Prüfer und den unabhängigen
+Abschlussreview. Die kanonische lokale SQL-Server-2025-Abnahme auf CL170
+besteht Deployment, Full Gate mit allen neun Findings-Fällen, Callerzustände,
+Berechtigungen, Regex, Plan-Standalone sowie Snapshotlauf und Nebenläufigkeit.
+Der eigene Container ist entfernt. Ein neuer Head-CI-Stand und der separate
+Main-Nachlauf bleiben erforderlich. Frühere Grenzen und Fehlversuche werden
+nicht zurückgesetzt.
+[PR #399](https://github.com/gecompat/SQL_Server_Analyze/pull/399) bleibt bis
+zur erfolgreichen Abnahme offen. Die nächste OPS-005-Reifewelle ist lesend
+vorbereitet und beginnt nach dem qualifizierten Streamabschluss.
+
+## Frühere Nichtqualifikation und integrierter OPS-005-Prüfschritt vom 20. Oktober 2026
 
 Der aktuelle Benutzerauftrag hebt die frühere allgemeine Entwicklungspause
 auf. Der Benutzer hat anschließend den dritten unabhängigen Review und

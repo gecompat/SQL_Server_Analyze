@@ -40,6 +40,82 @@ abschließende Gate verlangt auch für reinen Snapshot-Impact einen erfolgreiche
 Runtimejob. Die Datenbanken verbleiben ausschließlich im Testcontainer; dessen
 Cleanup läuft über den vorhandenen `always()`-Schritt.
 
+## Sperrdiagnose für die synthetischen SSIS-Verträge
+
+Die Verträge 202 bis 207 melden Datei, Aufrufstelle, laufende Aufrufnummer,
+vorhandene Schleifenwerte, UTC-Zeit, Session-ID und aktuellen Lock-Timeout
+vor dem Aufruf. Ein Folgemarker mit eigener UTC-Zeit kennzeichnet den Eintritt
+in die Assertions; der Dateiende-Marker beendet die Beobachtung. Der
+Dateistartmarker steht in einem eigenen, mit `GO` abgeschlossenen Batch.
+Die Meldungen erzeugen keine
+zusätzlichen fachlichen Resultsets und verändern keine Sessionoptionen.
+Der Testprozess verwendet `sqlcmd -r 1` und liest Meldungen über stderr
+getrennt von stdout-Ergebniszeilen. `stdbuf -o0 -e0` deaktiviert die
+Standardkanalpuffer des Clients im vorhandenen Linux-Container. Fehlt dieses
+Werkzeug, bleibt dessen Startfehler als fehlgeschlagener Test sichtbar.
+Ein lokaler Transportvergleich mit dem tatsächlichen Linux-SQLCMD zeigt,
+dass Meldungen desselben Batches trotz dieser Einstellungen gemeinsam am
+Batchende eintreffen können. Der abgeschlossene Startbatch liefert die
+Session-ID vor dem Testbatch und startet damit die Erfassung. Lange oder
+unvollständige Ergebniszeilen können deshalb keine Fallmarker verschlucken.
+Beide Kanäle verwenden getrennte Decoder und Geheimnispuffer, aber eine
+gemeinsame Größenbegrenzung für das bereinigte Log.
+
+`CI_LockTimeout_Diagnostics.py` verwendet im isolierten SQL-Server-2025-
+Container eine zusätzliche SQLCMD-Verbindung mit den vorhandenen CI-Rechten.
+Der Beobachter liest ausschließlich Requests und Sperren der markierten
+Session und ihrer direkten Blocker. Schlafende Blocker können über ihre
+gehaltenen Sperren sichtbar bleiben. SQL-Texte und Verbindungsidentitäten
+werden nicht zusätzlich gesammelt. Die Ressourcenidentität umfasst alle
+Ressourcenfelder aus `sys.dm_tran_locks`, einschließlich Datenbank und Partition.
+Die Stichproben sind keine atomare oder vollständige Sperrhistorie.
+
+Abfragen beginnen frühestens alle 250 Millisekunden. Der Beobachter endet
+spätestens nach zehn Minuten und behält höchstens 40 Stichproben der letzten
+zehn Sekunden mit jeweils 200 Zeilen. Jede Stichprobe enthält zusätzlich die
+UTC-Zeit des SQL-Servers vor der DMV-Abfrage. Neben der direkten Meldung 1222
+erkennt der Beobachter den vom TABLE-Writer umverpackten Lock-Timeout:
+Auf Meldung 51010 muss unmittelbar die Fehlermeldung mit dem festen Präfix
+`TABLE-Ausgabe fehlgeschlagen (LOCK_TIMEOUT):` folgen. Der Bericht unterscheidet
+`SQL_ERROR_1222` und `TABLE_EXPORT_LOCK_TIMEOUT` als Auslöser. Andere
+51010-Fehler oder eine isolierte gleichlautende Textzeile reichen nicht aus.
+Für den Blockernachweis werden nur
+Stichproben derselben Session berücksichtigt, deren Serverzeit strikt nach
+der Startzeit der zuletzt gemeldeten Aufruf- oder Assertionsphase liegt.
+Gleiche Zeitwerte reichen als Reihenfolgenachweis nicht aus.
+Der Vergleich erhält alle sieben Nachkommastellen. Damit können verspätete
+Fallmarker bereits erfasste Stichproben zuordnen. Frühere oder zeitgleiche
+Samples derselben Session bleiben mit `case: null` als unzugeordneter Kontext
+erhalten und begründen keinen Blockernachweis für die letzte Phase.
+Andere Sessions und abgelaufene Stichproben werden ausgeschlossen. Die ursprünglich
+beim Erfassen bekannte Phase bleibt als `sampled_case` erkennbar. Ein Sample,
+das eine Phasengrenze überlappt, kann konservativ unberücksichtigt bleiben.
+`BLOCKER_NOT_CAPTURED` bedeutet
+„Blocker nicht erfasst“; insbesondere ein sofortiger oder kurzer Timeout
+kann zwischen Stichproben liegen. Eine fehlende Beobachtung belegt keinen
+fehlenden Blocker. Fehler des Beobachters und abgeschnittene Stichproben
+werden gesondert ausgewiesen; der ursprüngliche SQLCMD-Fehler bleibt erhalten.
+
+Bei einem fehlgeschlagenen Impact-Lauf oder einem Erfassungsfehler sichert der
+Workflow das bereinigte SQLCMD-Log und die Diagnose vor dem Container-Cleanup.
+Das Log ist auf 44 MiB, die strukturierte Diagnose auf 5 MiB begrenzt; die
+synthetische Abnahme verwendet höchstens 1 MiB. Größenüberschreitungen werden
+als unvollständig ausgewiesen. Zugangsdaten werden auch über Lesepuffergrenzen
+hinweg entfernt. Das Artefakt bleibt einen Tag erhalten. Ein erfolgreicher
+gewöhnlicher Lauf erzeugt kein Diagnoseartefakt.
+
+Änderungen an Beobachter oder Abnahmedatei aktivieren das vollständige
+funktionale Gate auf SQL Server 2025. Die synthetische Sperrabnahme läuft nur
+bei betroffener CI-Infrastruktur in Pull Requests, im vorhandenen Container
+und mit einer Grenze von 60 Sekunden. Sie prüft einen bekannten schlafenden
+Lockhalter, den direkten Fehler 1222, dessen Übersetzung zu Fehler 51010,
+die vollständige Sperrressource, einen Soforttimeout, einen
+erfolgreichen Aufruf und die Bereinigung. Eine zusätzliche Engine, ein
+SSIS-Paket oder eine neue Python-Abhängigkeit wird dafür nicht benötigt.
+Die separate Cleanupverbindung prüft nach dem Schließen des Halters auch bei
+einer fehlgeschlagenen Assertion die Probe-Tabelle und die bekannte Halter-ID.
+Ein solcher Cleanupfehler ersetzt den ursprünglichen Abnahmefehler nicht.
+
 ## Compatibility-Level-Auswahl
 
 Der Selector aktiviert die Compatibility-Level-Matrix, wenn ausführbarer Code unter `Code/09_VersionAdaptive/`, ein Test unter `Code/Tests/VersionAdaptive/` oder ein expliziter Marker `CI: COMPATIBILITY_LEVELS=150,160,170` betroffen ist.

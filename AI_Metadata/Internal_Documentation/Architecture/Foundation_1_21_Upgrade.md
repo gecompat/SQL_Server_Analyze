@@ -115,3 +115,467 @@ Keiner dieser Punkte erlaubt das Auslassen bestehender Gates. Ein eigener
 begrenzter Implementierungsauftrag mit den in der CI-Strategie festgelegten
 Gegenproben ist die Fortsetzungsbedingung. Die Regelübernahme schließt diese
 technischen Punkte nicht als Effizienzimplementierung ab.
+
+## Begrenzte CI-Sperrdiagnose vom 19. Oktober 2026
+
+Der freigegebene Änderungsschritt ergänzt ausschließlich die CI-Protokollierung
+für Fehler 1222. Die SSIS-Verträge 202 bis 207 erhalten Aufrufmarker; ein
+Beobachter liest Requests und Sperren nur für markierte Sessions und deren
+direkte Blocker. Er verwendet eine zusätzliche Verbindung, frühestens eine
+Abfrage je 250 Millisekunden, höchstens zehn Minuten Laufzeit und einen
+begrenzten Ringpuffer. Die Erfassung hat Eigenlast und garantiert insbesondere
+bei einem sofortigen Timeout keinen Blockernachweis.
+
+Der Workflow sichert bei Fehlern höchstens 50 MiB bereinigte Diagnoseartefakte
+für einen Tag. Erfolgreiche gewöhnliche Läufe übertragen keine vollständigen
+Logs an ein Modell und erzeugen keine Diagnoseartefakte. Die neue synthetische
+Sperrabnahme läuft nur bei betroffener CI-Infrastruktur im vorhandenen
+SQL-Server-2025-Container eines Pull Requests, mit einer Grenze von 60 Sekunden.
+Änderungen an beiden Hilfsdateien sind in Pfadtrigger und Impact-Selector
+eingebunden. Es entsteht keine weitere native Engine oder Release-Matrix.
+
+Die Workflowänderung verlangt gemäß kanonischer Strategie das vollständige
+funktionale Gate auf SQL Server 2025 sowie die betroffenen statischen Gates.
+Unveränderte erfolgreiche Prüfungen werden lokal nicht wiederholt. Das
+freigegebene Budget umfasst zwölf Dateien, einen Implementierer, einen
+unabhängigen Reviewer mit höchstens zwei Reviewdurchgängen, einen
+befundgebundenen Korrekturpass und insgesamt höchstens drei funktionale
+CI-Qualifikationen einschließlich PR und Main. Die Offlineprüfung und die
+synthetische Sperrabnahme erhalten jeweils höchstens eine gezielte
+Fehlernachprüfung. Ein Budgetende lässt fehlende Nachweise offen.
+
+Kosten, Tokenverbrauch und eingesparte CI-Minuten wurden nicht verlässlich
+gemessen. Diese Grenzen sind Aufgaben- und Ausführungsgrenzen; sie behaupten
+keine gemessene Kostenersparnis. Die übrige autonome Verarbeitung bleibt
+pausiert. Die Abnahmeergebnisse werden commitgebunden im Pull Request und
+in den CI-Artefakten ausgewiesen; geplante Prüfungen gelten nicht als bestanden.
+
+Nach der ersten CI-Qualifikation wurde ein zusätzlicher gebündelter
+Korrekturpass mit höchstens einer weiteren gezielten Offline-Nachprüfung
+ausdrücklich freigegeben. Er betrifft die Benennung des aus der Umgebung
+gelesenen Wertes und des synthetischen Prüfwertes sowie den SQLCMD-Aufruf
+und die Erhaltung seiner ursprünglichen Startfehlermeldung. Das
+Datenschutzgate, die zwölf Dateien, zwei Reviewdurchgänge und die Grenze
+von insgesamt drei funktionalen CI-Qualifikationen bleiben unverändert.
+
+Nach dem ausgebliebenen Bereitschaftsmarker im zweiten SQL-Abnahmeversuch
+wurde ein letzter gezielter Protokollfix ausdrücklich freigegeben. Er
+verwendet den fortlaufenden SQLCMD-Kommandostrom, sofortige Endmarker und
+berücksichtigt interaktive Prompts. Die Erweiterung erlaubt einen weiteren
+Reviewdurchgang desselben Reviewers, eine gezielte Offlineprüfung und genau
+einen weiteren SQL-Abnahmeblock. Die Obergrenze beträgt damit vier
+funktionale CI-Qualifikationen einschließlich Main-Nachlauf; Dateiumfang,
+Größen- und Laufzeitgrenzen sowie die Pause der übrigen Verarbeitung bleiben
+bestehen.
+
+## Wiederaufnahme der CI-Sperrdiagnose vom 20. Oktober 2026
+
+Der neue Benutzerauftrag hebt die Entwicklungspause auf und beauftragt zuerst
+die Prüfung und Korrektur von PR #399. Die drei früheren SQL-Abnahmeversuche
+und drei Reviewdurchgänge bleiben verbraucht. Der letzte SQL-Lauf bleibt
+FAILED: Fehler 1222 und Exitcode wurden erfasst, der Blocker- und
+Ressourcennachweis sowie die unabhängige Cleanupprüfung fehlten. Der damals
+reservierte Main-Nachlauf wurde nicht ausgeführt.
+
+Die neue Korrekturwelle erhält einen getrennten endlichen Umfang: dieselben
+zwölf Dateien, ein Implementierer, ein unabhängiger Reviewer mit höchstens
+zwei befundgebundenen Prüfungen, eine gebündelte Offlineprüfung und höchstens
+eine gezielte Offline-Nachprüfung. Höchstens zwei PR-Qualifikationen mit je
+einer synthetischen SQL-Abnahme und einem vollständigen funktionalen Gate
+sowie ein anschließender Main-Nachlauf sind vorgesehen. Fehlversuche zählen
+mit. Die frühere Historie wird dadurch weder zurückgesetzt noch qualifiziert.
+Neue Produktverträge, Paketausführungen und Änderungen an gemeinsam genutzten
+Labressourcen gehören nicht zu diesem Umfang.
+
+Die Ursachenhypothese ist eine clientseitige Pufferung der Meldungen: Ein
+serverseitiges NOWAIT garantiert keine sofortige Auslieferung über umgeleitetes
+SQLCMD-stdout. Der Korrekturpass leitet Meldungen mit `-r 1` nach stderr und
+wertet diese getrennt von stdout-Ergebniszeilen aus. Der erste Review fand
+einen verbleibenden Vermischungsfall bei einer unvollständigen langen
+stdout-Zeile; die getrennte Verarbeitung behebt diesen Befund. Eine Offlineprobe
+verwendet einen echten Kindprozess mit gepuffertem stdout und einer solchen
+Ergebniszeile und prüft, dass eine Stichprobe vor dem Prozessende eintrifft.
+Getrennte Geheimnispuffer erhalten die Filterung bei verschachtelten
+Kanalausgaben; die gemeinsame Loggrenze bleibt bestehen. Die unabhängige Verbindung
+prüft den entfernten Halter und die Probe-Tabelle auch nach einer gescheiterten
+Assertion, soweit die Halter-ID bereits bekannt ist. Primärfehler bleiben
+erhalten. Die native Bestätigung der Hypothese steht vor der ersten neuen
+CI-Qualifikation noch aus.
+
+Die Größen-, Abfrage- und Zeitgrenzen bleiben erhalten. Die vorhandene
+GitHub-CI führt den SQL-Scope im eigenen Container aus; lokale Labressourcen
+werden nicht verwendet. Erfolgreiche unveränderte lokale Prüfungen werden
+nicht wiederholt. Ein weiterer Review benötigt einen neuen Befund oder die
+noch offene Ergebnisabnahme; eine Reviewkette entsteht nicht. Kosten und
+Kontingente bleiben UNKNOWN. Eine Integration verlangt aktuelle grüne
+Headchecks, die fachliche Abnahme und den nachgewiesenen Cleanup.
+
+Die elf Offlinecontracts bestehen am korrigierten Stand. Der zweite und
+letzte Review bestätigt die Kanalkorrektur ohne offene materielle Befunde;
+die native Abnahme bleibt davon unabhängig ausstehend. Die lokale statische
+Gesamtsuite scheitert im unveränderten OPS-005-Adapter an einem Bytevergleich
+mit gemischten Windows-Zeilenenden. Die normalisierten Inhalte stimmen mit
+den kanonisch erzeugten Quellen überein. Dieser lokale FAIL bleibt erhalten;
+die erforderliche Linux-CI muss den statischen Vertrag regulär prüfen.
+
+Die erste neue PR-Qualifikation am Commit
+`d9159be7bbf52b057f6f63af7e8efe8457e991f3` bleibt FAILED. Die elf
+Offlinecontracts, Deploymentregression und statischen Linux-Gates bestehen;
+die native positive Sperrprobe liefert weiterhin null Stichproben bei leerer
+Beobachterfehlerliste. Das Blockeroracle und das vollständige funktionale
+Gate sind nicht erfüllt. Der
+[fehlgeschlagene Lauf](https://github.com/gecompat/SQL_Server_Analyze/actions/runs/39340302984)
+bleibt als eigene Nichtqualifikation erhalten. Der ausgeführte
+Container-Cleanup ersetzt keinen vollständigen qualifizierten Cleanupnachweis.
+Die Kanaltrennung allein bestätigt die Ursachenhypothese somit nicht nativ.
+
+Ein unveröffentlichter Folgeansatz startet SQLCMD mit `stdbuf -o0 -e0` im
+Container, um dessen Standardkanalpuffer ausdrücklich abzuschalten. Die
+vorbereitete Kindprozessprobe verlangt diese Konfiguration zusätzlich zur
+getrennten Kanalauswertung. Dieser Ansatz ist noch nicht erneut offline
+oder nativ qualifiziert. Beide Reviewdurchgänge sind verbraucht; ein weiterer
+unabhängiger Review und eine gezielte Offlineprüfung benötigen eine
+ausdrückliche Budgeterweiterung. Ein zweiter PR-Qualifikationsversuch und
+der Main-Nachlauf bleiben reserviert und unausgeführt. Bis zur erforderlichen
+Abnahme erfolgen weder ein weiterer SQL-Lauf noch eine Integration.
+
+Der direkte Benutzer hat anschließend am 20. Oktober 2026 genau den
+zusätzlichen unabhängigen Review und die gezielte Offlineprüfung freigegeben
+und die Fortsetzung bis zur Integration samt eigenem Cleanup beauftragt.
+Damit sind in dieser Wiederaufnahmewelle drei Reviewdurchgänge zulässig.
+Das SQL-Budget bleibt unverändert: Ein zweiter PR-Qualifikationsversuch
+einschließlich Fehlversuch und der reservierte Main-Nachlauf stehen noch zur
+Verfügung. Die zwölf Dateien sowie alle Diagnose-, Privacy- und Cleanupgrenzen
+bleiben erhalten. Der Stand ist vor Veröffentlichung gegen das inzwischen
+integrierte OPS-005-Prüfupdate aus PR #401 aktualisiert.
+
+Der zweite und letzte PR-Qualifikationsversuch am Commit
+`2efabcb0cedbe0bae22129899422aff97d144666` bleibt ebenfalls FAILED. Die elf
+Offlinecontracts und die Deploymentregression bestehen. Die positive native
+Sperrprobe erfasst Fehler 1222, Exitcode 1 und den Testfall mit 2000 ms
+Lock-Timeout, aber null Stichproben bei leerer Beobachterfehlerliste.
+`BLOCKER_NOT_CAPTURED` erfüllt das Blocker- und Ressourcenoracle nicht.
+Der [letzte freigegebene Lauf](https://github.com/gecompat/SQL_Server_Analyze/actions/runs/39387700757)
+führt deshalb weder das vollständige funktionale Gate noch die übrigen
+synthetischen Fälle aus. Die Stdout-/Stderr-Entpufferung allein ist damit
+keine nativ bestätigte Lösung; die verbleibende Ursache ist UNKNOWN.
+
+Das Diagnoseartefakt ist privat erhalten. Der CI-Container-Cleanup besteht,
+ein vollständiger qualifizierter Cleanupnachweis bleibt offen. Beide neuen
+PR-SQL-Versuche und alle drei neuen Reviews sind verbraucht; der Main-Nachlauf
+bleibt ohne erfolgreiche PR-Abnahme unausgeführt. Es erfolgen kein Merge und
+keine Umwidmung des Main-Budgets. Der Stand bleibt wiederherstellbar erhalten.
+Eine Fortsetzung benötigt einen konkret abgegrenzten Diagnoseplan für die
+tatsächliche SQLCMD-Meldungsübertragung und gesondert freigegebene Review-,
+Offline- und SQL-Abnahmegrenzen. Die bisherigen Testdoubles bestätigen nur
+die Wrapperkonfiguration und ersetzen diesen fehlenden Nachweis nicht.
+
+## Erneute Transportdiagnose vom 20. Oktober 2026
+
+Der direkte Benutzer beauftragt den autonomen Streamabschluss, die Integration
+nach erfolgreichen lokalen Prüfungen und erforderlicher CI sowie anschließend
+die nächste ausführbare Welle. Er gibt dafür einen lokalen SQLCMD-
+Transportvergleich mit höchstens vier kurzen synthetischen Batches, eine
+lokale Sperrabnahme, höchstens zwei PR-CI-Abnahmen, einen Main-Nachlauf und
+einen unabhängigen Reviewer mit höchstens zwei befundgebundenen Prüfungen frei.
+Die früheren Fehlversuche bleiben unverändert erhalten. Der neue Umfang
+verwendet einen eigenen kurzlebigen Container ohne veröffentlichte Ports;
+gemeinsam genutzte Labressourcen werden nicht verändert.
+
+Der tatsächliche Linux-SQLCMD liefert im lokalen Transportvergleich Meldungen
+desselben Batches trotz NOWAIT, `-r 1` und `stdbuf` erst nach der zweisekündigen
+Wartezeit. Auch eine erste RAISERROR-Anweisung oder Severity 0 ändern dieses
+Ergebnis nicht. Ein eigener abgeschlossener Startbatch liefert die Meldung
+dagegen vor der Wartezeit. Der verwendete Container ist anschließend entfernt;
+die lokalen Rohbelege bleiben außerhalb des Repositorys.
+
+Die Korrektur trennt deshalb den Dateistartmarker durch `GO` vom Testbatch.
+Der Beobachter erfasst dieselbe markierte Session bereits vor verspäteten
+Aufrufmeldungen. Die serverseitige UTC-Zeit jeder Stichprobe und die eigene
+UTC-Zeit der Assertionsphase erlauben eine nachträgliche Zuordnung zur
+zuletzt gemeldeten Phase. Frühere Phasen, fremde Sessions und Samples außerhalb
+des bestehenden Zeitfensters werden ausgeschlossen. Die ursprüngliche
+Erfassungsphase bleibt erhalten. Die SQL-Assertions, Produktprocedures,
+Sessionoptionen, Zeilen-, Größen- und Laufzeitgrenzen bleiben unverändert.
+
+Die Offlineprüfung enthält einen Kindprozess, der den Fallmarker erst nach
+einer bereits erfassten Stichprobe liefert, sowie Gegenproben für Session,
+Phasenbeginn, Ablaufzeit und siebenstellige UTC-Präzision. Der Kindprozess
+behauptet keine Emulation des ODBC-Clients. Die unveränderte native
+Blocker-, Ressourcen-, Soforttimeout-, Erfolgs- und Cleanupabnahme bleibt
+erforderlich. Der stabile Stand benötigt anschließend den unabhängigen
+Review und die regulären aktuellen Head- und Mainchecks. Ein weiterer
+Fehlversuch zählt gegen die neue Grenze; fehlende Abnahme bleibt offen.
+
+Die lokale Sperrabnahme am Stand `b60b6701` bleibt FAILED. Der Beobachter
+erfasst zwölf Samples und den direkten Blocker. Acht Samples enthalten eine
+wartende Sperre und die gehaltene Sperre des bekannten Halters mit identischen
+vollständigen Ressourcenfeldern. Das bisherige Oracle erwartet jedoch
+`GRANTED`, während die native DMV `GRANT` liefert. Die Offlinegegenprüfung
+des privat erhaltenen Artefakts bestätigt acht passende Ressourcen nach
+Korrektur dieses Vergleichs. Sie ersetzt keine neue native Qualifikation.
+Die separate Fehlerpfad-Cleanupprüfung meldet ebenfalls einen Fehler;
+dessen Ursache bleibt UNKNOWN. Der eigene Container ist entfernt.
+
+Der vorbereitete Folgepass korrigiert ausschließlich das native Statusliteral
+im Ressourcenoracle und prüft fremde Halter, andere Statuswerte sowie jede
+abweichende Ressourcenkomponente negativ. Die Verbindung wartet begrenzt auf
+das Ende ihres Readerthreads. Die unabhängige Cleanupabfrage wartet höchstens
+eine Sekunde auf das Verschwinden der bekannten Session und Probe-Tabelle,
+bevor unverändert ein Fehler entsteht; begrenzte bereinigte Fehlerdetails
+bleiben erhalten. Dieser Ablauf behauptet keine bereits nachgewiesene
+Cleanupursache. Vierzehn Offlinecontracts bestehen. Eine weitere lokale
+Abnahme und ein zusätzlicher unabhängiger Review benötigen eine gezielte
+Freigabe; die beiden PR-CI-Abnahmen und der Main-Nachlauf bleiben ungenutzt.
+
+Der direkte Benutzer gibt anschließend genau einen zusätzlichen unabhängigen
+Review und eine lokale SQL-Nachprüfung dieses Folgepasses frei. Die beiden
+PR-CI-Abnahmen und der Main-Nachlauf bleiben unverändert reserviert.
+
+Die gezielte lokale Nachprüfung am Commit `fb052bb7` besteht in 7,18 Sekunden.
+Zwölf Samples erfassen den direkten Blocker und die vollständige Sperrressource.
+Positiver Timeout, Soforttimeout, erfolgreicher Aufruf, unabhängiger Cleanup
+und das anschließende Entfernen des eigenen Containers bestehen. Vierzehn
+Offlinecontracts sowie der zusätzliche unabhängige Review besitzen keine
+offenen Befunde. Der frühere lokale Fehlversuch bleibt erhalten; die Ursache
+seines Cleanupfehlers wird durch diesen erfolgreichen Abschluss nicht
+rückwirkend bestimmt. Die reguläre Head-CI und der Main-Nachlauf stehen vor
+der Veröffentlichung dieses Kandidaten noch aus.
+
+Die erste neue PR-CI am Head `ff7a296b` besteht Deploymentregression, native
+Sperrabnahme und alle statischen Headchecks. Das vollständige funktionale
+Gate bleibt im [Lauf 39402933887](https://github.com/gecompat/SQL_Server_Analyze/actions/runs/39402933887)
+FAILED. Test 202 scheitert an C009, dem unbegrenzten TABLE-Aufruf ohne
+High-Impact-Bestätigung, im gemeinsamen `InternalWriteResultTable` mit
+Fehler 51010 und Status `LOCK_TIMEOUT`. Der Helper verpackt den nativen
+Fehler; der bisherige direkte 1222-Trigger weist den Lauf deshalb als
+`NO_1222` aus und erhält keinen Ringpuffer. Die tatsächliche Sperrursache
+bleibt UNKNOWN. CI-Container-Cleanup besteht; Snapshot und nachfolgende
+Spezialgates sind nicht ausgeführt. Der Stand wird nicht integriert.
+
+Ein weiterer PR-CI-Versuch und der Main-Nachlauf bleiben reserviert.
+Produkt-Helperänderungen gehören nicht zum bisherigen Diagnosescope. Eine
+gezielte Diagnose samt minimaler vertragswahrender Korrektur dieses Helpers
+ist daher als eigener Freigabepunkt vorbereitet. Fremde Sperren, Assertions
+und Nonblocking-Verträge bleiben verbindlich. Die nächste Reifewelle ist
+bisher nur durch lesende OPS-005-Providerabgrenzung vorbereitet; ihre
+Ausführung beginnt nach dem qualifizierten Streamabschluss.
+
+## Freigegebene TABLE-Helperkorrektur vom 20. Oktober 2026
+
+Der direkte Benutzer erweitert den Stream um die gezielte Diagnose und einen
+minimalen Fix von `InternalWriteResultTable` samt abhängigen Tests und
+Installern. Dafür sind höchstens drei lokale SQL-Blöcke und ein unabhängiger
+Reviewer mit zwei befundgebundenen Prüfungen zulässig. Der eine verbleibende
+PR-CI-Versuch und der Main-Nachlauf bleiben reserviert. Fremde Sperren,
+Assertions und Nonblocking-Verträge dürfen nicht abgeschwächt werden.
+
+Der erste lokale Diagnoseblock endet bereits in Integration 165 mit Fehler
+54130 am `CurrentBlocking_chain_runtime`-Vertrag. Der lokale Imagebestand
+weicht vom Digest des fehlgeschlagenen CI-Laufs ab. Auch der zweite Block mit
+exaktem CI-Digest und bestandener Deploymentregression endet an diesem
+früheren Vertrag. Beide Versuche bleiben FAILED und qualifizieren weder
+Test 202 noch den TABLE-Helper. Die private Diagnoseinstrumentierung hat
+einen Steuerflussfehler eingeführt: Bei einem ungekapselten IF bindet sie
+nur die ergänzte Meldung an die Bedingung, während GOTO anschließend
+unbedingt ausgeführt wird. Die Imageabweichung ist damit keine festgestellte
+Ursache dieser beiden Fehler. Die korrigierte Instrumentierung kapselt
+Meldung und ursprüngliches GOTO in einer gemeinsamen BEGIN/END-Anweisung.
+Vor dem letzten lokalen Block wird diese Korrektur unabhängig geprüft.
+Timeouts und Assertions bleiben unverändert.
+
+Der vorbereitete Beobachter erkennt den umverpackten TABLE-Lock-Timeout nur
+aus Meldung 51010 und der unmittelbar zugehörigen festen LOCK_TIMEOUT-
+Meldung. Er kennzeichnet diesen Auslöser getrennt vom direkten Fehler 1222.
+Frühere oder zeitgleiche Samples bleiben unzugeordneter Kontext; sie werden
+nicht zu einem Blockernachweis der fehlerhaften Phase. Die native Abnahme
+ergänzt eine tatsächliche 1222-zu-51010-Übersetzung mit demselben bekannten
+Halter und vollständigem Ressourcenvergleich. Fünfzehn Offlinecontracts
+prüfen auch die Negativfälle. Eine erfolgreiche neue native Abnahme wird
+dadurch vor ihrer Ausführung nicht behauptet.
+
+Der dritte und letzte lokale Block verwendet die unabhängig geprüfte
+Instrumentierung und denselben Image-Digest wie die fehlgeschlagene CI.
+Die native Vierfallprobe besteht in 12,09 Sekunden: direkter Timeout,
+umverpackter Timeout, Soforttimeout, Erfolgsfall, vollständige bekannte
+Blockerressource und unabhängiger Cleanup sind qualifiziert. Die separate
+Deploymentregression aus dem zweiten Block bleibt bei unveränderten
+Produkt- und Generatorquellen gebunden; sie wird lokal nicht wiederholt.
+Diese Wiederverwendung ersetzt kein reguläres Remote-Gate.
+
+Das vollständige funktionale Gate bleibt FAILED. Test 202 erreicht diesmal
+C016, den TABLE-Aufruf mit abgeschalteten Nachrichten nach Entfernen der
+Nachrichtenspalte aus der synthetischen Quelle. Der private Marker erreicht
+den Fehlerfang des vierteiligen ALTER-TABLE-Batches zur Anpassung einer
+leeren Seed-Zieltabelle. Welche einzelne Anweisung scheitert und welche
+Ressource den Timeout verursacht, bleibt UNKNOWN. Der Marker identifiziert
+die interne Iterationsquelle und ihr lokales Exportziel. Er belegt keinen
+Fehler speziell beim Entfernen der Dummyspalte.
+
+Der Beobachter erkennt `TABLE_EXPORT_LOCK_TIMEOUT` und erhält 23 Samples.
+Ein Sample liegt nach dem Beginn von C016; frühere Samples bleiben
+unzugeordneter Kontext. Der Status ist `BLOCKER_NOT_CAPTURED`, nicht der
+Nachweis fehlender Fremdsperren. Beobachterfehler und Trunkierung sind 0;
+der SQLCMD-Exitcode ist 1. Der eigene Container wird nachweislich entfernt.
+Die statische Gesamtsuite mit 74 Validatoren und die fünfzehn
+Offlinecontracts bestehen. Ein Produkt-Helperfix ist noch nicht qualifiziert.
+
+Alle drei freigegebenen lokalen SQL-Blöcke und beide Reviewprüfungen sind
+verbraucht. Die zweite Prüfung untersucht ausschließlich die erhaltenen
+Artefakte und den bestehenden Quellstand. Sie bestätigt keinen belegbaren
+Produktfix. Die vorbereitete private Detailinstrumentierung erhält die
+IF-/GOTO-Bindung und trennt die vier dynamischen DDL-Anweisungen durch
+Zeilenumbrüche. ERROR_LINE und ERROR_PROCEDURE im betroffenen Catch sollen
+die Fehlerstelle eingrenzen; 0 oder NULL bleiben nicht entscheidbar.
+Außerhalb eines Catch liefern diese Funktionen keinen Fehlerkontext.
+Höchstens zwei gezielte Ausführungen von Test 202 mit und ohne Beobachter
+bilden den vorgeschlagenen Diagnoseumfang. Ein nicht reproduzierbares
+Ergebnis bleibt INCONCLUSIVE; ein einzelner PASS qualifiziert weder die
+Ursache noch das Full Gate. Dieser Vorschlag ist noch nicht ausgeführt.
+Ein weiterer nativer Diagnose-
+oder Abnahmelauf benötigt eine neue begrenzte Freigabe. Der verbleibende
+PR-CI-Versuch und der Main-Nachlauf bleiben ungenutzt. PR #399 wird bei
+fehlender lokaler Gesamtqualifikation weder erneut veröffentlicht noch
+integriert; die nächste Produktwelle bleibt lesend vorbereitet.
+
+## Freigegebene Detaildiagnose vom 20. Oktober 2026
+
+Der direkte Benutzer gibt anschließend höchstens zwei zusätzliche lokale
+SQL-Blöcke und genau einen unabhängigen Abschlussreview frei. Der erste
+Block umfasst höchstens zwei Test-202-Ausführungen mit und ohne Beobachter;
+der zweite bleibt der kanonischen Abnahme nach belegter Korrektur
+vorbehalten. Der letzte PR-CI-Versuch und der Main-Nachlauf bleiben reserviert.
+
+Beide Ausführungen des Diagnoseblocks scheitern vor der untersuchten
+Sperrstelle mit Fehler 1934 wegen QUOTED_IDENTIFIER OFF. Der direkte private
+Testaufruf übernimmt den Zustand des kanonischen Full Gates nicht: Dort
+setzt der vorhergehende Vertrag 199 QUOTED_IDENTIFIER ON, bevor Test 202
+seine dynamische Fixtureprocedure erstellt. Das Versäumnis liegt im privaten
+Diagnoseaufbau; die Ergebnisse sind FAILED und qualifizieren weder den
+Helper noch den Vergleich der Beobachterwirkung. Beide eigenen Container
+sind entfernt. Die ursprüngliche Sperrursache bleibt UNKNOWN.
+
+Der korrigierte private Einstieg setzt QUOTED_IDENTIFIER ON ausdrücklich vor
+der Fixtureerstellung und prüft den Wert vor dem unverändert eingebundenen
+Test. Die Python-Syntax, Reihenfolge, einzelne Testeinbindung und unveränderte
+kanonische Testquelle sind offline geprüft; eine native Qualifikation wird
+nicht behauptet. Die zwei zugelassenen Diagnoseausführungen sind verbraucht.
+Eine Wiederholung benötigt eine gezielte zusätzliche Freigabe. Der separate
+Abnahmeblock, Abschlussreview, letzte PR-CI und Main-Nachlauf sind ungenutzt.
+
+## Autonome Stabilisierung vom 20. Oktober 2026
+
+Der direkte Benutzer beauftragt anschließend die autonome Ursachenanalyse,
+Korrektur, Prüfung und Bewertung bis zu einem stabilen Teststand. Der
+korrigierte private Einstieg stellt die aus dem Full Gate belegten
+Sessionoptionen einschließlich LOCK_TIMEOUT 0 her. Server-, Master- und
+TempDB-Collation werden vor der Installation qualifiziert. Der zuvor
+fehlgeschlagene zweite Installationslauf mit Collationkonflikt bleibt FAILED;
+seine tatsächliche Startursache bleibt UNKNOWN.
+
+Die gezielten Test-202-Läufe mit und ohne Beobachter bestehen. Der Vergleich
+reproduziert die ursprüngliche Sperre nicht und bleibt für deren Ursache
+INCONCLUSIVE. Ein vollständiger Diagnosepass besteht Test 202 und scheitert
+anschließend in Test 203, C004, mit nativem Fehler 1222 bei eigener Temp-DDL
+in USP_SsisLegacyLogAnalysis. Der private Spurabruf scheitert an der nativ
+bestätigten Unverträglichkeit der SQLCMD-Optionen -h und -y 0. Beide Fehler
+bleiben erhalten; der eigene Container ist entfernt.
+
+Ein weiterer vollständiger Diagnosepass mit vorab geprüftem Spurabruf
+besteht. Er verwendet private Helperinstrumentierung und qualifiziert noch
+keinen geänderten Produktstand. Der begrenzte Ringpuffer enthält die letzten
+100 von 114 verarbeiteten Ereignissen; seine Retention ist kein Nachweis
+fehlender vorheriger Timeouts. Die frühere Helper-Sperrursache bleibt UNKNOWN.
+
+Die vorbereitete Produktkorrektur v1.5.1 übernimmt für eigene Temp-DDL des
+Legacy-Moduls die bereits bestehende begrenzte NOWAIT-Ausnahme. Neun
+Guardbereiche umfassen ausschließlich 28 eigene statische DDL-Anweisungen.
+Ein geänderter Eingangswert wird bei Erfolg und Fehler auf 0 zurückgesetzt;
+positive und unbegrenzte Werte bleiben erhalten. Quellzugriffe, Helperaufrufe,
+TABLE-Ziele, Schemas, Assertions und Callertransaktionen bleiben unverändert.
+Die mechanische Rückführung der Guards stellt den vorherigen SQL-Body wieder
+her. Der Nonblocking-Vertrag besteht; Installer sind aus den kanonischen
+Quellen neu erzeugt. Kanonische lokale Abnahme, unabhängiger Abschlussreview,
+letzte PR-CI und Main-Nachlauf stehen für diese Korrektur noch aus.
+
+
+Die anschließende kanonische Abnahme am Commit `88bf926e` besteht auf SQL
+Server 2025, Compatibility Level 170, ohne private Helperinstrumentierung.
+Deploymentregression, funktionales Full Gate, Callerzustände 0, 137 und -1
+samt frühem Mappingfehler, Berechtigungsmatrix, Regexmatrix, Plan-Standalone,
+Snapshotlauf und Snapshot-Nebenläufigkeit sind qualifiziert. Der eigene
+Container ist nachweislich entfernt. Der unabhängige Abschlussreview
+bestätigt keine offenen materiellen Befunde sowie die unveränderten übrigen
+SQL-, Schema- und API-Inhalte nach mechanischer Guardrückführung.
+
+Die statische Gesamtsuite besteht zunächst in 73 Prüfungen und scheitert
+allein am veralteten abhängigen OPS-005-Installer. Nach dessen kanonischer
+Neuerzeugung besteht die gezielte Adapterabnahme einschließlich der acht
+Darstellungsfälle. Unveränderte erfolgreiche Prüfer werden lokal nicht
+wiederholt. Datenschutz-, Dokumentationsstil- und Commitprüfung bestehen.
+Die früheren Fehler bleiben erhalten; die nicht reproduzierte frühere
+Helper-Seed-Sperre bleibt UNKNOWN. Die reguläre CI am endgültigen Head und
+der separate Main-Nachlauf bleiben vor dem Streamabschluss erforderlich.
+
+## Gezielte Findings-Stabilisierung vom 20. Oktober 2026
+
+Der anschließende [Head-Lauf](https://github.com/gecompat/SQL_Server_Analyze/actions/runs/39437366372)
+an `3fc20ae1` besteht Deploymentregression, native Vierfallprobe und statische
+Checks. Das funktionale Full Gate scheitert bereits in Stufe 15 von 34 mit
+Fehler 1222, State 47, in der eigenen CREATE-Anweisung von
+`USP_DiagnosticFindings`. Die Instrumentierung der Tests 202 bis 207 ist
+noch nicht aktiv; null Samples erlauben keine Aussage über den Blocker.
+Snapshot- und nachfolgende Spezialprüfungen sind übersprungen. Der
+CI-Container-Cleanup besteht. Dieser PR-Versuch bleibt FAILED und verbraucht;
+Main ist unverändert.
+
+Der direkte autonome Stabilisierungsauftrag trägt die anschließende
+befundgebundene Fortsetzung. Eine private Parallelprobe mit sechs Clients
+und je 80 Aufrufen vergleicht Original und einen alleinigen CREATE-Guard.
+Sie erfasst drei beziehungsweise zwei weitere Timeouts in jeweils 480
+Aufrufen. Alle fünf Ereignisse besitzen State 71, eine OBJECT-X-Ressource
+in der Frameworkdatenbank und nur einen EXEC-Aufrufkontext. Ohne
+Objektzuordnung und SUT-Statementframe bleibt ein Eintritts- oder Compilelock
+unbewiesen. Die Probe ist wegen des Guard-Timeoutoracles FAILED und für den
+früheren CI-Mechanismus INCONCLUSIVE. Die vollständigen sechs beziehungsweise
+vier XE-Ereignisse bleiben privat erhalten; der eigene Container ist entfernt.
+
+Der lokale lexikalische Audit findet in 116 Procedurequellen 780 statische
+CREATE-Temp-Anweisungen und 16 weitere eigene Temp-DDL-Anweisungen. Er
+belegt ähnliche Syntax und lokale Eigentumskandidaten, aber keinen
+Änderungsbedarf an jeder Stelle. Eine pauschale Mutation wird deshalb nicht
+vorgenommen. Der unabhängige Designreview bestätigt die Verhältnismäßigkeit
+einer Korrektur ausschließlich an der nachweislich betroffenen Findings-Anlage.
+Der frühere Helper-Seed-Timeout und die neu beobachteten Aufrufkonflikte
+bleiben UNKNOWN.
+
+Version 1.2.1 von `USP_DiagnosticFindings` übernimmt den vorhandenen eigenen
+Temp-DDL-Guard nur für `#DiagnosticFindings_Findings`. Der unveränderte
+Tabellenkörper liegt vollständig im Guard; Quellen, Childaufrufe und
+TABLE-Helper liegen außerhalb. Ein lokaler Wert 0 wird vorübergehend auf
+1000 gesetzt und bei Erfolg sowie im Catch vor THROW wiederhergestellt.
+Die übrigen Werte bleiben erhalten. Der Laufzeitvertrag 178 ergänzt drei
+Callerfälle für 0, 137 und -1 mit INVALID_PARAMETER und frühem TABLE-Mappingfehler;
+die bisherigen sechs Fälle und Assertions bleiben erhalten.
+
+Der begrenzte Umfang umfasst diese Korrektur, einen Implementierer, den
+bestehenden unabhängigen Reviewer mit Design- und Abschlussprüfung, die
+ausgeführte gezielte Probe, einen kanonischen Abnahmeblock und einen neuen
+Head-CI-Stand. Der bisher reservierte Main-Nachlauf bleibt ungenutzt.
+Frühere Fehlversuche und ausgeschöpfte Grenzen bleiben erhalten.
+
+Der korrigierte Kandidat `236e2b99` besteht alle 74 statischen Prüfer sowie
+Datenschutz-, Stil- und Commitprüfung. Der unabhängige Abschlussreview
+bestätigt den begrenzten Guard, die drei zusätzlichen Callerfälle, die
+unveränderten sechs bisherigen Fälle und die kanonische Installerbindung.
+Eine zu weit gefasste Aussage zu den Common-Helpern ist auf die beiden
+Produktprocedures begrenzt; Common-Helper behalten ihre vorhandenen Verträge.
+
+Die kanonische lokale SQL-Server-2025-Abnahme auf Compatibility Level 170
+besteht am selben Kandidaten ohne private Produktinstrumentierung:
+Deploymentregression, Full Gate mit allen neun Findings-Fällen,
+SSIS-Callerzustände, Berechtigungs- und Regexmatrix, Plan-Standalone,
+Snapshotlauf und Snapshot-Nebenläufigkeit. Der eigene Container ist entfernt.
+Die reguläre Head-CI und der separate Main-Nachlauf bleiben erforderlich.
+Die früheren unbekannten Sperrursachen werden durch diese begrenzte Abnahme
+nicht rückwirkend qualifiziert.

@@ -25,6 +25,17 @@ Jede öffentliche Procedure bleibt eigenständig aufrufbar und ermittelt zeitabh
 
 `READPAST` ist kein allgemeiner Framework-Hint und wird insbesondere nicht für `sys.*`, DMVs oder den Plan Cache eingesetzt. Der Hint überspringt nur gesperrte Zeilen, nicht gesperrte Seiten, und kann dadurch fachlich relevante Evidenz lautlos auslassen. Zulässig wäre er nur für eine frameworkeigene Queue-/Work-Tabelle, wenn genau dieses Überspringen Teil des Verarbeitungsvertrags ist und Anzahl beziehungsweise Scope der ausgelassenen Zeilen als partiell ausgewiesen werden. `NOLOCK` verhindert zudem keine Schema-Stability-Sperre gegen eine gleichzeitige Schema-Modification-Sperre; deshalb bleiben `LOCK_TIMEOUT 0`, isoliertes `TRY/CATCH` und ein expliziter Teilstatus erforderlich. Siehe [Microsoft: Tabellenhinweise – READPAST, READUNCOMMITTED/NOLOCK und NOWAIT](https://learn.microsoft.com/en-us/sql/t-sql/queries/hints-transact-sql-table).
 
+`USP_SsisLegacyLogAnalysis` und `USP_DiagnosticFindings` schützen ihre
+ausdrücklich abgegrenzte eigene
+Temp-DDL bei lokalem `LOCK_TIMEOUT 0` mit bis zu 1000 ms je Anweisung.
+Der Guard stellt den Wert bei Erfolg und vor dem Weiterwerfen eines Fehlers
+wieder her. Positive und unbegrenzte Werte werden durch den Guard nicht
+verändert. Quellen, Childaufrufe und Caller-TABLE-Ziele liegen außerhalb
+dieser Ausnahme. Daraus folgt kein entsprechender Schutz für sämtliche
+anderen Temp-Anlagen des Frameworks und keine allgemeine Sperrfreiheit.
+Die internen TABLE-Helper behalten ihre jeweils dokumentierten eigenen
+DDL-Ausnahmen und NOWAIT für fremde Tabellenoperationen.
+
 ## 2. JSON und OUTPUT-Status
 
 Viele neuere Procedures besitzen:

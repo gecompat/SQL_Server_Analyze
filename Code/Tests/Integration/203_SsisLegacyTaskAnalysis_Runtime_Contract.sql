@@ -1,5 +1,8 @@
 USE [DeineDatenbank];
 GO
+DECLARE @CiFileMarker nvarchar(400)=CONCAT(N'CI_BEGIN|203|file|0|',CONVERT(varchar(27),SYSUTCDATETIME(),126),N'Z|',@@SPID,N'|',@@LOCK_TIMEOUT,N'|-');
+RAISERROR(N'%s',10,1,@CiFileMarker) WITH NOWAIT;
+GO
 /* Synthetic observed-event tests; no provider-generation claim. */
 DECLARE @DbId int=DB_ID(),@ProcId int=NULL,@TableId int=NULL,@UserId int=NULL;
 DECLARE @OuterOptions int=@@OPTIONS,@OuterLock int=@@LOCK_TIMEOUT,@OuterTran int=@@TRANCOUNT;
@@ -12,6 +15,7 @@ DECLARE @OwnershipId int=OBJECT_ID(N'tempdb..#ExampleSsisTaskOwnership');
 BEGIN TRY
  EXEC(N'CREATE PROCEDURE dbo.ExampleSsisTaskFixtureScope @OwnedTableId int OUTPUT AS BEGIN
 SET NOCOUNT ON;
+DECLARE @CiOrdinal int=0,@CiMarker nvarchar(1000);
 DECLARE @Db sysname=(SELECT name FROM sys.databases WITH (NOLOCK) WHERE database_id=DB_ID());
 DECLARE @Id uniqueidentifier=''00000000-0000-0000-0000-000000000001'';
 DECLARE @A uniqueidentifier=''00000000-0000-0000-0000-000000000010'',@B uniqueidentifier=''00000000-0000-0000-0000-000000000020'';
@@ -33,16 +37,18 @@ INSERT dbo.ExampleSsisTaskLogSource (id,event,source,sourceid,executionid,startt
  (4,N''OnPostExecute'',N''ExampleTask'',@A,@Id,''20260101 00:00:04'',''20270101'',0),
  (5,N''OnPreExecute'',N''ExampleTask'',@A,@Id,''20260101 00:00:06'',''20270101'',0),
  (6,N''OnPostExecute'',N''ExampleTask'',@A,@Id,''20260101 00:00:09'',''20270101'',0);
+SET @CiOrdinal+=1; SET @CiMarker=CONCAT(N''CI_CASE|203|C001|'',@CiOrdinal,N''|'',CONVERT(varchar(27),SYSUTCDATETIME(),126),N''Z|'',@@SPID,N''|'',@@LOCK_TIMEOUT,N''|'',LEFT(CONCAT(N''-'',N''''),180)); RAISERROR(N''%s'',10,1,@CiMarker) WITH NOWAIT;
 EXEC [monitor].[USP_SsisLegacyLogAnalysis] @LoggingDatabase=@Db,@LoggingTable=N''ExampleSsisTaskLogSource'',@ExecutionId=@Id,
  @IncludeTaskAnalysis=1,@MaxZeilen=0,@HighImpactConfirmed=1,@ResultSetArt=''NONE'',@JsonErzeugen=1,@Json=@J OUTPUT,
- @StatusCodeOut=@Status OUTPUT,@IsPartialOut=@Partial OUTPUT,@ErrorNumberOut=@Error OUTPUT,@ErrorMessageOut=@Message OUTPUT;
+ @StatusCodeOut=@Status OUTPUT,@IsPartialOut=@Partial OUTPUT,@ErrorNumberOut=@Error OUTPUT,@ErrorMessageOut=@Message OUTPUT; SET @CiMarker=CONCAT(N''CI_AFTER|203|C001|'',@CiOrdinal,N''|'',CONVERT(varchar(27),SYSUTCDATETIME(),126),N''Z|'',@@SPID,N''|'',@@LOCK_TIMEOUT,N''|'',LEFT(CONCAT(N''-'',N''''),180)); RAISERROR(N''%s'',10,1,@CiMarker) WITH NOWAIT;
 IF NOT EXISTS(SELECT 1 WHERE ISJSON(@J)=1 AND EXISTS(SELECT 1 FROM OPENJSON(@J) WHERE [key]=N''taskDurations'' AND [type]=4) AND EXISTS(SELECT 1 FROM OPENJSON(@J) WHERE [key]=N''taskLoggingCoverage'' AND [type]=4)) THROW 56501,N''TASK_REQUIRED_OPTIN_ARRAYS'',1;
 IF NOT EXISTS(SELECT 1 WHERE JSON_VALUE(@J,''$.meta.SchemaVersion'')=N''2'' AND JSON_VALUE(@J,''$.meta.TaskAnalysisCatalogVersion'')=N''1'' AND JSON_VALUE(@J,''$.taskDurations[0].PairKind'')=N''EXECUTE'' AND JSON_VALUE(@J,''$.taskDurations[0].ValidPairCount'')=N''2'' AND JSON_VALUE(@J,''$.taskDurations[0].PairRowCount'')=N''2'' AND JSON_VALUE(@J,''$.taskDurations[0].TotalDurationMs'')=N''5000'' AND JSON_VALUE(@J,''$.taskDurations[0].AverageDurationMs'')=N''2500.000000'' AND JSON_VALUE(@J,''$.taskDurations[0].MinDurationMs'')=N''2000'' AND JSON_VALUE(@J,''$.taskDurations[0].MaxDurationMs'')=N''3000'' AND JSON_VALUE(@J,''$.taskDurations[0].EvidenceLogIdsJson'')=N''[3,4,5,6]'' AND JSON_VALUE(@J,''$.taskDurations[1].TotalDurationMs'')=N''1000'' AND JSON_VALUE(@J,''$.taskLoggingCoverage[0].ObservedEventCount'')=N''6'' AND JSON_VALUE(@J,''$.taskLoggingCoverage[0].ExecuteStartCount'')=N''2'' AND JSON_VALUE(@J,''$.taskLoggingCoverage[0].ExecuteEndCount'')=N''2'' AND JSON_VALUE(@J,''$.taskLoggingCoverage[0].ValidateStartCount'')=N''1'' AND JSON_VALUE(@J,''$.taskLoggingCoverage[0].ValidateEndCount'')=N''1'' AND JSON_VALUE(@J,''$.sourceStatus[4].ObservedRowCount'')=N''3'') THROW 56502,N''TASK_S01_ARITHMETIC'',1;
 CREATE TABLE #ExampleTaskDuration([Seed] int NULL); CREATE TABLE #ExampleTaskCoverage([Seed] int NULL);
 DECLARE @Mapping nvarchar(max)=N''{"taskDurations":"#ExampleTaskDuration","taskLoggingCoverage":"#ExampleTaskCoverage"}'';
 DECLARE @DurationId int=OBJECT_ID(N''tempdb..#ExampleTaskDuration''),@CoverageId int=OBJECT_ID(N''tempdb..#ExampleTaskCoverage'');
+SET @CiOrdinal+=1; SET @CiMarker=CONCAT(N''CI_CASE|203|C002|'',@CiOrdinal,N''|'',CONVERT(varchar(27),SYSUTCDATETIME(),126),N''Z|'',@@SPID,N''|'',@@LOCK_TIMEOUT,N''|'',LEFT(CONCAT(N''-'',N''''),180)); RAISERROR(N''%s'',10,1,@CiMarker) WITH NOWAIT;
 EXEC [monitor].[USP_SsisLegacyLogAnalysis] @LoggingDatabase=@Db,@LoggingTable=N''ExampleSsisTaskLogSource'',@ExecutionId=@Id,@IncludeTaskAnalysis=1,
- @MaxZeilen=0,@HighImpactConfirmed=1,@ResultSetArt=''TABLE'',@ResultTablesJson=@Mapping,@JsonErzeugen=1,@Json=@J OUTPUT;
+ @MaxZeilen=0,@HighImpactConfirmed=1,@ResultSetArt=''TABLE'',@ResultTablesJson=@Mapping,@JsonErzeugen=1,@Json=@J OUTPUT; SET @CiMarker=CONCAT(N''CI_AFTER|203|C002|'',@CiOrdinal,N''|'',CONVERT(varchar(27),SYSUTCDATETIME(),126),N''Z|'',@@SPID,N''|'',@@LOCK_TIMEOUT,N''|'',LEFT(CONCAT(N''-'',N''''),180)); RAISERROR(N''%s'',10,1,@CiMarker) WITH NOWAIT;
 DECLARE @TableJson nvarchar(max),@CompareSql nvarchar(max)=N''SELECT @T=(SELECT * FROM #ExampleTaskDuration ORDER BY TaskDurationOrdinal FOR JSON PATH,INCLUDE_NULL_VALUES)'';
 EXEC sys.sp_executesql @CompareSql,N''@T nvarchar(max) OUTPUT'',@T=@TableJson OUTPUT;
 IF @TableJson IS NULL OR JSON_QUERY(@J,''$.taskDurations'') IS NULL OR CONVERT(varbinary(max),@TableJson)<>CONVERT(varbinary(max),JSON_QUERY(@J,''$.taskDurations'')) THROW 56580,N''TASK_TABLE_JSON_ALL_23_FIELDS'',1;
@@ -119,9 +125,10 @@ INSERT dbo.ExampleSsisTaskLogSource (id,event,source,sourceid,executionid,startt
  (2,N''OnPreExecute'',N''ExampleSame'',@B,@Id,''20260101 00:00:01'',''20270101'',0),
  (3,N''OnPostExecute'',N''ExampleSame'',@B,@Id,''20260101 00:00:03'',''20270101'',0),
  (4,N''OnPostExecute'',N''ExampleSame'',@A,@Id,''20260101 00:00:04'',''20270101'',0);
+SET @CiOrdinal+=1; SET @CiMarker=CONCAT(N''CI_CASE|203|C003|'',@CiOrdinal,N''|'',CONVERT(varchar(27),SYSUTCDATETIME(),126),N''Z|'',@@SPID,N''|'',@@LOCK_TIMEOUT,N''|'',LEFT(CONCAT(N''-'',N''''),180)); RAISERROR(N''%s'',10,1,@CiMarker) WITH NOWAIT;
 EXEC [monitor].[USP_SsisLegacyLogAnalysis] @LoggingDatabase=@Db,@LoggingTable=N''ExampleSsisTaskLogSource'',@ExecutionId=@Id,
  @IncludeTaskAnalysis=1,@MaxZeilen=0,@HighImpactConfirmed=1,@ResultSetArt=''NONE'',@JsonErzeugen=1,@Json=@J OUTPUT,
- @StatusCodeOut=@Status OUTPUT,@IsPartialOut=@Partial OUTPUT,@ErrorNumberOut=@Error OUTPUT,@ErrorMessageOut=@Message OUTPUT;
+ @StatusCodeOut=@Status OUTPUT,@IsPartialOut=@Partial OUTPUT,@ErrorNumberOut=@Error OUTPUT,@ErrorMessageOut=@Message OUTPUT; SET @CiMarker=CONCAT(N''CI_AFTER|203|C003|'',@CiOrdinal,N''|'',CONVERT(varchar(27),SYSUTCDATETIME(),126),N''Z|'',@@SPID,N''|'',@@LOCK_TIMEOUT,N''|'',LEFT(CONCAT(N''-'',N''''),180)); RAISERROR(N''%s'',10,1,@CiMarker) WITH NOWAIT;
 IF NOT EXISTS(SELECT 1 WHERE ISJSON(@J)=1 AND EXISTS(SELECT 1 FROM OPENJSON(@J) WHERE [key]=N''taskDurations'' AND [type]=4) AND EXISTS(SELECT 1 FROM OPENJSON(@J) WHERE [key]=N''taskLoggingCoverage'' AND [type]=4)) THROW 56503,N''TASK_REQUIRED_OPTIN_ARRAYS'',1;
 IF NOT EXISTS(SELECT 1 WHERE JSON_VALUE(@J,''$.taskDurations[0].TotalDurationMs'')=N''4000'' AND JSON_VALUE(@J,''$.taskDurations[1].TotalDurationMs'')=N''2000'' AND JSON_VALUE(@J,''$.taskDurations[0].SourceType'')=N''UNRESOLVED'') THROW 56504,N''TASK_S02_SEPARATE_SOURCES'',1;
 DECLARE @ExpectedIdentities TABLE(SourceId uniqueidentifier NOT NULL,FirstId int NOT NULL,LastId int NOT NULL,Ids nvarchar(100) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL);
@@ -146,9 +153,10 @@ INSERT dbo.ExampleSsisTaskLogSource (id,event,source,sourceid,executionid,startt
  (2,N''OnPreExecute'',N''ExampleTask'',@A,@Id,''20260101 00:00:01'',''20270101'',0),
  (3,N''OnPostExecute'',N''ExampleTask'',@A,@Id,''20260101 00:00:03'',''20270101'',0),
  (4,N''OnPreExecute'',N''ExampleTask'',@A,@Id,''20260101 00:00:04'',''20270101'',0);
+SET @CiOrdinal+=1; SET @CiMarker=CONCAT(N''CI_CASE|203|C004|'',@CiOrdinal,N''|'',CONVERT(varchar(27),SYSUTCDATETIME(),126),N''Z|'',@@SPID,N''|'',@@LOCK_TIMEOUT,N''|'',LEFT(CONCAT(N''-'',N''''),180)); RAISERROR(N''%s'',10,1,@CiMarker) WITH NOWAIT;
 EXEC [monitor].[USP_SsisLegacyLogAnalysis] @LoggingDatabase=@Db,@LoggingTable=N''ExampleSsisTaskLogSource'',@ExecutionId=@Id,
  @IncludeTaskAnalysis=1,@MaxZeilen=0,@HighImpactConfirmed=1,@ResultSetArt=''NONE'',@JsonErzeugen=1,@Json=@J OUTPUT,
- @StatusCodeOut=@Status OUTPUT,@IsPartialOut=@Partial OUTPUT,@ErrorNumberOut=@Error OUTPUT,@ErrorMessageOut=@Message OUTPUT;
+ @StatusCodeOut=@Status OUTPUT,@IsPartialOut=@Partial OUTPUT,@ErrorNumberOut=@Error OUTPUT,@ErrorMessageOut=@Message OUTPUT; SET @CiMarker=CONCAT(N''CI_AFTER|203|C004|'',@CiOrdinal,N''|'',CONVERT(varchar(27),SYSUTCDATETIME(),126),N''Z|'',@@SPID,N''|'',@@LOCK_TIMEOUT,N''|'',LEFT(CONCAT(N''-'',N''''),180)); RAISERROR(N''%s'',10,1,@CiMarker) WITH NOWAIT;
 IF NOT EXISTS(SELECT 1 WHERE ISJSON(@J)=1 AND EXISTS(SELECT 1 FROM OPENJSON(@J) WHERE [key]=N''taskDurations'' AND [type]=4) AND EXISTS(SELECT 1 FROM OPENJSON(@J) WHERE [key]=N''taskLoggingCoverage'' AND [type]=4)) THROW 56505,N''TASK_REQUIRED_OPTIN_ARRAYS'',1;
 IF NOT EXISTS(SELECT 1 WHERE JSON_VALUE(@J,''$.taskDurations[0].ValidPairCount'')=N''1'' AND JSON_VALUE(@J,''$.taskDurations[0].OpenStartCount'')=N''1'' AND JSON_VALUE(@J,''$.taskDurations[0].OpenEndCount'')=N''1'' AND JSON_VALUE(@J,''$.taskDurations[0].TotalDurationMs'')=N''2000'' AND JSON_VALUE(@J,''$.taskDurations[0].MetricStatus'')=N''INCOMPLETE_BOUNDARIES'' AND JSON_VALUE(@J,''$.taskLoggingCoverage[0].IncompleteBoundaryCount'')=N''2'') THROW 56506,N''TASK_S03_OPEN'',1;
 -- S04: one ambiguous source does not invalidate the other source.
@@ -159,9 +167,10 @@ INSERT dbo.ExampleSsisTaskLogSource (id,event,source,sourceid,executionid,startt
  (3,N''OnPostExecute'',N''ExampleTask'',@A,@Id,''20260101'',''20270101'',0),
  (4,N''OnPreExecute'',N''ExampleTask'',@B,@Id,''20260101'',''20270101'',0),
  (5,N''OnPostExecute'',N''ExampleTask'',@B,@Id,''20260101'',''20270101'',0);
+SET @CiOrdinal+=1; SET @CiMarker=CONCAT(N''CI_CASE|203|C005|'',@CiOrdinal,N''|'',CONVERT(varchar(27),SYSUTCDATETIME(),126),N''Z|'',@@SPID,N''|'',@@LOCK_TIMEOUT,N''|'',LEFT(CONCAT(N''-'',N''''),180)); RAISERROR(N''%s'',10,1,@CiMarker) WITH NOWAIT;
 EXEC [monitor].[USP_SsisLegacyLogAnalysis] @LoggingDatabase=@Db,@LoggingTable=N''ExampleSsisTaskLogSource'',@ExecutionId=@Id,
  @IncludeTaskAnalysis=1,@MaxZeilen=0,@HighImpactConfirmed=1,@ResultSetArt=''NONE'',@JsonErzeugen=1,@Json=@J OUTPUT,
- @StatusCodeOut=@Status OUTPUT,@IsPartialOut=@Partial OUTPUT,@ErrorNumberOut=@Error OUTPUT,@ErrorMessageOut=@Message OUTPUT;
+ @StatusCodeOut=@Status OUTPUT,@IsPartialOut=@Partial OUTPUT,@ErrorNumberOut=@Error OUTPUT,@ErrorMessageOut=@Message OUTPUT; SET @CiMarker=CONCAT(N''CI_AFTER|203|C005|'',@CiOrdinal,N''|'',CONVERT(varchar(27),SYSUTCDATETIME(),126),N''Z|'',@@SPID,N''|'',@@LOCK_TIMEOUT,N''|'',LEFT(CONCAT(N''-'',N''''),180)); RAISERROR(N''%s'',10,1,@CiMarker) WITH NOWAIT;
 IF NOT EXISTS(SELECT 1 WHERE ISJSON(@J)=1 AND EXISTS(SELECT 1 FROM OPENJSON(@J) WHERE [key]=N''taskDurations'' AND [type]=4) AND EXISTS(SELECT 1 FROM OPENJSON(@J) WHERE [key]=N''taskLoggingCoverage'' AND [type]=4)) THROW 56507,N''TASK_REQUIRED_OPTIN_ARRAYS'',1;
 IF NOT EXISTS(SELECT 1 WHERE JSON_VALUE(@J,''$.taskDurations[0].AmbiguousBoundaryCount'')=N''3'' AND JSON_VALUE(@J,''$.taskDurations[0].ValidPairCount'')=N''0'' AND JSON_VALUE(@J,''$.taskDurations[0].TotalDurationMs'') IS NULL AND JSON_VALUE(@J,''$.taskDurations[0].AverageDurationMs'') IS NULL AND JSON_VALUE(@J,''$.taskDurations[0].MinDurationMs'') IS NULL AND JSON_VALUE(@J,''$.taskDurations[0].MaxDurationMs'') IS NULL AND JSON_VALUE(@J,''$.taskDurations[1].ValidPairCount'')=N''1'' AND JSON_VALUE(@J,''$.taskDurations[1].TotalDurationMs'')=N''0'') THROW 56508,N''TASK_S04_AMBIGUOUS'',1;
 -- S05: datetime precision, missing/reversed values and DATEDIFF_BIG range.
@@ -173,9 +182,10 @@ INSERT dbo.ExampleSsisTaskLogSource (id,event,source,sourceid,executionid,startt
  (4,N''OnPostExecute'',N''ExampleTask'',@A,@Id,''20260101'',''20270101'',0),
  (5,N''OnPreExecute'',N''ExampleTask'',@A,@Id,''17530101'',''20270101'',0),
  (6,N''OnPostExecute'',N''ExampleTask'',@A,@Id,''99991231'',''20270101'',0);
+SET @CiOrdinal+=1; SET @CiMarker=CONCAT(N''CI_CASE|203|C006|'',@CiOrdinal,N''|'',CONVERT(varchar(27),SYSUTCDATETIME(),126),N''Z|'',@@SPID,N''|'',@@LOCK_TIMEOUT,N''|'',LEFT(CONCAT(N''-'',N''''),180)); RAISERROR(N''%s'',10,1,@CiMarker) WITH NOWAIT;
 EXEC [monitor].[USP_SsisLegacyLogAnalysis] @LoggingDatabase=@Db,@LoggingTable=N''ExampleSsisTaskLogSource'',@ExecutionId=@Id,
  @IncludeTaskAnalysis=1,@MaxZeilen=0,@HighImpactConfirmed=1,@ResultSetArt=''NONE'',@JsonErzeugen=1,@Json=@J OUTPUT,
- @StatusCodeOut=@Status OUTPUT,@IsPartialOut=@Partial OUTPUT,@ErrorNumberOut=@Error OUTPUT,@ErrorMessageOut=@Message OUTPUT;
+ @StatusCodeOut=@Status OUTPUT,@IsPartialOut=@Partial OUTPUT,@ErrorNumberOut=@Error OUTPUT,@ErrorMessageOut=@Message OUTPUT; SET @CiMarker=CONCAT(N''CI_AFTER|203|C006|'',@CiOrdinal,N''|'',CONVERT(varchar(27),SYSUTCDATETIME(),126),N''Z|'',@@SPID,N''|'',@@LOCK_TIMEOUT,N''|'',LEFT(CONCAT(N''-'',N''''),180)); RAISERROR(N''%s'',10,1,@CiMarker) WITH NOWAIT;
 IF NOT EXISTS(SELECT 1 WHERE ISJSON(@J)=1 AND EXISTS(SELECT 1 FROM OPENJSON(@J) WHERE [key]=N''taskDurations'' AND [type]=4) AND EXISTS(SELECT 1 FROM OPENJSON(@J) WHERE [key]=N''taskLoggingCoverage'' AND [type]=4)) THROW 56509,N''TASK_REQUIRED_OPTIN_ARRAYS'',1;
 IF NOT EXISTS(SELECT 1 WHERE JSON_VALUE(@J,''$.taskDurations[0].UnknownTimePairCount'')=N''1'' AND JSON_VALUE(@J,''$.taskDurations[0].NonMonotonicPairCount'')=N''1'' AND JSON_VALUE(@J,''$.taskDurations[0].ValidPairCount'')=N''1'' AND JSON_VALUE(@J,''$.taskDurations[0].TotalDurationMs'')=N''260250019200000'' AND JSON_VALUE(@J,''$.taskLoggingCoverage[0].InvalidTimePairCount'')=N''2'' AND JSON_VALUE(@J,''$.taskLoggingCoverage[0].MissingEventTimeCount'')=N''1'') THROW 56510,N''TASK_S05_TIME'',1;
 -- S06: ordinal trailing-space conflict and NULL IDs retain original log identities.
@@ -185,9 +195,10 @@ INSERT dbo.ExampleSsisTaskLogSource (id,event,source,sourceid,executionid,startt
  (2,N''OnPostExecute'',N''ExampleTask '',@A,@Id,''20260101'',''20270101'',0),
  (3,N''OnPreExecute'',N''ExampleUnknown'',NULL,@Id,''20260101'',''20270101'',0),
  (4,N''OnPostExecute'',N''ExampleUnknown'',NULL,@Id,''20260101'',''20270101'',0);
+SET @CiOrdinal+=1; SET @CiMarker=CONCAT(N''CI_CASE|203|C007|'',@CiOrdinal,N''|'',CONVERT(varchar(27),SYSUTCDATETIME(),126),N''Z|'',@@SPID,N''|'',@@LOCK_TIMEOUT,N''|'',LEFT(CONCAT(N''-'',N''''),180)); RAISERROR(N''%s'',10,1,@CiMarker) WITH NOWAIT;
 EXEC [monitor].[USP_SsisLegacyLogAnalysis] @LoggingDatabase=@Db,@LoggingTable=N''ExampleSsisTaskLogSource'',@ExecutionId=@Id,
  @IncludeTaskAnalysis=1,@MaxZeilen=0,@HighImpactConfirmed=1,@ResultSetArt=''NONE'',@JsonErzeugen=1,@Json=@J OUTPUT,
- @StatusCodeOut=@Status OUTPUT,@IsPartialOut=@Partial OUTPUT,@ErrorNumberOut=@Error OUTPUT,@ErrorMessageOut=@Message OUTPUT;
+ @StatusCodeOut=@Status OUTPUT,@IsPartialOut=@Partial OUTPUT,@ErrorNumberOut=@Error OUTPUT,@ErrorMessageOut=@Message OUTPUT; SET @CiMarker=CONCAT(N''CI_AFTER|203|C007|'',@CiOrdinal,N''|'',CONVERT(varchar(27),SYSUTCDATETIME(),126),N''Z|'',@@SPID,N''|'',@@LOCK_TIMEOUT,N''|'',LEFT(CONCAT(N''-'',N''''),180)); RAISERROR(N''%s'',10,1,@CiMarker) WITH NOWAIT;
 IF NOT EXISTS(SELECT 1 WHERE ISJSON(@J)=1 AND EXISTS(SELECT 1 FROM OPENJSON(@J) WHERE [key]=N''taskDurations'' AND [type]=4) AND EXISTS(SELECT 1 FROM OPENJSON(@J) WHERE [key]=N''taskLoggingCoverage'' AND [type]=4)) THROW 56511,N''TASK_REQUIRED_OPTIN_ARRAYS'',1;
 IF NOT EXISTS(SELECT 1 WHERE JSON_VALUE(@J,''$.taskDurations[0].SourceName'') IS NULL AND JSON_VALUE(@J,''$.taskDurations[0].SourceNameConflict'')=N''true'' AND JSON_VALUE(@J,''$.taskLoggingCoverage[1].UnresolvedLogId'')=N''3'' AND JSON_VALUE(@J,''$.taskLoggingCoverage[2].UnresolvedLogId'')=N''4'' AND JSON_VALUE(@J,''$.taskLoggingCoverage[1].ObservedEventCount'')=N''1'' AND JSON_VALUE(@J,''$.taskLoggingCoverage[1].UnresolvedBoundaryCount'')=N''1'' AND JSON_VALUE(@J,''$.taskLoggingCoverage[1].CoverageStatus'')=N''UNRESOLVED_SOURCE'' AND (SELECT COUNT_BIG(*) FROM OPENJSON(@J,''$.taskDurations''))=1) THROW 56512,N''TASK_S06_IDENTITIES'',1;
 -- S07: observed non-boundaries and empty source are not missing-task/configuration evidence.
@@ -196,15 +207,17 @@ INSERT dbo.ExampleSsisTaskLogSource (id,event,source,sourceid,executionid,startt
  (1,N''OnError'',N''ExampleTask'',@A,@Id,''20260101'',''20270101'',0),
  (2,N''ExampleUnknownEvent'',N''ExampleTask'',@B,@Id,NULL,''20270101'',0),
  (3,NULL,N''ExampleTask'',@B,@Id,''20260101'',''20270101'',0);
+SET @CiOrdinal+=1; SET @CiMarker=CONCAT(N''CI_CASE|203|C008|'',@CiOrdinal,N''|'',CONVERT(varchar(27),SYSUTCDATETIME(),126),N''Z|'',@@SPID,N''|'',@@LOCK_TIMEOUT,N''|'',LEFT(CONCAT(N''-'',N''''),180)); RAISERROR(N''%s'',10,1,@CiMarker) WITH NOWAIT;
 EXEC [monitor].[USP_SsisLegacyLogAnalysis] @LoggingDatabase=@Db,@LoggingTable=N''ExampleSsisTaskLogSource'',@ExecutionId=@Id,
  @IncludeTaskAnalysis=1,@MaxZeilen=0,@HighImpactConfirmed=1,@ResultSetArt=''NONE'',@JsonErzeugen=1,@Json=@J OUTPUT,
- @StatusCodeOut=@Status OUTPUT,@IsPartialOut=@Partial OUTPUT,@ErrorNumberOut=@Error OUTPUT,@ErrorMessageOut=@Message OUTPUT;
+ @StatusCodeOut=@Status OUTPUT,@IsPartialOut=@Partial OUTPUT,@ErrorNumberOut=@Error OUTPUT,@ErrorMessageOut=@Message OUTPUT; SET @CiMarker=CONCAT(N''CI_AFTER|203|C008|'',@CiOrdinal,N''|'',CONVERT(varchar(27),SYSUTCDATETIME(),126),N''Z|'',@@SPID,N''|'',@@LOCK_TIMEOUT,N''|'',LEFT(CONCAT(N''-'',N''''),180)); RAISERROR(N''%s'',10,1,@CiMarker) WITH NOWAIT;
 IF NOT EXISTS(SELECT 1 WHERE ISJSON(@J)=1 AND EXISTS(SELECT 1 FROM OPENJSON(@J) WHERE [key]=N''taskDurations'' AND [type]=4) AND EXISTS(SELECT 1 FROM OPENJSON(@J) WHERE [key]=N''taskLoggingCoverage'' AND [type]=4)) THROW 56513,N''TASK_REQUIRED_OPTIN_ARRAYS'',1;
 IF NOT EXISTS(SELECT 1 WHERE JSON_VALUE(@J,''$.taskLoggingCoverage[0].KnownOtherEventCount'')=N''1'' AND JSON_VALUE(@J,''$.taskLoggingCoverage[1].UnknownEventNameCount'')=N''1'' AND JSON_VALUE(@J,''$.taskLoggingCoverage[1].MissingEventNameCount'')=N''1'' AND JSON_VALUE(@J,''$.taskLoggingCoverage[1].CoverageStatus'')=N''NO_BOUNDARY_OBSERVED'' AND JSON_QUERY(@J,''$.taskDurations'')=N''[]'') THROW 56514,N''TASK_S07_OBSERVED_ONLY'',1;
 TRUNCATE TABLE dbo.ExampleSsisTaskLogSource;
+SET @CiOrdinal+=1; SET @CiMarker=CONCAT(N''CI_CASE|203|C009|'',@CiOrdinal,N''|'',CONVERT(varchar(27),SYSUTCDATETIME(),126),N''Z|'',@@SPID,N''|'',@@LOCK_TIMEOUT,N''|'',LEFT(CONCAT(N''-'',N''''),180)); RAISERROR(N''%s'',10,1,@CiMarker) WITH NOWAIT;
 EXEC [monitor].[USP_SsisLegacyLogAnalysis] @LoggingDatabase=@Db,@LoggingTable=N''ExampleSsisTaskLogSource'',@ExecutionId=@Id,
  @IncludeTaskAnalysis=1,@MaxZeilen=0,@HighImpactConfirmed=1,@ResultSetArt=''NONE'',@JsonErzeugen=1,@Json=@J OUTPUT,
- @StatusCodeOut=@Status OUTPUT,@IsPartialOut=@Partial OUTPUT,@ErrorNumberOut=@Error OUTPUT,@ErrorMessageOut=@Message OUTPUT;
+ @StatusCodeOut=@Status OUTPUT,@IsPartialOut=@Partial OUTPUT,@ErrorNumberOut=@Error OUTPUT,@ErrorMessageOut=@Message OUTPUT; SET @CiMarker=CONCAT(N''CI_AFTER|203|C009|'',@CiOrdinal,N''|'',CONVERT(varchar(27),SYSUTCDATETIME(),126),N''Z|'',@@SPID,N''|'',@@LOCK_TIMEOUT,N''|'',LEFT(CONCAT(N''-'',N''''),180)); RAISERROR(N''%s'',10,1,@CiMarker) WITH NOWAIT;
 IF NOT EXISTS(SELECT 1 WHERE ISJSON(@J)=1 AND EXISTS(SELECT 1 FROM OPENJSON(@J) WHERE [key]=N''taskDurations'' AND [type]=4) AND EXISTS(SELECT 1 FROM OPENJSON(@J) WHERE [key]=N''taskLoggingCoverage'' AND [type]=4)) THROW 56515,N''TASK_REQUIRED_OPTIN_ARRAYS'',1;
 IF NOT EXISTS(SELECT 1 WHERE JSON_VALUE(@J,''$.sourceStatus[4].StatusCode'')=N''AVAILABLE_EMPTY'' AND JSON_VALUE(@J,''$.sourceStatus[4].ObservedRowCount'')=N''0'' AND JSON_QUERY(@J,''$.taskLoggingCoverage'')=N''[]'') THROW 56516,N''TASK_S07_EMPTY'',1;
 -- S08: N+1 sentinel cannot provide an end/name. Duplicate sentinel rejects the buffer.
@@ -212,30 +225,37 @@ TRUNCATE TABLE dbo.ExampleSsisTaskLogSource;
 INSERT dbo.ExampleSsisTaskLogSource (id,event,source,sourceid,executionid,starttime,endtime,datacode) VALUES
  (1,N''OnPreExecute'',N''ExampleTask'',@A,@Id,''20260101'',''20270101'',0),
  (2,N''OnPostExecute'',N''ExampleConflict'',@A,@Id,''20260101 00:00:01'',''20270101'',0);
+SET @CiOrdinal+=1; SET @CiMarker=CONCAT(N''CI_CASE|203|C010|'',@CiOrdinal,N''|'',CONVERT(varchar(27),SYSUTCDATETIME(),126),N''Z|'',@@SPID,N''|'',@@LOCK_TIMEOUT,N''|'',LEFT(CONCAT(N''-'',N''''),180)); RAISERROR(N''%s'',10,1,@CiMarker) WITH NOWAIT;
 EXEC [monitor].[USP_SsisLegacyLogAnalysis] @LoggingDatabase=@Db,@LoggingTable=N''ExampleSsisTaskLogSource'',@ExecutionId=@Id,
  @IncludeTaskAnalysis=1,@MaxZeilen=1,@HighImpactConfirmed=1,@ResultSetArt=''NONE'',@JsonErzeugen=1,@Json=@J OUTPUT,
- @StatusCodeOut=@Status OUTPUT,@IsPartialOut=@Partial OUTPUT,@ErrorNumberOut=@Error OUTPUT,@ErrorMessageOut=@Message OUTPUT;
+ @StatusCodeOut=@Status OUTPUT,@IsPartialOut=@Partial OUTPUT,@ErrorNumberOut=@Error OUTPUT,@ErrorMessageOut=@Message OUTPUT; SET @CiMarker=CONCAT(N''CI_AFTER|203|C010|'',@CiOrdinal,N''|'',CONVERT(varchar(27),SYSUTCDATETIME(),126),N''Z|'',@@SPID,N''|'',@@LOCK_TIMEOUT,N''|'',LEFT(CONCAT(N''-'',N''''),180)); RAISERROR(N''%s'',10,1,@CiMarker) WITH NOWAIT;
 IF NOT EXISTS(SELECT 1 WHERE ISJSON(@J)=1 AND EXISTS(SELECT 1 FROM OPENJSON(@J) WHERE [key]=N''taskDurations'' AND [type]=4) AND EXISTS(SELECT 1 FROM OPENJSON(@J) WHERE [key]=N''taskLoggingCoverage'' AND [type]=4)) THROW 56517,N''TASK_REQUIRED_OPTIN_ARRAYS'',1;
 IF NOT EXISTS(SELECT 1 WHERE JSON_VALUE(@J,''$.taskDurations[0].SourceName'')=N''ExampleTask'' AND JSON_VALUE(@J,''$.taskDurations[0].EvidenceLogIdsJson'')=N''[1]'' AND JSON_VALUE(@J,''$.taskDurations[0].InputIsTruncated'')=N''true'' AND JSON_VALUE(@J,''$.taskDurations[0].TotalDurationMs'') IS NULL) THROW 56518,N''TASK_S08_SENTINEL'',1;
+SET @CiOrdinal+=1; SET @CiMarker=CONCAT(N''CI_CASE|203|C011|'',@CiOrdinal,N''|'',CONVERT(varchar(27),SYSUTCDATETIME(),126),N''Z|'',@@SPID,N''|'',@@LOCK_TIMEOUT,N''|'',LEFT(CONCAT(N''-'',N''''),180)); RAISERROR(N''%s'',10,1,@CiMarker) WITH NOWAIT;
 EXEC [monitor].[USP_SsisLegacyLogAnalysis] @LoggingDatabase=@Db,@LoggingTable=N''ExampleSsisTaskLogSource'',@ExecutionId=@Id,
  @IncludeTaskAnalysis=1,@MaxZeilen=2,@HighImpactConfirmed=1,@ResultSetArt=''NONE'',@JsonErzeugen=1,@Json=@J OUTPUT,
- @StatusCodeOut=@Status OUTPUT,@IsPartialOut=@Partial OUTPUT,@ErrorNumberOut=@Error OUTPUT,@ErrorMessageOut=@Message OUTPUT;
+ @StatusCodeOut=@Status OUTPUT,@IsPartialOut=@Partial OUTPUT,@ErrorNumberOut=@Error OUTPUT,@ErrorMessageOut=@Message OUTPUT; SET @CiMarker=CONCAT(N''CI_AFTER|203|C011|'',@CiOrdinal,N''|'',CONVERT(varchar(27),SYSUTCDATETIME(),126),N''Z|'',@@SPID,N''|'',@@LOCK_TIMEOUT,N''|'',LEFT(CONCAT(N''-'',N''''),180)); RAISERROR(N''%s'',10,1,@CiMarker) WITH NOWAIT;
 IF NOT EXISTS(SELECT 1 WHERE ISJSON(@J)=1 AND EXISTS(SELECT 1 FROM OPENJSON(@J) WHERE [key]=N''taskDurations'' AND [type]=4) AND EXISTS(SELECT 1 FROM OPENJSON(@J) WHERE [key]=N''taskLoggingCoverage'' AND [type]=4)) THROW 56519,N''TASK_REQUIRED_OPTIN_ARRAYS'',1;
 IF NOT EXISTS(SELECT 1 WHERE JSON_VALUE(@J,''$.taskDurations[0].TotalDurationMs'')=N''1000'' AND JSON_VALUE(@J,''$.taskDurations[0].InputIsTruncated'')=N''false'') THROW 56520,N''TASK_S08_EXACT_CAP'',1;
 UPDATE dbo.ExampleSsisTaskLogSource SET id=1 WHERE id=2;
+SET @CiOrdinal+=1; SET @CiMarker=CONCAT(N''CI_CASE|203|C012|'',@CiOrdinal,N''|'',CONVERT(varchar(27),SYSUTCDATETIME(),126),N''Z|'',@@SPID,N''|'',@@LOCK_TIMEOUT,N''|'',LEFT(CONCAT(N''-'',N''''),180)); RAISERROR(N''%s'',10,1,@CiMarker) WITH NOWAIT;
 EXEC [monitor].[USP_SsisLegacyLogAnalysis] @LoggingDatabase=@Db,@LoggingTable=N''ExampleSsisTaskLogSource'',@ExecutionId=@Id,
  @IncludeTaskAnalysis=1,@MaxZeilen=1,@HighImpactConfirmed=1,@ResultSetArt=''NONE'',@JsonErzeugen=1,@Json=@J OUTPUT,
- @StatusCodeOut=@Status OUTPUT,@IsPartialOut=@Partial OUTPUT,@ErrorNumberOut=@Error OUTPUT,@ErrorMessageOut=@Message OUTPUT;
+ @StatusCodeOut=@Status OUTPUT,@IsPartialOut=@Partial OUTPUT,@ErrorNumberOut=@Error OUTPUT,@ErrorMessageOut=@Message OUTPUT; SET @CiMarker=CONCAT(N''CI_AFTER|203|C012|'',@CiOrdinal,N''|'',CONVERT(varchar(27),SYSUTCDATETIME(),126),N''Z|'',@@SPID,N''|'',@@LOCK_TIMEOUT,N''|'',LEFT(CONCAT(N''-'',N''''),180)); RAISERROR(N''%s'',10,1,@CiMarker) WITH NOWAIT;
 IF NOT EXISTS(SELECT 1 WHERE ISJSON(@J)=1 AND EXISTS(SELECT 1 FROM OPENJSON(@J) WHERE [key]=N''taskDurations'' AND [type]=4) AND EXISTS(SELECT 1 FROM OPENJSON(@J) WHERE [key]=N''taskLoggingCoverage'' AND [type]=4)) THROW 56521,N''TASK_REQUIRED_OPTIN_ARRAYS'',1;
 IF NOT EXISTS(SELECT 1 WHERE JSON_VALUE(@J,''$.sourceStatus[4].Detail'')=N''NO_VALID_EVENT_BUFFER'' AND JSON_VALUE(@J,''$.sourceStatus[4].ObservedRowCount'') IS NULL AND JSON_QUERY(@J,''$.taskDurations'')=N''[]'') THROW 56522,N''TASK_S08_DUPLICATE_SENTINEL'',1;
 -- S09 physical schemas and all-field TABLE/JSON parity are checked above; grid counts are tested by the native consumer.
 -- S10: default / 0 / NULL keep v1 output. New disabled TABLE mapping is rejected before source read.
-EXEC [monitor].[USP_SsisLegacyLogAnalysis] @LoggingDatabase=@Db,@LoggingTable=N''ExampleSsisTaskLogSource'',@ExecutionId=@Id,@ResultSetArt=''NONE'',@JsonErzeugen=1,@Json=@J0 OUTPUT;
-EXEC [monitor].[USP_SsisLegacyLogAnalysis] @LoggingDatabase=@Db,@LoggingTable=N''ExampleSsisTaskLogSource'',@ExecutionId=@Id,@ResultSetArt=''NONE'',@JsonErzeugen=1,@Json=@J OUTPUT,@IncludeTaskAnalysis=0;
-EXEC [monitor].[USP_SsisLegacyLogAnalysis] @LoggingDatabase=@Db,@LoggingTable=N''ExampleSsisTaskLogSource'',@ExecutionId=@Id,@ResultSetArt=''NONE'',@JsonErzeugen=1,@Json=@JNull OUTPUT,@IncludeTaskAnalysis=NULL;
+SET @CiOrdinal+=1; SET @CiMarker=CONCAT(N''CI_CASE|203|C013|'',@CiOrdinal,N''|'',CONVERT(varchar(27),SYSUTCDATETIME(),126),N''Z|'',@@SPID,N''|'',@@LOCK_TIMEOUT,N''|'',LEFT(CONCAT(N''-'',N''''),180)); RAISERROR(N''%s'',10,1,@CiMarker) WITH NOWAIT;
+EXEC [monitor].[USP_SsisLegacyLogAnalysis] @LoggingDatabase=@Db,@LoggingTable=N''ExampleSsisTaskLogSource'',@ExecutionId=@Id,@ResultSetArt=''NONE'',@JsonErzeugen=1,@Json=@J0 OUTPUT; SET @CiMarker=CONCAT(N''CI_AFTER|203|C013|'',@CiOrdinal,N''|'',CONVERT(varchar(27),SYSUTCDATETIME(),126),N''Z|'',@@SPID,N''|'',@@LOCK_TIMEOUT,N''|'',LEFT(CONCAT(N''-'',N''''),180)); RAISERROR(N''%s'',10,1,@CiMarker) WITH NOWAIT;
+SET @CiOrdinal+=1; SET @CiMarker=CONCAT(N''CI_CASE|203|C014|'',@CiOrdinal,N''|'',CONVERT(varchar(27),SYSUTCDATETIME(),126),N''Z|'',@@SPID,N''|'',@@LOCK_TIMEOUT,N''|'',LEFT(CONCAT(N''-'',N''''),180)); RAISERROR(N''%s'',10,1,@CiMarker) WITH NOWAIT;
+EXEC [monitor].[USP_SsisLegacyLogAnalysis] @LoggingDatabase=@Db,@LoggingTable=N''ExampleSsisTaskLogSource'',@ExecutionId=@Id,@ResultSetArt=''NONE'',@JsonErzeugen=1,@Json=@J OUTPUT,@IncludeTaskAnalysis=0; SET @CiMarker=CONCAT(N''CI_AFTER|203|C014|'',@CiOrdinal,N''|'',CONVERT(varchar(27),SYSUTCDATETIME(),126),N''Z|'',@@SPID,N''|'',@@LOCK_TIMEOUT,N''|'',LEFT(CONCAT(N''-'',N''''),180)); RAISERROR(N''%s'',10,1,@CiMarker) WITH NOWAIT;
+SET @CiOrdinal+=1; SET @CiMarker=CONCAT(N''CI_CASE|203|C015|'',@CiOrdinal,N''|'',CONVERT(varchar(27),SYSUTCDATETIME(),126),N''Z|'',@@SPID,N''|'',@@LOCK_TIMEOUT,N''|'',LEFT(CONCAT(N''-'',N''''),180)); RAISERROR(N''%s'',10,1,@CiMarker) WITH NOWAIT;
+EXEC [monitor].[USP_SsisLegacyLogAnalysis] @LoggingDatabase=@Db,@LoggingTable=N''ExampleSsisTaskLogSource'',@ExecutionId=@Id,@ResultSetArt=''NONE'',@JsonErzeugen=1,@Json=@JNull OUTPUT,@IncludeTaskAnalysis=NULL; SET @CiMarker=CONCAT(N''CI_AFTER|203|C015|'',@CiOrdinal,N''|'',CONVERT(varchar(27),SYSUTCDATETIME(),126),N''Z|'',@@SPID,N''|'',@@LOCK_TIMEOUT,N''|'',LEFT(CONCAT(N''-'',N''''),180)); RAISERROR(N''%s'',10,1,@CiMarker) WITH NOWAIT;
 IF NOT EXISTS(SELECT 1 WHERE JSON_VALUE(@J0,''$.meta.SchemaVersion'')=N''1'' AND JSON_VALUE(@J,''$.meta.SchemaVersion'')=N''1'' AND JSON_VALUE(@JNull,''$.meta.SchemaVersion'')=N''1'' AND JSON_QUERY(@J0,''$.taskDurations'') IS NULL AND JSON_QUERY(@J,''$.taskDurations'') IS NULL AND JSON_QUERY(@JNull,''$.taskLoggingCoverage'') IS NULL AND (SELECT COUNT_BIG(*) FROM OPENJSON(@J,''$.sourceStatus''))=4) THROW 56523,N''TASK_S10_DEFAULT'',1;
 BEGIN TRY
- EXEC [monitor].[USP_SsisLegacyLogAnalysis] @ResultSetArt=''TABLE'',@ResultTablesJson=N''{"taskDurations":"#ExampleTaskDuration"}'';
+ SET @CiOrdinal+=1; SET @CiMarker=CONCAT(N''CI_CASE|203|C016|'',@CiOrdinal,N''|'',CONVERT(varchar(27),SYSUTCDATETIME(),126),N''Z|'',@@SPID,N''|'',@@LOCK_TIMEOUT,N''|'',LEFT(CONCAT(N''-'',N''''),180)); RAISERROR(N''%s'',10,1,@CiMarker) WITH NOWAIT;
+ EXEC [monitor].[USP_SsisLegacyLogAnalysis] @ResultSetArt=''TABLE'',@ResultTablesJson=N''{"taskDurations":"#ExampleTaskDuration"}''; SET @CiMarker=CONCAT(N''CI_AFTER|203|C016|'',@CiOrdinal,N''|'',CONVERT(varchar(27),SYSUTCDATETIME(),126),N''Z|'',@@SPID,N''|'',@@LOCK_TIMEOUT,N''|'',LEFT(CONCAT(N''-'',N''''),180)); RAISERROR(N''%s'',10,1,@CiMarker) WITH NOWAIT;
  THROW 56583,N''TASK_DISABLED_MAPPING_ACCEPTED'',1;
 END TRY BEGIN CATCH IF ERROR_NUMBER()<>51011 THROW; END CATCH;
 -- S11: no message-column access; IncludeTimeline is an export option only.
@@ -243,14 +263,16 @@ TRUNCATE TABLE dbo.ExampleSsisTaskLogSource;
 INSERT dbo.ExampleSsisTaskLogSource (id,event,source,sourceid,executionid,starttime,endtime,datacode) VALUES
  (1,N''OnPreExecute'',N''ExampleTask'',@A,@Id,''20260101'',''20270101'',0),
  (2,N''OnPostExecute'',N''ExampleTask'',@A,@Id,''20260101 00:00:02'',''20270101'',0);
+SET @CiOrdinal+=1; SET @CiMarker=CONCAT(N''CI_CASE|203|C017|'',@CiOrdinal,N''|'',CONVERT(varchar(27),SYSUTCDATETIME(),126),N''Z|'',@@SPID,N''|'',@@LOCK_TIMEOUT,N''|'',LEFT(CONCAT(N''-'',N''''),180)); RAISERROR(N''%s'',10,1,@CiMarker) WITH NOWAIT;
 EXEC [monitor].[USP_SsisLegacyLogAnalysis] @LoggingDatabase=@Db,@LoggingTable=N''ExampleSsisTaskLogSource'',@ExecutionId=@Id,
  @IncludeTaskAnalysis=1,@MaxZeilen=0,@HighImpactConfirmed=1,@ResultSetArt=''NONE'',@JsonErzeugen=1,@Json=@J OUTPUT,
- @StatusCodeOut=@Status OUTPUT,@IsPartialOut=@Partial OUTPUT,@ErrorNumberOut=@Error OUTPUT,@ErrorMessageOut=@Message OUTPUT;
+ @StatusCodeOut=@Status OUTPUT,@IsPartialOut=@Partial OUTPUT,@ErrorNumberOut=@Error OUTPUT,@ErrorMessageOut=@Message OUTPUT; SET @CiMarker=CONCAT(N''CI_AFTER|203|C017|'',@CiOrdinal,N''|'',CONVERT(varchar(27),SYSUTCDATETIME(),126),N''Z|'',@@SPID,N''|'',@@LOCK_TIMEOUT,N''|'',LEFT(CONCAT(N''-'',N''''),180)); RAISERROR(N''%s'',10,1,@CiMarker) WITH NOWAIT;
 IF NOT EXISTS(SELECT 1 WHERE ISJSON(@J)=1 AND EXISTS(SELECT 1 FROM OPENJSON(@J) WHERE [key]=N''taskDurations'' AND [type]=4) AND EXISTS(SELECT 1 FROM OPENJSON(@J) WHERE [key]=N''taskLoggingCoverage'' AND [type]=4)) THROW 56524,N''TASK_REQUIRED_OPTIN_ARRAYS'',1;
 SET @J0=@J; ALTER TABLE dbo.ExampleSsisTaskLogSource DROP COLUMN message;
+SET @CiOrdinal+=1; SET @CiMarker=CONCAT(N''CI_CASE|203|C018|'',@CiOrdinal,N''|'',CONVERT(varchar(27),SYSUTCDATETIME(),126),N''Z|'',@@SPID,N''|'',@@LOCK_TIMEOUT,N''|'',LEFT(CONCAT(N''-'',N''''),180)); RAISERROR(N''%s'',10,1,@CiMarker) WITH NOWAIT;
 EXEC [monitor].[USP_SsisLegacyLogAnalysis] @LoggingDatabase=@Db,@LoggingTable=N''ExampleSsisTaskLogSource'',@ExecutionId=@Id,
  @IncludeTaskAnalysis=1,@MaxZeilen=0,@HighImpactConfirmed=1,@ResultSetArt=''NONE'',@JsonErzeugen=1,@Json=@J OUTPUT,
- @StatusCodeOut=@Status OUTPUT,@IsPartialOut=@Partial OUTPUT,@ErrorNumberOut=@Error OUTPUT,@ErrorMessageOut=@Message OUTPUT,@IncludeMessages=0,@IncludeTimeline=0;
+ @StatusCodeOut=@Status OUTPUT,@IsPartialOut=@Partial OUTPUT,@ErrorNumberOut=@Error OUTPUT,@ErrorMessageOut=@Message OUTPUT,@IncludeMessages=0,@IncludeTimeline=0; SET @CiMarker=CONCAT(N''CI_AFTER|203|C018|'',@CiOrdinal,N''|'',CONVERT(varchar(27),SYSUTCDATETIME(),126),N''Z|'',@@SPID,N''|'',@@LOCK_TIMEOUT,N''|'',LEFT(CONCAT(N''-'',N''''),180)); RAISERROR(N''%s'',10,1,@CiMarker) WITH NOWAIT;
 IF NOT EXISTS(SELECT 1 WHERE ISJSON(@J)=1 AND EXISTS(SELECT 1 FROM OPENJSON(@J) WHERE [key]=N''taskDurations'' AND [type]=4) AND EXISTS(SELECT 1 FROM OPENJSON(@J) WHERE [key]=N''taskLoggingCoverage'' AND [type]=4)) THROW 56525,N''TASK_REQUIRED_OPTIN_ARRAYS'',1;
 IF NOT EXISTS(SELECT 1 WHERE CONVERT(varbinary(max),JSON_QUERY(@J,''$.taskDurations''))=CONVERT(varbinary(max),JSON_QUERY(@J0,''$.taskDurations'')) AND JSON_QUERY(@J,''$.timeline'')=N''[]'') THROW 56526,N''TASK_S11_MESSAGE_OPTOUT'',1;
 -- S12: absent source and existing high-impact guard do not become successful empty analysis.
@@ -267,9 +289,10 @@ BEGIN TRY
  BEGIN TRY
   EXEC(N''SELECT COUNT_BIG(*) FROM dbo.ExampleSsisTaskLogSource;'');
  END TRY BEGIN CATCH SELECT @DirectDenied=ERROR_NUMBER(),@DirectMessage=ERROR_MESSAGE(); END CATCH;
+ SET @CiOrdinal+=1; SET @CiMarker=CONCAT(N''CI_CASE|203|C019|'',@CiOrdinal,N''|'',CONVERT(varchar(27),SYSUTCDATETIME(),126),N''Z|'',@@SPID,N''|'',@@LOCK_TIMEOUT,N''|'',LEFT(CONCAT(N''-'',N''''),180)); RAISERROR(N''%s'',10,1,@CiMarker) WITH NOWAIT;
  EXEC [monitor].[USP_SsisLegacyLogAnalysis] @LoggingDatabase=@Db,@LoggingTable=N''ExampleSsisTaskLogSource'',@ExecutionId=@Id,
   @IncludeTaskAnalysis=1,@IncludeMessages=0,@ResultSetArt=''NONE'',@JsonErzeugen=1,@Json=@J OUTPUT,
-  @ErrorNumberOut=@Error OUTPUT,@ErrorMessageOut=@Message OUTPUT;
+  @ErrorNumberOut=@Error OUTPUT,@ErrorMessageOut=@Message OUTPUT; SET @CiMarker=CONCAT(N''CI_AFTER|203|C019|'',@CiOrdinal,N''|'',CONVERT(varchar(27),SYSUTCDATETIME(),126),N''Z|'',@@SPID,N''|'',@@LOCK_TIMEOUT,N''|'',LEFT(CONCAT(N''-'',N''''),180)); RAISERROR(N''%s'',10,1,@CiMarker) WITH NOWAIT;
  REVERT;SET @Impersonated=0;
 END TRY BEGIN CATCH
  IF @Impersonated=1 BEGIN TRY REVERT; END TRY BEGIN CATCH SELECT ERROR_NUMBER() AS RevertError,ERROR_MESSAGE() AS RevertMessage; END CATCH;
@@ -285,9 +308,11 @@ IF (SELECT principal_id FROM sys.database_principals WITH (NOLOCK) WHERE name CO
 DROP USER ExampleTaskLogReader;
 UPDATE #ExampleSsisTaskOwnership SET UserId=NULL;
 
-EXEC [monitor].[USP_SsisLegacyLogAnalysis] @LoggingDatabase=@Db,@LoggingTable=N''ExampleMissingTaskLogSource'',@ExecutionId=@Id,@IncludeTaskAnalysis=1,@ResultSetArt=''NONE'',@JsonErzeugen=1,@Json=@J OUTPUT;
+SET @CiOrdinal+=1; SET @CiMarker=CONCAT(N''CI_CASE|203|C020|'',@CiOrdinal,N''|'',CONVERT(varchar(27),SYSUTCDATETIME(),126),N''Z|'',@@SPID,N''|'',@@LOCK_TIMEOUT,N''|'',LEFT(CONCAT(N''-'',N''''),180)); RAISERROR(N''%s'',10,1,@CiMarker) WITH NOWAIT;
+EXEC [monitor].[USP_SsisLegacyLogAnalysis] @LoggingDatabase=@Db,@LoggingTable=N''ExampleMissingTaskLogSource'',@ExecutionId=@Id,@IncludeTaskAnalysis=1,@ResultSetArt=''NONE'',@JsonErzeugen=1,@Json=@J OUTPUT; SET @CiMarker=CONCAT(N''CI_AFTER|203|C020|'',@CiOrdinal,N''|'',CONVERT(varchar(27),SYSUTCDATETIME(),126),N''Z|'',@@SPID,N''|'',@@LOCK_TIMEOUT,N''|'',LEFT(CONCAT(N''-'',N''''),180)); RAISERROR(N''%s'',10,1,@CiMarker) WITH NOWAIT;
 IF NOT EXISTS(SELECT 1 WHERE JSON_VALUE(@J,''$.sourceStatus[4].Detail'')=N''NO_VALID_EVENT_BUFFER'' AND JSON_VALUE(@J,''$.sourceStatus[4].ObservedRowCount'') IS NULL) THROW 56527,N''TASK_S12_ABSENT'',1;
-EXEC [monitor].[USP_SsisLegacyLogAnalysis] @LoggingDatabase=@Db,@ExecutionId=@Id,@IncludeTaskAnalysis=1,@MaxZeilen=0,@ResultSetArt=''NONE'',@JsonErzeugen=1,@Json=@J OUTPUT;
+SET @CiOrdinal+=1; SET @CiMarker=CONCAT(N''CI_CASE|203|C021|'',@CiOrdinal,N''|'',CONVERT(varchar(27),SYSUTCDATETIME(),126),N''Z|'',@@SPID,N''|'',@@LOCK_TIMEOUT,N''|'',LEFT(CONCAT(N''-'',N''''),180)); RAISERROR(N''%s'',10,1,@CiMarker) WITH NOWAIT;
+EXEC [monitor].[USP_SsisLegacyLogAnalysis] @LoggingDatabase=@Db,@ExecutionId=@Id,@IncludeTaskAnalysis=1,@MaxZeilen=0,@ResultSetArt=''NONE'',@JsonErzeugen=1,@Json=@J OUTPUT; SET @CiMarker=CONCAT(N''CI_AFTER|203|C021|'',@CiOrdinal,N''|'',CONVERT(varchar(27),SYSUTCDATETIME(),126),N''Z|'',@@SPID,N''|'',@@LOCK_TIMEOUT,N''|'',LEFT(CONCAT(N''-'',N''''),180)); RAISERROR(N''%s'',10,1,@CiMarker) WITH NOWAIT;
 IF NOT EXISTS(SELECT 1 WHERE JSON_VALUE(@J,''$.meta.StatusCode'')=N''INVALID_PARAMETER'' AND JSON_VALUE(@J,''$.sourceStatus[4].Detail'')=N''INVALID_PARAMETER'' AND JSON_VALUE(@J,''$.sourceStatus[4].ObservedRowCount'') IS NULL) THROW 56528,N''TASK_S12_HIGH_IMPACT'',1;
 -- S13 uses the separately bound private extracted-stage harness; it is not an original-SUT fault claim.
 -- S14: zero-duration and rounding, disjoint counts, caller restoration.
@@ -299,9 +324,10 @@ INSERT dbo.ExampleSsisTaskLogSource (id,event,source,sourceid,executionid,startt
  (4,N''OnPostExecute'',N''ExampleTask'',@A,@Id,''20260101'',''20270101'',0),
  (5,N''OnPreExecute'',N''ExampleTask'',@A,@Id,''20260101'',''20270101'',0),
  (6,N''OnPostExecute'',N''ExampleTask'',@A,@Id,''20260101 00:00:00.003'',''20270101'',0);
+SET @CiOrdinal+=1; SET @CiMarker=CONCAT(N''CI_CASE|203|C022|'',@CiOrdinal,N''|'',CONVERT(varchar(27),SYSUTCDATETIME(),126),N''Z|'',@@SPID,N''|'',@@LOCK_TIMEOUT,N''|'',LEFT(CONCAT(N''-'',N''''),180)); RAISERROR(N''%s'',10,1,@CiMarker) WITH NOWAIT;
 EXEC [monitor].[USP_SsisLegacyLogAnalysis] @LoggingDatabase=@Db,@LoggingTable=N''ExampleSsisTaskLogSource'',@ExecutionId=@Id,
  @IncludeTaskAnalysis=1,@MaxZeilen=0,@HighImpactConfirmed=1,@ResultSetArt=''NONE'',@JsonErzeugen=1,@Json=@J OUTPUT,
- @StatusCodeOut=@Status OUTPUT,@IsPartialOut=@Partial OUTPUT,@ErrorNumberOut=@Error OUTPUT,@ErrorMessageOut=@Message OUTPUT,@IncludeMessages=0;
+ @StatusCodeOut=@Status OUTPUT,@IsPartialOut=@Partial OUTPUT,@ErrorNumberOut=@Error OUTPUT,@ErrorMessageOut=@Message OUTPUT,@IncludeMessages=0; SET @CiMarker=CONCAT(N''CI_AFTER|203|C022|'',@CiOrdinal,N''|'',CONVERT(varchar(27),SYSUTCDATETIME(),126),N''Z|'',@@SPID,N''|'',@@LOCK_TIMEOUT,N''|'',LEFT(CONCAT(N''-'',N''''),180)); RAISERROR(N''%s'',10,1,@CiMarker) WITH NOWAIT;
 IF NOT EXISTS(SELECT 1 WHERE ISJSON(@J)=1 AND EXISTS(SELECT 1 FROM OPENJSON(@J) WHERE [key]=N''taskDurations'' AND [type]=4) AND EXISTS(SELECT 1 FROM OPENJSON(@J) WHERE [key]=N''taskLoggingCoverage'' AND [type]=4)) THROW 56529,N''TASK_REQUIRED_OPTIN_ARRAYS'',1;
 IF NOT EXISTS(SELECT 1 WHERE JSON_VALUE(@J,''$.taskDurations[0].ValidPairCount'')=N''3'' AND JSON_VALUE(@J,''$.taskDurations[0].AverageDurationMs'')=N''1.000000'' AND JSON_VALUE(@J,''$.taskDurations[0].MinDurationMs'')=N''0'' AND JSON_VALUE(@J,''$.taskDurations[0].PairRowCount'')=N''3'' AND JSON_VALUE(@J,''$.taskLoggingCoverage[0].ObservedEventCount'')=N''6'') THROW 56530,N''TASK_S14_DECIMAL_ZERO'',1;
 IF NOT EXISTS(SELECT 1 WHERE @@OPTIONS=@Options AND @@LOCK_TIMEOUT=@Lock AND @@TRANCOUNT=@Tran) THROW 56531,N''TASK_S14_CALLER'',1;
@@ -343,4 +369,6 @@ BEGIN CATCH
  THROW;
 END CATCH;
 DROP TABLE #ExampleSsisTaskOwnership;
+DECLARE @CiFileMarker nvarchar(400)=CONCAT(N'CI_END|203|file|0|',CONVERT(varchar(27),SYSUTCDATETIME(),126),N'Z|',@@SPID,N'|',@@LOCK_TIMEOUT,N'|-');
+RAISERROR(N'%s',10,1,@CiFileMarker) WITH NOWAIT;
 GO
