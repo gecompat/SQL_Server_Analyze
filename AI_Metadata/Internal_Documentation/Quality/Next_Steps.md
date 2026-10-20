@@ -3,38 +3,45 @@
 **Stand:** 20. Oktober 2026
 **Zweck:** aktuelle ausführbare Entwicklungswelle für `gecompat/SQL_Server_Analyze`
 
-## Lokal qualifizierte Stabilisierung vom 20. Oktober 2026
+## Aktuelle Findings-Stabilisierung vom 20. Oktober 2026
 
 Der Benutzer beauftragt die autonome Ursachenanalyse, Korrektur, Prüfung und
 Bewertung bis zu einem stabilen Teststand. Der
-[aktuelle Nachweis](../Architecture/Foundation_1_21_Upgrade.md#autonome-stabilisierung-vom-20-oktober-2026)
-erhält frühere Fehlversuche und trennt private Diagnose von kanonischer Abnahme.
+[aktuelle Nachweis](../Architecture/Foundation_1_21_Upgrade.md#gezielte-findings-stabilisierung-vom-20-oktober-2026)
+erhält frühere Fehlversuche und trennt Diagnose von kanonischer Abnahme.
 
-Version 1.5.1 schützt ausschließlich eigene Temp-DDL des Legacy-Moduls bei
-geerbtem NOWAIT mit bis zu 1000 ms je Anweisung. Der vorübergehend geänderte
-Wert wird bei Erfolg und im Fehlerpfad wiederhergestellt. Positive und
-unbegrenzte Werte, Quellzugriffe, TABLE-Ziele, Schemas und Assertions bleiben
-erhalten. Der unabhängig geprüfte Guardumfang umfasst 28 eigene
-DDL-Anweisungen in neun Bereichen; der abhängige OPS-005-Installer ist neu
-erzeugt und qualifiziert.
+Die kanonische lokale Abnahme an `88bf926e` besteht auf SQL Server 2025,
+Compatibility Level 170: Deploymentregression, Full Gate, Callerzustände,
+Berechtigungs- und Regexmatrix, Plan-Standalone sowie Snapshotlauf und
+Nebenläufigkeit. Der unabhängige SSIS-Review und die 74 statischen Prüfer
+sind qualifiziert; der anfänglich veraltete Adapterinstaller ist korrigiert.
 
-Die kanonische lokale SQL-Server-2025-Abnahme an `88bf926e` besteht auf
-Compatibility Level 170: Deploymentregression, funktionales Full Gate,
-Callerzustände 0, 137 und -1 samt frühem Fehlerpfad, Berechtigungs- und
-Regexmatrix, Plan-Standalone sowie Snapshotlauf und Nebenläufigkeit. Die
-Produktquellen enthalten dabei keine private Helperinstrumentierung. Cleanup
-des eigenen Containers und unabhängiger Abschlussreview bestehen. Alle
-74 statischen Prüfer sind durch die Gesamtsuite und die gezielte
-Adapter-Nachprüfung qualifiziert. Der vorherige Fehler wegen des veralteten
-Adapterinstallers bleibt erhalten. Fünfzehn unveränderte Offlinecontracts und
-die native Vierfallprobe des Diagnosebeobachters bleiben gebunden.
+Der anschließende [Head-Lauf](https://github.com/gecompat/SQL_Server_Analyze/actions/runs/39437366372)
+an `3fc20ae1` besteht Deployment, native Vierfallprobe und statische Checks,
+scheitert jedoch in Full-Gate-Stufe 15 von 34 mit 1222, State 47, bei der
+eigenen Temp-Anlage in `USP_DiagnosticFindings`. Ohne aktive Samples bleibt
+der Blocker UNKNOWN. Dieser frühere letzte PR-Versuch bleibt verbraucht;
+Main ist unverändert und sein reservierter Nachlauf ungenutzt.
 
-Die frühere Helper-Seed-Sperrursache bleibt UNKNOWN. Nicht reproduzierte
-Befunde und frühere Aufbaufehler werden durch diesen Erfolg nicht
-rückwirkend qualifiziert. Der eine verbleibende PR-CI-Versuch und der
-Main-Nachlauf stehen vor Integration noch aus.
-[PR #399](https://github.com/gecompat/SQL_Server_Analyze/pull/399) bleibt bis zu
-der erforderlichen Head-CI offen. Die nächste OPS-005-Reifewelle ist lesend
+Eine neue private Parallelprobe erfasst weitere Timeouts im EXEC-Kontext
+mit State 71. Sie bleibt FAILED und für den ursprünglichen Mechanismus
+INCONCLUSIVE. Der eigene Container ist entfernt. Die frühere Helper-Seed-
+Sperre bleibt ebenfalls UNKNOWN. Ein lexikalischer Audit ähnlicher Stellen
+begründet keinen pauschalen Eingriff in die übrigen Procedurequellen.
+
+Der unabhängige Designreview bestätigt die gezielte Findings-Korrektur.
+Version 1.2.1 schützt ausschließlich die eigene CREATE-Anweisung bei lokalem
+NOWAIT mit bis zu 1000 ms und stellt den Wert bei Erfolg und Fehler wieder
+her. Childaufrufe, Quellen und Caller-TABLE-Ziele liegen außerhalb. Vertrag
+178 ergänzt drei Callerfälle für 0, 137 und -1 samt frühem Mappingfehler;
+die bisherigen sechs Fälle bleiben erhalten. Der abhängige Installer ist
+kanonisch neu erzeugt.
+
+Für diesen befundgebundenen Kandidaten stehen statische Abnahme, genau ein
+kanonischer Abnahmeblock, der unabhängige Abschlussreview und ein neuer
+Head-CI-Stand aus. Frühere Grenzen und Fehlversuche werden nicht zurückgesetzt.
+[PR #399](https://github.com/gecompat/SQL_Server_Analyze/pull/399) bleibt bis
+zur erfolgreichen Abnahme offen. Die nächste OPS-005-Reifewelle ist lesend
 vorbereitet und beginnt nach dem qualifizierten Streamabschluss.
 
 ## Frühere Nichtqualifikation und integrierter OPS-005-Prüfschritt vom 20. Oktober 2026

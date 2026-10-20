@@ -516,3 +516,52 @@ wiederholt. Datenschutz-, Dokumentationsstil- und Commitprüfung bestehen.
 Die früheren Fehler bleiben erhalten; die nicht reproduzierte frühere
 Helper-Seed-Sperre bleibt UNKNOWN. Die reguläre CI am endgültigen Head und
 der separate Main-Nachlauf bleiben vor dem Streamabschluss erforderlich.
+
+## Gezielte Findings-Stabilisierung vom 20. Oktober 2026
+
+Der anschließende [Head-Lauf](https://github.com/gecompat/SQL_Server_Analyze/actions/runs/39437366372)
+an `3fc20ae1` besteht Deploymentregression, native Vierfallprobe und statische
+Checks. Das funktionale Full Gate scheitert bereits in Stufe 15 von 34 mit
+Fehler 1222, State 47, in der eigenen CREATE-Anweisung von
+`USP_DiagnosticFindings`. Die Instrumentierung der Tests 202 bis 207 ist
+noch nicht aktiv; null Samples erlauben keine Aussage über den Blocker.
+Snapshot- und nachfolgende Spezialprüfungen sind übersprungen. Der
+CI-Container-Cleanup besteht. Dieser PR-Versuch bleibt FAILED und verbraucht;
+Main ist unverändert.
+
+Der direkte autonome Stabilisierungsauftrag trägt die anschließende
+befundgebundene Fortsetzung. Eine private Parallelprobe mit sechs Clients
+und je 80 Aufrufen vergleicht Original und einen alleinigen CREATE-Guard.
+Sie erfasst drei beziehungsweise zwei weitere Timeouts in jeweils 480
+Aufrufen. Alle fünf Ereignisse besitzen State 71, eine OBJECT-X-Ressource
+in der Frameworkdatenbank und nur einen EXEC-Aufrufkontext. Ohne
+Objektzuordnung und SUT-Statementframe bleibt ein Eintritts- oder Compilelock
+unbewiesen. Die Probe ist wegen des Guard-Timeoutoracles FAILED und für den
+früheren CI-Mechanismus INCONCLUSIVE. Die vollständigen sechs beziehungsweise
+vier XE-Ereignisse bleiben privat erhalten; der eigene Container ist entfernt.
+
+Der lokale lexikalische Audit findet in 116 Procedurequellen 780 statische
+CREATE-Temp-Anweisungen und 16 weitere eigene Temp-DDL-Anweisungen. Er
+belegt ähnliche Syntax und lokale Eigentumskandidaten, aber keinen
+Änderungsbedarf an jeder Stelle. Eine pauschale Mutation wird deshalb nicht
+vorgenommen. Der unabhängige Designreview bestätigt die Verhältnismäßigkeit
+einer Korrektur ausschließlich an der nachweislich betroffenen Findings-Anlage.
+Der frühere Helper-Seed-Timeout und die neu beobachteten Aufrufkonflikte
+bleiben UNKNOWN.
+
+Version 1.2.1 von `USP_DiagnosticFindings` übernimmt den vorhandenen eigenen
+Temp-DDL-Guard nur für `#DiagnosticFindings_Findings`. Der unveränderte
+Tabellenkörper liegt vollständig im Guard; Quellen, Childaufrufe und
+TABLE-Helper liegen außerhalb. Ein lokaler Wert 0 wird vorübergehend auf
+1000 gesetzt und bei Erfolg sowie im Catch vor THROW wiederhergestellt.
+Die übrigen Werte bleiben erhalten. Der Laufzeitvertrag 178 ergänzt drei
+Callerfälle für 0, 137 und -1 mit INVALID_PARAMETER und frühem TABLE-Mappingfehler;
+die bisherigen sechs Fälle und Assertions bleiben erhalten.
+
+Der begrenzte Umfang umfasst diese Korrektur, einen Implementierer, den
+bestehenden unabhängigen Reviewer mit Design- und Abschlussprüfung, die
+ausgeführte gezielte Probe, einen kanonischen Abnahmeblock und einen neuen
+Head-CI-Stand. Der bisher reservierte Main-Nachlauf bleibt ungenutzt.
+Frühere Fehlversuche und ausgeschöpfte Grenzen bleiben erhalten. Statische
+Abnahme, kanonische Laufzeitprüfung und Abschlussreview des neuen Kandidaten
+sowie Head-CI stehen noch aus; eine erfolgreiche Integration wird nicht behauptet.

@@ -4,7 +4,7 @@ GO
 /*
 ===============================================================================
 Datei        : 178_P1_Diagnostic_Findings_Runtime_Contract.sql
-Zweck        : Prüft Laufzeitverträge für sechs P1-Findings-Fälle.
+Zweck        : Prüft Laufzeitverträge für neun P1-Findings-Fälle.
 Datenschutz  : Ausschließlich synthetische Principals und technische Statuswerte;
                keine SQL-, Plan-, Mail-, Pfad- oder freien Child-Meldungstexte
                werden als Testevidenz persistiert.
@@ -230,11 +230,50 @@ BEGIN CATCH
 END CATCH;
 INSERT @ExecutedCases VALUES('FIND-COMPAT');
 
-IF (SELECT COUNT_BIG(*) FROM @ExecutedCases)<>6
+/* Die eigene Temp-Anlage läuft auch vor INVALID_PARAMETER. Drei Callerwerte
+   und der frühe TABLE-Mappingfehler müssen den Sitzungskontext erhalten. */
+DECLARE @CallerEntryLock int=@@LOCK_TIMEOUT,@CallerOptions int=@@OPTIONS,
+        @CallerTranCount int=@@TRANCOUNT,@CallerOrdinal int=0,@CallerLock int,
+        @CallerSql nvarchar(max);
+WHILE @CallerOrdinal<3
+BEGIN
+    SET @CallerLock=CASE @CallerOrdinal WHEN 0 THEN 0 WHEN 1 THEN 137 ELSE -1 END;
+    SET @CallerSql=N'SET LOCK_TIMEOUT '+CONVERT(nvarchar(20),@CallerLock)+N';
+DECLARE @Status varchar(40),@Json nvarchar(max),@Options int=@@OPTIONS,@TranCount int=@@TRANCOUNT;
+EXEC [monitor].[USP_DiagnosticFindings]
+     @MitIntegritaet=0,@MitKapazitaet=0,@MitSpeicher=0,@MitBackupketten=0,
+     @MitAvailability=0,@MitAgentMonitoring=0,@ResultSetArt=''NONE'',
+     @JsonErzeugen=1,@Json=@Json OUTPUT,@PrintMeldungen=0,@StatusCodeOut=@Status OUTPUT;
+IF @Status IS NULL OR @Status<>''INVALID_PARAMETER'' OR ISNULL(ISJSON(@Json),0)<>1
+   OR @@LOCK_TIMEOUT<>'+CONVERT(nvarchar(20),@CallerLock)+N'
+   OR @@OPTIONS<>@Options OR @@TRANCOUNT<>@TranCount
+    THROW 55208,N''FIND-CALLER: Eigene Temp-Anlage verändert den Callerzustand.'',1;
+BEGIN TRY
+    EXEC [monitor].[USP_DiagnosticFindings] @ResultSetArt=''TABLE'',@ResultTablesJson=N''invalid'';
+    THROW 55209,N''FIND-CALLER: Ungültiges TABLE-Mapping wurde akzeptiert.'',1;
+END TRY
+BEGIN CATCH
+    IF ERROR_NUMBER()<>51011 THROW;
+END CATCH;
+IF @@LOCK_TIMEOUT<>'+CONVERT(nvarchar(20),@CallerLock)+N'
+   OR @@OPTIONS<>@Options OR @@TRANCOUNT<>@TranCount
+    THROW 55210,N''FIND-CALLER: Mappingfehler verändert den Callerzustand.'',1;
+SET LOCK_TIMEOUT '+CONVERT(nvarchar(20),@CallerEntryLock)+N';';
+    EXEC [sys].[sp_executesql] @CallerSql;
+    INSERT @ExecutedCases VALUES
+        (CASE @CallerOrdinal WHEN 0 THEN 'FIND-CALLER-NOWAIT'
+                            WHEN 1 THEN 'FIND-CALLER-BOUNDED'
+                            ELSE 'FIND-CALLER-UNBOUNDED' END);
+    SET @CallerOrdinal+=1;
+END;
+IF @@LOCK_TIMEOUT<>@CallerEntryLock OR @@OPTIONS<>@CallerOptions OR @@TRANCOUNT<>@CallerTranCount
+    THROW 55211,N'FIND-CALLER: Der Prüfblock verändert den Eingangskontext.',1;
+
+IF (SELECT COUNT_BIG(*) FROM @ExecutedCases)<>9
     THROW 55205,N'Der P1-Findings-Vertrag hat nicht alle vorgesehenen Fälle ausgeführt.',1;
 
 SELECT CAST('AVAILABLE' AS varchar(40)) AS [StatusCode],CAST(0 AS bit) AS [IsPartial],
        COUNT_BIG(*) AS [ExecutedCases],
-       N'Sechs P1-Findings-Fälle wurden einschließlich Parent-Reuse, Standalone-Frischlesung und vollständig rückgesetzten Kontexten geprüft.' AS [Detail]
+       N'Neun P1-Findings-Fälle wurden einschließlich Parent-Reuse, Standalone-Frischlesung und vollständig rückgesetzten Kontexten geprüft.' AS [Detail]
 FROM @ExecutedCases;
 GO
