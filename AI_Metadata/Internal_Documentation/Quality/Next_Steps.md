@@ -3,24 +3,39 @@
 **Stand:** 20. Oktober 2026
 **Zweck:** aktuelle ausführbare Entwicklungswelle für `gecompat/SQL_Server_Analyze`
 
-## Wiederaufnahme und unabhängiger OPS-005-Prüfschritt vom 20. Oktober 2026
+## Nichtqualifizierter CI-Abschluss und integrierter OPS-005-Prüfschritt vom 20. Oktober 2026
 
 Der aktuelle Benutzerauftrag hebt die frühere allgemeine Entwicklungspause
-auf. Vorrangig wird der erhaltene Stand von PR #399 geprüft. Sein erster
-neuer SQL-Abnahmeversuch bleibt FAILED: Der kontrollierte Fehler 1222 und
-Exitcode 1 wurden erkannt, aber null Stichproben erfüllten das Blockeroracle.
-Die elf Offlinecontracts und die Deploymentregression bestehen; das
-vollständige funktionale Gate wurde nicht erreicht. Der Lauf ist in
-[PR #399](https://github.com/gecompat/SQL_Server_Analyze/pull/399) referenziert.
-Die drei historischen SQL-Versuche und drei historischen Reviews bleiben
-verbraucht. Die neue Welle hat zwei abgeschlossene Reviews und einen von
-höchstens zwei PR-Qualifikationsversuchen; ihr Main-Nachlauf ist ungenutzt.
-Ein unveröffentlichter Folgeansatz zur Prozessentpufferung liegt vor.
-Eine zusätzliche unabhängige Prüfung benötigt eine ausdrückliche
-Budgeterweiterung. PR #399 wird bis zur tatsächlichen Abnahme erhalten und
-nicht integriert; der unveränderte Blocker löst keine weitere SQL-Ausführung aus.
+auf. Der Benutzer hat anschließend den dritten unabhängigen Review und
+eine gezielte Offlineprüfung für PR #399 freigegeben. Die elf Offlinecontracts,
+Deploymentregression und statischen Gates bestehen; beide neuen nativen
+PR-Abnahmeversuche bleiben FAILED. Der
+[erste Lauf](https://github.com/gecompat/SQL_Server_Analyze/actions/runs/39340302984)
+und der [letzte freigegebene Lauf](https://github.com/gecompat/SQL_Server_Analyze/actions/runs/39387700757)
+erkennen jeweils Fehler 1222, Exitcode 1 und den positiven Testfall mit
+2000 ms Lock-Timeout, aber null Stichproben erfüllen das Blocker- und
+Ressourcenoracle. Auch die explizite Prozessentpufferung mit `stdbuf -o0 -e0`
+ist damit keine nativ bestätigte Lösung. Die verbleibende Ursache ist UNKNOWN;
+die Testdoubles bestätigen nur die Wrapperkonfiguration.
 
-Unabhängig davon wird der statische OPS-005-Adaptervergleich korrigiert.
+Die drei historischen SQL-Versuche und drei historischen Reviews bleiben
+verbraucht. Zusätzlich sind beide neuen PR-SQL-Versuche und alle drei neuen
+Reviewdurchgänge ausgeschöpft. Vollständiges funktionales Gate und übrige
+synthetische Fälle wurden nicht ausgeführt. Der bestehende CI-Container-Cleanup
+besteht; ein vollständiger qualifizierter Cleanupnachweis bleibt offen.
+Der reservierte Main-Nachlauf wird ohne erfolgreiche PR-Abnahme weder
+ausgeführt noch als weiterer PR-Versuch verwendet.
+
+[PR #399](https://github.com/gecompat/SQL_Server_Analyze/pull/399) bleibt am
+Head `2efabcb0cedbe0bae22129899422aff97d144666` unintegriert erhalten.
+Diagnoseartefakte und der unübernommene Stand sind privat gesichert; der eigene
+Arbeits-Worktree ist wiederherstellbar archiviert. Eine Fortsetzung benötigt
+einen konkret abgegrenzten Diagnoseplan für die tatsächliche SQLCMD-Meldungs-
+übertragung samt gesondert freigegebenen Review-, Offline- und SQL-Abnahmegrenzen.
+Unveränderte Blocker lösen keine weiteren Ausführungen aus.
+
+Der unabhängige statische OPS-005-Adaptervergleich ist über
+[PR #401](https://github.com/gecompat/SQL_Server_Analyze/pull/401) integriert.
 Die vorhandene Prüfung vergleicht Dateien byteweise, obwohl Git-Checkout
 und Generator unter Windows unterschiedliche CRLF-/LF-Darstellungen erzeugen.
 Die normalisierten Inhalte der beiden Adapterdateien stimmen mit ihren
@@ -39,8 +54,10 @@ die vorhandenen Adapter- und Integritätsprüfungen bleiben erhalten.
 Die Dokumentations-CI führt die statische Gesamtsuite aus. Neue SQL- oder
 Providerläufe sind für diesen statischen Umfang gemäß CI-Teststrategie nicht
 erforderlich. Vollständige grüne Logs werden nicht an ein Modell übertragen;
-Kosten und Kontingente bleiben UNKNOWN. Die reguläre Head-CI, Integration,
-Main-Prüfung, Synchronisierung und eigenes Cleanup bleiben Abschlussgates.
+Kosten und Kontingente bleiben UNKNOWN. Die regulären Head- und Mainchecks
+bestehen; der Merge-Tree entspricht dem geprüften Head. Main ist synchron
+und sauber. Der eigene abgeschlossene Branch ist entfernt, der Worktree
+wiederherstellbar archiviert. Diese Lieferung qualifiziert PR #399 nicht.
 
 ## Regelübernahme für Testbewertung vom 19. Oktober 2026
 
