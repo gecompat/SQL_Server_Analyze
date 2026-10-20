@@ -341,3 +341,22 @@ offenen Befunde. Der frühere lokale Fehlversuch bleibt erhalten; die Ursache
 seines Cleanupfehlers wird durch diesen erfolgreichen Abschluss nicht
 rückwirkend bestimmt. Die reguläre Head-CI und der Main-Nachlauf stehen vor
 der Veröffentlichung dieses Kandidaten noch aus.
+
+Die erste neue PR-CI am Head `ff7a296b` besteht Deploymentregression, native
+Sperrabnahme und alle statischen Headchecks. Das vollständige funktionale
+Gate bleibt im [Lauf 39402933887](https://github.com/gecompat/SQL_Server_Analyze/actions/runs/39402933887)
+FAILED. Test 202 scheitert an C009, dem unbegrenzten TABLE-Aufruf ohne
+High-Impact-Bestätigung, im gemeinsamen `InternalWriteResultTable` mit
+Fehler 51010 und Status `LOCK_TIMEOUT`. Der Helper verpackt den nativen
+Fehler; der bisherige direkte 1222-Trigger weist den Lauf deshalb als
+`NO_1222` aus und erhält keinen Ringpuffer. Die tatsächliche Sperrursache
+bleibt UNKNOWN. CI-Container-Cleanup besteht; Snapshot und nachfolgende
+Spezialgates sind nicht ausgeführt. Der Stand wird nicht integriert.
+
+Ein weiterer PR-CI-Versuch und der Main-Nachlauf bleiben reserviert.
+Produkt-Helperänderungen gehören nicht zum bisherigen Diagnosescope. Eine
+gezielte Diagnose samt minimaler vertragswahrender Korrektur dieses Helpers
+ist daher als eigener Freigabepunkt vorbereitet. Fremde Sperren, Assertions
+und Nonblocking-Verträge bleiben verbindlich. Die nächste Reifewelle ist
+bisher nur durch lesende OPS-005-Providerabgrenzung vorbereitet; ihre
+Ausführung beginnt nach dem qualifizierten Streamabschluss.
