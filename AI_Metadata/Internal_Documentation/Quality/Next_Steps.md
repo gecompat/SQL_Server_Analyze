@@ -104,6 +104,9 @@ Labressourcen bleiben außerhalb des Umfangs; die Providervarianz bleibt
 unvollständig. Der Benutzer hat anschließend ausschließlich die konkrete
 Planung einer gesondert freizugebenden OPS-005-Fixture ausgewählt. Dieser
 Planungsschritt umfasst keine SQL-, Lab- oder weitere Reviewausführung.
+Nach Abschluss der Planung hat der Benutzer den nachstehend begrenzten
+Umsetzungsschritt gesondert freigegeben; dessen aktuelle Zulassung steht am
+Ende dieses Abschnitts.
 
 ### Geplanter Windows-Fixturepfad für OPS-005
 
@@ -129,8 +132,8 @@ Speicherplatz für die eigene differenzierende VHDX nachweisen. Ein passendes
 Artifact, seine gültige Lizenzlaufzeit, die Hostkapazität und ein konkreter
 Run sind derzeit nicht gebunden. Ihre Verfügbarkeit bleibt UNKNOWN.
 
-Die zukünftige Freigabe müsste den neuen Run und dessen vollständigen
-eigenen Cleanup einschließen. Allgemeine Bereitstellung und Lifecycle bleiben
+Die erteilte Umsetzungsfreigabe umfasst den neuen Run und dessen vollständigen
+eigenen Cleanup. Allgemeine Bereitstellung und Lifecycle bleiben
 bei `SQL_Server_Lab`. Imagebau, Downloads, Lizenzaktivierung mit zusätzlichem
 Netzzugang, neue Switches, Reconcile fremder Ressourcen und Änderungen am
 Lab-Repository gehören nicht zu diesem Vorschlag. Es werden keine
@@ -168,6 +171,9 @@ keine fremden Benutzerdatenbanken und keine Linked Server vorhanden sein.
 Windows-Authentifizierung muss im isolierten Ziel die benötigten Rechte
 besitzen; eine fehlende Berechtigung führt zum Abbruch statt zu einer
 Rechteausweitung.
+Der vorhandene Windows-Aktivierungsintent muss ausdrücklich
+`Strategy=VerifyOnly` und `EgressPolicy=Denied` erhalten. Eine erforderliche
+Aktivierung blockiert damit; `NotRequested` ersetzt keinen Lizenznachweis.
 
 Der Runner erstellt genau eine eigene, markierte Frameworkdatenbank auf
 CL170 und installiert eine privat gebundene Standalonefassung aus den
@@ -241,8 +247,50 @@ Der reguläre Merge, Main-/Treevergleich, Synchronisierung und die Bereinigung
 ausschließlich eigener integrierter Branches und Worktrees schließen einen
 qualifizierten Slice ab.
 Ein Fehlschlag oder eine fehlende Plattformvoraussetzung erlaubt keine
-weiteren Versuche. Dieser gesamte Ausführungsumfang ist derzeit nur
-vorgeschlagen; freigegeben ist ausschließlich der vorliegende Planungsschritt.
+weiteren Versuche. Dieser Ausführungsumfang ist gesondert freigegeben;
+Änderungen am Lab-Repository bleiben ausdrücklich ausgeschlossen.
+
+#### Zulassung vor der Runanlage
+
+Die lesende Quellenprüfung an `SQL_Server_Lab` Revision `c175c2cf` findet
+eine fehlende Voraussetzung. Der öffentliche Prepared-Pfad reicht
+`instance.collation` nicht an die Unattended-Provisionierung weiter.
+`Complete-HyperVLabSqlImage` besitzt weder einen Collationparameter noch
+`/SQLCOLLATION` in seinen Setupargumenten. Auch SQL_READY_RUN bestätigt dort
+keine Collation. Das bestehende Manifestfeld allein gewährleistet daher
+nicht die freigegebene Server-/Master-/TempDB-Collation. Eine passende
+Eigenschaft eines vorhandenen Images ist bislang nicht belegt; weder eine
+konkrete CI-Collation noch generelle Ungeeignetheit aller Images wird behauptet.
+
+Der unabhängige Reviewer bestätigt diesen Befund in der ersten von höchstens
+zwei Prüfungen. Die getrennte vollständige SQL-Installationskette unterstützt
+Collation, ersetzt aber den freigegebenen Prepared-Pfad nicht. Externe
+Aktivierung lässt sich dagegen mit dem vorhandenen ausdrücklichen
+VerifyOnly-/Denied-Intent sperren; dafür ist keine Lab-Erweiterung erforderlich.
+Es wurden kein neuer Run, kein nativer SQL-Block und kein CI-Versuch begonnen.
+Die zweite Reviewprüfung sowie VM-, SQL-, PR- und Main-Budgets bleiben
+ungenutzt. Die fehlende Collationbindung wird nicht durch eine abgeschwächte
+Vorprüfung, private Setupaufrufe oder eine Neuinstallation umgangen.
+
+Der kleinste Änderungsvorschlag für `SQL_Server_Lab` ist gesondert
+freizugeben:
+
+| Entscheidungspunkt | Vorgeschlagener begrenzter Umfang |
+|---|---|
+| Fehlende Funktion | Die ausdrücklich ausgewählte Instanzcollation muss den öffentlichen Prepared-/Unattended-Pfad bis SQL `CompleteImage` erreichen und danach tatsächlich geprüft werden. |
+| Analyze-Anwendungsfall | Die eigene OPS-005-Providerfixture benötigt die bereits freigegebene case-sensitive Server-/Master-/TempDB-Kombination auf Windows SQL Server 2025. |
+| Zuständigkeit | SQL-Instanzbereitstellung ist allgemeine Lab-Funktion. Analyze behält Fixture, fachliche Assertions und deren Cleanup. |
+| Kleinste Schnittstelle | Das bestehende Collationintent wird in der Prepared-Kette erhalten und validiert an den von Microsoft dokumentierten CompleteImage-Parameter weitergegeben. Es entsteht kein zweiter Setupweg und keine nachträgliche Collationreparatur. |
+| Providerwirkung | Die Korrektur bleibt in der Windows-/Hyper-V-Prepared-Kette; Docker, Podman, fremde Runs und bestehende SQL-Instanzen werden nicht verändert. |
+| Kompatibilität und Prüfung | Ohne ausdrücklich gewählten Intent bleibt das bisherige Setupverhalten erhalten. Offlinegegenproben prüfen unveränderte Defaults, exakte Weitergabe, ungültige Werte, falsche VM-/Run-Bindung und fehlende Replayautorität. Der bereits reservierte eigene Windows-Run kann anschließend die tatsächlichen drei Collations und die Analyze-Fixture gemeinsam nachweisen; das ist noch NOT_EXECUTED. |
+| Freigabe und gemeinsames Budget | Eine zusätzliche Lab-Änderungsfreigabe fehlt. Vorgeschlagen wird ein zusammenhängender Schritt in beiden Repositories mit der noch freien zweiten Prüfung desselben Reviewers und den unveränderten, bisher ungenutzten VM-/SQL-Grenzen. Für das zusätzliche Repository wären genau ein weiterer PR-CI-Versuch und ein weiterer Main-Nachlauf nötig; frühere Budgets werden nicht zurückgesetzt. |
+
+Microsoft führt `/SQLCOLLATION` unter den
+[CompleteImage-Parametern](https://learn.microsoft.com/en-us/sql/database-engine/install-windows/install-sql-server-from-the-command-prompt?view=sql-server-ver17#complete-image-parameters).
+Die Quellkorrektur und ihr erforderlicher lokaler beziehungsweise nativer
+Nachweis müssen vor Veröffentlichung und regulärer Integration vollständig
+vorliegen. Bis zur gesonderten Entscheidung endet die Umsetzung vor der
+Runanlage; das Lab-Repository bleibt unverändert.
 
 ## Abgeschlossene Findings-Stabilisierung vom 20. Oktober 2026
 
