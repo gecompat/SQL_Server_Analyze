@@ -161,8 +161,13 @@ Providerabnahme ist derzeit `NOT_EXECUTED`. Der erste Windows-Run scheitert
 vor SQL Setup mit dem zuvor gewählten `VerifyOnly`-Intent am tatsächlichen
 Gaststatus `ACTIVATION_REQUIRED`. Sein eigener Ressourcencleanup und die
 unveränderte Parentintegrität sind bestätigt. Der vorbereitete korrigierte
-Intent besitzt noch keinen nativen Nachweis und benötigt eine neue begrenzte
-Run- und Reviewfreigabe.
+Intent ist zusätzlich unabhängig geprüft. Der danach freigegebene Zusatzrun
+erreicht SQL CompleteImage und scheitert anschließend mit
+`HYPERV_SQL_COLLATION_QUERY_FAILED`: Die Lab-Gastprobe übergibt einen von der
+Transportsignatur nicht unterstützten `StateRoot`-Parameter. Auch dieser eigene
+Run ist bereinigt; die Providerabnahme bleibt `NOT_EXECUTED`. Beide begrenzten
+Runbudgets sind verbraucht. Eine Lab-Korrektur und eine weitere native Freigabe
+sind vor einer erneuten Abnahme erforderlich.
 
 ## OPS-006 Datenbankportabilität
 

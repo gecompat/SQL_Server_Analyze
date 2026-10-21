@@ -406,12 +406,65 @@ unabhängigen Abschlussreview und höchstens einen weiteren eigenen Windows-Run
 mit einem nativen Abnahmeblock freigegeben. Der zusätzliche Umfang bleibt bei
 vier vCPUs, acht GiB festem RAM, vorhandenem Prepared-Image, höchstens fünf
 Analyzer-Aufrufen und einer Provider-Vorprobe. Die bestehenden Laufzeit-,
-Netzwerk- und Cleanupgrenzen bleiben erhalten. Der zusätzliche Review läuft;
-der weitere Run ist noch nicht begonnen. Der ungenutzte PR-CI-Versuch und
+Netzwerk- und Cleanupgrenzen bleiben erhalten. Der zusätzliche Review ist
+ohne offene Befunde abgeschlossen. Der danach begonnene Run ist im folgenden
+Abschnitt dokumentiert. Der ungenutzte PR-CI-Versuch und
 Main-Nachlauf einschließlich regulärer Integration nach grünen Gates und
 eigenem Cleanup bleiben reserviert. Alle bisherigen Fehlversuche und
 Reservierungen bleiben bestehen. Lab-Codeänderungen, Imagebau, Downloads
 und externe Netzanbindung bleiben ausgeschlossen.
+
+#### Zusatzrun endet an der Lab-Collation-Gastprobe
+
+Der zusätzliche Windows-Run bindet den sauberen Analyze-Stand `ef84b574`
+und Lab `c56e3783`. Der korrigierte `NotRequested`-/`Denied`-Intent passiert
+die bisherige Blockadestelle. OOBE, SQL CompleteImage, WMI und die
+Konfiguration des Hostzugriffs werden erreicht; der gespeicherte
+SQL-Completionstatus bleibt jedoch `COLLATION_PENDING`. Die anschließende
+Collationverifikation endet mit `HYPERV_SQL_COLLATION_QUERY_FAILED`.
+
+Das private native Transkript und ein gezielter Offlinevergleich belegen
+eine konkrete Parameterbindungsabweichung in Lab:
+[`Test-LabHyperVSqlCollationRuntimeEvidence`](https://github.com/gecompat/SQL_Server_Lab/blob/c56e378382cf47ea8fe3b5a1cf520f46ce3be541/Private/HyperVSqlCollation.ps1)
+übergibt `-StateRoot` an
+[`Invoke-HyperVPowerShellDirect`](https://github.com/gecompat/SQL_Server_Lab/blob/c56e378382cf47ea8fe3b5a1cf520f46ce3be541/Providers/HyperV/HyperVProvider.ps1).
+Die tatsächliche Transportsignatur besitzt diesen Parameter nicht. Ihr
+gesondertes `BuildStateRoot` gehört zur Build-Lane und ist kein belegter
+Ersatz für die Run-Lane. Der Fehler tritt vor dem Gastblock der
+Collationabfrage auf. Eine tatsächliche Collationabweichung oder ein
+Analyzerfehler ist damit nicht nachgewiesen.
+
+Zwei geschlossene Offlinefälle mit dem unveränderten produktiven ParamBlock
+bestätigen die Zurückweisung von `StateRoot` und die Bindung ohne diesen
+Parameter an einen ausschließlich geschlossenen Testbody. Der produktive
+Transportbody, Gastaufrufe und SQL werden dabei nicht ausgeführt. Diese
+Diagnose qualifiziert noch keinen Lab-Fix. Eine zusätzliche unentschiedene
+Beobachtung betrifft unterschiedliche gespeicherte IPAM- und spätere
+Hostzugriffsadressen. Weder eine Fremdbelegung noch die fachliche Ursache
+dieser Differenz ist belegt. Die Netz-/Leasebindung gehört deshalb ebenfalls
+in die getrennte Lab-Bewertung; eigene Netzkorrekturen erfolgen nicht.
+
+Der Fehlercleanup entfernt auch den zweiten eigenen Run einschließlich VM
+und Child-Disk. Die lesende Nachprüfung bestätigt den Zustand `REMOVED`,
+fehlende VM und Child-Disk sowie null aktive eigene Leases. Parenthash und
+Schreibschutz sind unverändert. Frameworkdatenbank, Analyzer-Aufrufe und
+Provider-Vorprobe werden nicht erreicht; die eigentliche Providerabnahme
+bleibt `NOT_EXECUTED`.
+
+Damit sind beide freigegebenen Windows-Runs und nativen Abnahmeblöcke sowie
+alle drei Reviewprüfungen verbraucht. Der eine PR-CI-Versuch und Main-Nachlauf
+bleiben ungenutzt reserviert. Alle bisherigen Reservierungen und Fehlbelege
+bleiben bestehen. Es gibt keinen PR und keine Integration dieses Slices.
+
+Der nächste konkrete Schritt ist die getrennte lesende und offline
+ausführbare Lab-Prüfung der Parameterbindung sowie der offenen Netz-/
+Leasebeobachtung. Ein bereinigter privater Prüfprompt ist vorbereitet; eine
+Übermittlung an einen anderen Chat oder eine Lab-Implementierung ist damit
+nicht autorisiert. Für eine erneute Analyze-Ausführung fehlen anschließend
+eine qualifiziert integrierte Lab-Korrektur und eine zusätzliche ausdrückliche
+begrenzte native Freigabe. Eine freie Lab-Laufsperre oder ein Heartbeat ersetzt
+diese Voraussetzungen nicht. Unveränderte Blocker werden nicht erneut
+semantisch untersucht.
 
 ## Abgeschlossene Findings-Stabilisierung vom 20. Oktober 2026
 
