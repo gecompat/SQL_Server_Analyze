@@ -117,7 +117,7 @@ IF COALESCE(DB_ID(N'LabAnalyze'),0)<>@OwnDatabaseId
     OR NOT EXISTS(SELECT 1 FROM sys.databases WHERE database_id=@OwnDatabaseId
         AND create_date=TRY_CONVERT(datetime,@OwnDatabaseCreated,126))
     OR COALESCE(CONVERT(nvarchar(36),(SELECT value FROM [LabAnalyze].sys.extended_properties
-        WHERE class=0 AND major_id=0 AND minor_id=0 AND name=N'SQLANALYZE.Ops005Operation')),N'')<>@OperationId
+        WHERE class=0 AND major_id=0 AND minor_id=0 AND name=N'SQLANALYZE.Ops005Operation')),N'')<>CONVERT(nvarchar(36),TRY_CONVERT(uniqueidentifier,@OperationId))
     THROW 54895,N'OPS005_DATABASE_CLEANUP_IDENTITY_LOST',5;
 DROP DATABASE [LabAnalyze];
 IF DB_ID(N'LabAnalyze') IS NOT NULL

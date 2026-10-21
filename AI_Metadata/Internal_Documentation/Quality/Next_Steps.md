@@ -497,24 +497,39 @@ verwendet diese lokale Variable für den Ownershipmarker. Die beschreibende
 Aktivierungsvoraussetzung entspricht außerdem dem bereits verwendeten
 `NotRequested`-/`Denied`-Intent.
 
-Dreizehn gezielte Offlineprüfungen verwenden den tatsächlichen Lab-
-Parameterkonverter, dessen geschlossenen SqlClient-Parameterbindungsteil
+Die erste Markerkorrektur besteht dreizehn gezielte Offlineprüfungen. Sie
+verwenden den tatsächlichen Lab-Parameterkonverter, dessen geschlossenen SqlClient-Parameterbindungsteil
 und den TSql170-Parser. Sie bestätigen den ursprünglichen MAX-Typ, weisen
 den alten direkten Übergang sowie MAX-, Verkürzungs- und Rückfallmutationen
 ab und prüfen den begrenzten Marker. Alle übrigen Vorbereitungsstatements,
 Guards, kanonischen Quellen sowie Installations-, Abnahme- und Cleanup-SQL-
-Eingaben bleiben bytegleich. Diese Prüfung führt weder Gast- noch SQL-Aufrufe
-aus; die Markerkorrektur besitzt noch keinen nativen Nachweis und keinen
-zusätzlichen unabhängigen Review.
+Eingaben bleiben in diesem ersten Stand bytegleich. Diese Prüfung führt
+weder Gast- noch SQL-Aufrufe aus und ersetzt keinen nativen Nachweis.
+
+Der zusätzlich freigegebene unabhängige Review findet eine abweichende
+Markerdarstellung: Die Speicherung verwendet den SQL-GUID-Roundtrip,
+der Cleanup vergleicht zunächst mit dem ursprünglichen .NET-Text. Unter
+CS_AS müssen Speicherung, Szenarioguard und Cleanup dieselbe Darstellung
+verwenden. Der befundgebunden korrigierte Cleanupvergleich verwendet deshalb
+ebenfalls `CONVERT(nvarchar(36),TRY_CONVERT(uniqueidentifier,@OperationId))`.
+Zweiundzwanzig ergänzte Offlineprüfungen bestehen einschließlich kleiner,
+großer und gemischter GUID-Hexschreibweise, gemeinsamer SQL-Kanonisierung
+und negativer Cleanup-Rückfälle. Installations- und Provider-SQL bleiben
+bytegleich; alle übrigen Cleanupstatements und Identitätsassertions bleiben
+erhalten. Der befundgebundene Abschlussreview und die native Nachabnahme
+dieses korrigierten Standes sind noch offen.
 
 Der Datenbankstatus bleibt wegen des unbestätigten Batches
 `CREATION_UNCONFIRMED`; es erfolgt kein ungebundenes SQL-DROP. Der gebundene
 Run-Cleanup entfernt die eigene VM und Child-Disk. Eine lesende Nachprüfung
 bestätigt `REMOVED`, fehlende Ressourcen und keine aktive eigene Lease;
 Parenthash und Schreibschutz sind unverändert. Die zusätzliche native
-Freigabe ist verbraucht. Weitere Ausführung und erforderlicher Review
-benötigen eine neue begrenzte Freigabe. Der reservierte PR-CI-Versuch und
-Main-Nachlauf bleiben ungenutzt; der Slice ist noch nicht veröffentlicht.
+Freigabe ist verbraucht. Der Benutzer hat anschließend den zusätzlichen
+Review und einen weiteren eigenen gebundenen Windows-Run ausdrücklich
+freigegeben. Dieser Run beginnt erst nach erfolgreichem Abschlussreview;
+die früheren Fehlversuche und Reservierungen bleiben erhalten. Der
+reservierte PR-CI-Versuch und Main-Nachlauf bleiben ungenutzt; der Slice ist
+noch nicht veröffentlicht.
 
 ## Abgeschlossene Findings-Stabilisierung vom 20. Oktober 2026
 

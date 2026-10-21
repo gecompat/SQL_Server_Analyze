@@ -174,10 +174,12 @@ Verbindungsziel erhalten. Der erste Consumerbatch bricht jedoch mit
 SQL-Fehler 206 ab: Der als `nvarchar(max)` gebundene externe Operationswert
 wird direkt an den `sql_variant`-Parameter von `sp_addextendedproperty`
 übergeben. Der korrigierte Vorbereiter verwendet dafür eine lokale
-`nvarchar(36)`-Variable. Dreizehn gezielte Offlineprüfungen bestehen; eine
-native Nachprüfung dieser Markerkorrektur steht aus. Der eigene Run ist
-bereinigt, das Parent-Image unverändert. Die zusätzliche native Freigabe
-ist verbraucht. Aktueller Umfang und offene Voraussetzungen stehen in den
+`nvarchar(36)`-Variable. Der unabhängige Review verlangt außerdem dieselbe
+SQL-GUID-Kanonisierung im Cleanupvergleich. Der entsprechend ergänzte Stand
+besteht zweiundzwanzig Offlineprüfungen; seine native Nachprüfung steht aus.
+Der eigene fehlgeschlagene Run ist bereinigt, das Parent-Image unverändert.
+Ein weiterer Run ist gesondert freigegeben und wartet auf den Abschlussreview.
+Aktueller Umfang und offene Voraussetzungen stehen in den
 [Next Steps](../AI_Metadata/Internal_Documentation/Quality/Next_Steps.md#nachabnahme-mit-qualifizierter-lab-korrektur).
 
 ## OPS-006 Datenbankportabilität
