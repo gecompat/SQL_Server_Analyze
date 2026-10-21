@@ -1,6 +1,6 @@
 # Nächste Arbeitsschritte
 
-**Stand:** 20. Oktober 2026
+**Stand:** 21. Oktober 2026
 **Zweck:** aktuelle ausführbare Entwicklungswelle für `gecompat/SQL_Server_Analyze`
 
 ## Aktive Welle: OPS-005-Provider-Negativfall
@@ -291,6 +291,49 @@ Die Quellkorrektur und ihr erforderlicher lokaler beziehungsweise nativer
 Nachweis müssen vor Veröffentlichung und regulärer Integration vollständig
 vorliegen. Bis zur gesonderten Entscheidung endet die Umsetzung vor der
 Runanlage; das Lab-Repository bleibt unverändert.
+
+#### Wiederaufnahme nach Integration der Lab-Korrektur
+
+Die Collationkorrektur ist über
+[Lab-PR #815](https://github.com/gecompat/SQL_Server_Lab/pull/815) unter
+`c56e3783` in `origin/main` integriert. Der Merge-Tree entspricht dem
+geprüften Head `8b0f4fd3`. Das ausgewählte
+[PR-Gate](https://github.com/gecompat/SQL_Server_Lab/actions/runs/39578182570)
+besteht auf diesem Head einschließlich der statischen Windows-/Ubuntuprüfungen
+und der vorgesehenen Provider-Smokes. Dieser Nachweis bestätigt keine drei
+tatsächlichen Windows-Collations; die eigene native Analyze-Abnahme bleibt
+erforderlich. Dieser Chat hat das Lab-Repository nicht verändert.
+
+Der Benutzer hat klargestellt, dass sein zwischenzeitlicher Stopp ausschließlich
+die Übernahme von Lab-PR #815 betraf. OPS-005 wird innerhalb der bestehenden
+Freigaben fortgesetzt. Geeignete SQL-2025-Prepared-Images sind vorhanden.
+Ihre Integrität und die konkreten Run-, Lizenz- und Hostvoraussetzungen werden
+vor beziehungsweise während der gebundenen Bereitstellung geprüft. Der aktuelle
+Prozess besitzt kein erhöhtes Administratortoken. Die OOBE-Injektion benötigt
+einen erhöhten Runner; der Benutzer hat dessen Bereitstellung ausgewählt.
+Eine neue VM oder ein nativer SQL-Block wurde noch nicht begonnen.
+
+Die Analyze-Vorbereitung ergänzt einen separaten manuellen Windows-Fall unter
+`TestLab/Scenarios/OPS-005/provider-unavailable.sql` und zwei zugehörige
+PowerShell-Einstiege. Der Vorbereiter führt kein SQL aus. Er teilt die aus
+171 kanonischen Quellen erzeugte Standalonefassung an vollständigen
+Quellgrenzen in zwei Eingaben innerhalb der Transportlimits. Die erste Eingabe
+enthält keine temporären Tabellen außerhalb gespeicherter Module; die beiden
+Seed-Temptabellen liegen einschließlich ihrer Verbraucher in der zweiten
+Eingabe. Datenbankkontext und erforderliche Sessionoptionen werden je Eingabe
+gesetzt. Die kanonischen Produktquellen und der bestehende Linux-Adapter
+bleiben unverändert.
+
+Der native Runner verlangt einen sauberen, ausdrücklich gebundenen Analyze-
+und integrierten Lab-Stand, private geprüfte Eingaben, den gleichen Hostbenutzer,
+ein vorhandenes Prepared-Image sowie einen bestehenden internen Switch.
+Eine persistierte Reservierung sperrt die erneute Runanlage. Die vorhandenen
+Grenzen für fünf Analyzer-Aufrufe, eine native Provider-Vorprobe, Laufzeiten
+und eigenen Cleanup bleiben erhalten. Ein verlorener Reply erzeugt keinen
+Replay und keinen Erfolgsnachweis. PowerShell- und SQL-Parserprüfungen sind
+Offlineprüfungen; native Abnahme, verbleibende unabhängige Abschlussprüfung,
+Analyze-PR-CI und Main-Nachlauf sind noch offen. Die historischen Fehlversuche
+und verbrauchten Grenzen bleiben erhalten.
 
 ## Abgeschlossene Findings-Stabilisierung vom 20. Oktober 2026
 

@@ -135,6 +135,26 @@ Recoveryaufruf. Der Lauf vom 5. Oktober 2026 bestand auf SQL Server
 `17.0.4075.5` einschließlich Cleanup. Er belegt ausschließlich diese
 MSOLEDBSQL-Kombination und keinen weiteren Provider oder Remote-Workload.
 
+Der separate manuelle Windows-Providerfall verwendet
+`Prepare-Ops005UnavailableProvider.ps1` und
+`Invoke-Ops005UnavailableProviderScenario.ps1`. Der Vorbereiter erzeugt private
+SQL-Eingaben aus den kanonischen Quellen und führt kein SQL aus. Der Runner
+benötigt eine ausdrückliche Ausführung, einen sauberen gebundenen Quellstand,
+einen erhöhten Prozess desselben Hostbenutzers, ein vorhandenes SQL-2025-
+Prepared-Image und einen bestehenden internen Switch. Der eigene Run erhält
+vier vCPUs, acht GiB festen RAM sowie VerifyOnly-/Denied-Aktivierungsintent.
+Es werden keine Images gebaut oder heruntergeladen und keine externen
+Netzverbindungen eingerichtet.
+
+Die Abnahme bindet Provideranlage, Katalogidentität, fünf Analyzer-Aufrufe und
+eine native Provider-Vorprobe an dieselbe Operation. Native Fehler 7302 oder
+7403 müssen mit dem Analyzeroutput übereinstimmen. Eine Reservierungsdatei
+sperrt die erneute Runanlage; ein verlorener Reply erzeugt keinen Replay.
+SQL-Fixture, eigene markierte Datenbank, Run, aktive IPAM-Lease und unveränderter
+Parent werden getrennt geprüft. Der Fall gehört zum vorhandenen OPS-005-Umfang;
+er erweitert weder Vertrag 120 noch dessen Linux-Adapter. Seine native
+Abnahme ist derzeit `NOT_EXECUTED`.
+
 ## OPS-006 Datenbankportabilität
 
 Der Runner `Invoke-Ops006DatabasePortabilityScenario.ps1` installiert den
