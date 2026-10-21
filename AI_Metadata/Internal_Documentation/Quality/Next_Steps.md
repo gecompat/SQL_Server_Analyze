@@ -349,19 +349,66 @@ Schrittstartzeiten abgeleitet. Die Abfrage öffnet die Sperre ausschließlich
 zum Lesen ihrer Owner-Metadaten; sie wartet nicht auf die Sperre und gibt
 sie nicht frei. Reale Prozesskennungen und Beobachtungsbelege bleiben privat.
 Eine eigene Runreservierung, VM, Datenbank und aktive
-Netzwerklease wurden nicht angelegt. Für diese Windows-Welle bleiben neue
-Runs, native Abnahmeblöcke, Analyzer-Aufrufe und Provider-Vorproben jeweils
-bei null. Beide unabhängigen Reviewprüfungen sind verbraucht; PR-CI und
-Main-Nachlauf bleiben reserviert.
+Netzwerklease wurden nicht angelegt. Bis zu dieser Vorprüfungsgrenze lagen
+neue Runs, native Abnahmeblöcke, Analyzer-Aufrufe und Provider-Vorproben
+jeweils bei null. Beide unabhängigen Reviewprüfungen sind verbraucht;
+PR-CI und Main-Nachlauf bleiben reserviert.
 
-Die Fortsetzung prüft zunächst ausschließlich die aktuelle Belegung der
-Lab-Laufsperre. Erst bei nachgewiesener Verfügbarkeit und weiterhin erfüllten
-Quell-, Image- und Hostvoraussetzungen wird der vorhandene einmalige
-Windows-Abnahmeauftrag fortgesetzt. Dafür werden die privaten Eingaben aus
-dem dann sauberen Analyze-Commit neu gebunden. Der fehlgeschlagene
-Vorprüfungsbeleg bleibt erhalten; fremde Prozesse oder Ressourcen werden
-weder beendet noch verändert. Die historischen Fehlversuche und verbrauchten
-Grenzen bleiben erhalten.
+Die weitere Fortsetzung prüft die Lab-Laufsperre lesend. Nach einem kurzen
+freien Fenster zwischen CI-Jobs werden die privaten Eingaben aus dem sauberen
+Analyze-Commit `884c40a2` neu gebunden. Ein weiterer CI-Prozess hält die Sperre
+vorübergehend erneut; der anschließend freie eigene Worker erwirbt sie regulär.
+Der fehlgeschlagene Vorprüfungsbeleg bleibt erhalten; fremde Prozesse oder
+Ressourcen werden weder beendet noch verändert.
+
+#### Windows-Abbruch am Aktivierungsintent
+
+Der einzige freigegebene Windows-Run startet mit vier vCPUs und acht GiB
+festem RAM aus dem vorhandenen Prepared-Image. Parenthash und Schreibschutz,
+Hostkapazität, Quellenbindung und OOBE bestehen. Vor SQL Setup meldet die
+gebundene Gastprüfung jedoch `ACTIVATION_REQUIRED` mit `LicenseStatus = 2`.
+Der ausgewählte `VerifyOnly`-/`Denied`-Intent blockiert deshalb mit
+`WINDOWS_ACTIVATION_VERIFY_ONLY`. Die Inventareinstufung `EVALUATION_VALID`
+belegt keinen bereits aktivierten Child-Gast. Eine abgelaufene Evaluation
+oder ein Analyzerfehler ist damit nicht nachgewiesen. SQL-Readiness,
+Engine-Build, Compatibility Level, tatsächliche Collations und Providerfälle
+bleiben für diesen Run unbelegt.
+
+Die Ursache liegt im für diesen Workload zu streng ausgewählten
+Aktivierungsintent. Der bestehende
+[Lab-Vertrag](https://github.com/gecompat/SQL_Server_Lab/blob/c56e378382cf47ea8fe3b5a1cf520f46ce3be541/Documentation/HowTo/WINDOWS_ACTIVATION.md)
+erlaubt `NotRequested` mit `Denied`-Egress für einen konkreten Workload ohne
+Aktivierungsbedarf. Die lokale Linked-Server-Providerprüfung verwendet keine
+Windows-Aktivierungsfunktion. Der vorbereitete Analyze-Runner fordert deshalb
+keine Windows-Aktivierung mehr an und attestiert keinen aktiven Lizenzstatus.
+Die Inventarzulassung des vorhandenen Images sowie sämtliche SQL-,
+Collation-, Ownership- und Cleanupprüfungen bleiben erhalten. Das
+Lab-Repository wird nicht geändert.
+
+Zehn simulierte Runnerfälle bestehen mit dem korrigierten Intent. Ein reines
+Offline-Replay der vorhandenen Lab-Entscheidungsfunktion gegen den gespeicherten
+Gastbefund bestätigt zusätzlich die bisherige Blockierung und den neuen
+`WINDOWS_ACTIVATION_NOT_REQUESTED`-No-op ohne Netzwerkmutation. Das sind zwei
+Offlinefälle und kein weiterer Gast- oder SQL-Aufruf. Der korrigierte Intent
+besitzt noch keinen nativen Nachweis und keinen zusätzlichen unabhängigen Review.
+
+Der gebundene Fehlercleanup entfernt den eigenen Run einschließlich VM und
+Child-Disk. Es bleibt keine aktive eigene IPAM-Lease; Parenthash und
+Schreibschutz sind unverändert. Eine Frameworkdatenbank oder Providerfixture
+wurde nicht angelegt. Der aktuelle Verbrauch dieser Windows-Welle beträgt
+einen von einem freigegebenen Run, einen von einem nativen Abnahmeblock und
+zwei von zwei Reviewprüfungen. Analyzer-Aufrufe und Provider-Vorproben liegen
+bei null; diese Teilmengen erlauben keinen zweiten Abnahmeblock. PR-CI und
+Main-Nachlauf sind unverändert reserviert.
+
+Für die vorbereitete Intentkorrektur fehlen genau ein zusätzlicher
+unabhängiger Abschlussreview und höchstens ein weiterer eigener Windows-Run
+mit einem nativen Abnahmeblock. Dessen vorgeschlagener Umfang bleibt bei
+vier vCPUs, acht GiB festem RAM, vorhandenem Prepared-Image, höchstens fünf
+Analyzer-Aufrufen und einer Provider-Vorprobe. Die bestehenden Laufzeit-,
+Netzwerk- und Cleanupgrenzen bleiben erhalten. Alle bisherigen Fehlversuche
+und Reservierungen bleiben bestehen; bis zu dieser zusätzlichen Freigabe
+erfolgt keine weitere native Ausführung und keine PR-Veröffentlichung.
 
 ## Abgeschlossene Findings-Stabilisierung vom 20. Oktober 2026
 

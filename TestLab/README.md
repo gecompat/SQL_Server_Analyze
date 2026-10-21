@@ -142,7 +142,11 @@ SQL-Eingaben aus den kanonischen Quellen und führt kein SQL aus. Der Runner
 benötigt eine ausdrückliche Ausführung, einen sauberen gebundenen Quellstand,
 einen erhöhten Prozess desselben Hostbenutzers, ein vorhandenes SQL-2025-
 Prepared-Image und einen bestehenden internen Switch. Der eigene Run erhält
-vier vCPUs, acht GiB festen RAM sowie VerifyOnly-/Denied-Aktivierungsintent.
+vier vCPUs und acht GiB festen RAM. Der vorbereitete Aktivierungsintent
+`NotRequested` mit `Denied`-Egress entspricht dem lokalen SQL-Workload:
+Die Providerprüfung fordert keine Windows-Aktivierung an und attestiert
+keinen aktiven Windows-Lizenzzustand. Die Zulassung verlangt weiterhin ein
+gültiges vorhandenes Prepared-Image gemäß Lab-Inventar.
 Es werden keine Images gebaut oder heruntergeladen und keine externen
 Netzverbindungen eingerichtet.
 
@@ -153,7 +157,12 @@ sperrt die erneute Runanlage; ein verlorener Reply erzeugt keinen Replay.
 SQL-Fixture, eigene markierte Datenbank, Run, aktive IPAM-Lease und unveränderter
 Parent werden getrennt geprüft. Der Fall gehört zum vorhandenen OPS-005-Umfang;
 er erweitert weder Vertrag 120 noch dessen Linux-Adapter. Seine native
-Abnahme ist derzeit `NOT_EXECUTED`.
+Providerabnahme ist derzeit `NOT_EXECUTED`. Der erste Windows-Run scheitert
+vor SQL Setup mit dem zuvor gewählten `VerifyOnly`-Intent am tatsächlichen
+Gaststatus `ACTIVATION_REQUIRED`. Sein eigener Ressourcencleanup und die
+unveränderte Parentintegrität sind bestätigt. Der vorbereitete korrigierte
+Intent besitzt noch keinen nativen Nachweis und benötigt eine neue begrenzte
+Run- und Reviewfreigabe.
 
 ## OPS-006 Datenbankportabilität
 

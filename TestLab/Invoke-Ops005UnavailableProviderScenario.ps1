@@ -150,7 +150,7 @@ try {
     $manifest=@{name=$labName;automation=@{mode='unattended'};instances=@(@{
         id='primary';version='2025';provider='hyperv';os='windows';profile='standard';autostart='off'
         collation='SQL_Latin1_General_CP1_CS_AS';network=@{intent='hostOnly';exposure='host'}
-        windowsActivation=@{ContractVersion='SqlServerLab.WindowsActivationIntent/1.0';Strategy='VerifyOnly';EgressPolicy='Denied'}
+        windowsActivation=@{ContractVersion='SqlServerLab.WindowsActivationIntent/1.0';Strategy='NotRequested';EgressPolicy='Denied'}
         windowsLocale=@{ContractVersion='SqlServerLab.WindowsLocaleIntent/1.0';Region='US';SystemLocale='en-US';UiLanguage='en-US';InputLocale='0409:00000409';TimeZone='W. Europe Standard Time'}
         hyperv=@{preparedImageId=$ArtifactId;switchName=$ExistingSwitchName;memoryStartupMB=8192;dynamicMemoryEnabled=$false;processorCount=4;sqlPort=1433;guestPasswordMode='prompt'}
     })}
