@@ -308,9 +308,10 @@ Der Benutzer hat klargestellt, dass sein zwischenzeitlicher Stopp ausschließlic
 die Übernahme von Lab-PR #815 betraf. OPS-005 wird innerhalb der bestehenden
 Freigaben fortgesetzt. Geeignete SQL-2025-Prepared-Images sind vorhanden.
 Ihre Integrität und die konkreten Run-, Lizenz- und Hostvoraussetzungen werden
-vor beziehungsweise während der gebundenen Bereitstellung geprüft. Der aktuelle
-Prozess besitzt kein erhöhtes Administratortoken. Die OOBE-Injektion benötigt
-einen erhöhten Runner; der Benutzer hat dessen Bereitstellung ausgewählt.
+vor beziehungsweise während der gebundenen Bereitstellung geprüft. Die
+OOBE-Injektion benötigt einen erhöhten Runner. Der Benutzer hat dessen
+Bereitstellung ausgewählt; ein fest gebundener privater Starter bestätigt
+inzwischen das Administratortoken und dieselbe Benutzeridentität.
 Eine neue VM oder ein nativer SQL-Block wurde noch nicht begonnen.
 
 Die Analyze-Vorbereitung ergänzt einen separaten manuellen Windows-Fall unter
@@ -330,10 +331,30 @@ ein vorhandenes Prepared-Image sowie einen bestehenden internen Switch.
 Eine persistierte Reservierung sperrt die erneute Runanlage. Die vorhandenen
 Grenzen für fünf Analyzer-Aufrufe, eine native Provider-Vorprobe, Laufzeiten
 und eigenen Cleanup bleiben erhalten. Ein verlorener Reply erzeugt keinen
-Replay und keinen Erfolgsnachweis. PowerShell- und SQL-Parserprüfungen sind
-Offlineprüfungen; native Abnahme, verbleibende unabhängige Abschlussprüfung,
-Analyze-PR-CI und Main-Nachlauf sind noch offen. Die historischen Fehlversuche
-und verbrauchten Grenzen bleiben erhalten.
+Replay und keinen Erfolgsnachweis. Zehn simulierte Runnerfälle und drei
+Offlinefälle des privaten erhöhten Starters bestehen. Der unabhängige
+Abschlussreview ist mit Prüfung 2/2 ohne offene Befunde abgeschlossen.
+PowerShell-, SQL-Parser- und simulierte Ablaufprüfungen sind Offlineprüfungen;
+native Abnahme, Analyze-PR-CI und Main-Nachlauf sind noch offen.
+
+Die erhöhte Vorprüfung des sauberen Analyze-Stands `1bde42da` scheitert vor
+Imagezulassung und Runanlage mit `OPS005_HOST_RUNTIME_BUSY`. Die globale
+Lab-Laufsperre ist auch in begrenzten lesenden Nachprüfungen belegt. Der
+Sperrinhaber ist nicht bestimmt; ein fremder oder veralteter Lauf wird daraus
+nicht abgeleitet. Eine eigene Runreservierung, VM, Datenbank und aktive
+Netzwerklease wurden nicht angelegt. Für diese Windows-Welle bleiben neue
+Runs, native Abnahmeblöcke, Analyzer-Aufrufe und Provider-Vorproben jeweils
+bei null. Beide unabhängigen Reviewprüfungen sind verbraucht; PR-CI und
+Main-Nachlauf bleiben reserviert.
+
+Die Fortsetzung prüft zunächst ausschließlich die aktuelle Belegung der
+Lab-Laufsperre. Erst bei nachgewiesener Verfügbarkeit und weiterhin erfüllten
+Quell-, Image- und Hostvoraussetzungen wird der vorhandene einmalige
+Windows-Abnahmeauftrag fortgesetzt. Dafür werden die privaten Eingaben aus
+dem dann sauberen Analyze-Commit neu gebunden. Der fehlgeschlagene
+Vorprüfungsbeleg bleibt erhalten; fremde Prozesse oder Ressourcen werden
+weder beendet noch verändert. Die historischen Fehlversuche und verbrauchten
+Grenzen bleiben erhalten.
 
 ## Abgeschlossene Findings-Stabilisierung vom 20. Oktober 2026
 
