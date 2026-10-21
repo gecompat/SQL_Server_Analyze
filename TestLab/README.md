@@ -165,9 +165,20 @@ Intent ist zusätzlich unabhängig geprüft. Der danach freigegebene Zusatzrun
 erreicht SQL CompleteImage und scheitert anschließend mit
 `HYPERV_SQL_COLLATION_QUERY_FAILED`: Die Lab-Gastprobe übergibt einen von der
 Transportsignatur nicht unterstützten `StateRoot`-Parameter. Auch dieser eigene
-Run ist bereinigt; die Providerabnahme bleibt `NOT_EXECUTED`. Beide begrenzten
-Runbudgets sind verbraucht. Eine Lab-Korrektur und eine weitere native Freigabe
-sind vor einer erneuten Abnahme erforderlich.
+Run ist bereinigt; die Providerabnahme bleibt `NOT_EXECUTED`.
+
+Nach Integration der gesondert geprüften Lab-Korrektur besteht der erneut
+freigegebene Windows-Run die tatsächliche Collationprüfung für Server,
+`master` und `tempdb`. Die reservierte Gastadresse bleibt im Netzplan und
+Verbindungsziel erhalten. Der erste Consumerbatch bricht jedoch mit
+SQL-Fehler 206 ab: Der als `nvarchar(max)` gebundene externe Operationswert
+wird direkt an den `sql_variant`-Parameter von `sp_addextendedproperty`
+übergeben. Der korrigierte Vorbereiter verwendet dafür eine lokale
+`nvarchar(36)`-Variable. Dreizehn gezielte Offlineprüfungen bestehen; eine
+native Nachprüfung dieser Markerkorrektur steht aus. Der eigene Run ist
+bereinigt, das Parent-Image unverändert. Die zusätzliche native Freigabe
+ist verbraucht. Aktueller Umfang und offene Voraussetzungen stehen in den
+[Next Steps](../AI_Metadata/Internal_Documentation/Quality/Next_Steps.md#nachabnahme-mit-qualifizierter-lab-korrektur).
 
 ## OPS-006 Datenbankportabilität
 

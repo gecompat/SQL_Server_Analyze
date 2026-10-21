@@ -456,15 +456,65 @@ alle drei Reviewprüfungen verbraucht. Der eine PR-CI-Versuch und Main-Nachlauf
 bleiben ungenutzt reserviert. Alle bisherigen Reservierungen und Fehlbelege
 bleiben bestehen. Es gibt keinen PR und keine Integration dieses Slices.
 
-Der nächste konkrete Schritt ist die getrennte lesende und offline
-ausführbare Lab-Prüfung der Parameterbindung sowie der offenen Netz-/
-Leasebeobachtung. Ein bereinigter privater Prüfprompt ist vorbereitet; eine
-Übermittlung an einen anderen Chat oder eine Lab-Implementierung ist damit
-nicht autorisiert. Für eine erneute Analyze-Ausführung fehlen anschließend
-eine qualifiziert integrierte Lab-Korrektur und eine zusätzliche ausdrückliche
-begrenzte native Freigabe. Eine freie Lab-Laufsperre oder ein Heartbeat ersetzt
-diese Voraussetzungen nicht. Unveränderte Blocker werden nicht erneut
-semantisch untersucht.
+Zum damaligen Zwischenstand waren eine getrennte Lab-Prüfung der
+Parameterbindung und Netz-/Leasebeobachtung, eine gesonderte
+Implementierungsfreigabe und eine weitere begrenzte native Freigabe
+erforderlich. Diese Schritte wurden anschließend ausdrücklich beauftragt;
+die folgenden Nachweise ersetzen keine früheren Fehlversuche.
+
+#### Nachabnahme mit qualifizierter Lab-Korrektur
+
+Die getrennte Lab-Prüfung bestätigt die ungültige Parameterbindung und den
+Verlust der reservierten Gastadresse beim erneuten Auflösen des HostSQL-
+Netzplans. Die gezielte Lab-Korrektur erhält Root-, Run-, Scope-, VM- und
+Credentialbindungen sowie `NoRetry`, übernimmt die aktive reservierte
+Gastadresse und unterscheidet fehlende Collation-Evidence von vorhandenen
+abweichenden Werten. [Lab-PR #818](https://github.com/gecompat/SQL_Server_Lab/pull/818)
+ist nach unabhängiger Prüfung, erfolgreicher Windows-/Ubuntu-Statik und
+Hyper-V-Lifecycle-Smoke als `8b87d5b5` integriert. Getesteter Head und
+Mergecommit besitzen denselben Tree. Der Lifecycle-Smoke ist kein nativer
+SQL-Collationnachweis.
+
+Der danach separat freigegebene eigene Windows-Run verwendet Analyze
+`a8df379d`, das korrigierte Lab-Main und den unveränderten Runner. SQL
+CompleteImage endet mit `COMPLETE`; die gebundene Gastabfrage bestätigt
+`SQL_Latin1_General_CP1_CS_AS` für Server, `master` und `tempdb`, verfügbare
+Katalogcollation, SQL-Major-Version 17 und Defaultinstanz. Der gespeicherte
+Netzplan und die Verbindungsadresse entsprechen der eigenen Leaseadresse.
+Die Providerabnahme wird trotzdem nicht erreicht: Der erste Consumerbatch
+liefert `WINDOWS_SQL_SCRIPT_FAILED`, SQL-Fehler 206 und
+`FAILED_UNCONFIRMED`. Analyzer-Aufrufe und Provider-Vorprobe liegen bei null.
+Consumer-CL170 und vollständiger Engine-Build werden nicht bestätigt.
+
+Der Analyze-Vorbereiter übergibt den externen Operationsparameter direkt an
+`sp_addextendedproperty`. Der öffentliche Windows-Transport bindet Zeichenketten
+als `nvarchar(max)`. Der `sql_variant`-Parameter der Systemprocedure kann
+[diesen Typ nicht aufnehmen](https://learn.microsoft.com/en-us/sql/t-sql/data-types/sql-variant-transact-sql?view=sql-server-ver17).
+Diese Quellenabweichung erklärt den erfassten Fehler 206; der Transportbericht
+enthält keine zusätzliche native Statementzeile. Die vorbereitete Korrektur
+übernimmt den bereits geprüften GUID-Wert zunächst als `nvarchar(36)` und
+verwendet diese lokale Variable für den Ownershipmarker. Die beschreibende
+Aktivierungsvoraussetzung entspricht außerdem dem bereits verwendeten
+`NotRequested`-/`Denied`-Intent.
+
+Dreizehn gezielte Offlineprüfungen verwenden den tatsächlichen Lab-
+Parameterkonverter, dessen geschlossenen SqlClient-Parameterbindungsteil
+und den TSql170-Parser. Sie bestätigen den ursprünglichen MAX-Typ, weisen
+den alten direkten Übergang sowie MAX-, Verkürzungs- und Rückfallmutationen
+ab und prüfen den begrenzten Marker. Alle übrigen Vorbereitungsstatements,
+Guards, kanonischen Quellen sowie Installations-, Abnahme- und Cleanup-SQL-
+Eingaben bleiben bytegleich. Diese Prüfung führt weder Gast- noch SQL-Aufrufe
+aus; die Markerkorrektur besitzt noch keinen nativen Nachweis und keinen
+zusätzlichen unabhängigen Review.
+
+Der Datenbankstatus bleibt wegen des unbestätigten Batches
+`CREATION_UNCONFIRMED`; es erfolgt kein ungebundenes SQL-DROP. Der gebundene
+Run-Cleanup entfernt die eigene VM und Child-Disk. Eine lesende Nachprüfung
+bestätigt `REMOVED`, fehlende Ressourcen und keine aktive eigene Lease;
+Parenthash und Schreibschutz sind unverändert. Die zusätzliche native
+Freigabe ist verbraucht. Weitere Ausführung und erforderlicher Review
+benötigen eine neue begrenzte Freigabe. Der reservierte PR-CI-Versuch und
+Main-Nachlauf bleiben ungenutzt; der Slice ist noch nicht veröffentlicht.
 
 ## Abgeschlossene Findings-Stabilisierung vom 20. Oktober 2026
 

@@ -99,9 +99,10 @@ IF COALESCE(CONVERT(int,SERVERPROPERTY(N'ProductMajorVersion')),0)<>17
     THROW 54895,N'OPS005_WINDOWS_PREREQUISITE_FAILED',2;
 IF EXISTS(SELECT 1 FROM sys.databases WHERE database_id>4) OR EXISTS(SELECT 1 FROM sys.servers WHERE server_id<>0)
     THROW 54895,N'OPS005_EMPTY_OWN_RUN_REQUIRED',3;
+DECLARE @OwnOperationMarker nvarchar(36)=CONVERT(nvarchar(36),TRY_CONVERT(uniqueidentifier,@OperationId));
 CREATE DATABASE [LabAnalyze] COLLATE SQL_Latin1_General_CP1_CS_AS;
 ALTER DATABASE [LabAnalyze] SET COMPATIBILITY_LEVEL=170;
-EXEC [LabAnalyze].sys.sp_addextendedproperty @name=N'SQLANALYZE.Ops005Operation',@value=@OperationId;
+EXEC [LabAnalyze].sys.sp_addextendedproperty @name=N'SQLANALYZE.Ops005Operation',@value=@OwnOperationMarker;
 SELECT database_id AS OwnDatabaseId,CONVERT(nvarchar(33),create_date,126) AS OwnDatabaseCreated,
     CONVERT(nvarchar(128),SERVERPROPERTY(N'ProductVersion')) AS ProductVersion,
     CONVERT(nvarchar(128),SERVERPROPERTY(N'Edition')) AS Edition,
@@ -131,7 +132,7 @@ $binding=[ordered]@{
     CanonicalSourceCount=$sections.Count;CanonicalSources=@($sourceBindings)
     Inputs=@($inputs | ForEach-Object { [ordered]@{Name=[IO.Path]::GetFileName($_);Bytes=(Get-Item -LiteralPath $_).Length;Sha256=(Get-FileHash -LiteralPath $_ -Algorithm SHA256).Hash.ToLowerInvariant()} })
     Bounds=[ordered]@{NewRuns=1;NativeBlocks=1;SutCalls=5;Preprobes=1;InstallationSeconds=300;PreflightSeconds=300;AcceptanceSeconds=120}
-    NativePrerequisites=@('Clean integrated Lab Main','Elevated runner','Verified prepared parent','Host capacity and existing isolated network','VerifyOnly/Denied activation intent','Run/Scope/VM binding')
+    NativePrerequisites=@('Clean integrated Lab Main','Elevated runner','Verified prepared parent','Host capacity and existing isolated network','NotRequested/Denied activation intent','Run/Scope/VM binding')
 }
 [IO.File]::WriteAllText((Join-Path $destination 'preparation.json'),($binding|ConvertTo-Json -Depth 8),$encoding)
 [pscustomobject]@{Scope=$binding.Scope;Outcome=$binding.Outcome;CanonicalSources=$sections.Count;InstallerParts=$parts.Count;OutputDirectory=$destination}
