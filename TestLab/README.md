@@ -178,7 +178,17 @@ wird direkt an den `sql_variant`-Parameter von `sp_addextendedproperty`
 SQL-GUID-Kanonisierung im Cleanupvergleich. Der entsprechend ergänzte Stand
 besteht zweiundzwanzig Offlineprüfungen; seine native Nachprüfung steht aus.
 Der eigene fehlgeschlagene Run ist bereinigt, das Parent-Image unverändert.
-Ein weiterer Run ist gesondert freigegeben und wartet auf den Abschlussreview.
+Der Abschlussreview besteht. Der danach freigegebene Run bestätigt die
+Markerkorrektur auf SQL Server `17.0.1000.7` mit CL170, scheitert jedoch im
+ersten Installationsteil nach zehn Batches mit SQL-Fehler 113. Der
+Windows-Transport trennt eine GO-Zeile innerhalb eines Blockkommentars und
+erzeugt dadurch einen nicht geschlossenen Kommentar. Datenbank, eigener Run
+und aktive Lease sind entfernt; das Parent-Image ist unverändert. Eine
+vorbereitete Korrektur entschärft ausschließlich die bekannte Kommentarzeile
+in privaten Installationseingaben. Quellhash und genau ein erwarteter Treffer
+schützen vor einer ungeprüften Übernahme veränderter Quellen. Unabhängiger
+Review und native Nachabnahme dieses neuen Standes
+benötigen eine zusätzliche begrenzte Freigabe.
 Aktueller Umfang und offene Voraussetzungen stehen in den
 [Next Steps](../AI_Metadata/Internal_Documentation/Quality/Next_Steps.md#nachabnahme-mit-qualifizierter-lab-korrektur).
 

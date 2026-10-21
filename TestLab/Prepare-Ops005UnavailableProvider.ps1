@@ -29,6 +29,7 @@ function Write-PrivateSql([string]$Name,[string]$Content) {
     [IO.File]::WriteAllText($path,$Content,$encoding)
     return $path
 }
+
 $canonical=Join-Path $destination 'canonical-install.sql'
 & (Join-Path $repositoryRoot 'Code/Install/Build-StandaloneInstaller.ps1') -RepositoryRoot $repositoryRoot -OutputPath $canonical
 $text=[IO.File]::ReadAllText($canonical,$encoding)
@@ -64,6 +65,16 @@ foreach ($section in $sections) {
     if (-not (Test-Path -LiteralPath $source -PathType Leaf)) { throw 'OPS005_CANONICAL_SOURCE_MISSING' }
     $sourceBindings.Add([ordered]@{Path=$relative;Sha256=(Get-FileHash -LiteralPath $source -Algorithm SHA256).Hash.ToLowerInvariant()})
     $body=$section.Value.Replace('[DeineDatenbank]','[LabAnalyze]')+"`n"
+    if ($relative -ceq 'Code/01_Common/030_VW_AnalyseAccessPolicy.sql') {
+        # Der bestehende Windows-Transport erkennt diese Beispielzeile als GO.
+        # Die enge Quellenbindung verhindert eine ungeprüfte Kommentaränderung.
+        $normalized=[IO.File]::ReadAllText($source,$encoding).Replace("`r`n","`n")
+        $reviewedHash=[Convert]::ToHexString([Security.Cryptography.SHA256]::HashData($encoding.GetBytes($normalized))).ToLowerInvariant()
+        $exampleEnd=[regex]::new('(?m)^GO(?<eol>\r?\n)\*/')
+        if ($reviewedHash -cne '5db246fd8ba80478506c2a8533022383a6aad57c4983c21f65d9535d7530bfca' -or
+            $exampleEnd.Matches($body).Count -ne 1) { throw 'OPS005_POLICY_EXAMPLE_REVIEW_REQUIRED' }
+        $body=$exampleEnd.Replace($body,'-- GO${eol}*/')
+    }
     if ($encoding.GetByteCount($prefix+$body) -gt 3MB) { throw 'OPS005_CANONICAL_SOURCE_TOO_LARGE' }
     if ($encoding.GetByteCount($part+$body) -gt 3MB) {
         $parts.Add((Write-PrivateSql ('install-{0:D2}.sql' -f ($parts.Count+1)) $part))

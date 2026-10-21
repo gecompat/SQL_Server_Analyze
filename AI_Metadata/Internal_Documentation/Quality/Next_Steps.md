@@ -516,8 +516,9 @@ Zweiundzwanzig ergänzte Offlineprüfungen bestehen einschließlich kleiner,
 großer und gemischter GUID-Hexschreibweise, gemeinsamer SQL-Kanonisierung
 und negativer Cleanup-Rückfälle. Installations- und Provider-SQL bleiben
 bytegleich; alle übrigen Cleanupstatements und Identitätsassertions bleiben
-erhalten. Der befundgebundene Abschlussreview und die native Nachabnahme
-dieses korrigierten Standes sind noch offen.
+erhalten. Der befundgebundene Abschlussreview besteht ohne offene materielle
+Befunde. Die anschließend freigegebene native Nachabnahme ist nachstehend
+gesondert dokumentiert.
 
 Der Datenbankstatus bleibt wegen des unbestätigten Batches
 `CREATION_UNCONFIRMED`; es erfolgt kein ungebundenes SQL-DROP. Der gebundene
@@ -530,6 +531,60 @@ freigegeben. Dieser Run beginnt erst nach erfolgreichem Abschlussreview;
 die früheren Fehlversuche und Reservierungen bleiben erhalten. Der
 reservierte PR-CI-Versuch und Main-Nachlauf bleiben ungenutzt; der Slice ist
 noch nicht veröffentlicht.
+
+#### Markerkorrektur bestätigt; Installation am Kommentar-GO blockiert
+
+Nachdem die Lab-Laufsperre frei ist, beginnt der zusätzlich freigegebene
+Windows-Run mit Analyze `108c2063` und dem qualifizierten Lab-Main
+`90cf416a`. Der zwischenzeitliche Lab-Commit ergänzt ausschließlich
+Dokumentation; die verwendeten Runtimequellen entsprechen Lab-PR #818.
+SQL CompleteImage, Server-, Master- und TempDB-Collation sowie die
+Lease-/Hostadressbindung bestehen. Die korrigierte Datenbankvorbereitung
+liefert `SUCCEEDED`, SQL Server `17.0.1000.7`, Enterprise Developer Edition,
+Datenbankcollation `SQL_Latin1_General_CP1_CS_AS` und CL170.
+
+Der erste Installationsteil scheitert nach zehn erfolgreich ausgeführten
+Batches mit `WINDOWS_SQL_SCRIPT_FAILED`, SQL-Fehler 113 und
+`FAILED_UNCONFIRMED`. Der unveränderte Windows-Transport trennt mit einem
+zeilenbezogenen GO-Ausdruck ohne SQL-Kommentarkontext. Die gespeicherte
+Eingabe enthält genau eine damit irrtümlich erkannte Trennstelle im
+Blockkommentar von `Code/01_Common/030_VW_AnalyseAccessPolicy.sql`.
+Transportbatch 11 enthält dadurch den geöffneten Kommentar ohne dessen
+Abschluss. Der TSql170-Tokenizer bestätigt die Kommentarzugehörigkeit der
+Trennstelle und reproduziert den fehlenden Kommentarabschluss offline.
+Damit ist die konkrete Quellen-/Transportabweichung belegt; der native
+Transportbericht enthält keine zusätzliche Statementzeile.
+
+Der gebundene SQL-Cleanup entfernt die markierte eigene Datenbank. Der
+Run-Cleanup entfernt VM und Child-Disk und gibt die eigene Lease frei;
+Parenthash und Schreibschutz bleiben unverändert. Analyzer-Aufrufe und
+Provider-Vorprobe liegen weiterhin bei null. Die eigentliche Providerabnahme
+bleibt `NOT_EXECUTED`; es gibt keinen neuen PR und keine Integration.
+Alle vier freigegebenen Windows-Runs und nativen Blöcke sowie die fünf
+freigegebenen Reviewprüfungen sind verbraucht. PR-CI und Main-Nachlauf bleiben
+ungenutzt reserviert. Frühere Fehlversuche und Reservierungen bleiben erhalten.
+
+Die vorbereitete Analyze-Korrektur behandelt ausschließlich diese bekannte
+Kommentarzeile in privaten Installationseingaben. Ein Hash des auf LF
+normalisierten kanonischen Quelltexts und genau ein erwarteter Kommentarabschluss
+binden das ergänzte Präfix `-- ` an den geprüften Stand. Abweichender
+Quelltext oder eine andere Trefferzahl führen vor der Runanlage zu
+`OPS005_POLICY_EXAMPLE_REVIEW_REQUIRED`. Ausführbare Tokens und tatsächliche
+Batchgrenzen bleiben erhalten. Kanonische Quellen, Lab-Code, Worker,
+Provideroracle und Cleanup werden nicht geändert. Ein zunächst untersuchter
+allgemeiner Lexer wurde wegen seines unverhältnismäßigen Aufbereitungsumfangs
+verworfen; seine abgebrochenen Offlineversuche bleiben privat erhalten.
+Der gezielte Stand besteht 21 Offlineprüfungen. Sie reproduzieren den alten
+Kommentarfehler, bestätigen identische ausführbare Tokens und echte
+Batchgrenzen und prüfen alle 194 erzeugten Transportbatches auf geschlossene
+lexikalische Bereiche. Gegen den vorherigen Stand kommen ausschließlich drei
+Kommentarbytes hinzu; der zweite Installationsteil, alle 171 kanonischen
+Quellbindungen, Datenbankvorbereitung, Cleanup und Provider-SQL bleiben
+unverändert. Negative Quelltext- und Trefferzahlmutationen werden abgewiesen.
+Diese Prüfung führt weder SQL noch Gastaufrufe aus.
+Der gezielte neue Stand benötigt einen unabhängigen Review und eine gesondert
+begrenzte native Nachabnahme; ein bisheriger Review deckt die neue
+Aufbereitung nicht ab.
 
 ## Abgeschlossene Findings-Stabilisierung vom 20. Oktober 2026
 
