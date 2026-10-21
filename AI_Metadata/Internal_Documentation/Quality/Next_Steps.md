@@ -339,9 +339,16 @@ native Abnahme, Analyze-PR-CI und Main-Nachlauf sind noch offen.
 
 Die erhöhte Vorprüfung des sauberen Analyze-Stands `1bde42da` scheitert vor
 Imagezulassung und Runanlage mit `OPS005_HOST_RUNTIME_BUSY`. Die globale
-Lab-Laufsperre ist auch in begrenzten lesenden Nachprüfungen belegt. Der
-Sperrinhaber ist nicht bestimmt; ein fremder oder veralteter Lauf wird daraus
-nicht abgeleitet. Eine eigene Runreservierung, VM, Datenbank und aktive
+Lab-Laufsperre ist auch in begrenzten lesenden Nachprüfungen belegt. Eine
+anschließende native Owner-Abfrage identifiziert einen PowerShellprozess
+mit der Elternkette `Runner.Worker.exe` und `Runner.Listener.exe` als Halter.
+Die Zuordnung zum laufenden
+[Podman-CI-Job von Lab-PR #816](https://github.com/gecompat/SQL_Server_Lab/actions/runs/39604195474/job/119236194763)
+wird aus dieser Prozesskette und den sekundengleich passenden Prozess- und
+Schrittstartzeiten abgeleitet. Die Abfrage öffnet die Sperre ausschließlich
+zum Lesen ihrer Owner-Metadaten; sie wartet nicht auf die Sperre und gibt
+sie nicht frei. Reale Prozesskennungen und Beobachtungsbelege bleiben privat.
+Eine eigene Runreservierung, VM, Datenbank und aktive
 Netzwerklease wurden nicht angelegt. Für diese Windows-Welle bleiben neue
 Runs, native Abnahmeblöcke, Analyzer-Aufrufe und Provider-Vorproben jeweils
 bei null. Beide unabhängigen Reviewprüfungen sind verbraucht; PR-CI und
