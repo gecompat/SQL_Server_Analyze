@@ -401,14 +401,17 @@ zwei von zwei Reviewprüfungen. Analyzer-Aufrufe und Provider-Vorproben liegen
 bei null; diese Teilmengen erlauben keinen zweiten Abnahmeblock. PR-CI und
 Main-Nachlauf sind unverändert reserviert.
 
-Für die vorbereitete Intentkorrektur fehlen genau ein zusätzlicher
-unabhängiger Abschlussreview und höchstens ein weiterer eigener Windows-Run
-mit einem nativen Abnahmeblock. Dessen vorgeschlagener Umfang bleibt bei
+Der Benutzer hat für die vorbereitete Intentkorrektur genau einen zusätzlichen
+unabhängigen Abschlussreview und höchstens einen weiteren eigenen Windows-Run
+mit einem nativen Abnahmeblock freigegeben. Der zusätzliche Umfang bleibt bei
 vier vCPUs, acht GiB festem RAM, vorhandenem Prepared-Image, höchstens fünf
 Analyzer-Aufrufen und einer Provider-Vorprobe. Die bestehenden Laufzeit-,
-Netzwerk- und Cleanupgrenzen bleiben erhalten. Alle bisherigen Fehlversuche
-und Reservierungen bleiben bestehen; bis zu dieser zusätzlichen Freigabe
-erfolgt keine weitere native Ausführung und keine PR-Veröffentlichung.
+Netzwerk- und Cleanupgrenzen bleiben erhalten. Der zusätzliche Review läuft;
+der weitere Run ist noch nicht begonnen. Der ungenutzte PR-CI-Versuch und
+Main-Nachlauf einschließlich regulärer Integration nach grünen Gates und
+eigenem Cleanup bleiben reserviert. Alle bisherigen Fehlversuche und
+Reservierungen bleiben bestehen. Lab-Codeänderungen, Imagebau, Downloads
+und externe Netzanbindung bleiben ausgeschlossen.
 
 ## Abgeschlossene Findings-Stabilisierung vom 20. Oktober 2026
 
