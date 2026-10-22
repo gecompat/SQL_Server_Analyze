@@ -169,9 +169,12 @@ VM, Child-Disk und aktive Lease sowie ein unverändertes Parent-Image.
 Der Vorbereitungsintent `NotRequested` mit `Denied`-Egress fordert keine
 Windows-Aktivierung an und attestiert keinen aktiven Windows-Lizenzzustand.
 
-Der gesondert freizugebende Modus `-DiagnosePrerequisites` liest ausschließlich
-die unveränderten Guards und gegebenenfalls zugehörige Werte. Er führt keine
-Provideranlage, Analyzer-Aufrufe oder Provider-Vorprobe aus.
+Der gesondert freizugebende Modus `-DiagnosePrerequisites` erzeugt ebenfalls
+einen eigenen Windows-Run, legt die eigene Datenbank an und installiert
+denselben kanonischen Bestand. Erst danach lesen die Diagnoseabfragen
+ausschließlich die unveränderten Guards und gegebenenfalls zugehörige Werte.
+Provideranlage, Analyzer-Aufrufe und Provider-Vorprobe werden dabei nicht
+ausgeführt. Für den eigenen Run gilt derselbe Cleanupumfang.
 `DIAGNOSIS_CAPTURED` verlangt Cleanup und ersetzt keine Providerabnahme;
 `DIAGNOSIS_INCONCLUSIVE` bleibt ohne Qualifikation. Der Runner und das
 [Provider-Szenario](Scenarios/OPS-005/provider-unavailable.sql) enthalten die
