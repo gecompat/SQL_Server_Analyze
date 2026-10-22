@@ -80,146 +80,118 @@ scopegebundenen Entfernen ihrer Container- und Volume-Ressourcen.
 
 ## OPS-005 Linked Server
 
-Der Runner `Invoke-Ops005LinkedServerScenario.ps1` erzeugt einen frischen,
-wegwerfbaren Lab-Run, installiert das Framework und führt den bestehenden
-Linked-Server-Runtime-Vertrag aus. Er verwendet keine vorhandenen Container und
-entfernt den gesamten Run nach dem Test.
+Die Linked-Server-Szenarien prüfen getrennte Verträge: synthetische
+Standardfälle, einen erfolgreichen Verbindungsaufbau zwischen eigenen
+Containern und einen fehlenden Provider auf Windows. Wählen Sie den für die
+Änderung erforderlichen Fall. Die vorhandenen Runner und diese Anleitung
+erteilen keine Ausführungsfreigabe und erneuern kein verbrauchtes Budget.
+Die [CI-Teststrategie](../Documentation/Quality/CI_Test_Strategy.md) bestimmt
+den erforderlichen Umfang; zusätzliche native Versionen sind kein Standardlauf.
+
+### Adapter zunächst statisch prüfen
+
+Der folgende Aufruf prüft den Adapter und seine generierten Eingaben ohne
+SQL-Ausführung oder Lab-Provisionierung. Er benötigt PowerShell 7 und wird
+vom Repositoryroot ausgeführt:
 
 ```powershell
-pwsh -File ./TestLab/Invoke-Ops005LinkedServerScenario.ps1 -Provider docker -Version 2022
+pwsh -File ./TestLab/Test-AnalyzeOps005LinkedServerAdapter.ps1
 ```
 
-Der Adapter `OPS-005` führt den vorhandenen Linked-Server-Runtimevertrag auf
-einem pro Zielversion neu erzeugten Docker-Lab aus. Er installiert den
-kanonischen Frameworkbestand in die markergebundene Datenbank
-`LabAnalyze`, verwendet ausschließlich die synthetischen Fixtures des
-Runtimevertrags und entfernt danach zuerst die Adapterobjekte und anschließend
-den exakten Lab-Run. Der Runner verwendet die vom Labkatalog freigegebene
-Collation `Latin1_General_100_CS_AS`. Das zufällige SA-Passwort bleibt im
-Arbeitsspeicher; weder Passwort, Containername, Port noch Run-State werden als
-Repositoryevidenz gespeichert.
+Mit `-LabRepositoryRoot ../SQL_Server_Lab` wird zusätzlich der Adaptervertrag
+gegen das vorhandene Lab-Modul geprüft. Ein Ergebnis `Status = PASS` bestätigt
+diesen statischen Umfang; es ist keine native Providerabnahme. Die Quellen
+liegen unter [`Adapters/OPS-005/`](Adapters/OPS-005/).
+
+### Synthetischen Docker-Vertrag ausführen
+
+Für einen ausdrücklich freigegebenen Lauf werden ein vorhandenes
+`SQL_Server_Lab` und dessen freigegebene Docker-Umgebung benötigt. Die
+allgemeine Provisionierung bleibt dort. Der Matrixrunner erzeugt je gewählter
+Version einen eigenen frischen Run, installiert den kanonischen Bestand in
+die markierte synthetische Datenbank `LabAnalyze` und führt den vorhandenen
+[Runtimevertrag](../Code/Tests/120_OPS005_Linked_Server_Runtime_Contract.sql) aus.
 
 ```powershell
-pwsh -File ./TestLab/Test-AnalyzeOps005LinkedServerAdapter.ps1 `
-  -LabRepositoryRoot ../SQL_Server_Lab
-
 pwsh -File ./TestLab/Invoke-AnalyzeOps005LinkedServerMatrix.ps1 `
-  -LabRepositoryRoot ../SQL_Server_Lab
+  -LabRepositoryRoot ../SQL_Server_Lab -Version 2025
 ```
 
-Die Matrix verarbeitet SQL Server 2019, 2022 und 2025 sequenziell. Sie bindet
-keine bestehenden Container, Volumes oder Remoteziele ein. Ein fehlgeschlagener
-Adapter- oder Infrastruktur-Cleanup behält ausschließlich den zugehörigen
-temporären State für die Recovery; ein erfolgreicher Lauf entfernt auch diesen
-State-Root.
+Die explizite Versionswahl begrenzt diesen Aufruf auf SQL Server 2025. Ohne
+`-Version` wählt der Runner 2019, 2022 und 2025 sequenziell; diese zusätzliche
+Matrix benötigt ihren passenden Prüfgrund und freigegebenen Umfang. Der
+separate [Szenariorunner](Invoke-Ops005LinkedServerScenario.ps1) unterstützt
+auch die direkte Wahl von Provider und Version.
 
-Der zusätzliche Runner `Invoke-Ops005LinkedServerSuccessScenario.ps1` prüft
-einen tatsächlichen Verbindungsaufbau zwischen zwei ausschließlich für diesen
-Test neu erzeugten SQL-Server-2025-Containern unter Docker Desktop. Er richtet
-einen synthetischen Linked Server mit `MSOLEDBSQL` und einem eigenen Remote-Login
-ein. Der Test verlangt `NOT_EXECUTED` im Standardpfad,
+Der Docker-Adapter verwendet `Latin1_General_100_CS_AS`. Ein Erfolg erweitert
+die ausschließlich für `SQL_Latin1_General_CP1_CS_AS` geltende Projektgarantie
+nicht. Vorhandene Container, Volumes und Remoteziele werden nicht eingebunden.
+Das SA-Passwort bleibt im Arbeitsspeicher. Der Runner prüft Adapterergebnisse
+und Cleanup; ein bloß angelegter Container ist kein bestandener Vertrag.
+
+### Erfolgreiche Verbindung zwischen eigenen Containern prüfen
+
+[`Invoke-Ops005LinkedServerSuccessScenario.ps1`](Invoke-Ops005LinkedServerSuccessScenario.ps1)
+verwendet zwei ausschließlich dafür neu erzeugte SQL-Server-2025-Container
+unter Docker Desktop, `MSOLEDBSQL` und einen synthetischen Remote-Login.
+Dieser Fall benötigt eine eigene ausdrückliche Freigabe für die Verbindung
+zwischen diesen lokalen Testcontainern. Er gehört nicht zum Standardadapter.
+Die verschlüsselte Testverbindung vertraut dem Containerzertifikat.
+
+Erwartet werden `NOT_EXECUTED` ohne Verbindungsopt-in,
 `AUTHORIZATION_REQUIRED` ohne zweite Bestätigung und `SUCCEEDED` mit beiden
-Schaltern. Die verschlüsselte Testverbindung vertraut dem Containerzertifikat.
-Dieser Lauf erfordert die ausdrückliche Freigabe für Verbindungen zwischen den
-neuen lokalen Testcontainern und gehört nicht zum synthetischen Standardadapter.
+Schaltern. Ein Erfolg gilt für diese Provider- und Testkombination und
+qualifiziert keinen anderen Provider oder Remote-Workload.
 
-```powershell
-pwsh -File ./TestLab/Invoke-Ops005LinkedServerSuccessScenario.ps1 `
-  -LabRepositoryRoot ../SQL_Server_Lab
-```
+### Fehlenden Windows-Provider prüfen
 
-Der Runner hält erzeugte Passwörter ausschließlich im Arbeitsspeicher und
-entfernt beide eigenen Lab-Runs samt Volumes. Bei einem Cleanupfehler bleiben
-die temporären Recoverydaten erhalten; eine Warnung nennt den gezielten
-Recoveryaufruf. Der Lauf vom 5. Oktober 2026 bestand auf SQL Server
-`17.0.4075.5` einschließlich Cleanup. Er belegt ausschließlich diese
-MSOLEDBSQL-Kombination und keinen weiteren Provider oder Remote-Workload.
+Der getrennte Windows-Fall verwendet
+[`Prepare-Ops005UnavailableProvider.ps1`](Prepare-Ops005UnavailableProvider.ps1)
+und [`Invoke-Ops005UnavailableProviderScenario.ps1`](Invoke-Ops005UnavailableProviderScenario.ps1).
+Er benötigt PowerShell 7.2 oder neuer, einen sauberen gebundenen Analyze-Stand,
+den erwarteten sauberen integrierten Lab-Stand, einen erhöhten Prozess des
+gebundenen Hostbenutzers, ein gültiges vorhandenes SQL-2025-Prepared-Image und
+einen bestehenden internen Switch. Der eigene Run erhält vier vCPUs und acht
+GiB festen RAM. Images werden weder gebaut noch heruntergeladen; externe
+Netzverbindungen werden nicht eingerichtet.
 
-Der separate manuelle Windows-Providerfall verwendet
-`Prepare-Ops005UnavailableProvider.ps1` und
-`Invoke-Ops005UnavailableProviderScenario.ps1`. Der Vorbereiter erzeugt private
-SQL-Eingaben aus den kanonischen Quellen und führt kein SQL aus. Der Runner
-benötigt eine ausdrückliche Ausführung, einen sauberen gebundenen Quellstand,
-einen erhöhten Prozess desselben Hostbenutzers, ein vorhandenes SQL-2025-
-Prepared-Image und einen bestehenden internen Switch. Der eigene Run erhält
-vier vCPUs und acht GiB festen RAM. Der vorbereitete Aktivierungsintent
-`NotRequested` mit `Denied`-Egress entspricht dem lokalen SQL-Workload:
-Die Providerprüfung fordert keine Windows-Aktivierung an und attestiert
-keinen aktiven Windows-Lizenzzustand. Die Zulassung verlangt weiterhin ein
-gültiges vorhandenes Prepared-Image gemäß Lab-Inventar.
-Es werden keine Images gebaut oder heruntergeladen und keine externen
-Netzverbindungen eingerichtet.
+1. Prüfen Sie zuerst die konkrete Freigabe für Run, Abnahmeumfang und Cleanup.
+2. Erzeugen Sie mit dem Vorbereiter und `-OutputDirectory` einen neuen privaten Ordner außerhalb des Repositorys. Der Vorbereiter führt kein SQL aus; `preparation.json` bindet Operation, Quellstand und Eingaben.
+3. Binden Sie die im Runner verlangten Parameter an den geprüften Stand: Lab-Commit, Hostbenutzer, Vorbereitungsordner, State, Prepared-Artefakt, Parent-Disk, vorhandener Switch und neue Reservierungsdatei. Diese Werte bleiben privat. Ein vorhandener Ordner oder eine verbrauchte Reservierung wird nicht für einen neuen Versuch umgedeutet.
+4. Starten Sie ausschließlich den freigegebenen Modus mit `-Execute` im erhöhten Prozess. Ein verlorener Reply erlaubt keinen Replay und keine weitere Runanlage.
+5. Prüfen Sie den privaten Ergebnisbericht einschließlich Outputs, Callerzustand und Cleanup. Ein Zwischenergebnis vor dem Cleanup ist keine erfolgreiche Abnahme.
 
-Die Abnahme bindet Provideranlage, Katalogidentität, fünf Analyzer-Aufrufe und
-eine native Provider-Vorprobe an dieselbe Operation. Native Fehler 7302 oder
-7403 müssen mit dem Analyzeroutput übereinstimmen. Eine Reservierungsdatei
-sperrt die erneute Runanlage; ein verlorener Reply erzeugt keinen Replay.
-SQL-Fixture, eigene markierte Datenbank, Run, aktive IPAM-Lease und unveränderter
-Parent werden getrennt geprüft. Der Fall gehört zum vorhandenen OPS-005-Umfang;
-er erweitert weder Vertrag 120 noch dessen Linux-Adapter. Seine native
-Providerabnahme war zunächst `NOT_EXECUTED`. Der erste Windows-Run scheitert
-vor SQL Setup mit dem zuvor gewählten `VerifyOnly`-Intent am tatsächlichen
-Gaststatus `ACTIVATION_REQUIRED`. Sein eigener Ressourcencleanup und die
-unveränderte Parentintegrität sind bestätigt. Der vorbereitete korrigierte
-Intent ist zusätzlich unabhängig geprüft. Der danach freigegebene Zusatzrun
-erreicht SQL CompleteImage und scheitert anschließend mit
-`HYPERV_SQL_COLLATION_QUERY_FAILED`: Die Lab-Gastprobe übergibt einen von der
-Transportsignatur nicht unterstützten `StateRoot`-Parameter. Auch dieser eigene
-Run ist bereinigt; die Providerabnahme bleibt `NOT_EXECUTED`.
+Der reguläre Fall bindet Provideranlage und Katalogidentität, fünf
+Analyzer-Aufrufe und eine Provider-Vorprobe an dieselbe Operation. Native
+Fehler 7302 oder 7403 müssen mit dem Analyzeroutput übereinstimmen.
+`Outcome = PASSED` erfordert zusätzlich entfernte Fixture, eigene Datenbank,
+VM, Child-Disk und aktive Lease sowie ein unverändertes Parent-Image.
+Der Vorbereitungsintent `NotRequested` mit `Denied`-Egress fordert keine
+Windows-Aktivierung an und attestiert keinen aktiven Windows-Lizenzzustand.
 
-Nach Integration der gesondert geprüften Lab-Korrektur besteht der erneut
-freigegebene Windows-Run die tatsächliche Collationprüfung für Server,
-`master` und `tempdb`. Die reservierte Gastadresse bleibt im Netzplan und
-Verbindungsziel erhalten. Der erste Consumerbatch bricht jedoch mit
-SQL-Fehler 206 ab: Der als `nvarchar(max)` gebundene externe Operationswert
-wird direkt an den `sql_variant`-Parameter von `sp_addextendedproperty`
-übergeben. Der korrigierte Vorbereiter verwendet dafür eine lokale
-`nvarchar(36)`-Variable. Der unabhängige Review verlangt außerdem dieselbe
-SQL-GUID-Kanonisierung im Cleanupvergleich. Der entsprechend ergänzte Stand
-besteht zweiundzwanzig Offlineprüfungen; seine native Nachprüfung steht aus.
-Der eigene fehlgeschlagene Run ist bereinigt, das Parent-Image unverändert.
-Der Abschlussreview besteht. Der danach freigegebene Run bestätigt die
-Markerkorrektur auf SQL Server `17.0.1000.7` mit CL170, scheitert jedoch im
-ersten Installationsteil nach zehn Batches mit SQL-Fehler 113. Der
-Windows-Transport trennt eine GO-Zeile innerhalb eines Blockkommentars und
-erzeugt dadurch einen nicht geschlossenen Kommentar. Datenbank, eigener Run
-und aktive Lease sind entfernt; das Parent-Image ist unverändert. Eine
-vorbereitete Korrektur entschärft ausschließlich die bekannte Kommentarzeile
-in privaten Installationseingaben. Quellhash und genau ein erwarteter Treffer
-schützen vor einer ungeprüften Übernahme veränderter Quellen. Unabhängiger
-Review und native Nachabnahme dieses neuen Standes sind anschließend
-gesondert freigegeben und ausgeführt. Die Installation besteht mit allen
-194 Batches; der Providerbatch scheitert danach mit Guardfehler 54890.
-Der genaue Guard bleibt unbekannt, weil der Transport den Fehlerstate nicht
-zurückgibt. Ein statischer Implementierungsfehler ist nicht belegt.
-Eigene Datenbank, VM, Child-Disk und aktive Lease sind entfernt; das
-Parent-Image ist unverändert. Ein weiterer Diagnose- oder Abnahmerun benötigt
-eine neue begrenzte Freigabe. Die Providerabnahme bleibt unqualifiziert.
+Der gesondert freizugebende Modus `-DiagnosePrerequisites` liest ausschließlich
+die unveränderten Guards und gegebenenfalls zugehörige Werte. Er führt keine
+Provideranlage, Analyzer-Aufrufe oder Provider-Vorprobe aus.
+`DIAGNOSIS_CAPTURED` verlangt Cleanup und ersetzt keine Providerabnahme;
+`DIAGNOSIS_INCONCLUSIVE` bleibt ohne Qualifikation. Der Runner und das
+[Provider-Szenario](Scenarios/OPS-005/provider-unavailable.sql) enthalten die
+maßgeblichen Prüfbedingungen; diese Anleitung schwächt sie nicht ab.
 
-Der anschließend freigegebene Modus `-DiagnosePrerequisites` verwendet einen
-eigenen Run mit derselben Installation und demselben Cleanup. Er führt die
-sieben unverändert übernommenen Guards innerhalb `TRY/CATCH` aus und erfasst
-deren Fehlernummer und State in einer begrenzten Zeile. Nur bei 54890 mit
-State 1 bis 7 folgt eine zweite lesende Abfrage der zugehörigen Werte.
-Provideranlage, Analyzer und Provider-Vorprobe werden in diesem Modus nicht
-ausgeführt. `DIAGNOSIS_CAPTURED` erfordert auch den vollständigen Cleanup;
-ein nicht reproduzierter Fehler bleibt `DIAGNOSIS_INCONCLUSIVE` und beendet
-den Worker ohne Qualifikation. Der reguläre Providerpfad bleibt unverändert.
-Der Modus benötigt eine eigene ausdrückliche Freigabe für die begrenzten
-nativen Leseaufrufe.
+### Cleanup und Abweichungen beurteilen
 
-Die nachfolgende Diagnose erfasst Guardstate 5: Das Modul existiert, aber das
-erwartete Deklarationsliteral fehlt im gespeicherten Text. Die gezielte
-Korrektur normalisiert zusätzlich ausschließlich `CREATE   PROCEDURE` für
-das exakt benannte Modul. Der ursprüngliche vollständige Definitionshash
-und die 13-Parameter-ABI bleiben zwingend. Die abschließende Windows-Abnahme
-vom 22. Oktober 2026 besteht auf SQL Server `17.0.1000.7` mit CL170 und den
-vorgeschriebenen Collations: 194 Installationsbatches, fünf Analyzerfälle,
-eine Provider-Vorprobe mit nativem Fehler 7403 sowie sämtliche Output- und
-Callerzustandsprüfungen bestehen. Fixture, eigene Datenbank, VM, Child-Disk
-und aktive Lease sind entfernt; das Parent-Image ist unverändert. Der
-Workerbericht meldet `PASSED`. Andere Provider- oder Berechtigungsprofile
-werden damit nicht qualifiziert.
+Die Runner entfernen ausschließlich ihre eigenen gebundenen Ressourcen.
+Beim Docker-Matrixlauf werden zuerst die Adapterobjekte und anschließend der
+exakte Lab-Run entfernt. Bei einem Cleanupfehler bleiben die zugehörigen
+privaten Recoverydaten erhalten. Verwenden Sie nur den vom betreffenden
+Runner genannten oder eindeutig an diesen Run gebundenen Recoveryweg;
+behandeln Sie weder fremde Ressourcen noch einen allgemeinen State-Root als
+Löschziel. Ein fehlgeschlagener Cleanup bleibt ein Fehler.
+
+Historische erfolgreiche und fehlgeschlagene Läufe stehen getrennt in der
+[Nachweischronologie vom 22. Oktober 2026](../Documentation/Quality/OPS005_Linked_Server_Evidence_2026-10-22.md).
+Ihre damaligen Zwischenstände sind keine aktuellen Startanweisungen und
+erneuern keine Freigabe. Rohlogs, Passwörter, reale Laufidentitäten und
+Verbindungsdaten bleiben außerhalb des Repositorys.
 
 ## OPS-006 Datenbankportabilität
 

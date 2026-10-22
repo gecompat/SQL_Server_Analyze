@@ -3,7 +3,7 @@
 **Stand:** 22. Oktober 2026
 **Zweck:** aktuelle ausführbare Entwicklungswelle für `gecompat/SQL_Server_Analyze`
 
-## Aktive Welle: Metadaten-Dokumentation
+## Aktive Welle: OPS-005-Lesepfad und Nachweishistorie
 
 OPS-005 ist über PR #403 als `2874675a` qualifiziert in `origin/main`
 integriert. Vier Head-Gates und drei Main-Gates bestehen jeweils im ersten
@@ -23,21 +23,28 @@ Bewertung des tatsächlichen Verarbeitungsaufwands. Bestehende Produkt-,
 Datenschutz-, Lizenz- und Registrierungsverträge bleiben erhalten. Diese
 Übernahme enthält keine SQL- oder Lab-Ausführung.
 
-Der bereits autorisierte nächste Schritt ergänzt den
-[menschlichen Einstieg in Metadata](../../../Metadata/README.md) mit
-Inventaren, Qualitätsnachweisen, Registry, kanonischen Quellen und Prüfwegen.
-Die öffentliche Dokumentationsübersicht verweist auf diesen Einstieg.
-Schemas, Registrytypen, Produktquellen und Laufzeitfreigaben bleiben
-unverändert. Die Abnahme folgt den betroffenen Lesepfaden und vorhandenen
-statischen Gates mit einem unabhängigen semantischen Review; nach grünen
-Head-Gates folgen reguläre Integration, Mainprüfung und eigener Cleanup.
+Der [menschliche Einstieg in Metadata](../../../Metadata/README.md) ist über
+PR #405 als `0d40d4c1` qualifiziert integriert. Vier Head- und drei Main-Gates
+bestehen im ersten Versuch; Head- und Merge-Tree sind identisch. Eigene
+Branches sind entfernt und der Worktree ist wiederherstellbar archiviert.
+
+Der nächste bereits geplante Dokumentationsschritt trennt im öffentlichen
+[Linked-Server-Lesepfad](../../../TestLab/README.md#ops-005-linked-server)
+die Fallauswahl, Voraussetzungen, Ergebnisinterpretation und Cleanuphilfe
+von der [datierten Nachweischronologie](../../../Documentation/Quality/OPS005_Linked_Server_Evidence_2026-10-22.md).
+Der bisherige Abschnitt bleibt dort als gekennzeichnete historische Abschrift
+erhalten; andere TestLab-Abschnitte und bestehende Anker bleiben unverändert.
+Produktquellen, Runner, Assertions, Schemas und Laufzeitfreigaben werden
+nicht geändert. Nach statischer Lesepfadprüfung und unabhängigem Review
+folgen aktuelle Head-Gates, reguläre Integration, Mainprüfung und eigener
+Cleanup. Weitere SQL- oder Lab-Ausführung ist damit nicht freigegeben.
 
 ### Dokumentationsaltlasten und Wiederaufnahme
 
 | Betroffener Umfang | Verantwortliche Rolle | Konkreter Wiederaufnahmetrigger und Grenze |
 |---|---|---|
-| Einstieg in `Metadata/` | Maintainer der Metadatenverträge | Gegenstand der aktuellen abgegrenzten Dokumentationswelle; Abschluss erst nach Lesepfadprüfung und qualifizierter Integration. Keine neuen Schemas, Registrytypen oder SQL-Läufe. |
-| Öffentlicher OPS-005-Lesepfad im TestLab-README | Maintainer des TestLab-Vertrags | Nächste materielle Änderung dieses Bedienpfads: Anleitung, Voraussetzungen, erwartete Ergebnisse und Abweichungen von Entwicklungs- und Fehlversuchschronologie trennen. Native Belege und verbrauchte Grenzen bleiben erhalten; keine neue Runtimefreigabe. |
+| Einstieg in `Metadata/` | Maintainer der Metadatenverträge | Mit PR #405 qualifiziert abgeschlossen; die weitere Pflege folgt Änderungen an den beschriebenen Verträgen. Keine neuen Schemas, Registrytypen oder SQL-Läufe. |
+| Öffentlicher OPS-005-Lesepfad im TestLab-README | Maintainer des TestLab-Vertrags | Gegenstand der aktuellen Dokumentationswelle: Anleitung und datierte Nachweise getrennt abnehmen. Native Belege und verbrauchte Grenzen bleiben erhalten; keine neue Runtimefreigabe. |
 | Aktuelles Fortsetzungsdokument | Maintainer der Projektplanung | Nächste strukturelle Planungsbereinigung: erhaltene Historie in einen ausdrücklich historischen Nachweis verlagern und betroffene Anker beziehungsweise Pfadkonsumenten erhalten. Keine Umbenennung dauerhafter Kennungen und keine Reaktivierung abgeschlossener Wellen. |
 
 Das Upgrade darf mit diesen konkret geplanten Altlasten abgeschlossen werden;

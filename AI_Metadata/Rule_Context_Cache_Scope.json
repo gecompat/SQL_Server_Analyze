@@ -416,6 +416,16 @@
   "excluded_references": [
     {
       "source": "AI_Metadata/Internal_Documentation/Quality/Next_Steps.md",
+      "target": "TestLab/README.md",
+      "classification": "product-reference"
+    },
+    {
+      "source": "AI_Metadata/Internal_Documentation/Quality/Next_Steps.md",
+      "target": "Documentation/Quality/OPS005_Linked_Server_Evidence_2026-10-22.md",
+      "classification": "historical-context"
+    },
+    {
+      "source": "AI_Metadata/Internal_Documentation/Quality/Next_Steps.md",
       "target": "Metadata/README.md",
       "classification": "product-reference"
     },
