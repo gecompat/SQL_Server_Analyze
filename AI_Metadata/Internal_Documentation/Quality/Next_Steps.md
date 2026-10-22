@@ -1,6 +1,6 @@
 # Nächste Arbeitsschritte
 
-**Stand:** 21. Oktober 2026
+**Stand:** 22. Oktober 2026
 **Zweck:** aktuelle ausführbare Entwicklungswelle für `gecompat/SQL_Server_Analyze`
 
 ## Aktive Welle: OPS-005-Provider-Negativfall
@@ -560,8 +560,8 @@ Run-Cleanup entfernt VM und Child-Disk und gibt die eigene Lease frei;
 Parenthash und Schreibschutz bleiben unverändert. Analyzer-Aufrufe und
 Provider-Vorprobe liegen weiterhin bei null. Die eigentliche Providerabnahme
 bleibt `NOT_EXECUTED`; es gibt keinen neuen PR und keine Integration.
-Alle vier freigegebenen Windows-Runs und nativen Blöcke sowie die fünf
-freigegebenen Reviewprüfungen sind verbraucht. PR-CI und Main-Nachlauf bleiben
+Zu diesem Zwischenstand sind alle vier freigegebenen Windows-Runs und nativen
+Blöcke sowie die fünf freigegebenen Reviewprüfungen verbraucht. PR-CI und Main-Nachlauf bleiben
 ungenutzt reserviert. Frühere Fehlversuche und Reservierungen bleiben erhalten.
 
 Die vorbereitete Analyze-Korrektur behandelt ausschließlich diese bekannte
@@ -585,6 +585,73 @@ Diese Prüfung führt weder SQL noch Gastaufrufe aus.
 Der gezielte neue Stand benötigt einen unabhängigen Review und eine gesondert
 begrenzte native Nachabnahme; ein bisheriger Review deckt die neue
 Aufbereitung nicht ab.
+
+#### Installation bestätigt; Guardzustand 54890 unbekannt
+
+Der Benutzer gibt anschließend einen weiteren unabhängigen Reviewer mit
+höchstens zwei befundgebundenen Prüfungen sowie einen weiteren eigenen
+Windows-Run frei. Der erste Review besteht am sauberen Analyze-Stand
+`e47cdf3c` ohne offene materielle Befunde. Lab-Main `9be544f2` enthält
+gegenüber `90cf416a` ausschließlich TLS-UI- und Dokumentationsänderungen;
+die für OPS-005 verwendeten Runtimequellen sind identisch. Lab-PR #820
+besitzt grüne ausgewählte Head-Gates und denselben Head-/Merge-Tree;
+der Main-Nightlylauf besteht ebenfalls. Die Quellenkopie bleibt getrennt
+vom fremden Lab-Checkout.
+
+Der freigegebene Run bestätigt SQL Server `17.0.1000.7`, Enterprise Developer
+Edition, CL170, alle vorgeschriebenen Collations sowie Datenbankvorbereitung
+und Marker. Beide Installationsteile bestehen mit 153 und 41 Batches.
+Damit ist die gezielte Kommentar-GO-Korrektur nativ bestätigt. Der folgende
+Providerbatch scheitert jedoch mit `WINDOWS_SQL_SCRIPT_FAILED`,
+`FAILED_UNCONFIRMED`, Fehlernummer 54890 und null abgeschlossenen Batches.
+Der öffentliche Windows-Transport erfasst nur die Fehlernummer, keinen
+SQL-Fehlerstate und keine Fehlermeldung. Die gespeicherten Resultsets sind leer.
+
+54890 kommt in der tatsächlichen Eingabe ausschließlich in den sieben
+Guards vor der Fixtureanlage vor. Die States unterscheiden Operationswert,
+Datenbankmarker, native Voraussetzungen, Isolation, vorhandene Definition,
+Definitionshash und 13-Parameter-ABI. Welcher Guard nativ scheitert, bleibt
+UNKNOWN. Der erwartete Hash stimmt offline mit dem normalisierten tatsächlich
+eingereichten Definitionsbatch überein. Der unveränderte Lab-Konverter liefert
+VarBinary mit 32 Bytes; eine lokale Serialisierungssimulation erhält diese
+Bytes. Das ersetzt keine Beobachtung der gespeicherten Moduldefinition oder
+der tatsächlichen Parameter beim fehlgeschlagenen Aufruf. Der zweite
+befundgebundene Review findet keinen statisch beweisbaren Implementierungsfehler
+und bestätigt die fehlende State-Evidence auch im Operationsjournal.
+
+Der eigene SQL-Cleanup entfernt die markierte Datenbank. VM und Child-Disk
+sind entfernt, die eigene Lease ist freigegeben, Parenthash und Schreibschutz
+sind unverändert. Der letzte gespeicherte Bericht behält seine vorsorglichen
+Zähler `UNKNOWN_0_TO_5` und `UNKNOWN_0_TO_1`; sie werden nicht nachträglich
+als erfolgreiche Aufrufe umgedeutet. Eine Providerabnahme wird nicht belegt.
+Insgesamt sind fünf Windows-Runs und native Blöcke sowie sieben
+Reviewprüfungen verbraucht. Der reservierte PR-CI-Versuch und Main-Nachlauf
+bleiben ungenutzt. Der Stand wird weder veröffentlicht noch integriert.
+
+Der kleinste zusätzliche native Discriminator ist `ERROR_STATE()` zur
+Fehlernummer 54890. Ein gesondert gebundener, rein lesender Diagnosebatch
+soll ausschließlich die unveränderten sieben Guards innerhalb `TRY/CATCH`
+ausführen und genau eine begrenzte Ergebniszeile mit Fehlernummer und State
+zurückgeben. Er erzeugt keine Providerfixture und ruft keinen Analyzer auf.
+Höchstens eine zweite lesende Abfrage soll anschließend ausschließlich die
+für den ermittelten State erforderlichen Werte erfassen. Ein Diagnoseerfolg
+ist keine Providerabnahme; bei fehlendem oder nicht reproduzierbarem Befund
+bleibt die Ursache offen. Lab-Code und sämtliche bestehenden Assertions,
+Hash-, ABI-, Ownership- und Cleanupbedingungen bleiben geschützt.
+
+Für die Fortsetzung wird ein gemeinsamer begrenzter Umfang vorgeschlagen:
+höchstens ein eigener Windows-Diagnoserun und, erst nach belegter Ursache,
+minimaler Korrektur, passenden Offlineprüfungen und unabhängigem Abschlussreview,
+höchstens ein weiterer eigener Abnahmerun. Beide Runs verwenden das vorhandene
+Prepared-Image mit vier vCPUs und acht GiB festem RAM und erhalten jeweils
+ihren gebundenen Cleanup. Der Diagnoseblock erhält höchstens die beiden
+genannten lesenden Abfragen und keine Analyzer-Aufrufe oder Provider-Vorprobe.
+Der Abnahmeblock bleibt bei höchstens fünf Analyzer-Aufrufen und einer
+Provider-Vorprobe. Ein unabhängiger Reviewer erhält höchstens zwei
+befundgebundene Prüfungen für Diagnoseeinstieg und belegte Korrektur.
+PR-CI und Main-Nachlauf werden nicht erweitert. Diese Fortsetzung ist noch
+nicht freigegeben; Imagebau, Downloads, externe Netzanbindung, Lab-Codeänderungen
+und fremde Ressourcen bleiben ausgeschlossen.
 
 ## Abgeschlossene Findings-Stabilisierung vom 20. Oktober 2026
 

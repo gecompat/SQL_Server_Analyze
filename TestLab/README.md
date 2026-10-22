@@ -187,8 +187,14 @@ und aktive Lease sind entfernt; das Parent-Image ist unverändert. Eine
 vorbereitete Korrektur entschärft ausschließlich die bekannte Kommentarzeile
 in privaten Installationseingaben. Quellhash und genau ein erwarteter Treffer
 schützen vor einer ungeprüften Übernahme veränderter Quellen. Unabhängiger
-Review und native Nachabnahme dieses neuen Standes
-benötigen eine zusätzliche begrenzte Freigabe.
+Review und native Nachabnahme dieses neuen Standes sind anschließend
+gesondert freigegeben und ausgeführt. Die Installation besteht mit allen
+194 Batches; der Providerbatch scheitert danach mit Guardfehler 54890.
+Der genaue Guard bleibt unbekannt, weil der Transport den Fehlerstate nicht
+zurückgibt. Ein statischer Implementierungsfehler ist nicht belegt.
+Eigene Datenbank, VM, Child-Disk und aktive Lease sind entfernt; das
+Parent-Image ist unverändert. Ein weiterer Diagnose- oder Abnahmerun benötigt
+eine neue begrenzte Freigabe. Die Providerabnahme bleibt unqualifiziert.
 Aktueller Umfang und offene Voraussetzungen stehen in den
 [Next Steps](../AI_Metadata/Internal_Documentation/Quality/Next_Steps.md#nachabnahme-mit-qualifizierter-lab-korrektur).
 
