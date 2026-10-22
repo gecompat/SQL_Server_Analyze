@@ -8,7 +8,7 @@
 Der Releaseumfang ist auf die Konsolidierung des aktuellen Produktstands,
 den Versionskatalog, ein commitgebundenes Produkt-ZIP mit fünf fertigen
 Installern und die vorhandene native Linux-Matrix begrenzt. Neue
-Fachfunktionen, Produktkorrekturen, Windows-SQL-Läufe und SSIS-Paketausführung
+Fachfunktionen, Änderungen an Diagnose-APIs, Windows-SQL-Läufe und SSIS-Paketausführung
 bleiben außerhalb dieses Auftrags. Die übrige autonome Verarbeitung bleibt
 pausiert.
 
@@ -18,12 +18,19 @@ Abnahme und Veröffentlichung. Der menschliche Lesepfad beginnt bei der
 die aktive Testauswahl bleibt in der
 [CI-Teststrategie](../../../Documentation/Quality/CI_Test_Strategy.md).
 
-Für diesen Schritt gelten höchstens 24 versionierte Dateien, ein PR, ein
+Die Releasevorbereitung ist über PR #407 als `09060a6d` integriert. Head- und
+Main-Gates bestehen; die erste native Matrix ist fehlgeschlagen. Der aktuelle
+Korrekturschritt behebt ausschließlich die versionswidrigen Backup-Testoracles
+für 2019/2022 und den von Test 198 an Folgetests vererbten NOWAIT-Zustand.
+Die ursprünglichen Fehlernachweise bleiben erhalten. Eine neue Matrix prüft
+den korrigierten Quellstand und dessen neu gebundenes Produkt-ZIP.
+
+Für diesen Korrekturschritt gelten höchstens zwölf versionierte Dateien, ein PR, ein
 Implementierer, ein unabhängiger Reviewer mit höchstens zwei Durchgängen und
 ein gebündelter Korrekturpass. Zwei lokale Prüfblöcke, höchstens zwei
 Head-Qualifikationen, ein Main-Nachlauf und genau eine native Matrix sind die
 Ausführungsgrenzen. Die native Matrix führt maximal einen 45-Minuten-Job je
-Engine aus. Nach sechs Stunden wird ein Kontrollpunkt erreicht; nach acht
+Engine aus. Nach drei Stunden wird ein Kontrollpunkt erreicht; nach vier
 Stunden Gesamtzeit beginnt keine neue Arbeit. Ein Abnahmefehler oder eine
 offene Datenschutzgrenze verhindert die Veröffentlichung.
 
