@@ -28,6 +28,25 @@ Verzeichnis, erzeugt dort die fünf vorhandenen Installerformate und ergänzt
 Quellen und Unterlagen behalten ihre Pfade; Git-Verwaltungsdaten und lokale,
 unversionierte Dateien werden nicht übernommen.
 
+Für das freigegebene Produktrelease 1.1.0 gilt eine gezielte Ausnahme zu
+[Abschnitt 8 des Datenschutzvertrags](../Architecture/Runtime_Data_and_Repository_Privacy.md#8-prüfvertrag-vor-commit-und-zip):
+Der ZIP-Root lautet `SQL_Server_Analyze-1.1.0`. Ausschließlich diese fünf
+generierten Dateien unter `Code/Install/generated` sind zusätzlich zulässig:
+
+- `Install_All.generated.sql`
+- `Deploy_All.generated.sql`
+- `Install_ExecutionPlanAnalysis.generated.sql`
+- `Install_SnapshotBaseline_Target.generated.sql`
+- `Install_SnapshotBaseline_Framework.generated.sql`
+
+Die Ausnahme setzt den vollständigen Vergleich der Quellbytes mit dem exakten
+Git-Commit, die unabhängige Rekonstruktion aller fünf Installer und deren
+strikten Bytevergleich voraus. Sämtliche Originalquellen bleiben der
+Datenschutzprüfung unterworfen; andere generierte Dateien bleiben verboten.
+Der normale CLI-Aufruf des Datenschutzvalidators behält seinen bisherigen
+ZIP-Vertrag. Der Releaseweg verwendet dafür ausschließlich den nachstehenden
+Paketverifier. Diese Ausnahme erweitert keine Daten- oder Laufzeitfreigabe.
+
 ```powershell
 ./Code/Install/Build-ReleasePackage.ps1 -RepositoryRoot . -Revision HEAD `
     -OutputDirectory 'C:/Temp/SQL_Server_Analyze_Release' -PythonExecutable python

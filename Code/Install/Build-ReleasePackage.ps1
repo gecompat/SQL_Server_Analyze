@@ -86,9 +86,15 @@ try {
     try {
         foreach ($file in (Get-ChildItem -LiteralPath $sourceRoot -Recurse -Force -File | Sort-Object FullName)) {
             $relative = [IO.Path]::GetRelativePath($sourceRoot, $file.FullName).Replace('\', '/')
-            $entry = [IO.Compression.ZipFileExtensions]::CreateEntryFromFile(
-                $zip, $file.FullName, "$rootName/$relative", [IO.Compression.CompressionLevel]::Optimal)
+            $entry = $zip.CreateEntry("$rootName/$relative", [IO.Compression.CompressionLevel]::Optimal)
             $entry.LastWriteTime = [DateTimeOffset]::new(2000, 1, 1, 0, 0, 0, [TimeSpan]::Zero)
+            $entryStream = $entry.Open()
+            try {
+                $sourceStream = [IO.File]::OpenRead($file.FullName)
+                try { $sourceStream.CopyTo($entryStream) }
+                finally { $sourceStream.Dispose() }
+            }
+            finally { $entryStream.Dispose() }
         }
     }
     finally { $zip.Dispose() }
