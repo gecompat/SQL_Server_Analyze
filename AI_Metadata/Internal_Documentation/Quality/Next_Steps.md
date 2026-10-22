@@ -1,9 +1,763 @@
 # Nächste Arbeitsschritte
 
-**Stand:** 20. Oktober 2026
+**Stand:** 22. Oktober 2026
 **Zweck:** aktuelle ausführbare Entwicklungswelle für `gecompat/SQL_Server_Analyze`
 
-## Aktuelle Findings-Stabilisierung vom 20. Oktober 2026
+## Aktive Welle: OPS-005-Provider-Negativfall
+
+Der vorherige Stream ist über [PR #399](https://github.com/gecompat/SQL_Server_Analyze/pull/399)
+als `7359cf48` integriert. Lokale Abnahme, unabhängige Reviews, Head-CI und
+Main-Nachlauf bestehen; der Merge-Tree entspricht dem geprüften Head.
+Main ist synchron und sauber. Der eigene Worktree ist wiederherstellbar
+archiviert, die beiden integrierten eigenen Arbeitszweige sind entfernt.
+
+Der aktuelle Windows-Providerfall ist am Analyze-Stand `7a578c85` mit Lab-Main
+`1095f5ee` nativ abgenommen. Alle fünf Analyzerfälle und eine Provider-Vorprobe
+bestehen einschließlich vollständigem eigenen Cleanup. Produktquellen,
+Vertrag 120, Linux-Adapter und Reifeflags bleiben unverändert. Der aktuelle
+Lieferstand ergänzt den begrenzten Windows-Runner und seine Eingaben;
+Head-CI, reguläre Integration und eigener Branch-Cleanup stehen noch aus.
+Die folgenden Diagnose- und Planungsstände erhalten frühere Fehlversuche
+und ihre damaligen Aussagegrenzen.
+
+Die nächste Reifewelle untersucht einen synthetischen nicht verfügbaren
+OLE-DB-Provider. Der lokale Entwurf `3eec56c4` ergänzt Vertrag 120 und seinen
+kanonischen Updateadapter um Providername, Kollisionsschutz, einen sicheren
+Default, native Vorprobe 7302/7403 und gebundene SOURCE_UNAVAILABLE-Evidenz
+mit identitätsgebundenem Erfolgs- und Fehlercleanup. Der unabhängige erste
+Review sowie Adapterprüfung mit acht Darstellungsfällen, Maturity-,
+Datenschutz-, Stil- und Commitprüfung bestehen.
+
+Die eine lokale SQL-Server-2025-Probe auf CL170 besteht Installation und
+Smoke. Vertrag 120 scheitert anschließend mit 54868, State 1, am neuen
+kombinierten Default-Inventaroracle, noch vor der Provider-Vorprobe. Die
+Default-JSON-Werte, Status, Partialität, ErrorOut und die tatsächliche neue
+Provider-Katalogzeile wurden nicht erfasst. Der Negativzustand ist nicht
+nachgewiesen; die genaue Soll-Ist-Abweichung bleibt UNKNOWN. Ein Provideralias
+oder eine Linux-Plattformursache werden nicht als festgestellt ausgewiesen.
+Die Einstiegsprobe bleibt FAILED_NOT_QUALIFIED. Der eigene Container ist
+identitätsgebunden entfernt; ein Providererfolg wird nicht behauptet.
+
+Der nicht qualifizierte Testentwurf bleibt in der lokalen Git-Historie und
+privat mit Quellbindung erhalten. Vertrag 120 und die generierten Adapter
+sind im aktuellen Lieferstand wieder bytegleich mit dem qualifizierten
+Main `7359cf48`. Produktprocedures, öffentliche Verträge und Reifeflags
+bleiben unverändert. Gegen Main verbleibt nur dieses Status- und Planungsdokument;
+ein neuer PR wurde nicht veröffentlicht.
+
+Der begrenzte Einstieg mit einem nativen Block und zwei befundgebundenen
+Prüfungen eines unabhängigen Reviewers ist ausgeschöpft. Beide Prüfungen
+sind abgeschlossen; die zweite bestätigt die Nichtqualifikation und den
+sicheren Folgezustand ohne weitere SQL-Ausführung.
+
+Der Benutzer hat anschließend genau einen weiteren lokalen Diagnoseblock
+und einen unabhängigen Review freigegeben. Dieser Diagnoseblock besteht
+Installation und die getrennte Vorprüfung von Engine 17 sowie Server-,
+Master- und TempDB-Collation auf SQL Server 2025 mit CL170. Nach dem
+synthetischen `sp_addlinkedserver` findet der Einstieg keine Katalogzeile
+unter dem angeforderten Namen und bricht mit `DIAG_CREATED_ROW_MISSING`
+ab. Der anschließende Cleanup-Guard meldet `DIAG_FIXTURE_IDENTITY_LOST`.
+Der Rückgabecode der Anlage und alternative neue Katalogzeilen fehlen.
+Der Defaultaufruf wurde durch diese zu frühe Vorprüfung nicht erreicht;
+54868 wurde in diesem Lauf nicht erneut ausgeführt. Die genaue Ursache
+bleibt UNKNOWN. SQL-Fixturecleanup ist nicht belegt; die identitätsgebundene
+Entfernung des eigenen Containers ist bestätigt.
+
+Der zusätzliche native Block ist verbraucht. Der korrigierte private
+Einstieg erfasst den Anlagerückgabecode, native Fehler und Katalogstände
+vor und nach der Anlage. Er führt auch bei fehlender Fixture genau einen
+Defaultaufruf ohne Remote-Opt-ins aus und erfasst dessen Outputs sowie die
+Oracleprädikate getrennt. Fehlende Fixturevoraussetzungen bleiben als solche
+ausgewiesen. SQL-Cleanup erfordert eine neue, eindeutig eigene Identität;
+unerwartete Zeilen werden nicht übernommen. Der zusätzliche unabhängige
+Review ist ohne offene materielle
+Befunde abgeschlossen. Seine beiden Treiberbefunde zur Git-Quellbindung und
+zu abschaltbaren Ownershipprüfungen sind behoben. Sieben ausschließlich
+simulierte Treiberfälle bestehen mit normalem und optimiertem Python; sie
+ersetzen keine native Prüfung.
+
+Der anschließend ausdrücklich freigegebene einzelne Diagnoseblock führt
+diesen unveränderten Einstieg auf SQL Server 2025, Version 17.0.5015.4,
+mit CL170 und der vorgeprüften case-sensitiven Server-/Master-/TempDB-Collation
+aus. Installation und Beobachtungserfassung bestehen. `sp_addlinkedserver`
+liefert `1` ohne Exception; vor und nach der Anlage existiert ausschließlich
+die lokale Katalogzeile mit `server_id=0`. Eine Providerfixture entsteht
+nicht. Genau ein Defaultaufruf liefert `AVAILABLE_EMPTY`, JSON `[]`,
+Partialität `0` und NULL für beide Fehleroutputs. Locktimeout, Sessionoptionen
+und Transaktionszahl bleiben erhalten. Sechs der dreizehn getrennten
+Prädikate scheitern an der Erwartung einer vorhandenen Providerzeile und
+des globalen Status `AVAILABLE`. Es erfolgt kein SQL-Drop ohne eigene
+Identität. Der abschließende Katalog entspricht dem Ausgangsstand; der
+eigene Container ist identitätsgebunden entfernt.
+
+Damit ist ein Fehlerpfad des Entwurfs belegt: Die nicht geprüfte
+Anlagerückgabe lässt das Defaultoracle trotz fehlender Fixture laufen.
+Die erfassten Werte würden dort 54868 auslösen. Der leere Default ist in
+diesem Lauf vertragsgemäß; ein Produktfehler ist damit nicht belegt.
+Die internen Gründe für Anlagerückgabe `1` und die nicht erfassten Werte des
+ursprünglichen Fehlversuchs bleiben UNKNOWN. Microsoft dokumentiert
+`1` als [Fehlerrückgabe der Anlage](https://learn.microsoft.com/en-us/sql/relational-databases/system-stored-procedures/sp-addlinkedserver-transact-sql?view=sql-server-ver17)
+und Nicht-SQL-Server-Datenquellen als [unter Linux nicht unterstützt](https://learn.microsoft.com/en-us/sql/linux/sql-server-linux-editions-and-components-2025?view=sql-server-ver17#unsupported-features-and-services).
+Diese Plattformgrenze ersetzt keinen Nachweis des internen Fehlerpfads.
+
+Ein privater Korrekturvorschlag prüft Anlagerückgabe und exakte Katalogidentität
+vor dem Defaultoracle und meldet fehlende Voraussetzungen gesondert.
+Die bisherigen Orakel und Cleanupbedingungen bleiben darin unverändert.
+Dieser Vorschlag besitzt noch keine native Abnahme und keinen eigenen
+unabhängigen Review; er ist nicht in Vertrag 120 oder seinen Adapter
+übernommen. Der zuletzt freigegebene Diagnoseblock ist abgeschlossen und
+verbraucht. Für die eigentliche Provider-Negativabnahme fehlt eine geeignete,
+gesondert freigegebene Fixture. Weitere unveränderte Linux-Wiederholungen
+werden daraus nicht abgeleitet. Zusätzliche Plattformen und fremde
+Labressourcen bleiben außerhalb des Umfangs; die Providervarianz bleibt
+unvollständig. Der Benutzer hat anschließend ausschließlich die konkrete
+Planung einer gesondert freizugebenden OPS-005-Fixture ausgewählt. Dieser
+Planungsschritt umfasst keine SQL-, Lab- oder weitere Reviewausführung.
+Nach Abschluss der Planung hat der Benutzer den nachstehend begrenzten
+Umsetzungsschritt gesondert freigegeben; dessen aktuelle Zulassung steht am
+Ende dieses Abschnitts.
+
+### Geplanter Windows-Fixturepfad für OPS-005
+
+Der vorgeschlagene nächste Umsetzungsschritt prüft den fehlenden Provider
+auf genau einer eigenen Windows-SQL-Server-2025-Instanz. Windows ist ein
+Kandidat für die Anlage der synthetischen Registrierung; deren tatsächlicher
+Erfolg bleibt bis zur Vorprüfung NOT_EXECUTED. Microsoft beschreibt
+[Providerfehler erst beim Zugriff](https://learn.microsoft.com/en-us/troubleshoot/sql/database-engine/linked-servers/ole-db-provider-errors).
+Daraus wird kein garantierter Anlageerfolg für die konkrete Fixture abgeleitet.
+Der Nachweis betrifft ausschließlich den Provider-Negativfall; erfolgreiche
+Verbindungen mit weiteren Providern bleiben offen.
+
+#### Plattform und Zuständigkeit
+
+Die lesend geprüfte Revision `c175c2cf` von `SQL_Server_Lab` besitzt bereits
+einen begrenzten [Hyper-V-Prepared-Image-Pfad](https://github.com/gecompat/SQL_Server_Lab/blob/c175c2cf858a969183d0cbf281416510eabd7503/Providers/HyperV/README.md)
+für Windows Server 2025 und SQL Server 2025 Enterprise Developer.
+Vorgeschlagen wird höchstens ein neuer Run mit einer frischen eigenen VM aus
+einem vorhandenen, hashgebundenen `SQL_PREPARED_SEALED`-Artifact. Das
+Ressourcenprofil soll auf vier vCPUs und acht GiB festen RAM begrenzt sein;
+der vorhandene Host muss zusätzlich seine vorgeschriebene Reserve und den
+Speicherplatz für die eigene differenzierende VHDX nachweisen. Ein passendes
+Artifact, seine gültige Lizenzlaufzeit, die Hostkapazität und ein konkreter
+Run sind derzeit nicht gebunden. Ihre Verfügbarkeit bleibt UNKNOWN.
+
+Die erteilte Umsetzungsfreigabe umfasst den neuen Run und dessen vollständigen
+eigenen Cleanup. Allgemeine Bereitstellung und Lifecycle bleiben
+bei `SQL_Server_Lab`. Imagebau, Downloads, Lizenzaktivierung mit zusätzlichem
+Netzzugang, neue Switches, Reconcile fremder Ressourcen und Änderungen am
+Lab-Repository gehören nicht zu diesem Vorschlag. Es werden keine
+zusätzlichen Daten-VHDX oder persistenten Data-Root-Laufwerke angelegt.
+Der Test verwendet einen vorhandenen isolierten oder ausschließlich
+hostgebundenen Netzpfad mit PowerShell Direct; NAT, LAN und externe NICs
+gehören nicht zum Umfang.
+Fehlt eine Voraussetzung, endet der Schritt vor der betroffenen Mutation.
+Eine dadurch erforderliche allgemeine Lab-Erweiterung benötigt den
+[gesonderten Änderungsvorschlag](../../CONTINUATION_GUIDE.md#lab-zentralisierung).
+
+Der fachliche Runner soll den vorhandenen
+[Windows-Skripttransport](https://github.com/gecompat/SQL_Server_Lab/blob/c175c2cf858a969183d0cbf281416510eabd7503/Public/Invoke-SqlServerLabScript.ps1)
+über `Invoke-SqlServerLabScript`, explizite RunId, InstanceId und StateRoot,
+`WindowsAuthentication` und `KeepConnection` verwenden. Die Ausführung bleibt
+im gebundenen Gast; ein SQL-Auth-Fallback oder eine automatische Wiederholung
+nach Versand ist ausgeschlossen. Vor späterer Ausführung werden die dann
+maßgeblichen Lab-Anweisungen und die verwendete Revision erneut geprüft.
+Der vorhandene OPS-005-Adapter verlangt `container-linux` und erhält durch
+diesen Plan keine Windows-Capability. Der neue manuelle Analyze-Vertrag wird
+getrennt von Vertrag 120 und dessen Linux-Adapter umgesetzt und vor seiner
+Anlage gemäß Artefaktvertrag eingeordnet.
+Produktprocedure, öffentliche Parameter und Statuscodes sowie Reifeflags
+bleiben unverändert. Ein neuer Produktfehler erweitert diesen Umfang nicht
+automatisch.
+
+#### Voraussetzungen vor der Providerprobe
+
+Vor SQL-Mutationen müssen RunId, ScopeId, InstanceId, VMId und die eigenen
+Ressourcenpfade eindeutig gebunden sein. Der Gast muss bereits SQL_READY_RUN,
+gültige Lizenzvoraussetzungen, Major-Version 17 sowie
+`SQL_Latin1_General_CP1_CS_AS` für Server, Master und TempDB bestätigen.
+ProductVersion, Edition und Plattform werden tatsächlich erfasst. Es dürfen
+keine fremden Benutzerdatenbanken und keine Linked Server vorhanden sein.
+Windows-Authentifizierung muss im isolierten Ziel die benötigten Rechte
+besitzen; eine fehlende Berechtigung führt zum Abbruch statt zu einer
+Rechteausweitung.
+Der vorhandene Windows-Aktivierungsintent muss ausdrücklich
+`Strategy=VerifyOnly` und `EgressPolicy=Denied` erhalten. Eine erforderliche
+Aktivierung blockiert damit; `NotRequested` ersetzt keinen Lizenznachweis.
+
+Der Runner erstellt genau eine eigene, markierte Frameworkdatenbank auf
+CL170 und installiert eine privat gebundene Standalonefassung aus den
+kanonischen Quellen. Der bestehende Standalonebuilder bleibt unverändert;
+SQLCMD-Includes werden nicht als Unterstützung des Windows-Transports
+vorausgesetzt. Quellhashes, installierte Definition und ABI des Analyzers
+werden vor der Probe gebunden.
+
+Ein pro Versuch neu erzeugter synthetischer Providername dient ausschließlich
+diesem Run. Der Zielname und `example-provider.invalid` bleiben synthetisch.
+Es werden weder ein Provider installiert noch Treiberregistrierungen verändert.
+`sp_addlinkedserver` muss Rückgabecode `0` liefern und genau eine neue
+`sys.servers`-Zeile mit passendem Namen, Provider, Produkt, Datenquelle und
+`is_linked=1` erzeugen. Server-ID, `modify_date`, vorheriger Katalogstand und
+Erstellungsintent werden privat erfasst.
+Fehlt diese Voraussetzung, bleibt die Probe nicht qualifiziert und erreicht
+keinen Consumer-Erfolgsstatus. Die ursprünglichen Fehlerbelege bleiben erhalten.
+
+#### Fachlicher Abnahmeblock
+
+Nach gültiger Anlage sind höchstens fünf gezielte Analyzer-Aufrufe und genau
+eine unabhängige native `sp_testlinkedserver`-Vorprobe vorgesehen. Alle
+Analyzer-Aufrufe verwenden JSON und NONE; Caller-Locktimeout, Sessionoptionen
+und Transaktionszahl werden je Aufruf vor und nachher verglichen.
+
+| Schritt | Schalter Connectivity/HighImpact | Erwartung |
+|---|---|---|
+| Sicherer Default | `0/0` | Genau die eigene Zeile, global `AVAILABLE`, Partialität `0`, Zeile `NOT_EXECUTED`/`AVAILABLE` und leere Fehleroutputs. |
+| Nur HighImpact bestätigt | `0/1` | Derselbe sichere Inventarvertrag ohne aktivierten Verbindungstest. |
+| Zweite Bestätigung fehlt | `1/0` | Global `AUTHORIZATION_REQUIRED`, Partialität `1`, Zeile `AUTHORIZATION_REQUIRED`/`AVAILABLE` und NULL als Fehlernummer. |
+| Native Vorprobe und doppeltes Opt-in | `1/1` nach der Vorprobe | Die Vorprobe muss 7302 oder 7403 liefern. Der Analyzer muss dieselbe eigene Zeile als `FAILED`/`SOURCE_UNAVAILABLE`, global `AVAILABLE_LIMITED` und partiell liefern; Fehlernummer und `EvidenceLimit` müssen zur erfassten nativen Fehlernummer passen. |
+| Default nach SQL-Cleanup | `0/0` | Keine Linked Server, global `AVAILABLE_EMPTY`, JSON `[]`, Partialität `0` und leere Fehleroutputs. |
+
+Unmittelbar vor Vorprobe und doppeltem Opt-in muss weiterhin ausschließlich
+die gebundene eigene Linked-Server-Zeile vorhanden sein. `@MaxZeilen` begrenzt
+die Verbindungstests nicht. Timeout, Berechtigungsfehler, eine erfolgreiche
+Vorprobe oder ein anderer Providerfehler erfüllen den Negativnachweis nicht.
+Ein unerwarteter Befund beendet den fachlichen Block ohne automatische
+Korrektur oder Wiederholung. Ein verlorener Transportreply bleibt UNKNOWN.
+
+#### Cleanup, Nachweise und vorgeschlagene Freigabegrenze
+
+Erfolgs- und Fehlerpfad dürfen nur die erneut gegen Server-ID, `modify_date`,
+Namen, Provider, Produkt, Datenquelle und Erstellungsintent bestätigte Fixture
+entfernen. Nach dem Drop werden Rückgabecode und Abwesenheit geprüft.
+Unerwartete oder veränderte Identitäten bleiben unberührt. Die eigene
+Frameworkdatenbank wird nur mit unverändertem Marker entfernt. Anschließend
+erfolgt der [Lab-Cleanup](https://github.com/gecompat/SQL_Server_Lab/blob/c175c2cf858a969183d0cbf281416510eabd7503/Public/Remove-SqlServerLab.ps1)
+mit expliziter RunId und StateRoot; Parent-Images und andere Runs bleiben
+erhalten. Teilfehler bleiben als Recoverybedarf erhalten. SQL-Fixturecleanup,
+Datenbankcleanup und Ressourcencleanup werden getrennt nachgewiesen.
+
+Rohlogs, Zugangsdaten, Run- und Hostidentitäten bleiben privat. Eine spätere
+Repositoryevidenz enthält nur bereinigte synthetische Aussagen mit Commit,
+Engine, Version, Plattform, CL, Umfang, Ergebnis und Cleanupgrenzen.
+
+Zur gesonderten Freigabe wird ein kohärenter Umsetzungsschritt mit einem
+Implementierer, einem unabhängigen Reviewer mit höchstens zwei
+befundgebundenen Prüfungen, höchstens einem neuen vorbereiteten Lab-Run und
+genau einem nativen Windows-Abnahmeblock vorgeschlagen. Der fachliche
+Gastaufruf erhält höchstens 120 Sekunden; Installation und Vorprüfung
+erhalten jeweils höchstens 300 Sekunden. Der vorhandene Lab-Lifecycle muss
+seine eigenen begrenzten Warte- und Recoveryverträge erfüllen. Jeder
+begonnene Versuch zählt auch bei früherem Abbruch; ältere Budgets bleiben
+unverändert verbraucht.
+
+Vor Lieferung sind betroffene Offlineprüfungen, die gezielte native Abnahme
+und aktuelle grüne Head-Gates erforderlich. Vorgeschlagen werden höchstens
+ein PR-CI-Versuch und ein Main-Nachlauf gemäß kanonischer Impact-Auswahl.
+Der reguläre Merge, Main-/Treevergleich, Synchronisierung und die Bereinigung
+ausschließlich eigener integrierter Branches und Worktrees schließen einen
+qualifizierten Slice ab.
+Ein Fehlschlag oder eine fehlende Plattformvoraussetzung erlaubt keine
+weiteren Versuche. Dieser Ausführungsumfang ist gesondert freigegeben;
+Änderungen am Lab-Repository bleiben ausdrücklich ausgeschlossen.
+
+#### Zulassung vor der Runanlage
+
+Die lesende Quellenprüfung an `SQL_Server_Lab` Revision `c175c2cf` findet
+eine fehlende Voraussetzung. Der öffentliche Prepared-Pfad reicht
+`instance.collation` nicht an die Unattended-Provisionierung weiter.
+`Complete-HyperVLabSqlImage` besitzt weder einen Collationparameter noch
+`/SQLCOLLATION` in seinen Setupargumenten. Auch SQL_READY_RUN bestätigt dort
+keine Collation. Das bestehende Manifestfeld allein gewährleistet daher
+nicht die freigegebene Server-/Master-/TempDB-Collation. Eine passende
+Eigenschaft eines vorhandenen Images ist bislang nicht belegt; weder eine
+konkrete CI-Collation noch generelle Ungeeignetheit aller Images wird behauptet.
+
+Der unabhängige Reviewer bestätigt diesen Befund in der ersten von höchstens
+zwei Prüfungen. Die getrennte vollständige SQL-Installationskette unterstützt
+Collation, ersetzt aber den freigegebenen Prepared-Pfad nicht. Externe
+Aktivierung lässt sich dagegen mit dem vorhandenen ausdrücklichen
+VerifyOnly-/Denied-Intent sperren; dafür ist keine Lab-Erweiterung erforderlich.
+Es wurden kein neuer Run, kein nativer SQL-Block und kein CI-Versuch begonnen.
+Die zweite Reviewprüfung sowie VM-, SQL-, PR- und Main-Budgets bleiben
+ungenutzt. Die fehlende Collationbindung wird nicht durch eine abgeschwächte
+Vorprüfung, private Setupaufrufe oder eine Neuinstallation umgangen.
+
+Der kleinste Änderungsvorschlag für `SQL_Server_Lab` ist gesondert
+freizugeben:
+
+| Entscheidungspunkt | Vorgeschlagener begrenzter Umfang |
+|---|---|
+| Fehlende Funktion | Die ausdrücklich ausgewählte Instanzcollation muss den öffentlichen Prepared-/Unattended-Pfad bis SQL `CompleteImage` erreichen und danach tatsächlich geprüft werden. |
+| Analyze-Anwendungsfall | Die eigene OPS-005-Providerfixture benötigt die bereits freigegebene case-sensitive Server-/Master-/TempDB-Kombination auf Windows SQL Server 2025. |
+| Zuständigkeit | SQL-Instanzbereitstellung ist allgemeine Lab-Funktion. Analyze behält Fixture, fachliche Assertions und deren Cleanup. |
+| Kleinste Schnittstelle | Das bestehende Collationintent wird in der Prepared-Kette erhalten und validiert an den von Microsoft dokumentierten CompleteImage-Parameter weitergegeben. Es entsteht kein zweiter Setupweg und keine nachträgliche Collationreparatur. |
+| Providerwirkung | Die Korrektur bleibt in der Windows-/Hyper-V-Prepared-Kette; Docker, Podman, fremde Runs und bestehende SQL-Instanzen werden nicht verändert. |
+| Kompatibilität und Prüfung | Ohne ausdrücklich gewählten Intent bleibt das bisherige Setupverhalten erhalten. Offlinegegenproben prüfen unveränderte Defaults, exakte Weitergabe, ungültige Werte, falsche VM-/Run-Bindung und fehlende Replayautorität. Der bereits reservierte eigene Windows-Run kann anschließend die tatsächlichen drei Collations und die Analyze-Fixture gemeinsam nachweisen; das ist noch NOT_EXECUTED. |
+| Freigabe und gemeinsames Budget | Eine zusätzliche Lab-Änderungsfreigabe fehlt. Vorgeschlagen wird ein zusammenhängender Schritt in beiden Repositories mit der noch freien zweiten Prüfung desselben Reviewers und den unveränderten, bisher ungenutzten VM-/SQL-Grenzen. Für das zusätzliche Repository wären genau ein weiterer PR-CI-Versuch und ein weiterer Main-Nachlauf nötig; frühere Budgets werden nicht zurückgesetzt. |
+
+Microsoft führt `/SQLCOLLATION` unter den
+[CompleteImage-Parametern](https://learn.microsoft.com/en-us/sql/database-engine/install-windows/install-sql-server-from-the-command-prompt?view=sql-server-ver17#complete-image-parameters).
+Die Quellkorrektur und ihr erforderlicher lokaler beziehungsweise nativer
+Nachweis müssen vor Veröffentlichung und regulärer Integration vollständig
+vorliegen. Bis zur gesonderten Entscheidung endet die Umsetzung vor der
+Runanlage; das Lab-Repository bleibt unverändert.
+
+#### Wiederaufnahme nach Integration der Lab-Korrektur
+
+Die Collationkorrektur ist über
+[Lab-PR #815](https://github.com/gecompat/SQL_Server_Lab/pull/815) unter
+`c56e3783` in `origin/main` integriert. Der Merge-Tree entspricht dem
+geprüften Head `8b0f4fd3`. Das ausgewählte
+[PR-Gate](https://github.com/gecompat/SQL_Server_Lab/actions/runs/39578182570)
+besteht auf diesem Head einschließlich der statischen Windows-/Ubuntuprüfungen
+und der vorgesehenen Provider-Smokes. Dieser Nachweis bestätigt keine drei
+tatsächlichen Windows-Collations; die eigene native Analyze-Abnahme bleibt
+erforderlich. Dieser Chat hat das Lab-Repository nicht verändert.
+
+Der Benutzer hat klargestellt, dass sein zwischenzeitlicher Stopp ausschließlich
+die Übernahme von Lab-PR #815 betraf. OPS-005 wird innerhalb der bestehenden
+Freigaben fortgesetzt. Geeignete SQL-2025-Prepared-Images sind vorhanden.
+Ihre Integrität und die konkreten Run-, Lizenz- und Hostvoraussetzungen werden
+vor beziehungsweise während der gebundenen Bereitstellung geprüft. Die
+OOBE-Injektion benötigt einen erhöhten Runner. Der Benutzer hat dessen
+Bereitstellung ausgewählt; ein fest gebundener privater Starter bestätigt
+inzwischen das Administratortoken und dieselbe Benutzeridentität.
+Eine neue VM oder ein nativer SQL-Block wurde noch nicht begonnen.
+
+Die Analyze-Vorbereitung ergänzt einen separaten manuellen Windows-Fall unter
+`TestLab/Scenarios/OPS-005/provider-unavailable.sql` und zwei zugehörige
+PowerShell-Einstiege. Der Vorbereiter führt kein SQL aus. Er teilt die aus
+171 kanonischen Quellen erzeugte Standalonefassung an vollständigen
+Quellgrenzen in zwei Eingaben innerhalb der Transportlimits. Die erste Eingabe
+enthält keine temporären Tabellen außerhalb gespeicherter Module; die beiden
+Seed-Temptabellen liegen einschließlich ihrer Verbraucher in der zweiten
+Eingabe. Datenbankkontext und erforderliche Sessionoptionen werden je Eingabe
+gesetzt. Die kanonischen Produktquellen und der bestehende Linux-Adapter
+bleiben unverändert.
+
+Der native Runner verlangt einen sauberen, ausdrücklich gebundenen Analyze-
+und integrierten Lab-Stand, private geprüfte Eingaben, den gleichen Hostbenutzer,
+ein vorhandenes Prepared-Image sowie einen bestehenden internen Switch.
+Eine persistierte Reservierung sperrt die erneute Runanlage. Die vorhandenen
+Grenzen für fünf Analyzer-Aufrufe, eine native Provider-Vorprobe, Laufzeiten
+und eigenen Cleanup bleiben erhalten. Ein verlorener Reply erzeugt keinen
+Replay und keinen Erfolgsnachweis. Zehn simulierte Runnerfälle und drei
+Offlinefälle des privaten erhöhten Starters bestehen. Der unabhängige
+Abschlussreview ist mit Prüfung 2/2 ohne offene Befunde abgeschlossen.
+PowerShell-, SQL-Parser- und simulierte Ablaufprüfungen sind Offlineprüfungen;
+native Abnahme, Analyze-PR-CI und Main-Nachlauf sind noch offen.
+
+Die erhöhte Vorprüfung des sauberen Analyze-Stands `1bde42da` scheitert vor
+Imagezulassung und Runanlage mit `OPS005_HOST_RUNTIME_BUSY`. Die globale
+Lab-Laufsperre ist auch in begrenzten lesenden Nachprüfungen belegt. Eine
+anschließende native Owner-Abfrage identifiziert einen PowerShellprozess
+mit der Elternkette `Runner.Worker.exe` und `Runner.Listener.exe` als Halter.
+Die Zuordnung zum laufenden
+[Podman-CI-Job von Lab-PR #816](https://github.com/gecompat/SQL_Server_Lab/actions/runs/39604195474/job/119236194763)
+wird aus dieser Prozesskette und den sekundengleich passenden Prozess- und
+Schrittstartzeiten abgeleitet. Die Abfrage öffnet die Sperre ausschließlich
+zum Lesen ihrer Owner-Metadaten; sie wartet nicht auf die Sperre und gibt
+sie nicht frei. Reale Prozesskennungen und Beobachtungsbelege bleiben privat.
+Eine eigene Runreservierung, VM, Datenbank und aktive
+Netzwerklease wurden nicht angelegt. Bis zu dieser Vorprüfungsgrenze lagen
+neue Runs, native Abnahmeblöcke, Analyzer-Aufrufe und Provider-Vorproben
+jeweils bei null. Beide unabhängigen Reviewprüfungen sind verbraucht;
+PR-CI und Main-Nachlauf bleiben reserviert.
+
+Die weitere Fortsetzung prüft die Lab-Laufsperre lesend. Nach einem kurzen
+freien Fenster zwischen CI-Jobs werden die privaten Eingaben aus dem sauberen
+Analyze-Commit `884c40a2` neu gebunden. Ein weiterer CI-Prozess hält die Sperre
+vorübergehend erneut; der anschließend freie eigene Worker erwirbt sie regulär.
+Der fehlgeschlagene Vorprüfungsbeleg bleibt erhalten; fremde Prozesse oder
+Ressourcen werden weder beendet noch verändert.
+
+#### Windows-Abbruch am Aktivierungsintent
+
+Der einzige freigegebene Windows-Run startet mit vier vCPUs und acht GiB
+festem RAM aus dem vorhandenen Prepared-Image. Parenthash und Schreibschutz,
+Hostkapazität, Quellenbindung und OOBE bestehen. Vor SQL Setup meldet die
+gebundene Gastprüfung jedoch `ACTIVATION_REQUIRED` mit `LicenseStatus = 2`.
+Der ausgewählte `VerifyOnly`-/`Denied`-Intent blockiert deshalb mit
+`WINDOWS_ACTIVATION_VERIFY_ONLY`. Die Inventareinstufung `EVALUATION_VALID`
+belegt keinen bereits aktivierten Child-Gast. Eine abgelaufene Evaluation
+oder ein Analyzerfehler ist damit nicht nachgewiesen. SQL-Readiness,
+Engine-Build, Compatibility Level, tatsächliche Collations und Providerfälle
+bleiben für diesen Run unbelegt.
+
+Die Ursache liegt im für diesen Workload zu streng ausgewählten
+Aktivierungsintent. Der bestehende
+[Lab-Vertrag](https://github.com/gecompat/SQL_Server_Lab/blob/c56e378382cf47ea8fe3b5a1cf520f46ce3be541/Documentation/HowTo/WINDOWS_ACTIVATION.md)
+erlaubt `NotRequested` mit `Denied`-Egress für einen konkreten Workload ohne
+Aktivierungsbedarf. Die lokale Linked-Server-Providerprüfung verwendet keine
+Windows-Aktivierungsfunktion. Der vorbereitete Analyze-Runner fordert deshalb
+keine Windows-Aktivierung mehr an und attestiert keinen aktiven Lizenzstatus.
+Die Inventarzulassung des vorhandenen Images sowie sämtliche SQL-,
+Collation-, Ownership- und Cleanupprüfungen bleiben erhalten. Das
+Lab-Repository wird nicht geändert.
+
+Zehn simulierte Runnerfälle bestehen mit dem korrigierten Intent. Ein reines
+Offline-Replay der vorhandenen Lab-Entscheidungsfunktion gegen den gespeicherten
+Gastbefund bestätigt zusätzlich die bisherige Blockierung und den neuen
+`WINDOWS_ACTIVATION_NOT_REQUESTED`-No-op ohne Netzwerkmutation. Das sind zwei
+Offlinefälle und kein weiterer Gast- oder SQL-Aufruf. Der korrigierte Intent
+besitzt noch keinen nativen Nachweis und keinen zusätzlichen unabhängigen Review.
+
+Der gebundene Fehlercleanup entfernt den eigenen Run einschließlich VM und
+Child-Disk. Es bleibt keine aktive eigene IPAM-Lease; Parenthash und
+Schreibschutz sind unverändert. Eine Frameworkdatenbank oder Providerfixture
+wurde nicht angelegt. Der aktuelle Verbrauch dieser Windows-Welle beträgt
+einen von einem freigegebenen Run, einen von einem nativen Abnahmeblock und
+zwei von zwei Reviewprüfungen. Analyzer-Aufrufe und Provider-Vorproben liegen
+bei null; diese Teilmengen erlauben keinen zweiten Abnahmeblock. PR-CI und
+Main-Nachlauf sind unverändert reserviert.
+
+Der Benutzer hat für die vorbereitete Intentkorrektur genau einen zusätzlichen
+unabhängigen Abschlussreview und höchstens einen weiteren eigenen Windows-Run
+mit einem nativen Abnahmeblock freigegeben. Der zusätzliche Umfang bleibt bei
+vier vCPUs, acht GiB festem RAM, vorhandenem Prepared-Image, höchstens fünf
+Analyzer-Aufrufen und einer Provider-Vorprobe. Die bestehenden Laufzeit-,
+Netzwerk- und Cleanupgrenzen bleiben erhalten. Der zusätzliche Review ist
+ohne offene Befunde abgeschlossen. Der danach begonnene Run ist im folgenden
+Abschnitt dokumentiert. Der ungenutzte PR-CI-Versuch und
+Main-Nachlauf einschließlich regulärer Integration nach grünen Gates und
+eigenem Cleanup bleiben reserviert. Alle bisherigen Fehlversuche und
+Reservierungen bleiben bestehen. Lab-Codeänderungen, Imagebau, Downloads
+und externe Netzanbindung bleiben ausgeschlossen.
+
+#### Zusatzrun endet an der Lab-Collation-Gastprobe
+
+Der zusätzliche Windows-Run bindet den sauberen Analyze-Stand `ef84b574`
+und Lab `c56e3783`. Der korrigierte `NotRequested`-/`Denied`-Intent passiert
+die bisherige Blockadestelle. OOBE, SQL CompleteImage, WMI und die
+Konfiguration des Hostzugriffs werden erreicht; der gespeicherte
+SQL-Completionstatus bleibt jedoch `COLLATION_PENDING`. Die anschließende
+Collationverifikation endet mit `HYPERV_SQL_COLLATION_QUERY_FAILED`.
+
+Das private native Transkript und ein gezielter Offlinevergleich belegen
+eine konkrete Parameterbindungsabweichung in Lab:
+[`Test-LabHyperVSqlCollationRuntimeEvidence`](https://github.com/gecompat/SQL_Server_Lab/blob/c56e378382cf47ea8fe3b5a1cf520f46ce3be541/Private/HyperVSqlCollation.ps1)
+übergibt `-StateRoot` an
+[`Invoke-HyperVPowerShellDirect`](https://github.com/gecompat/SQL_Server_Lab/blob/c56e378382cf47ea8fe3b5a1cf520f46ce3be541/Providers/HyperV/HyperVProvider.ps1).
+Die tatsächliche Transportsignatur besitzt diesen Parameter nicht. Ihr
+gesondertes `BuildStateRoot` gehört zur Build-Lane und ist kein belegter
+Ersatz für die Run-Lane. Der Fehler tritt vor dem Gastblock der
+Collationabfrage auf. Eine tatsächliche Collationabweichung oder ein
+Analyzerfehler ist damit nicht nachgewiesen.
+
+Zwei geschlossene Offlinefälle mit dem unveränderten produktiven ParamBlock
+bestätigen die Zurückweisung von `StateRoot` und die Bindung ohne diesen
+Parameter an einen ausschließlich geschlossenen Testbody. Der produktive
+Transportbody, Gastaufrufe und SQL werden dabei nicht ausgeführt. Diese
+Diagnose qualifiziert noch keinen Lab-Fix. Eine zusätzliche unentschiedene
+Beobachtung betrifft unterschiedliche gespeicherte IPAM- und spätere
+Hostzugriffsadressen. Weder eine Fremdbelegung noch die fachliche Ursache
+dieser Differenz ist belegt. Die Netz-/Leasebindung gehört deshalb ebenfalls
+in die getrennte Lab-Bewertung; eigene Netzkorrekturen erfolgen nicht.
+
+Der Fehlercleanup entfernt auch den zweiten eigenen Run einschließlich VM
+und Child-Disk. Die lesende Nachprüfung bestätigt den Zustand `REMOVED`,
+fehlende VM und Child-Disk sowie null aktive eigene Leases. Parenthash und
+Schreibschutz sind unverändert. Frameworkdatenbank, Analyzer-Aufrufe und
+Provider-Vorprobe werden nicht erreicht; die eigentliche Providerabnahme
+bleibt `NOT_EXECUTED`.
+
+Damit sind beide freigegebenen Windows-Runs und nativen Abnahmeblöcke sowie
+alle drei Reviewprüfungen verbraucht. Der eine PR-CI-Versuch und Main-Nachlauf
+bleiben ungenutzt reserviert. Alle bisherigen Reservierungen und Fehlbelege
+bleiben bestehen. Es gibt keinen PR und keine Integration dieses Slices.
+
+Zum damaligen Zwischenstand waren eine getrennte Lab-Prüfung der
+Parameterbindung und Netz-/Leasebeobachtung, eine gesonderte
+Implementierungsfreigabe und eine weitere begrenzte native Freigabe
+erforderlich. Diese Schritte wurden anschließend ausdrücklich beauftragt;
+die folgenden Nachweise ersetzen keine früheren Fehlversuche.
+
+#### Nachabnahme mit qualifizierter Lab-Korrektur
+
+Die getrennte Lab-Prüfung bestätigt die ungültige Parameterbindung und den
+Verlust der reservierten Gastadresse beim erneuten Auflösen des HostSQL-
+Netzplans. Die gezielte Lab-Korrektur erhält Root-, Run-, Scope-, VM- und
+Credentialbindungen sowie `NoRetry`, übernimmt die aktive reservierte
+Gastadresse und unterscheidet fehlende Collation-Evidence von vorhandenen
+abweichenden Werten. [Lab-PR #818](https://github.com/gecompat/SQL_Server_Lab/pull/818)
+ist nach unabhängiger Prüfung, erfolgreicher Windows-/Ubuntu-Statik und
+Hyper-V-Lifecycle-Smoke als `8b87d5b5` integriert. Getesteter Head und
+Mergecommit besitzen denselben Tree. Der Lifecycle-Smoke ist kein nativer
+SQL-Collationnachweis.
+
+Der danach separat freigegebene eigene Windows-Run verwendet Analyze
+`a8df379d`, das korrigierte Lab-Main und den unveränderten Runner. SQL
+CompleteImage endet mit `COMPLETE`; die gebundene Gastabfrage bestätigt
+`SQL_Latin1_General_CP1_CS_AS` für Server, `master` und `tempdb`, verfügbare
+Katalogcollation, SQL-Major-Version 17 und Defaultinstanz. Der gespeicherte
+Netzplan und die Verbindungsadresse entsprechen der eigenen Leaseadresse.
+Die Providerabnahme wird trotzdem nicht erreicht: Der erste Consumerbatch
+liefert `WINDOWS_SQL_SCRIPT_FAILED`, SQL-Fehler 206 und
+`FAILED_UNCONFIRMED`. Analyzer-Aufrufe und Provider-Vorprobe liegen bei null.
+Consumer-CL170 und vollständiger Engine-Build werden nicht bestätigt.
+
+Der Analyze-Vorbereiter übergibt den externen Operationsparameter direkt an
+`sp_addextendedproperty`. Der öffentliche Windows-Transport bindet Zeichenketten
+als `nvarchar(max)`. Der `sql_variant`-Parameter der Systemprocedure kann
+[diesen Typ nicht aufnehmen](https://learn.microsoft.com/en-us/sql/t-sql/data-types/sql-variant-transact-sql?view=sql-server-ver17).
+Diese Quellenabweichung erklärt den erfassten Fehler 206; der Transportbericht
+enthält keine zusätzliche native Statementzeile. Die vorbereitete Korrektur
+übernimmt den bereits geprüften GUID-Wert zunächst als `nvarchar(36)` und
+verwendet diese lokale Variable für den Ownershipmarker. Die beschreibende
+Aktivierungsvoraussetzung entspricht außerdem dem bereits verwendeten
+`NotRequested`-/`Denied`-Intent.
+
+Die erste Markerkorrektur besteht dreizehn gezielte Offlineprüfungen. Sie
+verwenden den tatsächlichen Lab-Parameterkonverter, dessen geschlossenen SqlClient-Parameterbindungsteil
+und den TSql170-Parser. Sie bestätigen den ursprünglichen MAX-Typ, weisen
+den alten direkten Übergang sowie MAX-, Verkürzungs- und Rückfallmutationen
+ab und prüfen den begrenzten Marker. Alle übrigen Vorbereitungsstatements,
+Guards, kanonischen Quellen sowie Installations-, Abnahme- und Cleanup-SQL-
+Eingaben bleiben in diesem ersten Stand bytegleich. Diese Prüfung führt
+weder Gast- noch SQL-Aufrufe aus und ersetzt keinen nativen Nachweis.
+
+Der zusätzlich freigegebene unabhängige Review findet eine abweichende
+Markerdarstellung: Die Speicherung verwendet den SQL-GUID-Roundtrip,
+der Cleanup vergleicht zunächst mit dem ursprünglichen .NET-Text. Unter
+CS_AS müssen Speicherung, Szenarioguard und Cleanup dieselbe Darstellung
+verwenden. Der befundgebunden korrigierte Cleanupvergleich verwendet deshalb
+ebenfalls `CONVERT(nvarchar(36),TRY_CONVERT(uniqueidentifier,@OperationId))`.
+Zweiundzwanzig ergänzte Offlineprüfungen bestehen einschließlich kleiner,
+großer und gemischter GUID-Hexschreibweise, gemeinsamer SQL-Kanonisierung
+und negativer Cleanup-Rückfälle. Installations- und Provider-SQL bleiben
+bytegleich; alle übrigen Cleanupstatements und Identitätsassertions bleiben
+erhalten. Der befundgebundene Abschlussreview besteht ohne offene materielle
+Befunde. Die anschließend freigegebene native Nachabnahme ist nachstehend
+gesondert dokumentiert.
+
+Der Datenbankstatus bleibt wegen des unbestätigten Batches
+`CREATION_UNCONFIRMED`; es erfolgt kein ungebundenes SQL-DROP. Der gebundene
+Run-Cleanup entfernt die eigene VM und Child-Disk. Eine lesende Nachprüfung
+bestätigt `REMOVED`, fehlende Ressourcen und keine aktive eigene Lease;
+Parenthash und Schreibschutz sind unverändert. Die zusätzliche native
+Freigabe ist verbraucht. Der Benutzer hat anschließend den zusätzlichen
+Review und einen weiteren eigenen gebundenen Windows-Run ausdrücklich
+freigegeben. Dieser Run beginnt erst nach erfolgreichem Abschlussreview;
+die früheren Fehlversuche und Reservierungen bleiben erhalten. Der
+reservierte PR-CI-Versuch und Main-Nachlauf bleiben ungenutzt; der Slice ist
+noch nicht veröffentlicht.
+
+#### Markerkorrektur bestätigt; Installation am Kommentar-GO blockiert
+
+Nachdem die Lab-Laufsperre frei ist, beginnt der zusätzlich freigegebene
+Windows-Run mit Analyze `108c2063` und dem qualifizierten Lab-Main
+`90cf416a`. Der zwischenzeitliche Lab-Commit ergänzt ausschließlich
+Dokumentation; die verwendeten Runtimequellen entsprechen Lab-PR #818.
+SQL CompleteImage, Server-, Master- und TempDB-Collation sowie die
+Lease-/Hostadressbindung bestehen. Die korrigierte Datenbankvorbereitung
+liefert `SUCCEEDED`, SQL Server `17.0.1000.7`, Enterprise Developer Edition,
+Datenbankcollation `SQL_Latin1_General_CP1_CS_AS` und CL170.
+
+Der erste Installationsteil scheitert nach zehn erfolgreich ausgeführten
+Batches mit `WINDOWS_SQL_SCRIPT_FAILED`, SQL-Fehler 113 und
+`FAILED_UNCONFIRMED`. Der unveränderte Windows-Transport trennt mit einem
+zeilenbezogenen GO-Ausdruck ohne SQL-Kommentarkontext. Die gespeicherte
+Eingabe enthält genau eine damit irrtümlich erkannte Trennstelle im
+Blockkommentar von `Code/01_Common/030_VW_AnalyseAccessPolicy.sql`.
+Transportbatch 11 enthält dadurch den geöffneten Kommentar ohne dessen
+Abschluss. Der TSql170-Tokenizer bestätigt die Kommentarzugehörigkeit der
+Trennstelle und reproduziert den fehlenden Kommentarabschluss offline.
+Damit ist die konkrete Quellen-/Transportabweichung belegt; der native
+Transportbericht enthält keine zusätzliche Statementzeile.
+
+Der gebundene SQL-Cleanup entfernt die markierte eigene Datenbank. Der
+Run-Cleanup entfernt VM und Child-Disk und gibt die eigene Lease frei;
+Parenthash und Schreibschutz bleiben unverändert. Analyzer-Aufrufe und
+Provider-Vorprobe liegen weiterhin bei null. Die eigentliche Providerabnahme
+bleibt `NOT_EXECUTED`; es gibt keinen neuen PR und keine Integration.
+Zu diesem Zwischenstand sind alle vier freigegebenen Windows-Runs und nativen
+Blöcke sowie die fünf freigegebenen Reviewprüfungen verbraucht. PR-CI und Main-Nachlauf bleiben
+ungenutzt reserviert. Frühere Fehlversuche und Reservierungen bleiben erhalten.
+
+Die vorbereitete Analyze-Korrektur behandelt ausschließlich diese bekannte
+Kommentarzeile in privaten Installationseingaben. Ein Hash des auf LF
+normalisierten kanonischen Quelltexts und genau ein erwarteter Kommentarabschluss
+binden das ergänzte Präfix `-- ` an den geprüften Stand. Abweichender
+Quelltext oder eine andere Trefferzahl führen vor der Runanlage zu
+`OPS005_POLICY_EXAMPLE_REVIEW_REQUIRED`. Ausführbare Tokens und tatsächliche
+Batchgrenzen bleiben erhalten. Kanonische Quellen, Lab-Code, Worker,
+Provideroracle und Cleanup werden nicht geändert. Ein zunächst untersuchter
+allgemeiner Lexer wurde wegen seines unverhältnismäßigen Aufbereitungsumfangs
+verworfen; seine abgebrochenen Offlineversuche bleiben privat erhalten.
+Der gezielte Stand besteht 21 Offlineprüfungen. Sie reproduzieren den alten
+Kommentarfehler, bestätigen identische ausführbare Tokens und echte
+Batchgrenzen und prüfen alle 194 erzeugten Transportbatches auf geschlossene
+lexikalische Bereiche. Gegen den vorherigen Stand kommen ausschließlich drei
+Kommentarbytes hinzu; der zweite Installationsteil, alle 171 kanonischen
+Quellbindungen, Datenbankvorbereitung, Cleanup und Provider-SQL bleiben
+unverändert. Negative Quelltext- und Trefferzahlmutationen werden abgewiesen.
+Diese Prüfung führt weder SQL noch Gastaufrufe aus.
+Der gezielte neue Stand benötigt einen unabhängigen Review und eine gesondert
+begrenzte native Nachabnahme; ein bisheriger Review deckt die neue
+Aufbereitung nicht ab.
+
+#### Installation bestätigt; Guardzustand 54890 unbekannt
+
+Der Benutzer gibt anschließend einen weiteren unabhängigen Reviewer mit
+höchstens zwei befundgebundenen Prüfungen sowie einen weiteren eigenen
+Windows-Run frei. Der erste Review besteht am sauberen Analyze-Stand
+`e47cdf3c` ohne offene materielle Befunde. Lab-Main `9be544f2` enthält
+gegenüber `90cf416a` ausschließlich TLS-UI- und Dokumentationsänderungen;
+die für OPS-005 verwendeten Runtimequellen sind identisch. Lab-PR #820
+besitzt grüne ausgewählte Head-Gates und denselben Head-/Merge-Tree;
+der Main-Nightlylauf besteht ebenfalls. Die Quellenkopie bleibt getrennt
+vom fremden Lab-Checkout.
+
+Der freigegebene Run bestätigt SQL Server `17.0.1000.7`, Enterprise Developer
+Edition, CL170, alle vorgeschriebenen Collations sowie Datenbankvorbereitung
+und Marker. Beide Installationsteile bestehen mit 153 und 41 Batches.
+Damit ist die gezielte Kommentar-GO-Korrektur nativ bestätigt. Der folgende
+Providerbatch scheitert jedoch mit `WINDOWS_SQL_SCRIPT_FAILED`,
+`FAILED_UNCONFIRMED`, Fehlernummer 54890 und null abgeschlossenen Batches.
+Der öffentliche Windows-Transport erfasst nur die Fehlernummer, keinen
+SQL-Fehlerstate und keine Fehlermeldung. Die gespeicherten Resultsets sind leer.
+
+54890 kommt in der tatsächlichen Eingabe ausschließlich in den sieben
+Guards vor der Fixtureanlage vor. Die States unterscheiden Operationswert,
+Datenbankmarker, native Voraussetzungen, Isolation, vorhandene Definition,
+Definitionshash und 13-Parameter-ABI. Welcher Guard nativ scheitert, bleibt
+UNKNOWN. Der erwartete Hash stimmt offline mit dem normalisierten tatsächlich
+eingereichten Definitionsbatch überein. Der unveränderte Lab-Konverter liefert
+VarBinary mit 32 Bytes; eine lokale Serialisierungssimulation erhält diese
+Bytes. Das ersetzt keine Beobachtung der gespeicherten Moduldefinition oder
+der tatsächlichen Parameter beim fehlgeschlagenen Aufruf. Der zweite
+befundgebundene Review findet keinen statisch beweisbaren Implementierungsfehler
+und bestätigt die fehlende State-Evidence auch im Operationsjournal.
+
+Der eigene SQL-Cleanup entfernt die markierte Datenbank. VM und Child-Disk
+sind entfernt, die eigene Lease ist freigegeben, Parenthash und Schreibschutz
+sind unverändert. Der letzte gespeicherte Bericht behält seine vorsorglichen
+Zähler `UNKNOWN_0_TO_5` und `UNKNOWN_0_TO_1`; sie werden nicht nachträglich
+als erfolgreiche Aufrufe umgedeutet. Eine Providerabnahme wird nicht belegt.
+Insgesamt sind fünf Windows-Runs und native Blöcke sowie sieben
+Reviewprüfungen verbraucht. Der reservierte PR-CI-Versuch und Main-Nachlauf
+bleiben ungenutzt. Der Stand wird weder veröffentlicht noch integriert.
+
+Der kleinste zusätzliche native Discriminator ist `ERROR_STATE()` zur
+Fehlernummer 54890. Ein gesondert gebundener, rein lesender Diagnosebatch
+soll ausschließlich die unveränderten sieben Guards innerhalb `TRY/CATCH`
+ausführen und genau eine begrenzte Ergebniszeile mit Fehlernummer und State
+zurückgeben. Er erzeugt keine Providerfixture und ruft keinen Analyzer auf.
+Höchstens eine zweite lesende Abfrage soll anschließend ausschließlich die
+für den ermittelten State erforderlichen Werte erfassen. Ein Diagnoseerfolg
+ist keine Providerabnahme; bei fehlendem oder nicht reproduzierbarem Befund
+bleibt die Ursache offen. Lab-Code und sämtliche bestehenden Assertions,
+Hash-, ABI-, Ownership- und Cleanupbedingungen bleiben geschützt.
+
+Für die Fortsetzung wird ein gemeinsamer begrenzter Umfang vorgeschlagen:
+höchstens ein eigener Windows-Diagnoserun und, erst nach belegter Ursache,
+minimaler Korrektur, passenden Offlineprüfungen und unabhängigem Abschlussreview,
+höchstens ein weiterer eigener Abnahmerun. Beide Runs verwenden das vorhandene
+Prepared-Image mit vier vCPUs und acht GiB festem RAM und erhalten jeweils
+ihren gebundenen Cleanup. Der Diagnoseblock erhält höchstens die beiden
+genannten lesenden Abfragen und keine Analyzer-Aufrufe oder Provider-Vorprobe.
+Der Abnahmeblock bleibt bei höchstens fünf Analyzer-Aufrufen und einer
+Provider-Vorprobe. Ein unabhängiger Reviewer erhält höchstens zwei
+befundgebundene Prüfungen für Diagnoseeinstieg und belegte Korrektur.
+PR-CI und Main-Nachlauf werden nicht erweitert. Der Benutzer hat diesen
+gemeinsamen Umfang ausdrücklich freigegeben. Imagebau, Downloads, externe Netzanbindung, Lab-Codeänderungen
+und fremde Ressourcen bleiben ausgeschlossen.
+
+Der vorbereitete Worker besitzt dafür den ausdrücklich gewählten Modus
+`DiagnosePrerequisites`. Die sieben Guards stammen unverändert aus dem
+gebundenen Providerfall; der zweite SQL-Einstieg verzweigt ausschließlich
+nach dem erfassten State. Beide Eingaben werden gehasht und vor Runanlage
+unabhängig regeneriert. Diagnose und Abnahme haben getrennte Ergebnisscopes.
+Eine erfasste Diagnose verlangt vollständigen Cleanup und wird niemals
+`PASSED`. Der reguläre Abnahmepfad behält seinen bisherigen Providerblock.
+
+29 ausschließlich simulierte Workerfälle bestehen. Sie umfassen den bisherigen
+Abnahmepfad, alle sieben Diagnosestates, nicht reproduzierte Fehler, ungültige
+Antworten, verlorene Replies sowie fehlerhaften Cleanup und Parentbindung.
+In sämtlichen Diagnosefällen bleiben Analyzer und Provider-Vorprobe bei null.
+20 zusätzliche Strukturprüfungen bestätigen die unveränderten Guards,
+syntaktisch gültige Diagnoseeingaben, ausschließlich lesende persistente
+Zugriffe, den begrenzten zweiten Aufruf und unveränderte bisherige SQL-Eingaben
+sowie kanonische Quellbindungen. Die kopierte ABI-Tabellenvariable bleibt lokal.
+Diese Offlineprüfungen erzeugen weder Lab-Runs noch Gast- oder SQL-Aufrufe.
+Der unabhängige erste Review besteht am Stand `695cc718` ohne offene
+wesentliche Befunde. Ein zunächst durch die Lab-Laufsperre blockierter
+Start erzeugt keinen Run. Der anschließend ausgeführte Diagnoserun erfasst
+mit genau zwei lesenden Abfragen Fehler 54890, State 5. Das Modul ist vorhanden,
+doch die Suche nach `CREATE OR ALTER PROCEDURE` liefert null. Der erwartete
+Hash wird mit 32 Bytes übertragen. Der Diagnoseblock führt keinen Analyzer
+und keine Provider-Vorprobe aus. Datenbank, VM und Child-Disk sind entfernt,
+die eigene Lease ist freigegeben und das Parent bleibt unverändert.
+
+Die vorhandene Moduldefinition beginnt wie der eingereichte Installationsbatch;
+ihre Länge ist um 14 Bytes kürzer. Dies passt zur Ersetzung von
+`CREATE OR ALTER PROCEDURE` durch `CREATE   PROCEDURE`, belegt aber noch nicht
+den vollständigen gespeicherten Deklarationstext. Belegt ist der falsche
+Erkennungsvertrag in Guard 5. Die vorbereitete TestLab-Korrektur akzeptiert
+zusätzlich ausschließlich diese eng begrenzte Deklarationsform für das exakt
+benannte Modul und rekonstruiert vor der Hashprüfung die kanonische Form.
+Der erwartete SHA-256-Hash, der vollständige nachfolgende Definitionstext,
+die 13-Parameter-ABI und alle übrigen Guards bleiben erhalten. Andere
+Deklarationsformen und Änderungen am Parameter- oder Prozedurtext erhalten
+keine Ausnahme. Produkt- und Lab-Code werden nicht geändert.
+
+26 gezielte Offlineprüfungen bestätigen den unveränderten erwarteten Hash,
+die Rekonstruktion beider eng begrenzten Formen und die Ablehnung veränderter
+Parameter, Prozedurtexte, Namen und zusätzlicher Anweisungen. Der bisherige
+Providerblock einschließlich Oracle und Cleanup sowie Worker und Preparer
+bleiben unverändert. Der Längenvergleich ist als Inferenz gekennzeichnet;
+die native Abnahme der Korrektur bleibt offen.
+
+Vor der letzten Abnahme waren sechs Windows-Runs und native Blöcke sowie acht
+Reviewprüfungen verbraucht. Der bedingte Abnahmerun bleibt bis zu passenden
+Offlineprüfungen und der zweiten unabhängigen Prüfung reserviert. Seine
+Ausführung muss die tatsächliche kanonische Definition einschließlich Hash
+bestätigen; ein Diagnoseergebnis ersetzt diesen Nachweis nicht. PR-CI und
+Main-Nachlauf bleiben ungenutzt.
+
+#### Windows-Providerabnahme vom 22. Oktober 2026 bestanden
+
+17 zusätzliche Struktur- und Bindungsprüfungen bestätigen den unveränderten
+Installer, Datenbankvorbereitung, Cleanup und alle 171 kanonischen Quellen.
+Der unabhängige Abschlussreview besteht am Korrekturstand `c7f00cdb` ohne
+offene wesentliche Befunde und bestätigt die bedingte Zulassung. Zwei
+Dokumentationsbefunde der statischen Gesamtsuite sind anschließend gezielt
+korrigiert: Die Lab-Freigabegrenze verweist auf die kanonischen
+Fortsetzungsregeln, Produktquellen sind als solche eingeordnet und das
+öffentliche TestLab-README enthält keinen internen Dokumentationsverweis.
+SQL, Worker, Preparer und sämtliche Ausführungseingaben bleiben dabei
+bytegleich mit dem geprüften Korrekturstand. Die betroffenen Nachprüfungen
+bestehen; die ursprünglichen Fehlbelege bleiben erhalten.
+
+Der freigegebene eigene Abnahmerun besteht am Stand `7a578c85` auf Windows
+mit SQL Server `17.0.1000.7`, Enterprise Developer Edition, CL170 und allen
+vorgeschriebenen Collations. Beide Installerteile bestehen mit zusammen
+194 Batches. Der Providerbatch besteht einschließlich ursprünglichem
+vollständigem Definitionshash und 13-Parameter-ABI. Genau fünf Analyzerfälle
+und eine native Provider-Vorprobe liefern die erwarteten Outputs; der
+nicht registrierte synthetische Provider meldet 7403. Locktimeout,
+Sessionoptionen und Transaktionszahl bleiben bei allen fünf Aufrufen erhalten.
+Providerfixture, markierte Datenbank, VM und Child-Disk sind entfernt,
+die eigene Lease ist freigegeben und der schreibgeschützte Parenthash ist
+unverändert. Der abschließende Workerbericht meldet `PASSED`.
+
+Damit sind sieben Windows-Runs und native Blöcke sowie neun Reviewprüfungen
+verbraucht. Weitere native OPS-005-Läufe und Reviews sind nicht freigegeben.
+Der reservierte PR-CI-Versuch und Main-Nachlauf bleiben für die Integration
+dieses qualifizierten Stands verfügbar. Der Windows-Provider-Negativfall
+ist kein vollständiger Provider-, Berechtigungs- oder Release-Nachweis.
+
+### Autorisierter Foundation-Folgeauftrag
+
+Nach qualifizierter Integration von OPS-005 in `origin/main` und eigenem
+Branch- und Worktree-Cleanup wird die dann aktuelle AI-Repository-Foundation
+autonom übernommen. Quelle und Version werden aktuell verifiziert;
+projektspezifische Verträge, semantische Prüfung, Bewertung des tatsächlichen
+Verarbeitungsaufwands und erforderlicher unabhängiger Review bleiben erhalten.
+Die Übernahme wird nach erfolgreichen Gates regulär integriert und bereinigt.
+Anschließend wird die bereits autorisierte autonome Entwicklung fortgesetzt.
+Dieser Folgeauftrag erneuert keine bestehenden OPS-005- oder Lab-Budgets.
+
+## Abgeschlossene Findings-Stabilisierung vom 20. Oktober 2026
 
 Der Benutzer beauftragt die autonome Ursachenanalyse, Korrektur, Prüfung und
 Bewertung bis zu einem stabilen Teststand. Der
@@ -41,12 +795,14 @@ Der Kandidat `236e2b99` besteht alle 74 statischen Prüfer und den unabhängigen
 Abschlussreview. Die kanonische lokale SQL-Server-2025-Abnahme auf CL170
 besteht Deployment, Full Gate mit allen neun Findings-Fällen, Callerzustände,
 Berechtigungen, Regex, Plan-Standalone sowie Snapshotlauf und Nebenläufigkeit.
-Der eigene Container ist entfernt. Ein neuer Head-CI-Stand und der separate
-Main-Nachlauf bleiben erforderlich. Frühere Grenzen und Fehlversuche werden
-nicht zurückgesetzt.
-[PR #399](https://github.com/gecompat/SQL_Server_Analyze/pull/399) bleibt bis
-zur erfolgreichen Abnahme offen. Die nächste OPS-005-Reifewelle ist lesend
-vorbereitet und beginnt nach dem qualifizierten Streamabschluss.
+Der eigene Container ist entfernt. Die
+[Head-CI](https://github.com/gecompat/SQL_Server_Analyze/actions/runs/39443291549)
+und der separate [Main-Nachlauf](https://github.com/gecompat/SQL_Server_Analyze/actions/runs/39444518793)
+bestehen. Die zusätzliche Vierfallprobe ist gemäß Workflow auf Pull Requests
+beschränkt und bleibt für Main NOT_APPLICABLE; ihr Head-Nachweis besteht.
+Frühere Grenzen und Fehlversuche werden nicht zurückgesetzt. PR #399 ist
+integriert; die anschließende OPS-005-Welle beginnt mit dem oben begrenzten
+Provider-Negativfall.
 
 ## Frühere Nichtqualifikation und integrierter OPS-005-Prüfschritt vom 20. Oktober 2026
 

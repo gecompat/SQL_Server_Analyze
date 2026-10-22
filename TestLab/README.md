@@ -135,6 +135,92 @@ Recoveryaufruf. Der Lauf vom 5. Oktober 2026 bestand auf SQL Server
 `17.0.4075.5` einschließlich Cleanup. Er belegt ausschließlich diese
 MSOLEDBSQL-Kombination und keinen weiteren Provider oder Remote-Workload.
 
+Der separate manuelle Windows-Providerfall verwendet
+`Prepare-Ops005UnavailableProvider.ps1` und
+`Invoke-Ops005UnavailableProviderScenario.ps1`. Der Vorbereiter erzeugt private
+SQL-Eingaben aus den kanonischen Quellen und führt kein SQL aus. Der Runner
+benötigt eine ausdrückliche Ausführung, einen sauberen gebundenen Quellstand,
+einen erhöhten Prozess desselben Hostbenutzers, ein vorhandenes SQL-2025-
+Prepared-Image und einen bestehenden internen Switch. Der eigene Run erhält
+vier vCPUs und acht GiB festen RAM. Der vorbereitete Aktivierungsintent
+`NotRequested` mit `Denied`-Egress entspricht dem lokalen SQL-Workload:
+Die Providerprüfung fordert keine Windows-Aktivierung an und attestiert
+keinen aktiven Windows-Lizenzzustand. Die Zulassung verlangt weiterhin ein
+gültiges vorhandenes Prepared-Image gemäß Lab-Inventar.
+Es werden keine Images gebaut oder heruntergeladen und keine externen
+Netzverbindungen eingerichtet.
+
+Die Abnahme bindet Provideranlage, Katalogidentität, fünf Analyzer-Aufrufe und
+eine native Provider-Vorprobe an dieselbe Operation. Native Fehler 7302 oder
+7403 müssen mit dem Analyzeroutput übereinstimmen. Eine Reservierungsdatei
+sperrt die erneute Runanlage; ein verlorener Reply erzeugt keinen Replay.
+SQL-Fixture, eigene markierte Datenbank, Run, aktive IPAM-Lease und unveränderter
+Parent werden getrennt geprüft. Der Fall gehört zum vorhandenen OPS-005-Umfang;
+er erweitert weder Vertrag 120 noch dessen Linux-Adapter. Seine native
+Providerabnahme war zunächst `NOT_EXECUTED`. Der erste Windows-Run scheitert
+vor SQL Setup mit dem zuvor gewählten `VerifyOnly`-Intent am tatsächlichen
+Gaststatus `ACTIVATION_REQUIRED`. Sein eigener Ressourcencleanup und die
+unveränderte Parentintegrität sind bestätigt. Der vorbereitete korrigierte
+Intent ist zusätzlich unabhängig geprüft. Der danach freigegebene Zusatzrun
+erreicht SQL CompleteImage und scheitert anschließend mit
+`HYPERV_SQL_COLLATION_QUERY_FAILED`: Die Lab-Gastprobe übergibt einen von der
+Transportsignatur nicht unterstützten `StateRoot`-Parameter. Auch dieser eigene
+Run ist bereinigt; die Providerabnahme bleibt `NOT_EXECUTED`.
+
+Nach Integration der gesondert geprüften Lab-Korrektur besteht der erneut
+freigegebene Windows-Run die tatsächliche Collationprüfung für Server,
+`master` und `tempdb`. Die reservierte Gastadresse bleibt im Netzplan und
+Verbindungsziel erhalten. Der erste Consumerbatch bricht jedoch mit
+SQL-Fehler 206 ab: Der als `nvarchar(max)` gebundene externe Operationswert
+wird direkt an den `sql_variant`-Parameter von `sp_addextendedproperty`
+übergeben. Der korrigierte Vorbereiter verwendet dafür eine lokale
+`nvarchar(36)`-Variable. Der unabhängige Review verlangt außerdem dieselbe
+SQL-GUID-Kanonisierung im Cleanupvergleich. Der entsprechend ergänzte Stand
+besteht zweiundzwanzig Offlineprüfungen; seine native Nachprüfung steht aus.
+Der eigene fehlgeschlagene Run ist bereinigt, das Parent-Image unverändert.
+Der Abschlussreview besteht. Der danach freigegebene Run bestätigt die
+Markerkorrektur auf SQL Server `17.0.1000.7` mit CL170, scheitert jedoch im
+ersten Installationsteil nach zehn Batches mit SQL-Fehler 113. Der
+Windows-Transport trennt eine GO-Zeile innerhalb eines Blockkommentars und
+erzeugt dadurch einen nicht geschlossenen Kommentar. Datenbank, eigener Run
+und aktive Lease sind entfernt; das Parent-Image ist unverändert. Eine
+vorbereitete Korrektur entschärft ausschließlich die bekannte Kommentarzeile
+in privaten Installationseingaben. Quellhash und genau ein erwarteter Treffer
+schützen vor einer ungeprüften Übernahme veränderter Quellen. Unabhängiger
+Review und native Nachabnahme dieses neuen Standes sind anschließend
+gesondert freigegeben und ausgeführt. Die Installation besteht mit allen
+194 Batches; der Providerbatch scheitert danach mit Guardfehler 54890.
+Der genaue Guard bleibt unbekannt, weil der Transport den Fehlerstate nicht
+zurückgibt. Ein statischer Implementierungsfehler ist nicht belegt.
+Eigene Datenbank, VM, Child-Disk und aktive Lease sind entfernt; das
+Parent-Image ist unverändert. Ein weiterer Diagnose- oder Abnahmerun benötigt
+eine neue begrenzte Freigabe. Die Providerabnahme bleibt unqualifiziert.
+
+Der anschließend freigegebene Modus `-DiagnosePrerequisites` verwendet einen
+eigenen Run mit derselben Installation und demselben Cleanup. Er führt die
+sieben unverändert übernommenen Guards innerhalb `TRY/CATCH` aus und erfasst
+deren Fehlernummer und State in einer begrenzten Zeile. Nur bei 54890 mit
+State 1 bis 7 folgt eine zweite lesende Abfrage der zugehörigen Werte.
+Provideranlage, Analyzer und Provider-Vorprobe werden in diesem Modus nicht
+ausgeführt. `DIAGNOSIS_CAPTURED` erfordert auch den vollständigen Cleanup;
+ein nicht reproduzierter Fehler bleibt `DIAGNOSIS_INCONCLUSIVE` und beendet
+den Worker ohne Qualifikation. Der reguläre Providerpfad bleibt unverändert.
+Der Modus benötigt eine eigene ausdrückliche Freigabe für die begrenzten
+nativen Leseaufrufe.
+
+Die nachfolgende Diagnose erfasst Guardstate 5: Das Modul existiert, aber das
+erwartete Deklarationsliteral fehlt im gespeicherten Text. Die gezielte
+Korrektur normalisiert zusätzlich ausschließlich `CREATE   PROCEDURE` für
+das exakt benannte Modul. Der ursprüngliche vollständige Definitionshash
+und die 13-Parameter-ABI bleiben zwingend. Die abschließende Windows-Abnahme
+vom 22. Oktober 2026 besteht auf SQL Server `17.0.1000.7` mit CL170 und den
+vorgeschriebenen Collations: 194 Installationsbatches, fünf Analyzerfälle,
+eine Provider-Vorprobe mit nativem Fehler 7403 sowie sämtliche Output- und
+Callerzustandsprüfungen bestehen. Fixture, eigene Datenbank, VM, Child-Disk
+und aktive Lease sind entfernt; das Parent-Image ist unverändert. Der
+Workerbericht meldet `PASSED`. Andere Provider- oder Berechtigungsprofile
+werden damit nicht qualifiziert.
+
 ## OPS-006 Datenbankportabilität
 
 Der Runner `Invoke-Ops006DatabasePortabilityScenario.ps1` installiert den
