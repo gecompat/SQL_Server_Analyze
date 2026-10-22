@@ -2953,8 +2953,8 @@ GO
 /*
 ===============================================================================
 Objekt       : monitor.FrameworkVersion
-Version      : 1.1.0-special.20
-Stand        : 2026-07-27
+Version      : 1.1.0
+Stand        : 2026-10-22
 Zweck        : Liefert eine kompakte Versionsinformation für das installierte
                Ad-hoc-Analysepaket. Die Tabelle bildet weder eine
                Installationshistorie noch ein Deployment-Framework ab.
@@ -2983,12 +2983,12 @@ END;
 GO
 
 UPDATE [monitor].[FrameworkVersion]
-SET [FrameworkVersion]='1.1.0-special.20',
-    [ReleaseDate]='20260727',
+SET [FrameworkVersion]='1.1.0',
+    [ReleaseDate]='20261022',
     [MinimumProductMajorVersion]=15,
     [ContractVersion]='1.24',
     [LastInstalledUtc]=SYSUTCDATETIME(),
-    [ReleaseNotes]=N'API 1.24: SQL25-005 ergänzt Query Store um capability-adaptive Replica-Rollen-, Runtime-, Wait- und Plan-Forcing-Evidenz.'
+    [ReleaseNotes]=N'Release 1.1.0 konsolidiert den Diagnosekern, SSIS-Legacy- und Lookup-/Cacheanalysen sowie die vorhandenen Installationswege. API 1.24 einschließlich SQL25-005 bleibt erhalten.'
 WHERE [FrameworkName]=N'SQLServerMonitoringFramework';
 
 IF @@ROWCOUNT=0
@@ -3000,9 +3000,9 @@ BEGIN
     )
     VALUES
     (
-        N'SQLServerMonitoringFramework','1.1.0-special.20','20260727',15,
+        N'SQLServerMonitoringFramework','1.1.0','20261022',15,
         '1.24',SYSUTCDATETIME(),
-        N'API 1.24: SQL25-005 ergänzt Query Store um capability-adaptive Replica-Rollen-, Runtime-, Wait- und Plan-Forcing-Evidenz.'
+        N'Release 1.1.0 konsolidiert den Diagnosekern, SSIS-Legacy- und Lookup-/Cacheanalysen sowie die vorhandenen Installationswege. API 1.24 einschließlich SQL25-005 bleibt erhalten.'
     );
 END;
 GO

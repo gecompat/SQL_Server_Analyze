@@ -9,9 +9,9 @@ commitbezogenen Laufzeitnachweis.
 
 | Merkmal | Stand |
 |---|---|
-| Frameworkversion im Installationskatalog | `1.1.0-special.20` |
+| Frameworkversion im Installationskatalog | `1.1.0` |
 | ContractVersion im Installationskatalog | `1.24` |
-| ReleaseDate im Installationskatalog | 27. Juli 2026 |
+| ReleaseDate im Installationskatalog | 22. Oktober 2026 |
 | Mindestversion | SQL Server 2019 |
 
 Der aktuelle Inventarvertrag umfasst 182 Objekte: 110 öffentliche Procedures, 8 Views, 28 Table-Valued Functions, 16 interne Procedures und 20 Tabellen.
@@ -22,6 +22,39 @@ Die [Paketgrenzen](../Reference/Scope_and_Limitations.md) unterscheiden
 Diagnose, Installation, lokale TABLE-Ausgabe und persistente Sammlung.
 
 Alle öffentlichen Procedures besitzen eine eigenständige Procedure-Seite. Alle unterstützenden Objekte besitzen einen Detailabschnitt in der Objektreferenz.
+
+## Release 1.1.0
+
+Version 1.1.0 konsolidiert den vorhandenen Diagnosekern, die SSIS-Katalog- und
+Legacy-Loganalysen einschließlich Lookup-/Cacheanalyse, die Fehler-1222-
+Diagnose der CI sowie die bisherigen Installations- und Deploymentwege.
+Die öffentliche Vertragsversion bleibt `1.24`. Diese Auslieferung fügt keine
+weitere Fachfunktion und keine neue unterstützte Plattform hinzu.
+
+Das Produktpaket heißt `SQL_Server_Analyze-1.1.0.zip`. Es enthält sämtliche
+versionierten Quellen und Unterlagen sowie fünf fertig erzeugte Installer
+unter `Code/Install/generated`. `RELEASE.json` nennt den exakten Commit,
+den Quellbaum und den Objektumfang. Die separate `.sha256`-Datei schützt die
+Zuordnung zum heruntergeladenen ZIP. Die
+[Installationsanleitung](../Reference/Installation.md) beschreibt die Auswahl
+des Hauptinstallers und die anschließende Prüfung.
+
+Der verbindliche Veröffentlichungs- und Abnahmestatus steht beim
+[GitHub-Release](https://github.com/gecompat/SQL_Server_Analyze/releases).
+Der Versionskatalog allein belegt keine bestandene Releaseabnahme. Vor der
+Veröffentlichung muss die native Linux-Matrix auf SQL Server 2019, 2022 und
+2025 vollständig bestanden sein. Der zugehörige Nachweis
+`release-evidence.json` bindet alle Ergebnisse an genau dieses ZIP und dessen
+Quellcommit. Historische CSV-Nachweise bleiben auf ihrem ursprünglichen Stand.
+
+Die Unterstützung ist an keinen bestimmten SQL-Server-Build oder CU gebunden.
+Die im Nachweis erfassten Buildkomponenten beschreiben ausschließlich die
+tatsächlich verwendeten Testumgebungen. Featureverfügbarkeit, Berechtigungen,
+Plattformgrenzen und die garantierte Collation bleiben maßgeblich. Die neue
+Linux-Abnahme erweitert keine Windows-, Featurepositiv- oder Lastgarantie.
+Modulspezifische Einschränkungen bleiben unter
+[Scope und Grenzen](../Reference/Scope_and_Limitations.md) und in den jeweiligen
+Procedure-Seiten sichtbar.
 
 ## Historischer Beschreibungsstand vom 24. August 2026
 

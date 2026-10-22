@@ -1,6 +1,9 @@
 # Installation in SQL Server Management Studio (SSMS)
 
-Diese Anleitung beschreibt die vollständige Erstinstallation und die anschließende Funktionsprüfung. Der empfohlene Weg erzeugt zunächst einen eigenständigen Installer und führt danach nur eine SQL-Datei in SSMS aus.
+Diese Anleitung beschreibt die Erstinstallation und die anschließende
+Funktionsprüfung. Das versionierte Produkt-ZIP enthält den eigenständigen
+Installer bereits. Bei einer Repositorykopie wird er zunächst lokal erzeugt;
+anschließend wird in beiden Fällen eine SQL-Datei in SSMS ausgeführt.
 
 Für Wiederholungen und Migrationen mit erhaltener Datenhistorie gilt die [Anleitung zum Gesamtdeployment](Deployment.md). Der dort beschriebene Builder erfordert zusätzlich Python 3.10 oder neuer und verwendet explizite Datenbankwerte sowie persistente Vorzustandskopien. Die nachstehenden bisherigen Installer behalten ihren Erstinstallationsablauf.
 
@@ -10,8 +13,9 @@ Benötigt werden:
 
 - SQL Server 2019 oder neuer;
 - SQL Server Management Studio (SSMS);
-- Windows PowerShell oder PowerShell 7 zum Erzeugen des eigenständigen Installers;
-- eine lokale Kopie dieses Repositorys;
+- eine entpackte Kopie des Produkt-ZIP oder dieses Repositorys;
+- PowerShell nur für einen lokalen Neubau des Installers; das Produkt-ZIP
+  benötigt für die normale Erstinstallation keinen Build;
 - für die einmalige Installation ausreichende DDL-Rechte in der Installationsdatenbank. Für die Erstinstallation ist die Datenbankrolle `db_owner` der einfachste verlässliche Weg;
 - Für die garantierte Kombination verwenden Server, `tempdb` und
   Installationsdatenbank `SQL_Latin1_General_CP1_CS_AS`. Abweichende
@@ -22,10 +26,25 @@ Das Framework vergibt keine Benutzer-, Datenbank- oder Serverberechtigungen und 
 
 ## 2. Repository herunterladen
 
-1. Auf der GitHub-Seite des Repositorys **Code** und danach **Download ZIP** wählen. Alternativ das Repository mit Git klonen.
-2. Die ZIP-Datei vollständig in ein lokales Verzeichnis entpacken, beispielsweise `C:\Tools\SQL_Server_Analyze`.
-3. Die Verzeichnisstruktur unverändert lassen. Der Build und der alternative SQLCMD-Installer verwenden relative Pfade.
-4. Lesen Sie vor der Verwendung die Datei `LICENSE.md`.
+1. Im Bereich [Releases](https://github.com/gecompat/SQL_Server_Analyze/releases)
+   die Produktdatei `SQL_Server_Analyze-1.1.0.zip` und deren `.sha256`-Datei
+   herunterladen. Die zusätzlichen automatisch erzeugten Quellarchive
+   enthalten keine vorbereiteten Installer.
+2. Vor dem Entpacken die SHA-256-Prüfsumme des ZIP mit dem Wert aus der
+   `.sha256`-Datei vergleichen. Beispielsweise liefert
+   `Get-FileHash -Algorithm SHA256 -LiteralPath ./SQL_Server_Analyze-1.1.0.zip`
+   den lokalen Wert. Bei einer Abweichung das Paket nicht ausführen und erneut
+   von der Release-Seite beziehen.
+3. Die ZIP-Datei vollständig entpacken, beispielsweise nach `C:\Tools\SQL_Server_Analyze`.
+4. Die Verzeichnisstruktur unverändert lassen. Der Build und der alternative SQLCMD-Installer verwenden relative Pfade.
+5. Lesen Sie vor der Verwendung die Datei `LICENSE.md`.
+
+Alternativ kann das Repository geklont oder über **Code > Download ZIP**
+bezogen werden. In diesem Fall ist Schritt 5 zur Erzeugung des Installers
+erforderlich. `RELEASE.json` im Produktpaket nennt Frameworkversion, Commit
+und Objektumfang. Die Release-Seite ordnet diesem unveränderten ZIP den
+Abnahmenachweis zu. Die dort genannten Testbuilds sind keine Voraussetzung
+für die Installation auf anderen Builds derselben unterstützten Hauptversion.
 
 ## 3. Zielinstanz und Collation kontrollieren
 
@@ -104,6 +123,11 @@ Erwartet werden `ONLINE`, `MULTI_USER`, `is_read_only = 0` und die Collation `SQ
 
 ## 5. Eigenständigen Installer erzeugen
 
+Bei Verwendung des Produkt-ZIP liegt
+`Code/Install/generated/Install_All.generated.sql` bereits vor. Fahren Sie
+direkt mit Schritt 6 fort. Die folgenden Schritte gelten für Repositorykopien
+und bewusst gewählte lokale Neubauten.
+
 Dieser Schritt benötigt keine SQL-Server-Verbindung und verändert den Server nicht.
 
 1. Öffnen Sie PowerShell.
@@ -166,7 +190,9 @@ JOIN [sys].[schemas] AS [s] WITH (NOLOCK)
 WHERE [s].[name] = N'monitor';
 ```
 
-Die Versionsabfrage muss genau eine Frameworkzeile liefern. Die Prozedurzahl muss größer als `0` sein.
+Die Versionsabfrage muss genau eine Frameworkzeile mit `FrameworkVersion=1.1.0`
+liefern. Die Prozedurzahl muss größer als `0` sein. Der anschließende Smoke-Test
+prüft den katalogisierten Kernbestand genauer.
 
 ## 9. Smoke-Test ausführen
 
@@ -429,13 +455,26 @@ konsistent vorbereitete Arbeitskopie der Einzeldateien.
 
 ## Upgrade
 
-1. Die gewünschte neue Repositoryversion separat herunterladen oder auschecken.
-2. Den eigenständigen Installer aus genau diesem Stand neu erzeugen.
-3. Setzen Sie den Datenbanknamen in der ersten Zeile.
-4. Führen Sie den gesamten Installer erneut aus.
-5. Wiederholen Sie die Versionsprüfung und den Smoke-Test.
+1. Das vollständige Produkt-ZIP der gewünschten Version separat herunterladen,
+   Prüfsumme kontrollieren und vollständig entpacken.
+2. `Code/Install/generated/Deploy_All.generated.sql` aus diesem Paket öffnen.
+3. Den Datenwert der Deklaration `@FrameworkDatabase` auf die vorhandene
+   Frameworkdatenbank setzen. Das ausgelieferte Deployment umfasst den Core;
+   ein zusätzlicher Snapshotkontext wird dabei nicht eingerichtet.
+4. Voraussetzungen und Erhaltungsvertrag des
+   [Gesamtdeployments](Deployment.md) prüfen und die vollständige Datei ausführen.
+5. Receipt und Abschluss gemäß diesem Vertrag kontrollieren; danach
+   Versionsprüfung und benötigte Smoke-Tests ausführen.
 
-Frameworkeigene Standardzeilen im Wait-Katalog werden aktualisiert; eigene Katalogzeilen bleiben erhalten. Vor produktiven Upgrades gelten die üblichen Sicherungs-, Change- und Rückfallprozesse der Umgebung.
+Das Produkt-ZIP enthält bereits den aus seinem Quellcommit erzeugten und
+abgenommenen Deploymentinstaller. Für diesen Downloadweg ist kein erneuter
+Build erforderlich. Die Buildanweisung im Deploymentleitfaden gilt für einen
+Quellcheckout oder einen eigens um Snapshot erweiterten Deploymentumfang.
+Der Erstinstaller `Install_All.generated.sql` besitzt keinen gemeinsamen
+Receipt- und Vorzustandsvertrag und ist deshalb nicht der Upgradeweg.
+Vor produktiven Upgrades gelten die Sicherungs-, Change- und Rückfallprozesse
+der Umgebung. Ein unklarer Abschluss muss vor einer Wiederholung anhand des
+Receipts geklärt werden.
 
 ## Häufige Fehler
 

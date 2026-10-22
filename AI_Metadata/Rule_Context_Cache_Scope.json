@@ -45,6 +45,7 @@
     "AI_Metadata/Internal_Documentation/Architecture/Long_Term_Development_Roadmap.md",
     "AI_Metadata/Internal_Documentation/Architecture/Runtime_Data_and_Repository_Privacy.md",
     "AI_Metadata/Internal_Documentation/Quality/Next_Steps.md",
+    "AI_Metadata/Internal_Documentation/Quality/Release_Gate_Runbook.md",
     "AI_Metadata/PROJECT_CONTEXT.md",
     "AI_Metadata/Rule_Context_Cache.md",
     "AI_Metadata/Rule_Context_Cache_Scope.json",
@@ -342,7 +343,12 @@
       ".ai/foundation/DOCUMENTATION_POLICY.md",
       "AGENTS.md",
       "AI_Metadata/PROJECT_CONTEXT.md",
+      "AI_Metadata/Internal_Documentation/Quality/Release_Gate_Runbook.md",
       "AI_Metadata/Rule_Context_Cache.md",
+      "Documentation/Quality/CI_Test_Strategy.md"
+    ],
+    "AI_Metadata/Internal_Documentation/Quality/Release_Gate_Runbook.md": [
+      "AGENTS.md",
       "Documentation/Quality/CI_Test_Strategy.md"
     ],
     "AI_Metadata/PROJECT_CONTEXT.md": [
@@ -414,6 +420,16 @@
     ]
   },
   "excluded_references": [
+    {
+      "source": "AI_Metadata/Internal_Documentation/Quality/Next_Steps.md",
+      "target": "Documentation/Reference/Installation.md",
+      "classification": "product-reference"
+    },
+    {
+      "source": "AI_Metadata/Internal_Documentation/Quality/Release_Gate_Runbook.md",
+      "target": ".github/workflows/release-native-matrix.yml",
+      "classification": "product-reference"
+    },
     {
       "source": "AI_Metadata/Internal_Documentation/Quality/Next_Steps.md",
       "target": "TestLab/README.md",

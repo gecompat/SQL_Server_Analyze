@@ -21,6 +21,14 @@ from typing import Iterable, Iterator
 
 BLOCK_SENTINEL = "REPOSITORY_" + "PRIVACY_BLOCK"
 EXPECTED_ZIP_ROOT = "SQL_Server_Analyze"
+RELEASE_INSTALLERS = {
+    "Code/Install/generated/" + name for name in (
+        "Install_All.generated.sql", "Deploy_All.generated.sql",
+        "Install_ExecutionPlanAnalysis.generated.sql",
+        "Install_SnapshotBaseline_Target.generated.sql",
+        "Install_SnapshotBaseline_Framework.generated.sql",
+    )
+}
 ALLOWLIST_HEADER = ("RuleCode", "Path", "MatchSha256", "ReasonCode")
 GENERIC_DATABASE_NAMES = {
     "DeineDatenbank",
@@ -223,9 +231,27 @@ def scan_repository(
 def scan_archive(
     archive_path: Path,
     allowlist: set[tuple[str, str, str]],
+    *,
+    verified_installers: dict[str, bytes] | None = None,
+    expected_root: str = EXPECTED_ZIP_ROOT,
 ) -> tuple[list[Finding], int]:
+    """Release callers must first verify all sources and regenerate these bytes.
+
+    The ordinary CLI retains its original archive contract. The release
+    verifier supplies independently reconstructed installers only after its
+    exact commit/source checks; original source paths retain their privacy
+    checks and path-scoped exceptions.
+    """
     findings: list[Finding] = []
     scanned_files = 0
+    proof = verified_installers or {}
+    if (verified_installers is not None and
+            (set(proof) != RELEASE_INSTALLERS or
+             any(not isinstance(value, bytes) for value in proof.values()) or
+             not re.fullmatch(r"SQL_Server_Analyze-\d+\.\d+\.\d+", expected_root))):
+        return [Finding("ZIP_INSTALLER_PROOF_INVALID", archive_path.name)], 0
+    if expected_root != EXPECTED_ZIP_ROOT and verified_installers is None:
+        return [Finding("ZIP_INSTALLER_PROOF_REQUIRED", archive_path.name)], 0
     try:
         archive = zipfile.ZipFile(archive_path, "r")
     except (OSError, zipfile.BadZipFile):
@@ -243,7 +269,7 @@ def scan_archive(
                 or pure_path.is_absolute()
                 or ".." in parts
                 or not parts
-                or parts[0] != EXPECTED_ZIP_ROOT
+                or parts[0] != expected_root
             ):
                 findings.append(Finding("ZIP_ROOT_INVALID", name or "<empty>"))
                 continue
@@ -254,20 +280,28 @@ def scan_archive(
             if ".git" in parts:
                 findings.append(Finding("GIT_METADATA_PRESENT", name))
                 continue
-            if name.lower().endswith(FORBIDDEN_ARCHIVE_SUFFIXES):
+            relative_path = PurePosixPath(*parts[1:]).as_posix()
+            if name.lower().endswith(FORBIDDEN_ARCHIVE_SUFFIXES) and relative_path not in proof:
                 findings.append(Finding("FORBIDDEN_ARTIFACT_FILE", name))
                 continue
             if info.is_dir():
                 continue
 
-            relative_path = PurePosixPath(*parts[1:]).as_posix()
             scanned_files += 1
             try:
                 data = archive.read(info)
             except (OSError, RuntimeError, zipfile.BadZipFile):
                 findings.append(Finding("ZIP_ENTRY_READ_FAILED", name))
                 continue
-            findings.extend(scan_bytes(data, relative_path, allowlist))
+            if relative_path in proof:
+                if data != proof[relative_path]:
+                    findings.append(Finding("ZIP_INSTALLER_PROOF_MISMATCH", name))
+                # Derived text inherits the already checked source origins.
+                # Non-waivable sentinels and private keys still fail directly.
+                findings.extend(item for item in scan_bytes(data, relative_path, allowlist)
+                                if item.rule_code in {"BLOCK_SENTINEL", "PRIVATE_KEY_MATERIAL"})
+            else:
+                findings.extend(scan_bytes(data, relative_path, allowlist))
 
     return findings, scanned_files
 
@@ -290,6 +324,11 @@ def run_self_test(fixtures_path: Path) -> list[Finding]:
         "ZIP_SAFE_ROOT": "PASS",
         "ZIP_BLOCK_SENTINEL": "BLOCK",
         "ZIP_INVALID_ROOT": "BLOCK",
+        "ZIP_RELEASE_VERIFIED_INSTALLERS": "PASS",
+        "ZIP_RELEASE_NO_PROOF": "BLOCK",
+        "ZIP_RELEASE_TAMPERED_INSTALLER": "BLOCK",
+        "ZIP_RELEASE_UNKNOWN_INSTALLER": "BLOCK",
+        "ZIP_RELEASE_BLOCK_SENTINEL": "BLOCK",
     }
     declared_cases = {
         item.get("caseId"): item.get("expectedStatus")
@@ -359,6 +398,30 @@ def run_self_test(fixtures_path: Path) -> list[Finding]:
         if not any(item.rule_code == "ZIP_ROOT_INVALID" for item in findings):
             failures.append(Finding("SELF_TEST_INVALID_ROOT_FAILED", "ZIP_INVALID_ROOT"))
 
+        release_root = EXPECTED_ZIP_ROOT + "-1.1.0"
+        proof = {name: b"USE [DeineDatenbank];\nGO\n" for name in RELEASE_INSTALLERS}
+        entries = {release_root+"/"+name: value for name, value in proof.items()}
+        release_zip = temp_root / "release.zip"
+        _write_zip(release_zip, entries)
+        findings, _ = scan_archive(release_zip, set(), verified_installers=proof, expected_root=release_root)
+        if findings:
+            failures.append(Finding("SELF_TEST_RELEASE_PROOF_FAILED", "ZIP_RELEASE_VERIFIED_INSTALLERS"))
+        findings, _ = scan_archive(release_zip, set(), expected_root=release_root)
+        if not findings:
+            failures.append(Finding("SELF_TEST_RELEASE_NO_PROOF_FAILED", "ZIP_RELEASE_NO_PROOF"))
+        name = sorted(proof)[0]
+        cases = (
+            ("ZIP_RELEASE_TAMPERED_INSTALLER", {**entries, release_root+"/"+name: b"changed\n"}, proof),
+            ("ZIP_RELEASE_UNKNOWN_INSTALLER", {**entries, release_root+"/other.generated.sql": b"synthetic\n"}, proof),
+            ("ZIP_RELEASE_BLOCK_SENTINEL", {**entries, release_root+"/"+name: BLOCK_SENTINEL.encode()},
+             {**proof, name: BLOCK_SENTINEL.encode()}),
+        )
+        for case_id, contents, reference in cases:
+            _write_zip(release_zip, contents)
+            findings, _ = scan_archive(release_zip, set(), verified_installers=reference, expected_root=release_root)
+            if not findings:
+                failures.append(Finding("SELF_TEST_RELEASE_NEGATIVE_FAILED", case_id))
+
     return failures
 
 
@@ -398,7 +461,7 @@ def main() -> int:
 
     if args.self_test:
         failures = run_self_test(fixtures_path.resolve())
-        return report(failures, "SELF_TEST", 5)
+        return report(failures, "SELF_TEST", 10)
 
     allowlist_path = args.allowlist_path or (
         repository_root / "Metadata/Quality/Repository_Privacy_Allowlist.csv"

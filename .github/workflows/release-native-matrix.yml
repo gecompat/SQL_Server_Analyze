@@ -54,8 +54,45 @@ jobs:
           esac
           echo "matrix=$matrix" >> "$GITHUB_OUTPUT"
 
+  package:
+    name: Build and validate immutable release ZIP
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    outputs:
+      sha256: ${{ steps.digest.outputs.sha256 }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+          show-progress: false
+      - name: Build release ZIP from the event commit
+        shell: pwsh
+        run: |
+          ./Code/Install/Build-ReleasePackage.ps1 -RepositoryRoot . `
+            -Revision $env:GITHUB_SHA -Version 1.1.0 `
+            -OutputDirectory "$env:RUNNER_TEMP/product" -PythonExecutable python3
+      - name: Validate canonical contents and repository privacy
+        run: |
+          python3 Code/Tests/Static/Validate_Release_Package.py --self-test
+          python3 Code/Tests/Static/Validate_Release_Package.py \
+            --repository-root . --expected-commit "$GITHUB_SHA" \
+            --archive "$RUNNER_TEMP/product/SQL_Server_Analyze-1.1.0.zip"
+      - id: digest
+        name: Bind the native jobs to the ZIP bytes
+        run: |
+          set -euo pipefail
+          digest=$(sha256sum "$RUNNER_TEMP/product/SQL_Server_Analyze-1.1.0.zip" | cut -d ' ' -f 1)
+          echo "sha256=$digest" >> "$GITHUB_OUTPUT"
+      - uses: actions/upload-artifact@v7
+        with:
+          name: release-product
+          path: ${{ runner.temp }}/product/*
+          if-no-files-found: error
+          retention-days: 1
+
   native:
-    needs: select
+    needs: [select, package]
     name: SQL Server ${{ matrix.version }} native release gate
     runs-on: ubuntu-24.04
     timeout-minutes: 45
@@ -71,13 +108,105 @@ jobs:
           persist-credentials: false
           show-progress: false
 
+      - uses: actions/download-artifact@v8
+        with:
+          name: release-product
+          path: ${{ runner.temp }}/product
+
       - name: Prepare isolated SQL files
         shell: bash
+        env:
+          EXPECTED_PACKAGE_SHA256: ${{ needs.package.outputs.sha256 }}
         run: |
           set -euo pipefail
-          cp -R Code "$RUNNER_TEMP/Code"
+          actual=$(sha256sum "$RUNNER_TEMP/product/SQL_Server_Analyze-1.1.0.zip" | cut -d ' ' -f 1)
+          test "$actual" = "$EXPECTED_PACKAGE_SHA256"
+          python3 - <<'PY'
+          import json, os, pathlib, zipfile
+          source = pathlib.Path(os.environ['RUNNER_TEMP'])
+          with zipfile.ZipFile(source/'product/SQL_Server_Analyze-1.1.0.zip') as package:
+              metadata = json.loads(package.read('SQL_Server_Analyze-1.1.0/RELEASE.json'))
+              assert metadata['source_commit'] == os.environ['GITHUB_SHA'], 'PACKAGE_COMMIT_MISMATCH'
+              package.extractall(source/'release')
+          PY
+          release_root="$RUNNER_TEMP/release/SQL_Server_Analyze-1.1.0"
+          cp -R "$release_root/Code" "$RUNNER_TEMP/Code"
           find "$RUNNER_TEMP/Code" -type f -name '*.sql' -print0 \
             | xargs -0 perl -pi -e 's/\[DeineDatenbank\]/[SQLServerAnalyzeTest]/g'
+          if [ '${{ matrix.version }}' = '2025' ]; then
+            python3 "$release_root/Code/Tests/Integration/Deployment_Prepare_Runtime.py" \
+              --output "$RUNNER_TEMP/Code/Install/generated/Deployment_Runtime.generated.sql"
+            python3 - <<'PY'
+          import os, pathlib
+          root = pathlib.Path(os.environ['RUNNER_TEMP'])/'Code'
+          for filename, names in (
+              ('193_ExecutionPlanAnalysis_Standalone_Runtime_Contract.sql', ['ExecutionPlanAnalysis']),
+              ('195_SnapshotBaseline_Runtime_Contract.sql', ['SnapshotBaseline_Target', 'SnapshotBaseline_Framework'])):
+              path = root/'Tests/Integration'/filename
+              text = path.read_text()
+              for name in names:
+                  text = text.replace(':r Install_'+name+'.sql', ':r generated/Install_'+name+'.generated.sql')
+              path.write_text(text)
+          deploy = root/'Install/generated/Deploy_All.generated.sql'
+          configured = deploy.read_text().replace("@FrameworkDatabase nvarchar(max)=N'DeineDatenbank'",
+              "@FrameworkDatabase nvarchar(max)=N'SQLServerAnalyzePackageDeployment'", 1)
+          assert configured != deploy.read_text(), 'DEPLOYMENT_TARGET_NOT_CONFIGURED'
+          (root/'Install/generated/Release_Deploy_Configured.sql').write_text(configured)
+          # Reuse the synthetic fixtures and comparison helpers against the
+          # actual shipped Core deployment, with all nine Core tables filled.
+          import re, sys
+          canonical = pathlib.Path(os.environ['RUNNER_TEMP'])/'release/SQL_Server_Analyze-1.1.0'
+          sys.path.insert(0, str(canonical/'Code/Tests/Integration'))
+          import Deployment_Prepare_Runtime as regression
+          g = regression.g
+          _, tables, digest = g.load_sources(canonical, False)
+          shipped_digest = re.search(r'Source SHA256: ([0-9a-f]{64});', deploy.read_text()).group(1)
+          assert digest == shipped_digest, 'PACKAGED_DEPLOYMENT_SOURCE_MISMATCH'
+          db = 'SQLServerAnalyzePackageDeployment'
+          fixture = (canonical/'Code/Tests/Integration/Deployment_Filled_Core.sql').read_text()
+          omitted = [line for line in fixture.splitlines() if line.startswith('UPDATE monitor.SnapshotTargetConfiguration ')]
+          assert len(omitted) == 1
+          fixture = fixture.replace(omitted[0], '').replace('USE [DeineDatenbank];', 'USE ['+db+'];', 1)
+          before = ['USE ['+db+'];\nGO\nCREATE SCHEMA qa AUTHORIZATION dbo;\nGO\n', fixture,
+                    'CREATE TABLE qa.BeforeMeta(TableName sysname,IdentityValue decimal(38,0) NULL);\n']
+          after = ['USE ['+db+'];\nGO\n',
+              "IF (SELECT COUNT(*) FROM sys.tables WHERE schema_id=SCHEMA_ID(N'monitor_deployment') AND name LIKE N'Run[_]%')<>2 THROW 53806,N'Packaged receipt count.',1;\n",
+              "DECLARE @Run sysname=(SELECT TOP(1) name FROM sys.tables WHERE schema_id=SCHEMA_ID(N'monitor_deployment') AND name LIKE N'Run[_]%' ORDER BY create_date DESC,object_id DESC),@Manifest nvarchar(max),@State sysname,@Compare nvarchar(max),@Read nvarchar(max);\n",
+              "SET @Read=N'SELECT @Result=Manifest FROM monitor_deployment.'+QUOTENAME(@Run)+N' WHERE DatabaseRole=''FRAMEWORK'' AND FormatVersion=1 AND SourceSha256=0x"+digest+"'; EXEC sys.sp_executesql @Read,N'@Result nvarchar(max) OUTPUT',@Manifest OUTPUT; IF @Manifest IS NULL THROW 53803,N'Packaged receipt binding.',1;\n"]
+          mutable = {'FrameworkVersion','WaitTypeCatalog','WaitTypeCatalogSource',
+                     'ToolBackgroundQueryPattern','PlanAnalysisProfile','PlanAnalysisRuleThreshold'}
+          assert len(tables) == 9 and mutable <= {table.name for table in tables}
+          for i, table in enumerate(tables, 1):
+              cols = regression.binary_columns(table)
+              before.append("IF NOT EXISTS(SELECT 1 FROM "+table.object_name+") THROW 53804,N'Unfilled packaged fixture.',1;\n")
+              before.append('SELECT * INTO qa.Before_'+str(i)+' FROM '+table.object_name+';\n')
+              before.append('INSERT qa.BeforeMeta VALUES('+g.lit(table.name)+',CONVERT(decimal(38,0),IDENT_CURRENT('+g.lit(table.object_name)+')));\n')
+              if table.name in mutable:
+                  after.append("SET @State=NULL; SELECT @State=archiveName FROM OPENJSON(@Manifest) WITH(originalSchema sysname,originalObject sysname,archiveName sysname) WHERE originalSchema="+g.lit(table.schema)+" AND originalObject="+g.lit(table.name)+"; IF @State IS NULL THROW 53812,N'Missing packaged archive.',1;\n")
+                  compare = regression.equal_rows('qa.Before_'+str(i),'monitor_deployment.[ARCHIVE]',cols,'packaged archive '+table.name)
+                  after.append('SET @Compare=REPLACE('+g.lit(compare)+",N'[ARCHIVE]',QUOTENAME(@State)); EXEC sys.sp_executesql @Compare;\n")
+              if 'IsFrameworkDefault' in table.columns:
+                  after.append(regression.equal_rows('(SELECT * FROM qa.Before_'+str(i)+' WHERE IsFrameworkDefault=0) b',
+                      '(SELECT * FROM '+table.object_name+' WHERE IsFrameworkDefault=0) a', cols,'packaged custom '+table.name))
+              elif table.name == 'FrameworkVersion':
+                  predicate = " WHERE FrameworkName<>N'SQLServerMonitoringFramework'"
+                  after.append(regression.equal_rows('(SELECT * FROM qa.Before_'+str(i)+predicate+') b',
+                      '(SELECT * FROM '+table.object_name+predicate+') a',cols,'packaged other framework'))
+              else:
+                  after.append(regression.equal_rows('qa.Before_'+str(i),table.object_name,cols,'packaged active '+table.name))
+              after.append('IF EXISTS(SELECT 1 FROM qa.BeforeMeta WHERE TableName='+g.lit(table.name)+' AND IdentityValue<>CONVERT(decimal(38,0),IDENT_CURRENT('+g.lit(table.object_name)+"))) THROW 53807,N'Packaged identity changed.',1;\n")
+          before.append("SELECT OBJECT_DEFINITION(OBJECT_ID(N'monitor.VW_AnalyseAccessPolicy')) AS Definition INTO qa.BeforePolicy;\n")
+          after.append("IF EXISTS(SELECT 1 FROM qa.BeforePolicy WHERE CONVERT(varbinary(max),Definition)<>CONVERT(varbinary(max),OBJECT_DEFINITION(OBJECT_ID(N'monitor.VW_AnalyseAccessPolicy')))) THROW 53808,N'Packaged policy changed.',1;\n")
+          for name in ('FrameworkInstallationHistory','FrameworkExpectedObject','FrameworkProcedureContract'):
+              before.append('SELECT * INTO qa.Before_'+name+' FROM monitor.'+name+';\n')
+              after.append(regression.equal_rows('qa.Before_'+name,'monitor.'+name,
+                  'CONVERT(varbinary(max),Id) AS Id,CONVERT(varbinary(max),Value) AS Value','packaged legacy '+name))
+          after.append("IF EXISTS(SELECT 1 FROM monitor.PlanAnalysisProfile WHERE ProfileCode='BALANCED' AND IsEnabled<>0) OR EXISTS(SELECT 1 FROM monitor.PlanAnalysisRuleThreshold WHERE ProfileCode='BALANCED' AND IsEnabled<>0) OR EXISTS(SELECT 1 FROM monitor.ToolBackgroundQueryPattern WHERE RuleCode='SSMS_OBJECT_EXPLORER' AND IsEnabled<>0) THROW 53809,N'Packaged activation overwritten.',1;\n")
+          after.append("IF EXISTS(SELECT 1 FROM monitor.WaitTypeCatalog WHERE WaitType=N'CURSOR') OR EXISTS(SELECT 1 FROM monitor.WaitTypeCatalogSource WHERE WaitType=N'CURSOR') THROW 53810,N'Packaged retired defaults remain.',1;\n")
+          for name, text in (('Before', before), ('After', after)):
+              (root/('Install/generated/Release_Deploy_'+name+'.sql')).write_text(''.join(text), encoding='utf-8')
+          PY
+          fi
 
       - name: Generate ephemeral SQL credential
         shell: bash
@@ -102,6 +231,8 @@ jobs:
           fi
           echo "SQLSERVER_IMAGE_DIGEST=$image_digest" >> "$GITHUB_ENV"
           docker run --name "$SQLSERVER_CONTAINER" \
+            --cidfile "$RUNNER_TEMP/native.cid" \
+            --label "release-owner=$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT-${{ matrix.version }}" \
             --detach \
             --env ACCEPT_EULA=Y \
             --env MSSQL_PID=Developer \
@@ -153,7 +284,7 @@ jobs:
             "CREATE DATABASE [SQLServerAnalyzeTest] COLLATE SQL_Latin1_General_CP1_CS_AS; ALTER DATABASE [SQLServerAnalyzeTest] SET COMPATIBILITY_LEVEL = $SQLSERVER_COMPATIBILITY;" \
             >/dev/null
 
-      - name: Install framework
+      - name: Install framework from the shipped standalone installer
         shell: bash
         env:
           SQLSERVER_CONTAINER: ${{ matrix.container }}
@@ -164,11 +295,36 @@ jobs:
             --env SQLCMDPASSWORD="$MSSQL_EPHEMERAL_CREDENTIAL" \
             --workdir /work/Code/Install \
             "$SQLSERVER_CONTAINER" \
-            "$SQLCMD_PATH" -S localhost -U sa -C -b -i Install_All.sql \
+            "$SQLCMD_PATH" -S localhost -U sa -C -b -i generated/Install_All.generated.sql \
             >"$install_log" 2>&1; then
             grep -B 2 -A 4 -E 'Msg [0-9]+|Sqlcmd: Error|Error:' "$install_log" | tail -n 120 || true
             exit 1
           fi
+
+      - name: Capture public engine metadata
+        shell: bash
+        env:
+          SQLSERVER_CONTAINER: ${{ matrix.container }}
+          EXPECTED_MAJOR: ${{ matrix.major }}
+          EXPECTED_COMPATIBILITY: ${{ matrix.compatibility }}
+        run: |
+          set -euo pipefail
+          docker exec --env SQLCMDPASSWORD="$MSSQL_EPHEMERAL_CREDENTIAL" "$SQLSERVER_CONTAINER" \
+            "$SQLCMD_PATH" -S localhost -U sa -C -b -h -1 -W -Q \
+            "SET NOCOUNT ON; SELECT CONCAT(CONVERT(varchar(30),SERVERPROPERTY(N'ProductVersion')),N'|',(SELECT compatibility_level FROM sys.databases WHERE name=N'SQLServerAnalyzeTest'),N'|',CONVERT(sysname,SERVERPROPERTY(N'Collation')),N'|',(SELECT host_platform FROM sys.dm_os_host_info));" \
+            > "$RUNNER_TEMP/engine.txt"
+          python3 - <<'PY'
+          import json, os, pathlib, re
+          root = pathlib.Path(os.environ['RUNNER_TEMP'])
+          fields = (root/'engine.txt').read_text().strip().split('|')
+          assert len(fields) == 4 and re.fullmatch(r'\d+\.\d+\.\d+\.\d+', fields[0]), 'ENGINE_METADATA_INVALID'
+          parts = [int(part) for part in fields[0].split('.')]
+          assert parts[0] == int(os.environ['EXPECTED_MAJOR']), 'ENGINE_MAJOR_MISMATCH'
+          assert fields[1] == os.environ['EXPECTED_COMPATIBILITY'], 'ENGINE_CL_MISMATCH'
+          assert fields[2:] == ['SQL_Latin1_General_CP1_CS_AS', 'Linux'], 'ENGINE_PLATFORM_MISMATCH'
+          (root/'engine.json').write_text(json.dumps(dict(product_version_components=parts,
+              compatibility_level=int(fields[1]), collation=fields[2], platform=fields[3])))
+          PY
 
       - name: Run full release gate
         shell: bash
@@ -186,6 +342,7 @@ jobs:
             grep -B 2 -A 4 -E 'Msg [0-9]+|Sqlcmd: Error|Error:' "$release_log" | tail -n 160 || true
             exit 1
           fi
+          grep -Eq '^AVAILABLE[[:space:]]+0[[:space:]]+34[[:space:]]' "$release_log"
 
       - name: Run native permission matrix
         shell: bash
@@ -217,6 +374,55 @@ jobs:
             "$SQLCMD_PATH" -S localhost -U sa -C -b \
             -i VersionAdaptive/120_SQL_Server_2025_Regex_Matrix.sql >/dev/null
 
+      - name: Run SQL Server 2025 packaged deployment and preservation contracts
+        if: matrix.regex == true
+        shell: bash
+        env:
+          SQLSERVER_CONTAINER: ${{ matrix.container }}
+        run: |
+          set -euo pipefail
+          execute() {
+            docker exec --env SQLCMDPASSWORD="$MSSQL_EPHEMERAL_CREDENTIAL" \
+              --workdir /work/Code/Install "$SQLSERVER_CONTAINER" \
+              "$SQLCMD_PATH" -S localhost -U sa -C -b -I "$@"
+          }
+          execute -Q "CREATE DATABASE [SQLServerAnalyzePackageDeployment] COLLATE SQL_Latin1_General_CP1_CS_AS;" >/dev/null
+          execute -i generated/Release_Deploy_Configured.sql >"$RUNNER_TEMP/deployment-1.log" 2>&1
+          execute -i generated/Release_Deploy_Before.sql >"$RUNNER_TEMP/deployment-fill.log" 2>&1
+          execute -i generated/Release_Deploy_Configured.sql >"$RUNNER_TEMP/deployment-2.log" 2>&1
+          execute -i generated/Release_Deploy_After.sql >"$RUNNER_TEMP/deployment-preservation.log" 2>&1
+          execute -Q "IF NOT EXISTS(SELECT 1 FROM SQLServerAnalyzePackageDeployment.monitor.FrameworkVersion WHERE FrameworkVersion='1.1.0') THROW 50002,N'PACKAGE_DEPLOYMENT_VERSION',1;" >/dev/null
+          execute -i generated/Deployment_Runtime.generated.sql >"$RUNNER_TEMP/deployment-regression.log" 2>&1
+
+      - name: Run SQL Server 2025 packaged Snapshot and concurrency contracts
+        if: matrix.regex == true
+        shell: bash
+        env:
+          SQLSERVER_CONTAINER: ${{ matrix.container }}
+        run: |
+          set -euo pipefail
+          execute() {
+            docker exec --env SQLCMDPASSWORD="$MSSQL_EPHEMERAL_CREDENTIAL" \
+              --workdir /work/Code/Install "$SQLSERVER_CONTAINER" \
+              "$SQLCMD_PATH" -S localhost -U sa -C -b "$@"
+          }
+          execute -Q "CREATE DATABASE [SQLServerAnalyzeSnapshotTest] COLLATE Latin1_General_100_CI_AS; ALTER DATABASE [SQLServerAnalyzeSnapshotTest] SET COMPATIBILITY_LEVEL=170;" >/dev/null
+          execute -i ../Tests/Integration/195_SnapshotBaseline_Runtime_Contract.sql >"$RUNNER_TEMP/snapshot.log" 2>&1
+          execute -i ../Tests/Integration/196_SnapshotBaseline_Concurrency_Holder.sql >"$RUNNER_TEMP/snapshot-holder.log" 2>&1 &
+          holder_pid=$!
+          ready=0
+          for attempt in $(seq 1 30); do
+            if execute -d SQLServerAnalyzeTest -Q "IF APPLOCK_TEST(N'public',N'SQL_Server_Analyze.SC023.CollectionCycle',N'Exclusive',N'Session')<>0 THROW 53740,N'SC023_LOCK_NOT_READY',1;" >/dev/null 2>&1; then
+              ready=1
+              break
+            fi
+            kill -0 "$holder_pid" 2>/dev/null || break
+            sleep 0.2
+          done
+          test "$ready" = 1
+          execute -i ../Tests/Integration/197_SnapshotBaseline_Concurrency_Assert.sql >"$RUNNER_TEMP/snapshot-concurrency.log" 2>&1
+          wait "$holder_pid"
+
       - name: Run SQL Server 2025 standalone plan analysis contract
         if: matrix.regex == true
         shell: bash
@@ -237,22 +443,96 @@ jobs:
             "$SQLCMD_PATH" -S localhost -U sa -C -b \
             -i ../Tests/Integration/193_ExecutionPlanAnalysis_Standalone_Runtime_Contract.sql >/dev/null
 
-      - name: Record execution scope
-        if: success()
-        shell: bash
-        run: |
-          {
-            echo '## Native release gate'
-            echo '- SQL Server version: ${{ matrix.version }}'
-            echo '- Compatibility level: ${{ matrix.compatibility }}'
-            echo "- Container image digest: $SQLSERVER_IMAGE_DIGEST"
-            echo '- Full release gate: passed'
-            echo '- Native permission matrix: passed'
-          } >> "$GITHUB_STEP_SUMMARY"
-
-      - name: Stop synthetic SQL Server
+      - name: Stop synthetic SQL Server and verify removal
         if: always()
         shell: bash
         env:
-          SQLSERVER_CONTAINER: ${{ matrix.container }}
-        run: docker rm --force "$SQLSERVER_CONTAINER" >/dev/null 2>&1 || true
+          RELEASE_OWNER: ${{ github.run_id }}-${{ github.run_attempt }}-${{ matrix.version }}
+        run: |
+          set -euo pipefail
+          if [ -f "$RUNNER_TEMP/native.cid" ]; then
+            cid=$(cat "$RUNNER_TEMP/native.cid")
+            [[ "$cid" =~ ^[0-9a-f]{64}$ ]]
+            owner=$(docker inspect --format '{{index .Config.Labels "release-owner"}}' "$cid")
+            test "$owner" = "$RELEASE_OWNER"
+            docker rm --force "$cid" >/dev/null
+            remaining=$(docker container ls -a --no-trunc --filter "id=$cid" --format '{{.ID}}')
+            test -z "$remaining"
+          fi
+
+      - name: Record verified execution scope
+        shell: bash
+        env:
+          TARGET_VERSION: ${{ matrix.version }}
+          PACKAGE_SHA256: ${{ needs.package.outputs.sha256 }}
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json, os, pathlib
+          root = pathlib.Path(os.environ['RUNNER_TEMP'])
+          metadata = json.loads((root/'engine.json').read_text())
+          metadata.update(schema_version=1, framework_version='1.1.0',
+              source_commit=os.environ['GITHUB_SHA'], package_sha256=os.environ['PACKAGE_SHA256'],
+              container_image_digest=os.environ['SQLSERVER_IMAGE_DIGEST'],
+              target=os.environ['TARGET_VERSION'], executed_suites=34,
+              release_gate='PASS', permission_matrix='PASS', cleanup='PASS',
+              extra_2025_contracts='PASS' if os.environ['TARGET_VERSION']=='2025' else 'NOT_APPLICABLE',
+              run_url='https://github.com/'+os.environ['GITHUB_REPOSITORY']+'/actions/runs/'+os.environ['GITHUB_RUN_ID'])
+          payload = json.dumps(metadata, indent=2)+'\n'
+          assert len(payload.encode()) < 65536
+          (root/('evidence-'+os.environ['TARGET_VERSION']+'.json')).write_text(payload)
+          with open(os.environ['GITHUB_STEP_SUMMARY'], 'a') as summary:
+              summary.write('Native release gate: PASS; target='+metadata['target']+'; cleanup=PASS\n')
+          PY
+      - uses: actions/upload-artifact@v7
+        with:
+          name: release-evidence-${{ matrix.version }}
+          path: ${{ runner.temp }}/evidence-${{ matrix.version }}.json
+          if-no-files-found: error
+          retention-days: 1
+
+  evidence:
+    name: Bind successful native evidence to the product ZIP
+    needs: [select, package, native]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          pattern: release-evidence-*
+          merge-multiple: true
+          path: ${{ runner.temp }}/evidence
+      - name: Validate complete requested target set
+        env:
+          MATRIX: ${{ needs.select.outputs.matrix }}
+          PACKAGE_SHA256: ${{ needs.package.outputs.sha256 }}
+        run: |
+          python3 - <<'PY'
+          import json, os, pathlib
+          root = pathlib.Path(os.environ['RUNNER_TEMP'])/'evidence'
+          expected = {item['version'] for item in json.loads(os.environ['MATRIX'])['include']}
+          rows = [json.loads(path.read_text()) for path in sorted(root.glob('evidence-*.json'))]
+          assert len(rows) == len(expected) and {row['target'] for row in rows} == expected
+          for row in rows:
+              major = {'2019':15, '2022':16, '2025':17}[row['target']]
+              assert row['schema_version'] == 1 and row['framework_version'] == '1.1.0'
+              assert row['source_commit'] == os.environ['GITHUB_SHA']
+              assert row['package_sha256'] == os.environ['PACKAGE_SHA256']
+              assert all(row[key] == 'PASS' for key in ('release_gate','permission_matrix','cleanup'))
+              assert row['executed_suites'] == 34
+              assert row['product_version_components'][0] == major and row['compatibility_level'] == major*10
+              assert row['platform'] == 'Linux' and row['collation'] == 'SQL_Latin1_General_CP1_CS_AS'
+              assert row['extra_2025_contracts'] == ('PASS' if major==17 else 'NOT_APPLICABLE')
+          result = dict(schema_version=1, framework_version='1.1.0', source_commit=os.environ['GITHUB_SHA'],
+              package_sha256=os.environ['PACKAGE_SHA256'], complete_release_matrix=expected=={'2019','2022','2025'},
+              targets=rows)
+          payload = json.dumps(result, indent=2)+'\n'
+          assert len(payload.encode()) < 262144
+          (root/'release-evidence.json').write_text(payload)
+          PY
+      - uses: actions/upload-artifact@v7
+        with:
+          name: release-qualification
+          path: ${{ runner.temp }}/evidence/release-evidence.json
+          if-no-files-found: error
+          retention-days: 1

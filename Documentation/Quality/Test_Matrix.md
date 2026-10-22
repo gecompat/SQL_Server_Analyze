@@ -50,6 +50,17 @@ Fixture-, Berechtigungs-, Quellen- und Lastgrenzen dürfen nicht durch die
 hier ausgewählten Beispiele ersetzt werden. Die historischen CSV-Nachweise
 und ihre bestehenden `EvidenceStatus`-Werte bleiben unverändert.
 
+## Releasequalifikation 1.1.0
+
+Die Releasequalifikation für Version 1.1.0 wird separat an den unveränderten
+Produkt-ZIP und seinen Quellcommit gebunden. Die
+[Releaseübersicht](Release_Notes.md#release-110) führt zum zugehörigen
+`release-evidence.json`. Ein Versionskatalogeintrag oder eine gewöhnliche
+grüne Main-CI ist kein Ersatz für die native Drei-Versionen-Abnahme. Die
+genauen Buildkomponenten sind Nachweisdaten und keine Build-Allowlist.
+Die nachfolgenden fokussierten Berichte und die historischen CSV-Zeilen
+behalten ihre ursprüngliche Versions- und Plattformbindung.
+
 ## Neue fokussierte ObjectInventory-Probe
 
 Die neue Probe vom 7. Oktober prüfte zwei frisch angelegte synthetische

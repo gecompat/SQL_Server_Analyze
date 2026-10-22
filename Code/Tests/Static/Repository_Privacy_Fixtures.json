@@ -20,6 +20,26 @@
     {
       "caseId": "ZIP_INVALID_ROOT",
       "expectedStatus": "BLOCK"
+    },
+    {
+      "caseId": "ZIP_RELEASE_VERIFIED_INSTALLERS",
+      "expectedStatus": "PASS"
+    },
+    {
+      "caseId": "ZIP_RELEASE_NO_PROOF",
+      "expectedStatus": "BLOCK"
+    },
+    {
+      "caseId": "ZIP_RELEASE_TAMPERED_INSTALLER",
+      "expectedStatus": "BLOCK"
+    },
+    {
+      "caseId": "ZIP_RELEASE_UNKNOWN_INSTALLER",
+      "expectedStatus": "BLOCK"
+    },
+    {
+      "caseId": "ZIP_RELEASE_BLOCK_SENTINEL",
+      "expectedStatus": "BLOCK"
     }
   ]
 }
