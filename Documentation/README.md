@@ -128,6 +128,7 @@ Die maschinenlesbaren Verträge liegen unter `Metadata/Inventory` und `Metadata/
 - [Verbindlicher Schreibstil für Dokumentation](Quality/Documentation_Writing_Style.md)
 - [Bestandsprüfung des Dokumentationsstils](Quality/Documentation_Style_Review.md)
 - [Nachweisübersicht und historische Testmatrix](Quality/Test_Matrix.md)
+- [Historische Linked-Server-Nachweise bis 22. Oktober 2026](Quality/OPS005_Linked_Server_Evidence_2026-10-22.md)
 - [CI-Impact-Auswahl](Quality/CI_Impact_Selection.md)
 - [Performance- und Risikobewertung](Quality/Performance_and_Risk_Assessment.md)
 - [Bekannte Einschränkungen](Quality/Known_Issues.md)
