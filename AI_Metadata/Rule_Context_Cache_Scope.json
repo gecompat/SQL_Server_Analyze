@@ -390,6 +390,16 @@
   "excluded_references": [
     {
       "source": "AI_Metadata/Internal_Documentation/Quality/Next_Steps.md",
+      "target": "Code/01_Common/030_VW_AnalyseAccessPolicy.sql",
+      "classification": "product-reference"
+    },
+    {
+      "source": "AI_Metadata/Internal_Documentation/Quality/Next_Steps.md",
+      "target": "TestLab/Scenarios/OPS-005/provider-unavailable.sql",
+      "classification": "product-reference"
+    },
+    {
+      "source": "AI_Metadata/Internal_Documentation/Quality/Next_Steps.md",
       "target": "Documentation/Architecture/WI0004_Segment_Overlap_Public_Specification.md",
       "classification": "product-reference"
     },

@@ -205,8 +205,8 @@ Provideranlage, Analyzer und Provider-Vorprobe werden in diesem Modus nicht
 ausgeführt. `DIAGNOSIS_CAPTURED` erfordert auch den vollständigen Cleanup;
 ein nicht reproduzierter Fehler bleibt `DIAGNOSIS_INCONCLUSIVE` und beendet
 den Worker ohne Qualifikation. Der reguläre Providerpfad bleibt unverändert.
-Aktueller Umfang und offene Voraussetzungen stehen in den
-[Next Steps](../AI_Metadata/Internal_Documentation/Quality/Next_Steps.md#nachabnahme-mit-qualifizierter-lab-korrektur).
+Der Modus benötigt eine eigene ausdrückliche Freigabe für die begrenzten
+nativen Leseaufrufe.
 
 ## OPS-006 Datenbankportabilität
 

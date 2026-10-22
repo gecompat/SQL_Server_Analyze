@@ -143,7 +143,7 @@ hostgebundenen Netzpfad mit PowerShell Direct; NAT, LAN und externe NICs
 gehören nicht zum Umfang.
 Fehlt eine Voraussetzung, endet der Schritt vor der betroffenen Mutation.
 Eine dadurch erforderliche allgemeine Lab-Erweiterung benötigt den
-[gesonderten Änderungsvorschlag](../../../Documentation/Architecture/SQL_Server_Lab_Example_Integration_Plan.md#3-freigabegrenze-für-änderungen-an-sql_server_lab).
+[gesonderten Änderungsvorschlag](../../CONTINUATION_GUIDE.md#lab-zentralisierung).
 
 Der fachliche Runner soll den vorhandenen
 [Windows-Skripttransport](https://github.com/gecompat/SQL_Server_Lab/blob/c175c2cf858a969183d0cbf281416510eabd7503/Public/Invoke-SqlServerLabScript.ps1)
