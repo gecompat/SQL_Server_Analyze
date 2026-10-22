@@ -121,7 +121,7 @@ Das Framework erstellt keine Datenbank, vergibt keine Benutzer- oder Serverrecht
 - [Autorisierungsstatus](Reference/Authorization_Status_and_Access_Reasons.md)
 - [Autorisierungsbeispiele](Reference/Authorization_Policy_Examples.md)
 
-Die maschinenlesbaren Verträge liegen unter `Metadata/Inventory` und `Metadata/Quality`. `Objects.csv` ist die technische Bestandsquelle; der Analysis Catalog bildet die fachliche Navigation darüber ab.
+Die maschinenlesbaren Verträge liegen unter `Metadata/Inventory` und `Metadata/Quality`. `Objects.csv` ist die technische Bestandsquelle; der Analysis Catalog bildet die fachliche Navigation darüber ab. Der [Metadaten-Einstieg](../Metadata/README.md) erklärt die Ablagen, maßgeblichen Quellen und Prüfwege einschließlich der Artefaktregistry.
 
 ## Qualität und unterstützte Nachweise
 
