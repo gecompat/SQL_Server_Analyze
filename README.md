@@ -85,6 +85,23 @@ bestandener Teiltest ist keine Freigabe aller Procedures dieser Kombination.
 
 ## Schnellstart
 
+### Versioniertes Releasepaket
+
+Im Bereich [Releases](https://github.com/gecompat/SQL_Server_Analyze/releases)
+werden versionierte Produktpakete veröffentlicht. Wählen Sie die Datei
+`SQL_Server_Analyze-1.1.0.zip`; die automatisch angebotenen Quellarchive
+enthalten keine fertig erzeugten Installer. Das Produktpaket enthält Quellen,
+Dokumentation, Metadaten und fünf vorbereitete Installer unter
+`Code/Install/generated`. Für die Erstinstallation in SSMS kann
+`Install_All.generated.sql` unmittelbar verwendet werden. Ein lokaler Build
+ist dafür nicht erforderlich. Die [Installationsanleitung](./Documentation/Reference/Installation.md)
+führt von der Prüfsumme bis zur abschließenden Versions- und Funktionsprüfung.
+
+SQL Server 2019, 2022 und 2025 werden nach den dokumentierten Plattform-,
+Feature- und Berechtigungsgrenzen unterstützt. Die Freigabe ist an keinen
+bestimmten Build oder CU gebunden. Tatsächlich getestete Builds sind im
+Release-Nachweis dokumentiert; das ist keine Build-Allowlist.
+
 ### Empfohlen für SSMS: eigenständigen Installer erzeugen
 
 ```powershell

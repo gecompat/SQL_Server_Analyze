@@ -238,6 +238,18 @@
       "locator": "AI_Metadata/Internal_Documentation/Quality/WI0009_Local_Metadata_Runtime_Evidence_2026-10-14.md#ausstehende-positive-feature-abnahme",
       "registration_basis_blob": "08b0fb3ff87a8238cebec25a4e6416e1548f2ada",
       "acceptance_criteria": "Eigene gebundene externe Quelle; positive native Datenquellen-, Dateiformat-, Tabellen-, Schema- und Spaltenreferenzen; kein fremder Endpunkt; Native Capture, Caller- und Own-Cleanup-Nachweis."
+    },
+    "REL-0001": {
+      "artifact_uid": "urn:uuid:01a16314-f5f4-779e-9945-f41427bc0e65",
+      "kind": "release",
+      "title": "SQL Server Analyze 1.1.0",
+      "registration_state": "REGISTERED",
+      "status": "PREPARED_NOT_QUALIFIED",
+      "aliases": [],
+      "relations": [],
+      "locator": "Documentation/Quality/Release_Notes.md#release-110",
+      "registration_basis_blob": "8703a436f9544d57d66ebc00a4edab73cd7fdaad",
+      "acceptance_criteria": "Ein unverändertes commitgebundenes Produkt-ZIP mit sämtlichen kanonischen Quellen und fünf fertigen Installern; unabhängiger Review, aktuelle PR-/Main-Gates, native Linux-Abnahme auf SQL Server 2019/2022/2025 und bestätigter eigener Cleanup. Veröffentlichung und endgültiger Nachweis werden erst am geprüften GitHub-Release gebunden; keine Bindung an einen bestimmten Build oder CU."
     }
   }
 }

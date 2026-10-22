@@ -1,5 +1,13 @@
 # Installation
 
+Das versionierte Produkt-ZIP enthält bereits fünf Installer unter `generated`.
+Für die Erstinstallation verwenden Sie `Install_All.generated.sql`;
+für Migration und Vorzustandserhaltung `Deploy_All.generated.sql` nach der
+[Deploymentanleitung](../../Documentation/Reference/Deployment.md). Die
+Execution-Plan-Analyse und die beiden Snapshot-/Baseline-Kontexte bleiben
+getrennte Installationswege. Ein lokaler Neubau ist bei Verwendung dieses
+ZIP nicht erforderlich.
+
 Für ein wiederholbares Gesamtdeployment einschließlich Migration und Vorzustandserhaltung erzeugt `Build-DeploymentInstaller.ps1` die Datei `generated/Deploy_All.generated.sql`. Mit `-IncludeSnapshotBaseline` werden beide expliziten Datenbankkontexte in denselben Lauf aufgenommen. Voraussetzungen, Datenbankwerte, Receipt und Fehlerbehandlung beschreibt die [Deploymentanleitung](../../Documentation/Reference/Deployment.md).
 
 Für eine vollständige Schritt-für-Schritt-Installation in SSMS siehe
@@ -45,3 +53,25 @@ Für eine Installation ohne SQLCMD-Modus erzeugt
   Frameworkdatenbank nach Anpassung von `[DeineDatenbank]`.
 
 Die Trennung der Datenbankkontexte bleibt auch im Standalone-Weg erhalten.
+
+## Releasepaket erzeugen
+
+Maintainer erzeugen das Paket mit `Build-ReleasePackage.ps1`. Der Builder
+exportiert ausschließlich den ausgewählten Git-Commit, führt die vorhandenen
+vier Installerbuilder gegen diese Quellen aus und ergänzt `RELEASE.json`.
+Versionierte Dokumentations- und Steuerungsunterlagen bleiben unter ihren
+bisherigen Pfaden enthalten, damit Verweise auflösbar bleiben. Lokale,
+unversionierte Dateien und Git-Verwaltungsdaten werden nicht übernommen.
+
+```powershell
+./Code/Install/Build-ReleasePackage.ps1 -RepositoryRoot . -Revision HEAD `
+    -OutputDirectory 'C:/Temp/SQL_Server_Analyze_Release' -PythonExecutable python
+```
+
+Der Aufruf erfordert Git, PowerShell 7 und Python 3.10 oder neuer. Er verbindet
+sich nicht mit SQL Server. Vorhandene gleichnamige Ausgabedateien werden
+abgelehnt. Die ZIP-Prüfung vergleicht alle Quellen mit dem ausgewählten Commit
+und die fertigen Installer bytegenau mit einer erneuten kanonischen Erzeugung
+im festen Format UTF-8 ohne BOM mit LF-Zeilenenden. Die
+[Releaseübersicht](../../Documentation/Quality/Release_Notes.md#release-110)
+beschreibt Paket, Nachweis und Veröffentlichungsstatus.

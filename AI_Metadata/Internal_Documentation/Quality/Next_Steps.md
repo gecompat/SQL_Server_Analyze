@@ -3,7 +3,44 @@
 **Stand:** 22. Oktober 2026
 **Zweck:** aktuelle ausführbare Entwicklungswelle für `gecompat/SQL_Server_Analyze`
 
-## Aktive Welle: OPS-005-Lesepfad und Nachweishistorie
+## Aktive Welle: Release 1.1.0
+
+Der Releaseumfang ist auf die Konsolidierung des aktuellen Produktstands,
+den Versionskatalog, ein commitgebundenes Produkt-ZIP mit fünf fertigen
+Installern und die vorhandene native Linux-Matrix begrenzt. Neue
+Fachfunktionen, Produktkorrekturen, Windows-SQL-Läufe und SSIS-Paketausführung
+bleiben außerhalb dieses Auftrags. Die übrige autonome Verarbeitung bleibt
+pausiert.
+
+Der [Releaseablauf](Release_Gate_Runbook.md) beschreibt Paketbau, Prüfung,
+Abnahme und Veröffentlichung. Der menschliche Lesepfad beginnt bei der
+[Installationsanleitung](../../../Documentation/Reference/Installation.md);
+die aktive Testauswahl bleibt in der
+[CI-Teststrategie](../../../Documentation/Quality/CI_Test_Strategy.md).
+
+Für diesen Schritt gelten höchstens 24 versionierte Dateien, ein PR, ein
+Implementierer, ein unabhängiger Reviewer mit höchstens zwei Durchgängen und
+ein gebündelter Korrekturpass. Zwei lokale Prüfblöcke, höchstens zwei
+Head-Qualifikationen, ein Main-Nachlauf und genau eine native Matrix sind die
+Ausführungsgrenzen. Die native Matrix führt maximal einen 45-Minuten-Job je
+Engine aus. Nach sechs Stunden wird ein Kontrollpunkt erreicht; nach acht
+Stunden Gesamtzeit beginnt keine neue Arbeit. Ein Abnahmefehler oder eine
+offene Datenschutzgrenze verhindert die Veröffentlichung.
+
+Version und Datum werden vor der Abnahme eingefroren. Tag und Release müssen
+auf den getesteten Main-Commit zeigen; das veröffentlichte ZIP bleibt
+bytegleich zum abgenommenen Paket. Ein Produktversionswechsel auf 1.1.0
+ändert weder die Vertragsversion 1.24 noch die Foundation-Version. Er führt
+keine Build- oder CU-Bindung ein. Neue Nachweise werden nicht in historische
+CSV-Zeilen zurückgeschrieben.
+
+Sobald `v1.1.0` mit bestandener vollständiger Matrix und gebundenem Produkt-ZIP
+veröffentlicht ist und der eigene Branch-Cleanup bei sauberem `origin/main`
+abgeschlossen ist, ist diese Welle beendet. Dieser Eintrag erteilt danach
+keine Wiederholungsfreigabe. Die übrige autonome Verarbeitung bleibt bis zu
+einem neuen ausdrücklichen Auftrag pausiert.
+
+## Erhaltener Stand: OPS-005-Lesepfad und Nachweishistorie
 
 OPS-005 ist über PR #403 als `2874675a` qualifiziert in `origin/main`
 integriert. Vier Head-Gates und drei Main-Gates bestehen jeweils im ersten

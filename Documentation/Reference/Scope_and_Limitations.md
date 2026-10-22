@@ -1,6 +1,6 @@
 # Scope und Grenzen des Frameworks
 
-**Stand:** 25. Juli 2026
+**Stand:** 22. Oktober 2026
 
 Dieses Dokument fasst zusammen, was SQL Server Analyze **tut** und was es
 **ausdrücklich nicht tut**. Die modulspezifischen Aussagegrenzen stehen
@@ -8,6 +8,12 @@ zusätzlich in den jeweiligen Procedure-Headern und in
 [Special_Case_Modules.md](../Architecture/Special_Case_Modules.md).
 
 ## Was das Framework tut
+
+Die Unterstützung für SQL Server 2019, 2022 und 2025 ist an keinen bestimmten
+CU oder Build gebunden. Tatsächlich geprüfte Builds, Plattformen und
+Compatibility Levels werden im jeweiligen Release-Nachweis getrennt
+ausgewiesen. Dieser Nachweis erweitert weder Featurevoraussetzungen noch
+die garantierte Collation und behauptet keine Prüfung jedes verfügbaren CU.
 
 - Lesende, zustandslose Diagnose auf SQL Server 2019, 2022 und 2025.
 - Analyse laufender Sessions, Requests, Blocking, Waits, Memory, TempDB und I/O.
@@ -49,7 +55,7 @@ Retentionpolicy. Diese Operationen gehören nicht zum lesenden Diagnosekern.
 | Berechtigungen | Keine GRANTs, keine Loginverwaltung. |
 | Cleanup/Purge | Keine Löschung analysierter Anwendungsdaten, Logs oder Backups. Das optionale Paket löscht ausschließlich eigene abgelaufene Snapshotdaten. |
 
-Der Corebestand umfasst 158 Objekte, das optionale Paket weitere 19.
+Der Corebestand umfasst 163 Objekte, das optionale Paket weitere 19.
 `Install_All.sql` installiert ausschließlich den Core. Das Gesamtdeployment
 kann das Paket ausdrücklich einschließen. Voraussetzungen, Archivierung und
 Transaktionsverhalten stehen in der [Deploymentreferenz](Deployment.md);
