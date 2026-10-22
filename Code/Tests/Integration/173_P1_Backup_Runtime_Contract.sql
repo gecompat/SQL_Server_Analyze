@@ -23,6 +23,7 @@ DECLARE @OriginalRecovery nvarchar(60) =
 DECLARE @DatabaseQuoted nvarchar(258)=QUOTENAME(@DatabaseName);
 DECLARE @BackupDevice nvarchar(128)=N'SQL_Server_Analyze_P1_Backup_Runtime.bak';
 DECLARE @BackupSql nvarchar(max);
+DECLARE @BackupEngineMajor int=CONVERT(int,SERVERPROPERTY(N'ProductMajorVersion'));
 DECLARE @ExecutedCases TABLE([CaseId] varchar(40) NOT NULL PRIMARY KEY);
 
 BEGIN TRY
@@ -70,13 +71,15 @@ BEGIN TRY
            WITH ([EvidenceScope] varchar(32) N'$.EvidenceScope',[ConfigurationName] sysname N'$.ConfigurationName',
                  [AlgorithmName] nvarchar(32) N'$.AlgorithmName',[SourceStatus] varchar(40) N'$.SourceStatus')
            WHERE [EvidenceScope]='CAPABILITY' AND [ConfigurationName]=N'ZSTD_BACKUP_COMPRESSION'
-             AND [AlgorithmName]=N'ZSTD' AND [SourceStatus]='AVAILABLE')
+             AND [AlgorithmName]=N'ZSTD'
+             AND [SourceStatus]=CASE WHEN @BackupEngineMajor>=17 THEN 'AVAILABLE' ELSE 'UNAVAILABLE_VERSION' END)
        OR NOT EXISTS
           (SELECT 1 FROM OPENJSON(@Json,N'$.compression')
            WITH ([EvidenceScope] varchar(32) N'$.EvidenceScope',[AlgorithmName] nvarchar(32) N'$.AlgorithmName',
                  [SourceStatus] varchar(40) N'$.SourceStatus')
-           WHERE [EvidenceScope]='BACKUP_HISTORY' AND [AlgorithmName] IN (N'MS_XPRESS',N'QAT',N'ZSTD')
-             AND [SourceStatus]='AVAILABLE')
+           WHERE [EvidenceScope]='BACKUP_HISTORY'
+             AND ((@BackupEngineMajor>=16 AND [AlgorithmName] IN (N'MS_XPRESS',N'QAT',N'ZSTD') AND [SourceStatus]='AVAILABLE')
+               OR (@BackupEngineMajor<16 AND [AlgorithmName] IS NULL AND [SourceStatus]='UNAVAILABLE_VERSION')))
         THROW 54705,N'P1-Vertrag BKP-COMPRESSION fehlgeschlagen.',1;
 
     CREATE TABLE [#ExampleBackupCompression]([Seed] int NULL);
@@ -86,7 +89,8 @@ BEGIN TRY
          @HighImpactConfirmed=1;
     IF NOT EXISTS
        (SELECT 1 FROM [#ExampleBackupCompression]
-        WHERE [EvidenceScope]='BACKUP_HISTORY' AND [SourceStatus]='AVAILABLE')
+        WHERE [EvidenceScope]='BACKUP_HISTORY'
+          AND [SourceStatus]=CASE WHEN @BackupEngineMajor>=16 THEN 'AVAILABLE' ELSE 'UNAVAILABLE_VERSION' END)
         THROW 54706,N'P1-Vertrag BKP-COMPRESSION-TABLE fehlgeschlagen.',1;
     INSERT @ExecutedCases VALUES('BKP-COMPRESSION');
 

@@ -101,7 +101,14 @@ Eine fehlgeschlagene oder unklare Bereinigung verhindert einen Erfolgsnachweis.
 Es werden nur synthetische CI-Datenbanken verwendet. Eine Einzelversionsprobe
 ist weiterhin für einen gezielten Versionsbefund möglich, qualifiziert aber
 kein vollständiges Release. Ein fehlgeschlagener Matrixlauf wird innerhalb
-dieses Releaseumfangs nicht wiederholt.
+dieses Releaseumfangs nicht wiederholt. Der ausdrücklich freigegebene
+Korrekturschritt nach PR #407 erlaubt einmalig eine neue vollständige Matrix
+auf dem korrigierten Main-Commit. Der
+[ursprüngliche Lauf](https://github.com/gecompat/SQL_Server_Analyze/actions/runs/39793329967)
+bleibt fehlgeschlagen. Die Erneuerung betrifft die korrigierten Backuporacles
+und die Isolation der Calleroptionen von Test 198; alle übrigen Prüfungen
+behalten ihren Umfang. Die Bindung an ein neues unverändertes Produkt-ZIP
+und dessen Main-Commit erfordert eine vollständige Releasequalifikation.
 
 ## Nachweis und Aussagegrenze
 
@@ -141,7 +148,8 @@ Ein Implementierer verantwortet den Schritt. Ein unabhängiger Reviewer prüft
 höchstens zweimal; ein gebündelter Korrekturpass bleibt innerhalb der
 freigegebenen Dateien. Zwei lokale Prüfblöcke, höchstens zwei Head-
 Qualifikationen, ein Main-Nachlauf und genau eine native Matrix begrenzen die
-Ausführung. Nach sechs Stunden erfolgt ein Kontrollpunkt, nach acht Stunden
+Ausführung. Der aktuelle Korrekturschritt umfasst höchstens zwölf Dateien.
+Nach drei Stunden erfolgt ein Kontrollpunkt, nach vier Stunden
 Gesamtzeit beginnt keine neue Arbeit. Sicherheits- und Recoveryaktionen
 bleiben zulässig; ein offenes Gate wird nicht als bestanden ausgewiesen.
 
