@@ -42,8 +42,13 @@ Der Autor prüft folgende zentrale Pfade anhand der aktuellen Dateien:
 
 Dies ist eine semantische Leseprüfung, keine neue Ausführung der dokumentierten
 SQL-Aufrufe. Der zusätzliche README-Absatz verändert ausschließlich den
-KI-Einstieg. Der vollständige geschützte Präfix vor „Überblick“ einschließlich
-beider Lizenzabschnitte bleibt bytegleich; die Lizenzdatei bleibt unverändert.
+KI-Einstieg. Die Fehlerhilfe der Installationsanleitung wird an die vorhandene
+informative Collationwarnung des Preflight angeglichen: kontrollierte Prüfung
+der Zielkombination statt einer widersprüchlichen Abbruchanweisung; die
+Garantiegrenze bleibt erhalten. Der Regelkontext verweist auf die aktuelle
+Quellenauswahl statt einer veränderlichen Anzahl. Der vollständige geschützte
+Präfix vor „Überblick“ einschließlich beider Lizenzabschnitte bleibt bytegleich;
+die Lizenzdatei bleibt unverändert.
 
 Die vorhandene interne Ablage trennt Planungs- und Entstehungsnachweise von
 öffentlicher Anwenderdokumentation. Sie darf keine fachlich notwendige
@@ -79,7 +84,7 @@ Pflichtfelder pro Seite oder eine automatische Reviewkette.
 
 Die offizielle vollständige Foundationprüfung meldet 85 Informationen,
 keine Warnung und keinen Fehler. Der lokale Transferabgleich bestätigt mit
-105 Assertions die Featuredeckung, Schemafelder, Auswahl, Provenienz und
+108 Assertions die Featuredeckung, Schemafelder, Auswahl, Provenienz und
 den bytegleichen geschützten README-Präfix. Die 23 Regelkontext- und
 14 Deployment-Selbsttests bestehen; die statischen Repositoryverträge
 bestehen bis auf einen anschließend gezielt korrigierten README-Befund.

@@ -13,6 +13,7 @@
         "AGENTS.md",
         "Documentation/README.md",
         "Documentation/Reference/Installation.md",
+        "Code/00_Setup/000_Preflight_und_Schema.sql",
         "Documentation/Reference/Deployment.md",
         "Documentation/Analysis_Guides/Start_Here.md",
         "Documentation/Reference/Analysis_Navigator.md",

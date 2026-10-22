@@ -442,7 +442,7 @@ Frameworkeigene Standardzeilen im Wait-Katalog werden aktualisiert; eigene Katal
 | Meldung oder Symptom | Wahrscheinliche Ursache | Maßnahme |
 |---|---|---|
 | Datenbank `DeineDatenbank` nicht gefunden | Platzhalter wurde nicht ersetzt | Erste `USE`-Zeile beziehungsweise Testdatei korrigieren |
-| Der Installer meldet eine nicht unterstützte Server-, `tempdb`- oder Datenbank-Collation | Eine der drei Collations liegt außerhalb der derzeit getesteten und freigegebenen Plattformgrenze | Installation abbrechen; die Prüfung nicht umgehen und erst einen Frameworkstand mit nachgewiesener Collation-Portabilität verwenden |
+| Der Installer warnt vor einer abweichenden Server-, `tempdb`- oder Datenbank-Collation | Eine der drei Collations weicht von der ausschließlich garantierten `SQL_Latin1_General_CP1_CS_AS` ab | Die Warnung blockiert die Installation nicht. Prüfen Sie die Zielkombination kontrolliert gemäß [Collation-Architektur](#collation-architektur), einschließlich Installation, Smoke-Test und benötigter Filter- und Exportpfade. Die Garantie wird dadurch nicht erweitert. |
 | Syntaxfehler bei `:r` | Include-Installer ohne SQLCMD-Modus ausgeführt | SQLCMD-Modus aktivieren oder generierten Installer verwenden |
 | Include-Datei nicht gefunden | Repository unvollständig, verschoben oder falscher Ausführungskontext | Repository vollständig entpacken oder generierten Installer verwenden |
 | `CREATE`/`ALTER`/`CREATE SCHEMA` verweigert | DDL-Rechte fehlen | Installation mit einem dafür freigegebenen Konto ausführen |
