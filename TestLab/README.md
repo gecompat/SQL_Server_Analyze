@@ -157,7 +157,7 @@ sperrt die erneute Runanlage; ein verlorener Reply erzeugt keinen Replay.
 SQL-Fixture, eigene markierte Datenbank, Run, aktive IPAM-Lease und unveränderter
 Parent werden getrennt geprüft. Der Fall gehört zum vorhandenen OPS-005-Umfang;
 er erweitert weder Vertrag 120 noch dessen Linux-Adapter. Seine native
-Providerabnahme ist derzeit `NOT_EXECUTED`. Der erste Windows-Run scheitert
+Providerabnahme war zunächst `NOT_EXECUTED`. Der erste Windows-Run scheitert
 vor SQL Setup mit dem zuvor gewählten `VerifyOnly`-Intent am tatsächlichen
 Gaststatus `ACTIVATION_REQUIRED`. Sein eigener Ressourcencleanup und die
 unveränderte Parentintegrität sind bestätigt. Der vorbereitete korrigierte
@@ -207,6 +207,19 @@ ein nicht reproduzierter Fehler bleibt `DIAGNOSIS_INCONCLUSIVE` und beendet
 den Worker ohne Qualifikation. Der reguläre Providerpfad bleibt unverändert.
 Der Modus benötigt eine eigene ausdrückliche Freigabe für die begrenzten
 nativen Leseaufrufe.
+
+Die nachfolgende Diagnose erfasst Guardstate 5: Das Modul existiert, aber das
+erwartete Deklarationsliteral fehlt im gespeicherten Text. Die gezielte
+Korrektur normalisiert zusätzlich ausschließlich `CREATE   PROCEDURE` für
+das exakt benannte Modul. Der ursprüngliche vollständige Definitionshash
+und die 13-Parameter-ABI bleiben zwingend. Die abschließende Windows-Abnahme
+vom 22. Oktober 2026 besteht auf SQL Server `17.0.1000.7` mit CL170 und den
+vorgeschriebenen Collations: 194 Installationsbatches, fünf Analyzerfälle,
+eine Provider-Vorprobe mit nativem Fehler 7403 sowie sämtliche Output- und
+Callerzustandsprüfungen bestehen. Fixture, eigene Datenbank, VM, Child-Disk
+und aktive Lease sind entfernt; das Parent-Image ist unverändert. Der
+Workerbericht meldet `PASSED`. Andere Provider- oder Berechtigungsprofile
+werden damit nicht qualifiziert.
 
 ## OPS-006 Datenbankportabilität
 

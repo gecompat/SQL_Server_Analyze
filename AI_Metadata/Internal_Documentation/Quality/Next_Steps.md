@@ -11,6 +11,15 @@ Main-Nachlauf bestehen; der Merge-Tree entspricht dem geprüften Head.
 Main ist synchron und sauber. Der eigene Worktree ist wiederherstellbar
 archiviert, die beiden integrierten eigenen Arbeitszweige sind entfernt.
 
+Der aktuelle Windows-Providerfall ist am Analyze-Stand `7a578c85` mit Lab-Main
+`1095f5ee` nativ abgenommen. Alle fünf Analyzerfälle und eine Provider-Vorprobe
+bestehen einschließlich vollständigem eigenen Cleanup. Produktquellen,
+Vertrag 120, Linux-Adapter und Reifeflags bleiben unverändert. Der aktuelle
+Lieferstand ergänzt den begrenzten Windows-Runner und seine Eingaben;
+Head-CI, reguläre Integration und eigener Branch-Cleanup stehen noch aus.
+Die folgenden Diagnose- und Planungsstände erhalten frühere Fehlversuche
+und ihre damaligen Aussagegrenzen.
+
 Die nächste Reifewelle untersucht einen synthetischen nicht verfügbaren
 OLE-DB-Provider. Der lokale Entwurf `3eec56c4` ergänzt Vertrag 120 und seinen
 kanonischen Updateadapter um Providername, Kollisionsschutz, einen sicheren
@@ -698,12 +707,44 @@ Providerblock einschließlich Oracle und Cleanup sowie Worker und Preparer
 bleiben unverändert. Der Längenvergleich ist als Inferenz gekennzeichnet;
 die native Abnahme der Korrektur bleibt offen.
 
-Insgesamt sind jetzt sechs Windows-Runs und native Blöcke sowie acht
+Vor der letzten Abnahme waren sechs Windows-Runs und native Blöcke sowie acht
 Reviewprüfungen verbraucht. Der bedingte Abnahmerun bleibt bis zu passenden
 Offlineprüfungen und der zweiten unabhängigen Prüfung reserviert. Seine
 Ausführung muss die tatsächliche kanonische Definition einschließlich Hash
 bestätigen; ein Diagnoseergebnis ersetzt diesen Nachweis nicht. PR-CI und
 Main-Nachlauf bleiben ungenutzt.
+
+#### Windows-Providerabnahme vom 22. Oktober 2026 bestanden
+
+17 zusätzliche Struktur- und Bindungsprüfungen bestätigen den unveränderten
+Installer, Datenbankvorbereitung, Cleanup und alle 171 kanonischen Quellen.
+Der unabhängige Abschlussreview besteht am Korrekturstand `c7f00cdb` ohne
+offene wesentliche Befunde und bestätigt die bedingte Zulassung. Zwei
+Dokumentationsbefunde der statischen Gesamtsuite sind anschließend gezielt
+korrigiert: Die Lab-Freigabegrenze verweist auf die kanonischen
+Fortsetzungsregeln, Produktquellen sind als solche eingeordnet und das
+öffentliche TestLab-README enthält keinen internen Dokumentationsverweis.
+SQL, Worker, Preparer und sämtliche Ausführungseingaben bleiben dabei
+bytegleich mit dem geprüften Korrekturstand. Die betroffenen Nachprüfungen
+bestehen; die ursprünglichen Fehlbelege bleiben erhalten.
+
+Der freigegebene eigene Abnahmerun besteht am Stand `7a578c85` auf Windows
+mit SQL Server `17.0.1000.7`, Enterprise Developer Edition, CL170 und allen
+vorgeschriebenen Collations. Beide Installerteile bestehen mit zusammen
+194 Batches. Der Providerbatch besteht einschließlich ursprünglichem
+vollständigem Definitionshash und 13-Parameter-ABI. Genau fünf Analyzerfälle
+und eine native Provider-Vorprobe liefern die erwarteten Outputs; der
+nicht registrierte synthetische Provider meldet 7403. Locktimeout,
+Sessionoptionen und Transaktionszahl bleiben bei allen fünf Aufrufen erhalten.
+Providerfixture, markierte Datenbank, VM und Child-Disk sind entfernt,
+die eigene Lease ist freigegeben und der schreibgeschützte Parenthash ist
+unverändert. Der abschließende Workerbericht meldet `PASSED`.
+
+Damit sind sieben Windows-Runs und native Blöcke sowie neun Reviewprüfungen
+verbraucht. Weitere native OPS-005-Läufe und Reviews sind nicht freigegeben.
+Der reservierte PR-CI-Versuch und Main-Nachlauf bleiben für die Integration
+dieses qualifizierten Stands verfügbar. Der Windows-Provider-Negativfall
+ist kein vollständiger Provider-, Berechtigungs- oder Release-Nachweis.
 
 ### Autorisierter Foundation-Folgeauftrag
 

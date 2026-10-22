@@ -1,6 +1,6 @@
 # OPS-005 – TestLab-Laufzeitevidenz
 
-**Stand:** 19. September 2026
+**Stand:** 22. Oktober 2026
 **Status:** `LOCAL_TESTLAB_RUNTIME_EVIDENCE`
 **Datenbasis:** ausschließlich synthetische Fixtures
 
@@ -58,3 +58,50 @@ native ältere Engines im Erfolgspfad, Delegation, verteilte Transaktionen
 und fachliche Remoteabfragen bleiben außerhalb dieses Nachweises. Er ist
 kein vollständiger Release-Gate-Lauf. Secrets, Laufzeitidentitäten und
 vollständige Logs wurden nicht in das Repository übernommen.
+
+## Windows-Provider-Negativfall vom 22. Oktober 2026
+
+Der begrenzte Worker `TestLab/Invoke-Ops005UnavailableProviderScenario.ps1`
+bestand am Analyze-Stand `7a578c85` mit integriertem Lab-Stand `1095f5ee`.
+Ein eigener Hyper-V-Run verwendete das vorhandene schreibgeschützte
+Prepared-Image mit vier vCPUs und acht GiB festem RAM. Die tatsächliche
+Engine war SQL Server `17.0.1000.7`, Enterprise Developer Edition, auf Windows
+mit CL170. Server, `master`, `tempdb` und Frameworkdatenbank verwendeten
+`SQL_Latin1_General_CP1_CS_AS`. Die reservierte Gastadresse und eigene aktive
+Lease waren vor den Consumerbatches gebunden.
+
+Die kanonische Installation bestand in zwei Teilen mit 153 und 41 Batches.
+Vor der Provideranlage bestätigte der Guard den ursprünglichen vollständigen
+SHA-256 der normalisierten Prozedurdefinition und die unveränderte
+13-Parameter-ABI. Die eng begrenzte Deklarationsnormalisierung wurde damit
+nativ abgenommen. Genau eine synthetische Fixture eines nicht registrierten
+OLE-DB-Providers wurde erzeugt und anhand ihrer Katalogidentität geprüft.
+
+| Fall | Connectivity / HighImpact | Globaler Status | Partialität | JSON / Connectivity |
+|---|---|---|---|---|
+| Lokales Inventar | `0 / 0` | `AVAILABLE` | `0` | eine Fixturezeile, `NOT_EXECUTED` |
+| Bestätigung ohne Connectivity | `0 / 1` | `AVAILABLE` | `0` | eine Fixturezeile, `NOT_EXECUTED` |
+| Fehlende zweite Bestätigung | `1 / 0` | `AUTHORIZATION_REQUIRED` | `1` | eine Fixturezeile, `AUTHORIZATION_REQUIRED` |
+| Nicht registrierter Provider | `1 / 1` | `AVAILABLE_LIMITED` | `1` | eine Fixturezeile, `FAILED` und `SOURCE_UNAVAILABLE` |
+| Nach Fixtureentfernung | `0 / 0` | `AVAILABLE_EMPTY` | `0` | `[]` |
+
+Der vierte Fall verwendete genau eine vorgeschaltete native Provider-Vorprobe.
+Sie meldete Fehler 7403; Analyzerfehlernummer und gebundener Evidenzpräfix
+stimmten damit überein. Alle fünf Aufrufe erhielten Locktimeout,
+Sessionoptionen und Transaktionszahl. Das Oracle prüfte das JSON-Schema,
+Zeilenanzahl, Katalogwerte, Status, Partialität und Fehleroutputs.
+
+Die Providerfixture, die eigene markierte Datenbank, VM und Child-Disk waren
+nach dem Lauf entfernt. Es blieb keine aktive eigene Lease zurück.
+Schreibschutz und vollständiger Parenthash waren unverändert. Der
+abschließende Workerbericht meldete `PASSED`.
+
+Frühere fehlgeschlagene Windows-Einstiege und die rein lesende Diagnose von
+54890, State 5, bleiben als getrennte private Belege erhalten. Die genaue
+gespeicherte Headerform wurde im Diagnoserun nicht vollständig ausgegeben;
+der Abnahmelauf belegt die kanonische Hashprüfung nach der begrenzten
+Normalisierung. Der Linuxvertrag 120 und sein Adapter sowie Produktquellen
+und Reifeflags wurden nicht geändert. Diese Windows-Abnahme belegt weder
+weitere Provider und Rollen noch Delegation, verteilte Transaktionen,
+Remotedatenabfragen oder ein vollständiges Release-Gate. Laufzeitidentitäten,
+Hostdaten, Secrets und Rohlogs bleiben außerhalb des Repositorys.
