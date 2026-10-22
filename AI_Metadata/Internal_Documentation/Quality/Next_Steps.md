@@ -670,8 +670,51 @@ syntaktisch gültige Diagnoseeingaben, ausschließlich lesende persistente
 Zugriffe, den begrenzten zweiten Aufruf und unveränderte bisherige SQL-Eingaben
 sowie kanonische Quellbindungen. Die kopierte ABI-Tabellenvariable bleibt lokal.
 Diese Offlineprüfungen erzeugen weder Lab-Runs noch Gast- oder SQL-Aufrufe.
-Der unabhängige erste Review und der native Diagnoserun sind noch offen;
-der bedingte Abnahmerun bleibt bis zum belegten Fix und Abschlussreview reserviert.
+Der unabhängige erste Review besteht am Stand `695cc718` ohne offene
+wesentliche Befunde. Ein zunächst durch die Lab-Laufsperre blockierter
+Start erzeugt keinen Run. Der anschließend ausgeführte Diagnoserun erfasst
+mit genau zwei lesenden Abfragen Fehler 54890, State 5. Das Modul ist vorhanden,
+doch die Suche nach `CREATE OR ALTER PROCEDURE` liefert null. Der erwartete
+Hash wird mit 32 Bytes übertragen. Der Diagnoseblock führt keinen Analyzer
+und keine Provider-Vorprobe aus. Datenbank, VM und Child-Disk sind entfernt,
+die eigene Lease ist freigegeben und das Parent bleibt unverändert.
+
+Die vorhandene Moduldefinition beginnt wie der eingereichte Installationsbatch;
+ihre Länge ist um 14 Bytes kürzer. Dies passt zur Ersetzung von
+`CREATE OR ALTER PROCEDURE` durch `CREATE   PROCEDURE`, belegt aber noch nicht
+den vollständigen gespeicherten Deklarationstext. Belegt ist der falsche
+Erkennungsvertrag in Guard 5. Die vorbereitete TestLab-Korrektur akzeptiert
+zusätzlich ausschließlich diese eng begrenzte Deklarationsform für das exakt
+benannte Modul und rekonstruiert vor der Hashprüfung die kanonische Form.
+Der erwartete SHA-256-Hash, der vollständige nachfolgende Definitionstext,
+die 13-Parameter-ABI und alle übrigen Guards bleiben erhalten. Andere
+Deklarationsformen und Änderungen am Parameter- oder Prozedurtext erhalten
+keine Ausnahme. Produkt- und Lab-Code werden nicht geändert.
+
+26 gezielte Offlineprüfungen bestätigen den unveränderten erwarteten Hash,
+die Rekonstruktion beider eng begrenzten Formen und die Ablehnung veränderter
+Parameter, Prozedurtexte, Namen und zusätzlicher Anweisungen. Der bisherige
+Providerblock einschließlich Oracle und Cleanup sowie Worker und Preparer
+bleiben unverändert. Der Längenvergleich ist als Inferenz gekennzeichnet;
+die native Abnahme der Korrektur bleibt offen.
+
+Insgesamt sind jetzt sechs Windows-Runs und native Blöcke sowie acht
+Reviewprüfungen verbraucht. Der bedingte Abnahmerun bleibt bis zu passenden
+Offlineprüfungen und der zweiten unabhängigen Prüfung reserviert. Seine
+Ausführung muss die tatsächliche kanonische Definition einschließlich Hash
+bestätigen; ein Diagnoseergebnis ersetzt diesen Nachweis nicht. PR-CI und
+Main-Nachlauf bleiben ungenutzt.
+
+### Autorisierter Foundation-Folgeauftrag
+
+Nach qualifizierter Integration von OPS-005 in `origin/main` und eigenem
+Branch- und Worktree-Cleanup wird die dann aktuelle AI-Repository-Foundation
+autonom übernommen. Quelle und Version werden aktuell verifiziert;
+projektspezifische Verträge, semantische Prüfung, Bewertung des tatsächlichen
+Verarbeitungsaufwands und erforderlicher unabhängiger Review bleiben erhalten.
+Die Übernahme wird nach erfolgreichen Gates regulär integriert und bereinigt.
+Anschließend wird die bereits autorisierte autonome Entwicklung fortgesetzt.
+Dieser Folgeauftrag erneuert keine bestehenden OPS-005- oder Lab-Budgets.
 
 ## Abgeschlossene Findings-Stabilisierung vom 20. Oktober 2026
 

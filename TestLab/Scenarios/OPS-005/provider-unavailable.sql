@@ -28,6 +28,12 @@ IF EXISTS (SELECT 1 FROM sys.databases WHERE [database_id]>4 AND [database_id]<>
 
 DECLARE @Definition nvarchar(max)=OBJECT_DEFINITION(OBJECT_ID(N'monitor.USP_LinkedServerAnalysis'));
 DECLARE @DefinitionStart int=CHARINDEX(N'CREATE OR ALTER PROCEDURE', @Definition);
+IF COALESCE(@DefinitionStart,0)=0
+BEGIN
+    SET @DefinitionStart=CHARINDEX(N'CREATE   PROCEDURE [monitor].[USP_LinkedServerAnalysis]',@Definition);
+    IF @DefinitionStart>0
+        SET @Definition=STUFF(@Definition,@DefinitionStart,DATALENGTH(N'CREATE   ')/2,N'CREATE OR ALTER ');
+END;
 IF @DefinitionStart IS NULL OR @DefinitionStart=0
     THROW 54890, N'OPS005_DEFINITION_MISSING', 5;
 SET @Definition=TRIM(NCHAR(9)+NCHAR(10)+NCHAR(13)+N' ' FROM

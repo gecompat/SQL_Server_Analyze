@@ -34,6 +34,12 @@ ELSE IF @GuardState IN (5,6)
 BEGIN
     SET @Definition=OBJECT_DEFINITION(OBJECT_ID(N'monitor.USP_LinkedServerAnalysis'));
     SET @DefinitionStart=CHARINDEX(N'CREATE OR ALTER PROCEDURE',@Definition);
+    IF COALESCE(@DefinitionStart,0)=0
+    BEGIN
+        SET @DefinitionStart=CHARINDEX(N'CREATE   PROCEDURE [monitor].[USP_LinkedServerAnalysis]',@Definition);
+        IF @DefinitionStart>0
+            SET @Definition=STUFF(@Definition,@DefinitionStart,DATALENGTH(N'CREATE   ')/2,N'CREATE OR ALTER ');
+    END;
     SELECT @Details=(SELECT OBJECT_ID(N'monitor.USP_LinkedServerAnalysis') AS [ObjectId],
         LEFT(@Definition,96) AS [DefinitionPrefix],@DefinitionStart AS [DefinitionStart],DATALENGTH(@Definition) AS [DefinitionBytes],
         DATALENGTH(@ExpectedDefinitionHash) AS [ExpectedHashBytes],CONVERT(varchar(64),@ExpectedDefinitionHash,2) AS [ExpectedHash],
