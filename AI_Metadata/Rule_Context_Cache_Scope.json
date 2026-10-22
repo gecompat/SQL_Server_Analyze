@@ -60,7 +60,9 @@
     "Metadata/Governance/Artifact_Registry.json",
     "AI_Metadata/Internal_Documentation/Architecture/Foundation_1_24_Upgrade.md",
     "AI_Metadata/Internal_Documentation/Architecture/Foundation_1_24_Upgrade_Assessment.json",
-    ".ai/foundation/TEST_EVIDENCE_REUSE_POLICY.md"
+    ".ai/foundation/TEST_EVIDENCE_REUSE_POLICY.md",
+    "AI_Metadata/Internal_Documentation/Architecture/Foundation_1_25_Upgrade.md",
+    "AI_Metadata/Internal_Documentation/Architecture/Foundation_1_25_Upgrade_Assessment.json"
   ],
   "scopes": {
     "development": [
@@ -162,7 +164,9 @@
       "Documentation/Quality/CI_Test_Strategy.md",
       "Documentation/Quality/Documentation_Writing_Style.md",
       "Metadata/Governance/Artifact_Registry.json",
-      ".ai/foundation/TEST_EVIDENCE_REUSE_POLICY.md"
+      ".ai/foundation/TEST_EVIDENCE_REUSE_POLICY.md",
+      "AI_Metadata/Internal_Documentation/Architecture/Foundation_1_25_Upgrade.md",
+      "AI_Metadata/Internal_Documentation/Architecture/Foundation_1_25_Upgrade_Assessment.json"
     ],
     "ai-orchestration": [
       ".ai/foundation/AI_WORK_ORCHESTRATION_POLICY.md",
@@ -199,13 +203,16 @@
       "AGENTS.md"
     ],
     ".ai/foundation/DOCUMENTATION_POLICY.md": [
+      ".ai/foundation/PROCESSING_EFFICIENCY_POLICY.md",
       "AGENTS.md"
     ],
     ".ai/foundation/FOUNDATION_REFERENCE.md": [
+      ".ai/foundation/DOCUMENTATION_POLICY.md",
       ".ai/foundation/PROCESSING_EFFICIENCY_POLICY.md",
       "AGENTS.md"
     ],
     ".ai/foundation/FOUNDATION_RULESET.md": [
+      ".ai/foundation/DOCUMENTATION_POLICY.md",
       ".ai/foundation/PROCESSING_EFFICIENCY_POLICY.md",
       "AGENTS.md"
     ],
@@ -219,6 +226,7 @@
       "AGENTS.md"
     ],
     ".ai/foundation/PROJECT_RULES.md": [
+      ".ai/foundation/DOCUMENTATION_POLICY.md",
       "AGENTS.md"
     ],
     ".ai/foundation/REPOSITORY_CONTINUITY_POLICY.md": [
@@ -233,6 +241,7 @@
     ],
     ".ai/foundation/SEMANTIC_INTEGRATION_POLICY.md": [
       ".ai/foundation/ARTIFACT_REGISTRATION_POLICY.md",
+      ".ai/foundation/DOCUMENTATION_POLICY.md",
       ".ai/foundation/PERSISTENT_IDENTITY_POLICY.md",
       ".ai/foundation/UPGRADE_APPLICABILITY_POLICY.md",
       ".ai/foundation/feature_catalog.json",
@@ -245,10 +254,12 @@
       "AGENTS.md"
     ],
     ".ai/foundation/UPGRADE_APPLICABILITY_POLICY.md": [
+      ".ai/foundation/DOCUMENTATION_POLICY.md",
       ".ai/foundation/feature_catalog.json",
       "AGENTS.md"
     ],
     ".ai/foundation/VALIDATION_POLICY.md": [
+      ".ai/foundation/DOCUMENTATION_POLICY.md",
       ".ai/foundation/REPOSITORY_CONTINUITY_POLICY.md",
       "AGENTS.md"
     ],
@@ -257,6 +268,7 @@
       "AGENTS.md"
     ],
     ".ai/foundation/feature_catalog.json": [
+      ".ai/foundation/DOCUMENTATION_POLICY.md",
       "AGENTS.md"
     ],
     ".ai/foundation/installation-provenance.json": [
@@ -327,6 +339,7 @@
       "AGENTS.md"
     ],
     "AI_Metadata/Internal_Documentation/Quality/Next_Steps.md": [
+      ".ai/foundation/DOCUMENTATION_POLICY.md",
       "AGENTS.md",
       "AI_Metadata/PROJECT_CONTEXT.md",
       "AI_Metadata/Rule_Context_Cache.md",
@@ -385,6 +398,19 @@
     ],
     ".ai/foundation/TEST_EVIDENCE_REUSE_POLICY.md": [
       ".ai/foundation/VALIDATION_POLICY.md"
+    ],
+    "AI_Metadata/Internal_Documentation/Architecture/Foundation_1_25_Upgrade_Assessment.json": [
+      "AGENTS.md",
+      ".ai/foundation/DOCUMENTATION_POLICY.md",
+      "AI_Metadata/Internal_Documentation/Quality/Next_Steps.md"
+    ],
+    "AI_Metadata/Internal_Documentation/Architecture/Foundation_1_25_Upgrade.md": [
+      "AGENTS.md",
+      "AI_Metadata/Internal_Documentation/Architecture/Foundation_1_25_Upgrade_Assessment.json",
+      ".ai/foundation/DOCUMENTATION_POLICY.md",
+      "AI_Metadata/Internal_Documentation/Quality/Next_Steps.md",
+      "Documentation/Quality/CI_Test_Strategy.md",
+      "Documentation/Quality/Documentation_Writing_Style.md"
     ]
   },
   "excluded_references": [

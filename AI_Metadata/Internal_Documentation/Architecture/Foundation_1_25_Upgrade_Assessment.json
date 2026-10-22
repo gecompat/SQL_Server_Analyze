@@ -1,0 +1,33 @@
+{
+  "schema_version": 1,
+  "installed_version": "1.24.0",
+  "source_version": "1.25.0",
+  "source_ref": "9e1b9974de58ea775d40c7c6045cd5057ba8b30c",
+  "assessments": [
+    {
+      "feature_id": "human-documentation-paths",
+      "candidate_reasons": ["introduced_in:1.25.0"],
+      "classification": "APPLY_DEFAULT",
+      "evidence": [
+        "README.md",
+        "AGENTS.md",
+        "Documentation/README.md",
+        "Documentation/Reference/Installation.md",
+        "Documentation/Reference/Deployment.md",
+        "Documentation/Analysis_Guides/Start_Here.md",
+        "Documentation/Reference/Analysis_Navigator.md",
+        "Documentation/Analysis_Guides/Runbooks/01_User_Hangs_Blocking.md",
+        "AI_Metadata/ARTIFACT_IDENTITY_AND_NOMENCLATURE.md",
+        "AI_Metadata/Internal_Documentation/README.md",
+        "AI_Metadata/Internal_Documentation/Quality/Next_Steps.md",
+        "Documentation/Quality/Documentation_Writing_Style.md",
+        "Code/Tests/Static/Invoke-StaticContractSuite.ps1",
+        ".github/workflows/documentation-validation.yml"
+      ],
+      "rationale": "Die neue Pflicht gilt für betroffene neue und materiell geänderte Lesepfade. Die vorhandenen öffentlichen Fachverträge und interne Planungs- und Evidenzablage bleiben getrennt. Der zentrale Einstieg erhält einen ausdrücklich benannten AGENTS-Link; die geschützte Lizenz bleibt bytegleich. Einstieg, Vorbereitung, Aufruf, Ergebnisinterpretation und eine technische Prüfrichtung werden anhand aktueller Quellen beurteilt. Verbleibende Altlasten sind in Next_Steps mit Umfang, Maintainerrolle und Wiederaufnahmetrigger erfasst. Das Upgrade behauptet weder vollständige Dokumentationskonformität noch neue Laufzeitqualifikation.",
+      "recommendation": null,
+      "decision_required": null,
+      "selected_capabilities": []
+    }
+  ]
+}

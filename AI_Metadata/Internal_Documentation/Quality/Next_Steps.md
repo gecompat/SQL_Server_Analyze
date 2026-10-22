@@ -3,7 +3,40 @@
 **Stand:** 22. Oktober 2026
 **Zweck:** aktuelle ausführbare Entwicklungswelle für `gecompat/SQL_Server_Analyze`
 
-## Aktive Welle: OPS-005-Provider-Negativfall
+## Aktive Welle: Foundation 1.25.0
+
+OPS-005 ist über PR #403 als `2874675a` qualifiziert in `origin/main`
+integriert. Vier Head-Gates und drei Main-Gates bestehen jeweils im ersten
+Versuch; Head- und Merge-Tree sind identisch. Main ist sauber synchronisiert,
+eigener lokaler und Remote-Branch sind entfernt und der Worktree ist
+wiederherstellbar archiviert. Sieben Windows-Runs und neun Reviewprüfungen
+bleiben verbraucht; weitere native OPS-005-Ausführung ist nicht freigegeben.
+
+Der ausdrücklich autorisierte Folgeauftrag übernimmt jetzt Foundation 1.25.0
+aus dem kanonischen Source-Commit `9e1b9974`. Die
+[aktuelle Bewertung](../Architecture/Foundation_1_25_Upgrade.md) erfasst das
+eine neue Feature, menschliche Lesepfade, getrennte KI-Steuerung und die
+Bewertung des tatsächlichen Verarbeitungsaufwands. Bestehende Produkt-,
+Datenschutz-, Lizenz- und Registrierungsverträge bleiben erhalten. Diese
+Welle enthält keine SQL- oder Lab-Ausführung. Nach lokalen Prüfungen,
+unabhängigem Review und grünen Head-Gates folgen reguläre Integration,
+Mainprüfung und eigener Cleanup.
+
+### Dokumentationsaltlasten und Wiederaufnahme
+
+| Betroffener Umfang | Verantwortliche Rolle | Konkreter Wiederaufnahmetrigger und Grenze |
+|---|---|---|
+| Einstieg in `Metadata/` | Maintainer der Metadatenverträge | Nächster reiner Dokumentationsschritt nach diesem Upgrade: eine kurze Übersicht führt zu Inventaren, Qualitätsnachweisen und Registry sowie deren Quellen und Prüfern. Keine neuen Schemas, Registrytypen oder SQL-Läufe. |
+| Öffentlicher OPS-005-Lesepfad im TestLab-README | Maintainer des TestLab-Vertrags | Nächste materielle Änderung dieses Bedienpfads: Anleitung, Voraussetzungen, erwartete Ergebnisse und Abweichungen von Entwicklungs- und Fehlversuchschronologie trennen. Native Belege und verbrauchte Grenzen bleiben erhalten; keine neue Runtimefreigabe. |
+| Aktuelles Fortsetzungsdokument | Maintainer der Projektplanung | Nächste strukturelle Planungsbereinigung: erhaltene Historie in einen ausdrücklich historischen Nachweis verlagern und betroffene Anker beziehungsweise Pfadkonsumenten erhalten. Keine Umbenennung dauerhafter Kennungen und keine Reaktivierung abgeschlossener Wellen. |
+
+Das Upgrade darf mit diesen konkret geplanten Altlasten abgeschlossen werden;
+eine vollständige Dokumentationskonformität wird nicht behauptet. Nach
+qualifizierter Foundation-Integration und eigenem Cleanup beginnt der
+abgegrenzte Metadaten-Dokumentationsschritt. Bestehende SQL-, Lab- und
+Veröffentlichungsgrenzen werden dadurch nicht erneuert.
+
+## Erhaltene Diagnosehistorie: OPS-005-Provider-Negativfall
 
 Der vorherige Stream ist über [PR #399](https://github.com/gecompat/SQL_Server_Analyze/pull/399)
 als `7359cf48` integriert. Lokale Abnahme, unabhängige Reviews, Head-CI und

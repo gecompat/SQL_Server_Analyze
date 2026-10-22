@@ -294,6 +294,10 @@ Fehlerberichte und Pull Requests sind vorgesehen. Der
 [Beitragsleitfaden](./CONTRIBUTING.md) beschreibt nachvollziehbare Meldungen,
 Datenschutz, Testauswahl und den Reviewweg.
 
+Der ausdrücklich benannte Einstieg für AI-Systeme ist
+[`AGENTS.md`](./AGENTS.md). Er führt zu den maßgeblichen Projektregeln
+und technischen Quellen.
+
 Der veröffentlichte Bestand besitzt reproduzierbare statische API-, Installer-, Inventar- und Dokumentationsprüfungen. Die fachlichen Laufzeitnachweise und unterstützten Kombinationen stehen in der [Testmatrix](./Documentation/Quality/Test_Matrix.md); `NOT_EXECUTED` ist ausdrücklich kein Testnachweis.
 
 Der frameworkweite Ausgabe-Vertrag 2.0 verarbeitet ohne expliziten Filter alle
