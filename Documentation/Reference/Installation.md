@@ -1,11 +1,24 @@
 # Installation in SQL Server Management Studio (SSMS)
 
-Diese Anleitung beschreibt die Erstinstallation und die anschließende
-Funktionsprüfung. Das versionierte Produkt-ZIP enthält den eigenständigen
-Installer bereits. Bei einer Repositorykopie wird er zunächst lokal erzeugt;
-anschließend wird in beiden Fällen eine SQL-Datei in SSMS ausgeführt.
+Diese Anleitung beschreibt die Erstinstallation und das Upgrade aus der
+Produkt-ZIP einschließlich des optionalen Snapshot-/Baseline-Pakets. Die ZIP
+enthält fünf vorbereitete Installer unter `Code/Install/generated`. Für diese
+Wege werden weder ein lokaler Build noch PowerShell, Python oder der
+SQLCMD-Modus benötigt. Bei einer Repositorykopie gelten die gesonderten
+Build- beziehungsweise SQLCMD-Abschnitte.
 
-Für Wiederholungen und Migrationen mit erhaltener Datenhistorie gilt die [Anleitung zum Gesamtdeployment](Deployment.md). Der dort beschriebene Builder erfordert zusätzlich Python 3.10 oder neuer und verwendet explizite Datenbankwerte sowie persistente Vorzustandskopien. Die nachstehenden bisherigen Installer behalten ihren Erstinstallationsablauf.
+| Ausgangslage | Ablauf |
+|---|---|
+| Noch keine Frameworkinstallation | Schritte 1 bis 10 mit `Install_All.generated.sql`; danach bei Bedarf das [Snapshot-/Baseline-Paket ergänzen](#optional-persistentes-snapshot-baseline-paket-sc-023). |
+| Bestehender Frameworkkern | [Upgrade aus der Produkt-ZIP](#upgrade-aus-der-produkt-zip) mit `Deploy_All.generated.sql`. |
+| Bestehender Kern und bestehendes Snapshot-/Baseline-Paket | [Upgrade mit Snapshot/Baseline](#upgrade-mit-bestehendem-snapshot-baseline-paket): Kern, Snapshot-Target und Snapshot-Framework getrennt aktualisieren. |
+
+Der mitgelieferte `Deploy_All.generated.sql` enthält nur den Kern. Das Setzen
+von `@SnapshotDatabase` erweitert diesen Installer nicht; der Wert muss dort
+`NULL` bleiben. Der [Deploymentleitfaden](Deployment.md) erläutert den
+Receipt- und Vorzustandsvertrag sowie den gesonderten Neubau eines kombinierten
+Installers. Die Snapshot-Einzelinstaller besitzen diesen gemeinsamen Vertrag
+nicht.
 
 ## 1. Voraussetzungen prüfen
 
@@ -168,7 +181,11 @@ Der generierte Installer enthält keine `:r`-Anweisungen. Für ihn muss der SQLC
 2. Warten Sie bis zum Ende und kontrollieren Sie insbesondere die Registerkarte **Meldungen**.
 3. Gehen Sie bei einem Fehler nicht von einer vollständigen Installation aus. Beheben Sie die Ursache und führen Sie anschließend den gesamten Installer erneut aus.
 
-Die Frameworkobjekte liegen danach in der gewählten Datenbank im Schema `[monitor]`. Der Installer verwendet `CREATE OR ALTER` sowie idempotente DDL-/DML-Logik und kann deshalb auch für Upgrades erneut vollständig ausgeführt werden.
+Die Frameworkobjekte liegen danach in der gewählten Datenbank im Schema
+`[monitor]`. Der Erstinstaller verwendet `CREATE OR ALTER` und idempotente
+DDL-/DML-Logik, besitzt aber keinen gemeinsamen Receipt- und Vorzustandsvertrag.
+Für eine bestehende Installation gilt deshalb der
+[Upgradeweg](#upgrade-aus-der-produkt-zip).
 
 ## 8. Version und Kernobjekte prüfen
 
@@ -234,17 +251,40 @@ Die tatsächlich erforderlichen Rechte hängen vom aufgerufenen Modul ab. Das Fr
 
 ### Optional: persistentes Snapshot-/Baseline-Paket SC-023
 
-`Install_All.sql` installiert keine Persistenz. Für restartfeste Performance-
-Counter-Baselines sind eine eigene Snapshot-Datenbank, anschließend
-`Install_SnapshotBaseline_Target.sql` in deren Verbindungskontext und danach
-`Install_SnapshotBaseline_Framework.sql` in der Frameworkdatenbank erforderlich.
-Alternativ erzeugt `Code/Install/Build-SnapshotBaselineInstallers.ps1` unter
-`Code/Install/generated/` zwei vollständig eingebettete Installer ohne
-SQLCMD-Abhängigkeit. Der Target-Installer wird weiterhin in der ausdrücklich
-ausgewählten Snapshotdatenbank ausgeführt; erst danach folgt der
-Framework-Installer in der Frameworkdatenbank.
-Das Paket erstellt keine Datenbank, Berechtigungen oder Schedulerobjekte. Siehe
-[Snapshot-/Baseline-Betrieb](../Operations/Snapshot_Baseline_Operations.md).
+Der Kerninstaller installiert keine Snapshot-/Baseline-Persistenz. Nach erfolgreicher
+Kerninstallation ergänzen Sie das optionale Paket aus derselben ZIP:
+
+1. Eine eigene, beschreibbare Snapshotdatenbank auf derselben Instanz anlegen
+   und die erforderlichen Installationsrechte bereitstellen. Verwenden Sie
+   eine andere Benutzerdatenbank als die Frameworkdatenbank. Die
+   [Betriebsanleitung](../Operations/Snapshot_Baseline_Operations.md#installation)
+   enthält ein generisches Anlagebeispiel und die Rechtebeschreibung.
+2. `Code/Install/generated/Install_SnapshotBaseline_Target.generated.sql` in
+   SSMS öffnen. Im Datenbankfeld dieses Abfragefensters ausdrücklich die
+   Snapshotdatenbank auswählen und die gesamte Datei ausführen. Der Installer
+   verwendet den aktuellen Verbindungskontext und enthält keine eigene
+   Datenbankauswahl. Er lehnt Systemdatenbanken ab, erkennt aber keine
+   versehentlich gewählte andere Benutzerdatenbank als beabsichtigtes Ziel.
+3. Nach fehlerfreiem Targetlauf
+   `Code/Install/generated/Install_SnapshotBaseline_Framework.generated.sql`
+   öffnen. Die enthaltene `USE [DeineDatenbank];`-Zeile auf die
+   Frameworkdatenbank setzen und die gesamte Datei ausführen.
+4. Erst nach beiden erfolgreichen Installern das Ziel gemäß
+   [Betriebsanleitung](../Operations/Snapshot_Baseline_Operations.md#installation)
+   mit `monitor.USP_ConfigureSnapshotTarget` ausdrücklich konfigurieren.
+   Bei einer Erstinstallation bleibt die Zielbindung bis dahin deaktiviert.
+5. In der Snapshotdatenbank muss `snapshot.PackageVersion` für `SC-023` die
+   Paketversion `1.0.0` mit `SchemaVersion=1` enthalten. In der Frameworkdatenbank
+   muss `monitor.SnapshotTargetConfiguration` den gewählten Zielnamen und die
+   ausdrücklich gesetzte Aktivierung und Schedulerart zeigen. Diese
+   Paketversion ist von der Frameworkversion `1.1.0` getrennt.
+
+Beide Dateien liegen im Produkt-ZIP fertig vor und benötigen keinen
+SQLCMD-Modus. Sie erstellen keine Datenbank, Rechte oder Schedulerobjekte.
+Die Konfiguration startet keine Sammlung; ein Scheduler ist separat
+einzurichten. Die Schritte laufen getrennt und besitzen keinen gemeinsamen
+Rollback. Für ein bereits vorhandenes Paket gilt stattdessen das
+[Upgrade mit bestehendem Snapshot/Baseline](#upgrade-mit-bestehendem-snapshot-baseline-paket).
 
 ## 11. Erste Analyse starten
 
@@ -455,16 +495,48 @@ konsistent vorbereitete Arbeitskopie der Einzeldateien.
 
 ## Upgrade
 
+### Upgrade aus der Produkt-ZIP
+
 1. Das vollständige Produkt-ZIP der gewünschten Version separat herunterladen,
-   Prüfsumme kontrollieren und vollständig entpacken.
-2. `Code/Install/generated/Deploy_All.generated.sql` aus diesem Paket öffnen.
-3. Den Datenwert der Deklaration `@FrameworkDatabase` auf die vorhandene
-   Frameworkdatenbank setzen. Das ausgelieferte Deployment umfasst den Core;
-   ein zusätzlicher Snapshotkontext wird dabei nicht eingerichtet.
-4. Voraussetzungen und Erhaltungsvertrag des
-   [Gesamtdeployments](Deployment.md) prüfen und die vollständige Datei ausführen.
-5. Receipt und Abschluss gemäß diesem Vertrag kontrollieren; danach
-   Versionsprüfung und benötigte Smoke-Tests ausführen.
+   Prüfsumme gemäß Schritt 2 kontrollieren und vollständig entpacken.
+   Keine Dateien unterschiedlicher Releases mischen.
+2. Vorhandene Frameworkdatenbank sichern und den betrieblichen Rückfallweg
+   festlegen. Bei vorhandenem Snapshotpaket auch dessen Datenbank sichern
+   und die folgenden Schritte mit dem
+   [Snapshot-Upgrade](#upgrade-mit-bestehendem-snapshot-baseline-paket) verbinden.
+   Während des gesamten Ablaufs Frameworkaufrufe, Snapshot-Sammlung und Purge
+   unterbrechen. Die Installer richten diese Unterbrechung nicht selbst ein.
+3. Voraussetzungen des [Gesamtdeployments](Deployment.md) prüfen: eine
+   vorhandene, erreichbare, online und beschreibbare Benutzerdatenbank,
+   `CONTROL` auf dieser Datenbank und `VIEW ANY DEFINITION` auf dem Server.
+   Availability Groups und Mirroring sind für diesen Deploymentweg
+   ausgeschlossen. Ein eigenes SSMS-Abfragefenster ohne offene Transaktion
+   und mit `IMPLICIT_TRANSACTIONS OFF` verwenden. Für DDL können exklusive
+   Sperren und zusätzlicher Transaktionslogbedarf entstehen.
+4. `Code/Install/generated/Deploy_All.generated.sql` aus diesem Paket öffnen.
+   In der vorhandenen Deklaration ausschließlich den Datenwert der
+   Frameworkdatenbank anpassen, beispielsweise:
+
+   ```sql
+   DECLARE @FrameworkDatabase nvarchar(max)=N'ExampleFrameworkDatabase',
+           @SnapshotDatabase nvarchar(max)=NULL;
+   ```
+
+   `ExampleFrameworkDatabase` durch den tatsächlichen Namen ersetzen.
+   `@SnapshotDatabase` muss `NULL` bleiben: Die ZIP enthält hier den
+   Core-Installer. Eine vorhandene Snapshotdatenbank oder deren Konfiguration
+   wird durch dieses Skript nicht aktualisiert.
+5. Serververbindung kontrollieren, jeden markierten Ausschnitt aufheben und
+   die gesamte Datei ausführen. Der SQLCMD-Modus ist nicht erforderlich.
+   Die ausgegebene `DeploymentRunId` für die Abschlusskontrolle aufbewahren.
+6. Meldungen und das persistente Receipt `monitor_deployment.Run_<RunId>` in
+   der Frameworkdatenbank gemäß [Deploymentvertrag](Deployment.md#receipt-und-unklarer-abschluss)
+   kontrollieren. Die Versionsabfrage aus Schritt 8 muss genau eine
+   Frameworkzeile mit `FrameworkVersion=1.1.0` ergeben.
+7. Bei bestehendem Snapshotpaket vor der Freigabe mit dem folgenden Abschnitt
+   fortfahren. Ohne dieses Paket die Smoke-, Capability- und
+   Berechtigungsprüfungen aus den Schritten 9 und 10 durchführen und danach
+   die unterbrochenen Frameworkaufrufe wieder zulassen.
 
 Das Produkt-ZIP enthält bereits den aus seinem Quellcommit erzeugten und
 abgenommenen Deploymentinstaller. Für diesen Downloadweg ist kein erneuter
@@ -475,6 +547,71 @@ Receipt- und Vorzustandsvertrag und ist deshalb nicht der Upgradeweg.
 Vor produktiven Upgrades gelten die Sicherungs-, Change- und Rückfallprozesse
 der Umgebung. Ein unklarer Abschluss muss vor einer Wiederholung anhand des
 Receipts geklärt werden.
+
+### Upgrade mit bestehendem Snapshot-/Baseline-Paket
+
+Dieser ZIP-Weg gilt für eine bestehende, kompatible SC-023-Installation mit
+den vorhandenen Framework- und Snapshotdatenbanken. Die getrennten
+Snapshot-Installer sind idempotent; sie liefern keinen allgemeinen
+Strukturmigrationsnachweis für abweichende Alt- oder Customschemata. Bei
+bekannter Strukturdrift ist dieser Ablauf keine Freigabe zum Überschreiben
+der Abweichung.
+
+Vor Beginn Zielbindung und lokalen Policyzustand sowie die vorhandene
+Historie für den späteren Vergleich festhalten. Beide Datenbanken sichern
+und während aller drei Schritte Frameworkaufrufe, Collector und Purge
+unterbrechen. Eine neue Snapshotdatenbank ist für das Upgrade nicht anzulegen.
+Für die beiden Snapshot-Schritte sind zusätzlich ausreichende DDL-Rechte in
+ihrem jeweiligen Datenbankkontext erforderlich; die Kernrechte allein
+belegen diese Rechte auf der Snapshotdatenbank nicht.
+
+| Reihenfolge | Datei unter `Code/Install/generated` | Datenbankauswahl |
+|---|---|---|
+| 1 | `Deploy_All.generated.sql` | Bestehende Frameworkdatenbank als `@FrameworkDatabase`; `@SnapshotDatabase=NULL`. Den vorherigen Kernablauf genau einmal durchführen. |
+| 2 | `Install_SnapshotBaseline_Target.generated.sql` | In einem eigenen SSMS-Abfragefenster ausdrücklich die bestehende Snapshotdatenbank auswählen; das Skript verwendet diesen Kontext. |
+| 3 | `Install_SnapshotBaseline_Framework.generated.sql` | In einem eigenen Abfragefenster die enthaltene `USE [DeineDatenbank];`-Zeile auf die bestehende Frameworkdatenbank setzen. |
+
+Jede Datei vollständig ausführen und die Meldungen prüfen, bevor der nächste
+Schritt beginnt. Die Targetdatei enthält keine `USE`-Zeile zur Zielauswahl;
+vor ihrem Start das Datenbankfeld im zugehörigen Fenster erneut kontrollieren.
+Alle drei Dateien liegen fertig in der ZIP und benötigen keinen SQLCMD-Modus.
+Ihre eingebettete Produktlogik wird nicht bearbeitet.
+
+Nach den drei fehlerfreien Schritten den Abschluss kontrollieren:
+
+1. In der Frameworkdatenbank Versionsprüfung, Smoke-Test sowie Capability-
+   und Berechtigungsprüfung aus den Schritten 8 bis 10 durchführen. Erwartet
+   wird Frameworkversion `1.1.0` und der dort beschriebene erfolgreiche
+   Smoke-Test.
+2. In der bestehenden Snapshotdatenbank `snapshot.PackageVersion` prüfen.
+   Für `PackageCode='SC-023'` sind in diesem Release `PackageVersion='1.0.0'`
+   und `SchemaVersion=1` zu erwarten. Diese Paketversion ist von der
+   Frameworkversion `1.1.0` getrennt.
+3. In der Frameworkdatenbank `monitor.SnapshotTargetConfiguration` mit dem
+   Vorzustand vergleichen: vorhandener Zielname, Aktivierung und Schedulerart
+   müssen erhalten sein. Lokale Policies und vorhandene Historie in der
+   Snapshotdatenbank mit dem festgehaltenen Vorzustand abgleichen. Die
+   Installer führen keine Collection und keinen Purge aus.
+4. Bei unverändertem Ziel `monitor.USP_ConfigureSnapshotTarget` nicht erneut
+   aufrufen. Die vorhandene Konfiguration bleibt bestehen. Erst nach
+   erfolgreicher Abschlusskontrolle die zuvor unterbrochenen Aufrufe und den
+   vorhandenen Scheduler wieder zulassen.
+
+Die drei Schritte bilden keine gemeinsame Transaktion. Receipt und
+Vorzustandskopien des ersten Schritts gelten ausschließlich für den Kern;
+die Snapshot-Einzelinstaller besitzen diesen Vertrag nicht. Ein Fehler im
+zweiten oder dritten Schritt rollt zuvor erfolgreiche Schritte nicht zurück.
+Bei Fehlern oder Verbindungsabbruch keine Folgeschritte und keine Sammlung
+starten. Auch innerhalb einer Snapshotdatei können bereits Teiländerungen
+vorliegen; ihre Batches besitzen keinen gemeinsamen Rollback.
+Meldungen, Kern-Receipt und Objektzustand beider Datenbanken prüfen
+und den betrieblichen Wiederanlauf- oder Rückfallweg festlegen. Die
+Frameworkversionszeile allein belegt keinen erfolgreichen Snapshotabschluss.
+
+Ein gemeinsames Deployment mit Transaktion, Receipt und Vorzustandserhaltung
+für beide Datenbanken erfordert den gesonderten
+[kombinierten Neubau](Deployment.md#lokaler-neubau-aus-quellen).
+Die v1.1.0-ZIP enthält keinen fertig gebauten kombinierten Installer.
 
 ## Häufige Fehler
 
@@ -490,10 +627,26 @@ Receipts geklärt werden.
 
 ## Abgrenzung
 
-Es gibt bewusst keine persistente Installationshistorie, keine automatische Rechtevergabe und keine implizite Datenspeicherung. Git ist die maßgebliche Versions- und Integritätsquelle; ein zusätzliches, bei jeder Änderung nachzuführendes Dateihash-Manifest wird nicht verwendet.
+Die Installer vergeben keine Rechte und richten keinen Scheduler ein. Der
+Deploymentweg speichert ausdrücklich Receipts und Vorzustände; das optionale
+Snapshotpaket speichert bei autorisierten Betriebsaufrufen Laufzeitwerte.
+Die Erst- und Snapshot-Einzelinstaller besitzen keinen gemeinsamen
+Deployment-Receiptvertrag. Git und die Releaseartefakte bleiben die
+Quellen- und Integritätsreferenz; ein zusätzliches, bei jeder Änderung
+nachzuführendes Dateihash-Manifest wird nicht verwendet.
 
 Ein realer Compile- und Laufzeittest auf der konkreten Zielversion, Edition, Plattform und Berechtigungsstufe bleibt erforderlich.
 
 ## Teilinstallation der Execution-Plan-Analyse
 
-Für eine eigenständig nutzbare Plananalyse verwenden Sie `Code/Install/Install_ExecutionPlanAnalysis.sql` im SQLCMD-Modus. Alternativ erzeugt `Code/Install/Build-ExecutionPlanAnalysisInstaller.ps1` unter `Code/Install/generated/` einen vollständig eingebetteten Installer. Verfügbar sind danach mindestens `monitor.USP_ExecutionPlanAnalysis` und `monitor.USP_CreateExecutionEvidenceJson`; Query Store, Current State, Extended Events und Server Health werden nicht mitinstalliert.
+Für eine eigenständig nutzbare Plananalyse enthält das Produkt-ZIP bereits
+`Code/Install/generated/Install_ExecutionPlanAnalysis.generated.sql`. Die
+einleitende `USE`-Zeile auf die gewählte Installationsdatenbank setzen und die
+gesamte Datei in SSMS ohne SQLCMD-Modus ausführen. Neben einer vollständigen
+Kerninstallation ist dieser zusätzliche Teilinstaller nicht erforderlich.
+Bei einem Quellcheckout stehen der Include-Installer
+`Code/Install/Install_ExecutionPlanAnalysis.sql` im SQLCMD-Modus und der Builder
+`Code/Install/Build-ExecutionPlanAnalysisInstaller.ps1` zur Verfügung.
+Verfügbar sind danach mindestens `monitor.USP_ExecutionPlanAnalysis` und
+`monitor.USP_CreateExecutionEvidenceJson`; Query Store, Current State,
+Extended Events und Server Health werden nicht mitinstalliert.

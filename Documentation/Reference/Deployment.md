@@ -1,5 +1,34 @@
 # Wiederholbares Gesamtdeployment
 
+## Produkt-ZIP ohne Neubau
+
+Das Produkt-ZIP v1.1.0 enthält bereits
+`Code/Install/generated/Deploy_All.generated.sql` für den Frameworkkern.
+Die [Upgradeanleitung](Installation.md#upgrade-aus-der-produkt-zip) beschreibt
+Vorbereitung, Datenbankauswahl, Ausführung und Abschlusskontrolle in SSMS.
+Für diesen Weg sind weder PowerShell noch Python oder der SQLCMD-Modus
+erforderlich.
+
+Im mitgelieferten Installer wird ausschließlich `@FrameworkDatabase` auf
+die vorhandene Frameworkdatenbank gesetzt; `@SnapshotDatabase` muss `NULL`
+bleiben. Der Quellumfang ist beim Build festgelegt. Ein anderer Datenwert
+fügt dem Core-Artefakt keine Snapshotquellen hinzu und wird dort abgelehnt.
+
+Für ein bestehendes Snapshot-/Baseline-Paket gilt das
+[dreistufige Upgrade aus der ZIP](Installation.md#upgrade-mit-bestehendem-snapshot-baseline-paket).
+Dabei folgen auf das Kerndeployment der vorbereitete Target-Installer in der
+Snapshotdatenbank und der Framework-Installer in der Frameworkdatenbank.
+Die nachstehende gemeinsame Transaktion sowie Receipt- und
+Vorzustandserhaltung gelten bei diesem Weg nur für den Kern. Die
+Snapshot-Einzelinstaller haben keinen gemeinsamen Transaktions-, Receipt-
+oder allgemeinen Strukturmigrationsvertrag mit diesem Lauf.
+
+## Lokaler Neubau aus Quellen
+
+Dieser Abschnitt gilt für Quellcheckouts und für einen bewusst gewählten
+kombinierten Deploymentumfang. Das Produkt-ZIP enthält keinen vorbereiteten
+kombinierten Installer für beide Datenbanken.
+
 `Code/Install/Build-DeploymentInstaller.ps1` erzeugt den Gesamtdeploymentweg aus den kanonischen SQLCMD-Includes und den darin enthaltenen SQL-Quellen. Der Build benötigt PowerShell und Python 3.10 oder neuer. Der Python-Renderer verwendet ausschließlich die Standardbibliothek und verbindet sich nicht mit SQL Server. Unbekannte Quellformen führen zu einem Buildfehler; ein vorhandenes Ausgabe-Artefakt wird bei einem Fehler nicht ersetzt.
 
 ```powershell
@@ -11,6 +40,8 @@
 ```
 
 Das Ergebnis liegt unter `Code/Install/generated/Deploy_All.generated.sql`. In dieser Datei sind ausschließlich die Datenwerte der Deklaration `@FrameworkDatabase` und, beim optionalen Paket, `@SnapshotDatabase` anzupassen. Die Snapshotdatenbank muss eine andere vorhandene Benutzerdatenbank auf derselben Instanz sein. Anschließend wird die gesamte Datei in SSMS oder mit `sqlcmd -b` ausgeführt. Die Datei benötigt keinen SQLCMD-Modus. Ein zufällig gewählter Abfragekontext wird nicht als Installationsziel verwendet.
+
+## Voraussetzungen für das Deployment
 
 Die ausgewählten Datenbanken müssen online, beschreibbar und erreichbar sein. Der ausführende Benutzer benötigt `CONTROL` auf allen ausgewählten Datenbanken und `VIEW ANY DEFINITION` auf dem Server. Availability Groups und Database Mirroring sind für diesen Deploymentweg derzeit ausgeschlossen. Die Datei erzeugt weder Datenbanken noch Berechtigungen, Jobs oder Serverkonfigurationen. Offene Caller-Transaktionen und `IMPLICIT_TRANSACTIONS ON` werden vor der eigenen Transaktion abgelehnt. Die Fehlermeldung wird mit lokalem `XACT_ABORT OFF` in einem untergeordneten Ausführungsscope ausgelöst, damit die Caller-Transaktion und deren Optionen erhalten bleiben.
 
@@ -32,4 +63,13 @@ Jeder erfolgreiche Lauf erstellt auch bei einer Erstinstallation pro ausgewählt
 
 Bei einem SQL-Fehler rollt die eigene Transaktion Produktänderungen und neue Hilfstabellen gemeinsam zurück. Nach Verbindungsabbruch oder Cancellation kann der Abschluss beim Client unbekannt sein. In einer neuen Verbindung sind deshalb die zuvor ausgegebene Run-ID, die Receipts in allen gewählten Datenbanken, deren Rollen und SHA256 sowie die aktuelle Objektgestalt abzugleichen. Ein fehlendes Receipt bei noch laufender oder zurückrollender Session belegt keinen abgeschlossenen Rollback. Vor einer erneuten Ausführung muss dieser Zustand geklärt werden. Das Deployment entfernt ältere Receipts und Vorzustände nicht automatisch.
 
-Die bisherigen Einzelinstaller bleiben für ihre bisherigen Installationsumfänge verfügbar. Ihre Ausführung besitzt nicht den hier beschriebenen gemeinsamen Receipt- und Vorzustandsvertrag. Für Wiederholungen und Migrationen ist daher das frisch aus dem aktuellen Checkout erzeugte `Deploy_All.generated.sql` zu verwenden.
+Für Kernupgrades wird `Deploy_All.generated.sql` aus dem passenden Produkt-ZIP
+oder aus einem aktuellen kanonischen Neubau verwendet. Ein erneuter Build
+des unveränderten ZIP-Installers ist nicht erforderlich. Die bisherigen
+Einzelinstaller bleiben für ihre jeweiligen Installationsumfänge verfügbar;
+ihre Idempotenz ersetzt keinen allgemeinen Migrationsnachweis. Für ein
+Snapshot-Upgrade über die getrennten ZIP-Installer gelten ausdrücklich die
+[Grenzen und Abschlusskontrollen](Installation.md#upgrade-mit-bestehendem-snapshot-baseline-paket)
+dieses Weges. Wird der gemeinsame Erhaltungs- und Rollbackvertrag für beide
+Datenbanken benötigt, ist der mit `-IncludeSnapshotBaseline` erzeugte
+kombinierte Deploymentinstaller erforderlich.
