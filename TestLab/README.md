@@ -195,6 +195,16 @@ zurückgibt. Ein statischer Implementierungsfehler ist nicht belegt.
 Eigene Datenbank, VM, Child-Disk und aktive Lease sind entfernt; das
 Parent-Image ist unverändert. Ein weiterer Diagnose- oder Abnahmerun benötigt
 eine neue begrenzte Freigabe. Die Providerabnahme bleibt unqualifiziert.
+
+Der anschließend freigegebene Modus `-DiagnosePrerequisites` verwendet einen
+eigenen Run mit derselben Installation und demselben Cleanup. Er führt die
+sieben unverändert übernommenen Guards innerhalb `TRY/CATCH` aus und erfasst
+deren Fehlernummer und State in einer begrenzten Zeile. Nur bei 54890 mit
+State 1 bis 7 folgt eine zweite lesende Abfrage der zugehörigen Werte.
+Provideranlage, Analyzer und Provider-Vorprobe werden in diesem Modus nicht
+ausgeführt. `DIAGNOSIS_CAPTURED` erfordert auch den vollständigen Cleanup;
+ein nicht reproduzierter Fehler bleibt `DIAGNOSIS_INCONCLUSIVE` und beendet
+den Worker ohne Qualifikation. Der reguläre Providerpfad bleibt unverändert.
 Aktueller Umfang und offene Voraussetzungen stehen in den
 [Next Steps](../AI_Metadata/Internal_Documentation/Quality/Next_Steps.md#nachabnahme-mit-qualifizierter-lab-korrektur).
 

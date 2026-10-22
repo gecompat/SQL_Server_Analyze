@@ -6,6 +6,8 @@
     Benötigt geprüfte private Eingaben und einen erhöhten Windows-Prozess.
     Ein vorhandenes Prepared-Image und ein bestehender interner Switch werden
     verwendet. Allgemeine Provisionierung und Entfernung bleiben bei Lab.
+    DiagnosePrerequisites liest ausschließlich Guardstate und zugehörige Werte;
+    das Diagnoseergebnis ersetzt keine Providerabnahme.
 #>
 [CmdletBinding()]
 param(
@@ -18,6 +20,7 @@ param(
     [Parameter(Mandatory)][string]$ParentVhdxPath,
     [Parameter(Mandatory)][string]$ExistingSwitchName,
     [Parameter(Mandatory)][string]$ReservationPath,
+    [switch]$DiagnosePrerequisites,
     [Parameter(Mandatory)][switch]$Execute
 )
 Set-StrictMode -Version Latest
@@ -75,7 +78,7 @@ for($i=0;$i -lt @($fresh.Inputs).Count;$i++) {
 Import-Module (Join-Path $labRoot 'SqlServerLab.psd1')
 $mutex=[Threading.Mutex]::new($false,'Global\SQL_Server_Lab_Runtime_Smoke')
 $locked=$false; $started=$false; $runBinding=$null; $databaseBinding=$null; $childPath=$null; $primaryFailure=$null
-$report=[ordered]@{Scope='OPS005_WINDOWS_PROVIDER_ACCEPTANCE';Outcome='NOT_EXECUTED';SourceHead=$head;LabHead=$labHead;
+$report=[ordered]@{Scope=$(if($DiagnosePrerequisites){'OPS005_WINDOWS_PREREQUISITE_DIAGNOSIS'}else{'OPS005_WINDOWS_PROVIDER_ACCEPTANCE'});Outcome='NOT_EXECUTED';SourceHead=$head;LabHead=$labHead;DiagnosticReadQueries=0;
     NewRuns=0;NativeBlocks=0;SutCalls=0;Preprobes=0;DatabaseCleanup='NOT_CREATED';RunCleanup='NOT_CREATED';NetworkLeaseCleanup='NOT_CREATED';ParentIntegrity='NOT_CHECKED'}
 $resultPath=Join-Path $work 'result.json'
 function Save-PrivateReport { $report | ConvertTo-Json -Depth 15 | Set-Content -LiteralPath $resultPath -Encoding utf8NoBOM }
@@ -209,12 +212,34 @@ try {
         if ($remaining -lt 5) { throw 'OPS005_INSTALLATION_DEADLINE' }
         $null=Invoke-OwnSql $part.Name 'LabAnalyze' @{} $remaining
     }
+    if ($DiagnosePrerequisites) {
+        $report.DiagnosticReadQueries=1;Save-PrivateReport
+        $diagnosticParameters=@{OperationId=$operation.ToString('D');ExpectedDefinitionHash=[Convert]::FromHexString($binding.ExpectedDefinitionSha256)}
+        $guard=Get-OneRow (Invoke-OwnSql 'diagnose-prerequisites.sql' 'LabAnalyze' $diagnosticParameters 120)
+        if ($guard.Scope -cne 'OPS005_PREREQUISITE_DIAGNOSIS' -or $guard.GuardsPassed -isnot [bool]) { throw 'OPS005_DIAGNOSTIC_RESULT_INVALID' }
+        $report.GuardDiagnostic=$guard
+        if ($guard.GuardsPassed) {
+            if ($null -ne $guard.ErrorNumber -or $null -ne $guard.ErrorState) { throw 'OPS005_DIAGNOSTIC_RESULT_INVALID' }
+            $report.Outcome='DIAGNOSIS_INCONCLUSIVE_CLEANUP_PENDING'
+        } else {
+            if ($guard.ErrorNumber -isnot [int] -or $guard.ErrorNumber -ne 54890 -or $guard.ErrorState -isnot [int] -or $guard.ErrorState -lt 1 -or $guard.ErrorState -gt 7) { throw 'OPS005_DIAGNOSTIC_RESULT_INVALID' }
+            $diagnosticParameters.GuardState=$guard.ErrorState
+            $report.DiagnosticReadQueries=2;Save-PrivateReport
+            $details=Get-OneRow (Invoke-OwnSql 'diagnose-prerequisite-details.sql' 'LabAnalyze' $diagnosticParameters 60)
+            if ($details.Scope -cne 'OPS005_PREREQUISITE_DETAILS' -or $details.GuardState -isnot [int] -or $details.GuardState -ne $guard.ErrorState -or
+                $details.DetailsJson -isnot [string] -or $details.DetailsJson.Length -gt 32768) { throw 'OPS005_DIAGNOSTIC_DETAILS_INVALID' }
+            $report.GuardDetails=ConvertFrom-Json -InputObject $details.DetailsJson -Depth 12
+            if ($report.GuardDetails -isnot [pscustomobject] -or @($report.GuardDetails.PSObject.Properties).Count -eq 0) { throw 'OPS005_DIAGNOSTIC_DETAILS_INVALID' }
+            $report.Outcome='DIAGNOSIS_CAPTURED_CLEANUP_PENDING'
+        }
+    } else {
     $report.SutCalls='UNKNOWN_0_TO_5';$report.Preprobes='UNKNOWN_0_TO_1';Save-PrivateReport
     $accepted=Get-OneRow (Invoke-OwnSql 'provider-unavailable.sql' 'LabAnalyze' @{
         OperationId=$operation.ToString('D');ExpectedDefinitionHash=[Convert]::FromHexString($binding.ExpectedDefinitionSha256)} 120)
     if ($accepted.Scope -cne 'OPS005_PROVIDER_ACCEPTANCE' -or $accepted.Outcome -cne 'PASSED' -or $accepted.SutCalls -ne 5 -or
         $accepted.Preprobes -ne 1 -or $accepted.NativeError -notin @(7302,7403) -or $accepted.FixtureCleanup -cne 'REMOVED') { throw 'OPS005_ACCEPTANCE_INCOMPLETE' }
     $report.SutCalls=5;$report.Preprobes=1;$report.Acceptance=$accepted;$report.Outcome='ACCEPTANCE_PASSED_CLEANUP_PENDING'
+    }
 }
 catch { $primaryFailure=$_; $report.Outcome=if($started){'FAILED'}else{'BLOCKED'};$report.Error=$_.Exception.Message }
 finally {
@@ -254,12 +279,20 @@ finally {
             $report.ParentIntegrity='UNCHANGED'
         } catch { $report.ParentIntegrity='NOT_PROVEN';$report.ParentError=$_.Exception.Message }
     }
-    if ($report.Outcome -ceq 'ACCEPTANCE_PASSED_CLEANUP_PENDING' -and $report.DatabaseCleanup -ceq 'REMOVED' -and
-        $report.RunCleanup -ceq 'REMOVED' -and $report.NetworkLeaseCleanup -ceq 'NO_ACTIVE_OWN_LEASE' -and $report.ParentIntegrity -ceq 'UNCHANGED') { $report.Outcome='PASSED' }
+    $clean=$report.DatabaseCleanup -ceq 'REMOVED' -and $report.RunCleanup -ceq 'REMOVED' -and
+        $report.NetworkLeaseCleanup -ceq 'NO_ACTIVE_OWN_LEASE' -and $report.ParentIntegrity -ceq 'UNCHANGED'
+    if ($clean -and $report.Outcome -ceq 'ACCEPTANCE_PASSED_CLEANUP_PENDING') { $report.Outcome='PASSED' }
+    elseif ($clean -and $report.Outcome -ceq 'DIAGNOSIS_CAPTURED_CLEANUP_PENDING') { $report.Outcome='DIAGNOSIS_CAPTURED' }
+    elseif ($clean -and $report.Outcome -ceq 'DIAGNOSIS_INCONCLUSIVE_CLEANUP_PENDING') { $report.Outcome='DIAGNOSIS_INCONCLUSIVE' }
     elseif ($started -and $report.Outcome -cne 'FAILED') { $report.Outcome='FAILED' }
     Save-PrivateReport
     if ($locked) { $mutex.ReleaseMutex() };$mutex.Dispose()
 }
 if ($primaryFailure) { throw $primaryFailure }
+if ($DiagnosePrerequisites) {
+    if ($report.Outcome -cne 'DIAGNOSIS_CAPTURED') { throw 'OPS005_DIAGNOSIS_NOT_QUALIFIED' }
+    [pscustomobject]@{Scope=$report.Scope;Outcome=$report.Outcome;SutCalls=0;Preprobes=0;EvidencePath=$resultPath}
+    return
+}
 if ($report.Outcome -cne 'PASSED') { throw 'OPS005_ACCEPTANCE_NOT_QUALIFIED' }
 [pscustomobject]@{Scope=$report.Scope;Outcome=$report.Outcome;SutCalls=$report.SutCalls;Preprobes=$report.Preprobes;EvidencePath=$resultPath}

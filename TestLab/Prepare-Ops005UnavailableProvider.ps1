@@ -94,7 +94,23 @@ $match=[regex]::Match($definitionText,'(?s)(CREATE OR ALTER PROCEDURE.*)\nGO\s*\
 if (-not $match.Success) { throw 'OPS005_CANONICAL_DEFINITION_INVALID' }
 $definitionHash=[Security.Cryptography.SHA256]::HashData([Text.Encoding]::Unicode.GetBytes($match.Groups[1].Value.Trim()))
 $contractSource=Join-Path $PSScriptRoot 'Scenarios/OPS-005/provider-unavailable.sql'
-$contract=Write-PrivateSql 'provider-unavailable.sql' ([IO.File]::ReadAllText($contractSource,$encoding))
+$contractText=[IO.File]::ReadAllText($contractSource,$encoding)
+$contract=Write-PrivateSql 'provider-unavailable.sql' $contractText
+$guardBoundary=[regex]::Matches($contractText,'(?m)^DECLARE @Name sysname=')
+if ($guardBoundary.Count -ne 1) { throw 'OPS005_DIAGNOSTIC_GUARD_BOUNDARY_INVALID' }
+$guardPrefix=$contractText.Substring(0,$guardBoundary[0].Index)
+if ([regex]::Matches($guardPrefix,'THROW 54890,').Count -ne 7) { throw 'OPS005_DIAGNOSTIC_GUARD_COUNT_INVALID' }
+$diagnostic=Write-PrivateSql 'diagnose-prerequisites.sql' ("BEGIN TRY`n"+$guardPrefix+@'
+SELECT N'OPS005_PREREQUISITE_DIAGNOSIS' AS [Scope],CAST(1 AS bit) AS [GuardsPassed],
+    CAST(NULL AS int) AS [ErrorNumber],CAST(NULL AS int) AS [ErrorState];
+END TRY
+BEGIN CATCH
+SELECT N'OPS005_PREREQUISITE_DIAGNOSIS' AS [Scope],CAST(0 AS bit) AS [GuardsPassed],
+    ERROR_NUMBER() AS [ErrorNumber],CONVERT(int,ERROR_STATE()) AS [ErrorState];
+END CATCH;
+'@)
+$diagnosticDetails=Write-PrivateSql 'diagnose-prerequisite-details.sql' ([IO.File]::ReadAllText(
+    (Join-Path $PSScriptRoot 'Scenarios/OPS-005/provider-prerequisite-details.sql'),$encoding).Replace('[DeineDatenbank]','[LabAnalyze]'))
 $prepare=Write-PrivateSql 'prepare-database.sql' @'
 SET NOCOUNT ON;
 SET XACT_ABORT ON;
@@ -135,14 +151,14 @@ IF DB_ID(N'LabAnalyze') IS NOT NULL
     THROW 54895,N'OPS005_DATABASE_CLEANUP_FAILED',6;
 SELECT N'REMOVED' AS DatabaseCleanup;
 '@
-$inputs=@($prepare)+@($parts)+@($contract,$cleanup)
+$inputs=@($prepare)+@($parts)+@($contract,$cleanup,$diagnostic,$diagnosticDetails)
 $binding=[ordered]@{
     Scope='OPS005_WINDOWS_PROVIDER_PREPARATION';Outcome='NOT_EXECUTED';SourceHead=$head
     OperationId=$OperationId.ToString('D');Database='LabAnalyze'
     ExpectedDefinitionSha256=[Convert]::ToHexString($definitionHash).ToLowerInvariant()
     CanonicalSourceCount=$sections.Count;CanonicalSources=@($sourceBindings)
     Inputs=@($inputs | ForEach-Object { [ordered]@{Name=[IO.Path]::GetFileName($_);Bytes=(Get-Item -LiteralPath $_).Length;Sha256=(Get-FileHash -LiteralPath $_ -Algorithm SHA256).Hash.ToLowerInvariant()} })
-    Bounds=[ordered]@{NewRuns=1;NativeBlocks=1;SutCalls=5;Preprobes=1;InstallationSeconds=300;PreflightSeconds=300;AcceptanceSeconds=120}
+    Bounds=[ordered]@{NewRuns=1;NativeBlocks=1;SutCalls=5;Preprobes=1;DiagnosticReadQueries=2;InstallationSeconds=300;PreflightSeconds=300;AcceptanceSeconds=120}
     NativePrerequisites=@('Clean integrated Lab Main','Elevated runner','Verified prepared parent','Host capacity and existing isolated network','NotRequested/Denied activation intent','Run/Scope/VM binding')
 }
 [IO.File]::WriteAllText((Join-Path $destination 'preparation.json'),($binding|ConvertTo-Json -Depth 8),$encoding)

@@ -649,9 +649,29 @@ genannten lesenden Abfragen und keine Analyzer-Aufrufe oder Provider-Vorprobe.
 Der Abnahmeblock bleibt bei höchstens fünf Analyzer-Aufrufen und einer
 Provider-Vorprobe. Ein unabhängiger Reviewer erhält höchstens zwei
 befundgebundene Prüfungen für Diagnoseeinstieg und belegte Korrektur.
-PR-CI und Main-Nachlauf werden nicht erweitert. Diese Fortsetzung ist noch
-nicht freigegeben; Imagebau, Downloads, externe Netzanbindung, Lab-Codeänderungen
+PR-CI und Main-Nachlauf werden nicht erweitert. Der Benutzer hat diesen
+gemeinsamen Umfang ausdrücklich freigegeben. Imagebau, Downloads, externe Netzanbindung, Lab-Codeänderungen
 und fremde Ressourcen bleiben ausgeschlossen.
+
+Der vorbereitete Worker besitzt dafür den ausdrücklich gewählten Modus
+`DiagnosePrerequisites`. Die sieben Guards stammen unverändert aus dem
+gebundenen Providerfall; der zweite SQL-Einstieg verzweigt ausschließlich
+nach dem erfassten State. Beide Eingaben werden gehasht und vor Runanlage
+unabhängig regeneriert. Diagnose und Abnahme haben getrennte Ergebnisscopes.
+Eine erfasste Diagnose verlangt vollständigen Cleanup und wird niemals
+`PASSED`. Der reguläre Abnahmepfad behält seinen bisherigen Providerblock.
+
+29 ausschließlich simulierte Workerfälle bestehen. Sie umfassen den bisherigen
+Abnahmepfad, alle sieben Diagnosestates, nicht reproduzierte Fehler, ungültige
+Antworten, verlorene Replies sowie fehlerhaften Cleanup und Parentbindung.
+In sämtlichen Diagnosefällen bleiben Analyzer und Provider-Vorprobe bei null.
+20 zusätzliche Strukturprüfungen bestätigen die unveränderten Guards,
+syntaktisch gültige Diagnoseeingaben, ausschließlich lesende persistente
+Zugriffe, den begrenzten zweiten Aufruf und unveränderte bisherige SQL-Eingaben
+sowie kanonische Quellbindungen. Die kopierte ABI-Tabellenvariable bleibt lokal.
+Diese Offlineprüfungen erzeugen weder Lab-Runs noch Gast- oder SQL-Aufrufe.
+Der unabhängige erste Review und der native Diagnoserun sind noch offen;
+der bedingte Abnahmerun bleibt bis zum belegten Fix und Abschlussreview reserviert.
 
 ## Abgeschlossene Findings-Stabilisierung vom 20. Oktober 2026
 
