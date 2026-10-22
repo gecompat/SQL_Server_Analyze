@@ -110,7 +110,7 @@ Für einen ausdrücklich freigegebenen Lauf werden ein vorhandenes
 allgemeine Provisionierung bleibt dort. Der Matrixrunner erzeugt je gewählter
 Version einen eigenen frischen Run, installiert den kanonischen Bestand in
 die markierte synthetische Datenbank `LabAnalyze` und führt den vorhandenen
-[Runtimevertrag](../Code/Tests/120_OPS005_Linked_Server_Runtime_Contract.sql) aus.
+[Runtimevertrag](../Code/Tests/ServerHealth/120_OPS005_Linked_Server_Runtime_Contract.sql) aus.
 
 ```powershell
 pwsh -File ./TestLab/Invoke-AnalyzeOps005LinkedServerMatrix.ps1 `
