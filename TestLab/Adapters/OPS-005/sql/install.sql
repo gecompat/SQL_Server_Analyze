@@ -5323,6 +5323,7 @@ BEGIN
     SET LOCK_TIMEOUT 0;
 
     DECLARE @TableThrowMessage nvarchar(2048);
+    DECLARE @TableWriteStep varchar(32);
 
     SELECT
           @InsertedRows = 0
@@ -5377,7 +5378,8 @@ BEGIN
         SELECT
               @StatusCode = CASE WHEN ERROR_NUMBER() = 1222 THEN 'LOCK_TIMEOUT' ELSE 'SOURCE_NOT_FOUND' END
             , @ErrorNumber = ERROR_NUMBER()
-            , @ErrorMessage = N'Die interne Quelltabelle des ausgewählten Resultsets konnte nicht aufgelöst werden: ' + ERROR_MESSAGE();
+            , @ErrorMessage = N'Die interne Quelltabelle des ausgewählten Resultsets konnte nicht aufgelöst werden: ' + ERROR_MESSAGE()
+            , @TableWriteStep = 'SOURCE_MARKER_ADD';
         GOTO TableWriteFailed;
     END CATCH;
 
@@ -5396,7 +5398,8 @@ BEGIN
         SELECT
               @StatusCode = CASE WHEN ERROR_NUMBER() = 1222 THEN 'LOCK_TIMEOUT' ELSE 'TABLE_WRITE_ERROR' END
             , @ErrorNumber = ERROR_NUMBER()
-            , @ErrorMessage = N'Die temporäre Quellmarkierung konnte nicht entfernt werden: ' + ERROR_MESSAGE();
+            , @ErrorMessage = N'Die temporäre Quellmarkierung konnte nicht entfernt werden: ' + ERROR_MESSAGE()
+            , @TableWriteStep = 'SOURCE_MARKER_DROP';
         GOTO TableWriteFailed;
     END CATCH;
 
@@ -5417,7 +5420,8 @@ BEGIN
         SELECT
               @StatusCode = CASE WHEN ERROR_NUMBER() = 1222 THEN 'LOCK_TIMEOUT' ELSE 'TARGET_NOT_FOUND' END
             , @ErrorNumber = ERROR_NUMBER()
-            , @ErrorMessage = N'@TargetTable konnte nicht aufgelöst werden: ' + ERROR_MESSAGE();
+            , @ErrorMessage = N'@TargetTable konnte nicht aufgelöst werden: ' + ERROR_MESSAGE()
+            , @TableWriteStep = 'TARGET_MARKER_ADD';
         GOTO TableWriteFailed;
     END CATCH;
 
@@ -5436,7 +5440,8 @@ BEGIN
         SELECT
               @StatusCode = CASE WHEN ERROR_NUMBER() = 1222 THEN 'LOCK_TIMEOUT' ELSE 'TABLE_WRITE_ERROR' END
             , @ErrorNumber = ERROR_NUMBER()
-            , @ErrorMessage = N'Die temporäre Zielmarkierung konnte nicht entfernt werden: ' + ERROR_MESSAGE();
+            , @ErrorMessage = N'Die temporäre Zielmarkierung konnte nicht entfernt werden: ' + ERROR_MESSAGE()
+            , @TableWriteStep = 'TARGET_MARKER_DROP';
         GOTO TableWriteFailed;
     END CATCH;
 
@@ -5596,7 +5601,8 @@ BEGIN
             SELECT
                   @StatusCode = CASE WHEN ERROR_NUMBER() = 1222 THEN 'LOCK_TIMEOUT' ELSE 'TABLE_WRITE_ERROR' END
                 , @ErrorNumber = ERROR_NUMBER()
-                , @ErrorMessage = ERROR_MESSAGE();
+                , @ErrorMessage = ERROR_MESSAGE()
+                , @TableWriteStep = 'TARGET_EMPTY_CHECK';
             GOTO TableWriteFailed;
         END CATCH;
 
@@ -5659,7 +5665,8 @@ BEGIN
             SELECT
                   @StatusCode = CASE WHEN ERROR_NUMBER() = 1222 THEN 'LOCK_TIMEOUT' ELSE 'TABLE_WRITE_ERROR' END
                 , @ErrorNumber = ERROR_NUMBER()
-                , @ErrorMessage = ERROR_MESSAGE();
+                , @ErrorMessage = ERROR_MESSAGE()
+                , @TableWriteStep = 'TARGET_SCHEMA_ADAPT';
             GOTO TableWriteFailed;
         END CATCH;
 
@@ -5772,6 +5779,13 @@ BEGIN
     RETURN;
 
 TableWriteFailed:
+    IF @StatusCode = 'LOCK_TIMEOUT' AND @ErrorNumber = 1222
+        SET @ErrorMessage = CONCAT
+        (
+              N'TargetTable="', REPLACE(STRING_ESCAPE(@TargetTable, 'json'), N'%', N'\u0025')
+            , N'"; SqlStep=', @TableWriteStep, N'; ', @ErrorMessage
+        );
+
     IF @ThrowOnError = 1
     BEGIN
         SET @TableThrowMessage = CONCAT

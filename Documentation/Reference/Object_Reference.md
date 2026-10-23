@@ -646,8 +646,23 @@ Quelle: `Code/01_Common/095_USP_InternalWriteResultTable.sql`
 | Aufgabe | Schreibt eine kanonische Ergebnismenge in eine bereits vorbereitete lokale Ergebnistabelle. |
 | Schnittstelle | Interne Stored Procedure; Parameter: `@SourceTable sysname`; `@TargetTable sysname`; `@InsertedRows bigint = NULL OUTPUT`; `@StatusCode varchar(40) = NULL OUTPUT`; `@ErrorNumber int = NULL OUTPUT`; `@ErrorMessage nvarchar(2048) = NULL OUTPUT`; `@ThrowOnError bit = 0`. Status-, Fehler- und weitere OUTPUT-Parameter werden ausschließlich zwischen Frameworkbausteinen weitergereicht. |
 | Verwendung | Öffentliche Procedures im Schema `monitor` rufen diesen Baustein zur Orchestrierung auf. Anwendungen sollen ihn weder direkt ausführen noch von seiner Parameterreihenfolge oder seinen temporären Zwischenstrukturen abhängen. |
-| Last und Sperren | Die Procedure schreibt nur in die ausdrücklich vorgesehenen Framework-, Snapshot- oder lokalen Ergebnisspeicher und kann lokale Temp-Tabellen materialisieren, unter `LOCK_TIMEOUT 0`. Eigene lokale Temp-DDL erhält bei eingehendem Timeout 0 je Anlage bis zu 1000 ms; positive beziehungsweise unbegrenzte Eingangswerte bleiben für diese Anlage erhalten. Fremde Tabellenoperationen bleiben NOWAIT. Sie darf nur über den zugehörigen öffentlichen Einstieg ausgeführt werden. |
+| Last und Sperren | Die Procedure akzeptiert ausschließlich lokale `#Temp`-Tabellen als Quelle und Ziel und schreibt unter `LOCK_TIMEOUT 0`. Eigene lokale Temp-DDL erhält bei eingehendem Timeout 0 je Anlage bis zu 1000 ms; positive beziehungsweise unbegrenzte Eingangswerte bleiben für diese Anlage erhalten. Fremde Tabellenoperationen bleiben NOWAIT. Sie darf nur über den zugehörigen öffentlichen Einstieg ausgeführt werden. |
 | Vertrag | Nicht öffentlicher Vertrag. Fehlerbehandlung, OUTPUT-Parameter und Seiteneffekte sind nur für den versiongleichen internen Aufrufer zugesichert. |
+
+Bei bereits abgefangenen Fehlern mit `StatusCode=LOCK_TIMEOUT` und
+`ErrorNumber=1222` nennt `ErrorMessage` zusätzlich `TargetTable` und `SqlStep`.
+`TargetTable` ist der übergebene logische Temp-Tabellenname als JSON-Zeichenfolge;
+Prozentzeichen werden für die Fehlerweitergabe als `\u0025` kodiert.
+Die Schrittkennungen `SOURCE_MARKER_ADD`, `SOURCE_MARKER_DROP`,
+`TARGET_MARKER_ADD` und `TARGET_MARKER_DROP` bezeichnen die temporären
+Auflösungsmarkierungen. `TARGET_EMPTY_CHECK` bezeichnet die Leerheitsprüfung;
+`TARGET_SCHEMA_ADAPT` umfasst den bestehenden vierteiligen `ALTER TABLE`-Batch.
+Bei `@ThrowOnError=1` bleiben Fehlernummer 51010 und das Präfix
+`TABLE-Ausgabe fehlgeschlagen (LOCK_TIMEOUT): ` erhalten. Der Kontext steht vor
+dem ursprünglichen Fehlertext, damit er innerhalb der Grenze von 2048 Zeichen
+erhalten bleibt. Er benennt weder einen Blocker noch die Sperrressource und
+enthält keinen SQL-Text. Ohne passende Stichprobe bleibt die CI-Einstufung
+`BLOCKER_NOT_CAPTURED`.
 
 ### `[monitor].[InternalPrepareResultTables]`
 
