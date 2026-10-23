@@ -104,6 +104,25 @@ class Contracts(unittest.TestCase):
         self.assertEqual(report['status'], 'BLOCKER_OBSERVED')
         self.assertEqual(report['case'], case)
 
+    def test_table_timeout_context_is_retained_without_inventing_blocker(self):
+        target = '#ExampleExport] "Ä\r\n\t'
+        for step in ('TARGET_EMPTY_CHECK', 'TARGET_SCHEMA_ADAPT'):
+            body = ('TABLE-Ausgabe fehlgeschlagen (LOCK_TIMEOUT): TargetTable='
+                    +json.dumps(target, ensure_ascii=False)+'; SqlStep='+step+'; synthetic timeout')
+            output = io.BytesIO()
+            writer = ci.LogWriter(output, 'SyntheticCredential')
+            observer = ci.Observation(lambda: None)
+            observer.case = ci.marker(CASE)
+            for line in ('Msg 51010, Level 16, State 1', body):
+                writer.write(line+'\n')
+                observer.feed(line)
+            writer.write('', final=True)
+            self.assertIn(body, output.getvalue().decode('utf-8'))
+            self.assertNotIn('\r', body)
+            self.assertNotIn('\n', body)
+            self.assertEqual(observer.finish()['trigger'], 'TABLE_EXPORT_LOCK_TIMEOUT')
+            self.assertEqual(observer.finish()['status'], 'BLOCKER_NOT_CAPTURED')
+
     def test_stream_redaction_and_size_cap(self):
         synthetic_canary = "SyntheticCredential123!"
         for split in range(len(synthetic_canary)+1):
@@ -368,7 +387,7 @@ GO
                 read = """BEGIN TRY SELECT id FROM ##ExampleCiLockProbe; END TRY
 BEGIN CATCH
  IF ERROR_NUMBER()<>1222 THROW;
- DECLARE @wrappedMessage nvarchar(2048)=CONCAT(N'TABLE-Ausgabe fehlgeschlagen (LOCK_TIMEOUT): ',ERROR_MESSAGE());
+ DECLARE @wrappedMessage nvarchar(2048)=CONCAT(N'TABLE-Ausgabe fehlgeschlagen (LOCK_TIMEOUT): TargetTable="##ExampleCiLockProbe"; SqlStep=TARGET_EMPTY_CHECK; ',ERROR_MESSAGE());
  THROW 51010,@wrappedMessage,1;
 END CATCH;"""
             query = f"""USE tempdb; SET NOCOUNT ON;
@@ -395,6 +414,8 @@ WAITFOR DELAY '00:00:01';
             assert code != 0 and report["sqlcmd_exit_code"] == code, "CI_PROBE_NATIVE_EXIT"
             expected_error = "Msg 51010," if name == "wrapped" else "Msg 1222,"
             assert expected_error in (Path(args.artifacts)/"impact.log").read_text(), "CI_PROBE_NATIVE_TIMEOUT"
+            if name == 'wrapped':
+                assert 'TargetTable="##ExampleCiLockProbe"; SqlStep=TARGET_EMPTY_CHECK;' in (Path(args.artifacts)/'impact.log').read_text(), 'CI_PROBE_TABLE_CONTEXT'
             assert report["trigger"] == ("TABLE_EXPORT_LOCK_TIMEOUT" if name == "wrapped" else "SQL_ERROR_1222"), "CI_PROBE_TRIGGER"
             assert report["case"]["site"] == "Probe" and report["case"]["variant"] == name, "CI_PROBE_CASE"
             assert not report["errors"] and not report["log_incomplete"], "CI_PROBE_DIAGNOSTIC_FAILURE"

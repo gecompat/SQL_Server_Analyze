@@ -649,6 +649,20 @@ Quelle: `Code/01_Common/095_USP_InternalWriteResultTable.sql`
 | Last und Sperren | Die Procedure schreibt nur in die ausdrücklich vorgesehenen Framework-, Snapshot- oder lokalen Ergebnisspeicher und kann lokale Temp-Tabellen materialisieren, unter `LOCK_TIMEOUT 0`. Eigene lokale Temp-DDL erhält bei eingehendem Timeout 0 je Anlage bis zu 1000 ms; positive beziehungsweise unbegrenzte Eingangswerte bleiben für diese Anlage erhalten. Fremde Tabellenoperationen bleiben NOWAIT. Sie darf nur über den zugehörigen öffentlichen Einstieg ausgeführt werden. |
 | Vertrag | Nicht öffentlicher Vertrag. Fehlerbehandlung, OUTPUT-Parameter und Seiteneffekte sind nur für den versiongleichen internen Aufrufer zugesichert. |
 
+Bei bereits abgefangenen Fehlern mit `StatusCode=LOCK_TIMEOUT` und
+`ErrorNumber=1222` nennt `ErrorMessage` zusätzlich `TargetTable` und `SqlStep`.
+`TargetTable` ist der übergebene logische Temp-Tabellenname als JSON-escaped
+Zeichenfolge. Die Schrittkennungen `SOURCE_MARKER_ADD`, `SOURCE_MARKER_DROP`,
+`TARGET_MARKER_ADD` und `TARGET_MARKER_DROP` bezeichnen die temporären
+Auflösungsmarkierungen. `TARGET_EMPTY_CHECK` bezeichnet die Leerheitsprüfung;
+`TARGET_SCHEMA_ADAPT` umfasst den bestehenden vierteiligen `ALTER TABLE`-Batch.
+Bei `@ThrowOnError=1` bleiben Fehlernummer 51010 und das Präfix
+`TABLE-Ausgabe fehlgeschlagen (LOCK_TIMEOUT): ` erhalten. Der Kontext steht vor
+dem ursprünglichen Fehlertext, damit er innerhalb der Grenze von 2048 Zeichen
+erhalten bleibt. Er benennt weder einen Blocker noch die Sperrressource und
+enthält keinen SQL-Text. Ohne passende Stichprobe bleibt die CI-Einstufung
+`BLOCKER_NOT_CAPTURED`.
+
 ### `[monitor].[InternalPrepareResultTables]`
 
 Quelle: `Code/01_Common/096_USP_InternalPrepareResultTables.sql`
