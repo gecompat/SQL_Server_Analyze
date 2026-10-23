@@ -105,10 +105,12 @@ class Contracts(unittest.TestCase):
         self.assertEqual(report['case'], case)
 
     def test_table_timeout_context_is_retained_without_inventing_blocker(self):
-        target = '#ExampleExport] "Ä\r\n\t'
+        target = '#ExampleExport] "Ä%s\r\n\t'
+        encoded_target = json.dumps(target, ensure_ascii=False).replace('%', r'\u0025')
+        self.assertEqual(json.loads(encoded_target), target)
         for step in ('TARGET_EMPTY_CHECK', 'TARGET_SCHEMA_ADAPT'):
             body = ('TABLE-Ausgabe fehlgeschlagen (LOCK_TIMEOUT): TargetTable='
-                    +json.dumps(target, ensure_ascii=False)+'; SqlStep='+step+'; synthetic timeout')
+                    +encoded_target+'; SqlStep='+step+'; synthetic timeout')
             output = io.BytesIO()
             writer = ci.LogWriter(output, 'SyntheticCredential')
             observer = ci.Observation(lambda: None)

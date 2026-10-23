@@ -102,6 +102,16 @@ IF @TimeoutDefinition IS NULL OR COALESCE(@TimeoutHeaderAt,0)=0
     THROW 55726,N'TABLE timeout source definition unavailable.',1;
 IF OBJECT_ID(N'monitor.ExampleTableExportTimeoutProbe') IS NOT NULL
     THROW 55727,N'TABLE timeout probe ownership conflict.',1;
+DECLARE @TimeoutOriginalText nvarchar(2048);
+BEGIN TRY
+    RAISERROR(1222,16,1);
+END TRY
+BEGIN CATCH
+    IF ERROR_NUMBER()<>1222 THROW;
+    SET @TimeoutOriginalText=ERROR_MESSAGE();
+END CATCH;
+IF @TimeoutOriginalText IS NULL OR LEN(@TimeoutOriginalText)=0
+    THROW 55741,N'TABLE timeout original message unavailable.',1;
 DECLARE @TimeoutBase nvarchar(max)=N'CREATE PROCEDURE [monitor].[ExampleTableExportTimeoutProbe]'
     +SUBSTRING(@TimeoutDefinition,@TimeoutHeaderAt+LEN(@TimeoutHeader),LEN(@TimeoutDefinition));
 DECLARE @TimeoutStep int=0,@TimeoutThrow bit,@TimeoutProbeId int=NULL,@TimeoutNeedle nvarchar(32),
@@ -123,15 +133,15 @@ BEGIN TRY
         SET @TimeoutThrow=0;
         WHILE @TimeoutThrow IS NOT NULL
         BEGIN
-            SET @TimeoutTarget=CASE @TimeoutThrow WHEN 0 THEN N'#ExampleTableExportTimeout'
-                ELSE N'#ExampleExport] "'+NCHAR(13)+NCHAR(10)+NCHAR(9)+REPLICATE(N'Ä',60) END;
+            SET @TimeoutTarget=CASE @TimeoutThrow WHEN 0 THEN N'#ExampleTableExport%s'
+                ELSE N'#ExampleExport] "%d'+NCHAR(13)+NCHAR(10)+NCHAR(9)+REPLICATE(N'Ä',60) END;
             SET @TimeoutSql=N'
 IF OBJECT_ID(N''tempdb..''+QUOTENAME(@Name)) IS NOT NULL THROW 55730,N''TABLE timeout target collision.'',1;
 CREATE TABLE '+QUOTENAME(@TimeoutTarget)+N'([Dummy] int NULL);
 DECLARE @Owned int=OBJECT_ID(N''tempdb..''+QUOTENAME(@Name));
 BEGIN TRY
     DECLARE @Rows bigint,@Status varchar(40),@Native int,@Message nvarchar(2048),@Caught bit=0;
-    DECLARE @Expected nvarchar(1024)=CONCAT(N''TargetTable="'',STRING_ESCAPE(@Name,''json''),N''"; SqlStep='',@Step,N''; '');
+    DECLARE @Expected nvarchar(1024)=CONCAT(N''TargetTable="'',REPLACE(STRING_ESCAPE(@Name,''json''),N''%'',N''\u0025''),N''"; SqlStep='',@Step,N''; '');
     DECLARE @ThrownPrefix nvarchar(1100)=N''TABLE-Ausgabe fehlgeschlagen (LOCK_TIMEOUT): ''+@Expected;
     SET LOCK_TIMEOUT 731;
     BEGIN TRY
@@ -153,8 +163,9 @@ BEGIN TRY
     END CATCH;
     IF (@Throw=1 AND @Caught<>1) OR @@LOCK_TIMEOUT<>731 OR @@OPTIONS<>@Options OR @@TRANCOUNT<>@Tran
         THROW 55735,N''TABLE timeout caller state changed.'',1;
-    IF DATALENGTH(@Message)>4096 OR CHARINDEX(NCHAR(13),@Message)>0 OR CHARINDEX(NCHAR(10),@Message)>0
-       OR CHARINDEX(NCHAR(9),@Message)>0 OR CHARINDEX(FORMATMESSAGE(1222),@Message)=0
+    IF @Message IS NULL OR @Original IS NULL OR DATALENGTH(@Message)>4096
+       OR CHARINDEX(NCHAR(13),@Message)>0 OR CHARINDEX(NCHAR(10),@Message)>0
+       OR CHARINDEX(NCHAR(9),@Message)>0 OR CHARINDEX(@Original,@Message)=0
         THROW 55736,N''TABLE timeout message encoding or bounds failed.'',1;
     IF EXISTS(SELECT 1 FROM '+QUOTENAME(@TimeoutTarget)+N')
        OR (SELECT COUNT(*) FROM tempdb.sys.columns WHERE object_id=@Owned)<>1
@@ -167,9 +178,9 @@ BEGIN CATCH
 END CATCH;';
             DECLARE @TimeoutStepName varchar(32)=CASE @TimeoutStep WHEN 0 THEN 'TARGET_EMPTY_CHECK' ELSE 'TARGET_SCHEMA_ADAPT' END;
             EXEC [sys].[sp_executesql] @TimeoutSql,
-                N'@Name sysname,@Step varchar(32),@Throw bit,@Options int,@Tran int',
+                N'@Name sysname,@Step varchar(32),@Throw bit,@Options int,@Tran int,@Original nvarchar(2048)',
                 @Name=@TimeoutTarget,@Step=@TimeoutStepName,@Throw=@TimeoutThrow,
-                @Options=@TimeoutCallerOptions,@Tran=@TimeoutCallerTran;
+                @Options=@TimeoutCallerOptions,@Tran=@TimeoutCallerTran,@Original=@TimeoutOriginalText;
             IF OBJECT_ID(N'tempdb..'+QUOTENAME(@TimeoutTarget)) IS NOT NULL
                 THROW 55738,N'TABLE timeout target cleanup failed.',1;
             SET @TimeoutThrow=CASE @TimeoutThrow WHEN 0 THEN 1 ELSE NULL END;

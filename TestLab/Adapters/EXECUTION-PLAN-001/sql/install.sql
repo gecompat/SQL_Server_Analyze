@@ -1324,7 +1324,7 @@ TableWriteFailed:
     IF @StatusCode = 'LOCK_TIMEOUT' AND @ErrorNumber = 1222
         SET @ErrorMessage = CONCAT
         (
-              N'TargetTable="', STRING_ESCAPE(@TargetTable, 'json')
+              N'TargetTable="', REPLACE(STRING_ESCAPE(@TargetTable, 'json'), N'%', N'\u0025')
             , N'"; SqlStep=', @TableWriteStep, N'; ', @ErrorMessage
         );
 
