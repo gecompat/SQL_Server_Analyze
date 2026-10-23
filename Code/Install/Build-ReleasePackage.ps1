@@ -3,7 +3,7 @@ param(
     [string]$RepositoryRoot = (Join-Path $PSScriptRoot '../..'),
     [Parameter(Mandatory)][string]$OutputDirectory,
     [string]$Revision = 'HEAD',
-    [string]$Version = '1.1.1',
+    [string]$Version = '1.1.2',
     [string]$PythonExecutable = 'python'
 )
 

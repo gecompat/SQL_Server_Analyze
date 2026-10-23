@@ -3,7 +3,39 @@
 **Stand:** 23. Oktober 2026
 **Zweck:** aktuelle ausführbare Entwicklungswelle für `gecompat/SQL_Server_Analyze`
 
-## Aktive Welle: Release 1.1.0
+## Freigegebene Lieferung: Release 1.1.2
+
+Der Benutzer hat am 23. Oktober 2026 den Releaseplan für v1.1.2 samt enger
+ZIP-Ausnahme und festen Grenzen freigegeben. Der Branch beginnt auf
+Analyze-Main `e307fea3` einschließlich PR #410 und der OPS-005-Statusnachführung.
+Die bereits integrierte TABLE-Timeout-Diagnose wird mit dem vollständigen
+Produkt-ZIP und sechs vorbereiteten Installern ausgeliefert. Vertragsversion
+`1.24`, Snapshot-Paketversion `1.0.0`/Schema 1 und die Plattformgrenzen bleiben
+bestehen. Die [Releaseanleitung](Release_Gate_Runbook.md) führt durch Paketbau,
+Abnahme, regulären PR-Merge und Veröffentlichung; der menschliche Download-
+und Upgradeweg bleibt in der [Installationsanleitung](../../../Documentation/Reference/Installation.md).
+
+Der Umfang ist auf 20 Dateien und 400 handgeschriebene geänderte Zeilen
+begrenzt; der kanonisch generierte Adapterdiff zählt nicht zur Zeilengrenze.
+Ein Implementierer bearbeitet einen Umsetzungspass und höchstens einen
+gebündelten Korrekturpass. Ein unabhängiger Reviewer prüft höchstens zweimal.
+Höchstens zwei lokale Prüfblöcke mit je einem Prüfpaket, zwei Head-
+Qualifikationen, ein Main-Nachlauf, ein endgültiger CI-Paketbau und genau eine
+native Linux-Matrix auf SQL Server 2019, 2022 und 2025 bilden die Abnahmegrenze.
+Die zweite Head-Qualifikation setzt einen geänderten Korrekturstand voraus.
+Die Matrix läuft sequenziell mit höchstens 45 Minuten je Enginejob.
+
+Nach 120 Minuten aktiver Bearbeitung einschließlich Review und Koordination
+oder fünf Stunden Gesamtzeit beginnt keine neue Arbeit; nach drei Stunden
+erfolgt ein Kontrollpunkt. Ein Matrixfehler oder eine offene Daten-/Quellbindung
+verhindert die Veröffentlichung. Nach bestandener Abnahme zeigt `v1.1.2` auf
+den getesteten Main-Commit; veröffentlicht werden dieselben ZIP-Bytes mit
+Prüfsumme und gebundenem Nachweis. Der Abschluss wird beim Release geführt.
+Damit endet dieser Auftrag ohne Wiederholungsfreigabe. Die früheren Releases
+bleiben unverändert. OPS-005-Windows-Abnahmen und deren verbrauchte Lauf-/
+Reviewbudgets werden nicht erneuert. Die übrige autonome Verarbeitung bleibt pausiert.
+
+## Historische Welle: Release 1.1.0
 
 Der Releaseumfang ist auf die Konsolidierung des aktuellen Produktstands,
 den Versionskatalog, ein commitgebundenes Produkt-ZIP mit fünf fertigen

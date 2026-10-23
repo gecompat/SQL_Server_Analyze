@@ -85,7 +85,7 @@ Auswahl beider Datenbanken, die Unterbrechung von Collection und Purge sowie
 die Abschlusskontrollen. Der kombinierte Installer liegt ab v1.1.1 fertig
 in der ZIP vor. Er besitzt eine gemeinsame Transaktion, Receipts und
 Vorzustandserhaltung in beiden Kontexten. Vorhandene Datenbanken und Zielbindung werden
-weiterverwendet. Die Target-Paketversion bleibt in v1.1.1 `1.0.0` mit
+weiterverwendet. Die Target-Paketversion bleibt in v1.1.2 `1.0.0` mit
 `SchemaVersion=1`; sie ist von der Frameworkversion getrennt.
 
 Der Gesamtdeploymentweg prüft unterstützte Strukturformen und Customkonflikte

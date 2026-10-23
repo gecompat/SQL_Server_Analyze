@@ -2953,7 +2953,7 @@ GO
 /*
 ===============================================================================
 Objekt       : monitor.FrameworkVersion
-Version      : 1.1.1
+Version      : 1.1.2
 Stand        : 2026-10-23
 Zweck        : Liefert eine kompakte Versionsinformation für das installierte
                Ad-hoc-Analysepaket. Die Tabelle bildet weder eine
@@ -2983,12 +2983,12 @@ END;
 GO
 
 UPDATE [monitor].[FrameworkVersion]
-SET [FrameworkVersion]='1.1.1',
+SET [FrameworkVersion]='1.1.2',
     [ReleaseDate]='20261023',
     [MinimumProductMajorVersion]=15,
     [ContractVersion]='1.24',
     [LastInstalledUtc]=SYSUTCDATETIME(),
-    [ReleaseNotes]=N'Release 1.1.1 ergänzt den vorbereiteten kombinierten Upgradeinstaller für Kern und Snapshot/Baseline sowie die ZIP-Anleitungen. API 1.24 einschließlich SQL25-005 bleibt erhalten.'
+    [ReleaseNotes]=N'Release 1.1.2 ergänzt bei abgefangenen TABLE-Export-Lock-Timeouts die Zieltabelle und den SQL-Teilschritt. API 1.24 einschließlich SQL25-005 bleibt erhalten.'
 WHERE [FrameworkName]=N'SQLServerMonitoringFramework';
 
 IF @@ROWCOUNT=0
@@ -3000,9 +3000,9 @@ BEGIN
     )
     VALUES
     (
-        N'SQLServerMonitoringFramework','1.1.1','20261023',15,
+        N'SQLServerMonitoringFramework','1.1.2','20261023',15,
         '1.24',SYSUTCDATETIME(),
-        N'Release 1.1.1 ergänzt den vorbereiteten kombinierten Upgradeinstaller für Kern und Snapshot/Baseline sowie die ZIP-Anleitungen. API 1.24 einschließlich SQL25-005 bleibt erhalten.'
+        N'Release 1.1.2 ergänzt bei abgefangenen TABLE-Export-Lock-Timeouts die Zieltabelle und den SQL-Teilschritt. API 1.24 einschließlich SQL25-005 bleibt erhalten.'
     );
 END;
 GO

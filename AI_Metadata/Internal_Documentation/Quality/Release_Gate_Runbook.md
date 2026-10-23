@@ -2,11 +2,38 @@
 
 Die verbindliche Auswahl von Tests steht ausschließlich in der
 [CI-Teststrategie](../../../Documentation/Quality/CI_Test_Strategy.md).
-Dieser Ablauf beschreibt die Umsetzung für Version 1.1.1 und die Bindung
+Dieser Ablauf beschreibt die Umsetzung für Version 1.1.2 und die Bindung
 zwischen Quellcommit, Produkt-ZIP, Laufzeitprüfung und Veröffentlichung.
 Historische CSV-Nachweise werden dadurch nicht umgedeutet.
 
-## Freigegebene Ergänzung v1.1.1
+## Freigegebene Lieferung v1.1.2
+
+Der Benutzer hat am 23. Oktober 2026 den begrenzten Releaseplan für v1.1.2
+samt ZIP-Ausnahme freigegeben. Grundlage ist Analyze-Main `e307fea3` mit der
+integrierten TABLE-Timeout-Diagnose aus PR #410. Version, Lieferpfade und
+Versionsoracles werden aktualisiert; zusätzliche Fachänderungen gehören
+nicht zu diesem Auftrag. Der nachfolgende operative Ablauf gilt für v1.1.2.
+Frühere Freigaben und Ergebnisse bleiben an ihren jeweiligen Stand gebunden.
+
+Die Lieferung umfasst höchstens 20 Dateien und 400 handgeschriebene geänderte
+Zeilen; der kanonisch generierte Adapterdiff ist von der Zeilenzahl ausgenommen.
+Ein Implementierer, ein Umsetzungspass, ein gebündelter Korrekturpass und ein
+unabhängiger Reviewer mit höchstens zwei Durchgängen begrenzen die Bearbeitung.
+Zulässig sind höchstens zwei lokale Prüfblöcke mit je einem Prüfpaket, zwei
+Head-Qualifikationen, ein Main-Nachlauf und genau ein Matrixdispatch mit allen
+drei Engines. Die zweite Head-Qualifikation ist nur für einen geänderten
+Korrekturstand vorgesehen. Der endgültige CI-Paketbau erfolgt genau einmal.
+Die kanonische Rekonstruktion im Paketverifier ist eine Integritätsprüfung.
+
+Die Obergrenzen betragen 120 Minuten aktive Bearbeitung einschließlich Review
+und Koordination sowie fünf Stunden Gesamtzeit einschließlich Wartezeiten;
+nach drei Stunden erfolgt ein Kontrollpunkt. Ein Matrixfehler, eine ungeklärte
+Daten- oder Quellbindung oder eine überschrittene Grenze stoppt die Lieferung.
+Zusätzliche native Läufe benötigen eine neue ausdrückliche Freigabe.
+Die OPS-005-Windows-Budgets bleiben verbraucht; die übrige autonome Verarbeitung
+bleibt pausiert. v1.1.0 und v1.1.1 werden weder ersetzt noch neu gebunden.
+
+## Historische Freigabe v1.1.1
 
 Der Benutzer hat am 23. Oktober 2026 die Integration der Dokumentationskorrektur
 aus PR #409, den Paketbau mit zusätzlichem kombiniertem Deploymentinstaller
@@ -48,9 +75,9 @@ Verzeichnis, erzeugt dort die sechs vorhandenen Installerformate und ergänzt
 Quellen und Unterlagen behalten ihre Pfade; Git-Verwaltungsdaten und lokale,
 unversionierte Dateien werden nicht übernommen.
 
-Für das freigegebene Produktrelease 1.1.1 gilt die gezielte Ausnahme zu
+Für das freigegebene Produktrelease 1.1.2 gilt die gezielte Ausnahme zu
 [Abschnitt 8 des Datenschutzvertrags](../Architecture/Runtime_Data_and_Repository_Privacy.md#8-prüfvertrag-vor-commit-und-zip):
-Der ZIP-Root lautet `SQL_Server_Analyze-1.1.1`. Ausschließlich diese sechs
+Der ZIP-Root lautet `SQL_Server_Analyze-1.1.2`. Ausschließlich diese sechs
 generierten Dateien unter `Code/Install/generated` sind zusätzlich zulässig:
 
 - `Install_All.generated.sql`
@@ -72,7 +99,7 @@ Paketverifier. Diese Ausnahme erweitert keine Daten- oder Laufzeitfreigabe.
 ./Code/Install/Build-ReleasePackage.ps1 -RepositoryRoot . -Revision HEAD `
     -OutputDirectory 'C:/Temp/SQL_Server_Analyze_Release' -PythonExecutable python
 python ./Code/Tests/Static/Validate_Release_Package.py --repository-root . `
-    --archive 'C:/Temp/SQL_Server_Analyze_Release/SQL_Server_Analyze-1.1.1.zip'
+    --archive 'C:/Temp/SQL_Server_Analyze_Release/SQL_Server_Analyze-1.1.2.zip'
 ```
 
 Die Prüfung verlangt den vollständigen Dateibestand des ausgewählten
@@ -130,7 +157,7 @@ bleibt fehlgeschlagen. Die Erneuerung betrifft die korrigierten Backuporacles
 und die Isolation der Calleroptionen von Test 198; alle übrigen Prüfungen
 behalten ihren Umfang. Die Bindung an ein neues unverändertes Produkt-ZIP
 und dessen Main-Commit erfordert eine vollständige Releasequalifikation.
-Der neue v1.1.1-Kandidat erhält die oben gesondert freigegebene eine Matrix;
+Der neue v1.1.2-Kandidat erhält die oben gesondert freigegebene eine Matrix;
 die historischen v1.1.0-Ergebnisse bleiben auf ihrem ursprünglichen Stand.
 
 ## Nachweis und Aussagegrenze
@@ -153,7 +180,7 @@ umfassen. Historische Nachweise bleiben auf ihrem ursprünglichen Commit.
 ## Veröffentlichung
 
 Nach erfolgreicher Matrix werden der Workflowstatus, alle Zielversionen,
-Source-SHA und Paketprüfsumme geprüft. Der Tag `v1.1.1` wird auf genau diesen
+Source-SHA und Paketprüfsumme geprüft. Der Tag `v1.1.2` wird auf genau diesen
 getesteten Main-Commit gesetzt. Ein vorhandener abweichender Tag oder ein
 bereits abweichend veröffentlichtes Paket wird nicht überschrieben.
 
@@ -171,8 +198,9 @@ Ein Implementierer verantwortet den Schritt. Ein unabhängiger Reviewer prüft
 höchstens zweimal; ein gebündelter Korrekturpass bleibt innerhalb der
 freigegebenen Dateien. Zwei lokale Prüfblöcke, höchstens zwei Head-
 Qualifikationen, ein Main-Nachlauf und genau eine native Matrix begrenzen die
-Ausführung. Der aktuelle v1.1.1-Schritt umfasst höchstens 24 Dateien.
-Nach drei Stunden erfolgt ein Kontrollpunkt, nach vier Stunden
+Ausführung. Der aktuelle v1.1.2-Schritt umfasst höchstens 20 Dateien und 400 handgeschriebene geänderte Zeilen.
+Die aktive Bearbeitung einschließlich Review und Koordination bleibt auf 120 Minuten begrenzt.
+Nach drei Stunden erfolgt ein Kontrollpunkt, nach fünf Stunden
 Gesamtzeit beginnt keine neue Arbeit. Sicherheits- und Recoveryaktionen
 bleiben zulässig; ein offenes Gate wird nicht als bestanden ausgewiesen.
 
