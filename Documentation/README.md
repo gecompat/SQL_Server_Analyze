@@ -26,7 +26,7 @@ Der freigegebene [External-Model-Inventurvertrag](Architecture/WI0007_External_M
 
 - [Installation aus der Produkt-ZIP](Reference/Installation.md): vorbereiteter SSMS-Installer ohne Neubau, Voraussetzungen, Erfolgskontrolle und Fehlerbehebung; Quellinstallationswege sind gesondert beschrieben.
 - [Upgrade aus der Produkt-ZIP](Reference/Installation.md#upgrade-aus-der-produkt-zip): bestehenden Frameworkkern aktualisieren.
-- [Upgrade einschließlich Snapshot/Baseline](Reference/Installation.md#upgrade-mit-bestehendem-snapshot-baseline-paket): drei vorbereitete Skripte, ihre Datenbankkontexte und die Grenzen der getrennten Schritte.
+- [Upgrade einschließlich Snapshot/Baseline](Reference/Installation.md#upgrade-mit-bestehendem-snapshot-baseline-paket): ein vorbereiteter kombinierter Installer mit zwei expliziten Datenbankwerten, gemeinsamer Transaktion und Erhaltungskontrolle.
 - [Snapshot/Baseline erstmals ergänzen](Reference/Installation.md#optional-persistentes-snapshot-baseline-paket-sc-023): Target und Framework aus der ZIP installieren und anschließend ausdrücklich konfigurieren.
 - [Schnellwahl und Aufrufkatalog](Reference/Call_Catalog.md): kopierbare Hilfe- und sichere Beispielaufrufe.
 - [Procedure-Referenz](Reference/Procedure_Reference.md): Parameter, Datentypen, Defaults und OUTPUT-Verträge.

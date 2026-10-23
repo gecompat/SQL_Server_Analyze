@@ -1,6 +1,6 @@
 # Betrieb des optionalen Snapshot-/Baseline-Pakets SC-023
 
-Stand: 2026-10-22
+Stand: 2026-10-23
 Status: `IMPLEMENTED_ACTIONS_GATE`
 
 ## Paketgrenze
@@ -80,18 +80,21 @@ Beide Installer sind idempotent. Frameworkdefaults werden nur angelegt, wenn sie
 ### Upgrade einer bestehenden Installation aus der ZIP
 
 Die [zentrale Upgradeanleitung](../Reference/Installation.md#upgrade-mit-bestehendem-snapshot-baseline-paket)
-beschreibt die Reihenfolge Kern, bestehendes Snapshot-Target und
-Snapshot-Framework, die Unterbrechung von Collection und Purge sowie die
-Abschlusskontrollen. Vorhandene Datenbanken und Zielbindung werden
-weiterverwendet. Die Target-Paketversion bleibt in v1.1.0 `1.0.0` mit
+beschreibt `Deploy_All_WithSnapshotBaseline.generated.sql`, die explizite
+Auswahl beider Datenbanken, die Unterbrechung von Collection und Purge sowie
+die Abschlusskontrollen. Der kombinierte Installer liegt ab v1.1.1 fertig
+in der ZIP vor. Er besitzt eine gemeinsame Transaktion, Receipts und
+Vorzustandserhaltung in beiden Kontexten. Vorhandene Datenbanken und Zielbindung werden
+weiterverwendet. Die Target-Paketversion bleibt in v1.1.1 `1.0.0` mit
 `SchemaVersion=1`; sie ist von der Frameworkversion getrennt.
 
-Der getrennte ZIP-Weg gilt für eine kompatible bestehende SC-023-Struktur.
-Die Snapshot-Installer besitzen weder einen allgemeinen Strukturmigrations-
-noch einen gemeinsamen Transaktions-, Receipt- oder Vorzustandsvertrag mit
-dem Kerndeployment. Nach einem Fehler bleiben vorherige erfolgreiche
-Schritte bestehen; vor dem Wiederanlauf ist ihr Zustand zu klären. Ein
-Framework-Receipt allein bestätigt keinen erfolgreichen Snapshotabschluss.
+Der Gesamtdeploymentweg prüft unterstützte Strukturformen und Customkonflikte
+vor Produktänderungen. Die Snapshot-Einzelinstaller bleiben für getrennte
+Installationskontexte verfügbar, besitzen aber keinen allgemeinen
+Strukturmigrations- oder gemeinsamen Transaktions-, Receipt- oder
+Vorzustandsvertrag mit einem separat ausgeführten Kern. Ein Framework-Receipt
+allein bestätigt keinen vollständigen kombinierten Snapshotabschluss; dieselbe
+Run-ID mit den passenden Rollen muss in beiden Datenbanken vorhanden sein.
 
 ### Installation aus einem Quellcheckout
 
@@ -99,9 +102,9 @@ Bei einer vollständigen Repositorykopie stehen weiterhin die beiden
 `Code/Install/Install_SnapshotBaseline_*.sql` im SQLCMD-Modus zur Verfügung.
 Alternativ erzeugt `Code/Install/Build-SnapshotBaselineInstallers.ps1` die
 beiden eingebetteten Dateien unter `Code/Install/generated`. Nur dieser
-Neubau benötigt PowerShell. Für ein gemeinsames Deployment beider
-Datenbanken mit Vorzustandserhaltung gilt der
-[kombinierte Deploymentweg](../Reference/Deployment.md#lokaler-neubau-aus-quellen).
+Neubau benötigt PowerShell. Der
+[Deploymentleitfaden](../Reference/Deployment.md) trennt die fertigen
+ZIP-Artefakte vom kombinierten Neubau aus einem Quellcheckout.
 
 ## Rechte
 

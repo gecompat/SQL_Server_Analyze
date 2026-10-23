@@ -9,9 +9,9 @@ commitbezogenen Laufzeitnachweis.
 
 | Merkmal | Stand |
 |---|---|
-| Frameworkversion im Installationskatalog | `1.1.0` |
+| Frameworkversion im Installationskatalog | `1.1.1` |
 | ContractVersion im Installationskatalog | `1.24` |
-| ReleaseDate im Installationskatalog | 22. Oktober 2026 |
+| ReleaseDate im Installationskatalog | 23. Oktober 2026 |
 | Mindestversion | SQL Server 2019 |
 
 Der aktuelle Inventarvertrag umfasst 182 Objekte: 110 öffentliche Procedures, 8 Views, 28 Table-Valued Functions, 16 interne Procedures und 20 Tabellen.
@@ -22,6 +22,29 @@ Die [Paketgrenzen](../Reference/Scope_and_Limitations.md) unterscheiden
 Diagnose, Installation, lokale TABLE-Ausgabe und persistente Sammlung.
 
 Alle öffentlichen Procedures besitzen eine eigenständige Procedure-Seite. Alle unterstützenden Objekte besitzen einen Detailabschnitt in der Objektreferenz.
+
+## Release 1.1.1
+
+Version 1.1.1 ergänzt die korrigierten Installations- und Upgradeanleitungen
+im Produkt-ZIP und einen sechsten fertig gebauten Installer:
+`Code/Install/generated/Deploy_All_WithSnapshotBaseline.generated.sql`.
+Er verwendet den vorhandenen kanonischen Deploymentgenerator mit beiden
+Kontexten und aktualisiert Kern und Snapshot/Baseline in einer gemeinsamen
+Transaktion mit Receipts und Vorzustandserhaltung. Der bisherige
+`Deploy_All.generated.sql` bleibt Core-only. Die
+[Installationsanleitung](../Reference/Installation.md) führt ohne lokalen
+Neubau vom Download über die Skriptauswahl bis zur Abschlusskontrolle.
+
+Das Paket heißt `SQL_Server_Analyze-1.1.1.zip`; Quellbindung, Prüfsumme und
+Abnahmenachweis folgen demselben Releasevertrag. Die native Abnahme verwendet
+den tatsächlich ausgelieferten kombinierten Installer im bestehenden
+SQL-Server-2025-Deploymentvertrag einschließlich gefüllter Tabellen,
+Erhaltung, Vorprüfungsablehnungen und spätem Rollback. Die API bleibt `1.24`,
+der Objektumfang 182 und der Snapshot-Paketvertrag `1.0.0`/Schema 1.
+Die Diagnosefunktionen, Plattform- und Collationgrenzen bleiben bestehen.
+Der verbindliche Veröffentlichungs- und Abnahmestatus steht beim
+[GitHub-Release](https://github.com/gecompat/SQL_Server_Analyze/releases).
+Das veröffentlichte v1.1.0-Paket, sein Tag und sein Nachweis werden erhalten.
 
 ## Release 1.1.0
 

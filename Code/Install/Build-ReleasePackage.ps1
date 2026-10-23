@@ -3,7 +3,7 @@ param(
     [string]$RepositoryRoot = (Join-Path $PSScriptRoot '../..'),
     [Parameter(Mandatory)][string]$OutputDirectory,
     [string]$Revision = 'HEAD',
-    [string]$Version = '1.1.0',
+    [string]$Version = '1.1.1',
     [string]$PythonExecutable = 'python'
 )
 
@@ -46,6 +46,9 @@ try {
     & (Join-Path $install 'Build-ExecutionPlanAnalysisInstaller.ps1') -RepositoryRoot $sourceRoot
     & (Join-Path $install 'Build-SnapshotBaselineInstallers.ps1') -RepositoryRoot $sourceRoot
     & (Join-Path $install 'Build-DeploymentInstaller.ps1') -RepositoryRoot $sourceRoot -PythonExecutable $PythonExecutable
+    & (Join-Path $install 'Build-DeploymentInstaller.ps1') -RepositoryRoot $sourceRoot `
+        -OutputPath (Join-Path $generated 'Deploy_All_WithSnapshotBaseline.generated.sql') `
+        -IncludeSnapshotBaseline -PythonExecutable $PythonExecutable
     $inventory = @(Import-Csv -LiteralPath (Join-Path $sourceRoot 'Metadata/Inventory/Objects.csv'))
     foreach ($row in $inventory) {
         if (-not (Test-Path -LiteralPath (Join-Path $sourceRoot $row.SourcePath) -PathType Leaf)) {
@@ -69,7 +72,8 @@ try {
             'Install_All.generated.sql', 'Deploy_All.generated.sql',
             'Install_ExecutionPlanAnalysis.generated.sql',
             'Install_SnapshotBaseline_Target.generated.sql',
-            'Install_SnapshotBaseline_Framework.generated.sql'
+            'Install_SnapshotBaseline_Framework.generated.sql',
+            'Deploy_All_WithSnapshotBaseline.generated.sql'
         )
     }
     foreach ($name in $metadata.generated_installers) {

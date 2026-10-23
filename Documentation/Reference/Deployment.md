@@ -2,32 +2,32 @@
 
 ## Produkt-ZIP ohne Neubau
 
-Das Produkt-ZIP v1.1.0 enthält bereits
-`Code/Install/generated/Deploy_All.generated.sql` für den Frameworkkern.
+Das Produkt-ZIP v1.1.1 enthält bereits zwei fertige Deploymentumfänge unter
+`Code/Install/generated`: `Deploy_All.generated.sql` für den Frameworkkern und
+`Deploy_All_WithSnapshotBaseline.generated.sql` für Kern und Snapshot/Baseline.
 Die [Upgradeanleitung](Installation.md#upgrade-aus-der-produkt-zip) beschreibt
 Vorbereitung, Datenbankauswahl, Ausführung und Abschlusskontrolle in SSMS.
 Für diesen Weg sind weder PowerShell noch Python oder der SQLCMD-Modus
 erforderlich.
 
-Im mitgelieferten Installer wird ausschließlich `@FrameworkDatabase` auf
+Im Core-Installer wird ausschließlich `@FrameworkDatabase` auf
 die vorhandene Frameworkdatenbank gesetzt; `@SnapshotDatabase` muss `NULL`
 bleiben. Der Quellumfang ist beim Build festgelegt. Ein anderer Datenwert
 fügt dem Core-Artefakt keine Snapshotquellen hinzu und wird dort abgelehnt.
 
 Für ein bestehendes Snapshot-/Baseline-Paket gilt das
-[dreistufige Upgrade aus der ZIP](Installation.md#upgrade-mit-bestehendem-snapshot-baseline-paket).
-Dabei folgen auf das Kerndeployment der vorbereitete Target-Installer in der
-Snapshotdatenbank und der Framework-Installer in der Frameworkdatenbank.
-Die nachstehende gemeinsame Transaktion sowie Receipt- und
-Vorzustandserhaltung gelten bei diesem Weg nur für den Kern. Die
-Snapshot-Einzelinstaller haben keinen gemeinsamen Transaktions-, Receipt-
-oder allgemeinen Strukturmigrationsvertrag mit diesem Lauf.
+[kombinierte Upgrade aus der ZIP](Installation.md#upgrade-mit-bestehendem-snapshot-baseline-paket).
+Im zusätzlichen `Deploy_All_WithSnapshotBaseline.generated.sql` werden
+`@FrameworkDatabase` und `@SnapshotDatabase` auf zwei verschiedene vorhandene
+Benutzerdatenbanken derselben Instanz gesetzt. Der nachstehende gemeinsame
+Transaktions-, Receipt- und Vorzustandsvertrag gilt dann für beide Kontexte.
+Eine vorhandene Zielbindung wird erhalten, nicht automatisch neu gesetzt.
+Die ältere v1.1.0-ZIP enthält diesen kombinierten Installer noch nicht.
 
 ## Lokaler Neubau aus Quellen
 
 Dieser Abschnitt gilt für Quellcheckouts und für einen bewusst gewählten
-kombinierten Deploymentumfang. Das Produkt-ZIP enthält keinen vorbereiteten
-kombinierten Installer für beide Datenbanken.
+Neubau. Für beide vorbereiteten ZIP-Installer ist er nicht erforderlich.
 
 `Code/Install/Build-DeploymentInstaller.ps1` erzeugt den Gesamtdeploymentweg aus den kanonischen SQLCMD-Includes und den darin enthaltenen SQL-Quellen. Der Build benötigt PowerShell und Python 3.10 oder neuer. Der Python-Renderer verwendet ausschließlich die Standardbibliothek und verbindet sich nicht mit SQL Server. Unbekannte Quellformen führen zu einem Buildfehler; ein vorhandenes Ausgabe-Artefakt wird bei einem Fehler nicht ersetzt.
 
@@ -68,8 +68,8 @@ oder aus einem aktuellen kanonischen Neubau verwendet. Ein erneuter Build
 des unveränderten ZIP-Installers ist nicht erforderlich. Die bisherigen
 Einzelinstaller bleiben für ihre jeweiligen Installationsumfänge verfügbar;
 ihre Idempotenz ersetzt keinen allgemeinen Migrationsnachweis. Für ein
-Snapshot-Upgrade über die getrennten ZIP-Installer gelten ausdrücklich die
-[Grenzen und Abschlusskontrollen](Installation.md#upgrade-mit-bestehendem-snapshot-baseline-paket)
-dieses Weges. Wird der gemeinsame Erhaltungs- und Rollbackvertrag für beide
-Datenbanken benötigt, ist der mit `-IncludeSnapshotBaseline` erzeugte
-kombinierte Deploymentinstaller erforderlich.
+Snapshot-Upgrade wird der fertig mitgelieferte kombinierte Installer gemäß
+[Abschlusskontrolle](Installation.md#upgrade-mit-bestehendem-snapshot-baseline-paket)
+verwendet. Die weiterhin verfügbaren Snapshot-Einzelinstaller besitzen keinen
+gemeinsamen Receipt-, Vorzustands- oder Rollbackvertrag mit einem separat
+ausgeführten Core-Lauf.

@@ -2,9 +2,29 @@
 
 Die verbindliche Auswahl von Tests steht ausschließlich in der
 [CI-Teststrategie](../../../Documentation/Quality/CI_Test_Strategy.md).
-Dieser Ablauf beschreibt die Umsetzung für Version 1.1.0 und die Bindung
+Dieser Ablauf beschreibt die Umsetzung für Version 1.1.1 und die Bindung
 zwischen Quellcommit, Produkt-ZIP, Laufzeitprüfung und Veröffentlichung.
 Historische CSV-Nachweise werden dadurch nicht umgedeutet.
+
+## Freigegebene Ergänzung v1.1.1
+
+Der Benutzer hat am 23. Oktober 2026 die Integration der Dokumentationskorrektur
+aus PR #409, den Paketbau mit zusätzlichem kombiniertem Deploymentinstaller
+und die begrenzte Abnahme von v1.1.1 freigegeben. Die bisherigen Vorgaben
+ohne neue Läufe sind ausschließlich für diese Lieferung aufgehoben:
+erforderliche PR-/Main-Prüfungen, Paketbau und genau eine native Matrix mit
+SQL Server 2019, 2022 und 2025. Die Schutzregeln bleiben unverändert;
+der fehlende Pflichtcheck wird regulär ausgeführt. Die übrige autonome
+Verarbeitung bleibt pausiert. v1.1.0, sein Tag, sein ZIP und sein Nachweis
+werden weder ersetzt noch auf den neuen Quellstand umgedeutet.
+
+Der zusätzliche Installer wird durch denselben vorhandenen Builder mit
+`-IncludeSnapshotBaseline` unter einem getrennten Dateinamen erzeugt. Es
+entsteht keine zweite handgeschriebene SQL-Implementierung. Der Paketvalidator
+prüft alle sechs Installer gegen ihre kanonische Erzeugung und weist fehlende
+oder veränderte kombinierte Artefakte zurück. Die SQL-Server-2025-Abnahme
+verwendet diese unveränderte ausgelieferte Datei im bestehenden vollständigen
+Deploymentvertrag. Dessen Oracles und Rollbackgegenprobe bleiben erhalten.
 
 ## Kandidat vorbereiten
 
@@ -23,14 +43,14 @@ Lizenzblock und die tatsächliche Abnahme des ausgelieferten ZIP.
 
 Der Paketbuilder benötigt Git, PowerShell 7 und Python 3.10 oder neuer.
 Er exportiert den ausdrücklich ausgewählten Commit in ein temporäres
-Verzeichnis, erzeugt dort die fünf vorhandenen Installerformate und ergänzt
+Verzeichnis, erzeugt dort die sechs vorhandenen Installerformate und ergänzt
 `RELEASE.json`. SQL Server wird beim Build nicht aufgerufen. Die versionierten
 Quellen und Unterlagen behalten ihre Pfade; Git-Verwaltungsdaten und lokale,
 unversionierte Dateien werden nicht übernommen.
 
-Für das freigegebene Produktrelease 1.1.0 gilt eine gezielte Ausnahme zu
+Für das freigegebene Produktrelease 1.1.1 gilt die gezielte Ausnahme zu
 [Abschnitt 8 des Datenschutzvertrags](../Architecture/Runtime_Data_and_Repository_Privacy.md#8-prüfvertrag-vor-commit-und-zip):
-Der ZIP-Root lautet `SQL_Server_Analyze-1.1.0`. Ausschließlich diese fünf
+Der ZIP-Root lautet `SQL_Server_Analyze-1.1.1`. Ausschließlich diese sechs
 generierten Dateien unter `Code/Install/generated` sind zusätzlich zulässig:
 
 - `Install_All.generated.sql`
@@ -38,9 +58,10 @@ generierten Dateien unter `Code/Install/generated` sind zusätzlich zulässig:
 - `Install_ExecutionPlanAnalysis.generated.sql`
 - `Install_SnapshotBaseline_Target.generated.sql`
 - `Install_SnapshotBaseline_Framework.generated.sql`
+- `Deploy_All_WithSnapshotBaseline.generated.sql`
 
 Die Ausnahme setzt den vollständigen Vergleich der Quellbytes mit dem exakten
-Git-Commit, die unabhängige Rekonstruktion aller fünf Installer und deren
+Git-Commit, die unabhängige Rekonstruktion aller sechs Installer und deren
 strikten Bytevergleich voraus. Sämtliche Originalquellen bleiben der
 Datenschutzprüfung unterworfen; andere generierte Dateien bleiben verboten.
 Der normale CLI-Aufruf des Datenschutzvalidators behält seinen bisherigen
@@ -51,7 +72,7 @@ Paketverifier. Diese Ausnahme erweitert keine Daten- oder Laufzeitfreigabe.
 ./Code/Install/Build-ReleasePackage.ps1 -RepositoryRoot . -Revision HEAD `
     -OutputDirectory 'C:/Temp/SQL_Server_Analyze_Release' -PythonExecutable python
 python ./Code/Tests/Static/Validate_Release_Package.py --repository-root . `
-    --archive 'C:/Temp/SQL_Server_Analyze_Release/SQL_Server_Analyze-1.1.0.zip'
+    --archive 'C:/Temp/SQL_Server_Analyze_Release/SQL_Server_Analyze-1.1.1.zip'
 ```
 
 Die Prüfung verlangt den vollständigen Dateibestand des ausgewählten
@@ -101,14 +122,16 @@ Eine fehlgeschlagene oder unklare Bereinigung verhindert einen Erfolgsnachweis.
 Es werden nur synthetische CI-Datenbanken verwendet. Eine Einzelversionsprobe
 ist weiterhin für einen gezielten Versionsbefund möglich, qualifiziert aber
 kein vollständiges Release. Ein fehlgeschlagener Matrixlauf wird innerhalb
-dieses Releaseumfangs nicht wiederholt. Der ausdrücklich freigegebene
-Korrekturschritt nach PR #407 erlaubt einmalig eine neue vollständige Matrix
+dieses Releaseumfangs nicht wiederholt. Historisch erlaubte der ausdrücklich
+freigegebene Korrekturschritt für v1.1.0 nach PR #407 einmalig eine neue vollständige Matrix
 auf dem korrigierten Main-Commit. Der
 [ursprüngliche Lauf](https://github.com/gecompat/SQL_Server_Analyze/actions/runs/39793329967)
 bleibt fehlgeschlagen. Die Erneuerung betrifft die korrigierten Backuporacles
 und die Isolation der Calleroptionen von Test 198; alle übrigen Prüfungen
 behalten ihren Umfang. Die Bindung an ein neues unverändertes Produkt-ZIP
 und dessen Main-Commit erfordert eine vollständige Releasequalifikation.
+Der neue v1.1.1-Kandidat erhält die oben gesondert freigegebene eine Matrix;
+die historischen v1.1.0-Ergebnisse bleiben auf ihrem ursprünglichen Stand.
 
 ## Nachweis und Aussagegrenze
 
@@ -130,7 +153,7 @@ umfassen. Historische Nachweise bleiben auf ihrem ursprünglichen Commit.
 ## Veröffentlichung
 
 Nach erfolgreicher Matrix werden der Workflowstatus, alle Zielversionen,
-Source-SHA und Paketprüfsumme geprüft. Der Tag `v1.1.0` wird auf genau diesen
+Source-SHA und Paketprüfsumme geprüft. Der Tag `v1.1.1` wird auf genau diesen
 getesteten Main-Commit gesetzt. Ein vorhandener abweichender Tag oder ein
 bereits abweichend veröffentlichtes Paket wird nicht überschrieben.
 
@@ -148,7 +171,7 @@ Ein Implementierer verantwortet den Schritt. Ein unabhängiger Reviewer prüft
 höchstens zweimal; ein gebündelter Korrekturpass bleibt innerhalb der
 freigegebenen Dateien. Zwei lokale Prüfblöcke, höchstens zwei Head-
 Qualifikationen, ein Main-Nachlauf und genau eine native Matrix begrenzen die
-Ausführung. Der aktuelle Korrekturschritt umfasst höchstens zwölf Dateien.
+Ausführung. Der aktuelle v1.1.1-Schritt umfasst höchstens 24 Dateien.
 Nach drei Stunden erfolgt ein Kontrollpunkt, nach vier Stunden
 Gesamtzeit beginnt keine neue Arbeit. Sicherheits- und Recoveryaktionen
 bleiben zulässig; ein offenes Gate wird nicht als bestanden ausgewiesen.

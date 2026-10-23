@@ -90,9 +90,9 @@ bestandener Teiltest ist keine Freigabe aller Procedures dieser Kombination.
 
 Im Bereich [Releases](https://github.com/gecompat/SQL_Server_Analyze/releases)
 werden versionierte Produktpakete veröffentlicht. Wählen Sie die Datei
-`SQL_Server_Analyze-1.1.0.zip`; die automatisch angebotenen Quellarchive
+`SQL_Server_Analyze-1.1.1.zip`; die automatisch angebotenen Quellarchive
 enthalten keine fertig erzeugten Installer. Das Produktpaket enthält Quellen,
-Dokumentation, Metadaten und fünf vorbereitete Installer unter
+Dokumentation, Metadaten und sechs vorbereitete Installer unter
 `Code/Install/generated`. Für die folgenden Wege ist kein lokaler Build
 erforderlich:
 
@@ -101,13 +101,14 @@ erforderlich:
 | Framework erstmals installieren | [Installation aus der ZIP](./Documentation/Reference/Installation.md): `Install_All.generated.sql` |
 | Bestehenden Frameworkkern aktualisieren | [Upgrade aus der ZIP](./Documentation/Reference/Installation.md#upgrade-aus-der-produkt-zip): `Deploy_All.generated.sql` |
 | Snapshot/Baseline erstmals ergänzen | [Optionale Installation](./Documentation/Reference/Installation.md#optional-persistentes-snapshot-baseline-paket-sc-023): Target-Installer in der Snapshotdatenbank, danach Framework-Installer in der Frameworkdatenbank |
-| Framework einschließlich bestehendem Snapshot/Baseline aktualisieren | [Upgrade mit Snapshot/Baseline](./Documentation/Reference/Installation.md#upgrade-mit-bestehendem-snapshot-baseline-paket): Kern, Snapshot-Target und Snapshot-Framework in drei getrennten Schritten |
+| Framework einschließlich bestehendem Snapshot/Baseline aktualisieren | [Kombiniertes Upgrade](./Documentation/Reference/Installation.md#upgrade-mit-bestehendem-snapshot-baseline-paket): `Deploy_All_WithSnapshotBaseline.generated.sql` mit beiden ausdrücklich gesetzten Datenbanken |
 
 Die Installationsanleitung beschreibt Prüfsumme, Datenbankkontexte,
 Voraussetzungen, Erfolgskontrolle und Fehlerbehandlung. Der vorbereitete
-`Deploy_All.generated.sql` enthält nur den Kern. Der dreistufige Upgradeweg
-hat keine gemeinsame Transaktion und keine gemeinsame Vorzustandssicherung
-für beide Datenbanken.
+`Deploy_All.generated.sql` enthält nur den Kern. Für Kern und Snapshot/Baseline
+enthält v1.1.1 zusätzlich `Deploy_All_WithSnapshotBaseline.generated.sql` mit
+gemeinsamer Transaktion, Receipts und Vorzustandserhaltung in beiden
+Datenbanken. Der Vorgänger v1.1.0 enthält diesen sechsten Installer nicht.
 
 SQL Server 2019, 2022 und 2025 werden nach den dokumentierten Plattform-,
 Feature- und Berechtigungsgrenzen unterstützt. Die Freigabe ist an keinen
@@ -117,8 +118,8 @@ Release-Nachweis dokumentiert; das ist keine Build-Allowlist.
 ### Quellcheckout oder eigener kombinierter Deploymentumfang
 
 Die folgenden Buildschritte gelten für einen Quellcheckout oder einen bewusst
-gewählten Gesamtdeploymentumfang einschließlich Snapshot/Baseline. Sie sind
-für die oben beschriebenen ZIP-Wege nicht erforderlich.
+gewählten Neubau. Die v1.1.1-ZIP enthält sowohl den Core- als auch den
+kombinierten Deploymentinstaller bereits.
 
 ```powershell
 Set-Location ./Code/Install

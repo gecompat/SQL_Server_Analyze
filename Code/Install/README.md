@@ -1,6 +1,6 @@
 # Installation
 
-Das versionierte Produkt-ZIP enthält bereits fünf Installer unter `generated`.
+Das Produkt-ZIP v1.1.1 enthält bereits sechs Installer unter `generated`.
 Sie werden vollständig in SSMS ohne SQLCMD-Modus ausgeführt. Ein lokaler
 Neubau ist für die folgenden ZIP-Wege nicht erforderlich.
 
@@ -8,6 +8,7 @@ Neubau ist für die folgenden ZIP-Wege nicht erforderlich.
 |---|---|
 | `Install_All.generated.sql` | Erstinstallation des Kerns; die erste `USE`-Zeile benennt die Frameworkdatenbank. |
 | `Deploy_All.generated.sql` | Upgrade des Kerns mit Receipt und Vorzustandserhaltung; `@FrameworkDatabase` setzen und `@SnapshotDatabase=NULL` belassen. Der ZIP-Installer enthält nur Core. |
+| `Deploy_All_WithSnapshotBaseline.generated.sql` | Kern und Snapshot/Baseline gemeinsam installieren oder aktualisieren; `@FrameworkDatabase` und `@SnapshotDatabase` auf zwei verschiedene vorhandene Benutzerdatenbanken derselben Instanz setzen. |
 | `Install_SnapshotBaseline_Target.generated.sql` | Optionales Snapshot-Ziel installieren oder eine kompatible bestehende Installation wiederholen; im Abfragefenster ausdrücklich die Snapshotdatenbank auswählen. |
 | `Install_SnapshotBaseline_Framework.generated.sql` | Frameworkseite des optionalen Pakets nach dem Target ausführen; die enthaltene `USE`-Zeile benennt die Frameworkdatenbank. |
 | `Install_ExecutionPlanAnalysis.generated.sql` | Eigenständige Teilinstallation der Plananalyse; die erste `USE`-Zeile benennt die Installationsdatenbank. Bei vollständigem Kern nicht zusätzlich erforderlich. |
@@ -17,9 +18,11 @@ beschreibt die Erstinstallation einschließlich des optionalen Pakets.
 Für eine bestehende Installation gilt das
 [Upgrade aus der ZIP](../../Documentation/Reference/Installation.md#upgrade-aus-der-produkt-zip).
 Das [Upgrade mit Snapshot/Baseline](../../Documentation/Reference/Installation.md#upgrade-mit-bestehendem-snapshot-baseline-paket)
-verwendet drei getrennte Skripte. Für die Snapshot-Einzelinstaller gelten
-weder eine gemeinsame Transaktion mit dem Kern noch dessen Receipt- und
-Vorzustandsvertrag.
+verwendet den kombinierten Installer. Die beiden Snapshot-Einzelinstaller
+bleiben für ihre getrennten Installationskontexte verfügbar; sie besitzen
+keine gemeinsame Transaktion mit dem Kern und keinen gemeinsamen Receipt-
+oder Vorzustandsvertrag. Die ältere v1.1.0-ZIP enthält nur die fünf bisherigen
+Installer.
 
 ## Lokaler Neubau aus Quellen
 

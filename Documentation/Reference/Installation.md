@@ -1,8 +1,8 @@
 # Installation in SQL Server Management Studio (SSMS)
 
 Diese Anleitung beschreibt die Erstinstallation und das Upgrade aus der
-Produkt-ZIP einschließlich des optionalen Snapshot-/Baseline-Pakets. Die ZIP
-enthält fünf vorbereitete Installer unter `Code/Install/generated`. Für diese
+Produkt-ZIP v1.1.1 einschließlich des optionalen Snapshot-/Baseline-Pakets. Die ZIP
+enthält sechs vorbereitete Installer unter `Code/Install/generated`. Für diese
 Wege werden weder ein lokaler Build noch PowerShell, Python oder der
 SQLCMD-Modus benötigt. Bei einer Repositorykopie gelten die gesonderten
 Build- beziehungsweise SQLCMD-Abschnitte.
@@ -11,14 +11,15 @@ Build- beziehungsweise SQLCMD-Abschnitte.
 |---|---|
 | Noch keine Frameworkinstallation | Schritte 1 bis 10 mit `Install_All.generated.sql`; danach bei Bedarf das [Snapshot-/Baseline-Paket ergänzen](#optional-persistentes-snapshot-baseline-paket-sc-023). |
 | Bestehender Frameworkkern | [Upgrade aus der Produkt-ZIP](#upgrade-aus-der-produkt-zip) mit `Deploy_All.generated.sql`. |
-| Bestehender Kern und bestehendes Snapshot-/Baseline-Paket | [Upgrade mit Snapshot/Baseline](#upgrade-mit-bestehendem-snapshot-baseline-paket): Kern, Snapshot-Target und Snapshot-Framework getrennt aktualisieren. |
+| Bestehender Kern und bestehendes Snapshot-/Baseline-Paket | [Kombiniertes Upgrade](#upgrade-mit-bestehendem-snapshot-baseline-paket) mit `Deploy_All_WithSnapshotBaseline.generated.sql` in einer gemeinsamen Transaktion. |
 
 Der mitgelieferte `Deploy_All.generated.sql` enthält nur den Kern. Das Setzen
 von `@SnapshotDatabase` erweitert diesen Installer nicht; der Wert muss dort
-`NULL` bleiben. Der [Deploymentleitfaden](Deployment.md) erläutert den
-Receipt- und Vorzustandsvertrag sowie den gesonderten Neubau eines kombinierten
-Installers. Die Snapshot-Einzelinstaller besitzen diesen gemeinsamen Vertrag
-nicht.
+`NULL` bleiben. Der zusätzliche `Deploy_All_WithSnapshotBaseline.generated.sql`
+enthält beide Kontexte bereits. Der [Deploymentleitfaden](Deployment.md)
+erläutert den Receipt- und Vorzustandsvertrag. Die Snapshot-Einzelinstaller
+besitzen diesen gemeinsamen Vertrag nicht. In der älteren v1.1.0-ZIP fehlt
+der kombinierte Installer; für den hier beschriebenen Weg v1.1.1 verwenden.
 
 ## 1. Voraussetzungen prüfen
 
@@ -40,12 +41,12 @@ Das Framework vergibt keine Benutzer-, Datenbank- oder Serverberechtigungen und 
 ## 2. Repository herunterladen
 
 1. Im Bereich [Releases](https://github.com/gecompat/SQL_Server_Analyze/releases)
-   die Produktdatei `SQL_Server_Analyze-1.1.0.zip` und deren `.sha256`-Datei
+   die Produktdatei `SQL_Server_Analyze-1.1.1.zip` und deren `.sha256`-Datei
    herunterladen. Die zusätzlichen automatisch erzeugten Quellarchive
    enthalten keine vorbereiteten Installer.
 2. Vor dem Entpacken die SHA-256-Prüfsumme des ZIP mit dem Wert aus der
    `.sha256`-Datei vergleichen. Beispielsweise liefert
-   `Get-FileHash -Algorithm SHA256 -LiteralPath ./SQL_Server_Analyze-1.1.0.zip`
+   `Get-FileHash -Algorithm SHA256 -LiteralPath ./SQL_Server_Analyze-1.1.1.zip`
    den lokalen Wert. Bei einer Abweichung das Paket nicht ausführen und erneut
    von der Release-Seite beziehen.
 3. Die ZIP-Datei vollständig entpacken, beispielsweise nach `C:\Tools\SQL_Server_Analyze`.
@@ -207,7 +208,7 @@ JOIN [sys].[schemas] AS [s] WITH (NOLOCK)
 WHERE [s].[name] = N'monitor';
 ```
 
-Die Versionsabfrage muss genau eine Frameworkzeile mit `FrameworkVersion=1.1.0`
+Die Versionsabfrage muss genau eine Frameworkzeile mit `FrameworkVersion=1.1.1`
 liefern. Die Prozedurzahl muss größer als `0` sein. Der anschließende Smoke-Test
 prüft den katalogisierten Kernbestand genauer.
 
@@ -277,7 +278,7 @@ Kerninstallation ergänzen Sie das optionale Paket aus derselben ZIP:
    Paketversion `1.0.0` mit `SchemaVersion=1` enthalten. In der Frameworkdatenbank
    muss `monitor.SnapshotTargetConfiguration` den gewählten Zielnamen und die
    ausdrücklich gesetzte Aktivierung und Schedulerart zeigen. Diese
-   Paketversion ist von der Frameworkversion `1.1.0` getrennt.
+   Paketversion ist von der Frameworkversion `1.1.1` getrennt.
 
 Beide Dateien liegen im Produkt-ZIP fertig vor und benötigen keinen
 SQLCMD-Modus. Sie erstellen keine Datenbank, Rechte oder Schedulerobjekte.
@@ -501,9 +502,9 @@ konsistent vorbereitete Arbeitskopie der Einzeldateien.
    Prüfsumme gemäß Schritt 2 kontrollieren und vollständig entpacken.
    Keine Dateien unterschiedlicher Releases mischen.
 2. Vorhandene Frameworkdatenbank sichern und den betrieblichen Rückfallweg
-   festlegen. Bei vorhandenem Snapshotpaket auch dessen Datenbank sichern
-   und die folgenden Schritte mit dem
-   [Snapshot-Upgrade](#upgrade-mit-bestehendem-snapshot-baseline-paket) verbinden.
+   festlegen. Soll auch ein vorhandenes Snapshotpaket aktualisiert werden,
+   stattdessen den vollständigen
+   [kombinierten Ablauf](#upgrade-mit-bestehendem-snapshot-baseline-paket) verwenden.
    Während des gesamten Ablaufs Frameworkaufrufe, Snapshot-Sammlung und Purge
    unterbrechen. Die Installer richten diese Unterbrechung nicht selbst ein.
 3. Voraussetzungen des [Gesamtdeployments](Deployment.md) prüfen: eine
@@ -532,16 +533,15 @@ konsistent vorbereitete Arbeitskopie der Einzeldateien.
 6. Meldungen und das persistente Receipt `monitor_deployment.Run_<RunId>` in
    der Frameworkdatenbank gemäß [Deploymentvertrag](Deployment.md#receipt-und-unklarer-abschluss)
    kontrollieren. Die Versionsabfrage aus Schritt 8 muss genau eine
-   Frameworkzeile mit `FrameworkVersion=1.1.0` ergeben.
-7. Bei bestehendem Snapshotpaket vor der Freigabe mit dem folgenden Abschnitt
-   fortfahren. Ohne dieses Paket die Smoke-, Capability- und
-   Berechtigungsprüfungen aus den Schritten 9 und 10 durchführen und danach
-   die unterbrochenen Frameworkaufrufe wieder zulassen.
+   Frameworkzeile mit `FrameworkVersion=1.1.1` ergeben.
+7. Die Smoke-, Capability- und Berechtigungsprüfungen aus den Schritten 9
+   und 10 durchführen und danach die unterbrochenen Frameworkaufrufe wieder
+   zulassen. Der hier beschriebene Core-Lauf bestätigt kein Snapshot-Upgrade.
 
 Das Produkt-ZIP enthält bereits den aus seinem Quellcommit erzeugten und
 abgenommenen Deploymentinstaller. Für diesen Downloadweg ist kein erneuter
 Build erforderlich. Die Buildanweisung im Deploymentleitfaden gilt für einen
-Quellcheckout oder einen eigens um Snapshot erweiterten Deploymentumfang.
+Quellcheckout oder einen bewusst gewählten Neubau.
 Der Erstinstaller `Install_All.generated.sql` besitzt keinen gemeinsamen
 Receipt- und Vorzustandsvertrag und ist deshalb nicht der Upgradeweg.
 Vor produktiven Upgrades gelten die Sicherungs-, Change- und Rückfallprozesse
@@ -550,68 +550,87 @@ Receipts geklärt werden.
 
 ### Upgrade mit bestehendem Snapshot-/Baseline-Paket
 
-Dieser ZIP-Weg gilt für eine bestehende, kompatible SC-023-Installation mit
-den vorhandenen Framework- und Snapshotdatenbanken. Die getrennten
-Snapshot-Installer sind idempotent; sie liefern keinen allgemeinen
-Strukturmigrationsnachweis für abweichende Alt- oder Customschemata. Bei
-bekannter Strukturdrift ist dieser Ablauf keine Freigabe zum Überschreiben
-der Abweichung.
+Ab v1.1.1 enthält das Produkt-ZIP
+`Code/Install/generated/Deploy_All_WithSnapshotBaseline.generated.sql`.
+Dieses vorbereitete Skript aktualisiert Kern und Snapshot/Baseline gemeinsam;
+ein Neubau ist nicht erforderlich. Der Ablauf verwendet den
+[Erhaltungsvertrag des Gesamtdeployments](Deployment.md#prüfung-und-erhaltung)
+mit einer Transaktion für beide Datenbanken, typgetreuen Vorzustandskopien
+und je einem Receipt mit derselben Run-ID. Die unterstützten Strukturgrenzen
+und Customkonflikte werden vor Produktänderungen geprüft.
 
-Vor Beginn Zielbindung und lokalen Policyzustand sowie die vorhandene
-Historie für den späteren Vergleich festhalten. Beide Datenbanken sichern
-und während aller drei Schritte Frameworkaufrufe, Collector und Purge
-unterbrechen. Eine neue Snapshotdatenbank ist für das Upgrade nicht anzulegen.
-Für die beiden Snapshot-Schritte sind zusätzlich ausreichende DDL-Rechte in
-ihrem jeweiligen Datenbankkontext erforderlich; die Kernrechte allein
-belegen diese Rechte auf der Snapshotdatenbank nicht.
+1. Die Produkt-ZIP v1.1.1 und ihre Prüfsumme gemäß Schritt 2 herunterladen,
+   vergleichen und vollständig entpacken. Der kombinierte Installer ist in
+   v1.1.0 noch nicht enthalten. Keine Dateien unterschiedlicher Releases mischen.
+2. Bestehende Framework- und Snapshotdatenbank sichern und den betrieblichen
+   Rückfallweg festlegen. Zielbindung, lokale Policies und Historie für die
+   Abschlusskontrolle festhalten. Während des gesamten Upgrades
+   Frameworkaufrufe, Collection und Purge unterbrechen. Die vorhandene
+   Snapshotdatenbank weiterverwenden; für ein Upgrade keine neue anlegen.
+3. Die [Deploymentvoraussetzungen](Deployment.md#voraussetzungen-für-das-deployment)
+   prüfen: zwei verschiedene vorhandene, online und beschreibbare
+   Benutzerdatenbanken derselben Instanz, `CONTROL` auf beiden Datenbanken
+   und `VIEW ANY DEFINITION` auf dem Server. Availability Groups und Mirroring
+   sind für diese Route ausgeschlossen. Der Lauf benötigt exklusive Sperren
+   und Platz für Vorzustände und Transaktionslog; Sperrwartezeiten sind auf
+   zehn Sekunden begrenzt. Abgelehnte Struktur- oder Customkonflikte werden
+   geklärt, ohne die Schutzprüfungen zu entfernen.
+4. `Deploy_All_WithSnapshotBaseline.generated.sql` in einem eigenen
+   SSMS-Abfragefenster auf der richtigen Instanz öffnen. Es darf keine
+   Caller-Transaktion offen sein; `IMPLICIT_TRANSACTIONS` muss ausgeschaltet
+   sein. In der vorhandenen Deklaration ausschließlich die beiden Datenwerte
+   anpassen, beispielsweise:
 
-| Reihenfolge | Datei unter `Code/Install/generated` | Datenbankauswahl |
-|---|---|---|
-| 1 | `Deploy_All.generated.sql` | Bestehende Frameworkdatenbank als `@FrameworkDatabase`; `@SnapshotDatabase=NULL`. Den vorherigen Kernablauf genau einmal durchführen. |
-| 2 | `Install_SnapshotBaseline_Target.generated.sql` | In einem eigenen SSMS-Abfragefenster ausdrücklich die bestehende Snapshotdatenbank auswählen; das Skript verwendet diesen Kontext. |
-| 3 | `Install_SnapshotBaseline_Framework.generated.sql` | In einem eigenen Abfragefenster die enthaltene `USE [DeineDatenbank];`-Zeile auf die bestehende Frameworkdatenbank setzen. |
+   ```sql
+   DECLARE @FrameworkDatabase nvarchar(max)=N'ExampleFrameworkDatabase',
+           @SnapshotDatabase nvarchar(max)=N'ExampleSnapshotDatabase';
+   ```
 
-Jede Datei vollständig ausführen und die Meldungen prüfen, bevor der nächste
-Schritt beginnt. Die Targetdatei enthält keine `USE`-Zeile zur Zielauswahl;
-vor ihrem Start das Datenbankfeld im zugehörigen Fenster erneut kontrollieren.
-Alle drei Dateien liegen fertig in der ZIP und benötigen keinen SQLCMD-Modus.
-Ihre eingebettete Produktlogik wird nicht bearbeitet.
-
-Nach den drei fehlerfreien Schritten den Abschluss kontrollieren:
-
-1. In der Frameworkdatenbank Versionsprüfung, Smoke-Test sowie Capability-
+   Beide Beispielnamen durch die tatsächlich gewählten bestehenden
+   Datenbanken ersetzen. Die Zielnamen werden ausdrücklich als Datenwerte
+   angegeben; das Datenbankfeld des Abfragefensters bestimmt nicht die Ziele.
+   Die eingebettete Produktlogik wird nicht geändert. Der Core-Installer
+   `Deploy_All.generated.sql` ist für diesen Umfang die falsche Datei.
+5. Die gesamte kombinierte Datei ohne markierten Ausschnitt ausführen. Der
+   SQLCMD-Modus ist nicht erforderlich. Die ausgegebene `DeploymentRunId`
+   aufbewahren, alle Meldungen kontrollieren und das Abschlussresultset
+   `DeploymentStatus=COMMITTED` prüfen. Für diesen Ablauf sind die Core-
+   und Snapshot-Einzelinstaller nicht zusätzlich auszuführen.
+6. In beiden Datenbanken `monitor_deployment.Run_<RunId>` gemäß
+   [Receiptkontrolle](Deployment.md#receipt-und-unklarer-abschluss) prüfen:
+   gleiche Run-ID und gleicher Quellendigest, passende explizite Datenbanknamen,
+   `FormatVersion=1` und die Rollen `FRAMEWORK` beziehungsweise `SNAPSHOT`.
+   Eine Frameworkversionszeile allein belegt keinen vollständigen Abschluss.
+7. In der Frameworkdatenbank Versionsprüfung, Smoke-Test sowie Capability-
    und Berechtigungsprüfung aus den Schritten 8 bis 10 durchführen. Erwartet
-   wird Frameworkversion `1.1.0` und der dort beschriebene erfolgreiche
-   Smoke-Test.
-2. In der bestehenden Snapshotdatenbank `snapshot.PackageVersion` prüfen.
-   Für `PackageCode='SC-023'` sind in diesem Release `PackageVersion='1.0.0'`
-   und `SchemaVersion=1` zu erwarten. Diese Paketversion ist von der
-   Frameworkversion `1.1.0` getrennt.
-3. In der Frameworkdatenbank `monitor.SnapshotTargetConfiguration` mit dem
-   Vorzustand vergleichen: vorhandener Zielname, Aktivierung und Schedulerart
-   müssen erhalten sein. Lokale Policies und vorhandene Historie in der
-   Snapshotdatenbank mit dem festgehaltenen Vorzustand abgleichen. Die
-   Installer führen keine Collection und keinen Purge aus.
-4. Bei unverändertem Ziel `monitor.USP_ConfigureSnapshotTarget` nicht erneut
-   aufrufen. Die vorhandene Konfiguration bleibt bestehen. Erst nach
-   erfolgreicher Abschlusskontrolle die zuvor unterbrochenen Aufrufe und den
-   vorhandenen Scheduler wieder zulassen.
+   wird Frameworkversion `1.1.1` und der dort beschriebene erfolgreiche
+   Smoke-Test. In der Snapshotdatenbank muss `snapshot.PackageVersion` für
+   `PackageCode='SC-023'` weiterhin `PackageVersion='1.0.0'` und `SchemaVersion=1`
+   zeigen; die Versionen bezeichnen unterschiedliche Verträge.
+8. Zielname, Aktivierung und Schedulerart in
+   `monitor.SnapshotTargetConfiguration` sowie lokale Policies und Historie
+   mit dem festgehaltenen Vorzustand abgleichen. Vorhandene kompatible
+   Customdaten und die Zielbindung bleiben erhalten. Bei unverändertem Ziel
+   `monitor.USP_ConfigureSnapshotTarget` nicht erneut aufrufen. Der Installer
+   startet keine Collection und keinen Purge. Erst nach erfolgreicher
+   Abschlusskontrolle die unterbrochenen Aufrufe und den vorhandenen
+   Scheduler wieder zulassen.
 
-Die drei Schritte bilden keine gemeinsame Transaktion. Receipt und
-Vorzustandskopien des ersten Schritts gelten ausschließlich für den Kern;
-die Snapshot-Einzelinstaller besitzen diesen Vertrag nicht. Ein Fehler im
-zweiten oder dritten Schritt rollt zuvor erfolgreiche Schritte nicht zurück.
-Bei Fehlern oder Verbindungsabbruch keine Folgeschritte und keine Sammlung
-starten. Auch innerhalb einer Snapshotdatei können bereits Teiländerungen
-vorliegen; ihre Batches besitzen keinen gemeinsamen Rollback.
-Meldungen, Kern-Receipt und Objektzustand beider Datenbanken prüfen
-und den betrieblichen Wiederanlauf- oder Rückfallweg festlegen. Die
-Frameworkversionszeile allein belegt keinen erfolgreichen Snapshotabschluss.
+Bei einem abgefangenen SQL-Fehler rollt die eigene Transaktion Produktänderungen
+und neue Hilfstabellen beider Kontexte gemeinsam zurück. Nach Verbindungsabbruch,
+Cancellation oder verlorener Commitantwort bleibt der Abschluss zunächst
+unklar. Keine Sammlung und keinen erneuten Installerlauf starten, bevor
+Receipts, die zugehörigen Sessions und der Objektzustand in beiden Datenbanken
+gemäß Deploymentvertrag abgeglichen wurden. Fehlende Receipts bei noch laufender
+oder zurückrollender Session sind kein abgeschlossener Rollbacknachweis.
 
-Ein gemeinsames Deployment mit Transaktion, Receipt und Vorzustandserhaltung
-für beide Datenbanken erfordert den gesonderten
-[kombinierten Neubau](Deployment.md#lokaler-neubau-aus-quellen).
-Die v1.1.0-ZIP enthält keinen fertig gebauten kombinierten Installer.
+Der kombinierte Installer kann auch beide Paketteile in zwei ausdrücklich
+vorher angelegte leere Datenbanken installieren. Bei dieser Erstinstallation
+bleibt die Snapshot-Zielbindung zunächst deaktiviert; sie wird danach gemäß
+[Betriebsanleitung](../Operations/Snapshot_Baseline_Operations.md#installation)
+ausdrücklich konfiguriert. Die weiterhin mitgelieferten Snapshot-Einzelinstaller
+besitzen keine gemeinsame Transaktion, Receipt- oder Vorzustandserhaltung mit
+einem separat ausgeführten Core-Lauf.
 
 ## Häufige Fehler
 
