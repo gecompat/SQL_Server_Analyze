@@ -56,7 +56,7 @@ und Lab-Main
 Lab entspricht damit dem übergebenen Referenzstand von PR #828. Dieser
 Abgleich enthält keine neue native Ausführung.
 
-Die [Windows-Providerabnahme](OPS005_Linked_Server_TestLab_Runtime_Evidence_2026-09-19.md#windows-provider-negativfall-vom-22-oktober-2026)
+Die [Windows-Providerabnahme](../../../Documentation/Quality/OPS005_Linked_Server_Evidence_2026-10-22.md#ops-005-linked-server)
 bleibt am Analyze-Stand `7a578c85` mit Lab `1095f5ee` bestanden und über
 PR #403 als `2874675a` integriert. Belegt sind 194 Installationsbatches,
 fünf Analyzerfälle, eine native Provider-Vorprobe mit Fehler 7403,
