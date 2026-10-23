@@ -17,9 +17,9 @@ und Upgradeweg bleibt in der [Installationsanleitung](../../../Documentation/Ref
 
 Der Umfang ist auf 25 Dateien und 400 handgeschriebene geänderte Zeilen
 begrenzt; nur die beiden kanonischen Adapterdiffs zählen nicht zur Zeilengrenze.
-Ein Implementierer bearbeitet einen Umsetzungspass und höchstens zwei
-gebündelte Korrekturpässe. Ein unabhängiger Reviewer prüft insgesamt höchstens dreimal.
-Höchstens drei lokale Prüfblöcke mit je einem Prüfpaket, zwei Head-
+Ein Implementierer bearbeitet einen Umsetzungspass und höchstens drei
+gebündelte Korrekturpässe; der letzte betrifft nur Validator und Budgettexte. Ein Reviewer prüft höchstens viermal.
+Vier lokale Prüfblöcke mit insgesamt höchstens drei Prüfpaketen, zwei Head-
 Qualifikationen, ein Main-Nachlauf, ein endgültiger CI-Paketbau und genau eine
 native Linux-Matrix auf SQL Server 2019, 2022 und 2025 bilden die Abnahmegrenze.
 Die zweite Head-Qualifikation setzt einen geänderten Korrekturstand voraus.

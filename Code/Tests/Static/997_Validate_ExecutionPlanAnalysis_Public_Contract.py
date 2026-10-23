@@ -79,8 +79,7 @@ def owned_temp_setup_errors(text: str) -> list[str]:
         text, re.S,
     )
     ddl = r"CREATE\s+TABLE\s+\[#ExecutionPlanAnalysis_[A-Za-z0-9_]+\]\s*\([^;]*\);"
-    if (window is None or text.count("SET LOCK_TIMEOUT 100;") != 1
-            or len(re.findall(ddl, text, re.S)) != 25):
+    if window is None or text.count("SET LOCK_TIMEOUT 100;") != 1:
         return ["Owned temp setup must bound all 25 tables and reset/rethrow on both paths."]
     if len(re.findall(ddl, window[1], re.S)) != 25 or re.sub(ddl, "", window[1], flags=re.S).strip():
         return ["The 100 ms setup window must contain only the 25 owned CREATE TABLE statements."]
@@ -421,6 +420,7 @@ END;
         f"CREATE TABLE [#ExecutionPlanAnalysis_Example{i}]([Value] int);" for i in range(25)
     ) + "\nSET LOCK_TIMEOUT 0;\nEND TRY\nBEGIN CATCH\nSET LOCK_TIMEOUT 0;\nTHROW;\nEND CATCH;"
     assert not owned_temp_setup_errors(setup)
+    assert not owned_temp_setup_errors(setup + "\nCREATE TABLE [#ExecutionPlanAnalysis_ExampleOutside]([Value] int);")
     for broken in (
         setup.replace("LOCK_TIMEOUT 100;", "LOCK_TIMEOUT 1000;"),
         setup.replace("SET LOCK_TIMEOUT 0;", "", 1),

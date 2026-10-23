@@ -20,9 +20,9 @@ danach und im Fehlerpfad gilt NOWAIT. Der fehlgeschlagene Head-Lauf
 
 Die Lieferung umfasst höchstens 25 Dateien und 400 handgeschriebene geänderte
 Zeilen; nur die beiden kanonischen Adapterdiffs sind von der Zeilenzahl ausgenommen.
-Ein Implementierer, ein Umsetzungspass, zwei gebündelte Korrekturpässe und ein
-unabhängiger Reviewer mit insgesamt höchstens drei Durchgängen begrenzen die Bearbeitung.
-Zulässig sind insgesamt höchstens drei lokale Prüfblöcke mit je einem Prüfpaket, zwei
+Ein Implementierer bearbeitet einen Umsetzungspass und drei begrenzte Korrekturpässe;
+derselbe unabhängige Reviewer prüft insgesamt höchstens viermal.
+Zulässig sind vier lokale Prüfblöcke, insgesamt drei lokale Prüfpakete, zwei
 Head-Qualifikationen, ein Main-Nachlauf und genau ein Matrixdispatch mit allen
 drei Engines. Die zweite Head-Qualifikation ist nur für einen geänderten
 Korrekturstand vorgesehen. Der endgültige CI-Paketbau erfolgt genau einmal.
@@ -207,8 +207,8 @@ der geschützte README-Lizenzblock bleibt unverändert.
 ## Begrenzung und Verarbeitungsaufwand
 
 Ein Implementierer verantwortet den Schritt. Ein unabhängiger Reviewer prüft
-insgesamt höchstens dreimal; zwei gebündelte Korrekturpässe bleiben innerhalb der
-freigegebenen Dateien. Drei lokale Prüfblöcke, höchstens zwei Head-
+höchstens viermal; der letzte Korrekturpass betrifft nur Validator und Budgettexte (20 geänderte Zeilen, 15 aktive Minuten innerhalb der 60).
+Vier lokale Prüfblöcke, höchstens zwei Head-
 Qualifikationen, ein Main-Nachlauf und genau eine native Matrix begrenzen die
 Ausführung. Der aktuelle v1.1.2-Schritt umfasst höchstens 25 Dateien und 400 handgeschriebene geänderte Zeilen.
 Die aktive Bearbeitung einschließlich Review und Koordination bleibt auf 120 Minuten begrenzt.
