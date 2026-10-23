@@ -100,7 +100,8 @@ BEGIN CATCH
 END CATCH;
 
 /* Kontrollierte Fehlerinjektion prüft die Meldung, keinen realen Blocker.
-   Nur die Testkopie ersetzt je einen dynamischen SQL-Aufruf durch Fehler 1222. */
+   Nur die Testkopie ordnet den eigenen Fehler 55744 dem 1222-Vertrag zu;
+   SQL Server erlaubt keine direkte Erzeugung von 1222 mit RAISERROR oder THROW. */
 DECLARE @TimeoutDefinition nvarchar(max)=OBJECT_DEFINITION(OBJECT_ID(N'monitor.InternalWriteResultTable'));
 DECLARE @TimeoutHeader nvarchar(128)=N'PROCEDURE [monitor].[InternalWriteResultTable]';
 DECLARE @TimeoutHeaderAt int=CHARINDEX(@TimeoutHeader,@TimeoutDefinition);
@@ -110,16 +111,20 @@ IF OBJECT_ID(N'monitor.ExampleTableExportTimeoutProbe') IS NOT NULL
     THROW 55727,N'TABLE timeout probe ownership conflict.',1;
 DECLARE @TimeoutOriginalText nvarchar(2048);
 BEGIN TRY
-    RAISERROR(1222,16,1);
+    THROW 55744,N'Example table export lock timeout.',1;
 END TRY
 BEGIN CATCH
-    IF ERROR_NUMBER()<>1222 THROW;
+    IF ERROR_NUMBER()<>55744 THROW;
     SET @TimeoutOriginalText=ERROR_MESSAGE();
 END CATCH;
 IF @TimeoutOriginalText IS NULL OR LEN(@TimeoutOriginalText)=0
     THROW 55741,N'TABLE timeout original message unavailable.',1;
 DECLARE @TimeoutBase nvarchar(max)=N'CREATE PROCEDURE [monitor].[ExampleTableExportTimeoutProbe]'
     +SUBSTRING(@TimeoutDefinition,@TimeoutHeaderAt+LEN(@TimeoutHeader),LEN(@TimeoutDefinition));
+IF CHARINDEX(N'55744',@TimeoutBase)>0 OR CHARINDEX(N'ERROR_NUMBER()',@TimeoutBase)=0
+    THROW 55745,N'TABLE timeout surrogate binding changed.',1;
+SET @TimeoutBase=REPLACE(@TimeoutBase,N'ERROR_NUMBER()',
+    N'(CASE WHEN ERROR_NUMBER()=55744 THEN 1222 ELSE ERROR_NUMBER() END)');
 DECLARE @TimeoutStep int=0,@TimeoutThrow bit,@TimeoutProbeId int=NULL,@TimeoutNeedle nvarchar(32),
     @TimeoutAt int,@TimeoutCopy nvarchar(max),@TimeoutTarget sysname,@TimeoutSql nvarchar(max),
     @TimeoutCallerLock int=@@LOCK_TIMEOUT,@TimeoutCallerOptions int=@@OPTIONS,@TimeoutCallerTran int=@@TRANCOUNT;
@@ -132,7 +137,7 @@ BEGIN TRY
         IF @TimeoutAt=0 OR CHARINDEX(@TimeoutNeedle,@TimeoutBase,@TimeoutAt+LEN(@TimeoutNeedle))<>0
             THROW 55728,N'TABLE timeout injection binding changed.',1;
         SET @TimeoutCopy=STUFF(@TimeoutBase,@TimeoutAt,LEN(@TimeoutNeedle),
-            N'N''RAISERROR(1222,16,1);''');
+            N'N''THROW 55744,N''''Example table export lock timeout.'''',1;''');
         EXEC [sys].[sp_executesql] @TimeoutCopy;
         SET @TimeoutProbeId=OBJECT_ID(N'monitor.ExampleTableExportTimeoutProbe');
         IF @TimeoutProbeId IS NULL THROW 55729,N'TABLE timeout probe creation failed.',1;
