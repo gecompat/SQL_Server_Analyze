@@ -1,6 +1,6 @@
 # Nächste Arbeitsschritte
 
-**Stand:** 22. Oktober 2026
+**Stand:** 23. Oktober 2026
 **Zweck:** aktuelle ausführbare Entwicklungswelle für `gecompat/SQL_Server_Analyze`
 
 ## Aktive Welle: Release 1.1.0
@@ -46,6 +46,62 @@ veröffentlicht ist und der eigene Branch-Cleanup bei sauberem `origin/main`
 abgeschlossen ist, ist diese Welle beendet. Dieser Eintrag erteilt danach
 keine Wiederholungsfreigabe. Die übrige autonome Verarbeitung bleibt bis zu
 einem neuen ausdrücklichen Auftrag pausiert.
+
+## OPS-005-Quellenabgleich vom 23. Oktober 2026
+
+Der ausschließlich lesende Quellenabgleich bestätigt Analyze-Main
+[`59e6c9cc8e786828bc710ca6963121511aedb07a`](https://github.com/gecompat/SQL_Server_Analyze/commit/59e6c9cc8e786828bc710ca6963121511aedb07a)
+und Lab-Main
+[`2423ac75d7b07d29adbb63a2c218a6669db8363c`](https://github.com/gecompat/SQL_Server_Lab/commit/2423ac75d7b07d29adbb63a2c218a6669db8363c).
+Lab entspricht damit dem übergebenen Referenzstand von PR #828. Dieser
+Abgleich enthält keine neue native Ausführung.
+
+Die [Windows-Providerabnahme](../../../Documentation/Quality/OPS005_Linked_Server_Evidence_2026-10-22.md#ops-005-linked-server)
+bleibt am Analyze-Stand `7a578c85` mit Lab `1095f5ee` bestanden und über
+PR #403 als `2874675a` integriert. Belegt sind 194 Installationsbatches,
+fünf Analyzerfälle, eine native Provider-Vorprobe mit Fehler 7403,
+Callerzustand und vollständiger eigener Cleanup. Dieser begrenzte Nachweis
+ist abgeschlossen und wird weder erneut als offen geführt noch auf neuere
+Commits umgebunden.
+
+Die [Lab-Validierungsstrategie](https://github.com/gecompat/SQL_Server_Lab/blob/2423ac75d7b07d29adbb63a2c218a6669db8363c/Documentation/Quality/LOCAL_VALIDATION_STRATEGY.md#windows-prepared-collation-und-editierbarer-intentstandard)
+bindet die Windows-Prepared-Collationabnahme mit 27 Prüfungen an `77fcf951`.
+Die getrennte [HRESULT-Fehlerpfadabnahme](https://github.com/gecompat/SQL_Server_Lab/blob/2423ac75d7b07d29adbb63a2c218a6669db8363c/Documentation/Quality/LOCAL_VALIDATION_STRATEGY.md#windows-aktivierung-unter-hyper-v-native-hresult-fehlerpfadabnahme)
+belegt drei kontrollierte Fälle mit 32 Prüfungen auf `44b63129`. Sie enthält
+keinen echten `Activate`-Aufruf und qualifiziert weder Produktions-DHCP noch
+externen Egress oder einen tatsächlichen Aktivierungsdienstausfall. Der
+ursprüngliche historische Aktivierungsfehler bleibt ungeklärt.
+[PR #828](https://github.com/gecompat/SQL_Server_Lab/pull/828) führt diesen
+Status mit Dokumentations-, Privacy- und Pflicht-CI-Nachweisen nach; seine
+Integration ist keine erneute native Abnahme.
+
+Die Windows-Fixture wählt `SQL_Latin1_General_CP1_CS_AS` ausdrücklich.
+Der editierbare interaktive Lab-Standard ersetzt diese Auswahl nicht;
+Windows ohne Auswahl behält sein bisheriges Verhalten. Eigene Datenbank,
+deren Collation und CL170 bleiben getrennte Postconditions. `NotRequested`
+mit `Denied` attestiert keinen aktiven Windows-Lizenzzustand.
+`AVAILABLE_EMPTY` und `[]` belegen nur einen leeren sichtbaren Bestand.
+Docker, Podman und Hyper-V behalten getrennte Nachweise.
+
+Die Kombination Analyze `59e6c9cc` mit Lab `2423ac75` ist nativ
+`NOT_EXECUTED`. Analyzer, Windows-Worker, Vorbereiter und Provider-Fixture
+sind gegenüber dem bestandenen Analyze-Stand unverändert. Die spätere
+Lab-HRESULT-Korrektur betrifft den von dieser Fixture nicht angeforderten
+Aktivierungspfad. Die geänderte TABLE-Ausgabe wird von den fünf
+`NONE`-Analyzerfällen nicht aufgerufen. Daraus ergibt sich derzeit kein
+fachlicher Zwang zur Wiederholung; eine aktuelle gemeinsame native
+Qualifikation wird damit nicht behauptet.
+
+Eine ausdrücklich gewünschte Wiederholungsabnahme benötigt einen gesonderten
+Ausführungsauftrag: frischer eigener Run, neue private Vorbereitung und
+Reservierung, exakte Quellbindungen, unveränderte fünf Analyzerfälle samt
+nativer Vorprobe, Callerzustandsprüfungen und vollständiger eigener Cleanup
+gemäß dem [Windows-Lesepfad](../../../TestLab/README.md#fehlenden-windows-provider-prüfen).
+Assertions werden nicht zur Kompensation fehlender Evidence abgeschwächt.
+Sieben Windows-Runs und neun Reviewprüfungen bleiben verbraucht; diese
+Dokumentationsnachführung erneuert weder Lauf- noch Reviewbudgets.
+SQL-, Analyzer- und Providerläufe sind nicht freigegeben. Die übrige
+autonome Verarbeitung bleibt pausiert.
 
 ## Erhaltener Stand: OPS-005-Lesepfad und Nachweishistorie
 
@@ -98,6 +154,12 @@ Foundation-Integration und ihren bestätigten eigenen Cleanup. SQL-, Lab- und
 Veröffentlichungsgrenzen werden dadurch nicht erneuert.
 
 ## Erhaltene Diagnosehistorie: OPS-005-Provider-Negativfall
+
+Die folgenden offenen Integrationsschritte und Freigaben beschreiben die
+jeweiligen damaligen Zwischenstände. Der oben dokumentierte Abschluss über
+PR #403 und der [Quellenabgleich vom 23. Oktober 2026](#ops-005-quellenabgleich-vom-23-oktober-2026)
+sind für die heutige Einordnung maßgeblich; die historischen Angaben
+erneuern keine Ausführungs- oder Reviewbudgets.
 
 Der vorherige Stream ist über [PR #399](https://github.com/gecompat/SQL_Server_Analyze/pull/399)
 als `7359cf48` integriert. Lokale Abnahme, unabhängige Reviews, Head-CI und
