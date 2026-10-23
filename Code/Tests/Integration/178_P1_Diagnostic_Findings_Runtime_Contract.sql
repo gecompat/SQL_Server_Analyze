@@ -35,27 +35,117 @@ EXEC [monitor].[USP_DiagnosticFindings]
      @ErrorNumberOut=@ErrorNumber OUTPUT,@ErrorMessageOut=@ErrorMessage OUTPUT,
      @HighImpactConfirmed=1;
 
-IF ISJSON(@Json)<>1 OR @Status NOT IN('AVAILABLE_WITH_FINDING','AVAILABLE_LIMITED')
-   OR COALESCE(TRY_CONVERT(int,JSON_VALUE(@Json,N'$.meta.totalFindingCount')),0)<1
-   OR NOT EXISTS
-      (
-          SELECT 1
-          FROM OPENJSON(@Json,N'$.modules')
-          WITH ([ModuleName] sysname N'$.ModuleName',[InvocationStatus] varchar(40) N'$.InvocationStatus')
-          WHERE [ModuleName]=N'USP_AgentMonitoringAnalysis' AND [InvocationStatus]='EXECUTED'
-      )
-   OR EXISTS
-      (
-          SELECT 1
-          FROM OPENJSON(@Json,N'$.findings') AS [f]
-          CROSS APPLY OPENJSON([f].[value]) AS [p]
-          WHERE [p].[key] NOT IN
-          (
-              N'FindingOrdinal',N'SourceModule',N'Category',N'Severity',N'Confidence',N'ScopeType',
-              N'ScopeName',N'FindingCode',N'EvidenceMetric',N'Evidence',N'EvidenceLimit',N'RecommendedNextCheck'
-          )
-      )
+/* Derselbe Prüfblock dient dem echten Aufruf und neun synthetischen Gegenproben.
+   Nur feste Statuswerte und Zahlen gelangen in die vorhandene CI-Fehlerausgabe. */
+DECLARE @FindCoreCheck nvarchar(max)=N'
+SET @Line=NULL;
+DECLARE @Valid bit=COALESCE(ISJSON(@Json),0),@SafeJson nvarchar(max),@Count int,
+        @BadStatus bit=CASE WHEN @Status NOT IN(''AVAILABLE_WITH_FINDING'',''AVAILABLE_LIMITED'') THEN 1 ELSE 0 END,
+        @BadAgent bit=1,@BadKeys bit=1,@ParseError int=NULL,
+        @AgentInvoke varchar(40),@AgentEvidence varchar(40),@AgentError int,
+        @AggregationInvoke varchar(40),@AggregationError int;
+SET @SafeJson=CASE WHEN @Valid=1 THEN @Json ELSE N''{}'' END;
+BEGIN TRY
+    SET @Count=TRY_CONVERT(int,JSON_VALUE(@SafeJson,N''$.meta.totalFindingCount''));
+    SET @BadAgent=CASE WHEN EXISTS
+        (SELECT 1 FROM OPENJSON(@SafeJson,N''$.modules'')
+         WITH ([ModuleName] sysname N''$.ModuleName'',[InvocationStatus] varchar(40) N''$.InvocationStatus'')
+         WHERE [ModuleName]=N''USP_AgentMonitoringAnalysis'' AND [InvocationStatus]=''EXECUTED'') THEN 0 ELSE 1 END;
+    SET @BadKeys=CASE WHEN EXISTS
+        (SELECT 1 FROM OPENJSON(@SafeJson,N''$.findings'') AS [f] CROSS APPLY OPENJSON([f].[value]) AS [p]
+         WHERE [p].[key] NOT IN
+         (N''FindingOrdinal'',N''SourceModule'',N''Category'',N''Severity'',N''Confidence'',N''ScopeType'',
+          N''ScopeName'',N''FindingCode'',N''EvidenceMetric'',N''Evidence'',N''EvidenceLimit'',N''RecommendedNextCheck'')) THEN 1 ELSE 0 END;
+    SELECT @AgentInvoke=MAX(CASE WHEN [ModuleName]=N''USP_AgentMonitoringAnalysis'' THEN [InvocationStatus] END),
+           @AgentEvidence=MAX(CASE WHEN [ModuleName]=N''USP_AgentMonitoringAnalysis'' THEN [EvidenceStatus] END),
+           @AgentError=MAX(CASE WHEN [ModuleName]=N''USP_AgentMonitoringAnalysis'' THEN TRY_CONVERT(int,[ErrorNumber]) END),
+           @AggregationInvoke=MAX(CASE WHEN [ModuleName]=N''JSON_EVIDENCE_AGGREGATION'' THEN [InvocationStatus] END),
+           @AggregationError=MAX(CASE WHEN [ModuleName]=N''JSON_EVIDENCE_AGGREGATION'' THEN TRY_CONVERT(int,[ErrorNumber]) END)
+    FROM OPENJSON(@SafeJson,N''$.modules'') WITH
+        ([ModuleName] sysname N''$.ModuleName'',[InvocationStatus] varchar(40) N''$.InvocationStatus'',
+         [EvidenceStatus] varchar(40) N''$.EvidenceStatus'',[ErrorNumber] nvarchar(4000) N''$.ErrorNumber'');
+END TRY
+BEGIN CATCH
+    SET @ParseError=ERROR_NUMBER();
+END CATCH;
+IF @Valid=0 OR @BadStatus=1 OR COALESCE(@Count,0)<1 OR @BadAgent=1 OR @BadKeys=1 OR @ParseError IS NOT NULL
+BEGIN
+    SELECT @Status=CASE WHEN @Status IN(''AVAILABLE'',''AVAILABLE_EMPTY'',''AVAILABLE_WITH_FINDING'',''AVAILABLE_LIMITED'',
+        ''DENIED_PERMISSION'',''ERROR_HANDLED'',''DATABASE_UNAVAILABLE'',''UNAVAILABLE_FEATURE'',''INVALID_PARAMETER'') THEN @Status
+        WHEN @Status IS NULL THEN ''NULL'' ELSE ''UNKNOWN'' END,
+        @AgentInvoke=CASE WHEN @AgentInvoke IN(''EXECUTED'',''ERROR_HANDLED'',''REUSED_PARENT_RESULT'',''SKIPPED'') THEN @AgentInvoke
+        WHEN @AgentInvoke IS NULL THEN ''NULL'' ELSE ''UNKNOWN'' END,
+        @AgentEvidence=CASE WHEN @AgentEvidence IN(''AVAILABLE'',''AVAILABLE_EMPTY'',''AVAILABLE_WITH_FINDING'',''AVAILABLE_LIMITED'',
+        ''DENIED_PERMISSION'',''ERROR_HANDLED'',''DATABASE_UNAVAILABLE'',''UNAVAILABLE_FEATURE'') THEN @AgentEvidence
+        WHEN @AgentEvidence IS NULL THEN ''NULL'' ELSE ''UNKNOWN'' END,
+        @AggregationInvoke=CASE WHEN @AggregationInvoke IN(''EXECUTED'',''ERROR_HANDLED'') THEN @AggregationInvoke
+        WHEN @AggregationInvoke IS NULL THEN ''NULL'' ELSE ''UNKNOWN'' END;
+    SET @Line=CONCAT(N''Error: FIND_CORE_FAILURE badJson='',1-CONVERT(int,@Valid),N'' badStatus='',@BadStatus,
+        N'' badCount='',CASE WHEN COALESCE(@Count,0)<1 THEN 1 ELSE 0 END,N'' badAgent='',@BadAgent,N'' badKeys='',@BadKeys,
+        N'' status='',@Status,N'' partial='',COALESCE(CONVERT(varchar(1),@Partial),''NULL''),
+        N'' error='',COALESCE(CONVERT(varchar(12),@ErrorNumber),''NULL''),N'' count='',COALESCE(CONVERT(varchar(12),@Count),''NULL''),
+        N'' agentInvoke='',@AgentInvoke,N'' agentEvidence='',@AgentEvidence,N'' agentError='',COALESCE(CONVERT(varchar(12),@AgentError),''NULL''),
+        N'' aggregationInvoke='',@AggregationInvoke,N'' aggregationError='',COALESCE(CONVERT(varchar(12),@AggregationError),''NULL''),
+        N'' parseError='',COALESCE(CONVERT(varchar(12),@ParseError),''NULL''));
+END;';
+DECLARE @FindCoreParameters nvarchar(400)=N'@Json nvarchar(max),@Status varchar(40),@Partial bit,@ErrorNumber int,@Line nvarchar(1024) OUTPUT';
+DECLARE @FindCoreLine nvarchar(1024);
+EXEC [sys].[sp_executesql] @FindCoreCheck,@FindCoreParameters,@Json,@Status,@Partial,@ErrorNumber,@FindCoreLine OUTPUT;
+IF @FindCoreLine IS NOT NULL
+BEGIN
+    RAISERROR(N'%s',10,1,@FindCoreLine) WITH NOWAIT;
     THROW 55200,N'P1-Vertrag FIND-CORE fehlgeschlagen.',1;
+END;
+
+/* Die Gegenproben verändern keine Procedure, Quelle oder fachliche Fallzählung. */
+DECLARE @ProbeBase nvarchar(max)=N'{"meta":{"totalFindingCount":1},"modules":[{"ModuleName":"USP_AgentMonitoringAnalysis","InvocationStatus":"EXECUTED","EvidenceStatus":"AVAILABLE"}],"findings":[{"FindingCode":"SYNTHETIC_FINDING","ScopeName":"SYNTHETIC_PRIVATE_PAYLOAD"}]}',
+        @ProbeJson nvarchar(max),@ProbeStatus varchar(40),@ProbePartial bit,@ProbeError int,@ProbeOrdinal int=0,
+        @ExpectedToken nvarchar(80),@Caught int,@Character int;
+WHILE @ProbeOrdinal<9
+BEGIN
+    SELECT @ProbeJson=@ProbeBase,@ProbeStatus='AVAILABLE_WITH_FINDING',@ProbePartial=0,@ProbeError=NULL,@Caught=NULL,
+           @ExpectedToken=CASE @ProbeOrdinal WHEN 1 THEN N'badJson=1' WHEN 2 THEN N'badJson=1'
+           WHEN 3 THEN N'badStatus=1' WHEN 4 THEN N'badCount=1' WHEN 5 THEN N'badAgent=1'
+           WHEN 6 THEN N'agentError=1222' WHEN 7 THEN N'badKeys=1' WHEN 8 THEN N'aggregationError=13609' END;
+    IF @ProbeOrdinal=1 SET @ProbeJson=NULL;
+    IF @ProbeOrdinal=2 SET @ProbeJson=N'SYNTHETIC_PRIVATE_PAYLOAD'+NCHAR(10);
+    IF @ProbeOrdinal=3 SET @ProbeStatus='SYNTHETIC_PRIVATE_PAYLOAD'+CHAR(10)+'%';
+    IF @ProbeOrdinal=4 SET @ProbeJson=JSON_MODIFY(@ProbeJson,N'$.meta.totalFindingCount',0);
+    IF @ProbeOrdinal=5 SET @ProbeJson=JSON_MODIFY(@ProbeJson,N'$.modules',JSON_QUERY(N'[]'));
+    IF @ProbeOrdinal=6
+    BEGIN
+        SET @ProbeJson=JSON_MODIFY(JSON_MODIFY(JSON_MODIFY(@ProbeJson,N'$.modules[0].InvocationStatus','ERROR_HANDLED'),
+            N'$.modules[0].EvidenceStatus','DENIED_PERMISSION'),N'$.modules[0].ErrorNumber',1222);
+        SELECT @ProbeStatus='AVAILABLE_LIMITED',@ProbePartial=1,@ProbeError=1222;
+    END;
+    IF @ProbeOrdinal=7 SET @ProbeJson=JSON_MODIFY(@ProbeJson,N'$.findings[0].Unexpected',N'SYNTHETIC_PRIVATE_PAYLOAD');
+    IF @ProbeOrdinal=8
+        SET @ProbeJson=JSON_MODIFY(JSON_MODIFY(@ProbeJson,N'$.meta.totalFindingCount',0),N'append $.modules',
+            JSON_QUERY(N'{"ModuleName":"JSON_EVIDENCE_AGGREGATION","InvocationStatus":"ERROR_HANDLED","ErrorNumber":13609}'));
+    BEGIN TRY
+        EXEC [sys].[sp_executesql] @FindCoreCheck,@FindCoreParameters,
+            @ProbeJson,@ProbeStatus,@ProbePartial,@ProbeError,@FindCoreLine OUTPUT;
+        IF @FindCoreLine IS NOT NULL THROW 55200,N'P1-Vertrag FIND-CORE fehlgeschlagen.',1;
+    END TRY
+    BEGIN CATCH
+        SET @Caught=ERROR_NUMBER();
+        IF @Caught<>55200 THROW;
+    END CATCH;
+    IF (@ProbeOrdinal=0 AND (@Caught IS NOT NULL OR @FindCoreLine IS NOT NULL))
+       OR (@ProbeOrdinal>0 AND (@Caught IS NULL OR @FindCoreLine IS NULL OR CHARINDEX(@ExpectedToken,@FindCoreLine)=0
+           OR LEFT(@FindCoreLine,25)<>N'Error: FIND_CORE_FAILURE ' OR LEN(@FindCoreLine)>1024
+           OR CHARINDEX(N'SYNTHETIC_PRIVATE_PAYLOAD',@FindCoreLine)>0))
+        THROW 55212,N'FIND-CORE: Die synthetische Diagnosegegenprobe ist fehlgeschlagen.',1;
+    SET @Character=1;
+    WHILE @Character<=LEN(@FindCoreLine)
+    BEGIN
+        IF UNICODE(SUBSTRING(@FindCoreLine,@Character,1)) NOT BETWEEN 32 AND 126
+            THROW 55212,N'FIND-CORE: Die Diagnose enthält unzulässige Zeichen.',1;
+        SET @Character+=1;
+    END;
+    SET @ProbeOrdinal+=1;
+END;
+RAISERROR(N'FIND_CORE_DIAGNOSTIC_PROBES passed=9 synthetic=1',10,1) WITH NOWAIT;
 INSERT @ExecutedCases VALUES('FIND-CORE');
 INSERT @ExecutedCases VALUES('FIND-STANDALONE-FRESH');
 

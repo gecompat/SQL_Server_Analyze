@@ -6,7 +6,36 @@ Dieser Ablauf beschreibt die Umsetzung für Version 1.1.2 und die Bindung
 zwischen Quellcommit, Produkt-ZIP, Laufzeitprüfung und Veröffentlichung.
 Historische CSV-Nachweise werden dadurch nicht umgedeutet.
 
-## Freigegebene Lieferung v1.1.2
+## FIND-CORE-Diagnose
+
+PR #412 ist auf Main `73b9843a8cd799883d1b3d796992133020e38d97` integriert.
+Der [Main-Nachlauf 39962487724](https://github.com/gecompat/SQL_Server_Analyze/actions/runs/39962487724)
+scheiterte mit 55200; die Ursache bleibt unbekannt. v1.1.2 ist unveröffentlicht.
+Die nachfolgende Releasefreigabe ist gestoppt. Ihre Budgets und Frist werden
+durch den getrennten Diagnoseauftrag in [Next_Steps.md](Next_Steps.md#freigegebener-folge-pr-find-core-diagnose)
+nicht erneuert. Matrix, Paketbau und Veröffentlichung bleiben ausgesetzt.
+
+Test 178 meldet vor 55200 höchstens eine ASCII-Zeile mit 1.024 Zeichen und
+dem Präfix `Error: FIND_CORE_FAILURE`. Prüfflags, Gesamtstatus, Partialität,
+Finding-Anzahl sowie Status und Fehlernummern des Agent-Moduls und der
+JSON-Aggregation grenzen den Fehler ein. Nur feste Kennungen, erlaubte
+Statuswerte und Zahlen werden ausgegeben; unbekannte Werte erscheinen als
+`UNKNOWN`, fehlende als `NULL`. Freie Meldungen und JSON-Nutzdaten entfallen.
+Die Zeile erscheint über den bestehenden CI-Pfad in Konsole und `impact.log`.
+Sie belegt weder einen Blocker noch die Ursache eines intern gemeldeten Fehlers.
+
+Die begrenzte Abnahme prüft offline die fünf erhaltenen Kriterien, Fehler
+55200, Datenschutz, Ausgabegrenze und Lesepfade; ein unabhängiger Reviewer
+prüft denselben Umfang. Genau eine Head-Abnahme auf SQL Server 2025/CL170
+führt die betroffenen Verträge mit neun bisherigen P1-Findings-Fällen und
+neun synthetischen Diagnoseeingaben aus. Die Gegenproben nutzen denselben
+Prüfblock und prüfen Erfolg, NULL-/ungültiges JSON, falschen Status, null
+Findings, fehlendes Agent-Modul, abgefangenen 1222, unerlaubte Finding-Felder
+und Aggregationsfehler. Sie reproduzieren keinen ursprünglichen Fehler.
+Unveränderte erfolgreiche Selbsttests werden nicht lokal wiederholt.
+Ein Fehler stoppt ohne weiteren Head-Lauf; Abschluss ist der geprüfte PR.
+
+## Gestoppte Freigabe v1.1.2
 
 Der Benutzer hat am 23. Oktober 2026 den begrenzten Releaseplan für v1.1.2
 samt ZIP-Ausnahme freigegeben. Grundlage ist Analyze-Main `e307fea3` mit der

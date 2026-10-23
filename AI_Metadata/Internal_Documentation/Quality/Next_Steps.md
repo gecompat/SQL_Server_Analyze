@@ -3,7 +3,30 @@
 **Stand:** 23. Oktober 2026
 **Zweck:** aktuelle ausführbare Entwicklungswelle für `gecompat/SQL_Server_Analyze`
 
-## Freigegebene Lieferung: Release 1.1.2
+## Freigegebener Folge-PR: FIND-CORE-Diagnose
+
+PR #412 ist als `73b9843a8cd799883d1b3d796992133020e38d97` integriert.
+Der zweite Head-Lauf `39961104033` bestand auf `e2aa7e56`; der
+[Main-Nachlauf 39962487724](https://github.com/gecompat/SQL_Server_Analyze/actions/runs/39962487724)
+scheiterte mit 55200 in FIND-CORE. Die verletzte Prüfbedingung und die Ursache
+sind unbekannt. `NO_1222` schließt intern abgefangene Modulfehler nicht aus.
+v1.1.2 ist unveröffentlicht; native Matrix und endgültiger CI-ZIP-Bau fehlen.
+
+Freigegeben ist ausschließlich die Diagnose in Test 178 samt dieser
+Statusnachführung und der [Abnahmebeschreibung](Release_Gate_Runbook.md#find-core-diagnose).
+Die Grenze beträgt drei Dateien, 220 hinzugefügte oder gelöschte Handzeilen,
+60 aktive Minuten einschließlich Review und Koordination sowie zwei Stunden
+Gesamtzeit. Ein Implementierer bearbeitet einen Umsetzungspass und höchstens
+einen gebündelten Korrekturpass vor der einzigen Head-Abnahme. Höchstens zwei
+gezielte Offlineblöcke und zwei Durchgänge desselben unabhängigen Reviewers
+sind zulässig; zweite Durchgänge benötigen geänderte Eingaben oder Befunde.
+Die Lieferung endet mit dem geprüften Folge-PR. Merge, Main-Nachlauf,
+ZIP-Bau, Release-Matrix und Veröffentlichung sind nicht freigegeben.
+Fehler oder Grenzüberschreitung stoppen die Lieferung. Die verbrauchten
+Releasebudgets und die ursprüngliche Releasefrist werden nicht erneuert;
+die übrige autonome Verarbeitung bleibt pausiert.
+
+## Gestoppte Lieferung: Release 1.1.2
 
 Der Benutzer hat am 23. Oktober 2026 den Releaseplan für v1.1.2 samt enger
 ZIP-Ausnahme und festen Grenzen freigegeben. Der Branch beginnt auf
