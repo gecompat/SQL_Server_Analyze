@@ -1,11 +1,11 @@
 USE [DeineDatenbank];
 GO
 
-IF OBJECT_ID(N'tempdb..#ExampleTableExportContract') IS NOT NULL
+IF OBJECT_ID(N'monitor.ExampleTableExportContract') IS NOT NULL
     THROW 55742,N'TABLE contract scope ownership conflict.',1;
 GO
 
-CREATE PROCEDURE [#ExampleTableExportContract]
+CREATE PROCEDURE [monitor].[ExampleTableExportContract]
 AS
 BEGIN
 SET NOCOUNT ON;
@@ -211,16 +211,16 @@ END;
 GO
 
 DECLARE @ContractCallerLock int=@@LOCK_TIMEOUT,@ContractCallerOptions int=@@OPTIONS,@ContractCallerTran int=@@TRANCOUNT;
-DECLARE @ContractOwnedId int=OBJECT_ID(N'tempdb..#ExampleTableExportContract');
+DECLARE @ContractOwnedId int=OBJECT_ID(N'monitor.ExampleTableExportContract');
 BEGIN TRY
-    EXEC [#ExampleTableExportContract];
+    EXEC [monitor].[ExampleTableExportContract];
     IF @@LOCK_TIMEOUT<>@ContractCallerLock OR @@OPTIONS<>@ContractCallerOptions OR @@TRANCOUNT<>@ContractCallerTran
         THROW 55743,N'TABLE contract leaked caller state.',1;
-    DROP PROCEDURE [#ExampleTableExportContract];
+    DROP PROCEDURE [monitor].[ExampleTableExportContract];
 END TRY
 BEGIN CATCH
-    IF OBJECT_ID(N'tempdb..#ExampleTableExportContract')=@ContractOwnedId
-        DROP PROCEDURE [#ExampleTableExportContract];
+    IF OBJECT_ID(N'monitor.ExampleTableExportContract')=@ContractOwnedId
+        DROP PROCEDURE [monitor].[ExampleTableExportContract];
     THROW;
 END CATCH;
 GO
