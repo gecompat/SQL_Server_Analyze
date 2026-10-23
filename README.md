@@ -90,7 +90,7 @@ bestandener Teiltest ist keine Freigabe aller Procedures dieser Kombination.
 
 Im Bereich [Releases](https://github.com/gecompat/SQL_Server_Analyze/releases)
 werden versionierte Produktpakete veröffentlicht. Wählen Sie die Datei
-`SQL_Server_Analyze-1.1.1.zip`; die automatisch angebotenen Quellarchive
+`SQL_Server_Analyze-1.1.2.zip`; die automatisch angebotenen Quellarchive
 enthalten keine fertig erzeugten Installer. Das Produktpaket enthält Quellen,
 Dokumentation, Metadaten und sechs vorbereitete Installer unter
 `Code/Install/generated`. Für die folgenden Wege ist kein lokaler Build
@@ -106,7 +106,7 @@ erforderlich:
 Die Installationsanleitung beschreibt Prüfsumme, Datenbankkontexte,
 Voraussetzungen, Erfolgskontrolle und Fehlerbehandlung. Der vorbereitete
 `Deploy_All.generated.sql` enthält nur den Kern. Für Kern und Snapshot/Baseline
-enthält v1.1.1 zusätzlich `Deploy_All_WithSnapshotBaseline.generated.sql` mit
+enthält v1.1.2 zusätzlich `Deploy_All_WithSnapshotBaseline.generated.sql` mit
 gemeinsamer Transaktion, Receipts und Vorzustandserhaltung in beiden
 Datenbanken. Der Vorgänger v1.1.0 enthält diesen sechsten Installer nicht.
 
@@ -118,7 +118,7 @@ Release-Nachweis dokumentiert; das ist keine Build-Allowlist.
 ### Quellcheckout oder eigener kombinierter Deploymentumfang
 
 Die folgenden Buildschritte gelten für einen Quellcheckout oder einen bewusst
-gewählten Neubau. Die v1.1.1-ZIP enthält sowohl den Core- als auch den
+gewählten Neubau. Die v1.1.2-ZIP enthält sowohl den Core- als auch den
 kombinierten Deploymentinstaller bereits.
 
 ```powershell

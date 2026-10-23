@@ -1,6 +1,6 @@
 # Installation
 
-Das Produkt-ZIP v1.1.1 enthält bereits sechs Installer unter `generated`.
+Das Produkt-ZIP v1.1.2 enthält bereits sechs Installer unter `generated`.
 Sie werden vollständig in SSMS ohne SQLCMD-Modus ausgeführt. Ein lokaler
 Neubau ist für die folgenden ZIP-Wege nicht erforderlich.
 
@@ -92,5 +92,5 @@ sich nicht mit SQL Server. Vorhandene gleichnamige Ausgabedateien werden
 abgelehnt. Die ZIP-Prüfung vergleicht alle Quellen mit dem ausgewählten Commit
 und die fertigen Installer bytegenau mit einer erneuten kanonischen Erzeugung
 im festen Format UTF-8 ohne BOM mit LF-Zeilenenden. Die
-[Releaseübersicht](../../Documentation/Quality/Release_Notes.md#release-111)
+[Releaseübersicht](../../Documentation/Quality/Release_Notes.md#release-112)
 beschreibt Paket, Nachweis und Veröffentlichungsstatus.

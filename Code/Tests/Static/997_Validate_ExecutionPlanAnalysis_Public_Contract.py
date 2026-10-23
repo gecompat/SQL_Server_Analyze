@@ -72,6 +72,20 @@ def require_fragments(text: str, fragments: list[str], label: str, errors: list[
             errors.append(f"Missing {label}: {fragment}")
 
 
+def owned_temp_setup_errors(text: str) -> list[str]:
+    window = re.search(
+        r"BEGIN TRY\s+SET LOCK_TIMEOUT 100;\s*(.*?)\s*SET LOCK_TIMEOUT 0;\s*"
+        r"END TRY\s*BEGIN CATCH\s*SET LOCK_TIMEOUT 0;\s*THROW;\s*END CATCH;",
+        text, re.S,
+    )
+    ddl = r"CREATE\s+TABLE\s+\[#ExecutionPlanAnalysis_[A-Za-z0-9_]+\]\s*\([^;]*\);"
+    if window is None or text.count("SET LOCK_TIMEOUT 100;") != 1:
+        return ["Owned temp setup must bound all 25 tables and reset/rethrow on both paths."]
+    if len(re.findall(ddl, window[1], re.S)) != 25 or re.sub(ddl, "", window[1], flags=re.S).strip():
+        return ["The 100 ms setup window must contain only the 25 owned CREATE TABLE statements."]
+    return []
+
+
 def validate(repository_root: Path) -> list[str]:
     errors: list[str] = []
     contract_file = repository_root / CONTRACT_PATH
@@ -195,6 +209,7 @@ def validate(repository_root: Path) -> list[str]:
             errors.append(f"JSON schema marker changed: {procedure_name}")
 
     analysis_text = source_texts.get("USP_ExecutionPlanAnalysis", "")
+    errors.extend(owned_temp_setup_errors(analysis_text))
     evidence_text = source_texts.get("USP_CreateExecutionEvidenceJson", "")
     internal_text = (repository_root / "Code/04_PlanCache/051_InternalAnalyzeExecutionPlan.sql").read_text(
         encoding="utf-8-sig"
@@ -401,6 +416,20 @@ END;
     actual = extract_parameters(sample, "USP_Example")
     if actual != expected:
         raise AssertionError(f"Parameter parser self-test failed: {actual!r}")
+    setup = "BEGIN TRY\nSET LOCK_TIMEOUT 100;\n" + "\n".join(
+        f"CREATE TABLE [#ExecutionPlanAnalysis_Example{i}]([Value] int);" for i in range(25)
+    ) + "\nSET LOCK_TIMEOUT 0;\nEND TRY\nBEGIN CATCH\nSET LOCK_TIMEOUT 0;\nTHROW;\nEND CATCH;"
+    assert not owned_temp_setup_errors(setup)
+    assert not owned_temp_setup_errors(setup + "\nCREATE TABLE [#ExecutionPlanAnalysis_ExampleOutside]([Value] int);")
+    for broken in (
+        setup.replace("LOCK_TIMEOUT 100;", "LOCK_TIMEOUT 1000;"),
+        setup.replace("SET LOCK_TIMEOUT 0;", "", 1),
+        setup.replace("BEGIN CATCH\nSET LOCK_TIMEOUT 0;", "BEGIN CATCH"),
+        setup.replace("THROW;", "RETURN;"),
+        setup.replace("END TRY", "SELECT 1;\nEND TRY"),
+        setup.replace("CREATE TABLE [#ExecutionPlanAnalysis_Example0]([Value] int);", ""),
+    ):
+        assert owned_temp_setup_errors(broken), "Unsafe setup window was accepted."
 
 
 def main() -> int:

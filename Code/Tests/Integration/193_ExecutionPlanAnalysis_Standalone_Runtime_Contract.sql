@@ -160,6 +160,60 @@ REVERT;
 DROP USER [ExampleStandaloneUser];
 GO
 
+/* Kontrollierte Fehlerprobe an einer eigenen Kopie, keine Reproduktion einer Sperre. */
+DECLARE @SetupDefinition nvarchar(max)=OBJECT_DEFINITION(OBJECT_ID(N'monitor.USP_ExecutionPlanAnalysis')),
+    @SetupHeader nvarchar(128)=N'PROCEDURE [monitor].[USP_ExecutionPlanAnalysis]',
+    @SetupNeedle nvarchar(64)=N'SET LOCK_TIMEOUT 100;',@SetupHeaderAt int,@SetupNeedleAt int,
+    @SetupOwnedId int=NULL,@SetupCallerLock int=@@LOCK_TIMEOUT,
+    @SetupCallerTran int=@@TRANCOUNT,@SetupCallerOptions int=@@OPTIONS;
+IF OBJECT_ID(N'monitor.ExampleOwnedTempSetupProbe') IS NOT NULL
+    THROW 53636,N'Owned setup probe collision.',1;
+SELECT @SetupHeaderAt=CHARINDEX(@SetupHeader,@SetupDefinition),
+       @SetupNeedleAt=CHARINDEX(@SetupNeedle,@SetupDefinition);
+IF @SetupDefinition IS NULL OR @SetupHeaderAt=0 OR @SetupNeedleAt=0
+   OR CHARINDEX(@SetupNeedle,@SetupDefinition,@SetupNeedleAt+LEN(@SetupNeedle))<>0
+    THROW 53636,N'Owned setup probe binding changed.',1;
+SET @SetupDefinition=N'CREATE PROCEDURE [monitor].[ExampleOwnedTempSetupProbe]'
+    +SUBSTRING(@SetupDefinition,@SetupHeaderAt+LEN(@SetupHeader),LEN(@SetupDefinition));
+SET @SetupDefinition=REPLACE(@SetupDefinition,@SetupNeedle,
+    @SetupNeedle+N' THROW 53634,N''Example owned temp setup failure.'',7;');
+BEGIN TRY
+    EXEC [sys].[sp_executesql] @SetupDefinition;
+    SET @SetupOwnedId=OBJECT_ID(N'monitor.ExampleOwnedTempSetupProbe');
+    IF @SetupOwnedId IS NULL THROW 53636,N'Owned setup probe creation failed.',1;
+    EXEC [sys].[sp_executesql] N'
+DECLARE @Case int=0,@Caught bit,@IncomingLock int,@IncomingTran int=@@TRANCOUNT;
+WHILE @Case<2
+BEGIN
+    IF @Case=0 SET LOCK_TIMEOUT 0; ELSE SET LOCK_TIMEOUT 137;
+    SELECT @IncomingLock=@@LOCK_TIMEOUT,@Caught=0;
+    BEGIN TRY
+        EXEC [monitor].[ExampleOwnedTempSetupProbe] @ResultSetArt=''NONE'',@PrintMeldungen=0;
+    END TRY
+    BEGIN CATCH
+        IF ERROR_NUMBER()<>53634 OR ERROR_STATE()<>7
+           OR ERROR_MESSAGE()<>N''Example owned temp setup failure.'' THROW;
+        SET @Caught=1;
+    END CATCH;
+    IF @Caught<>1 OR @@LOCK_TIMEOUT<>@IncomingLock OR @@TRANCOUNT<>@IncomingTran
+        THROW 53635,N''Owned setup error or caller scope changed.'',1;
+    SET @Case+=1;
+END;';
+    IF @@LOCK_TIMEOUT<>@SetupCallerLock OR @@TRANCOUNT<>@SetupCallerTran OR @@OPTIONS<>@SetupCallerOptions
+        THROW 53635,N'Owned setup outer caller scope changed.',1;
+    IF ISNULL(OBJECT_ID(N'monitor.ExampleOwnedTempSetupProbe'),0)<>@SetupOwnedId
+        THROW 53637,N'Owned setup probe ownership changed.',1;
+    DROP PROCEDURE [monitor].[ExampleOwnedTempSetupProbe];
+    IF OBJECT_ID(N'monitor.ExampleOwnedTempSetupProbe') IS NOT NULL
+        THROW 53637,N'Owned setup probe cleanup failed.',1;
+END TRY
+BEGIN CATCH
+    IF @SetupOwnedId IS NOT NULL AND OBJECT_ID(N'monitor.ExampleOwnedTempSetupProbe')=@SetupOwnedId
+        DROP PROCEDURE [monitor].[ExampleOwnedTempSetupProbe];
+    THROW;
+END CATCH;
+GO
+
 /* Synthetische lokale Konfiguration muss die erneute Installation überleben. */
 INSERT [monitor].[PlanAnalysisProfile]
 (

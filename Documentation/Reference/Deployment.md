@@ -2,7 +2,7 @@
 
 ## Produkt-ZIP ohne Neubau
 
-Das Produkt-ZIP v1.1.1 enthält bereits zwei fertige Deploymentumfänge unter
+Das Produkt-ZIP v1.1.2 enthält bereits zwei fertige Deploymentumfänge unter
 `Code/Install/generated`: `Deploy_All.generated.sql` für den Frameworkkern und
 `Deploy_All_WithSnapshotBaseline.generated.sql` für Kern und Snapshot/Baseline.
 Die [Upgradeanleitung](Installation.md#upgrade-aus-der-produkt-zip) beschreibt

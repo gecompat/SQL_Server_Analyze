@@ -3,7 +3,47 @@
 **Stand:** 23. Oktober 2026
 **Zweck:** aktuelle ausführbare Entwicklungswelle für `gecompat/SQL_Server_Analyze`
 
-## Aktive Welle: Release 1.1.0
+## Freigegebene Lieferung: Release 1.1.2
+
+Der Benutzer hat am 23. Oktober 2026 den Releaseplan für v1.1.2 samt enger
+ZIP-Ausnahme und festen Grenzen freigegeben. Der Branch beginnt auf
+Analyze-Main `e307fea3` einschließlich PR #410 und der OPS-005-Statusnachführung.
+Die bereits integrierte TABLE-Timeout-Diagnose wird mit dem vollständigen
+Produkt-ZIP und sechs vorbereiteten Installern ausgeliefert. Vertragsversion
+`1.24`, Snapshot-Paketversion `1.0.0`/Schema 1 und die Plattformgrenzen bleiben
+bestehen. Die [Releaseanleitung](Release_Gate_Runbook.md) führt durch Paketbau,
+Abnahme, regulären PR-Merge und Veröffentlichung; der menschliche Download-
+und Upgradeweg bleibt in der [Installationsanleitung](../../../Documentation/Reference/Installation.md).
+
+Der Umfang ist auf 25 Dateien und 400 handgeschriebene geänderte Zeilen
+begrenzt; nur die beiden kanonischen Adapterdiffs zählen nicht zur Zeilengrenze.
+Ein Implementierer bearbeitet einen Umsetzungspass und höchstens drei
+gebündelte Korrekturpässe; der letzte betrifft nur Validator und Budgettexte. Ein Reviewer prüft höchstens viermal.
+Vier lokale Prüfblöcke mit insgesamt höchstens drei Prüfpaketen, zwei Head-
+Qualifikationen, ein Main-Nachlauf, ein endgültiger CI-Paketbau und genau eine
+native Linux-Matrix auf SQL Server 2019, 2022 und 2025 bilden die Abnahmegrenze.
+Die zweite Head-Qualifikation setzt einen geänderten Korrekturstand voraus.
+Die Matrix läuft sequenziell mit höchstens 45 Minuten je Enginejob.
+
+Der erste Head-Lauf `39942902098` auf `ffb8ffa4` scheiterte mit Fehler 1222
+im Standalone-Vertrag. Freigegeben ist nun ein zusätzlicher Temp-Setup-Fix
+in neun Dateien mit höchstens 200 weiteren Handzeilen und 60 aktiven Minuten
+innerhalb der ursprünglichen Gesamtgrenzen. Nur eigene Temp-DDL erhält 100 ms;
+die Sperrursache bleibt unbelegt. Genau ein weiterer lokaler Block samt ZIP,
+ein Review desselben Reviewers und der zweite Head sind dafür zulässig.
+Die ursprüngliche Frist endet am 23. Oktober 2026 um 17:45 Uhr Wien.
+
+Nach 120 Minuten aktiver Bearbeitung einschließlich Review und Koordination
+oder fünf Stunden Gesamtzeit beginnt keine neue Arbeit; nach drei Stunden
+erfolgt ein Kontrollpunkt. Ein Matrixfehler oder eine offene Daten-/Quellbindung
+verhindert die Veröffentlichung. Nach bestandener Abnahme zeigt `v1.1.2` auf
+den getesteten Main-Commit; veröffentlicht werden dieselben ZIP-Bytes mit
+Prüfsumme und gebundenem Nachweis. Der Abschluss wird beim Release geführt.
+Damit endet dieser Auftrag ohne Wiederholungsfreigabe. Die früheren Releases
+bleiben unverändert. OPS-005-Windows-Abnahmen und deren verbrauchte Lauf-/
+Reviewbudgets werden nicht erneuert. Die übrige autonome Verarbeitung bleibt pausiert.
+
+## Historische Welle: Release 1.1.0
 
 Der Releaseumfang ist auf die Konsolidierung des aktuellen Produktstands,
 den Versionskatalog, ein commitgebundenes Produkt-ZIP mit fünf fertigen

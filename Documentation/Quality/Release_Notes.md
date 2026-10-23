@@ -9,7 +9,7 @@ commitbezogenen Laufzeitnachweis.
 
 | Merkmal | Stand |
 |---|---|
-| Frameworkversion im Installationskatalog | `1.1.1` |
+| Frameworkversion im Installationskatalog | `1.1.2` |
 | ContractVersion im Installationskatalog | `1.24` |
 | ReleaseDate im Installationskatalog | 23. Oktober 2026 |
 | Mindestversion | SQL Server 2019 |
@@ -22,6 +22,29 @@ Die [Paketgrenzen](../Reference/Scope_and_Limitations.md) unterscheiden
 Diagnose, Installation, lokale TABLE-Ausgabe und persistente Sammlung.
 
 Alle öffentlichen Procedures besitzen eine eigenständige Procedure-Seite. Alle unterstützenden Objekte besitzen einen Detailabschnitt in der Objektreferenz.
+
+## Release 1.1.2
+
+Version 1.1.2 liefert die Änderung aus PR #410 im vollständigen Produkt-ZIP
+mit sechs fertig erzeugten Installern aus. Bereits abgefangene TABLE-Export-
+Lock-Timeouts enthalten den logischen Zieltabellennamen als JSON-Zeichenfolge
+und eine feste Kennung des SQL-Teilschritts. Fehlernummern, Statuswerte und
+das bestehende Fehlerpräfix bleiben erhalten. Die Diagnose nennt weder einen
+unbelegten Blocker noch eine Sperrressource und behebt keine nachgewiesene
+Sperrursache. Die zugehörigen Fehlervertragsfälle sind im Release-Gate eingebunden.
+
+Die Plananalyse begrenzt außerdem die Sperrwartezeit für ihre 25 eigenen
+Temp-Tabellen auf 100 ms je Anlage. Vor fachlichen Zugriffen und im Fehlerpfad
+gilt wieder NOWAIT; Fehler bleiben erhalten. Dies härtet die Initialisierung,
+belegt aber keine Ursache des historischen Standalone-Timeouts.
+
+`SQL_Server_Analyze-1.1.2.zip` enthält auch den kombinierten Installer für das
+Upgrade von Kern und Snapshot/Baseline. Die [Installationsanleitung](../Reference/Installation.md)
+führt ohne lokalen Neubau zur Erstinstallation und zum Upgrade. API `1.24`,
+Objektumfang 182 und Snapshot-Paketvertrag `1.0.0`/Schema 1 bleiben erhalten.
+Quellcommit, ZIP-Prüfsumme und tatsächliche native Abnahme stehen im gebundenen
+Release-Nachweis. Die dokumentierten Builds beschränken die Installation nicht
+auf einzelne Builds oder CUs. Frühere Releases und ihre Nachweise bleiben erhalten.
 
 ## Release 1.1.1
 
