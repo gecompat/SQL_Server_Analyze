@@ -141,6 +141,44 @@ Partial-Cache-Operationen bleiben mangels positiver Originale uninterpretiert.
 Die Ausgabe beweist keine Cache-Hit-Rate, Konfigurationsvollständigkeit,
 Datenqualität, physische Speichermessung oder technische Ursache.
 
+## Gemeldete Schreibmengen als Opt-in
+
+Objektversion 1.6.0 ergänzt `@IncludeRowsWrittenAnalysis bit=0` an Position 26.
+Bei aktiviertem Opt-in liefert SchemaVersion 7 die letzte Menge
+rowsWrittenEvents mit 21 Feldern. Der Quellenstatus rowsWrittenAnalysis besitzt
+SourceOrdinal 9. RAW enthält eine zusätzliche Menge; TABLE verwendet denselben
+Resultsetnamen und JSON dasselbe Array mit RowsWrittenCatalogVersion 1.
+CONSOLE behält ein Grid und ergänzt die drei Berichtsanzahlen Schreibmeldungen,
+GeleseneSchreibmeldungen und ZugeordneteSchreibmeldungen. NONE unterdrückt Grids.
+
+Das [genaue Meldungsprofil](../../Architecture/SSIS_001_Phase0_Public_Contract.md#schreibmengen-aus-erhaltenen-legacy-meldungen-vom-23-oktober-2026)
+interpretiert ausschließlich OnInformation mit DataCode 1074016267 und der
+vollständigen englischen Schreibmeldung einschließlich CRLF. ReportedRows=0
+bezeichnet eine ausdrücklich gemeldete Null; fehlende Meldungen liefern keine
+solche Zeile. Nicht unterstützte Texte bleiben mit NULL-Payloadwerten sichtbar.
+Ein eindeutiges beobachtetes EXECUTE-Paar liefert nur äußere Kontextgrenzen.
+
+Die gleiche Meldung kann auf Data-Flow- und Paketebene vorkommen. Beide LogIds
+bleiben einzeln erhalten. Weder Addition noch Deduplizierung erzeugen daraus
+eine Paketgesamtmenge; die Meldung bestätigt keinen dauerhaften Commit.
+Der Opt-in verwendet ausschließlich den bereits begrenzten Puffer. Bei
+IncludeMessages=0 findet keine Textinterpretation statt. Deadline und native
+Fehler verwerfen die neue Ableitung atomar und erhalten gültige andere Mengen.
+
+Ein synthetisches Beispiel mit explizitem Loggingziel lautet:
+
+```sql
+EXEC [monitor].[USP_SsisLegacyLogAnalysis]
+    @LoggingDatabase=N'ExampleLogging',
+    @ExecutionId='11111111-1111-1111-1111-111111111111',
+    @IncludeRowsWrittenAnalysis=1,
+    @ResultSetArt='RAW';
+```
+
+Ohne passende Quelle oder ohne zugelassenen Text bleibt die Aussage begrenzt.
+Quellenstatus und ParseStatus erklären die Abweichung; zusätzliche Provider-
+oder Paketaktionen werden durch den Analyzer nicht ausgelöst.
+
 ## Eine Zeile bedeutet
 
 Eine Timelinezeile entspricht einer materialisierten Logzeile. errorChain

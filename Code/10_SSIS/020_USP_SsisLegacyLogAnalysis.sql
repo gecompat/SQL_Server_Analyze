@@ -4,8 +4,8 @@ GO
 /*
 ===============================================================================
 Objekt       : monitor.USP_SsisLegacyLogAnalysis
-Version      : 1.5.1
-Stand        : 2026-10-20
+Version      : 1.6.0
+Stand        : 2026-10-23
 Typ          : Stored Procedure
 Zweck        : Liest eine explizite Legacy-Loggingquelle für genau eine GUID.
 Grenze       : Keine Quellaktionen; Meldungstexte bleiben Laufzeitausgaben.
@@ -37,6 +37,7 @@ CREATE OR ALTER PROCEDURE [monitor].[USP_SsisLegacyLogAnalysis]
     , @IncludeComponentPhaseAnalysis bit = 0
     , @IncludeComponentLifecyclePhases bit = 0
     , @IncludeLookupCacheAnalysis bit = 0
+    , @IncludeRowsWrittenAnalysis bit = 0
 AS
 BEGIN
     SET NOCOUNT ON;
@@ -51,10 +52,11 @@ BEGIN
         PRINT N'@IncludeComponentPhaseAnalysis=1 ergänzt PipelineComponentTime-Berichte für ProcessInput/PrimeOutput: SchemaVersion4, zwei letzte Mengen; keine CPU- oder exklusive Zeit.';
         PRINT N'@IncludeComponentLifecyclePhases=1 benötigt @IncludeComponentPhaseAnalysis=1 und ergänzt Validate/PreExecute/PostExecute: SchemaVersion5; getrennte VALIDATE-/EXECUTE-Berichtskontexte.';
         PRINT N'@IncludeLookupCacheAnalysis=1 ergänzt sechs Lookup-/Cacheprofile als einzelne Berichte: Position25, SchemaVersion6; keine Hit-Rate oder Gesamtmengenaddition.';
+        PRINT N'@IncludeRowsWrittenAnalysis=1 ergänzt einzelne Schreibberichte: Position26, SchemaVersion7; keine Summen oder Commitgarantie.';
         PRINT N'@MaxZeilen NULL/0 und eingeschlossenes nvarchar(max) benötigen @HighImpactConfirmed=1. Zeitbudget ist kooperativ.';
         RETURN;
     END;
-    SELECT @IncludeLookupCacheAnalysis=COALESCE(@IncludeLookupCacheAnalysis,0),@IncludeComponentLifecyclePhases=COALESCE(@IncludeComponentLifecyclePhases,0),@IncludeComponentPhaseAnalysis=COALESCE(@IncludeComponentPhaseAnalysis,0),@IncludeRowFlowAnalysis=COALESCE(@IncludeRowFlowAnalysis,0),@IncludeTaskAnalysis=COALESCE(@IncludeTaskAnalysis,0),@IncludeTimeline=COALESCE(@IncludeTimeline,1),@IncludeMessages=COALESCE(@IncludeMessages,1),@HighImpactConfirmed=COALESCE(@HighImpactConfirmed,0);
+    SELECT @IncludeRowsWrittenAnalysis=COALESCE(@IncludeRowsWrittenAnalysis,0),@IncludeLookupCacheAnalysis=COALESCE(@IncludeLookupCacheAnalysis,0),@IncludeComponentLifecyclePhases=COALESCE(@IncludeComponentLifecyclePhases,0),@IncludeComponentPhaseAnalysis=COALESCE(@IncludeComponentPhaseAnalysis,0),@IncludeRowFlowAnalysis=COALESCE(@IncludeRowFlowAnalysis,0),@IncludeTaskAnalysis=COALESCE(@IncludeTaskAnalysis,0),@IncludeTimeline=COALESCE(@IncludeTimeline,1),@IncludeMessages=COALESCE(@IncludeMessages,1),@HighImpactConfirmed=COALESCE(@HighImpactConfirmed,0);
     DECLARE @OutputMode varchar(16)=UPPER(LTRIM(RTRIM(COALESCE(@ResultSetArt,'')))) COLLATE SQL_Latin1_General_CP1_CS_AS;
     DECLARE @ConsoleResultRequested bit=CASE WHEN @OutputMode='CONSOLE' THEN 1 ELSE 0 END;
     DECLARE @Now datetime2(3)=SYSUTCDATETIME(),@Deadline datetime2(3),@Status varchar(40)='AVAILABLE',@Partial bit=0;
@@ -64,11 +66,13 @@ BEGIN
     DECLARE @RowComplete bit=0,@RowStarted bit=0,@RowCandidates bigint=NULL,@RowParsed bigint=NULL,@RowAssigned bigint=NULL;
     DECLARE @PhaseComplete bit=0,@PhaseStarted bit=0,@PhaseCandidates bigint=NULL,@PhaseParsed bigint=NULL,@PhaseAssigned bigint=NULL;
     DECLARE @LookupComplete bit=0,@LookupStarted bit=0,@LookupCandidates bigint=NULL,@LookupParsed bigint=NULL,@LookupAssigned bigint=NULL;
+    DECLARE @WrittenComplete bit=0,@WrittenStarted bit=0,@WrittenCandidates bigint=NULL,@WrittenParsed bigint=NULL,@WrittenAssigned bigint=NULL;
     DECLARE @AllowedNames nvarchar(max)=N'moduleStatus|execution|timeline|errorChain|iterations|loggingQuality|findings|sourceStatus|warnings';
     IF @IncludeTaskAnalysis=1 SET @AllowedNames+=N'|taskDurations|taskLoggingCoverage';
     IF @IncludeRowFlowAnalysis=1 SET @AllowedNames+=N'|rowFlowEvents|rowFlow';
     IF @IncludeComponentPhaseAnalysis=1 SET @AllowedNames+=N'|componentPhaseEvents|componentPhaseTimes';
     IF @IncludeLookupCacheAnalysis=1 SET @AllowedNames+=N'|lookupCacheEvents';
+    IF @IncludeRowsWrittenAnalysis=1 SET @AllowedNames+=N'|rowsWrittenEvents';
     DECLARE @Limit bigint=CASE WHEN COALESCE(@MaxZeilen,0)=0 THEN 9223372036854775807 ELSE CONVERT(bigint,@MaxZeilen) END;
     DECLARE @Take bigint=CASE WHEN COALESCE(@MaxZeilen,0)=0 THEN 9223372036854775807 ELSE CONVERT(bigint,@MaxZeilen)+1 END;
     DECLARE @PreviousLock int=@@LOCK_TIMEOUT,@PreviousAbort bit=CASE WHEN (@@OPTIONS & 16384)=16384 THEN 1 ELSE 0 END;
@@ -394,6 +398,30 @@ BEGIN
             [EvidenceSource] nvarchar(160) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,
             [MessageText] nvarchar(max) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
         );
+        CREATE TABLE [#SsisLegacyLogAnalysis_RowsWrittenEvents]
+        (
+            [RowsWrittenEventOrdinal] bigint NOT NULL,
+            [LogId] int NOT NULL,
+            [ExecutionId] uniqueidentifier NOT NULL,
+            [EventName] nvarchar(128) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,
+            [SourceId] uniqueidentifier NULL,
+            [SourceName] nvarchar(4000) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,
+            [EventTime] datetime NULL,
+            [DataCode] int NULL,
+            [ParserId] varchar(32) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,
+            [ParseStatus] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,
+            [ObservationKind] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,
+            [ComponentName] nvarchar(4000) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,
+            [ReportedRows] bigint NULL,
+            [DiagnosticCode] varchar(64) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,
+            [ContextStatus] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,
+            [ContextStartLogId] int NULL,
+            [ContextEndLogId] int NULL,
+            [InputIsTruncated] bit NOT NULL,
+            [EvidenceLevel] varchar(32) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,
+            [EvidenceSource] nvarchar(160) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,
+            [MessageText] nvarchar(max) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        );
         CREATE TABLE [#SsisLegacyLogAnalysis_Buffer]
         ([LogId] int NOT NULL,[EventName] nvarchar(128) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,
          [SourceName] nvarchar(4000) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,[SourceId] uniqueidentifier NULL,
@@ -432,6 +460,10 @@ BEGIN
         INSERT [#SsisLegacyLogAnalysis_SourceStatus]
             ([SourceOrdinal],[SourceName],[StatusCode],[IsPartial],[IsTruncated],[Detail],[CollectionTimeUtc])
         VALUES(8,N'lookupCacheAnalysis','NOT_READ',1,0,N'NOT_READ',@Now);
+    IF @IncludeRowsWrittenAnalysis=1
+        INSERT [#SsisLegacyLogAnalysis_SourceStatus]
+            ([SourceOrdinal],[SourceName],[StatusCode],[IsPartial],[IsTruncated],[Detail],[CollectionTimeUtc])
+        VALUES(9,N'rowsWrittenAnalysis','NOT_READ',1,0,N'NOT_READ',@Now);
     IF @IncludeTimeline=0 INSERT [#SsisLegacyLogAnalysis_Warnings] VALUES(0,'TIMELINE_NOT_REQUESTED',NULL,N'Der Timelineexport wurde abgeschaltet.');
     IF @IncludeMessages=0 INSERT [#SsisLegacyLogAnalysis_Warnings] VALUES(0,'MESSAGES_NOT_REQUESTED',NULL,N'Der fachliche Meldungstextzugriff wurde abgeschaltet.');
     IF @OutputMode NOT IN ('CONSOLE','RAW','TABLE','NONE')
@@ -1477,6 +1509,128 @@ BEGIN
             END;
         END;
         -- END LOOKUP CACHE ANALYSIS
+        -- BEGIN ROWS WRITTEN ANALYSIS: individual reports do not define additive package totals.
+        IF @IncludeRowsWrittenAnalysis=1
+        BEGIN
+            DECLARE @WrittenReason nvarchar(2000)=CASE WHEN @Status='INVALID_PARAMETER' THEN N'INVALID_PARAMETER'
+                WHEN @ValidBuffer=0 THEN N'NO_VALID_EVENT_BUFFER' WHEN @DerivationComplete=0 THEN N'PRIOR_DERIVATION_NOT_COMPLETED'
+                WHEN @IncludeMessages=0 THEN N'MESSAGES_DISABLED' WHEN SYSUTCDATETIME()>=@Deadline THEN N'TIME_BUDGET_EXHAUSTED' END;
+            IF @WrittenReason IS NULL
+            BEGIN TRY
+                SET @WrittenStarted=1;
+                DECLARE @WrittenMessageBytes int=(SELECT CASE WHEN MaxLength=-1 OR MaxLength>4096 THEN 4096 ELSE MaxLength END
+                    FROM [#SsisLegacyLogAnalysis_Columns] WHERE ColumnName=N'message');
+                INSERT [#SsisLegacyLogAnalysis_RowsWrittenEvents]
+                SELECT ROW_NUMBER() OVER(ORDER BY LogId),LogId,ExecutionId,EventName,SourceId,SourceName,EventTime,DataCode,
+                    NULL,'MALFORMED_PAYLOAD',NULL,NULL,NULL,NULL,'NOT_PARSED',NULL,NULL,@Truncated,
+                    'UNINTERPRETED',N'Legacy event buffer',MessageText
+                FROM [#SsisLegacyLogAnalysis_Buffer] WHERE DataCode=1074016267;
+                DECLARE @WrittenOrdinal bigint=1,@WrittenCount bigint=(SELECT COUNT_BIG(*) FROM [#SsisLegacyLogAnalysis_RowsWrittenEvents]);
+                DECLARE @WText nvarchar(max),@WEvent nvarchar(128),@WParser varchar(32),@WParse varchar(40),
+                    @WName nvarchar(max),@WNumber nvarchar(max),@WExpected nvarchar(max),@WRows bigint,
+                    @WQuote int,@WEnd int,@WChar int,@WUnicode int,@WBad bit;
+                WHILE @WrittenOrdinal<=@WrittenCount
+                BEGIN
+                    SELECT @WText=MessageText,@WEvent=EventName FROM [#SsisLegacyLogAnalysis_RowsWrittenEvents] WHERE RowsWrittenEventOrdinal=@WrittenOrdinal;
+                    SELECT @WParser=NULL,@WParse='MALFORMED_PAYLOAD',@WName=NULL,@WRows=NULL,@WBad=0;
+                    IF @WText IS NULL SET @WParse='MESSAGE_MISSING';
+                    ELSE IF DATALENGTH(@WText)>=@WrittenMessageBytes SET @WParse='POTENTIALLY_TRUNCATED';
+                    ELSE IF @WEvent IS NULL OR CONVERT(varbinary(max),@WEvent)<>CONVERT(varbinary(max),N'OnInformation') SET @WParse='CODE_EVENT_MISMATCH';
+                    ELSE
+                    BEGIN
+                        SELECT @WParser='ROWS_WRITTEN_EN_1',@WQuote=CHARINDEX(N'"',@WText COLLATE Latin1_General_100_BIN2,2);
+                        SET @WEnd=CHARINDEX(N' rows.',@WText COLLATE Latin1_General_100_BIN2,CASE WHEN @WQuote>0 THEN @WQuote+8 ELSE 1 END);
+                        SELECT @WName=SUBSTRING(@WText COLLATE Latin1_General_100_BIN2,2,CASE WHEN @WQuote>=2 THEN @WQuote-2 ELSE 0 END),
+                            @WNumber=SUBSTRING(@WText COLLATE Latin1_General_100_BIN2,@WQuote+8,CASE WHEN @WEnd>=@WQuote+8 THEN @WEnd-@WQuote-8 ELSE 0 END);
+                        SET @WExpected=CONVERT(nvarchar(max),N'"')+@WName+N'" wrote '+@WNumber+N' rows.'+NCHAR(13)+NCHAR(10);
+                        IF @WQuote<3 OR @WEnd<@WQuote+8 OR DATALENGTH(@WName) NOT BETWEEN 2 AND 8000
+                            OR CONVERT(varbinary(max),@WText)<>CONVERT(varbinary(max),@WExpected)
+                            OR CHARINDEX(N'"',@WText COLLATE Latin1_General_100_BIN2,@WQuote+1)>0
+                            OR DATALENGTH(@WNumber)=0 OR @WNumber COLLATE Latin1_General_100_BIN2 LIKE N'%[^0-9]%'
+                            OR (DATALENGTH(@WNumber)>2 AND LEFT(@WNumber,1)=N'0') SET @WBad=1;
+                        SET @WChar=1;
+                        WHILE @WChar<=DATALENGTH(@WName)/2
+                        BEGIN
+                            SET @WUnicode=UNICODE(SUBSTRING(@WName COLLATE Latin1_General_100_BIN2,@WChar,1));
+                            IF @WUnicode BETWEEN 0 AND 31 OR @WUnicode BETWEEN 127 AND 159 SET @WBad=1;
+                            SET @WChar+=1;
+                        END;
+                        SET @WChar=1;
+                        WHILE @WChar<=DATALENGTH(@WNumber)/2
+                        BEGIN
+                            SET @WUnicode=UNICODE(SUBSTRING(@WNumber COLLATE Latin1_General_100_BIN2,@WChar,1));
+                            IF @WUnicode NOT BETWEEN 48 AND 57 SET @WBad=1;
+                            SET @WChar+=1;
+                        END;
+                        SET @WRows=TRY_CONVERT(bigint,@WNumber);
+                        SET @WParse=CASE WHEN @WBad=1 THEN 'MALFORMED_PAYLOAD' WHEN @WRows IS NULL THEN 'NUMERIC_OUT_OF_RANGE' ELSE 'PARSED' END;
+                    END;
+                    UPDATE [#SsisLegacyLogAnalysis_RowsWrittenEvents] SET ParserId=@WParser,ParseStatus=@WParse,
+                        ObservationKind=CASE WHEN @WParse='PARSED' THEN 'ROWS_WRITTEN' END,
+                        ComponentName=CASE WHEN @WParse='PARSED' THEN @WName END,ReportedRows=CASE WHEN @WParse='PARSED' THEN @WRows END,
+                        DiagnosticCode=CASE WHEN @WParse='PARSED' THEN 'DTS_I_ROWS_WRITTEN' END,
+                        EvidenceLevel=CASE WHEN @WParse='PARSED' THEN 'RUNTIME_OBSERVED' ELSE 'UNINTERPRETED' END
+                    WHERE RowsWrittenEventOrdinal=@WrittenOrdinal;
+                    SET @WrittenOrdinal+=1;
+                END;
+                UPDATE e SET ContextStatus=c.ContextStatus,
+                    ContextStartLogId=CASE WHEN c.ContextStatus='ASSIGNED' THEN p.StartLogId END,
+                    ContextEndLogId=CASE WHEN c.ContextStatus='ASSIGNED' THEN p.EndLogId END
+                FROM [#SsisLegacyLogAnalysis_RowsWrittenEvents] AS e
+                OUTER APPLY(SELECT COUNT_BIG(*) AS PairCount,MIN(i.StartLogId) AS StartLogId,MIN(i.EndLogId) AS EndLogId,MIN(i.StartTime) AS StartTime,MIN(i.EndTime) AS EndTime
+                    FROM [#SsisLegacyLogAnalysis_Iterations] AS i WHERE i.ExecutionId=e.ExecutionId AND i.SourceId=e.SourceId AND i.PairKind='EXECUTE' AND i.PairStatus='PAIRED'
+                        AND i.StartLogId<e.LogId AND e.LogId<i.EndLogId) AS p
+                CROSS APPLY(SELECT CASE WHEN e.ParseStatus<>'PARSED' THEN 'NOT_PARSED'
+                    WHEN e.SourceId IS NULL OR e.SourceId='00000000-0000-0000-0000-000000000000' THEN 'SOURCE_ID_MISSING'
+                    WHEN e.EventTime IS NULL THEN 'EVENT_TIME_MISSING' WHEN p.PairCount=0 THEN 'NO_OBSERVED_PAIR'
+                    WHEN p.PairCount>1 THEN 'AMBIGUOUS_PAIR' WHEN e.EventTime<p.StartTime OR e.EventTime>p.EndTime THEN 'TIME_OUTSIDE_PAIR' ELSE 'ASSIGNED' END AS ContextStatus) AS c;
+                -- BEGIN ROWS WRITTEN ATOMIC DECISION
+                IF SYSUTCDATETIME()>=@Deadline SET @WrittenReason=N'TIME_BUDGET_EXHAUSTED';
+                ELSE
+                BEGIN
+                    SELECT @WrittenCandidates=COUNT_BIG(*),@WrittenParsed=COALESCE(SUM(CONVERT(bigint,CASE WHEN ParseStatus='PARSED' THEN 1 ELSE 0 END)),0),
+                        @WrittenAssigned=COALESCE(SUM(CONVERT(bigint,CASE WHEN ContextStatus='ASSIGNED' THEN 1 ELSE 0 END)),0)
+                    FROM [#SsisLegacyLogAnalysis_RowsWrittenEvents];
+                    DECLARE @WrittenLimited bit=CASE WHEN @Truncated=1 OR @WrittenParsed<@WrittenCandidates OR @WrittenAssigned<@WrittenParsed THEN 1 ELSE 0 END;
+                    UPDATE [#SsisLegacyLogAnalysis_SourceStatus] SET StatusCode=CASE WHEN @WrittenLimited=1 THEN 'AVAILABLE_LIMITED' WHEN @WrittenCandidates=0 THEN 'AVAILABLE_EMPTY' ELSE 'AVAILABLE' END,
+                        IsPartial=@WrittenLimited,ObservedRowCount=@WrittenCandidates,ReturnedRowCount=@WrittenCandidates,IsTruncated=0,
+                        Detail=N'Candidates='+CONVERT(nvarchar(20),@WrittenCandidates)+N';Parsed='+CONVERT(nvarchar(20),@WrittenParsed)+N';ContextAssigned='+CONVERT(nvarchar(20),@WrittenAssigned)
+                    WHERE SourceOrdinal=9;
+                    IF @WrittenCandidates=0 INSERT [#SsisLegacyLogAnalysis_Warnings] VALUES(0,'ROWS_WRITTEN_EVENT_NOT_OBSERVED',N'rowsWrittenAnalysis',N'Keine Kandidaten im gewählten Puffer; kein Nachweis fehlender Schreibmengenerzeugung.');
+                    IF @WrittenParsed<@WrittenCandidates INSERT [#SsisLegacyLogAnalysis_Warnings] VALUES(0,'ROWS_WRITTEN_PAYLOAD_NOT_PARSED',N'rowsWrittenAnalysis',N'Mindestens ein Kandidat besitzt kein zugelassenes vollständiges Meldungsprofil.');
+                    IF @WrittenAssigned<@WrittenParsed INSERT [#SsisLegacyLogAnalysis_Warnings] VALUES(0,'ROWS_WRITTEN_CONTEXT_NOT_ASSIGNED',N'rowsWrittenAnalysis',N'Mindestens ein lesbarer Bericht besitzt keinen eindeutigen EXECUTE-Berichtskontext.');
+                    SET @WrittenComplete=1;
+                END;
+                -- END ROWS WRITTEN ATOMIC DECISION
+            END TRY
+            BEGIN CATCH
+                DECLARE @WrittenNativeError int=ERROR_NUMBER(),@WrittenNativeMessage nvarchar(4000)=ERROR_MESSAGE();
+                UPDATE [#SsisLegacyLogAnalysis_SourceStatus] SET StatusCode=CASE WHEN @WrittenNativeError IN(229,262,297,300,371) THEN 'DENIED'
+                    WHEN @WrittenNativeError IN(207,208,911,916,942) THEN 'SOURCE_UNAVAILABLE' ELSE 'ERROR_HANDLED' END,
+                    IsPartial=1,ErrorNumber=@WrittenNativeError,ErrorMessage=@WrittenNativeMessage,ObservedRowCount=NULL,ReturnedRowCount=NULL,IsTruncated=0,Detail=N'NATIVE_SOURCE_ERROR' WHERE SourceOrdinal=9;
+                IF @Error IS NULL SELECT @Error=@WrittenNativeError,@Message=@WrittenNativeMessage;
+                INSERT [#SsisLegacyLogAnalysis_Warnings] VALUES(0,'ROWS_WRITTEN_ANALYSIS_ERROR',N'rowsWrittenAnalysis',N'Die optionale Schreibmengenableitung ist fehlgeschlagen; gültige vorherige Mengen bleiben erhalten.');
+            END CATCH;
+            -- BEGIN ROWS WRITTEN DISCARD
+            IF @WrittenComplete=0
+            BEGIN
+                DELETE FROM [#SsisLegacyLogAnalysis_RowsWrittenEvents];
+                SELECT @WrittenCandidates=NULL,@WrittenParsed=NULL,@WrittenAssigned=NULL;
+                UPDATE [#SsisLegacyLogAnalysis_SourceStatus] SET IsPartial=1,ObservedRowCount=NULL,ReturnedRowCount=NULL,IsTruncated=0,
+                    StatusCode=CASE WHEN @WrittenReason=N'TIME_BUDGET_EXHAUSTED' AND @WrittenStarted=1 THEN 'AVAILABLE_LIMITED' ELSE StatusCode END,
+                    Detail=COALESCE(@WrittenReason,Detail) WHERE SourceOrdinal=9;
+                IF @WrittenReason=N'MESSAGES_DISABLED' INSERT [#SsisLegacyLogAnalysis_Warnings] VALUES(0,'ROWS_WRITTEN_MESSAGES_DISABLED',N'rowsWrittenAnalysis',N'Der fachliche Meldungstextzugriff und die Schreibmengeninterpretation sind abgeschaltet.');
+                IF @WrittenReason=N'TIME_BUDGET_EXHAUSTED' INSERT [#SsisLegacyLogAnalysis_Warnings] VALUES(0,'ROWS_WRITTEN_TIME_BUDGET_EXHAUSTED',N'rowsWrittenAnalysis',N'Die optionale Ableitung wurde nicht innerhalb des kooperativen Budgets übernommen.');
+            END;
+            -- END ROWS WRITTEN DISCARD
+            UPDATE [#SsisLegacyLogAnalysis_SourceStatus] SET CollectionTimeUtc=SYSUTCDATETIME() WHERE SourceOrdinal=9;
+            IF EXISTS(SELECT 1 FROM [#SsisLegacyLogAnalysis_SourceStatus] WHERE SourceOrdinal=9 AND IsPartial=1)
+            BEGIN
+                SET @Partial=1;
+                IF @Status IN('AVAILABLE','AVAILABLE_EMPTY','AVAILABLE_LIMITED') SET @Status='AVAILABLE_LIMITED';
+            END;
+        END;
+        -- END ROWS WRITTEN ANALYSIS
 
         EXEC sys.sp_executesql @RestoreLock;
         IF @PreviousAbort=1 SET XACT_ABORT ON;
@@ -1551,11 +1705,11 @@ BEGIN
     END;
     ;WITH w AS(SELECT *,ROW_NUMBER() OVER(ORDER BY WarningCode,SourceName) AS n FROM [#SsisLegacyLogAnalysis_Warnings]) UPDATE w SET WarningOrdinal=CONVERT(int,n);
     INSERT [#SsisLegacyLogAnalysis_ModuleStatus]
-    VALUES(N'USP_SsisLegacyLogAnalysis',CASE WHEN @IncludeLookupCacheAnalysis=1 THEN 6 WHEN @IncludeComponentPhaseAnalysis=1 THEN CASE WHEN @IncludeComponentLifecyclePhases=1 THEN 5 ELSE 4 END WHEN @IncludeRowFlowAnalysis=1 THEN 3 WHEN @IncludeTaskAnalysis=1 THEN 2 ELSE 1 END,@LoggingDatabase,@LoggingSchema,@LoggingTable,@ExecutionId,@IncludeMessages,@Status,@Partial,@Error,@Message,@Now);
+    VALUES(N'USP_SsisLegacyLogAnalysis',CASE WHEN @IncludeRowsWrittenAnalysis=1 THEN 7 WHEN @IncludeLookupCacheAnalysis=1 THEN 6 WHEN @IncludeComponentPhaseAnalysis=1 THEN CASE WHEN @IncludeComponentLifecyclePhases=1 THEN 5 ELSE 4 END WHEN @IncludeRowFlowAnalysis=1 THEN 3 WHEN @IncludeTaskAnalysis=1 THEN 2 ELSE 1 END,@LoggingDatabase,@LoggingSchema,@LoggingTable,@ExecutionId,@IncludeMessages,@Status,@Partial,@Error,@Message,@Now);
     SELECT @StatusCodeOut=@Status,@IsPartialOut=@Partial,@ErrorNumberOut=@Error,@ErrorMessageOut=@Message;
     IF COALESCE(@JsonErzeugen,0)=1
         SELECT @Json=(SELECT
-            JSON_QUERY((SELECT N'USP_SsisLegacyLogAnalysis' AS ModuleName,CASE WHEN @IncludeLookupCacheAnalysis=1 THEN 6 WHEN @IncludeComponentPhaseAnalysis=1 THEN CASE WHEN @IncludeComponentLifecyclePhases=1 THEN 5 ELSE 4 END WHEN @IncludeRowFlowAnalysis=1 THEN 3 WHEN @IncludeTaskAnalysis=1 THEN 2 ELSE 1 END AS SchemaVersion,@Now AS CollectionTimeUtc,@Status AS StatusCode,@Partial AS IsPartial FOR JSON PATH,INCLUDE_NULL_VALUES,WITHOUT_ARRAY_WRAPPER)) AS [meta]
+            JSON_QUERY((SELECT N'USP_SsisLegacyLogAnalysis' AS ModuleName,CASE WHEN @IncludeRowsWrittenAnalysis=1 THEN 7 WHEN @IncludeLookupCacheAnalysis=1 THEN 6 WHEN @IncludeComponentPhaseAnalysis=1 THEN CASE WHEN @IncludeComponentLifecyclePhases=1 THEN 5 ELSE 4 END WHEN @IncludeRowFlowAnalysis=1 THEN 3 WHEN @IncludeTaskAnalysis=1 THEN 2 ELSE 1 END AS SchemaVersion,@Now AS CollectionTimeUtc,@Status AS StatusCode,@Partial AS IsPartial FOR JSON PATH,INCLUDE_NULL_VALUES,WITHOUT_ARRAY_WRAPPER)) AS [meta]
           , JSON_QUERY(COALESCE((SELECT * FROM [#SsisLegacyLogAnalysis_ModuleStatus] ORDER BY [ModuleName] FOR JSON PATH,INCLUDE_NULL_VALUES),N'[]')) AS [moduleStatus]
           , JSON_QUERY(COALESCE((SELECT * FROM [#SsisLegacyLogAnalysis_Execution] ORDER BY [ExecutionId] FOR JSON PATH,INCLUDE_NULL_VALUES),N'[]')) AS [execution]
           , JSON_QUERY(COALESCE((SELECT * FROM [#SsisLegacyLogAnalysis_Timeline] ORDER BY [TimelineOrdinal] FOR JSON PATH,INCLUDE_NULL_VALUES),N'[]')) AS [timeline]
@@ -1589,6 +1743,11 @@ BEGIN
         SET @Json=JSON_MODIFY(@Json,'$.meta.LookupCacheCatalogVersion',1);
         SET @Json=JSON_MODIFY(@Json,'$.lookupCacheEvents',JSON_QUERY(COALESCE((SELECT * FROM [#SsisLegacyLogAnalysis_LookupCacheEvents] ORDER BY LookupEventOrdinal FOR JSON PATH,INCLUDE_NULL_VALUES),N'[]')));
     END;
+    IF COALESCE(@JsonErzeugen,0)=1 AND @IncludeRowsWrittenAnalysis=1
+    BEGIN
+        SET @Json=JSON_MODIFY(@Json,'$.meta.RowsWrittenCatalogVersion',1);
+        SET @Json=JSON_MODIFY(@Json,'$.rowsWrittenEvents',JSON_QUERY(COALESCE((SELECT * FROM [#SsisLegacyLogAnalysis_RowsWrittenEvents] ORDER BY RowsWrittenEventOrdinal FOR JSON PATH,INCLUDE_NULL_VALUES),N'[]')));
+    END;
     IF @OutputMode='TABLE'
     BEGIN
         DECLARE @TargetTable sysname;
@@ -1620,6 +1779,10 @@ BEGIN
         BEGIN
             SET @TargetTable=(SELECT TargetTable FROM [#SsisLegacyLogAnalysis_ResultTables] WHERE ResultName=N'lookupCacheEvents'); IF @TargetTable IS NOT NULL EXEC [monitor].[InternalWriteResultTable] N'#SsisLegacyLogAnalysis_LookupCacheEvents',@TargetTable,@ThrowOnError=1;
         END;
+        IF @IncludeRowsWrittenAnalysis=1
+        BEGIN
+            SET @TargetTable=(SELECT TargetTable FROM [#SsisLegacyLogAnalysis_ResultTables] WHERE ResultName=N'rowsWrittenEvents'); IF @TargetTable IS NOT NULL EXEC [monitor].[InternalWriteResultTable] N'#SsisLegacyLogAnalysis_RowsWrittenEvents',@TargetTable,@ThrowOnError=1;
+        END;
     END;
     IF @OutputMode='RAW'
     BEGIN
@@ -1648,6 +1811,7 @@ BEGIN
             SELECT * FROM [#SsisLegacyLogAnalysis_ComponentPhaseTimes] ORDER BY PhaseTimeOrdinal;
         END;
         IF @IncludeLookupCacheAnalysis=1 SELECT * FROM [#SsisLegacyLogAnalysis_LookupCacheEvents] ORDER BY LookupEventOrdinal;
+        IF @IncludeRowsWrittenAnalysis=1 SELECT * FROM [#SsisLegacyLogAnalysis_RowsWrittenEvents] ORDER BY RowsWrittenEventOrdinal;
     END;
     IF @ConsoleResultRequested=1
     BEGIN
@@ -1728,6 +1892,21 @@ BEGIN
             IF @OwnDdlEntryLock=0 SET LOCK_TIMEOUT 0;
             EXEC sys.sp_executesql N'UPDATE [#SsisLegacyLogAnalysis_Console] SET [LookupCacheMeldungen]=@Candidates,[LookupCacheGeleseneMeldungen]=@Parsed,[LookupCacheKontextMeldungen]=@Assigned;',
                 N'@Candidates bigint,@Parsed bigint,@Assigned bigint',@Candidates=@LookupCandidates,@Parsed=@LookupParsed,@Assigned=@LookupAssigned;
+        END;
+        IF @IncludeRowsWrittenAnalysis=1
+        BEGIN
+            SET @OwnDdlEntryLock=@@LOCK_TIMEOUT;
+            BEGIN TRY
+                IF @OwnDdlEntryLock=0 SET LOCK_TIMEOUT 1000;
+                ALTER TABLE [#SsisLegacyLogAnalysis_Console] ADD [Schreibmeldungen] bigint NULL,[GeleseneSchreibmeldungen] bigint NULL,[ZugeordneteSchreibmeldungen] bigint NULL;
+            END TRY
+            BEGIN CATCH
+                IF @OwnDdlEntryLock=0 SET LOCK_TIMEOUT 0;
+                THROW;
+            END CATCH;
+            IF @OwnDdlEntryLock=0 SET LOCK_TIMEOUT 0;
+            EXEC sys.sp_executesql N'UPDATE [#SsisLegacyLogAnalysis_Console] SET [Schreibmeldungen]=@Candidates,[GeleseneSchreibmeldungen]=@Parsed,[ZugeordneteSchreibmeldungen]=@Assigned;',
+                N'@Candidates bigint,@Parsed bigint,@Assigned bigint',@Candidates=@WrittenCandidates,@Parsed=@WrittenParsed,@Assigned=@WrittenAssigned;
         END;
         EXEC [monitor].[InternalEmitConsoleResult] @SourceTable=N'#SsisLegacyLogAnalysis_Console',@ResultLabel=N'SSIS-Legacy-Ausführung',@EmptyMessage=N'Keine sichtbare Legacy-Ausführung';
     END;

@@ -2909,3 +2909,153 @@ allgemeine Rollen-/Versionsabdeckung und zusätzliche Loggingquellen bleiben
 offen. SSIS-001 bleibt PARTIAL_PRODUCT_FUNCTION und WI-0009 GATE-0001 offen.
 Der Ergebnisreview und die exakte Head-CI werden als eigene Liefergates
 geführt; nach regulärer Integration folgen Treeidentität und Mainchecks.
+## Schreibmengen aus erhaltenen Legacy-Meldungen vom 23. Oktober 2026
+
+Der direkte Benutzer hat diesen begrenzten SSIS-001-Umfang zur Umsetzung und
+regulären PR-Lieferung freigegeben. Die Erweiterung verwendet ausschließlich
+vorhandene Originalaufnahmen. Historische Lauf- und Reviewbudgets bleiben
+geschlossen; die übrige autonome Verarbeitung bleibt pausiert.
+
+### Zweck, Originalbasis und Aussagegrenze
+
+Ausgewertet werden einzelne Berichte zu DTS_I_ROWS_WRITTEN, nicht fachlich
+bestätigte Zielbestände. BasicSuccess/SqlFailure enthalten 12/16 Zeilen ohne
+Kandidaten; Duplicate/Miss enthalten 60/61 Zeilen und je zwei Berichte mit
+Werten 3/3 beziehungsweise 0/0. Die zweite Meldung liegt auf Paketebene.
+Beide LogIds bleiben erhalten; es gibt weder Summierung noch heuristische
+Deduplizierung. Ein Bericht beweist keinen dauerhaften Commit oder Paketerfolg.
+
+Die private Bindungsakte hält historische Manifeste und SHA-256-Werte fest.
+Exakte neun Providerwerte einschließlich CRLF stammen aus den gebundenen
+JSON-Snapshots; XML-Zeilenendennormalisierung begründet kein weiteres Profil.
+Originale, Endpunkte und Rohaufnahmen werden nicht versioniert. Native11/12
+bleiben FAILED_NOT_QUALIFIED; Restoreconsumer sind keine Providerqualifikation.
+
+### Aufruf und genaue Grammatik
+
+Objektversion 1.6.0 ergänzt den abschließenden Parameter
+`@IncludeRowsWrittenAnalysis bit=0` an Position 26; NULL bedeutet 0.
+Bei 0 bleiben die bisherigen SchemaVersionen und Ausgaben erhalten.
+Bei 1 gilt SchemaVersion 7; die Lifecycle-Abhängigkeit bleibt unverändert.
+Die neue Menge rowsWrittenEvents wird in RAW zuletzt angehängt, über TABLE
+selektiv exportiert und als JSON-Array einschließlich NULL-Feldern geliefert.
+NONE liefert keine fachlichen Grids. CONSOLE behält ein Grid und ergänzt nur
+bei Opt-in Schreibmeldungen, GeleseneSchreibmeldungen und
+ZugeordneteSchreibmeldungen als nullable bigint. Sie zählen Berichte.
+JSON-meta ergänzt RowsWrittenCatalogVersion=1 nur beim Opt-in.
+
+Kandidaten besitzen exakt DataCode 1074016267. Nur ordinal OnInformation und
+die vollständige Grammatik `"NAME" wrote COUNT rows.` mit abschließendem CRLF
+werden als ROWS_WRITTEN_EN_1 interpretiert. NAME enthält 1 bis 4000 UTF-16-
+Codeeinheiten, keine Anführungszeichen und keine C0-/C1-Steuerzeichen.
+Andere Zeichen einschließlich Klammern und Leerzeichen bleiben ordinal erhalten.
+COUNT ist 0 oder eine nicht mit 0 beginnende ASCII-Ziffernfolge im
+nichtnegativen bigint-Bereich. Größere Werte ergeben NUMERIC_OUT_OF_RANGE;
+Vorzeichen, Dezimal- und Gruppenzeichen ergeben MALFORMED_PAYLOAD.
+Synthetische große Werte belegen Parsergrenzen, keine native SSIS-Erzeugung.
+
+NULL-Text ergibt MESSAGE_MISSING. Text an oder über der deklarierten
+message-Spaltenkapazität, maximal 4096 Bytes, ergibt POTENTIALLY_TRUNCATED.
+Abweichendes oder fehlendes Ereignis ergibt CODE_EVENT_MISMATCH. Sonstige
+Abweichungen ergeben MALFORMED_PAYLOAD. ParserId wird nur bei zulässigem
+Ereignis und nicht fehlendem oder möglicherweise gekapptem Text gesetzt.
+Bei PARSED gelten ObservationKind=ROWS_WRITTEN, DiagnosticCode=
+DTS_I_ROWS_WRITTEN und EvidenceLevel=RUNTIME_OBSERVED. Sonst bleiben diese
+Werte, ComponentName und ReportedRows NULL; EvidenceLevel ist UNINTERPRETED.
+Gleiche Textform mit anderem DataCode ist kein Kandidat.
+
+### Physisches Ergebnisschema und Zuordnung
+
+Alle Textfelder besitzen COLLATE SQL_Latin1_General_CP1_CS_AS.
+NN bezeichnet NOT NULL; übrige Felder sind nullable.
+
+| Position | Feld | Typ |
+|---|---|---|
+| 1 | RowsWrittenEventOrdinal | bigint NN |
+| 2 | LogId | int NN |
+| 3 | ExecutionId | uniqueidentifier NN |
+| 4 | EventName | nvarchar(128) |
+| 5 | SourceId | uniqueidentifier |
+| 6 | SourceName | nvarchar(4000) |
+| 7 | EventTime | datetime |
+| 8 | DataCode | int |
+| 9 | ParserId | varchar(32) |
+| 10 | ParseStatus | varchar(40) NN |
+| 11 | ObservationKind | varchar(40) |
+| 12 | ComponentName | nvarchar(4000) |
+| 13 | ReportedRows | bigint |
+| 14 | DiagnosticCode | varchar(64) |
+| 15 | ContextStatus | varchar(40) NN |
+| 16 | ContextStartLogId | int |
+| 17 | ContextEndLogId | int |
+| 18 | InputIsTruncated | bit NN |
+| 19 | EvidenceLevel | varchar(32) NN |
+| 20 | EvidenceSource | nvarchar(160) NN |
+| 21 | MessageText | nvarchar(max) |
+
+Ordinal folgt LogId innerhalb des Aufrufs. EvidenceSource ist Legacy event buffer.
+Kontext ist ein bestehendes PAIRED-EXECUTE-Paar derselben ExecutionId/SourceId
+mit streng einschließenden LogIds. Die Paarzahl wird vor der Zeitprüfung
+bestimmt. Mehrere Paare ergeben AMBIGUOUS_PAIR, keines NO_OBSERVED_PAIR,
+fehlende oder Null-GUID SOURCE_ID_MISSING und fehlende Berichtszeit
+EVENT_TIME_MISSING. Außerhalb inklusiver Paarzeiten gilt TIME_OUTSIDE_PAIR.
+Die feste Priorität ist NOT_PARSED, SOURCE_ID_MISSING, EVENT_TIME_MISSING,
+NO_OBSERVED_PAIR, AMBIGUOUS_PAIR, TIME_OUTSIDE_PAIR und zuletzt ASSIGNED.
+Nur ASSIGNED erhält Kontext-LogIds; ungeparste Berichte bleiben NOT_PARSED.
+Namen beweisen keine Komponentenidentität und verbinden keine anderen Quellen.
+
+### Quellenstatus, atomare Ableitung und Eigenlast
+
+SourceOrdinal 9 mit SourceName rowsWrittenAnalysis existiert nur beim Opt-in.
+Die Stufe liest ausschließlich den vorhandenen Puffer und vorhandene Paare.
+Bestehende Quellen- und High-Impact-Gates bleiben erhalten. Neue Temp-DDL
+übernimmt die begrenzte Behandlung geerbten NOWAIT; Quell-/TABLE-Timeouts
+bleiben erhalten.
+
+INVALID_PARAMETER, NO_VALID_EVENT_BUFFER, PRIOR_DERIVATION_NOT_COMPLETED,
+MESSAGES_DISABLED und TIME_BUDGET_EXHAUSTED verhindern eine Übernahme.
+Vor Start bleibt SourceStatus NOT_READ, bei begonnenem Deadlineabbruch
+AVAILABLE_LIMITED. Unvollständige Stufen verwerfen neue Zeilen und drei Zähler
+atomar. Native Fehler werden wie beim Lookup-Slice isoliert; das erste native
+Modulfehlerpaar und bereits gültige Mengen bleiben erhalten.
+
+Nach Abschluss zählen C/P/A Kandidaten, geparste und zugeordnete Berichte.
+C=0 im vollständigen Puffer ergibt AVAILABLE_EMPTY mit 0/0/0. Ein gekappter
+Puffer oder P<C oder A<P ergibt AVAILABLE_LIMITED/IsPartial=1; sonst AVAILABLE.
+SourceStatus meldet beobachtete und exportierte Counts sowie Ausgabekappung.
+Warnungen unterscheiden fehlende Kandidaten, ungeparste Payloads, fehlenden
+Kontext, ausgeschaltete Meldungen, Deadline und Ableitungsfehler.
+
+### Begrenzte Abnahme und Lieferung
+
+Höchstens 48 synthetische Fach-/Grenzfälle und alle 64 Opt-in-Kombinationen
+prüfen unabhängige Sollwerte. Die fünf Ausgabewege einschließlich JSON-OUTPUT,
+21 Schemafacetten, Mappinggrenzen, Quellenfehler, Sparse-Counts, Callerzustand
+und Cleanup werden geprüft.
+
+Genau acht Restoreconsumer verwenden unveränderte neun Providerwerte:
+Basic/NONE+JSON, SqlFailure/NONE+JSON, Duplicate/RAW+JSON, Miss/TABLE+JSON,
+Duplicate/CONSOLE+JSON, Miss/NONE+JSON mit IncludeMessages=0,
+Duplicate/TABLE+JSON mit allen gültigen Opt-ins und Miss/NONE+JSON mit einem
+vor dem SUT bestimmten Präfix nach dem ersten Schreibbericht vor dem Paarende.
+Alle neuen Felder erhalten unabhängige Erwartungen. Der letzte Fall darf
+keinen unbeobachteten Kontextabschluss erfinden.
+
+Grenzen sind 15 versionierte Dateien, 1600 handgeänderte Zeilen, ein
+gebündelter Korrekturpass, zwei Reviews desselben Reviewers mit zusammen
+40 aktiven Minuten, zwei lokale Prüfblöcke, acht Originalconsumer, höchstens
+zwei Head-Qualifikationen und bei gesondert beauftragtem Merge ein Mainlauf.
+Es gelten vier aktive Stunden einschließlich Review und Koordination und
+sechs Stunden Gesamtzeit ab Freigabe; Zwischenstand nach zwei aktiven Stunden.
+Neue Paket-/SDK-Ausführungen, Providerqualifikationen, zusätzliche Engines,
+Labentwicklung und Release-/ZIP-Veröffentlichung sind ausgeschlossen.
+Die reguläre PR-Lieferung ist freigegeben. Fehlende Bindung,
+fehlgeschlagener Originalconsumer oder erschöpfte Grenzen führen zum Stopp.
+Historische Budgets bleiben geschlossen; übrige Autonomie bleibt pausiert.
+
+Der zentrale Include aktiviert das bestehende vollständige SQL-Server-2025-
+Gate. Required Checks bleiben erhalten. Unveränderte bestandene lokale Gruppen
+werden nicht wiederholt. Vertragsreview, begrenzte Prüfung, Ergebnisreview
+und regulärer PR sind getrennte Schritte. SSIS-001 bleibt partiell.
+
+Primärquelle: [Microsoft-Meldungsreferenz](https://learn.microsoft.com/en-us/sql/integration-services/integration-services-error-and-message-reference?view=sql-server-ver17#informational-messages).

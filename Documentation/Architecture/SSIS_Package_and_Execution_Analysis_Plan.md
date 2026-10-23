@@ -1852,3 +1852,32 @@ allgemeine Rollen-/Versionsabdeckung und zusätzliche Loggingquellen bleiben
 offen. SSIS-001 bleibt PARTIAL_PRODUCT_FUNCTION und WI-0009 GATE-0001 offen.
 Der Ergebnisreview und die exakte Head-CI werden als eigene Liefergates
 geführt; nach regulärer Integration folgen Treeidentität und Mainchecks.
+
+## Schreibmengen: begrenzte Lieferung vom 23. Oktober 2026
+
+Der freigegebene nächste SSIS-001-Slice wertet einzelne DTS_I_ROWS_WRITTEN-
+Berichte aus dem vorhandenen Legacy-Ereignispuffer aus. Er ergänzt eine
+21-Feld-Menge und einen unabhängigen Opt-in an Position 26. Der
+[öffentliche Vertrag](SSIS_001_Phase0_Public_Contract.md#schreibmengen-aus-erhaltenen-legacy-meldungen-vom-23-oktober-2026)
+legt SchemaVersion 7, Grammatik, Quellenstatus und Abnahme fest.
+
+Vorhandene Originale enthalten zwei Berichte mit jeweils drei und zwei mit
+jeweils null gemeldeten Zeilen. Weiterleitung auf Paketebene wird weder addiert
+noch dedupliziert. Eine positive Schreibmeldung beweist keinen Commit oder
+Paketerfolg. Die Originale bleiben privat und an ihre historischen Hashes
+gebunden. Vorbereitungs-/Partial-Cache-Profile besitzen weiterhin keine
+positive Originalbasis; ihre Umsetzung bleibt ausgeschlossen.
+
+Die begrenzte Abnahme besteht auf Windows SQL Server 17.0.5015.4 mit CL170:
+45 vollständige synthetische Fach-/Grenzfälle, 64 Opt-in-Kombinationen und drei
+getrennte quellgebundene Stufenfälle bestehen. Die Stufen belegen gezielt
+Mehrdeutigkeit vor Zeitprüfung, atomare Deadlineverwerfung und Erhaltung des
+ersten nativen Fehlerpaars; sie sind keine vollständige SUT-Fehlerabnahme.
+Genau acht Restoreconsumer bestätigen alle 21 Felder, native Exportfacetten,
+RAW-/TABLE-/JSON-Parität, CONSOLE-Zähler und NONE ohne fachliche Grids.
+Die neun Providerwerte, Callerzustände und das Datenbankinventar bleiben
+erhalten; Cleanup- und Retentionfehler sind 0. Neue Paket-/SDK-Aufrufe sind 0.
+Der erste statische Block findet einen unklassifizierten direkten Vertragslink
+in Next_Steps.md. Der bestehende klassifizierte SSIS-Planpfad mit Vertragsverweis
+behebt diesen Befund; unveränderte erfolgreiche Prüfungen werden nicht wiederholt. Native11/12
+bleiben FAILED_NOT_QUALIFIED; SSIS-001 bleibt PARTIAL_PRODUCT_FUNCTION.
