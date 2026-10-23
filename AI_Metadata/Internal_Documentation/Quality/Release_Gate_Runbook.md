@@ -2,11 +2,51 @@
 
 Die verbindliche Auswahl von Tests steht ausschließlich in der
 [CI-Teststrategie](../../../Documentation/Quality/CI_Test_Strategy.md).
-Dieser Ablauf beschreibt die Umsetzung für Version 1.1.2 und die Bindung
+Dieser Ablauf dokumentiert die Umsetzung für Version 1.1.2 und die Bindung
 zwischen Quellcommit, Produkt-ZIP, Laufzeitprüfung und Veröffentlichung.
-Historische CSV-Nachweise werden dadurch nicht umgedeutet.
+Der Release ist abgeschlossen; die beschriebenen Schritte erteilen keine
+erneute Ausführungsfreigabe. Historische CSV-Nachweise werden nicht umgedeutet.
+
+## Releaseabschluss v1.1.2
+
+[v1.1.2](https://github.com/gecompat/SQL_Server_Analyze/releases/tag/v1.1.2)
+wurde am 23. Oktober 2026 um 19:15:59 Uhr Wien auf Commit
+`fe24e7b496d2a1f221dbf44edfe96312dd4ed05a` veröffentlicht. PR #413 ist enthalten;
+der [Main-Nachlauf](https://github.com/gecompat/SQL_Server_Analyze/actions/runs/39975996941)
+bestand auf diesem Commit. Der einmalige
+[Matrixlauf 39986885609](https://github.com/gecompat/SQL_Server_Analyze/actions/runs/39986885609)
+qualifizierte dieselben ZIP-Bytes auf SQL Server 2019/CL150, 2022/CL160 und
+2025/CL170 unter Linux. Je Engine bestanden 34 Release-Suiten und die native
+Berechtigungsprüfung; der Cleanup ist für alle drei Engines bestätigt.
+Auf SQL Server 2025 bestanden auch die vorgesehenen Zusatzverträge.
+Der unabhängige Abschlussreview blieb ohne Befund. Die historischen
+Lock-Timeout-Ursachen bleiben ungeklärt; Windows-SQL und nicht geprüfte
+Featurepositivfälle erhalten durch diese Linux-Matrix keinen zusätzlichen Nachweis.
+
+Veröffentlicht sind `SQL_Server_Analyze-1.1.2.zip` mit sechs fertigen Installern,
+`SQL_Server_Analyze-1.1.2.zip.sha256` und
+[release-evidence.json](https://github.com/gecompat/SQL_Server_Analyze/releases/download/v1.1.2/release-evidence.json).
+Die ZIP-Prüfsumme lautet
+`eb0944f95b227ddb5af240a3b4b327e09d299aa59033e62d1930f064a9e3045c`.
+Alle drei veröffentlichten Downloads wurden gegen die qualifizierten Dateien
+geprüft. Die [Restgrenzen](Next_Steps.md#abgeschlossen-release-v112) von
+45 aktiven Minuten, vier Stunden Gesamtzeit und spätestens 22:00 Uhr Wien
+wurden eingehalten. Ein ZIP-Bau, ein Matrixdispatch, ein Abschlussreview,
+ein Tag, ein Entwurf und eine Veröffentlichung wurden verbraucht; der
+Restauftrag änderte keine Repositorydateien und wiederholte keine Matrixjobs.
+
+Die vorliegende Dokumentationsnachführung verändert weder den Releasecommit
+noch Tag oder Releaseanhänge. Die Statusdokumente im ZIP bleiben auf ihrem
+damaligen Zwischenstand. Frühere Nachweise und Budgets bleiben historisch
+gebunden; die übrige autonome Verarbeitung bleibt pausiert. Weitere Läufe
+oder Veröffentlichungen sind durch diesen Abschluss nicht freigegeben.
 
 ## FIND-CORE-Diagnose
+
+Die Diagnose ist mit PR #413 abgeschlossen. Der folgende Sperrstand gehört
+zur Zeit vor dessen Integration und vor der gesonderten Release-Restfreigabe.
+
+### Historischer Sperrstand vor PR #413
 
 PR #412 ist auf Main `73b9843a8cd799883d1b3d796992133020e38d97` integriert.
 Der [Main-Nachlauf 39962487724](https://github.com/gecompat/SQL_Server_Analyze/actions/runs/39962487724)
@@ -14,6 +54,8 @@ scheiterte mit 55200; die Ursache bleibt unbekannt. v1.1.2 ist unveröffentlicht
 Die nachfolgende Releasefreigabe ist gestoppt. Ihre Budgets und Frist werden
 durch den getrennten Diagnoseauftrag in [Next_Steps.md](Next_Steps.md#freigegebener-folge-pr-find-core-diagnose)
 nicht erneuert. Matrix, Paketbau und Veröffentlichung bleiben ausgesetzt.
+
+### Diagnosevertrag und damalige Abnahme
 
 Test 178 meldet vor 55200 höchstens eine ASCII-Zeile mit 1.024 Zeichen und
 dem Präfix `Error: FIND_CORE_FAILURE`. Prüfflags, Gesamtstatus, Partialität,
@@ -35,7 +77,13 @@ und Aggregationsfehler. Sie reproduzieren keinen ursprünglichen Fehler.
 Unveränderte erfolgreiche Selbsttests werden nicht lokal wiederholt.
 Ein Fehler stoppt ohne weiteren Head-Lauf; Abschluss ist der geprüfte PR.
 
-## Gestoppte Freigabe v1.1.2
+## Historische Freigaben
+
+Die folgenden Freigaben und Grenzen dokumentieren damalige Auftragsstände.
+Der spätere Restauftrag ist im Releaseabschluss getrennt nachgeführt;
+die früheren Grenzen erteilen keine neue Ausführungsbefugnis.
+
+### Gestoppte Freigabe v1.1.2
 
 Der Benutzer hat am 23. Oktober 2026 den begrenzten Releaseplan für v1.1.2
 samt ZIP-Ausnahme freigegeben. Grundlage ist Analyze-Main `e307fea3` mit der
@@ -234,6 +282,10 @@ Installern nicht. Der gesamte Vorgang verwendet die bestehende Lizenz;
 der geschützte README-Lizenzblock bleibt unverändert.
 
 ## Begrenzung und Verarbeitungsaufwand
+
+Dieser Abschnitt hält den ursprünglichen Planungsstand von PR #412 fest.
+Das spätere Restbudget steht im Releaseabschluss; die
+nachfolgenden historischen Grenzen werden weder ersetzt noch erneuert.
 
 Ein Implementierer verantwortet den Schritt. Ein unabhängiger Reviewer prüft
 höchstens viermal; der letzte Korrekturpass betrifft nur Validator und Budgettexte (20 geänderte Zeilen, 15 aktive Minuten innerhalb der 60).
