@@ -27,6 +27,7 @@ RELEASE_INSTALLERS = {
         "Install_ExecutionPlanAnalysis.generated.sql",
         "Install_SnapshotBaseline_Target.generated.sql",
         "Install_SnapshotBaseline_Framework.generated.sql",
+        "Deploy_All_WithSnapshotBaseline.generated.sql",
     )
 }
 ALLOWLIST_HEADER = ("RuleCode", "Path", "MatchSha256", "ReasonCode")
@@ -410,7 +411,10 @@ def run_self_test(fixtures_path: Path) -> list[Finding]:
         if not findings:
             failures.append(Finding("SELF_TEST_RELEASE_NO_PROOF_FAILED", "ZIP_RELEASE_NO_PROOF"))
         name = sorted(proof)[0]
+        combined = "Code/Install/generated/Deploy_All_WithSnapshotBaseline.generated.sql"
         cases = (
+            ("ZIP_RELEASE_COMBINED_PROOF_MISSING", entries, {key: value for key, value in proof.items() if key != combined}),
+            ("ZIP_RELEASE_COMBINED_TAMPERED", {**entries, release_root+"/"+combined: b"changed\n"}, proof),
             ("ZIP_RELEASE_TAMPERED_INSTALLER", {**entries, release_root+"/"+name: b"changed\n"}, proof),
             ("ZIP_RELEASE_UNKNOWN_INSTALLER", {**entries, release_root+"/other.generated.sql": b"synthetic\n"}, proof),
             ("ZIP_RELEASE_BLOCK_SENTINEL", {**entries, release_root+"/"+name: BLOCK_SENTINEL.encode()},

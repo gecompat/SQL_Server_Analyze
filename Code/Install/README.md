@@ -1,12 +1,30 @@
 # Installation
 
-Das versionierte Produkt-ZIP enthält bereits fünf Installer unter `generated`.
-Für die Erstinstallation verwenden Sie `Install_All.generated.sql`;
-für Migration und Vorzustandserhaltung `Deploy_All.generated.sql` nach der
-[Deploymentanleitung](../../Documentation/Reference/Deployment.md). Die
-Execution-Plan-Analyse und die beiden Snapshot-/Baseline-Kontexte bleiben
-getrennte Installationswege. Ein lokaler Neubau ist bei Verwendung dieses
-ZIP nicht erforderlich.
+Das Produkt-ZIP v1.1.1 enthält bereits sechs Installer unter `generated`.
+Sie werden vollständig in SSMS ohne SQLCMD-Modus ausgeführt. Ein lokaler
+Neubau ist für die folgenden ZIP-Wege nicht erforderlich.
+
+| Datei unter `generated` | Aufgabe und Datenbankkontext |
+|---|---|
+| `Install_All.generated.sql` | Erstinstallation des Kerns; die erste `USE`-Zeile benennt die Frameworkdatenbank. |
+| `Deploy_All.generated.sql` | Upgrade des Kerns mit Receipt und Vorzustandserhaltung; `@FrameworkDatabase` setzen und `@SnapshotDatabase=NULL` belassen. Der ZIP-Installer enthält nur Core. |
+| `Deploy_All_WithSnapshotBaseline.generated.sql` | Kern und Snapshot/Baseline gemeinsam installieren oder aktualisieren; `@FrameworkDatabase` und `@SnapshotDatabase` auf zwei verschiedene vorhandene Benutzerdatenbanken derselben Instanz setzen. |
+| `Install_SnapshotBaseline_Target.generated.sql` | Optionales Snapshot-Ziel installieren oder eine kompatible bestehende Installation wiederholen; im Abfragefenster ausdrücklich die Snapshotdatenbank auswählen. |
+| `Install_SnapshotBaseline_Framework.generated.sql` | Frameworkseite des optionalen Pakets nach dem Target ausführen; die enthaltene `USE`-Zeile benennt die Frameworkdatenbank. |
+| `Install_ExecutionPlanAnalysis.generated.sql` | Eigenständige Teilinstallation der Plananalyse; die erste `USE`-Zeile benennt die Installationsdatenbank. Bei vollständigem Kern nicht zusätzlich erforderlich. |
+
+Die [Installationsanleitung](../../Documentation/Reference/Installation.md)
+beschreibt die Erstinstallation einschließlich des optionalen Pakets.
+Für eine bestehende Installation gilt das
+[Upgrade aus der ZIP](../../Documentation/Reference/Installation.md#upgrade-aus-der-produkt-zip).
+Das [Upgrade mit Snapshot/Baseline](../../Documentation/Reference/Installation.md#upgrade-mit-bestehendem-snapshot-baseline-paket)
+verwendet den kombinierten Installer. Die beiden Snapshot-Einzelinstaller
+bleiben für ihre getrennten Installationskontexte verfügbar; sie besitzen
+keine gemeinsame Transaktion mit dem Kern und keinen gemeinsamen Receipt-
+oder Vorzustandsvertrag. Die ältere v1.1.0-ZIP enthält nur die fünf bisherigen
+Installer.
+
+## Lokaler Neubau aus Quellen
 
 Für ein wiederholbares Gesamtdeployment einschließlich Migration und Vorzustandserhaltung erzeugt `Build-DeploymentInstaller.ps1` die Datei `generated/Deploy_All.generated.sql`. Mit `-IncludeSnapshotBaseline` werden beide expliziten Datenbankkontexte in denselben Lauf aufgenommen. Voraussetzungen, Datenbankwerte, Receipt und Fehlerbehandlung beschreibt die [Deploymentanleitung](../../Documentation/Reference/Deployment.md).
 
@@ -44,8 +62,9 @@ APIs in der Frameworkdatenbank. Das Paket erstellt keine Datenbank, Rechte oder
 SQL-Agent-Objekte. Der vollständige Ablauf steht im
 [Betriebsleitfaden](../../Documentation/Operations/Snapshot_Baseline_Operations.md).
 
-Für eine Installation ohne SQLCMD-Modus erzeugt
-`Build-SnapshotBaselineInstallers.ps1` zwei getrennte Artefakte:
+Im Produkt-ZIP liegen die beiden folgenden Dateien bereits vor. Nur für einen
+Quellcheckout oder einen bewusst gewählten Neubau erzeugt
+`Build-SnapshotBaselineInstallers.ps1` diese getrennten Artefakte:
 
 - `generated/Install_SnapshotBaseline_Target.generated.sql` für die bereits
   ausdrücklich ausgewählte Snapshotdatenbank;
@@ -73,5 +92,5 @@ sich nicht mit SQL Server. Vorhandene gleichnamige Ausgabedateien werden
 abgelehnt. Die ZIP-Prüfung vergleicht alle Quellen mit dem ausgewählten Commit
 und die fertigen Installer bytegenau mit einer erneuten kanonischen Erzeugung
 im festen Format UTF-8 ohne BOM mit LF-Zeilenenden. Die
-[Releaseübersicht](../../Documentation/Quality/Release_Notes.md#release-110)
+[Releaseübersicht](../../Documentation/Quality/Release_Notes.md#release-111)
 beschreibt Paket, Nachweis und Veröffentlichungsstatus.

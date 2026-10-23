@@ -40,8 +40,13 @@ def equal_rows(left, right, columns, label):
             f"THROW 53801,{g.lit('Binary value mismatch: '+label)},1;\n")
 
 
-def prepare():
+def prepare(packaged_installer=None):
     sql, info = g.generate(ROOT, True)
+    if packaged_installer is not None:
+        packaged = packaged_installer.read_text(encoding='utf-8-sig')
+        if packaged != sql:
+            raise g.BuildError('Packaged combined deployment differs from canonical sources')
+        sql = packaged
     _, tables, _ = g.load_sources(ROOT, True)
     deployed = configured(sql)
     out = ["USE [master];\nGO\nSET QUOTED_IDENTIFIER ON; SET ANSI_NULLS ON; SET ARITHABORT ON; SET XACT_ABORT ON;\n",
@@ -170,9 +175,10 @@ def prepare():
 def main():
     parser=argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--output', type=Path, required=True)
+    parser.add_argument('--packaged-installer', type=Path)
     args=parser.parse_args()
     args.output.parent.mkdir(parents=True,exist_ok=True)
-    args.output.write_text(prepare(),encoding='utf-8',newline='\n')
+    args.output.write_text(prepare(args.packaged_installer),encoding='utf-8',newline='\n')
     print('Prepared native synthetic deployment regression:',args.output)
 
 

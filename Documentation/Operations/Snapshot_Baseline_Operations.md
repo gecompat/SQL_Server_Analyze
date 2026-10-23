@@ -1,6 +1,6 @@
 # Betrieb des optionalen Snapshot-/Baseline-Pakets SC-023
 
-Stand: 2026-07-21
+Stand: 2026-10-23
 Status: `IMPLEMENTED_ACTIONS_GATE`
 
 ## Paketgrenze
@@ -11,8 +11,19 @@ Die Snapshot-Datenbank darf im autorisierten Betrieb reale Laufzeitwerte speiche
 
 ## Installation
 
-1. Frameworkdatenbank wie üblich mit `Install_All.sql` installieren.
-2. Eine eigene Ziel-Datenbank ausdrücklich anlegen. Beispielname ausschließlich für Dokumentation:
+Der folgende Ablauf ergänzt das Paket erstmals. Für eine vorhandene
+Installation gilt stattdessen das
+[Upgrade aus der ZIP](#upgrade-einer-bestehenden-installation-aus-der-zip).
+Das Produkt-ZIP enthält die beiden Snapshot-Installer bereits; ein Neubau ist
+für diesen Weg nicht erforderlich.
+
+1. Den Frameworkkern gemäß
+   [Installationsanleitung](../Reference/Installation.md) erstmals installieren
+   oder gemäß [Upgradeanleitung](../Reference/Installation.md#upgrade-aus-der-produkt-zip)
+   auf den gewünschten Release-Stand bringen.
+2. Für die erstmalige Paketeinrichtung eine eigene Ziel-Datenbank ausdrücklich
+   anlegen. Bei einem Upgrade wird die vorhandene Snapshotdatenbank
+   weiterverwendet. Beispielname ausschließlich für Dokumentation:
 
 ```sql
 USE [master];
@@ -25,12 +36,23 @@ ALTER DATABASE [ExampleSnapshotDatabase] SET READ_COMMITTED_SNAPSHOT ON;
 GO
 ```
 
-3. Einen Installationsweg wählen:
-   - SQLCMD: die beiden `Code/Install/Install_SnapshotBaseline_*.sql` aus einer vollständigen Repositorykopie verwenden;
-   - Standalone: in `Code/Install` mit `./Build-SnapshotBaselineInstallers.ps1` zwei eingebettete Dateien unter `generated/` erzeugen.
-4. Mit SSMS/ADS auf `ExampleSnapshotDatabase` wechseln und den Target-Installer vollständig ausführen. Beim SQLCMD-Weg muss der SQLCMD-Modus aktiv sein; das generierte Artefakt benötigt ihn nicht. Der Installer bricht in `master`, `model`, `msdb`, `tempdb`, einer offline oder read-only Datenbank ab.
-5. Im Framework-Installer `[DeineDatenbank]` durch den lokalen Frameworkdatenbanknamen ersetzen und ihn anschließend vollständig ausführen. Der SQLCMD-Weg benötigt den SQLCMD-Modus; das generierte Artefakt nicht.
-6. Erst danach das Ziel explizit konfigurieren:
+3. Im entpackten Produkt-ZIP die beiden Dateien unter `Code/Install/generated`
+   verwenden. PowerShell, Python und SQLCMD-Modus werden dafür nicht benötigt.
+4. `Install_SnapshotBaseline_Target.generated.sql` in SSMS öffnen. Im
+   Datenbankfeld dieses Fensters ausdrücklich die vorgesehene Snapshotdatenbank
+   auswählen und die gesamte Datei ausführen. Der Target-Installer enthält
+   keine eigene `USE`-Auswahl. Er bricht in Systemdatenbanken sowie einer
+   offline oder read-only Datenbank ab; eine versehentlich gewählte andere
+   Benutzerdatenbank darf deshalb nicht als Ziel stehenbleiben.
+5. Nach fehlerfreiem Targetlauf
+   `Install_SnapshotBaseline_Framework.generated.sql` öffnen. In der
+   enthaltenen `USE [DeineDatenbank];`-Zeile die Frameworkdatenbank einsetzen
+   und die gesamte Datei ausführen. Der lokale Frameworkdatenbankname gehört
+   nicht in den Target-Installer.
+6. Bei einer Erstinstallation erst nach beiden erfolgreichen Installern das
+   Ziel explizit konfigurieren. Der folgende Beispielaufruf setzt die
+   genannten Policywerte; bei einem Upgrade mit unverändertem Ziel wird er
+   nicht erneut ausgeführt:
 
 ```sql
 DECLARE @Status varchar(40), @Partial bit, @Error int, @Message nvarchar(2048);
@@ -54,6 +76,35 @@ EXEC [monitor].[USP_ConfigureSnapshotTarget]
 ```
 
 Beide Installer sind idempotent. Frameworkdefaults werden nur angelegt, wenn sie fehlen; lokale Nicht-Default-Policies und vorhandene Historie bleiben erhalten.
+
+### Upgrade einer bestehenden Installation aus der ZIP
+
+Die [zentrale Upgradeanleitung](../Reference/Installation.md#upgrade-mit-bestehendem-snapshot-baseline-paket)
+beschreibt `Deploy_All_WithSnapshotBaseline.generated.sql`, die explizite
+Auswahl beider Datenbanken, die Unterbrechung von Collection und Purge sowie
+die Abschlusskontrollen. Der kombinierte Installer liegt ab v1.1.1 fertig
+in der ZIP vor. Er besitzt eine gemeinsame Transaktion, Receipts und
+Vorzustandserhaltung in beiden Kontexten. Vorhandene Datenbanken und Zielbindung werden
+weiterverwendet. Die Target-Paketversion bleibt in v1.1.1 `1.0.0` mit
+`SchemaVersion=1`; sie ist von der Frameworkversion getrennt.
+
+Der Gesamtdeploymentweg prüft unterstützte Strukturformen und Customkonflikte
+vor Produktänderungen. Die Snapshot-Einzelinstaller bleiben für getrennte
+Installationskontexte verfügbar, besitzen aber keinen allgemeinen
+Strukturmigrations- oder gemeinsamen Transaktions-, Receipt- oder
+Vorzustandsvertrag mit einem separat ausgeführten Kern. Ein Framework-Receipt
+allein bestätigt keinen vollständigen kombinierten Snapshotabschluss; dieselbe
+Run-ID mit den passenden Rollen muss in beiden Datenbanken vorhanden sein.
+
+### Installation aus einem Quellcheckout
+
+Bei einer vollständigen Repositorykopie stehen weiterhin die beiden
+`Code/Install/Install_SnapshotBaseline_*.sql` im SQLCMD-Modus zur Verfügung.
+Alternativ erzeugt `Code/Install/Build-SnapshotBaselineInstallers.ps1` die
+beiden eingebetteten Dateien unter `Code/Install/generated`. Nur dieser
+Neubau benötigt PowerShell. Der
+[Deploymentleitfaden](../Reference/Deployment.md) trennt die fertigen
+ZIP-Artefakte vom kombinierten Neubau aus einem Quellcheckout.
 
 ## Rechte
 

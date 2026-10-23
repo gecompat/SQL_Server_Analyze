@@ -74,7 +74,8 @@ Der Funktionsumfang umfasst insbesondere folgende Analysebereiche:
 - getestet mit Installationsdatenbank, Server und `tempdb` mit der Collation `SQL_Latin1_General_CP1_CS_AS`
 - ausreichende Leseberechtigungen für die verwendeten DMVs und Systemkataloge
 - DDL-Rechte für die einmalige Installation der Frameworkobjekte
-- SQLCMD-Modus oder PowerShell, abhängig vom gewählten Installationsweg
+- SSMS für die vorbereiteten Installer aus dem Produkt-ZIP; SQLCMD-Modus oder
+  lokale Buildwerkzeuge nur für die gesonderten Quellinstallationswege
 
 Das Framework vergibt selbst keine Benutzer- oder Serverberechtigungen.
 
@@ -89,20 +90,36 @@ bestandener Teiltest ist keine Freigabe aller Procedures dieser Kombination.
 
 Im Bereich [Releases](https://github.com/gecompat/SQL_Server_Analyze/releases)
 werden versionierte Produktpakete veröffentlicht. Wählen Sie die Datei
-`SQL_Server_Analyze-1.1.0.zip`; die automatisch angebotenen Quellarchive
+`SQL_Server_Analyze-1.1.1.zip`; die automatisch angebotenen Quellarchive
 enthalten keine fertig erzeugten Installer. Das Produktpaket enthält Quellen,
-Dokumentation, Metadaten und fünf vorbereitete Installer unter
-`Code/Install/generated`. Für die Erstinstallation in SSMS kann
-`Install_All.generated.sql` unmittelbar verwendet werden. Ein lokaler Build
-ist dafür nicht erforderlich. Die [Installationsanleitung](./Documentation/Reference/Installation.md)
-führt von der Prüfsumme bis zur abschließenden Versions- und Funktionsprüfung.
+Dokumentation, Metadaten und sechs vorbereitete Installer unter
+`Code/Install/generated`. Für die folgenden Wege ist kein lokaler Build
+erforderlich:
+
+| Aufgabe | Anleitung und Skriptauswahl |
+|---|---|
+| Framework erstmals installieren | [Installation aus der ZIP](./Documentation/Reference/Installation.md): `Install_All.generated.sql` |
+| Bestehenden Frameworkkern aktualisieren | [Upgrade aus der ZIP](./Documentation/Reference/Installation.md#upgrade-aus-der-produkt-zip): `Deploy_All.generated.sql` |
+| Snapshot/Baseline erstmals ergänzen | [Optionale Installation](./Documentation/Reference/Installation.md#optional-persistentes-snapshot-baseline-paket-sc-023): Target-Installer in der Snapshotdatenbank, danach Framework-Installer in der Frameworkdatenbank |
+| Framework einschließlich bestehendem Snapshot/Baseline aktualisieren | [Kombiniertes Upgrade](./Documentation/Reference/Installation.md#upgrade-mit-bestehendem-snapshot-baseline-paket): `Deploy_All_WithSnapshotBaseline.generated.sql` mit beiden ausdrücklich gesetzten Datenbanken |
+
+Die Installationsanleitung beschreibt Prüfsumme, Datenbankkontexte,
+Voraussetzungen, Erfolgskontrolle und Fehlerbehandlung. Der vorbereitete
+`Deploy_All.generated.sql` enthält nur den Kern. Für Kern und Snapshot/Baseline
+enthält v1.1.1 zusätzlich `Deploy_All_WithSnapshotBaseline.generated.sql` mit
+gemeinsamer Transaktion, Receipts und Vorzustandserhaltung in beiden
+Datenbanken. Der Vorgänger v1.1.0 enthält diesen sechsten Installer nicht.
 
 SQL Server 2019, 2022 und 2025 werden nach den dokumentierten Plattform-,
 Feature- und Berechtigungsgrenzen unterstützt. Die Freigabe ist an keinen
 bestimmten Build oder CU gebunden. Tatsächlich getestete Builds sind im
 Release-Nachweis dokumentiert; das ist keine Build-Allowlist.
 
-### Empfohlen für SSMS: eigenständigen Installer erzeugen
+### Quellcheckout oder eigener kombinierter Deploymentumfang
+
+Die folgenden Buildschritte gelten für einen Quellcheckout oder einen bewusst
+gewählten Neubau. Die v1.1.1-ZIP enthält sowohl den Core- als auch den
+kombinierten Deploymentinstaller bereits.
 
 ```powershell
 Set-Location ./Code/Install

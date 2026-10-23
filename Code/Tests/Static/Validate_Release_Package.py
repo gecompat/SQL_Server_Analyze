@@ -21,6 +21,7 @@ INSTALLERS = (
     'Install_ExecutionPlanAnalysis.generated.sql',
     'Install_SnapshotBaseline_Target.generated.sql',
     'Install_SnapshotBaseline_Framework.generated.sql',
+    'Deploy_All_WithSnapshotBaseline.generated.sql',
 )
 GENERATED = tuple('Code/Install/generated/'+name for name in INSTALLERS)
 MAX_ZIP_BYTES = 128 * 1024 * 1024
@@ -69,6 +70,8 @@ def canonical_installers(root):
                                              '-PythonExecutable', sys.executable]),
             ('Build-ExecutionPlanAnalysisInstaller.ps1', ['-OutputPath', str(destination/INSTALLERS[2])]),
             ('Build-SnapshotBaselineInstallers.ps1', ['-OutputDirectory', str(destination)]),
+            ('Build-DeploymentInstaller.ps1', ['-OutputPath', str(destination/INSTALLERS[5]),
+                                             '-IncludeSnapshotBaseline', '-PythonExecutable', sys.executable]),
         ]
         for name, arguments in jobs:
             result = subprocess.run(['pwsh', '-NoProfile', '-File', str(root/'Code/Install'/name),
@@ -188,9 +191,11 @@ class PackageContracts(unittest.TestCase):
         mutations = [
             ('missing source', lambda f: f.pop('LICENSE.md')),
             ('missing installer', lambda f: f.pop(GENERATED[0])),
+            ('missing combined installer', lambda f: f.pop(GENERATED[5])),
             ('local file', lambda f: f.update({'local.log': b'synthetic'})),
             ('changed license', lambda f: f.update({'LICENSE.md': b'changed'})),
             ('changed installer', lambda f: f.update({GENERATED[0]: b'changed'})),
+            ('changed combined installer', lambda f: f.update({GENERATED[5]: b'changed'})),
             ('changed installer EOL', lambda f: f.update({GENERATED[0]: f[GENERATED[0]].replace(b'\n', b'\r\n')})),
             ('invalid metadata', lambda f: f.update({'RELEASE.json': b'{}'})),
         ]
