@@ -1,9 +1,58 @@
 # Nächste Arbeitsschritte
 
 **Stand:** 23. Oktober 2026
-**Zweck:** aktuelle ausführbare Entwicklungswelle für `gecompat/SQL_Server_Analyze`
+**Zweck:** aktueller Auftragsstatus und historische Entwicklungswellen für `gecompat/SQL_Server_Analyze`
 
-## Freigegebener Folge-PR: FIND-CORE-Diagnose
+## Abgeschlossen: Release v1.1.2
+
+[v1.1.2](https://github.com/gecompat/SQL_Server_Analyze/releases/tag/v1.1.2)
+ist seit dem 23. Oktober 2026 um 19:15:59 Uhr Wien veröffentlicht. Tag und
+Produkt-ZIP sind an Main-Commit `fe24e7b496d2a1f221dbf44edfe96312dd4ed05a`
+gebunden. PR #413 ist darin integriert; sein
+[Main-Nachlauf 39975996941](https://github.com/gecompat/SQL_Server_Analyze/actions/runs/39975996941)
+bestand. Die historischen Fehlerläufe bleiben fehlgeschlagen und an ihre
+ursprünglichen Commits gebunden; ihre Ursachen sind weiterhin ungeklärt.
+
+Der einmalige [Matrixlauf 39986885609](https://github.com/gecompat/SQL_Server_Analyze/actions/runs/39986885609)
+bestand auf SQL Server 2019/CL150, 2022/CL160 und 2025/CL170 unter Linux.
+Je Engine bestanden 34 Release-Suiten, Berechtigungsprüfung und Cleanup;
+auf SQL Server 2025 bestanden zusätzlich die vorgesehenen Regex-, Deployment-,
+Erhaltungs-, Snapshot-/Nebenläufigkeits- und Standalone-Verträge. Ein
+unabhängiger Abschlussreview blieb ohne Befund. Builds und Plattformgrenzen
+stehen im [Release-Nachweis](https://github.com/gecompat/SQL_Server_Analyze/releases/download/v1.1.2/release-evidence.json);
+die beobachteten Builds beschränken die Installation nicht auf bestimmte Builds oder CUs.
+
+Die vollständige `SQL_Server_Analyze-1.1.2.zip` enthält sechs fertige Installer
+einschließlich des kombinierten Snapshot-/Baseline-Upgrades. Ihre SHA-256 lautet
+`eb0944f95b227ddb5af240a3b4b327e09d299aa59033e62d1930f064a9e3045c`.
+ZIP, Prüfsummendatei und Nachweis wurden nach Veröffentlichung heruntergeladen
+und mit den geprüften Dateien abgeglichen. Der [Releaseabschluss](Release_Gate_Runbook.md#releaseabschluss-v112)
+führt Paketbindung und Restbudget zusammen; die
+[Installationsanleitung](../../../Documentation/Reference/Installation.md)
+beschreibt den Einsatz der fertigen Installer.
+
+Der gesondert freigegebene Restauftrag erlaubte null Repositoryänderungen,
+einen CI-ZIP-Bau, einen Matrixdispatch ohne Jobwiederholung und höchstens
+einen Abschlussreview von maximal zehn aktiven Minuten. Es galten 45 aktive Minuten
+einschließlich Koordination und Review, vier Stunden Gesamtzeit sowie
+spätestens der 23. Oktober 2026 um 22:00 Uhr Wien. Paketjob, Enginejobs und
+Evidenzjob waren auf 15, jeweils 45 und zehn Minuten begrenzt. Ein Tag,
+ein Releaseentwurf und eine Veröffentlichung waren zulässig. Der Restauftrag
+ist innerhalb dieser Grenzen abgeschlossen; frühere Budgets wurden nicht erneuert.
+
+Diese nachträgliche Dokumentationsänderung gehört nicht zum veröffentlichten
+Quellcommit. Tag, ZIP, Prüfsumme und Release-Nachweis bleiben unverändert;
+die beiden Statusdokumente im ZIP enthalten den damaligen Zwischenstand.
+Es besteht kein weiterer autonomer Ausführungsauftrag. Die übrige autonome
+Verarbeitung bleibt pausiert; Lauf-, Review- und OPS-005-Budgets werden nicht erneuert.
+
+## Historische Freigaben und Sperrstände
+
+Die folgenden Angaben dokumentieren frühere Auftragsstände und Grenzen.
+Sie sind keine aktuelle Ausführungsfreigabe; der spätere Releaseabschluss
+ist oben getrennt nachgeführt.
+
+### Freigegebener Folge-PR: FIND-CORE-Diagnose
 
 PR #412 ist als `73b9843a8cd799883d1b3d796992133020e38d97` integriert.
 Der zweite Head-Lauf `39961104033` bestand auf `e2aa7e56`; der
@@ -26,7 +75,7 @@ Fehler oder Grenzüberschreitung stoppen die Lieferung. Die verbrauchten
 Releasebudgets und die ursprüngliche Releasefrist werden nicht erneuert;
 die übrige autonome Verarbeitung bleibt pausiert.
 
-## Gestoppte Lieferung: Release 1.1.2
+### Gestoppte Lieferung: Release 1.1.2
 
 Der Benutzer hat am 23. Oktober 2026 den Releaseplan für v1.1.2 samt enger
 ZIP-Ausnahme und festen Grenzen freigegeben. Der Branch beginnt auf
