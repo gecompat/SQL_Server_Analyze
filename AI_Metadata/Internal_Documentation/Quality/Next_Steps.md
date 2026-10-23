@@ -15,15 +15,23 @@ bestehen. Die [Releaseanleitung](Release_Gate_Runbook.md) führt durch Paketbau,
 Abnahme, regulären PR-Merge und Veröffentlichung; der menschliche Download-
 und Upgradeweg bleibt in der [Installationsanleitung](../../../Documentation/Reference/Installation.md).
 
-Der Umfang ist auf 20 Dateien und 400 handgeschriebene geänderte Zeilen
-begrenzt; der kanonisch generierte Adapterdiff zählt nicht zur Zeilengrenze.
-Ein Implementierer bearbeitet einen Umsetzungspass und höchstens einen
-gebündelten Korrekturpass. Ein unabhängiger Reviewer prüft höchstens zweimal.
-Höchstens zwei lokale Prüfblöcke mit je einem Prüfpaket, zwei Head-
+Der Umfang ist auf 25 Dateien und 400 handgeschriebene geänderte Zeilen
+begrenzt; nur die beiden kanonischen Adapterdiffs zählen nicht zur Zeilengrenze.
+Ein Implementierer bearbeitet einen Umsetzungspass und höchstens zwei
+gebündelte Korrekturpässe. Ein unabhängiger Reviewer prüft insgesamt höchstens dreimal.
+Höchstens drei lokale Prüfblöcke mit je einem Prüfpaket, zwei Head-
 Qualifikationen, ein Main-Nachlauf, ein endgültiger CI-Paketbau und genau eine
 native Linux-Matrix auf SQL Server 2019, 2022 und 2025 bilden die Abnahmegrenze.
 Die zweite Head-Qualifikation setzt einen geänderten Korrekturstand voraus.
 Die Matrix läuft sequenziell mit höchstens 45 Minuten je Enginejob.
+
+Der erste Head-Lauf `39942902098` auf `ffb8ffa4` scheiterte mit Fehler 1222
+im Standalone-Vertrag. Freigegeben ist nun ein zusätzlicher Temp-Setup-Fix
+in neun Dateien mit höchstens 200 weiteren Handzeilen und 60 aktiven Minuten
+innerhalb der ursprünglichen Gesamtgrenzen. Nur eigene Temp-DDL erhält 100 ms;
+die Sperrursache bleibt unbelegt. Genau ein weiterer lokaler Block samt ZIP,
+ein Review desselben Reviewers und der zweite Head sind dafür zulässig.
+Die ursprüngliche Frist endet am 23. Oktober 2026 um 17:45 Uhr Wien.
 
 Nach 120 Minuten aktiver Bearbeitung einschließlich Review und Koordination
 oder fünf Stunden Gesamtzeit beginnt keine neue Arbeit; nach drei Stunden

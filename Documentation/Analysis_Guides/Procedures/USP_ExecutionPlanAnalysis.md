@@ -52,10 +52,15 @@ Ein syntaktisch gültiger Plan kann keine Findings oder keine Runtime-Counter en
 | Skalierung | Grenzen wirken je Plan; breite Plansuche gehört nicht in diese Procedure |
 | Ressourcen | XML-CPU und Speicher; optional Katalog- und Query-Store-I/O |
 | Begrenzungswirkung | `@StatementId`, `@MaxOperatoren`, `@MaxFindings` und Zeitlimit |
-| Locking und Nebenwirkungen | Read-only; keine Planausführung, kein Forcing und keine DDL |
+| Locking und Nebenwirkungen | Keine Planausführung, kein Forcing und keine fachliche DDL; nur eigene lokale Temp-Tabellen |
 | Schutzmechanismus | Eindeutige Planquelle, High-Impact-Gate und Datenschutzmodi |
 | Sicherer Einsatz | Direkter Plan, `STANDARD`, kleine Grenzen und `DERIVED_ONLY` |
 | Aussagegrenze | Plan- und Runtimeevidenz ersetzt keine Workload- und Wirkungsprüfung |
+
+Die Anlage der 25 eigenen Temp-Tabellen erhält je Statement bis zu 100 ms
+Sperrwartezeit. Anschließend und im Fehlerpfad gilt wieder `LOCK_TIMEOUT 0`;
+ein Fehler wird unverändert weitergegeben. Dieses Fenster umfasst keine
+fachlichen Zugriffe und ist keine allgemeine Laufzeitgarantie.
 
 ## Eine Zeile bedeutet
 

@@ -4,8 +4,8 @@ GO
 /*
 ===============================================================================
 Objekt       : monitor.USP_ExecutionPlanAnalysis
-Version      : 1.2.0
-Stand        : 2026-07-23
+Version      : 1.2.1
+Stand        : 2026-10-23
 Typ          : Stored Procedure
 Zweck        : Analysiert genau ein direkt übergebenes oder gezielt beschafftes
                Showplan-XML. Der direkte @PlanXml-Pfad ist eigenständig nutzbar.
@@ -112,6 +112,9 @@ BEGIN
         RETURN;
     END;
 
+    -- Nur die eigenen Temp-Anlagen erhalten je Statement bis zu 100 ms Sperrwartezeit.
+    BEGIN TRY
+        SET LOCK_TIMEOUT 100;
     CREATE TABLE [#ExecutionPlanAnalysis_TableMap]
     (
           [ResultName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
@@ -671,6 +674,13 @@ BEGIN
         , [MatchesRangeHighKey] bit NULL,[IsBelowHistogram] bit NULL,[IsAboveHistogram] bit NULL
         , [SensitiveValueStatus] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
     );
+
+        SET LOCK_TIMEOUT 0;
+    END TRY
+    BEGIN CATCH
+        SET LOCK_TIMEOUT 0;
+        THROW;
+    END CATCH;
 
     IF @OutputMode NOT IN ('CONSOLE','RAW','TABLE','NONE')
        OR @RequestedPlanSource NOT IN ('AUTO','COMPILE','LAST_ACTUAL')

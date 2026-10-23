@@ -11,19 +11,30 @@ Historische CSV-Nachweise werden dadurch nicht umgedeutet.
 Der Benutzer hat am 23. Oktober 2026 den begrenzten Releaseplan für v1.1.2
 samt ZIP-Ausnahme freigegeben. Grundlage ist Analyze-Main `e307fea3` mit der
 integrierten TABLE-Timeout-Diagnose aus PR #410. Version, Lieferpfade und
-Versionsoracles werden aktualisiert; zusätzliche Fachänderungen gehören
-nicht zu diesem Auftrag. Der nachfolgende operative Ablauf gilt für v1.1.2.
+Versionsoracles werden aktualisiert. Der nachfolgende operative Ablauf gilt für v1.1.2.
 Frühere Freigaben und Ergebnisse bleiben an ihren jeweiligen Stand gebunden.
+Zusätzlich ist der begrenzte Temp-Tabellen-Fix in PR #412 freigegeben:
+Nur die 25 eigenen Anlagen der Plananalyse erhalten 100 ms Sperrwartezeit;
+danach und im Fehlerpfad gilt NOWAIT. Der fehlgeschlagene Head-Lauf
+`39942902098` bleibt an `ffb8ffa4` gebunden; seine Sperrursache ist unbekannt.
 
-Die Lieferung umfasst höchstens 20 Dateien und 400 handgeschriebene geänderte
-Zeilen; der kanonisch generierte Adapterdiff ist von der Zeilenzahl ausgenommen.
-Ein Implementierer, ein Umsetzungspass, ein gebündelter Korrekturpass und ein
-unabhängiger Reviewer mit höchstens zwei Durchgängen begrenzen die Bearbeitung.
-Zulässig sind höchstens zwei lokale Prüfblöcke mit je einem Prüfpaket, zwei
+Die Lieferung umfasst höchstens 25 Dateien und 400 handgeschriebene geänderte
+Zeilen; nur die beiden kanonischen Adapterdiffs sind von der Zeilenzahl ausgenommen.
+Ein Implementierer, ein Umsetzungspass, zwei gebündelte Korrekturpässe und ein
+unabhängiger Reviewer mit insgesamt höchstens drei Durchgängen begrenzen die Bearbeitung.
+Zulässig sind insgesamt höchstens drei lokale Prüfblöcke mit je einem Prüfpaket, zwei
 Head-Qualifikationen, ein Main-Nachlauf und genau ein Matrixdispatch mit allen
 drei Engines. Die zweite Head-Qualifikation ist nur für einen geänderten
 Korrekturstand vorgesehen. Der endgültige CI-Paketbau erfolgt genau einmal.
 Die kanonische Rekonstruktion im Paketverifier ist eine Integritätsprüfung.
+Der Temp-Fix erhält genau einen zusätzlichen lokalen Block, einen weiteren
+Durchgang desselben Reviewers und die zweite Head-Qualifikation. Sein Umfang
+bleibt auf neun Dateien, 200 zusätzliche Handzeilen und 60 weitere aktive
+Minuten innerhalb der ursprünglichen 120 Minuten begrenzt. Die Gesamtfrist
+endet unverändert am 23. Oktober 2026 um 17:45 Uhr Wien.
+Lokal werden nur betroffene Verträge geprüft. Die bestehende CI führt wegen
+des zentralen Releaseumfangs das Full Gate auf SQL Server 2025 aus; die neue
+Fehlerprobe läuft darin mit. Unveränderte erfolgreiche Selbsttests entfallen lokal.
 
 Die Obergrenzen betragen 120 Minuten aktive Bearbeitung einschließlich Review
 und Koordination sowie fünf Stunden Gesamtzeit einschließlich Wartezeiten;
@@ -57,8 +68,9 @@ Deploymentvertrag. Dessen Oracles und Rollbackgegenprobe bleiben erhalten.
 
 Ein Releasebranch beginnt auf aktuellem `origin/main`. Frameworkversion,
 ReleaseDate und Release Notes werden vor der Abnahme festgelegt; die
-Vertragsversion bleibt 1.24. Änderungen an Fachcode, APIs oder unterstützten
-Plattformen gehören nicht zu dieser Konsolidierung. Die übrige autonome
+Vertragsversion bleibt 1.24. Nur der oben freigegebene Temp-Fix ergänzt den
+Fachcode; weitere Fachänderungen sowie API- oder Plattformänderungen gehören
+nicht zu dieser Konsolidierung. Die übrige autonome
 Verarbeitung bleibt pausiert.
 
 Der verantwortliche Implementierer prüft den Lesepfad vom Download über die
@@ -195,10 +207,10 @@ der geschützte README-Lizenzblock bleibt unverändert.
 ## Begrenzung und Verarbeitungsaufwand
 
 Ein Implementierer verantwortet den Schritt. Ein unabhängiger Reviewer prüft
-höchstens zweimal; ein gebündelter Korrekturpass bleibt innerhalb der
-freigegebenen Dateien. Zwei lokale Prüfblöcke, höchstens zwei Head-
+insgesamt höchstens dreimal; zwei gebündelte Korrekturpässe bleiben innerhalb der
+freigegebenen Dateien. Drei lokale Prüfblöcke, höchstens zwei Head-
 Qualifikationen, ein Main-Nachlauf und genau eine native Matrix begrenzen die
-Ausführung. Der aktuelle v1.1.2-Schritt umfasst höchstens 20 Dateien und 400 handgeschriebene geänderte Zeilen.
+Ausführung. Der aktuelle v1.1.2-Schritt umfasst höchstens 25 Dateien und 400 handgeschriebene geänderte Zeilen.
 Die aktive Bearbeitung einschließlich Review und Koordination bleibt auf 120 Minuten begrenzt.
 Nach drei Stunden erfolgt ein Kontrollpunkt, nach fünf Stunden
 Gesamtzeit beginnt keine neue Arbeit. Sicherheits- und Recoveryaktionen

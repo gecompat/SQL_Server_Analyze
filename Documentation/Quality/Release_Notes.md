@@ -33,6 +33,11 @@ das bestehende Fehlerpräfix bleiben erhalten. Die Diagnose nennt weder einen
 unbelegten Blocker noch eine Sperrressource und behebt keine nachgewiesene
 Sperrursache. Die zugehörigen Fehlervertragsfälle sind im Release-Gate eingebunden.
 
+Die Plananalyse begrenzt außerdem die Sperrwartezeit für ihre 25 eigenen
+Temp-Tabellen auf 100 ms je Anlage. Vor fachlichen Zugriffen und im Fehlerpfad
+gilt wieder NOWAIT; Fehler bleiben erhalten. Dies härtet die Initialisierung,
+belegt aber keine Ursache des historischen Standalone-Timeouts.
+
 `SQL_Server_Analyze-1.1.2.zip` enthält auch den kombinierten Installer für das
 Upgrade von Kern und Snapshot/Baseline. Die [Installationsanleitung](../Reference/Installation.md)
 führt ohne lokalen Neubau zur Erstinstallation und zum Upgrade. API `1.24`,
