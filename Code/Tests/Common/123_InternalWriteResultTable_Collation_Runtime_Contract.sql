@@ -1,8 +1,14 @@
 USE [DeineDatenbank];
 GO
 
-SET NOCOUNT ON;
+IF OBJECT_ID(N'tempdb..#ExampleTableExportContract') IS NOT NULL
+    THROW 55742,N'TABLE contract scope ownership conflict.',1;
 GO
+
+CREATE PROCEDURE [#ExampleTableExportContract]
+AS
+BEGIN
+SET NOCOUNT ON;
 
 CREATE TABLE [#InternalWriteResultTable_Source]
 (
@@ -201,4 +207,20 @@ BEGIN CATCH
 END CATCH;
 
 PRINT N'InternalWriteResultTable collation and timeout context runtime contracts passed.';
+END;
+GO
+
+DECLARE @ContractCallerLock int=@@LOCK_TIMEOUT,@ContractCallerOptions int=@@OPTIONS,@ContractCallerTran int=@@TRANCOUNT;
+DECLARE @ContractOwnedId int=OBJECT_ID(N'tempdb..#ExampleTableExportContract');
+BEGIN TRY
+    EXEC [#ExampleTableExportContract];
+    IF @@LOCK_TIMEOUT<>@ContractCallerLock OR @@OPTIONS<>@ContractCallerOptions OR @@TRANCOUNT<>@ContractCallerTran
+        THROW 55743,N'TABLE contract leaked caller state.',1;
+    DROP PROCEDURE [#ExampleTableExportContract];
+END TRY
+BEGIN CATCH
+    IF OBJECT_ID(N'tempdb..#ExampleTableExportContract')=@ContractOwnedId
+        DROP PROCEDURE [#ExampleTableExportContract];
+    THROW;
+END CATCH;
 GO
