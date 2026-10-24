@@ -2685,4 +2685,5 @@ Quelle: `Code/10_SSIS/020_USP_SsisLegacyLogAnalysis.sql`
     , @IncludeComponentPhaseAnalysis bit = 0
     , @IncludeComponentLifecyclePhases bit = 0
     , @IncludeLookupCacheAnalysis bit = 0
+    , @IncludeRowsWrittenAnalysis bit = 0
 ```

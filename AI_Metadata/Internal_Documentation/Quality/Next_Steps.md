@@ -3,6 +3,45 @@
 **Stand:** 23. Oktober 2026
 **Zweck:** aktueller Auftragsstatus und historische Entwicklungswellen für `gecompat/SQL_Server_Analyze`
 
+## Freigegebener begrenzter SSIS-001-Schritt: Schreibmengen
+
+Der direkte Benutzer hat die Schreibmengen-Auswertung anhand vorhandener
+Originaldaten zur begrenzten Umsetzung und regulären PR-Lieferung freigegeben.
+Der [SSIS-Plan mit Vertragsverweis](../../../Documentation/Architecture/SSIS_Package_and_Execution_Analysis_Plan.md#schreibmengen-begrenzte-lieferung-vom-23-oktober-2026)
+ergänzt genau ein englisches DTS_I_ROWS_WRITTEN-Profil, Position 26 und eine
+21-Feld-Menge mit SchemaVersion 7. Einzelberichte bleiben getrennt; es gibt
+keine Addition propagierter Meldungen und keine Commitgarantie.
+
+Basis ist origin/main 2ddf5b341d4253780f299dfa766e2d6135d5de50. Vier bestehende
+hashgebundene Originalaufnahmen enthalten 12/16/60/61 Zeilen; die letzten
+beiden enthalten jeweils zwei Schreibberichte mit Werten 3/3 und 0/0.
+Originale und Bindungen bleiben privat; historische Belege werden nicht auf
+neuere Commits umgebunden. Vorbereitungs-/Partial-Cache-Profile bleiben offen.
+
+Grenzen sind 15 versionierte Dateien, 1600 handgeänderte Zeilen, ein gebündelter
+Korrekturpass, zwei Reviews desselben Reviewers mit zusammen 40 aktiven Minuten,
+zwei lokale Prüfblöcke, genau acht Restoreconsumer und höchstens zwei Head-
+Qualifikationen. Ein Main-Nachlauf setzt einen gesonderten Mergeauftrag voraus.
+Vier aktive Stunden einschließlich Review und Koordination und sechs Stunden
+Gesamtzeit ab 23. Oktober 2026 20:28:55 Uhr Wien gelten; Ende spätestens
+24. Oktober 2026 02:28:55 Uhr Wien, Zwischenstand nach zwei aktiven Stunden.
+Die Einbindung des Tests aktiviert das vorhandene vollständige SQL2025-Gate.
+
+Der Vertragsreview ist abgeschlossen; Kontextpriorität und Ausschluss nur
+der Release-/ZIP-Veröffentlichung sind geklärt. Die begrenzte lokale Abnahme
+besteht auf Windows SQL17.0.5015.4/CL170 mit 45 vollständigen synthetischen
+Fach-/Grenzfällen, drei getrennten quellgebundenen Stufenfällen, 64 Opt-in-
+Kombinationen und genau acht Restoreconsumern. Alle 21 Felder, native Facetten,
+Ausgabeparität, Callerzustände und neun Providerwerte sind geprüft; eigener
+Cleanup und unverändertes Datenbankinventar sind bestätigt. Neue Paket-/SDK-
+Aufrufe sind 0. Ein neuer direkter Vertragslink wird nach statischem Befund
+über den bestehenden klassifizierten SSIS-Planpfad geführt. Ergebnisreview
+und exakte Head-CI bleiben eigene Liefergates. Bei fehlender Bindung,
+fehlgeschlagenem Originalconsumer oder ausgeschöpften Grenzen folgt der Stopp.
+Neue Paket-/SDK-Ausführungen, Providerqualifikationen, weitere Engines,
+Labentwicklung und Release-/ZIP-Veröffentlichung bleiben ausgeschlossen.
+Historische Budgets bleiben geschlossen; übrige Autonomie bleibt pausiert.
+
 ## Abgeschlossen: Release v1.1.2
 
 [v1.1.2](https://github.com/gecompat/SQL_Server_Analyze/releases/tag/v1.1.2)
