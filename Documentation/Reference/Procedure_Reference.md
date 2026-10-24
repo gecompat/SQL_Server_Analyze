@@ -2659,6 +2659,8 @@ Quelle: `Code/10_SSIS/030_USP_SsisCatalogExecutionAnalysis.sql`
 
 Quelle: `Code/10_SSIS/020_USP_SsisLegacyLogAnalysis.sql`
 
+`@IncludeThroughputAnalysis=1` benötigt `@IncludeRowFlowAnalysis=1` und ergänzt `rowFlowThroughput` mit SchemaVersion 8. Die Rate bezieht gemeldete Pfadübertragungen auf ein beobachtetes EXECUTE-Intervall; Null-Dauern und unvollständige Abdeckung erhalten keine Rate.
+
 ```sql
 @LoggingDatabase sysname = NULL
     , @LoggingSchema sysname = N'dbo'
@@ -2686,4 +2688,5 @@ Quelle: `Code/10_SSIS/020_USP_SsisLegacyLogAnalysis.sql`
     , @IncludeComponentLifecyclePhases bit = 0
     , @IncludeLookupCacheAnalysis bit = 0
     , @IncludeRowsWrittenAnalysis bit = 0
+    , @IncludeThroughputAnalysis bit = 0
 ```

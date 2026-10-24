@@ -3059,3 +3059,113 @@ werden nicht wiederholt. Vertragsreview, begrenzte Prüfung, Ergebnisreview
 und regulärer PR sind getrennte Schritte. SSIS-001 bleibt partiell.
 
 Primärquelle: [Microsoft-Meldungsreferenz](https://learn.microsoft.com/en-us/sql/integration-services/integration-services-error-and-message-reference?view=sql-server-ver17#informational-messages).
+
+## Zeilenfluss-Durchsatz aus erhaltenen Originaldaten vom 24. Oktober 2026
+
+### Umfang und Versionierung
+
+Der Benutzer hat die begrenzte Umsetzung und PR-Lieferung freigegeben. Objektversion
+1.7.0 ergänzt @IncludeThroughputAnalysis bit=0 an Position 27; NULL entspricht 0.
+Der Opt-in benötigt @IncludeRowFlowAnalysis=1. Ohne diesen Schalter gilt vor dem
+ersten Quellzugriff INVALID_PARAMETER. SchemaVersion 8 gilt nur beim neuen Opt-in;
+die bisherigen Signaturen, Defaultausgaben und SchemaVersionen 1 bis 7 bleiben erhalten.
+Der Slice liest ausschließlich vorhandene RowFlow-Gruppen, Iterationen und
+Quellenstatus. Neue Parser, zusätzliche Quellabfragen und Paketaufrufe entfallen.
+
+### Pfadgruppen und Zeitbasis
+
+rowFlowThroughput übernimmt die bestehenden 25 rowFlow-Felder einschließlich
+RowFlowOrdinal in unveränderter Reihenfolge, Typisierung und NULL-Semantik.
+Es folgen genau diese acht Felder:
+
+| Position | Feld | Typ und NULL-Semantik |
+|---|---|---|
+| 26 | OccurrenceStartTime | datetime NULL |
+| 27 | OccurrenceEndTime | datetime NULL |
+| 28 | ObservedExecutionDurationMs | bigint NULL |
+| 29 | ReportedTransferRowsPerSecond | decimal(38,6) NULL |
+| 30 | RateStatus | varchar(40) NOT NULL |
+| 31 | RateTimeBasis | varchar(40) NOT NULL |
+| 32 | EvidenceLevel | varchar(32) NOT NULL |
+| 33 | EvidenceSource | nvarchar(160) NOT NULL |
+
+Alle neuen Textfelder verwenden SQL_Latin1_General_CP1_CS_AS. Die Ordnung folgt
+RowFlowOrdinal. Die Zuordnung verlangt genau ein PAIRED-EXECUTE-Intervall mit
+derselben ExecutionId, SourceId und beiden vorhandenen Grenz-LogIds. Beginn
+und Ende stammen aus dessen Pre-/Post-Execute-Ereignissen; RawEndTime wird nicht
+verwendet. Die Dauer ist DATEDIFF_BIG(millisecond,StartTime,EndTime).
+RateTimeBasis lautet OBSERVED_EXECUTE_PAIR, EvidenceLevel DERIVED und
+EvidenceSource Legacy event buffer.
+
+Die Rate ist RowsSentSum mal 1000 geteilt durch die beobachtete Dauer. Dezimale
+Arithmetik rundet kaufmännisch auf sechs Nachkommastellen; sie verwendet kein
+float. Ein negativer oder nicht darstellbarer Rechenwert wird nicht ausgegeben.
+Der numerische Zwischenschritt verwendet decimal(29,0) für den Zähler. Das
+reicht für den höchstmöglichen Summenwert aus eindeutigen int-LogIds und
+nichtnegativen bigint-Einzelmeldungen. Größere oder negative künstliche
+Stufenwerte erhalten NUMERIC_OUT_OF_RANGE, keine native Überlaufausnahme.
+Die rechnerischen Nachkommastellen sind keine entsprechend genaue Zeitmessung.
+
+Die feste RateStatus-Priorität lautet:
+
+1. ROWFLOW_COVERAGE_INCOMPLETE bei InputIsTruncated, einem anderen CoverageStatus
+   als OBSERVED_TRANSFERS oder einem partiellen RowFlow-Quellenstatus.
+2. INVALID_EXECUTION_INTERVAL bei nicht eindeutigem Paar, fehlender Zeit oder
+   rückläufigem Intervall.
+3. ZERO_DURATION bei einer Dauer von genau null.
+4. NUMERIC_OUT_OF_RANGE bei nicht darstellbarer Berechnung.
+5. AVAILABLE für die berechnete Rate; null gemeldete Zeilen ergeben bei
+   positiver Dauer die Rate null.
+
+Nur AVAILABLE besitzt eine Rate; andere Status behalten NULL. Es gibt keine
+Addition über Pfade, Multicastzweige, Sources oder Vorkommen. Schreibmeldungen
+werden nicht eingerechnet. Die Rate beschreibt beobachtete Pfadübertragungen
+im EXECUTE-Zeitfenster, keine eindeutigen Paketdatensätze, dauerhaften Commits,
+CPU-Zeit oder exklusive Komponentenleistung. Unzugeordnete Ereignisse bleiben
+im bisherigen RowFlow-Vertrag sichtbar und erzeugen keine künstliche Gruppe.
+
+### Zulassung, Partialität und Fehler
+
+SourceOrdinal 10 heißt rowFlowThroughputAnalysis. Die Zulassungspriorität lautet
+INVALID_PARAMETER, NO_VALID_EVENT_BUFFER, PRIOR_DERIVATION_NOT_COMPLETED,
+MESSAGES_DISABLED, ROWFLOW_NOT_COMPLETED und TIME_BUDGET_EXHAUSTED.
+Ein gültiger leerer Gruppenbestand ergibt AVAILABLE_EMPTY mit null Zählern.
+Unterdrückte Raten ergeben AVAILABLE_LIMITED und IsPartial=1. Pfad-, Raten-
+und Unterdrückungszähler beziehen sich auf den abgeleiteten Bestand vor
+Ausgabelimits. Durch @MaxZeilen gekürzte neue Ausgaben melden RESULT_TRUNCATED.
+Eine Deadline oder ein nativer Fehler verwirft die gesamte neue Teilmenge
+und setzt deren Zähler auf NULL. Frühere gültige Mengen und das erste native
+Fehlerpaar bleiben erhalten. Calleroptionen und Transaktionszustand folgen
+dem bestehenden Vertrag. Es gibt keine neue Quell- oder Indexmutation.
+
+### Ausgabe und Abnahmegrenze
+
+RAW hängt genau eine Menge zuletzt an: minimal mit RowFlow 12 und mit allen
+gültigen Analyseflags 18 Grids. TABLE erlaubt rowFlowThroughput; die interne
+Quelle heißt #SsisLegacyLogAnalysis_RowFlowThroughput. Der Caller ordnet eine
+anders benannte, vorab angelegte leere Temp-Tabelle zu; ein Standardziel
+existiert nicht. JSON bleibt der
+optionale OUTPUT-Vertrag und enthält alle 33 Felder einschließlich NULL.
+CONSOLE bleibt ein Grid und ergänzt beim Opt-in die drei nullable-bigint-
+Zähler ThroughputPaths, ThroughputRates und ThroughputSuppressed. NONE
+liefert keine fachlichen Grids. Der ausgeschaltete Opt-in ergänzt keine
+JSON-Eigenschaft und keine Console-Spalte.
+
+Die freigegebene lokale Restabnahme besteht auf Windows SQL Server
+17.0.5015.4 mit CL170. Der letzte gezielte Block prüft die Fälle 18 bis 24,
+einen Export-, sechs Mapping- und fünf Quellenfälle, zusammen 19 vollständige
+SUT-Fälle, sowie alle 128 Flagkombinationen. Die unveränderte Rundungsfassung
+war zuvor bis zur Datumsdarstellung beziehungsweise zum Parallelsollsatz
+gelaufen; diese fehlgeschlagenen Gesamtbatches bleiben FAILED_NOT_QUALIFIED.
+Bereits durchlaufene Satzprüfungen werden lokal nicht wiederholt. Die
+Vertragsdatei enthält weiterhin 36 Fachfälle; ihre vollständige Ausführung
+am endgültigen Head bleibt ein eigenes erforderliches CI-Gate.
+
+Drei getrennte quellgebundene Stufenfälle bestätigen numerische Grenzen,
+Deadlineverwerfung nach dem Zählen und Erhaltung des ersten nativen Fehlers.
+Sie sind keine vollständige SUT-Fehlerabnahme. Genau acht Restoreconsumer aus
+sechs hashgebundenen Originalen bestätigen unabhängig alle 33 Felder,
+Schemafacetten, Ausgabeparität und Callerzustände. Alle neun Quellwerte und
+das Datenbankinventar bleiben erhalten; Cleanup- und Retentionfehler sind 0.
+Neue Paket-/SDK-Aufrufe und Providerqualifikationen sind 0. Historische
+Fehlernachweise und Budgets bleiben an ihren ursprünglichen Quellen gebunden.
