@@ -1903,3 +1903,24 @@ bleiben erhalten. Die vollständige 36-Fälle-Datei wird am endgültigen Head
 separat qualifiziert. Neue Paket-/SDK-Aufrufe und Providerqualifikationen
 sind 0; weitere Engines und Releaseveröffentlichung bleiben ausgeschlossen. Native11/12 bleiben FAILED_NOT_QUALIFIED und SSIS-001 bleibt
 PARTIAL_PRODUCT_FUNCTION; frühere Nachweise werden nicht umgebunden.
+
+## Final-Commit-Meldungen: begrenzte Lieferung vom 24. Oktober 2026
+
+Der freigegebene Teilschritt aus Schritt 5 ergänzt einzelne Final-Commit-Starts
+und -Enden. Der [öffentliche Vertrag](SSIS_001_Phase0_Public_Contract.md#final-commit-meldungen-aus-erhaltenen-originaldaten-vom-24-oktober-2026)
+legt Position 28, SchemaVersion 9, zwei exakte Profile und 19 Felder fest.
+Die vier Duplicate-Berichte bleiben einschließlich Paketweiterleitung erhalten;
+es entstehen keine Commit-Paare, Dauern oder Persistenzgarantien.
+
+Die begrenzte Abnahme besteht auf Windows SQL Server 17.0.5015.4/CL170 mit
+40 synthetischen SUT-Szenarien, 128 Flagkombinationen, zwei Opt-out-Proben,
+drei getrennten quellgebundenen Stufenfällen und genau acht Restoreconsumern.
+Alle 19 Felder, native Schemafacetten, Ausgabeparitäten und Callerzustände
+sind unabhängig geprüft. Neun Originalfelder und das Datenbankinventar bleiben
+erhalten; Cleanup- und Retentionfehler sind 0. Die Stufen sind keine vollständige
+SUT-Fehlerqualifikation. Neue Paket-/SDK-/Providerläufe sind 0.
+Ergebnisreview und exakte Head-CI bleiben eigene Liefergates.
+Vorhandene Originale bleiben privat und hashgebunden. Buffer-, ExternalRequest-
+und ExecuteSQLExecutingQuery-Profile besitzen in diesen Aufnahmen keine positive
+Basis und bleiben offen. SSIS-001 bleibt PARTIAL_PRODUCT_FUNCTION;
+Native11/12 und historische Budgets werden nicht umgebunden oder erneuert.

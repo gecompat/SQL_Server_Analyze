@@ -3,6 +3,42 @@
 **Stand:** 24. Oktober 2026
 **Zweck:** aktueller Auftragsstatus und historische Entwicklungswellen für `gecompat/SQL_Server_Analyze`
 
+## Freigegebener begrenzter SSIS-001-Schritt: Final-Commit-Meldungen
+
+Der Benutzer hat den begrenzten Teilschritt aus Schritt 5 anhand vorhandener
+Originale zur Umsetzung und regulären PR-Lieferung freigegeben. Basis ist
+origin/main f6a0dd17390ce7250b1013d901920aaee99ad1ba. Der
+[SSIS-Plan mit Vertragsverweis](../../../Documentation/Architecture/SSIS_Package_and_Execution_Analysis_Plan.md#final-commit-meldungen-begrenzte-lieferung-vom-24-oktober-2026)
+bindet Position 28, SchemaVersion 9, zwei Meldungsprofile und 19 Felder.
+Die vier Duplicate-Berichte mit LogIds 58 bis 61 bleiben getrennt erhalten;
+Commit-Paare, Dauern und Persistenzgarantien sind ausgeschlossen.
+
+Die begrenzte Abnahme besteht auf Windows SQL Server 17.0.5015.4/CL170 mit
+40 synthetischen SUT-Szenarien, 128 Flagkombinationen, zwei Opt-out-Proben,
+drei getrennten quellgebundenen Stufenfällen und genau acht Restoreconsumern.
+Alle 19 Felder, native Schemafacetten, Ausgabeparitäten und Callerzustände
+sind unabhängig geprüft. Neun Originalfelder und das Datenbankinventar bleiben
+erhalten; Cleanup- und Retentionfehler sind 0. Die Stufen sind keine vollständige
+SUT-Fehlerqualifikation. Neue Paket-/SDK-/Providerläufe sind 0.
+Ergebnisreview und exakte Head-CI bleiben eigene Liefergates.
+
+Grenzen sind 15 versionierte Dateien, 1000 hinzugefügte oder gelöschte
+Handzeilen und zusätzlich 500 generierte Adapterzeilen. Ein Implementierer,
+ein Korrekturpass, zwei Reviews desselben Reviewers mit zusammen 30 aktiven
+Minuten, zwei lokale Prüfblöcke und genau eine funktionale Head-Abnahme
+bilden die Obergrenzen. Drei aktive Stunden einschließlich Review und
+Koordination sowie fünf Stunden Gesamtzeit ab 24. Oktober 2026 18:53:30 Uhr
+Wien gelten; Ende spätestens 24. Oktober 2026 23:53:30 Uhr Wien. Nach 90
+aktiven oder 150 gesamten Minuten folgt ein Kontrollpunkt. Das bestehende
+vollständige SQL2025-Gate einschließlich Test 210 bleibt erforderlich.
+
+Fehlende Quellenbindung, offene Reviewbefunde, fehlgeschlagene Abnahme oder
+ausgeschöpfte Grenzen stoppen die Lieferung. Eine unverändert fehlgeschlagene
+CI wird nicht wiederholt. Neue Paket-/SDK-/Providerläufe, weitere Engines,
+Labentwicklung, Merge, Main-Nachlauf und Release-/ZIP-Veröffentlichung sind
+ausgeschlossen. Historische Nachweise und Budgets bleiben erhalten und
+geschlossen; die übrige autonome Verarbeitung bleibt pausiert.
+
 ## Abgeschlossen: SSIS-001-Zeilenfluss-Durchsatz (PR #417)
 
 [PR #417](https://github.com/gecompat/SQL_Server_Analyze/pull/417) ist am

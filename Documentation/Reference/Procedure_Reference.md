@@ -2659,6 +2659,8 @@ Quelle: `Code/10_SSIS/030_USP_SsisCatalogExecutionAnalysis.sql`
 
 Quelle: `Code/10_SSIS/020_USP_SsisLegacyLogAnalysis.sql`
 
+`@IncludeFinalCommitAnalysis=1` ergänzt einzelne Start-/Endberichte als `finalCommitEvents` mit SchemaVersion 9. Die Meldungen belegen keinen dauerhaften Commit oder Paketerfolg.
+
 `@IncludeThroughputAnalysis=1` benötigt `@IncludeRowFlowAnalysis=1` und ergänzt `rowFlowThroughput` mit SchemaVersion 8. Die Rate bezieht gemeldete Pfadübertragungen auf ein beobachtetes EXECUTE-Intervall; Null-Dauern und unvollständige Abdeckung erhalten keine Rate.
 
 ```sql
@@ -2689,4 +2691,5 @@ Quelle: `Code/10_SSIS/020_USP_SsisLegacyLogAnalysis.sql`
     , @IncludeLookupCacheAnalysis bit = 0
     , @IncludeRowsWrittenAnalysis bit = 0
     , @IncludeThroughputAnalysis bit = 0
+    , @IncludeFinalCommitAnalysis bit = 0
 ```

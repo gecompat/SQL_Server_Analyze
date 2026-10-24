@@ -3169,3 +3169,120 @@ Schemafacetten, Ausgabeparität und Callerzustände. Alle neun Quellwerte und
 das Datenbankinventar bleiben erhalten; Cleanup- und Retentionfehler sind 0.
 Neue Paket-/SDK-Aufrufe und Providerqualifikationen sind 0. Historische
 Fehlernachweise und Budgets bleiben an ihren ursprünglichen Quellen gebunden.
+
+## Final-Commit-Meldungen aus erhaltenen Originaldaten vom 24. Oktober 2026
+
+### Zweck, Quellen und Schnittstelle
+
+Der Benutzer hat die begrenzte Umsetzung anhand vorhandener Originale zur
+regulären PR-Lieferung freigegeben. Objektversion 1.8.0 ergänzt den letzten
+Parameter @IncludeFinalCommitAnalysis bit=0 an Position 28; NULL entspricht 0.
+Der Schalter ist unabhängig von anderen Opt-ins. Nur bei 1 gilt SchemaVersion 9
+mit FinalCommitCatalogVersion=1 im JSON-meta. Bei 0 bleiben SchemaVersionen
+1 bis 8 und bisherige Ausgaben erhalten.
+
+Die private hashgebundene Duplicate-Aufnahme enthält Startberichte mit LogIds
+58/59 und Endberichte mit 60/61 auf Data-Flow- und Paketebene. Alle vier bleiben
+getrennt sichtbar. BasicSuccess, SqlFailure, Miss und die beiden Phasenaufnahmen
+enthalten keine Kandidaten. Die Originale bleiben privat; Restoreconsumer sind
+keine neue Providerqualifikation. Native11/12 bleiben FAILED_NOT_QUALIFIED.
+
+Ein Bericht belegt die gespeicherte Meldung, keinen dauerhaft bestätigten
+Commit, Paketerfolg oder eine physische Zieltabelle. ComponentName ist nur der
+gemeldete Name. Es gibt keine Commit-Paarbildung, Dauer, Summierung,
+Deduplizierung oder Verknüpfung mit gemeldeten Schreibmengen.
+
+### Exakte Meldungsprofile
+
+Kandidaten besitzen DataCode 1075876063 oder 1075876064. Nur das ordinale
+Ereignis OnInformation und die folgenden vollständigen englischen Texte
+einschließlich CRLF werden interpretiert; die doppelte Leerstelle im Endprofil
+bleibt erhalten:
+
+```text
+1075876063: The final commit for the data insertion in "NAME" has started.\r\n
+1075876064: The final commit for the data insertion  in "NAME" has ended.\r\n
+```
+
+ParserId lautet FINAL_COMMIT_START_EN_1 oder FINAL_COMMIT_END_EN_1. NAME
+besitzt 1 bis 4000 UTF-16-Codeeinheiten, keine Anführungszeichen und keine
+C0-/C1-Steuerzeichen. Andere Zeichen und Leerzeichen bleiben unverändert.
+Die Kapazitätsgrenze entspricht der deklarierten message-Spalte, höchstens
+4096 Bytes; an oder über dieser Grenze wird kein Profil interpretiert.
+
+Die feste ParseStatus-Priorität lautet MESSAGE_MISSING,
+POTENTIALLY_TRUNCATED, CODE_EVENT_MISMATCH, MALFORMED_PAYLOAD und PARSED.
+ParserId bleibt bei den ersten drei Zuständen NULL. Anderer DataCode erzeugt
+keinen Kandidaten. Bei PARSED gelten ObservationKind=FINAL_COMMIT_START_REPORTED
+oder FINAL_COMMIT_END_REPORTED und EvidenceLevel=RUNTIME_OBSERVED. Sonst
+bleiben ObservationKind und ComponentName NULL; EvidenceLevel=UNINTERPRETED.
+MessageText bleibt unverändert erhalten; EvidenceSource ist Legacy event buffer.
+
+### Physisches Schema und Kontext
+
+finalCommitEvents enthält die folgenden 19 Felder. NN bedeutet NOT NULL;
+übrige Felder sind nullable. Alle Textfelder verwenden
+COLLATE SQL_Latin1_General_CP1_CS_AS.
+
+| Position | Feld | Typ |
+|---|---|---|
+| 1 | FinalCommitEventOrdinal | bigint NN |
+| 2 | LogId | int NN |
+| 3 | ExecutionId | uniqueidentifier NN |
+| 4 | EventName | nvarchar(128) |
+| 5 | SourceId | uniqueidentifier |
+| 6 | SourceName | nvarchar(4000) |
+| 7 | EventTime | datetime |
+| 8 | DataCode | int |
+| 9 | ParserId | varchar(32) |
+| 10 | ParseStatus | varchar(40) NN |
+| 11 | ObservationKind | varchar(40) |
+| 12 | ComponentName | nvarchar(4000) |
+| 13 | ContextStatus | varchar(40) NN |
+| 14 | ContextStartLogId | int |
+| 15 | ContextEndLogId | int |
+| 16 | InputIsTruncated | bit NN |
+| 17 | EvidenceLevel | varchar(32) NN |
+| 18 | EvidenceSource | nvarchar(160) NN |
+| 19 | MessageText | nvarchar(max) |
+
+Die Ordnung folgt LogId. Kontext ist ein bestehendes PAIRED-EXECUTE-Paar
+derselben ExecutionId/SourceId mit streng einschließenden LogIds und inklusiven
+Zeitgrenzen. Die Priorität lautet NOT_PARSED, SOURCE_ID_MISSING,
+EVENT_TIME_MISSING, NO_OBSERVED_PAIR, AMBIGUOUS_PAIR, TIME_OUTSIDE_PAIR,
+ASSIGNED. Nur ASSIGNED erhält Kontext-LogIds. Die Paarzahl wird vor der
+Zeitprüfung bestimmt; Namen ersetzen keine Source-Identität.
+
+### Quellenstatus, Ausgaben und Abnahmegrenze
+
+SourceOrdinal 11 heißt finalCommitAnalysis und existiert nur beim Opt-in.
+Die Stufe liest ausschließlich vorhandene Puffer und Iterationen. Die
+Zulassungspriorität entspricht der Schreibmengenstufe: INVALID_PARAMETER,
+NO_VALID_EVENT_BUFFER, PRIOR_DERIVATION_NOT_COMPLETED, MESSAGES_DISABLED,
+TIME_BUDGET_EXHAUSTED. Unvollständige Stufen verwerfen alle neuen Zeilen und
+drei Zähler atomar. Die Deadline wird nach Zählerermittlung vor Übernahme
+geprüft; erste native Modulfehler und vorherige gültige Mengen bleiben erhalten.
+Quell- und TABLE-Timeouts sowie die bestehende eigene Temp-DDL-Behandlung gelten.
+
+Nach Abschluss zählen C/P/A Kandidaten, geparste und zugeordnete Berichte.
+Ein vollständiger leerer Bestand ergibt AVAILABLE_EMPTY und 0/0/0. Gekappter
+Input oder P<C oder A<P ergibt AVAILABLE_LIMITED; sonst AVAILABLE. Bei
+ausgeschalteten Meldungen bleiben die Zähler NULL und Detail=MESSAGES_DISABLED.
+Fehlende Kandidaten beweisen keine Abwesenheit von Commits.
+
+RAW hängt die neue Menge zuletzt an: minimal zehn, mit allen gültigen Flags
+19 Grids. TABLE erlaubt finalCommitEvents mit einer eigenen, vorab angelegten
+Caller-Temp-Tabelle. JSON enthält alle 19 Felder einschließlich NULL. CONSOLE
+bleibt ein Grid und ergänzt beim Opt-in FinalCommitMeldungen,
+GeleseneFinalCommitMeldungen und ZugeordneteFinalCommitMeldungen als nullable
+bigint. NONE liefert keine fachlichen Grids.
+
+Die begrenzte Abnahme besteht auf Windows SQL Server 17.0.5015.4/CL170 mit
+40 synthetischen SUT-Szenarien, 128 Flagkombinationen, zwei Opt-out-Proben,
+drei getrennten quellgebundenen Stufenfällen und genau acht Restoreconsumern.
+Alle 19 Felder, native Schemafacetten, Ausgabeparitäten und Callerzustände
+sind unabhängig geprüft. Neun Originalfelder und das Datenbankinventar bleiben
+erhalten; Cleanup- und Retentionfehler sind 0. Die Stufen sind keine vollständige
+SUT-Fehlerqualifikation. Neue Paket-/SDK-/Providerläufe sind 0.
+Ergebnisreview und exakte Head-CI bleiben eigene Liefergates.
+Historische Nachweise und Budgets bleiben an ihre ursprünglichen Quellen gebunden.
