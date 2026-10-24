@@ -3286,3 +3286,131 @@ erhalten; Cleanup- und Retentionfehler sind 0. Die Stufen sind keine vollständi
 SUT-Fehlerqualifikation. Neue Paket-/SDK-/Providerläufe sind 0.
 Ergebnisreview und exakte Head-CI bleiben eigene Liefergates.
 Historische Nachweise und Budgets bleiben an ihre ursprünglichen Quellen gebunden.
+
+## Pipeline-Phasenbeginnmeldungen aus erhaltenen Originaldaten vom 24. Oktober 2026
+
+### Zweck und Versionierung
+
+Der Benutzer hat die begrenzte Umsetzung aller sechs originalbelegten Profile
+zur regulären PR-Lieferung freigegeben. Procedureversion 1.9.0 ergänzt den
+letzten Parameter @IncludePipelinePhaseBeginAnalysis bit=0 an Position 29;
+NULL entspricht 0. Der Schalter ist unabhängig von anderen Opt-ins. Nur bei
+1 gelten SchemaVersion 10 und PipelinePhaseBeginCatalogVersion=1 im JSON-meta.
+Bei 0 bleiben SchemaVersionen 1 bis 9 und bisherige Ausgaben erhalten.
+
+Die neue Menge pipelinePhaseBeginEvents hält einzelne Beginnmeldungen fest.
+Sie ist von Komponentenphasenzeiten getrennt. Beginnmeldungen belegen weder
+Abschluss, Fortschritt, Erfolg noch exklusive Zeit. Es entstehen keine
+Phasendauern, Paarbildungen zwischen Meldungen, Summen oder Deduplizierungen.
+Weitergeleitete Paketmeldungen bleiben eigene Berichte.
+
+### Originalbasis und exakte Profile
+
+Die sechs privaten hashgebundenen Aufnahmen bleiben unverändert. Basic und
+SqlFailure mit 12/16 sowie P-N01/P-N02 mit 33/123 Zeilen enthalten keine
+Kandidaten. Duplicate/Miss mit 60/61 Zeilen enthalten jeweils 13 Berichte:
+drei Validation-Meldungen und je zwei der anderen fünf Profile.
+Neue Restoreconsumer sind keine erneute Providerqualifikation; Native11/12
+bleiben FAILED_NOT_QUALIFIED. Originale und Rohbelege werden nicht versioniert.
+
+Kandidaten besitzen einen der folgenden sechs DataCodes. Nur das ordinale
+Ereignis OnInformation und der vollständige zum Code gehörende Text werden
+interpretiert. Jeder Text endet mit CRLF; Großschreibung, Leerzeichen und
+Bindestriche werden nicht normalisiert.
+
+| DataCode | PhaseName | Text vor CRLF |
+|---|---|---|
+| 1074016266 | VALIDATION | Validation phase is beginning. |
+| 1074016262 | PREPARE_FOR_EXECUTE | Prepare for Execute phase is beginning. |
+| 1074016263 | PRE_EXECUTE | Pre-Execute phase is beginning. |
+| 1074016268 | EXECUTE | Execute phase is beginning. |
+| 1074016264 | POST_EXECUTE | Post Execute phase is beginning. |
+| 1074016265 | CLEANUP | Cleanup phase is beginning. |
+
+Die ParseStatus-Priorität lautet MESSAGE_MISSING, POTENTIALLY_TRUNCATED,
+CODE_EVENT_MISMATCH, MALFORMED_PAYLOAD, PARSED. Kapazitätsgrenze ist die
+deklarierte message-Spalte, höchstens 4096 Bytes; an oder über der Grenze
+wird nicht interpretiert. Bei den ersten drei Zuständen bleibt ParserId NULL;
+sonst gilt PIPELINE_PHASE_BEGIN_EN_1. Anderer Code erzeugt keinen Kandidaten.
+Bei PARSED gelten PhaseName laut Tabelle, ObservationKind=
+PIPELINE_PHASE_BEGIN_REPORTED und EvidenceLevel=RUNTIME_OBSERVED. Sonst
+bleiben beide Payloadfelder NULL; EvidenceLevel=UNINTERPRETED. MessageText
+bleibt erhalten; EvidenceSource ist Legacy event buffer.
+
+### Physisches Schema und Kontext
+
+pipelinePhaseBeginEvents besitzt genau 19 Felder. NN bedeutet NOT NULL;
+übrige Felder sind nullable. Alle Textfelder verwenden die Frameworkcollation
+SQL_Latin1_General_CP1_CS_AS.
+
+| Position | Feld | Typ |
+|---|---|---|
+| 1 | PipelinePhaseBeginEventOrdinal | bigint NN |
+| 2 | LogId | int NN |
+| 3 | ExecutionId | uniqueidentifier NN |
+| 4 | EventName | nvarchar(128) |
+| 5 | SourceId | uniqueidentifier |
+| 6 | SourceName | nvarchar(4000) |
+| 7 | EventTime | datetime |
+| 8 | DataCode | int |
+| 9 | ParserId | varchar(32) |
+| 10 | ParseStatus | varchar(40) NN |
+| 11 | ObservationKind | varchar(40) |
+| 12 | PhaseName | varchar(32) |
+| 13 | ContextStatus | varchar(40) NN |
+| 14 | ContextStartLogId | int |
+| 15 | ContextEndLogId | int |
+| 16 | InputIsTruncated | bit NN |
+| 17 | EvidenceLevel | varchar(32) NN |
+| 18 | EvidenceSource | nvarchar(160) NN |
+| 19 | MessageText | nvarchar(max) |
+
+Die Ordnung folgt LogId. VALIDATION verwendet ausschließlich bestehende
+PAIRED-VALIDATE-Paare, die übrigen fünf Phasen ausschließlich PAIRED-EXECUTE.
+Es gibt keine Ausweichregel auf den anderen PairKind. ExecutionId/SourceId
+müssen übereinstimmen; LogIds sind streng einschließend und Zeitgrenzen
+inklusiv. Die feste ContextStatus-Priorität lautet NOT_PARSED,
+SOURCE_ID_MISSING, EVENT_TIME_MISSING, NO_OBSERVED_PAIR, AMBIGUOUS_PAIR,
+TIME_OUTSIDE_PAIR, ASSIGNED. Mehrdeutigkeit wird vor Zeitprüfung bestimmt;
+nur ASSIGNED erhält Kontext-LogIds. Überlappende andere PairKinds zählen nicht.
+
+Je vollständiger Duplicate-/Miss-Aufnahme ergeben sich als Sollmenge 13
+geparste und zwölf zugeordnete Berichte. Validation-LogIds 19 und 29 verwenden
+18/23 beziehungsweise 28/34. Paketmeldung 30 bleibt NO_OBSERVED_PAIR, obwohl
+ein EXECUTE-Paar beobachtet ist. Miss-Cap 22 endet mit LogId 38 und enthält
+sieben geparste Berichte mit zwei VALIDATE-Zuordnungen; Input ist gekappt.
+
+### Quellenstatus, Ausgaben und Abnahmegrenze
+
+SourceOrdinal 12 heißt pipelinePhaseBeginAnalysis und existiert nur beim Opt-in.
+Die Stufe liest ausschließlich vorhandene Puffer und Iterationen. Zulassung,
+kooperative Deadline, atomare Verwerfung und erstes natives Fehlerpaar folgen
+dem Final-Commit-Muster. Die Deadline wird nach Zählerermittlung vor Übernahme
+geprüft. Vorherige gültige Mengen, Quell-/TABLE-Timeouts und eigene Temp-DDL-
+Behandlung bleiben erhalten.
+
+C/P/A zählen Kandidaten, geparste und zugeordnete Berichte. Vollständig leer
+ergibt AVAILABLE_EMPTY und 0/0/0. Gekappter Input oder P<C oder A<P ergibt
+AVAILABLE_LIMITED, sonst AVAILABLE. Bei ausgeschalteten Meldungen bleiben
+die Zähler NULL und Detail=MESSAGES_DISABLED. Leere Mengen beweisen keine
+Abwesenheit von Pipelinephasen.
+
+RAW hängt die Menge zuletzt an: minimal zehn, mit allen gültigen Flags 20
+Grids. TABLE verwendet pipelinePhaseBeginEvents mit einer eigenen, anders
+benannten Caller-Temp-Tabelle; JSON enthält alle 19 Felder einschließlich
+NULL. CONSOLE bleibt ein Grid und ergänzt Phasenbeginnmeldungen,
+GelesenePhasenbeginnmeldungen und ZugeordnetePhasenbeginnmeldungen als
+nullable bigint. NONE liefert keine fachlichen Grids.
+
+Die begrenzte lokale Abnahme ist auf Windows SQL Server 17.0.5015.4 mit
+CL170 und Framework-/Loggingcollation SQL_Latin1_General_CP1_CS_AS bestanden:
+40 SUT-Szenarien, 256 Kombinationen bisheriger Flags, zwei Opt-out-Proben,
+drei getrennte quellgebundene Stufenfälle und genau acht Restoreconsumer.
+Alle 19 Felder, nativen Facetten, Ausgabeparitäten, neun Originalfelder und
+Callerzustände sind unabhängig geprüft. Die zwei eigenen Datenbanken sind
+entfernt und das Inventar ist wiederhergestellt; Cleanup-/Retentionfehler sind 0.
+Die Stufen sind keine vollständige SUT-Fehlerqualifikation. Eine abgelaufene
+Deadline nach exakter Zählerabfrage wurde nur im privaten Stufenharness gesetzt;
+Produktquellen erhielten keinen Fehlerhook. Ergebnisreview und exakte Head-CI
+bleiben eigene Liefergates. Neue Paket-/SDK-/Providerläufe sind 0;
+historische Nachweise und Budgets bleiben an ihren ursprünglichen Quellen gebunden.

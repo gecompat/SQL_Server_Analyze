@@ -1924,3 +1924,26 @@ Vorhandene Originale bleiben privat und hashgebunden. Buffer-, ExternalRequest-
 und ExecuteSQLExecutingQuery-Profile besitzen in diesen Aufnahmen keine positive
 Basis und bleiben offen. SSIS-001 bleibt PARTIAL_PRODUCT_FUNCTION;
 Native11/12 und historische Budgets werden nicht umgebunden oder erneuert.
+
+## Pipeline-Phasenbeginnmeldungen: begrenzte Lieferung vom 24. Oktober 2026
+
+Der freigegebene Slice ergänzt sechs exakte Beginnprofile als einzelne Berichte.
+Der [öffentliche Vertrag](SSIS_001_Phase0_Public_Contract.md#pipeline-phasenbeginnmeldungen-aus-erhaltenen-originaldaten-vom-24-oktober-2026)
+bindet Position 29, SchemaVersion 10 und 19 Felder. VALIDATION verwendet nur
+VALIDATE, die übrigen Phasen nur EXECUTE. Paketmeldung 30 bleibt unzugeordnet;
+ein EXECUTE-Paar ersetzt keinen fehlenden VALIDATE-Kontext. Phasendauern,
+Abschluss, Fortschritt und Summen werden nicht behauptet.
+
+Duplicate und Miss liefern je 13 Originalberichte; die übrigen vier
+hashgebundenen Aufnahmen enthalten keine Kandidaten. Die begrenzte lokale
+Abnahme ist auf Windows SQL Server 17.0.5015.4 mit CL170 bestanden:
+40 SUT-Szenarien, 256 Flagkombinationen, zwei Opt-out-Proben, drei getrennte
+quellgebundene Stufenfälle und genau acht Restoreconsumer. Duplicate/Miss
+liefern 13/13/12, Miss mit Cap 22 liefert 7/7/2. Alle 19 Felder, nativen
+Facetten, neun Originalfelder und Callerzustände sind geprüft; die zwei
+eigenen Datenbanken sind entfernt und das Inventar ist wiederhergestellt.
+Die Stufen sind keine vollständige SUT-Fehlerqualifikation. Die exakte
+Head-CI bleibt ein eigenes Liefergate. Neue Paket-/SDK-/Providerläufe sind 0;
+weitere Engines, Labentwicklung und Release sind ausgeschlossen. SSIS-001
+bleibt PARTIAL_PRODUCT_FUNCTION; Native11/12 und historische Budgets werden
+nicht umgebunden oder erneuert.

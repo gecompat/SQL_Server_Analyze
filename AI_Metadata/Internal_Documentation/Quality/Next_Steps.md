@@ -3,6 +3,47 @@
 **Stand:** 24. Oktober 2026
 **Zweck:** aktueller Auftragsstatus und historische Entwicklungswellen für `gecompat/SQL_Server_Analyze`
 
+## Freigegebener begrenzter SSIS-001-Schritt: Pipeline-Phasenbeginnmeldungen
+
+Der Benutzer hat alle sechs originalbelegten Profile zur begrenzten Umsetzung
+und regulären PR-Lieferung freigegeben. Basis ist origin/main
+a98dd3d002bc9f9efbc2bff445874aa996df8df6. Der [SSIS-Plan mit Vertragsverweis](../../../Documentation/Architecture/SSIS_Package_and_Execution_Analysis_Plan.md#pipeline-phasenbeginnmeldungen-begrenzte-lieferung-vom-24-oktober-2026)
+bindet Position 29, SchemaVersion 10 und die 19-Feld-Menge. VALIDATION nutzt
+nur VALIDATE-Kontext, die anderen fünf Phasen nur EXECUTE; es gibt keine
+Ausweichregel oder Phasendauer. Weitergeleitete Berichte bleiben eigene Zeilen.
+
+Die begrenzte lokale Abnahme ist auf Windows SQL Server 17.0.5015.4 mit
+CL170 und Framework-/Loggingcollation SQL_Latin1_General_CP1_CS_AS bestanden:
+40 SUT-Szenarien, 256 Flagkombinationen, zwei Opt-out-Proben, drei getrennte
+quellgebundene Stufenfälle und genau acht Restoreconsumer. Duplicate/Miss
+liefern 13/13/12; Miss mit Cap 22 liefert 7/7/2. Alle 19 Felder, nativen
+Facetten, neun Originalfelder und Callerzustände sind unabhängig geprüft.
+Die zwei eigenen Datenbanken sind entfernt; das Inventar ist wiederhergestellt,
+Cleanup- und Retentionfehler sind 0. Die Stufen sind keine vollständigen
+SUT-Fehlernachweise; nach der exakten Zählerabfrage wurde nur im privaten
+Stufenharness eine abgelaufene Deadline gesetzt. Produkt und Test 211 sind
+an die privaten Quellenhashes gebunden. Originale und Rohbelege bleiben privat.
+Ergebnisreview und eine exakte Head-Abnahme bleiben eigene Liefergates.
+
+Grenzen sind 15 versionierte Dateien, 1000 hinzugefügte oder gelöschte
+Handzeilen und zusätzlich 500 generierte Adapterzeilen. Ein Implementierer,
+ein gebündelter Korrekturpass, zwei Reviews desselben Reviewers mit zusammen
+30 aktiven Minuten, zwei lokale Prüfblöcke, acht Restoreconsumer-Aufrufe und
+eine funktionale Head-Abnahme sind die Obergrenzen. Drei aktive Stunden
+einschließlich privater Helfer, Vorbereitung, Review und Koordination sowie
+fünf Stunden Gesamtzeit gelten ab T0=2026-10-24T18:30:30Z. Die Gesamtfrist
+endet 2026-10-24T23:30:30Z. Ein Kontrollpunkt folgt nach 90 aktiven oder
+150 gesamten Minuten; ein Neustart setzt Grenzen nicht zurück. Das bestehende
+vollständige SQL2025-Gate einschließlich Test 211 bleibt erforderlich.
+
+Fehlende Quellenbindung, offene Reviewbefunde, fehlgeschlagene Abnahme oder
+ausgeschöpfte Grenzen stoppen die Lieferung; danach erfolgen nur eigener
+Cleanup und Befundübergabe. Eine unverändert fehlgeschlagene CI wird nicht
+wiederholt. Neue Paket-/SDK-/Providerläufe, weitere Engines, Labentwicklung,
+Merge, Main-Nachlauf und Release-/ZIP-Veröffentlichung sind ausgeschlossen.
+Historische Nachweise und Budgets bleiben geschlossen;
+die übrige autonome Verarbeitung bleibt pausiert.
+
 ## Abgeschlossen: SSIS-001-Final-Commit-Meldungen (PR #419)
 
 [PR #419](https://github.com/gecompat/SQL_Server_Analyze/pull/419) ist am
