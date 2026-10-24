@@ -503,3 +503,36 @@ fehlender Kontext und gekappte Aufnahmen begrenzen die Aussage. Bei
 @IncludeMessages=0 bleibt die Interpretation mit MESSAGES_DISABLED aus.
 Der [öffentliche Vertrag](../../Architecture/SSIS_001_Phase0_Public_Contract.md#final-commit-meldungen-aus-erhaltenen-originaldaten-vom-24-oktober-2026)
 beschreibt Profile, ParseStatus, Schema und Grenzen.
+
+## Pipeline-Phasenbeginnmeldungen lesen
+
+@IncludePipelinePhaseBeginAnalysis=1 ergänzt pipelinePhaseBeginEvents mit
+SchemaVersion 10. PhaseName unterscheidet Validation, Prepare for Execute,
+Pre-Execute, Execute, Post Execute und Cleanup. Es handelt sich um gespeicherte
+Beginnmeldungen, getrennt von den vorhandenen Komponentenphasenzeiten.
+
+```sql
+EXEC [monitor].[USP_SsisLegacyLogAnalysis]
+      @LoggingDatabase = N'ExampleLogging'
+    , @ExecutionId = '00000000-0000-0000-0000-000000000001'
+    , @IncludePipelinePhaseBeginAnalysis = 1
+    , @HighImpactConfirmed = 1
+    , @MaxZeilen = 1000
+    , @ResultSetArt = 'RAW';
+```
+
+Die Beispielwerte sind synthetisch und müssen durch die eigene Quelle ersetzt
+werden. HighImpactConfirmed bestätigt hier das Lesen einer message-Spalte mit
+nvarchar(max); MaxZeilen begrenzt den Ausschnitt. RAW hängt die Menge zuletzt
+an. TABLE verwendet den Mappingnamen
+pipelinePhaseBeginEvents und eine eigene Caller-Temp-Tabelle; JSON enthält
+dieselben 19 Felder einschließlich NULL. CONSOLE zählt Berichte in einem Grid;
+NONE unterdrückt fachliche Grids.
+
+Validation wird nur einem VALIDATE-Paar derselben Source zugeordnet, andere
+Phasen einem EXECUTE-Paar. Eine weitergeleitete Paketmeldung ohne passenden
+Kontext bleibt sichtbar und unzugeordnet. Weitergeleitete Berichte werden
+nicht dedupliziert oder summiert. Beginnmeldungen beweisen keinen Abschluss,
+Fortschritt oder eine Phasendauer. Bei @IncludeMessages=0 ist die Interpretation
+mit MESSAGES_DISABLED ausgeschaltet. Der [öffentliche Vertrag](../../Architecture/SSIS_001_Phase0_Public_Contract.md#pipeline-phasenbeginnmeldungen-aus-erhaltenen-originaldaten-vom-24-oktober-2026)
+beschreibt genaue Profile, Status, Typen und Grenzen.

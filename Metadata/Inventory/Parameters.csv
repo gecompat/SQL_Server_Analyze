@@ -1974,3 +1974,5 @@ USP_SsisLegacyLogAnalysis,IncludeRowsWrittenAnalysis,bit,0
 USP_SsisLegacyLogAnalysis,IncludeThroughputAnalysis,bit,0
 
 USP_SsisLegacyLogAnalysis,IncludeFinalCommitAnalysis,bit,0
+
+USP_SsisLegacyLogAnalysis,IncludePipelinePhaseBeginAnalysis,bit,0
