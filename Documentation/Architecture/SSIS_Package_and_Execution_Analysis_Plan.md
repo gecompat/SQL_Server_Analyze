@@ -1881,3 +1881,25 @@ Der erste statische Block findet einen unklassifizierten direkten Vertragslink
 in Next_Steps.md. Der bestehende klassifizierte SSIS-Planpfad mit Vertragsverweis
 behebt diesen Befund; unveränderte erfolgreiche Prüfungen werden nicht wiederholt. Native11/12
 bleiben FAILED_NOT_QUALIFIED; SSIS-001 bleibt PARTIAL_PRODUCT_FUNCTION.
+
+## Zeilenfluss-Durchsatz: begrenzte Lieferung vom 24. Oktober 2026
+
+Der freigegebene Slice ergänzt eine beobachtete Rate je vorhandener Pfadgruppe
+und EXECUTE-Vorkommen. Der [öffentliche Vertrag](SSIS_001_Phase0_Public_Contract.md#zeilenfluss-durchsatz-aus-erhaltenen-originaldaten-vom-24-oktober-2026)
+legt Position 27, SchemaVersion 8 und die 33-Feld-Menge rowFlowThroughput fest.
+Null-Dauern und unvollständige Abdeckung erhalten keine Rate. Pfade und
+Multicastzweige werden nicht zu einer Paketmenge addiert.
+
+Vier erhaltene Aufnahmen mit 12/16/60/61 Ereignissen sowie P-N01/P-N02 mit
+33/123 Providerzeilen bilden die private, hashgebundene Originalbasis. P-N02
+enthält ein EXECUTE-Intervall mit 1000 ms; andere Originale belegen Null-Dauern.
+Die gezielte lokale Restabnahme besteht auf Windows SQL17.0.5015.4/CL170:
+19 noch offene SUT-Fälle, 128 Flagkombinationen, drei getrennte Stufenfälle
+und genau acht Restoreconsumer. Die Stufen sind keine vollständigen SUT-
+Fehlernachweise. Alle 33 Felder, native Facetten, Ausgabeparität, neun
+Quellwerte und Callerzustände sind geprüft; eigener Cleanup und unverändertes
+Datenbankinventar sind bestätigt. Die fehlgeschlagenen früheren Batches
+bleiben erhalten. Die vollständige 36-Fälle-Datei wird am endgültigen Head
+separat qualifiziert. Neue Paket-/SDK-Aufrufe und Providerqualifikationen
+sind 0; weitere Engines und Releaseveröffentlichung bleiben ausgeschlossen. Native11/12 bleiben FAILED_NOT_QUALIFIED und SSIS-001 bleibt
+PARTIAL_PRODUCT_FUNCTION; frühere Nachweise werden nicht umgebunden.

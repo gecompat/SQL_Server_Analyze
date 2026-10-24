@@ -372,6 +372,40 @@ Der direkte DTSX-Parser ergänzt statische Paketmetadaten. Der Kataloganalyzer
 untersucht getrennt eine SSISDB-Execution; GUID und Katalog-ID werden nicht
 automatisch miteinander verbunden.
 
+## Zeilenfluss-Durchsatz mit beobachteter Zeitbasis
+
+@IncludeThroughputAnalysis=1 benötigt @IncludeRowFlowAnalysis=1 und ergänzt
+rowFlowThroughput mit SchemaVersion 8. Jede vorhandene Pfadgruppe erhält ihre
+gemeldete Übertragungsmenge, das zugeordnete Pre-/Post-Execute-Zeitfenster
+und gegebenenfalls ReportedTransferRowsPerSecond. Die Zeitbasis ist das
+beobachtete EXECUTE-Intervall des Source-Vorkommens, keine gemessene exklusive
+Komponentenzeit. RawEndTime dient nicht zur Dauerberechnung.
+
+```sql
+EXEC [monitor].[USP_SsisLegacyLogAnalysis]
+    @LoggingDatabase = N'ExampleLogging',
+    @ExecutionId = '00000000-0000-0000-0000-000000000001',
+    @IncludeRowFlowAnalysis = 1,
+    @IncludeThroughputAnalysis = 1,
+    @HighImpactConfirmed = 1,
+    @ResultSetArt = 'RAW';
+```
+
+Der Aufruf verwendet eine eigene bereits vorhandene kompatible Loggingquelle.
+Bei ZERO_DURATION, unvollständiger Abdeckung oder einem ungeklärten Intervall
+bleibt die Rate NULL; RateStatus erklärt die Grenze. Null gemeldete Zeilen
+mit positiver Dauer ergeben dagegen die Rate null. Prüfen Sie dafür außerdem
+rowFlowEvents und sourceStatus. Fehlendes Logging wird nicht als null Zeilen
+oder vollständige Ausführung interpretiert. Pfade und Multicastzweige dürfen
+nicht zu einer Paketgesamtmenge addiert werden. Die sechs rechnerischen
+Nachkommastellen der Rate geben keine entsprechende Messgenauigkeit an.
+
+RAW hängt die neue Menge zuletzt an; TABLE verwendet den Schlüssel
+rowFlowThroughput. JSON liefert dieselben Felder über @Json OUTPUT.
+CONSOLE ergänzt drei Bestandszähler; NONE bleibt ohne fachliche Grids.
+Der [öffentliche Vertrag](../../Architecture/SSIS_001_Phase0_Public_Contract.md#zeilenfluss-durchsatz-aus-erhaltenen-originaldaten-vom-24-oktober-2026)
+beschreibt alle Felder, Statusprioritäten und Aussagegrenzen.
+
 ## Primärquellen
 
 - [Microsoft: sysssislog-Felder und Zeitgrenzen](https://learn.microsoft.com/en-us/sql/relational-databases/system-tables/sysssislog-transact-sql?view=sql-server-ver17)

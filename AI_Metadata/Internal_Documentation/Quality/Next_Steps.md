@@ -3,6 +3,45 @@
 **Stand:** 24. Oktober 2026
 **Zweck:** aktueller Auftragsstatus und historische Entwicklungswellen für `gecompat/SQL_Server_Analyze`
 
+## Freigegebener begrenzter SSIS-001-Schritt: Zeilenfluss-Durchsatz
+
+Der Benutzer hat den begrenzten Durchsatz-Slice anhand vorhandener Originale
+zur Implementierung und regulären PR-Lieferung freigegeben. Basis ist
+origin/main 7dc190f5cd0eac64e93b6d9bf0208ed98df62552. Der
+[SSIS-Plan mit Vertragsverweis](../../../Documentation/Architecture/SSIS_Package_and_Execution_Analysis_Plan.md#zeilenfluss-durchsatz-begrenzte-lieferung-vom-24-oktober-2026)
+bindet Position 27, SchemaVersion 8, die 33-Feld-Menge und acht Restoreconsumer.
+Die gezielte lokale Restabnahme besteht auf Windows SQL17.0.5015.4/CL170 mit
+19 noch offenen SUT-Fällen, allen 128 Flagkombinationen, drei getrennten
+quellgebundenen Stufenfällen und genau acht Restoreconsumern. Alle 33 Felder,
+nativen Facetten, Ausgaben und Callerzustände sind unabhängig geprüft;
+neun Quellwerte und Datenbankinventar bleiben erhalten, Cleanupfehler sind 0.
+Die Stufen sind keine vollständige SUT-Fehlerabnahme. Frühere Fehlerbatches
+bleiben fehlgeschlagen; die vollständige 36-Fälle-Datei wird in der exakten
+Head-CI separat ausgeführt. Ergebnisreview und Head-CI bleiben Liefergates.
+
+Die ursprünglichen Grenzen waren 15 versionierte Dateien, 1400 handgeänderte Zeilen, ein
+gebündelter Korrekturpass, zwei Reviews desselben Reviewers mit zusammen
+40 aktiven Minuten, zwei lokale Prüfblöcke und höchstens zwei Head-Abnahmen.
+Eine zweite Head-Abnahme benötigt einen geänderten Korrekturstand. Vier
+aktive Stunden einschließlich Review und Koordination sowie sechs Stunden
+Gesamtzeit ab 24. Oktober 2026 14:57:25 Uhr Wien gelten; Ende spätestens
+24. Oktober 2026 20:57:25 Uhr Wien. Ein Kontrollpunkt folgt nach zwei aktiven
+oder drei gesamten Stunden. Die Testeinbindung aktiviert das bestehende
+vollständige SQL2025-Gate. Die Lieferung endet mit dem geprüften offenen PR;
+Merge und Main-Nachlauf benötigen einen gesonderten Auftrag.
+
+Direkte Folgefreigaben erlaubten den eng begrenzten Rundungspass, die
+Datumsdarstellungs-/UTC-Korrektur und den unabhängig bestätigten Parallelsollsatz
+11/31 samt konsistenter Testgenerierung. Dafür gelten insgesamt vier lokale
+Prüfblöcke und drei Reviews desselben Reviewers; die übrigen Datei-, Zeilen-,
+Head-, Zeit- und Umfangsgrenzen bleiben erhalten. Die Rundungskorrektur
+betrifft 17 geänderte Handzeilen im Produkt und den kanonischen Adapter.
+Neue Paket-/SDK-Aufrufe und Providerqualifikationen sind 0; weitere Engines,
+Labentwicklung und Release-/ZIP-Veröffentlichung bleiben ausgeschlossen.
+Bindungsfehler, fehlgeschlagene Originalabnahme, offene Reviewbefunde oder
+ausgeschöpfte Grenzen stoppen die Lieferung. Historische Nachweise und
+Budgets bleiben unverändert; die übrige autonome Verarbeitung bleibt pausiert.
+
 ## Abgeschlossen: SSIS-001-Schreibmengen (PR #415)
 
 [PR #415](https://github.com/gecompat/SQL_Server_Analyze/pull/415) ist am

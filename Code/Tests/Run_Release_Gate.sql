@@ -123,6 +123,7 @@ RAISERROR(N'RELEASE_GATE 26/34: Frameworkweiter Ausgabevertrag',10,1) WITH NOWAI
 :r Integration/206_SsisLegacyLifecyclePhases_Runtime_Contract.sql
 :r Integration/207_SsisLegacyLookupCache_Runtime_Contract.sql
 :r Integration/208_SsisLegacyRowsWritten_Runtime_Contract.sql
+:r Integration/209_SsisLegacyRowFlowThroughput_Runtime_Contract.sql
 
 RAISERROR(N'RELEASE_GATE 27/34: Common',10,1) WITH NOWAIT;
 :r Common/090_Test_und_Abnahme_Phase1A.sql
