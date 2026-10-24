@@ -61987,7 +61987,7 @@ GO
 /*
 ===============================================================================
 Objekt       : monitor.USP_SsisLegacyLogAnalysis
-Version      : 1.7.0
+Version      : 1.8.0
 Stand        : 2026-10-24
 Typ          : Stored Procedure
 Zweck        : Liest eine explizite Legacy-Loggingquelle für genau eine GUID.
@@ -62022,6 +62022,7 @@ CREATE OR ALTER PROCEDURE [monitor].[USP_SsisLegacyLogAnalysis]
     , @IncludeLookupCacheAnalysis bit = 0
     , @IncludeRowsWrittenAnalysis bit = 0
     , @IncludeThroughputAnalysis bit = 0
+    , @IncludeFinalCommitAnalysis bit = 0
 AS
 BEGIN
     SET NOCOUNT ON;
@@ -62038,10 +62039,11 @@ BEGIN
         PRINT N'@IncludeLookupCacheAnalysis=1 ergänzt sechs Lookup-/Cacheprofile als einzelne Berichte: Position25, SchemaVersion6; keine Hit-Rate oder Gesamtmengenaddition.';
         PRINT N'@IncludeRowsWrittenAnalysis=1 ergänzt einzelne Schreibberichte: Position26, SchemaVersion7; keine Summen oder Commitgarantie.';
         PRINT N'@IncludeThroughputAnalysis=1 benötigt @IncludeRowFlowAnalysis=1: Position27, SchemaVersion8; gemeldete Pfadübertragungen je beobachtetem EXECUTE-Intervall.';
+        PRINT N'@IncludeFinalCommitAnalysis=1 ergänzt einzelne Final-Commit-Berichte: Position28, SchemaVersion9; keine Persistenz- oder Erfolgsgarantie.';
         PRINT N'@MaxZeilen NULL/0 und eingeschlossenes nvarchar(max) benötigen @HighImpactConfirmed=1. Zeitbudget ist kooperativ.';
         RETURN;
     END;
-    SELECT @IncludeThroughputAnalysis=COALESCE(@IncludeThroughputAnalysis,0),@IncludeRowsWrittenAnalysis=COALESCE(@IncludeRowsWrittenAnalysis,0),@IncludeLookupCacheAnalysis=COALESCE(@IncludeLookupCacheAnalysis,0),@IncludeComponentLifecyclePhases=COALESCE(@IncludeComponentLifecyclePhases,0),@IncludeComponentPhaseAnalysis=COALESCE(@IncludeComponentPhaseAnalysis,0),@IncludeRowFlowAnalysis=COALESCE(@IncludeRowFlowAnalysis,0),@IncludeTaskAnalysis=COALESCE(@IncludeTaskAnalysis,0),@IncludeTimeline=COALESCE(@IncludeTimeline,1),@IncludeMessages=COALESCE(@IncludeMessages,1),@HighImpactConfirmed=COALESCE(@HighImpactConfirmed,0);
+    SELECT @IncludeFinalCommitAnalysis=COALESCE(@IncludeFinalCommitAnalysis,0),@IncludeThroughputAnalysis=COALESCE(@IncludeThroughputAnalysis,0),@IncludeRowsWrittenAnalysis=COALESCE(@IncludeRowsWrittenAnalysis,0),@IncludeLookupCacheAnalysis=COALESCE(@IncludeLookupCacheAnalysis,0),@IncludeComponentLifecyclePhases=COALESCE(@IncludeComponentLifecyclePhases,0),@IncludeComponentPhaseAnalysis=COALESCE(@IncludeComponentPhaseAnalysis,0),@IncludeRowFlowAnalysis=COALESCE(@IncludeRowFlowAnalysis,0),@IncludeTaskAnalysis=COALESCE(@IncludeTaskAnalysis,0),@IncludeTimeline=COALESCE(@IncludeTimeline,1),@IncludeMessages=COALESCE(@IncludeMessages,1),@HighImpactConfirmed=COALESCE(@HighImpactConfirmed,0);
     DECLARE @OutputMode varchar(16)=UPPER(LTRIM(RTRIM(COALESCE(@ResultSetArt,'')))) COLLATE SQL_Latin1_General_CP1_CS_AS;
     DECLARE @ConsoleResultRequested bit=CASE WHEN @OutputMode='CONSOLE' THEN 1 ELSE 0 END;
     DECLARE @Now datetime2(3)=SYSUTCDATETIME(),@Deadline datetime2(3),@Status varchar(40)='AVAILABLE',@Partial bit=0;
@@ -62053,6 +62055,7 @@ BEGIN
     DECLARE @LookupComplete bit=0,@LookupStarted bit=0,@LookupCandidates bigint=NULL,@LookupParsed bigint=NULL,@LookupAssigned bigint=NULL;
     DECLARE @WrittenComplete bit=0,@WrittenStarted bit=0,@WrittenCandidates bigint=NULL,@WrittenParsed bigint=NULL,@WrittenAssigned bigint=NULL;
     DECLARE @ThroughputComplete bit=0,@ThroughputStarted bit=0,@ThroughputPaths bigint=NULL,@ThroughputRates bigint=NULL,@ThroughputSuppressed bigint=NULL;
+    DECLARE @CommitComplete bit=0,@CommitStarted bit=0,@CommitCandidates bigint=NULL,@CommitParsed bigint=NULL,@CommitAssigned bigint=NULL;
     DECLARE @AllowedNames nvarchar(max)=N'moduleStatus|execution|timeline|errorChain|iterations|loggingQuality|findings|sourceStatus|warnings';
     IF @IncludeTaskAnalysis=1 SET @AllowedNames+=N'|taskDurations|taskLoggingCoverage';
     IF @IncludeRowFlowAnalysis=1 SET @AllowedNames+=N'|rowFlowEvents|rowFlow';
@@ -62060,6 +62063,7 @@ BEGIN
     IF @IncludeLookupCacheAnalysis=1 SET @AllowedNames+=N'|lookupCacheEvents';
     IF @IncludeRowsWrittenAnalysis=1 SET @AllowedNames+=N'|rowsWrittenEvents';
     IF @IncludeThroughputAnalysis=1 SET @AllowedNames+=N'|rowFlowThroughput';
+    IF @IncludeFinalCommitAnalysis=1 SET @AllowedNames+=N'|finalCommitEvents';
     DECLARE @Limit bigint=CASE WHEN COALESCE(@MaxZeilen,0)=0 THEN 9223372036854775807 ELSE CONVERT(bigint,@MaxZeilen) END;
     DECLARE @Take bigint=CASE WHEN COALESCE(@MaxZeilen,0)=0 THEN 9223372036854775807 ELSE CONVERT(bigint,@MaxZeilen)+1 END;
     DECLARE @PreviousLock int=@@LOCK_TIMEOUT,@PreviousAbort bit=CASE WHEN (@@OPTIONS & 16384)=16384 THEN 1 ELSE 0 END;
@@ -62409,6 +62413,28 @@ BEGIN
             [EvidenceSource] nvarchar(160) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,
             [MessageText] nvarchar(max) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
         );
+        CREATE TABLE [#SsisLegacyLogAnalysis_FinalCommitEvents]
+        (
+            [FinalCommitEventOrdinal] bigint NOT NULL,
+            [LogId] int NOT NULL,
+            [ExecutionId] uniqueidentifier NOT NULL,
+            [EventName] nvarchar(128) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,
+            [SourceId] uniqueidentifier NULL,
+            [SourceName] nvarchar(4000) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,
+            [EventTime] datetime NULL,
+            [DataCode] int NULL,
+            [ParserId] varchar(32) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,
+            [ParseStatus] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,
+            [ObservationKind] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,
+            [ComponentName] nvarchar(4000) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,
+            [ContextStatus] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,
+            [ContextStartLogId] int NULL,
+            [ContextEndLogId] int NULL,
+            [InputIsTruncated] bit NOT NULL,
+            [EvidenceLevel] varchar(32) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,
+            [EvidenceSource] nvarchar(160) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,
+            [MessageText] nvarchar(max) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        );
         CREATE TABLE [#SsisLegacyLogAnalysis_RowFlowThroughput]
         (
             [RowFlowOrdinal] bigint NOT NULL,
@@ -62487,6 +62513,10 @@ BEGIN
         INSERT [#SsisLegacyLogAnalysis_SourceStatus]
             ([SourceOrdinal],[SourceName],[StatusCode],[IsPartial],[IsTruncated],[Detail],[CollectionTimeUtc])
         VALUES(9,N'rowsWrittenAnalysis','NOT_READ',1,0,N'NOT_READ',@Now);
+    IF @IncludeFinalCommitAnalysis=1
+        INSERT [#SsisLegacyLogAnalysis_SourceStatus]
+            ([SourceOrdinal],[SourceName],[StatusCode],[IsPartial],[IsTruncated],[Detail],[CollectionTimeUtc])
+        VALUES(11,N'finalCommitAnalysis','NOT_READ',1,0,N'NOT_READ',@Now);
     IF @IncludeThroughputAnalysis=1
         INSERT [#SsisLegacyLogAnalysis_SourceStatus]
             ([SourceOrdinal],[SourceName],[StatusCode],[IsPartial],[IsTruncated],[Detail],[CollectionTimeUtc])
@@ -63660,6 +63690,117 @@ BEGIN
         END;
         -- END ROWS WRITTEN ANALYSIS
 
+        -- BEGIN FINAL COMMIT ANALYSIS: individual reports do not prove durable commits or package success.
+        IF @IncludeFinalCommitAnalysis=1
+        BEGIN
+            DECLARE @CommitReason nvarchar(2000)=CASE WHEN @Status='INVALID_PARAMETER' THEN N'INVALID_PARAMETER'
+                WHEN @ValidBuffer=0 THEN N'NO_VALID_EVENT_BUFFER' WHEN @DerivationComplete=0 THEN N'PRIOR_DERIVATION_NOT_COMPLETED'
+                WHEN @IncludeMessages=0 THEN N'MESSAGES_DISABLED' WHEN SYSUTCDATETIME()>=@Deadline THEN N'TIME_BUDGET_EXHAUSTED' END;
+            IF @CommitReason IS NULL
+            BEGIN TRY
+                SET @CommitStarted=1;
+                DECLARE @CommitMessageBytes int=(SELECT CASE WHEN MaxLength=-1 OR MaxLength>4096 THEN 4096 ELSE MaxLength END
+                    FROM [#SsisLegacyLogAnalysis_Columns] WHERE ColumnName=N'message');
+                INSERT [#SsisLegacyLogAnalysis_FinalCommitEvents]
+                SELECT ROW_NUMBER() OVER(ORDER BY LogId),LogId,ExecutionId,EventName,SourceId,SourceName,EventTime,DataCode,
+                    NULL,'MALFORMED_PAYLOAD',NULL,NULL,'NOT_PARSED',NULL,NULL,@Truncated,
+                    'UNINTERPRETED',N'Legacy event buffer',MessageText
+                FROM [#SsisLegacyLogAnalysis_Buffer] WHERE DataCode IN(1075876063,1075876064);
+                DECLARE @CommitOrdinal bigint=1,@CommitCount bigint=(SELECT COUNT_BIG(*) FROM [#SsisLegacyLogAnalysis_FinalCommitEvents]);
+                DECLARE @FCText nvarchar(max),@FCEvent nvarchar(128),@FCCode int,@FCParser varchar(32),@FCParse varchar(40),
+                    @FCName nvarchar(max),@FCPrefix nvarchar(160),@FCSuffix nvarchar(80),@FCExpected nvarchar(max),
+                    @FCQuote int,@FCChar int,@FCUnicode int,@FCBad bit;
+                WHILE @CommitOrdinal<=@CommitCount
+                BEGIN
+                    SELECT @FCText=MessageText,@FCEvent=EventName,@FCCode=DataCode FROM [#SsisLegacyLogAnalysis_FinalCommitEvents] WHERE FinalCommitEventOrdinal=@CommitOrdinal;
+                    SELECT @FCParser=NULL,@FCParse='MALFORMED_PAYLOAD',@FCName=NULL,@FCBad=0;
+                    IF @FCText IS NULL SET @FCParse='MESSAGE_MISSING';
+                    ELSE IF DATALENGTH(@FCText)>=@CommitMessageBytes SET @FCParse='POTENTIALLY_TRUNCATED';
+                    ELSE IF @FCEvent IS NULL OR CONVERT(varbinary(max),@FCEvent)<>CONVERT(varbinary(max),N'OnInformation') SET @FCParse='CODE_EVENT_MISMATCH';
+                    ELSE
+                    BEGIN
+                        SELECT @FCParser=CASE WHEN @FCCode=1075876063 THEN 'FINAL_COMMIT_START_EN_1' ELSE 'FINAL_COMMIT_END_EN_1' END,
+                            @FCPrefix=CASE WHEN @FCCode=1075876063 THEN N'The final commit for the data insertion in "' ELSE N'The final commit for the data insertion  in "' END,
+                            @FCSuffix=CASE WHEN @FCCode=1075876063 THEN N'" has started.' ELSE N'" has ended.' END;
+                        SET @FCQuote=CHARINDEX(N'"',@FCText COLLATE Latin1_General_100_BIN2,LEN(@FCPrefix)+1);
+                        SET @FCName=SUBSTRING(@FCText COLLATE Latin1_General_100_BIN2,LEN(@FCPrefix)+1,CASE WHEN @FCQuote>LEN(@FCPrefix) THEN @FCQuote-LEN(@FCPrefix)-1 ELSE 0 END);
+                        SET @FCExpected=CONVERT(nvarchar(max),@FCPrefix)+@FCName+@FCSuffix+NCHAR(13)+NCHAR(10);
+                        IF DATALENGTH(@FCName) NOT BETWEEN 2 AND 8000 OR CONVERT(varbinary(max),@FCText)<>CONVERT(varbinary(max),@FCExpected) SET @FCBad=1;
+                        SET @FCChar=1;
+                        WHILE @FCChar<=DATALENGTH(@FCName)/2
+                        BEGIN
+                            SET @FCUnicode=UNICODE(SUBSTRING(@FCName COLLATE Latin1_General_100_BIN2,@FCChar,1));
+                            IF @FCUnicode BETWEEN 0 AND 31 OR @FCUnicode BETWEEN 127 AND 159 OR @FCUnicode=34 SET @FCBad=1;
+                            SET @FCChar+=1;
+                        END;
+                        SET @FCParse=CASE WHEN @FCBad=1 THEN 'MALFORMED_PAYLOAD' ELSE 'PARSED' END;
+                    END;
+                    UPDATE [#SsisLegacyLogAnalysis_FinalCommitEvents] SET ParserId=@FCParser,ParseStatus=@FCParse,
+                        ObservationKind=CASE WHEN @FCParse='PARSED' THEN CASE WHEN @FCCode=1075876063 THEN 'FINAL_COMMIT_START_REPORTED' ELSE 'FINAL_COMMIT_END_REPORTED' END END,
+                        ComponentName=CASE WHEN @FCParse='PARSED' THEN @FCName END,
+                        EvidenceLevel=CASE WHEN @FCParse='PARSED' THEN 'RUNTIME_OBSERVED' ELSE 'UNINTERPRETED' END
+                    WHERE FinalCommitEventOrdinal=@CommitOrdinal;
+                    SET @CommitOrdinal+=1;
+                END;
+                UPDATE e SET ContextStatus=c.ContextStatus,
+                    ContextStartLogId=CASE WHEN c.ContextStatus='ASSIGNED' THEN p.StartLogId END,
+                    ContextEndLogId=CASE WHEN c.ContextStatus='ASSIGNED' THEN p.EndLogId END
+                FROM [#SsisLegacyLogAnalysis_FinalCommitEvents] AS e
+                OUTER APPLY(SELECT COUNT_BIG(*) AS PairCount,MIN(i.StartLogId) AS StartLogId,MIN(i.EndLogId) AS EndLogId,MIN(i.StartTime) AS StartTime,MIN(i.EndTime) AS EndTime
+                    FROM [#SsisLegacyLogAnalysis_Iterations] AS i WHERE i.ExecutionId=e.ExecutionId AND i.SourceId=e.SourceId AND i.PairKind='EXECUTE' AND i.PairStatus='PAIRED'
+                        AND i.StartLogId<e.LogId AND e.LogId<i.EndLogId) AS p
+                CROSS APPLY(SELECT CASE WHEN e.ParseStatus<>'PARSED' THEN 'NOT_PARSED'
+                    WHEN e.SourceId IS NULL OR e.SourceId='00000000-0000-0000-0000-000000000000' THEN 'SOURCE_ID_MISSING'
+                    WHEN e.EventTime IS NULL THEN 'EVENT_TIME_MISSING' WHEN p.PairCount=0 THEN 'NO_OBSERVED_PAIR'
+                    WHEN p.PairCount>1 THEN 'AMBIGUOUS_PAIR' WHEN e.EventTime<p.StartTime OR e.EventTime>p.EndTime THEN 'TIME_OUTSIDE_PAIR' ELSE 'ASSIGNED' END AS ContextStatus) AS c;
+                -- BEGIN FINAL COMMIT ATOMIC DECISION
+                    SELECT @CommitCandidates=COUNT_BIG(*),@CommitParsed=COALESCE(SUM(CONVERT(bigint,CASE WHEN ParseStatus='PARSED' THEN 1 ELSE 0 END)),0),
+                        @CommitAssigned=COALESCE(SUM(CONVERT(bigint,CASE WHEN ContextStatus='ASSIGNED' THEN 1 ELSE 0 END)),0)
+                    FROM [#SsisLegacyLogAnalysis_FinalCommitEvents];
+                IF SYSUTCDATETIME()>=@Deadline SET @CommitReason=N'TIME_BUDGET_EXHAUSTED';
+                ELSE
+                BEGIN
+                    DECLARE @CommitLimited bit=CASE WHEN @Truncated=1 OR @CommitParsed<@CommitCandidates OR @CommitAssigned<@CommitParsed THEN 1 ELSE 0 END;
+                    UPDATE [#SsisLegacyLogAnalysis_SourceStatus] SET StatusCode=CASE WHEN @CommitLimited=1 THEN 'AVAILABLE_LIMITED' WHEN @CommitCandidates=0 THEN 'AVAILABLE_EMPTY' ELSE 'AVAILABLE' END,
+                        IsPartial=@CommitLimited,ObservedRowCount=@CommitCandidates,ReturnedRowCount=@CommitCandidates,IsTruncated=0,
+                        Detail=N'Candidates='+CONVERT(nvarchar(20),@CommitCandidates)+N';Parsed='+CONVERT(nvarchar(20),@CommitParsed)+N';ContextAssigned='+CONVERT(nvarchar(20),@CommitAssigned)
+                    WHERE SourceOrdinal=11;
+                    IF @CommitCandidates=0 INSERT [#SsisLegacyLogAnalysis_Warnings] VALUES(0,'FINAL_COMMIT_EVENT_NOT_OBSERVED',N'finalCommitAnalysis',N'Keine Kandidaten im gewählten Puffer; kein Nachweis fehlender Commits.');
+                    IF @CommitParsed<@CommitCandidates INSERT [#SsisLegacyLogAnalysis_Warnings] VALUES(0,'FINAL_COMMIT_PAYLOAD_NOT_PARSED',N'finalCommitAnalysis',N'Mindestens ein Kandidat besitzt kein zugelassenes vollständiges Meldungsprofil.');
+                    IF @CommitAssigned<@CommitParsed INSERT [#SsisLegacyLogAnalysis_Warnings] VALUES(0,'FINAL_COMMIT_CONTEXT_NOT_ASSIGNED',N'finalCommitAnalysis',N'Mindestens ein lesbarer Bericht besitzt keinen eindeutigen EXECUTE-Berichtskontext.');
+                    SET @CommitComplete=1;
+                END;
+                -- END FINAL COMMIT ATOMIC DECISION
+            END TRY
+            BEGIN CATCH
+                DECLARE @CommitNativeError int=ERROR_NUMBER(),@CommitNativeMessage nvarchar(4000)=ERROR_MESSAGE();
+                UPDATE [#SsisLegacyLogAnalysis_SourceStatus] SET StatusCode=CASE WHEN @CommitNativeError IN(229,262,297,300,371) THEN 'DENIED'
+                    WHEN @CommitNativeError IN(207,208,911,916,942) THEN 'SOURCE_UNAVAILABLE' ELSE 'ERROR_HANDLED' END,
+                    IsPartial=1,ErrorNumber=@CommitNativeError,ErrorMessage=@CommitNativeMessage,ObservedRowCount=NULL,ReturnedRowCount=NULL,IsTruncated=0,Detail=N'NATIVE_SOURCE_ERROR' WHERE SourceOrdinal=11;
+                IF @Error IS NULL SELECT @Error=@CommitNativeError,@Message=@CommitNativeMessage;
+                INSERT [#SsisLegacyLogAnalysis_Warnings] VALUES(0,'FINAL_COMMIT_ANALYSIS_ERROR',N'finalCommitAnalysis',N'Die optionale Auswertung der Final-Commit-Meldungen ist fehlgeschlagen; gültige vorherige Mengen bleiben erhalten.');
+            END CATCH;
+            -- BEGIN FINAL COMMIT DISCARD
+            IF @CommitComplete=0
+            BEGIN
+                DELETE FROM [#SsisLegacyLogAnalysis_FinalCommitEvents];
+                SELECT @CommitCandidates=NULL,@CommitParsed=NULL,@CommitAssigned=NULL;
+                UPDATE [#SsisLegacyLogAnalysis_SourceStatus] SET IsPartial=1,ObservedRowCount=NULL,ReturnedRowCount=NULL,IsTruncated=0,
+                    StatusCode=CASE WHEN @CommitReason=N'TIME_BUDGET_EXHAUSTED' AND @CommitStarted=1 THEN 'AVAILABLE_LIMITED' ELSE StatusCode END,
+                    Detail=COALESCE(@CommitReason,Detail) WHERE SourceOrdinal=11;
+                IF @CommitReason=N'MESSAGES_DISABLED' INSERT [#SsisLegacyLogAnalysis_Warnings] VALUES(0,'FINAL_COMMIT_MESSAGES_DISABLED',N'finalCommitAnalysis',N'Der fachliche Meldungstextzugriff und die Final-Commit-Meldungeninterpretation sind abgeschaltet.');
+                IF @CommitReason=N'TIME_BUDGET_EXHAUSTED' INSERT [#SsisLegacyLogAnalysis_Warnings] VALUES(0,'FINAL_COMMIT_TIME_BUDGET_EXHAUSTED',N'finalCommitAnalysis',N'Die optionale Ableitung wurde nicht innerhalb des kooperativen Budgets übernommen.');
+            END;
+            -- END FINAL COMMIT DISCARD
+            UPDATE [#SsisLegacyLogAnalysis_SourceStatus] SET CollectionTimeUtc=SYSUTCDATETIME() WHERE SourceOrdinal=11;
+            IF EXISTS(SELECT 1 FROM [#SsisLegacyLogAnalysis_SourceStatus] WHERE SourceOrdinal=11 AND IsPartial=1)
+            BEGIN
+                SET @Partial=1;
+                IF @Status IN('AVAILABLE','AVAILABLE_EMPTY','AVAILABLE_LIMITED') SET @Status='AVAILABLE_LIMITED';
+            END;
+        END;
+        -- END FINAL COMMIT ANALYSIS
+
         -- BEGIN ROW FLOW THROUGHPUT ANALYSIS
         IF @IncludeThroughputAnalysis=1
         BEGIN
@@ -63838,11 +63979,11 @@ BEGIN
     END;
     ;WITH w AS(SELECT *,ROW_NUMBER() OVER(ORDER BY WarningCode,SourceName) AS n FROM [#SsisLegacyLogAnalysis_Warnings]) UPDATE w SET WarningOrdinal=CONVERT(int,n);
     INSERT [#SsisLegacyLogAnalysis_ModuleStatus]
-    VALUES(N'USP_SsisLegacyLogAnalysis',CASE WHEN @IncludeThroughputAnalysis=1 THEN 8 WHEN @IncludeRowsWrittenAnalysis=1 THEN 7 WHEN @IncludeLookupCacheAnalysis=1 THEN 6 WHEN @IncludeComponentPhaseAnalysis=1 THEN CASE WHEN @IncludeComponentLifecyclePhases=1 THEN 5 ELSE 4 END WHEN @IncludeRowFlowAnalysis=1 THEN 3 WHEN @IncludeTaskAnalysis=1 THEN 2 ELSE 1 END,@LoggingDatabase,@LoggingSchema,@LoggingTable,@ExecutionId,@IncludeMessages,@Status,@Partial,@Error,@Message,@Now);
+    VALUES(N'USP_SsisLegacyLogAnalysis',CASE WHEN @IncludeFinalCommitAnalysis=1 THEN 9 WHEN @IncludeThroughputAnalysis=1 THEN 8 WHEN @IncludeRowsWrittenAnalysis=1 THEN 7 WHEN @IncludeLookupCacheAnalysis=1 THEN 6 WHEN @IncludeComponentPhaseAnalysis=1 THEN CASE WHEN @IncludeComponentLifecyclePhases=1 THEN 5 ELSE 4 END WHEN @IncludeRowFlowAnalysis=1 THEN 3 WHEN @IncludeTaskAnalysis=1 THEN 2 ELSE 1 END,@LoggingDatabase,@LoggingSchema,@LoggingTable,@ExecutionId,@IncludeMessages,@Status,@Partial,@Error,@Message,@Now);
     SELECT @StatusCodeOut=@Status,@IsPartialOut=@Partial,@ErrorNumberOut=@Error,@ErrorMessageOut=@Message;
     IF COALESCE(@JsonErzeugen,0)=1
         SELECT @Json=(SELECT
-            JSON_QUERY((SELECT N'USP_SsisLegacyLogAnalysis' AS ModuleName,CASE WHEN @IncludeThroughputAnalysis=1 THEN 8 WHEN @IncludeRowsWrittenAnalysis=1 THEN 7 WHEN @IncludeLookupCacheAnalysis=1 THEN 6 WHEN @IncludeComponentPhaseAnalysis=1 THEN CASE WHEN @IncludeComponentLifecyclePhases=1 THEN 5 ELSE 4 END WHEN @IncludeRowFlowAnalysis=1 THEN 3 WHEN @IncludeTaskAnalysis=1 THEN 2 ELSE 1 END AS SchemaVersion,@Now AS CollectionTimeUtc,@Status AS StatusCode,@Partial AS IsPartial FOR JSON PATH,INCLUDE_NULL_VALUES,WITHOUT_ARRAY_WRAPPER)) AS [meta]
+            JSON_QUERY((SELECT N'USP_SsisLegacyLogAnalysis' AS ModuleName,CASE WHEN @IncludeFinalCommitAnalysis=1 THEN 9 WHEN @IncludeThroughputAnalysis=1 THEN 8 WHEN @IncludeRowsWrittenAnalysis=1 THEN 7 WHEN @IncludeLookupCacheAnalysis=1 THEN 6 WHEN @IncludeComponentPhaseAnalysis=1 THEN CASE WHEN @IncludeComponentLifecyclePhases=1 THEN 5 ELSE 4 END WHEN @IncludeRowFlowAnalysis=1 THEN 3 WHEN @IncludeTaskAnalysis=1 THEN 2 ELSE 1 END AS SchemaVersion,@Now AS CollectionTimeUtc,@Status AS StatusCode,@Partial AS IsPartial FOR JSON PATH,INCLUDE_NULL_VALUES,WITHOUT_ARRAY_WRAPPER)) AS [meta]
           , JSON_QUERY(COALESCE((SELECT * FROM [#SsisLegacyLogAnalysis_ModuleStatus] ORDER BY [ModuleName] FOR JSON PATH,INCLUDE_NULL_VALUES),N'[]')) AS [moduleStatus]
           , JSON_QUERY(COALESCE((SELECT * FROM [#SsisLegacyLogAnalysis_Execution] ORDER BY [ExecutionId] FOR JSON PATH,INCLUDE_NULL_VALUES),N'[]')) AS [execution]
           , JSON_QUERY(COALESCE((SELECT * FROM [#SsisLegacyLogAnalysis_Timeline] ORDER BY [TimelineOrdinal] FOR JSON PATH,INCLUDE_NULL_VALUES),N'[]')) AS [timeline]
@@ -63885,6 +64026,11 @@ BEGIN
     BEGIN
         SET @Json=JSON_MODIFY(@Json,'$.rowFlowThroughput',JSON_QUERY(COALESCE((SELECT * FROM [#SsisLegacyLogAnalysis_RowFlowThroughput] ORDER BY RowFlowOrdinal FOR JSON PATH,INCLUDE_NULL_VALUES),N'[]')));
     END;
+    IF COALESCE(@JsonErzeugen,0)=1 AND @IncludeFinalCommitAnalysis=1
+    BEGIN
+        SET @Json=JSON_MODIFY(@Json,'$.meta.FinalCommitCatalogVersion',1);
+        SET @Json=JSON_MODIFY(@Json,'$.finalCommitEvents',JSON_QUERY(COALESCE((SELECT * FROM [#SsisLegacyLogAnalysis_FinalCommitEvents] ORDER BY FinalCommitEventOrdinal FOR JSON PATH,INCLUDE_NULL_VALUES),N'[]')));
+    END;
     IF @OutputMode='TABLE'
     BEGIN
         DECLARE @TargetTable sysname;
@@ -63924,6 +64070,10 @@ BEGIN
         BEGIN
             SET @TargetTable=(SELECT TargetTable FROM [#SsisLegacyLogAnalysis_ResultTables] WHERE ResultName=N'rowFlowThroughput'); IF @TargetTable IS NOT NULL EXEC [monitor].[InternalWriteResultTable] N'#SsisLegacyLogAnalysis_RowFlowThroughput',@TargetTable,@ThrowOnError=1;
         END;
+        IF @IncludeFinalCommitAnalysis=1
+        BEGIN
+            SET @TargetTable=(SELECT TargetTable FROM [#SsisLegacyLogAnalysis_ResultTables] WHERE ResultName=N'finalCommitEvents'); IF @TargetTable IS NOT NULL EXEC [monitor].[InternalWriteResultTable] N'#SsisLegacyLogAnalysis_FinalCommitEvents',@TargetTable,@ThrowOnError=1;
+        END;
     END;
     IF @OutputMode='RAW'
     BEGIN
@@ -63954,6 +64104,7 @@ BEGIN
         IF @IncludeLookupCacheAnalysis=1 SELECT * FROM [#SsisLegacyLogAnalysis_LookupCacheEvents] ORDER BY LookupEventOrdinal;
         IF @IncludeRowsWrittenAnalysis=1 SELECT * FROM [#SsisLegacyLogAnalysis_RowsWrittenEvents] ORDER BY RowsWrittenEventOrdinal;
         IF @IncludeThroughputAnalysis=1 SELECT * FROM [#SsisLegacyLogAnalysis_RowFlowThroughput] ORDER BY RowFlowOrdinal;
+        IF @IncludeFinalCommitAnalysis=1 SELECT * FROM [#SsisLegacyLogAnalysis_FinalCommitEvents] ORDER BY FinalCommitEventOrdinal;
     END;
     IF @ConsoleResultRequested=1
     BEGIN
@@ -64064,6 +64215,21 @@ BEGIN
             IF @OwnDdlEntryLock=0 SET LOCK_TIMEOUT 0;
             EXEC sys.sp_executesql N'UPDATE [#SsisLegacyLogAnalysis_Console] SET [ThroughputPaths]=@Candidates,[ThroughputRates]=@Parsed,[ThroughputSuppressed]=@Assigned;',
                 N'@Candidates bigint,@Parsed bigint,@Assigned bigint',@Candidates=@ThroughputPaths,@Parsed=@ThroughputRates,@Assigned=@ThroughputSuppressed;
+        END;
+        IF @IncludeFinalCommitAnalysis=1
+        BEGIN
+            SET @OwnDdlEntryLock=@@LOCK_TIMEOUT;
+            BEGIN TRY
+                IF @OwnDdlEntryLock=0 SET LOCK_TIMEOUT 1000;
+                ALTER TABLE [#SsisLegacyLogAnalysis_Console] ADD [FinalCommitMeldungen] bigint NULL,[GeleseneFinalCommitMeldungen] bigint NULL,[ZugeordneteFinalCommitMeldungen] bigint NULL;
+            END TRY
+            BEGIN CATCH
+                IF @OwnDdlEntryLock=0 SET LOCK_TIMEOUT 0;
+                THROW;
+            END CATCH;
+            IF @OwnDdlEntryLock=0 SET LOCK_TIMEOUT 0;
+            EXEC sys.sp_executesql N'UPDATE [#SsisLegacyLogAnalysis_Console] SET [FinalCommitMeldungen]=@Candidates,[GeleseneFinalCommitMeldungen]=@Parsed,[ZugeordneteFinalCommitMeldungen]=@Assigned;',
+                N'@Candidates bigint,@Parsed bigint,@Assigned bigint',@Candidates=@CommitCandidates,@Parsed=@CommitParsed,@Assigned=@CommitAssigned;
         END;
         EXEC [monitor].[InternalEmitConsoleResult] @SourceTable=N'#SsisLegacyLogAnalysis_Console',@ResultLabel=N'SSIS-Legacy-Ausführung',@EmptyMessage=N'Keine sichtbare Legacy-Ausführung';
     END;

@@ -473,3 +473,33 @@ Die begrenzte [Lookup-/Cacheabnahme](../../Architecture/SSIS_Package_and_Executi
 bestätigt Integration207, zwölf getrennte extrahierte Stufen und acht neue
 Restoreconsumer aus erhaltenen Originaldaten. Neue Paket- und SDK-Aufrufe
 sind 0; dies ist keine frische Provider- oder allgemeine Rollenqualifikation.
+
+## Einzelne Final-Commit-Berichte lesen
+
+@IncludeFinalCommitAnalysis=1 ergänzt finalCommitEvents mit SchemaVersion 9.
+ObservationKind unterscheidet gemeldeten Start und gemeldetes Ende; LogId,
+SourceId und MessageText erhalten die beobachtete Herkunft. ContextStatus
+beschreibt die Zuordnung zum vorhandenen EXECUTE-Zeitfenster derselben Source.
+ComponentName ist ein Meldungsname und kein verifizierter Tabellenname.
+
+```sql
+EXEC [monitor].[USP_SsisLegacyLogAnalysis]
+      @LoggingDatabase = N'ExampleLogging'
+    , @ExecutionId = '00000000-0000-0000-0000-000000000001'
+    , @IncludeFinalCommitAnalysis = 1
+    , @ResultSetArt = 'RAW';
+```
+
+Die Werte im Beispiel sind synthetisch und müssen durch die eigene Quelle
+ersetzt werden. RAW hängt die neue Menge zuletzt an; TABLE verwendet den
+Mappingnamen finalCommitEvents und eine eigene Caller-Temp-Tabelle. JSON
+liefert dieselben 19 Felder einschließlich NULL. CONSOLE zählt Berichte in
+einem Grid; NONE unterdrückt fachliche Grids.
+
+Weitergereichte Meldungen auf Paketebene bleiben separate Zeilen. Start und
+Ende werden nicht zu Commitoperationen gepaart oder gezählt. Eine Endmeldung
+belegt keinen dauerhaft bestätigten Commit oder Paketerfolg. Leere Mengen,
+fehlender Kontext und gekappte Aufnahmen begrenzen die Aussage. Bei
+@IncludeMessages=0 bleibt die Interpretation mit MESSAGES_DISABLED aus.
+Der [öffentliche Vertrag](../../Architecture/SSIS_001_Phase0_Public_Contract.md#final-commit-meldungen-aus-erhaltenen-originaldaten-vom-24-oktober-2026)
+beschreibt Profile, ParseStatus, Schema und Grenzen.
