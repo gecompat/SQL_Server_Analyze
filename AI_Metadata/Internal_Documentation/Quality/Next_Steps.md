@@ -3,7 +3,45 @@
 **Stand:** 24. Oktober 2026
 **Zweck:** aktueller Auftragsstatus und historische Entwicklungswellen für `gecompat/SQL_Server_Analyze`
 
-## Freigegebener begrenzter SSIS-001-Schritt: Zeilenfluss-Durchsatz
+## Abgeschlossen: SSIS-001-Zeilenfluss-Durchsatz (PR #417)
+
+[PR #417](https://github.com/gecompat/SQL_Server_Analyze/pull/417) ist am
+24. Oktober 2026 als `6dffdb8e67b6f8030f43e54f8d184d67f5bdf0bd` regulär in
+`origin/main` integriert. Der Ergebnisreview besitzt keine offenen P1/P2-Befunde.
+Alle sieben erforderlichen Head-Prüfungen bestehen auf
+`039bf0ae681d3e72efd18ca7db2762bcb183b144`. Die
+[funktionale Head-CI 40102707829](https://github.com/gecompat/SQL_Server_Analyze/actions/runs/40102707829)
+bestand im ausdrücklich freigegebenen zweiten Versuch auf unverändertem Head.
+Das vollständige Gate enthält Test 209 mit 36 Fachfällen und 128 Flagkombinationen.
+Der [erste SQL-Versuch](https://github.com/gecompat/SQL_Server_Analyze/actions/runs/40102707829/job/120897999970)
+bleibt fehlgeschlagen: Der TABLE-Export-Timeout 1222 in
+202/C012 besitzt weiterhin die Ursache UNKNOWN; elf Diagnosestichproben
+erfassten keinen Blocker. Die Wiederholung verbrauchte den zweiten und
+letzten Head-Abnahmeplatz und erneuerte keine weiteren Budgets.
+
+Die vier automatischen Main-Workflows für Commitnachrichten, Datenschutz,
+Dokumentation und [funktionale Abnahme 40105002784](https://github.com/gecompat/SQL_Server_Analyze/actions/runs/40105002784)
+bestehen jeweils im ersten Versuch auf dem Merge-Commit. Head- und Merge-Tree
+sind identisch; der SQL-Cleanup besteht. Beim Abschluss war Main sauber
+synchronisiert; der eigene lokale und Remote-Branch sind entfernt.
+Der bisherige Checkout blieb sauber am Merge-Commit ohne Arbeitsbranch
+erhalten, weil die App seine Archivierung als primären Checkout ablehnt.
+
+Der begrenzte Durchsatz-Auftrag ist abgeschlossen. Historische Nachweise
+bleiben an ihre ursprünglichen Quellen gebunden; fehlgeschlagene lokale
+Batches und Native11/12 bleiben FAILED_NOT_QUALIFIED. SSIS-001 bleibt
+PARTIAL_PRODUCT_FUNCTION und WI-0009 GATE-0001 offen. Das veröffentlichte
+v1.1.2 bleibt unverändert und enthält PR #417 nicht. Diese
+Dokumentationsnachführung erneuert keine Lauf-, Review- oder sonstigen
+Budgets und erteilt keine weitere Ausführungsfreigabe.
+Die übrige autonome Verarbeitung bleibt pausiert.
+
+### Historische Freigabe und lokale Abnahme
+
+Die folgenden Angaben halten die damalige Freigabe, deren Grenzen und die
+lokale Abnahme unverändert fest. Damals noch ausstehende Liefergates sind
+oben mit ihren tatsächlichen Nachweisen abgeschlossen. Die Angaben sind
+keine aktuelle Ausführungsfreigabe.
 
 Der Benutzer hat den begrenzten Durchsatz-Slice anhand vorhandener Originale
 zur Implementierung und regulären PR-Lieferung freigegeben. Basis ist
