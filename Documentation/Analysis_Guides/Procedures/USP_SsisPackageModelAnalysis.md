@@ -13,6 +13,10 @@ Der Import liest weder DTSX noch Dateien, SSISDB, externe Quellen oder Paket-SQL
 SQL CLR und eine Toolbelt-Installation werden auf dem Analyze-Server nicht benötigt.
 Die vorhandene direkte XML-Inventur bleibt über `USP_SsisPackageAnalysis` verfügbar.
 
+Die neue API gehört zum aktuellen Quellstand. Das bestehende Produkt-ZIP 1.1.2
+enthält sie noch nicht. Der [kanonische SSIS-Quellinstaller](../../../Code/Install/Install_SSIS_Analysis.sql)
+bindet sie gemeinsam mit ihren nativen Hilfsobjekten ein.
+
 ## Nicht beantwortete Fragen
 
 Ein formal gültiges Modell beweist weder Paketerfolg noch Datenqualität oder
