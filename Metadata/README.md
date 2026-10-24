@@ -22,6 +22,17 @@ einheitliches Metadatenschema. Ein ausdrücklich zugeordneter Vertrag oder ein
 Schema gilt für die betreffende Datei. Die öffentliche Ausgabe, technische
 Bestandsdaten und Planungsstatus dürfen nicht gegeneinander ausgetauscht werden.
 
+Der [SSIS-Austauschvertrag mit Toolbelt](../Documentation/Architecture/SSIS_Analyze_Toolbelt_Exchange_Contract.md)
+besitzt eine unverändert aus Toolbelt übernommene Formatbeschreibung unter `Quality/`:
+[JSON-Schema](Quality/SSIS_Exchange_V1.schema.json) und
+[synthetisches Beispiel](Quality/SSIS_Exchange_V1.example.json). Das Schema prüft
+die Dokumentstruktur; Kennungseindeutigkeit, Referenzen, Scopes, Producerherkunft
+und Paketbindung benötigen zusätzliche semantische Prüfungen. Die Beispieldigests
+sind erkennbare Platzhalter und kein Nachweis für einen Producerbuild oder ein
+vorhandenes DTSX-Paket. Die Provenienzdatei bindet die Übernahme an den
+Toolbelt-Commit; `Code/Tools/Sync_Ssis_Exchange_Contract.py --check` prüft sie
+ohne Toolbelt-Installation. Die nativen Feldregeln entstehen aus diesem Schema.
+
 ## Von einem Eintrag zur Prüfung
 
 Für eine Procedure führt der Weg von `Objects.csv` und ihrem `SourcePath` zur

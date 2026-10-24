@@ -808,3 +808,9 @@ EXEC [monitor].[USP_SsisCatalogExecutionAnalysis] @Hilfe=1;
 ```sql
 EXEC [monitor].[USP_SsisLegacyLogAnalysis] @Hilfe=1;
 ```
+
+## `[monitor].[USP_SsisPackageModelAnalysis]`
+
+```sql
+EXEC [monitor].[USP_SsisPackageModelAnalysis] @Hilfe = 1;
+```

@@ -1,0 +1,15 @@
+{
+  "wireVersion": "1.0.0",
+  "nodeSignatures": [
+    ["pkg1", "PACKAGE", null], ["var1", "VARIABLE", "pkg1"],
+    ["exe1", "EXECUTABLE", "pkg1"], ["cmp1", "COMPONENT", "exe1"],
+    ["port1", "PORT", "cmp1"], ["col1", "COLUMN", "port1"],
+    ["cmp2", "COMPONENT", "exe1"], ["port2", "PORT", "cmp2"], ["col2", "COLUMN", "port2"]
+  ],
+  "edgeSignatures": [
+    ["COLUMN_MAP", "col1", "col2", null],
+    ["PIPELINE_PATH", "port1", "port2", null],
+    ["VALUE_DEPENDENCY", "col1", "col2", "MAPPED_VALUE_INPUT"]
+  ],
+  "coverageStatus": "COMPLETE"
+}

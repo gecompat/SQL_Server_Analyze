@@ -1,0 +1,2 @@
+# Die Paketbytebindung benötigt unveränderte Fixturebytes auf allen Hosts.
+*.dtsx -text
