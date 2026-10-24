@@ -3,7 +3,56 @@
 **Stand:** 24. Oktober 2026
 **Zweck:** aktueller Auftragsstatus und historische Entwicklungswellen für `gecompat/SQL_Server_Analyze`
 
-## Freigegebener begrenzter SSIS-001-Schritt: Pipeline-Phasenbeginnmeldungen
+## Integriert: SSIS-001-Pipeline-Phasenbeginnmeldungen (PR #421); Main-Abnahme offen
+
+[PR #421](https://github.com/gecompat/SQL_Server_Analyze/pull/421) ist am
+24. Oktober 2026 durch den gesonderten Mergeauftrag regulär als
+`2f5f472bffab254d6b98a8f0ed72faf04b772455` in `origin/main` integriert.
+Beide Durchgänge desselben unabhängigen Reviewers sind mit zusammen sieben
+aktiven Minuten ohne offene Befunde abgeschlossen. Alle sieben Head-Prüfungen
+bestehen auf `3547bc29b38cf570e720ea19f4a3d42aa1cb3745`, einschließlich der
+[funktionalen Head-CI 40122884037](https://github.com/gecompat/SQL_Server_Analyze/actions/runs/40122884037)
+im ersten und einzigen Versuch mit dem vollständigen SQL2025-Gate und Test 211.
+Head- und Merge-Tree sind identisch.
+
+Die automatischen Main-Workflows für Commitnachrichten, Datenschutz und
+Dokumentation bestehen jeweils im ersten Versuch auf dem Merge-Commit.
+Der [funktionale Main-Nachlauf 40124510785](https://github.com/gecompat/SQL_Server_Analyze/actions/runs/40124510785)
+ist im ersten Versuch fehlgeschlagen: Der vorhandene Vertrag
+`175_P1_Statistics_Runtime_Contract.sql` bricht mit Fehler 54901 und
+`P1-Vertrag STAT-DOMINANT fehlgeschlagen.` ab. Die Ursache ist nicht
+nachgewiesen. Das Gate beendet sich vor Test 211; dessen Ausführung ist
+damit für diesen Main-Nachlauf nicht belegt. Die bestandene lokale und
+Head-Abnahme bleibt an ihre ursprünglichen Quellen gebunden und ersetzt
+keine erfolgreiche funktionale Main-Abnahme. Der Main-Nachlauf wurde nicht
+wiederholt. Seine Diagnose, Korrektur oder Wiederholung benötigt einen
+gesonderten Auftrag; die funktionale Main-Abnahme bleibt offen.
+
+Beim Mergeabschluss war Main sauber synchronisiert. Der eigene lokale und
+Remote-Branch sind entfernt; der Checkout blieb sauber am Merge-Commit
+ohne Arbeitsbranch erhalten. Der Umsetzungsumfang beträgt 15 versionierte
+Dateien mit 565 handgeänderten und 162 generierten Adapterzeilen. Verbraucht
+sind zwei lokale Prüfblöcke, zwei Reviews, ein gebündelter Korrekturpass,
+genau acht Restoreconsumer und eine funktionale Head-Abnahme. Der Korrekturpass
+betraf Dokumentation und einen Testkommentar; Produktbytes blieben unverändert.
+
+Die Lieferung und Integration von PR #421 sind abgeschlossen; die fehlgeschlagene
+funktionale Main-Abnahme bleibt als offener Befund erhalten. Historische
+Nachweise und Budgets bleiben unverändert und geschlossen. Native11/12 bleiben
+FAILED_NOT_QUALIFIED, SSIS-001 bleibt PARTIAL_PRODUCT_FUNCTION und
+WI-0009 GATE-0001 offen. Diese Dokumentationsnachführung erneuert keine Lauf-,
+Review- oder sonstigen Budgets und erteilt keine weitere Ausführungsfreigabe.
+Die übrige autonome Verarbeitung bleibt pausiert.
+
+### Historische Freigabe und lokale Abnahme
+
+Die folgenden Angaben halten die damalige Freigabe, ihre Grenzen und die
+lokale Abnahme unverändert fest. Damals noch ausstehende Review- und Head-Gates
+sind oben mit ihren tatsächlichen Nachweisen abgeschlossen; der später
+gesondert beauftragte Main-Nachlauf bleibt fehlgeschlagen. Die historischen
+Angaben sind keine aktuelle Ausführungsfreigabe.
+
+#### Freigegebener begrenzter SSIS-001-Schritt: Pipeline-Phasenbeginnmeldungen
 
 Der Benutzer hat alle sechs originalbelegten Profile zur begrenzten Umsetzung
 und regulären PR-Lieferung freigegeben. Basis ist origin/main
