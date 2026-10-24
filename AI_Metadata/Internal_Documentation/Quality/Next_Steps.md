@@ -3,7 +3,44 @@
 **Stand:** 24. Oktober 2026
 **Zweck:** aktueller Auftragsstatus und historische Entwicklungswellen für `gecompat/SQL_Server_Analyze`
 
-## Freigegebener begrenzter SSIS-001-Schritt: Final-Commit-Meldungen
+## Abgeschlossen: SSIS-001-Final-Commit-Meldungen (PR #419)
+
+[PR #419](https://github.com/gecompat/SQL_Server_Analyze/pull/419) ist am
+24. Oktober 2026 als `0ce9fc560c56a559baba258a47e333ca00b92947` regulär in
+`origin/main` integriert. Beide Durchgänge desselben unabhängigen Reviewers
+sind ohne offene handlungsrelevante Befunde abgeschlossen. Alle sieben
+erforderlichen Head-Prüfungen bestehen auf
+`4f58d8a1bbb25c82bfc9c78eb88cd5486ef665b7`, einschließlich der
+[funktionalen Head-CI 40115832878](https://github.com/gecompat/SQL_Server_Analyze/actions/runs/40115832878)
+im ersten und einzigen Versuch mit dem vollständigen SQL2025-Gate und Test 210.
+
+Die vier automatischen Main-Workflows für Commitnachrichten, Datenschutz,
+Dokumentation und [funktionale Abnahme 40117308159](https://github.com/gecompat/SQL_Server_Analyze/actions/runs/40117308159)
+bestehen jeweils im ersten Versuch auf dem Merge-Commit. Head- und Merge-Tree
+sind identisch. Beim Abschluss war Main sauber synchronisiert; der eigene
+lokale und Remote-Branch sind entfernt. Der Checkout blieb sauber am
+Merge-Commit ohne Arbeitsbranch erhalten; die App schützt ihn als primären Checkout.
+
+Der Umfang beträgt 15 versionierte Dateien mit 556 handgeänderten und
+174 generierten Adapterzeilen. Verbraucht sind zwei lokale Prüfblöcke, zwei
+Reviews mit zusammen rund zehn aktiven Minuten, acht Restoreconsumer und
+eine funktionale Head-Abnahme. Ein Produktkorrekturpass wurde nicht benötigt.
+Der begrenzte Final-Commit-Auftrag ist abgeschlossen.
+
+Historische Nachweise bleiben an ihre ursprünglichen Quellen gebunden;
+Native11/12 bleiben FAILED_NOT_QUALIFIED. SSIS-001 bleibt
+PARTIAL_PRODUCT_FUNCTION und WI-0009 GATE-0001 offen. Das veröffentlichte
+v1.1.2 und sein ZIP bleiben unverändert und enthalten PR #419 nicht.
+Diese Dokumentationsnachführung erneuert keine Lauf-, Review- oder sonstigen
+Budgets und erteilt keine weitere Ausführungsfreigabe.
+Die übrige autonome Verarbeitung bleibt pausiert.
+
+### Historische Freigabe und lokale Abnahme
+
+Die folgenden Angaben halten die damalige Freigabe, deren Grenzen und die
+lokale Abnahme unverändert fest. Damals noch ausstehende Liefergates sind
+oben mit ihren tatsächlichen Nachweisen abgeschlossen. Die Angaben sind
+keine aktuelle Ausführungsfreigabe.
 
 Der Benutzer hat den begrenzten Teilschritt aus Schritt 5 anhand vorhandener
 Originale zur Umsetzung und regulären PR-Lieferung freigegeben. Basis ist
