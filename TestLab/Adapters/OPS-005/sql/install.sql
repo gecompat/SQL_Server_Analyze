@@ -65160,6 +65160,7 @@ BEGIN
     DECLARE @Started datetime2(3)=SYSUTCDATETIME(),@Deadline datetime2(3),@Status varchar(40)='AVAILABLE_LIMITED',@Partial bit=1;
     DECLARE @OriginalLockTimeout int=@@LOCK_TIMEOUT,@LockTimeoutSql nvarchar(80),@Error int=NULL,@Message nvarchar(2048)=NULL;
     DECLARE @Mode varchar(16)=UPPER(LTRIM(RTRIM(COALESCE(@ResultSetArt,'')))) COLLATE SQL_Latin1_General_CP1_CS_AS;
+    DECLARE @ConsoleResultRequested bit=CASE WHEN @Mode='CONSOLE' THEN 1 ELSE 0 END;
     DECLARE @Limit bigint=CASE WHEN @MaxZeilen IS NULL OR @MaxZeilen=0 THEN 9223372036854775807 ELSE @MaxZeilen END;
     DECLARE @ProfileSupported bit=1,@SchemaVersion int=1;
     DECLARE @ValidationStage varchar(24)='PARAMETERS';
@@ -65458,7 +65459,7 @@ BEGIN
         SELECT * FROM #SsisPackageModelAnalysis_Coverage ORDER BY [Feature]; SELECT * FROM #SsisPackageModelAnalysis_Findings;
         SELECT * FROM #SsisPackageModelAnalysis_SourceStatus; SELECT * FROM #SsisPackageModelAnalysis_Warnings;
     END;
-    IF @Mode='CONSOLE'
+    IF @ConsoleResultRequested=1
         EXEC [monitor].[InternalEmitConsoleResult] @SourceTable=N'#SsisPackageModelAnalysis_ModuleStatus',@ResultLabel=N'SsisPackageModelAnalysis',@EmptyMessage=N'Keine fachlichen Ergebnisse';
 END;
 GO
