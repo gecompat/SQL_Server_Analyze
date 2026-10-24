@@ -1,9 +1,34 @@
 # Nächste Arbeitsschritte
 
-**Stand:** 23. Oktober 2026
+**Stand:** 24. Oktober 2026
 **Zweck:** aktueller Auftragsstatus und historische Entwicklungswellen für `gecompat/SQL_Server_Analyze`
 
-## Freigegebener begrenzter SSIS-001-Schritt: Schreibmengen
+## Abgeschlossen: SSIS-001-Schreibmengen (PR #415)
+
+[PR #415](https://github.com/gecompat/SQL_Server_Analyze/pull/415) ist am
+24. Oktober 2026 als `0e6f0325ecbfb1e984c59045f44ff11909628464` regulär in
+`origin/main` integriert. Der Ergebnisreview besitzt keine offenen Befunde.
+Alle sieben erforderlichen Head-Prüfungen bestehen auf
+`ff79408efdca95156adfd9df8724c6f9e3328536`, einschließlich der
+[funktionalen Head-CI 40009169508](https://github.com/gecompat/SQL_Server_Analyze/actions/runs/40009169508).
+Die vier automatischen Main-Workflows für Commitnachrichten, Datenschutz,
+Dokumentation und [funktionale Abnahme 40061402546](https://github.com/gecompat/SQL_Server_Analyze/actions/runs/40061402546)
+bestehen jeweils im ersten Versuch auf dem Merge-Commit. Head- und Merge-Tree
+sind identisch. Beim Abschluss war Main sauber synchronisiert; der eigene
+lokale und Remote-Branch sind entfernt, der Worktree ist wiederherstellbar archiviert.
+
+Der begrenzte Schreibmengen-Auftrag ist abgeschlossen. Historische Nachweise
+bleiben an ihre ursprünglichen Quellen gebunden; Native11/12 bleiben
+FAILED_NOT_QUALIFIED. SSIS-001 bleibt PARTIAL_PRODUCT_FUNCTION und
+WI-0009 GATE-0001 offen. Das veröffentlichte v1.1.2 bleibt unverändert und
+enthält PR #415 nicht. Diese Dokumentationsnachführung erneuert keine Lauf-,
+Review- oder sonstigen Budgets und erteilt keine weitere Ausführungsfreigabe.
+Die übrige autonome Verarbeitung bleibt pausiert.
+
+### Historische Freigabe und lokale Abnahme
+
+Die folgenden Angaben halten die damalige Freigabe, deren Grenzen und die
+lokale Abnahme fest. Sie sind keine aktuelle Ausführungsfreigabe.
 
 Der direkte Benutzer hat die Schreibmengen-Auswertung anhand vorhandener
 Originaldaten zur begrenzten Umsetzung und regulären PR-Lieferung freigegeben.
