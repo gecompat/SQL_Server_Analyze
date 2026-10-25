@@ -77,6 +77,32 @@ Native SQL-Server-2019- oder SQL-Server-2022-Läufe sind erforderlich, wenn die 
 
 Die betroffene native Version wird gezielt über `.github/workflows/release-native-matrix.yml` gestartet. Der Workflow führt bei einem Release Candidate alle drei unterstützten Versionen aus und begrenzt die Parallelität auf einen Matrixjob.
 
+Für ein konkretes natives Snapshot-/Migrationsrisiko ergänzt
+snapshot_risk_gate=true die Paket-, Deployment-, Snapshot- und
+Nebenläufigkeitsverträge auf genau dem ausdrücklich ausgewählten target.
+Der Schalter ist standardmäßig false und wird mit target=all abgelehnt.
+Auf SQL2025 laufen die bereits vorgesehenen Zusatzverträge weiterhin genau
+einmal. Der zusätzliche ältere Lauf verwendet das Compatibility Level seiner
+nativen Engine; ein Compatibility-Level-Wechsel ersetzt diese Abnahme nicht.
+
+
+qualification_scope=FULL_RELEASE bleibt der voreingestellte unveränderte
+Releaseumfang. Der ausdrücklich ausgewählte Modus SNAPSHOT_SCHEMA_RISK
+prüft auf genau einer nativen Engine stattdessen das commit-/paketgebundene
+Installations- und Snapshotrisiko: Frameworkinstallation und Smoke,
+die drei Migrationsrouten mit Daten-/Strukturerhaltung, Calleroptionen und
+gezielten Installationsrechten sowie Snapshot- und Nebenläufigkeitsverträge.
+Der volle SQL2025-Required-Check bleibt davon unabhängig verpflichtend.
+
+Die Evidenz dieses Modus nennt die tatsächlich ausgeführten Vertragskennungen,
+qualification_scope=SNAPSHOT_SCHEMA_RISK und core_release_gate=NOT_EXECUTED.
+Der Releaseaggregator lehnt eine solche Zeile als FULL_RELEASE ab; sie bestätigt
+keine vollständige native Releasematrix. Auswahl und Aggregation benötigen
+positive und negative Gegenfälle, insbesondere gegen fehlende Verträge,
+falsche Scopeangaben, Commit-/Paketabweichungen und unbestätigten Cleanup.
+Frühere fehlgeschlagene Vollläufe bleiben FAILED mit unbekannter Ursache,
+solange keine gesonderte Ursachenabnahme vorliegt.
+
 ## Aktive Workflows
 
 | Workflow | Aufgabe | Automatischer Umfang |

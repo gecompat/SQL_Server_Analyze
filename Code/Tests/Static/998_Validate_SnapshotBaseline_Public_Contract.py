@@ -342,6 +342,12 @@ def validate_repository(repository_root: pathlib.Path) -> list[str]:
                 errors.append("PUBLIC_CONTRACT_ID")
             if public_contract.get("contractVersion") != 1:
                 errors.append("PUBLIC_CONTRACT_VERSION")
+            if public_contract.get("targetPackageVersion") != "1.1.0" or public_contract.get("targetSchemaVersion") != 2:
+                errors.append("PUBLIC_CONTRACT_TARGET_SCHEMA_VERSION")
+            if public_contract.get("acceptedTargetUpgrade") != {"packageVersion":"1.0.0","schemaVersion":1,"requiresExactManagedShape":True,"preservesExistingRows":True}:
+                errors.append("PUBLIC_CONTRACT_TARGET_UPGRADE")
+            if public_contract.get("matrixWorkflow") != ".github/workflows/release-native-matrix.yml":
+                errors.append("PUBLIC_CONTRACT_ACTIVE_NATIVE_WORKFLOW")
             if public_contract.get("releaseState") != "IMPLEMENTED_ACTIONS_GATE":
                 errors.append("PUBLIC_CONTRACT_RELEASE_STATE")
             if public_contract.get("targetSqlServerMajorVersions") != [15, 16, 17]:
@@ -640,6 +646,10 @@ GO
             {
                 "contractId": "SC-023-PUBLIC-V1",
                 "contractVersion": 1,
+                "targetPackageVersion": "1.1.0",
+                "targetSchemaVersion": 2,
+                "acceptedTargetUpgrade": {"packageVersion":"1.0.0","schemaVersion":1,"requiresExactManagedShape":True,"preservesExistingRows":True},
+                "matrixWorkflow": ".github/workflows/release-native-matrix.yml",
                 "releaseState": "IMPLEMENTED_ACTIONS_GATE",
                 "targetSqlServerMajorVersions": [15, 16, 17],
                 "packageBoundary": {

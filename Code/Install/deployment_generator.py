@@ -264,7 +264,7 @@ def table_definitions(sql: str, role: str, path: str) -> list[Table]:
     return result
 
 
-def load_sources(root: Path, snapshot: bool) -> tuple[list[Source], list[Table], str]:
+def load_sources(root: Path, snapshot: bool, check_snapshot_guard: bool=True) -> tuple[list[Source], list[Table], str]:
     masters = [('FRAMEWORK', 'Install_All.sql')]
     if snapshot:
         masters += [('SNAPSHOT', 'Install_SnapshotBaseline_Target.sql'), ('FRAMEWORK', 'Install_SnapshotBaseline_Framework.sql')]
@@ -293,6 +293,12 @@ def load_sources(root: Path, snapshot: bool) -> tuple[list[Source], list[Table],
             content = path.read_text(encoding='utf-8-sig').replace('\r\n','\n')
             relative = path.relative_to(root).as_posix()
             hashes.append((relative, content))
+            if relative==SNAPSHOT_SCHEMA_SOURCE and SNAPSHOT_GUARD_BEGIN in content:
+                clean,actual_snapshot_guard=snapshot_guard_parts(content)
+                # Keep a marker in the parsed model; the native generated block
+                # is verified separately rather than expanding the SQL grammar.
+                begin=content.index(SNAPSHOT_GUARD_BEGIN)
+                content=clean[:begin]+SNAPSHOT_GUARD_BEGIN+SNAPSHOT_GUARD_END+clean[begin:]
             batches = split_batches(content)
             if batches and [upper(t) for t in tokens(batches[0])] == ['USE','[DeineDatenbank]',';']:
                 batches = batches[1:]
@@ -329,6 +335,8 @@ def load_sources(root: Path, snapshot: bool) -> tuple[list[Source], list[Table],
                 schema,name,pos = qualified(ts,i+2)
                 if (schema,name) != (table.schema,table.name):
                     continue
+                if snapshot_check_alter(ts,i,source.path,tables):
+                    continue
                 if upper(ts[pos]) != 'ADD':
                     raise BuildError('Only enumerated additive table clauses are supported')
                 if table.name != 'WaitTypeCatalog' or source.path != 'Code/01_Common/074_WaitTypeCatalog.sql':
@@ -361,6 +369,7 @@ def load_sources(root: Path, snapshot: bool) -> tuple[list[Source], list[Table],
             raise BuildError('Multiple unique constraints require an explicit native index-name mapping')
     # Classify executable source forms independently of comments and seed text.
     for source in sources:
+        snapshot_transaction_spans(source.text,source.path)
         if source.module:
             for batch in source.batches:
                 bt = tokens(batch)
@@ -372,14 +381,16 @@ def load_sources(root: Path, snapshot: bool) -> tuple[list[Source], list[Table],
             continue
         for batch in source.batches:
             bt = tokens(batch)
+            batch_tx_spans=snapshot_transaction_spans(batch,source.path,False)
             if upper(bt[0]) not in ('SET','IF','DECLARE','CREATE','UPDATE','INSERT','DELETE'):
                 raise BuildError(f'Unknown deployment batch prefix: {source.path}')
             for i,token in enumerate(bt):
-                if upper(token) in ('TRUNCATE','MERGE','GRANT','DENY','REVOKE','COMMIT','ROLLBACK','SAVE','DBCC','BACKUP','RESTORE','USE','BULK'):
+                in_snapshot_wrapper=any(a<=token.start<b for a,b in batch_tx_spans)
+                if upper(token) in ('TRUNCATE','MERGE','GRANT','DENY','REVOKE','COMMIT','ROLLBACK','SAVE','DBCC','BACKUP','RESTORE','USE','BULK') and not in_snapshot_wrapper:
                     raise BuildError(f'Unsupported deployment operation in {source.path}: {token.value}')
                 if upper(token)=='INTO' and (i==0 or upper(bt[i-1])!='INSERT'):
                     raise BuildError(f'Unclassified SELECT/OUTPUT INTO in {source.path}')
-                if upper(token)=='BEGIN' and i+1<len(bt) and upper(bt[i+1]) in ('TRAN','TRANSACTION','DISTRIBUTED'):
+                if upper(token)=='BEGIN' and i+1<len(bt) and upper(bt[i+1]) in ('TRAN','TRANSACTION','DISTRIBUTED') and not in_snapshot_wrapper:
                     raise BuildError(f'Deployment source may not start a transaction: {source.path}')
                 if upper(token)=='INSERT':
                     pos=i+1+(upper(bt[i+1])=='INTO')
@@ -394,6 +405,8 @@ def load_sources(root: Path, snapshot: bool) -> tuple[list[Source], list[Table],
                         if (source.role,schema,name) not in keys:
                             raise BuildError(f'Unclassified persistent INSERT target in {source.path}')
                 if upper(token)=='ALTER':
+                    if snapshot_check_alter(bt,i,source.path,tables):
+                        continue
                     if upper(bt[i+1])!='TABLE':
                         raise BuildError(f'Unsupported deployment ALTER in {source.path}')
                     schema,name,pos=qualified(bt,i+2)
@@ -405,6 +418,8 @@ def load_sources(root: Path, snapshot: bool) -> tuple[list[Source], list[Table],
                     if (source.role,schema,name) not in keys:
                         raise BuildError(f'Unclassified CREATE INDEX target in {source.path}')
                 if upper(token) == 'DROP' and source.path != 'Code/09_VersionAdaptive/005_Deprecated_Object_Cleanup.sql':
+                    if any(snapshot_check_alter(bt,j,source.path,tables) for j in range(max(0,i-6),i)):
+                        continue
                     local_tables={ident(bt[j+2]) for j in range(len(bt)-2)
                                   if [upper(t) for t in bt[j:j+2]]==['CREATE','TABLE']
                                   and ident(bt[j+2]).startswith('#')}
@@ -429,6 +444,8 @@ def load_sources(root: Path, snapshot: bool) -> tuple[list[Source], list[Table],
                     dynamic=tokens(unstring(bt[pos]))
                     if not dynamic:
                         raise BuildError('Empty executable source string')
+                    if source.path==SNAPSHOT_SCHEMA_SOURCE and unstring(bt[pos])==SNAPSHOT_ADMISSION_ERROR:
+                        continue
                     if [upper(t) for t in dynamic[:2]]==['CREATE','SCHEMA']:
                         if len(dynamic)!=6 or ident(dynamic[2]) not in ('monitor','snapshot') or [upper(dynamic[3]),ident(dynamic[4]),dynamic[5].value]!=['AUTHORIZATION','dbo',';']:
                             raise BuildError('Unknown schema creation contract')
@@ -444,6 +461,11 @@ def load_sources(root: Path, snapshot: bool) -> tuple[list[Source], list[Table],
                         raise BuildError(f'Unknown dynamic source batch: {source.path}')
     for relative in ('Code/Install/deployment_generator.py','Code/Install/Build-DeploymentInstaller.ps1'):
         hashes.append((relative,(root/relative).read_text(encoding='utf-8-sig').replace('\r\n','\n')))
+    schema_source=next((s for s in sources if s.path==SNAPSHOT_SCHEMA_SOURCE and SNAPSHOT_GUARD_BEGIN in s.text),None)
+    if schema_source:
+        expected=snapshot_guard([t for t in tables if t.role=='SNAPSHOT'],[s for s in sources if s.role=='SNAPSHOT'])
+        if check_snapshot_guard and actual_snapshot_guard!=expected:
+            raise BuildError('Stale or changed Snapshot schema preflight; regenerate the canonical guard')
     digest = hashlib.sha256(json.dumps(hashes, ensure_ascii=False, separators=(',',':')).encode('utf-8')).hexdigest()
     return sources,tables,digest
 
@@ -486,6 +508,131 @@ def constraint_template(table: Table, ordinal: int, include_indexes: bool=True) 
     return template,names
 
 
+SNAPSHOT_SCHEMA_SOURCE = 'Code/10_SnapshotBaseline/030_Snapshot_Target_Schema.sql'
+SNAPSHOT_GUARD_BEGIN = '-- SNAPSHOT_SCHEMA_PREFLIGHT_BEGIN\n'
+SNAPSHOT_GUARD_END = '-- SNAPSHOT_SCHEMA_PREFLIGHT_END\n'
+SNAPSHOT_ADMISSION_ERROR = "SET XACT_ABORT OFF; RAISERROR(N'Snapshot schema installation requires IMPLICIT_TRANSACTIONS OFF.',16,1);"
+SNAPSHOT_TX_BEGIN = """DECLARE @SnapshotMigrationStage tinyint=0;
+DECLARE @SnapshotSchemaOwnTransaction bit=CASE WHEN @@TRANCOUNT=0 THEN 1 ELSE 0 END;
+BEGIN TRY
+IF @SnapshotSchemaOwnTransaction=1 BEGIN TRANSACTION;
+ELSE SAVE TRANSACTION SQLSA_SnapshotSchema2;
+"""
+SNAPSHOT_TX_END = """IF @SnapshotSchemaOwnTransaction=1 COMMIT TRANSACTION;
+END TRY
+BEGIN CATCH
+DECLARE @SnapshotMigrationError int=ERROR_NUMBER();
+IF @SnapshotSchemaOwnTransaction=1 AND XACT_STATE()<>0 ROLLBACK TRANSACTION;
+ELSE IF @SnapshotSchemaOwnTransaction=0 AND XACT_STATE()=1 ROLLBACK TRANSACTION SQLSA_SnapshotSchema2;
+RAISERROR(N'SNAPSHOT_SCHEMA_MIGRATION_FAILED CompletedStage=%d NativeError=%d',10,1,@SnapshotMigrationStage,@SnapshotMigrationError) WITH NOWAIT;
+THROW;
+END CATCH;
+"""
+SNAPSHOT_LEGACY_CHECKS = {
+    'CollectorPolicy': ("CHECK ([CollectorCode] IN ('PERFORMANCE_COUNTERS','WAIT_STATS'))",
+                        "CHECK ([CollectorCode] = 'PERFORMANCE_COUNTERS')"),
+    'Scope': ("CHECK ([ScopeType] IN ('SERVER','PERFORMANCE_COUNTER','WAIT_TYPE'))",
+              "CHECK ([ScopeType] IN ('SERVER','PERFORMANCE_COUNTER'))"),
+}
+
+
+def snapshot_transaction_spans(text: str,path: str,required: bool=True) -> list[tuple[int,int]]:
+    if path!=SNAPSHOT_SCHEMA_SOURCE or SNAPSHOT_GUARD_BEGIN not in text:
+        return []
+    spans=[]
+    for expected in (SNAPSHOT_TX_BEGIN,SNAPSHOT_TX_END):
+        expected=expected.rstrip('\n')
+        count=text.count(expected)
+        if count!=1:
+            if required:
+                raise BuildError('Changed Snapshot transaction ownership wrapper')
+            return []
+        start=text.index(expected)
+        tokens(text[:start])  # The wrapper may not be hidden in a string/comment.
+        spans.append((start,start+len(expected)))
+    if spans[0][0]>=text.index(SNAPSHOT_GUARD_BEGIN) or spans[1][0]<text.index(SNAPSHOT_GUARD_END):
+        raise BuildError('Snapshot preflight is outside its transaction ownership wrapper')
+    return spans
+
+
+def snapshot_check_alter(ts: list[Token],start: int,path: str,tables: list[Table]) -> bool:
+    if path!=SNAPSHOT_SCHEMA_SOURCE or [upper(t) for t in ts[start:start+2]]!=['ALTER','TABLE']:
+        return False
+    end=next((j for j in range(start,len(ts)) if ts[j].value==';'),None)
+    if end is None:
+        return False
+    actual=[(upper(t) if t.kind=='plain' else ident(t)) for t in ts[start:end+1]]
+    for table in tables:
+        if table.schema!='snapshot' or table.name not in SNAPSHOT_LEGACY_CHECKS:
+            continue
+        name=next(n for n,k in table.constraints if k=='CHECK' and n in ('CK_snapshot_CollectorPolicy_CollectorCode','CK_snapshot_Scope_ScopeType'))
+        current,_=SNAPSHOT_LEGACY_CHECKS[table.name]
+        for clause in ('DROP CONSTRAINT '+q(name),'WITH CHECK ADD CONSTRAINT '+q(name)+' '+current):
+            expected=tokens('ALTER TABLE '+table.object_name+' '+clause+';')
+            if actual==[(upper(t) if t.kind=='plain' else ident(t)) for t in expected]:
+                return True
+    return False
+
+
+def snapshot_guard(tables: list[Table],sources: list[Source]) -> str:
+    sql=preflight(tables,sources)
+    # Direct SQLCMD batches share their temp scope with subsequent invocations.
+    # Only tables created by this block are dropped after successful validation.
+    sql+='DROP TABLE #SQLSA_ConstraintMap,#SQLSA_KnownForeignKeys,'+','.join(q(f'#SQLSA_Expected_{n}') for n in range(1,len(tables)+1))+';\n'
+    sql+='SET LOCK_TIMEOUT 0;\n'
+    sql=sql.replace('#SQLSA_','#SnapshotTargetSchema_')
+    digest=hashlib.sha256(sql.encode('utf-8')).hexdigest()
+    return '-- Derived model SHA256: '+digest+'\n'+sql
+
+
+def snapshot_guard_parts(text: str, required: bool=True) -> tuple[str,str]:
+    """Only an exactly delimited derived block can leave a deployment batch."""
+    if SNAPSHOT_GUARD_BEGIN not in text and SNAPSHOT_GUARD_END not in text and not required:
+        return text,''
+    if text.count(SNAPSHOT_GUARD_BEGIN)!=1 or text.count(SNAPSHOT_GUARD_END)!=1:
+        raise BuildError('Missing or ambiguous Snapshot schema preflight markers')
+    begin=text.index(SNAPSHOT_GUARD_BEGIN)
+    end=text.index(SNAPSHOT_GUARD_END)
+    if end<begin:
+        raise BuildError('Reversed Snapshot schema preflight markers')
+    if begin>0 and text[begin-1]!='\n' or end>0 and text[end-1]!='\n':
+        raise BuildError('Snapshot schema preflight markers must occupy their own lines')
+    tokens(text[:begin])
+    tokens(text[:end])
+    return text[:begin]+text[end+len(SNAPSHOT_GUARD_END):],text[begin+len(SNAPSHOT_GUARD_BEGIN):end]
+
+
+def snapshot_state_classifier(tables: list[Table], sources: list[Source], strict: bool=False,
+                              variable: str='@SnapshotExpectedLegacy') -> str:
+    """Classify only complete managed closures; table shape is checked next."""
+    managed=[t.object_name for t in tables if t.schema=='snapshot']
+    modules=[q(s.module[0])+'.'+q(s.module[1]) for s in sources if s.module and s.module[0]=='snapshot']
+    present=' OR '.join('OBJECT_ID('+lit(name)+') IS NOT NULL' for name in managed+modules)
+    missing=' OR '.join('OBJECT_ID('+lit(name)+",N'U') IS NULL" for name in managed)
+    out=[f'DECLARE {variable} bit=0;\n']
+    if strict:
+        out.append(f"IF {missing} THROW 53935,N'Incomplete Snapshot schema.',1;\n")
+    out.append(f'IF {present} BEGIN\n')
+    out.append(f"IF {missing} THROW 53935,N'Incomplete Snapshot schema.',1;\n")
+    # Hold the row's namespace before classifying it, not only later when
+    # checking its column/constraint shape. This also protects pure version DML.
+    out.append("DECLARE @SnapshotVersionLock bigint; SELECT TOP(1) @SnapshotVersionLock=1 FROM [snapshot].[PackageVersion] WITH(TABLOCKX,HOLDLOCK) OPTION(MAXDOP 1);\n")
+    # Dynamic compilation permits fresh installation without the version table;
+    # a malformed existing version table still fails before any product write.
+    query=("IF (SELECT COUNT_BIG(*) FROM [snapshot].[PackageVersion])<>1 "
+           "THROW 53935,N'Unknown Snapshot version cardinality.',1; "
+           "IF EXISTS(SELECT 1 FROM [snapshot].[PackageVersion] WHERE PackageCode='SC-023' "
+           "AND PackageVersion='1.0.0' AND SchemaVersion=1) SET @Legacy=1; "
+           "ELSE IF NOT EXISTS(SELECT 1 FROM [snapshot].[PackageVersion] WHERE PackageCode='SC-023' "
+           "AND PackageVersion='1.1.0' AND SchemaVersion=2) "
+           "THROW 53935,N'Unknown Snapshot package/schema version.',1;")
+    out.append(f"EXEC sys.sp_executesql {lit(query)},N'@Legacy bit OUTPUT',{variable} OUTPUT;\n")
+    if strict:
+        out.append(f"IF {variable}=1 THROW 53935,N'Legacy Snapshot version after deployment.',1;\n")
+    out.append('END;\n')
+    return ''.join(out)
+
+
 def preflight(tables: list[Table], sources: list[Source], strict: bool=False) -> str:
     out = ["SET NOCOUNT ON; SET LOCK_TIMEOUT 10000;\n"
            "IF ISNULL(HAS_PERMS_BY_NAME(DB_NAME(),'DATABASE','CONTROL'),0)<>1 OR ISNULL(HAS_PERMS_BY_NAME(NULL,NULL,'VIEW ANY DEFINITION'),0)<>1 THROW 53901,N'Deployment requires CONTROL DATABASE and visible server metadata.',1;\n"
@@ -494,6 +641,9 @@ def preflight(tables: list[Table], sources: list[Source], strict: bool=False) ->
            "DECLARE @ObjectId int,@ExpectedId int,@LockCount bigint,@ConstraintSql nvarchar(max),@Prefix nvarchar(33);\n"
            "CREATE TABLE #SQLSA_ConstraintMap(CanonicalName sysname COLLATE DATABASE_DEFAULT NOT NULL,ParentColumn sysname COLLATE DATABASE_DEFAULT NULL,ConstraintType char(2) COLLATE DATABASE_DEFAULT NOT NULL,Definition nvarchar(max) COLLATE DATABASE_DEFAULT NULL,IsDisabled bit NOT NULL,IsNotTrusted bit NOT NULL,IsNotForReplication bit NOT NULL);\n"
            "CREATE TABLE #SQLSA_KnownForeignKeys(ParentSchema sysname COLLATE DATABASE_DEFAULT,ParentTable sysname COLLATE DATABASE_DEFAULT,ConstraintName sysname COLLATE DATABASE_DEFAULT);\n"]
+    snapshot_schema2=any(s.path==SNAPSHOT_SCHEMA_SOURCE and SNAPSHOT_GUARD_BEGIN in s.text for s in sources)
+    if snapshot_schema2:
+        out.append(snapshot_state_classifier(tables,sources,strict))
     for schema in sorted({t.schema for t in tables}):
         out.append(f"IF SCHEMA_ID({lit(schema)}) IS NOT NULL AND NOT EXISTS(SELECT 1 FROM sys.schemas WHERE name={lit(schema)} AND principal_id=DATABASE_PRINCIPAL_ID(N'dbo')) THROW 53903,N'Noncanonical product schema ownership.',1;\n")
     for table in tables:
@@ -515,6 +665,11 @@ def preflight(tables: list[Table], sources: list[Source], strict: bool=False) ->
         name_cases=' '.join('WHEN @Prefix+'+lit(short)+' THEN '+lit(original) for short,original in names)
         definition_template+=f"\nINSERT #SQLSA_ConstraintMap SELECT CASE o.name {name_cases} END,c.name,o.type,COALESCE(d.definition,k.definition),COALESCE(k.is_disabled,0),COALESCE(k.is_not_trusted,0),COALESCE(k.is_not_for_replication,0) FROM tempdb.sys.objects o LEFT JOIN tempdb.sys.default_constraints d ON d.object_id=o.object_id LEFT JOIN tempdb.sys.check_constraints k ON k.object_id=o.object_id LEFT JOIN tempdb.sys.columns c ON c.object_id=o.parent_object_id AND c.column_id=COALESCE(d.parent_column_id,k.parent_column_id) WHERE o.parent_object_id=OBJECT_ID({lit('tempdb..'+ref_name)}) AND o.type IN('D','C');"
         out.append('DELETE FROM #SQLSA_ConstraintMap; SET @Prefix=REPLACE(CONVERT(nvarchar(36),NEWID()),N\'-\',N\'\')+N\'_\';\nSET @ConstraintSql='+lit(definition_template)+';\n')
+        if snapshot_schema2 and not strict and table.schema=='snapshot' and table.name in SNAPSHOT_LEGACY_CHECKS:
+            current,legacy=SNAPSHOT_LEGACY_CHECKS[table.name]
+            if definition_template.count(current)!=1:
+                raise BuildError('Snapshot legacy CHECK no longer matches the canonical model')
+            out.append('IF @SnapshotExpectedLegacy=1 SET @ConstraintSql='+lit(definition_template.replace(current,legacy))+';\n')
         for short,_ in names:
             out.append('SET @ConstraintSql=REPLACE(@ConstraintSql,'+lit('CONSTRAINT '+q(short))+','+lit('CONSTRAINT [')+'+@Prefix+'+lit(short+']')+');\n')
         out.append("EXEC sys.sp_executesql @ConstraintSql,N'@Prefix nvarchar(33)',@Prefix;\n")
@@ -527,6 +682,8 @@ def preflight(tables: list[Table], sources: list[Source], strict: bool=False) ->
         out.append("IF EXISTS(SELECT 1 FROM sys.triggers WHERE parent_id=@ObjectId) OR EXISTS(SELECT 1 FROM sys.security_predicates WHERE target_object_id=@ObjectId) OR EXISTS(SELECT 1 FROM sys.tables WHERE object_id=@ObjectId AND (temporal_type<>0 OR is_memory_optimized<>0 OR is_tracked_by_cdc<>0 OR is_replicated<>0 OR is_merge_published<>0 OR is_sync_tran_subscribed<>0 OR is_filetable<>0)) OR EXISTS(SELECT 1 FROM sys.change_tracking_tables WHERE object_id=@ObjectId) OR EXISTS(SELECT 1 FROM sys.columns WHERE object_id=@ObjectId AND (is_computed<>0 OR encryption_type IS NOT NULL OR is_sparse<>0 OR is_column_set<>0 OR generated_always_type<>0 OR is_hidden<>0 OR is_filestream<>0)) OR EXISTS(SELECT 1 FROM sys.indexes AS i JOIN sys.data_spaces AS d ON d.data_space_id=i.data_space_id WHERE i.object_id=@ObjectId AND (d.type<>'FG' OR i.type NOT IN (0,1,2))) THROW 53905,N'Unsupported table feature, trigger, policy or partitioning.',1;\n")
         out.append("IF EXISTS(SELECT 1 FROM sys.partitions WHERE object_id=@ObjectId AND data_compression<>0) THROW 53905,N'Noncanonical data compression.',1;\n")
         facets = '[name] COLLATE DATABASE_DEFAULT,[system_type_id],[user_type_id],[max_length],[precision],[scale],[is_nullable],[collation_name] COLLATE DATABASE_DEFAULT,[is_identity],[is_computed]'
+        if snapshot_schema2 and table.schema=='snapshot':
+            facets='[column_id],'+facets
         # sysname is the only alias type allowed; cross-database user_type IDs for
         # built-in aliases match, while user-defined types are rejected explicitly.
         additions = table.additions if not strict else []
@@ -803,6 +960,11 @@ def generate(root: Path,snapshot: bool=False) -> tuple[str,dict]:
                 statement = "IF OBJECT_ID(N'[monitor].[VW_AnalyseAccessPolicy]') IS NULL EXEC sys.sp_executesql "+lit(batch)+';'
             else:
                 statement = batch
+            if source.path==SNAPSHOT_SCHEMA_SOURCE and SNAPSHOT_GUARD_BEGIN in statement:
+                # The full structural preflight already ran under the same
+                # outer transaction. Retain the identical version classifier.
+                state=snapshot_state_classifier([t for t in tables if t.role=='SNAPSHOT'],[s for s in sources if s.role=='SNAPSHOT'])
+                statement=statement.replace(SNAPSHOT_GUARD_BEGIN+SNAPSHOT_GUARD_END,state)
             out.append(invoke(statement,'@FrameworkDatabase' if source.role=='FRAMEWORK' else '@SnapshotDatabase'))
         out.append('-- END SOURCE: '+source.path+'\n')
     for role in roles:
@@ -811,14 +973,55 @@ def generate(root: Path,snapshot: bool=False) -> tuple[str,dict]:
     return ''.join(out),{'sources':len(sources),'tables':len(tables),'digest':digest,'archives':len(mutable)}
 
 
+def generate_snapshot_target(root: Path) -> tuple[str,dict]:
+    sources,tables,digest=load_sources(root,True)
+    target=[s for s in sources if s.role=='SNAPSHOT']
+    admission="SET XACT_ABORT OFF; RAISERROR(N'Snapshot target installation requires no caller transaction and IMPLICIT_TRANSACTIONS OFF.',16,1);"
+    out=["/* Generated Snapshot target installer. Execute this complete batch in the explicitly selected target database. */\n"
+         "IF @@TRANCOUNT<>0 OR (@@OPTIONS & 2)<>0 BEGIN EXEC sys.sp_executesql "+lit(admission)+"; RETURN; END;\n"
+         "SET NOCOUNT ON; SET XACT_ABORT ON; SET LOCK_TIMEOUT 0; SET ANSI_NULLS ON; SET QUOTED_IDENTIFIER ON; SET ANSI_PADDING ON; SET ANSI_WARNINGS ON; SET ARITHABORT ON; SET CONCAT_NULL_YIELDS_NULL ON; SET NUMERIC_ROUNDABORT OFF;\nBEGIN TRY\nBEGIN TRANSACTION;\n"]
+    for source in target:
+        original=(root/source.path).read_text(encoding='utf-8-sig').replace('\r\n','\n')
+        out.append('-- BEGIN SOURCE: '+source.path+'\n')
+        for batch in split_batches(original):
+            out.append('EXEC sys.sp_executesql '+lit(batch)+';\n')
+        out.append('-- END SOURCE: '+source.path+'\n')
+    out.append("IF @@TRANCOUNT<>1 OR XACT_STATE()<>1 THROW 53936,N'Snapshot target transaction state changed.',1;\n"
+               "COMMIT TRANSACTION;\nEND TRY\nBEGIN CATCH\nIF XACT_STATE()<>0 ROLLBACK TRANSACTION;\nTHROW;\nEND CATCH;\n")
+    return ''.join(out),dict(sources=len(target),tables=len([t for t in tables if t.role=='SNAPSHOT']),digest=digest)
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--repository-root',type=Path,required=True)
-    parser.add_argument('--output',type=Path,required=True)
+    parser.add_argument('--output',type=Path)
     parser.add_argument('--include-snapshot-baseline',action='store_true')
+    parser.add_argument('--refresh-snapshot-guard',action='store_true')
+    parser.add_argument('--check-snapshot-guard',action='store_true')
+    parser.add_argument('--snapshot-target-standalone',action='store_true')
     args = parser.parse_args()
     try:
-        sql,report = generate(args.repository_root.resolve(),args.include_snapshot_baseline)
+        root=args.repository_root.resolve()
+        if args.refresh_snapshot_guard:
+            sources,tables,_=load_sources(root,True,False)
+            path=root/SNAPSHOT_SCHEMA_SOURCE
+            original=path.read_text(encoding='utf-8-sig').replace('\r\n','\n')
+            snapshot_guard_parts(original)
+            begin=original.index(SNAPSHOT_GUARD_BEGIN)+len(SNAPSHOT_GUARD_BEGIN)
+            end=original.index(SNAPSHOT_GUARD_END)
+            expected=snapshot_guard([t for t in tables if t.role=='SNAPSHOT'],[s for s in sources if s.role=='SNAPSHOT'])
+            path.write_text(original[:begin]+expected+original[end:],encoding='utf-8',newline='\n')
+            print('Refreshed canonical Snapshot schema preflight.')
+            return
+        if args.check_snapshot_guard:
+            sources,_,_=load_sources(root,True)
+            if not any(s.path==SNAPSHOT_SCHEMA_SOURCE and SNAPSHOT_GUARD_BEGIN in s.text for s in sources):
+                raise BuildError('Snapshot schema preflight is missing')
+            print('Canonical Snapshot schema preflight is current.')
+            return
+        if args.output is None:
+            raise BuildError('--output is required for an installer artifact')
+        sql,report = generate_snapshot_target(root) if args.snapshot_target_standalone else generate(root,args.include_snapshot_baseline)
         args.output.parent.mkdir(parents=True,exist_ok=True)
         temporary = args.output.with_suffix(args.output.suffix+'.tmp')
         temporary.write_text(sql,encoding='utf-8',newline='\n')
