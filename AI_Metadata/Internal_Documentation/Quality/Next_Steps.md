@@ -3,7 +3,13 @@
 **Stand:** 25. Oktober 2026
 **Zweck:** aktueller Auftragsstatus und historische Entwicklungswellen für `gecompat/SQL_Server_Analyze`
 
-## Eigener SSIS-Auftrag: siebte Paketwelle
+## Eigener SSIS-Auftrag: zehnte Paketwelle
+
+Der Benutzer hat den gebundenen Vergleich genau zweier Ausführungen autonom einschließlich regulärer PR-Integration nach erfolgreicher Abnahme freigegeben. Der Umfang umfasst eine native Vergleichs-API mit vier Ausgabegruppen, unabhängige lokale Capturebindungen, identische Modell-/Paketrevision, konservative Kontextprüfung und INFO-Regeln. Die [Anwenderseite](../../../Documentation/Analysis_Guides/Procedures/USP_SsisExecutionComparison.md) beschreibt den Vertrag.
+
+Parser, Profile und Lineage bleiben in Toolbelt; Analyze bleibt ohne SQL CLR eigenständig. Die vorhandene SSISDB wird weiterverwendet und bleibt erhalten. Ein Implementierer und ein unabhängiger Reviewer bearbeiten einen Analyze-PR. Die gemeinsame Obergrenze beträgt 16 native Root-Ausführungsversuche einschließlich Recovery; vorgesehen sind acht Szenarien. Frühere Wellenzähler bleiben abgeschlossen. Kostenmessung liegt nicht vor. Die bestehende SQL2025-SSISDB besteht die acht vorgesehenen Szenarien über zwei gebundene Läufe: gleiche beobachtete Mengen mit unabhängigem Dauerorakel und RAW-/TABLE-/JSON-Parität sowie Verzögerung, Mengenänderung, Loggingwechsel, eigener SQL-Fehler, Abbruch und Versionsablehnung. Der abschließende Lauf besteht 8549 Assertions; insgesamt wurden 15 der höchstens 16 nativen Rootversuche verwendet. Die 38 synthetischen Vergleichsfälle und die bestehenden Iterations-, Scope-, Pipeline- und Diagnoseregressionen bestehen ebenfalls. Eigene Consumerobjekte sind nachgewiesen bereinigt; die SSISDB bleibt erhalten. Für die reguläre Integration gelten die PR- und Main-Gates; ihre Ergebnisse sind am jeweiligen Commit zu prüfen. Nach deren Abschluss enthält der begrenzte Auftrag keinen weiteren Entwicklungsschritt.
+
+## Historischer SSIS-Auftrag: siebte Paketwelle
 
 Die ausdrücklich freigegebene siebte Welle ergänzt feste projektlokale
 Kind-/Enkelpaketaufrufe und die Handler `OnPreExecute`, `OnPostExecute`,

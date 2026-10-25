@@ -7,12 +7,13 @@ using Microsoft.SqlServer.Dts.Pipeline.Wrapper;
 using DataType = Microsoft.SqlServer.Dts.Runtime.Wrapper.DataType;
 
 // SDK-Autorschaft ist die unabhängige Referenz für synthetische Pipelinebelege.
-// Die Quelle liest ausschließlich fünf konstante Zeilen der eigenen Labinstanz;
+// Die Quelle liest konstante Zeilen oder kontrollierte Daten der eigenen Testdatenbank;
 // Row Count verändert nur eine eigene Paketvariable. Keine Nutzdatenexporte.
 internal static class CreatePipelineProject
 {
     static List<object> objects = new List<object>();
     static List<object> pipelines = new List<object>();
+    static string comparisonQuery = null;
     static void Record(string entry, DtsContainer item, string role)
     {
         objects.Add(new { entry = entry, guid = Guid.Parse(item.ID).ToString("D"),
@@ -32,7 +33,7 @@ internal static class CreatePipelineProject
         var sourceDesign = source.Instantiate(); sourceDesign.ProvideComponentProperties(); source.Name = "SyntheticSource";
         source.ValidateExternalMetadata = false;
         sourceDesign.SetComponentProperty("AccessMode", 2);
-        sourceDesign.SetComponentProperty("SqlCommand", (delay ? "WAITFOR DELAY '00:00:20';" : "") + (fail ? "SET LANGUAGE us_english;SELECT CONVERT(int,N'SyntheticInvalid') AS SyntheticValue" : "SELECT CONVERT(int,v.n) AS SyntheticValue FROM (VALUES(1),(2),(3),(4),(5)) AS v(n)"));
+        sourceDesign.SetComponentProperty("SqlCommand", comparisonQuery != null && !fail && !delay ? comparisonQuery : (delay ? "WAITFOR DELAY '00:00:20';" : "") + (fail ? "SET LANGUAGE us_english;SELECT CONVERT(int,N'SyntheticInvalid') AS SyntheticValue" : "SELECT CONVERT(int,v.n) AS SyntheticValue FROM (VALUES(1),(2),(3),(4),(5)) AS v(n)"));
         source.RuntimeConnectionCollection[0].ConnectionManagerID = connection.ID;
         source.RuntimeConnectionCollection[0].ConnectionManager = DtsConvert.GetExtendedInterface(connection);
         var output = source.OutputCollection[0];
@@ -80,7 +81,7 @@ internal static class CreatePipelineProject
         var pipe=(MainPipe)host.InnerObject;
         var source=pipe.ComponentMetaDataCollection.New();source.ComponentClassID="Microsoft.OLEDBSource";
         var sd=source.Instantiate();sd.ProvideComponentProperties();source.Name="SyntheticRoutingSource";source.ValidateExternalMetadata=false;
-        sd.SetComponentProperty("AccessMode",2);sd.SetComponentProperty("SqlCommand","SELECT CONVERT(int,v.n) AS SyntheticValue FROM (VALUES(1),(2),(3),(4),(5)) AS v(n)");
+        sd.SetComponentProperty("AccessMode",2);sd.SetComponentProperty("SqlCommand",comparisonQuery ?? "SELECT CONVERT(int,v.n) AS SyntheticValue FROM (VALUES(1),(2),(3),(4),(5)) AS v(n)");
         source.RuntimeConnectionCollection[0].ConnectionManagerID=connection.ID;source.RuntimeConnectionCollection[0].ConnectionManager=DtsConvert.GetExtendedInterface(connection);
         var column=source.OutputCollection[0].OutputColumnCollection.New();column.Name="SyntheticValue";column.SetDataTypeProperties(DataType.DT_I4,0,0,0,0);
         column.ErrorRowDisposition=DTSRowDisposition.RD_FailComponent;column.TruncationRowDisposition=DTSRowDisposition.RD_FailComponent;
@@ -127,6 +128,12 @@ internal static class CreatePipelineProject
         try
         {
             string target = args.Length > 2 && args[2] != "--oracle" ? args[2] : "localhost";
+            int comparisonIndex=Array.IndexOf(args,"--comparison");
+            if(comparisonIndex>=0)
+            {
+                if(comparisonIndex+1>=args.Length || !System.Text.RegularExpressions.Regex.IsMatch(args[comparisonIndex+1],"\\ASyntheticSsisNative_[a-f0-9]{32}\\z")) return 2;
+                comparisonQuery="EXEC ["+args[comparisonIndex+1]+"].dbo.SyntheticRead WITH RESULT SETS ((SyntheticValue int));";
+            }
             using (var project = Project.CreateProject())
             {
                 project.Name = args[0];project.TargetServerVersion = DTSTargetServerVersion.SQLServer2025;project.ProtectionLevel = DTSProtectionLevel.DontSaveSensitive;
@@ -137,6 +144,7 @@ internal static class CreatePipelineProject
                 project.PackageItems.Add(child,"SyntheticChild.dtsx");Record("SyntheticRoot.dtsx",root,"PACKAGE");Record("SyntheticChild.dtsx",child,"PACKAGE");
                 Flow(root,root.Executables,"SyntheticFlowA",target);Flow(root,root.Executables,"SyntheticFlowB",target);
                 Flow(child,child.Executables,"SyntheticFlowChild",target);
+                if(comparisonQuery!=null) RoutedFlow(root,target,true);
                 Call(root.Executables,"SyntheticCallA","SyntheticRoot.dtsx");Call(root.Executables,"SyntheticCallB","SyntheticRoot.dtsx");
                 root.Variables.Add("SyntheticIndex",false,"User",0);
                 var loop = (ForLoop)root.Executables.Add("STOCK:FORLOOP");loop.Name = "SyntheticLoop";loop.LocaleID=1033;loop.InitExpression="@SyntheticIndex = 0";loop.EvalExpression="@SyntheticIndex < 2";loop.AssignExpression="@SyntheticIndex = @SyntheticIndex + 1";Record("SyntheticRoot.dtsx",loop,"LOOP");

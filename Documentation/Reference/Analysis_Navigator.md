@@ -253,3 +253,5 @@ Diese Abfragen führen ebenfalls keine Diagnose aus.
 - Der Navigator ändert keine Konfiguration, erstellt keine XE-Session, startet keinen Job und speichert keine Diagnosedaten.
 
 Für die praktische Auswahl dient [Hier beginnen](../Analysis_Guides/Start_Here.md). Für Parameterdefaults und Datentypen siehe die [Procedure-Referenz](Procedure_Reference.md); für jede unterstützende Komponente die [Objektreferenz](Object_Reference.md).
+
+Der gezielte [SSIS-Ausführungsvergleich](../Analysis_Guides/Procedures/USP_SsisExecutionComparison.md) ist über die Suchbegriffe SSIS Ausführungsvergleich auffindbar. Sein Hilfeaufruf erläutert die zwei erforderlichen lokalen Übergaben.

@@ -2064,3 +2064,26 @@ USP_ConfigureSnapshotTarget,CollectorCode,varchar(64),'PERFORMANCE_COUNTERS'
 USP_ConfigureSnapshotTarget,CollectorEnabled,bit,1
 USP_ConfigureSnapshotTarget,UpdateSharedPolicy,bit,NULL
 USP_RunSnapshotCollectionCycle,CollectorCode,varchar(64),'PERFORMANCE_COUNTERS'
+USP_SsisExecutionComparison,BaselineProjectModelsJson,nvarchar(max),NULL
+USP_SsisExecutionComparison,BaselineScopeSnapshotJson,nvarchar(max),NULL
+USP_SsisExecutionComparison,BaselineScopeHandoverId,uniqueidentifier,NULL
+USP_SsisExecutionComparison,BaselineExecutionId,bigint,NULL
+USP_SsisExecutionComparison,CandidateProjectModelsJson,nvarchar(max),NULL
+USP_SsisExecutionComparison,CandidateScopeSnapshotJson,nvarchar(max),NULL
+USP_SsisExecutionComparison,CandidateScopeHandoverId,uniqueidentifier,NULL
+USP_SsisExecutionComparison,CandidateExecutionId,bigint,NULL
+USP_SsisExecutionComparison,MinDurationDeltaMs,bigint,NULL
+USP_SsisExecutionComparison,MinDurationDeltaPercent,"decimal(9,4)",NULL
+USP_SsisExecutionComparison,MaxZeilen,int,1000
+USP_SsisExecutionComparison,MaxDurationSeconds,int,30
+USP_SsisExecutionComparison,LockTimeoutMs,int,0
+USP_SsisExecutionComparison,ResultSetArt,varchar(16),'CONSOLE'
+USP_SsisExecutionComparison,ResultTablesJson,nvarchar(max),NULL
+USP_SsisExecutionComparison,JsonErzeugen,bit,0
+USP_SsisExecutionComparison,Json,nvarchar(max),NULL OUTPUT
+USP_SsisExecutionComparison,PrintMeldungen,bit,1
+USP_SsisExecutionComparison,Hilfe,bit,0
+USP_SsisExecutionComparison,StatusCodeOut,varchar(40),NULL OUTPUT
+USP_SsisExecutionComparison,IsPartialOut,bit,NULL OUTPUT
+USP_SsisExecutionComparison,ErrorNumberOut,int,NULL OUTPUT
+USP_SsisExecutionComparison,ErrorMessageOut,nvarchar(2048),NULL OUTPUT

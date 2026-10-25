@@ -839,3 +839,11 @@ EXEC [monitor].[USP_CurrentCallerPermissionAnalysis] @Hilfe=1;
 EXEC [monitor].[USP_EndpointTransportAnalysis] @Hilfe=1;
 EXEC [monitor].[USP_EndpointTransportAnalysis] @MaxZeilen=200, @ResultSetArt='CONSOLE';
 ```
+
+## `[monitor].[USP_SsisExecutionComparison]`
+
+```sql
+EXEC [monitor].[USP_SsisExecutionComparison] @Hilfe = 1;
+```
+
+Der [Ausführungsvergleich](../Analysis_Guides/Procedures/USP_SsisExecutionComparison.md) verlangt zwei lokal attestierte Scope-/Pipelinecaptures desselben exakten Exports. Die Hilfe ist ohne Captures aufrufbar.

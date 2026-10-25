@@ -573,3 +573,11 @@ statische Rolle; Analyze übernimmt weder diese Klassifikation noch neue
 Lineage. Das bestehende Austauschschema enthält die Rolle bereits. Die vorhandene
 SSISDB bleibt Testziel; Analyze benötigt weiterhin kein SQL CLR. Dieser Scope
 führt keine zusätzliche SSISDB-Quelle und keine automatische Loggingänderung ein.
+
+## Welle 10: gebundener Ausführungsvergleich
+
+Die [neue API](../Analysis_Guides/Procedures/USP_SsisExecutionComparison.md) verarbeitet genau eine Basis und einen Kandidaten. Beide Seiten verwenden die bestehenden lokalen Herkunfts-, Versions-, Scope- und Diagnoseconsumer. Parser, Komponentenprofile und Lineage werden ausschließlich in Toolbelt gepflegt. Analyze bleibt ohne SQL CLR eigenständig nutzbar.
+
+Der Katalogadapter ergänzt mit `-IncludeComparisonContext` ein optionales `comparisonContext`-Objekt mit `contract=ssis-comparison-context`, `version=1.0.0` und booleschem `use32BitRuntime`. Vorher-/Nachherwerte müssen vorhanden und gleich sein. Der vollständige Capture einschließlich dieser Erweiterung wird durch den unveränderten lokalen Scopebeleg attestiert. Scopeformat 1.1.0 und Aufnahmemethode bleiben erhalten; ältere Consumer ignorieren das additive Feld. Der Vergleich akzeptiert nur die drei exakten Kontextfelder und behandelt fehlenden oder unbekannten Kontext als unbelegt.
+
+Beide Modelltexte müssen bytegleich in UTF-16LE sein. Quellbindung, Katalog, Projektkennung, LSN, Archiv und Rootpaketdatei müssen übereinstimmen. Modell-/Aufrufpositionen werden über die bereits aufgelösten Pfade verbunden; native Statistikkennungen bleiben getrennte Belege. Unterschiedliche Protokollierung oder Bitness und nicht zwei erfolgreiche Läufe verhindern numerische Deltas. Fehlende und mehrdeutige Beobachtungen bleiben erhalten. Arbeitslastgleichheit bleibt UNPROVEN. Dauerhinweise sind ausschließlich INFO und verlangen explizite Grenzen sowie gleiche bekannte beobachtete Pfadzeilensets.
