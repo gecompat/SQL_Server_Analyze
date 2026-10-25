@@ -3955,3 +3955,19 @@ Ursachenprüfung ab. Reine Verbindungsfehler dürfen keine Error-Abnahme ergeben
 Native Abnahme, exakte Head-/Main-Gates und reguläre Integration werden erst mit
 ihrer tatsächlichen Durchführung als abgeschlossen dokumentiert. Der Timer
 startet keine unveränderten nativen Wiederholungen oder fremden Wellen.
+
+## Freigegebene neunte SSIS-Welle
+
+Der Benutzer hat die laufzeitgestützte Dataflow-Diagnose mit vier additiven
+Ergebnisgruppen, endlichen Regeln und vorhandener SSISDB freigegeben. Analyze
+verantwortet die Auswertung gebundener Phasen und Transfers. Das zusätzlich
+benötigte Lookup-No-Match-Profil verbleibt im kanonischen Toolbelt-Kern.
+Parser und Lineage werden nicht dupliziert; Analyze bleibt CLR-frei.
+
+Die Umsetzung und ihre gezielten Vertragsprüfungen laufen. Native Abnahme,
+unabhängiger Abschlussreview und erforderliche Head-/Main-Gates sind noch offen.
+Die frühere native Obergrenze der achten Welle bleibt geschlossen. Welle neun
+besitzt einen eigenen begrenzten Prüfrahmen; ein Timer setzt ihn nicht zurück.
+Die bestehende SSISDB bleibt erhalten, eigene Consumerobjekte werden nach jedem
+Lauf identitätsgebunden bereinigt. Reguläre automatische Integration nach
+vollständiger Abnahme ist ausdrücklich autorisiert.

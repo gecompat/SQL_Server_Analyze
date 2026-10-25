@@ -652,6 +652,72 @@ mit Fehlernummer ausgewiesen. Ein Quellenfehler verwirft keine lesbare
 Nachbarquelle. `IsPartial` bleibt wahr: Logginglücken, Rechte und ein laufender
 Capture erlauben keinen Schluss auf Nichtausführung oder globale Vollständigkeit.
 
+## Optionale Dataflow-Diagnose
+
+`@IncludePipelineDiagnostics=1` verlangt Scope- und Pipelinekorrelation und
+ergänzt vier Ergebnisgruppen. Der Empfänger wertet ausschließlich die bereits
+gebundenen Modelle, Komponentenphasen und Pfadtransfers aus. Die bestehende
+lokale Übergabe bindet weiterhin Projektversion, Paketbytes und konkrete
+Ausführung. Analyze benötigt dafür kein SQL CLR und keinen eigenen Parser.
+
+| Ergebnisgruppe | Bedeutung einer Zeile |
+|---|---|
+| `componentPhaseSummary` | Beobachtete Intervalle genau einer Komponente, Phase und Dataflowinstanz mit Anzahl, gültiger Intervallsumme, längstem Intervall, Spannweite, Überlappungsflag und Rang innerhalb derselben Phase und Instanz. |
+| `pathTransferSummary` | Beobachtete Transfers genau einer Modellkante und Dataflowinstanz mit bekannter Zeilensumme, unbekannten Zählern und der gelieferten Ausgangsrolle. |
+| `pipelineFindings` | Ein versionierter Regelhinweis mit Modell-, Aufruf- und Quellenbezug oder ein ausdrücklich quellenbezogener Hinweis auf begrenzte Evidenz. |
+| `pipelineDiagnosticCoverage` | Quellenstatus, vollständige Beobachtungs-, Zuordnungs-, Zusammenfassungs- und Unbekanntenzahlen vor der Ausgabekürzung. |
+
+```sql
+EXEC [monitor].[USP_SsisPackageModelAnalysis]
+      @IncludeExecutionScopes=1, @IncludePipelineCorrelation=1,
+      @IncludePipelineDiagnostics=1, @PipelinePhaseThresholdMs=1000,
+      @ProjectModelsJson=@Models, @ScopeSnapshotJson=@Capture,
+      @ScopeHandoverId=@Handover, @ExecutionId=@Execution,
+      @ResultSetArt='RAW';
+```
+
+Das Opt-in liefert 15 RAW-Gruppen. TABLE verwendet dieselben benannten Schemas;
+JSON ergänzt `pipelineDiagnosticsSchemaVersion=1`. CONSOLE bleibt die einzelne
+Bindungsübersicht. Ohne Opt-in bleiben die bisherigen Ausgabegruppen erhalten.
+`@MaxZeilen` begrenzt erst die Ausgabe. Alle neuen Abdeckungszeilen melden eine
+Kürzung, sobald eine Diagnosegruppe gekürzt wird.
+
+Die Intervallsumme enthält ausschließlich bekannte, nichtnegative Einzelwerte.
+`UnknownIntervalCount` zählt fehlende oder umgekehrte Grenzen. Die Spannweite
+verwendet die früheste Start- und späteste Endgrenze gültiger Intervalle;
+überlappende Intervalle können eine größere Summe als diese Spannweite ergeben.
+Die Kennzahlen belegen weder CPU-Zeit noch einen kritischen Pfad. Der Rang
+vergleicht die längsten Einzelintervalle derselben Phase innerhalb genau einer
+Flowinstanz und behauptet keine Engpassursache.
+
+Transferwerte werden nur innerhalb derselben gebundenen Kante und Instanz
+addiert. Fehlende Zähler bleiben unbekannt; eine ausschließlich unbekannte
+Gruppe erhält keine Nullsumme. Multicastzweige werden separat ausgewiesen.
+Eine Zeilensumme ist keine Paketzeilenzahl und keine Datenqualitätsaussage.
+
+| Regel | Voraussetzung und Aussage |
+|---|---|
+| `SSIS_PIPELINE_ERROR_OUTPUT_OBSERVED` | Ein positiver Transfer liegt auf einer vom Toolbelt-Modell als `ERROR` gelieferten Ausgangsrolle. |
+| `SSIS_PIPELINE_NO_MATCH_OBSERVED` | Ein positiver Transfer liegt auf einer ausdrücklich gelieferten `NO_MATCH`-Rolle. No-Match ist allein kein Paketfehler. |
+| `SSIS_PIPELINE_ZERO_OBSERVED_TRANSFER` | Alle tatsächlich beobachteten Zähler dieser Kante sind bekannt und null. Fehlende Transfers erfüllen diese Voraussetzung nicht. |
+| `SSIS_PIPELINE_PHASE_THRESHOLD_EXCEEDED` | Ein bekanntes Einzelintervall überschreitet den ausdrücklich gesetzten Grenzwert. |
+| `SSIS_PIPELINE_DIAGNOSTIC_EVIDENCE_LIMITED` | Quellen fehlen, Beobachtungen bleiben unzugeordnet, benötigte Werte beziehungsweise Portrollen sind unbekannt oder eine Quellkürzung beziehungsweise ein Diagnosefehler begrenzt die Auswertung. |
+
+`@PipelinePhaseThresholdMs` ist standardmäßig NULL und aktiviert dann keine
+Grenzwertregel. Ein expliziter Wert muss nichtnegativ sein und verlangt das
+Diagnose-Opt-in. Alle Hinweise besitzen `INFO`; die Regeln verändern keinen
+Ausführungsstatus. `SourceName` und `SourceId` referenzieren den ursprünglichen
+Capture. Bei `SOURCE_OUTPUT_TRUNCATED` kann die zugehörige Einzelzeile in der
+begrenzten Detailausgabe fehlen; die unveränderte Quellenkennung bleibt erhalten.
+Quellenabdeckung besitzt ausdrücklich keine erfundene Ereignis-ID.
+Ein gültiger Basisbeleg überstimmt keinen Fehler der zusätzlichen Diagnose.
+
+Die Laufzeitkosten folgen der bereits auf 50000 Belege begrenzten Datenmenge.
+Fensterfunktionen und Gruppierungen nutzen lokale Temp-Objekte und das gemeinsame
+kooperative Zeitbudget. Es entstehen keine zusätzlichen SSISDB-Quellabfragen.
+Unbekannte Portrollen werden nicht aus Namen oder Komponentenklassen erraten;
+deren Interpretation verbleibt im kanonischen Toolbelt-Profil.
+
 ## Primärquellen
 
 - [Freigegebener projektübergreifender Vertrag](../../Architecture/SSIS_Analyze_Toolbelt_Exchange_Contract.md)
