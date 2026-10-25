@@ -67023,6 +67023,149 @@ END;
 GO
 -- END SOURCE: Code/10_SSIS/036_InternalSsisPipelineCorrelation.sql
 
+-- BEGIN SOURCE: Code/10_SSIS/037_InternalSsisPipelineDiagnostics.sql
+/* Auswertung bereits gebundener Pipelinebelege. Portrollen stammen aus dem
+   validierten Toolbelt-Modell. Summen gelten ausschließlich im beobachteten
+   Instanzscope; überlappende Intervalle sind weder CPU- noch Paketlaufzeit.
+   Eigene Temp-Tabellen werden vom Scopeconsumer angelegt und ausgegeben. */
+CREATE OR ALTER PROCEDURE [monitor].[InternalSsisPipelineDiagnostics]
+    @Models nvarchar(max), @Bound bit, @Deadline datetime2(3), @Limit int,
+    @PipelinePhaseThresholdMs bigint = NULL
+AS
+BEGIN
+    SET NOCOUNT ON;
+    DECLARE @OriginalLockTimeout int=@@LOCK_TIMEOUT,@LockTimeoutSql nvarchar(80);
+    DECLARE @DiagnosticError int=NULL,@DiagnosticReason varchar(40)=NULL;
+    IF @Bound=1 AND NOT EXISTS(SELECT 1 FROM #InternalSsisExecutionScopes_PipelineCoverage WHERE [StatusCode]='PIPELINE_BINDING_UNPROVEN')
+    BEGIN TRY
+    IF SYSUTCDATETIME() >= @Deadline THROW 57920,N'PIPELINE_DIAGNOSTIC_TIME_LIMIT',1;
+
+    ;WITH [intervals] AS
+    (
+        SELECT [p].*,
+            MAX(CASE WHEN [ObservedDurationMs] IS NOT NULL THEN [EndTime] END) OVER(PARTITION BY [FlowStatisticsId],[ComponentNodeId],[PhaseName] COLLATE Latin1_General_100_BIN2,DATALENGTH([PhaseName])
+                ORDER BY [StartTime],[EndTime],[PhaseStatsId] ROWS BETWEEN UNBOUNDED PRECEDING AND 1 PRECEDING) AS [PriorEnd],
+            ROW_NUMBER() OVER(PARTITION BY [FlowStatisticsId],[ComponentNodeId],[PhaseName] COLLATE Latin1_General_100_BIN2,DATALENGTH([PhaseName])
+                ORDER BY [ObservedDurationMs] DESC,[PhaseStatsId]) AS [DurationOrder]
+        FROM #InternalSsisExecutionScopes_ComponentPhases AS [p]
+        WHERE [ComponentNodeId] IS NOT NULL AND [CorrelationStatus]='SCOPED_EXACT_COMPONENT_NAME'
+    ), [groups] AS
+    (
+        SELECT [FlowStatisticsId],[InvocationId],[PackageKey],[FlowNodeId],[ComponentNodeId],[PhaseName] COLLATE Latin1_General_100_BIN2 AS [PhaseName],
+            COUNT(*) AS [ObservedIntervalCount],COUNT([ObservedDurationMs]) AS [ValidIntervalCount],
+            SUM(CONVERT(decimal(38,0),[ObservedDurationMs])) AS [ObservedIntervalSumMs],
+            MAX([ObservedDurationMs]) AS [LongestIntervalMs],
+            MIN(CASE WHEN [ObservedDurationMs] IS NOT NULL THEN [StartTime] END) AS [FirstStartTime],
+            MAX(CASE WHEN [ObservedDurationMs] IS NOT NULL THEN [EndTime] END) AS [LastEndTime],
+            MAX(CASE WHEN [ObservedDurationMs] IS NOT NULL AND [StartTime]<[PriorEnd] THEN 1 ELSE 0 END) AS [OverlapObserved],
+            MAX(CASE WHEN [DurationOrder]=1 AND [ObservedDurationMs] IS NOT NULL THEN [PhaseStatsId] END) AS [EvidencePhaseStatsId]
+        FROM [intervals]
+        GROUP BY [FlowStatisticsId],[InvocationId],[PackageKey],[FlowNodeId],[ComponentNodeId],[PhaseName] COLLATE Latin1_General_100_BIN2,DATALENGTH([PhaseName])
+    )
+    INSERT #InternalSsisExecutionScopes_PhaseSummary
+    SELECT [FlowStatisticsId],[InvocationId],[PackageKey],[FlowNodeId],[ComponentNodeId],[PhaseName],
+        [ObservedIntervalCount],[ValidIntervalCount],[ObservedIntervalCount]-[ValidIntervalCount],
+        [ObservedIntervalSumMs],[LongestIntervalMs],DATEDIFF_BIG(millisecond,[FirstStartTime],[LastEndTime]),
+        [FirstStartTime],[LastEndTime],[OverlapObserved],
+        CASE WHEN [LongestIntervalMs] IS NOT NULL THEN DENSE_RANK() OVER(PARTITION BY [FlowStatisticsId],[PhaseName] COLLATE Latin1_General_100_BIN2,DATALENGTH([PhaseName]) ORDER BY [LongestIntervalMs] DESC) END,
+        [EvidencePhaseStatsId],1
+    FROM [groups];
+
+    IF SYSUTCDATETIME() >= @Deadline THROW 57920,N'PIPELINE_DIAGNOSTIC_TIME_LIMIT',1;
+    ;WITH [ports] AS
+    (
+        SELECT JSON_VALUE([p].[value],'$.packageKey') AS [PackageKey],[n].[NodeId],[n].[PortRole]
+        FROM OPENJSON(@Models,'$.packages') AS [p]
+        CROSS APPLY OPENJSON([p].[value],'$.model.nodes') WITH
+            ([NodeId] varchar(128) '$.id',[Kind] varchar(16) '$.kind',[PortRole] varchar(16) '$.attributes.portRole') AS [n]
+        WHERE [n].[Kind]='PORT'
+    ), [edges] AS
+    (
+        SELECT JSON_VALUE([p].[value],'$.packageKey') AS [PackageKey],[e].[EdgeId],[e].[FromId]
+        FROM OPENJSON(@Models,'$.packages') AS [p]
+        CROSS APPLY OPENJSON([p].[value],'$.model.edges') WITH
+            ([EdgeId] varchar(128) '$.id',[Kind] varchar(32) '$.kind',[FromId] varchar(128) '$.fromId') AS [e]
+        WHERE [e].[Kind]='PIPELINE_PATH'
+    )
+    INSERT #InternalSsisExecutionScopes_TransferSummary
+    SELECT [r].[FlowStatisticsId],[r].[InvocationId],[r].[PackageKey],[r].[FlowNodeId],[r].[ModelEdgeId],
+        COALESCE([p].[PortRole],'UNKNOWN'),COUNT(*),COUNT([r].[RowsSent]),COUNT(*)-COUNT([r].[RowsSent]),
+        SUM(CONVERT(decimal(38,0),[r].[RowsSent])),MIN([r].[CreatedTime]),MAX([r].[CreatedTime]),
+        MIN([r].[DataStatsId]),MIN(CASE WHEN [r].[RowsSent]>0 THEN [r].[DataStatsId] END),1
+    FROM #InternalSsisExecutionScopes_PathTransfers AS [r]
+    JOIN [edges] AS [e] ON [e].[PackageKey] COLLATE SQL_Latin1_General_CP1_CS_AS=[r].[PackageKey]
+        AND [e].[EdgeId]=[r].[ModelEdgeId]
+    LEFT JOIN [ports] AS [p] ON [p].[PackageKey] COLLATE SQL_Latin1_General_CP1_CS_AS=[e].[PackageKey] COLLATE SQL_Latin1_General_CP1_CS_AS AND [p].[NodeId]=[e].[FromId]
+    WHERE [r].[ModelEdgeId] IS NOT NULL AND [r].[CorrelationStatus]='SCOPED_EXACT_PATH_REFERENCE'
+    GROUP BY [r].[FlowStatisticsId],[r].[InvocationId],[r].[PackageKey],[r].[FlowNodeId],[r].[ModelEdgeId],[p].[PortRole];
+
+    INSERT #InternalSsisExecutionScopes_PipelineFindings
+    SELECT [rules].[RuleId],'1.0.0','INFO','OBSERVED_SCOPED',[t].[PackageKey],[t].[InvocationId],
+        [t].[FlowStatisticsId],[t].[FlowNodeId],NULL,[t].[ModelEdgeId],'pathTransfers',
+        CASE WHEN [rules].[RuleId]='SSIS_PIPELINE_ZERO_OBSERVED_TRANSFER' THEN [t].[FirstDataStatsId] ELSE [t].[PositiveDataStatsId] END,
+        [t].[ObservedRowsSent],NULL,[p].[PackageSha256],[b].[SourceBindingSha256],1
+    FROM #InternalSsisExecutionScopes_TransferSummary AS [t]
+    CROSS APPLY(VALUES
+        ('SSIS_PIPELINE_ERROR_OUTPUT_OBSERVED',CASE WHEN [t].[PortRole]='ERROR' AND [t].[PositiveDataStatsId] IS NOT NULL THEN 1 ELSE 0 END),
+        ('SSIS_PIPELINE_NO_MATCH_OBSERVED',CASE WHEN [t].[PortRole]='NO_MATCH' AND [t].[PositiveDataStatsId] IS NOT NULL THEN 1 ELSE 0 END),
+        ('SSIS_PIPELINE_ZERO_OBSERVED_TRANSFER',CASE WHEN [t].[UnknownRowCount]=0 AND [t].[ObservedRowsSent]=0 THEN 1 ELSE 0 END)
+    ) AS [rules]([RuleId],[Applies])
+    JOIN #InternalSsisExecutionScopes_Packages AS [p] ON [p].[PackageKey]=[t].[PackageKey]
+    CROSS JOIN #InternalSsisExecutionScopes_Binding AS [b]
+    WHERE [rules].[Applies]=1;
+
+    INSERT #InternalSsisExecutionScopes_PipelineFindings
+    SELECT 'SSIS_PIPELINE_PHASE_THRESHOLD_EXCEEDED','1.0.0','INFO','OBSERVED_SCOPED',
+        [s].[PackageKey],[s].[InvocationId],[s].[FlowStatisticsId],[s].[FlowNodeId],[s].[ComponentNodeId],NULL,
+        'componentPhases',[s].[EvidencePhaseStatsId],[s].[LongestIntervalMs],@PipelinePhaseThresholdMs,
+        [p].[PackageSha256],[b].[SourceBindingSha256],1
+    FROM #InternalSsisExecutionScopes_PhaseSummary AS [s]
+    JOIN #InternalSsisExecutionScopes_Packages AS [p] ON [p].[PackageKey]=[s].[PackageKey]
+    CROSS JOIN #InternalSsisExecutionScopes_Binding AS [b]
+    WHERE @PipelinePhaseThresholdMs IS NOT NULL AND [s].[LongestIntervalMs]>@PipelinePhaseThresholdMs;
+
+    IF SYSUTCDATETIME() >= @Deadline THROW 57920,N'PIPELINE_DIAGNOSTIC_TIME_LIMIT',1;
+    END TRY
+    BEGIN CATCH
+        SELECT @DiagnosticError=ERROR_NUMBER(),@DiagnosticReason=CASE WHEN ERROR_NUMBER()=57920 THEN 'DIAGNOSTIC_TIME_LIMIT' ELSE 'DIAGNOSTIC_INPUT_REJECTED' END;
+        DELETE #InternalSsisExecutionScopes_PhaseSummary;
+        DELETE #InternalSsisExecutionScopes_TransferSummary;
+        DELETE #InternalSsisExecutionScopes_PipelineFindings;
+    END CATCH;
+
+    INSERT #InternalSsisExecutionScopes_DiagnosticCoverage
+    SELECT [c].[SourceName],COALESCE(@DiagnosticReason,[c].[StatusCode]),COALESCE(@DiagnosticError,[c].[SourceErrorNumber]),[c].[ObservedRowCount],
+        [c].[MappedRowCount],[c].[UnassignedRowCount],
+        CASE WHEN [c].[SourceName]='componentPhases' THEN (SELECT COUNT(*) FROM #InternalSsisExecutionScopes_PhaseSummary)
+             ELSE (SELECT COUNT(*) FROM #InternalSsisExecutionScopes_TransferSummary) END,
+        CASE WHEN [c].[SourceName]='componentPhases' THEN (SELECT COUNT(*) FROM #InternalSsisExecutionScopes_ComponentPhases WHERE [ComponentNodeId] IS NOT NULL AND [ObservedDurationMs] IS NULL)
+             ELSE (SELECT COUNT(*) FROM #InternalSsisExecutionScopes_PathTransfers WHERE [ModelEdgeId] IS NOT NULL AND [RowsSent] IS NULL) END,
+        CASE WHEN [c].[SourceName]='pathTransfers' THEN (SELECT COUNT(*) FROM #InternalSsisExecutionScopes_TransferSummary WHERE [PortRole] IN('UNKNOWN') OR [PortRole] IS NULL) ELSE 0 END,
+        [c].[LoggingLevel],1,[c].[OutputTruncated],
+        CASE WHEN @DiagnosticReason IS NOT NULL THEN @DiagnosticReason WHEN [c].[StatusCode] NOT IN('AVAILABLE','AVAILABLE_EMPTY') THEN 'SOURCE_NOT_AVAILABLE'
+             WHEN [c].[ObservedRowCount]=0 THEN 'NO_OBSERVATIONS'
+             WHEN [c].[OutputTruncated]=1 THEN 'SOURCE_OUTPUT_TRUNCATED'
+             WHEN [c].[UnassignedRowCount]>0 THEN 'UNASSIGNED_OBSERVATIONS'
+             ELSE 'OBSERVED_PARTIAL' END
+    FROM #InternalSsisExecutionScopes_PipelineCoverage AS [c];
+
+    INSERT #InternalSsisExecutionScopes_PipelineFindings
+    SELECT 'SSIS_PIPELINE_DIAGNOSTIC_EVIDENCE_LIMITED','1.0.0','INFO','SOURCE_COVERAGE',NULL,NULL,NULL,NULL,NULL,NULL,
+        [SourceName],NULL,NULL,NULL,NULL,[b].[SourceBindingSha256],1
+    FROM #InternalSsisExecutionScopes_DiagnosticCoverage AS [c]
+    CROSS JOIN #InternalSsisExecutionScopes_Binding AS [b]
+    WHERE [c].[ReasonCode]<>'OBSERVED_PARTIAL' OR [c].[UnknownValueCount]>0 OR [c].[UnknownRoleCount]>0;
+
+    UPDATE #InternalSsisExecutionScopes_DiagnosticCoverage SET [OutputTruncated]=CASE
+        WHEN [OutputTruncated]=1 OR (SELECT COUNT(*) FROM #InternalSsisExecutionScopes_PhaseSummary)>@Limit
+          OR (SELECT COUNT(*) FROM #InternalSsisExecutionScopes_TransferSummary)>@Limit
+          OR (SELECT COUNT(*) FROM #InternalSsisExecutionScopes_PipelineFindings)>@Limit
+          OR (SELECT COUNT(*) FROM #InternalSsisExecutionScopes_DiagnosticCoverage)>@Limit THEN 1 ELSE 0 END;
+    SET @LockTimeoutSql=N'SET LOCK_TIMEOUT '+CONVERT(nvarchar(20),@OriginalLockTimeout)+N';';EXEC sys.sp_executesql @LockTimeoutSql;
+END;
+GO
+-- END SOURCE: Code/10_SSIS/037_InternalSsisPipelineDiagnostics.sql
+
 -- BEGIN SOURCE: Code/10_SSIS/035_InternalSsisExecutionScopes.sql
 /* Gemeinsamer Laufzeitconsumer für einen lokal gebundenen Paketsatz.
    Einzelmodellvalidierung bleibt in USP_SsisPackageModelAnalysis; statische
@@ -67033,7 +67176,8 @@ CREATE OR ALTER PROCEDURE [monitor].[InternalSsisExecutionScopes]
  @IncludePipelineCorrelation bit=0,@Models nvarchar(max),@Capture nvarchar(max),@Handover uniqueidentifier,@ExecutionId bigint,
  @MaxZeilen int=1000,@MaxDurationSeconds int=30,@LockTimeoutMs int=0,@ResultSetArt varchar(16)='CONSOLE',@ResultTablesJson nvarchar(max)=NULL,
  @JsonErzeugen bit=0,@Json nvarchar(max)=NULL OUTPUT,@StatusCodeOut varchar(40)=NULL OUTPUT,@IsPartialOut bit=NULL OUTPUT,
- @ErrorNumberOut int=NULL OUTPUT,@ErrorMessageOut nvarchar(2048)=NULL OUTPUT
+ @ErrorNumberOut int=NULL OUTPUT,@ErrorMessageOut nvarchar(2048)=NULL OUTPUT,
+ @IncludePipelineDiagnostics bit=0,@PipelinePhaseThresholdMs bigint=NULL
 AS
 BEGIN
  SET NOCOUNT ON;
@@ -67054,10 +67198,28 @@ BEGIN
  CREATE TABLE #InternalSsisExecutionScopes_ComponentPhases([PhaseStatsId] bigint NOT NULL PRIMARY KEY,[FlowStatisticsId] bigint NULL,[InvocationId] bigint NULL,[PackageKey] varchar(16) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,[FlowNodeId] varchar(128) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,[ComponentNodeId] varchar(128) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,[PackageName] nvarchar(260) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,[TaskName] nvarchar(4000) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,[ComponentName] nvarchar(4000) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,[PhaseName] nvarchar(128) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,[ExecutionPath] nvarchar(4000) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,[StartTime] datetimeoffset(7) NULL,[EndTime] datetimeoffset(7) NULL,[ObservedDurationMs] bigint NULL,[CorrelationStatus] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL);
  CREATE TABLE #InternalSsisExecutionScopes_PathTransfers([DataStatsId] bigint NOT NULL PRIMARY KEY,[FlowStatisticsId] bigint NULL,[InvocationId] bigint NULL,[PackageKey] varchar(16) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,[FlowNodeId] varchar(128) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,[ModelEdgeId] varchar(128) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,[PackageName] nvarchar(260) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,[TaskName] nvarchar(4000) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,[PathIdentificationString] nvarchar(4000) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,[PathName] nvarchar(4000) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,[SourceComponentName] nvarchar(4000) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,[DestinationComponentName] nvarchar(4000) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,[ExecutionPath] nvarchar(4000) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,[RowsSent] bigint NULL,[CreatedTime] datetimeoffset(7) NULL,[CorrelationStatus] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL);
  CREATE TABLE #InternalSsisExecutionScopes_PipelineCoverage([SourceName] varchar(32) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,[StatusCode] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,[SourceErrorNumber] int NULL,[ObservedRowCount] int NOT NULL,[MappedRowCount] int NOT NULL,[UnassignedRowCount] int NOT NULL,[LoggingLevel] int NULL,[IsPartial] bit NOT NULL,[OutputTruncated] bit NOT NULL,[ReasonCode] nvarchar(256) COLLATE SQL_Latin1_General_CP1_CS_AS NULL);
+ CREATE TABLE #InternalSsisExecutionScopes_PhaseSummary(
+  [FlowStatisticsId] bigint NOT NULL,[InvocationId] bigint NOT NULL,[PackageKey] varchar(16) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,
+  [FlowNodeId] varchar(128) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,[ComponentNodeId] varchar(128) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,[PhaseName] nvarchar(128) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,
+  [ObservedIntervalCount] int NOT NULL,[ValidIntervalCount] int NOT NULL,[UnknownIntervalCount] int NOT NULL,[ObservedIntervalSumMs] decimal(38,0) NULL,[LongestIntervalMs] bigint NULL,[SpanMs] bigint NULL,
+  [FirstStartTime] datetimeoffset(7) NULL,[LastEndTime] datetimeoffset(7) NULL,[OverlapObserved] bit NOT NULL,[RankWithinFlowPhase] bigint NULL,[EvidencePhaseStatsId] bigint NULL,[IsPartial] bit NOT NULL);
+ CREATE TABLE #InternalSsisExecutionScopes_TransferSummary(
+  [FlowStatisticsId] bigint NOT NULL,[InvocationId] bigint NOT NULL,[PackageKey] varchar(16) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,[FlowNodeId] varchar(128) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,
+  [ModelEdgeId] varchar(128) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,[PortRole] varchar(16) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,
+  [ObservedTransferCount] int NOT NULL,[KnownRowCount] int NOT NULL,[UnknownRowCount] int NOT NULL,[ObservedRowsSent] decimal(38,0) NULL,
+  [FirstCreatedTime] datetimeoffset(7) NULL,[LastCreatedTime] datetimeoffset(7) NULL,[FirstDataStatsId] bigint NOT NULL,[PositiveDataStatsId] bigint NULL,[IsPartial] bit NOT NULL);
+ CREATE TABLE #InternalSsisExecutionScopes_PipelineFindings(
+  [RuleId] varchar(64) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,[RuleVersion] varchar(16) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,[Severity] varchar(16) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,[EvidenceLevel] varchar(32) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,
+  [PackageKey] varchar(16) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,[InvocationId] bigint NULL,[FlowStatisticsId] bigint NULL,[FlowNodeId] varchar(128) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,[ComponentNodeId] varchar(128) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,[ModelEdgeId] varchar(128) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,
+  [SourceName] varchar(32) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,[SourceId] bigint NULL,[ObservedValue] decimal(38,0) NULL,[ThresholdMs] bigint NULL,[PackageSha256] varchar(64) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,[SourceBindingSha256] varchar(64) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,[IsPartial] bit NOT NULL);
+ CREATE TABLE #InternalSsisExecutionScopes_DiagnosticCoverage(
+  [SourceName] varchar(32) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,[StatusCode] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,[SourceErrorNumber] int NULL,
+  [ObservedRowCount] int NOT NULL,[MappedRowCount] int NOT NULL,[UnassignedRowCount] int NOT NULL,[SummaryRowCount] int NOT NULL,[UnknownValueCount] int NOT NULL,[UnknownRoleCount] int NOT NULL,[LoggingLevel] int NULL,[IsPartial] bit NOT NULL,[OutputTruncated] bit NOT NULL,[ReasonCode] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL);
  BEGIN TRY
-  IF @IncludePipelineCorrelation IS NULL OR @LockTimeoutMs IS NULL OR @LockTimeoutMs NOT BETWEEN 0 AND 60000 OR @mode NOT IN('CONSOLE','RAW','TABLE','NONE') OR @limit<1 OR @MaxDurationSeconds IS NULL OR @MaxDurationSeconds NOT BETWEEN 1 AND 60 OR @ExecutionId IS NULL OR @ExecutionId<1 OR @JsonErzeugen IS NULL OR (@mode<>'TABLE' AND @ResultTablesJson IS NOT NULL) THROW 57900,N'INVALID_PARAMETER',1;
+  IF @IncludePipelineCorrelation IS NULL OR @IncludePipelineDiagnostics IS NULL OR (@IncludePipelineDiagnostics=1 AND @IncludePipelineCorrelation<>1) OR (@PipelinePhaseThresholdMs IS NOT NULL AND (@PipelinePhaseThresholdMs<0 OR @IncludePipelineDiagnostics<>1)) OR @LockTimeoutMs IS NULL OR @LockTimeoutMs NOT BETWEEN 0 AND 60000 OR @mode NOT IN('CONSOLE','RAW','TABLE','NONE') OR @limit<1 OR @MaxDurationSeconds IS NULL OR @MaxDurationSeconds NOT BETWEEN 1 AND 60 OR @ExecutionId IS NULL OR @ExecutionId<1 OR @JsonErzeugen IS NULL OR (@mode<>'TABLE' AND @ResultTablesJson IS NOT NULL) THROW 57900,N'INVALID_PARAMETER',1;
   SET @setLock=N'SET LOCK_TIMEOUT '+CONVERT(nvarchar(12),@LockTimeoutMs)+N';';EXEC sys.sp_executesql @setLock;
   IF @IncludePipelineCorrelation=1 SET @allowed+=N'|pipelineInstances|componentPhases|pathTransfers|pipelineCoverage';
+  IF @IncludePipelineDiagnostics=1 SET @allowed+=N'|componentPhaseSummary|pathTransferSummary|pipelineFindings|pipelineDiagnosticCoverage';
   IF @mode='TABLE' EXEC monitor.InternalPrepareResultTables @ResultTablesJson=@ResultTablesJson,@AllowedResultNames=@allowed,@MappingTable=N'#InternalSsisExecutionScopes_Map',@ThrowOnError=1;
   IF COALESCE(ISJSON(@Models),0)<>1 OR COALESCE(ISJSON(@Capture),0)<>1 OR DATALENGTH(@Models)>16777216 OR DATALENGTH(@Capture)>16777216 THROW 57900,N'SCOPE_TRANSPORT_INVALID',1;
   -- Doppelte Schlüssel werden vor jeder typisierten Projektion verworfen.
@@ -67210,9 +67372,12 @@ BEGIN
  UPDATE #InternalSsisExecutionScopes_Coverage SET [StatisticsCount]=COALESCE([StatisticsCount],0),[EventCount]=COALESCE([EventCount],0),[MappedStatisticsCount]=COALESCE([MappedStatisticsCount],0),[MappedEventCount]=COALESCE([MappedEventCount],0);
  UPDATE #InternalSsisExecutionScopes_Coverage SET [OutputTruncated]=CASE WHEN (SELECT COUNT(*) FROM #InternalSsisExecutionScopes_Packages)>@limit OR (SELECT COUNT(*) FROM #InternalSsisExecutionScopes_Invocations)>@limit OR (SELECT COUNT(*) FROM #InternalSsisExecutionScopes_Observations)>@limit OR (SELECT COUNT(*) FROM #InternalSsisExecutionScopes_Handlers)>@limit OR (SELECT COUNT(*) FROM #InternalSsisExecutionScopes_Summary)>@limit THEN 1 ELSE 0 END;
  IF @IncludePipelineCorrelation=1 EXEC monitor.InternalSsisPipelineCorrelation @Models=@Models,@Capture=@Capture,@Bound=@bound,@Deadline=@deadline,@Limit=@limit;
+ IF @IncludePipelineDiagnostics=1 EXEC monitor.InternalSsisPipelineDiagnostics @Models=@Models,@Bound=@bound,@Deadline=@deadline,@Limit=@limit,@PipelinePhaseThresholdMs=@PipelinePhaseThresholdMs;
  DECLARE @spec nvarchar(max)=N'[{"name":"scopeBinding","table":"#InternalSsisExecutionScopes_Binding","order":"ExecutionId"},{"name":"packageScopes","table":"#InternalSsisExecutionScopes_Packages","order":"PackageKey"},{"name":"packageInvocations","table":"#InternalSsisExecutionScopes_Invocations","order":"InvocationId"},{"name":"scopeObservations","table":"#InternalSsisExecutionScopes_Observations","order":"SourceKind,SourceId"},{"name":"handlerActivity","table":"#InternalSsisExecutionScopes_Handlers","order":"SourceKind,SourceId"},{"name":"scopeObjectSummary","table":"#InternalSsisExecutionScopes_Summary","order":"PackageKey,ModelNodeId"},{"name":"scopeCoverage","table":"#InternalSsisExecutionScopes_Coverage","order":"ExecutionId"}]';
  IF @IncludePipelineCorrelation=1 SET @spec=LEFT(@spec,LEN(@spec)-1)+N',{"name":"pipelineInstances","table":"#InternalSsisExecutionScopes_PipelineInstances","order":"FlowStatisticsId"},{"name":"componentPhases","table":"#InternalSsisExecutionScopes_ComponentPhases","order":"PhaseStatsId"},{"name":"pathTransfers","table":"#InternalSsisExecutionScopes_PathTransfers","order":"DataStatsId"},{"name":"pipelineCoverage","table":"#InternalSsisExecutionScopes_PipelineCoverage","order":"SourceName"}]';
  IF @JsonErzeugen=1 SET @Json=N'{"meta":{"schemaVersion":1,"executionScopesSchemaVersion":1,"isPartial":true}}';
+ IF @IncludePipelineDiagnostics=1 SET @spec=LEFT(@spec,LEN(@spec)-1)+N',{"name":"componentPhaseSummary","table":"#InternalSsisExecutionScopes_PhaseSummary","order":"FlowStatisticsId,ComponentNodeId,PhaseName"},{"name":"pathTransferSummary","table":"#InternalSsisExecutionScopes_TransferSummary","order":"FlowStatisticsId,ModelEdgeId"},{"name":"pipelineFindings","table":"#InternalSsisExecutionScopes_PipelineFindings","order":"RuleId,FlowStatisticsId,ComponentNodeId,ModelEdgeId,SourceName,SourceId"},{"name":"pipelineDiagnosticCoverage","table":"#InternalSsisExecutionScopes_DiagnosticCoverage","order":"SourceName"}]';
+ IF @JsonErzeugen=1 AND @IncludePipelineDiagnostics=1 SET @Json=JSON_MODIFY(@Json,'$.meta.pipelineDiagnosticsSchemaVersion',1);
  IF @JsonErzeugen=1 AND @IncludePipelineCorrelation=1 SET @Json=JSON_MODIFY(@Json,'$.meta.pipelineCorrelationSchemaVersion',1);
  DECLARE @name sysname,@table sysname,@order nvarchar(128),@target sysname,@array nvarchar(max),@sql nvarchar(max);
  DECLARE [outputs] CURSOR LOCAL FAST_FORWARD FOR SELECT [name],[table],[order] FROM OPENJSON(@spec) WITH([name] sysname,[table] sysname,[order] nvarchar(128));OPEN [outputs];FETCH NEXT FROM [outputs] INTO @name,@table,@order;
@@ -67243,7 +67408,7 @@ GO
 
 -- BEGIN SOURCE: Code/10_SSIS/040_USP_SsisPackageModelAnalysis.sql
 /*
-Objekt: monitor.USP_SsisPackageModelAnalysis; Version 1.8.0; Stand 2026-10-25.
+Objekt: monitor.USP_SsisPackageModelAnalysis; Version 1.9.0; Stand 2026-10-25.
 Zweck: Validiert ein optional zugeliefertes neutrales SSIS-Modell ohne CLR.
 Quelle: Caller-JSON, optionale Originalbytes und lokale Herkunftsbelege;
         lokale SQL-Kataloge nur mit expliziter Metadatenzuordnung, kein Paket-SQL.
@@ -67285,6 +67450,8 @@ CREATE OR ALTER PROCEDURE [monitor].[USP_SsisPackageModelAnalysis]
     , @ScopeSnapshotJson nvarchar(max) = NULL
     , @ScopeHandoverId uniqueidentifier = NULL
     , @IncludePipelineCorrelation bit = 0
+    , @IncludePipelineDiagnostics bit = 0
+    , @PipelinePhaseThresholdMs bigint = NULL
 AS
 BEGIN
     SET NOCOUNT ON;
@@ -67302,6 +67469,7 @@ BEGIN
         PRINT N'@IncludeIterationCorrelation=1 verlangt Ausführungskorrelation und den Iterationscapture 1.1; ergänzt executionObjectSummary|executionCoverage. Beobachtungen sind kein Vollständigkeitsnachweis.';
         PRINT N'@IncludeExecutionScopes=1 verwendet exklusiv @ProjectModelsJson, @ScopeSnapshotJson und @ScopeHandoverId für Kindpaket-/Handlerbelege; sieben eigene Resultsets, stets partiell.';
         PRINT N'@IncludePipelineCorrelation=1 ergänzt im Scopemodus pipelineInstances|componentPhases|pathTransfers|pipelineCoverage aus gebundenen Belegen; keine Laufzeit-Lineage.';
+        PRINT N'@IncludePipelineDiagnostics=1 verlangt Scope- und Pipelinekorrelation; ergänzt componentPhaseSummary|pathTransferSummary|pipelineFindings|pipelineDiagnosticCoverage. @PipelinePhaseThresholdMs ist ein optionaler nichtnegativer Einzelintervall-Grenzwert.';
         RETURN;
     END;
     IF XACT_STATE()=-1 THROW 50000,N'EXCHANGE_INVALID: Callertransaktion ist nicht schreibfähig.',1;
@@ -67309,7 +67477,7 @@ BEGIN
     BEGIN
         IF @PackageModelJson IS NOT NULL OR @PackageBytes IS NOT NULL OR COALESCE(@IncludePackageViews,1)<>0 OR COALESCE(@IncludeObjectRules,1)<>0 OR COALESCE(@IncludeSqlMetadata,1)<>0 OR COALESCE(@IncludeExecutionCorrelation,1)<>0 OR COALESCE(@IncludeIterationCorrelation,1)<>0 OR @LocalHandoverId IS NOT NULL OR @ExecutionSnapshotJson IS NOT NULL OR @RuntimeHandoverId IS NOT NULL OR @SqlMetadataBindingsJson IS NOT NULL OR @IncludePipelineCorrelation IS NULL
             SET @MaxDurationSeconds=0; -- Der Scopeconsumer liefert den kontrollierten INVALID_PARAMETER-Vertrag.
-        EXEC monitor.InternalSsisExecutionScopes @IncludePipelineCorrelation=@IncludePipelineCorrelation,@Models=@ProjectModelsJson,@Capture=@ScopeSnapshotJson,@Handover=@ScopeHandoverId,@ExecutionId=@ExecutionId,@LockTimeoutMs=@LockTimeoutMs,@MaxZeilen=@MaxZeilen,@MaxDurationSeconds=@MaxDurationSeconds,@ResultSetArt=@ResultSetArt,@ResultTablesJson=@ResultTablesJson,@JsonErzeugen=@JsonErzeugen,@Json=@Json OUTPUT,@StatusCodeOut=@StatusCodeOut OUTPUT,@IsPartialOut=@IsPartialOut OUTPUT,@ErrorNumberOut=@ErrorNumberOut OUTPUT,@ErrorMessageOut=@ErrorMessageOut OUTPUT;
+        EXEC monitor.InternalSsisExecutionScopes @IncludePipelineCorrelation=@IncludePipelineCorrelation,@IncludePipelineDiagnostics=@IncludePipelineDiagnostics,@PipelinePhaseThresholdMs=@PipelinePhaseThresholdMs,@Models=@ProjectModelsJson,@Capture=@ScopeSnapshotJson,@Handover=@ScopeHandoverId,@ExecutionId=@ExecutionId,@LockTimeoutMs=@LockTimeoutMs,@MaxZeilen=@MaxZeilen,@MaxDurationSeconds=@MaxDurationSeconds,@ResultSetArt=@ResultSetArt,@ResultTablesJson=@ResultTablesJson,@JsonErzeugen=@JsonErzeugen,@Json=@Json OUTPUT,@StatusCodeOut=@StatusCodeOut OUTPUT,@IsPartialOut=@IsPartialOut OUTPUT,@ErrorNumberOut=@ErrorNumberOut OUTPUT,@ErrorMessageOut=@ErrorMessageOut OUTPUT;
         RETURN;
     END;
 
@@ -67439,7 +67607,7 @@ BEGIN
     -- END GENERATED SSIS EXCHANGE RULES
 
     BEGIN TRY
-        IF @IncludePipelineCorrelation IS NULL OR @IncludePipelineCorrelation<>0 OR @IncludeExecutionScopes IS NULL OR @ProjectModelsJson IS NOT NULL OR @ScopeSnapshotJson IS NOT NULL OR @ScopeHandoverId IS NOT NULL OR @MaxZeilen<0 OR @MaxDurationSeconds IS NULL OR @MaxDurationSeconds NOT BETWEEN 1 AND 60
+        IF @IncludePipelineDiagnostics IS NULL OR @IncludePipelineDiagnostics<>0 OR @PipelinePhaseThresholdMs IS NOT NULL OR @IncludePipelineCorrelation IS NULL OR @IncludePipelineCorrelation<>0 OR @IncludeExecutionScopes IS NULL OR @ProjectModelsJson IS NOT NULL OR @ScopeSnapshotJson IS NOT NULL OR @ScopeHandoverId IS NOT NULL OR @MaxZeilen<0 OR @MaxDurationSeconds IS NULL OR @MaxDurationSeconds NOT BETWEEN 1 AND 60
            OR @LockTimeoutMs IS NULL OR @LockTimeoutMs NOT BETWEEN 0 AND 60000 OR @JsonErzeugen IS NULL OR @PrintMeldungen IS NULL
            OR @IncludeExecutionCorrelation IS NULL OR @IncludeExecutionCorrelation=1 AND (@ExecutionId IS NULL OR @ExecutionId<1)
            OR @IncludeIterationCorrelation IS NULL OR @IncludeIterationCorrelation=1 AND @IncludeExecutionCorrelation<>1 OR @IncludeExecutionCorrelation=0 AND (@ExecutionId IS NOT NULL OR @ExecutionSnapshotJson IS NOT NULL OR @RuntimeHandoverId IS NOT NULL) OR @IncludeSqlMetadata IS NULL OR @IncludeSqlMetadata=0 AND @SqlMetadataBindingsJson IS NOT NULL OR @IncludeObjectRules IS NULL OR @IncludePackageViews IS NULL OR @Mode NOT IN ('CONSOLE','RAW','TABLE','NONE') OR (@Mode<>'TABLE' AND @ResultTablesJson IS NOT NULL)

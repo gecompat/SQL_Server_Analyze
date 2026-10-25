@@ -2732,6 +2732,8 @@ Quelle: `Code/10_SSIS/040_USP_SsisPackageModelAnalysis.sql`
     , @ScopeSnapshotJson nvarchar(max) = NULL
     , @ScopeHandoverId uniqueidentifier = NULL
     , @IncludePipelineCorrelation bit = 0
+    , @IncludePipelineDiagnostics bit = 0
+    , @PipelinePhaseThresholdMs bigint = NULL
 ```
 
 ## `[monitor].[USP_ServerPrincipalAnalysis]`
