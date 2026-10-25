@@ -474,3 +474,18 @@ Belege. Der externe Pfad verwendet den Toolbelt-Host ohne SQL-CLR-Installation;
 der eigenständige Analyze-Pfad bleibt verfügbar. Synthetische Transportprüfung
 ersetzt keine Abnahme gegen eine echte Windows-SSISDB. Solange diese fehlt,
 bleibt die gekoppelte Quellenabnahme offen.
+
+## Fünfte Welle: ausdrückliche SQL-Metadatenzuordnung
+
+Analyze ergänzt eine optionale native Katalogprüfung für ausdrücklich benannte
+lokale Datenbanken, Objekte und Spalten. Das paketgebundene Zuordnungsdokument
+referenziert vorhandene `COLUMN`-Knoten. Der
+[Anwendungsvertrag](../Analysis_Guides/Procedures/USP_SsisPackageModelAnalysis.md#optionale-lokale-sql-metadatenprüfung)
+beschreibt Eingaben, Ausgaben, Rechte, Limits und Aussagegrenzen.
+
+Die Prüfung führt weder Paket-SQL aus noch löst sie Verbindungsdaten automatisch
+auf. SQL-Katalogfakten und bekannte Nullablewerte können gegenübergestellt
+werden; SSIS-zu-SQL-Typkompatibilität bleibt ausdrücklich unqualifiziert.
+Komponentenprofile, Typinterpretation und Lineage werden dafür nicht nach
+Analyze kopiert. Ein Unique-Index-Beleg betrifft ausschließlich den vollständig
+angegebenen Spaltensatz, keine Laufzeitdaten oder beliebige Lookupabfrage.

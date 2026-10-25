@@ -365,6 +365,63 @@ Beobachtungen; Archivgrenzen sind 64 MiB/10000 Einträge und 16 MiB je Paket.
 Das gemeinsame Importerzeitbudget bleibt wirksam. Der eigenständige statische
 Pfad benötigt weder diesen Adapter noch SSISDB, Toolbelt oder SQL CLR.
 
+## Optionale lokale SQL-Metadatenprüfung
+
+`@IncludeSqlMetadata=1` ergänzt `sqlMetadata`. Die Standardausgabe bleibt bei
+acht Gruppen; Metadaten allein liefern neun, zusammen mit Paketsichten und
+Objektregeln fünfzehn RAW-Gruppen. Mit zusätzlich aktivierter
+Ausführungskorrelation sind es siebzehn Gruppen. CONSOLE bleibt eine Statusgruppe. JSON
+verwendet `meta.sqlMetadataSchemaVersion=1`; TABLE akzeptiert `sqlMetadata`
+nur bei aktiviertem Flag. Ohne Flag muss `@SqlMetadataBindingsJson` leer bleiben.
+
+Der Caller ordnet vorhandene Modellspalten ausdrücklich lokalen SQL-Spalten
+zu. Das Dokument besitzt genau `contract="ssis-sql-metadata-bindings"`,
+`version="1.0.0"`, den `packageSha256` des aktuellen Modells und `bindings`.
+Dieses Array enthält eine bis höchstens 1000 flache Zuordnungen mit jeweils
+genau sieben Feldern:
+
+| Feld | Vertrag |
+|---|---|
+| `bindingId` | Eine eindeutige ASCII-Kennung mit höchstens 64 Zeichen aus Buchstaben, Ziffern und `_.:-`. |
+| `nodeId` | Die genaue ID eines vorhandenen `COLUMN`-Knotens dieses Modells. |
+| `databaseName` | Der ausdrücklich benannte lokale Datenbankname; es gibt keinen impliziten CURRENT-Scope. |
+| `schemaName`, `objectName`, `columnName` | Je ein nicht leerer SQL-Bezeichner mit höchstens 128 UTF-16-Codeeinheiten. |
+| `keySetId` | `null` ohne Schlüsselprüfung oder eine ASCII-Kennung wie `bindingId`; derselbe Satz bezeichnet genau ein SQL-Objekt und enthält jede SQL-Spalte höchstens einmal. |
+
+Der Importer validiert den gesamten maximal 16 MiB großen Zuordnungsvertrag
+vor dem ersten Katalogzugriff. Er löst keine Connection Strings, Expressions,
+Lookupabfragen oder Paket-SQL auf. Nur ausdrücklich benannte sichtbare
+Datenbanken werden gelesen. Der Datenbankbezeichner stammt aus dem geprüften
+lokalen Katalog und wird mit `QUOTENAME` geschützt; Objekt- und Spaltennamen
+bleiben Daten. Vergleich ist ordinal einschließlich Länge. Der Caller benötigt
+Zugriff auf die jeweiligen Datenbanken und Sichtbarkeit der betreffenden
+Metadaten. EXECUTE allein erweitert diese Rechte nicht.
+
+`sqlMetadata` liefert beobachtete Objekt-/Spalten-IDs, deklarierten SQL-Typ mit
+Schema, Längen in Bytes, Präzision, Skala, Collation, Nullable-/Computed-/Identity-
+Eigenschaften und Beobachtungszeit. `ModelTypeCode` bleibt der unveränderte
+Producerwert. `NullableAgreement` vergleicht nur zwei bekannte Nullablewerte;
+fehlende Werte bleiben `UNKNOWN`. `TypeCompatibilityStatus=NOT_QUALIFIED`
+erteilt keine Konvertierungs- oder Ladefreigabe. Dadurch entsteht in Analyze
+keine zweite SSIS-Typenregelpflege.
+
+`UNIQUE_INDEX_OBSERVED` verlangt einen sichtbaren, aktivierten, nicht
+hypothetischen und ungefilterten Unique Index mit genau der ausdrücklich
+angegebenen Schlüsselspaltenmenge. Include-Spalten zählen nicht zum Schlüssel.
+Ein zusammengesetzter Schlüssel beweist keine Eindeutigkeit einer Teilmenge;
+gefilterte und deaktivierte Indizes qualifizieren den Satz nicht. Fehlende
+Sichtbarkeit ergibt `SQL_OBJECT_NOT_VISIBLE` beziehungsweise
+`SQL_COLUMN_NOT_VISIBLE`, keinen Nachweis einer tatsächlichen Objektabwesenheit.
+
+Die Zuordnung bleibt `CALLER_EXPLICIT`, die Evidenz `LOCAL_CATALOG_METADATA`.
+Paketdigest und Producervertrauen werden mitgeführt. Die Katalogbeobachtung
+unter NOLOCK bleibt partiell und ist bei gleichzeitiger DDL kein konsistenter
+Datenbanksnapshot. Es gibt keine Datenscans, GRANTs, DDL oder Paketabfragen.
+Fehler eines Datenbankzugriffs bleiben in dieser Quelle; ungültige Zuordnungen
+liefern leere Metadaten und erhalten das gültige statische Modell. Das
+gemeinsame Zeitbudget bleibt wirksam. `@MaxZeilen` kürzt erst nach der
+Prüfung aller Schlüsselmitglieder und kennzeichnet eine Kürzung.
+
 ## Primärquellen
 
 - [Freigegebener projektübergreifender Vertrag](../../Architecture/SSIS_Analyze_Toolbelt_Exchange_Contract.md)
@@ -372,5 +429,7 @@ Pfad benötigt weder diesen Adapter noch SSISDB, Toolbelt oder SQL CLR.
 - [Resultsetinventar](../../../Metadata/Inventory/ResultSets.csv)
 - [SSISDB-Ausführungen](https://learn.microsoft.com/en-us/sql/integration-services/system-views/catalog-executions-ssisdb-database)
 - [SSISDB-Executable-Statistiken](https://learn.microsoft.com/en-us/sql/integration-services/system-views/catalog-executable-statistics)
+- [Indexkatalog](https://learn.microsoft.com/en-us/sql/relational-databases/system-catalog-views/sys-indexes-transact-sql)
+- [Indexspalten und Metadatensichtbarkeit](https://learn.microsoft.com/en-us/sql/relational-databases/system-catalog-views/sys-index-columns-transact-sql)
 
 [Technische Detailbeschreibung](../../Architecture/SSIS_Analyze_Toolbelt_Exchange_Contract.md)

@@ -34,10 +34,12 @@ function Query([string]$Sql) {
     try { $data=[Data.DataSet]::new(); $adapter=[Data.SqlClient.SqlDataAdapter]::new($command); [void]$adapter.Fill($data); return ,$data }
     finally { $command.Dispose() }
 }
-function Invoke-Model([string]$Payload,[string]$Mode='NONE',[int]$Limit=1000,[bool]$IncludeBytes=$false,[string]$PrefixSql='', [string]$Mapping=$null,[string]$SuffixSql='', [bool]$Views=$false,[bool]$Rules=$false) {
+function Invoke-Model([string]$Payload,[string]$Mode='NONE',[int]$Limit=1000,[bool]$IncludeBytes=$false,[string]$PrefixSql='', [string]$Mapping=$null,[string]$SuffixSql='', [bool]$Views=$false,[bool]$Rules=$false,[bool]$SqlMetadata=$false,[string]$SqlBindings=$null) {
     $command=$connection.CreateCommand(); $command.CommandTimeout=90
-    $command.CommandText=$PrefixSql+"`nEXEC [monitor].[USP_SsisPackageModelAnalysis] @PackageModelJson=@Payload,@PackageBytes=@Bytes,@ResultSetArt=@Mode,@MaxZeilen=@Limit,@IncludePackageViews=@Views,@IncludeObjectRules=@Rules,@JsonErzeugen=1,@Json=@Json OUTPUT,@StatusCodeOut=@Status OUTPUT;`n"+$SuffixSql
+    $command.CommandText=$PrefixSql+"`nEXEC [monitor].[USP_SsisPackageModelAnalysis] @PackageModelJson=@Payload,@PackageBytes=@Bytes,@ResultSetArt=@Mode,@MaxZeilen=@Limit,@IncludePackageViews=@Views,@IncludeObjectRules=@Rules,@IncludeSqlMetadata=@SqlMetadata,@SqlMetadataBindingsJson=@SqlBindings,@JsonErzeugen=1,@Json=@Json OUTPUT,@StatusCodeOut=@Status OUTPUT;`n"+$SuffixSql
     [void]$command.Parameters.Add('@Rules',[Data.SqlDbType]::Bit);$command.Parameters['@Rules'].Value=$Rules
+    [void]$command.Parameters.Add('@SqlMetadata',[Data.SqlDbType]::Bit);$command.Parameters['@SqlMetadata'].Value=$SqlMetadata
+    [void]$command.Parameters.Add('@SqlBindings',[Data.SqlDbType]::NVarChar,-1);$command.Parameters['@SqlBindings'].Value=if(-not [string]::IsNullOrEmpty($SqlBindings)){$SqlBindings}else{[DBNull]::Value}
     [void]$command.Parameters.Add('@Views',[Data.SqlDbType]::Bit);$command.Parameters['@Views'].Value=$Views
     [void]$command.Parameters.Add('@Payload',[Data.SqlDbType]::NVarChar,-1); $command.Parameters['@Payload'].Value=$Payload
     [void]$command.Parameters.Add('@Bytes',[Data.SqlDbType]::VarBinary,-1)
@@ -204,9 +206,29 @@ try {
         [void]$handoverCommand.Parameters.Add('@Id',[Data.SqlDbType]::UniqueIdentifier);$handoverCommand.Parameters['@Id'].Value=$handover.LocalHandoverId
         try {$verified=$handoverCommand.ExecuteScalar()|ConvertFrom-Json -Depth 32;if($verified.meta.statusCode -cne 'AVAILABLE_LIMITED'){Write-Output ('HANDOVER_STATUS='+$verified.meta.statusCode+' '+$verified.moduleStatus[0].ErrorMessage)};Assert ($verified.sourceBinding.Count -eq 1 -and $verified.sourceBinding[0].ProducerTrust -ceq 'VERIFIED_LOCAL') 'QUALIFIED_HOST_HANDOVER_AFTER_CREATE_OR_ALTER'} finally {$handoverCommand.Dispose()}
     } else {Write-Output 'SSIS_QUALIFIED_HOST_HANDOVER_NOT_EXECUTED: ProducerAssemblyPath not supplied.'}
+    [void](Query 'CREATE TABLE monitor.SyntheticSsisHarnessColumn(SyntheticColumn int NULL);')
+    $columnId=@(($model|ConvertFrom-Json -Depth 32).nodes|Where-Object kind -ceq 'COLUMN')[0].id
+    $bindings=[ordered]@{contract='ssis-sql-metadata-bindings';version='1.0.0';packageSha256=($model|ConvertFrom-Json -Depth 32).source.packageSha256;bindings=@([ordered]@{bindingId='SyntheticBinding';nodeId=$columnId;databaseName=$database;schemaName='monitor';objectName='SyntheticSsisHarnessColumn';columnName='SyntheticColumn';keySetId=$null})}|ConvertTo-Json -Depth 8 -Compress
+    $sqlRaw=Invoke-Model $model 'RAW' 1000 $false '' $null '' $false $false $true $bindings
+    Assert ($sqlRaw.Data.Tables.Count -eq 9 -and $sqlRaw.Json.sqlMetadata[0].StatusCode -ceq 'SQL_COLUMN_OBSERVED' -and $sqlRaw.Json.meta.sqlMetadataSchemaVersion -eq 1) 'SQL_METADATA_RAW9'
+    $sqlAll=Invoke-Model $model 'RAW' 1000 $false '' $null '' $true $true $true $bindings
+    Assert ($sqlAll.Data.Tables.Count -eq 15 -and $sqlAll.Json.sqlMetadata[0].TypeCompatibilityStatus -ceq 'NOT_QUALIFIED') 'SQL_METADATA_ALL15'
+    $sqlNone=Invoke-Model $model 'NONE' 1000 $false '' $null '' $false $false $true $bindings
+    $sqlConsole=Invoke-Model $model 'CONSOLE' 1000 $false '' $null '' $false $false $true $bindings
+    Assert ($sqlNone.Data.Tables.Count -eq 0 -and $sqlConsole.Data.Tables.Count -eq 1 -and $sqlNone.Json.sqlMetadata.Count -eq 1) 'SQL_METADATA_NONE_CONSOLE'
+    $sqlTable=Invoke-Model $model 'TABLE' 1000 $false 'CREATE TABLE #SyntheticSqlMeta([seed] int NULL);' '{"sqlMetadata":"#SyntheticSqlMeta"}' 'SELECT * FROM #SyntheticSqlMeta;DROP TABLE #SyntheticSqlMeta;' $false $false $true $bindings
+    Assert ($sqlTable.Data.Tables.Count -eq 1 -and $sqlTable.Data.Tables[0].Columns.Count -eq $sqlRaw.Data.Tables[8].Columns.Count -and $sqlTable.Data.Tables[0].Rows.Count -eq 1) 'SQL_METADATA_TABLE_PARITY'
+    for($index=0;$index -lt $sqlTable.Data.Tables[0].Columns.Count;$index++) {
+        $left=$sqlRaw.Data.Tables[8].Columns[$index];$right=$sqlTable.Data.Tables[0].Columns[$index]
+        Assert ($left.ColumnName -ceq $right.ColumnName -and $left.DataType -eq $right.DataType) ('SQL_METADATA_NATIVE_SCHEMA_'+$index)
+    }
+    [void](Query 'DROP TABLE monitor.SyntheticSsisHarnessColumn;')
     $captureProbe=[IO.File]::ReadAllText((Join-Path $repositoryRoot 'Code/Tests/Integration/216_SsisExecutionCorrelation_Runtime_Contract.sql')) -replace 'USE \[DeineDatenbank\];',"USE [$database];"
     foreach($batch in [regex]::Split($captureProbe,'(?im)^\s*GO\s*$')) {if($batch.Trim()){[void](Query $batch)}}
     Assert $true 'EXECUTION_CAPTURE_RECEIVER_SQL_PROBE'
+    $metadataProbe=[IO.File]::ReadAllText((Join-Path $repositoryRoot 'Code/Tests/Integration/217_SsisSqlMetadata_Runtime_Contract.sql')) -replace 'USE \[DeineDatenbank\];',"USE [$database];"
+    foreach($batch in [regex]::Split($metadataProbe,'(?im)^\s*GO\s*$')) {if($batch.Trim()){[void](Query $batch)}}
+    Assert $true 'SQL_METADATA_SQL_PROBE'
     $probe=[IO.File]::ReadAllText((Join-Path $repositoryRoot 'Code/Tests/Integration/213_SsisPackageViews_Runtime_Contract.sql')) -replace 'USE \[DeineDatenbank\];',"USE [$database];"
     foreach($batch in [regex]::Split($probe,'(?im)^\s*GO\s*$')) {if($batch.Trim()){[void](Query $batch)}}
     Assert $true 'PACKAGE_VIEWS_SQL_PROBE'

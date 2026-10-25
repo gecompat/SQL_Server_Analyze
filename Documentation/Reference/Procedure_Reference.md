@@ -2720,6 +2720,8 @@ Quelle: `Code/10_SSIS/040_USP_SsisPackageModelAnalysis.sql`
     , @IncludePackageViews bit = 0
     , @IncludeObjectRules bit = 0
     , @LocalHandoverId uniqueidentifier = NULL
+    , @IncludeSqlMetadata bit = 0
+    , @SqlMetadataBindingsJson nvarchar(max) = NULL
     , @IncludeExecutionCorrelation bit = 0
     , @ExecutionId bigint = NULL
     , @ExecutionSnapshotJson nvarchar(max) = NULL

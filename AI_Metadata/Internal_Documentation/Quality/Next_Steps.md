@@ -29,6 +29,11 @@ konkreten Befundfolgecheck der neu erforderlichen 950-Validatorausnahme. Die
 lokale Vertrauensentscheidung benötigt committierte Metadaten statt NOLOCK.
 Diese zusätzliche Frage entstand erst im statischen Gate; sie öffnet keinen
 weiteren Produktreview.
+Ein zusätzlicher begrenzter Integrationscheck prüft ausschließlich die
+zusammengeführten Wellen 4/5 und den neu benötigten nativen Consumer-Test.
+Auslöser sind die gemeinsamen Append-Schnittstellen und die ausdrückliche
+Freigabe eines frischen SSISDB-Labs; geschlossene Produktbefunde werden nicht
+erneut geprüft.
 Ein Checkpoint folgt nach jeder integrierten Welle. Weitere Reviews, breite
 Native-Versionsmatrizen und unveränderte Testwiederholungen benötigen einen
 konkreten Auslöser. Verlässliche Token- und Kostenmessung liegt nicht vor.
@@ -65,23 +70,41 @@ konkreten Auslöser. Verlässliche Token- und Kostenmessung liegt nicht vor.
 4. Design-/Laufzeitkorrelation: in Umsetzung. Der native Empfänger importiert
    einen separat registrierten, modell- und paketgebundenen Katalogcapture.
    Toolbelt liefert native IDs und beobachtete Paketpfade aus demselben Kern;
-   Analyze rekonstruiert keine Pfade und keine Lineage. Der SQL2025-Empfänger
-   besteht 88 Harnessprüfungen; der synthetische Transportvertrag besteht fünfzehn
+   Analyze rekonstruiert keine Pfade und keine Lineage. Der zusammengeführte
+   SQL2025-Empfänger besteht 127 Harnessprüfungen; der synthetische
+   Transportvertrag besteht 19
    Prüfungen einschließlich konkurrierendem Versionswechsel, großen IDs,
    RAW-/JSON-Parität, Transaktionsabschluss, Registrierungsabbruch und
    Erhaltung fremder Callertransaktionen. Dies ist keine SSISDB-Abnahme.
    Der vorhandene öffentliche Windows-Consumerzugang des Labs wurde verwendet;
-   Deployment eines eigenen synthetischen Projekts scheitert mit SQL 15581.
+   das erste Deployment eines eigenen synthetischen Projekts scheiterte mit SQL 15581.
    Ein nutzbarer SSISDB-Masterkey ist nicht belegt. Die eigenen Ordner sind
    entfernt; globale Schlüssel-, Trust- und Labkonfiguration blieben unverändert.
    Eine Rückfrage zur vorhandenen freigegebenen Zugangs-/Secretreferenz ist
-   offen. Derselbe Quellenblocker wird ohne Zustandsänderung nicht wiederholt.
+   durch die nachfolgende Freigabe ersetzt. Der Benutzer hat ausdrücklich
+   einen frischen eigenen SSISDB-Labaufbau freigegeben. Ein öffentlicher
+   Prepared-Image-/Medienpfad läuft erhöht über Windows-UAC; genau ein eigener
+   Run wird für den Consumer angelegt und anschließend öffentlich entfernt.
+   Der alte Quellenblocker bleibt historisch erhalten.
    Dokumentation und 74 statische Validatoren bestehen. Unabhängiger Review
    und konkreter Folgecheck schließen den Registrierungsabbruchbefund; echte
-   Quellenabnahme und aktuelle Analyze-CI sind noch offen. Toolbelt PR #411
-   liefert den gemeinsamen Identitätsexport separat; seine aktuelle CI läuft.
-5. SQL-Metadatenprüfung: noch offen; ausschließlich ausdrückliche lokale
-   Bindings, keine automatische Ausführung von Paket-SQL oder Datenscans.
+   Quellenabnahme bleibt offen; die erste Head-CI von Draft #428 besteht
+   einschließlich SQL2025-Funktionslauf 40159105545. Die Integration von Welle 5
+   benötigt eine neue aktuelle Head-Abnahme. Toolbelt PR #411
+   ist nach grüner Head-CI als `626283a51a569442e5a0cfb455fdf59e9be608d7`
+   integriert; der Mergebaum ist identisch. Main-Nachläufe 40159164066 und
+   40159164077 bestehen. Analyze Draft-PR #428 hält den gekoppelten
+   Quellenpfad bis zur echten SSISDB-Abnahme offen.
+5. SQL-Metadatenprüfung: PR #429 ist nach vollständiger Head-CI als
+   `fb89385376573cd6e3188beef2fd03f7de388bba` integriert. Head- und Mergebaum
+   sind identisch; funktionale Head-CI 40159405306 besteht. Die Basis ist Welle 3.
+   Der SQL2025-Harness besteht 126 Prüfungen einschließlich RAW9/all15,
+   nativer TABLE-Schemaparität, paketgebundener Spaltenzuordnung, vollständiger
+   Unique-Key-Sätze und eingeschränkter Metadatensichtbarkeit. Parser, Typen-
+   interpretation und Lineage bleiben in Toolbelt. Der unabhängige Review
+   ist ohne materielle Befunde abgeschlossen; 74 statische Validatoren,
+   Datenschutz- und Stilgate bestehen. Der separate Main-Nachlauf
+   40159950842 besteht ebenfalls. Welle 5 benötigt keine SSISDB- oder CLR-Installation.
 
 Der angeforderte 30-Minuten-Heartbeat dient ausschließlich als letzte Instanz
 für Leerlauferkennung. Er startet keine parallele Umsetzung, setzt keine Budgets

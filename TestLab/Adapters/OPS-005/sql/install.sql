@@ -65118,7 +65118,7 @@ GO
 
 -- BEGIN SOURCE: Code/10_SSIS/040_USP_SsisPackageModelAnalysis.sql
 /*
-Objekt: monitor.USP_SsisPackageModelAnalysis; Version 1.4.0; Stand 2026-10-25.
+Objekt: monitor.USP_SsisPackageModelAnalysis; Version 1.5.0; Stand 2026-10-25.
 Zweck: Validiert ein optional zugeliefertes neutrales SSIS-Modell ohne CLR.
 Quelle: Ausschließlich Caller-JSON und optionale Originalbytes; kein Paket-SQL.
 Vertrag: SSIS_Analyze_Toolbelt_Exchange_Contract.md; Schema aus Toolbelt.
@@ -65147,6 +65147,8 @@ CREATE OR ALTER PROCEDURE [monitor].[USP_SsisPackageModelAnalysis]
     , @IncludePackageViews bit = 0
     , @IncludeObjectRules bit = 0
     , @LocalHandoverId uniqueidentifier = NULL
+    , @IncludeSqlMetadata bit = 0
+    , @SqlMetadataBindingsJson nvarchar(max) = NULL
     , @IncludeExecutionCorrelation bit = 0
     , @ExecutionId bigint = NULL
     , @ExecutionSnapshotJson nvarchar(max) = NULL
@@ -65163,6 +65165,7 @@ BEGIN
         PRINT N'@IncludePackageViews=1 ergänzt packageOverview|executables|dataFlows|components|columnRelations. Die fünf Sichten zeigen ausschließlich gelieferte Beziehungen.';
         PRINT N'@IncludeObjectRules=1 ergänzt objectFindings mit konkreten Knoten-/Kantenbelegen; statische Hinweise, keine Laufzeiturteile.';
         PRINT N'@LocalHandoverId prüft eine separat berechtigt registrierte lokale Übergabe; benötigt dieselben @PackageBytes. Kein Trust-Flag im Caller-JSON.';
+        PRINT N'@IncludeSqlMetadata=1 ergänzt sqlMetadata aus expliziten paketgebundenen lokalen SQL-Spaltenzuordnungen; keine Paket-SQL-Ausführung oder Typkonvertierungsfreigabe.';
         PRINT N'@IncludeExecutionCorrelation=1 ergänzt runtimeBinding|executionCorrelation für @ExecutionId. Nur qualifizierte lokale Katalogcaptures werden zugeordnet; kein SSISDB-Zugriff im Importer.';
         RETURN;
     END;
@@ -65178,6 +65181,7 @@ BEGIN
     DECLARE @AllowedResultNames nvarchar(max)=N'moduleStatus|sourceBinding|nodes|edges|coverage|findings|sourceStatus|warnings'
         +CASE WHEN @IncludePackageViews=1 THEN N'|packageOverview|executables|dataFlows|components|columnRelations' ELSE N'' END
         +CASE WHEN @IncludeObjectRules=1 THEN N'|objectFindings' ELSE N'' END
+        +CASE WHEN @IncludeSqlMetadata=1 THEN N'|sqlMetadata' ELSE N'' END
         +CASE WHEN @IncludeExecutionCorrelation=1 THEN N'|runtimeBinding|executionCorrelation' ELSE N'' END;
 
     CREATE TABLE #SsisPackageModelAnalysis_ResultTables([ResultName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,[TargetTable] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL);
@@ -65252,6 +65256,18 @@ BEGIN
         [BindingStatus] varchar(32) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,[ProducerTrust] varchar(24) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,
         [Finding] nvarchar(1000) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL);
 
+    CREATE TABLE #SsisPackageModelAnalysis_SqlMetadata(
+        [BindingOrdinal] int NOT NULL,[BindingId] varchar(64) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL PRIMARY KEY,
+        [NodeId] varchar(128) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,[DatabaseName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,
+        [SchemaName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,[ObjectName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,[ColumnName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,
+        [KeySetId] varchar(64) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,[DatabaseId] int NULL,[ObjectId] int NULL,[ColumnId] int NULL,[SqlObjectType] char(2) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,
+        [SqlTypeSchema] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL,[SqlTypeName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL,[SystemTypeId] int NULL,[MaxLengthBytes] smallint NULL,[Precision] tinyint NULL,[Scale] tinyint NULL,
+        [SqlCollation] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL,[IsNullable] bit NULL,[IsComputed] bit NULL,[IsIdentity] bit NULL,
+        [ModelTypeCode] nvarchar(64) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,[ModelIsNullable] bit NULL,[NullableAgreement] varchar(24) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,
+        [UniqueKeyStatus] varchar(48) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,[TypeCompatibilityStatus] varchar(24) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,
+        [StatusCode] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,[BindingStatus] varchar(24) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,
+        [PackageSha256] varchar(64) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,[ProducerTrust] varchar(24) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,
+        [EvidenceLevel] varchar(32) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,[ObservedUtc] datetime2(3) NULL,[ErrorNumber] int NULL);
     CREATE TABLE #SsisPackageModelAnalysis_RuntimeBinding(
         [ExecutionId] bigint NOT NULL,[CatalogDatabaseGuid] uniqueidentifier NULL,[SourceBindingSha256] varchar(64) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,[ProjectId] bigint NULL,[ProjectLsn] bigint NULL,
         [PackageFileName] nvarchar(260) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,[ExecutionCreatedUtc] datetimeoffset(7) NULL,
@@ -65272,9 +65288,8 @@ BEGIN
     BEGIN TRY
         IF @MaxZeilen<0 OR @MaxDurationSeconds IS NULL OR @MaxDurationSeconds NOT BETWEEN 1 AND 60
            OR @LockTimeoutMs IS NULL OR @LockTimeoutMs NOT BETWEEN 0 AND 60000 OR @JsonErzeugen IS NULL OR @PrintMeldungen IS NULL
-           OR @IncludeExecutionCorrelation IS NULL OR @IncludeObjectRules IS NULL OR @IncludePackageViews IS NULL
-           OR @IncludeExecutionCorrelation=1 AND (@ExecutionId IS NULL OR @ExecutionId<1)
-           OR @IncludeExecutionCorrelation=0 AND (@ExecutionId IS NOT NULL OR @ExecutionSnapshotJson IS NOT NULL OR @RuntimeHandoverId IS NOT NULL) OR @Mode NOT IN ('CONSOLE','RAW','TABLE','NONE') OR (@Mode<>'TABLE' AND @ResultTablesJson IS NOT NULL)
+           OR @IncludeExecutionCorrelation IS NULL OR @IncludeExecutionCorrelation=1 AND (@ExecutionId IS NULL OR @ExecutionId<1)
+           OR @IncludeExecutionCorrelation=0 AND (@ExecutionId IS NOT NULL OR @ExecutionSnapshotJson IS NOT NULL OR @RuntimeHandoverId IS NOT NULL) OR @IncludeSqlMetadata IS NULL OR @IncludeSqlMetadata=0 AND @SqlMetadataBindingsJson IS NOT NULL OR @IncludeObjectRules IS NULL OR @IncludePackageViews IS NULL OR @Mode NOT IN ('CONSOLE','RAW','TABLE','NONE') OR (@Mode<>'TABLE' AND @ResultTablesJson IS NOT NULL)
             THROW 50000,N'INVALID_PARAMETER',1;
         SET @Deadline=DATEADD(second,@MaxDurationSeconds,@Started);
         SET @LockTimeoutSql=N'SET LOCK_TIMEOUT '+CONVERT(nvarchar(12),@LockTimeoutMs)+N';'; EXEC [sys].[sp_executesql] @LockTimeoutSql;
@@ -65614,6 +65629,101 @@ BEGIN
                 (SELECT COUNT(*) FROM #SsisPackageModelAnalysis_Nodes),(SELECT COUNT(*) FROM #SsisPackageModelAnalysis_Edges),@ProducerTrust
             FROM #SsisPackageModelAnalysis_Nodes AS [n] WHERE [n].[NodeKind]='PACKAGE';
         END;
+        IF @IncludeSqlMetadata=1
+        BEGIN
+            SET @ValidationStage='SQL_METADATA';
+            DECLARE @SqlMetadataStatus varchar(40)='SQL_METADATA_BINDINGS_INVALID',@SqlMetadataError int=NULL;
+            BEGIN TRY
+                -- Dieser flache Zuordnungsvertrag bindet explizite Namen an dieses
+                -- Paket. Er liest keine DTSX-Eigenschaften oder Connection Strings.
+                IF @SqlMetadataBindingsJson IS NULL OR DATALENGTH(@SqlMetadataBindingsJson)>16777216 OR ISJSON(@SqlMetadataBindingsJson)<>1
+                    THROW 50000,N'SQL_METADATA_BINDINGS_INVALID',1;
+                IF (SELECT COUNT(*) FROM OPENJSON(@SqlMetadataBindingsJson))<>4
+                    OR EXISTS(SELECT [key] COLLATE Latin1_General_100_BIN2 FROM OPENJSON(@SqlMetadataBindingsJson) GROUP BY [key] COLLATE Latin1_General_100_BIN2,DATALENGTH([key]) HAVING COUNT(*)<>1)
+                    OR EXISTS(SELECT 1 FROM OPENJSON(@SqlMetadataBindingsJson) WHERE NOT([type]=1 AND [key] COLLATE Latin1_General_100_BIN2 IN ('contract','version','packageSha256') OR [type]=4 AND [key] COLLATE Latin1_General_100_BIN2='bindings'))
+                    OR COALESCE(JSON_VALUE(@SqlMetadataBindingsJson,'$.contract'),'') COLLATE Latin1_General_100_BIN2<>'ssis-sql-metadata-bindings' OR DATALENGTH(JSON_VALUE(@SqlMetadataBindingsJson,'$.contract'))<>DATALENGTH(N'ssis-sql-metadata-bindings')
+                    OR COALESCE(JSON_VALUE(@SqlMetadataBindingsJson,'$.version'),'') COLLATE Latin1_General_100_BIN2<>'1.0.0' OR DATALENGTH(JSON_VALUE(@SqlMetadataBindingsJson,'$.version'))<>10
+                    OR COALESCE(UPPER(JSON_VALUE(@SqlMetadataBindingsJson,'$.packageSha256')),'') COLLATE Latin1_General_100_BIN2<>UPPER(@PackageHash) COLLATE Latin1_General_100_BIN2 OR DATALENGTH(JSON_VALUE(@SqlMetadataBindingsJson,'$.packageSha256'))<>128
+                    OR JSON_QUERY(@SqlMetadataBindingsJson,'$.bindings') IS NULL OR (SELECT COUNT(*) FROM OPENJSON(@SqlMetadataBindingsJson,'$.bindings')) NOT BETWEEN 1 AND 1000
+                    OR EXISTS(SELECT 1 FROM OPENJSON(@SqlMetadataBindingsJson,'$.bindings') WHERE [type]<>5)
+                    THROW 50000,N'SQL_METADATA_BINDINGS_INVALID',1;
+                IF EXISTS(SELECT 1 FROM OPENJSON(@SqlMetadataBindingsJson,'$.bindings') AS [b] WHERE (SELECT COUNT(*) FROM OPENJSON([b].[value]))<>7)
+                    OR EXISTS(SELECT [b].[key],[j].[key] COLLATE Latin1_General_100_BIN2 FROM OPENJSON(@SqlMetadataBindingsJson,'$.bindings') AS [b] CROSS APPLY OPENJSON([b].[value]) AS [j] GROUP BY [b].[key],[j].[key] COLLATE Latin1_General_100_BIN2,DATALENGTH([j].[key]) HAVING COUNT(*)<>1)
+                    OR EXISTS(SELECT 1 FROM OPENJSON(@SqlMetadataBindingsJson,'$.bindings') AS [b] CROSS APPLY OPENJSON([b].[value]) AS [j]
+                        WHERE DATALENGTH([j].[key])<>DATALENGTH(RTRIM([j].[key])) OR NOT([j].[key] COLLATE Latin1_General_100_BIN2 IN ('bindingId','nodeId','databaseName','schemaName','objectName','columnName') AND [j].[type]=1 OR [j].[key] COLLATE Latin1_General_100_BIN2='keySetId' AND [j].[type] IN (0,1))
+                            OR [j].[type]=1 AND (DATALENGTH([j].[value])=0 OR [j].[key] COLLATE Latin1_General_100_BIN2 IN ('bindingId','keySetId') AND (DATALENGTH([j].[value])>128 OR [j].[value] COLLATE Latin1_General_100_BIN2 LIKE '%[^A-Za-z0-9_.:-]%')
+                                OR [j].[key] COLLATE Latin1_General_100_BIN2 IN ('databaseName','schemaName','objectName','columnName','nodeId') AND DATALENGTH([j].[value])>256))
+                    THROW 50000,N'SQL_METADATA_BINDINGS_INVALID',1;
+                IF EXISTS(SELECT 1 FROM OPENJSON(@SqlMetadataBindingsJson,'$.bindings') WITH([NodeId] nvarchar(128) '$.nodeId') AS [j]
+                    LEFT JOIN #SsisPackageModelAnalysis_Nodes AS [n] ON [n].[NodeId] COLLATE Latin1_General_100_BIN2=[j].[NodeId] COLLATE Latin1_General_100_BIN2 AND DATALENGTH([n].[NodeId])*2=DATALENGTH([j].[NodeId]) AND [n].[NodeKind]='COLUMN' WHERE [n].[NodeId] IS NULL)
+                    THROW 50000,N'SQL_METADATA_COLUMN_REFERENCE_INVALID',1;
+                INSERT #SsisPackageModelAnalysis_SqlMetadata
+                SELECT CONVERT(int,[b].[key]),[j].[BindingId],[j].[NodeId],[j].[DatabaseName],[j].[SchemaName],[j].[ObjectName],[j].[ColumnName],[j].[KeySetId],NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,
+                    JSON_VALUE([n].[AttributesJson],'$.typeCode'),CASE JSON_VALUE([n].[AttributesJson],'$.isNullable') WHEN 'true' THEN 1 WHEN 'false' THEN 0 END,
+                    'UNKNOWN',CASE WHEN [j].[KeySetId] IS NULL THEN 'NOT_REQUESTED' ELSE 'KEYSET_INCOMPLETE' END,'NOT_QUALIFIED','SQL_DATABASE_NOT_VISIBLE','CALLER_EXPLICIT',@PackageHash,@ProducerTrust,'LOCAL_CATALOG_METADATA',NULL,NULL
+                FROM OPENJSON(@SqlMetadataBindingsJson,'$.bindings') AS [b] CROSS APPLY OPENJSON([b].[value]) WITH([BindingId] varchar(64) '$.bindingId',[NodeId] varchar(128) '$.nodeId',[DatabaseName] nvarchar(128) '$.databaseName',[SchemaName] nvarchar(128) '$.schemaName',[ObjectName] nvarchar(128) '$.objectName',[ColumnName] nvarchar(128) '$.columnName',[KeySetId] varchar(64) '$.keySetId') AS [j]
+                JOIN #SsisPackageModelAnalysis_Nodes AS [n] ON [n].[NodeId]=[j].[NodeId];
+                -- Derselbe Schlüsselsatz darf weder verschiedene Objekte noch
+                -- doppelte SQL-Spalten enthalten. Namen werden ordinal verglichen.
+                IF EXISTS(SELECT 1 FROM #SsisPackageModelAnalysis_SqlMetadata AS [a] JOIN #SsisPackageModelAnalysis_SqlMetadata AS [b] ON [a].[KeySetId]=[b].[KeySetId]
+                    WHERE [a].[DatabaseName] COLLATE Latin1_General_100_BIN2<>[b].[DatabaseName] COLLATE Latin1_General_100_BIN2 OR DATALENGTH([a].[DatabaseName])<>DATALENGTH([b].[DatabaseName])
+                        OR [a].[SchemaName] COLLATE Latin1_General_100_BIN2<>[b].[SchemaName] COLLATE Latin1_General_100_BIN2 OR DATALENGTH([a].[SchemaName])<>DATALENGTH([b].[SchemaName])
+                        OR [a].[ObjectName] COLLATE Latin1_General_100_BIN2<>[b].[ObjectName] COLLATE Latin1_General_100_BIN2 OR DATALENGTH([a].[ObjectName])<>DATALENGTH([b].[ObjectName]))
+                    OR EXISTS(SELECT [KeySetId],[ColumnName] COLLATE Latin1_General_100_BIN2 FROM #SsisPackageModelAnalysis_SqlMetadata WHERE [KeySetId] IS NOT NULL GROUP BY [KeySetId],[ColumnName] COLLATE Latin1_General_100_BIN2,DATALENGTH([ColumnName]) HAVING COUNT(*)>1)
+                    THROW 50000,N'SQL_METADATA_KEYSET_INVALID',1;
+                DECLARE @MetadataDb sysname,@MetadataDatabaseId int,@MetadataSql nvarchar(max),@MetadataRows bigint;
+                DECLARE [MetadataDatabases] CURSOR LOCAL FAST_FORWARD FOR SELECT [DatabaseName] COLLATE Latin1_General_100_BIN2 FROM #SsisPackageModelAnalysis_SqlMetadata GROUP BY [DatabaseName] COLLATE Latin1_General_100_BIN2,DATALENGTH([DatabaseName]);
+                OPEN [MetadataDatabases];FETCH NEXT FROM [MetadataDatabases] INTO @MetadataDb;
+                WHILE @@FETCH_STATUS=0
+                BEGIN
+                    IF SYSUTCDATETIME()>=@Deadline THROW 50000,N'EXCHANGE_TIME_BUDGET_EXHAUSTED',1;
+                    SET @MetadataDatabaseId=NULL;
+                    SELECT @MetadataDatabaseId=[database_id] FROM [sys].[databases] WITH (NOLOCK) WHERE [name] COLLATE Latin1_General_100_BIN2=@MetadataDb COLLATE Latin1_General_100_BIN2 AND DATALENGTH([name])=DATALENGTH(@MetadataDb) AND [state]=0;
+                    BEGIN TRY
+                        IF @MetadataDatabaseId IS NOT NULL
+                        BEGIN
+                            -- Ausschließlich der gegen sys.databases geprüfte Name
+                            -- wird quotiert. Alle Objekt-/Spaltennamen bleiben Daten.
+                            SET @MetadataSql=N'USE '+QUOTENAME(@MetadataDb)+N';
+UPDATE [b] SET [DatabaseId]=DB_ID(),[ObjectId]=[o].[object_id],[ColumnId]=[c].[column_id],[SqlObjectType]=[o].[type],[SqlTypeSchema]=[ts].[name],[SqlTypeName]=[t].[name],[SystemTypeId]=[c].[system_type_id],
+ [MaxLengthBytes]=[c].[max_length],[Precision]=[c].[precision],[Scale]=[c].[scale],[SqlCollation]=[c].[collation_name],[IsNullable]=[c].[is_nullable],[IsComputed]=[c].[is_computed],[IsIdentity]=[c].[is_identity],
+ [NullableAgreement]=CASE WHEN [c].[column_id] IS NULL OR [b].[ModelIsNullable] IS NULL THEN ''UNKNOWN'' WHEN [b].[ModelIsNullable]=[c].[is_nullable] THEN ''AGREES'' ELSE ''DIFFERS'' END,
+ [StatusCode]=CASE WHEN [o].[object_id] IS NULL THEN ''SQL_OBJECT_NOT_VISIBLE'' WHEN [c].[column_id] IS NULL THEN ''SQL_COLUMN_NOT_VISIBLE'' ELSE ''SQL_COLUMN_OBSERVED'' END,[ObservedUtc]=SYSUTCDATETIME()
+FROM #SsisPackageModelAnalysis_SqlMetadata AS [b]
+LEFT JOIN [sys].[schemas] AS [s] WITH (NOLOCK) ON [s].[name] COLLATE Latin1_General_100_BIN2=[b].[SchemaName] COLLATE Latin1_General_100_BIN2 AND DATALENGTH([s].[name])=DATALENGTH([b].[SchemaName])
+LEFT JOIN [sys].[objects] AS [o] WITH (NOLOCK) ON [o].[schema_id]=[s].[schema_id] AND [o].[name] COLLATE Latin1_General_100_BIN2=[b].[ObjectName] COLLATE Latin1_General_100_BIN2 AND DATALENGTH([o].[name])=DATALENGTH([b].[ObjectName]) AND [o].[type] IN (''U'',''V'')
+LEFT JOIN [sys].[columns] AS [c] WITH (NOLOCK) ON [c].[object_id]=[o].[object_id] AND [c].[name] COLLATE Latin1_General_100_BIN2=[b].[ColumnName] COLLATE Latin1_General_100_BIN2 AND DATALENGTH([c].[name])=DATALENGTH([b].[ColumnName])
+LEFT JOIN [sys].[types] AS [t] WITH (NOLOCK) ON [t].[user_type_id]=[c].[user_type_id]
+LEFT JOIN [sys].[schemas] AS [ts] WITH (NOLOCK) ON [ts].[schema_id]=[t].[schema_id]
+WHERE [b].[DatabaseName] COLLATE Latin1_General_100_BIN2=@Db COLLATE Latin1_General_100_BIN2 AND DATALENGTH([b].[DatabaseName])=DATALENGTH(@Db);
+UPDATE [b] SET [UniqueKeyStatus]=CASE WHEN EXISTS(SELECT 1 FROM #SsisPackageModelAnalysis_SqlMetadata AS [k] WHERE [k].[KeySetId]=[b].[KeySetId] AND [k].[StatusCode]<>''SQL_COLUMN_OBSERVED'') THEN ''KEYSET_INCOMPLETE''
+ WHEN EXISTS(SELECT 1 FROM [sys].[indexes] AS [i] WITH (NOLOCK) WHERE [i].[object_id]=[b].[ObjectId] AND [i].[is_unique]=1 AND [i].[is_disabled]=0 AND [i].[is_hypothetical]=0 AND [i].[has_filter]=0
+  AND (SELECT COUNT(*) FROM [sys].[index_columns] AS [ic] WITH (NOLOCK) WHERE [ic].[object_id]=[i].[object_id] AND [ic].[index_id]=[i].[index_id] AND [ic].[key_ordinal]>0)=(SELECT COUNT(*) FROM #SsisPackageModelAnalysis_SqlMetadata AS [k] WHERE [k].[KeySetId]=[b].[KeySetId])
+  AND NOT EXISTS(SELECT 1 FROM [sys].[index_columns] AS [ic] WITH (NOLOCK) WHERE [ic].[object_id]=[i].[object_id] AND [ic].[index_id]=[i].[index_id] AND [ic].[key_ordinal]>0 AND NOT EXISTS(SELECT 1 FROM #SsisPackageModelAnalysis_SqlMetadata AS [k] WHERE [k].[KeySetId]=[b].[KeySetId] AND [k].[ColumnId]=[ic].[column_id]))) THEN ''UNIQUE_INDEX_OBSERVED'' ELSE ''NO_VISIBLE_UNFILTERED_UNIQUE_INDEX'' END
+FROM #SsisPackageModelAnalysis_SqlMetadata AS [b] WHERE [b].[KeySetId] IS NOT NULL AND [b].[DatabaseName] COLLATE Latin1_General_100_BIN2=@Db COLLATE Latin1_General_100_BIN2 AND DATALENGTH([b].[DatabaseName])=DATALENGTH(@Db);';
+                            EXEC [sys].[sp_executesql] @MetadataSql,N'@Db sysname',@Db=@MetadataDb;
+                        END;
+                        SELECT @MetadataRows=COUNT_BIG(*) FROM #SsisPackageModelAnalysis_SqlMetadata WHERE [DatabaseName] COLLATE Latin1_General_100_BIN2=@MetadataDb COLLATE Latin1_General_100_BIN2 AND DATALENGTH([DatabaseName])=DATALENGTH(@MetadataDb) AND [StatusCode]='SQL_COLUMN_OBSERVED';
+                        INSERT #SsisPackageModelAnalysis_SourceStatus VALUES(N'SQL-Metadaten: '+@MetadataDb,CASE WHEN @MetadataDatabaseId IS NULL THEN 'SQL_DATABASE_NOT_VISIBLE' ELSE 'AVAILABLE_LIMITED' END,1,@MetadataRows,N'Sichtbare lokale Katalogmetadaten; explizite Callerbindung. Fehlende Sichtbarkeit beweist keine Objektabwesenheit oder Typkompatibilität.');
+                    END TRY
+                    BEGIN CATCH
+                        UPDATE #SsisPackageModelAnalysis_SqlMetadata SET [DatabaseId]=NULL,[ObjectId]=NULL,[ColumnId]=NULL,[SqlObjectType]=NULL,[SqlTypeSchema]=NULL,[SqlTypeName]=NULL,[SystemTypeId]=NULL,[MaxLengthBytes]=NULL,[Precision]=NULL,[Scale]=NULL,[SqlCollation]=NULL,[IsNullable]=NULL,[IsComputed]=NULL,[IsIdentity]=NULL,[NullableAgreement]='UNKNOWN',[UniqueKeyStatus]=CASE WHEN [KeySetId] IS NULL THEN 'NOT_REQUESTED' ELSE 'KEYSET_INCOMPLETE' END,[StatusCode]='SQL_SOURCE_FAILED',[ObservedUtc]=NULL,[ErrorNumber]=ERROR_NUMBER()
+                        WHERE [DatabaseName] COLLATE Latin1_General_100_BIN2=@MetadataDb COLLATE Latin1_General_100_BIN2 AND DATALENGTH([DatabaseName])=DATALENGTH(@MetadataDb);
+                        INSERT #SsisPackageModelAnalysis_SourceStatus VALUES(N'SQL-Metadaten: '+@MetadataDb,'SQL_SOURCE_FAILED',1,0,N'Der isolierte Katalogzugriff ist fehlgeschlagen; Fehlernummer '+CONVERT(nvarchar(12),ERROR_NUMBER())+N'.');
+                    END CATCH;
+                    FETCH NEXT FROM [MetadataDatabases] INTO @MetadataDb;
+                END;
+                CLOSE [MetadataDatabases];DEALLOCATE [MetadataDatabases];
+                SET @SqlMetadataStatus='AVAILABLE_LIMITED';
+            END TRY
+            BEGIN CATCH
+                IF CURSOR_STATUS('local','MetadataDatabases')>=0 CLOSE [MetadataDatabases];
+                IF CURSOR_STATUS('local','MetadataDatabases')>-3 DEALLOCATE [MetadataDatabases];
+                SET @SqlMetadataError=ERROR_NUMBER();DELETE #SsisPackageModelAnalysis_SqlMetadata;
+                INSERT #SsisPackageModelAnalysis_SourceStatus VALUES(N'SQL-Metadatenzuordnung',@SqlMetadataStatus,1,0,N'Die optionale paketgebundene Zuordnung ist ungültig oder unvollständig; keine SQL-Metadatenbewertung.');
+                INSERT #SsisPackageModelAnalysis_Warnings VALUES(@SqlMetadataStatus,'INFO',N'Der optionale Metadatenpfad ist nicht qualifiziert; das statische Modell bleibt getrennt nutzbar.');
+            END CATCH;
+        END;
         IF @IncludeExecutionCorrelation=1
         BEGIN
             SET @ValidationStage='EXECUTION_CAPTURE';
@@ -65732,11 +65842,11 @@ BEGIN
         SET @Message=CASE WHEN ERROR_NUMBER()=50000 THEN ERROR_MESSAGE() ELSE N'Native Modellvalidierung fehlgeschlagen; Fehlernummer '+CONVERT(nvarchar(12),ERROR_NUMBER())+N'.' END;
         SET @Message+=N' Stage='+@ValidationStage;
         SET @Status=CASE WHEN ERROR_NUMBER()=50000 AND ERROR_MESSAGE() IN ('INVALID_PARAMETER','EXCHANGE_INVALID','EXCHANGE_VERSION_UNSUPPORTED','EXCHANGE_LIMIT_EXCEEDED','EXCHANGE_REFERENCE_INVALID','EXCHANGE_PROFILE_UNSUPPORTED','EXCHANGE_SOURCE_MISMATCH','EXCHANGE_HANDOVER_INVALID','EXCHANGE_TIME_BUDGET_EXHAUSTED') THEN ERROR_MESSAGE() ELSE 'EXCHANGE_INVALID' END;
-        DELETE #SsisPackageModelAnalysis_SourceStatus; DELETE #SsisPackageModelAnalysis_Binding; DELETE #SsisPackageModelAnalysis_Nodes; DELETE #SsisPackageModelAnalysis_Edges; DELETE #SsisPackageModelAnalysis_Coverage; DELETE #SsisPackageModelAnalysis_Findings; DELETE #SsisPackageModelAnalysis_Warnings;
-        DELETE #SsisPackageModelAnalysis_RuntimeBinding; DELETE #SsisPackageModelAnalysis_ExecutionCorrelation; DELETE #SsisPackageModelAnalysis_ObjectFindings; DELETE #SsisPackageModelAnalysis_PackageOverview; DELETE #SsisPackageModelAnalysis_Executables; DELETE #SsisPackageModelAnalysis_DataFlows; DELETE #SsisPackageModelAnalysis_Components; DELETE #SsisPackageModelAnalysis_ColumnRelations;
+        DELETE #SsisPackageModelAnalysis_RuntimeBinding; DELETE #SsisPackageModelAnalysis_ExecutionCorrelation; DELETE #SsisPackageModelAnalysis_SqlMetadata; DELETE #SsisPackageModelAnalysis_SourceStatus; DELETE #SsisPackageModelAnalysis_Binding; DELETE #SsisPackageModelAnalysis_Nodes; DELETE #SsisPackageModelAnalysis_Edges; DELETE #SsisPackageModelAnalysis_Coverage; DELETE #SsisPackageModelAnalysis_Findings; DELETE #SsisPackageModelAnalysis_Warnings;
+        DELETE #SsisPackageModelAnalysis_ObjectFindings; DELETE #SsisPackageModelAnalysis_PackageOverview; DELETE #SsisPackageModelAnalysis_Executables; DELETE #SsisPackageModelAnalysis_DataFlows; DELETE #SsisPackageModelAnalysis_Components; DELETE #SsisPackageModelAnalysis_ColumnRelations;
     END CATCH;
     SET @LockTimeoutSql=N'SET LOCK_TIMEOUT '+CONVERT(nvarchar(20),@OriginalLockTimeout)+N';'; EXEC [sys].[sp_executesql] @LockTimeoutSql;
-    IF @Status='AVAILABLE_LIMITED' AND (EXISTS(SELECT 1 FROM #SsisPackageModelAnalysis_Nodes WHERE [NodeOrdinal]>@Limit) OR EXISTS(SELECT 1 FROM #SsisPackageModelAnalysis_Edges WHERE [EdgeOrdinal]>@Limit) OR (SELECT COUNT_BIG(*) FROM #SsisPackageModelAnalysis_ObjectFindings)>@Limit OR (SELECT COUNT_BIG(*) FROM #SsisPackageModelAnalysis_ExecutionCorrelation)>@Limit)
+    IF @Status='AVAILABLE_LIMITED' AND (EXISTS(SELECT 1 FROM #SsisPackageModelAnalysis_Nodes WHERE [NodeOrdinal]>@Limit) OR EXISTS(SELECT 1 FROM #SsisPackageModelAnalysis_Edges WHERE [EdgeOrdinal]>@Limit) OR (SELECT COUNT_BIG(*) FROM #SsisPackageModelAnalysis_ObjectFindings)>@Limit OR (SELECT COUNT_BIG(*) FROM #SsisPackageModelAnalysis_SqlMetadata)>@Limit OR (SELECT COUNT_BIG(*) FROM #SsisPackageModelAnalysis_ExecutionCorrelation)>@Limit)
         INSERT #SsisPackageModelAnalysis_Warnings VALUES('RESULT_TRUNCATED','INFO',N'Nur die Ausgabe ist begrenzt; die Validierung verwendete den vollständigen Graphen.');
     INSERT #SsisPackageModelAnalysis_ModuleStatus VALUES('USP_SsisPackageModelAnalysis',@Started,@SchemaVersion,@Status,@Partial,(SELECT COUNT(*) FROM #SsisPackageModelAnalysis_Nodes),(SELECT COUNT(*) FROM #SsisPackageModelAnalysis_Edges),@Error,@Message);
     INSERT #SsisPackageModelAnalysis_SourceStatus VALUES(N'Caller SSIS-Modell',@Status,@Partial,(SELECT COUNT_BIG(*) FROM #SsisPackageModelAnalysis_Nodes),N'Native Strukturprüfung; ProducerTrust='+CONVERT(nvarchar(24),CASE WHEN @Status='AVAILABLE_LIMITED' THEN @ProducerTrust ELSE 'UNVERIFIED' END)+N'. Keine Paket- oder SQL-Ausführung.');
@@ -65757,6 +65867,11 @@ BEGIN
             SET @Json=JSON_MODIFY(@Json,'$.meta.executionCorrelationSchemaVersion',1);
             SET @Json=JSON_MODIFY(@Json,'$.runtimeBinding',JSON_QUERY(COALESCE((SELECT * FROM #SsisPackageModelAnalysis_RuntimeBinding FOR JSON PATH,INCLUDE_NULL_VALUES),N'[]')));
             SET @Json=JSON_MODIFY(@Json,'$.executionCorrelation',JSON_QUERY(COALESCE((SELECT TOP(@Limit) * FROM #SsisPackageModelAnalysis_ExecutionCorrelation ORDER BY [StatisticsId] FOR JSON PATH,INCLUDE_NULL_VALUES),N'[]')));
+        END;
+        IF @IncludeSqlMetadata=1
+        BEGIN
+            SET @Json=JSON_MODIFY(@Json,'$.meta.sqlMetadataSchemaVersion',1);
+            SET @Json=JSON_MODIFY(@Json,'$.sqlMetadata',JSON_QUERY(COALESCE((SELECT TOP(@Limit) * FROM #SsisPackageModelAnalysis_SqlMetadata ORDER BY [BindingOrdinal] FOR JSON PATH,INCLUDE_NULL_VALUES),N'[]')));
         END;
         IF @IncludeObjectRules=1
         BEGIN
@@ -65780,10 +65895,20 @@ BEGIN
     ;WITH [r] AS(SELECT *,ROW_NUMBER() OVER(ORDER BY [NodeOrdinal]) AS [OutputRow] FROM #SsisPackageModelAnalysis_Components) DELETE [r] WHERE [OutputRow]>@Limit;
     ;WITH [r] AS(SELECT *,ROW_NUMBER() OVER(ORDER BY [EdgeOrdinal]) AS [OutputRow] FROM #SsisPackageModelAnalysis_ColumnRelations) DELETE [r] WHERE [OutputRow]>@Limit;
     ;WITH [r] AS(SELECT *,ROW_NUMBER() OVER(ORDER BY [RuleId],[NodeId],[EdgeId]) AS [OutputRow] FROM #SsisPackageModelAnalysis_ObjectFindings) DELETE [r] WHERE [OutputRow]>@Limit;
+    ;WITH [r] AS(SELECT *,ROW_NUMBER() OVER(ORDER BY [BindingOrdinal]) AS [OutputRow] FROM #SsisPackageModelAnalysis_SqlMetadata) DELETE [r] WHERE [OutputRow]>@Limit;
     ;WITH [r] AS(SELECT *,ROW_NUMBER() OVER(ORDER BY [StatisticsId]) AS [OutputRow] FROM #SsisPackageModelAnalysis_ExecutionCorrelation) DELETE [r] WHERE [OutputRow]>@Limit;
     IF @Mode='TABLE'
     BEGIN
         DECLARE @Target sysname;
+        IF @IncludeExecutionCorrelation=1
+        BEGIN
+            SET @Target=(SELECT [TargetTable] FROM #SsisPackageModelAnalysis_ResultTables WHERE [ResultName]='runtimeBinding'); IF @Target IS NOT NULL EXEC [monitor].[InternalWriteResultTable] N'#SsisPackageModelAnalysis_RuntimeBinding',@Target,@ThrowOnError=1;
+            SET @Target=(SELECT [TargetTable] FROM #SsisPackageModelAnalysis_ResultTables WHERE [ResultName]='executionCorrelation'); IF @Target IS NOT NULL EXEC [monitor].[InternalWriteResultTable] N'#SsisPackageModelAnalysis_ExecutionCorrelation',@Target,@ThrowOnError=1;
+        END;
+        IF @IncludeSqlMetadata=1
+        BEGIN
+            SET @Target=(SELECT [TargetTable] FROM #SsisPackageModelAnalysis_ResultTables WHERE [ResultName]='sqlMetadata'); IF @Target IS NOT NULL EXEC [monitor].[InternalWriteResultTable] N'#SsisPackageModelAnalysis_SqlMetadata',@Target,@ThrowOnError=1;
+        END;
         SET @Target=(SELECT [TargetTable] FROM #SsisPackageModelAnalysis_ResultTables WHERE [ResultName]='moduleStatus'); IF @Target IS NOT NULL EXEC [monitor].[InternalWriteResultTable] N'#SsisPackageModelAnalysis_ModuleStatus',@Target,@ThrowOnError=1;
         SET @Target=(SELECT [TargetTable] FROM #SsisPackageModelAnalysis_ResultTables WHERE [ResultName]='sourceBinding'); IF @Target IS NOT NULL EXEC [monitor].[InternalWriteResultTable] N'#SsisPackageModelAnalysis_Binding',@Target,@ThrowOnError=1;
         SET @Target=(SELECT [TargetTable] FROM #SsisPackageModelAnalysis_ResultTables WHERE [ResultName]='nodes'); IF @Target IS NOT NULL EXEC [monitor].[InternalWriteResultTable] N'#SsisPackageModelAnalysis_Nodes',@Target,@ThrowOnError=1;
@@ -65792,11 +65917,6 @@ BEGIN
         SET @Target=(SELECT [TargetTable] FROM #SsisPackageModelAnalysis_ResultTables WHERE [ResultName]='findings'); IF @Target IS NOT NULL EXEC [monitor].[InternalWriteResultTable] N'#SsisPackageModelAnalysis_Findings',@Target,@ThrowOnError=1;
         SET @Target=(SELECT [TargetTable] FROM #SsisPackageModelAnalysis_ResultTables WHERE [ResultName]='sourceStatus'); IF @Target IS NOT NULL EXEC [monitor].[InternalWriteResultTable] N'#SsisPackageModelAnalysis_SourceStatus',@Target,@ThrowOnError=1;
         SET @Target=(SELECT [TargetTable] FROM #SsisPackageModelAnalysis_ResultTables WHERE [ResultName]='warnings'); IF @Target IS NOT NULL EXEC [monitor].[InternalWriteResultTable] N'#SsisPackageModelAnalysis_Warnings',@Target,@ThrowOnError=1;
-        IF @IncludeExecutionCorrelation=1
-        BEGIN
-            SET @Target=(SELECT [TargetTable] FROM #SsisPackageModelAnalysis_ResultTables WHERE [ResultName]='runtimeBinding'); IF @Target IS NOT NULL EXEC [monitor].[InternalWriteResultTable] N'#SsisPackageModelAnalysis_RuntimeBinding',@Target,@ThrowOnError=1;
-            SET @Target=(SELECT [TargetTable] FROM #SsisPackageModelAnalysis_ResultTables WHERE [ResultName]='executionCorrelation'); IF @Target IS NOT NULL EXEC [monitor].[InternalWriteResultTable] N'#SsisPackageModelAnalysis_ExecutionCorrelation',@Target,@ThrowOnError=1;
-        END;
         IF @IncludeObjectRules=1
         BEGIN
             SET @Target=(SELECT [TargetTable] FROM #SsisPackageModelAnalysis_ResultTables WHERE [ResultName]='objectFindings'); IF @Target IS NOT NULL EXEC [monitor].[InternalWriteResultTable] N'#SsisPackageModelAnalysis_ObjectFindings',@Target,@ThrowOnError=1;
@@ -65824,6 +65944,7 @@ BEGIN
         END;
     END;
     IF @Mode='RAW' AND @IncludeObjectRules=1 SELECT * FROM #SsisPackageModelAnalysis_ObjectFindings ORDER BY [RuleId],[NodeId],[EdgeId];
+    IF @Mode='RAW' AND @IncludeSqlMetadata=1 SELECT * FROM #SsisPackageModelAnalysis_SqlMetadata ORDER BY [BindingOrdinal];
     IF @Mode='RAW' AND @IncludeExecutionCorrelation=1
     BEGIN
         SELECT * FROM #SsisPackageModelAnalysis_RuntimeBinding; SELECT * FROM #SsisPackageModelAnalysis_ExecutionCorrelation ORDER BY [StatisticsId];

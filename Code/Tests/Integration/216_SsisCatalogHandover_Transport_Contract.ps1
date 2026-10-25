@@ -22,7 +22,6 @@ $connection=[Data.SqlClient.SqlConnection]::new($builder.ConnectionString)
 $source=[Data.SqlClient.SqlConnection]::new($builder.ConnectionString)
 $contender=[Data.SqlClient.SqlConnection]::new($builder.ConnectionString)
 $database='SyntheticSsisCapture_'+[guid]::NewGuid().ToString('N');$created=$false;$caseCount=[pscustomobject]@{Value=0}
-$owned=[Collections.Generic.List[guid]]::new()
 function Query([string]$Sql) {
     $command=$connection.CreateCommand();$command.CommandText=$Sql;$command.CommandTimeout=30
     try {$data=[Data.DataSet]::new();$adapter=[Data.SqlClient.SqlDataAdapter]::new($command);[void]$adapter.Fill($data);return ,$data} finally {$command.Dispose()}
@@ -92,19 +91,25 @@ INSERT catalog.executable_statistics VALUES(1,9007199254740993,51,N'\Package','2
     }
     $arguments=@{ExecutionId=9007199254740993L;Connection=$connection;SourceReader=$readerAdapter;SourceBindingId='SYNTHETIC_REGISTERED_SOURCE';ProducerAssemblyPath=$ProducerAssemblyPath;ExpectedBuildSha256=(Get-FileHash -LiteralPath $ProducerAssemblyPath -Algorithm SHA256).Hash;ExpectedSourceCommit=$ExpectedSourceCommit}
     $handover=& (Join-Path $root 'Code/Tools/Invoke-SsisCatalogHandover.ps1') @arguments
-    if($handover.LocalHandoverId){$owned.Add($handover.LocalHandoverId)};if($handover.RuntimeHandoverId){$owned.Add($handover.RuntimeHandoverId)}
     Assert ($handover.Status -ceq 'CAPTURED') 'CAPTURE_CREATED'
+    [void](Query 'CREATE TABLE monitor.SyntheticSsisCaptureMetadata(SyntheticColumn int NULL);')
+    $model=$handover.PackageModelJson|ConvertFrom-Json -Depth 32
+    $columnId=@($model.nodes|Where-Object kind -ceq 'COLUMN')[0].id
+    $metadataBindings=[ordered]@{contract='ssis-sql-metadata-bindings';version='1.0.0';packageSha256=$model.source.packageSha256;bindings=@([ordered]@{bindingId='SyntheticBinding';nodeId=$columnId;databaseName=$database;schemaName='monitor';objectName='SyntheticSsisCaptureMetadata';columnName='SyntheticColumn';keySetId=$null})}|ConvertTo-Json -Depth 8 -Compress
     $command=$connection.CreateCommand();$command.CommandTimeout=90
-    $command.CommandText="DECLARE @Json nvarchar(max);EXEC monitor.USP_SsisPackageModelAnalysis @PackageModelJson=@Model,@PackageBytes=@Bytes,@LocalHandoverId=@Id,@IncludeExecutionCorrelation=1,@ExecutionId=9007199254740993,@ExecutionSnapshotJson=@Snapshot,@RuntimeHandoverId=@Run,@ResultSetArt=@Mode,@IncludePackageViews=@Views,@IncludeObjectRules=@Views,@JsonErzeugen=1,@Json=@Json OUTPUT; SELECT @Json AS [ResultJson];"
+    $command.CommandText="DECLARE @Json nvarchar(max);EXEC monitor.USP_SsisPackageModelAnalysis @PackageModelJson=@Model,@PackageBytes=@Bytes,@LocalHandoverId=@Id,@IncludeExecutionCorrelation=1,@ExecutionId=9007199254740993,@ExecutionSnapshotJson=@Snapshot,@RuntimeHandoverId=@Run,@ResultSetArt=@Mode,@IncludePackageViews=@Views,@IncludeObjectRules=@Views,@IncludeSqlMetadata=@Metadata,@SqlMetadataBindingsJson=@Bindings,@JsonErzeugen=1,@Json=@Json OUTPUT; SELECT @Json AS [ResultJson];"
     foreach($item in @(@('@Model',[Data.SqlDbType]::NVarChar,$handover.PackageModelJson),@('@Bytes',[Data.SqlDbType]::VarBinary,[byte[]]$handover.PackageBytes),@('@Snapshot',[Data.SqlDbType]::NVarChar,$handover.ExecutionSnapshotJson))){[void]$command.Parameters.Add($item[0],$item[1],-1);$command.Parameters[$item[0]].Value=$item[2]}
     foreach($item in @(@('@Id',$handover.LocalHandoverId),@('@Run',$handover.RuntimeHandoverId))){[void]$command.Parameters.Add($item[0],[Data.SqlDbType]::UniqueIdentifier);$command.Parameters[$item[0]].Value=$item[1]}
     [void]$command.Parameters.Add('@Mode',[Data.SqlDbType]::VarChar,16);[void]$command.Parameters.Add('@Views',[Data.SqlDbType]::Bit)
+    [void]$command.Parameters.Add('@Metadata',[Data.SqlDbType]::Bit);[void]$command.Parameters.Add('@Bindings',[Data.SqlDbType]::NVarChar,-1)
     try {
-        foreach($views in @($false,$true)) {
+        foreach($case in @(@{Views=$false;Metadata=$false;Count=10},@{Views=$true;Metadata=$false;Count=16},@{Views=$true;Metadata=$true;Count=17})) {
+            $views=$case.Views;$command.Parameters['@Metadata'].Value=$case.Metadata;$command.Parameters['@Bindings'].Value=if($case.Metadata){$metadataBindings}else{[DBNull]::Value}
             $command.Parameters['@Mode'].Value='RAW';$command.Parameters['@Views'].Value=$views;$data=[Data.DataSet]::new();$adapter=[Data.SqlClient.SqlDataAdapter]::new($command);[void]$adapter.Fill($data)
-            $count=if($views){16}else{10};$result=$data.Tables[$count].Rows[0].ResultJson|ConvertFrom-Json -Depth 32
+            $count=$case.Count;$result=$data.Tables[$count].Rows[0].ResultJson|ConvertFrom-Json -Depth 32
             Assert ($data.Tables.Count -eq $count+1 -and $result.runtimeBinding[0].MappedRowCount -eq 2) ('RAW_GROUPS_'+$count)
             Assert ($result.executionCorrelation[1].ModelNodeId -ceq 'exe1' -and $result.sourceBinding[0].ProducerTrust -ceq 'VERIFIED_LOCAL') 'PRODUCER_TO_RECEIVER_BINDING'
+            if($case.Metadata){Assert ($result.sqlMetadata[0].StatusCode -ceq 'SQL_COLUMN_OBSERVED') 'COMBINED_METADATA_CAPTURE'}
             $table=$data.Tables[$count-1];$json=$result.executionCorrelation
             Assert ($table.Columns.Count -eq @($json[0].PSObject.Properties).Count -and $table.Rows.Count -eq $json.Count) 'RAW_JSON_SCHEMA_PARITY'
         }
