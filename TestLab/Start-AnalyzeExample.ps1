@@ -98,6 +98,7 @@ $runDirectory = $null
 $scripts = $null
 $workerTasks = @()
 $failed = $false
+$scenarioFailure = $null
 try {
     $lab = New-SqlServerLab `
         -Version $Version `
@@ -221,9 +222,11 @@ try {
 }
 catch {
     $failed = $true
+    $scenarioFailure = $_.Exception
     throw
 }
 finally {
+    $infrastructureCleanupFailure = $null
     foreach ($worker in $workerTasks) {
         if (-not $worker.Task.IsCompleted) {
             try {
@@ -251,11 +254,19 @@ finally {
                 Write-Warning "SQL-Cleanup meldete einen Fehler; der Lab-Lifecycle wird dennoch ausgeführt: $($_.Exception.Message)"
             }
         }
-        Remove-SqlServerLab `
-            -RunId $lab.RunId `
-            -StateRoot $StateRoot `
-            -Force `
-            -Confirm:$false | Out-Null
+        try {
+            $infrastructureCleanup = Remove-SqlServerLab `
+                -RunId $lab.RunId `
+                -StateRoot $StateRoot `
+                -Force `
+                -Confirm:$false
+            if ($infrastructureCleanup.Status -cne 'REMOVED') {
+                throw 'ANALYZE_LAB_CLEANUP_INCOMPLETE'
+            }
+        }
+        catch {
+            $infrastructureCleanupFailure = $_.Exception
+        }
     }
     elseif ($preserve) {
         Write-Warning "Fehlgeschlagenes Lab wurde absichtlich erhalten. RunId: $($lab.RunId)"
@@ -284,5 +295,12 @@ finally {
     }
     else {
         $env:TMP = $originalTmp
+    }
+    if ($infrastructureCleanupFailure) {
+        if ($scenarioFailure) {
+            $scenarioFailure.Data['InfrastructureCleanupFailure'] = $infrastructureCleanupFailure
+            throw $scenarioFailure
+        }
+        throw [InvalidOperationException]::new('ANALYZE_LAB_CLEANUP_INCOMPLETE', $infrastructureCleanupFailure)
     }
 }
