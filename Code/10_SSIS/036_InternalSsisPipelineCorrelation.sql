@@ -84,10 +84,18 @@ BEGIN
   IF SYSUTCDATETIME()>=@Deadline THROW 57910,N'PIPELINE_TIME_LIMIT',1;
   -- Quelle nennt das zuerst gestartete Paket. Die Paketinstanz kommt dagegen
   -- aus der bereits belegten Executable-Statistik, niemals aus diesem Namen.
+  -- Auch eine unzugeordnete Statistik mit demselben Pfad verhindert Eindeutigkeit.
+  -- Ein vorzeitiger Filter auf unterstützte Flows würde diese Mehrdeutigkeit verdecken.
+  ;WITH [pathCounts] AS(
+   SELECT [ExecutionPath] COLLATE Latin1_General_100_BIN2 AS [Path],[PathLength]=DATALENGTH([ExecutionPath]),COUNT_BIG(*) AS [StatisticCount]
+   FROM #InternalSsisExecutionScopes_Observations WHERE [SourceKind]='STATISTIC'
+   GROUP BY [ExecutionPath] COLLATE Latin1_General_100_BIN2,DATALENGTH([ExecutionPath]))
   INSERT #InternalSsisExecutionScopes_PipelineInstances
-  SELECT [o].[SourceId],[o].[InvocationId],[o].[PackageKey],[o].[ModelNodeId],[n].[NodeName],[o].[ExecutionPath],CASE WHEN COUNT(*) OVER(PARTITION BY [o].[ExecutionPath] COLLATE Latin1_General_100_BIN2,DATALENGTH([o].[ExecutionPath]))=1 THEN 1 ELSE 0 END
+  SELECT [o].[SourceId],[o].[InvocationId],[o].[PackageKey],[o].[ModelNodeId],[n].[NodeName],[o].[ExecutionPath],CASE WHEN [paths].[StatisticCount]=1 THEN 1 ELSE 0 END
   FROM #InternalSsisExecutionScopes_Observations AS [o] JOIN #InternalSsisPipelineCorrelation_Flows AS [f] ON [f].[PackageKey]=[o].[PackageKey] AND [f].[NodeId]=[o].[ModelNodeId] AND [f].[Supported]=1
-  JOIN #InternalSsisExecutionScopes_PipelineNodes AS [n] ON [n].[PackageKey]=[f].[PackageKey] AND [n].[NodeId]=[f].[NodeId] WHERE [o].[SourceKind]='STATISTIC' AND [o].[CorrelationStatus]='EXACT_SCOPED_IDENTITY';
+  JOIN #InternalSsisExecutionScopes_PipelineNodes AS [n] ON [n].[PackageKey]=[f].[PackageKey] AND [n].[NodeId]=[f].[NodeId]
+  JOIN [pathCounts] AS [paths] ON [paths].[Path] COLLATE Latin1_General_100_BIN2=[o].[ExecutionPath] COLLATE Latin1_General_100_BIN2 AND [paths].[PathLength]=DATALENGTH([o].[ExecutionPath])
+  WHERE [o].[SourceKind]='STATISTIC' AND [o].[CorrelationStatus]='EXACT_SCOPED_IDENTITY';
   IF EXISTS(SELECT 1 FROM OPENJSON(@Capture,'$.componentPhases') WITH([id] nvarchar(max) '$.phaseStatsId',[package] nvarchar(max) '$.packageName',[task] nvarchar(max) '$.taskName',[component] nvarchar(max) '$.componentName',[phase] nvarchar(max) '$.phaseName',[path] nvarchar(max) '$.executionPath',[start] nvarchar(max) '$.startTime',[end] nvarchar(max) '$.endTime') AS [r]
    WHERE COALESCE(TRY_CONVERT(bigint,[id]),0)<1 OR DATALENGTH([id])>40 OR DATALENGTH([package])>520 OR DATALENGTH([task])>8000 OR DATALENGTH([component])>8000 OR DATALENGTH([phase])>256 OR DATALENGTH([path])>8000 OR DATALENGTH([start])>128 OR DATALENGTH([end])>128 OR [start] IS NOT NULL AND TRY_CONVERT(datetimeoffset(7),[start],127) IS NULL OR [end] IS NOT NULL AND TRY_CONVERT(datetimeoffset(7),[end],127) IS NULL)
    OR EXISTS(SELECT 1 FROM OPENJSON(@Capture,'$.pathTransfers') WITH([id] nvarchar(max) '$.dataStatsId',[package] nvarchar(max) '$.packageName',[task] nvarchar(max) '$.taskName',[identification] nvarchar(max) '$.pathIdentificationString',[name] nvarchar(max) '$.pathName',[source] nvarchar(max) '$.sourceComponentName',[destination] nvarchar(max) '$.destinationComponentName',[path] nvarchar(max) '$.executionPath',[rows] nvarchar(max) '$.rowsSent',[time] nvarchar(max) '$.createdTime') AS [r]

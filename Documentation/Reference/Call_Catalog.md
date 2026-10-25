@@ -826,3 +826,16 @@ EXEC [monitor].[USP_ServerPrincipalAnalysis] @Hilfe=1;
 ```sql
 EXEC [monitor].[USP_DatabasePrincipalAnalysis] @Hilfe=1;
 ```
+
+## `[monitor].[USP_CurrentCallerPermissionAnalysis]`
+
+```sql
+EXEC [monitor].[USP_CurrentCallerPermissionAnalysis] @Hilfe=1;
+```
+
+## `[monitor].[USP_EndpointTransportAnalysis]`
+
+```sql
+EXEC [monitor].[USP_EndpointTransportAnalysis] @Hilfe=1;
+EXEC [monitor].[USP_EndpointTransportAnalysis] @MaxZeilen=200, @ResultSetArt='CONSOLE';
+```

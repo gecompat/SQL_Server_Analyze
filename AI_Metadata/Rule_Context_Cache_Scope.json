@@ -432,6 +432,16 @@
   "excluded_references": [
     {
       "source": "AI_Metadata/Internal_Documentation/Quality/Development_Waves_2026-10.md",
+      "target": "AI_Metadata/Internal_Documentation/Architecture/Endpoint_Transport_Analysis_Dossier.md",
+      "classification": "product-reference"
+    },
+    {
+      "source": "AI_Metadata/Internal_Documentation/Quality/Next_Steps.md",
+      "target": "AI_Metadata/Internal_Documentation/Architecture/Endpoint_Transport_Analysis_Dossier.md",
+      "classification": "product-reference"
+    },
+    {
+      "source": "AI_Metadata/Internal_Documentation/Quality/Development_Waves_2026-10.md",
       "target": "AI_Metadata/Internal_Documentation/Architecture/Caller_Permission_Analysis_Dossier.md",
       "classification": "product-reference"
     },
@@ -1498,6 +1508,16 @@
     {
       "source": "AI_Metadata/Internal_Documentation/Architecture/Long_Term_Development_Roadmap.md",
       "target": "Documentation/Architecture/SSIS_Package_and_Execution_Analysis_Plan.md",
+      "classification": "product-reference"
+    },
+    {
+      "source": "AI_Metadata/Internal_Documentation/Quality/Next_Steps.md",
+      "target": "AI_Metadata/Internal_Documentation/Architecture/Snapshot_Expansion_Dossier.md",
+      "classification": "product-reference"
+    },
+    {
+      "source": "AI_Metadata/Internal_Documentation/Quality/Development_Waves_2026-10.md",
+      "target": "AI_Metadata/Internal_Documentation/Architecture/Snapshot_Expansion_Dossier.md",
       "classification": "product-reference"
     }
   ]

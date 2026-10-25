@@ -48,8 +48,27 @@ sind regulär integriert. [PR #438](https://github.com/gecompat/SQL_Server_Analy
 besteht am Liefercommit `6e41c9fe` alle acht Head-Checks, das vollständige
 SQL2025-Gate und gezielte native 2019-/2022-Prüfungen. Nachweise und Grenzen
 stehen im [Datenbankprincipal-Dossier](../Architecture/Database_Principal_Analysis_Dossier.md).
-Das [Callerrechte-Dossier](../Architecture/Caller_Permission_Analysis_Dossier.md)
-konkretisiert den nächsten eigenen Teil für den aktuellen Ausführungskontext.
+Der erste Callerbericht ist über [PR #441](https://github.com/gecompat/SQL_Server_Analyze/pull/441)
+mit acht bestandenen Head-Checks sowie SQL2025- und gezielter nativer SQL2019-
+Abnahme integriert. Das [Callerrechte-Dossier](../Architecture/Caller_Permission_Analysis_Dossier.md)
+führt die tatsächlichen Nachweise und verbleibenden Grenzen.
+
+Der erste Endpoint-/Transport-Slice von Rang 7 ist über
+[PR #443](https://github.com/gecompat/SQL_Server_Analyze/pull/443) mit acht
+bestandenen Head-Checks, vollständigem SQL2025-Gate und gezielter nativer
+SQL2019-Abnahme integriert. Das
+[Endpoint-Dossier](../Architecture/Endpoint_Transport_Analysis_Dossier.md)
+führt Nachweise und offene Host-/Handshake-/HADR-/MARS-Grenzen. Der getrennte
+SQL2025-Main-Nachlauf besteht nach einem einmaligen begrenzten Wiederlauf
+der fehlgeschlagenen Jobs; der ursprüngliche SSIS-Legacy-Metadatentimeout
+bleibt ohne behauptete Sperrursache dokumentiert.
+
+Der separate SSIS-Auftrag arbeitet aktuell an Datenflusskorrelation. Der
+Gesamtauftrag übernimmt diesen Scope und die erhaltene SSISDB nicht. Der
+nächste unabhängige Rang 10 steht im
+[Snapshot-Dossier](../Architecture/Snapshot_Expansion_Dossier.md): zuerst
+Wait-Counter mit explizitem Kontinuitäts- und Resetmodell, danach Datei-I/O.
+Der genaue additive API-/Migrationsvertrag wird vor Implementierung geprüft.
 Bereits gelieferte Funktionen und die abgeschlossene STAT-DOMINANT-Diagnose
 werden nicht erneut entwickelt.
 
@@ -3869,7 +3888,7 @@ Die Implementierung ergänzt vier opt-in Ergebnisgruppen. Die gemeinsame
 Toolbelt-Konformität besteht 147 Prüfungen und die bisherigen 21
 Frameworkfälle. Der unabhängige SDK-Vergleich ordnet fünf synthetische Flows,
 20 Komponenten und 15 Pfade denselben Modellreferenzen zu. Der neue
-SQL-Empfängervertrag besteht 37 Fälle; die bisherigen Ausführungs-, Iterations-
+SQL-Empfängervertrag besteht 38 Fälle; die bisherigen Ausführungs-, Iterations-
 und Scopeempfänger bestehen ebenfalls. Sechs Adapterfälle mit simulierten
 Quelltabellen prüfen den echten SQL-Empfänger einschließlich großer IDs,
 Logginglücken, Fehlerisolation und ungültiger Quellformen. Diese Fälle sind

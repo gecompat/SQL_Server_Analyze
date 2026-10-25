@@ -1,7 +1,7 @@
 # Analysehandbuch für SQL_Server_Analyze
 
-**Stand:** 24. August 2026
-**Geltungsbereich:** 104 öffentliche Procedures
+**Stand:** 25. Oktober 2026
+**Geltungsbereich:** öffentliche Procedures im [Objektindex](Object_Index.md)
 **Zielgruppe:** Analyseanfänger, Datenbankentwickler und SQL-Server-Administratoren
 
 ## Empfohlener Einstieg
@@ -15,7 +15,7 @@
 
 Das gemeinsame [Execution-, Zeit- und Evidenzmodell](Technical_Foundations.md) gilt für alle Procedure-Seiten.
 
-Alle 104 Procedure-Seiten sind strukturell vollständig. 92 Seiten besitzen den tief geprüften Status `DEEP_REVIEWED`; die übrigen Seiten stehen auf `BASELINE`. [USP_CurrentRequests](Procedures/USP_CurrentRequests.md), [USP_IndexPhysicalStats](Procedures/USP_IndexPhysicalStats.md), [USP_ExtendedEventsReadEvents](Procedures/USP_ExtendedEventsReadEvents.md) und [USP_AnalysisNavigator](Procedures/USP_AnalysisNavigator.md) zeigen die unterschiedlichen Verträge von Live-Snapshot, physischem Scan, Datei-/XML-Analyse und reiner Metadatennavigation.
+Der [Reviewkatalog](../../Metadata/Quality/Analysis_Documentation_Review.csv) führt für jede Procedure den fachlichen Prüfstatus `DEEP_REVIEWED` oder `BASELINE`. [USP_CurrentRequests](Procedures/USP_CurrentRequests.md), [USP_IndexPhysicalStats](Procedures/USP_IndexPhysicalStats.md), [USP_ExtendedEventsReadEvents](Procedures/USP_ExtendedEventsReadEvents.md) und [USP_AnalysisNavigator](Procedures/USP_AnalysisNavigator.md) zeigen die unterschiedlichen Verträge von Live-Snapshot, physischem Scan, Datei-/XML-Analyse und reiner Metadatennavigation.
 
 ## Feste Leserichtung
 
@@ -92,4 +92,4 @@ Kein einzelnes Resultset rechtfertigt automatisch `KILL`, DDL, Rebuild, Plan For
 
 ## Vollständigkeit
 
-Der [Objektindex](Object_Index.md) enthält alle 113 öffentlichen Procedures. Die [Objektreferenz](../Reference/Object_Reference.md) dokumentiert zusätzlich alle 72 unterstützenden Views, TVFs, internen Procedures und Tabellen. Der [Navigator-Vertrag](../Reference/Analysis_Navigator.md) erklärt die fachliche Zuordnung, Suchbegriffe, Rollen und Beziehungen.
+Der [Objektindex](Object_Index.md) enthält alle 114 öffentlichen Procedures. Die [Objektreferenz](../Reference/Object_Reference.md) dokumentiert zusätzlich alle 74 unterstützenden Views, TVFs, internen Procedures und Tabellen. Der [Navigator-Vertrag](../Reference/Analysis_Navigator.md) erklärt die fachliche Zuordnung, Suchbegriffe, Rollen und Beziehungen.

@@ -12,7 +12,7 @@ SET @Models=(SELECT 'ssis-project-model-set' contract,'1.0.0' version,'p1' rootP
 DECLARE @Id uniqueidentifier=NEWID(),@Name sysname,@Now datetime2(3)=SYSUTCDATETIME(),@Receipt nvarchar(3000),@Created bit=0,@Json nvarchar(max),@Status varchar(40);SET @Name=N'SSIS_SCOPE_'+LOWER(CONVERT(nvarchar(36),@Id));
 BEGIN TRY
  DECLARE @Case int=0,@M nvarchar(max),@C nvarchar(max),@PhaseMapped int,@TransferMapped int,@Rejected bit,@Limit int,@X bit=CASE WHEN @@OPTIONS&16384=16384 THEN 1 ELSE 0 END,@OriginalLock int=@@LOCK_TIMEOUT;
- WHILE @Case<36
+ WHILE @Case<37
  BEGIN
   SELECT @M=@Models,@C=@Capture,@PhaseMapped=2,@TransferMapped=2,@Rejected=0,@Limit=1000;
   IF @Case=1 BEGIN SET @C=JSON_MODIFY(@C,'$.componentPhases[0].executionPath',N'\SyntheticRoot\SyntheticLoop\SyntheticFlow');SET @PhaseMapped=1;END;
@@ -62,6 +62,7 @@ BEGIN TRY
   IF @Case=33 BEGIN SET @C=JSON_MODIFY(JSON_MODIFY(@C,'$.componentPhases[0].startTime','2026-01-01T00:00:00.0009Z'),'$.componentPhases[0].endTime','2026-01-01T00:00:00.0010Z');END;
   IF @Case=34 BEGIN SET @C=JSON_MODIFY(@C,'$.componentPhases[0].startTime',REPLICATE(' ',64)+'2026-01-01T00:00:00Z');SET @Rejected=1;END;
   IF @Case=35 BEGIN SET @C=JSON_MODIFY(@C,'$.pathTransfers[0].createdTime',REPLICATE(' ',64)+'2026-01-01T00:00:00Z');SET @Rejected=1;END;
+  IF @Case=36 BEGIN SET @C=JSON_MODIFY(@C,'append $.observations',JSON_QUERY(JSON_MODIFY(JSON_MODIFY(JSON_QUERY(@C,'$.observations[2]'),'$.statisticsId','5'),'$.executableGuid','88888888-8888-8888-8888-888888888888')));SELECT @PhaseMapped=1,@TransferMapped=1;END;
   SET @C=JSON_MODIFY(@C,'$.modelSetSha256',CONVERT(varchar(64),HASHBYTES('SHA2_256',CONVERT(varbinary(max),@M)),2));
   SET @Receipt=(SELECT 'ssis-local-scope-handover' contract,'1.0.0' version,CONVERT(varchar(64),HASHBYTES('SHA2_256',CONVERT(varbinary(max),@M)),2) modelSetSha256,CONVERT(varchar(64),HASHBYTES('SHA2_256',CONVERT(varbinary(max),@C)),2) captureSha256,CONVERT(varchar(24),@Now,127)+'Z' issuedUtc,CONVERT(varchar(24),DATEADD(hour,1,@Now),127)+'Z' expiresUtc FOR JSON PATH,WITHOUT_ARRAY_WRAPPER);
   IF @Created=0 BEGIN EXEC sys.sp_addextendedproperty @name=@Name,@value=@Receipt,@level0type=N'SCHEMA',@level0name=N'monitor',@level1type=N'PROCEDURE',@level1name=N'USP_SsisPackageModelAnalysis';SET @Created=1;END;
@@ -101,7 +102,7 @@ BEGIN TRY
  EXEC sys.sp_executesql N'IF (SELECT COUNT(*) FROM #PipelineTransfers WHERE DataStatsId=1 AND FlowStatisticsId=3 AND RowsSent=3)<>1 OR (SELECT COUNT(*) FROM #PipelineTransfers WHERE DataStatsId=2 AND FlowStatisticsId=4 AND RowsSent=7)<>1 OR (SELECT COUNT(*) FROM #PipelineInstances)<>2 OR (SELECT COUNT(*) FROM #PipelinePhases)<>2 OR (SELECT COUNT(*) FROM #PipelineTransfers)<>2 OR (SELECT COUNT(*) FROM #PipelineCoverage)<>2 THROW 57911,N''PIPELINE_TABLE_COUNT'',1;';
  EXEC sys.sp_dropextendedproperty @name=@Name,@level0type=N'SCHEMA',@level0name=N'monitor',@level1type=N'PROCEDURE',@level1name=N'USP_SsisPackageModelAnalysis';SET @Created=0;
  SET @Failure=N'SET LOCK_TIMEOUT '+CONVERT(nvarchar(20),@OriginalLock)+N';';EXEC sys.sp_executesql @Failure;
- PRINT N'SSIS_PIPELINE_RECEIVER_PASS cases=37; iteration identity, source isolation, metric boundaries and TABLE.';
+ PRINT N'SSIS_PIPELINE_RECEIVER_PASS cases=38; iteration identity, source isolation, metric boundaries and TABLE.';
 END TRY
 BEGIN CATCH
  IF @Created=1 EXEC sys.sp_dropextendedproperty @name=@Name,@level0type=N'SCHEMA',@level0name=N'monitor',@level1type=N'PROCEDURE',@level1name=N'USP_SsisPackageModelAnalysis';

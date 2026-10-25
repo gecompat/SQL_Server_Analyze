@@ -420,6 +420,8 @@ AS
         , (N'USP_FrameworkUsageFromQueryStore',N'Framework-Nutzung aus Query Store','QUERY_STORE',N'Query Store und Laufzeithistorie','ENTRY','FRAMEWORK','PERSISTED_HISTORY','LOW_MEDIUM',NULL,0,0,0,'CORE',NULL,N'Aggregiert sichtbare Ausführungsanzahl, Laufzeit, CPU, I/O, Speicher und Planvielfalt installierter monitor-Procedures aus dem Query Store der Frameworkdatenbank.',N'Query Store muss lesbar aktiv sein; Capture Mode, Retention, Cleanup und Metadatensichtbarkeit begrenzen die Aussage.',N'EXEC [monitor].[USP_FrameworkUsageFromQueryStore] @MaxZeilen = 100, @ResultSetArt = ''CONSOLE'';',N'Documentation/Analysis_Guides/Procedures/USP_FrameworkUsageFromQueryStore.md',NULL)
         , (N'USP_ServerPrincipalAnalysis',N'Serverprincipals und direkte Rechte','SERVER',N'Konfiguration und Sicherheit','ENTRY','SERVER','CATALOG_CONFIGURATION','LOW_MEDIUM','SECURITY_CONFIGURATION_CURRENT',0,0,0,'CORE',NULL,N'Zeigt sichtbare Principals, direkte Rollen und explizite Rechte mit Login-Policyflags.',N'Caller-Metadatensicht; keine effektive Berechtigungsanalyse.',N'EXEC [monitor].[USP_ServerPrincipalAnalysis] @MaxZeilen=200, @ResultSetArt=''CONSOLE'';',N'Documentation/Analysis_Guides/Procedures/USP_ServerPrincipalAnalysis.md',NULL)
         , (N'USP_DatabasePrincipalAnalysis',N'Datenbankprincipals und direkte Rechte','SERVER',N'Konfiguration und Sicherheit','TARGETED','MULTI_DATABASE','CATALOG_CONFIGURATION','LOW_MEDIUM','SECURITY_CONFIGURATION_CURRENT',0,0,0,'CORE',NULL,N'Zeigt sichtbare Datenbankprincipals, direkte Rollen, explizite Rechte, Schemaowner und begrenzte Loginbindungen.',N'Caller-Metadatensicht; fehlende sichtbare SID-Treffer beweisen keine verwaisten Benutzer.',N'EXEC [monitor].[USP_DatabasePrincipalAnalysis] @DatabaseNames=N''[ExampleDatabase]'', @MaxZeilen=200, @ResultSetArt=''CONSOLE'';',N'Documentation/Analysis_Guides/Procedures/USP_DatabasePrincipalAnalysis.md',NULL)
+        , (N'USP_CurrentCallerPermissionAnalysis',N'Effektive Rechte des aktuellen Kontexts','SERVER',N'Konfiguration und Sicherheit','TARGETED','MULTI_DATABASE','CATALOG_CONFIGURATION','LOW_MEDIUM','SECURITY_CONFIGURATION_CURRENT',0,0,0,'CORE',NULL,N'Zeigt native SERVER- und DATABASE-Rechte mit aktiven Kontext-IDs und getrennten Quellen.',N'Nur benannte Securableebenen; kein konkreter Objektzugriffs- oder vollstaendiger Tokenbeweis.',N'EXEC [monitor].[USP_CurrentCallerPermissionAnalysis] @MaxZeilen=200, @ResultSetArt=''CONSOLE'';',N'Documentation/Analysis_Guides/Procedures/USP_CurrentCallerPermissionAnalysis.md',NULL)
+        , (N'USP_EndpointTransportAnalysis',N'Endpoints und Transportverschlüsselung','SERVER',N'Konfiguration und Sicherheit','TARGETED','SERVER','CATALOG_CONFIGURATION','LOW_MEDIUM','SECURITY_CONFIGURATION_CURRENT',0,0,0,'CORE',NULL,N'Zeigt sichtbare Endpointkonfiguration und gruppierte native Verbindungsflags.',N'Keine TLS-Version, Cipher-, Zertifikatsvertrauens- oder Erreichbarkeitsprüfung.',N'EXEC [monitor].[USP_EndpointTransportAnalysis] @MaxZeilen=200, @ResultSetArt=''CONSOLE'';',N'Documentation/Analysis_Guides/Procedures/USP_EndpointTransportAnalysis.md',NULL)
     ) AS [v]
     (
           [ProcedureName], [DisplayName], [PrimaryAreaCode], [PrimaryAreaName]
@@ -717,6 +719,10 @@ AS
         , (N'USP_ServerPrincipalAnalysis',N'server principal role explicit permission login policy','en',95,N'Lists visible direct server security metadata.')
         , (N'USP_DatabasePrincipalAnalysis',N'Datenbank Benutzer Rollen Rechte Schemaowner verwaiste Benutzer','de',100,N'Trennt direkte Rechte von begrenzten sichtbaren Loginbindungen.')
         , (N'USP_DatabasePrincipalAnalysis',N'database principal role permission owner contained user orphan login','en',95,N'Lists visible database security metadata without claiming effective permissions.')
+        , (N'USP_CurrentCallerPermissionAnalysis',N'eigene effektive Rechte aktueller Kontext Rollen DENY','de',100,N'Zeigt native Rechte des aktiven Kontexts auf SERVER- und DATABASE-Ebene.')
+        , (N'USP_CurrentCallerPermissionAnalysis',N'current caller effective permission context native grants deny','en',95,N'Lists native effective permissions at named securable levels.')
+        , (N'USP_EndpointTransportAnalysis',N'Endpoint TCP Transport Verschlüsselung TLS Verbindung Zertifikat','de',100,N'Zeigt SQL-sichtbare Konfiguration und native Flags mit Aussagegrenzen.')
+        , (N'USP_EndpointTransportAnalysis',N'endpoint transport encryption connection native flag mirroring','en',95,N'Lists visible configuration and native connection flags with explicit evidence limits.')
     ) AS [v]([ProcedureName],[SearchTerm],[LanguageCode],[SearchWeight],[MatchReason]);
 GO
 -- END SOURCE: Code/01_Common/022_VW_AnalysisSearchTerm.sql
@@ -924,6 +930,8 @@ AS
         , (N'USP_CheckFrameworkCapabilities','REFINE_WITH',N'USP_FrameworkUsageFromQueryStore',1,N'Nach dem Capability-Überblick die tatsächliche Nutzung aus dem Query Store verifizieren.')
         , (N'USP_ServerPrincipalAnalysis','CONFIRM_WITH',N'USP_ServerSecurityConfiguration',1,N'Direkte Principal-Evidenz mit Sicherheitskonfiguration abgleichen.')
         , (N'USP_DatabasePrincipalAnalysis','CONFIRM_WITH',N'USP_ServerPrincipalAnalysis',1,N'Sichtbare Datenbankrechte und Loginbindungen mit den getrennten Servermetadaten abgleichen.')
+        , (N'USP_CurrentCallerPermissionAnalysis','CONFIRM_WITH',N'USP_DatabasePrincipalAnalysis',1,N'Native Rechte des aktuellen Kontexts mit getrennten sichtbaren Katalogkanten abgleichen.')
+        , (N'USP_EndpointTransportAnalysis','CONFIRM_WITH',N'USP_EncryptionAnalysis',1,N'Transportbefunde getrennt von Daten- und Backupverschlüsselung interpretieren.')
     ) AS [v]
     (
           [FromProcedureName], [RelationType], [ToProcedureName]
@@ -51352,6 +51360,802 @@ END;
 GO
 -- END SOURCE: Code/08_ServerHealth/270_USP_DatabasePrincipalAnalysis.sql
 
+-- BEGIN SOURCE: Code/08_ServerHealth/280_USP_CurrentCallerPermissionAnalysis.sql
+USE [DeineDatenbank];
+GO
+/*
+Objekt       : monitor.USP_CurrentCallerPermissionAnalysis
+Version      : 1.0.0
+Stand        : 2026-10-25
+Zweck        : Zeigt native SERVER- und DATABASE-Rechte des aktuellen
+               Ausfuehrungskontexts mit getrennten Quellen und Kontext-IDs.
+Grenzen      : Der Bericht beweist keinen konkreten Objekt- oder Statementzugriff.
+Nebenwirkung : Der Bericht liest nur und wechselt keine Identitaet.
+Datenschutz  : Der Bericht erfragt keine SID- oder Tokenquellen. Native Namen
+               und diagnostische Fehlermeldungen bleiben erhalten.
+*/
+CREATE OR ALTER PROCEDURE [monitor].[USP_CurrentCallerPermissionAnalysis]
+      @DatabaseNames nvarchar(max) = NULL
+    , @SystemdatenbankenEinbeziehen bit = 0
+    , @DatabaseNamePattern nvarchar(4000) = NULL
+    , @ServerrechteEinbeziehen bit = 1
+    , @MaxZeilen int = 1000
+    , @LockTimeoutMs int = 0
+    , @ResultSetArt varchar(16) = 'CONSOLE'
+    , @ResultTablesJson nvarchar(max) = NULL
+    , @JsonErzeugen bit = 0
+    , @Json nvarchar(max) = NULL OUTPUT
+    , @PrintMeldungen bit = 1
+    , @Hilfe bit = 0
+    , @StatusCodeOut varchar(40) = NULL OUTPUT
+    , @IsPartialOut bit = NULL OUTPUT
+    , @ErrorNumberOut int = NULL OUTPUT
+    , @ErrorMessageOut nvarchar(2048) = NULL OUTPUT
+AS
+BEGIN
+    SET NOCOUNT ON;
+    SELECT @Json=NULL,@StatusCodeOut=NULL,@IsPartialOut=NULL,@ErrorNumberOut=NULL,@ErrorMessageOut=NULL;
+    DECLARE @CapturedAtUtc datetime2(3)=SYSUTCDATETIME(),
+        @Mode varchar(16)=UPPER(LTRIM(RTRIM(COALESCE(@ResultSetArt,'')))),
+        @Limit bigint=CASE WHEN @MaxZeilen IS NULL OR @MaxZeilen=0 THEN CONVERT(bigint,9223372036854775807) ELSE @MaxZeilen END,
+        @PreviousLockTimeout int=@@LOCK_TIMEOUT,@PreviousXactAbort bit=CASE WHEN (@@OPTIONS&16384)=16384 THEN 1 ELSE 0 END,
+        @RestoreLock nvarchar(100),@SetLock nvarchar(100),@Sql nvarchar(max),@IdentityGuard nvarchar(max),
+        @Status varchar(40)='AVAILABLE_LIMITED',@Error int=NULL,@Message nvarchar(2048)=NULL,
+        @FailureError int=NULL,@FailureStatus varchar(40)=NULL,@TableStatus varchar(40),@TableError int,@TableMessage nvarchar(2048),
+        @Started datetime2(3),@Observed bigint,@DatabaseId int,@DatabaseName sysname,@QuotedDatabase nvarchar(258),
+        @DatabaseCreatedAt datetime,@CrossDatabaseRequested bit;
+    DECLARE @ConsoleResultRequested bit=CASE WHEN @Mode='CONSOLE' THEN 1 ELSE 0 END;
+    SET @RestoreLock=N'SET LOCK_TIMEOUT '+CONVERT(nvarchar(20),@PreviousLockTimeout)+N';';
+    IF @Hilfe=1
+    BEGIN
+        PRINT N'monitor.USP_CurrentCallerPermissionAnalysis';
+        PRINT N'Liest native SERVER-/DATABASE-Rechte im aktiven Kontext; keine eigene Impersonation oder Objektzugriffsprobe.';
+        PRINT N'Ohne Filter: alle sichtbaren Online-Benutzerdatenbanken; Systemdatenbanken sind opt-in. Serverrechte sind getrennt abschaltbar.';
+        PRINT N'Sechs Mengen: moduleStatus, callerContexts, serverPermissions, databasePermissions, sourceStatus, warnings.';
+        PRINT N'MaxZeilen gilt getrennt global je Rechtemenge; 0/NULL ist unbegrenzt. Status und Error-OUTPUT sind auch bei RETURN 0 zu pruefen.';
+        SELECT @StatusCodeOut='AVAILABLE',@IsPartialOut=0;
+        RETURN 0;
+    END;
+    IF @Mode NOT IN ('CONSOLE','RAW','TABLE','NONE') OR @MaxZeilen<0 OR @LockTimeoutMs IS NULL OR @LockTimeoutMs<0 OR @LockTimeoutMs>60000
+       OR @ServerrechteEinbeziehen IS NULL OR @SystemdatenbankenEinbeziehen IS NULL
+       OR (@Mode<>'TABLE' AND NULLIF(LTRIM(RTRIM(COALESCE(@ResultTablesJson,N''))),N'') IS NOT NULL)
+    BEGIN
+        SELECT @StatusCodeOut='INVALID_PARAMETER',@IsPartialOut=1,@ErrorNumberOut=51011,
+               @ErrorMessageOut=N'Ungueltiger Ausgabe-, Auswahl-, Limit-, Locktimeout- oder TABLE-Parameter.';
+        IF @PrintMeldungen=1 RAISERROR(N'%s',10,1,@ErrorMessageOut) WITH NOWAIT;
+        RETURN 51011;
+    END;
+    BEGIN TRY
+        SET XACT_ABORT OFF;
+        IF @PreviousLockTimeout=0 SET LOCK_TIMEOUT 1000;
+        CREATE TABLE [#CurrentCallerPermissionAnalysis_moduleStatus]
+        (
+[ModuleName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,
+    [CapturedAtUtc] datetime2(3) NOT NULL,
+    [StatusCode] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,
+    [IsPartial] bit NOT NULL,
+    [RowCount] bigint NOT NULL,
+    [Detail] nvarchar(1000) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        );
+        CREATE TABLE [#CurrentCallerPermissionAnalysis_callerContexts]
+        (
+[SourceKey] varchar(64) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,
+    [DatabaseId] int NULL,
+    [DatabaseName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL,
+    [ContextDatabaseId] int NOT NULL,
+    [ServerPrincipalId] int NULL,
+    [DatabasePrincipalId] int NULL,
+    [ContextStatus] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,
+    [CapturedAtUtc] datetime2(3) NOT NULL
+        );
+        CREATE TABLE [#CurrentCallerPermissionAnalysis_serverPermissions]
+        (
+[EntityName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL,
+    [SubentityName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL,
+    [PermissionName] nvarchar(128) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        );
+        CREATE TABLE [#CurrentCallerPermissionAnalysis_databasePermissions]
+        (
+[DatabaseId] int NOT NULL,
+    [DatabaseName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,
+    [EntityName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL,
+    [SubentityName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL,
+    [PermissionName] nvarchar(128) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        );
+        CREATE TABLE [#CurrentCallerPermissionAnalysis_sourceStatus]
+        (
+[DatabaseId] int NULL,
+    [DatabaseName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL,
+    [SourceKey] varchar(64) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,
+    [SourceKind] varchar(16) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,
+    [StartedAtUtc] datetime2(3) NOT NULL,
+    [CompletedAtUtc] datetime2(3) NOT NULL,
+    [StatusCode] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,
+    [VisibilityScope] varchar(32) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,
+    [ObservedRows] bigint NULL,
+    [ReturnedRows] bigint NULL,
+    [IsLimited] bit NOT NULL,
+    [ErrorNumber] int NULL,
+    [ErrorMessage] nvarchar(2048) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        );
+        CREATE TABLE [#CurrentCallerPermissionAnalysis_warnings]
+        (
+[DatabaseId] int NULL,
+    [DatabaseName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL,
+    [WarningCode] varchar(64) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,
+    [SourceKey] varchar(64) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,
+    [Detail] nvarchar(1000) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        );
+        CREATE TABLE [#CurrentCallerPermissionAnalysis_Candidates]
+        (
+
+        [DatabaseId] int NOT NULL,[DatabaseName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,
+        [StateDesc] nvarchar(60) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,
+        [UserAccessDesc] nvarchar(60) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,[IsReadOnly] bit NULL,
+        [CompatibilityLevel] tinyint NULL,[CollationName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL,
+        [RecoveryModelDesc] nvarchar(60) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,
+        [IsSystemDatabase] bit NULL,[RequestedOrdinal] int NULL
+
+        );
+        CREATE TABLE [#CurrentCallerPermissionAnalysis_SelectionWarnings]
+        (
+[RequestedName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL,[StatusCode] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,[ErrorMessage] nvarchar(2048) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        );
+        CREATE TABLE [#CurrentCallerPermissionAnalysis_Map]
+        (
+[ResultName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,[TargetTable] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        );
+        CREATE TABLE [#CurrentCallerPermissionAnalysis_NativeServer]
+        ([EntityName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL,[SubentityName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL,[PermissionName] nvarchar(128) COLLATE SQL_Latin1_General_CP1_CS_AS NULL);
+        CREATE TABLE [#CurrentCallerPermissionAnalysis_NativeDatabase]
+        ([DatabaseId] int NOT NULL,[DatabaseName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,[EntityName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL,[SubentityName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL,[PermissionName] nvarchar(128) COLLATE SQL_Latin1_General_CP1_CS_AS NULL);
+        IF @Mode='TABLE'
+        BEGIN
+            EXEC [monitor].[InternalPrepareResultTables] @ResultTablesJson=@ResultTablesJson,
+                @AllowedResultNames=N'moduleStatus|callerContexts|serverPermissions|databasePermissions|sourceStatus|warnings',
+                @MappingTable=N'#CurrentCallerPermissionAnalysis_Map',@StatusCode=@TableStatus OUTPUT,
+                @ErrorMessage=@TableMessage OUTPUT,@ThrowOnError=0;
+            IF COALESCE(@TableStatus,'')<>'AVAILABLE'
+            BEGIN SET @FailureError=51011;RAISERROR(N'%s',16,1,@TableMessage);END;
+        END;
+        SET @Started=SYSUTCDATETIME();
+        EXEC [monitor].[USP_PrepareDatabaseCandidates] @DatabaseNames=@DatabaseNames,
+            @SystemdatenbankenEinbeziehen=@SystemdatenbankenEinbeziehen,@DatabaseNamePattern=@DatabaseNamePattern,
+            @StatusCode=@TableStatus OUTPUT,@ErrorMessage=@TableMessage OUTPUT,@CrossDatabaseRequested=@CrossDatabaseRequested OUTPUT,
+            @CandidateTable=N'#CurrentCallerPermissionAnalysis_Candidates',@WarningTable=N'#CurrentCallerPermissionAnalysis_SelectionWarnings';
+        IF COALESCE(@TableStatus,'')<>'AVAILABLE'
+        BEGIN SELECT @FailureError=51011,@FailureStatus=COALESCE(@TableStatus,'STATUS_UNAVAILABLE');RAISERROR(N'%s',16,1,@TableMessage);END;
+        INSERT [#CurrentCallerPermissionAnalysis_sourceStatus] VALUES
+            (NULL,NULL,'DATABASE_SELECTION','SELECTION',@Started,SYSUTCDATETIME(),'AVAILABLE','CURRENT_SELECTION',
+             (SELECT COUNT_BIG(*) FROM [#CurrentCallerPermissionAnalysis_Candidates]),(SELECT COUNT_BIG(*) FROM [#CurrentCallerPermissionAnalysis_Candidates]),0,NULL,NULL);
+        INSERT [#CurrentCallerPermissionAnalysis_sourceStatus]
+            SELECT NULL,[RequestedName],'DATABASE_SELECTION','SELECTION',@Started,SYSUTCDATETIME(),
+                   COALESCE([StatusCode],'STATUS_UNAVAILABLE'),'UNPROVEN',NULL,NULL,0,NULL,[ErrorMessage]
+            FROM [#CurrentCallerPermissionAnalysis_SelectionWarnings];
+        INSERT [#CurrentCallerPermissionAnalysis_warnings]
+            SELECT NULL,[RequestedName],'TARGET_SELECTION','DATABASE_SELECTION',LEFT(COALESCE([ErrorMessage],N'Kein verfuegbarer Zielkontext.'),1000)
+            FROM [#CurrentCallerPermissionAnalysis_SelectionWarnings];
+        SET LOCK_TIMEOUT 0;
+        SET @SetLock=N'SET LOCK_TIMEOUT '+CONVERT(nvarchar(20),@LockTimeoutMs)+N'; ';
+        -- TARGET_IDENTITY_GUARD_BEGIN
+        SET @IdentityGuard=N'IF DB_ID()<>@Id OR NOT EXISTS(SELECT 1 FROM [sys].[databases] WITH (NOLOCK)
+            WHERE [database_id]=DB_ID() AND [name] COLLATE SQL_Latin1_General_CP1_CS_AS=@Name COLLATE SQL_Latin1_General_CP1_CS_AS AND [create_date]=@Created)
+            THROW 51012,N''Target database identity changed or is not available for this source.'',1; ';
+        -- TARGET_IDENTITY_GUARD_END
+        SET @Started=SYSUTCDATETIME();
+        IF @ServerrechteEinbeziehen=1
+        BEGIN
+            BEGIN TRY
+                SET @Sql=@SetLock+N'DECLARE @ContextDb int=DB_ID(),@ContextServer int=SUSER_ID(),@ContextUser int=DATABASE_PRINCIPAL_ID(),@ContextAt datetime2(3)=SYSUTCDATETIME(); INSERT [#CurrentCallerPermissionAnalysis_NativeServer] SELECT [entity_name],[subentity_name],CONVERT(nvarchar(128),[permission_name]) FROM [sys].[fn_my_permissions](NULL,N''SERVER''); SET @Rows=(SELECT COUNT_BIG(*) FROM [#CurrentCallerPermissionAnalysis_NativeServer]); IF EXISTS(SELECT 1 FROM [#CurrentCallerPermissionAnalysis_NativeServer] WHERE ([PermissionName] IS NULL OR LEN(LTRIM(RTRIM([PermissionName])))=0)) THROW 51014,N''Native source returned an unusable permission name.'',1; IF EXISTS(SELECT @ContextDb,@ContextServer,@ContextUser EXCEPT SELECT DB_ID(),SUSER_ID(),DATABASE_PRINCIPAL_ID()) THROW 51013,N''Current execution-context identifiers changed during the source read.'',1; INSERT [#CurrentCallerPermissionAnalysis_serverPermissions] SELECT * FROM [#CurrentCallerPermissionAnalysis_NativeServer]; INSERT [#CurrentCallerPermissionAnalysis_callerContexts] VALUES (N''SERVER_CURRENT_PERMISSIONS'',NULL,NULL,@ContextDb,@ContextServer,@ContextUser,CASE WHEN @ContextServer IS NOT NULL AND @ContextUser IS NOT NULL THEN N''CAPTURED_CURRENT_IDS'' ELSE N''PARTIAL_CURRENT_IDS'' END,@ContextAt);';
+                EXEC [sys].[sp_executesql] @Sql,N'@Rows bigint OUTPUT',@Rows=@Observed OUTPUT;
+                INSERT [#CurrentCallerPermissionAnalysis_sourceStatus] VALUES
+                    (NULL,NULL,'SERVER_CURRENT_PERMISSIONS','NATIVE',@Started,SYSUTCDATETIME(),
+                     CASE WHEN @Observed=0 THEN 'EMPTY_UNPROVEN' ELSE 'AVAILABLE_LIMITED' END,'CURRENT_CONTEXT_ONLY',@Observed,@Observed,0,NULL,NULL);
+            END TRY
+            BEGIN CATCH
+                DELETE FROM [#CurrentCallerPermissionAnalysis_NativeServer];
+                DELETE FROM [#CurrentCallerPermissionAnalysis_serverPermissions];
+                DELETE FROM [#CurrentCallerPermissionAnalysis_callerContexts] WHERE [SourceKey]='SERVER_CURRENT_PERMISSIONS';
+                INSERT [#CurrentCallerPermissionAnalysis_sourceStatus] VALUES
+                    (NULL,NULL,'SERVER_CURRENT_PERMISSIONS','NATIVE',@Started,SYSUTCDATETIME(),
+                     CASE WHEN ERROR_NUMBER() IN (229,297,300,371,916) THEN 'DENIED_PERMISSION' WHEN ERROR_NUMBER()=1222 THEN 'TIMEOUT'
+                          WHEN ERROR_NUMBER() IN (911,924,926,927,942,945,952,978,4060,51012) THEN 'DATABASE_UNAVAILABLE'
+                          ELSE 'ERROR_HANDLED' END,'UNPROVEN',NULL,NULL,0,ERROR_NUMBER(),LEFT(ERROR_MESSAGE(),2048));
+            END CATCH;
+        END
+        ELSE
+            INSERT [#CurrentCallerPermissionAnalysis_sourceStatus] VALUES
+                (NULL,NULL,'SERVER_CURRENT_PERMISSIONS','NATIVE',@Started,SYSUTCDATETIME(),'SKIPPED','UNPROVEN',NULL,NULL,0,NULL,NULL);
+        DECLARE [CurrentCallerPermissionTargets] CURSOR LOCAL FAST_FORWARD FOR
+            SELECT [DatabaseId],[DatabaseName] FROM [#CurrentCallerPermissionAnalysis_Candidates] ORDER BY [DatabaseId];
+        OPEN [CurrentCallerPermissionTargets];FETCH NEXT FROM [CurrentCallerPermissionTargets] INTO @DatabaseId,@DatabaseName;
+        WHILE @@FETCH_STATUS=0
+        BEGIN
+            SELECT @QuotedDatabase=QUOTENAME(@DatabaseName),@DatabaseCreatedAt=NULL;
+            SET @Started=SYSUTCDATETIME();
+            BEGIN TRY
+                SET @Sql=@SetLock+N'SELECT @Created=[create_date] FROM [master].[sys].[databases] WITH (NOLOCK)
+                    WHERE [database_id]=@Id AND [name] COLLATE SQL_Latin1_General_CP1_CS_AS=@Name COLLATE SQL_Latin1_General_CP1_CS_AS;';
+                EXEC [sys].[sp_executesql] @Sql,N'@Id int,@Name sysname,@Created datetime OUTPUT',@Id=@DatabaseId,@Name=@DatabaseName,@Created=@DatabaseCreatedAt OUTPUT;
+                IF @DatabaseCreatedAt IS NULL THROW 51012,N'Target database context is not available.',1;
+                INSERT [#CurrentCallerPermissionAnalysis_sourceStatus] VALUES
+                    (@DatabaseId,@DatabaseName,'DATABASE_CONTEXT','NATIVE',@Started,SYSUTCDATETIME(),'AVAILABLE_LIMITED','VISIBLE_ONLY',1,1,0,NULL,NULL);
+            END TRY
+            BEGIN CATCH
+                INSERT [#CurrentCallerPermissionAnalysis_sourceStatus] VALUES
+                    (@DatabaseId,@DatabaseName,'DATABASE_CONTEXT','NATIVE',@Started,SYSUTCDATETIME(),
+                     CASE WHEN ERROR_NUMBER() IN (229,297,300,371,916) THEN 'DENIED_PERMISSION' WHEN ERROR_NUMBER()=1222 THEN 'TIMEOUT'
+                          WHEN ERROR_NUMBER()=51012 THEN 'DATABASE_UNAVAILABLE' ELSE 'ERROR_HANDLED' END,
+                     'UNPROVEN',NULL,NULL,0,ERROR_NUMBER(),LEFT(ERROR_MESSAGE(),2048));
+            END CATCH;
+            SET @Started=SYSUTCDATETIME();
+            IF @DatabaseCreatedAt IS NOT NULL
+            BEGIN
+            BEGIN TRY
+                SET @Sql=@SetLock+N'USE '+@QuotedDatabase+N'; '+@IdentityGuard+N'DECLARE @ContextDb int=DB_ID(),@ContextServer int=SUSER_ID(),@ContextUser int=DATABASE_PRINCIPAL_ID(),@ContextAt datetime2(3)=SYSUTCDATETIME(); INSERT [#CurrentCallerPermissionAnalysis_NativeDatabase] SELECT @Id,@Name,[entity_name],[subentity_name],CONVERT(nvarchar(128),[permission_name]) FROM [sys].[fn_my_permissions](NULL,N''DATABASE''); SET @Rows=(SELECT COUNT_BIG(*) FROM [#CurrentCallerPermissionAnalysis_NativeDatabase] WHERE [DatabaseId]=@Id); IF EXISTS(SELECT 1 FROM [#CurrentCallerPermissionAnalysis_NativeDatabase] WHERE [DatabaseId]=@Id AND ([PermissionName] IS NULL OR LEN(LTRIM(RTRIM([PermissionName])))=0)) THROW 51014,N''Native source returned an unusable permission name.'',1; IF EXISTS(SELECT @ContextDb,@ContextServer,@ContextUser EXCEPT SELECT DB_ID(),SUSER_ID(),DATABASE_PRINCIPAL_ID()) THROW 51013,N''Current execution-context identifiers changed during the source read.'',1; '+@IdentityGuard+N'INSERT [#CurrentCallerPermissionAnalysis_databasePermissions] SELECT * FROM [#CurrentCallerPermissionAnalysis_NativeDatabase] WHERE [DatabaseId]=@Id; INSERT [#CurrentCallerPermissionAnalysis_callerContexts] VALUES (N''DATABASE_CURRENT_PERMISSIONS'',@Id,@Name,@ContextDb,@ContextServer,@ContextUser,CASE WHEN @ContextServer IS NOT NULL AND @ContextUser IS NOT NULL THEN N''CAPTURED_CURRENT_IDS'' ELSE N''PARTIAL_CURRENT_IDS'' END,@ContextAt);';
+                EXEC [sys].[sp_executesql] @Sql,N'@Id int,@Name sysname,@Created datetime,@Rows bigint OUTPUT',@Id=@DatabaseId,@Name=@DatabaseName,@Created=@DatabaseCreatedAt,@Rows=@Observed OUTPUT;
+                INSERT [#CurrentCallerPermissionAnalysis_sourceStatus] VALUES
+                    (@DatabaseId,@DatabaseName,'DATABASE_CURRENT_PERMISSIONS','NATIVE',@Started,SYSUTCDATETIME(),
+                     CASE WHEN @Observed=0 THEN 'EMPTY_UNPROVEN' ELSE 'AVAILABLE_LIMITED' END,'CURRENT_CONTEXT_ONLY',@Observed,@Observed,0,NULL,NULL);
+            END TRY
+            BEGIN CATCH
+                DELETE FROM [#CurrentCallerPermissionAnalysis_NativeDatabase] WHERE [DatabaseId]=@DatabaseId;
+                DELETE FROM [#CurrentCallerPermissionAnalysis_databasePermissions] WHERE [DatabaseId]=@DatabaseId;
+                DELETE FROM [#CurrentCallerPermissionAnalysis_callerContexts] WHERE [SourceKey]='DATABASE_CURRENT_PERMISSIONS' AND [DatabaseId]=@DatabaseId;
+                INSERT [#CurrentCallerPermissionAnalysis_sourceStatus] VALUES
+                    (@DatabaseId,@DatabaseName,'DATABASE_CURRENT_PERMISSIONS','NATIVE',@Started,SYSUTCDATETIME(),
+                     CASE WHEN ERROR_NUMBER() IN (229,297,300,371,916) THEN 'DENIED_PERMISSION' WHEN ERROR_NUMBER()=1222 THEN 'TIMEOUT'
+                          WHEN ERROR_NUMBER() IN (911,924,926,927,942,945,952,978,4060,51012) THEN 'DATABASE_UNAVAILABLE'
+                          ELSE 'ERROR_HANDLED' END,'UNPROVEN',NULL,NULL,0,ERROR_NUMBER(),LEFT(ERROR_MESSAGE(),2048));
+            END CATCH;
+        END
+        ELSE
+            INSERT [#CurrentCallerPermissionAnalysis_sourceStatus] VALUES
+                (@DatabaseId,@DatabaseName,'DATABASE_CURRENT_PERMISSIONS','NATIVE',@Started,SYSUTCDATETIME(),'SKIPPED','UNPROVEN',NULL,NULL,0,NULL,N'DATABASE_CONTEXT is not available; the permission function was not called.');
+            FETCH NEXT FROM [CurrentCallerPermissionTargets] INTO @DatabaseId,@DatabaseName;
+        END;
+        CLOSE [CurrentCallerPermissionTargets];DEALLOCATE [CurrentCallerPermissionTargets];
+        ;WITH [Ranked] AS (SELECT *,ROW_NUMBER() OVER(ORDER BY [EntityName],[SubentityName],[PermissionName]) AS [OutputRank] FROM [#CurrentCallerPermissionAnalysis_serverPermissions]) DELETE FROM [Ranked] WHERE [OutputRank]>@Limit;
+        ;WITH [Ranked] AS (SELECT *,ROW_NUMBER() OVER(ORDER BY [DatabaseId],[EntityName],[SubentityName],[PermissionName]) AS [OutputRank] FROM [#CurrentCallerPermissionAnalysis_databasePermissions]) DELETE FROM [Ranked] WHERE [OutputRank]>@Limit;
+        UPDATE [s] SET [ReturnedRows]=CASE WHEN [s].[SourceKey]='SERVER_CURRENT_PERMISSIONS' THEN
+                (SELECT COUNT_BIG(*) FROM [#CurrentCallerPermissionAnalysis_serverPermissions]) ELSE
+                (SELECT COUNT_BIG(*) FROM [#CurrentCallerPermissionAnalysis_databasePermissions] AS [p] WHERE [p].[DatabaseId]=[s].[DatabaseId]) END
+        FROM [#CurrentCallerPermissionAnalysis_sourceStatus] AS [s]
+        WHERE [s].[SourceKey] IN ('SERVER_CURRENT_PERMISSIONS','DATABASE_CURRENT_PERMISSIONS') AND [s].[ObservedRows] IS NOT NULL;
+        UPDATE [#CurrentCallerPermissionAnalysis_sourceStatus] SET [IsLimited]=1 WHERE [ReturnedRows]<[ObservedRows];
+        INSERT [#CurrentCallerPermissionAnalysis_warnings] VALUES
+            (NULL,NULL,'CURRENT_CONTEXT_BOUNDARY',NULL,N'Die native Bewertung gilt nur fuer den aktuellen Ausfuehrungskontext; erfasste IDs sind kein vollstaendiger Token- oder Daueridentitaetsnachweis.'),
+            (NULL,NULL,'SECURABLE_LEVEL_BOUNDARY',NULL,N'SERVER-/DATABASE-Rechte beweisen keinen konkreten Objekt-, Spalten- oder Statementzugriff. Getrennte Quellen sind kein atomarer Snapshot.');
+        INSERT [#CurrentCallerPermissionAnalysis_warnings]
+            SELECT [DatabaseId],[DatabaseName],'OUTPUT_LIMIT',[SourceKey],N'Die fachliche Rechtemenge wurde global gekuerzt; erfasste Kontext- und Quellenzeilen bleiben erhalten.'
+            FROM [#CurrentCallerPermissionAnalysis_sourceStatus] WHERE [IsLimited]=1;
+        INSERT [#CurrentCallerPermissionAnalysis_warnings]
+            SELECT [DatabaseId],[DatabaseName],'EMPTY_PERMISSION_SOURCE_UNPROVEN',[SourceKey],N'Die native Funktion lieferte keine Zeile; dies beweist keine fehlenden Rechte.'
+            FROM [#CurrentCallerPermissionAnalysis_sourceStatus] WHERE [StatusCode]='EMPTY_UNPROVEN';
+        INSERT [#CurrentCallerPermissionAnalysis_warnings]
+            SELECT [DatabaseId],[DatabaseName],'PARTIAL_CONTEXT_IDENTIFIERS',[SourceKey],N'Mindestens eine native Principal-ID ist NULL. Die IDs beschreiben nicht die gesamte wirksame Sicherheitsidentitaet.'
+            FROM [#CurrentCallerPermissionAnalysis_callerContexts] WHERE [ContextStatus]='PARTIAL_CURRENT_IDS';
+        INSERT [#CurrentCallerPermissionAnalysis_warnings]
+            SELECT [DatabaseId],[DatabaseName],'SOURCE_FAILURE',[SourceKey],LEFT(COALESCE([ErrorMessage],N'Die Quelle ist nicht verfuegbar.'),1000)
+            FROM [#CurrentCallerPermissionAnalysis_sourceStatus] WHERE [SourceKind]='NATIVE'
+              AND [StatusCode] NOT IN ('AVAILABLE_LIMITED','EMPTY_UNPROVEN','SKIPPED');
+        IF NOT EXISTS(SELECT 1 FROM [#CurrentCallerPermissionAnalysis_sourceStatus]
+                      WHERE [SourceKey] IN ('SERVER_CURRENT_PERMISSIONS','DATABASE_CURRENT_PERMISSIONS') AND [StatusCode]='AVAILABLE_LIMITED')
+        BEGIN
+            IF EXISTS(SELECT 1 FROM [#CurrentCallerPermissionAnalysis_sourceStatus] WHERE [StatusCode]='EMPTY_UNPROVEN') SET @Status='EMPTY_UNPROVEN';
+            ELSE
+            BEGIN
+                SET @Status='NO_TARGETS';
+                SELECT TOP (1) @Status=[StatusCode] FROM [#CurrentCallerPermissionAnalysis_sourceStatus]
+                WHERE [SourceKind]='NATIVE' AND [StatusCode] NOT IN ('AVAILABLE_LIMITED','EMPTY_UNPROVEN','SKIPPED') ORDER BY [DatabaseId],[SourceKey];
+            END;
+        END;
+        SELECT TOP (1) @Error=[ErrorNumber],@Message=[ErrorMessage]
+        FROM [#CurrentCallerPermissionAnalysis_sourceStatus] WHERE [ErrorNumber] IS NOT NULL ORDER BY [DatabaseId],[SourceKey];
+        DECLARE @Rows bigint=(SELECT COUNT_BIG(*) FROM [#CurrentCallerPermissionAnalysis_serverPermissions])+
+            (SELECT COUNT_BIG(*) FROM [#CurrentCallerPermissionAnalysis_databasePermissions]);
+        INSERT [#CurrentCallerPermissionAnalysis_moduleStatus] VALUES
+            (N'USP_CurrentCallerPermissionAnalysis',@CapturedAtUtc,@Status,1,@Rows,N'Native SERVER-/DATABASE-Rechte im aktiven Kontext; RowCount summiert die beiden ausgegebenen Rechtemengen. Keine konkrete Objektzugriffs- oder vollstaendige Tokenanalyse.');
+        IF @JsonErzeugen=1
+        BEGIN
+            DECLARE @Meta nvarchar(max)=(SELECT N'CurrentCallerPermissionAnalysis' AS [resultName],1 AS [schemaVersion],
+                @CapturedAtUtc AS [generatedAtUtc],@Status AS [statusCode],CAST(1 AS bit) AS [isPartial],@Error AS [errorNumber],@Message AS [errorMessage]
+                FOR JSON PATH,WITHOUT_ARRAY_WRAPPER,INCLUDE_NULL_VALUES);
+            DECLARE @Json_moduleStatus nvarchar(max)=(SELECT * FROM [#CurrentCallerPermissionAnalysis_moduleStatus] FOR JSON PATH,INCLUDE_NULL_VALUES);
+            DECLARE @Json_callerContexts nvarchar(max)=(SELECT * FROM [#CurrentCallerPermissionAnalysis_callerContexts] ORDER BY [DatabaseId],[SourceKey] FOR JSON PATH,INCLUDE_NULL_VALUES);
+            DECLARE @Json_serverPermissions nvarchar(max)=(SELECT * FROM [#CurrentCallerPermissionAnalysis_serverPermissions] ORDER BY [EntityName],[SubentityName],[PermissionName] FOR JSON PATH,INCLUDE_NULL_VALUES);
+            DECLARE @Json_databasePermissions nvarchar(max)=(SELECT * FROM [#CurrentCallerPermissionAnalysis_databasePermissions] ORDER BY [DatabaseId],[EntityName],[SubentityName],[PermissionName] FOR JSON PATH,INCLUDE_NULL_VALUES);
+            DECLARE @Json_sourceStatus nvarchar(max)=(SELECT * FROM [#CurrentCallerPermissionAnalysis_sourceStatus] ORDER BY [DatabaseId],[DatabaseName],[SourceKey] FOR JSON PATH,INCLUDE_NULL_VALUES);
+            DECLARE @Json_warnings nvarchar(max)=(SELECT * FROM [#CurrentCallerPermissionAnalysis_warnings] ORDER BY [DatabaseId],[DatabaseName],[WarningCode],[SourceKey] FOR JSON PATH,INCLUDE_NULL_VALUES);
+            SET @Json=CONCAT(N'{"meta":',@Meta,N',"moduleStatus":',COALESCE(@Json_moduleStatus,N'[]'),N',"callerContexts":',COALESCE(@Json_callerContexts,N'[]'),N',"serverPermissions":',COALESCE(@Json_serverPermissions,N'[]'),N',"databasePermissions":',COALESCE(@Json_databasePermissions,N'[]'),N',"sourceStatus":',COALESCE(@Json_sourceStatus,N'[]'),N',"warnings":',COALESCE(@Json_warnings,N'[]'),N'}');
+        END;
+        IF @Mode='RAW'
+        BEGIN
+            SELECT * FROM [#CurrentCallerPermissionAnalysis_moduleStatus];
+            SELECT * FROM [#CurrentCallerPermissionAnalysis_callerContexts] ORDER BY [DatabaseId],[SourceKey];
+            SELECT * FROM [#CurrentCallerPermissionAnalysis_serverPermissions] ORDER BY [EntityName],[SubentityName],[PermissionName];
+            SELECT * FROM [#CurrentCallerPermissionAnalysis_databasePermissions] ORDER BY [DatabaseId],[EntityName],[SubentityName],[PermissionName];
+            SELECT * FROM [#CurrentCallerPermissionAnalysis_sourceStatus] ORDER BY [DatabaseId],[DatabaseName],[SourceKey];
+            SELECT * FROM [#CurrentCallerPermissionAnalysis_warnings] ORDER BY [DatabaseId],[DatabaseName],[WarningCode],[SourceKey];
+        END
+        ELSE IF @Mode='TABLE'
+        BEGIN
+            DECLARE @ResultName sysname,@TargetTable sysname,@SourceTable sysname;
+            DECLARE [CurrentCallerPermissionOutput] CURSOR LOCAL FAST_FORWARD FOR
+                SELECT [ResultName],[TargetTable] FROM [#CurrentCallerPermissionAnalysis_Map] ORDER BY [ResultName];
+            OPEN [CurrentCallerPermissionOutput];FETCH NEXT FROM [CurrentCallerPermissionOutput] INTO @ResultName,@TargetTable;
+            WHILE @@FETCH_STATUS=0
+            BEGIN
+                SET @SourceTable=N'#CurrentCallerPermissionAnalysis_'+@ResultName;
+                EXEC [monitor].[InternalWriteResultTable] @SourceTable=@SourceTable,@TargetTable=@TargetTable,
+                    @StatusCode=@TableStatus OUTPUT,@ErrorNumber=@TableError OUTPUT,@ErrorMessage=@TableMessage OUTPUT,@ThrowOnError=0;
+                IF COALESCE(@TableStatus,'')<>'AVAILABLE'
+                BEGIN SET @FailureError=COALESCE(@TableError,51010);RAISERROR(N'%s',16,1,@TableMessage);END;
+                FETCH NEXT FROM [CurrentCallerPermissionOutput] INTO @ResultName,@TargetTable;
+            END;
+            CLOSE [CurrentCallerPermissionOutput];DEALLOCATE [CurrentCallerPermissionOutput];
+        END
+        ELSE IF @ConsoleResultRequested=1
+        BEGIN
+            CREATE TABLE [#CurrentCallerPermissionAnalysis_Console]
+            ([Scope] varchar(8) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,[DatabaseId] int NULL,[DatabaseName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL,
+             [EntityName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL,[SubentityName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL,
+             [PermissionName] nvarchar(128) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,[StatusCode] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,
+             [SourceKey] varchar(64) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,[WarningCode] varchar(64) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,[Detail] nvarchar(max) COLLATE SQL_Latin1_General_CP1_CS_AS NULL);
+            INSERT [#CurrentCallerPermissionAnalysis_Console]
+                SELECT 'SERVER',NULL,NULL,[EntityName],[SubentityName],[PermissionName],@Status,'SERVER_CURRENT_PERMISSIONS',NULL,NULL FROM [#CurrentCallerPermissionAnalysis_serverPermissions]
+                UNION ALL SELECT 'DATABASE',[DatabaseId],[DatabaseName],[EntityName],[SubentityName],[PermissionName],@Status,'DATABASE_CURRENT_PERMISSIONS',NULL,NULL FROM [#CurrentCallerPermissionAnalysis_databasePermissions];
+            INSERT [#CurrentCallerPermissionAnalysis_Console]
+                SELECT 'SOURCE',[DatabaseId],[DatabaseName],NULL,NULL,NULL,[StatusCode],[SourceKey],NULL,
+                       COALESCE([ErrorMessage],N'Diese Quellenmenge ist nicht als vollstaendige erfolgreiche Rechtebewertung belegt.')
+                FROM [#CurrentCallerPermissionAnalysis_sourceStatus] WHERE [StatusCode] NOT IN ('AVAILABLE','AVAILABLE_LIMITED','SKIPPED');
+            INSERT [#CurrentCallerPermissionAnalysis_Console]
+                SELECT CASE WHEN [WarningCode] IN ('CURRENT_CONTEXT_BOUNDARY','SECURABLE_LEVEL_BOUNDARY') THEN 'INFO' ELSE 'WARNING' END,
+                       [DatabaseId],[DatabaseName],NULL,NULL,NULL,CASE WHEN [WarningCode] IN ('CURRENT_CONTEXT_BOUNDARY','SECURABLE_LEVEL_BOUNDARY') THEN 'INFO' ELSE 'WARNING' END,[SourceKey],[WarningCode],[Detail]
+                FROM [#CurrentCallerPermissionAnalysis_warnings] WHERE [WarningCode] NOT IN ('SOURCE_FAILURE','EMPTY_PERMISSION_SOURCE_UNPROVEN','TARGET_SELECTION');
+            IF NOT EXISTS(SELECT 1 FROM [#CurrentCallerPermissionAnalysis_serverPermissions]) AND NOT EXISTS(SELECT 1 FROM [#CurrentCallerPermissionAnalysis_databasePermissions])
+                INSERT [#CurrentCallerPermissionAnalysis_Console] VALUES ('STATUS',NULL,NULL,NULL,NULL,NULL,@Status,NULL,NULL,N'Keine ausgegebene Rechtezeile; Quellenstatus und Warnungen liefern die Aussagegrenze.');
+            EXEC [monitor].[InternalEmitConsoleResult] @SourceTable=N'#CurrentCallerPermissionAnalysis_Console',
+                @ResultLabel=N'Effektive Rechte des aktuellen Ausfuehrungskontexts',
+                @EmptyMessage=N'Keine ausgegebene Rechtezeile; Quellenstatus und Warnungen beachten.';
+        END;
+        SELECT @StatusCodeOut=@Status,@IsPartialOut=1,@ErrorNumberOut=@Error,@ErrorMessageOut=@Message;
+        IF @PrintMeldungen=1 AND @Error IS NOT NULL RAISERROR(N'%s',10,1,@Message) WITH NOWAIT;
+        EXEC [sys].[sp_executesql] @RestoreLock;
+        IF @PreviousXactAbort=1 SET XACT_ABORT ON; ELSE SET XACT_ABORT OFF;
+        RETURN 0;
+    END TRY
+    BEGIN CATCH
+        SELECT @Error=COALESCE(@FailureError,ERROR_NUMBER()),@Message=ERROR_MESSAGE(),@Status=COALESCE(@FailureStatus,'ERROR_HANDLED'),@Json=NULL;
+        SELECT @StatusCodeOut=@Status,@IsPartialOut=1,@ErrorNumberOut=@Error,@ErrorMessageOut=@Message;
+        EXEC [sys].[sp_executesql] @RestoreLock;
+        SET XACT_ABORT OFF;
+        IF @PrintMeldungen=1 RAISERROR(N'%s',10,1,@Message) WITH NOWAIT;
+        RETURN @Error;
+    END CATCH;
+END;
+GO
+-- END SOURCE: Code/08_ServerHealth/280_USP_CurrentCallerPermissionAnalysis.sql
+
+-- BEGIN SOURCE: Code/08_ServerHealth/290_USP_EndpointTransportAnalysis.sql
+/*
+===============================================================================
+Objekt       : monitor.USP_EndpointTransportAnalysis
+Version      : 1.0.0
+Stand        : 2026-10-25
+Zweck        : Zeigt sichtbare Engineendpoints, TCP-/Mirroringkonfiguration
+               und gruppierte native Verschlüsselungsflags bestehender Verbindungen.
+Quellen      : sys.endpoints, sys.tcp_endpoints, sys.database_mirroring_endpoints
+               und sys.dm_exec_connections.
+Grenzen      : Kein TLS-, Cipher-, Zertifikatsvertrauens- oder Erreichbarkeitsbeweis.
+               HADR-Flags und MARS-Zeilen besitzen eigene Aussagegrenzen.
+Nebenwirkung : Liest nur Metadaten; verändert keine Endpoints, Rechte oder Hostwerte.
+===============================================================================
+*/
+CREATE OR ALTER PROCEDURE [monitor].[USP_EndpointTransportAnalysis]
+      @MaxZeilen int = 1000
+    , @LockTimeoutMs int = 0
+    , @ResultSetArt varchar(16) = 'CONSOLE'
+    , @ResultTablesJson nvarchar(max) = NULL
+    , @JsonErzeugen bit = 0
+    , @Json nvarchar(max) = NULL OUTPUT
+    , @PrintMeldungen bit = 1
+    , @Hilfe bit = 0
+    , @StatusCodeOut varchar(40) = NULL OUTPUT
+    , @IsPartialOut bit = NULL OUTPUT
+    , @ErrorNumberOut int = NULL OUTPUT
+    , @ErrorMessageOut nvarchar(2048) = NULL OUTPUT
+AS
+BEGIN
+    SET NOCOUNT ON;
+    SELECT @Json=NULL,@StatusCodeOut=NULL,@IsPartialOut=NULL,@ErrorNumberOut=NULL,@ErrorMessageOut=NULL;
+    DECLARE @CapturedAtUtc datetime2(3)=SYSUTCDATETIME(),
+        @Mode varchar(16)=UPPER(LTRIM(RTRIM(COALESCE(@ResultSetArt,'')))),
+        @Limit bigint=CASE WHEN @MaxZeilen IS NULL OR @MaxZeilen=0 THEN CONVERT(bigint,9223372036854775807) ELSE @MaxZeilen END,
+        @PreviousLockTimeout int=@@LOCK_TIMEOUT,
+        @PreviousXactAbort bit=CASE WHEN (@@OPTIONS & 16384)=16384 THEN 1 ELSE 0 END,
+        @RestoreLock nvarchar(100),@SetLock nvarchar(100),@Batch nvarchar(max),@Started datetime2(3),@Observed bigint,
+        @Status varchar(40)='AVAILABLE_LIMITED',@Error int=NULL,@Message nvarchar(2048)=NULL,
+        @TableStatus varchar(40),@TableMessage nvarchar(2048),@TableError int,@TableFailureError int=NULL;
+    SET @RestoreLock=N'SET LOCK_TIMEOUT '+CONVERT(nvarchar(20),@PreviousLockTimeout)+N';';
+    DECLARE @ConsoleResultRequested bit=CASE WHEN @Mode='CONSOLE' THEN 1 ELSE 0 END;
+    IF @Hilfe=1
+    BEGIN
+        PRINT N'monitor.USP_EndpointTransportAnalysis';
+        PRINT N'SQL-sichtbare Endpoints und native Verbindungsflags; keine TLS-Version, Zertifikatsprüfung oder externe Erreichbarkeitsprobe.';
+        PRINT N'RAW/TABLE/JSON: moduleStatus, endpoints, tcpEndpoints, mirroringEndpoints, connectionEncryptionSummary, sourceStatus, warnings.';
+        PRINT N'@MaxZeilen begrenzt vier Ausgabemengen getrennt; 0 und NULL sind unbegrenzt. Die Quellenaufnahme bleibt ungekürzt. @LockTimeoutMs: 0 bis 60000.';
+        PRINT N'ConnectionRows zählt DMV-Zeilen einschließlich logischer MARS-Zeilen. HADR encrypt_option=FALSE ist kein Negativbeweis.';
+        PRINT N'Quellenfehler bleiben im Bericht; Status und Error-OUTPUT beachten. Parameter-/TABLE-Fehler liefern Diagnose-RETURN und JSON-NULL.';
+        SELECT @StatusCodeOut='AVAILABLE',@IsPartialOut=0;
+        RETURN;
+    END;
+    IF @Mode NOT IN ('CONSOLE','RAW','TABLE','NONE') OR @MaxZeilen<0
+       OR @LockTimeoutMs IS NULL OR @LockTimeoutMs<0 OR @LockTimeoutMs>60000
+       OR (@Mode<>'TABLE' AND NULLIF(LTRIM(RTRIM(COALESCE(@ResultTablesJson,N''))),N'') IS NOT NULL)
+    BEGIN
+        SELECT @StatusCodeOut='INVALID_PARAMETER',@IsPartialOut=1,@ErrorNumberOut=51011,
+               @ErrorMessageOut=N'Ungültiger Ausgabe-, Limit-, Locktimeout- oder TABLE-Parameter.';
+        IF @PrintMeldungen=1 RAISERROR(N'%s',10,1,@ErrorMessageOut) WITH NOWAIT;
+        RETURN 51011;
+    END;
+    BEGIN TRY
+        SET XACT_ABORT OFF;
+        SET LOCK_TIMEOUT 1000;
+        CREATE TABLE [#EndpointTransportAnalysis_moduleStatus]
+        (
+    [ModuleName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,
+    [CapturedAtUtc] datetime2(3) NOT NULL,
+    [StatusCode] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,
+    [IsPartial] bit NOT NULL,
+    [RowCount] bigint NOT NULL,
+    [Detail] nvarchar(1000) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        );
+        CREATE TABLE [#EndpointTransportAnalysis_endpoints]
+        (
+    [EndpointId] int NOT NULL,
+    [EndpointName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,
+    [PrincipalId] int NULL,
+    [Protocol] tinyint NOT NULL,
+    [ProtocolDescription] nvarchar(60) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,
+    [EndpointType] tinyint NOT NULL,
+    [EndpointTypeDescription] nvarchar(60) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,
+    [EndpointState] tinyint NULL,
+    [EndpointStateDescription] nvarchar(60) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,
+    [IsAdminEndpoint] bit NOT NULL
+        );
+        CREATE TABLE [#EndpointTransportAnalysis_tcpEndpoints]
+        (
+    [EndpointId] int NOT NULL,
+    [EndpointName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,
+    [Port] int NOT NULL,
+    [IsDynamicPort] bit NOT NULL,
+    [IpAddress] nvarchar(45) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        );
+        CREATE TABLE [#EndpointTransportAnalysis_mirroringEndpoints]
+        (
+    [EndpointId] int NOT NULL,
+    [EndpointName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,
+    [MirroringRole] tinyint NULL,
+    [MirroringRoleDescription] nvarchar(60) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,
+    [IsEncryptionEnabled] bit NOT NULL,
+    [ConnectionAuthentication] tinyint NOT NULL,
+    [ConnectionAuthenticationDescription] nvarchar(60) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,
+    [CertificateId] int NOT NULL,
+    [EncryptionAlgorithm] tinyint NOT NULL,
+    [EncryptionAlgorithmDescription] nvarchar(60) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        );
+        CREATE TABLE [#EndpointTransportAnalysis_connectionEncryptionSummary]
+        (
+    [EndpointId] int NULL,
+    [EndpointName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL,
+    [EndpointType] tinyint NULL,
+    [NetTransport] nvarchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,
+    [ProtocolType] nvarchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,
+    [EncryptOption] nvarchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,
+    [AuthenticationScheme] nvarchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,
+    [ConnectionRows] bigint NOT NULL,
+    [EndpointContextStatus] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,
+    [EncryptionEvidence] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        );
+        CREATE TABLE [#EndpointTransportAnalysis_sourceStatus]
+        (
+    [SourceKey] varchar(64) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,
+    [SourceKind] varchar(16) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,
+    [RowUnit] varchar(32) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,
+    [StartedAtUtc] datetime2(3) NOT NULL,
+    [CompletedAtUtc] datetime2(3) NOT NULL,
+    [StatusCode] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,
+    [VisibilityScope] varchar(32) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,
+    [ObservedRows] bigint NULL,
+    [ReturnedRows] bigint NULL,
+    [IsLimited] bit NOT NULL,
+    [ErrorNumber] int NULL,
+    [ErrorMessage] nvarchar(2048) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        );
+        CREATE TABLE [#EndpointTransportAnalysis_warnings]
+        (
+    [WarningCode] varchar(64) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,
+    [SourceKey] varchar(64) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,
+    [Detail] nvarchar(1000) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        );
+        CREATE TABLE [#EndpointTransportAnalysis_Map]
+        (
+            [ResultName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,
+            [TargetTable] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        );
+        CREATE TABLE [#EndpointTransportAnalysis_ConnectionsCache]
+        (
+            [EndpointId] int NULL,
+            [NetTransport] nvarchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,
+            [ProtocolType] nvarchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,
+            [EncryptOption] nvarchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,
+            [AuthenticationScheme] nvarchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        );
+        IF @Mode='TABLE'
+        BEGIN
+            EXEC [monitor].[InternalPrepareResultTables] @ResultTablesJson=@ResultTablesJson,
+                @AllowedResultNames=N'moduleStatus|endpoints|tcpEndpoints|mirroringEndpoints|connectionEncryptionSummary|sourceStatus|warnings',
+                @MappingTable=N'#EndpointTransportAnalysis_Map',@StatusCode=@TableStatus OUTPUT,
+                @ErrorMessage=@TableMessage OUTPUT,@ThrowOnError=0;
+            IF COALESCE(@TableStatus,'')<>'AVAILABLE'
+            BEGIN
+                SET @TableFailureError=51011;
+                RAISERROR(N'%s',16,1,@TableMessage);
+            END;
+        END;
+        SET LOCK_TIMEOUT 0;
+        SET @SetLock=N'SET LOCK_TIMEOUT '+CONVERT(nvarchar(20),@LockTimeoutMs)+N'; ';
+        SET @Started=SYSUTCDATETIME();
+        BEGIN TRY
+            SET @Batch=@SetLock+N'INSERT [#EndpointTransportAnalysis_endpoints]
+                SELECT [p].[endpoint_id],[p].[name],[p].[principal_id],[p].[protocol],[p].[protocol_desc],[p].[type],[p].[type_desc],[p].[state],[p].[state_desc],[p].[is_admin_endpoint] FROM [sys].[endpoints] AS [p] WITH (NOLOCK); SET @Rows=@@ROWCOUNT;';
+            EXEC [sys].[sp_executesql] @Batch,N'@Rows bigint OUTPUT',@Rows=@Observed OUTPUT;
+            INSERT [#EndpointTransportAnalysis_sourceStatus] VALUES
+                ('ENDPOINTS','NATIVE','CATALOG_ROW',@Started,SYSUTCDATETIME(),
+                 CASE WHEN @Observed=0 THEN 'EMPTY_UNPROVEN' ELSE 'AVAILABLE_LIMITED' END,'VISIBLE_ONLY',@Observed,@Observed,0,NULL,NULL);
+        END TRY
+        BEGIN CATCH
+            DELETE FROM [#EndpointTransportAnalysis_endpoints];
+            INSERT [#EndpointTransportAnalysis_sourceStatus] VALUES
+                ('ENDPOINTS','NATIVE','CATALOG_ROW',@Started,SYSUTCDATETIME(),
+                 CASE WHEN ERROR_NUMBER() IN (229,297,300,371) THEN 'DENIED_PERMISSION'
+                      WHEN ERROR_NUMBER()=1222 THEN 'TIMEOUT' ELSE 'ERROR_HANDLED' END,
+                 'UNPROVEN',NULL,NULL,0,ERROR_NUMBER(),ERROR_MESSAGE());
+        END CATCH;
+        SET @Started=SYSUTCDATETIME();
+        BEGIN TRY
+            SET @Batch=@SetLock+N'INSERT [#EndpointTransportAnalysis_tcpEndpoints]
+                SELECT [p].[endpoint_id],[p].[name],[p].[port],[p].[is_dynamic_port],CONVERT(nvarchar(45),[p].[ip_address]) FROM [sys].[tcp_endpoints] AS [p] WITH (NOLOCK); SET @Rows=@@ROWCOUNT;';
+            EXEC [sys].[sp_executesql] @Batch,N'@Rows bigint OUTPUT',@Rows=@Observed OUTPUT;
+            INSERT [#EndpointTransportAnalysis_sourceStatus] VALUES
+                ('TCP_ENDPOINTS','NATIVE','CATALOG_ROW',@Started,SYSUTCDATETIME(),
+                 CASE WHEN @Observed=0 THEN 'EMPTY_UNPROVEN' ELSE 'AVAILABLE_LIMITED' END,'VISIBLE_ONLY',@Observed,@Observed,0,NULL,NULL);
+        END TRY
+        BEGIN CATCH
+            DELETE FROM [#EndpointTransportAnalysis_tcpEndpoints];
+            INSERT [#EndpointTransportAnalysis_sourceStatus] VALUES
+                ('TCP_ENDPOINTS','NATIVE','CATALOG_ROW',@Started,SYSUTCDATETIME(),
+                 CASE WHEN ERROR_NUMBER() IN (229,297,300,371) THEN 'DENIED_PERMISSION'
+                      WHEN ERROR_NUMBER()=1222 THEN 'TIMEOUT' ELSE 'ERROR_HANDLED' END,
+                 'UNPROVEN',NULL,NULL,0,ERROR_NUMBER(),ERROR_MESSAGE());
+        END CATCH;
+        SET @Started=SYSUTCDATETIME();
+        BEGIN TRY
+            SET @Batch=@SetLock+N'INSERT [#EndpointTransportAnalysis_mirroringEndpoints]
+                SELECT [p].[endpoint_id],[p].[name],[p].[role],[p].[role_desc],[p].[is_encryption_enabled],[p].[connection_auth],[p].[connection_auth_desc],[p].[certificate_id],[p].[encryption_algorithm],[p].[encryption_algorithm_desc] FROM [sys].[database_mirroring_endpoints] AS [p] WITH (NOLOCK); SET @Rows=@@ROWCOUNT;';
+            EXEC [sys].[sp_executesql] @Batch,N'@Rows bigint OUTPUT',@Rows=@Observed OUTPUT;
+            INSERT [#EndpointTransportAnalysis_sourceStatus] VALUES
+                ('MIRRORING_ENDPOINTS','NATIVE','CATALOG_ROW',@Started,SYSUTCDATETIME(),
+                 CASE WHEN @Observed=0 THEN 'EMPTY_UNPROVEN' ELSE 'AVAILABLE_LIMITED' END,'VISIBLE_ONLY',@Observed,@Observed,0,NULL,NULL);
+        END TRY
+        BEGIN CATCH
+            DELETE FROM [#EndpointTransportAnalysis_mirroringEndpoints];
+            INSERT [#EndpointTransportAnalysis_sourceStatus] VALUES
+                ('MIRRORING_ENDPOINTS','NATIVE','CATALOG_ROW',@Started,SYSUTCDATETIME(),
+                 CASE WHEN ERROR_NUMBER() IN (229,297,300,371) THEN 'DENIED_PERMISSION'
+                      WHEN ERROR_NUMBER()=1222 THEN 'TIMEOUT' ELSE 'ERROR_HANDLED' END,
+                 'UNPROVEN',NULL,NULL,0,ERROR_NUMBER(),ERROR_MESSAGE());
+        END CATCH;
+        SET @Started=SYSUTCDATETIME();
+        BEGIN TRY
+            SET @Batch=@SetLock+N'INSERT [#EndpointTransportAnalysis_ConnectionsCache]
+                SELECT [p].[endpoint_id],[p].[net_transport],[p].[protocol_type],[p].[encrypt_option],[p].[auth_scheme] FROM [sys].[dm_exec_connections] AS [p] WITH (NOLOCK); SET @Rows=@@ROWCOUNT;';
+            EXEC [sys].[sp_executesql] @Batch,N'@Rows bigint OUTPUT',@Rows=@Observed OUTPUT;
+            INSERT [#EndpointTransportAnalysis_sourceStatus] VALUES
+                ('CONNECTIONS','NATIVE','CONNECTION_ROW',@Started,SYSUTCDATETIME(),
+                 CASE WHEN @Observed=0 THEN 'EMPTY_UNPROVEN' ELSE 'AVAILABLE_LIMITED' END,'VISIBLE_ONLY',@Observed,NULL,0,NULL,NULL);
+        END TRY
+        BEGIN CATCH
+            DELETE FROM [#EndpointTransportAnalysis_ConnectionsCache];
+            INSERT [#EndpointTransportAnalysis_sourceStatus] VALUES
+                ('CONNECTIONS','NATIVE','CONNECTION_ROW',@Started,SYSUTCDATETIME(),
+                 CASE WHEN ERROR_NUMBER() IN (229,297,300,371) THEN 'DENIED_PERMISSION'
+                      WHEN ERROR_NUMBER()=1222 THEN 'TIMEOUT' ELSE 'ERROR_HANDLED' END,
+                 'UNPROVEN',NULL,NULL,0,ERROR_NUMBER(),ERROR_MESSAGE());
+        END CATCH;
+        SET @Started=SYSUTCDATETIME();
+        IF EXISTS(SELECT 1 FROM [#EndpointTransportAnalysis_sourceStatus] WHERE [SourceKey]='CONNECTIONS' AND [ErrorNumber] IS NULL)
+        BEGIN
+            BEGIN TRY
+                ;WITH [Groups] AS
+                (
+                    SELECT [EndpointId],[NetTransport],[ProtocolType],[EncryptOption],[AuthenticationScheme],COUNT_BIG(*) AS [ConnectionRows]
+                    FROM [#EndpointTransportAnalysis_ConnectionsCache]
+                    GROUP BY [EndpointId],[NetTransport],[ProtocolType],[EncryptOption],[AuthenticationScheme]
+                )
+                INSERT [#EndpointTransportAnalysis_connectionEncryptionSummary]
+                SELECT [g].[EndpointId],[e].[EndpointName],[e].[EndpointType],[g].[NetTransport],[g].[ProtocolType],
+                       [g].[EncryptOption],[g].[AuthenticationScheme],[g].[ConnectionRows],
+                       CASE WHEN [g].[EndpointId] IS NULL THEN 'ENDPOINT_ID_NULL'
+                            WHEN EXISTS(SELECT 1 FROM [#EndpointTransportAnalysis_sourceStatus] WHERE [SourceKey]='ENDPOINTS' AND [ErrorNumber] IS NOT NULL) THEN 'ENDPOINT_SOURCE_UNAVAILABLE'
+                            WHEN [e].[EndpointId] IS NOT NULL THEN 'MATCHED_VISIBLE_ENDPOINT' ELSE 'NO_VISIBLE_ENDPOINT_MATCH' END,
+                       CASE WHEN [e].[EndpointType]=4 OR UPPER([g].[ProtocolType]) COLLATE SQL_Latin1_General_CP1_CS_AS=N'DATABASE MIRRORING' THEN 'HADR_FLAG_NOT_APPLICABLE'
+                            WHEN UPPER([g].[ProtocolType]) COLLATE SQL_Latin1_General_CP1_CS_AS=N'TSQL' THEN 'TSQL_FLAG_ONLY' ELSE 'NATIVE_FLAG_UNQUALIFIED' END
+                FROM [Groups] AS [g] LEFT JOIN [#EndpointTransportAnalysis_endpoints] AS [e] ON [e].[EndpointId]=[g].[EndpointId];
+                SET @Observed=@@ROWCOUNT;
+                INSERT [#EndpointTransportAnalysis_sourceStatus] VALUES
+                    ('CONNECTION_ENCRYPTION_SUMMARY','DERIVED','SUMMARY_GROUP',@Started,SYSUTCDATETIME(),
+                     CASE WHEN @Observed=0 THEN 'EMPTY_UNPROVEN' ELSE 'AVAILABLE_LIMITED' END,'VISIBLE_ONLY',@Observed,@Observed,0,NULL,NULL);
+            END TRY
+            BEGIN CATCH
+                DELETE FROM [#EndpointTransportAnalysis_connectionEncryptionSummary];
+                INSERT [#EndpointTransportAnalysis_sourceStatus] VALUES
+                    ('CONNECTION_ENCRYPTION_SUMMARY','DERIVED','SUMMARY_GROUP',@Started,SYSUTCDATETIME(),
+                     'ERROR_HANDLED','UNPROVEN',NULL,NULL,0,ERROR_NUMBER(),ERROR_MESSAGE());
+            END CATCH;
+        END
+        ELSE
+            INSERT [#EndpointTransportAnalysis_sourceStatus] VALUES
+                ('CONNECTION_ENCRYPTION_SUMMARY','DERIVED','SUMMARY_GROUP',@Started,SYSUTCDATETIME(),
+                 'SOURCE_UNAVAILABLE','UNPROVEN',NULL,NULL,0,NULL,NULL);
+        ;WITH [Bounded] AS
+        (SELECT *,ROW_NUMBER() OVER(ORDER BY [EndpointId]) AS [OutputOrdinal] FROM [#EndpointTransportAnalysis_endpoints])
+        DELETE FROM [Bounded] WHERE [OutputOrdinal]>@Limit;
+        UPDATE [#EndpointTransportAnalysis_sourceStatus] SET [ReturnedRows]=(SELECT COUNT_BIG(*) FROM [#EndpointTransportAnalysis_endpoints]),
+            [IsLimited]=CASE WHEN [ObservedRows]>(SELECT COUNT_BIG(*) FROM [#EndpointTransportAnalysis_endpoints]) THEN 1 ELSE 0 END
+        WHERE [SourceKey]='ENDPOINTS' AND [ErrorNumber] IS NULL AND [StatusCode]<>'SOURCE_UNAVAILABLE';
+        ;WITH [Bounded] AS
+        (SELECT *,ROW_NUMBER() OVER(ORDER BY [EndpointId]) AS [OutputOrdinal] FROM [#EndpointTransportAnalysis_tcpEndpoints])
+        DELETE FROM [Bounded] WHERE [OutputOrdinal]>@Limit;
+        UPDATE [#EndpointTransportAnalysis_sourceStatus] SET [ReturnedRows]=(SELECT COUNT_BIG(*) FROM [#EndpointTransportAnalysis_tcpEndpoints]),
+            [IsLimited]=CASE WHEN [ObservedRows]>(SELECT COUNT_BIG(*) FROM [#EndpointTransportAnalysis_tcpEndpoints]) THEN 1 ELSE 0 END
+        WHERE [SourceKey]='TCP_ENDPOINTS' AND [ErrorNumber] IS NULL AND [StatusCode]<>'SOURCE_UNAVAILABLE';
+        ;WITH [Bounded] AS
+        (SELECT *,ROW_NUMBER() OVER(ORDER BY [EndpointId]) AS [OutputOrdinal] FROM [#EndpointTransportAnalysis_mirroringEndpoints])
+        DELETE FROM [Bounded] WHERE [OutputOrdinal]>@Limit;
+        UPDATE [#EndpointTransportAnalysis_sourceStatus] SET [ReturnedRows]=(SELECT COUNT_BIG(*) FROM [#EndpointTransportAnalysis_mirroringEndpoints]),
+            [IsLimited]=CASE WHEN [ObservedRows]>(SELECT COUNT_BIG(*) FROM [#EndpointTransportAnalysis_mirroringEndpoints]) THEN 1 ELSE 0 END
+        WHERE [SourceKey]='MIRRORING_ENDPOINTS' AND [ErrorNumber] IS NULL AND [StatusCode]<>'SOURCE_UNAVAILABLE';
+        ;WITH [Bounded] AS
+        (SELECT *,ROW_NUMBER() OVER(ORDER BY [EndpointId],[NetTransport],[ProtocolType],[EncryptOption],[AuthenticationScheme]) AS [OutputOrdinal] FROM [#EndpointTransportAnalysis_connectionEncryptionSummary])
+        DELETE FROM [Bounded] WHERE [OutputOrdinal]>@Limit;
+        UPDATE [#EndpointTransportAnalysis_sourceStatus] SET [ReturnedRows]=(SELECT COUNT_BIG(*) FROM [#EndpointTransportAnalysis_connectionEncryptionSummary]),
+            [IsLimited]=CASE WHEN [ObservedRows]>(SELECT COUNT_BIG(*) FROM [#EndpointTransportAnalysis_connectionEncryptionSummary]) THEN 1 ELSE 0 END
+        WHERE [SourceKey]='CONNECTION_ENCRYPTION_SUMMARY' AND [ErrorNumber] IS NULL AND [StatusCode]<>'SOURCE_UNAVAILABLE';
+        INSERT [#EndpointTransportAnalysis_warnings] VALUES
+            ('METADATA_COMPLETENESS_UNPROVEN',NULL,N'Nur getrennte sichtbare Engineaufnahmen; keine atomare oder vollständige Endpointsicht und keine externe Erreichbarkeitsprobe.'),
+            ('TLS_DETAILS_UNPROVEN','CONNECTIONS',N'Native Verschlüsselungsflags belegen weder TLS-Version oder Cipher noch Zertifikatskette, Hostnamenprüfung, Extended Protection oder Treiberkonfiguration.'),
+            ('CONNECTION_ROW_SEMANTICS','CONNECTIONS',N'ConnectionRows zählt native DMV-Zeilen. MARS kann zusätzliche logische Session-Zeilen erzeugen; die Summe ist keine Zahl physischer Kanäle oder Clients.'),
+            ('HADR_FLAG_BOUNDARY','CONNECTIONS',N'Für HADR-Mirroring liefert encrypt_option nativ FALSE. Dies ist kein Nachweis unverschlüsselten Transports; die Endpointkonfiguration ist getrennte Evidenz.'),
+            ('TCP_CONFIGURATION_BOUNDARY','TCP_ENDPOINTS',N'Katalogport und LISTENER_IP können von der tatsächlichen Protokollkonfiguration abweichen. Endpointzustände beweisen keine externe Erreichbarkeit.'),
+            ('MIRRORING_CONFIGURATION_BOUNDARY','MIRRORING_ENDPOINTS',N'Konfigurierte Authentifizierung, Algorithmus und Zertifikats-ID sind kein Nachweis eines konkreten Handshakes. MirroringRole betrifft Database Mirroring, nicht eine AG-Replikarolle.');
+        INSERT [#EndpointTransportAnalysis_warnings]
+            SELECT 'OUTPUT_LIMIT',[SourceKey],N'Das Fachresultset ist gekappt; native Aufnahme und Verknüpfung verwenden vollständige Caches. Quellen- und Warnzeilen bleiben ungekürzt.'
+            FROM [#EndpointTransportAnalysis_sourceStatus] WHERE [IsLimited]=1;
+        INSERT [#EndpointTransportAnalysis_warnings]
+            SELECT 'EMPTY_UNPROVEN',[SourceKey],N'Die sichtbare Quelle ist leer. Dies beweist keine instanzweite Abwesenheit.'
+            FROM [#EndpointTransportAnalysis_sourceStatus] WHERE [StatusCode]='EMPTY_UNPROVEN';
+        INSERT [#EndpointTransportAnalysis_warnings]
+            SELECT 'SOURCE_UNAVAILABLE',[SourceKey],N'Die Quelle oder ihre Ableitung ist nicht verfügbar; native Details stehen im Quellenstatus.'
+            FROM [#EndpointTransportAnalysis_sourceStatus] WHERE [ErrorNumber] IS NOT NULL OR [StatusCode]='SOURCE_UNAVAILABLE';
+        IF NOT EXISTS(SELECT 1 FROM [#EndpointTransportAnalysis_sourceStatus] WHERE [SourceKind]='NATIVE' AND [StatusCode]='AVAILABLE_LIMITED')
+        BEGIN
+            IF EXISTS(SELECT 1 FROM [#EndpointTransportAnalysis_sourceStatus] WHERE [SourceKind]='NATIVE' AND [StatusCode]='EMPTY_UNPROVEN') SET @Status='EMPTY_UNPROVEN';
+            ELSE SELECT TOP (1) @Status=[StatusCode] FROM [#EndpointTransportAnalysis_sourceStatus]
+                WHERE [SourceKind]='NATIVE' ORDER BY CASE [SourceKey] WHEN 'ENDPOINTS' THEN 1 WHEN 'TCP_ENDPOINTS' THEN 2 WHEN 'MIRRORING_ENDPOINTS' THEN 3 ELSE 4 END;
+        END;
+        SELECT TOP (1) @Error=[ErrorNumber],@Message=[ErrorMessage] FROM [#EndpointTransportAnalysis_sourceStatus]
+            WHERE [ErrorNumber] IS NOT NULL ORDER BY CASE [SourceKey] WHEN 'ENDPOINTS' THEN 1 WHEN 'TCP_ENDPOINTS' THEN 2 WHEN 'MIRRORING_ENDPOINTS' THEN 3 WHEN 'CONNECTIONS' THEN 4 ELSE 5 END;
+        DECLARE @Rows bigint=(SELECT COUNT_BIG(*) FROM [#EndpointTransportAnalysis_endpoints])+
+            (SELECT COUNT_BIG(*) FROM [#EndpointTransportAnalysis_tcpEndpoints])+
+            (SELECT COUNT_BIG(*) FROM [#EndpointTransportAnalysis_mirroringEndpoints])+
+            (SELECT COUNT_BIG(*) FROM [#EndpointTransportAnalysis_connectionEncryptionSummary]);
+        INSERT [#EndpointTransportAnalysis_moduleStatus] VALUES
+            (N'USP_EndpointTransportAnalysis',@CapturedAtUtc,@Status,1,@Rows,
+             N'SQL-sichtbare Endpointkonfiguration und gruppierte native Verbindungsflags; getrennte Momentaufnahmen ohne TLS-, Cipher-, Zertifikatsvertrauens- oder Erreichbarkeitsbeweis.');
+        IF @JsonErzeugen=1
+        BEGIN
+            DECLARE @Meta nvarchar(max)=(SELECT N'EndpointTransportAnalysis' AS [resultName],1 AS [schemaVersion],
+                @CapturedAtUtc AS [generatedAtUtc],@Status AS [statusCode],CAST(1 AS bit) AS [isPartial],
+                @Error AS [errorNumber],@Message AS [errorMessage] FOR JSON PATH,WITHOUT_ARRAY_WRAPPER,INCLUDE_NULL_VALUES);
+            DECLARE @Json_moduleStatus nvarchar(max)=(SELECT * FROM [#EndpointTransportAnalysis_moduleStatus] FOR JSON PATH,INCLUDE_NULL_VALUES);
+            DECLARE @Json_endpoints nvarchar(max)=(SELECT * FROM [#EndpointTransportAnalysis_endpoints] ORDER BY [EndpointId] FOR JSON PATH,INCLUDE_NULL_VALUES);
+            DECLARE @Json_tcpEndpoints nvarchar(max)=(SELECT * FROM [#EndpointTransportAnalysis_tcpEndpoints] ORDER BY [EndpointId] FOR JSON PATH,INCLUDE_NULL_VALUES);
+            DECLARE @Json_mirroringEndpoints nvarchar(max)=(SELECT * FROM [#EndpointTransportAnalysis_mirroringEndpoints] ORDER BY [EndpointId] FOR JSON PATH,INCLUDE_NULL_VALUES);
+            DECLARE @Json_connectionEncryptionSummary nvarchar(max)=(SELECT * FROM [#EndpointTransportAnalysis_connectionEncryptionSummary] ORDER BY [EndpointId],[NetTransport],[ProtocolType],[EncryptOption],[AuthenticationScheme] FOR JSON PATH,INCLUDE_NULL_VALUES);
+            DECLARE @Json_sourceStatus nvarchar(max)=(SELECT * FROM [#EndpointTransportAnalysis_sourceStatus] ORDER BY [SourceKey] FOR JSON PATH,INCLUDE_NULL_VALUES);
+            DECLARE @Json_warnings nvarchar(max)=(SELECT * FROM [#EndpointTransportAnalysis_warnings] ORDER BY [WarningCode],[SourceKey] FOR JSON PATH,INCLUDE_NULL_VALUES);
+            SET @Json=CONCAT(N'{"meta":',@Meta,N',"moduleStatus":',COALESCE(@Json_moduleStatus,N'[]'),N',"endpoints":',COALESCE(@Json_endpoints,N'[]'),N',"tcpEndpoints":',COALESCE(@Json_tcpEndpoints,N'[]'),N',"mirroringEndpoints":',COALESCE(@Json_mirroringEndpoints,N'[]'),N',"connectionEncryptionSummary":',COALESCE(@Json_connectionEncryptionSummary,N'[]'),N',"sourceStatus":',COALESCE(@Json_sourceStatus,N'[]'),N',"warnings":',COALESCE(@Json_warnings,N'[]'),N'}');
+        END;
+        IF @Mode='RAW'
+        BEGIN
+            SELECT * FROM [#EndpointTransportAnalysis_moduleStatus];
+            SELECT * FROM [#EndpointTransportAnalysis_endpoints] ORDER BY [EndpointId];
+            SELECT * FROM [#EndpointTransportAnalysis_tcpEndpoints] ORDER BY [EndpointId];
+            SELECT * FROM [#EndpointTransportAnalysis_mirroringEndpoints] ORDER BY [EndpointId];
+            SELECT * FROM [#EndpointTransportAnalysis_connectionEncryptionSummary] ORDER BY [EndpointId],[NetTransport],[ProtocolType],[EncryptOption],[AuthenticationScheme];
+            SELECT * FROM [#EndpointTransportAnalysis_sourceStatus] ORDER BY [SourceKey];
+            SELECT * FROM [#EndpointTransportAnalysis_warnings] ORDER BY [WarningCode],[SourceKey];
+        END
+        ELSE IF @Mode='TABLE'
+        BEGIN
+            DECLARE @ResultName sysname,@TargetTable sysname,@SourceTable sysname;
+            DECLARE [EndpointTransportOutput] CURSOR LOCAL FAST_FORWARD FOR
+                SELECT [ResultName],[TargetTable] FROM [#EndpointTransportAnalysis_Map] ORDER BY [ResultName];
+            OPEN [EndpointTransportOutput];
+            FETCH NEXT FROM [EndpointTransportOutput] INTO @ResultName,@TargetTable;
+            WHILE @@FETCH_STATUS=0
+            BEGIN
+                SET @SourceTable=N'#EndpointTransportAnalysis_'+@ResultName;
+                EXEC [monitor].[InternalWriteResultTable] @SourceTable=@SourceTable,@TargetTable=@TargetTable,
+                    @StatusCode=@TableStatus OUTPUT,@ErrorNumber=@TableError OUTPUT,
+                    @ErrorMessage=@TableMessage OUTPUT,@ThrowOnError=0;
+                IF COALESCE(@TableStatus,'')<>'AVAILABLE'
+                BEGIN
+                    SET @TableFailureError=COALESCE(@TableError,51010);
+                    RAISERROR(N'%s',16,1,@TableMessage);
+                END;
+                FETCH NEXT FROM [EndpointTransportOutput] INTO @ResultName,@TargetTable;
+            END;
+            CLOSE [EndpointTransportOutput]; DEALLOCATE [EndpointTransportOutput];
+        END
+        ELSE IF @ConsoleResultRequested=1
+        BEGIN
+            SET LOCK_TIMEOUT 1000;
+            CREATE TABLE [#EndpointTransportAnalysis_Console]
+            (
+                [Scope] varchar(32) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,
+                [EndpointId] int NULL,
+                [EndpointName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL,
+                [StatusCode] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,
+                [Detail] nvarchar(max) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+            );
+            INSERT [#EndpointTransportAnalysis_Console]
+                SELECT 'ENDPOINT',[EndpointId],[EndpointName],NULL,CONCAT(N'Typ=',[EndpointTypeDescription],N'; Protokoll=',[ProtocolDescription],N'; Zustand=',[EndpointStateDescription],N'; PrincipalId=',[PrincipalId]) FROM [#EndpointTransportAnalysis_endpoints];
+            INSERT [#EndpointTransportAnalysis_Console]
+                SELECT 'TCP',[EndpointId],[EndpointName],NULL,CONCAT(N'Katalogport=',[Port],N'; dynamisch=',[IsDynamicPort],N'; LISTENER_IP=',[IpAddress]) FROM [#EndpointTransportAnalysis_tcpEndpoints];
+            INSERT [#EndpointTransportAnalysis_Console]
+                SELECT 'MIRRORING',[EndpointId],[EndpointName],NULL,CONCAT(N'Verschlüsselung konfiguriert=',[IsEncryptionEnabled],N'; Algorithmus=',[EncryptionAlgorithmDescription],N'; Authentifizierung=',[ConnectionAuthenticationDescription],N'; CertificateId=',[CertificateId],N'; Mirroringrolle=',[MirroringRoleDescription]) FROM [#EndpointTransportAnalysis_mirroringEndpoints];
+            INSERT [#EndpointTransportAnalysis_Console]
+                SELECT 'CONNECTION_GROUP',[EndpointId],[EndpointName],[EncryptionEvidence],CONCAT(N'NetTransport=',[NetTransport],N'; Protokoll=',[ProtocolType],N'; encrypt_option=',[EncryptOption],N'; Authentifizierung=',[AuthenticationScheme],N'; DMV-Zeilen=',[ConnectionRows],N'; Endpointkontext=',[EndpointContextStatus]) FROM [#EndpointTransportAnalysis_connectionEncryptionSummary];
+            INSERT [#EndpointTransportAnalysis_Console]
+                SELECT 'SOURCE',NULL,NULL,[StatusCode],CONCAT([SourceKey],N'; Einheit=',[RowUnit],N'; beobachtet=',[ObservedRows],N'; Ausgabe=',[ReturnedRows],N'; Fehler=',[ErrorNumber],N'; ',[ErrorMessage]) FROM [#EndpointTransportAnalysis_sourceStatus];
+            INSERT [#EndpointTransportAnalysis_Console]
+                SELECT 'WARNING',NULL,NULL,NULL,CONCAT([WarningCode],N'; ',[SourceKey],N'; ',[Detail]) FROM [#EndpointTransportAnalysis_warnings];
+            EXEC [monitor].[InternalEmitConsoleResult] @SourceTable=N'#EndpointTransportAnalysis_Console',
+                @ResultLabel=N'Sichtbare Endpoints und begrenzte Transportverschlüsselungsevidenz',
+                @EmptyMessage=N'Keine sichtbaren Endpoint- oder Verbindungszeilen; Quellenstatus beachten.';
+        END;
+        SELECT @StatusCodeOut=@Status,@IsPartialOut=1,@ErrorNumberOut=@Error,@ErrorMessageOut=@Message;
+        IF @PrintMeldungen=1 AND @Error IS NOT NULL
+            RAISERROR(N'USP_EndpointTransportAnalysis: mindestens eine Quelle ist nicht verfügbar; siehe sourceStatus.',10,1) WITH NOWAIT;
+        EXEC [sys].[sp_executesql] @RestoreLock;
+        IF @PreviousXactAbort=1 SET XACT_ABORT ON; ELSE SET XACT_ABORT OFF;
+    END TRY
+    BEGIN CATCH
+        SELECT @Error=COALESCE(@TableFailureError,ERROR_NUMBER()),@Message=ERROR_MESSAGE(),@Json=NULL;
+        SELECT @StatusCodeOut=CASE WHEN @TableFailureError=51011 THEN 'INVALID_PARAMETER' ELSE 'ERROR_HANDLED' END,
+               @IsPartialOut=1,@ErrorNumberOut=@Error,@ErrorMessageOut=@Message;
+        EXEC [sys].[sp_executesql] @RestoreLock;
+        IF @PreviousXactAbort=1 SET XACT_ABORT ON; ELSE SET XACT_ABORT OFF;
+        IF @PrintMeldungen=1 RAISERROR(N'%s',10,1,@Message) WITH NOWAIT;
+        RETURN @Error;
+    END CATCH;
+END;
+GO
+-- END SOURCE: Code/08_ServerHealth/290_USP_EndpointTransportAnalysis.sql
+
 -- BEGIN SOURCE: Code/08_ServerHealth/100_USP_ServerHealthAnalysis.sql
 /*
 ===============================================================================
@@ -66161,10 +66965,18 @@ BEGIN
   IF SYSUTCDATETIME()>=@Deadline THROW 57910,N'PIPELINE_TIME_LIMIT',1;
   -- Quelle nennt das zuerst gestartete Paket. Die Paketinstanz kommt dagegen
   -- aus der bereits belegten Executable-Statistik, niemals aus diesem Namen.
+  -- Auch eine unzugeordnete Statistik mit demselben Pfad verhindert Eindeutigkeit.
+  -- Ein vorzeitiger Filter auf unterstützte Flows würde diese Mehrdeutigkeit verdecken.
+  ;WITH [pathCounts] AS(
+   SELECT [ExecutionPath] COLLATE Latin1_General_100_BIN2 AS [Path],[PathLength]=DATALENGTH([ExecutionPath]),COUNT_BIG(*) AS [StatisticCount]
+   FROM #InternalSsisExecutionScopes_Observations WHERE [SourceKind]='STATISTIC'
+   GROUP BY [ExecutionPath] COLLATE Latin1_General_100_BIN2,DATALENGTH([ExecutionPath]))
   INSERT #InternalSsisExecutionScopes_PipelineInstances
-  SELECT [o].[SourceId],[o].[InvocationId],[o].[PackageKey],[o].[ModelNodeId],[n].[NodeName],[o].[ExecutionPath],CASE WHEN COUNT(*) OVER(PARTITION BY [o].[ExecutionPath] COLLATE Latin1_General_100_BIN2,DATALENGTH([o].[ExecutionPath]))=1 THEN 1 ELSE 0 END
+  SELECT [o].[SourceId],[o].[InvocationId],[o].[PackageKey],[o].[ModelNodeId],[n].[NodeName],[o].[ExecutionPath],CASE WHEN [paths].[StatisticCount]=1 THEN 1 ELSE 0 END
   FROM #InternalSsisExecutionScopes_Observations AS [o] JOIN #InternalSsisPipelineCorrelation_Flows AS [f] ON [f].[PackageKey]=[o].[PackageKey] AND [f].[NodeId]=[o].[ModelNodeId] AND [f].[Supported]=1
-  JOIN #InternalSsisExecutionScopes_PipelineNodes AS [n] ON [n].[PackageKey]=[f].[PackageKey] AND [n].[NodeId]=[f].[NodeId] WHERE [o].[SourceKind]='STATISTIC' AND [o].[CorrelationStatus]='EXACT_SCOPED_IDENTITY';
+  JOIN #InternalSsisExecutionScopes_PipelineNodes AS [n] ON [n].[PackageKey]=[f].[PackageKey] AND [n].[NodeId]=[f].[NodeId]
+  JOIN [pathCounts] AS [paths] ON [paths].[Path] COLLATE Latin1_General_100_BIN2=[o].[ExecutionPath] COLLATE Latin1_General_100_BIN2 AND [paths].[PathLength]=DATALENGTH([o].[ExecutionPath])
+  WHERE [o].[SourceKind]='STATISTIC' AND [o].[CorrelationStatus]='EXACT_SCOPED_IDENTITY';
   IF EXISTS(SELECT 1 FROM OPENJSON(@Capture,'$.componentPhases') WITH([id] nvarchar(max) '$.phaseStatsId',[package] nvarchar(max) '$.packageName',[task] nvarchar(max) '$.taskName',[component] nvarchar(max) '$.componentName',[phase] nvarchar(max) '$.phaseName',[path] nvarchar(max) '$.executionPath',[start] nvarchar(max) '$.startTime',[end] nvarchar(max) '$.endTime') AS [r]
    WHERE COALESCE(TRY_CONVERT(bigint,[id]),0)<1 OR DATALENGTH([id])>40 OR DATALENGTH([package])>520 OR DATALENGTH([task])>8000 OR DATALENGTH([component])>8000 OR DATALENGTH([phase])>256 OR DATALENGTH([path])>8000 OR DATALENGTH([start])>128 OR DATALENGTH([end])>128 OR [start] IS NOT NULL AND TRY_CONVERT(datetimeoffset(7),[start],127) IS NULL OR [end] IS NOT NULL AND TRY_CONVERT(datetimeoffset(7),[end],127) IS NULL)
    OR EXISTS(SELECT 1 FROM OPENJSON(@Capture,'$.pathTransfers') WITH([id] nvarchar(max) '$.dataStatsId',[package] nvarchar(max) '$.packageName',[task] nvarchar(max) '$.taskName',[identification] nvarchar(max) '$.pathIdentificationString',[name] nvarchar(max) '$.pathName',[source] nvarchar(max) '$.sourceComponentName',[destination] nvarchar(max) '$.destinationComponentName',[path] nvarchar(max) '$.executionPath',[rows] nvarchar(max) '$.rowsSent',[time] nvarchar(max) '$.createdTime') AS [r]
