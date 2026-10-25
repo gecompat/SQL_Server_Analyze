@@ -644,3 +644,11 @@ her. Der lokale Tokenvergleich belegt identisches ausführbares T-SQL; der
 unabhängige mechanische Delta-Review bestätigt dies. Die unveränderten
 Installertests 191, 192 und 194 bestehen danach. Der frühere Fehllauf bleibt
 erhalten; neue erforderliche Gates binden den korrigierten Lieferhead.
+
+
+Die folgende CI erkennt den noch nicht neu erzeugten versionierten OPS-005-
+Installer. Der vorgesehene Adapter-Builder aktualisiert ihn um genau sechs
+entfallende redundante USE-/GO-Zeilen aus den drei korrigierten Quellen.
+Sein unveränderter strenger Quellenvergleich besteht danach mit acht
+Repräsentationsfällen. Der Test wurde nicht abgeschwächt; das abgeleitete
+Artefakt und die kanonischen Quellen werden gemeinsam geliefert.
