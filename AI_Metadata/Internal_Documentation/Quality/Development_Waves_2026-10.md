@@ -151,9 +151,17 @@ Der erste vorgeschlagene Slice betrifft lokale Serverprincipals, direkte
 Rollenmitgliedschaften, explizite Serverberechtigungen und SQL-Login-Policies.
 Die vorhandene Konfigurations-, Audit- und Verschlüsselungsabdeckung sowie
 die offiziellen Katalog- und Sichtbarkeitsverträge sind abgeglichen. Das
-Dossier konkretisiert die erste Schnittstelle und unabhängige Abnahme;
-Produktcode und Produktstatus sind noch unverändert. Die technische
-Fertigstellung und unabhängige Prüfung des Schnittstellenvertrags gehen der
-Produktimplementierung voraus; die bestehende funktionsbezogene autonome
-Freigabe wird nicht erneut angefragt. Datenbankprincipals und
-effektive Berechtigungen bleiben weitere Teile desselben Rangs.
+Dossier konkretisiert die erste Schnittstelle und unabhängige Abnahme.
+`WI-0012` enthält inzwischen den ersten Server-Produktkandidaten einschließlich
+Installer, Navigator, sieben nativen Resultsets und synthetischen Tests.
+Der unabhängige Produktreview meldete vier konkrete Befunde zu Callerfehlern,
+Cleanupbindung, Schemafacetten und Quellenfehlerabnahme. Ein gebündelter
+Korrekturpass ergänzt reguläre Status-/Diagnose-Rückgabe, Transaktionssentinels,
+native ID-/SID-Bindungen, typisierte Schemaoracles und einen kontrollierten
+SELECT-DENY-Fall. Die nativen Entwicklungsprüfungen erforderten zusätzlich
+Master-Kontext, kollationsgebundene Sollwerte und eine reguläre Fehler-Rückkehr,
+damit T-SQL-Caller ihre OUTPUT-Werte und committable Transaktion behalten.
+Die abschließende native Abnahme steht noch aus; es wird kein
+Reifeabschluss behauptet. Die bestehende funktionsbezogene autonome Freigabe
+wird nicht erneut angefragt. Datenbankprincipals und effektive Berechtigungen
+bleiben weitere Teile desselben Rangs.

@@ -814,3 +814,9 @@ EXEC [monitor].[USP_SsisLegacyLogAnalysis] @Hilfe=1;
 ```sql
 EXEC [monitor].[USP_SsisPackageModelAnalysis] @Hilfe = 1;
 ```
+
+## `[monitor].[USP_ServerPrincipalAnalysis]`
+
+```sql
+EXEC [monitor].[USP_ServerPrincipalAnalysis] @Hilfe=1;
+```

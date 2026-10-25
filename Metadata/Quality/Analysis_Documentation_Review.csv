@@ -110,3 +110,4 @@ USP_ExternalDataAnalysis,BASELINE,,1
 USP_SsisCatalogExecutionAnalysis,BASELINE,,1
 USP_SsisLegacyLogAnalysis,BASELINE,,1
 USP_SsisPackageModelAnalysis,BASELINE,,1
+USP_ServerPrincipalAnalysis,BASELINE,,1

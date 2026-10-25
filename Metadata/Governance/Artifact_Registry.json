@@ -250,6 +250,24 @@
       "locator": "Documentation/Quality/Release_Notes.md#release-110",
       "registration_basis_blob": "8703a436f9544d57d66ebc00a4edab73cd7fdaad",
       "acceptance_criteria": "Ein unverändertes commitgebundenes Produkt-ZIP mit sämtlichen kanonischen Quellen und fünf fertigen Installern; unabhängiger Review, aktuelle PR-/Main-Gates, native Linux-Abnahme auf SQL Server 2019/2022/2025 und bestätigter eigener Cleanup. Veröffentlichung und endgültiger Nachweis werden erst am geprüften GitHub-Release gebunden; keine Bindung an einen bestimmten Build oder CU."
+    },
+    "WI-0012": {
+      "artifact_uid": "urn:uuid:01a17168-ab02-76fd-9f7c-5816187aeeef",
+      "kind": "work_item",
+      "title": "Serverprincipals Rollen und Login-Lifecycle",
+      "registration_state": "REGISTERED",
+      "status": "PARTIAL_PRODUCT_FUNCTION",
+      "priority": "P1",
+      "aliases": [],
+      "relations": [
+        {
+          "type": "parent",
+          "target": "WI-0010"
+        }
+      ],
+      "locator": "AI_Metadata/Internal_Documentation/Architecture/Server_Principal_Analysis_Dossier.md",
+      "registration_basis_blob": "657587e24c01746359e633cab3683ad08904bf30",
+      "acceptance_criteria": "Read-only server principal role explicit-permission and SQL-login-policy output with caller-visible coverage and native schemas; database security and effective permissions remain separate open scope."
     }
   }
 }
