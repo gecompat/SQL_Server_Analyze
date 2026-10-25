@@ -1,7 +1,7 @@
 # SQL-sichtbare Endpoints und Transportverschlüsselung
 
 **Stand:** 25. Oktober 2026.
-**Status:** konkretisierter erster SQL-Scope; unabhängiger Vertragsreview und Produktimplementierung offen.
+**Status:** erste Produktimplementierung und unabhängiger Produktreview bestehen; lokale SQL2025-Fixture besteht. Gebundene Liefergates bleiben offen.
 **Artefakt-UID:** `urn:uuid:01a172d8-177b-70e6-81a8-a09b4120e159`.
 **Registrierung:** `DEFERRED`; keine finale lesbare Arbeitselementkennung vergeben.
 **Intake:** TLS_NETWORK_ENDPOINTS, Rang 7 der
@@ -96,8 +96,8 @@ Vorgesehen sind sieben benannte Mengen: moduleStatus, endpoints,
 tcpEndpoints, mirroringEndpoints, connectionEncryptionSummary, sourceStatus
 und warnings. Die vier fachlichen Mengen erhalten getrennte abschließende
 Ausgabelimits. Kontext-, Quellen- und Warnzeilen werden dadurch nicht gekürzt.
-Der genaue Feldvertrag wird vor Implementierung unabhängig geprüft und
-anhand nativer Schemaproben konkretisiert.
+Der genaue Feldvertrag ist nachfolgend festgelegt und vor Implementierung
+unabhängig geprüft; native Schemaproben konkretisieren seine Quellfacetten.
 
 NATIVE kennzeichnet Katalog- oder DMV-Aufnahme, DERIVED die gruppierte
 Zusammenfassung. Die native DMV-Zeilenmenge und die abgeleitete Gruppenzahl
@@ -119,6 +119,173 @@ und RETURN 0 zurück; Status, Error-OUTPUT und Quellenzeilen sind zu prüfen.
 Erwartete API-/TABLE-Ablehnungen und gefangene äußere Fehler liefern dagegen
 Diagnose-RETURN und JSON-NULL. Native Meldungen bleiben diagnostisch vollständig.
 Die Procedure übernimmt weder Commit noch Rollback einer Callertransaktion.
+
+## Typisierter Vorvertrag und Statusbildung
+
+Die sieben Mengen erhalten SchemaVersion 1 in dieser RAW-Reihenfolge.
+Alle Textspalten verwenden explizit SQL_Latin1_General_CP1_CS_AS. Die
+folgenden Schemas sind vor Implementierung festgelegt; der Laufzeittest
+übernimmt die geprüften Sollschemas und beschreibt sie nicht aus der SUT.
+
+```sql
+CREATE TABLE #Contract_moduleStatus
+(
+    [ModuleName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,
+    [CapturedAtUtc] datetime2(3) NOT NULL,
+    [StatusCode] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,
+    [IsPartial] bit NOT NULL,
+    [RowCount] bigint NOT NULL,
+    [Detail] nvarchar(1000) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+);
+CREATE TABLE #Contract_endpoints
+(
+    [EndpointId] int NOT NULL,
+    [EndpointName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,
+    [PrincipalId] int NULL,
+    [Protocol] tinyint NOT NULL,
+    [ProtocolDescription] nvarchar(60) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,
+    [EndpointType] tinyint NOT NULL,
+    [EndpointTypeDescription] nvarchar(60) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,
+    [EndpointState] tinyint NULL,
+    [EndpointStateDescription] nvarchar(60) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,
+    [IsAdminEndpoint] bit NOT NULL
+);
+CREATE TABLE #Contract_tcpEndpoints
+(
+    [EndpointId] int NOT NULL,
+    [EndpointName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,
+    [Port] int NOT NULL,
+    [IsDynamicPort] bit NOT NULL,
+    [IpAddress] nvarchar(45) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+);
+CREATE TABLE #Contract_mirroringEndpoints
+(
+    [EndpointId] int NOT NULL,
+    [EndpointName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,
+    [MirroringRole] tinyint NULL,
+    [MirroringRoleDescription] nvarchar(60) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,
+    [IsEncryptionEnabled] bit NOT NULL,
+    [ConnectionAuthentication] tinyint NOT NULL,
+    [ConnectionAuthenticationDescription] nvarchar(60) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,
+    [CertificateId] int NOT NULL,
+    [EncryptionAlgorithm] tinyint NOT NULL,
+    [EncryptionAlgorithmDescription] nvarchar(60) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+);
+CREATE TABLE #Contract_connectionEncryptionSummary
+(
+    [EndpointId] int NULL,
+    [EndpointName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL,
+    [EndpointType] tinyint NULL,
+    [NetTransport] nvarchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,
+    [ProtocolType] nvarchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,
+    [EncryptOption] nvarchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,
+    [AuthenticationScheme] nvarchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,
+    [ConnectionRows] bigint NOT NULL,
+    [EndpointContextStatus] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,
+    [EncryptionEvidence] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+);
+CREATE TABLE #Contract_sourceStatus
+(
+    [SourceKey] varchar(64) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,
+    [SourceKind] varchar(16) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,
+    [RowUnit] varchar(32) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,
+    [StartedAtUtc] datetime2(3) NOT NULL,
+    [CompletedAtUtc] datetime2(3) NOT NULL,
+    [StatusCode] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,
+    [VisibilityScope] varchar(32) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,
+    [ObservedRows] bigint NULL,
+    [ReturnedRows] bigint NULL,
+    [IsLimited] bit NOT NULL,
+    [ErrorNumber] int NULL,
+    [ErrorMessage] nvarchar(2048) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+);
+CREATE TABLE #Contract_warnings
+(
+    [WarningCode] varchar(64) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,
+    [SourceKey] varchar(64) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,
+    [Detail] nvarchar(1000) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+);
+```
+
+Die vorbereitende native SQL2025-Schemaprobe bestätigt diese nativen
+Datentypen und Nullfähigkeiten. tcp_endpoints.ip_address liegt dort als
+nullable varchar(45) vor; die Ausgabe erweitert verlustfrei auf nvarchar(45).
+Eine Microsoft-Referenz nennt nvarchar(45); die unterschiedliche Quelle wird
+nicht als identische native Typisierung ausgegeben. Die Probe endete bewusst
+mit Diagnosecode 57292, um den privaten Facettenbeleg auszugeben. Sie ist
+keine bestandene Produktabnahme; die eigene Instanz und ihr Volume wurden
+anschließend entfernt. Positive Mirroring- oder Verbindungswerte wurden
+dabei nicht qualifiziert.
+
+Es gibt die vier NATIVE-Quellenschlüssel ENDPOINTS, TCP_ENDPOINTS,
+MIRRORING_ENDPOINTS und CONNECTIONS sowie den DERIVED-Schlüssel
+CONNECTION_ENCRYPTION_SUMMARY. Die ersten drei zählen CATALOG_ROW,
+CONNECTIONS zählt CONNECTION_ROW und die Ableitung SUMMARY_GROUP.
+Leere erfolgreich gelesene Quellen erhalten EMPTY_UNPROVEN; nichtleere
+native Quellen AVAILABLE_LIMITED. Die native Verbindungsquelle besitzt
+ReturnedRows=NULL und IsLimited=0. Die Ableitung bildet alle Gruppen aus
+ihrem vollständigen Cache und aktualisiert erst nach dem eigenen Ausgabelimit
+ReturnedRows und IsLimited. Ohne verfügbare Verbindungsquelle erhält sie
+SOURCE_UNAVAILABLE mit unbekannten Counts; der native Fehler bleibt bei
+CONNECTIONS erhalten. Ein eigener Ableitungsfehler erhält ERROR_HANDLED
+und seinen nativen Diagnosefehler.
+
+Die Namen und Typen einer Verbindungsgruppe stammen aus der vollständigen
+Endpointaufnahme. EndpointContextStatus unterscheidet ENDPOINT_ID_NULL,
+ENDPOINT_SOURCE_UNAVAILABLE, MATCHED_VISIBLE_ENDPOINT und
+NO_VISIBLE_ENDPOINT_MATCH. Ein fehlender sichtbarer Nachbar löscht keine
+Verbindungsgruppe. Die getrennten Quellen sind keine atomare Topologie-
+Momentaufnahme. Eine HADR-Kennung folgt nur aus dem nativen ProtocolType
+Database Mirroring oder dem sichtbaren EndpointType 4. EncryptionEvidence
+lautet dann HADR_FLAG_NOT_APPLICABLE. Für das native TSQL-Protokoll lautet
+sie TSQL_FLAG_ONLY; sonst NATIVE_FLAG_UNQUALIFIED. Unbekannte Endpoints
+oder Protokolle erhalten keine geratene Verschlüsselungsbewertung.
+
+Mindestens eine erfolgreiche nichtleere native Quelle begründet insgesamt
+AVAILABLE_LIMITED. Sind nur erfolgreiche leere native Quellen verfügbar,
+lautet der Gesamtstatus EMPTY_UNPROVEN. Bei vier fehlgeschlagenen nativen
+Quellen wird der erste native Fehlerstatus in der genannten Quellenreihenfolge
+übernommen; eine Ableitungszeile verdeckt ihn nicht. Error-OUTPUT nennt den
+ersten vorhandenen Fehler in derselben Reihenfolge, danach einen eigenen
+Ableitungsfehler. IsPartial bleibt 1. RowCount ist die Summe der vier
+zurückgegebenen Fachmengen; es ist keine Zahl unterschiedlicher Endpoints
+oder physischer Verbindungen. Alle sourceStatus-Zeilen und Warnungen bleiben
+ungekürzt. MaxZeilen begrenzt keine Aufnahme- oder Aggregationsarbeit.
+
+Die Abnahme verwendet keine neu erstellten TSQL-Endpunkte: Deren mögliche
+Seiteneffekte auf bestehende Default-Endpointrechte passen nicht zum
+Fixturevertrag. Ein positiver Mirroring-Katalogfall entsteht nur auf einer eigenen isolierten
+sysadmin-Testinstanz ohne Ambienttransaktion. Die frühere Anordnungsprobe
+mit DISABLED wurde mit 7871 abgelehnt. Ein STOPPED-Endpoint mit nur
+passwortgeschütztem Zertifikat wurde mit 28055 abgelehnt: Der private
+Schlüssel muss durch den Datenbank-Master-Key geschützt sein. Beide
+Fehlläufe sind bereinigt und keine positive Produktabnahme.
+
+Die geprüfte Fixturegrenze verwendet einen eigenen STOPPED-Mirroringendpoint
+mit Zertifikatauthentifizierung und einem freien Katalogport aus 32700 bis
+32767. Ein bestehender Endpoint oder Master-Key wird weder ersetzt, geöffnet
+noch geändert. Falls master keinen DMK besitzt, wird ausschließlich in der
+eigenen Labinstanz ein eigener Schlüssel mit flüchtigem Kennwort erzeugt und
+sofort an key_guid, symmetric_key_id und create_date gebunden. Ein eigenes
+Zertifikat nutzt den DMK und wird sofort an certificate_id, Name und Thumbprint
+gebunden. Der Endpoint wird vor nachfolgenden Änderungen an ID, Name,
+principal_id und Typ 4 gebunden.
+
+Bestandssnapshots umfassen Endpoints, Endpointrechte, master-Schlüssel,
+Zertifikate, asymmetrische Schlüssel und datenbankbezogene Credentials.
+Nach Arrange und Cleanup müssen die vorbestehenden Werte unverändert sein.
+Cleanup versucht gebundenen Endpoint, eigenes Zertifikat und gegebenenfalls
+eigenen DMK getrennt auch nach einem Primärfehler. Vor dem DMK-DROP werden
+neue fremde Abhängigkeiten gegenüber der Baseline ausgeschlossen; eine
+abweichende Bindung oder neue Abhängigkeit erzeugt Recoverybedarf statt
+eines ungebundenen DROP. Der äußere Cleanup bleibt auf das eigene Lab gebunden.
+Alle Endpoint-DDL liegt außerhalb einer Usertransaktion. Der Bericht wird
+zusätzlich in einer committable Ambienttransaktion geprüft. Die Fixture setzt
+keinen Endpoint auf STARTED, öffnet keinen Port im Provider oder Host und
+erzeugt keinen externen Handshake. STOPPED wird nicht als pauschales Versprechen
+eines fehlenden Listeners interpretiert. Die engere Anordnungsgrenze wurde
+unabhängig geprüft. Vertrag 138 bestätigt ihren positiven Katalogfall
+und Cleanup auf der eigenen SQL2025-Instanz; ein Handshake ist damit nicht belegt.
 
 ## Unabhängige Abnahme und Liefergrenze
 
@@ -149,9 +316,52 @@ Zur Lieferung gehören Einzelquelle, Installer, Navigator, Inventare,
 öffentlicher Lesepfad und die betroffenen Tests gemeinsam. Ein erster
 Katalog-/Flag-Slice begründet keinen vollständigen TLS- oder Reifeabschluss.
 
+## Lokale Entwicklung und offene Liefergates
+
+Die erste Implementierung liegt als USP_EndpointTransportAnalysis mit
+zwölf Parametern und sieben benannten Mengen vor. Vertrag 138 verwendet
+sieben vorab festgelegte native Sollschemas, drei direkte Katalogprojektionen
+und die unabhängig gelesene eigene Verbindungsgruppe. Vier TABLE-/JSON-Fälle
+prüfen unbegrenzte und begrenzte Ausgabe, volle Caches vor Limits sowie den
+Caller mit und ohne committable Ambienttransaktion. Die positive eigene
+Mirroringkonfiguration, eingeschränkte DMV-Sicht, echte SELECT-Denials,
+partielle CONSOLE-Evidenz und vier gleichzeitig fehlgeschlagene native Quellen
+bestehen im lokalen SQL2025-Lauf bei abweichenden Instanz-/Frameworkcollations.
+SQL-seitiger Cleanup und die Entfernung der eigenen Instanz samt Volume bestehen.
+
+Frühere Entwicklungsversuche sind keine bestandene Abnahme: Die variable
+LOCK_TIMEOUT-Syntax wurde korrigiert; eine explizite Kollation behebt einen
+Temp-Procedure-Ausdruckskonflikt. Eine Testannahme verlangte ohne Ambient
+XACT_STATE=0, obwohl nativ bei TRANCOUNT=0 im Prüfausdruck 1 beobachtet wurde.
+Das geprüfte Oracle verlangt jetzt unveränderten TRANCOUNT und zusätzlich
+keine native Benutzertransaktion; Ambientfälle verlangen weiterhin
+XACT_STATE=1 und unabhängige Sentinelwerte. Ein weiterer Cast-basierter
+JSON-null-Prüfausdruck widersprach dem tatsächlich ausgegebenen Payload.
+Die strengere Prüfung verlangt das vorhandene EndpointName-Mitglied mit
+JSON-Typ 0 in derselben korrekt gebundenen Gruppe. Die Ursachen dieser beiden
+Oraclebeobachtungen werden nicht aus dem späteren Erfolg geraten.
+
+Vorvertrag, Fixturegrenze, Produkt und die konkreten Oracle-/Timeoutdeltas
+sind unabhängig geprüft. Die statische Suite meldete zunächst nur den
+fehlenden äußeren nichtblockierenden Timeoutmarker und einen mit dem falschen
+Builder erzeugten OPS-Installer. Der Produktmarker und der zuständige
+Adapterbuilder sind korrigiert; die betroffenen Prüfungen bestehen.
+Die übrigen erfolgreichen unveränderten statischen Gates werden nicht
+allein wegen dieser Korrekturen wiederholt.
+
+Der lokale Entwicklungsnachweis ersetzt noch keinen commitgebundenen
+PR-Nachweis. Der zentrale Installer verlangt das vollständige SQL2025-Gate.
+Die ältere native SQL2019-Berechtigungsgrenze wird gezielt separat geprüft;
+SQL2025 deckt den verwendeten 2022+-Berechtigungszweig ab. Ein separater
+SQL2022-Lauf, echte HADR-/MARS-Verbindungen, Host-/Handshakequalifikation
+und eine vollständige separate RAW-Streamzählung bleiben unbelegt.
+
 ## Primärquellen
 
 - Microsoft Learn: [sys.endpoints](https://learn.microsoft.com/en-us/sql/relational-databases/system-catalog-views/sys-endpoints-transact-sql?view=sql-server-ver17).
 - Microsoft Learn: [sys.tcp_endpoints](https://learn.microsoft.com/en-us/sql/relational-databases/system-catalog-views/sys-tcp-endpoints-transact-sql?view=sql-server-ver17).
 - Microsoft Learn: [sys.database_mirroring_endpoints](https://learn.microsoft.com/en-us/sql/relational-databases/system-catalog-views/sys-database-mirroring-endpoints-transact-sql?view=sql-server-ver17).
 - Microsoft Learn: [sys.dm_exec_connections](https://learn.microsoft.com/en-us/sql/relational-databases/system-dynamic-management-objects/sys-dm-exec-connections-transact-sql?view=sql-server-ver17).
+
+- Microsoft Learn: [CREATE ENDPOINT](https://learn.microsoft.com/en-us/sql/t-sql/statements/create-endpoint-transact-sql).
+- Microsoft Learn: [Availability Groups unter Linux](https://learn.microsoft.com/en-us/sql/linux/high-availability/availability-groups-configure?view=sql-server-linux-ver17).

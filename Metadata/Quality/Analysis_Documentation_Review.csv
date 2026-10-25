@@ -113,3 +113,4 @@ USP_SsisPackageModelAnalysis,BASELINE,,1
 USP_ServerPrincipalAnalysis,BASELINE,,1
 USP_DatabasePrincipalAnalysis,BASELINE,,1
 USP_CurrentCallerPermissionAnalysis,BASELINE,,1
+USP_EndpointTransportAnalysis,BASELINE,,1

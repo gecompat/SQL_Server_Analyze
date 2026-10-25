@@ -179,3 +179,5 @@ Jede Seite weist jetzt Entscheidungseinsatz, Nichtziele, Resultset-Leserichtung,
 - [USP_DatabasePrincipalAnalysis](USP_DatabasePrincipalAnalysis.md) zeigt direkte Datenbankrechte und begrenzte sichtbare Identitätsbindungen.
 
 - [USP_CurrentCallerPermissionAnalysis](USP_CurrentCallerPermissionAnalysis.md) zeigt native effektive Rechte des aktuellen Ausführungskontexts.
+
+- [USP_EndpointTransportAnalysis](USP_EndpointTransportAnalysis.md) zeigt sichtbare Endpointkonfiguration und gruppierte native Verbindungsflags.

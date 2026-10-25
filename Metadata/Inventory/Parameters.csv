@@ -2045,3 +2045,15 @@ USP_SsisPackageModelAnalysis,IncludeExecutionScopes,bit,0
 USP_SsisPackageModelAnalysis,ProjectModelsJson,nvarchar(max),NULL
 USP_SsisPackageModelAnalysis,ScopeSnapshotJson,nvarchar(max),NULL
 USP_SsisPackageModelAnalysis,ScopeHandoverId,uniqueidentifier,NULL
+USP_EndpointTransportAnalysis,MaxZeilen,int,1000
+USP_EndpointTransportAnalysis,LockTimeoutMs,int,0
+USP_EndpointTransportAnalysis,ResultSetArt,varchar(16),'CONSOLE'
+USP_EndpointTransportAnalysis,ResultTablesJson,nvarchar(max),NULL
+USP_EndpointTransportAnalysis,JsonErzeugen,bit,0
+USP_EndpointTransportAnalysis,Json,nvarchar(max),NULL OUTPUT
+USP_EndpointTransportAnalysis,PrintMeldungen,bit,1
+USP_EndpointTransportAnalysis,Hilfe,bit,0
+USP_EndpointTransportAnalysis,StatusCodeOut,varchar(40),NULL OUTPUT
+USP_EndpointTransportAnalysis,IsPartialOut,bit,NULL OUTPUT
+USP_EndpointTransportAnalysis,ErrorNumberOut,int,NULL OUTPUT
+USP_EndpointTransportAnalysis,ErrorMessageOut,nvarchar(2048),NULL OUTPUT

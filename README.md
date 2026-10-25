@@ -289,11 +289,11 @@ Das Framework folgt den folgenden Betriebs- und Schutzregeln:
 
 ## Dokumentation
 
-Der aktuelle Inventarvertrag umfasst 188 Objekte: 114 öffentliche Procedures, 8 Views, 29 Table-Valued Functions, 17 interne Procedures und 20 Tabellen.
+Der aktuelle Inventarvertrag umfasst 189 Objekte: 115 öffentliche Procedures, 8 Views, 29 Table-Valued Functions, 17 interne Procedures und 20 Tabellen.
 
-Der Frameworkkern umfasst 169 Objekte mit 111 öffentlichen Procedures und 9 Tabellen. Das optionale Snapshotpaket umfasst 19 Objekte mit 3 öffentlichen Procedures und 11 Tabellen.
+Der Frameworkkern umfasst 170 Objekte mit 112 öffentlichen Procedures und 9 Tabellen. Das optionale Snapshotpaket umfasst 19 Objekte mit 3 öffentlichen Procedures und 11 Tabellen.
 
-Der Coreinstaller installiert die 109 öffentlichen Core-Procedures;
+Der Coreinstaller installiert die 110 öffentlichen Core-Procedures;
 die drei Snapshot-Procedures und deren
 Unterstützungsobjekte benötigen die separate Paketinstallation oder das
 entsprechende Opt-in im Gesamtdeployment. Jedes inventarisierte Objekt besitzt

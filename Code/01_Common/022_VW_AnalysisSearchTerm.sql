@@ -287,5 +287,7 @@ AS
         , (N'USP_DatabasePrincipalAnalysis',N'database principal role permission owner contained user orphan login','en',95,N'Lists visible database security metadata without claiming effective permissions.')
         , (N'USP_CurrentCallerPermissionAnalysis',N'eigene effektive Rechte aktueller Kontext Rollen DENY','de',100,N'Zeigt native Rechte des aktiven Kontexts auf SERVER- und DATABASE-Ebene.')
         , (N'USP_CurrentCallerPermissionAnalysis',N'current caller effective permission context native grants deny','en',95,N'Lists native effective permissions at named securable levels.')
+        , (N'USP_EndpointTransportAnalysis',N'Endpoint TCP Transport Verschlüsselung TLS Verbindung Zertifikat','de',100,N'Zeigt SQL-sichtbare Konfiguration und native Flags mit Aussagegrenzen.')
+        , (N'USP_EndpointTransportAnalysis',N'endpoint transport encryption connection native flag mirroring','en',95,N'Lists visible configuration and native connection flags with explicit evidence limits.')
     ) AS [v]([ProcedureName],[SearchTerm],[LanguageCode],[SearchWeight],[MatchReason]);
 GO

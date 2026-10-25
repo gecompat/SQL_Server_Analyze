@@ -888,3 +888,14 @@ Die [Caller-Rechteanalyse](Procedures/USP_CurrentCallerPermissionAnalysis.md) ze
 ```sql
 EXEC [monitor].[USP_CurrentCallerPermissionAnalysis] @MaxZeilen=200, @ResultSetArt='CONSOLE';
 ```
+
+## Endpoints und Transportverschlüsselung
+
+Die [Endpoint-Transportanalyse](Procedures/USP_EndpointTransportAnalysis.md)
+zeigt SQL-sichtbare Katalogzustände und gruppierte native Verbindungsflags.
+Die Ausgabe trennt Konfiguration und Beobachtung von TLS-Version, Cipher,
+Zertifikatsvertrauen und externer Erreichbarkeit.
+
+```sql
+EXEC [monitor].[USP_EndpointTransportAnalysis] @MaxZeilen=200, @ResultSetArt='CONSOLE';
+```
