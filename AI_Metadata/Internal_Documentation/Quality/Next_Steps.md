@@ -48,7 +48,37 @@ für Leerlauferkennung. Er startet keine parallele Umsetzung, setzt keine Budget
 zurück und wiederholt keine semantische Arbeit an unveränderten Blockern.
 Nach Abschluss der fünf Wellen beginnt er keine weitere Entwicklung.
 
-## Historischer Integrationsstand: Pipeline-Phasenbeginnmeldungen (PR #421)
+## Separater Auftrag: STAT-DOMINANT-Fehlerdiagnose (54901)
+
+Die folgende Freigabe betrifft einen anderen Chat und wird hier unverändert erhalten.
+
+Der Benutzer hat ausschließlich die Diagnose in Test 175 und die Nachführung
+dieser Seite sowie des [Diagnosevertrags](Release_Gate_Runbook.md#stat-dominant-diagnose-54901)
+freigegeben. Basis ist origin/main `0cf2ddf21e6f7e916276635342cb925c303f9717`;
+PR #423 ergänzt gegenüber der Planbasis nur den SSIS-Modellaustausch und
+ändert Test 175, seine Statistik-Procedures und die maßgeblichen Regeln nicht.
+Der historische Main-Lauf 40124510785 auf `2f5f472b` bleibt fehlgeschlagen;
+seine Ursache ist UNKNOWN. Die neue Diagnose qualifiziert keinen Produktfix.
+
+Grenzen sind drei Dateien und 240 hinzugefügte oder gelöschte Handzeilen,
+ein Implementierer, höchstens ein gebündelter Korrekturpass vor der einzigen
+Head-Abnahme sowie zwei Offlineblöcke. Derselbe unabhängige Reviewer prüft
+höchstens zweimal mit insgesamt 20 aktiven Minuten. Test 175 behält seine
+acht Fachfälle und erhält zwölf synthetische Diagnoseproben. Die einmalige
+Head-Abnahme auf SQL Server 2025/CL170 umfasst die bestehende Deployment-
+Regression, Test 175 und die erforderlichen statischen PR-Prüfungen.
+
+T0 ist 2026-10-25T00:25:23Z. Höchstens 60 aktive Minuten einschließlich Review
+und Koordination sowie zwei Stunden Gesamtzeit gelten; die Gesamtfrist ist
+2026-10-25T02:25:23Z. Nach 30 aktiven oder 60 gesamten Minuten folgt ein
+Kontrollpunkt. Offene Reviewbefunde, zusätzliche Dateien oder Prüfblöcke,
+CI-Fehler und Grenzüberschreitungen stoppen die Lieferung ohne Wiederholung.
+Die Lieferung endet mit einem geprüften offenen PR. Merge, Main-Nachlauf,
+weitere Engines, Release-/ZIP-, Paket-, SDK- und Providerläufe sind ausgeschlossen.
+Historische Nachweise und Budgets bleiben geschlossen; die übrige autonome
+Verarbeitung bleibt pausiert. Die Offline- und Head-Abnahme sind noch ausstehend.
+
+## Integriert: SSIS-001-Pipeline-Phasenbeginnmeldungen (PR #421); Main-Abnahme offen
 
 [PR #421](https://github.com/gecompat/SQL_Server_Analyze/pull/421) ist am
 24. Oktober 2026 durch den gesonderten Mergeauftrag regulär als
