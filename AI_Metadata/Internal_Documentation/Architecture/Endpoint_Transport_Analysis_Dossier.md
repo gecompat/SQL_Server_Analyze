@@ -370,8 +370,27 @@ Linux 15.0.4500.2 mit CL150. Der Maschinenbeleg bindet ZIP-SHA256
 SQL2022 wurde nicht separat nativ ausgeführt. Die bekannten HADR-/MARS-,
 Handshake-, Host- und RAW-Zählgrenzen bleiben offen. Das Modul bleibt PLANNED;
 der erste Slice ist kein Reifeabschluss des Transportbereichs. Main-Nachläufe
-werden getrennt vom qualifizierten Head ausgewertet. Als nächster unabhängiger
-Scope folgt der [Snapshot-Ausbau](Snapshot_Expansion_Dossier.md).
+werden getrennt vom qualifizierten Head ausgewertet. Die getrennte Main-Evidenz lautet wie folgt.
+
+Der getrennte [SQL2025-Main-Nachlauf](https://github.com/gecompat/SQL_Server_Analyze/actions/runs/40193775278)
+besteht im zweiten Versuch am Mergecommit `52a699a6`. Versuch 1 scheiterte
+im unveränderten SSIS-Legacy-Vertrag 202, C018, an TABLE-Schemaadaption mit
+Locktimeout 51010/1222. Der Observer meldete BLOCKER_NOT_CAPTURED bei null
+Observerfehlern und vollständigem begrenztem Log; eine Sperrursache ist
+nicht belegt. Nach Prüfung dieses Belegs wurden ausschließlich die
+fehlgeschlagenen Main-Jobs einmal wiederholt. Erfolgreiche PR- und native
+SQL2019-Gates wurden nicht wiederholt.
+
+Die fokussierte lokale Prüfung des unveränderten Vertrags 202 besteht mit
+den erforderlichen ANSI-/QUOTED_IDENTIFIER-Einstellungen und eigenem
+Labcleanup. Der erste private Einzelaufruf fehlte an diesen Session-
+Voraussetzungen mit 1934 und ist keine Reproduktion des Main-Timeouts.
+Der spätere Erfolg beweist keine Korrektur einer konkreten Sperrursache.
+Ein weiterer Metadatentimeout verlangt gezielte Reproduktion und keinen
+unveränderten unbegrenzten Wiederholungszyklus.
+
+Als nächster unabhängiger Scope folgt der
+[Snapshot-Ausbau](Snapshot_Expansion_Dossier.md).
 
 ## Primärquellen
 

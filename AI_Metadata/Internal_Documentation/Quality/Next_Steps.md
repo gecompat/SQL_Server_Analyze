@@ -58,7 +58,10 @@ Der erste Endpoint-/Transport-Slice von Rang 7 ist über
 bestandenen Head-Checks, vollständigem SQL2025-Gate und gezielter nativer
 SQL2019-Abnahme integriert. Das
 [Endpoint-Dossier](../Architecture/Endpoint_Transport_Analysis_Dossier.md)
-führt Nachweise und offene Host-/Handshake-/HADR-/MARS-Grenzen.
+führt Nachweise und offene Host-/Handshake-/HADR-/MARS-Grenzen. Der getrennte
+SQL2025-Main-Nachlauf besteht nach einem einmaligen begrenzten Wiederlauf
+der fehlgeschlagenen Jobs; der ursprüngliche SSIS-Legacy-Metadatentimeout
+bleibt ohne behauptete Sperrursache dokumentiert.
 
 Der separate SSIS-Auftrag arbeitet aktuell an Datenflusskorrelation. Der
 Gesamtauftrag übernimmt diesen Scope und die erhaltene SSISDB nicht. Der
