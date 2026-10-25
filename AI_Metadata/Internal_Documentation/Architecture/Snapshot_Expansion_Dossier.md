@@ -1,7 +1,7 @@
 # Ausbau der lokalen Snapshot- und Baseline-Erfassung
 
 **Stand:** 25. Oktober 2026.
-**Status:** Konzept-, Schema-2-Vertrags- und Produktreview bestanden; lokale Schema-2-Abnahme liegt vor. Head-CI, native Paketabnahme und PR-Integration bleiben offen. Die Collectorqualifikation ist nicht Teil dieser Migration.
+**Status:** Schema-2-Vorbereitung über PR #447 integriert; Head-, Main- und native Risikoabnahme bestehen. Der konkrete Wait-Kontextvertrag ist unabhängig geprüft. Der Wait-Collector ist noch nicht implementiert.
 **Artefakt-UID:** `urn:uuid:01a17312-4ac5-78b9-b77d-536e996e2817`.
 **Registrierung:** `DEFERRED`; keine neue finale lesbare Kennung vergeben.
 **Bestehende Zuordnung:** SC-023-EXPANSION, Rang 10 der
@@ -206,8 +206,9 @@ Schema- und Deploymentvorbereitung. Der bestehende Performance-Counter-Pfad,
 seine öffentlichen Parameter, MetricDefinition-Seeds und CollectorPolicy-
 Werte bleiben erhalten. WAIT_STATS-Policy, Waitmetriken und neue Collector-
 Helper werden erst mit der nachfolgenden Collectorlieferung installiert.
-Die noch offene Typisierung von WAIT_CAPTURE_CONTEXT blockiert deshalb
-keinen als Collector ausgegebenen Code in dieser vorgeschalteten Welle.
+Die Typisierung von WAIT_CAPTURE_CONTEXT wird im folgenden eigenständigen
+Feldvertrag konkretisiert. Diese vorgeschaltete Welle lieferte ausschließlich
+die Schema- und Installationsvorbereitung, keinen Collector.
 
 Die Migration akzeptiert ausschließlich diese bekannten Zustände:
 
@@ -457,7 +458,7 @@ Metrik, Einheit, Version und ResetEpochId bleiben getrennte Vergleichsschlüssel
 WAIT_CAPTURE_CONTEXT enthält Engineidentität, Aufnahmezeiten, native und
 persistierte Counts, Kappung, Vorwert-Run und die Epochenentscheidung. Sein
 SchemaVersion-1-JSON bleibt unter der vorhandenen StringValue-Grenze von
-4000 Zeichen. Eine Überschreitung führt zu Ablehnung statt Abschneiden.
+4000 UTF-16-Codeeinheiten. Eine Überschreitung führt zu Ablehnung statt Abschneiden.
 
 Persistiert werden aktive Waittypen mit mindestens einem positiven Counter
 sowie die Waittypen der unmittelbar vorherigen Aufnahme, soweit sie aktuell
@@ -473,7 +474,8 @@ Read. Pro gespeicherten Typ entstehen vier Rohwerte, ein Status und höchstens
 drei Kandidaten; hinzu kommt höchstens ein Aufnahmekontext. Die Schranke lautet
 8*MaxRows+1 MetricSamples. Bei Kappung wird kein vollständiger Vergleich
 behauptet; die stabil nach Waittyp ausgewählten Rohwerte und Counts bleiben
-als partiell gekennzeichnete Evidenz erhalten. Softbudget, Retention und
+als gemessene Rohwerte erhalten; Run und Kontext kennzeichnen die technisch
+partielle Aufnahme. Softbudget, Retention und
 Payloadpolicy gelten zusätzlich. Payload bleibt defaultmäßig deaktiviert.
 
 Als Vergleichsbasis dient ausschließlich der unmittelbar vorherige finalisierte
@@ -494,7 +496,8 @@ MONOTONIC_CONTINUITY_UNPROVEN mit IsPartial=1. Raw-Quality bleibt davon
 getrennt MEASURED_CUMULATIVE. Der erste Lauf, Kontextwechsel, nichtpositive
 Zeit, Kappung oder fehlende Basis unterdrücken Kandidatmetriken und erhalten
 FIRST_OBSERVATION, ENGINE_CONTEXT_CHANGED, INTERVAL_NOT_POSITIVE,
-WRITE_LIMITED, PREVIOUS_CAPTURE_PARTIAL oder PREVIOUS_CAPTURE_MISSING.
+WRITE_LIMITED, PREVIOUS_CAPTURE_PARTIAL, PREVIOUS_CONTEXT_INVALID oder
+PREVIOUS_RAW_INCOMPLETE gemäß der nachfolgenden Statuspriorität.
 Ein fehlender früherer Typ erhält FIRST_OBSERVATION. Ein fehlender notwendiger
 aktueller Typ unterbricht den gesamten Vergleich mit WAIT_TYPE_MISSING.
 
@@ -507,6 +510,233 @@ beobachteter Kontext erhält erst nach erfolgreicher Aufnahme eine eigene
 EpochId. Unbekannte Kandidaten werden wegen des ExactlyOneValue-Vertrags
 nicht als NULL-Samples eingefügt: der Status ist vorhanden, die entsprechende
 numerische Kandidatmetrik fehlt. Die fehlende Metrik bedeutet nicht Null.
+
+### Exakter WAIT_CAPTURE_CONTEXT-v1-Vertrag
+
+Dieser Feldvertrag konkretisiert ausschließlich den nachfolgenden Wait-Slice.
+Er ist noch keine implementierte Collector- oder API-Abnahme. Der Targethelper
+muss vor dem ersten Collectorwrite PackageVersion 1.2.0, SchemaVersion 2 und
+die vollständige benötigte Helperclosure prüfen; eine Versionszeile allein
+qualifiziert keine möglicherweise abgebrochene Installation. Configure führt
+kein implizites Upgrade aus.
+
+Der Kontext ist genau ein JSON-Objekt ohne Arrays. Alle nachfolgend genannten
+Member sind vorhanden und exakt case-sensitiv. Zusätzliche oder doppelte
+Member, falsche JSON-Typen und stillschweigende Konvertierungen sind unzulässig.
+Eine ausdrücklich nullable Eigenschaft bleibt als JSON null enthalten.
+Die Container engine, window, capture und comparison sind jeweils genau ein
+JSON object und weder null noch Array; ihre Membermengen entsprechen exakt
+der Tabelle. Das gesamte StringValue umfasst höchstens 4000 UTF-16-Codeeinheiten,
+gemessen mit DATALENGTH(StringValue)/2 statt LEN; Überlänge
+wird abgewiesen und nicht abgeschnitten. Diese Datenprüfung bestätigt interne
+Konsistenz, keine kryptografische Herkunft oder Unveränderbarkeit gegenüber
+einem berechtigten Administrator.
+
+DECIMAL_STRING bezeichnet JSON string mit kanonischen Dezimalziffern: entweder
+0 oder eine Ziffer 1 bis 9 mit folgenden Ziffern, ohne Vorzeichen, Leerraum,
+Dezimalpunkt und Exponent. Der Wert muss verlustfrei als nichtnegativer SQL-
+bigint darstellbar sein. Positive IDs erlauben 0 nicht. Headerzahlen sind
+JSON number mit exakt der kanonischen Ganzzahlenschreibweise des Vertragswerts
+ohne Dezimalpunkt oder Exponent; boolesche Felder sind
+JSON boolean. OPENJSON-Typ und Memberhäufigkeit werden vor typed WITH geprüft;
+JSON_VALUE und TRY_CONVERT allein beweisen diese Grenzen nicht.
+
+UTC_MS bezeichnet eine gültige datetime2(3)-Zeit als
+YYYY-MM-DDTHH:mm:ss.fffZ. LOCAL_MS besitzt dieselbe Darstellung ohne Z und
+beschreibt ausdrücklich lokale native SQL-Server-Zeit. Die Komponenten
+werden verlustfrei geparst und kanonisch zurückserialisiert; Offsetangaben,
+abweichende Präzision und eine stillschweigende UTC-Umrechnung sind unzulässig.
+GUID bezeichnet eine uniqueidentifier-Darstellung mit 36 Zeichen
+in kanonischer Kleinbuchstabenschreibung; die Null-GUID ist ausgeschlossen. SHA256 bezeichnet 64 hexadezimale
+Kleinbuchstaben ohne Präfix. Die Serialisierung benutzt diese Regeln auch
+bei Werten, die JavaScript nicht mehr als sichere Ganzzahl darstellen kann.
+
+| JSON-Pfad | Typ und NULL-Regel | Verbindliche Bedeutung |
+|---|---|---|
+| schemaVersion | number, genau 1 | Version dieses Kontextobjekts. |
+| collectorCode | string, genau WAIT_STATS | Bindung an den eigenen Collector. |
+| metricContractVersion | number, genau 1 | Gemeinsame Version der neun Waitmetrikdefinitionen. |
+| captureRunId | positive DECIMAL_STRING, NOT NULL | Muss dem tatsächlich geschriebenen CaptureRun entsprechen. |
+| serverScopeId | positive DECIMAL_STRING, NOT NULL | ScopeId des tatsächlich verwendeten lokalen SERVER-Scopes. |
+| resetEpochId | GUID, NOT NULL | Muss CaptureRun und allen Samples dieses Wait-Laufs entsprechen. |
+| engine.serverName | string, 1 bis 128 UTF-16-Einheiten, NOT NULL | Unverändert beobachteter nativer ServerName; kein Trim oder Casefold. |
+| engine.sqlServerStartTimeLocal | LOCAL_MS, NOT NULL | Verlustfreie Millisekundendarstellung des nativen datetime-Startwerts. |
+| engine.sqlServerStartTimeMsTicks | DECIMAL_STRING, NOT NULL | Nativer bigint-Starttick; kein UTC-Wert und keine gemessene Intervalllänge. |
+| window.measurementStartUtc | UTC_MS, NOT NULL | Zeitpunkt unmittelbar vor dem vollständigen nativen Counterread. |
+| window.measurementEndUtc | UTC_MS, NOT NULL | Zeitpunkt unmittelbar nach diesem Read. |
+| capture.sourceComplete | boolean, genau true | Der einmalige native Read ist beendet; dies behauptet keine instanzweite atomare DMV-Sicht. |
+| capture.nativeWaitTypeCount | DECIMAL_STRING, NOT NULL | Zahl aller nativen Cachezeilen einschließlich Nullcounter. |
+| capture.activeTypeCount | DECIMAL_STRING, NOT NULL | Native Typen mit mindestens einem positiven der vier Rohcounter. |
+| capture.eligibleTypeCount | DECIMAL_STRING, NOT NULL | Vor Kappung vereinigte aktive Typen und aktuell nativ vorhandene Vorwerttypen. |
+| capture.writtenTypeCount | DECIMAL_STRING, NOT NULL | Tatsächlich persistierte eindeutige WAIT_TYPE-Scopes dieses Laufs. |
+| capture.writeLimited | boolean, NOT NULL | Wahr genau dann, wenn die berechtigte Typmenge durch MaxRows gekappt wurde. |
+| capture.rawMetricSampleCount | DECIMAL_STRING, NOT NULL | Tatsächliche Zahl der vier Rohmetriken je geschriebenem Typ. |
+| capture.rawProjectionSha256 | SHA256, NOT NULL | Hash der tatsächlich gespeicherten kanonischen Rohprojektion. |
+| comparison.previousCaptureRunId | positive DECIMAL_STRING oder null | Unmittelbar vorheriger finalisierter WAIT_STATS-Run, auch bei dessen Fehler. |
+| comparison.previousContextVersion | positive kanonische JSON-Ganzzahl bis 2147483647 oder null | Beobachtete schemaVersion des Vorwertkontexts; null bei fehlendem oder ungültigem Versionsmember. Eine syntaktisch gültige unbekannte Version bleibt sichtbar und qualifiziert keinen Vergleich. |
+| comparison.status | string aus der nachfolgenden Menge, NOT NULL | Globaler Vergleichsstatus dieses Laufs. |
+| comparison.comparableTypeCount | DECIMAL_STRING, NOT NULL | Geschriebene Typen mit vier eindeutig belegten Vorwerten bei grundsätzlich zulässigem Vergleich. |
+| comparison.candidateSampleCount | DECIMAL_STRING, NOT NULL | Tatsächlich geschriebene drei Differenzkandidaten je vergleichbarem Typ. |
+| epochDecision | string aus der nachfolgenden Menge, NOT NULL | Explizite Entscheidung über die logische Vergleichsepoche. |
+
+Enginekontext und Zählwerte sind nur nach erfolgreichem Read und bestandenem
+Vorher-/Nachhervergleich zulässig. Fehlgeschlagene, negative oder doppelte
+Quellzeilen und unbekannter Enginekontext erzeugen keinen Kontextsample und
+keine erfundene Epoche; der finalisierte Fehlerlauf bleibt dennoch als nächste
+Vorwertreferenz gemäß der nachfolgenden Retentionsgrenze sichtbar.
+Ein vollständig gelesener leerer Katalog darf einen
+Kontext mit SOURCE_EMPTY_UNPROVEN erhalten, qualifiziert jedoch keinen
+numerischen Vergleich. capture.sourceComplete=true allein bedeutet deshalb
+weder verwertbare Rohwerte noch Resetkontinuität.
+
+Der transiente Sourcevertrag verwendet dieselben drei engine-Felder und
+Zeitdarstellungen. nativeRows ist DECIMAL_STRING oder null bei Lesefehler;
+sourceComplete ist boolean. Die fünf waits-Member heißen exakt WaitType,
+WaitingTasksCount, WaitTimeMs, MaxWaitTimeMs und SignalWaitTimeMs. WaitType ist
+ein nichtleerer nvarchar(60), die übrigen Werte sind nichtnegative native
+bigint als kanonische ganzzahlige JSON number ohne Exponent oder Dezimalpunkt.
+Deren SQL-Verarbeitung bleibt verlustfrei;
+eine Umwandlung durch JavaScript Number ist keine zulässige Zwischenstufe.
+Ein Sourcefehler besitzt keine behauptete vollständige waits-Menge.
+
+#### Scope-, Rohwert- und Mengenbindung
+
+Der lokale SERVER-Scope verwendet den bereits vorhandenen kanonischen
+Identitätswert {"scope":"SERVER"}. Der neue WAIT_TYPE-Scope besitzt exakt
+{"waitType":<nativer WaitType>} als mit FOR JSON erzeugtes Identitätsobjekt,
+mit diesem SERVER-Scope als Parent. Sein SHA2_256-Schlüssel wird aus den
+UTF-16LE-Bytes dieser kanonischen Identität ohne BOM gebildet. Vorhandene
+Scopezeilen mit widersprüchlicher Identität, Parentbindung oder Hash werden
+nicht still übernommen. Diese Identität ist ziel-lokal; mehrere Frameworks
+an demselben Target sind bis zu eigener Abnahme nicht unterstützt.
+
+Die Rohprojektion wird erst aus den in derselben Targettransaktion tatsächlich
+geschriebenen vier BIGINT-Samples rekonstruiert. Pro WaitType enthält sie die
+fünf oben genannten Member in genau dieser Reihenfolge. WaitType wird nach
+Latin1_General_100_BIN2 sortiert; die Serialisierung erfolgt mit FOR JSON PATH,
+INCLUDE_NULL_VALUES. SHA2_256 wird über CONVERT(varbinary(max),@RawJson), also
+UTF-16LE ohne BOM, berechnet und als SHA256 serialisiert. Erwartete Auswahl
+und gespeicherte Projektion müssen übereinstimmen. Counts allein ersetzen
+keine Rohwertdeckung. Dieser Hash ist eine Konsistenzprüfung und kein
+Herkunftsnachweis.
+
+writtenTypeCount darf eligibleTypeCount nicht überschreiten; eligibleTypeCount
+liegt höchstens bei nativeWaitTypeCount. writeLimited entspricht exakt dem
+Vergleich writtenTypeCount<eligibleTypeCount. rawMetricSampleCount ist genau
+4*writtenTypeCount. Jeder Typ besitzt zusätzlich genau einen WAIT_DELTA_STATUS;
+je vergleichbarem Typ entstehen genau drei Kandidaten, sonst keiner.
+candidateSampleCount ist deshalb genau 3*comparableTypeCount, höchstens
+3*writtenTypeCount. Bei unterdrücktem globalem Vergleich sind beide Counts 0.
+Der Kontextsample selbst liegt genau einmal auf dem gebundenen SERVER-Scope.
+Der Gesamtumfang ist damit 5*writtenTypeCount+candidateSampleCount+1 und bei
+positivem MaxRows höchstens 8*MaxRows+1. CaptureRun.MetricSampleCount muss dem
+tatsächlichen Umfang entsprechen.
+
+Alle Samples verwenden die beschriebenen neun Metrikcodes mit ValueType,
+Unit und ContractVersion 1. Fehlende, doppelte, zusätzliche oder falsch
+gebundene Waitmetriken, Raw-IsPartial, unbekannte Scopes und widersprüchliche
+EpochIds qualifizieren keine vollständige Aufnahme. Die vier Rohwerte sind
+nicht NULL, besitzen QualityCode MEASURED_CUMULATIVE und IsPartial=0.
+Kandidatensamples besitzen MONOTONIC_CONTINUITY_UNPROVEN und IsPartial=1.
+Diese fachliche Partialität verhindert nicht allein einen späteren Vergleich
+mit vollständigen Rohwerten.
+
+#### Zeit-, Vorwert- und Statuskonsistenz
+
+measurementStartUtc liegt nicht nach measurementEndUtc. Alle Wait-Samples
+benutzen measurementEndUtc als CollectedAtUtc. Bei einem finalisierten Lauf
+liegt dessen tatsächliches StartedAtUtc nicht nach dem Messbeginn und dessen
+EndedAtUtc nicht vor dem Messende. Der Kontext behauptet vor Finalisierung
+keine zukünftige Endzeit. Vorwertwahl ist der unmittelbar vorherige Lauf mit
+EndedAtUtc, CollectorCode WAIT_STATS und kleinerer CaptureRunId; ein Fehlerlauf
+wird nicht zugunsten eines älteren grünen Laufs übersprungen.
+
+Dafür muss die spätere Collectorlieferung den bestehenden Purge gezielt
+anpassen: Die CaptureRun-Zeile mit der größten finalisierten WAIT_STATS-
+CaptureRunId bleibt unabhängig von Status und vorhandenen Kindern erhalten,
+auch nach Ablauf der Rohretention. Rohsamples, Payloads, Modulstatus und
+nicht mehr referenzierte Scopes unterliegen weiter der begrenzten Retention.
+Ein erhaltener Lauf ohne notwendige Kinder ist keine gültige numerische
+Vergleichsbasis. Erst wenn ein neuerer Wait-Lauf tatsächlich finalisiert ist,
+darf die bisher erhaltene Zeile im regulären Purge entfallen. Diese Ausnahme
+hält höchstens eine zusätzliche finalisierte Laufzeile als Vergleichsgrenze;
+sie ist keine verlängerte Rohdatenaufbewahrung. Der Performance-Counter-Pfad
+behält seine bisherige Retention. Der vorhandene 1.1.0-Purge besitzt diese
+neue Wait-Garantie noch nicht; sie ist Pflicht vor WAIT_STATS-Aktivierung.
+Eine manuelle privilegierte Löschung der letzten Laufzeile kann ohne zusätzliche
+Historie nicht rekonstruiert werden und ist keine zugesagte Herkunftsgarantie.
+
+Für einen Vergleich müssen Vorwertlauf, genau ein unterstützter Kontext,
+Rohprojektion, Scope-/Metrikversionen und Counts konsistent sein. Die gesamte
+benötigte Rohmenge wird geprüft, nicht nur später angezeigte Typen. Ein
+Retentionsverlust an Kontext, Scope, Rohsample oder Statusmetrik sperrt den
+Vergleich; er wird nicht zu Null. Der aktuelle Messbeginn liegt frühestens
+am vorherigen Messende, und die Endzeitdifferenz ist positiv. Es wird keine
+Rate oder mittlere Waitdauer aus diesen Kandidaten berechnet.
+
+Der globale Status wird in dieser Priorität gewählt: SOURCE_EMPTY_UNPROVEN,
+WRITE_LIMITED, FIRST_OBSERVATION bei fehlendem vorherigem Lauf,
+PREVIOUS_CAPTURE_PARTIAL bei dessen Fehler/technischer Partialität,
+PREVIOUS_CONTEXT_INVALID bei fehlendem, ungültigem oder unbekanntem Kontext,
+PREVIOUS_RAW_INCOMPLETE bei fehlender oder widersprüchlicher Rohdeckung,
+ENGINE_CONTEXT_CHANGED, INTERVAL_NOT_POSITIVE, WAIT_TYPE_MISSING,
+COUNTER_DECREASE, NO_COMPARABLE_TYPES und andernfalls
+MONOTONIC_CONTINUITY_UNPROVEN. Ein Rückgang eines der vier Counter auf einem
+belegten Vorwerttyp, einschließlich MaxWaitTimeMs, sperrt alle Kandidaten.
+Er beweist keine einzelne Resetursache. Ein neuer Typ erhält selbst bei
+sonst zulässigem Vergleich FIRST_OBSERVATION und keine fiktiven Nullvorwerte.
+
+Der erste Kontext erhält NEW_FIRST. Eine belegte Engineänderung erhält
+NEW_ENGINE_CONTEXT, ein belegter Counterrückgang NEW_COUNTER_DECREASE.
+Andere technische Vergleichsunterbrechungen einschließlich Kappung, leerer
+Quelle, fehlendem Vorwertkontext oder unzulässigem Zeitfenster erzeugen
+NEW_COMPARISON_BREAK. Ein konsistenter gleicher Kontext erhält RETAIN_CONTEXT
+und genau die vorherige EpochId; dies gilt auch bei NO_COMPARABLE_TYPES,
+sofern die technische Rohdeckung vollständig ist. Alle NEW-Entscheidungen
+verwenden eine neue nichtleere EpochId und behaupten keinen bewiesenen
+DBCC-Reset. Die tatsächlich geschriebene EpochId wird in Run, Kontext und
+Samples atomar gleich gebunden.
+
+Die Epochenentscheidung besitzt eine eigene feste Priorität: Ohne vorherigen
+finalisierten Lauf gilt NEW_FIRST. Danach geht eine anhand eines gültigen
+Vorwertkontexts belegte Engineänderung vor; danach folgt ein bei gleicher
+Engine anhand vollständig geprüfter Vorrohwerte und des gesamten aktuellen
+Caches belegter Counterrückgang. Erst danach folgt NEW_COMPARISON_BREAK für
+andere technische Unterbrechungen, andernfalls RETAIN_CONTEXT. Ein unbekannter
+Vorwertkontext belegt weder Enginegleichheit noch Engineänderung. Diese
+Priorität gilt auch bei gleichzeitigem Writecap oder leerer Quelle; ein
+belegter Enginewechsel kann deshalb mit Status WRITE_LIMITED einhergehen.
+Status und Epochenentscheidung werden zusammen geprüft. Ein Rohwertfehler,
+ein fehlender aktueller Vorwerttyp oder eine unzulässige Zeit erlaubt keinen
+numerischen Kandidaten. Jede neue EpochId unterscheidet sich von der gültigen
+vorherigen EpochId.
+
+
+#### Erforderliche Gegenfälle vor Collectorlieferung
+
+Die Abnahme prüft fehlende, doppelte, zusätzliche und case-falsche Member,
+JSON-Typverwechslungen, übergroße IDs, Vorzeichen/Exponenten, ungültige Zeit-
+und GUID-Darstellungen sowie Kontextüberlänge ohne Abschneiden. Sie prüft
+Engine-/Epoch-/Run-/Scopewidersprüche, falsche Mengen und Rohhashes, entfernte
+Roh- oder Statussamples, unbekannte Versionen und technisch partielle
+Zwischenläufe. Jede solche Basis unterdrückt numerische Kandidaten.
+Neue Typen, echte gespeicherte Nullen, Counterrückgang, gleiche Zeitfenster,
+Kappung und leere Quellen erhalten getrennte Oracles. Quelle und Aufnahme
+werden einmal gelesen; ein Ergebnisfehler löst keine versteckte Wiederholung
+aus. Ein tatsächlicher DBCC-Reset bleibt eine getrennte eigene isolierte
+Lababnahme mit ausdrücklichem Opt-in und ersetzt diese Konsistenzfälle nicht.
+
+Ein zusätzlicher echter Purgefall verwendet einen abgelaufenen älteren Erfolg
+mit mehr Rohsamples als ein kleiner Purgebatch abbauen kann sowie einen
+jüngeren finalisierten Fehlerlauf ohne Samples. Nach genau einem begrenzten
+Purge bleibt der Fehlerlauf als unmittelbare Vorwertgrenze erhalten und
+numerische Kandidaten bleiben gesperrt; der ältere erhaltene Erfolg darf
+nicht übernehmen. Ein weiterer Fall entfernt Kinder der letzten erfolgreichen
+Aufnahme und verlangt PREVIOUS_RAW_INCOMPLETE statt eines Rückfalls. Nach
+Finalisierung eines neuen Wait-Laufs darf die alte abgelaufene Grenzzeile
+wieder regulär entfernt werden. Diese Fälle prüfen den tatsächlichen Purge
+und den tatsächlichen Collector gemeinsam, keine nachgebildete Löschfunktion.
+
 
 ### Atomarität, Betrieb und Abnahmegrenzen
 
@@ -560,7 +790,11 @@ Header. Die Ausnahme erweitert keine Datenbankauswahl oder Runtimeberechtigung.
 - Microsoft Learn: [Engine-Startkontext](https://learn.microsoft.com/en-us/sql/relational-databases/system-dynamic-management-objects/sys-dm-os-sys-info-transact-sql?view=sql-server-ver17).
 
 
-## Schema-2-Implementierungskandidat
+## Historie der Schema-2-Implementierung
+
+Die folgenden Zwischenstände dokumentieren die Entwicklung bis zum
+Liefercommit von PR #447. Ihre damaligen offenen Gates sind im anschließenden
+Abschlussstand aufgelöst; frühere Fehler bleiben als eigene Evidenz erhalten.
 
 Der aktuelle Änderungskandidat enthält ausschließlich die vorgeschaltete
 Migration und ihre drei Installationswege. Lokal bestehen auf SQL2025 die
@@ -685,3 +919,47 @@ Principals und das Lab werden bereinigt. Die neuen statischen Scope-/
 Evidenzgegenfälle bestehen für FULL_RELEASE-Defaults und SNAPSHOT_SCHEMA_RISK,
 einschließlich Abweisung falscher Vollerfolgsangaben. Eine Remoteausführung
 dieses expliziten Modus ist vor dessen Code-/Scopefolgecheck noch nicht erfolgt.
+
+
+## Integrierter Schema-2-Abschlussstand
+
+[PR #447](https://github.com/gecompat/SQL_Server_Analyze/pull/447) integriert
+PackageVersion 1.1.0 und SchemaVersion 2 als `ce8b5e30`. Der Liefercommit
+`459c19ae` besteht alle acht Head-Checks einschließlich des vollständigen
+[SQL2025-Laufs](https://github.com/gecompat/SQL_Server_Analyze/actions/runs/40211876502).
+Der getrennte vollständige
+[Main-Nachlauf](https://github.com/gecompat/SQL_Server_Analyze/actions/runs/40212817038)
+sowie Dokumentation, Datenschutz, Commitnachrichten und Cleanupvertrag
+bestehen ebenfalls. Der unabhängige Produktreview und seine konkreten
+Folgechecks sind ohne offene Befunde abgeschlossen.
+
+Die gezielte native
+[SQL2019-Risikoqualifizierung](https://github.com/gecompat/SQL_Server_Analyze/actions/runs/40211873213)
+bindet denselben Liefercommit und das Paket mit SHA256
+`0e0f7151af38cd3b401276b2e70d5518a3c68a65765f38fe00be2a9026c14085`.
+Sie besteht auf Linux mit ProductVersion 15.0.4500.2, Compatibility Level 150
+und SQL_Latin1_General_CP1_CS_AS. Der ausdrückliche Scope SNAPSHOT_SCHEMA_RISK
+führt genau FRAMEWORK_SMOKE, SNAPSHOT_SCHEMA_MIGRATION_AND_PERMISSION,
+SNAPSHOT_BASELINE_195 und SNAPSHOT_CONCURRENCY_196_197 aus. Migration und
+Rechte umfassen drei gefüllte reale Installationswege, 19 gezielte Ablehnungen,
+Callertransaktionen, Kompilationsoptionen und positive/negative
+Installationsrechte. Cleanup besteht. Core-Release und dessen allgemeine
+Berechtigungsmatrix bleiben NOT_EXECUTED; dies ist keine vollständige native
+Releaseabnahme. Frühere fehlgeschlagene Vollruns bleiben unverändert erhalten.
+
+Die Lieferung erweitert ausschließlich die beiden CHECK-Domänen und den
+zugehörigen Installations-/Validierungsweg. Sie enthält keine WAIT_STATS-
+Policy, keine neuen Waitmetriken und keinen Wait-Collector. Als nächster
+Schritt folgt nach dem unabhängig geschlossenen WAIT_CAPTURE_CONTEXT-v1-
+Vertragsreview die Collectorimplementierung mit PackageVersion 1.2.0 und unveränderter
+SchemaVersion 2. Datei-I/O bleibt ein getrennter späterer Slice.
+
+
+Der unabhängige Kontextreview ist einschließlich eines gezielten
+Retentionsfolgechecks ohne offene Befunde abgeschlossen. Der P2 betraf das
+mögliche Entfernen eines jüngeren Fehlerlaufs vor einem älteren erhaltenen
+Erfolg. Die ausdrücklich erst mit dem Wait-Produkt zu implementierende
+Erhaltung der letzten finalisierten Laufzeile und die echten Purgegegenfälle
+schließen diese Vertragslücke. 74 lokale statische Validatoren, Stilprüfung,
+Regelkontext und Datenschutz bestehen. Eine SQL-Laufzeitabnahme des neuen
+Kontextvertrags ist vor Collectorcode nicht erfolgt und wird nicht behauptet.
