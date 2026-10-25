@@ -1,7 +1,7 @@
 # SQL-sichtbare Endpoints und Transportverschlüsselung
 
 **Stand:** 25. Oktober 2026.
-**Status:** erste Produktimplementierung und unabhängiger Produktreview bestehen; lokale SQL2025-Fixture besteht. Gebundene Liefergates bleiben offen.
+**Status:** erster SQL-sichtbarer Slice über PR #443 integriert; gebundene SQL2025- und native SQL2019-Liefergates bestehen.
 **Artefakt-UID:** `urn:uuid:01a172d8-177b-70e6-81a8-a09b4120e159`.
 **Registrierung:** `DEFERRED`; keine finale lesbare Arbeitselementkennung vergeben.
 **Intake:** TLS_NETWORK_ENDPOINTS, Rang 7 der
@@ -355,6 +355,42 @@ Die ältere native SQL2019-Berechtigungsgrenze wird gezielt separat geprüft;
 SQL2025 deckt den verwendeten 2022+-Berechtigungszweig ab. Ein separater
 SQL2022-Lauf, echte HADR-/MARS-Verbindungen, Host-/Handshakequalifikation
 und eine vollständige separate RAW-Streamzählung bleiben unbelegt.
+
+## Integrierter Lieferstand
+
+[PR #443](https://github.com/gecompat/SQL_Server_Analyze/pull/443) ist als
+`52a699a67ba09923a67e4577bb6f47be21877bba` regulär integriert. Der Liefercommit
+`b7498890b25c15f1511b725e3607f1e2f07faa9c` besitzt acht erfolgreiche Head-Checks.
+Das [vollständige SQL2025-Gate](https://github.com/gecompat/SQL_Server_Analyze/actions/runs/40192963747)
+besteht im ersten Versuch. Die [gezielte native SQL2019-Abnahme](https://github.com/gecompat/SQL_Server_Analyze/actions/runs/40192976642)
+besteht Releasegate mit 34 Suiten, Permissionmatrix und Cleanup unter
+Linux 15.0.4500.2 mit CL150. Der Maschinenbeleg bindet ZIP-SHA256
+`828aee8bf4a947d21b29d56d7358cc4118256dca58b124de059ebe0fe3077285`.
+
+SQL2022 wurde nicht separat nativ ausgeführt. Die bekannten HADR-/MARS-,
+Handshake-, Host- und RAW-Zählgrenzen bleiben offen. Das Modul bleibt PLANNED;
+der erste Slice ist kein Reifeabschluss des Transportbereichs. Main-Nachläufe
+werden getrennt vom qualifizierten Head ausgewertet. Die getrennte Main-Evidenz lautet wie folgt.
+
+Der getrennte [SQL2025-Main-Nachlauf](https://github.com/gecompat/SQL_Server_Analyze/actions/runs/40193775278)
+besteht im zweiten Versuch am Mergecommit `52a699a6`. Versuch 1 scheiterte
+im unveränderten SSIS-Legacy-Vertrag 202, C018, an TABLE-Schemaadaption mit
+Locktimeout 51010/1222. Der Observer meldete BLOCKER_NOT_CAPTURED bei null
+Observerfehlern und vollständigem begrenztem Log; eine Sperrursache ist
+nicht belegt. Nach Prüfung dieses Belegs wurden ausschließlich die
+fehlgeschlagenen Main-Jobs einmal wiederholt. Erfolgreiche PR- und native
+SQL2019-Gates wurden nicht wiederholt.
+
+Die fokussierte lokale Prüfung des unveränderten Vertrags 202 besteht mit
+den erforderlichen ANSI-/QUOTED_IDENTIFIER-Einstellungen und eigenem
+Labcleanup. Der erste private Einzelaufruf scheiterte wegen fehlender Session-
+Voraussetzungen mit 1934 und ist keine Reproduktion des Main-Timeouts.
+Der spätere Erfolg beweist keine Korrektur einer konkreten Sperrursache.
+Ein weiterer Metadatentimeout verlangt gezielte Reproduktion und keinen
+unveränderten unbegrenzten Wiederholungszyklus.
+
+Als nächster unabhängiger Scope folgt der
+[Snapshot-Ausbau](Snapshot_Expansion_Dossier.md).
 
 ## Primärquellen
 
