@@ -181,12 +181,23 @@ Frameworkcollations. Die genauen Nachweislinks und Grenzen stehen im
 WI-0012 bleibt PARTIAL_PRODUCT_FUNCTION; die beiden Principalmodule erhalten
 tatsächliche CI-Evidenz ohne pauschalen Reifeabschluss.
 
-Der nächste eigene Teil von Rang 6 ist im
-[Callerrechte-Dossier](../Architecture/Caller_Permission_Analysis_Dossier.md)
-konkretisiert. Er soll die native Bewertung der effektiven Rechte des aktuellen
-Ausführungskontexts auf SERVER- und DATABASE-Ebene zeigen. Die Procedure
-impersoniert keine fremden Principals und behauptet keinen konkreten Objekt-
-oder Statementzugriff. Nach unabhängigem Vertragsreview werden Schemas,
-Kontextbindung und unabhängige Abnahme vor der Produktimplementierung
-festgelegt. Weitere Lifecycleteile und externe Identitätsprüfung bleiben offen;
-die bestehende funktionsbezogene autonome Freigabe wird nicht erneut angefragt.
+Der erste Caller-Slice ist über [PR #441](https://github.com/gecompat/SQL_Server_Analyze/pull/441)
+als `33747f6d` regulär integriert. Der Liefercommit `ff8e2578` besitzt acht
+bestandene Head-Checks, ein vollständiges SQL2025-Gate und gezielte native
+SQL2019-Evidenz. Der lokale kombinierte Vertrag 137/189 bestätigt zusätzlich
+den kanonischen Renderer, Quellenprobleme in CONSOLE und den begrenzten
+loginlosen Kontext. SQL2022 wurde für diesen Slice nicht separat ausgeführt.
+Der begrenzte Nachlauf nach einem unerfassten Timeout im älteren Namensfilter
+und die übrigen Evidenzgrenzen stehen im
+[Callerrechte-Dossier](../Architecture/Caller_Permission_Analysis_Dossier.md).
+
+Damit ist der erste SQL-sichtbare Sicherheitsdurchstich von Rang 6 mit drei
+vertikalen Grundlieferungen abgeschlossen. WI-0012 bleibt für konkrete Objekt-/
+Spalten-/Statementrechte, fremde Principals und externe Identitätsprüfung offen.
+Als nächste ausführbare Grundlieferung folgt Rang 7 mit dem
+[Endpoint-Dossier](../Architecture/Endpoint_Transport_Analysis_Dossier.md).
+Sein SQL-Scope umfasst Katalogzustände und beobachtete Verschlüsselungsflags;
+Hostkonfiguration, tatsächliche TLS-Version, Cipher und Zertifikatsvertrauen
+bleiben getrennte offene Evidenz. Nach unabhängigem Vertragsreview werden die
+konkreten Schemas und nativen Abnahmen vor der Implementierung festgelegt.
+Die bestehende funktionsbezogene autonome Freigabe wird nicht erneut angefragt.

@@ -1,7 +1,7 @@
 # Effektive Berechtigungen des aktuellen Ausführungskontexts
 
 **Stand:** 25. Oktober 2026.
-**Status:** erster Produktkandidat mit unabhängig geprüftem Vorvertrag und lokaler SQL2025-Abnahme; Produktreview und Head-Qualifikation offen.
+**Status:** erster Caller-Slice über PR #441 integriert; SQL2025- und gezielte native SQL2019-Abnahme abgeschlossen.
 **Artefakt-UID:** `urn:uuid:01a17261-e0f7-7145-9586-f332362bdc1c`.
 **Registrierung:** `DEFERRED`; keine zusätzliche lesbare Kennung vergeben.
 **Arbeitselement:** weiterer Teil von `WI-0012` und Rang 6 der
@@ -290,6 +290,45 @@ vor dem Beginn der Produktimplementierung festgelegt. Der Benutzerauftrag autori
 und die anschließende kohärente Produktwelle mit Review, Tests und PR-Merge.
 Objektbezogene effektive Rechte und fremde Principals bleiben offene Teile;
 die erste Callerlieferung schließt Rang 6 nicht pauschal ab.
+
+## Gelieferter Caller-Slice und Evidenz
+
+[PR #441](https://github.com/gecompat/SQL_Server_Analyze/pull/441) ist nach
+unabhängigem Vertrags-/Produktreview und gezielten Folgechecks regulär als
+`33747f6d` integriert. Der qualifizierte Lieferstand lautet
+`ff8e25789b2d2b16bc7fb9ebf65eebae1e629ead`.
+
+| Prüfung | Tatsächlich bestätigter Umfang |
+|---|---|
+| [SQL2025-Headgate](https://github.com/gecompat/SQL_Server_Analyze/actions/runs/40187405544) | Das vollständige funktionale Gate besteht im begrenzten zweiten Versuch. Ein zusätzlicher Enginebuild wird hier nicht ausgewiesen. |
+| [Native SQL2019-Abnahme](https://github.com/gecompat/SQL_Server_Analyze/actions/runs/40187401558) | Linux, 15.0.4500.2, CL150; Releasegate, Permissionmatrix und eigener Cleanup bestehen am gleichen Liefercommit. |
+
+Der native Maschinenbeleg bindet ZIP-SHA256
+`47c7db75248c769657f2ba6bfbd6c2f6b7455d094fc479b3de666b84d736d4cb`.
+SQL2022 wurde für diesen Slice nicht separat nativ ausgeführt. Windows-/Entra-
+Identitäten und weitere Plattformen werden damit nicht als qualifiziert ausgegeben.
+Die lokalen kombinierten Verträge 137 und 189 bestätigen zusätzlich den
+Callerbericht und den kanonischen Renderer bei abweichenden Instanz-/
+Frameworkcollations. RAW wird ausgeführt; eine vollständige separate
+Streamzählung und ein konkurrierender vollständiger Drift-Fault sind nicht belegt.
+
+Frühere Entwicklungs- und CI-Fehler betrafen reale Fixturekontexte,
+Berechtigungsort, Benutzerbindung und Rendererintegration. Sie sind vor dem
+Lieferstand korrigiert und keine bestandene Qualifikation. Der erste
+SQL2025-Versuch dieses Heads traf außerdem Locktimeout 1222 im unveränderten
+PrepareNameFilters beim früheren DataCapture-Gate, bevor der neue Callertest
+lief. Der Blocker blieb unerfasst. Die fokussierte lokale Prüfung 184 und die
+einmalige Wiederholung nur der fehlgeschlagenen Jobs bestehen; eine konkrete
+Sperrursache wird daraus nicht behauptet. Ein erneuter gleicher Befund verlangt
+gezielte Reproduktion statt unveränderter unbegrenzter Wiederholung.
+Der getrennte [SQL2025-Main-Nachlauf](https://github.com/gecompat/SQL_Server_Analyze/actions/runs/40188946001)
+besteht am Mergecommit `33747f6d` im ersten Versuch. Er reproduziert den
+Timeout nicht und beweist dessen Ursache nicht.
+
+WI-0012 bleibt PARTIAL_PRODUCT_FUNCTION. Die aktuelle Ebene ist nativ
+bewertet; objekt-/spaltenbezogene Rechte, fremde Principals und externe
+Identitätsprüfung bleiben offen. Die nächste vertikale Grundlieferung aus
+Rang 7 steht im [Endpoint-Dossier](Endpoint_Transport_Analysis_Dossier.md).
 
 ## Primärquellen
 
