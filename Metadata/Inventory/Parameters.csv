@@ -1970,11 +1970,8 @@ USP_SsisLegacyLogAnalysis,IncludeComponentPhaseAnalysis,bit,0
 USP_SsisLegacyLogAnalysis,IncludeComponentLifecyclePhases,bit,0
 USP_SsisLegacyLogAnalysis,IncludeLookupCacheAnalysis,bit,0
 USP_SsisLegacyLogAnalysis,IncludeRowsWrittenAnalysis,bit,0
-
 USP_SsisLegacyLogAnalysis,IncludeThroughputAnalysis,bit,0
-
 USP_SsisLegacyLogAnalysis,IncludeFinalCommitAnalysis,bit,0
-
 USP_SsisLegacyLogAnalysis,IncludePipelinePhaseBeginAnalysis,bit,0
 USP_SsisPackageModelAnalysis,PackageModelJson,nvarchar(max),NULL
 USP_SsisPackageModelAnalysis,PackageBytes,varbinary(max),NULL
@@ -2012,3 +2009,4 @@ USP_ServerPrincipalAnalysis,StatusCodeOut,varchar(40),NULL OUTPUT
 USP_ServerPrincipalAnalysis,IsPartialOut,bit,NULL OUTPUT
 USP_ServerPrincipalAnalysis,ErrorNumberOut,int,NULL OUTPUT
 USP_ServerPrincipalAnalysis,ErrorMessageOut,nvarchar(2048),NULL OUTPUT
+USP_SsisPackageModelAnalysis,IncludeIterationCorrelation,bit,0

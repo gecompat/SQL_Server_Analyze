@@ -6,13 +6,15 @@ param(
     [Parameter(Mandatory)][string]$FixtureBuilderPath,
     [Parameter(Mandatory)][string]$ProducerAssemblyPath,
     [Parameter(Mandatory)][string]$ExpectedSourceCommit,
-    [Parameter(Mandatory)][string]$ExpectedBuildSha256
+    [Parameter(Mandatory)][string]$ExpectedBuildSha256,
+    [switch]$IterationCases,
+    [ValidateSet(1,2,3)][int]$LoggingLevel=3
 )
 Set-StrictMode -Version Latest
 $ErrorActionPreference='Stop'
-# Manueller Windows-Vertrag auf einem ausdrücklich eigenen frischen Lab-Run.
+# Manueller Windows-Vertrag auf einem ausdrücklich gebundenen vorhandenen Lab-Run.
 # Lab stellt SSISDB bereit. Dieser Consumer besitzt nur seine eigenen Objekte;
-# der Aufrufer entfernt den gesamten eigenen Run nach bestätigtem Abschluss.
+# der Aufrufer bestimmt unabhängig die Aufbewahrung des Lab-Runs.
 $root=(Resolve-Path (Join-Path $PSScriptRoot '../../..')).Path
 Import-Module $LabModulePath -Force
 $capability=Get-SqlServerLabSsisCatalogCapability -RunId $RunId -InstanceId $InstanceId
@@ -52,9 +54,17 @@ function Convert-SourceTable($Set) {
     foreach($row in $Set.Rows){$values=[object[]]::new($Set.Columns.Count);for($i=0;$i -lt $values.Length;$i++){$values[$i]=if($null -eq $row[$i]){[DBNull]::Value}else{$row[$i]}};[void]$table.Rows.Add($values)}
     return ,$table
 }
-function Read-Analysis($Handover) {
-    $data=Query "DECLARE @Json nvarchar(max);EXEC monitor.USP_SsisPackageModelAnalysis @PackageModelJson=@Model,@PackageBytes=@Bytes,@LocalHandoverId=@Id,@IncludeExecutionCorrelation=1,@ExecutionId=@Execution,@ExecutionSnapshotJson=@Snapshot,@RuntimeHandoverId=@Run,@ResultSetArt='NONE',@JsonErzeugen=1,@Json=@Json OUTPUT;SELECT @Json;" @{Model=$Handover.PackageModelJson;Bytes=[byte[]]$Handover.PackageBytes;Id=$Handover.LocalHandoverId;Execution=$record.ExecutionId;Snapshot=$Handover.ExecutionSnapshotJson;Run=$Handover.RuntimeHandoverId}
-    return ($data.Tables[0].Rows[0][0]|ConvertFrom-Json -Depth 32)
+function Read-Analysis($Handover,[string]$Mode='NONE',[switch]$Detailed) {
+    $prefix='';$suffix='';$mapping=[DBNull]::Value
+    if($Mode -ceq 'TABLE') {
+        $prefix='CREATE TABLE #SsisNativeIterationsSummary(seed int NULL);CREATE TABLE #SsisNativeIterationsCoverage(seed int NULL);'
+        $suffix='SELECT * FROM #SsisNativeIterationsSummary ORDER BY ModelNodeId;SELECT * FROM #SsisNativeIterationsCoverage;'
+        $mapping='{"executionObjectSummary":"#SsisNativeIterationsSummary","executionCoverage":"#SsisNativeIterationsCoverage"}'
+    }
+    $data=Query ($prefix+"DECLARE @Json nvarchar(max);EXEC monitor.USP_SsisPackageModelAnalysis @PackageModelJson=@Model,@PackageBytes=@Bytes,@LocalHandoverId=@Id,@IncludeExecutionCorrelation=1,@IncludeIterationCorrelation=@Iterations,@ExecutionId=@Execution,@ExecutionSnapshotJson=@Snapshot,@RuntimeHandoverId=@Run,@ResultSetArt=@Mode,@ResultTablesJson=@Mapping,@JsonErzeugen=1,@Json=@Json OUTPUT;"+$suffix+'SELECT @Json;') @{Model=$Handover.PackageModelJson;Bytes=[byte[]]$Handover.PackageBytes;Id=$Handover.LocalHandoverId;Iterations=[bool]$IterationCases;Execution=$record.ExecutionId;Snapshot=$Handover.ExecutionSnapshotJson;Run=$Handover.RuntimeHandoverId;Mode=$Mode;Mapping=$mapping}
+    $json=$data.Tables[$data.Tables.Count-1].Rows[0][0]|ConvertFrom-Json -Depth 32
+    if($Detailed){return [pscustomobject]@{Json=$json;Data=$data}}
+    return $json
 }
 try {
     Save-Record;$connection.Open()
@@ -64,7 +74,8 @@ try {
         $sql=[IO.File]::ReadAllText((Join-Path $root $relative)).Replace('USE [DeineDatenbank];',"USE [$database];")
         foreach($batch in [regex]::Split($sql,'(?im)^\s*GO\s*$')){if($batch.Trim()){[void](Query $batch)}}
     }
-    $oracle=& $FixtureBuilderPath $record.ProjectName 'SQLServer2025' --oracle|ConvertFrom-Json
+    $authorArguments=@($record.ProjectName,'SQLServer2025','--oracle');if($IterationCases){$authorArguments+='--iterations'}
+    $oracle=& $FixtureBuilderPath @authorArguments|ConvertFrom-Json
     if($LASTEXITCODE -ne 0){throw 'SSIS_NATIVE_SDK_AUTHOR_FAILED'}
     $ispac=[Convert]::FromBase64String($oracle.ispacBase64)
     $stream=[IO.MemoryStream]::new($ispac,$false);$zip=[IO.Compression.ZipArchive]::new($stream,[IO.Compression.ZipArchiveMode]::Read,$false)
@@ -80,7 +91,7 @@ try {
     $execution=Windows-Query "IF NOT EXISTS(SELECT 1 FROM catalog.projects WHERE project_id=@projectId AND object_version_lsn=@version) THROW 57500,'SYNTHETIC_PROJECT_CHANGED',1;DECLARE @id bigint;EXEC catalog.create_execution @folder_name=@folder,@project_name=@project,@package_name=N'SyntheticRoot.dtsx',@execution_id=@id OUTPUT;SELECT @id;" @{projectId=$record.ProjectId;version=$record.ProjectLsn;folder=$record.FolderName;project=$record.ProjectName}
     $record.ExecutionId=[long]$execution.ResultSets[0].Rows[0][0];Save-Record
     $record.Phase='START_OWN_EXECUTION'
-    [void](Windows-Query "IF NOT EXISTS(SELECT 1 FROM catalog.executions WHERE execution_id=@id AND project_lsn=@version AND folder_name=@folder AND project_name=@project AND status=1) THROW 57500,'SYNTHETIC_EXECUTION_CHANGED',1;DECLARE @level smallint=3;EXEC catalog.set_execution_parameter_value @execution_id=@id,@object_type=50,@parameter_name=N'LOGGING_LEVEL',@parameter_value=@level;EXEC catalog.start_execution @execution_id=@id;" @{id=$record.ExecutionId;version=$record.ProjectLsn;folder=$record.FolderName;project=$record.ProjectName})
+    [void](Windows-Query "IF NOT EXISTS(SELECT 1 FROM catalog.executions WHERE execution_id=@id AND project_lsn=@version AND folder_name=@folder AND project_name=@project AND status=1) THROW 57500,'SYNTHETIC_EXECUTION_CHANGED',1;DECLARE @level smallint=@logging;EXEC catalog.set_execution_parameter_value @execution_id=@id,@object_type=50,@parameter_name=N'LOGGING_LEVEL',@parameter_value=@level;EXEC catalog.start_execution @execution_id=@id;" @{id=$record.ExecutionId;version=$record.ProjectLsn;folder=$record.FolderName;project=$record.ProjectName;logging=$LoggingLevel})
     $deadline=[datetime]::UtcNow.AddSeconds(60)
     do {$status=[int](Query 'SELECT status FROM SSISDB.catalog.executions WHERE execution_id=@id AND project_lsn=@version;' @{id=$record.ExecutionId;version=$record.ProjectLsn}).Tables[0].Rows[0][0];if($status -in 3,4,6,7,9){break};Start-Sleep -Milliseconds 500}while([datetime]::UtcNow -lt $deadline)
     Assert ($status -eq 7) 'REAL_PACKAGE_SUCCEEDED'
@@ -96,16 +107,40 @@ try {
         if($response.ResultSets.Count -ne 4){throw 'SSIS_NATIVE_CAPTURE_RESULT_SHAPE'}
         [pscustomobject]@{Before=(Convert-SourceTable $response.ResultSets[0]);Archive=[Convert]::FromBase64String([string]$response.ResultSets[1].Rows[0][0]);Observations=(Convert-SourceTable $response.ResultSets[2]);After=(Convert-SourceTable $response.ResultSets[3])}
     }
-    $arguments=@{ExecutionId=$record.ExecutionId;Connection=$connection;SourceReader=$readerAdapter;SourceBindingId=('LAB:'+ $RunId.ToString()+':'+$InstanceId);ProducerAssemblyPath=$ProducerAssemblyPath;ExpectedBuildSha256=$ExpectedBuildSha256;ExpectedSourceCommit=$ExpectedSourceCommit}
+    $arguments=@{ExecutionId=$record.ExecutionId;Connection=$connection;SourceReader=$readerAdapter;SourceBindingId=('LAB:'+ $RunId.ToString()+':'+$InstanceId);ProducerAssemblyPath=$ProducerAssemblyPath;ExpectedBuildSha256=$ExpectedBuildSha256;ExpectedSourceCommit=$ExpectedSourceCommit;IncludeIterationCorrelation=[bool]$IterationCases}
     $handover=& (Join-Path $root 'Code/Tools/Invoke-SsisCatalogHandover.ps1') @arguments
     Assert ($handover.Status -ceq 'CAPTURED') 'REAL_SOURCE_CAPTURED'
     $result=Read-Analysis $handover
     $record.CaptureEvidence=[ordered]@{RuntimeBinding=$result.runtimeBinding;Correlations=$result.executionCorrelation;SnapshotJson=$handover.ExecutionSnapshotJson;ModelJson=$handover.PackageModelJson;SdkOracle=[ordered]@{PackageGuid=$oracle.packageDtsId;SequenceGuid=$oracle.sequenceDtsId;PackagePath=$oracle.packagePath;SequencePath=$oracle.sequencePath;PackageSha256=$expectedDigest}};Save-Record
     Assert ($result.sourceBinding[0].ProducerTrust -ceq 'VERIFIED_LOCAL' -and $result.sourceBinding[0].PackageSha256 -ceq $expectedDigest) 'SDK_BYTES_TO_VERIFIED_MODEL'
-    Assert ($result.runtimeBinding[0].StatusCode -ceq 'RUNTIME_BOUND_CAPTURE' -and $result.runtimeBinding[0].RootObservationQualified -and $result.runtimeBinding[0].MappedRowCount -eq 2) 'REAL_MODEL_EXECUTION_CORRELATION'
-    foreach($item in @(@{Guid=$oracle.packageDtsId;Node='pkg1'},@{Guid=$oracle.sequenceDtsId;Node='exe1'})) {
+    Assert ($result.runtimeBinding[0].StatusCode -ceq 'RUNTIME_BOUND_CAPTURE' -and $result.runtimeBinding[0].RootObservationQualified -and $result.runtimeBinding[0].MappedRowCount -ge 2 -and ($IterationCases -or $result.runtimeBinding[0].MappedRowCount -eq 2)) 'REAL_MODEL_EXECUTION_CORRELATION'
+    $nativeModel=$handover.PackageModelJson|ConvertFrom-Json -Depth 32
+    $sequenceNode=@($nativeModel.nodes|Where-Object {$_.kind -ceq 'EXECUTABLE' -and $_.name -ceq 'SyntheticSequence'})
+    Assert ($sequenceNode.Count -eq 1) 'UNIQUE_SDK_SEQUENCE_DEFINITION'
+    foreach($item in @(@{Guid=$oracle.packageDtsId;Node='pkg1'},@{Guid=$oracle.sequenceDtsId;Node=$sequenceNode[0].id})) {
         $row=@($result.executionCorrelation|Where-Object {([guid]$_.ExecutableGuid).ToString('D') -ceq $item.Guid})
         Assert ($row.Count -eq 1 -and $row[0].ModelNodeId -ceq $item.Node -and $row[0].CorrelationStatus -ceq 'EXACT_GUID_AND_PATH') ('NATIVE_NODE_'+$item.Node)
+    }
+    if($IterationCases) {
+        foreach($item in @(@{Guid=$oracle.repeatedGuid;Path=$oracle.repeatedPath;Count=3},@{Guid=$oracle.eachRepeatedGuid;Path=$oracle.eachRepeatedPath;Count=2})) {
+            $rows=@($result.executionCorrelation|Where-Object {([guid]$_.ExecutableGuid).ToString('D') -ceq $item.Guid})
+            Assert ($rows.Count -eq $item.Count -and @($rows|Where-Object {$_.CorrelationStatus -cne 'EXACT_GUID_AND_ITERATION_PATH' -or $_.PackagePath -cne $item.Path -or -not $_.ModelNodeId}).Count -eq 0) 'SDK_ITERATIONS_MAPPED'
+            Assert (@($rows.StatisticsId|Select-Object -Unique).Count -eq $item.Count -and @($rows.ExecutionPath|Select-Object -Unique).Count -eq $item.Count -and @($rows.ModelNodeId|Select-Object -Unique).Count -eq 1) 'INSTANCES_SEPARATE_MODEL_SINGLE'
+            $summary=@($result.executionObjectSummary|Where-Object ModelNodeId -CEQ $rows[0].ModelNodeId)
+            $durationSum=($rows|Measure-Object DurationMs -Sum).Sum
+            Assert ($summary.Count -eq 1 -and $summary[0].ObservedInstanceCount -eq $item.Count -and $summary[0].SucceededCount -eq $item.Count -and $summary[0].InclusiveObservedDurationMs -eq $durationSum) 'INSTANCE_AGGREGATE_ORACLE'
+        }
+        Assert ($result.runtimeBinding[0].ObservedRowCount -eq 9 -and $result.runtimeBinding[0].MappedRowCount -eq 9) 'ALL_NINE_NATIVE_OBSERVATIONS_MAPPED'
+        Assert ($result.executionCoverage[0].LoggingLevel -eq $LoggingLevel -and $result.executionCoverage[0].LoggingCoverage -ceq 'CONFIGURATION_OBSERVED' -and $result.executionCoverage[0].IsPartial -and $result.executionCoverage[0].CaptureState -ceq 'TERMINAL_CAPTURE') 'ACTUAL_LOGGING_CONFIGURATION_PARTIAL'
+        $raw=Read-Analysis $handover 'RAW' -Detailed
+        $table=Read-Analysis $handover 'TABLE' -Detailed
+        Assert ($raw.Data.Tables.Count -eq 13 -and $table.Data.Tables.Count -eq 3) 'RAW12_TABLE2_GROUPS'
+        foreach($pair in @(@{Raw=10;Table=0;Json=@($result.executionObjectSummary)},@{Raw=11;Table=1;Json=@($result.executionCoverage)})) {
+            $rawSet=$raw.Data.Tables[$pair.Raw];$tableSet=$table.Data.Tables[$pair.Table]
+            Assert ($rawSet.Rows.Count -eq $pair.Json.Count -and $tableSet.Rows.Count -eq $pair.Json.Count -and $rawSet.Columns.Count -eq $tableSet.Columns.Count -and $rawSet.Columns.Count -eq @($pair.Json[0].PSObject.Properties).Count) 'ITERATION_NATIVE_OUTPUT_PARITY'
+            for($i=0;$i -lt $rawSet.Columns.Count;$i++) {Assert ($rawSet.Columns[$i].ColumnName -ceq $tableSet.Columns[$i].ColumnName -and $rawSet.Columns[$i].DataType -eq $tableSet.Columns[$i].DataType) 'ITERATION_NATIVE_SCHEMA_PARITY'}
+        }
+        Assert ((Read-Analysis $handover 'CONSOLE' -Detailed).Data.Tables.Count -eq 2 -and (Read-Analysis $handover 'NONE' -Detailed).Data.Tables.Count -eq 1) 'ONE_CONSOLE_ZERO_NONE_PLUS_OUTPUT_JSON'
     }
     $record.Phase='REDEPLOY_OWN_PROJECT'
     $changedOracle=& $FixtureBuilderPath $record.ProjectName 'SQLServer2025' --oracle|ConvertFrom-Json
