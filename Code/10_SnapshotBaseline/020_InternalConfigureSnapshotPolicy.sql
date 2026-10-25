@@ -1,8 +1,8 @@
 /*
 ===============================================================================
 Objekt       : snapshot.InternalConfigureSnapshotPolicy
-Version      : 1.0.0
-Stand        : 2026-07-21
+Version      : 1.1.0
+Stand        : 2026-10-25
 Zweck        : Schreibt die typisierten SC-023-Policies in der aktuell
                verbundenen Snapshot-Datenbank.
 ===============================================================================
@@ -21,6 +21,12 @@ CREATE OR ALTER PROCEDURE [snapshot].[InternalConfigureSnapshotPolicy]
     , @StatusCodeOut            varchar(40) OUTPUT
     , @ErrorNumberOut           int OUTPUT
     , @ErrorMessageOut          nvarchar(2048) OUTPUT
+    , @CollectorCode            varchar(64) = 'PERFORMANCE_COUNTERS'
+    , @CollectorEnabled         bit = 1
+    , @UpdateSharedPolicy       bit = NULL
+    , @ExpectedTargetDatabaseId int = NULL
+    , @ExpectedTargetDatabaseName sysname = NULL
+    , @ExpectedTargetCreateDate datetime = NULL
 AS
 BEGIN
     SET NOCOUNT ON;
@@ -28,15 +34,85 @@ BEGIN
 
     SELECT @StatusCodeOut='AVAILABLE',@ErrorNumberOut=NULL,@ErrorMessageOut=NULL;
 
+    SET @CollectorCode=UPPER(LTRIM(RTRIM(COALESCE(@CollectorCode,''))));
+    IF @UpdateSharedPolicy IS NULL
+        SET @UpdateSharedPolicy=CASE WHEN @CollectorCode='PERFORMANCE_COUNTERS' THEN 1 ELSE 0 END;
+    DECLARE @UseV2Contract bit=CASE WHEN @CollectorCode<>'PERFORMANCE_COUNTERS'
+             OR @CollectorEnabled<>1 OR @CollectorEnabled IS NULL OR @UpdateSharedPolicy<>1
+             OR @ExpectedTargetDatabaseId IS NOT NULL OR @ExpectedTargetDatabaseName IS NOT NULL
+             OR @ExpectedTargetCreateDate IS NOT NULL THEN 1 ELSE 0 END,
+            @OwnTransaction bit=0;
+
+    IF @UseV2Contract=1 AND ((@@OPTIONS & 2)<>0 OR (@CollectorCode='WAIT_STATS' AND @@TRANCOUNT<>0))
+    BEGIN
+        SELECT @StatusCodeOut='INVALID_PARAMETER',@ErrorNumberOut=51011,
+               @ErrorMessageOut=N'Der neue Wait-Vertrag benötigt IMPLICIT_TRANSACTIONS OFF und für WAIT_STATS keine Callertransaktion.';
+        RETURN 51011;
+    END;
+
+    IF @CollectorCode NOT IN ('PERFORMANCE_COUNTERS','WAIT_STATS') OR @CollectorEnabled IS NULL
+    BEGIN
+        SELECT @StatusCodeOut='INVALID_PARAMETER',@ErrorNumberOut=51011,
+               @ErrorMessageOut=N'Ungültiger Collector oder Aktivierungswert.';
+        RETURN 51011;
+    END;
+
+    IF @CollectorCode='WAIT_STATS' OR @ExpectedTargetDatabaseId IS NOT NULL
+       OR @ExpectedTargetDatabaseName IS NOT NULL OR @ExpectedTargetCreateDate IS NOT NULL
+    BEGIN
+        IF @ExpectedTargetDatabaseId IS NULL OR @ExpectedTargetDatabaseName IS NULL
+           OR @ExpectedTargetCreateDate IS NULL OR @ExpectedTargetDatabaseId<=4
+           OR DB_ID()<>@ExpectedTargetDatabaseId
+               OR NOT EXISTS
+           (
+               SELECT 1 FROM [master].[sys].[databases] AS [d] WITH (NOLOCK)
+               WHERE [d].[database_id]=@ExpectedTargetDatabaseId
+                 AND CONVERT(varbinary(max),[d].[name])=CONVERT(varbinary(max),@ExpectedTargetDatabaseName)
+                 AND [d].[create_date]=@ExpectedTargetCreateDate
+                 AND [d].[state]=0 AND [d].[is_read_only]=0
+           )
+        BEGIN
+            SELECT @StatusCodeOut='TARGET_UNAVAILABLE',@ErrorNumberOut=53764,
+                   @ErrorMessageOut=N'Die erwartete Snapshot-Zielidentität stimmt nicht mehr überein.';
+            RETURN;
+        END;
+    END;
+
+    IF @UseV2Contract=1
+    BEGIN
+        IF @CollectionIntervalSeconds IS NULL OR @MaxRows IS NULL OR @PayloadEnabled IS NULL
+           OR (@UpdateSharedPolicy=1 AND (@RawRetentionDays IS NULL OR @PayloadRetentionDays IS NULL
+               OR @RollupRetentionDays IS NULL OR @SoftBudgetMB IS NULL OR @PurgeIntervalMinutes IS NULL
+               OR @PurgeBatchRows IS NULL OR @BudgetAction IS NULL))
+        BEGIN
+            SELECT @StatusCodeOut='INVALID_PARAMETER',@ErrorNumberOut=51011,
+                   @ErrorMessageOut=N'Eine wirksame Policyeigenschaft darf nicht NULL sein.';
+            RETURN 51011;
+        END;
+        IF (SELECT COUNT_BIG(*) FROM [snapshot].[PackageVersion])<>1 OR NOT EXISTS
+           (SELECT 1 FROM [snapshot].[PackageVersion] WHERE CONVERT(varbinary(max),[PackageCode])=CONVERT(varbinary(max),'SC-023')
+            AND CONVERT(varbinary(max),[PackageVersion])=CONVERT(varbinary(max),'1.2.0') AND [SchemaVersion]=2)
+           OR NOT EXISTS(SELECT 1 FROM [sys].[procedures] AS [wp] WITH (NOLOCK) JOIN [sys].[schemas] AS [ws] WITH (NOLOCK) ON [ws].[schema_id]=[wp].[schema_id] WHERE CONVERT(varbinary(max),[ws].[name])=CONVERT(varbinary(max),N'snapshot') AND CONVERT(varbinary(max),[wp].[name])=CONVERT(varbinary(max),N'InternalCompleteWaitStatsCycle'))
+           OR NOT EXISTS(SELECT 1 FROM [sys].[parameters] AS [p] WITH (NOLOCK)
+                         WHERE [p].[object_id] IN(SELECT [hp].[object_id] FROM [sys].[procedures] AS [hp] WITH (NOLOCK) JOIN [sys].[schemas] AS [hs] WITH (NOLOCK) ON [hs].[schema_id]=[hp].[schema_id] WHERE CONVERT(varbinary(max),[hs].[name])=CONVERT(varbinary(max),N'snapshot') AND CONVERT(varbinary(max),[hp].[name])=CONVERT(varbinary(max),N'InternalPurgeExpiredData'))
+                           AND CONVERT(varbinary(max),[p].[name])=CONVERT(varbinary(max),N'@ContractOnly'))
+        BEGIN
+            SELECT @StatusCodeOut='TARGET_UNAVAILABLE',@ErrorNumberOut=53761,
+                   @ErrorMessageOut=N'Das vollständig installierte Wait-Target 1.2.0 fehlt.';
+            RETURN;
+        END;
+    END;
+
     IF @CollectionIntervalSeconds NOT BETWEEN 1 AND 3600
        OR @MaxRows NOT BETWEEN 1 AND 100000
-       OR @RawRetentionDays NOT BETWEEN 1 AND 3650
+       OR (@UpdateSharedPolicy=1 AND
+          (@RawRetentionDays NOT BETWEEN 1 AND 3650
        OR @PayloadRetentionDays NOT BETWEEN 1 AND 3650
        OR @RollupRetentionDays NOT BETWEEN 1 AND 3650
        OR @SoftBudgetMB<1
        OR @PurgeIntervalMinutes NOT BETWEEN 1 AND 1440
        OR @PurgeBatchRows NOT BETWEEN 1 AND 100000
-       OR @BudgetAction<>'PURGE_EXPIRED_THEN_STOP'
+       OR @BudgetAction<>'PURGE_EXPIRED_THEN_STOP'))
     BEGIN
         SELECT @StatusCodeOut='INVALID_PARAMETER',
                @ErrorMessageOut=N'Ungültige Snapshot-, Retention- oder Budgetpolicy.';
@@ -44,8 +120,16 @@ BEGIN
     END;
 
     BEGIN TRY
-        BEGIN TRANSACTION;
+        IF @UseV2Contract=0
+            BEGIN TRANSACTION;
+        ELSE IF @@TRANCOUNT=0
+        BEGIN
+            BEGIN TRANSACTION;
+            SET @OwnTransaction=1;
+        END
+        ELSE SAVE TRANSACTION SQLSA_SnapshotPolicy;
 
+        IF @UpdateSharedPolicy=1
         UPDATE [snapshot].[RetentionPolicy]
         SET [RawRetentionDays]=@RawRetentionDays,
             [PayloadRetentionDays]=@PayloadRetentionDays,
@@ -58,21 +142,27 @@ BEGIN
         WHERE [RetentionPolicyCode]='DEFAULT';
 
         UPDATE [snapshot].[CollectorPolicy]
-        SET [IsEnabled]=1,
+        SET [IsEnabled]=@CollectorEnabled,
             [CollectionIntervalSeconds]=@CollectionIntervalSeconds,
             [MaxRows]=@MaxRows,
             [PayloadEnabled]=@PayloadEnabled,
-            [RetentionPolicyCode]='DEFAULT',
+            [RetentionPolicyCode]=CASE WHEN @UpdateSharedPolicy=1 THEN 'DEFAULT' ELSE [RetentionPolicyCode] END,
             [LastUpdatedUtc]=SYSUTCDATETIME()
-        WHERE [CollectorCode]='PERFORMANCE_COUNTERS';
+        WHERE [CollectorCode]=@CollectorCode;
 
         IF @@ROWCOUNT<>1
-            THROW 53700,N'Die Performance-Counter-Policy fehlt.',1;
+        BEGIN
+            IF @CollectorCode='PERFORMANCE_COUNTERS'
+                THROW 53700,N'Die Performance-Counter-Policy fehlt.',1;
+            THROW 53700,N'Die Wait-Policy fehlt.',1;
+        END;
 
-        COMMIT TRANSACTION;
+        IF @UseV2Contract=0 OR @OwnTransaction=1 COMMIT TRANSACTION;
     END TRY
     BEGIN CATCH
-        IF XACT_STATE()<>0 ROLLBACK TRANSACTION;
+        IF (@UseV2Contract=0 OR @OwnTransaction=1) AND XACT_STATE()<>0 ROLLBACK TRANSACTION;
+        ELSE IF @UseV2Contract=1 AND @OwnTransaction=0 AND XACT_STATE()=1
+            ROLLBACK TRANSACTION SQLSA_SnapshotPolicy;
         SELECT @StatusCodeOut=CASE WHEN ERROR_NUMBER() IN (229,262,297,300,371)
                                    THEN 'DENIED_PERMISSION' ELSE 'ERROR_HANDLED' END,
                @ErrorNumberOut=ERROR_NUMBER(),

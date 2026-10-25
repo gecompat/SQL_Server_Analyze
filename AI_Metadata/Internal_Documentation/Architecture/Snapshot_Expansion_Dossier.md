@@ -1006,3 +1006,126 @@ das endgültige Upgrade nicht. Der Abgleich mit SSIS-PR #445 ist konfliktfrei;
 die gebundenen Snapshotproduktdateien bleiben unverändert. Die frischen
 regulären Head-/Main-Gates prüfen den gemeinsamen Lieferstand und stehen
 noch aus. Es wird keine ältere native Patchabnahme behauptet.
+
+
+## Target-Backend vor öffentlicher Wait-Aktivierung
+
+Der Retentionspatch ist über [PR #449](https://github.com/gecompat/SQL_Server_Analyze/pull/449)
+als `e2fd110e` integriert. Alle sieben Head-Prüfungen einschließlich des
+vollständigen SQL2025-Gates 40218094709 bestehen; der getrennte Main-Nachlauf
+40218996492 sowie Dokumentation, Datenschutz und Commitnachrichten bestehen ebenfalls. Der folgende Backend-Slice installiert die neun beschriebenen
+Metriken, eine deaktivierte WAIT_STATS-Policy und den neuen Targethelper.
+Die öffentlichen Frameworksignaturen und ihre Performance-Counter-Defaults
+bleiben bis zur anschließenden Aktivierungswelle erhalten.
+
+### Abschlussmarkierung und unvollständige Installation
+
+030 installiert weiterhin die bekannte Schema-2-Grundlage mit der vorläufigen
+Paketversion 1.1.1. Erst die letzte Targetquelle 075 darf nach erfolgreichen
+Seed-, Helper- und Signaturprüfungen die Version 1.2.0 markieren. Ein in SQLCMD
+unterbrochener Lauf nach 030 qualifiziert dadurch keine neue Wait-Erfassung.
+Standalone und Gesamtdeployment behalten ihre eigene gesamte Transaktion;
+ihre strikte Nachprüfung verlangt den vollständigen Abschluss mit 1.2.0.
+Bekannte 1.0.0-/Schema-1- und 1.1.0-/1.1.1-/Schema-2-Ziele bleiben erkennbare
+Upgrades, ein bereits vollständiges 1.2.0-Target bleibt wiederholbar.
+
+Die kanonische Metrikliste und ihre read-only Kollisionsprüfung liegen in der
+letzten Targetquelle. Der Generator übernimmt diesen unveränderten fachlichen
+Prüfblock in den verifizierten nativen 030-Preflight, sodass auch der direkte
+SQLCMD-Weg widersprüchliche vorhandene Waitdefinitionen vor Produktänderungen
+zurückweist. Fehlende neue Seeds werden erst nach erfolgreicher Vorprüfung
+angelegt. Vorhandene kompatible Definitionen und eigene Policywerte werden
+nicht überschrieben. Eine versionsgleiche Zeile allein genügt weiterhin nicht:
+Targetaufrufe prüfen die tatsächlich benötigte Objekt-/Signaturclosure und den
+neuen read-only Retentionsvertragsaufruf des Purgehelpers.
+
+Der Backend-Slice erweitert die internen Policy-/Prepare-Einstiege additiv für
+WAIT_STATS. Alte Frameworkaufrufe übergeben ihre bisherigen Argumente und
+behalten ihren Defaultpfad. Neue Wait-Zugriffe binden erwartete Datenbank-ID,
+exakten Namen und native create_date vor Writes erneut im tatsächlichen
+Targetkontext. Die Abschlussprüfung behauptet keine Unveränderbarkeit gegenüber
+privilegierten administrativen Eingriffen. Der vollständige lokale SQL2025-Vertrag 195 einschließlich der
+synthetischen Backendfälle in 223 besteht. Native DMV-Erfassung und
+öffentliche Aktivierung gehören weiterhin zum folgenden Slice.
+
+
+### Exakter transienter Source-v1-Rahmen
+
+Der interne Sourcevertrag besitzt genau die Rootmember meta (object) und waits
+(array). meta enthält genau schemaVersion (kanonische JSON number 1), resultName
+(string SnapshotWaitStats), measurementStartUtc, measurementEndUtc, statusCode,
+isPartial, errorNumber, errorMessage, nativeRows, sourceComplete und engineContext.
+Membernamen sind bytegenau case-sensitiv; doppelte oder zusätzliche Member und
+stillschweigende Typkonvertierungen sind unzulässig. Die oben beschriebenen
+UTC_MS-, DECIMAL_STRING- und nativen Waitrow-Regeln gelten unverändert.
+
+Bei erfolgreichem vollständigem Read sind beide Messzeiten gültige UTC_MS,
+engineContext ist das vollständige Objekt mit den drei beschriebenen nativen
+Feldern, sourceComplete ist true und nativeRows zählt genau die waits-Elemente.
+AVAILABLE verlangt nativeRows>0, isPartial=false und beide Fehlerfelder null.
+EMPTY_UNPROVEN verlangt nativeRows="0", waits=[], isPartial=true und ebenfalls
+beide Fehlerfelder null. Der Read muss auch dann tatsächlich vollständig
+beendet sein; ein Sourcefehler wird nicht als leere vollständige Quelle codiert.
+
+Ein Sourcefehler besitzt einen der Statuswerte DENIED_PERMISSION,
+UNAVAILABLE_OBJECT oder ERROR_HANDLED sowie isPartial=true, sourceComplete=false,
+nativeRows=null und waits=[]. errorNumber ist eine positive kanonische
+JSON-Ganzzahl im int-Bereich oder null, errorMessage ist string mit höchstens
+2048 UTF-16-Einheiten oder null. Messzeiten sind entweder gemeinsam null oder
+gemeinsam gültige geordnete UTC_MS; engineContext ist entweder ein vollständig
+belegtes natives Kontextobjekt oder null. Ein bekannter Enginekontext bei
+fehlgeschlagenem Counterread erzeugt weiterhin keinen Kontextsample und keine
+Epoche. Fehlerfelder bleiben diagnostische Angaben und ersetzen keine
+Vollständigkeitsprüfung.
+
+
+Der Backendvertrag verwendet für WAIT_DELTA_STATUS QualityCode
+COMPARISON_STATUS mit IsPartial=1 und für WAIT_CAPTURE_CONTEXT QualityCode
+CAPTURE_CONTEXT_V1 mit IsPartial=0. Der Kontextsample beschreibt seine
+expliziten Mengen-/Unterbrechungsangaben vollständig; er behauptet deshalb
+auch bei writeLimited=true keine vollständige Rohabdeckung. Die vier Rohwerte
+bleiben MEASURED_CUMULATIVE / IsPartial=0; Kandidaten bleiben
+MONOTONIC_CONTINUITY_UNPROVEN / IsPartial=1. Der erfolgreiche Wait-Run ist
+wegen dieser fachlichen Kandidatgrenze PARTIAL. Diese Kennzeichnung allein
+unterbricht den nächsten Vergleich vollständiger Rohwerte nicht.
+
+
+Der Installations-/Upgradereview schließt die frühe WAIT_STATS-Ablehnung
+von Callertransaktionen und die gemeinsame Bindung gespeicherter
+Helperdefinitionen ein. SQL Server speichert den kanonischen
+CREATE-OR-ALTER-Header mit entfernten OR-/ALTER-Tokens und erhaltenen
+Zwischenräumen. Generator und Upgradeoracle berücksichtigen genau diese
+nativ beobachtete Darstellung; Kommentarheader und Modulrumpf bleiben
+vollständig gebunden. Globale Textsetzungen in Kommentaren oder Literalen
+sind ausgeschlossen. Die nativen Abschlussläufe bleiben bis zu ihrem
+tatsächlichen Ergebnis offene Evidenz.
+
+
+### Aktueller Abnahmestand des internen Targets
+
+Der unabhängige Algorithmus-/Integrationsreview ist mit gezielten
+Befundnachprüfungen abgeschlossen. Der lokale vollständige Vertrag 195
+mit Targetprüfung 223 besteht einschließlich Callerzuständen, exakten
+Zielbindungen, gemeinsamen und eigenen Retentionspolicies, leeren und
+fehlerhaften Quellen, beschädigten Kontexten und tatsächlicher Rohhashbindung.
+Alle sechzehn eigenen Entwicklungsinstanzen sind nachgewiesen entfernt.
+Frühe Komponentenprüfungen, Diagnose- und fehlerhafte Testinputs bleiben
+von diesem abschließenden Backendnachweis getrennt.
+
+[PR #451](https://github.com/gecompat/SQL_Server_Analyze/pull/451) führt den
+Slice am Codehead 6f70d23c. Die integrierte statische Suite mit 74 Validatoren
+und die abschließenden 21 Deployment-Gegenprüfungen bestehen. Der vollständige
+SQL2025-Lauf [40230389338](https://github.com/gecompat/SQL_Server_Analyze/actions/runs/40230389338)
+besteht die native Deploymentregression mit drei realen Installationswegen,
+älteren gebundenen Helpern, Partial-Recovery, Seedkollisionen, Customwerten
+und unvollständiger Closure. Sein erster Gesamtversuch scheitert danach
+im bestehenden SSIS-Legacytest 202/C016 mit 51010/1222; die Sperrursache
+bleibt bei BLOCKER_NOT_CAPTURED unbekannt. Ein begrenzter Wiederlauf ist
+ausgewählt, der Fehler wird dadurch nicht als behoben bezeichnet.
+
+Die nativ bestätigte gespeicherte CREATE-Headerform begründet zusätzlich
+eine gezielte SQL2019-Risikoprüfung des Snapshot-/Migrations- und
+Berechtigungsscopes. Die vollständigen aktuellen Head- und Main-Gates
+sowie diese zusätzliche Prüfung bleiben bis zu ihren tatsächlichen
+Ergebnissen offen. Ein allgemeiner nativer Core-Reifeabschluss und eine
+öffentliche Wait-Erfassung werden damit weiterhin nicht behauptet.

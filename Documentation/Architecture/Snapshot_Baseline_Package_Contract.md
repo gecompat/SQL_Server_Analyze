@@ -40,14 +40,17 @@ In beiden Fällen bleibt die Reihenfolge verbindlich:
 
 Das Paket erstellt keine Datenbank, Benutzer, Login, Berechtigung oder Scheduleraufgabe.
 
-Der aktuelle Quellstand installiert Target-PackageVersion 1.1.1 mit
-SchemaVersion 2. Die CHECK-Domänen unterstützen WAIT_STATS und WAIT_TYPE.
+Der aktuelle Quellstand installiert Target-PackageVersion 1.2.0 mit
+SchemaVersion 2. Das Target enthält ein internes Wait-Backend mit neun
+Metrikdefinitionen, dem Target-Abschlusshelper und einer bei Neuanlage
+deaktivierten WAIT_STATS-Policy. Die öffentliche Frameworkaktivierung und
+die native Wait-Quelle gehören noch nicht zu diesem Stand. Die drei
+öffentlichen Einstiege und ihr Performance-Counter-Default bleiben erhalten.
 Der Purge erhält die letzte finalisierte WAIT_STATS-Laufzeile als spätere
-Vergleichsgrenze. Ein Wait-Collector, eine Wait-Policy und Waitmetriken sind
-noch nicht enthalten. Vorhandene Counterdaten, Scopeidentitäten und Policies
+Vergleichsgrenze. Vorhandene Counterdaten, Scopeidentitäten und Policies
 bleiben erhalten. Ein exakt erkanntes Target 1.0.0 / Schema 1 wird in einer
 Transaktion migriert. Das bekannte Target 1.1.0 / Schema 2 erhält den
-Patch ohne weitere Schemaänderung. Unbekannte Versionen, gemischte Domänen, zusätzliche
+Backendabschluss ohne weitere Schemaänderung; dies gilt ebenso für 1.1.1 / Schema 2. Unbekannte Versionen, gemischte Domänen, zusätzliche
 CHECKs, veränderte Tabellenfacetten und deaktivierte oder nicht vertrauenswürdige
 Constraints werden vor Produktänderungen abgelehnt. Ein abweichender Stand
 muss vor erneutem Installieren fachlich geklärt werden; der Installer repariert
@@ -226,3 +229,33 @@ laufen weiterhin nach ihrer normalen Retention ab. Ein erhaltener Run ohne
 notwendige Rohdaten erlaubt keinen numerischen Vergleich. Diese Vorbereitung
 aktiviert keine Wait-Erfassung. Ein späterer Collector muss fehlende Kinder
 und die unmittelbar vorherige Fehlergrenze ausdrücklich berücksichtigen.
+
+
+## Targetabschluss vor öffentlicher Wait-Aktivierung
+
+Die erste Targetquelle 030 prüft Kontext, bekannte Struktur und Seedkonflikte
+vor Produktänderungen. Sie markiert anschließend die Schema-2-Grundlage mit
+der vorläufigen Version 1.1.1. Erst die letzte Targetquelle 075 prüft die
+benötigten Helper und Signaturen, ergänzt fehlende kompatible Waitseeds und
+markiert 1.2.0. Ein unterbrochener SQLCMD-Lauf ist deshalb kein fertiger
+Wait-Paketstand. Die Standalone- und Gesamtinstaller behalten ihre jeweilige
+gesamte Transaktion und strikte Nachprüfung.
+
+Die read-only Metrikkollisionsprüfung stammt aus der kanonischen letzten
+Targetquelle und wird in den geprüften 030-Preflight übernommen. Ein fremdes
+Objekt auf dem neuen Helpernamen in einem älteren Paket wird vor Änderungen
+abgewiesen; ein exakt erkanntes eigenes Zwischenstadium bleibt wiederholbar.
+Vorhandene passende Metrikdefinitionen, Beschreibungen und eigene Policywerte
+werden erhalten. Eine fehlende WAIT_STATS-Policy wird mit IsEnabled=0 und
+PayloadEnabled=0 angelegt; ein vorhandener passender eigener Zustand wird
+nicht blind überschrieben.
+
+Der interne Abschlusshelper verlangt den Source-v1- und Kontext-v1-Vertrag,
+die passende tatsächliche Zielidentität und einen unbeschriebenen eigenen
+laufenden Wait-Run. Er speichert keine garantierten resetfreien Deltas,
+Raten oder Mittelwerte. Seine drei möglichen Differenzkandidaten sind immer
+MONOTONIC_CONTINUITY_UNPROVEN mit IsPartial=1. Fehlende, partielle oder
+widersprüchliche Basisdaten unterdrücken Zahlen und erhalten einen Status.
+Die vier Rohwerte sind davon getrennt gemessene kumulative Werte; die maximale
+Waitzeit ist ein High-Water-Wert und besitzt keinen additiven Kandidaten.
+Diese internen Bausteine sind noch kein öffentlicher manueller Sammelaufruf.
