@@ -226,6 +226,9 @@ try {
     $captureProbe=[IO.File]::ReadAllText((Join-Path $repositoryRoot 'Code/Tests/Integration/216_SsisExecutionCorrelation_Runtime_Contract.sql')) -replace 'USE \[DeineDatenbank\];',"USE [$database];"
     foreach($batch in [regex]::Split($captureProbe,'(?im)^\s*GO\s*$')) {if($batch.Trim()){[void](Query $batch)}}
     Assert $true 'EXECUTION_CAPTURE_RECEIVER_SQL_PROBE'
+    $iterationProbe=[IO.File]::ReadAllText((Join-Path $repositoryRoot 'Code/Tests/Integration/218_SsisIterationCorrelation_Runtime_Contract.sql')) -replace 'USE \[DeineDatenbank\];',"USE [$database];"
+    foreach($batch in [regex]::Split($iterationProbe,'(?im)^\s*GO\s*$')) {if($batch.Trim()){[void](Query $batch)}}
+    Assert $true 'ITERATION_CAPTURE_RECEIVER_SQL_PROBE'
     $metadataProbe=[IO.File]::ReadAllText((Join-Path $repositoryRoot 'Code/Tests/Integration/217_SsisSqlMetadata_Runtime_Contract.sql')) -replace 'USE \[DeineDatenbank\];',"USE [$database];"
     foreach($batch in [regex]::Split($metadataProbe,'(?im)^\s*GO\s*$')) {if($batch.Trim()){[void](Query $batch)}}
     Assert $true 'SQL_METADATA_SQL_PROBE'

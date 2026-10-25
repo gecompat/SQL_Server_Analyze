@@ -9,7 +9,8 @@
 
 Die Procedure prüft ein JSON-Modell nach dem
 [Abgrenzungs- und Austauschvertrag](../../Architecture/SSIS_Analyze_Toolbelt_Exchange_Contract.md).
-Der Import liest weder DTSX noch Dateien, SSISDB, externe Quellen oder Paket-SQL.
+Der Import liest weder DTSX noch Dateien, SSISDB oder Paket-SQL. Die optionale
+SQL-Metadatenprüfung liest ausschließlich ausdrücklich zugeordnete lokale Kataloge.
 SQL CLR und eine Toolbelt-Installation werden auf dem Analyze-Server nicht benötigt.
 Die vorhandene direkte XML-Inventur bleibt über `USP_SsisPackageAnalysis` verfügbar.
 
@@ -21,7 +22,8 @@ bindet sie gemeinsam mit ihren nativen Hilfsobjekten ein.
 
 Ein formal gültiges Modell beweist weder Paketerfolg noch Datenqualität oder
 richtige Ableitung durch den angegebenen Producer. Producerangaben bleiben ohne kontrollierte lokale Übergabe `UNVERIFIED`.
-Ein Caller kann sich nicht durch ein Trust-Flag im JSON selbst qualifizieren. Laufzeitkorrelation,
+Ein Caller kann sich nicht durch ein Trust-Flag im JSON selbst qualifizieren.
+Die optionale Laufzeitkorrelation verlangt einen kontrollierten Capture.
 Expressionauswertung und eine transitive Lineageberechnung gehören nicht zum Import.
 
 ## Sicherer Einstieg
@@ -356,7 +358,8 @@ mit passender GUID, passendem Paketpfad und dem Paketdateinamen der Ausführung
 beobachtet sein. Ihr Ausführungspfad muss genau ein oberstes Pfadsegment sein.
 Damit qualifiziert ein verschachtelter Paketaufruf keine Wurzel.
 
-Der Capturevertrag `SSISDB_CURRENT_PROJECT_ROOT_SCOPE_V1` erhält beide
+Der bisherige Capturevertrag `SSISDB_CURRENT_PROJECT_ROOT_SCOPE_V1` ohne
+Iterationsoption erhält beide
 Pfadrepräsentationen. SSISDB verwendet beispielsweise `\Package` als
 Paketpfad und `\SyntheticRuntimeRoot` als Ausführungspfad derselben Wurzel.
 Analyze bindet diese zwei beobachteten Wurzeln zusammen und vergleicht den
@@ -387,6 +390,65 @@ Toolbelt-Exporter. Der Test prüft einen echten Paketlauf und eine abweichende
 spätere Projektrevision. Er entfernt seine eigenen Katalogobjekte und die
 temporäre Analyze-Datenbank; der bereitgestellte Lab-Run verbleibt beim
 Aufrufer. Private Receipts und Capturedokumente gehören nicht in Git.
+
+## Iterationsgebundene Ausführungskorrelation
+
+`@IncludeIterationCorrelation=1` verlangt zugleich
+`@IncludeExecutionCorrelation=1`. Der Katalogadapter wird mit demselben
+Schalter aufgerufen. Er verwendet den optionalen Toolbelt-Export
+`--iteration-bundle`, den Identitätssidecar 1.1.0 und den Capturevertrag
+`ssis-execution-snapshot` 1.1.0 mit
+`method=SSISDB_CURRENT_PROJECT_ITERATION_SCOPE_V1`. Ein älterer Host wird
+nicht durch einen ungeprüften Ersatzpfad ergänzt. Die Standardoptionen und
+der bisherige Capture 1.0.0 bleiben unverändert.
+
+Nur Toolbelt klassifiziert die unterstützten For-/Foreach-Container im
+Booleanfeld `iterationContainer`. Analyze verwendet die gelieferten Parent-IDs
+und die unveränderten nativen Pfadsegmente. Eine eindeutige native GUID,
+derselbe Paketpfad, Paketdateiname, Paketdigest und eine qualifizierte
+Ausführungswurzel bleiben Voraussetzung. Zwischen einem bekannten
+Schleifensegment und seinem Kind ist zusätzlich ein kanonischer positiver
+ASCII-Zähler in eckigen Klammern erlaubt. Der Zähler muss in `bigint` passen;
+Vorzeichen, führende Nullen, Leerzeichen, zusätzliche Klammern und Unicodeziffern
+qualifizieren keine Zuordnung. Im eigentlichen Objektnamen vorhandene Klammern
+bleiben erhalten. Analyze leitet weder Containerrollen noch Lineage neu ab.
+
+Jede Ausführung behält ihre `StatisticsId`, `ExecutableId`, den ursprünglichen
+`ExecutionPath`, Zeitangaben und das Ergebnis in `executionCorrelation`.
+Eine zusätzliche Zuordnung trägt `EXACT_GUID_AND_ITERATION_PATH`. Mehrere
+Beobachtungen dürfen dieselbe `ModelNodeId` besitzen. Kindpaketsegmente und
+Ereignishandler erweitern diesen Scope nicht. Mehrdeutige GUIDs und nicht
+passende Pfade bleiben unzugeordnet.
+
+Die Option ergänzt zwei RAW-/TABLE-Gruppen und JSON-Arrays. JSON kennzeichnet
+sie mit `meta.iterationCorrelationSchemaVersion=1`. Mit Ausführungskorrelation
+sind zwölf RAW-Gruppen vorhanden; mit sämtlichen bisherigen Optionen sind es
+neunzehn. CONSOLE bleibt eine Statusgruppe, NONE liefert keine fachlichen
+Resultsets, JSON bleibt ein OUTPUT-Parameter.
+
+| Gruppe | Bedeutung und Aussagegrenze |
+|---|---|
+| `executionObjectSummary` | Eine Zeile je importiertem Paket-/Executableobjekt mit beobachteter Instanzzahl, Erfolgs-, Fehler-, Abbruch- und übrigen Ergebnissen sowie bekannten Dauerwerten. `UNASSIGNED_OR_NOT_OBSERVED` beweist keine Nichtausführung. |
+| `executionCoverage` | Eine Zeile für den angefragten Capture mit beobachteter Loggingkonfiguration, Capturezustand und vollständigen beobachteten, zugeordneten und unzugeordneten Zeilenzahlen. `CONFIGURATION_OBSERVED` ist kein Vollständigkeitsnachweis; unbekannte Loggingwerte bleiben `UNKNOWN`. |
+
+`InclusiveObservedDurationMs` summiert ausschließlich die bekannten,
+nicht negativen Dauern der beobachteten Instanzen desselben Modellobjekts.
+Fehlt eine Instanzdauer, bleibt die Summe unbekannt. Die Summe über mehrere
+Container und deren Kinder ist keine Paketdauer oder kritische Pfadzeit;
+verschachtelte und parallele Laufzeitanteile können sich überlagern.
+`IsPartial=1` bleibt für diese importierten Laufzeitbelege erhalten.
+Sichtbarkeit, Loggingkonfiguration, Aufbewahrung und der Erfassungszeitpunkt
+begrenzen den Befund auch bei einer am Captureende abgeschlossenen Ausführung.
+Die Procedure nimmt keine Änderungen an Logging oder Paketkonfiguration vor.
+
+Die Zuordnung und Aggregation verwenden alle validierten Beobachtungen vor
+`@MaxZeilen`. Eine Ausgabekürzung verändert die Zählungen in
+`executionCoverage` nicht. Die bestehenden Größen- und Zeitgrenzen gelten
+weiter. Ohne gültige Capturebindung bleiben die statischen Modellangaben
+nutzbar; die Objektzusammenfassung bleibt leer und die Abdeckung nennt
+`UNPROVEN`. Der manuelle Windows-Test verwendet eigene synthetische
+Katalogobjekte in einer ausdrücklich vorhandenen SSISDB-Umgebung und entfernt
+nur diese Consumerobjekte. Er provisioniert oder entfernt keine Labumgebung.
 
 ## Optionale lokale SQL-Metadatenprüfung
 
