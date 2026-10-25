@@ -67,7 +67,15 @@ internal static class CreateScopeProject
                     Handler(child, child.EventHandlers, eventName, "SyntheticChild.dtsx");
                 }
                 Handler(error, error.EventHandlers, "OnError", "SyntheticError.dtsx");
-                var fail = (TaskHost)error.Executables.Add("Microsoft.SqlServer.Dts.Tasks.ExecuteProcess.ExecuteProcess, Microsoft.SqlServer.ExecProcTask, Version=17.0.0.0, Culture=neutral, PublicKeyToken=89845dcd8080cc91"); fail.Name = "SyntheticFailure";
+                string processCreationName = null;
+                foreach (TaskInfo info in new Application().TaskInfos)
+                    if (info.CreationName != null && info.CreationName.StartsWith("Microsoft.SqlServer.Dts.Tasks.ExecuteProcess.ExecuteProcess,", StringComparison.Ordinal))
+                    {
+                        if (processCreationName != null) throw new InvalidOperationException("SYNTHETIC_PROCESS_TASK_AMBIGUOUS");
+                        processCreationName = info.CreationName;
+                    }
+                if (processCreationName == null) throw new InvalidOperationException("SYNTHETIC_PROCESS_TASK_UNAVAILABLE");
+                var fail = (TaskHost)error.Executables.Add(processCreationName); fail.Name = "SyntheticFailure";
                 fail.Properties["Executable"].SetValue(fail, "cmd.exe");
                 fail.Properties["Arguments"].SetValue(fail, "/d /c exit 1");
                 fail.Properties["FailTaskIfReturnCodeIsNotSuccessValue"].SetValue(fail, true);
