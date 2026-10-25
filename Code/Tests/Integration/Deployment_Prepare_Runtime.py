@@ -7,6 +7,7 @@ dedicated SQL Server test instance, for example the functional-impact CI job.
 """
 from __future__ import annotations
 import argparse
+import hashlib
 import importlib.util
 from pathlib import Path
 import sys
@@ -18,6 +19,178 @@ sys.modules[spec.name] = g
 spec.loader.exec_module(g)
 FRAMEWORK = 'SQLServerAnalyzeDeploymentFramework'
 TARGET = 'SQLServerAnalyzeDeploymentTarget'
+
+# Exact historical helper from 4ca1916c, retained solely as an upgrade fixture.
+# It is never a product installer input. Normalize repository line endings only.
+LEGACY_PURGE_V1_1_0 = r"""/*
+===============================================================================
+Objekt       : snapshot.InternalPurgeExpiredData
+Version      : 1.0.0
+Stand        : 2026-07-21
+Zweck        : Löscht ausschließlich abgelaufene Snapshotdaten child-first in
+               begrenzten Batches; nicht abgelaufene Daten bleiben erhalten.
+===============================================================================
+*/
+CREATE OR ALTER PROCEDURE [snapshot].[InternalPurgeExpiredData]
+      @MaxBatches        int
+    , @Force             bit
+    , @PurgeRunIdOut     bigint OUTPUT
+    , @StatusCodeOut     varchar(40) OUTPUT
+    , @BudgetExceededOut bit OUTPUT
+    , @ErrorNumberOut    int OUTPUT
+    , @ErrorMessageOut   nvarchar(2048) OUTPUT
+AS
+BEGIN
+    SET NOCOUNT ON;
+    SET XACT_ABORT ON;
+    SET LOCK_TIMEOUT 0;
+
+    DECLARE @Now datetime2(3)=SYSUTCDATETIME(),
+            @RawRetentionDays smallint,
+            @PayloadRetentionDays smallint,
+            @PurgeIntervalMinutes smallint,
+            @BatchRows int,
+            @SoftBudgetMB bigint,
+            @UsedBefore decimal(19,3),
+            @UsedAfter decimal(19,3),
+            @LastPurgeUtc datetime2(3),
+            @Batch int=0,
+            @Deleted int,
+            @Rows int,
+            @MetricDeleted bigint=0,
+            @PayloadDeleted bigint=0,
+            @ModuleDeleted bigint=0,
+            @RunsDeleted bigint=0,
+            @ScopeDeleted bigint=0;
+
+    SELECT @PurgeRunIdOut=NULL,@StatusCodeOut='AVAILABLE',@BudgetExceededOut=0,
+           @ErrorNumberOut=NULL,@ErrorMessageOut=NULL;
+
+    IF @MaxBatches NOT BETWEEN 1 AND 1000
+    BEGIN
+        SELECT @StatusCodeOut='INVALID_PARAMETER',@ErrorMessageOut=N'@MaxBatches muss zwischen 1 und 1000 liegen.';
+        RETURN;
+    END;
+
+    SELECT @RawRetentionDays=[RawRetentionDays],
+           @PayloadRetentionDays=[PayloadRetentionDays],
+           @PurgeIntervalMinutes=[PurgeIntervalMinutes],
+           @BatchRows=[PurgeBatchRows],
+           @SoftBudgetMB=[SoftBudgetMB]
+    FROM [snapshot].[RetentionPolicy]
+    WHERE [RetentionPolicyCode]='DEFAULT';
+
+    SELECT TOP (1) @LastPurgeUtc=[EndedAtUtc]
+    FROM [snapshot].[PurgeRun]
+    WHERE [StatusCode] IN ('AVAILABLE','AVAILABLE_LIMITED')
+      AND [EndedAtUtc] IS NOT NULL
+    ORDER BY [PurgeRunId] DESC;
+
+    SELECT @UsedBefore=CONVERT(decimal(19,3),COALESCE(SUM(CONVERT(decimal(38,3),[size]))*8.0/1024.0,0))
+    FROM [sys].[database_files] WITH (NOLOCK)
+    WHERE [type]=0;
+
+    IF @Force=0
+       AND @UsedBefore<=@SoftBudgetMB
+       AND @LastPurgeUtc IS NOT NULL
+       AND DATEADD(MINUTE,@PurgeIntervalMinutes,@LastPurgeUtc)>@Now
+    BEGIN
+        SELECT @StatusCodeOut='SKIPPED_NOT_DUE',@BudgetExceededOut=0;
+        RETURN;
+    END;
+
+    INSERT [snapshot].[PurgeRun]
+    ([StartedAtUtc],[StatusCode],[UsedDataMbBefore],[SoftBudgetMb])
+    VALUES (@Now,'RUNNING',@UsedBefore,@SoftBudgetMB);
+    SET @PurgeRunIdOut=CONVERT(bigint,SCOPE_IDENTITY());
+
+    BEGIN TRY
+        WHILE @Batch<@MaxBatches
+        BEGIN
+            SET @Deleted=0;
+            BEGIN TRANSACTION;
+
+            DELETE TOP (@BatchRows) [m]
+            FROM [snapshot].[MetricSample] AS [m]
+            WHERE [m].[CollectedAtUtc]<DATEADD(DAY,-@RawRetentionDays,@Now);
+            SET @Rows=@@ROWCOUNT;
+            SET @MetricDeleted+=@Rows;
+            SET @Deleted+=@Rows;
+
+            DELETE TOP (@BatchRows) [p]
+            FROM [snapshot].[PayloadSnapshot] AS [p]
+            WHERE [p].[CapturedAtUtc]<DATEADD(DAY,-@PayloadRetentionDays,@Now);
+            SET @Rows=@@ROWCOUNT;
+            SET @PayloadDeleted+=@Rows;
+            SET @Deleted+=@Rows;
+
+            DELETE TOP (@BatchRows) [m]
+            FROM [snapshot].[ModuleStatus] AS [m]
+            JOIN [snapshot].[CaptureRun] AS [r]
+              ON [r].[CaptureRunId]=[m].[CaptureRunId]
+            WHERE [r].[StartedAtUtc]<DATEADD(DAY,-@RawRetentionDays,@Now)
+              AND NOT EXISTS (SELECT 1 FROM [snapshot].[MetricSample] AS [x] WHERE [x].[CaptureRunId]=[r].[CaptureRunId])
+              AND NOT EXISTS (SELECT 1 FROM [snapshot].[PayloadSnapshot] AS [x] WHERE [x].[CaptureRunId]=[r].[CaptureRunId]);
+            SET @Rows=@@ROWCOUNT;
+            SET @ModuleDeleted+=@Rows;
+            SET @Deleted+=@Rows;
+
+            DELETE TOP (@BatchRows) [r]
+            FROM [snapshot].[CaptureRun] AS [r]
+            WHERE [r].[StartedAtUtc]<DATEADD(DAY,-@RawRetentionDays,@Now)
+              AND NOT EXISTS (SELECT 1 FROM [snapshot].[MetricSample] AS [m] WHERE [m].[CaptureRunId]=[r].[CaptureRunId])
+              AND NOT EXISTS (SELECT 1 FROM [snapshot].[PayloadSnapshot] AS [p] WHERE [p].[CaptureRunId]=[r].[CaptureRunId])
+              AND NOT EXISTS (SELECT 1 FROM [snapshot].[ModuleStatus] AS [s] WHERE [s].[CaptureRunId]=[r].[CaptureRunId]);
+            SET @Rows=@@ROWCOUNT;
+            SET @RunsDeleted+=@Rows;
+            SET @Deleted+=@Rows;
+
+            DELETE TOP (@BatchRows) [s]
+            FROM [snapshot].[Scope] AS [s]
+            WHERE [s].[ScopeType]<>'SERVER'
+              AND NOT EXISTS (SELECT 1 FROM [snapshot].[MetricSample] AS [m] WHERE [m].[ScopeId]=[s].[ScopeId])
+              AND NOT EXISTS (SELECT 1 FROM [snapshot].[Scope] AS [c] WHERE [c].[ParentScopeId]=[s].[ScopeId]);
+            SET @Rows=@@ROWCOUNT;
+            SET @ScopeDeleted+=@Rows;
+            SET @Deleted+=@Rows;
+
+            COMMIT TRANSACTION;
+            SET @Batch+=1;
+            IF @Deleted=0 BREAK;
+        END;
+
+        SELECT @UsedAfter=CONVERT(decimal(19,3),COALESCE(SUM(CONVERT(decimal(38,3),[size]))*8.0/1024.0,0))
+        FROM [sys].[database_files] WITH (NOLOCK)
+        WHERE [type]=0;
+
+        SET @BudgetExceededOut=CASE WHEN @UsedAfter>@SoftBudgetMB THEN 1 ELSE 0 END;
+        SET @StatusCodeOut=CASE WHEN @Batch>=@MaxBatches AND @Deleted>0 THEN 'AVAILABLE_LIMITED' ELSE 'AVAILABLE' END;
+
+        UPDATE [snapshot].[PurgeRun]
+        SET [EndedAtUtc]=SYSUTCDATETIME(),[StatusCode]=@StatusCodeOut,
+            [BatchesExecuted]=@Batch,[MetricRowsDeleted]=@MetricDeleted,
+            [PayloadRowsDeleted]=@PayloadDeleted,[ModuleRowsDeleted]=@ModuleDeleted,
+            [CaptureRunsDeleted]=@RunsDeleted,[ScopeRowsDeleted]=@ScopeDeleted,
+            [UsedDataMbAfter]=@UsedAfter
+        WHERE [PurgeRunId]=@PurgeRunIdOut;
+    END TRY
+    BEGIN CATCH
+        IF XACT_STATE()<>0 ROLLBACK TRANSACTION;
+        SELECT @StatusCodeOut=CASE WHEN ERROR_NUMBER() IN (229,262,297,300,371)
+                                   THEN 'DENIED_PERMISSION' ELSE 'ERROR_HANDLED' END,
+               @BudgetExceededOut=1,@ErrorNumberOut=ERROR_NUMBER(),@ErrorMessageOut=ERROR_MESSAGE();
+        UPDATE [snapshot].[PurgeRun]
+        SET [EndedAtUtc]=SYSUTCDATETIME(),[StatusCode]=@StatusCodeOut,
+            [BatchesExecuted]=@Batch,[MetricRowsDeleted]=@MetricDeleted,
+            [PayloadRowsDeleted]=@PayloadDeleted,[ModuleRowsDeleted]=@ModuleDeleted,
+            [CaptureRunsDeleted]=@RunsDeleted,[ScopeRowsDeleted]=@ScopeDeleted,
+            [ErrorNumber]=@ErrorNumberOut,[ErrorMessage]=@ErrorMessageOut
+        WHERE [PurgeRunId]=@PurgeRunIdOut;
+    END CATCH;
+END;
+GO
+"""
+LEGACY_PURGE_V1_1_0_SHA256 = 'ebf85095ea0800d39ac05daf136a5c6a20d10b3a4742d890883d44ce53cea408'
 
 
 def configured(sql, framework=FRAMEWORK, target=TARGET):
@@ -47,6 +220,16 @@ def snapshot_schema_cases(deployed, tables):
     direct='\n'.join(g.split_batches(schema))
     standalone,_=g.generate_snapshot_target(ROOT)
     routes=[('DIRECT',direct),('STANDALONE',standalone),('COMBINED',deployed)]
+    legacy=LEGACY_PURGE_V1_1_0.replace('\r\n','\n')
+    if hashlib.sha256(legacy.encode('utf-8')).hexdigest()!=LEGACY_PURGE_V1_1_0_SHA256:
+        raise RuntimeError('Historical Snapshot 1.1.0 Purge fixture binding changed')
+    legacy_batches=g.split_batches(legacy)
+    if len(legacy_batches)!=1:
+        raise RuntimeError('Historical Snapshot Purge must be one canonical module batch')
+    target_sources,_,_=g.load_sources(ROOT,True)
+    direct_patch=''.join('EXEC sys.sp_executesql '+g.lit(batch)+';\n'
+                         for source in target_sources if source.role=='SNAPSHOT'
+                         for batch in g.split_batches((ROOT/source.path).read_text(encoding='utf-8-sig')))
 
     def shape(version):
         out=[]
@@ -58,17 +241,19 @@ def snapshot_schema_cases(deployed, tables):
             out.append(f'ALTER TABLE {table.object_name} DROP CONSTRAINT {g.q(cname)};\n'
                        f'ALTER TABLE {table.object_name} WITH CHECK ADD CONSTRAINT {g.q(cname)} {legacy if version==1 else current};\n')
         out.append("UPDATE snapshot.PackageVersion SET PackageVersion='1.0.0',SchemaVersion=1 WHERE PackageCode='SC-023';\n" if version==1 else
-                   "UPDATE snapshot.PackageVersion SET PackageVersion='1.1.0',SchemaVersion=2 WHERE PackageCode='SC-023';\n")
+                   "UPDATE snapshot.PackageVersion SET PackageVersion='1.1.1',SchemaVersion=2 WHERE PackageCode='SC-023';\n")
         return ''.join(out)
 
-    def state(variable):
+    def state(variable, ignore_purge_definition=False):
+        definition=("CASE WHEN object_id=OBJECT_ID(N'snapshot.InternalPurgeExpiredData') THEN NULL ELSE definition END AS definition"
+                    if ignore_purge_definition else 'definition')
         items=[]
         for table in target_tables:
             items.append('JSON_QUERY((SELECT '+binary_columns(table)+' FROM '+table.object_name+' ORDER BY '+g.q(table.columns[0])+" FOR JSON PATH,INCLUDE_NULL_VALUES)) AS "+g.q(table.name))
         items += ["JSON_QUERY((SELECT name,type,create_date,modify_date FROM sys.objects WHERE schema_id=SCHEMA_ID(N'snapshot') ORDER BY object_id FOR JSON PATH,INCLUDE_NULL_VALUES)) AS objects",
                   "JSON_QUERY((SELECT name,object_id,parent_object_id,definition,is_disabled,is_not_trusted,is_not_for_replication FROM sys.check_constraints WHERE schema_id=SCHEMA_ID(N'snapshot') ORDER BY object_id FOR JSON PATH,INCLUDE_NULL_VALUES)) AS checks",
                   "JSON_QUERY((SELECT object_id,column_id,name,system_type_id,user_type_id,max_length,precision,scale,is_nullable,collation_name,is_identity FROM sys.columns WHERE object_id IN(SELECT object_id FROM sys.objects WHERE schema_id=SCHEMA_ID(N'snapshot')) ORDER BY object_id,column_id FOR JSON PATH,INCLUDE_NULL_VALUES)) AS columns",
-                  "JSON_QUERY((SELECT object_id,definition,uses_ansi_nulls,uses_quoted_identifier FROM sys.sql_modules WHERE object_id IN(SELECT object_id FROM sys.objects WHERE schema_id=SCHEMA_ID(N'snapshot')) ORDER BY object_id FOR JSON PATH,INCLUDE_NULL_VALUES)) AS modules",
+                  f"JSON_QUERY((SELECT object_id,{definition},uses_ansi_nulls,uses_quoted_identifier FROM sys.sql_modules WHERE object_id IN(SELECT object_id FROM sys.objects WHERE schema_id=SCHEMA_ID(N'snapshot')) ORDER BY object_id FOR JSON PATH,INCLUDE_NULL_VALUES)) AS modules",
                   "JSON_QUERY((SELECT object_id,last_value FROM sys.identity_columns WHERE object_id IN(SELECT object_id FROM sys.objects WHERE schema_id=SCHEMA_ID(N'snapshot')) ORDER BY object_id FOR JSON PATH,INCLUDE_NULL_VALUES)) AS identities"]
         return f'SET {variable}=(SELECT '+','.join(items)+' FOR JSON PATH,WITHOUT_ARRAY_WRAPPER);\n'
 
@@ -85,6 +270,7 @@ def snapshot_schema_cases(deployed, tables):
     out=['USE '+g.q(TARGET)+';\nGO\nCREATE TABLE qa.SnapshotMigrationInput(Route varchar(16) PRIMARY KEY,SqlText nvarchar(max) NOT NULL);\n']
     for label,route in routes:
         out.append('INSERT qa.SnapshotMigrationInput VALUES('+g.lit(label)+','+g.lit(route)+');\n')
+    out.append('INSERT qa.SnapshotMigrationInput VALUES('+g.lit('DIRECT_TARGET')+','+g.lit(direct_patch)+');\n')
     out.append('GO\n')
     for label,route in routes:
         call="DECLARE @SnapshotRouteSql nvarchar(max)=(SELECT SqlText FROM qa.SnapshotMigrationInput WHERE Route="+g.lit(label)+");\nEXEC sys.sp_executesql @SnapshotRouteSql;\n"
@@ -92,7 +278,7 @@ def snapshot_schema_cases(deployed, tables):
         # identity counters, rather than just a sample count.
         out.append(shape(1)+'GO\n')
         out.append(call+'GO\n')
-        out.append("IF NOT EXISTS(SELECT 1 FROM snapshot.PackageVersion WHERE PackageCode='SC-023' AND PackageVersion='1.1.0' AND SchemaVersion=2) THROW 53813,N'Snapshot V1 migration version mismatch.',1;\n")
+        out.append("IF NOT EXISTS(SELECT 1 FROM snapshot.PackageVersion WHERE PackageCode='SC-023' AND PackageVersion='1.1.1' AND SchemaVersion=2) THROW 53813,N'Snapshot V1 migration version mismatch.',1;\n")
         for i,table in enumerate(tables,1):
             if table.role=='SNAPSHOT' and table.name!='PackageVersion':
                 out.append(equal_rows(f'qa.Before_{i}',table.object_name,binary_columns(table),'Snapshot '+label+' V1 preservation '+table.name))
@@ -104,6 +290,18 @@ def snapshot_schema_cases(deployed, tables):
         # normalized field while retaining every other data/metadata facet.
         out.append("SET @Before=JSON_MODIFY(JSON_MODIFY(@Before,'$.PackageVersion[0].LastInstallerRunUtc',NULL),'$.objects',NULL); SET @After=JSON_MODIFY(JSON_MODIFY(@After,'$.PackageVersion[0].LastInstallerRunUtc',NULL),'$.objects',NULL);\n"
                    "IF CONVERT(varbinary(max),@Before)<>CONVERT(varbinary(max),@After) THROW 53814,N'Snapshot repetition changed existing state.',1;\nGO\n")
+        patch_call=("DECLARE @SnapshotPatchSql nvarchar(max)=(SELECT SqlText FROM qa.SnapshotMigrationInput WHERE Route="
+                    +g.lit('DIRECT_TARGET' if label=='DIRECT' else label)+");\nEXEC sys.sp_executesql @SnapshotPatchSql;\n")
+        out.append("DECLARE @ExpectedPurgeDefinition nvarchar(max)=OBJECT_DEFINITION(OBJECT_ID(N'snapshot.InternalPurgeExpiredData'));\n"
+                   +"IF @ExpectedPurgeDefinition IS NULL THROW 53826,N'Current Snapshot Purge definition is unavailable.',1;\n"
+                   +"EXEC sys.sp_executesql "+g.lit(legacy_batches[0])+";\n"
+                   +"IF CONVERT(varbinary(max),OBJECT_DEFINITION(OBJECT_ID(N'snapshot.InternalPurgeExpiredData')))=CONVERT(varbinary(max),@ExpectedPurgeDefinition) THROW 53826,N'Historical Snapshot Purge fixture did not replace the new helper.',1;\n"
+                   +"UPDATE snapshot.PackageVersion SET PackageVersion='1.1.0' WHERE PackageCode='SC-023';\nDECLARE @Before nvarchar(max),@After nvarchar(max);\n"+state('@Before',True))
+        out.append(patch_call+state('@After',True))
+        out.append("IF NOT EXISTS(SELECT 1 FROM snapshot.PackageVersion WHERE PackageCode='SC-023' AND PackageVersion='1.1.1' AND SchemaVersion=2) THROW 53826,N'Snapshot V2 patch upgrade version mismatch.',1;\n"
+                   "IF OBJECT_DEFINITION(OBJECT_ID(N'snapshot.InternalPurgeExpiredData')) IS NULL OR CONVERT(varbinary(max),OBJECT_DEFINITION(OBJECT_ID(N'snapshot.InternalPurgeExpiredData')))<>CONVERT(varbinary(max),@ExpectedPurgeDefinition) THROW 53826,N'Snapshot V2 patch did not install the current Purge helper.',1;\n")
+        out.append("SET @Before=JSON_MODIFY(JSON_MODIFY(JSON_MODIFY(@Before,'$.PackageVersion[0].LastInstallerRunUtc',NULL),'$.PackageVersion[0].PackageVersion',NULL),'$.objects',NULL); SET @After=JSON_MODIFY(JSON_MODIFY(JSON_MODIFY(@After,'$.PackageVersion[0].LastInstallerRunUtc',NULL),'$.PackageVersion[0].PackageVersion',NULL),'$.objects',NULL);\n"
+                   "IF CONVERT(varbinary(max),@Before)<>CONVERT(varbinary(max),@After) THROW 53826,N'Snapshot V2 patch upgrade changed unrelated state.',1;\nGO\n")
         if label=='STANDALONE':
             out.append('SET QUOTED_IDENTIFIER OFF; SET ANSI_NULLS OFF; SET ANSI_PADDING OFF; SET ANSI_WARNINGS OFF; SET ARITHABORT OFF; SET CONCAT_NULL_YIELDS_NULL OFF; SET NUMERIC_ROUNDABORT ON; SET LOCK_TIMEOUT -1;\n'+call)
             out.append('SET QUOTED_IDENTIFIER ON; SET ANSI_NULLS ON; SET ANSI_PADDING ON; SET ANSI_WARNINGS ON; SET ARITHABORT ON; SET CONCAT_NULL_YIELDS_NULL ON; SET NUMERIC_ROUNDABORT OFF; SET LOCK_TIMEOUT 10000;\n')

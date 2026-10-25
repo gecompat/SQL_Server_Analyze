@@ -963,3 +963,38 @@ Erhaltung der letzten finalisierten Laufzeile und die echten Purgegegenfälle
 schließen diese Vertragslücke. 74 lokale statische Validatoren, Stilprüfung,
 Regelkontext und Datenschutz bestehen. Eine SQL-Laufzeitabnahme des neuen
 Kontextvertrags ist vor Collectorcode nicht erfolgt und wird nicht behauptet.
+
+
+## Abgegrenzter Retentionspatch vor Wait-Persistenz
+
+Die nächste kohärente Produktwelle implementiert zunächst die im Kontextreview
+festgelegte Runerhaltung im gemeinsamen Purge. Target-PackageVersion 1.1.1
+behält SchemaVersion 2, akzeptiert das bekannte 1.1.0-Target und liefert
+keinen Wait-Collector, keine Policy und keine neuen Metrikseeds. Die Trennung
+ermöglicht eine eigene native Abnahme des gemeinsamen Löschpfads vor der
+späteren Target-Persistenz und öffentlichen Aktivierung mit 1.2.0.
+
+Die tatsächliche 195-Fixture prüft den jüngeren Fehlerlauf bei noch erhaltenen
+Kindern des älteren Erfolgs, die getrennte Collector-/Finalisierungsgrenze
+und die Löschbarkeit der alten Grenze nach neuer Finalisierung. Kinder der
+neuen letzten erfolgreichen Aufnahme laufen weiterhin ab. Die vollständige
+spätere Collectorprüfung gegen PREVIOUS_RAW_INCOMPLETE und unterdrückte
+Kandidaten bleibt vor Aktivierung erforderlich.
+
+Die erweiterte tatsächliche 195-Fixture besteht lokal auf einer eigenen
+SQL2025-Instanz. Dieselbe Fixture mit dem ursprünglichen 070-Helper scheitert
+gezielt mit 53751 / SC023_WAIT_RETENTION_FAILED_RUN_FENCE. Beide eigenen
+Labs sind bereinigt. Der unabhängige Produktreview schließt zwei konkrete
+Befunde am Upgradeoracle: Die 1.1.0-Basis enthält nun den gebundenen alten
+Helper statt nur einer zurückgesetzten Versionszeile; die direkte Patchroute
+liest unveränderte kanonische Quelldateien mit erhaltenem nativem Guard.
+
+Die historische Helperfixture aus `4ca1916c` ist mit UTF-8-/LF-SHA256
+`ebf85095ea0800d39ac05daf136a5c6a20d10b3a4742d890883d44ce53cea408` gebunden.
+Der Zustandserhaltungscheck erlaubt ausschließlich den beabsichtigten
+Definitionsaustausch dieses Helpers und prüft danach dessen neue Definition
+bytegenau. Alle übrigen Daten, Policies, Definitionen und gespeicherten
+SET-Metadaten bleiben gebunden. Ein nativer Zwischenlauf des fehlerhaften
+parserbereinigten Testpfads bestätigt 137; sein Cleanup besteht. Die korrigierte
+native Upgradeabnahme und die regulären Head-/Main-Gates stehen noch aus.
+

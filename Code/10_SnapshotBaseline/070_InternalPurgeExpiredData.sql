@@ -1,8 +1,8 @@
 /*
 ===============================================================================
 Objekt       : snapshot.InternalPurgeExpiredData
-Version      : 1.0.0
-Stand        : 2026-07-21
+Version      : 1.0.1
+Stand        : 2026-10-25
 Zweck        : Löscht ausschließlich abgelaufene Snapshotdaten child-first in
                begrenzten Batches; nicht abgelaufene Daten bleiben erhalten.
 ===============================================================================
@@ -116,7 +116,21 @@ BEGIN
             WHERE [r].[StartedAtUtc]<DATEADD(DAY,-@RawRetentionDays,@Now)
               AND NOT EXISTS (SELECT 1 FROM [snapshot].[MetricSample] AS [m] WHERE [m].[CaptureRunId]=[r].[CaptureRunId])
               AND NOT EXISTS (SELECT 1 FROM [snapshot].[PayloadSnapshot] AS [p] WHERE [p].[CaptureRunId]=[r].[CaptureRunId])
-              AND NOT EXISTS (SELECT 1 FROM [snapshot].[ModuleStatus] AS [s] WHERE [s].[CaptureRunId]=[r].[CaptureRunId]);
+              AND NOT EXISTS (SELECT 1 FROM [snapshot].[ModuleStatus] AS [s] WHERE [s].[CaptureRunId]=[r].[CaptureRunId])
+              -- Preserve the latest finalized Wait run as the comparison fence,
+              -- including a failed run whose children have expired or never existed.
+              AND
+              (
+                  [r].[CollectorCode]<>'WAIT_STATS'
+                  OR [r].[EndedAtUtc] IS NULL
+                  OR EXISTS
+                  (
+                      SELECT 1 FROM [snapshot].[CaptureRun] AS [later]
+                      WHERE [later].[CollectorCode]='WAIT_STATS'
+                        AND [later].[EndedAtUtc] IS NOT NULL
+                        AND [later].[CaptureRunId]>[r].[CaptureRunId]
+                  )
+              );
             SET @Rows=@@ROWCOUNT;
             SET @RunsDeleted+=@Rows;
             SET @Deleted+=@Rows;

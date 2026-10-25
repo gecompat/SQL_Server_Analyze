@@ -286,3 +286,28 @@ Main-Nachlauf 40212817038 bestehen ebenfalls. Zusätzliche Wiederholungen
 bestandener lokaler Prüfungen oder eine erneute allgemeine native Matrix
 waren für diesen Risikoscope nicht erforderlich; frühere Vollrunfehler
 werden dadurch nicht geschlossen.
+
+
+### Retentionspatch vor Wait-Aktivierung
+
+Der neu konkretisierte Retentionsschutz ändert den gemeinsamen Purge und die
+bekannte Target-Patchversion. Deshalb läuft das unveränderte vollständige
+SQL2025-Gate einschließlich der erweiterten tatsächlichen 195-Fixture; die
+drei realen Installationswege prüfen zusätzlich das gefüllte 1.1.0-Target.
+Der Versionsvergleich führt keine neue native API oder Engineverzweigung ein;
+eine weitere ältere Versionsmatrix ist für diesen Patch nicht ausgewählt.
+Die frühere native Risikoabnahme wird nicht als Patchabnahme wiederverwendet.
+Ein Implementierer und der vorhandene unabhängige Reviewer prüfen diese
+abgegrenzte Welle. Lokale Gegenproben und Required Head-/Main-Checks bleiben
+getrennte Nachweise. Die vollständige gemeinsame Qualitäts- und Privacy-CI
+bleibt erhalten; unveränderte erfolgreiche Einzelprüfungen werden lokal
+nicht ohne neuen Auslöser wiederholt.
+
+
+Die lokale Retentionsprüfung und die native Gegenprobe mit ursprünglichem
+Helper sind getrennte notwendige Oracles. Zwei konkrete Upgradeoraclebefunde
+erforderten gezielte Folgechecks desselben Reviewers und geänderte native
+Inputs. Ein Zwischenlauf ohne den echten alten Helper qualifiziert kein
+vollständiges Upgrade; der parserbereinigte direkte Testpfad scheiterte mit
+137 und nachgewiesenem Cleanup. Diese Korrekturversuche bleiben verbraucht.
+Es beginnt keine allgemeine neue Reviewkette und keine zusätzliche Engine.

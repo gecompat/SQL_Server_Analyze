@@ -76,7 +76,9 @@ nicht zu diesem zusätzlichen Risikoscope. Das Dossier bewahrt frühere
 Vollrunfehler und die Grenzen getrennt vom Integrationserfolg.
 Der genaue WAIT_CAPTURE_CONTEXT-Vertrag mit Typen, Mengen-, Rohwert-, Zeit-,
 Epochen- und Retentionsbindungen ist unabhängig geprüft. Der nächste Schritt
-implementiert Wait-Counter mit diesem Vertrag; danach folgt getrennt Datei-I/O.
+implementiert zuerst den Retentionsschutz im gemeinsamen Purge als
+Targetpatch 1.1.1, danach Wait-Persistenz und öffentliche Aktivierung mit
+1.2.0. Datei-I/O folgt getrennt.
 Ein Wait-Collector ist mit Schema 2 noch nicht geliefert.
 Bereits gelieferte Funktionen und die abgeschlossene STAT-DOMINANT-Diagnose
 werden nicht erneut entwickelt.

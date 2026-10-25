@@ -293,6 +293,93 @@ UPDATE [SQLServerAnalyzeSnapshotTest].[snapshot].[RetentionPolicy]
 SET [SoftBudgetMB]=10240
 WHERE [RetentionPolicyCode]='DEFAULT';
 
+-- Synthetic rows exercise the real shared Purge; no Wait collector is activated.
+DECLARE @WaitOld bigint,@WaitFailed bigint,@WaitNew bigint,@PerfExpired bigint,
+        @WaitPurge bigint,@WaitBudget bit,@WaitEpoch uniqueidentifier=NEWID(),
+        @WaitCutoff datetime2(3)=DATEADD(DAY,-40,SYSUTCDATETIME());
+INSERT [SQLServerAnalyzeSnapshotTest].[snapshot].[CollectorPolicy]
+([CollectorCode],[IsEnabled],[CollectionIntervalSeconds],[MaxRows],[PayloadEnabled],
+ [RetentionPolicyCode],[IsFrameworkDefault],[SeedVersion],[LastUpdatedUtc])
+VALUES('WAIT_STATS',0,30,1000,0,'DEFAULT',0,1,SYSUTCDATETIME());
+UPDATE [SQLServerAnalyzeSnapshotTest].[snapshot].[RetentionPolicy]
+SET [PurgeBatchRows]=1 WHERE [RetentionPolicyCode]='DEFAULT';
+
+INSERT [SQLServerAnalyzeSnapshotTest].[snapshot].[CaptureRun]
+([CollectorCode],[SchedulerType],[StartedAtUtc],[EndedAtUtc],[SourceDatabaseName],[ContractVersion],[StatusCode],[IsPartial],[MetricSampleCount])
+VALUES('WAIT_STATS','MANUAL',@WaitCutoff,@WaitCutoff,N'ExampleWaitRetentionFramework',1,'AVAILABLE',0,3);
+SET @WaitOld=CONVERT(bigint,SCOPE_IDENTITY());
+INSERT [SQLServerAnalyzeSnapshotTest].[snapshot].[Scope]
+([ScopeType],[ParentScopeId],[ScopeKeyHash],[ScopeIdentityJson],[CreatedAtUtc])
+SELECT 'WAIT_TYPE',@ScopeId,HASHBYTES('SHA2_256',CONVERT(varbinary(max),[j].[IdentityJson])),[j].[IdentityJson],@WaitCutoff
+FROM (VALUES(1),(2),(3)) AS [v]([n])
+CROSS APPLY(SELECT CONCAT(N'EXAMPLE_RETENTION_WAIT_',CONVERT(nvarchar(10),[v].[n])) AS [waitType] FOR JSON PATH,WITHOUT_ARRAY_WRAPPER) AS [j]([IdentityJson]);
+INSERT [SQLServerAnalyzeSnapshotTest].[snapshot].[MetricSample]
+([CaptureRunId],[ScopeId],[MetricDefinitionId],[CollectedAtUtc],[ResetEpochId],[BigintValue],[QualityCode],[IsPartial])
+SELECT @WaitOld,[ScopeId],@MetricId,@WaitCutoff,@WaitEpoch,1,'EXAMPLE_RETENTION_FIXTURE',0
+FROM [SQLServerAnalyzeSnapshotTest].[snapshot].[Scope]
+WHERE [ScopeType]='WAIT_TYPE' AND JSON_VALUE([ScopeIdentityJson],N'$.waitType') IN
+      (N'EXAMPLE_RETENTION_WAIT_1',N'EXAMPLE_RETENTION_WAIT_2',N'EXAMPLE_RETENTION_WAIT_3');
+INSERT [SQLServerAnalyzeSnapshotTest].[snapshot].[CaptureRun]
+([CollectorCode],[SchedulerType],[StartedAtUtc],[EndedAtUtc],[SourceDatabaseName],[ContractVersion],[StatusCode],[IsPartial],[ErrorNumber])
+VALUES('WAIT_STATS','MANUAL',DATEADD(SECOND,1,@WaitCutoff),DATEADD(SECOND,1,@WaitCutoff),N'ExampleWaitRetentionFramework',1,'ERROR_HANDLED',1,50000);
+SET @WaitFailed=CONVERT(bigint,SCOPE_IDENTITY());
+
+EXEC [SQLServerAnalyzeSnapshotTest].[snapshot].[InternalPurgeExpiredData]
+     @MaxBatches=1,@Force=1,@PurgeRunIdOut=@WaitPurge OUTPUT,@StatusCodeOut=@Status OUTPUT,
+     @BudgetExceededOut=@WaitBudget OUTPUT,@ErrorNumberOut=@Error OUTPUT,@ErrorMessageOut=@Message OUTPUT;
+IF COALESCE(@Status,'') NOT IN ('AVAILABLE','AVAILABLE_LIMITED') OR @Error IS NOT NULL
+   OR (SELECT COUNT_BIG(*) FROM [SQLServerAnalyzeSnapshotTest].[snapshot].[MetricSample] WHERE [CaptureRunId]=@WaitOld)<>2
+   OR NOT EXISTS(SELECT 1 FROM [SQLServerAnalyzeSnapshotTest].[snapshot].[PurgeRun]
+       WHERE [PurgeRunId]=@WaitPurge AND [BatchesExecuted]=1 AND [MetricRowsDeleted]=1)
+   OR NOT EXISTS(SELECT 1 FROM [SQLServerAnalyzeSnapshotTest].[snapshot].[CaptureRun] WHERE [CaptureRunId]=@WaitOld)
+   OR NOT EXISTS(SELECT 1 FROM [SQLServerAnalyzeSnapshotTest].[snapshot].[CaptureRun] WHERE [CaptureRunId]=@WaitFailed)
+   OR (SELECT MAX([CaptureRunId]) FROM [SQLServerAnalyzeSnapshotTest].[snapshot].[CaptureRun]
+       WHERE [CollectorCode]='WAIT_STATS' AND [EndedAtUtc] IS NOT NULL)<>@WaitFailed
+    THROW 53751,N'SC023_WAIT_RETENTION_FAILED_RUN_FENCE',1;
+
+-- Neither a newer Performance-Counter run nor an unfinalized Wait run releases the fence.
+INSERT [SQLServerAnalyzeSnapshotTest].[snapshot].[CaptureRun]
+([CollectorCode],[SchedulerType],[StartedAtUtc],[EndedAtUtc],[SourceDatabaseName],[ContractVersion],[StatusCode],[IsPartial])
+VALUES('PERFORMANCE_COUNTERS','MANUAL',@WaitCutoff,@WaitCutoff,N'ExampleWaitRetentionFramework',1,'AVAILABLE',0);
+SET @PerfExpired=CONVERT(bigint,SCOPE_IDENTITY());
+INSERT [SQLServerAnalyzeSnapshotTest].[snapshot].[CaptureRun]
+([CollectorCode],[SchedulerType],[StartedAtUtc],[SourceDatabaseName],[ContractVersion],[StatusCode],[IsPartial])
+VALUES('WAIT_STATS','MANUAL',SYSUTCDATETIME(),N'ExampleWaitRetentionFramework',1,'RUNNING',0);
+SET @WaitNew=CONVERT(bigint,SCOPE_IDENTITY());
+EXEC [SQLServerAnalyzeSnapshotTest].[snapshot].[InternalPurgeExpiredData]
+     @MaxBatches=10,@Force=1,@PurgeRunIdOut=@WaitPurge OUTPUT,@StatusCodeOut=@Status OUTPUT,
+     @BudgetExceededOut=@WaitBudget OUTPUT,@ErrorNumberOut=@Error OUTPUT,@ErrorMessageOut=@Message OUTPUT;
+IF COALESCE(@Status,'') NOT IN ('AVAILABLE','AVAILABLE_LIMITED') OR @Error IS NOT NULL
+   OR EXISTS(SELECT 1 FROM [SQLServerAnalyzeSnapshotTest].[snapshot].[CaptureRun] WHERE [CaptureRunId] IN(@WaitOld,@PerfExpired))
+   OR NOT EXISTS(SELECT 1 FROM [SQLServerAnalyzeSnapshotTest].[snapshot].[CaptureRun] WHERE [CaptureRunId]=@WaitFailed)
+   OR NOT EXISTS(SELECT 1 FROM [SQLServerAnalyzeSnapshotTest].[snapshot].[CaptureRun] WHERE [CaptureRunId]=@WaitNew AND [EndedAtUtc] IS NULL)
+    THROW 53752,N'SC023_WAIT_RETENTION_COLLECTOR_FINALIZED_BOUNDARY',1;
+
+-- A real finalization releases the previous fence. Children of the new fence still expire.
+INSERT [SQLServerAnalyzeSnapshotTest].[snapshot].[ModuleStatus]
+([CaptureRunId],[ModuleName],[CollectionTimeUtc],[StatusCode],[IsPartial])
+VALUES(@WaitNew,N'ExampleWaitRetentionFixture',@WaitCutoff,'AVAILABLE',0);
+INSERT [SQLServerAnalyzeSnapshotTest].[snapshot].[MetricSample]
+([CaptureRunId],[ScopeId],[MetricDefinitionId],[CollectedAtUtc],[ResetEpochId],[BigintValue],[QualityCode],[IsPartial])
+VALUES(@WaitNew,@ScopeId,@MetricId,@WaitCutoff,@WaitEpoch,2,'EXAMPLE_RETENTION_FIXTURE',0);
+EXEC [SQLServerAnalyzeSnapshotTest].[snapshot].[InternalFinalizeCollectionCycle]
+     @CaptureRunId=@WaitNew,@StatusCode='AVAILABLE',@IsPartial=0,@ErrorNumber=NULL,@ErrorMessage=NULL;
+UPDATE [SQLServerAnalyzeSnapshotTest].[snapshot].[CaptureRun]
+SET [StartedAtUtc]=DATEADD(SECOND,2,@WaitCutoff),[EndedAtUtc]=DATEADD(SECOND,2,@WaitCutoff)
+WHERE [CaptureRunId]=@WaitNew;
+EXEC [SQLServerAnalyzeSnapshotTest].[snapshot].[InternalPurgeExpiredData]
+     @MaxBatches=10,@Force=1,@PurgeRunIdOut=@WaitPurge OUTPUT,@StatusCodeOut=@Status OUTPUT,
+     @BudgetExceededOut=@WaitBudget OUTPUT,@ErrorNumberOut=@Error OUTPUT,@ErrorMessageOut=@Message OUTPUT;
+IF COALESCE(@Status,'') NOT IN ('AVAILABLE','AVAILABLE_LIMITED') OR @Error IS NOT NULL
+   OR EXISTS(SELECT 1 FROM [SQLServerAnalyzeSnapshotTest].[snapshot].[CaptureRun] WHERE [CaptureRunId]=@WaitFailed)
+   OR EXISTS(SELECT 1 FROM [SQLServerAnalyzeSnapshotTest].[snapshot].[MetricSample] WHERE [CaptureRunId]=@WaitNew)
+   OR EXISTS(SELECT 1 FROM [SQLServerAnalyzeSnapshotTest].[snapshot].[ModuleStatus] WHERE [CaptureRunId]=@WaitNew)
+   OR NOT EXISTS(SELECT 1 FROM [SQLServerAnalyzeSnapshotTest].[snapshot].[CaptureRun]
+       WHERE [CaptureRunId]=@WaitNew AND [EndedAtUtc] IS NOT NULL AND [MetricSampleCount]=1)
+    THROW 53753,N'SC023_WAIT_RETENTION_CHILD_EXPIRY_AND_FENCE_RELEASE',1;
+UPDATE [SQLServerAnalyzeSnapshotTest].[snapshot].[RetentionPolicy]
+SET [PurgeBatchRows]=1000 WHERE [RetentionPolicyCode]='DEFAULT';
+
 EXEC [monitor].[USP_ConfigureSnapshotTarget]
      @TargetDatabaseName=N'SQLServerAnalyzeSnapshotTest',@IsEnabled=0,@PrintMeldungen=0,
      @StatusCodeOut=@Status OUTPUT,@IsPartialOut=@Partial OUTPUT,
