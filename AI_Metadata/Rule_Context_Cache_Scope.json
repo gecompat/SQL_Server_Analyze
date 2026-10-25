@@ -1529,6 +1529,21 @@
       "source": "AI_Metadata/Internal_Documentation/Quality/Next_Steps.md",
       "target": "Documentation/Analysis_Guides/Procedures/USP_SsisExecutionComparison.md",
       "classification": "product-reference"
+    },
+    {
+      "source": "AI_Metadata/Internal_Documentation/Quality/Next_Steps.md",
+      "target": "AI_Metadata/Internal_Documentation/Architecture/File_IO_Snapshot_Dossier.md",
+      "classification": "product-reference"
+    },
+    {
+      "source": "AI_Metadata/Internal_Documentation/Quality/Development_Waves_2026-10.md",
+      "target": "AI_Metadata/Internal_Documentation/Architecture/File_IO_Snapshot_Dossier.md",
+      "classification": "product-reference"
+    },
+    {
+      "source": "AI_Metadata/Internal_Documentation/Architecture/Snapshot_Expansion_Dossier.md",
+      "target": "AI_Metadata/Internal_Documentation/Architecture/File_IO_Snapshot_Dossier.md",
+      "classification": "product-reference"
     }
   ]
 }
