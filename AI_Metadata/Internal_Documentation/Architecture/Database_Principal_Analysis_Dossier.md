@@ -1,7 +1,7 @@
 # Datenbankprincipals, direkte Rechte und sichtbare Loginbindungen
 
 **Stand:** 25. Oktober 2026.
-**Status:** Analyse und Schnittstellenvorschlag; nicht implementiert.
+**Status:** erster Datenbank-Implementierungskandidat; Produktreview und abschließende native Abnahme offen.
 **Artefakt-UID:** `urn:uuid:01a171d2-85e1-7474-be43-b3173fc4df92`.
 **Registrierung:** `DEFERRED`; keine zusätzliche lesbare Kennung vergeben.
 **Arbeitselement:** weiterer Teil von `WI-0012`; kein zusätzliches Arbeitselement für denselben Principal-Scope.
@@ -130,11 +130,53 @@ SID-Bindungen entstehen vor Kürzung,
 damit ein Ausgabelimit keine falschen fehlenden Bindungen erzeugt. Das Limit
 begrenzt die Ausgabe, nicht die vorgelagerte Katalogarbeit.
 
-`@LockTimeoutMs`, Standardausgabe, TABLE-Zuordnung, JSON-, Hilfe-, Print- und
-Status-/Fehler-OUTPUT-Parameter folgen dem abgestimmten Serverprincipal-Vertrag.
-Vor Implementierung werden Parameterdefaults, Statuswerte, Feldreihenfolge,
-Datentypen, Nullbarkeit und Textcollations im kanonischen Inventar fixiert.
-Diese Analyse ist noch kein eingefrorenes natives Schema.
+Der technische V1-Vertrag steht in den kanonischen Inventaren für
+[Parameter](../../../Metadata/Inventory/Parameters.csv) und
+[Resultsets](../../../Metadata/Inventory/ResultSets.csv). Die neun benannten
+Mengen besitzen dort feste Feldfolge, native Typen, Nullbarkeit und explizite
+Textcollations. Die 15 Parameter umfassen die drei Auswahlparameter sowie den
+bestehenden MaxZeilen-, Locktimeout-, Ausgabe-, JSON-, Hilfe-, Print- und
+Status-/Fehlervertrag. LockTimeoutMs bleibt 0 und ist von 0 bis 60000 zulässig;
+NULL ist ungültig. Diese Konkretisierung ist vor Implementierung unabhängig
+geprüft. Einzelquelle, Installer, Inventare, Navigator, Procedure-Seite und
+Vertrag 136 bilden nun den Produktkandidaten; seine abschließenden Gates bleiben
+erforderlich. Die bestehende Serverprocedure erhält im selben Principal-Scope
+eine Korrektur des positiven Locktimeoutpfads: SET und fachlicher Zugriff müssen
+im selben dynamischen Batch liegen. Ein vorher separat ausgeführtes SET wirkt
+nicht auf den anschließend ausgeführten Quellbatch.
+
+sourceStatus unterscheidet NATIVE, DERIVED und SELECTION über SourceKind.
+Die intern benötigte Serverprincipalsicht erhält ObservedRows, aber mangels
+eigenem Server-Fachresultset keine vorgetäuschte ReturnedRows-Menge. Eine
+ausgefallene Quelle besitzt unbekannte Mengen statt künstlicher Nullcounts.
+Abgeleitete Loginbindungen und Auswahlwarnungen bleiben von tatsächlich
+ausgeführten Katalogqueries getrennt. Nicht benötigte Quellen werden als
+SKIPPED erkennbar, ohne einen Quellenzugriff zu behaupten.
+
+Loginbindungen verwenden MATCHED_VISIBLE_LOGIN, NO_VISIBLE_LOGIN_MATCH,
+SOURCE_UNAVAILABLE, DATABASE_AUTHENTICATED und NOT_APPLICABLE. Benutzer mit
+DATABASE-Authentifizierung besitzen keinen fehlenden Login; andere vom
+INSTANCE-/SQL_USER-Vergleich ausgeschlossene Typen sind NOT_APPLICABLE.
+Der Ownerbefund ist ebenfalls nur eine sichtbare SID-Bindung und keine
+Ownership- oder Loginfähigkeitsgarantie über die Katalogaussage hinaus.
+
+OwnerBindingStatus folgt dieser Reihenfolge; die erste zutreffende Bedingung
+entscheidet. OwnerPrincipalId, OwnerName und OwnerPrincipalType bleiben außer
+bei den beiden ausdrücklich genannten einzelnen Treffern NULL.
+
+| OwnerBindingStatus | Bedingung und ausgegebene Identität |
+|---|---|
+| SOURCE_UNAVAILABLE | Zielkontextquelle oder benötigte Serverprincipalsicht ist fehlgeschlagen. Ein Quellenfehler wird nicht als fehlender Owner interpretiert. |
+| OWNER_SID_UNAVAILABLE | Beide Quellen wurden gelesen, aber owner_sid ist NULL oder leer; keine Identität wird geraten. |
+| AMBIGUOUS_VISIBLE_OWNER_MATCH | Mehrere sichtbare Serverprincipals besitzen die erfasste owner_sid; es wird kein beliebiger Owner ausgewählt. |
+| MATCHED_VISIBLE_OWNER | Genau ein sichtbarer SID-Treffer ist SQL_LOGIN (`S`) oder WINDOWS_LOGIN (`U`); seine ID, sein Name und sein Typ werden ausgegeben. |
+| UNSUPPORTED_PRINCIPAL_TYPE | Genau ein sichtbarer SID-Treffer besitzt einen anderen Typ. ID, Name und Typ bleiben als Katalogbefund sichtbar; eine gültige Ownereignung wird nicht behauptet. |
+| NO_VISIBLE_OWNER_MATCH | Kein sichtbarer SID-Treffer. Unvollständige Metadatensicht und Windowsbenutzer über Gruppen bleiben mögliche Ursachen; dies beweist keinen verwaisten oder ungültigen Owner. |
+
+Dieser SQL-Server-Vertrag löst weder Windowsgruppen auf noch prüft er die
+Ownereignung von Entra- oder anderen externen Identitäten. Die Bedingungen
+für eine Änderung des Owners sind kein aus einer SID-Gleichheit abgeleiteter
+Wirksamkeitsnachweis. Der Bericht führt selbst keine Owneränderung aus.
 
 Erwartete Parameter-/TABLE-Ablehnungen und gefangene äußere Fehler sollen
 regulär mit Status, Diagnose-OUTPUT und RETURN-Code zurückkehren; JSON bleibt
@@ -167,6 +209,21 @@ XACT_ABORT-Zustände, committable Ambienttransaktion und einen unabhängigen
 Sentinel. Erfolgs- und Fehlercleanup binden eigene Datenbanken, Principals,
 Rollen und Berechtigungen an ihre erfassten nativen Identitäten.
 
+Die Quellen prüfen ihre Zielbindung vor und nach jeder lokalen Abfrage anhand
+von ID, Name und erfasstem create_date. Abweichungen verwerfen die jeweilige
+Teilmenge mit DATABASE_UNAVAILABLE und dem lokalen Diagnosecode 51012. Die
+Fixture prüft den tatsächlich verwendeten Guard separat mit gültiger Bindung
+sowie abweichender ID, abweichendem Namen und abweichendem create_date. Dies
+ist ein Stufentest des Guards; ein zeitgleicher Rename-/Drop-Rennfall der
+vollständigen Procedure wird damit nicht als nachgewiesen ausgegeben.
+
+Die Fixture sichert konfigurierte und laufende Werte ihrer beiden
+Konfigurationsoptionen. Vorhandene ausstehende dynamische Änderungen führen
+vor jeder Mutation zum Abbruch. Die dokumentierten Standardnormalisierungen
+für min server memory (0/16) und max server memory (0/2147483647) gelten dabei
+nicht als ausstehende Änderungen. Eigentumsflags werden nach sp_configure vor
+RECONFIGURE gesetzt, damit auch dessen Fehler den Bereinigungsweg aktiviert.
+
 SQL Server 2025 bleibt die primäre Engine. Konkrete Unterschiede der älteren
 Securitykataloge und Berechtigungsmodelle werden gemäß
 [CI-Teststrategie](../../../Documentation/Quality/CI_Test_Strategy.md) auf den
@@ -182,9 +239,12 @@ Loginfähigkeit bleiben weitere ausdrücklich offene Teilumfänge.
 
 ## Primärquellen
 
+- Microsoft Learn: [Serverkonfigurationswerte und Standardnormalisierungen](https://learn.microsoft.com/en-us/sql/database-engine/configure-windows/server-configuration-options-sql-server?view=sql-server-ver17).
+
 - Microsoft Learn: [sys.database_principals](https://learn.microsoft.com/en-us/sql/relational-databases/system-catalog-views/sys-database-principals-transact-sql?view=sql-server-ver17).
 - Microsoft Learn: [sys.database_role_members](https://learn.microsoft.com/en-us/sql/relational-databases/system-catalog-views/sys-database-role-members-transact-sql?view=sql-server-ver17).
 - Microsoft Learn: [sys.database_permissions](https://learn.microsoft.com/en-us/sql/relational-databases/system-catalog-views/sys-database-permissions-transact-sql?view=sql-server-ver17).
 - Microsoft Learn: [sys.schemas](https://learn.microsoft.com/en-us/sql/relational-databases/system-catalog-views/schemas-catalog-views-sys-schemas?view=sql-server-ver17).
 - Microsoft Learn: [verwaiste Benutzerbindungen](https://learn.microsoft.com/en-us/sql/sql-server/failover-clusters/troubleshoot-orphaned-users-sql-server?view=sql-server-ver17).
 - Microsoft Learn: [Metadata Visibility Configuration](https://learn.microsoft.com/en-us/sql/relational-databases/security/metadata-visibility-configuration?view=sql-server-ver17).
+- Microsoft Learn: [ALTER AUTHORIZATION und Datenbankowner](https://learn.microsoft.com/en-us/sql/t-sql/statements/alter-authorization-transact-sql?view=sql-server-ver17).

@@ -216,3 +216,7 @@ Für einen Einstieg nach beobachtetem Problem verwenden Sie [Hier beginnen](Star
 ## Serverprincipals und direkte Berechtigungen
 
 - [USP_ServerPrincipalAnalysis](Procedures/USP_ServerPrincipalAnalysis.md) zeigt sichtbare Principals, direkte Rollen, explizite Serverrechte und Login-Policyflags.
+
+## Datenbankprincipals und direkte Berechtigungen
+
+- [USP_DatabasePrincipalAnalysis](Procedures/USP_DatabasePrincipalAnalysis.md) trennt sichtbare Rollen und Rechte von Schemaownership und begrenzten Loginbindungen.

@@ -820,3 +820,9 @@ EXEC [monitor].[USP_SsisPackageModelAnalysis] @Hilfe = 1;
 ```sql
 EXEC [monitor].[USP_ServerPrincipalAnalysis] @Hilfe=1;
 ```
+
+## `[monitor].[USP_DatabasePrincipalAnalysis]`
+
+```sql
+EXEC [monitor].[USP_DatabasePrincipalAnalysis] @Hilfe=1;
+```

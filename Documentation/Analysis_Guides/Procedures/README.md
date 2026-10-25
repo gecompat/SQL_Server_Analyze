@@ -175,3 +175,5 @@ Jede Seite weist jetzt Entscheidungseinsatz, Nichtziele, Resultset-Leserichtung,
 
 - [USP_SsisLegacyLogAnalysis](USP_SsisLegacyLogAnalysis.md)
 - [USP_ServerPrincipalAnalysis](USP_ServerPrincipalAnalysis.md)
+
+- [USP_DatabasePrincipalAnalysis](USP_DatabasePrincipalAnalysis.md) zeigt direkte Datenbankrechte und begrenzte sichtbare Identitätsbindungen.
