@@ -194,10 +194,27 @@ und die übrigen Evidenzgrenzen stehen im
 Damit ist der erste SQL-sichtbare Sicherheitsdurchstich von Rang 6 mit drei
 vertikalen Grundlieferungen abgeschlossen. WI-0012 bleibt für konkrete Objekt-/
 Spalten-/Statementrechte, fremde Principals und externe Identitätsprüfung offen.
-Als nächste ausführbare Grundlieferung folgt Rang 7 mit dem
+Darauf folgte Rang 7 mit dem
 [Endpoint-Dossier](../Architecture/Endpoint_Transport_Analysis_Dossier.md).
 Sein SQL-Scope umfasst Katalogzustände und beobachtete Verschlüsselungsflags;
 Hostkonfiguration, tatsächliche TLS-Version, Cipher und Zertifikatsvertrauen
-bleiben getrennte offene Evidenz. Nach unabhängigem Vertragsreview werden die
-konkreten Schemas und nativen Abnahmen vor der Implementierung festgelegt.
+bleiben getrennte offene Evidenz. Die konkreten Schemas und nativen Abnahmen
+wurden nach unabhängigem Vertragsreview vor der Implementierung festgelegt.
 Die bestehende funktionsbezogene autonome Freigabe wird nicht erneut angefragt.
+
+Der erste SQL-sichtbare Endpoint-/Transport-Slice ist über PR #443 als
+`52a699a6` integriert. Acht Head-Checks, das vollständige SQL2025-Gate und
+gezielte native SQL2019-Evidenz bestehen am Liefercommit `b7498890`.
+Das [Endpoint-Dossier](../Architecture/Endpoint_Transport_Analysis_Dossier.md)
+führt die tatsächlichen Nachweise und erhaltenen Grenzen. TLS-Version,
+Cipher, Zertifikatsvertrauen, externe Erreichbarkeit und positive HADR-/MARS-
+Verbindungsfälle werden nicht als abgeschlossen ausgegeben.
+
+Die separat aktive SSIS-Datenflusskorrelation bleibt bei ihrem Auftrag.
+Ein zusätzlicher SSIS-Vergleich benötigt einen freien, mit dessen Producer-
+und Consumerstand abgeglichenen Scope. Der nächste unabhängige Schritt ist
+Rang 10 mit dem [Snapshot-Dossier](../Architecture/Snapshot_Expansion_Dossier.md).
+Der Wait-Slice erhält native Rohwerte und ein ausdrücklich begrenztes
+Kontinuitätsmodell; ein Engine-Startwert allein beweist keinen ausbleibenden
+DBCC-Reset. Datei-I/O folgt mit eigener Identitätsabnahme. Vor Produktcode
+werden Feld-, Policy-, Versions- und Migrationsvertrag unabhängig geprüft.

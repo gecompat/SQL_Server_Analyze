@@ -51,15 +51,21 @@ stehen im [Datenbankprincipal-Dossier](../Architecture/Database_Principal_Analys
 Der erste Callerbericht ist über [PR #441](https://github.com/gecompat/SQL_Server_Analyze/pull/441)
 mit acht bestandenen Head-Checks sowie SQL2025- und gezielter nativer SQL2019-
 Abnahme integriert. Das [Callerrechte-Dossier](../Architecture/Caller_Permission_Analysis_Dossier.md)
-führt die tatsächlichen Nachweise und verbleibenden Grenzen. Die nächste
-vertikale Grundlieferung aus Rang 7 ist im
+führt die tatsächlichen Nachweise und verbleibenden Grenzen.
+
+Der erste Endpoint-/Transport-Slice von Rang 7 ist über
+[PR #443](https://github.com/gecompat/SQL_Server_Analyze/pull/443) mit acht
+bestandenen Head-Checks, vollständigem SQL2025-Gate und gezielter nativer
+SQL2019-Abnahme integriert. Das
 [Endpoint-Dossier](../Architecture/Endpoint_Transport_Analysis_Dossier.md)
-als SQL-sichtbarer Katalog-/Verschlüsselungsflag-Scope abgegrenzt. Die erste
-Implementierung mit sieben benannten Mengen und eigenem Vertrag 138 liegt
-vor. Unabhängiger Produktreview und lokale SQL2025-Fixture bestehen;
-gebundene Head-Gates und die gezielte native SQL2019-Abnahme bleiben bis zu
-ihrem tatsächlichen Abschluss offen. Host-/Handshake- und positive native
-HADR-/MARS-Verbindungsnachweise werden damit nicht behauptet.
+führt Nachweise und offene Host-/Handshake-/HADR-/MARS-Grenzen.
+
+Der separate SSIS-Auftrag arbeitet aktuell an Datenflusskorrelation. Der
+Gesamtauftrag übernimmt diesen Scope und die erhaltene SSISDB nicht. Der
+nächste unabhängige Rang 10 steht im
+[Snapshot-Dossier](../Architecture/Snapshot_Expansion_Dossier.md): zuerst
+Wait-Counter mit explizitem Kontinuitäts- und Resetmodell, danach Datei-I/O.
+Der genaue additive API-/Migrationsvertrag wird vor Implementierung geprüft.
 Bereits gelieferte Funktionen und die abgeschlossene STAT-DOMINANT-Diagnose
 werden nicht erneut entwickelt.
 
