@@ -82,6 +82,30 @@ Pflichtfelder pro Seite oder eine automatische Reviewkette.
 
 ## Validierung und offene Liefergates
 
+### Folgeassessment: autonome Entwicklungsplanung vom 25. Oktober 2026
+
+Der neue Gesamtauftrag verwendet die vorhandenen Selektoren und Gates. Die
+Änderungen an Next Steps und der aktuellen Entwicklungsplanung aktivieren
+weiterhin die vollständige statische Suite im Dokumentationsworkflow. Der
+konservative Fallback bleibt wegen der nicht vollständig zugeordneten
+Abhängigkeiten erhalten; lokal wird er erst am stabilen Lieferstand ausgeführt.
+`SelfTestMode Changed` vermeidet unveränderte Werkzeugselbsttests. Der separate
+Datenschutzscan und erforderliche Remotechecks bleiben verbindlich. Eine reine
+Planungsänderung startet keine SQL-Instanz und keine Labmatrix.
+
+Je kohärentem Schritt bleiben ein Implementierer und höchstens ein unabhängiger
+Reviewer mit konkretem Befundfolgecheck vorgesehen. Logs werden lokal auf
+Fehler, Mengen und Bindungen eingegrenzt; grüne Rohlogs lösen keine Modellarbeit
+aus. Die neue stündliche Leerlauferkennung gilt nur für den Gesamtauftrag und
+startet die separat laufenden SSIS-Wellen nicht erneut. Unveränderte Blocker
+bleiben still, gemeinsame Grenzen werden nicht durch Timer zurückgesetzt.
+Kosten- und Tokenmessung sind unbekannt; die
+[Entwicklungsplanung](../Quality/Development_Waves_2026-10.md) begrenzt stattdessen
+den fachlichen Umfang und die Zahl eigener PR-Schritte. Dieses Assessment
+ändert weder Selektorcode noch vorgeschriebene Review-, Sicherheits- oder
+Laufzeitgates. Eine Effizienzsteigerung in Tokens oder Laufzeit wird nicht
+behauptet.
+
 Die offizielle vollständige Foundationprüfung meldet 85 Informationen,
 keine Warnung und keinen Fehler. Der lokale Transferabgleich bestätigt mit
 108 Assertions die Featuredeckung, Schemafelder, Auswahl, Provenienz und

@@ -11,6 +11,15 @@ Diese Roadmap ordnet die langfristige Weiterentwicklung von SQL Server Analyze. 
 
 Der aktuelle ausführbare Schwerpunkt steht in [Nächste Arbeitsschritte](../Quality/Next_Steps.md). Produktstatus und Laufzeitevidenz bleiben in `Metadata/Quality/Implementation_Status.csv`, `Metadata/Inventory/Module_Maturity.csv` und den jeweils genannten Evidenzquellen maßgeblich. Neue technische Verträge entstehen erst in der Analyse- und Spezifikationsphase des jeweiligen Arbeitselements.
 
+Die [priorisierten Entwicklungswellen vom 25. Oktober 2026](../Quality/Development_Waves_2026-10.md)
+ersetzen für den neuen Gesamtauftrag die nachfolgenden älteren allgemeinen
+Aktivierungsfolgen. Die bereits separat gestarteten fünf SSIS-Paketwellen
+bleiben bei ihrem bisherigen Chat; die weitere Entwicklung beginnt unabhängig
+mit Berechtigungen und Login-Lifecycle. Bereits gelieferte Teilfunktionen
+werden anhand aktueller Produkt- und Evidenzquellen aus der offenen Arbeit
+ausgeschlossen. Fachverträge und historische Nachweise dieser Roadmap bleiben
+an ihren jeweiligen Umfang gebunden.
+
 ## Ausgangslage
 
 Der Frameworkkern umfasst 104 dokumentierte Procedures. Alle 104 Procedure-Seiten besitzen den Status `DEEP_REVIEWED` nach Reviewvertrag 3. Die P0-, P1- und P2-Spezialfallmatrix ist umgesetzt. Die wesentlichen offenen Arbeiten bestehen aus:

@@ -3,6 +3,27 @@
 **Stand:** 25. Oktober 2026
 **Zweck:** aktueller Auftragsstatus und historische Entwicklungswellen für `gecompat/SQL_Server_Analyze`
 
+## Aktueller Gesamtauftrag: priorisierte Entwicklungswellen
+
+Der Benutzer hat am 25. Oktober 2026 die Übernahme der priorisierten offenen
+Entwicklungen und deren autonome Umsetzung mit unabhängigen Reviews, Tests
+und regulärer PR-Integration nach `origin/main` beauftragt. Die maßgebliche
+[Entwicklungsplanung](Development_Waves_2026-10.md) führt Reihenfolge,
+Zuständigkeiten, Abschlussbedingungen und den nächsten ausführbaren Schritt.
+Sie ersetzt für diesen Auftrag ältere allgemeine Aktivierungsfolgen und
+Pausenhinweise, erhält jedoch deren historische Evidenz und konkrete Grenzen.
+
+Die fünf SSIS-Paketwellen bleiben beim bereits laufenden separaten
+SSIS-Chat. Dieser Gesamtauftrag startet dafür keine zweite Umsetzung und
+übernimmt weder dessen Branches noch dessen ausdrücklich erhaltenes Lab.
+Der neue stündliche Heartbeat gilt ausschließlich als letzte Instanz zur
+Leerlauferkennung des Gesamtauftrags; der bestehende SSIS-Heartbeat gehört
+weiterhin zum begrenzten SSIS-Auftrag.
+
+Der erste eigene Schritt integriert diese Planung und konkretisiert danach
+Rang 6, Berechtigungen und Login-Lifecycle. Bereits gelieferte Funktionen
+und die abgeschlossene STAT-DOMINANT-Diagnose werden nicht erneut entwickelt.
+
 ## Aktueller Auftrag: fünf SSIS-Paketwellen vom 25. Oktober 2026
 
 Der Benutzer hat fachliche Paketsichten, objektbezogene Regeln, belegte
