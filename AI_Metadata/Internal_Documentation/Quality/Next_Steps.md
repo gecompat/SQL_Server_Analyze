@@ -24,22 +24,38 @@ Der endliche Arbeitsumfang besteht aus fünf fachlichen Wellen und der
 vorhandenen Basisintegration, mit höchstens acht fachlichen PRs insgesamt.
 Je Welle arbeiten ein Implementierer und höchstens ein unabhängiger Reviewer;
 ein Folgeauftrag betrifft ausschließlich konkrete Befunde an geänderten Inputs.
+Welle 3 besitzt zusätzlich einen begrenzten unabhängigen Check und einen
+konkreten Befundfolgecheck der neu erforderlichen 950-Validatorausnahme. Die
+lokale Vertrauensentscheidung benötigt committierte Metadaten statt NOLOCK.
+Diese zusätzliche Frage entstand erst im statischen Gate; sie öffnet keinen
+weiteren Produktreview.
 Ein Checkpoint folgt nach jeder integrierten Welle. Weitere Reviews, breite
 Native-Versionsmatrizen und unveränderte Testwiederholungen benötigen einen
 konkreten Auslöser. Verlässliche Token- und Kostenmessung liegt nicht vor.
 
 1. Fachliche Paketsichten: als PR #425 nach vollständiger Head-CI regulär
    integriert (`9d0b018bc3a589e7ba20ae45e53ce425e2d94651`). Head- und
-   Mergebaum sind identisch. Der Main-Nachlauf ist ein getrennter, noch offener
-   Nachweis. Lokal sind 79 Prüfungen und der unabhängige Review mit einem
+   Mergebaum sind identisch. Der gesonderte Main-Nachlauf 40149167584
+   besteht ebenfalls. Lokal sind 79 Prüfungen und der unabhängige Review mit einem
    begrenzten Folgecheck abgeschlossen. Der mechanische Mergekonflikt erhielt
    den separaten Statistikdiagnoseauftrag aus PR #424 unverändert.
-2. Objektbezogene Regeln: lokal abgenommen. Der SQL2025-Linux-Harness besteht
-   83 Prüfungen einschließlich der zusätzlichen SQL-Gegenfälle. Unabhängiger
-   Review und ein Folgecheck schließen zwei Abwesenheitsbefunde. Die statische
-   Suite mit 74 Validatoren besteht; Head-CI und Integration sind noch offen.
-3. Herkunft und Paketversionsbindung: noch offen; keine selbst behauptete
-   Herkunft und keine Hash-Allowlist allein werden als verifiziert akzeptiert.
+2. Objektbezogene Regeln: PR #426 ist nach vollständiger Head-CI als
+   `9b301bca191b472b79d8cff5b100b37b1c7a40aa` integriert. Head-/Mergebaum
+   sind identisch; der Main-Nachlauf ist noch offen. Lokal sind 83 Prüfungen,
+   74 statische Validatoren sowie unabhängiger Review und ein Folgecheck
+   abgeschlossen; zwei Abwesenheitsbefunde sind geschlossen.
+3. Herkunft und Paketversionsbindung: aktiv. Ein optionaler lokaler Adapter
+   qualifiziert einen unabhängig freigegebenen Hostsnapshot und registriert
+   das konkrete validierte Modell über separate ALTER-Autorität. Native
+   Prüfung bindet exakten JSON-String, Originalbytes, Build und Laufzeitgrenze.
+   Der lokale SQL2025-Linux-Harness besteht 87 Prüfungen mit tatsächlichem
+   Windows-Hostsnapshot, reinen EXECUTE-Rechten, abgewiesenem verändertem
+   Modell und Eigentums-/Cleanup-Gegenfällen. Ein unabhängiger Review und ein
+   Folgecheck schließen vier Adapter-/Testbefunde. Head-CI und Integration
+   stehen noch aus. Der zusätzliche 950-Guard-Review und sein konkreter
+   Folgecheck sind ohne offene Befunde abgeschlossen. Die übrige lokale
+   statische Suite besteht; der ursprüngliche einzige 950-Befund ist durch
+   die eng gebundene Ausnahme mit positiven/negativen Selbsttests geschlossen.
 4. Design-/Laufzeitkorrelation: noch offen; ohne belegte Revision und eindeutige
    Objektbindung bleibt eine Zuordnung ausdrücklich unbewiesen.
 5. SQL-Metadatenprüfung: noch offen; ausschließlich ausdrückliche lokale
@@ -3628,3 +3644,15 @@ Erstellungszeit-gebundenen Empty-DB-Recoverybeleg, ohne darin gespeicherte
 zusätzliche native Nach-Abwesenheitsmenge; sein Originalfehler bleibt erhalten.
 Weitere native Läufe werden aus dem Liefergate nicht abgeleitet. Exakte
 Head-CI und reguläre PR-Integration sind vor dem Lieferabschluss noch offen.
+
+### Verarbeitungsaufwand der SSIS-Vertrauensausnahme
+
+Die Quelle an der eigenen Procedure benötigt READCOMMITTEDLOCK, damit ein
+uncommittierter Metadatenbeleg keine Trustfreigabe erzeugt. Die eng gebundene
+Ausnahme in Validator 950 besitzt positive und negative Selbsttests für Pfad,
+Quelle und Hint. Der vorhandene konservative Dokumentationsworkflow führt
+weiterhin seine statischen Gates aus; der zentrale Release-Runner löst das
+vollständige SQL2025-Gate aus. Es entsteht keine zusätzliche Engine-Matrix.
+Ein zusätzlicher begrenzter unabhängiger Check betrifft ausschließlich diese
+neue Sicherheits-/Validatorgrenze. Erfolgreiche Produktprüfungen werden dadurch
+nicht erneut semantisch reviewed. Token- und Geldaufwand sind UNKNOWN.

@@ -43,3 +43,9 @@ Die Modellanalyse bietet mit `@IncludeObjectRules=1` zusätzlich
 objektbezogene statische Hinweise. Die [Regelreferenz](Procedures/USP_SsisPackageModelAnalysis.md#objektbezogene-regeln)
 beschreibt ihre konkreten Belege und Abdeckungsgrenzen. Die Regeln
 interpretieren keine neuen Komponenten und berechnen keine Lineage.
+
+Eine [kontrollierte lokale Übergabe](Procedures/USP_SsisPackageModelAnalysis.md#kontrollierte-lokale-übergabe)
+kann den tatsächlichen Producerbuild und das konkrete Modellergebnis an die
+Originalpaketbytes binden. Der Betriebsweg benötigt ausdrücklich vorhandene
+Metadatenänderungsrechte des Zulieferers; gewöhnliche Analysecaller benötigen
+sie nicht. Ohne Übergabe-ID bleibt die Analyse eigenständig mit `UNVERIFIED`.

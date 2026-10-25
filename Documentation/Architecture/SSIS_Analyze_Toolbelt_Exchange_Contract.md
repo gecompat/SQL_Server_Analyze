@@ -430,3 +430,23 @@ Paketdigest, Bytebindungsstatus und Producervertrauen. Alle Hinweise bleiben
 `INFO` und `IMPORTED_STATIC`. Abwesenheitsprüfungen benötigen ausdrücklich
 vollständig gemeldete Inventar-/Graphabdeckung; die Producerbehauptung bleibt
 als solche erkennbar. Analyze ergänzt weder Profile noch Beziehungen.
+
+## Dritte Welle: qualifizierte lokale Übergabe
+
+Der native Importer unterstützt `@LocalHandoverId` nach dem
+[Übergabevertrag der Procedure](../Analysis_Guides/Procedures/USP_SsisPackageModelAnalysis.md#kontrollierte-lokale-übergabe).
+Der optionale externe Analyze-Zulieferadapter führt ausschließlich einen
+unabhängig freigegebenen Snapshot des bestehenden Toolbelt-Exporthosts aus.
+Er verwendet dessen kanonischen Parser unverändert und registriert das konkrete
+validierte Ergebnis über getrennte ALTER-Autorität an der Analyze-Procedure.
+Ein normaler EXECUTE-Caller kann daraus keinen eigenen Beleg erzeugen.
+
+Der lokale Vertrag bindet den exakten JSON-String, die Originalpaketbytes,
+den tatsächlichen Hostbuild, dessen Source-Commit und eine begrenzte Gültigkeit.
+`VERIFIED_LOCAL` bezeichnet diese kontrollierte lokale Übergabe; es bestätigt
+weder die semantische Richtigkeit des Modells noch eine Ausführungsrevision.
+Administratoren mit Änderungsrechten an der Procedure sind die explizite
+Vertrauenswurzel. Der Pfad führt keine Fernsignatur, Schlüsselregistrierung,
+CLR-Abhängigkeit oder automatische Berechtigungsänderung ein.
+Die [SQL-Server-Dokumentation](https://learn.microsoft.com/en-us/sql/relational-databases/system-stored-procedures/sp-addextendedproperty-transact-sql)
+beschreibt die Metadatenrechte der verwendeten Extended Properties.

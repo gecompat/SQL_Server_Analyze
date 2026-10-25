@@ -1,6 +1,13 @@
 # Releaseübersicht
 
 
+SSIS: Die optionale lokale Übergabe über `Invoke-SsisQualifiedHandover.ps1`
+und `@LocalHandoverId` bindet einen unabhängig freigegebenen Hostbuild und
+sein konkretes validiertes Modell an die Originalpaketbytes. Nur ein separat
+berechtigter Zulieferer registriert den zeitlich begrenzten Beleg. Analyze
+prüft ihn nativ; ohne Beleg bleibt `ProducerTrust=UNVERIFIED` erhalten.
+
+
 SSIS: `USP_SsisPackageModelAnalysis` ergänzt mit `@IncludeObjectRules=1`
 objektbezogene statische Hinweise. Knoten-/Kantenbezug, Paketbindung und
 Producervertrauen bleiben erhalten; Abwesenheitsprüfungen benötigen

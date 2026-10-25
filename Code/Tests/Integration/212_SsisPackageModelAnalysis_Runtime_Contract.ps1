@@ -7,7 +7,8 @@ param(
     [string]$ExpectedPath=(Join-Path $PSScriptRoot '../Fixtures/SSIS_Exchange/direct-8.expected.json'),
     [ValidateSet('linux','windows')][string]$Platform='linux',
     [ValidateSet('2019','2022','2025')][string]$Version='2025',
-    [string]$Patch='latest'
+    [string]$Patch='latest',
+    [string]$ProducerAssemblyPath=''
 )
 Set-StrictMode -Version Latest
 $ErrorActionPreference='Stop'
@@ -174,13 +175,42 @@ try {
     $ruleProbe=[IO.File]::ReadAllText((Join-Path $repositoryRoot 'Code/Tests/Integration/214_SsisObjectRules_Runtime_Contract.sql')) -replace 'USE \[DeineDatenbank\];',"USE [$database];"
     foreach($batch in [regex]::Split($ruleProbe,'(?im)^\s*GO\s*$')) {if($batch.Trim()){[void](Query $batch)}}
     Assert $true 'OBJECT_RULES_SQL_PROBE'
+    $handoverProbe=[IO.File]::ReadAllText((Join-Path $repositoryRoot 'Code/Tests/Integration/215_SsisLocalHandover_Runtime_Contract.sql')) -replace 'USE \[DeineDatenbank\];',"USE [$database];"
+    [void](Query 'CREATE USER [SyntheticSsisHandoverReader] WITHOUT LOGIN;')
+    $collisionRejected=$false
+    try {foreach($batch in [regex]::Split($handoverProbe,'(?im)^\s*GO\s*$')) {if($batch.Trim()){[void](Query $batch)}}}
+    catch {$collisionError=$_.Exception;while($collisionError.InnerException){$collisionError=$collisionError.InnerException};$collisionRejected=$collisionError -is [Data.SqlClient.SqlException] -and $collisionError.Number -eq 57406}
+    $retained=Query "SELECT COUNT(*) AS C FROM sys.database_principals WHERE name=N'SyntheticSsisHandoverReader';"
+    Assert ($collisionRejected -and $retained.Tables[0].Rows[0].C -eq 1) 'HANDOVER_COLLISION_PRESERVES_FOREIGN_USER'
+    [void](Query 'DROP USER [SyntheticSsisHandoverReader];')
+    foreach($batch in [regex]::Split($handoverProbe,'(?im)^\s*GO\s*$')) {if($batch.Trim()){[void](Query $batch)}}
+    Assert $true 'LOCAL_HANDOVER_SQL_PROBE'
+    if($ProducerAssemblyPath) {
+        $hostHash=(Get-FileHash -LiteralPath $ProducerAssemblyPath -Algorithm SHA256).Hash.ToLowerInvariant()
+        $hostCommit=($model|ConvertFrom-Json -Depth 32).producer.sourceCommit
+        $beforeSnapshots=@(Get-ChildItem -LiteralPath ([IO.Path]::GetTempPath()) -Directory -Filter 'ssis-qualified-handover-*' | ForEach-Object FullName)
+        $failedStart=$false
+        try {& (Join-Path $repositoryRoot 'Code/Tools/Invoke-SsisQualifiedHandover.ps1') -ProducerAssemblyPath $ProducerAssemblyPath -ExpectedBuildSha256 $hostHash -ExpectedSourceCommit $hostCommit -PackagePath $PackagePath -Connection $connection -DotnetPath 'synthetic-unavailable-dotnet-runtime' | Out-Null}
+        catch {$failedStart=$true}
+        $afterSnapshots=@(Get-ChildItem -LiteralPath ([IO.Path]::GetTempPath()) -Directory -Filter 'ssis-qualified-handover-*' | ForEach-Object FullName)
+        Assert ($failedStart -and @($afterSnapshots | Where-Object {$_ -notin $beforeSnapshots}).Count -eq 0) 'HANDOVER_FAILED_START_CLEANUP'
+        $handover=& (Join-Path $repositoryRoot 'Code/Tools/Invoke-SsisQualifiedHandover.ps1') -ProducerAssemblyPath $ProducerAssemblyPath -ExpectedBuildSha256 $hostHash -ExpectedSourceCommit $hostCommit -PackagePath $PackagePath -Connection $connection
+        $reinstall=[IO.File]::ReadAllText((Join-Path $repositoryRoot 'Code/10_SSIS/040_USP_SsisPackageModelAnalysis.sql')) -replace 'USE \[DeineDatenbank\];',"USE [$database];"
+        foreach($batch in [regex]::Split($reinstall,'(?im)^\s*GO\s*$')) {if($batch.Trim()){[void](Query $batch)}}
+        $handoverCommand=$connection.CreateCommand()
+        $handoverCommand.CommandText="DECLARE @Json nvarchar(max);EXEC [monitor].[USP_SsisPackageModelAnalysis] @PackageModelJson=@Model,@PackageBytes=@Bytes,@LocalHandoverId=@Id,@ResultSetArt='NONE',@JsonErzeugen=1,@Json=@Json OUTPUT;SELECT @Json;"
+        [void]$handoverCommand.Parameters.Add('@Model',[Data.SqlDbType]::NVarChar,-1);$handoverCommand.Parameters['@Model'].Value=$handover.PackageModelJson
+        [void]$handoverCommand.Parameters.Add('@Bytes',[Data.SqlDbType]::VarBinary,-1);$handoverCommand.Parameters['@Bytes'].Value=[byte[]]$handover.PackageBytes
+        [void]$handoverCommand.Parameters.Add('@Id',[Data.SqlDbType]::UniqueIdentifier);$handoverCommand.Parameters['@Id'].Value=$handover.LocalHandoverId
+        try {$verified=$handoverCommand.ExecuteScalar()|ConvertFrom-Json -Depth 32;if($verified.meta.statusCode -cne 'AVAILABLE_LIMITED'){Write-Output ('HANDOVER_STATUS='+$verified.meta.statusCode+' '+$verified.moduleStatus[0].ErrorMessage)};Assert ($verified.sourceBinding.Count -eq 1 -and $verified.sourceBinding[0].ProducerTrust -ceq 'VERIFIED_LOCAL') 'QUALIFIED_HOST_HANDOVER_AFTER_CREATE_OR_ALTER'} finally {$handoverCommand.Dispose()}
+    } else {Write-Output 'SSIS_QUALIFIED_HOST_HANDOVER_NOT_EXECUTED: ProducerAssemblyPath not supplied.'}
     $probe=[IO.File]::ReadAllText((Join-Path $repositoryRoot 'Code/Tests/Integration/213_SsisPackageViews_Runtime_Contract.sql')) -replace 'USE \[DeineDatenbank\];',"USE [$database];"
     foreach($batch in [regex]::Split($probe,'(?im)^\s*GO\s*$')) {if($batch.Trim()){[void](Query $batch)}}
     Assert $true 'PACKAGE_VIEWS_SQL_PROBE'
     $ciProbe=[IO.File]::ReadAllText((Join-Path $repositoryRoot 'Code/Tests/Integration/212_SsisPackageModelAnalysis_Runtime_Contract.sql')) -replace 'USE \[DeineDatenbank\];',"USE [$database];"
     foreach($batch in [regex]::Split($ciProbe,'(?im)^\s*GO\s*$')) {if($batch.Trim()){[void](Query $batch)}}
     Assert $true 'CANONICAL_CI_SQL_PROBE'
-    Write-Output "SSIS_MODEL_RUNTIME_PASS cases=$cases platform=$Platform version=$Version; Functional TLS; producer remains UNVERIFIED."
+    Write-Output "SSIS_MODEL_RUNTIME_PASS cases=$cases platform=$Platform version=$Version; Functional TLS; default producer UNVERIFIED; optional qualification separately asserted."
 } catch {
     Write-Output ('HARNESS_FAILURE Type='+$_.Exception.GetType().FullName+' Stack='+$_.ScriptStackTrace)
     $exception=$_.Exception
