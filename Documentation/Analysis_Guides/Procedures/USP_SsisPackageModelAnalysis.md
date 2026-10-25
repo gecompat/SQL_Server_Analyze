@@ -449,6 +449,13 @@ nutzbar; die Objektzusammenfassung bleibt leer und die Abdeckung nennt
 `UNPROVEN`. Der manuelle Windows-Test verwendet eigene synthetische
 Katalogobjekte in einer ausdrücklich vorhandenen SSISDB-Umgebung und entfernt
 nur diese Consumerobjekte. Er provisioniert oder entfernt keine Labumgebung.
+Der Testschalter `-IterationCases` ergänzt die mit dem SDK erzeugte For- und
+Foreach-NodeList-Fixture; `-LoggingLevel 1` beziehungsweise `3` wählt Basic
+oder Verbose. Nur der Testautor benötigt .NET Framework x64 sowie die
+passenden SDK-Assemblies `Microsoft.SqlServer.ManagedDTS.dll` und
+`Microsoft.SqlServer.ForEachNodeListEnumerator.dll`. Die native Abnahme dieser
+Erweiterung bezieht sich auf Windows SQL2025 und diese synthetischen Pakete;
+andere Engines und Enumeratorprofile werden dadurch nicht pauschal qualifiziert.
 
 ## Optionale lokale SQL-Metadatenprüfung
 

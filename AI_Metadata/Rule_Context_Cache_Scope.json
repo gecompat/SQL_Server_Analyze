@@ -1471,6 +1471,11 @@
       "classification": "product-reference"
     },
     {
+      "source": "AI_Metadata/Internal_Documentation/Quality/Next_Steps.md",
+      "target": "Documentation/Analysis_Guides/Procedures/USP_SsisPackageModelAnalysis.md",
+      "classification": "product-reference"
+    },
+    {
       "source": "AI_Metadata/Internal_Documentation/Architecture/Long_Term_Development_Roadmap.md",
       "target": "Documentation/Architecture/SSIS_Package_and_Execution_Analysis_Plan.md",
       "classification": "product-reference"
