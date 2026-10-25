@@ -33,7 +33,12 @@ Ein zusätzlicher begrenzter Integrationscheck prüft ausschließlich die
 zusammengeführten Wellen 4/5 und den neu benötigten nativen Consumer-Test.
 Auslöser sind die gemeinsamen Append-Schnittstellen und die ausdrückliche
 Freigabe eines frischen SSISDB-Labs; geschlossene Produktbefunde werden nicht
-erneut geprüft.
+erneut geprüft. Ein konkreter Cleanupbefund des nativen Tests ist mit drei
+I/O-isolierten Gegenproben und einem Befundfolgecheck geschlossen. Die erste
+echte Ausführung lieferte anschließend einen neuen fachlichen Befund zur
+unterschiedlichen SSISDB-Paket-/Ausführungspfadwurzel. Genau ein begrenzter
+Review dieser neuen Zuordnungsregel mit höchstens einem konkreten Folgecheck
+ist zusätzlich vorgesehen; dies öffnet keine allgemeinen Reviewschleifen.
 Ein Checkpoint folgt nach jeder integrierten Welle. Weitere Reviews, breite
 Native-Versionsmatrizen und unveränderte Testwiederholungen benötigen einen
 konkreten Auslöser. Verlässliche Token- und Kostenmessung liegt nicht vor.
@@ -67,34 +72,37 @@ konkreten Auslöser. Verlässliche Token- und Kostenmessung liegt nicht vor.
    Folgecheck sind ohne offene Befunde abgeschlossen. Die übrige lokale
    statische Suite besteht; der ursprüngliche einzige 950-Befund ist durch
    die eng gebundene Ausnahme mit positiven/negativen Selbsttests geschlossen.
-4. Design-/Laufzeitkorrelation: in Umsetzung. Der native Empfänger importiert
-   einen separat registrierten, modell- und paketgebundenen Katalogcapture.
-   Toolbelt liefert native IDs und beobachtete Paketpfade aus demselben Kern;
-   Analyze rekonstruiert keine Pfade und keine Lineage. Der zusammengeführte
-   SQL2025-Empfänger besteht 127 Harnessprüfungen; der synthetische
-   Transportvertrag besteht 19
-   Prüfungen einschließlich konkurrierendem Versionswechsel, großen IDs,
-   RAW-/JSON-Parität, Transaktionsabschluss, Registrierungsabbruch und
-   Erhaltung fremder Callertransaktionen. Dies ist keine SSISDB-Abnahme.
-   Der vorhandene öffentliche Windows-Consumerzugang des Labs wurde verwendet;
-   das erste Deployment eines eigenen synthetischen Projekts scheiterte mit SQL 15581.
-   Ein nutzbarer SSISDB-Masterkey ist nicht belegt. Die eigenen Ordner sind
-   entfernt; globale Schlüssel-, Trust- und Labkonfiguration blieben unverändert.
-   Eine Rückfrage zur vorhandenen freigegebenen Zugangs-/Secretreferenz ist
-   durch die nachfolgende Freigabe ersetzt. Der Benutzer hat ausdrücklich
-   einen frischen eigenen SSISDB-Labaufbau freigegeben. Ein öffentlicher
-   Prepared-Image-/Medienpfad läuft erhöht über Windows-UAC; genau ein eigener
-   Run wird für den Consumer angelegt und anschließend öffentlich entfernt.
-   Der alte Quellenblocker bleibt historisch erhalten.
-   Dokumentation und 74 statische Validatoren bestehen. Unabhängiger Review
-   und konkreter Folgecheck schließen den Registrierungsabbruchbefund; echte
-   Quellenabnahme bleibt offen; die erste Head-CI von Draft #428 besteht
-   einschließlich SQL2025-Funktionslauf 40159105545. Die Integration von Welle 5
-   benötigt eine neue aktuelle Head-Abnahme. Toolbelt PR #411
-   ist nach grüner Head-CI als `626283a51a569442e5a0cfb455fdf59e9be608d7`
-   integriert; der Mergebaum ist identisch. Main-Nachläufe 40159164066 und
-   40159164077 bestehen. Analyze Draft-PR #428 hält den gekoppelten
-   Quellenpfad bis zur echten SSISDB-Abnahme offen.
+4. Design-/Laufzeitkorrelation: lokal und nativ abgenommen; aktuelle Head-CI
+   und Integration von PR #428 bleiben erforderlich. Toolbelt liefert native
+   IDs und beobachtete Paketpfade aus demselben Kern. Analyze parst kein DTSX
+   und ergänzt keine Lineage; sein Empfänger bindet zwei beobachtete
+   Pfadwurzeln und unveränderte restliche Segmente innerhalb desselben Scopes.
+   127 SQL2025-Empfängerprüfungen, 19 synthetische Transportprüfungen und drei
+   I/O-isolierte Cleanupgegenproben bestehen. Diese Teilprüfungen bleiben von
+   der echten Quellenabnahme getrennt.
+   Der erste Zugriff auf die alte Quelle scheiterte beim Deployment mit SQL
+   15581. Dort wurden nur eigene Ordner entfernt; Schlüssel-/Trust-/Labzustand
+   blieben unverändert. Der Benutzer gab danach einen frischen öffentlichen
+   SSISDB-Labaufbau frei. SQL2025 und SSIS17 wurden im eigenen Prepared-Run
+   durch die Lab-API bereitgestellt. Der erste eigene Paketlauf bestätigte
+   SDK-GUIDs, Paketpfade und Originalbytes, offenbarte aber die zu strenge
+   Gleichheit von Paket- und Laufzeitwurzel. Der zweite Consumerlauf besteht
+   nach Korrektur und unabhängigem Review alle elf nativen Prüfungen:
+   echte Ausführung, SDK-Oracle, exakte Bytes, Objektkorrelation, Redeployment,
+   Ausschluss falscher aktueller Paketbytes und Gültigkeit früherer Captures
+   als zeitgebundene Evidenz. Eigene Consumerobjekte und die Analyze-Testdatenbank
+   sind nachgewiesen entfernt; private Evidenz bindet fünf aktuelle Quelldateien
+   ohne Abweichung. Die beiden frischen Consumerläufe bleiben verbraucht.
+   Registrierungs-, Cleanup- und BIN2-Befunde sind mit jeweils konkretem
+   Folgecheck geschlossen. Die erste Head-CI 40159105545 besteht; die neue
+   gemeinsame Fassung erhält eigene aktuelle Checks.
+   Toolbelt PR #411 ist nach grüner Head-CI als
+   `626283a51a569442e5a0cfb455fdf59e9be608d7` integriert; der Mergebaum ist
+   identisch. Main-Nachläufe 40159164066 und 40159164077 bestehen.
+   Der Benutzer will die neue SSISDB-Umgebung für weitere SSIS-Implementierung
+   ausdrücklich behalten. Sie bleibt als bewusst persistenter Testbestand
+   bereit; der Heartbeat darf sie nicht automatisch entfernen. Je Consumerlauf
+   werden ausschließlich dessen eigene Objekte nachgewiesen bereinigt.
 5. SQL-Metadatenprüfung: PR #429 ist nach vollständiger Head-CI als
    `fb89385376573cd6e3188beef2fd03f7de388bba` integriert. Head- und Mergebaum
    sind identisch; funktionale Head-CI 40159405306 besteht. Die Basis ist Welle 3.
@@ -110,6 +118,8 @@ Der angeforderte 30-Minuten-Heartbeat dient ausschließlich als letzte Instanz
 für Leerlauferkennung. Er startet keine parallele Umsetzung, setzt keine Budgets
 zurück und wiederholt keine semantische Arbeit an unveränderten Blockern.
 Nach Abschluss der fünf Wellen beginnt er keine weitere Entwicklung.
+Der auf Benutzerwunsch erhaltene Testbestand erteilt keinen neuen
+Entwicklungsauftrag und wird nicht durch einen Timer entfernt.
 
 ## Separater Auftrag: STAT-DOMINANT-Fehlerdiagnose (54901)
 
