@@ -40,6 +40,107 @@ def equal_rows(left, right, columns, label):
             f"THROW 53801,{g.lit('Binary value mismatch: '+label)},1;\n")
 
 
+def snapshot_schema_cases(deployed, tables):
+    """Exercise real canonical routes against a filled reconstructed V1 shape."""
+    target_tables=[t for t in tables if t.role=='SNAPSHOT']
+    schema=(ROOT/g.SNAPSHOT_SCHEMA_SOURCE).read_text(encoding='utf-8-sig')
+    direct='\n'.join(g.split_batches(schema))
+    standalone,_=g.generate_snapshot_target(ROOT)
+    routes=[('DIRECT',direct),('STANDALONE',standalone),('COMBINED',deployed)]
+
+    def shape(version):
+        out=[]
+        for table in target_tables:
+            if table.name not in g.SNAPSHOT_LEGACY_CHECKS:
+                continue
+            current,legacy=g.SNAPSHOT_LEGACY_CHECKS[table.name]
+            cname=next(n for n,k in table.constraints if k=='CHECK' and n in ('CK_snapshot_CollectorPolicy_CollectorCode','CK_snapshot_Scope_ScopeType'))
+            out.append(f'ALTER TABLE {table.object_name} DROP CONSTRAINT {g.q(cname)};\n'
+                       f'ALTER TABLE {table.object_name} WITH CHECK ADD CONSTRAINT {g.q(cname)} {legacy if version==1 else current};\n')
+        out.append("UPDATE snapshot.PackageVersion SET PackageVersion='1.0.0',SchemaVersion=1 WHERE PackageCode='SC-023';\n" if version==1 else
+                   "UPDATE snapshot.PackageVersion SET PackageVersion='1.1.0',SchemaVersion=2 WHERE PackageCode='SC-023';\n")
+        return ''.join(out)
+
+    def state(variable):
+        items=[]
+        for table in target_tables:
+            items.append('JSON_QUERY((SELECT '+binary_columns(table)+' FROM '+table.object_name+' ORDER BY '+g.q(table.columns[0])+" FOR JSON PATH,INCLUDE_NULL_VALUES)) AS "+g.q(table.name))
+        items += ["JSON_QUERY((SELECT name,type,create_date,modify_date FROM sys.objects WHERE schema_id=SCHEMA_ID(N'snapshot') ORDER BY object_id FOR JSON PATH,INCLUDE_NULL_VALUES)) AS objects",
+                  "JSON_QUERY((SELECT name,object_id,parent_object_id,definition,is_disabled,is_not_trusted,is_not_for_replication FROM sys.check_constraints WHERE schema_id=SCHEMA_ID(N'snapshot') ORDER BY object_id FOR JSON PATH,INCLUDE_NULL_VALUES)) AS checks",
+                  "JSON_QUERY((SELECT object_id,column_id,name,system_type_id,user_type_id,max_length,precision,scale,is_nullable,collation_name,is_identity FROM sys.columns WHERE object_id IN(SELECT object_id FROM sys.objects WHERE schema_id=SCHEMA_ID(N'snapshot')) ORDER BY object_id,column_id FOR JSON PATH,INCLUDE_NULL_VALUES)) AS columns",
+                  "JSON_QUERY((SELECT object_id,definition,uses_ansi_nulls,uses_quoted_identifier FROM sys.sql_modules WHERE object_id IN(SELECT object_id FROM sys.objects WHERE schema_id=SCHEMA_ID(N'snapshot')) ORDER BY object_id FOR JSON PATH,INCLUDE_NULL_VALUES)) AS modules",
+                  "JSON_QUERY((SELECT object_id,last_value FROM sys.identity_columns WHERE object_id IN(SELECT object_id FROM sys.objects WHERE schema_id=SCHEMA_ID(N'snapshot')) ORDER BY object_id FOR JSON PATH,INCLUDE_NULL_VALUES)) AS identities"]
+        return f'SET {variable}=(SELECT '+','.join(items)+' FOR JSON PATH,WITHOUT_ARRAY_WRAPPER);\n'
+
+    negatives=[
+        ('unknown version',"UPDATE snapshot.PackageVersion SET PackageVersion='9.9.9';",53935,"UPDATE snapshot.PackageVersion SET PackageVersion='1.0.0';"),
+        ('missing CHECK','ALTER TABLE snapshot.CollectorPolicy DROP CONSTRAINT CK_snapshot_CollectorPolicy_CollectorCode;',53908,"ALTER TABLE snapshot.CollectorPolicy WITH CHECK ADD CONSTRAINT CK_snapshot_CollectorPolicy_CollectorCode CHECK(CollectorCode='PERFORMANCE_COUNTERS');"),
+        ('disabled CHECK','ALTER TABLE snapshot.Scope NOCHECK CONSTRAINT CK_snapshot_Scope_ScopeType;',53908,'ALTER TABLE snapshot.Scope WITH CHECK CHECK CONSTRAINT CK_snapshot_Scope_ScopeType;'),
+        ('untrusted CHECK','ALTER TABLE snapshot.Scope NOCHECK CONSTRAINT CK_snapshot_Scope_ScopeType; ALTER TABLE snapshot.Scope CHECK CONSTRAINT CK_snapshot_Scope_ScopeType;',53908,'ALTER TABLE snapshot.Scope WITH CHECK CHECK CONSTRAINT CK_snapshot_Scope_ScopeType;'),
+        ('additional CHECK','ALTER TABLE snapshot.Scope ADD CONSTRAINT CK_ExampleAdditionalScope CHECK(ScopeId>0);',53908,'ALTER TABLE snapshot.Scope DROP CONSTRAINT CK_ExampleAdditionalScope;'),
+        ('additional column','ALTER TABLE snapshot.Scope ADD ExampleUnexpectedColumn int NULL;',53906,'ALTER TABLE snapshot.Scope DROP COLUMN ExampleUnexpectedColumn;'),
+        ('mixed domains',"ALTER TABLE snapshot.Scope DROP CONSTRAINT CK_snapshot_Scope_ScopeType; ALTER TABLE snapshot.Scope WITH CHECK ADD CONSTRAINT CK_snapshot_Scope_ScopeType CHECK([ScopeType] IN ('SERVER','PERFORMANCE_COUNTER','WAIT_TYPE'));",53908,shape(1)),
+        ('unknown enum',"ALTER TABLE snapshot.CollectorPolicy DROP CONSTRAINT CK_snapshot_CollectorPolicy_CollectorCode; ALTER TABLE snapshot.CollectorPolicy WITH CHECK ADD CONSTRAINT CK_snapshot_CollectorPolicy_CollectorCode CHECK(CollectorCode IN('PERFORMANCE_COUNTERS','EXAMPLE_UNSUPPORTED'));",53908,shape(1)),
+    ]
+    out=['USE '+g.q(TARGET)+';\nGO\nCREATE TABLE qa.SnapshotMigrationInput(Route varchar(16) PRIMARY KEY,SqlText nvarchar(max) NOT NULL);\n']
+    for label,route in routes:
+        out.append('INSERT qa.SnapshotMigrationInput VALUES('+g.lit(label)+','+g.lit(route)+');\n')
+    out.append('GO\n')
+    for label,route in routes:
+        call="DECLARE @SnapshotRouteSql nvarchar(max)=(SELECT SqlText FROM qa.SnapshotMigrationInput WHERE Route="+g.lit(label)+");\nEXEC sys.sp_executesql @SnapshotRouteSql;\n"
+        # Preserve every old table row, including typed/binary payloads and
+        # identity counters, rather than just a sample count.
+        out.append(shape(1)+'GO\n')
+        out.append(call+'GO\n')
+        out.append("IF NOT EXISTS(SELECT 1 FROM snapshot.PackageVersion WHERE PackageCode='SC-023' AND PackageVersion='1.1.0' AND SchemaVersion=2) THROW 53813,N'Snapshot V1 migration version mismatch.',1;\n")
+        for i,table in enumerate(tables,1):
+            if table.role=='SNAPSHOT' and table.name!='PackageVersion':
+                out.append(equal_rows(f'qa.Before_{i}',table.object_name,binary_columns(table),'Snapshot '+label+' V1 preservation '+table.name))
+            elif table.role=='SNAPSHOT':
+                out.append(equal_rows(f'qa.Before_{i}',table.object_name,'CONVERT(varbinary(max),PackageCode) AS PackageCode,CONVERT(varbinary(max),InstalledAtUtc) AS InstalledAtUtc','Snapshot '+label+' installed-at preservation'))
+        out.append('GO\nDECLARE @Before nvarchar(max),@After nvarchar(max);\n'+state('@Before'))
+        out.append(call+state('@After'))
+        # Repetition may update LastInstallerRunUtc; compare this explicitly
+        # normalized field while retaining every other data/metadata facet.
+        out.append("SET @Before=JSON_MODIFY(JSON_MODIFY(@Before,'$.PackageVersion[0].LastInstallerRunUtc',NULL),'$.objects',NULL); SET @After=JSON_MODIFY(JSON_MODIFY(@After,'$.PackageVersion[0].LastInstallerRunUtc',NULL),'$.objects',NULL);\n"
+                   "IF CONVERT(varbinary(max),@Before)<>CONVERT(varbinary(max),@After) THROW 53814,N'Snapshot repetition changed existing state.',1;\nGO\n")
+        if label=='STANDALONE':
+            out.append('SET XACT_ABORT ON; BEGIN TRANSACTION;\n')
+            out.append(negative(route,50000,'Snapshot standalone caller transaction',"IF @@TRANCOUNT<>1 OR XACT_STATE()<>1 OR (@@OPTIONS & 16384)=0 THROW 53817,N'Snapshot standalone changed caller transaction/options.',1; ROLLBACK TRANSACTION;"))
+            out.append('SET IMPLICIT_TRANSACTIONS ON;\n')
+            out.append(negative(route,50000,'Snapshot standalone implicit transactions',"IF @@TRANCOUNT<>0 OR (@@OPTIONS & 2)=0 THROW 53818,N'Snapshot standalone changed implicit transaction state.',1; SET IMPLICIT_TRANSACTIONS OFF;"))
+        if label=='DIRECT':
+            out.append(shape(1)+'GO\nBEGIN TRANSACTION;\n'+call)
+            out.append("IF @@TRANCOUNT<>1 OR XACT_STATE()<>1 THROW 53819,N'Direct Snapshot installer completed caller transaction.',1; ROLLBACK TRANSACTION;\n"
+                       "IF NOT EXISTS(SELECT 1 FROM snapshot.PackageVersion WHERE PackageVersion='1.0.0' AND SchemaVersion=1) THROW 53819,N'Direct Snapshot caller rollback failed.',1;\nGO\n")
+        out.append(shape(1)+'GO\n')
+        selected=negatives if label!='COMBINED' else [negatives[i] for i in (0,5,6)]
+        for case,arrange,error,restore in selected:
+            out.append(arrange+'\nGO\nDECLARE @Before nvarchar(max),@After nvarchar(max);\n'+state('@Before'))
+            out.append("DECLARE @SnapshotRouteSql nvarchar(max)=(SELECT SqlText FROM qa.SnapshotMigrationInput WHERE Route="+g.lit(label)+");\n")
+            out.append(f'BEGIN TRY EXEC sys.sp_executesql @SnapshotRouteSql; THROW 53815,{g.lit("Expected Snapshot rejection: "+label+" "+case)},1; END TRY\n'
+                       f'BEGIN CATCH IF ERROR_NUMBER()<>{error} THROW; END CATCH;\n')
+            out.append(state('@After')+"IF CONVERT(varbinary(max),@Before)<>CONVERT(varbinary(max),@After) OR @@TRANCOUNT<>0 THROW 53816,N'Rejected Snapshot route changed state.',1;\nGO\n"+restore+'\nGO\n')
+        out.append(shape(2)+'GO\n')
+    out.append("SELECT N'PASS' AS SnapshotSchemaMigration,N'3 real routes, 3 V1 upgrades, 3 repetitions, 19 shape/version rejections with preservation' AS Scope;\nGO\n")
+    return ''.join(out)
+
+
+def prepare_snapshot_schema_only():
+    sql,_=g.generate(ROOT,True)
+    _,tables,_=g.load_sources(ROOT,True)
+    deployed=configured(sql)
+    out=["USE master;\nGO\nSET QUOTED_IDENTIFIER ON; SET ANSI_NULLS ON; SET ANSI_PADDING ON; SET ANSI_WARNINGS ON; SET ARITHABORT ON; SET CONCAT_NULL_YIELDS_NULL ON; SET NUMERIC_ROUNDABORT OFF;\n",
+         f"IF DB_ID({g.lit(FRAMEWORK)}) IS NOT NULL OR DB_ID({g.lit(TARGET)}) IS NOT NULL THROW 53802,N'Regression requires absent dedicated test databases.',1;\n",
+         f'CREATE DATABASE {g.q(FRAMEWORK)} COLLATE SQL_Latin1_General_CP1_CS_AS;\nGO\nCREATE DATABASE {g.q(TARGET)} COLLATE Latin1_General_100_CS_AS;\nGO\n',deployed+'\nGO\nUSE '+g.q(TARGET)+';\nGO\nCREATE SCHEMA qa AUTHORIZATION dbo;\nGO\n']
+    out.append((ROOT/'Code/Tests/Integration/Deployment_Filled_Target.sql').read_text(encoding='utf-8-sig').replace('USE [DeineDatenbank];','USE '+g.q(TARGET)+';',1))
+    for i,table in enumerate(tables,1):
+        if table.role=='SNAPSHOT':
+            out.append(f'SELECT * INTO qa.Before_{i} FROM {table.object_name};\n')
+    out.append('GO\n'+snapshot_schema_cases(deployed,tables))
+    return ''.join(out)
+
+
 def prepare(packaged_installer=None):
     sql, info = g.generate(ROOT, True)
     if packaged_installer is not None:
@@ -168,7 +269,8 @@ def prepare(packaged_installer=None):
     old_columns=','.join('CONVERT(varbinary(max),'+g.q(c)+') AS '+g.q(c) for c in remaining)
     comparison=equal_rows('qa.BeforeOldWait','monitor_deployment.[ARCHIVE]',old_columns,'known old Wait shape')
     out.append('SET @Compare=REPLACE('+g.lit(comparison)+",N'[ARCHIVE]',QUOTENAME(@State)); EXEC sys.sp_executesql @Compare;\nGO\n")
-    out.append("SELECT N'PASS' AS DeploymentRuntimeContract,N'Fresh, filled all20, binary archives, custom/legacy/policy/identity and preflight rejection' AS Scope;\nGO\n")
+    out.append(snapshot_schema_cases(deployed,tables))
+    out.append("SELECT N'PASS' AS DeploymentRuntimeContract,N'Fresh, filled all20, binary archives, custom/legacy/policy/identity, Snapshot migration and preflight rejection' AS Scope;\nGO\n")
     return ''.join(out)
 
 
@@ -176,9 +278,12 @@ def main():
     parser=argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--output', type=Path, required=True)
     parser.add_argument('--packaged-installer', type=Path)
+    parser.add_argument('--snapshot-schema-only', action='store_true')
     args=parser.parse_args()
     args.output.parent.mkdir(parents=True,exist_ok=True)
-    args.output.write_text(prepare(args.packaged_installer),encoding='utf-8',newline='\n')
+    if args.snapshot_schema_only and args.packaged_installer:
+        parser.error('The focused local scope does not replace packaged full-deployment qualification.')
+    args.output.write_text(prepare_snapshot_schema_only() if args.snapshot_schema_only else prepare(args.packaged_installer),encoding='utf-8',newline='\n')
     print('Prepared native synthetic deployment regression:',args.output)
 
 

@@ -44,7 +44,7 @@ try {
     $generated = Join-Path $install 'generated'
     & (Join-Path $install 'Build-StandaloneInstaller.ps1') -RepositoryRoot $sourceRoot
     & (Join-Path $install 'Build-ExecutionPlanAnalysisInstaller.ps1') -RepositoryRoot $sourceRoot
-    & (Join-Path $install 'Build-SnapshotBaselineInstallers.ps1') -RepositoryRoot $sourceRoot
+    & (Join-Path $install 'Build-SnapshotBaselineInstallers.ps1') -RepositoryRoot $sourceRoot -PythonExecutable $PythonExecutable
     & (Join-Path $install 'Build-DeploymentInstaller.ps1') -RepositoryRoot $sourceRoot -PythonExecutable $PythonExecutable
     & (Join-Path $install 'Build-DeploymentInstaller.ps1') -RepositoryRoot $sourceRoot `
         -OutputPath (Join-Path $generated 'Deploy_All_WithSnapshotBaseline.generated.sql') `

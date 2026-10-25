@@ -558,3 +558,27 @@ Header. Die Ausnahme erweitert keine Datenbankauswahl oder Runtimeberechtigung.
 - Microsoft Learn: [Datei-I/O-Stats](https://learn.microsoft.com/en-us/sql/relational-databases/system-dynamic-management-objects/sys-dm-io-virtual-file-stats-transact-sql?view=sql-server-ver17).
 
 - Microsoft Learn: [Engine-Startkontext](https://learn.microsoft.com/en-us/sql/relational-databases/system-dynamic-management-objects/sys-dm-os-sys-info-transact-sql?view=sql-server-ver17).
+
+
+## Schema-2-Implementierungskandidat
+
+Der aktuelle Änderungskandidat enthält ausschließlich die vorgeschaltete
+Migration und ihre drei Installationswege. Lokal bestehen auf SQL2025 die
+frische Installation, die Wiederholung und das Upgrade aus dem zuvor gesicherten
+tatsächlichen 1.0.0-Targetskript mit erhaltenen Counterdaten und Policies.
+Der fokussierte native Deploymentvertrag besteht für drei gefüllte V1-Upgrades,
+drei Wiederholungen und 19 gezielte Versions-/Strukturablehnungen. Die neuen
+Callertransaktionsfälle werden getrennt nachgeprüft. Eine frühere Fixture-
+Wiederherstellung versuchte einen fehlenden CHECK erneut zu löschen; dieser
+Testfehler ist korrigiert. Der separate frühere 1222 vor Migration bleibt ohne
+behauptete Sperrursache sichtbar.
+
+Die eigene native Sch-S-Abnahme besteht mit dem tatsächlichen kanonischen
+Targetbatch auf SQL Server 2025, ProductVersion 17.0.4075.5. Der erste CHECK-
+Austausch ist über CompletedStage=1 belegt, der zweite Schritt scheitert mit
+1222. Alle zehn Tabellendaten und CHECK-Definitionen bleiben nach Rollback
+unverändert; die anschließende Wiederholung migriert erfolgreich. Cleanup
+bestätigt die Entfernung der eigenen Container- und Volumeressourcen.
+Das ist eine lokale Abnahme des benannten Kandidaten, kein Main-, PR- oder
+SQL2019-Nachweis. Unabhängiger Produktreview, vollständiges SQL2025-Gate,
+gezielte native SQL2019-Abnahme und reguläre PR-Integration bleiben offen.

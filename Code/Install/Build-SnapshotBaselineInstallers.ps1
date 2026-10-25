@@ -3,7 +3,8 @@ param(
     [string]$RepositoryRoot = (Resolve-Path (Join-Path $PSScriptRoot '../..')),
     [string]$OutputDirectory = (Join-Path $PSScriptRoot 'generated'),
     [string]$FrameworkOutputPath,
-    [string]$TargetOutputPath
+    [string]$TargetOutputPath,
+    [string]$PythonExecutable = 'python'
 )
 
 Set-StrictMode -Version Latest
@@ -137,8 +138,13 @@ if ([IO.Path]::GetFullPath($FrameworkOutputPath) -eq [IO.Path]::GetFullPath($Tar
     throw 'Framework and target output paths must be different.'
 }
 
+# The target must stop at the first failed preflight across every canonical
+# module compilation boundary; GO concatenation cannot provide this guarantee.
+$generator = Join-Path $PSScriptRoot 'deployment_generator.py'
+& $PythonExecutable $generator --repository-root $RepositoryRoot `
+    --snapshot-target-standalone --output $TargetOutputPath
+if ($LASTEXITCODE -ne 0) { throw 'SC023_TARGET_STANDALONE_BUILD_FAILED' }
 Write-GeneratedInstaller -Path $FrameworkOutputPath -Content $framework.Text
-Write-GeneratedInstaller -Path $TargetOutputPath -Content $target.Text
 
 Write-Host (
     "Generated $FrameworkOutputPath from $($framework.Files.Count) canonical SQL files and " +

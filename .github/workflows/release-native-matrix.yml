@@ -13,6 +13,11 @@ on:
           - '2019'
           - '2022'
           - '2025'
+      snapshot_risk_gate:
+        description: 'Also qualify packaged Snapshot and migration contracts on one explicit native target'
+        required: false
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -34,6 +39,10 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          if [ '${{ inputs.snapshot_risk_gate }}' = 'true' ] && [ '${{ inputs.target }}' = 'all' ]; then
+            echo 'Snapshot risk qualification requires one explicit native target.'
+            exit 1
+          fi
           case '${{ inputs.target }}' in
             all)
               matrix='{"include":[{"version":"2019","major":"15","compatibility":"150","image":"mcr.microsoft.com/mssql/server:2019-latest","container":"sqlserver-analyze-native-2019","permission_test":"Permissions/110_SQL_Server_2019_Permission_Matrix.sql","regex":false},{"version":"2022","major":"16","compatibility":"160","image":"mcr.microsoft.com/mssql/server:2022-latest","container":"sqlserver-analyze-native-2022","permission_test":"Permissions/110_SQL_Server_2022_Permission_Matrix.sql","regex":false},{"version":"2025","major":"17","compatibility":"170","image":"mcr.microsoft.com/mssql/server:2025-latest","container":"sqlserver-analyze-native-2025","permission_test":"Permissions/110_SQL_Server_2022_Permission_Matrix.sql","regex":true}]}'
@@ -133,7 +142,7 @@ jobs:
           cp -R "$release_root/Code" "$RUNNER_TEMP/Code"
           find "$RUNNER_TEMP/Code" -type f -name '*.sql' -print0 \
             | xargs -0 perl -pi -e 's/\[DeineDatenbank\]/[SQLServerAnalyzeTest]/g'
-          if [ '${{ matrix.version }}' = '2025' ]; then
+          if [ '${{ matrix.version }}' = '2025' ] || [ '${{ inputs.snapshot_risk_gate }}' = 'true' ]; then
             python3 "$release_root/Code/Tests/Integration/Deployment_Prepare_Runtime.py" \
               --packaged-installer "$release_root/Code/Install/generated/Deploy_All_WithSnapshotBaseline.generated.sql" \
               --output "$RUNNER_TEMP/Code/Install/generated/Deployment_Runtime.generated.sql"
@@ -375,8 +384,8 @@ jobs:
             "$SQLCMD_PATH" -S localhost -U sa -C -b \
             -i VersionAdaptive/120_SQL_Server_2025_Regex_Matrix.sql >/dev/null
 
-      - name: Run SQL Server 2025 packaged deployment and preservation contracts
-        if: matrix.regex == true
+      - name: Run selected packaged deployment and preservation contracts
+        if: matrix.regex == true || inputs.snapshot_risk_gate
         shell: bash
         env:
           SQLSERVER_CONTAINER: ${{ matrix.container }}
@@ -395,8 +404,8 @@ jobs:
           execute -Q "IF NOT EXISTS(SELECT 1 FROM SQLServerAnalyzePackageDeployment.monitor.FrameworkVersion WHERE FrameworkVersion='1.1.2') THROW 50002,N'PACKAGE_DEPLOYMENT_VERSION',1;" >/dev/null
           execute -i generated/Deployment_Runtime.generated.sql >"$RUNNER_TEMP/deployment-regression.log" 2>&1
 
-      - name: Run SQL Server 2025 packaged Snapshot and concurrency contracts
-        if: matrix.regex == true
+      - name: Run selected packaged Snapshot and concurrency contracts
+        if: matrix.regex == true || inputs.snapshot_risk_gate
         shell: bash
         env:
           SQLSERVER_CONTAINER: ${{ matrix.container }}
@@ -407,7 +416,7 @@ jobs:
               --workdir /work/Code/Install "$SQLSERVER_CONTAINER" \
               "$SQLCMD_PATH" -S localhost -U sa -C -b "$@"
           }
-          execute -Q "CREATE DATABASE [SQLServerAnalyzeSnapshotTest] COLLATE Latin1_General_100_CI_AS; ALTER DATABASE [SQLServerAnalyzeSnapshotTest] SET COMPATIBILITY_LEVEL=170;" >/dev/null
+          execute -Q "CREATE DATABASE [SQLServerAnalyzeSnapshotTest] COLLATE Latin1_General_100_CI_AS; ALTER DATABASE [SQLServerAnalyzeSnapshotTest] SET COMPATIBILITY_LEVEL=${{ matrix.compatibility }};" >/dev/null
           execute -i ../Tests/Integration/195_SnapshotBaseline_Runtime_Contract.sql >"$RUNNER_TEMP/snapshot.log" 2>&1
           execute -i ../Tests/Integration/196_SnapshotBaseline_Concurrency_Holder.sql >"$RUNNER_TEMP/snapshot-holder.log" 2>&1 &
           holder_pid=$!
@@ -466,6 +475,7 @@ jobs:
         env:
           TARGET_VERSION: ${{ matrix.version }}
           PACKAGE_SHA256: ${{ needs.package.outputs.sha256 }}
+          SNAPSHOT_RISK_GATE: ${{ inputs.snapshot_risk_gate }}
         run: |
           set -euo pipefail
           python3 - <<'PY'
@@ -478,6 +488,7 @@ jobs:
               target=os.environ['TARGET_VERSION'], executed_suites=34,
               release_gate='PASS', permission_matrix='PASS', cleanup='PASS',
               extra_2025_contracts='PASS' if os.environ['TARGET_VERSION']=='2025' else 'NOT_APPLICABLE',
+              snapshot_and_migration_contracts='PASS' if os.environ['TARGET_VERSION']=='2025' or os.environ['SNAPSHOT_RISK_GATE']=='true' else 'NOT_APPLICABLE',
               run_url='https://github.com/'+os.environ['GITHUB_REPOSITORY']+'/actions/runs/'+os.environ['GITHUB_RUN_ID'])
           payload = json.dumps(metadata, indent=2)+'\n'
           assert len(payload.encode()) < 65536

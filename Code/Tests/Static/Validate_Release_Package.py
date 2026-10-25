@@ -69,7 +69,7 @@ def canonical_installers(root):
             ('Build-DeploymentInstaller.ps1', ['-OutputPath', str(destination/INSTALLERS[1]),
                                              '-PythonExecutable', sys.executable]),
             ('Build-ExecutionPlanAnalysisInstaller.ps1', ['-OutputPath', str(destination/INSTALLERS[2])]),
-            ('Build-SnapshotBaselineInstallers.ps1', ['-OutputDirectory', str(destination)]),
+            ('Build-SnapshotBaselineInstallers.ps1', ['-OutputDirectory', str(destination), '-PythonExecutable', sys.executable]),
             ('Build-DeploymentInstaller.ps1', ['-OutputPath', str(destination/INSTALLERS[5]),
                                              '-IncludeSnapshotBaseline', '-PythonExecutable', sys.executable]),
         ]

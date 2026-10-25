@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import collections
+import importlib.util
 import pathlib
 import re
 import sys
@@ -11,6 +12,20 @@ import sys
 
 ROOT = pathlib.Path(__file__).resolve().parents[3]
 CODE = ROOT / "Code"
+
+
+def verified_snapshot_installer_text(text: str) -> str:
+    """Privileged native reference DDL is an installer-only trust boundary.
+
+    The exact derived block is checked against the complete canonical model;
+    no analysis path or arbitrary metadata query gains an exemption.
+    """
+    spec=importlib.util.spec_from_file_location('snapshot_deployment_guard',ROOT/'Code/Install/deployment_generator.py')
+    module=importlib.util.module_from_spec(spec)
+    sys.modules[spec.name]=module
+    spec.loader.exec_module(module)
+    module.load_sources(ROOT,True)
+    return module.snapshot_guard_parts(text)[0]
 
 FORBIDDEN_METADATA_FUNCTIONS = (
     "OBJECT_ID",
@@ -206,6 +221,13 @@ for path in sorted(CODE.rglob("*.sql")):
 
     relative = path.relative_to(ROOT)
     text = path.read_text(encoding="utf-8-sig")
+    if relative.as_posix()=="Code/10_SnapshotBaseline/030_Snapshot_Target_Schema.sql":
+        try:
+            text=verified_snapshot_installer_text(text)
+        except (ValueError,OSError) as error:
+            errors.append(f"{relative}: unverified native Snapshot preflight: {error}")
+            # Retain all ordinary checks on the remaining source. A malformed
+            # block can never turn this validator green.
     is_test_source = "Tests" in relative.parts
     if relative.as_posix() == SNAPSHOT_FIXTURE:
         fixture_issues = controlled_fixture_errors(text)

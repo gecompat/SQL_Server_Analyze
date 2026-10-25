@@ -252,6 +252,12 @@ Die tatsächlich erforderlichen Rechte hängen vom aufgerufenen Modul ab. Das Fr
 
 ### Optional: persistentes Snapshot-/Baseline-Paket SC-023
 
+Der aktuelle Repositorystand enthält eine zusätzliche Schema-2-Migration.
+Für einen lokalen Neubau gelten dessen
+[Targetversion, Installationsrechte und Transaktionsvoraussetzungen](../Architecture/Snapshot_Baseline_Package_Contract.md#installation).
+Die bereits veröffentlichte Produkt-ZIP bleibt an ihren ursprünglichen
+Commit und Paketstand gebunden.
+
 Der Kerninstaller installiert keine Snapshot-/Baseline-Persistenz. Nach erfolgreicher
 Kerninstallation ergänzen Sie das optionale Paket aus derselben ZIP:
 

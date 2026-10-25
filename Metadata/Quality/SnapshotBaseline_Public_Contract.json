@@ -3,7 +3,11 @@
   "contractVersion": 1,
   "releaseState": "IMPLEMENTED_ACTIONS_GATE",
   "minimumSqlServerMajorVersion": 15,
-  "targetSqlServerMajorVersions": [15, 16, 17],
+  "targetSqlServerMajorVersions": [
+    15,
+    16,
+    17
+  ],
   "packageBoundary": {
     "statelessCoreInstaller": "Code/Install/Install_All.sql",
     "frameworkInstaller": "Code/Install/Install_SnapshotBaseline_Framework.sql",
@@ -38,7 +42,11 @@
     "purgeBatchRows": 10000,
     "budgetAction": "PURGE_EXPIRED_THEN_STOP"
   },
-  "schedulerTypes": ["MANUAL", "EXTERNAL", "SQL_AGENT"],
+  "schedulerTypes": [
+    "MANUAL",
+    "EXTERNAL",
+    "SQL_AGENT"
+  ],
   "statusCodes": [
     "AVAILABLE",
     "PARTIAL",
@@ -61,5 +69,13 @@
     "Repository fixtures and failure summaries contain synthetic generic values only."
   ],
   "runtimeContract": "Code/Tests/Integration/195_SnapshotBaseline_Runtime_Contract.sql",
-  "matrixWorkflow": ".github/workflows/snapshot-baseline-release-gate.yml"
+  "matrixWorkflow": ".github/workflows/release-native-matrix.yml",
+  "targetPackageVersion": "1.1.0",
+  "targetSchemaVersion": 2,
+  "acceptedTargetUpgrade": {
+    "packageVersion": "1.0.0",
+    "schemaVersion": 1,
+    "requiresExactManagedShape": true,
+    "preservesExistingRows": true
+  }
 }

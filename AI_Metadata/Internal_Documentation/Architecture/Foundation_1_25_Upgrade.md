@@ -190,3 +190,37 @@ von späteren CREATE-OR-ALTER-Quellen entkoppeln. Der folgende Produktdiff
 muss einen gemeinsamen abbrechenden Rahmen und einen negativen Erhaltungs-
 nachweis für diesen konkreten Weg liefern. Bestehende eigene Caller-
 transaktionen werden vor Veränderung der Transaktionsoptionen abgelehnt.
+
+
+### Schema-2-Implementierung und begrenzte native Prüfung
+
+Die privilegierte Targetvorprüfung wird aus demselben nativen Referenzmodell
+wie das Gesamtdeployment erzeugt. Der Metadatenvalidator prüft diesen einen
+markierten Block auf exakte Synchronität, bevor er ihn von den allgemeinen
+Analyse-NOLOCK-Regeln ausnimmt. Außerhalb dieses Blocks und in sämtlichen
+Analysepfaden bleiben diese Regeln erhalten. CONTROL DATABASE und VIEW ANY
+DEFINITION sind ausdrückliche Installationsvoraussetzungen.
+
+Die native Strukturprüfung darf committed Katalogmetadaten mit maximal
+10000 ms Sperrwartezeit je Statement lesen. Sie hält die geprüften Tabellen
+bis zum Abschluss derselben Transaktion; die anschließende eigene DDL
+verwendet weiterhin LOCK_TIMEOUT 0. Ein erster negativer Lauf mit Wartezeit 0
+brach bereits vor der Migration mit 1222 ab; eine Sperrursache ist nicht
+belegt. Dieser begrenzte Installerpfad verwendet deshalb die bestehende
+Wartegrenze des Gesamtdeployments, ohne eine globale Lockerung für Analysen.
+Die Fälle müssen weiterhin den vorgesehenen Strukturkonflikt und unveränderte
+Daten nachweisen; ein beliebiger Timeout wird nicht als passende Ablehnung
+gewertet.
+
+Der vorhandene Deploymentregressionstest erhält drei tatsächliche Routen,
+je ein gefülltes V1-Upgrade und eine Wiederholung sowie 19 gezielte negative
+Zustände. Die bestehenden Binärvergleiche und gemeinsamen Targetfixtures
+werden wiederverwendet. Lokale Befundkorrekturen verwenden danach den
+fokussierten Snapshotumfang; der vollständige SQL2025-Abschluss bleibt für
+den stabilen Lieferstand erforderlich. Die gemeinsame native Source-DDL wird
+im erzeugten Test einmal als eigener Input gespeichert, statt große identische
+Installertexte für jeden Negativfall erneut einzubetten. Der gesonderte
+Sch-S-Fall benötigt ausschließlich eine eigene Labinstanz und prüft die
+unveränderte kanonische SUT einschließlich erstem DDL-Abschluss, Rollback und
+Recovery. Ausgeführt und qualifiziert wird nur der später tatsächlich belegte
+Umfang; diese Beschreibung ist keine Erfolgsbehauptung.
