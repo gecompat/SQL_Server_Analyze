@@ -43,6 +43,37 @@ oder Veröffentlichungen sind durch diesen Abschluss nicht freigegeben.
 
 ## STAT-DOMINANT-Diagnose (54901)
 
+### Abschluss mit PR #424
+
+[PR #424](https://github.com/gecompat/SQL_Server_Analyze/pull/424) ist als
+`17a6ff0298d9cf2b1754e76a8c0786e8402ba72c` integriert. Alle sieben Head-Checks
+bestehen auf `e8113f0b5486fcaabe8c6b0a0e747b4f927139d2`; die
+[Head-Abnahme 40147540255](https://github.com/gecompat/SQL_Server_Analyze/actions/runs/40147540255)
+bestand im ersten und einzigen Versuch. Zwei Durchgänge desselben unabhängigen
+Reviewers schließen die Befunde mit zusammen vier gebuchten aktiven Minuten.
+
+Die vier automatischen Main-Workflows bestehen jeweils im ersten Versuch auf
+dem Merge-Commit, einschließlich der [funktionalen Main-Abnahme 40148210140](https://github.com/gecompat/SQL_Server_Analyze/actions/runs/40148210140).
+Deployment-Regression, Test 175 mit acht bisherigen Fachfällen und zwölf
+synthetischen Diagnoseproben sowie Functional Gate bestehen auf SQL Server
+2025/CL170. Head- und Merge-Tree sind identisch. Diese Nachweise qualifizieren
+die genannten Revisionen und werden nicht auf spätere Commits umgebunden.
+
+Die Diagnoselieferung ist abgeschlossen. Der ursprüngliche Fehler aus dem
+Main-Lauf 40124510785 bleibt mit Ursache UNKNOWN erhalten; die Proben sind
+keine Reproduktion dieses Fehlers. Die [Abschluss- und Verbrauchsangaben](Next_Steps.md#abgeschlossen-diagnose-aus-pr-424)
+halten drei Dateien, 196 Handzeilen, zwei Offlineblöcke, zwei Reviews, einen
+gebündelten Korrekturpass und eine Head-Abnahme fest. Historische Nachweise,
+Budgets und Releaseartefakte bleiben erhalten. Diese Dokumentationsnachführung
+erneuert keine Budgets und erteilt keine weitere Lauf- oder Veröffentlichungsfreigabe.
+Die übrige autonome Verarbeitung bleibt pausiert.
+
+### Historischer Diagnosevertrag und damalige Abnahme
+
+Die folgenden Angaben beschreiben den Stand vor der Abnahme. Das damals noch
+ausstehende Ergebnis ist oben mit den tatsächlichen Nachweisen abgeschlossen;
+der Diagnosevertrag und die historischen Grenzen bleiben erhalten.
+
 Der historische [Main-Lauf 40124510785](https://github.com/gecompat/SQL_Server_Analyze/actions/runs/40124510785)
 scheiterte in Test 175 mit 54901; die Ursache bleibt UNKNOWN. Die gesonderte
 Freigabe und ihre festen Grenzen stehen in [Next_Steps.md](Next_Steps.md#freigegeben-stat-dominant-fehlerdiagnose-54901).
