@@ -3964,10 +3964,21 @@ verantwortet die Auswertung gebundener Phasen und Transfers. Das zusätzlich
 benötigte Lookup-No-Match-Profil verbleibt im kanonischen Toolbelt-Kern.
 Parser und Lineage werden nicht dupliziert; Analyze bleibt CLR-frei.
 
-Die Umsetzung und ihre gezielten Vertragsprüfungen laufen. Native Abnahme,
-unabhängiger Abschlussreview und erforderliche Head-/Main-Gates sind noch offen.
-Die frühere native Obergrenze der achten Welle bleibt geschlossen. Welle neun
-besitzt einen eigenen begrenzten Prüfrahmen; ein Timer setzt ihn nicht zurück.
-Die bestehende SSISDB bleibt erhalten, eigene Consumerobjekte werden nach jedem
+Der Quellstand liefert die vier Diagnosegruppen mit Quellenreferenzen und
+expliziter Partialität. Der SQL-Vertrag besteht 26 gezielte Fälle und die
+bisherigen Iterations-, Scope- und Pipelinegegenprüfungen. Der gemeinsame
+Toolbelt-Kern besteht 165 Konformitätsprüfungen und 23 Frameworkfälle.
+Die native Abnahme belegt Verbose-, Performance- und Basic-Logging, jeweils drei
+Zeilen am Fehler- beziehungsweise No-Match-Ausgang und den Abbruchfall. Der
+ursprüngliche Fehler der SDK-Inputdisposition bleibt im privaten Nachweis
+fehlgeschlagen erhalten; die korrigierte Fixture besteht beide Routingfälle.
+Der unabhängige Review hat seine konkreten Code-, Fixture- und Dokumentations-
+befunde geschlossen. Die erforderlichen exakten Head-/Main-Gates gehören
+weiterhin zur regulären Integration; lokale Erfolge ersetzen sie nicht.
+
+Die frühere native Obergrenze der achten Welle bleibt geschlossen. Der eigene
+begrenzte Prüfrahmen dieser Welle wird weder durch Timer noch CI zurückgesetzt.
+Die bestehende SSISDB bleibt erhalten; eigene Consumerobjekte werden nach jedem
 Lauf identitätsgebunden bereinigt. Reguläre automatische Integration nach
-vollständiger Abnahme ist ausdrücklich autorisiert.
+vollständiger Abnahme ist ausdrücklich autorisiert. Der begrenzte Auftrag
+enthält keine weitere SSIS-Entwicklungswelle.
