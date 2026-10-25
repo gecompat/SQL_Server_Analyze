@@ -135,10 +135,10 @@ BEGIN TRY
             THROW 57063,N'Serverprincipal source status differs.',1;
         SET @Expected=(SELECT * FROM [#ExamplePrincipal_moduleStatus] FOR JSON PATH,INCLUDE_NULL_VALUES);
         IF EXISTS(
-            SELECT [column_id],[name] COLLATE SQL_Latin1_General_CP1_CS_AS,[system_type_id],[max_length],[precision],[scale],[is_nullable],[collation_name] COLLATE SQL_Latin1_General_CP1_CS_AS
+            SELECT ROW_NUMBER() OVER(ORDER BY [column_id]),[name] COLLATE SQL_Latin1_General_CP1_CS_AS,[system_type_id],[max_length],[precision],[scale],[is_nullable],[collation_name] COLLATE SQL_Latin1_General_CP1_CS_AS
             FROM [tempdb].[sys].[columns] WHERE [object_id]=OBJECT_ID(N'tempdb..#ExamplePrincipal_moduleStatus')
             EXCEPT
-            SELECT [column_id],[name] COLLATE SQL_Latin1_General_CP1_CS_AS,[system_type_id],[max_length],[precision],[scale],[is_nullable],[collation_name] COLLATE SQL_Latin1_General_CP1_CS_AS
+            SELECT ROW_NUMBER() OVER(ORDER BY [column_id]),[name] COLLATE SQL_Latin1_General_CP1_CS_AS,[system_type_id],[max_length],[precision],[scale],[is_nullable],[collation_name] COLLATE SQL_Latin1_General_CP1_CS_AS
             FROM [tempdb].[sys].[columns] WHERE [object_id]=OBJECT_ID(N'tempdb..#ExamplePrincipal_Expected_moduleStatus'))
             THROW 57082,N'Serverprincipal published native schema facets differ: moduleStatus.',1;
         IF COALESCE(@Expected,N'[]') COLLATE SQL_Latin1_General_CP1_CS_AS<>COALESCE(JSON_QUERY(@Json,N'$.moduleStatus'),N'[]') COLLATE SQL_Latin1_General_CP1_CS_AS
@@ -148,10 +148,10 @@ BEGIN TRY
             THROW 57065,N'Serverprincipal native schema or text collation differs: moduleStatus.',1;
         SET @Expected=(SELECT * FROM [#ExamplePrincipal_principals] ORDER BY [PrincipalId] FOR JSON PATH,INCLUDE_NULL_VALUES);
         IF EXISTS(
-            SELECT [column_id],[name] COLLATE SQL_Latin1_General_CP1_CS_AS,[system_type_id],[max_length],[precision],[scale],[is_nullable],[collation_name] COLLATE SQL_Latin1_General_CP1_CS_AS
+            SELECT ROW_NUMBER() OVER(ORDER BY [column_id]),[name] COLLATE SQL_Latin1_General_CP1_CS_AS,[system_type_id],[max_length],[precision],[scale],[is_nullable],[collation_name] COLLATE SQL_Latin1_General_CP1_CS_AS
             FROM [tempdb].[sys].[columns] WHERE [object_id]=OBJECT_ID(N'tempdb..#ExamplePrincipal_principals')
             EXCEPT
-            SELECT [column_id],[name] COLLATE SQL_Latin1_General_CP1_CS_AS,[system_type_id],[max_length],[precision],[scale],[is_nullable],[collation_name] COLLATE SQL_Latin1_General_CP1_CS_AS
+            SELECT ROW_NUMBER() OVER(ORDER BY [column_id]),[name] COLLATE SQL_Latin1_General_CP1_CS_AS,[system_type_id],[max_length],[precision],[scale],[is_nullable],[collation_name] COLLATE SQL_Latin1_General_CP1_CS_AS
             FROM [tempdb].[sys].[columns] WHERE [object_id]=OBJECT_ID(N'tempdb..#ExamplePrincipal_Expected_principals'))
             THROW 57082,N'Serverprincipal published native schema facets differ: principals.',1;
         IF COALESCE(@Expected,N'[]') COLLATE SQL_Latin1_General_CP1_CS_AS<>COALESCE(JSON_QUERY(@Json,N'$.principals'),N'[]') COLLATE SQL_Latin1_General_CP1_CS_AS
@@ -162,10 +162,10 @@ BEGIN TRY
         IF @Limit=1 AND (SELECT COUNT_BIG(*) FROM [#ExamplePrincipal_principals])>1 THROW 57066,N'Serverprincipal per-set limit differs.',1;
         SET @Expected=(SELECT * FROM [#ExamplePrincipal_roleMemberships] ORDER BY [RolePrincipalId],[MemberPrincipalId] FOR JSON PATH,INCLUDE_NULL_VALUES);
         IF EXISTS(
-            SELECT [column_id],[name] COLLATE SQL_Latin1_General_CP1_CS_AS,[system_type_id],[max_length],[precision],[scale],[is_nullable],[collation_name] COLLATE SQL_Latin1_General_CP1_CS_AS
+            SELECT ROW_NUMBER() OVER(ORDER BY [column_id]),[name] COLLATE SQL_Latin1_General_CP1_CS_AS,[system_type_id],[max_length],[precision],[scale],[is_nullable],[collation_name] COLLATE SQL_Latin1_General_CP1_CS_AS
             FROM [tempdb].[sys].[columns] WHERE [object_id]=OBJECT_ID(N'tempdb..#ExamplePrincipal_roleMemberships')
             EXCEPT
-            SELECT [column_id],[name] COLLATE SQL_Latin1_General_CP1_CS_AS,[system_type_id],[max_length],[precision],[scale],[is_nullable],[collation_name] COLLATE SQL_Latin1_General_CP1_CS_AS
+            SELECT ROW_NUMBER() OVER(ORDER BY [column_id]),[name] COLLATE SQL_Latin1_General_CP1_CS_AS,[system_type_id],[max_length],[precision],[scale],[is_nullable],[collation_name] COLLATE SQL_Latin1_General_CP1_CS_AS
             FROM [tempdb].[sys].[columns] WHERE [object_id]=OBJECT_ID(N'tempdb..#ExamplePrincipal_Expected_roleMemberships'))
             THROW 57082,N'Serverprincipal published native schema facets differ: roleMemberships.',1;
         IF COALESCE(@Expected,N'[]') COLLATE SQL_Latin1_General_CP1_CS_AS<>COALESCE(JSON_QUERY(@Json,N'$.roleMemberships'),N'[]') COLLATE SQL_Latin1_General_CP1_CS_AS
@@ -176,10 +176,10 @@ BEGIN TRY
         IF @Limit=1 AND (SELECT COUNT_BIG(*) FROM [#ExamplePrincipal_roleMemberships])>1 THROW 57066,N'Serverprincipal per-set limit differs.',1;
         SET @Expected=(SELECT * FROM [#ExamplePrincipal_permissions] ORDER BY [GranteePrincipalId],[Class],[MajorId],[PermissionName],[PermissionState],[GrantorPrincipalId] FOR JSON PATH,INCLUDE_NULL_VALUES);
         IF EXISTS(
-            SELECT [column_id],[name] COLLATE SQL_Latin1_General_CP1_CS_AS,[system_type_id],[max_length],[precision],[scale],[is_nullable],[collation_name] COLLATE SQL_Latin1_General_CP1_CS_AS
+            SELECT ROW_NUMBER() OVER(ORDER BY [column_id]),[name] COLLATE SQL_Latin1_General_CP1_CS_AS,[system_type_id],[max_length],[precision],[scale],[is_nullable],[collation_name] COLLATE SQL_Latin1_General_CP1_CS_AS
             FROM [tempdb].[sys].[columns] WHERE [object_id]=OBJECT_ID(N'tempdb..#ExamplePrincipal_permissions')
             EXCEPT
-            SELECT [column_id],[name] COLLATE SQL_Latin1_General_CP1_CS_AS,[system_type_id],[max_length],[precision],[scale],[is_nullable],[collation_name] COLLATE SQL_Latin1_General_CP1_CS_AS
+            SELECT ROW_NUMBER() OVER(ORDER BY [column_id]),[name] COLLATE SQL_Latin1_General_CP1_CS_AS,[system_type_id],[max_length],[precision],[scale],[is_nullable],[collation_name] COLLATE SQL_Latin1_General_CP1_CS_AS
             FROM [tempdb].[sys].[columns] WHERE [object_id]=OBJECT_ID(N'tempdb..#ExamplePrincipal_Expected_permissions'))
             THROW 57082,N'Serverprincipal published native schema facets differ: permissions.',1;
         IF COALESCE(@Expected,N'[]') COLLATE SQL_Latin1_General_CP1_CS_AS<>COALESCE(JSON_QUERY(@Json,N'$.permissions'),N'[]') COLLATE SQL_Latin1_General_CP1_CS_AS
@@ -190,10 +190,10 @@ BEGIN TRY
         IF @Limit=1 AND (SELECT COUNT_BIG(*) FROM [#ExamplePrincipal_permissions])>1 THROW 57066,N'Serverprincipal per-set limit differs.',1;
         SET @Expected=(SELECT * FROM [#ExamplePrincipal_loginPolicies] ORDER BY [PrincipalId] FOR JSON PATH,INCLUDE_NULL_VALUES);
         IF EXISTS(
-            SELECT [column_id],[name] COLLATE SQL_Latin1_General_CP1_CS_AS,[system_type_id],[max_length],[precision],[scale],[is_nullable],[collation_name] COLLATE SQL_Latin1_General_CP1_CS_AS
+            SELECT ROW_NUMBER() OVER(ORDER BY [column_id]),[name] COLLATE SQL_Latin1_General_CP1_CS_AS,[system_type_id],[max_length],[precision],[scale],[is_nullable],[collation_name] COLLATE SQL_Latin1_General_CP1_CS_AS
             FROM [tempdb].[sys].[columns] WHERE [object_id]=OBJECT_ID(N'tempdb..#ExamplePrincipal_loginPolicies')
             EXCEPT
-            SELECT [column_id],[name] COLLATE SQL_Latin1_General_CP1_CS_AS,[system_type_id],[max_length],[precision],[scale],[is_nullable],[collation_name] COLLATE SQL_Latin1_General_CP1_CS_AS
+            SELECT ROW_NUMBER() OVER(ORDER BY [column_id]),[name] COLLATE SQL_Latin1_General_CP1_CS_AS,[system_type_id],[max_length],[precision],[scale],[is_nullable],[collation_name] COLLATE SQL_Latin1_General_CP1_CS_AS
             FROM [tempdb].[sys].[columns] WHERE [object_id]=OBJECT_ID(N'tempdb..#ExamplePrincipal_Expected_loginPolicies'))
             THROW 57082,N'Serverprincipal published native schema facets differ: loginPolicies.',1;
         IF COALESCE(@Expected,N'[]') COLLATE SQL_Latin1_General_CP1_CS_AS<>COALESCE(JSON_QUERY(@Json,N'$.loginPolicies'),N'[]') COLLATE SQL_Latin1_General_CP1_CS_AS
@@ -204,10 +204,10 @@ BEGIN TRY
         IF @Limit=1 AND (SELECT COUNT_BIG(*) FROM [#ExamplePrincipal_loginPolicies])>1 THROW 57066,N'Serverprincipal per-set limit differs.',1;
         SET @Expected=(SELECT * FROM [#ExamplePrincipal_sourceStatus] ORDER BY [SourceKey] FOR JSON PATH,INCLUDE_NULL_VALUES);
         IF EXISTS(
-            SELECT [column_id],[name] COLLATE SQL_Latin1_General_CP1_CS_AS,[system_type_id],[max_length],[precision],[scale],[is_nullable],[collation_name] COLLATE SQL_Latin1_General_CP1_CS_AS
+            SELECT ROW_NUMBER() OVER(ORDER BY [column_id]),[name] COLLATE SQL_Latin1_General_CP1_CS_AS,[system_type_id],[max_length],[precision],[scale],[is_nullable],[collation_name] COLLATE SQL_Latin1_General_CP1_CS_AS
             FROM [tempdb].[sys].[columns] WHERE [object_id]=OBJECT_ID(N'tempdb..#ExamplePrincipal_sourceStatus')
             EXCEPT
-            SELECT [column_id],[name] COLLATE SQL_Latin1_General_CP1_CS_AS,[system_type_id],[max_length],[precision],[scale],[is_nullable],[collation_name] COLLATE SQL_Latin1_General_CP1_CS_AS
+            SELECT ROW_NUMBER() OVER(ORDER BY [column_id]),[name] COLLATE SQL_Latin1_General_CP1_CS_AS,[system_type_id],[max_length],[precision],[scale],[is_nullable],[collation_name] COLLATE SQL_Latin1_General_CP1_CS_AS
             FROM [tempdb].[sys].[columns] WHERE [object_id]=OBJECT_ID(N'tempdb..#ExamplePrincipal_Expected_sourceStatus'))
             THROW 57082,N'Serverprincipal published native schema facets differ: sourceStatus.',1;
         IF COALESCE(@Expected,N'[]') COLLATE SQL_Latin1_General_CP1_CS_AS<>COALESCE(JSON_QUERY(@Json,N'$.sourceStatus'),N'[]') COLLATE SQL_Latin1_General_CP1_CS_AS
@@ -217,10 +217,10 @@ BEGIN TRY
             THROW 57065,N'Serverprincipal native schema or text collation differs: sourceStatus.',1;
         SET @Expected=(SELECT * FROM [#ExamplePrincipal_warnings] ORDER BY [WarningCode],[SourceKey] FOR JSON PATH,INCLUDE_NULL_VALUES);
         IF EXISTS(
-            SELECT [column_id],[name] COLLATE SQL_Latin1_General_CP1_CS_AS,[system_type_id],[max_length],[precision],[scale],[is_nullable],[collation_name] COLLATE SQL_Latin1_General_CP1_CS_AS
+            SELECT ROW_NUMBER() OVER(ORDER BY [column_id]),[name] COLLATE SQL_Latin1_General_CP1_CS_AS,[system_type_id],[max_length],[precision],[scale],[is_nullable],[collation_name] COLLATE SQL_Latin1_General_CP1_CS_AS
             FROM [tempdb].[sys].[columns] WHERE [object_id]=OBJECT_ID(N'tempdb..#ExamplePrincipal_warnings')
             EXCEPT
-            SELECT [column_id],[name] COLLATE SQL_Latin1_General_CP1_CS_AS,[system_type_id],[max_length],[precision],[scale],[is_nullable],[collation_name] COLLATE SQL_Latin1_General_CP1_CS_AS
+            SELECT ROW_NUMBER() OVER(ORDER BY [column_id]),[name] COLLATE SQL_Latin1_General_CP1_CS_AS,[system_type_id],[max_length],[precision],[scale],[is_nullable],[collation_name] COLLATE SQL_Latin1_General_CP1_CS_AS
             FROM [tempdb].[sys].[columns] WHERE [object_id]=OBJECT_ID(N'tempdb..#ExamplePrincipal_Expected_warnings'))
             THROW 57082,N'Serverprincipal published native schema facets differ: warnings.',1;
         IF COALESCE(@Expected,N'[]') COLLATE SQL_Latin1_General_CP1_CS_AS<>COALESCE(JSON_QUERY(@Json,N'$.warnings'),N'[]') COLLATE SQL_Latin1_General_CP1_CS_AS
