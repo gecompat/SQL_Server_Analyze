@@ -1,7 +1,7 @@
 # Ausbau der lokalen Snapshot- und Baseline-Erfassung
 
-**Stand:** 25. Oktober 2026.
-**Status:** Schema-2-Vorbereitung über PR #447 integriert; Head-, Main- und native Risikoabnahme bestehen. Der konkrete Wait-Kontextvertrag ist unabhängig geprüft. Der Wait-Collector ist noch nicht implementiert.
+**Stand:** 26. Oktober 2026.
+**Status:** Der öffentliche Waitpfad ist über PR #453 mit allen sieben Head-Checks und gezielter nativer SQL2019-Abnahme integriert. Alle vier Main-Prüfungen einschließlich des vollständigen SQL2025-Gates bestehen. Der nächste Ausbau betrifft den [Datei-I/O-Vorvertrag](File_IO_Snapshot_Dossier.md).
 **Artefakt-UID:** `urn:uuid:01a17312-4ac5-78b9-b77d-536e996e2817`.
 **Registrierung:** `DEFERRED`; keine neue finale lesbare Kennung vergeben.
 **Bestehende Zuordnung:** SC-023-EXPANSION, Rang 10 der
@@ -10,13 +10,14 @@
 ## Ausgangslage und nächster Nutzen
 
 Das [optionale Snapshotpaket](../../../Documentation/Architecture/Snapshot_Baseline_Package_Contract.md)
-persistiert derzeit ausschließlich Performance-Counter-Evidenz. Configure,
-Collection Cycle, Retention, Budgetreaktion, Scopeidentitäten, typisierte
-Metriken und Modulstatus sind vorhanden. Wait-/Datei-I/O-Zeitreihen sind
-keine bereits ausgelieferte Funktion dieses Pakets.
+persistiert Performance Counter und ausdrücklich aktivierte Waitcaptures.
+Configure, Collection Cycle, Retention, Budgetreaktion, Scopeidentitäten,
+typisierte Metriken und Modulstatus gehören zum gelieferten Stand.
+Waitdifferenzen bleiben unbewiesene monotone Kandidaten; Datei-I/O ist noch
+nicht implementiert.
 
-Die erste Ausbauwelle soll instanzweite Wait-Counter über getrennte lokale
-Collection Cycles vergleichen können. Danach folgt Datei-I/O mit eigener
+Der gelieferte Waitpfad vergleicht instanzweite Rohcounter über getrennte lokale
+Collection Cycles mit ausdrücklich begrenzter Kontinuität. Danach folgt Datei-I/O mit eigener
 Datenbank-/Dateiidentität. Kapazität, Ressourcendruck, Rollups, Scheduler und
 Exporte sind nachfolgende getrennte Schritte. Der Frameworkkern bleibt
 zustandslos; neue persistente Daten liegen ausschließlich im ausdrücklich
@@ -94,7 +95,7 @@ vor dem Produktvertrag samt Migration und bestehendem Consumerumfang
 festgelegt. Fehlender Startkontext darf keine gemeinsame geratene Epoche
 erzeugen.
 
-## Vorgeschlagene erste vertikale Lieferung
+## Ursprünglich vorgeschlagene erste vertikale Lieferung
 
 Der erste Produktschritt erweitert bestehende Konfigurations- und
 Collection-Einstiege um einen ausdrücklich gewählten WAIT_STATS-Collector.
@@ -123,6 +124,10 @@ unterdrückt werden. Ein erfolgreich gespeicherter Rohwert ist kein Beweis
 eines qualifizierten Deltas.
 
 ## Getrennte Datei-I/O-Fortsetzung
+
+Der [Datei-I/O-Vorvertrag](File_IO_Snapshot_Dossier.md) konkretisiert die
+Quellen-, Identitäts-, Counter- und Abnahmegrenzen dieses nächsten Schritts.
+Exakte persistierte Felder und Migration folgen vor Produktcode.
 
 Datei-I/O folgt nach dem Wait-Slice mit dem festen Datenbankauswahlvertrag:
 alle sichtbaren zugänglichen ONLINE-Benutzerdatenbanken, optionale
@@ -188,7 +193,7 @@ isolierte Testinstanz betreffen. Unveränderte bestehende erfolgreiche Gates
 werden nicht wegen eines Timers erneut ausgeführt. Ein neuer Collector mit
 fehlender nativer Qualifikation bleibt als Teillieferung sichtbar.
 
-## Wait-Spezifikationsentwurf und vorgeschalteter Schema-Vorvertrag
+## Historischer Waitentwurf und vorgeschalteter Schema-Vorvertrag
 
 Konzeptreview und Review des vorgeschalteten Migrationsvertrags bestehen.
 Die nachfolgende Collectorauswahl bleibt ein Entwurf und ist noch kein
@@ -1198,7 +1203,7 @@ SKIPPED_NOT_DUE des anschließenden Purge ohne Fehlernummer lässt eine fällige
 oder ausdrücklich erzwungene Messung zu. Die eigentliche Budgetprüfung
 folgt nach dem Purge in der normalen Vorbereitung.
 
-### Abnahme der öffentlichen Aktivierung
+### Abnahmeplanung vor Integration der öffentlichen Aktivierung
 
 Der ursprüngliche Produktreview hat zwei konkrete Ablaufbefunde geschlossen.
 Ein Purge mit SKIPPED_NOT_DUE darf einen Capture nicht verhindern. Enabled und
@@ -1214,3 +1219,32 @@ ist bis zu ihrem tatsächlichen Abschluss offen. Source-denied, erfolgreiche
 Quellrechte, Shared0-Erhaltung, atomare Fehler in beiden Datenbanken und
 Ausgabefehler nach bestätigtem Capture gehören zu dieser Abnahme. Es gibt
 keinen regulären DBCC-Reset und keinen allgemeinen Reifeabschluss.
+
+### Integration der öffentlichen Waitwelle
+
+[PR #453](https://github.com/gecompat/SQL_Server_Analyze/pull/453) ist als
+9266f869 integriert. Der Lieferhead 8d19c02d besteht alle sieben Head-Checks
+und das vollständige SQL2025-Gate
+[40241480841](https://github.com/gecompat/SQL_Server_Analyze/actions/runs/40241480841).
+Die zusätzliche native SQL2019-Prüfung
+[40241488684](https://github.com/gecompat/SQL_Server_Analyze/actions/runs/40241488684)
+bindet denselben Head an ZIP
+7f5cebdc36d472d946f7cf493f3b7c4a9a3ecfcca9c05d76a517e4333118c627,
+SQL2019 15.0.4500.2/CL150/Linux und Cleanup PASS. Ihre vier benannten
+Snapshot-Risikogruppen bestehen; allgemeines natives Core-Release und
+Permissionmatrix sind dort NOT_EXECUTED. SQL2022 wurde nicht separat geprüft.
+
+Der lokale endgültige Vertrag 224 einschließlich vollständiger öffentlicher
+Abnahme und drei expliziter Recoveryfehler besteht. Die echten 1.2.0-Upgrades
+über drei Installationswege sowie Recovery mit dem alten gespeicherten
+Waithelper bestehen ebenfalls. Alle sieben eigenen Labinstanzen sind entfernt.
+Der frühere Recoveryfehler der Fixture und ein vor dem Produkttest in der
+Coreinstallation beobachteter Session-Kill-State bleiben fehlgeschlagen
+erhalten; für Letzteren ist die Ursache UNKNOWN. Der unabhängige Review und
+seine konkreten Befundnachprüfungen besitzen keine offenen P1/P2.
+
+Der getrennte Main-Nachlauf besteht mit vollständigem SQL2025-Gate
+[40243041916](https://github.com/gecompat/SQL_Server_Analyze/actions/runs/40243041916),
+Dokumentation 40243041923, Datenschutz 40243041919 und Commitprüfung 40243041918.
+Der nächste Datei-I/O-Schritt beginnt mit seinem Quell-/Identitätsvorvertrag;
+eine vorhandene FILE_IO-Implementierung wird nicht behauptet.
