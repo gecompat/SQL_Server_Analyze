@@ -2041,3 +2041,7 @@ USP_CurrentCallerPermissionAnalysis,StatusCodeOut,varchar(40),NULL OUTPUT
 USP_CurrentCallerPermissionAnalysis,IsPartialOut,bit,NULL OUTPUT
 USP_CurrentCallerPermissionAnalysis,ErrorNumberOut,int,NULL OUTPUT
 USP_CurrentCallerPermissionAnalysis,ErrorMessageOut,nvarchar(2048),NULL OUTPUT
+USP_SsisPackageModelAnalysis,IncludeExecutionScopes,bit,0
+USP_SsisPackageModelAnalysis,ProjectModelsJson,nvarchar(max),NULL
+USP_SsisPackageModelAnalysis,ScopeSnapshotJson,nvarchar(max),NULL
+USP_SsisPackageModelAnalysis,ScopeHandoverId,uniqueidentifier,NULL
