@@ -123,6 +123,50 @@ Entwicklungsauftrag und wird nicht durch einen Timer entfernt.
 
 ## Separater Auftrag: STAT-DOMINANT-Fehlerdiagnose (54901)
 
+### Abgeschlossen: Diagnose aus PR #424
+
+[PR #424](https://github.com/gecompat/SQL_Server_Analyze/pull/424) ist am
+25. Oktober 2026 durch den gesonderten Mergeauftrag regulär als
+`17a6ff0298d9cf2b1754e76a8c0786e8402ba72c` in `origin/main` integriert.
+Alle sieben Head-Prüfungen bestehen auf
+`e8113f0b5486fcaabe8c6b0a0e747b4f927139d2`, einschließlich der
+[funktionalen Head-CI 40147540255](https://github.com/gecompat/SQL_Server_Analyze/actions/runs/40147540255)
+im ersten und einzigen Versuch. Beide Durchgänge desselben unabhängigen
+Reviewers sind ohne offene Befunde abgeschlossen; der konservativ gebuchte
+Reviewaufwand beträgt zusammen vier aktive Minuten.
+
+Die vier automatischen Main-Workflows für Commitnachrichten, Datenschutz,
+Dokumentation und [funktionale Abnahme 40148210140](https://github.com/gecompat/SQL_Server_Analyze/actions/runs/40148210140)
+bestehen jeweils im ersten Versuch auf dem Merge-Commit. Die funktionale
+Abnahme umfasst Deployment-Regression, Test 175 mit acht Fachfällen und zwölf
+synthetischen Diagnoseproben sowie das Functional Gate auf SQL Server 2025/CL170.
+Head- und Merge-Tree sind identisch; die Nachweise bleiben an diese Revisionen
+gebunden und werden nicht auf spätere Main-Stände übertragen.
+
+Der Umsetzungsumfang beträgt drei Dateien mit 196 hinzugefügten oder gelöschten
+Handzeilen. Verbraucht sind zwei Offlineblöcke, zwei Reviews, ein gebündelter
+Korrekturpass und eine funktionale Head-Abnahme. Der erste Offlineblock brach
+am privaten UTF-8-Lesehelfer ab; der zweite besteht nach dessen Korrektur und
+der ergänzten Gegenprobe für widersprüchliche native Fehlernummern. Beim
+Mergeabschluss war der eigene Checkout sauber auf Main synchronisiert;
+der eigene lokale und Remote-Feature-Branch sind entfernt.
+
+Der Diagnoseauftrag ist abgeschlossen. Der historische Main-Lauf 40124510785
+bleibt fehlgeschlagen und seine Ursache UNKNOWN. Die Diagnoseproben sind
+keine Reproduktion dieses Analyzerfehlers. Historische Nachweise und Budgets
+bleiben erhalten und geschlossen. Die Dokumentationsnachführung erneuert
+keine Lauf-, Review- oder sonstigen Budgets; die übrige autonome Verarbeitung
+bleibt pausiert. Der eigenständige Auftrag zu den fünf SSIS-Paketwellen bleibt
+durch diese Nachführung unverändert.
+
+### Historische Freigabe und Abnahmegrenzen
+
+Die folgenden Angaben halten den Stand vor Abnahme und Merge fest. Damals
+noch ausstehende Gates sind oben mit ihren tatsächlichen Nachweisen abgeschlossen.
+Die historischen Angaben sind keine aktuelle Ausführungsfreigabe.
+
+#### Freigegeben: STAT-DOMINANT-Fehlerdiagnose (54901)
+
 Die folgende Freigabe betrifft einen anderen Chat und wird hier unverändert erhalten.
 
 Der Benutzer hat ausschließlich die Diagnose in Test 175 und die Nachführung

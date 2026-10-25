@@ -46,5 +46,10 @@ internal static class CreateProject
         catch (Exception) { Console.Error.Write("SYNTHETIC_SSIS_PROJECT_BUILD_FAILED"); return 4; }
     }
 
-    private static string Escape(string value) { return value.Replace("\\", "\\\\").Replace("\"", "\\\""); }
+    private static string Escape(string value)
+    {
+        var slash = ((char)92).ToString();
+        var quote = ((char)34).ToString();
+        return value.Replace(slash, new string((char)92, 2)).Replace(quote, slash + quote);
+    }
 }
