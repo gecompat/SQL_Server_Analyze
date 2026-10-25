@@ -65118,7 +65118,7 @@ GO
 
 -- BEGIN SOURCE: Code/10_SSIS/040_USP_SsisPackageModelAnalysis.sql
 /*
-Objekt: monitor.USP_SsisPackageModelAnalysis; Version 1.1.0; Stand 2026-10-25.
+Objekt: monitor.USP_SsisPackageModelAnalysis; Version 1.2.0; Stand 2026-10-25.
 Zweck: Validiert ein optional zugeliefertes neutrales SSIS-Modell ohne CLR.
 Quelle: Ausschließlich Caller-JSON und optionale Originalbytes; kein Paket-SQL.
 Vertrag: SSIS_Analyze_Toolbelt_Exchange_Contract.md; Schema aus Toolbelt.
@@ -65145,6 +65145,7 @@ CREATE OR ALTER PROCEDURE [monitor].[USP_SsisPackageModelAnalysis]
     , @ErrorNumberOut int = NULL OUTPUT
     , @ErrorMessageOut nvarchar(2048) = NULL OUTPUT
     , @IncludePackageViews bit = 0
+    , @IncludeObjectRules bit = 0
 AS
 BEGIN
     SET NOCOUNT ON;
@@ -65155,6 +65156,7 @@ BEGIN
         PRINT N'@PackageModelJson erforderlich; @PackageBytes optional zum unabhängigen Bytevergleich. ProducerTrust bleibt UNVERIFIED.';
         PRINT N'CONSOLE|RAW|TABLE|NONE; JSON über OUTPUT. TABLE-Namen: moduleStatus|sourceBinding|nodes|edges|coverage|findings|sourceStatus|warnings.';
         PRINT N'@IncludePackageViews=1 ergänzt packageOverview|executables|dataFlows|components|columnRelations. Die fünf Sichten zeigen ausschließlich gelieferte Beziehungen.';
+        PRINT N'@IncludeObjectRules=1 ergänzt objectFindings mit konkreten Knoten-/Kantenbelegen; statische Hinweise, keine Laufzeiturteile.';
         RETURN;
     END;
     IF XACT_STATE()=-1 THROW 50000,N'EXCHANGE_INVALID: Callertransaktion ist nicht schreibfähig.',1;
@@ -65167,7 +65169,8 @@ BEGIN
     DECLARE @ProfileSupported bit=1,@SchemaVersion int=1;
     DECLARE @ValidationStage varchar(24)='PARAMETERS';
     DECLARE @AllowedResultNames nvarchar(max)=N'moduleStatus|sourceBinding|nodes|edges|coverage|findings|sourceStatus|warnings'
-        +CASE WHEN @IncludePackageViews=1 THEN N'|packageOverview|executables|dataFlows|components|columnRelations' ELSE N'' END;
+        +CASE WHEN @IncludePackageViews=1 THEN N'|packageOverview|executables|dataFlows|components|columnRelations' ELSE N'' END
+        +CASE WHEN @IncludeObjectRules=1 THEN N'|objectFindings' ELSE N'' END;
 
     CREATE TABLE #SsisPackageModelAnalysis_ResultTables([ResultName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,[TargetTable] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL);
     IF @Mode='TABLE'
@@ -65233,6 +65236,14 @@ BEGIN
         [Evidence] varchar(16) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,[RuleId] varchar(64) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,
         [MappingRole] varchar(24) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,[IsInterpretable] bit NOT NULL);
 
+    CREATE TABLE #SsisPackageModelAnalysis_ObjectFindings(
+        [RuleId] varchar(64) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,[Severity] varchar(16) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,
+        [EvidenceLevel] varchar(24) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,[Feature] varchar(32) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,
+        [NodeId] varchar(128) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,[EdgeId] varchar(128) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,
+        [ScopeNodeId] varchar(128) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,[PackageSha256] varchar(64) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,
+        [BindingStatus] varchar(32) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,[ProducerTrust] varchar(24) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,
+        [Finding] nvarchar(1000) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL);
+
     -- BEGIN GENERATED SSIS EXCHANGE RULES
     DECLARE @FieldRulesJson nvarchar(max) = N'[{"role":"ROOT","name":"contract","types":"1","required":true,"enum":["ssis-package-model"],"maxLength":null,"min":null,"max":null,"minItems":null,"maxItems":null,"pattern":null,"childRole":null},{"role":"ROOT","name":"version","types":"1","required":true,"enum":["1.0.0"],"maxLength":null,"min":null,"max":null,"minItems":null,"maxItems":null,"pattern":null,"childRole":null},{"role":"ROOT","name":"identityProfile","types":"1","required":true,"enum":["document-order-v1"],"maxLength":null,"min":null,"max":null,"minItems":null,"maxItems":null,"pattern":null,"childRole":null},{"role":"ROOT","name":"producer","types":"5","required":true,"enum":null,"maxLength":null,"min":null,"max":null,"minItems":null,"maxItems":null,"pattern":null,"childRole":"PRODUCER"},{"role":"ROOT","name":"source","types":"5","required":true,"enum":null,"maxLength":null,"min":null,"max":null,"minItems":null,"maxItems":null,"pattern":null,"childRole":"SOURCE"},{"role":"ROOT","name":"profiles","types":"5","required":true,"enum":null,"maxLength":null,"min":null,"max":null,"minItems":null,"maxItems":null,"pattern":null,"childRole":"PROFILES"},{"role":"ROOT","name":"coverage","types":"4","required":true,"enum":null,"maxLength":null,"min":null,"max":null,"minItems":8,"maxItems":8,"pattern":null,"childRole":"COVERAGE_ARRAY"},{"role":"ROOT","name":"nodes","types":"4","required":true,"enum":null,"maxLength":null,"min":null,"max":null,"minItems":1,"maxItems":20000,"pattern":null,"childRole":"NODES_ARRAY"},{"role":"ROOT","name":"edges","types":"4","required":true,"enum":null,"maxLength":null,"min":null,"max":null,"minItems":null,"maxItems":50000,"pattern":null,"childRole":"EDGES_ARRAY"},{"role":"ROOT","name":"diagnostics","types":"4","required":true,"enum":null,"maxLength":null,"min":null,"max":null,"minItems":null,"maxItems":1000,"pattern":null,"childRole":"DIAGNOSTICS_ARRAY"},{"role":"PRODUCER","name":"id","types":"1","required":true,"enum":["toolbelt.ssis-model"],"maxLength":null,"min":null,"max":null,"minItems":null,"maxItems":null,"pattern":null,"childRole":null},{"role":"PRODUCER","name":"version","types":"1","required":true,"enum":null,"maxLength":32,"min":null,"max":null,"minItems":null,"maxItems":null,"pattern":"VERSION","childRole":null},{"role":"PRODUCER","name":"sourceCommit","types":"1","required":true,"enum":null,"maxLength":null,"min":null,"max":null,"minItems":null,"maxItems":null,"pattern":"HEX40","childRole":null},{"role":"PRODUCER","name":"buildSha256","types":"1","required":true,"enum":null,"maxLength":null,"min":null,"max":null,"minItems":null,"maxItems":null,"pattern":"HEX64","childRole":null},{"role":"SOURCE","name":"kind","types":"1","required":true,"enum":["DTSX_BYTES"],"maxLength":null,"min":null,"max":null,"minItems":null,"maxItems":null,"pattern":null,"childRole":null},{"role":"SOURCE","name":"packageSha256","types":"1","required":true,"enum":null,"maxLength":null,"min":null,"max":null,"minItems":null,"maxItems":null,"pattern":"HEX64","childRole":null},{"role":"SOURCE","name":"byteLength","types":"2","required":true,"enum":null,"maxLength":null,"min":1,"max":16777216,"minItems":null,"maxItems":null,"pattern":null,"childRole":null},{"role":"SOURCE","name":"packageFormatVersion","types":"02","required":true,"enum":null,"maxLength":null,"min":0,"max":null,"minItems":null,"maxItems":null,"pattern":null,"childRole":null},{"role":"SOURCE","name":"xmlProfile","types":"1","required":true,"enum":["2012/01","2014/01","UNKNOWN"],"maxLength":null,"min":null,"max":null,"minItems":null,"maxItems":null,"pattern":null,"childRole":null},{"role":"PROFILES","name":"format","types":"1","required":true,"enum":null,"maxLength":32,"min":null,"max":null,"minItems":null,"maxItems":null,"pattern":"VERSION","childRole":null},{"role":"PROFILES","name":"components","types":"1","required":true,"enum":null,"maxLength":32,"min":null,"max":null,"minItems":null,"maxItems":null,"pattern":"VERSION","childRole":null},{"role":"PROFILES","name":"lineage","types":"1","required":true,"enum":null,"maxLength":32,"min":null,"max":null,"minItems":null,"maxItems":null,"pattern":"VERSION","childRole":null},{"role":"COVERAGE","name":"feature","types":"1","required":true,"enum":["inventory","controlFlow","pipelineGraph","columnMetadata","directColumnMapping","valueLineage","rowLineage","expressionReferences"],"maxLength":null,"min":null,"max":null,"minItems":null,"maxItems":null,"pattern":null,"childRole":null},{"role":"COVERAGE","name":"status","types":"1","required":true,"enum":["COMPLETE","PARTIAL","UNSUPPORTED","NOT_REQUESTED"],"maxLength":null,"min":null,"max":null,"minItems":null,"maxItems":null,"pattern":null,"childRole":null},{"role":"COVERAGE","name":"reasonCode","types":"01","required":true,"enum":["PROFILE_LIMIT","UNKNOWN_COMPONENT","ENCRYPTED_CONTENT","EXPRESSION_UNRESOLVED","MISSING_CONTEXT","UNSUPPORTED_PACKAGE_FORMAT","SCOPE_NOT_REQUESTED"],"maxLength":null,"min":null,"max":null,"minItems":null,"maxItems":null,"pattern":null,"childRole":null},{"role":"NODE","name":"id","types":"1","required":true,"enum":null,"maxLength":128,"min":null,"max":null,"minItems":null,"maxItems":null,"pattern":"ID","childRole":null},{"role":"NODE","name":"kind","types":"1","required":true,"enum":["PACKAGE","EXECUTABLE","COMPONENT","PORT","COLUMN","VARIABLE","PARAMETER","CONNECTION","EXPRESSION"],"maxLength":null,"min":null,"max":null,"minItems":null,"maxItems":null,"pattern":null,"childRole":null},{"role":"NODE","name":"parentId","types":"01","required":true,"enum":null,"maxLength":128,"min":null,"max":null,"minItems":null,"maxItems":null,"pattern":"ID","childRole":null},{"role":"NODE","name":"name","types":"01","required":true,"enum":null,"maxLength":256,"min":null,"max":null,"minItems":null,"maxItems":null,"pattern":null,"childRole":null},{"role":"NODE","name":"attributes","types":"5","required":true,"enum":null,"maxLength":null,"min":null,"max":null,"minItems":null,"maxItems":null,"pattern":null,"childRole":null},{"role":"EDGE","name":"id","types":"1","required":true,"enum":null,"maxLength":128,"min":null,"max":null,"minItems":null,"maxItems":null,"pattern":"EDGEID","childRole":null},{"role":"EDGE","name":"kind","types":"1","required":true,"enum":["CONTROL_FLOW","PIPELINE_PATH","COLUMN_MAP","VALUE_DEPENDENCY","ROW_DEPENDENCY","EXPRESSION_REFERENCE"],"maxLength":null,"min":null,"max":null,"minItems":null,"maxItems":null,"pattern":null,"childRole":null},{"role":"EDGE","name":"scopeId","types":"1","required":true,"enum":null,"maxLength":128,"min":null,"max":null,"minItems":null,"maxItems":null,"pattern":"ID","childRole":null},{"role":"EDGE","name":"fromId","types":"01","required":true,"enum":null,"maxLength":128,"min":null,"max":null,"minItems":null,"maxItems":null,"pattern":"ID","childRole":null},{"role":"EDGE","name":"toId","types":"01","required":true,"enum":null,"maxLength":128,"min":null,"max":null,"minItems":null,"maxItems":null,"pattern":"ID","childRole":null},{"role":"EDGE","name":"resolution","types":"1","required":true,"enum":["RESOLVED","UNRESOLVED","UNSUPPORTED"],"maxLength":null,"min":null,"max":null,"minItems":null,"maxItems":null,"pattern":null,"childRole":null},{"role":"EDGE","name":"evidence","types":"1","required":true,"enum":["DECLARED","DERIVED"],"maxLength":null,"min":null,"max":null,"minItems":null,"maxItems":null,"pattern":null,"childRole":null},{"role":"EDGE","name":"mappingRole","types":"01","required":true,"enum":["DATA_TRANSFER","METADATA_REFERENCE",null],"maxLength":null,"min":null,"max":null,"minItems":null,"maxItems":null,"pattern":null,"childRole":null},{"role":"EDGE","name":"ruleId","types":"01","required":true,"enum":null,"maxLength":64,"min":null,"max":null,"minItems":null,"maxItems":null,"pattern":"RULEID","childRole":null},{"role":"DIAGNOSTIC","name":"code","types":"1","required":true,"enum":["UNKNOWN_COMPONENT","ENCRYPTED_CONTENT","EXPRESSION_UNRESOLVED","MISSING_CONTEXT","PARTIAL_LINEAGE","PROFILE_LIMIT","UNSUPPORTED_PACKAGE_FORMAT"],"maxLength":null,"min":null,"max":null,"minItems":null,"maxItems":null,"pattern":null,"childRole":null},{"role":"DIAGNOSTIC","name":"objectId","types":"01","required":true,"enum":null,"maxLength":128,"min":null,"max":null,"minItems":null,"maxItems":null,"pattern":"ID","childRole":null},{"role":"ATTR_PACKAGE","name":"protectionLevel","types":"01","required":true,"enum":null,"maxLength":64,"min":null,"max":null,"minItems":null,"maxItems":null,"pattern":null,"childRole":null},{"role":"ATTR_EXECUTABLE","name":"executableType","types":"01","required":true,"enum":null,"maxLength":256,"min":null,"max":null,"minItems":null,"maxItems":null,"pattern":null,"childRole":null},{"role":"ATTR_EXECUTABLE","name":"isDisabled","types":"03","required":true,"enum":null,"maxLength":null,"min":null,"max":null,"minItems":null,"maxItems":null,"pattern":null,"childRole":null},{"role":"ATTR_EXECUTABLE","name":"isEventHandler","types":"03","required":true,"enum":null,"maxLength":null,"min":null,"max":null,"minItems":null,"maxItems":null,"pattern":null,"childRole":null},{"role":"ATTR_COMPONENT","name":"componentClassId","types":"01","required":true,"enum":null,"maxLength":256,"min":null,"max":null,"minItems":null,"maxItems":null,"pattern":null,"childRole":null},{"role":"ATTR_PORT","name":"direction","types":"01","required":true,"enum":["INPUT","OUTPUT",null],"maxLength":null,"min":null,"max":null,"minItems":null,"maxItems":null,"pattern":null,"childRole":null},{"role":"ATTR_PORT","name":"portRole","types":"01","required":true,"enum":["REGULAR","ERROR","NO_MATCH","DEFAULT","UNKNOWN",null],"maxLength":null,"min":null,"max":null,"minItems":null,"maxItems":null,"pattern":null,"childRole":null},{"role":"ATTR_PORT","name":"synchronousInputPortId","types":"01","required":true,"enum":null,"maxLength":128,"min":null,"max":null,"minItems":null,"maxItems":null,"pattern":"ID","childRole":null},{"role":"ATTR_COLUMN","name":"columnRole","types":"1","required":true,"enum":["DATA","EXTERNAL_METADATA"],"maxLength":null,"min":null,"max":null,"minItems":null,"maxItems":null,"pattern":null,"childRole":null},{"role":"ATTR_COLUMN","name":"typeCode","types":"01","required":true,"enum":null,"maxLength":64,"min":null,"max":null,"minItems":null,"maxItems":null,"pattern":null,"childRole":null},{"role":"ATTR_COLUMN","name":"length","types":"02","required":true,"enum":null,"maxLength":null,"min":-1,"max":2147483647,"minItems":null,"maxItems":null,"pattern":null,"childRole":null},{"role":"ATTR_COLUMN","name":"precision","types":"02","required":true,"enum":null,"maxLength":null,"min":0,"max":255,"minItems":null,"maxItems":null,"pattern":null,"childRole":null},{"role":"ATTR_COLUMN","name":"scale","types":"02","required":true,"enum":null,"maxLength":null,"min":0,"max":255,"minItems":null,"maxItems":null,"pattern":null,"childRole":null},{"role":"ATTR_COLUMN","name":"codePage","types":"02","required":true,"enum":null,"maxLength":null,"min":0,"max":2147483647,"minItems":null,"maxItems":null,"pattern":null,"childRole":null},{"role":"ATTR_COLUMN","name":"isNullable","types":"03","required":true,"enum":null,"maxLength":null,"min":null,"max":null,"minItems":null,"maxItems":null,"pattern":null,"childRole":null},{"role":"ATTR_VARIABLE","name":"namespace","types":"01","required":true,"enum":null,"maxLength":256,"min":null,"max":null,"minItems":null,"maxItems":null,"pattern":null,"childRole":null},{"role":"ATTR_VARIABLE","name":"typeCode","types":"01","required":true,"enum":null,"maxLength":64,"min":null,"max":null,"minItems":null,"maxItems":null,"pattern":null,"childRole":null},{"role":"ATTR_VARIABLE","name":"isReadOnly","types":"03","required":true,"enum":null,"maxLength":null,"min":null,"max":null,"minItems":null,"maxItems":null,"pattern":null,"childRole":null},{"role":"ATTR_VARIABLE","name":"evaluateAsExpression","types":"03","required":true,"enum":null,"maxLength":null,"min":null,"max":null,"minItems":null,"maxItems":null,"pattern":null,"childRole":null},{"role":"ATTR_PARAMETER","name":"typeCode","types":"01","required":true,"enum":null,"maxLength":64,"min":null,"max":null,"minItems":null,"maxItems":null,"pattern":null,"childRole":null},{"role":"ATTR_CONNECTION","name":"connectionKind","types":"01","required":true,"enum":null,"maxLength":128,"min":null,"max":null,"minItems":null,"maxItems":null,"pattern":null,"childRole":null},{"role":"ATTR_EXPRESSION","name":"propertyName","types":"01","required":true,"enum":null,"maxLength":256,"min":null,"max":null,"minItems":null,"maxItems":null,"pattern":null,"childRole":null}]';
     -- END GENERATED SSIS EXCHANGE RULES
@@ -65240,7 +65251,7 @@ BEGIN
     BEGIN TRY
         IF @MaxZeilen<0 OR @MaxDurationSeconds IS NULL OR @MaxDurationSeconds NOT BETWEEN 1 AND 60
            OR @LockTimeoutMs IS NULL OR @LockTimeoutMs NOT BETWEEN 0 AND 60000 OR @JsonErzeugen IS NULL OR @PrintMeldungen IS NULL
-           OR @IncludePackageViews IS NULL OR @Mode NOT IN ('CONSOLE','RAW','TABLE','NONE') OR (@Mode<>'TABLE' AND @ResultTablesJson IS NOT NULL)
+           OR @IncludeObjectRules IS NULL OR @IncludePackageViews IS NULL OR @Mode NOT IN ('CONSOLE','RAW','TABLE','NONE') OR (@Mode<>'TABLE' AND @ResultTablesJson IS NOT NULL)
             THROW 50000,N'INVALID_PARAMETER',1;
         SET @Deadline=DATEADD(second,@MaxDurationSeconds,@Started);
         SET @LockTimeoutSql=N'SET LOCK_TIMEOUT '+CONVERT(nvarchar(12),@LockTimeoutMs)+N';'; EXEC [sys].[sp_executesql] @LockTimeoutSql;
@@ -65444,6 +65455,43 @@ BEGIN
         INSERT #SsisPackageModelAnalysis_Findings
         SELECT 'SSIS_MODEL_COVERAGE_LIMITED','INFO','IMPORTED_STATIC',[Feature],N'Die berichtete Abdeckung oder das unterstützte Profil reicht für eine uneingeschränkte Auswertung dieses Features nicht aus.'
         FROM #SsisPackageModelAnalysis_Coverage WHERE [ReportedStatus]<>'COMPLETE' OR [IsProfileSupported]=0;
+        IF @IncludeObjectRules=1
+        BEGIN
+            SET @ValidationStage='OBJECT_RULES';
+            CREATE TABLE #SsisPackageModelAnalysis_RuleEvidence(
+                [RuleId] varchar(64) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,[Feature] varchar(32) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,
+                [NodeId] varchar(128) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,[EdgeId] varchar(128) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,
+                [ScopeNodeId] varchar(128) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,[Finding] nvarchar(1000) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL);
+            INSERT #SsisPackageModelAnalysis_RuleEvidence
+            SELECT 'SSIS_EXECUTABLE_DISABLED','inventory',[NodeId],NULL,[ParentNodeId],N'Das Modell deklariert das Executable als deaktiviert; eine tatsächliche Ausführung wird nicht behauptet.'
+            FROM #SsisPackageModelAnalysis_Nodes WHERE [NodeKind]='EXECUTABLE' AND JSON_VALUE([AttributesJson],'$.isDisabled')='true';
+            INSERT #SsisPackageModelAnalysis_RuleEvidence
+            SELECT DISTINCT 'SSIS_COMPONENT_PROFILE_UNKNOWN','inventory',[n].[NodeId],NULL,[n].[ParentNodeId],N'Der Producer meldet für diese Komponente UNKNOWN_COMPONENT; komponentenabhängige Aussagen sind begrenzt.'
+            FROM OPENJSON(@PackageModelJson,'$.diagnostics') WITH([Code] varchar(40) '$.code',[ObjectId] varchar(128) '$.objectId') AS [d]
+            JOIN #SsisPackageModelAnalysis_Nodes AS [n] ON [n].[NodeId]=[d].[ObjectId] COLLATE SQL_Latin1_General_CP1_CS_AS
+            WHERE [d].[Code] COLLATE Latin1_General_100_BIN2='UNKNOWN_COMPONENT' AND [n].[NodeKind]='COMPONENT';
+            INSERT #SsisPackageModelAnalysis_RuleEvidence
+            SELECT 'SSIS_EDGE_UNRESOLVED',CASE [EdgeKind] WHEN 'CONTROL_FLOW' THEN 'controlFlow' WHEN 'PIPELINE_PATH' THEN 'pipelineGraph'
+                WHEN 'COLUMN_MAP' THEN 'directColumnMapping' WHEN 'VALUE_DEPENDENCY' THEN 'valueLineage' WHEN 'ROW_DEPENDENCY' THEN 'rowLineage' ELSE 'expressionReferences' END,
+                NULL,[EdgeId],[ScopeNodeId],N'Die gelieferte Beziehung ist UNRESOLVED; fehlende Endpunkte werden nicht ergänzt.'
+            FROM #SsisPackageModelAnalysis_Edges WHERE [Resolution]='UNRESOLVED';
+            INSERT #SsisPackageModelAnalysis_RuleEvidence
+            SELECT 'SSIS_COLUMN_MULTIPLE_DIRECT_SOURCES','directColumnMapping',[ToNodeId],NULL,[ScopeNodeId],N'Das Modell enthält mehrere unterschiedliche direkte DATA_TRANSFER-Quellen für diese Spalte; dies ist kein Nachweis eines Laufzeitfehlers.'
+            FROM #SsisPackageModelAnalysis_Edges WHERE [EdgeKind]='COLUMN_MAP' AND [MappingRole]='DATA_TRANSFER' AND [Resolution]='RESOLVED' AND [IsInterpretable]=1
+            GROUP BY [ScopeNodeId],[ToNodeId] HAVING COUNT(DISTINCT [FromNodeId])>1;
+            IF JSON_VALUE(@PackageModelJson,'$.profiles.components')='1.0.0' AND (SELECT COUNT(*) FROM #SsisPackageModelAnalysis_Coverage WHERE [Feature] IN ('inventory','pipelineGraph') AND [ReportedStatus]='COMPLETE' AND [IsProfileSupported]=1)=2
+            INSERT #SsisPackageModelAnalysis_RuleEvidence
+            SELECT 'SSIS_PORT_NO_DECLARED_PATH','pipelineGraph',[n].[NodeId],NULL,[o].[ScopeId],N'Für diesen regulären Port ist bei vollständig gemeldeter Inventar-/Graphabdeckung keine passende deklarierte Pipelinekante vorhanden; Erreichbarkeit und Zeilenfluss bleiben unbelegt.'
+            FROM #SsisPackageModelAnalysis_Nodes AS [n] JOIN #SsisPackageModelAnalysis_Owners AS [o] ON [o].[NodeId]=[n].[NodeId]
+            WHERE [n].[NodeKind]='PORT' AND JSON_VALUE([n].[AttributesJson],'$.portRole')='REGULAR'
+                AND JSON_VALUE([n].[AttributesJson],'$.direction') IN ('INPUT','OUTPUT')
+                AND NOT EXISTS(SELECT 1 FROM #SsisPackageModelAnalysis_Edges AS [uncertain] WHERE [uncertain].[EdgeKind]='PIPELINE_PATH' AND [uncertain].[ScopeNodeId]=[o].[ScopeId] AND [uncertain].[Resolution]<>'RESOLVED')
+                AND NOT EXISTS(SELECT 1 FROM #SsisPackageModelAnalysis_Edges AS [e] WHERE [e].[EdgeKind]='PIPELINE_PATH' AND [e].[ScopeNodeId]=[o].[ScopeId]
+                    AND (JSON_VALUE([n].[AttributesJson],'$.direction')='INPUT' AND [e].[ToNodeId]=[n].[NodeId] OR JSON_VALUE([n].[AttributesJson],'$.direction')='OUTPUT' AND [e].[FromNodeId]=[n].[NodeId]));
+            INSERT #SsisPackageModelAnalysis_ObjectFindings
+            SELECT [r].[RuleId],'INFO','IMPORTED_STATIC',[r].[Feature],[r].[NodeId],[r].[EdgeId],[r].[ScopeNodeId],[b].[PackageSha256],[b].[BindingStatus],[b].[ProducerTrust],[r].[Finding]
+            FROM #SsisPackageModelAnalysis_RuleEvidence AS [r] CROSS JOIN #SsisPackageModelAnalysis_Binding AS [b];
+        END;
         IF @IncludePackageViews=1
         BEGIN
             SET @ValidationStage='PACKAGE_VIEWS';
@@ -65523,10 +65571,10 @@ BEGIN
         SET @Message+=N' Stage='+@ValidationStage;
         SET @Status=CASE WHEN ERROR_NUMBER()=50000 AND ERROR_MESSAGE() IN ('INVALID_PARAMETER','EXCHANGE_INVALID','EXCHANGE_VERSION_UNSUPPORTED','EXCHANGE_LIMIT_EXCEEDED','EXCHANGE_REFERENCE_INVALID','EXCHANGE_PROFILE_UNSUPPORTED','EXCHANGE_SOURCE_MISMATCH','EXCHANGE_TIME_BUDGET_EXHAUSTED') THEN ERROR_MESSAGE() ELSE 'EXCHANGE_INVALID' END;
         DELETE #SsisPackageModelAnalysis_Binding; DELETE #SsisPackageModelAnalysis_Nodes; DELETE #SsisPackageModelAnalysis_Edges; DELETE #SsisPackageModelAnalysis_Coverage; DELETE #SsisPackageModelAnalysis_Findings; DELETE #SsisPackageModelAnalysis_Warnings;
-        DELETE #SsisPackageModelAnalysis_PackageOverview; DELETE #SsisPackageModelAnalysis_Executables; DELETE #SsisPackageModelAnalysis_DataFlows; DELETE #SsisPackageModelAnalysis_Components; DELETE #SsisPackageModelAnalysis_ColumnRelations;
+        DELETE #SsisPackageModelAnalysis_ObjectFindings; DELETE #SsisPackageModelAnalysis_PackageOverview; DELETE #SsisPackageModelAnalysis_Executables; DELETE #SsisPackageModelAnalysis_DataFlows; DELETE #SsisPackageModelAnalysis_Components; DELETE #SsisPackageModelAnalysis_ColumnRelations;
     END CATCH;
     SET @LockTimeoutSql=N'SET LOCK_TIMEOUT '+CONVERT(nvarchar(20),@OriginalLockTimeout)+N';'; EXEC [sys].[sp_executesql] @LockTimeoutSql;
-    IF @Status='AVAILABLE_LIMITED' AND (EXISTS(SELECT 1 FROM #SsisPackageModelAnalysis_Nodes WHERE [NodeOrdinal]>@Limit) OR EXISTS(SELECT 1 FROM #SsisPackageModelAnalysis_Edges WHERE [EdgeOrdinal]>@Limit))
+    IF @Status='AVAILABLE_LIMITED' AND (EXISTS(SELECT 1 FROM #SsisPackageModelAnalysis_Nodes WHERE [NodeOrdinal]>@Limit) OR EXISTS(SELECT 1 FROM #SsisPackageModelAnalysis_Edges WHERE [EdgeOrdinal]>@Limit) OR (SELECT COUNT_BIG(*) FROM #SsisPackageModelAnalysis_ObjectFindings)>@Limit)
         INSERT #SsisPackageModelAnalysis_Warnings VALUES('RESULT_TRUNCATED','INFO',N'Nur die Ausgabe ist begrenzt; die Validierung verwendete den vollständigen Graphen.');
     INSERT #SsisPackageModelAnalysis_ModuleStatus VALUES('USP_SsisPackageModelAnalysis',@Started,@SchemaVersion,@Status,@Partial,(SELECT COUNT(*) FROM #SsisPackageModelAnalysis_Nodes),(SELECT COUNT(*) FROM #SsisPackageModelAnalysis_Edges),@Error,@Message);
     INSERT #SsisPackageModelAnalysis_SourceStatus VALUES(N'Caller SSIS-Modell',@Status,@Partial,(SELECT COUNT_BIG(*) FROM #SsisPackageModelAnalysis_Nodes),N'Native Strukturprüfung; ProducerTrust bleibt UNVERIFIED. Keine Paket- oder SQL-Ausführung.');
@@ -65542,6 +65590,11 @@ BEGIN
             JSON_QUERY(COALESCE((SELECT * FROM #SsisPackageModelAnalysis_Findings FOR JSON PATH,INCLUDE_NULL_VALUES),N'[]')) AS [findings],
             JSON_QUERY(COALESCE((SELECT * FROM #SsisPackageModelAnalysis_SourceStatus FOR JSON PATH,INCLUDE_NULL_VALUES),N'[]')) AS [sourceStatus],
             JSON_QUERY(COALESCE((SELECT * FROM #SsisPackageModelAnalysis_Warnings FOR JSON PATH,INCLUDE_NULL_VALUES),N'[]')) AS [warnings] FOR JSON PATH,WITHOUT_ARRAY_WRAPPER);
+        IF @IncludeObjectRules=1
+        BEGIN
+            SET @Json=JSON_MODIFY(@Json,'$.meta.objectRulesSchemaVersion',1);
+            SET @Json=JSON_MODIFY(@Json,'$.objectFindings',JSON_QUERY(COALESCE((SELECT TOP(@Limit) * FROM #SsisPackageModelAnalysis_ObjectFindings ORDER BY [RuleId],[NodeId],[EdgeId] FOR JSON PATH,INCLUDE_NULL_VALUES),N'[]')));
+        END;
         IF @IncludePackageViews=1
         BEGIN
             SET @Json=JSON_MODIFY(@Json,'$.meta.packageViewsSchemaVersion',1);
@@ -65558,6 +65611,7 @@ BEGIN
     ;WITH [r] AS(SELECT *,ROW_NUMBER() OVER(ORDER BY [NodeOrdinal]) AS [OutputRow] FROM #SsisPackageModelAnalysis_DataFlows) DELETE [r] WHERE [OutputRow]>@Limit;
     ;WITH [r] AS(SELECT *,ROW_NUMBER() OVER(ORDER BY [NodeOrdinal]) AS [OutputRow] FROM #SsisPackageModelAnalysis_Components) DELETE [r] WHERE [OutputRow]>@Limit;
     ;WITH [r] AS(SELECT *,ROW_NUMBER() OVER(ORDER BY [EdgeOrdinal]) AS [OutputRow] FROM #SsisPackageModelAnalysis_ColumnRelations) DELETE [r] WHERE [OutputRow]>@Limit;
+    ;WITH [r] AS(SELECT *,ROW_NUMBER() OVER(ORDER BY [RuleId],[NodeId],[EdgeId]) AS [OutputRow] FROM #SsisPackageModelAnalysis_ObjectFindings) DELETE [r] WHERE [OutputRow]>@Limit;
     IF @Mode='TABLE'
     BEGIN
         DECLARE @Target sysname;
@@ -65569,6 +65623,10 @@ BEGIN
         SET @Target=(SELECT [TargetTable] FROM #SsisPackageModelAnalysis_ResultTables WHERE [ResultName]='findings'); IF @Target IS NOT NULL EXEC [monitor].[InternalWriteResultTable] N'#SsisPackageModelAnalysis_Findings',@Target,@ThrowOnError=1;
         SET @Target=(SELECT [TargetTable] FROM #SsisPackageModelAnalysis_ResultTables WHERE [ResultName]='sourceStatus'); IF @Target IS NOT NULL EXEC [monitor].[InternalWriteResultTable] N'#SsisPackageModelAnalysis_SourceStatus',@Target,@ThrowOnError=1;
         SET @Target=(SELECT [TargetTable] FROM #SsisPackageModelAnalysis_ResultTables WHERE [ResultName]='warnings'); IF @Target IS NOT NULL EXEC [monitor].[InternalWriteResultTable] N'#SsisPackageModelAnalysis_Warnings',@Target,@ThrowOnError=1;
+        IF @IncludeObjectRules=1
+        BEGIN
+            SET @Target=(SELECT [TargetTable] FROM #SsisPackageModelAnalysis_ResultTables WHERE [ResultName]='objectFindings'); IF @Target IS NOT NULL EXEC [monitor].[InternalWriteResultTable] N'#SsisPackageModelAnalysis_ObjectFindings',@Target,@ThrowOnError=1;
+        END;
         IF @IncludePackageViews=1
         BEGIN
             SET @Target=(SELECT [TargetTable] FROM #SsisPackageModelAnalysis_ResultTables WHERE [ResultName]='packageOverview'); IF @Target IS NOT NULL EXEC [monitor].[InternalWriteResultTable] N'#SsisPackageModelAnalysis_PackageOverview',@Target,@ThrowOnError=1;
@@ -65591,6 +65649,7 @@ BEGIN
             SELECT * FROM #SsisPackageModelAnalysis_ColumnRelations ORDER BY [EdgeOrdinal];
         END;
     END;
+    IF @Mode='RAW' AND @IncludeObjectRules=1 SELECT * FROM #SsisPackageModelAnalysis_ObjectFindings ORDER BY [RuleId],[NodeId],[EdgeId];
     IF @ConsoleResultRequested=1
         EXEC [monitor].[InternalEmitConsoleResult] @SourceTable=N'#SsisPackageModelAnalysis_ModuleStatus',@ResultLabel=N'SsisPackageModelAnalysis',@EmptyMessage=N'Keine fachlichen Ergebnisse';
 END;

@@ -38,3 +38,8 @@ Mit `@IncludePackageViews=1` kommen Paketübersicht, Executables, beobachtete
 Datenflussscopes, Komponenten und direkte Spaltenbeziehungen hinzu. Die
 Projektionen verwenden den vollständigen validierten Graphen; das Zeilenlimit
 begrenzt anschließend jede Detailausgabe.
+
+Die Modellanalyse bietet mit `@IncludeObjectRules=1` zusätzlich
+objektbezogene statische Hinweise. Die [Regelreferenz](Procedures/USP_SsisPackageModelAnalysis.md#objektbezogene-regeln)
+beschreibt ihre konkreten Belege und Abdeckungsgrenzen. Die Regeln
+interpretieren keine neuen Komponenten und berechnen keine Lineage.

@@ -420,3 +420,13 @@ qualifizierte Expression-, Lookup- und Splitableitungen bleiben partiell und
 werden nicht durch einen zweiten Analyze-Parser ergänzt. Der Import setzt
 `producerTrust` weiterhin ausschließlich auf `UNVERIFIED`; eine spätere
 verifizierte lokale Herkunft benötigt eine eigene geschlossene Nachweisanbindung.
+
+## Zweite Welle: objektbezogene statische Regeln
+
+Analyze ergänzt `@IncludeObjectRules=1` und die optionale Gruppe
+`objectFindings`. Die [Regelreferenz](../Analysis_Guides/Procedures/USP_SsisPackageModelAnalysis.md#objektbezogene-regeln)
+führt den endlichen Regelumfang. Jede Zeile bewahrt Objekt-/Kantenbezug,
+Paketdigest, Bytebindungsstatus und Producervertrauen. Alle Hinweise bleiben
+`INFO` und `IMPORTED_STATIC`. Abwesenheitsprüfungen benötigen ausdrücklich
+vollständig gemeldete Inventar-/Graphabdeckung; die Producerbehauptung bleibt
+als solche erkennbar. Analyze ergänzt weder Profile noch Beziehungen.

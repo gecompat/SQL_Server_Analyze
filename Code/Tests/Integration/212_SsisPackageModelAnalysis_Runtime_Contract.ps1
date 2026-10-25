@@ -33,9 +33,10 @@ function Query([string]$Sql) {
     try { $data=[Data.DataSet]::new(); $adapter=[Data.SqlClient.SqlDataAdapter]::new($command); [void]$adapter.Fill($data); return ,$data }
     finally { $command.Dispose() }
 }
-function Invoke-Model([string]$Payload,[string]$Mode='NONE',[int]$Limit=1000,[bool]$IncludeBytes=$false,[string]$PrefixSql='', [string]$Mapping=$null,[string]$SuffixSql='', [bool]$Views=$false) {
+function Invoke-Model([string]$Payload,[string]$Mode='NONE',[int]$Limit=1000,[bool]$IncludeBytes=$false,[string]$PrefixSql='', [string]$Mapping=$null,[string]$SuffixSql='', [bool]$Views=$false,[bool]$Rules=$false) {
     $command=$connection.CreateCommand(); $command.CommandTimeout=90
-    $command.CommandText=$PrefixSql+"`nEXEC [monitor].[USP_SsisPackageModelAnalysis] @PackageModelJson=@Payload,@PackageBytes=@Bytes,@ResultSetArt=@Mode,@MaxZeilen=@Limit,@IncludePackageViews=@Views,@JsonErzeugen=1,@Json=@Json OUTPUT,@StatusCodeOut=@Status OUTPUT;`n"+$SuffixSql
+    $command.CommandText=$PrefixSql+"`nEXEC [monitor].[USP_SsisPackageModelAnalysis] @PackageModelJson=@Payload,@PackageBytes=@Bytes,@ResultSetArt=@Mode,@MaxZeilen=@Limit,@IncludePackageViews=@Views,@IncludeObjectRules=@Rules,@JsonErzeugen=1,@Json=@Json OUTPUT,@StatusCodeOut=@Status OUTPUT;`n"+$SuffixSql
+    [void]$command.Parameters.Add('@Rules',[Data.SqlDbType]::Bit);$command.Parameters['@Rules'].Value=$Rules
     [void]$command.Parameters.Add('@Views',[Data.SqlDbType]::Bit);$command.Parameters['@Views'].Value=$Views
     [void]$command.Parameters.Add('@Payload',[Data.SqlDbType]::NVarChar,-1); $command.Parameters['@Payload'].Value=$Payload
     [void]$command.Parameters.Add('@Bytes',[Data.SqlDbType]::VarBinary,-1)
@@ -162,6 +163,17 @@ try {
     $viewTables=Invoke-Model $model 'TABLE' 1000 $true $prefix ($mapping|ConvertTo-Json -Compress) $suffix $true
     Assert ($viewTables.Data.Tables.Count -eq 13) 'VIEWS_TABLE13'
     for($i=0;$i -lt 13;$i++){Assert ($viewTables.Data.Tables[$i].Rows.Count -eq $views.Data.Tables[$i].Rows.Count -and $viewTables.Data.Tables[$i].Columns.Count -eq $views.Data.Tables[$i].Columns.Count) ('VIEWS_TABLE_PARITY_'+$i)}
+    $ruleModel=$model|ConvertFrom-Json -Depth 32;$ruleExe=@($ruleModel.nodes|Where-Object kind -ceq 'EXECUTABLE')[0];$ruleExe.attributes|Add-Member -NotePropertyName isDisabled -NotePropertyValue $true -Force
+    $rulePayload=$ruleModel|ConvertTo-Json -Compress -Depth 32
+    $rules=Invoke-Model $rulePayload 'RAW' 1000 $false '' $null '' $false $true
+    Assert ($rules.Data.Tables.Count -eq 9 -and $rules.Json.objectFindings[0].NodeId -ceq $ruleExe.id) 'RULES_RAW9'
+    $both=Invoke-Model $rulePayload 'RAW' 1000 $false '' $null '' $true $true
+    Assert ($both.Data.Tables.Count -eq 14) 'RULES_VIEWS_RAW14'
+    $ruleTable=Invoke-Model $rulePayload 'TABLE' 1000 $false 'CREATE TABLE #SyntheticRules([seed] int NULL);' '{"objectFindings":"#SyntheticRules"}' 'SELECT * FROM #SyntheticRules; DROP TABLE #SyntheticRules;' $false $true
+    Assert ($ruleTable.Data.Tables.Count -eq 1 -and $ruleTable.Data.Tables[0].Rows.Count -eq $rules.Data.Tables[8].Rows.Count -and $ruleTable.Data.Tables[0].Columns.Count -eq $rules.Data.Tables[8].Columns.Count) 'RULES_TABLE_PARITY'
+    $ruleProbe=[IO.File]::ReadAllText((Join-Path $repositoryRoot 'Code/Tests/Integration/214_SsisObjectRules_Runtime_Contract.sql')) -replace 'USE \[DeineDatenbank\];',"USE [$database];"
+    foreach($batch in [regex]::Split($ruleProbe,'(?im)^\s*GO\s*$')) {if($batch.Trim()){[void](Query $batch)}}
+    Assert $true 'OBJECT_RULES_SQL_PROBE'
     $probe=[IO.File]::ReadAllText((Join-Path $repositoryRoot 'Code/Tests/Integration/213_SsisPackageViews_Runtime_Contract.sql')) -replace 'USE \[DeineDatenbank\];',"USE [$database];"
     foreach($batch in [regex]::Split($probe,'(?im)^\s*GO\s*$')) {if($batch.Trim()){[void](Query $batch)}}
     Assert $true 'PACKAGE_VIEWS_SQL_PROBE'

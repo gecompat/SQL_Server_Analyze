@@ -220,6 +220,30 @@ Weitere fachliche Regeln können die validierten typisierten Metadaten nutzen,
 sofern ihre Feature- und Evidenzvoraussetzungen erfüllt sind. Vertiefte
 Parser- und Lineagelogik bleibt im kanonischen Toolbelt-Kern.
 
+## Objektbezogene Regeln
+
+`@IncludeObjectRules=1` ergänzt `objectFindings` unabhängig von den
+Paketsichten. Der Standard behält acht RAW-Gruppen; Regeln allein liefern neun,
+Regeln mit Paketsichten vierzehn Gruppen. JSON kennzeichnet den optionalen
+Vertrag mit `meta.objectRulesSchemaVersion=1`; TABLE akzeptiert den Gruppennamen
+nur bei aktiviertem Flag. CONSOLE bleibt die einzelne Modulstatusausgabe.
+
+| RuleId | Gelieferter Beleg und Aussagegrenze |
+|---|---|
+| `SSIS_EXECUTABLE_DISABLED` | Ein Executable besitzt ausdrücklich `isDisabled=true`. Eine tatsächliche Ausführung ist damit nicht nachgewiesen. |
+| `SSIS_COMPONENT_PROFILE_UNKNOWN` | Eine Producerdiagnose `UNKNOWN_COMPONENT` verweist auf einen vorhandenen Komponentenknoten. Analyze führt keinen eigenen Komponentenkatalog. |
+| `SSIS_EDGE_UNRESOLVED` | Eine konkrete Kante besitzt `resolution=UNRESOLVED`. Analyze ergänzt keine Endpunkte. |
+| `SSIS_COLUMN_MULTIPLE_DIRECT_SOURCES` | Mehrere unterschiedliche gelieferte, aufgelöste `DATA_TRANSFER`-Quellen zeigen auf dieselbe Spalte im selben Scope. Das ist kein Fehlernachweis. |
+| `SSIS_PORT_NO_DECLARED_PATH` | Ein regulärer gerichteter Port besitzt keine passende deklarierte Pipelinekante. Diese Abwesenheitsaussage setzt `COMPLETE` für Inventar und Pipelinegraph sowie das unterstützte Format- und Komponentenprofil voraus. Unaufgelöste oder nicht unterstützte Pipelinepfade sperren die Abwesenheitsregel im betreffenden Scope; Laufzeiterreichbarkeit und Zeilenfluss bleiben unbelegt. |
+
+Alle Hinweise besitzen Severity `INFO` und EvidenceLevel `IMPORTED_STATIC`.
+`NodeId`, `EdgeId` und `ScopeNodeId` lokalisieren den Beleg; `PackageSha256`,
+`BindingStatus` und `ProducerTrust` erhalten seine Herkunft. Fehlende Namen,
+unbekannte Eigenschaften und nicht vorhandene Runtimebelege werden nicht
+ersetzt. Die Regeln arbeiten vor der Ausgabekürzung; `@MaxZeilen` begrenzt die
+Gruppe anschließend und erzeugt bei Kürzung `RESULT_TRUNCATED`. Ungültige
+Modelle liefern auch bei aktiviertem Flag keine Teilbefunde.
+
 ## Primärquellen
 
 - [Freigegebener projektübergreifender Vertrag](../../Architecture/SSIS_Analyze_Toolbelt_Exchange_Contract.md)

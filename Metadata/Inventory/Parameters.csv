@@ -1992,3 +1992,4 @@ USP_SsisPackageModelAnalysis,IsPartialOut,bit,NULL
 USP_SsisPackageModelAnalysis,ErrorNumberOut,int,NULL
 USP_SsisPackageModelAnalysis,ErrorMessageOut,nvarchar(2048),NULL
 USP_SsisPackageModelAnalysis,IncludePackageViews,bit,0
+USP_SsisPackageModelAnalysis,IncludeObjectRules,bit,0

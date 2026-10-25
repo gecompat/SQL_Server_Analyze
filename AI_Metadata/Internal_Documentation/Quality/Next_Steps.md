@@ -28,14 +28,16 @@ Ein Checkpoint folgt nach jeder integrierten Welle. Weitere Reviews, breite
 Native-Versionsmatrizen und unveränderte Testwiederholungen benötigen einen
 konkreten Auslöser. Verlässliche Token- und Kostenmessung liegt nicht vor.
 
-1. Fachliche Paketsichten: aktiv. Die acht bisherigen Importgruppen bleiben
-   standardmäßig erhalten; zusätzliche Sichten sind ein ausdrückliches Opt-in.
-   Der lokale Linux-SQL2025-Harness besteht 79 Prüfungen einschließlich RAW13,
-   TABLE-/JSON-Parität, Quellen mit Variablen und Parametern sowie exakter
-   Zahlenprojektion. Ein unabhängiger Review und der begrenzte Folgecheck
-   schließen zwei konkrete Projektionsbefunde. Head-CI und Integration stehen
-   noch aus; diese Angaben ersetzen deren tatsächliche Ergebnisse nicht.
-2. Objektbezogene Regeln: noch offen, mit konkreten Knoten-/Kantenbelegen.
+1. Fachliche Paketsichten: als PR #425 nach vollständiger Head-CI regulär
+   integriert (`9d0b018bc3a589e7ba20ae45e53ce425e2d94651`). Head- und
+   Mergebaum sind identisch. Der Main-Nachlauf ist ein getrennter, noch offener
+   Nachweis. Lokal sind 79 Prüfungen und der unabhängige Review mit einem
+   begrenzten Folgecheck abgeschlossen. Der mechanische Mergekonflikt erhielt
+   den separaten Statistikdiagnoseauftrag aus PR #424 unverändert.
+2. Objektbezogene Regeln: lokal abgenommen. Der SQL2025-Linux-Harness besteht
+   83 Prüfungen einschließlich der zusätzlichen SQL-Gegenfälle. Unabhängiger
+   Review und ein Folgecheck schließen zwei Abwesenheitsbefunde. Die statische
+   Suite mit 74 Validatoren besteht; Head-CI und Integration sind noch offen.
 3. Herkunft und Paketversionsbindung: noch offen; keine selbst behauptete
    Herkunft und keine Hash-Allowlist allein werden als verifiziert akzeptiert.
 4. Design-/Laufzeitkorrelation: noch offen; ohne belegte Revision und eindeutige
