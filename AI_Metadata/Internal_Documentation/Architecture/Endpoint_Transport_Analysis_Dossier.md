@@ -383,7 +383,7 @@ SQL2019-Gates wurden nicht wiederholt.
 
 Die fokussierte lokale Prüfung des unveränderten Vertrags 202 besteht mit
 den erforderlichen ANSI-/QUOTED_IDENTIFIER-Einstellungen und eigenem
-Labcleanup. Der erste private Einzelaufruf fehlte an diesen Session-
+Labcleanup. Der erste private Einzelaufruf scheiterte wegen fehlender Session-
 Voraussetzungen mit 1934 und ist keine Reproduktion des Main-Timeouts.
 Der spätere Erfolg beweist keine Korrektur einer konkreten Sperrursache.
 Ein weiterer Metadatentimeout verlangt gezielte Reproduktion und keinen
