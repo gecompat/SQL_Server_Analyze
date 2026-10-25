@@ -1,5 +1,11 @@
 # Releaseübersicht
 
+
+SSIS: `USP_SsisPackageModelAnalysis` ergänzt mit `@IncludeObjectRules=1`
+objektbezogene statische Hinweise. Knoten-/Kantenbezug, Paketbindung und
+Producervertrauen bleiben erhalten; Abwesenheitsprüfungen benötigen
+vollständig gemeldete Abdeckung. Die acht Standardgruppen bleiben erhalten.
+
 ## Aktueller Stand
 
 Der aktuelle Bestand folgt dem [Objektinventar](../../Metadata/Inventory/Objects.csv)
