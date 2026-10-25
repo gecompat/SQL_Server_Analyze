@@ -157,6 +157,8 @@ Quelle: `Code/05_QueryStore/005_TVF_QueryStoreReplicaRoleInfo.sql`
 | [`InternalCompleteWaitStatsCycle`](#snapshotinternalcompletewaitstatscycle) | `snapshot` | `Code/10_SnapshotBaseline/055_InternalCompleteWaitStatsCycle.sql` |
 | [`InternalFinalizeCollectionCycle`](#snapshotinternalfinalizecollectioncycle) | `snapshot` | `Code/10_SnapshotBaseline/060_InternalFinalizeCollectionCycle.sql` |
 | [`InternalPurgeExpiredData`](#snapshotinternalpurgeexpireddata) | `snapshot` | `Code/10_SnapshotBaseline/070_InternalPurgeExpiredData.sql` |
+| [`InternalValidateSnapshotWaitTarget`](#monitorinternalvalidatesnapshotwaittarget) | `monitor` | `Code/10_SnapshotBaseline/076_InternalValidateSnapshotWaitTarget.sql` |
+| [`InternalRunSnapshotWaitStatsCycle`](#monitorinternalrunsnapshotwaitstatscycle) | `monitor` | `Code/10_SnapshotBaseline/085_InternalRunSnapshotWaitStatsCycle.sql` |
 
 ### Tabellen
 
@@ -780,7 +782,7 @@ Quelle: `Code/10_SnapshotBaseline/020_InternalConfigureSnapshotPolicy.sql`
 | Dimension | Beschreibung |
 |---|---|
 | Aufgabe | Validiert und schreibt die typisierten Zielpolicies transaktional. |
-| Schnittstelle | Interne Stored Procedure; Parameter: `@CollectionIntervalSeconds smallint`; `@MaxRows int`; `@PayloadEnabled bit`; `@RawRetentionDays smallint`; `@PayloadRetentionDays smallint`; `@RollupRetentionDays smallint`; `@SoftBudgetMB int`; `@PurgeIntervalMinutes smallint`; `@PurgeBatchRows int`; `@BudgetAction varchar(32)`; `@StatusCodeOut varchar(40) OUTPUT`; `@ErrorNumberOut int OUTPUT`; `@ErrorMessageOut nvarchar(2048) OUTPUT`. Additive Target-Backendparameter: `@CollectorCode varchar(64)`; `@CollectorEnabled bit`; `@UpdateSharedPolicy bit`; `@ExpectedTargetDatabaseId int`; `@ExpectedTargetDatabaseName sysname`; `@ExpectedTargetCreateDate datetime`. Status-, Fehler- und weitere OUTPUT-Parameter werden ausschließlich zwischen Frameworkbausteinen weitergereicht. |
+| Schnittstelle | Interne Stored Procedure; Parameter: `@CollectionIntervalSeconds smallint`; `@MaxRows int`; `@PayloadEnabled bit`; `@RawRetentionDays smallint`; `@PayloadRetentionDays smallint`; `@RollupRetentionDays smallint`; `@SoftBudgetMB int`; `@PurgeIntervalMinutes smallint`; `@PurgeBatchRows int`; `@BudgetAction varchar(32)`; `@StatusCodeOut varchar(40) OUTPUT`; `@ErrorNumberOut int OUTPUT`; `@ErrorMessageOut nvarchar(2048) OUTPUT`. Additive Target-Backendparameter: `@CollectorCode varchar(64)`; `@CollectorEnabled bit`; `@UpdateSharedPolicy bit`; `@ExpectedTargetDatabaseId int`; `@ExpectedTargetDatabaseName sysname`; `@ExpectedTargetCreateDate datetime`; `@JoinFrameworkTransaction bit=0` für die ausdrückliche Teilnahme an der öffentlichen gemeinsamen Waittransaktion. Status-, Fehler- und weitere OUTPUT-Parameter werden ausschließlich zwischen Frameworkbausteinen weitergereicht. |
 | Verwendung | Öffentliche Procedures im Schema `monitor` rufen diesen Baustein zur Orchestrierung auf. Anwendungen sollen ihn weder direkt ausführen noch von seiner Parameterreihenfolge oder seinen temporären Zwischenstrukturen abhängen. |
 | Last und Sperren | Die Procedure schreibt nur in die ausdrücklich vorgesehenen Framework-, Snapshot- oder lokalen Ergebnisspeicher unter `LOCK_TIMEOUT 0`. Sie darf nur über den zugehörigen öffentlichen Einstieg ausgeführt werden. |
 | Vertrag | Nicht öffentlicher Vertrag. Fehlerbehandlung, OUTPUT-Parameter und Seiteneffekte sind nur für den versiongleichen internen Aufrufer zugesichert. |
@@ -792,7 +794,7 @@ Quelle: `Code/10_SnapshotBaseline/040_InternalPrepareCollectionCycle.sql`
 | Dimension | Beschreibung |
 |---|---|
 | Aufgabe | Prüft Due-Zeit und Softbudget vor jedem Quellread und eröffnet den Lauf. |
-| Schnittstelle | Interne Stored Procedure; Parameter: `@SourceDatabaseName sysname`; `@SchedulerType varchar(16)`; `@RunEvenIfNotDue bit`; `@CaptureRunIdOut bigint OUTPUT`; `@ShouldCollectOut bit OUTPUT`; `@StatusCodeOut varchar(40) OUTPUT`; `@ErrorMessageOut nvarchar(2048) OUTPUT`. Additive Target-Backendparameter: `@CollectorCode varchar(64)`; `@ExpectedTargetDatabaseId int`; `@ExpectedTargetDatabaseName sysname`; `@ExpectedTargetCreateDate datetime`. Status-, Fehler- und weitere OUTPUT-Parameter werden ausschließlich zwischen Frameworkbausteinen weitergereicht. |
+| Schnittstelle | Interne Stored Procedure; Parameter: `@SourceDatabaseName sysname`; `@SchedulerType varchar(16)`; `@RunEvenIfNotDue bit`; `@CaptureRunIdOut bigint OUTPUT`; `@ShouldCollectOut bit OUTPUT`; `@StatusCodeOut varchar(40) OUTPUT`; `@ErrorMessageOut nvarchar(2048) OUTPUT`. Additive Target-Backendparameter: `@CollectorCode varchar(64)`; `@ExpectedTargetDatabaseId int`; `@ExpectedTargetDatabaseName sysname`; `@ExpectedTargetCreateDate datetime`; `@PolicyOnly bit=0`. Mit `1` prüft der Waitpfad Enabled und Due ohne Budgetread oder Writes und liefert keine Run-ID. Status-, Fehler- und weitere OUTPUT-Parameter werden ausschließlich zwischen Frameworkbausteinen weitergereicht. |
 | Verwendung | Öffentliche Procedures im Schema `monitor` rufen diesen Baustein zur Orchestrierung auf. Anwendungen sollen ihn weder direkt ausführen noch von seiner Parameterreihenfolge oder seinen temporären Zwischenstrukturen abhängen. |
 | Last und Sperren | Die Procedure schreibt nur in die ausdrücklich vorgesehenen Framework-, Snapshot- oder lokalen Ergebnisspeicher unter `LOCK_TIMEOUT 0`. Sie darf nur über den zugehörigen öffentlichen Einstieg ausgeführt werden. |
 | Vertrag | Nicht öffentlicher Vertrag. Fehlerbehandlung, OUTPUT-Parameter und Seiteneffekte sind nur für den versiongleichen internen Aufrufer zugesichert. |
@@ -1102,3 +1104,27 @@ Quelle: `Code/10_SSIS/037_InternalSsisPipelineDiagnostics.sql`
 | Verwendung | Der öffentliche Einstieg ergänzt `IncludePipelineDiagnostics=1` zur Scope- und Pipelinekorrelation. Statische Portrollen werden ausschließlich aus dem Toolbelt-Modell übernommen. |
 | Last und Sperren | Gruppierungen und Fensterfunktionen verarbeiten höchstens den bereits begrenzten Capturebestand in eigenen Temp-Objekten. Es erfolgen keine zusätzlichen Katalogabfragen oder Berechtigungsänderungen. |
 | Vertrag | Unbekannte Werte, Zuordnungslücken, überlappende Intervalle und Quellenkürzung bleiben sichtbar. Summen gelten nur je Instanz und Objekt; Hinweise belegen keine CPU-Zeit, Engpassursache oder globale Paketzeilenzahl. |
+
+### `[monitor].[InternalValidateSnapshotWaitTarget]`
+
+Quelle: `Code/10_SnapshotBaseline/076_InternalValidateSnapshotWaitTarget.sql`
+
+| Dimension | Beschreibung |
+|---|---|
+| Aufgabe | Prüft die tatsächliche Wait-Zielidentität, Abschlussversion, verwendeten Signaturen, neun Metrikdefinitionen und den lesenden Retentionsvertrag. |
+| Schnittstelle | Zielname und optional erwartete ID/Erstellungszeit; OUTPUT liefert die tatsächliche ID, Erstellungszeit, Status und Fehlergrenze. |
+| Verwendung | Konfiguration und Collection verwenden denselben internen Aufnahmevertrag. Anwendungen verwenden die öffentlichen Snapshot-Procedures. |
+| Last und Sperren | Wenige Katalog- und Policyreads ohne persistente Writes; der Retentionsaufruf verwendet ausschließlich ContractOnly. |
+| Vertrag | Ein Versionsmarker allein reicht nicht. Der interne Vertrag setzt eine vertrauenswürdige installierte Paketnamespace voraus; er beweist keine administrative Codeintegrität. |
+
+### `[monitor].[InternalRunSnapshotWaitStatsCycle]`
+
+Quelle: `Code/10_SnapshotBaseline/085_InternalRunSnapshotWaitStatsCycle.sql`
+
+| Dimension | Beschreibung |
+|---|---|
+| Aufgabe | Orchestriert die vollständige native Waitquelle und deren gebundenen Targetabschluss. |
+| Schnittstelle | Schedulerart und Force sowie OUTPUT für Capture-ID, Targetname, Status, Partialität und Fehler. Die Ergebnisse fließen in die beiden internen Run-/Modulziele des öffentlichen Aufrufers. |
+| Verwendung | Ausschließlich `USP_RunSnapshotCollectionCycle` mit `CollectorCode=WAIT_STATS` ruft diesen Baustein auf. |
+| Last und Sperren | Ein Sessionlock mit Wartezeit null umfasst Aufnahmeprüfung, Purge, Vorbereitung, vollständigen DMV-Read, Abschluss und Ausgabe. MaxRows begrenzt nur Targetwrites. |
+| Vertrag | Enabled und Due werden vor Writes geprüft. Ein noch nicht fälliger Purge verhindert den Capture nicht. Enginekontext vor/nach dem Read beweist keine atomare Sicht oder Resetkontinuität; ein Ausgabefehler hebt einen bereits bestätigten Capture nicht auf. |

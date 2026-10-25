@@ -2060,3 +2060,7 @@ USP_EndpointTransportAnalysis,ErrorMessageOut,nvarchar(2048),NULL OUTPUT
 USP_SsisPackageModelAnalysis,IncludePipelineCorrelation,bit,0
 USP_SsisPackageModelAnalysis,IncludePipelineDiagnostics,bit,0
 USP_SsisPackageModelAnalysis,PipelinePhaseThresholdMs,bigint,NULL
+USP_ConfigureSnapshotTarget,CollectorCode,varchar(64),'PERFORMANCE_COUNTERS'
+USP_ConfigureSnapshotTarget,CollectorEnabled,bit,1
+USP_ConfigureSnapshotTarget,UpdateSharedPolicy,bit,NULL
+USP_RunSnapshotCollectionCycle,CollectorCode,varchar(64),'PERFORMANCE_COUNTERS'

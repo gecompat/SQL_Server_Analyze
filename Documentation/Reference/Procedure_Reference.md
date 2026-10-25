@@ -2378,24 +2378,27 @@ Quelle: `Code/10_SnapshotBaseline/080_USP_ConfigureSnapshotTarget.sql`
 
 ```sql
 @TargetDatabaseName       sysname
-    , @IsEnabled                bit           = 1
-    , @SchedulerType            varchar(16)   = 'EXTERNAL'
-    , @CollectionIntervalSeconds smallint      = 30
-    , @MaxRows                  int            = 1000
-    , @PayloadEnabled           bit            = 0
-    , @RawRetentionDays         smallint       = 14
-    , @PayloadRetentionDays     smallint       = 7
-    , @RollupRetentionDays      smallint       = 180
-    , @SoftBudgetMB             int            = 10240
-    , @PurgeIntervalMinutes     smallint       = 60
-    , @PurgeBatchRows           int            = 10000
-    , @BudgetAction             varchar(32)    = 'PURGE_EXPIRED_THEN_STOP'
-    , @PrintMeldungen           bit            = 1
-    , @Hilfe                    bit            = 0
-    , @StatusCodeOut            varchar(40)    = NULL OUTPUT
-    , @IsPartialOut             bit            = NULL OUTPUT
-    , @ErrorNumberOut           int            = NULL OUTPUT
-    , @ErrorMessageOut          nvarchar(2048) = NULL OUTPUT
+    , @IsEnabled                bit          = 1
+    , @SchedulerType            varchar(16)  = 'EXTERNAL'
+    , @CollectionIntervalSeconds smallint     = 30
+    , @MaxRows                  int           = 1000
+    , @PayloadEnabled           bit           = 0
+    , @RawRetentionDays         smallint      = 14
+    , @PayloadRetentionDays     smallint      = 7
+    , @RollupRetentionDays      smallint      = 180
+    , @SoftBudgetMB             int           = 10240
+    , @PurgeIntervalMinutes     smallint      = 60
+    , @PurgeBatchRows           int           = 10000
+    , @BudgetAction             varchar(32)   = 'PURGE_EXPIRED_THEN_STOP'
+    , @PrintMeldungen           bit           = 1
+    , @Hilfe                    bit           = 0
+    , @StatusCodeOut            varchar(40)   = NULL OUTPUT
+    , @IsPartialOut             bit           = NULL OUTPUT
+    , @ErrorNumberOut           int           = NULL OUTPUT
+    , @ErrorMessageOut          nvarchar(2048)= NULL OUTPUT
+    , @CollectorCode            varchar(64) = 'PERFORMANCE_COUNTERS'
+    , @CollectorEnabled         bit = 1
+    , @UpdateSharedPolicy       bit = NULL
 ```
 
 ## `[monitor].[USP_RunSnapshotCollectionCycle]`
@@ -2416,6 +2419,7 @@ Quelle: `Code/10_SnapshotBaseline/090_USP_RunSnapshotCollectionCycle.sql`
     , @IsPartialOut      bit            = NULL OUTPUT
     , @ErrorNumberOut    int            = NULL OUTPUT
     , @ErrorMessageOut   nvarchar(2048) = NULL OUTPUT
+    , @CollectorCode     varchar(64) = 'PERFORMANCE_COUNTERS'
 ```
 
 ## `[monitor].[USP_PurgeSnapshotData]`

@@ -5,7 +5,7 @@ Status: `IMPLEMENTED_ACTIONS_GATE`
 
 ## Paketgrenze
 
-SC-023 ist absichtlich kein Bestandteil von `Install_All.sql`. Ohne die beiden separaten Installer bleibt der Frameworkkern zustandslos. Der erste vertikale Slice besitzt genau einen Collector: `monitor.USP_PerformanceCounters` mit `@SampleSeconds=0`. Das Target enthält außerdem ein internes Wait-Backend mit deaktivierter neuer Policy. Ein öffentlicher Wait-Collector sowie I/O-, Datenbank-, Query-, Plan-, Rollup-, Export- und Agentjob-Pakete gehören nicht zu diesem Stand.
+SC-023 ist absichtlich kein Bestandteil von `Install_All.sql`. Ohne die beiden separaten Installer bleibt der Frameworkkern zustandslos. Der Defaultcollector bleibt `monitor.USP_PerformanceCounters` mit `@SampleSeconds=0`. `@CollectorCode='WAIT_STATS'` aktiviert ausdrücklich den öffentlichen Waitpfad; seine neue Targetpolicy bleibt zunächst deaktiviert. I/O-, Datenbank-, Query-, Plan-, Rollup-, Export- und Agentjob-Pakete gehören nicht zu diesem Stand.
 
 Die Snapshot-Datenbank darf im autorisierten Betrieb reale Laufzeitwerte speichern. Exporte, Berichte und weitergegebene Auszüge benötigen einen eigenen Datenschutz-, Empfänger- und Aufbewahrungsvertrag.
 
@@ -87,7 +87,7 @@ in der ZIP vor. Er besitzt eine gemeinsame Transaktion, Receipts und
 Vorzustandserhaltung in beiden Kontexten. Vorhandene Datenbanken und Zielbindung werden
 weiterverwendet. Die bereits veröffentlichte v1.1.2-ZIP enthält
 Target-Paketversion `1.0.0` mit `SchemaVersion=1`. Der aktuelle Quellstand
-installiert das Target-Backend `1.2.0` mit `SchemaVersion=2`; die Targetversion ist von der
+installiert das Target `1.2.1` mit `SchemaVersion=2`; die Targetversion ist von der
 Frameworkversion getrennt. Der
 [Architekturvertrag](../Architecture/Snapshot_Baseline_Package_Contract.md#installation)
 beschreibt die erkannten Upgradezustände und Installationsrechte. Bestehende
@@ -139,9 +139,35 @@ Ein Agentjob oder externer Scheduler ruft nur diese Procedure auf; Sammellogik g
 
 - `CaptureRun` und `ModuleStatus` bewahren Laufstatus, Partialität und Fehlergrenze.
 - `Scope`, `MetricDefinition` und `MetricSample` bilden typisierte Raw- und abgeleitete Werte ab.
-- `SqlServerStartTimeUtc` bindet alle Samples eines Engine-Starts an dieselbe `ResetEpochId`; über Epochwechsel werden keine Deltas behauptet.
+- Performance Counter verwenden ihren bestehenden `SqlServerStartTimeUtc`-/Epochenvertrag. Waits erhalten den nativen lokalen Engine-Start und die Startticks im Kontext; ihr `SqlServerStartTimeUtc` bleibt NULL. Ein gleicher Enginekontext beweist keine durchgehende Resetkontinuität.
 - `PayloadSnapshot` wird nur mit `@PayloadEnabled=1` geschrieben. Der JSON-Vertrag bleibt verlustfrei, wird GZIP-komprimiert und per SHA-256 gebunden.
 - Fehlende Evidenz erzeugt kein Sample mit erfundenem Nullwert.
+
+## Öffentlicher Waitpfad
+
+Nach Installation des Targets `1.2.1` wird zunächst die gemeinsame Zielbeziehung
+konfiguriert. Anschließend aktiviert `USP_ConfigureSnapshotTarget` mit
+`@CollectorCode='WAIT_STATS'`, `@CollectorEnabled=1` und
+`@UpdateSharedPolicy=0` nur die Waitpolicy. Der Default für gemeinsame Änderungen
+ist bei Waits `0`, bei Performance Countern `1`. Ein ausdrücklich gewähltes `1`
+aktualisiert beide Datenbanken atomar; neue Optionen benötigen einen Caller
+außerhalb eigener oder impliziter Transaktionen.
+
+Der Waitlauf hält denselben Sessionlock wie Performance Counter und Purge.
+Enabled und Due werden vor allen mutierenden Schritten geprüft. Danach folgen
+Purge, Größenprüfung und ein vollständiger Read von `sys.dm_os_wait_stats`.
+`MaxRows` begrenzt ausschließlich die anschließende Schreibauswahl. Der
+Enginekontext wird vorher und nachher gelesen; es gibt keinen regulären
+Cache-Reset. Fehlende Quellrechte erzeugen einen finalisierten Fehlerlauf ohne
+erfundene Samples oder Epoche. Monotone Differenzkandidaten bleiben ausdrücklich
+unbewiesen, der Gesamtstatus eines erfolgreichen Waitcaptures ist `PARTIAL`.
+
+Die Waitquelle und `sys.dm_os_sys_info` benötigen auf SQL Server 2019
+`VIEW SERVER STATE`, ab SQL Server 2022 `VIEW SERVER PERFORMANCE STATE`.
+Die Installer erteilen diese Rechte nicht. `CONSOLE`, `RAW`, `TABLE` und `NONE`
+sind zulässig; JSON wird optional über `@JsonErzeugen=1` ausgegeben. Die
+[Procedure-Seite](../Analysis_Guides/Procedures/USP_RunSnapshotCollectionCycle.md)
+erläutert frühe OUTPUT-Fehler und Ausgabefehler nach bestätigter Speicherung.
 
 ## Retention und Budget
 
@@ -150,8 +176,7 @@ Wait-Vergleichs von der Runlöschung ausgenommen, bis ein neuerer Wait-Lauf
 finalisiert ist. Dies erhält höchstens eine zusätzliche Laufzeile einschließlich
 eines möglichen Fehlerstatus. Ihre Rohsamples, Payloads und Modulstatus
 verfallen regulär; ihre bloße Existenz beweist deshalb keine vollständige
-Vergleichsbasis. Die Performance-Counter-Retention bleibt unverändert. Die neue WAIT_STATS-Policy ist bei Neuanlage deaktiviert; der
-aktuelle Stand stellt noch keinen öffentlichen Wait-Collector bereit.
+Vergleichsbasis. Die Performance-Counter-Retention bleibt unverändert. Die neue WAIT_STATS-Policy ist bei Neuanlage deaktiviert und wird über die ausdrückliche Collectorwahl aktiviert.
 
 ```sql
 EXEC [monitor].[USP_PurgeSnapshotData]

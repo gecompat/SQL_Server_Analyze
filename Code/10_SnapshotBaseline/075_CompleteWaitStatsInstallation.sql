@@ -1,7 +1,7 @@
 /*
 ===============================================================================
 Datei        : 075_CompleteWaitStatsInstallation.sql
-Version      : 1.2.0
+Version      : 1.2.1
 Stand        : 2026-10-25
 Zweck        : Prüft die vollständige Wait-Targetclosure, ergänzt fehlende
                kompatible Seeds und markiert erst danach den Paketabschluss.
@@ -88,7 +88,9 @@ INSERT @SnapshotWaitExpectedParameters VALUES
  (N'InternalConfigureSnapshotPolicy',N'@CollectorCode',167,64,0),
  (N'InternalConfigureSnapshotPolicy',N'@CollectorEnabled',104,1,0),
  (N'InternalConfigureSnapshotPolicy',N'@UpdateSharedPolicy',104,1,0),
+ (N'InternalConfigureSnapshotPolicy',N'@JoinFrameworkTransaction',104,1,0),
  (N'InternalPrepareCollectionCycle',N'@CollectorCode',167,64,0),
+ (N'InternalPrepareCollectionCycle',N'@PolicyOnly',104,1,0),
  (N'InternalPurgeExpiredData',N'@ContractOnly',104,1,0),
  (N'InternalPurgeExpiredData',N'@RetentionContractVersionOut',56,4,1),
  (N'InternalCompleteWaitStatsCycle',N'@CaptureRunId',127,8,0),
@@ -133,7 +135,7 @@ IF NOT EXISTS(SELECT 1 FROM [snapshot].[CollectorPolicy] WHERE [CollectorCode]='
     VALUES('WAIT_STATS',0,30,1000,0,'DEFAULT',0,1,SYSUTCDATETIME());
 
 UPDATE [snapshot].[PackageVersion]
-SET [PackageVersion]='1.2.0',[LastInstallerRunUtc]=SYSUTCDATETIME()
+SET [PackageVersion]='1.2.1',[LastInstallerRunUtc]=SYSUTCDATETIME()
 WHERE CONVERT(varbinary(max),[PackageCode])=CONVERT(varbinary(max),'SC-023') AND [PackageVersion]='1.1.1' AND [SchemaVersion]=2;
 IF @@ROWCOUNT<>1
     THROW 53761,N'Der Wait-Paketabschluss konnte nicht markiert werden.',1;

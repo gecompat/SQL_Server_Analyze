@@ -28,7 +28,7 @@ REQUIRED_STATUS = {
     "SQL25-004": "IMPLEMENTED_ACTIONS_GATE",
     "RUNTIME-001": "IMPLEMENTED_EXTERNAL_EVIDENCE_PENDING",
     "SC-023": "IMPLEMENTED_ACTIONS_GATE",
-    "SC-023-EXPANSION": "OPTIONAL_FUTURE",
+    "SC-023-EXPANSION": "PARTIAL_PRODUCT_FUNCTION",
 }
 OWNER_SINGLE_READS = (
     "FROM [sys].[dm_exec_sessions]",
@@ -262,7 +262,7 @@ def main() -> int:
     snapshot_contract = (
         root / "Documentation/Architecture/Snapshot_Baseline_Package_Contract.md"
     ).read_text(encoding="utf-8-sig")
-    for token in ("IMPLEMENTED_ACTIONS_GATE", "OPTIONAL_FUTURE"):
+    for token in ("IMPLEMENTED_ACTIONS_GATE", "PARTIAL_PRODUCT_FUNCTION"):
         if token not in snapshot_contract:
             fail("SNAPSHOT_PRODUCT_STATUS", token)
 

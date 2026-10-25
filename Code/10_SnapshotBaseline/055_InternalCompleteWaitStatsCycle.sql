@@ -1,7 +1,7 @@
 /*
 ===============================================================================
 Objekt       : snapshot.InternalCompleteWaitStatsCycle
-Version      : 1.0.0
+Version      : 1.0.1
 Stand        : 2026-10-25
 Zweck        : Die Procedure bindet einen vollständigen Waitread an seinen Run
                und speichert Rohwerte und Differenzkandidaten atomar.
@@ -81,11 +81,11 @@ BEGIN
         IF (SELECT COUNT_BIG(*) FROM [snapshot].[PackageVersion])<>1 OR NOT EXISTS
            (SELECT 1 FROM [snapshot].[PackageVersion]
             WHERE CONVERT(varbinary(max),[PackageCode])=CONVERT(varbinary(max),'SC-023')
-              AND CONVERT(varbinary(max),[PackageVersion])=CONVERT(varbinary(max),'1.2.0')
+              AND CONVERT(varbinary(max),[PackageVersion])=CONVERT(varbinary(max),'1.2.1')
               AND [SchemaVersion]=2)
         BEGIN
             SELECT @StatusCodeOut='TARGET_UNAVAILABLE',@IsPartialOut=1,@ErrorNumberOut=53761,
-                   @ErrorMessageOut=N'Das vollständig installierte Wait-Target 1.2.0 fehlt.';
+                   @ErrorMessageOut=N'Das vollständig installierte Wait-Target 1.2.1 fehlt.';
             RETURN;
         END;
         DECLARE @ProbeRun bigint,@ProbeStatus varchar(40),@ProbeBudget bit,@ProbeError int,

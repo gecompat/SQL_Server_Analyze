@@ -1101,7 +1101,7 @@ sind ausgeschlossen. Die nativen Abschlussläufe bleiben bis zu ihrem
 tatsächlichen Ergebnis offene Evidenz.
 
 
-### Aktueller Abnahmestand des internen Targets
+### Historischer Abnahmestand vor Abschluss von PR #451
 
 Der unabhängige Algorithmus-/Integrationsreview ist mit gezielten
 Befundnachprüfungen abgeschlossen. Der lokale vollständige Vertrag 195
@@ -1129,3 +1129,88 @@ Berechtigungsscopes. Die vollständigen aktuellen Head- und Main-Gates
 sowie diese zusätzliche Prüfung bleiben bis zu ihren tatsächlichen
 Ergebnissen offen. Ein allgemeiner nativer Core-Reifeabschluss und eine
 öffentliche Wait-Erfassung werden damit weiterhin nicht behauptet.
+
+
+## Öffentliche Aktivierungswelle nach PR #451
+
+Das interne Target ist als 71b6bc67 regulär integriert. Der Lieferhead
+8046679c besteht alle sieben Head-Checks, das vollständige SQL2025-Gate
+40232753331 und die gezielte native SQL2019-Abnahme 40232733776. Letztere
+bindet ZIP 50da2dfcf325f2b12232d17dff847b947963c68ac34c2226425140816d584615
+an SQL2019 15.0.4500.2, CL150 und die vier benannten Snapshot-Risikogruppen.
+Core-Vollrelease und allgemeine native Rechtematrix sind dort NOT_EXECUTED.
+Der getrennte Main-Nachlauf besteht inzwischen ebenfalls: vollständiges SQL2025-Gate 40234382008 sowie Dokumentation 40234382045, Datenschutz 40234381954 und Commitprüfung 40234381977. Der erste Fehlversuch und seine unbekannte Sperrursache bleiben historisch erhalten.
+
+Die neue Welle liefert die bereits beschriebenen additiven öffentlichen
+Collectorparameter und einen eigenen Frameworkhelper für den vollständigen
+nativen Read. Die Target-Patchversion 1.2.1 ergänzt dafür die ausdrücklich
+interne Transaktionsbeteiligung. Neue öffentliche Optionen benötigen die
+tatsächlich vollständige 1.2.1-Closure. Alte positionale Aufrufe und der
+bisherige Performance-Counter-Default bleiben auf ihrem Legacy-Pfad.
+
+### Atomare gemeinsame Konfiguration
+
+InternalConfigureSnapshotPolicy erhält abschließend
+JoinFrameworkTransaction bit = 0. Der unveränderte Default lehnt WAIT_STATS
+in einer Callertransaktion weiterhin vor Fachzugriff ab. Der Wert 1 verlangt
+WAIT_STATS, UpdateSharedPolicy=1, genau eine committable Transaktion,
+IMPLICIT_TRANSACTIONS OFF und die vollständige Zielbindung. Das Flag
+beschreibt die Transaktionsbeteiligung; der interne Aufrufer verantwortet
+die Herkunft und den gesamten Transaktionsabschluss.
+
+Der öffentliche neue Konfigurationspfad weist Usertransaktionen früh ab.
+Bei Shared1 eröffnet er selbst die gemeinsame Cross-DB-Transaktion. Im
+ausdrücklich gewählten Join-Modus eröffnet oder beendet der Targethelper
+keine Transaktion und verwendet keinen Savepoint. Jeder Fehler, Status
+ungleich AVAILABLE, nicht leere Fehlernummer oder abweichende
+Transaktionszustand führt beim öffentlichen Besitzer zum vollständigen
+Rollback. Vor Commit müssen Status AVAILABLE, Fehlernummer NULL,
+TRANCOUNT=1 und XACT_STATE=1 vorliegen. Shared0 ruft die eigene Target-
+Transaktion auf und erhält die vorhandene Frameworkbindung unverändert.
+
+### Erhaltung und unterbrochene Upgrades
+
+Das bekannte 1.2.0-Target besitzt den Waithelper bereits. Die neue
+Vorprüfung behandelt dessen Namen deshalb als eingeführten Paketbestand.
+Wenn 030 einen begonnenen Upgrade erneut als 1.1.1 markiert, muss auch der
+noch unveränderte kanonische 1.2.0-Helper wiederaufnehmbar bleiben. Der
+Kollisionsschutz bindet dafür ausschließlich die eingefrorene tatsächlich
+ausgelieferte alte Definition und die neue kanonische Definition. Fremde
+Definitionen unter älteren Paketmarkern bleiben unzulässig. Die tatsächlichen
+1.2.0-Helper, vorhandene Waitseeds und eigene Policywerte gehören in die
+nativen Upgradeoracles.
+
+Der neue öffentliche Wait-Pfad weist unzulässige Callerzustände vor lokaler
+Temp-DDL zurück und liefert dabei ausschließlich die regulären OUTPUT-
+Statuswerte. Dadurch erzeugt ein Aufruf mit impliziten Transaktionen selbst
+keine neue Usertransaktion. Normale RAW-/TABLE-Ausgaben behalten die beiden
+bisherigen Ergebnisschemas; Hilfe und diese frühe Callerablehnung sind
+ausdrückliche frühe Rückkehrpfade.
+
+
+Die schreibfreie Vorprüfung von Aktivierung und Fälligkeit verwendet
+InternalPrepareCollectionCycle mit dem additiven PolicyOnly bit = 0.
+PolicyOnly=1 ist ausschließlich für WAIT_STATS zulässig, liefert keinen
+CaptureRun und prüft das Budget noch nicht. Der normale Defaultpfad bleibt
+erhalten. Der Frameworkhelper führt diese Prüfung unter der gehaltenen
+Session-Applock vor jedem neuen Purge-/Capturewrite aus. Ein reguläres
+SKIPPED_NOT_DUE des anschließenden Purge ohne Fehlernummer lässt eine fällige
+oder ausdrücklich erzwungene Messung zu. Die eigentliche Budgetprüfung
+folgt nach dem Purge in der normalen Vorbereitung.
+
+### Abnahme der öffentlichen Aktivierung
+
+Der ursprüngliche Produktreview hat zwei konkrete Ablaufbefunde geschlossen.
+Ein Purge mit SKIPPED_NOT_DUE darf einen Capture nicht verhindern. Enabled und
+Due müssen vor jedem mutierenden Purge-/Capturepfad geprüft werden. Der neue
+Vertrag 224 ergänzt dafür unabhängige Nativecache-/Engineoracles, einen
+fälligen Purge bei noch nicht fälligem Collector sowie einen gemeinsamen
+Fehler-/Recoverypfad mit ID-/SID-Bindung. Die kanonische Targetinstallation
+liegt vor Frameworkmutation und Impersonation; ein Fehler in dieser Setupstufe
+benötigt den nachgewiesenen äußeren Cleanup der eigenen Labinstanz.
+
+Die lokale und reguläre Remotequalifizierung der öffentlichen Aktivierung
+ist bis zu ihrem tatsächlichen Abschluss offen. Source-denied, erfolgreiche
+Quellrechte, Shared0-Erhaltung, atomare Fehler in beiden Datenbanken und
+Ausgabefehler nach bestätigtem Capture gehören zu dieser Abnahme. Es gibt
+keinen regulären DBCC-Reset und keinen allgemeinen Reifeabschluss.

@@ -624,8 +624,8 @@ def snapshot_state_classifier(tables: list[Table], sources: list[Source], strict
            "IF EXISTS(SELECT 1 FROM [snapshot].[PackageVersion] WHERE CONVERT(varbinary(max),PackageCode)=CONVERT(varbinary(max),'SC-023') "
            "AND CONVERT(varbinary(max),PackageVersion)=CONVERT(varbinary(max),'1.0.0') AND SchemaVersion=1) SET @Legacy=1; "
            "ELSE IF NOT EXISTS(SELECT 1 FROM [snapshot].[PackageVersion] WHERE CONVERT(varbinary(max),PackageCode)=CONVERT(varbinary(max),'SC-023') "
-           + ("AND CONVERT(varbinary(max),PackageVersion)=CONVERT(varbinary(max),'1.2.0') AND SchemaVersion=2) " if strict else
-              "AND CONVERT(varbinary(max),PackageVersion) IN(CONVERT(varbinary(max),'1.1.0'),CONVERT(varbinary(max),'1.1.1'),CONVERT(varbinary(max),'1.2.0')) AND SchemaVersion=2) ")
+           + ("AND CONVERT(varbinary(max),PackageVersion)=CONVERT(varbinary(max),'1.2.1') AND SchemaVersion=2) " if strict else
+              "AND CONVERT(varbinary(max),PackageVersion) IN(CONVERT(varbinary(max),'1.1.0'),CONVERT(varbinary(max),'1.1.1'),CONVERT(varbinary(max),'1.2.0'),CONVERT(varbinary(max),'1.2.1')) AND SchemaVersion=2) ")
            + "THROW 53935,N'Unknown Snapshot package/schema version.',1;")
     out.append(f"EXEC sys.sp_executesql {lit(query)},N'@Legacy bit OUTPUT',{variable} OUTPUT;\n")
     if strict:
@@ -694,11 +694,13 @@ def snapshot_wait_seed_preflight(sources: list[Source], strict: bool=False) -> s
         raise BuildError('Wait target module closure is incomplete')
     expected=stored_module_definition(module.batches[0])
     digest=hashlib.sha256(expected.encode('utf-16le')).hexdigest()
+    # Frozen released 1.2.0 body, also valid after030 restages an interrupted upgrade.
+    legacy_digest='e392b9581c55955b81674e468aa88eac444339585dfd787a682abf66b3a48c49'
     obj="N'[snapshot].[InternalCompleteWaitStatsCycle]'"
     collision=("IF NOT EXISTS(SELECT 1 FROM [snapshot].[PackageVersion] WHERE CONVERT(varbinary(max),PackageCode)=CONVERT(varbinary(max),'SC-023') "
-               "AND CONVERT(varbinary(max),PackageVersion)=CONVERT(varbinary(max),'1.2.0') AND SchemaVersion=2) "
+               "AND CONVERT(varbinary(max),PackageVersion) IN(CONVERT(varbinary(max),'1.2.0'),CONVERT(varbinary(max),'1.2.1')) AND SchemaVersion=2) "
                "AND (OBJECT_DEFINITION(OBJECT_ID("+obj+",N'P')) IS NULL OR "
-               "HASHBYTES('SHA2_256',CONVERT(varbinary(max),TRIM(NCHAR(9)+NCHAR(10)+NCHAR(13)+N' ' FROM REPLACE(OBJECT_DEFINITION(OBJECT_ID("+obj+",N'P')),NCHAR(13)+NCHAR(10),NCHAR(10)))))<>0x"+digest+") "
+               "HASHBYTES('SHA2_256',CONVERT(varbinary(max),TRIM(NCHAR(9)+NCHAR(10)+NCHAR(13)+N' ' FROM REPLACE(OBJECT_DEFINITION(OBJECT_ID("+obj+",N'P')),NCHAR(13)+NCHAR(10),NCHAR(10))))) NOT IN(0x"+digest+",0x"+legacy_digest+")) "
                "THROW 53762,N'A noncanonical object occupies the new Wait helper name.',1;")
     out+="IF OBJECT_ID("+obj+",N'P') IS NOT NULL AND OBJECT_ID(N'[snapshot].[PackageVersion]',N'U') IS NOT NULL EXEC sys.sp_executesql "+lit(collision)+';\n'
     return out

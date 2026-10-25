@@ -7,15 +7,15 @@
 
 ## Entscheidungsfrage und Einsatz
 
-Die Procedure wird eingesetzt, wenn die konfigurierte Snapshot-Datenbank einen neuen, zeitlich und resetbezogen interpretierbaren Performance-Counter-Messpunkt erhalten soll. Alle Schedulerarten verwenden denselben Procedurevertrag. Der Scheduler bestimmt nur den Aufrufzeitpunkt; Due-, Parallelitäts-, Budget- und Collectionentscheidungen bleiben innerhalb des Frameworkvertrags.
+Die Procedure wird eingesetzt, wenn die konfigurierte Snapshot-Datenbank einen neuen Performance-Counter-Messpunkt oder einen ausdrücklich gewählten Waitcapture erhalten soll. Alle Schedulerarten verwenden denselben Procedurevertrag. Der Scheduler bestimmt nur den Aufrufzeitpunkt; Due-, Parallelitäts-, Budget- und Collectionentscheidungen bleiben innerhalb des Frameworkvertrags.
 
 ## Nicht beantwortete Fragen
 
-Ein einzelner Messpunkt ist kein Trend und liefert keine automatische Kapazitäts- oder Konfigurationsempfehlung. Der aktuelle Slice sammelt nur Performance Counter. Er beweist weder kontinuierliche Schedulerverfügbarkeit noch Vollständigkeit externer Monitoringdaten. Reset-Epochen, Countertypen und Basiseinheiten müssen vor jeder Delta- oder Ratenbildung kompatibel sein.
+Ein einzelner Messpunkt ist kein Trend und liefert keine automatische Kapazitäts- oder Konfigurationsempfehlung. Der Default sammelt Performance Counter; `@CollectorCode='WAIT_STATS'` liest den gesamten nativen Waitcache. Ein unveränderter Enginekontext beweist keinen ausgebliebenen Waitreset. Er beweist weder kontinuierliche Schedulerverfügbarkeit noch Vollständigkeit externer Monitoringdaten. Reset-Epochen, Countertypen und Basiseinheiten müssen vor jeder Delta- oder Ratenbildung kompatibel sein.
 
 ## Sicherer Einstieg
 
-Im ersten Slice wird ausschließlich `monitor.USP_PerformanceCounters` mit `@SampleSeconds=0` gelesen. `Install_All.sql` installiert diese Persistenzfunktion bewusst nicht.
+Der unveränderte Default verwendet `monitor.USP_PerformanceCounters` mit `@SampleSeconds=0`. Der angehängte Parameter `@CollectorCode` wählt alternativ `WAIT_STATS`; beide Collectorpolicies bleiben getrennt. `Install_All.sql` installiert diese Persistenzfunktion bewusst nicht.
 
 ```sql
 EXEC [monitor].[USP_RunSnapshotCollectionCycle]
@@ -26,7 +26,7 @@ EXEC [monitor].[USP_RunSnapshotCollectionCycle]
 
 ## Resultsets und Leserichtung
 
-CONSOLE zeigt den priorisierten Laufstatus. RAW, TABLE und JSON trennen `run` und `modules`; persistierte Metrics werden nicht als zusätzliches Defaultresultset kopiert. Lesen Sie zuerst Status, Start, Ende, Schedulerart und `ResetEpochId`. Ordnen Sie danach den Modulstatus und dessen Partialität ein. `SKIPPED_NOT_DUE` und ein No-wait-Concurrency-Skip sind kontrollierte Zustände, keine erfolgreichen Messpunkte.
+CONSOLE zeigt den priorisierten Laufstatus. RAW, TABLE und optionaler JSON-OUTPUT trennen `run` und `modules`; persistierte Metrics werden nicht als zusätzliches Defaultresultset kopiert. Lesen Sie zuerst Status, Start, Ende, Schedulerart und `ResetEpochId`. Ordnen Sie danach den Modulstatus und dessen Partialität ein. `SKIPPED_NOT_DUE` und ein No-wait-Concurrency-Skip sind kontrollierte Zustände, keine erfolgreichen Messpunkte.
 
 Die elf lokalen Textspalten einschließlich der TABLE-Zuordnung verwenden
 `SQL_Latin1_General_CP1_CS_AS`. Die fünf Textspalten von `run` und vier
@@ -34,6 +34,35 @@ Textspalten von `modules` behalten die Frameworkcollation auch bei
 abweichender `tempdb`-Collation. Der interne Counterabschluss verwendet
 dieselbe Collation für seine sechs transienten Textspalten. Bestehende
 persistente Zieltabellen und deren Collation werden dabei nicht geändert.
+
+## Waitaufruf und Ausgabegrenze
+
+```sql
+EXEC [monitor].[USP_RunSnapshotCollectionCycle]
+     @CollectorCode = 'WAIT_STATS',
+     @SchedulerType = 'MANUAL',
+     @RunEvenIfNotDue = 0,
+     @ResultSetArt = 'CONSOLE';
+```
+
+Waits benötigen das vollständige Target `1.2.1`, eine aktivierte Framework-
+und Waitpolicy, keine Callertransaktion sowie `IMPLICIT_TRANSACTIONS OFF`.
+Unsichere Callerzustände werden vor Temp-DDL ausschließlich über OUTPUT als
+`INVALID_PARAMETER` mit Fehler `51011` zurückgegeben. Für Waits sind `CONSOLE`,
+`RAW`, `TABLE` und `NONE` zulässig. `@JsonErzeugen=1` aktiviert den optionalen
+JSON-OUTPUT; die Ausgabeart `JSON` bleibt auf dem Legacy-Collector beschränkt.
+
+Disabled und NotDue beenden Waits vor Capture- und Purgewrites. Force umgeht
+nur das Collectorintervall. Ein noch nicht fälliger Purge verhindert einen
+fälligen oder erzwungenen Capture nicht. Ein überschrittenes Größenbudget
+bleibt auch mit Force wirksam. Derselbe Sessionlock serialisiert beide
+Collectors und den öffentlichen Purge.
+
+Scheitert das Lesen der Ausgabe nach einem bereits bestätigten Abschluss,
+bleibt der gespeicherte Capture erhalten. Capture-ID und Fehlerstatus bleiben
+sichtbar; ohne bestätigte Runprojektion liefern RAW/TABLE keine erfundene
+Runzeile mit Nullmengen, JSON enthält `run: {}`. Eine verschwundene Zielidentität
+nach Vorbereitung kann einen ehrlichen unfinalisierten Run zurücklassen.
 
 ## Beispiele und Gegenbeispiele
 
@@ -89,7 +118,7 @@ Der Quell-JSON-Vertrag ist nur während des autorisierten Aufrufs transient. Roh
 
 ### Datenkette
 
-Konfiguration → No-wait-Applock → begrenzter Purge → Due-/Budgetprüfung → `USP_PerformanceCounters` → Scope/MetricSample/Payload → CaptureRun/ModuleStatus.
+Konfiguration → No-wait-Applock → collectorspezifische Aufnahmeprüfung → begrenzter Purge → Budgetprüfung → Quelle → Scope/MetricSample/Payload → CaptureRun/ModuleStatus. Waits prüfen Enabled und Due vor dem Purge; ihre Quelle wird genau einmal ohne Leselimit materialisiert.
 
 ### Source Select
 
@@ -109,11 +138,11 @@ WHERE [c].[ConfigurationId] = 1
   AND [c].[IsEnabled] = 1;
 ```
 
-**Wichtig für die Eigenlast:** Danach ist der Pfad schreibend: No-wait-Applock, Due-/Budgetprüfung, genau ein Collector-Aufruf und typisierte Inserts in `snapshot.CaptureRun`, `ModuleStatus`, `MetricSample` und optional Payload. Collectorpolicy, `MaxRows` und Zeitintervall begrenzen die Arbeit; Parallelität wird übersprungen statt blockiert.
+**Wichtig für die Eigenlast:** Danach ist der Pfad schreibend: No-wait-Applock, Due-/Budgetprüfung, genau ein Collector-Aufruf und typisierte Inserts in `snapshot.CaptureRun`, `ModuleStatus`, `MetricSample` und optional Payload. Für Waits begrenzt `MaxRows` nur die ausgewählten Schreibtypen; der gesamte Cache wird davor gelesen. Collectorpolicy und Zeitintervall begrenzen die Erfassung; Parallelität wird übersprungen statt blockiert.
 
 ### Zeit- und Scope-Modell
 
-Alle Laufzeiten sind UTC. `SqlServerStartTimeUtc` bestimmt die stabile `ResetEpochId`; Deltas oder Raten dürfen nie über einen Epochwechsel berechnet werden.
+Capturezeiten sind UTC. Der Wait-Engine-Start wird dagegen als nativer lokaler Wert im versionierten Kontext gespeichert; `CaptureRun.SqlServerStartTimeUtc` bleibt für Waits NULL. Vorher-/Nachher-Engineidentität begrenzt die Zuordnung, beweist aber weder eine atomare DMV-Sicht noch Resetkontinuität. Die drei monotonen Differenzkandidaten bleiben `MONOTONIC_CONTINUITY_UNPROVEN`; maximale Waitzeit erhält keinen additiven Kandidaten. Erfolgreiche Waitcaptures bleiben deshalb `PARTIAL`.
 
 ### Bewertung und Gegenprobe
 
