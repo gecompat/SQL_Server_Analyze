@@ -137,14 +137,23 @@ des Repositorys.
 
 ## Aktueller Checkpoint
 
-Die Planung und ihre Regelkontexteinbindung sind unabhängig ohne offene
-Befunde geprüft. Der erste statische Lauf meldete ausschließlich die fehlende
-Einbindung der neuen Seite im Regelkontextindex; die korrigierte Einbindung
-und die 23 vorhandenen Selbsttests bestehen. Die übrigen statischen Prüfungen
-und der Datenschutzscan bestehen. Aktuelle Head-Checks und die reguläre
-PR-Integration bleiben vor Lieferung erforderlich. Danach beginnt Rang 6 mit
-einem quellengestützten Security-Dossier. Zuerst werden die vorhandene
-ServerSecurityConfiguration, die getrennte Audit-/Encryption-Abdeckung sowie
-Katalogsichtbarkeit, Rechte- und Kostenverträge abgeglichen. Das Dossier
-definiert den kleinsten nutzbaren Implementierungsschritt und dessen
-unabhängige Abnahme, bevor ein Produktstatus geändert wird.
+Die Planung ist über PR #431 nach unabhängigem Review, dem konkreten
+Regelkontextfolgecheck und vier erfolgreichen Head-Prüfungen regulär integriert.
+Der erste lokale statische Lauf meldete ausschließlich die fehlende Einbindung
+der neuen Seite; die korrigierte Bindung und alle 23 vorhandenen Selbsttests
+bestehen. Die übrigen statischen Prüfungen und der Datenschutzscan bestehen.
+Der getrennte Main-Nachlauf besteht für Dokumentation, Datenschutz und
+Commitnachrichten ebenfalls.
+
+Rang 6 beginnt mit dem
+[Serverprincipal-Dossier](../Architecture/Server_Principal_Analysis_Dossier.md).
+Der erste vorgeschlagene Slice betrifft lokale Serverprincipals, direkte
+Rollenmitgliedschaften, explizite Serverberechtigungen und SQL-Login-Policies.
+Die vorhandene Konfigurations-, Audit- und Verschlüsselungsabdeckung sowie
+die offiziellen Katalog- und Sichtbarkeitsverträge sind abgeglichen. Das
+Dossier konkretisiert die erste Schnittstelle und unabhängige Abnahme;
+Produktcode und Produktstatus sind noch unverändert. Die technische
+Fertigstellung und unabhängige Prüfung des Schnittstellenvertrags gehen der
+Produktimplementierung voraus; die bestehende funktionsbezogene autonome
+Freigabe wird nicht erneut angefragt. Datenbankprincipals und
+effektive Berechtigungen bleiben weitere Teile desselben Rangs.

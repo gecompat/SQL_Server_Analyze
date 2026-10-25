@@ -432,6 +432,11 @@
   "excluded_references": [
     {
       "source": "AI_Metadata/Internal_Documentation/Quality/Development_Waves_2026-10.md",
+      "target": "AI_Metadata/Internal_Documentation/Architecture/Server_Principal_Analysis_Dossier.md",
+      "classification": "product-reference"
+    },
+    {
+      "source": "AI_Metadata/Internal_Documentation/Quality/Development_Waves_2026-10.md",
       "target": "Metadata/Quality/Implementation_Status.csv",
       "classification": "product-reference"
     },
