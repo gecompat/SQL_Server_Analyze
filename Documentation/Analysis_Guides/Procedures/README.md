@@ -154,6 +154,7 @@ Jede Seite weist jetzt Entscheidungseinsatz, Nichtziele, Resultset-Leserichtung,
 - [USP_SsisCatalogExecutionAnalysis](USP_SsisCatalogExecutionAnalysis.md)
 - [USP_SsisPackageAnalysis](USP_SsisPackageAnalysis.md)
 - [USP_SsisPackageModelAnalysis](USP_SsisPackageModelAnalysis.md)
+- [USP_SsisExecutionComparison](USP_SsisExecutionComparison.md)
 - [USP_InMemoryOltpAnalysis](USP_InMemoryOltpAnalysis.md)
 - [USP_TemporalAnalysis](USP_TemporalAnalysis.md)
 - [USP_ServiceBrokerAnalysis](USP_ServiceBrokerAnalysis.md)

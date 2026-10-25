@@ -12,6 +12,7 @@ Für einen Einstieg nach beobachtetem Problem verwenden Sie [Hier beginnen](Star
 | Objekt | Eigenständige Beschreibung |
 |---|---|
 | `[monitor].[USP_SsisPackageAnalysis]` | [Statisches DTSX-v2-Paket- und Executable-Inventar](Procedures/USP_SsisPackageAnalysis.md) |
+| `[monitor].[USP_SsisExecutionComparison]` | [Zwei gebundene Ausführungen vergleichen](Procedures/USP_SsisExecutionComparison.md) |
 | `[monitor].[USP_SsisPackageModelAnalysis]` | [Nativer Import eines neutralen Paketmodells ohne CLR](Procedures/USP_SsisPackageModelAnalysis.md) |
 | `[monitor].[USP_SsisCatalogExecutionAnalysis]` | [Strukturierte SSISDB-Ausführungsmetadaten](Procedures/USP_SsisCatalogExecutionAnalysis.md) |
 | `[monitor].[USP_SsisLegacyLogAnalysis]` | [Legacy-Logging und Meldungstexte](Procedures/USP_SsisLegacyLogAnalysis.md) |

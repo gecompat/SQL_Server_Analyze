@@ -1524,6 +1524,11 @@
       "source": "AI_Metadata/PROJECT_CONTEXT.md",
       "target": "Code/Install/Install_SnapshotBaseline_Target.sql",
       "classification": "product-reference"
+    },
+    {
+      "source": "AI_Metadata/Internal_Documentation/Quality/Next_Steps.md",
+      "target": "Documentation/Analysis_Guides/Procedures/USP_SsisExecutionComparison.md",
+      "classification": "product-reference"
     }
   ]
 }

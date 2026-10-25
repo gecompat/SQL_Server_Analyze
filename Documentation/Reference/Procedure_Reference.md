@@ -2818,3 +2818,20 @@ Quelle: `Code/08_ServerHealth/290_USP_EndpointTransportAnalysis.sql`
     , @ErrorNumberOut int = NULL OUTPUT
     , @ErrorMessageOut nvarchar(2048) = NULL OUTPUT
 ```
+
+## `[monitor].[USP_SsisExecutionComparison]`
+
+Quelle: `Code/10_SSIS/050_USP_SsisExecutionComparison.sql`
+
+```sql
+ @BaselineProjectModelsJson nvarchar(max)=NULL,@BaselineScopeSnapshotJson nvarchar(max)=NULL,
+ @BaselineScopeHandoverId uniqueidentifier=NULL,@BaselineExecutionId bigint=NULL,
+ @CandidateProjectModelsJson nvarchar(max)=NULL,@CandidateScopeSnapshotJson nvarchar(max)=NULL,
+ @CandidateScopeHandoverId uniqueidentifier=NULL,@CandidateExecutionId bigint=NULL,
+ @MinDurationDeltaMs bigint=NULL,@MinDurationDeltaPercent decimal(9,4)=NULL,
+ @MaxZeilen int=1000,@MaxDurationSeconds int=30,@LockTimeoutMs int=0,
+ @ResultSetArt varchar(16)='CONSOLE',@ResultTablesJson nvarchar(max)=NULL,
+ @JsonErzeugen bit=0,@Json nvarchar(max)=NULL OUTPUT,@PrintMeldungen bit=1,@Hilfe bit=0,
+ @StatusCodeOut varchar(40)=NULL OUTPUT,@IsPartialOut bit=NULL OUTPUT,
+ @ErrorNumberOut int=NULL OUTPUT,@ErrorMessageOut nvarchar(2048)=NULL OUTPUT
+```

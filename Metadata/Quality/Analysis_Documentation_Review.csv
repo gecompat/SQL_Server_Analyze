@@ -114,3 +114,4 @@ USP_ServerPrincipalAnalysis,BASELINE,,1
 USP_DatabasePrincipalAnalysis,BASELINE,,1
 USP_CurrentCallerPermissionAnalysis,BASELINE,,1
 USP_EndpointTransportAnalysis,BASELINE,,1
+USP_SsisExecutionComparison,BASELINE,,1
