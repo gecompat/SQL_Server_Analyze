@@ -42,6 +42,7 @@ BEGIN
         @RestoreLock nvarchar(100),@SetLock nvarchar(100),
         @Started datetime2(3),@Observed bigint,@Returned bigint,
         @Status varchar(40)='AVAILABLE_LIMITED',@Error int=NULL,@Message nvarchar(2048)=NULL;
+    DECLARE @ConsoleResultRequested bit=CASE WHEN @Mode='CONSOLE' THEN 1 ELSE 0 END;
     SET @RestoreLock=N'SET LOCK_TIMEOUT '+CONVERT(nvarchar(20),@PreviousLockTimeout)+N';';
     IF @Hilfe=1
     BEGIN
@@ -306,7 +307,7 @@ BEGIN
             END;
             CLOSE [ServerPrincipalOutput]; DEALLOCATE [ServerPrincipalOutput];
         END
-        ELSE IF @Mode='CONSOLE'
+        ELSE IF @ConsoleResultRequested=1
         BEGIN
             CREATE TABLE [#ServerPrincipalAnalysis_Console]
             (
