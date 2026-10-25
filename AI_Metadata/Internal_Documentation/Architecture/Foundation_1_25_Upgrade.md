@@ -272,6 +272,17 @@ Der Modus wird vor seiner ersten Ausführung in Strategie, Workflow,
 Scope-/Evidenzvalidator und dieser Bewertung festgelegt. Ein vorhandener
 Reviewer prüft nur die Auswahl-/Aggregationsgrenze und die neuen gezielten
 Rechtefälle. Die lokalen Scope- und Evidenztests benötigen keine SQL-Instanz;
-der zusätzliche native Lauf führt fünf ausdrücklich benannte Vertragsgruppen
+der zusätzliche native Lauf führt vier ausdrücklich benannte Vertragsgruppen
 aus. Ganze grüne Logs und unveränderte Blocker erzeugen keine Folgearbeit.
 Notwendige Required Checks am neuen Lieferhead laufen weiterhin regulär.
+
+
+Die erste tatsächliche Risikoqualifizierung am Liefercommit `459c19ae`
+besteht als Lauf 40211873213 mit den vier Vertragsgruppen FRAMEWORK_SMOKE,
+SNAPSHOT_SCHEMA_MIGRATION_AND_PERMISSION, SNAPSHOT_BASELINE_195 und
+SNAPSHOT_CONCURRENCY_196_197. Die gezielten Rechtefälle gehören zur zweiten
+Gruppe. Das vollständige SQL2025-Head-Gate 40211876502 und der getrennte
+Main-Nachlauf 40212817038 bestehen ebenfalls. Zusätzliche Wiederholungen
+bestandener lokaler Prüfungen oder eine erneute allgemeine native Matrix
+waren für diesen Risikoscope nicht erforderlich; frühere Vollrunfehler
+werden dadurch nicht geschlossen.

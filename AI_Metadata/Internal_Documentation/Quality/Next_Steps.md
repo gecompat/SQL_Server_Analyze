@@ -67,12 +67,17 @@ Der separate SSIS-Auftrag arbeitet aktuell an Datenflusskorrelation. Der
 Gesamtauftrag übernimmt diesen Scope und die erhaltene SSISDB nicht. Der
 nächste unabhängige Rang 10 steht im
 [Snapshot-Dossier](../Architecture/Snapshot_Expansion_Dossier.md):
-zunächst die datenbewahrende Schema-2-Vorbereitung für zwei bestehende
-CHECK-Domänen. Danach folgen Wait-Counter mit explizitem Kontinuitäts- und
-Resetmodell und anschließend Datei-I/O. Der konkrete Migrationsvertrag und
-seine Fehler-/Nebenläufigkeitsabnahme werden vor Produktcode unabhängig
-geprüft. WAIT_CAPTURE_CONTEXT benötigt vor dem späteren Collector einen
-exakten Feld- und Vollständigkeitsvertrag; dieser Befund bleibt offen.
+Die datenbewahrende Schema-2-Vorbereitung ist über
+[PR #447](https://github.com/gecompat/SQL_Server_Analyze/pull/447) integriert.
+Alle acht Head-Checks, das vollständige SQL2025-Head- und Main-Gate sowie
+die gezielte native SQL2019-Snapshot-Risikoqualifizierung bestehen.
+Core-Release und dessen allgemeine native Berechtigungsmatrix gehören
+nicht zu diesem zusätzlichen Risikoscope. Das Dossier bewahrt frühere
+Vollrunfehler und die Grenzen getrennt vom Integrationserfolg.
+Der genaue WAIT_CAPTURE_CONTEXT-Vertrag mit Typen, Mengen-, Rohwert-, Zeit-,
+Epochen- und Retentionsbindungen ist unabhängig geprüft. Der nächste Schritt
+implementiert Wait-Counter mit diesem Vertrag; danach folgt getrennt Datei-I/O.
+Ein Wait-Collector ist mit Schema 2 noch nicht geliefert.
 Bereits gelieferte Funktionen und die abgeschlossene STAT-DOMINANT-Diagnose
 werden nicht erneut entwickelt.
 
