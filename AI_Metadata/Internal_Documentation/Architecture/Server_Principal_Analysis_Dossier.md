@@ -111,6 +111,14 @@ ausgegebene Quellmengen, Namensauflösung und Mengenbasis dürfen sich dabei nic
 gegenseitig verfälschen. Ein Ausgabelimit ist keine Garantie einer entsprechend
 begrenzten Kataloglesearbeit. Callertransaktion, LOCK_TIMEOUT und XACT_ABORT
 werden erhalten; Fehlerpfade dürfen eine vorhandene Transaktion nicht übernehmen.
+Parameter- und TABLE-Ablehnungen sowie gefangene äußere Fehler verwenden eine
+reguläre Rückkehr mit Status-, Fehler-OUTPUT und Diagnosecode als RETURN-Wert.
+Dadurch bleiben die OUTPUT-Werte für T-SQL-Caller verfügbar. Parameterfehler
+und abgelehnte TABLE-Zuordnungen verwenden 51011; TABLE-Schreibfehler behalten
+den nativen Helpercode oder ersatzweise 51010. JSON bleibt dabei NULL;
+optionale Meldungen besitzen höchstens Schweregrad 10. Der Caller muss Status
+und Rückgabecode prüfen. Nicht gefangene Engine- oder Verbindungsabbrüche sind
+von dieser Rückgabegarantie ausgenommen.
 
 ## Unabhängige Abnahme und Integration
 

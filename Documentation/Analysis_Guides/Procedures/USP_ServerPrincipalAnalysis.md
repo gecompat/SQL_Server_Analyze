@@ -131,12 +131,20 @@ Engineabbruch, Deadlockopfer oder Verbindungsabbruch bleiben außerhalb einer
 Garantie des Callerzustands. NOLOCK bedeutet keine atomare oder unveränderliche
 Sicherheitsaufnahme und schützt nicht vor allen Metadatenlocks.
 
-Parameter- und TABLE-Ablehnungen verwenden RAISERROR mit Schweregrad 16 statt
-THROW unter einem restaurierten XACT_ABORT-ON-Wert. Die SQL-Ausnahme besitzt
-dadurch Nummer 50000; der ursprüngliche Diagnosecode steht in
-@ErrorNumberOut. Ein ungültiger Parameter verwendet dort 51011. Der Caller
-behält die Entscheidung über Commit oder Rollback seiner bestehenden
-Transaktion. Fachliche Quellenfehler bleiben dagegen im sourceStatus isoliert.
+Parameter- und TABLE-Ablehnungen sowie gefangene äußere Fehler kehren regulär
+mit Status, Diagnose-OUTPUT und dem Diagnosecode als RETURN-Wert zurück.
+Ungültige Parameter verwenden INVALID_PARAMETER und 51011; eine abgelehnte
+TABLE-Zuordnung verwendet ERROR_HANDLED und 51011. Schreibfehler behalten den
+nativen Helpercode, soweit vorhanden, andernfalls 51010. Bei diesen Fehlern
+bleibt JSON NULL. Der Caller muss Status und Rückgabecode prüfen; eine
+optionale Meldung mit Schweregrad 10 ersetzt diese Prüfung nicht.
+
+Die reguläre Rückkehr überträgt die OUTPUT-Werte auch an T-SQL-Caller. Im
+gefangenen Fehlerpfad bleibt XACT_ABORT bis zum Procedureende deaktiviert;
+die Proceduregrenze stellt den Callerwert wieder her. Der Caller behält die
+Entscheidung über Commit oder Rollback seiner bestehenden Transaktion.
+Fachliche Quellenfehler bleiben im sourceStatus isoliert. Nicht gefangene
+Engine- oder Verbindungsabbrüche besitzen diese Rückgabegarantie nicht.
 
 Passwort-Hashes, Passwörter, Credentials, Tokens und Schlüssel werden nicht
 ausgewählt. Es gibt keine Namensanonymisierung der tatsächlich zurückgegebenen

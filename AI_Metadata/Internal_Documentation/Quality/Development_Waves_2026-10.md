@@ -156,9 +156,12 @@ Dossier konkretisiert die erste Schnittstelle und unabhängige Abnahme.
 Installer, Navigator, sieben nativen Resultsets und synthetischen Tests.
 Der unabhängige Produktreview meldete vier konkrete Befunde zu Callerfehlern,
 Cleanupbindung, Schemafacetten und Quellenfehlerabnahme. Ein gebündelter
-Korrekturpass ergänzt RAISERROR-basierte Fehlerweitergabe, Transaktionssentinels,
+Korrekturpass ergänzt reguläre Status-/Diagnose-Rückgabe, Transaktionssentinels,
 native ID-/SID-Bindungen, typisierte Schemaoracles und einen kontrollierten
-SELECT-DENY-Fall. Folgecheck und native Abnahme stehen noch aus; es wird kein
+SELECT-DENY-Fall. Die nativen Entwicklungsprüfungen erforderten zusätzlich
+Master-Kontext, kollationsgebundene Sollwerte und eine reguläre Fehler-Rückkehr,
+damit T-SQL-Caller ihre OUTPUT-Werte und committable Transaktion behalten.
+Die abschließende native Abnahme steht noch aus; es wird kein
 Reifeabschluss behauptet. Die bestehende funktionsbezogene autonome Freigabe
 wird nicht erneut angefragt. Datenbankprincipals und effektive Berechtigungen
 bleiben weitere Teile desselben Rangs.

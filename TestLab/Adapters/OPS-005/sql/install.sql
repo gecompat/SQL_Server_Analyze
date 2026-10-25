@@ -50476,6 +50476,8 @@ BEGIN
         @Started datetime2(3),@Observed bigint,@Returned bigint,
         @Status varchar(40)='AVAILABLE_LIMITED',@Error int=NULL,@Message nvarchar(2048)=NULL;
     DECLARE @ConsoleResultRequested bit=CASE WHEN @Mode='CONSOLE' THEN 1 ELSE 0 END;
+    DECLARE @TableStatus varchar(40),@TableMessage nvarchar(2048),
+        @TableError int,@TableFailureError int=NULL;
     SET @RestoreLock=N'SET LOCK_TIMEOUT '+CONVERT(nvarchar(20),@PreviousLockTimeout)+N';';
     IF @Hilfe=1
     BEGIN
@@ -50483,6 +50485,7 @@ BEGIN
         PRINT N'Liest sichtbare Principals, direkte Rollen, explizite Serverrechte und SQL-Login-Policyflags. Keine effektive Rechteberechnung.';
         PRINT N'RAW/TABLE/JSON: moduleStatus, principals, roleMemberships, permissions, loginPolicies, sourceStatus, warnings.';
         PRINT N'@MaxZeilen begrenzt jedes der vier Fachresultsets; 0 oder NULL bedeutet unbegrenzt. @LockTimeoutMs erlaubt 0 bis 60000.';
+        PRINT N'Parameter- und gefangene Ausgabefehler liefern Status, Diagnose-OUTPUT und einen Rückgabecode; optionale Meldungen haben Schweregrad 10.';
         SELECT @StatusCodeOut='AVAILABLE',@IsPartialOut=0;
         RETURN;
     END;
@@ -50492,7 +50495,7 @@ BEGIN
     BEGIN
         SELECT @StatusCodeOut='INVALID_PARAMETER',@IsPartialOut=1,
                @ErrorNumberOut=51011,@ErrorMessageOut=N'Ungültiger Ausgabe-, Limit-, Locktimeout- oder TABLE-Parameter.';
-        RAISERROR(N'%s',16,1,@ErrorMessageOut);
+        IF @PrintMeldungen=1 RAISERROR(N'%s',10,1,@ErrorMessageOut) WITH NOWAIT;
         RETURN 51011;
     END;
 
@@ -50572,9 +50575,17 @@ BEGIN
         [TargetTable] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
     );
         IF @Mode='TABLE'
+        BEGIN
             EXEC [monitor].[InternalPrepareResultTables] @ResultTablesJson=@ResultTablesJson,
                 @AllowedResultNames=N'moduleStatus|principals|roleMemberships|permissions|loginPolicies|sourceStatus|warnings',
-                @MappingTable=N'#ServerPrincipalAnalysis_Map',@ThrowOnError=1;
+                @MappingTable=N'#ServerPrincipalAnalysis_Map',@StatusCode=@TableStatus OUTPUT,
+                @ErrorMessage=@TableMessage OUTPUT,@ThrowOnError=0;
+            IF COALESCE(@TableStatus,'')<>'AVAILABLE'
+            BEGIN
+                SET @TableFailureError=51011;
+                RAISERROR(N'%s',16,1,@TableMessage);
+            END;
+        END;
         SET LOCK_TIMEOUT 0;
         IF @LockTimeoutMs>0
         BEGIN
@@ -50735,7 +50746,14 @@ BEGIN
             WHILE @@FETCH_STATUS=0
             BEGIN
                 SET @SourceTable=N'#ServerPrincipalAnalysis_'+@ResultName;
-                EXEC [monitor].[InternalWriteResultTable] @SourceTable=@SourceTable,@TargetTable=@TargetTable,@ThrowOnError=1;
+                EXEC [monitor].[InternalWriteResultTable] @SourceTable=@SourceTable,@TargetTable=@TargetTable,
+                    @StatusCode=@TableStatus OUTPUT,@ErrorNumber=@TableError OUTPUT,
+                    @ErrorMessage=@TableMessage OUTPUT,@ThrowOnError=0;
+                IF COALESCE(@TableStatus,'')<>'AVAILABLE'
+                BEGIN
+                    SET @TableFailureError=COALESCE(@TableError,51010);
+                    RAISERROR(N'%s',16,1,@TableMessage);
+                END;
                 FETCH NEXT FROM [ServerPrincipalOutput] INTO @ResultName,@TargetTable;
             END;
             CLOSE [ServerPrincipalOutput]; DEALLOCATE [ServerPrincipalOutput];
@@ -50778,12 +50796,12 @@ BEGIN
         IF @PreviousXactAbort=1 SET XACT_ABORT ON; ELSE SET XACT_ABORT OFF;
     END TRY
     BEGIN CATCH
-        SELECT @Error=ERROR_NUMBER(),@Message=ERROR_MESSAGE(),@Json=NULL;
+        SELECT @Error=COALESCE(@TableFailureError,ERROR_NUMBER()),@Message=ERROR_MESSAGE(),@Json=NULL;
         SELECT @StatusCodeOut='ERROR_HANDLED',@IsPartialOut=1,
                @ErrorNumberOut=@Error,@ErrorMessageOut=@Message;
         EXEC [sys].[sp_executesql] @RestoreLock;
-        IF @PreviousXactAbort=1 SET XACT_ABORT ON; ELSE SET XACT_ABORT OFF;
-        RAISERROR(N'%s',16,1,@Message);
+        SET XACT_ABORT OFF;
+        IF @PrintMeldungen=1 RAISERROR(N'%s',10,1,@Message) WITH NOWAIT;
         RETURN @Error;
     END CATCH;
 END;

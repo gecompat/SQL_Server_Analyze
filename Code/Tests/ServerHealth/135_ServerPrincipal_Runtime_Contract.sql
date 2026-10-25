@@ -338,26 +338,28 @@ BEGIN TRY
     SET LOCK_TIMEOUT 43;SET XACT_ABORT ON;
     BEGIN TRANSACTION;
     UPDATE [#ExamplePrincipal_Sentinel] SET [Value]=11 WHERE [Id]=1;
-    BEGIN TRY
-        EXEC [monitor].[USP_ServerPrincipalAnalysis] @ResultSetArt='TABLE',@ResultTablesJson=N'{"unknown":"#ExampleMissing"}';
-        THROW 57075,N'Serverprincipal invalid TABLE mapping was accepted.',1;
-    END TRY
-    BEGIN CATCH
-        IF ERROR_NUMBER()=57075 THROW;
-        IF ERROR_NUMBER()<>50000 OR @@LOCK_TIMEOUT<>43 OR (@@OPTIONS & 16384)<>16384
-           OR @@TRANCOUNT<>1 OR XACT_STATE()<>1 OR (SELECT [Value] FROM [#ExamplePrincipal_Sentinel] WHERE [Id]=1)<>11
-            THROW 57076,N'Serverprincipal rejected-mapping caller transaction or sentinel differs.',1;
-    END CATCH;
-    BEGIN TRY
-        EXEC [monitor].[USP_ServerPrincipalAnalysis] @MaxZeilen=-1,@ResultSetArt='NONE',
-            @StatusCodeOut=@Status OUTPUT,@ErrorNumberOut=@ProbeError OUTPUT;
-        THROW 57077,N'Serverprincipal negative limit was accepted.',1;
-    END TRY
-    BEGIN CATCH
-        IF ERROR_NUMBER()<>50000 OR COALESCE(@ProbeError,0)<>51011 OR COALESCE(@Status,'')<>'INVALID_PARAMETER'
-           OR @@TRANCOUNT<>1 OR XACT_STATE()<>1 OR @@LOCK_TIMEOUT<>43 OR (@@OPTIONS & 16384)<>16384
-           OR (SELECT [Value] FROM [#ExamplePrincipal_Sentinel] WHERE [Id]=1)<>11 THROW;
-    END CATCH;
+    DECLARE @FailureReturn int,@FailureMessage nvarchar(2048);
+    SET @Json=N'{"previous":true}';
+    EXEC @FailureReturn=[monitor].[USP_ServerPrincipalAnalysis] @ResultSetArt='TABLE',@ResultTablesJson=N'{"unknown":"#ExampleMissing"}',
+        @JsonErzeugen=1,@Json=@Json OUTPUT,@PrintMeldungen=0,
+        @StatusCodeOut=@Status OUTPUT,@ErrorNumberOut=@ProbeError OUTPUT,@ErrorMessageOut=@FailureMessage OUTPUT;
+    IF COALESCE(@FailureReturn,0)<>51011 OR COALESCE(@ProbeError,0)<>51011 OR COALESCE(@Status,'')<>'ERROR_HANDLED'
+       OR NULLIF(@FailureMessage,N'') IS NULL OR @Json IS NOT NULL OR @@LOCK_TIMEOUT<>43 OR (@@OPTIONS & 16384)<>16384
+       OR @@TRANCOUNT<>1 OR XACT_STATE()<>1 OR (SELECT [Value] FROM [#ExamplePrincipal_Sentinel] WHERE [Id]=1)<>11
+    BEGIN
+        DECLARE @RejectedMappingDetail nvarchar(2048)=CONCAT(N'Serverprincipal rejected-mapping caller state differs: return=',@FailureReturn,
+            N'; lock=',@@LOCK_TIMEOUT,N'; xactAbort=',CASE WHEN (@@OPTIONS & 16384)=16384 THEN 1 ELSE 0 END,
+            N'; tranCount=',@@TRANCOUNT,N'; xactState=',XACT_STATE(),N'; outputError=',@ProbeError,N'; sentinel=',
+            (SELECT [Value] FROM [#ExamplePrincipal_Sentinel] WHERE [Id]=1),N'; diagnostic=',@FailureMessage);
+        THROW 57076,@RejectedMappingDetail,1;
+    END;
+    SET @Json=N'{"previous":true}';
+    EXEC @FailureReturn=[monitor].[USP_ServerPrincipalAnalysis] @MaxZeilen=-1,@ResultSetArt='NONE',
+        @JsonErzeugen=1,@Json=@Json OUTPUT,@PrintMeldungen=0,@StatusCodeOut=@Status OUTPUT,@ErrorNumberOut=@ProbeError OUTPUT;
+    IF COALESCE(@FailureReturn,0)<>51011 OR COALESCE(@ProbeError,0)<>51011 OR COALESCE(@Status,'')<>'INVALID_PARAMETER'
+       OR @Json IS NOT NULL OR @@TRANCOUNT<>1 OR XACT_STATE()<>1 OR @@LOCK_TIMEOUT<>43 OR (@@OPTIONS & 16384)<>16384
+       OR (SELECT [Value] FROM [#ExamplePrincipal_Sentinel] WHERE [Id]=1)<>11
+        THROW 57077,N'Serverprincipal negative-limit status, return code or caller state differs.',1;
     ROLLBACK TRANSACTION;
     IF (SELECT [Value] FROM [#ExamplePrincipal_Sentinel] WHERE [Id]=1)<>10
         THROW 57086,N'Caller retained rollback ownership differs.',1;
