@@ -12,11 +12,13 @@ param(
     [string]$DotnetPath='dotnet',
     [switch]$IncludeIterationCorrelation,
     [switch]$IncludeExecutionScopes,
-    [switch]$IncludePipelineCorrelation
+    [switch]$IncludePipelineCorrelation,
+    [switch]$IncludeComparisonContext
 )
 Set-StrictMode -Version Latest
 $ErrorActionPreference='Stop'
 if($IncludePipelineCorrelation -and -not $IncludeExecutionScopes){throw 'SSIS_PIPELINE_SCOPES_REQUIRED'}
+if($IncludeComparisonContext -and -not $IncludePipelineCorrelation){throw 'SSIS_COMPARISON_PIPELINES_REQUIRED'}
 # Der explizite SourceReader ist ein qualifizierter Transportadapter, kein
 # fremdes Snapshotdokument. Er führt den vollständigen festen Capturebatch
 # einmal in einem gebundenen Kanal aus. Der Standard verwendet SqlClient direkt.
@@ -48,6 +50,7 @@ if($IncludeIterationCorrelation -or $IncludeExecutionScopes) {
     # Die Konfiguration begründet keine vollständige Logabdeckung. NULL bleibt unbekannt.
     $metadataSql=$metadataSql.Replace('[e].[status] AS [ExecutionStatus],',"(SELECT TRY_CONVERT(int,[parameter_value]) FROM [SSISDB].[catalog].[execution_parameter_values] WHERE [execution_id]=[e].[execution_id] AND [object_type]=50 AND [parameter_name]=N'LOGGING_LEVEL') AS [LoggingLevel],[e].[status] AS [ExecutionStatus],")
 }
+if($IncludeComparisonContext){$metadataSql=$metadataSql.Replace('[e].[status] AS [ExecutionStatus],','[e].[use32bitruntime] AS [Use32BitRuntime],[e].[status] AS [ExecutionStatus],')}
 $observationsSql=@'
 SELECT TOP (50001) CONVERT(varchar(20),[s].[statistics_id]) AS [StatisticsId],CONVERT(varchar(20),[s].[execution_id]) AS [ExecutionId],CONVERT(varchar(20),[s].[executable_id]) AS [ExecutableId],
  [e].[executable_guid] AS [ExecutableGuid],[e].[package_name] AS [PackageName],CASE WHEN DATALENGTH([e].[package_path])<=8000 THEN [e].[package_path] END AS [PackagePath],CASE WHEN DATALENGTH([s].[execution_path])<=8000 THEN [s].[execution_path] END AS [ExecutionPath],
@@ -181,6 +184,7 @@ if($IncludeExecutionScopes) {
     if($events -isnot [Data.DataTable] -or $events.Rows.Count+$observed.Rows.Count -gt 50000){throw 'SSIS_SCOPE_OBSERVATION_LIMIT'}
     $pipelineArguments=@{}
     if($IncludePipelineCorrelation){if($null -ne $SourceReader){$phases=$capture.ComponentPhases;$transfers=$capture.PathTransfers};if($phases -isnot [Data.DataTable] -or $transfers -isnot [Data.DataTable] -or $phases.Rows.Count+$transfers.Rows.Count+$events.Rows.Count+$observed.Rows.Count -gt 50000){throw 'SSIS_PIPELINE_SOURCE_LIMIT'};$pipelineArguments=@{IncludePipelineCorrelation=$true;ComponentPhases=$phases;PathTransfers=$transfers}}
+    if($IncludeComparisonContext){$pipelineArguments['IncludeComparisonContext']=$true}
     return & (Join-Path $PSScriptRoot 'Invoke-SsisProjectScopeHandover.ps1') @pipelineArguments -Archive $archive -Before $before -After $after -Observations $observed -Events $events -Connection $Connection -SourceBindingSha256 $sourceBindingSha -ProducerAssemblyPath $ProducerAssemblyPath -ExpectedBuildSha256 $ExpectedBuildSha256 -ExpectedSourceCommit $ExpectedSourceCommit -ValidHours $ValidHours -DotnetPath $DotnetPath
 }
 $memory=[IO.MemoryStream]::new($archive,$false);$zip=[IO.Compression.ZipArchive]::new($memory,[IO.Compression.ZipArchiveMode]::Read,$false)

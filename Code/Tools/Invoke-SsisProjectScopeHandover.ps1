@@ -14,7 +14,8 @@ param(
     [string]$DotnetPath='dotnet',
     [switch]$IncludePipelineCorrelation,
     [Data.DataTable]$ComponentPhases,
-    [Data.DataTable]$PathTransfers
+    [Data.DataTable]$PathTransfers,
+    [switch]$IncludeComparisonContext
 )
 Set-StrictMode -Version Latest
 $ErrorActionPreference='Stop'
@@ -75,6 +76,12 @@ if($IncludePipelineCorrelation) {
         $sources.Add([ordered]@{source=$description.Name;status=$state;errorNumber=$sourceErrorNumber})
     }
     $capture.pipelineSources=@($sources)
+}
+if($IncludeComparisonContext) {
+    if(-not $IncludePipelineCorrelation -or -not $Before.Columns.Contains('Use32BitRuntime') -or -not $After.Columns.Contains('Use32BitRuntime') -or $source.IsNull('Use32BitRuntime') -or $last.IsNull('Use32BitRuntime')){throw 'SSIS_COMPARISON_CONTEXT_UNPROVEN'}
+    $beforeBit=[int]$source.Use32BitRuntime;$afterBit=[int]$last.Use32BitRuntime
+    if($beforeBit -notin @(0,1) -or $afterBit -ne $beforeBit){throw 'SSIS_COMPARISON_CONTEXT_CHANGED'}
+    $capture['comparisonContext']=[ordered]@{contract='ssis-comparison-context';version='1.0.0';use32BitRuntime=[bool]$afterBit}
 }
 $captureJson=$capture|ConvertTo-Json -Depth 32 -Compress
 if([Text.Encoding]::Unicode.GetByteCount($modelJson) -gt 16777216 -or [Text.Encoding]::Unicode.GetByteCount($captureJson) -gt 16777216){throw 'SSIS_SCOPE_TRANSPORT_LIMIT'}

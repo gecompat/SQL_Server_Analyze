@@ -731,3 +731,5 @@ deren Interpretation verbleibt im kanonischen Toolbelt-Profil.
 - [Indexspalten und Metadatensichtbarkeit](https://learn.microsoft.com/en-us/sql/relational-databases/system-catalog-views/sys-index-columns-transact-sql)
 
 [Technische Detailbeschreibung](../../Architecture/SSIS_Analyze_Toolbelt_Exchange_Contract.md)
+
+Der separate [Ausführungsvergleich](USP_SsisExecutionComparison.md) verwendet zwei unabhängig gebundene Scope-/Pipelinecaptures desselben Exports. `-IncludeComparisonContext` ergänzt bei der Aufnahme attestierte Bitness; bestehende Einzelanalyse-Opt-ins bleiben unverändert.
