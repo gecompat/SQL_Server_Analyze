@@ -103,11 +103,12 @@ try {
     $execution=Windows-Query "IF NOT EXISTS(SELECT 1 FROM catalog.projects WHERE project_id=@projectId AND object_version_lsn=@version) THROW 57500,'SYNTHETIC_PROJECT_CHANGED',1;DECLARE @id bigint;EXEC catalog.create_execution @folder_name=@folder,@project_name=@project,@package_name=@entry,@execution_id=@id OUTPUT;SELECT @id;" @{projectId=$record.ProjectId;version=$record.ProjectLsn;folder=$record.FolderName;project=$record.ProjectName;entry=$entryName}
     $record.ExecutionId=[long]$execution.ResultSets[0].Rows[0][0];Save-Record
     $record.Phase='START_OWN_EXECUTION'
-    [void](Windows-Query "IF NOT EXISTS(SELECT 1 FROM catalog.executions WHERE execution_id=@id AND project_lsn=@version AND folder_name=@folder AND project_name=@project AND status=1) THROW 57500,'SYNTHETIC_EXECUTION_CHANGED',1;DECLARE @level smallint=@logging;EXEC catalog.set_execution_parameter_value @execution_id=@id,@object_type=50,@parameter_name=N'LOGGING_LEVEL',@parameter_value=@level;EXEC catalog.start_execution @execution_id=@id;" @{id=$record.ExecutionId;version=$record.ProjectLsn;folder=$record.FolderName;project=$record.ProjectName;logging=$LoggingLevel})
-    if($Scenario -ceq 'Abort') {
-        Start-Sleep -Seconds 3
-        [void](Windows-Query "IF NOT EXISTS(SELECT 1 FROM catalog.executions WHERE execution_id=@id AND project_lsn=@version AND folder_name=@folder AND project_name=@project AND status=2) THROW 57500,'SYNTHETIC_ABORT_TARGET_CHANGED',1;EXEC catalog.stop_operation @operation_id=@id;" @{id=$record.ExecutionId;version=$record.ProjectLsn;folder=$record.FolderName;project=$record.ProjectName})
-    }
+    # Die Windows-Gastsitzung bleibt während der eigenen asynchronen Ausführung offen.
+    $abortBatch=if($Scenario -ceq 'Abort'){
+        "WAITFOR DELAY '00:00:03';IF NOT EXISTS(SELECT 1 FROM catalog.executions WHERE execution_id=@id AND project_lsn=@version AND folder_name=@folder AND project_name=@project AND status=2) THROW 57500,'SYNTHETIC_ABORT_TARGET_CHANGED',1;EXEC catalog.stop_operation @operation_id=@id;"
+    }else{''}
+    $startBatch="IF NOT EXISTS(SELECT 1 FROM catalog.executions WHERE execution_id=@id AND project_lsn=@version AND folder_name=@folder AND project_name=@project AND status=1) THROW 57500,'SYNTHETIC_EXECUTION_CHANGED',1;DECLARE @level smallint=@logging;EXEC catalog.set_execution_parameter_value @execution_id=@id,@object_type=50,@parameter_name=N'LOGGING_LEVEL',@parameter_value=@level;EXEC catalog.start_execution @execution_id=@id;"+$abortBatch+"DECLARE @waitUntil datetime2=DATEADD(second,45,SYSUTCDATETIME());WHILE EXISTS(SELECT 1 FROM catalog.executions WHERE execution_id=@id AND project_lsn=@version AND status IN(1,2,5,8)) AND SYSUTCDATETIME()<@waitUntil BEGIN WAITFOR DELAY '00:00:00.250';END;IF NOT EXISTS(SELECT 1 FROM catalog.executions WHERE execution_id=@id AND project_lsn=@version AND status IN(3,4,6,7,9)) THROW 57500,'SYNTHETIC_EXECUTION_TERMINAL_STATE_UNCONFIRMED',1;"
+    [void](Windows-Query $startBatch @{id=$record.ExecutionId;version=$record.ProjectLsn;folder=$record.FolderName;project=$record.ProjectName;logging=$LoggingLevel})
     $deadline=[datetime]::UtcNow.AddSeconds(60)
     do {$status=[int](Query 'SELECT status FROM SSISDB.catalog.executions WHERE execution_id=@id AND project_lsn=@version;' @{id=$record.ExecutionId;version=$record.ProjectLsn}).Tables[0].Rows[0][0];if($status -in 3,4,6,7,9){break};Start-Sleep -Milliseconds 500}while([datetime]::UtcNow -lt $deadline)
     $record.NativeExecutionStatus=$status;Save-Record
@@ -130,14 +131,25 @@ try {
     Assert ($handover.Status -ceq 'CAPTURED') 'REAL_SOURCE_CAPTURED'
     $result=Read-Analysis $handover
     $record.CaptureEvidence=[ordered]@{Result=$result;Models=$handover.ProjectModelsJson;Capture=$handover.ScopeSnapshotJson;Oracle=$oracle.objects;PipelineOracle=$oracle.pipelines};Save-Record
-    Assert ($result.scopeBinding[0].StatusCode -ceq 'SCOPE_CAPTURE_BOUND' -and $result.scopeBinding[0].RootQualified) 'SCOPE_CAPTURE_BOUND'
+    $abortWithoutStatistics=$Scenario -ceq 'Abort' -and $status -eq 3 -and -not $result.scopeBinding[0].RootQualified -and $result.scopeCoverage[0].StatisticsCount -eq 0
+    Assert ($result.scopeBinding[0].StatusCode -ceq 'SCOPE_CAPTURE_BOUND') 'SCOPE_CAPTURE_BOUND'
+    if($abortWithoutStatistics) {
+        Assert (@($result.packageInvocations).Count -eq 0 -and @($result.pipelineInstances).Count -eq 0 -and $result.scopeCoverage[0].IsPartial) 'ABORT_WITHOUT_STATISTICS_HAS_NO_INVENTED_SCOPE'
+        Assert (@($result.componentPhases).Count -gt 0 -and @($result.pathTransfers).Count -eq 0) 'ABORT_BEFORE_SYNTHETIC_SOURCE_ROWS'
+        foreach($phase in $result.componentPhases) {
+            $flow=@($oracle.pipelines|Where-Object {$_.entry -ceq $entryName -and $_.flowName -ceq $phase.TaskName})
+            Assert ($phase.PackageName -ceq $entryName -and $flow.Count -eq 1 -and $flow[0].components.name -ccontains $phase.ComponentName) 'ABORT_RAW_PHASE_SDK_ORACLE'
+            Assert ($null -eq $phase.FlowStatisticsId -and $null -eq $phase.InvocationId -and $null -eq $phase.PackageKey -and $null -eq $phase.FlowNodeId -and $null -eq $phase.ComponentNodeId) 'ABORT_PHASE_HAS_NO_INVENTED_IDENTITY'
+        }
+        foreach($coverage in $result.pipelineCoverage){Assert ($coverage.IsPartial -and $coverage.MappedRowCount -eq 0) 'ABORT_COMPLETENESS_REMAINS_UNKNOWN'}
+    }else{Assert ($result.scopeBinding[0].RootQualified) 'SDK_ROOT_QUALIFIED'}
     Assert ($result.packageScopes[0].PackageSha256 -ceq $expectedDigest) 'INDEPENDENT_SDK_ENTRY_BYTE_HASH'
     $expectedArchive=[Convert]::ToHexString([Security.Cryptography.SHA256]::HashData($ispac)).ToLowerInvariant()
     Assert ($result.scopeBinding[0].ArchiveSha256 -ceq $expectedArchive) 'INDEPENDENT_SDK_ARCHIVE_BYTE_HASH'
 
     Assert (@($result.packageScopes).Count -eq $(if($Scenario -ceq 'Success'){2}else{1})) 'EXACT_REACHABLE_PACKAGE_MODELS'
-    Assert (@($result.packageInvocations).Count -eq $(if($Scenario -ceq 'Success'){5}else{1})) 'SDK_INVOCATION_COUNT'
-    Assert (@($result.pipelineInstances).Count -eq $(if($Scenario -ceq 'Success'){6}else{1})) 'SDK_FLOW_INSTANCE_COUNT'
+    Assert (@($result.packageInvocations).Count -eq $(if($Scenario -ceq 'Success'){5}elseif($abortWithoutStatistics){0}else{1})) 'SDK_INVOCATION_COUNT'
+    Assert (@($result.pipelineInstances).Count -eq $(if($Scenario -ceq 'Success'){6}elseif($abortWithoutStatistics){0}else{1})) 'SDK_FLOW_INSTANCE_COUNT'
     Assert (@($result.pipelineInstances|Where-Object {-not $_.IsPathUnique}).Count -eq 0) 'UNIQUE_FLOW_INSTANCE_PATHS'
     Assert (@($result.scopeObservations|Where-Object {$_.SourceKind -ceq 'STATISTIC' -and $_.CorrelationStatus -cne 'EXACT_SCOPED_IDENTITY'}).Count -eq 0) 'ALL_SDK_STATISTICS_SCOPED'
     $phaseCount=@($result.componentPhases).Count;$transferCount=@($result.pathTransfers).Count
@@ -145,7 +157,8 @@ try {
     elseif($Scenario -ceq 'Success') {Assert ($phaseCount -gt 0) 'PHASE_LOGGING_AVAILABLE'}
     if($LoggingLevel -eq 2){Assert ($transferCount -eq 0) 'PERFORMANCE_TRANSFER_GAP'}
     if($LoggingLevel -eq 3 -and $Scenario -ceq 'Success'){Assert ($transferCount -gt 0) 'VERBOSE_TRANSFERS_AVAILABLE'}
-    Assert (@($result.componentPhases|Where-Object CorrelationStatus -CNE 'SCOPED_EXACT_COMPONENT_NAME').Count -eq 0) 'ALL_PHASES_SCOPED'
+    $expectedPhaseStatus=if($abortWithoutStatistics){'UNASSIGNED'}else{'SCOPED_EXACT_COMPONENT_NAME'}
+    Assert (@($result.componentPhases|Where-Object CorrelationStatus -CNE $expectedPhaseStatus).Count -eq 0) 'ALL_PHASES_HAVE_PROVEN_SCOPE_STATUS'
     Assert (@($result.pathTransfers|Where-Object CorrelationStatus -CNE 'SCOPED_EXACT_PATH_REFERENCE').Count -eq 0) 'ALL_TRANSFERS_SCOPED'
     foreach($transfer in $result.pathTransfers) {
         $instance=@($result.pipelineInstances|Where-Object FlowStatisticsId -EQ $transfer.FlowStatisticsId)

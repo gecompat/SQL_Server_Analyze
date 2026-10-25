@@ -548,7 +548,9 @@ Ausführungsbindung bleibt Voraussetzung. Der
 beschreibt die zwei Opt-ins, vier zusätzlichen Ergebnisgruppen und
 Identitätsgrenzen. Eine bereits belegte Dataflow-Statistikinstanz bestimmt
 zuerst den Paket- und Aufrufscope. Erst danach werden scoped Namen und
-Pfadreferenzen ausgewertet. Beobachtete Phasendauern sind keine CPU-Zeit;
+Pfadreferenzen ausgewertet. Der Quellpaketname muss zum Archiveintrag genau
+dieses Paketmodells passen; der Name des Startpakets ersetzt keine
+Kindpaketbindung. Beobachtete Phasendauern sind keine CPU-Zeit;
 Transferzähler werden nicht zu einer Paketzeilenzahl aggregiert.
 
 Der Benutzer hat diese begrenzte Umsetzung mit Weiterverwendung der bestehenden

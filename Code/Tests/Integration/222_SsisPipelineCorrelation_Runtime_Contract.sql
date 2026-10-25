@@ -100,9 +100,47 @@ BEGIN TRY
  EXEC monitor.USP_SsisPackageModelAnalysis @IncludeExecutionScopes=1,@IncludePipelineCorrelation=1,@ProjectModelsJson=@Models,@ScopeSnapshotJson=@C,@ScopeHandoverId=@Id,@ExecutionId=9007199254740993,@ResultSetArt='TABLE',@ResultTablesJson=N'{"pipelineInstances":"#PipelineInstances","componentPhases":"#PipelinePhases","pathTransfers":"#PipelineTransfers","pipelineCoverage":"#PipelineCoverage"}',@JsonErzeugen=1,@Json=@Json OUTPUT,@StatusCodeOut=@Status OUTPUT;
  IF COALESCE(@Status,'')<>'SCOPE_CAPTURE_BOUND' THROW 57911,N'PIPELINE_TABLE_FAILED',1;
  EXEC sys.sp_executesql N'IF (SELECT COUNT(*) FROM #PipelineTransfers WHERE DataStatsId=1 AND FlowStatisticsId=3 AND RowsSent=3)<>1 OR (SELECT COUNT(*) FROM #PipelineTransfers WHERE DataStatsId=2 AND FlowStatisticsId=4 AND RowsSent=7)<>1 OR (SELECT COUNT(*) FROM #PipelineInstances)<>2 OR (SELECT COUNT(*) FROM #PipelinePhases)<>2 OR (SELECT COUNT(*) FROM #PipelineTransfers)<>2 OR (SELECT COUNT(*) FROM #PipelineCoverage)<>2 THROW 57911,N''PIPELINE_TABLE_COUNT'',1;';
+ -- Kindpaketphasen und Transfers binden an den zugeordneten Paketeintrag.
+ DECLARE @Child nvarchar(max)=JSON_MODIFY(JSON_MODIFY(@Root,'$.nodes[0].name',N'SyntheticChild'),'$.source.packageSha256',REPLICATE(N'2',64));
+ DECLARE @ChildObjects nvarchar(max)=JSON_MODIFY(JSON_MODIFY(JSON_MODIFY(JSON_MODIFY(@Objects,'$.packageSha256',REPLICATE(N'2',64)),'$.objects[0].dtsId',N'55555555-5555-5555-5555-555555555555'),'$.objects[1].dtsId',N'66666666-6666-6666-6666-666666666666'),'$.objects[2].dtsId',N'77777777-7777-7777-7777-777777777777');
+ DECLARE @ChildPipeline nvarchar(max)=JSON_MODIFY(@Pipeline,'$.packageSha256',REPLICATE(N'2',64));
+ DECLARE @Caller nvarchar(max)=JSON_MODIFY(JSON_MODIFY(@Root,'$.nodes',JSON_QUERY(N'[{"id":"pkg1","kind":"PACKAGE","parentId":null,"name":"SyntheticRoot","attributes":{"protectionLevel":null}},{"id":"exe1","kind":"EXECUTABLE","parentId":"pkg1","name":"SyntheticCall","attributes":{"executableType":"Microsoft.ExecutePackageTask","isDisabled":false,"isEventHandler":false}}]')),'$.edges',JSON_QUERY(N'[]'));
+ DECLARE @CallerObjects nvarchar(max)=JSON_MODIFY(@Objects,'$.objects',JSON_QUERY(N'[{"nodeId":"pkg1","nodeKind":"PACKAGE","parentId":null,"dtsId":"11111111-1111-1111-1111-111111111111","packagePath":"\\Package","scopeKind":"PACKAGE","eventName":null,"callTarget":null,"steps":[],"profileStatus":"SUPPORTED"},{"nodeId":"exe1","nodeKind":"EXECUTABLE","parentId":"pkg1","dtsId":"44444444-4444-4444-4444-444444444444","packagePath":"\\Package\\SyntheticCall","scopeKind":"CALL","eventName":null,"callTarget":"SyntheticChild.dtsx","steps":[{"text":"\\SyntheticCall","counter":false}],"profileStatus":"SUPPORTED"}]'));
+ DECLARE @CallerPipeline nvarchar(max)=JSON_MODIFY(@Pipeline,'$.pipelines',JSON_QUERY(N'[]'));
+ SET @M=JSON_MODIFY(JSON_MODIFY(JSON_MODIFY(@Models,'$.packages[0].model',JSON_QUERY(@Caller)),'$.packages[0].identities',JSON_QUERY(@CallerObjects)),'$.packages[0].pipelineIdentities',JSON_QUERY(@CallerPipeline));
+ SET @M=JSON_MODIFY(@M,'append $.packages',JSON_QUERY((SELECT 'p2' packageKey,'SyntheticChild.dtsx' entryName,JSON_QUERY(@Child) model,JSON_QUERY(@ChildObjects) identities,JSON_QUERY(@ChildPipeline) pipelineIdentities FOR JSON PATH,WITHOUT_ARRAY_WRAPPER)));
+ DECLARE @ChildCapture nvarchar(max)=JSON_MODIFY(@Capture,'$.observations',JSON_QUERY(N'[]'));
+ DECLARE @SyntheticObservations TABLE([statisticsId] varchar(40),[executionId] varchar(40),[executableId] varchar(40),[executableGuid] varchar(36),[packageName] nvarchar(260),[packagePath] nvarchar(4000),[executionPath] nvarchar(4000),[startTime] varchar(40),[endTime] varchar(40),[durationMs] int,[executionResult] int);
+ INSERT @SyntheticObservations
+ SELECT '1','9007199254740993','51','11111111-1111-1111-1111-111111111111',N'SyntheticRoot.dtsx',N'\Package',N'\SyntheticRoot','2026-01-01T00:00:00Z','2026-01-01T00:00:01Z',1000,0 UNION ALL
+ SELECT '2','9007199254740993','52','44444444-4444-4444-4444-444444444444',N'SyntheticRoot.dtsx',N'\Package\SyntheticCall',N'\SyntheticRoot\SyntheticCall','2026-01-01T00:00:00Z','2026-01-01T00:00:01Z',1000,0 UNION ALL
+ SELECT '3','9007199254740993','53','55555555-5555-5555-5555-555555555555',N'SyntheticChild.dtsx',N'\Package',N'\SyntheticRoot\SyntheticCall\SyntheticChild','2026-01-01T00:00:00Z','2026-01-01T00:00:01Z',1000,0 UNION ALL
+ SELECT '4','9007199254740993','54','66666666-6666-6666-6666-666666666666',N'SyntheticChild.dtsx',N'\Package\SyntheticLoop',N'\SyntheticRoot\SyntheticCall\SyntheticChild\SyntheticLoop','2026-01-01T00:00:00Z','2026-01-01T00:00:01Z',1000,0 UNION ALL
+ SELECT '5','9007199254740993','55','77777777-7777-7777-7777-777777777777',N'SyntheticChild.dtsx',N'\Package\SyntheticLoop\SyntheticFlow',N'\SyntheticRoot\SyntheticCall\SyntheticChild\SyntheticLoop[1]\SyntheticFlow','2026-01-01T00:00:00Z','2026-01-01T00:00:01Z',1000,0 UNION ALL
+ SELECT '6','9007199254740993','55','77777777-7777-7777-7777-777777777777',N'SyntheticChild.dtsx',N'\Package\SyntheticLoop\SyntheticFlow',N'\SyntheticRoot\SyntheticCall\SyntheticChild\SyntheticLoop[2]\SyntheticFlow','2026-01-01T00:00:00Z','2026-01-01T00:00:01Z',1000,0;
+ SET @ChildCapture=JSON_MODIFY(@ChildCapture,'$.observations',JSON_QUERY((SELECT * FROM @SyntheticObservations ORDER BY statisticsId FOR JSON PATH)));
+ DECLARE @ChildIndex int=0;
+ WHILE @ChildIndex<2
+ BEGIN
+  SET @ChildCapture=JSON_MODIFY(JSON_MODIFY(@ChildCapture,'$.componentPhases['+CONVERT(varchar(1),@ChildIndex)+'].packageName',N'SyntheticChild.dtsx'),'$.componentPhases['+CONVERT(varchar(1),@ChildIndex)+'].executionPath',N'\SyntheticRoot\SyntheticCall\SyntheticChild\SyntheticLoop['+CONVERT(nvarchar(1),@ChildIndex+1)+N']\SyntheticFlow');
+  SET @ChildCapture=JSON_MODIFY(JSON_MODIFY(@ChildCapture,'$.pathTransfers['+CONVERT(varchar(1),@ChildIndex)+'].packageName',N'SyntheticChild.dtsx'),'$.pathTransfers['+CONVERT(varchar(1),@ChildIndex)+'].executionPath',N'\SyntheticRoot\SyntheticCall\SyntheticChild\SyntheticLoop['+CONVERT(nvarchar(1),@ChildIndex+1)+N']\SyntheticFlow');
+  SET @ChildIndex+=1;
+ END;
+ SET @ChildIndex=0;
+ WHILE @ChildIndex<3
+ BEGIN
+  SET @C=JSON_MODIFY(@ChildCapture,'$.modelSetSha256',CONVERT(varchar(64),HASHBYTES('SHA2_256',CONVERT(varbinary(max),@M)),2));
+  IF @ChildIndex=1 SET @C=JSON_MODIFY(@C,'$.componentPhases[0].packageName',N'SyntheticRoot.dtsx');
+  IF @ChildIndex=2 SET @C=JSON_MODIFY(@C,'$.pathTransfers[0].packageName',N'SyntheticRoot.dtsx');
+  SET @Receipt=JSON_MODIFY(JSON_MODIFY(@Receipt,'$.modelSetSha256',CONVERT(varchar(64),HASHBYTES('SHA2_256',CONVERT(varbinary(max),@M)),2)),'$.captureSha256',CONVERT(varchar(64),HASHBYTES('SHA2_256',CONVERT(varbinary(max),@C)),2));
+  EXEC sys.sp_updateextendedproperty @name=@Name,@value=@Receipt,@level0type=N'SCHEMA',@level0name=N'monitor',@level1type=N'PROCEDURE',@level1name=N'USP_SsisPackageModelAnalysis';
+  EXEC monitor.USP_SsisPackageModelAnalysis @IncludeExecutionScopes=1,@IncludePipelineCorrelation=1,@ProjectModelsJson=@M,@ScopeSnapshotJson=@C,@ScopeHandoverId=@Id,@ExecutionId=9007199254740993,@ResultSetArt='NONE',@JsonErzeugen=1,@Json=@Json OUTPUT,@StatusCodeOut=@Status OUTPUT;
+  IF COALESCE(@Status,'')<>'SCOPE_CAPTURE_BOUND' OR (SELECT COUNT(*) FROM OPENJSON(@Json,'$.pipelineInstances'))<>2 OR (SELECT COUNT(*) FROM OPENJSON(@Json,'$.componentPhases') WITH([PackageKey] varchar(16),[CorrelationStatus] varchar(40)) WHERE PackageKey='p2' AND CorrelationStatus='SCOPED_EXACT_COMPONENT_NAME')<>CASE WHEN @ChildIndex=1 THEN 1 ELSE 2 END OR (SELECT COUNT(*) FROM OPENJSON(@Json,'$.pathTransfers') WITH([PackageKey] varchar(16),[CorrelationStatus] varchar(40)) WHERE PackageKey='p2' AND CorrelationStatus='SCOPED_EXACT_PATH_REFERENCE')<>CASE WHEN @ChildIndex=2 THEN 1 ELSE 2 END BEGIN SET @Failure=CONCAT(N'PIPELINE_CHILD_ENTRY_BINDING index=',@ChildIndex,N' status=',@Status,N' reason=',JSON_VALUE(@Json,'$.scopeBinding[0].ReasonCode'),N' flows=',(SELECT COUNT(*) FROM OPENJSON(@Json,'$.pipelineInstances')),N' phases=',(SELECT COUNT(*) FROM OPENJSON(@Json,'$.componentPhases')),N' transfers=',(SELECT COUNT(*) FROM OPENJSON(@Json,'$.pathTransfers')));THROW 57911,@Failure,1;END;
+  SET @ChildIndex+=1;
+ END;
  EXEC sys.sp_dropextendedproperty @name=@Name,@level0type=N'SCHEMA',@level0name=N'monitor',@level1type=N'PROCEDURE',@level1name=N'USP_SsisPackageModelAnalysis';SET @Created=0;
  SET @Failure=N'SET LOCK_TIMEOUT '+CONVERT(nvarchar(20),@OriginalLock)+N';';EXEC sys.sp_executesql @Failure;
- PRINT N'SSIS_PIPELINE_RECEIVER_PASS cases=38; iteration identity, source isolation, metric boundaries and TABLE.';
+ PRINT N'SSIS_PIPELINE_RECEIVER_PASS cases=41; iteration identity, source isolation, metric boundaries and TABLE.';
 END TRY
 BEGIN CATCH
  IF @Created=1 EXEC sys.sp_dropextendedproperty @name=@Name,@level0type=N'SCHEMA',@level0name=N'monitor',@level1type=N'PROCEDURE',@level1name=N'USP_SsisPackageModelAnalysis';

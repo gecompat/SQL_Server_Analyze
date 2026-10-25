@@ -3888,21 +3888,52 @@ Die Implementierung ergänzt vier opt-in Ergebnisgruppen. Die gemeinsame
 Toolbelt-Konformität besteht 147 Prüfungen und die bisherigen 21
 Frameworkfälle. Der unabhängige SDK-Vergleich ordnet fünf synthetische Flows,
 20 Komponenten und 15 Pfade denselben Modellreferenzen zu. Der neue
-SQL-Empfängervertrag besteht 38 Fälle; die bisherigen Ausführungs-, Iterations-
+SQL-Empfängervertrag besteht 41 Fälle; die bisherigen Ausführungs-, Iterations-
 und Scopeempfänger bestehen ebenfalls. Sechs Adapterfälle mit simulierten
 Quelltabellen prüfen den echten SQL-Empfänger einschließlich großer IDs,
 Logginglücken, Fehlerisolation und ungültiger Quellformen. Diese Fälle sind
 keine native SSISDB-Abnahme.
 
-Die native Abnahme bleibt offen. Das bereits abgenommene unveränderte
-Kontrollarchiv läuft in der erhaltenen Umgebung; neu erzeugte Pakete scheitern
-beim Laden der Tasks und Verbindungsmanager. Der aktuelle Projektarchivvergleich
-vor und nach SSISDB-Deployment ist bytegleich. Der erfolgte Neustart hat die
-Aktivierungsfehler nicht beseitigt. Die eigenen Consumerobjekte sind bereinigt;
-die SSISDB bleibt ausdrücklich bestehen. Eine Diagnose des tatsächlichen
-SSISDB-Ausführungsprozesses muss die Ursache klären, bevor Verbose-, Performance-,
-Basic-, Fehler- und Abbruchfälle als abgenommen gelten können. Ein allgemeiner
-Lab-Funktionsausbau benötigt nach dem Fortsetzungsvertrag eine eigene Freigabe.
+Die fünf fachlichen nativen Abnahmefälle sind belegt; die reguläre Integration
+und ihre Head-/Main-Gates stehen noch aus. Der zusätzlich freigegebene
+Lab-PR844 ergänzt eine an Execution-ID, Projekt-LSN, Katalogkennung und VM
+gebundene lesende Diagnose. Feste Dateien und Registrierungen sowie ein
+laufender Stock-ForLoop-Worker wurden beobachtet. Der Windows-Startbatch des
+nativen Consumers hält seine Sitzung jetzt bis zum eigenen terminalen
+Ausführungsstatus offen. Eine bestimmte Registry-/Profilursache wird dadurch
+nicht als bewiesen dargestellt.
+
+Der erste erfolgreiche neue Verboselauf zeigte eine falsche Empfängerannahme
+über Kindpaketnamen. Die Korrektur bindet Phasen und Transfers an den
+Archiveintrag der bereits zugeordneten Paketinstanz. Drei neue synthetische
+Fälle prüfen die positive Kindpaketbindung und die Ablehnung falscher
+Startpaketnamen. Der korrigierte Replay dieses echten Captures ordnet sechs
+Flowinstanzen, 378 Phasen und 36 Transfers zu; jeder der drei SDK-Pfade liefert
+je Vorkommen fünf Zeilen. Seine RAW-/JSON-/TABLE-Parität besteht 14553
+Vergleiche. Der ursprüngliche native Harnessfehler bleibt erhalten; dieser
+Nachweis ist ein Capture mit Empfängerreplay und kein erneut gestarteter
+Verboselauf.
+
+Die vollständigen nativen Harnessläufe bestehen für Performance mit 12854,
+Basic mit 2095 und den eigenen SQL-Konvertierungsfehler mit 1888 Prüfungen.
+Sie schließen Ausgabeparität, reales Redeployment, Ablehnung aktueller Bytes
+für eine ältere Ausführung und bestätigten Cleanup ein. Der Abbruchnachlauf
+besteht 1277 Prüfungen bei Status 3. Seine Phasen bleiben ohne die fehlenden
+Executable-Statistiken ausdrücklich unzugeordnet; es werden weder Paket- noch
+Flowinstanzen erfunden. Die ursprüngliche strengere Harnesserwartung und ihr
+Fehler bleiben erhalten. Fünf gezielte Gegenprüfungen sichern die korrigierte
+Abbrucherwartung; der Produktconsumer wurde dafür nicht geändert.
+
+Die ausdrücklich freigegebene Obergrenze von 23 nativen Versuchen ist erreicht.
+Alle früheren Versuche bleiben gezählt; weitere native Starts sind nicht
+freigegeben. Der fünfte gezielte Review hat keine neuen materiellen Befunde
+an Consumer, Windows-Startbatch oder SDK-Fixture festgestellt. Der spätere
+Abbruchnachlauf präzisiert ausschließlich die Testoracle-Erwartung an eine
+bereits vorgesehene partielle Ausgabe. Der lokale Kurzbericht scheiterte nach
+dem erfolgreichen Abbruchharness an einem optionalen Fehlerfeld und wurde
+anhand der gesicherten Receipt ohne Paketwiederholung korrigiert. Die eigenen
+Consumerobjekte sind nachgewiesen bereinigt. Die bestehende SSISDB bleibt
+ausdrücklich erhalten; weder ein Timer noch CI erneuert das Budget.
 
 Der unabhängige Review hat vier Eingabebefunde geschlossen. Der zusätzliche
 Errorfall des nativen Harness verlangt nun einen positiven Beleg des eigenen

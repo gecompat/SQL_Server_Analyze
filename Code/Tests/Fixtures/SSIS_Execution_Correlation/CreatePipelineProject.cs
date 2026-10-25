@@ -21,11 +21,11 @@ internal static class CreatePipelineProject
     static void Flow(Package package, Executables executables, string name, string target, bool fail = false, bool delay = false)
     {
         string entry = package.Name + ".dtsx";
-        var connection = package.Connections.Add("OLEDB"); connection.Name = "SyntheticConnection" + name;
-        var settings = new System.Data.OleDb.OleDbConnectionStringBuilder();settings.Provider = "MSOLEDBSQL";settings.DataSource = target;
+        var connection = package.Connections.Add("DTS.ConnectionManagerOleDb.9"); connection.Name = "SyntheticConnection" + name;
+        var settings = new System.Data.OleDb.OleDbConnectionStringBuilder();settings.Provider = "MSOLEDBSQL19";settings.DataSource = target;
         settings["Initial Catalog"] = "master";settings["Integrated Security"] = "SSPI";settings["Use Encryption for Data"] = true;settings["Trust Server Certificate"] = true;
         connection.ConnectionString = settings.ConnectionString;
-        var host = (TaskHost)executables.Add("Microsoft.Pipeline"); host.Name = name;host.LocaleID=1033;
+        var host = (TaskHost)executables.Add("SSIS.Pipeline.9"); host.Name = name;host.LocaleID=1033;
         Record(entry, host, "PIPELINE");
         var pipe = (MainPipe)host.InnerObject;
         var source = pipe.ComponentMetaDataCollection.New(); source.ComponentClassID = "Microsoft.OLEDBSource";
@@ -37,8 +37,12 @@ internal static class CreatePipelineProject
         source.RuntimeConnectionCollection[0].ConnectionManager = DtsConvert.GetExtendedInterface(connection);
         var output = source.OutputCollection[0];
         var column = output.OutputColumnCollection.New(); column.Name = "SyntheticValue"; column.SetDataTypeProperties(DataType.DT_I4, 0, 0, 0, 0);
+        column.ErrorRowDisposition = DTSRowDisposition.RD_FailComponent;
+        column.TruncationRowDisposition = DTSRowDisposition.RD_FailComponent;
         var external = output.ExternalMetadataColumnCollection.New(); external.Name = column.Name; external.DataType = DataType.DT_I4;
         column.ExternalMetadataColumnID = external.ID;
+        var errorColumn = source.OutputCollection[1].OutputColumnCollection.New();
+        errorColumn.Name = column.Name; errorColumn.SetDataTypeProperties(DataType.DT_I4, 0, 0, 0, 0);
         var branch = pipe.ComponentMetaDataCollection.New();branch.ComponentClassID = "Microsoft.Multicast";
         var branchDesign = branch.Instantiate();branchDesign.ProvideComponentProperties();branch.Name = "SyntheticBrancher";
         var firstPath = pipe.PathCollection.New();firstPath.AttachPathAndPropagateNotifications(output,branch.InputCollection[0]);firstPath.Name = "SyntheticInputTransfer";
@@ -58,12 +62,16 @@ internal static class CreatePipelineProject
             componentOracle.Add(new { name = counter.Name, id = counter.ID, reference = counter.IdentificationString });
             pathOracle.Add(new { id = path.ID, name = path.Name, reference = path.IdentificationString, source = branch.Name, destination = counter.Name, rows = 5 });
         }
+        // Multicast ergänzt beim Verbinden weitere Ausgänge; nur die beiden verwendeten bleiben.
+        for (int index = branch.OutputCollection.Count - 1; index >= 2; index--)
+            branch.OutputCollection.RemoveObjectByID(branch.OutputCollection[index].ID);
+        if (branch.OutputCollection.Count != 2) throw new InvalidOperationException("SYNTHETIC_BRANCH_OUTPUT_COUNT");
         pipelines.Add(new { entry = entry, flowGuid = Guid.Parse(host.ID).ToString("D"), flowName = name, components = componentOracle, paths = pathOracle });
     }
 
     static void Call(Executables executables, string name, string entry)
     {
-        var task = (TaskHost)executables.Add("Microsoft.ExecutePackageTask"); task.Name = name;task.LocaleID=1033;
+        var task = (TaskHost)executables.Add("SSIS.ExecutePackageTask.9"); task.Name = name;task.LocaleID=1033;
         task.Properties["UseProjectReference"].SetValue(task, true);task.Properties["PackageName"].SetValue(task,"SyntheticChild.dtsx");Record(entry, task, "CALL");
     }
     static int Main(string[] args)

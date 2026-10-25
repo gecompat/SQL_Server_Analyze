@@ -66988,12 +66988,11 @@ BEGIN
   INSERT #InternalSsisExecutionScopes_PathTransfers
   SELECT TRY_CONVERT(bigint,[id]),NULL,NULL,NULL,NULL,NULL,[package],[task],[identification],[name],[source],[destination],[path],TRY_CONVERT(bigint,[rows]),TRY_CONVERT(datetimeoffset(7),[time],127),'UNASSIGNED'
   FROM OPENJSON(@Capture,'$.pathTransfers') WITH([id] nvarchar(40) '$.dataStatsId',[package] nvarchar(260) '$.packageName',[task] nvarchar(4000) '$.taskName',[identification] nvarchar(4000) '$.pathIdentificationString',[name] nvarchar(4000) '$.pathName',[source] nvarchar(4000) '$.sourceComponentName',[destination] nvarchar(4000) '$.destinationComponentName',[path] nvarchar(4000) '$.executionPath',[rows] nvarchar(40) '$.rowsSent',[time] nvarchar(64) '$.createdTime');
-  DECLARE @entry nvarchar(260)=JSON_VALUE(@Capture,'$.execution.packageFileName');
   ;WITH [m] AS(
    SELECT [p].[PhaseStatsId],[f].[FlowStatisticsId],[f].[InvocationId],[f].[PackageKey],[f].[FlowNodeId],[c].[NodeId],COUNT(*) OVER(PARTITION BY [p].[PhaseStatsId]) AS [Candidates]
    FROM #InternalSsisExecutionScopes_ComponentPhases AS [p] JOIN #InternalSsisExecutionScopes_PipelineInstances AS [f] ON [f].[IsPathUnique]=1 AND [f].[ExecutionPath] COLLATE Latin1_General_100_BIN2=[p].[ExecutionPath] COLLATE Latin1_General_100_BIN2 AND DATALENGTH([f].[ExecutionPath])=DATALENGTH([p].[ExecutionPath])
    JOIN #InternalSsisPipelineCorrelation_Components AS [c] ON [c].[PackageKey]=[f].[PackageKey] AND [c].[FlowNodeId]=[f].[FlowNodeId] AND [c].[Supported]=1 AND [c].[Name] COLLATE Latin1_General_100_BIN2=[p].[ComponentName] COLLATE Latin1_General_100_BIN2 AND DATALENGTH([c].[Name])=DATALENGTH([p].[ComponentName])
-   WHERE [f].[FlowName] COLLATE Latin1_General_100_BIN2=[p].[TaskName] COLLATE Latin1_General_100_BIN2 AND DATALENGTH([f].[FlowName])=DATALENGTH([p].[TaskName]) AND [p].[PackageName] COLLATE Latin1_General_100_BIN2=@entry COLLATE Latin1_General_100_BIN2 AND DATALENGTH([p].[PackageName])=DATALENGTH(@entry))
+   WHERE [f].[FlowName] COLLATE Latin1_General_100_BIN2=[p].[TaskName] COLLATE Latin1_General_100_BIN2 AND DATALENGTH([f].[FlowName])=DATALENGTH([p].[TaskName]) AND EXISTS(SELECT 1 FROM #InternalSsisExecutionScopes_Packages AS [sp] WHERE [sp].[PackageKey]=[f].[PackageKey] AND [sp].[EntryName] COLLATE Latin1_General_100_BIN2=[p].[PackageName] COLLATE Latin1_General_100_BIN2 AND DATALENGTH([sp].[EntryName])=DATALENGTH([p].[PackageName])))
   UPDATE [p] SET [FlowStatisticsId]=[m].[FlowStatisticsId],[InvocationId]=[m].[InvocationId],[PackageKey]=[m].[PackageKey],[FlowNodeId]=[m].[FlowNodeId],[ComponentNodeId]=[m].[NodeId],[CorrelationStatus]='SCOPED_EXACT_COMPONENT_NAME'
   FROM #InternalSsisExecutionScopes_ComponentPhases AS [p] JOIN [m] ON [m].[PhaseStatsId]=[p].[PhaseStatsId] WHERE [m].[Candidates]=1;
   IF SYSUTCDATETIME()>=@Deadline THROW 57910,N'PIPELINE_TIME_LIMIT',1;
@@ -67005,7 +67004,7 @@ BEGIN
     AND [p].[Name] COLLATE Latin1_General_100_BIN2=[r].[PathName] COLLATE Latin1_General_100_BIN2 AND DATALENGTH([p].[Name])=DATALENGTH([r].[PathName])
     AND [p].[SourceName] COLLATE Latin1_General_100_BIN2=[r].[SourceComponentName] COLLATE Latin1_General_100_BIN2 AND DATALENGTH([p].[SourceName])=DATALENGTH([r].[SourceComponentName])
     AND [p].[DestinationName] COLLATE Latin1_General_100_BIN2=[r].[DestinationComponentName] COLLATE Latin1_General_100_BIN2 AND DATALENGTH([p].[DestinationName])=DATALENGTH([r].[DestinationComponentName])
-   WHERE [f].[FlowName] COLLATE Latin1_General_100_BIN2=[r].[TaskName] COLLATE Latin1_General_100_BIN2 AND DATALENGTH([f].[FlowName])=DATALENGTH([r].[TaskName]) AND [r].[PackageName] COLLATE Latin1_General_100_BIN2=@entry COLLATE Latin1_General_100_BIN2 AND DATALENGTH([r].[PackageName])=DATALENGTH(@entry))
+   WHERE [f].[FlowName] COLLATE Latin1_General_100_BIN2=[r].[TaskName] COLLATE Latin1_General_100_BIN2 AND DATALENGTH([f].[FlowName])=DATALENGTH([r].[TaskName]) AND EXISTS(SELECT 1 FROM #InternalSsisExecutionScopes_Packages AS [sp] WHERE [sp].[PackageKey]=[f].[PackageKey] AND [sp].[EntryName] COLLATE Latin1_General_100_BIN2=[r].[PackageName] COLLATE Latin1_General_100_BIN2 AND DATALENGTH([sp].[EntryName])=DATALENGTH([r].[PackageName])))
   UPDATE [r] SET [FlowStatisticsId]=[m].[FlowStatisticsId],[InvocationId]=[m].[InvocationId],[PackageKey]=[m].[PackageKey],[FlowNodeId]=[m].[FlowNodeId],[ModelEdgeId]=[m].[EdgeId],[CorrelationStatus]='SCOPED_EXACT_PATH_REFERENCE'
   FROM #InternalSsisExecutionScopes_PathTransfers AS [r] JOIN [m] ON [m].[DataStatsId]=[r].[DataStatsId] WHERE [m].[Candidates]=1;
   SET @valid=1;

@@ -622,8 +622,13 @@ Komponentennamen sowie passende Ports und Kante aus dem Toolbelt-Sidecar.
 Sein Status lautet `SCOPED_EXACT_PATH_REFERENCE`. Mehrdeutige, unbekannte oder
 abweichende Referenzen bleiben `UNASSIGNED`; Zeitnähe ersetzt keine Identität.
 Die SSISDB-Spalte `package_name` bezeichnet bei beiden zusätzlichen Quellen das
-zuerst gestartete Paket. Die Kindpaketkennung stammt deshalb ausschließlich aus
-der zuvor gebundenen Statistikinstanz.
+zugehörige Paket, einschließlich eines aufgerufenen Kindpakets. Der Name muss
+ordinal und längengleich zum Archiveintrag des bereits gebundenen Paketmodells
+passen. Die Paket- und Aufrufkennung stammt weiterhin aus der Statistikinstanz;
+ein übereinstimmender Paketname allein begründet keine Zuordnung. Nach einem
+frühen Abbruch können Phasen vorliegen, während Executable-Statistiken fehlen.
+Die Ausgabe behält diese Phasen unzugeordnet bei, meldet keine Flowinstanz und
+kennzeichnet die Abdeckung als partiell.
 
 `ObservedDurationMs` ist das nichtnegative Intervall einer einzelnen Phase.
 Unbekannte oder umgekehrte Grenzen ergeben keine Dauer. `RowsSent` bleibt der
