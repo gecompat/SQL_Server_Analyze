@@ -50495,6 +50495,9 @@ BEGIN
         RETURN 51011;
     END;
 
+    BEGIN TRY
+        SET XACT_ABORT OFF;
+        IF @PreviousLockTimeout=0 SET LOCK_TIMEOUT 1000;
     CREATE TABLE [#ServerPrincipalAnalysis_moduleStatus]
     (
         [ModuleName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,
@@ -50567,8 +50570,6 @@ BEGIN
         [ResultName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,
         [TargetTable] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
     );
-    BEGIN TRY
-        SET XACT_ABORT OFF;
         IF @Mode='TABLE'
             EXEC [monitor].[InternalPrepareResultTables] @ResultTablesJson=@ResultTablesJson,
                 @AllowedResultNames=N'moduleStatus|principals|roleMemberships|permissions|loginPolicies|sourceStatus|warnings',
