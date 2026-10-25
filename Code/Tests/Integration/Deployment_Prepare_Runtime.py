@@ -652,7 +652,7 @@ def snapshot_schema_cases(deployed, tables):
                 proc=text.split('CREATE OR ALTER PROCEDURE',1)[1].split('\n',1)[0].strip()
                 definition=g.split_batches(text)[0]
                 # Use the identical complete canonical batch as the preflight hash.
-                definition=definition.strip(' \t\r\n')
+                definition=g.stored_module_definition(definition)
                 digest=hashlib.sha256(definition.encode('utf-16le')).hexdigest()
                 out.append(f"IF HASHBYTES('SHA2_256',CONVERT(varbinary(max),TRIM(NCHAR(9)+NCHAR(10)+NCHAR(13)+N' ' FROM REPLACE(OBJECT_DEFINITION(OBJECT_ID({g.lit(proc)})),NCHAR(13)+NCHAR(10),NCHAR(10)))))<>0x{digest} OR OBJECT_DEFINITION(OBJECT_ID({g.lit(proc)})) IS NULL THROW 53826,{g.lit('Current helper body mismatch: '+proc)},1;\n")
         return ''.join(out)
@@ -670,7 +670,7 @@ def snapshot_schema_cases(deployed, tables):
         ('unknown version',"UPDATE snapshot.PackageVersion SET PackageVersion='9.9.9';",53935,shape(1)),
         ('padded version',"UPDATE snapshot.PackageVersion SET PackageVersion='1.0.0 ';",53935,shape(1)),
         ('padded package',"UPDATE snapshot.PackageVersion SET PackageCode='SC-023 ';",53935,"UPDATE snapshot.PackageVersion SET PackageCode='SC-023';"),
-        ('wrong case package',"UPDATE snapshot.PackageVersion SET PackageCode='sc-023';",53935,"UPDATE snapshot.PackageVersion SET PackageCode='SC-023';"),
+        ('wrong case package',"ALTER TABLE snapshot.PackageVersion NOCHECK CONSTRAINT CK_snapshot_PackageVersion_PackageCode; UPDATE snapshot.PackageVersion SET PackageCode='sc-023';",53935,"UPDATE snapshot.PackageVersion SET PackageCode='SC-023'; ALTER TABLE snapshot.PackageVersion WITH CHECK CHECK CONSTRAINT CK_snapshot_PackageVersion_PackageCode;"),
         ('missing CHECK','ALTER TABLE snapshot.CollectorPolicy DROP CONSTRAINT CK_snapshot_CollectorPolicy_CollectorCode;',53908,"ALTER TABLE snapshot.CollectorPolicy WITH CHECK ADD CONSTRAINT CK_snapshot_CollectorPolicy_CollectorCode CHECK(CollectorCode='PERFORMANCE_COUNTERS');"),
         ('disabled CHECK','ALTER TABLE snapshot.Scope NOCHECK CONSTRAINT CK_snapshot_Scope_ScopeType;',53908,'ALTER TABLE snapshot.Scope WITH CHECK CHECK CONSTRAINT CK_snapshot_Scope_ScopeType;'),
         ('untrusted CHECK','ALTER TABLE snapshot.Scope NOCHECK CONSTRAINT CK_snapshot_Scope_ScopeType; ALTER TABLE snapshot.Scope CHECK CONSTRAINT CK_snapshot_Scope_ScopeType;',53908,'ALTER TABLE snapshot.Scope WITH CHECK CHECK CONSTRAINT CK_snapshot_Scope_ScopeType;'),

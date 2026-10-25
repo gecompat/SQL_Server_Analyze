@@ -65,7 +65,7 @@ BEGIN TRY
 IF @SnapshotSchemaOwnTransaction=1 BEGIN TRANSACTION;
 ELSE SAVE TRANSACTION SQLSA_SnapshotSchema2;
 -- SNAPSHOT_SCHEMA_PREFLIGHT_BEGIN
--- Derived model SHA256: 812b788ba088c2f53d6a57388fc55147a0b857641234f69e4f81b5f6c61ceceb
+-- Derived model SHA256: aee9e33f717fc2f3a62a9adb54da1dc8960016b9d92ce4adaa0e209fe2ec4cc0
 SET NOCOUNT ON; SET LOCK_TIMEOUT 10000;
 IF ISNULL(HAS_PERMS_BY_NAME(DB_NAME(),'DATABASE','CONTROL'),0)<>1 OR ISNULL(HAS_PERMS_BY_NAME(NULL,NULL,'VIEW ANY DEFINITION'),0)<>1 THROW 53901,N'Deployment requires CONTROL DATABASE and visible server metadata.',1;
 IF EXISTS(SELECT 1 FROM sys.triggers WHERE parent_class=0 AND is_disabled=0) OR EXISTS(SELECT 1 FROM sys.server_triggers WHERE is_disabled=0) THROW 53902,N'Active DDL triggers are unsupported.',1;
@@ -1019,7 +1019,7 @@ IF EXISTS
 )
     THROW 53760,N''Eine vorhandene Waitmetrik widerspricht dem Metrikvertrag.'',1;
 ';
-IF OBJECT_ID(N'[snapshot].[InternalCompleteWaitStatsCycle]',N'P') IS NOT NULL AND OBJECT_ID(N'[snapshot].[PackageVersion]',N'U') IS NOT NULL EXEC sys.sp_executesql N'IF NOT EXISTS(SELECT 1 FROM [snapshot].[PackageVersion] WHERE CONVERT(varbinary(max),PackageCode)=CONVERT(varbinary(max),''SC-023'') AND CONVERT(varbinary(max),PackageVersion)=CONVERT(varbinary(max),''1.2.0'') AND SchemaVersion=2) AND (OBJECT_DEFINITION(OBJECT_ID(N''[snapshot].[InternalCompleteWaitStatsCycle]'',N''P'')) IS NULL OR HASHBYTES(''SHA2_256'',CONVERT(varbinary(max),TRIM(NCHAR(9)+NCHAR(10)+NCHAR(13)+N'' '' FROM REPLACE(OBJECT_DEFINITION(OBJECT_ID(N''[snapshot].[InternalCompleteWaitStatsCycle]'',N''P'')),NCHAR(13)+NCHAR(10),NCHAR(10)))))<>0xe0ddfb2a199c261d8e14c5fbbb64f211f2aaa9ef1a3563998f62bd20239803d3) THROW 53762,N''A noncanonical object occupies the new Wait helper name.'',1;';
+IF OBJECT_ID(N'[snapshot].[InternalCompleteWaitStatsCycle]',N'P') IS NOT NULL AND OBJECT_ID(N'[snapshot].[PackageVersion]',N'U') IS NOT NULL EXEC sys.sp_executesql N'IF NOT EXISTS(SELECT 1 FROM [snapshot].[PackageVersion] WHERE CONVERT(varbinary(max),PackageCode)=CONVERT(varbinary(max),''SC-023'') AND CONVERT(varbinary(max),PackageVersion)=CONVERT(varbinary(max),''1.2.0'') AND SchemaVersion=2) AND (OBJECT_DEFINITION(OBJECT_ID(N''[snapshot].[InternalCompleteWaitStatsCycle]'',N''P'')) IS NULL OR HASHBYTES(''SHA2_256'',CONVERT(varbinary(max),TRIM(NCHAR(9)+NCHAR(10)+NCHAR(13)+N'' '' FROM REPLACE(OBJECT_DEFINITION(OBJECT_ID(N''[snapshot].[InternalCompleteWaitStatsCycle]'',N''P'')),NCHAR(13)+NCHAR(10),NCHAR(10)))))<>0xe392b9581c55955b81674e468aa88eac444339585dfd787a682abf66b3a48c49) THROW 53762,N''A noncanonical object occupies the new Wait helper name.'',1;';
 DROP TABLE #SnapshotTargetSchema_ConstraintMap,#SnapshotTargetSchema_KnownForeignKeys,[#SnapshotTargetSchema_Expected_1],[#SnapshotTargetSchema_Expected_2],[#SnapshotTargetSchema_Expected_3],[#SnapshotTargetSchema_Expected_4],[#SnapshotTargetSchema_Expected_5],[#SnapshotTargetSchema_Expected_6],[#SnapshotTargetSchema_Expected_7],[#SnapshotTargetSchema_Expected_8],[#SnapshotTargetSchema_Expected_9],[#SnapshotTargetSchema_Expected_10];
 SET LOCK_TIMEOUT 0;
 -- SNAPSHOT_SCHEMA_PREFLIGHT_END

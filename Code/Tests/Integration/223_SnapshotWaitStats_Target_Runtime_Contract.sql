@@ -184,7 +184,7 @@ BEGIN
  IF COALESCE(@WaitBackendStatus,'')<>'INVALID_PARAMETER' OR @WaitBackendError<>51011 THROW 53770,N'Complete accepted Wait caller state.',1;
  SET @WaitCallerAfterXactState=XACT_STATE();
  IF @@OPTIONS<>@WaitCallerOptions OR @@TRANCOUNT<>CASE WHEN @WaitCallerMode=0 THEN 1 ELSE 0 END
-  OR @WaitCallerAfterXactState<>@WaitCallerXactState
+  OR (@WaitCallerMode=0 AND (@WaitCallerAfterXactState<>1 OR @WaitCallerXactState<>1))
  BEGIN
   DECLARE @WaitCallerFailure nvarchar(2048)=CONCAT(N'Wait caller mode=',@WaitCallerMode,N' options=',@@OPTIONS,N' expected=',@WaitCallerOptions,N' tran=',@@TRANCOUNT,N' state=',@WaitCallerAfterXactState,N' before=',@WaitCallerXactState);
   THROW 53770,@WaitCallerFailure,1;
@@ -194,7 +194,13 @@ BEGIN
   IF NOT EXISTS(SELECT 1 FROM #WaitCallerSentinel WHERE [Value]=1) THROW 53770,N'Wait helper erased caller sentinel.',1;
   ROLLBACK TRANSACTION;
  END
- ELSE SET IMPLICIT_TRANSACTIONS OFF;
+ ELSE
+ BEGIN
+  SET IMPLICIT_TRANSACTIONS OFF;
+  IF EXISTS(SELECT 1 FROM [sys].[dm_tran_session_transactions] WITH (NOLOCK)
+            WHERE [session_id]=@@SPID AND [is_user_transaction]=1)
+   THROW 53770,N'Wait rejection left a caller user transaction.',1;
+ END;
  SET @WaitCallerMode+=1;
 END;
 IF (SELECT COUNT_BIG(*) FROM [SQLServerAnalyzeSnapshotTest].[snapshot].[CaptureRun])<>@WaitBeforeRuns

@@ -325,7 +325,7 @@ diesen Targetvertrag ohne neue native API oder Engineverzweigung nicht
 ausgewählt; die spätere native DMV-Aktivierung erhält eine eigene Auswahl.
 
 Das lokal nach den konkreten Testinputbefunden neu begrenzte Budget umfasst
-höchstens vierzehn native Entwicklungsversuche für
+höchstens sechzehn native Entwicklungsversuche für
 Compiler-, Mengen-, Kontext-, Caller- und reale Upgradeoracles. Fehlversuche
 bleiben verbraucht. Die erste Quellenabnahme qualifiziert weder den
 vollständigen Collector noch einen nativen DMV-Read. Eine leere Rohprojektion
@@ -335,7 +335,11 @@ Testinputfehler und kein Produktnachweis. Der weitere native Befund zur
 CRLF-Normalisierung betrifft den Erwartungsliteralvergleich; das Oracle
 verwendet jetzt denselben kanonischen SHA256 wie der Installer. Der
 Callerzustand wird gegen die tatsächlich gemessene Ausgangslage verglichen.
-Diese konkreten Befunde begründen zwei zusätzliche Versuche innerhalb
+Die zusätzliche native Definitiondiagnose belegt außerdem, dass SQL Server
+CREATE OR ALTER als CREATE mit erhaltenen Zwischenräumen speichert.
+Generator und Upgradeoracle verwenden gemeinsam diese exakt bestätigte
+Darstellung einschließlich Kommentarheader und unverändertem Modulrumpf.
+Diese konkreten Befunde begründen vier zusätzliche Versuche innerhalb
 des unveränderten gemeinsamen Wellenumfangs. Jeder eigene Lauf benötigt
 belegtes Cleanup. Ganze grüne Logs werden nicht an Reviewer weitergereicht.
 Messwerte für Token und Kosten liegen nicht vor; der gemeinsame endliche

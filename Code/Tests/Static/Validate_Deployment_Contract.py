@@ -31,6 +31,13 @@ class DeploymentContract(unittest.TestCase):
         self.assertTrue('parentColumnName' in self.sql)
         self.assertIn('FOR JSON PATH,INCLUDE_NULL_VALUES', self.sql)
 
+    def test_stored_module_header_matches_native_representation(self):
+        source="/* CREATE OR ALTER stays in comments */\nCREATE OR ALTER PROCEDURE [snapshot].[ExampleProbe] AS SELECT N'CREATE OR ALTER';"
+        expected="/* CREATE OR ALTER stays in comments */\nCREATE   PROCEDURE [snapshot].[ExampleProbe] AS SELECT N'CREATE OR ALTER';"
+        self.assertEqual(expected, generator.stored_module_definition(source))
+        with self.assertRaises(generator.BuildError):
+            generator.stored_module_definition("SELECT N'CREATE OR ALTER PROCEDURE';")
+
     def test_wait_seed_guard_rejects_persistent_or_hidden_mutations(self):
         sources,_,_=generator.load_sources(ROOT,True)
         seed=next(s for s in sources if s.path.endswith('075_CompleteWaitStatsInstallation.sql'))

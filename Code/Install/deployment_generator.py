@@ -634,6 +634,16 @@ def snapshot_state_classifier(tables: list[Table], sources: list[Source], strict
     return ''.join(out)
 
 
+def stored_module_definition(batch: str) -> str:
+    """Match SQL Server's stored CREATE OR ALTER module header exactly."""
+    batch=batch.replace('\r\n','\n').strip('\t\r\n ')
+    ts=tokens(batch)
+    if len(ts)<4 or [upper(t) for t in ts[:3]]!=['CREATE','OR','ALTER'] or upper(ts[3]) not in ('PROCEDURE','PROC','VIEW','FUNCTION'):
+        raise BuildError('Expected one canonical CREATE OR ALTER module batch')
+    # SQL Server removes only the OR/ALTER tokens, retaining their whitespace.
+    return batch[:ts[1].start]+batch[ts[1].end:ts[2].start]+batch[ts[2].end:]
+
+
 def snapshot_wait_seed_preflight(sources: list[Source], strict: bool=False) -> str:
     """Copy one source-owned, mechanically read-only contract before writes."""
     seed=next((s for s in sources if s.path=='Code/10_SnapshotBaseline/075_CompleteWaitStatsInstallation.sql'),None)
@@ -682,7 +692,7 @@ def snapshot_wait_seed_preflight(sources: list[Source], strict: bool=False) -> s
     module=next((s for s in sources if s.path=='Code/10_SnapshotBaseline/055_InternalCompleteWaitStatsCycle.sql'),None)
     if module is None or len(module.batches)!=1:
         raise BuildError('Wait target module closure is incomplete')
-    expected=module.batches[0].strip('\t\r\n ')
+    expected=stored_module_definition(module.batches[0])
     digest=hashlib.sha256(expected.encode('utf-16le')).hexdigest()
     obj="N'[snapshot].[InternalCompleteWaitStatsCycle]'"
     collision=("IF NOT EXISTS(SELECT 1 FROM [snapshot].[PackageVersion] WHERE CONVERT(varbinary(max),PackageCode)=CONVERT(varbinary(max),'SC-023') "

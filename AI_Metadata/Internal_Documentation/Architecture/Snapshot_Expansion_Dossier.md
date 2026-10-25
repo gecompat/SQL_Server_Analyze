@@ -1087,3 +1087,14 @@ bleiben MEASURED_CUMULATIVE / IsPartial=0; Kandidaten bleiben
 MONOTONIC_CONTINUITY_UNPROVEN / IsPartial=1. Der erfolgreiche Wait-Run ist
 wegen dieser fachlichen Kandidatgrenze PARTIAL. Diese Kennzeichnung allein
 unterbricht den nächsten Vergleich vollständiger Rohwerte nicht.
+
+
+Der Installations-/Upgradereview schließt die frühe WAIT_STATS-Ablehnung
+von Callertransaktionen und die gemeinsame Bindung gespeicherter
+Helperdefinitionen ein. SQL Server speichert den kanonischen
+CREATE-OR-ALTER-Header mit entfernten OR-/ALTER-Tokens und erhaltenen
+Zwischenräumen. Generator und Upgradeoracle berücksichtigen genau diese
+nativ beobachtete Darstellung; Kommentarheader und Modulrumpf bleiben
+vollständig gebunden. Globale Textsetzungen in Kommentaren oder Literalen
+sind ausgeschlossen. Die nativen Abschlussläufe bleiben bis zu ihrem
+tatsächlichen Ergebnis offene Evidenz.
