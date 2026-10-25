@@ -1,7 +1,7 @@
 # Ausbau der lokalen Snapshot- und Baseline-Erfassung
 
 **Stand:** 25. Oktober 2026.
-**Status:** konkretisierter nächster unabhängiger Scope; Vertragsreview und Implementierung offen.
+**Status:** Konzeptreview und Schema-2-Vertragsreview bestanden. Implementierung, native Migrationsabnahme und Collectorqualifikation bleiben offen.
 **Artefakt-UID:** `urn:uuid:01a17312-4ac5-78b9-b77d-536e996e2817`.
 **Registrierung:** `DEFERRED`; keine neue finale lesbare Kennung vergeben.
 **Bestehende Zuordnung:** SC-023-EXPANSION, Rang 10 der
@@ -188,7 +188,373 @@ isolierte Testinstanz betreffen. Unveränderte bestehende erfolgreiche Gates
 werden nicht wegen eines Timers erneut ausgeführt. Ein neuer Collector mit
 fehlender nativer Qualifikation bleibt als Teillieferung sichtbar.
 
+## Wait-Spezifikationsentwurf und vorgeschalteter Schema-Vorvertrag
+
+Konzeptreview und Review des vorgeschalteten Migrationsvertrags bestehen.
+Die nachfolgende Collectorauswahl bleibt ein Entwurf und ist noch kein
+gelieferter Collector. Die vorgeschaltete PackageVersion 1.1.0 führt SchemaVersion 2 ein, ohne
+neue persistente Spalte oder Tabelle. Sie erweitert ausschließlich zwei
+bekannte CHECK-Domänen und liefert noch keinen Wait-Collector. Der spätere
+Collector wird als PackageVersion 1.2.0 mit SchemaVersion 2 konkretisiert. Neue Prozeduren und Seeds sind eine ausdrückliche Installation;
+Configure führt kein implizites Upgrade aus. Ein unbekannter Versions- oder
+Strukturstand wird vor Änderungen abgelehnt.
+
+### Vorgeschaltete Schemawelle und exakte Altzustände
+
+Die erste Produktwelle dieser Erweiterung implementiert ausschließlich die
+Schema- und Deploymentvorbereitung. Der bestehende Performance-Counter-Pfad,
+seine öffentlichen Parameter, MetricDefinition-Seeds und CollectorPolicy-
+Werte bleiben erhalten. WAIT_STATS-Policy, Waitmetriken und neue Collector-
+Helper werden erst mit der nachfolgenden Collectorlieferung installiert.
+Die noch offene Typisierung von WAIT_CAPTURE_CONTEXT blockiert deshalb
+keinen als Collector ausgegebenen Code in dieser vorgeschalteten Welle.
+
+Die Migration akzeptiert ausschließlich diese bekannten Zustände:
+
+| Paket-/Schemastand | CollectorPolicy-Domäne | Scope-Domäne | Aktion |
+|---|---|---|---|
+| keine Snapshotobjekte | keine | keine | Frische Installation als 1.1.0 / Schema 2. |
+| 1.0.0 / Schema 1 | PERFORMANCE_COUNTERS | SERVER und PERFORMANCE_COUNTER | Datenbewahrende Erweiterung beider bekannten CHECKs. |
+| 1.1.0 / Schema 2 | PERFORMANCE_COUNTERS und WAIT_STATS | SERVER, PERFORMANCE_COUNTER und WAIT_TYPE | Idempotente Wiederholung ohne Policy- oder Sampleänderung. |
+| anderer, gemischter oder unbekannter Stand | beliebig | beliebig | Ablehnung vor der Migration. |
+
+Die beiden bekannten Constraints heißen
+CK_snapshot_CollectorPolicy_CollectorCode und CK_snapshot_Scope_ScopeType.
+Beide müssen aktiviert, vertrauenswürdig und nicht NOT FOR REPLICATION sein.
+Die genaue semantische Definitionsmenge wird anhand nativer Referenztabellen
+verglichen; beliebige zusätzliche Tokens, Werte oder weitere CHECKs werden
+nicht als zulässiger Altzustand umgedeutet. Name, Spaltenfacetten, Schlüssel,
+Defaults und bestehende übrige Constraints müssen zum bekannten V1- oder
+V2-Modell passen. Ein bloß passender Versionswert genügt nicht.
+
+Nur für den vollständig erkannten V1-Zustand werden diese zwei CHECKs in
+derselben geschützten Transaktion wie der vollständige Preflight ersetzt
+und mit WITH CHECK validiert. Die vorhandenen TABLOCKX-/HOLDLOCK-Sperren
+bleiben bis zum Transaktionsende erhalten; zwischen Prüfung und Änderung
+wird keine ungeschützte Lücke zugelassen.
+Anschließend wird die Paketversion atomar auf 1.1.0 / Schema 2 gesetzt.
+Bestehende Samples, Scopes, Collector-/Retentionwerte und fremde Objekte
+werden nicht gelöscht oder umgeschrieben. Unbekannte oder widersprüchliche
+Struktur führt vor DDL/DML zur Ablehnung; die Migration versucht keine
+Reparatur unbekannter Nutzeränderungen. Der Vertragsreview verlangt
+gemeinsame Transaktionsbindung und Abbruch über alle Standalone-Batches.
+Die konkrete Implementierung wird vor Integration unabhängig geprüft.
+
+Der generierte Gesamtdeploymentweg erkennt zusätzlich zum exakten aktuellen
+Modell genau das freigegebene V1-Modell mit diesen beiden abweichenden
+Domänen und passender 1.0.0-/Schema-1-Metadatenzeile. Alle anderen Abweichungen
+bleiben unzulässig. Die generische Zustandsprüfung wird nicht global gelockert.
+Der SQLCMD-Master behält ON ERROR EXIT. Der erzeugte Target-Standaloneweg
+muss über Batchgrenzen fail-closed sein: Die kanonischen Batches werden in
+einem gemeinsamen bewachten Ausführungsrahmen mit getrennten notwendigen
+Kompilationsebenen ausgeführt. Der erste Fehler beendet diesen Rahmen vor
+jeder nachfolgenden Quelle. Er verlangt vor eigenen Transaktionsänderungen
+TRANCOUNT=0 und IMPLICIT_TRANSACTIONS OFF; eine Callertransaktion wird weder
+übernommen noch abgeschlossen. Eine abgelehnte Datenbank muss einschließlich
+vorhandener Helperdefinitionen und SET-Metadaten unverändert bleiben. Die
+Negativabnahme prüft genau diesen Standaloneweg und nicht nur SQLCMD oder
+Gesamtdeployment. Die konkrete Builderumsetzung wird mit dem Produktdiff
+geprüft; bloßes Entfernen von ON ERROR EXIT mit anschließender GO-Verkettung
+ist für Schema 2 unzulässig.
+
+Die Target-Quelle und der generierte Weg müssen dieselbe bekannte Migration
+anwenden. Der direkte Targetweg erhält einen read-only Prüfblock, der aus
+dem kanonischen Tabellenmodell und genau dieser Legacy-Auswahl generiert
+wird; die erwarteten Spalten-/Schlüssel-/CHECK-Definitionen werden nicht als
+zweiter handgepflegter Vertrag geführt. Der Prüfblock wird in einem eindeutig
+markierten Bereich der kanonischen Targetquelle gespeichert und durch den
+Builder deterministisch auf Synchronität geprüft. Sein Erzeugungshash schließt
+diesen Bereich selbst aus. Eine veraltete oder veränderte generierte Prüfung
+führt vor Artefakterzeugung zu Ablehnung.
+
+Der Gesamtdeployment-Builder führt bereits seine entsprechende vollständige
+Prüfung aus. Er entfernt deshalb ausschließlich diesen exakt erkannten
+read-only Bereich aus seinem erzeugten Sourcebatch. Diese statische
+Transformation wird im Builder geprüft; es gibt keinen zur Laufzeit durch
+einen Caller fälschbaren Skip-Schalter. Die eigentliche Migration bleibt
+in beiden Wegen derselbe kanonische Code. Datenbankkontextprüfung und
+kritische V1-/V2-Migrationsbedingungen werden nicht entfernt. Pro Route
+bleibt genau eine vollständige Strukturvorprüfung; die vorgeschriebene
+strikte Nachprüfung des Gesamtdeployments bleibt zusätzlich erhalten. Eine halb erkannte Kombination aus V1- und V2-Domänen gilt nicht
+als erfolgreiche frühere Installation.
+
+Abnahme umfasst frische Installation, V1-Upgrade mit eigenen zuvor gespeicherten
+Counterwerten und Policies, exakte Wiederholung, Rollback nach einem
+kontrollierten Fehler sowie unveränderte fremde Objekte. Negative Kontrollen
+prüfen unbekannte Version, zusätzliche Domänenwerte, fehlende beziehungsweise
+nicht vertrauenswürdige oder deaktivierte Constraints, weitere CHECKs,
+veränderte Spalten und gemischte V1-/V2-Domänen. Unveränderte vollständige
+Werte und Struktur werden vor und nach einer abgelehnten Migration verglichen.
+Diese Welle behauptet keine Wait-Quelle, Differenz, Reset- oder Collectorabnahme.
+
+Der direkte Targetweg eröffnet bei eigenem Aufruf ohne Ambienttransaktion
+eine eigene Transaktion vor dem vollständigen Preflight und beendet sie
+erst nach Migration und Versionsabschluss. Innerhalb des generierten Deployments verwendet sie eine lokale
+Savepointgrenze und übernimmt weder Commit noch Rollback einer äußeren
+Callertransaktion. Bei einem nativen nicht mehr committable äußeren Zustand
+wird dieser Fehler weitergegeben; eine pauschale Erhaltungsgarantie nach
+jedem DDL-/Enginefehler wird nicht behauptet. Der generierte Installer behält
+seinen vorhandenen eigenen vollständigen Rollbackweg.
+
+Die Fehlerabnahme benötigt eine nativ bestätigte eigene Sch-S-only-Sperre
+auf Scope, die den TABLOCKX-Preflight zulässt und erst den Sch-M-Zugriff des
+zweiten ALTER blockiert. Die Sperrart, ihre eigene Session und der tatsächlich
+abgeschlossene erste DDL-Schritt werden beobachtet. Ein vorab gehaltener
+Daten-S-Lock genügt nicht, weil bereits der Preflight darauf warten würde.
+Der native Fehlerabschluss muss beide CHECKs und die Paketzeile vollständig
+zurücknehmen. Der Sperrmechanismus erhält zunächst eine getrennte gebundene
+Probe. Ohne diesen Nachweis bleibt die Fehlerabnahme offen; ein kopierter
+Projektionsblock oder ein nur behaupteter Zwischenfehler genügt nicht.
+Die Wiederholung darf die vorgesehenen Installerzeitmetadaten aktualisieren,
+verändert aber keine Sample-, Scope-, Collector- oder Retentionwerte.
+
+Für den gezielten älteren Snapshotnachweis wird der vorhandene manuelle
+Native-Matrixworkflow um ein ausdrücklich gewähltes Snapshot-Risikogate
+für die einzelne angeforderte Engine erweitert. Bestehende Defaults und
+Release-Candidate-Matrizen bleiben erhalten. Der normale zusätzliche
+SQL2025-Snapshotlauf wird nicht doppelt ausgeführt. Die geänderte Workflow-
+auswahl erhält eigene deterministische Negativ-/Auswahlprüfungen; der
+zentrale Installer verlangt weiterhin das volle SQL2025-Gate.
+
+Der nachfolgende Collectorentwurf ist noch nicht freigegebenes Produktverhalten.
+Insbesondere benötigt WAIT_CAPTURE_CONTEXT vor Collectorcode einen exakten
+JSON-Feldvertrag mit Datentypen, NULL-Regeln, Konsistenzprüfung und vollständiger
+Rohsampledeckung. Fehlender, widersprüchlicher oder inkompatibler Kontext
+muss Vergleiche sperren. Dieser offene Befund wird nicht durch die separate
+Datenbank-Domänenmigration als erledigt ausgegeben.
+
+Der unabhängige Vertragsreview ist nach gezielter Nachprüfung ohne
+verbleibende P1-/P2-Befunde für diese vorgeschaltete Migration abgeschlossen.
+Die frühere Daten-S-Lock-Annahme und die Standalone-Batchlücke wurden im
+Vertrag korrigiert. Dies ist ein Spezifikationsnachweis; ausgeführter
+Produktcode, native Sch-S-Probe, Migrations- und Erhaltungsabnahme bleiben
+NOT_EXECUTED.
+
+### API und ausdrückliche Aktivierung
+
+ConfigureSnapshotTarget erhält nach seinen bisherigen 19 Parametern:
+
+```sql
+    , @CollectorCode varchar(64) = 'PERFORMANCE_COUNTERS'
+    , @CollectorEnabled bit = 1
+    , @UpdateSharedPolicy bit = NULL
+```
+
+RunSnapshotCollectionCycle erhält nach seinen bisherigen 13 Parametern:
+
+```sql
+    , @CollectorCode varchar(64) = 'PERFORMANCE_COUNTERS'
+```
+
+Steuerwerte werden getrimmt und großgeschrieben. Zulässig sind nur
+PERFORMANCE_COUNTERS und WAIT_STATS; NULL oder unbekannte Collectorcodes
+sind ungültig. Die bisherigen positionalen Aufrufe und der ausgelieferte
+Performance-Counter-Default behalten ihren Verhaltensteil. WAIT_STATS wird
+als deaktivierte Policy installiert und ausschließlich ausdrücklich gewählt.
+
+UpdateSharedPolicy=NULL bedeutet für den bisherigen Default 1 und für
+WAIT_STATS 0. Mit 0 muss eine passende bestehende Framework-Zielbindung
+vorliegen; der Aufruf ändert nur die ausgewählte Collectorpolicy. Gemeinsame
+Retention, Zielaktivierung, Zielbindung und Schedulerherkunft bleiben dann
+unverändert. Mit ausdrücklich gewähltem 1 dürfen die angegebenen gemeinsamen
+Werte im bestehenden Konfigurationsumfang übernommen werden. CollectorEnabled
+steuert ausschließlich den ausgewählten Collector. Ein unveränderter Default-
+Aufruf aktiviert oder verändert keine WAIT_STATS-Policy.
+
+Ein altes 1.0.0-Ziel bleibt mit dem bisherigen Performance-Counter-Aufruf
+nutzbar. Neue Optionen benötigen das bekannte 1.2.0-Ziel mit allen neuen
+Objekten und Seeds; der Aufruf lehnt andernfalls mit TARGET_UNAVAILABLE
+und präzisem Upgradehinweis ab. Alte Helpersignaturen erhalten im Legacy-
+Default keine neu erfundenen Argumente. Ein WAIT_STATS-Aufruf innerhalb
+einer Callertransaktion wird vor Fachzugriff oder persistentem Write als
+INVALID_PARAMETER mit 51011 abgelehnt. Der Caller behält seine Transaktion,
+Optionen und seine unabhängigen Änderungen.
+
+### Ausgaben und neuer Ausführungspfad
+
+Der neue Frameworkhelper monitor.InternalRunSnapshotWaitStatsCycle kapselt
+den ausdrücklich gewählten Wait-Pfad. Der Legacy-Pfad des öffentlichen
+Collection-Einstiegs bleibt getrennt erhalten. RAW und TABLE behalten die
+beiden vorhandenen run-/modules-Schemas; JSON behält ContractVersion 1 mit
+run-Objekt und modules-Array. Der CollectorCode im Lauf ist WAIT_STATS.
+WAIT_STATS akzeptiert CONSOLE, RAW, TABLE und NONE; optionales JSON bleibt
+OUTPUT. Der historische zusätzliche Ausgabeartwert JSON gilt allein für
+den bisherigen Performance-Counter-Pfad.
+
+CONSOLE des Wait-Pfads verwendet ein gemeinsames Grid aus Run und Modulstatus
+mit dem kanonischen Renderer. Die native Quelltabelle enthält Scope
+nvarchar(32) NOT NULL, CaptureRunId bigint NULL, CollectorCode varchar(64)
+NULL, ModuleName sysname NULL, StatusCode varchar(40) NOT NULL, IsPartial
+bit NOT NULL und Detail nvarchar(max) NOT NULL. Alle Textspalten verwenden
+SQL_Latin1_General_CP1_CS_AS. Der Renderer ergänzt sein vorhandenes Ergebnisfeld.
+Das Grid erhält Quellenfehler auch neben erhaltenem Run-Kontext.
+
+Ungültige neue API-/TABLE-Parameter liefern regulären Diagnose-RETURN 51011,
+Status und Fehler-OUTPUT sowie JSON-NULL. Vor Fachzugriff wird die gemeinsame
+benannte TABLE-Zuordnung geprüft. Erwartete native Quellenfehler liefern einen
+materialisierten Run-/Modulbericht mit RETURN 0; Status und Fehler-OUTPUT sind
+maßgeblich. Vor erstem Zielwrite fehlgeschlagene Validierung erzeugt keinen
+CaptureRun. Ein gefangener Writefehler liefert keine erfundene erfolgreiche
+Finalisierung. Hilfe, Source-Opt-out und abgelehnte Ziele öffnen keine Quelle.
+
+### Native Aufnahme und transienter Vertrag
+
+sys.dm_os_wait_stats wird einmal vollständig in einen eigenen Cache gelesen.
+Die SQL2025-Vorprobe bestätigt WaitType nvarchar(60) sowie WaitingTasksCount,
+WaitTimeMs, MaxWaitTimeMs und SignalWaitTimeMs als bigint, jeweils NOT NULL.
+Die Startfelder sind sqlserver_start_time datetime und
+sqlserver_start_time_ms_ticks bigint, jeweils NOT NULL. Die Charakterisierung
+endete absichtlich mit 57355 und eigenem erfolgreichen Labcleanup; sie ist
+keine Produktabnahme.
+
+Vor und nach dem Counterread werden native Startidentität und ServerName
+verglichen. Die Identität besteht aus nativem ServerName, lokalem
+sqlserver_start_time und sqlserver_start_time_ms_ticks. NULL-Kontext,
+Kontextwechsel, negative Counter oder doppelte Waittypen sind keine gültige
+Aufnahme. Der lokale Startzeitpunkt ist ausdrücklich keine UTC-Zeit.
+WAIT_STATS lässt CaptureRun.SqlServerStartTimeUtc NULL und hält die native
+Identität im versionierten Kontext. Der Performance-Counter-v1-Wert wird
+weder nachträglich geraten noch umgerechnet; dessen historische Feldbenennung
+bleibt als bekannte Grenze dokumentiert.
+
+Der transiente interne JSON-Vertrag besitzt SchemaVersion 1 und resultName
+SnapshotWaitStats. meta enthält measurementStartUtc, measurementEndUtc,
+statusCode, isPartial, errorNumber, errorMessage, nativeRows, sourceComplete
+und engineContext. engineContext enthält serverName, sqlServerStartTimeLocal
+und sqlServerStartTimeMsTicks. waits enthält die fünf oben genannten Felder
+mit exakter Groß-/Kleinschreibung. Ein fehlgeschlagener Read besitzt unbekannte
+Counts und keine behauptete vollständige waits-Menge. Ein leerer nativer
+Katalog erhält EMPTY_UNPROVEN. Explizite Quellencounter bleiben unverändert;
+Timeouts werden nicht in Wiederholungsschleifen versteckt.
+
+### Persistenz, Vorwerte und Qualitätscodes
+
+Der neue Targethelper snapshot.InternalCompleteWaitStatsCycle schreibt nur
+einen bereits eröffneten WAIT_STATS-Run. Ziel-ID, Zielname und create_date
+werden vor Targetaufruf erfasst und im tatsächlichen Targetkontext vor
+Writes erneut geprüft. Eine unbekannte oder geänderte Bindung erzeugt
+keinen Fremdwrite. Diese Guards sind keine globale atomare Rename-/Restore-
+Garantie. Ziel und vorheriger Lauf müssen denselben lokalen Paketvertrag
+und denselben Collector besitzen.
+
+Die folgenden neuen Metrikdefinitionen besitzen ContractVersion 1:
+
+| MetricCode | ValueType | Unit | Bedeutung |
+|---|---|---|---|
+| WAIT_TASK_COUNT | BIGINT | count | Nativer kumulativer waiting_tasks_count. |
+| WAIT_TIME_MS | BIGINT | ms | Native kumulative gesamte Waitzeit. |
+| WAIT_SIGNAL_TIME_MS | BIGINT | ms | Native kumulative Signalwaitzeit. |
+| WAIT_MAX_TIME_MS | BIGINT | ms | Native Maximalzeit; kein additiver Counter. |
+| WAIT_TASK_COUNT_DELTA_CANDIDATE | BIGINT | count | Monotone Differenz mit unbewiesener Resetkontinuität. |
+| WAIT_TIME_MS_DELTA_CANDIDATE | BIGINT | ms | Entsprechender Waitzeitkandidat. |
+| WAIT_SIGNAL_TIME_MS_DELTA_CANDIDATE | BIGINT | ms | Entsprechender Signalzeitkandidat. |
+| WAIT_DELTA_STATUS | STRING | status | Expliziter Grund für Kandidat oder Unterdrückung. |
+| WAIT_CAPTURE_CONTEXT | STRING | json | Versionierter Aufnahme-/Vergleichskontext auf SERVER-Scope. |
+
+Waittypen besitzen ScopeType WAIT_TYPE unter dem vorhandenen lokalen SERVER-
+Scope. Scopeidentität und Hash entstehen aus exakt gebundenem Waittyp;
+Metrik, Einheit, Version und ResetEpochId bleiben getrennte Vergleichsschlüssel.
+WAIT_CAPTURE_CONTEXT enthält Engineidentität, Aufnahmezeiten, native und
+persistierte Counts, Kappung, Vorwert-Run und die Epochenentscheidung. Sein
+SchemaVersion-1-JSON bleibt unter der vorhandenen StringValue-Grenze von
+4000 Zeichen. Eine Überschreitung führt zu Ablehnung statt Abschneiden.
+
+Persistiert werden aktive Waittypen mit mindestens einem positiven Counter
+sowie die Waittypen der unmittelbar vorherigen Aufnahme, soweit sie aktuell
+nativ vorhanden sind. Der vollständige native Cache bleibt für Reset- und
+Fehlwertprüfungen verfügbar. Fehlende Native-Waittypen werden nicht mit Null
+aufgefüllt. Ein bisher nicht gespeicherter Typ erhält FIRST_OBSERVATION;
+der erste Vergleich erfindet keinen früheren Nullwert. Native vollständig
+beobachtete Nullzeilen für vorherige Scopes dürfen als echte Nullwerte
+persistiert werden.
+
+MaxRows begrenzt gespeicherte Waittypen, nicht Datenbanken oder den nativen
+Read. Pro gespeicherten Typ entstehen vier Rohwerte, ein Status und höchstens
+drei Kandidaten; hinzu kommt höchstens ein Aufnahmekontext. Die Schranke lautet
+8*MaxRows+1 MetricSamples. Bei Kappung wird kein vollständiger Vergleich
+behauptet; die stabil nach Waittyp ausgewählten Rohwerte und Counts bleiben
+als partiell gekennzeichnete Evidenz erhalten. Softbudget, Retention und
+Payloadpolicy gelten zusätzlich. Payload bleibt defaultmäßig deaktiviert.
+
+Als Vergleichsbasis dient ausschließlich der unmittelbar vorherige finalisierte
+WAIT_STATS-Run, nicht still ein älterer grüner Lauf. Er muss denselben Kontext,
+dieselbe Metrikversion und eine vollständige nicht gekappte Aufnahme besitzen.
+Eine fehlgeschlagene oder technisch partielle Zwischenaufnahme unterbricht
+den Vergleich. Die rein fachliche Kennzeichnung der Kandidaten als
+IsPartial=1 wird dabei nicht mit unvollständigem SourceRead oder Writecap
+verwechselt: sourceComplete, Kappung und finalisierte Rohsampledeckung im
+WAIT_CAPTURE_CONTEXT bestimmen die technische Vollständigkeit.
+Das aktuelle UTC-Messfenster darf nicht vor dem vorherigen Ende beginnen;
+die Endzeitdifferenz muss positiv sein. Keine Rate und kein Mittelwert wird
+aus den Kandidaten abgeleitet.
+
+Bei gleicher beobachteter Engineidentität und monotonen vollständigen Countern
+bleibt die Epoche erhalten; Kandidaten erhalten QualityCode und Status
+MONOTONIC_CONTINUITY_UNPROVEN mit IsPartial=1. Raw-Quality bleibt davon
+getrennt MEASURED_CUMULATIVE. Der erste Lauf, Kontextwechsel, nichtpositive
+Zeit, Kappung oder fehlende Basis unterdrücken Kandidatmetriken und erhalten
+FIRST_OBSERVATION, ENGINE_CONTEXT_CHANGED, INTERVAL_NOT_POSITIVE,
+WRITE_LIMITED, PREVIOUS_CAPTURE_PARTIAL oder PREVIOUS_CAPTURE_MISSING.
+Ein fehlender früherer Typ erhält FIRST_OBSERVATION. Ein fehlender notwendiger
+aktueller Typ unterbricht den gesamten Vergleich mit WAIT_TYPE_MISSING.
+
+Ein Counterrückgang einschließlich MaxWaitTimeMs erzeugt für den ganzen
+Wait-Aufnahmebereich COUNTER_DECREASE und eine neue Epoche; alle Kandidaten
+bleiben unterdrückt. Diese Klassifikation beweist keine einzelne Resetursache.
+Bei unbekanntem Enginekontext entsteht keine geratene gemeinsame Epoche und
+kein MetricSample, dessen notwendige EpochId nur erfunden wäre. Ein neuer
+beobachteter Kontext erhält erst nach erfolgreicher Aufnahme eine eigene
+EpochId. Unbekannte Kandidaten werden wegen des ExactlyOneValue-Vertrags
+nicht als NULL-Samples eingefügt: der Status ist vorhanden, die entsprechende
+numerische Kandidatmetrik fehlt. Die fehlende Metrik bedeutet nicht Null.
+
+### Atomarität, Betrieb und Abnahmegrenzen
+
+Der neue Collection-Pfad prüft Aktivierung und Fälligkeit vor SourceRead und
+vor neuem Purge-/Capturewrite. RunEvenIfNotDue umgeht ausschließlich Fälligkeit.
+Eine gemeinsame Session-Applock mit Wartezeit 0 serialisiert alle Collector.
+Der Wait-Slice berücksichtigt jeden finalisierten vorherigen Wait-Lauf für
+Intervall und Vergleichsauswahl, auch einen fehlgeschlagenen; Force kann
+explizit früher erneut messen. Der bestehende Performance-Counter-Intervallpfad
+behält sein bisheriges Verhalten.
+
+Der Targethelper schreibt Scopes, Samples und Modulstatus für seinen Run in
+einer eigenen kurzen Transaktion. Ein Writefehler rollt nur diese eigene
+Transaktion zurück; die Fehlerfinalisierung bleibt sichtbar, soweit die
+Zielrechte dies erlauben. Unfinalisierte Läufe werden nicht zu Vorwerten.
+Erfolg und Fehler geben die Session-Applock frei und erhalten Calleroptionen.
+Quelle, Budgetstop, Versionsablehnung und leere/partielle Daten besitzen
+getrennte Oracles; ein erlaubter Erfolg bedeutet keine tatsächliche Kontrolle
+über konkurrierende Administratoraktionen.
+
+Upgrade, Wiederholung, Opt-out und eigene Policies werden nativ mit zuvor
+geschriebenen Performance-Counter-Samples geprüft. Alte Paket- und Helper-
+Signaturen bleiben im Default nutzbar. Die neuen Metrikseeds dürfen bestehende
+abweichende Definitionen nicht blind überschreiben. Kollisionen, unbekannte
+Versionen oder fremde Zielstruktur erzeugen vor Änderungen einen konkreten
+Konflikt. Die gespeicherten Differenzkandidaten können nach Retention ihrer
+älteren Basis nicht mehr vollständig aus den Rohsamples nachgerechnet werden;
+der erhaltene Kontext ist Provenienz und keine zugesagte ewige Reproduzierbarkeit.
+
+Ein tatsächliches DBCC-Wait-Reset ist eine globale Engineaktion und gehört
+nicht automatisch in den allgemein ausführbaren Release-SQL-Runner. Seine
+Ende-zu-Ende-Abnahme benötigt eine getrennt nachgewiesene eigene isolierte
+Labinstanz und ausdrückliches Reset-Opt-in. Die normale Fixture prüft
+konstruierte Vergleichsstufen getrennt von der vollständigen SUT. Ein solcher
+Stufenfall wird nicht als nativer Engine-Reset ausgegeben. Der neue Collector
+selbst führt keinen Reset, Restart oder Hosteingriff aus.
+
+Die Target-Quellen verwenden bereits den ausdrücklich gewählten und im ersten
+Targetskript geprüften Installationskontext. Der allgemeine USE-Satz im
+Projektkontext widerspricht diesem bestehenden Paketweg. Dieser begrenzte
+TARGET_INTERNAL_CONFLICT wird vor der neuen Targetquelle durch eine enge
+nachvollziehbare Ausnahme für den kanonischen Targetinstaller und seine
+Targetquellen aufgelöst; gewöhnliche Frameworkquellen behalten ihren USE-
+Header. Die Ausnahme erweitert keine Datenbankauswahl oder Runtimeberechtigung.
+
 ## Primärquellen
 
 - Microsoft Learn: [Wait-Stats](https://learn.microsoft.com/en-us/sql/relational-databases/system-dynamic-management-objects/sys-dm-os-wait-stats-transact-sql?view=sql-server-ver17).
 - Microsoft Learn: [Datei-I/O-Stats](https://learn.microsoft.com/en-us/sql/relational-databases/system-dynamic-management-objects/sys-dm-io-virtual-file-stats-transact-sql?view=sql-server-ver17).
+
+- Microsoft Learn: [Engine-Startkontext](https://learn.microsoft.com/en-us/sql/relational-databases/system-dynamic-management-objects/sys-dm-os-sys-info-transact-sql?view=sql-server-ver17).

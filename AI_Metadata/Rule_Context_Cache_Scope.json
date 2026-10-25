@@ -1519,6 +1519,11 @@
       "source": "AI_Metadata/Internal_Documentation/Quality/Development_Waves_2026-10.md",
       "target": "AI_Metadata/Internal_Documentation/Architecture/Snapshot_Expansion_Dossier.md",
       "classification": "product-reference"
+    },
+    {
+      "source": "AI_Metadata/PROJECT_CONTEXT.md",
+      "target": "Code/Install/Install_SnapshotBaseline_Target.sql",
+      "classification": "product-reference"
     }
   ]
 }
