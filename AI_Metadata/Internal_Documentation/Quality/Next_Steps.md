@@ -66,9 +66,13 @@ bleibt ohne behauptete Sperrursache dokumentiert.
 Der separate SSIS-Auftrag arbeitet aktuell an Datenflusskorrelation. Der
 Gesamtauftrag übernimmt diesen Scope und die erhaltene SSISDB nicht. Der
 nächste unabhängige Rang 10 steht im
-[Snapshot-Dossier](../Architecture/Snapshot_Expansion_Dossier.md): zuerst
-Wait-Counter mit explizitem Kontinuitäts- und Resetmodell, danach Datei-I/O.
-Der genaue additive API-/Migrationsvertrag wird vor Implementierung geprüft.
+[Snapshot-Dossier](../Architecture/Snapshot_Expansion_Dossier.md):
+zunächst die datenbewahrende Schema-2-Vorbereitung für zwei bestehende
+CHECK-Domänen. Danach folgen Wait-Counter mit explizitem Kontinuitäts- und
+Resetmodell und anschließend Datei-I/O. Der konkrete Migrationsvertrag und
+seine Fehler-/Nebenläufigkeitsabnahme werden vor Produktcode unabhängig
+geprüft. WAIT_CAPTURE_CONTEXT benötigt vor dem späteren Collector einen
+exakten Feld- und Vollständigkeitsvertrag; dieser Befund bleibt offen.
 Bereits gelieferte Funktionen und die abgeschlossene STAT-DOMINANT-Diagnose
 werden nicht erneut entwickelt.
 
