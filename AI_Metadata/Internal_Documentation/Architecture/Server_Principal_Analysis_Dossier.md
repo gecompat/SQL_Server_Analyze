@@ -175,10 +175,14 @@ Master-Kontext, kollationsgebundene Sollwerte und die dazugehörigen Tests sind
 vor dem erfolgreichen Lieferstand korrigiert. Die Fehlläufe gelten nicht als
 bestandene Qualifikation. Main-Nachläufe sind getrennte Evidenz.
 
-Das Arbeitselement bleibt PARTIAL_PRODUCT_FUNCTION. Datenbankprincipals werden
-im [Datenbankprincipal-Dossier](Database_Principal_Analysis_Dossier.md)
-weiter konkretisiert; effektive Rechte und externe Identitätsprüfung bleiben
-offen. Die native Serverabnahme begründet keinen vollständigen Reifeabschluss.
+PR #438 qualifiziert zusätzlich Version 1.0.1 mit dem korrigierten
+Lock-Timeout-Batch und der gekapselten Fixture 135 am Liefercommit `6e41c9fe`.
+Die gemeinsamen nativen Nachweise stehen im
+[Datenbankprincipal-Dossier](Database_Principal_Analysis_Dossier.md).
+
+Das Arbeitselement bleibt PARTIAL_PRODUCT_FUNCTION. Der erste
+Datenbankprincipal-Slice ist ebenfalls integriert; effektive Rechte und
+externe Identitätsprüfung bleiben offen. Die native Serverabnahme begründet keinen vollständigen Reifeabschluss.
 
 ## Primärquellen
 
