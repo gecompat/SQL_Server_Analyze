@@ -33,9 +33,10 @@ function Query([string]$Sql) {
     try { $data=[Data.DataSet]::new(); $adapter=[Data.SqlClient.SqlDataAdapter]::new($command); [void]$adapter.Fill($data); return ,$data }
     finally { $command.Dispose() }
 }
-function Invoke-Model([string]$Payload,[string]$Mode='NONE',[int]$Limit=1000,[bool]$IncludeBytes=$false,[string]$PrefixSql='', [string]$Mapping=$null,[string]$SuffixSql='') {
+function Invoke-Model([string]$Payload,[string]$Mode='NONE',[int]$Limit=1000,[bool]$IncludeBytes=$false,[string]$PrefixSql='', [string]$Mapping=$null,[string]$SuffixSql='', [bool]$Views=$false) {
     $command=$connection.CreateCommand(); $command.CommandTimeout=90
-    $command.CommandText=$PrefixSql+"`nEXEC [monitor].[USP_SsisPackageModelAnalysis] @PackageModelJson=@Payload,@PackageBytes=@Bytes,@ResultSetArt=@Mode,@MaxZeilen=@Limit,@JsonErzeugen=1,@Json=@Json OUTPUT,@StatusCodeOut=@Status OUTPUT;`n"+$SuffixSql
+    $command.CommandText=$PrefixSql+"`nEXEC [monitor].[USP_SsisPackageModelAnalysis] @PackageModelJson=@Payload,@PackageBytes=@Bytes,@ResultSetArt=@Mode,@MaxZeilen=@Limit,@IncludePackageViews=@Views,@JsonErzeugen=1,@Json=@Json OUTPUT,@StatusCodeOut=@Status OUTPUT;`n"+$SuffixSql
+    [void]$command.Parameters.Add('@Views',[Data.SqlDbType]::Bit);$command.Parameters['@Views'].Value=$Views
     [void]$command.Parameters.Add('@Payload',[Data.SqlDbType]::NVarChar,-1); $command.Parameters['@Payload'].Value=$Payload
     [void]$command.Parameters.Add('@Bytes',[Data.SqlDbType]::VarBinary,-1)
     if($IncludeBytes){$command.Parameters['@Bytes'].Value=[byte[]]$package}else{$command.Parameters['@Bytes'].Value=[DBNull]::Value}
@@ -142,6 +143,28 @@ try {
     Assert ($after.Tables[0].Rows[0].T -eq 1 -and $after.Tables[0].Rows[0].L -eq 1234) 'CALLER_TRANSACTION_AND_LOCK'
     $dependencies=Query "SELECT COUNT(*) AS C FROM sys.assembly_modules WHERE object_id IN (OBJECT_ID(N'[monitor].[USP_SsisPackageModelAnalysis]'),OBJECT_ID(N'[monitor].[USP_SsisPackageAnalysis]'));"
     Assert ($dependencies.Tables[0].Rows[0].C -eq 0) 'NO_CLR_MODULE_DEPENDENCY'
+    $views=Invoke-Model $model 'RAW' 1000 $true '' $null '' $true
+    Assert ($views.Data.Tables.Count -eq 13 -and $views.Json.components.Count -eq 2 -and $views.Json.columnRelations.Count -eq 2) 'VIEWS_RAW13'
+    Assert ($views.Json.packageOverview[0].SourceNodeCount -eq 9 -and $views.Json.packageOverview[0].ProducerTrust -ceq 'UNVERIFIED') 'VIEWS_SOURCE_AND_TRUST'
+    $valueModel=$model|ConvertFrom-Json -Depth 32
+    $valueModel.edges[2].fromId='var1';$valueModel.edges[2].ruleId='BOUND_EXPRESSION_INPUT'
+    $valueViews=Invoke-Model ($valueModel|ConvertTo-Json -Compress -Depth 32) 'NONE' 1000 $false '' $null '' $true
+    $variableRelation=@($valueViews.Json.columnRelations|Where-Object FromNodeId -ceq 'var1')
+    Assert ($valueViews.Status -ceq 'AVAILABLE_LIMITED' -and $variableRelation.Count -eq 1 -and $variableRelation[0].FromNodeKind -ceq 'VARIABLE' -and $null -eq $variableRelation[0].FromColumnNodeId -and $null -eq $variableRelation[0].FromComponentNodeId) 'VIEWS_VARIABLE_IS_NOT_COLUMN'
+    $valueModel.nodes+=([pscustomobject]@{id='par1';kind='PARAMETER';parentId='pkg1';name='SyntheticParameter';attributes=([pscustomobject]@{typeCode='3'})})
+    $valueModel.edges[2].fromId='par1'
+    $valueViews=Invoke-Model ($valueModel|ConvertTo-Json -Compress -Depth 32) 'NONE' 1000 $false '' $null '' $true
+    $parameterRelation=@($valueViews.Json.columnRelations|Where-Object FromNodeId -ceq 'par1')
+    Assert ($valueViews.Status -ceq 'AVAILABLE_LIMITED' -and $parameterRelation.Count -eq 1 -and $parameterRelation[0].FromNodeKind -ceq 'PARAMETER' -and $null -eq $parameterRelation[0].FromColumnName -and $null -eq $parameterRelation[0].FromTypeCode -and $null -eq $parameterRelation[0].FromComponentNodeId) 'VIEWS_PARAMETER_IS_NOT_COLUMN'
+    $groups=@('moduleStatus','sourceBinding','nodes','edges','coverage','findings','sourceStatus','warnings','packageOverview','executables','dataFlows','components','columnRelations')
+    $mapping=[ordered]@{};$prefix='';$suffix=''
+    for($i=0;$i -lt $groups.Count;$i++){ $name='#SyntheticViews'+$i;$mapping[$groups[$i]]=$name;$prefix+="CREATE TABLE $name([seed] int NULL);`n";$suffix+="SELECT * FROM $name;DROP TABLE $name;`n" }
+    $viewTables=Invoke-Model $model 'TABLE' 1000 $true $prefix ($mapping|ConvertTo-Json -Compress) $suffix $true
+    Assert ($viewTables.Data.Tables.Count -eq 13) 'VIEWS_TABLE13'
+    for($i=0;$i -lt 13;$i++){Assert ($viewTables.Data.Tables[$i].Rows.Count -eq $views.Data.Tables[$i].Rows.Count -and $viewTables.Data.Tables[$i].Columns.Count -eq $views.Data.Tables[$i].Columns.Count) ('VIEWS_TABLE_PARITY_'+$i)}
+    $probe=[IO.File]::ReadAllText((Join-Path $repositoryRoot 'Code/Tests/Integration/213_SsisPackageViews_Runtime_Contract.sql')) -replace 'USE \[DeineDatenbank\];',"USE [$database];"
+    foreach($batch in [regex]::Split($probe,'(?im)^\s*GO\s*$')) {if($batch.Trim()){[void](Query $batch)}}
+    Assert $true 'PACKAGE_VIEWS_SQL_PROBE'
     $ciProbe=[IO.File]::ReadAllText((Join-Path $repositoryRoot 'Code/Tests/Integration/212_SsisPackageModelAnalysis_Runtime_Contract.sql')) -replace 'USE \[DeineDatenbank\];',"USE [$database];"
     foreach($batch in [regex]::Split($ciProbe,'(?im)^\s*GO\s*$')) {if($batch.Trim()){[void](Query $batch)}}
     Assert $true 'CANONICAL_CI_SQL_PROBE'

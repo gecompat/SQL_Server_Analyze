@@ -70,18 +70,22 @@ if __name__ == "__main__":
     content = SOURCE.read_text(encoding="utf-8")
     start, end = content.index(BEGIN), content.index(END) + len(END)
     expected = content[:start] + render() + content[end:]
-    fixture_path = ROOT / "Code/Tests/Integration/212_SsisPackageModelAnalysis_Runtime_Contract.sql"
-    fixture = fixture_path.read_text(encoding="utf-8")
     fixture_begin = "-- BEGIN GENERATED SSIS MODEL FIXTURE\n"
     fixture_end = "-- END GENERATED SSIS MODEL FIXTURE"
     example = json.loads((ROOT / "Metadata/Quality/SSIS_Exchange_V1.example.json").read_text(encoding="utf-8"))
     fixture_payload = json.dumps(example, ensure_ascii=True, separators=(",", ":")).replace("'", "''")
-    first, last = fixture.index(fixture_begin), fixture.index(fixture_end) + len(fixture_end)
-    expected_fixture = fixture[:first] + fixture_begin + "DECLARE @Model nvarchar(max)=N'" + fixture_payload + "';\n" + fixture_end + fixture[last:]
+    fixtures = []
+    for name in ("212_SsisPackageModelAnalysis_Runtime_Contract.sql", "213_SsisPackageViews_Runtime_Contract.sql"):
+        fixture_path = ROOT / "Code/Tests/Integration" / name
+        fixture = fixture_path.read_text(encoding="utf-8")
+        first, last = fixture.index(fixture_begin), fixture.index(fixture_end) + len(fixture_end)
+        expected_fixture = fixture[:first] + fixture_begin + "DECLARE @Model nvarchar(max)=N'" + fixture_payload + "';\n" + fixture_end + fixture[last:]
+        fixtures.append((fixture_path, fixture, expected_fixture))
     if args.check:
-        if content != expected or fixture != expected_fixture:
+        if content != expected or any(original != generated for _, original, generated in fixtures):
             raise SystemExit("SSIS_EXCHANGE_RULES_DRIFT")
         print("SSIS_EXCHANGE_RULES_PASS")
     else:
         SOURCE.write_text(expected, encoding="utf-8")
-        fixture_path.write_text(expected_fixture, encoding="utf-8")
+        for path, _, generated in fixtures:
+            path.write_text(generated, encoding="utf-8")

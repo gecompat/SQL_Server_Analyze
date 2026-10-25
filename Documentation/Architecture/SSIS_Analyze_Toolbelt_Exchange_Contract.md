@@ -388,6 +388,19 @@ eine neue Produktveröffentlichung. Der weitere Zielkatalog bleibt offen.
 
 ## Bestehende Quellen und nächste Entscheidungen
 
+Der Benutzer hat am 25. Oktober 2026 fünf weitere SSIS-Wellen autonom
+freigegeben: fachliche Paketsichten, objektbezogene Regeln, abgesicherte
+Herkunft und Paketversionsbindung, Korrelation mit vorhandenen Ausführungen
+und eine optionale SQL-Metadatenprüfung. Konsistente Entwicklungsstände
+dürfen nach unabhängiger Prüfung und den erforderlichen Gates regulär per
+PR nach `origin/main` integriert werden. Die bestehende Produktabgrenzung
+bleibt erhalten; ein separates CLR-Repository wird nicht eingeführt.
+
+Die erste Welle ergänzt fünf optionale Projektionen im nativen Importer.
+Sie verwendet den validierten Graphen und verändert weder den neutralen
+Austauschvertrag noch die acht bisherigen Standardgruppen. Die übrigen vier
+Wellen bleiben jeweils eigene Implementierungs- und Abnahmeschritte.
+
 Die unveränderten öffentlichen Analyze-Schnittstellen stehen im
 [SSIS-Vertrag](SSIS_001_Phase0_Public_Contract.md). Der
 [SSIS-Ausbauplan](SSIS_Package_and_Execution_Analysis_Plan.md) enthält weitere

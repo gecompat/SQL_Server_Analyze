@@ -1991,3 +1991,4 @@ USP_SsisPackageModelAnalysis,StatusCodeOut,varchar(40),NULL
 USP_SsisPackageModelAnalysis,IsPartialOut,bit,NULL
 USP_SsisPackageModelAnalysis,ErrorNumberOut,int,NULL
 USP_SsisPackageModelAnalysis,ErrorMessageOut,nvarchar(2048),NULL
+USP_SsisPackageModelAnalysis,IncludePackageViews,bit,0

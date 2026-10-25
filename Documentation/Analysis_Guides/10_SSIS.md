@@ -34,3 +34,7 @@ optional übergebenes JSON ohne CLR oder Toolbelt-Installation. Er prüft Felder
 Kennungen, Scopes und Referenzen; Originalbytes erlauben einen unabhängigen
 Paketbytevergleich. Die Producerherkunft bleibt UNVERIFIED. Der Importer
 berechnet keine neue Lineage und führt weder Pakete noch enthaltenes SQL aus.
+Mit `@IncludePackageViews=1` kommen Paketübersicht, Executables, beobachtete
+Datenflussscopes, Komponenten und direkte Spaltenbeziehungen hinzu. Die
+Projektionen verwenden den vollständigen validierten Graphen; das Zeilenlimit
+begrenzt anschließend jede Detailausgabe.

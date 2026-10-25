@@ -49,8 +49,31 @@ RAW liefert `moduleStatus`, `sourceBinding`, `nodes`, `edges`, `coverage`,
 Modulstatus, Paketbindung und Producervertrauen. Prüfen Sie danach Coverage und
 `IsInterpretable`, bevor Sie eine Beziehung als auswertbare statische Angabe verwenden.
 
+Mit `@IncludePackageViews=1` ergänzt Version 1.1.0 fünf fachliche Gruppen in
+RAW, TABLE und JSON. Ohne Opt-in bleiben die bisherigen acht Gruppen erhalten.
+`meta.packageViewsSchemaVersion=1` beschreibt das zusätzliche JSON-Profil.
+
+| Gruppe | Bedeutung |
+|---|---|
+| `packageOverview` | Enthält Objektzahlen, beobachtete Datenflussscopes, direkte Beziehungen, offene Referenzen und begrenzte Features des vollständigen validierten Modells. |
+| `executables` | Zeigt Tasks, Container und Event Handler mit Parent, Besitzertiefe, deklarierter Art und gegebenenfalls deaktiviertem Zustand. |
+| `dataFlows` | Zeigt Executable-Scopes mit gelieferten Komponenten oder Datenflusskanten und deren Objektzahlen. Ein leerer, nicht entsprechend belegter Scope wird nicht als vollständig inventarisierter Datenfluss behauptet. |
+| `components` | Zeigt Klassenkennung sowie Port- und Spaltenzahlen. Analyze klassifiziert die Komponenten nicht erneut. |
+| `columnRelations` | Verbindet gelieferte direkte Spaltenzuordnungen und Wertabhängigkeiten mit den Endpunkten. `FromNodeKind` unterscheidet Spalten, Variablen und Parameter; spaltenbezogene Quellfelder bleiben für andere Arten NULL. Metadatenverweise bleiben durch `MappingRole` von Datentransfers getrennt. |
+
+Die zusätzlichen Gruppen entstehen vor jeder Ausgabekürzung. Ihre Zähler
+verwenden deshalb den vollständigen Graphen. `@MaxZeilen` begrenzt jede neue
+Detailgruppe auf deren erste Zeilen in Quellreihenfolge; `NodeOrdinal` und
+`EdgeOrdinal` behalten ihre ursprüngliche Bedeutung. Fehlende Endpunkte und
+Metadaten bleiben NULL. Die Sichten erzeugen weder transitive Lineage noch
+eine neue Typkompatibilitätsbewertung. Zulässige numerische Darstellungen wie
+`1e2` und `100.0` werden aus der vorhandenen exakten Zahlenvalidierung übernommen
+und als 100 dargestellt. Producervertrauen und Featureabdeckung
+bleiben für ihre Interpretation maßgeblich.
+
 CONSOLE liefert eine Modulübersicht. TABLE verwendet dieselben acht benannten
-Ziele in `@ResultTablesJson`; der Caller legt die leeren lokalen Temp-Tabellen an.
+Ziele in `@ResultTablesJson`; bei aktivierten Paketsichten kommen deren fünf
+Namen hinzu. Der Caller legt die leeren lokalen Temp-Tabellen an.
 JSON wird optional über `@JsonErzeugen=1, @Json=@Json OUTPUT` erzeugt. NONE
 unterdrückt fachliche Resultsets. Ausgabearten verändern die Validierung nicht.
 
@@ -91,6 +114,19 @@ Spaltenzuordnungen können trotzdem unabhängig nutzbar sein. Die Procedure
 rekonstruiert keine fehlenden Kanten anhand ähnlicher Namen.
 
 ## Beispiele und Gegenbeispiele
+
+```sql
+EXEC [monitor].[USP_SsisPackageModelAnalysis]
+      @PackageModelJson = @PackageModelJson
+    , @IncludePackageViews = 1
+    , @MaxZeilen = 200
+    , @ResultSetArt = 'RAW';
+```
+
+Eine reduzierte Knotenausgabe darf die Komponentenanzahl einer Datenflusssicht
+nicht verkleinern. Ein nicht aufgelöster Spaltenbezug erhält keinen erfundenen
+Quellnamen. Dieselbe direkte Beziehung wird nicht zu einem zusätzlichen,
+abgeleiteten Pfad erweitert.
 
 Ein anderer Anzeigename bei gleicher Objektkennung ändert nicht die
 Referenzauflösung. Gleiche Komponentennamen in verschiedenen Datenflüssen

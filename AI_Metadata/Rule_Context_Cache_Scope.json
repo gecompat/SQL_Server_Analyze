@@ -422,6 +422,11 @@
   "excluded_references": [
     {
       "source": "AI_Metadata/Internal_Documentation/Quality/Next_Steps.md",
+      "target": "Documentation/Architecture/SSIS_Analyze_Toolbelt_Exchange_Contract.md",
+      "classification": "product-reference"
+    },
+    {
+      "source": "AI_Metadata/Internal_Documentation/Quality/Next_Steps.md",
       "target": "Documentation/Reference/Installation.md",
       "classification": "product-reference"
     },
