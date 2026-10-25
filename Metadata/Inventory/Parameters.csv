@@ -1976,3 +1976,18 @@ USP_SsisLegacyLogAnalysis,IncludeThroughputAnalysis,bit,0
 USP_SsisLegacyLogAnalysis,IncludeFinalCommitAnalysis,bit,0
 
 USP_SsisLegacyLogAnalysis,IncludePipelinePhaseBeginAnalysis,bit,0
+USP_SsisPackageModelAnalysis,PackageModelJson,nvarchar(max),NULL
+USP_SsisPackageModelAnalysis,PackageBytes,varbinary(max),NULL
+USP_SsisPackageModelAnalysis,MaxZeilen,int,1000
+USP_SsisPackageModelAnalysis,MaxDurationSeconds,int,30
+USP_SsisPackageModelAnalysis,LockTimeoutMs,int,0
+USP_SsisPackageModelAnalysis,ResultSetArt,varchar(16),'CONSOLE'
+USP_SsisPackageModelAnalysis,ResultTablesJson,nvarchar(max),NULL
+USP_SsisPackageModelAnalysis,JsonErzeugen,bit,0
+USP_SsisPackageModelAnalysis,Json,nvarchar(max),NULL
+USP_SsisPackageModelAnalysis,PrintMeldungen,bit,1
+USP_SsisPackageModelAnalysis,Hilfe,bit,0
+USP_SsisPackageModelAnalysis,StatusCodeOut,varchar(40),NULL
+USP_SsisPackageModelAnalysis,IsPartialOut,bit,NULL
+USP_SsisPackageModelAnalysis,ErrorNumberOut,int,NULL
+USP_SsisPackageModelAnalysis,ErrorMessageOut,nvarchar(2048),NULL

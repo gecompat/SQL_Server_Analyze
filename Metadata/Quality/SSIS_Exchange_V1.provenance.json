@@ -1,0 +1,32 @@
+{
+  "schemaVersion": 1,
+  "sourceRepository": "https://github.com/gecompat/SQL_Server_Toolbelt",
+  "sourceCommit": "136ef17a39bae1a653d3b83543b3c212aad75795",
+  "files": [
+    {
+      "sourcePath": "Modules/toolbelt.tsql.ssis-debug/Contracts/Exchange/SSIS_Exchange_V1.schema.json",
+      "targetPath": "Metadata/Quality/SSIS_Exchange_V1.schema.json",
+      "sha256": "33cc120c7c9aae25380af0a50d39a382e9ee6e11fe651442166de057b859a649"
+    },
+    {
+      "sourcePath": "Modules/toolbelt.tsql.ssis-debug/Contracts/Exchange/SSIS_Exchange_V1.example.json",
+      "targetPath": "Metadata/Quality/SSIS_Exchange_V1.example.json",
+      "sha256": "e79c29009f0d29c4bc935a28b32bf86ae934a317f6e11100de686ee653982574"
+    },
+    {
+      "sourcePath": "Modules/toolbelt.tsql.ssis-debug/Contracts/Exchange/Fixtures/direct-8.dtsx",
+      "targetPath": "Code/Tests/Fixtures/SSIS_Exchange/direct-8.dtsx",
+      "sha256": "b7569fb6a1a4c97ebbac7641e5615d08c3082aeab861443a5d5171e995e866eb"
+    },
+    {
+      "sourcePath": "Modules/toolbelt.tsql.ssis-debug/Contracts/Exchange/Fixtures/direct-8.expected.json",
+      "targetPath": "Code/Tests/Fixtures/SSIS_Exchange/direct-8.expected.json",
+      "sha256": "b1f89fb1ef8f1864d64710248ded8eb8b15324570135a5e2d19473d1071cd510"
+    },
+    {
+      "sourcePath": "Modules/toolbelt.tsql.ssis-debug/Contracts/Exchange/Fixtures/.gitattributes",
+      "targetPath": "Code/Tests/Fixtures/SSIS_Exchange/.gitattributes",
+      "sha256": "b53a078af459997a2d532146429020bda61281be008102dee326c18451a20251"
+    }
+  ]
+}

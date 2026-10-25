@@ -192,6 +192,7 @@ AS
         , (N'USP_SsisCatalogExecutionAnalysis','CONFIRM_WITH',N'USP_SsisPackageAnalysis',1,N'Direkte DTSX-Metadaten ergänzen die getrennte native Ausführungssicht; keine Datei wird automatisch geöffnet.')
         , (N'USP_SsisLegacyLogAnalysis','CONFIRM_WITH',N'USP_SsisPackageAnalysis',1,N'Statische Paketmetadaten ergänzen den beobachteten Logausschnitt; keine automatische Paketöffnung.')
         , (N'USP_SsisPackageAnalysis','CONFIRM_WITH',N'USP_ServerFeatureCapabilities',1,N'Den statischen Paketbefund gegen die sichtbare SQL-Server-Featurefähigkeit und den vorgesehenen Laufzeitnachweis abgrenzen.')
+        , (N'USP_SsisPackageModelAnalysis','CONFIRM_WITH',N'USP_SsisPackageAnalysis',1,N'Bei vorhandener XML-Quelle das begrenzte direkte Inventar ergänzen; Paketbytebindung und Producerherkunft bleiben separate Nachweise.')
 
         , (N'USP_ConfigureSnapshotTarget','PREPARE_WITH',N'USP_RunSnapshotCollectionCycle',1,N'Nach erfolgreicher Ziel- und Policykonfiguration kann ein begrenzter Collection Cycle geplant werden.')
         , (N'USP_RunSnapshotCollectionCycle','CONFIRM_WITH',N'USP_ConfigureSnapshotTarget',1,N'Bei Skip, Policy- oder Zielproblemen zuerst die wirksame Snapshotkonfiguration prüfen.')

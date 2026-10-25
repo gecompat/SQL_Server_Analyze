@@ -1,0 +1,44 @@
+{
+  "contract": "ssis-package-model",
+  "version": "1.0.0",
+  "identityProfile": "document-order-v1",
+  "producer": {
+    "id": "toolbelt.ssis-model",
+    "version": "1.0.0",
+    "sourceCommit": "0000000000000000000000000000000000000000",
+    "buildSha256": "0000000000000000000000000000000000000000000000000000000000000000"
+  },
+  "source": {
+    "kind": "DTSX_BYTES",
+    "packageSha256": "1111111111111111111111111111111111111111111111111111111111111111",
+    "byteLength": 4096,
+    "packageFormatVersion": 8,
+    "xmlProfile": "2014/01"
+  },
+  "profiles": {"format": "1.0.0", "components": "1.0.0", "lineage": "1.0.0"},
+  "coverage": [
+    {"feature": "inventory", "status": "COMPLETE", "reasonCode": null},
+    {"feature": "controlFlow", "status": "NOT_REQUESTED", "reasonCode": "SCOPE_NOT_REQUESTED"},
+    {"feature": "pipelineGraph", "status": "COMPLETE", "reasonCode": null},
+    {"feature": "columnMetadata", "status": "PARTIAL", "reasonCode": "PROFILE_LIMIT"},
+    {"feature": "directColumnMapping", "status": "COMPLETE", "reasonCode": null},
+    {"feature": "valueLineage", "status": "NOT_REQUESTED", "reasonCode": "SCOPE_NOT_REQUESTED"},
+    {"feature": "rowLineage", "status": "NOT_REQUESTED", "reasonCode": "SCOPE_NOT_REQUESTED"},
+    {"feature": "expressionReferences", "status": "NOT_REQUESTED", "reasonCode": "SCOPE_NOT_REQUESTED"}
+  ],
+  "nodes": [
+    {"id": "pkg1", "kind": "PACKAGE", "parentId": null, "name": "SyntheticPackage", "attributes": {"protectionLevel": null}},
+    {"id": "exe1", "kind": "EXECUTABLE", "parentId": "pkg1", "name": "SyntheticFlow", "attributes": {"executableType": "Microsoft.Pipeline", "isDisabled": false, "isEventHandler": false}},
+    {"id": "cmp1", "kind": "COMPONENT", "parentId": "exe1", "name": "SyntheticSource", "attributes": {"componentClassId": "Microsoft.OLEDBSource"}},
+    {"id": "cmp2", "kind": "COMPONENT", "parentId": "exe1", "name": "SyntheticTarget", "attributes": {"componentClassId": "Microsoft.OLEDBDestination"}},
+    {"id": "port1", "kind": "PORT", "parentId": "cmp1", "name": "SyntheticOutput", "attributes": {"direction": "OUTPUT", "portRole": "REGULAR", "synchronousInputPortId": null}},
+    {"id": "port2", "kind": "PORT", "parentId": "cmp2", "name": "SyntheticInput", "attributes": {"direction": "INPUT", "portRole": "REGULAR", "synchronousInputPortId": null}},
+    {"id": "col1", "kind": "COLUMN", "parentId": "port1", "name": "SyntheticValue", "attributes": {"columnRole": "DATA", "typeCode": "i4", "length": null, "precision": null, "scale": null, "codePage": null, "isNullable": null}},
+    {"id": "col2", "kind": "COLUMN", "parentId": "port2", "name": "SyntheticValue", "attributes": {"columnRole": "DATA", "typeCode": "i4", "length": null, "precision": null, "scale": null, "codePage": null, "isNullable": null}}
+  ],
+  "edges": [
+    {"id": "edge1", "kind": "PIPELINE_PATH", "scopeId": "exe1", "fromId": "port1", "toId": "port2", "resolution": "RESOLVED", "evidence": "DECLARED", "ruleId": null, "mappingRole": null},
+    {"id": "edge2", "kind": "COLUMN_MAP", "scopeId": "exe1", "fromId": "col1", "toId": "col2", "resolution": "RESOLVED", "evidence": "DECLARED", "ruleId": null, "mappingRole": "DATA_TRANSFER"}
+  ],
+  "diagnostics": [{"code": "PROFILE_LIMIT", "objectId": "exe1"}]
+}

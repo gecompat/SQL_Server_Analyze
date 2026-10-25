@@ -17,6 +17,12 @@ ist ausschließlich für spätere Entwicklung vorgemerkt.
 
 ## 1. Auftrag und Abgrenzung
 
+Der [Abgrenzungs- und Austauschvertrag mit Toolbelt](SSIS_Analyze_Toolbelt_Exchange_Contract.md)
+legt die freigegebene Zuständigkeit für vertiefte Parser- und
+Lineagefunktionen fest. Die nachfolgenden älteren Zielabschnitte sind vor
+Ausbau mit diesem Vertrag abzugleichen; neutrale Semantik bleibt im Toolbelt-Kern. Bestehende öffentliche Schnittstellen und bereits
+freigegebene Laufzeitanalysen werden dadurch nicht geändert.
+
 SSIS-001 erweitert SQL Server Analyze um eine statische Analyse von SSIS-Paketen sowie um die Interpretation vorhandener Laufzeitprotokolle. Das Modul trennt Paketdefinition, Datenbankmetadaten und Laufzeitbeobachtung, damit ein mögliches Designrisiko nicht ohne Nachweis als ausgeführter Fehler dargestellt wird.
 
 Geplant sind drei getrennte öffentliche Analyseverfahren:

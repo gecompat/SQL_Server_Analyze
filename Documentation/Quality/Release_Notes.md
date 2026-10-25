@@ -14,14 +14,29 @@ commitbezogenen Laufzeitnachweis.
 | ReleaseDate im Installationskatalog | 23. Oktober 2026 |
 | Mindestversion | SQL Server 2019 |
 
-Der aktuelle Inventarvertrag umfasst 182 Objekte: 110 öffentliche Procedures, 8 Views, 28 Table-Valued Functions, 16 interne Procedures und 20 Tabellen.
+Der aktuelle Inventarvertrag umfasst 183 Objekte: 111 öffentliche Procedures, 8 Views, 28 Table-Valued Functions, 16 interne Procedures und 20 Tabellen.
 
-Der Frameworkkern umfasst 163 Objekte mit 107 öffentlichen Procedures und 9 Tabellen. Das optionale Snapshotpaket umfasst 19 Objekte mit 3 öffentlichen Procedures und 11 Tabellen.
+Der Frameworkkern umfasst 164 Objekte mit 108 öffentlichen Procedures und 9 Tabellen. Das optionale Snapshotpaket umfasst 19 Objekte mit 3 öffentlichen Procedures und 11 Tabellen.
 
 Die [Paketgrenzen](../Reference/Scope_and_Limitations.md) unterscheiden
 Diagnose, Installation, lokale TABLE-Ausgabe und persistente Sammlung.
 
 Alle öffentlichen Procedures besitzen eine eigenständige Procedure-Seite. Alle unterstützenden Objekte besitzen einen Detailabschnitt in der Objektreferenz.
+
+## Noch nicht veröffentlicht: nativer SSIS-Modellaustausch
+
+`[monitor].[USP_SsisPackageModelAnalysis]` importiert das versionierte neutrale
+Toolbelt-Modell mit acht eigenen Ergebnisgruppen. Der Import prüft Schema,
+Referenzen, Grenzen und optional die Originalbytes ausschließlich in T-SQL.
+Analyze lädt keine CLR-Assembly und benötigt kein benachbartes Toolbelt-Repository.
+Der gemeinsame semantische DTSX-Kern und die direkte Wert-Lineage werden in
+Toolbelt gepflegt; Analyze hält nur eine an einen Commit gebundene Vertragskopie.
+Die bestehende XML-Inventur behält ihren Vertrag mit 13 Ergebnisgruppen.
+
+Das vorhandene Produkt-ZIP 1.1.2 enthält diese neue API noch nicht. Die
+Quellinstaller übernehmen sie beim Neubau. Weiterführende Ausdrucks- und
+Zeilenselektionsregeln, SDK-Parität und eine neue Produktveröffentlichung
+bleiben eigene Abnahmeschritte.
 
 ## Release 1.1.2
 

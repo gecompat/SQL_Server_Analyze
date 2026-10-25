@@ -1,0 +1,159 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/gecompat/SQL_Server_Toolbelt/blob/main/Modules/toolbelt.tsql.ssis-debug/Contracts/Exchange/SSIS_Exchange_V1.schema.json",
+  "title": "SSIS package model 1.0.0",
+  "$comment": "Canonical schema for approved artifact urn:uuid:01a16fd0-76d2-763d-aea4-b034dd939d3b. Cross-object invariants and duplicate JSON keys require semantic validation.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["contract", "version", "identityProfile", "producer", "source", "profiles", "coverage", "nodes", "edges", "diagnostics"],
+  "properties": {
+    "contract": {"const": "ssis-package-model"},
+    "version": {"const": "1.0.0"},
+    "identityProfile": {"const": "document-order-v1"},
+    "producer": {
+      "type": "object", "additionalProperties": false,
+      "required": ["id", "version", "sourceCommit", "buildSha256"],
+      "properties": {
+        "id": {"const": "toolbelt.ssis-model"},
+        "version": {"$ref": "#/$defs/version"},
+        "sourceCommit": {"type": "string", "pattern": "^[0-9a-f]{40}$"},
+        "buildSha256": {"$ref": "#/$defs/sha256"}
+      }
+    },
+    "source": {
+      "type": "object", "additionalProperties": false,
+      "required": ["kind", "packageSha256", "byteLength", "packageFormatVersion", "xmlProfile"],
+      "properties": {
+        "kind": {"const": "DTSX_BYTES"},
+        "packageSha256": {"$ref": "#/$defs/sha256"},
+        "byteLength": {"type": "integer", "minimum": 1, "maximum": 16777216},
+        "packageFormatVersion": {"type": ["integer", "null"], "minimum": 0},
+        "xmlProfile": {"enum": ["2012/01", "2014/01", "UNKNOWN"]}
+      }
+    },
+    "profiles": {
+      "type": "object", "additionalProperties": false,
+      "required": ["format", "components", "lineage"],
+      "properties": {
+        "format": {"$ref": "#/$defs/version"},
+        "components": {"$ref": "#/$defs/version"},
+        "lineage": {"$ref": "#/$defs/version"}
+      }
+    },
+    "coverage": {
+      "type": "array", "minItems": 8, "maxItems": 8,
+      "items": {"$ref": "#/$defs/coverage"},
+      "allOf": [
+        {"contains": {"properties": {"feature": {"const": "inventory"}}}, "minContains": 1, "maxContains": 1},
+        {"contains": {"properties": {"feature": {"const": "controlFlow"}}}, "minContains": 1, "maxContains": 1},
+        {"contains": {"properties": {"feature": {"const": "pipelineGraph"}}}, "minContains": 1, "maxContains": 1},
+        {"contains": {"properties": {"feature": {"const": "columnMetadata"}}}, "minContains": 1, "maxContains": 1},
+        {"contains": {"properties": {"feature": {"const": "directColumnMapping"}}}, "minContains": 1, "maxContains": 1},
+        {"contains": {"properties": {"feature": {"const": "valueLineage"}}}, "minContains": 1, "maxContains": 1},
+        {"contains": {"properties": {"feature": {"const": "rowLineage"}}}, "minContains": 1, "maxContains": 1},
+        {"contains": {"properties": {"feature": {"const": "expressionReferences"}}}, "minContains": 1, "maxContains": 1}
+      ]
+    },
+    "nodes": {"type": "array", "minItems": 1, "maxItems": 20000, "items": {"$ref": "#/$defs/node"}},
+    "edges": {"type": "array", "maxItems": 50000, "items": {"$ref": "#/$defs/edge"}},
+    "diagnostics": {"type": "array", "maxItems": 1000, "items": {"$ref": "#/$defs/diagnostic"}}
+  },
+  "$defs": {
+    "id": {"type": "string", "maxLength": 128, "pattern": "^(pkg|exe|cmp|port|col|var|par|con|expr)[1-9][0-9]*$"},
+    "nullableId": {"oneOf": [{"$ref": "#/$defs/id"}, {"type": "null"}]},
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "version": {"type": "string", "maxLength": 32, "pattern": "^(0|[1-9][0-9]*)[.](0|[1-9][0-9]*)[.](0|[1-9][0-9]*)$"},
+    "reason": {"enum": ["PROFILE_LIMIT", "UNKNOWN_COMPONENT", "ENCRYPTED_CONTENT", "EXPRESSION_UNRESOLVED", "MISSING_CONTEXT", "UNSUPPORTED_PACKAGE_FORMAT", "SCOPE_NOT_REQUESTED"]},
+    "coverage": {
+      "type": "object", "additionalProperties": false,
+      "required": ["feature", "status", "reasonCode"],
+      "properties": {
+        "feature": {"enum": ["inventory", "controlFlow", "pipelineGraph", "columnMetadata", "directColumnMapping", "valueLineage", "rowLineage", "expressionReferences"]},
+        "status": {"enum": ["COMPLETE", "PARTIAL", "UNSUPPORTED", "NOT_REQUESTED"]},
+        "reasonCode": {"oneOf": [{"$ref": "#/$defs/reason"}, {"type": "null"}]}
+      },
+      "if": {"properties": {"status": {"const": "COMPLETE"}}},
+      "then": {"properties": {"reasonCode": {"type": "null"}}},
+      "else": {"properties": {"reasonCode": {"$ref": "#/$defs/reason"}}}
+    },
+    "attributes": {
+      "type": "object", "additionalProperties": false,
+      "properties": {
+        "typeCode": {"type": ["string", "null"], "maxLength": 64},
+        "length": {"type": ["integer", "null"], "minimum": -1, "maximum": 2147483647},
+        "precision": {"type": ["integer", "null"], "minimum": 0, "maximum": 255},
+        "scale": {"type": ["integer", "null"], "minimum": 0, "maximum": 255},
+        "codePage": {"type": ["integer", "null"], "minimum": 0, "maximum": 2147483647},
+        "isNullable": {"type": ["boolean", "null"]},
+        "isDisabled": {"type": ["boolean", "null"]},
+        "isReadOnly": {"type": ["boolean", "null"]},
+        "evaluateAsExpression": {"type": ["boolean", "null"]},
+        "isEventHandler": {"type": ["boolean", "null"]},
+        "executableType": {"type": ["string", "null"], "maxLength": 256},
+        "namespace": {"type": ["string", "null"], "maxLength": 256},
+        "protectionLevel": {"type": ["string", "null"], "maxLength": 64},
+        "connectionKind": {"type": ["string", "null"], "maxLength": 128},
+        "columnRole": {"enum": ["DATA", "EXTERNAL_METADATA"]},
+        "direction": {"enum": ["INPUT", "OUTPUT", null]},
+        "portRole": {"enum": ["REGULAR", "ERROR", "NO_MATCH", "DEFAULT", "UNKNOWN", null]},
+        "componentClassId": {"type": ["string", "null"], "maxLength": 256},
+        "propertyName": {"type": ["string", "null"], "maxLength": 256},
+        "synchronousInputPortId": {"$ref": "#/$defs/nullableId"}
+      }
+    },
+    "node": {
+      "type": "object", "additionalProperties": false,
+      "required": ["id", "kind", "parentId", "name", "attributes"],
+      "properties": {
+        "id": {"$ref": "#/$defs/id"},
+        "kind": {"enum": ["PACKAGE", "EXECUTABLE", "COMPONENT", "PORT", "COLUMN", "VARIABLE", "PARAMETER", "CONNECTION", "EXPRESSION"]},
+        "parentId": {"$ref": "#/$defs/nullableId"},
+        "name": {"type": ["string", "null"], "maxLength": 256},
+        "attributes": {"$ref": "#/$defs/attributes"}
+      },
+      "if": {"properties": {"kind": {"const": "PACKAGE"}}},
+      "then": {"properties": {"id": {"const": "pkg1"}, "parentId": {"type": "null"}}},
+      "else": {"properties": {"parentId": {"$ref": "#/$defs/id"}}},
+      "allOf": [
+        {"if": {"properties": {"kind": {"const": "PACKAGE"}}}, "then": {"properties": {"attributes": {"required": ["protectionLevel"], "propertyNames": {"enum": ["protectionLevel"]}}}}},
+        {"if": {"properties": {"kind": {"const": "EXECUTABLE"}}}, "then": {"properties": {"attributes": {"required": ["executableType", "isDisabled", "isEventHandler"], "propertyNames": {"enum": ["executableType", "isDisabled", "isEventHandler"]}}}}},
+        {"if": {"properties": {"kind": {"const": "COMPONENT"}}}, "then": {"properties": {"attributes": {"required": ["componentClassId"], "propertyNames": {"enum": ["componentClassId"]}}}}},
+        {"if": {"properties": {"kind": {"const": "PORT"}}}, "then": {"properties": {"attributes": {"required": ["direction", "portRole", "synchronousInputPortId"], "propertyNames": {"enum": ["direction", "portRole", "synchronousInputPortId"]}}}}},
+        {"if": {"properties": {"kind": {"const": "COLUMN"}}}, "then": {"properties": {"attributes": {"required": ["columnRole", "typeCode", "length", "precision", "scale", "codePage", "isNullable"], "propertyNames": {"enum": ["columnRole", "typeCode", "length", "precision", "scale", "codePage", "isNullable"]}}}}},
+        {"if": {"properties": {"kind": {"const": "VARIABLE"}}}, "then": {"properties": {"attributes": {"required": ["namespace", "typeCode", "isReadOnly", "evaluateAsExpression"], "propertyNames": {"enum": ["namespace", "typeCode", "isReadOnly", "evaluateAsExpression"]}}}}},
+        {"if": {"properties": {"kind": {"const": "PARAMETER"}}}, "then": {"properties": {"attributes": {"required": ["typeCode"], "propertyNames": {"enum": ["typeCode"]}}}}},
+        {"if": {"properties": {"kind": {"const": "CONNECTION"}}}, "then": {"properties": {"attributes": {"required": ["connectionKind"], "propertyNames": {"enum": ["connectionKind"]}}}}},
+        {"if": {"properties": {"kind": {"const": "EXPRESSION"}}}, "then": {"properties": {"attributes": {"required": ["propertyName"], "propertyNames": {"enum": ["propertyName"]}}}}}
+      ]
+    },
+    "edge": {
+      "type": "object", "additionalProperties": false,
+      "required": ["id", "kind", "scopeId", "fromId", "toId", "resolution", "evidence", "ruleId", "mappingRole"],
+      "properties": {
+        "id": {"type": "string", "maxLength": 128, "pattern": "^edge[1-9][0-9]*$"},
+        "kind": {"enum": ["CONTROL_FLOW", "PIPELINE_PATH", "COLUMN_MAP", "VALUE_DEPENDENCY", "ROW_DEPENDENCY", "EXPRESSION_REFERENCE"]},
+        "scopeId": {"$ref": "#/$defs/id"},
+        "fromId": {"$ref": "#/$defs/nullableId"},
+        "toId": {"$ref": "#/$defs/nullableId"},
+        "resolution": {"enum": ["RESOLVED", "UNRESOLVED", "UNSUPPORTED"]},
+        "evidence": {"enum": ["DECLARED", "DERIVED"]},
+        "mappingRole": {"enum": ["DATA_TRANSFER", "METADATA_REFERENCE", null]},
+        "ruleId": {"type": ["string", "null"], "maxLength": 64, "pattern": "^[A-Z][A-Z0-9_]*$"}
+      },
+      "anyOf": [{"properties": {"fromId": {"$ref": "#/$defs/id"}}}, {"properties": {"toId": {"$ref": "#/$defs/id"}}}],
+      "allOf": [
+        {"if": {"properties": {"kind": {"const": "COLUMN_MAP"}}}, "then": {"properties": {"mappingRole": {"enum": ["DATA_TRANSFER", "METADATA_REFERENCE"]}}}, "else": {"properties": {"mappingRole": {"type": "null"}}}},
+        {"if": {"properties": {"resolution": {"const": "RESOLVED"}}}, "then": {"properties": {"fromId": {"$ref": "#/$defs/id"}, "toId": {"$ref": "#/$defs/id"}}}},
+        {"if": {"properties": {"evidence": {"const": "DECLARED"}}}, "then": {"properties": {"ruleId": {"type": "null"}}}, "else": {"properties": {"ruleId": {"type": "string"}}}}
+      ]
+    },
+    "diagnostic": {
+      "type": "object", "additionalProperties": false,
+      "required": ["code", "objectId"],
+      "properties": {
+        "code": {"enum": ["UNKNOWN_COMPONENT", "ENCRYPTED_CONTENT", "EXPRESSION_UNRESOLVED", "MISSING_CONTEXT", "PARTIAL_LINEAGE", "PROFILE_LIMIT", "UNSUPPORTED_PACKAGE_FORMAT"]},
+        "objectId": {"$ref": "#/$defs/nullableId"}
+      }
+    }
+  }
+}

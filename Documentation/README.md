@@ -8,12 +8,12 @@ SQL Server Analyze ist ein T-SQL-Diagnoseframework für SQL Server 2019 oder neu
 2. [`USP_AnalysisNavigator`](Reference/Analysis_Navigator.md) – Suche direkt in SSMS, Rollen, Ranking, Kosten, Pakete und Folgebeziehungen.
 3. [Einsteiger-Leseleitfaden](Analysis_Guides/Beginner_Reading_Guide.md) – Status, Scope, Zeitbezug, Nenner, Partialität und Gegenprobe.
 4. [Runbooks](Analysis_Guides/Runbooks/README.md) – konkrete Abläufe für zehn häufige Störungssituationen.
-5. [Procedure-Seiten](Analysis_Guides/Procedures/README.md) – eigenständige Tiefendokumentation für alle 110 öffentlichen Procedures.
+5. [Procedure-Seiten](Analysis_Guides/Procedures/README.md) – eigenständige Tiefendokumentation für alle 111 öffentlichen Procedures.
 6. [Objektreferenz](Reference/Object_Reference.md) – jede unterstützende View, TVF, interne Procedure und Tabelle.
 
-Der aktuelle Inventarvertrag umfasst 182 Objekte: 110 öffentliche Procedures, 8 Views, 28 Table-Valued Functions, 16 interne Procedures und 20 Tabellen.
+Der aktuelle Inventarvertrag umfasst 183 Objekte: 111 öffentliche Procedures, 8 Views, 28 Table-Valued Functions, 16 interne Procedures und 20 Tabellen.
 
-Der Frameworkkern umfasst 163 Objekte mit 107 öffentlichen Procedures und 9 Tabellen. Das optionale Snapshotpaket umfasst 19 Objekte mit 3 öffentlichen Procedures und 11 Tabellen.
+Der Frameworkkern umfasst 164 Objekte mit 108 öffentlichen Procedures und 9 Tabellen. Das optionale Snapshotpaket umfasst 19 Objekte mit 3 öffentlichen Procedures und 11 Tabellen.
 
 Die Bestandszahlen beschreiben das Repositoryinventar; der installierte Umfang
 hängt vom gewählten Paket ab. Scalar-Valued Functions sind derzeit nicht vorhanden.
@@ -99,6 +99,7 @@ Kostenklasse, High-Impact-Bestätigung und SQL-Server-Berechtigung sind getrennt
 - [SQL-Server-2025-Statistiken auf lesbaren Secondaries](Architecture/SQL_Server_2025_Readable_Secondary_Statistics.md)
 - [RUNTIME-001: External Runtime und SQL CLR](Architecture/External_Runtime_CLR_Analysis_Plan.md)
 - [Geplantes SubProject SSIS-001: SSIS Package- und Execution-Analyse](Architecture/SSIS_Package_and_Execution_Analysis_Plan.md)
+- [SSIS-Abgrenzung und Modellaustausch mit Toolbelt](Architecture/SSIS_Analyze_Toolbelt_Exchange_Contract.md): Freigegebener Vertrag mit gemeinsamem Toolbelt-Kern, externem Exporthost und nativem Analyze-Import.
 - [ANALYZE-LAB-001: spielbare Analyze-Beispiele mit SQL_Server_Lab](Architecture/SQL_Server_Lab_Example_Integration_Plan.md)
 - [Datenschutz und Laufzeitausgaben](Architecture/Runtime_Data_Privacy.md)
 - [Execution-Plan-Analyse](Architecture/Execution_Plan_Analysis_Design.md)

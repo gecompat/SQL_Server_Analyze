@@ -1,0 +1,4 @@
+# Die an Toolbelt gebundenen Vertragskopien behalten auf allen Hosts ihre Bytes.
+/Metadata/Quality/SSIS_Exchange_V1.schema.json -text
+/Metadata/Quality/SSIS_Exchange_V1.example.json -text
+/Code/Tests/Fixtures/SSIS_Exchange/* -text
