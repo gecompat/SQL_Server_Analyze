@@ -54,7 +54,12 @@ Abnahme integriert. Das [Callerrechte-Dossier](../Architecture/Caller_Permission
 führt die tatsächlichen Nachweise und verbleibenden Grenzen. Die nächste
 vertikale Grundlieferung aus Rang 7 ist im
 [Endpoint-Dossier](../Architecture/Endpoint_Transport_Analysis_Dossier.md)
-als SQL-sichtbarer Katalog-/Verschlüsselungsflag-Scope abgegrenzt.
+als SQL-sichtbarer Katalog-/Verschlüsselungsflag-Scope abgegrenzt. Die erste
+Implementierung mit sieben benannten Mengen und eigenem Vertrag 138 liegt
+vor. Unabhängiger Produktreview und lokale SQL2025-Fixture bestehen;
+gebundene Head-Gates und die gezielte native SQL2019-Abnahme bleiben bis zu
+ihrem tatsächlichen Abschluss offen. Host-/Handshake- und positive native
+HADR-/MARS-Verbindungsnachweise werden damit nicht behauptet.
 Bereits gelieferte Funktionen und die abgeschlossene STAT-DOMINANT-Diagnose
 werden nicht erneut entwickelt.
 
