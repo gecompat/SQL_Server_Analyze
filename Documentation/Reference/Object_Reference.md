@@ -1074,7 +1074,7 @@ Quelle: `Code/10_SSIS/035_InternalSsisExecutionScopes.sql`
 | Dimension | Beschreibung |
 |---|---|
 | Aufgabe | Validiert einen lokal attestierten Paketsatz und ordnet dessen gebundene Statistik- und Ereignisbeobachtungen eindeutigen Paketaufrufen und Handlerkörpern zu. |
-| Schnittstelle | Die interne Procedure erhält die Dokumente und Ausgabeparameter vom öffentlichen Scopeopt-in. Sie liefert sieben benannte Ergebnisgruppen einschließlich Herkunftsstatus, Paketinstanzen, Einzelbelegen und partieller Abdeckung. Das Pipelineopt-in ergänzt vier eigene Gruppen. |
+| Schnittstelle | Die interne Procedure erhält die Dokumente und Ausgabeparameter vom öffentlichen Scopeopt-in. Sie liefert sieben benannte Ergebnisgruppen einschließlich Herkunftsstatus, Paketinstanzen, Einzelbelegen und partieller Abdeckung. Das Pipelineopt-in ergänzt vier eigene Gruppen; das Diagnoseopt-in ergänzt vier weitere Gruppen. |
 | Verwendung | Aufrufer verwenden `USP_SsisPackageModelAnalysis` mit `IncludeExecutionScopes=1`. Parser, Pfadprofile und Lineage werden ausschließlich vom Toolbelt übernommen; gewöhnliche Caller können keine qualifizierten lokalen Belege registrieren. |
 | Last und Sperren | Höchstens 16 Pakete, acht Aufrufebenen, 1024 Instanzen und 50000 Quellzeilen teilen ein kooperatives Zeitbudget. Die lokale Herkunftsentscheidung liest Receipt und Eigentümermetadaten committed mit dem expliziten Locktimeout und stellt den Callerwert wieder her. |
 | Vertrag | Interner Consumer ohne SQL CLR. Mehrdeutige Instanzen bleiben unzugeordnet; Handlerbelege enthalten keine erfundene Auslöserkausalität. Ausgabegrenzen ändern die zuvor ermittelten Abdeckungszahlen nicht. |
@@ -1090,3 +1090,15 @@ Quelle: `Code/10_SSIS/036_InternalSsisPipelineCorrelation.sql`
 | Verwendung | Der öffentliche Einstieg verwendet `IncludeExecutionScopes=1` und `IncludePipelineCorrelation=1`. Toolbelt liefert die Referenzen auf vorhandene Komponenten, Ports und Kanten. |
 | Last und Sperren | Der Baustein teilt das Zeit- und Zeilenbudget des Scopeconsumers und liest ausschließlich dessen temporäre Modelle und JSON. Er greift nicht auf SSISDB zu und erhält den Caller-Locktimeout. |
 | Vertrag | Ein ordinal exakter eindeutiger Instanzpfad ist Voraussetzung. Komponenten werden anschließend über scoped Namen, Pfade zusätzlich über Referenz und Endpunkte zugeordnet. Zeitintervalle sind keine CPU-Zeit; Transferzähler sind keine globale Paketzeilenzahl. |
+
+### `[monitor].[InternalSsisPipelineDiagnostics]`
+
+Quelle: `Code/10_SSIS/037_InternalSsisPipelineDiagnostics.sql`
+
+| Dimension | Beschreibung |
+|---|---|
+| Aufgabe | Fasst bereits gebundene Phasen und Transfers innerhalb ihrer konkreten Dataflowinstanz zusammen und erzeugt endliche versionierte Diagnosehinweise. |
+| Schnittstelle | Der Scopeconsumer übergibt validierte Modelle, Bindungsstatus, gemeinsame Deadline, Ausgabegrenze und einen optionalen Einzelintervall-Grenzwert. Vier temporäre Ausgabeziele enthalten Kennzahlen, Regelbelege und Abdeckung. |
+| Verwendung | Der öffentliche Einstieg ergänzt `IncludePipelineDiagnostics=1` zur Scope- und Pipelinekorrelation. Statische Portrollen werden ausschließlich aus dem Toolbelt-Modell übernommen. |
+| Last und Sperren | Gruppierungen und Fensterfunktionen verarbeiten höchstens den bereits begrenzten Capturebestand in eigenen Temp-Objekten. Es erfolgen keine zusätzlichen Katalogabfragen oder Berechtigungsänderungen. |
+| Vertrag | Unbekannte Werte, Zuordnungslücken, überlappende Intervalle und Quellenkürzung bleiben sichtbar. Summen gelten nur je Instanz und Objekt; Hinweise belegen keine CPU-Zeit, Engpassursache oder globale Paketzeilenzahl. |

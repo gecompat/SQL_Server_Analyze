@@ -68,3 +68,8 @@ ordnet Komponentenphasen und Pfadtransfers erst nach eindeutiger Bindung einer
 Statistikinstanz zu. Sie erhält Einzelintervalle und Transferzähler samt
 Logginggrenzen. Komponenten-, Port- und Kantenreferenzen stammen aus dem
 Toolbelt; Analyze berechnet keine zusätzliche Lineage.
+
+Die optionale [Dataflow-Diagnose](Procedures/USP_SsisPackageModelAnalysis.md#optionale-dataflow-diagnose)
+fasst diese gebundenen Einzelbelege je Aufrufinstanz zusammen. Sie zeigt
+Phasenkennzahlen, Pfadtransfers und versionierte Regelhinweise mit Quellenbezug.
+Fehlende Beobachtungen und unbekannte Rollen bleiben als Evidenzgrenzen sichtbar.

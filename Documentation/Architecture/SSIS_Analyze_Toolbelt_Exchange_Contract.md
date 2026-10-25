@@ -558,3 +558,18 @@ SSISDB und regulärer automatischer Integration nach erfolgreicher Abnahme
 freigegeben. Die Erweiterung übernimmt keine Datenwerte, Data Taps oder neue
 Lineage. Parser, Komponentenprofile und Lineage bleiben ausschließlich im
 Toolbelt; der Analyze-Empfänger benötigt kein SQL CLR.
+
+## Neunte Welle: laufzeitgestützte Dataflow-Diagnose
+
+Die ausdrücklich freigegebene Erweiterung wertet in Analyze ausschließlich die
+bereits gebundenen Pipelinebelege aus. Der [Anwendungsvertrag](../Analysis_Guides/Procedures/USP_SsisPackageModelAnalysis.md#optionale-dataflow-diagnose)
+beschreibt das zusätzliche Opt-in, vier Ergebnisgruppen, einen optionalen
+Einzelintervall-Grenzwert und die endlichen Diagnosebedingungen. Überlappende
+Zeiten, unbekannte Zähler und gekürzte Quellenbelege bleiben sichtbar.
+
+Die Rolle `NO_MATCH` wird ausschließlich im bestehenden Toolbelt-Kern ergänzt.
+Das unterstützte Lookupprofil und seine Ausgangsreihenfolge bestimmen diese
+statische Rolle; Analyze übernimmt weder diese Klassifikation noch neue
+Lineage. Das bestehende Austauschschema enthält die Rolle bereits. Die vorhandene
+SSISDB bleibt Testziel; Analyze benötigt weiterhin kein SQL CLR. Dieser Scope
+führt keine zusätzliche SSISDB-Quelle und keine automatische Loggingänderung ein.

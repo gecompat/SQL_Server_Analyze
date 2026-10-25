@@ -7,8 +7,9 @@ param(
     [Parameter(Mandatory)][string]$ProducerAssemblyPath,
     [Parameter(Mandatory)][string]$ExpectedSourceCommit,
     [Parameter(Mandatory)][string]$ExpectedBuildSha256,
-    [ValidateSet('Success','Error','Abort')][string]$Scenario='Success',
-    [ValidateSet(1,2,3)][int]$LoggingLevel=3
+    [ValidateSet('Success','Error','Abort','ErrorOutput','NoMatch')][string]$Scenario='Success',
+    [ValidateSet(1,2,3)][int]$LoggingLevel=3,
+    [switch]$IncludePipelineDiagnostics
 )
 Set-StrictMode -Version Latest
 $ErrorActionPreference='Stop'
@@ -31,9 +32,9 @@ $security.AddAccessRule([Security.AccessControl.FileSystemAccessRule]::new($iden
 [IO.FileSystemAclExtensions]::Create([IO.DirectoryInfo]::new($directory),$security)
 $scriptFile=Join-Path $directory 'own.sql';$receipt=Join-Path $directory 'ownership.private.json'
 $record=[ordered]@{RunId=$RunId.ToString();InstanceId=$InstanceId;OperationId=[guid]::NewGuid().ToString();FolderName='SyntheticCorrelation_'+[guid]::NewGuid().ToString('N');FolderId=0L;ProjectName='SyntheticProject_'+[guid]::NewGuid().ToString('N');ProjectId=0L;ProjectLsn=0L;ExecutionId=0L;DatabaseAttempted=$false;FolderAttempted=$false;ProjectAttempted=$false;Phase='PLANNED';Cleanup='PENDING';Operations=@()}
-$entryName=switch($Scenario){'Success'{'SyntheticRoot.dtsx'};'Error'{'SyntheticError.dtsx'};'Abort'{'SyntheticAbort.dtsx'}}
+$entryName=switch($Scenario){'Success'{'SyntheticRoot.dtsx'};'Error'{'SyntheticError.dtsx'};'Abort'{'SyntheticAbort.dtsx'};'ErrorOutput'{'SyntheticErrorOutput.dtsx'};'NoMatch'{'SyntheticNoMatch.dtsx'}}
 $record.SourceBindings=[ordered]@{ProducerCommit=$ExpectedSourceCommit;ProducerSha256=$ExpectedBuildSha256;FixtureBuilderSha256=(Get-FileHash -LiteralPath $FixtureBuilderPath -Algorithm SHA256).Hash}
-foreach($relative in @('Code/10_SSIS/034_InternalSsisScopePathMatch.sql','Code/10_SSIS/036_InternalSsisPipelineCorrelation.sql','Code/10_SSIS/035_InternalSsisExecutionScopes.sql','Code/10_SSIS/040_USP_SsisPackageModelAnalysis.sql','Code/Tools/Invoke-SsisCatalogHandover.ps1','Code/Tools/Invoke-SsisQualifiedHandover.ps1','Code/Tools/SsisHandoverSupport.psm1','Code/Tools/Invoke-SsisProjectScopeHandover.ps1','Code/Tests/Integration/221_SsisPipelineCorrelation_Native_Contract.ps1','Code/Tests/Fixtures/SSIS_Execution_Correlation/CreatePipelineProject.cs')){$record.SourceBindings[$relative]=(Get-FileHash -LiteralPath (Join-Path $root $relative) -Algorithm SHA256).Hash}
+foreach($relative in @('Code/10_SSIS/034_InternalSsisScopePathMatch.sql','Code/10_SSIS/036_InternalSsisPipelineCorrelation.sql','Code/10_SSIS/037_InternalSsisPipelineDiagnostics.sql','Code/10_SSIS/035_InternalSsisExecutionScopes.sql','Code/10_SSIS/040_USP_SsisPackageModelAnalysis.sql','Code/Tools/Invoke-SsisCatalogHandover.ps1','Code/Tools/Invoke-SsisQualifiedHandover.ps1','Code/Tools/SsisHandoverSupport.psm1','Code/Tools/Invoke-SsisProjectScopeHandover.ps1','Code/Tests/Integration/221_SsisPipelineCorrelation_Native_Contract.ps1','Code/Tests/Fixtures/SSIS_Execution_Correlation/CreatePipelineProject.cs')){$record.SourceBindings[$relative]=(Get-FileHash -LiteralPath (Join-Path $root $relative) -Algorithm SHA256).Hash}
 $database='SyntheticSsisNative_'+[guid]::NewGuid().ToString('N');$databaseCreated=$false;$counter=[pscustomobject]@{Value=0}
 $target=@{RunId=$RunId;InstanceId=$InstanceId;WindowsAuthentication=$true;Database='SSISDB';KeepConnection=$true;TimeoutSeconds=60}
 function Save-Record {[IO.File]::WriteAllText($receipt,($record|ConvertTo-Json -Depth 16),[Text.UTF8Encoding]::new($false))}
@@ -57,6 +58,10 @@ function Convert-SourceTable($Set) {
 }
 $outputGroups=@('scopeBinding','packageScopes','packageInvocations','scopeObservations','handlerActivity','scopeObjectSummary','scopeCoverage','pipelineInstances','componentPhases','pathTransfers','pipelineCoverage')
 $outputOrders=@('ExecutionId','PackageKey','InvocationId','SourceKind,SourceId','SourceKind,SourceId','PackageKey,ModelNodeId','ExecutionId','FlowStatisticsId','PhaseStatsId','DataStatsId','SourceName')
+if($IncludePipelineDiagnostics){
+    $outputGroups+=@('componentPhaseSummary','pathTransferSummary','pipelineFindings','pipelineDiagnosticCoverage')
+    $outputOrders+=@('FlowStatisticsId,ComponentNodeId,PhaseName','FlowStatisticsId,ModelEdgeId','RuleId,FlowStatisticsId,ComponentNodeId,ModelEdgeId,SourceName,SourceId','SourceName')
+}
 function Test-OwnConversionFailure($Messages) {
     return @($Messages|Where-Object {$_.Code -eq -1071636471 -and ([string]$_.Message).Contains('SyntheticInvalid') -and ([string]$_.Message).Contains('Conversion failed when converting')}).Count -gt 0
 }
@@ -65,7 +70,7 @@ function Read-Analysis($Handover,[string]$Mode='NONE',[switch]$Detailed) {
     if($Mode -ceq 'TABLE') {
         for($i=0;$i -lt $outputGroups.Count;$i++){$table='#SyntheticPipeline'+$i;$mapping[$outputGroups[$i]]=$table;$prefix+="CREATE TABLE $table ([Seed] int);";$suffix+="SELECT * FROM $table ORDER BY $($outputOrders[$i]);DROP TABLE $table;"}
     }
-    $data=Query ($prefix+"DECLARE @j nvarchar(max);EXEC monitor.USP_SsisPackageModelAnalysis @IncludeExecutionScopes=1,@IncludePipelineCorrelation=1,@ProjectModelsJson=@Models,@ScopeSnapshotJson=@Capture,@ScopeHandoverId=@Id,@ExecutionId=@Execution,@ResultSetArt=@Mode,@ResultTablesJson=@Mapping,@JsonErzeugen=1,@Json=@j OUTPUT;"+$suffix+'SELECT @j;') @{Models=$Handover.ProjectModelsJson;Capture=$Handover.ScopeSnapshotJson;Id=$Handover.ScopeHandoverId;Execution=$record.ExecutionId;Mode=$Mode;Mapping=$(if($Mode -ceq 'TABLE'){$mapping|ConvertTo-Json -Compress}else{[DBNull]::Value})}
+    $data=Query ($prefix+"DECLARE @j nvarchar(max);EXEC monitor.USP_SsisPackageModelAnalysis @IncludeExecutionScopes=1,@IncludePipelineCorrelation=1,@IncludePipelineDiagnostics=@Diagnostics,@PipelinePhaseThresholdMs=@Threshold,@ProjectModelsJson=@Models,@ScopeSnapshotJson=@Capture,@ScopeHandoverId=@Id,@ExecutionId=@Execution,@ResultSetArt=@Mode,@ResultTablesJson=@Mapping,@JsonErzeugen=1,@Json=@j OUTPUT;"+$suffix+'SELECT @j;') @{Diagnostics=[bool]$IncludePipelineDiagnostics;Threshold=$(if($IncludePipelineDiagnostics){0L}else{[DBNull]::Value});Models=$Handover.ProjectModelsJson;Capture=$Handover.ScopeSnapshotJson;Id=$Handover.ScopeHandoverId;Execution=$record.ExecutionId;Mode=$Mode;Mapping=$(if($Mode -ceq 'TABLE'){$mapping|ConvertTo-Json -Compress}else{[DBNull]::Value})}
     $json=$data.Tables[$data.Tables.Count-1].Rows[0][0]|ConvertFrom-Json -Depth 40
     if($Detailed){return [pscustomobject]@{Data=$data;Json=$json}}
     return $json
@@ -75,13 +80,13 @@ try {
     Save-Record;$connection.Open()
     $record.DatabaseAttempted=$true;Save-Record
     [void](Query "CREATE DATABASE [$database] COLLATE SQL_Latin1_General_CP1_CS_AS;");$databaseCreated=$true;$connection.ChangeDatabase($database);[void](Query 'CREATE SCHEMA monitor AUTHORIZATION dbo;')
-    foreach($relative in @('Code/01_Common/095_USP_InternalWriteResultTable.sql','Code/01_Common/096_USP_InternalPrepareResultTables.sql','Code/01_Common/098_USP_InternalEmitConsoleResult.sql','Code/10_SSIS/034_InternalSsisScopePathMatch.sql','Code/10_SSIS/036_InternalSsisPipelineCorrelation.sql','Code/10_SSIS/035_InternalSsisExecutionScopes.sql','Code/10_SSIS/040_USP_SsisPackageModelAnalysis.sql')) {
+    foreach($relative in @('Code/01_Common/095_USP_InternalWriteResultTable.sql','Code/01_Common/096_USP_InternalPrepareResultTables.sql','Code/01_Common/098_USP_InternalEmitConsoleResult.sql','Code/10_SSIS/034_InternalSsisScopePathMatch.sql','Code/10_SSIS/036_InternalSsisPipelineCorrelation.sql','Code/10_SSIS/037_InternalSsisPipelineDiagnostics.sql','Code/10_SSIS/035_InternalSsisExecutionScopes.sql','Code/10_SSIS/040_USP_SsisPackageModelAnalysis.sql')) {
         $sql=[IO.File]::ReadAllText((Join-Path $root $relative)).Replace('USE [DeineDatenbank];',"USE [$database];")
         foreach($batch in [regex]::Split($sql,'(?im)^\s*GO\s*$')){if($batch.Trim()){[void](Query $batch)}}
     }
     $instance=Windows-Query "SELECT CONVERT(nvarchar(128),SERVERPROPERTY(N'InstanceName'));" @{}
     $runtimeTarget='localhost';if($null -ne $instance.ResultSets[0].Rows[0][0]){$runtimeTarget+='\'+[string]$instance.ResultSets[0].Rows[0][0]}
-    $authorArguments=@($record.ProjectName,'SQLServer2025',$runtimeTarget)
+    $authorArguments=@($record.ProjectName,'SQLServer2025',$runtimeTarget);if($IncludePipelineDiagnostics){$authorArguments+='--diagnostics'}
     $oracle=& $FixtureBuilderPath @authorArguments|ConvertFrom-Json
     if($LASTEXITCODE -ne 0){throw 'SSIS_NATIVE_SDK_AUTHOR_FAILED'}
     $record.FixtureEvidence=$oracle;Save-Record
@@ -115,7 +120,7 @@ try {
     $nativeMessages=Query 'SELECT message_code,message FROM SSISDB.catalog.event_messages WHERE operation_id=@id AND message_type=120;' @{id=$record.ExecutionId}
     $record.NativeMessages=@($nativeMessages.Tables[0].Rows|ForEach-Object {[ordered]@{Code=[int]$_.message_code;Message=[string]$_.message}})
     $record.NativeExecutionStatus=$status;Save-Record
-    Assert ($status -eq $(switch($Scenario){'Success'{7};'Error'{4};'Abort'{3}})) 'EXPECTED_NATIVE_PACKAGE_OUTCOME'
+    Assert ($status -eq $(switch($Scenario){'Success'{7};'Error'{4};'Abort'{3};'ErrorOutput'{7};'NoMatch'{7}})) 'EXPECTED_NATIVE_PACKAGE_OUTCOME'
     Assert (@($record.NativeMessages|Where-Object {$_.Code -in -1073614806,-1073676264,-1073659899}).Count -eq 0) 'NO_TASK_ACTIVATION_FAILURE'
     if($Scenario -ceq 'Error'){Assert (Test-OwnConversionFailure $record.NativeMessages) 'OWN_SQL_CONVERSION_FAILURE_PROVEN'}
     $catalog=Query 'SELECT s.statistics_id,e.executable_guid,e.package_path,s.execution_path FROM SSISDB.catalog.executables e JOIN SSISDB.catalog.executable_statistics s ON s.execution_id=e.execution_id AND s.executable_id=e.executable_id WHERE e.execution_id=@id ORDER BY s.statistics_id;' @{id=$record.ExecutionId}
@@ -188,11 +193,29 @@ try {
         $reference=@($oracle.objects|Where-Object {$_.entry -ceq $pkg.EntryName -and ([guid]$_.guid) -eq ([guid]$observation.ExecutableGuid)})
         Assert ($reference.Count -eq 1 -and $reference[0].path -ceq $observation.PackagePath) 'INDEPENDENT_SDK_GUID_PATH_ORACLE'
     }
+    if($IncludePipelineDiagnostics) {
+        Assert ($result.meta.pipelineDiagnosticsSchemaVersion -eq 1) 'DIAGNOSTIC_VERSION'
+        Assert (@($result.pipelineDiagnosticCoverage).Count -eq 2) 'DIAGNOSTIC_SOURCE_COVERAGE'
+        foreach($summary in $result.pathTransferSummary) {
+            $sources=@($result.pathTransfers|Where-Object {$_.FlowStatisticsId -eq $summary.FlowStatisticsId -and $_.ModelEdgeId -ceq $summary.ModelEdgeId})
+            Assert ($sources.Count -eq $summary.ObservedTransferCount -and ($sources|Measure-Object RowsSent -Sum).Sum -eq $summary.ObservedRowsSent) 'DIAGNOSTIC_PATH_AGGREGATION'
+        }
+        foreach($summary in $result.componentPhaseSummary) {
+            $sources=@($result.componentPhases|Where-Object {$_.FlowStatisticsId -eq $summary.FlowStatisticsId -and $_.ComponentNodeId -ceq $summary.ComponentNodeId -and $_.PhaseName -ceq $summary.PhaseName})
+            Assert ($sources.Count -eq $summary.ObservedIntervalCount -and ($sources|Measure-Object ObservedDurationMs -Maximum).Maximum -eq $summary.LongestIntervalMs) 'DIAGNOSTIC_PHASE_AGGREGATION'
+        }
+        if($Scenario -cin @('ErrorOutput','NoMatch')) {
+            $rule=if($Scenario -ceq 'ErrorOutput'){'SSIS_PIPELINE_ERROR_OUTPUT_OBSERVED'}else{'SSIS_PIPELINE_NO_MATCH_OBSERVED'}
+            Assert (@($result.pipelineFindings|Where-Object RuleId -CEQ $rule).Count -eq 1) 'POSITIVE_ROUTED_FINDING'
+            $finding=@($result.pipelineFindings|Where-Object RuleId -CEQ $rule)[0]
+            Assert ($finding.ObservedValue -eq 3 -and $finding.SourceId -gt 0 -and $finding.PackageSha256 -ceq $expectedDigest) 'ROUTED_FINDING_EVIDENCE'
+        }
+    }
     $raw=Read-Analysis $handover 'RAW' -Detailed
-    Assert ($raw.Data.Tables.Count -eq 12) 'RAW11_PLUS_OUTPUT_JSON'
+    Assert ($raw.Data.Tables.Count -eq ($outputGroups.Count+1)) 'RAW11_PLUS_OUTPUT_JSON'
     $tableResult=Read-Analysis $handover 'TABLE' -Detailed
-    Assert ($tableResult.Data.Tables.Count -eq 12) 'TABLE11_PLUS_OUTPUT_JSON'
-    for($i=0;$i -lt 11;$i++) {
+    Assert ($tableResult.Data.Tables.Count -eq ($outputGroups.Count+1)) 'TABLE11_PLUS_OUTPUT_JSON'
+    for($i=0;$i -lt $outputGroups.Count;$i++) {
         $left=$raw.Data.Tables[$i];$right=$tableResult.Data.Tables[$i];$jsonRows=@($raw.Json.($outputGroups[$i]))
         Assert ($left.Columns.Count -eq $right.Columns.Count -and $left.Rows.Count -eq $right.Rows.Count -and $left.Rows.Count -eq $jsonRows.Count) 'OUTPUT_SHAPE_PARITY'
         for($column=0;$column -lt $left.Columns.Count;$column++) {
@@ -211,7 +234,7 @@ try {
 
     Assert ((Read-Analysis $handover 'CONSOLE' -Detailed).Data.Tables.Count -eq 2 -and (Read-Analysis $handover 'NONE' -Detailed).Data.Tables.Count -eq 1) 'CONSOLE_NONE_CONTRACT'
     $record.Phase='REDEPLOY_OWN_PROJECT'
-    $changedOracle=& $FixtureBuilderPath $record.ProjectName 'SQLServer2025' $runtimeTarget|ConvertFrom-Json
+    $changedOracle=& $FixtureBuilderPath @authorArguments|ConvertFrom-Json
     if($LASTEXITCODE -ne 0){throw 'SSIS_NATIVE_SECOND_SDK_AUTHOR_FAILED'}
     $previousLsn=$record.ProjectLsn
     $changed=Windows-Query "IF NOT EXISTS(SELECT 1 FROM catalog.projects WHERE project_id=@projectId AND folder_id=@folderId AND object_version_lsn=@version) THROW 57500,'SYNTHETIC_PROJECT_CHANGED',1;DECLARE @op bigint;EXEC catalog.deploy_project @folder_name=@folder,@project_name=@project,@project_stream=@bytes,@operation_id=@op OUTPUT;SELECT object_version_lsn FROM catalog.projects WHERE project_id=@projectId;" @{projectId=$record.ProjectId;folderId=$record.FolderId;version=$record.ProjectLsn;folder=$record.FolderName;project=$record.ProjectName;bytes=[Convert]::FromBase64String($changedOracle.ispacBase64)}
