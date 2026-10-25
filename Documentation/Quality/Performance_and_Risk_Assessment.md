@@ -33,6 +33,14 @@ Plan Cache, Showplan XML, Query Store, Physical Stats und breite Cross-Database-
 
 Breite Diagnosepfade sollen Namensauflösungsfunktionen vermeiden, wenn Systemkatalog-Joins mit `READUNCOMMITTED` beziehungsweise `NOLOCK` ausreichen. Nicht auflösbare Namen ergeben ein Teilergebnis; technische IDs bleiben verfügbar. Installations- und lokale Temp-Tabellen-Prüfungen sind davon getrennt zu betrachten.
 
+Die lokale SSIS-Producerübergabe entscheidet über eine Vertrauensstufe und
+liest ausschließlich ihre Extended Property an der eigenen Procedure mit
+`READCOMMITTEDLOCK`. Ein uncommittierter Übergabebeleg darf keine verifizierte
+Herkunft erzeugen. Der vorhandene lokale Lock-Timeout begrenzt die Wartezeit;
+Fehler verhindern die Vertrauensfreigabe. Validator 950 erlaubt diese Ausnahme
+nur für diese Quelle in `USP_SsisPackageModelAnalysis`; andere Systemquellen
+behalten den Nonblocking-Vertrag.
+
 ### Dynamic SQL
 
 Datenbank-, Schema- und Objektidentifier werden aus validierten Parsergebnissen aufgebaut und mit `QUOTENAME` geschützt. Freier Benutzertext wird ausschließlich als Parameter an `sp_executesql` übergeben. Datenbankwechsel werden pro Quelle isoliert.

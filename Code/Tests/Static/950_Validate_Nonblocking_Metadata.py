@@ -54,6 +54,24 @@ SNAPSHOT_PRODUCER = "Code/04_PlanCache/060_USP_PlanCacheAnalysis.sql"
 SNAPSHOT_FIXTURE = "Code/Tests/Common/181_QueryHashAnalysis_Collation_Runtime_Contract.sql"
 
 
+def trusted_handover_source(relative: str, source: str, tail: str) -> bool:
+    """Only the local trust decision requires committed metadata, never NOLOCK."""
+    return (
+        relative.replace("\\", "/") == "Code/10_SSIS/040_USP_SsisPackageModelAnalysis.sql"
+        and source.casefold() == "[sys].[extended_properties]"
+        and re.match(r"^\s+WITH\s*\(\s*READCOMMITTEDLOCK\s*\)", tail, re.IGNORECASE) is not None
+    )
+
+
+def metadata_source_allowed(relative: str, source: str, tail: str) -> bool:
+    normalized = source.replace("[", "").replace("]", "").casefold()
+    protected = (relative.replace("\\", "/") == "Code/10_SSIS/040_USP_SsisPackageModelAnalysis.sql"
+                 and normalized.split(".")[-2:] == ["sys", "extended_properties"])
+    if protected:
+        return trusted_handover_source(relative, source, tail)
+    return re.match(r"^\s*\(", tail) is not None or NOLOCK_AFTER_SOURCE.match(tail) is not None
+
+
 def without_comments(text: str) -> str:
     tokens = re.compile(r"N?'(?:''|[^'])*'|--[^\r\n]*|/\*.*?\*/", re.DOTALL)
     return tokens.sub(
@@ -102,6 +120,23 @@ def controlled_collision(name: str, owners: list[str], fixture_valid: bool) -> b
 
 
 def self_test() -> None:
+    path = "Code/10_SSIS/040_USP_SsisPackageModelAnalysis.sql"
+    assert trusted_handover_source(path, "[sys].[extended_properties]", " WITH (READCOMMITTEDLOCK)")
+    assert not trusted_handover_source("Code/Other.sql", "[sys].[extended_properties]", " WITH (READCOMMITTEDLOCK)")
+    assert not trusted_handover_source(path, "[sys].[objects]", " WITH (READCOMMITTEDLOCK)")
+    assert not trusted_handover_source(path, "[sys].[extended_properties]", " WITH (READUNCOMMITTED)")
+    assert not trusted_handover_source(path, "[sys].[extended_properties]", " WITH (READCOMMITTEDLOCK, NOLOCK)")
+    assert not trusted_handover_source(path, "[sys].[extended_properties]", "")
+    assert metadata_source_allowed(path, "[sys].[extended_properties]", " WITH (READCOMMITTEDLOCK)")
+    assert not metadata_source_allowed(path, "[sys].[extended_properties]", " WITH (NOLOCK)")
+    assert not metadata_source_allowed(path, "[sys].[extended_properties]", " (NOLOCK)")
+    assert not metadata_source_allowed(path, "sys.extended_properties", " WITH (NOLOCK)")
+    assert not metadata_source_allowed(path, "[Other].[sys].[extended_properties]", " WITH (NOLOCK)")
+    assert not metadata_source_allowed(path, "[sys].[extended_properties]", " WITH (READCOMMITTEDLOCK, NOLOCK)")
+    assert metadata_source_allowed("Code/Other.sql", "[sys].[extended_properties]", " WITH (NOLOCK)")
+    assert not metadata_source_allowed("Code/Other.sql", "[sys].[extended_properties]", " WITH (READCOMMITTEDLOCK)")
+    assert metadata_source_allowed(path, "[sys].[objects]", " WITH (NOLOCK)")
+    assert metadata_source_allowed(path, "[sys].[SomeFunction]", " (1)")
     source = (ROOT / SNAPSHOT_FIXTURE).read_text(encoding="utf-8-sig")
     assert not controlled_fixture_errors(source)
     guard = "IF OBJECT_ID(N'tempdb..#PlanCacheAnalysis_QueryStatsSnapshot') IS NOT NULL\n    THROW 58301,N'QUERY_HASH_FOREIGN_SNAPSHOT',1;"
@@ -246,9 +281,7 @@ for path in sorted(CODE.rglob("*.sql")):
             continue
         seen_offsets.add(match.start())
         tail = text[match.end() : match.end() + 180]
-        if re.match(r"^\s*\(", tail):
-            continue
-        if not NOLOCK_AFTER_SOURCE.match(tail):
+        if not metadata_source_allowed(relative.as_posix(), match.group("source"), tail):
             errors.append(
                 f"{relative}:{line_number(text, match.start())}: "
                 f"Systemquelle {match.group('source')} ohne direktes WITH (NOLOCK)"

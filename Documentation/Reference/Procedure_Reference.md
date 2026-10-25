@@ -2719,4 +2719,5 @@ Quelle: `Code/10_SSIS/040_USP_SsisPackageModelAnalysis.sql`
     , @ErrorMessageOut nvarchar(2048) = NULL OUTPUT
     , @IncludePackageViews bit = 0
     , @IncludeObjectRules bit = 0
+    , @LocalHandoverId uniqueidentifier = NULL
 ```

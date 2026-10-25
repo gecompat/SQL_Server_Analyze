@@ -20,9 +20,8 @@ bindet sie gemeinsam mit ihren nativen Hilfsobjekten ein.
 ## Nicht beantwortete Fragen
 
 Ein formal gültiges Modell beweist weder Paketerfolg noch Datenqualität oder
-richtige Ableitung durch den angegebenen Producer. Producerangaben bleiben
-`UNVERIFIED`. Der erste Importer bietet keinen Schalter, mit dem der Caller sich
-selbst als vertrauenswürdigen Producer deklarieren kann. Laufzeitkorrelation,
+richtige Ableitung durch den angegebenen Producer. Producerangaben bleiben ohne kontrollierte lokale Übergabe `UNVERIFIED`.
+Ein Caller kann sich nicht durch ein Trust-Flag im JSON selbst qualifizieren. Laufzeitkorrelation,
 Expressionauswertung und eine transitive Lineageberechnung gehören nicht zum Import.
 
 ## Sicherer Einstieg
@@ -219,6 +218,71 @@ gegen dieselben Objekt- und Kanten-Erwartungen.
 Weitere fachliche Regeln können die validierten typisierten Metadaten nutzen,
 sofern ihre Feature- und Evidenzvoraussetzungen erfüllt sind. Vertiefte
 Parser- und Lineagelogik bleibt im kanonischen Toolbelt-Kern.
+
+## Kontrollierte lokale Übergabe
+
+`@LocalHandoverId` ist optional und benötigt zugleich `@PackageBytes`.
+Ohne ID wird kein Übergabebeleg gelesen. Mit ID prüft Analyze die an dieser
+Procedure gespeicherte Extended Property `SSIS_HANDOVER_<uuid-in-kleinschreibung>`.
+Nur Besitzer, berechtigte DDL-Administratoren oder Principals mit ALTER/CONTROL
+auf der Procedure dürfen diese Metadaten schreiben. Diese Principals bilden
+zusammen mit dem lokalen Account, Adapter und der qualifizierten .NET-Runtime
+die Vertrauenswurzel. Analyze erteilt keine zusätzlichen Berechtigungen.
+
+Der [lokale Zulieferadapter](../../../Code/Tools/Invoke-SsisQualifiedHandover.ps1)
+benötigt eine bereits offene Verbindung zur ausdrücklich gewählten Analyze-
+Datenbank sowie unabhängig freigegebene SHA-256- und Source-Commit-Werte des
+Toolbelt-Exporthosts. Die Freigabewerte dürfen nicht erst aus dem ungeprüften
+Kandidaten als eigene Freigabe abgeleitet werden. Der Adapter prüft vorhandenes
+ALTER-Recht, liest begrenzte private Snapshots von DLL und Paket, vergleicht den
+Buildhash und führt genau diesen Hostsnapshot mit einer eigenen .NET-10-
+Runtimekonfiguration aus. Der Snapshotordner besitzt vor dem Schreiben ausschließlich Accountzugriff
+(unter Unix Modus 0700); Größenprüfungen begrenzen bereits jeden Kopierschritt.
+Auch nach fehlgeschlagenem Prozessstart wird der eigene Ordner bereinigt.
+Der Adapter kopiert keine fremden Abhängigkeiten und entfernt
+DOTNET-/CoreCLR-Konfigurationsvariablen aus der Kindprozessumgebung.
+
+```powershell
+$handover = & ./Code/Tools/Invoke-SsisQualifiedHandover.ps1 `
+    -ProducerAssemblyPath $qualifiedProducerAssembly `
+    -ExpectedBuildSha256 $approvedBuildSha256 `
+    -ExpectedSourceCommit $approvedSourceCommit `
+    -PackagePath $packagePath -Connection $openAnalyzeConnection
+```
+
+Der Adapter kontrolliert die vom tatsächlichen Host gemeldete Build-/Commit-
+Identität. Analyze validiert das Ergebnis und die Paketbytes bereits vor der
+Registrierung. Der separat berechtigte Metadatenzugriff speichert ausschließlich
+Digests, Länge, Methode und SQL-Server-Zeitstempel; er speichert keine Pakete,
+Modelle, Dateipfade, Konten oder Verbindungsdaten. Der Adapter liefert Modell,
+Originalbytes und Übergabe-ID an den Caller zurück. Private temporäre Snapshots
+werden anschließend entfernt. Es findet keine Paket- oder Paket-SQL-Ausführung
+statt; ausgeführt wird ausschließlich der ausdrücklich qualifizierte Exporthost.
+
+Die spätere Analyse vergleicht den SHA-256 über die exakten UTF-16LE-Bytes des
+übergebenen JSON-Strings sowie Paketdigest, Byteanzahl, Buildhash und Commit.
+Schon eine Neuserialisierung benötigt einen neuen Beleg. `issuedUtc` und
+`expiresUtc` begrenzen die Gültigkeit auf die gewählte Dauer von einer bis
+höchstens 24 Stunden. Der Beleg ist ein geschlossener lokaler Vertrag
+`ssis-local-handover`, Version `1.0.0`, Methode `QUALIFIED_HOST_SNAPSHOT`.
+Er ist keine Fernsignatur und kein Nachweis richtiger Parsersemantik.
+
+Nur bei erfolgreicher Gesamtprüfung wird `ProducerTrust=VERIFIED_LOCAL`
+ausgegeben und an objektbezogene Hinweise weitergereicht. Diese bleiben
+statische importierte Aussagen. Unbekannte, abgelaufene oder widersprüchliche
+Belege ergeben `EXCHANGE_HANDOVER_INVALID` und atomar leere fachliche Gruppen.
+Ein falscher Paketbytehash wird bereits als `EXCHANGE_SOURCE_MISMATCH` abgewiesen.
+Für den Vertrauenszugriff gilt ein fest begrenzter Metadatenzugriff mit
+`READCOMMITTEDLOCK` und dem bestehenden Lock-Timeout; ein uncommittierter Beleg
+wird nicht über NOLOCK als vertrauenswürdig übernommen.
+
+Der verantwortliche Administrator kann einen Beleg durch Entfernen seiner
+Extended Property widerrufen. Abgelaufene Eigenschaften werden ignoriert,
+aber nicht automatisch gelöscht. CREATE OR ALTER erhält die Eigenschaften;
+ein Drop/Recreate oder ein Datenbankwechsel überträgt ihre Vertrauenswirkung
+nicht automatisch. Ein anderes Datenbank- oder Laufzeitziel benötigt seine
+separat kontrollierte Übergabe. Der eigenständige Pfad ohne ID und ohne SQL CLR
+bleibt verfügbar.
 
 ## Objektbezogene Regeln
 

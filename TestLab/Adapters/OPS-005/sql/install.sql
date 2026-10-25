@@ -65118,12 +65118,12 @@ GO
 
 -- BEGIN SOURCE: Code/10_SSIS/040_USP_SsisPackageModelAnalysis.sql
 /*
-Objekt: monitor.USP_SsisPackageModelAnalysis; Version 1.2.0; Stand 2026-10-25.
+Objekt: monitor.USP_SsisPackageModelAnalysis; Version 1.3.0; Stand 2026-10-25.
 Zweck: Validiert ein optional zugeliefertes neutrales SSIS-Modell ohne CLR.
 Quelle: Ausschließlich Caller-JSON und optionale Originalbytes; kein Paket-SQL.
 Vertrag: SSIS_Analyze_Toolbelt_Exchange_Contract.md; Schema aus Toolbelt.
 Grenzen: 16 MiB JSON/Bytes, 32 JSON-Ebenen, 20000 Knoten, 50000 Kanten;
-         kooperatives Zeitbudget. Producerangaben bleiben UNVERIFIED.
+         kooperatives Zeitbudget. Producerangaben ohne qualifizierte lokale Übergabe bleiben UNVERIFIED.
 Seiteneffekte: Eigene lokale Temp-Tabellen und explizite TABLE-Ausgabeziele.
 Die BIN2-Vergleiche gelten nur für den ordinalen Austauschvertrag; native
 Resultsets behalten die explizite Frameworkcollation.
@@ -65146,6 +65146,7 @@ CREATE OR ALTER PROCEDURE [monitor].[USP_SsisPackageModelAnalysis]
     , @ErrorMessageOut nvarchar(2048) = NULL OUTPUT
     , @IncludePackageViews bit = 0
     , @IncludeObjectRules bit = 0
+    , @LocalHandoverId uniqueidentifier = NULL
 AS
 BEGIN
     SET NOCOUNT ON;
@@ -65153,10 +65154,11 @@ BEGIN
     IF @Hilfe=1
     BEGIN
         PRINT N'monitor.USP_SsisPackageModelAnalysis: natives SSIS-Modell 1.0.0; kein CLR, Toolbelt- oder Dateizugriff.';
-        PRINT N'@PackageModelJson erforderlich; @PackageBytes optional zum unabhängigen Bytevergleich. ProducerTrust bleibt UNVERIFIED.';
+        PRINT N'@PackageModelJson erforderlich; @PackageBytes optional zum unabhängigen Bytevergleich. ProducerTrust ist ohne @LocalHandoverId UNVERIFIED.';
         PRINT N'CONSOLE|RAW|TABLE|NONE; JSON über OUTPUT. TABLE-Namen: moduleStatus|sourceBinding|nodes|edges|coverage|findings|sourceStatus|warnings.';
         PRINT N'@IncludePackageViews=1 ergänzt packageOverview|executables|dataFlows|components|columnRelations. Die fünf Sichten zeigen ausschließlich gelieferte Beziehungen.';
         PRINT N'@IncludeObjectRules=1 ergänzt objectFindings mit konkreten Knoten-/Kantenbelegen; statische Hinweise, keine Laufzeiturteile.';
+        PRINT N'@LocalHandoverId prüft eine separat berechtigt registrierte lokale Übergabe; benötigt dieselben @PackageBytes. Kein Trust-Flag im Caller-JSON.';
         RETURN;
     END;
     IF XACT_STATE()=-1 THROW 50000,N'EXCHANGE_INVALID: Callertransaktion ist nicht schreibfähig.',1;
@@ -65167,7 +65169,7 @@ BEGIN
     DECLARE @ConsoleResultRequested bit=CASE WHEN @Mode='CONSOLE' THEN 1 ELSE 0 END;
     DECLARE @Limit bigint=CASE WHEN @MaxZeilen IS NULL OR @MaxZeilen=0 THEN 9223372036854775807 ELSE @MaxZeilen END;
     DECLARE @ProfileSupported bit=1,@SchemaVersion int=1;
-    DECLARE @ValidationStage varchar(24)='PARAMETERS';
+    DECLARE @ValidationStage varchar(24)='PARAMETERS',@ProducerTrust varchar(24)='UNVERIFIED';
     DECLARE @AllowedResultNames nvarchar(max)=N'moduleStatus|sourceBinding|nodes|edges|coverage|findings|sourceStatus|warnings'
         +CASE WHEN @IncludePackageViews=1 THEN N'|packageOverview|executables|dataFlows|components|columnRelations' ELSE N'' END
         +CASE WHEN @IncludeObjectRules=1 THEN N'|objectFindings' ELSE N'' END;
@@ -65449,9 +65451,37 @@ BEGIN
             JOIN #SsisPackageModelAnalysis_Tokens AS [p] ON [p].[TokenId]=[c].[ParentId] WHERE [p].[Role]='SOURCE' AND [c].[Name]='byteLength');
         IF @PackageBytes IS NOT NULL AND (DATALENGTH(@PackageBytes)<>@DeclaredLength OR CONVERT(varchar(64),HASHBYTES('SHA2_256',@PackageBytes),2) COLLATE Latin1_General_100_BIN2<>UPPER(@PackageHash) COLLATE Latin1_General_100_BIN2)
             THROW 50000,N'EXCHANGE_SOURCE_MISMATCH',1;
-        INSERT #SsisPackageModelAnalysis_Binding VALUES(@PackageHash,@DeclaredLength,CASE WHEN @PackageBytes IS NULL THEN 'DECLARED_ONLY' ELSE 'PACKAGE_BYTES_MATCH' END,'UNVERIFIED',
+        IF @LocalHandoverId IS NOT NULL
+        BEGIN
+            SET @ValidationStage='LOCAL_HANDOVER';
+            DECLARE @Receipt nvarchar(3750),@ReceiptName sysname=N'SSIS_HANDOVER_'+LOWER(CONVERT(nvarchar(36),@LocalHandoverId));
+            SELECT @Receipt=TRY_CONVERT(nvarchar(3750),[value]) FROM [sys].[extended_properties] WITH (READCOMMITTEDLOCK)
+            WHERE [class]=1 AND [major_id]=@@PROCID AND [minor_id]=0 AND [name] COLLATE Latin1_General_100_BIN2=@ReceiptName COLLATE Latin1_General_100_BIN2;
+            IF @PackageBytes IS NULL OR @Receipt IS NULL OR ISJSON(@Receipt)<>1 THROW 50000,N'EXCHANGE_HANDOVER_INVALID',1;
+            CREATE TABLE #SsisPackageModelAnalysis_HandoverFields([FieldName] nvarchar(4000) COLLATE Latin1_General_100_BIN2 NOT NULL,[FieldValue] nvarchar(max) COLLATE Latin1_General_100_BIN2 NULL,[JsonType] int NOT NULL);
+            INSERT #SsisPackageModelAnalysis_HandoverFields SELECT [key],[value],[type] FROM OPENJSON(@Receipt);
+            IF (SELECT COUNT(*) FROM #SsisPackageModelAnalysis_HandoverFields)<>10 OR
+                EXISTS(SELECT [FieldName] FROM #SsisPackageModelAnalysis_HandoverFields GROUP BY [FieldName] HAVING COUNT(*)<>1) OR
+                EXISTS(SELECT 1 FROM #SsisPackageModelAnalysis_HandoverFields WHERE NOT EXISTS(SELECT 1 FROM (VALUES(N'contract'),(N'version'),(N'method'),(N'modelSha256'),(N'packageSha256'),(N'byteLength'),(N'buildSha256'),(N'sourceCommit'),(N'issuedUtc'),(N'expiresUtc')) AS [allowed]([FieldName])
+                        WHERE [allowed].[FieldName] COLLATE Latin1_General_100_BIN2=#SsisPackageModelAnalysis_HandoverFields.[FieldName] AND DATALENGTH([allowed].[FieldName])=DATALENGTH(#SsisPackageModelAnalysis_HandoverFields.[FieldName])) OR
+                    [JsonType]<>CASE WHEN [FieldName]='byteLength' THEN 2 ELSE 1 END OR [FieldValue] IS NULL)
+                THROW 50000,N'EXCHANGE_HANDOVER_INVALID',1;
+            DECLARE @Issued datetime2(3)=TRY_CONVERT(datetime2(3),JSON_VALUE(@Receipt,'$.issuedUtc'),127),@Expires datetime2(3)=TRY_CONVERT(datetime2(3),JSON_VALUE(@Receipt,'$.expiresUtc'),127);
+            IF JSON_VALUE(@Receipt,'$.contract') COLLATE Latin1_General_100_BIN2<>'ssis-local-handover' OR DATALENGTH(JSON_VALUE(@Receipt,'$.contract'))<>38
+                OR JSON_VALUE(@Receipt,'$.version') COLLATE Latin1_General_100_BIN2<>'1.0.0' OR DATALENGTH(JSON_VALUE(@Receipt,'$.version'))<>10
+                OR JSON_VALUE(@Receipt,'$.method') COLLATE Latin1_General_100_BIN2<>'QUALIFIED_HOST_SNAPSHOT' OR DATALENGTH(JSON_VALUE(@Receipt,'$.method'))<>46
+                OR @Issued IS NULL OR @Expires IS NULL OR @Issued>@Started OR @Expires<=@Started OR @Expires>DATEADD(hour,24,@Issued)
+                OR DATALENGTH(JSON_VALUE(@Receipt,'$.modelSha256'))<>128 OR UPPER(JSON_VALUE(@Receipt,'$.modelSha256')) COLLATE Latin1_General_100_BIN2<>CONVERT(varchar(64),HASHBYTES('SHA2_256',CONVERT(varbinary(max),@PackageModelJson)),2) COLLATE Latin1_General_100_BIN2
+                OR DATALENGTH(JSON_VALUE(@Receipt,'$.packageSha256'))<>128 OR UPPER(JSON_VALUE(@Receipt,'$.packageSha256')) COLLATE Latin1_General_100_BIN2<>UPPER(@PackageHash) COLLATE Latin1_General_100_BIN2
+                OR TRY_CONVERT(int,JSON_VALUE(@Receipt,'$.byteLength')) IS NULL OR TRY_CONVERT(int,JSON_VALUE(@Receipt,'$.byteLength'))<>@DeclaredLength
+                OR DATALENGTH(JSON_VALUE(@Receipt,'$.buildSha256'))<>128 OR UPPER(JSON_VALUE(@Receipt,'$.buildSha256')) COLLATE Latin1_General_100_BIN2<>UPPER(JSON_VALUE(@PackageModelJson,'$.producer.buildSha256')) COLLATE Latin1_General_100_BIN2
+                OR DATALENGTH(JSON_VALUE(@Receipt,'$.sourceCommit'))<>80 OR UPPER(JSON_VALUE(@Receipt,'$.sourceCommit')) COLLATE Latin1_General_100_BIN2<>UPPER(JSON_VALUE(@PackageModelJson,'$.producer.sourceCommit')) COLLATE Latin1_General_100_BIN2
+                THROW 50000,N'EXCHANGE_HANDOVER_INVALID',1;
+            SET @ProducerTrust='VERIFIED_LOCAL';
+        END;
+        INSERT #SsisPackageModelAnalysis_Binding VALUES(@PackageHash,@DeclaredLength,CASE WHEN @PackageBytes IS NULL THEN 'DECLARED_ONLY' ELSE 'PACKAGE_BYTES_MATCH' END,@ProducerTrust,
             JSON_VALUE(@PackageModelJson,'$.producer.version'),JSON_VALUE(@PackageModelJson,'$.producer.sourceCommit'),JSON_VALUE(@PackageModelJson,'$.producer.buildSha256'));
-        INSERT #SsisPackageModelAnalysis_Findings VALUES('SSIS_MODEL_UNVERIFIED_PRODUCER','INFO','IMPORTED_STATIC',NULL,N'Das Modell enthält statische Producerbehauptungen; die angegebenen Digests authentifizieren den Erzeuger nicht.');
+        IF @ProducerTrust='UNVERIFIED' INSERT #SsisPackageModelAnalysis_Findings VALUES('SSIS_MODEL_UNVERIFIED_PRODUCER','INFO','IMPORTED_STATIC',NULL,N'Das Modell enthält statische Producerbehauptungen; die angegebenen Digests authentifizieren den Erzeuger nicht.');
         INSERT #SsisPackageModelAnalysis_Findings
         SELECT 'SSIS_MODEL_COVERAGE_LIMITED','INFO','IMPORTED_STATIC',[Feature],N'Die berichtete Abdeckung oder das unterstützte Profil reicht für eine uneingeschränkte Auswertung dieses Features nicht aus.'
         FROM #SsisPackageModelAnalysis_Coverage WHERE [ReportedStatus]<>'COMPLETE' OR [IsProfileSupported]=0;
@@ -65560,7 +65590,7 @@ BEGIN
                 (SELECT COUNT(*) FROM #SsisPackageModelAnalysis_Edges WHERE [EdgeKind]='PIPELINE_PATH'),(SELECT COUNT(*) FROM #SsisPackageModelAnalysis_ColumnRelations),
                 (SELECT COUNT(*) FROM #SsisPackageModelAnalysis_Edges WHERE [Resolution]='UNRESOLVED'),
                 (SELECT COUNT(*) FROM #SsisPackageModelAnalysis_Coverage WHERE [ReportedStatus]<>'COMPLETE' OR [IsProfileSupported]=0),
-                (SELECT COUNT(*) FROM #SsisPackageModelAnalysis_Nodes),(SELECT COUNT(*) FROM #SsisPackageModelAnalysis_Edges),'UNVERIFIED'
+                (SELECT COUNT(*) FROM #SsisPackageModelAnalysis_Nodes),(SELECT COUNT(*) FROM #SsisPackageModelAnalysis_Edges),@ProducerTrust
             FROM #SsisPackageModelAnalysis_Nodes AS [n] WHERE [n].[NodeKind]='PACKAGE';
         END;
         IF SYSUTCDATETIME()>=@Deadline THROW 50000,N'EXCHANGE_TIME_BUDGET_EXHAUSTED',1;
@@ -65569,7 +65599,7 @@ BEGIN
         SET @Error=ERROR_NUMBER();
         SET @Message=CASE WHEN ERROR_NUMBER()=50000 THEN ERROR_MESSAGE() ELSE N'Native Modellvalidierung fehlgeschlagen; Fehlernummer '+CONVERT(nvarchar(12),ERROR_NUMBER())+N'.' END;
         SET @Message+=N' Stage='+@ValidationStage;
-        SET @Status=CASE WHEN ERROR_NUMBER()=50000 AND ERROR_MESSAGE() IN ('INVALID_PARAMETER','EXCHANGE_INVALID','EXCHANGE_VERSION_UNSUPPORTED','EXCHANGE_LIMIT_EXCEEDED','EXCHANGE_REFERENCE_INVALID','EXCHANGE_PROFILE_UNSUPPORTED','EXCHANGE_SOURCE_MISMATCH','EXCHANGE_TIME_BUDGET_EXHAUSTED') THEN ERROR_MESSAGE() ELSE 'EXCHANGE_INVALID' END;
+        SET @Status=CASE WHEN ERROR_NUMBER()=50000 AND ERROR_MESSAGE() IN ('INVALID_PARAMETER','EXCHANGE_INVALID','EXCHANGE_VERSION_UNSUPPORTED','EXCHANGE_LIMIT_EXCEEDED','EXCHANGE_REFERENCE_INVALID','EXCHANGE_PROFILE_UNSUPPORTED','EXCHANGE_SOURCE_MISMATCH','EXCHANGE_HANDOVER_INVALID','EXCHANGE_TIME_BUDGET_EXHAUSTED') THEN ERROR_MESSAGE() ELSE 'EXCHANGE_INVALID' END;
         DELETE #SsisPackageModelAnalysis_Binding; DELETE #SsisPackageModelAnalysis_Nodes; DELETE #SsisPackageModelAnalysis_Edges; DELETE #SsisPackageModelAnalysis_Coverage; DELETE #SsisPackageModelAnalysis_Findings; DELETE #SsisPackageModelAnalysis_Warnings;
         DELETE #SsisPackageModelAnalysis_ObjectFindings; DELETE #SsisPackageModelAnalysis_PackageOverview; DELETE #SsisPackageModelAnalysis_Executables; DELETE #SsisPackageModelAnalysis_DataFlows; DELETE #SsisPackageModelAnalysis_Components; DELETE #SsisPackageModelAnalysis_ColumnRelations;
     END CATCH;
@@ -65577,7 +65607,7 @@ BEGIN
     IF @Status='AVAILABLE_LIMITED' AND (EXISTS(SELECT 1 FROM #SsisPackageModelAnalysis_Nodes WHERE [NodeOrdinal]>@Limit) OR EXISTS(SELECT 1 FROM #SsisPackageModelAnalysis_Edges WHERE [EdgeOrdinal]>@Limit) OR (SELECT COUNT_BIG(*) FROM #SsisPackageModelAnalysis_ObjectFindings)>@Limit)
         INSERT #SsisPackageModelAnalysis_Warnings VALUES('RESULT_TRUNCATED','INFO',N'Nur die Ausgabe ist begrenzt; die Validierung verwendete den vollständigen Graphen.');
     INSERT #SsisPackageModelAnalysis_ModuleStatus VALUES('USP_SsisPackageModelAnalysis',@Started,@SchemaVersion,@Status,@Partial,(SELECT COUNT(*) FROM #SsisPackageModelAnalysis_Nodes),(SELECT COUNT(*) FROM #SsisPackageModelAnalysis_Edges),@Error,@Message);
-    INSERT #SsisPackageModelAnalysis_SourceStatus VALUES(N'Caller SSIS-Modell',@Status,@Partial,(SELECT COUNT_BIG(*) FROM #SsisPackageModelAnalysis_Nodes),N'Native Strukturprüfung; ProducerTrust bleibt UNVERIFIED. Keine Paket- oder SQL-Ausführung.');
+    INSERT #SsisPackageModelAnalysis_SourceStatus VALUES(N'Caller SSIS-Modell',@Status,@Partial,(SELECT COUNT_BIG(*) FROM #SsisPackageModelAnalysis_Nodes),N'Native Strukturprüfung; ProducerTrust='+CONVERT(nvarchar(24),CASE WHEN @Status='AVAILABLE_LIMITED' THEN @ProducerTrust ELSE 'UNVERIFIED' END)+N'. Keine Paket- oder SQL-Ausführung.');
     SELECT @StatusCodeOut=@Status,@IsPartialOut=@Partial,@ErrorNumberOut=@Error,@ErrorMessageOut=@Message;
     IF @JsonErzeugen=1
     BEGIN
