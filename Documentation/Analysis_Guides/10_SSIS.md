@@ -62,3 +62,9 @@ beobachteten Paketinstanzen. Er trennt Paketidentitäten und Handlerbelege;
 mehrdeutige Pfade und unbekannte Auslöser bleiben ausdrücklich unbewiesen.
 Die sieben eigenen Ergebnisgruppen ersetzen in diesem Opt-in die bisherigen
 Einzelmodellausgaben. Analyze bleibt ohne SQL CLR eigenständig nutzbar.
+
+Die zusätzliche [Dataflow-Korrelation](Procedures/USP_SsisPackageModelAnalysis.md#optionale-dataflow-ausführungskorrelation)
+ordnet Komponentenphasen und Pfadtransfers erst nach eindeutiger Bindung einer
+Statistikinstanz zu. Sie erhält Einzelintervalle und Transferzähler samt
+Logginggrenzen. Komponenten-, Port- und Kantenreferenzen stammen aus dem
+Toolbelt; Analyze berechnet keine zusätzliche Lineage.

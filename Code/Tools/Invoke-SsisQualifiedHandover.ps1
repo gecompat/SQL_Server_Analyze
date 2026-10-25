@@ -12,10 +12,12 @@ param(
     [switch]$IncludeObjectIdentities,
     [switch]$IncludeIterationCorrelation,
     [switch]$IncludeExecutionScopes,
+    [switch]$IncludePipelineCorrelation,
     [switch]$PrepareOnly
 )
 Set-StrictMode -Version Latest
 $ErrorActionPreference='Stop'
+if($IncludePipelineCorrelation -and -not $IncludeExecutionScopes){throw 'SSIS_PIPELINE_SCOPES_REQUIRED'}
 if(($IncludeIterationCorrelation -or $IncludeExecutionScopes) -and -not $IncludeObjectIdentities){throw 'SSIS_ITERATION_IDENTITIES_REQUIRED'}
 # Vertrauenswurzel: qualifizierter Build, Runtime, lokaler Account und ALTER-Recht
 # auf der Zielprocedure. Der Adapter liest keine Paket-Connection-Strings.
@@ -66,7 +68,7 @@ try {
     $info=[Diagnostics.ProcessStartInfo]::new();$info.FileName=$DotnetPath;$info.UseShellExecute=$false;$info.CreateNoWindow=$true
     $info.RedirectStandardOutput=$true;$info.RedirectStandardError=$true;$info.StandardOutputEncoding=[Text.UTF8Encoding]::new($false,$true)
     foreach($item in @('exec','--runtimeconfig',$runtime,$dll)){[void]$info.ArgumentList.Add($item)}
-    if($IncludeObjectIdentities){[void]$info.ArgumentList.Add($(if($IncludeExecutionScopes){'--scope-bundle'}elseif($IncludeIterationCorrelation){'--iteration-bundle'}else{'--bundle'}))}
+    if($IncludeObjectIdentities){[void]$info.ArgumentList.Add($(if($IncludePipelineCorrelation){'--pipeline-bundle'}elseif($IncludeExecutionScopes){'--scope-bundle'}elseif($IncludeIterationCorrelation){'--iteration-bundle'}else{'--bundle'}))}
     [void]$info.ArgumentList.Add($inputFile)
     foreach($key in @($info.Environment.Keys)){if($key -match '^(DOTNET_|CORECLR_|COR_|COMPlus_)'){[void]$info.Environment.Remove($key)}}
     $process=[Diagnostics.Process]::new();$process.StartInfo=$info;$processStarted=$process.Start();if(-not $processStarted){throw 'SSIS_HANDOVER_PROCESS_NOT_STARTED'}
@@ -74,13 +76,14 @@ try {
     if(-not $process.WaitForExit($ProducerTimeoutSeconds*1000)){$process.Kill($true);throw 'SSIS_HANDOVER_PRODUCER_TIMEOUT'}
     $model=$output.GetAwaiter().GetResult();[void]$errorOutput.GetAwaiter().GetResult()
     if($process.ExitCode -ne 0 -or [Text.Encoding]::Unicode.GetByteCount($model) -gt 16777216){throw 'SSIS_HANDOVER_PRODUCER_FAILED'}
-    $identities=$null
+    $identities=$null;$pipelineIdentities=$null
     if($IncludeObjectIdentities) {
         $bundle=[Text.Json.JsonDocument]::Parse($model)
         try {
             if($bundle.RootElement.GetProperty('contract').GetString() -cne 'ssis-export-bundle' -or $bundle.RootElement.GetProperty('version').GetString() -cne '1.0.0'){throw 'SSIS_HANDOVER_BUNDLE_UNSUPPORTED'}
             $model=$bundle.RootElement.GetProperty('model').GetRawText()
             $identities=$bundle.RootElement.GetProperty('identities').GetRawText()
+            if($IncludePipelineCorrelation){$pipelineIdentities=$bundle.RootElement.GetProperty('pipelineIdentities').GetRawText()}
         } finally {$bundle.Dispose()}
     }
     $parsed=$model|ConvertFrom-Json -Depth 32
@@ -91,7 +94,9 @@ try {
         $registration=Register-SsisHandover -Connection $Connection -ModelJson $model -PackageBytes $bytes -ValidHours $ValidHours
         $id=$registration.LocalHandoverId
     }
-    [pscustomobject]@{LocalHandoverId=$id;PackageModelJson=$model;PackageBytes=[byte[]]$bytes;ProducerBuildSha256=$hash;ObjectIdentitiesJson=$identities}
+    $result=[pscustomobject]@{LocalHandoverId=$id;PackageModelJson=$model;PackageBytes=[byte[]]$bytes;ProducerBuildSha256=$hash;ObjectIdentitiesJson=$identities}
+    if($IncludePipelineCorrelation){$result|Add-Member -NotePropertyName PipelineIdentitiesJson -NotePropertyValue $pipelineIdentities}
+    $result
 } finally {
     try {
         if($null -ne $process){try {if($processStarted -and -not $process.HasExited){$process.Kill($true)}} finally {$process.Dispose()}}
