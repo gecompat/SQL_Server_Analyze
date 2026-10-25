@@ -9,10 +9,12 @@ param(
     [ValidateRange(1,24)][int]$ValidHours=1,
     [string]$DotnetPath='dotnet',
     [switch]$IncludeObjectIdentities,
+    [switch]$IncludeIterationCorrelation,
     [switch]$PrepareOnly
 )
 Set-StrictMode -Version Latest
 $ErrorActionPreference='Stop'
+if($IncludeIterationCorrelation -and -not $IncludeObjectIdentities){throw 'SSIS_ITERATION_IDENTITIES_REQUIRED'}
 # Vertrauenswurzel: qualifizierter Build, Runtime, lokaler Account und ALTER-Recht
 # auf der Zielprocedure. Der Adapter liest keine Paket-Connection-Strings.
 if($Connection.State -ne 'Open' -or $Connection.Database -eq 'master' -or $Connection.Database -eq 'tempdb') {throw 'SSIS_HANDOVER_EXPLICIT_OPEN_DATABASE_REQUIRED'}
@@ -62,7 +64,7 @@ try {
     $info=[Diagnostics.ProcessStartInfo]::new();$info.FileName=$DotnetPath;$info.UseShellExecute=$false;$info.CreateNoWindow=$true
     $info.RedirectStandardOutput=$true;$info.RedirectStandardError=$true;$info.StandardOutputEncoding=[Text.UTF8Encoding]::new($false,$true)
     foreach($item in @('exec','--runtimeconfig',$runtime,$dll)){[void]$info.ArgumentList.Add($item)}
-    if($IncludeObjectIdentities){[void]$info.ArgumentList.Add('--bundle')}
+    if($IncludeObjectIdentities){[void]$info.ArgumentList.Add($(if($IncludeIterationCorrelation){'--iteration-bundle'}else{'--bundle'}))}
     [void]$info.ArgumentList.Add($inputFile)
     foreach($key in @($info.Environment.Keys)){if($key -match '^(DOTNET_|CORECLR_|COR_|COMPlus_)'){[void]$info.Environment.Remove($key)}}
     $process=[Diagnostics.Process]::new();$process.StartInfo=$info;$processStarted=$process.Start();if(-not $processStarted){throw 'SSIS_HANDOVER_PROCESS_NOT_STARTED'}

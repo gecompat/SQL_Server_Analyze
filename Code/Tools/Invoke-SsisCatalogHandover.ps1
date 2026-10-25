@@ -9,7 +9,8 @@ param(
     [Parameter(Mandatory)][ValidatePattern('^[0-9a-fA-F]{64}$')][string]$ExpectedBuildSha256,
     [Parameter(Mandatory)][ValidatePattern('^[0-9a-fA-F]{40}$')][string]$ExpectedSourceCommit,
     [ValidateRange(1,24)][int]$ValidHours=1,
-    [string]$DotnetPath='dotnet'
+    [string]$DotnetPath='dotnet',
+    [switch]$IncludeIterationCorrelation
 )
 Set-StrictMode -Version Latest
 $ErrorActionPreference='Stop'
@@ -40,6 +41,10 @@ LEFT JOIN [SSISDB].[catalog].[folders] AS [f] WITH (HOLDLOCK) ON [f].[folder_id]
 JOIN [master].[sys].[databases] AS [d] WITH (NOLOCK) ON [d].[name]=N'SSISDB' AND [d].[state]=0
 WHERE [e].[execution_id]=@ExecutionId;
 '@
+if($IncludeIterationCorrelation) {
+    # Die Konfiguration begründet keine vollständige Logabdeckung. NULL bleibt unbekannt.
+    $metadataSql=$metadataSql.Replace('[e].[status] AS [ExecutionStatus],',"(SELECT TRY_CONVERT(int,[parameter_value]) FROM [SSISDB].[catalog].[execution_parameter_values] WHERE [execution_id]=[e].[execution_id] AND [object_type]=50 AND [parameter_name]=N'LOGGING_LEVEL') AS [LoggingLevel],[e].[status] AS [ExecutionStatus],")
+}
 $observationsSql=@'
 SELECT TOP (50001) CONVERT(varchar(20),[s].[statistics_id]) AS [StatisticsId],CONVERT(varchar(20),[s].[execution_id]) AS [ExecutionId],CONVERT(varchar(20),[s].[executable_id]) AS [ExecutableId],
  [e].[executable_guid] AS [ExecutableGuid],[e].[package_name] AS [PackageName],CASE WHEN DATALENGTH([e].[package_path])<=8000 THEN [e].[package_path] END AS [PackagePath],CASE WHEN DATALENGTH([s].[execution_path])<=8000 THEN [s].[execution_path] END AS [ExecutionPath],
@@ -151,7 +156,7 @@ try {
         $bytes=$package.ToArray()
     } finally {$package.Dispose();$stream.Dispose()}
 } finally {$zip.Dispose();$memory.Dispose()}
-$handover=& (Join-Path $PSScriptRoot 'Invoke-SsisQualifiedHandover.ps1') -ProducerAssemblyPath $ProducerAssemblyPath -ExpectedBuildSha256 $ExpectedBuildSha256 -ExpectedSourceCommit $ExpectedSourceCommit -PackageBytes $bytes -Connection $Connection -ValidHours $ValidHours -DotnetPath $DotnetPath -IncludeObjectIdentities -PrepareOnly
+$handover=& (Join-Path $PSScriptRoot 'Invoke-SsisQualifiedHandover.ps1') -ProducerAssemblyPath $ProducerAssemblyPath -ExpectedBuildSha256 $ExpectedBuildSha256 -ExpectedSourceCommit $ExpectedSourceCommit -PackageBytes $bytes -Connection $Connection -ValidHours $ValidHours -DotnetPath $DotnetPath -IncludeObjectIdentities -PrepareOnly -IncludeIterationCorrelation:$IncludeIterationCorrelation
 $rows=@(foreach($row in $observed.Rows) {
     $nativeGuid=[guid]::Empty;$guidValue=if(-not $row.IsNull('ExecutableGuid') -and [guid]::TryParse([string]$row.ExecutableGuid,[ref]$nativeGuid)){$nativeGuid.ToString('D').ToLowerInvariant()}else{$null}
     [ordered]@{statisticsId=[string]$row.StatisticsId;executionId=[string]$row.ExecutionId;executableId=[string]$row.ExecutableId;executableGuid=$guidValue;
@@ -166,6 +171,10 @@ $snapshot=[ordered]@{contract='ssis-execution-snapshot';version='1.0.0';method='
     execution=[ordered]@{sourceBindingSha256=$sourceBindingSha;executionId=[string]$source.ExecutionId;projectId=[string]$source.ProjectId;projectLsn=[string]$source.ProjectLsn;catalogDatabaseGuid=[string]$source.CatalogDatabaseGuid;packageFileName=[string]$source.PackageFileName;executionCreatedUtc=[string]$source.ExecutionCreatedUtc;
         executionStatus=[int]$after.Rows[0].ExecutionStatus;startTime=$(if($after.Rows[0].IsNull('StartTime')){$null}else{[string]$after.Rows[0].StartTime});endTime=$(if($after.Rows[0].IsNull('EndTime')){$null}else{[string]$after.Rows[0].EndTime});
         snapshotStartedUtc=[string]$source.ReadTimeUtc;snapshotCompletedUtc=[string]$after.Rows[0].ReadTimeUtc};identities=($handover.ObjectIdentitiesJson|ConvertFrom-Json -Depth 32);observations=$rows}
+if($IncludeIterationCorrelation) {
+    $snapshot.version='1.1.0';$snapshot.method='SSISDB_CURRENT_PROJECT_ITERATION_SCOPE_V1'
+    $snapshot.execution.loggingLevel=if($after.Rows[0].IsNull('LoggingLevel')){$null}else{[int]$after.Rows[0].LoggingLevel}
+}
 $snapshotJson=$snapshot|ConvertTo-Json -Depth 32 -Compress
 if([Text.Encoding]::Unicode.GetByteCount($snapshotJson) -gt 16777216){throw 'SSIS_CATALOG_SNAPSHOT_LIMIT'}
 Import-Module (Join-Path $PSScriptRoot 'SsisHandoverSupport.psm1') -Scope Local

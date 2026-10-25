@@ -2726,6 +2726,7 @@ Quelle: `Code/10_SSIS/040_USP_SsisPackageModelAnalysis.sql`
     , @ExecutionId bigint = NULL
     , @ExecutionSnapshotJson nvarchar(max) = NULL
     , @RuntimeHandoverId uniqueidentifier = NULL
+    , @IncludeIterationCorrelation bit = 0
 ```
 
 ## `[monitor].[USP_ServerPrincipalAnalysis]`

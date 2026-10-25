@@ -1,7 +1,7 @@
 # Datenbankprincipals, direkte Rechte und sichtbare Loginbindungen
 
 **Stand:** 25. Oktober 2026.
-**Status:** erster Datenbank-Implementierungskandidat; Produktreview und abschließende native Abnahme offen.
+**Status:** erster Datenbank-Implementierungskandidat; unabhängiger Produktreview abgeschlossen, Head-CI und abschließende native Abnahme offen.
 **Artefakt-UID:** `urn:uuid:01a171d2-85e1-7474-be43-b3173fc4df92`.
 **Registrierung:** `DEFERRED`; keine zusätzliche lesbare Kennung vergeben.
 **Arbeitselement:** weiterer Teil von `WI-0012`; kein zusätzliches Arbeitselement für denselben Principal-Scope.

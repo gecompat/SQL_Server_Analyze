@@ -154,6 +154,43 @@ Nach Abschluss der fünf Wellen beginnt er keine weitere Entwicklung.
 Der auf Benutzerwunsch erhaltene Testbestand erteilt keinen neuen
 Entwicklungsauftrag und wird nicht durch einen Timer entfernt.
 
+## SSIS-Welle 6: iterationsgebundene Ausführungskorrelation
+
+Nach Abschluss der fünf Paketwellen hat der Benutzer diesen zusätzlichen
+begrenzten Umfang ausdrücklich freigegeben. Die vorhandene SSISDB-Umgebung
+wird weiterverwendet; eine zweite Provisionierung und eine Änderung am
+Lab-Produkt gehören nicht zum Auftrag. Ein Implementierer verantwortet die
+zwei gekoppelten Liefer-PRs für Toolbelt und Analyze. Ein unabhängiger Review
+mit einem begrenzten Folgecheck ist abgeschlossen; ein Befund zu exakten
+JSON-Pflichtschlüsseln wurde korrigiert und durch fünf Gegenfälle abgesichert.
+
+Toolbelt PR #420 ergänzt ausschließlich den optionalen Identitätssidecar
+1.1.0 mit zentral klassifizierter Iterationsrolle. Analyze verwendet diese
+Rolle in seinem neuen Opt-in, erhält jede Statistikinstanz und ergänzt
+`executionObjectSummary` sowie `executionCoverage`. Die bisherigen Exporte
+und Standardschemata bleiben erhalten. Parser, Komponentenprofile und Lineage
+werden nicht nach Analyze kopiert. Die
+[Anleitung](../../../Documentation/Analysis_Guides/Procedures/USP_SsisPackageModelAnalysis.md#iterationsgebundene-ausführungskorrelation)
+beschreibt Vorbereitung, Ausgabe und Aussagegrenzen.
+
+Die lokale Abnahme auf Windows SQL2025 bestand getrennt mit Basic und Verbose,
+jeweils 47 Assertions mit drei For- und zwei Foreach-Instanzen, nativer
+Schema-/Ausgabeparität, tatsächlichem Redeployment und nachgewiesener
+Bereinigung eigener Consumerobjekte. Die erfolgreiche Foreach-Fixture nutzt
+zwei konstante XML-Knoten. Frühere Item-Enumerator-Fixtures bleiben bereinigte
+Fehlversuche und sind kein Nachweis einer allgemeinen Enumeratorqualifikation.
+Der native Testbestand und seine privaten Belege bleiben außerhalb von Git.
+Der SQL-Empfänger bestand den bisherigen Capturevertrag und 30 neue
+synthetische Iterationsfälle. Toolbelt bestand 97 gemeinsame Kernorakel,
+Framework Full21 und die inkrementelle Konsistenzprüfung mit 46 gekoppelten
+Tests. Das versionierte Adapterinstallationsskript wird aus den kanonischen
+Quellen mitgeführt. Required Checks am aktuellen PR-Head und die erforderlichen
+Main-Gates bleiben Voraussetzung des regulären automatischen Mergewegs.
+
+Die SSISDB-Umgebung bleibt ausdrücklich erhalten. Neue Entwicklung beginnt
+nur mit einem weiteren konkreten Auftrag; Kindpaket-/Ereignishandlerbindung,
+vertiefte Lineage und allgemeine Laufvergleiche sind hier nicht freigegeben.
+
 ## Separater Auftrag: STAT-DOMINANT-Fehlerdiagnose (54901)
 
 ### Abgeschlossen: Diagnose aus PR #424

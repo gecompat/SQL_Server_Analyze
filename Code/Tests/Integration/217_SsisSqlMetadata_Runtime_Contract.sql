@@ -12,8 +12,11 @@ DECLARE @TableCreated bit=0,@UserCreated bit=0,@Bindings nvarchar(max),@Changed 
 IF OBJECT_ID(N'monitor.SyntheticSsisSqlTarget') IS NOT NULL OR USER_ID(N'SyntheticSsisSqlReader') IS NOT NULL THROW 57700,N'SSIS_METADATA_TEST_RESOURCE_COLLISION',1;
 BEGIN TRY
     CREATE TABLE monitor.SyntheticSsisSqlTarget(SyntheticA int NOT NULL,SyntheticB nvarchar(20) NULL);SET @TableCreated=1;
-    CREATE UNIQUE INDEX SyntheticCompositeKey ON monitor.SyntheticSsisSqlTarget(SyntheticA,SyntheticB);
-    CREATE UNIQUE INDEX SyntheticFilteredKey ON monitor.SyntheticSsisSqlTarget(SyntheticA) WHERE SyntheticB IS NOT NULL;
+    -- Index-DDL benötigt QUOTED_IDENTIFIER ON. Der eigene dynamische Scope
+    -- erhält den Callerzustand auch bei isolierten sqlcmd-Impact-Läufen mit OFF.
+    EXEC sys.sp_executesql N'SET QUOTED_IDENTIFIER ON;
+        CREATE UNIQUE INDEX SyntheticCompositeKey ON monitor.SyntheticSsisSqlTarget(SyntheticA,SyntheticB);
+        CREATE UNIQUE INDEX SyntheticFilteredKey ON monitor.SyntheticSsisSqlTarget(SyntheticA) WHERE SyntheticB IS NOT NULL;';
     SET @Bindings=(SELECT 'ssis-sql-metadata-bindings' AS [contract],'1.0.0' AS [version],JSON_VALUE(@Model,'$.source.packageSha256') AS [packageSha256],
         JSON_QUERY((SELECT [b].[bindingId],[b].[nodeId],@Db AS [databaseName],'monitor' AS [schemaName],'SyntheticSsisSqlTarget' AS [objectName],[b].[columnName],'keyAB' AS [keySetId]
         FROM(VALUES('bindingA','col1','SyntheticA'),('bindingB','col2','SyntheticB')) AS [b]([bindingId],[nodeId],[columnName]) FOR JSON PATH,INCLUDE_NULL_VALUES)) AS [bindings] FOR JSON PATH,WITHOUT_ARRAY_WRAPPER);
@@ -33,8 +36,10 @@ BEGIN TRY
     SET @Changed=JSON_MODIFY(@Bindings,'$.bindings',JSON_QUERY(N'['+JSON_QUERY(@Bindings,'$.bindings[0]')+N']'));
     EXEC monitor.USP_SsisPackageModelAnalysis @PackageModelJson=@Model,@IncludeSqlMetadata=1,@SqlMetadataBindingsJson=@Changed,@ResultSetArt='NONE',@JsonErzeugen=1,@Json=@Json OUTPUT;
     IF JSON_VALUE(@Json,'$.sqlMetadata[0].UniqueKeyStatus')<>'NO_VISIBLE_UNFILTERED_UNIQUE_INDEX' THROW 57713,N'SSIS_METADATA_COMPOSITE_KEY_INFERRED_SINGLE_COLUMN',1;
-    DROP INDEX SyntheticCompositeKey ON monitor.SyntheticSsisSqlTarget;
-    CREATE UNIQUE INDEX SyntheticDisabledKey ON monitor.SyntheticSsisSqlTarget(SyntheticA);ALTER INDEX SyntheticDisabledKey ON monitor.SyntheticSsisSqlTarget DISABLE;
+    EXEC sys.sp_executesql N'SET QUOTED_IDENTIFIER ON;
+        DROP INDEX SyntheticCompositeKey ON monitor.SyntheticSsisSqlTarget;
+        CREATE UNIQUE INDEX SyntheticDisabledKey ON monitor.SyntheticSsisSqlTarget(SyntheticA);
+        ALTER INDEX SyntheticDisabledKey ON monitor.SyntheticSsisSqlTarget DISABLE;';
     SET @Changed=JSON_MODIFY(@Bindings,'$.bindings',JSON_QUERY(N'['+JSON_QUERY(@Bindings,'$.bindings[0]')+N']'));
     EXEC monitor.USP_SsisPackageModelAnalysis @PackageModelJson=@Model,@IncludeSqlMetadata=1,@SqlMetadataBindingsJson=@Changed,@ResultSetArt='NONE',@JsonErzeugen=1,@Json=@Json OUTPUT;
     IF JSON_VALUE(@Json,'$.sqlMetadata[0].UniqueKeyStatus')<>'NO_VISIBLE_UNFILTERED_UNIQUE_INDEX' THROW 57705,N'SSIS_METADATA_FILTERED_DISABLED_KEY_QUALIFIED',1;

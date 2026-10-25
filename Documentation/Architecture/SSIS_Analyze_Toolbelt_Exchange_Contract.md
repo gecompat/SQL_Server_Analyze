@@ -472,8 +472,9 @@ Pfade und eine qualifizierte Paketwurzel. Laufzeitbeobachtung ist keine Lineage.
 Der SQL-Empfänger liest ausschließlich zugelieferte Dokumente und lokale
 Belege. Der externe Pfad verwendet den Toolbelt-Host ohne SQL-CLR-Installation;
 der eigenständige Analyze-Pfad bleibt verfügbar. Synthetische Transportprüfung
-ersetzt keine Abnahme gegen eine echte Windows-SSISDB. Solange diese fehlt,
-bleibt die gekoppelte Quellenabnahme offen.
+ersetzt keine Abnahme gegen eine echte Windows-SSISDB. Die abgeschlossene
+Quellenabnahme der vierten Welle ist im internen Abschlussstand getrennt
+von späteren Erweiterungen dokumentiert.
 
 ## Fünfte Welle: ausdrückliche SQL-Metadatenzuordnung
 
@@ -489,3 +490,24 @@ werden; SSIS-zu-SQL-Typkompatibilität bleibt ausdrücklich unqualifiziert.
 Komponentenprofile, Typinterpretation und Lineage werden dafür nicht nach
 Analyze kopiert. Ein Unique-Index-Beleg betrifft ausschließlich den vollständig
 angegebenen Spaltensatz, keine Laufzeitdaten oder beliebige Lookupabfrage.
+
+## Sechste Welle: iterationsgebundene Ausführungskorrelation
+
+Der optionale Toolbelt-Sidecar 1.1.0 ergänzt `iterationContainer` aus genau
+einem zentralen Containerklassifikator. Analyze übernimmt diese Rolle und
+ordnet native Pfadsegmente entlang der gelieferten Modellhierarchie zu.
+Beobachtete Iterationszähler erweitern ausschließlich den ausdrücklich
+qualifizierten Wurzelscope. Der bisherige Export und Capture 1.0.0 bleiben
+erhalten. Parser, Komponentenprofile und Lineage werden nicht dupliziert.
+
+Der [Anwendungsvertrag](../Analysis_Guides/Procedures/USP_SsisPackageModelAnalysis.md#iterationsgebundene-ausführungskorrelation)
+beschreibt die beiden Opt-ins, Capture 1.1.0, zusätzliche Objektzusammenfassung
+und Loggingabdeckung. GUID-, Paketversions-, Byte- und Quellenbindungen
+bleiben Voraussetzung. Fehlende Beobachtungen beweisen keine Nichtausführung;
+objektbezogene Dauern werden nicht zu einer Paketlaufzeit zusammengezählt.
+Kindpakete und Ereignishandler bleiben außerhalb dieser Erweiterung.
+
+Die Umsetzung wurde nach Besprechung dieses begrenzten Umfangs am
+25. Oktober 2026 ausdrücklich freigegeben, einschließlich der Weiterverwendung
+der bestehenden SSISDB-Umgebung und automatischer Integration nach Abnahme.
+Der Auftrag erweitert keine Lab-Produkt- oder Infrastrukturverwaltung.
