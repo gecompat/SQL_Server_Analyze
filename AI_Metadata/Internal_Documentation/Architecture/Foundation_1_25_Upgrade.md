@@ -320,9 +320,13 @@ Aufrufverträge. Ein Implementierer und derselbe unabhängige Reviewer prüfen
 den Algorithmus und anschließend die getrennten Installations-/Legacyrisiken.
 Gezielte Folgeprüfungen schließen tatsächliche Befunde; es beginnt keine
 weitere Reviewkette. Die statische Gesamtsuite und das vollständige SQL2025-
-Head-/Main-Gate bleiben erforderlich. Eine weitere native Engine ist für
-diesen Targetvertrag ohne neue native API oder Engineverzweigung nicht
-ausgewählt; die spätere native DMV-Aktivierung erhält eine eigene Auswahl.
+Head-/Main-Gate bleiben erforderlich. Die zunächst nicht ausgewählte zusätzliche Engineprüfung wird durch den
+nativ beobachteten Unterschied der gespeicherten Modulform konkret:
+SQL2019 qualifiziert deshalb zusätzlich den begrenzten Snapshot-/Migrations-
+und Berechtigungsscope. Core-Vollrelease und allgemeine native Rechtematrix
+bleiben dort NOT_EXECUTED. SQL2025 behält sein vollständiges Gate. Eine
+zusätzliche SQL2022-Matrix ist für dieses konkrete Risiko nicht ausgewählt;
+die spätere native DMV-Aktivierung erhält eine eigene Auswahl.
 
 Das lokal nach den konkreten Testinputbefunden neu begrenzte Budget umfasst
 höchstens sechzehn native Entwicklungsversuche für
@@ -344,3 +348,17 @@ des unveränderten gemeinsamen Wellenumfangs. Jeder eigene Lauf benötigt
 belegtes Cleanup. Ganze grüne Logs werden nicht an Reviewer weitergereicht.
 Messwerte für Token und Kosten liegen nicht vor; der gemeinsame endliche
 PR-Umfang und ein Reviewer bleiben die Verbrauchsgrenzen.
+
+
+Der erste vollständige SQL2025-Headlauf 40230389338 bestätigt die gesamte
+native Deploymentregression, scheitert danach jedoch in Legacytest 202,
+C016/Ordinal17, mit 51010/1222 beim TARGET_SCHEMA_ADAPT. Die vorhandene
+Diagnostik meldet BLOCKER_NOT_CAPTURED; zehn vollständige Stichproben zeigen
+keinen erfassten wartenden Request oder Blockierer. Die Ursache bleibt
+UNKNOWN. Nach dieser begrenzten Auswertung ist genau ein Wiederlauf der
+fehlgeschlagenen Jobs auf einer frisch erstellten CI-Instanz ausgewählt.
+Es gibt keine Änderung am gemeinsamen TABLE-Helper oder am Testscope.
+Der abschließende lokale Upgradeversuch scheiterte zuvor mit 547 an der
+Anordnung eines ungültigen Case-Negativfalls unter dem vorhandenen CHECK.
+Die korrigierte Anordnung und unveränderte Erhaltungsprüfung bestehen
+bereits in der vollständigen nativen Deploymentregression der CI.

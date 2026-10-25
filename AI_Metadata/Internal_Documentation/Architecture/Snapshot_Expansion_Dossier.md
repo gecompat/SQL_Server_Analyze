@@ -1044,8 +1044,9 @@ WAIT_STATS. Alte Frameworkaufrufe übergeben ihre bisherigen Argumente und
 behalten ihren Defaultpfad. Neue Wait-Zugriffe binden erwartete Datenbank-ID,
 exakten Namen und native create_date vor Writes erneut im tatsächlichen
 Targetkontext. Die Abschlussprüfung behauptet keine Unveränderbarkeit gegenüber
-privilegierten administrativen Eingriffen. Die native Produktabnahme dieses
-Backend-Slices ist noch nicht erfolgt.
+privilegierten administrativen Eingriffen. Der vollständige lokale SQL2025-Vertrag 195 einschließlich der
+synthetischen Backendfälle in 223 besteht. Native DMV-Erfassung und
+öffentliche Aktivierung gehören weiterhin zum folgenden Slice.
 
 
 ### Exakter transienter Source-v1-Rahmen
@@ -1098,3 +1099,33 @@ nativ beobachtete Darstellung; Kommentarheader und Modulrumpf bleiben
 vollständig gebunden. Globale Textsetzungen in Kommentaren oder Literalen
 sind ausgeschlossen. Die nativen Abschlussläufe bleiben bis zu ihrem
 tatsächlichen Ergebnis offene Evidenz.
+
+
+### Aktueller Abnahmestand des internen Targets
+
+Der unabhängige Algorithmus-/Integrationsreview ist mit gezielten
+Befundnachprüfungen abgeschlossen. Der lokale vollständige Vertrag 195
+mit Targetprüfung 223 besteht einschließlich Callerzuständen, exakten
+Zielbindungen, gemeinsamen und eigenen Retentionspolicies, leeren und
+fehlerhaften Quellen, beschädigten Kontexten und tatsächlicher Rohhashbindung.
+Alle sechzehn eigenen Entwicklungsinstanzen sind nachgewiesen entfernt.
+Frühe Komponentenprüfungen, Diagnose- und fehlerhafte Testinputs bleiben
+von diesem abschließenden Backendnachweis getrennt.
+
+[PR #451](https://github.com/gecompat/SQL_Server_Analyze/pull/451) führt den
+Slice am Codehead 6f70d23c. Die integrierte statische Suite mit 74 Validatoren
+und die abschließenden 21 Deployment-Gegenprüfungen bestehen. Der vollständige
+SQL2025-Lauf [40230389338](https://github.com/gecompat/SQL_Server_Analyze/actions/runs/40230389338)
+besteht die native Deploymentregression mit drei realen Installationswegen,
+älteren gebundenen Helpern, Partial-Recovery, Seedkollisionen, Customwerten
+und unvollständiger Closure. Sein erster Gesamtversuch scheitert danach
+im bestehenden SSIS-Legacytest 202/C016 mit 51010/1222; die Sperrursache
+bleibt bei BLOCKER_NOT_CAPTURED unbekannt. Ein begrenzter Wiederlauf ist
+ausgewählt, der Fehler wird dadurch nicht als behoben bezeichnet.
+
+Die nativ bestätigte gespeicherte CREATE-Headerform begründet zusätzlich
+eine gezielte SQL2019-Risikoprüfung des Snapshot-/Migrations- und
+Berechtigungsscopes. Die vollständigen aktuellen Head- und Main-Gates
+sowie diese zusätzliche Prüfung bleiben bis zu ihren tatsächlichen
+Ergebnissen offen. Ein allgemeiner nativer Core-Reifeabschluss und eine
+öffentliche Wait-Erfassung werden damit weiterhin nicht behauptet.
