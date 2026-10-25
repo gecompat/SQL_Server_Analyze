@@ -1,7 +1,7 @@
 # Serverprincipals, Rollen und Login-Lifecycle
 
 **Stand:** 25. Oktober 2026.
-**Status:** erster Server-Implementierungskandidat; unabhängiger Produktreview und native Abnahme noch offen.
+**Status:** erster Server-Slice über PR #434 integriert und im definierten nativen Testumfang geprüft; Rang 6 bleibt teilweise offen.
 **Referenz:** `WI-0012`, aus dem aktuellen Registry-Blob zur serialisierten Übernahme vergeben.
 **Artefakt-UID:** `urn:uuid:01a17168-ab02-76fd-9f7c-5816187aeeef`.
 **Registrierung:** `DIRECT`; maßgebliche Vergabe und Basis stehen in der Artefaktregistry.
@@ -146,6 +146,39 @@ Zur vertikalen Lieferung gehören Einzelquelle, Installer, Inventare,
 Navigator/Hilfe, Procedure-Seite, relevante Leitfäden und betroffene Tests.
 Erst tatsächliche Abnahme ändert Produktstatus oder Reife. Der eigenständige
 SSIS-Strang ist kein Implementierungs-, Test- oder Lababhängiger dieses Scopes.
+
+## Gelieferter Server-Slice und Evidenz
+
+[PR #434](https://github.com/gecompat/SQL_Server_Analyze/pull/434) ist nach
+unabhängigem Produktreview und gezielten Folgechecks regulär als `8acbbfa3`
+integriert. Der qualifizierte Lieferstand ist
+`aabf9e0d9d0e94390d8242ba539c992aae59f707`.
+
+| Native Prüfung | Tatsächlich bestätigter Umfang |
+|---|---|
+| [SQL2025-Headgate](https://github.com/gecompat/SQL_Server_Analyze/actions/runs/40169772515) | Vollständiges funktionales Gate einschließlich Vertrag 135 erfolgreich. Der Build wird hier nicht zusätzlich ausgewiesen. |
+| [SQL2019-Zusatzprüfung](https://github.com/gecompat/SQL_Server_Analyze/actions/runs/40169823675) | Linux, 15.0.4500.2, CL150; Releasegate, Permissionmatrix und eigener Cleanup erfolgreich. |
+| [SQL2022-Zusatzprüfung](https://github.com/gecompat/SQL_Server_Analyze/actions/runs/40169825158) | Linux, 16.0.4305.5, CL160; Releasegate, Permissionmatrix und eigener Cleanup erfolgreich. |
+
+Die beiden nativen Maschinenbelege binden denselben Liefercommit und dieselbe
+ZIP-SHA256 `7b9d1b6d45ce305d545a077684283592f55e876492d86c5abe4c969f33e68fee`.
+Vertrag 135 prüft vier TABLE-/JSON-Fälle, sieben native Schemas mit typisierten
+Sollwerten, eigene Principals und Rollen, explizite Rechte, Login-Policyflags,
+eingeschränkte Sicht, eine native SELECT-DENY-Gegenprobe, Ambienttransaktion,
+Fehler-OUTPUT/RETURN, CONSOLE und eigenen Cleanup. RAW wird ausgeführt; eine
+separate vollständige Zählung seines Resultsetstreams wird damit nicht behauptet.
+
+Frühere Entwicklungsprüfungen meldeten reale Fixture-/Integrationsfehler und
+eine nicht committable Callertransaktion. Die damalige Severity16-Weitergabe
+verlor außerdem OUTPUT-Werte im T-SQL-Caller. Der reguläre Rückgabevertrag,
+Master-Kontext, kollationsgebundene Sollwerte und die dazugehörigen Tests sind
+vor dem erfolgreichen Lieferstand korrigiert. Die Fehlläufe gelten nicht als
+bestandene Qualifikation. Main-Nachläufe sind getrennte Evidenz.
+
+Das Arbeitselement bleibt PARTIAL_PRODUCT_FUNCTION. Datenbankprincipals werden
+im [Datenbankprincipal-Dossier](Database_Principal_Analysis_Dossier.md)
+weiter konkretisiert; effektive Rechte und externe Identitätsprüfung bleiben
+offen. Die native Serverabnahme begründet keinen vollständigen Reifeabschluss.
 
 ## Primärquellen
 

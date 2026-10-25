@@ -43,7 +43,7 @@ im SSIS-Abschnitt von Next Steps gepflegt.
 | 3 | Modellherkunft und Paketversionsbindung, `SSIS-001` | PR #427 ist integriert; keine erneute Umsetzung. |
 | 4 | Design-/Laufzeitkorrelation, `SSIS-001` | PR #428 ist einschließlich nativer Quellenabnahme sowie Head-/Main-Gates abgeschlossen; der SSIS-Abschnitt von Next Steps führt den Abschlussstand. |
 | 5 | Optionale SQL-Metadatenprüfung, `SSIS-001` | PR #429 ist integriert; keine erneute Umsetzung. |
-| 6 | Berechtigungen und Login-Lifecycle, Intake `PRINCIPALS_ROLE_PERMISSIONS` und `AUTHENTICATION_LOGIN_LIFECYCLE` | Ein Dossier grenzt sichtbare Principals, Rollen, explizite Rechte, Ownership und Loginzustände ab. Effektive Berechtigungen und unsichtbare Metadaten werden nicht aus unvollständigen Katalogen behauptet. |
+| 6 | Berechtigungen und Login-Lifecycle, Intake `PRINCIPALS_ROLE_PERMISSIONS` und `AUTHENTICATION_LOGIN_LIFECYCLE` | Das Serverprincipal-Dossier und das [Datenbankprincipal-Dossier](../Architecture/Database_Principal_Analysis_Dossier.md) grenzen sichtbare Principals, Rollen, explizite Rechte, Ownership und Loginzustände ab. Effektive Berechtigungen und unsichtbare Metadaten werden nicht aus unvollständigen Katalogen behauptet. |
 | 7 | TLS und Endpoints, Intake `TLS_NETWORK_ENDPOINTS` | SQL-sichtbare Verbindungsverschlüsselung und Endpointzustände getrennt von Host-, Zertifikats- und externen Verbindungsnachweisen spezifizieren und implementieren. |
 | 8 | Weitere SSIS-Laufzeitdiagnosen, `SSIS-001` | Nur die nach Abschluss der fünf Paketwellen tatsächlich fehlenden Task-, Wiederholungs-, Buffer-, Provider-, Checkpoint- und Loggingpfade auswählen. Die Umsetzung benötigt einen freien eigenen Scope; der laufende SSIS-Chat bleibt unberührt. |
 | 9 | SSIS-Laufvergleiche, `SSIS-001` | Vergleichbare explizite Ausführungen mit Paketrevision, Loggingabdeckung, Mengenbasis, Stichprobengröße und Ausschlüssen gegenüberstellen. |
@@ -161,7 +161,21 @@ native ID-/SID-Bindungen, typisierte Schemaoracles und einen kontrollierten
 SELECT-DENY-Fall. Die nativen Entwicklungsprüfungen erforderten zusätzlich
 Master-Kontext, kollationsgebundene Sollwerte und eine reguläre Fehler-Rückkehr,
 damit T-SQL-Caller ihre OUTPUT-Werte und committable Transaktion behalten.
-Die abschließende native Abnahme steht noch aus; es wird kein
-Reifeabschluss behauptet. Die bestehende funktionsbezogene autonome Freigabe
-wird nicht erneut angefragt. Datenbankprincipals und effektive Berechtigungen
-bleiben weitere Teile desselben Rangs.
+Der erste Server-Slice ist über PR #434 als `8acbbfa3` regulär integriert.
+Alle acht Head-Checks und das vollständige SQL2025-Gate bestehen. Die beiden
+gezielten nativen Zusatzprüfungen bestätigen SQL2019 15.0.4500.2/CL150 und
+SQL2022 16.0.4305.5/CL160 einschließlich Permissionmatrix und eigenem Cleanup
+am selben Liefercommit `aabf9e0d`. Die genauen Nachweislinks und Grenzen stehen
+im Serverprincipal-Dossier. Frühere Fehlläufe bleiben als solche erhalten;
+Main-Nachläufe sind getrennte Evidenz. Es wird kein Reifeabschluss behauptet.
+
+Der nächste Teil von Rang 6 wird im
+[Datenbankprincipal-Dossier](../Architecture/Database_Principal_Analysis_Dossier.md)
+konkretisiert. Es hält die frameworkweite Auswahl sichtbarer Online-Benutzer-
+datenbanken, direkte Datenbankrollen, explizite Rechte, Schemaownership und
+begrenzte sichtbare SID-Bindungen fest. Der unabhängige Review und sein
+konkreter Folgecheck sind ohne offene Befunde abgeschlossen; native Schemas
+und die Produktimplementierung dieses Teils bleiben der nächste Schritt.
+Datenbankprincipals und effektive Berechtigungen sind weiterhin offene Teile
+desselben Arbeitselements. Die bestehende funktionsbezogene autonome Freigabe
+wird nicht erneut angefragt.
