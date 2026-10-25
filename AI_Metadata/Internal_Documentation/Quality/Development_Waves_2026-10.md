@@ -169,13 +169,17 @@ am selben Liefercommit `aabf9e0d`. Die genauen Nachweislinks und Grenzen stehen
 im Serverprincipal-Dossier. Frühere Fehlläufe bleiben als solche erhalten;
 Main-Nachläufe sind getrennte Evidenz. Es wird kein Reifeabschluss behauptet.
 
-Der nächste Teil von Rang 6 wird im
+Der Datenbankteil von Rang 6 liegt als Produktkandidat zum
 [Datenbankprincipal-Dossier](../Architecture/Database_Principal_Analysis_Dossier.md)
-konkretisiert. Es hält die frameworkweite Auswahl sichtbarer Online-Benutzer-
-datenbanken, direkte Datenbankrollen, explizite Rechte, Schemaownership und
-begrenzte sichtbare SID-Bindungen fest. Der unabhängige Review und sein
-konkreter Folgecheck sind ohne offene Befunde abgeschlossen; native Schemas
-und die Produktimplementierung dieses Teils bleiben der nächste Schritt.
-Datenbankprincipals und effektive Berechtigungen sind weiterhin offene Teile
-desselben Arbeitselements. Die bestehende funktionsbezogene autonome Freigabe
-wird nicht erneut angefragt.
+vor. Er hält die frameworkweite Auswahl sichtbarer Online-Benutzerdatenbanken,
+direkte Rollen, explizite Rechte, Schemaownership und begrenzte sichtbare
+SID-Bindungen ein. Neun Resultsets, Installer, Navigator und unabhängige native
+Schema- und Wertoracles gehören gemeinsam zur Lieferung. Der Produktreview
+und sein gezielter Folgecheck sind ohne offene Befunde abgeschlossen.
+Der lokale kombinierte Lauf der beiden Principal-Fixtures besteht auf SQL
+Server 2025 mit abweichender Instanz-/Frameworkcollation, eingeschränkten
+Callern, Quellenfehlern und identitätsgebundenem Cleanup. Head-gebundene CI und
+gezielte native 2019-/2022-Abnahmen bleiben vor der regulären Integration
+erforderlich. Effektive Berechtigungen und weitere Lifecycleteile bleiben
+offene Teile desselben Arbeitselements. Die bestehende funktionsbezogene
+autonome Freigabe wird nicht erneut angefragt.

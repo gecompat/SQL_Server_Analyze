@@ -202,6 +202,7 @@ AS
         , (N'USP_FrameworkUsageFromQueryStore','CONFIRM_WITH',N'USP_ServerVersionInformation',3,N'Versionsspezifische Nutzungsmuster mit dem verfügbaren Funktionsumfang abgleichen.')
         , (N'USP_CheckFrameworkCapabilities','REFINE_WITH',N'USP_FrameworkUsageFromQueryStore',1,N'Nach dem Capability-Überblick die tatsächliche Nutzung aus dem Query Store verifizieren.')
         , (N'USP_ServerPrincipalAnalysis','CONFIRM_WITH',N'USP_ServerSecurityConfiguration',1,N'Direkte Principal-Evidenz mit Sicherheitskonfiguration abgleichen.')
+        , (N'USP_DatabasePrincipalAnalysis','CONFIRM_WITH',N'USP_ServerPrincipalAnalysis',1,N'Sichtbare Datenbankrechte und Loginbindungen mit den getrennten Servermetadaten abgleichen.')
     ) AS [v]
     (
           [FromProcedureName], [RelationType], [ToProcedureName]

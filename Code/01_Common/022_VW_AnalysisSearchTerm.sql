@@ -283,5 +283,7 @@ AS
         , (N'USP_AuditConfigurationAnalysis',N'SQL audit configuration runtime status','en',95,N'Inventarisiert Auditkonfiguration und verfügbaren Runtimezustand.')
         , (N'USP_ServerPrincipalAnalysis',N'Logins Rollen Berechtigungen Passwortpolicy','de',100,N'Liest sichtbare direkte Serverberechtigungsevidenz.')
         , (N'USP_ServerPrincipalAnalysis',N'server principal role explicit permission login policy','en',95,N'Lists visible direct server security metadata.')
+        , (N'USP_DatabasePrincipalAnalysis',N'Datenbank Benutzer Rollen Rechte Schemaowner verwaiste Benutzer','de',100,N'Trennt direkte Rechte von begrenzten sichtbaren Loginbindungen.')
+        , (N'USP_DatabasePrincipalAnalysis',N'database principal role permission owner contained user orphan login','en',95,N'Lists visible database security metadata without claiming effective permissions.')
     ) AS [v]([ProcedureName],[SearchTerm],[LanguageCode],[SearchWeight],[MatchReason]);
 GO
