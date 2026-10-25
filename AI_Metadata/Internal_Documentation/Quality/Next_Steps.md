@@ -1,9 +1,54 @@
 # Nächste Arbeitsschritte
 
-**Stand:** 24. Oktober 2026
+**Stand:** 25. Oktober 2026
 **Zweck:** aktueller Auftragsstatus und historische Entwicklungswellen für `gecompat/SQL_Server_Analyze`
 
-## Integriert: SSIS-001-Pipeline-Phasenbeginnmeldungen (PR #421); Main-Abnahme offen
+## Aktueller Auftrag: fünf SSIS-Paketwellen vom 25. Oktober 2026
+
+Der Benutzer hat fachliche Paketsichten, objektbezogene Regeln, belegte
+Modellherkunft und Paketversionsbindung, Design-/Laufzeitkorrelation und eine
+ausdrücklich optionale SQL-Metadatenprüfung zur autonomen Umsetzung freigegeben.
+Parser, Komponentenprofile und Lineage bleiben in Toolbelt; Analyze bleibt ohne
+SQL CLR eigenständig nutzbar. Konsistente Entwicklungsstände dürfen nach
+unabhängigem Review und den vorgeschriebenen Gates regulär per PR nach
+`origin/main` gemergt werden. Diese Freigabe betrifft die fünf genannten Wellen
+und ihre notwendige Integration, keine sonstigen pausierten Entwicklungsaufträge.
+
+Der [Austauschvertrag](../../../Documentation/Architecture/SSIS_Analyze_Toolbelt_Exchange_Contract.md)
+führt den fachlichen Rahmen. Toolbelt PR #409 ist integriert. Analyze PR #423
+ist als `0cf2ddf21e6f7e916276635342cb925c303f9717` integriert; sein Baum ist
+identisch zum grün geprüften Head. Der automatische Main-Nachlauf ist ein
+getrennter Nachweis; sein funktionaler Lauf 40146327300 ist ebenfalls grün.
+
+Der endliche Arbeitsumfang besteht aus fünf fachlichen Wellen und der
+vorhandenen Basisintegration, mit höchstens acht fachlichen PRs insgesamt.
+Je Welle arbeiten ein Implementierer und höchstens ein unabhängiger Reviewer;
+ein Folgeauftrag betrifft ausschließlich konkrete Befunde an geänderten Inputs.
+Ein Checkpoint folgt nach jeder integrierten Welle. Weitere Reviews, breite
+Native-Versionsmatrizen und unveränderte Testwiederholungen benötigen einen
+konkreten Auslöser. Verlässliche Token- und Kostenmessung liegt nicht vor.
+
+1. Fachliche Paketsichten: aktiv. Die acht bisherigen Importgruppen bleiben
+   standardmäßig erhalten; zusätzliche Sichten sind ein ausdrückliches Opt-in.
+   Der lokale Linux-SQL2025-Harness besteht 79 Prüfungen einschließlich RAW13,
+   TABLE-/JSON-Parität, Quellen mit Variablen und Parametern sowie exakter
+   Zahlenprojektion. Ein unabhängiger Review und der begrenzte Folgecheck
+   schließen zwei konkrete Projektionsbefunde. Head-CI und Integration stehen
+   noch aus; diese Angaben ersetzen deren tatsächliche Ergebnisse nicht.
+2. Objektbezogene Regeln: noch offen, mit konkreten Knoten-/Kantenbelegen.
+3. Herkunft und Paketversionsbindung: noch offen; keine selbst behauptete
+   Herkunft und keine Hash-Allowlist allein werden als verifiziert akzeptiert.
+4. Design-/Laufzeitkorrelation: noch offen; ohne belegte Revision und eindeutige
+   Objektbindung bleibt eine Zuordnung ausdrücklich unbewiesen.
+5. SQL-Metadatenprüfung: noch offen; ausschließlich ausdrückliche lokale
+   Bindings, keine automatische Ausführung von Paket-SQL oder Datenscans.
+
+Der angeforderte 30-Minuten-Heartbeat dient ausschließlich als letzte Instanz
+für Leerlauferkennung. Er startet keine parallele Umsetzung, setzt keine Budgets
+zurück und wiederholt keine semantische Arbeit an unveränderten Blockern.
+Nach Abschluss der fünf Wellen beginnt er keine weitere Entwicklung.
+
+## Historischer Integrationsstand: Pipeline-Phasenbeginnmeldungen (PR #421)
 
 [PR #421](https://github.com/gecompat/SQL_Server_Analyze/pull/421) ist am
 24. Oktober 2026 durch den gesonderten Mergeauftrag regulär als

@@ -32,6 +32,9 @@ Analyze lädt keine CLR-Assembly und benötigt kein benachbartes Toolbelt-Reposi
 Der gemeinsame semantische DTSX-Kern und die direkte Wert-Lineage werden in
 Toolbelt gepflegt; Analyze hält nur eine an einen Commit gebundene Vertragskopie.
 Die bestehende XML-Inventur behält ihren Vertrag mit 13 Ergebnisgruppen.
+Mit `@IncludePackageViews=1` ergänzt der Modellimport fünf fachliche
+Paketsichten. Die acht bisherigen Standardgruppen bleiben erhalten; Zähler
+werden vor der Ausgabekürzung aus dem vollständigen validierten Graphen ermittelt.
 
 Das vorhandene Produkt-ZIP 1.1.2 enthält diese neue API noch nicht. Die
 Quellinstaller übernehmen sie beim Neubau. Weiterführende Ausdrucks- und
