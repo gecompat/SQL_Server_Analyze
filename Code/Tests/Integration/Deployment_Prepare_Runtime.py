@@ -105,6 +105,9 @@ def snapshot_schema_cases(deployed, tables):
         out.append("SET @Before=JSON_MODIFY(JSON_MODIFY(@Before,'$.PackageVersion[0].LastInstallerRunUtc',NULL),'$.objects',NULL); SET @After=JSON_MODIFY(JSON_MODIFY(@After,'$.PackageVersion[0].LastInstallerRunUtc',NULL),'$.objects',NULL);\n"
                    "IF CONVERT(varbinary(max),@Before)<>CONVERT(varbinary(max),@After) THROW 53814,N'Snapshot repetition changed existing state.',1;\nGO\n")
         if label=='STANDALONE':
+            out.append('SET QUOTED_IDENTIFIER OFF; SET ANSI_NULLS OFF; SET ANSI_PADDING OFF; SET ANSI_WARNINGS OFF; SET ARITHABORT OFF; SET CONCAT_NULL_YIELDS_NULL OFF; SET NUMERIC_ROUNDABORT ON; SET LOCK_TIMEOUT -1;\n'+call)
+            out.append('SET QUOTED_IDENTIFIER ON; SET ANSI_NULLS ON; SET ANSI_PADDING ON; SET ANSI_WARNINGS ON; SET ARITHABORT ON; SET CONCAT_NULL_YIELDS_NULL ON; SET NUMERIC_ROUNDABORT OFF; SET LOCK_TIMEOUT 10000;\n')
+            out.append("IF (SELECT COUNT(*) FROM sys.procedures WHERE schema_id=SCHEMA_ID(N'snapshot'))<>5 OR EXISTS(SELECT 1 FROM sys.procedures p JOIN sys.sql_modules m ON m.object_id=p.object_id WHERE p.schema_id=SCHEMA_ID(N'snapshot') AND (m.uses_ansi_nulls<>1 OR m.uses_quoted_identifier<>1)) THROW 53820,N'Snapshot standalone inherited noncanonical module settings.',1;\nGO\n")
             out.append('SET XACT_ABORT ON; BEGIN TRANSACTION;\n')
             out.append(negative(route,50000,'Snapshot standalone caller transaction',"IF @@TRANCOUNT<>1 OR XACT_STATE()<>1 OR (@@OPTIONS & 16384)=0 THROW 53817,N'Snapshot standalone changed caller transaction/options.',1; ROLLBACK TRANSACTION;"))
             out.append('SET IMPLICIT_TRANSACTIONS ON;\n')
@@ -113,6 +116,8 @@ def snapshot_schema_cases(deployed, tables):
             out.append(shape(1)+'GO\nBEGIN TRANSACTION;\n'+call)
             out.append("IF @@TRANCOUNT<>1 OR XACT_STATE()<>1 THROW 53819,N'Direct Snapshot installer completed caller transaction.',1; ROLLBACK TRANSACTION;\n"
                        "IF NOT EXISTS(SELECT 1 FROM snapshot.PackageVersion WHERE PackageVersion='1.0.0' AND SchemaVersion=1) THROW 53819,N'Direct Snapshot caller rollback failed.',1;\nGO\n")
+            out.append('SET XACT_ABORT ON; SET IMPLICIT_TRANSACTIONS ON;\n')
+            out.append(negative(route,50000,'Direct Snapshot implicit transactions',"IF @@TRANCOUNT<>0 OR (@@OPTIONS & 2)=0 OR (@@OPTIONS & 16384)=0 THROW 53818,N'Direct Snapshot changed implicit transaction state.',1; SET IMPLICIT_TRANSACTIONS OFF;"))
         out.append(shape(1)+'GO\n')
         selected=negatives if label!='COMBINED' else [negatives[i] for i in (0,5,6)]
         for case,arrange,error,restore in selected:

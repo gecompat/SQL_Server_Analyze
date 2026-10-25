@@ -444,6 +444,8 @@ def load_sources(root: Path, snapshot: bool, check_snapshot_guard: bool=True) ->
                     dynamic=tokens(unstring(bt[pos]))
                     if not dynamic:
                         raise BuildError('Empty executable source string')
+                    if source.path==SNAPSHOT_SCHEMA_SOURCE and unstring(bt[pos])==SNAPSHOT_ADMISSION_ERROR:
+                        continue
                     if [upper(t) for t in dynamic[:2]]==['CREATE','SCHEMA']:
                         if len(dynamic)!=6 or ident(dynamic[2]) not in ('monitor','snapshot') or [upper(dynamic[3]),ident(dynamic[4]),dynamic[5].value]!=['AUTHORIZATION','dbo',';']:
                             raise BuildError('Unknown schema creation contract')
@@ -509,6 +511,7 @@ def constraint_template(table: Table, ordinal: int, include_indexes: bool=True) 
 SNAPSHOT_SCHEMA_SOURCE = 'Code/10_SnapshotBaseline/030_Snapshot_Target_Schema.sql'
 SNAPSHOT_GUARD_BEGIN = '-- SNAPSHOT_SCHEMA_PREFLIGHT_BEGIN\n'
 SNAPSHOT_GUARD_END = '-- SNAPSHOT_SCHEMA_PREFLIGHT_END\n'
+SNAPSHOT_ADMISSION_ERROR = "SET XACT_ABORT OFF; RAISERROR(N'Snapshot schema installation requires IMPLICIT_TRANSACTIONS OFF.',16,1);"
 SNAPSHOT_TX_BEGIN = """DECLARE @SnapshotMigrationStage tinyint=0;
 DECLARE @SnapshotSchemaOwnTransaction bit=CASE WHEN @@TRANCOUNT=0 THEN 1 ELSE 0 END;
 BEGIN TRY
@@ -611,6 +614,9 @@ def snapshot_state_classifier(tables: list[Table], sources: list[Source], strict
         out.append(f"IF {missing} THROW 53935,N'Incomplete Snapshot schema.',1;\n")
     out.append(f'IF {present} BEGIN\n')
     out.append(f"IF {missing} THROW 53935,N'Incomplete Snapshot schema.',1;\n")
+    # Hold the row's namespace before classifying it, not only later when
+    # checking its column/constraint shape. This also protects pure version DML.
+    out.append("DECLARE @SnapshotVersionLock bigint; SELECT TOP(1) @SnapshotVersionLock=1 FROM [snapshot].[PackageVersion] WITH(TABLOCKX,HOLDLOCK) OPTION(MAXDOP 1);\n")
     # Dynamic compilation permits fresh installation without the version table;
     # a malformed existing version table still fails before any product write.
     query=("IF (SELECT COUNT_BIG(*) FROM [snapshot].[PackageVersion])<>1 "
@@ -970,9 +976,10 @@ def generate(root: Path,snapshot: bool=False) -> tuple[str,dict]:
 def generate_snapshot_target(root: Path) -> tuple[str,dict]:
     sources,tables,digest=load_sources(root,True)
     target=[s for s in sources if s.role=='SNAPSHOT']
+    admission="SET XACT_ABORT OFF; RAISERROR(N'Snapshot target installation requires no caller transaction and IMPLICIT_TRANSACTIONS OFF.',16,1);"
     out=["/* Generated Snapshot target installer. Execute this complete batch in the explicitly selected target database. */\n"
-         "IF @@TRANCOUNT<>0 OR (@@OPTIONS & 2)<>0 BEGIN RAISERROR(N'Snapshot target installation requires no caller transaction and IMPLICIT_TRANSACTIONS OFF.',16,1); RETURN; END;\n"
-         "SET NOCOUNT ON; SET XACT_ABORT ON;\nBEGIN TRY\nBEGIN TRANSACTION;\n"]
+         "IF @@TRANCOUNT<>0 OR (@@OPTIONS & 2)<>0 BEGIN EXEC sys.sp_executesql "+lit(admission)+"; RETURN; END;\n"
+         "SET NOCOUNT ON; SET XACT_ABORT ON; SET LOCK_TIMEOUT 0; SET ANSI_NULLS ON; SET QUOTED_IDENTIFIER ON; SET ANSI_PADDING ON; SET ANSI_WARNINGS ON; SET ARITHABORT ON; SET CONCAT_NULL_YIELDS_NULL ON; SET NUMERIC_ROUNDABORT OFF;\nBEGIN TRY\nBEGIN TRANSACTION;\n"]
     for source in target:
         original=(root/source.path).read_text(encoding='utf-8-sig').replace('\r\n','\n')
         out.append('-- BEGIN SOURCE: '+source.path+'\n')

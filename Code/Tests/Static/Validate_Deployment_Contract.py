@@ -145,6 +145,8 @@ class DeploymentContract(unittest.TestCase):
             generator.snapshot_transaction_spans(original.replace(generator.SNAPSHOT_TX_BEGIN,'/*\n'+generator.SNAPSHOT_TX_BEGIN,1),source.path)
         self.assertNotIn('-- Derived model SHA256:',self.sql)
         self.assertIn('Legacy Snapshot version after deployment',self.sql)
+        classifier=generator.snapshot_state_classifier([t for t in tables if t.role=='SNAPSHOT'],[s for s in sources if s.role=='SNAPSHOT'])
+        self.assertLess(classifier.index('WITH(TABLOCKX,HOLDLOCK)'),classifier.index('EXEC sys.sp_executesql'))
 
     def test_snapshot_target_has_one_aborting_compilation_envelope(self):
         sql,info=generator.generate_snapshot_target(ROOT)
@@ -153,6 +155,9 @@ class DeploymentContract(unittest.TestCase):
         self.assertLess(sql.index('IF @@TRANCOUNT<>0'),sql.index('SET XACT_ABORT ON;'))
         self.assertLess(sql.index('BEGIN TRANSACTION;'),sql.index('-- BEGIN SOURCE:'))
         self.assertEqual(6,sql.count('-- BEGIN SOURCE:'))
+        for setting in ('LOCK_TIMEOUT 0','ANSI_NULLS ON','QUOTED_IDENTIFIER ON','ANSI_PADDING ON','ANSI_WARNINGS ON','ARITHABORT ON','CONCAT_NULL_YIELDS_NULL ON','NUMERIC_ROUNDABORT OFF'):
+            self.assertLess(sql.index('SET '+setting+';'),sql.index('-- BEGIN SOURCE:'))
+        self.assertIn("BEGIN EXEC sys.sp_executesql N'SET XACT_ABORT OFF; RAISERROR(",sql)
         self.assertIn('IF XACT_STATE()<>0 ROLLBACK TRANSACTION;\nTHROW;',sql)
 
     def test_stale_snapshot_guard_is_rejected(self):

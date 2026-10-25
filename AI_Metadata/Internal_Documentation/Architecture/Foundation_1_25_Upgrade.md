@@ -224,3 +224,13 @@ Sch-S-Fall benötigt ausschließlich eine eigene Labinstanz und prüft die
 unveränderte kanonische SUT einschließlich erstem DDL-Abschluss, Rollback und
 Recovery. Ausgeführt und qualifiziert wird nur der später tatsächlich belegte
 Umfang; diese Beschreibung ist keine Erfolgsbehauptung.
+
+
+Der Produktreview bleibt auf einen Reviewer und einen gebündelten
+Korrekturpass begrenzt. Die erforderlichen Gegenfälle betreffen frühe
+Versionssperrung, Standalone-Kompilationsoptionen und Erhaltung einer
+abgelehnten Callertransaktion. Die vollständige lokale Suite mit 74
+Validatoren besteht am ersten Kandidaten; nach dessen Korrektur werden nur
+die tatsächlich betroffenen Installer-, Grammar-, Privacy-, Stil- und
+Regelkontextprüfungen wiederholt. Die regulären erforderlichen Head-Checks
+und die native Risikoprüfung bleiben am Liefercommit bestehen.

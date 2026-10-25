@@ -582,3 +582,18 @@ bestätigt die Entfernung der eigenen Container- und Volumeressourcen.
 Das ist eine lokale Abnahme des benannten Kandidaten, kein Main-, PR- oder
 SQL2019-Nachweis. Unabhängiger Produktreview, vollständiges SQL2025-Gate,
 gezielte native SQL2019-Abnahme und reguläre PR-Integration bleiben offen.
+
+
+Der Produktreview des ersten Kandidaten benennt zwei P2-Befunde: Der
+Versionsread musste seine PackageVersion-Sperre bereits vor Klassifikation
+halten; außerdem fehlte dem Standalone-Rahmen der gemeinsame ANSI-/
+QUOTED_IDENTIFIER-/LOCK_TIMEOUT-Kontext für spätere Helperkompilationen.
+Der gebündelte Korrekturpass bindet die Versionszeile zuerst mit
+TABLOCKX/HOLDLOCK und setzt den kanonischen begrenzten Kompilationskontext
+nach der frühen Callerablehnung. Ein positiver Gegenfall beginnt mit
+QUOTED_IDENTIFIER OFF und LOCK_TIMEOUT -1 und verlangt korrekte gespeicherte
+SET-Metadaten aller fünf Helper. Die frühe Ablehnung verwendet wie das
+Gesamtdeployment einen getrennten XACT_ABORT-OFF-/RAISERROR-Rahmen. Der
+neue Callerfall hatte zuvor den Zustand nach erwarteter Ablehnung verletzt;
+sein Oracle bleibt unverändert. Folgeprüfung und native Wiederholung dieses
+Korrekturstands sind noch offen.

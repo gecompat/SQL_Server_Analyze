@@ -77,6 +77,15 @@ Native SQL-Server-2019- oder SQL-Server-2022-Läufe sind erforderlich, wenn die 
 
 Die betroffene native Version wird gezielt über `.github/workflows/release-native-matrix.yml` gestartet. Der Workflow führt bei einem Release Candidate alle drei unterstützten Versionen aus und begrenzt die Parallelität auf einen Matrixjob.
 
+Für ein konkretes natives Snapshot-/Migrationsrisiko ergänzt
+snapshot_risk_gate=true die Paket-, Deployment-, Snapshot- und
+Nebenläufigkeitsverträge auf genau dem ausdrücklich ausgewählten target.
+Der Schalter ist standardmäßig false und wird mit target=all abgelehnt.
+Auf SQL2025 laufen die bereits vorgesehenen Zusatzverträge weiterhin genau
+einmal. Der zusätzliche ältere Lauf verwendet das Compatibility Level seiner
+nativen Engine; ein Compatibility-Level-Wechsel ersetzt diese Abnahme nicht.
+
+
 ## Aktive Workflows
 
 | Workflow | Aufgabe | Automatischer Umfang |
