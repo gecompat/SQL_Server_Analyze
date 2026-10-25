@@ -864,3 +864,11 @@ und zwei aggregierten Memory-Cache-Klassen. Standardmäßig werden nur
 Momentaufnahmen gelesen. Ein aktiviertes Sample verwendet genau ein
 begrenztes WAITFOR mit getrennten Quellenintervallen. Keine Ausgabe
 identifiziert automatisch eine Query, Datenbank oder Compileursache.
+
+## Serverprincipals, Rollen und Login-Policies
+
+Die [Serverprincipal-Analyse](Procedures/USP_ServerPrincipalAnalysis.md) ergänzt die Sicherheitskonfiguration um sichtbare direkte Zuordnungen. Sie berechnet keine effektiven Rechte und weist die Vollständigkeit der Metadatensicht ausdrücklich als unbewiesen aus.
+
+```sql
+EXEC [monitor].[USP_ServerPrincipalAnalysis] @MaxZeilen=200, @ResultSetArt='CONSOLE';
+```

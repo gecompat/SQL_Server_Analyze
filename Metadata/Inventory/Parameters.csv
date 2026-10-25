@@ -1970,11 +1970,8 @@ USP_SsisLegacyLogAnalysis,IncludeComponentPhaseAnalysis,bit,0
 USP_SsisLegacyLogAnalysis,IncludeComponentLifecyclePhases,bit,0
 USP_SsisLegacyLogAnalysis,IncludeLookupCacheAnalysis,bit,0
 USP_SsisLegacyLogAnalysis,IncludeRowsWrittenAnalysis,bit,0
-
 USP_SsisLegacyLogAnalysis,IncludeThroughputAnalysis,bit,0
-
 USP_SsisLegacyLogAnalysis,IncludeFinalCommitAnalysis,bit,0
-
 USP_SsisLegacyLogAnalysis,IncludePipelinePhaseBeginAnalysis,bit,0
 USP_SsisPackageModelAnalysis,PackageModelJson,nvarchar(max),NULL
 USP_SsisPackageModelAnalysis,PackageBytes,varbinary(max),NULL
@@ -2000,4 +1997,16 @@ USP_SsisPackageModelAnalysis,IncludeExecutionCorrelation,bit,0
 USP_SsisPackageModelAnalysis,ExecutionId,bigint,NULL
 USP_SsisPackageModelAnalysis,ExecutionSnapshotJson,nvarchar(max),NULL
 USP_SsisPackageModelAnalysis,RuntimeHandoverId,uniqueidentifier,NULL
+USP_ServerPrincipalAnalysis,MaxZeilen,int,1000
+USP_ServerPrincipalAnalysis,LockTimeoutMs,int,0
+USP_ServerPrincipalAnalysis,ResultSetArt,varchar(16),'CONSOLE'
+USP_ServerPrincipalAnalysis,ResultTablesJson,nvarchar(max),NULL
+USP_ServerPrincipalAnalysis,JsonErzeugen,bit,0
+USP_ServerPrincipalAnalysis,Json,nvarchar(max),NULL OUTPUT
+USP_ServerPrincipalAnalysis,PrintMeldungen,bit,1
+USP_ServerPrincipalAnalysis,Hilfe,bit,0
+USP_ServerPrincipalAnalysis,StatusCodeOut,varchar(40),NULL OUTPUT
+USP_ServerPrincipalAnalysis,IsPartialOut,bit,NULL OUTPUT
+USP_ServerPrincipalAnalysis,ErrorNumberOut,int,NULL OUTPUT
+USP_ServerPrincipalAnalysis,ErrorMessageOut,nvarchar(2048),NULL OUTPUT
 USP_SsisPackageModelAnalysis,IncludeIterationCorrelation,bit,0

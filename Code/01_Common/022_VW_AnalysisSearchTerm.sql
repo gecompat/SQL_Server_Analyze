@@ -281,5 +281,7 @@ AS
         , (N'USP_FrameworkUsageFromQueryStore',N'meistgenutzt ungenutzt Häufigkeit Laufzeit','de',90,N'Identifiziert viel- und nie-genutzte Module.')
         , (N'USP_AuditConfigurationAnalysis',N'SQL Audit Konfiguration deaktiviert','de',100,N'Prüft sichtbare Audit- und Spezifikationszustände ohne Ereignispayloads.')
         , (N'USP_AuditConfigurationAnalysis',N'SQL audit configuration runtime status','en',95,N'Inventarisiert Auditkonfiguration und verfügbaren Runtimezustand.')
+        , (N'USP_ServerPrincipalAnalysis',N'Logins Rollen Berechtigungen Passwortpolicy','de',100,N'Liest sichtbare direkte Serverberechtigungsevidenz.')
+        , (N'USP_ServerPrincipalAnalysis',N'server principal role explicit permission login policy','en',95,N'Lists visible direct server security metadata.')
     ) AS [v]([ProcedureName],[SearchTerm],[LanguageCode],[SearchWeight],[MatchReason]);
 GO

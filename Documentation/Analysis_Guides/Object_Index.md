@@ -212,3 +212,7 @@ Für einen Einstieg nach beobachtetem Problem verwenden Sie [Hier beginnen](Star
 | Procedure | Analyse |
 |---|---|
 | `[monitor].[USP_ExternalDataAnalysis]` | [Lokale Kataloge und Referenzen](Procedures/USP_ExternalDataAnalysis.md) |
+
+## Serverprincipals und direkte Berechtigungen
+
+- [USP_ServerPrincipalAnalysis](Procedures/USP_ServerPrincipalAnalysis.md) zeigt sichtbare Principals, direkte Rollen, explizite Serverrechte und Login-Policyflags.

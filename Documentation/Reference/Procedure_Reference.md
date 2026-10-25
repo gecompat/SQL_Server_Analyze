@@ -2728,3 +2728,22 @@ Quelle: `Code/10_SSIS/040_USP_SsisPackageModelAnalysis.sql`
     , @RuntimeHandoverId uniqueidentifier = NULL
     , @IncludeIterationCorrelation bit = 0
 ```
+
+## `[monitor].[USP_ServerPrincipalAnalysis]`
+
+Quelle: `Code/08_ServerHealth/260_USP_ServerPrincipalAnalysis.sql`
+
+```sql
+      @MaxZeilen int = 1000
+    , @LockTimeoutMs int = 0
+    , @ResultSetArt varchar(16) = 'CONSOLE'
+    , @ResultTablesJson nvarchar(max) = NULL
+    , @JsonErzeugen bit = 0
+    , @Json nvarchar(max) = NULL OUTPUT
+    , @PrintMeldungen bit = 1
+    , @Hilfe bit = 0
+    , @StatusCodeOut varchar(40) = NULL OUTPUT
+    , @IsPartialOut bit = NULL OUTPUT
+    , @ErrorNumberOut int = NULL OUTPUT
+    , @ErrorMessageOut nvarchar(2048) = NULL OUTPUT
+```
