@@ -1994,3 +1994,5 @@ USP_SsisPackageModelAnalysis,ErrorMessageOut,nvarchar(2048),NULL
 USP_SsisPackageModelAnalysis,IncludePackageViews,bit,0
 USP_SsisPackageModelAnalysis,IncludeObjectRules,bit,0
 USP_SsisPackageModelAnalysis,LocalHandoverId,uniqueidentifier,NULL
+USP_SsisPackageModelAnalysis,IncludeSqlMetadata,bit,0
+USP_SsisPackageModelAnalysis,SqlMetadataBindingsJson,nvarchar(max),NULL
