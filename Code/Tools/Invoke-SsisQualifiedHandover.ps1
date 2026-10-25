@@ -1,12 +1,15 @@
-[CmdletBinding()]
+[CmdletBinding(DefaultParameterSetName='Path')]
 param(
     [Parameter(Mandatory)][string]$ProducerAssemblyPath,
     [Parameter(Mandatory)][ValidatePattern('^[0-9a-fA-F]{64}$')][string]$ExpectedBuildSha256,
     [Parameter(Mandatory)][ValidatePattern('^[0-9a-fA-F]{40}$')][string]$ExpectedSourceCommit,
-    [Parameter(Mandatory)][string]$PackagePath,
+    [Parameter(Mandatory,ParameterSetName='Path')][string]$PackagePath,
+    [Parameter(Mandatory,ParameterSetName='Bytes')][byte[]]$PackageBytes,
     [Parameter(Mandatory)][System.Data.SqlClient.SqlConnection]$Connection,
     [ValidateRange(1,24)][int]$ValidHours=1,
-    [string]$DotnetPath='dotnet'
+    [string]$DotnetPath='dotnet',
+    [switch]$IncludeObjectIdentities,
+    [switch]$PrepareOnly
 )
 Set-StrictMode -Version Latest
 $ErrorActionPreference='Stop'
@@ -32,7 +35,10 @@ function Read-BoundedFile([string]$Path,[int]$MaxBytes) {
     } finally {$stream.Dispose()}
 }
 $assembly=Read-BoundedFile $ProducerAssemblyPath 16777216
-$bytes=Read-BoundedFile $PackagePath 16777216
+$bytes=if($PSCmdlet.ParameterSetName -eq 'Bytes') {
+    if($PackageBytes.Length -eq 0 -or $PackageBytes.Length -gt 16777216){throw 'SSIS_HANDOVER_FILE_LIMIT'}
+    [byte[]]$PackageBytes.Clone()
+} else {Read-BoundedFile $PackagePath 16777216}
 $hash=[Convert]::ToHexString([Security.Cryptography.SHA256]::HashData($assembly)).ToLowerInvariant()
 if($hash -cne $ExpectedBuildSha256.ToLowerInvariant()){throw 'SSIS_HANDOVER_BUILD_MISMATCH'}
 $directory=Join-Path ([IO.Path]::GetTempPath()) ('ssis-qualified-handover-'+[guid]::NewGuid().ToString('N'))
@@ -55,37 +61,33 @@ try {
     [IO.File]::WriteAllText($runtime,'{"runtimeOptions":{"tfm":"net10.0","framework":{"name":"Microsoft.NETCore.App","version":"10.0.0"},"rollForward":"LatestPatch"}}',[Text.UTF8Encoding]::new($false))
     $info=[Diagnostics.ProcessStartInfo]::new();$info.FileName=$DotnetPath;$info.UseShellExecute=$false;$info.CreateNoWindow=$true
     $info.RedirectStandardOutput=$true;$info.RedirectStandardError=$true;$info.StandardOutputEncoding=[Text.UTF8Encoding]::new($false,$true)
-    foreach($item in @('exec','--runtimeconfig',$runtime,$dll,$inputFile)){[void]$info.ArgumentList.Add($item)}
+    foreach($item in @('exec','--runtimeconfig',$runtime,$dll)){[void]$info.ArgumentList.Add($item)}
+    if($IncludeObjectIdentities){[void]$info.ArgumentList.Add('--bundle')}
+    [void]$info.ArgumentList.Add($inputFile)
     foreach($key in @($info.Environment.Keys)){if($key -match '^(DOTNET_|CORECLR_|COR_|COMPlus_)'){[void]$info.Environment.Remove($key)}}
     $process=[Diagnostics.Process]::new();$process.StartInfo=$info;$processStarted=$process.Start();if(-not $processStarted){throw 'SSIS_HANDOVER_PROCESS_NOT_STARTED'}
     $output=$process.StandardOutput.ReadToEndAsync();$errorOutput=$process.StandardError.ReadToEndAsync()
     if(-not $process.WaitForExit(60000)){$process.Kill($true);throw 'SSIS_HANDOVER_PRODUCER_TIMEOUT'}
     $model=$output.GetAwaiter().GetResult();[void]$errorOutput.GetAwaiter().GetResult()
     if($process.ExitCode -ne 0 -or [Text.Encoding]::Unicode.GetByteCount($model) -gt 16777216){throw 'SSIS_HANDOVER_PRODUCER_FAILED'}
+    $identities=$null
+    if($IncludeObjectIdentities) {
+        $bundle=[Text.Json.JsonDocument]::Parse($model)
+        try {
+            if($bundle.RootElement.GetProperty('contract').GetString() -cne 'ssis-export-bundle' -or $bundle.RootElement.GetProperty('version').GetString() -cne '1.0.0'){throw 'SSIS_HANDOVER_BUNDLE_UNSUPPORTED'}
+            $model=$bundle.RootElement.GetProperty('model').GetRawText()
+            $identities=$bundle.RootElement.GetProperty('identities').GetRawText()
+        } finally {$bundle.Dispose()}
+    }
     $parsed=$model|ConvertFrom-Json -Depth 32
     if($parsed.producer.buildSha256 -cne $hash -or $parsed.producer.sourceCommit -cne $ExpectedSourceCommit.ToLowerInvariant()) {throw 'SSIS_HANDOVER_PRODUCER_IDENTITY_MISMATCH'}
-    $id=[guid]::NewGuid();$name='SSIS_HANDOVER_'+$id.ToString()
-    $command=$Connection.CreateCommand();$command.CommandTimeout=90
-    $command.CommandText=@'
-IF @@TRANCOUNT<>0 THROW 57400,N'SSIS_HANDOVER_CALLER_TRANSACTION_NOT_ALLOWED',1;
-DECLARE @Status varchar(40),@Validated nvarchar(max);
-EXEC [monitor].[USP_SsisPackageModelAnalysis] @PackageModelJson=@Model,@PackageBytes=@Bytes,@ResultSetArt='NONE',@JsonErzeugen=1,@Json=@Validated OUTPUT,@StatusCodeOut=@Status OUTPUT;
-IF @Status<>'AVAILABLE_LIMITED' THROW 57400,N'SSIS_HANDOVER_MODEL_REJECTED',1;
-DECLARE @Issued datetime2(3)=SYSUTCDATETIME(),@Receipt nvarchar(3000);
-SET @Receipt=(SELECT 'ssis-local-handover' AS [contract],'1.0.0' AS [version],'QUALIFIED_HOST_SNAPSHOT' AS [method],
-    CONVERT(varchar(64),HASHBYTES('SHA2_256',CONVERT(varbinary(max),@Model)),2) AS [modelSha256],
-    JSON_VALUE(@Model,'$.source.packageSha256') AS [packageSha256],DATALENGTH(@Bytes) AS [byteLength],
-    JSON_VALUE(@Model,'$.producer.buildSha256') AS [buildSha256],JSON_VALUE(@Model,'$.producer.sourceCommit') AS [sourceCommit],
-    CONVERT(varchar(24),@Issued,127)+'Z' AS [issuedUtc],CONVERT(varchar(24),DATEADD(hour,@Hours,@Issued),127)+'Z' AS [expiresUtc]
-    FOR JSON PATH,WITHOUT_ARRAY_WRAPPER);
-EXEC [sys].[sp_addextendedproperty] @name=@Name,@value=@Receipt,@level0type=N'SCHEMA',@level0name=N'monitor',@level1type=N'PROCEDURE',@level1name=N'USP_SsisPackageModelAnalysis';
-'@
-    [void]$command.Parameters.Add('@Model',[Data.SqlDbType]::NVarChar,-1);$command.Parameters['@Model'].Value=$model
-    [void]$command.Parameters.Add('@Bytes',[Data.SqlDbType]::VarBinary,-1);$command.Parameters['@Bytes'].Value=[byte[]]$bytes
-    [void]$command.Parameters.Add('@Name',[Data.SqlDbType]::NVarChar,128);$command.Parameters['@Name'].Value=$name
-    [void]$command.Parameters.Add('@Hours',[Data.SqlDbType]::Int);$command.Parameters['@Hours'].Value=$ValidHours
-    try {[void]$command.ExecuteNonQuery()} finally {$command.Dispose()}
-    [pscustomobject]@{LocalHandoverId=$id;PackageModelJson=$model;PackageBytes=[byte[]]$bytes;ProducerBuildSha256=$hash}
+    $id=$null
+    if(-not $PrepareOnly) {
+        Import-Module (Join-Path $PSScriptRoot 'SsisHandoverSupport.psm1') -Scope Local
+        $registration=Register-SsisHandover -Connection $Connection -ModelJson $model -PackageBytes $bytes -ValidHours $ValidHours
+        $id=$registration.LocalHandoverId
+    }
+    [pscustomobject]@{LocalHandoverId=$id;PackageModelJson=$model;PackageBytes=[byte[]]$bytes;ProducerBuildSha256=$hash;ObjectIdentitiesJson=$identities}
 } finally {
     try {
         if($null -ne $process){try {if($processStarted -and -not $process.HasExited){$process.Kill($true)}} finally {$process.Dispose()}}

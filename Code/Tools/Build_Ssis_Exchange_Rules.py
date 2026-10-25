@@ -75,7 +75,7 @@ if __name__ == "__main__":
     example = json.loads((ROOT / "Metadata/Quality/SSIS_Exchange_V1.example.json").read_text(encoding="utf-8"))
     fixture_payload = json.dumps(example, ensure_ascii=True, separators=(",", ":")).replace("'", "''")
     fixtures = []
-    for name in ("212_SsisPackageModelAnalysis_Runtime_Contract.sql", "213_SsisPackageViews_Runtime_Contract.sql", "214_SsisObjectRules_Runtime_Contract.sql", "215_SsisLocalHandover_Runtime_Contract.sql", "217_SsisSqlMetadata_Runtime_Contract.sql"):
+    for name in ("212_SsisPackageModelAnalysis_Runtime_Contract.sql", "213_SsisPackageViews_Runtime_Contract.sql", "214_SsisObjectRules_Runtime_Contract.sql", "215_SsisLocalHandover_Runtime_Contract.sql", "216_SsisExecutionCorrelation_Runtime_Contract.sql", "217_SsisSqlMetadata_Runtime_Contract.sql"):
         fixture_path = ROOT / "Code/Tests/Integration" / name
         fixture = fixture_path.read_text(encoding="utf-8")
         first, last = fixture.index(fixture_begin), fixture.index(fixture_end) + len(fixture_end)

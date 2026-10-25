@@ -223,6 +223,9 @@ try {
         Assert ($left.ColumnName -ceq $right.ColumnName -and $left.DataType -eq $right.DataType) ('SQL_METADATA_NATIVE_SCHEMA_'+$index)
     }
     [void](Query 'DROP TABLE monitor.SyntheticSsisHarnessColumn;')
+    $captureProbe=[IO.File]::ReadAllText((Join-Path $repositoryRoot 'Code/Tests/Integration/216_SsisExecutionCorrelation_Runtime_Contract.sql')) -replace 'USE \[DeineDatenbank\];',"USE [$database];"
+    foreach($batch in [regex]::Split($captureProbe,'(?im)^\s*GO\s*$')) {if($batch.Trim()){[void](Query $batch)}}
+    Assert $true 'EXECUTION_CAPTURE_RECEIVER_SQL_PROBE'
     $metadataProbe=[IO.File]::ReadAllText((Join-Path $repositoryRoot 'Code/Tests/Integration/217_SsisSqlMetadata_Runtime_Contract.sql')) -replace 'USE \[DeineDatenbank\];',"USE [$database];"
     foreach($batch in [regex]::Split($metadataProbe,'(?im)^\s*GO\s*$')) {if($batch.Trim()){[void](Query $batch)}}
     Assert $true 'SQL_METADATA_SQL_PROBE'

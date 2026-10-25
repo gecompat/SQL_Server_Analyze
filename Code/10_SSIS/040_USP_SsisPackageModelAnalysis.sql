@@ -2,9 +2,10 @@ USE [DeineDatenbank];
 GO
 
 /*
-Objekt: monitor.USP_SsisPackageModelAnalysis; Version 1.4.0; Stand 2026-10-25.
+Objekt: monitor.USP_SsisPackageModelAnalysis; Version 1.5.0; Stand 2026-10-25.
 Zweck: Validiert ein optional zugeliefertes neutrales SSIS-Modell ohne CLR.
-Quelle: Ausschließlich Caller-JSON und optionale Originalbytes; kein Paket-SQL.
+Quelle: Caller-JSON, optionale Originalbytes und lokale Herkunftsbelege;
+        lokale SQL-Kataloge nur mit expliziter Metadatenzuordnung, kein Paket-SQL.
 Vertrag: SSIS_Analyze_Toolbelt_Exchange_Contract.md; Schema aus Toolbelt.
 Grenzen: 16 MiB JSON/Bytes, 32 JSON-Ebenen, 20000 Knoten, 50000 Kanten;
          kooperatives Zeitbudget. Producerangaben ohne qualifizierte lokale Übergabe bleiben UNVERIFIED.
@@ -33,6 +34,10 @@ CREATE OR ALTER PROCEDURE [monitor].[USP_SsisPackageModelAnalysis]
     , @LocalHandoverId uniqueidentifier = NULL
     , @IncludeSqlMetadata bit = 0
     , @SqlMetadataBindingsJson nvarchar(max) = NULL
+    , @IncludeExecutionCorrelation bit = 0
+    , @ExecutionId bigint = NULL
+    , @ExecutionSnapshotJson nvarchar(max) = NULL
+    , @RuntimeHandoverId uniqueidentifier = NULL
 AS
 BEGIN
     SET NOCOUNT ON;
@@ -46,6 +51,7 @@ BEGIN
         PRINT N'@IncludeObjectRules=1 ergänzt objectFindings mit konkreten Knoten-/Kantenbelegen; statische Hinweise, keine Laufzeiturteile.';
         PRINT N'@LocalHandoverId prüft eine separat berechtigt registrierte lokale Übergabe; benötigt dieselben @PackageBytes. Kein Trust-Flag im Caller-JSON.';
         PRINT N'@IncludeSqlMetadata=1 ergänzt sqlMetadata aus expliziten paketgebundenen lokalen SQL-Spaltenzuordnungen; keine Paket-SQL-Ausführung oder Typkonvertierungsfreigabe.';
+        PRINT N'@IncludeExecutionCorrelation=1 ergänzt runtimeBinding|executionCorrelation für @ExecutionId. Nur qualifizierte lokale Katalogcaptures werden zugeordnet; kein SSISDB-Zugriff im Importer.';
         RETURN;
     END;
     IF XACT_STATE()=-1 THROW 50000,N'EXCHANGE_INVALID: Callertransaktion ist nicht schreibfähig.',1;
@@ -60,7 +66,8 @@ BEGIN
     DECLARE @AllowedResultNames nvarchar(max)=N'moduleStatus|sourceBinding|nodes|edges|coverage|findings|sourceStatus|warnings'
         +CASE WHEN @IncludePackageViews=1 THEN N'|packageOverview|executables|dataFlows|components|columnRelations' ELSE N'' END
         +CASE WHEN @IncludeObjectRules=1 THEN N'|objectFindings' ELSE N'' END
-        +CASE WHEN @IncludeSqlMetadata=1 THEN N'|sqlMetadata' ELSE N'' END;
+        +CASE WHEN @IncludeSqlMetadata=1 THEN N'|sqlMetadata' ELSE N'' END
+        +CASE WHEN @IncludeExecutionCorrelation=1 THEN N'|runtimeBinding|executionCorrelation' ELSE N'' END;
 
     CREATE TABLE #SsisPackageModelAnalysis_ResultTables([ResultName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,[TargetTable] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL);
     IF @Mode='TABLE'
@@ -146,6 +153,19 @@ BEGIN
         [StatusCode] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,[BindingStatus] varchar(24) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,
         [PackageSha256] varchar(64) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,[ProducerTrust] varchar(24) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,
         [EvidenceLevel] varchar(32) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,[ObservedUtc] datetime2(3) NULL,[ErrorNumber] int NULL);
+    CREATE TABLE #SsisPackageModelAnalysis_RuntimeBinding(
+        [ExecutionId] bigint NOT NULL,[CatalogDatabaseGuid] uniqueidentifier NULL,[SourceBindingSha256] varchar(64) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,[ProjectId] bigint NULL,[ProjectLsn] bigint NULL,
+        [PackageFileName] nvarchar(260) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,[ExecutionCreatedUtc] datetimeoffset(7) NULL,
+        [ExecutionStatus] int NULL,[StartTime] datetimeoffset(7) NULL,[EndTime] datetimeoffset(7) NULL,[SnapshotStartedUtc] datetime2(7) NULL,[SnapshotCompletedUtc] datetime2(7) NULL,
+        [PackageSha256] varchar(64) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,[StatusCode] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,
+        [ReasonCode] varchar(64) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,[RootObservationQualified] bit NOT NULL,[ObservedRowCount] int NOT NULL,[MappedRowCount] int NOT NULL,[IsPartial] bit NOT NULL,[ErrorNumber] int NULL);
+    CREATE TABLE #SsisPackageModelAnalysis_ExecutionCorrelation(
+        [StatisticsId] bigint NOT NULL PRIMARY KEY,[ExecutionId] bigint NOT NULL,[ExecutableId] bigint NOT NULL,[ModelNodeId] varchar(128) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,
+        [ModelNodeKind] varchar(16) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,[ExecutableGuid] uniqueidentifier NULL,[PackageName] nvarchar(260) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,
+        [PackagePath] nvarchar(4000) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,[ExecutionPath] nvarchar(4000) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,
+        [StartTime] datetimeoffset(7) NULL,[EndTime] datetimeoffset(7) NULL,[DurationMs] int NULL,[ExecutionResult] int NULL,
+        [CorrelationStatus] varchar(48) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,[EvidenceLevel] varchar(32) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL);
+
     -- BEGIN GENERATED SSIS EXCHANGE RULES
     DECLARE @FieldRulesJson nvarchar(max) = N'[{"role":"ROOT","name":"contract","types":"1","required":true,"enum":["ssis-package-model"],"maxLength":null,"min":null,"max":null,"minItems":null,"maxItems":null,"pattern":null,"childRole":null},{"role":"ROOT","name":"version","types":"1","required":true,"enum":["1.0.0"],"maxLength":null,"min":null,"max":null,"minItems":null,"maxItems":null,"pattern":null,"childRole":null},{"role":"ROOT","name":"identityProfile","types":"1","required":true,"enum":["document-order-v1"],"maxLength":null,"min":null,"max":null,"minItems":null,"maxItems":null,"pattern":null,"childRole":null},{"role":"ROOT","name":"producer","types":"5","required":true,"enum":null,"maxLength":null,"min":null,"max":null,"minItems":null,"maxItems":null,"pattern":null,"childRole":"PRODUCER"},{"role":"ROOT","name":"source","types":"5","required":true,"enum":null,"maxLength":null,"min":null,"max":null,"minItems":null,"maxItems":null,"pattern":null,"childRole":"SOURCE"},{"role":"ROOT","name":"profiles","types":"5","required":true,"enum":null,"maxLength":null,"min":null,"max":null,"minItems":null,"maxItems":null,"pattern":null,"childRole":"PROFILES"},{"role":"ROOT","name":"coverage","types":"4","required":true,"enum":null,"maxLength":null,"min":null,"max":null,"minItems":8,"maxItems":8,"pattern":null,"childRole":"COVERAGE_ARRAY"},{"role":"ROOT","name":"nodes","types":"4","required":true,"enum":null,"maxLength":null,"min":null,"max":null,"minItems":1,"maxItems":20000,"pattern":null,"childRole":"NODES_ARRAY"},{"role":"ROOT","name":"edges","types":"4","required":true,"enum":null,"maxLength":null,"min":null,"max":null,"minItems":null,"maxItems":50000,"pattern":null,"childRole":"EDGES_ARRAY"},{"role":"ROOT","name":"diagnostics","types":"4","required":true,"enum":null,"maxLength":null,"min":null,"max":null,"minItems":null,"maxItems":1000,"pattern":null,"childRole":"DIAGNOSTICS_ARRAY"},{"role":"PRODUCER","name":"id","types":"1","required":true,"enum":["toolbelt.ssis-model"],"maxLength":null,"min":null,"max":null,"minItems":null,"maxItems":null,"pattern":null,"childRole":null},{"role":"PRODUCER","name":"version","types":"1","required":true,"enum":null,"maxLength":32,"min":null,"max":null,"minItems":null,"maxItems":null,"pattern":"VERSION","childRole":null},{"role":"PRODUCER","name":"sourceCommit","types":"1","required":true,"enum":null,"maxLength":null,"min":null,"max":null,"minItems":null,"maxItems":null,"pattern":"HEX40","childRole":null},{"role":"PRODUCER","name":"buildSha256","types":"1","required":true,"enum":null,"maxLength":null,"min":null,"max":null,"minItems":null,"maxItems":null,"pattern":"HEX64","childRole":null},{"role":"SOURCE","name":"kind","types":"1","required":true,"enum":["DTSX_BYTES"],"maxLength":null,"min":null,"max":null,"minItems":null,"maxItems":null,"pattern":null,"childRole":null},{"role":"SOURCE","name":"packageSha256","types":"1","required":true,"enum":null,"maxLength":null,"min":null,"max":null,"minItems":null,"maxItems":null,"pattern":"HEX64","childRole":null},{"role":"SOURCE","name":"byteLength","types":"2","required":true,"enum":null,"maxLength":null,"min":1,"max":16777216,"minItems":null,"maxItems":null,"pattern":null,"childRole":null},{"role":"SOURCE","name":"packageFormatVersion","types":"02","required":true,"enum":null,"maxLength":null,"min":0,"max":null,"minItems":null,"maxItems":null,"pattern":null,"childRole":null},{"role":"SOURCE","name":"xmlProfile","types":"1","required":true,"enum":["2012/01","2014/01","UNKNOWN"],"maxLength":null,"min":null,"max":null,"minItems":null,"maxItems":null,"pattern":null,"childRole":null},{"role":"PROFILES","name":"format","types":"1","required":true,"enum":null,"maxLength":32,"min":null,"max":null,"minItems":null,"maxItems":null,"pattern":"VERSION","childRole":null},{"role":"PROFILES","name":"components","types":"1","required":true,"enum":null,"maxLength":32,"min":null,"max":null,"minItems":null,"maxItems":null,"pattern":"VERSION","childRole":null},{"role":"PROFILES","name":"lineage","types":"1","required":true,"enum":null,"maxLength":32,"min":null,"max":null,"minItems":null,"maxItems":null,"pattern":"VERSION","childRole":null},{"role":"COVERAGE","name":"feature","types":"1","required":true,"enum":["inventory","controlFlow","pipelineGraph","columnMetadata","directColumnMapping","valueLineage","rowLineage","expressionReferences"],"maxLength":null,"min":null,"max":null,"minItems":null,"maxItems":null,"pattern":null,"childRole":null},{"role":"COVERAGE","name":"status","types":"1","required":true,"enum":["COMPLETE","PARTIAL","UNSUPPORTED","NOT_REQUESTED"],"maxLength":null,"min":null,"max":null,"minItems":null,"maxItems":null,"pattern":null,"childRole":null},{"role":"COVERAGE","name":"reasonCode","types":"01","required":true,"enum":["PROFILE_LIMIT","UNKNOWN_COMPONENT","ENCRYPTED_CONTENT","EXPRESSION_UNRESOLVED","MISSING_CONTEXT","UNSUPPORTED_PACKAGE_FORMAT","SCOPE_NOT_REQUESTED"],"maxLength":null,"min":null,"max":null,"minItems":null,"maxItems":null,"pattern":null,"childRole":null},{"role":"NODE","name":"id","types":"1","required":true,"enum":null,"maxLength":128,"min":null,"max":null,"minItems":null,"maxItems":null,"pattern":"ID","childRole":null},{"role":"NODE","name":"kind","types":"1","required":true,"enum":["PACKAGE","EXECUTABLE","COMPONENT","PORT","COLUMN","VARIABLE","PARAMETER","CONNECTION","EXPRESSION"],"maxLength":null,"min":null,"max":null,"minItems":null,"maxItems":null,"pattern":null,"childRole":null},{"role":"NODE","name":"parentId","types":"01","required":true,"enum":null,"maxLength":128,"min":null,"max":null,"minItems":null,"maxItems":null,"pattern":"ID","childRole":null},{"role":"NODE","name":"name","types":"01","required":true,"enum":null,"maxLength":256,"min":null,"max":null,"minItems":null,"maxItems":null,"pattern":null,"childRole":null},{"role":"NODE","name":"attributes","types":"5","required":true,"enum":null,"maxLength":null,"min":null,"max":null,"minItems":null,"maxItems":null,"pattern":null,"childRole":null},{"role":"EDGE","name":"id","types":"1","required":true,"enum":null,"maxLength":128,"min":null,"max":null,"minItems":null,"maxItems":null,"pattern":"EDGEID","childRole":null},{"role":"EDGE","name":"kind","types":"1","required":true,"enum":["CONTROL_FLOW","PIPELINE_PATH","COLUMN_MAP","VALUE_DEPENDENCY","ROW_DEPENDENCY","EXPRESSION_REFERENCE"],"maxLength":null,"min":null,"max":null,"minItems":null,"maxItems":null,"pattern":null,"childRole":null},{"role":"EDGE","name":"scopeId","types":"1","required":true,"enum":null,"maxLength":128,"min":null,"max":null,"minItems":null,"maxItems":null,"pattern":"ID","childRole":null},{"role":"EDGE","name":"fromId","types":"01","required":true,"enum":null,"maxLength":128,"min":null,"max":null,"minItems":null,"maxItems":null,"pattern":"ID","childRole":null},{"role":"EDGE","name":"toId","types":"01","required":true,"enum":null,"maxLength":128,"min":null,"max":null,"minItems":null,"maxItems":null,"pattern":"ID","childRole":null},{"role":"EDGE","name":"resolution","types":"1","required":true,"enum":["RESOLVED","UNRESOLVED","UNSUPPORTED"],"maxLength":null,"min":null,"max":null,"minItems":null,"maxItems":null,"pattern":null,"childRole":null},{"role":"EDGE","name":"evidence","types":"1","required":true,"enum":["DECLARED","DERIVED"],"maxLength":null,"min":null,"max":null,"minItems":null,"maxItems":null,"pattern":null,"childRole":null},{"role":"EDGE","name":"mappingRole","types":"01","required":true,"enum":["DATA_TRANSFER","METADATA_REFERENCE",null],"maxLength":null,"min":null,"max":null,"minItems":null,"maxItems":null,"pattern":null,"childRole":null},{"role":"EDGE","name":"ruleId","types":"01","required":true,"enum":null,"maxLength":64,"min":null,"max":null,"minItems":null,"maxItems":null,"pattern":"RULEID","childRole":null},{"role":"DIAGNOSTIC","name":"code","types":"1","required":true,"enum":["UNKNOWN_COMPONENT","ENCRYPTED_CONTENT","EXPRESSION_UNRESOLVED","MISSING_CONTEXT","PARTIAL_LINEAGE","PROFILE_LIMIT","UNSUPPORTED_PACKAGE_FORMAT"],"maxLength":null,"min":null,"max":null,"minItems":null,"maxItems":null,"pattern":null,"childRole":null},{"role":"DIAGNOSTIC","name":"objectId","types":"01","required":true,"enum":null,"maxLength":128,"min":null,"max":null,"minItems":null,"maxItems":null,"pattern":"ID","childRole":null},{"role":"ATTR_PACKAGE","name":"protectionLevel","types":"01","required":true,"enum":null,"maxLength":64,"min":null,"max":null,"minItems":null,"maxItems":null,"pattern":null,"childRole":null},{"role":"ATTR_EXECUTABLE","name":"executableType","types":"01","required":true,"enum":null,"maxLength":256,"min":null,"max":null,"minItems":null,"maxItems":null,"pattern":null,"childRole":null},{"role":"ATTR_EXECUTABLE","name":"isDisabled","types":"03","required":true,"enum":null,"maxLength":null,"min":null,"max":null,"minItems":null,"maxItems":null,"pattern":null,"childRole":null},{"role":"ATTR_EXECUTABLE","name":"isEventHandler","types":"03","required":true,"enum":null,"maxLength":null,"min":null,"max":null,"minItems":null,"maxItems":null,"pattern":null,"childRole":null},{"role":"ATTR_COMPONENT","name":"componentClassId","types":"01","required":true,"enum":null,"maxLength":256,"min":null,"max":null,"minItems":null,"maxItems":null,"pattern":null,"childRole":null},{"role":"ATTR_PORT","name":"direction","types":"01","required":true,"enum":["INPUT","OUTPUT",null],"maxLength":null,"min":null,"max":null,"minItems":null,"maxItems":null,"pattern":null,"childRole":null},{"role":"ATTR_PORT","name":"portRole","types":"01","required":true,"enum":["REGULAR","ERROR","NO_MATCH","DEFAULT","UNKNOWN",null],"maxLength":null,"min":null,"max":null,"minItems":null,"maxItems":null,"pattern":null,"childRole":null},{"role":"ATTR_PORT","name":"synchronousInputPortId","types":"01","required":true,"enum":null,"maxLength":128,"min":null,"max":null,"minItems":null,"maxItems":null,"pattern":"ID","childRole":null},{"role":"ATTR_COLUMN","name":"columnRole","types":"1","required":true,"enum":["DATA","EXTERNAL_METADATA"],"maxLength":null,"min":null,"max":null,"minItems":null,"maxItems":null,"pattern":null,"childRole":null},{"role":"ATTR_COLUMN","name":"typeCode","types":"01","required":true,"enum":null,"maxLength":64,"min":null,"max":null,"minItems":null,"maxItems":null,"pattern":null,"childRole":null},{"role":"ATTR_COLUMN","name":"length","types":"02","required":true,"enum":null,"maxLength":null,"min":-1,"max":2147483647,"minItems":null,"maxItems":null,"pattern":null,"childRole":null},{"role":"ATTR_COLUMN","name":"precision","types":"02","required":true,"enum":null,"maxLength":null,"min":0,"max":255,"minItems":null,"maxItems":null,"pattern":null,"childRole":null},{"role":"ATTR_COLUMN","name":"scale","types":"02","required":true,"enum":null,"maxLength":null,"min":0,"max":255,"minItems":null,"maxItems":null,"pattern":null,"childRole":null},{"role":"ATTR_COLUMN","name":"codePage","types":"02","required":true,"enum":null,"maxLength":null,"min":0,"max":2147483647,"minItems":null,"maxItems":null,"pattern":null,"childRole":null},{"role":"ATTR_COLUMN","name":"isNullable","types":"03","required":true,"enum":null,"maxLength":null,"min":null,"max":null,"minItems":null,"maxItems":null,"pattern":null,"childRole":null},{"role":"ATTR_VARIABLE","name":"namespace","types":"01","required":true,"enum":null,"maxLength":256,"min":null,"max":null,"minItems":null,"maxItems":null,"pattern":null,"childRole":null},{"role":"ATTR_VARIABLE","name":"typeCode","types":"01","required":true,"enum":null,"maxLength":64,"min":null,"max":null,"minItems":null,"maxItems":null,"pattern":null,"childRole":null},{"role":"ATTR_VARIABLE","name":"isReadOnly","types":"03","required":true,"enum":null,"maxLength":null,"min":null,"max":null,"minItems":null,"maxItems":null,"pattern":null,"childRole":null},{"role":"ATTR_VARIABLE","name":"evaluateAsExpression","types":"03","required":true,"enum":null,"maxLength":null,"min":null,"max":null,"minItems":null,"maxItems":null,"pattern":null,"childRole":null},{"role":"ATTR_PARAMETER","name":"typeCode","types":"01","required":true,"enum":null,"maxLength":64,"min":null,"max":null,"minItems":null,"maxItems":null,"pattern":null,"childRole":null},{"role":"ATTR_CONNECTION","name":"connectionKind","types":"01","required":true,"enum":null,"maxLength":128,"min":null,"max":null,"minItems":null,"maxItems":null,"pattern":null,"childRole":null},{"role":"ATTR_EXPRESSION","name":"propertyName","types":"01","required":true,"enum":null,"maxLength":256,"min":null,"max":null,"minItems":null,"maxItems":null,"pattern":null,"childRole":null}]';
     -- END GENERATED SSIS EXCHANGE RULES
@@ -153,7 +173,8 @@ BEGIN
     BEGIN TRY
         IF @MaxZeilen<0 OR @MaxDurationSeconds IS NULL OR @MaxDurationSeconds NOT BETWEEN 1 AND 60
            OR @LockTimeoutMs IS NULL OR @LockTimeoutMs NOT BETWEEN 0 AND 60000 OR @JsonErzeugen IS NULL OR @PrintMeldungen IS NULL
-           OR @IncludeSqlMetadata IS NULL OR @IncludeSqlMetadata=0 AND @SqlMetadataBindingsJson IS NOT NULL OR @IncludeObjectRules IS NULL OR @IncludePackageViews IS NULL OR @Mode NOT IN ('CONSOLE','RAW','TABLE','NONE') OR (@Mode<>'TABLE' AND @ResultTablesJson IS NOT NULL)
+           OR @IncludeExecutionCorrelation IS NULL OR @IncludeExecutionCorrelation=1 AND (@ExecutionId IS NULL OR @ExecutionId<1)
+           OR @IncludeExecutionCorrelation=0 AND (@ExecutionId IS NOT NULL OR @ExecutionSnapshotJson IS NOT NULL OR @RuntimeHandoverId IS NOT NULL) OR @IncludeSqlMetadata IS NULL OR @IncludeSqlMetadata=0 AND @SqlMetadataBindingsJson IS NOT NULL OR @IncludeObjectRules IS NULL OR @IncludePackageViews IS NULL OR @Mode NOT IN ('CONSOLE','RAW','TABLE','NONE') OR (@Mode<>'TABLE' AND @ResultTablesJson IS NOT NULL)
             THROW 50000,N'INVALID_PARAMETER',1;
         SET @Deadline=DATEADD(second,@MaxDurationSeconds,@Started);
         SET @LockTimeoutSql=N'SET LOCK_TIMEOUT '+CONVERT(nvarchar(12),@LockTimeoutMs)+N';'; EXEC [sys].[sp_executesql] @LockTimeoutSql;
@@ -588,6 +609,125 @@ FROM #SsisPackageModelAnalysis_SqlMetadata AS [b] WHERE [b].[KeySetId] IS NOT NU
                 INSERT #SsisPackageModelAnalysis_Warnings VALUES(@SqlMetadataStatus,'INFO',N'Der optionale Metadatenpfad ist nicht qualifiziert; das statische Modell bleibt getrennt nutzbar.');
             END CATCH;
         END;
+        IF @IncludeExecutionCorrelation=1
+        BEGIN
+            SET @ValidationStage='EXECUTION_CAPTURE';
+            DECLARE @RuntimeStatus varchar(40)='RUNTIME_BINDING_UNPROVEN',@RuntimeReason varchar(64)=NULL,@RuntimeError int=NULL,@RootQualified bit=0;
+            DECLARE @CatalogGuid uniqueidentifier=NULL,@RuntimeSourceBinding varchar(64)=NULL,@RuntimeProjectId bigint=NULL,@RuntimeProjectLsn bigint=NULL,@RuntimeFile nvarchar(260)=NULL,@RuntimeCreated datetimeoffset(7)=NULL;
+            DECLARE @RuntimeExecutionStatus int=NULL,@RuntimeStart datetimeoffset(7)=NULL,@RuntimeEnd datetimeoffset(7)=NULL,@CaptureStart datetime2(7)=NULL,@CaptureEnd datetime2(7)=NULL;
+            BEGIN TRY
+                IF @ProducerTrust<>'VERIFIED_LOCAL' THROW 50000,N'MODEL_HANDOVER_UNVERIFIED',1;
+                IF @ExecutionSnapshotJson IS NULL OR @RuntimeHandoverId IS NULL THROW 50000,N'QUALIFIED_CAPTURE_MISSING',1;
+                IF DATALENGTH(@ExecutionSnapshotJson)>16777216 OR ISJSON(@ExecutionSnapshotJson)<>1 THROW 50000,N'RUNTIME_CAPTURE_INVALID',1;
+                DECLARE @RuntimeReceipt nvarchar(3750),@RuntimeName sysname=N'SSIS_RUNTIME_'+LOWER(CONVERT(nvarchar(36),@RuntimeHandoverId));
+                SELECT @RuntimeReceipt=TRY_CONVERT(nvarchar(3750),[value]) FROM [sys].[extended_properties] WITH (READCOMMITTEDLOCK)
+                WHERE [class]=1 AND [major_id]=@@PROCID AND [minor_id]=0 AND [name] COLLATE Latin1_General_100_BIN2=@RuntimeName COLLATE Latin1_General_100_BIN2;
+                IF @RuntimeReceipt IS NULL OR ISJSON(@RuntimeReceipt)<>1 THROW 50000,N'RUNTIME_HANDOVER_INVALID',1;
+                IF (SELECT COUNT(*) FROM OPENJSON(@RuntimeReceipt))<>5 OR EXISTS(SELECT [key] COLLATE Latin1_General_100_BIN2 FROM OPENJSON(@RuntimeReceipt) GROUP BY [key] COLLATE Latin1_General_100_BIN2,DATALENGTH([key]) HAVING COUNT(*)<>1)
+                    OR EXISTS(SELECT 1 FROM OPENJSON(@RuntimeReceipt) WHERE [type]<>1 OR [key] COLLATE Latin1_General_100_BIN2 NOT IN ('contract','version','snapshotSha256','issuedUtc','expiresUtc'))
+                    THROW 50000,N'RUNTIME_HANDOVER_INVALID',1;
+                DECLARE @RuntimeIssued datetime2(3)=TRY_CONVERT(datetime2(3),JSON_VALUE(@RuntimeReceipt,'$.issuedUtc'),127),@RuntimeExpires datetime2(3)=TRY_CONVERT(datetime2(3),JSON_VALUE(@RuntimeReceipt,'$.expiresUtc'),127);
+                IF COALESCE(JSON_VALUE(@RuntimeReceipt,'$.contract'),'') COLLATE Latin1_General_100_BIN2<>'ssis-local-runtime-handover' OR DATALENGTH(JSON_VALUE(@RuntimeReceipt,'$.contract'))<>DATALENGTH(N'ssis-local-runtime-handover')
+                    OR COALESCE(JSON_VALUE(@RuntimeReceipt,'$.version'),'') COLLATE Latin1_General_100_BIN2<>'1.0.0' OR DATALENGTH(JSON_VALUE(@RuntimeReceipt,'$.version'))<>10
+                    OR @RuntimeIssued IS NULL OR @RuntimeExpires IS NULL OR @RuntimeIssued>@Started OR @RuntimeExpires<=@Started OR @RuntimeExpires>DATEADD(hour,24,@RuntimeIssued)
+                    OR DATALENGTH(JSON_VALUE(@RuntimeReceipt,'$.snapshotSha256'))<>128 OR COALESCE(UPPER(JSON_VALUE(@RuntimeReceipt,'$.snapshotSha256')),'') COLLATE Latin1_General_100_BIN2<>CONVERT(varchar(64),HASHBYTES('SHA2_256',CONVERT(varbinary(max),@ExecutionSnapshotJson)),2) COLLATE Latin1_General_100_BIN2
+                    THROW 50000,N'RUNTIME_HANDOVER_INVALID',1;
+                -- Der Capturetransport erlaubt unbekannte Annotationen; bekannte Bindungen
+                -- werden ausdrücklich geprüft. Doppelte Objektschlüssel sind überall ungültig.
+                CREATE TABLE #SsisPackageModelAnalysis_RuntimeContainers([ContainerId] int IDENTITY PRIMARY KEY,[Depth] int NOT NULL,[JsonType] int NOT NULL,[ValueText] nvarchar(max) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL);
+                INSERT #SsisPackageModelAnalysis_RuntimeContainers VALUES(0,5,@ExecutionSnapshotJson);
+                DECLARE @RuntimeDepth int=0,@RuntimeTokens bigint=0;
+                WHILE EXISTS(SELECT 1 FROM #SsisPackageModelAnalysis_RuntimeContainers WHERE [Depth]=@RuntimeDepth)
+                BEGIN
+                    IF @RuntimeDepth>16 OR SYSUTCDATETIME()>=@Deadline THROW 50000,N'RUNTIME_CAPTURE_LIMIT',1;
+                    SELECT @RuntimeTokens+=COUNT_BIG(*) FROM #SsisPackageModelAnalysis_RuntimeContainers AS [c] CROSS APPLY OPENJSON([c].[ValueText]) AS [j] WHERE [c].[Depth]=@RuntimeDepth;
+                    IF @RuntimeTokens>1048576 THROW 50000,N'RUNTIME_CAPTURE_LIMIT',1;
+                    IF EXISTS(SELECT [c].[ContainerId],[j].[key] COLLATE Latin1_General_100_BIN2 FROM #SsisPackageModelAnalysis_RuntimeContainers AS [c] CROSS APPLY OPENJSON([c].[ValueText]) AS [j]
+                        WHERE [c].[Depth]=@RuntimeDepth AND [c].[JsonType]=5 GROUP BY [c].[ContainerId],[j].[key] COLLATE Latin1_General_100_BIN2,DATALENGTH([j].[key]) HAVING COUNT(*)>1)
+                        THROW 50000,N'RUNTIME_CAPTURE_INVALID',1;
+                    INSERT #SsisPackageModelAnalysis_RuntimeContainers SELECT @RuntimeDepth+1,[j].[type],[j].[value] FROM #SsisPackageModelAnalysis_RuntimeContainers AS [c] CROSS APPLY OPENJSON([c].[ValueText]) AS [j] WHERE [c].[Depth]=@RuntimeDepth AND [j].[type] IN (4,5);
+                    DELETE #SsisPackageModelAnalysis_RuntimeContainers WHERE [Depth]=@RuntimeDepth;
+                    SET @RuntimeDepth+=1;
+                END;
+                IF COALESCE(JSON_VALUE(@ExecutionSnapshotJson,'$.contract'),'') COLLATE Latin1_General_100_BIN2<>'ssis-execution-snapshot' OR DATALENGTH(JSON_VALUE(@ExecutionSnapshotJson,'$.contract'))<>DATALENGTH(N'ssis-execution-snapshot')
+                    OR COALESCE(JSON_VALUE(@ExecutionSnapshotJson,'$.version'),'') COLLATE Latin1_General_100_BIN2<>'1.0.0' OR DATALENGTH(JSON_VALUE(@ExecutionSnapshotJson,'$.version'))<>10
+                    OR COALESCE(JSON_VALUE(@ExecutionSnapshotJson,'$.method'),'') COLLATE Latin1_General_100_BIN2<>'SSISDB_CURRENT_PROJECT_ROOT_SCOPE_V1' OR DATALENGTH(JSON_VALUE(@ExecutionSnapshotJson,'$.method'))<>DATALENGTH(N'SSISDB_CURRENT_PROJECT_ROOT_SCOPE_V1')
+                    OR COALESCE(JSON_VALUE(@ExecutionSnapshotJson,'$.identityProfile'),'') COLLATE Latin1_General_100_BIN2<>'document-order-v1' OR DATALENGTH(JSON_VALUE(@ExecutionSnapshotJson,'$.identityProfile'))<>34
+                    OR COALESCE(UPPER(JSON_VALUE(@ExecutionSnapshotJson,'$.modelSha256')),'') COLLATE Latin1_General_100_BIN2<>CONVERT(varchar(64),HASHBYTES('SHA2_256',CONVERT(varbinary(max),@PackageModelJson)),2) COLLATE Latin1_General_100_BIN2 OR DATALENGTH(JSON_VALUE(@ExecutionSnapshotJson,'$.modelSha256'))<>128
+                    OR COALESCE(UPPER(JSON_VALUE(@ExecutionSnapshotJson,'$.packageSha256')),'') COLLATE Latin1_General_100_BIN2<>UPPER(@PackageHash) COLLATE Latin1_General_100_BIN2 OR DATALENGTH(JSON_VALUE(@ExecutionSnapshotJson,'$.packageSha256'))<>128
+                    OR COALESCE(JSON_VALUE(@ExecutionSnapshotJson,'$.identities.contract'),'') COLLATE Latin1_General_100_BIN2<>'ssis-object-identities' OR DATALENGTH(JSON_VALUE(@ExecutionSnapshotJson,'$.identities.contract'))<>DATALENGTH(N'ssis-object-identities')
+                    OR COALESCE(JSON_VALUE(@ExecutionSnapshotJson,'$.identities.version'),'') COLLATE Latin1_General_100_BIN2<>'1.0.0' OR DATALENGTH(JSON_VALUE(@ExecutionSnapshotJson,'$.identities.version'))<>10
+                    OR COALESCE(JSON_VALUE(@ExecutionSnapshotJson,'$.identities.identityProfile'),'') COLLATE Latin1_General_100_BIN2<>'document-order-v1' OR DATALENGTH(JSON_VALUE(@ExecutionSnapshotJson,'$.identities.identityProfile'))<>34
+                    OR COALESCE(UPPER(JSON_VALUE(@ExecutionSnapshotJson,'$.identities.packageSha256')),'') COLLATE Latin1_General_100_BIN2<>UPPER(@PackageHash) COLLATE Latin1_General_100_BIN2 OR DATALENGTH(JSON_VALUE(@ExecutionSnapshotJson,'$.identities.packageSha256'))<>128
+                    THROW 50000,N'RUNTIME_MODEL_BINDING_INVALID',1;
+                SELECT @CatalogGuid=TRY_CONVERT(uniqueidentifier,JSON_VALUE(@ExecutionSnapshotJson,'$.execution.catalogDatabaseGuid')),@RuntimeSourceBinding=JSON_VALUE(@ExecutionSnapshotJson,'$.execution.sourceBindingSha256'),@RuntimeProjectId=TRY_CONVERT(bigint,JSON_VALUE(@ExecutionSnapshotJson,'$.execution.projectId')),
+                    @RuntimeProjectLsn=TRY_CONVERT(bigint,JSON_VALUE(@ExecutionSnapshotJson,'$.execution.projectLsn')),@RuntimeFile=JSON_VALUE(@ExecutionSnapshotJson,'$.execution.packageFileName'),
+                    @RuntimeCreated=TRY_CONVERT(datetimeoffset(7),JSON_VALUE(@ExecutionSnapshotJson,'$.execution.executionCreatedUtc'),127),@RuntimeExecutionStatus=TRY_CONVERT(int,JSON_VALUE(@ExecutionSnapshotJson,'$.execution.executionStatus')),
+                    @RuntimeStart=TRY_CONVERT(datetimeoffset(7),JSON_VALUE(@ExecutionSnapshotJson,'$.execution.startTime'),127),@RuntimeEnd=TRY_CONVERT(datetimeoffset(7),JSON_VALUE(@ExecutionSnapshotJson,'$.execution.endTime'),127),
+                    @CaptureStart=TRY_CONVERT(datetime2(7),JSON_VALUE(@ExecutionSnapshotJson,'$.execution.snapshotStartedUtc'),127),@CaptureEnd=TRY_CONVERT(datetime2(7),JSON_VALUE(@ExecutionSnapshotJson,'$.execution.snapshotCompletedUtc'),127);
+                IF COALESCE(TRY_CONVERT(bigint,JSON_VALUE(@ExecutionSnapshotJson,'$.execution.executionId')),0)<>@ExecutionId OR @CatalogGuid IS NULL OR @CatalogGuid='00000000-0000-0000-0000-000000000000' OR DATALENGTH(JSON_VALUE(@ExecutionSnapshotJson,'$.execution.catalogDatabaseGuid'))<>72
+                    OR @RuntimeSourceBinding IS NULL OR DATALENGTH(JSON_VALUE(@ExecutionSnapshotJson,'$.execution.sourceBindingSha256'))<>128 OR @RuntimeSourceBinding COLLATE Latin1_General_100_BIN2 LIKE '%[^0-9a-f]%'
+                    OR @RuntimeProjectId IS NULL OR @RuntimeProjectId<1 OR @RuntimeProjectLsn IS NULL OR @RuntimeProjectLsn<1 OR @RuntimeFile IS NULL OR DATALENGTH(JSON_VALUE(@ExecutionSnapshotJson,'$.execution.packageFileName')) NOT BETWEEN 2 AND 520
+                    OR JSON_VALUE(@ExecutionSnapshotJson,'$.execution.startTime') IS NOT NULL AND @RuntimeStart IS NULL
+                    OR JSON_VALUE(@ExecutionSnapshotJson,'$.execution.endTime') IS NOT NULL AND @RuntimeEnd IS NULL
+                    OR JSON_QUERY(@ExecutionSnapshotJson,'$.execution.startTime') IS NOT NULL OR JSON_QUERY(@ExecutionSnapshotJson,'$.execution.endTime') IS NOT NULL
+                    OR @RuntimeCreated IS NULL OR @RuntimeExecutionStatus NOT BETWEEN 1 AND 9 OR @RuntimeExecutionStatus IS NULL OR @CaptureStart IS NULL OR @CaptureEnd IS NULL OR @CaptureEnd<@CaptureStart
+                    THROW 50000,N'RUNTIME_EXECUTION_BINDING_INVALID',1;
+                CREATE TABLE #SsisPackageModelAnalysis_RuntimeIdentities([NodeId] varchar(128) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL PRIMARY KEY,[NodeKind] varchar(16) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,[NativeGuid] uniqueidentifier NULL,[PackagePath] nvarchar(4000) COLLATE SQL_Latin1_General_CP1_CS_AS NULL);
+                IF JSON_QUERY(@ExecutionSnapshotJson,'$.identities.objects') IS NULL OR LEFT(LTRIM(JSON_QUERY(@ExecutionSnapshotJson,'$.identities.objects')),1)<>N'['
+                    OR EXISTS(SELECT 1 FROM OPENJSON(@ExecutionSnapshotJson,'$.identities.objects') WHERE [type]<>5)
+                    OR (SELECT COUNT(*) FROM OPENJSON(@ExecutionSnapshotJson,'$.identities.objects'))<>(SELECT COUNT(*) FROM #SsisPackageModelAnalysis_Nodes WHERE [NodeKind] IN ('PACKAGE','EXECUTABLE'))
+                    OR EXISTS(SELECT 1 FROM OPENJSON(@ExecutionSnapshotJson,'$.identities.objects') WITH([NodeId] nvarchar(max) '$.nodeId',[NodeKind] nvarchar(max) '$.nodeKind',[NativeGuid] nvarchar(max) '$.dtsId',[PackagePath] nvarchar(max) '$.packagePath') AS [j]
+                        LEFT JOIN #SsisPackageModelAnalysis_Nodes AS [n] ON [n].[NodeId] COLLATE Latin1_General_100_BIN2=[j].[NodeId] COLLATE Latin1_General_100_BIN2 AND DATALENGTH([n].[NodeId])*2=DATALENGTH([j].[NodeId]) AND [n].[NodeKind] COLLATE Latin1_General_100_BIN2=[j].[NodeKind] COLLATE Latin1_General_100_BIN2 AND DATALENGTH([n].[NodeKind])*2=DATALENGTH([j].[NodeKind])
+                        WHERE [n].[NodeId] IS NULL OR [n].[NodeKind] NOT IN ('PACKAGE','EXECUTABLE') OR DATALENGTH([j].[PackagePath])>8000 OR [j].[NativeGuid] IS NOT NULL AND (DATALENGTH([j].[NativeGuid])<>72 OR TRY_CONVERT(uniqueidentifier,[j].[NativeGuid]) IS NULL))
+                    THROW 50000,N'RUNTIME_OBJECT_IDENTITIES_INVALID',1;
+                INSERT #SsisPackageModelAnalysis_RuntimeIdentities
+                SELECT [NodeId],[NodeKind],TRY_CONVERT(uniqueidentifier,[NativeGuid]),[PackagePath] FROM OPENJSON(@ExecutionSnapshotJson,'$.identities.objects') WITH([NodeId] varchar(128) '$.nodeId',[NodeKind] varchar(16) '$.nodeKind',[NativeGuid] nvarchar(36) '$.dtsId',[PackagePath] nvarchar(4000) '$.packagePath');
+                IF JSON_QUERY(@ExecutionSnapshotJson,'$.observations') IS NULL OR LEFT(LTRIM(JSON_QUERY(@ExecutionSnapshotJson,'$.observations')),1)<>N'[' OR (SELECT COUNT(*) FROM OPENJSON(@ExecutionSnapshotJson,'$.observations'))>50000 OR EXISTS(SELECT 1 FROM OPENJSON(@ExecutionSnapshotJson,'$.observations') WHERE [type]<>5)
+                    OR EXISTS(SELECT 1 FROM OPENJSON(@ExecutionSnapshotJson,'$.observations') WITH([StatisticsId] nvarchar(max) '$.statisticsId',[ExecutionId] nvarchar(max) '$.executionId',[ExecutableId] nvarchar(max) '$.executableId',[NativeGuid] nvarchar(max) '$.executableGuid',[PackageName] nvarchar(max) '$.packageName',[PackagePath] nvarchar(max) '$.packagePath',[ExecutionPath] nvarchar(max) '$.executionPath',[StartTime] nvarchar(max) '$.startTime',[EndTime] nvarchar(max) '$.endTime',[DurationMs] nvarchar(max) '$.durationMs',[ExecutionResult] nvarchar(max) '$.executionResult') AS [j]
+                        WHERE COALESCE(TRY_CONVERT(bigint,[j].[StatisticsId]),0)<1 OR COALESCE(TRY_CONVERT(bigint,[j].[ExecutionId]),0)<>@ExecutionId OR COALESCE(TRY_CONVERT(bigint,[j].[ExecutableId]),0)<1
+                            OR [j].[StartTime] IS NOT NULL AND TRY_CONVERT(datetimeoffset(7),[j].[StartTime],127) IS NULL OR [j].[EndTime] IS NOT NULL AND TRY_CONVERT(datetimeoffset(7),[j].[EndTime],127) IS NULL
+                            OR [j].[DurationMs] IS NOT NULL AND TRY_CONVERT(int,[j].[DurationMs]) IS NULL OR [j].[ExecutionResult] IS NOT NULL AND TRY_CONVERT(int,[j].[ExecutionResult]) IS NULL
+                            OR DATALENGTH([j].[PackageName])>520 OR DATALENGTH([j].[PackagePath])>8000 OR DATALENGTH([j].[ExecutionPath])>8000 OR [j].[NativeGuid] IS NOT NULL AND (DATALENGTH([j].[NativeGuid])<>72 OR TRY_CONVERT(uniqueidentifier,[j].[NativeGuid]) IS NULL))
+                    THROW 50000,N'RUNTIME_OBSERVATIONS_INVALID',1;
+                INSERT #SsisPackageModelAnalysis_ExecutionCorrelation
+                SELECT TRY_CONVERT(bigint,[StatisticsId]),@ExecutionId,TRY_CONVERT(bigint,[ExecutableId]),NULL,NULL,TRY_CONVERT(uniqueidentifier,[NativeGuid]),[PackageName],[PackagePath],[ExecutionPath],TRY_CONVERT(datetimeoffset(7),[StartTime],127),TRY_CONVERT(datetimeoffset(7),[EndTime],127),TRY_CONVERT(int,[DurationMs]),TRY_CONVERT(int,[ExecutionResult]),'NO_QUALIFIED_ROOT_OBSERVATION','IMPORTED_CATALOG_OBSERVATION'
+                FROM OPENJSON(@ExecutionSnapshotJson,'$.observations') WITH([StatisticsId] nvarchar(40) '$.statisticsId',[ExecutableId] nvarchar(40) '$.executableId',[NativeGuid] nvarchar(36) '$.executableGuid',[PackageName] nvarchar(260) '$.packageName',[PackagePath] nvarchar(4000) '$.packagePath',[ExecutionPath] nvarchar(4000) '$.executionPath',[StartTime] nvarchar(64) '$.startTime',[EndTime] nvarchar(64) '$.endTime',[DurationMs] nvarchar(64) '$.durationMs',[ExecutionResult] nvarchar(64) '$.executionResult');
+                DECLARE @RootCount int,@RootRuntimePackage nvarchar(260),@RootPackagePath nvarchar(4000),@RootExecutionPath nvarchar(4000),@RootPackageChars int;
+                -- SSISDB unterscheidet Paketpfad und Laufzeitwurzel. Die Wurzel
+                -- wird beobachtet, nicht aus einem Modellanzeigenamen erzeugt.
+                SELECT @RootCount=COUNT(*),@RootRuntimePackage=MAX([o].[PackageName]),@RootPackagePath=MAX([o].[PackagePath]),@RootExecutionPath=MAX([o].[ExecutionPath])
+                FROM #SsisPackageModelAnalysis_ExecutionCorrelation AS [o] JOIN #SsisPackageModelAnalysis_RuntimeIdentities AS [i] ON [i].[NodeKind]='PACKAGE' AND [i].[NativeGuid]=[o].[ExecutableGuid]
+                WHERE [i].[PackagePath] COLLATE Latin1_General_100_BIN2=[o].[PackagePath] COLLATE Latin1_General_100_BIN2 AND DATALENGTH([i].[PackagePath])=DATALENGTH([o].[PackagePath])
+                    AND [o].[PackageName] COLLATE Latin1_General_100_BIN2=@RuntimeFile COLLATE Latin1_General_100_BIN2 AND DATALENGTH([o].[PackageName])=DATALENGTH(@RuntimeFile)
+                    AND LEFT([o].[ExecutionPath] COLLATE Latin1_General_100_BIN2,1) COLLATE Latin1_General_100_BIN2=N'\' COLLATE Latin1_General_100_BIN2
+                    AND DATALENGTH([o].[ExecutionPath])>2 AND CHARINDEX(N'\',[o].[ExecutionPath] COLLATE Latin1_General_100_BIN2,2)=0
+                    AND (SELECT COUNT(*) FROM #SsisPackageModelAnalysis_RuntimeIdentities AS [g] WHERE [g].[NativeGuid]=[i].[NativeGuid])=1;
+                IF @RootCount=1 AND @RootRuntimePackage IS NOT NULL
+                BEGIN
+                    SET @RootQualified=1;SET @RootPackageChars=DATALENGTH(@RootPackagePath)/2;
+                    UPDATE [o] SET [CorrelationStatus]=CASE WHEN [o].[ExecutableGuid] IS NULL THEN 'NATIVE_GUID_UNAVAILABLE' WHEN [o].[PackagePath] IS NULL OR [o].[ExecutionPath] IS NULL THEN 'PATH_UNAVAILABLE' ELSE 'NO_EXACT_MODEL_OBJECT' END FROM #SsisPackageModelAnalysis_ExecutionCorrelation AS [o];
+                    UPDATE [o] SET [ModelNodeId]=[i].[NodeId],[ModelNodeKind]=[i].[NodeKind],[CorrelationStatus]='EXACT_GUID_AND_PATH'
+                    FROM #SsisPackageModelAnalysis_ExecutionCorrelation AS [o] JOIN #SsisPackageModelAnalysis_RuntimeIdentities AS [i] ON [i].[NativeGuid]=[o].[ExecutableGuid]
+                    CROSS APPLY(SELECT CONVERT(nvarchar(max),@RootExecutionPath)+SUBSTRING([i].[PackagePath] COLLATE Latin1_General_100_BIN2,@RootPackageChars+1,4000) AS [Path]) AS [expected]
+                    WHERE [i].[PackagePath] COLLATE Latin1_General_100_BIN2=[o].[PackagePath] COLLATE Latin1_General_100_BIN2 AND DATALENGTH([i].[PackagePath])=DATALENGTH([o].[PackagePath])
+                        AND ([i].[PackagePath] COLLATE Latin1_General_100_BIN2=@RootPackagePath COLLATE Latin1_General_100_BIN2 AND DATALENGTH([i].[PackagePath])=DATALENGTH(@RootPackagePath)
+                            OR LEFT([i].[PackagePath] COLLATE Latin1_General_100_BIN2,@RootPackageChars+1) COLLATE Latin1_General_100_BIN2=(@RootPackagePath+N'\') COLLATE Latin1_General_100_BIN2 AND DATALENGTH([i].[PackagePath])>DATALENGTH(@RootPackagePath))
+                        AND [expected].[Path] COLLATE Latin1_General_100_BIN2=[o].[ExecutionPath] COLLATE Latin1_General_100_BIN2 AND DATALENGTH([expected].[Path])=DATALENGTH([o].[ExecutionPath])
+                        AND [o].[PackageName] COLLATE Latin1_General_100_BIN2=@RootRuntimePackage COLLATE Latin1_General_100_BIN2 AND DATALENGTH([o].[PackageName])=DATALENGTH(@RootRuntimePackage)
+                        AND (SELECT COUNT(*) FROM #SsisPackageModelAnalysis_RuntimeIdentities AS [g] WHERE [g].[NativeGuid]=[i].[NativeGuid])=1;
+                END;
+                SET @RuntimeStatus='RUNTIME_BOUND_CAPTURE';SET @RuntimeReason=CASE WHEN @RootQualified=0 THEN 'NO_QUALIFIED_ROOT_OBSERVATION' END;
+            END TRY
+            BEGIN CATCH
+                SET @RuntimeError=ERROR_NUMBER();SET @RuntimeReason=CASE WHEN ERROR_NUMBER()=50000 THEN CONVERT(varchar(64),ERROR_MESSAGE()) ELSE 'RUNTIME_CAPTURE_INVALID' END;
+                DELETE #SsisPackageModelAnalysis_ExecutionCorrelation;
+                SELECT @CatalogGuid=NULL,@RuntimeSourceBinding=NULL,@RuntimeProjectId=NULL,@RuntimeProjectLsn=NULL,@RuntimeFile=NULL,@RuntimeCreated=NULL,@RuntimeExecutionStatus=NULL,@RuntimeStart=NULL,@RuntimeEnd=NULL,@CaptureStart=NULL,@CaptureEnd=NULL,@RootQualified=0;
+            END CATCH;
+            INSERT #SsisPackageModelAnalysis_RuntimeBinding VALUES(@ExecutionId,@CatalogGuid,@RuntimeSourceBinding,@RuntimeProjectId,@RuntimeProjectLsn,@RuntimeFile,@RuntimeCreated,@RuntimeExecutionStatus,@RuntimeStart,@RuntimeEnd,@CaptureStart,@CaptureEnd,@PackageHash,@RuntimeStatus,@RuntimeReason,@RootQualified,(SELECT COUNT(*) FROM #SsisPackageModelAnalysis_ExecutionCorrelation),(SELECT COUNT(*) FROM #SsisPackageModelAnalysis_ExecutionCorrelation WHERE [ModelNodeId] IS NOT NULL),1,@RuntimeError);
+            INSERT #SsisPackageModelAnalysis_SourceStatus VALUES(N'Qualifizierter SSISDB-Capture',@RuntimeStatus,1,(SELECT COUNT_BIG(*) FROM #SsisPackageModelAnalysis_ExecutionCorrelation),N'Importierte Katalogbeobachtung des ausgewiesenen Quellslices; kein Livezugriff, keine normalisierten Iterationspfade und keine Laufzeit-Lineage.');
+            IF @RuntimeReason IS NOT NULL INSERT #SsisPackageModelAnalysis_Warnings VALUES(@RuntimeReason,'INFO',N'Die optionale Laufzeitquelle besitzt keine uneingeschränkt qualifizierte Objektzuordnung; statische Modellangaben bleiben getrennt.');
+        END;
         IF SYSUTCDATETIME()>=@Deadline THROW 50000,N'EXCHANGE_TIME_BUDGET_EXHAUSTED',1;
     END TRY
     BEGIN CATCH
@@ -595,11 +735,11 @@ FROM #SsisPackageModelAnalysis_SqlMetadata AS [b] WHERE [b].[KeySetId] IS NOT NU
         SET @Message=CASE WHEN ERROR_NUMBER()=50000 THEN ERROR_MESSAGE() ELSE N'Native Modellvalidierung fehlgeschlagen; Fehlernummer '+CONVERT(nvarchar(12),ERROR_NUMBER())+N'.' END;
         SET @Message+=N' Stage='+@ValidationStage;
         SET @Status=CASE WHEN ERROR_NUMBER()=50000 AND ERROR_MESSAGE() IN ('INVALID_PARAMETER','EXCHANGE_INVALID','EXCHANGE_VERSION_UNSUPPORTED','EXCHANGE_LIMIT_EXCEEDED','EXCHANGE_REFERENCE_INVALID','EXCHANGE_PROFILE_UNSUPPORTED','EXCHANGE_SOURCE_MISMATCH','EXCHANGE_HANDOVER_INVALID','EXCHANGE_TIME_BUDGET_EXHAUSTED') THEN ERROR_MESSAGE() ELSE 'EXCHANGE_INVALID' END;
-        DELETE #SsisPackageModelAnalysis_SqlMetadata; DELETE #SsisPackageModelAnalysis_SourceStatus; DELETE #SsisPackageModelAnalysis_Binding; DELETE #SsisPackageModelAnalysis_Nodes; DELETE #SsisPackageModelAnalysis_Edges; DELETE #SsisPackageModelAnalysis_Coverage; DELETE #SsisPackageModelAnalysis_Findings; DELETE #SsisPackageModelAnalysis_Warnings;
+        DELETE #SsisPackageModelAnalysis_RuntimeBinding; DELETE #SsisPackageModelAnalysis_ExecutionCorrelation; DELETE #SsisPackageModelAnalysis_SqlMetadata; DELETE #SsisPackageModelAnalysis_SourceStatus; DELETE #SsisPackageModelAnalysis_Binding; DELETE #SsisPackageModelAnalysis_Nodes; DELETE #SsisPackageModelAnalysis_Edges; DELETE #SsisPackageModelAnalysis_Coverage; DELETE #SsisPackageModelAnalysis_Findings; DELETE #SsisPackageModelAnalysis_Warnings;
         DELETE #SsisPackageModelAnalysis_ObjectFindings; DELETE #SsisPackageModelAnalysis_PackageOverview; DELETE #SsisPackageModelAnalysis_Executables; DELETE #SsisPackageModelAnalysis_DataFlows; DELETE #SsisPackageModelAnalysis_Components; DELETE #SsisPackageModelAnalysis_ColumnRelations;
     END CATCH;
     SET @LockTimeoutSql=N'SET LOCK_TIMEOUT '+CONVERT(nvarchar(20),@OriginalLockTimeout)+N';'; EXEC [sys].[sp_executesql] @LockTimeoutSql;
-    IF @Status='AVAILABLE_LIMITED' AND (EXISTS(SELECT 1 FROM #SsisPackageModelAnalysis_Nodes WHERE [NodeOrdinal]>@Limit) OR EXISTS(SELECT 1 FROM #SsisPackageModelAnalysis_Edges WHERE [EdgeOrdinal]>@Limit) OR (SELECT COUNT_BIG(*) FROM #SsisPackageModelAnalysis_ObjectFindings)>@Limit OR (SELECT COUNT_BIG(*) FROM #SsisPackageModelAnalysis_SqlMetadata)>@Limit)
+    IF @Status='AVAILABLE_LIMITED' AND (EXISTS(SELECT 1 FROM #SsisPackageModelAnalysis_Nodes WHERE [NodeOrdinal]>@Limit) OR EXISTS(SELECT 1 FROM #SsisPackageModelAnalysis_Edges WHERE [EdgeOrdinal]>@Limit) OR (SELECT COUNT_BIG(*) FROM #SsisPackageModelAnalysis_ObjectFindings)>@Limit OR (SELECT COUNT_BIG(*) FROM #SsisPackageModelAnalysis_SqlMetadata)>@Limit OR (SELECT COUNT_BIG(*) FROM #SsisPackageModelAnalysis_ExecutionCorrelation)>@Limit)
         INSERT #SsisPackageModelAnalysis_Warnings VALUES('RESULT_TRUNCATED','INFO',N'Nur die Ausgabe ist begrenzt; die Validierung verwendete den vollständigen Graphen.');
     INSERT #SsisPackageModelAnalysis_ModuleStatus VALUES('USP_SsisPackageModelAnalysis',@Started,@SchemaVersion,@Status,@Partial,(SELECT COUNT(*) FROM #SsisPackageModelAnalysis_Nodes),(SELECT COUNT(*) FROM #SsisPackageModelAnalysis_Edges),@Error,@Message);
     INSERT #SsisPackageModelAnalysis_SourceStatus VALUES(N'Caller SSIS-Modell',@Status,@Partial,(SELECT COUNT_BIG(*) FROM #SsisPackageModelAnalysis_Nodes),N'Native Strukturprüfung; ProducerTrust='+CONVERT(nvarchar(24),CASE WHEN @Status='AVAILABLE_LIMITED' THEN @ProducerTrust ELSE 'UNVERIFIED' END)+N'. Keine Paket- oder SQL-Ausführung.');
@@ -615,6 +755,12 @@ FROM #SsisPackageModelAnalysis_SqlMetadata AS [b] WHERE [b].[KeySetId] IS NOT NU
             JSON_QUERY(COALESCE((SELECT * FROM #SsisPackageModelAnalysis_Findings FOR JSON PATH,INCLUDE_NULL_VALUES),N'[]')) AS [findings],
             JSON_QUERY(COALESCE((SELECT * FROM #SsisPackageModelAnalysis_SourceStatus FOR JSON PATH,INCLUDE_NULL_VALUES),N'[]')) AS [sourceStatus],
             JSON_QUERY(COALESCE((SELECT * FROM #SsisPackageModelAnalysis_Warnings FOR JSON PATH,INCLUDE_NULL_VALUES),N'[]')) AS [warnings] FOR JSON PATH,WITHOUT_ARRAY_WRAPPER);
+        IF @IncludeExecutionCorrelation=1
+        BEGIN
+            SET @Json=JSON_MODIFY(@Json,'$.meta.executionCorrelationSchemaVersion',1);
+            SET @Json=JSON_MODIFY(@Json,'$.runtimeBinding',JSON_QUERY(COALESCE((SELECT * FROM #SsisPackageModelAnalysis_RuntimeBinding FOR JSON PATH,INCLUDE_NULL_VALUES),N'[]')));
+            SET @Json=JSON_MODIFY(@Json,'$.executionCorrelation',JSON_QUERY(COALESCE((SELECT TOP(@Limit) * FROM #SsisPackageModelAnalysis_ExecutionCorrelation ORDER BY [StatisticsId] FOR JSON PATH,INCLUDE_NULL_VALUES),N'[]')));
+        END;
         IF @IncludeSqlMetadata=1
         BEGIN
             SET @Json=JSON_MODIFY(@Json,'$.meta.sqlMetadataSchemaVersion',1);
@@ -643,9 +789,15 @@ FROM #SsisPackageModelAnalysis_SqlMetadata AS [b] WHERE [b].[KeySetId] IS NOT NU
     ;WITH [r] AS(SELECT *,ROW_NUMBER() OVER(ORDER BY [EdgeOrdinal]) AS [OutputRow] FROM #SsisPackageModelAnalysis_ColumnRelations) DELETE [r] WHERE [OutputRow]>@Limit;
     ;WITH [r] AS(SELECT *,ROW_NUMBER() OVER(ORDER BY [RuleId],[NodeId],[EdgeId]) AS [OutputRow] FROM #SsisPackageModelAnalysis_ObjectFindings) DELETE [r] WHERE [OutputRow]>@Limit;
     ;WITH [r] AS(SELECT *,ROW_NUMBER() OVER(ORDER BY [BindingOrdinal]) AS [OutputRow] FROM #SsisPackageModelAnalysis_SqlMetadata) DELETE [r] WHERE [OutputRow]>@Limit;
+    ;WITH [r] AS(SELECT *,ROW_NUMBER() OVER(ORDER BY [StatisticsId]) AS [OutputRow] FROM #SsisPackageModelAnalysis_ExecutionCorrelation) DELETE [r] WHERE [OutputRow]>@Limit;
     IF @Mode='TABLE'
     BEGIN
         DECLARE @Target sysname;
+        IF @IncludeExecutionCorrelation=1
+        BEGIN
+            SET @Target=(SELECT [TargetTable] FROM #SsisPackageModelAnalysis_ResultTables WHERE [ResultName]='runtimeBinding'); IF @Target IS NOT NULL EXEC [monitor].[InternalWriteResultTable] N'#SsisPackageModelAnalysis_RuntimeBinding',@Target,@ThrowOnError=1;
+            SET @Target=(SELECT [TargetTable] FROM #SsisPackageModelAnalysis_ResultTables WHERE [ResultName]='executionCorrelation'); IF @Target IS NOT NULL EXEC [monitor].[InternalWriteResultTable] N'#SsisPackageModelAnalysis_ExecutionCorrelation',@Target,@ThrowOnError=1;
+        END;
         IF @IncludeSqlMetadata=1
         BEGIN
             SET @Target=(SELECT [TargetTable] FROM #SsisPackageModelAnalysis_ResultTables WHERE [ResultName]='sqlMetadata'); IF @Target IS NOT NULL EXEC [monitor].[InternalWriteResultTable] N'#SsisPackageModelAnalysis_SqlMetadata',@Target,@ThrowOnError=1;
@@ -686,6 +838,10 @@ FROM #SsisPackageModelAnalysis_SqlMetadata AS [b] WHERE [b].[KeySetId] IS NOT NU
     END;
     IF @Mode='RAW' AND @IncludeObjectRules=1 SELECT * FROM #SsisPackageModelAnalysis_ObjectFindings ORDER BY [RuleId],[NodeId],[EdgeId];
     IF @Mode='RAW' AND @IncludeSqlMetadata=1 SELECT * FROM #SsisPackageModelAnalysis_SqlMetadata ORDER BY [BindingOrdinal];
+    IF @Mode='RAW' AND @IncludeExecutionCorrelation=1
+    BEGIN
+        SELECT * FROM #SsisPackageModelAnalysis_RuntimeBinding; SELECT * FROM #SsisPackageModelAnalysis_ExecutionCorrelation ORDER BY [StatisticsId];
+    END;
     IF @ConsoleResultRequested=1
         EXEC [monitor].[InternalEmitConsoleResult] @SourceTable=N'#SsisPackageModelAnalysis_ModuleStatus',@ResultLabel=N'SsisPackageModelAnalysis',@EmptyMessage=N'Keine fachlichen Ergebnisse';
 END;
