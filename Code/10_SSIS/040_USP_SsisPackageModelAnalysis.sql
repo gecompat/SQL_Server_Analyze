@@ -2,7 +2,7 @@ USE [DeineDatenbank];
 GO
 
 /*
-Objekt: monitor.USP_SsisPackageModelAnalysis; Version 1.6.0; Stand 2026-10-25.
+Objekt: monitor.USP_SsisPackageModelAnalysis; Version 1.7.0; Stand 2026-10-25.
 Zweck: Validiert ein optional zugeliefertes neutrales SSIS-Modell ohne CLR.
 Quelle: Caller-JSON, optionale Originalbytes und lokale Herkunftsbelege;
         lokale SQL-Kataloge nur mit expliziter Metadatenzuordnung, kein Paket-SQL.
@@ -39,6 +39,10 @@ CREATE OR ALTER PROCEDURE [monitor].[USP_SsisPackageModelAnalysis]
     , @ExecutionSnapshotJson nvarchar(max) = NULL
     , @RuntimeHandoverId uniqueidentifier = NULL
     , @IncludeIterationCorrelation bit = 0
+    , @IncludeExecutionScopes bit = 0
+    , @ProjectModelsJson nvarchar(max) = NULL
+    , @ScopeSnapshotJson nvarchar(max) = NULL
+    , @ScopeHandoverId uniqueidentifier = NULL
 AS
 BEGIN
     SET NOCOUNT ON;
@@ -54,9 +58,18 @@ BEGIN
         PRINT N'@IncludeSqlMetadata=1 ergänzt sqlMetadata aus expliziten paketgebundenen lokalen SQL-Spaltenzuordnungen; keine Paket-SQL-Ausführung oder Typkonvertierungsfreigabe.';
         PRINT N'@IncludeExecutionCorrelation=1 ergänzt runtimeBinding|executionCorrelation für @ExecutionId. Nur qualifizierte lokale Katalogcaptures werden zugeordnet; kein SSISDB-Zugriff im Importer.';
         PRINT N'@IncludeIterationCorrelation=1 verlangt Ausführungskorrelation und den Iterationscapture 1.1; ergänzt executionObjectSummary|executionCoverage. Beobachtungen sind kein Vollständigkeitsnachweis.';
+        PRINT N'@IncludeExecutionScopes=1 verwendet exklusiv @ProjectModelsJson, @ScopeSnapshotJson und @ScopeHandoverId für Kindpaket-/Handlerbelege; sieben eigene Resultsets, stets partiell.';
         RETURN;
     END;
     IF XACT_STATE()=-1 THROW 50000,N'EXCHANGE_INVALID: Callertransaktion ist nicht schreibfähig.',1;
+    IF @IncludeExecutionScopes=1
+    BEGIN
+        IF @PackageModelJson IS NOT NULL OR @PackageBytes IS NOT NULL OR COALESCE(@IncludePackageViews,1)<>0 OR COALESCE(@IncludeObjectRules,1)<>0 OR COALESCE(@IncludeSqlMetadata,1)<>0 OR COALESCE(@IncludeExecutionCorrelation,1)<>0 OR COALESCE(@IncludeIterationCorrelation,1)<>0 OR @LocalHandoverId IS NOT NULL OR @ExecutionSnapshotJson IS NOT NULL OR @RuntimeHandoverId IS NOT NULL OR @SqlMetadataBindingsJson IS NOT NULL
+            SET @MaxDurationSeconds=0; -- Der Scopeconsumer liefert den kontrollierten INVALID_PARAMETER-Vertrag.
+        EXEC monitor.InternalSsisExecutionScopes @Models=@ProjectModelsJson,@Capture=@ScopeSnapshotJson,@Handover=@ScopeHandoverId,@ExecutionId=@ExecutionId,@LockTimeoutMs=@LockTimeoutMs,@MaxZeilen=@MaxZeilen,@MaxDurationSeconds=@MaxDurationSeconds,@ResultSetArt=@ResultSetArt,@ResultTablesJson=@ResultTablesJson,@JsonErzeugen=@JsonErzeugen,@Json=@Json OUTPUT,@StatusCodeOut=@StatusCodeOut OUTPUT,@IsPartialOut=@IsPartialOut OUTPUT,@ErrorNumberOut=@ErrorNumberOut OUTPUT,@ErrorMessageOut=@ErrorMessageOut OUTPUT;
+        RETURN;
+    END;
+
     SET XACT_ABORT OFF;
     DECLARE @Started datetime2(3)=SYSUTCDATETIME(),@Deadline datetime2(3),@Status varchar(40)='AVAILABLE_LIMITED',@Partial bit=1;
     DECLARE @OriginalLockTimeout int=@@LOCK_TIMEOUT,@LockTimeoutSql nvarchar(80),@Error int=NULL,@Message nvarchar(2048)=NULL;
@@ -183,7 +196,7 @@ BEGIN
     -- END GENERATED SSIS EXCHANGE RULES
 
     BEGIN TRY
-        IF @MaxZeilen<0 OR @MaxDurationSeconds IS NULL OR @MaxDurationSeconds NOT BETWEEN 1 AND 60
+        IF @IncludeExecutionScopes IS NULL OR @ProjectModelsJson IS NOT NULL OR @ScopeSnapshotJson IS NOT NULL OR @ScopeHandoverId IS NOT NULL OR @MaxZeilen<0 OR @MaxDurationSeconds IS NULL OR @MaxDurationSeconds NOT BETWEEN 1 AND 60
            OR @LockTimeoutMs IS NULL OR @LockTimeoutMs NOT BETWEEN 0 AND 60000 OR @JsonErzeugen IS NULL OR @PrintMeldungen IS NULL
            OR @IncludeExecutionCorrelation IS NULL OR @IncludeExecutionCorrelation=1 AND (@ExecutionId IS NULL OR @ExecutionId<1)
            OR @IncludeIterationCorrelation IS NULL OR @IncludeIterationCorrelation=1 AND @IncludeExecutionCorrelation<>1 OR @IncludeExecutionCorrelation=0 AND (@ExecutionId IS NOT NULL OR @ExecutionSnapshotJson IS NOT NULL OR @RuntimeHandoverId IS NOT NULL) OR @IncludeSqlMetadata IS NULL OR @IncludeSqlMetadata=0 AND @SqlMetadataBindingsJson IS NOT NULL OR @IncludeObjectRules IS NULL OR @IncludePackageViews IS NULL OR @Mode NOT IN ('CONSOLE','RAW','TABLE','NONE') OR (@Mode<>'TABLE' AND @ResultTablesJson IS NOT NULL)

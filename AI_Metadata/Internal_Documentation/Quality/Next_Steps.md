@@ -3,6 +3,30 @@
 **Stand:** 25. Oktober 2026
 **Zweck:** aktueller Auftragsstatus und historische Entwicklungswellen für `gecompat/SQL_Server_Analyze`
 
+## Eigener SSIS-Auftrag: siebte Paketwelle
+
+Die ausdrücklich freigegebene siebte Welle ergänzt feste projektlokale
+Kind-/Enkelpaketaufrufe und die Handler `OnPreExecute`, `OnPostExecute`,
+`OnError`. Parser, Komponentenprofile und Lineage bleiben in Toolbelt;
+Analyze verarbeitet nur gebundene Modelle und Katalogbeobachtungen ohne SQL CLR.
+Der [Anwendungsvertrag](../../../Documentation/Analysis_Guides/Procedures/USP_SsisPackageModelAnalysis.md#kindpaket-und-ereignishandlerkorrelation)
+führt die konkrete Schnittstelle und ihre Grenzen.
+
+Der endliche Umfang besteht aus je einem fachlichen PR in Toolbelt und Analyze,
+einem Implementierer, einem unabhängigen Review mit gezielter Befundnachprüfung
+und höchstens acht nativen Katalogversuchen. Verlässliche Kostenmessung liegt
+nicht vor. Die bestehende SSISDB bleibt absichtlich erhalten; jeder Lauf
+bereinigt nur seine nachgewiesenen Consumerobjekte. Die lokale Abnahme umfasst
+native Windows-SQL2025-Läufe mit 217 Assertions im Erfolgsbaum und 16 Assertions
+am tatsächlich ausgeführten OnError-Handler sowie 41 synthetische Empfängerfälle.
+Drei P2-Befunde des unabhängigen Reviews sind mit gezielter Nachprüfung geschlossen.
+Toolbelt [PR #427](https://github.com/gecompat/SQL_Server_Toolbelt/pull/427) ist
+regulär integriert; seine Head- und Main-Gates sind erfolgreich. Die Analyze-
+Integration benötigt die regulären Gates des zugehörigen W7-PRs und dessen
+Main-Nachlauf. Danach enthält dieser begrenzte Auftrag keinen weiteren
+Entwicklungsschritt. Diese Freigabe erweitert keine Zuständigkeit des separaten
+Gesamtauftrags.
+
 ## Aktueller Gesamtauftrag: priorisierte Entwicklungswellen
 
 Der Benutzer hat am 25. Oktober 2026 die Übernahme der priorisierten offenen

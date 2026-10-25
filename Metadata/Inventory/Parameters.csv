@@ -2010,3 +2010,7 @@ USP_ServerPrincipalAnalysis,IsPartialOut,bit,NULL OUTPUT
 USP_ServerPrincipalAnalysis,ErrorNumberOut,int,NULL OUTPUT
 USP_ServerPrincipalAnalysis,ErrorMessageOut,nvarchar(2048),NULL OUTPUT
 USP_SsisPackageModelAnalysis,IncludeIterationCorrelation,bit,0
+USP_SsisPackageModelAnalysis,IncludeExecutionScopes,bit,0
+USP_SsisPackageModelAnalysis,ProjectModelsJson,nvarchar(max),NULL
+USP_SsisPackageModelAnalysis,ScopeSnapshotJson,nvarchar(max),NULL
+USP_SsisPackageModelAnalysis,ScopeHandoverId,uniqueidentifier,NULL

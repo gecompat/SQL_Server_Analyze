@@ -511,3 +511,24 @@ Die Umsetzung wurde nach Besprechung dieses begrenzten Umfangs am
 25. Oktober 2026 ausdrücklich freigegeben, einschließlich der Weiterverwendung
 der bestehenden SSISDB-Umgebung und automatischer Integration nach Abnahme.
 Der Auftrag erweitert keine Lab-Produkt- oder Infrastrukturverwaltung.
+
+## Siebte Welle: Kindpaket- und Ereignishandlerscopes
+
+Toolbelt liefert mit `--scope-bundle` den optionalen Identitätssidecar 1.2.0.
+Er verwendet dieselben Parserdefinitionen und Knoten-IDs wie Modell und Lineage.
+Qualifizierte statische Rollen, feste projektlokale Aufrufziele und wörtliche
+Pfadschritte entstehen ausschließlich dort. Die bisherigen Exporte und das
+neutrale Einzelmodell 1.0.0 bleiben erhalten.
+
+Analyze bindet die erreichbaren Einzelmodelle an genau ein Projektarchiv und
+dessen Ausführung. Paketkennungen trennen gleiche lokale IDs und GUIDs;
+beobachtete Paketwurzeln trennen Aufrufinstanzen. Der
+[Anwendungsvertrag](../Analysis_Guides/Procedures/USP_SsisPackageModelAnalysis.md#kindpaket-und-ereignishandlerkorrelation)
+beschreibt die sieben exklusiven Ergebnisgruppen, lokale Herkunftsautorität,
+Limits und Mehrdeutigkeitsgrenzen. Handlerkörper liefern Einzelbelege ohne
+behauptete Auslöserkausalität. Die Korrelation erzeugt keine Datenlineage.
+
+Der Benutzer hat diese begrenzte Umsetzung, die Weiterverwendung der
+bestehenden SSISDB und die reguläre automatische Integration nach erfolgreicher
+Abnahme ausdrücklich freigegeben. Neue Lab-Provisionierung, CLR-Installation
+in Analyze und eine zweite Parserpflege gehören nicht zu diesem Auftrag.

@@ -57,16 +57,16 @@ SNAPSHOT_FIXTURE = "Code/Tests/Common/181_QueryHashAnalysis_Collation_Runtime_Co
 def trusted_handover_source(relative: str, source: str, tail: str) -> bool:
     """Only the local trust decision requires committed metadata, never NOLOCK."""
     return (
-        relative.replace("\\", "/") == "Code/10_SSIS/040_USP_SsisPackageModelAnalysis.sql"
-        and source.casefold() == "[sys].[extended_properties]"
+        (relative.replace("\\", "/") == "Code/10_SSIS/040_USP_SsisPackageModelAnalysis.sql" and source.casefold() == "[sys].[extended_properties]"
+         or relative.replace("\\", "/") == "Code/10_SSIS/035_InternalSsisExecutionScopes.sql" and source.casefold() in {"[sys].[extended_properties]", "[sys].[procedures]", "[sys].[schemas]"})
         and re.match(r"^\s+WITH\s*\(\s*READCOMMITTEDLOCK\s*\)", tail, re.IGNORECASE) is not None
     )
 
 
 def metadata_source_allowed(relative: str, source: str, tail: str) -> bool:
     normalized = source.replace("[", "").replace("]", "").casefold()
-    protected = (relative.replace("\\", "/") == "Code/10_SSIS/040_USP_SsisPackageModelAnalysis.sql"
-                 and normalized.split(".")[-2:] == ["sys", "extended_properties"])
+    protected = ((relative.replace("\\", "/") == "Code/10_SSIS/040_USP_SsisPackageModelAnalysis.sql" and normalized.split(".")[-2:] == ["sys", "extended_properties"])
+                 or (relative.replace("\\", "/") == "Code/10_SSIS/035_InternalSsisExecutionScopes.sql" and normalized.split(".")[-2:] in (["sys", "extended_properties"], ["sys", "procedures"], ["sys", "schemas"])))
     if protected:
         return trusted_handover_source(relative, source, tail)
     return re.match(r"^\s*\(", tail) is not None or NOLOCK_AFTER_SOURCE.match(tail) is not None
@@ -137,6 +137,12 @@ def self_test() -> None:
     assert not metadata_source_allowed("Code/Other.sql", "[sys].[extended_properties]", " WITH (READCOMMITTEDLOCK)")
     assert metadata_source_allowed(path, "[sys].[objects]", " WITH (NOLOCK)")
     assert metadata_source_allowed(path, "[sys].[SomeFunction]", " (1)")
+    scope_path = "Code/10_SSIS/035_InternalSsisExecutionScopes.sql"
+    for catalog in ("extended_properties", "procedures", "schemas"):
+        assert metadata_source_allowed(scope_path, "[sys].["+catalog+"]", " WITH (READCOMMITTEDLOCK)")
+        assert not metadata_source_allowed(scope_path, "[sys].["+catalog+"]", " WITH (NOLOCK)")
+        assert not metadata_source_allowed(scope_path, "[sys].["+catalog+"]", " WITH (READCOMMITTEDLOCK, NOLOCK)")
+    assert not metadata_source_allowed(scope_path, "[sys].[objects]", " WITH (READCOMMITTEDLOCK)")
     source = (ROOT / SNAPSHOT_FIXTURE).read_text(encoding="utf-8-sig")
     assert not controlled_fixture_errors(source)
     guard = "IF OBJECT_ID(N'tempdb..#PlanCacheAnalysis_QueryStatsSnapshot') IS NOT NULL\n    THROW 58301,N'QUERY_HASH_FOREIGN_SNAPSHOT',1;"

@@ -10,7 +10,8 @@ param(
     [Parameter(Mandatory)][ValidatePattern('^[0-9a-fA-F]{40}$')][string]$ExpectedSourceCommit,
     [ValidateRange(1,24)][int]$ValidHours=1,
     [string]$DotnetPath='dotnet',
-    [switch]$IncludeIterationCorrelation
+    [switch]$IncludeIterationCorrelation,
+    [switch]$IncludeExecutionScopes
 )
 Set-StrictMode -Version Latest
 $ErrorActionPreference='Stop'
@@ -41,7 +42,7 @@ LEFT JOIN [SSISDB].[catalog].[folders] AS [f] WITH (HOLDLOCK) ON [f].[folder_id]
 JOIN [master].[sys].[databases] AS [d] WITH (NOLOCK) ON [d].[name]=N'SSISDB' AND [d].[state]=0
 WHERE [e].[execution_id]=@ExecutionId;
 '@
-if($IncludeIterationCorrelation) {
+if($IncludeIterationCorrelation -or $IncludeExecutionScopes) {
     # Die Konfiguration begründet keine vollständige Logabdeckung. NULL bleibt unbekannt.
     $metadataSql=$metadataSql.Replace('[e].[status] AS [ExecutionStatus],',"(SELECT TRY_CONVERT(int,[parameter_value]) FROM [SSISDB].[catalog].[execution_parameter_values] WHERE [execution_id]=[e].[execution_id] AND [object_type]=50 AND [parameter_name]=N'LOGGING_LEVEL') AS [LoggingLevel],[e].[status] AS [ExecutionStatus],")
 }
@@ -54,6 +55,12 @@ JOIN [SSISDB].[catalog].[executables] AS [e] WITH (READCOMMITTEDLOCK) ON [e].[ex
 WHERE [s].[execution_id]=@ExecutionId ORDER BY [s].[statistics_id];
 '@
 $nonce=[guid]::NewGuid().ToString('N')
+$eventsSql=if($IncludeExecutionScopes){@'
+SELECT TOP(50001) CONVERT(varchar(20),[event_message_id]) AS [EventMessageId],[event_name] AS [EventName],[message_source_id] AS [ExecutableGuid],
+ [package_name] AS [PackageName],CASE WHEN DATALENGTH([package_path])<=8000 THEN [package_path] END AS [PackagePath],CASE WHEN DATALENGTH([execution_path])<=8000 THEN [execution_path] END AS [ExecutionPath],
+ CONVERT(varchar(40),[message_time],127) AS [MessageTime],[message_code] AS [MessageCode]
+FROM [SSISDB].[catalog].[event_messages] WITH(READCOMMITTEDLOCK) WHERE [operation_id]=@ExecutionId AND [event_name] IN(N'OnPreExecute',N'OnPostExecute',N'OnError') ORDER BY [event_message_id];
+'@}else{''}
 $beforeTable='#SsisCatalogHandover_Before_'+$nonce;$archiveTable='#SsisCatalogHandover_Archive_'+$nonce
 $beforeSql=$metadataSql.Replace('FROM [SSISDB].[catalog].[executions]','INTO '+$beforeTable+' FROM [SSISDB].[catalog].[executions]')
 $inner=@"
@@ -75,6 +82,7 @@ BEGIN TRY
  END
  ELSE EXEC [SSISDB].[catalog].[get_project] @folder_name=@Folder,@project_name=@Project;
  $observationsSql
+ $eventsSql
  $metadataSql
  COMMIT TRANSACTION;
 END TRY
@@ -119,6 +127,8 @@ if($null -ne $SourceReader) {
             try {while(($read=$stream.Read($buffer,0,$buffer.Length)) -gt 0){if($blob.Length+$read -gt 67108864){throw 'SSIS_CATALOG_ARCHIVE_LIMIT'};$blob.Write($buffer,0,$read)};$archive=$blob.ToArray()} finally {$blob.Dispose();$stream.Dispose()}
             if($reader.Read() -or -not $reader.NextResult()){throw 'SSIS_CATALOG_ARCHIVE_AMBIGUOUS'}
             $observed=Read-CurrentTable $reader
+            $events=$null
+            if($IncludeExecutionScopes){if(-not $reader.NextResult()){throw 'SSIS_SCOPE_EVENT_SOURCE_MISSING'};$events=Read-CurrentTable $reader}
             if(-not $reader.NextResult()){throw 'SSIS_CATALOG_READER_SHAPE_INVALID'}
             $after=Read-CurrentTable $reader
             if($reader.NextResult()){throw 'SSIS_CATALOG_READER_SHAPE_INVALID'}
@@ -140,10 +150,16 @@ if($source.IsNull('ProjectId') -or $source.IsNull('CurrentProjectLsn') -or -not 
 if($after -isnot [Data.DataTable] -or $observed -isnot [Data.DataTable] -or $after.Rows.Count -ne 1){throw 'SSIS_CATALOG_READER_SHAPE_INVALID'}
 if($observed.Rows.Count -gt 50000){throw 'SSIS_CATALOG_OBSERVATION_LIMIT'}
 if($archive.Length -eq 0 -or $archive.Length -gt 67108864){throw 'SSIS_CATALOG_ARCHIVE_LIMIT'}
+
 foreach($field in @('ExecutionId','FolderName','ProjectName','PackageFileName','ProjectLsn','ProjectId','CurrentProjectLsn','CatalogDatabaseGuid','ExecutionCreatedUtc')) {
     if(-not [string]::Equals([string]$before.Rows[0][$field],[string]$after.Rows[0][$field],[StringComparison]::Ordinal)){throw 'SSIS_CATALOG_SOURCE_CHANGED'}
 }
 if($null -eq $SourceReader -and $SourceConnection.ClientConnectionId -ne $sourceChannel){throw 'SSIS_CATALOG_SOURCE_CHANNEL_CHANGED'}
+if($IncludeExecutionScopes) {
+    if($null -ne $SourceReader){$events=$capture.Events}
+    if($events -isnot [Data.DataTable] -or $events.Rows.Count+$observed.Rows.Count -gt 50000){throw 'SSIS_SCOPE_OBSERVATION_LIMIT'}
+    return & (Join-Path $PSScriptRoot 'Invoke-SsisProjectScopeHandover.ps1') -Archive $archive -Before $before -After $after -Observations $observed -Events $events -Connection $Connection -SourceBindingSha256 $sourceBindingSha -ProducerAssemblyPath $ProducerAssemblyPath -ExpectedBuildSha256 $ExpectedBuildSha256 -ExpectedSourceCommit $ExpectedSourceCommit -ValidHours $ValidHours -DotnetPath $DotnetPath
+}
 $memory=[IO.MemoryStream]::new($archive,$false);$zip=[IO.Compression.ZipArchive]::new($memory,[IO.Compression.ZipArchiveMode]::Read,$false)
 try {
     if($zip.Entries.Count -gt 10000){throw 'SSIS_CATALOG_ARCHIVE_LIMIT'}

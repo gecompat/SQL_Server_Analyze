@@ -8,13 +8,15 @@ param(
     [Parameter(Mandatory)][System.Data.SqlClient.SqlConnection]$Connection,
     [ValidateRange(1,24)][int]$ValidHours=1,
     [string]$DotnetPath='dotnet',
+    [ValidateRange(1,60)][int]$ProducerTimeoutSeconds=60,
     [switch]$IncludeObjectIdentities,
     [switch]$IncludeIterationCorrelation,
+    [switch]$IncludeExecutionScopes,
     [switch]$PrepareOnly
 )
 Set-StrictMode -Version Latest
 $ErrorActionPreference='Stop'
-if($IncludeIterationCorrelation -and -not $IncludeObjectIdentities){throw 'SSIS_ITERATION_IDENTITIES_REQUIRED'}
+if(($IncludeIterationCorrelation -or $IncludeExecutionScopes) -and -not $IncludeObjectIdentities){throw 'SSIS_ITERATION_IDENTITIES_REQUIRED'}
 # Vertrauenswurzel: qualifizierter Build, Runtime, lokaler Account und ALTER-Recht
 # auf der Zielprocedure. Der Adapter liest keine Paket-Connection-Strings.
 if($Connection.State -ne 'Open' -or $Connection.Database -eq 'master' -or $Connection.Database -eq 'tempdb') {throw 'SSIS_HANDOVER_EXPLICIT_OPEN_DATABASE_REQUIRED'}
@@ -64,12 +66,12 @@ try {
     $info=[Diagnostics.ProcessStartInfo]::new();$info.FileName=$DotnetPath;$info.UseShellExecute=$false;$info.CreateNoWindow=$true
     $info.RedirectStandardOutput=$true;$info.RedirectStandardError=$true;$info.StandardOutputEncoding=[Text.UTF8Encoding]::new($false,$true)
     foreach($item in @('exec','--runtimeconfig',$runtime,$dll)){[void]$info.ArgumentList.Add($item)}
-    if($IncludeObjectIdentities){[void]$info.ArgumentList.Add($(if($IncludeIterationCorrelation){'--iteration-bundle'}else{'--bundle'}))}
+    if($IncludeObjectIdentities){[void]$info.ArgumentList.Add($(if($IncludeExecutionScopes){'--scope-bundle'}elseif($IncludeIterationCorrelation){'--iteration-bundle'}else{'--bundle'}))}
     [void]$info.ArgumentList.Add($inputFile)
     foreach($key in @($info.Environment.Keys)){if($key -match '^(DOTNET_|CORECLR_|COR_|COMPlus_)'){[void]$info.Environment.Remove($key)}}
     $process=[Diagnostics.Process]::new();$process.StartInfo=$info;$processStarted=$process.Start();if(-not $processStarted){throw 'SSIS_HANDOVER_PROCESS_NOT_STARTED'}
     $output=$process.StandardOutput.ReadToEndAsync();$errorOutput=$process.StandardError.ReadToEndAsync()
-    if(-not $process.WaitForExit(60000)){$process.Kill($true);throw 'SSIS_HANDOVER_PRODUCER_TIMEOUT'}
+    if(-not $process.WaitForExit($ProducerTimeoutSeconds*1000)){$process.Kill($true);throw 'SSIS_HANDOVER_PRODUCER_TIMEOUT'}
     $model=$output.GetAwaiter().GetResult();[void]$errorOutput.GetAwaiter().GetResult()
     if($process.ExitCode -ne 0 -or [Text.Encoding]::Unicode.GetByteCount($model) -gt 16777216){throw 'SSIS_HANDOVER_PRODUCER_FAILED'}
     $identities=$null

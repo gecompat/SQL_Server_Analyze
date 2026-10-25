@@ -55,3 +55,10 @@ kann den tatsächlichen Producerbuild und das konkrete Modellergebnis an die
 Originalpaketbytes binden. Der Betriebsweg benötigt ausdrücklich vorhandene
 Metadatenänderungsrechte des Zulieferers; gewöhnliche Analysecaller benötigen
 sie nicht. Ohne Übergabe-ID bleibt die Analyse eigenständig mit `UNVERIFIED`.
+
+Der optionale [Kindpaket-/Handlerpfad](Procedures/USP_SsisPackageModelAnalysis.md#kindpaket-und-ereignishandlerkorrelation)
+verknüpft feste projektlokale Aufrufe desselben gebundenen Archivs mit
+beobachteten Paketinstanzen. Er trennt Paketidentitäten und Handlerbelege;
+mehrdeutige Pfade und unbekannte Auslöser bleiben ausdrücklich unbewiesen.
+Die sieben eigenen Ergebnisgruppen ersetzen in diesem Opt-in die bisherigen
+Einzelmodellausgaben. Analyze bleibt ohne SQL CLR eigenständig nutzbar.

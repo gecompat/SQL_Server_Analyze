@@ -514,6 +514,76 @@ liefern leere Metadaten und erhalten das gültige statische Modell. Das
 gemeinsame Zeitbudget bleibt wirksam. `@MaxZeilen` kürzt erst nach der
 Prüfung aller Schlüsselmitglieder und kennzeichnet eine Kürzung.
 
+## Kindpaket- und Ereignishandlerkorrelation
+
+`@IncludeExecutionScopes=1` ist ein eigener, exklusiver Ausgabemodus. Er verlangt
+`@ProjectModelsJson`, `@ScopeSnapshotJson`, `@ScopeHandoverId` und `@ExecutionId`;
+die bisherigen Modell-, Regel-, Metadaten- und Korrelationsopt-ins werden dabei
+nicht kombiniert. Ohne diesen Schalter bleiben die bisherigen Verträge erhalten.
+Der SQL-Empfänger verwendet ausschließlich JSON und lokale Herkunftsbelege und
+benötigt weder SQL CLR noch eine Toolbelt-Installation.
+
+Der externe Katalogadapter erhält `-IncludeExecutionScopes` und führt einen
+gebundenen, lesenden SSISDB-Batch aus. Vorher-/Nachherprüfung, Projekt-LSN,
+Katalogdatenbankkennung und Execution-ID sichern den Quellenbezug. Nur die zur
+Ausführung unverändert aktuelle Projektversion ist zulässig. Aus diesem Archiv
+exportiert genau der freigegebene Toolbelt-Host die erreichbaren Pakete; jeder
+Paketdigest, unveränderte Einzelmodelle und Sidecars 1.2.0 gehen in einen
+hashgebundenen Paketsatz ein. Eine erneute Projektbereitstellung erlaubt keinen
+Import aktueller Bytes als Modell einer historischen Ausführung.
+
+Der lokale Attestor benötigt ALTER-Recht auf die Analyseprocedure. Seine
+zeitlich begrenzte Registrierung bindet die exakten UTF-16-JSON-Dokumente.
+Diese administrative Autorität, der geprüfte Hostbuild und dessen Runtime sind
+die Vertrauenswurzel. Ein JSON-Trustflag oder gewöhnliches EXECUTE genügt nicht.
+Der gespeicherte Capture bleibt nach einem Redeployment zeitbezogener Beleg
+seiner Aufnahme; er behauptet keine aktuelle Projektversion.
+
+| Ergebnisgruppe | Bedeutung einer Zeile |
+|---|---|
+| `scopeBinding` | Bindungsstatus, qualifizierte Wurzel und Herkunft dieses Captures. |
+| `packageScopes` | Ein erreichbares Paketmodell mit eigener `PackageKey` und Bytehash. |
+| `packageInvocations` | Eine eindeutig belegte Paketwurzelstatistik mit Elterninstanz und aufrufender Statistik-ID. |
+| `scopeObservations` | Eine unveränderte Statistik- oder Ereignisidentität mit beobachteten Pfaden und optionaler Modellzuordnung. |
+| `handlerActivity` | Ein dem Handlerkörper zugeordneter Einzelbeleg mit Handler- und Eigentümerknoten. |
+| `scopeObjectSummary` | Beobachtete Statistikanzahlen und inklusive Dauern genau eines paketgebundenen Modellknotens. |
+| `scopeCoverage` | Vollständige Quell- und Zuordnungszahlen vor dem Ausgabelimit, Logging-Level und Capturestatus. |
+
+`CONSOLE` liefert eine fachliche Bindungsausgabe, `RAW` sieben typisierte
+Resultsets, `TABLE` die ausdrücklich benannten lokalen Seed-Ziele und `NONE`
+keine Resultsets. JSON wird ausschließlich über OUTPUT geliefert und enthält
+`executionScopesSchemaVersion=1`. `@MaxZeilen` begrenzt jede Ergebnisgruppe erst
+nach Validierung und Korrelation. `OutputTruncated` kennzeichnet eine Kürzung;
+die Abdeckungszahlen bleiben dabei auf den gesamten Capture bezogen.
+
+Unterstützt sind feste projektlokale Execute Package Tasks desselben Archivs,
+Kind- und Enkelpakete sowie `OnPreExecute`, `OnPostExecute` und `OnError`.
+Wiederholte, parallele und schleifengebundene Aufrufstellen benötigen exakte
+beobachtete Pfade. GUIDs gelten innerhalb ihres Pakets; gleiche GUIDs in zwei
+Paketen werden nicht zusammengeführt. Identische mehrdeutige Instanzpfade
+bleiben unzugeordnet. Dynamische Ziele, externe Projekte, Datei-/MSDB-Pakete,
+rekursive Aufrufe und andere Handlerereignisse sind nicht qualifiziert.
+
+Ein Handlerkörper kann durch propagierte Ereignisse mehrfach denselben Pfad
+besitzen. Seine Statistik- und Ereigniszeilen bleiben getrennte Belege.
+`TriggerEventMessageId` bleibt unbekannt und `CausalityStatus=UNPROVEN`:
+Ereignisname, Zeitnähe und Meldungstext beweisen keinen konkreten Auslöser.
+Der Adapter übernimmt keine Meldungstexte oder Parameterwerte. Fehlende
+Beobachtungen beweisen keine Nichtausführung. `IsPartial` bleibt wahr; Dauern
+werden nicht über Objekte zu einer Paketlaufzeit addiert. Bei unbekannten oder
+negativen Einzeldauern bleibt die betreffende Dauersumme unbekannt.
+
+Der Paketsatz ist auf 16 Pakete, acht Aufrufebenen, 1024 Instanzen und zusammen
+50000 Statistik-/Ereigniszeilen begrenzt. Archive enthalten höchstens 10000
+Einträge, 64 MiB expandierte Paketbytes und 16 MiB je Paket; beide JSON-Dokumente
+haben jeweils ein 16-MiB-Limit. Export und Modellvalidierung teilen 60 Sekunden;
+der SQL-Consumer verwendet das angegebene kooperative Zeitbudget. Der
+Locktimeout wird nach Eintritt in den Consumer geprüft, angewendet und
+wiederhergestellt. Sperren vor dem Eintritt in eine SQL-Procedure benötigen
+wie bei anderen SQL-Aufrufen einen begrenzten Caller- oder Clienttimeout. Parser,
+Komponentenprofile und paketübergreifende Daten-/Parameterlineage werden nicht
+in Analyze nachgebaut; solche Lineage ist nicht Bestandteil dieses Modus.
+
 ## Primärquellen
 
 - [Freigegebener projektübergreifender Vertrag](../../Architecture/SSIS_Analyze_Toolbelt_Exchange_Contract.md)
