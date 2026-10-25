@@ -293,7 +293,7 @@ Der aktuelle Inventarvertrag umfasst 187 Objekte: 113 öffentliche Procedures, 8
 
 Der Frameworkkern umfasst 168 Objekte mit 110 öffentlichen Procedures und 9 Tabellen. Das optionale Snapshotpaket umfasst 19 Objekte mit 3 öffentlichen Procedures und 11 Tabellen.
 
-Der Coreinstaller installiert die 108 öffentlichen Core-Procedures;
+Der Coreinstaller installiert die 110 öffentlichen Core-Procedures;
 die drei Snapshot-Procedures und deren
 Unterstützungsobjekte benötigen die separate Paketinstallation oder das
 entsprechende Opt-in im Gesamtdeployment. Jedes inventarisierte Objekt besitzt
