@@ -417,9 +417,9 @@ externen Host oder Austausch-API.
 Die Annahme durch den Benutzer, kanonische Quellen und additive Import-API sind
 festgehalten. Der erste Producer leitet nur `MAPPED_VALUE_INPUT` ab. Nicht
 qualifizierte Expression-, Lookup- und Splitableitungen bleiben partiell und
-werden nicht durch einen zweiten Analyze-Parser ergänzt. Der Import setzt
-`producerTrust` weiterhin ausschließlich auf `UNVERIFIED`; eine spätere
-verifizierte lokale Herkunft benötigt eine eigene geschlossene Nachweisanbindung.
+werden nicht durch einen zweiten Analyze-Parser ergänzt. Ohne kontrollierte
+lokale Übergabe bleibt `ProducerTrust=UNVERIFIED`. Die dritte Welle ergänzt
+den nachfolgend beschriebenen lokalen Beleg.
 
 ## Zweite Welle: objektbezogene statische Regeln
 
@@ -450,3 +450,18 @@ Vertrauenswurzel. Der Pfad führt keine Fernsignatur, Schlüsselregistrierung,
 CLR-Abhängigkeit oder automatische Berechtigungsänderung ein.
 Die [SQL-Server-Dokumentation](https://learn.microsoft.com/en-us/sql/relational-databases/system-stored-procedures/sp-addextendedproperty-transact-sql)
 beschreibt die Metadatenrechte der verwendeten Extended Properties.
+
+## Fünfte Welle: ausdrückliche SQL-Metadatenzuordnung
+
+Analyze ergänzt eine optionale native Katalogprüfung für ausdrücklich benannte
+lokale Datenbanken, Objekte und Spalten. Das paketgebundene Zuordnungsdokument
+referenziert vorhandene `COLUMN`-Knoten. Der
+[Anwendungsvertrag](../Analysis_Guides/Procedures/USP_SsisPackageModelAnalysis.md#optionale-lokale-sql-metadatenprüfung)
+beschreibt Eingaben, Ausgaben, Rechte, Limits und Aussagegrenzen.
+
+Die Prüfung führt weder Paket-SQL aus noch löst sie Verbindungsdaten automatisch
+auf. SQL-Katalogfakten und bekannte Nullablewerte können gegenübergestellt
+werden; SSIS-zu-SQL-Typkompatibilität bleibt ausdrücklich unqualifiziert.
+Komponentenprofile, Typinterpretation und Lineage werden dafür nicht nach
+Analyze kopiert. Ein Unique-Index-Beleg betrifft ausschließlich den vollständig
+angegebenen Spaltensatz, keine Laufzeitdaten oder beliebige Lookupabfrage.
