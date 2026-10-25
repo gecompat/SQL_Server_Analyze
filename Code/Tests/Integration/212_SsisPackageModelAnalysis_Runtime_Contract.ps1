@@ -204,6 +204,9 @@ try {
         [void]$handoverCommand.Parameters.Add('@Id',[Data.SqlDbType]::UniqueIdentifier);$handoverCommand.Parameters['@Id'].Value=$handover.LocalHandoverId
         try {$verified=$handoverCommand.ExecuteScalar()|ConvertFrom-Json -Depth 32;if($verified.meta.statusCode -cne 'AVAILABLE_LIMITED'){Write-Output ('HANDOVER_STATUS='+$verified.meta.statusCode+' '+$verified.moduleStatus[0].ErrorMessage)};Assert ($verified.sourceBinding.Count -eq 1 -and $verified.sourceBinding[0].ProducerTrust -ceq 'VERIFIED_LOCAL') 'QUALIFIED_HOST_HANDOVER_AFTER_CREATE_OR_ALTER'} finally {$handoverCommand.Dispose()}
     } else {Write-Output 'SSIS_QUALIFIED_HOST_HANDOVER_NOT_EXECUTED: ProducerAssemblyPath not supplied.'}
+    $captureProbe=[IO.File]::ReadAllText((Join-Path $repositoryRoot 'Code/Tests/Integration/216_SsisExecutionCorrelation_Runtime_Contract.sql')) -replace 'USE \[DeineDatenbank\];',"USE [$database];"
+    foreach($batch in [regex]::Split($captureProbe,'(?im)^\s*GO\s*$')) {if($batch.Trim()){[void](Query $batch)}}
+    Assert $true 'EXECUTION_CAPTURE_RECEIVER_SQL_PROBE'
     $probe=[IO.File]::ReadAllText((Join-Path $repositoryRoot 'Code/Tests/Integration/213_SsisPackageViews_Runtime_Contract.sql')) -replace 'USE \[DeineDatenbank\];',"USE [$database];"
     foreach($batch in [regex]::Split($probe,'(?im)^\s*GO\s*$')) {if($batch.Trim()){[void](Query $batch)}}
     Assert $true 'PACKAGE_VIEWS_SQL_PROBE'

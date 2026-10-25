@@ -308,10 +308,69 @@ ersetzt. Die Regeln arbeiten vor der Ausgabekürzung; `@MaxZeilen` begrenzt die
 Gruppe anschließend und erzeugt bei Kürzung `RESULT_TRUNCATED`. Ungültige
 Modelle liefern auch bei aktiviertem Flag keine Teilbefunde.
 
+## Ausführungskorrelation aus einem kontrollierten Capture
+
+`@IncludeExecutionCorrelation=1` ergänzt `runtimeBinding` und
+`executionCorrelation` für eine positive `@ExecutionId`. Korrelation allein
+liefert zehn RAW-Gruppen, zusammen mit Paketsichten und Regeln sechzehn.
+CONSOLE bleibt eine Modulstatusausgabe. JSON kennzeichnet den Zusatzvertrag
+mit `meta.executionCorrelationSchemaVersion=1`; TABLE akzeptiert die zwei
+Namen nur bei aktiviertem Flag. Die vier Korrelationseingaben müssen bei
+abgeschaltetem Flag leer bleiben. `@MaxZeilen` begrenzt die Ausgabe erst
+nach Prüfung und Zuordnung des gesamten Captures.
+
+Der native Importer führt keinen SSISDB-Zugriff aus. Der optionale externe
+[Katalogadapter](../../../Code/Tools/Invoke-SsisCatalogHandover.ps1) liest
+Ausführung, aktuelle Projektversion, Projektarchiv und sichtbare Statistiken
+in einem gebundenen Kanal. Projekt und Ordner bleiben während der begrenzten
+Lesetransaktion mit `HOLDLOCK` geschützt. Die Ausführungsrevision muss der
+aktuellen Projektrevision entsprechen. Nicht verfügbare alte Versionen werden
+nicht durch heutige Pakete ersetzt oder wiederhergestellt. Nur der exakt
+benannte ZIP-Eintrag wird im Speicher geöffnet; Pakete werden nicht ausgeführt.
+
+Voraussetzungen sind PowerShell 7/.NET 10, ein unabhängig freigegebener
+Toolbelt-Host mit Exportbundle, eine dedizierte offene SSISDB-Quellverbindung
+und eine offene Analyze-Zielverbindung mit ALTER-Autorität. Beide Verbindungen
+dürfen keine Callertransaktion besitzen oder gleichzeitig anderweitig verwendet
+werden. Die Quelle benötigt die dokumentierten Katalog-/`catalog.get_project`-
+Rechte. Die Scriptparameter verlangen Buildhash und Source-Commit. Ein optionaler
+`SourceReader` ist selbst Teil der qualifizierten Vertrauensgrenze: Er führt den
+vorgegebenen Gesamtbatch einmal gegen denselben frisch geprüften Quellkanal aus,
+bindet dessen eindeutige `SourceBindingId` und liefert begrenzte Ergebnistabellen.
+Er ist kein Importpfad für fertige fremde Captures.
+
+Modell und Identitätssidecar stammen aus einem einzigen Toolbelt-Export.
+Nur Toolbelt liest native IDs und vorhandene namespacequalifizierte `refId`-
+Pfade. Zwei eigene lokale Extended Properties registrieren Modell und Capture
+atomar. Der Adapter liefert `PackageModelJson`, `PackageBytes`, `LocalHandoverId`,
+`ExecutionSnapshotJson` und `RuntimeHandoverId`; diese Werte werden gemeinsam
+an die Procedure übergeben. Ein Laufzeitbeleg ersetzt den Modellbeleg nicht.
+
+`runtimeBinding` nennt Ausführung, Katalog-GUID, Kanalbindungshash, Projekt-ID/-LSN,
+Paketdigest, Capturezeitraum und vollständige Zeilen-/Trefferzahlen.
+`RUNTIME_BOUND_CAPTURE` bestätigt diesen importierten Capture zum genannten
+Zeitpunkt. Jede Statistikzeile bleibt separat erhalten. Objektzuordnung verlangt
+eine im Modell eindeutige native GUID und bytegenaue Gleichheit von beobachtetem
+Modellpaketpfad, Katalogpaketpfad und Ausführungspfad. Zuvor muss genau eine
+passende Paketwurzel beobachtet sein. Ihre beobachtete Paketbezeichnung begrenzt
+weitere Treffer; Modellanzeigenamen begründen keine Zuordnung. Iterations- und
+Kindpaketpfade, mehrdeutige GUIDs oder fehlende Pfade bleiben unzugeordnet.
+
+EvidenceLevel ist `IMPORTED_CATALOG_OBSERVATION`; wegen unbekannter
+Loggingabdeckung bleibt die Quelle partiell. Analyze erzeugt keine neue
+Lineage. Fehlende, veränderte oder abgelaufene Captures liefern
+`RUNTIME_BINDING_UNPROVEN` und leere Korrelationszeilen; das gültige statische
+Modell bleibt nutzbar. Capturegrenzen sind 16 MiB, 16 JSON-Ebenen und 50000
+Beobachtungen; Archivgrenzen sind 64 MiB/10000 Einträge und 16 MiB je Paket.
+Das gemeinsame Importerzeitbudget bleibt wirksam. Der eigenständige statische
+Pfad benötigt weder diesen Adapter noch SSISDB, Toolbelt oder SQL CLR.
+
 ## Primärquellen
 
 - [Freigegebener projektübergreifender Vertrag](../../Architecture/SSIS_Analyze_Toolbelt_Exchange_Contract.md)
 - [Austauschschema](../../../Metadata/Quality/SSIS_Exchange_V1.schema.json)
 - [Resultsetinventar](../../../Metadata/Inventory/ResultSets.csv)
+- [SSISDB-Ausführungen](https://learn.microsoft.com/en-us/sql/integration-services/system-views/catalog-executions-ssisdb-database)
+- [SSISDB-Executable-Statistiken](https://learn.microsoft.com/en-us/sql/integration-services/system-views/catalog-executable-statistics)
 
 [Technische Detailbeschreibung](../../Architecture/SSIS_Analyze_Toolbelt_Exchange_Contract.md)

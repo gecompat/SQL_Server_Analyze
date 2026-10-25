@@ -41,23 +41,45 @@ konkreten Auslöser. Verlässliche Token- und Kostenmessung liegt nicht vor.
    den separaten Statistikdiagnoseauftrag aus PR #424 unverändert.
 2. Objektbezogene Regeln: PR #426 ist nach vollständiger Head-CI als
    `9b301bca191b472b79d8cff5b100b37b1c7a40aa` integriert. Head-/Mergebaum
-   sind identisch; der Main-Nachlauf ist noch offen. Lokal sind 83 Prüfungen,
+   sind identisch; Main-Nachlauf 40150237356 besteht. Lokal sind 83 Prüfungen,
    74 statische Validatoren sowie unabhängiger Review und ein Folgecheck
    abgeschlossen; zwei Abwesenheitsbefunde sind geschlossen.
-3. Herkunft und Paketversionsbindung: aktiv. Ein optionaler lokaler Adapter
+3. Herkunft und Paketversionsbindung: PR #427 ist als
+   `9adf33367a6adc775fefb3058486b0dded696146` integriert; Head- und Mergebaum
+   sind identisch. Main-Nachlauf 40153793970 besteht. Ein optionaler lokaler Adapter
    qualifiziert einen unabhängig freigegebenen Hostsnapshot und registriert
    das konkrete validierte Modell über separate ALTER-Autorität. Native
    Prüfung bindet exakten JSON-String, Originalbytes, Build und Laufzeitgrenze.
    Der lokale SQL2025-Linux-Harness besteht 87 Prüfungen mit tatsächlichem
    Windows-Hostsnapshot, reinen EXECUTE-Rechten, abgewiesenem verändertem
    Modell und Eigentums-/Cleanup-Gegenfällen. Ein unabhängiger Review und ein
-   Folgecheck schließen vier Adapter-/Testbefunde. Head-CI und Integration
-   stehen noch aus. Der zusätzliche 950-Guard-Review und sein konkreter
+   Folgecheck schließen vier Adapter-/Testbefunde. Head-CI 40151017257
+   besteht im zweiten Versuch. Nach erfolgreicher SSIS-Prüfung scheiterte der
+   erste Versuch mit Lock-Timeout 1222 in der unveränderten Rechteprüfung von
+   Current Sessions. Nach bestätigtem Containercleanup wurden ausschließlich
+   die fehlgeschlagenen Jobs einmal begrenzt wiederholt; Produkt und Oracle
+   blieben unverändert. Der zusätzliche 950-Guard-Review und sein konkreter
    Folgecheck sind ohne offene Befunde abgeschlossen. Die übrige lokale
    statische Suite besteht; der ursprüngliche einzige 950-Befund ist durch
    die eng gebundene Ausnahme mit positiven/negativen Selbsttests geschlossen.
-4. Design-/Laufzeitkorrelation: noch offen; ohne belegte Revision und eindeutige
-   Objektbindung bleibt eine Zuordnung ausdrücklich unbewiesen.
+4. Design-/Laufzeitkorrelation: in Umsetzung. Der native Empfänger importiert
+   einen separat registrierten, modell- und paketgebundenen Katalogcapture.
+   Toolbelt liefert native IDs und beobachtete Paketpfade aus demselben Kern;
+   Analyze rekonstruiert keine Pfade und keine Lineage. Der SQL2025-Empfänger
+   besteht 88 Harnessprüfungen; der synthetische Transportvertrag besteht fünfzehn
+   Prüfungen einschließlich konkurrierendem Versionswechsel, großen IDs,
+   RAW-/JSON-Parität, Transaktionsabschluss, Registrierungsabbruch und
+   Erhaltung fremder Callertransaktionen. Dies ist keine SSISDB-Abnahme.
+   Der vorhandene öffentliche Windows-Consumerzugang des Labs wurde verwendet;
+   Deployment eines eigenen synthetischen Projekts scheitert mit SQL 15581.
+   Ein nutzbarer SSISDB-Masterkey ist nicht belegt. Die eigenen Ordner sind
+   entfernt; globale Schlüssel-, Trust- und Labkonfiguration blieben unverändert.
+   Eine Rückfrage zur vorhandenen freigegebenen Zugangs-/Secretreferenz ist
+   offen. Derselbe Quellenblocker wird ohne Zustandsänderung nicht wiederholt.
+   Dokumentation und 74 statische Validatoren bestehen. Unabhängiger Review
+   und konkreter Folgecheck schließen den Registrierungsabbruchbefund; echte
+   Quellenabnahme und aktuelle Analyze-CI sind noch offen. Toolbelt PR #411
+   liefert den gemeinsamen Identitätsexport separat; seine aktuelle CI läuft.
 5. SQL-Metadatenprüfung: noch offen; ausschließlich ausdrückliche lokale
    Bindings, keine automatische Ausführung von Paket-SQL oder Datenscans.
 

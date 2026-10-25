@@ -417,9 +417,9 @@ externen Host oder Austausch-API.
 Die Annahme durch den Benutzer, kanonische Quellen und additive Import-API sind
 festgehalten. Der erste Producer leitet nur `MAPPED_VALUE_INPUT` ab. Nicht
 qualifizierte Expression-, Lookup- und Splitableitungen bleiben partiell und
-werden nicht durch einen zweiten Analyze-Parser ergänzt. Der Import setzt
-`producerTrust` weiterhin ausschließlich auf `UNVERIFIED`; eine spätere
-verifizierte lokale Herkunft benötigt eine eigene geschlossene Nachweisanbindung.
+werden nicht durch einen zweiten Analyze-Parser ergänzt. Ohne kontrollierte
+lokale Übergabe bleibt `ProducerTrust=UNVERIFIED`. Die dritte Welle ergänzt
+den nachfolgend beschriebenen lokalen Beleg.
 
 ## Zweite Welle: objektbezogene statische Regeln
 
@@ -450,3 +450,27 @@ Vertrauenswurzel. Der Pfad führt keine Fernsignatur, Schlüsselregistrierung,
 CLR-Abhängigkeit oder automatische Berechtigungsänderung ein.
 Die [SQL-Server-Dokumentation](https://learn.microsoft.com/en-us/sql/relational-databases/system-stored-procedures/sp-addextendedproperty-transact-sql)
 beschreibt die Metadatenrechte der verwendeten Extended Properties.
+
+## Vierte Welle: gebundener Ausführungscapture
+
+Toolbelt ergänzt ein optionales Exportbundle und den Sidecar
+`ssis-object-identities` 1.0.0. Der bestehende Modellvertrag bleibt unverändert.
+Der bereits materialisierte gemeinsame Kern liefert für Paket und Executables
+dieselben Knoten-IDs, vorhandene namespacequalifizierte `DTSID`-Werte und
+vorhandene `refId`-Pfade. Fehlende, ungültige oder mehrdeutige Identitäten
+werden nicht repariert. Parser und Lineage besitzen weiterhin nur eine Quelle.
+
+Analyze besitzt den optionalen Katalogadapter, die lokale Registrierung und
+die native Interpretation des Captures. Der
+[Anwendungsvertrag](../Analysis_Guides/Procedures/USP_SsisPackageModelAnalysis.md#ausführungskorrelation-aus-einem-kontrollierten-capture)
+beschreibt Quelle, Rechte, Ablauf und Aussagegrenzen. Die aktuelle Projekt-LSN
+muss zur Ausführung passen; Archiv-/Paketbytes, Modellhash und Quellenbindung
+bleiben zusammen erhalten. Eine Capturebindung beweist noch keine eindeutige
+Objektzuordnung. Dafür gelten zusätzlich eindeutige GUIDs, exakt beobachtete
+Pfade und eine qualifizierte Paketwurzel. Laufzeitbeobachtung ist keine Lineage.
+
+Der SQL-Empfänger liest ausschließlich zugelieferte Dokumente und lokale
+Belege. Der externe Pfad verwendet den Toolbelt-Host ohne SQL-CLR-Installation;
+der eigenständige Analyze-Pfad bleibt verfügbar. Synthetische Transportprüfung
+ersetzt keine Abnahme gegen eine echte Windows-SSISDB. Solange diese fehlt,
+bleibt die gekoppelte Quellenabnahme offen.
