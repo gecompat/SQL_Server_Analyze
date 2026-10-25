@@ -3,9 +3,10 @@ GO
 SET NOCOUNT ON;
 DECLARE @Suffix nvarchar(32)=REPLACE(CONVERT(nvarchar(36),NEWID()),N'-',N''),
     @LoginA sysname,@LoginB sysname,@RoleA sysname,@RoleB sysname,@UserB sysname,
-    @MadeA bit=0,@MadeB bit=0,@MadeRoleA bit=0,@MadeRoleB bit=0,@MadeUser bit=0,
+    @MadeA bit=0,@MadeB bit=0,@MadeRoleA bit=0,@MadeRoleB bit=0,@MadeUser bit=0,@MadeMasterUser bit=0,
     @IdA int,@IdB int,@RoleIdA int,@RoleIdB int,@SidA varbinary(85),@SidB varbinary(85),
     @RoleSidA varbinary(85),@RoleSidB varbinary(85),@UserIdB int,@UserSidB varbinary(85),
+    @MasterUserIdB int,@MasterUserSidB varbinary(85),
     @Sql nvarchar(max),@Json nvarchar(max),@Expected nvarchar(max),@Status varchar(40),@Partial bit,
     @OriginalLock int=@@LOCK_TIMEOUT,@OriginalAbort bit=CASE WHEN (@@OPTIONS & 16384)=16384 THEN 1 ELSE 0 END,
     @OriginalTx int=@@TRANCOUNT,@Restore nvarchar(100),@Case int=0,@Limit int;
@@ -16,6 +17,7 @@ SELECT @LoginA=N'ExamplePrincipalA_'+@Suffix,@LoginB=N'ExamplePrincipalB_'+@Suff
 SET @Restore=N'SET LOCK_TIMEOUT '+CONVERT(nvarchar(20),@OriginalLock)+N';';
 BEGIN TRY
     IF EXISTS(SELECT 1 FROM [sys].[server_principals] WHERE [name] IN (@LoginA,@LoginB,@RoleA,@RoleB))
+       OR EXISTS(SELECT 1 FROM [master].[sys].[database_principals] WHERE [name]=@UserB)
         THROW 57061,N'Serverprincipal fixture collision.',1;
     DECLARE @FixtureCredential nvarchar(128)=N'Example!'+CONVERT(nvarchar(36),NEWID());
     SET @Sql=N'CREATE LOGIN '+QUOTENAME(@LoginA)+N' WITH PASSWORD '+N'= '+QUOTENAME(@FixtureCredential,'''')+N',CHECK_POLICY=OFF,CHECK_EXPIRATION=OFF;';
@@ -284,8 +286,12 @@ BEGIN TRY
        OR EXISTS(SELECT 1 FROM OPENJSON(@Json,N'$.principals') WITH([PrincipalId] int N'$.PrincipalId') WHERE [PrincipalId]=@IdA)
         THROW 57074,N'Serverprincipal restricted metadata visibility differs.',1;
 
+    SET @Sql=N'CREATE USER '+QUOTENAME(@UserB)+N' FOR LOGIN '+QUOTENAME(@LoginB)+N';';
+    EXEC [master].[sys].[sp_executesql] @Sql;SET @MadeMasterUser=1;
+    SELECT @MasterUserIdB=[principal_id],@MasterUserSidB=[sid]
+    FROM [master].[sys].[database_principals] WHERE [name]=@UserB;
     SET @Sql=N'DENY SELECT ON [sys].[sql_logins] TO '+QUOTENAME(@UserB)+N';';
-    EXEC [sys].[sp_executesql] @Sql;
+    EXEC [master].[sys].[sp_executesql] @Sql;
     DECLARE @ProbeError int=NULL;
     SET @Sql=N'EXECUTE AS LOGIN='+QUOTENAME(@LoginB,'''')+N';
         BEGIN TRY
@@ -364,6 +370,9 @@ BEGIN TRY
         THROW 57078,N'Serverprincipal single CONSOLE evidence boundary differs.',1;
     DROP TABLE [#ExamplePrincipal_Console];
 
+    IF NOT EXISTS(SELECT 1 FROM [master].[sys].[database_principals] WHERE [name]=@UserB AND [principal_id]=@MasterUserIdB AND [sid]=@MasterUserSidB)
+        THROW 57079,N'Serverprincipal master user ownership changed before cleanup.',1;
+    SET @Sql=N'DROP USER '+QUOTENAME(@UserB)+N';';EXEC [master].[sys].[sp_executesql] @Sql;SET @MadeMasterUser=0;
     IF NOT EXISTS(SELECT 1 FROM [sys].[database_principals] WHERE [name]=@UserB AND [principal_id]=@UserIdB AND [sid]=@UserSidB)
         THROW 57079,N'Serverprincipal user ownership changed before cleanup.',1;
     SET @Sql=N'DROP USER '+QUOTENAME(@UserB)+N';';EXEC [sys].[sp_executesql] @Sql;SET @MadeUser=0;
@@ -387,6 +396,7 @@ BEGIN TRY
     SET @Sql=N'DROP LOGIN '+QUOTENAME(@LoginA)+N';';EXEC [sys].[sp_executesql] @Sql;SET @MadeA=0;
     IF EXISTS(SELECT 1 FROM [sys].[server_principals] WHERE [name] IN (@LoginA,@LoginB,@RoleA,@RoleB))
        OR EXISTS(SELECT 1 FROM [sys].[database_principals] WHERE [name]=@UserB)
+       OR EXISTS(SELECT 1 FROM [master].[sys].[database_principals] WHERE [name]=@UserB)
         THROW 57080,N'Serverprincipal fixture cleanup is incomplete.',1;
     EXEC [sys].[sp_executesql] @Restore;
     IF @OriginalAbort=1 SET XACT_ABORT ON; ELSE SET XACT_ABORT OFF;
@@ -396,6 +406,8 @@ END TRY
 BEGIN CATCH
     IF @@TRANCOUNT>@OriginalTx ROLLBACK TRANSACTION;
     SET XACT_ABORT OFF;
+    IF @MadeMasterUser=1 AND EXISTS(SELECT 1 FROM [master].[sys].[database_principals] WHERE [name]=@UserB AND [principal_id]=@MasterUserIdB AND [sid]=@MasterUserSidB)
+    BEGIN SET @Sql=N'DROP USER '+QUOTENAME(@UserB)+N';';EXEC [master].[sys].[sp_executesql] @Sql;END;
     IF @MadeUser=1 AND EXISTS(SELECT 1 FROM [sys].[database_principals] WHERE [name]=@UserB AND [principal_id]=@UserIdB AND [sid]=@UserSidB)
     BEGIN SET @Sql=N'DROP USER '+QUOTENAME(@UserB)+N';';EXEC [sys].[sp_executesql] @Sql;END;
     IF @MadeRoleB=1 AND EXISTS(SELECT 1 FROM [sys].[server_principals] WHERE [name]=@RoleB AND [principal_id]=@RoleIdB AND [sid]=@RoleSidB)
