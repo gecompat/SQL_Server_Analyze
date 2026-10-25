@@ -28,8 +28,8 @@ noch erforderliche konkrete Freigabe bleibt als Grenze sichtbar.
 Die ersten fünf Ränge bleiben vollständig beim bereits gestarteten separaten
 SSIS-Chat. Dort gelten dessen bestehender Wellenumfang, Reviewbudgets und
 Ressourcenentscheidungen. Der Gesamtauftrag bearbeitet eigenständig Rang 6
-und folgende. Die noch offene SSIS-Integration verhindert eine unabhängige
-Security-Analyse nicht. Gemeinsame Änderungen werden vor PR-Integration gegen
+und folgende. Die Security-Analyse beginnt unabhängig vom abgeschlossenen
+SSIS-Umfang. Gemeinsame Änderungen werden vor PR-Integration gegen
 aktuelles Remote-main abgeglichen; fremde Arbeit wird nicht übernommen.
 
 Der Abgleich beruht auf dem öffentlichen Main-Stand nach PR #430 und der
@@ -41,7 +41,7 @@ im SSIS-Abschnitt von Next Steps gepflegt.
 | 1 | Fachliche SSIS-Paketsichten, `SSIS-001` | PR #425 ist integriert; keine erneute Umsetzung. |
 | 2 | Objektbezogene SSIS-Regeln, `SSIS-001` | PR #426 ist integriert; keine erneute Umsetzung. |
 | 3 | Modellherkunft und Paketversionsbindung, `SSIS-001` | PR #427 ist integriert; keine erneute Umsetzung. |
-| 4 | Design-/Laufzeitkorrelation, `SSIS-001` | PR #428 ist durch den separaten SSIS-Chat integriert; dessen Nachweise und verbleibende Abschlussarbeit bleiben dort. |
+| 4 | Design-/Laufzeitkorrelation, `SSIS-001` | PR #428 ist einschließlich nativer Quellenabnahme sowie Head-/Main-Gates abgeschlossen; der SSIS-Abschnitt von Next Steps führt den Abschlussstand. |
 | 5 | Optionale SQL-Metadatenprüfung, `SSIS-001` | PR #429 ist integriert; keine erneute Umsetzung. |
 | 6 | Berechtigungen und Login-Lifecycle, Intake `PRINCIPALS_ROLE_PERMISSIONS` und `AUTHENTICATION_LOGIN_LIFECYCLE` | Ein Dossier grenzt sichtbare Principals, Rollen, explizite Rechte, Ownership und Loginzustände ab. Effektive Berechtigungen und unsichtbare Metadaten werden nicht aus unvollständigen Katalogen behauptet. |
 | 7 | TLS und Endpoints, Intake `TLS_NETWORK_ENDPOINTS` | SQL-sichtbare Verbindungsverschlüsselung und Endpointzustände getrennt von Host-, Zertifikats- und externen Verbindungsnachweisen spezifizieren und implementieren. |
