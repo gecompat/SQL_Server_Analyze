@@ -1,7 +1,7 @@
 # Ausbau der lokalen Snapshot- und Baseline-Erfassung
 
 **Stand:** 25. Oktober 2026.
-**Status:** Konzeptreview und Schema-2-Vertragsreview bestanden. Implementierung, native Migrationsabnahme und Collectorqualifikation bleiben offen.
+**Status:** Konzept-, Schema-2-Vertrags- und Produktreview bestanden; lokale Schema-2-Abnahme liegt vor. Head-CI, native Paketabnahme und PR-Integration bleiben offen. Die Collectorqualifikation ist nicht Teil dieser Migration.
 **Artefakt-UID:** `urn:uuid:01a17312-4ac5-78b9-b77d-536e996e2817`.
 **Registrierung:** `DEFERRED`; keine neue finale lesbare Kennung vergeben.
 **Bestehende Zuordnung:** SC-023-EXPANSION, Rang 10 der
@@ -567,8 +567,8 @@ Migration und ihre drei Installationswege. Lokal bestehen auf SQL2025 die
 frische Installation, die Wiederholung und das Upgrade aus dem zuvor gesicherten
 tatsächlichen 1.0.0-Targetskript mit erhaltenen Counterdaten und Policies.
 Der fokussierte native Deploymentvertrag besteht für drei gefüllte V1-Upgrades,
-drei Wiederholungen und 19 gezielte Versions-/Strukturablehnungen. Die neuen
-Callertransaktionsfälle werden getrennt nachgeprüft. Eine frühere Fixture-
+drei Wiederholungen und 19 gezielte Versions-/Strukturablehnungen. Die nachfolgenden
+Callertransaktionsfälle werden am Korrekturstand gesondert nachgewiesen. Eine frühere Fixture-
 Wiederherstellung versuchte einen fehlenden CHECK erneut zu löschen; dieser
 Testfehler ist korrigiert. Der separate frühere 1222 vor Migration bleibt ohne
 behauptete Sperrursache sichtbar.
@@ -597,3 +597,30 @@ Gesamtdeployment einen getrennten XACT_ABORT-OFF-/RAISERROR-Rahmen. Der
 neue Callerfall hatte zuvor den Zustand nach erwarteter Ablehnung verletzt;
 sein Oracle bleibt unverändert. Folgeprüfung und native Wiederholung dieses
 Korrekturstands sind noch offen.
+
+
+### Abschlussstand des lokalen Korrekturpasses
+
+Der unabhängige Folgecheck schließt beide P2 und den eng begrenzten
+Callerablehnungsfix ohne neue Befunde. Die vollständige lokale Suite besteht
+am ersten Kandidaten mit 74 Validatoren; alle 19 betroffenen Deployment-
+Grammarprüfungen bestehen erneut am Korrekturstand. Metadaten-/Tempnamen-,
+Snapshotvertrags-, Stil-, Privacy- und Regelkontextprüfung bestehen. Der
+Datenschutzselbsttest besteht ebenfalls; der neue Testdatenbankkontext ist
+als exakt pfad-/wertgebundener synthetischer Kontext klassifiziert.
+
+Der korrigierte native SQL2025-Vertrag besteht für drei reale Installationswege,
+V1-Upgrades, Wiederholungen, 19 Struktur-/Versionskonflikte sowie die zusätzlichen
+Caller- und abweichenden Kompilationsoptionen. Der eigene Lab-Cleanup ist
+bestätigt. Der korrigierte kanonische Fehlerlauf besteht auf SQL Server 2019,
+ProductVersion 15.0.4480.2, einschließlich Stage 1, nativem Fehler 1222,
+Rollback aller zehn Tabellen und CHECKs, Recovery und Cleanup. Die lokale
+Batchbindung lautet 2427938116a1ac158c17216427bc364d5f8bb53311dd265b1ba2424b7e14bb5c.
+Das frühere 53817 des Standalone-Callerfalls bleibt als fehlgeschlagener
+Vorstand erhalten; sein unverändertes Oracle besteht nach der Korrektur.
+
+Die reguläre vollständige SQL2025-Head-CI und das gezielt gewählte native
+SQL2019-Snapshot-/Migrationsrisikogate sind noch auszuführen. Lokale Ergebnisse
+ersetzen diese Required Checks nicht. WAIT_CAPTURE_CONTEXT und der spätere
+Wait-Collector bleiben offen; neue WAIT-Policies oder Metriken werden mit
+dieser Welle nicht geliefert.
