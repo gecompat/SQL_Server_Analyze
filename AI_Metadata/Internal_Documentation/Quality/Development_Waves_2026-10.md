@@ -32,8 +32,8 @@ und folgende. Die noch offene SSIS-Integration verhindert eine unabhängige
 Security-Analyse nicht. Gemeinsame Änderungen werden vor PR-Integration gegen
 aktuelles Remote-main abgeglichen; fremde Arbeit wird nicht übernommen.
 
-Der Abgleich beruht auf dem öffentlichen Main-Stand nach PR #430 und dem
-offenen SSIS-PR #428. Statusänderungen der ersten fünf Ränge werden weiterhin
+Der Abgleich beruht auf dem öffentlichen Main-Stand nach PR #430 und der
+anschließenden Integration von SSIS-PR #428. Statusänderungen der ersten fünf Ränge werden weiterhin
 im SSIS-Abschnitt von Next Steps gepflegt.
 
 | Rang | Entwicklung und vorhandene Zuordnung | Nächster abgegrenzter Abschluss |
@@ -41,7 +41,7 @@ im SSIS-Abschnitt von Next Steps gepflegt.
 | 1 | Fachliche SSIS-Paketsichten, `SSIS-001` | PR #425 ist integriert; keine erneute Umsetzung. |
 | 2 | Objektbezogene SSIS-Regeln, `SSIS-001` | PR #426 ist integriert; keine erneute Umsetzung. |
 | 3 | Modellherkunft und Paketversionsbindung, `SSIS-001` | PR #427 ist integriert; keine erneute Umsetzung. |
-| 4 | Design-/Laufzeitkorrelation, `SSIS-001` | Der separate SSIS-Chat liefert PR #428 mit aktueller Head-CI und eigener nativer Abnahme. |
+| 4 | Design-/Laufzeitkorrelation, `SSIS-001` | PR #428 ist durch den separaten SSIS-Chat integriert; dessen Nachweise und verbleibende Abschlussarbeit bleiben dort. |
 | 5 | Optionale SQL-Metadatenprüfung, `SSIS-001` | PR #429 ist integriert; keine erneute Umsetzung. |
 | 6 | Berechtigungen und Login-Lifecycle, Intake `PRINCIPALS_ROLE_PERMISSIONS` und `AUTHENTICATION_LOGIN_LIFECYCLE` | Ein Dossier grenzt sichtbare Principals, Rollen, explizite Rechte, Ownership und Loginzustände ab. Effektive Berechtigungen und unsichtbare Metadaten werden nicht aus unvollständigen Katalogen behauptet. |
 | 7 | TLS und Endpoints, Intake `TLS_NETWORK_ENDPOINTS` | SQL-sichtbare Verbindungsverschlüsselung und Endpointzustände getrennt von Host-, Zertifikats- und externen Verbindungsnachweisen spezifizieren und implementieren. |
@@ -137,8 +137,12 @@ des Repositorys.
 
 ## Aktueller Checkpoint
 
-Die Planung ist ausgearbeitet; Review, statische Gates und reguläre
-PR-Integration dieser Lieferung stehen noch aus. Danach beginnt Rang 6 mit
+Die Planung und ihre Regelkontexteinbindung sind unabhängig ohne offene
+Befunde geprüft. Der erste statische Lauf meldete ausschließlich die fehlende
+Einbindung der neuen Seite im Regelkontextindex; die korrigierte Einbindung
+und die 23 vorhandenen Selbsttests bestehen. Die übrigen statischen Prüfungen
+und der Datenschutzscan bestehen. Aktuelle Head-Checks und die reguläre
+PR-Integration bleiben vor Lieferung erforderlich. Danach beginnt Rang 6 mit
 einem quellengestützten Security-Dossier. Zuerst werden die vorhandene
 ServerSecurityConfiguration, die getrennte Audit-/Encryption-Abdeckung sowie
 Katalogsichtbarkeit, Rechte- und Kostenverträge abgeglichen. Das Dossier
