@@ -3,7 +3,7 @@
 **Stand:** 25. Oktober 2026
 **Zweck:** aktueller Auftragsstatus und historische Entwicklungswellen für `gecompat/SQL_Server_Analyze`
 
-## Aktueller Auftrag: fünf SSIS-Paketwellen vom 25. Oktober 2026
+## Abgeschlossen: fünf SSIS-Paketwellen vom 25. Oktober 2026
 
 Der Benutzer hat fachliche Paketsichten, objektbezogene Regeln, belegte
 Modellherkunft und Paketversionsbindung, Design-/Laufzeitkorrelation und eine
@@ -13,6 +13,11 @@ SQL CLR eigenständig nutzbar. Konsistente Entwicklungsstände dürfen nach
 unabhängigem Review und den vorgeschriebenen Gates regulär per PR nach
 `origin/main` gemergt werden. Diese Freigabe betrifft die fünf genannten Wellen
 und ihre notwendige Integration, keine sonstigen pausierten Entwicklungsaufträge.
+
+Die fünf freigegebenen Wellen sind integriert. Dieser Abschlusscheckpoint
+ändert ausschließlich den Auftragsstatus; er beginnt keine neue fachliche
+Welle und setzt die acht fachlichen PRs sowie verbrauchte Review- und
+Nativebudgets nicht zurück.
 
 Der [Austauschvertrag](../../../Documentation/Architecture/SSIS_Analyze_Toolbelt_Exchange_Contract.md)
 führt den fachlichen Rahmen. Toolbelt PR #409 ist integriert. Analyze PR #423
@@ -72,8 +77,10 @@ konkreten Auslöser. Verlässliche Token- und Kostenmessung liegt nicht vor.
    Folgecheck sind ohne offene Befunde abgeschlossen. Die übrige lokale
    statische Suite besteht; der ursprüngliche einzige 950-Befund ist durch
    die eng gebundene Ausnahme mit positiven/negativen Selbsttests geschlossen.
-4. Design-/Laufzeitkorrelation: lokal und nativ abgenommen; aktuelle Head-CI
-   und Integration von PR #428 bleiben erforderlich. Toolbelt liefert native
+4. Design-/Laufzeitkorrelation: PR #428 ist nach vollständiger Head-CI
+   40162460898 als `e70510b9244ccfacd0703210d5050ee2e07db161` integriert.
+   Head- und Mergebaum sind identisch. Der getrennte Main-Nachlauf
+   40163073811 besteht ebenfalls. Toolbelt liefert native
    IDs und beobachtete Paketpfade aus demselben Kern. Analyze parst kein DTSX
    und ergänzt keine Lineage; sein Empfänger bindet zwei beobachtete
    Pfadwurzeln und unveränderte restliche Segmente innerhalb desselben Scopes.
@@ -94,8 +101,10 @@ konkreten Auslöser. Verlässliche Token- und Kostenmessung liegt nicht vor.
    sind nachgewiesen entfernt; private Evidenz bindet fünf aktuelle Quelldateien
    ohne Abweichung. Die beiden frischen Consumerläufe bleiben verbraucht.
    Registrierungs-, Cleanup- und BIN2-Befunde sind mit jeweils konkretem
-   Folgecheck geschlossen. Die erste Head-CI 40159105545 besteht; die neue
-   gemeinsame Fassung erhält eigene aktuelle Checks.
+   Folgecheck geschlossen. Die erste Head-CI 40159105545 bleibt an ihren
+   damaligen Stand gebunden. Ein Backslashliteral des Fixtureautors wurde
+   für das Datenschutzgate gleichwertig umgeschrieben; acht Codecgegenproben
+   bestätigen dieselben Werte. Die endgültigen Required Checks bestehen.
    Toolbelt PR #411 ist nach grüner Head-CI als
    `626283a51a569442e5a0cfb455fdf59e9be608d7` integriert; der Mergebaum ist
    identisch. Main-Nachläufe 40159164066 und 40159164077 bestehen.
@@ -103,6 +112,10 @@ konkreten Auslöser. Verlässliche Token- und Kostenmessung liegt nicht vor.
    ausdrücklich behalten. Sie bleibt als bewusst persistenter Testbestand
    bereit; der Heartbeat darf sie nicht automatisch entfernen. Je Consumerlauf
    werden ausschließlich dessen eigene Objekte nachgewiesen bereinigt.
+   Ein dauerhafter privater Environmentverweis und der hashgleiche qualifizierte
+   Hostsnapshot liegen außerhalb von Git im lokalen Anwendungsdatenbereich.
+   Der Verweis enthält keine Zugangsdaten; aktuelle Zugriffe verwenden weiter
+   die gebundenen öffentlichen Lab-APIs.
 5. SQL-Metadatenprüfung: PR #429 ist nach vollständiger Head-CI als
    `fb89385376573cd6e3188beef2fd03f7de388bba` integriert. Head- und Mergebaum
    sind identisch; funktionale Head-CI 40159405306 besteht. Die Basis ist Welle 3.
