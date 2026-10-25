@@ -19,9 +19,9 @@ Analyseendpunkt. Anwendungen verwenden grundsätzlich die
 | Objektklasse | Inventarisiert | Dokumentationsumfang |
 |---|---:|---|
 | Views | 8 | ein Abschnitt je View |
-| Table-Valued Functions (TVFs) | 28 | ein Abschnitt je TVF |
+| Table-Valued Functions (TVFs) | 29 | ein Abschnitt je TVF |
 | Scalar-Valued Functions (SVFs) | 0 | derzeit keine SVF installiert |
-| Interne Procedures | 16 | ein Abschnitt je Procedure |
+| Interne Procedures | 17 | ein Abschnitt je Procedure |
 | Tabellen | 20 | ein Abschnitt je Tabelle |
 
 ## Direktnavigation
@@ -1041,3 +1041,27 @@ Quelle: `Code/10_SnapshotBaseline/030_Snapshot_Target_Schema.sql`
 ## monitor.USP_ExternalDataAnalysis
 
 Öffentliche Procedure für lokale externe Kataloge. [Parameter und Vertrag](Procedure_Reference.md#monitorusp_externaldataanalysis).
+
+### `[monitor].[InternalSsisScopePathMatch]`
+
+Quelle: `Code/10_SSIS/034_InternalSsisScopePathMatch.sql`
+
+| Dimension | Beschreibung |
+|---|---|
+| Aufgabe | Vergleicht einen beobachteten Ausführungspfad mit einer qualifizierten Paketwurzel und den bereits vom Toolbelt klassifizierten Pfadschritten. |
+| Schnittstelle | Die Table-Valued Function nimmt `@Root`, `@Path` und `@Steps` an und liefert genau eine Zeile mit `IsMatch`. Ein unbekannter oder ungültiger Vergleich liefert `0` als Bitwert. |
+| Verwendung | Der interne Scopeconsumer verwendet das Ergebnis zusätzlich zu Paketname, GUID, nativem Paketpfad und eindeutiger Instanzbindung. Die Funktion liest weder DTSX noch SSISDB und klassifiziert keine Komponenten. |
+| Last und Sperren | Der Vergleich verarbeitet höchstens 32 Schritte und je 4000 UTF-16-Codeeinheiten. Er erzeugt keine Katalogsperren; kanonische positive Iterationszähler werden nur an ausdrücklich qualifizierten Schritten akzeptiert. |
+| Vertrag | Interner Bestandteil der optionalen Ausführungsscopeanalyse. Der öffentliche Einstieg bleibt `USP_SsisPackageModelAnalysis`; ein Pfadtreffer allein beweist keine Ausführung oder Lineage. |
+
+### `[monitor].[InternalSsisExecutionScopes]`
+
+Quelle: `Code/10_SSIS/035_InternalSsisExecutionScopes.sql`
+
+| Dimension | Beschreibung |
+|---|---|
+| Aufgabe | Validiert einen lokal attestierten Paketsatz und ordnet dessen gebundene Statistik- und Ereignisbeobachtungen eindeutigen Paketaufrufen und Handlerkörpern zu. |
+| Schnittstelle | Die interne Procedure erhält die Dokumente und Ausgabeparameter vom öffentlichen Scopeopt-in. Sie liefert sieben benannte Ergebnisgruppen einschließlich Herkunftsstatus, Paketinstanzen, Einzelbelegen und partieller Abdeckung. |
+| Verwendung | Aufrufer verwenden `USP_SsisPackageModelAnalysis` mit `IncludeExecutionScopes=1`. Parser, Pfadprofile und Lineage werden ausschließlich vom Toolbelt übernommen; gewöhnliche Caller können keine qualifizierten lokalen Belege registrieren. |
+| Last und Sperren | Höchstens 16 Pakete, acht Aufrufebenen, 1024 Instanzen und 50000 Quellzeilen teilen ein kooperatives Zeitbudget. Die lokale Herkunftsentscheidung liest Receipt und Eigentümermetadaten committed mit dem expliziten Locktimeout und stellt den Callerwert wieder her. |
+| Vertrag | Interner Consumer ohne SQL CLR. Mehrdeutige Instanzen bleiben unzugeordnet; Handlerbelege enthalten keine erfundene Auslöserkausalität. Ausgabegrenzen ändern die zuvor ermittelten Abdeckungszahlen nicht. |
