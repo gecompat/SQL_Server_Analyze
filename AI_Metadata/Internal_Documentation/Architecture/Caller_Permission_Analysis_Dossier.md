@@ -1,7 +1,7 @@
 # Effektive Berechtigungen des aktuellen Ausführungskontexts
 
 **Stand:** 25. Oktober 2026.
-**Status:** konkretisierter Folgescope vor technischer Vertragsfestlegung und Produktimplementierung.
+**Status:** erster Produktkandidat mit unabhängig geprüftem Vorvertrag und lokaler SQL2025-Abnahme; Produktreview und Head-Qualifikation offen.
 **Artefakt-UID:** `urn:uuid:01a17261-e0f7-7145-9586-f332362bdc1c`.
 **Registrierung:** `DEFERRED`; keine zusätzliche lesbare Kennung vergeben.
 **Arbeitselement:** weiterer Teil von `WI-0012` und Rang 6 der
@@ -73,14 +73,21 @@ permission_name erhalten eine explizite unbewiesene Grenze. Daraus entsteht
 kein Negativnachweis fehlender Rechte. Ein Fehler oder Timeout wird weder in
 eine leere erfolgreiche Menge noch in ein fehlendes Recht umgedeutet.
 
-Der aktuelle Kontext wird je Quelle mit SUSER_SNAME() und CURRENT_USER
-beschrieben. Das sind beobachtete Kontextnamen, keine Directoryprüfung und
-keine dauerhafte Identität. Kontext- und Rechteaufnahme werden zeitlich
-gekoppelt; ein beobachteter Wechsel dieser Kontextnamen verwirft die betreffende
-Teilmenge. Unveränderte Namen beweisen keine unveränderte Rollen- oder
-Modulidentitätsmenge.
-Die konkreten nativen Schemas und dieser Bindungsvertrag werden vor dem
-Implementierungsbeginn im unabhängigen Vertragsreview eingefroren.
+Der aktuelle Kontext wird je Quelle durch DB_ID(), SUSER_ID() und DATABASE_PRINCIPAL_ID()
+ohne Namensargumente beschrieben. Die numerischen IDs werden vor und nach der
+Rechteaufnahme im selben Batch verglichen. Ein beobachteter Wechsel verwirft
+die betreffende Teilmenge. Eine unveränderte ID-Kombination beweist keine
+unveränderte Rollen- oder Modulidentitätsmenge und keine dauerhafte Identität.
+Eine fehlende Serverprincipal-ID ist bei einem lokalen Benutzerkontext
+zulässig; sie wird nicht als Funktionsfehler behandelt.
+
+Die vorbereitende SQL2025-Charakterisierung bestätigte bei einem eigenen
+loginlosen Benutzer eine leere SERVER-Menge, eine nichtleere DATABASE-Menge
+und eine NULL-Serverprincipal-ID. Die Namensfunktionen SUSER_SNAME und
+SUSER_NAME konnten in diesem Kontext eine SID-Zeichenfolge zurückgeben.
+Der Produktvertrag verwendet deshalb die numerischen Kontextfunktionen und
+übernimmt keine solche Namensausgabe. Dies ist Quellencharakterisierung,
+keine Produktabnahme und keine pauschale Versionsqualifikation.
 
 Datenbank-ID, Name und erfasstes create_date werden vor und nach jedem lokalen
 Read geprüft. Ein Drift verwirft die Teilmenge mit DATABASE_UNAVAILABLE und
@@ -103,17 +110,143 @@ auf die beiden fachlichen Rechtemengen; ObservedRows und ReturnedRows bleiben
 unterscheidbar. Eine Kürzung enthält eine ausdrückliche Limitwarnung.
 
 RAW, CONSOLE, TABLE, NONE und optionales JSON verwenden dieselbe kanonische
-Materialisierung. CONSOLE liefert die Datenbankrechte als eine fachliche
-Menge; der Serverumfang bleibt über RAW, TABLE und JSON erreichbar. TABLE
+Materialisierung. CONSOLE führt die beiden Rechtemengen mit einer Scope-Spalte in einer
+fachlichen Ausgabemenge zusammen. SOURCE-, WARNING- und INFO-Zeilen erhalten
+Quellprobleme und Aussagegrenzen auch neben erfolgreichen Rechtezeilen.
+SourceKey und WarningCode bleiben getrennt von den nativen Namensfeldern.
+RowCount im moduleStatus ist die Summe der beiden tatsächlich zurückgegebenen
+Rechtemengen. TABLE
 verwendet ausschließlich die gemeinsame benannte Mehrfachzuordnung.
-Der Gesamtbefund bleibt AVAILABLE_LIMITED mit IsPartial=1, weil nur die
-benannten Securableebenen im aktuellen Kontext aufgenommen werden.
+Sobald mindestens eine Rechtemenge erfolgreich und nichtleer gelesen wurde,
+bleibt der Gesamtbefund AVAILABLE_LIMITED mit IsPartial=1. Sind ausschließlich
+leere erfolgreiche Rechtemengen verfügbar, lautet der Befund EMPTY_UNPROVEN.
+Ohne ausführbares Ziel lautet er NO_TARGETS. Bei ausschließlich
+fehlgeschlagenen Rechtesourcen übernimmt er den ersten konkreten Fehlerstatus.
+Kontextmetadaten allein gelten dabei nicht als erfolgreiche Rechtemenge.
 
 Erwartete Parameter- und TABLE-Ablehnungen sowie gefangene äußere Fehler
 kehren regulär mit Status, Diagnose-OUTPUT, Diagnosecode als RETURN-Wert und
 JSON-NULL zurück. Der Callerzustand, seine Transaktion und sein Datenbankkontext
 bleiben erhalten. Nicht gefangene Verbindungs- oder Engineabbrüche erhalten
 keine erfundene Rückgabe- oder Wiederherstellungsgarantie.
+
+## Technischer Vorvertrag für die Produktimplementierung
+
+Die API umfasst 16 Parameter in der oben beschriebenen Reihenfolge; der
+zusätzliche Serverparameter folgt auf DatabaseNamePattern. Die sechs
+benannten Mengen erhalten SchemaVersion 1. Alle Textspalten verwenden
+explizit SQL_Latin1_General_CP1_CS_AS. Die folgenden Tabellen sind der
+zu prüfende Ausgabevertrag, keine aus einer SUT-Ergebnisbeschreibung
+übernommene Schemasynthese.
+
+```sql
+CREATE TABLE #Contract_moduleStatus
+(
+    [ModuleName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,
+    [CapturedAtUtc] datetime2(3) NOT NULL,
+    [StatusCode] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,
+    [IsPartial] bit NOT NULL,
+    [RowCount] bigint NOT NULL,
+    [Detail] nvarchar(1000) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+);
+CREATE TABLE #Contract_callerContexts
+(
+    [SourceKey] varchar(64) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,
+    [DatabaseId] int NULL,
+    [DatabaseName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL,
+    [ContextDatabaseId] int NOT NULL,
+    [ServerPrincipalId] int NULL,
+    [DatabasePrincipalId] int NULL,
+    [ContextStatus] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,
+    [CapturedAtUtc] datetime2(3) NOT NULL
+);
+CREATE TABLE #Contract_serverPermissions
+(
+    [EntityName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL,
+    [SubentityName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL,
+    [PermissionName] nvarchar(128) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+);
+CREATE TABLE #Contract_databasePermissions
+(
+    [DatabaseId] int NOT NULL,
+    [DatabaseName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,
+    [EntityName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL,
+    [SubentityName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL,
+    [PermissionName] nvarchar(128) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+);
+CREATE TABLE #Contract_sourceStatus
+(
+    [DatabaseId] int NULL,
+    [DatabaseName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL,
+    [SourceKey] varchar(64) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,
+    [SourceKind] varchar(16) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,
+    [StartedAtUtc] datetime2(3) NOT NULL,
+    [CompletedAtUtc] datetime2(3) NOT NULL,
+    [StatusCode] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,
+    [VisibilityScope] varchar(32) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,
+    [ObservedRows] bigint NULL,
+    [ReturnedRows] bigint NULL,
+    [IsLimited] bit NOT NULL,
+    [ErrorNumber] int NULL,
+    [ErrorMessage] nvarchar(2048) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+);
+CREATE TABLE #Contract_warnings
+(
+    [DatabaseId] int NULL,
+    [DatabaseName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL,
+    [WarningCode] varchar(64) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,
+    [SourceKey] varchar(64) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,
+    [Detail] nvarchar(1000) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+);
+```
+
+Die Funktion lieferte in der vorbereitenden SQL2025-Prüfung entity_name und
+subentity_name als nullable nvarchar(128) sowie permission_name als nullable
+nvarchar(60). Der Vertrag erweitert das gültige permission_name verlustfrei
+[auf] nvarchar(128); eine NULL- oder Leerzeile wird vor dieser Übernahme als
+unbewiesene Quellenform verworfen. Reguläre NULL- und Leerwerte der beiden
+Namensspalten bleiben unverändert erhalten. Die Frameworkschemas werden
+gegen unabhängig deklarierte typisierte Solltabellen geprüft.
+
+SERVER_CURRENT_PERMISSIONS und DATABASE_CURRENT_PERMISSIONS bezeichnen die
+beiden NATIVE-Rechtequellen. DATABASE_CONTEXT bindet vorher ID, Name und
+create_date des jeweiligen Ziels. DATABASE_SELECTION besitzt SourceKind
+SELECTION. Serverzeilen haben DatabaseId und DatabaseName NULL; die lokalen
+Zeilen enthalten die geprüfte Zielbindung. ContextDatabaseId enthält auch
+beim Serverbefund den tatsächlichen Datenbankkontext des Funktionsaufrufs,
+damit die lokale DatabasePrincipalId einen definierten Namespace besitzt.
+
+callerContexts enthält nur erfolgreich erfasste Rechtekontexte. Nichtleere
+und leere native Mengen können einen Kontext besitzen; SKIPPED- und
+fehlgeschlagene Aufnahmen erzeugen keine erfundene Kontextzeile. Der Status
+CAPTURED_CURRENT_IDS bedeutet, dass beide Principal-IDs vorliegen.
+PARTIAL_CURRENT_IDS kennzeichnet eine fehlende Principal-ID. Beide Zustände
+beweisen keine Vollständigkeit des gesamten wirksamen Sicherheitskontexts.
+
+Eine erfolgreiche nichtleere Rechtequelle erhält AVAILABLE_LIMITED mit
+VisibilityScope CURRENT_CONTEXT_ONLY. Eine erfolgreiche leere Quelle erhält
+EMPTY_UNPROVEN mit ObservedRows=ReturnedRows=0 und eine ausdrückliche Warnung.
+Eine unbrauchbare permission_name-Zeile verwirft die ganze betreffende
+Rechtemenge mit ERROR_HANDLED und lokaler Diagnose 51014. Ein beobachteter
+ID-Wechsel verwirft die Menge mit ERROR_HANDLED und lokaler Diagnose 51013.
+Zieldrift verwendet DATABASE_UNAVAILABLE mit lokaler Diagnose 51012.
+Diese lokalen Diagnosen sind keine nativen Enginefehler.
+
+Native Berechtigungs-, Timeout- und Datenbankfehler bleiben nach ihrem
+konkreten Ursprung getrennt erkennbar. Ihre diagnostischen Meldungen bleiben
+entsprechend dem Projektvertrag vollständig; der Verzicht auf SID- und
+Tokenquellen ist keine nachträgliche Anonymisierung der Laufzeitausgabe. Bei verworfenen Quellen sind
+ObservedRows und ReturnedRows NULL. Das Ausgabelimit kürzt getrennt global
+nach deterministischer Reihenfolge; Kontext und Status bleiben vollständig.
+Die Datenbankmenge sortiert zuerst nach DatabaseId, danach nach den drei
+nativen Feldern; die Servermenge sortiert nach ihren nativen Feldern.
+
+Regulär materialisierte Berichte kehren mit RETURN 0 zurück, auch wenn eine
+isolierte fachliche Quelle scheitert. Status und Error-OUTPUT sowie die
+Quellenzeilen müssen deshalb geprüft werden. Erwartete API-/TABLE-Ablehnungen
+und gefangene äußere Fehler liefern dagegen den dokumentierten Diagnosecode
+als RETURN-Wert und JSON-NULL. Dieser Unterschied übernimmt den bestehenden
+Principal-Rückgabevertrag.
 
 ## Unabhängige Abnahme und nächste Grenze
 
@@ -137,10 +270,23 @@ die primäre Engine. Native ältere Versionen oder weitere Plattformen werden
 nur bei einem konkreten verbleibenden Versions- oder Berechtigungsrisiko
 ergänzt. Neue Berechtigungsnamen werden als Daten übernommen; eine feste
 versionsübergreifende Anzahl wird nicht vorausgesetzt.
+Für die erste Lieferung wird gezielt SQL2019 nativ ergänzt, um den lokalen
+loginlosen beziehungsweise eingeschränkten Kontext an der Mindestengine zu
+prüfen. Eine zusätzliche pauschale 2022- oder Plattformmatrix wird daraus
+nicht abgeleitet.
 
-Nach dem unabhängigen Vertragsreview werden sechs konkrete Schemas, die
-Kontextbindung und die Negativ-/Fehleroracles vor der Implementierung
-festgelegt. Der Benutzerauftrag autorisiert diese weitere Konkretisierung
+Der lokale Vertrag 137 besteht auf SQL2025 einschließlich vier TABLE-/JSON-
+Fällen, sechs unabhängigen typisierten Schemas, nativer Werteparität, bekannten
+Rollen-/DENY-Sollfällen, Objektzugriffsgegenprobe und loginlosem Kontext. Die
+Nativefunktion verwaltet ihre SELECT-Berechtigung serverweit in master; die
+Fixture verwendet dafür einen eigenen gebundenen Masteruser. Sein kontrollierter
+DENY weist den Ausfall aller Rechtequellen nach. Erfolgreiche Kontextmetadaten
+verdecken diesen Fehler nicht. Ambienttransaktion, Sentinels und identitäts-
+gebundener Cleanup bestehen. Dies ist noch keine Head- oder Versionsfreigabe.
+
+Der unabhängige technische Vertragsreview bestätigt die sechs konkreten
+Schemas, Kontextbindung und Negativ-/Fehleroracles. Diese Grundlagen sind
+vor dem Beginn der Produktimplementierung festgelegt. Der Benutzerauftrag autorisiert diese weitere Konkretisierung
 und die anschließende kohärente Produktwelle mit Review, Tests und PR-Merge.
 Objektbezogene effektive Rechte und fremde Principals bleiben offene Teile;
 die erste Callerlieferung schließt Rang 6 nicht pauschal ab.
@@ -149,5 +295,7 @@ die erste Callerlieferung schließt Rang 6 nicht pauschal ab.
 
 - Microsoft Learn: [sys.fn_my_permissions](https://learn.microsoft.com/en-us/sql/relational-databases/system-functions/sys-fn-my-permissions-transact-sql).
 - Microsoft Learn: [Berechtigungsprüfung und Ownershipchains](https://learn.microsoft.com/en-us/sql/relational-databases/security/permissions-database-engine?view=sql-server-ver17).
+- Microsoft Learn: [Serverprincipal-ID](https://learn.microsoft.com/en-us/sql/t-sql/functions/suser-id-transact-sql?view=sql-server-ver17).
+- Microsoft Learn: [Datenbankprincipal-ID](https://learn.microsoft.com/en-us/sql/t-sql/functions/database-principal-id-transact-sql?view=sql-server-ver17).
 - Microsoft Learn: [aktueller und ursprünglicher Kontext](https://learn.microsoft.com/en-us/sql/t-sql/functions/original-login-transact-sql?view=sql-server-ver17).
 - Microsoft Learn: [aktueller Datenbankbenutzer](https://learn.microsoft.com/en-us/sql/t-sql/functions/user-transact-sql?view=sql-server-ver17).

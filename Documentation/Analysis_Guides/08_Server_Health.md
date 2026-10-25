@@ -880,3 +880,11 @@ Die [Datenbankprincipal-Analyse](Procedures/USP_DatabasePrincipalAnalysis.md) li
 ```sql
 EXEC [monitor].[USP_DatabasePrincipalAnalysis] @DatabaseNames=N'[ExampleDatabase]', @MaxZeilen=200, @ResultSetArt='CONSOLE';
 ```
+
+## Effektive Rechte des aktuellen Kontexts
+
+Die [Caller-Rechteanalyse](Procedures/USP_CurrentCallerPermissionAnalysis.md) zeigt die native Enginebewertung auf SERVER- und DATABASE-Ebene. Die Ausgabe ist an den aktiven Ausführungskontext gebunden und beweist keinen konkreten Objektzugriff.
+
+```sql
+EXEC [monitor].[USP_CurrentCallerPermissionAnalysis] @MaxZeilen=200, @ResultSetArt='CONSOLE';
+```

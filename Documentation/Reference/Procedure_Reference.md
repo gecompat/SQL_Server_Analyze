@@ -2769,3 +2769,26 @@ Quelle: `Code/08_ServerHealth/270_USP_DatabasePrincipalAnalysis.sql`
     , @ErrorNumberOut int = NULL OUTPUT
     , @ErrorMessageOut nvarchar(2048) = NULL OUTPUT
 ```
+
+## `[monitor].[USP_CurrentCallerPermissionAnalysis]`
+
+Quelle: `Code/08_ServerHealth/280_USP_CurrentCallerPermissionAnalysis.sql`
+
+```sql
+      @DatabaseNames nvarchar(max) = NULL
+    , @SystemdatenbankenEinbeziehen bit = 0
+    , @DatabaseNamePattern nvarchar(4000) = NULL
+    , @ServerrechteEinbeziehen bit = 1
+    , @MaxZeilen int = 1000
+    , @LockTimeoutMs int = 0
+    , @ResultSetArt varchar(16) = 'CONSOLE'
+    , @ResultTablesJson nvarchar(max) = NULL
+    , @JsonErzeugen bit = 0
+    , @Json nvarchar(max) = NULL OUTPUT
+    , @PrintMeldungen bit = 1
+    , @Hilfe bit = 0
+    , @StatusCodeOut varchar(40) = NULL OUTPUT
+    , @IsPartialOut bit = NULL OUTPUT
+    , @ErrorNumberOut int = NULL OUTPUT
+    , @ErrorMessageOut nvarchar(2048) = NULL OUTPUT
+```
