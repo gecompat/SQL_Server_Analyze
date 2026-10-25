@@ -76,7 +76,8 @@ VALUES
 (N'monitor.USP_ClrAnalysis','P'),
 (N'monitor.USP_SsisPackageModelAnalysis','P'),
 (N'monitor.USP_MaintenanceOperations','P'),
-(N'monitor.USP_ServerPrincipalAnalysis','P');
+(N'monitor.USP_ServerPrincipalAnalysis','P'),
+(N'monitor.USP_DatabasePrincipalAnalysis','P');
 
 SELECT @Missing = STRING_AGG([ObjectName],N', ')
 FROM @Expected AS [e]
@@ -109,8 +110,8 @@ IF NOT EXISTS
 )
     THROW 54001,N'FrameworkVersion fehlt oder entspricht nicht Release 1.1.2.',1;
 
-IF (SELECT COUNT_BIG(*) FROM [monitor].[VW_AnalysisCatalog]) <> 112
-    THROW 54025,N'Der Analysis Catalog enthält nicht genau alle 112 öffentlichen Procedures.',1;
+IF (SELECT COUNT_BIG(*) FROM [monitor].[VW_AnalysisCatalog]) <> 113
+    THROW 54025,N'Der Analysis Catalog enthält nicht genau alle 113 öffentlichen Procedures.',1;
 
 IF EXISTS
 (

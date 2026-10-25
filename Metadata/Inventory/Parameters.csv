@@ -2009,6 +2009,21 @@ USP_ServerPrincipalAnalysis,StatusCodeOut,varchar(40),NULL OUTPUT
 USP_ServerPrincipalAnalysis,IsPartialOut,bit,NULL OUTPUT
 USP_ServerPrincipalAnalysis,ErrorNumberOut,int,NULL OUTPUT
 USP_ServerPrincipalAnalysis,ErrorMessageOut,nvarchar(2048),NULL OUTPUT
+USP_DatabasePrincipalAnalysis,DatabaseNames,nvarchar(max),NULL
+USP_DatabasePrincipalAnalysis,SystemdatenbankenEinbeziehen,bit,0
+USP_DatabasePrincipalAnalysis,DatabaseNamePattern,nvarchar(4000),NULL
+USP_DatabasePrincipalAnalysis,MaxZeilen,int,1000
+USP_DatabasePrincipalAnalysis,LockTimeoutMs,int,0
+USP_DatabasePrincipalAnalysis,ResultSetArt,varchar(16),'CONSOLE'
+USP_DatabasePrincipalAnalysis,ResultTablesJson,nvarchar(max),NULL
+USP_DatabasePrincipalAnalysis,JsonErzeugen,bit,0
+USP_DatabasePrincipalAnalysis,Json,nvarchar(max),NULL OUTPUT
+USP_DatabasePrincipalAnalysis,PrintMeldungen,bit,1
+USP_DatabasePrincipalAnalysis,Hilfe,bit,0
+USP_DatabasePrincipalAnalysis,StatusCodeOut,varchar(40),NULL OUTPUT
+USP_DatabasePrincipalAnalysis,IsPartialOut,bit,NULL OUTPUT
+USP_DatabasePrincipalAnalysis,ErrorNumberOut,int,NULL OUTPUT
+USP_DatabasePrincipalAnalysis,ErrorMessageOut,nvarchar(2048),NULL OUTPUT
 USP_SsisPackageModelAnalysis,IncludeIterationCorrelation,bit,0
 USP_SsisPackageModelAnalysis,IncludeExecutionScopes,bit,0
 USP_SsisPackageModelAnalysis,ProjectModelsJson,nvarchar(max),NULL

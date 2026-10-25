@@ -4,7 +4,7 @@ GO
 /*
 ===============================================================================
 Objekt       : monitor.USP_ServerPrincipalAnalysis
-Version      : 1.0.0
+Version      : 1.0.1
 Stand        : 2026-10-25
 Zweck        : Zeigt sichtbare Serverprincipals, direkte Rollenmitgliedschaften,
                explizite Berechtigungen und konfigurierte SQL-Login-Policies.
@@ -39,7 +39,7 @@ BEGIN
         @Limit bigint=CASE WHEN @MaxZeilen IS NULL OR @MaxZeilen=0 THEN CONVERT(bigint,9223372036854775807) ELSE @MaxZeilen END,
         @PreviousLockTimeout int=@@LOCK_TIMEOUT,
         @PreviousXactAbort bit=CASE WHEN (@@OPTIONS & 16384)=16384 THEN 1 ELSE 0 END,
-        @RestoreLock nvarchar(100),@SetLock nvarchar(100),
+        @RestoreLock nvarchar(100),@SetLock nvarchar(100),@SetLockSource nvarchar(max),
         @Started datetime2(3),@Observed bigint,@Returned bigint,
         @Status varchar(40)='AVAILABLE_LIMITED',@Error int=NULL,@Message nvarchar(2048)=NULL;
     DECLARE @ConsoleResultRequested bit=CASE WHEN @Mode='CONSOLE' THEN 1 ELSE 0 END;
@@ -154,17 +154,13 @@ BEGIN
             END;
         END;
         SET LOCK_TIMEOUT 0;
-        IF @LockTimeoutMs>0
-        BEGIN
-            SET @SetLock=N'SET LOCK_TIMEOUT '+CONVERT(nvarchar(20),@LockTimeoutMs)+N';';
-            EXEC [sys].[sp_executesql] @SetLock;
-        END;
+        SET @SetLock=N'SET LOCK_TIMEOUT '+CONVERT(nvarchar(20),@LockTimeoutMs)+N'; ';
         SET @Started=SYSUTCDATETIME();
         BEGIN TRY
-            INSERT [#ServerPrincipalAnalysis_principals]
+            SET @SetLockSource=@SetLock+N'INSERT [#ServerPrincipalAnalysis_principals]
             SELECT [p].[principal_id],[p].[name],[p].[type],[p].[type_desc],CONVERT(bit,[p].[is_disabled]),[p].[create_date],[p].[modify_date],[p].[is_fixed_role],[p].[owning_principal_id]
-            FROM [sys].[server_principals] AS [p] WITH (NOLOCK);
-            SET @Observed=@@ROWCOUNT;
+            FROM [sys].[server_principals] AS [p] WITH (NOLOCK); SET @Rows=@@ROWCOUNT;';
+            EXEC [sys].[sp_executesql] @SetLockSource,N'@Rows bigint OUTPUT',@Rows=@Observed OUTPUT;
             INSERT [#ServerPrincipalAnalysis_sourceStatus] VALUES
                 ('SERVER_PRINCIPALS',@Started,SYSUTCDATETIME(),'AVAILABLE_LIMITED','VISIBLE_ONLY',@Observed,@Observed,0,NULL,NULL);
         END TRY
@@ -178,12 +174,12 @@ BEGIN
         END CATCH;
         SET @Started=SYSUTCDATETIME();
         BEGIN TRY
-            INSERT [#ServerPrincipalAnalysis_roleMemberships]
+            SET @SetLockSource=@SetLock+N'INSERT [#ServerPrincipalAnalysis_roleMemberships]
             SELECT [m].[role_principal_id],[r].[PrincipalName],[m].[member_principal_id],[p].[PrincipalName]
             FROM [sys].[server_role_members] AS [m] WITH (NOLOCK)
             LEFT JOIN [#ServerPrincipalAnalysis_principals] AS [r] ON [r].[PrincipalId]=[m].[role_principal_id]
-            LEFT JOIN [#ServerPrincipalAnalysis_principals] AS [p] ON [p].[PrincipalId]=[m].[member_principal_id];
-            SET @Observed=@@ROWCOUNT;
+            LEFT JOIN [#ServerPrincipalAnalysis_principals] AS [p] ON [p].[PrincipalId]=[m].[member_principal_id]; SET @Rows=@@ROWCOUNT;';
+            EXEC [sys].[sp_executesql] @SetLockSource,N'@Rows bigint OUTPUT',@Rows=@Observed OUTPUT;
             INSERT [#ServerPrincipalAnalysis_sourceStatus] VALUES
                 ('SERVER_ROLE_MEMBERS',@Started,SYSUTCDATETIME(),'AVAILABLE_LIMITED','VISIBLE_ONLY',@Observed,@Observed,0,NULL,NULL);
         END TRY
@@ -197,12 +193,12 @@ BEGIN
         END CATCH;
         SET @Started=SYSUTCDATETIME();
         BEGIN TRY
-            INSERT [#ServerPrincipalAnalysis_permissions]
+            SET @SetLockSource=@SetLock+N'INSERT [#ServerPrincipalAnalysis_permissions]
             SELECT [e].[grantee_principal_id],[p].[PrincipalName],[e].[grantor_principal_id],[g].[PrincipalName],[e].[class],[e].[class_desc],[e].[major_id],[e].[permission_name],[e].[state],[e].[state_desc]
             FROM [sys].[server_permissions] AS [e] WITH (NOLOCK)
             LEFT JOIN [#ServerPrincipalAnalysis_principals] AS [p] ON [p].[PrincipalId]=[e].[grantee_principal_id]
-            LEFT JOIN [#ServerPrincipalAnalysis_principals] AS [g] ON [g].[PrincipalId]=[e].[grantor_principal_id];
-            SET @Observed=@@ROWCOUNT;
+            LEFT JOIN [#ServerPrincipalAnalysis_principals] AS [g] ON [g].[PrincipalId]=[e].[grantor_principal_id]; SET @Rows=@@ROWCOUNT;';
+            EXEC [sys].[sp_executesql] @SetLockSource,N'@Rows bigint OUTPUT',@Rows=@Observed OUTPUT;
             INSERT [#ServerPrincipalAnalysis_sourceStatus] VALUES
                 ('SERVER_PERMISSIONS',@Started,SYSUTCDATETIME(),'AVAILABLE_LIMITED','VISIBLE_ONLY',@Observed,@Observed,0,NULL,NULL);
         END TRY
@@ -216,10 +212,10 @@ BEGIN
         END CATCH;
         SET @Started=SYSUTCDATETIME();
         BEGIN TRY
-            INSERT [#ServerPrincipalAnalysis_loginPolicies]
+            SET @SetLockSource=@SetLock+N'INSERT [#ServerPrincipalAnalysis_loginPolicies]
             SELECT [p].[principal_id],[p].[name],[p].[is_policy_checked],[p].[is_expiration_checked]
-            FROM [sys].[sql_logins] AS [p] WITH (NOLOCK);
-            SET @Observed=@@ROWCOUNT;
+            FROM [sys].[sql_logins] AS [p] WITH (NOLOCK); SET @Rows=@@ROWCOUNT;';
+            EXEC [sys].[sp_executesql] @SetLockSource,N'@Rows bigint OUTPUT',@Rows=@Observed OUTPUT;
             INSERT [#ServerPrincipalAnalysis_sourceStatus] VALUES
                 ('SQL_LOGIN_POLICIES',@Started,SYSUTCDATETIME(),'AVAILABLE_LIMITED','VISIBLE_ONLY',@Observed,@Observed,0,NULL,NULL);
         END TRY

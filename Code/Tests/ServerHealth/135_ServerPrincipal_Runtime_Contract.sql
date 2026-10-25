@@ -1,5 +1,11 @@
 USE [DeineDatenbank];
 GO
+IF OBJECT_ID(N'tempdb..#ExampleServerPrincipalRuntimeContract') IS NOT NULL
+    THROW 57087,N'Serverprincipal scoped fixture procedure already exists.',1;
+GO
+CREATE PROCEDURE [#ExampleServerPrincipalRuntimeContract] @NativeTableCases int OUTPUT
+AS
+BEGIN
 SET NOCOUNT ON;
 DECLARE @Suffix nvarchar(32)=REPLACE(CONVERT(nvarchar(36),NEWID()),N'-',N''),
     @LoginA sysname,@LoginB sysname,@RoleA sysname,@RoleB sysname,@UserB sysname,
@@ -9,7 +15,7 @@ DECLARE @Suffix nvarchar(32)=REPLACE(CONVERT(nvarchar(36),NEWID()),N'-',N''),
     @MasterUserIdB int,@MasterUserSidB varbinary(85),
     @Sql nvarchar(max),@Json nvarchar(max),@Expected nvarchar(max),@Status varchar(40),@Partial bit,
     @OriginalLock int=@@LOCK_TIMEOUT,@OriginalAbort bit=CASE WHEN (@@OPTIONS & 16384)=16384 THEN 1 ELSE 0 END,
-    @OriginalTx int=@@TRANCOUNT,@Restore nvarchar(100),@Case int=0,@Limit int;
+    @OriginalTx int=@@TRANCOUNT,@Restore nvarchar(100),@Case int=0,@Limit int,@SourceLock int;
 IF @OriginalTx<>0 OR COALESCE(IS_SRVROLEMEMBER(N'sysadmin'),0)<>1
     THROW 57060,N'Serverprincipal fixture requires an isolated sysadmin test target without ambient transaction.',1;
 SELECT @LoginA=N'ExamplePrincipalA_'+@Suffix,@LoginB=N'ExamplePrincipalB_'+@Suffix,
@@ -114,6 +120,7 @@ BEGIN TRY
     WHILE @Case<4
     BEGIN
         SET @Limit=CASE WHEN @Case=1 THEN 1 WHEN @Case=2 THEN NULL ELSE 0 END;
+        SET @SourceLock=CASE WHEN @Case%2=0 THEN 0 ELSE 29 END;
         SET LOCK_TIMEOUT 37;
         IF @Case%2=0 SET XACT_ABORT ON; ELSE SET XACT_ABORT OFF;
         CREATE TABLE [#ExamplePrincipal_moduleStatus]([Seed] int NULL);
@@ -124,10 +131,10 @@ BEGIN TRY
         CREATE TABLE [#ExamplePrincipal_sourceStatus]([Seed] int NULL);
         CREATE TABLE [#ExamplePrincipal_warnings]([Seed] int NULL);
         IF @Case=3 BEGIN TRANSACTION;
-        EXEC [monitor].[USP_ServerPrincipalAnalysis] @MaxZeilen=@Limit,@ResultSetArt='TABLE',
+        EXEC [monitor].[USP_ServerPrincipalAnalysis] @MaxZeilen=@Limit,@LockTimeoutMs=@SourceLock,@ResultSetArt='TABLE',
             @ResultTablesJson=N'{"moduleStatus":"#ExamplePrincipal_moduleStatus","principals":"#ExamplePrincipal_principals","roleMemberships":"#ExamplePrincipal_roleMemberships","permissions":"#ExamplePrincipal_permissions","loginPolicies":"#ExamplePrincipal_loginPolicies","sourceStatus":"#ExamplePrincipal_sourceStatus","warnings":"#ExamplePrincipal_warnings"}',@JsonErzeugen=1,@Json=@Json OUTPUT,
             @PrintMeldungen=0,@StatusCodeOut=@Status OUTPUT,@IsPartialOut=@Partial OUTPUT;
-        IF COALESCE(@Status,'')<>'AVAILABLE_LIMITED' OR COALESCE(@Partial,0)<>1 OR ISJSON(@Json)<>1
+        IF COALESCE(@Status COLLATE SQL_Latin1_General_CP1_CS_AS,'')<>'AVAILABLE_LIMITED' OR COALESCE(@Partial,0)<>1 OR ISJSON(@Json)<>1
            OR @@LOCK_TIMEOUT<>37 OR @@TRANCOUNT<>CASE WHEN @Case=3 THEN 1 ELSE 0 END
            OR CASE WHEN (@@OPTIONS & 16384)=16384 THEN 1 ELSE 0 END<>CASE WHEN @Case%2=0 THEN 1 ELSE 0 END
             THROW 57062,N'Serverprincipal status or caller state differs.',1;
@@ -143,7 +150,7 @@ BEGIN TRY
             SELECT ROW_NUMBER() OVER(ORDER BY [column_id]),[name] COLLATE SQL_Latin1_General_CP1_CS_AS,[system_type_id],[max_length],[precision],[scale],[is_nullable],[collation_name] COLLATE SQL_Latin1_General_CP1_CS_AS
             FROM [tempdb].[sys].[columns] WHERE [object_id]=OBJECT_ID(N'tempdb..#ExamplePrincipal_Expected_moduleStatus'))
             THROW 57082,N'Serverprincipal published native schema facets differ: moduleStatus.',1;
-        IF COALESCE(@Expected,N'[]') COLLATE SQL_Latin1_General_CP1_CS_AS<>COALESCE(JSON_QUERY(@Json,N'$.moduleStatus'),N'[]') COLLATE SQL_Latin1_General_CP1_CS_AS
+        IF COALESCE(@Expected COLLATE SQL_Latin1_General_CP1_CS_AS,N'[]' COLLATE SQL_Latin1_General_CP1_CS_AS) COLLATE SQL_Latin1_General_CP1_CS_AS<>COALESCE(JSON_QUERY(@Json COLLATE SQL_Latin1_General_CP1_CS_AS,N'$.moduleStatus'),N'[]' COLLATE SQL_Latin1_General_CP1_CS_AS) COLLATE SQL_Latin1_General_CP1_CS_AS
             THROW 57064,N'Serverprincipal same-call TABLE JSON parity differs: moduleStatus.',1;
         IF (SELECT COUNT(*) FROM [tempdb].[sys].[columns] WHERE [object_id]=OBJECT_ID(N'tempdb..#ExamplePrincipal_moduleStatus'))<>6
            OR EXISTS(SELECT 1 FROM [tempdb].[sys].[columns] WHERE [object_id]=OBJECT_ID(N'tempdb..#ExamplePrincipal_moduleStatus') AND [collation_name] IS NOT NULL AND [collation_name] COLLATE SQL_Latin1_General_CP1_CS_AS<>N'SQL_Latin1_General_CP1_CS_AS')
@@ -156,7 +163,7 @@ BEGIN TRY
             SELECT ROW_NUMBER() OVER(ORDER BY [column_id]),[name] COLLATE SQL_Latin1_General_CP1_CS_AS,[system_type_id],[max_length],[precision],[scale],[is_nullable],[collation_name] COLLATE SQL_Latin1_General_CP1_CS_AS
             FROM [tempdb].[sys].[columns] WHERE [object_id]=OBJECT_ID(N'tempdb..#ExamplePrincipal_Expected_principals'))
             THROW 57082,N'Serverprincipal published native schema facets differ: principals.',1;
-        IF COALESCE(@Expected,N'[]') COLLATE SQL_Latin1_General_CP1_CS_AS<>COALESCE(JSON_QUERY(@Json,N'$.principals'),N'[]') COLLATE SQL_Latin1_General_CP1_CS_AS
+        IF COALESCE(@Expected COLLATE SQL_Latin1_General_CP1_CS_AS,N'[]' COLLATE SQL_Latin1_General_CP1_CS_AS) COLLATE SQL_Latin1_General_CP1_CS_AS<>COALESCE(JSON_QUERY(@Json COLLATE SQL_Latin1_General_CP1_CS_AS,N'$.principals'),N'[]' COLLATE SQL_Latin1_General_CP1_CS_AS) COLLATE SQL_Latin1_General_CP1_CS_AS
             THROW 57064,N'Serverprincipal same-call TABLE JSON parity differs: principals.',1;
         IF (SELECT COUNT(*) FROM [tempdb].[sys].[columns] WHERE [object_id]=OBJECT_ID(N'tempdb..#ExamplePrincipal_principals'))<>9
            OR EXISTS(SELECT 1 FROM [tempdb].[sys].[columns] WHERE [object_id]=OBJECT_ID(N'tempdb..#ExamplePrincipal_principals') AND [collation_name] IS NOT NULL AND [collation_name] COLLATE SQL_Latin1_General_CP1_CS_AS<>N'SQL_Latin1_General_CP1_CS_AS')
@@ -170,7 +177,7 @@ BEGIN TRY
             SELECT ROW_NUMBER() OVER(ORDER BY [column_id]),[name] COLLATE SQL_Latin1_General_CP1_CS_AS,[system_type_id],[max_length],[precision],[scale],[is_nullable],[collation_name] COLLATE SQL_Latin1_General_CP1_CS_AS
             FROM [tempdb].[sys].[columns] WHERE [object_id]=OBJECT_ID(N'tempdb..#ExamplePrincipal_Expected_roleMemberships'))
             THROW 57082,N'Serverprincipal published native schema facets differ: roleMemberships.',1;
-        IF COALESCE(@Expected,N'[]') COLLATE SQL_Latin1_General_CP1_CS_AS<>COALESCE(JSON_QUERY(@Json,N'$.roleMemberships'),N'[]') COLLATE SQL_Latin1_General_CP1_CS_AS
+        IF COALESCE(@Expected COLLATE SQL_Latin1_General_CP1_CS_AS,N'[]' COLLATE SQL_Latin1_General_CP1_CS_AS) COLLATE SQL_Latin1_General_CP1_CS_AS<>COALESCE(JSON_QUERY(@Json COLLATE SQL_Latin1_General_CP1_CS_AS,N'$.roleMemberships'),N'[]' COLLATE SQL_Latin1_General_CP1_CS_AS) COLLATE SQL_Latin1_General_CP1_CS_AS
             THROW 57064,N'Serverprincipal same-call TABLE JSON parity differs: roleMemberships.',1;
         IF (SELECT COUNT(*) FROM [tempdb].[sys].[columns] WHERE [object_id]=OBJECT_ID(N'tempdb..#ExamplePrincipal_roleMemberships'))<>4
            OR EXISTS(SELECT 1 FROM [tempdb].[sys].[columns] WHERE [object_id]=OBJECT_ID(N'tempdb..#ExamplePrincipal_roleMemberships') AND [collation_name] IS NOT NULL AND [collation_name] COLLATE SQL_Latin1_General_CP1_CS_AS<>N'SQL_Latin1_General_CP1_CS_AS')
@@ -184,7 +191,7 @@ BEGIN TRY
             SELECT ROW_NUMBER() OVER(ORDER BY [column_id]),[name] COLLATE SQL_Latin1_General_CP1_CS_AS,[system_type_id],[max_length],[precision],[scale],[is_nullable],[collation_name] COLLATE SQL_Latin1_General_CP1_CS_AS
             FROM [tempdb].[sys].[columns] WHERE [object_id]=OBJECT_ID(N'tempdb..#ExamplePrincipal_Expected_permissions'))
             THROW 57082,N'Serverprincipal published native schema facets differ: permissions.',1;
-        IF COALESCE(@Expected,N'[]') COLLATE SQL_Latin1_General_CP1_CS_AS<>COALESCE(JSON_QUERY(@Json,N'$.permissions'),N'[]') COLLATE SQL_Latin1_General_CP1_CS_AS
+        IF COALESCE(@Expected COLLATE SQL_Latin1_General_CP1_CS_AS,N'[]' COLLATE SQL_Latin1_General_CP1_CS_AS) COLLATE SQL_Latin1_General_CP1_CS_AS<>COALESCE(JSON_QUERY(@Json COLLATE SQL_Latin1_General_CP1_CS_AS,N'$.permissions'),N'[]' COLLATE SQL_Latin1_General_CP1_CS_AS) COLLATE SQL_Latin1_General_CP1_CS_AS
             THROW 57064,N'Serverprincipal same-call TABLE JSON parity differs: permissions.',1;
         IF (SELECT COUNT(*) FROM [tempdb].[sys].[columns] WHERE [object_id]=OBJECT_ID(N'tempdb..#ExamplePrincipal_permissions'))<>10
            OR EXISTS(SELECT 1 FROM [tempdb].[sys].[columns] WHERE [object_id]=OBJECT_ID(N'tempdb..#ExamplePrincipal_permissions') AND [collation_name] IS NOT NULL AND [collation_name] COLLATE SQL_Latin1_General_CP1_CS_AS<>N'SQL_Latin1_General_CP1_CS_AS')
@@ -198,7 +205,7 @@ BEGIN TRY
             SELECT ROW_NUMBER() OVER(ORDER BY [column_id]),[name] COLLATE SQL_Latin1_General_CP1_CS_AS,[system_type_id],[max_length],[precision],[scale],[is_nullable],[collation_name] COLLATE SQL_Latin1_General_CP1_CS_AS
             FROM [tempdb].[sys].[columns] WHERE [object_id]=OBJECT_ID(N'tempdb..#ExamplePrincipal_Expected_loginPolicies'))
             THROW 57082,N'Serverprincipal published native schema facets differ: loginPolicies.',1;
-        IF COALESCE(@Expected,N'[]') COLLATE SQL_Latin1_General_CP1_CS_AS<>COALESCE(JSON_QUERY(@Json,N'$.loginPolicies'),N'[]') COLLATE SQL_Latin1_General_CP1_CS_AS
+        IF COALESCE(@Expected COLLATE SQL_Latin1_General_CP1_CS_AS,N'[]' COLLATE SQL_Latin1_General_CP1_CS_AS) COLLATE SQL_Latin1_General_CP1_CS_AS<>COALESCE(JSON_QUERY(@Json COLLATE SQL_Latin1_General_CP1_CS_AS,N'$.loginPolicies'),N'[]' COLLATE SQL_Latin1_General_CP1_CS_AS) COLLATE SQL_Latin1_General_CP1_CS_AS
             THROW 57064,N'Serverprincipal same-call TABLE JSON parity differs: loginPolicies.',1;
         IF (SELECT COUNT(*) FROM [tempdb].[sys].[columns] WHERE [object_id]=OBJECT_ID(N'tempdb..#ExamplePrincipal_loginPolicies'))<>4
            OR EXISTS(SELECT 1 FROM [tempdb].[sys].[columns] WHERE [object_id]=OBJECT_ID(N'tempdb..#ExamplePrincipal_loginPolicies') AND [collation_name] IS NOT NULL AND [collation_name] COLLATE SQL_Latin1_General_CP1_CS_AS<>N'SQL_Latin1_General_CP1_CS_AS')
@@ -212,7 +219,7 @@ BEGIN TRY
             SELECT ROW_NUMBER() OVER(ORDER BY [column_id]),[name] COLLATE SQL_Latin1_General_CP1_CS_AS,[system_type_id],[max_length],[precision],[scale],[is_nullable],[collation_name] COLLATE SQL_Latin1_General_CP1_CS_AS
             FROM [tempdb].[sys].[columns] WHERE [object_id]=OBJECT_ID(N'tempdb..#ExamplePrincipal_Expected_sourceStatus'))
             THROW 57082,N'Serverprincipal published native schema facets differ: sourceStatus.',1;
-        IF COALESCE(@Expected,N'[]') COLLATE SQL_Latin1_General_CP1_CS_AS<>COALESCE(JSON_QUERY(@Json,N'$.sourceStatus'),N'[]') COLLATE SQL_Latin1_General_CP1_CS_AS
+        IF COALESCE(@Expected COLLATE SQL_Latin1_General_CP1_CS_AS,N'[]' COLLATE SQL_Latin1_General_CP1_CS_AS) COLLATE SQL_Latin1_General_CP1_CS_AS<>COALESCE(JSON_QUERY(@Json COLLATE SQL_Latin1_General_CP1_CS_AS,N'$.sourceStatus'),N'[]' COLLATE SQL_Latin1_General_CP1_CS_AS) COLLATE SQL_Latin1_General_CP1_CS_AS
             THROW 57064,N'Serverprincipal same-call TABLE JSON parity differs: sourceStatus.',1;
         IF (SELECT COUNT(*) FROM [tempdb].[sys].[columns] WHERE [object_id]=OBJECT_ID(N'tempdb..#ExamplePrincipal_sourceStatus'))<>10
            OR EXISTS(SELECT 1 FROM [tempdb].[sys].[columns] WHERE [object_id]=OBJECT_ID(N'tempdb..#ExamplePrincipal_sourceStatus') AND [collation_name] IS NOT NULL AND [collation_name] COLLATE SQL_Latin1_General_CP1_CS_AS<>N'SQL_Latin1_General_CP1_CS_AS')
@@ -225,7 +232,7 @@ BEGIN TRY
             SELECT ROW_NUMBER() OVER(ORDER BY [column_id]),[name] COLLATE SQL_Latin1_General_CP1_CS_AS,[system_type_id],[max_length],[precision],[scale],[is_nullable],[collation_name] COLLATE SQL_Latin1_General_CP1_CS_AS
             FROM [tempdb].[sys].[columns] WHERE [object_id]=OBJECT_ID(N'tempdb..#ExamplePrincipal_Expected_warnings'))
             THROW 57082,N'Serverprincipal published native schema facets differ: warnings.',1;
-        IF COALESCE(@Expected,N'[]') COLLATE SQL_Latin1_General_CP1_CS_AS<>COALESCE(JSON_QUERY(@Json,N'$.warnings'),N'[]') COLLATE SQL_Latin1_General_CP1_CS_AS
+        IF COALESCE(@Expected COLLATE SQL_Latin1_General_CP1_CS_AS,N'[]' COLLATE SQL_Latin1_General_CP1_CS_AS) COLLATE SQL_Latin1_General_CP1_CS_AS<>COALESCE(JSON_QUERY(@Json COLLATE SQL_Latin1_General_CP1_CS_AS,N'$.warnings'),N'[]' COLLATE SQL_Latin1_General_CP1_CS_AS) COLLATE SQL_Latin1_General_CP1_CS_AS
             THROW 57064,N'Serverprincipal same-call TABLE JSON parity differs: warnings.',1;
         IF (SELECT COUNT(*) FROM [tempdb].[sys].[columns] WHERE [object_id]=OBJECT_ID(N'tempdb..#ExamplePrincipal_warnings'))<>3
            OR EXISTS(SELECT 1 FROM [tempdb].[sys].[columns] WHERE [object_id]=OBJECT_ID(N'tempdb..#ExamplePrincipal_warnings') AND [collation_name] IS NOT NULL AND [collation_name] COLLATE SQL_Latin1_General_CP1_CS_AS<>N'SQL_Latin1_General_CP1_CS_AS')
@@ -320,7 +327,7 @@ BEGIN TRY
         END CATCH;';
     EXEC [sys].[sp_executesql] @Sql,N'@ProbeError int OUTPUT,@Json nvarchar(max) OUTPUT,@Status varchar(40) OUTPUT,@Partial bit OUTPUT',
         @ProbeError=@ProbeError OUTPUT,@Json=@Json OUTPUT,@Status=@Status OUTPUT,@Partial=@Partial OUTPUT;
-    IF COALESCE(@Status,'')<>'AVAILABLE_LIMITED' OR COALESCE(@Partial,0)<>1
+    IF COALESCE(@Status COLLATE SQL_Latin1_General_CP1_CS_AS,'')<>'AVAILABLE_LIMITED' OR COALESCE(@Partial,0)<>1
        OR NOT EXISTS(SELECT 1 FROM OPENJSON(@Json,N'$.sourceStatus')
             WITH([SourceKey] varchar(64) N'$.SourceKey',[StatusCode] varchar(40) N'$.StatusCode',[ErrorNumber] int N'$.ErrorNumber')
             WHERE [SourceKey]='SQL_LOGIN_POLICIES' AND [StatusCode]='DENIED_PERMISSION' AND [ErrorNumber]=@ProbeError)
@@ -343,8 +350,8 @@ BEGIN TRY
     EXEC @FailureReturn=[monitor].[USP_ServerPrincipalAnalysis] @ResultSetArt='TABLE',@ResultTablesJson=N'{"unknown":"#ExampleMissing"}',
         @JsonErzeugen=1,@Json=@Json OUTPUT,@PrintMeldungen=0,
         @StatusCodeOut=@Status OUTPUT,@ErrorNumberOut=@ProbeError OUTPUT,@ErrorMessageOut=@FailureMessage OUTPUT;
-    IF COALESCE(@FailureReturn,0)<>51011 OR COALESCE(@ProbeError,0)<>51011 OR COALESCE(@Status,'')<>'ERROR_HANDLED'
-       OR NULLIF(@FailureMessage,N'') IS NULL OR @Json IS NOT NULL OR @@LOCK_TIMEOUT<>43 OR (@@OPTIONS & 16384)<>16384
+    IF COALESCE(@FailureReturn,0)<>51011 OR COALESCE(@ProbeError,0)<>51011 OR COALESCE(@Status COLLATE SQL_Latin1_General_CP1_CS_AS,'')<>'ERROR_HANDLED'
+       OR NULLIF(@FailureMessage COLLATE SQL_Latin1_General_CP1_CS_AS,N'') IS NULL OR @Json IS NOT NULL OR @@LOCK_TIMEOUT<>43 OR (@@OPTIONS & 16384)<>16384
        OR @@TRANCOUNT<>1 OR XACT_STATE()<>1 OR (SELECT [Value] FROM [#ExamplePrincipal_Sentinel] WHERE [Id]=1)<>11
     BEGIN
         DECLARE @RejectedMappingDetail nvarchar(2048)=CONCAT(N'Serverprincipal rejected-mapping caller state differs: return=',@FailureReturn,
@@ -356,7 +363,7 @@ BEGIN TRY
     SET @Json=N'{"previous":true}';
     EXEC @FailureReturn=[monitor].[USP_ServerPrincipalAnalysis] @MaxZeilen=-1,@ResultSetArt='NONE',
         @JsonErzeugen=1,@Json=@Json OUTPUT,@PrintMeldungen=0,@StatusCodeOut=@Status OUTPUT,@ErrorNumberOut=@ProbeError OUTPUT;
-    IF COALESCE(@FailureReturn,0)<>51011 OR COALESCE(@ProbeError,0)<>51011 OR COALESCE(@Status,'')<>'INVALID_PARAMETER'
+    IF COALESCE(@FailureReturn,0)<>51011 OR COALESCE(@ProbeError,0)<>51011 OR COALESCE(@Status COLLATE SQL_Latin1_General_CP1_CS_AS,'')<>'INVALID_PARAMETER'
        OR @Json IS NOT NULL OR @@TRANCOUNT<>1 OR XACT_STATE()<>1 OR @@LOCK_TIMEOUT<>43 OR (@@OPTIONS & 16384)<>16384
        OR (SELECT [Value] FROM [#ExamplePrincipal_Sentinel] WHERE [Id]=1)<>11
         THROW 57077,N'Serverprincipal negative-limit status, return code or caller state differs.',1;
@@ -402,8 +409,7 @@ BEGIN TRY
         THROW 57080,N'Serverprincipal fixture cleanup is incomplete.',1;
     EXEC [sys].[sp_executesql] @Restore;
     IF @OriginalAbort=1 SET XACT_ABORT ON; ELSE SET XACT_ABORT OFF;
-    SELECT N'SERVER_PRINCIPAL_CONTRACT_PASS' AS [Result],@Case AS [NativeTableCases],
-           CAST(1 AS bit) AS [RestrictedCaller],CAST(1 AS bit) AS [CallerAndOwnedCleanup];
+    SET @NativeTableCases=@Case;
 END TRY
 BEGIN CATCH
     IF @@TRANCOUNT>@OriginalTx ROLLBACK TRANSACTION;
@@ -432,6 +438,26 @@ BEGIN CATCH
     BEGIN SET @Sql=N'DROP LOGIN '+QUOTENAME(@LoginA)+N';';EXEC [sys].[sp_executesql] @Sql;END;
     EXEC [sys].[sp_executesql] @Restore;
     IF @OriginalAbort=1 SET XACT_ABORT ON; ELSE SET XACT_ABORT OFF;
+    THROW;
+END CATCH;
+END;
+GO
+DECLARE @FixtureParentLock int=@@LOCK_TIMEOUT,
+    @FixtureParentAbort bit=CASE WHEN (@@OPTIONS&16384)=16384 THEN 1 ELSE 0 END,
+    @FixtureParentTransaction int=@@TRANCOUNT,@FixtureParentDatabase int=DB_ID(),@FixtureCases int;
+BEGIN TRY
+    EXEC [#ExampleServerPrincipalRuntimeContract] @NativeTableCases=@FixtureCases OUTPUT;
+    IF COALESCE(@FixtureCases,0)<>4 OR @@LOCK_TIMEOUT<>@FixtureParentLock OR @@TRANCOUNT<>@FixtureParentTransaction
+       OR DB_ID()<>@FixtureParentDatabase OR CASE WHEN (@@OPTIONS&16384)=16384 THEN 1 ELSE 0 END<>@FixtureParentAbort
+        THROW 57088,N'Serverprincipal scoped fixture did not restore its original caller.',1;
+    DROP PROCEDURE [#ExampleServerPrincipalRuntimeContract];
+    SELECT N'SERVER_PRINCIPAL_CONTRACT_PASS' AS [Result],@FixtureCases AS [NativeTableCases],
+           CAST(1 AS bit) AS [RestrictedCaller],CAST(1 AS bit) AS [CallerAndOwnedCleanup];
+END TRY
+BEGIN CATCH
+    IF @@TRANCOUNT>@FixtureParentTransaction ROLLBACK TRANSACTION;
+    IF OBJECT_ID(N'tempdb..#ExampleServerPrincipalRuntimeContract') IS NOT NULL
+        DROP PROCEDURE [#ExampleServerPrincipalRuntimeContract];
     THROW;
 END CATCH;
 GO

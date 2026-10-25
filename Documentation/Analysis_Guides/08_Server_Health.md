@@ -872,3 +872,11 @@ Die [Serverprincipal-Analyse](Procedures/USP_ServerPrincipalAnalysis.md) ergänz
 ```sql
 EXEC [monitor].[USP_ServerPrincipalAnalysis] @MaxZeilen=200, @ResultSetArt='CONSOLE';
 ```
+
+## Datenbankprincipals, Rollen und Ownership
+
+Die [Datenbankprincipal-Analyse](Procedures/USP_DatabasePrincipalAnalysis.md) liest ausgewählte sichtbare Datenbankkataloge. Fehlende sichtbare SID-Treffer beweisen weder verwaiste Benutzer noch ungültige Owner; effektive Rechte werden nicht berechnet.
+
+```sql
+EXEC [monitor].[USP_DatabasePrincipalAnalysis] @DatabaseNames=N'[ExampleDatabase]', @MaxZeilen=200, @ResultSetArt='CONSOLE';
+```
