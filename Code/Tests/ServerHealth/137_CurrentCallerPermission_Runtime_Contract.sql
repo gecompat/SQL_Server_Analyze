@@ -201,7 +201,7 @@ BEGIN TRY
  IF (SELECT COUNT(*) FROM OPENJSON(@Json COLLATE SQL_Latin1_General_CP1_CS_AS,N'$.callerContexts'))<>1 OR (SELECT COUNT(*) FROM OPENJSON(@Json COLLATE SQL_Latin1_General_CP1_CS_AS,N'$.serverPermissions'))<>0 OR NOT EXISTS(SELECT 1 FROM OPENJSON(@Json COLLATE SQL_Latin1_General_CP1_CS_AS,N'$.sourceStatus') WITH([SourceKey] varchar(64),[StatusCode] varchar(40)) WHERE [SourceKey]='SERVER_CURRENT_PERMISSIONS' AND [StatusCode]='SKIPPED') THROW 57226,N'Caller LIKE scope or server opt-out differs.',1;
  DECLARE @Missing sysname=N'ExampleCallerMissing_'+@Suffix;
  CREATE TABLE [#ExampleCallerPermission_Console]
- ([Scope] varchar(8) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,[DatabaseId] int NULL,[DatabaseName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL,
+ ([Ergebnis] nvarchar(200) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,[Scope] varchar(8) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,[DatabaseId] int NULL,[DatabaseName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL,
   [EntityName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL,[SubentityName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL,[PermissionName] nvarchar(128) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,
   [StatusCode] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,[SourceKey] varchar(64) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,[WarningCode] varchar(64) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,[Detail] nvarchar(max) COLLATE SQL_Latin1_General_CP1_CS_AS NULL);
  INSERT [#ExampleCallerPermission_Console] EXEC [monitor].[USP_CurrentCallerPermissionAnalysis] @DatabaseNames=@Missing,@MaxZeilen=1,@ResultSetArt='CONSOLE',@PrintMeldungen=0;

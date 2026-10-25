@@ -352,8 +352,9 @@ BEGIN
                 FROM [#CurrentCallerPermissionAnalysis_warnings] WHERE [WarningCode] NOT IN ('SOURCE_FAILURE','EMPTY_PERMISSION_SOURCE_UNPROVEN','TARGET_SELECTION');
             IF NOT EXISTS(SELECT 1 FROM [#CurrentCallerPermissionAnalysis_serverPermissions]) AND NOT EXISTS(SELECT 1 FROM [#CurrentCallerPermissionAnalysis_databasePermissions])
                 INSERT [#CurrentCallerPermissionAnalysis_Console] VALUES ('STATUS',NULL,NULL,NULL,NULL,NULL,@Status,NULL,NULL,N'Keine ausgegebene Rechtezeile; Quellenstatus und Warnungen liefern die Aussagegrenze.');
-            SELECT * FROM [#CurrentCallerPermissionAnalysis_Console]
-            ORDER BY CASE [Scope] WHEN 'STATUS' THEN 0 WHEN 'SOURCE' THEN 1 WHEN 'WARNING' THEN 2 WHEN 'INFO' THEN 3 ELSE 4 END,[Scope],[DatabaseId],[SourceKey],[WarningCode],[EntityName],[SubentityName],[PermissionName];
+            EXEC [monitor].[InternalEmitConsoleResult] @SourceTable=N'#CurrentCallerPermissionAnalysis_Console',
+                @ResultLabel=N'Effektive Rechte des aktuellen Ausfuehrungskontexts',
+                @EmptyMessage=N'Keine ausgegebene Rechtezeile; Quellenstatus und Warnungen beachten.';
         END;
         SELECT @StatusCodeOut=@Status,@IsPartialOut=1,@ErrorNumberOut=@Error,@ErrorMessageOut=@Message;
         IF @PrintMeldungen=1 AND @Error IS NOT NULL RAISERROR(N'%s',10,1,@Message) WITH NOWAIT;

@@ -44,7 +44,8 @@ CURRENT-Scope und keine vorgezogene Datenbankanzahlbegrenzung.
 RAW und TABLE liefern sechs benannte Mengen. JSON enthält dieselbe
 Materialisierung und ein meta-Objekt mit SchemaVersion 1. NONE kann JSON und
 Status über OUTPUT liefern. CONSOLE führt die beiden Rechtemengen mit einer
-Scope-Spalte in einer fachlichen Übersicht zusammen. SOURCE-, WARNING- und
+Scope-Spalte über den gemeinsamen CONSOLE-Renderer in einer fachlichen
+Übersicht zusammen. SOURCE-, WARNING- und
 INFO-Zeilen zeigen auch bei vorhandenen Rechtezeilen die Quellenprobleme,
 Limits und Aussagegrenzen. SourceKey und WarningCode bleiben dafür getrennt
 erkennbar; RowCount zählt ausschließlich die beiden Rechtemengen.
