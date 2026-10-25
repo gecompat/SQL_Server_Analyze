@@ -34,7 +34,7 @@ BEGIN TRY
     SET @Sql=N'ALTER SERVER ROLE '+QUOTENAME(@RoleA)+N' ADD MEMBER '+QUOTENAME(@LoginA)+N'; ALTER SERVER ROLE '+QUOTENAME(@RoleB)+N' ADD MEMBER '+QUOTENAME(@RoleA)+N';';
     EXEC [sys].[sp_executesql] @Sql;
     SET @Sql=N'GRANT VIEW SERVER STATE TO '+QUOTENAME(@RoleA)+N' WITH GRANT OPTION; DENY ALTER ANY LOGIN TO '+QUOTENAME(@LoginB)+N';';
-    EXEC [sys].[sp_executesql] @Sql;
+    EXEC [master].[sys].[sp_executesql] @Sql;
     SET @Sql=N'CREATE USER '+QUOTENAME(@UserB)+N' FOR LOGIN '+QUOTENAME(@LoginB)+N';';
     EXEC [sys].[sp_executesql] @Sql;SET @MadeUser=1;
     SELECT @UserIdB=[principal_id],@UserSidB=[sid] FROM [sys].[database_principals] WHERE [name]=@UserB;
@@ -347,7 +347,7 @@ BEGIN TRY
         THROW 57077,N'Serverprincipal negative limit was accepted.',1;
     END TRY
     BEGIN CATCH
-        IF ERROR_NUMBER()<>50000 OR @ProbeError<>51011 OR @Status<>'INVALID_PARAMETER'
+        IF ERROR_NUMBER()<>50000 OR COALESCE(@ProbeError,0)<>51011 OR COALESCE(@Status,'')<>'INVALID_PARAMETER'
            OR @@TRANCOUNT<>1 OR XACT_STATE()<>1 OR @@LOCK_TIMEOUT<>43 OR (@@OPTIONS & 16384)<>16384
            OR (SELECT [Value] FROM [#ExamplePrincipal_Sentinel] WHERE [Id]=1)<>11 THROW;
     END CATCH;
