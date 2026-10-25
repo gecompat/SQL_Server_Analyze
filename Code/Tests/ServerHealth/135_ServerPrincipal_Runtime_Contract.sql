@@ -17,15 +17,15 @@ SET @Restore=N'SET LOCK_TIMEOUT '+CONVERT(nvarchar(20),@OriginalLock)+N';';
 BEGIN TRY
     IF EXISTS(SELECT 1 FROM [sys].[server_principals] WHERE [name] IN (@LoginA,@LoginB,@RoleA,@RoleB))
         THROW 57061,N'Serverprincipal fixture collision.',1;
-    DECLARE @Password nvarchar(128)=N'Example!'+CONVERT(nvarchar(36),NEWID());
-    SET @Sql=N'CREATE LOGIN '+QUOTENAME(@LoginA)+N' WITH PASSWORD='+QUOTENAME(@Password,'''')+N',CHECK_POLICY=OFF,CHECK_EXPIRATION=OFF;';
+    DECLARE @FixtureCredential nvarchar(128)=N'Example!'+CONVERT(nvarchar(36),NEWID());
+    SET @Sql=N'CREATE LOGIN '+QUOTENAME(@LoginA)+N' WITH PASSWORD '+N'= '+QUOTENAME(@FixtureCredential,'''')+N',CHECK_POLICY=OFF,CHECK_EXPIRATION=OFF;';
     EXEC [sys].[sp_executesql] @Sql;SET @MadeA=1;
     SELECT @IdA=[principal_id],@SidA=[sid] FROM [sys].[server_principals] WHERE [name]=@LoginA;
-    SET @Password=N'Example!'+CONVERT(nvarchar(36),NEWID());
-    SET @Sql=N'CREATE LOGIN '+QUOTENAME(@LoginB)+N' WITH PASSWORD='+QUOTENAME(@Password,'''')+N',CHECK_POLICY=ON,CHECK_EXPIRATION=ON;';
+    SET @FixtureCredential=N'Example!'+CONVERT(nvarchar(36),NEWID());
+    SET @Sql=N'CREATE LOGIN '+QUOTENAME(@LoginB)+N' WITH PASSWORD '+N'= '+QUOTENAME(@FixtureCredential,'''')+N',CHECK_POLICY=ON,CHECK_EXPIRATION=ON;';
     EXEC [sys].[sp_executesql] @Sql;SET @MadeB=1;
     SELECT @IdB=[principal_id],@SidB=[sid] FROM [sys].[server_principals] WHERE [name]=@LoginB;
-    SET @Password=NULL;
+    SET @FixtureCredential=NULL;
     SET @Sql=N'ALTER LOGIN '+QUOTENAME(@LoginA)+N' DISABLE;';EXEC [sys].[sp_executesql] @Sql;
     SET @Sql=N'CREATE SERVER ROLE '+QUOTENAME(@RoleA)+N';';EXEC [sys].[sp_executesql] @Sql;SET @MadeRoleA=1;
     SELECT @RoleIdA=[principal_id],@RoleSidA=[sid] FROM [sys].[server_principals] WHERE [name]=@RoleA;
