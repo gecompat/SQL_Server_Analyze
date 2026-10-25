@@ -51361,8 +51361,6 @@ GO
 -- END SOURCE: Code/08_ServerHealth/270_USP_DatabasePrincipalAnalysis.sql
 
 -- BEGIN SOURCE: Code/08_ServerHealth/280_USP_CurrentCallerPermissionAnalysis.sql
-USE [DeineDatenbank];
-GO
 /*
 Objekt       : monitor.USP_CurrentCallerPermissionAnalysis
 Version      : 1.0.0
@@ -66844,8 +66842,6 @@ GO
 -- END SOURCE: Code/10_SSIS/030_USP_SsisCatalogExecutionAnalysis.sql
 
 -- BEGIN SOURCE: Code/10_SSIS/034_InternalSsisScopePathMatch.sql
-USE [DeineDatenbank];
-GO
 -- Ordinaler Laufzeitvergleich auf bereits klassifizierten Toolbelt-Schritten.
 -- Kein DTSX-Zugriff und keine Erkennung von SSIS-Komponentenklassen.
 CREATE OR ALTER FUNCTION [monitor].[InternalSsisScopePathMatch]
@@ -67028,8 +67024,6 @@ GO
 -- END SOURCE: Code/10_SSIS/036_InternalSsisPipelineCorrelation.sql
 
 -- BEGIN SOURCE: Code/10_SSIS/035_InternalSsisExecutionScopes.sql
-USE [DeineDatenbank];
-GO
 /* Gemeinsamer Laufzeitconsumer für einen lokal gebundenen Paketsatz.
    Einzelmodellvalidierung bleibt in USP_SsisPackageModelAnalysis; statische
    Rollen und Pfadschritte stammen ausschließlich aus dem Toolbelt-Export.

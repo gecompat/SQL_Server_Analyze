@@ -3,6 +3,7 @@
 from __future__ import annotations
 import argparse
 import importlib.util
+import re
 from pathlib import Path
 import shutil
 import sys
@@ -127,6 +128,63 @@ class DeploymentContract(unittest.TestCase):
 
     def test_source_change_changes_receipt_digest(self):
         self.changed_source('Code/01_Common/074e_WaitTypeCatalog_Analysis.sql', 'SET NOCOUNT ON;', '-- fixture digest mutation\nSET NOCOUNT ON;', False)
+
+    def test_snapshot_guard_and_transaction_boundaries(self):
+        sources,tables,_=generator.load_sources(ROOT,True)
+        source=next(s for s in sources if s.path==generator.SNAPSHOT_SCHEMA_SOURCE)
+        original=(ROOT/source.path).read_text(encoding='utf-8-sig')
+        clean,guard=generator.snapshot_guard_parts(original)
+        self.assertEqual(guard,generator.snapshot_guard([t for t in tables if t.role=='SNAPSHOT'],[s for s in sources if s.role=='SNAPSHOT']))
+        self.assertLess(clean.index(generator.SNAPSHOT_TX_BEGIN),clean.index(generator.SNAPSHOT_TX_END))
+        for mutation in (original.replace(generator.SNAPSHOT_GUARD_BEGIN,'/*\n'+generator.SNAPSHOT_GUARD_BEGIN,1),
+                         original.replace(generator.SNAPSHOT_GUARD_BEGIN,'prefix '+generator.SNAPSHOT_GUARD_BEGIN,1),
+                         original+generator.SNAPSHOT_GUARD_END):
+            with self.assertRaises(generator.BuildError):
+                generator.snapshot_guard_parts(mutation)
+        with self.assertRaises(generator.BuildError):
+            generator.snapshot_transaction_spans(original.replace(generator.SNAPSHOT_TX_BEGIN,'/*\n'+generator.SNAPSHOT_TX_BEGIN,1),source.path)
+        self.assertNotIn('-- Derived model SHA256:',self.sql)
+        self.assertIn('Legacy Snapshot version after deployment',self.sql)
+        classifier=generator.snapshot_state_classifier([t for t in tables if t.role=='SNAPSHOT'],[s for s in sources if s.role=='SNAPSHOT'])
+        self.assertLess(classifier.index('WITH(TABLOCKX,HOLDLOCK)'),classifier.index('EXEC sys.sp_executesql'))
+
+    def test_snapshot_target_has_one_aborting_compilation_envelope(self):
+        sql,info=generator.generate_snapshot_target(ROOT)
+        self.assertEqual(6,info['sources'])
+        self.assertEqual(1,len(generator.split_batches(sql)))
+        self.assertLess(sql.index('IF @@TRANCOUNT<>0'),sql.index('SET XACT_ABORT ON;'))
+        self.assertLess(sql.index('BEGIN TRANSACTION;'),sql.index('-- BEGIN SOURCE:'))
+        self.assertEqual(6,sql.count('-- BEGIN SOURCE:'))
+        for setting in ('LOCK_TIMEOUT 0','ANSI_NULLS ON','QUOTED_IDENTIFIER ON','ANSI_PADDING ON','ANSI_WARNINGS ON','ARITHABORT ON','CONCAT_NULL_YIELDS_NULL ON','NUMERIC_ROUNDABORT OFF'):
+            self.assertLess(sql.index('SET '+setting+';'),sql.index('-- BEGIN SOURCE:'))
+        self.assertIn("BEGIN EXEC sys.sp_executesql N'SET XACT_ABORT OFF; RAISERROR(",sql)
+        self.assertIn('IF XACT_STATE()<>0 ROLLBACK TRANSACTION;\nTHROW;',sql)
+
+    def test_stale_snapshot_guard_is_rejected(self):
+        self.changed_source(generator.SNAPSHOT_SCHEMA_SOURCE,'-- Derived model SHA256:','-- Changed model SHA256:')
+
+    def test_unknown_snapshot_check_migration_is_rejected(self):
+        self.changed_source(generator.SNAPSHOT_SCHEMA_SOURCE,'DROP CONSTRAINT [CK_snapshot_CollectorPolicy_CollectorCode]','DROP CONSTRAINT [CK_ExampleUnrecognized]')
+
+    def test_native_snapshot_risk_selection_preserves_defaults(self):
+        workflow=(ROOT/'.github/workflows/release-native-matrix.yml').read_text(encoding='utf-8-sig')
+        names=('Run selected packaged deployment and preservation contracts','Run selected packaged Snapshot and concurrency contracts')
+        for name in names:
+            match=re.search(r'- name: '+re.escape(name)+r'\n\s+if: (.+)',workflow)
+            self.assertIsNotNone(match)
+            terms=match[1].split('||')
+            self.assertEqual(['matrix.regex == true','inputs.snapshot_risk_gate',"inputs.qualification_scope == 'SNAPSHOT_SCHEMA_RISK'"],[t.strip() for t in terms])
+            for version in ('2019','2022','2025'):
+                for flag in (False,True):
+                    for risk in (False,True):
+                        values={'matrix.regex == true':version=='2025','inputs.snapshot_risk_gate':flag,"inputs.qualification_scope == 'SNAPSHOT_SCHEMA_RISK'":risk}
+                        selected=any(values[t.strip()] for t in terms)
+                        self.assertEqual(version=='2025' or flag or risk,selected)
+        self.assertIn("if [ '${{ inputs.snapshot_risk_gate }}' = 'true' ] && [ '${{ inputs.target }}' = 'all' ]; then\n            echo 'Snapshot risk qualification requires one explicit native target.'\n            exit 1",workflow)
+        self.assertIn("if [ '${{ matrix.version }}' = '2025' ] || [ '${{ inputs.snapshot_risk_gate }}' = 'true' ] || [ '${{ inputs.qualification_scope }}' = 'SNAPSHOT_SCHEMA_RISK' ]; then",workflow)
+        for name in ('Run full release gate','Run native permission matrix'):
+            self.assertIn('- name: '+name+"\n        if: inputs.qualification_scope == 'FULL_RELEASE'",workflow)
+        self.assertIn('SET COMPATIBILITY_LEVEL=${{ matrix.compatibility }}',workflow)
 
 
 def main():

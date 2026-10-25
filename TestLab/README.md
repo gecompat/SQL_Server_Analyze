@@ -1098,3 +1098,27 @@ Berechtigungsprofile.
 | `MEMORY-GRANTS-001` | `USP_CurrentMemoryGrants` | [Memory Grants](Examples/MEMORY-GRANTS-001/README.md) |
 | `EXECUTION-PLAN-001` | `USP_ExecutionPlanAnalysis` | [Execution Plan](Examples/EXECUTION-PLAN-001/README.md) |
 | `INDEX-USAGE-001` | `USP_MissingIndexes` | [Indexnutzung](Examples/INDEX-USAGE-001/README.md) |
+
+
+## Snapshot-Schemamigration nach nativem DDL-Fehler prüfen
+
+Der [spezifische Fehlerlauf](Invoke-SnapshotSchemaMigrationFaultScenario.ps1)
+verwendet eine neue eigene Docker-Labinstanz und den unveränderten kanonischen
+Targetbatch. Er rekonstruiert den bekannten Schema-1-Zustand ausschließlich
+in diesem Testziel und füllt alle zehn Tabellen mit der gemeinsamen
+synthetischen Fixture. Eine eigene Sch-S-Sitzung hält für höchstens 20 Sekunden
+eine CPU-gebundene Abfrage auf einem Kern. Der Lauf beobachtet ihre native
+Sperre, verlangt den ersten abgeschlossenen CHECK-Austausch und Fehler 1222
+am zweiten DDL-Schritt, vergleicht Daten und CHECKs nach Rollback und prüft
+die anschließende erfolgreiche Wiederholung. Er führt keinen DBCC-Reset aus.
+
+```powershell
+pwsh -File ./TestLab/Invoke-SnapshotSchemaMigrationFaultScenario.ps1 -Version 2025 -LabRepositoryRoot ../SQL_Server_Lab
+```
+
+Das Ergebnis enthält Engineversion und Hash des tatsächlich ausgeführten
+kanonischen Batches. PASS wird erst nach bestätigter Entfernung des eigenen
+Labs ausgegeben. Ein Fehler oder unbestätigter Cleanup bleibt ein Fehler;
+die allgemeine Provisionierung und Recovery liegen in SQL_Server_Lab.
+Dieser einzelne Fehlerlauf ersetzt nicht die vollständige Deployment-,
+Versions- und Performance-Counter-Abnahme gemäß CI-Teststrategie.

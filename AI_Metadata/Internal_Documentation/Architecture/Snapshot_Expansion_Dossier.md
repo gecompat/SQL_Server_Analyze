@@ -1,7 +1,7 @@
 # Ausbau der lokalen Snapshot- und Baseline-Erfassung
 
 **Stand:** 25. Oktober 2026.
-**Status:** Konzeptreview und Schema-2-Vertragsreview bestanden. Implementierung, native Migrationsabnahme und Collectorqualifikation bleiben offen.
+**Status:** Konzept-, Schema-2-Vertrags- und Produktreview bestanden; lokale Schema-2-Abnahme liegt vor. Head-CI, native Paketabnahme und PR-Integration bleiben offen. Die Collectorqualifikation ist nicht Teil dieser Migration.
 **Artefakt-UID:** `urn:uuid:01a17312-4ac5-78b9-b77d-536e996e2817`.
 **Registrierung:** `DEFERRED`; keine neue finale lesbare Kennung vergeben.
 **Bestehende Zuordnung:** SC-023-EXPANSION, Rang 10 der
@@ -558,3 +558,130 @@ Header. Die Ausnahme erweitert keine Datenbankauswahl oder Runtimeberechtigung.
 - Microsoft Learn: [Datei-I/O-Stats](https://learn.microsoft.com/en-us/sql/relational-databases/system-dynamic-management-objects/sys-dm-io-virtual-file-stats-transact-sql?view=sql-server-ver17).
 
 - Microsoft Learn: [Engine-Startkontext](https://learn.microsoft.com/en-us/sql/relational-databases/system-dynamic-management-objects/sys-dm-os-sys-info-transact-sql?view=sql-server-ver17).
+
+
+## Schema-2-Implementierungskandidat
+
+Der aktuelle Änderungskandidat enthält ausschließlich die vorgeschaltete
+Migration und ihre drei Installationswege. Lokal bestehen auf SQL2025 die
+frische Installation, die Wiederholung und das Upgrade aus dem zuvor gesicherten
+tatsächlichen 1.0.0-Targetskript mit erhaltenen Counterdaten und Policies.
+Der fokussierte native Deploymentvertrag besteht für drei gefüllte V1-Upgrades,
+drei Wiederholungen und 19 gezielte Versions-/Strukturablehnungen. Die nachfolgenden
+Callertransaktionsfälle werden am Korrekturstand gesondert nachgewiesen. Eine frühere Fixture-
+Wiederherstellung versuchte einen fehlenden CHECK erneut zu löschen; dieser
+Testfehler ist korrigiert. Der separate frühere 1222 vor Migration bleibt ohne
+behauptete Sperrursache sichtbar.
+
+Die eigene native Sch-S-Abnahme besteht mit dem tatsächlichen kanonischen
+Targetbatch auf SQL Server 2025, ProductVersion 17.0.4075.5. Der erste CHECK-
+Austausch ist über CompletedStage=1 belegt, der zweite Schritt scheitert mit
+1222. Alle zehn Tabellendaten und CHECK-Definitionen bleiben nach Rollback
+unverändert; die anschließende Wiederholung migriert erfolgreich. Cleanup
+bestätigt die Entfernung der eigenen Container- und Volumeressourcen.
+Das ist eine lokale Abnahme des benannten Kandidaten, kein Main-, PR- oder
+SQL2019-Nachweis. Unabhängiger Produktreview, vollständiges SQL2025-Gate,
+gezielte native SQL2019-Abnahme und reguläre PR-Integration bleiben offen.
+
+
+Der Produktreview des ersten Kandidaten benennt zwei P2-Befunde: Der
+Versionsread musste seine PackageVersion-Sperre bereits vor Klassifikation
+halten; außerdem fehlte dem Standalone-Rahmen der gemeinsame ANSI-/
+QUOTED_IDENTIFIER-/LOCK_TIMEOUT-Kontext für spätere Helperkompilationen.
+Der gebündelte Korrekturpass bindet die Versionszeile zuerst mit
+TABLOCKX/HOLDLOCK und setzt den kanonischen begrenzten Kompilationskontext
+nach der frühen Callerablehnung. Ein positiver Gegenfall beginnt mit
+QUOTED_IDENTIFIER OFF und LOCK_TIMEOUT -1 und verlangt korrekte gespeicherte
+SET-Metadaten aller fünf Helper. Die frühe Ablehnung verwendet wie das
+Gesamtdeployment einen getrennten XACT_ABORT-OFF-/RAISERROR-Rahmen. Der
+neue Callerfall hatte zuvor den Zustand nach erwarteter Ablehnung verletzt;
+sein Oracle bleibt unverändert. Folgeprüfung und native Wiederholung dieses
+Korrekturstands sind noch offen.
+
+
+### Abschlussstand des lokalen Korrekturpasses
+
+Der unabhängige Folgecheck schließt beide P2 und den eng begrenzten
+Callerablehnungsfix ohne neue Befunde. Die vollständige lokale Suite besteht
+am ersten Kandidaten mit 74 Validatoren; alle 19 betroffenen Deployment-
+Grammarprüfungen bestehen erneut am Korrekturstand. Metadaten-/Tempnamen-,
+Snapshotvertrags-, Stil-, Privacy- und Regelkontextprüfung bestehen. Der
+Datenschutzselbsttest besteht ebenfalls; der neue Testdatenbankkontext ist
+als exakt pfad-/wertgebundener synthetischer Kontext klassifiziert.
+
+Der korrigierte native SQL2025-Vertrag besteht für drei reale Installationswege,
+V1-Upgrades, Wiederholungen, 19 Struktur-/Versionskonflikte sowie die zusätzlichen
+Caller- und abweichenden Kompilationsoptionen. Der eigene Lab-Cleanup ist
+bestätigt. Der korrigierte kanonische Fehlerlauf besteht auf SQL Server 2019,
+ProductVersion 15.0.4480.2, einschließlich Stage 1, nativem Fehler 1222,
+Rollback aller zehn Tabellen und CHECKs, Recovery und Cleanup. Die lokale
+Batchbindung lautet 2427938116a1ac158c17216427bc364d5f8bb53311dd265b1ba2424b7e14bb5c.
+Das frühere 53817 des Standalone-Callerfalls bleibt als fehlgeschlagener
+Vorstand erhalten; sein unverändertes Oracle besteht nach der Korrektur.
+
+Die reguläre vollständige SQL2025-Head-CI und das gezielt gewählte native
+SQL2019-Snapshot-/Migrationsrisikogate sind noch auszuführen. Lokale Ergebnisse
+ersetzen diese Required Checks nicht. WAIT_CAPTURE_CONTEXT und der spätere
+Wait-Collector bleiben offen; neue WAIT-Policies oder Metriken werden mit
+dieser Welle nicht geliefert.
+
+
+### Erstes Remote-Paketgate und Installerkontextkorrektur
+
+Das native SQL2019-Paketgate 40207013284 besteht am Lieferkandidaten f31f9fae
+mit tatsächlicher Snapshot-/Migrationsrisikoauswahl. Paketvalidierung,
+Core-Release-Gate, Berechtigungen, gefülltes Deployment, Snapshot- und
+Nebenläufigkeitsverträge sowie Cleanup bestehen. Dieser Erfolg gehört zu
+diesem Head und wird nicht still auf einen späteren Paketdigest übertragen.
+
+Die Dokumentations-CI desselben Heads scheitert im unveränderten allgemeinen
+Standalone-Installertest 191. Drei bereits in der Basis vorhandene Quellen
+hatten unmittelbar nach dem führenden GO keine Leerzeile; der bestehende
+Builder entfernte deshalb ihre USE-Header nicht. Je eine zusätzliche Leerzeile
+in CurrentCallerPermissionAnalysis, InternalSsisScopePathMatch und
+InternalSsisExecutionScopes stellt den vorgesehenen einen Installerkontext
+her. Der lokale Tokenvergleich belegt identisches ausführbares T-SQL; der
+unabhängige mechanische Delta-Review bestätigt dies. Die unveränderten
+Installertests 191, 192 und 194 bestehen danach. Der frühere Fehllauf bleibt
+erhalten; neue erforderliche Gates binden den korrigierten Lieferhead.
+
+
+Die folgende CI erkennt den noch nicht neu erzeugten versionierten OPS-005-
+Installer. Der vorgesehene Adapter-Builder aktualisiert ihn um genau sechs
+entfallende redundante USE-/GO-Zeilen aus den drei korrigierten Quellen.
+Sein unveränderter strenger Quellenvergleich besteht danach mit acht
+Repräsentationsfällen. Der Test wurde nicht abgeschwächt; das abgeleitete
+Artefakt und die kanonischen Quellen werden gemeinsam geliefert.
+
+
+### Gezielter älterer Versionsumfang und offene Vollrun-Befunde
+
+Am Head d286e9f5 besteht die vollständige statische CI. Der native Vollrun
+40208646875 scheitert in Versuch 1 und im begrenzten Versuch 2 vor Snapshot
+in Legacy202 an TARGET_SCHEMA_ADAPT / 51010, einmal findings C022, danach
+iterations C012. Cleanup ist jeweils bestätigt. Die unveränderte 202-Fixture
+besteht isoliert lokal auf SQL2019. Die SQL2025-Head-CI 40208610598 scheitert
+im bestehenden Standalone-Plan-Test mit 1222 in CreateExecutionEvidenceJson.
+Der frühere 2eaba0cc-Lauf scheiterte an CONT-PAGE / 54504. Ursachen bleiben
+UNKNOWN; ein weiterer unveränderter blinder Wiederlauf ist nicht vorgesehen.
+
+Ein unabhängiger Scopecheck bestätigt den gemäß kanonischer 1+0+N-Strategie
+zulässigen expliziten Modus SNAPSHOT_SCHEMA_RISK. Der volle primäre SQL2025-
+Required-Check und der Default FULL_RELEASE werden nicht eingeschränkt.
+Die native Risikoabnahme prüft commit-/paketgebunden Frameworkinstallation
+und Smoke, drei Snapshot-Migrationsrouten und Erhaltung, Caller-/Options-
+und gezielte Installationsrechte sowie Snapshot und Nebenläufigkeit. Die
+Evidenz erklärt Core-Release und dessen allgemeine Berechtigungsmatrix als
+NOT_EXECUTED. Ein eigenes Artefakt und der scopegebundene Validator verhindern
+die Ausgabe eines vollständigen nativen Releaseerfolgs. Die gescheiterten
+Vollruns bleiben als offene allgemeine TABLE-/Temp-DDL-Zuverlässigkeit sichtbar.
+
+
+Der neue gezielte native Rechtescope besteht lokal auf SQL2019: Ein eigener
+synthetischer Login mit CONTROL DATABASE und VIEW ANY DEFINITION kann den
+kanonischen Targetbatch ausführen. Der Entzug jeweils einer Voraussetzung
+liefert den erwarteten Fehler 53901 ohne Daten-/Strukturänderung. Eigene
+Principals und das Lab werden bereinigt. Die neuen statischen Scope-/
+Evidenzgegenfälle bestehen für FULL_RELEASE-Defaults und SNAPSHOT_SCHEMA_RISK,
+einschließlich Abweisung falscher Vollerfolgsangaben. Eine Remoteausführung
+dieses expliziten Modus ist vor dessen Code-/Scopefolgecheck noch nicht erfolgt.

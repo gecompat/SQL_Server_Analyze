@@ -190,3 +190,88 @@ von späteren CREATE-OR-ALTER-Quellen entkoppeln. Der folgende Produktdiff
 muss einen gemeinsamen abbrechenden Rahmen und einen negativen Erhaltungs-
 nachweis für diesen konkreten Weg liefern. Bestehende eigene Caller-
 transaktionen werden vor Veränderung der Transaktionsoptionen abgelehnt.
+
+
+### Schema-2-Implementierung und begrenzte native Prüfung
+
+Die privilegierte Targetvorprüfung wird aus demselben nativen Referenzmodell
+wie das Gesamtdeployment erzeugt. Der Metadatenvalidator prüft diesen einen
+markierten Block auf exakte Synchronität, bevor er ihn von den allgemeinen
+Analyse-NOLOCK-Regeln ausnimmt. Außerhalb dieses Blocks und in sämtlichen
+Analysepfaden bleiben diese Regeln erhalten. CONTROL DATABASE und VIEW ANY
+DEFINITION sind ausdrückliche Installationsvoraussetzungen.
+
+Die native Strukturprüfung darf committed Katalogmetadaten mit maximal
+10000 ms Sperrwartezeit je Statement lesen. Sie hält die geprüften Tabellen
+bis zum Abschluss derselben Transaktion; die anschließende eigene DDL
+verwendet weiterhin LOCK_TIMEOUT 0. Ein erster negativer Lauf mit Wartezeit 0
+brach bereits vor der Migration mit 1222 ab; eine Sperrursache ist nicht
+belegt. Dieser begrenzte Installerpfad verwendet deshalb die bestehende
+Wartegrenze des Gesamtdeployments, ohne eine globale Lockerung für Analysen.
+Die Fälle müssen weiterhin den vorgesehenen Strukturkonflikt und unveränderte
+Daten nachweisen; ein beliebiger Timeout wird nicht als passende Ablehnung
+gewertet.
+
+Der vorhandene Deploymentregressionstest erhält drei tatsächliche Routen,
+je ein gefülltes V1-Upgrade und eine Wiederholung sowie 19 gezielte negative
+Zustände. Die bestehenden Binärvergleiche und gemeinsamen Targetfixtures
+werden wiederverwendet. Lokale Befundkorrekturen verwenden danach den
+fokussierten Snapshotumfang; der vollständige SQL2025-Abschluss bleibt für
+den stabilen Lieferstand erforderlich. Die gemeinsame native Source-DDL wird
+im erzeugten Test einmal als eigener Input gespeichert, statt große identische
+Installertexte für jeden Negativfall erneut einzubetten. Der gesonderte
+Sch-S-Fall benötigt ausschließlich eine eigene Labinstanz und prüft die
+unveränderte kanonische SUT einschließlich erstem DDL-Abschluss, Rollback und
+Recovery. Ausgeführt und qualifiziert wird nur der später tatsächlich belegte
+Umfang; diese Beschreibung ist keine Erfolgsbehauptung.
+
+
+Der Produktreview bleibt auf einen Reviewer und einen gebündelten
+Korrekturpass begrenzt. Die erforderlichen Gegenfälle betreffen frühe
+Versionssperrung, Standalone-Kompilationsoptionen und Erhaltung einer
+abgelehnten Callertransaktion. Die vollständige lokale Suite mit 74
+Validatoren besteht am ersten Kandidaten; nach dessen Korrektur werden nur
+die tatsächlich betroffenen Installer-, Grammar-, Privacy-, Stil- und
+Regelkontextprüfungen wiederholt. Die regulären erforderlichen Head-Checks
+und die native Risikoprüfung bleiben am Liefercommit bestehen.
+
+
+### Ausdrückliche native Snapshot-Risikoabnahme
+
+Zwei native Vollpässe standen späteren Legacy-TABLE-Timeouts gegenüber.
+Der aktuelle Volllauf und sein einmaliger begrenzter Wiederlauf scheiterten
+vor Snapshot in Legacy202 an verschiedenen lokalen TABLE-Resultsets;
+die isolierte unveränderte 202-Abnahme auf SQL2019 bestand. Eine Sperrursache
+ist nicht belegt. Zusätzlich scheiterte eine SQL2025-Vollprüfung im bestehenden
+Standalone-Plan-Test mit 1222. Diese Ergebnisse bleiben FAILED beziehungsweise
+UNKNOWN und werden nicht zu Infrastrukturfehlern oder Erfolgen umklassifiziert.
+
+Die kanonische Strategie und die maschinenlesbare Policy verlangen beim
+zusätzlichen nativen Versionsrisiko betroffene Tests mit Smoke, während das
+volle primäre SQL2025-Gate und der Release-Candidate-Umfang erhalten bleiben.
+Der unabhängige Scopecheck bestätigt daher einen ausdrücklich ausgewählten
+SNAPSHOT_SCHEMA_RISK-Modus für genau eine Engine. FULL_RELEASE bleibt Default.
+Die vorbereitete Paketinstallation, Native-Metadaten-/CHECK-Migrationen,
+Erhaltung, Caller- und gezielte Berechtigungsfälle sowie Snapshot-/Concurrency-
+Verträge und Cleanup bleiben Pflicht. Das Paket wird am tatsächlichen Commit
+und Digest gebunden; ein fehlender Vertrag oder abweichender Scope verhindert
+Aggregaterfolg. Der neue Modus weist den nicht ausgeführten Core-Vollumfang
+aus und erhält ein eigenes Artefaktlabel. Die alte Matrix kann daraus keinen
+Full-Release-Erfolg ableiten.
+
+Snapshot ruft PerformanceCounters und seine öffentlichen Ausgabehelper auf;
+die installierte Legacy-SSIS-Analyse wird nicht fachlich ausgeführt. Der
+unveränderte gemeinsame TABLE-Helper wird durch den erforderlichen Snapshot-
+TABLE-Consumer geprüft. Keine Legacy-Implementierung wird in dieser Welle
+geändert; die drei Sourceheaderkorrekturen sind als identische SQL-Tokenströme
+belegt. Die isolierte Core-/Planzuverlässigkeit bleibt als konkreter späterer
+Qualitätsscope sichtbar. Eine unerfüllte Snapshot- oder primäre SQL2025-
+Prüfung wird durch den Modus nicht übersprungen.
+
+Der Modus wird vor seiner ersten Ausführung in Strategie, Workflow,
+Scope-/Evidenzvalidator und dieser Bewertung festgelegt. Ein vorhandener
+Reviewer prüft nur die Auswahl-/Aggregationsgrenze und die neuen gezielten
+Rechtefälle. Die lokalen Scope- und Evidenztests benötigen keine SQL-Instanz;
+der zusätzliche native Lauf führt fünf ausdrücklich benannte Vertragsgruppen
+aus. Ganze grüne Logs und unveränderte Blocker erzeugen keine Folgearbeit.
+Notwendige Required Checks am neuen Lieferhead laufen weiterhin regulär.

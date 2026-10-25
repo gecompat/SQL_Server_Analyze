@@ -40,6 +40,36 @@ In beiden Fällen bleibt die Reihenfolge verbindlich:
 
 Das Paket erstellt keine Datenbank, Benutzer, Login, Berechtigung oder Scheduleraufgabe.
 
+Der aktuelle Quellstand installiert Target-PackageVersion 1.1.0 mit
+SchemaVersion 2. Er erweitert ausschließlich die CHECK-Domänen um WAIT_STATS
+und WAIT_TYPE; ein Wait-Collector, eine Wait-Policy und Waitmetriken sind
+noch nicht enthalten. Vorhandene Counterdaten, Scopeidentitäten und Policies
+bleiben erhalten. Ein exakt erkanntes Target 1.0.0 / Schema 1 wird in einer
+Transaktion migriert. Unbekannte Versionen, gemischte Domänen, zusätzliche
+CHECKs, veränderte Tabellenfacetten und deaktivierte oder nicht vertrauenswürdige
+Constraints werden vor Produktänderungen abgelehnt. Ein abweichender Stand
+muss vor erneutem Installieren fachlich geklärt werden; der Installer repariert
+keine unbekannten Nutzeränderungen.
+
+Die Targetinstallation benötigt CONTROL DATABASE und VIEW ANY DEFINITION
+für die native Struktur- und Triggerprüfung. Diese Installationsrechte sind
+von den späteren Collector-Leserechten getrennt. Der direkte SQLCMD-Weg
+bindet Strukturprüfung und Migration an dieselbe Transaktion. Die native
+Katalogvorprüfung begrenzt jede Sperrwartezeit auf 10000 ms; die anschließende
+eigene DDL verwendet LOCK_TIMEOUT 0. Der erzeugte Target-Standaloneinstaller führt alle
+Batches in einer gemeinsamen Transaktion mit Abbruch beim ersten Fehler aus.
+Er benötigt TRANCOUNT=0 und IMPLICIT_TRANSACTIONS OFF. Das kombinierte
+Deployment behält seine eigene gesamte Transaktion und strikte Nachprüfung.
+Eine Wiederholung darf LastInstallerRunUtc aktualisieren, überschreibt aber
+keine vorhandenen Policies oder Samples.
+
+Der lokale Neubau des Snapshot-Standaloneinstallers benötigt neben PowerShell
+Python 3.11 oder neuer. PythonExecutable wählt den Interpreter ausdrücklich.
+Die vorbereiteten SQL-Artefakte benötigen zur Ausführung keinen Interpreter.
+Bereits veröffentlichte ZIP-Dateien bleiben unverändert; ihre enthaltene
+Paketversion wird durch diesen Quellstand nicht nachträglich geändert.
+
+
 ## Zielbindung
 
 `monitor.SnapshotTargetConfiguration` enthält die aktive Datenbankbindung und typisierte Steuerwerte. Das Ziel muss lokal erreichbar, als Snapshotpaket erkennbar und versionskompatibel sein.
