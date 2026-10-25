@@ -1,7 +1,7 @@
 /*
 ===============================================================================
 Objekt       : snapshot.InternalPurgeExpiredData
-Version      : 1.0.1
+Version      : 1.1.0
 Stand        : 2026-10-25
 Zweck        : Löscht ausschließlich abgelaufene Snapshotdaten child-first in
                begrenzten Batches; nicht abgelaufene Daten bleiben erhalten.
@@ -15,8 +15,54 @@ CREATE OR ALTER PROCEDURE [snapshot].[InternalPurgeExpiredData]
     , @BudgetExceededOut bit OUTPUT
     , @ErrorNumberOut    int OUTPUT
     , @ErrorMessageOut   nvarchar(2048) OUTPUT
+    , @ContractOnly      bit = 0
+    , @RetentionContractVersionOut int = NULL OUTPUT
+    , @ExpectedTargetDatabaseId int = NULL
+    , @ExpectedTargetDatabaseName sysname = NULL
+    , @ExpectedTargetCreateDate datetime = NULL
 AS
 BEGIN
+    SELECT @PurgeRunIdOut=NULL,@StatusCodeOut='AVAILABLE',@BudgetExceededOut=0,
+           @ErrorNumberOut=NULL,@ErrorMessageOut=NULL,@RetentionContractVersionOut=1;
+
+    IF @ContractOnly IS NULL
+    BEGIN
+        SELECT @StatusCodeOut='INVALID_PARAMETER',@ErrorNumberOut=51011,
+               @ErrorMessageOut=N'@ContractOnly darf nicht NULL sein.';
+        RETURN 51011;
+    END;
+
+    IF (@ContractOnly=1 OR @ExpectedTargetDatabaseId IS NOT NULL OR @ExpectedTargetDatabaseName IS NOT NULL OR @ExpectedTargetCreateDate IS NOT NULL) AND (@@OPTIONS & 2)<>0
+    BEGIN
+        SELECT @StatusCodeOut='INVALID_PARAMETER',@ErrorNumberOut=51011,
+               @ErrorMessageOut=N'Der neue Wait-Vertrag benötigt IMPLICIT_TRANSACTIONS OFF.';
+        RETURN 51011;
+    END;
+
+    IF @ExpectedTargetDatabaseId IS NOT NULL OR @ExpectedTargetDatabaseName IS NOT NULL
+       OR @ExpectedTargetCreateDate IS NOT NULL
+    BEGIN
+        IF @ExpectedTargetDatabaseId IS NULL OR @ExpectedTargetDatabaseName IS NULL
+           OR @ExpectedTargetCreateDate IS NULL OR @ExpectedTargetDatabaseId<=4
+           OR DB_ID()<>@ExpectedTargetDatabaseId
+               OR NOT EXISTS
+           (
+               SELECT 1 FROM [master].[sys].[databases] AS [d] WITH (NOLOCK)
+               WHERE [d].[database_id]=@ExpectedTargetDatabaseId
+                 AND CONVERT(varbinary(max),[d].[name])=CONVERT(varbinary(max),@ExpectedTargetDatabaseName)
+                 AND [d].[create_date]=@ExpectedTargetCreateDate
+                 AND [d].[state]=0 AND [d].[is_read_only]=0
+           )
+        BEGIN
+            SELECT @StatusCodeOut='TARGET_UNAVAILABLE',@ErrorNumberOut=53764,
+                   @ErrorMessageOut=N'Die erwartete Snapshot-Zielidentität stimmt nicht mehr überein.';
+            RETURN;
+        END;
+    END;
+
+    -- The installation/runtime handshake does not read or change package data.
+    IF @ContractOnly=1 RETURN;
+
     SET NOCOUNT ON;
     SET XACT_ABORT ON;
     SET LOCK_TIMEOUT 0;

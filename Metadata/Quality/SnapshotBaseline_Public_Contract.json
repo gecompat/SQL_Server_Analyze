@@ -63,14 +63,14 @@
   "invariants": [
     "No source read occurs for disabled, not-due, concurrent, unavailable-target or stopped-budget cycles.",
     "Missing or partial evidence never becomes a fabricated numeric zero.",
-    "Reset epochs remain stable for one SQL Server start and never span a restart.",
+    "Legacy performance-counter epochs bind their observed start marker; Wait epochs additionally break on context, counter and technical comparison changes without proving reset-free continuity.",
     "Purge deletes expired child rows first and never deletes unexpired evidence to satisfy the soft budget.",
     "Optional payload persistence is lossless, versioned, compressed and hash-bound.",
     "Repository fixtures and failure summaries contain synthetic generic values only."
   ],
   "runtimeContract": "Code/Tests/Integration/195_SnapshotBaseline_Runtime_Contract.sql",
   "matrixWorkflow": ".github/workflows/release-native-matrix.yml",
-  "targetPackageVersion": "1.1.1",
+  "targetPackageVersion": "1.2.0",
   "targetSchemaVersion": 2,
   "acceptedTargetUpgrade": {
     "packageVersion": "1.0.0",
@@ -83,5 +83,67 @@
     "schemaVersion": 2,
     "requiresExactManagedShape": true,
     "preservesExistingRows": true
+  },
+  "targetSchemaStageVersion": "1.1.1",
+  "acceptedTargetBackendUpgradeVersions": [
+    "1.1.0",
+    "1.1.1"
+  ],
+  "waitTargetBackend": {
+    "releaseState": "INTERNAL_PREACTIVATION",
+    "collectorCode": "WAIT_STATS",
+    "defaultEnabled": false,
+    "sourceSchemaVersion": 1,
+    "captureContextVersion": 1,
+    "metricContractVersion": 1,
+    "completionProcedure": "snapshot.InternalCompleteWaitStatsCycle",
+    "completionSource": "Code/10_SnapshotBaseline/075_CompleteWaitStatsInstallation.sql",
+    "metrics": [
+      {
+        "code": "WAIT_TASK_COUNT",
+        "valueType": "BIGINT",
+        "unit": "count"
+      },
+      {
+        "code": "WAIT_TIME_MS",
+        "valueType": "BIGINT",
+        "unit": "ms"
+      },
+      {
+        "code": "WAIT_SIGNAL_TIME_MS",
+        "valueType": "BIGINT",
+        "unit": "ms"
+      },
+      {
+        "code": "WAIT_MAX_TIME_MS",
+        "valueType": "BIGINT",
+        "unit": "ms"
+      },
+      {
+        "code": "WAIT_TASK_COUNT_DELTA_CANDIDATE",
+        "valueType": "BIGINT",
+        "unit": "count"
+      },
+      {
+        "code": "WAIT_TIME_MS_DELTA_CANDIDATE",
+        "valueType": "BIGINT",
+        "unit": "ms"
+      },
+      {
+        "code": "WAIT_SIGNAL_TIME_MS_DELTA_CANDIDATE",
+        "valueType": "BIGINT",
+        "unit": "ms"
+      },
+      {
+        "code": "WAIT_DELTA_STATUS",
+        "valueType": "STRING",
+        "unit": "status"
+      },
+      {
+        "code": "WAIT_CAPTURE_CONTEXT",
+        "valueType": "STRING",
+        "unit": "json"
+      }
+    ]
   }
 }

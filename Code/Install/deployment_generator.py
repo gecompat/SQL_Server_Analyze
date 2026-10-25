@@ -621,17 +621,77 @@ def snapshot_state_classifier(tables: list[Table], sources: list[Source], strict
     # a malformed existing version table still fails before any product write.
     query=("IF (SELECT COUNT_BIG(*) FROM [snapshot].[PackageVersion])<>1 "
            "THROW 53935,N'Unknown Snapshot version cardinality.',1; "
-           "IF EXISTS(SELECT 1 FROM [snapshot].[PackageVersion] WHERE PackageCode='SC-023' "
-           "AND PackageVersion='1.0.0' AND SchemaVersion=1) SET @Legacy=1; "
-           "ELSE IF NOT EXISTS(SELECT 1 FROM [snapshot].[PackageVersion] WHERE PackageCode='SC-023' "
-           + ("AND PackageVersion='1.1.1' AND SchemaVersion=2) " if strict else
-              "AND PackageVersion IN('1.1.0','1.1.1') AND SchemaVersion=2) ")
+           "IF EXISTS(SELECT 1 FROM [snapshot].[PackageVersion] WHERE CONVERT(varbinary(max),PackageCode)=CONVERT(varbinary(max),'SC-023') "
+           "AND CONVERT(varbinary(max),PackageVersion)=CONVERT(varbinary(max),'1.0.0') AND SchemaVersion=1) SET @Legacy=1; "
+           "ELSE IF NOT EXISTS(SELECT 1 FROM [snapshot].[PackageVersion] WHERE CONVERT(varbinary(max),PackageCode)=CONVERT(varbinary(max),'SC-023') "
+           + ("AND CONVERT(varbinary(max),PackageVersion)=CONVERT(varbinary(max),'1.2.0') AND SchemaVersion=2) " if strict else
+              "AND CONVERT(varbinary(max),PackageVersion) IN(CONVERT(varbinary(max),'1.1.0'),CONVERT(varbinary(max),'1.1.1'),CONVERT(varbinary(max),'1.2.0')) AND SchemaVersion=2) ")
            + "THROW 53935,N'Unknown Snapshot package/schema version.',1;")
     out.append(f"EXEC sys.sp_executesql {lit(query)},N'@Legacy bit OUTPUT',{variable} OUTPUT;\n")
     if strict:
         out.append(f"IF {variable}=1 THROW 53935,N'Legacy Snapshot version after deployment.',1;\n")
     out.append('END;\n')
     return ''.join(out)
+
+
+def snapshot_wait_seed_preflight(sources: list[Source], strict: bool=False) -> str:
+    """Copy one source-owned, mechanically read-only contract before writes."""
+    seed=next((s for s in sources if s.path=='Code/10_SnapshotBaseline/075_CompleteWaitStatsInstallation.sql'),None)
+    if seed is None:
+        return ''
+
+    def region(label: str) -> str:
+        begin,end='-- '+label+'_BEGIN','-- '+label+'_END'
+        if seed.text.count(begin)!=1 or seed.text.count(end)!=1:
+            raise BuildError('Wait seed preflight marker cardinality changed')
+        a,b=seed.text.index(begin),seed.text.index(end)
+        if a>=b:
+            raise BuildError('Wait seed preflight marker order changed')
+        tokens(seed.text[:a])
+        tokens(seed.text[:b])
+        return seed.text[a+len(begin):b].strip()
+
+    declaration=region('SNAPSHOT_WAIT_METRIC_CONTRACT')
+    check=region('SNAPSHOT_WAIT_SEED_CHECK')
+    forbidden={'UPDATE','DELETE','EXEC','EXECUTE','CREATE','ALTER','DROP','TRUNCATE','MERGE',
+               'GRANT','DENY','REVOKE','COMMIT','ROLLBACK','SAVE','SET','DBCC','BACKUP','RESTORE',
+               'USE','BULK','INTO','WAITFOR','TRAN','TRANSACTION','DISTRIBUTED'}
+    for block,may_insert in ((declaration,True),(check,False)):
+        ts=tokens(block)
+        for i,t in enumerate(ts):
+            if t.kind=='string':
+                continue
+            if upper(t) in forbidden or (upper(t)=='INSERT' and not may_insert):
+                raise BuildError('Wait seed preflight must be read-only except its declared table variable')
+            if upper(t)=='INSERT' and (i+1>=len(ts) or ident(ts[i+1])!='@SnapshotWaitExpectedMetrics'):
+                raise BuildError('Wait seed declaration has an unexpected INSERT target')
+    if [upper(t) for t in tokens(declaration)[:3]]!=['DECLARE','@SNAPSHOTWAITEXPECTEDMETRICS','TABLE']:
+        raise BuildError('Wait seed declaration must own its reference variable')
+    if sum(upper(t)=='INSERT' for t in tokens(declaration))!=1:
+        raise BuildError('Wait seed declaration must contain one literal INSERT')
+
+    body=declaration+'\n'+check+'\n'
+    if strict:
+        body+=("IF EXISTS(SELECT 1 FROM @SnapshotWaitExpectedMetrics e WHERE NOT EXISTS(SELECT 1 FROM [snapshot].[MetricDefinition] d WHERE d.MetricCode=e.MetricCode)) "
+               "OR NOT EXISTS(SELECT 1 FROM [snapshot].[CollectorPolicy] WHERE CollectorCode='WAIT_STATS') "
+               "THROW 53760,N'Canonical Wait seeds are missing after deployment.',1;\n")
+    out="IF OBJECT_ID(N'[snapshot].[MetricDefinition]',N'U') IS NOT NULL EXEC sys.sp_executesql "+lit(body)+';\n'
+
+    # A newly claimed name in an older package is accepted only if it already
+    # contains this exact canonical module, as after a stopped SQLCMD install.
+    module=next((s for s in sources if s.path=='Code/10_SnapshotBaseline/055_InternalCompleteWaitStatsCycle.sql'),None)
+    if module is None or len(module.batches)!=1:
+        raise BuildError('Wait target module closure is incomplete')
+    expected=module.batches[0].strip('\t\r\n ')
+    digest=hashlib.sha256(expected.encode('utf-16le')).hexdigest()
+    obj="N'[snapshot].[InternalCompleteWaitStatsCycle]'"
+    collision=("IF NOT EXISTS(SELECT 1 FROM [snapshot].[PackageVersion] WHERE CONVERT(varbinary(max),PackageCode)=CONVERT(varbinary(max),'SC-023') "
+               "AND CONVERT(varbinary(max),PackageVersion)=CONVERT(varbinary(max),'1.2.0') AND SchemaVersion=2) "
+               "AND (OBJECT_DEFINITION(OBJECT_ID("+obj+",N'P')) IS NULL OR "
+               "HASHBYTES('SHA2_256',CONVERT(varbinary(max),TRIM(NCHAR(9)+NCHAR(10)+NCHAR(13)+N' ' FROM REPLACE(OBJECT_DEFINITION(OBJECT_ID("+obj+",N'P')),NCHAR(13)+NCHAR(10),NCHAR(10)))))<>0x"+digest+") "
+               "THROW 53762,N'A noncanonical object occupies the new Wait helper name.',1;")
+    out+="IF OBJECT_ID("+obj+",N'P') IS NOT NULL AND OBJECT_ID(N'[snapshot].[PackageVersion]',N'U') IS NOT NULL EXEC sys.sp_executesql "+lit(collision)+';\n'
+    return out
 
 
 def preflight(tables: list[Table], sources: list[Source], strict: bool=False) -> str:
@@ -774,6 +834,7 @@ def preflight(tables: list[Table], sources: list[Source], strict: bool=False) ->
         out.append(f"IF EXISTS(SELECT 1 FROM [monitor].[WaitTypeCatalogSource] s JOIN [#SQLSA_Expected_{ri}] e ON e.WaitType=s.WaitType AND e.SourceOrdinal=s.SourceOrdinal WHERE s.IsFrameworkDefault=0) THROW 53933,N'Custom Wait source collides with a required default source key.',1; END;\n")
         if strict:
             out.append(f"IF EXISTS(SELECT WaitType FROM [#SQLSA_Expected_{ci}] EXCEPT SELECT WaitType FROM [monitor].[WaitTypeCatalog]) THROW 53934,N'Canonical Wait seed key is missing after deployment.',1;\n")
+    out.append(snapshot_wait_seed_preflight(sources,strict))
     return ''.join(out)
 
 

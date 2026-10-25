@@ -1,6 +1,6 @@
 # Referenz der unterstützenden Frameworkobjekte
 
-Stand: 2026-07-27
+Stand: 2026-10-25
 
 Diese Referenz ergänzt die [Procedure-Referenz](Procedure_Reference.md). Sie
 beschreibt alle inventarisierten Framework- und optionalen Paketobjekte, die
@@ -21,7 +21,7 @@ Analyseendpunkt. Anwendungen verwenden grundsätzlich die
 | Views | 8 | ein Abschnitt je View |
 | Table-Valued Functions (TVFs) | 29 | ein Abschnitt je TVF |
 | Scalar-Valued Functions (SVFs) | 0 | derzeit keine SVF installiert |
-| Interne Procedures | 17 | ein Abschnitt je Procedure |
+| Interne Procedures | 19 | ein Abschnitt je Procedure |
 | Tabellen | 20 | ein Abschnitt je Tabelle |
 
 ## Direktnavigation
@@ -154,6 +154,7 @@ Quelle: `Code/05_QueryStore/005_TVF_QueryStoreReplicaRoleInfo.sql`
 | [`InternalConfigureSnapshotPolicy`](#snapshotinternalconfiguresnapshotpolicy) | `snapshot` | `Code/10_SnapshotBaseline/020_InternalConfigureSnapshotPolicy.sql` |
 | [`InternalPrepareCollectionCycle`](#snapshotinternalpreparecollectioncycle) | `snapshot` | `Code/10_SnapshotBaseline/040_InternalPrepareCollectionCycle.sql` |
 | [`InternalCompletePerformanceCounterCycle`](#snapshotinternalcompleteperformancecountercycle) | `snapshot` | `Code/10_SnapshotBaseline/050_InternalCompletePerformanceCounterCycle.sql` |
+| [`InternalCompleteWaitStatsCycle`](#snapshotinternalcompletewaitstatscycle) | `snapshot` | `Code/10_SnapshotBaseline/055_InternalCompleteWaitStatsCycle.sql` |
 | [`InternalFinalizeCollectionCycle`](#snapshotinternalfinalizecollectioncycle) | `snapshot` | `Code/10_SnapshotBaseline/060_InternalFinalizeCollectionCycle.sql` |
 | [`InternalPurgeExpiredData`](#snapshotinternalpurgeexpireddata) | `snapshot` | `Code/10_SnapshotBaseline/070_InternalPurgeExpiredData.sql` |
 
@@ -779,7 +780,7 @@ Quelle: `Code/10_SnapshotBaseline/020_InternalConfigureSnapshotPolicy.sql`
 | Dimension | Beschreibung |
 |---|---|
 | Aufgabe | Validiert und schreibt die typisierten Zielpolicies transaktional. |
-| Schnittstelle | Interne Stored Procedure; Parameter: `@CollectionIntervalSeconds smallint`; `@MaxRows int`; `@PayloadEnabled bit`; `@RawRetentionDays smallint`; `@PayloadRetentionDays smallint`; `@RollupRetentionDays smallint`; `@SoftBudgetMB int`; `@PurgeIntervalMinutes smallint`; `@PurgeBatchRows int`; `@BudgetAction varchar(32)`; `@StatusCodeOut varchar(40) OUTPUT`; `@ErrorNumberOut int OUTPUT`; `@ErrorMessageOut nvarchar(2048) OUTPUT`. Status-, Fehler- und weitere OUTPUT-Parameter werden ausschließlich zwischen Frameworkbausteinen weitergereicht. |
+| Schnittstelle | Interne Stored Procedure; Parameter: `@CollectionIntervalSeconds smallint`; `@MaxRows int`; `@PayloadEnabled bit`; `@RawRetentionDays smallint`; `@PayloadRetentionDays smallint`; `@RollupRetentionDays smallint`; `@SoftBudgetMB int`; `@PurgeIntervalMinutes smallint`; `@PurgeBatchRows int`; `@BudgetAction varchar(32)`; `@StatusCodeOut varchar(40) OUTPUT`; `@ErrorNumberOut int OUTPUT`; `@ErrorMessageOut nvarchar(2048) OUTPUT`. Additive Target-Backendparameter: `@CollectorCode varchar(64)`; `@CollectorEnabled bit`; `@UpdateSharedPolicy bit`; `@ExpectedTargetDatabaseId int`; `@ExpectedTargetDatabaseName sysname`; `@ExpectedTargetCreateDate datetime`. Status-, Fehler- und weitere OUTPUT-Parameter werden ausschließlich zwischen Frameworkbausteinen weitergereicht. |
 | Verwendung | Öffentliche Procedures im Schema `monitor` rufen diesen Baustein zur Orchestrierung auf. Anwendungen sollen ihn weder direkt ausführen noch von seiner Parameterreihenfolge oder seinen temporären Zwischenstrukturen abhängen. |
 | Last und Sperren | Die Procedure schreibt nur in die ausdrücklich vorgesehenen Framework-, Snapshot- oder lokalen Ergebnisspeicher unter `LOCK_TIMEOUT 0`. Sie darf nur über den zugehörigen öffentlichen Einstieg ausgeführt werden. |
 | Vertrag | Nicht öffentlicher Vertrag. Fehlerbehandlung, OUTPUT-Parameter und Seiteneffekte sind nur für den versiongleichen internen Aufrufer zugesichert. |
@@ -791,7 +792,7 @@ Quelle: `Code/10_SnapshotBaseline/040_InternalPrepareCollectionCycle.sql`
 | Dimension | Beschreibung |
 |---|---|
 | Aufgabe | Prüft Due-Zeit und Softbudget vor jedem Quellread und eröffnet den Lauf. |
-| Schnittstelle | Interne Stored Procedure; Parameter: `@SourceDatabaseName sysname`; `@SchedulerType varchar(16)`; `@RunEvenIfNotDue bit`; `@CaptureRunIdOut bigint OUTPUT`; `@ShouldCollectOut bit OUTPUT`; `@StatusCodeOut varchar(40) OUTPUT`; `@ErrorMessageOut nvarchar(2048) OUTPUT`. Status-, Fehler- und weitere OUTPUT-Parameter werden ausschließlich zwischen Frameworkbausteinen weitergereicht. |
+| Schnittstelle | Interne Stored Procedure; Parameter: `@SourceDatabaseName sysname`; `@SchedulerType varchar(16)`; `@RunEvenIfNotDue bit`; `@CaptureRunIdOut bigint OUTPUT`; `@ShouldCollectOut bit OUTPUT`; `@StatusCodeOut varchar(40) OUTPUT`; `@ErrorMessageOut nvarchar(2048) OUTPUT`. Additive Target-Backendparameter: `@CollectorCode varchar(64)`; `@ExpectedTargetDatabaseId int`; `@ExpectedTargetDatabaseName sysname`; `@ExpectedTargetCreateDate datetime`. Status-, Fehler- und weitere OUTPUT-Parameter werden ausschließlich zwischen Frameworkbausteinen weitergereicht. |
 | Verwendung | Öffentliche Procedures im Schema `monitor` rufen diesen Baustein zur Orchestrierung auf. Anwendungen sollen ihn weder direkt ausführen noch von seiner Parameterreihenfolge oder seinen temporären Zwischenstrukturen abhängen. |
 | Last und Sperren | Die Procedure schreibt nur in die ausdrücklich vorgesehenen Framework-, Snapshot- oder lokalen Ergebnisspeicher unter `LOCK_TIMEOUT 0`. Sie darf nur über den zugehörigen öffentlichen Einstieg ausgeführt werden. |
 | Vertrag | Nicht öffentlicher Vertrag. Fehlerbehandlung, OUTPUT-Parameter und Seiteneffekte sind nur für den versiongleichen internen Aufrufer zugesichert. |
@@ -807,6 +808,18 @@ Quelle: `Code/10_SnapshotBaseline/050_InternalCompletePerformanceCounterCycle.sq
 | Verwendung | Öffentliche Procedures im Schema `monitor` rufen diesen Baustein zur Orchestrierung auf. Anwendungen sollen ihn weder direkt ausführen noch von seiner Parameterreihenfolge oder seinen temporären Zwischenstrukturen abhängen. |
 | Last und Sperren | Die Procedure schreibt nur in die ausdrücklich vorgesehenen Framework-, Snapshot- oder lokalen Ergebnisspeicher und kann lokale Temp-Tabellen materialisieren, unter `LOCK_TIMEOUT 0`. Sie darf nur über den zugehörigen öffentlichen Einstieg ausgeführt werden. |
 | Vertrag | Nicht öffentlicher Vertrag. Fehlerbehandlung, OUTPUT-Parameter und Seiteneffekte sind nur für den versiongleichen internen Aufrufer zugesichert. |
+
+### `[snapshot].[InternalCompleteWaitStatsCycle]`
+
+Quelle: `Code/10_SnapshotBaseline/055_InternalCompleteWaitStatsCycle.sql`
+
+| Dimension | Beschreibung |
+|---|---|
+| Aufgabe | Prüft einen vollständigen internen Source-v1-Vertrag und persistiert Rohwerte, Status, Vergleichskontext und zulässige monotone Kandidaten atomar. |
+| Schnittstelle | Interne Stored Procedure; Parameter: `@CaptureRunId bigint`; `@CollectorJson nvarchar(max)`; `@ExpectedTargetDatabaseId int`; `@ExpectedTargetDatabaseName sysname`; `@ExpectedTargetCreateDate datetime`; `@StatusCodeOut varchar(40) OUTPUT`; `@IsPartialOut bit OUTPUT`; `@ErrorNumberOut int OUTPUT`; `@ErrorMessageOut nvarchar(2048) OUTPUT`. |
+| Verwendung | Der passende interne Frameworkbaustein übergibt den vollständig erfassten Sourcevertrag. Das Target-Backend allein stellt noch keinen öffentlichen Wait-Collector bereit. |
+| Last und Sperren | Der Helper schreibt nur den gebundenen eigenen Wait-Run in einer eigenen kurzen Transaktion unter `LOCK_TIMEOUT 0`. Callertransaktionen und implizite Transaktionen werden vor Fachzugriff abgelehnt. |
+| Vertrag | Der interne Vertrag ist nur für den passenden Paketstand zugesichert. Fehlende Vorwerte werden als Status erhalten; Sourcefehler erhalten keine erfundene Epoche. Der [Snapshotvertrag](../Architecture/Snapshot_Baseline_Package_Contract.md) führt Installation und Aktivierungsgrenze. |
 
 ### `[snapshot].[InternalFinalizeCollectionCycle]`
 
@@ -827,7 +840,7 @@ Quelle: `Code/10_SnapshotBaseline/070_InternalPurgeExpiredData.sql`
 | Dimension | Beschreibung |
 |---|---|
 | Aufgabe | Entfernt ausschließlich abgelaufene Evidenz child-first in begrenzten Batches. |
-| Schnittstelle | Interne Stored Procedure; Parameter: `@MaxBatches int`; `@Force bit`; `@PurgeRunIdOut bigint OUTPUT`; `@StatusCodeOut varchar(40) OUTPUT`; `@BudgetExceededOut bit OUTPUT`; `@ErrorNumberOut int OUTPUT`; `@ErrorMessageOut nvarchar(2048) OUTPUT`. Status-, Fehler- und weitere OUTPUT-Parameter werden ausschließlich zwischen Frameworkbausteinen weitergereicht. |
+| Schnittstelle | Interne Stored Procedure; Parameter: `@MaxBatches int`; `@Force bit`; `@PurgeRunIdOut bigint OUTPUT`; `@StatusCodeOut varchar(40) OUTPUT`; `@BudgetExceededOut bit OUTPUT`; `@ErrorNumberOut int OUTPUT`; `@ErrorMessageOut nvarchar(2048) OUTPUT`. Additive Target-Backendparameter: `@ContractOnly bit`; `@RetentionContractVersionOut int OUTPUT`; `@ExpectedTargetDatabaseId int`; `@ExpectedTargetDatabaseName sysname`; `@ExpectedTargetCreateDate datetime`. Status-, Fehler- und weitere OUTPUT-Parameter werden ausschließlich zwischen Frameworkbausteinen weitergereicht. |
 | Verwendung | Öffentliche Procedures im Schema `monitor` rufen diesen Baustein zur Orchestrierung auf. Anwendungen sollen ihn weder direkt ausführen noch von seiner Parameterreihenfolge oder seinen temporären Zwischenstrukturen abhängen. |
 | Last und Sperren | Die Procedure schreibt nur in die ausdrücklich vorgesehenen Framework-, Snapshot- oder lokalen Ergebnisspeicher unter `LOCK_TIMEOUT 0`. Sie darf nur über den zugehörigen öffentlichen Einstieg ausgeführt werden. |
 | Vertrag | Nicht öffentlicher Vertrag. Fehlerbehandlung, OUTPUT-Parameter und Seiteneffekte sind nur für den versiongleichen internen Aufrufer zugesichert. |

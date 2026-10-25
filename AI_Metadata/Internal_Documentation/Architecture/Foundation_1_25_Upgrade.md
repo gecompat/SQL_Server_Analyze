@@ -311,3 +311,32 @@ Inputs. Ein Zwischenlauf ohne den echten alten Helper qualifiziert kein
 vollständiges Upgrade; der parserbereinigte direkte Testpfad scheiterte mit
 137 und nachgewiesenem Cleanup. Diese Korrekturversuche bleiben verbraucht.
 Es beginnt keine allgemeine neue Reviewkette und keine zusätzliche Engine.
+
+
+### Internes Wait-Target vor öffentlicher Aktivierung
+
+Die Targetwelle ergänzt Persistenz, Seeds, Abschlussmarker und die internen
+Aufrufverträge. Ein Implementierer und derselbe unabhängige Reviewer prüfen
+den Algorithmus und anschließend die getrennten Installations-/Legacyrisiken.
+Gezielte Folgeprüfungen schließen tatsächliche Befunde; es beginnt keine
+weitere Reviewkette. Die statische Gesamtsuite und das vollständige SQL2025-
+Head-/Main-Gate bleiben erforderlich. Eine weitere native Engine ist für
+diesen Targetvertrag ohne neue native API oder Engineverzweigung nicht
+ausgewählt; die spätere native DMV-Aktivierung erhält eine eigene Auswahl.
+
+Das lokal nach den konkreten Testinputbefunden neu begrenzte Budget umfasst
+höchstens vierzehn native Entwicklungsversuche für
+Compiler-, Mengen-, Kontext-, Caller- und reale Upgradeoracles. Fehlversuche
+bleiben verbraucht. Die erste Quellenabnahme qualifiziert weder den
+vollständigen Collector noch einen nativen DMV-Read. Eine leere Rohprojektion
+und zwei konkrete Integrationsbefunde begründen korrigierte Testinputs.
+Ein fehlerhafter Testdatenbankname und eine Klammer im Upgradeoracle sind
+Testinputfehler und kein Produktnachweis. Der weitere native Befund zur
+CRLF-Normalisierung betrifft den Erwartungsliteralvergleich; das Oracle
+verwendet jetzt denselben kanonischen SHA256 wie der Installer. Der
+Callerzustand wird gegen die tatsächlich gemessene Ausgangslage verglichen.
+Diese konkreten Befunde begründen zwei zusätzliche Versuche innerhalb
+des unveränderten gemeinsamen Wellenumfangs. Jeder eigene Lauf benötigt
+belegtes Cleanup. Ganze grüne Logs werden nicht an Reviewer weitergereicht.
+Messwerte für Token und Kosten liegen nicht vor; der gemeinsame endliche
+PR-Umfang und ein Reviewer bleiben die Verbrauchsgrenzen.

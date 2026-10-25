@@ -23,13 +23,31 @@ class DeploymentContract(unittest.TestCase):
         cls.sql, cls.info = generator.generate(ROOT, True)
 
     def test_source_closure_and_receipts(self):
-        self.assertEqual((189, 20, 7), tuple(self.info[k] for k in ('sources', 'tables', 'archives')))
+        self.assertEqual((191, 20, 7), tuple(self.info[k] for k in ('sources', 'tables', 'archives')))
         self.assertIn('NEWID()', self.sql)
         self.assertTrue("N''State_''" in self.sql)
         self.assertIn('AS [rowCount]', self.sql)
         self.assertIn('identityLastValue', self.sql)
         self.assertTrue('parentColumnName' in self.sql)
         self.assertIn('FOR JSON PATH,INCLUDE_NULL_VALUES', self.sql)
+
+    def test_wait_seed_guard_rejects_persistent_or_hidden_mutations(self):
+        sources,_,_=generator.load_sources(ROOT,True)
+        seed=next(s for s in sources if s.path.endswith('075_CompleteWaitStatsInstallation.sql'))
+        guard=generator.snapshot_wait_seed_preflight(sources)
+        self.assertIn('Waitmetrik',guard)
+        for text in (
+            seed.text.replace('-- SNAPSHOT_WAIT_SEED_CHECK_END',"UPDATE snapshot.CollectorPolicy SET IsEnabled=1;\n-- SNAPSHOT_WAIT_SEED_CHECK_END"),
+            seed.text.replace('INSERT @SnapshotWaitExpectedMetrics','INSERT [snapshot].[MetricDefinition]'),
+            seed.text.replace('-- SNAPSHOT_WAIT_SEED_CHECK_BEGIN',"-- SNAPSHOT_WAIT_SEED_CHECK_BEGIN\nEXEC sys.sp_executesql N'SELECT 1';"),
+            seed.text.replace('-- SNAPSHOT_WAIT_SEED_CHECK_BEGIN',"-- SNAPSHOT_WAIT_SEED_CHECK_BEGIN\n-- SNAPSHOT_WAIT_SEED_CHECK_BEGIN"),
+        ):
+            changed=generator.Source(seed.role,seed.path,text,seed.batches,seed.module)
+            with self.assertRaises(generator.BuildError):
+                generator.snapshot_wait_seed_preflight([changed if s is seed else s for s in sources])
+        # Mutation verbs inside a description stay data, not executable tokens.
+        described=generator.Source(seed.role,seed.path,seed.text.replace('Unveränderte native kumulative gesamte Waitzeit.', 'UPDATE DELETE EXEC are example text.'),seed.batches,seed.module)
+        generator.snapshot_wait_seed_preflight([described if s is seed else s for s in sources])
 
     def test_lexer_preserves_literals_and_nested_comments(self):
         value = "SELECT N'first\nGO\nlast''value', [GO]; /* a /* GO */ b */\nGO -- actual\nSELECT 2;"
@@ -150,11 +168,11 @@ class DeploymentContract(unittest.TestCase):
 
     def test_snapshot_target_has_one_aborting_compilation_envelope(self):
         sql,info=generator.generate_snapshot_target(ROOT)
-        self.assertEqual(6,info['sources'])
+        self.assertEqual(8,info['sources'])
         self.assertEqual(1,len(generator.split_batches(sql)))
         self.assertLess(sql.index('IF @@TRANCOUNT<>0'),sql.index('SET XACT_ABORT ON;'))
         self.assertLess(sql.index('BEGIN TRANSACTION;'),sql.index('-- BEGIN SOURCE:'))
-        self.assertEqual(6,sql.count('-- BEGIN SOURCE:'))
+        self.assertEqual(8,sql.count('-- BEGIN SOURCE:'))
         for setting in ('LOCK_TIMEOUT 0','ANSI_NULLS ON','QUOTED_IDENTIFIER ON','ANSI_PADDING ON','ANSI_WARNINGS ON','ARITHABORT ON','CONCAT_NULL_YIELDS_NULL ON','NUMERIC_ROUNDABORT OFF'):
             self.assertLess(sql.index('SET '+setting+';'),sql.index('-- BEGIN SOURCE:'))
         self.assertIn("BEGIN EXEC sys.sp_executesql N'SET XACT_ABORT OFF; RAISERROR(",sql)
