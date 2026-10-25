@@ -48,8 +48,13 @@ sind regulär integriert. [PR #438](https://github.com/gecompat/SQL_Server_Analy
 besteht am Liefercommit `6e41c9fe` alle acht Head-Checks, das vollständige
 SQL2025-Gate und gezielte native 2019-/2022-Prüfungen. Nachweise und Grenzen
 stehen im [Datenbankprincipal-Dossier](../Architecture/Database_Principal_Analysis_Dossier.md).
-Das [Callerrechte-Dossier](../Architecture/Caller_Permission_Analysis_Dossier.md)
-konkretisiert den nächsten eigenen Teil für den aktuellen Ausführungskontext.
+Der erste Callerbericht ist über [PR #441](https://github.com/gecompat/SQL_Server_Analyze/pull/441)
+mit acht bestandenen Head-Checks sowie SQL2025- und gezielter nativer SQL2019-
+Abnahme integriert. Das [Callerrechte-Dossier](../Architecture/Caller_Permission_Analysis_Dossier.md)
+führt die tatsächlichen Nachweise und verbleibenden Grenzen. Die nächste
+vertikale Grundlieferung aus Rang 7 ist im
+[Endpoint-Dossier](../Architecture/Endpoint_Transport_Analysis_Dossier.md)
+als SQL-sichtbarer Katalog-/Verschlüsselungsflag-Scope abgegrenzt.
 Bereits gelieferte Funktionen und die abgeschlossene STAT-DOMINANT-Diagnose
 werden nicht erneut entwickelt.
 
