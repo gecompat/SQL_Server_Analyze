@@ -2057,3 +2057,4 @@ USP_EndpointTransportAnalysis,StatusCodeOut,varchar(40),NULL OUTPUT
 USP_EndpointTransportAnalysis,IsPartialOut,bit,NULL OUTPUT
 USP_EndpointTransportAnalysis,ErrorNumberOut,int,NULL OUTPUT
 USP_EndpointTransportAnalysis,ErrorMessageOut,nvarchar(2048),NULL OUTPUT
+USP_SsisPackageModelAnalysis,IncludePipelineCorrelation,bit,0

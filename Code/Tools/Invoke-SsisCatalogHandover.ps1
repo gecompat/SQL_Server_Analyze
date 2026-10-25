@@ -11,10 +11,12 @@ param(
     [ValidateRange(1,24)][int]$ValidHours=1,
     [string]$DotnetPath='dotnet',
     [switch]$IncludeIterationCorrelation,
-    [switch]$IncludeExecutionScopes
+    [switch]$IncludeExecutionScopes,
+    [switch]$IncludePipelineCorrelation
 )
 Set-StrictMode -Version Latest
 $ErrorActionPreference='Stop'
+if($IncludePipelineCorrelation -and -not $IncludeExecutionScopes){throw 'SSIS_PIPELINE_SCOPES_REQUIRED'}
 # Der explizite SourceReader ist ein qualifizierter Transportadapter, kein
 # fremdes Snapshotdokument. Er führt den vollständigen festen Capturebatch
 # einmal in einem gebundenen Kanal aus. Der Standard verwendet SqlClient direkt.
@@ -61,6 +63,23 @@ SELECT TOP(50001) CONVERT(varchar(20),[event_message_id]) AS [EventMessageId],[e
  CONVERT(varchar(40),[message_time],127) AS [MessageTime],[message_code] AS [MessageCode]
 FROM [SSISDB].[catalog].[event_messages] WITH(READCOMMITTEDLOCK) WHERE [operation_id]=@ExecutionId AND [event_name] IN(N'OnPreExecute',N'OnPostExecute',N'OnError') ORDER BY [event_message_id];
 '@}else{''}
+# Optionale Quellen scheitern getrennt. Ein Fehlerresultat enthält ausschließlich
+# SourceErrorNumber; der Consumer erzeugt daraus keine Beobachtungszeile.
+$pipelineSql=if($IncludePipelineCorrelation){@'
+BEGIN TRY
+ SELECT TOP(50001) CONVERT(varchar(20),[phase_stats_id]) AS [PhaseStatsId],[package_name] AS [PackageName],[task_name] AS [TaskName],[subcomponent_name] AS [ComponentName],[phase] AS [PhaseName],
+ CONVERT(varchar(40),[start_time],127) AS [StartTime],CONVERT(varchar(40),[end_time],127) AS [EndTime],CASE WHEN DATALENGTH([execution_path])<=8000 THEN [execution_path] END AS [ExecutionPath],CAST(NULL AS int) AS [SourceErrorNumber]
+ FROM [SSISDB].[catalog].[execution_component_phases] WITH(READCOMMITTEDLOCK) WHERE [execution_id]=@ExecutionId ORDER BY [phase_stats_id];
+END TRY
+BEGIN CATCH SELECT ERROR_NUMBER() AS [SourceErrorNumber]; END CATCH;
+BEGIN TRY
+ SELECT TOP(50001) CONVERT(varchar(20),[data_stats_id]) AS [DataStatsId],[package_name] AS [PackageName],[task_name] AS [TaskName],[dataflow_path_id_string] AS [PathIdentificationString],[dataflow_path_name] AS [PathName],
+ [source_component_name] AS [SourceComponentName],[destination_component_name] AS [DestinationComponentName],[rows_sent] AS [RowsSent],CONVERT(varchar(40),[created_time],127) AS [CreatedTime],
+ CASE WHEN DATALENGTH([execution_path])<=8000 THEN [execution_path] END AS [ExecutionPath],CAST(NULL AS int) AS [SourceErrorNumber]
+ FROM [SSISDB].[catalog].[execution_data_statistics] WITH(READCOMMITTEDLOCK) WHERE [execution_id]=@ExecutionId ORDER BY [data_stats_id];
+END TRY
+BEGIN CATCH SELECT ERROR_NUMBER() AS [SourceErrorNumber]; END CATCH;
+'@}else{''}
 $beforeTable='#SsisCatalogHandover_Before_'+$nonce;$archiveTable='#SsisCatalogHandover_Archive_'+$nonce
 $beforeSql=$metadataSql.Replace('FROM [SSISDB].[catalog].[executions]','INTO '+$beforeTable+' FROM [SSISDB].[catalog].[executions]')
 $inner=@"
@@ -83,6 +102,7 @@ BEGIN TRY
  ELSE EXEC [SSISDB].[catalog].[get_project] @folder_name=@Folder,@project_name=@Project;
  $observationsSql
  $eventsSql
+ $pipelineSql
  $metadataSql
  COMMIT TRANSACTION;
 END TRY
@@ -129,6 +149,7 @@ if($null -ne $SourceReader) {
             $observed=Read-CurrentTable $reader
             $events=$null
             if($IncludeExecutionScopes){if(-not $reader.NextResult()){throw 'SSIS_SCOPE_EVENT_SOURCE_MISSING'};$events=Read-CurrentTable $reader}
+            if($IncludePipelineCorrelation){if(-not $reader.NextResult()){throw 'SSIS_PIPELINE_SOURCE_MISSING'};$phases=Read-CurrentTable $reader;if(-not $reader.NextResult()){throw 'SSIS_PIPELINE_SOURCE_MISSING'};$transfers=Read-CurrentTable $reader}
             if(-not $reader.NextResult()){throw 'SSIS_CATALOG_READER_SHAPE_INVALID'}
             $after=Read-CurrentTable $reader
             if($reader.NextResult()){throw 'SSIS_CATALOG_READER_SHAPE_INVALID'}
@@ -158,7 +179,9 @@ if($null -eq $SourceReader -and $SourceConnection.ClientConnectionId -ne $source
 if($IncludeExecutionScopes) {
     if($null -ne $SourceReader){$events=$capture.Events}
     if($events -isnot [Data.DataTable] -or $events.Rows.Count+$observed.Rows.Count -gt 50000){throw 'SSIS_SCOPE_OBSERVATION_LIMIT'}
-    return & (Join-Path $PSScriptRoot 'Invoke-SsisProjectScopeHandover.ps1') -Archive $archive -Before $before -After $after -Observations $observed -Events $events -Connection $Connection -SourceBindingSha256 $sourceBindingSha -ProducerAssemblyPath $ProducerAssemblyPath -ExpectedBuildSha256 $ExpectedBuildSha256 -ExpectedSourceCommit $ExpectedSourceCommit -ValidHours $ValidHours -DotnetPath $DotnetPath
+    $pipelineArguments=@{}
+    if($IncludePipelineCorrelation){if($null -ne $SourceReader){$phases=$capture.ComponentPhases;$transfers=$capture.PathTransfers};if($phases -isnot [Data.DataTable] -or $transfers -isnot [Data.DataTable] -or $phases.Rows.Count+$transfers.Rows.Count+$events.Rows.Count+$observed.Rows.Count -gt 50000){throw 'SSIS_PIPELINE_SOURCE_LIMIT'};$pipelineArguments=@{IncludePipelineCorrelation=$true;ComponentPhases=$phases;PathTransfers=$transfers}}
+    return & (Join-Path $PSScriptRoot 'Invoke-SsisProjectScopeHandover.ps1') @pipelineArguments -Archive $archive -Before $before -After $after -Observations $observed -Events $events -Connection $Connection -SourceBindingSha256 $sourceBindingSha -ProducerAssemblyPath $ProducerAssemblyPath -ExpectedBuildSha256 $ExpectedBuildSha256 -ExpectedSourceCommit $ExpectedSourceCommit -ValidHours $ValidHours -DotnetPath $DotnetPath
 }
 $memory=[IO.MemoryStream]::new($archive,$false);$zip=[IO.Compression.ZipArchive]::new($memory,[IO.Compression.ZipArchiveMode]::Read,$false)
 try {
