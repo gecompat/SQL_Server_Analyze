@@ -40,6 +40,7 @@ BEGIN
   @deadline datetime2(3)=DATEADD(second,COALESCE(@MaxDurationSeconds,30),SYSUTCDATETIME()),
   @status varchar(40)='COMPARISON_BINDING_UNPROVEN',@reason varchar(64)=NULL,@error int=NULL,@canPair bit=0,
   @context varchar(40)='CONTEXT_UNPROVEN',@sameExport bit=0;
+ DECLARE @ConsoleResultRequested bit=CASE WHEN @mode='CONSOLE' THEN 1 ELSE 0 END;
  CREATE TABLE #SsisExecutionComparison_Binding(
   [BaselineExecutionId] bigint NULL,[CandidateExecutionId] bigint NULL,[StatusCode] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,
   [ReasonCode] varchar(64) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,[BaselineStatusCode] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,[CandidateStatusCode] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,
@@ -76,7 +77,7 @@ BEGIN
   [Value] decimal(38,0) NULL,[Quality] varchar(32) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,[SourceName] varchar(32) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,[SourceId] bigint NULL,[KeyJson] nvarchar(max) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,[KeyHash] binary(32) NULL);
  BEGIN TRY
   IF @mode<>'TABLE' AND @ResultTablesJson IS NOT NULL THROW 51011,N'ResultTablesJson ist ausschließlich für TABLE zulässig.',1;
-  IF @mode='TABLE' EXEC monitor.InternalPrepareResultTables @ResultTablesJson=@ResultTablesJson,@AllowedResultNames=N'comparisonBinding|objectComparison|comparisonFindings|comparisonCoverage',@MappingTable=N'#SsisExecutionComparison_Map',@ThrowOnError=1;
+  IF @mode='TABLE' EXEC [monitor].[InternalPrepareResultTables] @ResultTablesJson=@ResultTablesJson,@AllowedResultNames=N'comparisonBinding|objectComparison|comparisonFindings|comparisonCoverage',@MappingTable=N'#SsisExecutionComparison_Map',@ThrowOnError=1;
   IF @mode NOT IN('RAW','TABLE','CONSOLE','NONE') OR @limit<1 OR @MaxDurationSeconds IS NULL OR @MaxDurationSeconds NOT BETWEEN 1 AND 60 OR @LockTimeoutMs IS NULL OR @LockTimeoutMs NOT BETWEEN 0 AND 60000 OR @JsonErzeugen IS NULL
    OR COALESCE(@BaselineExecutionId,0)<1 OR COALESCE(@CandidateExecutionId,0)<1 OR @BaselineExecutionId=@CandidateExecutionId OR @MinDurationDeltaMs<0 OR @MinDurationDeltaPercent<0 THROW 57930,N'INVALID_PARAMETER',1;
   SET @setLock=N'SET LOCK_TIMEOUT '+CONVERT(nvarchar(20),@LockTimeoutMs)+N';';EXEC sys.sp_executesql @setLock;
@@ -204,10 +205,10 @@ BEGIN
   IF @JsonErzeugen=1 SET @Json=JSON_MODIFY(@Json,'$.'+@name,JSON_QUERY(@array));
   SET @sql=N';WITH r AS(SELECT *,ROW_NUMBER() OVER(ORDER BY '+@order+N') AS OutputRow FROM '+QUOTENAME(@table)+N') DELETE FROM r WHERE OutputRow>@n;';EXEC sys.sp_executesql @sql,N'@n int',@n=@limit;
   IF @mode='RAW' BEGIN SET @sql=N'SELECT * FROM '+QUOTENAME(@table)+N' ORDER BY '+@order+N';';EXEC sys.sp_executesql @sql;END;
-  IF @mode='TABLE' BEGIN SELECT @target=[TargetTable] FROM #SsisExecutionComparison_Map WHERE [ResultName]=@name;IF @target IS NOT NULL EXEC monitor.InternalWriteResultTable @table,@target,@ThrowOnError=1;SET @target=NULL;END;
+  IF @mode='TABLE' BEGIN SELECT @target=[TargetTable] FROM #SsisExecutionComparison_Map WHERE [ResultName]=@name;IF @target IS NOT NULL EXEC [monitor].[InternalWriteResultTable] @table,@target,@ThrowOnError=1;SET @target=NULL;END;
   FETCH NEXT FROM [comparisonOutputs] INTO @name,@table,@order;
  END;CLOSE [comparisonOutputs];DEALLOCATE [comparisonOutputs];
- IF @mode='CONSOLE' EXEC monitor.InternalEmitConsoleResult @SourceTable=N'#SsisExecutionComparison_Binding',@ResultLabel=N'SsisExecutionComparison',@EmptyMessage=N'Keine fachlichen Ergebnisse';
+ IF @ConsoleResultRequested=1 EXEC [monitor].[InternalEmitConsoleResult] @SourceTable=N'#SsisExecutionComparison_Binding',@ResultLabel=N'SsisExecutionComparison',@EmptyMessage=N'Keine fachlichen Ergebnisse';
  SELECT @StatusCodeOut=@status,@IsPartialOut=1,@ErrorNumberOut=@error,@ErrorMessageOut=CONVERT(nvarchar(2048),@reason);
  END TRY
  BEGIN CATCH
