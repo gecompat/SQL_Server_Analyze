@@ -128,3 +128,65 @@ zugehörigen ausführbaren Verträge geändert werden. Diese Ergebnisse
 qualifizieren weder die gesamte Dokumentationsablage noch neue Laufzeitpfade.
 
 <!-- artifact_uid: urn:uuid:01a1624c-dcca-759f-bf6a-6641b749903f; registration_state: DEFERRED -->
+
+
+## Snapshot-Targetkontext und Verarbeitungsaufwand
+
+Die Wait-Erweiterung konkretisiert den bereits separat installierten
+Snapshot-Targetweg. Der allgemeine USE-Satz in Projektkontext und
+Architekturentscheidung widersprach dem vorhandenen kanonischen Targetinstaller
+und dem öffentlichen Paketvertrag. Dieser TARGET_INTERNAL_CONFLICT wird
+eng auf dessen ausdrücklich eingebundene Targetquellen aufgelöst. Das erste
+Targetskript prüft weiterhin tatsächliche Datenbankidentität, ONLINE-/
+Schreibstatus und den Ausschluss von Systemdatenbanken. Gewöhnliche Framework-
+quellen behalten ihren USE-Header; Source-Datenbankauswahl, Privacy und
+Berechtigung werden nicht erweitert. Foundationdateien und installierte
+Provenienz bleiben unverändert; diese Nachführung ist kein Foundationupgrade.
+
+Die Erweiterung nutzt vorhandene statische, Snapshot-Installer- und funktionale
+Selektoren. Lokal ist am kohärenten Stand eine vollständige statische Suite
+mit SelfTestMode Changed vorgesehen; danach werden ausschließlich geänderte
+Inputs oder fehlgeschlagene betroffene Gates nachgeprüft. Der konservative
+Fallback für nicht vollständig zugeordnete Abhängigkeiten bleibt erhalten.
+Der geänderte Installer verlangt das volle SQL2025-Gate und die direkten
+Snapshotverträge. Die vorgeschaltete Schemawelle prüft nativ SQL2019 für die ältere
+Metadaten-/CHECK-Kanonisierung; der spätere Collector prüft zusätzlich seine
+Counter-/Berechtigungsgrenze. Eine zusätzliche pauschale Drei-Versionen-
+Matrix ist nicht vorgesehen. Tatsächliche DBCC-Resetabnahme bleibt eine
+getrennte eigene isolierte Laboperation mit ausdrücklichem Opt-in und wird
+nicht in den allgemein ausführbaren SQL-Runner aufgenommen.
+
+Es arbeiten ein Implementierer und ein unabhängiger Reviewer. Vorvertrag
+und Produkt besitzen verschiedene Abnahmefragen; Folgechecks betreffen nur
+konkrete geänderte Befunde. Ganze grüne Logs und Reviewberichte lösen keine
+weiteren Modelle aus. Der vorhandene gemeinsame Rahmen von 40 PR-Schritten
+und sein Checkpoint bei 30 bleiben unverändert. Kosten-/Tokenmessung ist
+unbekannt. Die tatsächliche Gateausführung und verbleibende Evidenz werden
+am Lieferstand nachgeführt; dieses Assessment behauptet noch keine fertige
+Runtime- oder Effizienzqualifikation des neuen Collectors.
+
+
+Für die Schema-2-Vorbereitung wird der direkte Target-Prüfblock aus demselben
+kanonischen Tabellenmodell wie die Gesamtdeploymentprüfung abgeleitet. Der
+Builder prüft den markierten erzeugten Bereich deterministisch und entfernt
+nur dessen read-only Duplikat aus dem bereits vollständig geprüften Gesamt-
+deploymentbatch. Es gibt keinen Runtime-Skip-Schalter. Unbekannte Zustände,
+Schemaabweichungen und Sicherheitsgates bleiben fail-closed. Die begrenzte
+Transformation erhält negative Parser- und native Zustandstests; eine pauschale
+zweite vollständige Vorprüfung am gleichen Binding wird nicht hinzugefügt.
+
+Dieser Änderungsschritt liefert ausschließlich den Vorvertrag und die enge
+Kontextausnahme. Er ändert keinen ausführbaren Installer oder Workflow und
+benötigt deshalb keine SQL-Engine. Die oben benannten Produktgates gelten
+für die folgende Implementierung. Die direkte Route muss vollständigen
+Preflight und Migration in derselben Transaktion binden. Der zunächst
+vorgeschlagene Daten-S-Lock belegt keinen Zwischenfehler und wurde durch
+die Anforderung einer separat nativ bestätigten Sch-S-only-Probe ersetzt.
+Ihre Ausführung und die eigentliche Migrationsabnahme sind noch offen.
+
+Der unabhängige Vertragsreview hat außerdem die Standalone-Batchgrenze
+benannt: Entferntes ON ERROR EXIT darf einen abgewiesenen Preflight nicht
+von späteren CREATE-OR-ALTER-Quellen entkoppeln. Der folgende Produktdiff
+muss einen gemeinsamen abbrechenden Rahmen und einen negativen Erhaltungs-
+nachweis für diesen konkreten Weg liefern. Bestehende eigene Caller-
+transaktionen werden vor Veränderung der Transaktionsoptionen abgelehnt.
