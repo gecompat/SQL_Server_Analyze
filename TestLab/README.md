@@ -5,6 +5,21 @@ Provisionierung und der Container-Lifecycle bleiben vollständig in
 `SQL_Server_Lab`; dieses Repository liefert nur den Beispielkatalog, die
 Analyze-Installation und fachliche Szenarioausführung.
 
+Die Runner für Adapter-Quickcheck, Linked-Server-Szenario und Beispielprüfung
+werten auch den Rückgabestatus des Infrastruktur-Cleanups aus. Nur `REMOVED`
+bestätigt die Entfernung. Ein Recoverystatus oder Providerfehler beendet den
+Lauf mit Fehler und erhält die Lab-Recoverydaten. Ein ursprünglicher
+Szenariofehler bleibt zusammen mit dem Cleanupfehler erhalten. Der
+Beispielrunner stellt seine Prozessumgebung auch bei Cleanupfehlern wieder her.
+Ein explizites `KeepOnFailure` erhält das fehlgeschlagene Lab weiterhin.
+
+Die providerfreie Gegenprobe führt die tatsächlichen `finally`-Blöcke mit
+synthetischen Labantworten aus:
+
+```powershell
+pwsh -File ./TestLab/Tests/Invoke-CleanupStatusChecks.ps1
+```
+
 ## Katalog prüfen
 
 ```powershell

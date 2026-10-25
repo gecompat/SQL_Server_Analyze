@@ -36,6 +36,7 @@ Import-Module (Join-Path $labRoot 'SqlServerLab.psd1') -Force
 
 $lab = $null
 $failed = $false
+$scenarioFailure = $null
 $cleanupCompleted = $false
 try {
     $lab = New-SqlServerLab -Version $Version -Provider $Provider -Profile standard `
@@ -58,11 +59,24 @@ try {
 }
 catch {
     $failed = $true
+    $scenarioFailure = $_.Exception
     throw
 }
 finally {
     if ($lab -and -not ($failed -and $KeepOnFailure)) {
-        Remove-SqlServerLab -RunId $lab.RunId -StateRoot $StateRoot -Force -Confirm:$false | Out-Null
+        try {
+            $infrastructureCleanup = Remove-SqlServerLab -RunId $lab.RunId -StateRoot $StateRoot -Force -Confirm:$false
+            if ($infrastructureCleanup.Status -cne 'REMOVED') {
+                throw 'ANALYZE_LAB_CLEANUP_INCOMPLETE'
+            }
+        }
+        catch {
+            if ($scenarioFailure) {
+                $scenarioFailure.Data['InfrastructureCleanupFailure'] = $_.Exception
+                throw $scenarioFailure
+            }
+            throw
+        }
     }
 }
 
