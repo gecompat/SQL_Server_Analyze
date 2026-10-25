@@ -230,8 +230,5 @@ Dossier führt Paketbindung, frühere Vollrunfehler und verbleibende Grenzen.
 Der WAIT_CAPTURE_CONTEXT-v1-Feldvertrag ist einschließlich der gezielten
 Retentionskorrektur unabhängig geprüft. Der Retentionsschutz mit Targetpatch 1.1.1 ist über
 [PR #449](https://github.com/gecompat/SQL_Server_Analyze/pull/449) mit
-vollständigen Head- und Main-Gates integriert. Die laufende Welle ergänzt
-das interne Wait-Target mit Abschlussversion 1.2.0 und bestehender
-SchemaVersion 2. Öffentliche Aktivierung und Datei-I/O bleiben jeweils
-eigenständige folgende Wellen. Die SSIS-Datenflussarbeit bleibt
+vollständigen Head- und Main-Gates integriert. Das interne Wait-Target 1.2.0 ist über PR #451 einschließlich aller Head-/Main-Gates und gezielter nativer SQL2019-Snapshotprüfung integriert. Die aktuelle Welle ergänzt die öffentliche Aktivierung mit Targetpatch 1.2.1 bei unveränderter SchemaVersion 2; Datei-I/O bleibt eine eigene folgende Welle. Die SSIS-Datenflussarbeit bleibt
 beim separaten Auftrag.

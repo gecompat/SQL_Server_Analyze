@@ -183,7 +183,7 @@ Primärquelle: [`sys.external_models`](https://learn.microsoft.com/en-us/sql/rel
 
 ## Welle 3: `SC-023-EXPANSION`
 
-Der erste Ausbau-Slice erfasst Wait-Stats- und Datei-I/O-Deltas mit UTC, Reset-Epoche, Scope, Einheit und Quellenstatus. Der zweite Slice ergänzt Datenbank-, Datei-, Log- und TempDB-Kapazität sowie begrenzte Worker-, Scheduler- und Resource-Semaphore-Metriken. Erst danach werden stündliche und tägliche Rollups sowie ein getrenntes idempotentes SQL-Agent-DDL-Paket spezifiziert.
+Der erste Ausbau-Slice trennt Wait- und Datei-I/O-Erfassung mit Zeitbezug, Scope, Einheit und Quellenstatus. Das integrierte Wait-Target speichert kumulative Rohwerte und ausdrücklich unbewiesene monotone Differenzkandidaten; ein gleicher Enginekontext beweist keine Resetkontinuität. Die öffentliche Aktivierung und die spätere Datei-I/O-Identitätsabnahme bleiben getrennte Entwicklungswellen. Der zweite Slice ergänzt Datenbank-, Datei-, Log- und TempDB-Kapazität sowie begrenzte Worker-, Scheduler- und Resource-Semaphore-Metriken. Erst danach werden stündliche und tägliche Rollups sowie ein getrenntes idempotentes SQL-Agent-DDL-Paket spezifiziert.
 
 Payloads, Export und Fleet-Transport bleiben standardmäßig deaktiviert. Collector, Rollups und Scheduler erhalten getrennte Status- und Aktivierungsverträge. Ein Baselinevergleich ist nur bei kompatibler Metrikdefinition, Einheit, Scope, Vertragsversion und Reset-Epoche zulässig.
 

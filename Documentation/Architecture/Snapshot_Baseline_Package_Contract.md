@@ -1,7 +1,7 @@
 # Optionales Snapshot-/Baseline-Paket – Architekturvertrag
 
 **Produktstatus des ausgelieferten Performance-Counter-Slice:** `IMPLEMENTED_ACTIONS_GATE`  
-**Weitere Collector, Rollups und Scheduler-/Exportpakete:** `OPTIONAL_FUTURE`
+**Waitausbau und weitere Collector, Rollups, Scheduler-/Exportpakete:** `PARTIAL_PRODUCT_FUNCTION`; der Waitpfad ist implementiert, weitere Ausbaupakete bleiben offen.
 
 ## Zweck und Abgrenzung
 
@@ -40,17 +40,16 @@ In beiden Fällen bleibt die Reihenfolge verbindlich:
 
 Das Paket erstellt keine Datenbank, Benutzer, Login, Berechtigung oder Scheduleraufgabe.
 
-Der aktuelle Quellstand installiert Target-PackageVersion 1.2.0 mit
-SchemaVersion 2. Das Target enthält ein internes Wait-Backend mit neun
-Metrikdefinitionen, dem Target-Abschlusshelper und einer bei Neuanlage
-deaktivierten WAIT_STATS-Policy. Die öffentliche Frameworkaktivierung und
-die native Wait-Quelle gehören noch nicht zu diesem Stand. Die drei
-öffentlichen Einstiege und ihr Performance-Counter-Default bleiben erhalten.
+Der aktuelle Quellstand installiert Target-PackageVersion 1.2.1 mit
+SchemaVersion 2. Das Wait-Backend besitzt neun Metrikdefinitionen und eine bei
+Neuanlage deaktivierte WAIT_STATS-Policy. Die öffentliche Collectorwahl ergänzt
+die vollständige native Waitquelle. Die drei öffentlichen Einstiege und ihr
+Performance-Counter-Default bleiben erhalten.
 Der Purge erhält die letzte finalisierte WAIT_STATS-Laufzeile als spätere
 Vergleichsgrenze. Vorhandene Counterdaten, Scopeidentitäten und Policies
 bleiben erhalten. Ein exakt erkanntes Target 1.0.0 / Schema 1 wird in einer
 Transaktion migriert. Das bekannte Target 1.1.0 / Schema 2 erhält den
-Backendabschluss ohne weitere Schemaänderung; dies gilt ebenso für 1.1.1 / Schema 2. Unbekannte Versionen, gemischte Domänen, zusätzliche
+Backendabschluss ohne weitere Schemaänderung; dies gilt ebenso für 1.1.1 und 1.2.0 / Schema 2. Unbekannte Versionen, gemischte Domänen, zusätzliche
 CHECKs, veränderte Tabellenfacetten und deaktivierte oder nicht vertrauenswürdige
 Constraints werden vor Produktänderungen abgelehnt. Ein abweichender Stand
 muss vor erneutem Installieren fachlich geklärt werden; der Installer repariert
@@ -123,11 +122,11 @@ Ein Lauf:
 7. schreibt Payload nur bei expliziter Aktivierung;
 8. finalisiert Laufstatus und Summen.
 
-Der vorhandene Collector erfasst begrenzte Performance-Counter-Evidenz. Weitere Frameworkmodule werden durch die Paketinstallation nicht automatisch persistiert.
+Der Defaultcollector erfasst begrenzte Performance-Counter-Evidenz; der ausdrücklich gewählte Waitcollector liest den gesamten Cache und begrenzt erst die Schreibauswahl. Weitere Frameworkmodule werden durch die Paketinstallation nicht automatisch persistiert.
 
 ## Zeit- und Resetmodell
 
-Jeder Lauf verwendet UTC-Zeitgrenzen. `SqlServerStartTimeUtc` und `ResetEpochId` verhindern, dass kumulative Zähler über einen SQL-Server-Neustart hinweg als durchgehendes Delta interpretiert werden.
+Jeder Lauf verwendet UTC-Zeitgrenzen. Performance Counter behalten ihren bestehenden Engine-Start-/Epochenvertrag. Waits speichern den nativen lokalen Startwert und Startticks getrennt vom UTC-Messfenster; ihr `SqlServerStartTimeUtc` bleibt NULL. Gleicher Enginekontext beweist keinen ausgebliebenen Waitreset.
 
 Metriken tragen ihren Werttyp und ihre Einheit in `MetricDefinition`. `MetricSample` speichert numerische, ganzzahlige oder textuelle Werte in getrennten Spalten. Ein partieller Read erzeugt keinen erfundenen Nullwert.
 
@@ -226,18 +225,16 @@ behalten ihren bisherigen Löschpfad.
 
 MetricSamples, Payloads, Modulstatus und nicht mehr referenzierte Scopes
 laufen weiterhin nach ihrer normalen Retention ab. Ein erhaltener Run ohne
-notwendige Rohdaten erlaubt keinen numerischen Vergleich. Diese Vorbereitung
-aktiviert keine Wait-Erfassung. Ein späterer Collector muss fehlende Kinder
-und die unmittelbar vorherige Fehlergrenze ausdrücklich berücksichtigen.
+notwendige Rohdaten erlaubt keinen numerischen Vergleich. Der Waitcollector berücksichtigt fehlende Kinder und die unmittelbar vorherige Fehlergrenze ausdrücklich.
 
 
-## Targetabschluss vor öffentlicher Wait-Aktivierung
+## Targetabschluss und öffentliche Wait-Aktivierung
 
 Die erste Targetquelle 030 prüft Kontext, bekannte Struktur und Seedkonflikte
 vor Produktänderungen. Sie markiert anschließend die Schema-2-Grundlage mit
 der vorläufigen Version 1.1.1. Erst die letzte Targetquelle 075 prüft die
 benötigten Helper und Signaturen, ergänzt fehlende kompatible Waitseeds und
-markiert 1.2.0. Ein unterbrochener SQLCMD-Lauf ist deshalb kein fertiger
+markiert 1.2.1. Ein unterbrochener SQLCMD-Lauf ist deshalb kein fertiger
 Wait-Paketstand. Die Standalone- und Gesamtinstaller behalten ihre jeweilige
 gesamte Transaktion und strikte Nachprüfung.
 
@@ -258,4 +255,24 @@ MONOTONIC_CONTINUITY_UNPROVEN mit IsPartial=1. Fehlende, partielle oder
 widersprüchliche Basisdaten unterdrücken Zahlen und erhalten einen Status.
 Die vier Rohwerte sind davon getrennt gemessene kumulative Werte; die maximale
 Waitzeit ist ein High-Water-Wert und besitzt keinen additiven Kandidaten.
-Diese internen Bausteine sind noch kein öffentlicher manueller Sammelaufruf.
+Die öffentliche Aktivierung erfolgt ausdrücklich über `@CollectorCode='WAIT_STATS'`
+an Konfiguration und Collection. Der Defaultpfad bleibt Performance Counter.
+Zwei interne Frameworkhelper prüfen die tatsächliche Zielidentität und führen
+Enabled-/Due-Prüfung, Purge, Vorbereitung, vollständigen Nativecache-Read,
+Waitabschluss und Ausgabe unter demselben Sessionlock zusammen. Signaturen,
+neun Metrikdefinitionen und Retentionsvertrag müssen tatsächlich passen;
+ein Versionsmarker allein genügt nicht. Die installierte Paketnamespace ist
+vertrauenswürdig; dies ist kein Integritätsnachweis gegen administrative
+Änderungen an Verfahren mit unveränderter Signatur.
+
+Neue Konfigurationsoptionen verlangen einen Caller ohne eigene oder implizite
+Transaktion. Mit `@UpdateSharedPolicy=1` besitzt der öffentliche Konfigurationspfad
+die gesamte Transaktion über beide Datenbanken; das interne Target nimmt nur
+mit ausdrücklichem Join teil. Mit `0` bleiben Frameworkzeile und gemeinsame
+Werte einschließlich eigener Retentionszuordnung erhalten.
+
+Bekannte Targets `1.2.0` werden mit ihren tatsächlich alten Helpern geprüft.
+Auch der Abbruch nach dem erneuten 030-Stadium `1.1.1` vor Umschreiben des
+Waithelpers ist wiederaufnehmbar, wenn dessen gespeicherter Code exakt dem
+veröffentlichten eigenen Stand entspricht. Fremde Definitionen werden nicht
+allgemein als eigener Zwischenstand anerkannt.

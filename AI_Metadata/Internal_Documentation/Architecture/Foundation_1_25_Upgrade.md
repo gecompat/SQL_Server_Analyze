@@ -362,3 +362,26 @@ Der abschließende lokale Upgradeversuch scheiterte zuvor mit 547 an der
 Anordnung eines ungültigen Case-Negativfalls unter dem vorhandenen CHECK.
 Die korrigierte Anordnung und unveränderte Erhaltungsprüfung bestehen
 bereits in der vollständigen nativen Deploymentregression der CI.
+
+### Verarbeitungsaufwand der öffentlichen Waitaktivierung
+
+Die Targetpatch-/Generatoränderung löst das vollständige SQL2025-Gate aus.
+Die zusätzlichen nativen SQL2019-Prüfungen bleiben auf Snapshotmigration,
+Quellrechte und Paketvertrag begrenzt; SQL2022 erhält ohne eigenes Risiko
+keinen zusätzlichen Lauf. Die unveränderte Backendsemantik wird nicht erneut
+breit reviewed. Derselbe unabhängige Reviewer prüft nur die neue öffentliche
+Orchestrierung, Transaktionsgrenze, Fixtureoracles und betroffenen Lesepfade.
+Konkrete Befunde werden gebündelt geschlossen; es gibt keinen Review des Reviews.
+
+Die vorige Welle erzeugte durch Ready-for-review einen zweiten vollständigen
+Lauf desselben Heads. Nach Auswahl des aktuellen Ready-Laufs wurde ausschließlich
+der überholte Duplikatlauf beendet. Ein vollständiger aktueller Head- und der
+getrennte Main-Nachlauf blieben erforderlich und bestehen. Ein bereits lokal
+geprüfter folgender Lieferkandidat wird regulär ohne zusätzliche Draft-/Ready-
+Umschaltung veröffentlicht, sofern kein konkreter Draftgrund vorliegt.
+
+Die lokale Entwicklung besitzt zwölf eigene native Versuche einschließlich
+Fehlversuchen und Recoveryproben. Der gemeinsame private Wellenzähler bleibt
+maßgeblich; ein Timer setzt ihn nicht zurück. Ganze grüne Logs werden nicht
+an das Modell oder den Reviewer weitergereicht. Token- und Kostenmessung
+bleiben UNKNOWN.

@@ -392,6 +392,7 @@ EXEC [monitor].[USP_RunSnapshotCollectionCycle]
 IF @Status<>'DISABLED' THROW 53739,N'SC023_DISABLED_CONTRACT_FAILED',1;
 
 :r ../Tests/Integration/223_SnapshotWaitStats_Target_Runtime_Contract.sql
+:r ../Tests/Integration/224_SnapshotWaitStats_Public_Runtime_Contract.sql
 
 PRINT N'SC023_RUNTIME_CONTRACT PASS';
 GO

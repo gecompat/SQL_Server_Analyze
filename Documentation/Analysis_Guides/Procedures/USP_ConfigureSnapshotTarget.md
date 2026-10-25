@@ -25,6 +25,35 @@ EXEC [monitor].[USP_ConfigureSnapshotTarget]
      @PayloadEnabled = 0;
 ```
 
+## Collectorwahl und gemeinsame Policy
+
+Die drei angehängten Parameter erhalten die bisherigen positionalen Aufrufe:
+
+| Parameter | Bedeutung |
+|---|---|
+| `@CollectorCode` | `PERFORMANCE_COUNTERS` ist der Default; `WAIT_STATS` wird ausdrücklich gewählt. |
+| `@CollectorEnabled` | Aktiviert oder deaktiviert ausschließlich die ausgewählte Collectorpolicy; Default ist `1`. |
+| `@UpdateSharedPolicy` | `NULL` bedeutet `1` für Performance Counter und `0` für Waits. Mit `0` bleiben Frameworkzeile, gemeinsame Retention und die bestehende Retentionszuordnung erhalten. Mit `1` werden gemeinsame Werte und ausgewählte Policy atomar aktualisiert. |
+
+Neue Collectoroptionen benötigen Targetversion `1.2.1` mit SchemaVersion `2`,
+einen passenden bestehenden Zielbezug bei `@UpdateSharedPolicy=0` und einen
+Aufruf ohne Callertransaktion mit `IMPLICIT_TRANSACTIONS OFF`. Die Procedure
+prüft die tatsächliche Zielkennung, den Erstellungszeitpunkt, die verwendeten
+Signaturen und den Retentionsvertrag. Ein Hilfeaufruf führt keine Sammlung aus.
+Bei gemeinsamer Konfiguration besitzt die öffentliche Procedure die gesamte
+Transaktion über beide Datenbanken. Ein Fehler rollt beide Änderungen zurück.
+
+Nach bestehender gemeinsamer Zielkonfiguration aktiviert dieser Aufruf nur Waits:
+
+```sql
+EXEC [monitor].[USP_ConfigureSnapshotTarget]
+     @TargetDatabaseName = N'ExampleSnapshotDatabase',
+     @CollectorCode = 'WAIT_STATS',
+     @CollectorEnabled = 1,
+     @UpdateSharedPolicy = 0,
+     @MaxRows = 1000;
+```
+
 ## Resultsets und Leserichtung
 
 Die Procedure besitzt kein fachliches Resultset. Lesen Sie `@StatusCodeOut`, `@IsPartialOut`, Fehlernummer und Fehlermeldung als Ergebnis genau dieses Konfigurationsversuchs. Prüfen Sie danach die persistierte Framework-Singletonzeile und die Zielpolicy getrennt. Ein `AVAILABLE`-Status bezieht sich auf die atomare Konfigurationsänderung, nicht auf einen Collection Cycle.
@@ -102,7 +131,7 @@ LEFT JOIN [master].[sys].[databases] AS [d] WITH (NOLOCK)
 WHERE [c].[ConfigurationId] = 1;
 ```
 
-**Wichtig für die Eigenlast:** Das Lesen ist trivial. Die Procedure ist jedoch ein Konfigurations-Schreibpfad: Sie validiert genau eine Zieldatenbank, aktualisiert zuerst deren Snapshotpolicy und danach die Framework-Singletonzeile in einer Transaktion.
+**Wichtig für die Eigenlast:** Das Lesen ist trivial. Die Procedure ist jedoch ein Konfigurations-Schreibpfad: Mit `@UpdateSharedPolicy=1` validiert sie genau eine Zieldatenbank und aktualisiert zuerst deren Policy und danach die Frameworkzeile innerhalb ihrer eigenen Transaktion. Mit `0` ändert sie nur die gewählte Collectorpolicy.
 
 ### Zeit- und Scope-Modell
 

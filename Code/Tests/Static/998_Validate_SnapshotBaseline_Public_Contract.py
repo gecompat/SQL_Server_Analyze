@@ -36,7 +36,9 @@ PUBLIC_CONTRACT = pathlib.PurePosixPath(
 EXPECTED_FRAMEWORK_INCLUDES = (
     "Code/00_Setup/000_Preflight_und_Schema.sql",
     "Code/10_SnapshotBaseline/010_SnapshotTargetConfiguration.sql",
+    "Code/10_SnapshotBaseline/076_InternalValidateSnapshotWaitTarget.sql",
     "Code/10_SnapshotBaseline/080_USP_ConfigureSnapshotTarget.sql",
+    "Code/10_SnapshotBaseline/085_InternalRunSnapshotWaitStatsCycle.sql",
     "Code/10_SnapshotBaseline/090_USP_RunSnapshotCollectionCycle.sql",
     "Code/10_SnapshotBaseline/100_USP_PurgeSnapshotData.sql",
 )
@@ -52,7 +54,7 @@ EXPECTED_TARGET_INCLUDES = (
     "Code/10_SnapshotBaseline/075_CompleteWaitStatsInstallation.sql",
 )
 
-EXPECTED_WAIT_TARGET_BACKEND = {'releaseState': 'INTERNAL_PREACTIVATION',
+EXPECTED_WAIT_TARGET_BACKEND = {'releaseState': 'IMPLEMENTED_TARGET_BACKEND',
  'collectorCode': 'WAIT_STATS',
  'defaultEnabled': False,
  'sourceSchemaVersion': 1,
@@ -69,6 +71,11 @@ EXPECTED_WAIT_TARGET_BACKEND = {'releaseState': 'INTERNAL_PREACTIVATION',
              {'code': 'WAIT_SIGNAL_TIME_MS_DELTA_CANDIDATE', 'valueType': 'BIGINT', 'unit': 'ms'},
              {'code': 'WAIT_DELTA_STATUS', 'valueType': 'STRING', 'unit': 'status'},
              {'code': 'WAIT_CAPTURE_CONTEXT', 'valueType': 'STRING', 'unit': 'json'}]}
+
+EXPECTED_WAIT_COLLECTOR = {'releaseState': 'IMPLEMENTED_ACTIONS_GATE', 'collectorCode': 'WAIT_STATS', 'defaultEnabled': False, 'source': 'sys.dm_os_wait_stats', 'fullNativeRead': True, 'engineContextBeforeAndAfter': True, 'helper': 'monitor.InternalRunSnapshotWaitStatsCycle', 'admissionHelper': 'monitor.InternalValidateSnapshotWaitTarget', 'modes': ['CONSOLE', 'RAW', 'TABLE', 'NONE'], 'jsonOutputContractVersion': 1, 'targetPackageVersion': '1.2.1', 'sharedConfigurationTransaction': 'FRAMEWORK_OWNED_EXPLICIT_JOIN', 'policyAdmission': 'READ_ONLY_BEFORE_PURGE', 'preservesCommittedCaptureOnProjectionFailure': True}
+
+FRAMEWORK_INTERNAL_PROCEDURES = ("InternalValidateSnapshotWaitTarget", "InternalRunSnapshotWaitStatsCycle")
+WAIT_ADMISSION_METHODS = ("InternalConfigureSnapshotPolicy", "InternalPrepareCollectionCycle", "InternalCompleteWaitStatsCycle", "InternalPurgeExpiredData")
 
 PUBLIC_APIS = (
     "USP_ConfigureSnapshotTarget",
@@ -130,6 +137,9 @@ EXPECTED_PARAMETERS: dict[str, tuple[ExpectedParameter, ...]] = {
         ExpectedParameter("IsPartialOut", "bit", "NULL", True),
         ExpectedParameter("ErrorNumberOut", "int", "NULL", True),
         ExpectedParameter("ErrorMessageOut", "nvarchar(2048)", "NULL", True),
+        ExpectedParameter("CollectorCode", "varchar(64)", "'PERFORMANCE_COUNTERS'"),
+        ExpectedParameter("CollectorEnabled", "bit", "1"),
+        ExpectedParameter("UpdateSharedPolicy", "bit", "NULL"),
     ),
     "USP_RunSnapshotCollectionCycle": (
         ExpectedParameter("SchedulerType", "varchar(16)", "'EXTERNAL'"),
@@ -145,6 +155,7 @@ EXPECTED_PARAMETERS: dict[str, tuple[ExpectedParameter, ...]] = {
         ExpectedParameter("IsPartialOut", "bit", "NULL", True),
         ExpectedParameter("ErrorNumberOut", "int", "NULL", True),
         ExpectedParameter("ErrorMessageOut", "nvarchar(2048)", "NULL", True),
+        ExpectedParameter("CollectorCode", "varchar(64)", "'PERFORMANCE_COUNTERS'"),
     ),
     "USP_PurgeSnapshotData": (
         ExpectedParameter("MaxBatches", "int", "10"),
@@ -363,14 +374,16 @@ def validate_repository(repository_root: pathlib.Path) -> list[str]:
                 errors.append("PUBLIC_CONTRACT_ID")
             if public_contract.get("contractVersion") != 1:
                 errors.append("PUBLIC_CONTRACT_VERSION")
-            if public_contract.get("targetPackageVersion") != "1.2.0" or public_contract.get("targetSchemaVersion") != 2:
+            if public_contract.get("targetPackageVersion") != "1.2.1" or public_contract.get("targetSchemaVersion") != 2:
                 errors.append("PUBLIC_CONTRACT_TARGET_SCHEMA_VERSION")
             if public_contract.get("acceptedTargetUpgrade") != {"packageVersion":"1.0.0","schemaVersion":1,"requiresExactManagedShape":True,"preservesExistingRows":True}:
                 errors.append("PUBLIC_CONTRACT_TARGET_UPGRADE")
             if public_contract.get("acceptedTargetPatchUpgrade") != {"packageVersion":"1.1.0","schemaVersion":2,"requiresExactManagedShape":True,"preservesExistingRows":True}:
                 errors.append("PUBLIC_CONTRACT_TARGET_PATCH_UPGRADE")
-            if public_contract.get("targetSchemaStageVersion") != "1.1.1" or public_contract.get("acceptedTargetBackendUpgradeVersions") != ["1.1.0", "1.1.1"]:
+            if public_contract.get("targetSchemaStageVersion") != "1.1.1" or public_contract.get("acceptedTargetBackendUpgradeVersions") != ["1.1.0", "1.1.1", "1.2.0"]:
                 errors.append("PUBLIC_CONTRACT_WAIT_UPGRADE_CLOSURE")
+            if public_contract.get("waitCollector") != EXPECTED_WAIT_COLLECTOR:
+                errors.append("PUBLIC_CONTRACT_WAIT_COLLECTOR")
             if public_contract.get("waitTargetBackend") != EXPECTED_WAIT_TARGET_BACKEND:
                 errors.append("PUBLIC_CONTRACT_WAIT_BACKEND")
             if public_contract.get("matrixWorkflow") != ".github/workflows/release-native-matrix.yml":
@@ -542,6 +555,45 @@ def validate_repository(repository_root: pathlib.Path) -> list[str]:
         if not match.group("name").startswith("Internal"):
             errors.append("TARGET_PUBLIC_PROCEDURE_FORBIDDEN")
 
+    for helper in FRAMEWORK_INTERNAL_PROCEDURES:
+        if sum(item.group("schema").casefold()=="monitor" and item.group("name")==helper for item in procedures)!=1:
+            errors.append("FRAMEWORK_INTERNAL_HELPER:"+helper)
+    admission_path=source_root / "076_InternalValidateSnapshotWaitTarget.sql"
+    acquisition_path=source_root / "085_InternalRunSnapshotWaitStatsCycle.sql"
+    admission=admission_path.read_text(encoding="utf-8-sig") if admission_path.is_file() else ""
+    literal=re.search(r"DECLARE @AdmissionSql nvarchar\(max\)=(N'(?:''|[^'])*');",admission,re.DOTALL)
+    expected_rows=set()
+    scalar={"sysname":(231,256),"smallint":(52,2),"int":(56,4),"bit":(104,1),"bigint":(127,8),"datetime":(61,8)}
+    for method in target_procedures:
+        name=method.group("name")
+        if name not in WAIT_ADMISSION_METHODS: continue
+        for parameter in parse_parameters(method.group("parameters")).values():
+            typ=parameter.data_type
+            if typ in scalar: sid,size=scalar[typ]
+            else:
+                variable=re.fullmatch(r"(n?varchar)\((max|\d+)\)",typ)
+                if not variable:
+                    errors.append("WAIT_ADMISSION_UNSUPPORTED_TYPE:"+typ)
+                    continue
+                kind,length=variable.groups();sid=167 if kind=="varchar" else 231
+                size=-1 if length=="max" else int(length)*(2 if kind=="nvarchar" else 1)
+            expected_rows.add((name,"@"+parameter.name,sid,size,int(parameter.output)))
+    if literal is None:
+        errors.append("WAIT_ADMISSION_CONTRACT_BODY")
+    else:
+        body=literal.group(1)[2:-1].replace("''", "'")
+        marker=re.search(r"-- WAIT_ADMISSION_PARAMETERS_BEGIN(.*?)-- WAIT_ADMISSION_PARAMETERS_END",body,re.DOTALL)
+        rows=[] if marker is None else [(a,b,int(c),int(d),int(e)) for a,b,c,d,e in re.findall(r"\(N'([^']+)',N'([^']+)',(\d+),(-?\d+),([01])\)",marker.group(1))]
+        if marker is None or len(rows)!=len(set(rows)) or set(rows)!=expected_rows:
+            errors.append("WAIT_ADMISSION_PARAMETER_BINDING")
+    acquisition=acquisition_path.read_text(encoding="utf-8-sig") if acquisition_path.is_file() else ""
+    native_reads=list(re.finditer(r"\bFROM\s+\[sys\]\.\[dm_os_wait_stats\]",acquisition,re.IGNORECASE))
+    native_cache=re.search(r"INSERT\s+@WaitRows\s*\([^;]*?\)\s*SELECT(?P<projection>[^;]+?)FROM\s+\[sys\]\.\[dm_os_wait_stats\]\s+WITH\s*\(NOLOCK\)\s*;",acquisition,re.IGNORECASE)
+    if len(native_reads)!=1 or native_cache is None or re.search(r"\bTOP\b",native_cache.group("projection"),re.IGNORECASE):
+        errors.append("WAIT_NATIVE_FULL_CACHE_READ")
+    if len(re.findall(r"\bFROM\s+\[sys\]\.\[dm_os_sys_info\]",acquisition,re.IGNORECASE))!=2:
+        errors.append("WAIT_NATIVE_ENGINE_CONTEXT_READS")
+
     for label, text in (("FRAMEWORK", framework_text), ("TARGET", target_text)):
         for rule_code, pattern in FORBIDDEN_MUTATIONS:
             if pattern.search(text):
@@ -586,7 +638,10 @@ CREATE OR ALTER PROCEDURE [monitor].[USP_ConfigureSnapshotTarget]
       @PurgeIntervalMinutes smallint = 60,
       @PurgeBatchRows int = 10000,
       @BudgetAction varchar(32) = 'PURGE_EXPIRED_THEN_STOP',
-      {common_parameters}
+      {common_parameters},
+      @CollectorCode varchar(64) = 'PERFORMANCE_COUNTERS',
+      @CollectorEnabled bit = 1,
+      @UpdateSharedPolicy bit = NULL
 AS BEGIN SET NOCOUNT ON; END;
 GO
 CREATE OR ALTER PROCEDURE [monitor].[USP_RunSnapshotCollectionCycle]
@@ -602,7 +657,8 @@ CREATE OR ALTER PROCEDURE [monitor].[USP_RunSnapshotCollectionCycle]
       @StatusCodeOut varchar(40) = NULL OUTPUT,
       @IsPartialOut bit = NULL OUTPUT,
       @ErrorNumberOut int = NULL OUTPUT,
-      @ErrorMessageOut nvarchar(2048) = NULL OUTPUT
+      @ErrorMessageOut nvarchar(2048) = NULL OUTPUT,
+      @CollectorCode varchar(64) = 'PERFORMANCE_COUNTERS'
 AS BEGIN SET NOCOUNT ON; END;
 GO
 CREATE OR ALTER PROCEDURE [monitor].[USP_PurgeSnapshotData]
@@ -644,6 +700,14 @@ GO
     for relative_path in EXPECTED_TARGET_INCLUDES[1:]:
         path = root / relative_path
         path.write_text("-- self-test source included in target contract\n", encoding="utf-8")
+    (root / SOURCE_ROOT / "076_InternalValidateSnapshotWaitTarget.sql").write_text(
+        "CREATE OR ALTER PROCEDURE [monitor].[InternalValidateSnapshotWaitTarget]\nAS BEGIN\n"
+        "DECLARE @AdmissionSql nvarchar(max)=N'-- WAIT_ADMISSION_PARAMETERS_BEGIN\n-- WAIT_ADMISSION_PARAMETERS_END';\nEND;\nGO\n",encoding="utf-8")
+    (root / SOURCE_ROOT / "085_InternalRunSnapshotWaitStatsCycle.sql").write_text(
+        "CREATE OR ALTER PROCEDURE [monitor].[InternalRunSnapshotWaitStatsCycle]\nAS BEGIN\n"
+        "DECLARE @WaitRows TABLE(WaitType nvarchar(60)); SELECT sqlserver_start_time FROM [sys].[dm_os_sys_info] WITH (NOLOCK);\n"
+        "INSERT @WaitRows(WaitType) SELECT wait_type FROM [sys].[dm_os_wait_stats] WITH (NOLOCK);\n"
+        "SELECT sqlserver_start_time FROM [sys].[dm_os_sys_info] WITH (NOLOCK); END;\nGO\n",encoding="utf-8")
     setup_path = root / EXPECTED_FRAMEWORK_INCLUDES[0]
     setup_path.parent.mkdir(parents=True, exist_ok=True)
     setup_path.write_text("-- self-test preflight\n", encoding="utf-8")
@@ -673,11 +737,12 @@ GO
             {
                 "contractId": "SC-023-PUBLIC-V1",
                 "contractVersion": 1,
-                "targetPackageVersion": "1.2.0",
+                "targetPackageVersion": "1.2.1",
                 "targetSchemaVersion": 2,
                 "targetSchemaStageVersion": "1.1.1",
-                "acceptedTargetBackendUpgradeVersions": ["1.1.0", "1.1.1"],
+                "acceptedTargetBackendUpgradeVersions": ["1.1.0", "1.1.1", "1.2.0"],
                 "waitTargetBackend": EXPECTED_WAIT_TARGET_BACKEND,
+                "waitCollector": EXPECTED_WAIT_COLLECTOR,
                 "acceptedTargetUpgrade": {"packageVersion":"1.0.0","schemaVersion":1,"requiresExactManagedShape":True,"preservesExistingRows":True},
                 "acceptedTargetPatchUpgrade": {"packageVersion":"1.1.0","schemaVersion":2,"requiresExactManagedShape":True,"preservesExistingRows":True},
                 "matrixWorkflow": ".github/workflows/release-native-matrix.yml",
@@ -706,6 +771,18 @@ def run_self_test() -> None:
         if good_errors:
             raise AssertionError("positive self-test failed: " + ",".join(good_errors))
 
+        acquisition_path=good_root / SOURCE_ROOT / "085_InternalRunSnapshotWaitStatsCycle.sql"
+        acquisition_text=acquisition_path.read_text(encoding="utf-8")
+        acquisition_path.write_text(acquisition_text.replace("SELECT wait_type FROM", "SELECT TOP(1) wait_type FROM"),encoding="utf-8")
+        if "WAIT_NATIVE_FULL_CACHE_READ" not in validate_repository(good_root):
+            raise AssertionError("capped native source read was accepted")
+        acquisition_path.write_text(acquisition_text,encoding="utf-8")
+        target_path=good_root / EXPECTED_TARGET_INCLUDES[0]
+        target_text=target_path.read_text(encoding="utf-8")
+        target_path.write_text(target_text.replace("[snapshot].[InternalPrepareCollectionCycle]\nAS", "[snapshot].[InternalPrepareCollectionCycle]\n @PolicyOnly bit=0\nAS"),encoding="utf-8")
+        if "WAIT_ADMISSION_PARAMETER_BINDING" not in validate_repository(good_root):
+            raise AssertionError("stale runtime admission prototype was accepted")
+        target_path.write_text(target_text,encoding="utf-8")
         backend_path = good_root / PUBLIC_CONTRACT
         backend_manifest = json.loads(backend_path.read_text(encoding="utf-8"))
         backend_manifest["waitTargetBackend"]["defaultEnabled"] = True

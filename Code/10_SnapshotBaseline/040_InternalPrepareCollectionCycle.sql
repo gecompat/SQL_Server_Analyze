@@ -1,7 +1,7 @@
 /*
 ===============================================================================
 Objekt       : snapshot.InternalPrepareCollectionCycle
-Version      : 1.1.0
+Version      : 1.2.0
 Stand        : 2026-10-25
 Zweck        : Prüft Intervall und Größenbudget und eröffnet genau einen Lauf.
 ===============================================================================
@@ -18,6 +18,7 @@ CREATE OR ALTER PROCEDURE [snapshot].[InternalPrepareCollectionCycle]
     , @ExpectedTargetDatabaseId int = NULL
     , @ExpectedTargetDatabaseName sysname = NULL
     , @ExpectedTargetCreateDate datetime = NULL
+    , @PolicyOnly bit = 0
 AS
 BEGIN
     SET NOCOUNT ON;
@@ -34,6 +35,7 @@ BEGIN
 
     SET @CollectorCode=UPPER(LTRIM(RTRIM(COALESCE(@CollectorCode,''))));
     IF @CollectorCode NOT IN ('PERFORMANCE_COUNTERS','WAIT_STATS')
+       OR @PolicyOnly IS NULL OR (@PolicyOnly=1 AND @CollectorCode<>'WAIT_STATS')
        OR (@CollectorCode='WAIT_STATS' AND (@@TRANCOUNT<>0 OR (@@OPTIONS & 2)<>0))
     BEGIN
         SELECT @StatusCodeOut='INVALID_PARAMETER',
@@ -63,14 +65,14 @@ BEGIN
     IF @CollectorCode='WAIT_STATS' AND
        ((SELECT COUNT_BIG(*) FROM [snapshot].[PackageVersion])<>1 OR NOT EXISTS
           (SELECT 1 FROM [snapshot].[PackageVersion] WHERE CONVERT(varbinary(max),[PackageCode])=CONVERT(varbinary(max),'SC-023')
-           AND CONVERT(varbinary(max),[PackageVersion])=CONVERT(varbinary(max),'1.2.0') AND [SchemaVersion]=2)
+           AND CONVERT(varbinary(max),[PackageVersion])=CONVERT(varbinary(max),'1.2.1') AND [SchemaVersion]=2)
         OR NOT EXISTS(SELECT 1 FROM [sys].[procedures] AS [wp] WITH (NOLOCK) JOIN [sys].[schemas] AS [ws] WITH (NOLOCK) ON [ws].[schema_id]=[wp].[schema_id] WHERE CONVERT(varbinary(max),[ws].[name])=CONVERT(varbinary(max),N'snapshot') AND CONVERT(varbinary(max),[wp].[name])=CONVERT(varbinary(max),N'InternalCompleteWaitStatsCycle'))
         OR NOT EXISTS(SELECT 1 FROM [sys].[parameters] AS [p] WITH (NOLOCK)
                       WHERE [p].[object_id] IN(SELECT [hp].[object_id] FROM [sys].[procedures] AS [hp] WITH (NOLOCK) JOIN [sys].[schemas] AS [hs] WITH (NOLOCK) ON [hs].[schema_id]=[hp].[schema_id] WHERE CONVERT(varbinary(max),[hs].[name])=CONVERT(varbinary(max),N'snapshot') AND CONVERT(varbinary(max),[hp].[name])=CONVERT(varbinary(max),N'InternalPurgeExpiredData'))
                         AND CONVERT(varbinary(max),[p].[name])=CONVERT(varbinary(max),N'@ContractOnly')))
     BEGIN
         SELECT @StatusCodeOut='TARGET_UNAVAILABLE',
-               @ErrorMessageOut=N'Das vollständig installierte Wait-Target 1.2.0 fehlt.';
+               @ErrorMessageOut=N'Das vollständig installierte Wait-Target 1.2.1 fehlt.';
         RETURN;
     END;
 
@@ -84,6 +86,19 @@ BEGIN
 
     IF @IntervalSeconds IS NULL
         SELECT @StatusCodeOut='DISABLED',@ErrorMessageOut=CASE WHEN @CollectorCode='PERFORMANCE_COUNTERS' THEN N'Der Performance-Counter-Sammler ist deaktiviert.' ELSE N'Der Wait-Sammler ist deaktiviert.' END;
+
+    IF @PolicyOnly=1
+    BEGIN
+        SELECT TOP(1) @LastCompletedUtc=[EndedAtUtc]
+        FROM [snapshot].[CaptureRun]
+        WHERE [CollectorCode]='WAIT_STATS' AND [EndedAtUtc] IS NOT NULL
+        ORDER BY [CaptureRunId] DESC;
+        IF @StatusCodeOut='AVAILABLE' AND @RunEvenIfNotDue=0 AND @LastCompletedUtc IS NOT NULL
+           AND DATEADD(SECOND,@IntervalSeconds,@LastCompletedUtc)>@Now
+            SELECT @StatusCodeOut='SKIPPED_NOT_DUE',@ErrorMessageOut=N'Das konfigurierte Sammlerintervall ist noch nicht abgelaufen.';
+        -- Budget is checked after the real purge in the normal preparation path.
+        RETURN;
+    END;
 
     SELECT @UsedDataMB=CONVERT(decimal(19,3),COALESCE(SUM(CONVERT(decimal(38,3),[size]))*8.0/1024.0,0))
     FROM [sys].[database_files] WITH (NOLOCK)

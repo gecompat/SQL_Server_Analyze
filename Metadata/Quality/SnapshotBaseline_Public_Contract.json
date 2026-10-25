@@ -58,7 +58,8 @@
     "DENIED_PERMISSION",
     "STOPPED_SIZE_BUDGET",
     "INVALID_PARAMETER",
-    "ERROR_HANDLED"
+    "ERROR_HANDLED",
+    "UNAVAILABLE_OBJECT"
   ],
   "invariants": [
     "No source read occurs for disabled, not-due, concurrent, unavailable-target or stopped-budget cycles.",
@@ -70,7 +71,7 @@
   ],
   "runtimeContract": "Code/Tests/Integration/195_SnapshotBaseline_Runtime_Contract.sql",
   "matrixWorkflow": ".github/workflows/release-native-matrix.yml",
-  "targetPackageVersion": "1.2.0",
+  "targetPackageVersion": "1.2.1",
   "targetSchemaVersion": 2,
   "acceptedTargetUpgrade": {
     "packageVersion": "1.0.0",
@@ -87,10 +88,11 @@
   "targetSchemaStageVersion": "1.1.1",
   "acceptedTargetBackendUpgradeVersions": [
     "1.1.0",
-    "1.1.1"
+    "1.1.1",
+    "1.2.0"
   ],
   "waitTargetBackend": {
-    "releaseState": "INTERNAL_PREACTIVATION",
+    "releaseState": "IMPLEMENTED_TARGET_BACKEND",
     "collectorCode": "WAIT_STATS",
     "defaultEnabled": false,
     "sourceSchemaVersion": 1,
@@ -145,5 +147,26 @@
         "unit": "json"
       }
     ]
+  },
+  "waitCollector": {
+    "releaseState": "IMPLEMENTED_ACTIONS_GATE",
+    "collectorCode": "WAIT_STATS",
+    "defaultEnabled": false,
+    "source": "sys.dm_os_wait_stats",
+    "fullNativeRead": true,
+    "engineContextBeforeAndAfter": true,
+    "helper": "monitor.InternalRunSnapshotWaitStatsCycle",
+    "admissionHelper": "monitor.InternalValidateSnapshotWaitTarget",
+    "modes": [
+      "CONSOLE",
+      "RAW",
+      "TABLE",
+      "NONE"
+    ],
+    "jsonOutputContractVersion": 1,
+    "targetPackageVersion": "1.2.1",
+    "sharedConfigurationTransaction": "FRAMEWORK_OWNED_EXPLICIT_JOIN",
+    "policyAdmission": "READ_ONLY_BEFORE_PURGE",
+    "preservesCommittedCaptureOnProjectionFailure": true
   }
 }
