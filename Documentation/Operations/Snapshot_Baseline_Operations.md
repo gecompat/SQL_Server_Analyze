@@ -195,4 +195,4 @@ Der Purge arbeitet child-first und begrenzt jede Löschschleife durch `PurgeBatc
 
 ## Abnahmegrenze
 
-Der Paketvertrag ist für Installertrennung, Idempotenz, Collection, Reset-Epoche, optionale Payloadverlustfreiheit, Retention, Größenstopp und Zwei-Session-Concurrency auf SQL Server 2019, 2022 und 2025 nachgewiesen. Die Plattform- und Evidenzgrenzen stehen in der [Testmatrix](../Quality/Test_Matrix.md).
+Der ursprüngliche Performance-Counter-Paketvertrag besitzt Nachweise für Installertrennung, Idempotenz, Collection, Reset-Epoche, Payloadverlustfreiheit, Retention, Größenstopp und Zwei-Session-Concurrency auf SQL Server 2019, 2022 und 2025. Die öffentliche Waiterweiterung erhält ihre eigene SQL2025-Abnahme und gezielte native SQL2019-Snapshot-Risikoqualifizierung; daraus folgt kein neuer separater SQL2022-Lauf. Historische Nachweise und Plattformgrenzen stehen in der [Testmatrix](../Quality/Test_Matrix.md).

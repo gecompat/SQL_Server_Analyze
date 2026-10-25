@@ -1112,7 +1112,7 @@ Quelle: `Code/10_SnapshotBaseline/076_InternalValidateSnapshotWaitTarget.sql`
 | Dimension | Beschreibung |
 |---|---|
 | Aufgabe | Prüft die tatsächliche Wait-Zielidentität, Abschlussversion, verwendeten Signaturen, neun Metrikdefinitionen und den lesenden Retentionsvertrag. |
-| Schnittstelle | Zielname und optional erwartete ID/Erstellungszeit; OUTPUT liefert die tatsächliche ID, Erstellungszeit, Status und Fehlergrenze. |
+| Schnittstelle | Zielname und optional erwartete ID/Erstellungszeit; OUTPUT liefert die tatsächliche ID, Erstellungszeit, Status und Fehlergrenze. Der Retentionsprobeaufruf muss Vertragsversion 1, AVAILABLE und keine Fehlernummer bestätigen; Run-ID und Budgetsignal bleiben leer beziehungsweise null. Eine abweichende Signatur verhindert die Aufnahme vor Writes. |
 | Verwendung | Konfiguration und Collection verwenden denselben internen Aufnahmevertrag. Anwendungen verwenden die öffentlichen Snapshot-Procedures. |
 | Last und Sperren | Wenige Katalog- und Policyreads ohne persistente Writes; der Retentionsaufruf verwendet ausschließlich ContractOnly. |
 | Vertrag | Ein Versionsmarker allein reicht nicht. Der interne Vertrag setzt eine vertrauenswürdige installierte Paketnamespace voraus; er beweist keine administrative Codeintegrität. |
