@@ -1,5 +1,6 @@
 USE [DeineDatenbank];
 GO
+
 /*
 Objekt       : monitor.USP_CurrentCallerPermissionAnalysis
 Version      : 1.0.0

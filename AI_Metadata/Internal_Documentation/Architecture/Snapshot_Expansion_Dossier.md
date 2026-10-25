@@ -624,3 +624,23 @@ SQL2019-Snapshot-/Migrationsrisikogate sind noch auszuführen. Lokale Ergebnisse
 ersetzen diese Required Checks nicht. WAIT_CAPTURE_CONTEXT und der spätere
 Wait-Collector bleiben offen; neue WAIT-Policies oder Metriken werden mit
 dieser Welle nicht geliefert.
+
+
+### Erstes Remote-Paketgate und Installerkontextkorrektur
+
+Das native SQL2019-Paketgate 40207013284 besteht am Lieferkandidaten f31f9fae
+mit tatsächlicher Snapshot-/Migrationsrisikoauswahl. Paketvalidierung,
+Core-Release-Gate, Berechtigungen, gefülltes Deployment, Snapshot- und
+Nebenläufigkeitsverträge sowie Cleanup bestehen. Dieser Erfolg gehört zu
+diesem Head und wird nicht still auf einen späteren Paketdigest übertragen.
+
+Die Dokumentations-CI desselben Heads scheitert im unveränderten allgemeinen
+Standalone-Installertest 191. Drei bereits in der Basis vorhandene Quellen
+hatten unmittelbar nach dem führenden GO keine Leerzeile; der bestehende
+Builder entfernte deshalb ihre USE-Header nicht. Je eine zusätzliche Leerzeile
+in CurrentCallerPermissionAnalysis, InternalSsisScopePathMatch und
+InternalSsisExecutionScopes stellt den vorgesehenen einen Installerkontext
+her. Der lokale Tokenvergleich belegt identisches ausführbares T-SQL; der
+unabhängige mechanische Delta-Review bestätigt dies. Die unveränderten
+Installertests 191, 192 und 194 bestehen danach. Der frühere Fehllauf bleibt
+erhalten; neue erforderliche Gates binden den korrigierten Lieferhead.
