@@ -45,6 +45,7 @@
     "AI_Metadata/Internal_Documentation/Architecture/Long_Term_Development_Roadmap.md",
     "AI_Metadata/Internal_Documentation/Architecture/Runtime_Data_and_Repository_Privacy.md",
     "AI_Metadata/Internal_Documentation/Quality/Next_Steps.md",
+    "AI_Metadata/Internal_Documentation/Quality/Development_Waves_2026-10.md",
     "AI_Metadata/Internal_Documentation/Quality/Release_Gate_Runbook.md",
     "AI_Metadata/PROJECT_CONTEXT.md",
     "AI_Metadata/Rule_Context_Cache.md",
@@ -182,6 +183,12 @@
     ]
   },
   "semantic_dependencies": {
+    "AI_Metadata/Internal_Documentation/Quality/Development_Waves_2026-10.md": [
+      "AGENTS.md",
+      "AI_Metadata/ARTIFACT_IDENTITY_AND_NOMENCLATURE.md",
+      ".ai/foundation/PROCESSING_EFFICIENCY_POLICY.md",
+      "Documentation/Quality/CI_Test_Strategy.md"
+    ],
     ".ai/foundation/AI_REPOSITORY_FOUNDATION_NOTICE.md": [
       "AGENTS.md"
     ],
@@ -333,6 +340,7 @@
     ],
     "AI_Metadata/Internal_Documentation/Architecture/Long_Term_Development_Roadmap.md": [
       "AGENTS.md",
+      "AI_Metadata/Internal_Documentation/Quality/Development_Waves_2026-10.md",
       "AI_Metadata/Internal_Documentation/Quality/Next_Steps.md",
       "Documentation/Quality/CI_Test_Strategy.md"
     ],
@@ -341,6 +349,7 @@
     ],
     "AI_Metadata/Internal_Documentation/Quality/Next_Steps.md": [
       ".ai/foundation/DOCUMENTATION_POLICY.md",
+      "AI_Metadata/Internal_Documentation/Quality/Development_Waves_2026-10.md",
       "AGENTS.md",
       "AI_Metadata/PROJECT_CONTEXT.md",
       "AI_Metadata/Internal_Documentation/Quality/Release_Gate_Runbook.md",
@@ -412,6 +421,7 @@
     ],
     "AI_Metadata/Internal_Documentation/Architecture/Foundation_1_25_Upgrade.md": [
       "AGENTS.md",
+      "AI_Metadata/Internal_Documentation/Quality/Development_Waves_2026-10.md",
       "AI_Metadata/Internal_Documentation/Architecture/Foundation_1_25_Upgrade_Assessment.json",
       ".ai/foundation/DOCUMENTATION_POLICY.md",
       "AI_Metadata/Internal_Documentation/Quality/Next_Steps.md",
@@ -420,6 +430,16 @@
     ]
   },
   "excluded_references": [
+    {
+      "source": "AI_Metadata/Internal_Documentation/Quality/Development_Waves_2026-10.md",
+      "target": "Metadata/Quality/Implementation_Status.csv",
+      "classification": "product-reference"
+    },
+    {
+      "source": "AI_Metadata/Internal_Documentation/Quality/Development_Waves_2026-10.md",
+      "target": "Metadata/Quality/Diagnostic_Coverage_Landscape.csv",
+      "classification": "product-reference"
+    },
     {
       "source": "AI_Metadata/Internal_Documentation/Quality/Next_Steps.md",
       "target": "Documentation/Architecture/SSIS_Analyze_Toolbelt_Exchange_Contract.md",
