@@ -652,3 +652,36 @@ entfallende redundante USE-/GO-Zeilen aus den drei korrigierten Quellen.
 Sein unveränderter strenger Quellenvergleich besteht danach mit acht
 Repräsentationsfällen. Der Test wurde nicht abgeschwächt; das abgeleitete
 Artefakt und die kanonischen Quellen werden gemeinsam geliefert.
+
+
+### Gezielter älterer Versionsumfang und offene Vollrun-Befunde
+
+Am Head d286e9f5 besteht die vollständige statische CI. Der native Vollrun
+40208646875 scheitert in Versuch 1 und im begrenzten Versuch 2 vor Snapshot
+in Legacy202 an TARGET_SCHEMA_ADAPT / 51010, einmal findings C022, danach
+iterations C012. Cleanup ist jeweils bestätigt. Die unveränderte 202-Fixture
+besteht isoliert lokal auf SQL2019. Die SQL2025-Head-CI 40208610598 scheitert
+im bestehenden Standalone-Plan-Test mit 1222 in CreateExecutionEvidenceJson.
+Der frühere 2eaba0cc-Lauf scheiterte an CONT-PAGE / 54504. Ursachen bleiben
+UNKNOWN; ein weiterer unveränderter blinder Wiederlauf ist nicht vorgesehen.
+
+Ein unabhängiger Scopecheck bestätigt den gemäß kanonischer 1+0+N-Strategie
+zulässigen expliziten Modus SNAPSHOT_SCHEMA_RISK. Der volle primäre SQL2025-
+Required-Check und der Default FULL_RELEASE werden nicht eingeschränkt.
+Die native Risikoabnahme prüft commit-/paketgebunden Frameworkinstallation
+und Smoke, drei Snapshot-Migrationsrouten und Erhaltung, Caller-/Options-
+und gezielte Installationsrechte sowie Snapshot und Nebenläufigkeit. Die
+Evidenz erklärt Core-Release und dessen allgemeine Berechtigungsmatrix als
+NOT_EXECUTED. Ein eigenes Artefakt und der scopegebundene Validator verhindern
+die Ausgabe eines vollständigen nativen Releaseerfolgs. Die gescheiterten
+Vollruns bleiben als offene allgemeine TABLE-/Temp-DDL-Zuverlässigkeit sichtbar.
+
+
+Der neue gezielte native Rechtescope besteht lokal auf SQL2019: Ein eigener
+synthetischer Login mit CONTROL DATABASE und VIEW ANY DEFINITION kann den
+kanonischen Targetbatch ausführen. Der Entzug jeweils einer Voraussetzung
+liefert den erwarteten Fehler 53901 ohne Daten-/Strukturänderung. Eigene
+Principals und das Lab werden bereinigt. Die neuen statischen Scope-/
+Evidenzgegenfälle bestehen für FULL_RELEASE-Defaults und SNAPSHOT_SCHEMA_RISK,
+einschließlich Abweisung falscher Vollerfolgsangaben. Eine Remoteausführung
+dieses expliziten Modus ist vor dessen Code-/Scopefolgecheck noch nicht erfolgt.

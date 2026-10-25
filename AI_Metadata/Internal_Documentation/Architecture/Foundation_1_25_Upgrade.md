@@ -234,3 +234,44 @@ Validatoren besteht am ersten Kandidaten; nach dessen Korrektur werden nur
 die tatsächlich betroffenen Installer-, Grammar-, Privacy-, Stil- und
 Regelkontextprüfungen wiederholt. Die regulären erforderlichen Head-Checks
 und die native Risikoprüfung bleiben am Liefercommit bestehen.
+
+
+### Ausdrückliche native Snapshot-Risikoabnahme
+
+Zwei native Vollpässe standen späteren Legacy-TABLE-Timeouts gegenüber.
+Der aktuelle Volllauf und sein einmaliger begrenzter Wiederlauf scheiterten
+vor Snapshot in Legacy202 an verschiedenen lokalen TABLE-Resultsets;
+die isolierte unveränderte 202-Abnahme auf SQL2019 bestand. Eine Sperrursache
+ist nicht belegt. Zusätzlich scheiterte eine SQL2025-Vollprüfung im bestehenden
+Standalone-Plan-Test mit 1222. Diese Ergebnisse bleiben FAILED beziehungsweise
+UNKNOWN und werden nicht zu Infrastrukturfehlern oder Erfolgen umklassifiziert.
+
+Die kanonische Strategie und die maschinenlesbare Policy verlangen beim
+zusätzlichen nativen Versionsrisiko betroffene Tests mit Smoke, während das
+volle primäre SQL2025-Gate und der Release-Candidate-Umfang erhalten bleiben.
+Der unabhängige Scopecheck bestätigt daher einen ausdrücklich ausgewählten
+SNAPSHOT_SCHEMA_RISK-Modus für genau eine Engine. FULL_RELEASE bleibt Default.
+Die vorbereitete Paketinstallation, Native-Metadaten-/CHECK-Migrationen,
+Erhaltung, Caller- und gezielte Berechtigungsfälle sowie Snapshot-/Concurrency-
+Verträge und Cleanup bleiben Pflicht. Das Paket wird am tatsächlichen Commit
+und Digest gebunden; ein fehlender Vertrag oder abweichender Scope verhindert
+Aggregaterfolg. Der neue Modus weist den nicht ausgeführten Core-Vollumfang
+aus und erhält ein eigenes Artefaktlabel. Die alte Matrix kann daraus keinen
+Full-Release-Erfolg ableiten.
+
+Snapshot ruft PerformanceCounters und seine öffentlichen Ausgabehelper auf;
+die installierte Legacy-SSIS-Analyse wird nicht fachlich ausgeführt. Der
+unveränderte gemeinsame TABLE-Helper wird durch den erforderlichen Snapshot-
+TABLE-Consumer geprüft. Keine Legacy-Implementierung wird in dieser Welle
+geändert; die drei Sourceheaderkorrekturen sind als identische SQL-Tokenströme
+belegt. Die isolierte Core-/Planzuverlässigkeit bleibt als konkreter späterer
+Qualitätsscope sichtbar. Eine unerfüllte Snapshot- oder primäre SQL2025-
+Prüfung wird durch den Modus nicht übersprungen.
+
+Der Modus wird vor seiner ersten Ausführung in Strategie, Workflow,
+Scope-/Evidenzvalidator und dieser Bewertung festgelegt. Ein vorhandener
+Reviewer prüft nur die Auswahl-/Aggregationsgrenze und die neuen gezielten
+Rechtefälle. Die lokalen Scope- und Evidenztests benötigen keine SQL-Instanz;
+der zusätzliche native Lauf führt fünf ausdrücklich benannte Vertragsgruppen
+aus. Ganze grüne Logs und unveränderte Blocker erzeugen keine Folgearbeit.
+Notwendige Required Checks am neuen Lieferhead laufen weiterhin regulär.

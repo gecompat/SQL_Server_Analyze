@@ -18,6 +18,14 @@ on:
         required: false
         type: boolean
         default: false
+      qualification_scope:
+        description: 'Full release qualification or only the affected native Snapshot schema risk'
+        required: true
+        type: choice
+        default: FULL_RELEASE
+        options:
+          - FULL_RELEASE
+          - SNAPSHOT_SCHEMA_RISK
 
 permissions:
   contents: read
@@ -34,11 +42,21 @@ jobs:
       matrix: ${{ steps.matrix.outputs.matrix }}
 
     steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+          show-progress: false
       - id: matrix
         name: Build requested target matrix
         shell: bash
         run: |
           set -euo pipefail
+          python3 - <<'PY'
+          import sys
+          sys.path.insert(0,'Code/Tests/Static')
+          from Validate_Release_Package import native_qualification_plan
+          native_qualification_plan('${{ inputs.target }}','${{ inputs.qualification_scope }}','${{ inputs.snapshot_risk_gate }}'=='true')
+          PY
           if [ '${{ inputs.snapshot_risk_gate }}' = 'true' ] && [ '${{ inputs.target }}' = 'all' ]; then
             echo 'Snapshot risk qualification requires one explicit native target.'
             exit 1
@@ -65,6 +83,7 @@ jobs:
 
   package:
     name: Build and validate immutable release ZIP
+    needs: select
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     outputs:
@@ -102,7 +121,7 @@ jobs:
 
   native:
     needs: [select, package]
-    name: SQL Server ${{ matrix.version }} native release gate
+    name: SQL Server ${{ matrix.version }} native ${{ inputs.qualification_scope == 'SNAPSHOT_SCHEMA_RISK' && 'Snapshot schema risk gate' || 'release gate' }}
     runs-on: ubuntu-24.04
     timeout-minutes: 45
     strategy:
@@ -142,10 +161,12 @@ jobs:
           cp -R "$release_root/Code" "$RUNNER_TEMP/Code"
           find "$RUNNER_TEMP/Code" -type f -name '*.sql' -print0 \
             | xargs -0 perl -pi -e 's/\[DeineDatenbank\]/[SQLServerAnalyzeTest]/g'
-          if [ '${{ matrix.version }}' = '2025' ] || [ '${{ inputs.snapshot_risk_gate }}' = 'true' ]; then
+          if [ '${{ matrix.version }}' = '2025' ] || [ '${{ inputs.snapshot_risk_gate }}' = 'true' ] || [ '${{ inputs.qualification_scope }}' = 'SNAPSHOT_SCHEMA_RISK' ]; then
+            snapshot_scope_args=()
+            if [ '${{ inputs.qualification_scope }}' = 'SNAPSHOT_SCHEMA_RISK' ]; then snapshot_scope_args+=(--snapshot-schema-only); fi
             python3 "$release_root/Code/Tests/Integration/Deployment_Prepare_Runtime.py" \
               --packaged-installer "$release_root/Code/Install/generated/Deploy_All_WithSnapshotBaseline.generated.sql" \
-              --output "$RUNNER_TEMP/Code/Install/generated/Deployment_Runtime.generated.sql"
+              --output "$RUNNER_TEMP/Code/Install/generated/Deployment_Runtime.generated.sql" "${snapshot_scope_args[@]}"
             python3 - <<'PY'
           import os, pathlib
           root = pathlib.Path(os.environ['RUNNER_TEMP'])/'Code'
@@ -336,7 +357,20 @@ jobs:
               compatibility_level=int(fields[1]), collation=fields[2], platform=fields[3])))
           PY
 
+      - name: Run installed framework smoke for Snapshot schema risk
+        if: inputs.qualification_scope == 'SNAPSHOT_SCHEMA_RISK'
+        shell: bash
+        env:
+          SQLSERVER_CONTAINER: ${{ matrix.container }}
+        run: |
+          set -euo pipefail
+          docker exec --env SQLCMDPASSWORD="$MSSQL_EPHEMERAL_CREDENTIAL" \
+            --workdir /work/Code/Tests "$SQLSERVER_CONTAINER" \
+            "$SQLCMD_PATH" -S localhost -U sa -C -b -I \
+            -i Integration/110_Smoke_Test.sql >"$RUNNER_TEMP/snapshot-risk-smoke.log" 2>&1
+
       - name: Run full release gate
+        if: inputs.qualification_scope == 'FULL_RELEASE'
         shell: bash
         env:
           SQLSERVER_CONTAINER: ${{ matrix.container }}
@@ -355,6 +389,7 @@ jobs:
           grep -Eq '^AVAILABLE[[:space:]]+0[[:space:]]+34[[:space:]]' "$release_log"
 
       - name: Run native permission matrix
+        if: inputs.qualification_scope == 'FULL_RELEASE'
         shell: bash
         env:
           SQLSERVER_CONTAINER: ${{ matrix.container }}
@@ -371,7 +406,7 @@ jobs:
             -i "$PERMISSION_TEST" >/dev/null
 
       - name: Run SQL Server 2025 regex matrix
-        if: matrix.regex == true
+        if: matrix.regex == true && inputs.qualification_scope == 'FULL_RELEASE'
         shell: bash
         env:
           SQLSERVER_CONTAINER: ${{ matrix.container }}
@@ -385,7 +420,7 @@ jobs:
             -i VersionAdaptive/120_SQL_Server_2025_Regex_Matrix.sql >/dev/null
 
       - name: Run selected packaged deployment and preservation contracts
-        if: matrix.regex == true || inputs.snapshot_risk_gate
+        if: matrix.regex == true || inputs.snapshot_risk_gate || inputs.qualification_scope == 'SNAPSHOT_SCHEMA_RISK'
         shell: bash
         env:
           SQLSERVER_CONTAINER: ${{ matrix.container }}
@@ -396,16 +431,18 @@ jobs:
               --workdir /work/Code/Install "$SQLSERVER_CONTAINER" \
               "$SQLCMD_PATH" -S localhost -U sa -C -b -I "$@"
           }
-          execute -Q "CREATE DATABASE [SQLServerAnalyzePackageDeployment] COLLATE SQL_Latin1_General_CP1_CS_AS;" >/dev/null
-          execute -i generated/Release_Deploy_Configured.sql >"$RUNNER_TEMP/deployment-1.log" 2>&1
-          execute -i generated/Release_Deploy_Before.sql >"$RUNNER_TEMP/deployment-fill.log" 2>&1
-          execute -i generated/Release_Deploy_Configured.sql >"$RUNNER_TEMP/deployment-2.log" 2>&1
-          execute -i generated/Release_Deploy_After.sql >"$RUNNER_TEMP/deployment-preservation.log" 2>&1
-          execute -Q "IF NOT EXISTS(SELECT 1 FROM SQLServerAnalyzePackageDeployment.monitor.FrameworkVersion WHERE FrameworkVersion='1.1.2') THROW 50002,N'PACKAGE_DEPLOYMENT_VERSION',1;" >/dev/null
+          if [ '${{ inputs.qualification_scope }}' = 'FULL_RELEASE' ]; then
+            execute -Q "CREATE DATABASE [SQLServerAnalyzePackageDeployment] COLLATE SQL_Latin1_General_CP1_CS_AS;" >/dev/null
+            execute -i generated/Release_Deploy_Configured.sql >"$RUNNER_TEMP/deployment-1.log" 2>&1
+            execute -i generated/Release_Deploy_Before.sql >"$RUNNER_TEMP/deployment-fill.log" 2>&1
+            execute -i generated/Release_Deploy_Configured.sql >"$RUNNER_TEMP/deployment-2.log" 2>&1
+            execute -i generated/Release_Deploy_After.sql >"$RUNNER_TEMP/deployment-preservation.log" 2>&1
+            execute -Q "IF NOT EXISTS(SELECT 1 FROM SQLServerAnalyzePackageDeployment.monitor.FrameworkVersion WHERE FrameworkVersion='1.1.2') THROW 50002,N'PACKAGE_DEPLOYMENT_VERSION',1;" >/dev/null
+          fi
           execute -i generated/Deployment_Runtime.generated.sql >"$RUNNER_TEMP/deployment-regression.log" 2>&1
 
       - name: Run selected packaged Snapshot and concurrency contracts
-        if: matrix.regex == true || inputs.snapshot_risk_gate
+        if: matrix.regex == true || inputs.snapshot_risk_gate || inputs.qualification_scope == 'SNAPSHOT_SCHEMA_RISK'
         shell: bash
         env:
           SQLSERVER_CONTAINER: ${{ matrix.container }}
@@ -434,7 +471,7 @@ jobs:
           wait "$holder_pid"
 
       - name: Run SQL Server 2025 standalone plan analysis contract
-        if: matrix.regex == true
+        if: matrix.regex == true && inputs.qualification_scope == 'FULL_RELEASE'
         shell: bash
         env:
           SQLSERVER_CONTAINER: ${{ matrix.container }}
@@ -476,25 +513,31 @@ jobs:
           TARGET_VERSION: ${{ matrix.version }}
           PACKAGE_SHA256: ${{ needs.package.outputs.sha256 }}
           SNAPSHOT_RISK_GATE: ${{ inputs.snapshot_risk_gate }}
+          QUALIFICATION_SCOPE: ${{ inputs.qualification_scope }}
         run: |
           set -euo pipefail
           python3 - <<'PY'
-          import json, os, pathlib
+          import json, os, pathlib, sys
           root = pathlib.Path(os.environ['RUNNER_TEMP'])
+          sys.path.insert(0,str(root/'release/SQL_Server_Analyze-1.1.2/Code/Tests/Static'))
+          from Validate_Release_Package import native_qualification_plan
+          plan=native_qualification_plan(os.environ['TARGET_VERSION'],os.environ['QUALIFICATION_SCOPE'],os.environ['SNAPSHOT_RISK_GATE']=='true')[os.environ['TARGET_VERSION']]
           metadata = json.loads((root/'engine.json').read_text())
-          metadata.update(schema_version=1, framework_version='1.1.2',
+          metadata.update(schema_version=2, framework_version='1.1.2',
+              qualification_scope=plan['qualification_scope'],executed_contracts=plan['contracts'],core_release_gate='PASS' if plan['full_release'] else 'NOT_EXECUTED',
               source_commit=os.environ['GITHUB_SHA'], package_sha256=os.environ['PACKAGE_SHA256'],
               container_image_digest=os.environ['SQLSERVER_IMAGE_DIGEST'],
-              target=os.environ['TARGET_VERSION'], executed_suites=34,
-              release_gate='PASS', permission_matrix='PASS', cleanup='PASS',
-              extra_2025_contracts='PASS' if os.environ['TARGET_VERSION']=='2025' else 'NOT_APPLICABLE',
-              snapshot_and_migration_contracts='PASS' if os.environ['TARGET_VERSION']=='2025' or os.environ['SNAPSHOT_RISK_GATE']=='true' else 'NOT_APPLICABLE',
+              target=os.environ['TARGET_VERSION'], executed_suites=34 if plan['full_release'] else 0,
+              executed_core_suites=34 if plan['full_release'] else 0,
+              release_gate='PASS' if plan['full_release'] else 'NOT_EXECUTED', permission_matrix='PASS' if plan['full_release'] else 'NOT_EXECUTED', cleanup='PASS',
+              extra_2025_contracts='PASS' if plan['full_release'] and os.environ['TARGET_VERSION']=='2025' else 'NOT_APPLICABLE',
+              snapshot_and_migration_contracts='PASS' if plan['snapshot'] else 'NOT_APPLICABLE',
               run_url='https://github.com/'+os.environ['GITHUB_REPOSITORY']+'/actions/runs/'+os.environ['GITHUB_RUN_ID'])
           payload = json.dumps(metadata, indent=2)+'\n'
           assert len(payload.encode()) < 65536
           (root/('evidence-'+os.environ['TARGET_VERSION']+'.json')).write_text(payload)
           with open(os.environ['GITHUB_STEP_SUMMARY'], 'a') as summary:
-              summary.write('Native release gate: PASS; target='+metadata['target']+'; cleanup=PASS\n')
+              summary.write('Native qualification: PASS; scope='+plan['qualification_scope']+'; target='+metadata['target']+'; core_release_gate='+metadata['core_release_gate']+'; cleanup=PASS\n')
           PY
       - uses: actions/upload-artifact@v7
         with:
@@ -509,6 +552,10 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+          show-progress: false
       - uses: actions/download-artifact@v8
         with:
           pattern: release-evidence-*
@@ -517,6 +564,9 @@ jobs:
       - name: Validate complete requested target set
         env:
           MATRIX: ${{ needs.select.outputs.matrix }}
+          REQUESTED_TARGET: ${{ inputs.target }}
+          QUALIFICATION_SCOPE: ${{ inputs.qualification_scope }}
+          SNAPSHOT_RISK_GATE: ${{ inputs.snapshot_risk_gate }}
           PACKAGE_SHA256: ${{ needs.package.outputs.sha256 }}
         run: |
           python3 - <<'PY'
@@ -525,26 +575,17 @@ jobs:
           expected = {item['version'] for item in json.loads(os.environ['MATRIX'])['include']}
           rows = [json.loads(path.read_text()) for path in sorted(root.glob('evidence-*.json'))]
           assert len(rows) == len(expected) and {row['target'] for row in rows} == expected
-          for row in rows:
-              major = {'2019':15, '2022':16, '2025':17}[row['target']]
-              assert row['schema_version'] == 1 and row['framework_version'] == '1.1.2'
-              assert row['source_commit'] == os.environ['GITHUB_SHA']
-              assert row['package_sha256'] == os.environ['PACKAGE_SHA256']
-              assert all(row[key] == 'PASS' for key in ('release_gate','permission_matrix','cleanup'))
-              assert row['executed_suites'] == 34
-              assert row['product_version_components'][0] == major and row['compatibility_level'] == major*10
-              assert row['platform'] == 'Linux' and row['collation'] == 'SQL_Latin1_General_CP1_CS_AS'
-              assert row['extra_2025_contracts'] == ('PASS' if major==17 else 'NOT_APPLICABLE')
-          result = dict(schema_version=1, framework_version='1.1.2', source_commit=os.environ['GITHUB_SHA'],
-              package_sha256=os.environ['PACKAGE_SHA256'], complete_release_matrix=expected=={'2019','2022','2025'},
-              targets=rows)
+          import sys
+          sys.path.insert(0,'Code/Tests/Static')
+          from Validate_Release_Package import validate_native_qualification
+          result=validate_native_qualification(rows,os.environ['REQUESTED_TARGET'],os.environ['QUALIFICATION_SCOPE'],os.environ['SNAPSHOT_RISK_GATE']=='true',os.environ['GITHUB_SHA'],os.environ['PACKAGE_SHA256'])
           payload = json.dumps(result, indent=2)+'\n'
           assert len(payload.encode()) < 262144
           (root/'release-evidence.json').write_text(payload)
           PY
       - uses: actions/upload-artifact@v7
         with:
-          name: release-qualification
+          name: ${{ inputs.qualification_scope == 'SNAPSHOT_SCHEMA_RISK' && 'snapshot-risk-qualification' || 'release-qualification' }}
           path: ${{ runner.temp }}/evidence/release-evidence.json
           if-no-files-found: error
           retention-days: 1

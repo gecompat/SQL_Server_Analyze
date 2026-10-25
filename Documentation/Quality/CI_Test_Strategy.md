@@ -86,6 +86,23 @@ einmal. Der zusätzliche ältere Lauf verwendet das Compatibility Level seiner
 nativen Engine; ein Compatibility-Level-Wechsel ersetzt diese Abnahme nicht.
 
 
+qualification_scope=FULL_RELEASE bleibt der voreingestellte unveränderte
+Releaseumfang. Der ausdrücklich ausgewählte Modus SNAPSHOT_SCHEMA_RISK
+prüft auf genau einer nativen Engine stattdessen das commit-/paketgebundene
+Installations- und Snapshotrisiko: Frameworkinstallation und Smoke,
+die drei Migrationsrouten mit Daten-/Strukturerhaltung, Calleroptionen und
+gezielten Installationsrechten sowie Snapshot- und Nebenläufigkeitsverträge.
+Der volle SQL2025-Required-Check bleibt davon unabhängig verpflichtend.
+
+Die Evidenz dieses Modus nennt die tatsächlich ausgeführten Vertragskennungen,
+qualification_scope=SNAPSHOT_SCHEMA_RISK und core_release_gate=NOT_EXECUTED.
+Der Releaseaggregator lehnt eine solche Zeile als FULL_RELEASE ab; sie bestätigt
+keine vollständige native Releasematrix. Auswahl und Aggregation benötigen
+positive und negative Gegenfälle, insbesondere gegen fehlende Verträge,
+falsche Scopeangaben, Commit-/Paketabweichungen und unbestätigten Cleanup.
+Frühere fehlgeschlagene Vollläufe bleiben FAILED mit unbekannter Ursache,
+solange keine gesonderte Ursachenabnahme vorliegt.
+
 ## Aktive Workflows
 
 | Workflow | Aufgabe | Automatischer Umfang |

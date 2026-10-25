@@ -173,14 +173,17 @@ class DeploymentContract(unittest.TestCase):
             match=re.search(r'- name: '+re.escape(name)+r'\n\s+if: (.+)',workflow)
             self.assertIsNotNone(match)
             terms=match[1].split('||')
-            self.assertEqual(['matrix.regex == true','inputs.snapshot_risk_gate'],[t.strip() for t in terms])
+            self.assertEqual(['matrix.regex == true','inputs.snapshot_risk_gate',"inputs.qualification_scope == 'SNAPSHOT_SCHEMA_RISK'"],[t.strip() for t in terms])
             for version in ('2019','2022','2025'):
                 for flag in (False,True):
-                    values={'matrix.regex == true':version=='2025','inputs.snapshot_risk_gate':flag}
-                    selected=any(values[t.strip()] for t in terms)
-                    self.assertEqual(version=='2025' or flag,selected)
+                    for risk in (False,True):
+                        values={'matrix.regex == true':version=='2025','inputs.snapshot_risk_gate':flag,"inputs.qualification_scope == 'SNAPSHOT_SCHEMA_RISK'":risk}
+                        selected=any(values[t.strip()] for t in terms)
+                        self.assertEqual(version=='2025' or flag or risk,selected)
         self.assertIn("if [ '${{ inputs.snapshot_risk_gate }}' = 'true' ] && [ '${{ inputs.target }}' = 'all' ]; then\n            echo 'Snapshot risk qualification requires one explicit native target.'\n            exit 1",workflow)
-        self.assertIn("if [ '${{ matrix.version }}' = '2025' ] || [ '${{ inputs.snapshot_risk_gate }}' = 'true' ]; then",workflow)
+        self.assertIn("if [ '${{ matrix.version }}' = '2025' ] || [ '${{ inputs.snapshot_risk_gate }}' = 'true' ] || [ '${{ inputs.qualification_scope }}' = 'SNAPSHOT_SCHEMA_RISK' ]; then",workflow)
+        for name in ('Run full release gate','Run native permission matrix'):
+            self.assertIn('- name: '+name+"\n        if: inputs.qualification_scope == 'FULL_RELEASE'",workflow)
         self.assertIn('SET COMPATIBILITY_LEVEL=${{ matrix.compatibility }}',workflow)
 
 

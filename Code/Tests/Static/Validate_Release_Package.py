@@ -32,6 +32,47 @@ def fail(code):
     raise ValueError(code)
 
 
+def native_qualification_plan(target, scope='FULL_RELEASE', extra_snapshot=False):
+    if scope not in ('FULL_RELEASE','SNAPSHOT_SCHEMA_RISK') or target not in ('all','2019','2022','2025'):
+        fail('NATIVE_QUALIFICATION_SELECTION')
+    if target=='all' and (scope=='SNAPSHOT_SCHEMA_RISK' or extra_snapshot):
+        fail('NATIVE_RISK_REQUIRES_ONE_TARGET')
+    versions=['2019','2022','2025'] if target=='all' else [target]
+    plans={}
+    for version in versions:
+        full=scope=='FULL_RELEASE'
+        snapshot=not full or version=='2025' or extra_snapshot
+        contracts=['CORE_RELEASE_34','NATIVE_PERMISSION_MATRIX'] if full else ['FRAMEWORK_SMOKE']
+        if full and version=='2025': contracts+=['REGEX_2025','PLAN_STANDALONE_193']
+        if full and snapshot: contracts+=['CORE_PACKAGE_PRESERVATION','FULL_DEPLOYMENT_REGRESSION']
+        if not full: contracts+=['SNAPSHOT_SCHEMA_MIGRATION_AND_PERMISSION']
+        if snapshot: contracts+=['SNAPSHOT_BASELINE_195','SNAPSHOT_CONCURRENCY_196_197']
+        plans[version]=dict(qualification_scope=scope,full_release=full,snapshot=snapshot,contracts=contracts)
+    return plans
+
+
+def validate_native_qualification(rows, target, scope, extra_snapshot, commit, package_sha256):
+    plans=native_qualification_plan(target,scope,extra_snapshot)
+    if len(rows)!=len(plans) or {r.get('target') for r in rows}!=set(plans): fail('NATIVE_TARGET_SET')
+    for row in rows:
+        plan=plans[row['target']]; major={'2019':15,'2022':16,'2025':17}[row['target']]
+        expected='PASS' if plan['full_release'] else 'NOT_EXECUTED'
+        checks=(row.get('schema_version')==2,row.get('framework_version')=='1.1.2',
+                row.get('qualification_scope')==scope,row.get('source_commit')==commit,
+                row.get('package_sha256')==package_sha256,row.get('cleanup')=='PASS',
+                row.get('release_gate')==expected,row.get('core_release_gate')==expected,
+                row.get('permission_matrix')==expected,row.get('executed_suites')==(34 if plan['full_release'] else 0),
+                row.get('executed_core_suites')==(34 if plan['full_release'] else 0),
+                row.get('executed_contracts')==plan['contracts'],
+                row.get('snapshot_and_migration_contracts')==('PASS' if plan['snapshot'] else 'NOT_APPLICABLE'),
+                row.get('extra_2025_contracts')==('PASS' if plan['full_release'] and major==17 else 'NOT_APPLICABLE'),
+                row.get('product_version_components',[None])[0]==major,row.get('compatibility_level')==major*10,
+                row.get('platform')=='Linux',row.get('collation')=='SQL_Latin1_General_CP1_CS_AS')
+        if not all(checks): fail('NATIVE_QUALIFICATION_BINDING_OR_SCOPE')
+    return dict(schema_version=2,qualification_scope=scope,source_commit=commit,package_sha256=package_sha256,
+                complete_release_matrix=scope=='FULL_RELEASE' and set(plans)=={'2019','2022','2025'},targets=rows)
+
+
 def archive_files(archive):
     if sum(item.file_size for item in archive.infolist()) > MAX_EXPANDED_BYTES:
         fail('RELEASE_EXPANDED_SIZE')
@@ -168,6 +209,27 @@ def validate_privacy(root, archive_path, metadata, verified):
 
 
 class PackageContracts(unittest.TestCase):
+    def test_native_qualification_scope_and_evidence(self):
+        self.assertEqual({'2019','2022','2025'},set(native_qualification_plan('all')))
+        for version in ('2019','2022','2025'):
+            self.assertTrue(native_qualification_plan(version)[version]['full_release'])
+        for args in (('all','SNAPSHOT_SCHEMA_RISK',False),('all','FULL_RELEASE',True),('2019','UNKNOWN',False)):
+            with self.assertRaises(ValueError): native_qualification_plan(*args)
+        plan=native_qualification_plan('2019','SNAPSHOT_SCHEMA_RISK')['2019']
+        row=dict(schema_version=2,framework_version='1.1.2',qualification_scope='SNAPSHOT_SCHEMA_RISK',target='2019',source_commit='a'*40,package_sha256='b'*64,cleanup='PASS',release_gate='NOT_EXECUTED',core_release_gate='NOT_EXECUTED',permission_matrix='NOT_EXECUTED',executed_suites=0,executed_core_suites=0,executed_contracts=plan['contracts'],snapshot_and_migration_contracts='PASS',extra_2025_contracts='NOT_APPLICABLE',product_version_components=[15,0,1,0],compatibility_level=150,platform='Linux',collation='SQL_Latin1_General_CP1_CS_AS')
+        result=validate_native_qualification([row],'2019','SNAPSHOT_SCHEMA_RISK',False,'a'*40,'b'*64)
+        self.assertFalse(result['complete_release_matrix'])
+        for key,value in [('release_gate','PASS'),('core_release_gate','PASS'),('executed_suites',34),('executed_contracts',[]),('qualification_scope','FULL_RELEASE'),('source_commit','c'*40),('package_sha256','c'*64),('cleanup','FAILED')]:
+            with self.subTest(key=key):
+                candidate=dict(row);candidate[key]=value
+                with self.assertRaises(ValueError): validate_native_qualification([candidate],'2019','SNAPSHOT_SCHEMA_RISK',False,'a'*40,'b'*64)
+        rows=[]
+        for version,full in native_qualification_plan('all').items():
+            major={'2019':15,'2022':16,'2025':17}[version]
+            candidate=dict(row,qualification_scope='FULL_RELEASE',target=version,release_gate='PASS',core_release_gate='PASS',permission_matrix='PASS',executed_suites=34,executed_core_suites=34,executed_contracts=full['contracts'],snapshot_and_migration_contracts='PASS' if full['snapshot'] else 'NOT_APPLICABLE',extra_2025_contracts='PASS' if major==17 else 'NOT_APPLICABLE',product_version_components=[major,0,1,0],compatibility_level=major*10)
+            rows.append(candidate)
+        self.assertTrue(validate_native_qualification(rows,'all','FULL_RELEASE',False,'a'*40,'b'*64)['complete_release_matrix'])
+
     def fixture(self):
         commit, tree = 'a'*40, 'b'*40
         sources = {

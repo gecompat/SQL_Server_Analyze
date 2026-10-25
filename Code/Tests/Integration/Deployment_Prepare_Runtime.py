@@ -128,11 +128,29 @@ def snapshot_schema_cases(deployed, tables):
             out.append(state('@After')+"IF CONVERT(varbinary(max),@Before)<>CONVERT(varbinary(max),@After) OR @@TRANCOUNT<>0 THROW 53816,N'Rejected Snapshot route changed state.',1;\nGO\n"+restore+'\nGO\n')
         out.append(shape(2)+'GO\n')
     out.append("SELECT N'PASS' AS SnapshotSchemaMigration,N'3 real routes, 3 V1 upgrades, 3 repetitions, 19 shape/version rejections with preservation' AS Scope;\nGO\n")
+    out.append("DECLARE @Installer sysname=N'ExampleSnapshotInstaller_'+REPLACE(CONVERT(nvarchar(36),NEWID()),N'-',N''),@CredentialValue nvarchar(128)=N'Example!'+CONVERT(nvarchar(36),NEWID()),@PermissionSql nvarchar(max),@Impersonated bit=0,@InstallerSid varbinary(85),@PermissionBefore nvarchar(max),@PermissionAfter nvarchar(max),@InstallerSource nvarchar(max)=(SELECT SqlText FROM qa.SnapshotMigrationInput WHERE Route='DIRECT');\n")
+    out.append("SET @PermissionSql=N'CREATE LOGIN '+QUOTENAME(@Installer)+N' WITH PASSWORD='+QUOTENAME(@CredentialValue,NCHAR(39))+N',CHECK_POLICY=OFF;'; EXEC master.sys.sp_executesql @PermissionSql; SET @InstallerSid=SUSER_SID(@Installer);\nBEGIN TRY\n")
+    out.append("SET @PermissionSql=N'CREATE USER '+QUOTENAME(@Installer)+N' FOR LOGIN '+QUOTENAME(@Installer)+N'; GRANT CONTROL ON DATABASE::'+QUOTENAME(DB_NAME())+N' TO '+QUOTENAME(@Installer)+N';'; EXEC sys.sp_executesql @PermissionSql; SET @PermissionSql=N'GRANT VIEW ANY DEFINITION TO '+QUOTENAME(@Installer)+N';'; EXEC master.sys.sp_executesql @PermissionSql;\n")
+    out.append("EXECUTE AS LOGIN=@Installer; SET @Impersonated=1; EXEC sys.sp_executesql @InstallerSource; REVERT; SET @Impersonated=0;\n")
+    for permission in ('VIEW ANY DEFINITION','CONTROL'):
+        change='DENY VIEW ANY DEFINITION' if permission=='VIEW ANY DEFINITION' else 'GRANT VIEW ANY DEFINITION'
+        out.append("SET @PermissionSql=N'"+change+" TO '+QUOTENAME(@Installer)+N';'; EXEC master.sys.sp_executesql @PermissionSql;\n")
+        if permission=='CONTROL':
+            out.append("SET @PermissionSql=N'REVOKE CONTROL ON DATABASE::'+QUOTENAME(DB_NAME())+N' FROM '+QUOTENAME(@Installer)+N';'; EXEC sys.sp_executesql @PermissionSql;\n")
+        out.append(state('@PermissionBefore'))
+        out.append("BEGIN TRY EXECUTE AS LOGIN=@Installer; SET @Impersonated=1; EXEC sys.sp_executesql @InstallerSource; REVERT; SET @Impersonated=0; THROW 53821,N'Expected Snapshot installer permission rejection.',1; END TRY\nBEGIN CATCH IF @Impersonated=1 BEGIN REVERT; SET @Impersonated=0; END; IF ERROR_NUMBER()<>53901 THROW; END CATCH;\n")
+        out.append(state('@PermissionAfter')+"IF CONVERT(varbinary(max),@PermissionBefore)<>CONVERT(varbinary(max),@PermissionAfter) OR @@TRANCOUNT<>0 THROW 53822,N'Denied Snapshot installer changed state.',1;\n")
+    cleanup="IF SUSER_SID(@Installer)<>@InstallerSid THROW 53823,N'Own installer identity changed.',1; IF EXISTS(SELECT 1 FROM sys.database_principals WHERE name=@Installer AND sid=@InstallerSid) BEGIN SET @PermissionSql=N'DROP USER '+QUOTENAME(@Installer)+N';'; EXEC sys.sp_executesql @PermissionSql; END; SET @PermissionSql=N'DROP LOGIN '+QUOTENAME(@Installer)+N';'; EXEC master.sys.sp_executesql @PermissionSql;\n"
+    out.append(cleanup+"END TRY\nBEGIN CATCH\nIF @Impersonated=1 REVERT;\n"+cleanup+"THROW;\nEND CATCH;\nSELECT N'PASS' AS SnapshotInstallerPermissions,N'CONTROL plus server definition visibility; two exact denied-state preservation cases' AS Scope;\nGO\n")
     return ''.join(out)
 
 
-def prepare_snapshot_schema_only():
+def prepare_snapshot_schema_only(packaged_installer=None):
     sql,_=g.generate(ROOT,True)
+    if packaged_installer is not None:
+        packaged=packaged_installer.read_text(encoding='utf-8-sig')
+        if packaged!=sql: raise g.BuildError('Packaged snapshot-risk deployment differs from canonical sources')
+        sql=packaged
     _,tables,_=g.load_sources(ROOT,True)
     deployed=configured(sql)
     out=["USE master;\nGO\nSET QUOTED_IDENTIFIER ON; SET ANSI_NULLS ON; SET ANSI_PADDING ON; SET ANSI_WARNINGS ON; SET ARITHABORT ON; SET CONCAT_NULL_YIELDS_NULL ON; SET NUMERIC_ROUNDABORT OFF;\n",
@@ -286,9 +304,7 @@ def main():
     parser.add_argument('--snapshot-schema-only', action='store_true')
     args=parser.parse_args()
     args.output.parent.mkdir(parents=True,exist_ok=True)
-    if args.snapshot_schema_only and args.packaged_installer:
-        parser.error('The focused local scope does not replace packaged full-deployment qualification.')
-    args.output.write_text(prepare_snapshot_schema_only() if args.snapshot_schema_only else prepare(args.packaged_installer),encoding='utf-8',newline='\n')
+    args.output.write_text(prepare_snapshot_schema_only(args.packaged_installer) if args.snapshot_schema_only else prepare(args.packaged_installer),encoding='utf-8',newline='\n')
     print('Prepared native synthetic deployment regression:',args.output)
 
 
