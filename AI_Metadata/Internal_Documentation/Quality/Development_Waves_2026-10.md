@@ -47,7 +47,7 @@ im SSIS-Abschnitt von Next Steps gepflegt.
 | 7 | TLS und Endpoints, Intake `TLS_NETWORK_ENDPOINTS` | SQL-sichtbare Verbindungsverschlüsselung und Endpointzustände getrennt von Host-, Zertifikats- und externen Verbindungsnachweisen spezifizieren und implementieren. |
 | 8 | Weitere SSIS-Laufzeitdiagnosen, `SSIS-001` | Die separat beauftragte SSIS-Welle 6 ergänzt iterationsgebundene Korrelation; ihr Abnahmestand steht im SSIS-Abschnitt von Next Steps. Weitere Task-, Buffer-, Provider-, Checkpoint- und Loggingpfade benötigen einen eigenen freien Scope. |
 | 9 | SSIS-Laufvergleiche, `SSIS-001` | Vergleichbare explizite Ausführungen mit Paketrevision, Loggingabdeckung, Mengenbasis, Stichprobengröße und Ausschlüssen gegenüberstellen. |
-| 10 | Snapshot- und Baseline-Ausbau, `SC-023-EXPANSION` | Zuerst die datenbewahrende Erweiterung zweier CHECK-Domänen auf Schema 2, danach Wait- und Datei-I/O-Differenzkandidaten mit ausdrücklich begrenztem Kontinuitätsnachweis. Kapazität, Ressourcendruck, Rollups und Scheduler folgen getrennt. |
+| 10 | Snapshot- und Baseline-Ausbau, `SC-023-EXPANSION` | Die Schema-2-Vorbereitung ist mit PR #447 integriert. Der genaue Wait-Kontextvertrag ist unabhängig geprüft. Als Nächstes folgen Wait- und Datei-I/O-Differenzkandidaten mit ausdrücklich begrenztem Kontinuitätsnachweis. Kapazität, Ressourcendruck, Rollups und Scheduler folgen getrennt. |
 | 11 | Upgrade- und Plattformdiagnostik, Intake `DEPRECATION_BREAKING_CHANGE` und `LINUX_CONTAINER_LIMITS` | Veraltete Nutzung und Zielversionsrisiken von Linux-/Containergrenzen trennen; Hostinformationen nur über einen ausdrücklich begrenzten Adapter erfassen. |
 | 12 | Collation-Härtung, `COLL-001` | Verbleibende betroffene Quelldateien und Consumer gezielt härten und prüfen. Die garantierte Collation wird ohne vollständigen Nachweis nicht erweitert. |
 | 13 | msdb-, Agent- und Mail-Diagnostik, `OPS-008` | Verbleibende Retention-, Status-, Datum-/Dauer- und Wartungsfälle abschließen; vorhandenen SMTP-Erfolg nicht erneut qualifizieren. |
@@ -218,3 +218,16 @@ Der Wait-Slice erhält native Rohwerte und ein ausdrücklich begrenztes
 Kontinuitätsmodell; ein Engine-Startwert allein beweist keinen ausbleibenden
 DBCC-Reset. Datei-I/O folgt mit eigener Identitätsabnahme. Vor Produktcode
 werden Feld-, Policy-, Versions- und Migrationsvertrag unabhängig geprüft.
+
+
+Die Schema-2-Vorbereitung ist über [PR #447](https://github.com/gecompat/SQL_Server_Analyze/pull/447)
+als `ce8b5e30` integriert. Alle acht Head-Checks, die vollständigen SQL2025-
+Head-/Main-Gates und die gezielte native SQL2019-Qualifizierung mit Scope
+SNAPSHOT_SCHEMA_RISK bestehen. Diese zusätzliche native Prüfung qualifiziert
+die betroffenen Snapshot-/Migrationsverträge; Core-Release und allgemeine
+native Berechtigungsmatrix sind ausdrücklich NOT_EXECUTED. Das Snapshot-
+Dossier führt Paketbindung, frühere Vollrunfehler und verbleibende Grenzen.
+Der WAIT_CAPTURE_CONTEXT-v1-Feldvertrag ist einschließlich der gezielten
+Retentionskorrektur unabhängig geprüft. Der nächste eigenständige Schritt
+liefert Wait-Counter mit PackageVersion 1.2.0 und bestehender SchemaVersion 2; Datei-I/O folgt getrennt. Die SSIS-Datenflussarbeit bleibt
+beim separaten Auftrag.
