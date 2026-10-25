@@ -145,7 +145,7 @@ bestehen. Die übrigen statischen Prüfungen und der Datenschutzscan bestehen.
 Der getrennte Main-Nachlauf besteht für Dokumentation, Datenschutz und
 Commitnachrichten ebenfalls.
 
-Rang 6 beginnt mit dem
+Rang 6 begann mit dem
 [Serverprincipal-Dossier](../Architecture/Server_Principal_Analysis_Dossier.md).
 Der erste vorgeschlagene Slice betrifft lokale Serverprincipals, direkte
 Rollenmitgliedschaften, explizite Serverberechtigungen und SQL-Login-Policies.
@@ -169,17 +169,24 @@ am selben Liefercommit `aabf9e0d`. Die genauen Nachweislinks und Grenzen stehen
 im Serverprincipal-Dossier. Frühere Fehlläufe bleiben als solche erhalten;
 Main-Nachläufe sind getrennte Evidenz. Es wird kein Reifeabschluss behauptet.
 
-Der Datenbankteil von Rang 6 liegt als Produktkandidat zum
-[Datenbankprincipal-Dossier](../Architecture/Database_Principal_Analysis_Dossier.md)
-vor. Er hält die frameworkweite Auswahl sichtbarer Online-Benutzerdatenbanken,
-direkte Rollen, explizite Rechte, Schemaownership und begrenzte sichtbare
-SID-Bindungen ein. Neun Resultsets, Installer, Navigator und unabhängige native
-Schema- und Wertoracles gehören gemeinsam zur Lieferung. Der Produktreview
-und sein gezielter Folgecheck sind ohne offene Befunde abgeschlossen.
-Der lokale kombinierte Lauf der beiden Principal-Fixtures besteht auf SQL
-Server 2025 mit abweichender Instanz-/Frameworkcollation, eingeschränkten
-Callern, Quellenfehlern und identitätsgebundenem Cleanup. Head-gebundene CI und
-gezielte native 2019-/2022-Abnahmen bleiben vor der regulären Integration
-erforderlich. Effektive Berechtigungen und weitere Lifecycleteile bleiben
-offene Teile desselben Arbeitselements. Die bestehende funktionsbezogene
-autonome Freigabe wird nicht erneut angefragt.
+Der erste Datenbankteil ist über [PR #438](https://github.com/gecompat/SQL_Server_Analyze/pull/438)
+als `00f0056e` regulär integriert. Neun Resultsets, Installer, Navigator und
+unabhängige native Schema- und Wertoracles gehören gemeinsam zur Lieferung.
+Produktreview, gezielte Folgechecks und alle acht Head-Checks bestehen.
+Der Liefercommit `6e41c9fe` besteht das vollständige SQL2025-Gate sowie gezielte
+native 2019-/2022-Prüfungen einschließlich Permissionmatrix und eigenem Cleanup.
+Der lokale kombinierte Lauf bestätigt zusätzlich abweichende Instanz- und
+Frameworkcollations. Die genauen Nachweislinks und Grenzen stehen im
+[Datenbankprincipal-Dossier](../Architecture/Database_Principal_Analysis_Dossier.md).
+WI-0012 bleibt PARTIAL_PRODUCT_FUNCTION; die beiden Principalmodule erhalten
+tatsächliche CI-Evidenz ohne pauschalen Reifeabschluss.
+
+Der nächste eigene Teil von Rang 6 ist im
+[Callerrechte-Dossier](../Architecture/Caller_Permission_Analysis_Dossier.md)
+konkretisiert. Er soll die native Bewertung der effektiven Rechte des aktuellen
+Ausführungskontexts auf SERVER- und DATABASE-Ebene zeigen. Die Procedure
+impersoniert keine fremden Principals und behauptet keinen konkreten Objekt-
+oder Statementzugriff. Nach unabhängigem Vertragsreview werden Schemas,
+Kontextbindung und unabhängige Abnahme vor der Produktimplementierung
+festgelegt. Weitere Lifecycleteile und externe Identitätsprüfung bleiben offen;
+die bestehende funktionsbezogene autonome Freigabe wird nicht erneut angefragt.

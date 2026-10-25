@@ -1,7 +1,7 @@
 # Datenbankprincipals, direkte Rechte und sichtbare Loginbindungen
 
 **Stand:** 25. Oktober 2026.
-**Status:** erster Datenbank-Implementierungskandidat; unabhängiger Produktreview abgeschlossen, Head-CI und abschließende native Abnahme offen.
+**Status:** erster Datenbank-Slice über PR #438 integriert; native Abnahme abgeschlossen, weitergehende effektive Rechte bleiben offen.
 **Artefakt-UID:** `urn:uuid:01a171d2-85e1-7474-be43-b3173fc4df92`.
 **Registrierung:** `DEFERRED`; keine zusätzliche lesbare Kennung vergeben.
 **Arbeitselement:** weiterer Teil von `WI-0012`; kein zusätzliches Arbeitselement für denselben Principal-Scope.
@@ -236,6 +236,44 @@ Procedure-Lesepfad und die betroffenen Tests gemeinsam. Dieser Entwurf ändert
 noch keinen Produktstatus und schließt Rang 6 nicht ab. Effektive Rechte,
 abweichende Objektownership, externe Identitätsprüfung und tatsächliche
 Loginfähigkeit bleiben weitere ausdrücklich offene Teilumfänge.
+
+## Gelieferter Datenbank-Slice und Evidenz
+
+[PR #438](https://github.com/gecompat/SQL_Server_Analyze/pull/438) ist nach
+unabhängigem Produktreview und gezielten Folgechecks regulär als `00f0056e`
+integriert. Der qualifizierte Lieferstand ist
+`6e41c9fef0f0455cea78742bde66c986b3212616`.
+
+| Native Prüfung | Tatsächlich bestätigter Umfang |
+|---|---|
+| [SQL2025-Headgate](https://github.com/gecompat/SQL_Server_Analyze/actions/runs/40179660190) | Das vollständige funktionale Gate einschließlich der Verträge 135 und 136 besteht. Ein zusätzlicher Enginebuild wird hier nicht ausgewiesen. |
+| [SQL2019-Zusatzprüfung](https://github.com/gecompat/SQL_Server_Analyze/actions/runs/40179667973) | Linux, 15.0.4500.2, CL150; Releasegate, Permissionmatrix und eigener Cleanup bestehen. |
+| [SQL2022-Zusatzprüfung](https://github.com/gecompat/SQL_Server_Analyze/actions/runs/40179669994) | Linux, 16.0.4305.5, CL160; Releasegate, Permissionmatrix und eigener Cleanup bestehen. |
+
+Beide nativen Maschinenbelege binden denselben Liefercommit und dieselbe
+ZIP-SHA256 `1a000aa4063c3ed0b3094dbfa5d84f7bc519c5d9c78b898399e6477ea7cec538`.
+Vertrag 136 prüft vier TABLE-/JSON-Fälle, neun native Schemas, unabhängig
+arrangierte Rollen-, Grant-, DENY-, Grant-Option- und Spalten-REVOKE-Zeilen,
+mehrere Zielbindungen, enthaltene Benutzer, sichtbare Login-/Ownerbindungen,
+eingeschränkte Caller, Quellenfehler und die gemeinsame Datenbankauswahl.
+Fehlerfälle prüfen reguläre OUTPUT-/RETURN-Rückgabe, JSON-NULL, Calleroptionen,
+committable Ambienttransaktion und einen unabhängigen Sentinel. Eigene
+Datenbanken, Principals und Konfigurationswerte werden bereinigt.
+
+Der zusätzliche lokale kombinierte Lauf bestätigt die Verträge 135 und 136
+auf SQL2025 bei abweichender Instanz-/Frameworkcollation. Frühere Fehlläufe
+betrafen reale Fixture-, Collation-, Optionsscope- und Vorbedingungsfehler;
+sie sind keine bestandene Qualifikation. Die dokumentierte
+Speichernormalisierung 0/16 wird nicht als ausstehende Änderung behandelt.
+Die Guard-Stufenprobe und RAW-Ausführung besitzen die oben beschriebenen
+Grenzen; ein konkurrierender vollständiger Rename-/Drop-Rennfall und die
+separate Zählung des gesamten RAW-Resultsetstreams sind damit nicht belegt.
+Main-Nachläufe bleiben getrennte Evidenz.
+
+Das Arbeitselement bleibt PARTIAL_PRODUCT_FUNCTION. Der nächste eigene
+Teilumfang wird im [Callerrechte-Dossier](Caller_Permission_Analysis_Dossier.md)
+konkretisiert. Objektbezogene effektive Rechte, fremde Principals,
+Windows-/Entra-Auflösung und tatsächliche Anmeldefähigkeit bleiben offen.
 
 ## Primärquellen
 

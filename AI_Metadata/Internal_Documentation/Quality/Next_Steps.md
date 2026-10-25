@@ -19,9 +19,15 @@ Der neue stündliche Heartbeat gilt ausschließlich als letzte Instanz zur
 Leerlauferkennung des Gesamtauftrags; der bestehende SSIS-Heartbeat gehört
 weiterhin zum begrenzten SSIS-Auftrag.
 
-Der erste eigene Schritt integriert diese Planung und konkretisiert danach
-Rang 6, Berechtigungen und Login-Lifecycle. Bereits gelieferte Funktionen
-und die abgeschlossene STAT-DOMINANT-Diagnose werden nicht erneut entwickelt.
+Die Planung sowie die ersten Server- und Datenbankprincipal-Slices von Rang 6
+sind regulär integriert. [PR #438](https://github.com/gecompat/SQL_Server_Analyze/pull/438)
+besteht am Liefercommit `6e41c9fe` alle acht Head-Checks, das vollständige
+SQL2025-Gate und gezielte native 2019-/2022-Prüfungen. Nachweise und Grenzen
+stehen im [Datenbankprincipal-Dossier](../Architecture/Database_Principal_Analysis_Dossier.md).
+Das [Callerrechte-Dossier](../Architecture/Caller_Permission_Analysis_Dossier.md)
+konkretisiert den nächsten eigenen Teil für den aktuellen Ausführungskontext.
+Bereits gelieferte Funktionen und die abgeschlossene STAT-DOMINANT-Diagnose
+werden nicht erneut entwickelt.
 
 ## Abgeschlossen: fünf SSIS-Paketwellen vom 25. Oktober 2026
 
