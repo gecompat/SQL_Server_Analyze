@@ -231,7 +231,8 @@ BEGIN TRY
         IF @Case<>1
         BEGIN
             IF EXISTS(
-                SELECT [p].[principal_id],[p].[name],[p].[type],[p].[type_desc],CONVERT(bit,[p].[is_disabled]),
+                SELECT [p].[principal_id],[p].[name] COLLATE SQL_Latin1_General_CP1_CS_AS,
+                       [p].[type] COLLATE SQL_Latin1_General_CP1_CS_AS,[p].[type_desc] COLLATE SQL_Latin1_General_CP1_CS_AS,CONVERT(bit,[p].[is_disabled]),
                        [p].[create_date],[p].[modify_date],[p].[is_fixed_role],[p].[owning_principal_id]
                 FROM [sys].[server_principals] AS [p] WHERE [p].[principal_id] IN (@IdA,@IdB,@RoleIdA,@RoleIdB)
                 EXCEPT SELECT * FROM [#ExamplePrincipal_principals] WHERE [PrincipalId] IN (@IdA,@IdB,@RoleIdA,@RoleIdB))
