@@ -29,6 +29,8 @@ $security.AddAccessRule([Security.AccessControl.FileSystemAccessRule]::new($iden
 [IO.FileSystemAclExtensions]::Create([IO.DirectoryInfo]::new($directory),$security)
 $scriptFile=Join-Path $directory 'own.sql';$receipt=Join-Path $directory 'ownership.private.json'
 $record=[ordered]@{RunId=$RunId.ToString();InstanceId=$InstanceId;OperationId=[guid]::NewGuid().ToString();FolderName='SyntheticCorrelation_'+[guid]::NewGuid().ToString('N');FolderId=0L;ProjectName='SyntheticProject_'+[guid]::NewGuid().ToString('N');ProjectId=0L;ProjectLsn=0L;ExecutionId=0L;DatabaseAttempted=$false;FolderAttempted=$false;ProjectAttempted=$false;Phase='PLANNED';Cleanup='PENDING';Operations=@()}
+$record.SourceBindings=[ordered]@{ProducerCommit=$ExpectedSourceCommit;ProducerSha256=$ExpectedBuildSha256;FixtureBuilderSha256=(Get-FileHash -LiteralPath $FixtureBuilderPath -Algorithm SHA256).Hash}
+foreach($relative in @('Code/10_SSIS/040_USP_SsisPackageModelAnalysis.sql','Code/Tools/Invoke-SsisCatalogHandover.ps1','Code/Tools/Invoke-SsisQualifiedHandover.ps1','Code/Tools/SsisHandoverSupport.psm1','Code/Tests/Integration/216_SsisCatalogHandover_Native_Contract.ps1')){$record.SourceBindings[$relative]=(Get-FileHash -LiteralPath (Join-Path $root $relative) -Algorithm SHA256).Hash}
 $database='SyntheticSsisNative_'+[guid]::NewGuid().ToString('N');$databaseCreated=$false;$counter=[pscustomobject]@{Value=0}
 $target=@{RunId=$RunId;InstanceId=$InstanceId;WindowsAuthentication=$true;Database='SSISDB';KeepConnection=$true;TimeoutSeconds=60}
 function Save-Record {[IO.File]::WriteAllText($receipt,($record|ConvertTo-Json -Depth 16),[Text.UTF8Encoding]::new($false))}
@@ -98,6 +100,7 @@ try {
     $handover=& (Join-Path $root 'Code/Tools/Invoke-SsisCatalogHandover.ps1') @arguments
     Assert ($handover.Status -ceq 'CAPTURED') 'REAL_SOURCE_CAPTURED'
     $result=Read-Analysis $handover
+    $record.CaptureEvidence=[ordered]@{RuntimeBinding=$result.runtimeBinding;Correlations=$result.executionCorrelation;SnapshotJson=$handover.ExecutionSnapshotJson;ModelJson=$handover.PackageModelJson;SdkOracle=[ordered]@{PackageGuid=$oracle.packageDtsId;SequenceGuid=$oracle.sequenceDtsId;PackagePath=$oracle.packagePath;SequencePath=$oracle.sequencePath;PackageSha256=$expectedDigest}};Save-Record
     Assert ($result.sourceBinding[0].ProducerTrust -ceq 'VERIFIED_LOCAL' -and $result.sourceBinding[0].PackageSha256 -ceq $expectedDigest) 'SDK_BYTES_TO_VERIFIED_MODEL'
     Assert ($result.runtimeBinding[0].StatusCode -ceq 'RUNTIME_BOUND_CAPTURE' -and $result.runtimeBinding[0].RootObservationQualified -and $result.runtimeBinding[0].MappedRowCount -eq 2) 'REAL_MODEL_EXECUTION_CORRELATION'
     foreach($item in @(@{Guid=$oracle.packageDtsId;Node='pkg1'},@{Guid=$oracle.sequenceDtsId;Node='exe1'})) {

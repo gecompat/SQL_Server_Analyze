@@ -65120,7 +65120,8 @@ GO
 /*
 Objekt: monitor.USP_SsisPackageModelAnalysis; Version 1.5.0; Stand 2026-10-25.
 Zweck: Validiert ein optional zugeliefertes neutrales SSIS-Modell ohne CLR.
-Quelle: Ausschließlich Caller-JSON und optionale Originalbytes; kein Paket-SQL.
+Quelle: Caller-JSON, optionale Originalbytes und lokale Herkunftsbelege;
+        lokale SQL-Kataloge nur mit expliziter Metadatenzuordnung, kein Paket-SQL.
 Vertrag: SSIS_Analyze_Toolbelt_Exchange_Contract.md; Schema aus Toolbelt.
 Grenzen: 16 MiB JSON/Bytes, 32 JSON-Ebenen, 20000 Knoten, 50000 Kanten;
          kooperatives Zeitbudget. Producerangaben ohne qualifizierte lokale Übergabe bleiben UNVERIFIED.
@@ -65766,7 +65767,7 @@ FROM #SsisPackageModelAnalysis_SqlMetadata AS [b] WHERE [b].[KeySetId] IS NOT NU
                 END;
                 IF COALESCE(JSON_VALUE(@ExecutionSnapshotJson,'$.contract'),'') COLLATE Latin1_General_100_BIN2<>'ssis-execution-snapshot' OR DATALENGTH(JSON_VALUE(@ExecutionSnapshotJson,'$.contract'))<>DATALENGTH(N'ssis-execution-snapshot')
                     OR COALESCE(JSON_VALUE(@ExecutionSnapshotJson,'$.version'),'') COLLATE Latin1_General_100_BIN2<>'1.0.0' OR DATALENGTH(JSON_VALUE(@ExecutionSnapshotJson,'$.version'))<>10
-                    OR COALESCE(JSON_VALUE(@ExecutionSnapshotJson,'$.method'),'') COLLATE Latin1_General_100_BIN2<>'SSISDB_CURRENT_PROJECT_DIRECT_PATH_V1' OR DATALENGTH(JSON_VALUE(@ExecutionSnapshotJson,'$.method'))<>DATALENGTH(N'SSISDB_CURRENT_PROJECT_DIRECT_PATH_V1')
+                    OR COALESCE(JSON_VALUE(@ExecutionSnapshotJson,'$.method'),'') COLLATE Latin1_General_100_BIN2<>'SSISDB_CURRENT_PROJECT_ROOT_SCOPE_V1' OR DATALENGTH(JSON_VALUE(@ExecutionSnapshotJson,'$.method'))<>DATALENGTH(N'SSISDB_CURRENT_PROJECT_ROOT_SCOPE_V1')
                     OR COALESCE(JSON_VALUE(@ExecutionSnapshotJson,'$.identityProfile'),'') COLLATE Latin1_General_100_BIN2<>'document-order-v1' OR DATALENGTH(JSON_VALUE(@ExecutionSnapshotJson,'$.identityProfile'))<>34
                     OR COALESCE(UPPER(JSON_VALUE(@ExecutionSnapshotJson,'$.modelSha256')),'') COLLATE Latin1_General_100_BIN2<>CONVERT(varchar(64),HASHBYTES('SHA2_256',CONVERT(varbinary(max),@PackageModelJson)),2) COLLATE Latin1_General_100_BIN2 OR DATALENGTH(JSON_VALUE(@ExecutionSnapshotJson,'$.modelSha256'))<>128
                     OR COALESCE(UPPER(JSON_VALUE(@ExecutionSnapshotJson,'$.packageSha256')),'') COLLATE Latin1_General_100_BIN2<>UPPER(@PackageHash) COLLATE Latin1_General_100_BIN2 OR DATALENGTH(JSON_VALUE(@ExecutionSnapshotJson,'$.packageSha256'))<>128
@@ -65808,19 +65809,27 @@ FROM #SsisPackageModelAnalysis_SqlMetadata AS [b] WHERE [b].[KeySetId] IS NOT NU
                 INSERT #SsisPackageModelAnalysis_ExecutionCorrelation
                 SELECT TRY_CONVERT(bigint,[StatisticsId]),@ExecutionId,TRY_CONVERT(bigint,[ExecutableId]),NULL,NULL,TRY_CONVERT(uniqueidentifier,[NativeGuid]),[PackageName],[PackagePath],[ExecutionPath],TRY_CONVERT(datetimeoffset(7),[StartTime],127),TRY_CONVERT(datetimeoffset(7),[EndTime],127),TRY_CONVERT(int,[DurationMs]),TRY_CONVERT(int,[ExecutionResult]),'NO_QUALIFIED_ROOT_OBSERVATION','IMPORTED_CATALOG_OBSERVATION'
                 FROM OPENJSON(@ExecutionSnapshotJson,'$.observations') WITH([StatisticsId] nvarchar(40) '$.statisticsId',[ExecutableId] nvarchar(40) '$.executableId',[NativeGuid] nvarchar(36) '$.executableGuid',[PackageName] nvarchar(260) '$.packageName',[PackagePath] nvarchar(4000) '$.packagePath',[ExecutionPath] nvarchar(4000) '$.executionPath',[StartTime] nvarchar(64) '$.startTime',[EndTime] nvarchar(64) '$.endTime',[DurationMs] nvarchar(64) '$.durationMs',[ExecutionResult] nvarchar(64) '$.executionResult');
-                DECLARE @RootCount int,@RootRuntimePackage nvarchar(260);
-                SELECT @RootCount=COUNT(*),@RootRuntimePackage=MAX([o].[PackageName]) FROM #SsisPackageModelAnalysis_ExecutionCorrelation AS [o] JOIN #SsisPackageModelAnalysis_RuntimeIdentities AS [i] ON [i].[NodeKind]='PACKAGE' AND [i].[NativeGuid]=[o].[ExecutableGuid]
+                DECLARE @RootCount int,@RootRuntimePackage nvarchar(260),@RootPackagePath nvarchar(4000),@RootExecutionPath nvarchar(4000),@RootPackageChars int;
+                -- SSISDB unterscheidet Paketpfad und Laufzeitwurzel. Die Wurzel
+                -- wird beobachtet, nicht aus einem Modellanzeigenamen erzeugt.
+                SELECT @RootCount=COUNT(*),@RootRuntimePackage=MAX([o].[PackageName]),@RootPackagePath=MAX([o].[PackagePath]),@RootExecutionPath=MAX([o].[ExecutionPath])
+                FROM #SsisPackageModelAnalysis_ExecutionCorrelation AS [o] JOIN #SsisPackageModelAnalysis_RuntimeIdentities AS [i] ON [i].[NodeKind]='PACKAGE' AND [i].[NativeGuid]=[o].[ExecutableGuid]
                 WHERE [i].[PackagePath] COLLATE Latin1_General_100_BIN2=[o].[PackagePath] COLLATE Latin1_General_100_BIN2 AND DATALENGTH([i].[PackagePath])=DATALENGTH([o].[PackagePath])
-                    AND [i].[PackagePath] COLLATE Latin1_General_100_BIN2=[o].[ExecutionPath] COLLATE Latin1_General_100_BIN2 AND DATALENGTH([i].[PackagePath])=DATALENGTH([o].[ExecutionPath])
+                    AND [o].[PackageName] COLLATE Latin1_General_100_BIN2=@RuntimeFile COLLATE Latin1_General_100_BIN2 AND DATALENGTH([o].[PackageName])=DATALENGTH(@RuntimeFile)
+                    AND LEFT([o].[ExecutionPath] COLLATE Latin1_General_100_BIN2,1) COLLATE Latin1_General_100_BIN2=N'\' COLLATE Latin1_General_100_BIN2
+                    AND DATALENGTH([o].[ExecutionPath])>2 AND CHARINDEX(N'\',[o].[ExecutionPath] COLLATE Latin1_General_100_BIN2,2)=0
                     AND (SELECT COUNT(*) FROM #SsisPackageModelAnalysis_RuntimeIdentities AS [g] WHERE [g].[NativeGuid]=[i].[NativeGuid])=1;
                 IF @RootCount=1 AND @RootRuntimePackage IS NOT NULL
                 BEGIN
-                    SET @RootQualified=1;
+                    SET @RootQualified=1;SET @RootPackageChars=DATALENGTH(@RootPackagePath)/2;
                     UPDATE [o] SET [CorrelationStatus]=CASE WHEN [o].[ExecutableGuid] IS NULL THEN 'NATIVE_GUID_UNAVAILABLE' WHEN [o].[PackagePath] IS NULL OR [o].[ExecutionPath] IS NULL THEN 'PATH_UNAVAILABLE' ELSE 'NO_EXACT_MODEL_OBJECT' END FROM #SsisPackageModelAnalysis_ExecutionCorrelation AS [o];
                     UPDATE [o] SET [ModelNodeId]=[i].[NodeId],[ModelNodeKind]=[i].[NodeKind],[CorrelationStatus]='EXACT_GUID_AND_PATH'
                     FROM #SsisPackageModelAnalysis_ExecutionCorrelation AS [o] JOIN #SsisPackageModelAnalysis_RuntimeIdentities AS [i] ON [i].[NativeGuid]=[o].[ExecutableGuid]
+                    CROSS APPLY(SELECT CONVERT(nvarchar(max),@RootExecutionPath)+SUBSTRING([i].[PackagePath] COLLATE Latin1_General_100_BIN2,@RootPackageChars+1,4000) AS [Path]) AS [expected]
                     WHERE [i].[PackagePath] COLLATE Latin1_General_100_BIN2=[o].[PackagePath] COLLATE Latin1_General_100_BIN2 AND DATALENGTH([i].[PackagePath])=DATALENGTH([o].[PackagePath])
-                        AND [i].[PackagePath] COLLATE Latin1_General_100_BIN2=[o].[ExecutionPath] COLLATE Latin1_General_100_BIN2 AND DATALENGTH([i].[PackagePath])=DATALENGTH([o].[ExecutionPath])
+                        AND ([i].[PackagePath] COLLATE Latin1_General_100_BIN2=@RootPackagePath COLLATE Latin1_General_100_BIN2 AND DATALENGTH([i].[PackagePath])=DATALENGTH(@RootPackagePath)
+                            OR LEFT([i].[PackagePath] COLLATE Latin1_General_100_BIN2,@RootPackageChars+1) COLLATE Latin1_General_100_BIN2=(@RootPackagePath+N'\') COLLATE Latin1_General_100_BIN2 AND DATALENGTH([i].[PackagePath])>DATALENGTH(@RootPackagePath))
+                        AND [expected].[Path] COLLATE Latin1_General_100_BIN2=[o].[ExecutionPath] COLLATE Latin1_General_100_BIN2 AND DATALENGTH([expected].[Path])=DATALENGTH([o].[ExecutionPath])
                         AND [o].[PackageName] COLLATE Latin1_General_100_BIN2=@RootRuntimePackage COLLATE Latin1_General_100_BIN2 AND DATALENGTH([o].[PackageName])=DATALENGTH(@RootRuntimePackage)
                         AND (SELECT COUNT(*) FROM #SsisPackageModelAnalysis_RuntimeIdentities AS [g] WHERE [g].[NativeGuid]=[i].[NativeGuid])=1;
                 END;

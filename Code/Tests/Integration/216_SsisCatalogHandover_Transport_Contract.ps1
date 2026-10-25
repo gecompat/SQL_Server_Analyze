@@ -50,8 +50,8 @@ CREATE TABLE catalog.executable_statistics(statistics_id bigint,execution_id big
 CREATE TABLE catalog.SyntheticArchive(payload varbinary(max));
 INSERT catalog.folders VALUES(1,N'SyntheticFolder');INSERT catalog.projects VALUES(17,1,N'SyntheticProject',91);
 INSERT catalog.executions VALUES(9007199254740993,N'SyntheticFolder',N'SyntheticProject',N'SyntheticRoot.dtsx',91,20,17,'2026-01-01T00:00:00+00:00',7,'2026-01-01T00:00:00+00:00','2026-01-01T00:00:01+00:00');
-INSERT catalog.executables VALUES(9007199254740993,51,'11111111-1111-1111-1111-111111111111',N'SyntheticLabel',N'\Package'),(9007199254740993,52,'22222222-2222-2222-2222-222222222222',N'SyntheticLabel',N'\Package\SyntheticFlow');
-INSERT catalog.executable_statistics VALUES(1,9007199254740993,51,N'\Package','2026-01-01T00:00:00+00:00','2026-01-01T00:00:01+00:00',1000,0),(2,9007199254740993,52,N'\Package\SyntheticFlow','2026-01-01T00:00:00+00:00','2026-01-01T00:00:01+00:00',1000,0);
+INSERT catalog.executables VALUES(9007199254740993,51,'11111111-1111-1111-1111-111111111111',N'SyntheticRoot.dtsx',N'\Package'),(9007199254740993,52,'22222222-2222-2222-2222-222222222222',N'SyntheticRoot.dtsx',N'\Package\SyntheticFlow');
+INSERT catalog.executable_statistics VALUES(1,9007199254740993,51,N'\SyntheticObservedRuntimeRoot','2026-01-01T00:00:00+00:00','2026-01-01T00:00:01+00:00',1000,0),(2,9007199254740993,52,N'\SyntheticObservedRuntimeRoot\SyntheticFlow','2026-01-01T00:00:00+00:00','2026-01-01T00:00:01+00:00',1000,0);
 '@)
     [void](Query "CREATE PROCEDURE catalog.get_project @folder_name nvarchar(128),@project_name nvarchar(128) AS BEGIN EXEC sys.sp_getapplock @Resource=N'SyntheticCaptureBarrier',@LockOwner=N'Transaction',@LockMode=N'Exclusive',@LockTimeout=0; WAITFOR DELAY '00:00:03'; SELECT payload FROM catalog.SyntheticArchive; END;")
     # Die beiden nativen IDs und refId-Pfade werden ausdrücklich vom Testautor

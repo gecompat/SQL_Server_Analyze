@@ -160,7 +160,7 @@ $rows=@(foreach($row in $observed.Rows) {
         durationMs=$(if($row.IsNull('DurationMs')){$null}else{[int]$row.DurationMs});executionResult=$(if($row.IsNull('ExecutionResult')){$null}else{[int]$row.ExecutionResult})}
 })
 $model=$handover.PackageModelJson|ConvertFrom-Json -Depth 32
-$snapshot=[ordered]@{contract='ssis-execution-snapshot';version='1.0.0';method='SSISDB_CURRENT_PROJECT_DIRECT_PATH_V1';
+$snapshot=[ordered]@{contract='ssis-execution-snapshot';version='1.0.0';method='SSISDB_CURRENT_PROJECT_ROOT_SCOPE_V1';
     modelSha256=[Convert]::ToHexString([Security.Cryptography.SHA256]::HashData([Text.Encoding]::Unicode.GetBytes($handover.PackageModelJson))).ToLowerInvariant();
     packageSha256=$model.source.packageSha256;identityProfile='document-order-v1';
     execution=[ordered]@{sourceBindingSha256=$sourceBindingSha;executionId=[string]$source.ExecutionId;projectId=[string]$source.ProjectId;projectLsn=[string]$source.ProjectLsn;catalogDatabaseGuid=[string]$source.CatalogDatabaseGuid;packageFileName=[string]$source.PackageFileName;executionCreatedUtc=[string]$source.ExecutionCreatedUtc;

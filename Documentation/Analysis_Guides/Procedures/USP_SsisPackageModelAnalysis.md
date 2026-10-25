@@ -350,11 +350,23 @@ an die Procedure übergeben. Ein Laufzeitbeleg ersetzt den Modellbeleg nicht.
 Paketdigest, Capturezeitraum und vollständige Zeilen-/Trefferzahlen.
 `RUNTIME_BOUND_CAPTURE` bestätigt diesen importierten Capture zum genannten
 Zeitpunkt. Jede Statistikzeile bleibt separat erhalten. Objektzuordnung verlangt
-eine im Modell eindeutige native GUID und bytegenaue Gleichheit von beobachtetem
-Modellpaketpfad, Katalogpaketpfad und Ausführungspfad. Zuvor muss genau eine
-passende Paketwurzel beobachtet sein. Ihre beobachtete Paketbezeichnung begrenzt
-weitere Treffer; Modellanzeigenamen begründen keine Zuordnung. Iterations- und
-Kindpaketpfade, mehrdeutige GUIDs oder fehlende Pfade bleiben unzugeordnet.
+eine im Modell eindeutige native GUID und bytegenaue Gleichheit von importiertem
+Modellpaketpfad und Katalogpaketpfad. Zusätzlich muss genau eine Paketwurzel
+mit passender GUID, passendem Paketpfad und dem Paketdateinamen der Ausführung
+beobachtet sein. Ihr Ausführungspfad muss genau ein oberstes Pfadsegment sein.
+Damit qualifiziert ein verschachtelter Paketaufruf keine Wurzel.
+
+Der Capturevertrag `SSISDB_CURRENT_PROJECT_ROOT_SCOPE_V1` erhält beide
+Pfadrepräsentationen. SSISDB verwendet beispielsweise `\Package` als
+Paketpfad und `\SyntheticRuntimeRoot` als Ausführungspfad derselben Wurzel.
+Analyze bindet diese zwei beobachteten Wurzeln zusammen und vergleicht den
+unveränderten restlichen Paketpfad innerhalb dieses Scopes exakt mit dem
+Ausführungspfad. Eine Pfadsegmentgrenze ist Pflicht; `\PackageSuffix` ist
+kein Kind von `\Package`. Modellanzeigenamen bestimmen die Laufzeitwurzel
+nicht. Zeichen, Iterationszusätze und Kindpaketsegmente werden weder entfernt
+noch normalisiert. Mehrdeutige GUIDs, fehlende Pfade und Abweichungen bleiben
+unzugeordnet. Dies ist eine native Laufzeitzuordnungsregel auf bereits
+zugelieferten Identitäten, kein DTSX-Parser und keine Lineageableitung.
 
 EvidenceLevel ist `IMPORTED_CATALOG_OBSERVATION`; wegen unbekannter
 Loggingabdeckung bleibt die Quelle partiell. Analyze erzeugt keine neue
@@ -364,6 +376,17 @@ Modell bleibt nutzbar. Capturegrenzen sind 16 MiB, 16 JSON-Ebenen und 50000
 Beobachtungen; Archivgrenzen sind 64 MiB/10000 Einträge und 16 MiB je Paket.
 Das gemeinsame Importerzeitbudget bleibt wirksam. Der eigenständige statische
 Pfad benötigt weder diesen Adapter noch SSISDB, Toolbelt oder SQL CLR.
+
+Der manuelle
+[Windows-Quellentest](../../../Code/Tests/Integration/216_SsisCatalogHandover_Native_Contract.ps1)
+verwendet einen ausdrücklich eigenen Lab-Run mit bereits bereitgestellter
+SSISDB. Sein getrennt kompilierter
+[SDK-Fixtureautor](../../../Code/Tests/Fixtures/SSIS_Execution_Correlation/CreateProject.cs)
+liefert die erwarteten GUIDs, Paketpfade und Originalbytes unabhängig vom
+Toolbelt-Exporter. Der Test prüft einen echten Paketlauf und eine abweichende
+spätere Projektrevision. Er entfernt seine eigenen Katalogobjekte und die
+temporäre Analyze-Datenbank; der bereitgestellte Lab-Run verbleibt beim
+Aufrufer. Private Receipts und Capturedokumente gehören nicht in Git.
 
 ## Optionale lokale SQL-Metadatenprüfung
 
