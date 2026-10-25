@@ -584,6 +584,69 @@ wie bei anderen SQL-Aufrufen einen begrenzten Caller- oder Clienttimeout. Parser
 Komponentenprofile und paketübergreifende Daten-/Parameterlineage werden nicht
 in Analyze nachgebaut; solche Lineage ist nicht Bestandteil dieses Modus.
 
+## Optionale Dataflow-Ausführungskorrelation
+
+`@IncludePipelineCorrelation=1` erweitert ausschließlich
+`@IncludeExecutionScopes=1`. Der externe Katalogadapter erhält beide Schalter.
+Der gebundene Batch liest zusätzlich Komponentenphasen und Pfadtransfers
+derselben Ausführung. Der Capture verwendet `ssis-execution-scopes` 1.1.0 und
+`SSISDB_CURRENT_PROJECT_PIPELINES_V1`; der Paketsatz ergänzt pro Paket
+`ssis-pipeline-identities` 1.0.0. Der Toolbelt-Host liefert diesen Sidecar mit
+`--pipeline-bundle` aus seinem bestehenden Modell. Ohne Opt-in bleiben
+Capture, Hostaufruf und sieben Scopeausgaben unverändert. Im vorbereiteten
+Katalogaufruf werden `-IncludeExecutionScopes -IncludePipelineCorrelation`
+zusammen angegeben; der SQL-Aufruf übernimmt anschließend den Paketsatz und
+Capture dieser Übergabe mit beiden gleichnamigen SQL-Opt-ins. Die vorherigen
+Abschnitte zur lokalen Übergabe beschreiben die Host- und Berechtigungsvorbereitung.
+
+| Zusätzliche Ergebnisgruppe | Bedeutung einer Zeile |
+|---|---|
+| `pipelineInstances` | Eine bereits gebundene Dataflow-Statistikinstanz mit Paket-, Aufruf- und Modellkennung sowie beobachtetem Ausführungspfad. |
+| `componentPhases` | Ein Quellbeleg einer Komponentenphase mit Zeitintervall und optionaler scoped Komponentenzuordnung. |
+| `pathTransfers` | Ein Quellbeleg eines Pfadtransfers mit beobachtetem Zeilenzähler und optionaler Zuordnung zur vorhandenen Modellkante. |
+| `pipelineCoverage` | Der Status genau einer zusätzlichen Quelle mit vollständigen Quell-, Zuordnungs- und Restzahlen vor dem Ausgabelimit. |
+
+`RAW` liefert in diesem Opt-in elf Resultsets; `CONSOLE` weiterhin eines und
+`NONE` keines. `TABLE` akzeptiert die vier zusätzlichen Namen mit denselben
+nativen Schemas wie JSON und RAW. JSON ergänzt
+`pipelineCorrelationSchemaVersion=1`. Die gemeinsame Grenze von 50000
+Quellzeilen umfasst Statistiken, Ereignisse, Phasen und Transfers; die bisherigen
+Paket-, Archiv-, Dokument- und Zeitgrenzen gelten weiter.
+
+Zuerst muss der ordinal exakte Ausführungspfad genau eine bereits gebundene
+Dataflow-Statistikinstanz bestimmen. Taskname und Komponentenname gelten danach
+innerhalb dieses Paketmodells und Dataflows. Phasen erhalten
+`SCOPED_EXACT_COMPONENT_NAME`; die Quelle liefert keine Komponenten-GUID.
+Ein Pfadtransfer verlangt zusätzlich Identifikationsstring, Pfadname und beide
+Komponentennamen sowie passende Ports und Kante aus dem Toolbelt-Sidecar.
+Sein Status lautet `SCOPED_EXACT_PATH_REFERENCE`. Mehrdeutige, unbekannte oder
+abweichende Referenzen bleiben `UNASSIGNED`; Zeitnähe ersetzt keine Identität.
+Die SSISDB-Spalte `package_name` bezeichnet bei beiden zusätzlichen Quellen das
+zuerst gestartete Paket. Die Kindpaketkennung stammt deshalb ausschließlich aus
+der zuvor gebundenen Statistikinstanz.
+
+`ObservedDurationMs` ist das nichtnegative Intervall einer einzelnen Phase.
+Unbekannte oder umgekehrte Grenzen ergeben keine Dauer. `RowsSent` bleibt der
+unveränderte nichtnegative Zähler genau eines Transfers; unbekannte Werte
+bleiben unbekannt. Wiederholte Transfers und verzweigte Pfade werden nicht zu
+einer Paketzeilenzahl zusammengezählt. Die Ausgaben behaupten weder CPU-Zeit
+noch Wert- oder Zeilenlineage.
+
+Der Status in `scopeBinding` beschreibt weiterhin die grundlegende Paket- und
+Ausführungsbindung. Ein ungültiger Pipelinesidecar oder Pipelinecapture führt
+zusätzlich zu `PIPELINE_BINDING_UNPROVEN` in beiden Quellenabdeckungen und
+leeren Pipelinedetails; eine erfolgreiche Basisbindung überstimmt diesen
+Fehlerstatus nicht.
+
+Die Quellen erfordern sichtbare Ausführungsrechte und unterliegen der
+SSISDB-Zeilensicherheit. Komponentenphasen benötigen Performance oder Verbose,
+Zeilentransfers Verbose. Der Adapter ändert keine produktive Loggingeinstellung.
+Leere sichtbare Quellen erhalten `AVAILABLE_EMPTY`; fehlende oder verweigerte
+Quellen werden getrennt als `UNAVAILABLE` beziehungsweise `DENIED_PERMISSION`
+mit Fehlernummer ausgewiesen. Ein Quellenfehler verwirft keine lesbare
+Nachbarquelle. `IsPartial` bleibt wahr: Logginglücken, Rechte und ein laufender
+Capture erlauben keinen Schluss auf Nichtausführung oder globale Vollständigkeit.
+
 ## Primärquellen
 
 - [Freigegebener projektübergreifender Vertrag](../../Architecture/SSIS_Analyze_Toolbelt_Exchange_Contract.md)
@@ -591,6 +654,8 @@ in Analyze nachgebaut; solche Lineage ist nicht Bestandteil dieses Modus.
 - [Resultsetinventar](../../../Metadata/Inventory/ResultSets.csv)
 - [SSISDB-Ausführungen](https://learn.microsoft.com/en-us/sql/integration-services/system-views/catalog-executions-ssisdb-database)
 - [SSISDB-Executable-Statistiken](https://learn.microsoft.com/en-us/sql/integration-services/system-views/catalog-executable-statistics)
+- [SSISDB-Komponentenphasen](https://learn.microsoft.com/en-us/sql/integration-services/system-views/catalog-execution-component-phases)
+- [SSISDB-Pfadtransfers](https://learn.microsoft.com/en-us/sql/integration-services/system-views/catalog-execution-data-statistics)
 - [Indexkatalog](https://learn.microsoft.com/en-us/sql/relational-databases/system-catalog-views/sys-indexes-transact-sql)
 - [Indexspalten und Metadatensichtbarkeit](https://learn.microsoft.com/en-us/sql/relational-databases/system-catalog-views/sys-index-columns-transact-sql)
 

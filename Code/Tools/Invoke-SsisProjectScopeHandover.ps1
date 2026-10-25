@@ -11,7 +11,10 @@ param(
     [Parameter(Mandatory)][string]$ExpectedBuildSha256,
     [Parameter(Mandatory)][string]$ExpectedSourceCommit,
     [ValidateRange(1,24)][int]$ValidHours=1,
-    [string]$DotnetPath='dotnet'
+    [string]$DotnetPath='dotnet',
+    [switch]$IncludePipelineCorrelation,
+    [Data.DataTable]$ComponentPhases,
+    [Data.DataTable]$PathTransfers
 )
 Set-StrictMode -Version Latest
 $ErrorActionPreference='Stop'
@@ -40,11 +43,12 @@ try {
         $expanded+=$entries[0].Length;if($expanded -gt 67108864){throw 'SSIS_SCOPE_EXPANDED_ARCHIVE_LIMIT'}
         $input=$entries[0].Open();$memory=[IO.MemoryStream]::new()
         try {$buffer=[byte[]]::new(65536);while(($read=$input.Read($buffer,0,$buffer.Length)) -gt 0){if($memory.Length+$read -gt 16777216){throw 'SSIS_SCOPE_PACKAGE_ENTRY_UNPROVEN'};$memory.Write($buffer,0,$read)};$bytes=$memory.ToArray()}finally{$input.Dispose();$memory.Dispose()}
-        $handover=& (Join-Path $PSScriptRoot 'Invoke-SsisQualifiedHandover.ps1') -ProducerAssemblyPath $ProducerAssemblyPath -ExpectedBuildSha256 $ExpectedBuildSha256 -ExpectedSourceCommit $ExpectedSourceCommit -PackageBytes $bytes -Connection $Connection -ValidHours $ValidHours -DotnetPath $DotnetPath -ProducerTimeoutSeconds (Remaining-Seconds) -IncludeObjectIdentities -IncludeExecutionScopes -PrepareOnly
+        $handover=& (Join-Path $PSScriptRoot 'Invoke-SsisQualifiedHandover.ps1') -ProducerAssemblyPath $ProducerAssemblyPath -ExpectedBuildSha256 $ExpectedBuildSha256 -ExpectedSourceCommit $ExpectedSourceCommit -PackageBytes $bytes -Connection $Connection -ValidHours $ValidHours -DotnetPath $DotnetPath -ProducerTimeoutSeconds (Remaining-Seconds) -IncludeObjectIdentities -IncludeExecutionScopes -IncludePipelineCorrelation:$IncludePipelineCorrelation -PrepareOnly
         $key='p'+($packages.Count+1)
         $identities=$handover.ObjectIdentitiesJson|ConvertFrom-Json -Depth 32
         if($identities.version -cne '1.2.0'){throw 'SSIS_SCOPE_IDENTITY_PROFILE_UNSUPPORTED'}
         $packages.Add([ordered]@{packageKey=$key;entryName=$entryName;model=($handover.PackageModelJson|ConvertFrom-Json -Depth 32);identities=$identities})
+        if($IncludePipelineCorrelation){$packages[$packages.Count-1]['pipelineIdentities']=($handover.PipelineIdentitiesJson|ConvertFrom-Json -Depth 32)}
         $bytesByKey[$key]=$bytes
         foreach($item in $identities.objects){if($null -ne $item.callTarget){$pending.Enqueue([string]$item.callTarget)}}
     }
@@ -56,6 +60,22 @@ $rows=@(foreach($row in $Observations.Rows){[ordered]@{statisticsId=[string]$row
 $messages=@(foreach($row in $Events.Rows){[ordered]@{eventMessageId=[string]$row.EventMessageId;eventName=(Cell $row 'EventName');executableGuid=(Cell $row 'ExecutableGuid');packageName=(Cell $row 'PackageName');packagePath=(Cell $row 'PackagePath');executionPath=(Cell $row 'ExecutionPath');messageTime=(Cell $row 'MessageTime');messageCode=(Cell $row 'MessageCode')}})
 $capture=[ordered]@{contract='ssis-execution-scopes';version='1.0.0';method='SSISDB_CURRENT_PROJECT_SCOPES_V1';modelSetSha256=[Convert]::ToHexString([Security.Cryptography.SHA256]::HashData([Text.Encoding]::Unicode.GetBytes($modelJson))).ToLowerInvariant();archiveSha256=[Convert]::ToHexString([Security.Cryptography.SHA256]::HashData($Archive)).ToLowerInvariant();
     execution=[ordered]@{executionId=[string]$source.ExecutionId;projectId=[string]$source.ProjectId;projectLsn=[string]$source.ProjectLsn;catalogDatabaseGuid=[string]$source.CatalogDatabaseGuid;sourceBindingSha256=$SourceBindingSha256;packageFileName=[string]$source.PackageFileName;loggingLevel=(Cell $last 'LoggingLevel');executionStatus=[int]$last.ExecutionStatus;snapshotStartedUtc=[string]$source.ReadTimeUtc;snapshotCompletedUtc=[string]$last.ReadTimeUtc};observations=$rows;events=$messages}
+if($IncludePipelineCorrelation) {
+    $capture.version='1.1.0';$capture.method='SSISDB_CURRENT_PROJECT_PIPELINES_V1'
+    $sources=[Collections.Generic.List[object]]::new()
+    foreach($description in @(@{Name='componentPhases';Table=$ComponentPhases;Fields=@('PhaseStatsId','PackageName','TaskName','ComponentName','PhaseName','StartTime','EndTime','ExecutionPath')},@{Name='pathTransfers';Table=$PathTransfers;Fields=@('DataStatsId','PackageName','TaskName','PathIdentificationString','PathName','SourceComponentName','DestinationComponentName','RowsSent','CreatedTime','ExecutionPath')})) {
+        $table=$description.Table;if($table -isnot [Data.DataTable] -or -not $table.Columns.Contains('SourceErrorNumber')){throw 'SSIS_PIPELINE_SOURCE_SHAPE'}
+        $sourceErrorNumbers=@($table.Rows|Where-Object {-not $_.IsNull('SourceErrorNumber')})
+        if($sourceErrorNumbers.Count -gt 0){if($table.Rows.Count -ne 1){throw 'SSIS_PIPELINE_SOURCE_SHAPE'};foreach($column in $table.Columns){if($column.ColumnName -cne 'SourceErrorNumber' -and -not $table.Rows[0].IsNull($column.ColumnName)){throw 'SSIS_PIPELINE_SOURCE_SHAPE'}};$sourceErrorNumber=0;if(-not [int]::TryParse([string]$sourceErrorNumbers[0].SourceErrorNumber,[Globalization.NumberStyles]::None,[Globalization.CultureInfo]::InvariantCulture,[ref]$sourceErrorNumber) -or $sourceErrorNumber -lt 1){throw 'SSIS_PIPELINE_SOURCE_SHAPE'};$state=if($sourceErrorNumber -in 229,262,297,300,371){'DENIED_PERMISSION'}else{'UNAVAILABLE'};$capture[$description.Name]=@()}
+        else {
+            $sourceErrorNumber=$null;$state=if($table.Rows.Count -eq 0){'AVAILABLE_EMPTY'}else{'AVAILABLE'}
+            foreach($field in $description.Fields){if(-not $table.Columns.Contains($field)){throw 'SSIS_PIPELINE_SOURCE_SHAPE'}}
+            $capture[$description.Name]=@(foreach($row in $table.Rows){$item=[ordered]@{};foreach($field in $description.Fields){$key=$field.Substring(0,1).ToLowerInvariant()+$field.Substring(1);$item[$key]=Cell $row $field};$item})
+        }
+        $sources.Add([ordered]@{source=$description.Name;status=$state;errorNumber=$sourceErrorNumber})
+    }
+    $capture.pipelineSources=@($sources)
+}
 $captureJson=$capture|ConvertTo-Json -Depth 32 -Compress
 if([Text.Encoding]::Unicode.GetByteCount($modelJson) -gt 16777216 -or [Text.Encoding]::Unicode.GetByteCount($captureJson) -gt 16777216){throw 'SSIS_SCOPE_TRANSPORT_LIMIT'}
 # Validierung derselben kanonischen Einzelmodelle einschließlich Originalbytes.

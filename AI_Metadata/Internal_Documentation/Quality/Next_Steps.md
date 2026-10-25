@@ -3855,3 +3855,40 @@ vollständige SQL2025-Gate aus. Es entsteht keine zusätzliche Engine-Matrix.
 Ein zusätzlicher begrenzter unabhängiger Check betrifft ausschließlich diese
 neue Sicherheits-/Validatorgrenze. Erfolgreiche Produktprüfungen werden dadurch
 nicht erneut semantisch reviewed. Token- und Geldaufwand sind UNKNOWN.
+
+
+## Gesondert freigegebene SSIS-Dataflowkorrelation
+
+Der Benutzer hat die achte SSIS-Welle mit Weiterverwendung der bestehenden
+SSISDB und regulärer automatischer Integration nach erfolgreicher Abnahme
+freigegeben. Dieser Auftrag ist vom Entwicklungsrangplan dieses Dokuments
+getrennt. Parser, Komponentenprofile und Lineage verbleiben im Toolbelt;
+Analyze konsumiert den optionalen Sidecar und Katalogcapture ohne SQL CLR.
+
+Die Implementierung ergänzt vier opt-in Ergebnisgruppen. Die gemeinsame
+Toolbelt-Konformität besteht 147 Prüfungen und die bisherigen 21
+Frameworkfälle. Der unabhängige SDK-Vergleich ordnet fünf synthetische Flows,
+20 Komponenten und 15 Pfade denselben Modellreferenzen zu. Der neue
+SQL-Empfängervertrag besteht 37 Fälle; die bisherigen Ausführungs-, Iterations-
+und Scopeempfänger bestehen ebenfalls. Sechs Adapterfälle mit simulierten
+Quelltabellen prüfen den echten SQL-Empfänger einschließlich großer IDs,
+Logginglücken, Fehlerisolation und ungültiger Quellformen. Diese Fälle sind
+keine native SSISDB-Abnahme.
+
+Die native Abnahme bleibt offen. Das bereits abgenommene unveränderte
+Kontrollarchiv läuft in der erhaltenen Umgebung; neu erzeugte Pakete scheitern
+beim Laden der Tasks und Verbindungsmanager. Der aktuelle Projektarchivvergleich
+vor und nach SSISDB-Deployment ist bytegleich. Der erfolgte Neustart hat die
+Aktivierungsfehler nicht beseitigt. Die eigenen Consumerobjekte sind bereinigt;
+die SSISDB bleibt ausdrücklich bestehen. Eine Diagnose des tatsächlichen
+SSISDB-Ausführungsprozesses muss die Ursache klären, bevor Verbose-, Performance-,
+Basic-, Fehler- und Abbruchfälle als abgenommen gelten können. Ein allgemeiner
+Lab-Funktionsausbau benötigt nach dem Fortsetzungsvertrag eine eigene Freigabe.
+
+Der unabhängige Review hat vier Eingabebefunde geschlossen. Der zusätzliche
+Errorfall des nativen Harness verlangt nun einen positiven Beleg des eigenen
+SQL-Konvertierungsfehlers; drei synthetische Gegenprüfungen sichern diese
+Ursachenprüfung ab. Reine Verbindungsfehler dürfen keine Error-Abnahme ergeben.
+Native Abnahme, exakte Head-/Main-Gates und reguläre Integration werden erst mit
+ihrer tatsächlichen Durchführung als abgeschlossen dokumentiert. Der Timer
+startet keine unveränderten nativen Wiederholungen oder fremden Wellen.

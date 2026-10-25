@@ -2029,3 +2029,4 @@ USP_SsisPackageModelAnalysis,IncludeExecutionScopes,bit,0
 USP_SsisPackageModelAnalysis,ProjectModelsJson,nvarchar(max),NULL
 USP_SsisPackageModelAnalysis,ScopeSnapshotJson,nvarchar(max),NULL
 USP_SsisPackageModelAnalysis,ScopeHandoverId,uniqueidentifier,NULL
+USP_SsisPackageModelAnalysis,IncludePipelineCorrelation,bit,0

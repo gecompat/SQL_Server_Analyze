@@ -2731,6 +2731,7 @@ Quelle: `Code/10_SSIS/040_USP_SsisPackageModelAnalysis.sql`
     , @ProjectModelsJson nvarchar(max) = NULL
     , @ScopeSnapshotJson nvarchar(max) = NULL
     , @ScopeHandoverId uniqueidentifier = NULL
+    , @IncludePipelineCorrelation bit = 0
 ```
 
 ## `[monitor].[USP_ServerPrincipalAnalysis]`

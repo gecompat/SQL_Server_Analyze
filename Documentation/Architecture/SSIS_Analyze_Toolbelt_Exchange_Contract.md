@@ -532,3 +532,27 @@ Der Benutzer hat diese begrenzte Umsetzung, die Weiterverwendung der
 bestehenden SSISDB und die reguläre automatische Integration nach erfolgreicher
 Abnahme ausdrücklich freigegeben. Neue Lab-Provisionierung, CLR-Installation
 in Analyze und eine zweite Parserpflege gehören nicht zu diesem Auftrag.
+
+## Achte Welle: Dataflow-Ausführungsbelege
+
+Der optionale Toolbelt-Sidecar `ssis-pipeline-identities` 1.0.0 referenziert
+dieselben Dataflows, Komponenten, Ports und Kanten wie das neutrale Modell.
+Native Pfadreferenz und Identifikationsstring entstehen im vorhandenen
+Parserlauf und dessen Projektion. Die alten Hostmodi, Identitätssidecars und
+das neutrale Modell 1.0.0 bleiben erhalten.
+
+Analyze erweitert den gebundenen Katalogcapture um Komponentenphasen und
+Pfadtransfers. Die vorhandene Paket-, Archiv-, Projektversions- und
+Ausführungsbindung bleibt Voraussetzung. Der
+[Anwendungsvertrag](../Analysis_Guides/Procedures/USP_SsisPackageModelAnalysis.md#optionale-dataflow-ausführungskorrelation)
+beschreibt die zwei Opt-ins, vier zusätzlichen Ergebnisgruppen und
+Identitätsgrenzen. Eine bereits belegte Dataflow-Statistikinstanz bestimmt
+zuerst den Paket- und Aufrufscope. Erst danach werden scoped Namen und
+Pfadreferenzen ausgewertet. Beobachtete Phasendauern sind keine CPU-Zeit;
+Transferzähler werden nicht zu einer Paketzeilenzahl aggregiert.
+
+Der Benutzer hat diese begrenzte Umsetzung mit Weiterverwendung der bestehenden
+SSISDB und regulärer automatischer Integration nach erfolgreicher Abnahme
+freigegeben. Die Erweiterung übernimmt keine Datenwerte, Data Taps oder neue
+Lineage. Parser, Komponentenprofile und Lineage bleiben ausschließlich im
+Toolbelt; der Analyze-Empfänger benötigt kein SQL CLR.
