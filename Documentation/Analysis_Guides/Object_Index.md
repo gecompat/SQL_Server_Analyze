@@ -220,3 +220,5 @@ Für einen Einstieg nach beobachtetem Problem verwenden Sie [Hier beginnen](Star
 ## Datenbankprincipals und direkte Berechtigungen
 
 - [USP_DatabasePrincipalAnalysis](Procedures/USP_DatabasePrincipalAnalysis.md) trennt sichtbare Rollen und Rechte von Schemaownership und begrenzten Loginbindungen.
+
+- [USP_CurrentCallerPermissionAnalysis](Procedures/USP_CurrentCallerPermissionAnalysis.md) zeigt native Rechte des aktiven Kontexts auf SERVER- und DATABASE-Ebene.

@@ -15,6 +15,8 @@ vollständig gemeldete Abdeckung. Die acht Standardgruppen bleiben erhalten.
 
 Datenbanksicherheit: `USP_DatabasePrincipalAnalysis` ergänzt sichtbare Datenbankprincipals, direkte Rollen, native explizite Rechte mit Spaltenausnahmen sowie begrenzte Schemaowner- und Loginbindungen. Der Bericht bleibt lesend und behauptet keine vollständigen effektiven Rechte oder sicheren Orphan-Negativschlüsse.
 
+Die neue `USP_CurrentCallerPermissionAnalysis` zeigt native effektive SERVER-/DATABASE-Rechte des aktuellen Ausführungskontexts mit getrennten Quellen und numerischer Kontextbindung. Ein konkreter Objekt- oder Statementzugriff bleibt eine getrennte Prüfung.
+
 ## Aktueller Stand
 
 Der aktuelle Bestand folgt dem [Objektinventar](../../Metadata/Inventory/Objects.csv)
@@ -29,9 +31,9 @@ commitbezogenen Laufzeitnachweis.
 | ReleaseDate im Installationskatalog | 23. Oktober 2026 |
 | Mindestversion | SQL Server 2019 |
 
-Der aktuelle Inventarvertrag umfasst 187 Objekte: 113 öffentliche Procedures, 8 Views, 29 Table-Valued Functions, 17 interne Procedures und 20 Tabellen.
+Der aktuelle Inventarvertrag umfasst 188 Objekte: 114 öffentliche Procedures, 8 Views, 29 Table-Valued Functions, 17 interne Procedures und 20 Tabellen.
 
-Der Frameworkkern umfasst 168 Objekte mit 110 öffentlichen Procedures und 9 Tabellen. Das optionale Snapshotpaket umfasst 19 Objekte mit 3 öffentlichen Procedures und 11 Tabellen.
+Der Frameworkkern umfasst 169 Objekte mit 111 öffentlichen Procedures und 9 Tabellen. Das optionale Snapshotpaket umfasst 19 Objekte mit 3 öffentlichen Procedures und 11 Tabellen.
 
 Die [Paketgrenzen](../Reference/Scope_and_Limitations.md) unterscheiden
 Diagnose, Installation, lokale TABLE-Ausgabe und persistente Sammlung.

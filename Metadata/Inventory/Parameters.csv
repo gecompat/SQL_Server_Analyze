@@ -2025,6 +2025,22 @@ USP_DatabasePrincipalAnalysis,IsPartialOut,bit,NULL OUTPUT
 USP_DatabasePrincipalAnalysis,ErrorNumberOut,int,NULL OUTPUT
 USP_DatabasePrincipalAnalysis,ErrorMessageOut,nvarchar(2048),NULL OUTPUT
 USP_SsisPackageModelAnalysis,IncludeIterationCorrelation,bit,0
+USP_CurrentCallerPermissionAnalysis,DatabaseNames,nvarchar(max),NULL
+USP_CurrentCallerPermissionAnalysis,SystemdatenbankenEinbeziehen,bit,0
+USP_CurrentCallerPermissionAnalysis,DatabaseNamePattern,nvarchar(4000),NULL
+USP_CurrentCallerPermissionAnalysis,ServerrechteEinbeziehen,bit,1
+USP_CurrentCallerPermissionAnalysis,MaxZeilen,int,1000
+USP_CurrentCallerPermissionAnalysis,LockTimeoutMs,int,0
+USP_CurrentCallerPermissionAnalysis,ResultSetArt,varchar(16),'CONSOLE'
+USP_CurrentCallerPermissionAnalysis,ResultTablesJson,nvarchar(max),NULL
+USP_CurrentCallerPermissionAnalysis,JsonErzeugen,bit,0
+USP_CurrentCallerPermissionAnalysis,Json,nvarchar(max),NULL OUTPUT
+USP_CurrentCallerPermissionAnalysis,PrintMeldungen,bit,1
+USP_CurrentCallerPermissionAnalysis,Hilfe,bit,0
+USP_CurrentCallerPermissionAnalysis,StatusCodeOut,varchar(40),NULL OUTPUT
+USP_CurrentCallerPermissionAnalysis,IsPartialOut,bit,NULL OUTPUT
+USP_CurrentCallerPermissionAnalysis,ErrorNumberOut,int,NULL OUTPUT
+USP_CurrentCallerPermissionAnalysis,ErrorMessageOut,nvarchar(2048),NULL OUTPUT
 USP_SsisPackageModelAnalysis,IncludeExecutionScopes,bit,0
 USP_SsisPackageModelAnalysis,ProjectModelsJson,nvarchar(max),NULL
 USP_SsisPackageModelAnalysis,ScopeSnapshotJson,nvarchar(max),NULL
