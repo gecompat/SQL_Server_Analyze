@@ -50,6 +50,7 @@ if (-not $adapterValidation.IsReady) {
 $lab = $null
 $result = $null
 $failed = $false
+$scenarioFailure = $null
 $cleanupCompleted = $false
 
 try {
@@ -102,6 +103,7 @@ try {
 }
 catch {
     $failed = $true
+    $scenarioFailure = $_.Exception
     throw
 }
 finally {
@@ -125,11 +127,23 @@ finally {
             Write-Warning "Adapter-Cleanup fehlgeschlagen; der Infrastruktur-Cleanup wird dennoch ausgeführt: $($_.Exception.Message)"
         }
 
-        Remove-SqlServerLab `
-            -RunId $lab.RunId `
-            -StateRoot $StateRoot `
-            -Force `
-            -Confirm:$false | Out-Null
+        try {
+            $infrastructureCleanup = Remove-SqlServerLab `
+                -RunId $lab.RunId `
+                -StateRoot $StateRoot `
+                -Force `
+                -Confirm:$false
+            if ($infrastructureCleanup.Status -cne 'REMOVED') {
+                throw 'ANALYZE_LAB_CLEANUP_INCOMPLETE'
+            }
+        }
+        catch {
+            if ($scenarioFailure) {
+                $scenarioFailure.Data['InfrastructureCleanupFailure'] = $_.Exception
+                throw $scenarioFailure
+            }
+            throw
+        }
     }
     elseif ($preserve) {
         Write-Warning "Fehlgeschlagenes Adapter-Lab wurde absichtlich erhalten. RunId: $($lab.RunId)"

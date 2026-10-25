@@ -1,0 +1,22 @@
+name: TestLab cleanup contract
+on:
+  pull_request:
+    paths:
+      - 'TestLab/**'
+      - '.github/workflows/testlab-cleanup-contract.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'TestLab/**'
+      - '.github/workflows/testlab-cleanup-contract.yml'
+permissions:
+  contents: read
+jobs:
+  contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@v6
+      - name: Verify actual cleanup blocks without SQL or provider access
+        shell: pwsh
+        run: ./TestLab/Tests/Invoke-CleanupStatusChecks.ps1
