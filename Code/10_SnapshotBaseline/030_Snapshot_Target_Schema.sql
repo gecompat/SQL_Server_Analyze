@@ -1,7 +1,7 @@
 /*
 ===============================================================================
 Datei        : 030_Snapshot_Target_Schema.sql
-Version      : 1.1.0
+Version      : 1.1.1
 Stand        : 2026-10-25
 Zweck        : Erstellt das versionierte Basisschema des optionalen SC-023-
                Snapshot-/Baseline-Ziels in der aktuell verbundenen Datenbank.
@@ -65,7 +65,7 @@ BEGIN TRY
 IF @SnapshotSchemaOwnTransaction=1 BEGIN TRANSACTION;
 ELSE SAVE TRANSACTION SQLSA_SnapshotSchema2;
 -- SNAPSHOT_SCHEMA_PREFLIGHT_BEGIN
--- Derived model SHA256: 0dfca3ed957ff71aac524aa2656fe3089c52167d5ff27d3f8adcdd3183600b9c
+-- Derived model SHA256: 083a4e719bdc42137fc8116bb4cb7a9880148e2696660908e30217634ca2654c
 SET NOCOUNT ON; SET LOCK_TIMEOUT 10000;
 IF ISNULL(HAS_PERMS_BY_NAME(DB_NAME(),'DATABASE','CONTROL'),0)<>1 OR ISNULL(HAS_PERMS_BY_NAME(NULL,NULL,'VIEW ANY DEFINITION'),0)<>1 THROW 53901,N'Deployment requires CONTROL DATABASE and visible server metadata.',1;
 IF EXISTS(SELECT 1 FROM sys.triggers WHERE parent_class=0 AND is_disabled=0) OR EXISTS(SELECT 1 FROM sys.server_triggers WHERE is_disabled=0) THROW 53902,N'Active DDL triggers are unsupported.',1;
@@ -77,7 +77,7 @@ DECLARE @SnapshotExpectedLegacy bit=0;
 IF OBJECT_ID(N'[snapshot].[PackageVersion]') IS NOT NULL OR OBJECT_ID(N'[snapshot].[RetentionPolicy]') IS NOT NULL OR OBJECT_ID(N'[snapshot].[CollectorPolicy]') IS NOT NULL OR OBJECT_ID(N'[snapshot].[CaptureRun]') IS NOT NULL OR OBJECT_ID(N'[snapshot].[ModuleStatus]') IS NOT NULL OR OBJECT_ID(N'[snapshot].[Scope]') IS NOT NULL OR OBJECT_ID(N'[snapshot].[MetricDefinition]') IS NOT NULL OR OBJECT_ID(N'[snapshot].[MetricSample]') IS NOT NULL OR OBJECT_ID(N'[snapshot].[PayloadSnapshot]') IS NOT NULL OR OBJECT_ID(N'[snapshot].[PurgeRun]') IS NOT NULL OR OBJECT_ID(N'[snapshot].[InternalConfigureSnapshotPolicy]') IS NOT NULL OR OBJECT_ID(N'[snapshot].[InternalPrepareCollectionCycle]') IS NOT NULL OR OBJECT_ID(N'[snapshot].[InternalCompletePerformanceCounterCycle]') IS NOT NULL OR OBJECT_ID(N'[snapshot].[InternalFinalizeCollectionCycle]') IS NOT NULL OR OBJECT_ID(N'[snapshot].[InternalPurgeExpiredData]') IS NOT NULL BEGIN
 IF OBJECT_ID(N'[snapshot].[PackageVersion]',N'U') IS NULL OR OBJECT_ID(N'[snapshot].[RetentionPolicy]',N'U') IS NULL OR OBJECT_ID(N'[snapshot].[CollectorPolicy]',N'U') IS NULL OR OBJECT_ID(N'[snapshot].[CaptureRun]',N'U') IS NULL OR OBJECT_ID(N'[snapshot].[ModuleStatus]',N'U') IS NULL OR OBJECT_ID(N'[snapshot].[Scope]',N'U') IS NULL OR OBJECT_ID(N'[snapshot].[MetricDefinition]',N'U') IS NULL OR OBJECT_ID(N'[snapshot].[MetricSample]',N'U') IS NULL OR OBJECT_ID(N'[snapshot].[PayloadSnapshot]',N'U') IS NULL OR OBJECT_ID(N'[snapshot].[PurgeRun]',N'U') IS NULL THROW 53935,N'Incomplete Snapshot schema.',1;
 DECLARE @SnapshotVersionLock bigint; SELECT TOP(1) @SnapshotVersionLock=1 FROM [snapshot].[PackageVersion] WITH(TABLOCKX,HOLDLOCK) OPTION(MAXDOP 1);
-EXEC sys.sp_executesql N'IF (SELECT COUNT_BIG(*) FROM [snapshot].[PackageVersion])<>1 THROW 53935,N''Unknown Snapshot version cardinality.'',1; IF EXISTS(SELECT 1 FROM [snapshot].[PackageVersion] WHERE PackageCode=''SC-023'' AND PackageVersion=''1.0.0'' AND SchemaVersion=1) SET @Legacy=1; ELSE IF NOT EXISTS(SELECT 1 FROM [snapshot].[PackageVersion] WHERE PackageCode=''SC-023'' AND PackageVersion=''1.1.0'' AND SchemaVersion=2) THROW 53935,N''Unknown Snapshot package/schema version.'',1;',N'@Legacy bit OUTPUT',@SnapshotExpectedLegacy OUTPUT;
+EXEC sys.sp_executesql N'IF (SELECT COUNT_BIG(*) FROM [snapshot].[PackageVersion])<>1 THROW 53935,N''Unknown Snapshot version cardinality.'',1; IF EXISTS(SELECT 1 FROM [snapshot].[PackageVersion] WHERE PackageCode=''SC-023'' AND PackageVersion=''1.0.0'' AND SchemaVersion=1) SET @Legacy=1; ELSE IF NOT EXISTS(SELECT 1 FROM [snapshot].[PackageVersion] WHERE PackageCode=''SC-023'' AND PackageVersion IN(''1.1.0'',''1.1.1'') AND SchemaVersion=2) THROW 53935,N''Unknown Snapshot package/schema version.'',1;',N'@Legacy bit OUTPUT',@SnapshotExpectedLegacy OUTPUT;
 END;
 IF SCHEMA_ID(N'snapshot') IS NOT NULL AND NOT EXISTS(SELECT 1 FROM sys.schemas WHERE name=N'snapshot' AND principal_id=DATABASE_PRINCIPAL_ID(N'dbo')) THROW 53903,N'Noncanonical product schema ownership.',1;
 INSERT #SnapshotTargetSchema_KnownForeignKeys VALUES(N'snapshot',N'CollectorPolicy',N'FK_snapshot_CollectorPolicy_RetentionPolicy');
@@ -1561,14 +1561,14 @@ BEGIN
     )
     VALUES
     (
-          'SC-023','1.1.0',2
+          'SC-023','1.1.1',2
         , SYSUTCDATETIME(),SYSUTCDATETIME()
     );
 END
 ELSE
 BEGIN
     UPDATE [snapshot].[PackageVersion]
-    SET [PackageVersion] = '1.1.0'
+    SET [PackageVersion] = '1.1.1'
       , [SchemaVersion] = 2
       , [LastInstallerRunUtc] = SYSUTCDATETIME()
     WHERE [PackageCode] = 'SC-023';

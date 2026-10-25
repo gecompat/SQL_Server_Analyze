@@ -624,8 +624,9 @@ def snapshot_state_classifier(tables: list[Table], sources: list[Source], strict
            "IF EXISTS(SELECT 1 FROM [snapshot].[PackageVersion] WHERE PackageCode='SC-023' "
            "AND PackageVersion='1.0.0' AND SchemaVersion=1) SET @Legacy=1; "
            "ELSE IF NOT EXISTS(SELECT 1 FROM [snapshot].[PackageVersion] WHERE PackageCode='SC-023' "
-           "AND PackageVersion='1.1.0' AND SchemaVersion=2) "
-           "THROW 53935,N'Unknown Snapshot package/schema version.',1;")
+           + ("AND PackageVersion='1.1.1' AND SchemaVersion=2) " if strict else
+              "AND PackageVersion IN('1.1.0','1.1.1') AND SchemaVersion=2) ")
+           + "THROW 53935,N'Unknown Snapshot package/schema version.',1;")
     out.append(f"EXEC sys.sp_executesql {lit(query)},N'@Legacy bit OUTPUT',{variable} OUTPUT;\n")
     if strict:
         out.append(f"IF {variable}=1 THROW 53935,N'Legacy Snapshot version after deployment.',1;\n")

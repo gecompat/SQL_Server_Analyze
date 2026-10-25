@@ -83,6 +83,15 @@ Wurden nur abgelaufene Daten in kontrollierter Menge entfernt, ohne frische Evid
 
 Der Purge löscht MetricSample und PayloadSnapshot zuerst, anschließend ModuleStatus, leere CaptureRuns und verwaiste Nicht-Server-Scopes. Jede Schleife besitzt eine konfigurierte Zeilen- und eine aufrufbezogene Batchgrenze.
 
+Die letzte finalisierte WAIT_STATS-CaptureRun-Zeile bleibt unabhängig von
+Status und Kindern erhalten, bis ein neuerer Wait-Lauf finalisiert ist.
+Ein neuerer Performance-Counter-Lauf oder ein unfinalisierter Wait-Lauf hebt
+diesen Schutz nicht auf. MetricSamples, Payloads und Modulstatus dieser
+Grenzzeile verfallen regulär; ein erhaltener Run ist keine vollständige
+Vergleichsbasis. Diese Retentionsvorbereitung installiert oder aktiviert
+keinen Wait-Collector und verändert die Performance-Counter-Retention nicht.
+
+
 ### Datenkette
 
 RetentionPolicy → Ablaufgrenzen → child-first Deletes → PurgeRun-Summen → erneute Größenbewertung.

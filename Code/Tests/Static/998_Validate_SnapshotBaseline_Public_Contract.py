@@ -342,10 +342,12 @@ def validate_repository(repository_root: pathlib.Path) -> list[str]:
                 errors.append("PUBLIC_CONTRACT_ID")
             if public_contract.get("contractVersion") != 1:
                 errors.append("PUBLIC_CONTRACT_VERSION")
-            if public_contract.get("targetPackageVersion") != "1.1.0" or public_contract.get("targetSchemaVersion") != 2:
+            if public_contract.get("targetPackageVersion") != "1.1.1" or public_contract.get("targetSchemaVersion") != 2:
                 errors.append("PUBLIC_CONTRACT_TARGET_SCHEMA_VERSION")
             if public_contract.get("acceptedTargetUpgrade") != {"packageVersion":"1.0.0","schemaVersion":1,"requiresExactManagedShape":True,"preservesExistingRows":True}:
                 errors.append("PUBLIC_CONTRACT_TARGET_UPGRADE")
+            if public_contract.get("acceptedTargetPatchUpgrade") != {"packageVersion":"1.1.0","schemaVersion":2,"requiresExactManagedShape":True,"preservesExistingRows":True}:
+                errors.append("PUBLIC_CONTRACT_TARGET_PATCH_UPGRADE")
             if public_contract.get("matrixWorkflow") != ".github/workflows/release-native-matrix.yml":
                 errors.append("PUBLIC_CONTRACT_ACTIVE_NATIVE_WORKFLOW")
             if public_contract.get("releaseState") != "IMPLEMENTED_ACTIONS_GATE":
@@ -646,9 +648,10 @@ GO
             {
                 "contractId": "SC-023-PUBLIC-V1",
                 "contractVersion": 1,
-                "targetPackageVersion": "1.1.0",
+                "targetPackageVersion": "1.1.1",
                 "targetSchemaVersion": 2,
                 "acceptedTargetUpgrade": {"packageVersion":"1.0.0","schemaVersion":1,"requiresExactManagedShape":True,"preservesExistingRows":True},
+                "acceptedTargetPatchUpgrade": {"packageVersion":"1.1.0","schemaVersion":2,"requiresExactManagedShape":True,"preservesExistingRows":True},
                 "matrixWorkflow": ".github/workflows/release-native-matrix.yml",
                 "releaseState": "IMPLEMENTED_ACTIONS_GATE",
                 "targetSqlServerMajorVersions": [15, 16, 17],
@@ -674,6 +677,13 @@ def run_self_test() -> None:
         good_errors = validate_repository(good_root)
         if good_errors:
             raise AssertionError("positive self-test failed: " + ",".join(good_errors))
+
+        manifest_path = good_root / PUBLIC_CONTRACT
+        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+        manifest["acceptedTargetPatchUpgrade"]["schemaVersion"] = 1
+        manifest_path.write_text(json.dumps(manifest), encoding="utf-8")
+        if "PUBLIC_CONTRACT_TARGET_PATCH_UPGRADE" not in validate_repository(good_root):
+            raise AssertionError("negative self-test did not detect wrong patch schema")
 
         bad_root = pathlib.Path(temporary_directory) / "bad"
         write_self_test_repository(bad_root, bad=True)

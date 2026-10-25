@@ -40,12 +40,14 @@ In beiden Fällen bleibt die Reihenfolge verbindlich:
 
 Das Paket erstellt keine Datenbank, Benutzer, Login, Berechtigung oder Scheduleraufgabe.
 
-Der aktuelle Quellstand installiert Target-PackageVersion 1.1.0 mit
-SchemaVersion 2. Er erweitert ausschließlich die CHECK-Domänen um WAIT_STATS
-und WAIT_TYPE; ein Wait-Collector, eine Wait-Policy und Waitmetriken sind
+Der aktuelle Quellstand installiert Target-PackageVersion 1.1.1 mit
+SchemaVersion 2. Die CHECK-Domänen unterstützen WAIT_STATS und WAIT_TYPE.
+Der Purge erhält die letzte finalisierte WAIT_STATS-Laufzeile als spätere
+Vergleichsgrenze. Ein Wait-Collector, eine Wait-Policy und Waitmetriken sind
 noch nicht enthalten. Vorhandene Counterdaten, Scopeidentitäten und Policies
 bleiben erhalten. Ein exakt erkanntes Target 1.0.0 / Schema 1 wird in einer
-Transaktion migriert. Unbekannte Versionen, gemischte Domänen, zusätzliche
+Transaktion migriert. Das bekannte Target 1.1.0 / Schema 2 erhält den
+Patch ohne weitere Schemaänderung. Unbekannte Versionen, gemischte Domänen, zusätzliche
 CHECKs, veränderte Tabellenfacetten und deaktivierte oder nicht vertrauenswürdige
 Constraints werden vor Produktänderungen abgelehnt. Ein abweichender Stand
 muss vor erneutem Installieren fachlich geklärt werden; der Installer repariert
@@ -207,3 +209,20 @@ Siehe [Datenschutz und Laufzeitausgaben](Runtime_Data_Privacy.md).
 - [Procedure-Seite `USP_ConfigureSnapshotTarget`](../Analysis_Guides/Procedures/USP_ConfigureSnapshotTarget.md)
 - [Procedure-Seite `USP_RunSnapshotCollectionCycle`](../Analysis_Guides/Procedures/USP_RunSnapshotCollectionCycle.md)
 - [Procedure-Seite `USP_PurgeSnapshotData`](../Analysis_Guides/Procedures/USP_PurgeSnapshotData.md)
+
+
+## Erhaltung der letzten Wait-Vergleichsgrenze
+
+Die CaptureRun-Zeile mit der größten finalisierten WAIT_STATS-CaptureRunId
+bleibt beim Purge erhalten, auch wenn sie einen Fehler meldet oder ihre Kinder
+fehlen. Erst eine neuere tatsächlich finalisierte Wait-Aufnahme gibt die alte
+Grenzzeile zur regulären Retention frei. Ein unfinalisierter Wait-Lauf oder
+ein neuerer Performance-Counter-Lauf gibt sie nicht frei. Die Ausnahme hält
+höchstens eine zusätzliche finalisierte Zeile; Performance-Counter-Läufe
+behalten ihren bisherigen Löschpfad.
+
+MetricSamples, Payloads, Modulstatus und nicht mehr referenzierte Scopes
+laufen weiterhin nach ihrer normalen Retention ab. Ein erhaltener Run ohne
+notwendige Rohdaten erlaubt keinen numerischen Vergleich. Diese Vorbereitung
+aktiviert keine Wait-Erfassung. Ein späterer Collector muss fehlende Kinder
+und die unmittelbar vorherige Fehlergrenze ausdrücklich berücksichtigen.

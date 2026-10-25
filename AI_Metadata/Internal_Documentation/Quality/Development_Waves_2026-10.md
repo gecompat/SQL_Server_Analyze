@@ -229,5 +229,7 @@ native Berechtigungsmatrix sind ausdrücklich NOT_EXECUTED. Das Snapshot-
 Dossier führt Paketbindung, frühere Vollrunfehler und verbleibende Grenzen.
 Der WAIT_CAPTURE_CONTEXT-v1-Feldvertrag ist einschließlich der gezielten
 Retentionskorrektur unabhängig geprüft. Der nächste eigenständige Schritt
-liefert Wait-Counter mit PackageVersion 1.2.0 und bestehender SchemaVersion 2; Datei-I/O folgt getrennt. Die SSIS-Datenflussarbeit bleibt
+liefert zunächst den Retentionsschutz mit Targetpatch 1.1.1. Wait-Persistenz
+und öffentliche Aktivierung folgen mit PackageVersion 1.2.0 und bestehender
+SchemaVersion 2; Datei-I/O folgt getrennt. Die SSIS-Datenflussarbeit bleibt
 beim separaten Auftrag.

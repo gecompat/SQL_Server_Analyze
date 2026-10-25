@@ -1,6 +1,6 @@
 # Betrieb des optionalen Snapshot-/Baseline-Pakets SC-023
 
-Stand: 2026-10-23
+Stand: 2026-10-25
 Status: `IMPLEMENTED_ACTIONS_GATE`
 
 ## Paketgrenze
@@ -85,8 +85,13 @@ Auswahl beider Datenbanken, die Unterbrechung von Collection und Purge sowie
 die Abschlusskontrollen. Der kombinierte Installer liegt ab v1.1.1 fertig
 in der ZIP vor. Er besitzt eine gemeinsame Transaktion, Receipts und
 Vorzustandserhaltung in beiden Kontexten. Vorhandene Datenbanken und Zielbindung werden
-weiterverwendet. Die Target-Paketversion bleibt in v1.1.2 `1.0.0` mit
-`SchemaVersion=1`; sie ist von der Frameworkversion getrennt.
+weiterverwendet. Die bereits veröffentlichte v1.1.2-ZIP enthält
+Target-Paketversion `1.0.0` mit `SchemaVersion=1`. Der aktuelle Quellstand
+installiert `1.1.1` mit `SchemaVersion=2`; die Targetversion ist von der
+Frameworkversion getrennt. Der
+[Architekturvertrag](../Architecture/Snapshot_Baseline_Package_Contract.md#installation)
+beschreibt die erkannten Upgradezustände und Installationsrechte. Bestehende
+ZIP-Dateien werden durch einen neueren Quellstand nicht nachträglich geändert.
 
 Der Gesamtdeploymentweg prüft unterstützte Strukturformen und Customkonflikte
 vor Produktänderungen. Die Snapshot-Einzelinstaller bleiben für getrennte
@@ -139,6 +144,14 @@ Ein Agentjob oder externer Scheduler ruft nur diese Procedure auf; Sammellogik g
 - Fehlende Evidenz erzeugt kein Sample mit erfundenem Nullwert.
 
 ## Retention und Budget
+
+Die letzte finalisierte WAIT_STATS-Laufzeile ist als Vorbereitung des späteren
+Wait-Vergleichs von der Runlöschung ausgenommen, bis ein neuerer Wait-Lauf
+finalisiert ist. Dies erhält höchstens eine zusätzliche Laufzeile einschließlich
+eines möglichen Fehlerstatus. Ihre Rohsamples, Payloads und Modulstatus
+verfallen regulär; ihre bloße Existenz beweist deshalb keine vollständige
+Vergleichsbasis. Die Performance-Counter-Retention bleibt unverändert. Der
+aktuelle Stand aktiviert noch keinen Wait-Collector.
 
 ```sql
 EXEC [monitor].[USP_PurgeSnapshotData]

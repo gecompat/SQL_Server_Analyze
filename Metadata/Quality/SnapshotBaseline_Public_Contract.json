@@ -70,11 +70,17 @@
   ],
   "runtimeContract": "Code/Tests/Integration/195_SnapshotBaseline_Runtime_Contract.sql",
   "matrixWorkflow": ".github/workflows/release-native-matrix.yml",
-  "targetPackageVersion": "1.1.0",
+  "targetPackageVersion": "1.1.1",
   "targetSchemaVersion": 2,
   "acceptedTargetUpgrade": {
     "packageVersion": "1.0.0",
     "schemaVersion": 1,
+    "requiresExactManagedShape": true,
+    "preservesExistingRows": true
+  },
+  "acceptedTargetPatchUpgrade": {
+    "packageVersion": "1.1.0",
+    "schemaVersion": 2,
     "requiresExactManagedShape": true,
     "preservesExistingRows": true
   }
