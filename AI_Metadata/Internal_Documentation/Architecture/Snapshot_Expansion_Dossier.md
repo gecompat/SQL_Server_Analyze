@@ -995,6 +995,14 @@ Der Zustandserhaltungscheck erlaubt ausschließlich den beabsichtigten
 Definitionsaustausch dieses Helpers und prüft danach dessen neue Definition
 bytegenau. Alle übrigen Daten, Policies, Definitionen und gespeicherten
 SET-Metadaten bleiben gebunden. Ein nativer Zwischenlauf des fehlerhaften
-parserbereinigten Testpfads bestätigt 137; sein Cleanup besteht. Die korrigierte
-native Upgradeabnahme und die regulären Head-/Main-Gates stehen noch aus.
+parserbereinigten Testpfads bestätigt 137; sein Cleanup besteht.
 
+Die korrigierte lokale SQL2025-Abnahme besteht für alle drei tatsächlichen
+Patchinstallationswege mit altem Helper und gefülltem 1.1.0-Target. Der
+zusätzliche V1-/Wiederholungs-/19-Ablehnungsumfang, Calleroptionen und gezielte
+Installationsrechte bestehen ebenfalls. Alle fünf eigenen lokalen
+Labversuche sind bereinigt; zwei ersetzte Testzwischenstände qualifizieren
+das endgültige Upgrade nicht. Der Abgleich mit SSIS-PR #445 ist konfliktfrei;
+die gebundenen Snapshotproduktdateien bleiben unverändert. Die frischen
+regulären Head-/Main-Gates prüfen den gemeinsamen Lieferstand und stehen
+noch aus. Es wird keine ältere native Patchabnahme behauptet.

@@ -63,8 +63,10 @@ SQL2025-Main-Nachlauf besteht nach einem einmaligen begrenzten Wiederlauf
 der fehlgeschlagenen Jobs; der ursprüngliche SSIS-Legacy-Metadatentimeout
 bleibt ohne behauptete Sperrursache dokumentiert.
 
-Der separate SSIS-Auftrag arbeitet aktuell an Datenflusskorrelation. Der
-Gesamtauftrag übernimmt diesen Scope und die erhaltene SSISDB nicht. Der
+Die separate SSIS-Datenflusskorrelation ist über
+[PR #445](https://github.com/gecompat/SQL_Server_Analyze/pull/445) integriert.
+Abnahme und Zuständigkeit bleiben beim SSIS-Auftrag. Der Gesamtauftrag
+übernimmt dessen Scope und die erhaltene SSISDB nicht. Der
 nächste unabhängige Rang 10 steht im
 [Snapshot-Dossier](../Architecture/Snapshot_Expansion_Dossier.md):
 Die datenbewahrende Schema-2-Vorbereitung ist über
