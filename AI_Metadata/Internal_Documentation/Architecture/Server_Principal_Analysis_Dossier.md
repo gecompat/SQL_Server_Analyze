@@ -1,9 +1,10 @@
 # Serverprincipals, Rollen und Login-Lifecycle
 
 **Stand:** 25. Oktober 2026.
-**Status:** Analyse und erster Schnittstellenvorschlag; nicht implementiert.
+**Status:** erster Server-Implementierungskandidat; unabhängiger Produktreview und native Abnahme noch offen.
+**Referenz:** `WI-0012`, aus dem aktuellen Registry-Blob zur serialisierten Übernahme vergeben.
 **Artefakt-UID:** `urn:uuid:01a17168-ab02-76fd-9f7c-5816187aeeef`.
-**Registrierung:** `DEFERRED`; noch keine finale lesbare Referenz vergeben.
+**Registrierung:** `DIRECT`; maßgebliche Vergabe und Basis stehen in der Artefaktregistry.
 **Planung:** Rang 6 der [Entwicklungswellen](../Quality/Development_Waves_2026-10.md),
 unter dem bestehenden Intake `WI-0010`.
 
@@ -45,9 +46,9 @@ Passwortwerten, Paket- oder Anwendungsinhalten. Namen und fachlich benötigte
 Identitätsmetadaten bleiben in Laufzeitausgaben erhalten; gespeicherte Beispiele,
 Tests und Evidenzzusammenfassungen verwenden ausschließlich synthetische Werte.
 
-## Vorgeschlagener öffentlicher Vertrag
+## Öffentlicher Vertrag des ersten Server-Slices
 
-Der Vorschlag lautet `[monitor].[USP_ServerPrincipalAnalysis]`. Der übernommene
+Der erste Slice lautet `[monitor].[USP_ServerPrincipalAnalysis]`. Der übernommene
 Benutzerauftrag gibt den beschriebenen fachlichen Umfang zur autonomen
 Umsetzung frei. Diese bestehende funktionsbezogene Freigabe wird nicht erneut
 angefragt. Die technische Konkretisierung wird vor Implementierung fertiggestellt
@@ -57,8 +58,8 @@ werden dadurch nicht freigegeben.
 
 | Parameter | Default und Bedeutung |
 |---|---|
-| `@MaxZeilen int` | `1000`; begrenzt jedes fachliche Resultset getrennt. `0` oder `NULL` bedeutet unbeschränkt, negative Werte sind ungültig. |
-| `@LockTimeoutMs int` | `0`; keine unbeschränkte Wartezeit und keine Änderung des Callerwerts nach Abschluss oder Fehler. |
+| `@MaxZeilen int` | `1000`; begrenzt jedes der vier Fachresultsets getrennt. `0` oder `NULL` bedeutet unbeschränkt, negative Werte sind ungültig. Modul-, Quellenstatus und Warnungen bleiben als kleine Diagnosemengen erhalten. |
+| `@LockTimeoutMs int` | `0`; zulässig sind 0 bis 60000 Millisekunden. NULL ist ungültig. Der Callerwert wird nach Abschluss oder einem gefangenen Fehler wiederhergestellt. |
 | `@ResultSetArt varchar(16)` | `CONSOLE`; zusätzlich RAW, TABLE und NONE gemäß Frameworkvertrag. |
 | `@ResultTablesJson nvarchar(max)` | `NULL`; nur TABLE und ausschließlich die unten benannten Resultsets. |
 | `@JsonErzeugen bit`, `@Json nvarchar(max) OUTPUT` | `0` beziehungsweise `NULL`; separates versioniertes JSON aus derselben materialisierten Datenbasis. |
@@ -75,15 +76,18 @@ TABLE-Ziele bleiben lokale Temp-Tabellen mit dem vorhandenen Mappingvertrag.
 | `moduleStatus` | Modul, Aufnahmezeit, Status, Partialität, Gesamtumfang und Aussagegrenze. |
 | `principals` | `PrincipalId int`, `PrincipalName sysname`, `PrincipalType char(1)`, `PrincipalTypeDescription nvarchar(60)`, `IsDisabled bit`, `CreatedAt datetime`, `ModifiedAt datetime`, `IsFixedRole bit`, `OwningPrincipalId int`. |
 | `roleMemberships` | `RolePrincipalId int`, `RoleName sysname NULL`, `MemberPrincipalId int`, `MemberName sysname NULL`; sichtbare Kanten werden nicht durch innere Namensjoins entfernt. |
-| `permissions` | Grantee-/Grantor-ID und optional sichtbare Namen, `Class tinyint`, `ClassDescription nvarchar(60)`, `MajorId int`, `MinorId int`, `PermissionName nvarchar(128)`, `PermissionState char(1)`, `PermissionStateDescription nvarchar(60)`. |
+| `permissions` | Grantee-/Grantor-ID und optional sichtbare Namen, `Class tinyint`, `ClassDescription nvarchar(60)`, `MajorId int`, `PermissionName nvarchar(128)`, `PermissionState char(1)`, `PermissionStateDescription nvarchar(60)`. |
 | `loginPolicies` | `PrincipalId int`, sichtbarer Loginname sowie `IsPolicyChecked bit` und `IsExpirationChecked bit`. Fehlende Sicht bleibt von ausdrücklich deaktivierten Schaltern unterscheidbar. |
 | `sourceStatus` | Quellschlüssel, Beginn/Ende der Aufnahme, Status, Sichtbarkeitsgrenze, beobachtete und ausgegebene Zeilenzahl, Limitstatus sowie native Fehlerdaten. |
 | `warnings` | Warncode, Quellbezug und konkrete Evidenzgrenze; keine automatische Sicherheitsfreigabe oder DDL-Empfehlung. |
 
-SchemaVersion beginnt bei 1. Die endgültige Feldfolge, Nullbarkeit,
-Zeichentypen und Textcollations werden vor Produktimplementierung in den
-Resultsetvertrag übernommen und unabhängig geprüft. Die aufgeführten Fachfelder
-sind noch kein veröffentlichter API-Vertrag.
+SchemaVersion ist 1. Die vollständige Feldfolge, Typen und Nullbarkeit stehen
+kanonisch im [Resultsetinventar](../../../Metadata/Inventory/ResultSets.csv).
+Alle Textfelder verwenden `SQL_Latin1_General_CP1_CS_AS`. Der Kandidat erhält
+vor regulärer PR-Integration den unabhängigen Produktreview und die tatsächlich
+erforderliche native Abnahme. Die öffentliche
+[Procedure-Seite](../../../Documentation/Analysis_Guides/Procedures/USP_ServerPrincipalAnalysis.md)
+führt Aufruf, Leserichtung, Status- und Aussagegrenzen zusammen.
 
 ## Sichtbarkeit, Berechtigungen und Eigenlast
 
@@ -93,10 +97,12 @@ kein Vollständigkeitsnachweis. Quelle und Modul müssen eingeschränkte oder
 nicht bewiesene Sicht ausdrücklich ausweisen; ein pauschaler erfolgreicher
 HAS_PERMS_BY_NAME-Aufruf ersetzt keine quellenspezifische Prüfung.
 
-Der erste sichere Vertrag kann ausschließlich sichtbare Metadaten mit
-`VISIBLE_ONLY` ausgeben und die Vollständigkeit ausdrücklich unbewiesen lassen.
+Der erste Vertrag gibt ausschließlich sichtbare Metadaten mit
+`VISIBLE_ONLY` aus und lässt die Vollständigkeit ausdrücklich unbewiesen.
 Ein späterer stärkerer Vollständigkeitsstatus benötigt einen gesondert
-qualifizierten Kontext. Verweigerte Quelle, erfolgreicher Leerfall und
+qualifizierten Kontext. Deshalb ist ein erfolgreicher V1-Aufruf
+`AVAILABLE_LIMITED` mit `IsPartial=1`; vollständige Quellverweigerung liefert
+den ersten Quellenfehlerstatus. Verweigerte Quelle, erfolgreicher Leerfall und
 eingeschränkte sichtbare Teilmenge bleiben unterscheidbar.
 
 Die vier lokalen Katalogquellen besitzen keine Nutzdatenscans. Limits werden

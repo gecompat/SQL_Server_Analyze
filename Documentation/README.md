@@ -11,9 +11,9 @@ SQL Server Analyze ist ein T-SQL-Diagnoseframework für SQL Server 2019 oder neu
 5. [Procedure-Seiten](Analysis_Guides/Procedures/README.md) – eigenständige Tiefendokumentation für alle 111 öffentlichen Procedures.
 6. [Objektreferenz](Reference/Object_Reference.md) – jede unterstützende View, TVF, interne Procedure und Tabelle.
 
-Der aktuelle Inventarvertrag umfasst 183 Objekte: 111 öffentliche Procedures, 8 Views, 28 Table-Valued Functions, 16 interne Procedures und 20 Tabellen.
+Der aktuelle Inventarvertrag umfasst 184 Objekte: 112 öffentliche Procedures, 8 Views, 28 Table-Valued Functions, 16 interne Procedures und 20 Tabellen.
 
-Der Frameworkkern umfasst 164 Objekte mit 108 öffentlichen Procedures und 9 Tabellen. Das optionale Snapshotpaket umfasst 19 Objekte mit 3 öffentlichen Procedures und 11 Tabellen.
+Der Frameworkkern umfasst 165 Objekte mit 109 öffentlichen Procedures und 9 Tabellen. Das optionale Snapshotpaket umfasst 19 Objekte mit 3 öffentlichen Procedures und 11 Tabellen.
 
 Die Bestandszahlen beschreiben das Repositoryinventar; der installierte Umfang
 hängt vom gewählten Paket ab. Scalar-Valued Functions sind derzeit nicht vorhanden.
