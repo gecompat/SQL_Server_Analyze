@@ -41,6 +41,34 @@ damaligen Zwischenstand. Frühere Nachweise und Budgets bleiben historisch
 gebunden; die übrige autonome Verarbeitung bleibt pausiert. Weitere Läufe
 oder Veröffentlichungen sind durch diesen Abschluss nicht freigegeben.
 
+## STAT-DOMINANT-Diagnose (54901)
+
+Der historische [Main-Lauf 40124510785](https://github.com/gecompat/SQL_Server_Analyze/actions/runs/40124510785)
+scheiterte in Test 175 mit 54901; die Ursache bleibt UNKNOWN. Die gesonderte
+Freigabe und ihre festen Grenzen stehen in [Next_Steps.md](Next_Steps.md#freigegeben-stat-dominant-fehlerdiagnose-54901).
+Diese Diagnose korrigiert keine Statistikbewertung und erneuert keine Budgets.
+
+Vor dem unveränderten Abbruch meldet Test 175 höchstens eine ASCII-Zeile mit
+1.024 Zeichen und dem Präfix `Error: STAT_DOMINANT_FAILURE`. Prüfflags,
+Rückgabe-/Metastatus, Partialität, natives Fehlerkennzeichen, Datenbankstatus
+und Fehlernummern sowie Kandidaten-, Histogramm- und Befundwerte grenzen den
+Fehler ein. Mehrfachzeilen bleiben durch Zähler und MULTIPLE sichtbar;
+nur eine eindeutige native Fehlernummer wird ausgegeben. Fehlende Werte sind
+NULL, unbekannte Statuswerte UNKNOWN. Freie Meldungen, Namen, Histogrammgrenzen
+und vollständiges JSON werden nicht ausgegeben. Die Werte stammen nur aus
+vorhandenen OUTPUT-/JSON-Werten. Diagnoseparsing ersetzt keinen nativen Fehler.
+
+Die Fehlerzeile gelangt ohne Workflowänderung in Konsole und impact.log.
+Erfolgskriterien, Schwelle 50, Fehler 54901 und Cleanup bleiben erhalten;
+erfolgreiche Fachfälle erzeugen keine zusätzliche Diagnoseausgabe.
+Zwölf vorgeschaltete synthetische Proben verwenden denselben Diagnoseblock
+für Erfolg, NULL-/ungültiges JSON, falschen Status, fehlenden/falschen Befund,
+abweichende Metrik/Schwelle, intern behandelten 1222, natives Fehlerkennzeichen,
+unvollständige/mehrdeutige Daten und unerlaubte überlange Textwerte. Sie prüfen
+Format und kontrollierten Abbruch; sie reproduzieren keinen Analyzerfehler.
+Die acht bestehenden Fachfälle und zwölf Proben werden genau einmal in der
+Head-Abnahme auf SQL Server 2025/CL170 geprüft; das Ergebnis ist noch ausstehend.
+
 ## FIND-CORE-Diagnose
 
 Die Diagnose ist mit PR #413 abgeschlossen. Der folgende Sperrstand gehört
