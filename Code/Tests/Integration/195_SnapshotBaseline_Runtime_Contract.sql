@@ -297,6 +297,7 @@ WHERE [RetentionPolicyCode]='DEFAULT';
 DECLARE @WaitOld bigint,@WaitFailed bigint,@WaitNew bigint,@PerfExpired bigint,
         @WaitPurge bigint,@WaitBudget bit,@WaitEpoch uniqueidentifier=NEWID(),
         @WaitCutoff datetime2(3)=DATEADD(DAY,-40,SYSUTCDATETIME());
+IF NOT EXISTS(SELECT 1 FROM [SQLServerAnalyzeSnapshotTest].[snapshot].[CollectorPolicy] WHERE [CollectorCode]='WAIT_STATS')
 INSERT [SQLServerAnalyzeSnapshotTest].[snapshot].[CollectorPolicy]
 ([CollectorCode],[IsEnabled],[CollectionIntervalSeconds],[MaxRows],[PayloadEnabled],
  [RetentionPolicyCode],[IsFrameworkDefault],[SeedVersion],[LastUpdatedUtc])
@@ -389,6 +390,8 @@ EXEC [monitor].[USP_RunSnapshotCollectionCycle]
      @ResultSetArt='NONE',@PrintMeldungen=0,@StatusCodeOut=@Status OUTPUT,
      @IsPartialOut=@Partial OUTPUT,@ErrorNumberOut=@Error OUTPUT,@ErrorMessageOut=@Message OUTPUT;
 IF @Status<>'DISABLED' THROW 53739,N'SC023_DISABLED_CONTRACT_FAILED',1;
+
+:r ../Tests/Integration/223_SnapshotWaitStats_Target_Runtime_Contract.sql
 
 PRINT N'SC023_RUNTIME_CONTRACT PASS';
 GO

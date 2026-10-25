@@ -213,52 +213,464 @@ def equal_rows(left, right, columns, label):
             f"THROW 53801,{g.lit('Binary value mismatch: '+label)},1;\n")
 
 
+# Historical 1.1.1 modules from e2fd110e; synthetic upgrade fixtures only.
+LEGACY_TARGET_V1_1_1 = {
+'020_InternalConfigureSnapshotPolicy.sql': ('e56d0e1976ff6db332d01f2dea3195cbc4701ad3d8e3c80d17e98569affe69d2', r"""/*
+===============================================================================
+Objekt       : snapshot.InternalConfigureSnapshotPolicy
+Version      : 1.0.0
+Stand        : 2026-07-21
+Zweck        : Schreibt die typisierten SC-023-Policies in der aktuell
+               verbundenen Snapshot-Datenbank.
+===============================================================================
+*/
+CREATE OR ALTER PROCEDURE [snapshot].[InternalConfigureSnapshotPolicy]
+      @CollectionIntervalSeconds smallint
+    , @MaxRows                  int
+    , @PayloadEnabled           bit
+    , @RawRetentionDays         smallint
+    , @PayloadRetentionDays     smallint
+    , @RollupRetentionDays      smallint
+    , @SoftBudgetMB             int
+    , @PurgeIntervalMinutes     smallint
+    , @PurgeBatchRows           int
+    , @BudgetAction             varchar(32)
+    , @StatusCodeOut            varchar(40) OUTPUT
+    , @ErrorNumberOut           int OUTPUT
+    , @ErrorMessageOut          nvarchar(2048) OUTPUT
+AS
+BEGIN
+    SET NOCOUNT ON;
+    SET LOCK_TIMEOUT 0;
+
+    SELECT @StatusCodeOut='AVAILABLE',@ErrorNumberOut=NULL,@ErrorMessageOut=NULL;
+
+    IF @CollectionIntervalSeconds NOT BETWEEN 1 AND 3600
+       OR @MaxRows NOT BETWEEN 1 AND 100000
+       OR @RawRetentionDays NOT BETWEEN 1 AND 3650
+       OR @PayloadRetentionDays NOT BETWEEN 1 AND 3650
+       OR @RollupRetentionDays NOT BETWEEN 1 AND 3650
+       OR @SoftBudgetMB<1
+       OR @PurgeIntervalMinutes NOT BETWEEN 1 AND 1440
+       OR @PurgeBatchRows NOT BETWEEN 1 AND 100000
+       OR @BudgetAction<>'PURGE_EXPIRED_THEN_STOP'
+    BEGIN
+        SELECT @StatusCodeOut='INVALID_PARAMETER',
+               @ErrorMessageOut=N'Ungültige Snapshot-, Retention- oder Budgetpolicy.';
+        RETURN;
+    END;
+
+    BEGIN TRY
+        BEGIN TRANSACTION;
+
+        UPDATE [snapshot].[RetentionPolicy]
+        SET [RawRetentionDays]=@RawRetentionDays,
+            [PayloadRetentionDays]=@PayloadRetentionDays,
+            [RollupRetentionDays]=@RollupRetentionDays,
+            [SoftBudgetMB]=@SoftBudgetMB,
+            [PurgeIntervalMinutes]=@PurgeIntervalMinutes,
+            [PurgeBatchRows]=@PurgeBatchRows,
+            [BudgetAction]=@BudgetAction,
+            [LastUpdatedUtc]=SYSUTCDATETIME()
+        WHERE [RetentionPolicyCode]='DEFAULT';
+
+        UPDATE [snapshot].[CollectorPolicy]
+        SET [IsEnabled]=1,
+            [CollectionIntervalSeconds]=@CollectionIntervalSeconds,
+            [MaxRows]=@MaxRows,
+            [PayloadEnabled]=@PayloadEnabled,
+            [RetentionPolicyCode]='DEFAULT',
+            [LastUpdatedUtc]=SYSUTCDATETIME()
+        WHERE [CollectorCode]='PERFORMANCE_COUNTERS';
+
+        IF @@ROWCOUNT<>1
+            THROW 53700,N'Die Performance-Counter-Policy fehlt.',1;
+
+        COMMIT TRANSACTION;
+    END TRY
+    BEGIN CATCH
+        IF XACT_STATE()<>0 ROLLBACK TRANSACTION;
+        SELECT @StatusCodeOut=CASE WHEN ERROR_NUMBER() IN (229,262,297,300,371)
+                                   THEN 'DENIED_PERMISSION' ELSE 'ERROR_HANDLED' END,
+               @ErrorNumberOut=ERROR_NUMBER(),
+               @ErrorMessageOut=ERROR_MESSAGE();
+    END CATCH;
+END;
+GO
+"""),
+'040_InternalPrepareCollectionCycle.sql': ('a7713788bbc7fdb106b70c5db39c6ecec794111cfac05ee435c388b94de44130', r"""/*
+===============================================================================
+Objekt       : snapshot.InternalPrepareCollectionCycle
+Version      : 1.0.0
+Stand        : 2026-07-21
+Zweck        : Prüft Intervall und Größenbudget und eröffnet genau einen Lauf.
+===============================================================================
+*/
+CREATE OR ALTER PROCEDURE [snapshot].[InternalPrepareCollectionCycle]
+      @SourceDatabaseName sysname
+    , @SchedulerType      varchar(16)
+    , @RunEvenIfNotDue    bit
+    , @CaptureRunIdOut    bigint OUTPUT
+    , @ShouldCollectOut   bit OUTPUT
+    , @StatusCodeOut      varchar(40) OUTPUT
+    , @ErrorMessageOut    nvarchar(2048) OUTPUT
+AS
+BEGIN
+    SET NOCOUNT ON;
+    SET LOCK_TIMEOUT 0;
+
+    DECLARE @Now datetime2(3)=SYSUTCDATETIME(),
+            @IntervalSeconds smallint,
+            @SoftBudgetMB bigint,
+            @UsedDataMB decimal(19,3),
+            @LastCompletedUtc datetime2(3);
+
+    SELECT @CaptureRunIdOut=NULL,@ShouldCollectOut=0,
+           @StatusCodeOut='AVAILABLE',@ErrorMessageOut=NULL;
+
+    SELECT @IntervalSeconds=[c].[CollectionIntervalSeconds],
+           @SoftBudgetMB=[r].[SoftBudgetMB]
+    FROM [snapshot].[CollectorPolicy] AS [c]
+    JOIN [snapshot].[RetentionPolicy] AS [r]
+      ON [r].[RetentionPolicyCode]=[c].[RetentionPolicyCode]
+    WHERE [c].[CollectorCode]='PERFORMANCE_COUNTERS'
+      AND [c].[IsEnabled]=1;
+
+    IF @IntervalSeconds IS NULL
+        SELECT @StatusCodeOut='DISABLED',@ErrorMessageOut=N'Der Performance-Counter-Sammler ist deaktiviert.';
+
+    SELECT @UsedDataMB=CONVERT(decimal(19,3),COALESCE(SUM(CONVERT(decimal(38,3),[size]))*8.0/1024.0,0))
+    FROM [sys].[database_files] WITH (NOLOCK)
+    WHERE [type]=0;
+
+    IF @StatusCodeOut='AVAILABLE' AND @UsedDataMB>@SoftBudgetMB
+        SELECT @StatusCodeOut='STOPPED_SIZE_BUDGET',
+               @ErrorMessageOut=N'Das konfigurierte weiche Datenbudget ist nach dem Purge weiterhin überschritten.';
+
+    SELECT TOP (1) @LastCompletedUtc=[EndedAtUtc]
+    FROM [snapshot].[CaptureRun]
+    WHERE [CollectorCode]='PERFORMANCE_COUNTERS'
+      AND [StatusCode] IN ('AVAILABLE','PARTIAL')
+      AND [EndedAtUtc] IS NOT NULL
+    ORDER BY [CaptureRunId] DESC;
+
+    IF @StatusCodeOut='AVAILABLE'
+       AND @RunEvenIfNotDue=0
+       AND @LastCompletedUtc IS NOT NULL
+       AND DATEADD(SECOND,@IntervalSeconds,@LastCompletedUtc)>@Now
+        SELECT @StatusCodeOut='SKIPPED_NOT_DUE',
+               @ErrorMessageOut=N'Das konfigurierte Sammlerintervall ist noch nicht abgelaufen.';
+
+    INSERT [snapshot].[CaptureRun]
+    (
+          [CollectorCode],[SchedulerType],[StartedAtUtc],[EndedAtUtc]
+        , [SourceDatabaseName],[ContractVersion],[StatusCode],[IsPartial]
+        , [ErrorMessage],[MetricSampleCount],[PayloadCount]
+    )
+    VALUES
+    (
+          'PERFORMANCE_COUNTERS',@SchedulerType,@Now
+        , CASE WHEN @StatusCodeOut='AVAILABLE' THEN NULL ELSE @Now END
+        , @SourceDatabaseName,1
+        , CASE WHEN @StatusCodeOut='AVAILABLE' THEN 'RUNNING' ELSE @StatusCodeOut END
+        , CASE WHEN @StatusCodeOut='AVAILABLE' THEN 0 ELSE 1 END
+        , @ErrorMessageOut,0,0
+    );
+
+    SET @CaptureRunIdOut=CONVERT(bigint,SCOPE_IDENTITY());
+    SET @ShouldCollectOut=CASE WHEN @StatusCodeOut='AVAILABLE' THEN 1 ELSE 0 END;
+
+    IF @ShouldCollectOut=0
+    BEGIN
+        INSERT [snapshot].[ModuleStatus]
+        ([CaptureRunId],[ModuleName],[CollectionTimeUtc],[StatusCode],[IsPartial],[ErrorMessage],[EvidenceLimit])
+        VALUES
+        (@CaptureRunIdOut,N'monitor.USP_PerformanceCounters',@Now,@StatusCodeOut,1,@ErrorMessageOut,
+         N'Kein Quellread wurde ausgeführt.');
+    END;
+END;
+GO
+"""),
+'070_InternalPurgeExpiredData.sql': ('4b1bdeaeb915409c9a53d2f6ec2f7bf35dfb9b35bb43a3ef7fb0fbd93bea239b', r"""/*
+===============================================================================
+Objekt       : snapshot.InternalPurgeExpiredData
+Version      : 1.0.1
+Stand        : 2026-10-25
+Zweck        : Löscht ausschließlich abgelaufene Snapshotdaten child-first in
+               begrenzten Batches; nicht abgelaufene Daten bleiben erhalten.
+===============================================================================
+*/
+CREATE OR ALTER PROCEDURE [snapshot].[InternalPurgeExpiredData]
+      @MaxBatches        int
+    , @Force             bit
+    , @PurgeRunIdOut     bigint OUTPUT
+    , @StatusCodeOut     varchar(40) OUTPUT
+    , @BudgetExceededOut bit OUTPUT
+    , @ErrorNumberOut    int OUTPUT
+    , @ErrorMessageOut   nvarchar(2048) OUTPUT
+AS
+BEGIN
+    SET NOCOUNT ON;
+    SET XACT_ABORT ON;
+    SET LOCK_TIMEOUT 0;
+
+    DECLARE @Now datetime2(3)=SYSUTCDATETIME(),
+            @RawRetentionDays smallint,
+            @PayloadRetentionDays smallint,
+            @PurgeIntervalMinutes smallint,
+            @BatchRows int,
+            @SoftBudgetMB bigint,
+            @UsedBefore decimal(19,3),
+            @UsedAfter decimal(19,3),
+            @LastPurgeUtc datetime2(3),
+            @Batch int=0,
+            @Deleted int,
+            @Rows int,
+            @MetricDeleted bigint=0,
+            @PayloadDeleted bigint=0,
+            @ModuleDeleted bigint=0,
+            @RunsDeleted bigint=0,
+            @ScopeDeleted bigint=0;
+
+    SELECT @PurgeRunIdOut=NULL,@StatusCodeOut='AVAILABLE',@BudgetExceededOut=0,
+           @ErrorNumberOut=NULL,@ErrorMessageOut=NULL;
+
+    IF @MaxBatches NOT BETWEEN 1 AND 1000
+    BEGIN
+        SELECT @StatusCodeOut='INVALID_PARAMETER',@ErrorMessageOut=N'@MaxBatches muss zwischen 1 und 1000 liegen.';
+        RETURN;
+    END;
+
+    SELECT @RawRetentionDays=[RawRetentionDays],
+           @PayloadRetentionDays=[PayloadRetentionDays],
+           @PurgeIntervalMinutes=[PurgeIntervalMinutes],
+           @BatchRows=[PurgeBatchRows],
+           @SoftBudgetMB=[SoftBudgetMB]
+    FROM [snapshot].[RetentionPolicy]
+    WHERE [RetentionPolicyCode]='DEFAULT';
+
+    SELECT TOP (1) @LastPurgeUtc=[EndedAtUtc]
+    FROM [snapshot].[PurgeRun]
+    WHERE [StatusCode] IN ('AVAILABLE','AVAILABLE_LIMITED')
+      AND [EndedAtUtc] IS NOT NULL
+    ORDER BY [PurgeRunId] DESC;
+
+    SELECT @UsedBefore=CONVERT(decimal(19,3),COALESCE(SUM(CONVERT(decimal(38,3),[size]))*8.0/1024.0,0))
+    FROM [sys].[database_files] WITH (NOLOCK)
+    WHERE [type]=0;
+
+    IF @Force=0
+       AND @UsedBefore<=@SoftBudgetMB
+       AND @LastPurgeUtc IS NOT NULL
+       AND DATEADD(MINUTE,@PurgeIntervalMinutes,@LastPurgeUtc)>@Now
+    BEGIN
+        SELECT @StatusCodeOut='SKIPPED_NOT_DUE',@BudgetExceededOut=0;
+        RETURN;
+    END;
+
+    INSERT [snapshot].[PurgeRun]
+    ([StartedAtUtc],[StatusCode],[UsedDataMbBefore],[SoftBudgetMb])
+    VALUES (@Now,'RUNNING',@UsedBefore,@SoftBudgetMB);
+    SET @PurgeRunIdOut=CONVERT(bigint,SCOPE_IDENTITY());
+
+    BEGIN TRY
+        WHILE @Batch<@MaxBatches
+        BEGIN
+            SET @Deleted=0;
+            BEGIN TRANSACTION;
+
+            DELETE TOP (@BatchRows) [m]
+            FROM [snapshot].[MetricSample] AS [m]
+            WHERE [m].[CollectedAtUtc]<DATEADD(DAY,-@RawRetentionDays,@Now);
+            SET @Rows=@@ROWCOUNT;
+            SET @MetricDeleted+=@Rows;
+            SET @Deleted+=@Rows;
+
+            DELETE TOP (@BatchRows) [p]
+            FROM [snapshot].[PayloadSnapshot] AS [p]
+            WHERE [p].[CapturedAtUtc]<DATEADD(DAY,-@PayloadRetentionDays,@Now);
+            SET @Rows=@@ROWCOUNT;
+            SET @PayloadDeleted+=@Rows;
+            SET @Deleted+=@Rows;
+
+            DELETE TOP (@BatchRows) [m]
+            FROM [snapshot].[ModuleStatus] AS [m]
+            JOIN [snapshot].[CaptureRun] AS [r]
+              ON [r].[CaptureRunId]=[m].[CaptureRunId]
+            WHERE [r].[StartedAtUtc]<DATEADD(DAY,-@RawRetentionDays,@Now)
+              AND NOT EXISTS (SELECT 1 FROM [snapshot].[MetricSample] AS [x] WHERE [x].[CaptureRunId]=[r].[CaptureRunId])
+              AND NOT EXISTS (SELECT 1 FROM [snapshot].[PayloadSnapshot] AS [x] WHERE [x].[CaptureRunId]=[r].[CaptureRunId]);
+            SET @Rows=@@ROWCOUNT;
+            SET @ModuleDeleted+=@Rows;
+            SET @Deleted+=@Rows;
+
+            DELETE TOP (@BatchRows) [r]
+            FROM [snapshot].[CaptureRun] AS [r]
+            WHERE [r].[StartedAtUtc]<DATEADD(DAY,-@RawRetentionDays,@Now)
+              AND NOT EXISTS (SELECT 1 FROM [snapshot].[MetricSample] AS [m] WHERE [m].[CaptureRunId]=[r].[CaptureRunId])
+              AND NOT EXISTS (SELECT 1 FROM [snapshot].[PayloadSnapshot] AS [p] WHERE [p].[CaptureRunId]=[r].[CaptureRunId])
+              AND NOT EXISTS (SELECT 1 FROM [snapshot].[ModuleStatus] AS [s] WHERE [s].[CaptureRunId]=[r].[CaptureRunId])
+              -- Preserve the latest finalized Wait run as the comparison fence,
+              -- including a failed run whose children have expired or never existed.
+              AND
+              (
+                  [r].[CollectorCode]<>'WAIT_STATS'
+                  OR [r].[EndedAtUtc] IS NULL
+                  OR EXISTS
+                  (
+                      SELECT 1 FROM [snapshot].[CaptureRun] AS [later]
+                      WHERE [later].[CollectorCode]='WAIT_STATS'
+                        AND [later].[EndedAtUtc] IS NOT NULL
+                        AND [later].[CaptureRunId]>[r].[CaptureRunId]
+                  )
+              );
+            SET @Rows=@@ROWCOUNT;
+            SET @RunsDeleted+=@Rows;
+            SET @Deleted+=@Rows;
+
+            DELETE TOP (@BatchRows) [s]
+            FROM [snapshot].[Scope] AS [s]
+            WHERE [s].[ScopeType]<>'SERVER'
+              AND NOT EXISTS (SELECT 1 FROM [snapshot].[MetricSample] AS [m] WHERE [m].[ScopeId]=[s].[ScopeId])
+              AND NOT EXISTS (SELECT 1 FROM [snapshot].[Scope] AS [c] WHERE [c].[ParentScopeId]=[s].[ScopeId]);
+            SET @Rows=@@ROWCOUNT;
+            SET @ScopeDeleted+=@Rows;
+            SET @Deleted+=@Rows;
+
+            COMMIT TRANSACTION;
+            SET @Batch+=1;
+            IF @Deleted=0 BREAK;
+        END;
+
+        SELECT @UsedAfter=CONVERT(decimal(19,3),COALESCE(SUM(CONVERT(decimal(38,3),[size]))*8.0/1024.0,0))
+        FROM [sys].[database_files] WITH (NOLOCK)
+        WHERE [type]=0;
+
+        SET @BudgetExceededOut=CASE WHEN @UsedAfter>@SoftBudgetMB THEN 1 ELSE 0 END;
+        SET @StatusCodeOut=CASE WHEN @Batch>=@MaxBatches AND @Deleted>0 THEN 'AVAILABLE_LIMITED' ELSE 'AVAILABLE' END;
+
+        UPDATE [snapshot].[PurgeRun]
+        SET [EndedAtUtc]=SYSUTCDATETIME(),[StatusCode]=@StatusCodeOut,
+            [BatchesExecuted]=@Batch,[MetricRowsDeleted]=@MetricDeleted,
+            [PayloadRowsDeleted]=@PayloadDeleted,[ModuleRowsDeleted]=@ModuleDeleted,
+            [CaptureRunsDeleted]=@RunsDeleted,[ScopeRowsDeleted]=@ScopeDeleted,
+            [UsedDataMbAfter]=@UsedAfter
+        WHERE [PurgeRunId]=@PurgeRunIdOut;
+    END TRY
+    BEGIN CATCH
+        IF XACT_STATE()<>0 ROLLBACK TRANSACTION;
+        SELECT @StatusCodeOut=CASE WHEN ERROR_NUMBER() IN (229,262,297,300,371)
+                                   THEN 'DENIED_PERMISSION' ELSE 'ERROR_HANDLED' END,
+               @BudgetExceededOut=1,@ErrorNumberOut=ERROR_NUMBER(),@ErrorMessageOut=ERROR_MESSAGE();
+        UPDATE [snapshot].[PurgeRun]
+        SET [EndedAtUtc]=SYSUTCDATETIME(),[StatusCode]=@StatusCodeOut,
+            [BatchesExecuted]=@Batch,[MetricRowsDeleted]=@MetricDeleted,
+            [PayloadRowsDeleted]=@PayloadDeleted,[ModuleRowsDeleted]=@ModuleDeleted,
+            [CaptureRunsDeleted]=@RunsDeleted,[ScopeRowsDeleted]=@ScopeDeleted,
+            [ErrorNumber]=@ErrorNumberOut,[ErrorMessage]=@ErrorMessageOut
+        WHERE [PurgeRunId]=@PurgeRunIdOut;
+    END CATCH;
+END;
+GO
+"""),
+}
+
 def snapshot_schema_cases(deployed, tables):
-    """Exercise real canonical routes against a filled reconstructed V1 shape."""
+    """Preserve actual old module/data contracts across all canonical routes."""
     target_tables=[t for t in tables if t.role=='SNAPSHOT']
     schema=(ROOT/g.SNAPSHOT_SCHEMA_SOURCE).read_text(encoding='utf-8-sig')
     direct='\n'.join(g.split_batches(schema))
     standalone,_=g.generate_snapshot_target(ROOT)
     routes=[('DIRECT',direct),('STANDALONE',standalone),('COMBINED',deployed)]
-    legacy=LEGACY_PURGE_V1_1_0.replace('\r\n','\n')
-    if hashlib.sha256(legacy.encode('utf-8')).hexdigest()!=LEGACY_PURGE_V1_1_0_SHA256:
-        raise RuntimeError('Historical Snapshot 1.1.0 Purge fixture binding changed')
-    legacy_batches=g.split_batches(legacy)
-    if len(legacy_batches)!=1:
-        raise RuntimeError('Historical Snapshot Purge must be one canonical module batch')
     target_sources,_,_=g.load_sources(ROOT,True)
+    current={Path(source.path).name: (ROOT/source.path).read_text(encoding='utf-8-sig')
+             for source in target_sources if source.role=='SNAPSHOT'}
     direct_patch=''.join('EXEC sys.sp_executesql '+g.lit(batch)+';\n'
-                         for source in target_sources if source.role=='SNAPSHOT'
-                         for batch in g.split_batches((ROOT/source.path).read_text(encoding='utf-8-sig')))
+                         for text in current.values() for batch in g.split_batches(text))
+    historical={}
+    for name,(digest,text) in LEGACY_TARGET_V1_1_1.items():
+        text=text.replace('\r\n','\n')
+        if hashlib.sha256(text.encode()).hexdigest()!=digest:
+            raise RuntimeError('Historical Snapshot helper binding changed: '+name)
+        historical[name]=text
+    legacy=LEGACY_PURGE_V1_1_0.replace('\r\n','\n')
+    if hashlib.sha256(legacy.encode()).hexdigest()!=LEGACY_PURGE_V1_1_0_SHA256:
+        raise RuntimeError('Historical Snapshot 1.1.0 Purge fixture binding changed')
+    metrics=('WAIT_TASK_COUNT','WAIT_TIME_MS','WAIT_SIGNAL_TIME_MS','WAIT_MAX_TIME_MS',
+             'WAIT_TASK_COUNT_DELTA_CANDIDATE','WAIT_TIME_MS_DELTA_CANDIDATE',
+             'WAIT_SIGNAL_TIME_MS_DELTA_CANDIDATE','WAIT_DELTA_STATUS','WAIT_CAPTURE_CONTEXT')
+    metric_list=','.join(g.lit(x) for x in metrics)
 
     def shape(version):
         out=[]
         for table in target_tables:
-            if table.name not in g.SNAPSHOT_LEGACY_CHECKS:
-                continue
-            current,legacy=g.SNAPSHOT_LEGACY_CHECKS[table.name]
-            cname=next(n for n,k in table.constraints if k=='CHECK' and n in ('CK_snapshot_CollectorPolicy_CollectorCode','CK_snapshot_Scope_ScopeType'))
+            if table.name not in g.SNAPSHOT_LEGACY_CHECKS: continue
+            new,old=g.SNAPSHOT_LEGACY_CHECKS[table.name]
+            cname=next(n for n,k in table.constraints if k=='CHECK' and n in
+                       ('CK_snapshot_CollectorPolicy_CollectorCode','CK_snapshot_Scope_ScopeType'))
             out.append(f'ALTER TABLE {table.object_name} DROP CONSTRAINT {g.q(cname)};\n'
-                       f'ALTER TABLE {table.object_name} WITH CHECK ADD CONSTRAINT {g.q(cname)} {legacy if version==1 else current};\n')
-        out.append("UPDATE snapshot.PackageVersion SET PackageVersion='1.0.0',SchemaVersion=1 WHERE PackageCode='SC-023';\n" if version==1 else
-                   "UPDATE snapshot.PackageVersion SET PackageVersion='1.1.1',SchemaVersion=2 WHERE PackageCode='SC-023';\n")
+                       f'ALTER TABLE {table.object_name} WITH CHECK ADD CONSTRAINT {g.q(cname)} {old if version==1 else new};\n')
+        out.append("UPDATE snapshot.PackageVersion SET PackageVersion="+g.lit('1.0.0' if version==1 else '1.1.1')+
+                   f",SchemaVersion={version} WHERE PackageCode='SC-023';\n")
         return ''.join(out)
 
-    def state(variable, ignore_purge_definition=False):
-        definition=("CASE WHEN object_id=OBJECT_ID(N'snapshot.InternalPurgeExpiredData') THEN NULL ELSE definition END AS definition"
-                    if ignore_purge_definition else 'definition')
-        items=[]
-        for table in target_tables:
-            items.append('JSON_QUERY((SELECT '+binary_columns(table)+' FROM '+table.object_name+' ORDER BY '+g.q(table.columns[0])+" FOR JSON PATH,INCLUDE_NULL_VALUES)) AS "+g.q(table.name))
+    def arrange_old(version):
+        # Only the named, sample-free synthetic test target is reconstructed.
+        out=[f"IF EXISTS(SELECT 1 FROM snapshot.MetricSample s JOIN snapshot.MetricDefinition d ON d.MetricDefinitionId=s.MetricDefinitionId WHERE d.MetricCode IN({metric_list})) THROW 53826,N'Historical fixture owns no Wait samples.',1;\n",
+             f'DELETE snapshot.MetricDefinition WHERE MetricCode IN({metric_list});\n',
+             "DELETE snapshot.CollectorPolicy WHERE CollectorCode='WAIT_STATS';\n",
+             'DROP PROCEDURE IF EXISTS snapshot.InternalCompleteWaitStatsCycle;\n']
+        for name,text in historical.items():
+            if version in ('1.0.0','1.1.0') and name.startswith('070_'): text=legacy
+            out += ['EXEC sys.sp_executesql '+g.lit(batch)+';\n' for batch in g.split_batches(text)]
+        out.append(shape(1 if version=='1.0.0' else 2))
+        out.append('UPDATE snapshot.PackageVersion SET PackageVersion='+g.lit(version)+';\nGO\n')
+        for i,t in enumerate(tables,1):
+            if t.role!='SNAPSHOT': continue
+            out.append(f'DROP TABLE IF EXISTS qa.LegacyBefore_{i}; SELECT * INTO qa.LegacyBefore_{i} FROM {t.object_name};\n')
+        return ''.join(out)+'GO\n'
+
+    def preserve(label,ready):
+        out=[]
+        for i,t in enumerate(tables,1):
+            if t.role!='SNAPSHOT': continue
+            cols=binary_columns(t); before=f'qa.LegacyBefore_{i}'
+            if t.name=='PackageVersion':
+                cols='CONVERT(varbinary(max),PackageCode) AS PackageCode,CONVERT(varbinary(max),InstalledAtUtc) AS InstalledAtUtc'
+            if ready and t.name in ('MetricDefinition','CollectorPolicy'):
+                pred=f'MetricCode NOT IN({metric_list})' if t.name=='MetricDefinition' else "CollectorCode<>'WAIT_STATS'"
+                out.append(equal_rows(before,f'(SELECT * FROM {t.object_name} WHERE {pred}) AS preserved',cols,label+' '+t.name))
+                seed_pred=f'MetricCode IN({metric_list})' if t.name=='MetricDefinition' else "CollectorCode='WAIT_STATS'"
+                out.append(f'IF (SELECT COUNT_BIG(*) FROM {t.object_name} WHERE {seed_pred})<>{9 if t.name=="MetricDefinition" else 1} THROW 53826,N\'Unexpected added seed set.\',1;\n')
+            else: out.append(equal_rows(before,t.object_name,cols,label+' '+t.name))
+        version='1.2.0' if ready else '1.1.1'
+        out.append(f"IF NOT EXISTS(SELECT 1 FROM snapshot.PackageVersion WHERE PackageCode='SC-023' AND PackageVersion='{version}' AND SchemaVersion=2) THROW 53813,N'Snapshot migration version mismatch.',1;\n")
+        if ready:
+            out.append("IF NOT EXISTS(SELECT 1 FROM snapshot.CollectorPolicy WHERE CollectorCode='WAIT_STATS' AND IsEnabled=0 AND PayloadEnabled=0 AND IsFrameworkDefault=0) THROW 53826,N'New Wait policy must remain opt-in.',1;\n")
+            for name,text in current.items():
+                if not name.startswith(('020_','040_','050_','055_','060_','070_')): continue
+                proc=text.split('CREATE OR ALTER PROCEDURE',1)[1].split('\n',1)[0].strip()
+                definition=g.split_batches(text)[0]
+                # Use the identical complete canonical batch as the preflight hash.
+                definition=g.stored_module_definition(definition)
+                digest=hashlib.sha256(definition.encode('utf-16le')).hexdigest()
+                out.append(f"IF HASHBYTES('SHA2_256',CONVERT(varbinary(max),TRIM(NCHAR(9)+NCHAR(10)+NCHAR(13)+N' ' FROM REPLACE(OBJECT_DEFINITION(OBJECT_ID({g.lit(proc)})),NCHAR(13)+NCHAR(10),NCHAR(10)))))<>0x{digest} OR OBJECT_DEFINITION(OBJECT_ID({g.lit(proc)})) IS NULL THROW 53826,{g.lit('Current helper body mismatch: '+proc)},1;\n")
+        return ''.join(out)
+
+    def state(variable):
+        items=['JSON_QUERY((SELECT '+binary_columns(t)+' FROM '+t.object_name+' ORDER BY '+g.q(t.columns[0])+" FOR JSON PATH,INCLUDE_NULL_VALUES)) AS "+g.q(t.name) for t in target_tables]
         items += ["JSON_QUERY((SELECT name,type,create_date,modify_date FROM sys.objects WHERE schema_id=SCHEMA_ID(N'snapshot') ORDER BY object_id FOR JSON PATH,INCLUDE_NULL_VALUES)) AS objects",
                   "JSON_QUERY((SELECT name,object_id,parent_object_id,definition,is_disabled,is_not_trusted,is_not_for_replication FROM sys.check_constraints WHERE schema_id=SCHEMA_ID(N'snapshot') ORDER BY object_id FOR JSON PATH,INCLUDE_NULL_VALUES)) AS checks",
                   "JSON_QUERY((SELECT object_id,column_id,name,system_type_id,user_type_id,max_length,precision,scale,is_nullable,collation_name,is_identity FROM sys.columns WHERE object_id IN(SELECT object_id FROM sys.objects WHERE schema_id=SCHEMA_ID(N'snapshot')) ORDER BY object_id,column_id FOR JSON PATH,INCLUDE_NULL_VALUES)) AS columns",
-                  f"JSON_QUERY((SELECT object_id,{definition},uses_ansi_nulls,uses_quoted_identifier FROM sys.sql_modules WHERE object_id IN(SELECT object_id FROM sys.objects WHERE schema_id=SCHEMA_ID(N'snapshot')) ORDER BY object_id FOR JSON PATH,INCLUDE_NULL_VALUES)) AS modules",
+                  "JSON_QUERY((SELECT object_id,definition,uses_ansi_nulls,uses_quoted_identifier FROM sys.sql_modules WHERE object_id IN(SELECT object_id FROM sys.objects WHERE schema_id=SCHEMA_ID(N'snapshot')) ORDER BY object_id FOR JSON PATH,INCLUDE_NULL_VALUES)) AS modules",
                   "JSON_QUERY((SELECT object_id,last_value FROM sys.identity_columns WHERE object_id IN(SELECT object_id FROM sys.objects WHERE schema_id=SCHEMA_ID(N'snapshot')) ORDER BY object_id FOR JSON PATH,INCLUDE_NULL_VALUES)) AS identities"]
         return f'SET {variable}=(SELECT '+','.join(items)+' FOR JSON PATH,WITHOUT_ARRAY_WRAPPER);\n'
 
     negatives=[
-        ('unknown version',"UPDATE snapshot.PackageVersion SET PackageVersion='9.9.9';",53935,"UPDATE snapshot.PackageVersion SET PackageVersion='1.0.0';"),
+        ('unknown version',"UPDATE snapshot.PackageVersion SET PackageVersion='9.9.9';",53935,shape(1)),
+        ('padded version',"UPDATE snapshot.PackageVersion SET PackageVersion='1.0.0 ';",53935,shape(1)),
+        ('padded package',"UPDATE snapshot.PackageVersion SET PackageCode='SC-023 ';",53935,"UPDATE snapshot.PackageVersion SET PackageCode='SC-023';"),
+        ('wrong case package',"ALTER TABLE snapshot.PackageVersion NOCHECK CONSTRAINT CK_snapshot_PackageVersion_PackageCode; UPDATE snapshot.PackageVersion SET PackageCode='sc-023';",53935,"UPDATE snapshot.PackageVersion SET PackageCode='SC-023'; ALTER TABLE snapshot.PackageVersion WITH CHECK CHECK CONSTRAINT CK_snapshot_PackageVersion_PackageCode;"),
         ('missing CHECK','ALTER TABLE snapshot.CollectorPolicy DROP CONSTRAINT CK_snapshot_CollectorPolicy_CollectorCode;',53908,"ALTER TABLE snapshot.CollectorPolicy WITH CHECK ADD CONSTRAINT CK_snapshot_CollectorPolicy_CollectorCode CHECK(CollectorCode='PERFORMANCE_COUNTERS');"),
         ('disabled CHECK','ALTER TABLE snapshot.Scope NOCHECK CONSTRAINT CK_snapshot_Scope_ScopeType;',53908,'ALTER TABLE snapshot.Scope WITH CHECK CHECK CONSTRAINT CK_snapshot_Scope_ScopeType;'),
         ('untrusted CHECK','ALTER TABLE snapshot.Scope NOCHECK CONSTRAINT CK_snapshot_Scope_ScopeType; ALTER TABLE snapshot.Scope CHECK CONSTRAINT CK_snapshot_Scope_ScopeType;',53908,'ALTER TABLE snapshot.Scope WITH CHECK CHECK CONSTRAINT CK_snapshot_Scope_ScopeType;'),
@@ -268,64 +680,56 @@ def snapshot_schema_cases(deployed, tables):
         ('unknown enum',"ALTER TABLE snapshot.CollectorPolicy DROP CONSTRAINT CK_snapshot_CollectorPolicy_CollectorCode; ALTER TABLE snapshot.CollectorPolicy WITH CHECK ADD CONSTRAINT CK_snapshot_CollectorPolicy_CollectorCode CHECK(CollectorCode IN('PERFORMANCE_COUNTERS','EXAMPLE_UNSUPPORTED'));",53908,shape(1)),
     ]
     out=['USE '+g.q(TARGET)+';\nGO\nCREATE TABLE qa.SnapshotMigrationInput(Route varchar(16) PRIMARY KEY,SqlText nvarchar(max) NOT NULL);\n']
-    for label,route in routes:
+    for label,route in routes+[('DIRECT_TARGET',direct_patch)]:
         out.append('INSERT qa.SnapshotMigrationInput VALUES('+g.lit(label)+','+g.lit(route)+');\n')
-    out.append('INSERT qa.SnapshotMigrationInput VALUES('+g.lit('DIRECT_TARGET')+','+g.lit(direct_patch)+');\n')
     out.append('GO\n')
     for label,route in routes:
         call="DECLARE @SnapshotRouteSql nvarchar(max)=(SELECT SqlText FROM qa.SnapshotMigrationInput WHERE Route="+g.lit(label)+");\nEXEC sys.sp_executesql @SnapshotRouteSql;\n"
-        # Preserve every old table row, including typed/binary payloads and
-        # identity counters, rather than just a sample count.
-        out.append(shape(1)+'GO\n')
-        out.append(call+'GO\n')
-        out.append("IF NOT EXISTS(SELECT 1 FROM snapshot.PackageVersion WHERE PackageCode='SC-023' AND PackageVersion='1.1.1' AND SchemaVersion=2) THROW 53813,N'Snapshot V1 migration version mismatch.',1;\n")
-        for i,table in enumerate(tables,1):
-            if table.role=='SNAPSHOT' and table.name!='PackageVersion':
-                out.append(equal_rows(f'qa.Before_{i}',table.object_name,binary_columns(table),'Snapshot '+label+' V1 preservation '+table.name))
-            elif table.role=='SNAPSHOT':
-                out.append(equal_rows(f'qa.Before_{i}',table.object_name,'CONVERT(varbinary(max),PackageCode) AS PackageCode,CONVERT(varbinary(max),InstalledAtUtc) AS InstalledAtUtc','Snapshot '+label+' installed-at preservation'))
-        out.append('GO\nDECLARE @Before nvarchar(max),@After nvarchar(max);\n'+state('@Before'))
-        out.append(call+state('@After'))
-        # Repetition may update LastInstallerRunUtc; compare this explicitly
-        # normalized field while retaining every other data/metadata facet.
-        out.append("SET @Before=JSON_MODIFY(JSON_MODIFY(@Before,'$.PackageVersion[0].LastInstallerRunUtc',NULL),'$.objects',NULL); SET @After=JSON_MODIFY(JSON_MODIFY(@After,'$.PackageVersion[0].LastInstallerRunUtc',NULL),'$.objects',NULL);\n"
-                   "IF CONVERT(varbinary(max),@Before)<>CONVERT(varbinary(max),@After) THROW 53814,N'Snapshot repetition changed existing state.',1;\nGO\n")
-        patch_call=("DECLARE @SnapshotPatchSql nvarchar(max)=(SELECT SqlText FROM qa.SnapshotMigrationInput WHERE Route="
-                    +g.lit('DIRECT_TARGET' if label=='DIRECT' else label)+");\nEXEC sys.sp_executesql @SnapshotPatchSql;\n")
-        out.append("DECLARE @ExpectedPurgeDefinition nvarchar(max)=OBJECT_DEFINITION(OBJECT_ID(N'snapshot.InternalPurgeExpiredData'));\n"
-                   +"IF @ExpectedPurgeDefinition IS NULL THROW 53826,N'Current Snapshot Purge definition is unavailable.',1;\n"
-                   +"EXEC sys.sp_executesql "+g.lit(legacy_batches[0])+";\n"
-                   +"IF CONVERT(varbinary(max),OBJECT_DEFINITION(OBJECT_ID(N'snapshot.InternalPurgeExpiredData')))=CONVERT(varbinary(max),@ExpectedPurgeDefinition) THROW 53826,N'Historical Snapshot Purge fixture did not replace the new helper.',1;\n"
-                   +"UPDATE snapshot.PackageVersion SET PackageVersion='1.1.0' WHERE PackageCode='SC-023';\nDECLARE @Before nvarchar(max),@After nvarchar(max);\n"+state('@Before',True))
-        out.append(patch_call+state('@After',True))
-        out.append("IF NOT EXISTS(SELECT 1 FROM snapshot.PackageVersion WHERE PackageCode='SC-023' AND PackageVersion='1.1.1' AND SchemaVersion=2) THROW 53826,N'Snapshot V2 patch upgrade version mismatch.',1;\n"
-                   "IF OBJECT_DEFINITION(OBJECT_ID(N'snapshot.InternalPurgeExpiredData')) IS NULL OR CONVERT(varbinary(max),OBJECT_DEFINITION(OBJECT_ID(N'snapshot.InternalPurgeExpiredData')))<>CONVERT(varbinary(max),@ExpectedPurgeDefinition) THROW 53826,N'Snapshot V2 patch did not install the current Purge helper.',1;\n")
-        out.append("SET @Before=JSON_MODIFY(JSON_MODIFY(JSON_MODIFY(@Before,'$.PackageVersion[0].LastInstallerRunUtc',NULL),'$.PackageVersion[0].PackageVersion',NULL),'$.objects',NULL); SET @After=JSON_MODIFY(JSON_MODIFY(JSON_MODIFY(@After,'$.PackageVersion[0].LastInstallerRunUtc',NULL),'$.PackageVersion[0].PackageVersion',NULL),'$.objects',NULL);\n"
-                   "IF CONVERT(varbinary(max),@Before)<>CONVERT(varbinary(max),@After) THROW 53826,N'Snapshot V2 patch upgrade changed unrelated state.',1;\nGO\n")
+        out.append(arrange_old('1.0.0')+call+'GO\n'+preserve('V1 '+label,label!='DIRECT'))
+        out.append('GO\nDECLARE @Before nvarchar(max),@After nvarchar(max);\n'+state('@Before')+call+state('@After'))
+        out.append("SET @Before=JSON_MODIFY(JSON_MODIFY(@Before,'$.PackageVersion[0].LastInstallerRunUtc',NULL),'$.objects',NULL); SET @After=JSON_MODIFY(JSON_MODIFY(@After,'$.PackageVersion[0].LastInstallerRunUtc',NULL),'$.objects',NULL);\nIF CONVERT(varbinary(max),@Before)<>CONVERT(varbinary(max),@After) THROW 53814,N'Snapshot repetition changed existing state.',1;\nGO\n")
+        patch_route='DIRECT_TARGET' if label=='DIRECT' else label
+        patch_call="DECLARE @SnapshotPatchSql nvarchar(max)=(SELECT SqlText FROM qa.SnapshotMigrationInput WHERE Route="+g.lit(patch_route)+"); EXEC sys.sp_executesql @SnapshotPatchSql;\n"
+        for version in ('1.1.0','1.1.1'):
+            out.append(arrange_old(version)+patch_call+'GO\n'+preserve(version+' '+label,True)+'GO\n')
         if label=='STANDALONE':
             out.append('SET QUOTED_IDENTIFIER OFF; SET ANSI_NULLS OFF; SET ANSI_PADDING OFF; SET ANSI_WARNINGS OFF; SET ARITHABORT OFF; SET CONCAT_NULL_YIELDS_NULL OFF; SET NUMERIC_ROUNDABORT ON; SET LOCK_TIMEOUT -1;\n'+call)
             out.append('SET QUOTED_IDENTIFIER ON; SET ANSI_NULLS ON; SET ANSI_PADDING ON; SET ANSI_WARNINGS ON; SET ARITHABORT ON; SET CONCAT_NULL_YIELDS_NULL ON; SET NUMERIC_ROUNDABORT OFF; SET LOCK_TIMEOUT 10000;\n')
-            out.append("IF (SELECT COUNT(*) FROM sys.procedures WHERE schema_id=SCHEMA_ID(N'snapshot'))<>5 OR EXISTS(SELECT 1 FROM sys.procedures p JOIN sys.sql_modules m ON m.object_id=p.object_id WHERE p.schema_id=SCHEMA_ID(N'snapshot') AND (m.uses_ansi_nulls<>1 OR m.uses_quoted_identifier<>1)) THROW 53820,N'Snapshot standalone inherited noncanonical module settings.',1;\nGO\n")
-            out.append('SET XACT_ABORT ON; BEGIN TRANSACTION;\n')
-            out.append(negative(route,50000,'Snapshot standalone caller transaction',"IF @@TRANCOUNT<>1 OR XACT_STATE()<>1 OR (@@OPTIONS & 16384)=0 THROW 53817,N'Snapshot standalone changed caller transaction/options.',1; ROLLBACK TRANSACTION;"))
-            out.append('SET IMPLICIT_TRANSACTIONS ON;\n')
-            out.append(negative(route,50000,'Snapshot standalone implicit transactions',"IF @@TRANCOUNT<>0 OR (@@OPTIONS & 2)=0 THROW 53818,N'Snapshot standalone changed implicit transaction state.',1; SET IMPLICIT_TRANSACTIONS OFF;"))
+            out.append("IF (SELECT COUNT(*) FROM sys.procedures WHERE schema_id=SCHEMA_ID(N'snapshot'))<>6 OR EXISTS(SELECT 1 FROM sys.procedures p JOIN sys.sql_modules m ON m.object_id=p.object_id WHERE p.schema_id=SCHEMA_ID(N'snapshot') AND (m.uses_ansi_nulls<>1 OR m.uses_quoted_identifier<>1)) THROW 53820,N'Snapshot standalone inherited noncanonical module settings.',1;\nGO\n")
+            out.append('SET XACT_ABORT ON; BEGIN TRANSACTION;\n'+negative(route,50000,'Snapshot standalone caller transaction',"IF @@TRANCOUNT<>1 OR XACT_STATE()<>1 OR (@@OPTIONS & 16384)=0 THROW 53817,N'Snapshot standalone changed caller transaction/options.',1; ROLLBACK TRANSACTION;"))
+            out.append('SET IMPLICIT_TRANSACTIONS ON;\n'+negative(route,50000,'Snapshot standalone implicit transactions',"IF @@TRANCOUNT<>0 OR (@@OPTIONS & 2)=0 THROW 53818,N'Snapshot standalone changed implicit transaction state.',1; SET IMPLICIT_TRANSACTIONS OFF;"))
+        out.append(arrange_old('1.0.0'))
         if label=='DIRECT':
-            out.append(shape(1)+'GO\nBEGIN TRANSACTION;\n'+call)
-            out.append("IF @@TRANCOUNT<>1 OR XACT_STATE()<>1 THROW 53819,N'Direct Snapshot installer completed caller transaction.',1; ROLLBACK TRANSACTION;\n"
-                       "IF NOT EXISTS(SELECT 1 FROM snapshot.PackageVersion WHERE PackageVersion='1.0.0' AND SchemaVersion=1) THROW 53819,N'Direct Snapshot caller rollback failed.',1;\nGO\n")
-            out.append('SET XACT_ABORT ON; SET IMPLICIT_TRANSACTIONS ON;\n')
-            out.append(negative(route,50000,'Direct Snapshot implicit transactions',"IF @@TRANCOUNT<>0 OR (@@OPTIONS & 2)=0 OR (@@OPTIONS & 16384)=0 THROW 53818,N'Direct Snapshot changed implicit transaction state.',1; SET IMPLICIT_TRANSACTIONS OFF;"))
-        out.append(shape(1)+'GO\n')
-        selected=negatives if label!='COMBINED' else [negatives[i] for i in (0,5,6)]
+            out.append('BEGIN TRANSACTION;\n'+call+"IF @@TRANCOUNT<>1 OR XACT_STATE()<>1 THROW 53819,N'Direct Snapshot installer completed caller transaction.',1; ROLLBACK TRANSACTION;\nIF NOT EXISTS(SELECT 1 FROM snapshot.PackageVersion WHERE PackageVersion='1.0.0' AND SchemaVersion=1) THROW 53819,N'Direct Snapshot caller rollback failed.',1;\nGO\n")
+            out.append('SET XACT_ABORT ON; SET IMPLICIT_TRANSACTIONS ON;\n'+negative(route,50000,'Direct Snapshot implicit transactions',"IF @@TRANCOUNT<>0 OR (@@OPTIONS & 2)=0 OR (@@OPTIONS & 16384)=0 THROW 53818,N'Direct Snapshot changed implicit transaction state.',1; SET IMPLICIT_TRANSACTIONS OFF;"))
+        selected=negatives if label!='COMBINED' else [negatives[i] for i in (0,2,3,8,9)]
         for case,arrange,error,restore in selected:
             out.append(arrange+'\nGO\nDECLARE @Before nvarchar(max),@After nvarchar(max);\n'+state('@Before'))
             out.append("DECLARE @SnapshotRouteSql nvarchar(max)=(SELECT SqlText FROM qa.SnapshotMigrationInput WHERE Route="+g.lit(label)+");\n")
-            out.append(f'BEGIN TRY EXEC sys.sp_executesql @SnapshotRouteSql; THROW 53815,{g.lit("Expected Snapshot rejection: "+label+" "+case)},1; END TRY\n'
-                       f'BEGIN CATCH IF ERROR_NUMBER()<>{error} THROW; END CATCH;\n')
+            out.append(f'BEGIN TRY EXEC sys.sp_executesql @SnapshotRouteSql; THROW 53815,{g.lit("Expected Snapshot rejection: "+label+" "+case)},1; END TRY\nBEGIN CATCH IF ERROR_NUMBER()<>{error} THROW; END CATCH;\n')
             out.append(state('@After')+"IF CONVERT(varbinary(max),@Before)<>CONVERT(varbinary(max),@After) OR @@TRANCOUNT<>0 THROW 53816,N'Rejected Snapshot route changed state.',1;\nGO\n"+restore+'\nGO\n')
         out.append(shape(2)+'GO\n')
-    out.append("SELECT N'PASS' AS SnapshotSchemaMigration,N'3 real routes, 3 V1 upgrades, 3 repetitions, 19 shape/version rejections with preservation' AS Scope;\nGO\n")
+    # A foreign new helper on an old package is rejected before any DDL/seed.
+    out.append(arrange_old('1.1.1')+"EXEC(N'CREATE PROCEDURE snapshot.InternalCompleteWaitStatsCycle AS SELECT 1;');\nGO\nDECLARE @Before nvarchar(max),@After nvarchar(max);\n"+state('@Before'))
+    out.append("DECLARE @BadRoute nvarchar(max)=(SELECT SqlText FROM qa.SnapshotMigrationInput WHERE Route='DIRECT_TARGET'); BEGIN TRY EXEC sys.sp_executesql @BadRoute; THROW 53826,N'Expected foreign helper rejection.',1; END TRY BEGIN CATCH IF ERROR_NUMBER()<>53762 THROW; END CATCH;\n"+state('@After')+"IF CONVERT(varbinary(max),@Before)<>CONVERT(varbinary(max),@After) THROW 53826,N'Foreign helper rejection changed state.',1;\nGO\nDROP PROCEDURE snapshot.InternalCompleteWaitStatsCycle;\n")
+    # Canonical partial SQLCMD progress is recoverable while still staged.
+    out += ['EXEC sys.sp_executesql '+g.lit(b)+';\n' for b in g.split_batches(current['055_InternalCompleteWaitStatsCycle.sql'])]
+    out.append("DECLARE @Recover nvarchar(max)=(SELECT SqlText FROM qa.SnapshotMigrationInput WHERE Route='DIRECT_TARGET'); EXEC sys.sp_executesql @Recover;\nGO\n"+preserve('canonical partial recovery',True)+'GO\n')
+    for label,route in routes:
+        out.append("UPDATE snapshot.MetricDefinition SET Unit='EXAMPLE_WRONG' WHERE MetricCode='WAIT_TIME_MS';\nGO\nDECLARE @Before nvarchar(max),@After nvarchar(max);\n"+state('@Before'))
+        out.append("DECLARE @SeedRoute nvarchar(max)=(SELECT SqlText FROM qa.SnapshotMigrationInput WHERE Route="+g.lit(label)+"); BEGIN TRY EXEC sys.sp_executesql @SeedRoute; THROW 53826,N'Expected seed collision rejection.',1; END TRY BEGIN CATCH IF ERROR_NUMBER()<>53760 THROW; END CATCH;\n"+state('@After')+"IF CONVERT(varbinary(max),@Before)<>CONVERT(varbinary(max),@After) THROW 53826,N'Seed preflight rejection changed state.',1;\nGO\nUPDATE snapshot.MetricDefinition SET Unit='ms' WHERE MetricCode='WAIT_TIME_MS';\nGO\n")
+    # Compatible custom seeds and the disabled, customized Wait policy survive.
+    out.append("UPDATE snapshot.MetricDefinition SET Description=N'Example custom Wait description',IsFrameworkDefault=0,SeedVersion=2 WHERE MetricCode='WAIT_TIME_MS'; UPDATE snapshot.CollectorPolicy SET MaxRows=123,IsEnabled=0 WHERE CollectorCode='WAIT_STATS';\nGO\nDECLARE @Before nvarchar(max),@After nvarchar(max);\n"+state('@Before'))
+    out.append("DECLARE @CustomRoute nvarchar(max)=(SELECT SqlText FROM qa.SnapshotMigrationInput WHERE Route='DIRECT_TARGET'); EXEC sys.sp_executesql @CustomRoute;\n"+state('@After')+"SET @Before=JSON_MODIFY(JSON_MODIFY(@Before,'$.PackageVersion[0].LastInstallerRunUtc',NULL),'$.objects',NULL); SET @After=JSON_MODIFY(JSON_MODIFY(@After,'$.PackageVersion[0].LastInstallerRunUtc',NULL),'$.objects',NULL); IF CONVERT(varbinary(max),@Before)<>CONVERT(varbinary(max),@After) THROW 53826,N'Compatible custom seeds or policies were overwritten.',1;\nGO\n")
+    finish=''.join('EXEC sys.sp_executesql '+g.lit(b)+';\n' for b in g.split_batches(current['075_CompleteWaitStatsInstallation.sql']))
+    for label,arrange,restore in [
+        ('missing helper','DROP PROCEDURE snapshot.InternalFinalizeCollectionCycle;\n',current['060_InternalFinalizeCollectionCycle.sql']),
+        ('mistyped handshake',''.join('EXEC sys.sp_executesql '+g.lit(b)+';\n' for b in g.split_batches(current['070_InternalPurgeExpiredData.sql'].replace('@RetentionContractVersionOut int','@RetentionContractVersionOut smallint'))),current['070_InternalPurgeExpiredData.sql'])]:
+        out.append("UPDATE snapshot.PackageVersion SET PackageVersion='1.1.1';\n"+arrange+'GO\nDECLARE @Before nvarchar(max),@After nvarchar(max);\n'+state('@Before'))
+        out.append('BEGIN TRY\n'+finish+"THROW 53826,N'Expected incomplete closure rejection.',1; END TRY BEGIN CATCH IF ERROR_NUMBER()<>53762 THROW; END CATCH;\n"+state('@After')+"IF CONVERT(varbinary(max),@Before)<>CONVERT(varbinary(max),@After) THROW 53826,N'Closure rejection changed staged state.',1;\nGO\n")
+        out += ['EXEC sys.sp_executesql '+g.lit(b)+';\n' for b in g.split_batches(restore)]
+        out.append(finish+'GO\n')
+    out.append("SELECT N'PASS' AS SnapshotSchemaMigration,N'3 V1 routes, 6 real-helper patch upgrades, repetition, 27 shape/version rejections, collision and partial recovery' AS Scope;\nGO\n")
     out.append("DECLARE @Installer sysname=N'ExampleSnapshotInstaller_'+REPLACE(CONVERT(nvarchar(36),NEWID()),N'-',N''),@CredentialValue nvarchar(128)=N'Example!'+CONVERT(nvarchar(36),NEWID()),@PermissionSql nvarchar(max),@Impersonated bit=0,@InstallerSid varbinary(85),@PermissionBefore nvarchar(max),@PermissionAfter nvarchar(max),@InstallerSource nvarchar(max)=(SELECT SqlText FROM qa.SnapshotMigrationInput WHERE Route='DIRECT');\n")
     out.append("SET @PermissionSql=N'CREATE LOGIN '+QUOTENAME(@Installer)+N' WITH PASSWORD='+QUOTENAME(@CredentialValue,NCHAR(39))+N',CHECK_POLICY=OFF;'; EXEC master.sys.sp_executesql @PermissionSql; SET @InstallerSid=SUSER_SID(@Installer);\nBEGIN TRY\n")
     out.append("SET @PermissionSql=N'CREATE USER '+QUOTENAME(@Installer)+N' FOR LOGIN '+QUOTENAME(@Installer)+N'; GRANT CONTROL ON DATABASE::'+QUOTENAME(DB_NAME())+N' TO '+QUOTENAME(@Installer)+N';'; EXEC sys.sp_executesql @PermissionSql; SET @PermissionSql=N'GRANT VIEW ANY DEFINITION TO '+QUOTENAME(@Installer)+N';'; EXEC master.sys.sp_executesql @PermissionSql;\n")

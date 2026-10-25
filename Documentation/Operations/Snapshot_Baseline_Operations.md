@@ -5,7 +5,7 @@ Status: `IMPLEMENTED_ACTIONS_GATE`
 
 ## Paketgrenze
 
-SC-023 ist absichtlich kein Bestandteil von `Install_All.sql`. Ohne die beiden separaten Installer bleibt der Frameworkkern zustandslos. Der erste vertikale Slice besitzt genau einen Collector: `monitor.USP_PerformanceCounters` mit `@SampleSeconds=0`. Wait-, I/O-, Datenbank-, Query-, Plan-, Rollup-, Export- und Agentjob-Pakete gehören nicht zu diesem Stand.
+SC-023 ist absichtlich kein Bestandteil von `Install_All.sql`. Ohne die beiden separaten Installer bleibt der Frameworkkern zustandslos. Der erste vertikale Slice besitzt genau einen Collector: `monitor.USP_PerformanceCounters` mit `@SampleSeconds=0`. Das Target enthält außerdem ein internes Wait-Backend mit deaktivierter neuer Policy. Ein öffentlicher Wait-Collector sowie I/O-, Datenbank-, Query-, Plan-, Rollup-, Export- und Agentjob-Pakete gehören nicht zu diesem Stand.
 
 Die Snapshot-Datenbank darf im autorisierten Betrieb reale Laufzeitwerte speichern. Exporte, Berichte und weitergegebene Auszüge benötigen einen eigenen Datenschutz-, Empfänger- und Aufbewahrungsvertrag.
 
@@ -87,7 +87,7 @@ in der ZIP vor. Er besitzt eine gemeinsame Transaktion, Receipts und
 Vorzustandserhaltung in beiden Kontexten. Vorhandene Datenbanken und Zielbindung werden
 weiterverwendet. Die bereits veröffentlichte v1.1.2-ZIP enthält
 Target-Paketversion `1.0.0` mit `SchemaVersion=1`. Der aktuelle Quellstand
-installiert `1.1.1` mit `SchemaVersion=2`; die Targetversion ist von der
+installiert das Target-Backend `1.2.0` mit `SchemaVersion=2`; die Targetversion ist von der
 Frameworkversion getrennt. Der
 [Architekturvertrag](../Architecture/Snapshot_Baseline_Package_Contract.md#installation)
 beschreibt die erkannten Upgradezustände und Installationsrechte. Bestehende
@@ -150,8 +150,8 @@ Wait-Vergleichs von der Runlöschung ausgenommen, bis ein neuerer Wait-Lauf
 finalisiert ist. Dies erhält höchstens eine zusätzliche Laufzeile einschließlich
 eines möglichen Fehlerstatus. Ihre Rohsamples, Payloads und Modulstatus
 verfallen regulär; ihre bloße Existenz beweist deshalb keine vollständige
-Vergleichsbasis. Die Performance-Counter-Retention bleibt unverändert. Der
-aktuelle Stand aktiviert noch keinen Wait-Collector.
+Vergleichsbasis. Die Performance-Counter-Retention bleibt unverändert. Die neue WAIT_STATS-Policy ist bei Neuanlage deaktiviert; der
+aktuelle Stand stellt noch keinen öffentlichen Wait-Collector bereit.
 
 ```sql
 EXEC [monitor].[USP_PurgeSnapshotData]

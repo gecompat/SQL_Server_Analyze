@@ -46,9 +46,29 @@ EXPECTED_TARGET_INCLUDES = (
     "Code/10_SnapshotBaseline/020_InternalConfigureSnapshotPolicy.sql",
     "Code/10_SnapshotBaseline/040_InternalPrepareCollectionCycle.sql",
     "Code/10_SnapshotBaseline/050_InternalCompletePerformanceCounterCycle.sql",
+    "Code/10_SnapshotBaseline/055_InternalCompleteWaitStatsCycle.sql",
     "Code/10_SnapshotBaseline/060_InternalFinalizeCollectionCycle.sql",
     "Code/10_SnapshotBaseline/070_InternalPurgeExpiredData.sql",
+    "Code/10_SnapshotBaseline/075_CompleteWaitStatsInstallation.sql",
 )
+
+EXPECTED_WAIT_TARGET_BACKEND = {'releaseState': 'INTERNAL_PREACTIVATION',
+ 'collectorCode': 'WAIT_STATS',
+ 'defaultEnabled': False,
+ 'sourceSchemaVersion': 1,
+ 'captureContextVersion': 1,
+ 'metricContractVersion': 1,
+ 'completionProcedure': 'snapshot.InternalCompleteWaitStatsCycle',
+ 'completionSource': 'Code/10_SnapshotBaseline/075_CompleteWaitStatsInstallation.sql',
+ 'metrics': [{'code': 'WAIT_TASK_COUNT', 'valueType': 'BIGINT', 'unit': 'count'},
+             {'code': 'WAIT_TIME_MS', 'valueType': 'BIGINT', 'unit': 'ms'},
+             {'code': 'WAIT_SIGNAL_TIME_MS', 'valueType': 'BIGINT', 'unit': 'ms'},
+             {'code': 'WAIT_MAX_TIME_MS', 'valueType': 'BIGINT', 'unit': 'ms'},
+             {'code': 'WAIT_TASK_COUNT_DELTA_CANDIDATE', 'valueType': 'BIGINT', 'unit': 'count'},
+             {'code': 'WAIT_TIME_MS_DELTA_CANDIDATE', 'valueType': 'BIGINT', 'unit': 'ms'},
+             {'code': 'WAIT_SIGNAL_TIME_MS_DELTA_CANDIDATE', 'valueType': 'BIGINT', 'unit': 'ms'},
+             {'code': 'WAIT_DELTA_STATUS', 'valueType': 'STRING', 'unit': 'status'},
+             {'code': 'WAIT_CAPTURE_CONTEXT', 'valueType': 'STRING', 'unit': 'json'}]}
 
 PUBLIC_APIS = (
     "USP_ConfigureSnapshotTarget",
@@ -73,6 +93,7 @@ TARGET_INTERNAL_PROCEDURES = (
     "InternalConfigureSnapshotPolicy",
     "InternalPrepareCollectionCycle",
     "InternalCompletePerformanceCounterCycle",
+    "InternalCompleteWaitStatsCycle",
     "InternalFinalizeCollectionCycle",
     "InternalPurgeExpiredData",
 )
@@ -342,12 +363,16 @@ def validate_repository(repository_root: pathlib.Path) -> list[str]:
                 errors.append("PUBLIC_CONTRACT_ID")
             if public_contract.get("contractVersion") != 1:
                 errors.append("PUBLIC_CONTRACT_VERSION")
-            if public_contract.get("targetPackageVersion") != "1.1.1" or public_contract.get("targetSchemaVersion") != 2:
+            if public_contract.get("targetPackageVersion") != "1.2.0" or public_contract.get("targetSchemaVersion") != 2:
                 errors.append("PUBLIC_CONTRACT_TARGET_SCHEMA_VERSION")
             if public_contract.get("acceptedTargetUpgrade") != {"packageVersion":"1.0.0","schemaVersion":1,"requiresExactManagedShape":True,"preservesExistingRows":True}:
                 errors.append("PUBLIC_CONTRACT_TARGET_UPGRADE")
             if public_contract.get("acceptedTargetPatchUpgrade") != {"packageVersion":"1.1.0","schemaVersion":2,"requiresExactManagedShape":True,"preservesExistingRows":True}:
                 errors.append("PUBLIC_CONTRACT_TARGET_PATCH_UPGRADE")
+            if public_contract.get("targetSchemaStageVersion") != "1.1.1" or public_contract.get("acceptedTargetBackendUpgradeVersions") != ["1.1.0", "1.1.1"]:
+                errors.append("PUBLIC_CONTRACT_WAIT_UPGRADE_CLOSURE")
+            if public_contract.get("waitTargetBackend") != EXPECTED_WAIT_TARGET_BACKEND:
+                errors.append("PUBLIC_CONTRACT_WAIT_BACKEND")
             if public_contract.get("matrixWorkflow") != ".github/workflows/release-native-matrix.yml":
                 errors.append("PUBLIC_CONTRACT_ACTIVE_NATIVE_WORKFLOW")
             if public_contract.get("releaseState") != "IMPLEMENTED_ACTIONS_GATE":
@@ -648,8 +673,11 @@ GO
             {
                 "contractId": "SC-023-PUBLIC-V1",
                 "contractVersion": 1,
-                "targetPackageVersion": "1.1.1",
+                "targetPackageVersion": "1.2.0",
                 "targetSchemaVersion": 2,
+                "targetSchemaStageVersion": "1.1.1",
+                "acceptedTargetBackendUpgradeVersions": ["1.1.0", "1.1.1"],
+                "waitTargetBackend": EXPECTED_WAIT_TARGET_BACKEND,
                 "acceptedTargetUpgrade": {"packageVersion":"1.0.0","schemaVersion":1,"requiresExactManagedShape":True,"preservesExistingRows":True},
                 "acceptedTargetPatchUpgrade": {"packageVersion":"1.1.0","schemaVersion":2,"requiresExactManagedShape":True,"preservesExistingRows":True},
                 "matrixWorkflow": ".github/workflows/release-native-matrix.yml",
@@ -677,6 +705,15 @@ def run_self_test() -> None:
         good_errors = validate_repository(good_root)
         if good_errors:
             raise AssertionError("positive self-test failed: " + ",".join(good_errors))
+
+        backend_path = good_root / PUBLIC_CONTRACT
+        backend_manifest = json.loads(backend_path.read_text(encoding="utf-8"))
+        backend_manifest["waitTargetBackend"]["defaultEnabled"] = True
+        backend_path.write_text(json.dumps(backend_manifest), encoding="utf-8")
+        if "PUBLIC_CONTRACT_WAIT_BACKEND" not in validate_repository(good_root):
+            raise AssertionError("negative self-test did not reject implicit Wait activation")
+        backend_manifest["waitTargetBackend"]["defaultEnabled"] = False
+        backend_path.write_text(json.dumps(backend_manifest), encoding="utf-8")
 
         manifest_path = good_root / PUBLIC_CONTRACT
         manifest = json.loads(manifest_path.read_text(encoding="utf-8"))

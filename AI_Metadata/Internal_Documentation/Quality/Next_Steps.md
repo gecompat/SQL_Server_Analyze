@@ -83,10 +83,12 @@ Core-Release und dessen allgemeine native Berechtigungsmatrix gehören
 nicht zu diesem zusätzlichen Risikoscope. Das Dossier bewahrt frühere
 Vollrunfehler und die Grenzen getrennt vom Integrationserfolg.
 Der genaue WAIT_CAPTURE_CONTEXT-Vertrag mit Typen, Mengen-, Rohwert-, Zeit-,
-Epochen- und Retentionsbindungen ist unabhängig geprüft. Der nächste Schritt
-implementiert zuerst den Retentionsschutz im gemeinsamen Purge als
-Targetpatch 1.1.1, danach Wait-Persistenz und öffentliche Aktivierung mit
-1.2.0. Datei-I/O folgt getrennt.
+Epochen- und Retentionsbindungen ist unabhängig geprüft. Der Retentionsschutz im gemeinsamen Purge ist über
+[PR #449](https://github.com/gecompat/SQL_Server_Analyze/pull/449) als
+Targetpatch 1.1.1 einschließlich aller Head- und Main-Gates integriert.
+Die aktuelle Welle ergänzt das interne Wait-Target mit Abschlussversion
+1.2.0; die öffentliche Frameworkaktivierung folgt als eigener Schritt.
+Datei-I/O folgt getrennt.
 Ein Wait-Collector ist mit Schema 2 noch nicht geliefert.
 Bereits gelieferte Funktionen und die abgeschlossene STAT-DOMINANT-Diagnose
 werden nicht erneut entwickelt.

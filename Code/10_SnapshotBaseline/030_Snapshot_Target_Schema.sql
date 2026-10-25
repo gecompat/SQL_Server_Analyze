@@ -65,7 +65,7 @@ BEGIN TRY
 IF @SnapshotSchemaOwnTransaction=1 BEGIN TRANSACTION;
 ELSE SAVE TRANSACTION SQLSA_SnapshotSchema2;
 -- SNAPSHOT_SCHEMA_PREFLIGHT_BEGIN
--- Derived model SHA256: 083a4e719bdc42137fc8116bb4cb7a9880148e2696660908e30217634ca2654c
+-- Derived model SHA256: aee9e33f717fc2f3a62a9adb54da1dc8960016b9d92ce4adaa0e209fe2ec4cc0
 SET NOCOUNT ON; SET LOCK_TIMEOUT 10000;
 IF ISNULL(HAS_PERMS_BY_NAME(DB_NAME(),'DATABASE','CONTROL'),0)<>1 OR ISNULL(HAS_PERMS_BY_NAME(NULL,NULL,'VIEW ANY DEFINITION'),0)<>1 THROW 53901,N'Deployment requires CONTROL DATABASE and visible server metadata.',1;
 IF EXISTS(SELECT 1 FROM sys.triggers WHERE parent_class=0 AND is_disabled=0) OR EXISTS(SELECT 1 FROM sys.server_triggers WHERE is_disabled=0) THROW 53902,N'Active DDL triggers are unsupported.',1;
@@ -74,10 +74,10 @@ DECLARE @ObjectId int,@ExpectedId int,@LockCount bigint,@ConstraintSql nvarchar(
 CREATE TABLE #SnapshotTargetSchema_ConstraintMap(CanonicalName sysname COLLATE DATABASE_DEFAULT NOT NULL,ParentColumn sysname COLLATE DATABASE_DEFAULT NULL,ConstraintType char(2) COLLATE DATABASE_DEFAULT NOT NULL,Definition nvarchar(max) COLLATE DATABASE_DEFAULT NULL,IsDisabled bit NOT NULL,IsNotTrusted bit NOT NULL,IsNotForReplication bit NOT NULL);
 CREATE TABLE #SnapshotTargetSchema_KnownForeignKeys(ParentSchema sysname COLLATE DATABASE_DEFAULT,ParentTable sysname COLLATE DATABASE_DEFAULT,ConstraintName sysname COLLATE DATABASE_DEFAULT);
 DECLARE @SnapshotExpectedLegacy bit=0;
-IF OBJECT_ID(N'[snapshot].[PackageVersion]') IS NOT NULL OR OBJECT_ID(N'[snapshot].[RetentionPolicy]') IS NOT NULL OR OBJECT_ID(N'[snapshot].[CollectorPolicy]') IS NOT NULL OR OBJECT_ID(N'[snapshot].[CaptureRun]') IS NOT NULL OR OBJECT_ID(N'[snapshot].[ModuleStatus]') IS NOT NULL OR OBJECT_ID(N'[snapshot].[Scope]') IS NOT NULL OR OBJECT_ID(N'[snapshot].[MetricDefinition]') IS NOT NULL OR OBJECT_ID(N'[snapshot].[MetricSample]') IS NOT NULL OR OBJECT_ID(N'[snapshot].[PayloadSnapshot]') IS NOT NULL OR OBJECT_ID(N'[snapshot].[PurgeRun]') IS NOT NULL OR OBJECT_ID(N'[snapshot].[InternalConfigureSnapshotPolicy]') IS NOT NULL OR OBJECT_ID(N'[snapshot].[InternalPrepareCollectionCycle]') IS NOT NULL OR OBJECT_ID(N'[snapshot].[InternalCompletePerformanceCounterCycle]') IS NOT NULL OR OBJECT_ID(N'[snapshot].[InternalFinalizeCollectionCycle]') IS NOT NULL OR OBJECT_ID(N'[snapshot].[InternalPurgeExpiredData]') IS NOT NULL BEGIN
+IF OBJECT_ID(N'[snapshot].[PackageVersion]') IS NOT NULL OR OBJECT_ID(N'[snapshot].[RetentionPolicy]') IS NOT NULL OR OBJECT_ID(N'[snapshot].[CollectorPolicy]') IS NOT NULL OR OBJECT_ID(N'[snapshot].[CaptureRun]') IS NOT NULL OR OBJECT_ID(N'[snapshot].[ModuleStatus]') IS NOT NULL OR OBJECT_ID(N'[snapshot].[Scope]') IS NOT NULL OR OBJECT_ID(N'[snapshot].[MetricDefinition]') IS NOT NULL OR OBJECT_ID(N'[snapshot].[MetricSample]') IS NOT NULL OR OBJECT_ID(N'[snapshot].[PayloadSnapshot]') IS NOT NULL OR OBJECT_ID(N'[snapshot].[PurgeRun]') IS NOT NULL OR OBJECT_ID(N'[snapshot].[InternalConfigureSnapshotPolicy]') IS NOT NULL OR OBJECT_ID(N'[snapshot].[InternalPrepareCollectionCycle]') IS NOT NULL OR OBJECT_ID(N'[snapshot].[InternalCompletePerformanceCounterCycle]') IS NOT NULL OR OBJECT_ID(N'[snapshot].[InternalCompleteWaitStatsCycle]') IS NOT NULL OR OBJECT_ID(N'[snapshot].[InternalFinalizeCollectionCycle]') IS NOT NULL OR OBJECT_ID(N'[snapshot].[InternalPurgeExpiredData]') IS NOT NULL BEGIN
 IF OBJECT_ID(N'[snapshot].[PackageVersion]',N'U') IS NULL OR OBJECT_ID(N'[snapshot].[RetentionPolicy]',N'U') IS NULL OR OBJECT_ID(N'[snapshot].[CollectorPolicy]',N'U') IS NULL OR OBJECT_ID(N'[snapshot].[CaptureRun]',N'U') IS NULL OR OBJECT_ID(N'[snapshot].[ModuleStatus]',N'U') IS NULL OR OBJECT_ID(N'[snapshot].[Scope]',N'U') IS NULL OR OBJECT_ID(N'[snapshot].[MetricDefinition]',N'U') IS NULL OR OBJECT_ID(N'[snapshot].[MetricSample]',N'U') IS NULL OR OBJECT_ID(N'[snapshot].[PayloadSnapshot]',N'U') IS NULL OR OBJECT_ID(N'[snapshot].[PurgeRun]',N'U') IS NULL THROW 53935,N'Incomplete Snapshot schema.',1;
 DECLARE @SnapshotVersionLock bigint; SELECT TOP(1) @SnapshotVersionLock=1 FROM [snapshot].[PackageVersion] WITH(TABLOCKX,HOLDLOCK) OPTION(MAXDOP 1);
-EXEC sys.sp_executesql N'IF (SELECT COUNT_BIG(*) FROM [snapshot].[PackageVersion])<>1 THROW 53935,N''Unknown Snapshot version cardinality.'',1; IF EXISTS(SELECT 1 FROM [snapshot].[PackageVersion] WHERE PackageCode=''SC-023'' AND PackageVersion=''1.0.0'' AND SchemaVersion=1) SET @Legacy=1; ELSE IF NOT EXISTS(SELECT 1 FROM [snapshot].[PackageVersion] WHERE PackageCode=''SC-023'' AND PackageVersion IN(''1.1.0'',''1.1.1'') AND SchemaVersion=2) THROW 53935,N''Unknown Snapshot package/schema version.'',1;',N'@Legacy bit OUTPUT',@SnapshotExpectedLegacy OUTPUT;
+EXEC sys.sp_executesql N'IF (SELECT COUNT_BIG(*) FROM [snapshot].[PackageVersion])<>1 THROW 53935,N''Unknown Snapshot version cardinality.'',1; IF EXISTS(SELECT 1 FROM [snapshot].[PackageVersion] WHERE CONVERT(varbinary(max),PackageCode)=CONVERT(varbinary(max),''SC-023'') AND CONVERT(varbinary(max),PackageVersion)=CONVERT(varbinary(max),''1.0.0'') AND SchemaVersion=1) SET @Legacy=1; ELSE IF NOT EXISTS(SELECT 1 FROM [snapshot].[PackageVersion] WHERE CONVERT(varbinary(max),PackageCode)=CONVERT(varbinary(max),''SC-023'') AND CONVERT(varbinary(max),PackageVersion) IN(CONVERT(varbinary(max),''1.1.0''),CONVERT(varbinary(max),''1.1.1''),CONVERT(varbinary(max),''1.2.0'')) AND SchemaVersion=2) THROW 53935,N''Unknown Snapshot package/schema version.'',1;',N'@Legacy bit OUTPUT',@SnapshotExpectedLegacy OUTPUT;
 END;
 IF SCHEMA_ID(N'snapshot') IS NOT NULL AND NOT EXISTS(SELECT 1 FROM sys.schemas WHERE name=N'snapshot' AND principal_id=DATABASE_PRINCIPAL_ID(N'dbo')) THROW 53903,N'Noncanonical product schema ownership.',1;
 INSERT #SnapshotTargetSchema_KnownForeignKeys VALUES(N'snapshot',N'CollectorPolicy',N'FK_snapshot_CollectorPolicy_RetentionPolicy');
@@ -985,8 +985,41 @@ END;
 IF OBJECT_ID(N'[snapshot].[InternalConfigureSnapshotPolicy]') IS NOT NULL AND NOT EXISTS(SELECT 1 FROM sys.objects WHERE object_id=OBJECT_ID(N'[snapshot].[InternalConfigureSnapshotPolicy]') AND type=N'P') THROW 53913,N'Module object type mismatch: [snapshot].[InternalConfigureSnapshotPolicy]',1;
 IF OBJECT_ID(N'[snapshot].[InternalPrepareCollectionCycle]') IS NOT NULL AND NOT EXISTS(SELECT 1 FROM sys.objects WHERE object_id=OBJECT_ID(N'[snapshot].[InternalPrepareCollectionCycle]') AND type=N'P') THROW 53913,N'Module object type mismatch: [snapshot].[InternalPrepareCollectionCycle]',1;
 IF OBJECT_ID(N'[snapshot].[InternalCompletePerformanceCounterCycle]') IS NOT NULL AND NOT EXISTS(SELECT 1 FROM sys.objects WHERE object_id=OBJECT_ID(N'[snapshot].[InternalCompletePerformanceCounterCycle]') AND type=N'P') THROW 53913,N'Module object type mismatch: [snapshot].[InternalCompletePerformanceCounterCycle]',1;
+IF OBJECT_ID(N'[snapshot].[InternalCompleteWaitStatsCycle]') IS NOT NULL AND NOT EXISTS(SELECT 1 FROM sys.objects WHERE object_id=OBJECT_ID(N'[snapshot].[InternalCompleteWaitStatsCycle]') AND type=N'P') THROW 53913,N'Module object type mismatch: [snapshot].[InternalCompleteWaitStatsCycle]',1;
 IF OBJECT_ID(N'[snapshot].[InternalFinalizeCollectionCycle]') IS NOT NULL AND NOT EXISTS(SELECT 1 FROM sys.objects WHERE object_id=OBJECT_ID(N'[snapshot].[InternalFinalizeCollectionCycle]') AND type=N'P') THROW 53913,N'Module object type mismatch: [snapshot].[InternalFinalizeCollectionCycle]',1;
 IF OBJECT_ID(N'[snapshot].[InternalPurgeExpiredData]') IS NOT NULL AND NOT EXISTS(SELECT 1 FROM sys.objects WHERE object_id=OBJECT_ID(N'[snapshot].[InternalPurgeExpiredData]') AND type=N'P') THROW 53913,N'Module object type mismatch: [snapshot].[InternalPurgeExpiredData]',1;
+IF OBJECT_ID(N'[snapshot].[MetricDefinition]',N'U') IS NOT NULL EXEC sys.sp_executesql N'DECLARE @SnapshotWaitExpectedMetrics TABLE
+(
+    [MetricCode] varchar(96) COLLATE DATABASE_DEFAULT NOT NULL PRIMARY KEY,
+    [ValueType] varchar(24) COLLATE DATABASE_DEFAULT NOT NULL,
+    [Unit] varchar(40) COLLATE DATABASE_DEFAULT NOT NULL,
+    [Description] nvarchar(1000) COLLATE DATABASE_DEFAULT NOT NULL
+);
+INSERT @SnapshotWaitExpectedMetrics ([MetricCode],[ValueType],[Unit],[Description])
+VALUES
+ (''WAIT_TASK_COUNT'',''BIGINT'',''count'',N''Unveränderter nativer kumulativer Wait-Taskcounter.''),
+ (''WAIT_TIME_MS'',''BIGINT'',''ms'',N''Unveränderte native kumulative gesamte Waitzeit.''),
+ (''WAIT_SIGNAL_TIME_MS'',''BIGINT'',''ms'',N''Unveränderte native kumulative Signalwaitzeit.''),
+ (''WAIT_MAX_TIME_MS'',''BIGINT'',''ms'',N''Native bisherige maximale Waitzeit; kein additiver Counter.''),
+ (''WAIT_TASK_COUNT_DELTA_CANDIDATE'',''BIGINT'',''count'',N''Monotone Taskdifferenz mit unbewiesener Resetkontinuität.''),
+ (''WAIT_TIME_MS_DELTA_CANDIDATE'',''BIGINT'',''ms'',N''Monotone Waitzeitdifferenz mit unbewiesener Resetkontinuität.''),
+ (''WAIT_SIGNAL_TIME_MS_DELTA_CANDIDATE'',''BIGINT'',''ms'',N''Monotone Signalzeitdifferenz mit unbewiesener Resetkontinuität.''),
+ (''WAIT_DELTA_STATUS'',''STRING'',''status'',N''Expliziter Status für Differenzkandidaten oder ihre Unterdrückung.''),
+ (''WAIT_CAPTURE_CONTEXT'',''STRING'',''json'',N''Versionierter Aufnahme-, Rohwert- und Vergleichskontext auf SERVER-Scope.'');
+IF EXISTS
+(
+    SELECT 1
+    FROM [snapshot].[MetricDefinition] AS [d]
+    JOIN @SnapshotWaitExpectedMetrics AS [e]
+      ON [d].[MetricCode]=[e].[MetricCode]
+    WHERE CONVERT(varbinary(max),[d].[MetricCode])<>CONVERT(varbinary(max),[e].[MetricCode])
+       OR CONVERT(varbinary(max),[d].[ValueType])<>CONVERT(varbinary(max),[e].[ValueType])
+       OR CONVERT(varbinary(max),[d].[Unit])<>CONVERT(varbinary(max),[e].[Unit])
+       OR [d].[ContractVersion]<>1
+)
+    THROW 53760,N''Eine vorhandene Waitmetrik widerspricht dem Metrikvertrag.'',1;
+';
+IF OBJECT_ID(N'[snapshot].[InternalCompleteWaitStatsCycle]',N'P') IS NOT NULL AND OBJECT_ID(N'[snapshot].[PackageVersion]',N'U') IS NOT NULL EXEC sys.sp_executesql N'IF NOT EXISTS(SELECT 1 FROM [snapshot].[PackageVersion] WHERE CONVERT(varbinary(max),PackageCode)=CONVERT(varbinary(max),''SC-023'') AND CONVERT(varbinary(max),PackageVersion)=CONVERT(varbinary(max),''1.2.0'') AND SchemaVersion=2) AND (OBJECT_DEFINITION(OBJECT_ID(N''[snapshot].[InternalCompleteWaitStatsCycle]'',N''P'')) IS NULL OR HASHBYTES(''SHA2_256'',CONVERT(varbinary(max),TRIM(NCHAR(9)+NCHAR(10)+NCHAR(13)+N'' '' FROM REPLACE(OBJECT_DEFINITION(OBJECT_ID(N''[snapshot].[InternalCompleteWaitStatsCycle]'',N''P'')),NCHAR(13)+NCHAR(10),NCHAR(10)))))<>0xe392b9581c55955b81674e468aa88eac444339585dfd787a682abf66b3a48c49) THROW 53762,N''A noncanonical object occupies the new Wait helper name.'',1;';
 DROP TABLE #SnapshotTargetSchema_ConstraintMap,#SnapshotTargetSchema_KnownForeignKeys,[#SnapshotTargetSchema_Expected_1],[#SnapshotTargetSchema_Expected_2],[#SnapshotTargetSchema_Expected_3],[#SnapshotTargetSchema_Expected_4],[#SnapshotTargetSchema_Expected_5],[#SnapshotTargetSchema_Expected_6],[#SnapshotTargetSchema_Expected_7],[#SnapshotTargetSchema_Expected_8],[#SnapshotTargetSchema_Expected_9],[#SnapshotTargetSchema_Expected_10];
 SET LOCK_TIMEOUT 0;
 -- SNAPSHOT_SCHEMA_PREFLIGHT_END
