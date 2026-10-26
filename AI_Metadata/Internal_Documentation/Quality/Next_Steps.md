@@ -93,6 +93,13 @@ Epochen- und Retentionsbindungen ist unabhängig geprüft. Der Retentionsschutz 
 [PR #449](https://github.com/gecompat/SQL_Server_Analyze/pull/449) als
 Targetpatch 1.1.1 einschließlich aller Head- und Main-Gates integriert.
 Das interne Wait-Target 1.2.0 ist über PR #451 einschließlich aller sieben Head-Checks, vollständigem SQL2025-Head-/Main-Gate und gezielter nativer SQL2019-Snapshotprüfung integriert. Die öffentliche Frameworkaktivierung mit Targetpatch 1.2.1 ist über PR #453 einschließlich aller sieben Head-Checks, vollständigem SQL2025-Gate und gezielter nativer SQL2019-Abnahme integriert; alle vier getrennten Main-Prüfungen einschließlich des vollständigen SQL2025-Gates bestehen. Der [Datei-I/O-Vorvertrag](../Architecture/File_IO_Snapshot_Dossier.md) ist über PR #454 mit allen vier Head- und drei Main-Prüfungen integriert. Der [genaue Feld- und Migrationsvertrag](../Architecture/File_IO_Snapshot_Field_Contract.md) ist über PR #455 mit allen Head-/Main-Gates integriert. Die aktuelle Produktwelle implementiert das interne FILE_IO-Target mit Schema 3 und die notwendige Waitkompatibilität. Die erweiterte synthetische SQL2025-Targetabnahme, die kombinierte bekannte Upgrade-/Recovery- und Waitregressionsabnahme sowie der unabhängige Befundabschluss bestehen. Reguläre PR-Gates einschließlich des vollständigen SQL2025-Gates und der gezielten nativen SQL2019-Risikoabnahme bleiben erforderlich. Die öffentliche native Datei-I/O-Aufnahme folgt danach getrennt.
+Während die öffentliche Datei-I/O-Welle PR #458 ihre eigenen Gates durchläuft,
+bereitet der Gesamtauftrag den nächsten unabhängigen Rang 11 im
+[Upgrade-Usage-Dossier](../Architecture/Upgrade_Feature_Usage_Dossier.md) vor.
+Der erste vorgeschlagene Slice betrifft SQL-sichtbare Deprecated-Begegnungszähler
+und eine begrenzte Zielversionsregel; Produktcode und Abnahme sind noch offen.
+Linux-/Container-Hostnachweise bleiben ein eigener Scope. Diese Vorbereitung
+übernimmt keine SSIS-Arbeit und ersetzt keinen ausstehenden Datei-I/O-Checkpoint.
 Bereits gelieferte Funktionen und die abgeschlossene STAT-DOMINANT-Diagnose
 werden nicht erneut entwickelt.
 
