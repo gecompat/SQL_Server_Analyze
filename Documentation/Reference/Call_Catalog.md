@@ -827,6 +827,12 @@ EXEC [monitor].[USP_ServerPrincipalAnalysis] @Hilfe=1;
 EXEC [monitor].[USP_DatabasePrincipalAnalysis] @Hilfe=1;
 ```
 
+## `[monitor].[USP_RowLevelSecurityAndMaskingInventory]`
+
+```sql
+EXEC [monitor].[USP_RowLevelSecurityAndMaskingInventory] @Hilfe=1;
+```
+
 ## `[monitor].[USP_CurrentCallerPermissionAnalysis]`
 
 ```sql

@@ -164,6 +164,7 @@ Der Installer beendet die Verarbeitung beim ersten SQL-Fehler.
 :r ../08_ServerHealth/260_USP_ServerPrincipalAnalysis.sql
 :r ../08_ServerHealth/270_USP_DatabasePrincipalAnalysis.sql
 :r ../08_ServerHealth/280_USP_CurrentCallerPermissionAnalysis.sql
+:r ../08_ServerHealth/285_USP_RowLevelSecurityAndMaskingInventory.sql
 :r ../08_ServerHealth/290_USP_EndpointTransportAnalysis.sql
 :r ../08_ServerHealth/100_USP_ServerHealthAnalysis.sql
 :r ../09_VersionAdaptive/005_Deprecated_Object_Cleanup.sql
