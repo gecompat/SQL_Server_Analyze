@@ -110,12 +110,13 @@ Epochen- und Retentionsbindungen ist unabhängig geprüft. Der Retentionsschutz 
 Targetpatch 1.1.1 einschließlich aller Head- und Main-Gates integriert.
 Das interne Wait-Target 1.2.0 ist über PR #451 einschließlich aller sieben Head-Checks, vollständigem SQL2025-Head-/Main-Gate und gezielter nativer SQL2019-Snapshotprüfung integriert. Die öffentliche Frameworkaktivierung mit Targetpatch 1.2.1 ist über PR #453 einschließlich aller sieben Head-Checks, vollständigem SQL2025-Gate und gezielter nativer SQL2019-Abnahme integriert; alle vier getrennten Main-Prüfungen einschließlich des vollständigen SQL2025-Gates bestehen. Der [Datei-I/O-Vorvertrag](../Architecture/File_IO_Snapshot_Dossier.md) ist über PR #454 mit allen vier Head- und drei Main-Prüfungen integriert. Der [genaue Feld- und Migrationsvertrag](../Architecture/File_IO_Snapshot_Field_Contract.md) ist über PR #455 mit allen Head-/Main-Gates integriert. Das interne FILE_IO-Target 1.3.0 / Schema 3 und die notwendige Waitkompatibilität sind über [PR #456](https://github.com/gecompat/SQL_Server_Analyze/pull/456) integriert. Alle sieben Head-Prüfungen, das vollständige SQL2025-Gate, die gezielte native SQL2019-Risikoabnahme und alle vier getrennten Main-Gates bestehen. Der erste Main-Versuch scheiterte im Legacy-SSIS-TABLE-Fall 202/C008 mit Timeout; ein begrenzter Wiederlauf bestand ohne Produktänderung. BLOCKER_NOT_CAPTURED bleibt mit Ursache UNKNOWN erhalten. Die öffentliche native Datei-I/O-Aufnahme mit Targetpatch 1.3.1 / Schema 3 und Retentionsvertrag 3 ist über [PR #458](https://github.com/gecompat/SQL_Server_Analyze/pull/458) als 1a144251 integriert. Alle sieben Head-Checks, das vollständige SQL2025-Gate und die gezielte native SQL2019-Snapshot-Risikoabnahme bestehen am Head 23730d1d. Merge- und Headbaum sind identisch. Alle vier getrennten Main-Gates einschließlich des vollständigen SQL2025-Laufs 40273412551 bestehen. Der nächste unabhängige Rang 11 beginnt mit dem Upgrade-Usage-Vertrag.
 Der erste Rang-11-Slice ist über PR #459 integriert. PR #460 schließt den
-Linux-cgroup-Vorvertrag mit seinen Head-/Main-Gates ab. Der nächste kleine
-Implementierungsschritt liefert ausschließlich den dokumentierten
-Python-Skalarkern für fünf cgroup-Dateien. Dateizugriff, vollständiger
-Collector, SQL-Import und native Hostqualifikation folgen getrennt und sind
-hier nicht umgesetzt. Die Bearbeitung verwendet ECONOMICAL/LOCAL und eskaliert
-gezielt, falls ein konkreter ungeklärter Vertrags- oder Prüfbedarf entsteht.
+Linux-cgroup-Vorvertrag ab; der reine Fünf-Dateien-Skalarkern ist über PR #461
+integriert. Der nächste kleine Schritt erweitert die typisierten Parser um
+cpuset, `memory.events`, `cpu.stat` und `cgroup.type`. Dateizugriff, vollständiger
+Collector, SQL-Import und native Hostqualifikation bleiben getrennte,
+nicht implementierte Grenzen. Die Bearbeitung verwendet ECONOMICAL/LOCAL und
+eskaliert gezielt, falls ein konkreter ungeklärter Vertrags- oder Prüfbedarf
+entsteht.
 
 ## Abgeschlossen: fünf SSIS-Paketwellen vom 25. Oktober 2026
 

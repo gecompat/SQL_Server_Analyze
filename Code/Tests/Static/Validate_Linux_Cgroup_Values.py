@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import importlib.util
+import json
 from pathlib import Path
 from typing import Any
 
@@ -11,14 +12,18 @@ from typing import Any
 MODULE_RELATIVE_PATH = Path("Code/Tools/Linux_Cgroup_Values.py")
 
 
-def load_parser(repository_root: Path):
+def load_module(repository_root: Path):
     module_path = repository_root / MODULE_RELATIVE_PATH
     spec = importlib.util.spec_from_file_location("linux_cgroup_values", module_path)
     if spec is None or spec.loader is None:
         raise AssertionError(f"Cannot load parser module: {MODULE_RELATIVE_PATH}")
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
-    return module.parse_resource_value
+    return module
+
+
+def load_parser(repository_root: Path):
+    return load_module(repository_root).parse_resource_value
 
 
 def expected(
@@ -33,7 +38,7 @@ def expected(
     period: str | None = None,
     numerator: str | None = None,
     denominator: str | None = None,
-) -> dict[str, str | None]:
+) -> dict[str, Any]:
     return {
         "source_key": source_key,
         "raw_value": raw_value,
@@ -59,7 +64,8 @@ def assert_raises(error_type: type[Exception], callback: Any, label: str) -> Non
 
 
 def run_behavior_checks(repository_root: Path) -> int:
-    parse = load_parser(repository_root)
+    module = load_module(repository_root)
+    parse = module.parse_resource_value
     cases = [
         ("memory.max", "0", expected("memory.max", "0", "VALID", "FINITE_VALUE", "FINITE", value="0")),
         ("memory.max", "000000000000000000001", expected("memory.max", "000000000000000000001", "VALID", "FINITE_VALUE", "FINITE", value="1")),
@@ -116,7 +122,185 @@ def run_behavior_checks(repository_root: Path) -> int:
     assert_raises(ValueError, lambda: parse("memory.maxx", "1"), "unknown source key")
     assert_raises(TypeError, lambda: parse(None, "1"), "non-string source key")
     assert_raises(TypeError, lambda: parse("memory.max", None), "non-string raw value")
-    return len(cases) + 4
+    structured_cases = [
+        (
+            "parse_cpuset_cpus_effective",
+            "0-2,2-5,6,2147483647",
+            {
+                "source_key": "cpuset.cpus.effective",
+                "raw_value": "0-2,2-5,6,2147483647",
+                "parse_state": "VALID",
+                "reason_code": "FINITE_VALUE",
+                "intervals": [{"start": "0", "end": "6"}, {"start": "2147483647", "end": "2147483647"}],
+                "cpu_count": "8",
+            },
+        ),
+        (
+            "parse_cpuset_cpus_effective",
+            "0-2147483647",
+            {
+                "source_key": "cpuset.cpus.effective",
+                "raw_value": "0-2147483647",
+                "parse_state": "VALID",
+                "reason_code": "FINITE_VALUE",
+                "intervals": [{"start": "0", "end": "2147483647"}],
+                "cpu_count": "2147483648",
+            },
+        ),
+        (
+            "parse_cpuset_cpus_effective",
+            "0001-0003,3-4",
+            {
+                "source_key": "cpuset.cpus.effective",
+                "raw_value": "0001-0003,3-4",
+                "parse_state": "VALID",
+                "reason_code": "FINITE_VALUE",
+                "intervals": [{"start": "1", "end": "4"}],
+                "cpu_count": "4",
+            },
+        ),
+        (
+            "parse_cpuset_cpus_effective",
+            " \t\r\n",
+            {
+                "source_key": "cpuset.cpus.effective",
+                "raw_value": " \t\r\n",
+                "parse_state": "EMPTY_OBSERVATION",
+                "reason_code": "EMPTY_OBSERVATION",
+                "intervals": [],
+                "cpu_count": None,
+            },
+        ),
+        ("parse_cpuset_cpus_effective", "0,,1", {"source_key": "cpuset.cpus.effective", "raw_value": "0,,1", "parse_state": "INVALID_VALUE", "reason_code": "INVALID_FORMAT", "intervals": None, "cpu_count": None}),
+        ("parse_cpuset_cpus_effective", "4-2", {"source_key": "cpuset.cpus.effective", "raw_value": "4-2", "parse_state": "INVALID_VALUE", "reason_code": "INVALID_RANGE", "intervals": None, "cpu_count": None}),
+        ("parse_cpuset_cpus_effective", "2147483648", {"source_key": "cpuset.cpus.effective", "raw_value": "2147483648", "parse_state": "INVALID_VALUE", "reason_code": "OUT_OF_RANGE", "intervals": None, "cpu_count": None}),
+        ("parse_cpuset_cpus_effective", "1\x00", {"source_key": "cpuset.cpus.effective", "raw_value": "1\x00", "parse_state": "INVALID_VALUE", "reason_code": "INVALID_TOKEN", "intervals": None, "cpu_count": None}),
+        ("parse_cpuset_cpus_effective", "١", {"source_key": "cpuset.cpus.effective", "raw_value": "١", "parse_state": "INVALID_VALUE", "reason_code": "INVALID_FORMAT", "intervals": None, "cpu_count": None}),
+        (
+            "parse_memory_events",
+            "low 0\nhigh 18446744073709551615\nfuture_event 0007\n",
+            {
+                "source_key": "memory.events",
+                "raw_value": "low 0\nhigh 18446744073709551615\nfuture_event 0007\n",
+                "parse_state": "VALID",
+                "reason_code": "COUNTERS_PARSED",
+                "counters": [
+                    {"key": "low", "value": "0", "raw_value": "0", "key_state": "MAPPED", "unit": "events"},
+                    {"key": "high", "value": "18446744073709551615", "raw_value": "18446744073709551615", "key_state": "MAPPED", "unit": "events"},
+                    {"key": "future_event", "value": "7", "raw_value": "0007", "key_state": "UNMAPPED_KEY", "unit": None},
+                ],
+                "event_scope": "UNVERIFIED",
+            },
+        ),
+        (
+            "parse_cpu_stat",
+            "usage_usec 12\nnr_periods 3\nfuture_key 0004",
+            {
+                "source_key": "cpu.stat",
+                "raw_value": "usage_usec 12\nnr_periods 3\nfuture_key 0004",
+                "parse_state": "VALID",
+                "reason_code": "COUNTERS_PARSED",
+                "counters": [
+                    {"key": "usage_usec", "value": "12", "raw_value": "12", "key_state": "MAPPED", "unit": "microseconds"},
+                    {"key": "nr_periods", "value": "3", "raw_value": "3", "key_state": "MAPPED", "unit": "count"},
+                    {"key": "future_key", "value": "4", "raw_value": "0004", "key_state": "UNMAPPED_KEY", "unit": None},
+                ],
+            },
+        ),
+        ("parse_memory_events", "low 1\nlow 2", {"source_key": "memory.events", "raw_value": "low 1\nlow 2", "parse_state": "INVALID_VALUE", "reason_code": "DUPLICATE_KEY", "counters": None, "event_scope": "UNVERIFIED"}),
+        ("parse_cpu_stat", "usage_usec 1 extra", {"source_key": "cpu.stat", "raw_value": "usage_usec 1 extra", "parse_state": "INVALID_VALUE", "reason_code": "INVALID_FORMAT", "counters": None}),
+        ("parse_cpu_stat", "usage_usec", {"source_key": "cpu.stat", "raw_value": "usage_usec", "parse_state": "INVALID_VALUE", "reason_code": "INVALID_FORMAT", "counters": None}),
+        ("parse_memory_events", "oom 18446744073709551616", {"source_key": "memory.events", "raw_value": "oom 18446744073709551616", "parse_state": "INVALID_VALUE", "reason_code": "OUT_OF_RANGE", "counters": None, "event_scope": "UNVERIFIED"}),
+        ("parse_cpu_stat", "nr_periods +1", {"source_key": "cpu.stat", "raw_value": "nr_periods +1", "parse_state": "INVALID_VALUE", "reason_code": "INVALID_TOKEN", "counters": None}),
+        ("parse_memory_events", "low 1\x00", {"source_key": "memory.events", "raw_value": "low 1\x00", "parse_state": "INVALID_VALUE", "reason_code": "INVALID_TOKEN", "counters": None, "event_scope": "UNVERIFIED"}),
+        ("parse_cpu_stat", "usage_usec ١", {"source_key": "cpu.stat", "raw_value": "usage_usec ١", "parse_state": "INVALID_VALUE", "reason_code": "INVALID_TOKEN", "counters": None}),
+        ("parse_cgroup_type", "domain\n", {"source_key": "cgroup.type", "raw_value": "domain\n", "parse_state": "VALID", "reason_code": "SUPPORTED_DOMAIN", "observed_type": "domain", "layout_state": "SUPPORTED_DOMAIN"}),
+        ("parse_cgroup_type", "threaded", {"source_key": "cgroup.type", "raw_value": "threaded", "parse_state": "UNSUPPORTED_LAYOUT", "reason_code": "UNSUPPORTED_LAYOUT", "observed_type": "threaded", "layout_state": "UNSUPPORTED_LAYOUT"}),
+        ("parse_cgroup_type", "domain threaded", {"source_key": "cgroup.type", "raw_value": "domain threaded", "parse_state": "UNSUPPORTED_LAYOUT", "reason_code": "UNSUPPORTED_LAYOUT", "observed_type": "domain threaded", "layout_state": "UNSUPPORTED_LAYOUT"}),
+        ("parse_cgroup_type", "domain (invalid)", {"source_key": "cgroup.type", "raw_value": "domain (invalid)", "parse_state": "UNSUPPORTED_LAYOUT", "reason_code": "UNSUPPORTED_LAYOUT", "observed_type": "domain (invalid)", "layout_state": "UNSUPPORTED_LAYOUT"}),
+        ("parse_cgroup_type", "domain invalid", {"source_key": "cgroup.type", "raw_value": "domain invalid", "parse_state": "UNSUPPORTED_LAYOUT", "reason_code": "UNSUPPORTED_LAYOUT", "observed_type": "domain invalid", "layout_state": "UNSUPPORTED_LAYOUT"}),
+        ("parse_cgroup_type", "", {"source_key": "cgroup.type", "raw_value": "", "parse_state": "TYPE_UNVERIFIED", "reason_code": "TYPE_UNVERIFIED", "observed_type": None, "layout_state": "UNVERIFIED"}),
+        ("parse_cgroup_type", "future-type", {"source_key": "cgroup.type", "raw_value": "future-type", "parse_state": "TYPE_UNVERIFIED", "reason_code": "TYPE_UNVERIFIED", "observed_type": "future-type", "layout_state": "UNVERIFIED"}),
+        ("parse_cgroup_type", "domain\x00", {"source_key": "cgroup.type", "raw_value": "domain\x00", "parse_state": "INVALID_VALUE", "reason_code": "INVALID_TOKEN", "observed_type": None, "layout_state": "UNVERIFIED"}),
+    ]
+    for function_name, raw_value, wanted in structured_cases:
+        actual = getattr(module, function_name)(raw_value)
+        if actual != wanted:
+            raise AssertionError(f"{function_name} input mismatch: {actual!r} != {wanted!r}")
+        try:
+            json.dumps(actual, allow_nan=False)
+        except (TypeError, ValueError) as error:
+            raise AssertionError(f"{function_name} result is not JSON-compatible: {error}") from error
+
+    boundary_cases = [
+        (
+            "parse_cpuset_cpus_effective",
+            "0" + (" " * 65_535),
+            {
+                "source_key": "cpuset.cpus.effective",
+                "raw_value": "0" + (" " * 65_535),
+                "parse_state": "VALID",
+                "reason_code": "FINITE_VALUE",
+                "intervals": [{"start": "0", "end": "0"}],
+                "cpu_count": "1",
+            },
+        ),
+        (
+            "parse_memory_events",
+            "low 0" + (" " * 65_531),
+            {
+                "source_key": "memory.events",
+                "raw_value": "low 0" + (" " * 65_531),
+                "parse_state": "VALID",
+                "reason_code": "COUNTERS_PARSED",
+                "counters": [{"key": "low", "value": "0", "raw_value": "0", "key_state": "MAPPED", "unit": "events"}],
+                "event_scope": "UNVERIFIED",
+            },
+        ),
+        (
+            "parse_cpu_stat",
+            "usage_usec 0" + (" " * 65_524),
+            {
+                "source_key": "cpu.stat",
+                "raw_value": "usage_usec 0" + (" " * 65_524),
+                "parse_state": "VALID",
+                "reason_code": "COUNTERS_PARSED",
+                "counters": [{"key": "usage_usec", "value": "0", "raw_value": "0", "key_state": "MAPPED", "unit": "microseconds"}],
+            },
+        ),
+        (
+            "parse_cgroup_type",
+            "domain" + (" " * 65_530),
+            {
+                "source_key": "cgroup.type",
+                "raw_value": "domain" + (" " * 65_530),
+                "parse_state": "VALID",
+                "reason_code": "SUPPORTED_DOMAIN",
+                "observed_type": "domain",
+                "layout_state": "SUPPORTED_DOMAIN",
+            },
+        ),
+    ]
+    for function_name, raw_value, wanted in boundary_cases:
+        if len(raw_value.encode("utf-8")) != 65_536:
+            raise AssertionError(f"{function_name} boundary fixture is not exactly 64 KiB")
+        actual = getattr(module, function_name)(raw_value)
+        if actual != wanted:
+            raise AssertionError(f"{function_name} 64-KiB boundary mismatch")
+
+    functions = [getattr(module, name) for name in (
+        "parse_cpuset_cpus_effective", "parse_memory_events", "parse_cpu_stat", "parse_cgroup_type"
+    )]
+    for function in functions:
+        assert_raises(TypeError, lambda function=function: function(None), function.__name__)
+    for function in functions:
+        oversized = function("1" * 65_537)
+        if oversized["parse_state"] != "LIMIT_REACHED" or oversized["reason_code"] != "INPUT_TOO_LARGE":
+            raise AssertionError(f"{function.__name__} did not enforce the UTF-8 input limit")
+        invalid_utf8 = function("\ud800")
+        if invalid_utf8["parse_state"] != "INVALID_VALUE" or invalid_utf8["reason_code"] != "NON_UTF8_TEXT":
+            raise AssertionError(f"{function.__name__} did not reject a non-UTF-8 Python string")
+    return len(cases) + len(structured_cases) + len(boundary_cases) + 12
 
 
 def validate_source(repository_root: Path) -> None:
@@ -126,9 +310,15 @@ def validate_source(repository_root: Path) -> None:
     source = module_path.read_text(encoding="utf-8")
     for required in (
         "def parse_resource_value(source_key: str, raw_value: str)",
+        "def parse_cpuset_cpus_effective(raw_value: str)",
+        "def parse_memory_events(raw_value: str)",
+        "def parse_cpu_stat(raw_value: str)",
+        "def parse_cgroup_type(raw_value: str)",
         "_MAX_INPUT_BYTES: Final = 64 * 1024",
-        'parse_state="LIMIT_REACHED"',
+        'return "LIMIT_REACHED", "INPUT_TOO_LARGE"',
         "math.gcd(quota, period)",
+        '"sock_throttled"',
+        '"burst_usec": "microseconds"',
     ):
         if required not in source:
             raise AssertionError(f"Parser source is missing required contract marker: {required}")

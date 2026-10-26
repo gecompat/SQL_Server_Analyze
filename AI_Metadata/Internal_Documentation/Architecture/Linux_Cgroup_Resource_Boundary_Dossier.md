@@ -248,14 +248,81 @@ einer Ganzzahlkonvertierung geprüft. Ein Überschreiten erzeugt
 `LIMIT_REACHED` ohne Zahlenwerte.
 
 Diese API ist weder Voll-Collector-Schnittstelle noch Dateizugriffsadapter.
-Namespace-/PID-/Mountauflösung, Hierarchieableitungen, Counter, cpuset,
-CLI, SQL-Import und native Hostqualifikation bleiben nicht implementiert.
+Namespace-/PID-/Mountauflösung, Hierarchieableitungen, CLI, SQL-Import und
+native Hostqualifikation bleiben nicht implementiert.
 Die Registrierung des Validators im vorhandenen statischen Runner aktiviert
 bei dessen Änderung einmalig dessen bestehenden vollständigen Satz statischer
 Selbsttests. Diese notwendige Runnergrenze wird nicht durch Verengung
 bestehender Gates umgangen; spätere Änderungen am Parser aktivieren gezielt
 den neuen fokussierten Selbsttest. Der vorhandene Dokumentationsworkflow
 erhält lediglich den Modulpfad als Trigger.
+
+### Weitere reine Parser-APIs
+
+`Code/Tools/Linux_Cgroup_Values.py` ergänzt die unveränderte
+`parse_resource_value`-API um `parse_cpuset_cpus_effective(raw_value: str)`,
+`parse_memory_events(raw_value: str)`, `parse_cpu_stat(raw_value: str)` und
+`parse_cgroup_type(raw_value: str)`. Alle prüfen den Argumenttyp mit
+`TypeError`, bewahren `raw_value` unverändert und wenden vor jedem Parsen die
+64-KiB-UTF-8-Grenze an. Fehlerhafte UTF-8-Strings, zu große Eingaben und
+ungültige Inhalte erhalten reguläre Status-/Reason-Codes ohne Zahlenwerte.
+Zahlen im Ergebnis sind Dezimalzeichenketten; strukturierte Arrays enthalten
+ebenfalls nur Strings und fest dokumentierte Zustandsfelder. Keine API liest
+Dateien oder bestimmt deren Vorhandensein oder Leserechte.
+
+Alle neuen Ergebnisse enthalten `source_key`, `raw_value`, `parse_state` und
+`reason_code`. `parse_state` verwendet `VALID`, `INVALID_VALUE`,
+`LIMIT_REACHED`, `EMPTY_OBSERVATION`, `UNSUPPORTED_LAYOUT` oder
+`TYPE_UNVERIFIED`. Fehlercodes sind `INVALID_FORMAT`, `INVALID_TOKEN`,
+`INVALID_RANGE`, `OUT_OF_RANGE`, `DUPLICATE_KEY`, `NON_UTF8_TEXT` und
+`INPUT_TOO_LARGE`; erfolgreiche CPuset- und Counterparser verwenden
+`FINITE_VALUE` beziehungsweise `COUNTERS_PARSED`. Die Typklassifikation
+verwendet die gleichnamigen `SUPPORTED_DOMAIN`, `UNSUPPORTED_LAYOUT` und
+`TYPE_UNVERIFIED`-Codes.
+
+`parse_cpuset_cpus_effective` liefert `source_key`, `raw_value`,
+`parse_state`, `reason_code`, `intervals` und `cpu_count`. IDs und
+Intervallenden liegen zwischen 0 und 2147483647. Die API sortiert und vereinigt
+überlappende oder benachbarte Intervalle ohne CPU-Expansion. `intervals` führt
+Objekte mit den Stringfeldern `start` und `end`; die eindeutige Anzahl steht
+als Dezimalzeichenkette in `cpu_count`. Leerer Inhalt ergibt
+`EMPTY_OBSERVATION` mit `cpu_count=None`, keine synthetische Null.
+Die Syntax ist eine kommagetrennte Liste aus ASCII-Dezimal-IDs oder
+aufsteigenden `start-end`-Intervallen; äußere ASCII-Leerzeichen, Tabulatoren,
+CR und LF werden entfernt, innere Leerzeichen nicht.
+
+`parse_memory_events` und `parse_cpu_stat` liefern `source_key`, `raw_value`,
+`parse_state`, `reason_code`, `counters` und bei Memory-Events zusätzlich
+`event_scope`. Jede nichtleere Zeile muss genau einen ASCII-Schlüssel und
+einen unsigned64-Dezimalwert enthalten. Schlüssel erfüllen `[A-Za-z0-9_]+`;
+Leerzeilen werden ignoriert, führende Nullen in Werten bleiben nur im Rohtext
+erhalten. Doppelte Schlüssel oder eine fehlerhafte Zeile verwerfen die
+gesamte Quelle; ungültige Dokumente liefern `counters=None`, also keine
+Teilkennzahlen. Jedes gültige Counterobjekt besitzt `key`, `value`,
+`raw_value`, `key_state` und `unit`; `value` ist die kanonische
+Dezimalzeichenkette und `raw_value` erhält den Token unverändert. Aktuell
+dokumentierte `memory.events`-Schlüssel sind
+`low`, `high`, `max`, `oom`, `oom_kill`, `oom_group_kill` und
+`sock_throttled`; ihre Einheit ist `events`. Bekannte `cpu.stat`-Schlüssel
+`usage_usec`, `user_usec`, `system_usec`, `throttled_usec` und `burst_usec`
+haben die Einheit `microseconds`; `nr_periods`, `nr_throttled` und
+`nr_bursts` haben die Einheit `count`. Die Definitionen folgen der
+[Kernel-Dokumentation für cgroup v2](https://docs.kernel.org/admin-guide/cgroup-v2.html).
+Andere syntaktisch gültige Schlüssel bleiben in Dateireihenfolge als
+`key_state=UNMAPPED_KEY`, mit Rohwert und `unit=None` erhalten. Es wird keine
+Einheit oder Aggregation für unbekannte Schlüssel erfunden. `event_scope` ist
+immer `UNVERIFIED`; die API bildet weder Deltas noch Raten, Auslastung oder
+OOM-Verursachung ab.
+
+`parse_cgroup_type` liefert `source_key`, `raw_value`, `parse_state`,
+`reason_code`, `observed_type` und `layout_state`. `domain` ergibt
+`SUPPORTED_DOMAIN`; `threaded`, `domain threaded`, `domain invalid` und
+`domain (invalid)` ergeben `UNSUPPORTED_LAYOUT`. Leere oder andere
+beobachtete Inhalte ergeben `TYPE_UNVERIFIED`, ohne einen Domain-Default zu
+ergänzen.
+
+Alle vier APIs sind reine Parser. Sie binden weder Host, Prozess, Namespace,
+Mount noch Hierarchie und erzeugen keinen Collector oder SQL-Instanzbezug.
 
 Diese Vertragswelle verlangt einen unabhängigen Review der Quellen-,
 Namespace-, Pfad-, Hierarchie-, Vertrauens- und Abbruchgrenzen sowie die
