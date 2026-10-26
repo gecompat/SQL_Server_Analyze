@@ -268,3 +268,10 @@ Schritt ergänzt Parser für Procfs-Mitgliedschaft und cgroup2-Mountmetadaten.
 Dateizugriff, Auswahl, Prozess-/Namespacebindung und übriger Collector folgen
 als getrennte Slices; eine native Hostqualifikation bleibt ein eigener
 nachzuweisender Scope.
+
+PR #463 schließt die Linux-cgroup-Metadatenparser ab. Der begrenzte COLL-001-
+Schritt ergänzt Common 159 um zwei verpflichtende SQL-2025-Kandidatenfälle:
+TRUNCATE-bedingte MinValidVersion-Ungültigkeit und einen gültigen Kontrollstand.
+Impact-CI, tatsächlich ausgewählter Compatibility-Scope und Cleanup müssen den
+Kandidaten noch bestätigen. Zeitbasierte Retention und Backgroundbereinigung
+bleiben offen; lokale native Versuche bleiben null.

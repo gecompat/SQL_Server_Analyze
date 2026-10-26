@@ -1,12 +1,16 @@
 USE [DeineDatenbank];
 GO
-/* Prüft den Findings-Export anhand eigener CT-Metadaten aus zwei leeren Tabellen.
-Die Fixture aktiviert weder CDC noch Replikation und schreibt keine Change-Zeilen.
-Ein synthetischer Wasserstand über der nativen aktuellen Version erzeugt WARNs;
-deaktiviertes Auto-Cleanup liefert INFO-Kontext. Retentionverlust, CDC und positive
-Replikationsquellen bleiben außerhalb dieses Vertrags. Der Runner verwendet die
-Framework-Compatibility-Level 150, 160 und 170; beide Quellen werden daran angepasst. */
-SET NOCOUNT ON;
+/* Prüft den Findings-Export anhand eigener CT-Metadaten aus synthetischen Tabellen.
+Die Fixture aktiviert weder CDC noch Replikation. Ein dedizierter Truncate-Fall
+assertiert zuerst die native Vorbedingung MinValidVersion > gespeichertem
+Consumerstand. Danach erwartet das unabhängige Orakel genau
+CT_CLIENT_REINITIALIZATION_REQUIRED mit WARN/HIGH und exakt gebundenen
+MetricValue-/ThresholdValue-Werten, TABLE-/JSON-Parität sowie REVIEW. Ein zweiter
+Aufruf mit MinValidVersion als gültigem Consumerstand erwartet keinen solchen
+Befund und den Status AVAILABLE. Der Fall belegt keine zeitbasierte Retention
+oder Backgroundbereinigung. Der Runner bindet den tatsächlich ausgewählten
+Framework- und Source-Compatibility-Scope. */
+DECLARE @OriginalNoCount bit=CASE WHEN (@@OPTIONS & 512)=512 THEN 1 ELSE 0 END;
 IF DB_ID(N'ExampleDataCaptureDeepSourceÄ') IS NOT NULL THROW 56300,N'DataCaptureDeep source fixture already exists.',1;
 IF DB_ID(N'ExampleDataCaptureDeepOtherÖ') IS NOT NULL THROW 56301,N'DataCaptureDeep second fixture already exists.',1;
 IF DB_ID(N'ExampleDataCaptureDeepMissingÜ') IS NOT NULL THROW 56302,N'DataCaptureDeep missing selection fixture already exists.',1;
@@ -16,9 +20,14 @@ DECLARE @OwnedSourceId int=NULL,@OwnedOtherId int=NULL,@OriginalLockTimeout int=
         @Sql nvarchar(max),@Case int=0,@Limit int,@Problems bit,@Timeout int,
         @Names nvarchar(max),@Objects nvarchar(max),@Schemas nvarchar(max),@FullObjects nvarchar(max),
         @Pattern nvarchar(4000),@Json nvarchar(max),@Status varchar(40),@Partial bit,
-        @Invalid bit,@NativeScopeCount bigint,@FullFindingCount bigint,@OutputFindingCount bigint,@OutputCtCount bigint;
+        @Invalid bit,@NativeScopeCount bigint,@FullFindingCount bigint,@OutputFindingCount bigint,@OutputCtCount bigint,
+        @CtProbeOwnerToken uniqueidentifier=NEWID(),@CtProbeObjectId int=NULL,
+        @CtProbeClientVersion bigint=NULL,@CtProbeMinValidVersion bigint=NULL,@CtProbeCurrentVersion bigint=NULL,
+        @CtProbeOwnerMatches bit=0,@CtProbeCleanupConfirmed bit=0,@CtProbePassCount int=0;
 IF @FrameworkLevel NOT IN(150,160,170) THROW 56303,N'DataCaptureDeep framework compatibility level is outside the contract.',1;
+IF @@TRANCOUNT<>0 THROW 56329,N'DataCaptureDeep runtime fixture requires an autocommit caller.',1;
 BEGIN TRY
+    SET NOCOUNT ON;
     CREATE DATABASE [ExampleDataCaptureDeepSourceÄ] COLLATE Latin1_General_100_CI_AS;
     SET @OwnedSourceId=DB_ID(N'ExampleDataCaptureDeepSourceÄ');
     CREATE DATABASE [ExampleDataCaptureDeepOtherÖ] COLLATE Latin1_General_100_CI_AS;
@@ -272,7 +281,149 @@ JOIN [sys].[schemas] [s] ON [s].[schema_id]=[t].[schema_id];';
          @PrintMeldungen=0,@StatusCodeOut=@Status OUTPUT,@IsPartialOut=@Partial OUTPUT;
     IF COALESCE(@Status,'')<>'AVAILABLE_WITH_FINDING' OR COALESCE(CONVERT(int,@Partial),-1)<>0 OR (SELECT COUNT_BIG(*) FROM OPENJSON(@Json,N'$.findings'))<>1
         THROW 56323,N'DataCaptureDeep positive CONSOLE status or JSON count failed.',1;
+
+    /* Deterministic stale-watermark case. TRUNCATE invalidates this table's
+       tracked history without waiting for retention cleanup. */
+    SET @Sql=N'USE [ExampleDataCaptureDeepSourceÄ];
+CREATE TABLE [ExampleSchemaÜ].[ExampleCtRetentionProbe]([Id] int NOT NULL PRIMARY KEY);
+ALTER TABLE [ExampleSchemaÜ].[ExampleCtRetentionProbe] ENABLE CHANGE_TRACKING WITH (TRACK_COLUMNS_UPDATED=OFF);
+DECLARE @pOwnerValue nvarchar(36)=CONVERT(nvarchar(36),@pOwnerToken);
+EXEC [sys].[sp_addextendedproperty] @name=N''Analyze_CtProbe_Owner'',@value=@pOwnerValue,
+     @level0type=N''SCHEMA'',@level0name=N''ExampleSchemaÜ'',
+     @level1type=N''TABLE'',@level1name=N''ExampleCtRetentionProbe'';
+SELECT @pObjectId=OBJECT_ID(N''[ExampleSchemaÜ].[ExampleCtRetentionProbe]''),
+       @pClientVersion=CHANGE_TRACKING_CURRENT_VERSION();
+INSERT [ExampleSchemaÜ].[ExampleCtRetentionProbe]([Id]) VALUES(1);
+TRUNCATE TABLE [ExampleSchemaÜ].[ExampleCtRetentionProbe];
+SELECT @pMinValidVersion=CHANGE_TRACKING_MIN_VALID_VERSION(@pObjectId),
+       @pCurrentVersion=CHANGE_TRACKING_CURRENT_VERSION(),
+       @pOwnerMatches=CONVERT(bit,CASE WHEN EXISTS
+         (SELECT 1 FROM [sys].[extended_properties]
+          WHERE [class]=1 AND [major_id]=@pObjectId AND [minor_id]=0
+            AND [name]=N''Analyze_CtProbe_Owner''
+            AND TRY_CONVERT(uniqueidentifier,[value])=@pOwnerToken) THEN 1 ELSE 0 END);';
+    EXEC [sys].[sp_executesql] @Sql,
+         N'@pOwnerToken uniqueidentifier,@pObjectId int OUTPUT,@pClientVersion bigint OUTPUT,
+           @pMinValidVersion bigint OUTPUT,@pCurrentVersion bigint OUTPUT,@pOwnerMatches bit OUTPUT',
+         @pOwnerToken=@CtProbeOwnerToken,@pObjectId=@CtProbeObjectId OUTPUT,
+         @pClientVersion=@CtProbeClientVersion OUTPUT,@pMinValidVersion=@CtProbeMinValidVersion OUTPUT,
+         @pCurrentVersion=@CtProbeCurrentVersion OUTPUT,@pOwnerMatches=@CtProbeOwnerMatches OUTPUT;
+    IF @CtProbeObjectId IS NULL OR @CtProbeClientVersion IS NULL OR @CtProbeMinValidVersion IS NULL
+       OR @CtProbeCurrentVersion IS NULL OR @CtProbeOwnerMatches<>1
+       OR @CtProbeMinValidVersion<=@CtProbeClientVersion OR @CtProbeMinValidVersion>@CtProbeCurrentVersion
+        THROW 56324,N'DataCaptureDeep native CT truncate watermark or ownership precondition failed.',1;
+
+    CREATE TABLE [#ExampleDeepCtProbeExport]([Dummy] int NULL);
+    SET @Json=NULL; SET @Status=NULL; SET @Partial=NULL;
+    EXEC [monitor].[USP_DataCaptureDeepAnalysis]
+         @DatabaseNames=N'[ExampleDataCaptureDeepSourceÄ]',@ObjectNames=N'ExampleCtRetentionProbe',
+         @ChangeTrackingClientVersion=@CtProbeClientVersion,@NurProblematisch=1,@MaxZeilen=0,
+         @HighImpactConfirmed=1,@ResultSetArt='TABLE',
+         @ResultTablesJson=N'{"findings":"#ExampleDeepCtProbeExport"}',
+         @JsonErzeugen=1,@Json=@Json OUTPUT,@PrintMeldungen=0,
+         @StatusCodeOut=@Status OUTPUT,@IsPartialOut=@Partial OUTPUT;
+    IF COALESCE(@Status,'')<>'AVAILABLE_WITH_FINDING' OR COALESCE(CONVERT(int,@Partial),-1)<>0
+       OR COALESCE(JSON_VALUE(@Json,N'$.meta.statusCode'),N'')<>N'AVAILABLE_WITH_FINDING'
+       OR COALESCE(JSON_VALUE(@Json,N'$.meta.isPartial'),N'')<>N'false'
+       OR (SELECT COUNT_BIG(*) FROM [#ExampleDeepCtProbeExport])<>1
+       OR (SELECT COUNT_BIG(*) FROM OPENJSON(@Json,N'$.findings'))<>1
+       OR (SELECT COUNT_BIG(*) FROM OPENJSON(@Json,N'$.changeTrackingTables'))<>1
+        THROW 56325,N'DataCaptureDeep stale CT watermark TABLE/JSON result count or status failed.',1;
+    IF NOT EXISTS
+       (SELECT 1 FROM [#ExampleDeepCtProbeExport]
+        WHERE [DatabaseName] COLLATE SQL_Latin1_General_CP1_CS_AS=N'ExampleDataCaptureDeepSourceÄ'
+          AND [SchemaName] COLLATE SQL_Latin1_General_CP1_CS_AS=N'ExampleSchemaÜ'
+          AND [ObjectName] COLLATE SQL_Latin1_General_CP1_CS_AS=N'ExampleCtRetentionProbe'
+          AND [Severity] COLLATE SQL_Latin1_General_CP1_CS_AS='WARN'
+          AND [Confidence] COLLATE SQL_Latin1_General_CP1_CS_AS='HIGH'
+          AND [FindingCode] COLLATE SQL_Latin1_General_CP1_CS_AS='CT_CLIENT_REINITIALIZATION_REQUIRED'
+          AND [MetricName] COLLATE SQL_Latin1_General_CP1_CS_AS='CLIENT_VERSION'
+          AND [MetricValue]=CONVERT(decimal(38,4),@CtProbeClientVersion)
+          AND [ThresholdValue]=CONVERT(decimal(38,4),@CtProbeMinValidVersion))
+       OR NOT EXISTS
+       (SELECT 1 FROM OPENJSON(@Json,N'$.findings') WITH
+         ([DatabaseName] nvarchar(128) '$.DatabaseName',[SchemaName] nvarchar(128) '$.SchemaName',
+          [ObjectName] nvarchar(128) '$.ObjectName',[Severity] varchar(16) '$.Severity',
+          [Confidence] varchar(16) '$.Confidence',[FindingCode] varchar(120) '$.FindingCode',
+          [MetricName] varchar(80) '$.MetricName',[MetricValue] decimal(38,4) '$.MetricValue',
+          [ThresholdValue] decimal(38,4) '$.ThresholdValue')
+        WHERE [DatabaseName] COLLATE SQL_Latin1_General_CP1_CS_AS=N'ExampleDataCaptureDeepSourceÄ'
+          AND [SchemaName] COLLATE SQL_Latin1_General_CP1_CS_AS=N'ExampleSchemaÜ'
+          AND [ObjectName] COLLATE SQL_Latin1_General_CP1_CS_AS=N'ExampleCtRetentionProbe'
+          AND [Severity]='WARN' AND [Confidence]='HIGH'
+          AND [FindingCode]='CT_CLIENT_REINITIALIZATION_REQUIRED'
+          AND [MetricName]='CLIENT_VERSION'
+          AND [MetricValue]=CONVERT(decimal(38,4),@CtProbeClientVersion)
+          AND [ThresholdValue]=CONVERT(decimal(38,4),@CtProbeMinValidVersion))
+       OR NOT EXISTS
+       (SELECT 1 FROM OPENJSON(@Json,N'$.changeTrackingTables') WITH
+         ([DatabaseName] nvarchar(128) '$.DatabaseName',[SchemaName] nvarchar(128) '$.SchemaName',
+          [TableName] nvarchar(128) '$.TableName',[TableObjectId] int '$.TableObjectId',
+          [MinValidVersion] bigint '$.MinValidVersion',[CurrentVersion] bigint '$.CurrentVersion',
+          [ClientVersion] bigint '$.ClientVersion',[AssessmentStatus] varchar(32) '$.AssessmentStatus')
+        WHERE [DatabaseName] COLLATE SQL_Latin1_General_CP1_CS_AS=N'ExampleDataCaptureDeepSourceÄ'
+          AND [SchemaName] COLLATE SQL_Latin1_General_CP1_CS_AS=N'ExampleSchemaÜ'
+          AND [TableName] COLLATE SQL_Latin1_General_CP1_CS_AS=N'ExampleCtRetentionProbe'
+          AND [TableObjectId]=@CtProbeObjectId AND [MinValidVersion]=@CtProbeMinValidVersion
+          AND [CurrentVersion]=@CtProbeCurrentVersion AND [ClientVersion]=@CtProbeClientVersion
+          AND [AssessmentStatus]='REVIEW')
+        THROW 56326,N'DataCaptureDeep native stale CT consumer oracle or REVIEW status mismatch.',1;
+    DELETE @Parity;
+    INSERT @Parity VALUES((SELECT * FROM [#ExampleDeepCtProbeExport] FOR JSON PATH),JSON_QUERY(@Json,N'$.findings'));
+    IF EXISTS
+       (SELECT [n].[RowJson] COLLATE SQL_Latin1_General_CP1_CS_AS,COUNT_BIG(*) FROM @Parity [p] CROSS APPLY OPENJSON([p].[TableJson]) [r]
+        CROSS APPLY(SELECT [key],[type],[value] FROM OPENJSON([r].[value]) ORDER BY [key] COLLATE SQL_Latin1_General_CP1_CS_AS FOR JSON PATH,INCLUDE_NULL_VALUES) [n]([RowJson])
+        GROUP BY [n].[RowJson] COLLATE SQL_Latin1_General_CP1_CS_AS
+        EXCEPT SELECT [n].[RowJson] COLLATE SQL_Latin1_General_CP1_CS_AS,COUNT_BIG(*) FROM @Parity [p] CROSS APPLY OPENJSON([p].[ProductJson]) [r]
+        CROSS APPLY(SELECT [key],[type],[value] FROM OPENJSON([r].[value]) ORDER BY [key] COLLATE SQL_Latin1_General_CP1_CS_AS FOR JSON PATH,INCLUDE_NULL_VALUES) [n]([RowJson])
+        GROUP BY [n].[RowJson] COLLATE SQL_Latin1_General_CP1_CS_AS)
+       OR EXISTS
+       (SELECT [n].[RowJson] COLLATE SQL_Latin1_General_CP1_CS_AS,COUNT_BIG(*) FROM @Parity [p] CROSS APPLY OPENJSON([p].[ProductJson]) [r]
+        CROSS APPLY(SELECT [key],[type],[value] FROM OPENJSON([r].[value]) ORDER BY [key] COLLATE SQL_Latin1_General_CP1_CS_AS FOR JSON PATH,INCLUDE_NULL_VALUES) [n]([RowJson])
+        GROUP BY [n].[RowJson] COLLATE SQL_Latin1_General_CP1_CS_AS
+        EXCEPT SELECT [n].[RowJson] COLLATE SQL_Latin1_General_CP1_CS_AS,COUNT_BIG(*) FROM @Parity [p] CROSS APPLY OPENJSON([p].[TableJson]) [r]
+        CROSS APPLY(SELECT [key],[type],[value] FROM OPENJSON([r].[value]) ORDER BY [key] COLLATE SQL_Latin1_General_CP1_CS_AS FOR JSON PATH,INCLUDE_NULL_VALUES) [n]([RowJson])
+        GROUP BY [n].[RowJson] COLLATE SQL_Latin1_General_CP1_CS_AS)
+        THROW 56331,N'DataCaptureDeep truncate TABLE/JSON full-row multiset parity failed.',1;
+    SET @CtProbePassCount+=1;
+
+    /* The independently sampled minimum valid version is the same call's valid
+       consumer watermark; it must not produce a reinitialization finding. */
+    SET @Json=NULL; SET @Status=NULL; SET @Partial=NULL;
+    EXEC [monitor].[USP_DataCaptureDeepAnalysis]
+         @DatabaseNames=N'[ExampleDataCaptureDeepSourceÄ]',@ObjectNames=N'ExampleCtRetentionProbe',
+         @ChangeTrackingClientVersion=@CtProbeMinValidVersion,@NurProblematisch=0,@MaxZeilen=0,
+         @HighImpactConfirmed=1,@ResultSetArt='NONE',@JsonErzeugen=1,@Json=@Json OUTPUT,
+         @PrintMeldungen=0,@StatusCodeOut=@Status OUTPUT,@IsPartialOut=@Partial OUTPUT;
+    IF COALESCE(@Status,'')<>'AVAILABLE' OR COALESCE(CONVERT(int,@Partial),-1)<>0
+       OR EXISTS(SELECT 1 FROM OPENJSON(@Json,N'$.findings') WITH ([FindingCode] varchar(120) '$.FindingCode')
+                 WHERE [FindingCode]='CT_CLIENT_REINITIALIZATION_REQUIRED')
+       OR (SELECT COUNT_BIG(*) FROM OPENJSON(@Json,N'$.changeTrackingTables'))<>1
+       OR NOT EXISTS(SELECT 1 FROM OPENJSON(@Json,N'$.changeTrackingTables') WITH
+                     ([TableObjectId] int '$.TableObjectId',[MinValidVersion] bigint '$.MinValidVersion',
+                      [CurrentVersion] bigint '$.CurrentVersion',[ClientVersion] bigint '$.ClientVersion',
+                      [AssessmentStatus] varchar(32) '$.AssessmentStatus')
+                     WHERE [TableObjectId]=@CtProbeObjectId AND [MinValidVersion]=@CtProbeMinValidVersion
+                       AND [CurrentVersion]=@CtProbeCurrentVersion AND [ClientVersion]=@CtProbeMinValidVersion
+                       AND [AssessmentStatus]='AVAILABLE')
+        THROW 56327,N'DataCaptureDeep valid CT watermark control still requires reinitialization.',1;
+    SET @CtProbePassCount+=1;
+    DROP TABLE [#ExampleDeepCtProbeExport];
+
     SET @Sql=N'SET LOCK_TIMEOUT '+CONVERT(nvarchar(20),@OriginalLockTimeout)+N';'; EXEC(@Sql);
+    SET @CtProbeOwnerMatches=0;
+    SET @Sql=N'USE [ExampleDataCaptureDeepSourceÄ];
+SELECT @pOwnerMatches=CONVERT(bit,CASE WHEN OBJECT_ID(N''[ExampleSchemaÜ].[ExampleCtRetentionProbe]'')=@pObjectId
+  AND EXISTS(SELECT 1 FROM [sys].[extended_properties]
+             WHERE [class]=1 AND [major_id]=@pObjectId AND [minor_id]=0
+               AND [name]=N''Analyze_CtProbe_Owner''
+               AND TRY_CONVERT(uniqueidentifier,[value])=@pOwnerToken) THEN 1 ELSE 0 END);';
+    EXEC [sys].[sp_executesql] @Sql,
+         N'@pOwnerToken uniqueidentifier,@pObjectId int,@pOwnerMatches bit OUTPUT',
+         @pOwnerToken=@CtProbeOwnerToken,@pObjectId=@CtProbeObjectId,
+         @pOwnerMatches=@CtProbeOwnerMatches OUTPUT;
+    IF @CtProbeOwnerMatches<>1
+        THROW 56330,N'DataCaptureDeep CT probe ownership marker changed before cleanup.',1;
     IF DB_ID(N'ExampleDataCaptureDeepSourceÄ')=@OwnedSourceId
     BEGIN
         ALTER DATABASE [ExampleDataCaptureDeepSourceÄ] SET SINGLE_USER WITH ROLLBACK IMMEDIATE;
@@ -283,11 +434,18 @@ JOIN [sys].[schemas] [s] ON [s].[schema_id]=[t].[schema_id];';
         ALTER DATABASE [ExampleDataCaptureDeepOtherÖ] SET SINGLE_USER WITH ROLLBACK IMMEDIATE;
         DROP DATABASE [ExampleDataCaptureDeepOtherÖ];
     END;
+    IF DB_ID(N'ExampleDataCaptureDeepSourceÄ') IS NOT NULL OR DB_ID(N'ExampleDataCaptureDeepOtherÖ') IS NOT NULL
+        THROW 56328,N'DataCaptureDeep owned fixture database cleanup failed.',1;
+    IF @OriginalNoCount=0 SET NOCOUNT OFF;
+    SET @CtProbeCleanupConfirmed=1;
+    PRINT N'PASS|COLL001_CT_TRUNCATE_WATERMARK|2|CLEANUP_CONFIRMED';
     SELECT @FrameworkLevel AS [FrameworkCompatibilityLevel],@SourceLevel AS [CtSourceCompatibilityLevel],@OtherLevel AS [SecondSourceCompatibilityLevel],
-           @Case AS [TableJsonCases],N'CT-Metadaten und positive Findingfilter wurden geprüft; Retentionverlust, CDC und positive Replikationsquellen bleiben unbelegt.' AS [Detail];
+           @Case AS [TableJsonCases],@CtProbePassCount AS [TruncateWatermarkCases],@CtProbeCleanupConfirmed AS [CleanupConfirmed],
+           N'TRUNCATE-bedingte CT-Reinitialisierung wurde gegen natives MinValidVersion geprüft; zeitbasierter Retentionablauf, CDC und positive Replikationsquellen bleiben unbelegt.' AS [Detail];
 END TRY
 BEGIN CATCH
     SET @Sql=N'SET LOCK_TIMEOUT '+CONVERT(nvarchar(20),@OriginalLockTimeout)+N';'; EXEC(@Sql);
+    IF @OriginalNoCount=0 SET NOCOUNT OFF;
     IF @OwnedSourceId IS NOT NULL AND DB_ID(N'ExampleDataCaptureDeepSourceÄ')=@OwnedSourceId
     BEGIN
         ALTER DATABASE [ExampleDataCaptureDeepSourceÄ] SET SINGLE_USER WITH ROLLBACK IMMEDIATE;
@@ -298,6 +456,8 @@ BEGIN CATCH
         ALTER DATABASE [ExampleDataCaptureDeepOtherÖ] SET SINGLE_USER WITH ROLLBACK IMMEDIATE;
         DROP DATABASE [ExampleDataCaptureDeepOtherÖ];
     END;
+    IF DB_ID(N'ExampleDataCaptureDeepSourceÄ') IS NULL AND DB_ID(N'ExampleDataCaptureDeepOtherÖ') IS NULL
+        PRINT N'CLEANUP|COLL001_CT_TRUNCATE_WATERMARK|FAILURE_PATH_CONFIRMED';
     THROW;
 END CATCH;
 GO
