@@ -7,6 +7,7 @@ import argparse
 import csv
 import re
 import sys
+import tempfile
 import unicodedata
 from collections import Counter, defaultdict
 from pathlib import Path
@@ -22,6 +23,9 @@ PARAMETER_INVENTORY_PATH = Path("Metadata/Inventory/Parameters.csv")
 RESULT_SET_INVENTORY_PATH = Path("Metadata/Inventory/ResultSets.csv")
 INSTALLER_PATH = Path("Code/Install/Install_All.sql")
 PLAN_INSTALLER_PATH = Path("Code/Install/Install_ExecutionPlanAnalysis.sql")
+SMOKE_TEST_PATH = Path("Code/Tests/Integration/110_Smoke_Test.sql")
+NAVIGATOR_RUNTIME_PATH = Path("Code/Tests/Integration/196_Analysis_Navigator_Runtime_Contract.sql")
+INSTALLED_PUBLIC_RUNTIME_PATH = Path("Code/Tests/Integration/189_Framework_Output_Runtime_Contract.sql")
 
 CATALOG_COLUMNS = (
     "ProcedureName",
@@ -285,6 +289,131 @@ def read_csv(path: Path) -> list[dict[str, str]]:
         return list(csv.DictReader(handle))
 
 
+def resolve_sqlcmd_includes(repository_root: Path, installer_path: Path) -> set[str]:
+    """Resolve the direct SQLCMD include closure used by Install_All.sql."""
+    if not installer_path.is_file():
+        raise ValueError(f"Missing SQLCMD installer: {installer_path}")
+    includes: set[str] = set()
+    for line in installer_path.read_text(encoding="utf-8-sig").splitlines():
+        match = re.fullmatch(r"\s*:r\s+([^\s]+)\s*", line, re.IGNORECASE)
+        if not match:
+            if line.lstrip().casefold().startswith(":r"):
+                raise ValueError(f"Unsupported SQLCMD include form: {line.strip()}")
+            continue
+        include = (installer_path.parent / match.group(1).replace("\\", "/")).resolve()
+        try:
+            relative = include.relative_to(repository_root.resolve()).as_posix()
+        except ValueError as exc:
+            raise ValueError(f"SQLCMD include escapes repository: {match.group(1)}") from exc
+        if not include.is_file():
+            raise ValueError(f"SQLCMD include does not exist: {relative}")
+        included_sql = strip_sql_comments_and_literals(
+            include.read_text(encoding="utf-8-sig")
+        )
+        if re.search(r"^\s*:r(?:\s|$)", included_sql, re.IGNORECASE | re.MULTILINE):
+            raise ValueError(f"Nested SQLCMD include is unsupported: {relative}")
+        if relative in includes:
+            raise ValueError(f"Duplicate SQLCMD include: {relative}")
+        includes.add(relative)
+    if not includes:
+        raise ValueError(f"SQLCMD installer has no includes: {installer_path}")
+    return includes
+
+
+def derive_procedure_populations(
+    object_rows: list[dict[str, str]], included_sources: set[str]
+) -> tuple[int, int]:
+    """Return catalog procedures and installed public procedures from inventory/closure."""
+    procedures = [row for row in object_rows if row["ObjectType"] == "PROCEDURE"]
+    installed_public = [
+        row
+        for row in procedures
+        if row["SourcePath"] in included_sources
+        and not row["ObjectName"].startswith("Internal")
+        and not row["ObjectName"].startswith("USP_Prepare")
+    ]
+    return len(procedures), len(installed_public)
+
+
+def validate_native_count_bindings(
+    repository_root: Path, catalog_count: int, installed_public_count: int
+) -> list[str]:
+    errors: list[str] = []
+    loaded: dict[Path, str] = {}
+    for relative_path in (SMOKE_TEST_PATH, NAVIGATOR_RUNTIME_PATH, INSTALLED_PUBLIC_RUNTIME_PATH):
+        path = repository_root / relative_path
+        if not path.is_file():
+            errors.append(f"Missing native count contract: {relative_path}")
+            continue
+        loaded[relative_path] = path.read_text(encoding="utf-8-sig")
+
+    checks = (
+        (SMOKE_TEST_PATH, "Smoke test catalog assertion", r"COUNT_BIG\s*\(\s*\*\s*\)\s*FROM\s*\[monitor\]\.\[VW_AnalysisCatalog\]\s*\)\s*<>\s*(\d+)", catalog_count),
+        (NAVIGATOR_RUNTIME_PATH, "Navigator runtime catalog assertion", r"COUNT_BIG\s*\(\s*\*\s*\)\s*FROM\s*\[monitor\]\.\[VW_AnalysisCatalog\]\s*\)\s*<>\s*(\d+)", catalog_count),
+        (INSTALLED_PUBLIC_RUNTIME_PATH, "Installed public procedure assertion", r"COUNT\s*\(\s*\*\s*\)\s*FROM\s*\[#FrameworkOutputRuntimeContract_Public\]\s*\)\s*<>\s*(\d+)", installed_public_count),
+    )
+    for relative_path, label, pattern, expected in checks:
+        text = loaded.get(relative_path)
+        if text is None:
+            continue
+        matches = list(re.finditer(pattern, text, re.IGNORECASE | re.DOTALL))
+        if len(matches) != 1:
+            errors.append(f"{label} has {len(matches)} matching assertions; expected exactly one.")
+        elif int(matches[0].group(1)) != expected:
+            errors.append(
+                f"{label} is {matches[0].group(1)}; inventory/installer closure requires {expected}."
+            )
+        message_patterns = {
+            SMOKE_TEST_PATH: r"THROW\s+54025\s*,\s*N'([^']*)'",
+            NAVIGATOR_RUNTIME_PATH: r"VALUES\s*\(\s*N'CATALOG_COUNT'\s*,\s*N'([^']*)'",
+            INSTALLED_PUBLIC_RUNTIME_PATH: r"VALUES\s*\(\s*N'PUBLIC_INVENTORY'\s*,\s*N'([^']*)'",
+        }
+        message_matches = list(
+            re.finditer(message_patterns[relative_path], text, re.IGNORECASE)
+        )
+        if len(message_matches) != 1:
+            errors.append(f"{label} has {len(message_matches)} matching messages; expected exactly one.")
+        elif re.search(rf"\b{expected}\b", message_matches[0].group(1)) is None:
+            errors.append(f"{label} message does not report expected count {expected}.")
+
+    runtime_text = loaded.get(NAVIGATOR_RUNTIME_PATH)
+    if runtime_text is not None:
+        reported_matches = list(
+            re.finditer(
+                r"CAST\s*\(\s*(\d+)\s+AS\s+int\s*\)\s+AS\s+\[CatalogProcedureCount\]",
+                runtime_text,
+                re.IGNORECASE,
+            )
+        )
+        if len(reported_matches) != 1:
+            errors.append(
+                f"Navigator CatalogProcedureCount has {len(reported_matches)} matching outputs; expected exactly one."
+            )
+        elif int(reported_matches[0].group(1)) != catalog_count:
+            errors.append(
+                f"Navigator reported CatalogProcedureCount is {reported_matches[0].group(1)}; inventory requires {catalog_count}."
+            )
+
+    installed_text = loaded.get(INSTALLED_PUBLIC_RUNTIME_PATH)
+    if installed_text is not None:
+        message_matches = list(
+            re.finditer(
+                r"N'[^']*?\b(\d+)\s+Vertragsobjekte\b[^']*'",
+                installed_text,
+                re.IGNORECASE,
+            )
+        )
+        if len(message_matches) != 1:
+            errors.append(
+                f"Installed public procedure failure message has {len(message_matches)} matching literals; expected exactly one."
+            )
+        elif int(message_matches[0].group(1)) != installed_public_count:
+            errors.append(
+                f"Installed public procedure failure message reports {message_matches[0].group(1)}; installer closure requires {installed_public_count}."
+            )
+    return errors
+
+
 def strip_sql_comments_and_literals(sql_text: str) -> str:
     text = re.sub(r"/\*.*?\*/", " ", sql_text, flags=re.DOTALL)
     text = re.sub(r"--[^\r\n]*", " ", text)
@@ -333,6 +462,16 @@ def validate(repository_root: Path) -> list[str]:
 
     object_rows = read_csv(repository_root / OBJECT_INVENTORY_PATH)
     public_rows = [row for row in object_rows if row["ObjectType"] == "PROCEDURE"]
+    try:
+        included_sources = resolve_sqlcmd_includes(repository_root, repository_root / INSTALLER_PATH)
+        catalog_count, installed_public_count = derive_procedure_populations(
+            object_rows, included_sources
+        )
+        errors.extend(
+            validate_native_count_bindings(repository_root, catalog_count, installed_public_count)
+        )
+    except (OSError, UnicodeError, ValueError) as exc:
+        errors.append(f"Native procedure counts cannot be bound to inventory/installer closure: {exc}")
     public_procedures = {row["ObjectName"] for row in public_rows}
     catalog_names = [str(row["ProcedureName"]) for row in catalog_rows]
     catalog_procedures = set(catalog_names)
@@ -841,6 +980,124 @@ FROM
         raise AssertionError(f"VALUES parser self-test failed: {rows!r}")
     if normalize_ci_ai("BENÚTZER   WARTEN") != normalize_ci_ai("Benutzer warten"):
         raise AssertionError("CI/AI normalizer self-test failed.")
+
+    with tempfile.TemporaryDirectory(prefix="analysis-navigator-includes-") as temporary:
+        fixture_root = Path(temporary)
+        installer = fixture_root / "Code/Install/Install_All.sql"
+        included_sql = fixture_root / "Code/Core/Included.sql"
+        installer.parent.mkdir(parents=True, exist_ok=True)
+        included_sql.parent.mkdir(parents=True, exist_ok=True)
+        installer.write_text(":r ../Core/Included.sql\n", encoding="utf-8")
+        included_sql.write_text(
+            "-- :r ../Target/Decoy.sql\nSELECT N':r ../Target/StringDecoy.sql';\n",
+            encoding="utf-8",
+        )
+        if resolve_sqlcmd_includes(fixture_root, installer) != {"Code/Core/Included.sql"}:
+            raise AssertionError("Comment/string SQLCMD decoys changed the flat include selection.")
+        included_sql.write_text(":r ../Target/Nested.sql\n", encoding="utf-8")
+        try:
+            resolve_sqlcmd_includes(fixture_root, installer)
+        except ValueError as exc:
+            if "Nested SQLCMD include is unsupported" not in str(exc):
+                raise AssertionError(f"Unexpected nested-include rejection: {exc}") from exc
+        else:
+            raise AssertionError("Nested SQLCMD include was accepted by the flat closure check.")
+
+    fixture_includes = {
+        "Code/Core/USP_Core.sql",
+        "Code/Core/USP_PrepareLocal.sql",
+    }
+    base_rows = [
+        {"ObjectType": "PROCEDURE", "ObjectName": "USP_Core", "SourcePath": "Code/Core/USP_Core.sql"},
+        {"ObjectType": "PROCEDURE", "ObjectName": "USP_PrepareLocal", "SourcePath": "Code/Core/USP_PrepareLocal.sql"},
+        {"ObjectType": "PROCEDURE", "ObjectName": "USP_TargetOnly", "SourcePath": "Code/Target/USP_TargetOnly.sql"},
+    ]
+    if derive_procedure_populations(base_rows, fixture_includes) != (3, 1):
+        raise AssertionError("Procedure population fixture must separate metadata and core installation.")
+    core_added = base_rows + [
+        {"ObjectType": "PROCEDURE", "ObjectName": "USP_CoreAdded", "SourcePath": "Code/Core/USP_CoreAdded.sql"}
+    ]
+    if derive_procedure_populations(core_added, fixture_includes | {"Code/Core/USP_CoreAdded.sql"}) != (4, 2):
+        raise AssertionError("A new core public procedure must increment both populations.")
+    target_added = base_rows + [
+        {"ObjectType": "PROCEDURE", "ObjectName": "USP_TargetAdded", "SourcePath": "Code/Target/USP_TargetAdded.sql"}
+    ]
+    if derive_procedure_populations(target_added, fixture_includes) != (4, 1):
+        raise AssertionError("A target-only procedure must increment only the catalog population.")
+    prepare_added = base_rows + [
+        {"ObjectType": "PROCEDURE", "ObjectName": "USP_PrepareExtra", "SourcePath": "Code/Core/USP_PrepareExtra.sql"}
+    ]
+    if derive_procedure_populations(prepare_added, fixture_includes | {"Code/Core/USP_PrepareExtra.sql"}) != (4, 1):
+        raise AssertionError("A Prepare procedure must increment only the catalog population.")
+
+    with tempfile.TemporaryDirectory(prefix="analysis-navigator-counts-") as temporary:
+        fixture_root = Path(temporary)
+        pristine = {
+            SMOKE_TEST_PATH: """IF (SELECT COUNT_BIG(*) FROM [monitor].[VW_AnalysisCatalog]) <> 3
+    THROW 54025,N'The Analysis Catalog does not contain exactly 3 public Procedures.',1;
+""",
+            NAVIGATOR_RUNTIME_PATH: """IF (SELECT COUNT_BIG(*) FROM [monitor].[VW_AnalysisCatalog]) <> 3
+    INSERT [#Failure] VALUES(N'CATALOG_COUNT',N'The catalog does not contain 3 public Procedures.');
+SELECT CAST(3 AS int) AS [CatalogProcedureCount];
+""",
+            INSTALLED_PUBLIC_RUNTIME_PATH: """IF (SELECT COUNT(*) FROM [#FrameworkOutputRuntimeContract_Public])<>1
+    INSERT [#Failure] VALUES(N'PUBLIC_INVENTORY',N'The installed public inventory does not contain 1 Vertragsobjekte.');
+""",
+        }
+        for relative, source in pristine.items():
+            target_path = fixture_root / relative
+            target_path.parent.mkdir(parents=True, exist_ok=True)
+            target_path.write_text(source, encoding="utf-8")
+        if validate_native_count_bindings(fixture_root, 3, 1):
+            raise AssertionError("Correct native count bindings were rejected.")
+
+        def reject_mutant(relative: Path, mutant: str, label: str) -> None:
+            target_path = fixture_root / relative
+            target_path.write_text(mutant, encoding="utf-8")
+            if not validate_native_count_bindings(fixture_root, 3, 1):
+                raise AssertionError(f"Count-binding decoy/duplicate was accepted: {label}")
+            target_path.write_text(pristine[relative], encoding="utf-8")
+
+        stale_cases = (
+            (SMOKE_TEST_PATH, "<> 3", "<> 2"),
+            (SMOKE_TEST_PATH, "exactly 3", "exactly 2"),
+            (NAVIGATOR_RUNTIME_PATH, "<> 3", "<> 2"),
+            (NAVIGATOR_RUNTIME_PATH, "CAST(3 AS int)", "CAST(2 AS int)"),
+            (INSTALLED_PUBLIC_RUNTIME_PATH, ")<>1", ")<>0"),
+            (INSTALLED_PUBLIC_RUNTIME_PATH, "contain 1 Vertragsobjekte", "contain 0 Vertragsobjekte"),
+        )
+        for relative, old, new in stale_cases:
+            if old not in pristine[relative]:
+                raise AssertionError(f"Count-binding mutant source marker is missing: {relative} {old!r}")
+            target_path = fixture_root / relative
+            reject_mutant(
+                relative,
+                pristine[relative].replace(old, new, 1),
+                f"{relative} {new!r}",
+            )
+
+        smoke_decoy = "-- IF (SELECT COUNT_BIG(*) FROM [monitor].[VW_AnalysisCatalog]) <> 3\n"
+        smoke_stale_live = pristine[SMOKE_TEST_PATH].replace(
+            "IF (SELECT COUNT_BIG(*) FROM [monitor].[VW_AnalysisCatalog]) <> 3",
+            "IF (SELECT COUNT_BIG(*) FROM [monitor].[VW_AnalysisCatalog]) <> 2",
+            1,
+        )
+        reject_mutant(
+            SMOKE_TEST_PATH,
+            smoke_decoy + smoke_stale_live,
+            "expected comment before stale smoke assertion",
+        )
+        reject_mutant(
+            NAVIGATOR_RUNTIME_PATH,
+            "-- CAST(3 AS int) AS [CatalogProcedureCount]\n" + pristine[NAVIGATOR_RUNTIME_PATH],
+            "duplicate Navigator output in comment",
+        )
+        reject_mutant(
+            INSTALLED_PUBLIC_RUNTIME_PATH,
+            "-- COUNT(*) FROM [#FrameworkOutputRuntimeContract_Public])<>1\n"
+            + pristine[INSTALLED_PUBLIC_RUNTIME_PATH],
+            "duplicate installed-public assertion in comment",
+        )
 
 
 def main() -> int:

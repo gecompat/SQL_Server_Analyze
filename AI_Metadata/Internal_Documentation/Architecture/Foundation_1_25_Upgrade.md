@@ -450,3 +450,27 @@ und Gegenbeispiele enthalten ausschließlich synthetische Daten; es gibt keine
 zusätzlichen Modellaufrufe zur Bestätigung grüner Ausgaben. Belastbare Token-
 und Kostenmessungen liegen nicht vor. Die abschließenden CI-Gates des
 aktuellen Kandidaten stehen noch aus.
+
+### Verarbeitungsaufwand der statischen Katalogzählungsbindung in Schritt 36
+
+Der bestehende `905_Validate_Analysis_Navigator.py` bindet die beiden
+Katalogasserts und den gemeldeten Katalogwert in den nativen Integrationstests
+an die aktuelle öffentliche Prozedurinventur. Die installierte öffentliche
+Menge wird aus denselben Inventarzeilen und den tatsächlich aufgelösten
+SQLCMD-Includes von `Install_All.sql` abgeleitet; interne und
+`USP_Prepare%`-Prozeduren zählen nicht dazu. Dadurch bleiben
+zielinstallationsspezifische Prozeduren außerhalb der Core-Installationsmenge.
+Der Zähler behandelt die ausgewählten Includes als flache Liste und weist ein
+weiteres ausführbares `:r` in einer eingebundenen Datei zurück. Kommentar- und
+Stringbeispiele gelten nicht als Includes.
+
+Die Änderung erweitert den bereits registrierten Validator. Seine vorhandenen
+Aufrufe in der statischen Vertragssuite bleiben unverändert; es entsteht kein
+neuer Runner oder SQL-Server-Lauf. Der Selftest deckt korrekte Bindungen,
+veraltete Werte in 110, 196 und 189 sowie Core-, Target-only- und
+Prepare-Populationsänderungen mit kleinen synthetischen Zeilen ab. Der lokale
+Abschluss verwendet den Selftest und den normalen 905-Aufruf. Die Prüfung
+verändert keine Produktfunktion und qualifiziert keinen nativen Lauf. Der
+unabhängige Review ist abgeschlossen. Die erforderlichen Head- und Main-
+Prüfungen der eigenständigen Integration stehen noch aus. Kosten- und Tokenmessungen liegen nicht vor;
+eine angeforderte Luna-Auswahl ist nicht kostenattestiert.
