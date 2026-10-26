@@ -155,6 +155,7 @@ Quelle: `Code/05_QueryStore/005_TVF_QueryStoreReplicaRoleInfo.sql`
 | [`InternalPrepareCollectionCycle`](#snapshotinternalpreparecollectioncycle) | `snapshot` | `Code/10_SnapshotBaseline/040_InternalPrepareCollectionCycle.sql` |
 | [`InternalCompletePerformanceCounterCycle`](#snapshotinternalcompleteperformancecountercycle) | `snapshot` | `Code/10_SnapshotBaseline/050_InternalCompletePerformanceCounterCycle.sql` |
 | [`InternalCompleteWaitStatsCycle`](#snapshotinternalcompletewaitstatscycle) | `snapshot` | `Code/10_SnapshotBaseline/055_InternalCompleteWaitStatsCycle.sql` |
+| [`InternalCompleteFileIOCycle`](#snapshotinternalcompletefileiocycle) | `snapshot` | `Code/10_SnapshotBaseline/057_InternalCompleteFileIOCycle.sql` |
 | [`InternalFinalizeCollectionCycle`](#snapshotinternalfinalizecollectioncycle) | `snapshot` | `Code/10_SnapshotBaseline/060_InternalFinalizeCollectionCycle.sql` |
 | [`InternalPurgeExpiredData`](#snapshotinternalpurgeexpireddata) | `snapshot` | `Code/10_SnapshotBaseline/070_InternalPurgeExpiredData.sql` |
 | [`InternalValidateSnapshotWaitTarget`](#monitorinternalvalidatesnapshotwaittarget) | `monitor` | `Code/10_SnapshotBaseline/076_InternalValidateSnapshotWaitTarget.sql` |
@@ -823,6 +824,18 @@ Quelle: `Code/10_SnapshotBaseline/055_InternalCompleteWaitStatsCycle.sql`
 | Last und Sperren | Der Helper schreibt nur den gebundenen eigenen Wait-Run in einer eigenen kurzen Transaktion unter `LOCK_TIMEOUT 0`. Callertransaktionen und implizite Transaktionen werden vor Fachzugriff abgelehnt. |
 | Vertrag | Der interne Vertrag ist nur für den passenden Paketstand zugesichert. Fehlende Vorwerte werden als Status erhalten; Sourcefehler erhalten keine erfundene Epoche. Der [Snapshotvertrag](../Architecture/Snapshot_Baseline_Package_Contract.md) führt Installation und Aktivierungsgrenze. |
 
+### `[snapshot].[InternalCompleteFileIOCycle]`
+
+Quelle: `Code/10_SnapshotBaseline/057_InternalCompleteFileIOCycle.sql`
+
+| Dimension | Beschreibung |
+|---|---|
+| Aufgabe | Prüft den geschlossenen Source-v1-Vertrag und persistiert sieben Rohwerte je ausgewählter Datei, Status, Kontexte und zulässige sechs Differenzkandidaten atomar. |
+| Schnittstelle | CaptureRunId bigint, CollectorJson nvarchar(max), erwartete Target-ID int, Name sysname und Erstellungszeit datetime sowie StatusCodeOut varchar(40), IsPartialOut bit, ErrorNumberOut int und ErrorMessageOut nvarchar(2048) als OUTPUT. |
+| Verwendung | Interner Targetabschluss für den passenden Frameworkcollector. Eine öffentliche native FILE_IO-Aufnahme ist noch nicht implementiert. |
+| Last und Sperren | Der Helper verwendet eine eigene Transaktion unter LOCK_TIMEOUT 0 für den bereits vorbereiteten eigenen RUNNING-Lauf; Sourceabfragen gehören nicht zu dieser Transaktion. Caller- und implizite Transaktionen werden vor Fachzugriff abgelehnt. |
+| Vertrag | Vollständiges Target 1.3.0 / Schema 3 mit tatsächlichem Retentionsvertrag 2. Dateiepochen, tatsächliche Rohhashes und der unmittelbar vorherige finalisierte FILE_IO-Lauf begrenzen Kandidaten. Sourcefehler bleiben auch ohne Payload als gebundene Module erhalten. Erfolgreiche Aufnahmen bleiben PARTIAL; Kontinuität wird nicht behauptet. Der [interne Datei-I/O-Vertrag](../Architecture/Snapshot_Baseline_Package_Contract.md#internes-datei-io-target) beschreibt die Bindungen. |
+
 ### `[snapshot].[InternalFinalizeCollectionCycle]`
 
 Quelle: `Code/10_SnapshotBaseline/060_InternalFinalizeCollectionCycle.sql`
@@ -1112,7 +1125,7 @@ Quelle: `Code/10_SnapshotBaseline/076_InternalValidateSnapshotWaitTarget.sql`
 | Dimension | Beschreibung |
 |---|---|
 | Aufgabe | Prüft die tatsächliche Wait-Zielidentität, Abschlussversion, verwendeten Signaturen, neun Metrikdefinitionen und den lesenden Retentionsvertrag. |
-| Schnittstelle | Zielname und optional erwartete ID/Erstellungszeit; OUTPUT liefert die tatsächliche ID, Erstellungszeit, Status und Fehlergrenze. Der Retentionsprobeaufruf muss Vertragsversion 1, AVAILABLE und keine Fehlernummer bestätigen; Run-ID und Budgetsignal bleiben leer beziehungsweise null. Eine abweichende Signatur verhindert die Aufnahme vor Writes. |
+| Schnittstelle | Zielname und optional erwartete ID/Erstellungszeit; OUTPUT liefert die tatsächliche ID, Erstellungszeit, Status und Fehlergrenze. Der Retentionsprobeaufruf muss beim vollständigen Target 1.2.1 / Schema 2 Vertragsversion 1 und bei 1.3.0 / Schema 3 Vertragsversion 2 sowie AVAILABLE und keine Fehlernummer bestätigen; Die Run-ID bleibt NULL und das Budgetsignal 0. Eine abweichende Signatur verhindert die Aufnahme vor Writes. |
 | Verwendung | Konfiguration und Collection verwenden denselben internen Aufnahmevertrag. Anwendungen verwenden die öffentlichen Snapshot-Procedures. |
 | Last und Sperren | Wenige Katalog- und Policyreads ohne persistente Writes; der Retentionsaufruf verwendet ausschließlich ContractOnly. |
 | Vertrag | Ein Versionsmarker allein reicht nicht. Der interne Vertrag setzt eine vertrauenswürdige installierte Paketnamespace voraus; er beweist keine administrative Codeintegrität. |

@@ -49,9 +49,11 @@ EXPECTED_TARGET_INCLUDES = (
     "Code/10_SnapshotBaseline/040_InternalPrepareCollectionCycle.sql",
     "Code/10_SnapshotBaseline/050_InternalCompletePerformanceCounterCycle.sql",
     "Code/10_SnapshotBaseline/055_InternalCompleteWaitStatsCycle.sql",
+    "Code/10_SnapshotBaseline/057_InternalCompleteFileIOCycle.sql",
     "Code/10_SnapshotBaseline/060_InternalFinalizeCollectionCycle.sql",
     "Code/10_SnapshotBaseline/070_InternalPurgeExpiredData.sql",
     "Code/10_SnapshotBaseline/075_CompleteWaitStatsInstallation.sql",
+    "Code/10_SnapshotBaseline/078_CompleteFileIOInstallation.sql",
 )
 
 EXPECTED_WAIT_TARGET_BACKEND = {'releaseState': 'IMPLEMENTED_TARGET_BACKEND',
@@ -72,7 +74,9 @@ EXPECTED_WAIT_TARGET_BACKEND = {'releaseState': 'IMPLEMENTED_TARGET_BACKEND',
              {'code': 'WAIT_DELTA_STATUS', 'valueType': 'STRING', 'unit': 'status'},
              {'code': 'WAIT_CAPTURE_CONTEXT', 'valueType': 'STRING', 'unit': 'json'}]}
 
-EXPECTED_WAIT_COLLECTOR = {'releaseState': 'IMPLEMENTED_ACTIONS_GATE', 'collectorCode': 'WAIT_STATS', 'defaultEnabled': False, 'source': 'sys.dm_os_wait_stats', 'fullNativeRead': True, 'engineContextBeforeAndAfter': True, 'helper': 'monitor.InternalRunSnapshotWaitStatsCycle', 'admissionHelper': 'monitor.InternalValidateSnapshotWaitTarget', 'modes': ['CONSOLE', 'RAW', 'TABLE', 'NONE'], 'jsonOutputContractVersion': 1, 'targetPackageVersion': '1.2.1', 'sharedConfigurationTransaction': 'FRAMEWORK_OWNED_EXPLICIT_JOIN', 'policyAdmission': 'READ_ONLY_BEFORE_PURGE', 'preservesCommittedCaptureOnProjectionFailure': True}
+EXPECTED_WAIT_COLLECTOR = {'releaseState': 'IMPLEMENTED_ACTIONS_GATE', 'collectorCode': 'WAIT_STATS', 'defaultEnabled': False, 'source': 'sys.dm_os_wait_stats', 'fullNativeRead': True, 'engineContextBeforeAndAfter': True, 'helper': 'monitor.InternalRunSnapshotWaitStatsCycle', 'admissionHelper': 'monitor.InternalValidateSnapshotWaitTarget', 'modes': ['CONSOLE', 'RAW', 'TABLE', 'NONE'], 'jsonOutputContractVersion': 1, 'targetPackageVersion': '1.3.0', 'acceptedTargetVersions': [{'packageVersion':'1.2.1','schemaVersion':2,'retentionContractVersion':1},{'packageVersion':'1.3.0','schemaVersion':3,'retentionContractVersion':2}], 'sharedConfigurationTransaction': 'FRAMEWORK_OWNED_EXPLICIT_JOIN', 'policyAdmission': 'READ_ONLY_BEFORE_PURGE', 'preservesCommittedCaptureOnProjectionFailure': True}
+
+EXPECTED_FILE_IO_BACKEND = {'releaseState': 'IMPLEMENTED_TARGET_BACKEND', 'collectorCode': 'FILE_IO', 'defaultEnabled': False, 'sourceSchemaVersion': 1, 'fileContextVersion': 1, 'captureContextVersion': 1, 'metricContractVersion': 1, 'completionProcedure': 'snapshot.InternalCompleteFileIOCycle', 'completionSource': 'Code/10_SnapshotBaseline/078_CompleteFileIOInstallation.sql', 'retentionContractVersion': 2, 'publicCollectorImplemented': False, 'metrics': [{'code': 'IO_READ_COUNT', 'valueType': 'BIGINT', 'unit': 'count'}, {'code': 'IO_READ_BYTES', 'valueType': 'BIGINT', 'unit': 'bytes'}, {'code': 'IO_READ_STALL_MS', 'valueType': 'BIGINT', 'unit': 'ms'}, {'code': 'IO_WRITE_COUNT', 'valueType': 'BIGINT', 'unit': 'count'}, {'code': 'IO_WRITE_BYTES', 'valueType': 'BIGINT', 'unit': 'bytes'}, {'code': 'IO_WRITE_STALL_MS', 'valueType': 'BIGINT', 'unit': 'ms'}, {'code': 'IO_SIZE_ON_DISK_BYTES', 'valueType': 'BIGINT', 'unit': 'bytes'}, {'code': 'IO_READ_COUNT_DELTA_CANDIDATE', 'valueType': 'BIGINT', 'unit': 'count'}, {'code': 'IO_READ_BYTES_DELTA_CANDIDATE', 'valueType': 'BIGINT', 'unit': 'bytes'}, {'code': 'IO_READ_STALL_MS_DELTA_CANDIDATE', 'valueType': 'BIGINT', 'unit': 'ms'}, {'code': 'IO_WRITE_COUNT_DELTA_CANDIDATE', 'valueType': 'BIGINT', 'unit': 'count'}, {'code': 'IO_WRITE_BYTES_DELTA_CANDIDATE', 'valueType': 'BIGINT', 'unit': 'bytes'}, {'code': 'IO_WRITE_STALL_MS_DELTA_CANDIDATE', 'valueType': 'BIGINT', 'unit': 'ms'}, {'code': 'IO_DELTA_STATUS', 'valueType': 'STRING', 'unit': 'status'}, {'code': 'IO_FILE_CONTEXT', 'valueType': 'STRING', 'unit': 'json'}, {'code': 'IO_CAPTURE_CONTEXT', 'valueType': 'STRING', 'unit': 'json'}]}
 
 FRAMEWORK_INTERNAL_PROCEDURES = ("InternalValidateSnapshotWaitTarget", "InternalRunSnapshotWaitStatsCycle")
 WAIT_ADMISSION_METHODS = ("InternalConfigureSnapshotPolicy", "InternalPrepareCollectionCycle", "InternalCompleteWaitStatsCycle", "InternalPurgeExpiredData")
@@ -101,6 +105,7 @@ TARGET_INTERNAL_PROCEDURES = (
     "InternalPrepareCollectionCycle",
     "InternalCompletePerformanceCounterCycle",
     "InternalCompleteWaitStatsCycle",
+    "InternalCompleteFileIOCycle",
     "InternalFinalizeCollectionCycle",
     "InternalPurgeExpiredData",
 )
@@ -374,16 +379,18 @@ def validate_repository(repository_root: pathlib.Path) -> list[str]:
                 errors.append("PUBLIC_CONTRACT_ID")
             if public_contract.get("contractVersion") != 1:
                 errors.append("PUBLIC_CONTRACT_VERSION")
-            if public_contract.get("targetPackageVersion") != "1.2.1" or public_contract.get("targetSchemaVersion") != 2:
+            if public_contract.get("targetPackageVersion") != "1.3.0" or public_contract.get("targetSchemaVersion") != 3:
                 errors.append("PUBLIC_CONTRACT_TARGET_SCHEMA_VERSION")
             if public_contract.get("acceptedTargetUpgrade") != {"packageVersion":"1.0.0","schemaVersion":1,"requiresExactManagedShape":True,"preservesExistingRows":True}:
                 errors.append("PUBLIC_CONTRACT_TARGET_UPGRADE")
             if public_contract.get("acceptedTargetPatchUpgrade") != {"packageVersion":"1.1.0","schemaVersion":2,"requiresExactManagedShape":True,"preservesExistingRows":True}:
                 errors.append("PUBLIC_CONTRACT_TARGET_PATCH_UPGRADE")
-            if public_contract.get("targetSchemaStageVersion") != "1.1.1" or public_contract.get("acceptedTargetBackendUpgradeVersions") != ["1.1.0", "1.1.1", "1.2.0"]:
+            if public_contract.get("targetSchemaStageVersion") != "1.2.2" or public_contract.get("acceptedTargetBackendUpgradeVersions") != ["1.1.0", "1.1.1", "1.2.0", "1.2.1", "1.2.2"]:
                 errors.append("PUBLIC_CONTRACT_WAIT_UPGRADE_CLOSURE")
             if public_contract.get("waitCollector") != EXPECTED_WAIT_COLLECTOR:
                 errors.append("PUBLIC_CONTRACT_WAIT_COLLECTOR")
+            if public_contract.get("fileIOTargetBackend") != EXPECTED_FILE_IO_BACKEND:
+                errors.append("PUBLIC_CONTRACT_FILE_IO_BACKEND")
             if public_contract.get("waitTargetBackend") != EXPECTED_WAIT_TARGET_BACKEND:
                 errors.append("PUBLIC_CONTRACT_WAIT_BACKEND")
             if public_contract.get("matrixWorkflow") != ".github/workflows/release-native-matrix.yml":
@@ -737,11 +744,12 @@ GO
             {
                 "contractId": "SC-023-PUBLIC-V1",
                 "contractVersion": 1,
-                "targetPackageVersion": "1.2.1",
-                "targetSchemaVersion": 2,
-                "targetSchemaStageVersion": "1.1.1",
-                "acceptedTargetBackendUpgradeVersions": ["1.1.0", "1.1.1", "1.2.0"],
+                "targetPackageVersion": "1.3.0",
+                "targetSchemaVersion": 3,
+                "targetSchemaStageVersion": "1.2.2",
+                "acceptedTargetBackendUpgradeVersions": ["1.1.0", "1.1.1", "1.2.0", "1.2.1", "1.2.2"],
                 "waitTargetBackend": EXPECTED_WAIT_TARGET_BACKEND,
+                "fileIOTargetBackend": EXPECTED_FILE_IO_BACKEND,
                 "waitCollector": EXPECTED_WAIT_COLLECTOR,
                 "acceptedTargetUpgrade": {"packageVersion":"1.0.0","schemaVersion":1,"requiresExactManagedShape":True,"preservesExistingRows":True},
                 "acceptedTargetPatchUpgrade": {"packageVersion":"1.1.0","schemaVersion":2,"requiresExactManagedShape":True,"preservesExistingRows":True},

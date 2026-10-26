@@ -5,7 +5,7 @@ Status: `IMPLEMENTED_ACTIONS_GATE`
 
 ## Paketgrenze
 
-SC-023 ist absichtlich kein Bestandteil von `Install_All.sql`. Ohne die beiden separaten Installer bleibt der Frameworkkern zustandslos. Der Defaultcollector bleibt `monitor.USP_PerformanceCounters` mit `@SampleSeconds=0`. `@CollectorCode='WAIT_STATS'` aktiviert ausdrücklich den öffentlichen Waitpfad; seine neue Targetpolicy bleibt zunächst deaktiviert. I/O-, Datenbank-, Query-, Plan-, Rollup-, Export- und Agentjob-Pakete gehören nicht zu diesem Stand.
+SC-023 ist absichtlich kein Bestandteil von `Install_All.sql`. Ohne die beiden separaten Installer bleibt der Frameworkkern zustandslos. Der Defaultcollector bleibt `monitor.USP_PerformanceCounters` mit `@SampleSeconds=0`. `@CollectorCode='WAIT_STATS'` aktiviert ausdrücklich den öffentlichen Waitpfad; seine neue Targetpolicy bleibt zunächst deaktiviert. Ein internes Datei-I/O-Target ist vorbereitet; ein öffentlicher nativer Datei-I/O-Collector sowie Datenbank-, Query-, Plan-, Rollup-, Export- und Agentjob-Pakete gehören nicht zu diesem Stand.
 
 Die Snapshot-Datenbank darf im autorisierten Betrieb reale Laufzeitwerte speichern. Exporte, Berichte und weitergegebene Auszüge benötigen einen eigenen Datenschutz-, Empfänger- und Aufbewahrungsvertrag.
 
@@ -87,7 +87,7 @@ in der ZIP vor. Er besitzt eine gemeinsame Transaktion, Receipts und
 Vorzustandserhaltung in beiden Kontexten. Vorhandene Datenbanken und Zielbindung werden
 weiterverwendet. Die bereits veröffentlichte v1.1.2-ZIP enthält
 Target-Paketversion `1.0.0` mit `SchemaVersion=1`. Der aktuelle Quellstand
-installiert das Target `1.2.1` mit `SchemaVersion=2`; die Targetversion ist von der
+installiert das Target `1.3.0` mit `SchemaVersion=3`; die Targetversion ist von der
 Frameworkversion getrennt. Der
 [Architekturvertrag](../Architecture/Snapshot_Baseline_Package_Contract.md#installation)
 beschreibt die erkannten Upgradezustände und Installationsrechte. Bestehende
@@ -100,6 +100,13 @@ Strukturmigrations- oder gemeinsamen Transaktions-, Receipt- oder
 Vorzustandsvertrag mit einem separat ausgeführten Kern. Ein Framework-Receipt
 allein bestätigt keinen vollständigen kombinierten Snapshotabschluss; dieselbe
 Run-ID mit den passenden Rollen muss in beiden Datenbanken vorhanden sein.
+
+Beim getrennten Upgrade wird zuerst das aktualisierte Framework installiert.
+Es unterstützt vollständige alte Waittargets 1.2.1 / Schema 2 mit
+Retentionsvertrag 1 und neue Targets 1.3.0 / Schema 3 mit Retentionsvertrag 2.
+Das Stadium 1.2.2 ist unvollständig und nimmt keine neue Sammlung an.
+Die FILE_IO-Policy bleibt deaktiviert; ihre interne Speicherung ist kein
+öffentlich aufrufbarer nativer Collector.
 
 ### Installation aus einem Quellcheckout
 
@@ -145,7 +152,7 @@ Ein Agentjob oder externer Scheduler ruft nur diese Procedure auf; Sammellogik g
 
 ## Öffentlicher Waitpfad
 
-Nach Installation des Targets `1.2.1` wird zunächst die gemeinsame Zielbeziehung
+Nach Installation des Targets `1.3.0` wird zunächst die gemeinsame Zielbeziehung
 konfiguriert. Anschließend aktiviert `USP_ConfigureSnapshotTarget` mit
 `@CollectorCode='WAIT_STATS'`, `@CollectorEnabled=1` und
 `@UpdateSharedPolicy=0` nur die Waitpolicy. Der Default für gemeinsame Änderungen

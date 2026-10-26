@@ -81,8 +81,7 @@ BEGIN
         IF (SELECT COUNT_BIG(*) FROM [snapshot].[PackageVersion])<>1 OR NOT EXISTS
            (SELECT 1 FROM [snapshot].[PackageVersion]
             WHERE CONVERT(varbinary(max),[PackageCode])=CONVERT(varbinary(max),'SC-023')
-              AND CONVERT(varbinary(max),[PackageVersion])=CONVERT(varbinary(max),'1.2.1')
-              AND [SchemaVersion]=2)
+              AND ((CONVERT(varbinary(max),[PackageVersion])=CONVERT(varbinary(max),'1.2.1') AND [SchemaVersion]=2) OR (CONVERT(varbinary(max),[PackageVersion])=CONVERT(varbinary(max),'1.3.0') AND [SchemaVersion]=3)))
         BEGIN
             SELECT @StatusCodeOut='TARGET_UNAVAILABLE',@IsPartialOut=1,@ErrorNumberOut=53761,
                    @ErrorMessageOut=N'Das vollständig installierte Wait-Target 1.2.1 fehlt.';
@@ -98,8 +97,8 @@ BEGIN
              @ExpectedTargetDatabaseId=@ExpectedTargetDatabaseId,
              @ExpectedTargetDatabaseName=@ExpectedTargetDatabaseName,
              @ExpectedTargetCreateDate=@ExpectedTargetCreateDate;
-        IF COALESCE(@ProbeStatus,'')<>'AVAILABLE' OR COALESCE(@RetentionContract,0)<>1
-           OR @ProbeRun IS NOT NULL OR @ProbeError IS NOT NULL
+        IF COALESCE(@ProbeStatus,'')<>'AVAILABLE' OR COALESCE(@RetentionContract,0)<>CASE WHEN EXISTS(SELECT 1 FROM [snapshot].[PackageVersion] WHERE [SchemaVersion]=3) THEN 2 ELSE 1 END
+           OR @ProbeRun IS NOT NULL OR @ProbeError IS NOT NULL OR COALESCE(@ProbeBudget,1)<>0
             THROW 53762,N'Der benötigte read-only Retentionsvertrag fehlt.',1;
 
         BEGIN TRANSACTION;

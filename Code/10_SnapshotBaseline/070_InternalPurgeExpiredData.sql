@@ -60,7 +60,11 @@ BEGIN
         END;
     END;
 
-    -- The installation/runtime handshake does not read or change package data.
+    SET NOCOUNT ON;
+    SET LOCK_TIMEOUT 0;
+    SET @RetentionContractVersionOut=CASE WHEN EXISTS(SELECT 1 FROM [snapshot].[PackageVersion] WITH (NOLOCK)
+      WHERE [SchemaVersion]=3 AND [PackageVersion] IN('1.2.2','1.3.0')) THEN 2 ELSE 1 END;
+    -- The handshake reads only the admitted version and creates no purge receipt.
     IF @ContractOnly=1 RETURN;
 
     SET NOCOUNT ON;
@@ -167,12 +171,12 @@ BEGIN
               -- including a failed run whose children have expired or never existed.
               AND
               (
-                  [r].[CollectorCode]<>'WAIT_STATS'
+                  [r].[CollectorCode] NOT IN('WAIT_STATS','FILE_IO')
                   OR [r].[EndedAtUtc] IS NULL
                   OR EXISTS
                   (
                       SELECT 1 FROM [snapshot].[CaptureRun] AS [later]
-                      WHERE [later].[CollectorCode]='WAIT_STATS'
+                      WHERE [later].[CollectorCode]=[r].[CollectorCode]
                         AND [later].[EndedAtUtc] IS NOT NULL
                         AND [later].[CaptureRunId]>[r].[CaptureRunId]
                   )

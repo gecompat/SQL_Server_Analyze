@@ -40,16 +40,20 @@ In beiden Fällen bleibt die Reihenfolge verbindlich:
 
 Das Paket erstellt keine Datenbank, Benutzer, Login, Berechtigung oder Scheduleraufgabe.
 
-Der aktuelle Quellstand installiert Target-PackageVersion 1.2.1 mit
-SchemaVersion 2. Das Wait-Backend besitzt neun Metrikdefinitionen und eine bei
-Neuanlage deaktivierte WAIT_STATS-Policy. Die öffentliche Collectorwahl ergänzt
-die vollständige native Waitquelle. Die drei öffentlichen Einstiege und ihr
-Performance-Counter-Default bleiben erhalten.
-Der Purge erhält die letzte finalisierte WAIT_STATS-Laufzeile als spätere
-Vergleichsgrenze. Vorhandene Counterdaten, Scopeidentitäten und Policies
-bleiben erhalten. Ein exakt erkanntes Target 1.0.0 / Schema 1 wird in einer
-Transaktion migriert. Das bekannte Target 1.1.0 / Schema 2 erhält den
-Backendabschluss ohne weitere Schemaänderung; dies gilt ebenso für 1.1.1 und 1.2.0 / Schema 2. Unbekannte Versionen, gemischte Domänen, zusätzliche
+Der aktuelle Quellstand installiert Target-PackageVersion 1.3.0 mit
+SchemaVersion 3. Die öffentliche Collectorwahl umfasst weiterhin Performance
+Counter und Waits. Das interne Datei-I/O-Backend ergänzt 16 Metrikdefinitionen
+und eine deaktivierte FILE_IO-Policy; ein öffentlicher nativer Datei-I/O-Collector
+gehört noch nicht zu diesem Stand. Der [interne Datei-I/O-Vertrag](#internes-datei-io-target) beschreibt
+Source-, Kontext-, Epochen- und Mengenbindung.
+
+Der Purge erhält für WAIT_STATS und FILE_IO jeweils die letzte finalisierte
+Laufzeile einschließlich Fehlern als Vergleichsgrenze; ihre Kinder dürfen
+regulär ablaufen. Performance Counter behalten ihren bisherigen Löschpfad.
+Bekannte Targets 1.0.0 / Schema 1 und 1.1.0, 1.1.1, 1.2.0, 1.2.1 / Schema 2
+werden unter Erhaltung ihrer Daten, Identitäten und Policies auf Schema 3
+migriert. 1.2.2 / Schema 3 ist ausschließlich das bekannte unvollständige
+Installationsstadium. Unbekannte Versionen, gemischte Domänen, zusätzliche
 CHECKs, veränderte Tabellenfacetten und deaktivierte oder nicht vertrauenswürdige
 Constraints werden vor Produktänderungen abgelehnt. Ein abweichender Stand
 muss vor erneutem Installieren fachlich geklärt werden; der Installer repariert
@@ -230,13 +234,14 @@ notwendige Rohdaten erlaubt keinen numerischen Vergleich. Der Waitcollector ber�
 
 ## Targetabschluss und öffentliche Wait-Aktivierung
 
-Die erste Targetquelle 030 prüft Kontext, bekannte Struktur und Seedkonflikte
-vor Produktänderungen. Sie markiert anschließend die Schema-2-Grundlage mit
-der vorläufigen Version 1.1.1. Erst die letzte Targetquelle 075 prüft die
-benötigten Helper und Signaturen, ergänzt fehlende kompatible Waitseeds und
-markiert 1.2.1. Ein unterbrochener SQLCMD-Lauf ist deshalb kein fertiger
-Wait-Paketstand. Die Standalone- und Gesamtinstaller behalten ihre jeweilige
-gesamte Transaktion und strikte Nachprüfung.
+Die erste Targetquelle 030 prüft Kontext, bekannte Struktur und beide
+Collector-Seedverträge vor Produktänderungen. Sie markiert anschließend
+Schema 3 als vorläufigen Stand 1.2.2. Quelle 075 prüft und ergänzt den
+Waitteil; erst die letzte Quelle 078 prüft alle sieben Targethelper mit
+ihren typisierten Parametern, die kompatiblen Seeds und den tatsächlich
+schreibfreien Retentionsvertrag 2 und markiert 1.3.0. Ein unterbrochener
+SQLCMD-Lauf ist kein fertiger Collectorstand. Standalone- und Gesamtinstaller
+behalten ihre gesamte Transaktion und strikte Nachprüfung.
 
 Die read-only Metrikkollisionsprüfung stammt aus der kanonischen letzten
 Targetquelle und wird in den geprüften 030-Preflight übernommen. Ein fremdes
@@ -272,7 +277,51 @@ mit ausdrücklichem Join teil. Mit `0` bleiben Frameworkzeile und gemeinsame
 Werte einschließlich eigener Retentionszuordnung erhalten.
 
 Bekannte Targets `1.2.0` werden mit ihren tatsächlich alten Helpern geprüft.
-Auch der Abbruch nach dem erneuten 030-Stadium `1.1.1` vor Umschreiben des
+Auch der Abbruch nach dem erneuten 030-Stadium `1.2.2` vor Umschreiben des
 Waithelpers ist wiederaufnehmbar, wenn dessen gespeicherter Code exakt dem
 veröffentlichten eigenen Stand entspricht. Fremde Definitionen werden nicht
 allgemein als eigener Zwischenstand anerkannt.
+
+Das aktualisierte Framework unterstützt für Waits vollständige Targets
+1.2.1 / Schema 2 mit Retentionsvertrag 1 und 1.3.0 / Schema 3 mit
+Retentionsvertrag 2. Beim getrennten Rollout wird zuerst das Framework
+aktualisiert. Das alte Framework kennt den neuen Targetmarker nicht;
+die umgekehrte Reihenfolge ist deshalb nicht als unterbrechungsfrei qualifiziert.
+
+## Internes Datei-I/O-Target
+
+InternalCompleteFileIOCycle nimmt einen geschlossenen Source-v1-Rahmen mit
+meta, databases, files und issues entgegen. Die bereitgestellten Werte werden
+vor der Speicherung auf Member, Typ, Nullregeln, native Wertebereiche,
+Zeitfenster sowie Framework- und Auswahlbindung geprüft. Der Helper führt
+keinen nativen VFS-Read aus. Er verlangt einen unbeschriebenen eigenen
+Lauf mit CollectorCode=FILE_IO und Status RUNNING im vollständigen Target 1.3.0 / Schema 3 und besitzt
+seine eigene Transaktion; Caller- und implizite Transaktionen sind unzulässig.
+
+Jede ausgewählte geeignete Datei erhält sechs kumulative Rohcounter, den
+Gauge für SizeOnDiskBytes, einen Vergleichsstatus und einen Dateikontext. Nur bei
+gültiger unmittelbarer Vorwertbasis entstehen sechs nichtnegative
+MONOTONIC_CONTINUITY_UNPROVEN-Kandidaten. Zusätzlich wird ein globaler
+Aufnahmekontext geschrieben. Für N geschriebene und C vergleichbare Dateien
+gilt MetricSampleCount = 9*N + 6*C + 1. Ein gültiger leerer Capture besitzt
+nur den globalen Kontext; ein fataler Sourcefehler besitzt keine Metrics.
+
+Dateiepochen binden Rohwerte, Status, Dateikontext und Kandidaten. Der globale
+Kontext erhält eine eigene technische ContextEpochId je Capture;
+CaptureRun.ResetEpochId und SqlServerStartTimeUtc bleiben NULL. Die bestehende
+NOT-NULL-Bedingung von MetricSample.ResetEpochId bleibt erhalten.
+Kanonische UTF-16LE-Hashes binden tatsächliche Scopeidentitäten, sieben
+gespeicherte Rohzeilen und Dateikontexte. Der unmittelbar vorherige
+finalisierte FILE_IO-Lauf einschließlich Fehlern ist die Vergleichsgrenze.
+Fehlende, partielle, widersprüchliche oder abgelaufene Belege erlauben keine
+Zahlen. Gleiche Beobachtungen beweisen keine ausbleibenden Resets;
+Kandidaten und erfolgreiche Gesamtaufnahmen bleiben partiell.
+
+Quellfehler verschwinden auch bei PayloadEnabled=0 nicht. Jeder gültige Issue
+besitzt eine unveränderte Zeile mit Fehler und Evidenz und einen an deren tatsächliche
+ModuleStatusId gebundenen Entitätskontext. Hinzu kommt eine Summaryzeile;
+bei J Issues entstehen 1+2*J Module. Ein ungültiger Sourcevertrag finalisiert
+einen kontrollierten SOURCE_CONTRACT-Fehler ohne numerische Samples.
+Die öffentliche native FILE_IO-Aufnahme und ihre Auswahlparameter folgen
+getrennt; Anwendungen verwenden weiterhin die dokumentierten öffentlichen
+Snapshot-Procedures.

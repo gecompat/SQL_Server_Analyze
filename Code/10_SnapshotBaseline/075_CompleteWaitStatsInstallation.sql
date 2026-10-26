@@ -1,11 +1,11 @@
 /*
 ===============================================================================
 Datei        : 075_CompleteWaitStatsInstallation.sql
-Version      : 1.2.1
-Stand        : 2026-10-25
+Version      : 1.2.2
+Stand        : 2026-10-26
 Zweck        : Prüft die vollständige Wait-Targetclosure, ergänzt fehlende
-               kompatible Seeds und markiert erst danach den Paketabschluss.
-Kontext      : Letzte Quelle des geprüften Snapshot-Targetinstallers.
+               kompatible Seeds; die nachfolgende Datei-I/O-Closure markiert den Paketabschluss.
+Kontext      : Waitteil der gemeinsamen geprüften Targetclosure.
 ===============================================================================
 */
 SET NOCOUNT ON;
@@ -51,8 +51,8 @@ IF DB_ID()<=4
    OR (SELECT COUNT_BIG(*) FROM [snapshot].[PackageVersion])<>1
    OR NOT EXISTS
       (SELECT 1 FROM [snapshot].[PackageVersion]
-       WHERE CONVERT(varbinary(max),[PackageCode])=CONVERT(varbinary(max),'SC-023') AND [PackageVersion]='1.1.1' AND [SchemaVersion]=2)
-    THROW 53761,N'Der Wait-Paketabschluss benötigt die geprüfte Schema-2-Grundlage.',1;
+       WHERE CONVERT(varbinary(max),[PackageCode])=CONVERT(varbinary(max),'SC-023') AND [PackageVersion]='1.2.2' AND [SchemaVersion]=3)
+    THROW 53761,N'Der Wait-Paketabschluss benötigt die geprüfte Schema-3-Grundlage.',1;
 
 DECLARE @SnapshotWaitExpectedHelpers TABLE
 ([Name] sysname COLLATE DATABASE_DEFAULT NOT NULL PRIMARY KEY,[ObjectId] int NULL);
@@ -134,9 +134,5 @@ IF NOT EXISTS(SELECT 1 FROM [snapshot].[CollectorPolicy] WHERE [CollectorCode]='
      [RetentionPolicyCode],[IsFrameworkDefault],[SeedVersion],[LastUpdatedUtc])
     VALUES('WAIT_STATS',0,30,1000,0,'DEFAULT',0,1,SYSUTCDATETIME());
 
-UPDATE [snapshot].[PackageVersion]
-SET [PackageVersion]='1.2.1',[LastInstallerRunUtc]=SYSUTCDATETIME()
-WHERE CONVERT(varbinary(max),[PackageCode])=CONVERT(varbinary(max),'SC-023') AND [PackageVersion]='1.1.1' AND [SchemaVersion]=2;
-IF @@ROWCOUNT<>1
-    THROW 53761,N'Der Wait-Paketabschluss konnte nicht markiert werden.',1;
+-- Schema 3 bleibt bis zur nachfolgenden Datei-I/O-Closure ausdrücklich unvollständig.
 GO

@@ -437,6 +437,12 @@ def load_sources(root: Path, snapshot: bool, check_snapshot_guard: bool=True) ->
                         pos+=1
                     elif bt[pos].kind=='identifier' or upper(bt[pos])=='SYS':
                         schema,proc,pos=qualified(bt,pos)
+                        if source.path=='Code/10_SnapshotBaseline/078_CompleteFileIOInstallation.sql' and schema=='snapshot' and proc=='InternalPurgeExpiredData':
+                            end=next((j for j in range(i,len(bt)) if bt[j].value==';'),len(bt))
+                            expected=tokens('EXEC [snapshot].[InternalPurgeExpiredData] @MaxBatches=1,@Force=0,@PurgeRunIdOut=@Run OUTPUT, @StatusCodeOut=@Status OUTPUT,@BudgetExceededOut=@Budget OUTPUT,@ErrorNumberOut=@Error OUTPUT, @ErrorMessageOut=@Message OUTPUT,@ContractOnly=1,@RetentionContractVersionOut=@Contract OUTPUT, @ExpectedTargetDatabaseId=@TargetId,@ExpectedTargetDatabaseName=@TargetName,@ExpectedTargetCreateDate=@Created;')
+                            if [(t.kind,t.value) for t in bt[i:end+1]]!=[(t.kind,t.value) for t in expected]:
+                                raise BuildError('File-I/O installation probe differs from its bounded read-only call')
+                            continue
                         if schema!='sys' or proc!='sp_executesql':
                             raise BuildError(f'Unsupported deployment procedure: {source.path}')
                     if bt[pos].kind!='string':
@@ -529,10 +535,14 @@ THROW;
 END CATCH;
 """
 SNAPSHOT_LEGACY_CHECKS = {
-    'CollectorPolicy': ("CHECK ([CollectorCode] IN ('PERFORMANCE_COUNTERS','WAIT_STATS'))",
+    'CollectorPolicy': ("CHECK ([CollectorCode] IN ('PERFORMANCE_COUNTERS','WAIT_STATS','FILE_IO'))",
                         "CHECK ([CollectorCode] = 'PERFORMANCE_COUNTERS')"),
-    'Scope': ("CHECK ([ScopeType] IN ('SERVER','PERFORMANCE_COUNTER','WAIT_TYPE'))",
+    'Scope': ("CHECK ([ScopeType] IN ('SERVER','PERFORMANCE_COUNTER','WAIT_TYPE','FILE_IO_FILE'))",
               "CHECK ([ScopeType] IN ('SERVER','PERFORMANCE_COUNTER'))"),
+}
+SNAPSHOT_SCHEMA2_CHECKS = {
+    'CollectorPolicy': "CHECK ([CollectorCode] IN ('PERFORMANCE_COUNTERS','WAIT_STATS'))",
+    'Scope': "CHECK ([ScopeType] IN ('SERVER','PERFORMANCE_COUNTER','WAIT_TYPE'))",
 }
 
 
@@ -609,7 +619,7 @@ def snapshot_state_classifier(tables: list[Table], sources: list[Source], strict
     modules=[q(s.module[0])+'.'+q(s.module[1]) for s in sources if s.module and s.module[0]=='snapshot']
     present=' OR '.join('OBJECT_ID('+lit(name)+') IS NOT NULL' for name in managed+modules)
     missing=' OR '.join('OBJECT_ID('+lit(name)+",N'U') IS NULL" for name in managed)
-    out=[f'DECLARE {variable} bit=0;\n']
+    out=[f'DECLARE {variable} bit=0;\nDECLARE @SnapshotExpectedSchema2 bit=0;\n']
     if strict:
         out.append(f"IF {missing} THROW 53935,N'Incomplete Snapshot schema.',1;\n")
     out.append(f'IF {present} BEGIN\n')
@@ -624,10 +634,12 @@ def snapshot_state_classifier(tables: list[Table], sources: list[Source], strict
            "IF EXISTS(SELECT 1 FROM [snapshot].[PackageVersion] WHERE CONVERT(varbinary(max),PackageCode)=CONVERT(varbinary(max),'SC-023') "
            "AND CONVERT(varbinary(max),PackageVersion)=CONVERT(varbinary(max),'1.0.0') AND SchemaVersion=1) SET @Legacy=1; "
            "ELSE IF NOT EXISTS(SELECT 1 FROM [snapshot].[PackageVersion] WHERE CONVERT(varbinary(max),PackageCode)=CONVERT(varbinary(max),'SC-023') "
-           + ("AND CONVERT(varbinary(max),PackageVersion)=CONVERT(varbinary(max),'1.2.1') AND SchemaVersion=2) " if strict else
-              "AND CONVERT(varbinary(max),PackageVersion) IN(CONVERT(varbinary(max),'1.1.0'),CONVERT(varbinary(max),'1.1.1'),CONVERT(varbinary(max),'1.2.0'),CONVERT(varbinary(max),'1.2.1')) AND SchemaVersion=2) ")
+           + ("AND CONVERT(varbinary(max),PackageVersion)=CONVERT(varbinary(max),'1.3.0') AND SchemaVersion=3) " if strict else
+              "AND ((CONVERT(varbinary(max),PackageVersion) IN(CONVERT(varbinary(max),'1.1.0'),CONVERT(varbinary(max),'1.1.1'),CONVERT(varbinary(max),'1.2.0'),CONVERT(varbinary(max),'1.2.1')) AND SchemaVersion=2) OR (CONVERT(varbinary(max),PackageVersion) IN(CONVERT(varbinary(max),'1.2.2'),CONVERT(varbinary(max),'1.3.0')) AND SchemaVersion=3))) ")
            + "THROW 53935,N'Unknown Snapshot package/schema version.',1;")
-    out.append(f"EXEC sys.sp_executesql {lit(query)},N'@Legacy bit OUTPUT',{variable} OUTPUT;\n")
+    if not strict:
+        query+="IF EXISTS(SELECT 1 FROM [snapshot].[PackageVersion] WHERE SchemaVersion=2) SET @Schema2=1;"
+    out.append(f"EXEC sys.sp_executesql {lit(query)},N'@Legacy bit OUTPUT,@Schema2 bit OUTPUT',{variable} OUTPUT,@SnapshotExpectedSchema2 OUTPUT;\n")
     if strict:
         out.append(f"IF {variable}=1 THROW 53935,N'Legacy Snapshot version after deployment.',1;\n")
     out.append('END;\n')
@@ -644,9 +656,12 @@ def stored_module_definition(batch: str) -> str:
     return batch[:ts[1].start]+batch[ts[1].end:ts[2].start]+batch[ts[2].end:]
 
 
-def snapshot_wait_seed_preflight(sources: list[Source], strict: bool=False) -> str:
+def snapshot_wait_seed_preflight(sources: list[Source], strict: bool=False, file_io: bool=False) -> str:
     """Copy one source-owned, mechanically read-only contract before writes."""
-    seed=next((s for s in sources if s.path=='Code/10_SnapshotBaseline/075_CompleteWaitStatsInstallation.sql'),None)
+    seed_path='Code/10_SnapshotBaseline/'+('078_CompleteFileIOInstallation.sql' if file_io else '075_CompleteWaitStatsInstallation.sql')
+    label='SNAPSHOT_FILE_IO' if file_io else 'SNAPSHOT_WAIT'
+    reference='@SnapshotFileIOExpectedMetrics' if file_io else '@SnapshotWaitExpectedMetrics'
+    seed=next((s for s in sources if s.path==seed_path),None)
     if seed is None:
         return ''
 
@@ -661,8 +676,8 @@ def snapshot_wait_seed_preflight(sources: list[Source], strict: bool=False) -> s
         tokens(seed.text[:b])
         return seed.text[a+len(begin):b].strip()
 
-    declaration=region('SNAPSHOT_WAIT_METRIC_CONTRACT')
-    check=region('SNAPSHOT_WAIT_SEED_CHECK')
+    declaration=region(label+'_METRIC_CONTRACT')
+    check=region(label+'_SEED_CHECK')
     forbidden={'UPDATE','DELETE','EXEC','EXECUTE','CREATE','ALTER','DROP','TRUNCATE','MERGE',
                'GRANT','DENY','REVOKE','COMMIT','ROLLBACK','SAVE','SET','DBCC','BACKUP','RESTORE',
                'USE','BULK','INTO','WAITFOR','TRAN','TRANSACTION','DISTRIBUTED'}
@@ -673,9 +688,9 @@ def snapshot_wait_seed_preflight(sources: list[Source], strict: bool=False) -> s
                 continue
             if upper(t) in forbidden or (upper(t)=='INSERT' and not may_insert):
                 raise BuildError('Wait seed preflight must be read-only except its declared table variable')
-            if upper(t)=='INSERT' and (i+1>=len(ts) or ident(ts[i+1])!='@SnapshotWaitExpectedMetrics'):
+            if upper(t)=='INSERT' and (i+1>=len(ts) or ident(ts[i+1])!=reference):
                 raise BuildError('Wait seed declaration has an unexpected INSERT target')
-    if [upper(t) for t in tokens(declaration)[:3]]!=['DECLARE','@SNAPSHOTWAITEXPECTEDMETRICS','TABLE']:
+    if [upper(t) for t in tokens(declaration)[:3]]!=['DECLARE',reference.upper(),'TABLE']:
         raise BuildError('Wait seed declaration must own its reference variable')
     if sum(upper(t)=='INSERT' for t in tokens(declaration))!=1:
         raise BuildError('Wait seed declaration must contain one literal INSERT')
@@ -685,22 +700,27 @@ def snapshot_wait_seed_preflight(sources: list[Source], strict: bool=False) -> s
         body+=("IF EXISTS(SELECT 1 FROM @SnapshotWaitExpectedMetrics e WHERE NOT EXISTS(SELECT 1 FROM [snapshot].[MetricDefinition] d WHERE d.MetricCode=e.MetricCode)) "
                "OR NOT EXISTS(SELECT 1 FROM [snapshot].[CollectorPolicy] WHERE CollectorCode='WAIT_STATS') "
                "THROW 53760,N'Canonical Wait seeds are missing after deployment.',1;\n")
+    if file_io:
+        body=body.replace('@SnapshotWaitExpectedMetrics',reference).replace("CollectorCode='WAIT_STATS'","CollectorCode='FILE_IO'")
     out="IF OBJECT_ID(N'[snapshot].[MetricDefinition]',N'U') IS NOT NULL EXEC sys.sp_executesql "+lit(body)+';\n'
 
     # A newly claimed name in an older package is accepted only if it already
     # contains this exact canonical module, as after a stopped SQLCMD install.
-    module=next((s for s in sources if s.path=='Code/10_SnapshotBaseline/055_InternalCompleteWaitStatsCycle.sql'),None)
+    module_path='Code/10_SnapshotBaseline/'+('057_InternalCompleteFileIOCycle.sql' if file_io else '055_InternalCompleteWaitStatsCycle.sql')
+    module=next((s for s in sources if s.path==module_path),None)
     if module is None or len(module.batches)!=1:
         raise BuildError('Wait target module closure is incomplete')
     expected=stored_module_definition(module.batches[0])
     digest=hashlib.sha256(expected.encode('utf-16le')).hexdigest()
     # Frozen released 1.2.0 body, also valid after030 restages an interrupted upgrade.
     legacy_digest='e392b9581c55955b81674e468aa88eac444339585dfd787a682abf66b3a48c49'
-    obj="N'[snapshot].[InternalCompleteWaitStatsCycle]'"
-    collision=("IF NOT EXISTS(SELECT 1 FROM [snapshot].[PackageVersion] WHERE CONVERT(varbinary(max),PackageCode)=CONVERT(varbinary(max),'SC-023') "
-               "AND CONVERT(varbinary(max),PackageVersion) IN(CONVERT(varbinary(max),'1.2.0'),CONVERT(varbinary(max),'1.2.1')) AND SchemaVersion=2) "
-               "AND (OBJECT_DEFINITION(OBJECT_ID("+obj+",N'P')) IS NULL OR "
-               "HASHBYTES('SHA2_256',CONVERT(varbinary(max),TRIM(NCHAR(9)+NCHAR(10)+NCHAR(13)+N' ' FROM REPLACE(OBJECT_DEFINITION(OBJECT_ID("+obj+",N'P')),NCHAR(13)+NCHAR(10),NCHAR(10))))) NOT IN(0x"+digest+",0x"+legacy_digest+")) "
+    obj="N'[snapshot].["+('InternalCompleteFileIOCycle' if file_io else 'InternalCompleteWaitStatsCycle')+"]'"
+    released_wait_digest='aeb295d67a15ce0fcf452404dde233729012e42340c138c8924f27447e1b8762'
+    hashes='0x'+digest if file_io else '0x'+digest+',0x'+legacy_digest+',0x'+released_wait_digest
+    collision=("IF NOT EXISTS(SELECT 1 FROM [snapshot].[PackageVersion] WHERE CONVERT(varbinary(max),PackageCode)=CONVERT(varbinary(max),'SC-023') " +
+               ("AND CONVERT(varbinary(max),PackageVersion)=CONVERT(varbinary(max),'1.3.0') AND SchemaVersion=3) " if file_io else "AND ((CONVERT(varbinary(max),PackageVersion) IN(CONVERT(varbinary(max),'1.2.0'),CONVERT(varbinary(max),'1.2.1')) AND SchemaVersion=2) OR (CONVERT(varbinary(max),PackageVersion)=CONVERT(varbinary(max),'1.3.0') AND SchemaVersion=3))) ")
+               + "AND (OBJECT_DEFINITION(OBJECT_ID("+obj+",N'P')) IS NULL OR "
+               "HASHBYTES('SHA2_256',CONVERT(varbinary(max),TRIM(NCHAR(9)+NCHAR(10)+NCHAR(13)+N' ' FROM REPLACE(OBJECT_DEFINITION(OBJECT_ID("+obj+",N'P')),NCHAR(13)+NCHAR(10),NCHAR(10))))) NOT IN("+hashes+")) "
                "THROW 53762,N'A noncanonical object occupies the new Wait helper name.',1;")
     out+="IF OBJECT_ID("+obj+",N'P') IS NOT NULL AND OBJECT_ID(N'[snapshot].[PackageVersion]',N'U') IS NOT NULL EXEC sys.sp_executesql "+lit(collision)+';\n'
     return out
@@ -743,6 +763,7 @@ def preflight(tables: list[Table], sources: list[Source], strict: bool=False) ->
             if definition_template.count(current)!=1:
                 raise BuildError('Snapshot legacy CHECK no longer matches the canonical model')
             out.append('IF @SnapshotExpectedLegacy=1 SET @ConstraintSql='+lit(definition_template.replace(current,legacy))+';\n')
+            out.append('ELSE IF @SnapshotExpectedSchema2=1 SET @ConstraintSql='+lit(definition_template.replace(current,SNAPSHOT_SCHEMA2_CHECKS[table.name]))+';\n')
         for short,_ in names:
             out.append('SET @ConstraintSql=REPLACE(@ConstraintSql,'+lit('CONSTRAINT '+q(short))+','+lit('CONSTRAINT [')+'+@Prefix+'+lit(short+']')+');\n')
         out.append("EXEC sys.sp_executesql @ConstraintSql,N'@Prefix nvarchar(33)',@Prefix;\n")
@@ -847,6 +868,7 @@ def preflight(tables: list[Table], sources: list[Source], strict: bool=False) ->
         if strict:
             out.append(f"IF EXISTS(SELECT WaitType FROM [#SQLSA_Expected_{ci}] EXCEPT SELECT WaitType FROM [monitor].[WaitTypeCatalog]) THROW 53934,N'Canonical Wait seed key is missing after deployment.',1;\n")
     out.append(snapshot_wait_seed_preflight(sources,strict))
+    out.append(snapshot_wait_seed_preflight(sources,strict,file_io=True))
     return ''.join(out)
 
 

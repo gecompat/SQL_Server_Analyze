@@ -46,7 +46,7 @@ BEGIN
         RETURN;
     END;
     DECLARE @Sql nvarchar(max),@ProbeRun bigint,@ProbeStatus varchar(40),@ProbeBudget bit,
-            @ProbeError int,@ProbeMessage nvarchar(2048),@RetentionContract int;
+            @ProbeError int,@ProbeMessage nvarchar(2048),@RetentionContract int,@RequiredRetention int;
     BEGIN TRY
         DECLARE @AdmissionSql nvarchar(max)=N'IF DB_ID()<>@Id OR NOT EXISTS(SELECT 1 FROM [master].[sys].[databases] WITH (NOLOCK)
  WHERE [database_id]=@Id AND CONVERT(varbinary(max),[name])=CONVERT(varbinary(max),@Name)
@@ -54,8 +54,9 @@ BEGIN
  THROW 53764,N''Die gebundene Targetidentität stimmt nicht mehr überein.'',1;
 IF (SELECT COUNT_BIG(*) FROM [snapshot].[PackageVersion])<>1 OR NOT EXISTS
  (SELECT 1 FROM [snapshot].[PackageVersion] WHERE CONVERT(varbinary(max),[PackageCode])=CONVERT(varbinary(max),''SC-023'')
- AND CONVERT(varbinary(max),[PackageVersion])=CONVERT(varbinary(max),''1.2.1'') AND [SchemaVersion]=2)
+ AND ((CONVERT(varbinary(max),[PackageVersion])=CONVERT(varbinary(max),''1.2.1'') AND [SchemaVersion]=2) OR (CONVERT(varbinary(max),[PackageVersion])=CONVERT(varbinary(max),''1.3.0'') AND [SchemaVersion]=3)))
  THROW 53761,N''Die neuen öffentlichen Optionen benötigen das vollständige Snapshot-Target 1.2.1.'',1;
+SELECT @Required=CASE WHEN [SchemaVersion]=3 THEN 2 ELSE 1 END FROM [snapshot].[PackageVersion];
 DECLARE @Methods TABLE([Name] sysname,[ObjectId] int NULL);
 INSERT @Methods
 SELECT [e].[Name],[p].[object_id] FROM (VALUES(N''InternalConfigureSnapshotPolicy''),(N''InternalPrepareCollectionCycle''),(N''InternalCompleteWaitStatsCycle''),(N''InternalPurgeExpiredData'')) AS [e]([Name])
@@ -145,9 +146,9 @@ IF EXISTS(SELECT 1 FROM @Metrics [e] LEFT JOIN [snapshot].[MetricDefinition] [d]
  OR NOT EXISTS(SELECT 1 FROM [snapshot].[CollectorPolicy] WHERE CONVERT(varbinary(max),[CollectorCode])=CONVERT(varbinary(max),''WAIT_STATS''))
  THROW 53760,N''Die erforderlichen Waitdefinitionen fehlen oder widersprechen dem Metrikvertrag.'',1;
 ';
-        SET @Sql=N'USE '+QUOTENAME(@TargetDatabaseName)+N'; EXEC [sys].[sp_executesql] @Body,N''@Id int,@Name sysname,@Created datetime'',@Id,@Name,@Created;';
-        EXEC [sys].[sp_executesql] @Sql,N'@Body nvarchar(max),@Id int,@Name sysname,@Created datetime',
-             @AdmissionSql,@TargetDatabaseIdOut,@TargetDatabaseName,@TargetCreateDateOut;
+        SET @Sql=N'USE '+QUOTENAME(@TargetDatabaseName)+N'; EXEC [sys].[sp_executesql] @Body,N''@Id int,@Name sysname,@Created datetime,@Required int OUTPUT'',@Id,@Name,@Created,@Required OUTPUT;';
+        EXEC [sys].[sp_executesql] @Sql,N'@Body nvarchar(max),@Id int,@Name sysname,@Created datetime,@Required int OUTPUT',
+             @AdmissionSql,@TargetDatabaseIdOut,@TargetDatabaseName,@TargetCreateDateOut,@RequiredRetention OUTPUT;
         SET @Sql=N'EXEC '+QUOTENAME(@TargetDatabaseName)+N'.[snapshot].[InternalPurgeExpiredData]
  @MaxBatches=1,@Force=0,@ContractOnly=1,@RetentionContractVersionOut=@V OUTPUT,
  @ExpectedTargetDatabaseId=@Id,@ExpectedTargetDatabaseName=@Name,@ExpectedTargetCreateDate=@Created,
@@ -158,10 +159,10 @@ IF EXISTS(SELECT 1 FROM @Metrics [e] LEFT JOIN [snapshot].[MetricDefinition] [d]
  @V=@RetentionContract OUTPUT,@Id=@TargetDatabaseIdOut,@Name=@TargetDatabaseName,@Created=@TargetCreateDateOut,
  @Run=@ProbeRun OUTPUT,@Status=@ProbeStatus OUTPUT,@Budget=@ProbeBudget OUTPUT,@Error=@ProbeError OUTPUT,@Message=@ProbeMessage OUTPUT;
         IF COALESCE(@ProbeStatus,'')<>'AVAILABLE' OR @ProbeError IS NOT NULL OR @ProbeRun IS NOT NULL
-           OR @ProbeBudget IS NULL OR @ProbeBudget<>0 OR @RetentionContract IS NULL OR @RetentionContract<>1
+           OR @ProbeBudget IS NULL OR @ProbeBudget<>0 OR @RetentionContract IS NULL OR @RetentionContract<>@RequiredRetention
             SELECT @StatusCodeOut=CASE WHEN @ProbeStatus='DENIED_PERMISSION' THEN 'DENIED_PERMISSION' ELSE 'TARGET_UNAVAILABLE' END,
                    @ErrorNumberOut=COALESCE(@ProbeError,53761),
-                   @ErrorMessageOut=COALESCE(@ProbeMessage,N'Der tatsächlich ausgeführte Retentionsvertragsaufruf bestätigt keine schreibfreie Version 1.');
+                   @ErrorMessageOut=COALESCE(@ProbeMessage,N'Der tatsächlich ausgeführte Retentionsvertragsaufruf bestätigt keine passende schreibfreie Version.');
     END TRY
     BEGIN CATCH
         SELECT @StatusCodeOut=CASE WHEN ERROR_NUMBER() IN(229,262,297,300,371) THEN 'DENIED_PERMISSION' ELSE 'TARGET_UNAVAILABLE' END,

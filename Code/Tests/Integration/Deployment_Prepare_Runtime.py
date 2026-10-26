@@ -1978,6 +1978,479 @@ GO
 """),
 }
 
+# Released 1.2.1 bodies are reconstructed only by exact reverse fragments.
+# The full independent released-byte hashes prevent a current-source approximation.
+LEGACY_TARGET_V1_2_1_PATCHES = {'020_InternalConfigureSnapshotPolicy.sql': ('397b29eb601df68ecedb0bfabf7b1af9909fcd03b5d4276dcdbe8b5bab2a4230',
+                                             [('\n'
+                                               '    IF @JoinFrameworkTransaction IS NULL OR\n'
+                                               '       (@JoinFrameworkTransaction=1 AND\n'
+                                               "         (@CollectorCode NOT IN('WAIT_STATS','FILE_IO') OR "
+                                               '@UpdateSharedPolicy<>1 OR @@TRANCOUNT<>1 OR XACT_STATE()<>1 '
+                                               'OR (@@OPTIONS & 2)<>0))\n'
+                                               '    BEGIN\n'
+                                               '        SELECT '
+                                               "@StatusCodeOut='INVALID_PARAMETER',@ErrorNumberOut=51011,\n"
+                                               "               @ErrorMessageOut=N'Die ausdrückliche "
+                                               'Transaktionsbeteiligung benötigt WAIT_STATS oder FILE_IO mit '
+                                               "Shared1 und eine committable Besitzertransaktion.';\n"
+                                               '        RETURN 51011;\n'
+                                               '    END;\n'
+                                               '\n'
+                                               '    IF @UseV2Contract=1 AND ((@@OPTIONS & 2)<>0 OR '
+                                               "(@CollectorCode IN('WAIT_STATS','FILE_IO') AND "
+                                               '@@TRANCOUNT<>0 AND @JoinFrameworkTransaction=0))\n'
+                                               '    BEGIN\n'
+                                               '        SELECT '
+                                               "@StatusCodeOut='INVALID_PARAMETER',@ErrorNumberOut=51011,\n"
+                                               "               @ErrorMessageOut=N'Der Collectorvertrag "
+                                               'benötigt IMPLICIT_TRANSACTIONS OFF und außerhalb der '
+                                               "Besitzerbeteiligung keine Callertransaktion.';\n"
+                                               '        RETURN 51011;\n'
+                                               '    END;\n'
+                                               '\n'
+                                               '    IF @CollectorCode NOT IN '
+                                               "('PERFORMANCE_COUNTERS','WAIT_STATS','FILE_IO') OR "
+                                               '@CollectorEnabled IS NULL\n'
+                                               '    BEGIN\n'
+                                               '        SELECT '
+                                               "@StatusCodeOut='INVALID_PARAMETER',@ErrorNumberOut=51011,\n"
+                                               "               @ErrorMessageOut=N'Ungültiger Collector oder "
+                                               "Aktivierungswert.';\n"
+                                               '        RETURN 51011;\n'
+                                               '    END;\n'
+                                               '\n'
+                                               "    IF @CollectorCode IN('WAIT_STATS','FILE_IO') OR "
+                                               '@ExpectedTargetDatabaseId IS NOT NULL\n'
+                                               '       OR @ExpectedTargetDatabaseName IS NOT NULL OR '
+                                               '@ExpectedTargetCreateDate IS NOT NULL\n'
+                                               '    BEGIN\n'
+                                               '        IF @ExpectedTargetDatabaseId IS NULL OR '
+                                               '@ExpectedTargetDatabaseName IS NULL\n',
+                                               '\n'
+                                               '    IF @JoinFrameworkTransaction IS NULL OR\n'
+                                               '       (@JoinFrameworkTransaction=1 AND\n'
+                                               "         (@CollectorCode<>'WAIT_STATS' OR "
+                                               '@UpdateSharedPolicy<>1 OR @@TRANCOUNT<>1 OR XACT_STATE()<>1 '
+                                               'OR (@@OPTIONS & 2)<>0))\n'
+                                               '    BEGIN\n'
+                                               '        SELECT '
+                                               "@StatusCodeOut='INVALID_PARAMETER',@ErrorNumberOut=51011,\n"
+                                               "               @ErrorMessageOut=N'Die ausdrückliche "
+                                               'Transaktionsbeteiligung benötigt WAIT_STATS/Shared1 und eine '
+                                               "committable Besitzertransaktion.';\n"
+                                               '        RETURN 51011;\n'
+                                               '    END;\n'
+                                               '\n'
+                                               '    IF @UseV2Contract=1 AND ((@@OPTIONS & 2)<>0 OR '
+                                               "(@CollectorCode='WAIT_STATS' AND @@TRANCOUNT<>0 AND "
+                                               '@JoinFrameworkTransaction=0))\n'
+                                               '    BEGIN\n'
+                                               '        SELECT '
+                                               "@StatusCodeOut='INVALID_PARAMETER',@ErrorNumberOut=51011,\n"
+                                               "               @ErrorMessageOut=N'Der neue Wait-Vertrag "
+                                               'benötigt IMPLICIT_TRANSACTIONS OFF und für WAIT_STATS keine '
+                                               "Callertransaktion.';\n"
+                                               '        RETURN 51011;\n'
+                                               '    END;\n'
+                                               '\n'
+                                               '    IF @CollectorCode NOT IN '
+                                               "('PERFORMANCE_COUNTERS','WAIT_STATS') OR @CollectorEnabled "
+                                               'IS NULL\n'
+                                               '    BEGIN\n'
+                                               '        SELECT '
+                                               "@StatusCodeOut='INVALID_PARAMETER',@ErrorNumberOut=51011,\n"
+                                               "               @ErrorMessageOut=N'Ungültiger Collector oder "
+                                               "Aktivierungswert.';\n"
+                                               '        RETURN 51011;\n'
+                                               '    END;\n'
+                                               '\n'
+                                               "    IF @CollectorCode='WAIT_STATS' OR "
+                                               '@ExpectedTargetDatabaseId IS NOT NULL\n'
+                                               '       OR @ExpectedTargetDatabaseName IS NOT NULL OR '
+                                               '@ExpectedTargetCreateDate IS NOT NULL\n'
+                                               '    BEGIN\n'
+                                               '        IF @ExpectedTargetDatabaseId IS NULL OR '
+                                               '@ExpectedTargetDatabaseName IS NULL\n'),
+                                              ('        END;\n'
+                                               '        IF (SELECT COUNT_BIG(*) FROM '
+                                               '[snapshot].[PackageVersion])<>1 OR NOT EXISTS\n'
+                                               '           (SELECT 1 FROM [snapshot].[PackageVersion] WHERE '
+                                               "CONVERT(varbinary(max),[PackageCode])=CONVERT(varbinary(max),'SC-023')\n"
+                                               '            AND '
+                                               "((CONVERT(varbinary(max),[PackageVersion])=CONVERT(varbinary(max),'1.2.1') "
+                                               'AND [SchemaVersion]=2) OR '
+                                               "(CONVERT(varbinary(max),[PackageVersion])=CONVERT(varbinary(max),'1.3.0') "
+                                               'AND [SchemaVersion]=3)))\n'
+                                               '           OR NOT EXISTS(SELECT 1 FROM [sys].[procedures] AS '
+                                               '[wp] WITH (NOLOCK) JOIN [sys].[schemas] AS [ws] WITH '
+                                               '(NOLOCK) ON [ws].[schema_id]=[wp].[schema_id] WHERE '
+                                               "CONVERT(varbinary(max),[ws].[name])=CONVERT(varbinary(max),N'snapshot') "
+                                               'AND '
+                                               "CONVERT(varbinary(max),[wp].[name])=CONVERT(varbinary(max),N'InternalCompleteWaitStatsCycle'))\n"
+                                               '           OR NOT EXISTS(SELECT 1 FROM [sys].[parameters] AS '
+                                               '[p] WITH (NOLOCK)\n'
+                                               '                         WHERE [p].[object_id] IN(SELECT '
+                                               '[hp].[object_id] FROM [sys].[procedures] AS [hp] WITH '
+                                               '(NOLOCK) JOIN [sys].[schemas] AS [hs] WITH (NOLOCK) ON '
+                                               '[hs].[schema_id]=[hp].[schema_id] WHERE '
+                                               "CONVERT(varbinary(max),[hs].[name])=CONVERT(varbinary(max),N'snapshot') "
+                                               'AND '
+                                               "CONVERT(varbinary(max),[hp].[name])=CONVERT(varbinary(max),N'InternalPurgeExpiredData'))\n"
+                                               '                           AND '
+                                               "CONVERT(varbinary(max),[p].[name])=CONVERT(varbinary(max),N'@ContractOnly'))\n"
+                                               '        BEGIN\n'
+                                               '            SELECT '
+                                               "@StatusCodeOut='TARGET_UNAVAILABLE',@ErrorNumberOut=53761,\n"
+                                               "                   @ErrorMessageOut=N'Das vollständig "
+                                               "installierte kompatible Collector-Target fehlt.';\n"
+                                               '            RETURN;\n'
+                                               '        END;\n'
+                                               '    END;\n'
+                                               '\n'
+                                               "    IF @CollectorCode='FILE_IO' AND NOT EXISTS(SELECT 1 FROM "
+                                               "[snapshot].[PackageVersion] WHERE [PackageVersion]='1.3.0' "
+                                               'AND [SchemaVersion]=3)\n'
+                                               '    BEGIN\n'
+                                               '        SELECT '
+                                               "@StatusCodeOut='TARGET_UNAVAILABLE',@ErrorNumberOut=53781,@ErrorMessageOut=N'Das "
+                                               "vollständige Datei-I/O-Target 1.3.0 fehlt.';\n"
+                                               '        RETURN;\n'
+                                               '    END;\n'
+                                               '\n'
+                                               '    IF @CollectionIntervalSeconds NOT BETWEEN 1 AND 3600\n',
+                                               '        END;\n'
+                                               '        IF (SELECT COUNT_BIG(*) FROM '
+                                               '[snapshot].[PackageVersion])<>1 OR NOT EXISTS\n'
+                                               '           (SELECT 1 FROM [snapshot].[PackageVersion] WHERE '
+                                               "CONVERT(varbinary(max),[PackageCode])=CONVERT(varbinary(max),'SC-023')\n"
+                                               '            AND '
+                                               "CONVERT(varbinary(max),[PackageVersion])=CONVERT(varbinary(max),'1.2.1') "
+                                               'AND [SchemaVersion]=2)\n'
+                                               '           OR NOT EXISTS(SELECT 1 FROM [sys].[procedures] AS '
+                                               '[wp] WITH (NOLOCK) JOIN [sys].[schemas] AS [ws] WITH '
+                                               '(NOLOCK) ON [ws].[schema_id]=[wp].[schema_id] WHERE '
+                                               "CONVERT(varbinary(max),[ws].[name])=CONVERT(varbinary(max),N'snapshot') "
+                                               'AND '
+                                               "CONVERT(varbinary(max),[wp].[name])=CONVERT(varbinary(max),N'InternalCompleteWaitStatsCycle'))\n"
+                                               '           OR NOT EXISTS(SELECT 1 FROM [sys].[parameters] AS '
+                                               '[p] WITH (NOLOCK)\n'
+                                               '                         WHERE [p].[object_id] IN(SELECT '
+                                               '[hp].[object_id] FROM [sys].[procedures] AS [hp] WITH '
+                                               '(NOLOCK) JOIN [sys].[schemas] AS [hs] WITH (NOLOCK) ON '
+                                               '[hs].[schema_id]=[hp].[schema_id] WHERE '
+                                               "CONVERT(varbinary(max),[hs].[name])=CONVERT(varbinary(max),N'snapshot') "
+                                               'AND '
+                                               "CONVERT(varbinary(max),[hp].[name])=CONVERT(varbinary(max),N'InternalPurgeExpiredData'))\n"
+                                               '                           AND '
+                                               "CONVERT(varbinary(max),[p].[name])=CONVERT(varbinary(max),N'@ContractOnly'))\n"
+                                               '        BEGIN\n'
+                                               '            SELECT '
+                                               "@StatusCodeOut='TARGET_UNAVAILABLE',@ErrorNumberOut=53761,\n"
+                                               "                   @ErrorMessageOut=N'Das vollständig "
+                                               "installierte Wait-Target 1.2.1 fehlt.';\n"
+                                               '            RETURN;\n'
+                                               '        END;\n'
+                                               '    END;\n'
+                                               '\n'
+                                               '    IF @CollectionIntervalSeconds NOT BETWEEN 1 AND '
+                                               '3600\n')]),
+ '040_InternalPrepareCollectionCycle.sql': ('de3379b41e0e9ece57cc82001d99fd8140429a9e673595fb65492b88b6a07128',
+                                            [("           @StatusCodeOut='AVAILABLE',@ErrorMessageOut=NULL;\n"
+                                              '\n'
+                                              '    SET '
+                                              "@CollectorCode=UPPER(LTRIM(RTRIM(COALESCE(@CollectorCode,''))));\n"
+                                              '    IF @CollectorCode NOT IN '
+                                              "('PERFORMANCE_COUNTERS','WAIT_STATS','FILE_IO')\n"
+                                              '       OR @PolicyOnly IS NULL OR (@PolicyOnly=1 AND '
+                                              "@CollectorCode NOT IN('WAIT_STATS','FILE_IO'))\n"
+                                              "       OR (@CollectorCode IN('WAIT_STATS','FILE_IO') AND "
+                                              '(@@TRANCOUNT<>0 OR (@@OPTIONS & 2)<>0))\n'
+                                              '    BEGIN\n'
+                                              "        SELECT @StatusCodeOut='INVALID_PARAMETER',\n"
+                                              "               @ErrorMessageOut=N'Ungültiger Collector oder "
+                                              "unzulässiger Wait-Callertransaktionszustand.';\n"
+                                              '        RETURN 51011;\n'
+                                              '    END;\n'
+                                              "    IF @CollectorCode IN('WAIT_STATS','FILE_IO') OR "
+                                              '@ExpectedTargetDatabaseId IS NOT NULL\n'
+                                              '       OR @ExpectedTargetDatabaseName IS NOT NULL OR '
+                                              '@ExpectedTargetCreateDate IS NOT NULL\n'
+                                              '    BEGIN\n'
+                                              '        IF @ExpectedTargetDatabaseId IS NULL OR '
+                                              '@ExpectedTargetDatabaseName IS NULL\n',
+                                              "           @StatusCodeOut='AVAILABLE',@ErrorMessageOut=NULL;\n"
+                                              '\n'
+                                              '    SET '
+                                              "@CollectorCode=UPPER(LTRIM(RTRIM(COALESCE(@CollectorCode,''))));\n"
+                                              '    IF @CollectorCode NOT IN '
+                                              "('PERFORMANCE_COUNTERS','WAIT_STATS')\n"
+                                              '       OR @PolicyOnly IS NULL OR (@PolicyOnly=1 AND '
+                                              "@CollectorCode<>'WAIT_STATS')\n"
+                                              "       OR (@CollectorCode='WAIT_STATS' AND (@@TRANCOUNT<>0 OR "
+                                              '(@@OPTIONS & 2)<>0))\n'
+                                              '    BEGIN\n'
+                                              "        SELECT @StatusCodeOut='INVALID_PARAMETER',\n"
+                                              "               @ErrorMessageOut=N'Ungültiger Collector oder "
+                                              "unzulässiger Wait-Callertransaktionszustand.';\n"
+                                              '        RETURN 51011;\n'
+                                              '    END;\n'
+                                              "    IF @CollectorCode='WAIT_STATS' OR "
+                                              '@ExpectedTargetDatabaseId IS NOT NULL\n'
+                                              '       OR @ExpectedTargetDatabaseName IS NOT NULL OR '
+                                              '@ExpectedTargetCreateDate IS NOT NULL\n'
+                                              '    BEGIN\n'
+                                              '        IF @ExpectedTargetDatabaseId IS NULL OR '
+                                              '@ExpectedTargetDatabaseName IS NULL\n'),
+                                             ('            RETURN;\n'
+                                              '        END;\n'
+                                              '    END;\n'
+                                              "    IF @CollectorCode IN('WAIT_STATS','FILE_IO') AND\n"
+                                              '       ((SELECT COUNT_BIG(*) FROM '
+                                              '[snapshot].[PackageVersion])<>1 OR NOT EXISTS\n'
+                                              '          (SELECT 1 FROM [snapshot].[PackageVersion] WHERE '
+                                              "CONVERT(varbinary(max),[PackageCode])=CONVERT(varbinary(max),'SC-023')\n"
+                                              '           AND '
+                                              "((CONVERT(varbinary(max),[PackageVersion])=CONVERT(varbinary(max),'1.2.1') "
+                                              'AND [SchemaVersion]=2) OR '
+                                              "(CONVERT(varbinary(max),[PackageVersion])=CONVERT(varbinary(max),'1.3.0') "
+                                              'AND [SchemaVersion]=3)))\n'
+                                              '        OR NOT EXISTS(SELECT 1 FROM [sys].[procedures] AS '
+                                              '[wp] WITH (NOLOCK) JOIN [sys].[schemas] AS [ws] WITH (NOLOCK) '
+                                              'ON [ws].[schema_id]=[wp].[schema_id] WHERE '
+                                              "CONVERT(varbinary(max),[ws].[name])=CONVERT(varbinary(max),N'snapshot') "
+                                              'AND '
+                                              "CONVERT(varbinary(max),[wp].[name])=CONVERT(varbinary(max),N'InternalCompleteWaitStatsCycle'))\n"
+                                              '        OR NOT EXISTS(SELECT 1 FROM [sys].[parameters] AS [p] '
+                                              'WITH (NOLOCK)\n'
+                                              '                      WHERE [p].[object_id] IN(SELECT '
+                                              '[hp].[object_id] FROM [sys].[procedures] AS [hp] WITH '
+                                              '(NOLOCK) JOIN [sys].[schemas] AS [hs] WITH (NOLOCK) ON '
+                                              '[hs].[schema_id]=[hp].[schema_id] WHERE '
+                                              "CONVERT(varbinary(max),[hs].[name])=CONVERT(varbinary(max),N'snapshot') "
+                                              'AND '
+                                              "CONVERT(varbinary(max),[hp].[name])=CONVERT(varbinary(max),N'InternalPurgeExpiredData'))\n",
+                                              '            RETURN;\n'
+                                              '        END;\n'
+                                              '    END;\n'
+                                              "    IF @CollectorCode='WAIT_STATS' AND\n"
+                                              '       ((SELECT COUNT_BIG(*) FROM '
+                                              '[snapshot].[PackageVersion])<>1 OR NOT EXISTS\n'
+                                              '          (SELECT 1 FROM [snapshot].[PackageVersion] WHERE '
+                                              "CONVERT(varbinary(max),[PackageCode])=CONVERT(varbinary(max),'SC-023')\n"
+                                              '           AND '
+                                              "CONVERT(varbinary(max),[PackageVersion])=CONVERT(varbinary(max),'1.2.1') "
+                                              'AND [SchemaVersion]=2)\n'
+                                              '        OR NOT EXISTS(SELECT 1 FROM [sys].[procedures] AS '
+                                              '[wp] WITH (NOLOCK) JOIN [sys].[schemas] AS [ws] WITH (NOLOCK) '
+                                              'ON [ws].[schema_id]=[wp].[schema_id] WHERE '
+                                              "CONVERT(varbinary(max),[ws].[name])=CONVERT(varbinary(max),N'snapshot') "
+                                              'AND '
+                                              "CONVERT(varbinary(max),[wp].[name])=CONVERT(varbinary(max),N'InternalCompleteWaitStatsCycle'))\n"
+                                              '        OR NOT EXISTS(SELECT 1 FROM [sys].[parameters] AS [p] '
+                                              'WITH (NOLOCK)\n'
+                                              '                      WHERE [p].[object_id] IN(SELECT '
+                                              '[hp].[object_id] FROM [sys].[procedures] AS [hp] WITH '
+                                              '(NOLOCK) JOIN [sys].[schemas] AS [hs] WITH (NOLOCK) ON '
+                                              '[hs].[schema_id]=[hp].[schema_id] WHERE '
+                                              "CONVERT(varbinary(max),[hs].[name])=CONVERT(varbinary(max),N'snapshot') "
+                                              'AND '
+                                              "CONVERT(varbinary(max),[hp].[name])=CONVERT(varbinary(max),N'InternalPurgeExpiredData'))\n"),
+                                             ('    BEGIN\n'
+                                              "        SELECT @StatusCodeOut='TARGET_UNAVAILABLE',\n"
+                                              "               @ErrorMessageOut=N'Das vollständig "
+                                              "installierte Wait-Target 1.2.1 fehlt.';\n"
+                                              '        RETURN;\n'
+                                              '    END;\n'
+                                              '\n'
+                                              "    IF @CollectorCode='FILE_IO' AND NOT EXISTS(SELECT 1 FROM "
+                                              '[snapshot].[PackageVersion] WHERE '
+                                              "CONVERT(varbinary(max),[PackageVersion])=CONVERT(varbinary(max),'1.3.0') "
+                                              'AND [SchemaVersion]=3)\n'
+                                              '    BEGIN\n'
+                                              '        SELECT '
+                                              "@StatusCodeOut='TARGET_UNAVAILABLE',@ErrorMessageOut=N'Datei-I/O "
+                                              "benötigt das vollständige Schema-3-Target.';\n"
+                                              '        RETURN;\n'
+                                              '    END;\n'
+                                              '\n',
+                                              '    BEGIN\n'
+                                              "        SELECT @StatusCodeOut='TARGET_UNAVAILABLE',\n"
+                                              "               @ErrorMessageOut=N'Das vollständig "
+                                              "installierte Wait-Target 1.2.1 fehlt.';\n"
+                                              '        RETURN;\n'
+                                              '    END;\n'
+                                              '\n'),
+                                             ('    BEGIN\n'
+                                              '        SELECT TOP(1) @LastCompletedUtc=[EndedAtUtc]\n'
+                                              '        FROM [snapshot].[CaptureRun]\n'
+                                              '        WHERE [CollectorCode]=@CollectorCode AND [EndedAtUtc] '
+                                              'IS NOT NULL\n'
+                                              '        ORDER BY [CaptureRunId] DESC;\n'
+                                              "        IF @StatusCodeOut='AVAILABLE' AND @RunEvenIfNotDue=0 "
+                                              'AND @LastCompletedUtc IS NOT NULL\n'
+                                              '           AND '
+                                              'DATEADD(SECOND,@IntervalSeconds,@LastCompletedUtc)>@Now\n',
+                                              '    BEGIN\n'
+                                              '        SELECT TOP(1) @LastCompletedUtc=[EndedAtUtc]\n'
+                                              '        FROM [snapshot].[CaptureRun]\n'
+                                              "        WHERE [CollectorCode]='WAIT_STATS' AND [EndedAtUtc] "
+                                              'IS NOT NULL\n'
+                                              '        ORDER BY [CaptureRunId] DESC;\n'
+                                              "        IF @StatusCodeOut='AVAILABLE' AND @RunEvenIfNotDue=0 "
+                                              'AND @LastCompletedUtc IS NOT NULL\n'
+                                              '           AND '
+                                              'DATEADD(SECOND,@IntervalSeconds,@LastCompletedUtc)>@Now\n'),
+                                             ('    SELECT TOP (1) @LastCompletedUtc=[EndedAtUtc]\n'
+                                              '    FROM [snapshot].[CaptureRun]\n'
+                                              '    WHERE [CollectorCode]=@CollectorCode\n'
+                                              "      AND (@CollectorCode IN('WAIT_STATS','FILE_IO') OR "
+                                              "[StatusCode] IN ('AVAILABLE','PARTIAL'))\n"
+                                              '      AND [EndedAtUtc] IS NOT NULL\n'
+                                              '    ORDER BY [CaptureRunId] DESC;\n'
+                                              '\n',
+                                              '    SELECT TOP (1) @LastCompletedUtc=[EndedAtUtc]\n'
+                                              '    FROM [snapshot].[CaptureRun]\n'
+                                              '    WHERE [CollectorCode]=@CollectorCode\n'
+                                              "      AND (@CollectorCode='WAIT_STATS' OR [StatusCode] IN "
+                                              "('AVAILABLE','PARTIAL'))\n"
+                                              '      AND [EndedAtUtc] IS NOT NULL\n'
+                                              '    ORDER BY [CaptureRunId] DESC;\n'
+                                              '\n'),
+                                             ("        SELECT @StatusCodeOut='SKIPPED_NOT_DUE',\n"
+                                              "               @ErrorMessageOut=N'Das konfigurierte "
+                                              "Sammlerintervall ist noch nicht abgelaufen.';\n"
+                                              '\n'
+                                              "    IF @CollectorCode IN('WAIT_STATS','FILE_IO') AND "
+                                              "@StatusCodeOut<>'AVAILABLE' RETURN;\n"
+                                              '\n'
+                                              '    INSERT [snapshot].[CaptureRun]\n'
+                                              '    (\n',
+                                              "        SELECT @StatusCodeOut='SKIPPED_NOT_DUE',\n"
+                                              "               @ErrorMessageOut=N'Das konfigurierte "
+                                              "Sammlerintervall ist noch nicht abgelaufen.';\n"
+                                              '\n'
+                                              "    IF @CollectorCode='WAIT_STATS' AND "
+                                              "@StatusCodeOut<>'AVAILABLE' RETURN;\n"
+                                              '\n'
+                                              '    INSERT [snapshot].[CaptureRun]\n'
+                                              '    (\n')]),
+ '055_InternalCompleteWaitStatsCycle.sql': ('0010c55376a06586134c801c743e1cd1a49aefac40b095d112d2ddab53067d41',
+                                            [('        IF (SELECT COUNT_BIG(*) FROM '
+                                              '[snapshot].[PackageVersion])<>1 OR NOT EXISTS\n'
+                                              '           (SELECT 1 FROM [snapshot].[PackageVersion]\n'
+                                              '            WHERE '
+                                              "CONVERT(varbinary(max),[PackageCode])=CONVERT(varbinary(max),'SC-023')\n"
+                                              '              AND '
+                                              "((CONVERT(varbinary(max),[PackageVersion])=CONVERT(varbinary(max),'1.2.1') "
+                                              'AND [SchemaVersion]=2) OR '
+                                              "(CONVERT(varbinary(max),[PackageVersion])=CONVERT(varbinary(max),'1.3.0') "
+                                              'AND [SchemaVersion]=3)))\n'
+                                              '        BEGIN\n'
+                                              '            SELECT '
+                                              "@StatusCodeOut='TARGET_UNAVAILABLE',@IsPartialOut=1,@ErrorNumberOut=53761,\n"
+                                              "                   @ErrorMessageOut=N'Das vollständig "
+                                              "installierte Wait-Target 1.2.1 fehlt.';\n",
+                                              '        IF (SELECT COUNT_BIG(*) FROM '
+                                              '[snapshot].[PackageVersion])<>1 OR NOT EXISTS\n'
+                                              '           (SELECT 1 FROM [snapshot].[PackageVersion]\n'
+                                              '            WHERE '
+                                              "CONVERT(varbinary(max),[PackageCode])=CONVERT(varbinary(max),'SC-023')\n"
+                                              '              AND '
+                                              "CONVERT(varbinary(max),[PackageVersion])=CONVERT(varbinary(max),'1.2.1')\n"
+                                              '              AND [SchemaVersion]=2)\n'
+                                              '        BEGIN\n'
+                                              '            SELECT '
+                                              "@StatusCodeOut='TARGET_UNAVAILABLE',@IsPartialOut=1,@ErrorNumberOut=53761,\n"
+                                              "                   @ErrorMessageOut=N'Das vollständig "
+                                              "installierte Wait-Target 1.2.1 fehlt.';\n"),
+                                             ('             '
+                                              '@ExpectedTargetDatabaseId=@ExpectedTargetDatabaseId,\n'
+                                              '             '
+                                              '@ExpectedTargetDatabaseName=@ExpectedTargetDatabaseName,\n'
+                                              '             '
+                                              '@ExpectedTargetCreateDate=@ExpectedTargetCreateDate;\n'
+                                              "        IF COALESCE(@ProbeStatus,'')<>'AVAILABLE' OR "
+                                              'COALESCE(@RetentionContract,0)<>CASE WHEN EXISTS(SELECT 1 '
+                                              'FROM [snapshot].[PackageVersion] WHERE [SchemaVersion]=3) '
+                                              'THEN 2 ELSE 1 END\n'
+                                              '           OR @ProbeRun IS NOT NULL OR @ProbeError IS NOT '
+                                              'NULL OR COALESCE(@ProbeBudget,1)<>0\n'
+                                              "            THROW 53762,N'Der benötigte read-only "
+                                              "Retentionsvertrag fehlt.',1;\n"
+                                              '\n'
+                                              '        BEGIN TRANSACTION;\n',
+                                              '             '
+                                              '@ExpectedTargetDatabaseId=@ExpectedTargetDatabaseId,\n'
+                                              '             '
+                                              '@ExpectedTargetDatabaseName=@ExpectedTargetDatabaseName,\n'
+                                              '             '
+                                              '@ExpectedTargetCreateDate=@ExpectedTargetCreateDate;\n'
+                                              "        IF COALESCE(@ProbeStatus,'')<>'AVAILABLE' OR "
+                                              'COALESCE(@RetentionContract,0)<>1\n'
+                                              '           OR @ProbeRun IS NOT NULL OR @ProbeError IS NOT '
+                                              'NULL\n'
+                                              "            THROW 53762,N'Der benötigte read-only "
+                                              "Retentionsvertrag fehlt.',1;\n"
+                                              '\n'
+                                              '        BEGIN TRANSACTION;\n')]),
+ '070_InternalPurgeExpiredData.sql': ('d2603c04e4885a6ec84888c2abc7811bb4d42f048e9eea23dab6cfb65171f396',
+                                      [('        END;\n'
+                                        '    END;\n'
+                                        '\n'
+                                        '    SET NOCOUNT ON;\n'
+                                        '    SET LOCK_TIMEOUT 0;\n'
+                                        '    SET @RetentionContractVersionOut=CASE WHEN EXISTS(SELECT 1 FROM '
+                                        '[snapshot].[PackageVersion] WITH (NOLOCK)\n'
+                                        '      WHERE [SchemaVersion]=3 AND [PackageVersion] '
+                                        "IN('1.2.2','1.3.0')) THEN 2 ELSE 1 END;\n"
+                                        '    -- The handshake reads only the admitted version and creates no '
+                                        'purge receipt.\n'
+                                        '    IF @ContractOnly=1 RETURN;\n'
+                                        '\n'
+                                        '    SET NOCOUNT ON;\n',
+                                        '        END;\n'
+                                        '    END;\n'
+                                        '\n'
+                                        '    -- The installation/runtime handshake does not read or change '
+                                        'package data.\n'
+                                        '    IF @ContractOnly=1 RETURN;\n'
+                                        '\n'
+                                        '    SET NOCOUNT ON;\n'),
+                                       ('              -- including a failed run whose children have expired '
+                                        'or never existed.\n'
+                                        '              AND\n'
+                                        '              (\n'
+                                        '                  [r].[CollectorCode] NOT '
+                                        "IN('WAIT_STATS','FILE_IO')\n"
+                                        '                  OR [r].[EndedAtUtc] IS NULL\n'
+                                        '                  OR EXISTS\n'
+                                        '                  (\n'
+                                        '                      SELECT 1 FROM [snapshot].[CaptureRun] AS '
+                                        '[later]\n'
+                                        '                      WHERE '
+                                        '[later].[CollectorCode]=[r].[CollectorCode]\n'
+                                        '                        AND [later].[EndedAtUtc] IS NOT NULL\n'
+                                        '                        AND '
+                                        '[later].[CaptureRunId]>[r].[CaptureRunId]\n'
+                                        '                  )\n',
+                                        '              -- including a failed run whose children have expired '
+                                        'or never existed.\n'
+                                        '              AND\n'
+                                        '              (\n'
+                                        "                  [r].[CollectorCode]<>'WAIT_STATS'\n"
+                                        '                  OR [r].[EndedAtUtc] IS NULL\n'
+                                        '                  OR EXISTS\n'
+                                        '                  (\n'
+                                        '                      SELECT 1 FROM [snapshot].[CaptureRun] AS '
+                                        '[later]\n'
+                                        "                      WHERE [later].[CollectorCode]='WAIT_STATS'\n"
+                                        '                        AND [later].[EndedAtUtc] IS NOT NULL\n'
+                                        '                        AND '
+                                        '[later].[CaptureRunId]>[r].[CaptureRunId]\n'
+                                        '                  )\n')])}
+
+FILE_IO_METRIC_CODES = ('IO_READ_COUNT', 'IO_READ_BYTES', 'IO_READ_STALL_MS', 'IO_WRITE_COUNT', 'IO_WRITE_BYTES', 'IO_WRITE_STALL_MS', 'IO_SIZE_ON_DISK_BYTES', 'IO_READ_COUNT_DELTA_CANDIDATE', 'IO_READ_BYTES_DELTA_CANDIDATE', 'IO_READ_STALL_MS_DELTA_CANDIDATE', 'IO_WRITE_COUNT_DELTA_CANDIDATE', 'IO_WRITE_BYTES_DELTA_CANDIDATE', 'IO_WRITE_STALL_MS_DELTA_CANDIDATE', 'IO_DELTA_STATUS', 'IO_FILE_CONTEXT', 'IO_CAPTURE_CONTEXT')
+
 def snapshot_schema_cases(deployed, tables):
     """Preserve actual old module/data contracts across all canonical routes."""
     target_tables=[t for t in tables if t.role=='SNAPSHOT']
@@ -2005,6 +2478,17 @@ def snapshot_schema_cases(deployed, tables):
     old_wait=g.stored_module_definition(g.split_batches(historical_new['055_InternalCompleteWaitStatsCycle.sql'])[0])
     if hashlib.sha256(old_wait.encode('utf-16le')).hexdigest()!='e392b9581c55955b81674e468aa88eac444339585dfd787a682abf66b3a48c49':
         raise RuntimeError('Released Wait recovery hash does not bind the actual 1.2.0 fixture')
+    historical_ready={}
+    for name,(digest,patches) in LEGACY_TARGET_V1_2_1_PATCHES.items():
+        text=current[name]
+        for fragment,released in patches:
+            if text.count(fragment)!=1: raise RuntimeError('Released1.2.1 fixture fragment changed: '+name)
+            text=text.replace(fragment,released,1)
+        if hashlib.sha256(text.encode()).hexdigest()!=digest: raise RuntimeError('Released1.2.1 byte binding changed: '+name)
+        historical_ready[name]=text
+    ready_wait=g.stored_module_definition(g.split_batches(historical_ready['055_InternalCompleteWaitStatsCycle.sql'])[0])
+    if hashlib.sha256(ready_wait.encode('utf-16le')).hexdigest()!='aeb295d67a15ce0fcf452404dde233729012e42340c138c8924f27447e1b8762':
+        raise RuntimeError('Released1.2.1 stored helper binding changed')
     legacy=LEGACY_PURGE_V1_1_0.replace('\r\n','\n')
     if hashlib.sha256(legacy.encode()).hexdigest()!=LEGACY_PURGE_V1_1_0_SHA256:
         raise RuntimeError('Historical Snapshot 1.1.0 Purge fixture binding changed')
@@ -2021,28 +2505,32 @@ def snapshot_schema_cases(deployed, tables):
             cname=next(n for n,k in table.constraints if k=='CHECK' and n in
                        ('CK_snapshot_CollectorPolicy_CollectorCode','CK_snapshot_Scope_ScopeType'))
             out.append(f'ALTER TABLE {table.object_name} DROP CONSTRAINT {g.q(cname)};\n'
-                       f'ALTER TABLE {table.object_name} WITH CHECK ADD CONSTRAINT {g.q(cname)} {old if version==1 else new};\n')
+                       f'ALTER TABLE {table.object_name} WITH CHECK ADD CONSTRAINT {g.q(cname)} {old if version==1 else g.SNAPSHOT_SCHEMA2_CHECKS[table.name]};\n')
         out.append("UPDATE snapshot.PackageVersion SET PackageVersion="+g.lit('1.0.0' if version==1 else '1.1.1')+
                    f",SchemaVersion={version} WHERE PackageCode='SC-023';\n")
         return ''.join(out)
 
     def arrange_old(version):
-        if version=='1.2.0':
+        if version in ('1.2.0','1.2.1'):
             # Preserve installed Wait definitions, identities and custom values.
             out=["UPDATE snapshot.CollectorPolicy SET IsEnabled=1,PayloadEnabled=1,MaxRows=123,RetentionPolicyCode=COALESCE((SELECT TOP(1) RetentionPolicyCode FROM snapshot.RetentionPolicy WHERE IsFrameworkDefault=0 ORDER BY RetentionPolicyCode),'DEFAULT') WHERE CollectorCode='WAIT_STATS';\n",
                  "UPDATE snapshot.MetricDefinition SET Description=N'Example existing Wait definition',IsFrameworkDefault=0,SeedVersion=2 WHERE MetricCode='WAIT_TIME_MS';\n"]
-            selected=historical_new
+            selected=historical_new if version=='1.2.0' else historical_ready
         else:
             out=[f"IF EXISTS(SELECT 1 FROM snapshot.MetricSample s JOIN snapshot.MetricDefinition d ON d.MetricDefinitionId=s.MetricDefinitionId WHERE d.MetricCode IN({metric_list})) THROW 53826,N'Historical fixture owns no Wait samples.',1;\n",
                  f'DELETE snapshot.MetricDefinition WHERE MetricCode IN({metric_list});\n',
                  "DELETE snapshot.CollectorPolicy WHERE CollectorCode='WAIT_STATS';\n",
                  'DROP PROCEDURE IF EXISTS snapshot.InternalCompleteWaitStatsCycle;\n']
             selected=historical
+        out.insert(0,"IF EXISTS(SELECT 1 FROM snapshot.MetricSample s JOIN snapshot.MetricDefinition d ON d.MetricDefinitionId=s.MetricDefinitionId WHERE d.MetricCode LIKE 'IO[_]%') THROW 53826,N'Historical fixture owns no file-I/O samples.',1;\nDELETE snapshot.MetricDefinition WHERE MetricCode LIKE 'IO[_]%'; DELETE snapshot.CollectorPolicy WHERE CollectorCode='FILE_IO'; DROP PROCEDURE IF EXISTS snapshot.InternalCompleteFileIOCycle;\n")
         for name,text in selected.items():
             if version in ('1.0.0','1.1.0') and name.startswith('070_'): text=legacy
             out += ['EXEC sys.sp_executesql '+g.lit(batch)+';\n' for batch in g.split_batches(text)]
         out.append(shape(1 if version=='1.0.0' else 2))
         out.append('UPDATE snapshot.PackageVersion SET PackageVersion='+g.lit(version)+';\nGO\n')
+        if version=='1.2.1':
+            out.append("IF HASHBYTES('SHA2_256',CONVERT(varbinary(max),TRIM(NCHAR(9)+NCHAR(10)+NCHAR(13)+N' ' FROM REPLACE(OBJECT_DEFINITION(OBJECT_ID(N'snapshot.InternalCompleteWaitStatsCycle')),NCHAR(13)+NCHAR(10),NCHAR(10)))))<>0xaeb295d67a15ce0fcf452404dde233729012e42340c138c8924f27447e1b8762 THROW 53826,N'Released1.2.1 native stored binding differs.',1;\n")
+            out.append("DECLARE @OldId int,@OldCreated datetime,@OldStatus varchar(40),@OldError int,@OldMessage nvarchar(2048); EXEC "+g.q(FRAMEWORK)+".monitor.InternalValidateSnapshotWaitTarget @TargetDatabaseName="+g.lit(TARGET)+",@TargetDatabaseIdOut=@OldId OUTPUT,@TargetCreateDateOut=@OldCreated OUTPUT,@StatusCodeOut=@OldStatus OUTPUT,@ErrorNumberOut=@OldError OUTPUT,@ErrorMessageOut=@OldMessage OUTPUT; IF COALESCE(@OldStatus,'')<>'AVAILABLE' OR @OldError IS NOT NULL OR @OldId<>DB_ID() THROW 53826,N'New framework rejected actual complete old1.2.1 Wait target.',1;\nGO\n")
         for i,t in enumerate(tables,1):
             if t.role!='SNAPSHOT': continue
             out.append(f'DROP TABLE IF EXISTS qa.LegacyBefore_{i}; SELECT * INTO qa.LegacyBefore_{i} FROM {t.object_name};\n')
@@ -2055,19 +2543,22 @@ def snapshot_schema_cases(deployed, tables):
             cols=binary_columns(t); before=f'qa.LegacyBefore_{i}'
             if t.name=='PackageVersion':
                 cols='CONVERT(varbinary(max),PackageCode) AS PackageCode,CONVERT(varbinary(max),InstalledAtUtc) AS InstalledAtUtc'
-            if ready and not had_wait and t.name in ('MetricDefinition','CollectorPolicy'):
-                pred=f'MetricCode NOT IN({metric_list})' if t.name=='MetricDefinition' else "CollectorCode<>'WAIT_STATS'"
+            if ready and t.name in ('MetricDefinition','CollectorPolicy'):
+                io_codes=','.join(g.lit(c) for c in FILE_IO_METRIC_CODES)
+                added=io_codes+(','+metric_list if not had_wait else '')
+                pred=f'MetricCode NOT IN({added})' if t.name=='MetricDefinition' else ("CollectorCode NOT IN('FILE_IO','WAIT_STATS')" if not had_wait else "CollectorCode<>'FILE_IO'")
                 out.append(equal_rows(before,f'(SELECT * FROM {t.object_name} WHERE {pred}) AS preserved',cols,label+' '+t.name))
-                seed_pred=f'MetricCode IN({metric_list})' if t.name=='MetricDefinition' else "CollectorCode='WAIT_STATS'"
-                out.append(f'IF (SELECT COUNT_BIG(*) FROM {t.object_name} WHERE {seed_pred})<>{9 if t.name=="MetricDefinition" else 1} THROW 53826,N\'Unexpected added seed set.\',1;\n')
+                seed_pred=f'MetricCode IN({added})' if t.name=='MetricDefinition' else ("CollectorCode IN('FILE_IO','WAIT_STATS')" if not had_wait else "CollectorCode='FILE_IO'")
+                count=(16+(0 if had_wait else 9)) if t.name=='MetricDefinition' else (1 if had_wait else 2)
+                out.append(f'IF (SELECT COUNT_BIG(*) FROM {t.object_name} WHERE {seed_pred})<>{count} THROW 53826,N\'Unexpected added seed set.\',1;\n')
             else: out.append(equal_rows(before,t.object_name,cols,label+' '+t.name))
-        version='1.2.1' if ready else '1.1.1'
-        out.append(f"IF NOT EXISTS(SELECT 1 FROM snapshot.PackageVersion WHERE PackageCode='SC-023' AND PackageVersion='{version}' AND SchemaVersion=2) THROW 53813,N'Snapshot migration version mismatch.',1;\n")
+        version='1.3.0' if ready else '1.2.2'
+        out.append(f"IF NOT EXISTS(SELECT 1 FROM snapshot.PackageVersion WHERE PackageCode='SC-023' AND PackageVersion='{version}' AND SchemaVersion=3) THROW 53813,N'Snapshot migration version mismatch.',1;\n")
         if ready:
             if not had_wait:
                 out.append("IF NOT EXISTS(SELECT 1 FROM snapshot.CollectorPolicy WHERE CollectorCode='WAIT_STATS' AND IsEnabled=0 AND PayloadEnabled=0 AND IsFrameworkDefault=0) THROW 53826,N'New Wait policy must remain opt-in.',1;\n")
             for name,text in current.items():
-                if not name.startswith(('020_','040_','050_','055_','060_','070_')): continue
+                if not name.startswith(('020_','040_','050_','055_','057_','060_','070_')): continue
                 proc=text.split('CREATE OR ALTER PROCEDURE',1)[1].split('\n',1)[0].strip()
                 definition=g.split_batches(text)[0]
                 # Use the identical complete canonical batch as the preflight hash.
@@ -2109,12 +2600,12 @@ def snapshot_schema_cases(deployed, tables):
         out.append("SET @Before=JSON_MODIFY(JSON_MODIFY(@Before,'$.PackageVersion[0].LastInstallerRunUtc',NULL),'$.objects',NULL); SET @After=JSON_MODIFY(JSON_MODIFY(@After,'$.PackageVersion[0].LastInstallerRunUtc',NULL),'$.objects',NULL);\nIF CONVERT(varbinary(max),@Before)<>CONVERT(varbinary(max),@After) THROW 53814,N'Snapshot repetition changed existing state.',1;\nGO\n")
         patch_route='DIRECT_TARGET' if label=='DIRECT' else label
         patch_call="DECLARE @SnapshotPatchSql nvarchar(max)=(SELECT SqlText FROM qa.SnapshotMigrationInput WHERE Route="+g.lit(patch_route)+"); EXEC sys.sp_executesql @SnapshotPatchSql;\n"
-        for version in ('1.1.0','1.1.1','1.2.0'):
-            out.append(arrange_old(version)+patch_call+'GO\n'+preserve(version+' '+label,True,version=='1.2.0')+'GO\n')
+        for version in ('1.1.0','1.1.1','1.2.0','1.2.1'):
+            out.append(arrange_old(version)+patch_call+'GO\n'+preserve(version+' '+label,True,version in ('1.2.0','1.2.1'))+'GO\n')
         if label=='STANDALONE':
             out.append('SET QUOTED_IDENTIFIER OFF; SET ANSI_NULLS OFF; SET ANSI_PADDING OFF; SET ANSI_WARNINGS OFF; SET ARITHABORT OFF; SET CONCAT_NULL_YIELDS_NULL OFF; SET NUMERIC_ROUNDABORT ON; SET LOCK_TIMEOUT -1;\n'+call)
             out.append('SET QUOTED_IDENTIFIER ON; SET ANSI_NULLS ON; SET ANSI_PADDING ON; SET ANSI_WARNINGS ON; SET ARITHABORT ON; SET CONCAT_NULL_YIELDS_NULL ON; SET NUMERIC_ROUNDABORT OFF; SET LOCK_TIMEOUT 10000;\n')
-            out.append("IF (SELECT COUNT(*) FROM sys.procedures WHERE schema_id=SCHEMA_ID(N'snapshot'))<>6 OR EXISTS(SELECT 1 FROM sys.procedures p JOIN sys.sql_modules m ON m.object_id=p.object_id WHERE p.schema_id=SCHEMA_ID(N'snapshot') AND (m.uses_ansi_nulls<>1 OR m.uses_quoted_identifier<>1)) THROW 53820,N'Snapshot standalone inherited noncanonical module settings.',1;\nGO\n")
+            out.append("IF (SELECT COUNT(*) FROM sys.procedures WHERE schema_id=SCHEMA_ID(N'snapshot'))<>7 OR EXISTS(SELECT 1 FROM sys.procedures p JOIN sys.sql_modules m ON m.object_id=p.object_id WHERE p.schema_id=SCHEMA_ID(N'snapshot') AND (m.uses_ansi_nulls<>1 OR m.uses_quoted_identifier<>1)) THROW 53820,N'Snapshot standalone inherited noncanonical module settings.',1;\nGO\n")
             out.append('SET XACT_ABORT ON; BEGIN TRANSACTION;\n'+negative(route,50000,'Snapshot standalone caller transaction',"IF @@TRANCOUNT<>1 OR XACT_STATE()<>1 OR (@@OPTIONS & 16384)=0 THROW 53817,N'Snapshot standalone changed caller transaction/options.',1; ROLLBACK TRANSACTION;"))
             out.append('SET IMPLICIT_TRANSACTIONS ON;\n'+negative(route,50000,'Snapshot standalone implicit transactions',"IF @@TRANCOUNT<>0 OR (@@OPTIONS & 2)=0 THROW 53818,N'Snapshot standalone changed implicit transaction state.',1; SET IMPLICIT_TRANSACTIONS OFF;"))
         out.append(arrange_old('1.0.0'))
@@ -2135,23 +2626,37 @@ def snapshot_schema_cases(deployed, tables):
     out += ['EXEC sys.sp_executesql '+g.lit(b)+';\n' for b in g.split_batches(current['055_InternalCompleteWaitStatsCycle.sql'])]
     out.append("DECLARE @Recover nvarchar(max)=(SELECT SqlText FROM qa.SnapshotMigrationInput WHERE Route='DIRECT_TARGET'); EXEC sys.sp_executesql @Recover;\nGO\n"+preserve('canonical partial recovery',True)+'GO\n')
     # Stop a real released1.2.0 upgrade after030, leaving its actual old055.
-    out.append(arrange_old('1.2.0')+"DECLARE @Stage nvarchar(max)=(SELECT SqlText FROM qa.SnapshotMigrationInput WHERE Route='DIRECT'); EXEC sys.sp_executesql @Stage;\nIF NOT EXISTS(SELECT 1 FROM snapshot.PackageVersion WHERE PackageVersion='1.1.1') THROW 53826,N'Expected staged old-Wait upgrade.',1;\n")
+    out.append(arrange_old('1.2.0')+"DECLARE @Stage nvarchar(max)=(SELECT SqlText FROM qa.SnapshotMigrationInput WHERE Route='DIRECT'); EXEC sys.sp_executesql @Stage;\nIF NOT EXISTS(SELECT 1 FROM snapshot.PackageVersion WHERE PackageVersion='1.2.2') THROW 53826,N'Expected staged old-Wait upgrade.',1;\n")
     out.append("IF HASHBYTES('SHA2_256',CONVERT(varbinary(max),TRIM(NCHAR(9)+NCHAR(10)+NCHAR(13)+N' ' FROM REPLACE(OBJECT_DEFINITION(OBJECT_ID(N'snapshot.InternalCompleteWaitStatsCycle')),NCHAR(13)+NCHAR(10),NCHAR(10)))))<>0xe392b9581c55955b81674e468aa88eac444339585dfd787a682abf66b3a48c49 THROW 53826,N'Staged recovery did not retain the actual released old helper.',1;\nGO\nDECLARE @OldRecover nvarchar(max)=(SELECT SqlText FROM qa.SnapshotMigrationInput WHERE Route='DIRECT_TARGET'); EXEC sys.sp_executesql @OldRecover;\nGO\n"+preserve('released Wait partial recovery',True,True)+'GO\n')
+    # A released1.2.1 helper is also preserved after the schema3 stage and recovered by its exact stored hash.
+    out.append(arrange_old('1.2.1')+"DECLARE @StageReady nvarchar(max)=(SELECT SqlText FROM qa.SnapshotMigrationInput WHERE Route='DIRECT'); EXEC sys.sp_executesql @StageReady;\nIF NOT EXISTS(SELECT 1 FROM snapshot.PackageVersion WHERE PackageVersion='1.2.2' AND SchemaVersion=3) THROW 53826,N'Expected staged released1.2.1 upgrade.',1;\n")
+    out.append("IF HASHBYTES('SHA2_256',CONVERT(varbinary(max),TRIM(NCHAR(9)+NCHAR(10)+NCHAR(13)+N' ' FROM REPLACE(OBJECT_DEFINITION(OBJECT_ID(N'snapshot.InternalCompleteWaitStatsCycle')),NCHAR(13)+NCHAR(10),NCHAR(10)))))<>0xaeb295d67a15ce0fcf452404dde233729012e42340c138c8924f27447e1b8762 THROW 53826,N'Staged recovery lost the actual released1.2.1 helper.',1;\nGO\nDECLARE @ReadyRecover nvarchar(max)=(SELECT SqlText FROM qa.SnapshotMigrationInput WHERE Route='DIRECT_TARGET'); EXEC sys.sp_executesql @ReadyRecover;\nGO\n"+preserve('released1.2.1 staged recovery',True,True)+'GO\n')
+    out.append(arrange_old('1.2.1')+"EXEC(N'CREATE PROCEDURE snapshot.InternalCompleteFileIOCycle AS SELECT 1;');\nGO\nDECLARE @Before nvarchar(max),@After nvarchar(max);\n"+state('@Before'))
+    out.append("DECLARE @ForeignIO nvarchar(max)=(SELECT SqlText FROM qa.SnapshotMigrationInput WHERE Route='DIRECT_TARGET'); BEGIN TRY EXEC sys.sp_executesql @ForeignIO; THROW 53826,N'Expected foreign file-I/O helper rejection.',1; END TRY BEGIN CATCH IF ERROR_NUMBER()<>53762 THROW; END CATCH;\n"+state('@After')+"IF CONVERT(varbinary(max),@Before)<>CONVERT(varbinary(max),@After) THROW 53826,N'Foreign file-I/O helper rejection changed state.',1;\nGO\nDROP PROCEDURE snapshot.InternalCompleteFileIOCycle;\nGO\nDECLARE @CompleteIO nvarchar(max)=(SELECT SqlText FROM qa.SnapshotMigrationInput WHERE Route='DIRECT_TARGET'); EXEC sys.sp_executesql @CompleteIO;\nGO\n")
     for label,route in routes:
         out.append("UPDATE snapshot.MetricDefinition SET Unit='EXAMPLE_WRONG' WHERE MetricCode='WAIT_TIME_MS';\nGO\nDECLARE @Before nvarchar(max),@After nvarchar(max);\n"+state('@Before'))
         out.append("DECLARE @SeedRoute nvarchar(max)=(SELECT SqlText FROM qa.SnapshotMigrationInput WHERE Route="+g.lit(label)+"); BEGIN TRY EXEC sys.sp_executesql @SeedRoute; THROW 53826,N'Expected seed collision rejection.',1; END TRY BEGIN CATCH IF ERROR_NUMBER()<>53760 THROW; END CATCH;\n"+state('@After')+"IF CONVERT(varbinary(max),@Before)<>CONVERT(varbinary(max),@After) THROW 53826,N'Seed preflight rejection changed state.',1;\nGO\nUPDATE snapshot.MetricDefinition SET Unit='ms' WHERE MetricCode='WAIT_TIME_MS';\nGO\n")
     # Compatible custom seeds and the disabled, customized Wait policy survive.
     out.append("UPDATE snapshot.MetricDefinition SET Description=N'Example custom Wait description',IsFrameworkDefault=0,SeedVersion=2 WHERE MetricCode='WAIT_TIME_MS'; UPDATE snapshot.CollectorPolicy SET MaxRows=123,IsEnabled=0 WHERE CollectorCode='WAIT_STATS';\nGO\nDECLARE @Before nvarchar(max),@After nvarchar(max);\n"+state('@Before'))
     out.append("DECLARE @CustomRoute nvarchar(max)=(SELECT SqlText FROM qa.SnapshotMigrationInput WHERE Route='DIRECT_TARGET'); EXEC sys.sp_executesql @CustomRoute;\n"+state('@After')+"SET @Before=JSON_MODIFY(JSON_MODIFY(@Before,'$.PackageVersion[0].LastInstallerRunUtc',NULL),'$.objects',NULL); SET @After=JSON_MODIFY(JSON_MODIFY(@After,'$.PackageVersion[0].LastInstallerRunUtc',NULL),'$.objects',NULL); IF CONVERT(varbinary(max),@Before)<>CONVERT(varbinary(max),@After) THROW 53826,N'Compatible custom seeds or policies were overwritten.',1;\nGO\n")
-    finish=''.join('EXEC sys.sp_executesql '+g.lit(b)+';\n' for b in g.split_batches(current['075_CompleteWaitStatsInstallation.sql']))
+    finish=''.join('EXEC sys.sp_executesql '+g.lit(b)+';\n' for name in ('075_CompleteWaitStatsInstallation.sql','078_CompleteFileIOInstallation.sql') for b in g.split_batches(current[name]))
     for label,arrange,restore in [
         ('missing helper','DROP PROCEDURE snapshot.InternalFinalizeCollectionCycle;\n',current['060_InternalFinalizeCollectionCycle.sql']),
+        ('missing file-I/O helper','DROP PROCEDURE snapshot.InternalCompleteFileIOCycle;\n',current['057_InternalCompleteFileIOCycle.sql']),
         ('mistyped handshake',''.join('EXEC sys.sp_executesql '+g.lit(b)+';\n' for b in g.split_batches(current['070_InternalPurgeExpiredData.sql'].replace('@RetentionContractVersionOut int','@RetentionContractVersionOut smallint'))),current['070_InternalPurgeExpiredData.sql'])]:
-        out.append("UPDATE snapshot.PackageVersion SET PackageVersion='1.1.1';\n"+arrange+'GO\nDECLARE @Before nvarchar(max),@After nvarchar(max);\n'+state('@Before'))
-        out.append('BEGIN TRY\n'+finish+"THROW 53826,N'Expected incomplete closure rejection.',1; END TRY BEGIN CATCH IF ERROR_NUMBER()<>53762 THROW; END CATCH;\n"+state('@After')+"IF CONVERT(varbinary(max),@Before)<>CONVERT(varbinary(max),@After) THROW 53826,N'Closure rejection changed staged state.',1;\nGO\n")
+        out.append("UPDATE snapshot.PackageVersion SET PackageVersion='1.2.2';\n"+arrange+'GO\nDECLARE @Before nvarchar(max),@After nvarchar(max);\n'+state('@Before'))
+        expected_error=53781 if label=='missing file-I/O helper' else 53762
+        out.append('BEGIN TRY\n'+finish+f"THROW 53826,N'Expected incomplete closure rejection.',1; END TRY BEGIN CATCH IF ERROR_NUMBER()<>{expected_error} THROW; END CATCH;\n"+state('@After')+"IF CONVERT(varbinary(max),@Before)<>CONVERT(varbinary(max),@After) THROW 53826,N'Closure rejection changed staged state.',1;\nGO\n")
         out += ['EXEC sys.sp_executesql '+g.lit(b)+';\n' for b in g.split_batches(restore)]
         out.append(finish+'GO\n')
-    out.append("SELECT N'PASS' AS SnapshotSchemaMigration,N'3 V1 routes, 9 real-helper patch upgrades and old-Wait partial recovery, repetition, 27 shape/version rejections, collision and partial recovery' AS Scope;\nGO\n")
+    # The final closure alone cannot advertise Ready after a Wait seed is lost.
+    final_io=''.join('EXEC sys.sp_executesql '+g.lit(batch)+';\n' for batch in g.split_batches(current['078_CompleteFileIOInstallation.sql']))
+    out.append("UPDATE snapshot.PackageVersion SET PackageVersion='1.2.2'; SELECT * INTO qa.FinalWaitSeedBefore FROM snapshot.MetricDefinition WHERE MetricCode='WAIT_SIGNAL_TIME_MS'; DELETE snapshot.MetricDefinition WHERE MetricCode='WAIT_SIGNAL_TIME_MS';\nGO\nDECLARE @Before nvarchar(max),@After nvarchar(max);\n"+state('@Before'))
+    out.append('BEGIN TRY\n'+final_io+"THROW 53826,N'Expected last-closure missing Wait seed rejection.',1; END TRY BEGIN CATCH IF ERROR_NUMBER()<>53781 THROW; END CATCH;\n"+state('@After')+"IF CONVERT(varbinary(max),@Before)<>CONVERT(varbinary(max),@After) THROW 53826,N'Missing Wait seed closure changed stage state.',1;\nGO\nSET IDENTITY_INSERT snapshot.MetricDefinition ON; INSERT snapshot.MetricDefinition(MetricDefinitionId,MetricCode,ValueType,Unit,ContractVersion,Description,IsFrameworkDefault,SeedVersion,LastUpdatedUtc) SELECT MetricDefinitionId,MetricCode,ValueType,Unit,ContractVersion,Description,IsFrameworkDefault,SeedVersion,LastUpdatedUtc FROM qa.FinalWaitSeedBefore; SET IDENTITY_INSERT snapshot.MetricDefinition OFF;\nGO\n"+finish+'GO\n')
+    for label,route in routes:
+        out.append("UPDATE snapshot.MetricDefinition SET Unit='EXAMPLE_WRONG' WHERE MetricCode='IO_READ_COUNT';\nGO\nDECLARE @Before nvarchar(max),@After nvarchar(max);\n"+state('@Before'))
+        out.append("DECLARE @IOSeedRoute nvarchar(max)=(SELECT SqlText FROM qa.SnapshotMigrationInput WHERE Route="+g.lit(label)+"); BEGIN TRY EXEC sys.sp_executesql @IOSeedRoute; THROW 53826,N'Expected file-I/O seed collision rejection.',1; END TRY BEGIN CATCH IF ERROR_NUMBER()<>53780 THROW; END CATCH;\n"+state('@After')+"IF CONVERT(varbinary(max),@Before)<>CONVERT(varbinary(max),@After) THROW 53826,N'File-I/O seed preflight changed state.',1;\nGO\nUPDATE snapshot.MetricDefinition SET Unit='count' WHERE MetricCode='IO_READ_COUNT';\nGO\n")
+    out.append("SELECT N'PASS' AS SnapshotSchemaMigration,N'3 V1 routes, 12 real-helper patch upgrades with released1.2.1 Wait admission and old-Wait partial recovery, repetition, 27 shape/version rejections, collision and partial recovery' AS Scope;\nGO\n")
     out.append("DECLARE @Installer sysname=N'ExampleSnapshotInstaller_'+REPLACE(CONVERT(nvarchar(36),NEWID()),N'-',N''),@CredentialValue nvarchar(128)=N'Example!'+CONVERT(nvarchar(36),NEWID()),@PermissionSql nvarchar(max),@Impersonated bit=0,@InstallerSid varbinary(85),@PermissionBefore nvarchar(max),@PermissionAfter nvarchar(max),@InstallerSource nvarchar(max)=(SELECT SqlText FROM qa.SnapshotMigrationInput WHERE Route='DIRECT');\n")
     out.append("SET @PermissionSql=N'CREATE LOGIN '+QUOTENAME(@Installer)+N' WITH PASSWORD='+QUOTENAME(@CredentialValue,NCHAR(39))+N',CHECK_POLICY=OFF;'; EXEC master.sys.sp_executesql @PermissionSql; SET @InstallerSid=SUSER_SID(@Installer);\nBEGIN TRY\n")
     out.append("SET @PermissionSql=N'CREATE USER '+QUOTENAME(@Installer)+N' FOR LOGIN '+QUOTENAME(@Installer)+N'; GRANT CONTROL ON DATABASE::'+QUOTENAME(DB_NAME())+N' TO '+QUOTENAME(@Installer)+N';'; EXEC sys.sp_executesql @PermissionSql; SET @PermissionSql=N'GRANT VIEW ANY DEFINITION TO '+QUOTENAME(@Installer)+N';'; EXEC master.sys.sp_executesql @PermissionSql;\n")
