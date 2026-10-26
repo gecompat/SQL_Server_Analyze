@@ -427,30 +427,6 @@ verträge und alle erforderlichen Gates. Frühere Fehlversuche bleiben im
 Reifeevidenzdokument erhalten. Verlässliche Token- oder Kostenmessungen liegen
 nicht vor.
 
-### Verarbeitungsaufwand des Offline-Kennzahlenvalidators
-
-Der neue Offline-Validator prüft ausschließlich ausdrücklich übergebene
-Berichte. Sein portabler Produkt-Contractcheck ist in der bestehenden
-statischen Repositorysuite registriert. Er prüft das neue Produktverhalten
-mit synthetischen Gegenbeispielen; er ist kein weiterer Review oder Nachweis
-nativer SSIS-Läufe. Der normale Full-Scope der statischen Suite enthält diesen
-begrenzten Produktcheck. Tool-Selbsttests behalten die bestehende Auswahl
-`Changed`; die erste Änderung der Runnerregistrierung aktiviert einmalig deren
-bestehenden vollständigen Satz. Unveränderte Datenschutz- und Impact-Gates
-werden in der Dokumentations-CI weiterhin separat ausgeführt.
-
-Der Pfad startet keine SQL-Server-Instanz, verändert keine SQL-Objekte und
-behauptet keine Capture- oder Producerattestierung. Die vorhandene
-Linux-Reader-Prüfung bleibt bei ihrer bereits definierten Runnerabhängigkeit
-erhalten. Ein Implementierer und ein unabhängiger Reviewer prüfen nur die
-neuen Profil-/Validierungsdeltas und konkrete Fehlerfälle. Die Korrektur eines
-malformierten Beobachtungsarrays ist durch einen tatsächlichen lokalen
-CLI-Gegenfall mit begrenzter Fehlerantwort ohne Traceback geprüft. Berichte
-und Gegenbeispiele enthalten ausschließlich synthetische Daten; es gibt keine
-zusätzlichen Modellaufrufe zur Bestätigung grüner Ausgaben. Belastbare Token-
-und Kostenmessungen liegen nicht vor. Die abschließenden CI-Gates des
-aktuellen Kandidaten stehen noch aus.
-
 ### Verarbeitungsaufwand der statischen Katalogzählungsbindung in Schritt 36
 
 Der bestehende `905_Validate_Analysis_Navigator.py` bindet die beiden
@@ -474,3 +450,27 @@ verändert keine Produktfunktion und qualifiziert keinen nativen Lauf. Der
 unabhängige Review ist abgeschlossen. Die erforderlichen Head- und Main-
 Prüfungen der eigenständigen Integration stehen noch aus. Kosten- und Tokenmessungen liegen nicht vor;
 eine angeforderte Luna-Auswahl ist nicht kostenattestiert.
+
+### Verarbeitungsaufwand des Offline-Kennzahlenvalidators
+
+Der neue Offline-Validator prüft ausschließlich ausdrücklich übergebene
+Berichte. Sein portabler Produkt-Contractcheck ist in der bestehenden
+statischen Repositorysuite registriert. Er prüft das neue Produktverhalten
+mit synthetischen Gegenbeispielen; er ist kein weiterer Review oder Nachweis
+nativer SSIS-Läufe. Der normale Full-Scope der statischen Suite enthält diesen
+begrenzten Produktcheck. Tool-Selbsttests behalten die bestehende Auswahl
+`Changed`; die erste Änderung der Runnerregistrierung aktiviert einmalig deren
+bestehenden vollständigen Satz. Unveränderte Datenschutz- und Impact-Gates
+werden in der Dokumentations-CI weiterhin separat ausgeführt.
+
+Der Pfad startet keine SQL-Server-Instanz, verändert keine SQL-Objekte und
+behauptet keine Capture- oder Producerattestierung. Die vorhandene
+Linux-Reader-Prüfung bleibt bei ihrer bereits definierten Runnerabhängigkeit
+erhalten. Ein Implementierer und ein unabhängiger Reviewer prüfen nur die
+neuen Profil-/Validierungsdeltas und konkrete Fehlerfälle. Die Korrektur eines
+malformierten Beobachtungsarrays ist durch einen tatsächlichen lokalen
+CLI-Gegenfall mit begrenzter Fehlerantwort ohne Traceback geprüft. Berichte
+und Gegenbeispiele enthalten ausschließlich synthetische Daten; es gibt keine
+zusätzlichen Modellaufrufe zur Bestätigung grüner Ausgaben. Belastbare Token-
+und Kostenmessungen liegen nicht vor. Die abschließenden CI-Gates des
+aktuellen Kandidaten stehen noch aus.
