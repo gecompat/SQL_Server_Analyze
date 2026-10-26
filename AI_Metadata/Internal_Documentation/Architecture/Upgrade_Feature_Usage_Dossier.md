@@ -1,6 +1,6 @@
 # SQL-sichtbare Nutzung veralteter Funktionen und Upgradehinweise
 
-**Status:** Produktkandidat mit abgeschlossenem Vertrags- und Erstproduktreview; abschließende Fehlerfallprüfung und CI-Abnahme offen.
+**Status:** Produktkandidat mit abgeschlossenem Vertrags-, Produkt- und Fehlerfallreview; CI-Abnahme offen.
 **Artefakt-UID:** `urn:uuid:01a1769e-e5e7-7f0a-bed1-d4b5988cd11f`.
 **Registrierung:** `DEFERRED`; keine finale lesbare Arbeitselementkennung vergeben.
 **Stand:** 26. Oktober 2026.
@@ -316,3 +316,22 @@ und die tatsächlich ausgeführten Tests werden getrennt bewertet. SQL2022 wird
 nicht zusätzlich gestartet. Höchstens drei CI-Kandidaten dürfen für diese
 Welle qualifiziert werden; neue Inputs oder Befunde sind für Wiederholungen
 erforderlich. Es werden keine weiteren lokalen Labversuche begonnen.
+
+Der gebündelte unabhängige Folgecheck schließt die Fehlerfallabdeckung ohne
+weitere P1/P2. Fall 8 bindet erste Fehlernummer und Meldung in OUTPUT,
+JSON-Meta und sources. Die ergänzten elf synthetischen Fälle bleiben bis zur
+CI-Ausführung unqualifiziert. Der erste PR-Kandidat 23703dde stoppt im
+Datenschutzgate auf einem Codepräfix zur Laufzeitgenerierung des eigenen
+Logincredentials. Der exakt pfad-/regel-/wertgebundene Allowlist-Eintrag ist
+unabhängig geprüft; ein kopierter Pfad, geänderter Matchtoken und ein
+synthetisches Credentialliteral werden weiterhin abgelehnt. Der Hash bindet
+den Matchpräfix und nicht die gesamte Erzeugungslogik. Der native SQL2019-Job
+startete in diesem ersten Kandidaten nicht; seine gescheiterte Paketvorprüfung
+ist kein SQL-Laufnachweis.
+
+Die erste statische PR-CI meldet außerdem einen veralteten versionierten
+OPS-005-Installer. Seine kanonische Neuerzeugung übernimmt den neuen Kernumfang;
+der lokale Adaptervergleich einschließlich acht Darstellungsgegenfällen besteht.
+Der zweite CI-Kandidat bündelt ausschließlich diese generierte Aktualisierung,
+die geprüfte Privacy-Ausnahme und den aktuellen Nachweisstand. Die laufende
+mutierende SQL2025-Prüfung des ersten Kandidaten wird nicht abgebrochen.
