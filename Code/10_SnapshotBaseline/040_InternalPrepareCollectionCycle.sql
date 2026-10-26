@@ -34,15 +34,15 @@ BEGIN
            @StatusCodeOut='AVAILABLE',@ErrorMessageOut=NULL;
 
     SET @CollectorCode=UPPER(LTRIM(RTRIM(COALESCE(@CollectorCode,''))));
-    IF @CollectorCode NOT IN ('PERFORMANCE_COUNTERS','WAIT_STATS')
-       OR @PolicyOnly IS NULL OR (@PolicyOnly=1 AND @CollectorCode<>'WAIT_STATS')
-       OR (@CollectorCode='WAIT_STATS' AND (@@TRANCOUNT<>0 OR (@@OPTIONS & 2)<>0))
+    IF @CollectorCode NOT IN ('PERFORMANCE_COUNTERS','WAIT_STATS','FILE_IO')
+       OR @PolicyOnly IS NULL OR (@PolicyOnly=1 AND @CollectorCode NOT IN('WAIT_STATS','FILE_IO'))
+       OR (@CollectorCode IN('WAIT_STATS','FILE_IO') AND (@@TRANCOUNT<>0 OR (@@OPTIONS & 2)<>0))
     BEGIN
         SELECT @StatusCodeOut='INVALID_PARAMETER',
                @ErrorMessageOut=N'Ungültiger Collector oder unzulässiger Wait-Callertransaktionszustand.';
         RETURN 51011;
     END;
-    IF @CollectorCode='WAIT_STATS' OR @ExpectedTargetDatabaseId IS NOT NULL
+    IF @CollectorCode IN('WAIT_STATS','FILE_IO') OR @ExpectedTargetDatabaseId IS NOT NULL
        OR @ExpectedTargetDatabaseName IS NOT NULL OR @ExpectedTargetCreateDate IS NOT NULL
     BEGIN
         IF @ExpectedTargetDatabaseId IS NULL OR @ExpectedTargetDatabaseName IS NULL
@@ -62,10 +62,10 @@ BEGIN
             RETURN;
         END;
     END;
-    IF @CollectorCode='WAIT_STATS' AND
+    IF @CollectorCode IN('WAIT_STATS','FILE_IO') AND
        ((SELECT COUNT_BIG(*) FROM [snapshot].[PackageVersion])<>1 OR NOT EXISTS
           (SELECT 1 FROM [snapshot].[PackageVersion] WHERE CONVERT(varbinary(max),[PackageCode])=CONVERT(varbinary(max),'SC-023')
-           AND CONVERT(varbinary(max),[PackageVersion])=CONVERT(varbinary(max),'1.2.1') AND [SchemaVersion]=2)
+           AND ((CONVERT(varbinary(max),[PackageVersion])=CONVERT(varbinary(max),'1.2.1') AND [SchemaVersion]=2) OR (CONVERT(varbinary(max),[PackageVersion])=CONVERT(varbinary(max),'1.3.0') AND [SchemaVersion]=3)))
         OR NOT EXISTS(SELECT 1 FROM [sys].[procedures] AS [wp] WITH (NOLOCK) JOIN [sys].[schemas] AS [ws] WITH (NOLOCK) ON [ws].[schema_id]=[wp].[schema_id] WHERE CONVERT(varbinary(max),[ws].[name])=CONVERT(varbinary(max),N'snapshot') AND CONVERT(varbinary(max),[wp].[name])=CONVERT(varbinary(max),N'InternalCompleteWaitStatsCycle'))
         OR NOT EXISTS(SELECT 1 FROM [sys].[parameters] AS [p] WITH (NOLOCK)
                       WHERE [p].[object_id] IN(SELECT [hp].[object_id] FROM [sys].[procedures] AS [hp] WITH (NOLOCK) JOIN [sys].[schemas] AS [hs] WITH (NOLOCK) ON [hs].[schema_id]=[hp].[schema_id] WHERE CONVERT(varbinary(max),[hs].[name])=CONVERT(varbinary(max),N'snapshot') AND CONVERT(varbinary(max),[hp].[name])=CONVERT(varbinary(max),N'InternalPurgeExpiredData'))
@@ -73,6 +73,12 @@ BEGIN
     BEGIN
         SELECT @StatusCodeOut='TARGET_UNAVAILABLE',
                @ErrorMessageOut=N'Das vollständig installierte Wait-Target 1.2.1 fehlt.';
+        RETURN;
+    END;
+
+    IF @CollectorCode='FILE_IO' AND NOT EXISTS(SELECT 1 FROM [snapshot].[PackageVersion] WHERE CONVERT(varbinary(max),[PackageVersion])=CONVERT(varbinary(max),'1.3.0') AND [SchemaVersion]=3)
+    BEGIN
+        SELECT @StatusCodeOut='TARGET_UNAVAILABLE',@ErrorMessageOut=N'Datei-I/O benötigt das vollständige Schema-3-Target.';
         RETURN;
     END;
 
@@ -91,7 +97,7 @@ BEGIN
     BEGIN
         SELECT TOP(1) @LastCompletedUtc=[EndedAtUtc]
         FROM [snapshot].[CaptureRun]
-        WHERE [CollectorCode]='WAIT_STATS' AND [EndedAtUtc] IS NOT NULL
+        WHERE [CollectorCode]=@CollectorCode AND [EndedAtUtc] IS NOT NULL
         ORDER BY [CaptureRunId] DESC;
         IF @StatusCodeOut='AVAILABLE' AND @RunEvenIfNotDue=0 AND @LastCompletedUtc IS NOT NULL
            AND DATEADD(SECOND,@IntervalSeconds,@LastCompletedUtc)>@Now
@@ -111,7 +117,7 @@ BEGIN
     SELECT TOP (1) @LastCompletedUtc=[EndedAtUtc]
     FROM [snapshot].[CaptureRun]
     WHERE [CollectorCode]=@CollectorCode
-      AND (@CollectorCode='WAIT_STATS' OR [StatusCode] IN ('AVAILABLE','PARTIAL'))
+      AND (@CollectorCode IN('WAIT_STATS','FILE_IO') OR [StatusCode] IN ('AVAILABLE','PARTIAL'))
       AND [EndedAtUtc] IS NOT NULL
     ORDER BY [CaptureRunId] DESC;
 
@@ -122,7 +128,7 @@ BEGIN
         SELECT @StatusCodeOut='SKIPPED_NOT_DUE',
                @ErrorMessageOut=N'Das konfigurierte Sammlerintervall ist noch nicht abgelaufen.';
 
-    IF @CollectorCode='WAIT_STATS' AND @StatusCodeOut<>'AVAILABLE' RETURN;
+    IF @CollectorCode IN('WAIT_STATS','FILE_IO') AND @StatusCodeOut<>'AVAILABLE' RETURN;
 
     INSERT [snapshot].[CaptureRun]
     (

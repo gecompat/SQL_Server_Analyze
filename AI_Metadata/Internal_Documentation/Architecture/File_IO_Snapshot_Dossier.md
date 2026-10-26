@@ -1,7 +1,7 @@
 # Datei-I/O-Snapshots: Quellen, Identität und Vergleichsgrenzen
 
 **Stand:** 26. Oktober 2026.
-**Status:** Quell- und Identitätsvorvertrag; ein persistenter FILE_IO-Collector ist noch nicht implementiert.
+**Status:** Quell- und Identitätsvertrag mit implementiertem internem Target; die öffentliche native FILE_IO-Aufnahme bleibt offen.
 **Artefakt-UID:** `urn:uuid:01a17554-a6d5-74c8-bf71-2eb993e63559`.
 **Registrierung:** `DEFERRED`; keine finale lesbare Kennung vergeben.
 **Zuordnung:** SC-023-EXPANSION, Rang 10 der
@@ -17,11 +17,11 @@ Zählerkontinuität. Numerische Differenzen bleiben deshalb ausdrücklich
 unbewiesene Kandidaten.
 
 Dieser Vorvertrag legt Quellenumfang, Identitätsbedingungen, Rohwerte und
-fachliche Gegenfälle fest. Er führt weder SQL-Code, neue öffentliche Parameter
-noch eine neue Targetversion ein. Der [Feld- und Migrationsvertrag](File_IO_Snapshot_Field_Contract.md)
+fachliche Gegenfälle fest. Die öffentliche native Aufnahme und neue öffentliche Auswahlparameter bleiben
+eine gesonderte Welle. Das interne Target implementiert den nachfolgenden Feldvertrag. Der [Feld- und Migrationsvertrag](File_IO_Snapshot_Field_Contract.md)
 konkretisiert Source, Kontexte, Epochen und Versionsstufen und ist vor der Implementierung unabhängig geprüft.
 Der [Snapshotvertrag](../../../Documentation/Architecture/Snapshot_Baseline_Package_Contract.md)
-bleibt für den gelieferten Performance-Counter-/Waitstand maßgeblich.
+bleibt für den gelieferten Performance-Counter-/Waitstand und die interne Targetgrenze maßgeblich.
 
 ## Auswahl und native Aufnahme
 
@@ -118,14 +118,14 @@ Fehlerstatus als Vergleichsgrenze erhalten. Ihre Kinder verfallen weiterhin
 regulär. Ein erhaltener Run ohne erforderliche Kontext-/Rohdaten erlaubt
 keinen numerischen Vergleich. Der bestehende Waitschutz bleibt erhalten.
 
-## Nächster genauer Feld- und Migrationsvertrag
+## Genauer Feld- und Migrationsvertrag
 
-Der [genaue Vertragsentwurf](File_IO_Snapshot_Field_Contract.md) führt die
-Member-/Typentabellen und die geplante bekannte Migration. Sein unabhängiger
+Der [genaue Feldvertrag](File_IO_Snapshot_Field_Contract.md) führt die
+Member-/Typentabellen und die bekannte Migration. Sein unabhängiger
 Review ist abgeschlossen; der folgende Abschnitt erklärt deren fachlichen Zweck.
 
-Der Feldvertrag konkretisiert die folgenden zusammenhängenden Entscheidungen
-vor Produktcode; sie sind unabhängig geprüft:
+Der Feldvertrag konkretisiert die folgenden zusammenhängenden, unabhängig
+geprüften Entscheidungen:
 
 - Der transiente Sourcevertrag erhält exakte Member, JSON-Typen, Nullregeln,
   Mengenbindungen, UTC-/Native-Zeitformate und zulässige Quellenzustände.
@@ -136,7 +136,7 @@ vor Produktcode; sie sind unabhängig geprüft:
   vollständig festgelegt. Sechs Rohcounter, ein Gauge und sechs Kandidaten
   sind der hier abgegrenzte fachliche Umfang; Kontext und Status sind eigene
   persistierte Informationen.
-- Die derzeitigen `CollectorPolicy`- und `ScopeType`-CHECKs erlauben keinen
+- Die alten `CollectorPolicy`- und `ScopeType`-CHECKs erlauben keinen
   FILE_IO-Collector beziehungsweise Dateiscope. Ihre bekannte Migration,
   Wiederholung, Seedkollisionen, unterbrochenen Stadien und letzte
   Abschlussmarkierung müssen vor DDL bestimmt sein.
@@ -147,9 +147,10 @@ vor Produktcode; sie sind unabhängig geprüft:
   gemeinsame Konfigurationsweg müssen bestehende positionale Aufrufe,
   den Performance-Counter-Default und die Waitverträge erhalten.
 
-Der nächste ausführbare Produktschritt setzt dieses interne Target und die
-erforderliche Waitkompatibilität um; die öffentliche native Aufnahme folgt getrennt. Der bestehende autonome Benutzerauftrag bleibt die
-Arbeitsautorität; der Vorvertrag behauptet keine Laufzeitimplementierung.
+Der Quellstand implementiert das interne Target und die erforderliche
+Waitkompatibilität. Nach deren regulärer Abnahme folgt die öffentliche native
+Aufnahme als nächster getrennter Produktschritt. Der bestehende autonome
+Benutzerauftrag bleibt die Arbeitsautorität.
 
 ## Abnahme und Betriebsgrenzen
 

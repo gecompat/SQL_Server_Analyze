@@ -33,14 +33,27 @@ commitbezogenen Laufzeitnachweis.
 | ReleaseDate im Installationskatalog | 23. Oktober 2026 |
 | Mindestversion | SQL Server 2019 |
 
-Der aktuelle Inventarvertrag umfasst 195 Objekte: 116 öffentliche Procedures, 8 Views, 29 Table-Valued Functions, 22 interne Procedures und 20 Tabellen.
+Der aktuelle Inventarvertrag umfasst 196 Objekte: 116 öffentliche Procedures, 8 Views, 29 Table-Valued Functions, 23 interne Procedures und 20 Tabellen.
 
-Der Frameworkkern umfasst 173 Objekte mit 113 öffentlichen Procedures und 9 Tabellen. Das optionale Snapshotpaket umfasst 22 Objekte mit 3 öffentlichen Procedures und 11 Tabellen.
+Der Frameworkkern umfasst 173 Objekte mit 113 öffentlichen Procedures und 9 Tabellen. Das optionale Snapshotpaket umfasst 23 Objekte mit 3 öffentlichen Procedures und 11 Tabellen.
 
 Die [Paketgrenzen](../Reference/Scope_and_Limitations.md) unterscheiden
 Diagnose, Installation, lokale TABLE-Ausgabe und persistente Sammlung.
 
 Alle öffentlichen Procedures besitzen eine eigenständige Procedure-Seite. Alle unterstützenden Objekte besitzen einen Detailabschnitt in der Objektreferenz.
+
+## Noch nicht veröffentlicht: internes Datei-I/O-Snapshottarget
+
+Target 1.3.0 / Schema 3 ergänzt die interne Datei-I/O-Speicherung mit
+Dateiepochen, sieben Rohwerten, sechs unbewiesenen Differenzkandidaten und
+gebundenen Fehler-/Vergleichskontexten. Bekannte alte Targets werden
+datenbewahrend migriert; das Stadium 1.2.2 bleibt unvollständig. Waits
+unterstützen vollständige alte Targets 1.2.1 / Schema 2 und neue Targets
+1.3.0 / Schema 3 mit ihrem jeweiligen tatsächlichen Retentionsvertrag.
+Beim getrennten Upgrade wird zuerst das Framework aktualisiert.
+Die FILE_IO-Policy ist neu deaktiviert; die öffentliche native Aufnahme
+folgt separat. Der [Paketvertrag](../Architecture/Snapshot_Baseline_Package_Contract.md)
+beschreibt Rollout und Aussagegrenzen.
 
 ## Noch nicht veröffentlicht: öffentliche Wait-Snapshots
 

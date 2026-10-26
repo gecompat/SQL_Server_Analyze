@@ -45,7 +45,7 @@ EXEC [monitor].[USP_RunSnapshotCollectionCycle]
      @ResultSetArt = 'CONSOLE';
 ```
 
-Waits benötigen das vollständige Target `1.2.1`, eine aktivierte Framework-
+Waits benötigen das vollständige Target `1.2.1` / Schema 2 oder `1.3.0` / Schema 3, eine aktivierte Framework-
 und Waitpolicy, keine Callertransaktion sowie `IMPLICIT_TRANSACTIONS OFF`.
 Unsichere Callerzustände werden vor Temp-DDL ausschließlich über OUTPUT als
 `INVALID_PARAMETER` mit Fehler `51011` zurückgegeben. Für Waits sind `CONSOLE`,

@@ -35,7 +35,8 @@ Die drei angehängten Parameter erhalten die bisherigen positionalen Aufrufe:
 | `@CollectorEnabled` | Aktiviert oder deaktiviert ausschließlich die ausgewählte Collectorpolicy; Default ist `1`. |
 | `@UpdateSharedPolicy` | `NULL` bedeutet `1` für Performance Counter und `0` für Waits. Mit `0` bleiben Frameworkzeile, gemeinsame Retention und die bestehende Retentionszuordnung erhalten. Mit `1` werden gemeinsame Werte und ausgewählte Policy atomar aktualisiert. |
 
-Neue Collectoroptionen benötigen Targetversion `1.2.1` mit SchemaVersion `2`,
+Neue Collectoroptionen benötigen ein vollständiges Target `1.2.1` mit Schema 2
+oder `1.3.0` mit Schema 3,
 einen passenden bestehenden Zielbezug bei `@UpdateSharedPolicy=0` und einen
 Aufruf ohne Callertransaktion mit `IMPLICIT_TRANSACTIONS OFF`. Die Procedure
 prüft die tatsächliche Zielkennung, den Erstellungszeitpunkt, die verwendeten

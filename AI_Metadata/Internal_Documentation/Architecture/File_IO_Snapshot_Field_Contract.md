@@ -1,7 +1,7 @@
-# Datei-I/O-Snapshots: geplanter Feld- und Migrationsvertrag
+# Datei-I/O-Snapshots: Feld- und Migrationsvertrag
 
 **Stand:** 26. Oktober 2026.
-**Status:** unabhängig geprüfter Sollvertrag vor Implementierung; keine hier geplante API oder Targetversion ist ausgeliefert.
+**Status:** internes Schema-3-Target und Waitkompatibilität im Quellstand implementiert; die öffentliche native FILE_IO-Aufnahme bleibt geplant. Die regulären Integrationsgates bleiben erforderlich.
 **Artefakt-UID:** `urn:uuid:01a17587-45e0-7332-a8bd-2015f82e2bad`.
 **Registrierung:** `DEFERRED`; keine finale lesbare Kennung vergeben.
 **Zuordnung:** SC-023-EXPANSION; dieser Vertrag konkretisiert den
@@ -15,11 +15,11 @@ bekannte Migration, internes Datei-I/O-Target und notwendige Waitkompatibilität
 im Framework. Die öffentliche native Datei-I/O-Aufnahme folgt getrennt.
 Produktcode beginnt erst nach unabhängigem Review dieses Vertrags.
 
-Als neuer vollständiger Targetstand ist `1.3.0` mit `SchemaVersion=3`
-vorgesehen. Das ausdrücklich unvollständige Installationsstadium lautet
+Der vollständige Targetstand lautet `1.3.0` mit `SchemaVersion=3`.
+Das ausdrücklich unvollständige Installationsstadium lautet
 `1.2.2` mit Schema 3. Die Frameworkversion und der öffentliche
-JSON-Ausgabevertrag werden dadurch nicht automatisch geändert. Der heute
-gelieferte Targetstand bleibt bis zur Implementierung `1.2.1` / Schema 2.
+JSON-Ausgabevertrag werden dadurch nicht automatisch geändert. Vollständige alte Waittargets `1.2.1` / Schema 2 bleiben über den tatsächlichen
+Retentionsvertrag 1 unterstützt.
 
 ## Öffentliche Auswahl und Reihenfolge
 
@@ -54,7 +54,7 @@ oder Capture geprüft. Force umgeht nur das Collectorintervall. Der normale
 Purge-Skip ohne Fehler verhindert keinen Capture; ein überschrittenes
 Softbudget bleibt wirksam. Erst danach beginnt der eigentliche Sourcepfad.
 
-Der geplante interne Abschlusshelper InternalCompleteFileIOCycle erhält in
+Der interne Abschlusshelper InternalCompleteFileIOCycle erhält in
 dieser Reihenfolge CaptureRunId bigint, CollectorJson nvarchar(max),
 ExpectedTargetDatabaseId int, ExpectedTargetDatabaseName sysname,
 ExpectedTargetCreateDate datetime, StatusCodeOut varchar(40) OUTPUT,
@@ -483,8 +483,11 @@ PREVIOUS_CAPTURE_CONTEXT_INVALID, PREVIOUS_SOURCE_PARTIAL, SELECTION_CHANGED,
 PREVIOUS_FILE_UNAVAILABLE, PREVIOUS_FILE_CONTEXT_INVALID,
 PREVIOUS_RAW_INCOMPLETE, OBSERVED_IDENTITY_CHANGED, FILE_HANDLE_CHANGED,
 UPTIME_DECREASED, NONPOSITIVE_INTERVAL, COUNTER_DECREASED und
-MONOTONIC_CONTINUITY_UNPROVEN. Bei Identitätsvergleich wird zunächst die
-Bindung ohne Handle geprüft, danach der Handle separat. Namenslabels
+MONOTONIC_CONTINUITY_UNPROVEN. Bei Identitätsvergleich werden zunächst der tatsächlich validierte vorherige
+Framework-Tuplehash gegen den aktuellen Frameworkkontext und die Dateibindung
+ohne Handle geprüft, danach der Handle separat. Ein beobachteter Wechsel
+der Frameworkdatenbankgeneration erhält an dieser Stelle
+OBSERVED_IDENTITY_CHANGED, auch bei unveränderter tatsächlicher Dateiauswahl. Namenslabels
 entscheiden dabei nicht über Identitätsgleichheit. Die Epochenentscheidung besitzt eine eigene eindeutige Priorität: aktuelle
 Identität unvollständig bedeutet NEW_UNBOUND_OBSERVATION; danach bedeutet
 gültiger monotoner Vergleich RETAIN_OBSERVED_EPOCH; danach bedeutet fehlender
@@ -500,7 +503,7 @@ ausgegeben. Der Gesamtstatus eines erfolgreichen Captures bleibt PARTIAL.
 
 ## Bekannte Migration und tatsächliche Aufnahmeprüfung
 
-| Stand | Geplante Behandlung |
+| Stand | Behandlung |
 |---|---|
 | 1.0.0 / Schema 1 | Nur exakt bekannte Altstruktur datenbewahrend nach Schema 3 migrieren. |
 | 1.1.0, 1.1.1, 1.2.0, 1.2.1 / Schema 2 | Nur exakt bekannte Strukturen und Eigentümerschaft migrieren. |
@@ -562,3 +565,47 @@ Erhaltung alter Waitziele, unabhängige native Dateimengen-/Wertgrenzen,
 fehlende Identität, beobachtete Wechsel, Gauge-Rückgang, Counterrückgang,
 verborgenen Reset als weiterhin unbewiesen, Auswahl-/Vorwert-/Retentions-
 und Outputfehler. Hier wird kein solcher Lauf als ausgeführt dargestellt.
+
+## Implementierter interner Umfang
+
+Der Quellstand ergänzt InternalCompleteFileIOCycle, 16 Metrikdefinitionen,
+eine deaktivierte FILE_IO-Policy, die bekannte Schema-3-Migration und den
+letzten gemeinsamen Targetabschluss. Dieser prüft alle sieben tatsächlichen
+Helpersignaturen, beide Seedgruppen und Retentionsvertrag 2. Die bisherige
+öffentliche Waitfläche akzeptiert vollständige alte und neue Targets mit
+expliziter Zuordnung von Version, Schema und Retentionsvertrag.
+
+Der synthetische Targetvertrag 227 besteht lokal auf SQL Server 2025.
+Er prüft unter anderem Rohwertorakel, Epochenentscheidungen, Gauge-/Counter-
+und Handlewechsel, fehlende Identität, Sourcefehler ohne Payload, leere
+Mengen, manipulierte Vorwertkontexte und Samplemetadaten sowie einen
+zurückgerollten tatsächlichen Rohschreibfehler. Die vorausgehenden
+fehlgeschlagenen Versuche bleiben private Evidenz; sie werden nicht als
+Erfolge umgedeutet. Die kombinierte lokale SQL2025-Qualifizierung besteht zusätzlich die bekannten
+Upgrades über alle drei Installationswege, echte alte 1.2.1-Helper mit nativ
+bestätigtem Stored-Hash, unterbrochene Recovery, Fremdhelper-/Seedkonflikte,
+letzte Abschlussablehnung bei fehlender Waitmetrik sowie die Verträge
+195/223/224/227 einschließlich der FILE_IO-Fehlertombstonegrenze. Der
+unabhängige Befundabschluss besteht ohne offene P1/P2. Reguläre Head-/Main-
+Gates und die gezielte native SQL2019-Risikoabnahme bleiben getrennt erforderlich.
+
+## Prüf- und Verarbeitungsumfang
+
+Die bekannte Migration verändert installierte Domänen und den tatsächlichen
+Abschlussvertrag. Deshalb umfasst die SQL2025-Abnahme alle drei
+Installationswege, erhaltene Altinhalte, Wiederholung, unterbrochene eigene
+Stadien, Fremdobjekt-/Seedkonflikte und die bestehenden Snapshot-/Waitpfade.
+Die lokale kombinierte Qualifizierung bündelt Migration und Runtimefälle in
+einem eigenen Lab. Das reguläre vollständige SQL2025-Gate bleibt am
+Liefercommit erforderlich. Eine zusätzliche native SQL2019-Prüfung betrifft
+ausschließlich das konkrete Schema-/Stored-Helper-/Berechtigungsrisiko;
+ein routinemäßiger SQL2022-Lauf ist nicht ausgewählt.
+
+Ein Implementierer und ein unabhängiger Reviewer bearbeiten den Umfang.
+Konkrete Befunde werden gebündelt geschlossen; die nativen Fehlversuche
+bleiben innerhalb der privaten endlichen Versuchsgrenze erhalten.
+Die 22 Deploymenttests prüfen den Installer und seine negativen Schutzfälle;
+die vorhandenen Vertrags-, Dokumentations- und Datenschutzgates prüfen den
+stabilen Lieferstand. Unveränderte grüne Prüfungen werden ohne neuen Input
+nicht wiederholt. Token- und Kostenmessung ist nicht verfügbar und wird
+nicht aus Laufzeiten abgeleitet.

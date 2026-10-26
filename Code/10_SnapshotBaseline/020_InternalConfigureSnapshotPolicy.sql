@@ -46,28 +46,28 @@ BEGIN
 
     IF @JoinFrameworkTransaction IS NULL OR
        (@JoinFrameworkTransaction=1 AND
-         (@CollectorCode<>'WAIT_STATS' OR @UpdateSharedPolicy<>1 OR @@TRANCOUNT<>1 OR XACT_STATE()<>1 OR (@@OPTIONS & 2)<>0))
+         (@CollectorCode NOT IN('WAIT_STATS','FILE_IO') OR @UpdateSharedPolicy<>1 OR @@TRANCOUNT<>1 OR XACT_STATE()<>1 OR (@@OPTIONS & 2)<>0))
     BEGIN
         SELECT @StatusCodeOut='INVALID_PARAMETER',@ErrorNumberOut=51011,
-               @ErrorMessageOut=N'Die ausdrückliche Transaktionsbeteiligung benötigt WAIT_STATS/Shared1 und eine committable Besitzertransaktion.';
+               @ErrorMessageOut=N'Die ausdrückliche Transaktionsbeteiligung benötigt WAIT_STATS oder FILE_IO mit Shared1 und eine committable Besitzertransaktion.';
         RETURN 51011;
     END;
 
-    IF @UseV2Contract=1 AND ((@@OPTIONS & 2)<>0 OR (@CollectorCode='WAIT_STATS' AND @@TRANCOUNT<>0 AND @JoinFrameworkTransaction=0))
+    IF @UseV2Contract=1 AND ((@@OPTIONS & 2)<>0 OR (@CollectorCode IN('WAIT_STATS','FILE_IO') AND @@TRANCOUNT<>0 AND @JoinFrameworkTransaction=0))
     BEGIN
         SELECT @StatusCodeOut='INVALID_PARAMETER',@ErrorNumberOut=51011,
-               @ErrorMessageOut=N'Der neue Wait-Vertrag benötigt IMPLICIT_TRANSACTIONS OFF und für WAIT_STATS keine Callertransaktion.';
+               @ErrorMessageOut=N'Der Collectorvertrag benötigt IMPLICIT_TRANSACTIONS OFF und außerhalb der Besitzerbeteiligung keine Callertransaktion.';
         RETURN 51011;
     END;
 
-    IF @CollectorCode NOT IN ('PERFORMANCE_COUNTERS','WAIT_STATS') OR @CollectorEnabled IS NULL
+    IF @CollectorCode NOT IN ('PERFORMANCE_COUNTERS','WAIT_STATS','FILE_IO') OR @CollectorEnabled IS NULL
     BEGIN
         SELECT @StatusCodeOut='INVALID_PARAMETER',@ErrorNumberOut=51011,
                @ErrorMessageOut=N'Ungültiger Collector oder Aktivierungswert.';
         RETURN 51011;
     END;
 
-    IF @CollectorCode='WAIT_STATS' OR @ExpectedTargetDatabaseId IS NOT NULL
+    IF @CollectorCode IN('WAIT_STATS','FILE_IO') OR @ExpectedTargetDatabaseId IS NOT NULL
        OR @ExpectedTargetDatabaseName IS NOT NULL OR @ExpectedTargetCreateDate IS NOT NULL
     BEGIN
         IF @ExpectedTargetDatabaseId IS NULL OR @ExpectedTargetDatabaseName IS NULL
@@ -101,16 +101,22 @@ BEGIN
         END;
         IF (SELECT COUNT_BIG(*) FROM [snapshot].[PackageVersion])<>1 OR NOT EXISTS
            (SELECT 1 FROM [snapshot].[PackageVersion] WHERE CONVERT(varbinary(max),[PackageCode])=CONVERT(varbinary(max),'SC-023')
-            AND CONVERT(varbinary(max),[PackageVersion])=CONVERT(varbinary(max),'1.2.1') AND [SchemaVersion]=2)
+            AND ((CONVERT(varbinary(max),[PackageVersion])=CONVERT(varbinary(max),'1.2.1') AND [SchemaVersion]=2) OR (CONVERT(varbinary(max),[PackageVersion])=CONVERT(varbinary(max),'1.3.0') AND [SchemaVersion]=3)))
            OR NOT EXISTS(SELECT 1 FROM [sys].[procedures] AS [wp] WITH (NOLOCK) JOIN [sys].[schemas] AS [ws] WITH (NOLOCK) ON [ws].[schema_id]=[wp].[schema_id] WHERE CONVERT(varbinary(max),[ws].[name])=CONVERT(varbinary(max),N'snapshot') AND CONVERT(varbinary(max),[wp].[name])=CONVERT(varbinary(max),N'InternalCompleteWaitStatsCycle'))
            OR NOT EXISTS(SELECT 1 FROM [sys].[parameters] AS [p] WITH (NOLOCK)
                          WHERE [p].[object_id] IN(SELECT [hp].[object_id] FROM [sys].[procedures] AS [hp] WITH (NOLOCK) JOIN [sys].[schemas] AS [hs] WITH (NOLOCK) ON [hs].[schema_id]=[hp].[schema_id] WHERE CONVERT(varbinary(max),[hs].[name])=CONVERT(varbinary(max),N'snapshot') AND CONVERT(varbinary(max),[hp].[name])=CONVERT(varbinary(max),N'InternalPurgeExpiredData'))
                            AND CONVERT(varbinary(max),[p].[name])=CONVERT(varbinary(max),N'@ContractOnly'))
         BEGIN
             SELECT @StatusCodeOut='TARGET_UNAVAILABLE',@ErrorNumberOut=53761,
-                   @ErrorMessageOut=N'Das vollständig installierte Wait-Target 1.2.1 fehlt.';
+                   @ErrorMessageOut=N'Das vollständig installierte kompatible Collector-Target fehlt.';
             RETURN;
         END;
+    END;
+
+    IF @CollectorCode='FILE_IO' AND NOT EXISTS(SELECT 1 FROM [snapshot].[PackageVersion] WHERE [PackageVersion]='1.3.0' AND [SchemaVersion]=3)
+    BEGIN
+        SELECT @StatusCodeOut='TARGET_UNAVAILABLE',@ErrorNumberOut=53781,@ErrorMessageOut=N'Das vollständige Datei-I/O-Target 1.3.0 fehlt.';
+        RETURN;
     END;
 
     IF @CollectionIntervalSeconds NOT BETWEEN 1 AND 3600

@@ -71,8 +71,8 @@
   ],
   "runtimeContract": "Code/Tests/Integration/195_SnapshotBaseline_Runtime_Contract.sql",
   "matrixWorkflow": ".github/workflows/release-native-matrix.yml",
-  "targetPackageVersion": "1.2.1",
-  "targetSchemaVersion": 2,
+  "targetPackageVersion": "1.3.0",
+  "targetSchemaVersion": 3,
   "acceptedTargetUpgrade": {
     "packageVersion": "1.0.0",
     "schemaVersion": 1,
@@ -85,11 +85,13 @@
     "requiresExactManagedShape": true,
     "preservesExistingRows": true
   },
-  "targetSchemaStageVersion": "1.1.1",
+  "targetSchemaStageVersion": "1.2.2",
   "acceptedTargetBackendUpgradeVersions": [
     "1.1.0",
     "1.1.1",
-    "1.2.0"
+    "1.2.0",
+    "1.2.1",
+    "1.2.2"
   ],
   "waitTargetBackend": {
     "releaseState": "IMPLEMENTED_TARGET_BACKEND",
@@ -164,9 +166,116 @@
       "NONE"
     ],
     "jsonOutputContractVersion": 1,
-    "targetPackageVersion": "1.2.1",
+    "targetPackageVersion": "1.3.0",
     "sharedConfigurationTransaction": "FRAMEWORK_OWNED_EXPLICIT_JOIN",
     "policyAdmission": "READ_ONLY_BEFORE_PURGE",
-    "preservesCommittedCaptureOnProjectionFailure": true
+    "preservesCommittedCaptureOnProjectionFailure": true,
+    "acceptedTargetVersions": [
+      {
+        "packageVersion": "1.2.1",
+        "schemaVersion": 2,
+        "retentionContractVersion": 1
+      },
+      {
+        "packageVersion": "1.3.0",
+        "schemaVersion": 3,
+        "retentionContractVersion": 2
+      }
+    ]
+  },
+  "fileIOTargetBackend": {
+    "releaseState": "IMPLEMENTED_TARGET_BACKEND",
+    "collectorCode": "FILE_IO",
+    "defaultEnabled": false,
+    "sourceSchemaVersion": 1,
+    "fileContextVersion": 1,
+    "captureContextVersion": 1,
+    "metricContractVersion": 1,
+    "completionProcedure": "snapshot.InternalCompleteFileIOCycle",
+    "completionSource": "Code/10_SnapshotBaseline/078_CompleteFileIOInstallation.sql",
+    "retentionContractVersion": 2,
+    "publicCollectorImplemented": false,
+    "metrics": [
+      {
+        "code": "IO_READ_COUNT",
+        "valueType": "BIGINT",
+        "unit": "count"
+      },
+      {
+        "code": "IO_READ_BYTES",
+        "valueType": "BIGINT",
+        "unit": "bytes"
+      },
+      {
+        "code": "IO_READ_STALL_MS",
+        "valueType": "BIGINT",
+        "unit": "ms"
+      },
+      {
+        "code": "IO_WRITE_COUNT",
+        "valueType": "BIGINT",
+        "unit": "count"
+      },
+      {
+        "code": "IO_WRITE_BYTES",
+        "valueType": "BIGINT",
+        "unit": "bytes"
+      },
+      {
+        "code": "IO_WRITE_STALL_MS",
+        "valueType": "BIGINT",
+        "unit": "ms"
+      },
+      {
+        "code": "IO_SIZE_ON_DISK_BYTES",
+        "valueType": "BIGINT",
+        "unit": "bytes"
+      },
+      {
+        "code": "IO_READ_COUNT_DELTA_CANDIDATE",
+        "valueType": "BIGINT",
+        "unit": "count"
+      },
+      {
+        "code": "IO_READ_BYTES_DELTA_CANDIDATE",
+        "valueType": "BIGINT",
+        "unit": "bytes"
+      },
+      {
+        "code": "IO_READ_STALL_MS_DELTA_CANDIDATE",
+        "valueType": "BIGINT",
+        "unit": "ms"
+      },
+      {
+        "code": "IO_WRITE_COUNT_DELTA_CANDIDATE",
+        "valueType": "BIGINT",
+        "unit": "count"
+      },
+      {
+        "code": "IO_WRITE_BYTES_DELTA_CANDIDATE",
+        "valueType": "BIGINT",
+        "unit": "bytes"
+      },
+      {
+        "code": "IO_WRITE_STALL_MS_DELTA_CANDIDATE",
+        "valueType": "BIGINT",
+        "unit": "ms"
+      },
+      {
+        "code": "IO_DELTA_STATUS",
+        "valueType": "STRING",
+        "unit": "status"
+      },
+      {
+        "code": "IO_FILE_CONTEXT",
+        "valueType": "STRING",
+        "unit": "json"
+      },
+      {
+        "code": "IO_CAPTURE_CONTEXT",
+        "valueType": "STRING",
+        "unit": "json"
+      }
+    ]
   }
 }
