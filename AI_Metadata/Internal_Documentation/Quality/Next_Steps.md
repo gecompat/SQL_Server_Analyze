@@ -101,8 +101,10 @@ und öffentlicher SQL2025-Smoke bestehen. Die breite native Rechteprobe deckt
 einen impliziten Returnwert auf; der normale Abschluss enthält nun RETURN 0.
 Die abschließende Fehlerfallprüfung und CI-Abnahme bleiben offen. Acht lokale
 native Versuche sind ausgeschöpft und alle eigenen Labs entfernt. Es folgen
-höchstens drei stabile CI-Kandidaten, einschließlich der erforderlichen nativen
-SQL2019-Rechtegrenze; ohne neue Inputs wird kein Lauf wiederholt.
+nach ausdrücklicher Benutzerfreigabe höchstens fünf stabile CI-Kandidaten,
+einschließlich der erforderlichen nativen SQL2019-Rechtegrenze. Die vorbereitete
+und unabhängig geprüfte Fixturekorrektur trennt serverweite Rechte in master
+vom Objektrecht im Frameworkkontext. Ohne neue Inputs wird kein Lauf wiederholt.
 Linux-/Container-Hostnachweise bleiben ein eigener Scope. Diese Vorbereitung
 übernimmt keine SSIS-Arbeit und verändert die erhaltene SSISDB nicht.
 Bereits gelieferte Funktionen und die abgeschlossene STAT-DOMINANT-Diagnose

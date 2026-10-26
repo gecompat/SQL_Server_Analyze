@@ -107,7 +107,7 @@ IF EXISTS(SELECT CONVERT(int,ROW_NUMBER() OVER(ORDER BY [column_id])) AS [Ordina
   OR (SELECT COUNT_BIG(*) FROM OPENJSON(@Json,'$.sources') WITH([SourceOrdinal] int,[NativeReadState] varchar(16),[NativeRows] bigint) WHERE [SourceOrdinal] IN(1,2,3) AND [NativeReadState]='FAILED' AND [NativeRows] IS NULL)<>3
   OR COALESCE(JSON_VALUE(@Json,'$.sources[3].NativeReadState'),N'<NULL>')<>'SUCCEEDED' OR COALESCE(JSON_VALUE(@Json,'$.context[0].EngineContextConfirmed'),N'<NULL>')<>'false'
   BEGIN SET @Message=LEFT(CONCAT(N'Restricted caller: return=',@Return,N'; status=',@Status,N'; error=',@Error,N'; sources=',JSON_QUERY(@Json,'$.sources')),2048);THROW 57414,@Message,1;END;
- SET @Sql=N'GRANT '+CASE WHEN @Major=15 THEN N'VIEW SERVER STATE' ELSE N'VIEW SERVER PERFORMANCE STATE' END+N' TO '+QUOTENAME(@Login)+N';';EXEC sys.sp_executesql @Sql;
+ SET @Sql=N'GRANT '+CASE WHEN @Major=15 THEN N'VIEW SERVER STATE' ELSE N'VIEW SERVER PERFORMANCE STATE' END+N' TO '+QUOTENAME(@Login)+N';';EXEC [master].[sys].[sp_executesql] @Sql;
  EXECUTE AS LOGIN=@Login;SET @Impersonated=1;
  EXEC @Return=[monitor].[USP_UpgradeFeatureUsageAnalysis] @ResultSetArt='NONE',@JsonErzeugen=1,@Json=@Json OUTPUT,@PrintMeldungen=0,@ErrorNumberOut=@Error OUTPUT;
  REVERT;SET @Impersonated=0;
@@ -158,8 +158,10 @@ IF EXISTS(SELECT CONVERT(int,ROW_NUMBER() OVER(ORDER BY [column_id])) AS [Ordina
   SET @Sql=N'EXEC [monitor].'+QUOTENAME(@Module)+N' @TargetMajorVersion=17,@ResultSetArt=''NONE'',@JsonErzeugen=1,@Json=@J OUTPUT,@PrintMeldungen=0,@StatusCodeOut=@S OUTPUT,@ErrorNumberOut=@E OUTPUT,@ErrorMessageOut=@M OUTPUT;';
   IF @FixtureCase=6
   BEGIN
-   DECLARE @RightSql nvarchar(max)=N'REVOKE '+CASE WHEN @Major=15 THEN N'VIEW SERVER STATE' ELSE N'VIEW SERVER PERFORMANCE STATE' END+N' FROM '+QUOTENAME(@Login)+N'; GRANT EXECUTE ON OBJECT::[monitor].'+QUOTENAME(@Module)+N' TO '+QUOTENAME(@User)+N';';
-   EXEC sys.sp_executesql @RightSql;
+   DECLARE @RightSql nvarchar(max)=N'REVOKE '+CASE WHEN @Major=15 THEN N'VIEW SERVER STATE' ELSE N'VIEW SERVER PERFORMANCE STATE' END+N' FROM '+QUOTENAME(@Login)+N';';
+   EXEC [master].[sys].[sp_executesql] @RightSql;
+   SET @RightSql=N'GRANT EXECUTE ON OBJECT::[monitor].'+QUOTENAME(@Module)+N' TO '+QUOTENAME(@User)+N';';
+   EXEC [sys].[sp_executesql] @RightSql;
    EXECUTE AS LOGIN=@Login;SET @Impersonated=1;
   END;
   EXEC sys.sp_executesql @Sql,N'@J nvarchar(max) OUTPUT,@S varchar(40) OUTPUT,@E int OUTPUT,@M nvarchar(2048) OUTPUT',@J=@Json OUTPUT,@S=@Status OUTPUT,@E=@Error OUTPUT,@M=@Message OUTPUT;

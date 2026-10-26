@@ -313,8 +313,8 @@ Compatibility-Level-Risiko und eine gezielte Auswahl der nativen SQL2019-Engine
 wegen der unterschiedlichen DMV-Rechte. Die vorhandene native Workflowauswahl
 FULL_RELEASE ist umfangreicher als der einzelne neue Vertrag; dessen Ergebnis
 und die tatsächlich ausgeführten Tests werden getrennt bewertet. SQL2022 wird
-nicht zusätzlich gestartet. Höchstens drei CI-Kandidaten dürfen für diese
-Welle qualifiziert werden; neue Inputs oder Befunde sind für Wiederholungen
+nicht zusätzlich gestartet. Nach ausdrücklicher Benutzerfreigabe dürfen höchstens fünf CI-Kandidaten für
+diese Welle qualifiziert werden; neue Inputs oder Befunde sind für Wiederholungen
 erforderlich. Es werden keine weiteren lokalen Labversuche begonnen.
 
 Der gebündelte unabhängige Folgecheck schließt die Fehlerfallabdeckung ohne
@@ -345,3 +345,25 @@ war deshalb noch nicht ausgeführt. Sie folgt im letzten Kandidaten als
 unabhängiger Begleittest direkt auf Smoke; die bisherigen kanonischen Suiten
 behalten ihre Reihenfolge. Der bestehende Zählvertrag bleibt bei 34 kanonischen
 Suiten und zählt diese Begleitfixture nicht zusätzlich.
+
+## Begrenzte Fortsetzung nach Benutzerfreigabe
+
+Der Benutzer erweitert am 26. Oktober 2026 die Grenze um höchstens zwei
+CI-Kandidaten. Die Gesamtgrenze dieser Welle beträgt damit fünf; die acht
+lokalen Labversuche bleiben ausgeschöpft. Der dritte Kandidat besteht alle
+statischen Head-Gates. Native SQL2019- und SQL2025-Läufe erreichen die neue
+Fixture und scheitern nach den ersten drei Gruppen auf Fehler 4621: Das
+serverweite GRANT wird im Frameworkkontext ausgeführt. Die Cleanup-Schritte
+bestehen. Die Laufzeitabnahme bleibt daher offen.
+
+Die unabhängig geprüfte Fixturekorrektur führt serverweites GRANT und REVOKE
+über master.sys.sp_executesql aus. Das Objektrecht für das eigene Clonemodul
+bleibt im Frameworkkontext; der äußere Datenbankkontext und die gebundene
+Bereinigung bleiben erhalten. Produktcode und Oracles ändern sich nicht.
+Der zusätzliche CI-Lauf ist durch diese geänderte Fixture begründet. Bereits
+abgeschlossene Reviews werden nicht erneut geprüft; weitere lokale Labs und
+eine zusätzliche native SQL2022-Matrix werden nicht gestartet. Der vorhandene
+native Workflow bietet für dieses Core-Rechterisiko nur den umfangreicheren
+FULL_RELEASE-Scope; der Snapshot-Scope wäre fachlich unzutreffend. Die tatsächlich
+ausgeführten Gates und Kosten bleiben getrennt; eine Kostenmessung wird nicht
+behauptet.
