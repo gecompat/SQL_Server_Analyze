@@ -43,10 +43,7 @@
     "AI_Metadata/Internal_Documentation/Architecture/Foundation_1_21_Upgrade.md",
     "AI_Metadata/Internal_Documentation/Architecture/Foundation_1_21_Upgrade_Assessment.json",
     "AI_Metadata/Internal_Documentation/Architecture/Long_Term_Development_Roadmap.md",
-    "AI_Metadata/Internal_Documentation/Architecture/Database_Principal_Analysis_Dossier.md",
-    "AI_Metadata/Internal_Documentation/Architecture/RLS_and_Masking_Inventory_Dossier.md",
     "AI_Metadata/Internal_Documentation/Architecture/Runtime_Data_and_Repository_Privacy.md",
-    "AI_Metadata/Internal_Documentation/Research/SQL_Server_Diagnostic_Coverage_Landscape.md",
     "AI_Metadata/Internal_Documentation/Quality/Next_Steps.md",
     "AI_Metadata/Internal_Documentation/Quality/Development_Waves_2026-10.md",
     "AI_Metadata/Internal_Documentation/Quality/Release_Gate_Runbook.md",
@@ -57,14 +54,11 @@
     "Documentation/Architecture/Lossless_Deployment_Contract.md",
     "Documentation/Architecture/Runtime_Data_Privacy.md",
     "Documentation/Architecture/Special_Case_Modules.md",
-    "Documentation/Analysis_Guides/Procedures/USP_SpecialFeatureInventory.md",
-    "Code/09_VersionAdaptive/020_USP_SpecialFeatureInventory.sql",
     "Documentation/Architecture/TSQL_SCENARIO_ORCHESTRATION.md",
     "Documentation/Quality/CI_Impact_Selection.md",
     "Documentation/Quality/CI_Test_Strategy.md",
     "Documentation/Quality/Documentation_Writing_Style.md",
     "Documentation/Quality/Test_Matrix.md",
-    "Metadata/Quality/Diagnostic_Coverage_Landscape.csv",
     "Metadata/Governance/Artifact_Registry.json",
     "AI_Metadata/Internal_Documentation/Architecture/Foundation_1_24_Upgrade.md",
     "AI_Metadata/Internal_Documentation/Architecture/Foundation_1_24_Upgrade_Assessment.json",
@@ -115,7 +109,6 @@
       "AI_Metadata/ARTIFACT_IDENTITY_AND_NOMENCLATURE.md",
       "AI_Metadata/CONTINUATION_GUIDE.md",
       "AI_Metadata/Internal_Documentation/Architecture/Long_Term_Development_Roadmap.md",
-      "AI_Metadata/Internal_Documentation/Architecture/RLS_and_Masking_Inventory_Dossier.md",
       "AI_Metadata/Internal_Documentation/Architecture/Runtime_Data_and_Repository_Privacy.md",
       "AI_Metadata/Internal_Documentation/Quality/Next_Steps.md",
       "AI_Metadata/PROJECT_CONTEXT.md",
@@ -190,36 +183,10 @@
     ]
   },
   "semantic_dependencies": {
-    "AI_Metadata/Internal_Documentation/Architecture/Database_Principal_Analysis_Dossier.md": [
-      "AGENTS.md",
-      "AI_Metadata/ARTIFACT_IDENTITY_AND_NOMENCLATURE.md",
-      "Documentation/Quality/CI_Test_Strategy.md"
-    ],
-    "AI_Metadata/Internal_Documentation/Research/SQL_Server_Diagnostic_Coverage_Landscape.md": [
-      "AGENTS.md",
-      "Metadata/Quality/Diagnostic_Coverage_Landscape.csv"
-    ],
-    "Metadata/Quality/Diagnostic_Coverage_Landscape.csv": [
-      "AGENTS.md"
-    ],
-    "Documentation/Analysis_Guides/Procedures/USP_SpecialFeatureInventory.md": [
-      "AGENTS.md",
-      "Code/09_VersionAdaptive/020_USP_SpecialFeatureInventory.sql",
-      "Documentation/Quality/Documentation_Writing_Style.md"
-    ],
-    "Code/09_VersionAdaptive/020_USP_SpecialFeatureInventory.sql": [
-      "AGENTS.md"
-    ],
     "AI_Metadata/Internal_Documentation/Quality/Development_Waves_2026-10.md": [
       "AGENTS.md",
       "AI_Metadata/ARTIFACT_IDENTITY_AND_NOMENCLATURE.md",
       ".ai/foundation/PROCESSING_EFFICIENCY_POLICY.md",
-      "Documentation/Quality/CI_Test_Strategy.md"
-    ],
-    "AI_Metadata/Internal_Documentation/Architecture/RLS_and_Masking_Inventory_Dossier.md": [
-      "AGENTS.md",
-      "AI_Metadata/ARTIFACT_IDENTITY_AND_NOMENCLATURE.md",
-      "AI_Metadata/Internal_Documentation/Quality/Development_Waves_2026-10.md",
       "Documentation/Quality/CI_Test_Strategy.md"
     ],
     ".ai/foundation/AI_REPOSITORY_FOUNDATION_NOTICE.md": [
