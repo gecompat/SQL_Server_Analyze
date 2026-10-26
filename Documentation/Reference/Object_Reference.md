@@ -834,7 +834,7 @@ Quelle: `Code/10_SnapshotBaseline/057_InternalCompleteFileIOCycle.sql`
 | Schnittstelle | CaptureRunId bigint, CollectorJson nvarchar(max), erwartete Target-ID int, Name sysname und Erstellungszeit datetime sowie StatusCodeOut varchar(40), IsPartialOut bit, ErrorNumberOut int und ErrorMessageOut nvarchar(2048) als OUTPUT. |
 | Verwendung | Interner Targetabschluss für den passenden Frameworkcollector. Eine öffentliche native FILE_IO-Aufnahme ist noch nicht implementiert. |
 | Last und Sperren | Der Helper verwendet eine eigene Transaktion unter LOCK_TIMEOUT 0 für den bereits vorbereiteten eigenen RUNNING-Lauf; Sourceabfragen gehören nicht zu dieser Transaktion. Caller- und implizite Transaktionen werden vor Fachzugriff abgelehnt. |
-| Vertrag | Vollständiges Target 1.3.0 / Schema 3 mit tatsächlichem Retentionsvertrag 2. Dateiepochen, tatsächliche Rohhashes und der unmittelbar vorherige finalisierte FILE_IO-Lauf begrenzen Kandidaten. Sourcefehler bleiben auch ohne Payload als gebundene Module erhalten. Erfolgreiche Aufnahmen bleiben PARTIAL; Kontinuität wird nicht behauptet. Der [Feldvertrag](../../AI_Metadata/Internal_Documentation/Architecture/File_IO_Snapshot_Field_Contract.md) beschreibt die Bindungen. |
+| Vertrag | Vollständiges Target 1.3.0 / Schema 3 mit tatsächlichem Retentionsvertrag 2. Dateiepochen, tatsächliche Rohhashes und der unmittelbar vorherige finalisierte FILE_IO-Lauf begrenzen Kandidaten. Sourcefehler bleiben auch ohne Payload als gebundene Module erhalten. Erfolgreiche Aufnahmen bleiben PARTIAL; Kontinuität wird nicht behauptet. Der [interne Datei-I/O-Vertrag](../Architecture/Snapshot_Baseline_Package_Contract.md#internes-datei-io-target) beschreibt die Bindungen. |
 
 ### `[snapshot].[InternalFinalizeCollectionCycle]`
 

@@ -44,8 +44,8 @@ Der aktuelle Quellstand installiert Target-PackageVersion 1.3.0 mit
 SchemaVersion 3. Die öffentliche Collectorwahl umfasst weiterhin Performance
 Counter und Waits. Das interne Datei-I/O-Backend ergänzt 16 Metrikdefinitionen
 und eine deaktivierte FILE_IO-Policy; ein öffentlicher nativer Datei-I/O-Collector
-gehört noch nicht zu diesem Stand. Der [Feld- und Migrationsvertrag](../../AI_Metadata/Internal_Documentation/Architecture/File_IO_Snapshot_Field_Contract.md)
-beschreibt Source-, Kontext-, Epochen- und Mengenbindung.
+gehört noch nicht zu diesem Stand. Der [interne Datei-I/O-Vertrag](#internes-datei-io-target) beschreibt
+Source-, Kontext-, Epochen- und Mengenbindung.
 
 Der Purge erhält für WAIT_STATS und FILE_IO jeweils die letzte finalisierte
 Laufzeile einschließlich Fehlern als Vergleichsgrenze; ihre Kinder dürfen
@@ -287,3 +287,41 @@ Das aktualisierte Framework unterstützt für Waits vollständige Targets
 Retentionsvertrag 2. Beim getrennten Rollout wird zuerst das Framework
 aktualisiert. Das alte Framework kennt den neuen Targetmarker nicht;
 die umgekehrte Reihenfolge ist deshalb nicht als unterbrechungsfrei qualifiziert.
+
+## Internes Datei-I/O-Target
+
+InternalCompleteFileIOCycle nimmt einen geschlossenen Source-v1-Rahmen mit
+meta, databases, files und issues entgegen. Die bereitgestellten Werte werden
+vor der Speicherung auf Member, Typ, Nullregeln, native Wertebereiche,
+Zeitfenster sowie Framework- und Auswahlbindung geprüft. Der Helper führt
+keinen nativen VFS-Read aus. Er verlangt einen unbeschriebenen eigenen
+Lauf mit CollectorCode=FILE_IO und Status RUNNING im vollständigen Target 1.3.0 / Schema 3 und besitzt
+seine eigene Transaktion; Caller- und implizite Transaktionen sind unzulässig.
+
+Jede ausgewählte geeignete Datei erhält sechs kumulative Rohcounter, den
+Gauge für SizeOnDiskBytes, einen Vergleichsstatus und einen Dateikontext. Nur bei
+gültiger unmittelbarer Vorwertbasis entstehen sechs nichtnegative
+MONOTONIC_CONTINUITY_UNPROVEN-Kandidaten. Zusätzlich wird ein globaler
+Aufnahmekontext geschrieben. Für N geschriebene und C vergleichbare Dateien
+gilt MetricSampleCount = 9*N + 6*C + 1. Ein gültiger leerer Capture besitzt
+nur den globalen Kontext; ein fataler Sourcefehler besitzt keine Metrics.
+
+Dateiepochen binden Rohwerte, Status, Dateikontext und Kandidaten. Der globale
+Kontext erhält eine eigene technische ContextEpochId je Capture;
+CaptureRun.ResetEpochId und SqlServerStartTimeUtc bleiben NULL. Die bestehende
+NOT-NULL-Bedingung von MetricSample.ResetEpochId bleibt erhalten.
+Kanonische UTF-16LE-Hashes binden tatsächliche Scopeidentitäten, sieben
+gespeicherte Rohzeilen und Dateikontexte. Der unmittelbar vorherige
+finalisierte FILE_IO-Lauf einschließlich Fehlern ist die Vergleichsgrenze.
+Fehlende, partielle, widersprüchliche oder abgelaufene Belege erlauben keine
+Zahlen. Gleiche Beobachtungen beweisen keine ausbleibenden Resets;
+Kandidaten und erfolgreiche Gesamtaufnahmen bleiben partiell.
+
+Quellfehler verschwinden auch bei PayloadEnabled=0 nicht. Jeder gültige Issue
+besitzt eine unveränderte Zeile mit Fehler und Evidenz und einen an deren tatsächliche
+ModuleStatusId gebundenen Entitätskontext. Hinzu kommt eine Summaryzeile;
+bei J Issues entstehen 1+2*J Module. Ein ungültiger Sourcevertrag finalisiert
+einen kontrollierten SOURCE_CONTRACT-Fehler ohne numerische Samples.
+Die öffentliche native FILE_IO-Aufnahme und ihre Auswahlparameter folgen
+getrennt; Anwendungen verwenden weiterhin die dokumentierten öffentlichen
+Snapshot-Procedures.
