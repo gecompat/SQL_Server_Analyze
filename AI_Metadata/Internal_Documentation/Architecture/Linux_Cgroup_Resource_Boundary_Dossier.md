@@ -212,6 +212,51 @@ sind klar von nativen Hostbelegen getrennt.
 
 ## Abnahme und nächster ausführbarer Schritt
 
+### Parser-Schnittstelle für skalare Ressourcenwerte
+
+Der erste Implementierungsschritt ist auf einen reinen Python-3.11-Parser
+ohne Dateizugriff begrenzt. `Code/Tools/Linux_Cgroup_Values.py` stellt
+`parse_resource_value(source_key: str, raw_value: str) -> dict[str, str | None]`
+bereit. Zulässige `source_key`-Werte sind `memory.max`, `memory.high`,
+`memory.swap.max`, `memory.current` und `cpu.max`. Unbekannte Schlüssel lösen
+`ValueError`, Argumente des falschen Typs `TypeError` aus.
+
+Jedes Ergebnis besitzt fest die Felder `source_key`, `raw_value`,
+`parse_state`, `reason_code`, `value_kind`, `value`, `quota_us`, `period_us`,
+`ratio_numerator` und `ratio_denominator`. `raw_value` bleibt als
+unveränderter Python-String erhalten. `parse_state` ist `VALID`, `INVALID_VALUE` oder
+`LIMIT_REACHED`; `reason_code` benennt den konkreten Zustand als
+`FINITE_VALUE`, `UNLIMITED`, `INVALID_FORMAT`, `INVALID_TOKEN`,
+`OUT_OF_RANGE`, `NON_UTF8_TEXT` oder `INPUT_TOO_LARGE`. `value_kind` ist
+`FINITE`, `UNLIMITED` oder `NONE`. Endliche Speicherwerte stehen als
+Dezimalzeichenkette in `value`; bei `cpu.max` stehen Quota und Periode in
+`quota_us` und `period_us`. Ein endlicher CPU-Quotient wird ausschließlich als
+gekürztes Paar `ratio_numerator`/`ratio_denominator` ausgegeben. Alle nicht
+zutreffenden Wertfelder sind `None`; eine unbegrenzte Quote behält ihre
+Periode und hat keine numerische Quote oder Ratio. Ergebnisfelder enthalten
+keine Python-Ganzzahlen und sind JSON-kompatibel. Die API liefert keinen
+Datei- oder Readzustand und kann fehlende Dateien oder Lesefehler nicht
+feststellen.
+
+Speicherwerte akzeptieren ASCII-Dezimalziffern von null bis
+`18446744073709551615`; `max` ist nur für `memory.max`, `memory.high` und
+`memory.swap.max` zulässig. `cpu.max` verlangt genau zwei Tokens mit positiver
+endlicher Quote oder `max` und strikt positiver Periode, jeweils höchstens
+`18446744073709551615`. Geparst wird nach Entfernen äußerer ASCII-Leerzeichen,
+Tabulatoren, CR und LF. Die UTF-8-Eingabegrenze beträgt 64 KiB und wird vor
+einer Ganzzahlkonvertierung geprüft. Ein Überschreiten erzeugt
+`LIMIT_REACHED` ohne Zahlenwerte.
+
+Diese API ist weder Voll-Collector-Schnittstelle noch Dateizugriffsadapter.
+Namespace-/PID-/Mountauflösung, Hierarchieableitungen, Counter, cpuset,
+CLI, SQL-Import und native Hostqualifikation bleiben nicht implementiert.
+Die Registrierung des Validators im vorhandenen statischen Runner aktiviert
+bei dessen Änderung einmalig dessen bestehenden vollständigen Satz statischer
+Selbsttests. Diese notwendige Runnergrenze wird nicht durch Verengung
+bestehender Gates umgangen; spätere Änderungen am Parser aktivieren gezielt
+den neuen fokussierten Selbsttest. Der vorhandene Dokumentationsworkflow
+erhält lediglich den Modulpfad als Trigger.
+
 Diese Vertragswelle verlangt einen unabhängigen Review der Quellen-,
 Namespace-, Pfad-, Hierarchie-, Vertrauens- und Abbruchgrenzen sowie die
 betroffenen statischen Dokumentations-, Metadaten-, Privacy- und Registrygates.
