@@ -147,13 +147,24 @@ und SQL-Instanzbindung bleiben offen. Schritt 29 ist über
 aller Head- und Main-Prüfungen integriert. Der begrenzte
 [COLL-B007-Consumernachweis](COLLB007_Filter_Identifier_Runtime_Evidence_2026-09-19.md#ergänzung-vom-26-oktober-2026-datenbankprincipal-consumer)
 prüft exakte Datenbankauswahl und Groß-/Kleinschreibung; die garantierte
-Collation bleibt unverändert. Schritt 30 ergänzt vier AgentJobs-TABLE-
-Kalenderfälle und deren bedingte Abnahme im bestehenden SQL2025-CI-Container.
-Die abschließende native Qualifikation ist noch offen; zwei lokale Fehlläufe
-bleiben mit erfolgreichem Cleanup im
-[Reifeevidenzdokument](Maturity_Closeout_Runtime_Evidence_2026-08-29.md) erhalten.
-Nach Abschluss der erforderlichen Gates wird der Restumfang am bestehenden
-Checkpoint neu bewertet.
+Collation bleibt unverändert. Schritt 30 ist über
+[PR #468](https://github.com/gecompat/SQL_Server_Analyze/pull/468) mit allen
+Head- und fünf Main-Prüfungen integriert. Head `dec8cdc7` und Merge `0c958e14`
+besitzen denselben Baum. Der tatsächliche Marker der AgentHistory-Fixture,
+Standalonevertrag 193, Snapshotverträge und Cleanup bestehen am Head und auf
+Main. Der [Reifeevidenznachweis](Maturity_Closeout_Runtime_Evidence_2026-08-29.md#abschluss-des-korrigierten-testvertrags)
+erhält alle Fehlläufe und die begrenzte Leerfallkorrektur; die Bestätigung gilt
+für die SQL2025-CI-Baseline, nicht für weitere Collationkombinationen.
+
+Der Checkpoint nach 30 Schritten ist neu bewertet. Innerhalb der unveränderten
+Gesamtgrenze folgt als nächster unabhängiger geplanter Schritt der optionale
+[Producervertrag für eigene SSIS-Kennzahlen](../../../Documentation/Architecture/SSIS_Custom_Metrics_Producer_Contract.md)
+aus Rang 15. Der Abgleich bestätigt nur die bereits gelieferten festen
+Kennzahlen; der neue Vertrag bleibt ein nicht implementierter Entwurf.
+Das [zugehörige Dossier](../Architecture/SSIS_Custom_Metrics_Contract_Dossier.md)
+führt Scope, Quellenbindung und den späteren Implementierungsweg. Externe
+Quellenabnahmen, weitere Ausgabearten und andere offene Ränge bleiben erhalten;
+es wird kein vollständiger Reifeabschluss behauptet.
 
 ## Abgeschlossen: fünf SSIS-Paketwellen vom 25. Oktober 2026
 

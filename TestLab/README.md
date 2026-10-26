@@ -321,8 +321,9 @@ Joboutcome erhalten bleiben; bei einem ungültigen Jobdatum bleibt das
 Jobsresultat leer. Nur bei bestätigter Zeilenmenge null wird eine leere
 SQL-NULL-Serialisierung des TABLE-Ergebnisses auf `[]` normalisiert.
 RAW- und CONSOLE-Ausgaben sowie Monitoring-TABLE-Ausgaben werden dadurch
-nicht abgenommen. Diese ergänzte TABLE-Gegenprobe ist noch
-nicht nativ qualifiziert. Die Fixture führt keinen Agent-Job aus.
+nicht abgenommen. Die ergänzte TABLE-Gegenprobe besteht auf der
+SQL2025-CI-Baseline mit Engine 17 und CL170 am PR-Head und auf Main. Weitere
+Collationkombinationen werden dadurch nicht qualifiziert. Die Fixture führt keinen Agent-Job aus.
 Tatsächliche Stepausführung und Retryverhalten, Daueroverläufe außerhalb
 der geprüften Literalwerte, UTC- oder Endzeitinterpretation,
 Zeitfenstergrenzen und Retention werden damit nicht belegt.
