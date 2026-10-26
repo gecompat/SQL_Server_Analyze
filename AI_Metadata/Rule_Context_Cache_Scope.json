@@ -1609,6 +1609,46 @@
       "source": "AI_Metadata/Internal_Documentation/Architecture/Linux_Cgroup_Resource_Boundary_Dossier.md",
       "target": "Documentation/Analysis_Guides/Linux_Cgroup_Reader.md",
       "classification": "product-reference"
+    },
+    {
+      "source": "AI_Metadata/Internal_Documentation/Quality/Development_Waves_2026-10.md",
+      "target": "AI_Metadata/Internal_Documentation/Quality/COLLB007_Filter_Identifier_Runtime_Evidence_2026-09-19.md",
+      "classification": "historical-context"
+    },
+    {
+      "source": "AI_Metadata/Internal_Documentation/Quality/Next_Steps.md",
+      "target": "AI_Metadata/Internal_Documentation/Quality/COLLB007_Filter_Identifier_Runtime_Evidence_2026-09-19.md",
+      "classification": "historical-context"
+    },
+    {
+      "source": "AI_Metadata/Internal_Documentation/Architecture/Foundation_1_25_Upgrade.md",
+      "target": ".github/workflows/ci-functional-impact.yml",
+      "classification": "product-reference"
+    },
+    {
+      "source": "AI_Metadata/Internal_Documentation/Architecture/Foundation_1_25_Upgrade.md",
+      "target": "Code/Tests/Static/925_Select_CI_Impact.py",
+      "classification": "product-reference"
+    },
+    {
+      "source": "AI_Metadata/Internal_Documentation/Quality/Next_Steps.md",
+      "target": "AI_Metadata/Internal_Documentation/Quality/Maturity_Closeout_Runtime_Evidence_2026-08-29.md",
+      "classification": "historical-context"
+    },
+    {
+      "source": "AI_Metadata/Internal_Documentation/Quality/Development_Waves_2026-10.md",
+      "target": "AI_Metadata/Internal_Documentation/Quality/Maturity_Closeout_Runtime_Evidence_2026-08-29.md",
+      "classification": "historical-context"
+    },
+    {
+      "source": "Documentation/Quality/CI_Impact_Selection.md",
+      "target": "TestLab/Scenarios/OPS-008/agent-history.sql",
+      "classification": "product-reference"
+    },
+    {
+      "source": "Documentation/Quality/CI_Impact_Selection.md",
+      "target": "Code/Tests/ServerHealth/122_OPS008_Msdb_Health_Runtime_Contract.sql",
+      "classification": "product-reference"
     }
   ]
 }

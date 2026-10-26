@@ -53,7 +53,7 @@ wird nicht allein aufgrund eines Planverweises übernommen.
 | 9 | SSIS-Laufvergleiche, `SSIS-001` | Paarvergleich und Mehrlauf-Baseline sind geliefert; PR #457 ergänzt bis zu 20 gebundene Basisläufe und einen Kandidaten. Ein Ausbau benötigt einen konkreten verbleibenden Bedarf und wiederholt keine abgeschlossene Abnahme. |
 | 10 | Snapshot- und Baseline-Ausbau, `SC-023-EXPANSION` | Wait- und native Datei-I/O-Slices sind bis PR #458 mit ihren begrenzten Kontinuitätsverträgen integriert. Kapazität, Ressourcendruck, Rollups und Scheduler folgen als getrennte verbleibende Umfänge. |
 | 11 | Upgrade- und Plattformdiagnostik, Intake `DEPRECATION_BREAKING_CHANGE` und `LINUX_CONTAINER_LIMITS` | Upgrade und Linux-cgroup-Vertrags-/Parser-Slices sind über PR #459 bis PR #463 abgeschlossen. PR #464 schließt den begrenzten Common-159-TRUNCATE-/MinValidVersion-Fall ab: Source-Head `12bf7fff`, sieben Head-Checks, SQL-2025-Lauf [40332918187](https://github.com/gecompat/SQL_Server_Analyze/actions/runs/40332918187) und vier bestandene Main-Gates. Der Quelllauf ist belegt; separater Erfolgsstdout und PASS-Marker sind nicht exportiert. Schritt 27 präzisiert den Reader-Vertrag im [Dossier](../Architecture/Linux_Cgroup_Resource_Boundary_Dossier.md) und in der öffentlichen [Readerspezifikation](../../../Documentation/Analysis_Guides/Linux_Cgroup_Reader_Contract.md). Schritt 28 ist über PR #466 mit unabhängigem Review, vier Head- und drei Main-Prüfungen integriert. Python 3.11.17 auf Linux x86_64 besteht 223 portable Readerfälle, 113 Parserfälle und 19 native Fälle; der erste CI-Fehllauf bleibt im Dossier erhalten. Native Hostqualifikation, cgroup-Limitwirkung und SQL-Bindung bleiben offen. Bearbeitung ECONOMICAL/LOCAL mit gezielter Eskalation bei konkretem Klärungsbedarf. |
-| 12 | Collation-Härtung, `COLL-001` | Verbleibende betroffene Quelldateien und Consumer gezielt härten und prüfen. Die garantierte Collation wird ohne vollständigen Nachweis nicht erweitert. |
+| 12 | Collation-Härtung, `COLL-001` | PR #467 ergänzt die exakte Datenbankauswahl und deren Groß-/Kleinschreibung im Datenbankprincipal-Consumer mit allen Head-/Main-Prüfungen. Weitere betroffene Quelldateien und Consumer bleiben offen; die garantierte Collation wird nicht erweitert. |
 | 13 | msdb-, Agent- und Mail-Diagnostik, `OPS-008` | Verbleibende Retention-, Status-, Datum-/Dauer- und Wartungsfälle abschließen; vorhandenen SMTP-Erfolg nicht erneut qualifizieren. |
 | 14 | External-Data-, Runtime- und CLR-Abnahmen, `WI-0009` und `RUNTIME-001` | Eigene positive External-Table-Quellen, aktivierte Runtimes und synthetische SAFE-Assembly-Nachweise getrennt abnehmen. Fehlende Infrastruktur bleibt externe Evidenz. |
 | 15 | Eigene SSIS-Kennzahlen, `SSIS-001` | Den optionalen Produzentenvertrag für DELTA, CUMULATIVE, GAUGE und FINAL mit Einheiten, Epochen, Duplikaten und Sequenzlücken spezifizieren; keine automatische Paketinstrumentierung. |
@@ -289,9 +289,15 @@ und drei Main-Prüfungen integriert. Head `18bf0d6e` und Merge `65174ea1`
 besitzen denselben Baum. Python 3.11.17 auf Linux x86_64 besteht 223 portable
 Readerfälle, 113 Parserfälle und 19 native Fälle am Head und auf Main.
 Der erste CI-Fehllauf und die begrenzte Testtreiberkorrektur bleiben im Dossier
-erhalten; lokal erfolgte keine Nativeausführung. Schritt 29 bearbeitet eine
-konkrete verbleibende Collation-Grenze aus Rang 12 mit begrenztem Umfang,
-unabhängigem Review und impactbasierten Tests. Native Hostqualifikation,
+erhalten; lokal erfolgte keine Nativeausführung. Schritt 29 ist über PR #467
+mit allen sieben Head- und vier Main-Prüfungen integriert. Der
+[COLL-B007-Consumernachweis](COLLB007_Filter_Identifier_Runtime_Evidence_2026-09-19.md#ergänzung-vom-26-oktober-2026-datenbankprincipal-consumer)
+belegt die begrenzte exakte Datenbankauswahl und Groß-/Kleinschreibung auf
+SQL Server 2025; weitere Consumer bleiben offen. Schritt 30 ergänzt vier
+AgentJobs-TABLE-Kalenderfälle und deren bedingte Abnahme im vorhandenen
+SQL2025-CI-Container. Zwei lokale Fehlläufe bleiben mit erfolgreichem Cleanup
+und offener abschließender Qualifikation im
+[Reifeevidenzdokument](Maturity_Closeout_Runtime_Evidence_2026-08-29.md) erhalten. Nach Abschluss folgt die bestehende Restumfangsbewertung bei 30. Native Hostqualifikation,
 positive kontrollierte cgroup-Limits und deren Wirkung auf SQL Server, globale
 Hierarchievollständigkeit und SQL-Instanzbindung bleiben offen. Die Bearbeitung
 verwendet ECONOMICAL/LOCAL und eskaliert nur bei konkreten ungeklärten Vertrags-

@@ -3763,3 +3763,78 @@ Compatibility Levels bleiben offen. Produktcode, öffentliche Verträge,
 Versionen und Maturityflags bleiben unverändert. OPS-008 bleibt
 `PARTIAL_PRODUCT_FUNCTION`. Das Budget steht nach Abschluss auf eins von
 einem tatsächlichen Versuch und wird nicht zurückgesetzt.
+
+## Ergänzung vom 26. Oktober 2026: AgentJobs-TABLE-Kalenderfälle
+
+Der aktuelle Kandidat ergänzt vier TABLE-Aufrufe in der bestehenden
+synthetischen `AgentHistory`-Fixture. Zwei ungültige Jobdaten müssen ein
+leeres Jobsresultat ergeben; zwei ungültige Stepdaten müssen den gültigen
+Joboutcome erhalten. Geprüft werden Fehler 242, Teilstatus, 17 Spalten mit
+ausgewählten Typen und logischen Positionen, Zeilenmenge, TABLE-/JSON-Parität
+sowie die bekannte gültige Jobzeit und Laufzeit. Die Fixture führt keinen
+Agent-Job aus und erhält ihre bestehenden Quell-, Caller- und Rollbackprüfungen.
+
+Die neue Gegenprobe ist noch nicht qualifiziert. Ein lokaler Lauf scheiterte
+mit 56219 an einer falschen Testannahme über physische `column_id`-Werte.
+Der bestehende TABLE-Writer fügt Hilfsspalten hinzu und entfernt sie wieder;
+der Test prüft deshalb jetzt logische Positionen mit `ROW_NUMBER()`. Diese
+Korrektur wurde unabhängig geprüft. Ein folgender Lauf passierte im erreichten Fall Schema und
+Fehlermetadaten, scheiterte jedoch mit 56221 an der kombinierten Zeilenmengen-
+oder JSON-Prüfung. Der ursprüngliche Log unterscheidet diese beiden Ursachen
+nicht. Die Diagnose trennt sie nun in 56221 und 56223. Sie gibt ausschließlich
+die synthetische Fallnummer, geschlossene Mengenkategorien und bei JSON-
+Abweichungen Schlüsselstrukturstatus und eine begrenzte bekannte Feldmaske aus.
+Zeilenwerte und Identitäten werden nicht ausgegeben. Ein Produktfehler oder eine konkrete
+Serialisierungsursache ist damit noch nicht belegt.
+
+Beide fehlgeschlagenen Läufe besitzen erfolgreichen eigenen Labcleanup;
+die betroffenen Container und Volumes sind entfernt. Ihre Fehler werden
+nicht als bestandene Teilqualifikation umgedeutet. Die erforderliche native
+Abnahme des abschließenden Kandidaten bleibt offen. RAW, CONSOLE,
+Monitoring-TABLE, weitere Dauergrenzen, tatsächliche Stepausführung und
+allgemeine Agent-Retention werden durch diese Ergänzung nicht qualifiziert.
+`OPS-008` bleibt `PARTIAL_PRODUCT_FUNCTION`.
+
+Der aktuelle CI-Kandidat bindet diese feste Fixture an den vorhandenen
+SQL2025-Container und die bestehende Testdatenbank. Datenbankname, Engine 17,
+CL170 und der neue Wegwerfmarker werden vor Ausführung geprüft. Die
+ursprünglichen Leerstands- und Quellschutzprüfungen bleiben erhalten.
+Der zusätzliche Fixturelauf erfolgt einmal nach dem bestehenden Testpfad;
+seine vollständigen Logs werden nicht veröffentlicht. Die tatsächliche
+CI-Qualifikation und reguläre PR-Integration stehen noch aus.
+
+Der erste PR-CI-Kandidat am Head `9eafaa9d` besteht native Deploymentregression,
+CI-Lockdiagnostikqualifikation und das vollständige SQL2025-Fachgate. Der
+zusätzliche Fixturelauf scheitert mit `UNCLASSIFIED` ohne erfasste Fallnummer;
+der ursprüngliche öffentliche Bericht liefert keinen konkreten SQL-Fehlertyp.
+Der eigene Container-Stop-Schritt besteht. Im Quellablauf wurde anschließend
+ein Reihenfolgefehler festgestellt: Die am Ende liegende Standaloneprüfung
+baut die Testdatenbank neu auf und installiert nur ihre eigene Closure.
+Die nachfolgende AgentHistory-Fixture benötigt dagegen die vollständigen
+Agent-Module. Der Korrekturkandidat ordnet die unveränderte Standaloneprüfung
+hinter der Fixture an und prüft die beiden benötigten Agent-Procedures vor
+dem Wegwerfmarker. Ein daraus vermuteter SQL-Fehler 2812 wird nicht als
+beobachtet behauptet. Die Kalenderparitätsursache und die abschließende
+native Qualifikation bleiben weiterhin offen.
+
+Der zweite CI-Kandidat scheiterte zunächst im bestehenden Fachgate an 1222
+in `USP_PrepareNameFilters`; `BLOCKER_NOT_CAPTURED` blieb ohne erfassten
+Blockierer. Die neue Fixture wurde dabei nicht ausgeführt. Ein begrenzter
+Wiederlauf am unveränderten Head `c7faf7f0` besteht Deploymentregression,
+Lockdiagnostikqualifikation und Fachgate, erreicht aber den Fixturefehler
+56223 bei Fall 1. Seine sichere Diagnose nennt für TABLE und JSON jeweils
+null Zeilen, passende Schlüsselstruktur und die Maske 131071. Diese Maske
+kennzeichnet bei den leeren Objekten fehlende bekannte Felder; sie belegt
+keine 17 abweichenden Datenwerte. Die ursprünglichen Serialisierungstexte
+wurden nicht veröffentlicht. Standalonevertrag 193 wurde nach dem Fehler
+nicht ausgeführt; der eigene Container-Stop-Schritt besteht.
+
+Im Quellvergleich fehlt der neuen Fixture die im bestehenden
+`Common/167_AgentJobs_Collation_Runtime_Contract.sql` verwendete Normalisierung
+leerer TABLE-Serialisierungen auf `[]`. Die vorbereitete Korrektur übernimmt
+sie nur bei unabhängig bestätigter Zeilenmenge null und SQL-NULL für den
+serialisierten TABLE-Wert. Fehlendes Quell-`jobs`, eine nicht leere Tabelle
+mit fehlender Serialisierung sowie abweichende nicht leere Werte bleiben
+Fehler. Der unabhängige Review dieser begrenzten Korrektur enthält keine
+Befunde. Der fehlgeschlagene Lauf hat SQL-NULL als Rohwert nicht separat
+belegt; die neue native Abschlussqualifikation bleibt erforderlich und offen.
