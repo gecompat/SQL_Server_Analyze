@@ -63,7 +63,7 @@ BEGIN
     SET NOCOUNT ON;
     SET LOCK_TIMEOUT 0;
     SET @RetentionContractVersionOut=CASE WHEN EXISTS(SELECT 1 FROM [snapshot].[PackageVersion] WITH (NOLOCK)
-      WHERE [SchemaVersion]=3 AND [PackageVersion] IN('1.2.2','1.3.0')) THEN 2 ELSE 1 END;
+      WHERE [SchemaVersion]=3 AND [PackageVersion] IN('1.2.2','1.3.0','1.3.1')) THEN 3 ELSE 1 END;
     -- The handshake reads only the admitted version and creates no purge receipt.
     IF @ContractOnly=1 RETURN;
 
@@ -167,17 +167,17 @@ BEGIN
               AND NOT EXISTS (SELECT 1 FROM [snapshot].[MetricSample] AS [m] WHERE [m].[CaptureRunId]=[r].[CaptureRunId])
               AND NOT EXISTS (SELECT 1 FROM [snapshot].[PayloadSnapshot] AS [p] WHERE [p].[CaptureRunId]=[r].[CaptureRunId])
               AND NOT EXISTS (SELECT 1 FROM [snapshot].[ModuleStatus] AS [s] WHERE [s].[CaptureRunId]=[r].[CaptureRunId])
-              -- Preserve the latest finalized Wait run as the comparison fence,
-              -- including a failed run whose children have expired or never existed.
+              -- Waits retain their latest finalized run. File I/O retains its latest
+              -- run even when finalization is unconfirmed or children are absent.
               AND
               (
                   [r].[CollectorCode] NOT IN('WAIT_STATS','FILE_IO')
-                  OR [r].[EndedAtUtc] IS NULL
+                  OR ([r].[CollectorCode]='WAIT_STATS' AND [r].[EndedAtUtc] IS NULL)
                   OR EXISTS
                   (
                       SELECT 1 FROM [snapshot].[CaptureRun] AS [later]
                       WHERE [later].[CollectorCode]=[r].[CollectorCode]
-                        AND [later].[EndedAtUtc] IS NOT NULL
+                        AND ([r].[CollectorCode]='FILE_IO' OR [later].[EndedAtUtc] IS NOT NULL)
                         AND [later].[CaptureRunId]>[r].[CaptureRunId]
                   )
               );

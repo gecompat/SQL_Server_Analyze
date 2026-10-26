@@ -634,8 +634,8 @@ def snapshot_state_classifier(tables: list[Table], sources: list[Source], strict
            "IF EXISTS(SELECT 1 FROM [snapshot].[PackageVersion] WHERE CONVERT(varbinary(max),PackageCode)=CONVERT(varbinary(max),'SC-023') "
            "AND CONVERT(varbinary(max),PackageVersion)=CONVERT(varbinary(max),'1.0.0') AND SchemaVersion=1) SET @Legacy=1; "
            "ELSE IF NOT EXISTS(SELECT 1 FROM [snapshot].[PackageVersion] WHERE CONVERT(varbinary(max),PackageCode)=CONVERT(varbinary(max),'SC-023') "
-           + ("AND CONVERT(varbinary(max),PackageVersion)=CONVERT(varbinary(max),'1.3.0') AND SchemaVersion=3) " if strict else
-              "AND ((CONVERT(varbinary(max),PackageVersion) IN(CONVERT(varbinary(max),'1.1.0'),CONVERT(varbinary(max),'1.1.1'),CONVERT(varbinary(max),'1.2.0'),CONVERT(varbinary(max),'1.2.1')) AND SchemaVersion=2) OR (CONVERT(varbinary(max),PackageVersion) IN(CONVERT(varbinary(max),'1.2.2'),CONVERT(varbinary(max),'1.3.0')) AND SchemaVersion=3))) ")
+           + ("AND CONVERT(varbinary(max),PackageVersion)=CONVERT(varbinary(max),'1.3.1') AND SchemaVersion=3) " if strict else
+              "AND ((CONVERT(varbinary(max),PackageVersion) IN(CONVERT(varbinary(max),'1.1.0'),CONVERT(varbinary(max),'1.1.1'),CONVERT(varbinary(max),'1.2.0'),CONVERT(varbinary(max),'1.2.1')) AND SchemaVersion=2) OR (CONVERT(varbinary(max),PackageVersion) IN(CONVERT(varbinary(max),'1.2.2'),CONVERT(varbinary(max),'1.3.0'),CONVERT(varbinary(max),'1.3.1')) AND SchemaVersion=3))) ")
            + "THROW 53935,N'Unknown Snapshot package/schema version.',1;")
     if not strict:
         query+="IF EXISTS(SELECT 1 FROM [snapshot].[PackageVersion] WHERE SchemaVersion=2) SET @Schema2=1;"
@@ -716,9 +716,11 @@ def snapshot_wait_seed_preflight(sources: list[Source], strict: bool=False, file
     legacy_digest='e392b9581c55955b81674e468aa88eac444339585dfd787a682abf66b3a48c49'
     obj="N'[snapshot].["+('InternalCompleteFileIOCycle' if file_io else 'InternalCompleteWaitStatsCycle')+"]'"
     released_wait_digest='aeb295d67a15ce0fcf452404dde233729012e42340c138c8924f27447e1b8762'
-    hashes='0x'+digest if file_io else '0x'+digest+',0x'+legacy_digest+',0x'+released_wait_digest
+    released_130_wait='86272875a1bb5052072b6106d2845658c2fea26414820ef0f0c018a8b88c7c40'
+    released_130_file_io='5a2846e5b919adb69eae95cc4869f5a43b4b69b0b7fe57192a0a0dc002cee592'
+    hashes='0x'+digest+',0x'+released_130_file_io if file_io else '0x'+digest+',0x'+legacy_digest+',0x'+released_wait_digest+',0x'+released_130_wait
     collision=("IF NOT EXISTS(SELECT 1 FROM [snapshot].[PackageVersion] WHERE CONVERT(varbinary(max),PackageCode)=CONVERT(varbinary(max),'SC-023') " +
-               ("AND CONVERT(varbinary(max),PackageVersion)=CONVERT(varbinary(max),'1.3.0') AND SchemaVersion=3) " if file_io else "AND ((CONVERT(varbinary(max),PackageVersion) IN(CONVERT(varbinary(max),'1.2.0'),CONVERT(varbinary(max),'1.2.1')) AND SchemaVersion=2) OR (CONVERT(varbinary(max),PackageVersion)=CONVERT(varbinary(max),'1.3.0') AND SchemaVersion=3))) ")
+               ("AND CONVERT(varbinary(max),PackageVersion) IN(CONVERT(varbinary(max),'1.3.0'),CONVERT(varbinary(max),'1.3.1')) AND SchemaVersion=3) " if file_io else "AND ((CONVERT(varbinary(max),PackageVersion) IN(CONVERT(varbinary(max),'1.2.0'),CONVERT(varbinary(max),'1.2.1')) AND SchemaVersion=2) OR (CONVERT(varbinary(max),PackageVersion) IN(CONVERT(varbinary(max),'1.3.0'),CONVERT(varbinary(max),'1.3.1')) AND SchemaVersion=3))) ")
                + "AND (OBJECT_DEFINITION(OBJECT_ID("+obj+",N'P')) IS NULL OR "
                "HASHBYTES('SHA2_256',CONVERT(varbinary(max),TRIM(NCHAR(9)+NCHAR(10)+NCHAR(13)+N' ' FROM REPLACE(OBJECT_DEFINITION(OBJECT_ID("+obj+",N'P')),NCHAR(13)+NCHAR(10),NCHAR(10))))) NOT IN("+hashes+")) "
                "THROW 53762,N'A noncanonical object occupies the new Wait helper name.',1;")

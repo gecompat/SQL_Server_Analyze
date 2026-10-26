@@ -40,20 +40,21 @@ In beiden Fällen bleibt die Reihenfolge verbindlich:
 
 Das Paket erstellt keine Datenbank, Benutzer, Login, Berechtigung oder Scheduleraufgabe.
 
-Der aktuelle Quellstand installiert Target-PackageVersion 1.3.0 mit
-SchemaVersion 3. Die öffentliche Collectorwahl umfasst weiterhin Performance
-Counter und Waits. Das interne Datei-I/O-Backend ergänzt 16 Metrikdefinitionen
-und eine deaktivierte FILE_IO-Policy; ein öffentlicher nativer Datei-I/O-Collector
-gehört noch nicht zu diesem Stand. Der [interne Datei-I/O-Vertrag](#internes-datei-io-target) beschreibt
+Der aktuelle Quellstand installiert Target-PackageVersion 1.3.1 mit
+SchemaVersion 3. Die öffentliche Collectorwahl umfasst Performance Counter,
+Waits und ausdrücklich gewählte Datei-I/O-Aufnahmen. Das Datei-I/O-Backend
+enthält 16 Metrikdefinitionen und eine zunächst deaktivierte FILE_IO-Policy.
+Die öffentliche native Quelle verlangt Targetpatch 1.3.1 und Retentionsvertrag 3. Der [interne Datei-I/O-Vertrag](#internes-datei-io-target) beschreibt
 Source-, Kontext-, Epochen- und Mengenbindung.
 
-Der Purge erhält für WAIT_STATS und FILE_IO jeweils die letzte finalisierte
-Laufzeile einschließlich Fehlern als Vergleichsgrenze; ihre Kinder dürfen
-regulär ablaufen. Performance Counter behalten ihren bisherigen Löschpfad.
+Der Purge erhält die größte finalisierte WAIT_STATS-ID und die größte
+FILE_IO-ID einschließlich offener und fehlerhafter Läufe als Vergleichsgrenze;
+ihre Kinder dürfen regulär ablaufen. Performance Counter behalten ihren bisherigen Löschpfad.
 Bekannte Targets 1.0.0 / Schema 1 und 1.1.0, 1.1.1, 1.2.0, 1.2.1 / Schema 2
 werden unter Erhaltung ihrer Daten, Identitäten und Policies auf Schema 3
 migriert. 1.2.2 / Schema 3 ist ausschließlich das bekannte unvollständige
-Installationsstadium. Unbekannte Versionen, gemischte Domänen, zusätzliche
+Installationsstadium. Das vollständige Target 1.3.0 / Schema 3 wird als
+bekannter Patchstand unter Datenerhaltung auf 1.3.1 aktualisiert. Unbekannte Versionen, gemischte Domänen, zusätzliche
 CHECKs, veränderte Tabellenfacetten und deaktivierte oder nicht vertrauenswürdige
 Constraints werden vor Produktänderungen abgelehnt. Ein abweichender Stand
 muss vor erneutem Installieren fachlich geklärt werden; der Installer repariert
@@ -239,7 +240,7 @@ Collector-Seedverträge vor Produktänderungen. Sie markiert anschließend
 Schema 3 als vorläufigen Stand 1.2.2. Quelle 075 prüft und ergänzt den
 Waitteil; erst die letzte Quelle 078 prüft alle sieben Targethelper mit
 ihren typisierten Parametern, die kompatiblen Seeds und den tatsächlich
-schreibfreien Retentionsvertrag 2 und markiert 1.3.0. Ein unterbrochener
+schreibfreien Retentionsvertrag 3 und markiert 1.3.1. Ein unterbrochener
 SQLCMD-Lauf ist kein fertiger Collectorstand. Standalone- und Gesamtinstaller
 behalten ihre gesamte Transaktion und strikte Nachprüfung.
 
@@ -284,7 +285,7 @@ allgemein als eigener Zwischenstand anerkannt.
 
 Das aktualisierte Framework unterstützt für Waits vollständige Targets
 1.2.1 / Schema 2 mit Retentionsvertrag 1 und 1.3.0 / Schema 3 mit
-Retentionsvertrag 2. Beim getrennten Rollout wird zuerst das Framework
+Retentionsvertrag 2 sowie 1.3.1 / Schema 3 mit Retentionsvertrag 3. Beim getrennten Rollout wird zuerst das Framework
 aktualisiert. Das alte Framework kennt den neuen Targetmarker nicht;
 die umgekehrte Reihenfolge ist deshalb nicht als unterbrechungsfrei qualifiziert.
 
@@ -295,7 +296,7 @@ meta, databases, files und issues entgegen. Die bereitgestellten Werte werden
 vor der Speicherung auf Member, Typ, Nullregeln, native Wertebereiche,
 Zeitfenster sowie Framework- und Auswahlbindung geprüft. Der Helper führt
 keinen nativen VFS-Read aus. Er verlangt einen unbeschriebenen eigenen
-Lauf mit CollectorCode=FILE_IO und Status RUNNING im vollständigen Target 1.3.0 / Schema 3 und besitzt
+Lauf mit CollectorCode=FILE_IO und Status RUNNING im vollständigen Target 1.3.1 / Schema 3 und besitzt
 seine eigene Transaktion; Caller- und implizite Transaktionen sind unzulässig.
 
 Jede ausgewählte geeignete Datei erhält sechs kumulative Rohcounter, den
@@ -312,7 +313,7 @@ CaptureRun.ResetEpochId und SqlServerStartTimeUtc bleiben NULL. Die bestehende
 NOT-NULL-Bedingung von MetricSample.ResetEpochId bleibt erhalten.
 Kanonische UTF-16LE-Hashes binden tatsächliche Scopeidentitäten, sieben
 gespeicherte Rohzeilen und Dateikontexte. Der unmittelbar vorherige
-finalisierte FILE_IO-Lauf einschließlich Fehlern ist die Vergleichsgrenze.
+FILE_IO-Lauf einschließlich offener und fehlerhafter Läufe ist die Vergleichsgrenze.
 Fehlende, partielle, widersprüchliche oder abgelaufene Belege erlauben keine
 Zahlen. Gleiche Beobachtungen beweisen keine ausbleibenden Resets;
 Kandidaten und erfolgreiche Gesamtaufnahmen bleiben partiell.
@@ -322,6 +323,56 @@ besitzt eine unveränderte Zeile mit Fehler und Evidenz und einen an deren tats�
 ModuleStatusId gebundenen Entitätskontext. Hinzu kommt eine Summaryzeile;
 bei J Issues entstehen 1+2*J Module. Ein ungültiger Sourcevertrag finalisiert
 einen kontrollierten SOURCE_CONTRACT-Fehler ohne numerische Samples.
-Die öffentliche native FILE_IO-Aufnahme und ihre Auswahlparameter folgen
-getrennt; Anwendungen verwenden weiterhin die dokumentierten öffentlichen
-Snapshot-Procedures.
+Wiederholte SourceNames erhalten ab dem zweiten gleichnamigen Issue den Suffix
+#<Originalordinal>. Der erste Kontext am nullbasierten Ordinal 0 heißt
+FileIOSourceIssueContext; weitere heißen FileIOSourceIssueContext#<Ordinal>.
+Die erste Sourcezeile bleibt unverändert benannt. Der ursprüngliche SourceName,
+Status, Fehlertext und Evidenz bleiben vollständig erhalten; die tatsächliche
+ModuleStatusId bindet den zugehörigen Kontext. Diese Ableitung erhält den
+bestehenden UNIQUE-Vertrag für CaptureRunId/ModuleName ohne Schemaänderung.
+
+## Öffentliche Datei-I/O-Aufnahme
+
+Konfiguration und Collection wählen FILE_IO ausdrücklich mit @CollectorCode.
+Das vollständige Target 1.3.1 / Schema 3 und der tatsächlich schreibfreie
+Retentionsvertrag 3 sind erforderlich. Die FILE_IO-Policy bleibt nach der
+Installation deaktiviert. Die drei angehängten Collectionparameter entsprechen
+CurrentIO: @DatabaseNames als bracketfähige Pipe-Liste, @SystemdatenbankenEinbeziehen
+mit Default 0 und @DatabaseNamePattern mit Default NULL. Wirksame neue Filter
+an einem anderen Collector werden mit 51011 abgewiesen.
+
+Der Frameworkcollector liest sys.dm_io_virtual_file_stats(NULL,NULL) genau
+einmal vollständig in einen lokalen Cache. Erst danach werden die tatsächlich
+ausgewählten Datenbanken zugeordnet. Vorher-/Nachher-Engine- und Katalogreads
+binden die beobachteten Dateien; physische Dateipfade werden dafür nicht gelesen.
+MaxRows begrenzt ausschließlich die sortierten geeigneten Targetwrites.
+Metadatenlücken bleiben Issues, fehlende Werte werden keine Nullsamples.
+Die Quelle garantiert keine atomare Dateiidentität oder Resetkontinuität.
+
+Ein erfolgreicher nativer Read bleibt SUCCEEDED mit seiner beobachteten Menge,
+auch wenn anschließend eine Engine- oder Zeitbindung scheitert. Der fatale
+Frame enthält dann keine Dateiwerte und erzeugt keine Metrics. Ein nicht
+begonnener Read hat bei nichtleerer Auswahl eine unbekannte Menge; die
+bekannte leere Auswahl besitzt NOT_STARTED und die Menge 0.
+
+Liegt die tatsächliche Abschlusszeit vor dem gespeicherten Runstart, bleiben
+EndedAtUtc und die numerische Aufnahme unbestätigt. OUTPUT liefert
+FINALIZATION_UNCONFIRMED mit der tatsächlichen Capture-ID. Ein gesonderter
+Fehlerwrite erhält validierte Source-Issues, eine getrennte technische Diagnose
+und FileIOFinalizationBoundary. Run- und Fehler-OUTPUT behalten bei erfolgreichem
+Fehlerwrite die originale Sourcefehlerprojektion. Scheitert auch dieser Write,
+liefern sie die tatsächlich abgefangene sekundäre Fehlernummer und Meldung.
+Scheitert zusätzlich das Readback, bleibt die Runprojektion leer; lokal erhaltene
+Quelldiagnosen tragen ModuleStatusId=NULL und behaupten keine Persistenz.
+
+Die größte vorhergehende FILE_IO-ID ist auch mit EndedAtUtc=NULL die unmittelbare
+Vergleichsgrenze. PREVIOUS_CAPTURE_UNCONFIRMED verhindert Kandidaten und den
+Rückgriff auf ältere erfolgreiche Belege. Retentionsvertrag 3 erhält die größte
+FILE_IO-ID unabhängig von Abschluss, Status und Kindern. Erst eine höhere
+FILE_IO-ID gibt sie zur gewöhnlichen ablaufbezogenen Löschung frei. Die
+Waitretention erhält weiterhin den größten finalisierten Waitlauf.
+
+CONSOLE, RAW, TABLE, NONE und optionaler JSON-OUTPUT verwenden die bestehenden
+run-/modules-Verträge. Der Default bleibt PERFORMANCE_COUNTERS. Die
+[Betriebsanleitung](../Operations/Snapshot_Baseline_Operations.md) beschreibt
+Aktivierung, Rechte und den ersten begrenzten Aufruf.
