@@ -1154,3 +1154,15 @@ Quelle: `Code/10_SnapshotBaseline/087_InternalRunSnapshotFileIOCycle.sql`
 | Verwendung | Der öffentliche Collectioneinstieg wählt diesen internen Baustein ausschließlich mit CollectorCode=FILE_IO. |
 | Last und Sperren | Ein Sessionlock ohne Wartezeit umfasst Policyprüfung, Purge, Vorbereitung, Quelle, Abschluss und Projektion. Ein vollständiger VFS-Read erfolgt vor dem Schreiblimit; Katalogreads laufen je ausgewählter Datenbank vorher und nachher. |
 | Vertrag | Erfolgreiche Aufnahmen bleiben PARTIAL. Späte Bindungsfehler erhalten den tatsächlichen Readzustand. Unbestätigte Abschlüsse und ihre Vorgängergrenze bleiben sichtbar; fehlgeschlagenes Readback erzeugt keine erfundene Runzeile. Der [öffentliche Datei-I/O-Vertrag](../Architecture/Snapshot_Baseline_Package_Contract.md#öffentliche-datei-io-aufnahme) beschreibt Status und Retention. |
+
+### `[monitor].[InternalSsisExecutionMetrics]`
+
+Quelle: `Code/10_SSIS/045_InternalSsisExecutionMetrics.sql`
+
+| Dimension | Beschreibung |
+|---|---|
+| Aufgabe | Validiert einen Capture und projiziert die Kennzahlen, Positionsschlüssel und bekannten beobachteten Pfadzeilensets für Paarvergleich und Mehrlauf-Baseline. |
+| Schnittstelle | Laufordinal, Modell, Capture, lokale Übergabe, Ausführungs-ID, gemeinsame Deadline und Locktimeout; OUTPUT liefert Einzelanalyse, Bindungsstatus und attestierte Bitness. Ein interner JSON-OUTPUT-Vertrag liefert die nativen Kennzahlen mit hexkodierten Hashes; jeder Consumer besitzt sein eigenes temporäres Empfangsziel. |
+| Verwendung | Die beiden öffentlichen Vergleichsprocedures rufen diesen Consumer je Eingabecapture genau einmal auf. |
+| Last und Sperren | Höchstens 16 MiB je Modell/Capture, die bestehenden 50000 Quellbelege und 200000 Kennzahlen je Capture; eigene Temp-Objekte ohne zusätzlichen SSISDB-Zugriff. |
+| Vertrag | Die bestehende Einzelanalyse prüft Herkunft, Version und Aufrufscope. Schlüssel enthalten Modellobjekt und beobachtete Aufrufposition; native Statistik-IDs bleiben Quellenbelege. Parser, Profile und Lineage werden ausschließlich in Toolbelt gepflegt. |

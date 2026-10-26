@@ -269,6 +269,8 @@ AS
         , (N'USP_SsisPackageAnalysis',N'ssis dtsx package executables','en',95,N'Static DTSX-v2 package and executable inventory.')
         , (N'USP_SsisExecutionComparison',N'SSIS DTSX Ausführungsvergleich Basis Kandidat Dauer Zeilen','de',100,N'Vergleicht zwei gebundene Beobachtungen mit Kontext- und Coveragegrenzen.')
         , (N'USP_SsisExecutionComparison',N'SSIS execution baseline candidate comparison duration rows','en',100,N'Compares two bound observations without claiming workload equivalence.')
+        , (N'USP_SsisExecutionBaseline',N'SSIS DTSX Mehrlauf Baseline Median Spannweite Kohorte','de',100,N'Vergleicht einen Kandidaten mit einer expliziten gebundenen Basiskohorte.')
+        , (N'USP_SsisExecutionBaseline',N'SSIS multi run baseline cohort median spread candidate','en',100,N'Compares a candidate with an explicit bound observation cohort.')
         , (N'USP_SsisPackageModelAnalysis',N'SSIS Paketmodell JSON Import Lineage ohne CLR','de',100,N'Validiert ein optionales neutrales Paketmodell ohne CLR- oder Toolbelt-Installation.')
         , (N'USP_SsisPackageModelAnalysis',N'SSIS package model JSON import lineage CLR free','en',100,N'Validates a caller-supplied neutral package model without CLR or a Toolbelt installation.')
 

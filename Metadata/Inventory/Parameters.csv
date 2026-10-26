@@ -2090,3 +2090,23 @@ USP_SsisExecutionComparison,StatusCodeOut,varchar(40),NULL OUTPUT
 USP_SsisExecutionComparison,IsPartialOut,bit,NULL OUTPUT
 USP_SsisExecutionComparison,ErrorNumberOut,int,NULL OUTPUT
 USP_SsisExecutionComparison,ErrorMessageOut,nvarchar(2048),NULL OUTPUT
+USP_SsisExecutionBaseline,BaselineExecutionsJson,nvarchar(max),NULL
+USP_SsisExecutionBaseline,CandidateProjectModelsJson,nvarchar(max),NULL
+USP_SsisExecutionBaseline,CandidateScopeSnapshotJson,nvarchar(max),NULL
+USP_SsisExecutionBaseline,CandidateScopeHandoverId,uniqueidentifier,NULL
+USP_SsisExecutionBaseline,CandidateExecutionId,bigint,NULL
+USP_SsisExecutionBaseline,MinDurationDeltaMs,bigint,NULL
+USP_SsisExecutionBaseline,MinDurationDeltaPercent,"decimal(9,4)",NULL
+USP_SsisExecutionBaseline,MaxZeilen,int,1000
+USP_SsisExecutionBaseline,MaxDurationSeconds,int,30
+USP_SsisExecutionBaseline,LockTimeoutMs,int,0
+USP_SsisExecutionBaseline,ResultSetArt,varchar(16),'CONSOLE'
+USP_SsisExecutionBaseline,ResultTablesJson,nvarchar(max),NULL
+USP_SsisExecutionBaseline,JsonErzeugen,bit,0
+USP_SsisExecutionBaseline,Json,nvarchar(max),NULL OUTPUT
+USP_SsisExecutionBaseline,PrintMeldungen,bit,1
+USP_SsisExecutionBaseline,Hilfe,bit,0
+USP_SsisExecutionBaseline,StatusCodeOut,varchar(40),NULL OUTPUT
+USP_SsisExecutionBaseline,IsPartialOut,bit,NULL OUTPUT
+USP_SsisExecutionBaseline,ErrorNumberOut,int,NULL OUTPUT
+USP_SsisExecutionBaseline,ErrorMessageOut,nvarchar(2048),NULL OUTPUT

@@ -1,9 +1,15 @@
 # Nächste Arbeitsschritte
 
-**Stand:** 25. Oktober 2026
+**Stand:** 26. Oktober 2026
 **Zweck:** aktueller Auftragsstatus und historische Entwicklungswellen für `gecompat/SQL_Server_Analyze`
 
-## Eigener SSIS-Auftrag: zehnte Paketwelle
+## Eigener SSIS-Auftrag: elfte Paketwelle
+
+Der Benutzer hat die [gebundene Mehrlauf-Baseline](../../../Documentation/Analysis_Guides/Procedures/USP_SsisExecutionBaseline.md) autonom einschließlich regulärer PR-Integration nach erfolgreicher Abnahme freigegeben. Der Umfang enthält eine explizite Kohorte mit bis zu 20 Basisläufen und einem Kandidaten, gemeinsame Kennzahlenprojektion mit dem Paarvergleich, exakte deskriptive Statistik, nachvollziehbare Ausschlüsse und INFO-Regeln ab fünf verwendbaren Basiswerten.
+
+Ein Implementierer und ein unabhängiger Reviewer bearbeiten einen Analyze-PR. Die gemeinsame Grenze beträgt 16 native Rootversuche einschließlich Recovery mit Checkpoint bei zwölf; vorgesehen sind fünf Basisläufe und sechs Kandidaten. Vier begrenzte Reviewrunden bilden die Obergrenze für Erstprüfung und konkrete Befundnachprüfungen. Verlässliche Kostenmessung liegt nicht vor. Frühere Wellenzähler bleiben abgeschlossen. Die vorhandene SSISDB wird weiterverwendet und bleibt erhalten. Parser, Profile und Lineage verbleiben in Toolbelt; Analyze bleibt ohne SQL CLR eigenständig. Der Produktumfang ist implementiert und lokal abgenommen: 46 synthetische Baselinefälle, die 38 Paarvergleichsfälle, betroffene Scope-/Pipeline-Regressionen sowie vollständige Coreinstallation, Smoke-, Frameworkausgabe- und Navigationsverträge bestehen. Die native Abnahme verwendet zwei gebundene Kohorten mit insgesamt 16 Rootversuchen. Gleichstand, Verzögerung und Volumenänderung sowie Loggingwechsel, eigener SQL-Fehler und Abbruch sind anhand ihrer unveränderten nativen Captures auch mit dem abschließenden gemeinsamen Consumer geprüft. Ein anfänglicher Orakelfehler bei einer leeren PowerShell-Werteliste und ein privater Replay-Metadatenfehler bleiben als fehlgeschlagene Läufe erhalten; ihre erfolgreichen Teilfälle werden ausschließlich mit Quellenbindung und eigenständiger Abschlussprüfung zusammengeführt. Eigene Consumerobjekte sind bereinigt, die SSISDB bleibt erhalten. Der unabhängige Review ist nach einer gezielten Korrekturrunde ohne offene P1-/P2-Befunde abgeschlossen. Die regulären PR- und Main-Gates müssen den jeweiligen exakten Commit bestätigen. Nach erfolgreicher Integration enthält dieser begrenzte Auftrag keinen weiteren Entwicklungsschritt. Der separate Gesamtauftrag für andere Entwicklungsränge wird nicht übernommen.
+
+## Historischer SSIS-Auftrag: zehnte Paketwelle
 
 Der Benutzer hat den gebundenen Vergleich genau zweier Ausführungen autonom einschließlich regulärer PR-Integration nach erfolgreicher Abnahme freigegeben. Der Umfang umfasst eine native Vergleichs-API mit vier Ausgabegruppen, unabhängige lokale Capturebindungen, identische Modell-/Paketrevision, konservative Kontextprüfung und INFO-Regeln. Die [Anwenderseite](../../../Documentation/Analysis_Guides/Procedures/USP_SsisExecutionComparison.md) beschreibt den Vertrag.
 
