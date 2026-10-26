@@ -112,8 +112,8 @@ IF NOT EXISTS
 )
     THROW 54001,N'FrameworkVersion fehlt oder entspricht nicht Release 1.1.2.',1;
 
-IF (SELECT COUNT_BIG(*) FROM [monitor].[VW_AnalysisCatalog]) <> 118
-    THROW 54025,N'Der Analysis Catalog enthält nicht genau alle 118 öffentlichen Procedures.',1;
+IF (SELECT COUNT_BIG(*) FROM [monitor].[VW_AnalysisCatalog]) <> 119
+    THROW 54025,N'Der Analysis Catalog enthält nicht genau alle 119 öffentlichen Procedures.',1;
 
 IF EXISTS
 (
