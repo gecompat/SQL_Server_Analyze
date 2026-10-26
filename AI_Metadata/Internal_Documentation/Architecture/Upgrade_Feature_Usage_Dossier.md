@@ -335,3 +335,13 @@ der lokale Adaptervergleich einschließlich acht Darstellungsgegenfällen besteh
 Der zweite CI-Kandidat bündelt ausschließlich diese generierte Aktualisierung,
 die geprüfte Privacy-Ausnahme und den aktuellen Nachweisstand. Die laufende
 mutierende SQL2025-Prüfung des ersten Kandidaten wird nicht abgebrochen.
+
+Die erste funktionale PR-CI besteht die native Deploymentregression und stoppt
+anschließend auf CL150 in Integration189: Dem neuen Console-Branch fehlt die
+verbindlich geprüfte Steuerkonvention @ConsoleResultRequested. Der Renderer
+war vorhanden. Der korrigierte Branch verwendet das aus @Mode abgeleitete Bit
+nun tatsächlich. Die neue Runtimefixture stand hinter dieser Fehlerstelle und
+war deshalb noch nicht ausgeführt. Sie folgt im letzten Kandidaten als
+unabhängiger Begleittest direkt auf Smoke; die bisherigen kanonischen Suiten
+behalten ihre Reihenfolge. Der bestehende Zählvertrag bleibt bei 34 kanonischen
+Suiten und zählt diese Begleitfixture nicht zusätzlich.

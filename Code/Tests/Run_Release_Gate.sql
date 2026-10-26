@@ -35,6 +35,9 @@ OUTPUT       : Suiten 187 bis 190 prüfen Strukturadaption, Pilotvertrag, den
 RAISERROR(N'RELEASE_GATE 1/34: Smoke Test',10,1) WITH NOWAIT;
 :r Integration/110_Smoke_Test.sql
 
+RAISERROR(N'RELEASE_GATE companion: Upgrade feature usage',10,1) WITH NOWAIT;
+:r VersionAdaptive/121_UpgradeFeatureUsage_Runtime_Contract.sql
+
 RAISERROR(N'RELEASE_GATE 2/34: Parameter-API-Vertrag',10,1) WITH NOWAIT;
 :r Integration/163_Parameter_API_Vertrag.sql
 
@@ -182,10 +185,9 @@ RAISERROR(N'RELEASE_GATE 35/35: Server Health',10,1) WITH NOWAIT;
 :r ServerHealth/138_EndpointTransport_Runtime_Contract.sql
 :r VersionAdaptive/127_WI0007_External_Model_Inventory_Runtime_Contract.sql
 :r VersionAdaptive/129_WI0004_Segment_Overlap_Runtime_Contract.sql
-:r VersionAdaptive/121_UpgradeFeatureUsage_Runtime_Contract.sql
 
 SELECT CAST('AVAILABLE' AS varchar(40)) AS [StatusCode],
        CAST(0 AS bit) AS [IsPartial],
-       CAST(35 AS int) AS [ExecutedSuites],
+       CAST(34 AS int) AS [ExecutedSuites],
        N'Alle Integrationsverträge und Bereichs-Smoke-Tests wurden ohne SQL-Fehler beendet.' AS [Detail];
 GO

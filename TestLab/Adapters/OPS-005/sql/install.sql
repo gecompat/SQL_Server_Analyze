@@ -62691,6 +62691,7 @@ BEGIN
         RETURN;
     END;
     DECLARE @Mode varchar(16)=UPPER(LTRIM(RTRIM(COALESCE(@ResultSetArt,'')))),
+            @ConsoleResultRequested bit,
             @Major int,@Build nvarchar(128),@PreviousLock int=@@LOCK_TIMEOUT,
             @PreviousXactAbort bit=CASE WHEN (@@OPTIONS & 16384)<>0 THEN 1 ELSE 0 END,
             @RestoreLock nvarchar(100),@TechnicalError int,@TableStatus varchar(40),@TableMessage nvarchar(2048),
@@ -62715,6 +62716,7 @@ BEGIN
           @ErrorMessageOut=N'Die Zielmajor darf nicht unter der tatsächlichen unterstützten Sourceversion liegen.';
         RETURN 51011;
     END;
+    SET @ConsoleResultRequested=CASE WHEN @Mode='CONSOLE' THEN 1 ELSE 0 END;
     SET @RestoreLock=N'SET LOCK_TIMEOUT '+CONVERT(nvarchar(20),@PreviousLock)+N';';
     BEGIN TRY
         SET XACT_ABORT OFF;
@@ -62950,7 +62952,7 @@ BEGIN
             END;
             CLOSE [UpgradeFeatureUsageOutput]; DEALLOCATE [UpgradeFeatureUsageOutput];
         END
-        ELSE IF @Mode='CONSOLE'
+        ELSE IF @ConsoleResultRequested=1
         BEGIN
             EXEC [monitor].[InternalEmitConsoleResult] @SourceTable=N'#UpgradeFeatureUsageAnalysis_context',
               @ResultLabel=N'Begrenzte Upgradebeobachtung',@EmptyMessage=N'Kein bestätigter Kontext; Quellenstatus beachten.';
