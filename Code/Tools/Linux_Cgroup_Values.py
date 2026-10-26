@@ -56,11 +56,11 @@ def _invalid(source_key: str, raw_value: str, reason_code: str) -> dict[str, str
     )
 
 
-def _parse_u64(token: str) -> tuple[int | None, str | None]:
+def _parse_u64(numeric_text: str) -> tuple[int | None, str | None]:
     """Return (value, error reason); avoid converting oversized tokens."""
-    if not _ASCII_DIGITS.fullmatch(token):
+    if not _ASCII_DIGITS.fullmatch(numeric_text):
         return None, "INVALID_TOKEN"
-    normalized = token.lstrip("0") or "0"
+    normalized = numeric_text.lstrip("0") or "0"
     if len(normalized) > 20:
         return None, "OUT_OF_RANGE"
     number = int(normalized)
