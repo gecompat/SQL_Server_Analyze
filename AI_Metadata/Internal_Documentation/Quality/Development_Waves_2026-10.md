@@ -249,5 +249,7 @@ Der nächste unabhängige Rang 11 steht im
 [Upgrade-Usage-Dossier](../Architecture/Upgrade_Feature_Usage_Dossier.md).
 Vertrag und Fehleraggregation sind unabhängig geprüft. Die erste eigene
 SQL2025-Quellenprobe bestätigt den nativen Deprecated-Counter und kontrollierten
-Begegnungszuwachs; der Labcleanup besteht. Produktumsetzung und endgültige
-Abnahme bleiben eigene Schritte. Der getrennte SSIS-Auftrag wird nicht übernommen.
+Begegnungszuwachs; der Labcleanup besteht. Der Produktkandidat ist umgesetzt
+und im Erstproduktreview ohne offene P1/P2. Ein bei der echten Rechteprobe
+aufgedeckter impliziter Returnwert wird mit explizitem RETURN 0 korrigiert.
+Die endgültige Fehlerfall- und CI-Abnahme bleibt offen. Der getrennte SSIS-Auftrag wird nicht übernommen.

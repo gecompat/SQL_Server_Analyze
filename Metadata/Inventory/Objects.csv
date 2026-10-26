@@ -199,3 +199,4 @@ INTERNAL_PROCEDURE,InternalRunSnapshotFileIOCycle,Code/10_SnapshotBaseline/087_I
 
 INTERNAL_PROCEDURE,InternalSsisExecutionMetrics,Code/10_SSIS/045_InternalSsisExecutionMetrics.sql
 PROCEDURE,USP_SsisExecutionBaseline,Code/10_SSIS/060_USP_SsisExecutionBaseline.sql
+PROCEDURE,USP_UpgradeFeatureUsageAnalysis,Code/09_VersionAdaptive/120_USP_UpgradeFeatureUsageAnalysis.sql

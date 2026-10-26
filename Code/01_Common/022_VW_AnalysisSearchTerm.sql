@@ -293,5 +293,7 @@ AS
         , (N'USP_CurrentCallerPermissionAnalysis',N'current caller effective permission context native grants deny','en',95,N'Lists native effective permissions at named securable levels.')
         , (N'USP_EndpointTransportAnalysis',N'Endpoint TCP Transport Verschlüsselung TLS Verbindung Zertifikat','de',100,N'Zeigt SQL-sichtbare Konfiguration und native Flags mit Aussagegrenzen.')
         , (N'USP_EndpointTransportAnalysis',N'endpoint transport encryption connection native flag mirroring','en',95,N'Lists visible configuration and native connection flags with explicit evidence limits.')
+        , (N'USP_UpgradeFeatureUsageAnalysis',N'Upgrade veraltet Deprecated Begegnungszähler Zielversion','de',100,N'Zeigt begrenzte SQL-sichtbare Nutzung und Konfiguration ohne Upgradefreigabe.')
+        , (N'USP_UpgradeFeatureUsageAnalysis',N'upgrade deprecated feature usage target version lightweight pooling','en',95,N'Lists native deprecated encounters and one bounded configuration rule.')
     ) AS [v]([ProcedureName],[SearchTerm],[LanguageCode],[SearchWeight],[MatchReason]);
 GO

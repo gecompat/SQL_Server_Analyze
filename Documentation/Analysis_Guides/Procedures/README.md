@@ -184,3 +184,5 @@ Jede Seite weist jetzt Entscheidungseinsatz, Nichtziele, Resultset-Leserichtung,
 - [USP_EndpointTransportAnalysis](USP_EndpointTransportAnalysis.md) zeigt sichtbare Endpointkonfiguration und gruppierte native Verbindungsflags.
 
 - [USP_SsisExecutionBaseline](USP_SsisExecutionBaseline.md)
+
+- [USP_UpgradeFeatureUsageAnalysis](USP_UpgradeFeatureUsageAnalysis.md) zeigt instanzweite Deprecated-Begegnungen und eine begrenzte Zielversionsregel.

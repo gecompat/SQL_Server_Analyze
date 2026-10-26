@@ -33,9 +33,9 @@ commitbezogenen Laufzeitnachweis.
 | ReleaseDate im Installationskatalog | 23. Oktober 2026 |
 | Mindestversion | SQL Server 2019 |
 
-Der aktuelle Inventarvertrag umfasst 199 Objekte: 117 öffentliche Procedures, 8 Views, 29 Table-Valued Functions, 25 interne Procedures und 20 Tabellen.
+Der aktuelle Inventarvertrag umfasst 200 Objekte: 118 öffentliche Procedures, 8 Views, 29 Table-Valued Functions, 25 interne Procedures und 20 Tabellen.
 
-Der Frameworkkern umfasst 175 Objekte mit 114 öffentlichen Procedures und 9 Tabellen. Das optionale Snapshotpaket umfasst 24 Objekte mit 3 öffentlichen Procedures und 11 Tabellen.
+Der Frameworkkern umfasst 176 Objekte mit 115 öffentlichen Procedures und 9 Tabellen. Das optionale Snapshotpaket umfasst 24 Objekte mit 3 öffentlichen Procedures und 11 Tabellen.
 
 Die [Paketgrenzen](../Reference/Scope_and_Limitations.md) unterscheiden
 Diagnose, Installation, lokale TABLE-Ausgabe und persistente Sammlung.
@@ -501,3 +501,5 @@ Legacy und eingeschränkte Rollen bleiben offen; SSIS-001 bleibt partiell.
 ## Noch nicht veröffentlicht: gebundene SSIS-Mehrlauf-Baselines
 
 `USP_SsisExecutionBaseline` vergleicht einen Kandidaten mit bis zu 20 expliziten, unabhängig attestierten Basisläufen derselben Quell- und Modellrevision. Median, Minimum, Maximum, Spannweite und verwendbare Laufzahl gelten je Kennzahl. Fünf Ausgabegruppen erhalten Ausschlüsse, unbekannte Werte und Ausgabekürzungen. Fachliche INFO-Hinweise verlangen mindestens fünf verwendbare Basiswerte; Dauerhinweise benötigen explizite Grenzen und gleiche bekannte beobachtete Pfadzeilensets. Der Paarvergleich verwendet denselben neuen internen Kennzahlconsumer bei unveränderter öffentlicher Schnittstelle. Parser und Lineage bleiben in Toolbelt; Analyze bleibt CLR-frei.
+
+Upgradebeobachtung: `USP_UpgradeFeatureUsageAnalysis` ergänzt native Deprecated-Begegnungszähler, unabhängige Quellenzustände und eine begrenzte Zielversionsregel für lightweight pooling. Die Ausgabe erteilt keine Upgradefreigabe und ordnet Counter keiner Datenbank zu.

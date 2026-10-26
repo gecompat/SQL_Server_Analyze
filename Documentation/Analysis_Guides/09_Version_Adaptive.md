@@ -1,6 +1,6 @@
 # Versionsadaptive und spezialisierte Analysepfade
 
-**Procedures:** 9
+**Procedures:** 10
 **Evidenz:** Version, Plattform, sichtbare Kataloge, Spezialfeature-Metadaten und isolierte Runtime-DMVs  
 **Kosten:** LOW bis HIGH_OPT_IN
 
@@ -824,3 +824,10 @@ Prüfen Sie blockierte Managed-Code-Requests mit `USP_CurrentRequests` und `USP_
 ## monitor.USP_ExternalDataAnalysis
 
 [Eigenständige Analysebeschreibung](Procedures/USP_ExternalDataAnalysis.md). Lokale Kataloge, sichtbare Referenzen und aggregierte Modelle bleiben getrennt von externer Nutzbarkeit.
+
+## Begrenzte Upgrade-Featurebeobachtung
+
+[USP_UpgradeFeatureUsageAnalysis](Procedures/USP_UpgradeFeatureUsageAnalysis.md)
+liest native Deprecated-Begegnungen und lightweight-pooling-Konfiguration.
+Die explizite Zielversion aktiviert nur die dokumentierte begrenzte Regel.
+Das Ergebnis ist keine vollständige Upgradeprüfung.

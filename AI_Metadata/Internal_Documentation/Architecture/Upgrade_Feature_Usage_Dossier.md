@@ -1,6 +1,6 @@
 # SQL-sichtbare Nutzung veralteter Funktionen und Upgradehinweise
 
-**Status:** konkretisierter Produktvertrag mit abgeschlossenem Vertragsreview; Produktcode und Abnahme offen.
+**Status:** Produktkandidat mit abgeschlossenem Vertrags- und Erstproduktreview; abschließende Fehlerfallprüfung und CI-Abnahme offen.
 **Artefakt-UID:** `urn:uuid:01a1769e-e5e7-7f0a-bed1-d4b5988cd11f`.
 **Registrierung:** `DEFERRED`; keine finale lesbare Arbeitselementkennung vergeben.
 **Stand:** 26. Oktober 2026.
@@ -9,11 +9,11 @@
 
 Rang 11 der [Entwicklungsplanung](../Quality/Development_Waves_2026-10.md)
 autorisiert die getrennte Bearbeitung von Upgrade- und Plattformdiagnostik.
-Der erste hier vorgeschlagene Slice ergänzt native Deprecated-Features-Counter
+Der erste hier begrenzte Slice ergänzt native Deprecated-Features-Counter
 und eine ausdrücklich begrenzte Konfigurationsregel für eine gewählte Zielversion.
 Ein Implementierer und ein unabhängiger Reviewer bearbeiten einen kohärenten PR;
-Produktcode beginnt nach der konkreten Vertragsprüfung. Die bereits laufende
-Datei-I/O-Welle PR #458 besitzt ihre eigene Abnahme und wird zuerst integriert.
+Die Vertragsprüfung ist abgeschlossen. Die Datei-I/O-Welle PR #458 ist
+mit ihren getrennten Head- und Main-Gates integriert.
 
 DatabasePortabilityAnalysis inventarisiert persistierte Edition-Features und
 uncontained dependencies. ServerFeatureCapabilities beschreibt sichtbare
@@ -282,3 +282,37 @@ harmlosen DATABASEPROPERTYEX-IsFullTextEnabled-Aufruf. Native Engine-Startzeit
 und Startticks stimmen vorher/nachher überein. Der eigene Labcleanup bestätigt
 REMOVED. Die Probe belegt die Nutzbarkeit dieses Sourcesignals, keine Ausführung
 von Benutzerworkload und keine vollständige Produktergebnisprüfung.
+
+## Produktkandidat und gebündelte Runtimeprüfung
+
+Die öffentliche Procedure `USP_UpgradeFeatureUsageAnalysis` und ihre vier
+registrierten Ergebnisse sind im Kerninstaller, Navigator und Anwenderpfad
+enthalten. Der Erstproduktreview schloss ohne offene P1/P2. Die SQL2025-
+Quellenprobe und der öffentliche NONE-/JSON-Smoke bestehen.
+
+Die acht lokalen nativen Versuche sind ausgeschöpft. Die breiteren Läufe
+meldeten zunächst Fehler im Fixture: Tempdb-Prozedurcollation, unzulässig
+volltypisierte TABLE-Ziele, physische statt logische Spaltenordinalen und eine
+fehlende explizite Textcollation im nativen Konfigurationsoracle. Die korrigierte
+Fixture besteht die ersten drei Gruppen mit vier typisierten Schemas,
+TABLE-/JSON-Parität, unabhängigen nativen Rohwert-/Mengenoracles, Begegnungszuwachs,
+Target-/Limitgrenze sowie Caller-, Help- und technischem TABLE-Fehlerpfad.
+
+Die echte Rechteprobe beobachtet drei gescheiterte DMV-Reads mit nativer
+Fehlernummer 300 und eine erfolgreiche Optionsquelle. Sie deckt einen
+Produktfehler auf: Ohne explizites reguläres RETURN konnte SQL Server trotz
+korrekter PARTIAL-/Fehlerprojektion den Wert -4 liefern. Der Produktkandidat
+enthält jetzt RETURN 0 am normalen Abschluss. Der abschließende Review prüft
+auch die ergänzten Vierquellen-, EngineAfter- und Mehrfehlergegenfälle. Alle
+acht eigenen Labs sind nachgewiesen entfernt. Die endgültige Runtimeabnahme
+bleibt bis zur tatsächlich ausgeführten CI offen; lokale Teilerfolge ersetzen
+keinen vollständigen erfolgreichen Lauf.
+
+Die reguläre Qualifizierung verwendet einen vollständigen SQL2025-PR-Lauf mit
+Compatibility-Level-Risiko und eine gezielte Auswahl der nativen SQL2019-Engine
+wegen der unterschiedlichen DMV-Rechte. Die vorhandene native Workflowauswahl
+FULL_RELEASE ist umfangreicher als der einzelne neue Vertrag; dessen Ergebnis
+und die tatsächlich ausgeführten Tests werden getrennt bewertet. SQL2022 wird
+nicht zusätzlich gestartet. Höchstens drei CI-Kandidaten dürfen für diese
+Welle qualifiziert werden; neue Inputs oder Befunde sind für Wiederholungen
+erforderlich. Es werden keine weiteren lokalen Labversuche begonnen.

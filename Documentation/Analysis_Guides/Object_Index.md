@@ -226,3 +226,5 @@ Für einen Einstieg nach beobachtetem Problem verwenden Sie [Hier beginnen](Star
 - [USP_CurrentCallerPermissionAnalysis](Procedures/USP_CurrentCallerPermissionAnalysis.md) zeigt native Rechte des aktiven Kontexts auf SERVER- und DATABASE-Ebene.
 
 - [USP_EndpointTransportAnalysis](Procedures/USP_EndpointTransportAnalysis.md) zeigt Endpoints, TCP-/Mirroringkonfiguration und begrenzte Transportverschlüsselungsevidenz.
+
+- [USP_UpgradeFeatureUsageAnalysis](Procedures/USP_UpgradeFeatureUsageAnalysis.md) trennt native Deprecated-Begegnungen von einer begrenzten Zielversionsregel.
