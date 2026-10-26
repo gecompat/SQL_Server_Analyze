@@ -1,6 +1,6 @@
 # Linux-cgroup-Ressourcen: begrenzter externer Beobachtungsvertrag
 
-**Status:** Vertragsentwurf zur unabhängigen Abnahme; kein Collector implementiert.
+**Status:** unabhängig geprüfter Implementierungsvorvertrag; kein Collector implementiert und keine native Hostabnahme erfolgt.
 **Artefakt-UID:** `urn:uuid:01a17804-0079-7079-9643-0c639808a4ff`.
 **Registrierung:** `DEFERRED`; keine finale lesbare Arbeitselementkennung vergeben.
 **Stand:** 26. Oktober 2026.
@@ -37,7 +37,9 @@ daher die SQL-seitige Konfiguration oder ihre Wirksamkeit nicht bestätigen.
 Nach dem [Kernelvertrag für cgroup v2](https://docs.kernel.org/admin-guide/cgroup-v2.html)
 bezieht sich memory.current auf die Gruppe einschließlich Nachkommen.
 memory.high beschreibt Drosselung und Reclaim, memory.max eine harte Grenze
-mit möglichen vorübergehenden Überschreitungen. memory.events ist hierarchisch.
+mit möglichen vorübergehenden Überschreitungen. memory.events ist ohne die
+Mountoption memory_localevents hierarchisch; diese Option begrenzt die Zählung
+auf die lokale Gruppe.
 cpu.max enthält Quota und Periode; max bezeichnet fehlende Quotenbegrenzung.
 Die Wirkung hängt vom Scheduler ab. cpuset.cpus.effective beschreibt die
 aktuell gewährten Online-CPUs. Diese Felder belegen weder reservierte
@@ -80,13 +82,25 @@ als gesonderter Änderungsvorschlag freigegeben.
 ## Begrenzte Quellenwahl und Pfadauflösung
 
 Die erste Implementierung unterstützt ausschließlich eine eindeutige
-cgroup-v2-Mitgliedschaft. cgroup v1 und hybride Mehrdeutigkeiten erhalten
-`UNSUPPORTED_LAYOUT`. Zulässig sind die folgenden Metadatenquellen:
+cgroup-v2-Mitgliedschaft in nachgewiesenen normalen domain-Gruppen.
+`cgroup.type` wird am Blatt und den verwendeten sichtbaren Ebenen vor und nach
+der Aufnahme gelesen. Nur der native Wert `domain` erlaubt die entsprechende
+gebundene Ableitung. `threaded`, `domain threaded` und `domain (invalid)`
+erhalten `UNSUPPORTED_LAYOUT`; fehlende oder unlesbare Typen erhalten
+`TYPE_UNVERIFIED`. Ein fehlendes cgroup.type an einer Wurzel wird nicht als
+nachgewiesenes domain ergänzt. Erfolgreiche Ressourcenreads bleiben erhalten,
+aber die betroffenen Hierarchieableitungen entfallen. Insbesondere beweist die
+Mitgliedschaft des Threadgruppenleiters keine gemeinsame CPU-/cpuset-Grenze
+aller Threads eines threaded-Prozesses. Der erste Slice liest keine fremden
+Threadlisten und unterstützt keine threadweise Korrelation. cgroup v1 und
+hybride Mehrdeutigkeiten bleiben `UNSUPPORTED_LAYOUT`. Zulässig sind die
+folgenden Metadatenquellen:
 
 | Quelle | Verwendungszweck |
 |---|---|
 | `/proc/<target_pid>/stat` | Nur PID und Startticks werden exportiert; die Prozessbezeichnung wird beim Parsen berücksichtigt und nicht als Identitätsnachweis verwendet. |
-| `/proc/<target_pid>/cgroup` | Die v2-Mitgliedschaft wird vor und nach der Aufnahme geprüft. |
+| `/proc/<target_pid>/cgroup` | Die v2-Mitgliedschaft des ausgewählten Threadgruppenleiters wird vor und nach der Aufnahme geprüft. |
+| cgroup.type | Der normale domain-Typ der verwendeten Ebenen wird geprüft; fehlende Typdaten werden nicht geraten. |
 | `/proc/self/mountinfo` | Nur passende cgroup2-Mountmetadaten werden zur Auflösung ausgewählt. |
 | `/proc/self/ns/{pid,mnt,cgroup}` und die entsprechenden Targetlinks | Namespace-Identitäten werden verglichen und vor/nach der Aufnahme gebunden. |
 
@@ -149,7 +163,12 @@ Schlüssel sowie unvollständige Quota-/Periodenpaare. Zahlenwerte werden im
 JSON als Dezimalzeichenketten ohne Genauigkeitsverlust transportiert; eine
 Quota benötigt einen positiven Nenner. Unbekannte Zählerschlüssel bleiben
 mit Rohwert und `UNMAPPED_KEY` sichtbar und fließen in keine bekannte Kennzahl
-ein. CPU-Intervalle werden validiert und vereinigt; ein leeres effective-Set
+ein. Für memory.events wird `event_scope=UNVERIFIED` ausgegeben: Die sichtbare
+Mountoption memory_localevents wird zwar mit ihrer Beobachtungsbindung
+geführt, ihre Abwesenheit in einem eingeschränkten Namespace beweist jedoch
+keine globale Einstellung. Der Collector klassifiziert deshalb keine
+Ereignisreichweite allein aus fehlenden Mountoptionen. CPU-Intervalle werden
+validiert und vereinigt; ein leeres effective-Set
 bleibt `EMPTY_OBSERVATION` ohne Behauptung einer nutzbaren CPU-Zahl von Null.
 Die genaue JSON-Schemadatei und der CLI-Exitcodevertrag folgen vor Produktcode
 in derselben abgegrenzten Implementierungswelle.
@@ -178,7 +197,8 @@ Mitgliedschaft sowie Mount-/Verzeichnisbindung geprüft. UTC-Uhrsprünge werden
 gegen monotone Reihenfolge als Zeitproblem gekennzeichnet. Bei Abweichung oder
 fehlendem Abschluss entstehen keine kontextgebundenen Ableitungen; erfolgreiche
 Einzelreads bleiben als `CONTEXT_UNBOUND` zuordenbare Rohbeobachtungen erhalten.
-Limits und effective-CPU-Set werden am Ende erneut gelesen. Abweichungen
+Limits, cgroup.type und effective-CPU-Set werden am Ende erneut gelesen.
+Abweichungen
 markieren `CONFIGURATION_CHANGED` und sperren davon betroffene Ableitungen.
 Unveränderte Randwerte beweisen keine zwischenzeitliche Kontinuität oder
 atomare Mehrdateiaufnahme. Kumulative Counter bleiben einzelne Messpunkte.
@@ -201,7 +221,10 @@ Nach Integration folgt ein kohärenter erster Collector-Slice mit JSON-Schema,
 Parser und synthetischem Dateizugriffsadapter. Seine Oracles müssen endliche
 Werte und Null, max, Teilreads, fehlende/verweigerte Quellen, unbekannte Felder,
 Überlauf, große und überlappende CPU-Intervalle, Mountinfo-Escapes, Bindmounts,
-mehrdeutige Auflösung, Namespaceabweichung, PID-Wiederverwendung, Symlink- und
+mehrdeutige Auflösung, Namespaceabweichung, normale domain-Gruppen,
+threaded/domain-threaded/invalid/unbekannte Typen, unterschiedlich platzierte
+Threads sowie memory.events mit und ohne memory_localevents und jeweils
+unbestätigter Ereignisreichweite, PID-Wiederverwendung, Symlink- und
 Mounttausch, Mitgliedschaftswechsel, sichtbare Vorfahrenlücken, versteckte
 Vorfahren, geänderte Randkonfiguration und Budgetabbrüche unabhängig prüfen.
 Ein Fixture-PASS qualifiziert nur diesen synthetischen Scope.
