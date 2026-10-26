@@ -3,7 +3,21 @@
 **Stand:** 26. Oktober 2026
 **Zweck:** aktueller Auftragsstatus und historische Entwicklungswellen für `gecompat/SQL_Server_Analyze`
 
-## Eigener SSIS-Auftrag: elfte Paketwelle
+## Aktuelle Orchestrierung
+
+Seit dem Benutzerauftrag vom 26. Oktober 2026 führt der
+[Gesamtauftrag](#aktueller-gesamtauftrag-priorisierte-entwicklungswellen) die
+Weiterentwicklung einschließlich verbleibender SSIS-Themen als einziger
+Orchestrator. Die aktuelle Reihenfolge und der nächste ausführbare Schritt
+stehen in der [Entwicklungsplanung](Development_Waves_2026-10.md).
+Abgeschlossene SSIS-Wellen werden nicht wiederholt; die bestehende SSISDB
+bleibt erhalten. Frühere separate Aufträge sind nachfolgend historisch geführt.
+
+## Historischer SSIS-Auftrag: elfte Paketwelle
+
+Die Welle ist über [PR #457](https://github.com/gecompat/SQL_Server_Analyze/pull/457)
+mit Abnahme, unabhängigem Review und allen Head-/Main-Gates abgeschlossen.
+Die folgenden Angaben beschreiben ihren damaligen begrenzten Auftrag.
 
 Der Benutzer hat die [gebundene Mehrlauf-Baseline](../../../Documentation/Analysis_Guides/Procedures/USP_SsisExecutionBaseline.md) autonom einschließlich regulärer PR-Integration nach erfolgreicher Abnahme freigegeben. Der Umfang enthält eine explizite Kohorte mit bis zu 20 Basisläufen und einem Kandidaten, gemeinsame Kennzahlenprojektion mit dem Paarvergleich, exakte deskriptive Statistik, nachvollziehbare Ausschlüsse und INFO-Regeln ab fünf verwendbaren Basiswerten.
 
@@ -49,11 +63,13 @@ Zuständigkeiten, Abschlussbedingungen und den nächsten ausführbaren Schritt.
 Sie ersetzt für diesen Auftrag ältere allgemeine Aktivierungsfolgen und
 Pausenhinweise, erhält jedoch deren historische Evidenz und konkrete Grenzen.
 
-Die fünf SSIS-Paketwellen sind im separaten SSIS-Chat abgeschlossen. Dieser Gesamtauftrag startet dafür keine zweite Umsetzung und
-übernimmt weder dessen Branches noch dessen ausdrücklich erhaltenes Lab.
-Der neue stündliche Heartbeat gilt ausschließlich als letzte Instanz zur
-Leerlauferkennung des Gesamtauftrags; der bestehende SSIS-Heartbeat gehört
-weiterhin zum begrenzten SSIS-Auftrag.
+Seit dem 26. Oktober 2026 bündelt dieser Chat die gesamte Weiterentwicklung.
+Die elfte Welle des bisherigen SSIS-Chats ist über PR #457 abgeschlossen.
+Die erhaltene SSISDB bleibt bestehen; Parser und Lineage bleiben im Toolbelt,
+Analyze bleibt CLR-frei. Neue SSIS-Slices zählen im bestehenden Gesamtbudget
+mit. Dessen Obergrenze von 40 PR-Schritten und der Checkpoint bei 30 werden
+nicht zurückgesetzt. Der stündliche Heartbeat dient weiterhin ausschließlich
+zur Wiederaufnahme bei tatsächlichem unerwartetem Leerlauf.
 
 Die Planung sowie die ersten Server- und Datenbankprincipal-Slices von Rang 6
 sind regulär integriert. [PR #438](https://github.com/gecompat/SQL_Server_Analyze/pull/438)
@@ -77,8 +93,8 @@ bleibt ohne behauptete Sperrursache dokumentiert.
 
 Die separate SSIS-Datenflusskorrelation ist über
 [PR #445](https://github.com/gecompat/SQL_Server_Analyze/pull/445) integriert.
-Abnahme und Zuständigkeit bleiben beim SSIS-Auftrag. Der Gesamtauftrag
-übernimmt dessen Scope und die erhaltene SSISDB nicht. Der
+Die damalige Abnahme gehört zum abgeschlossenen SSIS-Auftrag. Seine
+erhaltene SSISDB bleibt unverändert; künftige Wellen werden zentral geplant. Der
 nächste unabhängige Rang 10 steht im
 [Snapshot-Dossier](../Architecture/Snapshot_Expansion_Dossier.md):
 Die datenbewahrende Schema-2-Vorbereitung ist über
@@ -93,26 +109,24 @@ Epochen- und Retentionsbindungen ist unabhängig geprüft. Der Retentionsschutz 
 [PR #449](https://github.com/gecompat/SQL_Server_Analyze/pull/449) als
 Targetpatch 1.1.1 einschließlich aller Head- und Main-Gates integriert.
 Das interne Wait-Target 1.2.0 ist über PR #451 einschließlich aller sieben Head-Checks, vollständigem SQL2025-Head-/Main-Gate und gezielter nativer SQL2019-Snapshotprüfung integriert. Die öffentliche Frameworkaktivierung mit Targetpatch 1.2.1 ist über PR #453 einschließlich aller sieben Head-Checks, vollständigem SQL2025-Gate und gezielter nativer SQL2019-Abnahme integriert; alle vier getrennten Main-Prüfungen einschließlich des vollständigen SQL2025-Gates bestehen. Der [Datei-I/O-Vorvertrag](../Architecture/File_IO_Snapshot_Dossier.md) ist über PR #454 mit allen vier Head- und drei Main-Prüfungen integriert. Der [genaue Feld- und Migrationsvertrag](../Architecture/File_IO_Snapshot_Field_Contract.md) ist über PR #455 mit allen Head-/Main-Gates integriert. Das interne FILE_IO-Target 1.3.0 / Schema 3 und die notwendige Waitkompatibilität sind über [PR #456](https://github.com/gecompat/SQL_Server_Analyze/pull/456) integriert. Alle sieben Head-Prüfungen, das vollständige SQL2025-Gate, die gezielte native SQL2019-Risikoabnahme und alle vier getrennten Main-Gates bestehen. Der erste Main-Versuch scheiterte im Legacy-SSIS-TABLE-Fall 202/C008 mit Timeout; ein begrenzter Wiederlauf bestand ohne Produktänderung. BLOCKER_NOT_CAPTURED bleibt mit Ursache UNKNOWN erhalten. Die öffentliche native Datei-I/O-Aufnahme mit Targetpatch 1.3.1 / Schema 3 und Retentionsvertrag 3 ist über [PR #458](https://github.com/gecompat/SQL_Server_Analyze/pull/458) als 1a144251 integriert. Alle sieben Head-Checks, das vollständige SQL2025-Gate und die gezielte native SQL2019-Snapshot-Risikoabnahme bestehen am Head 23730d1d. Merge- und Headbaum sind identisch. Alle vier getrennten Main-Gates einschließlich des vollständigen SQL2025-Laufs 40273412551 bestehen. Der nächste unabhängige Rang 11 beginnt mit dem Upgrade-Usage-Vertrag.
-Nach dem abgeschlossenen Datei-I/O-Checkpoint bearbeitet der Gesamtauftrag
-Rang 11 gemäß [Upgrade-Usage-Dossier](../Architecture/Upgrade_Feature_Usage_Dossier.md).
-Der Produktkandidat ergänzt SQL-sichtbare Deprecated-Begegnungszähler und eine
-begrenzte Zielversionsregel. Vertrags- und Erstproduktreview sowie Quellenprobe
-und öffentlicher SQL2025-Smoke bestehen. Die breite native Rechteprobe deckt
-einen impliziten Returnwert auf; der normale Abschluss enthält nun RETURN 0.
-Die abschließende Fehlerfallprüfung und CI-Abnahme bleiben offen. Acht lokale
-native Versuche sind ausgeschöpft und alle eigenen Labs entfernt. Es folgen
-nach ausdrücklicher Benutzerfreigabe höchstens sechs stabile CI-Kandidaten,
-einschließlich der erforderlichen nativen SQL2019-Rechtegrenze. Die vorbereitete
-und unabhängig geprüfte Fixturekorrektur trennt serverweite Rechte in master
-vom Objektrecht im Frameworkkontext. Der sechste Kandidat korrigiert zusätzlich
-den festen Zeilenlimitvertrag: NULL/0 liefern vollständig, positive Werte
-begrenzen nur die Ausgabe und negative bleiben ungültig. Die Korrektur ist
-unabhängig geprüft; ihre eigene Runtimeabnahme bleibt bis zum erfolgreichen
-Head-Gate offen. Ohne neue Inputs wird kein Lauf wiederholt.
-Linux-/Container-Hostnachweise bleiben ein eigener Scope. Diese Vorbereitung
-übernimmt keine SSIS-Arbeit und verändert die erhaltene SSISDB nicht.
-Bereits gelieferte Funktionen und die abgeschlossene STAT-DOMINANT-Diagnose
-werden nicht erneut entwickelt.
+Der erste Rang-11-Slice ist über
+[PR #459](https://github.com/gecompat/SQL_Server_Analyze/pull/459) als 746ddbd4
+integriert. Alle acht ursprünglichen Head-Checks, das vollständige SQL2025-Gate
+auf CL150/160/170, die gezielte native SQL2019-Rechteabnahme und alle fünf
+getrennten Main-Workflows bestehen. Der korrigierte Zeilenlimitvertrag liefert
+bei NULL/0 den vollständigen abgegrenzten Countercache; positive Werte begrenzen
+ausschließlich die Ausgabe. Das
+[Upgrade-Dossier](../Architecture/Upgrade_Feature_Usage_Dossier.md) erhält die
+fehlgeschlagenen Vorstände und dokumentiert die genaue qualifizierte Revision.
+Acht lokale Versuche und sechs CI-Quellkandidaten dieser Welle sind abgeschlossen.
+
+Als nächster kohärenter Schritt folgt der
+[Linux-cgroup-Vertrag](../Architecture/Linux_Cgroup_Resource_Boundary_Dossier.md).
+Die Vertragslieferung ergänzt keine SQL-Funktion und startet kein natives Lab.
+Nach Review und regulärer Integration folgt ein begrenzter externer
+Collector-Slice mit Schema, Parser und synthetischen Dateizugriffsoracles.
+Native Hostbelege, SQL-Instanzbindung und allgemeine Lab-Erweiterungen bleiben
+getrennte nachzuweisende Grenzen.
 
 ## Abgeschlossen: fünf SSIS-Paketwellen vom 25. Oktober 2026
 

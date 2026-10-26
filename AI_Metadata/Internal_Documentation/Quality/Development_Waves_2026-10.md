@@ -25,16 +25,20 @@ noch erforderliche konkrete Freigabe bleibt als Grenze sichtbar.
 
 ## Zuständigkeit und Reihenfolge
 
-Die ersten fünf Ränge bleiben vollständig beim bereits gestarteten separaten
-SSIS-Chat. Dort gelten dessen bestehender Wellenumfang, Reviewbudgets und
-Ressourcenentscheidungen. Der Gesamtauftrag bearbeitet eigenständig Rang 6
-und folgende. Die Security-Analyse beginnt unabhängig vom abgeschlossenen
-SSIS-Umfang. Gemeinsame Änderungen werden vor PR-Integration gegen
-aktuelles Remote-main abgeglichen; fremde Arbeit wird nicht übernommen.
+Seit dem Benutzerauftrag vom 26. Oktober 2026 führt dieser Gesamtauftrag die
+Weiterentwicklung als einziger Orchestrator, einschließlich verbleibender
+SSIS-Themen. Der bisherige SSIS-Chat ist inaktiv; seine elfte Welle ist über
+[PR #457](https://github.com/gecompat/SQL_Server_Analyze/pull/457) mit Review,
+Abnahme und Head-/Main-Gates abgeschlossen. Bereits integrierte Wellen werden
+nicht wiederholt. Die erhaltene SSISDB bleibt bestehen; Parser und Lineage
+bleiben im Toolbelt, Analyze bleibt CLR-frei.
 
-Der Abgleich beruht auf dem öffentlichen Main-Stand nach PR #430 und der
-anschließenden Integration von SSIS-PR #428. Statusänderungen der ersten fünf Ränge werden weiterhin
-im SSIS-Abschnitt von Next Steps gepflegt.
+Neue SSIS-Arbeit wird anhand des aktuellen Producer-/Consumerstands und
+verbleibender Lücken ausgewählt. Sie verwendet einen neuen kohärenten Scope
+innerhalb desselben Gesamtbudgets. Historische Beauftragungen und ihre
+verbrauchten Grenzen bleiben erhalten. Vor jedem Schritt werden Remote-main,
+offene PRs und Zuständigkeiten abgeglichen; fremde unveröffentlichte Arbeit
+wird nicht allein aufgrund eines Planverweises übernommen.
 
 | Rang | Entwicklung und vorhandene Zuordnung | Nächster abgegrenzter Abschluss |
 |---|---|---|
@@ -45,10 +49,10 @@ im SSIS-Abschnitt von Next Steps gepflegt.
 | 5 | Optionale SQL-Metadatenprüfung, `SSIS-001` | PR #429 ist integriert; keine erneute Umsetzung. |
 | 6 | Berechtigungen und Login-Lifecycle, Intake `PRINCIPALS_ROLE_PERMISSIONS` und `AUTHENTICATION_LOGIN_LIFECYCLE` | Das Serverprincipal-Dossier und das [Datenbankprincipal-Dossier](../Architecture/Database_Principal_Analysis_Dossier.md) grenzen sichtbare Principals, Rollen, explizite Rechte, Ownership und Loginzustände ab. Effektive Berechtigungen und unsichtbare Metadaten werden nicht aus unvollständigen Katalogen behauptet. |
 | 7 | TLS und Endpoints, Intake `TLS_NETWORK_ENDPOINTS` | SQL-sichtbare Verbindungsverschlüsselung und Endpointzustände getrennt von Host-, Zertifikats- und externen Verbindungsnachweisen spezifizieren und implementieren. |
-| 8 | Weitere SSIS-Laufzeitdiagnosen, `SSIS-001` | Die separat beauftragte SSIS-Welle 6 ergänzt iterationsgebundene Korrelation; ihr Abnahmestand steht im SSIS-Abschnitt von Next Steps. Weitere Task-, Buffer-, Provider-, Checkpoint- und Loggingpfade benötigen einen eigenen freien Scope. |
-| 9 | SSIS-Laufvergleiche, `SSIS-001` | Vergleichbare explizite Ausführungen mit Paketrevision, Loggingabdeckung, Mengenbasis, Stichprobengröße und Ausschlüssen gegenüberstellen. |
-| 10 | Snapshot- und Baseline-Ausbau, `SC-023-EXPANSION` | Die Schema-2-Vorbereitung ist mit PR #447 integriert. Der genaue Wait-Kontextvertrag ist unabhängig geprüft. Als Nächstes folgen Wait- und Datei-I/O-Differenzkandidaten mit ausdrücklich begrenztem Kontinuitätsnachweis. Kapazität, Ressourcendruck, Rollups und Scheduler folgen getrennt. |
-| 11 | Upgrade- und Plattformdiagnostik, Intake `DEPRECATION_BREAKING_CHANGE` und `LINUX_CONTAINER_LIMITS` | Veraltete Nutzung und Zielversionsrisiken von Linux-/Containergrenzen trennen; Hostinformationen nur über einen ausdrücklich begrenzten Adapter erfassen. |
+| 8 | Weitere SSIS-Laufzeitdiagnosen, `SSIS-001` | Die bisherigen Iterations-, Pipeline-, Kindpaket- und Handlerpfade sind geliefert. Verbleibende Task-, Buffer-, Provider-, Checkpoint- und Loggingpfade werden vor einer neuen Welle gegen den aktuellen OpenScope abgeglichen. |
+| 9 | SSIS-Laufvergleiche, `SSIS-001` | Paarvergleich und Mehrlauf-Baseline sind geliefert; PR #457 ergänzt bis zu 20 gebundene Basisläufe und einen Kandidaten. Ein Ausbau benötigt einen konkreten verbleibenden Bedarf und wiederholt keine abgeschlossene Abnahme. |
+| 10 | Snapshot- und Baseline-Ausbau, `SC-023-EXPANSION` | Wait- und native Datei-I/O-Slices sind bis PR #458 mit ihren begrenzten Kontinuitätsverträgen integriert. Kapazität, Ressourcendruck, Rollups und Scheduler folgen als getrennte verbleibende Umfänge. |
+| 11 | Upgrade- und Plattformdiagnostik, Intake `DEPRECATION_BREAKING_CHANGE` und `LINUX_CONTAINER_LIMITS` | Der erste Upgrade-Slice ist über PR #459 abgenommen. Der [Linux-cgroup-Vertrag](../Architecture/Linux_Cgroup_Resource_Boundary_Dossier.md) grenzt einen externen lesenden Adapter, sichtbare Hierarchie, Prozessbindung und unbestätigte SQL-Identität ab. |
 | 12 | Collation-Härtung, `COLL-001` | Verbleibende betroffene Quelldateien und Consumer gezielt härten und prüfen. Die garantierte Collation wird ohne vollständigen Nachweis nicht erweitert. |
 | 13 | msdb-, Agent- und Mail-Diagnostik, `OPS-008` | Verbleibende Retention-, Status-, Datum-/Dauer- und Wartungsfälle abschließen; vorhandenen SMTP-Erfolg nicht erneut qualifizieren. |
 | 14 | External-Data-, Runtime- und CLR-Abnahmen, `WI-0009` und `RUNTIME-001` | Eigene positive External-Table-Quellen, aktivierte Runtimes und synthetische SAFE-Assembly-Nachweise getrennt abnehmen. Fehlende Infrastruktur bleibt externe Evidenz. |
@@ -89,7 +93,9 @@ Weitere fachliche Teilfragen erfordern einen neuen begründeten Schritt.
 Der endliche Gesamtscope umfasst die 13 Ränge 6 bis 18, diese Planintegration
 und die betroffene Dokumentationskonsolidierung. Als gemeinsame Obergrenze
 gelten 40 eigene fachliche PR-Schritte einschließlich Korrekturlieferungen
-und Koordination; der separate SSIS-Auftrag gehört nicht zu diesem Budget.
+und Koordination. Bereits abgeschlossene Schritte des früheren separaten
+SSIS-Auftrags werden nicht nachträglich neu gezählt. Neue SSIS-Schritte dieses
+Orchestrators zählen innerhalb derselben Obergrenze mit.
 Pro Schritt sind ein Erstentwurf, ein gebündelter Korrekturpass und die
 erforderlichen Gates vorgesehen. Neue fehlgeschlagene Tests werden zunächst
 lokal eingegrenzt. Ein weiterer Versuch benötigt geänderte Inputs, neue
@@ -245,11 +251,22 @@ Dokumentation, Privacy und Commitprüfung bestehen. Targetpatch 1.3.1 / Schema 3
 mit Retentionsvertrag 3 umfasst die öffentliche native Aufnahme, ehrliche späte
 Read-/Zeitfehler, erhaltene Mehrfach-Issues und offene Vorgängergrenzen.
 
-Der nächste unabhängige Rang 11 steht im
-[Upgrade-Usage-Dossier](../Architecture/Upgrade_Feature_Usage_Dossier.md).
-Vertrag und Fehleraggregation sind unabhängig geprüft. Die erste eigene
-SQL2025-Quellenprobe bestätigt den nativen Deprecated-Counter und kontrollierten
-Begegnungszuwachs; der Labcleanup besteht. Der Produktkandidat ist umgesetzt
-und im Erstproduktreview ohne offene P1/P2. Ein bei der echten Rechteprobe
-aufgedeckter impliziter Returnwert wird mit explizitem RETURN 0 korrigiert.
-Die endgültige Fehlerfall- und CI-Abnahme bleibt offen. Der getrennte SSIS-Auftrag wird nicht übernommen.
+## Aktueller Checkpoint und nächste Welle
+
+Der erste Rang-11-Upgrade-Slice ist über
+[PR #459](https://github.com/gecompat/SQL_Server_Analyze/pull/459) als 746ddbd4
+integriert. Der Head 72460593 besteht alle acht ursprünglichen Standardchecks,
+das vollständige SQL2025-Gate auf CL150/160/170 und die gezielte native
+SQL2019-Abnahme einschließlich Rechteprobe und Cleanup. Head- und Mergebaum
+sind identisch. Alle fünf getrennten Main-Workflows bestehen. Das
+[Upgrade-Dossier](../Architecture/Upgrade_Feature_Usage_Dossier.md) führt
+Laufbindungen, Korrekturhistorie und verbleibende fachliche Grenzen.
+
+Die nächste kohärente Vertragswelle konkretisiert den begrenzten externen
+Linux-cgroup-v2-Collector gemäß
+[Linux-cgroup-Dossier](../Architecture/Linux_Cgroup_Resource_Boundary_Dossier.md).
+Diese Lieferung enthält keinen Collectorcode und keinen neuen nativen Lauf.
+Nach unabhängigem Vertragsreview und statischen Gates folgt die reguläre
+PR-Integration. Erst danach beginnt der erste Implementierungsslice mit
+Schema, Parser und synthetischen Dateizugriffsoracles; eine native
+Hostqualifikation bleibt ein eigener nachzuweisender Scope.
