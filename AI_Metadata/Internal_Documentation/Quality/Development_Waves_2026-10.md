@@ -52,7 +52,7 @@ wird nicht allein aufgrund eines Planverweises übernommen.
 | 8 | Weitere SSIS-Laufzeitdiagnosen, `SSIS-001` | Die bisherigen Iterations-, Pipeline-, Kindpaket- und Handlerpfade sind geliefert. Verbleibende Task-, Buffer-, Provider-, Checkpoint- und Loggingpfade werden vor einer neuen Welle gegen den aktuellen OpenScope abgeglichen. |
 | 9 | SSIS-Laufvergleiche, `SSIS-001` | Paarvergleich und Mehrlauf-Baseline sind geliefert; PR #457 ergänzt bis zu 20 gebundene Basisläufe und einen Kandidaten. Ein Ausbau benötigt einen konkreten verbleibenden Bedarf und wiederholt keine abgeschlossene Abnahme. |
 | 10 | Snapshot- und Baseline-Ausbau, `SC-023-EXPANSION` | Wait- und native Datei-I/O-Slices sind bis PR #458 mit ihren begrenzten Kontinuitätsverträgen integriert. Kapazität, Ressourcendruck, Rollups und Scheduler folgen als getrennte verbleibende Umfänge. |
-| 11 | Upgrade- und Plattformdiagnostik, Intake `DEPRECATION_BREAKING_CHANGE` und `LINUX_CONTAINER_LIMITS` | Upgrade, Linux-cgroup-Vorvertrag und Fünf-Dateien-Skalarkern sind über PR #459 bis PR #461 abgeschlossen. Der [nächste Schritt](../Architecture/Linux_Cgroup_Resource_Boundary_Dossier.md) erweitert die reinen Parser auf cpuset, keyed counters und cgroup.type; Dateizugriff und übriger Collector bleiben getrennt. |
+| 11 | Upgrade- und Plattformdiagnostik, Intake `DEPRECATION_BREAKING_CHANGE` und `LINUX_CONTAINER_LIMITS` | Upgrade, Linux-cgroup-Vorvertrag und neun reine Ressourcenparser sind über PR #459 bis PR #462 abgeschlossen. Der [nächste Schritt](../Architecture/Linux_Cgroup_Resource_Boundary_Dossier.md) parst Procfs-Mitgliedschaft und cgroup2-Mountmetadaten ohne Dateizugriff oder Auswahl; Collector und Bindung bleiben getrennt. |
 | 12 | Collation-Härtung, `COLL-001` | Verbleibende betroffene Quelldateien und Consumer gezielt härten und prüfen. Die garantierte Collation wird ohne vollständigen Nachweis nicht erweitert. |
 | 13 | msdb-, Agent- und Mail-Diagnostik, `OPS-008` | Verbleibende Retention-, Status-, Datum-/Dauer- und Wartungsfälle abschließen; vorhandenen SMTP-Erfolg nicht erneut qualifizieren. |
 | 14 | External-Data-, Runtime- und CLR-Abnahmen, `WI-0009` und `RUNTIME-001` | Eigene positive External-Table-Quellen, aktivierte Runtimes und synthetische SAFE-Assembly-Nachweise getrennt abnehmen. Fehlende Infrastruktur bleibt externe Evidenz. |
@@ -262,8 +262,9 @@ sind identisch. Alle fünf getrennten Main-Workflows bestehen. Das
 [Upgrade-Dossier](../Architecture/Upgrade_Feature_Usage_Dossier.md) führt
 Laufbindungen, Korrekturhistorie und verbleibende fachliche Grenzen.
 
-Die Linux-cgroup-Vertragswelle ist über PR #460 und der reine Parser für fünf
-Skalarwerte über PR #461 abgeschlossen. Der nächste kleine Schritt ergänzt
-Parser für cpuset, `memory.events`, `cpu.stat` und `cgroup.type`. Dateizugriff
-und übriger Collector folgen als getrennte Slices; eine native
-Hostqualifikation bleibt ein eigener nachzuweisender Scope.
+Die Linux-cgroup-Vertragswelle ist über PR #460 und die neun reinen
+Ressourcenparser über PR #461 und PR #462 abgeschlossen. Der nächste kleine
+Schritt ergänzt Parser für Procfs-Mitgliedschaft und cgroup2-Mountmetadaten.
+Dateizugriff, Auswahl, Prozess-/Namespacebindung und übriger Collector folgen
+als getrennte Slices; eine native Hostqualifikation bleibt ein eigener
+nachzuweisender Scope.
