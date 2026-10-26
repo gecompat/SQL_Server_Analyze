@@ -407,7 +407,7 @@ den bereits vorhandenen vollständigen statischen Selbsttestsatz. Spätere
 Änderungen am Metadatenmodul aktivieren gezielt den fokussierten Validator;
 bestehende Gates bleiben unverändert.
 
-### Reader-Vertrag und aktueller Kandidatenstatus
+### Reader-Vertrag und abgeschlossene erste Implementierung
 
 Der gemeinsame Wire- und Native-ABI-Vertrag ist in der öffentlichen
 [Linux-cgroup-Reader-Spezifikation](../../../Documentation/Analysis_Guides/Linux_Cgroup_Reader_Contract.md)
@@ -416,20 +416,30 @@ fachliche Quellsemantik, sichtbare Hierarchie, Datenschutz und Aussagegrenzen
 maßgeblich. Die öffentliche [Betriebsanleitung](../../../Documentation/Analysis_Guides/Linux_Cgroup_Reader.md)
 beschreibt Voraussetzungen und Aufruf.
 
-`Code/Tools/Linux_Cgroup_Native.py` enthält die begrenzten x86_64-Primitiven.
-`Code/Tools/Linux_Cgroup_Reader.py` und sein fokussierter Validator sind im
-Arbeitsstand als Kandidat umgesetzt. Die portablen Phase-A- und Reader-Oracles
-laufen lokal; eine Linux-Nativeausführung wurde hier nicht vorgenommen. Die
-getrennte Linux-x86_64-/Python-3.11-CI muss die ABI-/Syscallprüfungen und die
-read-only Beobachtung eines eigenen Kindprozesses tatsächlich ausführen; ein
-Unsupported-Ergebnis gilt nicht als Erfolg. Unabhängiger Review, dieser CI-Lauf
-und danach die erforderlichen PR-Gates stehen noch aus.
+Der Collector mit Native-Primitiven, Reader und CLI ist über
+[PR #466](https://github.com/gecompat/SQL_Server_Analyze/pull/466) integriert.
+Der abschließende Head `18bf0d6e` und Merge `65174ea1` besitzen denselben Baum.
+Nach unabhängigem Review bestehen alle vier Head- und drei Main-Prüfungen.
+Der Linux-x86_64-Lauf mit Python 3.11.17 besteht 223 portable Readerfälle,
+113 Parserfälle und 19 native Fälle einschließlich Syscalls, eigener
+Kindprozessbeobachtung und Cleanup. Die tatsächliche Nativeausführung ist im
+[Head-Lauf](https://github.com/gecompat/SQL_Server_Analyze/actions/runs/40360222251)
+und im getrennten
+[Main-Lauf](https://github.com/gecompat/SQL_Server_Analyze/actions/runs/40360895898)
+belegt. Lokal unter Windows erfolgte keine Nativeausführung.
 
-Der Kandidat behauptet keine Hostqualifikation, keine konfigurierte
+Der erste CI-Kandidat scheiterte im nativen Validator mit dem unspezifischen
+Code `VALIDATION_FAILURE`; sein ursprünglicher Log belegt keinen konkreten
+Ausnahmetyp. Ein danach festgestellter Scopefehler des Testtreibers wurde mit
+portabler Regression korrigiert: Reader und Backend werden gemeinsam aus dem
+geschützten Kindprozess-Aufruf zurückgegeben. Der zweite Kandidat besteht die
+Gates. Fehlerdiagnosen enthalten nun Grundcode, Ausnahmetyp, Quellzeile und
+Funktionsnamen, jedoch keine Fehlermeldungstexte oder Hostpfade.
+
+Der Collector behauptet keine Hostqualifikation, keine konfigurierte
 cgroup-Grenzwirkung und keinen SQL-Prozessbezug. SQL-Import, kontrollierte
 cgroup-Limitwirkung, globale Hierarchievollständigkeit und SQL-Instanzbindung
-bleiben getrennte offene Evidenzgrenzen. Die Native-CI ist auf Änderungen an
-Reader, Native-Primitiven, Parserabhängigkeiten, Validator und diesem Vertrag
-begrenzt; sie startet keinen SQL-Server. Die Integration in den bestehenden
-statischen Runner aktiviert dessen vollständige Selbsttests. Diese notwendige
-einmalige Runnergrenze wird nicht durch Verengung bestehender Gates umgangen.
+bleiben getrennte offene Evidenzgrenzen. Der gezielt ausgewählte Nativeblock
+im Dokumentationsworkflow startet keinen SQL Server. Die erste Integration in
+den statischen Runner erforderte dessen vollständige Selbsttests; bestehende
+Gates wurden dafür nicht verengt.

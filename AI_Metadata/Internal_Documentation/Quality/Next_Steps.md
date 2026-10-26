@@ -135,11 +135,15 @@ begrenzten Common-159-TRUNCATE-/MinValidVersion-Fall ab. Schritt 27 präzisierte
 den Reader-Vertrag im [Dossier](../Architecture/Linux_Cgroup_Resource_Boundary_Dossier.md)
 und in der öffentlichen
 [Readerspezifikation](../../../Documentation/Analysis_Guides/Linux_Cgroup_Reader_Contract.md).
-Schritt 28 bündelt Native-Primitiven, Reader/CLI, portable Wire-Oracles und den
-gezielten Linux-Nativejob als PR-Kandidat. Unabhängiger Review, tatsächlicher
-Linux-CI-Lauf und PR-Gates stehen aus; lokal erfolgte keine Nativeausführung.
-SQL-Import, kontrollierte cgroup-Limitwirkung und Hostqualifikation bleiben
-getrennte offene Grenzen.
+Schritt 28 ist über [PR #466](https://github.com/gecompat/SQL_Server_Analyze/pull/466)
+integriert. Head `18bf0d6e` und Merge `65174ea1` besitzen denselben Baum; alle
+vier Head- und drei Main-Prüfungen bestehen. Linux x86_64 mit Python 3.11.17
+besteht 223 portable Readerfälle, 113 Parserfälle und 19 native Fälle im
+Head- und Main-Lauf. Das Dossier erhält den ursprünglichen CI-Fehllauf und
+die begrenzte Testtreiberkorrektur. Lokal erfolgte keine Nativeausführung.
+SQL-Import, kontrollierte cgroup-Limitwirkung, globale Hierarchievollständigkeit
+und SQL-Instanzbindung bleiben offen. Schritt 29 prüft eine konkrete verbleibende
+Collation-Grenze von `COLL-001`; die garantierte Collation wird nicht erweitert.
 
 ## Abgeschlossen: fünf SSIS-Paketwellen vom 25. Oktober 2026
 
