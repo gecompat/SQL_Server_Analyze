@@ -324,6 +324,87 @@ ergänzen.
 Alle vier APIs sind reine Parser. Sie binden weder Host, Prozess, Namespace,
 Mount noch Hierarchie und erzeugen keinen Collector oder SQL-Instanzbezug.
 
+### Reine Parser für Procfs-Metadaten
+
+`Code/Tools/Linux_Cgroup_Metadata.py` stellt
+`parse_v2_membership(raw_value: str)` und
+`parse_cgroup2_mountinfo(raw_value: str)` bereit. Beide APIs prüfen
+Nicht-Stringargumente mit `TypeError`, akzeptieren höchstens 512 KiB UTF-8
+und geben keine Rohzeilen, nativen Fehlertexte oder Readzustände aus.
+Ungültige Eingaben liefern nur stabile `parse_state`- und `reason_code`-Werte
+sowie betroffene 1-basierte `issue_line_ordinals`. Zahlen werden als
+Dezimalzeichenketten ausgegeben. Die Ergebnisse sind begrenzte
+Parserprojektionen; sie attestieren keine Dateiverfügbarkeit, Berechtigung,
+Prozessidentität, Mountauswahl oder globale Hierarchievollständigkeit.
+Zustände sind `VALID`, `INVALID_VALUE`, `LIMIT_REACHED`,
+`UNSUPPORTED_LAYOUT`, `MISSING_MEMBERSHIP` und `DELETED_RECORD`. Stabile
+Reason-Codes sind `MALFORMED_RECORD`, `INVALID_PATH`, `INVALID_TOKEN`,
+`INVALID_ID`, `INVALID_ESCAPE`, `OUT_OF_RANGE`, `DUPLICATE_V2_RECORD`,
+`DUPLICATE_MOUNT_ID`, `V1_ONLY`, `HYBRID_LAYOUT`,
+`V2_MEMBERSHIP_MISSING`, `MEMBERSHIP_DELETED`, `NON_UTF8_TEXT` und
+`INPUT_TOO_LARGE`; gültige Mountinfo-Dokumente verwenden
+`MOUNTINFO_PARSED` oder `NO_CGROUP2_MOUNTS`.
+
+`parse_v2_membership` akzeptiert genau einen Datensatz `0::<absoluter Pfad>`.
+Die Rückgabe enthält fest `source_key`, `parse_state`, `reason_code`,
+`record_count`, `record_ordinal`, `hierarchy_id`, `membership_path`,
+`layout_state` und `issue_line_ordinals`. `record_count`, Ordinale und
+`hierarchy_id` sind Dezimalzeichenketten. Bei gültiger v2-Mitgliedschaft ist
+`hierarchy_id="0"`, `record_ordinal` die ursprüngliche Zeilennummer und
+`membership_path` der unveränderte Pfadtext. Zusätzliche Doppelpunkte gehören
+zum Pfad; Unicode-Zeichen sowie abschließende Leerzeichen oder CR bleiben
+Pfadbestandteil. Nur LF trennt Datensätze. `/` ist gültig, belegt aber keine
+globale Wurzel. V1-Controllerlisten akzeptieren normale ASCII-Controllerkennungen
+und benannte Hierarchien in der Form `name=<Name>`; der Name muss aus mindestens
+einem ASCII-Buchstaben, einer Ziffer, `_`, `.` oder `-` bestehen. V1-only und
+gemischte v1/v2-Datensätze ergeben `UNSUPPORTED_LAYOUT`; fehlende v2-Zeilen
+ergeben `MISSING_MEMBERSHIP` mit `membership_path=None`. Mehrere v2-Zeilen,
+syntaktisch fehlerhafte Datensätze, relative Pfade, NUL sowie `.`- oder
+`..`-Pfadkomponenten machen die gesamte Quelle ungültig und liefern keinen
+Teilpfad. Ein terminales ` (deleted)` ergibt `DELETED_RECORD` ohne Pfad.
+Leere Eingabe bedeutet fehlende Mitgliedschaft; leere Zwischenzeilen werden
+ignoriert, während andere nicht interpretierbare Datensätze die gesamte
+Quelle ungültig machen. UTF-8-Fehler und Überschreitung der Grenze ergeben
+`INVALID_VALUE/NON_UTF8_TEXT` beziehungsweise `LIMIT_REACHED/INPUT_TOO_LARGE`.
+Die Hierarchie-ID ist auf unsigned64 begrenzt; ihre Führungsnullen werden nur
+im typisierten Zahlenwert kanonisiert.
+
+`parse_cgroup2_mountinfo` liefert fest `source_key`, `parse_state`,
+`reason_code`, `record_count`, `mounts`, `selection_state`,
+`path_binding_state` und `issue_line_ordinals`. Jeder ausgegebene cgroup2-
+Datensatz enthält `source_ordinal`, `mount_id`, `parent_id`, `major`, `minor`,
+`root`, `mount_point`, `mount_options`, `super_options` und `filesystem_type`.
+Ordinale und IDs sind Dezimalzeichenketten; Mount-, Parent-, Major- und
+Minorwerte sind auf unsigned64 begrenzt, Mount- und Parent-ID müssen positiv
+sein. Optionen sind geordnete Zeichenkettenlisten. Die 1-basierte
+`source_ordinal` verweist auf die
+Ursprungszeile. Unbekannte optionale Felder vor `-` werden gemäß
+[proc_pid_mountinfo(5)](https://man7.org/linux/man-pages/man5/proc_pid_mountinfo.5.html)
+ignoriert. Eine strukturell fehlerhafte Zeile oder doppelte Mount-ID macht die
+gesamte Eingabe ungültig und setzt `mounts=None`; aus einem ungültigen Dokument
+wird keine Teilauswahl ausgegeben. Nicht-cgroup2-Dateisysteme werden nach
+vollständiger Strukturprüfung ausgefiltert. Keine cgroup2-Zeile ergibt
+erfolgreich `mounts=[]` mit `selection_state=EMPTY_CGROUP2_SELECTION`, nicht
+ein Urteil über die Betriebssystem-Capability.
+
+Root und Mountpunkt dekodieren genau einmal die Mountinfo-Escapes `\\040`,
+`\\011`, `\\012` und `\\134` für Leerzeichen, Tabulator, LF und Backslash.
+Die dekodierten Pfade bleiben unverändert; insbesondere werden `.`- und
+`..`-Segmente nicht normalisiert. `path_binding_state=UNVERIFIED` und
+`selection_state=NOT_SELECTED` halten fest, dass die API keine Bindung oder
+sichere Mountwahl trifft. Mount-ID-Dubletten werden über alle Dateisystemtypen
+hinweg geprüft. Ein fehlender Elternrecord bleibt zulässig, da ein Parent
+außerhalb der sichtbaren Prozesswurzel liegen kann. Diese Grenze folgt aus
+[proc_pid_mountinfo(5)](https://man7.org/linux/man-pages/man5/proc_pid_mountinfo.5.html)
+und der Namespaceansicht in
+[cgroup_namespaces(7)](https://man7.org/linux/man-pages/man7/cgroup_namespaces.7.html).
+Das Mitgliedschaftsformat `0::<Pfad>` folgt dem
+[Kernelvertrag für cgroup v2](https://docs.kernel.org/admin-guide/cgroup-v2.html).
+Die Registrierung im bestehenden Runner aktiviert bei dessen Änderung einmalig
+den bereits vorhandenen vollständigen statischen Selbsttestsatz. Spätere
+Änderungen am Metadatenmodul aktivieren gezielt den fokussierten Validator;
+bestehende Gates bleiben unverändert.
+
 Diese Vertragswelle verlangt einen unabhängigen Review der Quellen-,
 Namespace-, Pfad-, Hierarchie-, Vertrauens- und Abbruchgrenzen sowie die
 betroffenen statischen Dokumentations-, Metadaten-, Privacy- und Registrygates.

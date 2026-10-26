@@ -144,7 +144,8 @@ try {
         $path = Join-Path 'Code/Tests/Static' $validator
         $selfTestRequired = $runAllSelfTests -or $changedFiles -contains ($path -replace '\\', '/') -or
             ($validator -eq 'Validate_Linux_Cgroup_Values.py' -and
-             $changedFiles -contains 'Code/Tools/Linux_Cgroup_Values.py') -or
+             ($changedFiles -contains 'Code/Tools/Linux_Cgroup_Values.py' -or
+              $changedFiles -contains 'Code/Tools/Linux_Cgroup_Metadata.py')) -or
             ($validator -eq 'Validate_Rule_Context_Cache.py' -and
              ($changedFiles -contains 'Code/Tools/Rule_Context_Cache.py' -or
               $changedFiles -contains 'AI_Metadata/Rule_Context_Cache_Scope.json'))
