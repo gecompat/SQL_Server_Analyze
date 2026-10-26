@@ -109,24 +109,13 @@ Epochen- und Retentionsbindungen ist unabhängig geprüft. Der Retentionsschutz 
 [PR #449](https://github.com/gecompat/SQL_Server_Analyze/pull/449) als
 Targetpatch 1.1.1 einschließlich aller Head- und Main-Gates integriert.
 Das interne Wait-Target 1.2.0 ist über PR #451 einschließlich aller sieben Head-Checks, vollständigem SQL2025-Head-/Main-Gate und gezielter nativer SQL2019-Snapshotprüfung integriert. Die öffentliche Frameworkaktivierung mit Targetpatch 1.2.1 ist über PR #453 einschließlich aller sieben Head-Checks, vollständigem SQL2025-Gate und gezielter nativer SQL2019-Abnahme integriert; alle vier getrennten Main-Prüfungen einschließlich des vollständigen SQL2025-Gates bestehen. Der [Datei-I/O-Vorvertrag](../Architecture/File_IO_Snapshot_Dossier.md) ist über PR #454 mit allen vier Head- und drei Main-Prüfungen integriert. Der [genaue Feld- und Migrationsvertrag](../Architecture/File_IO_Snapshot_Field_Contract.md) ist über PR #455 mit allen Head-/Main-Gates integriert. Das interne FILE_IO-Target 1.3.0 / Schema 3 und die notwendige Waitkompatibilität sind über [PR #456](https://github.com/gecompat/SQL_Server_Analyze/pull/456) integriert. Alle sieben Head-Prüfungen, das vollständige SQL2025-Gate, die gezielte native SQL2019-Risikoabnahme und alle vier getrennten Main-Gates bestehen. Der erste Main-Versuch scheiterte im Legacy-SSIS-TABLE-Fall 202/C008 mit Timeout; ein begrenzter Wiederlauf bestand ohne Produktänderung. BLOCKER_NOT_CAPTURED bleibt mit Ursache UNKNOWN erhalten. Die öffentliche native Datei-I/O-Aufnahme mit Targetpatch 1.3.1 / Schema 3 und Retentionsvertrag 3 ist über [PR #458](https://github.com/gecompat/SQL_Server_Analyze/pull/458) als 1a144251 integriert. Alle sieben Head-Checks, das vollständige SQL2025-Gate und die gezielte native SQL2019-Snapshot-Risikoabnahme bestehen am Head 23730d1d. Merge- und Headbaum sind identisch. Alle vier getrennten Main-Gates einschließlich des vollständigen SQL2025-Laufs 40273412551 bestehen. Der nächste unabhängige Rang 11 beginnt mit dem Upgrade-Usage-Vertrag.
-Der erste Rang-11-Slice ist über
-[PR #459](https://github.com/gecompat/SQL_Server_Analyze/pull/459) als 746ddbd4
-integriert. Alle acht ursprünglichen Head-Checks, das vollständige SQL2025-Gate
-auf CL150/160/170, die gezielte native SQL2019-Rechteabnahme und alle fünf
-getrennten Main-Workflows bestehen. Der korrigierte Zeilenlimitvertrag liefert
-bei NULL/0 den vollständigen abgegrenzten Countercache; positive Werte begrenzen
-ausschließlich die Ausgabe. Das
-[Upgrade-Dossier](../Architecture/Upgrade_Feature_Usage_Dossier.md) erhält die
-fehlgeschlagenen Vorstände und dokumentiert die genaue qualifizierte Revision.
-Acht lokale Versuche und sechs CI-Quellkandidaten dieser Welle sind abgeschlossen.
-
-Als nächster kohärenter Schritt folgt der
-[Linux-cgroup-Vertrag](../Architecture/Linux_Cgroup_Resource_Boundary_Dossier.md).
-Die Vertragslieferung ergänzt keine SQL-Funktion und startet kein natives Lab.
-Nach Review und regulärer Integration folgt ein begrenzter externer
-Collector-Slice mit Schema, Parser und synthetischen Dateizugriffsoracles.
-Native Hostbelege, SQL-Instanzbindung und allgemeine Lab-Erweiterungen bleiben
-getrennte nachzuweisende Grenzen.
+Der erste Rang-11-Slice ist über PR #459 integriert. PR #460 schließt den
+Linux-cgroup-Vorvertrag mit seinen Head-/Main-Gates ab. Der nächste kleine
+Implementierungsschritt liefert ausschließlich den dokumentierten
+Python-Skalarkern für fünf cgroup-Dateien. Dateizugriff, vollständiger
+Collector, SQL-Import und native Hostqualifikation folgen getrennt und sind
+hier nicht umgesetzt. Die Bearbeitung verwendet ECONOMICAL/LOCAL und eskaliert
+gezielt, falls ein konkreter ungeklärter Vertrags- oder Prüfbedarf entsteht.
 
 ## Abgeschlossen: fünf SSIS-Paketwellen vom 25. Oktober 2026
 
