@@ -13,6 +13,13 @@ stehen in der [Entwicklungsplanung](Development_Waves_2026-10.md).
 Abgeschlossene SSIS-Wellen werden nicht wiederholt; die bestehende SSISDB
 bleibt erhalten. Frühere separate Aufträge sind nachfolgend historisch geführt.
 
+PR #463 mit den reinen Linux-cgroup-Metadatenparsern ist integriert. Schritt 26
+ergänzt den bestehenden Common-159-Collationvertrag um einen positiven
+TRUNCATE-/MinValidVersion-Reinitialisierungsfall mit gültiger Kontrolle,
+unabhängigem nativem Orakel und gebundenem Cleanup. Die SQL-Server-2025-
+Impact-CI steht noch aus; der Fall belegt keine zeitbasierte Retention oder
+Backgroundbereinigung. Lokale native Versuche bleiben null.
+
 ## Historischer SSIS-Auftrag: elfte Paketwelle
 
 Die Welle ist über [PR #457](https://github.com/gecompat/SQL_Server_Analyze/pull/457)
