@@ -535,6 +535,28 @@ def _raises(expected: type[BaseException], callback: Any, label: str) -> BaseExc
     raise AssertionError(f"{label}: expected {expected.__name__}")
 
 
+_SAFE_FAILURE_CODE = re.compile(r"^[A-Z][A-Z0-9_]{0,63}$")
+
+
+def _safe_failure_fields(error: BaseException) -> dict[str, str]:
+    reason_code = getattr(error, "code", None)
+    if not isinstance(reason_code, str) or _SAFE_FAILURE_CODE.fullmatch(reason_code) is None:
+        reason_code = "VALIDATION_FAILURE"
+        if isinstance(error, AssertionError) and error.args:
+            candidate = error.args[0]
+            if isinstance(candidate, str) and _SAFE_FAILURE_CODE.fullmatch(candidate):
+                reason_code = candidate
+    frame = error.__traceback__
+    while frame is not None and frame.tb_next is not None:
+        frame = frame.tb_next
+    return {
+        "reason_code": reason_code,
+        "exception_type": type(error).__name__,
+        "source_line": str(frame.tb_lineno) if frame is not None else "UNKNOWN",
+        "function": frame.tb_frame.f_code.co_name if frame is not None else "UNKNOWN",
+    }
+
+
 def _stop_and_join_thread(stop_event: threading.Event, thread: Any) -> None:
     stop_event.set()
     thread.join()
@@ -649,6 +671,17 @@ def run_cleanup_self_tests() -> int:
     _assert(str(start_error) == "SYNTHETIC_SPAWN_FAILURE", "spawn failure propagates")
     cases += 1
 
+    reader_expected = object()
+    backend_expected = object()
+    successful_child = FakeChild()
+    dependencies = _with_child_process(
+        lambda: successful_child,
+        lambda _child: _load_child_dependencies(lambda: reader_expected, lambda: backend_expected),
+    )
+    _assert(dependencies == (reader_expected, backend_expected), "child dependencies remain available after cleanup scope")
+    _assert(not successful_child.running and successful_child.wait_calls == 1, "successful child path is still reaped")
+    cases += 2
+
     stop_event = threading.Event()
     finished = threading.Event()
     worker = threading.Thread(target=lambda: (stop_event.wait(), finished.set()))
@@ -677,6 +710,16 @@ def run_cleanup_self_tests() -> int:
     )
     _assert(failed_cleanup_stop.is_set(), "cleanup always signals stop before join")
     cases += 2
+
+    try:
+        raise RuntimeError("synthetic private path and secret-like text")
+    except RuntimeError as error:
+        safe_fields = _safe_failure_fields(error)
+    rendered_fields = repr(safe_fields)
+    _assert(safe_fields["reason_code"] == "VALIDATION_FAILURE", "unexpected exceptions use generic stable reason")
+    _assert(safe_fields["exception_type"] == "RuntimeError" and safe_fields["source_line"].isdigit(), "safe diagnostics include exception type and source line")
+    _assert("private path" not in rendered_fields and "secret-like" not in rendered_fields, "safe diagnostics omit exception message")
+    cases += 3
     return cases
 
 
@@ -1219,7 +1262,7 @@ def run_native_tests(repository_root: Path) -> int:
         finally:
             os.close(root_fd)
 
-    def inspect_child(child: subprocess.Popen[Any]) -> Any:
+    def inspect_child(child: subprocess.Popen[Any]) -> tuple[Any, Any]:
         reader, reader_backend = _load_child_dependencies(
             lambda: load_reader(repository_root),
             lambda: sys.modules["Linux_Cgroup_Native"].native_backend(),
@@ -1237,9 +1280,9 @@ def run_native_tests(repository_root: Path) -> int:
             child.wait(timeout=5)
             if reader_backend.pidfd_alive(pidfd.fd):
                 raise AssertionError("NATIVE_PIDFD_EXIT")
-        return reader_backend
+        return reader, reader_backend
 
-    reader_backend = _with_child_process(
+    reader, reader_backend = _with_child_process(
         lambda: subprocess.Popen(
             [sys.executable, "-c", "import time; time.sleep(30)"],
             stdin=subprocess.DEVNULL,
@@ -1286,7 +1329,13 @@ def validate_source(repository_root: Path) -> None:
         if required not in native_source:
             raise AssertionError("LINUX_READER_NATIVE_MARKER")
     validator_source = validator_path.read_text(encoding="utf-8")
-    if "def run_reader_self_tests(" not in validator_source or "def run_native_tests(" not in validator_source:
+    if (
+        "def run_reader_self_tests(" not in validator_source
+        or "def run_native_tests(" not in validator_source
+        or "def run_cleanup_self_tests()" not in validator_source
+        or "reader, reader_backend = _with_child_process(" not in validator_source
+        or "def _safe_failure_fields(" not in validator_source
+    ):
         raise AssertionError("LINUX_READER_TEST_MODES")
     workflow = workflow_path.read_text(encoding="utf-8")
     for required in (
@@ -1330,10 +1379,14 @@ def main() -> int:
             print("Linux cgroup reader source contract: PASS")
             return 0
     except Exception as error:
-        code = getattr(error, "code", None)
-        if code is None:
-            code = error.args[0] if isinstance(error, AssertionError) and error.args else "VALIDATION_FAILURE"
-        print(f"Linux cgroup native validator failed: {code}", file=sys.stderr)
+        fields = _safe_failure_fields(error)
+        print(
+            "Linux cgroup native validator failed: "
+            f"reason_code={fields['reason_code']} "
+            f"exception_type={fields['exception_type']} "
+            f"source_line={fields['source_line']} function={fields['function']}",
+            file=sys.stderr,
+        )
         return 1
     print(f"Linux cgroup reader validator passed: mode={mode} cases={cases}")
     return 0

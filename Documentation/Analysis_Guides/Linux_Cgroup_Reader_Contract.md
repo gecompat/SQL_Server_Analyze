@@ -52,7 +52,7 @@ Jede Ressourcendatei ist auf 64 KiB, jede Procfs-Quelle auf 512 KiB begrenzt. Al
 
 ## CI- und Evidenzgrenze
 
-Der bestehende Dokumentationsvalidierungs-Workflow führt einen getrennten Linux-x86_64-/Python-3.11-Job nur bei Änderungen an Reader, Native-Primitiven, Parserabhängigkeiten, Validator oder öffentlichem Vertrag aus. Er prüft Parser, portable Wirefälle, echte Native-Syscalls und eine read-only Beobachtung eines eigenen Kindprozesses. Unsupported-Ausführung lässt den Job scheitern. Der Job gehört nicht zur SQL-Compatibility-Level-Abdeckung und startet keinen SQL Server.
+Der bestehende Dokumentationsvalidierungs-Workflow führt einen gezielt ausgewählten Linux-x86_64-/Python-3.11-Prüfblock nur bei Änderungen an Reader, Native-Primitiven, Parserabhängigkeiten, Validator, öffentlichem Vertrag oder seiner eigenen Verkabelung aus. Er prüft Parser, portable Wirefälle, echte Native-Syscalls und eine read-only Beobachtung eines eigenen Kindprozesses. Unsupported-Ausführung lässt die Prüfung scheitern. Sie gehört nicht zur SQL-Compatibility-Level-Abdeckung und startet keinen SQL Server.
 
 Portable Fake-Backend-Oracles belegen keine Nativequalifikation. Native CI prüft die auf ihrem Runner verfügbaren Syscalls und Beobachtungen, aber keine konfigurierte cgroup-Grenze, keinen Produktionshost, keine SQL-PID-Zuordnung und keine SQL-Reaktion. Diese Nachweise bleiben getrennt.
 
