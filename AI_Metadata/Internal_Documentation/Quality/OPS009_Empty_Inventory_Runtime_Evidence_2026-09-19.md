@@ -33,3 +33,28 @@ Fixture aus `model` oder `msdb` und eine `DENIED_PERMISSION`-Zeile für
 `model`. Gesamtstatus und Partialstatus blieben `AVAILABLE_LIMITED` und
 `1`. Auch dieser Lauf entfernte den eigenen Container, das Volume und den
 temporären State vollständig.
+
+## Ergänzung vom 26. Oktober 2026
+
+Der manuelle Workflow [40403446152](https://github.com/gecompat/SQL_Server_Analyze/actions/runs/40403446152)
+qualifizierte den unveränderten Quellstand `abb2324168e725583edcd22f3fa670c2c2ac5dab`
+auf einer nativen SQL-Server-2022-Instanz mit `qualification_scope=FULL_RELEASE`.
+Das native Release-Gate bestand alle 34 Kern-Suites und die Berechtigungsmatrix;
+der Runner bestätigte außerdem den Cleanup. Das öffentliche Engine-Metadatum
+bestätigte Hauptversion 16, ProductVersion 16.0.4305.5, Compatibility Level 160
+und Linux. Der Workflow band die Evidenz an das aus demselben Commit gebaute
+Releasepaket.
+
+Der Action-Job führte `Code/Tests/Run_Release_Gate.sql` erfolgreich aus. Dessen
+Quellstand enthält den OPS-009-Vertrag
+`Code/Tests/ServerHealth/123_OPS009_System_Database_Objects_Runtime_Contract.sql`.
+Ein einzelner testspezifischer PASS-Marker für Vertrag 123 wurde nicht exportiert.
+Der enthaltene Vertrag prüft das nicht leere Inventar über `master`, `model` und
+`msdb`, die exakte Ein-Zeilen-Begrenzung, den eingeschränkten EXECUTE-only-Pfad,
+das selektive `master`-Metadatenprofil mit verweigertem `model`-Zugriff und den
+abschließenden Leerfall. Diese Quellabdeckung gehört zum bestandenen nativen
+Core-Gate. Die vom Test angelegten Tabellen und Principals wurden entfernt; der
+Runner bestätigte den Container-Cleanup.
+Der Lauf schließt den dokumentierten OPS-009-OpenScope. Er belegt den einzelnen nativen
+`FULL_RELEASE`-Zielumfang, keine vollständige native Drei-Versionen-Matrix.
+Der OPS-009-Status lautet `IMPLEMENTED_ACTIONS_GATE`.

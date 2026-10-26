@@ -56,8 +56,8 @@ wird nicht allein aufgrund eines Planverweises übernommen.
 | 12 | Collation-Härtung, `COLL-001` | PR #467 ergänzt die exakte Datenbankauswahl und deren Groß-/Kleinschreibung im Datenbankprincipal-Consumer mit allen Head-/Main-Prüfungen. Weitere betroffene Quelldateien und Consumer bleiben offen; die garantierte Collation wird nicht erweitert. |
 | 13 | msdb-, Agent- und Mail-Diagnostik, `OPS-008` | PR #468 schließt vier AgentJobs-TABLE-Kalenderfälle auf der SQL2025-CI-Baseline mit allen Head-/Main-Gates ab. Weitere Ausgabearten, Retention-, Status-, Datum-/Dauer- und Wartungsfälle bleiben offen; vorhandener SMTP-Erfolg wird nicht wiederholt. |
 | 14 | External-Data-, Runtime- und CLR-Abnahmen, `WI-0009` und `RUNTIME-001` | Eigene positive External-Table-Quellen, aktivierte Runtimes und synthetische SAFE-Assembly-Nachweise getrennt abnehmen. Fehlende Infrastruktur bleibt externe Evidenz. |
-| 15 | Eigene SSIS-Kennzahlen, `SSIS-001` | Der [Producervertragsentwurf](../../../Documentation/Architecture/SSIS_Custom_Metrics_Producer_Contract.md) definiert DELTA, CUMULATIVE, GAUGE und FINAL mit Einheiten, Epochen, Duplikaten und Sequenzlücken. Das [Dossier](../Architecture/SSIS_Custom_Metrics_Contract_Dossier.md) hält Implementierung und Abnahme getrennt offen; keine automatische Paketinstrumentierung. |
-| 16 | Übrige Reifeabschlüsse, `OPS-005`, `OPS-006`, `OPS-007`, `OPS-009` | Nur noch fehlende Provider-, Portabilitäts-, Cursor- und Systemdatenbankfälle anhand des aktuellen OpenScope abnehmen. |
+| 15 | Eigene SSIS-Kennzahlen, `SSIS-001` | Der [Producervertragsentwurf](../../../Documentation/Architecture/SSIS_Custom_Metrics_Producer_Contract.md) definiert DELTA, CUMULATIVE, GAUGE und FINAL mit Einheiten, Epochen, Duplikaten und Sequenzlücken. PR #470 integriert ein begrenztes Offline-Berichtsprofil und den lokalen Validator mit vier bestandenen Head- und drei bestandenen Main-Prüfungen. Producer, native Captureverifikation, SQL-Aufnahme, Aggregation und Vergleich bleiben offen; es erfolgt keine automatische Paketinstrumentierung. |
+| 16 | Übrige Reifeabschlüsse, `OPS-005`, `OPS-006`, `OPS-007` | Das native SQL-Server-2022-FULL_RELEASE-Gate für `OPS-009` ist als Schritt 33 über [Run 40403446152](https://github.com/gecompat/SQL_Server_Analyze/actions/runs/40403446152) abgeschlossen und im [Evidenznachweis](OPS009_Empty_Inventory_Runtime_Evidence_2026-09-19.md) dokumentiert. Weitere OPS-Fälle werden anhand ihres aktuellen OpenScope ausgewählt; ein erneuter SQL-2022-Lauf folgt nur bei neuem Versionsrisiko oder erforderlicher Releasequalifikation. |
 | 17 | Weitere Sicherheits- und Spezialdiagnosen, `WI-0010` | RLS/Maskierung, Klassifikation, Agent-Proxies, MSDTC und Legacy-Mirroring einzeln abgrenzen und nach Überschneidungsprüfung in konkrete Dossiers überführen. |
 | 18 | Restore-/Hostnachweise und Fleet-Korrelation, `SC-025` und `SC-024` | Eigene isolierte Restore-/CHECKDB-Nachweise und den externen Fleet-Vertrag getrennt bearbeiten. Externe Infrastruktur, Transport, Mandantenisolation und Betriebsmodell sind eigene Grenzen. |
 
@@ -309,7 +309,7 @@ keine neue Arbeit. Der nächste unabhängige geplante Schritt ist der optionale
 Producervertrag für eigene SSIS-Kennzahlen aus Rang 15. Der aktuelle Abgleich
 bestätigt die Lücke neben den gelieferten festen Kennzahlen. PR #469 ist mit
 allen fünf Head- und vier Main-Prüfungen integriert; Head `2ee97df1` und Merge
-`d8ca3cb7` besitzen denselben Baum. Schritt 32 ergänzt ein begrenztes
+`d8ca3cb7` besitzen denselben Baum. Schritt 32 ist über PR #470 mit vier bestandenen Head- und drei bestandenen Main-Prüfungen integriert und ergänzt ein begrenztes
 Offline-Berichtsprofil und einen lokalen Validator. Native Captureverifikation,
 Producer, SQL-Aufnahme, Aggregation und Vergleich bleiben eigenständige offene
 Umfänge innerhalb der bestehenden Freigaben. Parser und Lineage bleiben im
