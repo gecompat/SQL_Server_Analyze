@@ -184,6 +184,23 @@ Ein einzelner testspezifischer PASS-Marker für Vertrag 123 wurde nicht exportie
 Der OPS-009-Status ist `IMPLEMENTED_ACTIONS_GATE`; das Gate schließt den dokumentierten OpenScope. Der Lauf qualifiziert weder die vollständige native
 Drei-Versionen-Matrix noch weitere Produktverträge.
 
+PR #471 wurde mit vier bestandenen Head- und drei bestandenen Main-Prüfungen
+integriert. Sein tatsächlicher Scope ist die native SQL-Server-2022-
+`FULL_RELEASE`-Abnahme von OPS-009 auf Quellcommit
+`abb2324168e725583edcd22f3fa670c2c2ac5dab`, einschließlich 34 Kern-Suites,
+nativer Berechtigungsmatrix und Cleanup. Der [Evidenznachweis](OPS009_Empty_Inventory_Runtime_Evidence_2026-09-19.md)
+bindet Ziel, Compatibility Level, fehlenden Einzelmarker und Grenzen; daraus
+folgt keine native Drei-Versionen-Matrix.
+
+Schritt 34 konkretisiert den ersten Rang-17-Slice als
+[Dossier für ein sichtbares RLS-/Masking-Inventar](../Architecture/RLS_and_Masking_Inventory_Dossier.md).
+Der Vertrag bleibt `RESEARCHED_NOT_IMPLEMENTED`; Policies, Predicate-Typen/
+Operationen und masked Columns werden nur als caller-sichtbare Katalogmetadaten
+vorgesehen. Predicate- und Masking-Expressions, geschützte Tabellenwerte,
+effektive Berechtigungen sowie Gesundheits- und Enforcement-Aussagen bleiben
+ausgeschlossen. Es wurden weder Produktcode noch Tests oder Laufzeitevidenz
+hinzugefügt.
+
 ## Abgeschlossen: fünf SSIS-Paketwellen vom 25. Oktober 2026
 
 Der Benutzer hat fachliche Paketsichten, objektbezogene Regeln, belegte

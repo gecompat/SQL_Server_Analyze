@@ -58,7 +58,7 @@ wird nicht allein aufgrund eines Planverweises übernommen.
 | 14 | External-Data-, Runtime- und CLR-Abnahmen, `WI-0009` und `RUNTIME-001` | Eigene positive External-Table-Quellen, aktivierte Runtimes und synthetische SAFE-Assembly-Nachweise getrennt abnehmen. Fehlende Infrastruktur bleibt externe Evidenz. |
 | 15 | Eigene SSIS-Kennzahlen, `SSIS-001` | Der [Producervertragsentwurf](../../../Documentation/Architecture/SSIS_Custom_Metrics_Producer_Contract.md) definiert DELTA, CUMULATIVE, GAUGE und FINAL mit Einheiten, Epochen, Duplikaten und Sequenzlücken. PR #470 integriert ein begrenztes Offline-Berichtsprofil und den lokalen Validator mit vier bestandenen Head- und drei bestandenen Main-Prüfungen. Producer, native Captureverifikation, SQL-Aufnahme, Aggregation und Vergleich bleiben offen; es erfolgt keine automatische Paketinstrumentierung. |
 | 16 | Übrige Reifeabschlüsse, `OPS-005`, `OPS-006`, `OPS-007` | Das native SQL-Server-2022-FULL_RELEASE-Gate für `OPS-009` ist als Schritt 33 über [Run 40403446152](https://github.com/gecompat/SQL_Server_Analyze/actions/runs/40403446152) abgeschlossen und im [Evidenznachweis](OPS009_Empty_Inventory_Runtime_Evidence_2026-09-19.md) dokumentiert. Weitere OPS-Fälle werden anhand ihres aktuellen OpenScope ausgewählt; ein erneuter SQL-2022-Lauf folgt nur bei neuem Versionsrisiko oder erforderlicher Releasequalifikation. |
-| 17 | Weitere Sicherheits- und Spezialdiagnosen, `WI-0010` | RLS/Maskierung, Klassifikation, Agent-Proxies, MSDTC und Legacy-Mirroring einzeln abgrenzen und nach Überschneidungsprüfung in konkrete Dossiers überführen. |
+| 17 | Weitere Sicherheits- und Spezialdiagnosen, `WI-0010` | Schritt 34 konkretisiert als ersten begrenzten Vertragsentwurf das sichtbare RLS-/Masking-Inventar im [Dossier](../Architecture/RLS_and_Masking_Inventory_Dossier.md). Klassifikation, Agent-Proxies, MSDTC und Legacy-Mirroring bleiben getrennte offene Themen; kein Produktmodul ist implementiert. |
 | 18 | Restore-/Hostnachweise und Fleet-Korrelation, `SC-025` und `SC-024` | Eigene isolierte Restore-/CHECKDB-Nachweise und den externen Fleet-Vertrag getrennt bearbeiten. Externe Infrastruktur, Transport, Mandantenisolation und Betriebsmodell sind eigene Grenzen. |
 
 Die [Abdeckungsmatrix](../../../Metadata/Quality/Diagnostic_Coverage_Landscape.csv)
@@ -320,3 +320,20 @@ positive kontrollierte cgroup-Limits und deren Wirkung auf SQL Server, globale
 Hierarchievollständigkeit und SQL-Instanzbindung bleiben offen. Die Bearbeitung
 verwendet ECONOMICAL/LOCAL und eskaliert nur bei konkreten ungeklärten Vertrags-
 oder Prüfgrenzen.
+
+PR #471 schließt den nativen SQL-Server-2022-FULL_RELEASE-Nachweis für
+`OPS-009`; der zugehörige Evidenznachweis hält Quellcommit,
+`target=2022`, Compatibility Level 160, 34 Kern-Suites, Berechtigungsmatrix,
+Cleanup und den fehlenden einzelnen testspezifischen PASS-Marker fest.
+Vier Head- und drei Main-Prüfungen bestanden. Der tatsächliche Umfang ist in
+Schritt 33 und im OPS-009-Nachweis dokumentiert; der Lauf belegt keine
+Drei-Versionen-Matrix.
+
+Schritt 34 ergänzt ausschließlich den ersten begrenzten Vertragsentwurf für
+RLS-Policies, Predicate-Metadaten und masked Columns. Das Dossier bindet die
+drei sichtbaren Katalogquellen, schließt Predicate- und Masking-Expressions,
+geschützte Tabellenwerte, Gesundheits- und effektive Berechtigungsurteile aus
+und hält Metadaten-Partialität fest. `RLS_DYNAMIC_MASKING` bleibt
+`RESEARCHED_NOT_IMPLEMENTED`; es wurden weder Procedure noch Tests oder
+Laufzeitevidenz ergänzt. Klassifikation, Agent-Proxies, MSDTC und
+Legacy-Mirroring bleiben offen.
