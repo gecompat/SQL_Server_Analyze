@@ -11,15 +11,15 @@
 
 Nach dem öffentlichen Waitpfad soll das optionale Snapshotpaket gemessene
 Datei-I/O-Rohwerte über getrennte lokale Aufrufe erhalten. Der Vergleich muss
-Dateiwechsel, wiederverwendete IDs und fehlende Identitätsbelege erkennen.
+beobachtete Identitätswechsel und fehlende Belege berücksichtigen.
 Eine gleichbleibende beobachtete Identität beweist keine ununterbrochene
 Zählerkontinuität. Numerische Differenzen bleiben deshalb ausdrücklich
 unbewiesene Kandidaten.
 
 Dieser Vorvertrag legt Quellenumfang, Identitätsbedingungen, Rohwerte und
 fachliche Gegenfälle fest. Er führt weder SQL-Code, neue öffentliche Parameter
-noch eine neue Targetversion ein. Der nächste Schritt konkretisiert den
-persistierten Feldvertrag und die bekannte Migration vor der Implementierung.
+noch eine neue Targetversion ein. Der [Feld- und Migrationsvertrag](File_IO_Snapshot_Field_Contract.md)
+konkretisiert Source, Kontexte, Epochen und Versionsstufen und ist vor der Implementierung unabhängig geprüft.
 Der [Snapshotvertrag](../../../Documentation/Architecture/Snapshot_Baseline_Package_Contract.md)
 bleibt für den gelieferten Performance-Counter-/Waitstand maßgeblich.
 
@@ -120,8 +120,12 @@ keinen numerischen Vergleich. Der bestehende Waitschutz bleibt erhalten.
 
 ## Nächster genauer Feld- und Migrationsvertrag
 
-Vor Produktcode werden die folgenden zusammenhängenden Entscheidungen
-konkretisiert und unabhängig geprüft:
+Der [genaue Vertragsentwurf](File_IO_Snapshot_Field_Contract.md) führt die
+Member-/Typentabellen und die geplante bekannte Migration. Sein unabhängiger
+Review ist abgeschlossen; der folgende Abschnitt erklärt deren fachlichen Zweck.
+
+Der Feldvertrag konkretisiert die folgenden zusammenhängenden Entscheidungen
+vor Produktcode; sie sind unabhängig geprüft:
 
 - Der transiente Sourcevertrag erhält exakte Member, JSON-Typen, Nullregeln,
   Mengenbindungen, UTC-/Native-Zeitformate und zulässige Quellenzustände.
@@ -143,8 +147,8 @@ konkretisiert und unabhängig geprüft:
   gemeinsame Konfigurationsweg müssen bestehende positionale Aufrufe,
   den Performance-Counter-Default und die Waitverträge erhalten.
 
-Diese noch offenen Entscheidungen sind der nächste ausführbare
-Spezifikationsschritt. Der bestehende autonome Benutzerauftrag bleibt die
+Der nächste ausführbare Produktschritt setzt dieses interne Target und die
+erforderliche Waitkompatibilität um; die öffentliche native Aufnahme folgt getrennt. Der bestehende autonome Benutzerauftrag bleibt die
 Arbeitsautorität; der Vorvertrag behauptet keine Laufzeitimplementierung.
 
 ## Abnahme und Betriebsgrenzen
@@ -185,3 +189,14 @@ Der [Snapshot-Ausbau](Snapshot_Expansion_Dossier.md) führt die bereits
 integrierten Wellen und ihre historische Evidenz; der
 [Betriebsleitfaden](../../../Documentation/Operations/Snapshot_Baseline_Operations.md)
 erläutert ausschließlich den tatsächlich gelieferten Paketstand.
+
+## Abnahme des Quell- und Identitätsvorvertrags
+
+[PR #454](https://github.com/gecompat/SQL_Server_Analyze/pull/454) ist als
+0237fddc integriert. Der unabhängige Review besitzt keine offenen P1/P2.
+Alle vier Head-Prüfungen und die drei getrennten Main-Prüfungen für
+Dokumentation 40245000001, Datenschutz 40244999998 und Commitnachricht
+40245000048 bestehen. Die Regelkontextprüfung einschließlich 23 Selbsttests,
+Dokumentationsstil, Roadmap-/Statuskonsistenz und die eindeutige UUIDv7
+bestehen ebenfalls. Diese Dokumentationswelle startete keine SQL-Instanz
+und behauptet keine FILE_IO-Laufzeitabnahme.
