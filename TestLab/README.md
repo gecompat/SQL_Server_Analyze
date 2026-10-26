@@ -312,8 +312,17 @@ und sämtliche Historyzeilen. Der native Lauf auf
 SQL Server 2025 `17.0.4075.5` und Framework-CL170 besteht einschließlich
 Coreinstallation, Smoke, Runtimevertrag `122` und eigenem Labcleanup.
 Die vierfeldrige Zusammenfassung bleibt unverändert; Fall- und Aufrufzahlen
-werden intern geprüft. Die Fixture führt keinen Agent-Job aus. Tatsächliche Stepausführung und Retryverhalten,
-ungültige Kalenderwerte, Überläufe, UTC- oder Endzeitinterpretation,
+werden intern geprüft. Der Kalenderabschnitt prüft ungültige Kalender- und
+Uhrzeitwerte für Job- und Stepoutcomes. Vier ungültige Kalenderfälle prüfen
+`USP_AgentJobs` zusätzlich im TABLE-Modus gegen das gleichzeitige JSON und
+die 17-spaltige Tabelle einschließlich der Typen und Positionen der geprüften
+Datums- und Dauerspalten. Bei einem ungültigen Stepdatum muss der gültige
+Joboutcome erhalten bleiben; bei einem ungültigen Jobdatum bleibt das
+Jobsresultat leer. RAW- und CONSOLE-Ausgaben sowie Monitoring-TABLE-Ausgaben
+werden dadurch nicht abgenommen. Diese ergänzte TABLE-Gegenprobe ist noch
+nicht nativ qualifiziert. Die Fixture führt keinen Agent-Job aus.
+Tatsächliche Stepausführung und Retryverhalten, Daueroverläufe außerhalb
+der geprüften Literalwerte, UTC- oder Endzeitinterpretation,
 Zeitfenstergrenzen und Retention werden damit nicht belegt.
 Der Runner initialisiert für seinen
 frischen State die testgebundene Ownership-Lane von `SQL_Server_Lab` und

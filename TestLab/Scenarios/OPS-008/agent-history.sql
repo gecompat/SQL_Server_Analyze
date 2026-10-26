@@ -432,6 +432,14 @@ BEGIN TRY
         @CalendarBadStep bit, @CalendarCalls int = 0, @CalendarRollbacks int = 0,
         @CalendarBaseline nvarchar(max), @CalendarBefore nvarchar(max),
         @CalendarAfter nvarchar(max), @CalendarState int;
+    DECLARE @CalendarTableRows bigint, @CalendarTableJobId uniqueidentifier,
+        @CalendarTableRunDate datetime, @CalendarTableDuration int, @CalendarTableJson nvarchar(max);
+    DECLARE @CalendarTableSchema TABLE
+    (
+        [LogicalOrdinal] int NOT NULL,
+        [ColumnName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,
+        [SystemTypeId] int NOT NULL
+    );
             SELECT @CalendarBaseline = (SELECT
             JSON_QUERY((SELECT * FROM [msdb].[dbo].[sysjobs]
                 ORDER BY [job_id] FOR JSON PATH, INCLUDE_NULL_VALUES)) AS [Jobs],
@@ -539,6 +547,79 @@ BEGIN TRY
                     OR (SELECT COUNT_BIG(*) FROM OPENJSON(@Json, '$.jobs')) <> CONVERT(int, @CalendarBadStep)
                     OR (SELECT COUNT_BIG(*) FROM OPENJSON(@Json, '$.steps')) <> 0
                     THROW 56216, N'Der abgefangene AgentJobs-Kalenderfehler ist verletzt.', 1;
+
+                IF @CalendarCase <= 4
+                BEGIN
+                    CREATE TABLE [#AgentJobsCalendarTable] ([Placeholder] int NULL);
+                    EXEC [monitor].[USP_AgentJobs] @JobNames = N'[ExampleOps008HistoryJob]',
+                        @MaxZeilen = 0, @NurProblematisch = 0, @ResultSetArt = 'TABLE',
+                        @ResultTablesJson = N'{"jobs":"#AgentJobsCalendarTable"}',
+                        @JsonErzeugen = 1, @Json = @Json OUTPUT, @PrintMeldungen = 0;
+                    EXEC [sys].[sp_executesql]
+                        N'SELECT @rows = (SELECT COUNT_BIG(*) FROM [#AgentJobsCalendarTable]),
+                                 @jobId = (SELECT TOP (1) [JobId] FROM [#AgentJobsCalendarTable]),
+                                 @runDate = (SELECT TOP (1) [LastRunDateTime] FROM [#AgentJobsCalendarTable]),
+                                 @duration = (SELECT TOP (1) [LastRunDurationSeconds] FROM [#AgentJobsCalendarTable]),
+                                 @rowsJson = (SELECT * FROM [#AgentJobsCalendarTable]
+                                     ORDER BY [JobName] FOR JSON PATH, INCLUDE_NULL_VALUES);',
+                        N'@rows bigint OUTPUT, @jobId uniqueidentifier OUTPUT,
+                          @runDate datetime OUTPUT, @duration int OUTPUT,
+                          @rowsJson nvarchar(max) OUTPUT',
+                        @rows = @CalendarTableRows OUTPUT, @jobId = @CalendarTableJobId OUTPUT,
+                        @runDate = @CalendarTableRunDate OUTPUT,
+                        @duration = @CalendarTableDuration OUTPUT,
+                        @rowsJson = @CalendarTableJson OUTPUT;
+                    SET @CalendarCalls += 1;
+                    DELETE FROM @CalendarTableSchema;
+                    INSERT @CalendarTableSchema ([LogicalOrdinal], [ColumnName], [SystemTypeId])
+                    SELECT CONVERT(int, ROW_NUMBER() OVER (ORDER BY [c].[column_id])),
+                           [c].[name] COLLATE SQL_Latin1_General_CP1_CS_AS, [c].[system_type_id]
+                    FROM [tempdb].[sys].[columns] AS [c]
+                    WHERE [c].[object_id] = OBJECT_ID(N'tempdb..#AgentJobsCalendarTable');
+                    IF (SELECT COUNT(*) FROM @CalendarTableSchema) <> 17
+                        OR NOT EXISTS (SELECT 1 FROM @CalendarTableSchema
+                            WHERE [LogicalOrdinal] = 1 AND [ColumnName] = N'JobId' AND [SystemTypeId] = 36)
+                        OR NOT EXISTS (SELECT 1 FROM @CalendarTableSchema
+                            WHERE [LogicalOrdinal] = 9 AND [ColumnName] = N'LastRunDateTime' AND [SystemTypeId] = 61)
+                        OR NOT EXISTS (SELECT 1 FROM @CalendarTableSchema
+                            WHERE [LogicalOrdinal] = 12 AND [ColumnName] = N'LastRunDurationSeconds' AND [SystemTypeId] = 56)
+                    BEGIN
+                        PRINT CONCAT(N'OPS-008 AgentJobs-TABLE schema case ordinal: ', @CalendarCase);
+                        THROW 56219, N'Das AgentJobs-TABLE-Schema hat nicht die erwarteten Spalten und Felder.', 1;
+                    END;
+                    IF COALESCE(ISJSON(@Json), 0) <> 1
+                        OR COALESCE(JSON_VALUE(@Json, '$.meta.statusCode'), N'') <> N'ERROR_HANDLED'
+                        OR COALESCE(JSON_VALUE(@Json, '$.meta.isPartial'), N'') <> N'true'
+                        OR COALESCE(TRY_CONVERT(int, JSON_VALUE(@Json, '$.meta.errorNumber')), 0) <> 242
+                    BEGIN
+                        PRINT CONCAT(N'OPS-008 AgentJobs-TABLE metadata case ordinal: ', @CalendarCase);
+                        THROW 56220, N'Die AgentJobs-TABLE-Metadaten weichen vom Kalenderfehlervertrag ab.', 1;
+                    END;
+                    IF @CalendarTableRows <> CONVERT(bigint, @CalendarBadStep)
+                    BEGIN
+                        PRINT CONCAT(N'OPS-008 AgentJobs-TABLE row-count case ordinal: ', @CalendarCase);
+                        THROW 56221, N'Die AgentJobs-TABLE-Zeilenmenge entspricht nicht der erwarteten Job-/Step-Fallzahl.', 1;
+                    END;
+                    IF COALESCE(@CalendarTableJson, N'<missing>') COLLATE SQL_Latin1_General_CP1_CS_AS
+                       <> COALESCE(JSON_QUERY(@Json, '$.jobs'), N'<missing>') COLLATE SQL_Latin1_General_CP1_CS_AS
+                    BEGIN
+                        PRINT CONCAT(N'OPS-008 AgentJobs-TABLE JSON-parity case ordinal: ', @CalendarCase);
+                        THROW 56223, N'Die AgentJobs-TABLE-Zeilen stimmen nicht mit der gleichzeitigen JSON-Ausgabe überein.', 1;
+                    END;
+                    IF (@CalendarBadStep = 1 AND
+                        (@CalendarTableJobId IS NULL OR @CalendarTableJobId <> @JobId
+                         OR @CalendarTableRunDate IS NULL
+                         OR @CalendarTableRunDate <> CONVERT(datetime, '2024-02-29T00:00:00', 126)
+                         OR @CalendarTableDuration IS NULL OR @CalendarTableDuration <> 85))
+                        OR (@CalendarBadStep = 0 AND
+                        (@CalendarTableJobId IS NOT NULL OR @CalendarTableRunDate IS NOT NULL
+                         OR @CalendarTableDuration IS NOT NULL))
+                    BEGIN
+                        PRINT CONCAT(N'OPS-008 AgentJobs-TABLE known-row case ordinal: ', @CalendarCase);
+                        THROW 56222, N'Das erhaltene AgentJobs-TABLE-Teilergebnis ist verletzt.', 1;
+                    END;
+                    DROP TABLE [#AgentJobsCalendarTable];
+                END;
             END
             ELSE
             BEGIN
@@ -606,8 +687,8 @@ BEGIN TRY
         END;
         SET @CalendarCase += 1;
     END;
-    IF @CalendarCalls <> 36 OR @CalendarRollbacks <> 36
-        THROW 56218, N'Die 36 Kalender-/Uhrzeitaufrufe oder Rollbacks fehlen.', 1;
+    IF @CalendarCalls <> 40 OR @CalendarRollbacks <> 36
+        THROW 56218, N'Die 40 Kalender-/Uhrzeitaufrufe oder 36 Rollbacks fehlen.', 1;
 END TRY
 BEGIN CATCH
     IF XACT_STATE() <> 0 ROLLBACK TRANSACTION;

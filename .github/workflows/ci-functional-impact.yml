@@ -12,6 +12,7 @@ on:
     paths:
       - '.github/workflows/ci-functional-impact.yml'
       - 'Code/Tests/Static/925_Select_CI_Impact.py'
+      - 'TestLab/Scenarios/OPS-008/agent-history.sql'
       - 'Code/Install/**/*.ps1'
       - 'Code/Install/**/*.py'
       - 'Code/Tests/Integration/Deployment_*.py'
@@ -23,6 +24,7 @@ on:
     paths:
       - '.github/workflows/ci-functional-impact.yml'
       - 'Code/Tests/Static/925_Select_CI_Impact.py'
+      - 'TestLab/Scenarios/OPS-008/agent-history.sql'
       - 'Code/Install/**/*.ps1'
       - 'Code/Install/**/*.py'
       - 'Code/Tests/Integration/Deployment_*.py'
@@ -54,6 +56,7 @@ jobs:
       permission_matrix: ${{ steps.select.outputs.permission_matrix }}
       regex_matrix: ${{ steps.select.outputs.regex_matrix }}
       plan_standalone: ${{ steps.select.outputs.plan_standalone }}
+      ops008_agent_history: ${{ steps.select.outputs.ops008_agent_history }}
       compatibility_matrix: ${{ steps.select.outputs.compatibility_matrix }}
       snapshot_required: ${{ steps.snapshot.outputs.run_runtime }}
       snapshot_runtime: ${{ steps.snapshot.outputs.snapshot_runtime }}
@@ -138,6 +141,8 @@ jobs:
 
       - name: Prepare isolated SQL files
         shell: bash
+        env:
+          RUN_OPS008_AGENT_HISTORY: ${{ needs.impact.outputs.ops008_agent_history }}
         run: |
           set -euo pipefail
           cp -R Code "$RUNNER_TEMP/Code"
@@ -145,6 +150,12 @@ jobs:
             | xargs -0 perl -pi -e 's/\[DeineDatenbank\]/[SQLServerAnalyzeTest]/g'
           python3 ./Code/Tests/Integration/Deployment_Prepare_Runtime.py \
             --output "$RUNNER_TEMP/Code/Install/generated/Deployment_Runtime.generated.sql"
+          if [ "$RUN_OPS008_AGENT_HISTORY" = 'true' ]; then
+            mkdir -p "$RUNNER_TEMP/Code/Tests/ServerHealth"
+            perl -pe 's/\[DeineDatenbank\]/[SQLServerAnalyzeTest]/g' \
+              TestLab/Scenarios/OPS-008/agent-history.sql \
+              > "$RUNNER_TEMP/Code/Tests/ServerHealth/OPS008_AgentHistory_CI.sql"
+          fi
 
       - name: Build impact-selected SQLCMD runner
         shell: bash
@@ -357,6 +368,55 @@ jobs:
             echo "- Compatibility levels: ${levels[*]}"
             echo '- Scope: impact-selected tests plus required special contracts'
           } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Run isolated OPS-008 Agent history fixture
+        if: needs.impact.outputs.ops008_agent_history == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          guard_log="$RUNNER_TEMP/ops008-agent-history-guard.log"
+          fixture_log="$RUNNER_TEMP/ops008-agent-history-fixture.log"
+          safe_report_failure() {
+            local log_path="$1"
+            local sql_error='UNCLASSIFIED'
+            local calendar_case='NONE'
+            local error_match
+            local case_match
+            local allowed_errors='54943|54944|54945|54946|54947|54948|55155|55197|55198|55199|56214|56215|56216|56217|56218|56219|56220|56221|56222|56223|56230|56231|56232|56233'
+            error_match=$(grep -Eo "Msg (${allowed_errors})," "$log_path" | tail -n 1 || true)
+            if [ -n "$error_match" ]; then
+              sql_error=$(printf '%s' "$error_match" | sed -E 's/^Msg ([0-9]+),$/\1/')
+            fi
+            case_match=$(grep -Eo 'OPS-008 AgentJobs-TABLE (schema|metadata|row-count|JSON-parity|known-row) case ordinal: [0-9]+' \
+              "$log_path" | tail -n 1 || true)
+            if [ -n "$case_match" ]; then
+              local parsed_case
+              parsed_case=$(printf '%s' "$case_match" | awk '{print $NF}')
+              if [[ "$parsed_case" =~ ^([1-9]|1[0-2])$ ]]; then
+                calendar_case="$parsed_case"
+              fi
+            fi
+            echo "OPS008_AGENT_HISTORY_FAILED SQL_ERROR=${sql_error} CALENDAR_CASE=${calendar_case}"
+            exit 1
+          }
+
+          guard_query="IF COALESCE(DB_NAME(),N'')<>N'SQLServerAnalyzeTest' THROW 56230,N'OPS008_WRONG_DATABASE',1; IF COALESCE(TRY_CONVERT(int,SERVERPROPERTY(N'ProductMajorVersion')),-1)<>17 THROW 56231,N'OPS008_WRONG_ENGINE',1; IF COALESCE((SELECT compatibility_level FROM sys.databases WHERE database_id=DB_ID()),-1)<>170 THROW 56232,N'OPS008_WRONG_COMPATIBILITY_LEVEL',1; IF EXISTS(SELECT 1 FROM sys.extended_properties WHERE class=0 AND name=N'SQLANALYZE.Ops008Disposable') THROW 56233,N'OPS008_MARKER_ALREADY_EXISTS',1; EXEC sys.sp_addextendedproperty @name=N'SQLANALYZE.Ops008Disposable',@value=1;"
+          if ! docker exec \
+            --env SQLCMDPASSWORD="$MSSQL_EPHEMERAL_CREDENTIAL" \
+            sqlserver-analyze-impact-2025 \
+            "$SQLCMD_PATH" -S localhost -U sa -C -b -d SQLServerAnalyzeTest -Q "$guard_query" \
+            >"$guard_log" 2>&1; then
+            safe_report_failure "$guard_log"
+          fi
+          if ! docker exec \
+            --env SQLCMDPASSWORD="$MSSQL_EPHEMERAL_CREDENTIAL" \
+            sqlserver-analyze-impact-2025 \
+            "$SQLCMD_PATH" -S localhost -U sa -C -b -d SQLServerAnalyzeTest \
+            -i /work/Code/Tests/ServerHealth/OPS008_AgentHistory_CI.sql \
+            >"$fixture_log" 2>&1; then
+            safe_report_failure "$fixture_log"
+          fi
+          echo 'OPS008_AGENT_HISTORY_NATIVE_PASS'
 
       - name: Run selected Snapshot contracts
         if: needs.impact.outputs.snapshot_required == 'true'

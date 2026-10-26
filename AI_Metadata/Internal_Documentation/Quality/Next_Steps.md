@@ -142,8 +142,18 @@ besteht 223 portable Readerfälle, 113 Parserfälle und 19 native Fälle im
 Head- und Main-Lauf. Das Dossier erhält den ursprünglichen CI-Fehllauf und
 die begrenzte Testtreiberkorrektur. Lokal erfolgte keine Nativeausführung.
 SQL-Import, kontrollierte cgroup-Limitwirkung, globale Hierarchievollständigkeit
-und SQL-Instanzbindung bleiben offen. Schritt 29 prüft eine konkrete verbleibende
-Collation-Grenze von `COLL-001`; die garantierte Collation wird nicht erweitert.
+und SQL-Instanzbindung bleiben offen. Schritt 29 ist über
+[PR #467](https://github.com/gecompat/SQL_Server_Analyze/pull/467) einschließlich
+aller Head- und Main-Prüfungen integriert. Der begrenzte
+[COLL-B007-Consumernachweis](COLLB007_Filter_Identifier_Runtime_Evidence_2026-09-19.md#ergänzung-vom-26-oktober-2026-datenbankprincipal-consumer)
+prüft exakte Datenbankauswahl und Groß-/Kleinschreibung; die garantierte
+Collation bleibt unverändert. Schritt 30 ergänzt vier AgentJobs-TABLE-
+Kalenderfälle und deren bedingte Abnahme im bestehenden SQL2025-CI-Container.
+Die abschließende native Qualifikation ist noch offen; zwei lokale Fehlläufe
+bleiben mit erfolgreichem Cleanup im
+[Reifeevidenzdokument](Maturity_Closeout_Runtime_Evidence_2026-08-29.md) erhalten.
+Nach Abschluss der erforderlichen Gates wird der Restumfang am bestehenden
+Checkpoint neu bewertet.
 
 ## Abgeschlossen: fünf SSIS-Paketwellen vom 25. Oktober 2026
 

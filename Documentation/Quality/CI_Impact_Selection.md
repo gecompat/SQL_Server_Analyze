@@ -29,6 +29,24 @@ Bei ausführbaren Änderungen führt der Selector folgende Schritte aus:
 
 Kann eine Produktionsänderung nicht sicher zugeordnet werden oder betrifft sie Setup, zentralen Installer, Impact-Selector oder funktionale Workflow-Infrastruktur, verwendet der Selector das vollständige funktionale Gate auf der primären SQL-Server-2025-Engine.
 
+Die feste [AgentHistory-Fixture](../../TestLab/Scenarios/OPS-008/agent-history.sql)
+besitzt den zusätzlichen Core-Schalter `ops008_agent_history`. Eine Änderung
+dieser Fixture wählt den vorhandenen
+[MSDB-Laufzeitvertrag](../../Code/Tests/ServerHealth/122_OPS008_Msdb_Health_Runtime_Contract.sql)
+und den Fixturelauf auf SQL Server 2025; sie fordert keine weitere Engine
+oder Compatibility-Level-Matrix an. Die Änderung des funktionalen Workflows
+aktiviert zusätzlich dessen eigene Fixtureprüfung und behält das vollständige
+SQL2025-Gate. Unbeteiligte TestLab-Fixtures aktivieren diesen Pfad nicht.
+
+Der zusätzliche Lauf erfolgt einmal nach dem Core-Pfad auf dessen bestehender
+CL170-Testdatenbank. Er verlangt den festen Datenbanknamen, Engine 17, CL170,
+einen neuen Wegwerfmarker und die vorhandenen Leerstands- und Quellschutzgates.
+Er verwendet den bereits eigenen CI-Container und führt keinen Agent-Job aus.
+Die vollständigen Fixturelogs bleiben temporär auf dem Runner. Im Fehlerfall
+werden ausschließlich freigegebene feste SQL-Fehlercodes und die synthetische
+Fallnummer ausgegeben; der feste Erfolgsmarker folgt erst nach erfolgreichem
+SQLCMD-Abschluss. Der bestehende Containercleanup bleibt auch bei Fehlern aktiv.
+
 Der funktionale Workflow wertet die Scopes `core` und `snapshot` getrennt aus.
 Bereits ein erforderlicher Lauf in einem der beiden Scopes startet die
 SQL-Server-2025-Runtime. Für Snapshot-Impact erstellt der Workflow nach dem

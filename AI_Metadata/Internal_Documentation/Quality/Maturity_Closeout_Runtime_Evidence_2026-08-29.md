@@ -3763,3 +3763,40 @@ Compatibility Levels bleiben offen. Produktcode, öffentliche Verträge,
 Versionen und Maturityflags bleiben unverändert. OPS-008 bleibt
 `PARTIAL_PRODUCT_FUNCTION`. Das Budget steht nach Abschluss auf eins von
 einem tatsächlichen Versuch und wird nicht zurückgesetzt.
+
+## Ergänzung vom 26. Oktober 2026: AgentJobs-TABLE-Kalenderfälle
+
+Der aktuelle Kandidat ergänzt vier TABLE-Aufrufe in der bestehenden
+synthetischen `AgentHistory`-Fixture. Zwei ungültige Jobdaten müssen ein
+leeres Jobsresultat ergeben; zwei ungültige Stepdaten müssen den gültigen
+Joboutcome erhalten. Geprüft werden Fehler 242, Teilstatus, 17 Spalten mit
+ausgewählten Typen und logischen Positionen, Zeilenmenge, TABLE-/JSON-Parität
+sowie die bekannte gültige Jobzeit und Laufzeit. Die Fixture führt keinen
+Agent-Job aus und erhält ihre bestehenden Quell-, Caller- und Rollbackprüfungen.
+
+Die neue Gegenprobe ist noch nicht qualifiziert. Ein lokaler Lauf scheiterte
+mit 56219 an einer falschen Testannahme über physische `column_id`-Werte.
+Der bestehende TABLE-Writer fügt Hilfsspalten hinzu und entfernt sie wieder;
+der Test prüft deshalb jetzt logische Positionen mit `ROW_NUMBER()`. Diese
+Korrektur wurde unabhängig geprüft. Ein folgender Lauf passierte im erreichten Fall Schema und
+Fehlermetadaten, scheiterte jedoch mit 56221 an der kombinierten Zeilenmengen-
+oder JSON-Prüfung. Der ursprüngliche Log unterscheidet diese beiden Ursachen
+nicht. Die Diagnose trennt sie nun in 56221 und 56223 und gibt ausschließlich
+die synthetische Fallnummer aus. Ein Produktfehler oder eine konkrete
+Serialisierungsursache ist damit noch nicht belegt.
+
+Beide fehlgeschlagenen Läufe besitzen erfolgreichen eigenen Labcleanup;
+die betroffenen Container und Volumes sind entfernt. Ihre Fehler werden
+nicht als bestandene Teilqualifikation umgedeutet. Die erforderliche native
+Abnahme des abschließenden Kandidaten bleibt offen. RAW, CONSOLE,
+Monitoring-TABLE, weitere Dauergrenzen, tatsächliche Stepausführung und
+allgemeine Agent-Retention werden durch diese Ergänzung nicht qualifiziert.
+`OPS-008` bleibt `PARTIAL_PRODUCT_FUNCTION`.
+
+Der aktuelle CI-Kandidat bindet diese feste Fixture an den vorhandenen
+SQL2025-Container und die bestehende Testdatenbank. Datenbankname, Engine 17,
+CL170 und der neue Wegwerfmarker werden vor Ausführung geprüft. Die
+ursprünglichen Leerstands- und Quellschutzprüfungen bleiben erhalten.
+Der zusätzliche Fixturelauf erfolgt einmal nach dem bestehenden Testpfad;
+seine vollständigen Logs werden nicht veröffentlicht. Die tatsächliche
+CI-Qualifikation und reguläre PR-Integration stehen noch aus.

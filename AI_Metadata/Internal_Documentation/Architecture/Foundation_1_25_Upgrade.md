@@ -385,3 +385,37 @@ Fehlversuchen und Recoveryproben. Der gemeinsame private Wellenzähler bleibt
 maßgeblich; ein Timer setzt ihn nicht zurück. Ganze grüne Logs werden nicht
 an das Modell oder den Reviewer weitergereicht. Token- und Kostenmessung
 bleiben UNKNOWN.
+
+### Verarbeitungsaufwand der AgentHistory-CI-Erweiterung
+
+Der aktuelle Kandidat führt die bisher nur im eigenen Lab ausgeführte
+AgentHistory-Fixture einmal im bereits vorhandenen SQL2025-CI-Container aus.
+Der Trigger ist die konkrete Fixture oder die eigene Verkabelung des
+[funktionalen Workflows](../../../.github/workflows/ci-functional-impact.yml).
+Der [kanonische Selector](../../../Code/Tests/Static/925_Select_CI_Impact.py)
+setzt dafür `ops008_agent_history`. Eine reine Fixtureänderung wählt den
+vorhandenen OPS-008-Vertrag 122 und den zusätzlichen Fixturelauf; Änderungen
+am zentralen Workflow beziehungsweise Selector behalten das vollständige
+SQL2025-Gate gemäß der kanonischen Strategie. Weitere native Engines oder
+Compatibility Levels werden durch diesen neuen Pfad nicht angefordert.
+
+Der Zusatzlauf erfolgt einmal nach dem bestehenden Installations- und
+Compatibility-Level-Pfad auf dessen abschließender CL170-Datenbank. Er erzeugt
+weder einen weiteren Container noch eine zweite Installation. Die feste
+Datenbank-, Engine- und CL-Bindung, der Wegwerfmarker sowie die bestehenden
+Leerstands-, Quell-, Caller- und Rollbackprüfungen bleiben Pflicht. Der
+bestehende Cleanup entfernt den eigenen CI-Container auch bei Fehlern.
+Die vollständigen zusätzlichen SQL-Logs bleiben ausschließlich temporär auf
+dem Runner; ausgegeben werden nur feste Fehlercodes mit synthetischer
+Fallnummer oder der feste Erfolgsmarker nach erfolgreichem SQLCMD-Abschluss.
+
+Die Selector-Selbsttests prüfen die positive Auswahl, einen unbeteiligten
+Fixturepfad und den Workflow-Selbsttrigger. Sie werden lokal fokussiert geprüft;
+die übrige statische Suite kann diesen unveränderten Selbsttest auslassen.
+Ein Implementierer bearbeitet Fixture und Verkabelung. Derselbe unabhängige
+Reviewer prüft jeweils nur neue fachliche Deltas und konkrete native Befunde.
+Es gibt keinen Review des Reviews. Zwei lokale fehlgeschlagene Prüfungen
+bleiben mit erfolgreichem Cleanup erhalten; ihre Ergebnisse ersetzen keinen
+abschließenden nativen CI-Nachweis. Dieser Nachweis und die regulären
+Head-/Main-Gates stehen beim aktuellen Kandidaten noch aus. Verlässliche
+Token- oder Kostenmessungen liegen nicht vor.

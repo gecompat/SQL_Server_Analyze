@@ -27,6 +27,9 @@ DEFINITION_PATTERN = re.compile(
 )
 
 IMPACT_SCRIPT = "Code/Tests/Static/925_Select_CI_Impact.py"
+OPS008_AGENT_HISTORY_FIXTURE = "TestLab/Scenarios/OPS-008/agent-history.sql"
+OPS008_AGENT_HISTORY_WORKFLOW = ".github/workflows/ci-functional-impact.yml"
+OPS008_AGENT_HISTORY_TEST = "ServerHealth/122_OPS008_Msdb_Health_Runtime_Contract.sql"
 CORE_WORKFLOWS = {
     ".github/workflows/ci-functional-impact.yml",
     ".github/workflows/release-native-matrix.yml",
@@ -76,6 +79,7 @@ class Plan:
     permission_matrix: bool = False
     regex_matrix: bool = False
     plan_standalone: bool = False
+    ops008_agent_history: bool = False
     snapshot_runtime: bool = False
     snapshot_concurrency: bool = False
     compatibility_matrix: bool = False
@@ -98,6 +102,7 @@ class Plan:
             "permission_matrix": self.permission_matrix,
             "regex_matrix": self.regex_matrix,
             "plan_standalone": self.plan_standalone,
+            "ops008_agent_history": self.ops008_agent_history,
             "snapshot_runtime": self.snapshot_runtime,
             "snapshot_concurrency": self.snapshot_concurrency,
             "compatibility_matrix": self.compatibility_matrix,
@@ -375,6 +380,10 @@ def plan_changes(
     scope: str,
 ) -> Plan:
     plan = Plan(scope=scope)
+    plan.ops008_agent_history = scope == "core" and any(
+        change.path in {OPS008_AGENT_HISTORY_FIXTURE, OPS008_AGENT_HISTORY_WORKFLOW}
+        for change in changes
+    )
     executable: list[Change] = []
     for change in changes:
         relevant = is_snapshot_runtime_path(change.path) if scope == "snapshot" else is_core_sql_path(change.path)
@@ -393,9 +402,16 @@ def plan_changes(
     plan.compatibility_matrix = scope == "core" and any(
         requires_compatibility_matrix(change) for change in executable
     )
-    if not executable:
+    if not executable and not plan.ops008_agent_history:
         plan.reasons.append("No executable SQL or runtime infrastructure changed.")
         return plan
+
+    if plan.ops008_agent_history:
+        plan.run_runtime = True
+        plan.reasons.append("The OPS-008 Agent history fixture requires its SQL Server 2025 runtime contract.")
+        if not executable:
+            plan.selected_tests = [OPS008_AGENT_HISTORY_TEST]
+            return plan
 
     plan.run_runtime = True
     if any(force_full_path(change.path, scope) for change in executable):
@@ -447,6 +463,8 @@ def plan_changes(
     plan.affected_objects = sorted(affected)
 
     selected = set(direct_tests)
+    if plan.ops008_agent_history:
+        selected.add(OPS008_AGENT_HISTORY_TEST)
     dependency_test_count = 0
     for path in test_sql_paths(repository_root, head_sha, scope):
         test_name = path.removeprefix("Code/Tests/")
@@ -514,6 +532,7 @@ def write_github_output(path: pathlib.Path, plan: Plan) -> None:
         "permission_matrix": str(plan.permission_matrix).lower(),
         "regex_matrix": str(plan.regex_matrix).lower(),
         "plan_standalone": str(plan.plan_standalone).lower(),
+        "ops008_agent_history": str(plan.ops008_agent_history).lower(),
         "snapshot_runtime": str(plan.snapshot_runtime).lower(),
         "snapshot_concurrency": str(plan.snapshot_concurrency).lower(),
         "compatibility_matrix": str(plan.compatibility_matrix).lower(),
@@ -670,6 +689,41 @@ def run_self_test() -> None:
         assert not code_plan.full_suite
         assert "monitor.usp_consumer" in code_plan.affected_objects
         assert "CurrentState/110_Test_und_Abnahme_Phase1B.sql" in code_plan.selected_tests
+
+        fixture_plan = plan_changes(
+            root,
+            code_sha,
+            [Change(OPS008_AGENT_HISTORY_FIXTURE, None, "synthetic fixture change")],
+            "core",
+        )
+        assert fixture_plan.run_runtime and not fixture_plan.full_suite
+        assert fixture_plan.ops008_agent_history
+        assert fixture_plan.selected_tests == [OPS008_AGENT_HISTORY_TEST]
+        assert not fixture_plan.compatibility_matrix
+        runner_path = root / "ops008-runner.sql"
+        write_runner(runner_path, fixture_plan)
+        assert f":r {OPS008_AGENT_HISTORY_TEST}" in runner_path.read_text(encoding="utf-8")
+        output_path = root / "ops008-output.txt"
+        write_github_output(output_path, fixture_plan)
+        assert "ops008_agent_history=true\n" in output_path.read_text(encoding="utf-8")
+
+        unrelated_lab_fixture = plan_changes(
+            root,
+            code_sha,
+            [Change("TestLab/Scenarios/OPS-008/mail-maintenance.sql", None, "synthetic change")],
+            "core",
+        )
+        assert not unrelated_lab_fixture.run_runtime
+        assert not unrelated_lab_fixture.ops008_agent_history
+
+        workflow_plan = plan_changes(
+            root,
+            code_sha,
+            [Change(OPS008_AGENT_HISTORY_WORKFLOW, None, "synthetic workflow change")],
+            "core",
+        )
+        assert workflow_plan.run_runtime and workflow_plan.full_suite
+        assert workflow_plan.ops008_agent_history
 
 
 def main() -> int:
