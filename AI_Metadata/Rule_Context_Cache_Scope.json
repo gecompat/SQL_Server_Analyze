@@ -1649,6 +1649,26 @@
       "source": "Documentation/Quality/CI_Impact_Selection.md",
       "target": "Code/Tests/ServerHealth/122_OPS008_Msdb_Health_Runtime_Contract.sql",
       "classification": "product-reference"
+    },
+    {
+      "source": "AI_Metadata/Internal_Documentation/Quality/Development_Waves_2026-10.md",
+      "target": "Documentation/Architecture/SSIS_Custom_Metrics_Producer_Contract.md",
+      "classification": "product-reference"
+    },
+    {
+      "source": "AI_Metadata/Internal_Documentation/Quality/Development_Waves_2026-10.md",
+      "target": "AI_Metadata/Internal_Documentation/Architecture/SSIS_Custom_Metrics_Contract_Dossier.md",
+      "classification": "product-reference"
+    },
+    {
+      "source": "AI_Metadata/Internal_Documentation/Quality/Next_Steps.md",
+      "target": "Documentation/Architecture/SSIS_Custom_Metrics_Producer_Contract.md",
+      "classification": "product-reference"
+    },
+    {
+      "source": "AI_Metadata/Internal_Documentation/Quality/Next_Steps.md",
+      "target": "AI_Metadata/Internal_Documentation/Architecture/SSIS_Custom_Metrics_Contract_Dossier.md",
+      "classification": "product-reference"
     }
   ]
 }

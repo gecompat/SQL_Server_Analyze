@@ -421,6 +421,8 @@ Ein Implementierer bearbeitet Fixture und Verkabelung. Derselbe unabhängige
 Reviewer prüft jeweils nur neue fachliche Deltas und konkrete native Befunde.
 Es gibt keinen Review des Reviews. Zwei lokale fehlgeschlagene Prüfungen
 bleiben mit erfolgreichem Cleanup erhalten; ihre Ergebnisse ersetzen keinen
-abschließenden nativen CI-Nachweis. Dieser Nachweis und die regulären
-Head-/Main-Gates stehen beim aktuellen Kandidaten noch aus. Verlässliche
-Token- oder Kostenmessungen liegen nicht vor.
+abschließenden nativen CI-Nachweis. PR #468 besteht am korrigierten Head
+und auf Main den tatsächlichen Fixturelauf, Standalonevertrag 193, Snapshot-
+verträge und alle erforderlichen Gates. Frühere Fehlversuche bleiben im
+Reifeevidenzdokument erhalten. Verlässliche Token- oder Kostenmessungen liegen
+nicht vor.

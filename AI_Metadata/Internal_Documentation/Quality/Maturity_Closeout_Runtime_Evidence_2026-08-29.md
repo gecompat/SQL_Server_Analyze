@@ -3774,7 +3774,7 @@ ausgewählten Typen und logischen Positionen, Zeilenmenge, TABLE-/JSON-Parität
 sowie die bekannte gültige Jobzeit und Laufzeit. Die Fixture führt keinen
 Agent-Job aus und erhält ihre bestehenden Quell-, Caller- und Rollbackprüfungen.
 
-Die neue Gegenprobe ist noch nicht qualifiziert. Ein lokaler Lauf scheiterte
+Vor der abschließenden Qualifikation scheiterte ein lokaler Lauf
 mit 56219 an einer falschen Testannahme über physische `column_id`-Werte.
 Der bestehende TABLE-Writer fügt Hilfsspalten hinzu und entfernt sie wieder;
 der Test prüft deshalb jetzt logische Positionen mit `ROW_NUMBER()`. Diese
@@ -3790,7 +3790,7 @@ Serialisierungsursache ist damit noch nicht belegt.
 Beide fehlgeschlagenen Läufe besitzen erfolgreichen eigenen Labcleanup;
 die betroffenen Container und Volumes sind entfernt. Ihre Fehler werden
 nicht als bestandene Teilqualifikation umgedeutet. Die erforderliche native
-Abnahme des abschließenden Kandidaten bleibt offen. RAW, CONSOLE,
+Abnahme war an diesem Kandidatenstand noch offen. RAW, CONSOLE,
 Monitoring-TABLE, weitere Dauergrenzen, tatsächliche Stepausführung und
 allgemeine Agent-Retention werden durch diese Ergänzung nicht qualifiziert.
 `OPS-008` bleibt `PARTIAL_PRODUCT_FUNCTION`.
@@ -3801,7 +3801,7 @@ CL170 und der neue Wegwerfmarker werden vor Ausführung geprüft. Die
 ursprünglichen Leerstands- und Quellschutzprüfungen bleiben erhalten.
 Der zusätzliche Fixturelauf erfolgt einmal nach dem bestehenden Testpfad;
 seine vollständigen Logs werden nicht veröffentlicht. Die tatsächliche
-CI-Qualifikation und reguläre PR-Integration stehen noch aus.
+CI-Qualifikation und reguläre PR-Integration waren an diesem Stand noch offen.
 
 Der erste PR-CI-Kandidat am Head `9eafaa9d` besteht native Deploymentregression,
 CI-Lockdiagnostikqualifikation und das vollständige SQL2025-Fachgate. Der
@@ -3814,8 +3814,8 @@ Die nachfolgende AgentHistory-Fixture benötigt dagegen die vollständigen
 Agent-Module. Der Korrekturkandidat ordnet die unveränderte Standaloneprüfung
 hinter der Fixture an und prüft die beiden benötigten Agent-Procedures vor
 dem Wegwerfmarker. Ein daraus vermuteter SQL-Fehler 2812 wird nicht als
-beobachtet behauptet. Die Kalenderparitätsursache und die abschließende
-native Qualifikation bleiben weiterhin offen.
+beobachtet behauptet. Die Kalenderparitätsursache blieb unbelegt; die abschließende
+native Qualifikation war an diesem Stand noch offen.
 
 Der zweite CI-Kandidat scheiterte zunächst im bestehenden Fachgate an 1222
 in `USP_PrepareNameFilters`; `BLOCKER_NOT_CAPTURED` blieb ohne erfassten
@@ -3837,4 +3837,24 @@ serialisierten TABLE-Wert. Fehlendes Quell-`jobs`, eine nicht leere Tabelle
 mit fehlender Serialisierung sowie abweichende nicht leere Werte bleiben
 Fehler. Der unabhängige Review dieser begrenzten Korrektur enthält keine
 Befunde. Der fehlgeschlagene Lauf hat SQL-NULL als Rohwert nicht separat
-belegt; die neue native Abschlussqualifikation bleibt erforderlich und offen.
+belegt; die neue native Abschlussqualifikation war an diesem vorbereiteten Stand noch offen.
+
+### Abschluss des korrigierten Testvertrags
+
+[PR #468](https://github.com/gecompat/SQL_Server_Analyze/pull/468) ist regulär
+integriert. Der korrigierte Head `dec8cdc7` und Merge `0c958e14` besitzen
+denselben Baum. Alle Head-Prüfungen und alle fünf Main-Prüfungen bestehen.
+Der feste Marker `OPS008_AGENT_HISTORY_NATIVE_PASS` ist im Head- und im
+getrennten Main-Lauf tatsächlich vorhanden. Beide Läufe bestehen außerdem
+Deploymentregression, vollständiges Fachgate, Standalonevertrag 193,
+Snapshotverträge und eigenen Containercleanup.
+
+Damit sind die vier zusätzlichen TABLE-Kalenderfälle einschließlich ihrer
+unveränderten Schema-, Metadaten-, Mengen-, Wert-, Quell-, Caller- und
+Rollbackprüfungen auf der SQL2025-CI-Baseline mit Engine 17 und CL170 belegt.
+Die im Skript geforderten 40 Kalender-/Uhrzeitaufrufe und 36 Rollbacks bleiben
+verbindlich. Die Korrektur belegt den getesteten Leerfallvertrag, jedoch nicht
+den ursprünglichen SQL-NULL-Rohwert oder eine allgemeine Engineursache.
+Weitere Collationkombinationen, RAW, CONSOLE, Monitoring-TABLE, tatsächliche
+Stepausführung und weitere Dauergrenzen bleiben außerhalb dieser Ergänzung.
+`OPS-008` bleibt `PARTIAL_PRODUCT_FUNCTION`.

@@ -54,9 +54,9 @@ wird nicht allein aufgrund eines Planverweises übernommen.
 | 10 | Snapshot- und Baseline-Ausbau, `SC-023-EXPANSION` | Wait- und native Datei-I/O-Slices sind bis PR #458 mit ihren begrenzten Kontinuitätsverträgen integriert. Kapazität, Ressourcendruck, Rollups und Scheduler folgen als getrennte verbleibende Umfänge. |
 | 11 | Upgrade- und Plattformdiagnostik, Intake `DEPRECATION_BREAKING_CHANGE` und `LINUX_CONTAINER_LIMITS` | Upgrade und Linux-cgroup-Vertrags-/Parser-Slices sind über PR #459 bis PR #463 abgeschlossen. PR #464 schließt den begrenzten Common-159-TRUNCATE-/MinValidVersion-Fall ab: Source-Head `12bf7fff`, sieben Head-Checks, SQL-2025-Lauf [40332918187](https://github.com/gecompat/SQL_Server_Analyze/actions/runs/40332918187) und vier bestandene Main-Gates. Der Quelllauf ist belegt; separater Erfolgsstdout und PASS-Marker sind nicht exportiert. Schritt 27 präzisiert den Reader-Vertrag im [Dossier](../Architecture/Linux_Cgroup_Resource_Boundary_Dossier.md) und in der öffentlichen [Readerspezifikation](../../../Documentation/Analysis_Guides/Linux_Cgroup_Reader_Contract.md). Schritt 28 ist über PR #466 mit unabhängigem Review, vier Head- und drei Main-Prüfungen integriert. Python 3.11.17 auf Linux x86_64 besteht 223 portable Readerfälle, 113 Parserfälle und 19 native Fälle; der erste CI-Fehllauf bleibt im Dossier erhalten. Native Hostqualifikation, cgroup-Limitwirkung und SQL-Bindung bleiben offen. Bearbeitung ECONOMICAL/LOCAL mit gezielter Eskalation bei konkretem Klärungsbedarf. |
 | 12 | Collation-Härtung, `COLL-001` | PR #467 ergänzt die exakte Datenbankauswahl und deren Groß-/Kleinschreibung im Datenbankprincipal-Consumer mit allen Head-/Main-Prüfungen. Weitere betroffene Quelldateien und Consumer bleiben offen; die garantierte Collation wird nicht erweitert. |
-| 13 | msdb-, Agent- und Mail-Diagnostik, `OPS-008` | Verbleibende Retention-, Status-, Datum-/Dauer- und Wartungsfälle abschließen; vorhandenen SMTP-Erfolg nicht erneut qualifizieren. |
+| 13 | msdb-, Agent- und Mail-Diagnostik, `OPS-008` | PR #468 schließt vier AgentJobs-TABLE-Kalenderfälle auf der SQL2025-CI-Baseline mit allen Head-/Main-Gates ab. Weitere Ausgabearten, Retention-, Status-, Datum-/Dauer- und Wartungsfälle bleiben offen; vorhandener SMTP-Erfolg wird nicht wiederholt. |
 | 14 | External-Data-, Runtime- und CLR-Abnahmen, `WI-0009` und `RUNTIME-001` | Eigene positive External-Table-Quellen, aktivierte Runtimes und synthetische SAFE-Assembly-Nachweise getrennt abnehmen. Fehlende Infrastruktur bleibt externe Evidenz. |
-| 15 | Eigene SSIS-Kennzahlen, `SSIS-001` | Den optionalen Produzentenvertrag für DELTA, CUMULATIVE, GAUGE und FINAL mit Einheiten, Epochen, Duplikaten und Sequenzlücken spezifizieren; keine automatische Paketinstrumentierung. |
+| 15 | Eigene SSIS-Kennzahlen, `SSIS-001` | Der [Producervertragsentwurf](../../../Documentation/Architecture/SSIS_Custom_Metrics_Producer_Contract.md) definiert DELTA, CUMULATIVE, GAUGE und FINAL mit Einheiten, Epochen, Duplikaten und Sequenzlücken. Das [Dossier](../Architecture/SSIS_Custom_Metrics_Contract_Dossier.md) hält Implementierung und Abnahme getrennt offen; keine automatische Paketinstrumentierung. |
 | 16 | Übrige Reifeabschlüsse, `OPS-005`, `OPS-006`, `OPS-007`, `OPS-009` | Nur noch fehlende Provider-, Portabilitäts-, Cursor- und Systemdatenbankfälle anhand des aktuellen OpenScope abnehmen. |
 | 17 | Weitere Sicherheits- und Spezialdiagnosen, `WI-0010` | RLS/Maskierung, Klassifikation, Agent-Proxies, MSDTC und Legacy-Mirroring einzeln abgrenzen und nach Überschneidungsprüfung in konkrete Dossiers überführen. |
 | 18 | Restore-/Hostnachweise und Fleet-Korrelation, `SC-025` und `SC-024` | Eigene isolierte Restore-/CHECKDB-Nachweise und den externen Fleet-Vertrag getrennt bearbeiten. Externe Infrastruktur, Transport, Mandantenisolation und Betriebsmodell sind eigene Grenzen. |
@@ -295,9 +295,24 @@ mit allen sieben Head- und vier Main-Prüfungen integriert. Der
 belegt die begrenzte exakte Datenbankauswahl und Groß-/Kleinschreibung auf
 SQL Server 2025; weitere Consumer bleiben offen. Schritt 30 ergänzt vier
 AgentJobs-TABLE-Kalenderfälle und deren bedingte Abnahme im vorhandenen
-SQL2025-CI-Container. Zwei lokale Fehlläufe bleiben mit erfolgreichem Cleanup
-und offener abschließender Qualifikation im
-[Reifeevidenzdokument](Maturity_Closeout_Runtime_Evidence_2026-08-29.md) erhalten. Nach Abschluss folgt die bestehende Restumfangsbewertung bei 30. Native Hostqualifikation,
+SQL2025-CI-Container. PR #468 ist mit allen Head- und fünf Main-Prüfungen
+integriert; Head `dec8cdc7` und Merge `0c958e14` besitzen denselben Baum.
+Die tatsächlichen Fixturemarker, Standalonevertrag 193, Snapshotverträge und
+Cleanup bestehen am Head und auf Main. Der
+[Reifeevidenznachweis](Maturity_Closeout_Runtime_Evidence_2026-08-29.md#abschluss-des-korrigierten-testvertrags)
+bewahrt frühere Fehlläufe und die begrenzte Leerfallkorrektur. Weitere
+Collationkombinationen und Ausgabearten werden damit nicht qualifiziert.
+
+Der Restumfang ist am Checkpoint nach 30 Schritten neu bewertet. Die
+Gesamtgrenze bleibt unverändert; nach zehn verbleibenden Schritten beginnt
+keine neue Arbeit. Der nächste unabhängige geplante Schritt ist der optionale
+Producervertrag für eigene SSIS-Kennzahlen aus Rang 15. Der aktuelle Abgleich
+bestätigt die Lücke neben den gelieferten festen Kennzahlen. Der neue Entwurf
+bleibt ohne Producer- oder Consumerimplementierung; eine spätere Umsetzung
+benötigt einen eigenen kohärenten Schritt innerhalb der bestehenden Freigaben.
+Parser und Lineage bleiben im Toolbelt. Positive externe Quellen- und Runtimeabnahmen bleiben
+an ihre tatsächlich gebundenen Quellen geknüpft. Offene Restumfänge der
+anderen Ränge werden nicht als abgeschlossen ausgewiesen. Native Hostqualifikation,
 positive kontrollierte cgroup-Limits und deren Wirkung auf SQL Server, globale
 Hierarchievollständigkeit und SQL-Instanzbindung bleiben offen. Die Bearbeitung
 verwendet ECONOMICAL/LOCAL und eskaliert nur bei konkreten ungeklärten Vertrags-

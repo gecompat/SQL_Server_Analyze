@@ -100,6 +100,7 @@ Kostenklasse, High-Impact-Bestätigung und SQL-Server-Berechtigung sind getrennt
 - [RUNTIME-001: External Runtime und SQL CLR](Architecture/External_Runtime_CLR_Analysis_Plan.md)
 - [Geplantes SubProject SSIS-001: SSIS Package- und Execution-Analyse](Architecture/SSIS_Package_and_Execution_Analysis_Plan.md)
 - [SSIS-Abgrenzung und Modellaustausch mit Toolbelt](Architecture/SSIS_Analyze_Toolbelt_Exchange_Contract.md): Freigegebener Vertrag mit gemeinsamem Toolbelt-Kern, externem Exporthost und nativem Analyze-Import.
+- [SSIS-Vertrag für eigene Kennzahlenproduzenten](Architecture/SSIS_Custom_Metrics_Producer_Contract.md): Nicht implementierter Entwurf für optionale, gebundene Produzentenwerte.
 - [ANALYZE-LAB-001: spielbare Analyze-Beispiele mit SQL_Server_Lab](Architecture/SQL_Server_Lab_Example_Integration_Plan.md)
 - [Datenschutz und Laufzeitausgaben](Architecture/Runtime_Data_Privacy.md)
 - [Execution-Plan-Analyse](Architecture/Execution_Plan_Analysis_Design.md)
