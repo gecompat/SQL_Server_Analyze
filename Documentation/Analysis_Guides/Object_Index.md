@@ -170,7 +170,7 @@ Für einen Einstieg nach beobachtetem Problem verwenden Sie [Hier beginnen](Star
 | Objekt | Eigenständige Beschreibung |
 |---|---|
 | `[monitor].[USP_ConfigureSnapshotTarget]` | [Explizites Ziel sowie Collector-, Retention- und Budgetpolicy](Procedures/USP_ConfigureSnapshotTarget.md) |
-| `[monitor].[USP_RunSnapshotCollectionCycle]` | [Schedulerneutraler, begrenzter Performance-Counter-Snapshot](Procedures/USP_RunSnapshotCollectionCycle.md) |
+| `[monitor].[USP_RunSnapshotCollectionCycle]` | [Schedulerneutrale Performance-Counter-, Wait- und Datei-I/O-Aufnahme](Procedures/USP_RunSnapshotCollectionCycle.md) |
 | `[monitor].[USP_PurgeSnapshotData]` | [Child-first-Retention in begrenzten Batches](Procedures/USP_PurgeSnapshotData.md) |
 
 ## Vollständigkeit

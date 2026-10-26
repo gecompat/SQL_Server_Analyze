@@ -31,12 +31,13 @@ Die drei angehängten Parameter erhalten die bisherigen positionalen Aufrufe:
 
 | Parameter | Bedeutung |
 |---|---|
-| `@CollectorCode` | `PERFORMANCE_COUNTERS` ist der Default; `WAIT_STATS` wird ausdrücklich gewählt. |
+| `@CollectorCode` | `PERFORMANCE_COUNTERS` ist der Default; `WAIT_STATS` oder `FILE_IO` werden ausdrücklich gewählt. |
 | `@CollectorEnabled` | Aktiviert oder deaktiviert ausschließlich die ausgewählte Collectorpolicy; Default ist `1`. |
-| `@UpdateSharedPolicy` | `NULL` bedeutet `1` für Performance Counter und `0` für Waits. Mit `0` bleiben Frameworkzeile, gemeinsame Retention und die bestehende Retentionszuordnung erhalten. Mit `1` werden gemeinsame Werte und ausgewählte Policy atomar aktualisiert. |
+| `@UpdateSharedPolicy` | `NULL` bedeutet `1` für Performance Counter und `0` für Waits und Datei-I/O. Mit `0` bleiben Frameworkzeile, gemeinsame Retention und die bestehende Retentionszuordnung erhalten. Mit `1` werden gemeinsame Werte und ausgewählte Policy atomar aktualisiert. |
 
 Neue Collectoroptionen benötigen ein vollständiges Target `1.2.1` mit Schema 2
-oder `1.3.0` mit Schema 3,
+oder `1.3.0` beziehungsweise `1.3.1` mit Schema 3 für Waits. Datei-I/O verlangt
+`1.3.1` / Schema 3 mit Retentionsvertrag 3; erforderlich sind außerdem
 einen passenden bestehenden Zielbezug bei `@UpdateSharedPolicy=0` und einen
 Aufruf ohne Callertransaktion mit `IMPLICIT_TRANSACTIONS OFF`. Die Procedure
 prüft die tatsächliche Zielkennung, den Erstellungszeitpunkt, die verwendeten

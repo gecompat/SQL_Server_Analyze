@@ -87,7 +87,7 @@ in der ZIP vor. Er besitzt eine gemeinsame Transaktion, Receipts und
 Vorzustandserhaltung in beiden Kontexten. Vorhandene Datenbanken und Zielbindung werden
 weiterverwendet. Die bereits veröffentlichte v1.1.2-ZIP enthält
 Target-Paketversion `1.0.0` mit `SchemaVersion=1`. Der aktuelle Quellstand
-installiert das Target `1.3.0` mit `SchemaVersion=3`; die Targetversion ist von der
+installiert das Target `1.3.1` mit `SchemaVersion=3`; die Targetversion ist von der
 Frameworkversion getrennt. Der
 [Architekturvertrag](../Architecture/Snapshot_Baseline_Package_Contract.md#installation)
 beschreibt die erkannten Upgradezustände und Installationsrechte. Bestehende
@@ -103,10 +103,11 @@ Run-ID mit den passenden Rollen muss in beiden Datenbanken vorhanden sein.
 
 Beim getrennten Upgrade wird zuerst das aktualisierte Framework installiert.
 Es unterstützt vollständige alte Waittargets 1.2.1 / Schema 2 mit
-Retentionsvertrag 1 und neue Targets 1.3.0 / Schema 3 mit Retentionsvertrag 2.
+Retentionsvertrag 1, Targets 1.3.0 / Schema 3 mit Retentionsvertrag 2 und
+Targets 1.3.1 / Schema 3 mit Retentionsvertrag 3.
 Das Stadium 1.2.2 ist unvollständig und nimmt keine neue Sammlung an.
-Die FILE_IO-Policy bleibt deaktiviert; ihre interne Speicherung ist kein
-öffentlich aufrufbarer nativer Collector.
+Die FILE_IO-Policy bleibt nach Installation deaktiviert. Die öffentliche native
+Aufnahme verlangt ausdrücklich Target 1.3.1 / Schema 3 und ihre Aktivierung.
 
 ### Installation aus einem Quellcheckout
 
@@ -152,7 +153,7 @@ Ein Agentjob oder externer Scheduler ruft nur diese Procedure auf; Sammellogik g
 
 ## Öffentlicher Waitpfad
 
-Nach Installation des Targets `1.3.0` wird zunächst die gemeinsame Zielbeziehung
+Nach Installation des Targets `1.3.1` wird zunächst die gemeinsame Zielbeziehung
 konfiguriert. Anschließend aktiviert `USP_ConfigureSnapshotTarget` mit
 `@CollectorCode='WAIT_STATS'`, `@CollectorEnabled=1` und
 `@UpdateSharedPolicy=0` nur die Waitpolicy. Der Default für gemeinsame Änderungen
@@ -203,3 +204,48 @@ Der Purge arbeitet child-first und begrenzt jede Löschschleife durch `PurgeBatc
 ## Abnahmegrenze
 
 Der ursprüngliche Performance-Counter-Paketvertrag besitzt Nachweise für Installertrennung, Idempotenz, Collection, Reset-Epoche, Payloadverlustfreiheit, Retention, Größenstopp und Zwei-Session-Concurrency auf SQL Server 2019, 2022 und 2025. Die öffentliche Waiterweiterung erhält ihre eigene SQL2025-Abnahme und gezielte native SQL2019-Snapshot-Risikoqualifizierung; daraus folgt kein neuer separater SQL2022-Lauf. Historische Nachweise und Plattformgrenzen stehen in der [Testmatrix](../Quality/Test_Matrix.md).
+
+## Datei-I/O ausdrücklich aktivieren
+
+Das Framework wird beim getrennten Upgrade zuerst aktualisiert. Nach bestehender
+gemeinsamer Zielkonfiguration aktiviert dieser Aufruf ausschließlich die
+Datei-I/O-Policy im vollständigen Target 1.3.1 / Schema 3:
+
+```sql
+EXEC [monitor].[USP_ConfigureSnapshotTarget]
+     @TargetDatabaseName = N'ExampleSnapshotDatabase',
+     @CollectorCode = 'FILE_IO',
+     @CollectorEnabled = 1,
+     @UpdateSharedPolicy = 0,
+     @MaxRows = 1000;
+
+EXEC [monitor].[USP_RunSnapshotCollectionCycle]
+     @CollectorCode = 'FILE_IO',
+     @DatabaseNames = N'[ExampleDatabase]',
+     @SchedulerType = 'MANUAL',
+     @ResultSetArt = 'CONSOLE';
+```
+
+Die Datenbankauswahl entspricht CurrentIO: Namen sind eine bracketfähige
+Pipe-Liste; alternativ gilt @DatabaseNamePattern. Standardmäßig werden sichtbare
+Online-Benutzerdatenbanken ausgewählt. @SystemdatenbankenEinbeziehen=1 nimmt
+Systemdatenbanken ausdrücklich hinzu. Die drei Filter gelten ausschließlich
+für FILE_IO. Der vollständige native Read erfolgt vor Zuordnung der ausgewählten
+Datenbanken und vor dem Schreiblimit. Ein kleines MaxRows reduziert deshalb
+keine native Enumeration und keine erforderlichen Katalogbeobachtungen.
+
+SQL Server 2019 benötigt VIEW SERVER STATE, SQL Server 2022 und neuer benötigen
+VIEW SERVER PERFORMANCE STATE. Hinzu kommen die tatsächlich erforderlichen
+Datenbank-, Metadaten- und Targetrechte. Das Produkt vergibt keine Rechte.
+Die [Microsoft-Referenz zur nativen Datei-I/O-Quelle](https://learn.microsoft.com/en-us/sql/relational-databases/system-dynamic-management-objects/sys-dm-io-virtual-file-stats-transact-sql?view=sql-server-ver17)
+beschreibt diese versionsabhängige Berechtigung.
+
+Prüfen Sie zuerst Status und Ende des Laufs, dann Source-Issues und Vergleichsstatus.
+Erfolgreiche Datei-I/O-Aufnahmen bleiben PARTIAL; Kandidaten beweisen keine
+Resetkontinuität. FINALIZATION_UNCONFIRMED mit bekannter Capture-ID bedeutet,
+dass kein Abschluss bestätigt wird. Eine offene Vorgänger-ID bleibt eine
+Vergleichsunterbrechung und wird von Retentionsvertrag 3 als neueste Datei-I/O-Grenze
+erhalten. Bei zusätzlichem Ausgabefehler bleibt der Runbericht leer; ein lokaler
+ModuleStatusId=NULL bezeichnet eine nicht bestätigte Persistenz. Die
+[Vertragsbeschreibung](../Architecture/Snapshot_Baseline_Package_Contract.md#öffentliche-datei-io-aufnahme)
+erläutert diese Fehlergrenzen.

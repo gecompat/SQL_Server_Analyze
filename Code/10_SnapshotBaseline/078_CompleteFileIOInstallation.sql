@@ -1,7 +1,7 @@
 /*
 ===============================================================================
 Datei        : 078_CompleteFileIOInstallation.sql
-Version      : 1.3.0
+Version      : 1.3.1
 Stand        : 2026-10-26
 Zweck        : Die Quelle prüft die gesamte Collectorclosure und markiert erst
                nach kompatiblen Seeds und tatsächlichem Retentionsvertrag den Abschluss.
@@ -173,8 +173,8 @@ EXEC [snapshot].[InternalPurgeExpiredData] @MaxBatches=1,@Force=0,@PurgeRunIdOut
  @StatusCodeOut=@Status OUTPUT,@BudgetExceededOut=@Budget OUTPUT,@ErrorNumberOut=@Error OUTPUT,
  @ErrorMessageOut=@Message OUTPUT,@ContractOnly=1,@RetentionContractVersionOut=@Contract OUTPUT,
  @ExpectedTargetDatabaseId=@TargetId,@ExpectedTargetDatabaseName=@TargetName,@ExpectedTargetCreateDate=@Created;
-IF COALESCE(@Status,'')<>'AVAILABLE' OR COALESCE(@Contract,0)<>2 OR @Run IS NOT NULL OR COALESCE(@Budget,1)<>0 OR @Error IS NOT NULL
- THROW 53781,N'Der tatsächliche schreibfreie Retentionsvertrag 2 fehlt.',1;
+IF COALESCE(@Status,'')<>'AVAILABLE' OR COALESCE(@Contract,0)<>3 OR @Run IS NOT NULL OR COALESCE(@Budget,1)<>0 OR @Error IS NOT NULL
+ THROW 53781,N'Der tatsächliche schreibfreie Retentionsvertrag 3 fehlt.',1;
 INSERT [snapshot].[MetricDefinition]
 ([MetricCode],[ValueType],[Unit],[ContractVersion],[Description],[IsFrameworkDefault],[SeedVersion],[LastUpdatedUtc])
 SELECT [e].[MetricCode],[e].[ValueType],[e].[Unit],1,
@@ -186,7 +186,7 @@ IF NOT EXISTS(SELECT 1 FROM [snapshot].[CollectorPolicy] WHERE [CollectorCode]='
  INSERT [snapshot].[CollectorPolicy]
  ([CollectorCode],[IsEnabled],[CollectionIntervalSeconds],[MaxRows],[PayloadEnabled],[RetentionPolicyCode],[IsFrameworkDefault],[SeedVersion],[LastUpdatedUtc])
  VALUES('FILE_IO',0,30,1000,0,'DEFAULT',0,1,SYSUTCDATETIME());
-UPDATE [snapshot].[PackageVersion] SET [PackageVersion]='1.3.0',[LastInstallerRunUtc]=SYSUTCDATETIME()
+UPDATE [snapshot].[PackageVersion] SET [PackageVersion]='1.3.1',[LastInstallerRunUtc]=SYSUTCDATETIME()
  WHERE CONVERT(varbinary(max),[PackageCode])=CONVERT(varbinary(max),'SC-023') AND [PackageVersion]='1.2.2' AND [SchemaVersion]=3;
 IF @@ROWCOUNT<>1 THROW 53781,N'Der gemeinsame Targetabschluss konnte nicht markiert werden.',1;
 GO

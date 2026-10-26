@@ -7,7 +7,7 @@
 
 ## Entscheidungsfrage und Einsatz
 
-Die Procedure wird eingesetzt, wenn die konfigurierte Snapshot-Datenbank einen neuen Performance-Counter-Messpunkt oder einen ausdrücklich gewählten Waitcapture erhalten soll. Alle Schedulerarten verwenden denselben Procedurevertrag. Der Scheduler bestimmt nur den Aufrufzeitpunkt; Due-, Parallelitäts-, Budget- und Collectionentscheidungen bleiben innerhalb des Frameworkvertrags.
+Die Procedure wird eingesetzt, wenn die konfigurierte Snapshot-Datenbank einen neuen Performance-Counter-Messpunkt oder einen ausdrücklich gewählten Wait- oder Datei-I/O-Capture erhalten soll. Alle Schedulerarten verwenden denselben Procedurevertrag. Der Scheduler bestimmt nur den Aufrufzeitpunkt; Due-, Parallelitäts-, Budget- und Collectionentscheidungen bleiben innerhalb des Frameworkvertrags.
 
 ## Nicht beantwortete Fragen
 
@@ -15,7 +15,7 @@ Ein einzelner Messpunkt ist kein Trend und liefert keine automatische Kapazität
 
 ## Sicherer Einstieg
 
-Der unveränderte Default verwendet `monitor.USP_PerformanceCounters` mit `@SampleSeconds=0`. Der angehängte Parameter `@CollectorCode` wählt alternativ `WAIT_STATS`; beide Collectorpolicies bleiben getrennt. `Install_All.sql` installiert diese Persistenzfunktion bewusst nicht.
+Der unveränderte Default verwendet `monitor.USP_PerformanceCounters` mit `@SampleSeconds=0`. Der angehängte Parameter `@CollectorCode` wählt alternativ `WAIT_STATS` oder `FILE_IO`; die Collectorpolicies bleiben getrennt. `Install_All.sql` installiert diese Persistenzfunktion bewusst nicht.
 
 ```sql
 EXEC [monitor].[USP_RunSnapshotCollectionCycle]
@@ -45,7 +45,7 @@ EXEC [monitor].[USP_RunSnapshotCollectionCycle]
      @ResultSetArt = 'CONSOLE';
 ```
 
-Waits benötigen das vollständige Target `1.2.1` / Schema 2 oder `1.3.0` / Schema 3, eine aktivierte Framework-
+Waits benötigen das vollständige Target `1.2.1` / Schema 2 oder `1.3.0` beziehungsweise `1.3.1` / Schema 3, eine aktivierte Framework-
 und Waitpolicy, keine Callertransaktion sowie `IMPLICIT_TRANSACTIONS OFF`.
 Unsichere Callerzustände werden vor Temp-DDL ausschließlich über OUTPUT als
 `INVALID_PARAMETER` mit Fehler `51011` zurückgegeben. Für Waits sind `CONSOLE`,
@@ -63,6 +63,36 @@ bleibt der gespeicherte Capture erhalten. Capture-ID und Fehlerstatus bleiben
 sichtbar; ohne bestätigte Runprojektion liefern RAW/TABLE keine erfundene
 Runzeile mit Nullmengen, JSON enthält `run: {}`. Eine verschwundene Zielidentität
 nach Vorbereitung kann einen ehrlichen unfinalisierten Run zurücklassen.
+
+## Datei-I/O und seine Auswahlgrenze
+
+```sql
+EXEC [monitor].[USP_RunSnapshotCollectionCycle]
+     @CollectorCode = 'FILE_IO',
+     @DatabaseNames = N'[ExampleDatabase]',
+     @SchedulerType = 'MANUAL',
+     @ResultSetArt = 'CONSOLE';
+```
+
+Datei-I/O verlangt das vollständige Target 1.3.1 / Schema 3, eine ausdrücklich
+aktivierte FILE_IO-Policy und denselben sicheren Callerzustand wie Waits.
+Die drei am Ende angehängten Parameter entsprechen CurrentIO: @DatabaseNames,
+@SystemdatenbankenEinbeziehen mit Default 0 und @DatabaseNamePattern. Sie erhalten
+alle bisherigen Parameterpositionen. Wirksame Datei-I/O-Filter bei anderen
+Collectors werden mit 51011 abgewiesen.
+
+Die Quelle liest genau einen vollständigen nativen Dateicache. Engine- und
+Dateikatalogbeobachtungen vor/nach dem Read begrenzen seine Zuordnung.
+MaxRows begrenzt ausschließlich sortierte geeignete Datei-Metrics. Fehlende
+Metadaten bleiben Issues; ein unbekannter Wert wird kein Nullsample. Sechs
+Counter und der Größen-Gauge bleiben von den unbewiesenen Kandidaten getrennt.
+
+Prüfen Sie FINALIZATION_UNCONFIRMED und EndedAtUtc=NULL vor jeder Auswertung.
+Eine solche Capture-ID bleibt die unmittelbare Vergleichsgrenze; es wird kein
+älterer Erfolg übersprungen. Ein zusätzlicher Readbackfehler erzeugt einen leeren
+Runbericht. Lokale Diagnosen mit ModuleStatusId=NULL behaupten keine gespeicherte
+Zeile. Der [Datei-I/O-Vertrag](../../Architecture/Snapshot_Baseline_Package_Contract.md#öffentliche-datei-io-aufnahme)
+führt Mengen-, Fehler- und Retentionsbindungen.
 
 ## Beispiele und Gegenbeispiele
 
@@ -159,6 +189,8 @@ Für die weitere Analyse gelten folgende Schritte und Quellen: `USP_PerformanceC
 ## Primärquellen
 
 - [sys.dm_os_performance_counters](https://learn.microsoft.com/en-us/sql/relational-databases/system-dynamic-management-views/sys-dm-os-performance-counters-transact-sql?view=sql-server-ver17)
+- [sys.dm_io_virtual_file_stats](https://learn.microsoft.com/en-us/sql/relational-databases/system-dynamic-management-objects/sys-dm-io-virtual-file-stats-transact-sql?view=sql-server-ver17)
+- [sys.database_files](https://learn.microsoft.com/en-us/sql/relational-databases/system-catalog-views/sys-database-files-transact-sql?view=sql-server-ver17)
 - [sys.dm_os_wait_stats](https://learn.microsoft.com/en-us/sql/relational-databases/system-dynamic-management-views/sys-dm-os-wait-stats-transact-sql?view=sql-server-ver17)
 - [sys.dm_os_sys_info](https://learn.microsoft.com/en-us/sql/relational-databases/system-dynamic-management-views/sys-dm-os-sys-info-transact-sql?view=sql-server-ver17)
 - [sp_getapplock](https://learn.microsoft.com/en-us/sql/relational-databases/system-stored-procedures/sp-getapplock-transact-sql?view=sql-server-ver17)

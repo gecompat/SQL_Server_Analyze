@@ -2064,6 +2064,9 @@ USP_ConfigureSnapshotTarget,CollectorCode,varchar(64),'PERFORMANCE_COUNTERS'
 USP_ConfigureSnapshotTarget,CollectorEnabled,bit,1
 USP_ConfigureSnapshotTarget,UpdateSharedPolicy,bit,NULL
 USP_RunSnapshotCollectionCycle,CollectorCode,varchar(64),'PERFORMANCE_COUNTERS'
+USP_RunSnapshotCollectionCycle,DatabaseNames,nvarchar(max),NULL
+USP_RunSnapshotCollectionCycle,SystemdatenbankenEinbeziehen,bit,0
+USP_RunSnapshotCollectionCycle,DatabaseNamePattern,nvarchar(4000),NULL
 USP_SsisExecutionComparison,BaselineProjectModelsJson,nvarchar(max),NULL
 USP_SsisExecutionComparison,BaselineScopeSnapshotJson,nvarchar(max),NULL
 USP_SsisExecutionComparison,BaselineScopeHandoverId,uniqueidentifier,NULL

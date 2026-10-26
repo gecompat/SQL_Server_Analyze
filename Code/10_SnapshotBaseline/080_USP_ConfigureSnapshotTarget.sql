@@ -4,8 +4,8 @@ GO
 /*
 ===============================================================================
 Objekt       : monitor.USP_ConfigureSnapshotTarget
-Version      : 1.1.0
-Stand        : 2026-10-25
+Version      : 1.2.0
+Stand        : 2026-10-26
 Zweck        : Aktiviert ein explizit installiertes SC-023-Ziel und schreibt
                alle bekannten Collector-/Retentionwerte typisiert.
 Nebenwirkung : Persistente Konfiguration in Framework- und Snapshot-Datenbank.
@@ -43,14 +43,14 @@ BEGIN
     IF @UpdateSharedPolicy IS NULL SET @UpdateSharedPolicy=CASE WHEN @CollectorCode='PERFORMANCE_COUNTERS' THEN 1 ELSE 0 END;
     DECLARE @NewPolicyContract bit=CASE WHEN @CollectorCode<>'PERFORMANCE_COUNTERS' OR @CollectorEnabled<>1
        OR @CollectorEnabled IS NULL OR @UpdateSharedPolicy<>1 THEN 1 ELSE 0 END;
-    IF @Hilfe=1 AND (@NewPolicyContract=1 OR @CollectorCode NOT IN('PERFORMANCE_COUNTERS','WAIT_STATS'))
+    IF @Hilfe=1 AND (@NewPolicyContract=1 OR @CollectorCode NOT IN('PERFORMANCE_COUNTERS','WAIT_STATS','FILE_IO'))
     BEGIN
         PRINT N'monitor.USP_ConfigureSnapshotTarget';
-        PRINT N'@CollectorCode wählt PERFORMANCE_COUNTERS oder WAIT_STATS; @CollectorEnabled steuert nur die ausgewählte Policy.';
-        PRINT N'@UpdateSharedPolicy=0 erhält gemeinsame Werte; 1 ändert sie atomar. Neue Optionen benötigen Target 1.2.1.';
+        PRINT N'@CollectorCode wählt PERFORMANCE_COUNTERS, WAIT_STATS oder FILE_IO; @CollectorEnabled steuert nur die ausgewählte Policy.';
+        PRINT N'@UpdateSharedPolicy=0 erhält gemeinsame Werte; 1 ändert sie atomar. WAIT_STATS benötigt ein passendes Waittarget; FILE_IO benötigt Target 1.3.1.';
         RETURN;
     END;
-    IF @CollectorCode NOT IN('PERFORMANCE_COUNTERS','WAIT_STATS') OR @CollectorEnabled IS NULL
+    IF @CollectorCode NOT IN('PERFORMANCE_COUNTERS','WAIT_STATS','FILE_IO') OR @CollectorEnabled IS NULL
        OR (@NewPolicyContract=1 AND (@@TRANCOUNT<>0 OR (@@OPTIONS & 2)<>0))
     BEGIN
         SELECT @StatusCodeOut='INVALID_PARAMETER',@IsPartialOut=1,@ErrorNumberOut=51011,
@@ -79,7 +79,7 @@ BEGIN
     BEGIN
         DECLARE @NewTargetId int,@NewTargetCreated datetime,@NewTargetStatus varchar(40),@NewTargetError int,
                 @NewTargetMessage nvarchar(2048),@NewSql nvarchar(max),@NewJoin bit,
-                @NewPrint nvarchar(2048);
+                @NewPrint nvarchar(2048),@AdmissionCollector varchar(64)=CASE WHEN @CollectorCode='FILE_IO' THEN 'FILE_IO' ELSE 'WAIT_STATS' END;
         BEGIN TRY
             IF NULLIF(LTRIM(RTRIM(@TargetDatabaseName)),N'') IS NULL
                OR (@UpdateSharedPolicy=1 AND (@IsEnabled IS NULL OR @SchedulerType NOT IN('MANUAL','EXTERNAL','SQL_AGENT')))
@@ -99,7 +99,7 @@ BEGIN
             EXEC [monitor].[InternalValidateSnapshotWaitTarget]
                  @TargetDatabaseName=@TargetDatabaseName,@TargetDatabaseIdOut=@NewTargetId OUTPUT,
                  @TargetCreateDateOut=@NewTargetCreated OUTPUT,@StatusCodeOut=@NewTargetStatus OUTPUT,
-                 @ErrorNumberOut=@NewTargetError OUTPUT,@ErrorMessageOut=@NewTargetMessage OUTPUT;
+                 @ErrorNumberOut=@NewTargetError OUTPUT,@ErrorMessageOut=@NewTargetMessage OUTPUT,@CollectorCode=@AdmissionCollector;
             IF COALESCE(@NewTargetStatus,'')<>'AVAILABLE' OR @NewTargetError IS NOT NULL
             BEGIN
                 SELECT @StatusCodeOut=COALESCE(NULLIF(@NewTargetStatus,''),'TARGET_UNAVAILABLE'),@IsPartialOut=1,
@@ -107,7 +107,7 @@ BEGIN
                 RETURN;
             END;
             IF @UpdateSharedPolicy=1 BEGIN TRANSACTION;
-            SET @NewJoin=CASE WHEN @CollectorCode='WAIT_STATS' AND @UpdateSharedPolicy=1 THEN 1 ELSE 0 END;
+            SET @NewJoin=CASE WHEN @CollectorCode IN('WAIT_STATS','FILE_IO') AND @UpdateSharedPolicy=1 THEN 1 ELSE 0 END;
             SET @NewSql=N'EXEC '+QUOTENAME(@TargetDatabaseName)+N'.[snapshot].[InternalConfigureSnapshotPolicy]
  @CollectionIntervalSeconds=@Interval,@MaxRows=@MaxRows,@PayloadEnabled=@Payload,
  @RawRetentionDays=@RawDays,@PayloadRetentionDays=@PayloadDays,@RollupRetentionDays=@RollupDays,

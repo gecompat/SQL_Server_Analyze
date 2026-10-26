@@ -124,6 +124,55 @@ IF @Mutation=N''ENGINE_NULL'' SET @Source=JSON_MODIFY(@Source,N''$.meta.engine''
 IF @Mutation=N''BAD_TIME'' SET @Source=JSON_MODIFY(@Source,N''$.meta.measurementEndUtc'',N''2026-01-01T00:00:00Z'');
 IF @Mutation=N''BIGINT_OVERFLOW'' SET @Source=REPLACE(@Source,N''"Reads":10'',N''"Reads":9223372036854775808'');
 IF @Mutation=N''SELECTION_HASH'' SET @Source=JSON_MODIFY(@Source,N''$.meta.selection.selectionSha256'',REPLICATE(N''0'',64));
+IF @Mutation IN(N''FATAL_SUCCEEDED'',N''FATAL_UNKNOWN_WINDOW'',N''FATAL_FAILED'',N''FATAL_NOT_STARTED'',N''FATAL_EMPTY'',N''FATAL_HALF_WINDOW'',N''FATAL_REVERSE_WINDOW'',N''FUTURE_START'')
+BEGIN
+ SELECT @Issues=(SELECT N''SOURCE'' AS [ScopeType],N''sys.dm_os_sys_info'' AS [SourceName],CONVERT(int,NULL) AS [DatabaseId],
+  CONVERT(int,NULL) AS [FileId],CONVERT(nvarchar(128),NULL) AS [DatabaseName],N''ERROR_HANDLED'' AS [StatusCode],CONVERT(int,NULL) AS [ErrorNumber],
+  N''Example post-read binding failed.'' AS [ErrorMessage],N''Example independently validated source diagnosis.'' AS [EvidenceLimit] FOR JSON PATH,INCLUDE_NULL_VALUES);
+ SET @Source=JSON_MODIFY(JSON_MODIFY(JSON_MODIFY(JSON_MODIFY(JSON_MODIFY(@Source,N''$.meta.statusCode'',N''ERROR_HANDLED''),
+  N''$.meta.isPartial'',CONVERT(bit,1)),N''$.meta.sourceComplete'',CONVERT(bit,0)),N''strict $.meta.engine'',NULL),N''$.meta.errorMessage'',N''Example post-read binding failed.'');
+ SET @Source=JSON_MODIFY(JSON_MODIFY(@Source,N''$.files'',JSON_QUERY(N''[]'')),N''$.issues'',JSON_QUERY(@Issues));
+ SET @Source=JSON_MODIFY(@Source,N''$.meta.selectedNativeRows'',N''7'');
+ IF @Mutation IN(N''FATAL_FAILED'',N''FATAL_NOT_STARTED'',N''FATAL_EMPTY'')
+ BEGIN
+  SET @Source=JSON_MODIFY(JSON_MODIFY(JSON_MODIFY(JSON_MODIFY(@Source,N''$.meta.nativeReadState'',
+   CASE WHEN @Mutation=N''FATAL_FAILED'' THEN N''FAILED'' ELSE N''NOT_STARTED'' END),N''strict $.meta.selectedNativeRows'',NULL),
+   N''strict $.meta.nativeReadStartUtc'',NULL),N''strict $.meta.nativeReadEndUtc'',NULL);
+ END;
+ IF @Mutation=N''FATAL_EMPTY''
+  SET @Source=JSON_MODIFY(JSON_MODIFY(JSON_MODIFY(JSON_MODIFY(@Source,N''$.databases'',JSON_QUERY(N''[]'')),
+   N''$.meta.selection.selectedDatabaseCount'',N''0''),N''$.meta.selection.selectionSha256'',
+   LOWER(CONVERT(varchar(64),HASHBYTES(''SHA2_256'',CONVERT(varbinary(max),N''[]'')),2))),N''$.meta.selectedNativeRows'',N''0'');
+ IF @Mutation=N''FATAL_UNKNOWN_WINDOW''
+  SET @Source=JSON_MODIFY(JSON_MODIFY(JSON_MODIFY(JSON_MODIFY(@Source,N''strict $.meta.measurementStartUtc'',NULL),
+   N''strict $.meta.measurementEndUtc'',NULL),N''strict $.meta.nativeReadStartUtc'',NULL),N''strict $.meta.nativeReadEndUtc'',NULL);
+ IF @Mutation=N''FATAL_HALF_WINDOW'' SET @Source=JSON_MODIFY(@Source,N''strict $.meta.measurementEndUtc'',NULL);
+ IF @Mutation=N''FATAL_REVERSE_WINDOW''
+ BEGIN
+  DECLARE @SwapTime nvarchar(24)=JSON_VALUE(@Source,N''$.meta.measurementStartUtc'');
+  SET @Source=JSON_MODIFY(JSON_MODIFY(@Source,N''$.meta.measurementStartUtc'',JSON_VALUE(@Source,N''$.meta.measurementEndUtc'')),N''$.meta.measurementEndUtc'',@SwapTime);
+ END;
+ IF @Mutation IN(N''FATAL_SUCCEEDED'',N''FUTURE_START'')
+ BEGIN
+  DECLARE @FirstIssue nvarchar(max)=JSON_QUERY(@Source,N''$.issues[0]''),@SecondIssue nvarchar(max),@ThirdIssue nvarchar(max);
+  SET @FirstIssue=JSON_MODIFY(JSON_MODIFY(@FirstIssue,N''$.ErrorNumber'',229),N''$.StatusCode'',N''DENIED_PERMISSION'');
+  SET @SecondIssue=JSON_MODIFY(JSON_MODIFY(JSON_MODIFY(JSON_MODIFY(JSON_MODIFY(@FirstIssue,N''$.SourceName'',N''sys.dm_io_virtual_file_stats''),
+   N''$.ErrorNumber'',208),N''$.StatusCode'',N''UNAVAILABLE_OBJECT''),N''$.ErrorMessage'',REPLICATE(N''B'',2048)),N''$.EvidenceLimit'',REPLICATE(N''E'',1000));
+  SET @ThirdIssue=JSON_MODIFY(JSON_MODIFY(JSON_MODIFY(JSON_MODIFY(@FirstIssue,N''strict $.ErrorNumber'',NULL),
+   N''$.StatusCode'',N''ERROR_HANDLED''),N''$.ErrorMessage'',REPLICATE(N''C'',2048)),N''$.EvidenceLimit'',REPLICATE(N''F'',1000));
+  SET @Source=JSON_MODIFY(JSON_MODIFY(JSON_MODIFY(@Source,N''$.meta.errorNumber'',229),N''$.meta.statusCode'',N''DENIED_PERMISSION''),
+   N''$.issues'',JSON_QUERY(N''[''+@FirstIssue+N'',''+@SecondIssue+N'',''+@ThirdIssue+N'']''));
+ END;
+ IF @Mutation=N''FUTURE_START''
+  UPDATE [SQLServerAnalyzeSnapshotTest].[snapshot].[CaptureRun] SET [StartedAtUtc]=DATEADD(hour,1,SYSUTCDATETIME()) WHERE [CaptureRunId]=@Run;
+END;
+IF @Mutation=N''NONFATAL_FAILED''
+BEGIN
+ SET @Source=JSON_MODIFY(JSON_MODIFY(JSON_MODIFY(JSON_MODIFY(JSON_MODIFY(JSON_MODIFY(JSON_MODIFY(@Source,
+  N''$.meta.statusCode'',N''PARTIAL''),N''$.meta.isPartial'',CONVERT(bit,1)),N''$.meta.sourceComplete'',CONVERT(bit,0)),
+  N''$.meta.nativeReadState'',N''FAILED''),N''strict $.meta.selectedNativeRows'',NULL),N''strict $.meta.nativeReadStartUtc'',NULL),N''strict $.meta.nativeReadEndUtc'',NULL);
+ SET @Source=JSON_MODIFY(@Source,N''$.files'',JSON_QUERY(N''[]''));
+END;
 EXEC [SQLServerAnalyzeSnapshotTest].[snapshot].[InternalCompleteFileIOCycle]
  @CaptureRunId=@Run,@CollectorJson=@Source,@ExpectedTargetDatabaseId=@Db,@ExpectedTargetDatabaseName=N''SQLServerAnalyzeSnapshotTest'',
  @ExpectedTargetCreateDate=@Created,@StatusCodeOut=@Status OUTPUT,@IsPartialOut=@Partial OUTPUT,@ErrorNumberOut=@Error OUTPUT,@ErrorMessageOut=@Message OUTPUT;
@@ -132,8 +181,9 @@ BEGIN
  DECLARE @Failure nvarchar(2048)=CONCAT(N''File-I/O case '',@Mutation,N'': '',@Status,N''/'',@Error,N''/'',@Message);
  THROW 53790,@Failure,1;
 END;
-IF NOT EXISTS(SELECT 1 FROM [SQLServerAnalyzeSnapshotTest].[snapshot].[CaptureRun] WHERE [CaptureRunId]=@Run AND [EndedAtUtc] IS NOT NULL
- AND [StatusCode]=@WantStatus AND [MetricSampleCount]=@WantSamples AND [ResetEpochId] IS NULL AND [SqlServerStartTimeUtc] IS NULL)
+IF NOT EXISTS(SELECT 1 FROM [SQLServerAnalyzeSnapshotTest].[snapshot].[CaptureRun] WHERE [CaptureRunId]=@Run AND ((@WantStatus<>''FINALIZATION_UNCONFIRMED'' AND [EndedAtUtc] IS NOT NULL)
+ OR (@WantStatus=''FINALIZATION_UNCONFIRMED'' AND [EndedAtUtc] IS NULL))
+ AND [StatusCode]=CASE WHEN @WantStatus=''FINALIZATION_UNCONFIRMED'' THEN ''ERROR_HANDLED'' ELSE @WantStatus END AND [MetricSampleCount]=@WantSamples AND [ResetEpochId] IS NULL AND [SqlServerStartTimeUtc] IS NULL)
 BEGIN
  DECLARE @RunFailure nvarchar(2048)=(SELECT CONCAT(N''File-I/O run '',@Mutation,N'' counter '',@Counter,N'': samples '',[MetricSampleCount],N'' expected '',@WantSamples,N'' status '',[StatusCode],N'' epoch '',CONVERT(nvarchar(36),[ResetEpochId]),N'' ended '',[EndedAtUtc],N'' comparison '',
   (SELECT [s].[StringValue] FROM [SQLServerAnalyzeSnapshotTest].[snapshot].[MetricSample] [s] JOIN [SQLServerAnalyzeSnapshotTest].[snapshot].[MetricDefinition] [m] ON [m].[MetricDefinitionId]=[s].[MetricDefinitionId] WHERE [s].[CaptureRunId]=@Run AND [m].[MetricCode]=''IO_DELTA_STATUS''))
@@ -172,6 +222,41 @@ IF @Mutation IN(N''DENIED'',N''PARTIAL'',N''OFFLINE'',N''UNSUPPORTED'') AND
  ON TRY_CONVERT(bigint,JSON_VALUE(CASE WHEN ISJSON([ctx].[ErrorMessage])=1 THEN [ctx].[ErrorMessage] ELSE N''{}'' END,N''$.sourceModuleStatusId''))=[src].[ModuleStatusId]
  AND [ctx].[CaptureRunId]=[src].[CaptureRunId] WHERE [ctx].[CaptureRunId]=@Run AND [ctx].[ModuleName]=N''FileIOSourceIssueContext'' AND [ctx].[ErrorNumber] IS NULL))
  THROW 53790,N''Source issues must persist losslessly without payload.'',1;
+IF @Mutation=N''FUTURE_START''
+BEGIN
+ DECLARE @Boundary nvarchar(max),@FailureId bigint;
+ SELECT @Boundary=[ErrorMessage] FROM [SQLServerAnalyzeSnapshotTest].[snapshot].[ModuleStatus]
+ WHERE [CaptureRunId]=@Run AND [ModuleName]=N''FileIOFinalizationBoundary'' AND [ErrorNumber] IS NULL AND [StatusCode]=''FINALIZATION_UNCONFIRMED'';
+ SET @FailureId=TRY_CONVERT(bigint,JSON_VALUE(@Boundary,N''$.failureModuleStatusId''));
+ IF COALESCE(ISJSON(@Boundary),0)<>1 OR (SELECT COUNT_BIG(*) FROM OPENJSON(@Boundary))<>8
+  OR JSON_VALUE(@Boundary,N''$.captureRunId'')<>CONVERT(varchar(20),@Run)
+  OR JSON_VALUE(@Boundary,N''$.sourceIssuesPreserved'')<>''true'' OR JSON_VALUE(@Boundary,N''$.finalizationConfirmed'')<>''false''
+  OR TRY_CONVERT(datetime2(3),LEFT(JSON_VALUE(@Boundary,N''$.recordedAtUtc''),23),126)>=
+     TRY_CONVERT(datetime2(3),LEFT(JSON_VALUE(@Boundary,N''$.startedAtUtc''),23),126)
+  OR NOT EXISTS(SELECT 1 FROM [SQLServerAnalyzeSnapshotTest].[snapshot].[ModuleStatus] WHERE [CaptureRunId]=@Run
+   AND [ModuleStatusId]=@FailureId AND [ModuleName]=N''snapshot.InternalCompleteFileIOCycle'' AND [ErrorNumber]=53784)
+  OR (SELECT COUNT_BIG(*) FROM [SQLServerAnalyzeSnapshotTest].[snapshot].[ModuleStatus] WHERE [CaptureRunId]=@Run)<>9
+  OR NOT EXISTS(SELECT 1 FROM [SQLServerAnalyzeSnapshotTest].[snapshot].[ModuleStatus] WHERE [CaptureRunId]=@Run
+   AND [ModuleName]=N''sys.dm_os_sys_info'' AND [ErrorNumber]=229 AND [ErrorMessage]=N''Example post-read binding failed.'')
+  OR COALESCE(@Error,0)<>229 OR @Message<>N''Example post-read binding failed.''
+  OR NOT EXISTS(SELECT 1 FROM [SQLServerAnalyzeSnapshotTest].[snapshot].[CaptureRun] WHERE [CaptureRunId]=@Run
+   AND [ErrorNumber]=229 AND [ErrorMessage]=N''Example post-read binding failed.'')
+  THROW 53790,N''Unconfirmed clock boundary lost the actual technical binding or original source diagnosis.'',1;
+END;
+IF @Mutation IN(N''FATAL_SUCCEEDED'',N''FUTURE_START'') AND
+ ((SELECT COUNT_BIG(*) FROM [SQLServerAnalyzeSnapshotTest].[snapshot].[ModuleStatus] WHERE [CaptureRunId]=@Run)<>
+   CASE WHEN @Mutation=N''FUTURE_START'' THEN 9 ELSE 7 END
+ OR NOT EXISTS(SELECT 1 FROM [SQLServerAnalyzeSnapshotTest].[snapshot].[ModuleStatus] WHERE [CaptureRunId]=@Run
+   AND [ModuleName]=N''sys.dm_os_sys_info#2'' AND [ErrorNumber] IS NULL AND [ErrorMessage]=REPLICATE(N''C'',2048) AND [EvidenceLimit]=REPLICATE(N''F'',1000))
+ OR (SELECT COUNT_BIG(*) FROM [SQLServerAnalyzeSnapshotTest].[snapshot].[ModuleStatus] [ctx]
+   JOIN [SQLServerAnalyzeSnapshotTest].[snapshot].[ModuleStatus] [src]
+    ON [src].[ModuleStatusId]=TRY_CONVERT(bigint,JSON_VALUE(CASE WHEN ISJSON([ctx].[ErrorMessage])=1 THEN [ctx].[ErrorMessage] ELSE N''{}'' END,N''$.sourceModuleStatusId''))
+    AND [src].[CaptureRunId]=[ctx].[CaptureRunId]
+   WHERE [ctx].[CaptureRunId]=@Run AND
+    (([ctx].[ModuleName]=N''FileIOSourceIssueContext'' AND [src].[ModuleName]=N''sys.dm_os_sys_info'')
+    OR ([ctx].[ModuleName]=N''FileIOSourceIssueContext#1'' AND [src].[ModuleName]=N''sys.dm_io_virtual_file_stats'')
+    OR ([ctx].[ModuleName]=N''FileIOSourceIssueContext#2'' AND [src].[ModuleName]=N''sys.dm_os_sys_info#2'')))<>3)
+ THROW 53790,N''Multi-issue source ordinal, lossless text or actual context binding failed.'',1;
 SELECT @RunOut=@Run,@ContextOut=@Ctx,@EpochOut=TRY_CONVERT(uniqueidentifier,JSON_VALUE(@Ctx,N''$.resetEpochId''));';
 DECLARE @FileIOParams nvarchar(max)=N'@Counter bigint,@Gauge bigint,@SampleMs bigint,@Guid nvarchar(36),@Handle varchar(18),@LogicalName nvarchar(128),@Mutation nvarchar(40),
  @WantStatus varchar(40),@WantCompare varchar(40),@WantEpoch varchar(40),@WantSamples bigint,@RunOut bigint OUTPUT,@ContextOut nvarchar(max) OUTPUT,@EpochOut uniqueidentifier OUTPUT';
@@ -313,6 +398,17 @@ EXEC sys.sp_executesql @FileIOCaseSql,@FileIOParams,@Counter=50,@Gauge=100,@Samp
 EXEC sys.sp_executesql @FileIOCaseSql,@FileIOParams,@Counter=50,@Gauge=100,@SampleMs=3000,@Guid=@FileIOGuid,@Handle=@FileIOHandle,@LogicalName=N'ExampleLogicalFile',@Mutation=N'',@WantStatus='PARTIAL',@WantCompare='PREVIOUS_FILE_UNAVAILABLE',@WantEpoch='NEW_COMPARISON_BREAK',@WantSamples=10,@RunOut=@FileIORun OUTPUT,@ContextOut=@FileIOContext OUTPUT,@EpochOut=@FileIOEpoch OUTPUT;
 EXEC sys.sp_executesql @FileIOCaseSql,@FileIOParams,@Counter=50,@Gauge=100,@SampleMs=3000,@Guid=@FileIOGuid,@Handle=@FileIOHandle,@LogicalName=N'ExampleLogicalFile',@Mutation=N'UNSUPPORTED',@WantStatus='PARTIAL',@WantCompare=NULL,@WantEpoch=NULL,@WantSamples=1,@RunOut=@FileIORun OUTPUT,@ContextOut=@FileIOContext OUTPUT,@EpochOut=@FileIOEpoch OUTPUT;
 EXEC sys.sp_executesql @FileIOCaseSql,@FileIOParams,@Counter=50,@Gauge=100,@SampleMs=3000,@Guid=@FileIOGuid,@Handle=@FileIOHandle,@LogicalName=N'ExampleLogicalFile',@Mutation=N'',@WantStatus='PARTIAL',@WantCompare='PREVIOUS_FILE_UNAVAILABLE',@WantEpoch='NEW_COMPARISON_BREAK',@WantSamples=10,@RunOut=@FileIORun OUTPUT,@ContextOut=@FileIOContext OUTPUT,@EpochOut=@FileIOEpoch OUTPUT;
+EXEC sys.sp_executesql @FileIOCaseSql,@FileIOParams,@Counter=50,@Gauge=100,@SampleMs=3000,@Guid=@FileIOGuid,@Handle=@FileIOHandle,@LogicalName=N'ExampleLogicalFile',@Mutation=N'FATAL_SUCCEEDED',@WantStatus='DENIED_PERMISSION',@WantCompare=NULL,@WantEpoch=NULL,@WantSamples=0,@RunOut=@FileIORun OUTPUT,@ContextOut=@FileIOContext OUTPUT,@EpochOut=@FileIOEpoch OUTPUT;
+EXEC sys.sp_executesql @FileIOCaseSql,@FileIOParams,@Counter=50,@Gauge=100,@SampleMs=3000,@Guid=@FileIOGuid,@Handle=@FileIOHandle,@LogicalName=N'ExampleLogicalFile',@Mutation=N'FATAL_UNKNOWN_WINDOW',@WantStatus='ERROR_HANDLED',@WantCompare=NULL,@WantEpoch=NULL,@WantSamples=0,@RunOut=@FileIORun OUTPUT,@ContextOut=@FileIOContext OUTPUT,@EpochOut=@FileIOEpoch OUTPUT;
+EXEC sys.sp_executesql @FileIOCaseSql,@FileIOParams,@Counter=50,@Gauge=100,@SampleMs=3000,@Guid=@FileIOGuid,@Handle=@FileIOHandle,@LogicalName=N'ExampleLogicalFile',@Mutation=N'FATAL_FAILED',@WantStatus='ERROR_HANDLED',@WantCompare=NULL,@WantEpoch=NULL,@WantSamples=0,@RunOut=@FileIORun OUTPUT,@ContextOut=@FileIOContext OUTPUT,@EpochOut=@FileIOEpoch OUTPUT;
+EXEC sys.sp_executesql @FileIOCaseSql,@FileIOParams,@Counter=50,@Gauge=100,@SampleMs=3000,@Guid=@FileIOGuid,@Handle=@FileIOHandle,@LogicalName=N'ExampleLogicalFile',@Mutation=N'FATAL_NOT_STARTED',@WantStatus='ERROR_HANDLED',@WantCompare=NULL,@WantEpoch=NULL,@WantSamples=0,@RunOut=@FileIORun OUTPUT,@ContextOut=@FileIOContext OUTPUT,@EpochOut=@FileIOEpoch OUTPUT;
+EXEC sys.sp_executesql @FileIOCaseSql,@FileIOParams,@Counter=50,@Gauge=100,@SampleMs=3000,@Guid=@FileIOGuid,@Handle=@FileIOHandle,@LogicalName=N'ExampleLogicalFile',@Mutation=N'FATAL_EMPTY',@WantStatus='ERROR_HANDLED',@WantCompare=NULL,@WantEpoch=NULL,@WantSamples=0,@RunOut=@FileIORun OUTPUT,@ContextOut=@FileIOContext OUTPUT,@EpochOut=@FileIOEpoch OUTPUT;
+EXEC sys.sp_executesql @FileIOCaseSql,@FileIOParams,@Counter=50,@Gauge=100,@SampleMs=3000,@Guid=@FileIOGuid,@Handle=@FileIOHandle,@LogicalName=N'ExampleLogicalFile',@Mutation=N'FATAL_HALF_WINDOW',@WantStatus='ERROR_HANDLED',@WantCompare=NULL,@WantEpoch=NULL,@WantSamples=0,@RunOut=@FileIORun OUTPUT,@ContextOut=@FileIOContext OUTPUT,@EpochOut=@FileIOEpoch OUTPUT;
+EXEC sys.sp_executesql @FileIOCaseSql,@FileIOParams,@Counter=50,@Gauge=100,@SampleMs=3000,@Guid=@FileIOGuid,@Handle=@FileIOHandle,@LogicalName=N'ExampleLogicalFile',@Mutation=N'FATAL_REVERSE_WINDOW',@WantStatus='ERROR_HANDLED',@WantCompare=NULL,@WantEpoch=NULL,@WantSamples=0,@RunOut=@FileIORun OUTPUT,@ContextOut=@FileIOContext OUTPUT,@EpochOut=@FileIOEpoch OUTPUT;
+EXEC sys.sp_executesql @FileIOCaseSql,@FileIOParams,@Counter=50,@Gauge=100,@SampleMs=3000,@Guid=@FileIOGuid,@Handle=@FileIOHandle,@LogicalName=N'ExampleLogicalFile',@Mutation=N'NONFATAL_FAILED',@WantStatus='ERROR_HANDLED',@WantCompare=NULL,@WantEpoch=NULL,@WantSamples=0,@RunOut=@FileIORun OUTPUT,@ContextOut=@FileIOContext OUTPUT,@EpochOut=@FileIOEpoch OUTPUT;
+EXEC sys.sp_executesql @FileIOCaseSql,@FileIOParams,@Counter=50,@Gauge=100,@SampleMs=3000,@Guid=@FileIOGuid,@Handle=@FileIOHandle,@LogicalName=N'ExampleLogicalFile',@Mutation=N'FUTURE_START',@WantStatus='FINALIZATION_UNCONFIRMED',@WantCompare=NULL,@WantEpoch=NULL,@WantSamples=0,@RunOut=@FileIORun OUTPUT,@ContextOut=@FileIOContext OUTPUT,@EpochOut=@FileIOEpoch OUTPUT;
+EXEC sys.sp_executesql @FileIOCaseSql,@FileIOParams,@Counter=50,@Gauge=100,@SampleMs=3000,@Guid=@FileIOGuid,@Handle=@FileIOHandle,@LogicalName=N'ExampleLogicalFile',@Mutation=N'',@WantStatus='PARTIAL',@WantCompare='PREVIOUS_CAPTURE_UNCONFIRMED',@WantEpoch='NEW_COMPARISON_BREAK',@WantSamples=10,@RunOut=@FileIORun OUTPUT,@ContextOut=@FileIOContext OUTPUT,@EpochOut=@FileIOEpoch OUTPUT;
+EXEC sys.sp_executesql @FileIOCaseSql,@FileIOParams,@Counter=50,@Gauge=100,@SampleMs=3000,@Guid=@FileIOGuid,@Handle=@FileIOHandle,@LogicalName=N'ExampleLogicalFile',@Mutation=N'',@WantStatus='PARTIAL',@WantCompare='MONOTONIC_CONTINUITY_UNPROVEN',@WantEpoch='RETAIN_OBSERVED_EPOCH',@WantSamples=16,@RunOut=@FileIORun OUTPUT,@ContextOut=@FileIOContext OUTPUT,@EpochOut=@FileIOEpoch OUTPUT;
 DECLARE @FileIOTriggerId int,@FileIOTriggerSql nvarchar(max)=N'CREATE TRIGGER [snapshot].[ExampleFileIORawWriteFault]
 ON [snapshot].[MetricSample] AFTER INSERT AS
 BEGIN
@@ -349,9 +445,15 @@ IF COALESCE(@FileIOProbeStatus,'')<>'SKIPPED_NOT_DUE' OR @FileIOProbeRun IS NOT 
  THROW 53790,N'Not-due file-I/O must create no capture row.',1;
 EXEC sys.sp_executesql @FileIOCaseSql,@FileIOParams,@Counter=50,@Gauge=100,@SampleMs=3000,@Guid=@FileIOGuid,@Handle=@FileIOHandle,@LogicalName=N'ExampleLogicalFile',
  @Mutation=N'EXTRA_MEMBER',@WantStatus='ERROR_HANDLED',@WantCompare=NULL,@WantEpoch=NULL,@WantSamples=0,@RunOut=@FileIORun OUTPUT,@ContextOut=@FileIOContext OUTPUT,@EpochOut=@FileIOEpoch OUTPUT;
-DECLARE @FileIOLatestFailure bigint=@FileIORun;
-UPDATE [SQLServerAnalyzeSnapshotTest].[snapshot].[CaptureRun] SET [StartedAtUtc]=DATEADD(day,-31,SYSUTCDATETIME()),[EndedAtUtc]=DATEADD(day,-31,SYSUTCDATETIME())
- WHERE [CollectorCode]='FILE_IO' AND [EndedAtUtc] IS NOT NULL;
+INSERT [SQLServerAnalyzeSnapshotTest].[snapshot].[CaptureRun]([CollectorCode],[SourceDatabaseName],[SchedulerType],[StartedAtUtc],[StatusCode],[IsPartial],[ContractVersion])
+VALUES('FILE_IO',N'SQLServerAnalyzeTest','MANUAL',DATEADD(day,-31,SYSUTCDATETIME()),'ERROR_HANDLED',1,1);
+DECLARE @FileIOLatestFailure bigint=CONVERT(bigint,SCOPE_IDENTITY());
+INSERT [SQLServerAnalyzeSnapshotTest].[snapshot].[CaptureRun]([CollectorCode],[SourceDatabaseName],[SchedulerType],[StartedAtUtc],[EndedAtUtc],[StatusCode],[IsPartial],[ContractVersion])
+VALUES('WAIT_STATS',N'SQLServerAnalyzeTest','MANUAL',DATEADD(day,-31,SYSUTCDATETIME()),DATEADD(day,-31,SYSUTCDATETIME()),'ERROR_HANDLED',1,1),
+      ('PERFORMANCE_COUNTERS',N'SQLServerAnalyzeTest','MANUAL',DATEADD(day,-31,SYSUTCDATETIME()),DATEADD(day,-31,SYSUTCDATETIME()),'ERROR_HANDLED',1,1);
+UPDATE [SQLServerAnalyzeSnapshotTest].[snapshot].[CaptureRun] SET [StartedAtUtc]=DATEADD(day,-31,SYSUTCDATETIME()),
+ [EndedAtUtc]=CASE WHEN [EndedAtUtc] IS NOT NULL THEN DATEADD(day,-31,SYSUTCDATETIME()) END
+ WHERE [CollectorCode]='FILE_IO';
 UPDATE [m] SET [CollectedAtUtc]=DATEADD(day,-31,SYSUTCDATETIME()) FROM [SQLServerAnalyzeSnapshotTest].[snapshot].[MetricSample] [m]
  JOIN [SQLServerAnalyzeSnapshotTest].[snapshot].[CaptureRun] [r] ON [r].[CaptureRunId]=[m].[CaptureRunId] WHERE [r].[CollectorCode]='FILE_IO';
 EXEC [SQLServerAnalyzeSnapshotTest].[snapshot].[InternalPurgeExpiredData] @MaxBatches=1000,@Force=1,@PurgeRunIdOut=@FileIOProbeRun OUTPUT,
@@ -364,7 +466,7 @@ IF COALESCE(@FileIOProbeStatus,'')<>'AVAILABLE' OR @FileIOProbeError IS NOT NULL
  OR EXISTS(SELECT 1 FROM [SQLServerAnalyzeSnapshotTest].[snapshot].[ModuleStatus] WHERE [CaptureRunId]=@FileIOLatestFailure)
  THROW 53790,N'File-I/O retention must expire children and preserve the actual latest failure fence.',1;
 EXEC sys.sp_executesql @FileIOCaseSql,@FileIOParams,@Counter=50,@Gauge=100,@SampleMs=3000,@Guid=@FileIOGuid,@Handle=@FileIOHandle,@LogicalName=N'ExampleLogicalFile',
- @Mutation=N'',@WantStatus='PARTIAL',@WantCompare='PREVIOUS_CAPTURE_FAILED',@WantEpoch='NEW_COMPARISON_BREAK',@WantSamples=10,@RunOut=@FileIORun OUTPUT,@ContextOut=@FileIOContext OUTPUT,@EpochOut=@FileIOEpoch OUTPUT;
+ @Mutation=N'',@WantStatus='PARTIAL',@WantCompare='PREVIOUS_CAPTURE_UNCONFIRMED',@WantEpoch='NEW_COMPARISON_BREAK',@WantSamples=10,@RunOut=@FileIORun OUTPUT,@ContextOut=@FileIOContext OUTPUT,@EpochOut=@FileIOEpoch OUTPUT;
 UPDATE [SQLServerAnalyzeSnapshotTest].[snapshot].[CollectorPolicy] SET [IsEnabled]=0 WHERE [CollectorCode]='FILE_IO';
 SET @FileIORunCount=(SELECT COUNT_BIG(*) FROM [SQLServerAnalyzeSnapshotTest].[snapshot].[CaptureRun]);
 EXEC [SQLServerAnalyzeSnapshotTest].[snapshot].[InternalPrepareCollectionCycle] @SourceDatabaseName=N'SQLServerAnalyzeTest',@SchedulerType='MANUAL',@RunEvenIfNotDue=1,
