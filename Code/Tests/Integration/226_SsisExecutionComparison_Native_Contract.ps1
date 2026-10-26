@@ -8,11 +8,14 @@ param(
     [Parameter(Mandatory)][string]$ExpectedSourceCommit,
     [Parameter(Mandatory)][string]$ExpectedBuildSha256,
     [Parameter(Mandatory)][string]$NativeBudgetPath,
-    [ValidateSet('Baseline','Equal','Delay','Volume','Logging','Error','Abort','Redeploy')][string[]]$Scenarios=@('Baseline','Equal','Delay','Volume','Logging','Error','Abort','Redeploy')
+    [switch]$IncludeBaselineContract,
+    [ValidateSet('Baseline','Baseline2','Baseline3','Baseline4','Baseline5','Equal','Delay','Volume','Logging','Error','Abort','Redeploy')][string[]]$Scenarios=@('Baseline','Equal','Delay','Volume','Logging','Error','Abort','Redeploy')
 )
 Set-StrictMode -Version Latest
 $ErrorActionPreference='Stop'
 if($Scenarios.Count -lt 2 -or $Scenarios[0] -cne 'Baseline' -or @($Scenarios|Select-Object -Unique).Count -ne $Scenarios.Count){throw 'SSIS_COMPARISON_SCENARIO_ORDER_INVALID'}
+if(-not $IncludeBaselineContract -and @($Scenarios|Where-Object {$_ -cmatch '^Baseline[2-5]$'}).Count -gt 0){throw 'SSIS_BASELINE_OPT_IN_REQUIRED'}
+if($IncludeBaselineContract -and (($Scenarios[0..4] -join ',') -cne 'Baseline,Baseline2,Baseline3,Baseline4,Baseline5')){throw 'SSIS_BASELINE_FIVE_RUNS_REQUIRED'}
 # Manueller Windows-Vertrag auf einem ausdrücklich gebundenen vorhandenen Lab-Run.
 # Lab stellt SSISDB bereit. Dieser Consumer besitzt nur seine eigenen Objekte;
 # der Aufrufer bestimmt unabhängig die Aufbewahrung des Lab-Runs.
@@ -33,8 +36,9 @@ $security.AddAccessRule([Security.AccessControl.FileSystemAccessRule]::new($iden
 $scriptFile=Join-Path $directory 'own.sql';$receipt=Join-Path $directory 'ownership.private.json'
 $record=[ordered]@{RequestedScenarios=$Scenarios;CompletedScenarios=@();Executions=@();Captures=@();Comparisons=@();RunId=$RunId.ToString();InstanceId=$InstanceId;OperationId=[guid]::NewGuid().ToString();FolderName='SyntheticCorrelation_'+[guid]::NewGuid().ToString('N');FolderId=0L;ProjectName='SyntheticProject_'+[guid]::NewGuid().ToString('N');ProjectId=0L;ProjectLsn=0L;ExecutionId=0L;DatabaseAttempted=$false;FolderAttempted=$false;ProjectAttempted=$false;Phase='PLANNED';Cleanup='PENDING';Operations=@()}
 $entryName='SyntheticRoot.dtsx'
+$record.BaselineResults=@()
 $record.SourceBindings=[ordered]@{ProducerCommit=$ExpectedSourceCommit;ProducerSha256=$ExpectedBuildSha256;FixtureBuilderSha256=(Get-FileHash -LiteralPath $FixtureBuilderPath -Algorithm SHA256).Hash}
-foreach($relative in @('Code/10_SSIS/050_USP_SsisExecutionComparison.sql','Code/Tools/Invoke-SsisCatalogHandover.ps1','Code/Tools/Invoke-SsisProjectScopeHandover.ps1','Code/Tests/Integration/226_SsisExecutionComparison_Native_Contract.ps1','Code/Tests/Fixtures/SSIS_Execution_Correlation/CreatePipelineProject.cs')){$record.SourceBindings[$relative]=(Get-FileHash -LiteralPath (Join-Path $root $relative) -Algorithm SHA256).Hash}
+foreach($relative in @('Code/10_SSIS/045_InternalSsisExecutionMetrics.sql','Code/10_SSIS/050_USP_SsisExecutionComparison.sql','Code/10_SSIS/060_USP_SsisExecutionBaseline.sql','Code/Tools/Invoke-SsisCatalogHandover.ps1','Code/Tools/Invoke-SsisProjectScopeHandover.ps1','Code/Tests/Integration/226_SsisExecutionComparison_Native_Contract.ps1','Code/Tests/Integration/228_SsisExecutionBaseline_Native_Contract.ps1','Code/Tests/Fixtures/SSIS_Execution_Correlation/CreatePipelineProject.cs')){$record.SourceBindings[$relative]=(Get-FileHash -LiteralPath (Join-Path $root $relative) -Algorithm SHA256).Hash}
 $database='SyntheticSsisNative_'+[guid]::NewGuid().ToString('N');$databaseCreated=$false;$counter=[pscustomobject]@{Value=0}
 $target=@{RunId=$RunId;InstanceId=$InstanceId;WindowsAuthentication=$true;Database='SSISDB';KeepConnection=$true;TimeoutSeconds=60}
 function Save-Record {[IO.File]::WriteAllText($receipt,($record|ConvertTo-Json -Depth 16),[Text.UTF8Encoding]::new($false))}
@@ -125,6 +129,76 @@ function Test-OutputParity($Baseline,$Candidate) {
  }
  Assert ((Read-Comparison $Baseline $Candidate CONSOLE -Detailed).Data.Tables.Count -eq 2 -and (Read-Comparison $Baseline $Candidate NONE -Detailed).Data.Tables.Count -eq 1) 'CONSOLE_NONE_CONTRACT'
 }
+
+$baselineGroups=@('baselineBinding','executionCohort','metricBaseline','baselineFindings','baselineCoverage')
+$baselineOrders=@('CandidateExecutionId','RunOrdinal','ComparisonKeySha256','RuleId,ComparisonKeySha256','RunOrdinal,SourceName,ComparisonKeySha256')
+function Read-Baseline($Baselines,$Candidate,[string]$Mode='NONE',[switch]$Detailed) {
+ $entries=@($Baselines|ForEach-Object {[ordered]@{projectModelsJson=$_.ProjectModelsJson;scopeSnapshotJson=$_.ScopeSnapshotJson;scopeHandoverId=$_.ScopeHandoverId.ToString();executionId=$_.NativeExecutionId.ToString()}})
+ $prefix='';$suffix='';$mapping=[ordered]@{}
+ if($Mode -ceq 'TABLE'){for($i=0;$i -lt 5;$i++){$table='#SyntheticBaseline'+$i;$mapping[$baselineGroups[$i]]=$table;$prefix+="CREATE TABLE $table ([Seed] int);";$suffix+="SELECT * FROM $table ORDER BY $($baselineOrders[$i]);DROP TABLE $table;"}}
+ $data=Query ($prefix+"DECLARE @j nvarchar(max);EXEC monitor.USP_SsisExecutionBaseline @BaselineExecutionsJson=@B,@CandidateProjectModelsJson=@CM,@CandidateScopeSnapshotJson=@CC,@CandidateScopeHandoverId=@CI,@CandidateExecutionId=@CE,@MinDurationDeltaMs=500,@MinDurationDeltaPercent=10,@MaxZeilen=0,@MaxDurationSeconds=60,@ResultSetArt=@Mode,@ResultTablesJson=@Mapping,@JsonErzeugen=1,@Json=@j OUTPUT;"+$suffix+'SELECT @j;') @{B=(ConvertTo-Json -InputObject $entries -Depth 8 -Compress);CM=$Candidate.ProjectModelsJson;CC=$Candidate.ScopeSnapshotJson;CI=$Candidate.ScopeHandoverId;CE=$Candidate.NativeExecutionId;Mode=$Mode;Mapping=$(if($Mode -ceq 'TABLE'){$mapping|ConvertTo-Json -Compress}else{[DBNull]::Value})}
+ $json=$data.Tables[$data.Tables.Count-1].Rows[0][0]|ConvertFrom-Json -Depth 40
+ if($Detailed){return [pscustomobject]@{Data=$data;Json=$json}};return $json
+}
+function Native-BaselineValue($Capture,$Metric,$Evidence) {
+ if($Metric.Unit -ceq 'MS'){
+  $proxy=[pscustomobject]@{BaselineSourceId=$Evidence.SourceId;ObjectKind=$Metric.ObjectKind;MetricName=$Metric.MetricName}
+  return Native-DurationValue $Capture $proxy Baseline
+ }
+ if($Metric.ObjectKind -ceq 'PHASE'){
+  $seed=@($Capture.componentPhases|Where-Object {[long]$_.phaseStatsId -eq [long]$Evidence.SourceId});Assert ($seed.Count -eq 1) 'BASELINE_PHASE_SOURCE'
+  return [decimal]@($Capture.componentPhases|Where-Object {$_.executionPath -ceq $seed[0].executionPath -and $_.packageName -ceq $seed[0].packageName -and $_.taskName -ceq $seed[0].taskName -and $_.componentName -ceq $seed[0].componentName -and $_.phaseName -ceq $seed[0].phaseName}).Count
+ }
+ $seed=@($Capture.pathTransfers|Where-Object {[long]$_.dataStatsId -eq [long]$Evidence.SourceId});Assert ($seed.Count -eq 1) 'BASELINE_PATH_SOURCE'
+ $transfers=@($Capture.pathTransfers|Where-Object {$_.executionPath -ceq $seed[0].executionPath -and $_.packageName -ceq $seed[0].packageName -and $_.taskName -ceq $seed[0].taskName -and $_.pathIdentificationString -ceq $seed[0].pathIdentificationString -and $_.pathName -ceq $seed[0].pathName -and $_.sourceComponentName -ceq $seed[0].sourceComponentName -and $_.destinationComponentName -ceq $seed[0].destinationComponentName})
+ if($Metric.MetricName -ceq 'PATH_TRANSFER_COUNT'){return [decimal]$transfers.Count}
+ $sum=[decimal]0;foreach($transfer in $transfers){$sum+=[decimal]$transfer.rowsSent};return $sum
+}
+function Test-BaselineOutputParity($Baselines,$Candidate) {
+ $raw=Read-Baseline $Baselines $Candidate RAW -Detailed;$tableResult=Read-Baseline $Baselines $Candidate TABLE -Detailed
+ Assert ($raw.Data.Tables.Count -eq 6 -and $tableResult.Data.Tables.Count -eq 6) 'BASELINE_RAW_TABLE_FIVE_GROUPS'
+ for($i=0;$i -lt 5;$i++){
+  $left=$raw.Data.Tables[$i];$right=$tableResult.Data.Tables[$i];$jsonRows=@($raw.Json.($baselineGroups[$i]))
+  Assert ($left.Columns.Count -eq $right.Columns.Count -and $left.Rows.Count -eq $right.Rows.Count -and $left.Rows.Count -eq $jsonRows.Count) 'BASELINE_OUTPUT_SHAPE'
+  for($column=0;$column -lt $left.Columns.Count;$column++){
+   $definition=$left.Columns[$column];Assert ($definition.ColumnName -ceq $right.Columns[$column].ColumnName -and $definition.DataType -eq $right.Columns[$column].DataType) 'BASELINE_NATIVE_SCHEMA'
+   for($row=0;$row -lt $left.Rows.Count;$row++){
+    $value=$left.Rows[$row][$column];$other=$right.Rows[$row][$column];$jv=$jsonRows[$row].($definition.ColumnName)
+    if($value -is [DBNull]){Assert ($other -is [DBNull] -and $null -eq $jv) 'BASELINE_OUTPUT_NULL';continue}
+    if($value -is [byte[]]){Assert ([Convert]::ToBase64String($value) -ceq [Convert]::ToBase64String($other) -and [Convert]::ToBase64String($value) -ceq $jv) 'BASELINE_OUTPUT_BINARY'}
+    elseif($value -is [string]){Assert ($value -ceq $other -and $value -ceq [string]$jv) 'BASELINE_OUTPUT_TEXT'}
+    else{Assert ($value.Equals($other) -and $value -eq $jv) 'BASELINE_OUTPUT_TYPED'}
+   }
+  }
+ }
+ Assert ((Read-Baseline $Baselines $Candidate CONSOLE -Detailed).Data.Tables.Count -eq 2 -and (Read-Baseline $Baselines $Candidate NONE -Detailed).Data.Tables.Count -eq 1) 'BASELINE_CONSOLE_NONE'
+}
+function Test-BaselineContract($Baselines,$Candidate,[string]$Scenario) {
+ Assert ($Baselines.Count -eq 5) 'FIVE_NATIVE_BASELINES'
+ $result=Read-Baseline $Baselines $Candidate
+ $record.BaselineResults+=@([ordered]@{Scenario=$Scenario;Result=$result});Save-Record
+ Assert ($result.baselineBinding[0].StatusCode -ceq 'BASELINE_CAPTURE_BOUND' -and $result.baselineBinding[0].AnalyzedExecutionCount -eq 6 -and $result.executionCohort.Count -eq 6) 'BASELINE_NATIVE_BOUND_ONCE'
+ Assert ($result.baselineBinding[0].WorkloadEquivalence -ceq 'UNPROVEN' -and $result.baselineBinding[0].IsPartial -and @($result.baselineFindings|Where-Object Severity -CNE 'INFO').Count -eq 0) 'BASELINE_EVIDENCE_LIMITS'
+ if($Scenario -cin @('Equal','Delay','Volume')){
+  foreach($metric in $result.metricBaseline){
+   $evidence=@($result.baselineCoverage|Where-Object {$_.SourceName -ceq 'metrics' -and $_.ComparisonKeySha256 -ceq $metric.ComparisonKeySha256 -and $_.RunOrdinal -gt 0 -and $_.StatusCode -ceq 'INCLUDED'})
+   Assert ($metric.ValidBaselineCount -eq $evidence.Count -and $metric.ExcludedBaselineCount -eq 5-$evidence.Count) 'BASELINE_PER_METRIC_N'
+   $values=@(@(foreach($item in $evidence){$capture=$Baselines[[int]$item.RunOrdinal-1].ScopeSnapshotJson|ConvertFrom-Json -Depth 40;$value=Native-BaselineValue $capture $metric $item;Assert ($value -eq [decimal]$item.ObservedValue) 'BASELINE_INDEPENDENT_SOURCE_VALUE';$value})|Sort-Object)
+   if($values.Count -gt 0){
+    $median=if($values.Count%2 -eq 1){[decimal]$values[[int][math]::Floor($values.Count/2)]}else{([decimal]$values[$values.Count/2-1]+[decimal]$values[$values.Count/2])/2}
+    Assert ($metric.MedianValue -eq $median -and $metric.MinValue -eq $values[0] -and $metric.MaxValue -eq $values[-1] -and $metric.SpreadValue -eq [decimal]$values[-1]-[decimal]$values[0]) 'BASELINE_INDEPENDENT_EXACT_STATISTICS'
+    if($null -ne $metric.DeltaValue){Assert ([decimal]$metric.DeltaValue -eq [decimal]$metric.CandidateValue-$median) 'BASELINE_INDEPENDENT_DELTA';if($median -eq 0){Assert ($null -eq $metric.DeltaPercent) 'BASELINE_ZERO_MEDIAN'}else{Assert ([decimal]$metric.DeltaPercent -eq [decimal]::Round(100*([decimal]$metric.CandidateValue-$median)/$median,6,[MidpointRounding]::AwayFromZero)) 'BASELINE_INDEPENDENT_PERCENT'}}
+   }
+  }
+  if($Scenario -ceq 'Equal'){Assert (@($result.metricBaseline|Where-Object {$_.MetricName -ceq 'PATH_ROWS_SENT' -and $_.DeltaValue -ne 0}).Count -eq 0) 'BASELINE_EQUAL_ROWS';Test-BaselineOutputParity $Baselines $Candidate}
+  if($Scenario -ceq 'Delay'){Assert (@($result.baselineFindings|Where-Object RuleId -CEQ 'SSIS_BASELINE_DURATION_THRESHOLD_EXCEEDED').Count -gt 0) 'BASELINE_DELAY_FINDING'}
+  if($Scenario -ceq 'Volume'){Assert (@($result.baselineFindings|Where-Object RuleId -CEQ 'SSIS_BASELINE_OBSERVED_ROWS_CHANGED').Count -gt 0 -and @($result.baselineFindings|Where-Object RuleId -CEQ 'SSIS_BASELINE_DURATION_THRESHOLD_EXCEEDED').Count -eq 0) 'BASELINE_VOLUME_GUARD'}
+ }else{
+  Assert (@($result.metricBaseline|Where-Object {$null -ne $_.DeltaValue}).Count -eq 0 -and @($result.baselineFindings|Where-Object RuleId -CEQ 'SSIS_BASELINE_DURATION_THRESHOLD_EXCEEDED').Count -eq 0) 'BASELINE_CONTEXT_GUARD'
+  Assert (@($result.executionCohort|Where-Object {$_.ContextStatus -ceq $(if($Scenario -ceq 'Logging'){'LOGGING_LEVEL_DIFFERENT'}else{'NOT_BOTH_SUCCEEDED'})}).Count -ge 5) 'BASELINE_EXPLICIT_RUN_EXCLUSION'
+ }
+}
+
 try {
     Save-Record;$connection.Open()
     $record.DatabaseAttempted=$true;Save-Record
@@ -132,7 +206,7 @@ try {
     $dbIdentity=(Query 'SELECT database_id,create_date,service_broker_guid FROM sys.databases WHERE name=@name;' @{name=$database}).Tables[0].Rows[0]
     $record.DatabaseIdentity=[ordered]@{Name=$database;Id=[int]$dbIdentity.database_id;Created=[datetime]$dbIdentity.create_date;BrokerGuid=[guid]$dbIdentity.service_broker_guid};Save-Record
     $connection.ChangeDatabase($database);[void](Query 'CREATE SCHEMA monitor AUTHORIZATION dbo;')
-    foreach($relative in @('Code/01_Common/095_USP_InternalWriteResultTable.sql','Code/01_Common/096_USP_InternalPrepareResultTables.sql','Code/01_Common/098_USP_InternalEmitConsoleResult.sql','Code/10_SSIS/034_InternalSsisScopePathMatch.sql','Code/10_SSIS/036_InternalSsisPipelineCorrelation.sql','Code/10_SSIS/037_InternalSsisPipelineDiagnostics.sql','Code/10_SSIS/035_InternalSsisExecutionScopes.sql','Code/10_SSIS/040_USP_SsisPackageModelAnalysis.sql','Code/10_SSIS/050_USP_SsisExecutionComparison.sql')) {
+    foreach($relative in @('Code/01_Common/095_USP_InternalWriteResultTable.sql','Code/01_Common/096_USP_InternalPrepareResultTables.sql','Code/01_Common/098_USP_InternalEmitConsoleResult.sql','Code/10_SSIS/034_InternalSsisScopePathMatch.sql','Code/10_SSIS/036_InternalSsisPipelineCorrelation.sql','Code/10_SSIS/037_InternalSsisPipelineDiagnostics.sql','Code/10_SSIS/035_InternalSsisExecutionScopes.sql','Code/10_SSIS/040_USP_SsisPackageModelAnalysis.sql','Code/10_SSIS/045_InternalSsisExecutionMetrics.sql','Code/10_SSIS/050_USP_SsisExecutionComparison.sql','Code/10_SSIS/060_USP_SsisExecutionBaseline.sql')) {
         $sql=[IO.File]::ReadAllText((Join-Path $root $relative)).Replace('USE [DeineDatenbank];',"USE [$database];")
         foreach($batch in [regex]::Split($sql,'(?im)^\s*GO\s*$')){if($batch.Trim()){[void](Query $batch)}}
     }
@@ -185,7 +259,7 @@ END;
         [pscustomobject]@{Before=(Convert-SourceTable $response.ResultSets[0]);Archive=[Convert]::FromBase64String([string]$response.ResultSets[1].Rows[0][0]);Observations=(Convert-SourceTable $response.ResultSets[2]);Events=(Convert-SourceTable $response.ResultSets[3]);ComponentPhases=(Convert-SourceTable $response.ResultSets[4]);PathTransfers=(Convert-SourceTable $response.ResultSets[5]);After=(Convert-SourceTable $response.ResultSets[6])}
     }
 
-    $baseline=$null
+    $baseline=$null;$baselineCohort=[Collections.Generic.List[object]]::new()
     foreach($scenario in $Scenarios){
         $record.Phase='SCENARIO_'+$scenario;Save-Record
         if($scenario -ceq 'Redeploy'){
@@ -216,7 +290,8 @@ END;
         Assert ($handover.Status -ceq 'CAPTURED') 'INDEPENDENT_HANDOVER_CAPTURED'
         $handover|Add-Member -NotePropertyName NativeExecutionId -NotePropertyValue $record.ExecutionId
         $record.Captures+=@([ordered]@{Scenario=$scenario;Models=$handover.ProjectModelsJson;Capture=$handover.ScopeSnapshotJson;HandoverId=$handover.ScopeHandoverId});Save-Record
-        if($scenario -ceq 'Baseline'){$baseline=$handover;$record.CompletedScenarios+=@($scenario);Save-Record;continue}
+        if($scenario -cmatch '^Baseline[2-5]?$'){if($scenario -ceq 'Baseline'){$baseline=$handover};$baselineCohort.Add($handover);$record.CompletedScenarios+=@($scenario);Save-Record;continue}
+        if($IncludeBaselineContract){Test-BaselineContract $baselineCohort $handover $scenario}
         $comparison=Read-Comparison $baseline $handover
         $record.Comparisons+=@([ordered]@{Scenario=$scenario;Result=$comparison});Save-Record
         if($scenario -ceq 'Redeploy'){

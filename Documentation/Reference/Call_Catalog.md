@@ -847,3 +847,11 @@ EXEC [monitor].[USP_SsisExecutionComparison] @Hilfe = 1;
 ```
 
 Der [Ausführungsvergleich](../Analysis_Guides/Procedures/USP_SsisExecutionComparison.md) verlangt zwei lokal attestierte Scope-/Pipelinecaptures desselben exakten Exports. Die Hilfe ist ohne Captures aufrufbar.
+
+## `[monitor].[USP_SsisExecutionBaseline]`
+
+```sql
+EXEC [monitor].[USP_SsisExecutionBaseline] @Hilfe = 1;
+```
+
+Die [Mehrlauf-Baseline](../Analysis_Guides/Procedures/USP_SsisExecutionBaseline.md) verarbeitet explizit übergebene, unabhängig lokal attestierte Captures derselben Modellrevision. Der Hilfeaufruf benötigt keine Capturewerte.

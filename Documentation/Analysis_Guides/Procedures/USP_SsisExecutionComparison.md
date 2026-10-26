@@ -92,7 +92,7 @@ Sind zwei unabhängig belegte Beobachtungssets derselben Modellrevision an derse
 
 ### Technischer Hintergrund
 
-Die bestehende `USP_SsisPackageModelAnalysis` übernimmt Bindung, Pfadauflösung und Diagnoseaggregation je Seite. Der Vergleich projiziert deren Ergebnisse und ergänzt keine zweite Parser- oder Lineageimplementierung.
+Die bestehende `USP_SsisPackageModelAnalysis` übernimmt Bindung, Pfadauflösung und Diagnoseaggregation je Seite. Der gemeinsame `InternalSsisExecutionMetrics` projiziert diese Ergebnisse und bildet Positionsschlüssel für Paarvergleich und [Mehrlauf-Baseline](USP_SsisExecutionBaseline.md). Er ergänzt keine zweite Parser- oder Lineageimplementierung.
 
 ### Datenkette
 

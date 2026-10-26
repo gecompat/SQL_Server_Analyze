@@ -255,3 +255,5 @@ Diese Abfragen führen ebenfalls keine Diagnose aus.
 Für die praktische Auswahl dient [Hier beginnen](../Analysis_Guides/Start_Here.md). Für Parameterdefaults und Datentypen siehe die [Procedure-Referenz](Procedure_Reference.md); für jede unterstützende Komponente die [Objektreferenz](Object_Reference.md).
 
 Der gezielte [SSIS-Ausführungsvergleich](../Analysis_Guides/Procedures/USP_SsisExecutionComparison.md) ist über die Suchbegriffe SSIS Ausführungsvergleich auffindbar. Sein Hilfeaufruf erläutert die zwei erforderlichen lokalen Übergaben.
+
+Die [SSIS-Mehrlauf-Baseline](../Analysis_Guides/Procedures/USP_SsisExecutionBaseline.md) ist über SSIS Baseline Median auffindbar. Die gemeinsame Modellrevision und unabhängige lokale Übergaben bleiben Voraussetzung; eine automatische Auswahl historischer Läufe erfolgt nicht.

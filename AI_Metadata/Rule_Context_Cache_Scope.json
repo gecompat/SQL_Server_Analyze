@@ -1559,6 +1559,11 @@
       "source": "AI_Metadata/Internal_Documentation/Architecture/File_IO_Snapshot_Dossier.md",
       "target": "AI_Metadata/Internal_Documentation/Architecture/File_IO_Snapshot_Field_Contract.md",
       "classification": "product-reference"
+    },
+    {
+      "source": "AI_Metadata/Internal_Documentation/Quality/Next_Steps.md",
+      "target": "Documentation/Analysis_Guides/Procedures/USP_SsisExecutionBaseline.md",
+      "classification": "product-reference"
     }
   ]
 }
