@@ -22,11 +22,16 @@ PASS-Marker behauptet. Der TRUNCATE-/MinValidVersion-Fall belegt keine
 zeitbasierte Retention oder Backgroundbereinigung. Lokale native Versuche
 bleiben null.
 
-Schritt 27 konkretisiert im [Linux-cgroup-Dossier](../Architecture/Linux_Cgroup_Resource_Boundary_Dossier.md)
-den primärquellenbasierten Entwurf für den ersten lesenden Reader-Slice.
-Collectorcode, Nativevidenz und SQL-Limitwirkung bleiben offen. Die Bearbeitung
-verwendet ECONOMICAL/LOCAL und eskaliert gezielt bei konkretem ungeklärtem
-Vertrags- oder Prüfbedarf.
+Schritt 27 konkretisierte den Reader-Vertrag im
+[Linux-cgroup-Dossier](../Architecture/Linux_Cgroup_Resource_Boundary_Dossier.md)
+und in der öffentlichen
+[Readerspezifikation](../../../Documentation/Analysis_Guides/Linux_Cgroup_Reader_Contract.md).
+Schritt 28 bündelt Native-Primitiven, Reader/CLI, portable Wire-Oracles und den
+gezielten Linux-Nativejob als PR-Kandidat. Unabhängiger Review, tatsächlicher
+Linux-CI-Lauf und PR-Gates stehen aus; lokal erfolgte keine Nativeausführung.
+Hostqualifikation, cgroup-Limitwirkung und SQL-Bindung bleiben offen. Die
+Bearbeitung verwendet ECONOMICAL/LOCAL und eskaliert gezielt bei konkretem
+ungeklärtem Vertrags- oder Prüfbedarf.
 
 ## Historischer SSIS-Auftrag: elfte Paketwelle
 
@@ -126,10 +131,14 @@ Targetpatch 1.1.1 einschließlich aller Head- und Main-Gates integriert.
 Das interne Wait-Target 1.2.0 ist über PR #451 einschließlich aller sieben Head-Checks, vollständigem SQL2025-Head-/Main-Gate und gezielter nativer SQL2019-Snapshotprüfung integriert. Die öffentliche Frameworkaktivierung mit Targetpatch 1.2.1 ist über PR #453 einschließlich aller sieben Head-Checks, vollständigem SQL2025-Gate und gezielter nativer SQL2019-Abnahme integriert; alle vier getrennten Main-Prüfungen einschließlich des vollständigen SQL2025-Gates bestehen. Der [Datei-I/O-Vorvertrag](../Architecture/File_IO_Snapshot_Dossier.md) ist über PR #454 mit allen vier Head- und drei Main-Prüfungen integriert. Der [genaue Feld- und Migrationsvertrag](../Architecture/File_IO_Snapshot_Field_Contract.md) ist über PR #455 mit allen Head-/Main-Gates integriert. Das interne FILE_IO-Target 1.3.0 / Schema 3 und die notwendige Waitkompatibilität sind über [PR #456](https://github.com/gecompat/SQL_Server_Analyze/pull/456) integriert. Alle sieben Head-Prüfungen, das vollständige SQL2025-Gate, die gezielte native SQL2019-Risikoabnahme und alle vier getrennten Main-Gates bestehen. Der erste Main-Versuch scheiterte im Legacy-SSIS-TABLE-Fall 202/C008 mit Timeout; ein begrenzter Wiederlauf bestand ohne Produktänderung. BLOCKER_NOT_CAPTURED bleibt mit Ursache UNKNOWN erhalten. Die öffentliche native Datei-I/O-Aufnahme mit Targetpatch 1.3.1 / Schema 3 und Retentionsvertrag 3 ist über [PR #458](https://github.com/gecompat/SQL_Server_Analyze/pull/458) als 1a144251 integriert. Alle sieben Head-Checks, das vollständige SQL2025-Gate und die gezielte native SQL2019-Snapshot-Risikoabnahme bestehen am Head 23730d1d. Merge- und Headbaum sind identisch. Alle vier getrennten Main-Gates einschließlich des vollständigen SQL2025-Laufs 40273412551 bestehen. Der nächste unabhängige Rang 11 beginnt mit dem Upgrade-Usage-Vertrag.
 Der erste Rang-11-Slice ist über PR #459 integriert. PR #460 bis PR #463
 schließen Linux-cgroup-Vertrags- und Parser-Slices ab; PR #464 schließt den
-begrenzten Common-159-TRUNCATE-/MinValidVersion-Fall ab. Schritt 27 präzisiert
-den noch nicht implementierten Reader-Vertrag im
-[Dossier](../Architecture/Linux_Cgroup_Resource_Boundary_Dossier.md).
-Collector, native cgroup-Limitwirkung, SQL-Import und Hostqualifikation bleiben
+begrenzten Common-159-TRUNCATE-/MinValidVersion-Fall ab. Schritt 27 präzisierte
+den Reader-Vertrag im [Dossier](../Architecture/Linux_Cgroup_Resource_Boundary_Dossier.md)
+und in der öffentlichen
+[Readerspezifikation](../../../Documentation/Analysis_Guides/Linux_Cgroup_Reader_Contract.md).
+Schritt 28 bündelt Native-Primitiven, Reader/CLI, portable Wire-Oracles und den
+gezielten Linux-Nativejob als PR-Kandidat. Unabhängiger Review, tatsächlicher
+Linux-CI-Lauf und PR-Gates stehen aus; lokal erfolgte keine Nativeausführung.
+SQL-Import, kontrollierte cgroup-Limitwirkung und Hostqualifikation bleiben
 getrennte offene Grenzen.
 
 ## Abgeschlossen: fünf SSIS-Paketwellen vom 25. Oktober 2026

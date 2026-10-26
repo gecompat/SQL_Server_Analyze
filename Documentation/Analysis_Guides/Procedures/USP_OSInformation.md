@@ -13,6 +13,10 @@ Die Procedure beantwortet die Betriebsfrage: **Welche Betriebssystem-, Host-, Vi
 
 Die Procedure beantwortet keine vollständige OS-/Hypervisorursache und ohne Delta oder Verlauf keine belastbare Aussage über einen dauerhaften Engpass. Der Zeitvertrag ist im Abschnitt „Zeit- und Scope-Modell“ konkretisiert. Ein Einzelwert gilt daher nur für diesen Scope und Zeitpunkt; er belegt weder eine Ursache noch eine Entwicklung.
 
+## Externe Linux-cgroup-Gegenprobe
+
+Ein separater [Linux-cgroup-Reader](../Linux_Cgroup_Reader.md) kann die begrenzten cgroup-v2-Werte eines ausdrücklich ausgewählten Linux-Prozesses beobachten. Diese Ausgabe gehört nicht zum SQL-Resultset von `USP_OSInformation` und bindet den Prozess nicht automatisch an die SQL-Instanz. Vergleichen Sie beide Beobachtungen nur mit einer unabhängigen Prüfung der Prozessidentität.
+
 ## Sicherer Einstieg
 
 ```sql
