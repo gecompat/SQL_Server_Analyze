@@ -609,3 +609,283 @@ die vorhandenen Vertrags-, Dokumentations- und Datenschutzgates prüfen den
 stabilen Lieferstand. Unveränderte grüne Prüfungen werden ohne neuen Input
 nicht wiederholt. Token- und Kostenmessung ist nicht verfügbar und wird
 nicht aus Laufzeiten abgeleitet.
+
+## Öffentliche Quelle und Targetpatch 1.3.1
+
+Dieser Abschnitt beschreibt die im Quellstand umgesetzte Fortsetzung der
+öffentlichen Aufnahme. Der integrierte Stand aus PR #456 bleibt getrennt
+Target 1.3.0 / Schema 3 mit internem Backend. Die neue öffentliche Quelle und
+Targetpatch 1.3.1 besitzen einen abgeschlossenen Produktreview; lokale
+Laufzeitqualifikation und reguläre Head-/Main-Gates werden separat nachgewiesen. Source- und Kontextlayouts
+bleiben Version 1; die erweiterten Fehler- und Vorgängerregeln gelten erst
+mit dem ausdrücklich passenden Targetpatch 1.3.1.
+
+### Ehrliche Read- und Zeitgrenzen
+
+SUCCEEDED bezeichnet den tatsächlich erfolgreichen einzigen nativen SQL-Read.
+Ein danach fehlender Engine- oder Zeitbeleg macht diesen Read nicht zu FAILED.
+Die dafür nicht mehr verwendbaren Dateiwerte werden bei einem fatalen Capture
+verworfen; ihre tatsächlich beobachtete ausgewählte Menge bleibt erhalten.
+Ein kontrollierter Bindungsfehler ohne native SQL-Ausnahme erfindet keine
+native Fehlernummer. Originale Source-Issuefehler bleiben unverändert.
+
+| Sourcezustand | NativeReadState | selectedNativeRows und files | Zeitbindung |
+|---|---|---|---|
+| Nichtfatal | SUCCEEDED | Die bekannte Anzahl ist gleich der tatsächlichen Dateienmenge; die bisherigen Partition- und Limitregeln gelten. | Mess- und natives Fenster sind vollständig, geordnet und an Runstart/Abschluss gebunden. |
+| Nichtfatal | NOT_STARTED | Die tatsächliche Datenbankauswahl ist leer, die Menge ist der String 0 und files ist leer. | Das Messfenster ist gültig; das native Fenster ist NULL. |
+| Fatal | SUCCEEDED | Die tatsächlich beobachtete ausgewählte Menge ist bekannt und nicht negativ; files ist leer. Es entstehen keine Metrics. | Nicht mehr bestätigbare Fensterpaare sind NULL; erhaltene Paare sind intern gültig. |
+| Fatal | FAILED | Die native Menge ist NULL und files ist leer. Es entstehen keine Metrics. | Das native Fenster ist NULL. |
+| Fatal | NOT_STARTED | Bei leerer tatsächlicher Auswahl ist die Menge 0, bei nichtleerer Auswahl NULL; files ist leer. Es entstehen keine Metrics. | Das native Fenster ist NULL. |
+
+Alle fatalen Frames tragen sourceComplete=false, isPartial=true und engine=null.
+Halbe Zeitpaare bleiben unzulässig. Erhaltene Zeitpaare müssen intern geordnet
+sein. Ein Sourcefenster, dessen Zuordnung zu Runstart, Gesamtfenster oder
+Abschluss nicht bestätigt werden kann, wird im fatalen Rahmen als Paar
+verworfen; es werden keine passenden UTC-Werte konstruiert. Die ursprünglich
+erfassten Beobachtungsgrenzen können als diagnostische Evidenz erhalten
+bleiben, ohne eine gültige Messbindung zu behaupten.
+
+Nicht ausgeführte Metadatenabfragen erhalten keine erfundene native Ausnahme.
+Ein fataler vorzeitiger Abbruch darf ihren MetadataStatusCode als ERROR_HANDLED
+mit einer ausdrücklichen Diagnose zum nicht ausgeführten Read darstellen;
+ErrorNumber bleibt dafür NULL. AVAILABLE verlangt weiterhin die tatsächlich
+bestätigten stabilen Kontextreads. Die erste tatsächliche native Issuefehlernummer
+und der zugehörige Meldungstext bleiben die Sourcefehlerprojektion.
+
+### Eindeutige Issueprojektion im vorhandenen Schema
+
+Der erste öffentliche lokale Smokeversuch erreichte den Collector wegen eines
+falschen Testkontexts nicht. Der zweite Versuch belegt einen bisher ungetesteten
+Produktfehler: Die eindeutige Kombination CaptureRunId/ModuleName verhindert
+mehrere gleichnamige Issues und den zweiten FileIOSourceIssueContext. Der
+alte synthetische Targetvertrag deckte nur J<=1 ab. Die früheren Prüfungen
+belegen daher keine erfolgreiche Mehrfach-Issuepersistenz.
+
+Targetpatch 1.3.1 erhält Schema und UNIQUE-Vertrag. Die erste Beobachtung eines
+SourceName trägt weiterhin diesen unveränderten ModuleName. Weitere gleiche
+SourceNames erhalten den Suffix #<Ordinal>. Maßgeblich ist der nullbasierte
+Originalordinal im Source-JSON-Array; es wird keine Zählung je SourceName
+eingeführt. Der erste Kontext am Ordinal 0 heißt FileIOSourceIssueContext,
+weitere heißen FileIOSourceIssueContext#<Ordinal>. Die geschlossenen
+Sourcenamen enthalten kein #, und sämtliche resultierenden Namen passen in
+sysname. Der originale SourceName bleibt damit vollständig und eindeutig
+rekonstruierbar. J=0 und J=1 bleiben kompatibel.
+
+Normaler und gesonderter Fehlerwrite verwenden dieselbe Ableitung und dieselben
+Originalordinals. Status, Fehlernummer, Meldung, EvidenceLimit und das bestehende
+sechsstellige Kontextlayout bleiben unverändert. sourceModuleStatusId bindet
+jeweils die tatsächlich zugehörige Issuezeile. Summary, technischer Fehlerrecord
+und Boundary behalten ihre eigenen überschneidungsfreien Namen. Die Gegenprobe
+A[0], B[1], A[2] verlangt die Quellenmodule A, B und A#2 sowie die Kontextnamen
+ohne Suffix, mit #1 und mit #2. Die Mengenformeln und der vollständige atomare
+Rollback gelten auch für J>1; es werden keine Issues zusammengefasst oder gekürzt.
+
+### Unbestätigte Finalisierung ohne erfundene Endzeit
+
+Der bestehende CHECK EndedAtUtc>=StartedAtUtc bleibt bestehen. Liegt die
+tatsächliche Fehleraufzeichnungszeit vor dem gespeicherten Runstart, kann der
+Lauf nicht sofort mit einer wahrheitsgetreuen Endzeit finalisiert werden.
+Numerische Writes werden zurückgerollt. Der gespeicherte Lauf bleibt mit
+EndedAtUtc=NULL ausdrücklich unfinalisiert; eine künstliche Endzeit, ein
+nachträglich veränderter Runstart oder ein erfundener Abbruchgrund ist
+unzulässig.
+
+Ein gesonderter eigener Fehlerwrite darf ausschließlich den zuvor bestätigten
+eigenen, noch unbeschriebenen FILE_IO-Lauf in derselben erwarteten
+Targetidentität binden. Er setzt den gespeicherten Status auf ERROR_HANDLED,
+IsPartial=1, MetricSampleCount=0 und PayloadCount=0; ResetEpochId und
+SqlServerStartTimeUtc bleiben NULL. Die tatsächliche Aufzeichnungszeit darf
+vor dem Runstart liegen. Das Ergebnis liefert dieselbe tatsächliche Run-ID,
+StatusCodeOut=FINALIZATION_UNCONFIRMED und IsPartialOut=1; RETURN bleibt beim bestehenden
+Vertrag 0, sofern keine frühe ungültige Callereingabe 51011 erfordert.
+EndedAtUtc=NULL und die Boundary verhindern eine erfolgreiche
+Abschlussbehauptung. Der öffentliche Aufrufer liest diese tatsächliche Zeile
+zurück und ersetzt sie nicht durch einen scheinbar abgeschlossenen Bericht.
+
+Bereits unabhängig validierte Source-Issues und ihre Sourcefehlerprojektion
+werden beim separaten Fehlerwrite unverändert erhalten. Die Summary bleibt
+FileIOCollector mit IsPartial=1 und ErrorNumber=NULL. Ein zusätzliches
+technisches Fehlerrecord mit ModuleName=snapshot.InternalCompleteFileIOCycle
+trägt die tatsächlich abgefangene Targetfehlernummer und den vollständigen
+Targetfehlertext innerhalb des bestehenden Limits; es wird nicht als nativer
+Sourcefehler ausgegeben. Ohne tatsächlich abgefangene SQL-Ausnahme bleibt
+auch diese Fehlernummer NULL. Seine tatsächliche ModuleStatusId wird gebunden.
+
+Die zusätzliche Boundary trägt ModuleName=FileIOFinalizationBoundary,
+StatusCode=FINALIZATION_UNCONFIRMED, IsPartial=1 und ErrorNumber=NULL. Ihr
+ErrorMessage enthält exakt dieses kanonische JSON-Objekt in der angegebenen
+Reihenfolge:
+
+| Member | Typ und Bindung |
+|---|---|
+| schemaVersion | JSON-Zahl 1. |
+| captureRunId | Kanonischer String der tatsächlichen Run-ID. |
+| failureModuleStatusId | Kanonischer String der tatsächlich gespeicherten technischen Fehlerzeile. |
+| statusCode | String FINALIZATION_UNCONFIRMED. |
+| startedAtUtc | Unveränderter gespeicherter Runstart als UTC-String. |
+| recordedAtUtc | Tatsächliche UTC-Aufzeichnungszeit der Boundary. |
+| sourceIssuesPreserved | Boolean; true ausschließlich bei vollständig validierter und tatsächlich erhaltener Source-Issuemenge. |
+| finalizationConfirmed | Boolean false. |
+
+Die Targetbindung folgt der geprüften tatsächlichen Targetidentität und der
+CaptureRunId-Fremdschlüsselbindung; native Fehlertexte werden im Boundary-JSON
+nicht dupliziert oder verkürzt. Ein regulär abgeschlossener Sourcepfad besitzt weiterhin 1+2*J Modulzeilen.
+Nach technischem Targetfehler mit J validierten Source-Issues besitzt der
+separate Fehlerwrite zusätzlich zur Summary und den Issues einen technischen
+Fehlerrecord: 2+2*J Zeilen bei tatsächlicher bestätigbarer Endzeit beziehungsweise
+3+2*J mit zusätzlicher Boundary bei unbestätigter Finalisierung. Bei ungültigem
+Sourcevertrag ersetzt der kontrollierte SOURCE_CONTRACT-Nachweis die
+unvalidierten Issues; er besteht aus Fehlerzeile, gebundenem Kontext und
+Summary, gegebenenfalls mit zusätzlicher Boundary. Die Fehlerzeile ist dabei
+zugleich der gebundene technische Fehlerrecord. Unvalidierte Source-Issues
+werden nicht übernommen. Bei erfolgreichem gesondertem Fehlerwrite behalten Run- und Fehler-OUTPUT
+bei validierter Source deren unveränderte Fehlerprojektion. Ohne validierte
+Source verwenden sie die tatsächlich abgefangene Targetfehlernummer und den
+zugehörigen vollständigen Fehlertext.
+
+Scheitert auch dieser gesonderte Schreibversuch, gilt die folgende ausdrückliche
+technische OUTPUT-Ausnahme: StatusCodeOut bleibt FINALIZATION_UNCONFIRMED,
+IsPartialOut bleibt 1 und die bekannte Run-ID bleibt erhalten. ErrorNumberOut
+und ErrorMessageOut liefern die tatsächlich abgefangene Fehlernummer und den
+vollständigen Meldungstext dieses gescheiterten sekundären Writes innerhalb
+des bestehenden Limits. RETURN bleibt 0; der Status-OUTPUT ist maßgeblich.
+Dadurch erhält der Caller auch bei anschließend verweigertem Readback eine
+konkrete technische Diagnose. Weder Modulzeile noch Abschluss werden dann
+behauptet.
+
+Die ursprüngliche Sourcefehlerprojektion bleibt separat im unveränderten
+CollectorJson und in den bereits vorhandenen lokalen Sourcevariablen des
+aufrufenden Frameworkcollectors erhalten. Der Caller überschreibt diese Werte
+nicht mit der technischen OUTPUT-Ausnahme. Er darf daraus ausdrücklich nicht
+persistierte Source-/Frameworkdiagnosen in der bestehenden Modulausgabe mit
+ModuleStatusId=NULL projizieren; tatsächliche persistierte IDs werden dabei
+nicht erfunden. Wenn Readback zusätzlich scheitert, bleibt der Runbericht
+unbekannt beziehungsweise leer statt mit erfundenen Status-, Zeit- oder
+Mengendaten ergänzt zu werden. Die bekannte Run-ID und
+FINALIZATION_UNCONFIRMED bleiben über OUTPUT verfügbar. Die bestehende
+öffentliche run-/modules-Struktur bleibt erhalten; der neue Status ist
+auf den neuen FILE_IO-Pfad begrenzt.
+
+Die bereits angelegte offene Capture-Zeile selbst bleibt unabhängig von diesem
+Transport eine Vergleichsunterbrechung. Ein späterer erfolgreicher Capture
+schließt diesen alten Lauf nicht automatisch.
+
+### Vorgängergrenze und Retentionsvertrag 3
+
+FILE_IO wählt am neuen Target die größte vorhergehende Capture-ID unabhängig
+vom Abschluss. EndedAtUtc=NULL führt zum Status
+PREVIOUS_CAPTURE_UNCONFIRMED vor den übrigen Vorgängerprüfungen. Aktuelle
+Sourcepartialität und unvollständige aktuelle Identität behalten ihre höhere
+Priorität. Vom offenen Vorgänger werden weder Kontexte noch vorhandene
+Samples als Vergleichsbasis verwendet; previousContextVersion bleibt NULL.
+previousCaptureRunId bezeichnet dafür ausdrücklich diese tatsächliche
+vorhergehende ID. Der Rohwertvergleich springt nicht zu einem älteren Erfolg.
+
+Die unabhängige Epochenpriorität bleibt erhalten: unvollständige aktuelle
+Identität bedeutet NEW_UNBOUND_OBSERVATION. Eine sonst gültige neue
+Rohbeobachtung nach unbestätigtem Vorgänger erhält NEW_COMPARISON_BREAK und
+keine Kandidaten. Der darauffolgende gültige Capture darf diese neue Rohbasis
+verwenden; deren monotone Kandidaten bleiben unbewiesen und partiell.
+
+Retentionsvertrag 3 erhält für FILE_IO die größte Capture-ID unabhängig von
+EndedAtUtc, Status und vorhandenen Kindern. Erst eine höhere FILE_IO-ID gibt
+die ältere Zeile zur normalen Löschung frei. Höhere Wait- oder
+Performance-Counter-IDs geben sie nicht frei. WAIT_STATS behält die größte
+finalisierte ID einschließlich Fehlern; PERFORMANCE_COUNTERS behält seinen
+bisherigen Löschpfad. ContractOnly bleibt nach sicheren frühen Callerguards
+schreibfrei und erzeugt weder Recoverywrite noch Purge- oder Capturerun.
+
+### Versionierung und konkrete Abnahme
+
+| Vollständiges Target | Schema | Tatsächlicher Retentionsvertrag | Verwendung im neuen Framework |
+|---|---|---|---|
+| 1.2.1 | 2 | 1 | Der bestehende Waitpfad bleibt unterstützt. |
+| 1.3.0 | 3 | 2 | Der bestehende Waitpfad bleibt unterstützt. |
+| 1.3.1 | 3 | 3 | Waits und die neue öffentliche FILE_IO-Aufnahme werden zugelassen. |
+
+Das neue Framework wird beim getrennten Rollout zuerst installiert. Die
+bekannte 1.3.0-Struktur wird über das weiterhin ausdrücklich unvollständige
+Stadium 1.2.2 nach 1.3.1 aktualisiert. Vor dem Ready-Marker prüft die letzte
+Closure alle tatsächlichen Signaturen, beide Seedgruppen und den tatsächlichen
+schreibfreien Retentionsvertrag 3. Die veröffentlichten 1.3.0-Definitionen von
+055 und 057 werden zusätzlich zur bisherigen alten Waitbindung bytegenau
+für unterbrochene Recovery eingefroren und nativ bestätigt.
+
+Vor Implementierung werden die beschriebenen Grenzen unabhängig geprüft.
+Die Abnahme benötigt fatales NOT_STARTED mit leerer/nichtleerer Auswahl,
+SUCCEEDED mit positiver Menge und anschließend fataler Bindung, echte
+Read-Ausnahmen, halbe und rückläufige Fenster, unverändert strenge nichtfatale
+Mengenbindung sowie einen synthetisch zukünftigen Runstart ohne falsche
+Endzeit. Nachfolger müssen den unbestätigten Vorgänger berücksichtigen und
+danach eine neue gültige Rohbasis zulassen. Direkter Purge mit kleinem Batch
+und fehlenden Kindern muss die größte offene FILE_IO-ID erhalten und erst
+nach höherer FILE_IO-ID freigeben. Bekanntes 1.3.0-Patchupgrade, unterbrochene
+030-Recovery und alle drei tatsächlichen Waitprofile gehören ebenfalls dazu.
+Die kombinierte Gegenprobe aus fehlgeschlagenem sekundärem Fehlerwrite und
+verweigertem Readback muss eine verfügbare technische Callerdiagnose, getrennt
+erhaltene ursprüngliche Sourcefehler und weiterhin unbestätigten Abschluss
+belegen.
+Synthetische Zeitfälle belegen ausschließlich die Targetbehandlung; sie
+werden nicht als nativer Hostuhrsprung ausgewiesen.
+
+## Abnahmeumfang der öffentlichen Welle
+
+Der Produktreview ist ohne offene P1/P2 abgeschlossen. Vier Befunde sind
+korrigiert: Filter an fremden Collectors, stabile Offline-Dateien ohne native
+Zeile, ein nichtfataler FAILED-Frame und eine blockierende Helperauflösung.
+Der spätere echte Mehrfach-Issuebefund ist mit einer eigenen begrenzten
+Vertragsprüfung sowie dem Delta-/Testreview geschlossen. Zwei neue Befunde
+im Test betreffen Loginquoting und eine unvollständige FileId-Oracleabdeckung;
+beide sind korrigiert. Ein Codereview ersetzt keinen Laufzeitnachweis.
+
+Der erweiterte synthetische Targetvertrag 227 besteht lokal einschließlich
+A[0]/B[1]/A[2], nativer Wertebereiche und ungültiger/fataler Zeitframes,
+ursprünglicher Sourcefehlernummer 229 trotz technischem Targetfehler,
+unbestätigter Finalisierung mit J=3, unmittelbarer offener Vorgängergrenze,
+folgender gesunder Rohbasis und Retention ohne Kinder trotz höherer fremder
+Collector-IDs. Synthetische Runstarts verändern keine Hostuhr und belegen
+keinen tatsächlich beobachteten Clock-Rücksprung.
+
+Die öffentliche native Prüfung 228 begrenzt Rohwerte, Handle und Hostuptime
+mit unabhängigen Vorher-/Nachher-Reads im eigenen stabilen Lab. Sie verlangt
+exakte FileId-Mengen, sieben unveränderte Rohsamples, ein Schreiblimit nach
+vollständigem Nativecache und identische TABLE-/JSON-Projektionen. Ein
+lokaler Source-Spy und gezielte Fehlerdefinitionen gelten ausschließlich im
+eigenen Test; die ursprüngliche Procedure wird identitätsgebunden erhalten
+und wiederhergestellt. Frühe native Berechtigungsfehler, späte Enginebindung,
+synthetischer Zukunftsstart und sekundärer Writefehler mit zusätzlichem
+Readback-DENY gehören zum korrigierten Abnahmeumfang. Frühere fehlgeschlagene
+Versuche bleiben private Evidenz und werden nicht als bestandene Gesamtprüfung
+umgedeutet.
+
+Bekannte 1.2.1- und 1.3.0-Helper werden aus exakt gebundenen veröffentlichten
+Bytes rekonstruiert. Der Installer prüft alle drei Upgradewege, Daten- und
+Policyerhaltung, tatsächliche alte Waitzulassung und die Wiederaufnahme eines
+eigenen Stadiums mit den veröffentlichten 3.0-Hashes. SQL2025 bleibt das
+vollständige Standardgate; die zusätzliche native SQL2019-Abnahme betrifft
+die konkrete VFS-/Katalogberechtigungs- und Targetkompatibilität. Ein zusätzlicher
+SQL2022-Lauf ist ohne weiteres Versionsrisiko nicht ausgewählt.
+
+Die kombinierte lokale SQL2025-Qualifikation besteht nach den dokumentierten
+Testkorrekturen: öffentliche Nativeaufnahme einschließlich Rechtefällen und
+kombiniertem Sekundärwrite-/Readbackfehler sowie bekannte Upgrades, alte
+Waitzulassung und 3.0-Helper-Recovery. Der eigene Lababschluss bestätigt REMOVED.
+Die nachfolgende rein mechanische Temp-Namenskorrektur erfüllt 950; die
+abschließenden regulären Prüfungen binden den tatsächlichen Liefercommit.
+Der zusätzliche Anpassungsfall für erhaltene eigene 3.0-Policy-/Seedwerte und
+die laufende Main-Integration bleiben Teil dieser abschließenden Abnahme.
+
+## Reguläre Integration der öffentlichen Quelle
+
+PR #458 ist mit Head 23730d1d und identischem Mergebaum als 1a144251 integriert.
+Alle sieben Standard-Headprüfungen sowie das vollständige SQL2025-Gate
+40271515196 bestehen. Native SQL2019-Prüfung 40271529655 bindet denselben Head
+an ZIP-SHA256 76217277010522b17a6d3f7a3a2b816d6a955caec2b3cee31fe88bafc1dc0626.
+SQL2019 15.0.4500.2/CL150/Linux, alle vier benannten Snapshot-Risikogruppen und
+Cleanup bestehen. Evidence-Schema 2 ist vom Targetschema 3 getrennt; allgemeines
+natives Core-Release und Permissionmatrix sind NOT_EXECUTED, eine vollständige
+Release-Versionsmatrix wird nicht behauptet.
+
+Alle vier getrennten Main-Gates bestehen, darunter das vollständige SQL2025-Gate
+40273412551 sowie Dokumentation 40273412530, Privacy 40273412548 und
+Commitprüfung 40273412523. Frühere private Fehlversuche bleiben erhalten.

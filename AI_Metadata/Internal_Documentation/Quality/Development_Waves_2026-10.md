@@ -230,5 +230,24 @@ Dossier führt Paketbindung, frühere Vollrunfehler und verbleibende Grenzen.
 Der WAIT_CAPTURE_CONTEXT-v1-Feldvertrag ist einschließlich der gezielten
 Retentionskorrektur unabhängig geprüft. Der Retentionsschutz mit Targetpatch 1.1.1 ist über
 [PR #449](https://github.com/gecompat/SQL_Server_Analyze/pull/449) mit
-vollständigen Head- und Main-Gates integriert. Das interne Wait-Target 1.2.0 ist über PR #451 einschließlich aller Head-/Main-Gates und gezielter nativer SQL2019-Snapshotprüfung integriert. Die öffentliche Aktivierung mit Targetpatch 1.2.1 bei unveränderter SchemaVersion 2 ist über PR #453 mit allen sieben Head-Checks und gezielter nativer SQL2019-Prüfung integriert; alle vier getrennten Main-Prüfungen einschließlich des vollständigen SQL2025-Gates bestehen. Der [Datei-I/O-Vorvertrag](../Architecture/File_IO_Snapshot_Dossier.md) ist über PR #454 mit allen Head-/Main-Gates integriert. Der [Feld- und Migrationsvertrag](../Architecture/File_IO_Snapshot_Field_Contract.md) ist über PR #455 mit allen Head-/Main-Gates integriert. Die aktuelle Produktwelle implementiert das interne Datei-I/O-Target, die bekannte Schema-3-Migration und die erforderliche Waitkompatibilität. Die erweiterte synthetische SQL2025-Targetabnahme, die kombinierte lokale Upgrade-/Recovery- und Waitregressionsabnahme sowie der unabhängige Befundabschluss bestehen. Reguläre PR-Gates und die gezielte native SQL2019-Risikoabnahme bleiben erforderlich. Die öffentliche native Datei-I/O-Aufnahme folgt als nächste kohärente Welle. Die SSIS-Datenflussarbeit bleibt
+vollständigen Head- und Main-Gates integriert. Das interne Wait-Target 1.2.0 ist über PR #451 einschließlich aller Head-/Main-Gates und gezielter nativer SQL2019-Snapshotprüfung integriert. Die öffentliche Aktivierung mit Targetpatch 1.2.1 bei unveränderter SchemaVersion 2 ist über PR #453 mit allen sieben Head-Checks und gezielter nativer SQL2019-Prüfung integriert; alle vier getrennten Main-Prüfungen einschließlich des vollständigen SQL2025-Gates bestehen. Der [Datei-I/O-Vorvertrag](../Architecture/File_IO_Snapshot_Dossier.md) ist über PR #454 mit allen Head-/Main-Gates integriert. Der [Feld- und Migrationsvertrag](../Architecture/File_IO_Snapshot_Field_Contract.md) ist über PR #455 mit allen Head-/Main-Gates integriert. Das interne Datei-I/O-Target 1.3.0 / Schema 3 ist über [PR #456](https://github.com/gecompat/SQL_Server_Analyze/pull/456) einschließlich aller sieben Head-Prüfungen, vollständigem SQL2025-Gate, gezielter nativer SQL2019-Risikoabnahme und aller vier Main-Gates integriert. Der erste Main-Legacy-SSIS-TABLE-Timeout bleibt ohne behauptete Ursache dokumentiert; ein begrenzter Wiederlauf der fehlgeschlagenen Jobs bestand. Die öffentliche native Datei-I/O-Aufnahme folgt als nächste kohärente Welle mit vorab geprüften Grenzen für erfolgreiche Reads, fatale Bindungen und unbestätigte Abschlüsse. Die SSIS-Datenflussarbeit bleibt
 beim separaten Auftrag.
+
+## Checkpoint der öffentlichen Datei-I/O-Welle
+
+[PR #458](https://github.com/gecompat/SQL_Server_Analyze/pull/458) ist regulär
+als 1a144251 integriert. Der Head 23730d1d besteht alle sieben Standardprüfungen,
+das vollständige [SQL2025-Gate](https://github.com/gecompat/SQL_Server_Analyze/actions/runs/40271515196)
+und die gezielte [native SQL2019-Snapshot-Risikoabnahme](https://github.com/gecompat/SQL_Server_Analyze/actions/runs/40271529655).
+Der Mergebaum ist identisch zum geprüften Headbaum. Der getrennte vollständige
+[SQL2025-Main-Lauf](https://github.com/gecompat/SQL_Server_Analyze/actions/runs/40273412551),
+Dokumentation, Privacy und Commitprüfung bestehen. Targetpatch 1.3.1 / Schema 3
+mit Retentionsvertrag 3 umfasst die öffentliche native Aufnahme, ehrliche späte
+Read-/Zeitfehler, erhaltene Mehrfach-Issues und offene Vorgängergrenzen.
+
+Der nächste unabhängige Rang 11 steht im
+[Upgrade-Usage-Dossier](../Architecture/Upgrade_Feature_Usage_Dossier.md).
+Vertrag und Fehleraggregation sind unabhängig geprüft. Die erste eigene
+SQL2025-Quellenprobe bestätigt den nativen Deprecated-Counter und kontrollierten
+Begegnungszuwachs; der Labcleanup besteht. Produktumsetzung und endgültige
+Abnahme bleiben eigene Schritte. Der getrennte SSIS-Auftrag wird nicht übernommen.

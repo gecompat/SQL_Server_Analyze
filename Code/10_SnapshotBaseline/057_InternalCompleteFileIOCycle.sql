@@ -1,7 +1,7 @@
 /*
 ===============================================================================
 Objekt       : snapshot.InternalCompleteFileIOCycle
-Version      : 1.0.0
+Version      : 1.1.0
 Stand        : 2026-10-26
 Zweck        : Die Procedure bindet Datei-I/O-Rohwerte und Vergleichskontexte
                atomar an einen vorbereiteten eigenen Lauf.
@@ -41,12 +41,13 @@ BEGIN
     SET NOCOUNT ON;
     SET LOCK_TIMEOUT 0;
     SET XACT_ABORT ON;
-    DECLARE @OwnRun bit=0,@Started datetime2(3),@SourceName sysname,@MaxRows int,@Payload bit,
+    DECLARE @OwnRun bit=0,@SourceValidated bit=0,@ValidatedIssuesJson nvarchar(max),
+            @SourceErrorNumber int,@SourceErrorMessage nvarchar(2048),@Started datetime2(3),@SourceName sysname,@MaxRows int,@Payload bit,
             @Now datetime2(3),@Meta nvarchar(max),@Engine nvarchar(max),@Framework nvarchar(max),@Selection nvarchar(max),
             @Start datetime2(3),@End datetime2(3),@ReadStart datetime2(3),@ReadEnd datetime2(3),
             @SourceStatus varchar(40),@Complete bit,@Fatal bit,@Native bigint,@Eligible bigint,@Excluded bigint,@Unbound bigint,
             @Written bigint,@Comparable bigint=0,@Limited bit,@ServerScope bigint,@ServerIdentity nvarchar(max),
-            @Previous bigint,@PreviousStatus varchar(40),@PreviousContext nvarchar(max),@PreviousValid bit=0,
+            @Previous bigint,@PreviousStatus varchar(40),@PreviousEnded datetime2(3),@PreviousContext nvarchar(max),@PreviousValid bit=0,
             @SelectionHash varchar(64),@EngineHash varchar(64),@FrameworkHash varchar(64),
             @Context nvarchar(max),@ContextEpoch uniqueidentifier=NEWID(),@Manifest nvarchar(max),@ManifestHash varchar(64);
     DECLARE @Objects TABLE([Id] int IDENTITY PRIMARY KEY,[Kind] varchar(8),[Ordinal] int,[Json] nvarchar(max));
@@ -67,7 +68,7 @@ BEGIN
     BEGIN TRY
         IF (SELECT COUNT_BIG(*) FROM [snapshot].[PackageVersion])<>1 OR NOT EXISTS
            (SELECT 1 FROM [snapshot].[PackageVersion] WHERE CONVERT(varbinary(max),[PackageCode])=CONVERT(varbinary(max),'SC-023')
-            AND CONVERT(varbinary(max),[PackageVersion])=CONVERT(varbinary(max),'1.3.0') AND [SchemaVersion]=3)
+            AND CONVERT(varbinary(max),[PackageVersion])=CONVERT(varbinary(max),'1.3.1') AND [SchemaVersion]=3)
             THROW 53781,N'Der Dateiabschluss benötigt das vollständige Schema-3-Target.',1;
         DECLARE @Probe bigint,@ProbeStatus varchar(40),@ProbeBudget bit,@ProbeError int,@ProbeMessage nvarchar(2048),@Retention int;
         EXEC [snapshot].[InternalPurgeExpiredData] @MaxBatches=1,@Force=0,@PurgeRunIdOut=@Probe OUTPUT,
@@ -75,9 +76,9 @@ BEGIN
              @ErrorMessageOut=@ProbeMessage OUTPUT,@ContractOnly=1,@RetentionContractVersionOut=@Retention OUTPUT,
              @ExpectedTargetDatabaseId=@ExpectedTargetDatabaseId,@ExpectedTargetDatabaseName=@ExpectedTargetDatabaseName,
              @ExpectedTargetCreateDate=@ExpectedTargetCreateDate;
-        IF COALESCE(@ProbeStatus,'')<>'AVAILABLE' OR COALESCE(@ProbeBudget,1)<>0 OR COALESCE(@Retention,0)<>2
+        IF COALESCE(@ProbeStatus,'')<>'AVAILABLE' OR COALESCE(@ProbeBudget,1)<>0 OR COALESCE(@Retention,0)<>3
            OR @Probe IS NOT NULL OR @ProbeError IS NOT NULL
-            THROW 53781,N'Der tatsächlich ausgeführte schreibfreie Retentionsvertrag 2 fehlt.',1;
+            THROW 53781,N'Der tatsächlich ausgeführte schreibfreie Retentionsvertrag 3 fehlt.',1;
         BEGIN TRANSACTION;
         SELECT @Started=[StartedAtUtc],@SourceName=[SourceDatabaseName] FROM [snapshot].[CaptureRun] WITH (UPDLOCK,HOLDLOCK)
         WHERE [CaptureRunId]=@CaptureRunId AND CONVERT(varbinary(max),[CollectorCode])=CONVERT(varbinary(max),'FILE_IO')
@@ -241,13 +242,14 @@ BEGIN
            OR @Complete<>CASE WHEN @SourceStatus IN('AVAILABLE','EMPTY_UNPROVEN') THEN 1 ELSE 0 END
            OR (@Start IS NULL AND @End IS NOT NULL) OR (@Start IS NOT NULL AND @End IS NULL)
            OR (@ReadStart IS NULL AND @ReadEnd IS NOT NULL) OR (@ReadStart IS NOT NULL AND @ReadEnd IS NULL)
-           OR @Start>@End OR @ReadStart>@ReadEnd OR @ReadStart<@Start OR @ReadEnd>@End OR @Start<@Started
+           OR @Start>@End OR @ReadStart>@ReadEnd
+           OR @Fatal=0 AND (@ReadStart<@Start OR @ReadEnd>@End OR @Start<@Started)
            OR @Fatal=0 AND (@Engine IS NULL OR @Start IS NULL OR @End IS NULL)
            OR @Fatal=1 AND @Engine IS NOT NULL
            OR JSON_VALUE(@Meta,'$.nativeReadState') COLLATE Latin1_General_100_BIN2 NOT IN('NOT_STARTED','SUCCEEDED','FAILED')
-           OR JSON_VALUE(@Meta,'$.nativeReadState')='SUCCEEDED' AND (@ReadStart IS NULL OR @Native IS NULL)
+           OR JSON_VALUE(@Meta,'$.nativeReadState')='SUCCEEDED' AND (@Native IS NULL OR @Fatal=0 AND @ReadStart IS NULL)
            OR JSON_VALUE(@Meta,'$.nativeReadState')<>'SUCCEEDED' AND (@ReadStart IS NOT NULL OR @ReadEnd IS NOT NULL)
-           OR JSON_VALUE(@Meta,'$.nativeReadState')='FAILED' AND @Native IS NOT NULL
+           OR JSON_VALUE(@Meta,'$.nativeReadState')='FAILED' AND (@Native IS NOT NULL OR @Fatal=0)
            OR CONVERT(varbinary(max),JSON_VALUE(@Framework,'$.databaseName'))<>CONVERT(varbinary(max),@SourceName)
            OR NOT EXISTS(SELECT 1 FROM [master].[sys].[databases] WITH (NOLOCK)
              WHERE [database_id]=TRY_CONVERT(int,JSON_VALUE(@Framework,'$.databaseId'))
@@ -264,7 +266,8 @@ BEGIN
            OR EXISTS(SELECT 1 FROM @Databases GROUP BY CONVERT(varbinary(256),[Name]) HAVING COUNT_BIG(*)<>1)
            OR (SELECT COUNT_BIG(*) FROM @Databases)<>TRY_CONVERT(bigint,JSON_VALUE(@Selection,'$.selectedDatabaseCount'))
            OR JSON_VALUE(@Meta,'$.nativeReadState')='NOT_STARTED' AND
-               (EXISTS(SELECT 1 FROM @Databases) OR COALESCE(@Native,-1)<>0)
+               ((NOT EXISTS(SELECT 1 FROM @Databases) AND COALESCE(@Native,-1)<>0)
+                OR EXISTS(SELECT 1 FROM @Databases) AND (@Fatal=0 OR @Native IS NOT NULL))
             THROW 53782,N'Die tatsächliche Datenbankauswahl ist widersprüchlich.',1;
         DECLARE @CanonicalDatabases nvarchar(max)=(SELECT [Id] AS [DatabaseId],[Name] AS [DatabaseName],
             CONVERT(nvarchar(19),[Created],126)+N'.'+RIGHT(N'00'+CONVERT(nvarchar(3),DATEPART(millisecond,[Created])),3) AS [DatabaseCreateDateNative]
@@ -309,7 +312,7 @@ BEGIN
             JSON_QUERY([Json],'$.MetadataBefore'),JSON_QUERY([Json],'$.MetadataAfter') FROM @Objects WHERE [Kind]='FILE';
         IF EXISTS(SELECT 1 FROM @Files GROUP BY [DatabaseId],[FileId] HAVING COUNT_BIG(*)<>1)
            OR EXISTS(SELECT 1 FROM @Files [f] WHERE NOT EXISTS(SELECT 1 FROM @Databases [d] WHERE [d].[Id]=[f].[DatabaseId]))
-           OR JSON_VALUE(@Meta,'$.nativeReadState')='SUCCEEDED' AND (SELECT COUNT_BIG(*) FROM @Files)<>@Native
+           OR @Fatal=0 AND JSON_VALUE(@Meta,'$.nativeReadState')='SUCCEEDED' AND (SELECT COUNT_BIG(*) FROM @Files)<>@Native
            OR (JSON_VALUE(@Meta,'$.nativeReadState')<>'SUCCEEDED' OR @Fatal=1) AND EXISTS(SELECT 1 FROM @Files)
             THROW 53782,N'Die native Dateimenge verletzt ihre Auswahl- oder Mengenbindung.',1;
         UPDATE [f] SET [Partition]=CASE
@@ -335,8 +338,15 @@ BEGIN
           (SELECT TOP(@MaxRows) [Ordinal] FROM @Files WHERE [Partition]='ELIGIBLE' ORDER BY [DatabaseId],[FileId]);
         SELECT @Written=COUNT_BIG(*) FROM @Files WHERE [Selected]=1;
         SET @Limited=CASE WHEN @Written<@Eligible THEN 1 ELSE 0 END;
+        SELECT @ValidatedIssuesJson=COALESCE((SELECT * FROM @Issues ORDER BY [Ordinal] FOR JSON PATH,INCLUDE_NULL_VALUES),N'[]');
+        SELECT @SourceValidated=1,@SourceErrorNumber=@ErrorNumberOut,@SourceErrorMessage=@ErrorMessageOut;
         SET @Now=SYSUTCDATETIME();
-        IF @End>@Now OR @Started>@Now THROW 53782,N'Das Messfenster liegt nach der tatsächlichen Abschlussprüfung.',1;
+        IF @Fatal=1 AND (@Start<@Started OR @End>@Now)
+            SELECT @Start=NULL,@End=NULL,@ReadStart=NULL,@ReadEnd=NULL;
+        IF @Fatal=1 AND (@ReadStart<@Start OR @ReadEnd>@End OR @Start IS NULL)
+            SELECT @ReadStart=NULL,@ReadEnd=NULL;
+        IF @Started>@Now OR @Fatal=0 AND @End>@Now
+            THROW 53784,N'Die tatsächliche Targetzeit bestätigt keine zeitliche Abschlussbindung.',1;
         IF @Fatal=1
         BEGIN
             SET @StatusCodeOut=@SourceStatus;
@@ -409,12 +419,12 @@ BEGIN
         UPDATE [f] SET [ScopeId]=[s].[ScopeId] FROM @Files [f] JOIN [snapshot].[Scope] [s]
           ON [s].[ScopeType]='FILE_IO_FILE' AND [s].[ScopeKeyHash]=HASHBYTES('SHA2_256',CONVERT(varbinary(max),[f].[Identity])) WHERE [Selected]=1;
 
-        SELECT TOP(1) @Previous=[CaptureRunId],@PreviousStatus=[StatusCode] FROM [snapshot].[CaptureRun]
-          WHERE [CollectorCode]='FILE_IO' AND [EndedAtUtc] IS NOT NULL AND [CaptureRunId]<@CaptureRunId ORDER BY [CaptureRunId] DESC;
+        SELECT TOP(1) @Previous=[CaptureRunId],@PreviousStatus=[StatusCode],@PreviousEnded=[EndedAtUtc] FROM [snapshot].[CaptureRun]
+          WHERE [CollectorCode]='FILE_IO' AND [CaptureRunId]<@CaptureRunId ORDER BY [CaptureRunId] DESC;
         DECLARE @PreviousFiles TABLE([ScopeId] bigint PRIMARY KEY,[Json] nvarchar(max),[Identity] nvarchar(max),[Hash] binary(32),
           [Epoch] uniqueidentifier,[DatabaseId] int,[FileId] int,[RawJson] nvarchar(max),[RawCount] bigint,
           [ContextValid] bit DEFAULT(0),[RawValid] bit DEFAULT(0));
-        IF @Previous IS NOT NULL AND @PreviousStatus='PARTIAL'
+        IF @Previous IS NOT NULL AND @PreviousEnded IS NOT NULL AND @PreviousStatus='PARTIAL'
         BEGIN
             SELECT @PreviousContext=[s].[StringValue] FROM [snapshot].[MetricSample] [s] JOIN @Metrics [m] ON [m].[Id]=[s].[MetricDefinitionId]
               WHERE [s].[CaptureRunId]=@Previous AND [m].[Code]='IO_CAPTURE_CONTEXT';
@@ -679,6 +689,7 @@ BEGIN
             SET @Comparison=CASE WHEN @Complete=0 THEN 'SOURCE_PARTIAL'
               WHEN @IdentityComplete=0 THEN 'CURRENT_IDENTITY_INCOMPLETE'
               WHEN @Previous IS NULL THEN 'NO_PREVIOUS_CAPTURE'
+              WHEN @PreviousEnded IS NULL THEN 'PREVIOUS_CAPTURE_UNCONFIRMED'
               WHEN @PreviousStatus<>'PARTIAL' THEN 'PREVIOUS_CAPTURE_FAILED'
               WHEN @PreviousValid=0 THEN 'PREVIOUS_CAPTURE_CONTEXT_INVALID'
               WHEN JSON_VALUE(@PreviousContext,'$.capture.sourceComplete')<>'true' THEN 'PREVIOUS_SOURCE_PARTIAL'
@@ -808,6 +819,7 @@ PersistIssues:
             VALUES(@CaptureRunId,N'SnapshotFileIO',COALESCE(@End,SYSUTCDATETIME()),'JSON',1,'GZIP',
               HASHBYTES('SHA2_256',CONVERT(varbinary(max),@CollectorJson)),COMPRESS(@CollectorJson),DATALENGTH(@CollectorJson)/2);
         DECLARE @IssueOrdinal int,@SourceModule sysname,@IssueStatus varchar(40),@IssueError int,@IssueMessage nvarchar(2048),
+          @PersistSourceModule sysname,@PersistContextModule sysname,
           @Evidence nvarchar(1000),@ScopeType varchar(16),@IssueDB int,@IssueFile int,@IssueName sysname,@ModuleId bigint,@IssueContext nvarchar(max);
         DECLARE [SourceIssues] CURSOR LOCAL FAST_FORWARD FOR SELECT [Ordinal],[SourceName],[StatusCode],[ErrorNumber],[ErrorMessage],
           [EvidenceLimit],[ScopeType],[DatabaseId],[FileId],[DatabaseName] FROM @Issues ORDER BY [Ordinal];
@@ -815,14 +827,17 @@ PersistIssues:
         FETCH NEXT FROM [SourceIssues] INTO @IssueOrdinal,@SourceModule,@IssueStatus,@IssueError,@IssueMessage,@Evidence,@ScopeType,@IssueDB,@IssueFile,@IssueName;
         WHILE @@FETCH_STATUS=0
         BEGIN
+            SELECT @PersistSourceModule=CASE WHEN EXISTS(SELECT 1 FROM @Issues WHERE [SourceName]=@SourceModule AND [Ordinal]<@IssueOrdinal)
+              THEN CONVERT(sysname,CONCAT(@SourceModule,N'#',@IssueOrdinal)) ELSE @SourceModule END,
+              @PersistContextModule=CASE WHEN @IssueOrdinal=0 THEN N'FileIOSourceIssueContext' ELSE CONVERT(sysname,CONCAT(N'FileIOSourceIssueContext#',@IssueOrdinal)) END;
             INSERT [snapshot].[ModuleStatus]([CaptureRunId],[ModuleName],[CollectionTimeUtc],[StatusCode],[IsPartial],[ErrorNumber],[ErrorMessage],[EvidenceLimit])
-            VALUES(@CaptureRunId,@SourceModule,COALESCE(@End,SYSUTCDATETIME()),@IssueStatus,1,@IssueError,@IssueMessage,@Evidence);
+            VALUES(@CaptureRunId,@PersistSourceModule,COALESCE(@End,SYSUTCDATETIME()),@IssueStatus,1,@IssueError,@IssueMessage,@Evidence);
             SET @ModuleId=CONVERT(bigint,SCOPE_IDENTITY());
             SELECT @IssueContext=(SELECT CONVERT(varchar(20),@ModuleId) AS [sourceModuleStatusId],@ScopeType AS [ScopeType],@IssueDB AS [DatabaseId],
               @IssueFile AS [FileId],@IssueName AS [DatabaseName],@IssueStatus AS [StatusCode] FOR JSON PATH,WITHOUT_ARRAY_WRAPPER,INCLUDE_NULL_VALUES);
             IF DATALENGTH(@IssueContext)>4096 THROW 53784,N'Der gebundene Issuekontext überschreitet sein Meldungslimit.',1;
             INSERT [snapshot].[ModuleStatus]([CaptureRunId],[ModuleName],[CollectionTimeUtc],[StatusCode],[IsPartial],[ErrorNumber],[ErrorMessage],[EvidenceLimit])
-            VALUES(@CaptureRunId,N'FileIOSourceIssueContext',COALESCE(@End,SYSUTCDATETIME()),@IssueStatus,1,NULL,@IssueContext,NULL);
+            VALUES(@CaptureRunId,@PersistContextModule,COALESCE(@End,SYSUTCDATETIME()),@IssueStatus,1,NULL,@IssueContext,NULL);
             FETCH NEXT FROM [SourceIssues] INTO @IssueOrdinal,@SourceModule,@IssueStatus,@IssueError,@IssueMessage,@Evidence,@ScopeType,@IssueDB,@IssueFile,@IssueName;
         END;
         CLOSE [SourceIssues]; DEALLOCATE [SourceIssues];
@@ -840,44 +855,102 @@ PersistIssues:
         COMMIT TRANSACTION;
     END TRY
     BEGIN CATCH
-        DECLARE @Failure int=ERROR_NUMBER(),@FailureMessage nvarchar(2048)=ERROR_MESSAGE();
+        DECLARE @Failure int=ERROR_NUMBER(),@FailureMessage nvarchar(2048)=ERROR_MESSAGE(),
+                @FailureModuleId bigint,@Recorded datetime2(3),@Confirmed bit,@Boundary nvarchar(max);
         IF XACT_STATE()<>0 ROLLBACK TRANSACTION;
         SELECT @StatusCodeOut=CASE WHEN @Failure IN(229,262,297,300,371) THEN 'DENIED_PERMISSION'
-          WHEN @Failure IN(53781,53764,2812,8144,8145) THEN 'TARGET_UNAVAILABLE' WHEN @OwnRun=0 AND @Failure=53783 THEN 'INVALID_PARAMETER' ELSE 'ERROR_HANDLED' END,
-          @IsPartialOut=1,@ErrorNumberOut=CASE WHEN @OwnRun=0 AND @Failure=53783 THEN 51011 ELSE @Failure END,@ErrorMessageOut=@FailureMessage;
-        IF @OwnRun=1 AND DB_ID()=@ExpectedTargetDatabaseId AND EXISTS(SELECT 1 FROM [master].[sys].[databases] WITH (NOLOCK)
-          WHERE [database_id]=@ExpectedTargetDatabaseId AND [create_date]=@ExpectedTargetCreateDate
-            AND CONVERT(varbinary(max),[name])=CONVERT(varbinary(max),@ExpectedTargetDatabaseName) AND [state]=0 AND [is_read_only]=0)
+          WHEN @Failure IN(53781,53764,2812,8144,8145) THEN 'TARGET_UNAVAILABLE'
+          WHEN @OwnRun=0 AND @Failure=53783 THEN 'INVALID_PARAMETER' ELSE 'ERROR_HANDLED' END,
+          @IsPartialOut=1,@ErrorNumberOut=CASE WHEN @OwnRun=0 AND @Failure=53783 THEN 51011 ELSE @Failure END,
+          @ErrorMessageOut=@FailureMessage;
+        IF @OwnRun=1
         BEGIN TRY
+            IF DB_ID()<>@ExpectedTargetDatabaseId OR NOT EXISTS(SELECT 1 FROM [master].[sys].[databases] WITH (NOLOCK)
+              WHERE [database_id]=@ExpectedTargetDatabaseId AND [create_date]=@ExpectedTargetCreateDate
+                AND CONVERT(varbinary(max),[name])=CONVERT(varbinary(max),@ExpectedTargetDatabaseName) AND [state]=0 AND [is_read_only]=0)
+                THROW 53764,N'Die Fehlerfinalisierung kann die gebundene Targetidentität nicht bestätigen.',1;
             BEGIN TRANSACTION;
-            IF EXISTS(SELECT 1 FROM [snapshot].[CaptureRun] WITH (UPDLOCK,HOLDLOCK) WHERE [CaptureRunId]=@CaptureRunId
-              AND [CollectorCode]='FILE_IO' AND [StatusCode]='RUNNING' AND [EndedAtUtc] IS NULL)
-              AND NOT EXISTS(SELECT 1 FROM [snapshot].[MetricSample] WHERE [CaptureRunId]=@CaptureRunId)
-              AND NOT EXISTS(SELECT 1 FROM [snapshot].[ModuleStatus] WHERE [CaptureRunId]=@CaptureRunId)
-              AND NOT EXISTS(SELECT 1 FROM [snapshot].[PayloadSnapshot] WHERE [CaptureRunId]=@CaptureRunId)
+            IF NOT EXISTS(SELECT 1 FROM [snapshot].[CaptureRun] WITH (UPDLOCK,HOLDLOCK) WHERE [CaptureRunId]=@CaptureRunId
+              AND [CollectorCode]='FILE_IO' AND [StatusCode]='RUNNING' AND [EndedAtUtc] IS NULL
+              AND [StartedAtUtc]=@Started AND CONVERT(varbinary(max),[SourceDatabaseName])=CONVERT(varbinary(max),@SourceName))
+              OR EXISTS(SELECT 1 FROM [snapshot].[MetricSample] WHERE [CaptureRunId]=@CaptureRunId)
+              OR EXISTS(SELECT 1 FROM [snapshot].[ModuleStatus] WHERE [CaptureRunId]=@CaptureRunId)
+              OR EXISTS(SELECT 1 FROM [snapshot].[PayloadSnapshot] WHERE [CaptureRunId]=@CaptureRunId)
+                THROW 53784,N'Die Fehlerfinalisierung bestätigt keinen unveränderten eigenen Lauf.',1;
+            SELECT @Recorded=SYSUTCDATETIME();
+            SET @Confirmed=CASE WHEN @Recorded>=@Started THEN 1 ELSE 0 END;
+            INSERT [snapshot].[ModuleStatus]([CaptureRunId],[ModuleName],[CollectionTimeUtc],[StatusCode],[IsPartial],[ErrorNumber],[ErrorMessage],[EvidenceLimit])
+            VALUES(@CaptureRunId,CASE WHEN @SourceValidated=0 AND @Failure=53782 THEN N'SOURCE_CONTRACT'
+                   ELSE N'snapshot.InternalCompleteFileIOCycle' END,@Recorded,'ERROR_HANDLED',1,@Failure,@FailureMessage,
+              N'Die Fachwrites wurden zurückgerollt; keine numerische Aufnahme wird behauptet.');
+            SET @FailureModuleId=CONVERT(bigint,SCOPE_IDENTITY());
+            IF @SourceValidated=1
             BEGIN
-                INSERT [snapshot].[ModuleStatus]([CaptureRunId],[ModuleName],[CollectionTimeUtc],[StatusCode],[IsPartial],[ErrorNumber],[ErrorMessage],[EvidenceLimit])
-                VALUES(@CaptureRunId,CASE WHEN @Failure=53782 THEN N'SOURCE_CONTRACT' ELSE N'FileIOCollector' END,SYSUTCDATETIME(),@StatusCodeOut,1,
-                  @ErrorNumberOut,@ErrorMessageOut,N'Die Fachwrites wurden zurückgerollt; keine numerische Aufnahme wird behauptet.');
-                SET @ModuleId=CONVERT(bigint,SCOPE_IDENTITY());
-                IF @Failure=53782
+                DELETE @Issues;
+                INSERT @Issues([Ordinal],[ScopeType],[SourceName],[DatabaseId],[FileId],[DatabaseName],[StatusCode],[ErrorNumber],[ErrorMessage],[EvidenceLimit])
+                SELECT [Ordinal],[ScopeType],[SourceName],[DatabaseId],[FileId],[DatabaseName],[StatusCode],[ErrorNumber],[ErrorMessage],[EvidenceLimit]
+                FROM OPENJSON(@ValidatedIssuesJson) WITH
+                 ([Ordinal] int,[ScopeType] varchar(16),[SourceName] nvarchar(128),[DatabaseId] int,[FileId] int,[DatabaseName] nvarchar(128),
+                  [StatusCode] varchar(40),[ErrorNumber] int,[ErrorMessage] nvarchar(2048),[EvidenceLimit] nvarchar(1000));
+                DECLARE [FailureSourceIssues] CURSOR LOCAL FAST_FORWARD FOR
+                SELECT [Ordinal],[SourceName],[StatusCode],[ErrorNumber],[ErrorMessage],[EvidenceLimit],[ScopeType],[DatabaseId],[FileId],[DatabaseName]
+                FROM @Issues ORDER BY [Ordinal];
+                OPEN [FailureSourceIssues];
+                FETCH NEXT FROM [FailureSourceIssues] INTO @IssueOrdinal,@SourceModule,@IssueStatus,@IssueError,@IssueMessage,@Evidence,@ScopeType,@IssueDB,@IssueFile,@IssueName;
+                WHILE @@FETCH_STATUS=0
                 BEGIN
-                    SELECT @IssueContext=(SELECT CONVERT(varchar(20),@ModuleId) AS [sourceModuleStatusId],'SOURCE' AS [ScopeType],
-                      CONVERT(int,NULL) AS [DatabaseId],CONVERT(int,NULL) AS [FileId],CONVERT(nvarchar(128),NULL) AS [DatabaseName],
-                      @StatusCodeOut AS [StatusCode] FOR JSON PATH,WITHOUT_ARRAY_WRAPPER,INCLUDE_NULL_VALUES);
-                    INSERT [snapshot].[ModuleStatus]([CaptureRunId],[ModuleName],[CollectionTimeUtc],[StatusCode],[IsPartial],[ErrorMessage])
-                    VALUES(@CaptureRunId,N'FileIOSourceIssueContext',SYSUTCDATETIME(),@StatusCodeOut,1,@IssueContext),
-                          (@CaptureRunId,N'FileIOCollector',SYSUTCDATETIME(),@StatusCodeOut,1,@ErrorMessageOut);
+                    SELECT @PersistSourceModule=CASE WHEN EXISTS(SELECT 1 FROM @Issues WHERE [SourceName]=@SourceModule AND [Ordinal]<@IssueOrdinal)
+                      THEN CONVERT(sysname,CONCAT(@SourceModule,N'#',@IssueOrdinal)) ELSE @SourceModule END,
+                      @PersistContextModule=CASE WHEN @IssueOrdinal=0 THEN N'FileIOSourceIssueContext' ELSE CONVERT(sysname,CONCAT(N'FileIOSourceIssueContext#',@IssueOrdinal)) END;
+                    INSERT [snapshot].[ModuleStatus]([CaptureRunId],[ModuleName],[CollectionTimeUtc],[StatusCode],[IsPartial],[ErrorNumber],[ErrorMessage],[EvidenceLimit])
+                    VALUES(@CaptureRunId,@PersistSourceModule,@Recorded,@IssueStatus,1,@IssueError,@IssueMessage,@Evidence);
+                    SET @ModuleId=CONVERT(bigint,SCOPE_IDENTITY());
+                    SELECT @IssueContext=(SELECT CONVERT(varchar(20),@ModuleId) AS [sourceModuleStatusId],@ScopeType AS [ScopeType],@IssueDB AS [DatabaseId],
+                      @IssueFile AS [FileId],@IssueName AS [DatabaseName],@IssueStatus AS [StatusCode] FOR JSON PATH,WITHOUT_ARRAY_WRAPPER,INCLUDE_NULL_VALUES);
+                    INSERT [snapshot].[ModuleStatus]([CaptureRunId],[ModuleName],[CollectionTimeUtc],[StatusCode],[IsPartial],[ErrorNumber],[ErrorMessage],[EvidenceLimit])
+                    VALUES(@CaptureRunId,@PersistContextModule,@Recorded,@IssueStatus,1,NULL,@IssueContext,NULL);
+                    FETCH NEXT FROM [FailureSourceIssues] INTO @IssueOrdinal,@SourceModule,@IssueStatus,@IssueError,@IssueMessage,@Evidence,@ScopeType,@IssueDB,@IssueFile,@IssueName;
                 END;
-                UPDATE [snapshot].[CaptureRun] SET [EndedAtUtc]=SYSUTCDATETIME(),[ResetEpochId]=NULL,[SqlServerStartTimeUtc]=NULL,
-                  [StatusCode]=@StatusCodeOut,[IsPartial]=1,[ErrorNumber]=@ErrorNumberOut,[ErrorMessage]=@ErrorMessageOut,[MetricSampleCount]=0,[PayloadCount]=0
-                  WHERE [CaptureRunId]=@CaptureRunId AND [StatusCode]='RUNNING' AND [EndedAtUtc] IS NULL;
+                CLOSE [FailureSourceIssues]; DEALLOCATE [FailureSourceIssues];
+            END
+            ELSE IF @Failure=53782
+            BEGIN
+                SELECT @IssueContext=(SELECT CONVERT(varchar(20),@FailureModuleId) AS [sourceModuleStatusId],'SOURCE' AS [ScopeType],
+                  CONVERT(int,NULL) AS [DatabaseId],CONVERT(int,NULL) AS [FileId],CONVERT(nvarchar(128),NULL) AS [DatabaseName],
+                  'ERROR_HANDLED' AS [StatusCode] FOR JSON PATH,WITHOUT_ARRAY_WRAPPER,INCLUDE_NULL_VALUES);
+                INSERT [snapshot].[ModuleStatus]([CaptureRunId],[ModuleName],[CollectionTimeUtc],[StatusCode],[IsPartial],[ErrorMessage])
+                VALUES(@CaptureRunId,N'FileIOSourceIssueContext',@Recorded,'ERROR_HANDLED',1,@IssueContext);
             END;
+            INSERT [snapshot].[ModuleStatus]([CaptureRunId],[ModuleName],[CollectionTimeUtc],[StatusCode],[IsPartial],[ErrorNumber],[ErrorMessage],[EvidenceLimit])
+            VALUES(@CaptureRunId,N'FileIOCollector',@Recorded,'ERROR_HANDLED',1,NULL,
+              CASE WHEN @SourceValidated=1 THEN @SourceErrorMessage ELSE @FailureMessage END,
+              N'Der Targetabschluss enthält keine numerischen Samples; die Quelldiagnose bleibt getrennt erhalten.');
+            IF @Confirmed=0
+            BEGIN
+                SELECT @Boundary=(SELECT 1 AS [schemaVersion],CONVERT(varchar(20),@CaptureRunId) AS [captureRunId],
+                  CONVERT(varchar(20),@FailureModuleId) AS [failureModuleStatusId],'FINALIZATION_UNCONFIRMED' AS [statusCode],
+                  CONVERT(nvarchar(19),@Started,126)+N'.'+RIGHT(N'00'+CONVERT(nvarchar(3),DATEPART(millisecond,@Started)),3)+N'Z' AS [startedAtUtc],
+                  CONVERT(nvarchar(19),@Recorded,126)+N'.'+RIGHT(N'00'+CONVERT(nvarchar(3),DATEPART(millisecond,@Recorded)),3)+N'Z' AS [recordedAtUtc],
+                  @SourceValidated AS [sourceIssuesPreserved],CONVERT(bit,0) AS [finalizationConfirmed]
+                  FOR JSON PATH,WITHOUT_ARRAY_WRAPPER,INCLUDE_NULL_VALUES);
+                INSERT [snapshot].[ModuleStatus]([CaptureRunId],[ModuleName],[CollectionTimeUtc],[StatusCode],[IsPartial],[ErrorNumber],[ErrorMessage])
+                VALUES(@CaptureRunId,N'FileIOFinalizationBoundary',@Recorded,'FINALIZATION_UNCONFIRMED',1,NULL,@Boundary);
+            END;
+            UPDATE [snapshot].[CaptureRun] SET [EndedAtUtc]=CASE WHEN @Confirmed=1 THEN @Recorded END,
+              [ResetEpochId]=NULL,[SqlServerStartTimeUtc]=NULL,[StatusCode]='ERROR_HANDLED',[IsPartial]=1,
+              [ErrorNumber]=CASE WHEN @SourceValidated=1 THEN @SourceErrorNumber ELSE @Failure END,
+              [ErrorMessage]=CASE WHEN @SourceValidated=1 THEN @SourceErrorMessage ELSE @FailureMessage END,[MetricSampleCount]=0,[PayloadCount]=0
+            WHERE [CaptureRunId]=@CaptureRunId AND [StatusCode]='RUNNING' AND [EndedAtUtc] IS NULL;
+            IF @@ROWCOUNT<>1 THROW 53784,N'Der eigene Fehlerabschluss wurde nicht bestätigt.',1;
             COMMIT TRANSACTION;
+            SELECT @StatusCodeOut=CASE WHEN @Confirmed=1 THEN 'ERROR_HANDLED' ELSE 'FINALIZATION_UNCONFIRMED' END,
+              @ErrorNumberOut=CASE WHEN @SourceValidated=1 THEN @SourceErrorNumber ELSE @Failure END,
+              @ErrorMessageOut=CASE WHEN @SourceValidated=1 THEN @SourceErrorMessage ELSE @FailureMessage END;
         END TRY
         BEGIN CATCH
+            SELECT @StatusCodeOut='FINALIZATION_UNCONFIRMED',@IsPartialOut=1,
+              @ErrorNumberOut=ERROR_NUMBER(),@ErrorMessageOut=CONVERT(nvarchar(2048),ERROR_MESSAGE());
             IF XACT_STATE()<>0 ROLLBACK TRANSACTION;
-            SET @ErrorMessageOut=LEFT(CONCAT(@FailureMessage,N' Fehlerfinalisierung nicht bestätigt: ',ERROR_MESSAGE()),2048);
         END CATCH;
         IF @OwnRun=0 AND @Failure=53783 RETURN 51011;
     END CATCH;

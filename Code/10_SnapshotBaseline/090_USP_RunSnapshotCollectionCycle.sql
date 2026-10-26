@@ -4,8 +4,8 @@ GO
 /*
 ===============================================================================
 Objekt       : monitor.USP_RunSnapshotCollectionCycle
-Version      : 1.1.0
-Stand        : 2026-10-25
+Version      : 1.2.0
+Stand        : 2026-10-26
 Zweck        : Stellt den schedulerneutralen SC-023-Einstieg für genau einen
                leichten Performance-Counter-Sammler und seine persistente
                Evidenz bereit.
@@ -28,6 +28,9 @@ CREATE OR ALTER PROCEDURE [monitor].[USP_RunSnapshotCollectionCycle]
     , @ErrorNumberOut    int            = NULL OUTPUT
     , @ErrorMessageOut   nvarchar(2048) = NULL OUTPUT
     , @CollectorCode     varchar(64) = 'PERFORMANCE_COUNTERS'
+    , @DatabaseNames nvarchar(max) = NULL
+    , @SystemdatenbankenEinbeziehen bit = 0
+    , @DatabaseNamePattern nvarchar(4000) = NULL
 AS
 BEGIN
     SET NOCOUNT ON;
@@ -38,18 +41,28 @@ BEGIN
     BEGIN
         PRINT N'monitor.USP_RunSnapshotCollectionCycle';
         PRINT N'@CollectorCode=WAIT_STATS wählt den vollständigen nativen Waitcache. Default bleibt PERFORMANCE_COUNTERS.';
-        PRINT N'WAIT_STATS akzeptiert CONSOLE, RAW, TABLE und NONE. JSON ist optionaler OUTPUT mit @JsonErzeugen=1.';
-        PRINT N'Normale Waitläufe benötigen IMPLICIT_TRANSACTIONS OFF und keine Callertransaktion.';
+        PRINT N'WAIT_STATS und FILE_IO akzeptieren CONSOLE, RAW, TABLE und NONE. JSON ist optionaler OUTPUT mit @JsonErzeugen=1.';
+        PRINT N'FILE_IO verwendet @DatabaseNames, @SystemdatenbankenEinbeziehen und @DatabaseNamePattern wie CurrentIO.';
+        PRINT N'Normale Snapshotläufe benötigen IMPLICIT_TRANSACTIONS OFF und keine Callertransaktion.';
         RETURN;
     END;
-    IF @CollectorCode NOT IN('PERFORMANCE_COUNTERS','WAIT_STATS')
-       OR (@CollectorCode='WAIT_STATS' AND (@@TRANCOUNT<>0 OR (@@OPTIONS & 2)<>0))
+    IF (@CollectorCode<>'FILE_IO' AND
+        (NULLIF(LTRIM(RTRIM(@DatabaseNames)),N'') IS NOT NULL OR @SystemdatenbankenEinbeziehen IS NULL
+         OR @SystemdatenbankenEinbeziehen<>0 OR NULLIF(LTRIM(RTRIM(@DatabaseNamePattern)),N'') IS NOT NULL))
+       OR (@CollectorCode='FILE_IO' AND @SystemdatenbankenEinbeziehen IS NULL)
+    BEGIN
+        SELECT @StatusCodeOut='INVALID_PARAMETER',@IsPartialOut=1,@ErrorNumberOut=51011,
+          @ErrorMessageOut=N'Die drei Datenbankfilter gelten ausschließlich für FILE_IO; der Systemdatenbankparameter benötigt 0 oder 1.';
+        RETURN 51011;
+    END;
+    IF @CollectorCode NOT IN('PERFORMANCE_COUNTERS','WAIT_STATS','FILE_IO')
+       OR (@CollectorCode IN('WAIT_STATS','FILE_IO') AND (@@TRANCOUNT<>0 OR (@@OPTIONS & 2)<>0))
     BEGIN
         SELECT @StatusCodeOut='INVALID_PARAMETER',@IsPartialOut=1,@ErrorNumberOut=51011,
                @ErrorMessageOut=N'Der neue Waitpfad benötigt einen gültigen Collector ohne Callertransaktion oder implizite Transaktionen.';
         RETURN 51011;
     END;
-    IF @CollectorCode='WAIT_STATS' AND UPPER(LTRIM(RTRIM(COALESCE(@ResultSetArt,''))))='JSON'
+    IF @CollectorCode IN('WAIT_STATS','FILE_IO') AND UPPER(LTRIM(RTRIM(COALESCE(@ResultSetArt,''))))='JSON'
     BEGIN
         SELECT @StatusCodeOut='INVALID_PARAMETER',@IsPartialOut=1,@ErrorNumberOut=51011,
                @ErrorMessageOut=N'Der Ausgabeartwert JSON gehört zum Legacy-Collector. WAIT_STATS verwendet optionalen JSON-OUTPUT.';
@@ -139,6 +152,16 @@ BEGIN
             @PurgeRunId bigint,@PurgeStatus varchar(40),@BudgetExceeded bit,
             @PurgeError int,@PurgeMessage nvarchar(2048);
 
+    IF @CollectorCode='FILE_IO'
+    BEGIN
+        EXEC [monitor].[InternalRunSnapshotFileIOCycle]
+         @SchedulerType=@SchedulerType,@RunEvenIfNotDue=@RunEvenIfNotDue,
+         @CaptureRunIdOut=@CaptureRunIdOut OUTPUT,@TargetDatabaseNameOut=@TargetDatabaseName OUTPUT,
+         @StatusCodeOut=@StatusCodeOut OUTPUT,@IsPartialOut=@IsPartialOut OUTPUT,
+         @ErrorNumberOut=@ErrorNumberOut OUTPUT,@ErrorMessageOut=@ErrorMessageOut OUTPUT,
+         @DatabaseNames=@DatabaseNames,@SystemdatenbankenEinbeziehen=@SystemdatenbankenEinbeziehen,@DatabaseNamePattern=@DatabaseNamePattern;
+        GOTO EmitResults;
+    END;
     IF @CollectorCode='WAIT_STATS'
     BEGIN
         EXEC [monitor].[InternalRunSnapshotWaitStatsCycle]
@@ -281,10 +304,10 @@ FROM '+@TargetQuoted+N'.[snapshot].[ModuleStatus] WHERE [CaptureRunId]=@RunId;';
     END;
 
 EmitResults:
-    IF @CollectorCode='WAIT_STATS' AND @CaptureRunIdOut IS NULL AND NOT EXISTS(SELECT 1 FROM [#RunSnapshotCollectionCycle_Run])
+    IF @CollectorCode IN('WAIT_STATS','FILE_IO') AND @CaptureRunIdOut IS NULL AND NOT EXISTS(SELECT 1 FROM [#RunSnapshotCollectionCycle_Run])
         INSERT [#RunSnapshotCollectionCycle_Run]
         ([CaptureRunId],[TargetDatabaseName],[CollectorCode],[SchedulerType],[StatusCode],[IsPartial],[MetricSampleCount],[PayloadCount],[ErrorNumber],[ErrorMessage])
-        VALUES(NULL,@TargetDatabaseName,'WAIT_STATS',@SchedulerType,@StatusCodeOut,COALESCE(@IsPartialOut,1),0,0,@ErrorNumberOut,@ErrorMessageOut);
+        VALUES(NULL,@TargetDatabaseName,@CollectorCode,@SchedulerType,@StatusCodeOut,COALESCE(@IsPartialOut,1),0,0,@ErrorNumberOut,@ErrorMessageOut);
     IF @CollectorCode='PERFORMANCE_COUNTERS' AND NOT EXISTS (SELECT 1 FROM [#RunSnapshotCollectionCycle_Run])
         INSERT [#RunSnapshotCollectionCycle_Run]
         ([CaptureRunId],[TargetDatabaseName],[StatusCode],[IsPartial],[MetricSampleCount],[PayloadCount],[ErrorNumber],[ErrorMessage])
@@ -304,7 +327,7 @@ EmitResults:
     END
     ELSE IF @OutputMode='CONSOLE'
     BEGIN
-        DECLARE @RunEmptyMessage nvarchar(1000)=CASE WHEN @CollectorCode='WAIT_STATS' AND @CaptureRunIdOut IS NOT NULL
+        DECLARE @RunEmptyMessage nvarchar(1000)=CASE WHEN @CollectorCode IN('WAIT_STATS','FILE_IO') AND @CaptureRunIdOut IS NOT NULL
           THEN N'Runprojektion nicht verfügbar; die Laufkennung steht im OUTPUT.' ELSE N'Kein Snapshotlauf' END;
         EXEC [monitor].[InternalEmitConsoleResult] @SourceTable=N'#RunSnapshotCollectionCycle_Run',
              @ResultLabel=N'Snapshot Collection Cycle',@EmptyMessage=@RunEmptyMessage,

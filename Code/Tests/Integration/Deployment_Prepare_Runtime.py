@@ -1981,7 +1981,23 @@ GO
 # Released 1.2.1 bodies are reconstructed only by exact reverse fragments.
 # The full independent released-byte hashes prevent a current-source approximation.
 LEGACY_TARGET_V1_2_1_PATCHES = {'020_InternalConfigureSnapshotPolicy.sql': ('397b29eb601df68ecedb0bfabf7b1af9909fcd03b5d4276dcdbe8b5bab2a4230',
-                                             [('\n'
+                                             [('===============================================================================\n'
+                                               'Objekt       : snapshot.InternalConfigureSnapshotPolicy\n'
+                                               'Version      : 1.2.0\n'
+                                               'Stand        : 2026-10-26\n'
+                                               'Zweck        : Schreibt die typisierten SC-023-Policies in '
+                                               'der aktuell\n'
+                                               '               verbundenen Snapshot-Datenbank.\n'
+                                               '===============================================================================\n',
+                                               '===============================================================================\n'
+                                               'Objekt       : snapshot.InternalConfigureSnapshotPolicy\n'
+                                               'Version      : 1.2.0\n'
+                                               'Stand        : 2026-10-25\n'
+                                               'Zweck        : Schreibt die typisierten SC-023-Policies in '
+                                               'der aktuell\n'
+                                               '               verbundenen Snapshot-Datenbank.\n'
+                                               '===============================================================================\n'),
+                                              ('\n'
                                                '    IF @JoinFrameworkTransaction IS NULL OR\n'
                                                '       (@JoinFrameworkTransaction=1 AND\n'
                                                "         (@CollectorCode NOT IN('WAIT_STATS','FILE_IO') OR "
@@ -2079,7 +2095,8 @@ LEGACY_TARGET_V1_2_1_PATCHES = {'020_InternalConfigureSnapshotPolicy.sql': ('397
                                                '            AND '
                                                "((CONVERT(varbinary(max),[PackageVersion])=CONVERT(varbinary(max),'1.2.1') "
                                                'AND [SchemaVersion]=2) OR '
-                                               "(CONVERT(varbinary(max),[PackageVersion])=CONVERT(varbinary(max),'1.3.0') "
+                                               '(CONVERT(varbinary(max),[PackageVersion]) '
+                                               "IN(CONVERT(varbinary(max),'1.3.0'),CONVERT(varbinary(max),'1.3.1')) "
                                                'AND [SchemaVersion]=3)))\n'
                                                '           OR NOT EXISTS(SELECT 1 FROM [sys].[procedures] AS '
                                                '[wp] WITH (NOLOCK) JOIN [sys].[schemas] AS [ws] WITH '
@@ -2108,7 +2125,8 @@ LEGACY_TARGET_V1_2_1_PATCHES = {'020_InternalConfigureSnapshotPolicy.sql': ('397
                                                '    END;\n'
                                                '\n'
                                                "    IF @CollectorCode='FILE_IO' AND NOT EXISTS(SELECT 1 FROM "
-                                               "[snapshot].[PackageVersion] WHERE [PackageVersion]='1.3.0' "
+                                               '[snapshot].[PackageVersion] WHERE '
+                                               "CONVERT(varbinary(max),[PackageVersion])=CONVERT(varbinary(max),'1.3.1') "
                                                'AND [SchemaVersion]=3)\n'
                                                '    BEGIN\n'
                                                '        SELECT '
@@ -2155,7 +2173,23 @@ LEGACY_TARGET_V1_2_1_PATCHES = {'020_InternalConfigureSnapshotPolicy.sql': ('397
                                                '    IF @CollectionIntervalSeconds NOT BETWEEN 1 AND '
                                                '3600\n')]),
  '040_InternalPrepareCollectionCycle.sql': ('de3379b41e0e9ece57cc82001d99fd8140429a9e673595fb65492b88b6a07128',
-                                            [("           @StatusCodeOut='AVAILABLE',@ErrorMessageOut=NULL;\n"
+                                            [('===============================================================================\n'
+                                              'Objekt       : snapshot.InternalPrepareCollectionCycle\n'
+                                              'Version      : 1.2.0\n'
+                                              'Stand        : 2026-10-26\n'
+                                              'Zweck        : Prüft Intervall und Größenbudget und eröffnet '
+                                              'genau einen Lauf.\n'
+                                              '===============================================================================\n'
+                                              '*/\n',
+                                              '===============================================================================\n'
+                                              'Objekt       : snapshot.InternalPrepareCollectionCycle\n'
+                                              'Version      : 1.2.0\n'
+                                              'Stand        : 2026-10-25\n'
+                                              'Zweck        : Prüft Intervall und Größenbudget und eröffnet '
+                                              'genau einen Lauf.\n'
+                                              '===============================================================================\n'
+                                              '*/\n'),
+                                             ("           @StatusCodeOut='AVAILABLE',@ErrorMessageOut=NULL;\n"
                                               '\n'
                                               '    SET '
                                               "@CollectorCode=UPPER(LTRIM(RTRIM(COALESCE(@CollectorCode,''))));\n"
@@ -2212,7 +2246,8 @@ LEGACY_TARGET_V1_2_1_PATCHES = {'020_InternalConfigureSnapshotPolicy.sql': ('397
                                               '           AND '
                                               "((CONVERT(varbinary(max),[PackageVersion])=CONVERT(varbinary(max),'1.2.1') "
                                               'AND [SchemaVersion]=2) OR '
-                                              "(CONVERT(varbinary(max),[PackageVersion])=CONVERT(varbinary(max),'1.3.0') "
+                                              '(CONVERT(varbinary(max),[PackageVersion]) '
+                                              "IN(CONVERT(varbinary(max),'1.3.0'),CONVERT(varbinary(max),'1.3.1')) "
                                               'AND [SchemaVersion]=3)))\n'
                                               '        OR NOT EXISTS(SELECT 1 FROM [sys].[procedures] AS '
                                               '[wp] WITH (NOLOCK) JOIN [sys].[schemas] AS [ws] WITH (NOLOCK) '
@@ -2264,7 +2299,7 @@ LEGACY_TARGET_V1_2_1_PATCHES = {'020_InternalConfigureSnapshotPolicy.sql': ('397
                                               '\n'
                                               "    IF @CollectorCode='FILE_IO' AND NOT EXISTS(SELECT 1 FROM "
                                               '[snapshot].[PackageVersion] WHERE '
-                                              "CONVERT(varbinary(max),[PackageVersion])=CONVERT(varbinary(max),'1.3.0') "
+                                              "CONVERT(varbinary(max),[PackageVersion])=CONVERT(varbinary(max),'1.3.1') "
                                               'AND [SchemaVersion]=3)\n'
                                               '    BEGIN\n'
                                               '        SELECT '
@@ -2335,7 +2370,27 @@ LEGACY_TARGET_V1_2_1_PATCHES = {'020_InternalConfigureSnapshotPolicy.sql': ('397
                                               '    INSERT [snapshot].[CaptureRun]\n'
                                               '    (\n')]),
  '055_InternalCompleteWaitStatsCycle.sql': ('0010c55376a06586134c801c743e1cd1a49aefac40b095d112d2ddab53067d41',
-                                            [('        IF (SELECT COUNT_BIG(*) FROM '
+                                            [('===============================================================================\n'
+                                              'Objekt       : snapshot.InternalCompleteWaitStatsCycle\n'
+                                              'Version      : 1.0.1\n'
+                                              'Stand        : 2026-10-26\n'
+                                              'Zweck        : Die Procedure bindet einen vollständigen '
+                                              'Waitread an seinen Run\n'
+                                              '               und speichert Rohwerte und Differenzkandidaten '
+                                              'atomar.\n'
+                                              'Grenze       : Monotonie beweist keine ununterbrochene '
+                                              'Resetkontinuität.\n',
+                                              '===============================================================================\n'
+                                              'Objekt       : snapshot.InternalCompleteWaitStatsCycle\n'
+                                              'Version      : 1.0.1\n'
+                                              'Stand        : 2026-10-25\n'
+                                              'Zweck        : Die Procedure bindet einen vollständigen '
+                                              'Waitread an seinen Run\n'
+                                              '               und speichert Rohwerte und Differenzkandidaten '
+                                              'atomar.\n'
+                                              'Grenze       : Monotonie beweist keine ununterbrochene '
+                                              'Resetkontinuität.\n'),
+                                             ('        IF (SELECT COUNT_BIG(*) FROM '
                                               '[snapshot].[PackageVersion])<>1 OR NOT EXISTS\n'
                                               '           (SELECT 1 FROM [snapshot].[PackageVersion]\n'
                                               '            WHERE '
@@ -2343,7 +2398,8 @@ LEGACY_TARGET_V1_2_1_PATCHES = {'020_InternalConfigureSnapshotPolicy.sql': ('397
                                               '              AND '
                                               "((CONVERT(varbinary(max),[PackageVersion])=CONVERT(varbinary(max),'1.2.1') "
                                               'AND [SchemaVersion]=2) OR '
-                                              "(CONVERT(varbinary(max),[PackageVersion])=CONVERT(varbinary(max),'1.3.0') "
+                                              '(CONVERT(varbinary(max),[PackageVersion]) '
+                                              "IN(CONVERT(varbinary(max),'1.3.0'),CONVERT(varbinary(max),'1.3.1')) "
                                               'AND [SchemaVersion]=3)))\n'
                                               '        BEGIN\n'
                                               '            SELECT '
@@ -2371,8 +2427,10 @@ LEGACY_TARGET_V1_2_1_PATCHES = {'020_InternalConfigureSnapshotPolicy.sql': ('397
                                               '@ExpectedTargetCreateDate=@ExpectedTargetCreateDate;\n'
                                               "        IF COALESCE(@ProbeStatus,'')<>'AVAILABLE' OR "
                                               'COALESCE(@RetentionContract,0)<>CASE WHEN EXISTS(SELECT 1 '
-                                              'FROM [snapshot].[PackageVersion] WHERE [SchemaVersion]=3) '
-                                              'THEN 2 ELSE 1 END\n'
+                                              'FROM [snapshot].[PackageVersion] WHERE '
+                                              "[PackageVersion]='1.3.1' AND [SchemaVersion]=3) THEN 3 WHEN "
+                                              'EXISTS(SELECT 1 FROM [snapshot].[PackageVersion] WHERE '
+                                              '[SchemaVersion]=3) THEN 2 ELSE 1 END\n'
                                               '           OR @ProbeRun IS NOT NULL OR @ProbeError IS NOT '
                                               'NULL OR COALESCE(@ProbeBudget,1)<>0\n'
                                               "            THROW 53762,N'Der benötigte read-only "
@@ -2402,7 +2460,7 @@ LEGACY_TARGET_V1_2_1_PATCHES = {'020_InternalConfigureSnapshotPolicy.sql': ('397
                                         '    SET @RetentionContractVersionOut=CASE WHEN EXISTS(SELECT 1 FROM '
                                         '[snapshot].[PackageVersion] WITH (NOLOCK)\n'
                                         '      WHERE [SchemaVersion]=3 AND [PackageVersion] '
-                                        "IN('1.2.2','1.3.0')) THEN 2 ELSE 1 END;\n"
+                                        "IN('1.2.2','1.3.0','1.3.1')) THEN 3 ELSE 1 END;\n"
                                         '    -- The handshake reads only the admitted version and creates no '
                                         'purge receipt.\n'
                                         '    IF @ContractOnly=1 RETURN;\n'
@@ -2416,7 +2474,1129 @@ LEGACY_TARGET_V1_2_1_PATCHES = {'020_InternalConfigureSnapshotPolicy.sql': ('397
                                         '    IF @ContractOnly=1 RETURN;\n'
                                         '\n'
                                         '    SET NOCOUNT ON;\n'),
-                                       ('              -- including a failed run whose children have expired '
+                                       ('              AND NOT EXISTS (SELECT 1 FROM '
+                                        '[snapshot].[MetricSample] AS [m] WHERE '
+                                        '[m].[CaptureRunId]=[r].[CaptureRunId])\n'
+                                        '              AND NOT EXISTS (SELECT 1 FROM '
+                                        '[snapshot].[PayloadSnapshot] AS [p] WHERE '
+                                        '[p].[CaptureRunId]=[r].[CaptureRunId])\n'
+                                        '              AND NOT EXISTS (SELECT 1 FROM '
+                                        '[snapshot].[ModuleStatus] AS [s] WHERE '
+                                        '[s].[CaptureRunId]=[r].[CaptureRunId])\n'
+                                        '              -- Waits retain their latest finalized run. File I/O '
+                                        'retains its latest\n'
+                                        '              -- run even when finalization is unconfirmed or '
+                                        'children are absent.\n'
+                                        '              AND\n'
+                                        '              (\n'
+                                        '                  [r].[CollectorCode] NOT '
+                                        "IN('WAIT_STATS','FILE_IO')\n"
+                                        "                  OR ([r].[CollectorCode]='WAIT_STATS' AND "
+                                        '[r].[EndedAtUtc] IS NULL)\n'
+                                        '                  OR EXISTS\n'
+                                        '                  (\n'
+                                        '                      SELECT 1 FROM [snapshot].[CaptureRun] AS '
+                                        '[later]\n'
+                                        '                      WHERE '
+                                        '[later].[CollectorCode]=[r].[CollectorCode]\n'
+                                        "                        AND ([r].[CollectorCode]='FILE_IO' OR "
+                                        '[later].[EndedAtUtc] IS NOT NULL)\n'
+                                        '                        AND '
+                                        '[later].[CaptureRunId]>[r].[CaptureRunId]\n'
+                                        '                  )\n'
+                                        '              );\n',
+                                        '              AND NOT EXISTS (SELECT 1 FROM '
+                                        '[snapshot].[MetricSample] AS [m] WHERE '
+                                        '[m].[CaptureRunId]=[r].[CaptureRunId])\n'
+                                        '              AND NOT EXISTS (SELECT 1 FROM '
+                                        '[snapshot].[PayloadSnapshot] AS [p] WHERE '
+                                        '[p].[CaptureRunId]=[r].[CaptureRunId])\n'
+                                        '              AND NOT EXISTS (SELECT 1 FROM '
+                                        '[snapshot].[ModuleStatus] AS [s] WHERE '
+                                        '[s].[CaptureRunId]=[r].[CaptureRunId])\n'
+                                        '              -- Preserve the latest finalized Wait run as the '
+                                        'comparison fence,\n'
+                                        '              -- including a failed run whose children have expired '
+                                        'or never existed.\n'
+                                        '              AND\n'
+                                        '              (\n'
+                                        "                  [r].[CollectorCode]<>'WAIT_STATS'\n"
+                                        '                  OR [r].[EndedAtUtc] IS NULL\n'
+                                        '                  OR EXISTS\n'
+                                        '                  (\n'
+                                        '                      SELECT 1 FROM [snapshot].[CaptureRun] AS '
+                                        '[later]\n'
+                                        "                      WHERE [later].[CollectorCode]='WAIT_STATS'\n"
+                                        '                        AND [later].[EndedAtUtc] IS NOT NULL\n'
+                                        '                        AND '
+                                        '[later].[CaptureRunId]>[r].[CaptureRunId]\n'
+                                        '                  )\n'
+                                        '              );\n')])}
+
+# Exact released 1.3.0 target bodies; source digest and native stored hashes bind recovery.
+LEGACY_TARGET_V1_3_0_PATCHES = {'020_InternalConfigureSnapshotPolicy.sql': ('d6d77e052c0a4816cedb066ddcd29e04e9567c4268111285bc3a09c5c1c32585',
+                                             [('===============================================================================\n'
+                                               'Objekt       : snapshot.InternalConfigureSnapshotPolicy\n'
+                                               'Version      : 1.2.0\n'
+                                               'Stand        : 2026-10-26\n'
+                                               'Zweck        : Schreibt die typisierten SC-023-Policies in '
+                                               'der aktuell\n'
+                                               '               verbundenen Snapshot-Datenbank.\n'
+                                               '===============================================================================\n',
+                                               '===============================================================================\n'
+                                               'Objekt       : snapshot.InternalConfigureSnapshotPolicy\n'
+                                               'Version      : 1.2.0\n'
+                                               'Stand        : 2026-10-25\n'
+                                               'Zweck        : Schreibt die typisierten SC-023-Policies in '
+                                               'der aktuell\n'
+                                               '               verbundenen Snapshot-Datenbank.\n'
+                                               '===============================================================================\n'),
+                                              ('        END;\n'
+                                               '        IF (SELECT COUNT_BIG(*) FROM '
+                                               '[snapshot].[PackageVersion])<>1 OR NOT EXISTS\n'
+                                               '           (SELECT 1 FROM [snapshot].[PackageVersion] WHERE '
+                                               "CONVERT(varbinary(max),[PackageCode])=CONVERT(varbinary(max),'SC-023')\n"
+                                               '            AND '
+                                               "((CONVERT(varbinary(max),[PackageVersion])=CONVERT(varbinary(max),'1.2.1') "
+                                               'AND [SchemaVersion]=2) OR '
+                                               '(CONVERT(varbinary(max),[PackageVersion]) '
+                                               "IN(CONVERT(varbinary(max),'1.3.0'),CONVERT(varbinary(max),'1.3.1')) "
+                                               'AND [SchemaVersion]=3)))\n'
+                                               '           OR NOT EXISTS(SELECT 1 FROM [sys].[procedures] AS '
+                                               '[wp] WITH (NOLOCK) JOIN [sys].[schemas] AS [ws] WITH '
+                                               '(NOLOCK) ON [ws].[schema_id]=[wp].[schema_id] WHERE '
+                                               "CONVERT(varbinary(max),[ws].[name])=CONVERT(varbinary(max),N'snapshot') "
+                                               'AND '
+                                               "CONVERT(varbinary(max),[wp].[name])=CONVERT(varbinary(max),N'InternalCompleteWaitStatsCycle'))\n"
+                                               '           OR NOT EXISTS(SELECT 1 FROM [sys].[parameters] AS '
+                                               '[p] WITH (NOLOCK)\n'
+                                               '                         WHERE [p].[object_id] IN(SELECT '
+                                               '[hp].[object_id] FROM [sys].[procedures] AS [hp] WITH '
+                                               '(NOLOCK) JOIN [sys].[schemas] AS [hs] WITH (NOLOCK) ON '
+                                               '[hs].[schema_id]=[hp].[schema_id] WHERE '
+                                               "CONVERT(varbinary(max),[hs].[name])=CONVERT(varbinary(max),N'snapshot') "
+                                               'AND '
+                                               "CONVERT(varbinary(max),[hp].[name])=CONVERT(varbinary(max),N'InternalPurgeExpiredData'))\n",
+                                               '        END;\n'
+                                               '        IF (SELECT COUNT_BIG(*) FROM '
+                                               '[snapshot].[PackageVersion])<>1 OR NOT EXISTS\n'
+                                               '           (SELECT 1 FROM [snapshot].[PackageVersion] WHERE '
+                                               "CONVERT(varbinary(max),[PackageCode])=CONVERT(varbinary(max),'SC-023')\n"
+                                               '            AND '
+                                               "((CONVERT(varbinary(max),[PackageVersion])=CONVERT(varbinary(max),'1.2.1') "
+                                               'AND [SchemaVersion]=2) OR '
+                                               "(CONVERT(varbinary(max),[PackageVersion])=CONVERT(varbinary(max),'1.3.0') "
+                                               'AND [SchemaVersion]=3)))\n'
+                                               '           OR NOT EXISTS(SELECT 1 FROM [sys].[procedures] AS '
+                                               '[wp] WITH (NOLOCK) JOIN [sys].[schemas] AS [ws] WITH '
+                                               '(NOLOCK) ON [ws].[schema_id]=[wp].[schema_id] WHERE '
+                                               "CONVERT(varbinary(max),[ws].[name])=CONVERT(varbinary(max),N'snapshot') "
+                                               'AND '
+                                               "CONVERT(varbinary(max),[wp].[name])=CONVERT(varbinary(max),N'InternalCompleteWaitStatsCycle'))\n"
+                                               '           OR NOT EXISTS(SELECT 1 FROM [sys].[parameters] AS '
+                                               '[p] WITH (NOLOCK)\n'
+                                               '                         WHERE [p].[object_id] IN(SELECT '
+                                               '[hp].[object_id] FROM [sys].[procedures] AS [hp] WITH '
+                                               '(NOLOCK) JOIN [sys].[schemas] AS [hs] WITH (NOLOCK) ON '
+                                               '[hs].[schema_id]=[hp].[schema_id] WHERE '
+                                               "CONVERT(varbinary(max),[hs].[name])=CONVERT(varbinary(max),N'snapshot') "
+                                               'AND '
+                                               "CONVERT(varbinary(max),[hp].[name])=CONVERT(varbinary(max),N'InternalPurgeExpiredData'))\n"),
+                                              ('        END;\n'
+                                               '    END;\n'
+                                               '\n'
+                                               "    IF @CollectorCode='FILE_IO' AND NOT EXISTS(SELECT 1 FROM "
+                                               '[snapshot].[PackageVersion] WHERE '
+                                               "CONVERT(varbinary(max),[PackageVersion])=CONVERT(varbinary(max),'1.3.1') "
+                                               'AND [SchemaVersion]=3)\n'
+                                               '    BEGIN\n'
+                                               '        SELECT '
+                                               "@StatusCodeOut='TARGET_UNAVAILABLE',@ErrorNumberOut=53781,@ErrorMessageOut=N'Das "
+                                               "vollständige Datei-I/O-Target 1.3.0 fehlt.';\n"
+                                               '        RETURN;\n',
+                                               '        END;\n'
+                                               '    END;\n'
+                                               '\n'
+                                               "    IF @CollectorCode='FILE_IO' AND NOT EXISTS(SELECT 1 FROM "
+                                               "[snapshot].[PackageVersion] WHERE [PackageVersion]='1.3.0' "
+                                               'AND [SchemaVersion]=3)\n'
+                                               '    BEGIN\n'
+                                               '        SELECT '
+                                               "@StatusCodeOut='TARGET_UNAVAILABLE',@ErrorNumberOut=53781,@ErrorMessageOut=N'Das "
+                                               "vollständige Datei-I/O-Target 1.3.0 fehlt.';\n"
+                                               '        RETURN;\n')]),
+ '040_InternalPrepareCollectionCycle.sql': ('f06365f0e3c9ffe5996e3a3415a243db25aab77065d6d39db76aef6f31447b5c',
+                                            [('===============================================================================\n'
+                                              'Objekt       : snapshot.InternalPrepareCollectionCycle\n'
+                                              'Version      : 1.2.0\n'
+                                              'Stand        : 2026-10-26\n'
+                                              'Zweck        : Prüft Intervall und Größenbudget und eröffnet '
+                                              'genau einen Lauf.\n'
+                                              '===============================================================================\n'
+                                              '*/\n',
+                                              '===============================================================================\n'
+                                              'Objekt       : snapshot.InternalPrepareCollectionCycle\n'
+                                              'Version      : 1.2.0\n'
+                                              'Stand        : 2026-10-25\n'
+                                              'Zweck        : Prüft Intervall und Größenbudget und eröffnet '
+                                              'genau einen Lauf.\n'
+                                              '===============================================================================\n'
+                                              '*/\n'),
+                                             ("    IF @CollectorCode IN('WAIT_STATS','FILE_IO') AND\n"
+                                              '       ((SELECT COUNT_BIG(*) FROM '
+                                              '[snapshot].[PackageVersion])<>1 OR NOT EXISTS\n'
+                                              '          (SELECT 1 FROM [snapshot].[PackageVersion] WHERE '
+                                              "CONVERT(varbinary(max),[PackageCode])=CONVERT(varbinary(max),'SC-023')\n"
+                                              '           AND '
+                                              "((CONVERT(varbinary(max),[PackageVersion])=CONVERT(varbinary(max),'1.2.1') "
+                                              'AND [SchemaVersion]=2) OR '
+                                              '(CONVERT(varbinary(max),[PackageVersion]) '
+                                              "IN(CONVERT(varbinary(max),'1.3.0'),CONVERT(varbinary(max),'1.3.1')) "
+                                              'AND [SchemaVersion]=3)))\n'
+                                              '        OR NOT EXISTS(SELECT 1 FROM [sys].[procedures] AS '
+                                              '[wp] WITH (NOLOCK) JOIN [sys].[schemas] AS [ws] WITH (NOLOCK) '
+                                              'ON [ws].[schema_id]=[wp].[schema_id] WHERE '
+                                              "CONVERT(varbinary(max),[ws].[name])=CONVERT(varbinary(max),N'snapshot') "
+                                              'AND '
+                                              "CONVERT(varbinary(max),[wp].[name])=CONVERT(varbinary(max),N'InternalCompleteWaitStatsCycle'))\n"
+                                              '        OR NOT EXISTS(SELECT 1 FROM [sys].[parameters] AS [p] '
+                                              'WITH (NOLOCK)\n'
+                                              '                      WHERE [p].[object_id] IN(SELECT '
+                                              '[hp].[object_id] FROM [sys].[procedures] AS [hp] WITH '
+                                              '(NOLOCK) JOIN [sys].[schemas] AS [hs] WITH (NOLOCK) ON '
+                                              '[hs].[schema_id]=[hp].[schema_id] WHERE '
+                                              "CONVERT(varbinary(max),[hs].[name])=CONVERT(varbinary(max),N'snapshot') "
+                                              'AND '
+                                              "CONVERT(varbinary(max),[hp].[name])=CONVERT(varbinary(max),N'InternalPurgeExpiredData'))\n",
+                                              "    IF @CollectorCode IN('WAIT_STATS','FILE_IO') AND\n"
+                                              '       ((SELECT COUNT_BIG(*) FROM '
+                                              '[snapshot].[PackageVersion])<>1 OR NOT EXISTS\n'
+                                              '          (SELECT 1 FROM [snapshot].[PackageVersion] WHERE '
+                                              "CONVERT(varbinary(max),[PackageCode])=CONVERT(varbinary(max),'SC-023')\n"
+                                              '           AND '
+                                              "((CONVERT(varbinary(max),[PackageVersion])=CONVERT(varbinary(max),'1.2.1') "
+                                              'AND [SchemaVersion]=2) OR '
+                                              "(CONVERT(varbinary(max),[PackageVersion])=CONVERT(varbinary(max),'1.3.0') "
+                                              'AND [SchemaVersion]=3)))\n'
+                                              '        OR NOT EXISTS(SELECT 1 FROM [sys].[procedures] AS '
+                                              '[wp] WITH (NOLOCK) JOIN [sys].[schemas] AS [ws] WITH (NOLOCK) '
+                                              'ON [ws].[schema_id]=[wp].[schema_id] WHERE '
+                                              "CONVERT(varbinary(max),[ws].[name])=CONVERT(varbinary(max),N'snapshot') "
+                                              'AND '
+                                              "CONVERT(varbinary(max),[wp].[name])=CONVERT(varbinary(max),N'InternalCompleteWaitStatsCycle'))\n"
+                                              '        OR NOT EXISTS(SELECT 1 FROM [sys].[parameters] AS [p] '
+                                              'WITH (NOLOCK)\n'
+                                              '                      WHERE [p].[object_id] IN(SELECT '
+                                              '[hp].[object_id] FROM [sys].[procedures] AS [hp] WITH '
+                                              '(NOLOCK) JOIN [sys].[schemas] AS [hs] WITH (NOLOCK) ON '
+                                              '[hs].[schema_id]=[hp].[schema_id] WHERE '
+                                              "CONVERT(varbinary(max),[hs].[name])=CONVERT(varbinary(max),N'snapshot') "
+                                              'AND '
+                                              "CONVERT(varbinary(max),[hp].[name])=CONVERT(varbinary(max),N'InternalPurgeExpiredData'))\n"),
+                                             ('        RETURN;\n'
+                                              '    END;\n'
+                                              '\n'
+                                              "    IF @CollectorCode='FILE_IO' AND NOT EXISTS(SELECT 1 FROM "
+                                              '[snapshot].[PackageVersion] WHERE '
+                                              "CONVERT(varbinary(max),[PackageVersion])=CONVERT(varbinary(max),'1.3.1') "
+                                              'AND [SchemaVersion]=3)\n'
+                                              '    BEGIN\n'
+                                              '        SELECT '
+                                              "@StatusCodeOut='TARGET_UNAVAILABLE',@ErrorMessageOut=N'Datei-I/O "
+                                              "benötigt das vollständige Schema-3-Target.';\n"
+                                              '        RETURN;\n',
+                                              '        RETURN;\n'
+                                              '    END;\n'
+                                              '\n'
+                                              "    IF @CollectorCode='FILE_IO' AND NOT EXISTS(SELECT 1 FROM "
+                                              '[snapshot].[PackageVersion] WHERE '
+                                              "CONVERT(varbinary(max),[PackageVersion])=CONVERT(varbinary(max),'1.3.0') "
+                                              'AND [SchemaVersion]=3)\n'
+                                              '    BEGIN\n'
+                                              '        SELECT '
+                                              "@StatusCodeOut='TARGET_UNAVAILABLE',@ErrorMessageOut=N'Datei-I/O "
+                                              "benötigt das vollständige Schema-3-Target.';\n"
+                                              '        RETURN;\n')]),
+ '055_InternalCompleteWaitStatsCycle.sql': ('190fc9c2ae4337f3f6bcd4a1132b1ee955df62f1eded6674c19f7498b9687608',
+                                            [('===============================================================================\n'
+                                              'Objekt       : snapshot.InternalCompleteWaitStatsCycle\n'
+                                              'Version      : 1.0.1\n'
+                                              'Stand        : 2026-10-26\n'
+                                              'Zweck        : Die Procedure bindet einen vollständigen '
+                                              'Waitread an seinen Run\n'
+                                              '               und speichert Rohwerte und Differenzkandidaten '
+                                              'atomar.\n'
+                                              'Grenze       : Monotonie beweist keine ununterbrochene '
+                                              'Resetkontinuität.\n',
+                                              '===============================================================================\n'
+                                              'Objekt       : snapshot.InternalCompleteWaitStatsCycle\n'
+                                              'Version      : 1.0.1\n'
+                                              'Stand        : 2026-10-25\n'
+                                              'Zweck        : Die Procedure bindet einen vollständigen '
+                                              'Waitread an seinen Run\n'
+                                              '               und speichert Rohwerte und Differenzkandidaten '
+                                              'atomar.\n'
+                                              'Grenze       : Monotonie beweist keine ununterbrochene '
+                                              'Resetkontinuität.\n'),
+                                             ('        IF (SELECT COUNT_BIG(*) FROM '
+                                              '[snapshot].[PackageVersion])<>1 OR NOT EXISTS\n'
+                                              '           (SELECT 1 FROM [snapshot].[PackageVersion]\n'
+                                              '            WHERE '
+                                              "CONVERT(varbinary(max),[PackageCode])=CONVERT(varbinary(max),'SC-023')\n"
+                                              '              AND '
+                                              "((CONVERT(varbinary(max),[PackageVersion])=CONVERT(varbinary(max),'1.2.1') "
+                                              'AND [SchemaVersion]=2) OR '
+                                              '(CONVERT(varbinary(max),[PackageVersion]) '
+                                              "IN(CONVERT(varbinary(max),'1.3.0'),CONVERT(varbinary(max),'1.3.1')) "
+                                              'AND [SchemaVersion]=3)))\n'
+                                              '        BEGIN\n'
+                                              '            SELECT '
+                                              "@StatusCodeOut='TARGET_UNAVAILABLE',@IsPartialOut=1,@ErrorNumberOut=53761,\n"
+                                              "                   @ErrorMessageOut=N'Das vollständig "
+                                              "installierte Wait-Target 1.2.1 fehlt.';\n",
+                                              '        IF (SELECT COUNT_BIG(*) FROM '
+                                              '[snapshot].[PackageVersion])<>1 OR NOT EXISTS\n'
+                                              '           (SELECT 1 FROM [snapshot].[PackageVersion]\n'
+                                              '            WHERE '
+                                              "CONVERT(varbinary(max),[PackageCode])=CONVERT(varbinary(max),'SC-023')\n"
+                                              '              AND '
+                                              "((CONVERT(varbinary(max),[PackageVersion])=CONVERT(varbinary(max),'1.2.1') "
+                                              'AND [SchemaVersion]=2) OR '
+                                              "(CONVERT(varbinary(max),[PackageVersion])=CONVERT(varbinary(max),'1.3.0') "
+                                              'AND [SchemaVersion]=3)))\n'
+                                              '        BEGIN\n'
+                                              '            SELECT '
+                                              "@StatusCodeOut='TARGET_UNAVAILABLE',@IsPartialOut=1,@ErrorNumberOut=53761,\n"
+                                              "                   @ErrorMessageOut=N'Das vollständig "
+                                              "installierte Wait-Target 1.2.1 fehlt.';\n"),
+                                             ('             '
+                                              '@ExpectedTargetDatabaseId=@ExpectedTargetDatabaseId,\n'
+                                              '             '
+                                              '@ExpectedTargetDatabaseName=@ExpectedTargetDatabaseName,\n'
+                                              '             '
+                                              '@ExpectedTargetCreateDate=@ExpectedTargetCreateDate;\n'
+                                              "        IF COALESCE(@ProbeStatus,'')<>'AVAILABLE' OR "
+                                              'COALESCE(@RetentionContract,0)<>CASE WHEN EXISTS(SELECT 1 '
+                                              'FROM [snapshot].[PackageVersion] WHERE '
+                                              "[PackageVersion]='1.3.1' AND [SchemaVersion]=3) THEN 3 WHEN "
+                                              'EXISTS(SELECT 1 FROM [snapshot].[PackageVersion] WHERE '
+                                              '[SchemaVersion]=3) THEN 2 ELSE 1 END\n'
+                                              '           OR @ProbeRun IS NOT NULL OR @ProbeError IS NOT '
+                                              'NULL OR COALESCE(@ProbeBudget,1)<>0\n'
+                                              "            THROW 53762,N'Der benötigte read-only "
+                                              "Retentionsvertrag fehlt.',1;\n"
+                                              '\n',
+                                              '             '
+                                              '@ExpectedTargetDatabaseId=@ExpectedTargetDatabaseId,\n'
+                                              '             '
+                                              '@ExpectedTargetDatabaseName=@ExpectedTargetDatabaseName,\n'
+                                              '             '
+                                              '@ExpectedTargetCreateDate=@ExpectedTargetCreateDate;\n'
+                                              "        IF COALESCE(@ProbeStatus,'')<>'AVAILABLE' OR "
+                                              'COALESCE(@RetentionContract,0)<>CASE WHEN EXISTS(SELECT 1 '
+                                              'FROM [snapshot].[PackageVersion] WHERE [SchemaVersion]=3) '
+                                              'THEN 2 ELSE 1 END\n'
+                                              '           OR @ProbeRun IS NOT NULL OR @ProbeError IS NOT '
+                                              'NULL OR COALESCE(@ProbeBudget,1)<>0\n'
+                                              "            THROW 53762,N'Der benötigte read-only "
+                                              "Retentionsvertrag fehlt.',1;\n"
+                                              '\n')]),
+ '057_InternalCompleteFileIOCycle.sql': ('1abdc3645d1de792db9d232f8e1253bcfed443050cdd1410d4e031c77ed085b8',
+                                         [('/*\n'
+                                           '===============================================================================\n'
+                                           'Objekt       : snapshot.InternalCompleteFileIOCycle\n'
+                                           'Version      : 1.1.0\n'
+                                           'Stand        : 2026-10-26\n'
+                                           'Zweck        : Die Procedure bindet Datei-I/O-Rohwerte und '
+                                           'Vergleichskontexte\n'
+                                           '               atomar an einen vorbereiteten eigenen Lauf.\n',
+                                           '/*\n'
+                                           '===============================================================================\n'
+                                           'Objekt       : snapshot.InternalCompleteFileIOCycle\n'
+                                           'Version      : 1.0.0\n'
+                                           'Stand        : 2026-10-26\n'
+                                           'Zweck        : Die Procedure bindet Datei-I/O-Rohwerte und '
+                                           'Vergleichskontexte\n'
+                                           '               atomar an einen vorbereiteten eigenen Lauf.\n'),
+                                          ('    SET NOCOUNT ON;\n'
+                                           '    SET LOCK_TIMEOUT 0;\n'
+                                           '    SET XACT_ABORT ON;\n'
+                                           '    DECLARE @OwnRun bit=0,@SourceValidated '
+                                           'bit=0,@ValidatedIssuesJson nvarchar(max),\n'
+                                           '            @SourceErrorNumber int,@SourceErrorMessage '
+                                           'nvarchar(2048),@Started datetime2(3),@SourceName '
+                                           'sysname,@MaxRows int,@Payload bit,\n'
+                                           '            @Now datetime2(3),@Meta nvarchar(max),@Engine '
+                                           'nvarchar(max),@Framework nvarchar(max),@Selection '
+                                           'nvarchar(max),\n'
+                                           '            @Start datetime2(3),@End datetime2(3),@ReadStart '
+                                           'datetime2(3),@ReadEnd datetime2(3),\n'
+                                           '            @SourceStatus varchar(40),@Complete bit,@Fatal '
+                                           'bit,@Native bigint,@Eligible bigint,@Excluded bigint,@Unbound '
+                                           'bigint,\n'
+                                           '            @Written bigint,@Comparable bigint=0,@Limited '
+                                           'bit,@ServerScope bigint,@ServerIdentity nvarchar(max),\n'
+                                           '            @Previous bigint,@PreviousStatus '
+                                           'varchar(40),@PreviousEnded datetime2(3),@PreviousContext '
+                                           'nvarchar(max),@PreviousValid bit=0,\n'
+                                           '            @SelectionHash varchar(64),@EngineHash '
+                                           'varchar(64),@FrameworkHash varchar(64),\n'
+                                           '            @Context nvarchar(max),@ContextEpoch '
+                                           'uniqueidentifier=NEWID(),@Manifest nvarchar(max),@ManifestHash '
+                                           'varchar(64);\n'
+                                           '    DECLARE @Objects TABLE([Id] int IDENTITY PRIMARY KEY,[Kind] '
+                                           'varchar(8),[Ordinal] int,[Json] nvarchar(max));\n',
+                                           '    SET NOCOUNT ON;\n'
+                                           '    SET LOCK_TIMEOUT 0;\n'
+                                           '    SET XACT_ABORT ON;\n'
+                                           '    DECLARE @OwnRun bit=0,@Started datetime2(3),@SourceName '
+                                           'sysname,@MaxRows int,@Payload bit,\n'
+                                           '            @Now datetime2(3),@Meta nvarchar(max),@Engine '
+                                           'nvarchar(max),@Framework nvarchar(max),@Selection '
+                                           'nvarchar(max),\n'
+                                           '            @Start datetime2(3),@End datetime2(3),@ReadStart '
+                                           'datetime2(3),@ReadEnd datetime2(3),\n'
+                                           '            @SourceStatus varchar(40),@Complete bit,@Fatal '
+                                           'bit,@Native bigint,@Eligible bigint,@Excluded bigint,@Unbound '
+                                           'bigint,\n'
+                                           '            @Written bigint,@Comparable bigint=0,@Limited '
+                                           'bit,@ServerScope bigint,@ServerIdentity nvarchar(max),\n'
+                                           '            @Previous bigint,@PreviousStatus '
+                                           'varchar(40),@PreviousContext nvarchar(max),@PreviousValid '
+                                           'bit=0,\n'
+                                           '            @SelectionHash varchar(64),@EngineHash '
+                                           'varchar(64),@FrameworkHash varchar(64),\n'
+                                           '            @Context nvarchar(max),@ContextEpoch '
+                                           'uniqueidentifier=NEWID(),@Manifest nvarchar(max),@ManifestHash '
+                                           'varchar(64);\n'
+                                           '    DECLARE @Objects TABLE([Id] int IDENTITY PRIMARY KEY,[Kind] '
+                                           'varchar(8),[Ordinal] int,[Json] nvarchar(max));\n'),
+                                          ('    BEGIN TRY\n'
+                                           '        IF (SELECT COUNT_BIG(*) FROM '
+                                           '[snapshot].[PackageVersion])<>1 OR NOT EXISTS\n'
+                                           '           (SELECT 1 FROM [snapshot].[PackageVersion] WHERE '
+                                           "CONVERT(varbinary(max),[PackageCode])=CONVERT(varbinary(max),'SC-023')\n"
+                                           '            AND '
+                                           "CONVERT(varbinary(max),[PackageVersion])=CONVERT(varbinary(max),'1.3.1') "
+                                           'AND [SchemaVersion]=3)\n'
+                                           "            THROW 53781,N'Der Dateiabschluss benötigt das "
+                                           "vollständige Schema-3-Target.',1;\n"
+                                           '        DECLARE @Probe bigint,@ProbeStatus '
+                                           'varchar(40),@ProbeBudget bit,@ProbeError int,@ProbeMessage '
+                                           'nvarchar(2048),@Retention int;\n'
+                                           '        EXEC [snapshot].[InternalPurgeExpiredData] '
+                                           '@MaxBatches=1,@Force=0,@PurgeRunIdOut=@Probe OUTPUT,\n',
+                                           '    BEGIN TRY\n'
+                                           '        IF (SELECT COUNT_BIG(*) FROM '
+                                           '[snapshot].[PackageVersion])<>1 OR NOT EXISTS\n'
+                                           '           (SELECT 1 FROM [snapshot].[PackageVersion] WHERE '
+                                           "CONVERT(varbinary(max),[PackageCode])=CONVERT(varbinary(max),'SC-023')\n"
+                                           '            AND '
+                                           "CONVERT(varbinary(max),[PackageVersion])=CONVERT(varbinary(max),'1.3.0') "
+                                           'AND [SchemaVersion]=3)\n'
+                                           "            THROW 53781,N'Der Dateiabschluss benötigt das "
+                                           "vollständige Schema-3-Target.',1;\n"
+                                           '        DECLARE @Probe bigint,@ProbeStatus '
+                                           'varchar(40),@ProbeBudget bit,@ProbeError int,@ProbeMessage '
+                                           'nvarchar(2048),@Retention int;\n'
+                                           '        EXEC [snapshot].[InternalPurgeExpiredData] '
+                                           '@MaxBatches=1,@Force=0,@PurgeRunIdOut=@Probe OUTPUT,\n'),
+                                          ('             @ErrorMessageOut=@ProbeMessage '
+                                           'OUTPUT,@ContractOnly=1,@RetentionContractVersionOut=@Retention '
+                                           'OUTPUT,\n'
+                                           '             '
+                                           '@ExpectedTargetDatabaseId=@ExpectedTargetDatabaseId,@ExpectedTargetDatabaseName=@ExpectedTargetDatabaseName,\n'
+                                           '             '
+                                           '@ExpectedTargetCreateDate=@ExpectedTargetCreateDate;\n'
+                                           "        IF COALESCE(@ProbeStatus,'')<>'AVAILABLE' OR "
+                                           'COALESCE(@ProbeBudget,1)<>0 OR COALESCE(@Retention,0)<>3\n'
+                                           '           OR @Probe IS NOT NULL OR @ProbeError IS NOT NULL\n'
+                                           "            THROW 53781,N'Der tatsächlich ausgeführte "
+                                           "schreibfreie Retentionsvertrag 3 fehlt.',1;\n"
+                                           '        BEGIN TRANSACTION;\n'
+                                           '        SELECT '
+                                           '@Started=[StartedAtUtc],@SourceName=[SourceDatabaseName] FROM '
+                                           '[snapshot].[CaptureRun] WITH (UPDLOCK,HOLDLOCK)\n'
+                                           '        WHERE [CaptureRunId]=@CaptureRunId AND '
+                                           "CONVERT(varbinary(max),[CollectorCode])=CONVERT(varbinary(max),'FILE_IO')\n",
+                                           '             @ErrorMessageOut=@ProbeMessage '
+                                           'OUTPUT,@ContractOnly=1,@RetentionContractVersionOut=@Retention '
+                                           'OUTPUT,\n'
+                                           '             '
+                                           '@ExpectedTargetDatabaseId=@ExpectedTargetDatabaseId,@ExpectedTargetDatabaseName=@ExpectedTargetDatabaseName,\n'
+                                           '             '
+                                           '@ExpectedTargetCreateDate=@ExpectedTargetCreateDate;\n'
+                                           "        IF COALESCE(@ProbeStatus,'')<>'AVAILABLE' OR "
+                                           'COALESCE(@ProbeBudget,1)<>0 OR COALESCE(@Retention,0)<>2\n'
+                                           '           OR @Probe IS NOT NULL OR @ProbeError IS NOT NULL\n'
+                                           "            THROW 53781,N'Der tatsächlich ausgeführte "
+                                           "schreibfreie Retentionsvertrag 2 fehlt.',1;\n"
+                                           '        BEGIN TRANSACTION;\n'
+                                           '        SELECT '
+                                           '@Started=[StartedAtUtc],@SourceName=[SourceDatabaseName] FROM '
+                                           '[snapshot].[CaptureRun] WITH (UPDLOCK,HOLDLOCK)\n'
+                                           '        WHERE [CaptureRunId]=@CaptureRunId AND '
+                                           "CONVERT(varbinary(max),[CollectorCode])=CONVERT(varbinary(max),'FILE_IO')\n"),
+                                          ('           OR @Complete<>CASE WHEN @SourceStatus '
+                                           "IN('AVAILABLE','EMPTY_UNPROVEN') THEN 1 ELSE 0 END\n"
+                                           '           OR (@Start IS NULL AND @End IS NOT NULL) OR (@Start '
+                                           'IS NOT NULL AND @End IS NULL)\n'
+                                           '           OR (@ReadStart IS NULL AND @ReadEnd IS NOT NULL) OR '
+                                           '(@ReadStart IS NOT NULL AND @ReadEnd IS NULL)\n'
+                                           '           OR @Start>@End OR @ReadStart>@ReadEnd\n'
+                                           '           OR @Fatal=0 AND (@ReadStart<@Start OR @ReadEnd>@End '
+                                           'OR @Start<@Started)\n'
+                                           '           OR @Fatal=0 AND (@Engine IS NULL OR @Start IS NULL OR '
+                                           '@End IS NULL)\n'
+                                           '           OR @Fatal=1 AND @Engine IS NOT NULL\n'
+                                           "           OR JSON_VALUE(@Meta,'$.nativeReadState') COLLATE "
+                                           'Latin1_General_100_BIN2 NOT '
+                                           "IN('NOT_STARTED','SUCCEEDED','FAILED')\n"
+                                           "           OR JSON_VALUE(@Meta,'$.nativeReadState')='SUCCEEDED' "
+                                           'AND (@Native IS NULL OR @Fatal=0 AND @ReadStart IS NULL)\n'
+                                           "           OR JSON_VALUE(@Meta,'$.nativeReadState')<>'SUCCEEDED' "
+                                           'AND (@ReadStart IS NOT NULL OR @ReadEnd IS NOT NULL)\n'
+                                           "           OR JSON_VALUE(@Meta,'$.nativeReadState')='FAILED' AND "
+                                           '(@Native IS NOT NULL OR @Fatal=0)\n'
+                                           '           OR '
+                                           "CONVERT(varbinary(max),JSON_VALUE(@Framework,'$.databaseName'))<>CONVERT(varbinary(max),@SourceName)\n"
+                                           '           OR NOT EXISTS(SELECT 1 FROM '
+                                           '[master].[sys].[databases] WITH (NOLOCK)\n'
+                                           '             WHERE '
+                                           "[database_id]=TRY_CONVERT(int,JSON_VALUE(@Framework,'$.databaseId'))\n",
+                                           '           OR @Complete<>CASE WHEN @SourceStatus '
+                                           "IN('AVAILABLE','EMPTY_UNPROVEN') THEN 1 ELSE 0 END\n"
+                                           '           OR (@Start IS NULL AND @End IS NOT NULL) OR (@Start '
+                                           'IS NOT NULL AND @End IS NULL)\n'
+                                           '           OR (@ReadStart IS NULL AND @ReadEnd IS NOT NULL) OR '
+                                           '(@ReadStart IS NOT NULL AND @ReadEnd IS NULL)\n'
+                                           '           OR @Start>@End OR @ReadStart>@ReadEnd OR '
+                                           '@ReadStart<@Start OR @ReadEnd>@End OR @Start<@Started\n'
+                                           '           OR @Fatal=0 AND (@Engine IS NULL OR @Start IS NULL OR '
+                                           '@End IS NULL)\n'
+                                           '           OR @Fatal=1 AND @Engine IS NOT NULL\n'
+                                           "           OR JSON_VALUE(@Meta,'$.nativeReadState') COLLATE "
+                                           'Latin1_General_100_BIN2 NOT '
+                                           "IN('NOT_STARTED','SUCCEEDED','FAILED')\n"
+                                           "           OR JSON_VALUE(@Meta,'$.nativeReadState')='SUCCEEDED' "
+                                           'AND (@ReadStart IS NULL OR @Native IS NULL)\n'
+                                           "           OR JSON_VALUE(@Meta,'$.nativeReadState')<>'SUCCEEDED' "
+                                           'AND (@ReadStart IS NOT NULL OR @ReadEnd IS NOT NULL)\n'
+                                           "           OR JSON_VALUE(@Meta,'$.nativeReadState')='FAILED' AND "
+                                           '@Native IS NOT NULL\n'
+                                           '           OR '
+                                           "CONVERT(varbinary(max),JSON_VALUE(@Framework,'$.databaseName'))<>CONVERT(varbinary(max),@SourceName)\n"
+                                           '           OR NOT EXISTS(SELECT 1 FROM '
+                                           '[master].[sys].[databases] WITH (NOLOCK)\n'
+                                           '             WHERE '
+                                           "[database_id]=TRY_CONVERT(int,JSON_VALUE(@Framework,'$.databaseId'))\n"),
+                                          ('           OR EXISTS(SELECT 1 FROM @Databases GROUP BY '
+                                           'CONVERT(varbinary(256),[Name]) HAVING COUNT_BIG(*)<>1)\n'
+                                           '           OR (SELECT COUNT_BIG(*) FROM '
+                                           "@Databases)<>TRY_CONVERT(bigint,JSON_VALUE(@Selection,'$.selectedDatabaseCount'))\n"
+                                           '           OR '
+                                           "JSON_VALUE(@Meta,'$.nativeReadState')='NOT_STARTED' AND\n"
+                                           '               ((NOT EXISTS(SELECT 1 FROM @Databases) AND '
+                                           'COALESCE(@Native,-1)<>0)\n'
+                                           '                OR EXISTS(SELECT 1 FROM @Databases) AND '
+                                           '(@Fatal=0 OR @Native IS NOT NULL))\n'
+                                           "            THROW 53782,N'Die tatsächliche Datenbankauswahl ist "
+                                           "widersprüchlich.',1;\n"
+                                           '        DECLARE @CanonicalDatabases nvarchar(max)=(SELECT [Id] '
+                                           'AS [DatabaseId],[Name] AS [DatabaseName],\n'
+                                           '            '
+                                           "CONVERT(nvarchar(19),[Created],126)+N'.'+RIGHT(N'00'+CONVERT(nvarchar(3),DATEPART(millisecond,[Created])),3) "
+                                           'AS [DatabaseCreateDateNative]\n',
+                                           '           OR EXISTS(SELECT 1 FROM @Databases GROUP BY '
+                                           'CONVERT(varbinary(256),[Name]) HAVING COUNT_BIG(*)<>1)\n'
+                                           '           OR (SELECT COUNT_BIG(*) FROM '
+                                           "@Databases)<>TRY_CONVERT(bigint,JSON_VALUE(@Selection,'$.selectedDatabaseCount'))\n"
+                                           '           OR '
+                                           "JSON_VALUE(@Meta,'$.nativeReadState')='NOT_STARTED' AND\n"
+                                           '               (EXISTS(SELECT 1 FROM @Databases) OR '
+                                           'COALESCE(@Native,-1)<>0)\n'
+                                           "            THROW 53782,N'Die tatsächliche Datenbankauswahl ist "
+                                           "widersprüchlich.',1;\n"
+                                           '        DECLARE @CanonicalDatabases nvarchar(max)=(SELECT [Id] '
+                                           'AS [DatabaseId],[Name] AS [DatabaseName],\n'
+                                           '            '
+                                           "CONVERT(nvarchar(19),[Created],126)+N'.'+RIGHT(N'00'+CONVERT(nvarchar(3),DATEPART(millisecond,[Created])),3) "
+                                           'AS [DatabaseCreateDateNative]\n'),
+                                          ('            '
+                                           "JSON_QUERY([Json],'$.MetadataBefore'),JSON_QUERY([Json],'$.MetadataAfter') "
+                                           "FROM @Objects WHERE [Kind]='FILE';\n"
+                                           '        IF EXISTS(SELECT 1 FROM @Files GROUP BY '
+                                           '[DatabaseId],[FileId] HAVING COUNT_BIG(*)<>1)\n'
+                                           '           OR EXISTS(SELECT 1 FROM @Files [f] WHERE NOT '
+                                           'EXISTS(SELECT 1 FROM @Databases [d] WHERE '
+                                           '[d].[Id]=[f].[DatabaseId]))\n'
+                                           '           OR @Fatal=0 AND '
+                                           "JSON_VALUE(@Meta,'$.nativeReadState')='SUCCEEDED' AND (SELECT "
+                                           'COUNT_BIG(*) FROM @Files)<>@Native\n'
+                                           '           OR '
+                                           "(JSON_VALUE(@Meta,'$.nativeReadState')<>'SUCCEEDED' OR @Fatal=1) "
+                                           'AND EXISTS(SELECT 1 FROM @Files)\n'
+                                           "            THROW 53782,N'Die native Dateimenge verletzt ihre "
+                                           "Auswahl- oder Mengenbindung.',1;\n"
+                                           '        UPDATE [f] SET [Partition]=CASE\n',
+                                           '            '
+                                           "JSON_QUERY([Json],'$.MetadataBefore'),JSON_QUERY([Json],'$.MetadataAfter') "
+                                           "FROM @Objects WHERE [Kind]='FILE';\n"
+                                           '        IF EXISTS(SELECT 1 FROM @Files GROUP BY '
+                                           '[DatabaseId],[FileId] HAVING COUNT_BIG(*)<>1)\n'
+                                           '           OR EXISTS(SELECT 1 FROM @Files [f] WHERE NOT '
+                                           'EXISTS(SELECT 1 FROM @Databases [d] WHERE '
+                                           '[d].[Id]=[f].[DatabaseId]))\n'
+                                           "           OR JSON_VALUE(@Meta,'$.nativeReadState')='SUCCEEDED' "
+                                           'AND (SELECT COUNT_BIG(*) FROM @Files)<>@Native\n'
+                                           '           OR '
+                                           "(JSON_VALUE(@Meta,'$.nativeReadState')<>'SUCCEEDED' OR @Fatal=1) "
+                                           'AND EXISTS(SELECT 1 FROM @Files)\n'
+                                           "            THROW 53782,N'Die native Dateimenge verletzt ihre "
+                                           "Auswahl- oder Mengenbindung.',1;\n"
+                                           '        UPDATE [f] SET [Partition]=CASE\n'),
+                                          ('          (SELECT TOP(@MaxRows) [Ordinal] FROM @Files WHERE '
+                                           "[Partition]='ELIGIBLE' ORDER BY [DatabaseId],[FileId]);\n"
+                                           '        SELECT @Written=COUNT_BIG(*) FROM @Files WHERE '
+                                           '[Selected]=1;\n'
+                                           '        SET @Limited=CASE WHEN @Written<@Eligible THEN 1 ELSE 0 '
+                                           'END;\n'
+                                           '        SELECT @ValidatedIssuesJson=COALESCE((SELECT * FROM '
+                                           '@Issues ORDER BY [Ordinal] FOR JSON '
+                                           "PATH,INCLUDE_NULL_VALUES),N'[]');\n"
+                                           '        SELECT '
+                                           '@SourceValidated=1,@SourceErrorNumber=@ErrorNumberOut,@SourceErrorMessage=@ErrorMessageOut;\n'
+                                           '        SET @Now=SYSUTCDATETIME();\n'
+                                           '        IF @Fatal=1 AND (@Start<@Started OR @End>@Now)\n'
+                                           '            SELECT '
+                                           '@Start=NULL,@End=NULL,@ReadStart=NULL,@ReadEnd=NULL;\n'
+                                           '        IF @Fatal=1 AND (@ReadStart<@Start OR @ReadEnd>@End OR '
+                                           '@Start IS NULL)\n'
+                                           '            SELECT @ReadStart=NULL,@ReadEnd=NULL;\n'
+                                           '        IF @Started>@Now OR @Fatal=0 AND @End>@Now\n'
+                                           "            THROW 53784,N'Die tatsächliche Targetzeit bestätigt "
+                                           "keine zeitliche Abschlussbindung.',1;\n"
+                                           '        IF @Fatal=1\n'
+                                           '        BEGIN\n'
+                                           '            SET @StatusCodeOut=@SourceStatus;\n',
+                                           '          (SELECT TOP(@MaxRows) [Ordinal] FROM @Files WHERE '
+                                           "[Partition]='ELIGIBLE' ORDER BY [DatabaseId],[FileId]);\n"
+                                           '        SELECT @Written=COUNT_BIG(*) FROM @Files WHERE '
+                                           '[Selected]=1;\n'
+                                           '        SET @Limited=CASE WHEN @Written<@Eligible THEN 1 ELSE 0 '
+                                           'END;\n'
+                                           '        SET @Now=SYSUTCDATETIME();\n'
+                                           "        IF @End>@Now OR @Started>@Now THROW 53782,N'Das "
+                                           "Messfenster liegt nach der tatsächlichen Abschlussprüfung.',1;\n"
+                                           '        IF @Fatal=1\n'
+                                           '        BEGIN\n'
+                                           '            SET @StatusCodeOut=@SourceStatus;\n'),
+                                          ('        UPDATE [f] SET [ScopeId]=[s].[ScopeId] FROM @Files [f] '
+                                           'JOIN [snapshot].[Scope] [s]\n'
+                                           "          ON [s].[ScopeType]='FILE_IO_FILE' AND "
+                                           "[s].[ScopeKeyHash]=HASHBYTES('SHA2_256',CONVERT(varbinary(max),[f].[Identity])) "
+                                           'WHERE [Selected]=1;\n'
+                                           '\n'
+                                           '        SELECT TOP(1) '
+                                           '@Previous=[CaptureRunId],@PreviousStatus=[StatusCode],@PreviousEnded=[EndedAtUtc] '
+                                           'FROM [snapshot].[CaptureRun]\n'
+                                           "          WHERE [CollectorCode]='FILE_IO' AND "
+                                           '[CaptureRunId]<@CaptureRunId ORDER BY [CaptureRunId] DESC;\n'
+                                           '        DECLARE @PreviousFiles TABLE([ScopeId] bigint PRIMARY '
+                                           'KEY,[Json] nvarchar(max),[Identity] nvarchar(max),[Hash] '
+                                           'binary(32),\n'
+                                           '          [Epoch] uniqueidentifier,[DatabaseId] int,[FileId] '
+                                           'int,[RawJson] nvarchar(max),[RawCount] bigint,\n'
+                                           '          [ContextValid] bit DEFAULT(0),[RawValid] bit '
+                                           'DEFAULT(0));\n'
+                                           '        IF @Previous IS NOT NULL AND @PreviousEnded IS NOT NULL '
+                                           "AND @PreviousStatus='PARTIAL'\n"
+                                           '        BEGIN\n'
+                                           '            SELECT @PreviousContext=[s].[StringValue] FROM '
+                                           '[snapshot].[MetricSample] [s] JOIN @Metrics [m] ON '
+                                           '[m].[Id]=[s].[MetricDefinitionId]\n'
+                                           '              WHERE [s].[CaptureRunId]=@Previous AND '
+                                           "[m].[Code]='IO_CAPTURE_CONTEXT';\n",
+                                           '        UPDATE [f] SET [ScopeId]=[s].[ScopeId] FROM @Files [f] '
+                                           'JOIN [snapshot].[Scope] [s]\n'
+                                           "          ON [s].[ScopeType]='FILE_IO_FILE' AND "
+                                           "[s].[ScopeKeyHash]=HASHBYTES('SHA2_256',CONVERT(varbinary(max),[f].[Identity])) "
+                                           'WHERE [Selected]=1;\n'
+                                           '\n'
+                                           '        SELECT TOP(1) '
+                                           '@Previous=[CaptureRunId],@PreviousStatus=[StatusCode] FROM '
+                                           '[snapshot].[CaptureRun]\n'
+                                           "          WHERE [CollectorCode]='FILE_IO' AND [EndedAtUtc] IS "
+                                           'NOT NULL AND [CaptureRunId]<@CaptureRunId ORDER BY '
+                                           '[CaptureRunId] DESC;\n'
+                                           '        DECLARE @PreviousFiles TABLE([ScopeId] bigint PRIMARY '
+                                           'KEY,[Json] nvarchar(max),[Identity] nvarchar(max),[Hash] '
+                                           'binary(32),\n'
+                                           '          [Epoch] uniqueidentifier,[DatabaseId] int,[FileId] '
+                                           'int,[RawJson] nvarchar(max),[RawCount] bigint,\n'
+                                           '          [ContextValid] bit DEFAULT(0),[RawValid] bit '
+                                           'DEFAULT(0));\n'
+                                           "        IF @Previous IS NOT NULL AND @PreviousStatus='PARTIAL'\n"
+                                           '        BEGIN\n'
+                                           '            SELECT @PreviousContext=[s].[StringValue] FROM '
+                                           '[snapshot].[MetricSample] [s] JOIN @Metrics [m] ON '
+                                           '[m].[Id]=[s].[MetricDefinitionId]\n'
+                                           '              WHERE [s].[CaptureRunId]=@Previous AND '
+                                           "[m].[Code]='IO_CAPTURE_CONTEXT';\n"),
+                                          ('            SET @Comparison=CASE WHEN @Complete=0 THEN '
+                                           "'SOURCE_PARTIAL'\n"
+                                           '              WHEN @IdentityComplete=0 THEN '
+                                           "'CURRENT_IDENTITY_INCOMPLETE'\n"
+                                           "              WHEN @Previous IS NULL THEN 'NO_PREVIOUS_CAPTURE'\n"
+                                           '              WHEN @PreviousEnded IS NULL THEN '
+                                           "'PREVIOUS_CAPTURE_UNCONFIRMED'\n"
+                                           "              WHEN @PreviousStatus<>'PARTIAL' THEN "
+                                           "'PREVIOUS_CAPTURE_FAILED'\n"
+                                           '              WHEN @PreviousValid=0 THEN '
+                                           "'PREVIOUS_CAPTURE_CONTEXT_INVALID'\n"
+                                           '              WHEN '
+                                           "JSON_VALUE(@PreviousContext,'$.capture.sourceComplete')<>'true' "
+                                           "THEN 'PREVIOUS_SOURCE_PARTIAL'\n",
+                                           '            SET @Comparison=CASE WHEN @Complete=0 THEN '
+                                           "'SOURCE_PARTIAL'\n"
+                                           '              WHEN @IdentityComplete=0 THEN '
+                                           "'CURRENT_IDENTITY_INCOMPLETE'\n"
+                                           "              WHEN @Previous IS NULL THEN 'NO_PREVIOUS_CAPTURE'\n"
+                                           "              WHEN @PreviousStatus<>'PARTIAL' THEN "
+                                           "'PREVIOUS_CAPTURE_FAILED'\n"
+                                           '              WHEN @PreviousValid=0 THEN '
+                                           "'PREVIOUS_CAPTURE_CONTEXT_INVALID'\n"
+                                           '              WHEN '
+                                           "JSON_VALUE(@PreviousContext,'$.capture.sourceComplete')<>'true' "
+                                           "THEN 'PREVIOUS_SOURCE_PARTIAL'\n"),
+                                          ('            '
+                                           "VALUES(@CaptureRunId,N'SnapshotFileIO',COALESCE(@End,SYSUTCDATETIME()),'JSON',1,'GZIP',\n"
+                                           '              '
+                                           "HASHBYTES('SHA2_256',CONVERT(varbinary(max),@CollectorJson)),COMPRESS(@CollectorJson),DATALENGTH(@CollectorJson)/2);\n"
+                                           '        DECLARE @IssueOrdinal int,@SourceModule '
+                                           'sysname,@IssueStatus varchar(40),@IssueError int,@IssueMessage '
+                                           'nvarchar(2048),\n'
+                                           '          @PersistSourceModule sysname,@PersistContextModule '
+                                           'sysname,\n'
+                                           '          @Evidence nvarchar(1000),@ScopeType '
+                                           'varchar(16),@IssueDB int,@IssueFile int,@IssueName '
+                                           'sysname,@ModuleId bigint,@IssueContext nvarchar(max);\n'
+                                           '        DECLARE [SourceIssues] CURSOR LOCAL FAST_FORWARD FOR '
+                                           'SELECT '
+                                           '[Ordinal],[SourceName],[StatusCode],[ErrorNumber],[ErrorMessage],\n'
+                                           '          '
+                                           '[EvidenceLimit],[ScopeType],[DatabaseId],[FileId],[DatabaseName] '
+                                           'FROM @Issues ORDER BY [Ordinal];\n',
+                                           '            '
+                                           "VALUES(@CaptureRunId,N'SnapshotFileIO',COALESCE(@End,SYSUTCDATETIME()),'JSON',1,'GZIP',\n"
+                                           '              '
+                                           "HASHBYTES('SHA2_256',CONVERT(varbinary(max),@CollectorJson)),COMPRESS(@CollectorJson),DATALENGTH(@CollectorJson)/2);\n"
+                                           '        DECLARE @IssueOrdinal int,@SourceModule '
+                                           'sysname,@IssueStatus varchar(40),@IssueError int,@IssueMessage '
+                                           'nvarchar(2048),\n'
+                                           '          @Evidence nvarchar(1000),@ScopeType '
+                                           'varchar(16),@IssueDB int,@IssueFile int,@IssueName '
+                                           'sysname,@ModuleId bigint,@IssueContext nvarchar(max);\n'
+                                           '        DECLARE [SourceIssues] CURSOR LOCAL FAST_FORWARD FOR '
+                                           'SELECT '
+                                           '[Ordinal],[SourceName],[StatusCode],[ErrorNumber],[ErrorMessage],\n'
+                                           '          '
+                                           '[EvidenceLimit],[ScopeType],[DatabaseId],[FileId],[DatabaseName] '
+                                           'FROM @Issues ORDER BY [Ordinal];\n'),
+                                          ('        FETCH NEXT FROM [SourceIssues] INTO '
+                                           '@IssueOrdinal,@SourceModule,@IssueStatus,@IssueError,@IssueMessage,@Evidence,@ScopeType,@IssueDB,@IssueFile,@IssueName;\n'
+                                           '        WHILE @@FETCH_STATUS=0\n'
+                                           '        BEGIN\n'
+                                           '            SELECT @PersistSourceModule=CASE WHEN EXISTS(SELECT '
+                                           '1 FROM @Issues WHERE [SourceName]=@SourceModule AND '
+                                           '[Ordinal]<@IssueOrdinal)\n'
+                                           '              THEN '
+                                           "CONVERT(sysname,CONCAT(@SourceModule,N'#',@IssueOrdinal)) ELSE "
+                                           '@SourceModule END,\n'
+                                           '              @PersistContextModule=CASE WHEN @IssueOrdinal=0 '
+                                           "THEN N'FileIOSourceIssueContext' ELSE "
+                                           "CONVERT(sysname,CONCAT(N'FileIOSourceIssueContext#',@IssueOrdinal)) "
+                                           'END;\n'
+                                           '            INSERT '
+                                           '[snapshot].[ModuleStatus]([CaptureRunId],[ModuleName],[CollectionTimeUtc],[StatusCode],[IsPartial],[ErrorNumber],[ErrorMessage],[EvidenceLimit])\n'
+                                           '            '
+                                           'VALUES(@CaptureRunId,@PersistSourceModule,COALESCE(@End,SYSUTCDATETIME()),@IssueStatus,1,@IssueError,@IssueMessage,@Evidence);\n'
+                                           '            SET @ModuleId=CONVERT(bigint,SCOPE_IDENTITY());\n'
+                                           '            SELECT @IssueContext=(SELECT '
+                                           'CONVERT(varchar(20),@ModuleId) AS '
+                                           '[sourceModuleStatusId],@ScopeType AS [ScopeType],@IssueDB AS '
+                                           '[DatabaseId],\n'
+                                           '              @IssueFile AS [FileId],@IssueName AS '
+                                           '[DatabaseName],@IssueStatus AS [StatusCode] FOR JSON '
+                                           'PATH,WITHOUT_ARRAY_WRAPPER,INCLUDE_NULL_VALUES);\n'
+                                           "            IF DATALENGTH(@IssueContext)>4096 THROW 53784,N'Der "
+                                           "gebundene Issuekontext überschreitet sein Meldungslimit.',1;\n"
+                                           '            INSERT '
+                                           '[snapshot].[ModuleStatus]([CaptureRunId],[ModuleName],[CollectionTimeUtc],[StatusCode],[IsPartial],[ErrorNumber],[ErrorMessage],[EvidenceLimit])\n'
+                                           '            '
+                                           'VALUES(@CaptureRunId,@PersistContextModule,COALESCE(@End,SYSUTCDATETIME()),@IssueStatus,1,NULL,@IssueContext,NULL);\n'
+                                           '            FETCH NEXT FROM [SourceIssues] INTO '
+                                           '@IssueOrdinal,@SourceModule,@IssueStatus,@IssueError,@IssueMessage,@Evidence,@ScopeType,@IssueDB,@IssueFile,@IssueName;\n'
+                                           '        END;\n'
+                                           '        CLOSE [SourceIssues]; DEALLOCATE [SourceIssues];\n',
+                                           '        FETCH NEXT FROM [SourceIssues] INTO '
+                                           '@IssueOrdinal,@SourceModule,@IssueStatus,@IssueError,@IssueMessage,@Evidence,@ScopeType,@IssueDB,@IssueFile,@IssueName;\n'
+                                           '        WHILE @@FETCH_STATUS=0\n'
+                                           '        BEGIN\n'
+                                           '            INSERT '
+                                           '[snapshot].[ModuleStatus]([CaptureRunId],[ModuleName],[CollectionTimeUtc],[StatusCode],[IsPartial],[ErrorNumber],[ErrorMessage],[EvidenceLimit])\n'
+                                           '            '
+                                           'VALUES(@CaptureRunId,@SourceModule,COALESCE(@End,SYSUTCDATETIME()),@IssueStatus,1,@IssueError,@IssueMessage,@Evidence);\n'
+                                           '            SET @ModuleId=CONVERT(bigint,SCOPE_IDENTITY());\n'
+                                           '            SELECT @IssueContext=(SELECT '
+                                           'CONVERT(varchar(20),@ModuleId) AS '
+                                           '[sourceModuleStatusId],@ScopeType AS [ScopeType],@IssueDB AS '
+                                           '[DatabaseId],\n'
+                                           '              @IssueFile AS [FileId],@IssueName AS '
+                                           '[DatabaseName],@IssueStatus AS [StatusCode] FOR JSON '
+                                           'PATH,WITHOUT_ARRAY_WRAPPER,INCLUDE_NULL_VALUES);\n'
+                                           "            IF DATALENGTH(@IssueContext)>4096 THROW 53784,N'Der "
+                                           "gebundene Issuekontext überschreitet sein Meldungslimit.',1;\n"
+                                           '            INSERT '
+                                           '[snapshot].[ModuleStatus]([CaptureRunId],[ModuleName],[CollectionTimeUtc],[StatusCode],[IsPartial],[ErrorNumber],[ErrorMessage],[EvidenceLimit])\n'
+                                           '            '
+                                           "VALUES(@CaptureRunId,N'FileIOSourceIssueContext',COALESCE(@End,SYSUTCDATETIME()),@IssueStatus,1,NULL,@IssueContext,NULL);\n"
+                                           '            FETCH NEXT FROM [SourceIssues] INTO '
+                                           '@IssueOrdinal,@SourceModule,@IssueStatus,@IssueError,@IssueMessage,@Evidence,@ScopeType,@IssueDB,@IssueFile,@IssueName;\n'
+                                           '        END;\n'
+                                           '        CLOSE [SourceIssues]; DEALLOCATE [SourceIssues];\n'),
+                                          ('        COMMIT TRANSACTION;\n'
+                                           '    END TRY\n'
+                                           '    BEGIN CATCH\n'
+                                           '        DECLARE @Failure int=ERROR_NUMBER(),@FailureMessage '
+                                           'nvarchar(2048)=ERROR_MESSAGE(),\n'
+                                           '                @FailureModuleId bigint,@Recorded '
+                                           'datetime2(3),@Confirmed bit,@Boundary nvarchar(max);\n'
+                                           '        IF XACT_STATE()<>0 ROLLBACK TRANSACTION;\n'
+                                           '        SELECT @StatusCodeOut=CASE WHEN @Failure '
+                                           "IN(229,262,297,300,371) THEN 'DENIED_PERMISSION'\n"
+                                           '          WHEN @Failure IN(53781,53764,2812,8144,8145) THEN '
+                                           "'TARGET_UNAVAILABLE'\n"
+                                           '          WHEN @OwnRun=0 AND @Failure=53783 THEN '
+                                           "'INVALID_PARAMETER' ELSE 'ERROR_HANDLED' END,\n"
+                                           '          @IsPartialOut=1,@ErrorNumberOut=CASE WHEN @OwnRun=0 '
+                                           'AND @Failure=53783 THEN 51011 ELSE @Failure END,\n'
+                                           '          @ErrorMessageOut=@FailureMessage;\n'
+                                           '        IF @OwnRun=1\n'
+                                           '        BEGIN TRY\n'
+                                           '            IF DB_ID()<>@ExpectedTargetDatabaseId OR NOT '
+                                           'EXISTS(SELECT 1 FROM [master].[sys].[databases] WITH (NOLOCK)\n'
+                                           '              WHERE [database_id]=@ExpectedTargetDatabaseId AND '
+                                           '[create_date]=@ExpectedTargetCreateDate\n'
+                                           '                AND '
+                                           'CONVERT(varbinary(max),[name])=CONVERT(varbinary(max),@ExpectedTargetDatabaseName) '
+                                           'AND [state]=0 AND [is_read_only]=0)\n'
+                                           "                THROW 53764,N'Die Fehlerfinalisierung kann die "
+                                           "gebundene Targetidentität nicht bestätigen.',1;\n"
+                                           '            BEGIN TRANSACTION;\n'
+                                           '            IF NOT EXISTS(SELECT 1 FROM [snapshot].[CaptureRun] '
+                                           'WITH (UPDLOCK,HOLDLOCK) WHERE [CaptureRunId]=@CaptureRunId\n'
+                                           "              AND [CollectorCode]='FILE_IO' AND "
+                                           "[StatusCode]='RUNNING' AND [EndedAtUtc] IS NULL\n"
+                                           '              AND [StartedAtUtc]=@Started AND '
+                                           'CONVERT(varbinary(max),[SourceDatabaseName])=CONVERT(varbinary(max),@SourceName))\n'
+                                           '              OR EXISTS(SELECT 1 FROM [snapshot].[MetricSample] '
+                                           'WHERE [CaptureRunId]=@CaptureRunId)\n'
+                                           '              OR EXISTS(SELECT 1 FROM [snapshot].[ModuleStatus] '
+                                           'WHERE [CaptureRunId]=@CaptureRunId)\n'
+                                           '              OR EXISTS(SELECT 1 FROM '
+                                           '[snapshot].[PayloadSnapshot] WHERE '
+                                           '[CaptureRunId]=@CaptureRunId)\n'
+                                           "                THROW 53784,N'Die Fehlerfinalisierung bestätigt "
+                                           "keinen unveränderten eigenen Lauf.',1;\n"
+                                           '            SELECT @Recorded=SYSUTCDATETIME();\n'
+                                           '            SET @Confirmed=CASE WHEN @Recorded>=@Started THEN 1 '
+                                           'ELSE 0 END;\n'
+                                           '            INSERT '
+                                           '[snapshot].[ModuleStatus]([CaptureRunId],[ModuleName],[CollectionTimeUtc],[StatusCode],[IsPartial],[ErrorNumber],[ErrorMessage],[EvidenceLimit])\n'
+                                           '            VALUES(@CaptureRunId,CASE WHEN @SourceValidated=0 '
+                                           "AND @Failure=53782 THEN N'SOURCE_CONTRACT'\n"
+                                           "                   ELSE N'snapshot.InternalCompleteFileIOCycle' "
+                                           "END,@Recorded,'ERROR_HANDLED',1,@Failure,@FailureMessage,\n"
+                                           "              N'Die Fachwrites wurden zurückgerollt; keine "
+                                           "numerische Aufnahme wird behauptet.');\n"
+                                           '            SET '
+                                           '@FailureModuleId=CONVERT(bigint,SCOPE_IDENTITY());\n'
+                                           '            IF @SourceValidated=1\n'
+                                           '            BEGIN\n'
+                                           '                DELETE @Issues;\n'
+                                           '                INSERT '
+                                           '@Issues([Ordinal],[ScopeType],[SourceName],[DatabaseId],[FileId],[DatabaseName],[StatusCode],[ErrorNumber],[ErrorMessage],[EvidenceLimit])\n'
+                                           '                SELECT '
+                                           '[Ordinal],[ScopeType],[SourceName],[DatabaseId],[FileId],[DatabaseName],[StatusCode],[ErrorNumber],[ErrorMessage],[EvidenceLimit]\n'
+                                           '                FROM OPENJSON(@ValidatedIssuesJson) WITH\n'
+                                           '                 ([Ordinal] int,[ScopeType] '
+                                           'varchar(16),[SourceName] nvarchar(128),[DatabaseId] int,[FileId] '
+                                           'int,[DatabaseName] nvarchar(128),\n'
+                                           '                  [StatusCode] varchar(40),[ErrorNumber] '
+                                           'int,[ErrorMessage] nvarchar(2048),[EvidenceLimit] '
+                                           'nvarchar(1000));\n'
+                                           '                DECLARE [FailureSourceIssues] CURSOR LOCAL '
+                                           'FAST_FORWARD FOR\n'
+                                           '                SELECT '
+                                           '[Ordinal],[SourceName],[StatusCode],[ErrorNumber],[ErrorMessage],[EvidenceLimit],[ScopeType],[DatabaseId],[FileId],[DatabaseName]\n'
+                                           '                FROM @Issues ORDER BY [Ordinal];\n'
+                                           '                OPEN [FailureSourceIssues];\n'
+                                           '                FETCH NEXT FROM [FailureSourceIssues] INTO '
+                                           '@IssueOrdinal,@SourceModule,@IssueStatus,@IssueError,@IssueMessage,@Evidence,@ScopeType,@IssueDB,@IssueFile,@IssueName;\n'
+                                           '                WHILE @@FETCH_STATUS=0\n'
+                                           '                BEGIN\n'
+                                           '                    SELECT @PersistSourceModule=CASE WHEN '
+                                           'EXISTS(SELECT 1 FROM @Issues WHERE [SourceName]=@SourceModule '
+                                           'AND [Ordinal]<@IssueOrdinal)\n'
+                                           '                      THEN '
+                                           "CONVERT(sysname,CONCAT(@SourceModule,N'#',@IssueOrdinal)) ELSE "
+                                           '@SourceModule END,\n'
+                                           '                      @PersistContextModule=CASE WHEN '
+                                           "@IssueOrdinal=0 THEN N'FileIOSourceIssueContext' ELSE "
+                                           "CONVERT(sysname,CONCAT(N'FileIOSourceIssueContext#',@IssueOrdinal)) "
+                                           'END;\n'
+                                           '                    INSERT '
+                                           '[snapshot].[ModuleStatus]([CaptureRunId],[ModuleName],[CollectionTimeUtc],[StatusCode],[IsPartial],[ErrorNumber],[ErrorMessage],[EvidenceLimit])\n'
+                                           '                    '
+                                           'VALUES(@CaptureRunId,@PersistSourceModule,@Recorded,@IssueStatus,1,@IssueError,@IssueMessage,@Evidence);\n'
+                                           '                    SET '
+                                           '@ModuleId=CONVERT(bigint,SCOPE_IDENTITY());\n'
+                                           '                    SELECT @IssueContext=(SELECT '
+                                           'CONVERT(varchar(20),@ModuleId) AS '
+                                           '[sourceModuleStatusId],@ScopeType AS [ScopeType],@IssueDB AS '
+                                           '[DatabaseId],\n'
+                                           '                      @IssueFile AS [FileId],@IssueName AS '
+                                           '[DatabaseName],@IssueStatus AS [StatusCode] FOR JSON '
+                                           'PATH,WITHOUT_ARRAY_WRAPPER,INCLUDE_NULL_VALUES);\n'
+                                           '                    INSERT '
+                                           '[snapshot].[ModuleStatus]([CaptureRunId],[ModuleName],[CollectionTimeUtc],[StatusCode],[IsPartial],[ErrorNumber],[ErrorMessage],[EvidenceLimit])\n'
+                                           '                    '
+                                           'VALUES(@CaptureRunId,@PersistContextModule,@Recorded,@IssueStatus,1,NULL,@IssueContext,NULL);\n'
+                                           '                    FETCH NEXT FROM [FailureSourceIssues] INTO '
+                                           '@IssueOrdinal,@SourceModule,@IssueStatus,@IssueError,@IssueMessage,@Evidence,@ScopeType,@IssueDB,@IssueFile,@IssueName;\n'
+                                           '                END;\n'
+                                           '                CLOSE [FailureSourceIssues]; DEALLOCATE '
+                                           '[FailureSourceIssues];\n'
+                                           '            END\n'
+                                           '            ELSE IF @Failure=53782\n'
+                                           '            BEGIN\n'
+                                           '                SELECT @IssueContext=(SELECT '
+                                           'CONVERT(varchar(20),@FailureModuleId) AS '
+                                           "[sourceModuleStatusId],'SOURCE' AS [ScopeType],\n"
+                                           '                  CONVERT(int,NULL) AS '
+                                           '[DatabaseId],CONVERT(int,NULL) AS '
+                                           '[FileId],CONVERT(nvarchar(128),NULL) AS [DatabaseName],\n'
+                                           "                  'ERROR_HANDLED' AS [StatusCode] FOR JSON "
+                                           'PATH,WITHOUT_ARRAY_WRAPPER,INCLUDE_NULL_VALUES);\n'
+                                           '                INSERT '
+                                           '[snapshot].[ModuleStatus]([CaptureRunId],[ModuleName],[CollectionTimeUtc],[StatusCode],[IsPartial],[ErrorMessage])\n'
+                                           '                '
+                                           "VALUES(@CaptureRunId,N'FileIOSourceIssueContext',@Recorded,'ERROR_HANDLED',1,@IssueContext);\n"
+                                           '            END;\n'
+                                           '            INSERT '
+                                           '[snapshot].[ModuleStatus]([CaptureRunId],[ModuleName],[CollectionTimeUtc],[StatusCode],[IsPartial],[ErrorNumber],[ErrorMessage],[EvidenceLimit])\n'
+                                           '            '
+                                           "VALUES(@CaptureRunId,N'FileIOCollector',@Recorded,'ERROR_HANDLED',1,NULL,\n"
+                                           '              CASE WHEN @SourceValidated=1 THEN '
+                                           '@SourceErrorMessage ELSE @FailureMessage END,\n'
+                                           "              N'Der Targetabschluss enthält keine numerischen "
+                                           "Samples; die Quelldiagnose bleibt getrennt erhalten.');\n"
+                                           '            IF @Confirmed=0\n'
+                                           '            BEGIN\n'
+                                           '                SELECT @Boundary=(SELECT 1 AS '
+                                           '[schemaVersion],CONVERT(varchar(20),@CaptureRunId) AS '
+                                           '[captureRunId],\n'
+                                           '                  CONVERT(varchar(20),@FailureModuleId) AS '
+                                           "[failureModuleStatusId],'FINALIZATION_UNCONFIRMED' AS "
+                                           '[statusCode],\n'
+                                           '                  '
+                                           "CONVERT(nvarchar(19),@Started,126)+N'.'+RIGHT(N'00'+CONVERT(nvarchar(3),DATEPART(millisecond,@Started)),3)+N'Z' "
+                                           'AS [startedAtUtc],\n'
+                                           '                  '
+                                           "CONVERT(nvarchar(19),@Recorded,126)+N'.'+RIGHT(N'00'+CONVERT(nvarchar(3),DATEPART(millisecond,@Recorded)),3)+N'Z' "
+                                           'AS [recordedAtUtc],\n'
+                                           '                  @SourceValidated AS '
+                                           '[sourceIssuesPreserved],CONVERT(bit,0) AS '
+                                           '[finalizationConfirmed]\n'
+                                           '                  FOR JSON '
+                                           'PATH,WITHOUT_ARRAY_WRAPPER,INCLUDE_NULL_VALUES);\n'
+                                           '                INSERT '
+                                           '[snapshot].[ModuleStatus]([CaptureRunId],[ModuleName],[CollectionTimeUtc],[StatusCode],[IsPartial],[ErrorNumber],[ErrorMessage])\n'
+                                           '                '
+                                           "VALUES(@CaptureRunId,N'FileIOFinalizationBoundary',@Recorded,'FINALIZATION_UNCONFIRMED',1,NULL,@Boundary);\n"
+                                           '            END;\n'
+                                           '            UPDATE [snapshot].[CaptureRun] SET [EndedAtUtc]=CASE '
+                                           'WHEN @Confirmed=1 THEN @Recorded END,\n'
+                                           '              '
+                                           "[ResetEpochId]=NULL,[SqlServerStartTimeUtc]=NULL,[StatusCode]='ERROR_HANDLED',[IsPartial]=1,\n"
+                                           '              [ErrorNumber]=CASE WHEN @SourceValidated=1 THEN '
+                                           '@SourceErrorNumber ELSE @Failure END,\n'
+                                           '              [ErrorMessage]=CASE WHEN @SourceValidated=1 THEN '
+                                           '@SourceErrorMessage ELSE @FailureMessage '
+                                           'END,[MetricSampleCount]=0,[PayloadCount]=0\n'
+                                           '            WHERE [CaptureRunId]=@CaptureRunId AND '
+                                           "[StatusCode]='RUNNING' AND [EndedAtUtc] IS NULL;\n"
+                                           "            IF @@ROWCOUNT<>1 THROW 53784,N'Der eigene "
+                                           "Fehlerabschluss wurde nicht bestätigt.',1;\n"
+                                           '            COMMIT TRANSACTION;\n'
+                                           '            SELECT @StatusCodeOut=CASE WHEN @Confirmed=1 THEN '
+                                           "'ERROR_HANDLED' ELSE 'FINALIZATION_UNCONFIRMED' END,\n"
+                                           '              @ErrorNumberOut=CASE WHEN @SourceValidated=1 THEN '
+                                           '@SourceErrorNumber ELSE @Failure END,\n'
+                                           '              @ErrorMessageOut=CASE WHEN @SourceValidated=1 THEN '
+                                           '@SourceErrorMessage ELSE @FailureMessage END;\n'
+                                           '        END TRY\n'
+                                           '        BEGIN CATCH\n'
+                                           '            SELECT '
+                                           "@StatusCodeOut='FINALIZATION_UNCONFIRMED',@IsPartialOut=1,\n"
+                                           '              '
+                                           '@ErrorNumberOut=ERROR_NUMBER(),@ErrorMessageOut=CONVERT(nvarchar(2048),ERROR_MESSAGE());\n'
+                                           '            IF XACT_STATE()<>0 ROLLBACK TRANSACTION;\n'
+                                           '        END CATCH;\n'
+                                           '        IF @OwnRun=0 AND @Failure=53783 RETURN 51011;\n'
+                                           '    END CATCH;\n',
+                                           '        COMMIT TRANSACTION;\n'
+                                           '    END TRY\n'
+                                           '    BEGIN CATCH\n'
+                                           '        DECLARE @Failure int=ERROR_NUMBER(),@FailureMessage '
+                                           'nvarchar(2048)=ERROR_MESSAGE();\n'
+                                           '        IF XACT_STATE()<>0 ROLLBACK TRANSACTION;\n'
+                                           '        SELECT @StatusCodeOut=CASE WHEN @Failure '
+                                           "IN(229,262,297,300,371) THEN 'DENIED_PERMISSION'\n"
+                                           '          WHEN @Failure IN(53781,53764,2812,8144,8145) THEN '
+                                           "'TARGET_UNAVAILABLE' WHEN @OwnRun=0 AND @Failure=53783 THEN "
+                                           "'INVALID_PARAMETER' ELSE 'ERROR_HANDLED' END,\n"
+                                           '          @IsPartialOut=1,@ErrorNumberOut=CASE WHEN @OwnRun=0 '
+                                           'AND @Failure=53783 THEN 51011 ELSE @Failure '
+                                           'END,@ErrorMessageOut=@FailureMessage;\n'
+                                           '        IF @OwnRun=1 AND DB_ID()=@ExpectedTargetDatabaseId AND '
+                                           'EXISTS(SELECT 1 FROM [master].[sys].[databases] WITH (NOLOCK)\n'
+                                           '          WHERE [database_id]=@ExpectedTargetDatabaseId AND '
+                                           '[create_date]=@ExpectedTargetCreateDate\n'
+                                           '            AND '
+                                           'CONVERT(varbinary(max),[name])=CONVERT(varbinary(max),@ExpectedTargetDatabaseName) '
+                                           'AND [state]=0 AND [is_read_only]=0)\n'
+                                           '        BEGIN TRY\n'
+                                           '            BEGIN TRANSACTION;\n'
+                                           '            IF EXISTS(SELECT 1 FROM [snapshot].[CaptureRun] WITH '
+                                           '(UPDLOCK,HOLDLOCK) WHERE [CaptureRunId]=@CaptureRunId\n'
+                                           "              AND [CollectorCode]='FILE_IO' AND "
+                                           "[StatusCode]='RUNNING' AND [EndedAtUtc] IS NULL)\n"
+                                           '              AND NOT EXISTS(SELECT 1 FROM '
+                                           '[snapshot].[MetricSample] WHERE [CaptureRunId]=@CaptureRunId)\n'
+                                           '              AND NOT EXISTS(SELECT 1 FROM '
+                                           '[snapshot].[ModuleStatus] WHERE [CaptureRunId]=@CaptureRunId)\n'
+                                           '              AND NOT EXISTS(SELECT 1 FROM '
+                                           '[snapshot].[PayloadSnapshot] WHERE '
+                                           '[CaptureRunId]=@CaptureRunId)\n'
+                                           '            BEGIN\n'
+                                           '                INSERT '
+                                           '[snapshot].[ModuleStatus]([CaptureRunId],[ModuleName],[CollectionTimeUtc],[StatusCode],[IsPartial],[ErrorNumber],[ErrorMessage],[EvidenceLimit])\n'
+                                           '                VALUES(@CaptureRunId,CASE WHEN @Failure=53782 '
+                                           "THEN N'SOURCE_CONTRACT' ELSE N'FileIOCollector' "
+                                           'END,SYSUTCDATETIME(),@StatusCodeOut,1,\n'
+                                           "                  @ErrorNumberOut,@ErrorMessageOut,N'Die "
+                                           'Fachwrites wurden zurückgerollt; keine numerische Aufnahme wird '
+                                           "behauptet.');\n"
+                                           '                SET @ModuleId=CONVERT(bigint,SCOPE_IDENTITY());\n'
+                                           '                IF @Failure=53782\n'
+                                           '                BEGIN\n'
+                                           '                    SELECT @IssueContext=(SELECT '
+                                           'CONVERT(varchar(20),@ModuleId) AS '
+                                           "[sourceModuleStatusId],'SOURCE' AS [ScopeType],\n"
+                                           '                      CONVERT(int,NULL) AS '
+                                           '[DatabaseId],CONVERT(int,NULL) AS '
+                                           '[FileId],CONVERT(nvarchar(128),NULL) AS [DatabaseName],\n'
+                                           '                      @StatusCodeOut AS [StatusCode] FOR JSON '
+                                           'PATH,WITHOUT_ARRAY_WRAPPER,INCLUDE_NULL_VALUES);\n'
+                                           '                    INSERT '
+                                           '[snapshot].[ModuleStatus]([CaptureRunId],[ModuleName],[CollectionTimeUtc],[StatusCode],[IsPartial],[ErrorMessage])\n'
+                                           '                    '
+                                           "VALUES(@CaptureRunId,N'FileIOSourceIssueContext',SYSUTCDATETIME(),@StatusCodeOut,1,@IssueContext),\n"
+                                           '                          '
+                                           "(@CaptureRunId,N'FileIOCollector',SYSUTCDATETIME(),@StatusCodeOut,1,@ErrorMessageOut);\n"
+                                           '                END;\n'
+                                           '                UPDATE [snapshot].[CaptureRun] SET '
+                                           '[EndedAtUtc]=SYSUTCDATETIME(),[ResetEpochId]=NULL,[SqlServerStartTimeUtc]=NULL,\n'
+                                           '                  '
+                                           '[StatusCode]=@StatusCodeOut,[IsPartial]=1,[ErrorNumber]=@ErrorNumberOut,[ErrorMessage]=@ErrorMessageOut,[MetricSampleCount]=0,[PayloadCount]=0\n'
+                                           '                  WHERE [CaptureRunId]=@CaptureRunId AND '
+                                           "[StatusCode]='RUNNING' AND [EndedAtUtc] IS NULL;\n"
+                                           '            END;\n'
+                                           '            COMMIT TRANSACTION;\n'
+                                           '        END TRY\n'
+                                           '        BEGIN CATCH\n'
+                                           '            IF XACT_STATE()<>0 ROLLBACK TRANSACTION;\n'
+                                           "            SET @ErrorMessageOut=LEFT(CONCAT(@FailureMessage,N' "
+                                           "Fehlerfinalisierung nicht bestätigt: ',ERROR_MESSAGE()),2048);\n"
+                                           '        END CATCH;\n'
+                                           '        IF @OwnRun=0 AND @Failure=53783 RETURN 51011;\n'
+                                           '    END CATCH;\n')]),
+ '070_InternalPurgeExpiredData.sql': ('64c209d09b29a72837af3d64d9b1e479d8cd92769f6ca0579a43406896d11a2d',
+                                      [('    SET NOCOUNT ON;\n'
+                                        '    SET LOCK_TIMEOUT 0;\n'
+                                        '    SET @RetentionContractVersionOut=CASE WHEN EXISTS(SELECT 1 FROM '
+                                        '[snapshot].[PackageVersion] WITH (NOLOCK)\n'
+                                        '      WHERE [SchemaVersion]=3 AND [PackageVersion] '
+                                        "IN('1.2.2','1.3.0','1.3.1')) THEN 3 ELSE 1 END;\n"
+                                        '    -- The handshake reads only the admitted version and creates no '
+                                        'purge receipt.\n'
+                                        '    IF @ContractOnly=1 RETURN;\n'
+                                        '\n',
+                                        '    SET NOCOUNT ON;\n'
+                                        '    SET LOCK_TIMEOUT 0;\n'
+                                        '    SET @RetentionContractVersionOut=CASE WHEN EXISTS(SELECT 1 FROM '
+                                        '[snapshot].[PackageVersion] WITH (NOLOCK)\n'
+                                        '      WHERE [SchemaVersion]=3 AND [PackageVersion] '
+                                        "IN('1.2.2','1.3.0')) THEN 2 ELSE 1 END;\n"
+                                        '    -- The handshake reads only the admitted version and creates no '
+                                        'purge receipt.\n'
+                                        '    IF @ContractOnly=1 RETURN;\n'
+                                        '\n'),
+                                       ('              AND NOT EXISTS (SELECT 1 FROM '
+                                        '[snapshot].[MetricSample] AS [m] WHERE '
+                                        '[m].[CaptureRunId]=[r].[CaptureRunId])\n'
+                                        '              AND NOT EXISTS (SELECT 1 FROM '
+                                        '[snapshot].[PayloadSnapshot] AS [p] WHERE '
+                                        '[p].[CaptureRunId]=[r].[CaptureRunId])\n'
+                                        '              AND NOT EXISTS (SELECT 1 FROM '
+                                        '[snapshot].[ModuleStatus] AS [s] WHERE '
+                                        '[s].[CaptureRunId]=[r].[CaptureRunId])\n'
+                                        '              -- Waits retain their latest finalized run. File I/O '
+                                        'retains its latest\n'
+                                        '              -- run even when finalization is unconfirmed or '
+                                        'children are absent.\n'
+                                        '              AND\n'
+                                        '              (\n'
+                                        '                  [r].[CollectorCode] NOT '
+                                        "IN('WAIT_STATS','FILE_IO')\n"
+                                        "                  OR ([r].[CollectorCode]='WAIT_STATS' AND "
+                                        '[r].[EndedAtUtc] IS NULL)\n'
+                                        '                  OR EXISTS\n'
+                                        '                  (\n'
+                                        '                      SELECT 1 FROM [snapshot].[CaptureRun] AS '
+                                        '[later]\n'
+                                        '                      WHERE '
+                                        '[later].[CollectorCode]=[r].[CollectorCode]\n'
+                                        "                        AND ([r].[CollectorCode]='FILE_IO' OR "
+                                        '[later].[EndedAtUtc] IS NOT NULL)\n'
+                                        '                        AND '
+                                        '[later].[CaptureRunId]>[r].[CaptureRunId]\n'
+                                        '                  )\n'
+                                        '              );\n',
+                                        '              AND NOT EXISTS (SELECT 1 FROM '
+                                        '[snapshot].[MetricSample] AS [m] WHERE '
+                                        '[m].[CaptureRunId]=[r].[CaptureRunId])\n'
+                                        '              AND NOT EXISTS (SELECT 1 FROM '
+                                        '[snapshot].[PayloadSnapshot] AS [p] WHERE '
+                                        '[p].[CaptureRunId]=[r].[CaptureRunId])\n'
+                                        '              AND NOT EXISTS (SELECT 1 FROM '
+                                        '[snapshot].[ModuleStatus] AS [s] WHERE '
+                                        '[s].[CaptureRunId]=[r].[CaptureRunId])\n'
+                                        '              -- Preserve the latest finalized Wait run as the '
+                                        'comparison fence,\n'
+                                        '              -- including a failed run whose children have expired '
                                         'or never existed.\n'
                                         '              AND\n'
                                         '              (\n'
@@ -2432,22 +3612,8 @@ LEGACY_TARGET_V1_2_1_PATCHES = {'020_InternalConfigureSnapshotPolicy.sql': ('397
                                         '                        AND [later].[EndedAtUtc] IS NOT NULL\n'
                                         '                        AND '
                                         '[later].[CaptureRunId]>[r].[CaptureRunId]\n'
-                                        '                  )\n',
-                                        '              -- including a failed run whose children have expired '
-                                        'or never existed.\n'
-                                        '              AND\n'
-                                        '              (\n'
-                                        "                  [r].[CollectorCode]<>'WAIT_STATS'\n"
-                                        '                  OR [r].[EndedAtUtc] IS NULL\n'
-                                        '                  OR EXISTS\n'
-                                        '                  (\n'
-                                        '                      SELECT 1 FROM [snapshot].[CaptureRun] AS '
-                                        '[later]\n'
-                                        "                      WHERE [later].[CollectorCode]='WAIT_STATS'\n"
-                                        '                        AND [later].[EndedAtUtc] IS NOT NULL\n'
-                                        '                        AND '
-                                        '[later].[CaptureRunId]>[r].[CaptureRunId]\n'
-                                        '                  )\n')])}
+                                        '                  )\n'
+                                        '              );\n')])}
 
 FILE_IO_METRIC_CODES = ('IO_READ_COUNT', 'IO_READ_BYTES', 'IO_READ_STALL_MS', 'IO_WRITE_COUNT', 'IO_WRITE_BYTES', 'IO_WRITE_STALL_MS', 'IO_SIZE_ON_DISK_BYTES', 'IO_READ_COUNT_DELTA_CANDIDATE', 'IO_READ_BYTES_DELTA_CANDIDATE', 'IO_READ_STALL_MS_DELTA_CANDIDATE', 'IO_WRITE_COUNT_DELTA_CANDIDATE', 'IO_WRITE_BYTES_DELTA_CANDIDATE', 'IO_WRITE_STALL_MS_DELTA_CANDIDATE', 'IO_DELTA_STATUS', 'IO_FILE_CONTEXT', 'IO_CAPTURE_CONTEXT')
 
@@ -2489,6 +3655,19 @@ def snapshot_schema_cases(deployed, tables):
     ready_wait=g.stored_module_definition(g.split_batches(historical_ready['055_InternalCompleteWaitStatsCycle.sql'])[0])
     if hashlib.sha256(ready_wait.encode('utf-16le')).hexdigest()!='aeb295d67a15ce0fcf452404dde233729012e42340c138c8924f27447e1b8762':
         raise RuntimeError('Released1.2.1 stored helper binding changed')
+    historical_file_io={}
+    for name,(digest,patches) in LEGACY_TARGET_V1_3_0_PATCHES.items():
+        text=current[name]
+        for fragment,released in patches:
+            if text.count(fragment)!=1: raise RuntimeError('Released1.3.0 fixture fragment changed: '+name)
+            text=text.replace(fragment,released,1)
+        if hashlib.sha256(text.encode()).hexdigest()!=digest: raise RuntimeError('Released1.3.0 byte binding changed: '+name)
+        historical_file_io[name]=text
+    for name,digest in (('055_InternalCompleteWaitStatsCycle.sql','86272875a1bb5052072b6106d2845658c2fea26414820ef0f0c018a8b88c7c40'),
+                        ('057_InternalCompleteFileIOCycle.sql','5a2846e5b919adb69eae95cc4869f5a43b4b69b0b7fe57192a0a0dc002cee592')):
+        definition=g.stored_module_definition(g.split_batches(historical_file_io[name])[0])
+        if hashlib.sha256(definition.encode('utf-16le')).hexdigest()!=digest:
+            raise RuntimeError('Released1.3.0 stored helper binding changed: '+name)
     legacy=LEGACY_PURGE_V1_1_0.replace('\r\n','\n')
     if hashlib.sha256(legacy.encode()).hexdigest()!=LEGACY_PURGE_V1_1_0_SHA256:
         raise RuntimeError('Historical Snapshot 1.1.0 Purge fixture binding changed')
@@ -2511,39 +3690,48 @@ def snapshot_schema_cases(deployed, tables):
         return ''.join(out)
 
     def arrange_old(version):
-        if version in ('1.2.0','1.2.1'):
+        if version in ('1.2.0','1.2.1','1.3.0'):
             # Preserve installed Wait definitions, identities and custom values.
             out=["UPDATE snapshot.CollectorPolicy SET IsEnabled=1,PayloadEnabled=1,MaxRows=123,RetentionPolicyCode=COALESCE((SELECT TOP(1) RetentionPolicyCode FROM snapshot.RetentionPolicy WHERE IsFrameworkDefault=0 ORDER BY RetentionPolicyCode),'DEFAULT') WHERE CollectorCode='WAIT_STATS';\n",
                  "UPDATE snapshot.MetricDefinition SET Description=N'Example existing Wait definition',IsFrameworkDefault=0,SeedVersion=2 WHERE MetricCode='WAIT_TIME_MS';\n"]
-            selected=historical_new if version=='1.2.0' else historical_ready
+            selected=historical_file_io if version=='1.3.0' else historical_new if version=='1.2.0' else historical_ready
+            if version=='1.3.0':
+                out.append("UPDATE snapshot.CollectorPolicy SET IsEnabled=1,PayloadEnabled=1,MaxRows=123,CollectionIntervalSeconds=77,SeedVersion=42 WHERE CollectorCode='FILE_IO';\nUPDATE snapshot.MetricDefinition SET Description=N'Example released file I/O Ä漢字  ',IsFrameworkDefault=0,SeedVersion=3 WHERE MetricCode='IO_READ_COUNT';\n")
         else:
             out=[f"IF EXISTS(SELECT 1 FROM snapshot.MetricSample s JOIN snapshot.MetricDefinition d ON d.MetricDefinitionId=s.MetricDefinitionId WHERE d.MetricCode IN({metric_list})) THROW 53826,N'Historical fixture owns no Wait samples.',1;\n",
                  f'DELETE snapshot.MetricDefinition WHERE MetricCode IN({metric_list});\n',
                  "DELETE snapshot.CollectorPolicy WHERE CollectorCode='WAIT_STATS';\n",
                  'DROP PROCEDURE IF EXISTS snapshot.InternalCompleteWaitStatsCycle;\n']
             selected=historical
-        out.insert(0,"IF EXISTS(SELECT 1 FROM snapshot.MetricSample s JOIN snapshot.MetricDefinition d ON d.MetricDefinitionId=s.MetricDefinitionId WHERE d.MetricCode LIKE 'IO[_]%') THROW 53826,N'Historical fixture owns no file-I/O samples.',1;\nDELETE snapshot.MetricDefinition WHERE MetricCode LIKE 'IO[_]%'; DELETE snapshot.CollectorPolicy WHERE CollectorCode='FILE_IO'; DROP PROCEDURE IF EXISTS snapshot.InternalCompleteFileIOCycle;\n")
+        if version!='1.3.0':
+            out.insert(0,"IF EXISTS(SELECT 1 FROM snapshot.MetricSample s JOIN snapshot.MetricDefinition d ON d.MetricDefinitionId=s.MetricDefinitionId WHERE d.MetricCode LIKE 'IO[_]%') THROW 53826,N'Historical fixture owns no file-I/O samples.',1;\nDELETE snapshot.MetricDefinition WHERE MetricCode LIKE 'IO[_]%'; DELETE snapshot.CollectorPolicy WHERE CollectorCode='FILE_IO'; DROP PROCEDURE IF EXISTS snapshot.InternalCompleteFileIOCycle;\n")
         for name,text in selected.items():
             if version in ('1.0.0','1.1.0') and name.startswith('070_'): text=legacy
             out += ['EXEC sys.sp_executesql '+g.lit(batch)+';\n' for batch in g.split_batches(text)]
-        out.append(shape(1 if version=='1.0.0' else 2))
+        if version!='1.3.0': out.append(shape(1 if version=='1.0.0' else 2))
         out.append('UPDATE snapshot.PackageVersion SET PackageVersion='+g.lit(version)+';\nGO\n')
         if version=='1.2.1':
             out.append("IF HASHBYTES('SHA2_256',CONVERT(varbinary(max),TRIM(NCHAR(9)+NCHAR(10)+NCHAR(13)+N' ' FROM REPLACE(OBJECT_DEFINITION(OBJECT_ID(N'snapshot.InternalCompleteWaitStatsCycle')),NCHAR(13)+NCHAR(10),NCHAR(10)))))<>0xaeb295d67a15ce0fcf452404dde233729012e42340c138c8924f27447e1b8762 THROW 53826,N'Released1.2.1 native stored binding differs.',1;\n")
             out.append("DECLARE @OldId int,@OldCreated datetime,@OldStatus varchar(40),@OldError int,@OldMessage nvarchar(2048); EXEC "+g.q(FRAMEWORK)+".monitor.InternalValidateSnapshotWaitTarget @TargetDatabaseName="+g.lit(TARGET)+",@TargetDatabaseIdOut=@OldId OUTPUT,@TargetCreateDateOut=@OldCreated OUTPUT,@StatusCodeOut=@OldStatus OUTPUT,@ErrorNumberOut=@OldError OUTPUT,@ErrorMessageOut=@OldMessage OUTPUT; IF COALESCE(@OldStatus,'')<>'AVAILABLE' OR @OldError IS NOT NULL OR @OldId<>DB_ID() THROW 53826,N'New framework rejected actual complete old1.2.1 Wait target.',1;\nGO\n")
+        if version=='1.3.0':
+            for name,digest in (('InternalCompleteWaitStatsCycle','86272875a1bb5052072b6106d2845658c2fea26414820ef0f0c018a8b88c7c40'),
+                                ('InternalCompleteFileIOCycle','5a2846e5b919adb69eae95cc4869f5a43b4b69b0b7fe57192a0a0dc002cee592')):
+                out.append("IF HASHBYTES('SHA2_256',CONVERT(varbinary(max),TRIM(NCHAR(9)+NCHAR(10)+NCHAR(13)+N' ' FROM REPLACE(OBJECT_DEFINITION(OBJECT_ID(N'snapshot."+name+"')),NCHAR(13)+NCHAR(10),NCHAR(10)))))<>0x"+digest+" THROW 53826,N'Released1.3.0 native stored binding differs.',1;\n")
+            out.append("DECLARE @OldId int,@OldCreated datetime,@OldStatus varchar(40),@OldError int,@OldMessage nvarchar(2048); EXEC "+g.q(FRAMEWORK)+".monitor.InternalValidateSnapshotWaitTarget @TargetDatabaseName="+g.lit(TARGET)+",@TargetDatabaseIdOut=@OldId OUTPUT,@TargetCreateDateOut=@OldCreated OUTPUT,@StatusCodeOut=@OldStatus OUTPUT,@ErrorNumberOut=@OldError OUTPUT,@ErrorMessageOut=@OldMessage OUTPUT; IF COALESCE(@OldStatus,'')<>'AVAILABLE' OR @OldError IS NOT NULL OR @OldId<>DB_ID() THROW 53826,N'New framework rejected actual complete old1.3.0 Wait target.',1;\n")
+            out.append("EXEC "+g.q(FRAMEWORK)+".monitor.InternalValidateSnapshotWaitTarget @TargetDatabaseName="+g.lit(TARGET)+",@TargetDatabaseIdOut=@OldId OUTPUT,@TargetCreateDateOut=@OldCreated OUTPUT,@StatusCodeOut=@OldStatus OUTPUT,@ErrorNumberOut=@OldError OUTPUT,@ErrorMessageOut=@OldMessage OUTPUT,@CollectorCode='FILE_IO'; IF COALESCE(@OldStatus,'')<>'TARGET_UNAVAILABLE' THROW 53826,N'New public FILE_IO admitted an actual old1.3.0 target.',1;\nGO\n")
         for i,t in enumerate(tables,1):
             if t.role!='SNAPSHOT': continue
             out.append(f'DROP TABLE IF EXISTS qa.LegacyBefore_{i}; SELECT * INTO qa.LegacyBefore_{i} FROM {t.object_name};\n')
         return ''.join(out)+'GO\n'
 
-    def preserve(label,ready,had_wait=False):
+    def preserve(label,ready,had_wait=False,had_file_io=False):
         out=[]
         for i,t in enumerate(tables,1):
             if t.role!='SNAPSHOT': continue
             cols=binary_columns(t); before=f'qa.LegacyBefore_{i}'
             if t.name=='PackageVersion':
                 cols='CONVERT(varbinary(max),PackageCode) AS PackageCode,CONVERT(varbinary(max),InstalledAtUtc) AS InstalledAtUtc'
-            if ready and t.name in ('MetricDefinition','CollectorPolicy'):
+            if ready and not had_file_io and t.name in ('MetricDefinition','CollectorPolicy'):
                 io_codes=','.join(g.lit(c) for c in FILE_IO_METRIC_CODES)
                 added=io_codes+(','+metric_list if not had_wait else '')
                 pred=f'MetricCode NOT IN({added})' if t.name=='MetricDefinition' else ("CollectorCode NOT IN('FILE_IO','WAIT_STATS')" if not had_wait else "CollectorCode<>'FILE_IO'")
@@ -2552,7 +3740,7 @@ def snapshot_schema_cases(deployed, tables):
                 count=(16+(0 if had_wait else 9)) if t.name=='MetricDefinition' else (1 if had_wait else 2)
                 out.append(f'IF (SELECT COUNT_BIG(*) FROM {t.object_name} WHERE {seed_pred})<>{count} THROW 53826,N\'Unexpected added seed set.\',1;\n')
             else: out.append(equal_rows(before,t.object_name,cols,label+' '+t.name))
-        version='1.3.0' if ready else '1.2.2'
+        version='1.3.1' if ready else '1.2.2'
         out.append(f"IF NOT EXISTS(SELECT 1 FROM snapshot.PackageVersion WHERE PackageCode='SC-023' AND PackageVersion='{version}' AND SchemaVersion=3) THROW 53813,N'Snapshot migration version mismatch.',1;\n")
         if ready:
             if not had_wait:
@@ -2600,8 +3788,8 @@ def snapshot_schema_cases(deployed, tables):
         out.append("SET @Before=JSON_MODIFY(JSON_MODIFY(@Before,'$.PackageVersion[0].LastInstallerRunUtc',NULL),'$.objects',NULL); SET @After=JSON_MODIFY(JSON_MODIFY(@After,'$.PackageVersion[0].LastInstallerRunUtc',NULL),'$.objects',NULL);\nIF CONVERT(varbinary(max),@Before)<>CONVERT(varbinary(max),@After) THROW 53814,N'Snapshot repetition changed existing state.',1;\nGO\n")
         patch_route='DIRECT_TARGET' if label=='DIRECT' else label
         patch_call="DECLARE @SnapshotPatchSql nvarchar(max)=(SELECT SqlText FROM qa.SnapshotMigrationInput WHERE Route="+g.lit(patch_route)+"); EXEC sys.sp_executesql @SnapshotPatchSql;\n"
-        for version in ('1.1.0','1.1.1','1.2.0','1.2.1'):
-            out.append(arrange_old(version)+patch_call+'GO\n'+preserve(version+' '+label,True,version in ('1.2.0','1.2.1'))+'GO\n')
+        for version in ('1.1.0','1.1.1','1.2.0','1.2.1','1.3.0'):
+            out.append(arrange_old(version)+patch_call+'GO\n'+preserve(version+' '+label,True,version in ('1.2.0','1.2.1','1.3.0'),version=='1.3.0')+'GO\n')
         if label=='STANDALONE':
             out.append('SET QUOTED_IDENTIFIER OFF; SET ANSI_NULLS OFF; SET ANSI_PADDING OFF; SET ANSI_WARNINGS OFF; SET ARITHABORT OFF; SET CONCAT_NULL_YIELDS_NULL OFF; SET NUMERIC_ROUNDABORT ON; SET LOCK_TIMEOUT -1;\n'+call)
             out.append('SET QUOTED_IDENTIFIER ON; SET ANSI_NULLS ON; SET ANSI_PADDING ON; SET ANSI_WARNINGS ON; SET ARITHABORT ON; SET CONCAT_NULL_YIELDS_NULL ON; SET NUMERIC_ROUNDABORT OFF; SET LOCK_TIMEOUT 10000;\n')
@@ -2628,6 +3816,7 @@ def snapshot_schema_cases(deployed, tables):
     # Stop a real released1.2.0 upgrade after030, leaving its actual old055.
     out.append(arrange_old('1.2.0')+"DECLARE @Stage nvarchar(max)=(SELECT SqlText FROM qa.SnapshotMigrationInput WHERE Route='DIRECT'); EXEC sys.sp_executesql @Stage;\nIF NOT EXISTS(SELECT 1 FROM snapshot.PackageVersion WHERE PackageVersion='1.2.2') THROW 53826,N'Expected staged old-Wait upgrade.',1;\n")
     out.append("IF HASHBYTES('SHA2_256',CONVERT(varbinary(max),TRIM(NCHAR(9)+NCHAR(10)+NCHAR(13)+N' ' FROM REPLACE(OBJECT_DEFINITION(OBJECT_ID(N'snapshot.InternalCompleteWaitStatsCycle')),NCHAR(13)+NCHAR(10),NCHAR(10)))))<>0xe392b9581c55955b81674e468aa88eac444339585dfd787a682abf66b3a48c49 THROW 53826,N'Staged recovery did not retain the actual released old helper.',1;\nGO\nDECLARE @OldRecover nvarchar(max)=(SELECT SqlText FROM qa.SnapshotMigrationInput WHERE Route='DIRECT_TARGET'); EXEC sys.sp_executesql @OldRecover;\nGO\n"+preserve('released Wait partial recovery',True,True)+'GO\n')
+    out.append(arrange_old('1.3.0')+"UPDATE snapshot.PackageVersion SET PackageVersion='1.2.2';\nGO\nDECLARE @OldFileRecover nvarchar(max)=(SELECT SqlText FROM qa.SnapshotMigrationInput WHERE Route='DIRECT_TARGET'); EXEC sys.sp_executesql @OldFileRecover;\nGO\n"+preserve('released1.3.0 staged helper recovery',True,True,True)+'GO\n')
     # A released1.2.1 helper is also preserved after the schema3 stage and recovered by its exact stored hash.
     out.append(arrange_old('1.2.1')+"DECLARE @StageReady nvarchar(max)=(SELECT SqlText FROM qa.SnapshotMigrationInput WHERE Route='DIRECT'); EXEC sys.sp_executesql @StageReady;\nIF NOT EXISTS(SELECT 1 FROM snapshot.PackageVersion WHERE PackageVersion='1.2.2' AND SchemaVersion=3) THROW 53826,N'Expected staged released1.2.1 upgrade.',1;\n")
     out.append("IF HASHBYTES('SHA2_256',CONVERT(varbinary(max),TRIM(NCHAR(9)+NCHAR(10)+NCHAR(13)+N' ' FROM REPLACE(OBJECT_DEFINITION(OBJECT_ID(N'snapshot.InternalCompleteWaitStatsCycle')),NCHAR(13)+NCHAR(10),NCHAR(10)))))<>0xaeb295d67a15ce0fcf452404dde233729012e42340c138c8924f27447e1b8762 THROW 53826,N'Staged recovery lost the actual released1.2.1 helper.',1;\nGO\nDECLARE @ReadyRecover nvarchar(max)=(SELECT SqlText FROM qa.SnapshotMigrationInput WHERE Route='DIRECT_TARGET'); EXEC sys.sp_executesql @ReadyRecover;\nGO\n"+preserve('released1.2.1 staged recovery',True,True)+'GO\n')
@@ -2656,7 +3845,7 @@ def snapshot_schema_cases(deployed, tables):
     for label,route in routes:
         out.append("UPDATE snapshot.MetricDefinition SET Unit='EXAMPLE_WRONG' WHERE MetricCode='IO_READ_COUNT';\nGO\nDECLARE @Before nvarchar(max),@After nvarchar(max);\n"+state('@Before'))
         out.append("DECLARE @IOSeedRoute nvarchar(max)=(SELECT SqlText FROM qa.SnapshotMigrationInput WHERE Route="+g.lit(label)+"); BEGIN TRY EXEC sys.sp_executesql @IOSeedRoute; THROW 53826,N'Expected file-I/O seed collision rejection.',1; END TRY BEGIN CATCH IF ERROR_NUMBER()<>53780 THROW; END CATCH;\n"+state('@After')+"IF CONVERT(varbinary(max),@Before)<>CONVERT(varbinary(max),@After) THROW 53826,N'File-I/O seed preflight changed state.',1;\nGO\nUPDATE snapshot.MetricDefinition SET Unit='count' WHERE MetricCode='IO_READ_COUNT';\nGO\n")
-    out.append("SELECT N'PASS' AS SnapshotSchemaMigration,N'3 V1 routes, 12 real-helper patch upgrades with released1.2.1 Wait admission and old-Wait partial recovery, repetition, 27 shape/version rejections, collision and partial recovery' AS Scope;\nGO\n")
+    out.append("SELECT N'PASS' AS SnapshotSchemaMigration,N'3 V1 routes, 15 real-helper patch upgrades with released1.2.1 and1.3.0 Wait admission and old-Wait partial recovery, repetition, 27 shape/version rejections, collision and partial recovery' AS Scope;\nGO\n")
     out.append("DECLARE @Installer sysname=N'ExampleSnapshotInstaller_'+REPLACE(CONVERT(nvarchar(36),NEWID()),N'-',N''),@CredentialValue nvarchar(128)=N'Example!'+CONVERT(nvarchar(36),NEWID()),@PermissionSql nvarchar(max),@Impersonated bit=0,@InstallerSid varbinary(85),@PermissionBefore nvarchar(max),@PermissionAfter nvarchar(max),@InstallerSource nvarchar(max)=(SELECT SqlText FROM qa.SnapshotMigrationInput WHERE Route='DIRECT');\n")
     out.append("SET @PermissionSql=N'CREATE LOGIN '+QUOTENAME(@Installer)+N' WITH PASSWORD='+QUOTENAME(@CredentialValue,NCHAR(39))+N',CHECK_POLICY=OFF;'; EXEC master.sys.sp_executesql @PermissionSql; SET @InstallerSid=SUSER_SID(@Installer);\nBEGIN TRY\n")
     out.append("SET @PermissionSql=N'CREATE USER '+QUOTENAME(@Installer)+N' FOR LOGIN '+QUOTENAME(@Installer)+N'; GRANT CONTROL ON DATABASE::'+QUOTENAME(DB_NAME())+N' TO '+QUOTENAME(@Installer)+N';'; EXEC sys.sp_executesql @PermissionSql; SET @PermissionSql=N'GRANT VIEW ANY DEFINITION TO '+QUOTENAME(@Installer)+N';'; EXEC master.sys.sp_executesql @PermissionSql;\n")

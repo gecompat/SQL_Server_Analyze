@@ -128,7 +128,7 @@ EXEC [SQLServerAnalyzeSnapshotTest].[snapshot].[InternalPurgeExpiredData]
  @BudgetExceededOut=@WaitProbeBudget OUTPUT,@ErrorNumberOut=@WaitBackendError OUTPUT,@ErrorMessageOut=@WaitBackendMessage OUTPUT,
  @ContractOnly=1,@RetentionContractVersionOut=@WaitProbeVersion OUTPUT,@ExpectedTargetDatabaseId=@WaitBackendDb,
  @ExpectedTargetDatabaseName=N'SQLServerAnalyzeSnapshotTest',@ExpectedTargetCreateDate=@WaitBackendCreated;
-IF @WaitProbeVersion<>2 OR @WaitProbeRun IS NOT NULL OR COALESCE(@WaitBackendStatus,'')<>'AVAILABLE'
+IF @WaitProbeVersion<>3 OR @WaitProbeRun IS NOT NULL OR COALESCE(@WaitBackendStatus,'')<>'AVAILABLE'
  THROW 53770,N'Read-only retention handshake failed.',1;
 DECLARE @WaitBadBinding int=1,@WaitBadId int,@WaitBadName sysname,@WaitBadCreated datetime;
 WHILE @WaitBadBinding<=3

@@ -160,6 +160,7 @@ Quelle: `Code/05_QueryStore/005_TVF_QueryStoreReplicaRoleInfo.sql`
 | [`InternalPurgeExpiredData`](#snapshotinternalpurgeexpireddata) | `snapshot` | `Code/10_SnapshotBaseline/070_InternalPurgeExpiredData.sql` |
 | [`InternalValidateSnapshotWaitTarget`](#monitorinternalvalidatesnapshotwaittarget) | `monitor` | `Code/10_SnapshotBaseline/076_InternalValidateSnapshotWaitTarget.sql` |
 | [`InternalRunSnapshotWaitStatsCycle`](#monitorinternalrunsnapshotwaitstatscycle) | `monitor` | `Code/10_SnapshotBaseline/085_InternalRunSnapshotWaitStatsCycle.sql` |
+| [`InternalRunSnapshotFileIOCycle`](#monitorinternalrunsnapshotfileiocycle) | `monitor` | `Code/10_SnapshotBaseline/087_InternalRunSnapshotFileIOCycle.sql` |
 
 ### Tabellen
 
@@ -834,7 +835,7 @@ Quelle: `Code/10_SnapshotBaseline/057_InternalCompleteFileIOCycle.sql`
 | Schnittstelle | CaptureRunId bigint, CollectorJson nvarchar(max), erwartete Target-ID int, Name sysname und Erstellungszeit datetime sowie StatusCodeOut varchar(40), IsPartialOut bit, ErrorNumberOut int und ErrorMessageOut nvarchar(2048) als OUTPUT. |
 | Verwendung | Interner Targetabschluss für den passenden Frameworkcollector. Eine öffentliche native FILE_IO-Aufnahme ist noch nicht implementiert. |
 | Last und Sperren | Der Helper verwendet eine eigene Transaktion unter LOCK_TIMEOUT 0 für den bereits vorbereiteten eigenen RUNNING-Lauf; Sourceabfragen gehören nicht zu dieser Transaktion. Caller- und implizite Transaktionen werden vor Fachzugriff abgelehnt. |
-| Vertrag | Vollständiges Target 1.3.0 / Schema 3 mit tatsächlichem Retentionsvertrag 2. Dateiepochen, tatsächliche Rohhashes und der unmittelbar vorherige finalisierte FILE_IO-Lauf begrenzen Kandidaten. Sourcefehler bleiben auch ohne Payload als gebundene Module erhalten. Erfolgreiche Aufnahmen bleiben PARTIAL; Kontinuität wird nicht behauptet. Der [interne Datei-I/O-Vertrag](../Architecture/Snapshot_Baseline_Package_Contract.md#internes-datei-io-target) beschreibt die Bindungen. |
+| Vertrag | Vollständiges Target 1.3.1 / Schema 3 mit tatsächlichem Retentionsvertrag 3. Dateiepochen, tatsächliche Rohhashes und der unmittelbar vorherige FILE_IO-Lauf einschließlich offener Läufe begrenzen Kandidaten. Sourcefehler bleiben auch ohne Payload als gebundene Module erhalten. Erfolgreiche Aufnahmen bleiben PARTIAL; Kontinuität wird nicht behauptet. Der [interne Datei-I/O-Vertrag](../Architecture/Snapshot_Baseline_Package_Contract.md#internes-datei-io-target) beschreibt die Bindungen. |
 
 ### `[snapshot].[InternalFinalizeCollectionCycle]`
 
@@ -1125,7 +1126,7 @@ Quelle: `Code/10_SnapshotBaseline/076_InternalValidateSnapshotWaitTarget.sql`
 | Dimension | Beschreibung |
 |---|---|
 | Aufgabe | Prüft die tatsächliche Wait-Zielidentität, Abschlussversion, verwendeten Signaturen, neun Metrikdefinitionen und den lesenden Retentionsvertrag. |
-| Schnittstelle | Zielname und optional erwartete ID/Erstellungszeit; OUTPUT liefert die tatsächliche ID, Erstellungszeit, Status und Fehlergrenze. Der Retentionsprobeaufruf muss beim vollständigen Target 1.2.1 / Schema 2 Vertragsversion 1 und bei 1.3.0 / Schema 3 Vertragsversion 2 sowie AVAILABLE und keine Fehlernummer bestätigen; Die Run-ID bleibt NULL und das Budgetsignal 0. Eine abweichende Signatur verhindert die Aufnahme vor Writes. |
+| Schnittstelle | Zielname, optional erwartete ID/Erstellungszeit und Collectorcode mit Default WAIT_STATS; FILE_IO verlangt 1.3.1 / Schema 3 und 16 Datei-I/O-Metrikdefinitionen. OUTPUT liefert die tatsächliche ID, Erstellungszeit, Status und Fehlergrenze. Der Retentionsprobeaufruf muss beim vollständigen Target 1.2.1 / Schema 2 Vertragsversion 1 und bei 1.3.0 / Schema 3 Vertragsversion 2 beziehungsweise bei 1.3.1 / Schema 3 Vertragsversion 3 sowie AVAILABLE und keine Fehlernummer bestätigen; Die Run-ID bleibt NULL und das Budgetsignal 0. Eine abweichende Signatur verhindert die Aufnahme vor Writes. |
 | Verwendung | Konfiguration und Collection verwenden denselben internen Aufnahmevertrag. Anwendungen verwenden die öffentlichen Snapshot-Procedures. |
 | Last und Sperren | Wenige Katalog- und Policyreads ohne persistente Writes; der Retentionsaufruf verwendet ausschließlich ContractOnly. |
 | Vertrag | Ein Versionsmarker allein reicht nicht. Der interne Vertrag setzt eine vertrauenswürdige installierte Paketnamespace voraus; er beweist keine administrative Codeintegrität. |
@@ -1141,6 +1142,18 @@ Quelle: `Code/10_SnapshotBaseline/085_InternalRunSnapshotWaitStatsCycle.sql`
 | Verwendung | Ausschließlich `USP_RunSnapshotCollectionCycle` mit `CollectorCode=WAIT_STATS` ruft diesen Baustein auf. |
 | Last und Sperren | Ein Sessionlock mit Wartezeit null umfasst Aufnahmeprüfung, Purge, Vorbereitung, vollständigen DMV-Read, Abschluss und Ausgabe. MaxRows begrenzt nur Targetwrites. |
 | Vertrag | Enabled und Due werden vor Writes geprüft. Ein noch nicht fälliger Purge verhindert den Capture nicht. Enginekontext vor/nach dem Read beweist keine atomare Sicht oder Resetkontinuität; ein Ausgabefehler hebt einen bereits bestätigten Capture nicht auf. |
+
+### `[monitor].[InternalRunSnapshotFileIOCycle]`
+
+Quelle: `Code/10_SnapshotBaseline/087_InternalRunSnapshotFileIOCycle.sql`
+
+| Dimension | Beschreibung |
+|---|---|
+| Aufgabe | Bindet den vollständigen nativen Datei-I/O-Cache an beobachtete Engine-, Datenbank- und Dateimetadaten und den eigenen Targetlauf. |
+| Schnittstelle | Schedulerart, Force und die drei CurrentIO-Datenbankfilter; OUTPUT liefert Capture-ID, Targetname, Status, Partialität und Fehler. |
+| Verwendung | Der öffentliche Collectioneinstieg wählt diesen internen Baustein ausschließlich mit CollectorCode=FILE_IO. |
+| Last und Sperren | Ein Sessionlock ohne Wartezeit umfasst Policyprüfung, Purge, Vorbereitung, Quelle, Abschluss und Projektion. Ein vollständiger VFS-Read erfolgt vor dem Schreiblimit; Katalogreads laufen je ausgewählter Datenbank vorher und nachher. |
+| Vertrag | Erfolgreiche Aufnahmen bleiben PARTIAL. Späte Bindungsfehler erhalten den tatsächlichen Readzustand. Unbestätigte Abschlüsse und ihre Vorgängergrenze bleiben sichtbar; fehlgeschlagenes Readback erzeugt keine erfundene Runzeile. Der [öffentliche Datei-I/O-Vertrag](../Architecture/Snapshot_Baseline_Package_Contract.md#öffentliche-datei-io-aufnahme) beschreibt Status und Retention. |
 
 ### `[monitor].[InternalSsisExecutionMetrics]`
 

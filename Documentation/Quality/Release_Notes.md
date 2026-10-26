@@ -33,9 +33,9 @@ commitbezogenen Laufzeitnachweis.
 | ReleaseDate im Installationskatalog | 23. Oktober 2026 |
 | Mindestversion | SQL Server 2019 |
 
-Der aktuelle Inventarvertrag umfasst 198 Objekte: 117 öffentliche Procedures, 8 Views, 29 Table-Valued Functions, 24 interne Procedures und 20 Tabellen.
+Der aktuelle Inventarvertrag umfasst 199 Objekte: 117 öffentliche Procedures, 8 Views, 29 Table-Valued Functions, 25 interne Procedures und 20 Tabellen.
 
-Der Frameworkkern umfasst 175 Objekte mit 114 öffentlichen Procedures und 9 Tabellen. Das optionale Snapshotpaket umfasst 23 Objekte mit 3 öffentlichen Procedures und 11 Tabellen.
+Der Frameworkkern umfasst 175 Objekte mit 114 öffentlichen Procedures und 9 Tabellen. Das optionale Snapshotpaket umfasst 24 Objekte mit 3 öffentlichen Procedures und 11 Tabellen.
 
 Die [Paketgrenzen](../Reference/Scope_and_Limitations.md) unterscheiden
 Diagnose, Installation, lokale TABLE-Ausgabe und persistente Sammlung.

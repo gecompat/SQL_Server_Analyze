@@ -2420,6 +2420,9 @@ Quelle: `Code/10_SnapshotBaseline/090_USP_RunSnapshotCollectionCycle.sql`
     , @ErrorNumberOut    int            = NULL OUTPUT
     , @ErrorMessageOut   nvarchar(2048) = NULL OUTPUT
     , @CollectorCode     varchar(64) = 'PERFORMANCE_COUNTERS'
+    , @DatabaseNames nvarchar(max) = NULL
+    , @SystemdatenbankenEinbeziehen bit = 0
+    , @DatabaseNamePattern nvarchar(4000) = NULL
 ```
 
 ## `[monitor].[USP_PurgeSnapshotData]`
