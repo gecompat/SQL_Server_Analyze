@@ -1,6 +1,6 @@
 # Linux-cgroup-Ressourcen: begrenzter externer Beobachtungsvertrag
 
-**Status:** Ressourcen- und Parserverträge sind unabhängig geprüft. Der nachfolgende Reader-Vertrag ist ein primärquellenbasierter, noch unabhängig zu prüfender Entwurf. Es ist kein Collector implementiert und keine native Hostabnahme erfolgt.
+**Status:** Ressourcen-, Parser- und erster Reader-Vorvertrag sind unabhängig geprüft. Der Reader ist nicht implementiert; eine native Hostabnahme ist nicht erfolgt.
 **Artefakt-UID:** `urn:uuid:01a17804-0079-7079-9643-0c639808a4ff`.
 **Registrierung:** `DEFERRED`; keine finale lesbare Arbeitselementkennung vergeben.
 **Stand:** 26. Oktober 2026.
