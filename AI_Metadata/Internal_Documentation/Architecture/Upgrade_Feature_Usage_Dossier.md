@@ -1,6 +1,6 @@
 # SQL-sichtbare Nutzung veralteter Funktionen und Upgradehinweise
 
-**Status:** Produktkandidat mit abgeschlossenem Vertrags-, Produkt- und Fehlerfallreview; CI-Abnahme offen.
+**Status:** erster Produktslice über PR #459 integriert und am Head sowie auf Main abgenommen; breiter Upgradeumfang bleibt offen.
 **Artefakt-UID:** `urn:uuid:01a1769e-e5e7-7f0a-bed1-d4b5988cd11f`.
 **Registrierung:** `DEFERRED`; keine finale lesbare Arbeitselementkennung vergeben.
 **Stand:** 26. Oktober 2026.
@@ -403,3 +403,42 @@ die Grenze beträgt damit sechs. Der fünfte Kandidat besteht inzwischen auch
 das vollständige SQL2025-Gate, qualifiziert jedoch ausdrücklich den früheren
 Zeilenlimitvertrag. Der sechste Kandidat prüft den korrigierten Vertrag an
 seinem eigenen Head. Weitere lokale Labs bleiben ausgeschlossen.
+
+
+## Integrierter Abschluss des ersten Produktslices
+
+[PR #459](https://github.com/gecompat/SQL_Server_Analyze/pull/459) integriert
+den geprüften Head 7246059396d96a55f99850eb7ef4248ce3136c73 als
+746ddbd4f9738270497a9b66aba95daf9e54742b. Beide besitzen denselben Git-Tree
+916567e4f920b14830688c2bfc3ccdc02b54bfa5. Vertrags-, Produkt-, Fehlerfall-
+und abschließender Zeilenlimitreview haben keine offenen Befunde.
+
+Alle acht ursprünglichen Standardchecks bestehen am korrigierten Head,
+einschließlich des vollständigen
+[SQL2025-Gates](https://github.com/gecompat/SQL_Server_Analyze/actions/runs/40299437309)
+mit Compatibility Levels 150, 160 und 170. Die zusätzliche
+[native SQL2019-Abnahme](https://github.com/gecompat/SQL_Server_Analyze/actions/runs/40299430492)
+besteht mit qualification_scope=FULL_RELEASE, Coreumfang 34, Berechtigungsmatrix
+und Cleanup auf Linux, Build 15.0.4500.2 und CL150. Der Paket-SHA256 lautet
+5f81367069d68480604f5f05f285217a37465bd85631d6b732162d66f3ae67d5.
+Die Paket-/Sourcebindung und die unbedingte Aufnahme des Runtimebegleitvertrags
+121 einschließlich seiner Abschlussoracles 5/11/3 sind geprüft. Dessen
+Erfolgsstdout wird nicht als gesondert exportierter Lognachweis behauptet.
+
+Die Ready-for-review-Prüfungen bestätigen denselben Head zusätzlich. Alle fünf
+getrennten Main-Workflows bestehen, einschließlich des vollständigen
+[SQL2025-Main-Gates](https://github.com/gecompat/SQL_Server_Analyze/actions/runs/40303549679),
+Dokumentation, Privacy, Commitprüfung und Cleanup. Die davor dokumentierten
+fehlgeschlagenen Kandidaten bleiben historische Fehlnachweise. Der sechste
+Kandidat qualifiziert den korrigierten NULL-/0-/positiven Zeilenlimitvertrag;
+frühere grüne Kandidaten ersetzen ihn nicht. Die acht lokalen Versuche und
+sechs CI-Quellkandidaten sind abgeschlossen; kein weiterer Versuch ist daraus
+ableitbar.
+
+Maturity bleibt PLANNED für den breiteren Upgradebereich. Der gelieferte
+Slice enthält native Deprecated-Begegnungszähler und genau eine begrenzte
+Zielversionsregel. Eine vollständige Discontinued-/Breaking-Change-Abdeckung,
+Hostvoraussetzungen, ein allgemeines Upgradeurteil und eine vollständige
+native Drei-Versionen-Releasematrix sind nicht nachgewiesen. Der nächste
+Plattformvertrag steht im
+[Linux-cgroup-Dossier](Linux_Cgroup_Resource_Boundary_Dossier.md).
