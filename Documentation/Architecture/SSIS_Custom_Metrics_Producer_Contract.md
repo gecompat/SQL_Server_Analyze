@@ -1,6 +1,6 @@
 # SSIS-Vertrag für eigene Kennzahlenproduzenten
 
-**Status:** Vertragsentwurf; nicht implementiert und keine öffentliche API.
+**Status:** Fachlicher Vertragsentwurf mit begrenztem Offline-Validator; Producer, native Bindungsprüfung und SQL-Integration sind nicht implementiert.
 **Geltung:** optionales, explizites Austauschformat für eigene SSIS-Laufzeitkennzahlen.
 **Artefakt-UID:** `urn:uuid:01a179d8-4406-7dd2-97db-f4d82ab95e4c`.
 **Registrierung:** `DEFERRED`; keine finale lesbare Referenz vergeben.
@@ -11,8 +11,10 @@ Dieser Vertrag beschreibt, wie ein eigenständiger Produzent eigene Kennzahlen
 als explizite, versionierte Beobachtungen bereitstellen kann. Er standardisiert
 die Bedeutung der Typen `DELTA`, `CUMULATIVE`, `GAUGE` und `FINAL`, ihre
 Einheiten, Modell- und Ausführungsbindung sowie den Umgang mit Epochen,
-Sequenzlücken und Duplikaten. Er beschreibt keine Implementierung in Analyze
-oder Toolbelt und erweitert keine bestehende Schnittstelle.
+Sequenzlücken und Duplikaten. Der unten beschriebene Offline-Validator prüft nur das begrenzte
+Berichtsprofil. Eine Producerimplementierung oder native SQL-Aufnahme in
+Analyze oder Toolbelt wird damit nicht geliefert; bestehende Schnittstellen
+bleiben unverändert.
 
 Eine spätere Übergabe muss ausdrücklich durch einen Caller erfolgen. Analyze
 liest dafür weder Paketnutzdaten noch zusätzliche Laufzeitquellen, startet
@@ -230,15 +232,95 @@ Aufrufvertrag.
 }
 ```
 
+## Begrenztes Offline-Berichtsprofil v1
+
+`ssis-reported-metrics/v1` ist ein ausführbares, lokales JSON-Profil für die
+syntaktische und deklarierte Konsistenz eines getrennt übergebenen Berichts.
+Es ändert weder das Toolbelt-Modell-JSON noch eine SQL- oder SSIS-Schnittstelle.
+Der Validator unter `Code/Tools/Validate_Ssis_Custom_Metrics_Report.py` liest
+eine einzelne UTF-8-Datei und gibt eine kompakte JSON-Bewertung aus.
+
+Der Aufrufer speichert den separat erhaltenen Bericht lokal als UTF-8-JSON und
+startet den Validator aus dem Repositorystamm:
+
+```powershell
+python Code/Tools/Validate_Ssis_Custom_Metrics_Report.py .\Bericht.json
+```
+
+Exitcode `0` und `"valid": true` bestätigen nur das Profil. Bei einem
+Eingabefehler ist der Exitcode ungleich null; das JSON-Feld `error` enthält
+den begrenzten Fehlercode. Der Aufrufer prüft daraufhin die genannte
+Profileigenschaft oder korrigiert die Berichtsdatei. Keine dieser Ausgaben
+attestiert eine Producer- oder Capturebindung.
+
+Das geschlossene Dokument enthält genau die Wurzelfelder `profile`, `metricProducer`,
+`modelReference`, `execution`, `definitions`, `scopes` und `series`. `profile`
+ist der feste Wert `ssis-reported-metrics/v1`. Producerfelder sind `id`,
+`version` (begrenzter ASCII-Versionswert), `sourceCommit` (40 kleingeschriebene
+hexadezimale Zeichen) und `buildSha256` (SHA-256-Hextext); Modellreferenzen enthalten
+`sourceSha256` und `packageNodeId`; Ausführungsreferenzen enthalten `id` und
+`captureHandoverId`. Diese Herkunftsfelder werden auf Form geprüft, aber weder
+gegen ein Modell oder Capture aufgelöst noch authentifiziert. `metricProducer`
+bezeichnet ausschließlich die deklarierten Identitätsangaben des
+Kennzahlenproduzenten und ist vom `producer` des Toolbelt-Modellexports
+getrennt; das Profil bindet die beiden nicht zusammen.
+
+`definitions` enthält je Kennungszeichenfolge eine eindeutige Kombination aus
+`id`, `definitionVersion`, `kind` und `unit`. Für `GAUGE` ist zusätzlich eine
+stabile `selectionRule` erforderlich; andere Typen dürfen sie nicht angeben.
+`scopes` enthält eindeutige `id`-Werte. Jede `series`-Zeile bindet
+`metricId`, `definitionVersion`, `scopeId` und opakes `epoch` an
+`expectedFinalSequence`, `completed`, `cumulativeZeroPointKnown` und eine
+Beobachtungsliste. Beobachtungen verwenden die positiven Sequenzen als
+kanonischen Dezimaltext, einen UTC-Zeitstempel mit `Z` und entweder
+`status: KNOWN` mit `value` oder `status: UNKNOWN` mit `reasonCode`. Ein
+unbekannter Wert darf keinen Zahlenwert tragen. `FINAL` verlangt genau eine
+bekannte Beobachtung mit `final: true`, Sequenz und Abschlusswasserstand `1`.
+`packageNodeId` und `scopeId` sind deklarierte Bezeichner; der Validator löst
+sie weder gegen den Modellexport auf noch prüft er, ob ein Scope innerhalb des
+angegebenen Paketknotens liegt.
+
+Die Eingabe ist auf 4 MiB, 16 JSON-Verschachtelungsebenen, 256 Definitionen,
+1024 Scopes, 1024 Serien und insgesamt 10000 Beobachtungen begrenzt. Doppelte
+JSON-Properties und JSON-Zahlenliterale werden abgewiesen; Werte und Sequenzen
+sind Zeichenfolgen, sodass weder binäre Gleitkommawerte noch Parser-
+Präzisionsverlust auftreten. Ein identisches Duplikat derselben Sequenz wird
+einmal gezählt und als `IDENTICAL_DUPLICATE` gemeldet. Der Vergleich erfolgt
+auf den nach JSON-Parsing verbleibenden Property-/Wertemengen und ist damit
+unabhängig von der Reihenfolge der JSON-Properties; fehlende optionale Felder
+und explizite Standardwerte bleiben verschieden. Abweichende Inhalte
+derselben Sequenz und doppelte Definitionen oder Serienepochen sind ungültig.
+Wasserstände werden nie als Zahlenbereich expandiert: Lücken werden anhand der
+Anzahl und Grenzen beobachteter Sequenzen erkannt. Eine deklarierte
+abgeschlossene Epoche mit fehlender Schlusssequenz bleibt als `SEQUENCE_GAP`
+in der Coverage sichtbar; daraus folgt keine Attestierung der
+Abschlussdeklaration.
+
+Ein erfolgreicher Bericht belegt ausschließlich, dass die begrenzte Eingabe
+die Regeln dieses Profils erfüllt. Ausgabe `captureBinding: UNVERIFIED`,
+`producerIdentity: DECLARED_UNVERIFIED` und `runtimeEligibility:
+NOT_EVALUATED` bleibt auch dann bestehen, wenn Referenzfelder vorhanden sind.
+Die Coverage kann `SEQUENCE_GAP`, `UNKNOWN_VALUE`, `RESET_UNKNOWN`,
+`CUMULATIVE_DECREASE`, `INCOMPLETE`, `IDENTICAL_DUPLICATE` und
+`MULTIPLE_EPOCHS` ausweisen. Ein Rückgang innerhalb einer CUMULATIVE-Epoche
+wird als Coverage gemeldet und nicht über einen angenommenen Reset korrigiert. Der
+Validator bildet keinen Laufwert, addiert keine DELTA-Werte, wählt keine
+Epoche und führt weder Vergleich noch Baselinebildung aus. Coverage ist kein
+Beweis für Wahrheit, Vollständigkeit, Capturebindung, Arbeitslastgleichheit
+oder Systemgesundheit.
+
+Die erste Implementierung deckt daher eine abgegrenzte Report-Validierung ab.
+Nicht implementiert bleiben eine Abfrage oder Attestierung bestehender
+Capturebindungen, Producerinstrumentierung, automatische Paketänderungen,
+SQL-/SSISDB-Zugriff, Paket- oder Modell-Parser, Lineage, Einheitenumrechnung,
+Laufprojektion, Vergleich, Baseline und Runtime-Eignungsentscheidung.
+
 ## Implementierungsgrenze
 
-Dieser Entwurf liefert keine Parser-, Transport-, Producer-, Capture-, SQL-,
-Resultset-, Installer- oder Testimplementierung. Eine spätere Implementierung
-benötigt einen eigenen freigegebenen Umfang und muss festlegen, wie der
-logische Vertrag in versionierte Producerdefinitionen, Eingabevalidierung,
-Coverage und bestehende SSIS-Capturebindungen überführt wird. Der Entwurf
-autorisiert keine Änderungen an Paketen, SSISDB, Toolbelt, Netzwerk,
-Installation oder Benutzerrechten.
+Der Validator ist keine Parser-, Transport-, Producer-, Capture-, SQL-,
+Resultset- oder Installerimplementierung. Weitere Umsetzung benötigt einen
+eigenen freigegebenen Umfang. Dieser Vertrag autorisiert keine Änderungen an
+Paketen, SSISDB, Toolbelt, Netzwerk, Installation oder Benutzerrechten.
 
 ## Bestehende Verträge
 

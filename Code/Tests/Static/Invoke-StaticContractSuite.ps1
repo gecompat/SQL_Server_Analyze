@@ -103,6 +103,7 @@ $selfTestValidators = @(
   )
 $repositoryOnlyValidators = @(
     'Validate_Ssis_Exchange_Contract.py'
+    'Validate_Ssis_Custom_Metrics_Report.py'
     '950_Validate_Nonblocking_Metadata.py'
     '960_Validate_Complete_P1_Evidence.py'
     '970_Validate_Complete_P2_Evidence.py'

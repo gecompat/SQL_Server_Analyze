@@ -307,10 +307,13 @@ Der Restumfang ist am Checkpoint nach 30 Schritten neu bewertet. Die
 Gesamtgrenze bleibt unverändert; nach zehn verbleibenden Schritten beginnt
 keine neue Arbeit. Der nächste unabhängige geplante Schritt ist der optionale
 Producervertrag für eigene SSIS-Kennzahlen aus Rang 15. Der aktuelle Abgleich
-bestätigt die Lücke neben den gelieferten festen Kennzahlen. Der neue Entwurf
-bleibt ohne Producer- oder Consumerimplementierung; eine spätere Umsetzung
-benötigt einen eigenen kohärenten Schritt innerhalb der bestehenden Freigaben.
-Parser und Lineage bleiben im Toolbelt. Positive externe Quellen- und Runtimeabnahmen bleiben
+bestätigt die Lücke neben den gelieferten festen Kennzahlen. PR #469 ist mit
+allen fünf Head- und vier Main-Prüfungen integriert; Head `2ee97df1` und Merge
+`d8ca3cb7` besitzen denselben Baum. Schritt 32 ergänzt ein begrenztes
+Offline-Berichtsprofil und einen lokalen Validator. Native Captureverifikation,
+Producer, SQL-Aufnahme, Aggregation und Vergleich bleiben eigenständige offene
+Umfänge innerhalb der bestehenden Freigaben. Parser und Lineage bleiben im
+Toolbelt. Positive externe Quellen- und Runtimeabnahmen bleiben
 an ihre tatsächlich gebundenen Quellen geknüpft. Offene Restumfänge der
 anderen Ränge werden nicht als abgeschlossen ausgewiesen. Native Hostqualifikation,
 positive kontrollierte cgroup-Limits und deren Wirkung auf SQL Server, globale

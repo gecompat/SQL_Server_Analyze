@@ -159,10 +159,15 @@ für die SQL2025-CI-Baseline, nicht für weitere Collationkombinationen.
 Der Checkpoint nach 30 Schritten ist neu bewertet. Innerhalb der unveränderten
 Gesamtgrenze folgt als nächster unabhängiger geplanter Schritt der optionale
 [Producervertrag für eigene SSIS-Kennzahlen](../../../Documentation/Architecture/SSIS_Custom_Metrics_Producer_Contract.md)
-aus Rang 15. Der Abgleich bestätigt nur die bereits gelieferten festen
-Kennzahlen; der neue Vertrag bleibt ein nicht implementierter Entwurf.
+aus Rang 15. Der Vertragsentwurf ist über
+[PR #469](https://github.com/gecompat/SQL_Server_Analyze/pull/469) mit allen
+fünf Head- und vier Main-Prüfungen integriert. Head `2ee97df1` und Merge
+`d8ca3cb7` besitzen denselben Baum. Schritt 32 ergänzt ein begrenztes
+Offline-Berichtsprofil und einen rein lokalen Validator. Producer, native
+Captureverifikation, SQL-Aufnahme, Aggregation und Vergleich sind damit nicht
+implementiert; formatgültige Herkunftsangaben bleiben unbestätigt.
 Das [zugehörige Dossier](../Architecture/SSIS_Custom_Metrics_Contract_Dossier.md)
-führt Scope, Quellenbindung und den späteren Implementierungsweg. Externe
+führt Scope, Grenzen und den späteren Implementierungsweg. Externe
 Quellenabnahmen, weitere Ausgabearten und andere offene Ränge bleiben erhalten;
 es wird kein vollständiger Reifeabschluss behauptet.
 
