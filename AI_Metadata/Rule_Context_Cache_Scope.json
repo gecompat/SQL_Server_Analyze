@@ -1669,6 +1669,16 @@
       "source": "AI_Metadata/Internal_Documentation/Quality/Next_Steps.md",
       "target": "AI_Metadata/Internal_Documentation/Architecture/SSIS_Custom_Metrics_Contract_Dossier.md",
       "classification": "product-reference"
+    },
+    {
+      "source": "AI_Metadata/Internal_Documentation/Quality/Development_Waves_2026-10.md",
+      "target": "AI_Metadata/Internal_Documentation/Quality/OPS009_Empty_Inventory_Runtime_Evidence_2026-09-19.md",
+      "classification": "historical-context"
+    },
+    {
+      "source": "AI_Metadata/Internal_Documentation/Quality/Next_Steps.md",
+      "target": "AI_Metadata/Internal_Documentation/Quality/OPS009_Empty_Inventory_Runtime_Evidence_2026-09-19.md",
+      "classification": "historical-context"
     }
   ]
 }
