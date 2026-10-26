@@ -41,6 +41,7 @@ Der [Reviewkatalog](../../Metadata/Quality/Analysis_Documentation_Review.csv) f�
 | Parameter und sichere Aufrufe | [Parameter_Reading_Guide.md](Parameter_Reading_Guide.md) |
 | Gemeinsame Verträge | [Common_Contracts.md](Common_Contracts.md) |
 | Technische Grundlagen einschließlich Kostenmodell | [Technical_Foundations.md](Technical_Foundations.md) |
+| Externe Linux-cgroup-Beobachtung | [Linux_Cgroup_Reader.md](Linux_Cgroup_Reader.md) |
 | Versions- und Primärquellennachweis | [Version_Primary_Source_Matrix.md](Version_Primary_Source_Matrix.md) |
 | Vollständiger Objektindex | [Object_Index.md](Object_Index.md) |
 | Vollständige Komponentenreferenz | [Object_Reference.md](../Reference/Object_Reference.md) |

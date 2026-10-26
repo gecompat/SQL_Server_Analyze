@@ -1589,6 +1589,26 @@
       "source": "AI_Metadata/Internal_Documentation/Architecture/Upgrade_Feature_Usage_Dossier.md",
       "target": "AI_Metadata/Internal_Documentation/Architecture/Linux_Cgroup_Resource_Boundary_Dossier.md",
       "classification": "product-reference"
+    },
+    {
+      "source": "AI_Metadata/Internal_Documentation/Quality/Next_Steps.md",
+      "target": "Documentation/Analysis_Guides/Linux_Cgroup_Reader_Contract.md",
+      "classification": "product-reference"
+    },
+    {
+      "source": "AI_Metadata/Internal_Documentation/Quality/Development_Waves_2026-10.md",
+      "target": "Documentation/Analysis_Guides/Linux_Cgroup_Reader_Contract.md",
+      "classification": "product-reference"
+    },
+    {
+      "source": "AI_Metadata/Internal_Documentation/Architecture/Linux_Cgroup_Resource_Boundary_Dossier.md",
+      "target": "Documentation/Analysis_Guides/Linux_Cgroup_Reader_Contract.md",
+      "classification": "product-reference"
+    },
+    {
+      "source": "AI_Metadata/Internal_Documentation/Architecture/Linux_Cgroup_Resource_Boundary_Dossier.md",
+      "target": "Documentation/Analysis_Guides/Linux_Cgroup_Reader.md",
+      "classification": "product-reference"
     }
   ]
 }

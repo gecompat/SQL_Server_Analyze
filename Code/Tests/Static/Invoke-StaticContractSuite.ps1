@@ -29,6 +29,7 @@ else {
 $selfTestValidators = @(
     'Validate_Rule_Context_Cache.py'
     'Validate_Linux_Cgroup_Values.py'
+    'Validate_Linux_Cgroup_Reader.py'
     'Validate_Deployment_Contract.py'
     '905_Validate_Analysis_Navigator.py'
     '910_Validate_Repository_Privacy.py'
@@ -145,6 +146,11 @@ try {
         $selfTestRequired = $runAllSelfTests -or $changedFiles -contains ($path -replace '\\', '/') -or
             ($validator -eq 'Validate_Linux_Cgroup_Values.py' -and
              ($changedFiles -contains 'Code/Tools/Linux_Cgroup_Values.py' -or
+              $changedFiles -contains 'Code/Tools/Linux_Cgroup_Metadata.py')) -or
+            ($validator -eq 'Validate_Linux_Cgroup_Reader.py' -and
+             ($changedFiles -contains 'Code/Tools/Linux_Cgroup_Reader.py' -or
+              $changedFiles -contains 'Code/Tools/Linux_Cgroup_Native.py' -or
+              $changedFiles -contains 'Code/Tools/Linux_Cgroup_Values.py' -or
               $changedFiles -contains 'Code/Tools/Linux_Cgroup_Metadata.py')) -or
             ($validator -eq 'Validate_Rule_Context_Cache.py' -and
              ($changedFiles -contains 'Code/Tools/Rule_Context_Cache.py' -or
