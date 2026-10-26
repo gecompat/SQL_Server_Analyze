@@ -8,3 +8,5 @@ SSIS-001,Code/10_SSIS/030_USP_SsisCatalogExecutionAnalysis.sql,Public procedure,
 SSIS-001,Code/10_SSIS/020_USP_SsisLegacyLogAnalysis.sql,Public procedure,Explicit local existing Legacy logging table; stored messages; no source actions
 SSIS-001,Code/10_SSIS/040_USP_SsisPackageModelAnalysis.sql,Public procedure,Native optional neutral package model import without CLR or Toolbelt installation
 SSIS-001,Code/10_SSIS/050_USP_SsisExecutionComparison.sql,Public procedure,Two independently bound captures of one exact export; native consumer without parser lineage or SQL CLR
+SSIS-001,Code/10_SSIS/045_InternalSsisExecutionMetrics.sql,Internal procedure,Shared capture validation metric projection and positional keys for pair and cohort consumers
+SSIS-001,Code/10_SSIS/060_USP_SsisExecutionBaseline.sql,Public procedure,Explicit bound multi-run baseline without parser lineage or SQL CLR

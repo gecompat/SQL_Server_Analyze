@@ -1141,3 +1141,15 @@ Quelle: `Code/10_SnapshotBaseline/085_InternalRunSnapshotWaitStatsCycle.sql`
 | Verwendung | Ausschließlich `USP_RunSnapshotCollectionCycle` mit `CollectorCode=WAIT_STATS` ruft diesen Baustein auf. |
 | Last und Sperren | Ein Sessionlock mit Wartezeit null umfasst Aufnahmeprüfung, Purge, Vorbereitung, vollständigen DMV-Read, Abschluss und Ausgabe. MaxRows begrenzt nur Targetwrites. |
 | Vertrag | Enabled und Due werden vor Writes geprüft. Ein noch nicht fälliger Purge verhindert den Capture nicht. Enginekontext vor/nach dem Read beweist keine atomare Sicht oder Resetkontinuität; ein Ausgabefehler hebt einen bereits bestätigten Capture nicht auf. |
+
+### `[monitor].[InternalSsisExecutionMetrics]`
+
+Quelle: `Code/10_SSIS/045_InternalSsisExecutionMetrics.sql`
+
+| Dimension | Beschreibung |
+|---|---|
+| Aufgabe | Validiert einen Capture und projiziert die Kennzahlen, Positionsschlüssel und bekannten beobachteten Pfadzeilensets für Paarvergleich und Mehrlauf-Baseline. |
+| Schnittstelle | Laufordinal, Modell, Capture, lokale Übergabe, Ausführungs-ID, gemeinsame Deadline und Locktimeout; OUTPUT liefert Einzelanalyse, Bindungsstatus und attestierte Bitness. Ein interner JSON-OUTPUT-Vertrag liefert die nativen Kennzahlen mit hexkodierten Hashes; jeder Consumer besitzt sein eigenes temporäres Empfangsziel. |
+| Verwendung | Die beiden öffentlichen Vergleichsprocedures rufen diesen Consumer je Eingabecapture genau einmal auf. |
+| Last und Sperren | Höchstens 16 MiB je Modell/Capture, die bestehenden 50000 Quellbelege und 200000 Kennzahlen je Capture; eigene Temp-Objekte ohne zusätzlichen SSISDB-Zugriff. |
+| Vertrag | Die bestehende Einzelanalyse prüft Herkunft, Version und Aufrufscope. Schlüssel enthalten Modellobjekt und beobachtete Aufrufposition; native Statistik-IDs bleiben Quellenbelege. Parser, Profile und Lineage werden ausschließlich in Toolbelt gepflegt. |

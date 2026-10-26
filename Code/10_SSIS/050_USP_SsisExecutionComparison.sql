@@ -69,12 +69,10 @@ BEGIN
   [Side] char(1) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL PRIMARY KEY,[Models] nvarchar(max) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,[Capture] nvarchar(max) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,
   [HandoverId] uniqueidentifier NULL,[ExecutionId] bigint NULL,[Analysis] nvarchar(max) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,[StatusCode] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,[Use32BitRuntime] bit NULL,[PhaseSourceQualified] bit NOT NULL DEFAULT(0),[PathSourceQualified] bit NOT NULL DEFAULT(0));
  INSERT #SsisExecutionComparison_Sides([Side],[Models],[Capture],[HandoverId],[ExecutionId]) VALUES('B',@BaselineProjectModelsJson,@BaselineScopeSnapshotJson,@BaselineScopeHandoverId,@BaselineExecutionId),('C',@CandidateProjectModelsJson,@CandidateScopeSnapshotJson,@CandidateScopeHandoverId,@CandidateExecutionId);
- CREATE TABLE #SsisExecutionComparison_Stats([Side] char(1) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,[SourceId] bigint NOT NULL,[DurationMs] bigint NULL,[ExecutionResult] int NULL,PRIMARY KEY([Side],[SourceId]));
- CREATE TABLE #SsisExecutionComparison_Flows([Side] char(1) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,[FlowStatisticsId] bigint NOT NULL,[PackageKey] varchar(16) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,[FlowNodeId] varchar(128) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,[ExecutionPath] nvarchar(4000) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,[IsPathUnique] bit NOT NULL,PRIMARY KEY([Side],[FlowStatisticsId]));
- CREATE TABLE #SsisExecutionComparison_Metrics(
-  [Side] char(1) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,[ObjectKind] varchar(16) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,[PackageKey] varchar(16) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,[ModelNodeId] varchar(128) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,[FlowNodeId] varchar(128) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,
+ CREATE TABLE #SsisExecutionComparison_MetricInput(
+  [RunOrdinal] int NOT NULL,[ObjectKind] varchar(16) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,[PackageKey] varchar(16) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,[ModelNodeId] varchar(128) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,[FlowNodeId] varchar(128) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,
   [ExecutionPath] nvarchar(4000) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,[PhaseName] nvarchar(128) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,[PortRole] varchar(16) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,[MetricName] varchar(32) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,[Unit] varchar(16) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,
-  [Value] decimal(38,0) NULL,[Quality] varchar(32) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,[SourceName] varchar(32) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,[SourceId] bigint NULL,[KeyJson] nvarchar(max) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,[KeyHash] binary(32) NULL);
+  [Value] decimal(38,0) NULL,[Quality] varchar(32) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,[SourceName] varchar(32) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,[SourceId] bigint NULL,[KeyJson] nvarchar(max) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,[KeyHash] binary(32) NULL,[VolumeSignature] binary(32) NULL);
  BEGIN TRY
   IF @mode<>'TABLE' AND @ResultTablesJson IS NOT NULL THROW 51011,N'ResultTablesJson ist ausschließlich für TABLE zulässig.',1;
   IF @mode='TABLE' EXEC [monitor].[InternalPrepareResultTables] @ResultTablesJson=@ResultTablesJson,@AllowedResultNames=N'comparisonBinding|objectComparison|comparisonFindings|comparisonCoverage',@MappingTable=N'#SsisExecutionComparison_Map',@ThrowOnError=1;
@@ -87,20 +85,13 @@ BEGIN
   OPEN [comparisonSides];FETCH NEXT FROM [comparisonSides] INTO @side,@models,@capture,@handover,@execution;
   WHILE @@FETCH_STATUS=0
   BEGIN
-   SET @remaining=CONVERT(int,DATEDIFF_BIG(millisecond,SYSUTCDATETIME(),@deadline)/1000);IF @remaining<1 THROW 57930,N'COMPARISON_TIME_LIMIT',1;
-   EXEC monitor.USP_SsisPackageModelAnalysis @IncludeExecutionScopes=1,@IncludePipelineCorrelation=1,@IncludePipelineDiagnostics=1,@ProjectModelsJson=@models,@ScopeSnapshotJson=@capture,@ScopeHandoverId=@handover,@ExecutionId=@execution,@MaxZeilen=0,@MaxDurationSeconds=@remaining,@LockTimeoutMs=@LockTimeoutMs,@ResultSetArt='NONE',@JsonErzeugen=1,@Json=@analysis OUTPUT,@StatusCodeOut=@childStatus OUTPUT;
-   UPDATE #SsisExecutionComparison_Sides SET [Analysis]=@analysis,[StatusCode]=@childStatus WHERE [Side]=@side;
-   IF @childStatus<>'SCOPE_CAPTURE_BOUND' OR EXISTS(SELECT 1 FROM OPENJSON(@analysis,'$.pipelineCoverage') WHERE JSON_VALUE([value],'$.StatusCode')='PIPELINE_BINDING_UNPROVEN') THROW 57930,N'COMPARISON_SIDE_BINDING_UNPROVEN',1;
-   UPDATE #SsisExecutionComparison_Sides SET
-    [PhaseSourceQualified]=CASE WHEN EXISTS(SELECT 1 FROM OPENJSON(@analysis,'$.pipelineDiagnosticCoverage') WHERE JSON_VALUE([value],'$.SourceName')='componentPhases' AND JSON_VALUE([value],'$.StatusCode') IN('AVAILABLE','AVAILABLE_EMPTY') AND JSON_VALUE([value],'$.UnassignedRowCount')='0' AND JSON_VALUE([value],'$.UnknownValueCount')='0') THEN 1 ELSE 0 END,
-    [PathSourceQualified]=CASE WHEN EXISTS(SELECT 1 FROM OPENJSON(@analysis,'$.pipelineDiagnosticCoverage') WHERE JSON_VALUE([value],'$.SourceName')='pathTransfers' AND JSON_VALUE([value],'$.StatusCode') IN('AVAILABLE','AVAILABLE_EMPTY') AND JSON_VALUE([value],'$.UnassignedRowCount')='0' AND JSON_VALUE([value],'$.UnknownValueCount')='0') THEN 1 ELSE 0 END WHERE [Side]=@side;
-   -- Der alte Scopeconsumer ignoriert die additive Erweiterung; der Vergleich
-   -- akzeptiert nur dieses exakte, bereits mitattestierte Kontextprofil.
-   IF JSON_VALUE(@capture,'$.comparisonContext.contract') COLLATE Latin1_General_100_BIN2=N'ssis-comparison-context' AND DATALENGTH(JSON_VALUE(@capture,'$.comparisonContext.contract'))=46
-    AND JSON_VALUE(@capture,'$.comparisonContext.version') COLLATE Latin1_General_100_BIN2=N'1.0.0' AND DATALENGTH(JSON_VALUE(@capture,'$.comparisonContext.version'))=10
-    AND (SELECT COUNT(*) FROM OPENJSON(@capture,'$.comparisonContext'))=3
-    AND EXISTS(SELECT 1 FROM OPENJSON(@capture,'$.comparisonContext') WHERE [key] COLLATE Latin1_General_100_BIN2=N'use32BitRuntime' AND DATALENGTH([key])=30 AND [type]=3)
-    UPDATE #SsisExecutionComparison_Sides SET [Use32BitRuntime]=CASE WHEN JSON_VALUE(@capture,'$.comparisonContext.use32BitRuntime')='true' THEN 1 ELSE 0 END WHERE [Side]=@side;
+   DECLARE @run int=CASE WHEN @side='B' THEN 0 ELSE 1 END,@bitness bit,@captureBound bit,@metricsJson nvarchar(max),@metricError int,@metricReason varchar(64);
+   EXEC [monitor].[InternalSsisExecutionMetrics] @run,@models,@capture,@handover,@execution,@deadline,@LockTimeoutMs,@analysis OUTPUT,@childStatus OUTPUT,@bitness OUTPUT,@captureBound OUTPUT,@metricsJson OUTPUT,@metricError OUTPUT,@metricReason OUTPUT;
+   UPDATE #SsisExecutionComparison_Sides SET [Analysis]=@analysis,[StatusCode]=@childStatus,[Use32BitRuntime]=@bitness WHERE [Side]=@side;
+   IF @metricError IS NOT NULL THROW 57930,@metricReason,1;
+   IF @captureBound<>1 THROW 57930,N'COMPARISON_SIDE_BINDING_UNPROVEN',1;
+   INSERT #SsisExecutionComparison_MetricInput SELECT [RunOrdinal],[ObjectKind],[PackageKey],[ModelNodeId],[FlowNodeId],[ExecutionPath],[PhaseName],[PortRole],[MetricName],[Unit],[Value],[Quality],[SourceName],[SourceId],[KeyJson],CONVERT(binary(32),[KeyHashHex],2),CONVERT(binary(32),[VolumeSignatureHex],2) FROM OPENJSON(@metricsJson) WITH([RunOrdinal] int,[ObjectKind] varchar(16),[PackageKey] varchar(16),[ModelNodeId] varchar(128),[FlowNodeId] varchar(128),[ExecutionPath] nvarchar(4000),[PhaseName] nvarchar(128),[PortRole] varchar(16),[MetricName] varchar(32),[Unit] varchar(16),[Value] decimal(38,0),[Quality] varchar(32),[SourceName] varchar(32),[SourceId] bigint,[KeyJson] nvarchar(max),[KeyHashHex] varchar(64),[VolumeSignatureHex] varchar(64));
+   IF EXISTS(SELECT 1 FROM #SsisExecutionComparison_MetricInput GROUP BY [KeyHash] HAVING MIN([KeyJson] COLLATE Latin1_General_100_BIN2)<>MAX([KeyJson] COLLATE Latin1_General_100_BIN2) OR MIN(DATALENGTH([KeyJson]))<>MAX(DATALENGTH([KeyJson]))) THROW 57930,N'COMPARISON_KEY_COLLISION',1;
    FETCH NEXT FROM [comparisonSides] INTO @side,@models,@capture,@handover,@execution;
   END;CLOSE [comparisonSides];DEALLOCATE [comparisonSides];
   SET @sameExport=CASE WHEN HASHBYTES('SHA2_256',CONVERT(varbinary(max),@BaselineProjectModelsJson))=HASHBYTES('SHA2_256',CONVERT(varbinary(max),@CandidateProjectModelsJson)) THEN 1 ELSE 0 END;
@@ -116,35 +107,13 @@ BEGIN
    WHEN JSON_VALUE(@BaselineScopeSnapshotJson,'$.execution.loggingLevel')<>JSON_VALUE(@CandidateScopeSnapshotJson,'$.execution.loggingLevel') THEN 'LOGGING_LEVEL_DIFFERENT'
    WHEN COALESCE(TRY_CONVERT(int,JSON_VALUE(@BaselineScopeSnapshotJson,'$.execution.executionStatus')),0)<>7 OR COALESCE(TRY_CONVERT(int,JSON_VALUE(@CandidateScopeSnapshotJson,'$.execution.executionStatus')),0)<>7 THEN 'NOT_BOTH_SUCCEEDED'
    ELSE 'MATCHED_OBSERVATION_CONTEXT' END;
-  INSERT #SsisExecutionComparison_Stats SELECT [s].[Side],[o].[SourceId],[o].[DurationMs],[o].[ExecutionResult] FROM #SsisExecutionComparison_Sides AS [s] CROSS APPLY OPENJSON([s].[Analysis],'$.scopeObservations') WITH([SourceKind] varchar(16),[SourceId] bigint,[DurationMs] bigint,[ExecutionResult] int) AS [o] WHERE [o].[SourceKind]='STATISTIC';
-  INSERT #SsisExecutionComparison_Flows SELECT [s].[Side],[f].* FROM #SsisExecutionComparison_Sides AS [s] CROSS APPLY OPENJSON([s].[Analysis],'$.pipelineInstances') WITH([FlowStatisticsId] bigint,[PackageKey] varchar(16),[FlowNodeId] varchar(128),[ExecutionPath] nvarchar(4000),[IsPathUnique] bit) AS [f];
-  INSERT #SsisExecutionComparison_Metrics([Side],[ObjectKind],[PackageKey],[ModelNodeId],[FlowNodeId],[ExecutionPath],[PhaseName],[PortRole],[MetricName],[Unit],[Value],[Quality],[SourceName],[SourceId])
-  SELECT [s].[Side],'EXECUTION',JSON_VALUE([s].[Models],'$.rootPackageKey'),'pkg1',NULL,N'\',NULL,NULL,'EXECUTION_STATUS','STATUS',TRY_CONVERT(int,JSON_VALUE([s].[Capture],'$.execution.executionStatus')),'KNOWN','execution',[s].[ExecutionId] FROM #SsisExecutionComparison_Sides AS [s]
-  UNION ALL SELECT [f].[Side],'FLOW',[f].[PackageKey],[f].[FlowNodeId],[f].[FlowNodeId],[f].[ExecutionPath],NULL,NULL,[m].[MetricName],[m].[Unit],[m].[Value],CASE WHEN [f].[IsPathUnique]=0 THEN 'AMBIGUOUS' WHEN [m].[Value] IS NULL OR [m].[Value]<0 THEN 'UNKNOWN' ELSE 'KNOWN' END,'scopeObservations',[f].[FlowStatisticsId]
-   FROM #SsisExecutionComparison_Flows AS [f] JOIN #SsisExecutionComparison_Stats AS [o] ON [o].[Side]=[f].[Side] AND [o].[SourceId]=[f].[FlowStatisticsId]
-   CROSS APPLY(VALUES('FLOW_DURATION_MS','MS',CONVERT(decimal(38,0),[o].[DurationMs])),('FLOW_RESULT','STATUS',CONVERT(decimal(38,0),[o].[ExecutionResult]))) AS [m]([MetricName],[Unit],[Value]);
-  INSERT #SsisExecutionComparison_Metrics([Side],[ObjectKind],[PackageKey],[ModelNodeId],[FlowNodeId],[ExecutionPath],[PhaseName],[PortRole],[MetricName],[Unit],[Value],[Quality],[SourceName],[SourceId])
-  SELECT [s].[Side],'PHASE',[p].[PackageKey],[p].[ComponentNodeId],[p].[FlowNodeId],[f].[ExecutionPath],[p].[PhaseName],NULL,[m].[MetricName],[m].[Unit],[m].[Value],CASE WHEN [p].[UnknownIntervalCount]>0 OR [m].[Value] IS NULL THEN 'UNKNOWN' WHEN [s].[PhaseSourceQualified]=0 THEN 'LIMITED' ELSE 'KNOWN' END,'componentPhases',[p].[EvidencePhaseStatsId]
-  FROM #SsisExecutionComparison_Sides AS [s] CROSS APPLY OPENJSON([s].[Analysis],'$.componentPhaseSummary') WITH([FlowStatisticsId] bigint,[PackageKey] varchar(16),[FlowNodeId] varchar(128),[ComponentNodeId] varchar(128),[PhaseName] nvarchar(128),[UnknownIntervalCount] int,[ObservedIntervalSumMs] decimal(38,0),[LongestIntervalMs] bigint,[SpanMs] bigint,[ObservedIntervalCount] int,[EvidencePhaseStatsId] bigint) AS [p]
-  JOIN #SsisExecutionComparison_Flows AS [f] ON [f].[Side]=[s].[Side] AND [f].[FlowStatisticsId]=[p].[FlowStatisticsId]
-  CROSS APPLY(VALUES('PHASE_INTERVAL_SUM_MS','MS',[p].[ObservedIntervalSumMs]),('PHASE_LONGEST_MS','MS',CONVERT(decimal(38,0),[p].[LongestIntervalMs])),('PHASE_SPAN_MS','MS',CONVERT(decimal(38,0),[p].[SpanMs])),('PHASE_INTERVAL_COUNT','COUNT',CONVERT(decimal(38,0),[p].[ObservedIntervalCount]))) AS [m]([MetricName],[Unit],[Value]);
-  INSERT #SsisExecutionComparison_Metrics([Side],[ObjectKind],[PackageKey],[ModelNodeId],[FlowNodeId],[ExecutionPath],[PhaseName],[PortRole],[MetricName],[Unit],[Value],[Quality],[SourceName],[SourceId])
-  SELECT [s].[Side],'PATH',[p].[PackageKey],[p].[ModelEdgeId],[p].[FlowNodeId],[f].[ExecutionPath],NULL,[p].[PortRole],[m].[MetricName],[m].[Unit],[m].[Value],CASE WHEN [p].[UnknownRowCount]>0 OR [m].[Value] IS NULL THEN 'UNKNOWN' WHEN [s].[PathSourceQualified]=0 THEN 'LIMITED' ELSE 'KNOWN' END,'pathTransfers',[p].[FirstDataStatsId]
-  FROM #SsisExecutionComparison_Sides AS [s] CROSS APPLY OPENJSON([s].[Analysis],'$.pathTransferSummary') WITH([FlowStatisticsId] bigint,[PackageKey] varchar(16),[FlowNodeId] varchar(128),[ModelEdgeId] varchar(128),[PortRole] varchar(16),[UnknownRowCount] int,[ObservedRowsSent] decimal(38,0),[ObservedTransferCount] int,[FirstDataStatsId] bigint) AS [p]
-  JOIN #SsisExecutionComparison_Flows AS [f] ON [f].[Side]=[s].[Side] AND [f].[FlowStatisticsId]=[p].[FlowStatisticsId]
-  CROSS APPLY(VALUES('PATH_ROWS_SENT','ROWS',[p].[ObservedRowsSent]),('PATH_TRANSFER_COUNT','COUNT',CONVERT(decimal(38,0),[p].[ObservedTransferCount]))) AS [m]([MetricName],[Unit],[Value]);
-  IF EXISTS(SELECT 1 FROM #SsisExecutionComparison_Metrics GROUP BY [Side] HAVING COUNT(*)>200000) THROW 57930,N'COMPARISON_METRIC_LIMIT',1;
-  IF SYSUTCDATETIME()>=@deadline THROW 57930,N'COMPARISON_TIME_LIMIT',1;
-  UPDATE [m] SET [KeyJson]=(SELECT [ObjectKind],[PackageKey],[ModelNodeId],[FlowNodeId],[ExecutionPath],[PhaseName],[MetricName] FOR JSON PATH,INCLUDE_NULL_VALUES,WITHOUT_ARRAY_WRAPPER) FROM #SsisExecutionComparison_Metrics AS [m];
-  UPDATE #SsisExecutionComparison_Metrics SET [KeyHash]=HASHBYTES('SHA2_256',CONVERT(varbinary(max),[KeyJson]));
-  IF EXISTS(SELECT 1 FROM #SsisExecutionComparison_Metrics GROUP BY [KeyHash] HAVING MIN([KeyJson] COLLATE Latin1_General_100_BIN2)<>MAX([KeyJson] COLLATE Latin1_General_100_BIN2) OR MIN(DATALENGTH([KeyJson]))<>MAX(DATALENGTH([KeyJson]))) THROW 57930,N'COMPARISON_KEY_COLLISION',1;
   ;WITH [g] AS(
    SELECT [KeyHash],MAX([ObjectKind]) [ObjectKind],MAX([PackageKey]) [PackageKey],MAX([ModelNodeId]) [ModelNodeId],MAX([FlowNodeId]) [FlowNodeId],MAX([ExecutionPath]) [ExecutionPath],MAX([PhaseName]) [PhaseName],MAX([PortRole]) [PortRole],MAX([MetricName]) [MetricName],MAX([Unit]) [Unit],
-    SUM(CASE WHEN [Side]='B' THEN 1 ELSE 0 END) [BCount],SUM(CASE WHEN [Side]='C' THEN 1 ELSE 0 END) [CCount],
-    MAX(CASE WHEN [Side]='B' THEN [Value] END) [BValue],MAX(CASE WHEN [Side]='C' THEN [Value] END) [CValue],
-    MAX(CASE WHEN [Side]='B' THEN [SourceName] END) [BSource],MAX(CASE WHEN [Side]='C' THEN [SourceName] END) [CSource],MAX(CASE WHEN [Side]='B' THEN [SourceId] END) [BId],MAX(CASE WHEN [Side]='C' THEN [SourceId] END) [CId],
+    SUM(CASE WHEN [RunOrdinal]=0 THEN 1 ELSE 0 END) [BCount],SUM(CASE WHEN [RunOrdinal]=1 THEN 1 ELSE 0 END) [CCount],
+    MAX(CASE WHEN [RunOrdinal]=0 THEN [Value] END) [BValue],MAX(CASE WHEN [RunOrdinal]=1 THEN [Value] END) [CValue],
+    MAX(CASE WHEN [RunOrdinal]=0 THEN [SourceName] END) [BSource],MAX(CASE WHEN [RunOrdinal]=1 THEN [SourceName] END) [CSource],MAX(CASE WHEN [RunOrdinal]=0 THEN [SourceId] END) [BId],MAX(CASE WHEN [RunOrdinal]=1 THEN [SourceId] END) [CId],
     SUM(CASE WHEN [Quality]='UNKNOWN' THEN 1 ELSE 0 END) [UnknownCount],SUM(CASE WHEN [Quality]='AMBIGUOUS' THEN 1 ELSE 0 END) [AmbiguousCount],SUM(CASE WHEN [Quality]='LIMITED' THEN 1 ELSE 0 END) [LimitedCount]
-   FROM #SsisExecutionComparison_Metrics GROUP BY [KeyHash])
+   FROM #SsisExecutionComparison_MetricInput GROUP BY [KeyHash])
   INSERT #SsisExecutionComparison_Objects
   SELECT [KeyHash],[ObjectKind],[PackageKey],[ModelNodeId],[FlowNodeId],[ExecutionPath],[PhaseName],[PortRole],[MetricName],[Unit],CASE WHEN [BCount]=1 THEN [BValue] END,CASE WHEN [CCount]=1 THEN [CValue] END,
    CASE WHEN [BCount]=1 AND [CCount]=1 AND [UnknownCount]=0 AND [AmbiguousCount]=0 AND [LimitedCount]=0 AND [Unit]<>'STATUS' AND @context='MATCHED_OBSERVATION_CONTEXT' THEN [CValue]-[BValue] END,NULL,
@@ -163,9 +132,9 @@ BEGIN
   -- Volumenbezug bleibt auf die tatsächlich beobachteten Pfadsets beschränkt.
   -- Gleiche beobachtete Zähler beweisen keine gleichen Datensätze oder Parameter.
   UPDATE [o] SET [ComparisonStatus]='VOLUME_CONTEXT_LIMITED',[ReasonCode]='OBSERVED_PATH_VOLUME_DIFFERENT_OR_UNKNOWN'
-  FROM #SsisExecutionComparison_Objects AS [o] WHERE [o].[Unit]='MS' AND [o].[ComparisonStatus]='COMPARABLE_OBSERVATION' AND
-   (NOT EXISTS(SELECT 1 FROM #SsisExecutionComparison_Objects AS [p] WHERE [p].[MetricName]='PATH_ROWS_SENT' AND [p].[PackageKey]=[o].[PackageKey] AND [p].[FlowNodeId]=[o].[FlowNodeId] AND [p].[ExecutionPath] COLLATE Latin1_General_100_BIN2=[o].[ExecutionPath] COLLATE Latin1_General_100_BIN2 AND DATALENGTH([p].[ExecutionPath])=DATALENGTH([o].[ExecutionPath]))
-    OR EXISTS(SELECT 1 FROM #SsisExecutionComparison_Objects AS [p] WHERE [p].[MetricName]='PATH_ROWS_SENT' AND [p].[PackageKey]=[o].[PackageKey] AND [p].[FlowNodeId]=[o].[FlowNodeId] AND [p].[ExecutionPath] COLLATE Latin1_General_100_BIN2=[o].[ExecutionPath] COLLATE Latin1_General_100_BIN2 AND DATALENGTH([p].[ExecutionPath])=DATALENGTH([o].[ExecutionPath]) AND ([p].[ComparisonStatus]<>'COMPARABLE_OBSERVATION' OR [p].[DeltaValue]<>0)));
+  FROM #SsisExecutionComparison_Objects AS [o] WHERE [o].[Unit]='MS' AND [o].[ComparisonStatus]='COMPARABLE_OBSERVATION' AND NOT EXISTS(
+   SELECT 1 FROM #SsisExecutionComparison_MetricInput AS [b] JOIN #SsisExecutionComparison_MetricInput AS [c] ON [c].[KeyHash]=[b].[KeyHash] AND [c].[RunOrdinal]=1
+   WHERE [b].[RunOrdinal]=0 AND [b].[KeyHash]=[o].[ComparisonKeySha256] AND [b].[VolumeSignature]=[c].[VolumeSignature]);
   INSERT #SsisExecutionComparison_Findings
   SELECT CASE WHEN [Unit]='STATUS' THEN 'SSIS_COMPARISON_STATUS_CHANGED' WHEN [MetricName]='PATH_ROWS_SENT' THEN 'SSIS_COMPARISON_OBSERVED_ROWS_CHANGED' ELSE 'SSIS_COMPARISON_DURATION_THRESHOLD_EXCEEDED' END,'1.0.0','INFO',[ComparisonKeySha256],[MetricName],[BaselineSourceId],[CandidateSourceId],[DeltaValue],@MinDurationDeltaMs,@MinDurationDeltaPercent,
    CASE WHEN [Unit]='STATUS' THEN 'OBSERVED_STATUS_CHANGED' WHEN [MetricName]='PATH_ROWS_SENT' THEN 'OBSERVED_ROWS_CHANGED' ELSE 'HIGHER_OBSERVED_DURATION_WORKLOAD_UNPROVEN' END,1
@@ -176,7 +145,7 @@ BEGIN
   IF SYSUTCDATETIME()>=@deadline THROW 57930,N'COMPARISON_TIME_LIMIT',1;
  END TRY
  BEGIN CATCH
-  SELECT @error=ERROR_NUMBER(),@reason=CASE WHEN ERROR_NUMBER()=57930 THEN CONVERT(varchar(64),ERROR_MESSAGE()) ELSE 'COMPARISON_INPUT_REJECTED' END;
+  SELECT @error=COALESCE(@metricError,ERROR_NUMBER()),@reason=CASE WHEN ERROR_NUMBER()=57930 THEN CONVERT(varchar(64),ERROR_MESSAGE()) ELSE 'COMPARISON_INPUT_REJECTED' END;
   IF @error=51011 BEGIN SET @LockTimeoutSql=N'SET LOCK_TIMEOUT '+CONVERT(nvarchar(20),@OriginalLockTimeout)+N';';EXEC sys.sp_executesql @LockTimeoutSql;IF @savedX=1 SET XACT_ABORT ON;THROW;END;
   IF CURSOR_STATUS('local','comparisonSides')>=0 CLOSE [comparisonSides];IF CURSOR_STATUS('local','comparisonSides')>-3 DEALLOCATE [comparisonSides];
   SELECT @canPair=0,@status=CASE WHEN @reason='INVALID_PARAMETER' THEN 'INVALID_PARAMETER' ELSE 'COMPARISON_BINDING_UNPROVEN' END;
@@ -190,7 +159,7 @@ BEGIN
  INSERT #SsisExecutionComparison_Coverage
  SELECT CASE WHEN [s].[Side]='B' THEN 'BASELINE' ELSE 'CANDIDATE' END,[p].[SourceName],[p].[StatusCode],[p].[ObservedRowCount],[p].[MappedRowCount],[p].[UnassignedRowCount],[p].[UnknownValueCount],0,0,0,0,0,0,1,[p].[ReasonCode]
  FROM #SsisExecutionComparison_Sides AS [s] CROSS APPLY OPENJSON([s].[Analysis],'$.pipelineDiagnosticCoverage') WITH([SourceName] varchar(32),[StatusCode] varchar(40),[ObservedRowCount] int,[MappedRowCount] int,[UnassignedRowCount] int,[UnknownValueCount] int,[ReasonCode] varchar(64)) AS [p];
- INSERT #SsisExecutionComparison_Coverage SELECT 'PAIR','metrics',@status,(SELECT COUNT(*) FROM #SsisExecutionComparison_Metrics),(SELECT COUNT(*) FROM #SsisExecutionComparison_Objects WHERE [BaselineMatchCount]=1 AND [CandidateMatchCount]=1),0,0,
+ INSERT #SsisExecutionComparison_Coverage SELECT 'PAIR','metrics',@status,(SELECT COUNT(*) FROM #SsisExecutionComparison_MetricInput),(SELECT COUNT(*) FROM #SsisExecutionComparison_Objects WHERE [BaselineMatchCount]=1 AND [CandidateMatchCount]=1),0,0,
   (SELECT COUNT(*) FROM #SsisExecutionComparison_Objects WHERE [BaselineMatchCount]=1 AND [CandidateMatchCount]=1),(SELECT COUNT(*) FROM #SsisExecutionComparison_Objects WHERE [ComparisonStatus]='BASELINE_ONLY'),(SELECT COUNT(*) FROM #SsisExecutionComparison_Objects WHERE [ComparisonStatus]='CANDIDATE_ONLY'),(SELECT COUNT(*) FROM #SsisExecutionComparison_Objects WHERE [ComparisonStatus]='AMBIGUOUS'),(SELECT COUNT(*) FROM #SsisExecutionComparison_Objects WHERE [ComparisonStatus] NOT IN('COMPARABLE_OBSERVATION','STATUS_ONLY')),0,1,COALESCE(@reason,'OBSERVED_POSITION_AND_VALUES_ONLY');
  IF @canPair=0 OR @context<>'MATCHED_OBSERVATION_CONTEXT' OR EXISTS(SELECT 1 FROM #SsisExecutionComparison_Objects WHERE [ComparisonStatus] NOT IN('COMPARABLE_OBSERVATION','STATUS_ONLY')) OR EXISTS(SELECT 1 FROM #SsisExecutionComparison_Coverage WHERE [UnassignedRowCount]>0 OR [UnknownValueCount]>0 OR [StatusCode] NOT IN('AVAILABLE','AVAILABLE_EMPTY','COMPARISON_CAPTURE_BOUND'))
   INSERT #SsisExecutionComparison_Findings VALUES('SSIS_COMPARISON_EVIDENCE_LIMITED','1.0.0','INFO',NULL,NULL,NULL,NULL,NULL,NULL,NULL,COALESCE(@reason,CASE WHEN @context<>'MATCHED_OBSERVATION_CONTEXT' THEN @context ELSE 'PARTIAL_METRIC_COMPARABILITY' END),1);
