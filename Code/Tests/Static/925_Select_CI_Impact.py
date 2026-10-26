@@ -725,6 +725,19 @@ def run_self_test() -> None:
         assert workflow_plan.run_runtime and workflow_plan.full_suite
         assert workflow_plan.ops008_agent_history
 
+        workflow_source = (
+            pathlib.Path(__file__).resolve().parents[3]
+            / ".github/workflows/ci-functional-impact.yml"
+        ).read_text(encoding="utf-8")
+        impacted_step = workflow_source.index("      - name: Run impacted contracts")
+        history_step = workflow_source.index("      - name: Run isolated OPS-008 Agent history fixture")
+        standalone_step = workflow_source.index("      - name: Qualify standalone Execution Plan contract")
+        assert impacted_step < history_step < standalone_step
+        standalone_end = workflow_source.find("\n      - name:", standalone_step + 1)
+        standalone_source = workflow_source[standalone_step:standalone_end]
+        assert "if: needs.impact.outputs.plan_standalone == 'true'" in standalone_source
+        assert "193_ExecutionPlanAnalysis_Standalone_Runtime_Contract.sql" in standalone_source
+
 
 def main() -> int:
     parser = argparse.ArgumentParser()

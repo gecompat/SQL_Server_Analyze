@@ -400,14 +400,19 @@ SQL2025-Gate gemäß der kanonischen Strategie. Weitere native Engines oder
 Compatibility Levels werden durch diesen neuen Pfad nicht angefordert.
 
 Der Zusatzlauf erfolgt einmal nach dem bestehenden Installations- und
-Compatibility-Level-Pfad auf dessen abschließender CL170-Datenbank. Er erzeugt
-weder einen weiteren Container noch eine zweite Installation. Die feste
+Compatibility-Level-Pfad auf dessen abschließender CL170-Datenbank und vor
+der danach getrennten Standaloneprüfung. Deren unveränderter Neuaufbau und
+Vertrag bleiben Pflicht. Der Zusatzlauf erzeugt weder einen weiteren Container
+noch eine zweite Installation. Die feste
 Datenbank-, Engine- und CL-Bindung, der Wegwerfmarker sowie die bestehenden
 Leerstands-, Quell-, Caller- und Rollbackprüfungen bleiben Pflicht. Der
 bestehende Cleanup entfernt den eigenen CI-Container auch bei Fehlern.
 Die vollständigen zusätzlichen SQL-Logs bleiben ausschließlich temporär auf
-dem Runner; ausgegeben werden nur feste Fehlercodes mit synthetischer
-Fallnummer oder der feste Erfolgsmarker nach erfolgreichem SQLCMD-Abschluss.
+dem Runner; ausgegeben werden feste Fehlerstufen und Fehlercodes mit
+synthetischer Fallnummer sowie gegebenenfalls geschlossene Mengenkategorien,
+Schlüsselstrukturstatus und eine validierte 17-Bit-Feldmaske. Zeilenwerte
+bleiben ausgeschlossen. Der feste Erfolgsmarker folgt erst nach erfolgreichem
+SQLCMD-Abschluss.
 
 Die Selector-Selbsttests prüfen die positive Auswahl, einen unbeteiligten
 Fixturepfad und den Workflow-Selbsttrigger. Sie werden lokal fokussiert geprüft;

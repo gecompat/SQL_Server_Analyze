@@ -39,13 +39,18 @@ aktiviert zusätzlich dessen eigene Fixtureprüfung und behält das vollständig
 SQL2025-Gate. Unbeteiligte TestLab-Fixtures aktivieren diesen Pfad nicht.
 
 Der zusätzliche Lauf erfolgt einmal nach dem Core-Pfad auf dessen bestehender
-CL170-Testdatenbank. Er verlangt den festen Datenbanknamen, Engine 17, CL170,
+CL170-Testdatenbank und vor der getrennten Execution-Plan-Standaloneprüfung,
+die diese Datenbank anschließend neu aufbaut. Er verlangt den festen
+Datenbanknamen, Engine 17, CL170, die beiden benötigten Agent-Procedures,
 einen neuen Wegwerfmarker und die vorhandenen Leerstands- und Quellschutzgates.
 Er verwendet den bereits eigenen CI-Container und führt keinen Agent-Job aus.
 Die vollständigen Fixturelogs bleiben temporär auf dem Runner. Im Fehlerfall
-werden ausschließlich freigegebene feste SQL-Fehlercodes und die synthetische
-Fallnummer ausgegeben; der feste Erfolgsmarker folgt erst nach erfolgreichem
-SQLCMD-Abschluss. Der bestehende Containercleanup bleibt auch bei Fehlern aktiv.
+werden ausschließlich feste Fehlerstufen und freigegebene SQL-Fehlercodes
+mit synthetischer Fallnummer ausgegeben. Geschlossene Zeilenmengenkategorien,
+Schlüsselstrukturstatus und eine auf 17 Bit begrenzte bekannte Feldmaske
+können die Diagnose ergänzen; Zeilenwerte bleiben ausgeschlossen. Diese
+Diagnose ersetzt keine Ursachenabnahme. Der feste Erfolgsmarker folgt erst
+nach erfolgreichem SQLCMD-Abschluss. Der bestehende Containercleanup bleibt auch bei Fehlern aktiv.
 
 Der funktionale Workflow wertet die Scopes `core` und `snapshot` getrennt aus.
 Bereits ein erforderlicher Lauf in einem der beiden Scopes startet die

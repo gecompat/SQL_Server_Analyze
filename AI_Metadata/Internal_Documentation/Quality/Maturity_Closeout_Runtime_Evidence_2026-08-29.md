@@ -3781,8 +3781,10 @@ der Test prüft deshalb jetzt logische Positionen mit `ROW_NUMBER()`. Diese
 Korrektur wurde unabhängig geprüft. Ein folgender Lauf passierte im erreichten Fall Schema und
 Fehlermetadaten, scheiterte jedoch mit 56221 an der kombinierten Zeilenmengen-
 oder JSON-Prüfung. Der ursprüngliche Log unterscheidet diese beiden Ursachen
-nicht. Die Diagnose trennt sie nun in 56221 und 56223 und gibt ausschließlich
-die synthetische Fallnummer aus. Ein Produktfehler oder eine konkrete
+nicht. Die Diagnose trennt sie nun in 56221 und 56223. Sie gibt ausschließlich
+die synthetische Fallnummer, geschlossene Mengenkategorien und bei JSON-
+Abweichungen Schlüsselstrukturstatus und eine begrenzte bekannte Feldmaske aus.
+Zeilenwerte und Identitäten werden nicht ausgegeben. Ein Produktfehler oder eine konkrete
 Serialisierungsursache ist damit noch nicht belegt.
 
 Beide fehlgeschlagenen Läufe besitzen erfolgreichen eigenen Labcleanup;
@@ -3800,3 +3802,17 @@ ursprünglichen Leerstands- und Quellschutzprüfungen bleiben erhalten.
 Der zusätzliche Fixturelauf erfolgt einmal nach dem bestehenden Testpfad;
 seine vollständigen Logs werden nicht veröffentlicht. Die tatsächliche
 CI-Qualifikation und reguläre PR-Integration stehen noch aus.
+
+Der erste PR-CI-Kandidat am Head `9eafaa9d` besteht native Deploymentregression,
+CI-Lockdiagnostikqualifikation und das vollständige SQL2025-Fachgate. Der
+zusätzliche Fixturelauf scheitert mit `UNCLASSIFIED` ohne erfasste Fallnummer;
+der ursprüngliche öffentliche Bericht liefert keinen konkreten SQL-Fehlertyp.
+Der eigene Container-Stop-Schritt besteht. Im Quellablauf wurde anschließend
+ein Reihenfolgefehler festgestellt: Die am Ende liegende Standaloneprüfung
+baut die Testdatenbank neu auf und installiert nur ihre eigene Closure.
+Die nachfolgende AgentHistory-Fixture benötigt dagegen die vollständigen
+Agent-Module. Der Korrekturkandidat ordnet die unveränderte Standaloneprüfung
+hinter der Fixture an und prüft die beiden benötigten Agent-Procedures vor
+dem Wegwerfmarker. Ein daraus vermuteter SQL-Fehler 2812 wird nicht als
+beobachtet behauptet. Die Kalenderparitätsursache und die abschließende
+native Qualifikation bleiben weiterhin offen.

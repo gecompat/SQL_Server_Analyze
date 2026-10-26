@@ -270,7 +270,6 @@ jobs:
           RUN_RELEASE_TESTS: ${{ needs.impact.outputs.run_release_tests }}
           RUN_PERMISSION_MATRIX: ${{ needs.impact.outputs.permission_matrix }}
           RUN_REGEX_MATRIX: ${{ needs.impact.outputs.regex_matrix }}
-          RUN_PLAN_STANDALONE: ${{ needs.impact.outputs.plan_standalone }}
         run: |
           set -euo pipefail
           levels=(170)
@@ -341,25 +340,6 @@ jobs:
               fi
             fi
 
-            if [ "$compatibility_level" = '170' ] && [ "$RUN_PLAN_STANDALONE" = 'true' ]; then
-              docker exec \
-                --env SQLCMDPASSWORD="$MSSQL_EPHEMERAL_CREDENTIAL" \
-                sqlserver-analyze-impact-2025 \
-                "$SQLCMD_PATH" -S localhost -U sa -C -b -Q \
-                "ALTER DATABASE [SQLServerAnalyzeTest] SET SINGLE_USER WITH ROLLBACK IMMEDIATE; DROP DATABASE [SQLServerAnalyzeTest]; CREATE DATABASE [SQLServerAnalyzeTest] COLLATE SQL_Latin1_General_CP1_CS_AS; ALTER DATABASE [SQLServerAnalyzeTest] SET COMPATIBILITY_LEVEL = 170; ALTER DATABASE [SQLServerAnalyzeTest] SET QUERY_STORE = OFF;" \
-                >"${log_prefix}-standalone-database.log" 2>&1
-              if ! docker exec \
-                --env SQLCMDPASSWORD="$MSSQL_EPHEMERAL_CREDENTIAL" \
-                --workdir /work/Code/Install \
-                sqlserver-analyze-impact-2025 \
-                "$SQLCMD_PATH" -S localhost -U sa -C -b \
-                -i ../Tests/Integration/193_ExecutionPlanAnalysis_Standalone_Runtime_Contract.sql \
-                >"${log_prefix}-standalone.log" 2>&1; then
-                echo 'Execution Plan standalone contract failed for SQL Server 2025.'
-                grep -B 2 -A 4 -E 'Msg [0-9]+|Sqlcmd: Error|Error:' "${log_prefix}-standalone.log" | tail -n 160 || true
-                exit 1
-              fi
-            fi
           done
 
           {
@@ -378,11 +358,19 @@ jobs:
           fixture_log="$RUNNER_TEMP/ops008-agent-history-fixture.log"
           safe_report_failure() {
             local log_path="$1"
+            local stage="$2"
             local sql_error='UNCLASSIFIED'
             local calendar_case='NONE'
+            local table_rows='NONE'
+            local json_rows='NONE'
+            local json_keyset='NONE'
+            local json_value_mask='NONE'
             local error_match
             local case_match
-            local allowed_errors='54943|54944|54945|54946|54947|54948|55155|55197|55198|55199|56214|56215|56216|56217|56218|56219|56220|56221|56222|56223|56230|56231|56232|56233'
+            local diagnostic_match
+            local diagnostic_case
+            local parsed_mask
+            local allowed_errors='54943|54944|54945|54946|54947|54948|55155|55197|55198|55199|56214|56215|56216|56217|56218|56219|56220|56221|56222|56223|56230|56231|56232|56233|56234'
             error_match=$(grep -Eo "Msg (${allowed_errors})," "$log_path" | tail -n 1 || true)
             if [ -n "$error_match" ]; then
               sql_error=$(printf '%s' "$error_match" | sed -E 's/^Msg ([0-9]+),$/\1/')
@@ -396,17 +384,46 @@ jobs:
                 calendar_case="$parsed_case"
               fi
             fi
-            echo "OPS008_AGENT_HISTORY_FAILED SQL_ERROR=${sql_error} CALENDAR_CASE=${calendar_case}"
+            if [ "$sql_error" = '56221' ]; then
+              diagnostic_match=$(grep -Eo 'OPS-008 AgentJobs-TABLE row-count case ordinal: (1[0-2]|[1-9]) TABLE_ROWS=(ZERO|ONE|OTHER)' \
+                "$log_path" | tail -n 1 || true)
+              if [ -n "$diagnostic_match" ]; then
+                diagnostic_case=$(printf '%s' "$diagnostic_match" | awk '{print $6}')
+                if [ "$diagnostic_case" = "$calendar_case" ]; then
+                  table_rows=$(printf '%s' "$diagnostic_match" | sed -E 's/.* TABLE_ROWS=(ZERO|ONE|OTHER)$/\1/')
+                fi
+              fi
+            elif [ "$sql_error" = '56223' ]; then
+              diagnostic_match=$(grep -Eo 'OPS-008 AgentJobs-TABLE JSON-parity case ordinal: (1[0-2]|[1-9]) TABLE_ROWS=(ZERO|ONE|OTHER) JSON_ROWS=(ZERO|ONE|OTHER) JSON_KEYSET=(MATCH|MISMATCH) JSON_VALUE_MASK=(0|[1-9][0-9]*)' \
+                "$log_path" | tail -n 1 || true)
+              if [ -n "$diagnostic_match" ]; then
+                diagnostic_case=$(printf '%s' "$diagnostic_match" | awk '{print $6}')
+                if [ "$diagnostic_case" = "$calendar_case" ]; then
+                  table_rows=$(printf '%s' "$diagnostic_match" | sed -E 's/.* TABLE_ROWS=(ZERO|ONE|OTHER) JSON_ROWS=.*/\1/')
+                  json_rows=$(printf '%s' "$diagnostic_match" | sed -E 's/.* JSON_ROWS=(ZERO|ONE|OTHER) JSON_KEYSET=.*/\1/')
+                  json_keyset=$(printf '%s' "$diagnostic_match" | sed -E 's/.* JSON_KEYSET=(MATCH|MISMATCH) JSON_VALUE_MASK=.*/\1/')
+                  parsed_mask=$(printf '%s' "$diagnostic_match" | sed -E 's/.* JSON_VALUE_MASK=([0-9]+)$/\1/')
+                  if [[ "$parsed_mask" =~ ^(0|[1-9][0-9]{0,5})$ ]] && [ "$parsed_mask" -le 131071 ]; then
+                    json_value_mask="$parsed_mask"
+                  else
+                    table_rows='NONE'
+                    json_rows='NONE'
+                    json_keyset='NONE'
+                  fi
+                fi
+              fi
+            fi
+            echo "OPS008_AGENT_HISTORY_FAILED SQL_STAGE=${stage} SQL_ERROR=${sql_error} CALENDAR_CASE=${calendar_case} TABLE_ROWS=${table_rows} JSON_ROWS=${json_rows} JSON_KEYSET=${json_keyset} JSON_VALUE_MASK=${json_value_mask}"
             exit 1
           }
 
-          guard_query="IF COALESCE(DB_NAME(),N'')<>N'SQLServerAnalyzeTest' THROW 56230,N'OPS008_WRONG_DATABASE',1; IF COALESCE(TRY_CONVERT(int,SERVERPROPERTY(N'ProductMajorVersion')),-1)<>17 THROW 56231,N'OPS008_WRONG_ENGINE',1; IF COALESCE((SELECT compatibility_level FROM sys.databases WHERE database_id=DB_ID()),-1)<>170 THROW 56232,N'OPS008_WRONG_COMPATIBILITY_LEVEL',1; IF EXISTS(SELECT 1 FROM sys.extended_properties WHERE class=0 AND name=N'SQLANALYZE.Ops008Disposable') THROW 56233,N'OPS008_MARKER_ALREADY_EXISTS',1; EXEC sys.sp_addextendedproperty @name=N'SQLANALYZE.Ops008Disposable',@value=1;"
+          guard_query="IF COALESCE(DB_NAME(),N'')<>N'SQLServerAnalyzeTest' THROW 56230,N'OPS008_WRONG_DATABASE',1; IF COALESCE(TRY_CONVERT(int,SERVERPROPERTY(N'ProductMajorVersion')),-1)<>17 THROW 56231,N'OPS008_WRONG_ENGINE',1; IF COALESCE((SELECT compatibility_level FROM sys.databases WHERE database_id=DB_ID()),-1)<>170 THROW 56232,N'OPS008_WRONG_COMPATIBILITY_LEVEL',1; IF OBJECT_ID(N'monitor.USP_AgentJobs',N'P') IS NULL OR OBJECT_ID(N'monitor.USP_AgentMonitoringAnalysis',N'P') IS NULL THROW 56234,N'OPS008_AGENT_MODULES_MISSING',1; IF EXISTS(SELECT 1 FROM sys.extended_properties WHERE class=0 AND name=N'SQLANALYZE.Ops008Disposable') THROW 56233,N'OPS008_MARKER_ALREADY_EXISTS',1; EXEC sys.sp_addextendedproperty @name=N'SQLANALYZE.Ops008Disposable',@value=1;"
           if ! docker exec \
             --env SQLCMDPASSWORD="$MSSQL_EPHEMERAL_CREDENTIAL" \
             sqlserver-analyze-impact-2025 \
             "$SQLCMD_PATH" -S localhost -U sa -C -b -d SQLServerAnalyzeTest -Q "$guard_query" \
             >"$guard_log" 2>&1; then
-            safe_report_failure "$guard_log"
+            safe_report_failure "$guard_log" GUARD
           fi
           if ! docker exec \
             --env SQLCMDPASSWORD="$MSSQL_EPHEMERAL_CREDENTIAL" \
@@ -414,9 +431,33 @@ jobs:
             "$SQLCMD_PATH" -S localhost -U sa -C -b -d SQLServerAnalyzeTest \
             -i /work/Code/Tests/ServerHealth/OPS008_AgentHistory_CI.sql \
             >"$fixture_log" 2>&1; then
-            safe_report_failure "$fixture_log"
+            safe_report_failure "$fixture_log" FIXTURE
           fi
           echo 'OPS008_AGENT_HISTORY_NATIVE_PASS'
+
+      - name: Qualify standalone Execution Plan contract
+        if: needs.impact.outputs.plan_standalone == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          log_prefix="$RUNNER_TEMP/sqlserver-analyze-cl-170"
+          docker exec \
+            --env SQLCMDPASSWORD="$MSSQL_EPHEMERAL_CREDENTIAL" \
+            sqlserver-analyze-impact-2025 \
+            "$SQLCMD_PATH" -S localhost -U sa -C -b -Q \
+            "ALTER DATABASE [SQLServerAnalyzeTest] SET SINGLE_USER WITH ROLLBACK IMMEDIATE; DROP DATABASE [SQLServerAnalyzeTest]; CREATE DATABASE [SQLServerAnalyzeTest] COLLATE SQL_Latin1_General_CP1_CS_AS; ALTER DATABASE [SQLServerAnalyzeTest] SET COMPATIBILITY_LEVEL = 170; ALTER DATABASE [SQLServerAnalyzeTest] SET QUERY_STORE = OFF;" \
+            >"${log_prefix}-standalone-database.log" 2>&1
+          if ! docker exec \
+            --env SQLCMDPASSWORD="$MSSQL_EPHEMERAL_CREDENTIAL" \
+            --workdir /work/Code/Install \
+            sqlserver-analyze-impact-2025 \
+            "$SQLCMD_PATH" -S localhost -U sa -C -b \
+            -i ../Tests/Integration/193_ExecutionPlanAnalysis_Standalone_Runtime_Contract.sql \
+            >"${log_prefix}-standalone.log" 2>&1; then
+            echo 'Execution Plan standalone contract failed for SQL Server 2025.'
+            grep -B 2 -A 4 -E 'Msg [0-9]+|Sqlcmd: Error|Error:' "${log_prefix}-standalone.log" | tail -n 160 || true
+            exit 1
+          fi
 
       - name: Run selected Snapshot contracts
         if: needs.impact.outputs.snapshot_required == 'true'

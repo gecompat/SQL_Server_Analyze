@@ -597,13 +597,141 @@ BEGIN TRY
                     END;
                     IF @CalendarTableRows <> CONVERT(bigint, @CalendarBadStep)
                     BEGIN
-                        PRINT CONCAT(N'OPS-008 AgentJobs-TABLE row-count case ordinal: ', @CalendarCase);
+                        PRINT CONCAT(N'OPS-008 AgentJobs-TABLE row-count case ordinal: ', @CalendarCase,
+                            N' TABLE_ROWS=', CASE WHEN @CalendarTableRows = 0 THEN N'ZERO'
+                                WHEN @CalendarTableRows = 1 THEN N'ONE' ELSE N'OTHER' END);
                         THROW 56221, N'Die AgentJobs-TABLE-Zeilenmenge entspricht nicht der erwarteten Job-/Step-Fallzahl.', 1;
                     END;
                     IF COALESCE(@CalendarTableJson, N'<missing>') COLLATE SQL_Latin1_General_CP1_CS_AS
                        <> COALESCE(JSON_QUERY(@Json, '$.jobs'), N'<missing>') COLLATE SQL_Latin1_General_CP1_CS_AS
                     BEGIN
-                        PRINT CONCAT(N'OPS-008 AgentJobs-TABLE JSON-parity case ordinal: ', @CalendarCase);
+                        DECLARE @CalendarTableJsonRow nvarchar(max), @CalendarExpectedJsonRow nvarchar(max);
+                        DECLARE @CalendarTableJsonRowCount int, @CalendarExpectedJsonRowCount int;
+                        DECLARE @CalendarJsonKeySetMatch bit, @CalendarJsonValueDifferenceMask int;
+                        DECLARE @CalendarTableJsonFields TABLE
+                        (
+                            [LogicalOrdinal] int NOT NULL,
+                            [JsonType] int NOT NULL,
+                            [JsonValue] nvarchar(max) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+                        );
+                        DECLARE @CalendarExpectedJsonFields TABLE
+                        (
+                            [LogicalOrdinal] int NOT NULL,
+                            [JsonType] int NOT NULL,
+                            [JsonValue] nvarchar(max) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+                        );
+                        DECLARE @CalendarTableJsonPropertyCountByColumn TABLE
+                        (
+                            [LogicalOrdinal] int NOT NULL,
+                            [PropertyCount] int NOT NULL
+                        );
+                        DECLARE @CalendarExpectedJsonPropertyCountByColumn TABLE
+                        (
+                            [LogicalOrdinal] int NOT NULL,
+                            [PropertyCount] int NOT NULL
+                        );
+                        DECLARE @CalendarTableJsonComparison TABLE
+                        (
+                            [LogicalOrdinal] int NOT NULL,
+                            [JsonType] int NOT NULL,
+                            [JsonValue] nvarchar(max) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+                        );
+                        DECLARE @CalendarExpectedJsonComparison TABLE
+                        (
+                            [LogicalOrdinal] int NOT NULL,
+                            [JsonType] int NOT NULL,
+                            [JsonValue] nvarchar(max) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+                        );
+
+                        SELECT @CalendarTableJsonRowCount = COUNT(*) FROM OPENJSON(@CalendarTableJson);
+                        SELECT @CalendarExpectedJsonRowCount = COUNT(*)
+                        FROM OPENJSON(JSON_QUERY(@Json, '$.jobs'));
+                        SELECT @CalendarTableJsonRow = [value]
+                        FROM OPENJSON(@CalendarTableJson) WHERE [key] = N'0';
+                        SELECT @CalendarExpectedJsonRow = [value]
+                        FROM OPENJSON(JSON_QUERY(@Json, '$.jobs')) WHERE [key] = N'0';
+                        SELECT @CalendarJsonKeySetMatch = CASE WHEN EXISTS
+                        (
+                            SELECT [key] COLLATE SQL_Latin1_General_CP1_CS_AS
+                            FROM OPENJSON(@CalendarTableJsonRow)
+                            EXCEPT
+                            SELECT [key] COLLATE SQL_Latin1_General_CP1_CS_AS
+                            FROM OPENJSON(@CalendarExpectedJsonRow)
+                        ) OR EXISTS
+                        (
+                            SELECT [key] COLLATE SQL_Latin1_General_CP1_CS_AS
+                            FROM OPENJSON(@CalendarExpectedJsonRow)
+                            EXCEPT
+                            SELECT [key] COLLATE SQL_Latin1_General_CP1_CS_AS
+                            FROM OPENJSON(@CalendarTableJsonRow)
+                        ) THEN 0 ELSE 1 END;
+
+                        INSERT @CalendarTableJsonFields ([LogicalOrdinal], [JsonType], [JsonValue])
+                        SELECT [schema].[LogicalOrdinal], [property].[type], [property].[value]
+                        FROM OPENJSON(@CalendarTableJsonRow) AS [property]
+                        JOIN @CalendarTableSchema AS [schema]
+                          ON [property].[key] COLLATE SQL_Latin1_General_CP1_CS_AS = [schema].[ColumnName];
+                        INSERT @CalendarExpectedJsonFields ([LogicalOrdinal], [JsonType], [JsonValue])
+                        SELECT [schema].[LogicalOrdinal], [property].[type], [property].[value]
+                        FROM OPENJSON(@CalendarExpectedJsonRow) AS [property]
+                        JOIN @CalendarTableSchema AS [schema]
+                          ON [property].[key] COLLATE SQL_Latin1_General_CP1_CS_AS = [schema].[ColumnName];
+                        INSERT @CalendarTableJsonPropertyCountByColumn ([LogicalOrdinal], [PropertyCount])
+                        SELECT [schema].[LogicalOrdinal], COUNT([property].[key])
+                        FROM @CalendarTableSchema AS [schema]
+                        LEFT JOIN OPENJSON(@CalendarTableJsonRow) AS [property]
+                          ON [property].[key] COLLATE SQL_Latin1_General_CP1_CS_AS = [schema].[ColumnName]
+                        GROUP BY [schema].[LogicalOrdinal];
+                        INSERT @CalendarExpectedJsonPropertyCountByColumn ([LogicalOrdinal], [PropertyCount])
+                        SELECT [schema].[LogicalOrdinal], COUNT([property].[key])
+                        FROM @CalendarTableSchema AS [schema]
+                        LEFT JOIN OPENJSON(@CalendarExpectedJsonRow) AS [property]
+                          ON [property].[key] COLLATE SQL_Latin1_General_CP1_CS_AS = [schema].[ColumnName]
+                        GROUP BY [schema].[LogicalOrdinal];
+                        INSERT @CalendarTableJsonComparison ([LogicalOrdinal], [JsonType], [JsonValue])
+                        SELECT [field].[LogicalOrdinal], [field].[JsonType], [field].[JsonValue]
+                        FROM @CalendarTableJsonFields AS [field]
+                        WHERE NOT EXISTS
+                        (
+                            SELECT 1 FROM @CalendarTableJsonPropertyCountByColumn AS [count]
+                            WHERE [count].[LogicalOrdinal] = [field].[LogicalOrdinal]
+                              AND [count].[PropertyCount] > 1
+                        );
+                        INSERT @CalendarExpectedJsonComparison ([LogicalOrdinal], [JsonType], [JsonValue])
+                        SELECT [field].[LogicalOrdinal], [field].[JsonType], [field].[JsonValue]
+                        FROM @CalendarExpectedJsonFields AS [field]
+                        WHERE NOT EXISTS
+                        (
+                            SELECT 1 FROM @CalendarExpectedJsonPropertyCountByColumn AS [count]
+                            WHERE [count].[LogicalOrdinal] = [field].[LogicalOrdinal]
+                              AND [count].[PropertyCount] > 1
+                        );
+                        SELECT @CalendarJsonValueDifferenceMask = COALESCE(SUM(CONVERT(int,
+                            CASE WHEN [tableCount].[PropertyCount] <> 1 OR [expectedCount].[PropertyCount] <> 1
+                                   OR [tableField].[JsonType] <> [expectedField].[JsonType]
+                                   OR ([tableField].[JsonValue] IS NULL AND [expectedField].[JsonValue] IS NOT NULL)
+                                   OR ([tableField].[JsonValue] IS NOT NULL AND [expectedField].[JsonValue] IS NULL)
+                                   OR ([tableField].[JsonValue] IS NOT NULL AND [expectedField].[JsonValue] IS NOT NULL
+                                       AND [tableField].[JsonValue] COLLATE SQL_Latin1_General_CP1_CS_AS
+                                           <> [expectedField].[JsonValue] COLLATE SQL_Latin1_General_CP1_CS_AS)
+                                 THEN POWER(CONVERT(float, 2), [schema].[LogicalOrdinal] - 1)
+                                 ELSE 0 END)), 0)
+                        FROM @CalendarTableSchema AS [schema]
+                        JOIN @CalendarTableJsonPropertyCountByColumn AS [tableCount]
+                          ON [tableCount].[LogicalOrdinal] = [schema].[LogicalOrdinal]
+                        JOIN @CalendarExpectedJsonPropertyCountByColumn AS [expectedCount]
+                          ON [expectedCount].[LogicalOrdinal] = [schema].[LogicalOrdinal]
+                        LEFT JOIN @CalendarTableJsonComparison AS [tableField]
+                          ON [tableField].[LogicalOrdinal] = [schema].[LogicalOrdinal]
+                        LEFT JOIN @CalendarExpectedJsonComparison AS [expectedField]
+                          ON [expectedField].[LogicalOrdinal] = [schema].[LogicalOrdinal];
+                        PRINT CONCAT(N'OPS-008 AgentJobs-TABLE JSON-parity case ordinal: ', @CalendarCase,
+                            N' TABLE_ROWS=', CASE WHEN @CalendarTableJsonRowCount = 0 THEN N'ZERO'
+                                WHEN @CalendarTableJsonRowCount = 1 THEN N'ONE' ELSE N'OTHER' END,
+                            N' JSON_ROWS=', CASE WHEN @CalendarExpectedJsonRowCount = 0 THEN N'ZERO'
+                                WHEN @CalendarExpectedJsonRowCount = 1 THEN N'ONE' ELSE N'OTHER' END,
+                            N' JSON_KEYSET=', CASE WHEN @CalendarJsonKeySetMatch = 1 THEN N'MATCH' ELSE N'MISMATCH' END,
+                            N' JSON_VALUE_MASK=', @CalendarJsonValueDifferenceMask);
                         THROW 56223, N'Die AgentJobs-TABLE-Zeilen stimmen nicht mit der gleichzeitigen JSON-Ausgabe überein.', 1;
                     END;
                     IF (@CalendarBadStep = 1 AND
