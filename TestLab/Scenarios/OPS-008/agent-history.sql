@@ -602,6 +602,8 @@ BEGIN TRY
                                 WHEN @CalendarTableRows = 1 THEN N'ONE' ELSE N'OTHER' END);
                         THROW 56221, N'Die AgentJobs-TABLE-Zeilenmenge entspricht nicht der erwarteten Job-/Step-Fallzahl.', 1;
                     END;
+                    IF @CalendarTableRows = 0 AND @CalendarTableJson IS NULL
+                        SET @CalendarTableJson = N'[]';
                     IF COALESCE(@CalendarTableJson, N'<missing>') COLLATE SQL_Latin1_General_CP1_CS_AS
                        <> COALESCE(JSON_QUERY(@Json, '$.jobs'), N'<missing>') COLLATE SQL_Latin1_General_CP1_CS_AS
                     BEGIN

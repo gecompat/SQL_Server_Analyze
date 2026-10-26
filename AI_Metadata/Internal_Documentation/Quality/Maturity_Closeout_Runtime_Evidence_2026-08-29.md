@@ -3816,3 +3816,25 @@ hinter der Fixture an und prüft die beiden benötigten Agent-Procedures vor
 dem Wegwerfmarker. Ein daraus vermuteter SQL-Fehler 2812 wird nicht als
 beobachtet behauptet. Die Kalenderparitätsursache und die abschließende
 native Qualifikation bleiben weiterhin offen.
+
+Der zweite CI-Kandidat scheiterte zunächst im bestehenden Fachgate an 1222
+in `USP_PrepareNameFilters`; `BLOCKER_NOT_CAPTURED` blieb ohne erfassten
+Blockierer. Die neue Fixture wurde dabei nicht ausgeführt. Ein begrenzter
+Wiederlauf am unveränderten Head `c7faf7f0` besteht Deploymentregression,
+Lockdiagnostikqualifikation und Fachgate, erreicht aber den Fixturefehler
+56223 bei Fall 1. Seine sichere Diagnose nennt für TABLE und JSON jeweils
+null Zeilen, passende Schlüsselstruktur und die Maske 131071. Diese Maske
+kennzeichnet bei den leeren Objekten fehlende bekannte Felder; sie belegt
+keine 17 abweichenden Datenwerte. Die ursprünglichen Serialisierungstexte
+wurden nicht veröffentlicht. Standalonevertrag 193 wurde nach dem Fehler
+nicht ausgeführt; der eigene Container-Stop-Schritt besteht.
+
+Im Quellvergleich fehlt der neuen Fixture die im bestehenden
+`Common/167_AgentJobs_Collation_Runtime_Contract.sql` verwendete Normalisierung
+leerer TABLE-Serialisierungen auf `[]`. Die vorbereitete Korrektur übernimmt
+sie nur bei unabhängig bestätigter Zeilenmenge null und SQL-NULL für den
+serialisierten TABLE-Wert. Fehlendes Quell-`jobs`, eine nicht leere Tabelle
+mit fehlender Serialisierung sowie abweichende nicht leere Werte bleiben
+Fehler. Der unabhängige Review dieser begrenzten Korrektur enthält keine
+Befunde. Der fehlgeschlagene Lauf hat SQL-NULL als Rohwert nicht separat
+belegt; die neue native Abschlussqualifikation bleibt erforderlich und offen.
