@@ -1,7 +1,7 @@
 # Dossier: Vertrag für eigene SSIS-Kennzahlen
 
 **Stand:** 26. Oktober 2026.
-**Status:** Vertragsentwurf; nicht implementiert.
+**Status:** Fachlicher Vertragsentwurf mit begrenztem Offline-Berichtsvalidator; keine öffentliche API.
 **Artefakt-UID:** `urn:uuid:01a179d8-4f3f-793f-893c-c3987e4cfdf1`.
 **Registrierung:** `DEFERRED`; keine finale lesbare Kennung vergeben.
 **Intake:** `SSIS-001`, Entwicklungsrang 15; bestehender Eintrag bleibt maßgeblich.
@@ -65,21 +65,30 @@ Duplikate, Lücken, Abschlusswasserstände sowie spätere Aggregations- und
 Vergleichsgrenzen fest. Ein synthetisches Beispiel illustriert die Feldideen;
 es ist kein Schema oder API.
 
-Es werden weder Toolbelt-Dateien noch Analyze-Code, Pakete, Tests,
-Installationsartefakte oder SSISDB-Zustand geändert. Der Schritt übernimmt
-keinen neuen Arbeitselementschlüssel und ändert die von der Root-Aufgabe
-verwalteten Fortsetzungs- und Wellenregister nicht.
+Der erste Implementierungsschritt ergänzt das öffentliche Vertragsdokument um
+das geschlossene JSON-Profil `ssis-reported-metrics/v1`, einen lokalen
+Python-Validator, fokussierte Gegenbeispiele und eine vorhandene statische
+Runnerregistrierung. Der Validator verändert keine Toolbelt-Modellbytes,
+Pakete, SQL-Objekte, Installer oder SSISDB-Zustand. Er liest nur eine lokale
+UTF-8-Berichtsdatei. Der Root-Aufgabe vorbehaltene Fortsetzungs- und
+Wellenregister bleiben unverändert.
+
+Die Ausgabe bestätigt nur Profilform und deklarierte interne Konsistenz.
+Capturebindung bleibt `UNVERIFIED`, Produceridentität bleibt
+`DECLARED_UNVERIFIED`; Berichtsreferenzen werden nicht nachgeschlagen. Es gibt
+keine Laufaggregation, keine Auswahl einer Epoche, keinen Vergleich und keine
+Baselinebildung. Coverageflags zeigen deklarierte Lücken oder Unsicherheiten,
+sie qualifizieren keinen Laufwert.
 
 ## Begrenzter späterer Implementierungsweg
 
-Ein späterer, eigenständig geplanter Implementierungsschritt muss zuerst die
-Producerdefinitions- und Eingabeform festlegen, die genannten Bindungen aus
-dem vorhandenen Aufnahmeweg verifizieren und die Coverage- und
-Vergleichsauswahl gegen die vier Metriktypen implementieren. Die erste
-Implementierung sollte ausschließlich bereits explizit übergebene Werte
-verarbeiten. Paketänderungen, automatische Instrumentierung, zusätzliche
+Spätere eigenständige Schritte müssten Producerdefinitionen und
+Eingabeherkunft mit bestehenden Aufnahmebindungen abgleichen und eine
+separate Coverage- und Vergleichsauswahl für die vier Metriktypen umsetzen.
+Die aktuelle Implementierung verarbeitet ausschließlich explizit übergebene
+Werte. Paketänderungen, automatische Instrumentierung, zusätzliche
 Quellenabfragen, Nutzdatenlesung, Remoteausführung und neue Parser-/Lineage-
-Implementierungen bleiben außerhalb dieses Vertrags.
+Implementierungen bleiben außerhalb dieses Umfangs.
 
 Vor einer Produktumsetzung sind die Abnahmekriterien an den bestehenden
 Vergleichs- und Baselinefällen auszurichten: stabile Definitionen,

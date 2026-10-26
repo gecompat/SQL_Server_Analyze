@@ -78,4 +78,4 @@ Der [gebundene Ausführungsvergleich](Procedures/USP_SsisExecutionComparison.md)
 
 Die [Mehrlauf-Baseline](Procedures/USP_SsisExecutionBaseline.md) ergänzt den Paarvergleich für eine explizite Kohorte von bis zu 20 Basisläufen. Verwendbare Laufzahl, Median und Spannweite gelten je Kennzahl; Ausschlüsse bleiben einzeln nachvollziehbar.
 
-Der [Entwurf für eigene Kennzahlenproduzenten](../Architecture/SSIS_Custom_Metrics_Producer_Contract.md) beschreibt optionale `DELTA`-, `CUMULATIVE`-, `GAUGE`- und `FINAL`-Beobachtungen sowie ihre Bindungs- und Vergleichsgrenzen. Der Vertrag ist nicht implementiert und erweitert keine vorhandene Schnittstelle.
+Der [Vertrag für eigene Kennzahlenproduzenten](../Architecture/SSIS_Custom_Metrics_Producer_Contract.md) beschreibt optionale `DELTA`-, `CUMULATIVE`-, `GAUGE`- und `FINAL`-Beobachtungen sowie ihre Bindungs- und Vergleichsgrenzen. Ein begrenzter Offline-Validator prüft `ssis-reported-metrics/v1`-Berichte syntaktisch und auf deklarierte Konsistenz. Er verifiziert weder Capture- oder Producerherkunft noch Wahrheitsgehalt und bildet keine Laufwerte, Vergleiche oder Baselines.
