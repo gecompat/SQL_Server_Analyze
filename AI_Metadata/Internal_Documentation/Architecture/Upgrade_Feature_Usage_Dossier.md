@@ -57,7 +57,7 @@ keine Datenbankfilter und keine datenbankbezogene Attribution der Counter.
 | Parameter | Typ und Vertrag |
 |---|---|
 | TargetMajorVersion | int, Default NULL; NULL bedeutet keine gewählte Zielbewertung. Explizit sind 15, 16 und 17 zulässig, soweit die Zielversion nicht kleiner als die tatsächliche unterstützte Sourceversion ist. |
-| MaxZeilen | int, Default 1000; positiver begrenzter Ausgabewert bis 100000. Der Sourcecache wird vorher vollständig im abgegrenzten Counterobjekt gelesen. |
+| MaxZeilen | int, Default 1000; positive Werte begrenzen die Ausgabe, NULL und 0 liefern vollständig, negative sind ungültig. Der Sourcecache wird vorher vollständig im abgegrenzten Counterobjekt gelesen. |
 | ResultSetArt | varchar(16), Default CONSOLE; außerdem RAW, TABLE und NONE. |
 | ResultTablesJson | nvarchar(max), Default NULL; vorhandener benannter TABLE-Vertrag. |
 | JsonErzeugen / Json | bit 0 / nvarchar(max) NULL OUTPUT; JSON ist optionaler OUTPUT. |
@@ -313,7 +313,7 @@ Compatibility-Level-Risiko und eine gezielte Auswahl der nativen SQL2019-Engine
 wegen der unterschiedlichen DMV-Rechte. Die vorhandene native Workflowauswahl
 FULL_RELEASE ist umfangreicher als der einzelne neue Vertrag; dessen Ergebnis
 und die tatsächlich ausgeführten Tests werden getrennt bewertet. SQL2022 wird
-nicht zusätzlich gestartet. Nach ausdrücklicher Benutzerfreigabe dürfen höchstens fünf CI-Kandidaten für
+nicht zusätzlich gestartet. Nach ausdrücklicher Benutzerfreigabe dürfen höchstens sechs CI-Kandidaten für
 diese Welle qualifiziert werden; neue Inputs oder Befunde sind für Wiederholungen
 erforderlich. Es werden keine weiteren lokalen Labversuche begonnen.
 
@@ -379,3 +379,27 @@ nach Neuerstellung neu erfasst. Der unabhängige Review bestätigt diesen
 Lifecycle-Delta ohne Befunde. Produkt und Oracles bleiben unverändert. Der
 fünfte Kandidat prüft diesen geänderten Stand; kein früherer Teilerfolg wird als
 vollständige Runtimeabnahme ausgegeben.
+
+## Offener Abgleich des festen Zeilenlimitvertrags
+
+Der abschließende semantische Abgleich identifiziert einen P2: Die vorherige
+Abweisung von NULL und 0 widerspricht dem festen Frameworkvertrag. Auch eine
+zusätzliche positive Obergrenze ist dafür nicht vorgesehen. Diese Abweichung
+wurde im bisherigen Implementierungs- und Reviewablauf übersehen; die grünen
+Läufe des früheren Stands schließen sie nicht.
+
+Die vorbereitete Korrektur erhält Default 1000, gibt bei NULL/0 den vollständigen
+abgegrenzten Countercache aus und begrenzt bei positiven int-Werten nur die
+Ausgabe. Negative Werte bleiben INVALID_PARAMETER/51011. Neue unabhängige
+Mengenoracles vergleichen NULL, 0 und den größten positiven int-Wert mit dem
+nativen Sourceumfang und verlangen OutputLimited=0. Der bisherige positive
+Limitfall bleibt erhalten. Das Parameterinventar beschreibt nur Typ und Default;
+beide bleiben unverändert. Produkt- und Dokumentationsdelta sowie erneute
+Runtimeabnahme sind vor Integration erforderlich.
+
+Der unabhängige Review schließt den vorbereiteten MaxZeilen-Delta ohne Befunde.
+Der Benutzer gibt am 26. Oktober 2026 genau einen weiteren CI-Kandidaten frei;
+die Grenze beträgt damit sechs. Der fünfte Kandidat besteht inzwischen auch
+das vollständige SQL2025-Gate, qualifiziert jedoch ausdrücklich den früheren
+Zeilenlimitvertrag. Der sechste Kandidat prüft den korrigierten Vertrag an
+seinem eigenen Head. Weitere lokale Labs bleiben ausgeschlossen.

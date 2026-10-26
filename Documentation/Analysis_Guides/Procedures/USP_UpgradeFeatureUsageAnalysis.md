@@ -27,8 +27,9 @@ EXEC [monitor].[USP_UpgradeFeatureUsageAnalysis]
 ```
 
 Ohne @TargetMajorVersion erfolgt keine Zielbewertung. Zulässig sind 15, 16 und
-17 ab der tatsächlichen unterstützten Source-Major. Das explizite Ausgabelimit
-liegt zwischen 1 und 100000; NULL und 0 sind hier ungültig. Der native Cache
+17 ab der tatsächlichen unterstützten Source-Major. Positive Werte für @MaxZeilen begrenzen die ausgegebenen Counterzeilen.
+NULL und 0 geben den abgegrenzten nativen Scope vollständig aus; negative Werte
+sind ungültig. Der native Cache
 wird vor dem Limit aufgebaut. NativeCounterRows und ReturnedCounterRows zeigen
 die beiden Mengen, OutputLimited meldet die Kürzung.
 

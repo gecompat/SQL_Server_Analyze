@@ -36,12 +36,13 @@ BEGIN
         PRINT N'@TargetMajorVersion=NULL wählt keine Zielbewertung. Unterstützte Ziele: 15,16,17 ab tatsächlicher Sourceversion.';
         PRINT N'Eine begrenzte Regel beschreibt lightweight pooling ab Ziel17; weitere deprecated/discontinued/breaking Features bleiben getrennt offen.';
         PRINT N'CONSOLE|RAW|TABLE|NONE; vier Ergebnisse: context, deprecatedUsage, configuration, sources. JSON ist optionaler OUTPUT.';
-        PRINT N'@MaxZeilen=1..100000 begrenzt erst die Ausgabe; keine Callertransaktion und IMPLICIT_TRANSACTIONS OFF.';
+        PRINT N'@MaxZeilen=NULL/0 liefert vollständig; positive Werte begrenzen die Ausgabe, negative sind ungültig. Keine Callertransaktion; IMPLICIT_TRANSACTIONS OFF.';
         SELECT @StatusCodeOut='AVAILABLE',@IsPartialOut=0;
         RETURN;
     END;
     DECLARE @Mode varchar(16)=UPPER(LTRIM(RTRIM(COALESCE(@ResultSetArt,'')))),
             @ConsoleResultRequested bit,
+            @EffectiveMaxZeilen int=COALESCE(NULLIF(@MaxZeilen,0),2147483647),
             @Major int,@Build nvarchar(128),@PreviousLock int=@@LOCK_TIMEOUT,
             @PreviousXactAbort bit=CASE WHEN (@@OPTIONS & 16384)<>0 THEN 1 ELSE 0 END,
             @RestoreLock nvarchar(100),@TechnicalError int,@TableStatus varchar(40),@TableMessage nvarchar(2048),
@@ -50,7 +51,7 @@ BEGIN
             @StartLocal datetime,@StartTicks bigint,@AfterLocal datetime,@AfterTicks bigint,
             @Phase smallint=1,@Ordinal smallint,@Observed bigint,@NativeRows bigint,@Returned bigint,@Limited bit;
     IF @@TRANCOUNT<>0 OR (@@OPTIONS & 2)<>0 OR @Mode NOT IN('CONSOLE','RAW','TABLE','NONE')
-       OR @MaxZeilen IS NULL OR @MaxZeilen NOT BETWEEN 1 AND 100000
+       OR @MaxZeilen<0
        OR (@TargetMajorVersion IS NOT NULL AND @TargetMajorVersion NOT IN(15,16,17))
        OR @JsonErzeugen IS NULL OR @PrintMeldungen IS NULL OR @Hilfe IS NULL
        OR (@Mode<>'TABLE' AND NULLIF(LTRIM(RTRIM(COALESCE(@ResultTablesJson,N''))),N'') IS NOT NULL)
@@ -208,7 +209,7 @@ BEGIN
         IF @Start>@End SELECT @Start=NULL,@End=NULL;
         INSERT [#UpgradeFeatureUsageAnalysis_deprecatedUsage]
           ([ObjectName],[CounterName],[FeatureName],[NativeCounterType],[NativeCounterValue],[ObservationStatus],[TargetAssessment],[EvidenceLimit])
-        SELECT TOP(@MaxZeilen) [ObjectName],[CounterName],[FeatureName],[NativeCounterType],[NativeCounterValue],
+        SELECT TOP(@EffectiveMaxZeilen) [ObjectName],[CounterName],[FeatureName],[NativeCounterType],[NativeCounterValue],
           CASE WHEN @Confirmed=0 THEN 'ENGINE_CONTEXT_UNBOUND' WHEN [NativeCounterValue]<0 THEN 'INVALID_NATIVE_VALUE'
             WHEN [NativeCounterValue]=0 THEN 'OBSERVED_ZERO' ELSE 'OBSERVED_POSITIVE' END,
           CASE WHEN @TargetMajorVersion IS NULL THEN 'TARGET_NOT_SELECTED' ELSE 'UNMAPPED_SOURCE_FEATURE' END,

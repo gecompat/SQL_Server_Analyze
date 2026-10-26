@@ -33,7 +33,7 @@ BEGIN TRY
  SET LOCK_TIMEOUT 1379; SET XACT_ABORT ON;
  INSERT [#ExampleUpgradeBefore] SELECT [object_name],[counter_name],[instance_name],[cntr_type],[cntr_value] FROM sys.dm_os_performance_counters
   WHERE [object_name] LIKE N'%SQL%Deprecated Features%' AND RTRIM([counter_name])=N'Usage';
- EXEC @Return=[monitor].[USP_UpgradeFeatureUsageAnalysis] @MaxZeilen=100000,@ResultSetArt='TABLE',
+ EXEC @Return=[monitor].[USP_UpgradeFeatureUsageAnalysis] @MaxZeilen=NULL,@ResultSetArt='TABLE',
   @ResultTablesJson=N'{"context":"#ExampleUpgrade_context","deprecatedUsage":"#ExampleUpgrade_deprecatedUsage","configuration":"#ExampleUpgrade_configuration","sources":"#ExampleUpgrade_sources"}',
   @JsonErzeugen=1,@Json=@Json OUTPUT,@PrintMeldungen=0,@StatusCodeOut=@Status OUTPUT,@IsPartialOut=@Partial OUTPUT,@ErrorNumberOut=@Error OUTPUT,@ErrorMessageOut=@Message OUTPUT;
  INSERT [#ExampleUpgradeAfter] SELECT [object_name],[counter_name],[instance_name],[cntr_type],[cntr_value] FROM sys.dm_os_performance_counters
@@ -66,9 +66,23 @@ IF EXISTS(SELECT CONVERT(int,ROW_NUMBER() OVER(ORDER BY [column_id])) AS [Ordina
  SET @Case+=1;PRINT CONCAT(N'UPGRADE_NATIVE_GROUP_PASS ',@Case);
  SELECT @GrowthBefore=[cntr_value] FROM sys.dm_os_performance_counters WHERE [object_name] LIKE N'%SQL%Deprecated Features%' AND RTRIM([counter_name])=N'Usage' AND RTRIM([instance_name])=N'DATABASEPROPERTYEX(''IsFullTextEnabled'')';
  EXEC sys.sp_executesql N'DECLARE @Observed int=CONVERT(int,DATABASEPROPERTYEX(DB_NAME(),''IsFullTextEnabled''));';
- EXEC [monitor].[USP_UpgradeFeatureUsageAnalysis] @TargetMajorVersion=17,@MaxZeilen=100000,@ResultSetArt='NONE',@JsonErzeugen=1,@Json=@Json OUTPUT,@PrintMeldungen=0;
+ EXEC [monitor].[USP_UpgradeFeatureUsageAnalysis] @TargetMajorVersion=17,@MaxZeilen=NULL,@ResultSetArt='NONE',@JsonErzeugen=1,@Json=@Json OUTPUT,@PrintMeldungen=0;
  SELECT @GrowthAfter=[NativeCounterValue] FROM OPENJSON(@Json,'$.deprecatedUsage') WITH([FeatureName] nvarchar(128),[NativeCounterValue] bigint) WHERE RTRIM([FeatureName])=N'DATABASEPROPERTYEX(''IsFullTextEnabled'')';
  IF @GrowthBefore IS NULL OR @GrowthAfter IS NULL OR @GrowthAfter<=@GrowthBefore OR EXISTS(SELECT 1 FROM OPENJSON(@Json,'$.deprecatedUsage') WITH([TargetAssessment] varchar(40)) WHERE [TargetAssessment]<>'UNMAPPED_SOURCE_FEATURE') THROW 57406,N'Native encounter growth and target separation failed.',1;
+ DECLARE @UnlimitedCase int=0,@OutputLimit int;
+ WHILE @UnlimitedCase<3
+ BEGIN
+  SET @OutputLimit=CASE WHEN @UnlimitedCase=0 THEN NULL WHEN @UnlimitedCase=1 THEN 0 ELSE 2147483647 END;
+  EXEC @Return=[monitor].[USP_UpgradeFeatureUsageAnalysis] @TargetMajorVersion=17,@MaxZeilen=@OutputLimit,@ResultSetArt='NONE',
+   @JsonErzeugen=1,@Json=@Json OUTPUT,@PrintMeldungen=0,@ErrorNumberOut=@Error OUTPUT;
+  IF COALESCE(@Return,-1)<>0 OR @Error IS NOT NULL OR COALESCE(ISJSON(@Json),0)<>1
+   OR (SELECT COUNT_BIG(*) FROM OPENJSON(@Json,'$.deprecatedUsage'))<>@BeforeCount
+   OR COALESCE(TRY_CONVERT(bigint,JSON_VALUE(@Json,'$.context[0].NativeCounterRows')),-1)<>@BeforeCount
+   OR COALESCE(TRY_CONVERT(bigint,JSON_VALUE(@Json,'$.context[0].ReturnedCounterRows')),-1)<>@BeforeCount
+   OR COALESCE(JSON_VALUE(@Json,'$.context[0].OutputLimited'),'')<>'false'
+   THROW 57439,N'Framework NULL zero or large positive output-limit contract failed.',1;
+  SET @UnlimitedCase+=1;
+ END;
  EXEC [monitor].[USP_UpgradeFeatureUsageAnalysis] @TargetMajorVersion=17,@MaxZeilen=1,@ResultSetArt='NONE',@JsonErzeugen=1,@Json=@Json OUTPUT,@PrintMeldungen=0;
  IF (SELECT COUNT_BIG(*) FROM OPENJSON(@Json,'$.deprecatedUsage'))<>1 OR COALESCE(JSON_VALUE(@Json,'$.context[0].OutputLimited'),N'<NULL>')<>'true'
   OR TRY_CONVERT(bigint,JSON_VALUE(@Json,'$.context[0].NativeCounterRows'))<>@BeforeCount THROW 57407,N'Limit applied before full native read.',1;
@@ -81,7 +95,7 @@ IF EXISTS(SELECT CONVERT(int,ROW_NUMBER() OVER(ORDER BY [column_id])) AS [Ordina
  EXEC @Return=[monitor].[USP_UpgradeFeatureUsageAnalysis] @ResultSetArt='NONE',@PrintMeldungen=0,@ErrorNumberOut=@Error OUTPUT;
  SET IMPLICIT_TRANSACTIONS OFF;
  IF @Return<>51011 OR @Error<>51011 OR @@TRANCOUNT<>0 THROW 57409,N'Implicit caller state was not rejected before work.',1;
- EXEC @Return=[monitor].[USP_UpgradeFeatureUsageAnalysis] @MaxZeilen=0,@ResultSetArt='NONE',@PrintMeldungen=0;
+ EXEC @Return=[monitor].[USP_UpgradeFeatureUsageAnalysis] @MaxZeilen=-1,@ResultSetArt='NONE',@PrintMeldungen=0;
  IF @Return<>51011 THROW 57410,N'Invalid output limit accepted.',1;
  EXEC @Return=[monitor].[USP_UpgradeFeatureUsageAnalysis] @TargetMajorVersion=14,@ResultSetArt='NONE',@PrintMeldungen=0;
  IF @Return<>51011 THROW 57410,N'Unsupported target accepted.',1;
@@ -229,7 +243,7 @@ SET @Sql=N'SET LOCK_TIMEOUT '+CONVERT(nvarchar(20),@ParentLock);EXEC sys.sp_exec
 IF @ParentAbort=1 SET XACT_ABORT ON;ELSE SET XACT_ABORT OFF;
 IF @Cleanup IS NOT NULL BEGIN SET @Message=LEFT(CONCAT(N'Owned cleanup failed: ',@Cleanup,N'; primary: ',@Failure),2048);THROW 57428,@Message,1;END;
 IF @Failure IS NOT NULL THROW 57429,@Failure,1;
-IF @Case<>5 OR @FixtureCase<>11 THROW 57430,N'Required native and synthetic cases incomplete.',1;
+IF @Case<>5 OR @FixtureCase<>11 OR COALESCE(@UnlimitedCase,-1)<>3 THROW 57430,N'Required native synthetic or unlimited-limit cases incomplete.',1;
 SELECT N'UPGRADE_FEATURE_USAGE_CONTRACT_PASS' AS [Result],@Case AS [NativeGroups],@FixtureCase AS [SyntheticSourceCases],CONVERT(bit,1) AS [OwnedCleanupConfirmed];
 END;
 GO
