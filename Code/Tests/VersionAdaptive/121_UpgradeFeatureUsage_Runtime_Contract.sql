@@ -117,7 +117,13 @@ IF EXISTS(SELECT CONVERT(int,ROW_NUMBER() OVER(ORDER BY [column_id])) AS [Ordina
  -- Synthetic engine/cache substitutions never claim native engine observations.
  WHILE @FixtureCase<11
  BEGIN
-  IF @OwnModule=1 AND NOT EXISTS(SELECT 1 FROM sys.sql_modules WHERE [object_id]=@ModuleId AND HASHBYTES('SHA2_256',[definition])=@ModuleHash) THROW 57416,N'Owned fixture definition changed.',1;
+  IF @OwnModule=1
+  BEGIN
+   IF NOT EXISTS(SELECT 1 FROM sys.sql_modules WHERE [object_id]=@ModuleId AND [object_id]=OBJECT_ID(N'monitor.'+@Module) AND HASHBYTES('SHA2_256',[definition])=@ModuleHash) THROW 57416,N'Owned fixture definition or name binding changed.',1;
+   -- Stored CREATE headers are valid only for a new owned clone; never alter the public module.
+   SET @Sql=N'DROP PROCEDURE [monitor].'+QUOTENAME(@Module);EXEC [sys].[sp_executesql] @Sql;
+   SELECT @OwnModule=0,@ModuleId=NULL,@ModuleHash=NULL;
+  END;
   SET @Clone=REPLACE(@Original,N'[monitor].[USP_UpgradeFeatureUsageAnalysis]',N'[monitor].'+QUOTENAME(@Module));
   SET @Clone=REPLACE(@Clone,N'SELECT @Phase,[sqlserver_start_time],[sqlserver_start_time_ms_ticks]'+NCHAR(13)+NCHAR(10)+N'                    FROM [sys].[dm_os_sys_info] WITH (NOLOCK);',N'SELECT @Phase,CONVERT(datetime,''20260101''),CASE WHEN @Phase=2 AND '+CONVERT(nvarchar(2),@FixtureCase)+N'=1 THEN 2 ELSE 1 END;');
   -- The installed source may use LF or CRLF. Normalize only this owned clone.

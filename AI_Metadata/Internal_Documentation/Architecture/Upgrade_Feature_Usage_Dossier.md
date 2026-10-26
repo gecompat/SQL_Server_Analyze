@@ -367,3 +367,15 @@ native Workflow bietet für dieses Core-Rechterisiko nur den umfangreicheren
 FULL_RELEASE-Scope; der Snapshot-Scope wäre fachlich unzutreffend. Die tatsächlich
 ausgeführten Gates und Kosten bleiben getrennt; eine Kostenmessung wird nicht
 behauptet.
+
+Der vierte Kandidat bestätigt auf SQL2019 zusätzlich die echte positive
+Serverrechteprobe. Im anschließenden synthetischen Teil scheitert die zweite
+Clonerstellung mit 2714, weil die gespeicherte Definition einen CREATE-Header
+enthält. Die erste synthetische Leerprobe ist davor bestanden. Der abschließende
+Fixture-Delta entfernt jeden vorhandenen eigenen Clone nach Prüfung von
+Objekt-ID, Name und Definitionshash und erstellt ihn anschließend frisch.
+Besitzflag und Bindung werden erst nach erfolgreichem DROP zurückgesetzt und
+nach Neuerstellung neu erfasst. Der unabhängige Review bestätigt diesen
+Lifecycle-Delta ohne Befunde. Produkt und Oracles bleiben unverändert. Der
+fünfte Kandidat prüft diesen geänderten Stand; kein früherer Teilerfolg wird als
+vollständige Runtimeabnahme ausgegeben.
