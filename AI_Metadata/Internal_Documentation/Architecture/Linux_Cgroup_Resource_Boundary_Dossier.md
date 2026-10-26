@@ -1,6 +1,6 @@
 # Linux-cgroup-Ressourcen: begrenzter externer Beobachtungsvertrag
 
-**Status:** unabhängig geprüfter Implementierungsvorvertrag; kein Collector implementiert und keine native Hostabnahme erfolgt.
+**Status:** Ressourcen- und Parserverträge sind unabhängig geprüft. Der nachfolgende Reader-Vertrag ist ein primärquellenbasierter, noch unabhängig zu prüfender Entwurf. Es ist kein Collector implementiert und keine native Hostabnahme erfolgt.
 **Artefakt-UID:** `urn:uuid:01a17804-0079-7079-9643-0c639808a4ff`.
 **Registrierung:** `DEFERRED`; keine finale lesbare Arbeitselementkennung vergeben.
 **Stand:** 26. Oktober 2026.
@@ -98,11 +98,12 @@ folgenden Metadatenquellen:
 
 | Quelle | Verwendungszweck |
 |---|---|
-| `/proc/<target_pid>/stat` | Nur PID und Startticks werden exportiert; die Prozessbezeichnung wird beim Parsen berücksichtigt und nicht als Identitätsnachweis verwendet. |
+| `/proc/<target_pid>/stat` | Nur PID und Startticks werden für die Prozess-Fences geparst. Die Prozessbezeichnung und übriger Rohtext werden weder exportiert noch als Identitätsnachweis verwendet. |
 | `/proc/<target_pid>/cgroup` | Die v2-Mitgliedschaft des ausgewählten Threadgruppenleiters wird vor und nach der Aufnahme geprüft. |
 | cgroup.type | Der normale domain-Typ der verwendeten Ebenen wird geprüft; fehlende Typdaten werden nicht geraten. |
-| `/proc/self/mountinfo` | Nur passende cgroup2-Mountmetadaten werden zur Auflösung ausgewählt. |
+| `/proc/self/mountinfo` | Nur passende cgroup2-Mountmetadaten werden zur Auflösung ausgewählt; der Reader liest die Callerdatei relativ zum eng gebundenen `self`-FD. |
 | `/proc/self/ns/{pid,mnt,cgroup}` und die entsprechenden Targetlinks | Namespace-Identitäten werden verglichen und vor/nach der Aufnahme gebunden. |
+| `/proc/self/fdinfo/<pidfd>` | Nur der Kernelwert `Pid` wird zur Bindung des pidfd an die PID-Ansicht des verwendeten Procfs geparst; andere Felder und der Rohtext bleiben ausgeschlossen. |
 
 Target und Collector müssen im ersten Slice dieselben PID-, Mount- und
 cgroup-Namespaces erkennen. Unterschiede oder unlesbare Bindungsmetadaten
@@ -404,6 +405,271 @@ Die Registrierung im bestehenden Runner aktiviert bei dessen Änderung einmalig
 den bereits vorhandenen vollständigen statischen Selbsttestsatz. Spätere
 Änderungen am Metadatenmodul aktivieren gezielt den fokussierten Validator;
 bestehende Gates bleiben unverändert.
+
+### Entwurf des ersten lesenden Reader-Slices
+
+Dieser Abschnitt legt den kleinsten umsetzbaren Readvertrag fest. Er ist noch
+nicht implementiert und wird vor Produktcode unabhängig geprüft. Zulässig sind
+zunächst ausschließlich Linux x86_64 im little-endian-64-Bit-ABI mit Python
+3.11 oder neuer. Zur Laufzeit müssen alle beschriebenen Symbole, Syscalls,
+Rückgabemasken und Dateisystemprüfungen vorhanden sein. Eine abweichende
+Architektur, Datenordnung, Strukturgröße, fehlende Fähigkeit oder fehlende
+Pflichtbits in einer Rückgabemaske ergibt `CONTEXT_UNBOUND` beziehungsweise
+`UNSUPPORTED_ABI`; zusätzliche Rückgabebits werden ignoriert. Es gibt keinen `openat`, Stringpräfix-, Pfadauflösungs-,
+`/proc/<pid>/root`- oder Namespacewechsel-Fallback.
+
+Der Produktscope umfasst höchstens zwei Module:
+`Code/Tools/Linux_Cgroup_Syscalls.py` enthält ausschließlich die begrenzten
+Linux-ABI-Bindungen; `Code/Tools/Linux_Cgroup_Reader.py` stellt
+`collect_process(target_pid: int) -> dict[str, object]` und die CLI bereit.
+Der Reader verwendet ausschließlich die vorhandenen reinen Parser für
+Mitgliedschaft, Mountinfo, Ressourcendateien und cgroup.type. Er akzeptiert nur
+eine positive, im aufrufenden PID-Namespace sichtbare Prozess-ID. Freie Pfade,
+Konfiguration, Remoteziele, Prozesssuche und erhöhte Rechte sind nicht Teil
+des Vertrags.
+
+Die Syscall-Bindung ist auf native x86_64 festgelegt. Der Laufzeit-Preflight
+verlangt Linux, `platform.machine()=="x86_64"`, `sys.byteorder=="little"`,
+acht Byte für `ctypes.c_long` und Zeiger, die genannten Strukturgrößen,
+Alignments und Feldoffsets, `os.pidfd_open`, `libc.syscall` und `libc.fstatfs`.
+`ctypes.CDLL(None, use_errno=True).syscall` erhält `restype=c_long` und
+`argtypes=[c_long]`; seine variadischen Argumente werden für `openat2` als
+`c_int dirfd`, `c_char_p path`, Zeiger auf `open_how` und `c_size_t size` und
+für `statx` als `c_int dirfd`, `c_char_p path`, `c_int flags`, `c_uint mask`
+und Zeiger auf `statx` übergeben. Die Syscallnummer steht jeweils als erstes
+`c_long`-Variadicargument 437 beziehungsweise 332. `ctypes.get_errno()` wird
+direkt nach einem `-1`-Rückgabewert gelesen. `openat2` verwendet x86_64-Syscall 437
+mit `struct open_how` aus drei little-endian `uint64`-Feldern `flags`, `mode`
+und `resolve`, Größe 24 und Alignment 8. `statx` verwendet Syscall 332 und
+das UAPI-`struct statx`, Größe 256 und Alignment 8. Verwendete Feldoffsets
+sind `stx_mask=0`, `stx_mode=28`, `stx_ino=32`, `stx_dev_major=136`,
+`stx_dev_minor=140` und `stx_mnt_id=144`. Für FD-Prüfungen wird
+`AT_EMPTY_PATH=0x1000` mit leerem Pfad benutzt; angefordert werden genau
+`STATX_TYPE | STATX_MODE | STATX_INO | STATX_MNT_ID = 0x1103`. Der Reader
+verlangt, dass alle vier Pflichtbits in `stx_mask` zurückkommen. Weitere vom
+Kernel gesetzte Bits sind zulässig und werden ignoriert. Fehlt ein Pflichtbit,
+scheitert die FD-Bindung fail-closed. `STATX_MNT_ID` ist ab Linux 5.8 verfügbar
+und entspricht der Mount-ID im ersten Feld von
+`/proc/self/mountinfo`.
+
+`fstatfs(fd, struct statfs *)` wird über `libc.fstatfs` mit
+`argtypes=[c_int, POINTER(Statfs)]`, `restype=c_int` und `use_errno=True`
+gebunden. `errno` wird unmittelbar nach `-1` erfasst. Die x86_64-Layoutprüfung
+verlangt 64-Bit-`long`, `fsblkcnt_t` und `fsfilcnt_t`,
+Alignment 8 sowie die UAPI-Reihenfolge `f_type@0`, `f_bsize@8`, `f_blocks@16`,
+`f_bfree@24`, `f_bavail@32`, `f_files@40`, `f_ffree@48`, zwei 32-Bit-
+`fsid`-Werte ab Offset 56, `f_namelen@64`, `f_frsize@72`, `f_flags@80` und
+vier `long`-Reservefelder ab Offset 88; die Größe beträgt 120 Byte. Geprüft
+werden nur `f_type`-Werte
+`PROC_SUPER_MAGIC=0x9fa0`, `CGROUP2_SUPER_MAGIC=0x63677270` und
+`NSFS_MAGIC=0x6e736673`. Diese Werte folgen auch dem [`magic.h`-UAPI](https://github.com/torvalds/linux/blob/master/include/uapi/linux/magic.h). `os.fstat` liefert zusätzlich `st_dev`, `st_ino` und
+`st_mode`. Nicht passende Werte oder Strukturprüfungen sperren die Bindung.
+Die Strukturen und Masken folgen dem Linux-UAPI für
+[`openat2`](https://github.com/torvalds/linux/blob/master/include/uapi/linux/openat2.h),
+[`statx`](https://github.com/torvalds/linux/blob/master/include/uapi/linux/stat.h)
+und [`statfs`](https://github.com/torvalds/linux/blob/master/include/uapi/asm-generic/statfs.h),
+der [x86_64-Syscalltabelle](https://github.com/torvalds/linux/blob/master/arch/x86/entry/syscalls/syscall_64.tbl),
+sowie [`statfs(2)`](https://man7.org/linux/man-pages/man2/statfs.2.html).
+Die ABI-Definition ist kein Test- oder Nativevidenznachweis.
+
+Der errno-Vertrag legt keine lokalen Fehlertexte offen. `EACCES` und `EPERM`
+ergeben `PERMISSION_DENIED`, `ENOENT` bei einer ausgewählten Ressource
+`MISSING`, `ELOOP` `SYMLINK_REJECTED`, `EXDEV` `CROSS_MOUNT_REJECTED` und
+`EAGAIN` `CONTEXT_UNBOUND`. Ein pidfd-/Procfs-PID-Mismatch verwendet `PIDFD_PROCFS_MISMATCH`. `ENOSYS`, `EINVAL` oder `E2BIG` während eines
+ABI-Aufrufs ergeben `UNSUPPORTED_ABI` beziehungsweise `ABI_MISMATCH` und
+sperren die Bindung. Andere Fehler werden als `READ_ERROR` für Ressourcen
+oder `CONTEXT_UNBOUND` für Fences eingeordnet. Der numerische errno bleibt,
+wo verfügbar, allein als Dezimalzeichenkette erhalten; es gibt keinen
+automatischen Retry.
+
+Für PID-Liveness wird ausschließlich `os.pidfd_open(target_pid, 0)` verwendet;
+Python stellt es ab 3.9 und Linux ab Kernel 5.3 bereit. Ein pollbarer pidfd
+wird mit `select.poll` und Timeout null vor und nach dem Zugriff geprüft; `POLLIN`, `POLLHUP`, `POLLERR` oder `POLLNVAL` sperren die Bindung. Da er keine spätere
+`/proc/<pid>`-Namensauflösung bindet, öffnet der Reader nach bestätigtem
+Procfs-Anker den festen Magiclink `self` zu genau einem Caller-Verzeichnis-FD.
+Dieses FD muss weiter `PROC_SUPER_MAGIC` und dieselbe Procfs-Mount-ID haben.
+Unter diesem FD wird ausschließlich `fdinfo/<pidfd>` gelesen; dessen
+dezimaler `Pid`-Wert muss mit der PID-Spalte der anschließend geöffneten
+`/proc/<target_pid>/stat`-Datei übereinstimmen. `0`, `-1`, fehlende oder
+zusätzliche `Pid`-Tokens, ein fehlerhafter Wert oder ein
+anderer Wert sperren die Bindung. Andere fdinfo-Felder werden ignoriert und nicht geparst. So wird der PID-Namensraum des Procfs nicht
+aus der Mountoption oder aus gleichem Dateisystemtyp geraten. Zusätzlich
+werden `/proc/<target_pid>/stat`-Startticks vor und nach dem Read verglichen;
+pidfd-Liveness, Procfs-PID und Startticks müssen gemeinsam bestehen. `stat`
+und pidfd-`fdinfo` sind damit begrenzte zusätzliche Allowlistquellen: Geparst
+werden nur PID, Startticks und pidfd-`Pid`; `comm`, andere fdinfo-Felder und
+übriger Rohtext werden weder ausgegeben noch geloggt. Der Kernel beschreibt
+`Pid` als PID des pidfd-Ziels in der PID-Namespaceansicht der Procfs-Instanz
+([pidfd-Kernelimplementierung](https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git/tree/fs/pidfs.c)). Python dokumentiert
+[`os.pidfd_open`](https://docs.python.org/3.11/library/os.html#os.pidfd_open)
+und FD-relative Öffnungen; `openat2(2)` hat keinen glibc-Wrapper und verlangt
+`syscall(2)` ([Manpage](https://man7.org/linux/man-pages/man2/openat2.2.html)).
+
+Die feste `/proc`-Ankeröffnung erfolgt vom geöffneten Root-Verzeichnis relativ
+und ohne Symlink- oder Magiclinkauflösung; `fstatfs` muss Procfs bestätigen.
+Danach werden ausschließlich numerische PID-Verzeichnisse und die erlaubten
+Dateien unter diesem FD geöffnet. Der Eintrag `/proc/self/mountinfo` wird
+relativ zum eng gebundenen Caller-FD gelesen; `statx`-Mount-ID des Procfs-FD und dessen
+`PROC_SUPER_MAGIC` müssen einem Procfs-Satz dieses Dokuments entsprechen.
+Prozessquellen werden ebenfalls relativ zum geprüften Anker geöffnet und
+vor/nach dem Snapshot erneut gebunden. Die eng begrenzte Ausnahme für
+`/proc/self` besteht nur aus einem einzelnen `openat` des fest benannten
+`self`-Eintrags relativ zum verifizierten Procfs-FD. Der resultierende
+Caller-FD muss per `fstatfs` Procfs und per `statx` dieselbe Procfs-Mount-ID
+besitzen; jede andere magic-link-Auflösung bleibt gesperrt. Die Mountwahl
+nimmt genau einen
+cgroup2-Satz, dessen `root` componentweise Präfix des Membership-Pfads ist,
+mit dem längsten passenden `root`; Gleichstand, ungültiger Pfad oder fehlender
+Satz ergibt `CONTEXT_UNBOUND`. Der relative Blattpfad ist der Membership-
+Suffix unter diesem `root`; Punkte und Rücksprünge werden nicht normalisiert,
+sondern als ungültig abgewiesen. Für den ausgewählten Mountpunkt wird bei der
+Ankeröffnung `openat2` mit
+`RESOLVE_BENEATH | RESOLVE_NO_SYMLINKS | RESOLVE_NO_MAGICLINKS` verwendet;
+`RESOLVE_NO_XDEV` bleibt dabei absichtlich aus, weil der Weg zum Mountpunkt
+den legitimen Mountübertritt enthalten muss. Auf dem geöffneten Anker müssen
+`fstatfs` den cgroup-v2-Dateisystemtyp und `statx` die Mount-ID des exakt
+ausgewählten Mountinfo-Datensatzes bestätigen. Danach werden Membership und
+sichtbare Vorfahren komponentenweise relativ zum cgroup2-FD mit
+`RESOLVE_BENEATH | RESOLVE_NO_SYMLINKS | RESOLVE_NO_MAGICLINKS |
+RESOLVE_NO_XDEV` geöffnet. Die UAPI-Werte sind `RESOLVE_NO_XDEV=0x01`,
+`RESOLVE_NO_MAGICLINKS=0x02`, `RESOLVE_NO_SYMLINKS=0x04` und
+`RESOLVE_BENEATH=0x08`; Anker verwenden `O_PATH=0x200000`,
+`O_DIRECTORY=0x10000`, `O_CLOEXEC=0x80000`, Ressourcenreads `O_RDONLY=0` und
+`O_CLOEXEC`. Jedes Ebenenverzeichnis und jede Ressourcendatei
+wird auf Verzeichnistyp beziehungsweise regulären Dateityp, Dateisystemmagie,
+Mount-ID, `st_dev` und `st_ino` geprüft. Beim Abschluss werden Membership,
+Mountinfo, PID-Startticks, Namespaceidentitäten und Pfad-FD-Identitäten neu
+ermittelt und verglichen. Der Vergleich erkennt beobachtete Änderungen,
+beweist aber weder Zwischenzustandsfreiheit noch Schutz vor ABA-Wechseln.
+
+Der Namespace-ioctl ist die Linux-Makroauswertung `_IO(0xb7, 0x03)=0xb703`
+bei x86_64; `fcntl.ioctl` muss genau einen nichtnegativen Ganzzahltyp
+zurückgeben. `CLONE_NEWPID`, `CLONE_NEWNS` und `CLONE_NEWCGROUP` werden nur als
+Typ-IDs verglichen, nie als Aufrufrechte verwendet.
+
+Die drei Namespaceeinträge `pid`, `mnt` und `cgroup` sind absichtliche
+Procfs-Magiclinks. Sie werden nicht durch eine globale Magiclink-Ausnahme
+geöffnet: Erst nach bestätigtem Procfs werden ausschließlich diese festen
+Basenames relativ zu dessen sicher geöffnetem `/proc/<pid>/ns`-Verzeichnis
+mit `os.open(..., dir_fd=...)` geöffnet. Der zurückgegebene FD muss
+`NSFS_MAGIC` haben; `fstat`-Paar `st_dev`/`st_ino` bindet die Identität und
+`fcntl.ioctl(fd, NS_GET_NSTYPE)` muss für PID, Mount und cgroup exakt
+`CLONE_NEWPID=0x20000000`, `CLONE_NEWNS=0x00020000` und
+`CLONE_NEWCGROUP=0x02000000` liefern. `NS_GET_NSTYPE` ist `_IO(0xb7, 0x03)`
+(`0xb703`); die Werte folgen dem
+[nsfs-UAPI](https://github.com/torvalds/linux/blob/master/include/uapi/linux/nsfs.h)
+und [`ioctl_ns(2)`](https://man7.org/linux/man-pages/man2/ioctl_ns.2.html).
+Die drei Identitätspaare des Ziels müssen vor und nach dem Read denen des
+Aufrufers entsprechen. Unbekannte ioctl-Rückgaben, `ENOTTY`, verweigerte
+Zugriffe oder ein Wechsel ergeben `CONTEXT_UNBOUND`. Es erfolgt kein `setns`.
+Die begrenzte Ausnahme entspricht der dokumentierten Namespace-FD-Semantik
+([`namespaces(7)`](https://man7.org/linux/man-pages/man7/namespaces.7.html)).
+
+Die CLI akzeptiert nur `--target-pid <positive ASCII-Dezimalzahl>` bis
+`2147483647`; weitere Optionen gibt es nicht. stdout enthält genau ein
+kompaktes JSON-Objekt mit den festen Schlüsseln `schema_version`,
+`target_pid`, `target_identity`, `partial`, `global_hierarchy`, `sql_binding`,
+`event_scope`, `selection_state`, `context_state`, `resources`,
+`hierarchy_metrics` und `issues`. Konstanten sind
+`schema_version="linux-cgroup-observation/1"`,
+`target_identity="CALLER_SELECTED_PROCESS"`, `partial=true`,
+`global_hierarchy="UNVERIFIED"`, `sql_binding="UNVERIFIED"` und
+`event_scope="UNVERIFIED"`. Die PID und sämtliche Zahlen sind
+Dezimalzeichenketten.
+
+Die `resources`-Liste enthält nur die acht vereinbarten Ressourcen und
+`cgroup.type` an den vertraglich ausgewählten Ebenen. Jedes Element enthält
+`source_ordinal`, `level_ordinal`, `observation_phase`, `source_key`,
+`read_state`, `parse_state`, `reason_code`, `byte_count`, `raw_value`,
+`parsed_value`, `native_errno`, `started_at_utc`, `completed_at_utc` und
+`duration_ns`. Ordinale, Bytezahlen und Dauer sind Dezimalstrings; Zeitwerte
+sind UTC-Texte. `observation_phase` ist `INITIAL_FENCE`, `MAIN_READ` oder
+`CLOSING_FENCE`; wiederholte Fence-Reads erhalten eigene Ordinale. Bei nicht
+versuchten Quellen sind Bytezahl, Rohwert, Parsewert und errno `null`,
+`parse_state=NOT_ATTEMPTED` und `reason_code=null`. `raw_value` enthält nur
+vollständig gelesene, begrenzte cgroup-Dateiinhalte einschließlich
+`cgroup.type`, nie Procfs-Metadaten. Ein nicht vollständig gelesener Wert
+liefert keinen Rohwert und wird nicht geparst.
+
+Readzustände sind `AVAILABLE`, `NOT_SELECTED`, `MISSING`,
+`PERMISSION_DENIED`, `READ_ERROR`, `CONTEXT_UNBOUND`, `LIMIT_REACHED` und
+`DEADLINE_REACHED`. Erfolgreiche Reads bleiben `AVAILABLE`, auch wenn ein
+späterer Fence `context_state=CONTEXT_UNBOUND` ergibt. Parsezustände und
+Reason-Codes kommen bei ausgeführtem Parser unverändert aus der vorhandenen
+API. `selection_state` ist `SELECTED`, `MISSING_MEMBERSHIP`,
+`UNSUPPORTED_LAYOUT`, `AMBIGUOUS_MOUNT` oder `CONTEXT_UNBOUND`;
+`context_state` ist `BOUND` oder `CONTEXT_UNBOUND`. `issues`-Elemente enthalten
+nur `scope`, `reason_code` und optional `source_ordinal`; Scopes sind
+`SELECTION`, `ABI`, `CONTEXT`, `RESOURCE`, `BUDGET` und `OUTPUT`. Stabile
+Issue-Codes umfassen `UNSUPPORTED_ABI`, `ABI_MISMATCH`,
+`SYSCALL_UNAVAILABLE`, `FILESYSTEM_MISMATCH`, `NAMESPACE_MISMATCH`,
+`PID_EXITED`, `STARTTIME_CHANGED`, `MEMBERSHIP_CHANGED`, `MOUNT_CHANGED`,
+`PIDFD_PROCFS_MISMATCH`, `DIRECTORY_CHANGED`, `SYMLINK_REJECTED`,
+`CROSS_MOUNT_REJECTED`, `PERMISSION_DENIED`, `READ_ERROR`,
+`RESOURCE_MISSING`, `LIMIT_REACHED`, `DEADLINE_REACHED` und `OUTPUT_ERROR`;
+Parsefehler verwenden die bestehenden Parsercodes. `native_errno` ist nur der
+dezimale Zahlencode als String, nie eine Fehlerbeschreibung.
+
+Nicht gelesene oder ungültige Werte erhalten keinen synthetischen Nullwert.
+Gebundene Hierarchieableitungen entfallen bei `CONTEXT_UNBOUND`.
+`hierarchy_metrics` enthält `visible_memory_max_ceiling_bytes`,
+`visible_swap_max_ceiling_bytes` und `visible_cpu_quota_ratio`. Jedes Element
+hat `state`, `value` und `source_ordinals`; der CPU-Quotient führt zusätzlich
+exakte `ratio_numerator` und `ratio_denominator`. Zustände sind `AVAILABLE`,
+`NO_FINITE_VISIBLE_LIMIT` oder `UNAVAILABLE`; Werte, Quotientteile und
+Ordinale sind Dezimalzeichenketten. Nicht anwendbare Werte sind `null`; jede
+Ableitung nennt ihre Quellordinale.
+
+Exitcode 0 bedeutet, dass ein vollständiges JSON-Ergebnis geschrieben wurde,
+auch wenn es partiell oder ungebunden ist; 2 bezeichnet einen ungültigen
+CLI-Aufruf, 3 einen Fehler, der ein vertragsgemäßes JSON-Ergebnis verhindert.
+stderr enthält ausschließlich stabile Fehlercodes, keine Hostwerte oder
+Rohtexte.
+
+Die bestehenden Grenzen gelten unverändert: höchstens 64 sichtbare Ebenen
+einschließlich Blatt, 64 KiB je Ressourcendatei, 512 KiB je Procfs-Quelle,
+8 MiB Gesamtbudget und zehn Sekunden monotones Budget zur Zulassung weiterer
+Reads. Ein bereits blockierter Systemaufruf kann durch das Zeitbudget nicht
+garantiert unterbrochen werden. Fehlende Fähigkeiten sperren die Bindung;
+erfolgreiche Einzelreads bleiben trotzdem erhalten. Keine Aufnahme ist ein
+atomarer Snapshot oder eine Sicherheitsattestierung eines kopierten JSON.
+
+Die Bytezählung umfasst alle tatsächlichen Reads einschließlich Prozess-,
+Mount-, Namespace-, Membership-, Starttick-, Konfigurations- und Abschluss-
+Fences innerhalb desselben 8-MiB-Gesamtbudgets; Readversuche werden nur
+zugelassen, solange sowohl Byte- als auch Zeitbudget verbleiben. Für Procfs-
+und cgroup-Pseudodateien wird `fstat`-Dateigröße nicht als EOF-Nachweis
+verwendet. Ein positiver Read kann kürzer als die Anfrage sein, ohne das
+Dateiende zu beweisen; nur ein tatsächlicher Null-Byte-Read zählt als EOF.
+Erreicht die Bytezahl exakt das 64-KiB-, 512-KiB- oder verbleibende
+Gesamtlimit, wird kein zusätzlicher Probe-Read ausgelöst. Ohne bereits
+beobachtetes EOF erhält die Quelle `LIMIT_REACHED`, keinen Rohwert und keinen
+Parseversuch. Diese Regel hält den Höchstwert auch dann ein, wenn der
+Dateiinhalt exakt am Cap endet.
+
+Die spätere Abnahme benötigt portable feste Parser- und Wire-Oracles sowie
+einen getrennten Job im bestehenden
+[`ci-functional-impact.yml`](../../../.github/workflows/ci-functional-impact.yml)
+ohne Abhängigkeit zum SQL-Server-Job und ohne SQL-Instanzstart. Geänderte
+Reader-/Syscallmodule und deren Validator aktivieren diesen Job. Sein
+Linux-x86_64-/Python-3.11-Preflight schlägt fehl statt die Laufzeitfälle zu
+überspringen, wenn Kernel, ABI oder Syscalls nicht verfügbar sind. Auf dem
+Runner werden tatsächliche `openat2`,
+`statx`, `fstatfs`, Namespace-FD- und pidfd-Aufrufe mit einem eigenen
+Kindprozess und dessen bestehender cgroup geprüft. Temporäre synthetische
+Verzeichnisfixtures prüfen Races, Symlinkablehnung, erlaubten Mountanker,
+verbotene Folgemounts soweit ohne Privilegien herstellbar, Permissionfehler,
+eine Rückgabemaske mit allen vier Pflichtbits plus zusätzlichen gesetzten Bits
+als Erfolg sowie das Fehlen jedes einzelnen Pflichtbits als fail-closed,
+EOF knapp unter und genau am Datei-/Gesamtcap ohne zusätzliche Probe-Reads,
+gemeinsame Zählung von Vor-/Nachher-Fences, Read-/Byte-/Zeitbudget und Cleanup.
+Injizierte ABI-, Namespace-, PID-,
+Starttick-, Mount-ID- und Directory-ID-Abweichungen müssen fail-closed enden;
+ein CI-Preflight für die festgelegte Architektur überspringt diese Fälle nicht.
+Das kompakte Laufprotokoll enthält nur Prüf-Codes und Fallzahlen. Kein solcher
+Fixture- oder Prozesslauf qualifiziert eine kontrolliert gesetzte native
+cgroup-Grenze oder deren Wirkung auf SQL Server; dieser positive
+Linux-/SQL-Nachweis bleibt separat offen.
 
 Diese Vertragswelle verlangt einen unabhängigen Review der Quellen-,
 Namespace-, Pfad-, Hierarchie-, Vertrauens- und Abbruchgrenzen sowie die

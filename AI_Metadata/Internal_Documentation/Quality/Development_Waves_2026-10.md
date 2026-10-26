@@ -52,7 +52,7 @@ wird nicht allein aufgrund eines Planverweises übernommen.
 | 8 | Weitere SSIS-Laufzeitdiagnosen, `SSIS-001` | Die bisherigen Iterations-, Pipeline-, Kindpaket- und Handlerpfade sind geliefert. Verbleibende Task-, Buffer-, Provider-, Checkpoint- und Loggingpfade werden vor einer neuen Welle gegen den aktuellen OpenScope abgeglichen. |
 | 9 | SSIS-Laufvergleiche, `SSIS-001` | Paarvergleich und Mehrlauf-Baseline sind geliefert; PR #457 ergänzt bis zu 20 gebundene Basisläufe und einen Kandidaten. Ein Ausbau benötigt einen konkreten verbleibenden Bedarf und wiederholt keine abgeschlossene Abnahme. |
 | 10 | Snapshot- und Baseline-Ausbau, `SC-023-EXPANSION` | Wait- und native Datei-I/O-Slices sind bis PR #458 mit ihren begrenzten Kontinuitätsverträgen integriert. Kapazität, Ressourcendruck, Rollups und Scheduler folgen als getrennte verbleibende Umfänge. |
-| 11 | Upgrade- und Plattformdiagnostik, Intake `DEPRECATION_BREAKING_CHANGE` und `LINUX_CONTAINER_LIMITS` | Upgrade, Linux-cgroup-Vorvertrag und neun reine Ressourcenparser sind über PR #459 bis PR #462 abgeschlossen. Der [nächste Schritt](../Architecture/Linux_Cgroup_Resource_Boundary_Dossier.md) parst Procfs-Mitgliedschaft und cgroup2-Mountmetadaten ohne Dateizugriff oder Auswahl; Collector und Bindung bleiben getrennt. |
+| 11 | Upgrade- und Plattformdiagnostik, Intake `DEPRECATION_BREAKING_CHANGE` und `LINUX_CONTAINER_LIMITS` | Upgrade und Linux-cgroup-Vertrags-/Parser-Slices sind über PR #459 bis PR #463 abgeschlossen. PR #464 schließt den begrenzten Common-159-TRUNCATE-/MinValidVersion-Fall ab: Source-Head `12bf7fff`, sieben Head-Checks, SQL-2025-Lauf [40332918187](https://github.com/gecompat/SQL_Server_Analyze/actions/runs/40332918187) und vier bestandene Main-Gates. Der Quelllauf ist belegt; separater Erfolgsstdout und PASS-Marker sind nicht exportiert. Schritt 27 konkretisiert im [Dossier](../Architecture/Linux_Cgroup_Resource_Boundary_Dossier.md) den noch nicht implementierten Reader-Vertrag; Collector, native cgroup-Limitwirkung und SQL-Bindung bleiben offen. Bearbeitung ECONOMICAL/LOCAL mit gezielter Eskalation bei konkretem Klärungsbedarf. |
 | 12 | Collation-Härtung, `COLL-001` | Verbleibende betroffene Quelldateien und Consumer gezielt härten und prüfen. Die garantierte Collation wird ohne vollständigen Nachweis nicht erweitert. |
 | 13 | msdb-, Agent- und Mail-Diagnostik, `OPS-008` | Verbleibende Retention-, Status-, Datum-/Dauer- und Wartungsfälle abschließen; vorhandenen SMTP-Erfolg nicht erneut qualifizieren. |
 | 14 | External-Data-, Runtime- und CLR-Abnahmen, `WI-0009` und `RUNTIME-001` | Eigene positive External-Table-Quellen, aktivierte Runtimes und synthetische SAFE-Assembly-Nachweise getrennt abnehmen. Fehlende Infrastruktur bleibt externe Evidenz. |
@@ -108,6 +108,13 @@ PR-Schritten wird der verbleibende Umfang vor weiterer Arbeit neu bewertet;
 bei 40 beginnen keine neuen Schritte. Offene Arbeit wird dann mit ihrer
 tatsächlichen Grenze gesichert und nicht als abgeschlossen ausgegeben. Ein
 Heartbeat oder Sessionwechsel setzt diese Grenzen nicht zurück.
+
+Der Abschluss eines einzelnen Pull Requests beendet den Gesamtauftrag nicht.
+Der Orchestrator setzt anschließend den nächsten ausführbaren freigegebenen
+Schritt ohne erneute Fortsetzungsaufforderung um. Der stündliche Heartbeat
+bleibt eine zusätzliche Leerlauferkennung und ersetzt diese laufende
+Fortsetzung nicht. Am Checkpoint bei 30 bewertet der Orchestrator den
+Restumfang neu und setzt innerhalb der bestehenden Freigaben und Grenzen fort.
 
 Die Testauswahl folgt ausschließlich der
 [CI-Teststrategie](../../../Documentation/Quality/CI_Test_Strategy.md).
@@ -262,16 +269,25 @@ sind identisch. Alle fünf getrennten Main-Workflows bestehen. Das
 [Upgrade-Dossier](../Architecture/Upgrade_Feature_Usage_Dossier.md) führt
 Laufbindungen, Korrekturhistorie und verbleibende fachliche Grenzen.
 
-Die Linux-cgroup-Vertragswelle ist über PR #460 und die neun reinen
-Ressourcenparser über PR #461 und PR #462 abgeschlossen. Der nächste kleine
-Schritt ergänzt Parser für Procfs-Mitgliedschaft und cgroup2-Mountmetadaten.
-Dateizugriff, Auswahl, Prozess-/Namespacebindung und übriger Collector folgen
-als getrennte Slices; eine native Hostqualifikation bleibt ein eigener
-nachzuweisender Scope.
+Die Linux-cgroup-Vertragswelle ist über PR #460, die reinen Ressourcenparser
+über PR #461 und PR #462 und die reinen Procfs-Metadatenparser über PR #463
+abgeschlossen.
 
-PR #463 schließt die Linux-cgroup-Metadatenparser ab. Der begrenzte COLL-001-
-Schritt ergänzt Common 159 um zwei verpflichtende SQL-2025-Kandidatenfälle:
-TRUNCATE-bedingte MinValidVersion-Ungültigkeit und einen gültigen Kontrollstand.
-Impact-CI, tatsächlich ausgewählter Compatibility-Scope und Cleanup müssen den
-Kandidaten noch bestätigen. Zeitbasierte Retention und Backgroundbereinigung
-bleiben offen; lokale native Versuche bleiben null.
+PR #464 schließt den in Schritt 26 begrenzten Common-159-TRUNCATE- und
+MinValidVersion-Nachweis ab. Source-Head `12bf7fff` und Merge `178a6b38`
+bestehen alle sieben Head-Checks, den SQL-Server-2025-Lauf
+[40332918187](https://github.com/gecompat/SQL_Server_Analyze/actions/runs/40332918187)
+und alle vier Main-Gates. Der Quelllauf ist belegt; der Erfolgsstdout der Probe
+wurde nicht separat exportiert und wird deshalb nicht als gesondert erfasster
+PASS-Marker ausgewiesen. Der Fall belegt weder zeitbasiertes Retentionablaufen
+noch Backgroundbereinigung; lokale native Versuche bleiben null.
+
+Schritt 27 ergänzt ausschließlich den primärquellenbasierten Entwurf für den
+ersten kohärenten Linux-Reader im bestehenden
+[Dossier](../Architecture/Linux_Cgroup_Resource_Boundary_Dossier.md). Er
+grenzt native x86_64-ABI-Bindungen, Dateisystem- und Namespacefences, JSON/CLI,
+Fehlerzustände und spätere gezielte Linux-CI ab. Der Entwurf wartet auf
+unabhängigen Vertragsreview. Readercode, positive kontrollierte cgroup-Limits,
+deren Wirkung auf SQL Server, globale Hierarchievollständigkeit und SQL-
+Instanzbindung bleiben offen. Die Bearbeitung verwendet ECONOMICAL/LOCAL und
+eskaliert nur bei konkreten ungeklärten Vertrags- oder Prüfgrenzen.
