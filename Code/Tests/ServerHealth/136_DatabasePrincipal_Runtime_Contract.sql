@@ -426,6 +426,25 @@ BEGIN TRY
         @JsonErzeugen=1,@Json=@Json OUTPUT,@PrintMeldungen=0;
     IF (SELECT COUNT_BIG(*) FROM OPENJSON(@Json,N'$.databaseContext'))<>@DefaultDatabases
         THROW 57129,N'Databaseprincipal default selection does not cover visible online user databases.',1;
+    SET @Exact=QUOTENAME(@DbA);
+    EXEC [monitor].[USP_DatabasePrincipalAnalysis] @DatabaseNames=@Exact,@ResultSetArt='NONE',
+        @JsonErzeugen=1,@Json=@Json OUTPUT,@PrintMeldungen=0;
+    IF ISJSON(@Json)<>1
+       OR (SELECT COUNT(*) FROM OPENJSON(@Json,N'$.databaseContext'))<>1
+       OR NOT EXISTS(SELECT 1 FROM OPENJSON(@Json,N'$.databaseContext') WITH([DatabaseId] int N'$.DatabaseId') WHERE [DatabaseId]=@IdA)
+       OR EXISTS(SELECT 1 FROM OPENJSON(@Json,N'$.databaseContext') WITH([DatabaseId] int N'$.DatabaseId') WHERE [DatabaseId]<>@IdA)
+        THROW 57190,N'Databaseprincipal exact-name consumer selection did not resolve only the requested numeric database identity.',1;
+    DECLARE @WrongCaseName sysname=N'e'+SUBSTRING(@DbA,2,128);
+    SET @Exact=QUOTENAME(@WrongCaseName);
+    EXEC [monitor].[USP_DatabasePrincipalAnalysis] @DatabaseNames=@Exact,@ResultSetArt='NONE',
+        @JsonErzeugen=1,@Json=@Json OUTPUT,@PrintMeldungen=0,@StatusCodeOut=@Status OUTPUT;
+    IF COALESCE(@Status COLLATE SQL_Latin1_General_CP1_CS_AS,'')<>'DATABASE_UNAVAILABLE'
+       OR (SELECT COUNT(*) FROM OPENJSON(@Json,N'$.databaseContext'))<>0
+       OR NOT EXISTS(SELECT 1 FROM OPENJSON(@Json,N'$.sourceStatus')
+            WITH([SourceKind] varchar(16) N'$.SourceKind',[StatusCode] varchar(40) N'$.StatusCode')
+            WHERE [SourceKind]='SELECTION' AND [StatusCode]='DATABASE_UNAVAILABLE')
+        THROW 57191,N'Databaseprincipal wrong-case exact-name selection was not rejected as unavailable.',1;
+    SET @Exact=QUOTENAME(@DbA)+N'|'+QUOTENAME(@DbB);
     SET @Pattern=N'like:ExampleDbPrincipalA%'+@Suffix;
     EXEC [monitor].[USP_DatabasePrincipalAnalysis] @DatabaseNamePattern=@Pattern,@MaxZeilen=1,@ResultSetArt='NONE',
         @JsonErzeugen=1,@Json=@Json OUTPUT,@PrintMeldungen=0;
