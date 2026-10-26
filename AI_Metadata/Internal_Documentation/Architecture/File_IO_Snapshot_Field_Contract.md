@@ -874,3 +874,18 @@ Die nachfolgende rein mechanische Temp-Namenskorrektur erfüllt 950; die
 abschließenden regulären Prüfungen binden den tatsächlichen Liefercommit.
 Der zusätzliche Anpassungsfall für erhaltene eigene 3.0-Policy-/Seedwerte und
 die laufende Main-Integration bleiben Teil dieser abschließenden Abnahme.
+
+## Reguläre Integration der öffentlichen Quelle
+
+PR #458 ist mit Head 23730d1d und identischem Mergebaum als 1a144251 integriert.
+Alle sieben Standard-Headprüfungen sowie das vollständige SQL2025-Gate
+40271515196 bestehen. Native SQL2019-Prüfung 40271529655 bindet denselben Head
+an ZIP-SHA256 76217277010522b17a6d3f7a3a2b816d6a955caec2b3cee31fe88bafc1dc0626.
+SQL2019 15.0.4500.2/CL150/Linux, alle vier benannten Snapshot-Risikogruppen und
+Cleanup bestehen. Evidence-Schema 2 ist vom Targetschema 3 getrennt; allgemeines
+natives Core-Release und Permissionmatrix sind NOT_EXECUTED, eine vollständige
+Release-Versionsmatrix wird nicht behauptet.
+
+Alle vier getrennten Main-Gates bestehen, darunter das vollständige SQL2025-Gate
+40273412551 sowie Dokumentation 40273412530, Privacy 40273412548 und
+Commitprüfung 40273412523. Frühere private Fehlversuche bleiben erhalten.

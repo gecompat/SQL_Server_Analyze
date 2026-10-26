@@ -92,7 +92,25 @@ Der genaue WAIT_CAPTURE_CONTEXT-Vertrag mit Typen, Mengen-, Rohwert-, Zeit-,
 Epochen- und Retentionsbindungen ist unabhängig geprüft. Der Retentionsschutz im gemeinsamen Purge ist über
 [PR #449](https://github.com/gecompat/SQL_Server_Analyze/pull/449) als
 Targetpatch 1.1.1 einschließlich aller Head- und Main-Gates integriert.
-Das interne Wait-Target 1.2.0 ist über PR #451 einschließlich aller sieben Head-Checks, vollständigem SQL2025-Head-/Main-Gate und gezielter nativer SQL2019-Snapshotprüfung integriert. Die öffentliche Frameworkaktivierung mit Targetpatch 1.2.1 ist über PR #453 einschließlich aller sieben Head-Checks, vollständigem SQL2025-Gate und gezielter nativer SQL2019-Abnahme integriert; alle vier getrennten Main-Prüfungen einschließlich des vollständigen SQL2025-Gates bestehen. Der [Datei-I/O-Vorvertrag](../Architecture/File_IO_Snapshot_Dossier.md) ist über PR #454 mit allen vier Head- und drei Main-Prüfungen integriert. Der [genaue Feld- und Migrationsvertrag](../Architecture/File_IO_Snapshot_Field_Contract.md) ist über PR #455 mit allen Head-/Main-Gates integriert. Das interne FILE_IO-Target 1.3.0 / Schema 3 und die notwendige Waitkompatibilität sind über [PR #456](https://github.com/gecompat/SQL_Server_Analyze/pull/456) integriert. Alle sieben Head-Prüfungen, das vollständige SQL2025-Gate, die gezielte native SQL2019-Risikoabnahme und alle vier getrennten Main-Gates bestehen. Der erste Main-Versuch scheiterte im Legacy-SSIS-TABLE-Fall 202/C008 mit Timeout; ein begrenzter Wiederlauf bestand ohne Produktänderung. BLOCKER_NOT_CAPTURED bleibt mit Ursache UNKNOWN erhalten. Die nächste Welle ergänzt die öffentliche native Datei-I/O-Aufnahme und deren ausdrücklich geprüfte Fehler-/Zeitgrenzen.
+Das interne Wait-Target 1.2.0 ist über PR #451 einschließlich aller sieben Head-Checks, vollständigem SQL2025-Head-/Main-Gate und gezielter nativer SQL2019-Snapshotprüfung integriert. Die öffentliche Frameworkaktivierung mit Targetpatch 1.2.1 ist über PR #453 einschließlich aller sieben Head-Checks, vollständigem SQL2025-Gate und gezielter nativer SQL2019-Abnahme integriert; alle vier getrennten Main-Prüfungen einschließlich des vollständigen SQL2025-Gates bestehen. Der [Datei-I/O-Vorvertrag](../Architecture/File_IO_Snapshot_Dossier.md) ist über PR #454 mit allen vier Head- und drei Main-Prüfungen integriert. Der [genaue Feld- und Migrationsvertrag](../Architecture/File_IO_Snapshot_Field_Contract.md) ist über PR #455 mit allen Head-/Main-Gates integriert. Das interne FILE_IO-Target 1.3.0 / Schema 3 und die notwendige Waitkompatibilität sind über [PR #456](https://github.com/gecompat/SQL_Server_Analyze/pull/456) integriert. Alle sieben Head-Prüfungen, das vollständige SQL2025-Gate, die gezielte native SQL2019-Risikoabnahme und alle vier getrennten Main-Gates bestehen. Der erste Main-Versuch scheiterte im Legacy-SSIS-TABLE-Fall 202/C008 mit Timeout; ein begrenzter Wiederlauf bestand ohne Produktänderung. BLOCKER_NOT_CAPTURED bleibt mit Ursache UNKNOWN erhalten. Die öffentliche native Datei-I/O-Aufnahme mit Targetpatch 1.3.1 / Schema 3 und Retentionsvertrag 3 ist über [PR #458](https://github.com/gecompat/SQL_Server_Analyze/pull/458) als 1a144251 integriert. Alle sieben Head-Checks, das vollständige SQL2025-Gate und die gezielte native SQL2019-Snapshot-Risikoabnahme bestehen am Head 23730d1d. Merge- und Headbaum sind identisch. Alle vier getrennten Main-Gates einschließlich des vollständigen SQL2025-Laufs 40273412551 bestehen. Der nächste unabhängige Rang 11 beginnt mit dem Upgrade-Usage-Vertrag.
+Nach dem abgeschlossenen Datei-I/O-Checkpoint bearbeitet der Gesamtauftrag
+Rang 11 gemäß [Upgrade-Usage-Dossier](../Architecture/Upgrade_Feature_Usage_Dossier.md).
+Der Produktkandidat ergänzt SQL-sichtbare Deprecated-Begegnungszähler und eine
+begrenzte Zielversionsregel. Vertrags- und Erstproduktreview sowie Quellenprobe
+und öffentlicher SQL2025-Smoke bestehen. Die breite native Rechteprobe deckt
+einen impliziten Returnwert auf; der normale Abschluss enthält nun RETURN 0.
+Die abschließende Fehlerfallprüfung und CI-Abnahme bleiben offen. Acht lokale
+native Versuche sind ausgeschöpft und alle eigenen Labs entfernt. Es folgen
+nach ausdrücklicher Benutzerfreigabe höchstens sechs stabile CI-Kandidaten,
+einschließlich der erforderlichen nativen SQL2019-Rechtegrenze. Die vorbereitete
+und unabhängig geprüfte Fixturekorrektur trennt serverweite Rechte in master
+vom Objektrecht im Frameworkkontext. Der sechste Kandidat korrigiert zusätzlich
+den festen Zeilenlimitvertrag: NULL/0 liefern vollständig, positive Werte
+begrenzen nur die Ausgabe und negative bleiben ungültig. Die Korrektur ist
+unabhängig geprüft; ihre eigene Runtimeabnahme bleibt bis zum erfolgreichen
+Head-Gate offen. Ohne neue Inputs wird kein Lauf wiederholt.
+Linux-/Container-Hostnachweise bleiben ein eigener Scope. Diese Vorbereitung
+übernimmt keine SSIS-Arbeit und verändert die erhaltene SSISDB nicht.
 Bereits gelieferte Funktionen und die abgeschlossene STAT-DOMINANT-Diagnose
 werden nicht erneut entwickelt.
 

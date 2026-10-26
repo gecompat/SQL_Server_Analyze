@@ -855,3 +855,11 @@ EXEC [monitor].[USP_SsisExecutionBaseline] @Hilfe = 1;
 ```
 
 Die [Mehrlauf-Baseline](../Analysis_Guides/Procedures/USP_SsisExecutionBaseline.md) verarbeitet explizit übergebene, unabhängig lokal attestierte Captures derselben Modellrevision. Der Hilfeaufruf benötigt keine Capturewerte.
+
+## `[monitor].[USP_UpgradeFeatureUsageAnalysis]`
+
+```sql
+EXEC [monitor].[USP_UpgradeFeatureUsageAnalysis] @TargetMajorVersion=17, @MaxZeilen=100, @ResultSetArt='CONSOLE';
+```
+
+Aussagegrenzen und Fehlerbehandlung stehen in der [Procedure-Seite](../Analysis_Guides/Procedures/USP_UpgradeFeatureUsageAnalysis.md).

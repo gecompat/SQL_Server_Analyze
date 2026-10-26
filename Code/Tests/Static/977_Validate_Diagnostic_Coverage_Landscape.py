@@ -128,7 +128,8 @@ def validate_rows(fields: list[str], rows: list[dict[str, str]]) -> list[str]:
 
     for domain in sorted(REQUIRED_DOMAINS - domains):
         errors.append(f"required coverage domain missing: {domain}")
-    if status_counts["RESEARCHED_NOT_IMPLEMENTED"] < 25:
+    # One bounded deprecation slice has moved to PARTIAL_PRODUCT_FUNCTION.
+    if status_counts["RESEARCHED_NOT_IMPLEMENTED"] < 24:
         errors.append("too few explicit researched gaps")
     if status_counts["OUT_OF_SCOPE"] < 4:
         errors.append("explicit product exclusions are incomplete")

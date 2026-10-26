@@ -2110,3 +2110,15 @@ USP_SsisExecutionBaseline,StatusCodeOut,varchar(40),NULL OUTPUT
 USP_SsisExecutionBaseline,IsPartialOut,bit,NULL OUTPUT
 USP_SsisExecutionBaseline,ErrorNumberOut,int,NULL OUTPUT
 USP_SsisExecutionBaseline,ErrorMessageOut,nvarchar(2048),NULL OUTPUT
+USP_UpgradeFeatureUsageAnalysis,TargetMajorVersion,int,NULL
+USP_UpgradeFeatureUsageAnalysis,MaxZeilen,int,1000
+USP_UpgradeFeatureUsageAnalysis,ResultSetArt,varchar(16),'CONSOLE'
+USP_UpgradeFeatureUsageAnalysis,ResultTablesJson,nvarchar(max),NULL
+USP_UpgradeFeatureUsageAnalysis,JsonErzeugen,bit,0
+USP_UpgradeFeatureUsageAnalysis,Json,nvarchar(max),NULL OUTPUT
+USP_UpgradeFeatureUsageAnalysis,PrintMeldungen,bit,1
+USP_UpgradeFeatureUsageAnalysis,Hilfe,bit,0
+USP_UpgradeFeatureUsageAnalysis,StatusCodeOut,varchar(40),NULL OUTPUT
+USP_UpgradeFeatureUsageAnalysis,IsPartialOut,bit,NULL OUTPUT
+USP_UpgradeFeatureUsageAnalysis,ErrorNumberOut,int,NULL OUTPUT
+USP_UpgradeFeatureUsageAnalysis,ErrorMessageOut,nvarchar(2048),NULL OUTPUT

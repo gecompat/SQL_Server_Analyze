@@ -207,6 +207,8 @@ AS
         , (N'USP_DatabasePrincipalAnalysis','CONFIRM_WITH',N'USP_ServerPrincipalAnalysis',1,N'Sichtbare Datenbankrechte und Loginbindungen mit den getrennten Servermetadaten abgleichen.')
         , (N'USP_CurrentCallerPermissionAnalysis','CONFIRM_WITH',N'USP_DatabasePrincipalAnalysis',1,N'Native Rechte des aktuellen Kontexts mit getrennten sichtbaren Katalogkanten abgleichen.')
         , (N'USP_EndpointTransportAnalysis','CONFIRM_WITH',N'USP_EncryptionAnalysis',1,N'Transportbefunde getrennt von Daten- und Backupverschlüsselung interpretieren.')
+        , (N'USP_UpgradeFeatureUsageAnalysis','CONFIRM_WITH',N'USP_DatabasePortabilityAnalysis',1,N'Instanzweite Begegnungen getrennt von datenbankbezogenen Portabilitätsbefunden prüfen.')
+        , (N'USP_UpgradeFeatureUsageAnalysis','CONFIRM_WITH',N'USP_ServerVersionInformation',2,N'Tatsächliche Engineversion und explizit gewählte Zielversion getrennt berücksichtigen.')
     ) AS [v]
     (
           [FromProcedureName], [RelationType], [ToProcedureName]

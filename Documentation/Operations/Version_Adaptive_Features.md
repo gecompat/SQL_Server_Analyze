@@ -12,3 +12,10 @@ Die folgenden Statuswerte beschreiben die Verfügbarkeit der jeweiligen Quelle:
 - `DENIED_PERMISSION`: Quelle existiert, ist aber nicht lesbar.
 
 Wenn eine neue Quelle nur zusätzliche Details liefert, bleibt die ältere äquivalente Kernaussage erhalten. Beispiele dafür sind das allgemeine Indexinventar ohne Vector-Metadaten, die allgemeine Query-Store-Auswertung ohne Replica-Dimension und die allgemeinen OS-DMVs ohne Linux-Host-DMVs.
+
+## Upgradebeobachtung
+
+Die [Upgrade-Featureanalyse](../Analysis_Guides/Procedures/USP_UpgradeFeatureUsageAnalysis.md)
+trennt native Begegnungszähler von einer ausdrücklich ausgewählten
+Zielversionsregel. Discontinued Features, Breaking Changes und Hostvoraussetzungen
+bleiben gesonderte Prüfungen.

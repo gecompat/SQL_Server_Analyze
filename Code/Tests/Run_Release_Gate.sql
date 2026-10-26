@@ -35,6 +35,9 @@ OUTPUT       : Suiten 187 bis 190 prüfen Strukturadaption, Pilotvertrag, den
 RAISERROR(N'RELEASE_GATE 1/34: Smoke Test',10,1) WITH NOWAIT;
 :r Integration/110_Smoke_Test.sql
 
+RAISERROR(N'RELEASE_GATE companion: Upgrade feature usage',10,1) WITH NOWAIT;
+:r VersionAdaptive/121_UpgradeFeatureUsage_Runtime_Contract.sql
+
 RAISERROR(N'RELEASE_GATE 2/34: Parameter-API-Vertrag',10,1) WITH NOWAIT;
 :r Integration/163_Parameter_API_Vertrag.sql
 
