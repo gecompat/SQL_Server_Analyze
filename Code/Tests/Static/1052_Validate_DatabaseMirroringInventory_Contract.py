@@ -469,6 +469,30 @@ def validate_contract(
         errors.append("runtime fixture must admit its existing SQL Server 2019/2022/2025 release-gate targets")
     if "IF @ProductMajor>=16" not in runtime or "SQL Server 2019: no minimum catalog-denial permission is asserted" not in runtime:
         errors.append("runtime fixture must version-scope the 2022+ permission-denial case and state the 2019 boundary")
+    login_start = runtime.find("SET @Sql=N'CREATE LOGIN ")
+    login_exec = runtime.find("EXEC [sys].[sp_executesql] @Sql;", login_start)
+    login_flag = runtime.find("SET @LoginCreated=1;", login_exec)
+    grant_start = runtime.find("SET @Sql=N'USE [master]; GRANT VIEW ANY DATABASE", login_flag)
+    grant_exec = runtime.find("EXEC [sys].[sp_executesql] @Sql;", grant_start)
+    user_start = runtime.find("SET @Sql=N'CREATE USER ", grant_exec)
+    user_exec = runtime.find("EXEC [sys].[sp_executesql] @Sql;", user_start)
+    user_flag = runtime.find("SET @UserCreated=1;", user_exec)
+    execute_grant_start = runtime.find("SET @Sql=N'GRANT EXECUTE ON OBJECT::[monitor].[USP_DatabaseMirroringInventory]", user_flag)
+    execute_grant_exec = runtime.find("EXEC [sys].[sp_executesql] @Sql;", execute_grant_start)
+    login_batch = runtime[login_start:login_exec] if login_start >= 0 and login_exec >= 0 else ""
+    grant_batch = runtime[grant_start:grant_exec] if grant_start >= 0 and grant_exec >= 0 else ""
+    user_batch = runtime[user_start:user_exec] if user_start >= 0 and user_exec >= 0 else ""
+    execute_grant_batch = runtime[execute_grant_start:execute_grant_exec] if execute_grant_start >= 0 and execute_grant_exec >= 0 else ""
+    if (min(login_start,login_exec,login_flag,grant_start,grant_exec,user_start,user_exec,user_flag,execute_grant_start,execute_grant_exec)<0
+            or not login_start<login_exec<login_flag<grant_start<grant_exec<user_start<user_exec<user_flag<execute_grant_start<execute_grant_exec
+            or "GRANT VIEW ANY DATABASE" in login_batch
+            or "USE [master]; GRANT VIEW ANY DATABASE" not in grant_batch
+            or "DENY VIEW SERVER PERFORMANCE STATE" not in grant_batch
+            or "GRANT EXECUTE" in user_batch
+            or "CREATE USER" not in user_batch
+            or "GRANT EXECUTE ON OBJECT::[monitor].[USP_DatabaseMirroringInventory]" not in execute_grant_batch
+            or "USE [master]" in user_batch+execute_grant_batch):
+        errors.append("login and user ownership flags must precede grants; server grants use master and the user grant uses the framework database")
     if "sp_executesql] N'DROP USER" in runtime or "sp_executesql] N'DROP LOGIN" in runtime:
         errors.append("runtime cleanup passes concatenated expressions directly to sp_executesql instead of a variable")
     for sql_token in ("SET @Sql=N'DROP USER '+QUOTENAME(@Login)+N';';\n    EXEC [sys].[sp_executesql] @Sql;",
@@ -581,6 +605,20 @@ def main() -> int:
         late_selector_mutation = text["procedure"].replace(selector_clause, "", 1).replace(
             "        SET @Started=SYSUTCDATETIME();", late_selector_guard + "        SET @Started=SYSUTCDATETIME();", 1
         )
+        late_login_flag_mutation = text["runtime"].replace(
+            "EXEC [sys].[sp_executesql] @Sql;\n    SET @LoginCreated=1;\n    SET @Sql=N'USE [master]; GRANT VIEW ANY DATABASE",
+            "EXEC [sys].[sp_executesql] @Sql;\n    SET @Sql=N'USE [master]; GRANT VIEW ANY DATABASE", 1
+        ).replace(
+            "EXEC [sys].[sp_executesql] @Sql;\n    SET @Sql=N'CREATE USER",
+            "EXEC [sys].[sp_executesql] @Sql;\n    SET @LoginCreated=1;\n    SET @Sql=N'CREATE USER", 1
+        )
+        late_user_flag_mutation = text["runtime"].replace(
+            "EXEC [sys].[sp_executesql] @Sql;\n    SET @UserCreated=1;\n    SET @Sql=N'GRANT EXECUTE",
+            "EXEC [sys].[sp_executesql] @Sql;\n    SET @Sql=N'GRANT EXECUTE", 1
+        ).replace(
+            "EXEC [sys].[sp_executesql] @Sql;\n    IF @ProductMajor>=16\n    BEGIN",
+            "EXEC [sys].[sp_executesql] @Sql;\n    SET @UserCreated=1;\n    IF @ProductMajor>=16\n    BEGIN", 1
+        )
         mutations = (
             ("NOLOCK", "procedure", text["procedure"].replace("[master].[sys].[database_mirroring] AS [m] WITH (NOLOCK)", "[master].[sys].[database_mirroring] AS [m]", 1), "native source"),
             ("ABI", "procedure", text["procedure"].replace("[ConfiguredRedoQueueLimitMb] int NULL", "[ConfiguredRedoQueueLimitMb] bigint NULL", 1), "business ABI"),
@@ -593,6 +631,10 @@ def main() -> int:
             ("JSON_KEY_UNIQUENESS", "runtime", text["runtime"].replace("GROUP BY [FieldName] HAVING COUNT(*)<>1", "GROUP BY [FieldName] HAVING COUNT(*)<>2", 1), "all twelve JSON keys exactly once and all ten nullable values null"),
             ("JSON_EXTRA_KEY_DIRECTION", "runtime", text["runtime"].replace("EXCEPT SELECT [FieldName] FROM @ExpectedJsonFields", "EXCEPT SELECT [FieldName] FROM @ActualJsonFields", 1), "all twelve JSON keys exactly once and all ten nullable values null"),
             ("SELECTOR_GUARD_REMOVED", "procedure", text["procedure"].replace("AND NULLIF(LTRIM(RTRIM(COALESCE(@DatabaseNames,N''))),N'') IS NOT NULL", "AND NULLIF(LTRIM(RTRIM(COALESCE(@DatabaseNames,N''))),N'') IS NULL", 1), "nonblank exact-name plus pattern conflict must return INVALID_PARAMETER"),
+            ("PRIVILEGE_MASTER_CONTEXT", "runtime", text["runtime"].replace("SET @Sql=N'USE [master]; GRANT VIEW ANY DATABASE", "SET @Sql=N'GRANT VIEW ANY DATABASE", 1), "server grants use master"),
+            ("LOGIN_OWNED_BEFORE_GRANT", "runtime", late_login_flag_mutation, "ownership flags must precede grants"),
+            ("USER_OWNED_BEFORE_GRANT", "runtime", late_user_flag_mutation, "user ownership flags must precede grants"),
+            ("USER_GRANT_IN_CREATE_BATCH", "runtime", text["runtime"].replace("N' FOR LOGIN '+QUOTENAME(@Login)+N';';", "N' FOR LOGIN '+QUOTENAME(@Login)+N'; GRANT EXECUTE ON OBJECT::[monitor].[USP_DatabaseMirroringInventory] TO '+QUOTENAME(@Login)+N';';", 1), "user ownership flags must precede grants"),
             ("SELECTOR_BLANK_NORMALIZATION", "procedure", text["procedure"].replace("NULLIF(LTRIM(RTRIM(COALESCE(@DatabaseNames,N''))),N'') IS NOT NULL", "COALESCE(@DatabaseNames,N'') IS NOT NULL", 1), "blank exact names normalize to no selector"),
             ("SELECTOR_GUARD_TOO_LATE", "procedure", late_selector_mutation, "before source/temp work"),
             ("PARAM_SIGNATURE", "procedure", text["procedure"].replace("@MaxZeilen int = 1000", "@MaxZeilen int = 500", 1), "public parameter names"),

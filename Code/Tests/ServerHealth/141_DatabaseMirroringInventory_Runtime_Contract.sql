@@ -354,14 +354,18 @@ BEGIN TRY
 
     SET @Login=CONCAT(N'DbmiReader_',REPLACE(CONVERT(nvarchar(36),NEWID()),N'-',N''));
     SET @EphemeralCredential=REPLACE(CONVERT(nvarchar(36),NEWID()),N'-',N'');
-    SET @Sql=N'CREATE LOGIN '+QUOTENAME(@Login)+N' WITH PASS'+N'WORD = N'''+REPLACE(@EphemeralCredential,N'''',N'''''')+N''', CHECK_POLICY=OFF; GRANT VIEW ANY DATABASE TO '+QUOTENAME(@Login)+N';';
+    SET @Sql=N'CREATE LOGIN '+QUOTENAME(@Login)+N' WITH PASS'+N'WORD = N'''+REPLACE(@EphemeralCredential,N'''',N'''''')+N''', CHECK_POLICY=OFF;';
+    EXEC [sys].[sp_executesql] @Sql;
+    SET @LoginCreated=1;
+    SET @Sql=N'USE [master]; GRANT VIEW ANY DATABASE TO '+QUOTENAME(@Login)+N';';
     IF @ProductMajor>=16
         SET @Sql+=N' DENY VIEW SERVER PERFORMANCE STATE TO '+QUOTENAME(@Login)+N';';
     EXEC [sys].[sp_executesql] @Sql;
-    SET @LoginCreated=1;
-    SET @Sql=N'CREATE USER '+QUOTENAME(@Login)+N' FOR LOGIN '+QUOTENAME(@Login)+N'; GRANT EXECUTE ON OBJECT::[monitor].[USP_DatabaseMirroringInventory] TO '+QUOTENAME(@Login)+N';';
+    SET @Sql=N'CREATE USER '+QUOTENAME(@Login)+N' FOR LOGIN '+QUOTENAME(@Login)+N';';
     EXEC [sys].[sp_executesql] @Sql;
     SET @UserCreated=1;
+    SET @Sql=N'GRANT EXECUTE ON OBJECT::[monitor].[USP_DatabaseMirroringInventory] TO '+QUOTENAME(@Login)+N';';
+    EXEC [sys].[sp_executesql] @Sql;
     IF @ProductMajor>=16
     BEGIN
         EXECUTE AS LOGIN=@Login;
