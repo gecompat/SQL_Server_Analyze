@@ -516,3 +516,36 @@ Lokale Labs und SQL-Instanzen wurden nicht verwendet. Das CI-Gate, die
 unabhängige Prüfung und die danach erforderlichen Head-/Main-Prüfungen stehen
 aus. Diese geplante Auswahl behauptet keine ausgeführte oder erfolgreiche
 Runtimeprüfung.
+
+### Verarbeitungsaufwand der begrenzten CurrentRequests-Temp-DDL in Schritt 37
+
+Die drei zusammenhängenden Gruppen eigener lokaler Temp-Tabellen in
+`USP_CurrentRequests` erhalten während der jeweiligen DDL ein Timeout von
+1000 ms. Jede Gruppe fängt DDL-Fehler, stellt den zuvor geltenden Timeout
+wieder her und wirft den Fehler erneut. Vor Quelllesungen, fremder
+Zieltabellenprüfung und Parent-Snapshot-Lesezugriffen gilt weiterhin
+`LOCK_TIMEOUT 0`. Die Tabellenreihenfolge, Schemas, API und Quellenverträge
+bleiben unverändert. Die Änderung kann kurze TempDB-Metadatenkollisionen
+abfangen; anhaltende Kollisionen können weiterhin mit 1222 enden.
+
+Der bekannte CI-Fehllauf enthält keinen erfassten Blocker. Die konkrete
+Sperrursache bleibt UNKNOWN; die Änderung belegt nicht, dass eigene Temp-DDL
+den Fehllauf verursacht hat. Die bestehende statische Prüfung 950 ergänzt
+einen lokalen Strukturvertrag für die drei DDL-Gruppen und gezielte
+Mutationstests. Die vorhandene CurrentRequests-Prüfung 1039 bindet weiterhin
+Tabellenreihenfolge und Feldschemas. Der Installationsartefakt-Neubau verwendet
+den bestehenden Builder; es entsteht kein zusätzlicher Runner. Der lokale
+Abschluss führt die betroffenen statischen Prüfungen und Selbsttests aus.
+Funktionale Abnahme erfolgt nach Review über die 14 vom bestehenden Selector
+gewählten SQL2025-Verträge, einschließlich der Callerprüfung mit Timeout 137.
+Der unveränderte funktionale Workflow führt davor weiterhin seine native
+Deploymentregression aus. Diese zusätzliche bestehende Prüfung wird für den
+Kandidaten erhalten; eine spätere Verengung benötigt eine eigene begründete
+Änderung. Lokale SQL-Instanzen und zusätzliche native Engines werden nicht
+gestartet.
+
+Der versionierte OPS-005-Adapter enthält den generierten Vollinstaller und
+muss nach der kanonischen Quelländerung ebenfalls neu gebaut werden.
+Adapterbuilder und Bytevergleich laufen offline. Die bestehende statische
+TestLab-Cleanupprüfung wird durch die Adapteränderung ausgelöst; es entsteht
+kein Provider-Lab. Verlässliche Token- und Kostenmessungen liegen nicht vor.
