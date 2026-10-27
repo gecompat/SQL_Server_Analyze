@@ -43,8 +43,9 @@ BEGIN
         OPEN [RlsMaskFixtureDatabases]; FETCH NEXT FROM [RlsMaskFixtureDatabases] INTO @FixtureDatabase;
         WHILE @@FETCH_STATUS=0
         BEGIN
-            SET @Sql=N'USE '+QUOTENAME(@FixtureDatabase)+N'; CREATE SCHEMA '+QUOTENAME(@Schema)+N';';
-            EXEC [master].[sys].[sp_executesql] @Sql;
+            SET @Definition=N'CREATE SCHEMA '+QUOTENAME(@Schema)+N';';
+            SET @Sql=N'USE '+QUOTENAME(@FixtureDatabase)+N'; EXEC [sys].[sp_executesql] @Definition;';
+            EXEC [master].[sys].[sp_executesql] @Sql,N'@Definition nvarchar(max)',@Definition=@Definition;
             SET @Sql=N'USE '+QUOTENAME(@FixtureDatabase)+N'; CREATE TABLE '+QUOTENAME(@Schema)+N'.'+QUOTENAME(@TableA)+N'([TenantId] int NOT NULL,[SensitiveA] varchar(40) MASKED WITH (FUNCTION=''partial(1,"NO_LEAK_MASK_TOKEN",0)'') NULL,[SensitiveB] varchar(40) MASKED WITH (FUNCTION=''default()'') NULL); CREATE TABLE '+QUOTENAME(@Schema)+N'.'+QUOTENAME(@TableB)+N'([TenantId] int NOT NULL);';
             EXEC [master].[sys].[sp_executesql] @Sql;
             SET @Definition=N'CREATE FUNCTION '+QUOTENAME(@Schema)+N'.'+QUOTENAME(@Function)+N'(@TenantId int) RETURNS TABLE WITH SCHEMABINDING AS RETURN SELECT 1 AS [allowed] WHERE @TenantId=0 /* EXAMPLE_NO_LEAK_PREDICATE_TOKEN */;';

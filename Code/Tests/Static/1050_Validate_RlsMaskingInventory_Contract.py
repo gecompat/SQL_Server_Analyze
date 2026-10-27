@@ -45,6 +45,30 @@ def read_csv(path: Path) -> list[dict[str, str]]:
         return list(csv.DictReader(stream))
 
 
+def fixture_schema_batch_error(fixture: str) -> str | None:
+    combined_schema_batch = re.search(
+        r"SET\s+@Sql\s*=\s*N'USE '\s*\+\s*QUOTENAME\(@FixtureDatabase\)\s*\+\s*N';\s*CREATE SCHEMA '\s*\+\s*QUOTENAME\(@Schema\)\s*\+\s*N';'",
+        fixture,
+        re.IGNORECASE,
+    )
+    if combined_schema_batch:
+        return "CREATE SCHEMA must execute as the first statement in its database batch"
+    schema_definition = re.search(
+        r"SET\s+@Definition\s*=\s*N'CREATE SCHEMA '\s*\+\s*QUOTENAME\(@Schema\)\s*\+\s*N';';",
+        fixture,
+        re.IGNORECASE,
+    )
+    schema_dispatch = re.search(
+        r"SET\s+@Sql\s*=\s*N'USE '\s*\+\s*QUOTENAME\(@FixtureDatabase\)\s*\+\s*N'; EXEC \[sys\]\.\[sp_executesql\] @Definition;';\s*"
+        r"EXEC \[master\]\.\[sys\]\.\[sp_executesql\] @Sql,N'@Definition nvarchar\(max\)',@Definition=@Definition;",
+        fixture,
+        re.IGNORECASE,
+    )
+    if not schema_definition or not schema_dispatch:
+        return "fixture must execute CREATE SCHEMA in a separate first-statement batch in the target database"
+    return None
+
+
 def validate(root: Path) -> list[str]:
     errors: list[str] = []
     source = (root / SOURCE).read_text(encoding="utf-8-sig")
@@ -125,6 +149,9 @@ def validate(root: Path) -> list[str]:
     if "CAST(34 AS int) AS [ExecutedSuites]" not in release_gate:
         errors.append("release gate suite total changed without enumerating a new top-level suite")
     fixture = (root / "Code/Tests/ServerHealth/139_RowLevelSecurityAndMasking_Runtime_Contract.sql").read_text(encoding="utf-8-sig")
+    schema_batch_error = fixture_schema_batch_error(fixture)
+    if schema_batch_error:
+        errors.append(schema_batch_error)
     pass_marker = "RLS_MASKING_RUNTIME_CONTRACT_PASS"
     if fixture.count(pass_marker) != 1 or fixture.rfind("DROP DATABASE '+QUOTENAME(@DbEmpty)") > fixture.index(pass_marker):
         errors.append("runtime fixture must emit one fixed success marker after owned database cleanup")
@@ -153,6 +180,17 @@ def main() -> int:
     if args.self_test:
         assert len(RESULTS) == 7 and len(PARAMETERS) == 15
         assert "[IsSchemabindingEnabled] bit NULL" in RESULTS["securityPolicies"]
+        valid_schema_setup = (
+            "SET @Definition=N'CREATE SCHEMA '+QUOTENAME(@Schema)+N';'; "
+            "SET @Sql=N'USE '+QUOTENAME(@FixtureDatabase)+N'; EXEC [sys].[sp_executesql] @Definition;'; "
+            "EXEC [master].[sys].[sp_executesql] @Sql,N'@Definition nvarchar(max)',@Definition=@Definition;"
+        )
+        invalid_schema_setup = (
+            "SET @Sql=N'USE '+QUOTENAME(@FixtureDatabase)+N'; CREATE SCHEMA '+QUOTENAME(@Schema)+N';'; "
+            "EXEC [master].[sys].[sp_executesql] @Sql;"
+        )
+        assert fixture_schema_batch_error(valid_schema_setup) is None
+        assert fixture_schema_batch_error(invalid_schema_setup) is not None
         print("RLS and masking inventory validator self-test passed.")
         return 0
     errors = validate(args.repository_root.resolve())
