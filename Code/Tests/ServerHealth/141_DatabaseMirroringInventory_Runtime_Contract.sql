@@ -50,12 +50,26 @@ BEGIN TRY
         @JsonErzeugen=1,@Json=@Json OUTPUT,@PrintMeldungen=0,
         @StatusCodeOut=@Status OUTPUT,@IsPartialOut=@Partial OUTPUT,
         @ErrorNumberOut=@Error OUTPUT,@ErrorMessageOut=@Message OUTPUT;
-    IF @Return<>0 OR @Status<>'AVAILABLE_LIMITED' OR @Partial<>1 OR ISJSON(@Json)<>1
-       OR @@TRANCOUNT<>1 OR XACT_STATE()<>1 OR @@LOCK_TIMEOUT<>137
-       OR (@@OPTIONS&16384)=0
-       OR (SELECT [transaction_isolation_level] FROM sys.dm_exec_sessions WHERE [session_id]=@@SPID)<>4
-       OR (SELECT COUNT(*) FROM [#DbmiMarker] WHERE [Marker]=57412)<>1
-        THROW 57413,N'TABLE capture or caller transaction/isolation/LOCK_TIMEOUT/XACT_ABORT preservation failed.',1;
+    IF @Return<>0
+        THROW 57440,N'TABLE call returned a nonzero procedure return code.',1;
+    IF @Status<>'AVAILABLE_LIMITED'
+        THROW 57441,N'TABLE call did not report its expected successful limited status.',1;
+    IF @Partial<>1
+        THROW 57442,N'TABLE call did not report partial caller-visible scope.',1;
+    IF ISJSON(@Json)<>1
+        THROW 57443,N'TABLE call did not return the requested JSON envelope.',1;
+    IF @@TRANCOUNT<>1
+        THROW 57444,N'TABLE call changed the caller transaction count.',1;
+    IF XACT_STATE()<>1
+        THROW 57445,N'TABLE call changed the active caller transaction state.',1;
+    IF @@LOCK_TIMEOUT<>137
+        THROW 57446,N'TABLE call did not restore the caller LOCK_TIMEOUT.',1;
+    IF (@@OPTIONS&16384)=0
+        THROW 57447,N'TABLE call did not preserve caller XACT_ABORT ON.',1;
+    IF (SELECT [transaction_isolation_level] FROM sys.dm_exec_sessions WHERE [session_id]=@@SPID)<>3
+        THROW 57448,N'TABLE call did not preserve the caller REPEATABLE READ isolation level.',1;
+    IF (SELECT COUNT(*) FROM [#DbmiMarker] WHERE [Marker]=57412)<>1
+        THROW 57449,N'TABLE call changed the caller sentinel row.',1;
     -- Procedure source reads use SET LOCK_TIMEOUT 0 and restore this caller value.
     IF (SELECT COUNT(*) FROM [#DbmiOut_moduleStatus])<>1
        OR (SELECT COUNT(*) FROM [#DbmiOut_databaseMirroring])<1

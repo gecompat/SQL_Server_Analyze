@@ -255,6 +255,30 @@ def validate_contract(
                   "transaction_isolation_level", "@@TRANCOUNT<>1"):
         if token not in runtime:
             errors.append("runtime fixture misses caller-state condition: " + token)
+    isolation_check = "SET TRANSACTION ISOLATION LEVEL REPEATABLE READ;"
+    isolation_level = "transaction_isolation_level] FROM sys.dm_exec_sessions WHERE [session_id]=@@SPID)<>3"
+    if isolation_check not in runtime or isolation_level not in runtime or "THROW 57448" not in runtime:
+        errors.append("runtime fixture must verify REPEATABLE READ as sys.dm_exec_sessions isolation level 3")
+    caller_checks = (
+        ("IF @Return<>0", "57440"),
+        ("IF @Status<>'AVAILABLE_LIMITED'", "57441"),
+        ("IF @Partial<>1", "57442"),
+        ("IF ISJSON(@Json)<>1", "57443"),
+        ("IF @@TRANCOUNT<>1", "57444"),
+        ("IF XACT_STATE()<>1", "57445"),
+        ("IF @@LOCK_TIMEOUT<>137", "57446"),
+        ("IF (@@OPTIONS&16384)=0", "57447"),
+        ("IF (SELECT [transaction_isolation_level] FROM sys.dm_exec_sessions WHERE [session_id]=@@SPID)<>3", "57448"),
+        ("IF (SELECT COUNT(*) FROM [#DbmiMarker] WHERE [Marker]=57412)<>1", "57449"),
+    )
+    for condition, error_number in caller_checks:
+        if condition + "\n        THROW " + error_number + "," not in runtime:
+            errors.append("caller preservation condition must have its own fixed error: " + error_number)
+    if "THROW 57413," in runtime:
+        errors.append("caller preservation checks may not be recombined into the former aggregate assertion")
+    for check in range(57440, 57450):
+        if f"THROW {check}," not in runtime:
+            errors.append(f"caller TABLE acceptance condition needs its separate fixed error {check}")
     if "MirroringRole]=2" in runtime or "mirroring_role]=2" in runtime:
         errors.append("runtime fixture may not synthesize a positive mirrored role")
     if runtime.count("EXCEPT") < 7:
@@ -316,6 +340,8 @@ def main() -> int:
             ("LIMIT", "runtime", text["runtime"].replace("@SourceRows<2", "@SourceRows<1", 1), "limit cases"),
             ("NATIVE_VERSION_SCOPE", "runtime", text["runtime"].replace("NOT IN (15,16,17)", "<>17", 1), "existing SQL Server 2019/2022/2025 release-gate targets"),
             ("SP_EXECUTESQL_EXPRESSION", "runtime", text["runtime"].replace("SET @Sql=N'DROP USER '+QUOTENAME(@Login)+N';';\n    EXEC [sys].[sp_executesql] @Sql;", "EXEC [sys].[sp_executesql] N'DROP USER '+QUOTENAME(@Login)+N';';", 1), "concatenated expressions directly to sp_executesql"),
+            ("ISOLATION_ORDINAL", "runtime", text["runtime"].replace("transaction_isolation_level] FROM sys.dm_exec_sessions WHERE [session_id]=@@SPID)<>3", "transaction_isolation_level] FROM sys.dm_exec_sessions WHERE [session_id]=@@SPID)<>4", 1), "REPEATABLE READ as sys.dm_exec_sessions isolation level 3"),
+            ("CALLER_AGGREGATE", "runtime", text["runtime"].replace("IF @Return<>0\n        THROW 57440,", "IF @Return<>0 OR @Status<>'AVAILABLE_LIMITED'\n        THROW 57440,", 1), "caller preservation condition must have its own fixed error"),
             ("CANONICAL_INSTALLER_INCLUDE", "installer", text["installer"].replace("310_USP_DatabaseMirroringInventory.sql", "missing_procedure.sql", 1), "canonical deployment installer must include the procedure"),
         )
         for name, key, changed, expected in mutations:
