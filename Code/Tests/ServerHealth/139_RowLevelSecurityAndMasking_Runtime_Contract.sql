@@ -9,7 +9,7 @@ BEGIN
     SET NOCOUNT ON;
     DECLARE @Suffix nvarchar(32)=REPLACE(CONVERT(nvarchar(36),NEWID()),N'-',N''),
         @DbA sysname,@DbB sysname,@DbEmpty sysname,@Schema sysname,@Function sysname,@PolicyA sysname,@PolicyB sysname,
-        @TableA sysname,@TableB sysname,@Sql nvarchar(max),@Names nvarchar(max),@NamesBoth nvarchar(max),@Json nvarchar(max),@PositiveJson nvarchar(max),
+        @TableA sysname,@TableB sysname,@Sql nvarchar(max),@Names nvarchar(max),@NamesBoth nvarchar(max),@NamesEmpty nvarchar(max),@Json nvarchar(max),@PositiveJson nvarchar(max),
         @Status varchar(40),@Partial bit,@Error int,@Message nvarchar(2048),@Return int,
         @OriginalLock int=@@LOCK_TIMEOUT,@OriginalAbort bit=CASE WHEN (@@OPTIONS&16384)=16384 THEN 1 ELSE 0 END,
         @OriginalTx int=@@TRANCOUNT,@NativeTableCases int=0,@RestrictedLogin sysname,@RestrictedUser sysname,
@@ -61,6 +61,7 @@ BEGIN
         CLOSE [RlsMaskFixtureDatabases]; DEALLOCATE [RlsMaskFixtureDatabases];
         SET @Names=QUOTENAME(@DbA);
         SET @NamesBoth=QUOTENAME(@DbA)+N'|'+QUOTENAME(@DbB);
+        SET @NamesEmpty=QUOTENAME(@DbEmpty);
         SET @Sql=N'USE '+QUOTENAME(@DbA)+N'; '
             +N'INSERT [#RlsMaskExpected_securityPolicies] SELECT DB_ID(),DB_NAME(),[p].[object_id],[p].[name],[p].[schema_id],[s].[name],[p].[is_enabled],[p].[is_not_for_replication],[p].[uses_database_collation],[p].[is_schemabinding_enabled],[p].[create_date],[p].[modify_date] FROM [sys].[security_policies] AS [p] LEFT JOIN [sys].[schemas] AS [s] ON [s].[schema_id]=[p].[schema_id]; '
             +N'INSERT [#RlsMaskExpected_securityPredicates] SELECT DB_ID(),DB_NAME(),[p].[object_id],[p].[predicate_id],[p].[target_object_id],[p].[predicate_type],[p].[predicate_type_desc],[p].[operation],[p].[operation_desc] FROM [sys].[security_predicates] AS [p]; '
@@ -118,7 +119,7 @@ BEGIN
 
         -- Empty synthetic database remains an available limited observation.
         EXEC [monitor].[USP_RowLevelSecurityAndMaskingInventory]
-            @DatabaseNames=QUOTENAME(@DbEmpty),@MaxZeilen=0,@ResultSetArt='NONE',@JsonErzeugen=1,@Json=@Json OUTPUT,
+            @DatabaseNames=@NamesEmpty,@MaxZeilen=0,@ResultSetArt='NONE',@JsonErzeugen=1,@Json=@Json OUTPUT,
             @PrintMeldungen=0,@StatusCodeOut=@Status OUTPUT,@IsPartialOut=@Partial OUTPUT;
         IF ISJSON(@Json)<>1 OR JSON_VALUE(@Json,N'$.meta.statusCode')<>'AVAILABLE_LIMITED'
            OR (SELECT COUNT(*) FROM OPENJSON(@Json,N'$.securityPolicies'))<>0
@@ -246,7 +247,8 @@ BEGIN
         SET @Sql=N'DROP USER '+QUOTENAME(@RestrictedUser)+N'; REVOKE VIEW ANY DATABASE FROM '+QUOTENAME(@RestrictedLogin)+N'; DROP LOGIN '+QUOTENAME(@RestrictedLogin)+N';';
         EXEC [master].[sys].[sp_executesql] @Sql;
         SET @RestrictedLogin=NULL; SET @RestrictedUser=NULL;
-        SET LOCK_TIMEOUT @OriginalLock; IF @OriginalAbort=1 SET XACT_ABORT ON; ELSE SET XACT_ABORT OFF;
+        SET @Sql=N'SET LOCK_TIMEOUT '+CONVERT(nvarchar(20),@OriginalLock)+N';'; EXEC [sys].[sp_executesql] @Sql;
+        IF @OriginalAbort=1 SET XACT_ABORT ON; ELSE SET XACT_ABORT OFF;
 
         -- A negative limit is rejected before any catalog query and returns no JSON.
         EXEC @Return=[monitor].[USP_RowLevelSecurityAndMaskingInventory]
@@ -271,7 +273,8 @@ BEGIN
     BEGIN CATCH
         IF @Impersonating=1 REVERT;
         IF @@TRANCOUNT>@OriginalTx ROLLBACK TRANSACTION;
-        SET LOCK_TIMEOUT @OriginalLock; IF @OriginalAbort=1 SET XACT_ABORT ON; ELSE SET XACT_ABORT OFF;
+        SET @Sql=N'SET LOCK_TIMEOUT '+CONVERT(nvarchar(20),@OriginalLock)+N';'; EXEC [sys].[sp_executesql] @Sql;
+        IF @OriginalAbort=1 SET XACT_ABORT ON; ELSE SET XACT_ABORT OFF;
         BEGIN TRY
             IF @RestrictedLogin IS NOT NULL AND DB_ID(@DbA) IS NOT NULL BEGIN SET @Sql=N'USE '+QUOTENAME(@DbA)+N'; IF USER_ID('+QUOTENAME(@RestrictedUser,'''')+N') IS NOT NULL DROP USER '+QUOTENAME(@RestrictedUser)+N';'; EXEC [master].[sys].[sp_executesql] @Sql; END;
             IF @RestrictedLogin IS NOT NULL AND USER_ID(@RestrictedUser) IS NOT NULL BEGIN SET @Sql=N'DROP USER '+QUOTENAME(@RestrictedUser)+N';'; EXEC [sys].[sp_executesql] @Sql; END;

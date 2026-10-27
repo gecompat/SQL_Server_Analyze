@@ -128,6 +128,13 @@ def validate(root: Path) -> list[str]:
     pass_marker = "RLS_MASKING_RUNTIME_CONTRACT_PASS"
     if fixture.count(pass_marker) != 1 or fixture.rfind("DROP DATABASE '+QUOTENAME(@DbEmpty)") > fixture.index(pass_marker):
         errors.append("runtime fixture must emit one fixed success marker after owned database cleanup")
+    if re.search(r"@DatabaseNames\s*=\s*QUOTENAME\s*\(", fixture, re.IGNORECASE):
+        errors.append("runtime fixture must bind computed database selections to variables before EXEC parameter assignment")
+    if re.search(r"SET\s+LOCK_TIMEOUT\s+@", fixture, re.IGNORECASE):
+        errors.append("runtime fixture must restore variable lock timeouts through a dynamic SET statement")
+    restore_lock = "SET @Sql=N'SET LOCK_TIMEOUT '+CONVERT(nvarchar(20),@OriginalLock)+N';'; EXEC [sys].[sp_executesql] @Sql;"
+    if fixture.count(restore_lock) != 2:
+        errors.append("runtime fixture must restore caller lock timeout on both success and catch paths")
     for relative in (
         "Code/01_Common/021_VW_AnalysisCatalog.sql", "Code/01_Common/022_VW_AnalysisSearchTerm.sql",
         "Documentation/Analysis_Guides/Procedures/USP_RowLevelSecurityAndMaskingInventory.md",
