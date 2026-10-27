@@ -58,6 +58,13 @@ REQUIRED_DOMAINS = {
     "EXTERNAL_SCOPE",
 }
 
+# Cohort credit is limited to these two delivered bounded slices, never any partial row.
+KNOWN_RESEARCH_TO_PARTIAL_KEYS = {
+    "DEPRECATION_BREAKING_CHANGE",
+    "RLS_DYNAMIC_MASKING",
+}
+RESEARCH_GAP_COHORT_FLOOR = 25  # Preserve 24 researched gaps plus deprecation promotion.
+
 REQUIRED_KEYS = {
     "LINUX_CONTAINER_LIMITS",
     "DEPRECATION_BREAKING_CHANGE",
@@ -128,9 +135,20 @@ def validate_rows(fields: list[str], rows: list[dict[str, str]]) -> list[str]:
 
     for domain in sorted(REQUIRED_DOMAINS - domains):
         errors.append(f"required coverage domain missing: {domain}")
-    # One bounded deprecation slice has moved to PARTIAL_PRODUCT_FUNCTION.
-    if status_counts["RESEARCHED_NOT_IMPLEMENTED"] < 24:
-        errors.append("too few explicit researched gaps")
+    accounted_promotions = {
+        row["CoverageKey"]
+        for row in rows
+        if row.get("CoverageKey") in KNOWN_RESEARCH_TO_PARTIAL_KEYS
+        and row.get("CoverageStatus") == "PARTIAL_PRODUCT_FUNCTION"
+    }
+    research_gap_cohort = status_counts["RESEARCHED_NOT_IMPLEMENTED"] + len(
+        accounted_promotions
+    )
+    if research_gap_cohort < RESEARCH_GAP_COHORT_FLOOR:
+        errors.append(
+            "too few explicit researched gaps and accounted known promotions "
+            f"({research_gap_cohort} < {RESEARCH_GAP_COHORT_FLOOR})"
+        )
     if status_counts["OUT_OF_SCOPE"] < 4:
         errors.append("explicit product exclusions are incomplete")
     return errors
@@ -211,26 +229,103 @@ def validate_repository(root: Path) -> list[str]:
     return sorted(set(errors))
 
 
-def self_test() -> None:
-    sample = {
-        field: "value" for field in EXPECTED_FIELDS
+def coverage_fixture() -> list[dict[str, str]]:
+    keys = sorted(REQUIRED_KEYS)
+    sample_index = 0
+    while len(keys) < 100:
+        sample_key = f'SAMPLE_AREA_{sample_index:03d}'
+        if sample_key not in keys:
+            keys.append(sample_key)
+        sample_index += 1
+
+    researched = {
+        'DEPRECATION_BREAKING_CHANGE',
+        'RLS_DYNAMIC_MASKING',
+        *(f'SAMPLE_AREA_{index:03d}' for index in range(23)),
     }
-    sample.update(
-        {
-            "CoverageKey": "SAMPLE_KEY",
-            "Domain": "PLATFORM",
-            "CoverageStatus": "IMPLEMENTED_DEEP",
-            "Disposition": "KEEP",
-            "PrimarySource": "https://learn.microsoft.com/example",
-        }
-    )
-    errors = validate_rows(list(EXPECTED_FIELDS), [sample])
-    if not any("too narrow" in error for error in errors):
-        raise AssertionError("narrow fixture was accepted")
-    duplicate = [dict(sample), dict(sample)]
-    errors = validate_rows(list(EXPECTED_FIELDS), duplicate)
-    if not any("duplicate CoverageKey" in error for error in errors):
-        raise AssertionError("duplicate fixture was accepted")
+    out_of_scope = {f'SAMPLE_AREA_{index:03d}' for index in range(23, 27)}
+    domains = sorted(REQUIRED_DOMAINS)
+    rows: list[dict[str, str]] = []
+    for index, key in enumerate(keys):
+        status = (
+            'RESEARCHED_NOT_IMPLEMENTED'
+            if key in researched
+            else 'OUT_OF_SCOPE' if key in out_of_scope else 'IMPLEMENTED_BASELINE'
+        )
+        rows.append(
+            {
+                'CoverageKey': key,
+                'Domain': domains[index % len(domains)],
+                'Area': key.replace('_', ' '),
+                'CoverageStatus': status,
+                'CurrentEvidence': 'Synthetic validator fixture',
+                'OpenQuestion': 'Bounded validator scenario',
+                'Disposition': 'KEEP',
+                'Priority': 'P1',
+                'SuggestedOwner': 'Validator fixture',
+                'VersionPlatform': 'SQL Server 2025',
+                'PrimarySource': 'https://learn.microsoft.com/example',
+            }
+        )
+    return rows
+
+
+def self_test() -> None:
+    all_researched_fixture = coverage_fixture()
+    if validate_rows(list(EXPECTED_FIELDS), all_researched_fixture):
+        raise AssertionError('all-researched fixture was rejected')
+
+    prior_promotion_state = [dict(row) for row in all_researched_fixture]
+    for row in prior_promotion_state:
+        if row['CoverageKey'] == 'DEPRECATION_BREAKING_CHANGE':
+            row['CoverageStatus'] = 'PARTIAL_PRODUCT_FUNCTION'
+    if validate_rows(list(EXPECTED_FIELDS), prior_promotion_state):
+        raise AssertionError('known deprecation promotion was rejected')
+
+    current_promotions = [dict(row) for row in prior_promotion_state]
+    for row in current_promotions:
+        if row['CoverageKey'] == 'RLS_DYNAMIC_MASKING':
+            row['CoverageStatus'] = 'PARTIAL_PRODUCT_FUNCTION'
+    if validate_rows(list(EXPECTED_FIELDS), current_promotions):
+        raise AssertionError('RLS and deprecation promotions were rejected')
+
+    unrelated_promotion = [dict(row) for row in prior_promotion_state]
+    for row in unrelated_promotion:
+        if row['CoverageKey'] == 'SAMPLE_AREA_000':
+            row['CoverageStatus'] = 'PARTIAL_PRODUCT_FUNCTION'
+    if not any(
+        'too few explicit researched gaps' in error
+        for error in validate_rows(list(EXPECTED_FIELDS), unrelated_promotion)
+    ):
+        raise AssertionError('unrelated promotion reduced the research cohort')
+
+    dropped_required_key = [
+        dict(row)
+        for row in current_promotions
+        if row['CoverageKey'] != 'RLS_DYNAMIC_MASKING'
+    ]
+    errors = validate_rows(list(EXPECTED_FIELDS), dropped_required_key)
+    if not any('required coverage area missing: RLS_DYNAMIC_MASKING' in e for e in errors):
+        raise AssertionError('dropped RLS key was accepted')
+    if not any('too few explicit researched gaps' in e for e in errors):
+        raise AssertionError('dropped promotion reduced the cohort unnoticed')
+
+    invalid_status = [dict(row) for row in current_promotions]
+    for row in invalid_status:
+        if row['CoverageKey'] == 'RLS_DYNAMIC_MASKING':
+            row['CoverageStatus'] = 'UNKNOWN_STATUS'
+    errors = validate_rows(list(EXPECTED_FIELDS), invalid_status)
+    if not any('unknown coverage status' in e for e in errors):
+        raise AssertionError('invalid coverage status was accepted')
+    if not any('too few explicit researched gaps' in e for e in errors):
+        raise AssertionError('invalid promotion reduced the cohort unnoticed')
+
+    duplicate = current_promotions + [dict(current_promotions[0])]
+    if not any(
+        'duplicate CoverageKey' in error
+        for error in validate_rows(list(EXPECTED_FIELDS), duplicate)
+    ):
+        raise AssertionError('duplicate coverage key was accepted')
 
 
 def main() -> int:

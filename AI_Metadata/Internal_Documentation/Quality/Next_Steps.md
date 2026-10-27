@@ -1,6 +1,6 @@
 # Nächste Arbeitsschritte
 
-**Stand:** 26. Oktober 2026
+**Stand:** 27. Oktober 2026
 **Zweck:** aktueller Auftragsstatus und historische Entwicklungswellen für `gecompat/SQL_Server_Analyze`
 
 ## Aktuelle Orchestrierung
@@ -192,20 +192,13 @@ nativer Berechtigungsmatrix und Cleanup. Der [Evidenznachweis](OPS009_Empty_Inve
 bindet Ziel, Compatibility Level, fehlenden Einzelmarker und Grenzen; daraus
 folgt keine native Drei-Versionen-Matrix.
 
-Schritt 34 konkretisierte den ersten Rang-17-Slice als
-[Dossier für ein sichtbares RLS-/Masking-Inventar](../Architecture/RLS_and_Masking_Inventory_Dossier.md).
-Schritt 35 setzt den V1-Vertrag in einem öffentlichen read-only-Modul und einem
-synthetischen Laufzeitvertrag um. Predicate- und Masking-Expressions,
-geschützte Tabellenwerte, effektive Berechtigungen sowie Gesundheits- und
-Enforcement-Aussagen bleiben ausgeschlossen. Der statische Vertragsvalidator,
-die unabhängige Prüfung und das SQL-Server-2025-Head-Gate stehen noch aus;
-lokale SQL-Läufe wurden nicht ausgeführt.
+Schritt 34 konkretisierte den ersten Rang-17-Slice im [Dossier für ein sichtbares RLS-/Masking-Inventar](../Architecture/RLS_and_Masking_Inventory_Dossier.md). Schritte 35–38 integrieren das begrenzte read-only-V1 regulär über [PR #473](https://github.com/gecompat/SQL_Server_Analyze/pull/473). Das Modul liefert 15 Parameter und sieben Resultsets für caller-sichtbare Policy-, Predicate- und Masked-Column-Katalogmetadaten. Predicate- und Masking-Expressions, geschützte Tabellenwerte, effektive Berechtigungen sowie Gesundheits- und Enforcement-Aussagen bleiben ausgeschlossen.
 
-Der Selector ordnet dem geänderten Server-Health-Produktcode genau den Smoke-,
-Bereichs- und fokussierten Laufzeitvertrag zu. Die funktionale Abnahme bleibt
-auf SQL Server 2025; dieser Schritt aktiviert weder ältere native Engines noch
-zusätzliche Compatibility Levels. Ein Implementierer und ein unabhängiger
-Reviewer prüfen denselben stabilen Produkt-, Fixture- und Schema-Stand.
+Der SQL-Server-2025-Funktionslauf [40534609883](https://github.com/gecompat/SQL_Server_Analyze/actions/runs/40534609883) bestand den vollständigen Release-Scope einschließlich 139 exakt einmal ausgeführter Verträge, CL170, Deployment, Berechtigungs-/Regexfällen, Standalone-Execution-Plan und Containercleanup. Der erfolgreiche SQL-stdout wurde unterdrückt; ein separat exportierter PASS-Marker-Transcript für Vertrag 139 liegt nicht vor. Der quellgebundene Laufzeit-PASS bleibt belegt. Eine kontrollierte Timeout-Probe wurde nicht ausgeführt; es erfolgte keine zusätzliche native Qualifikation auf SQL Server 2019 oder 2022. Alle acht Head-Prüfungen und alle fünf Main-Prüfungen bestanden.
+
+Schritt 36 integriert über [PR #474](https://github.com/gecompat/SQL_Server_Analyze/pull/474) die statischen Bindungen für native Ergebnismengen 905; alle vier Head- und drei Main-Prüfungen bestanden. Schritt 37 integriert über [PR #475](https://github.com/gecompat/SQL_Server_Analyze/pull/475) den begrenzten CurrentRequests-Timeoutvertrag mit eigenem temporärem DDL, 1.000-ms-Timeout und Reset auf 0; acht Head- und fünf Main-Prüfungen bestanden. Dieser Vertrag belegt nicht die ursprüngliche Ursache eines früheren Blockers.
+
+Die 13 Head-CI-Kandidaten für RLS einschließlich Wiederholungen bleiben als kompakte Fehlerhistorie erhalten: zwei veraltete Zählstände, Legacy-Lock-/Fixture-/Batch-/Schemafehler, statische 950-/Predicate-ID-, TABLE-Aggregat- und Modulstatuszählungsbefunde sowie getrennte Cleanup- und Frameworkfixturefehler; die einzelne Ursache wird nicht weiter abgeleitet. Schritt 38 gleicht Status und Evidenz ab und lässt den Coverage-Validator ausschließlich die explizit belegten Teilstatuswechsel von DEPRECATION_BREAKING_CHANGE und RLS_DYNAMIC_MASKING auf PARTIAL_PRODUCT_FUNCTION an den vorhandenen Mindestumfang anrechnen. Die Reifematrix bleibt PLANNED; eingeschränkte Katalogsicht ist dauerhaft AVAILABLE_LIMITED/partial. Klassifikation, Agent-Proxies, MSDTC und Legacy-Mirroring bleiben eigenständige offene Themen. Für Schritt 39 ist ein einzelnes Dossier zu MSDTC (DISTRIBUTED_TRANSACTIONS) priorisiert. Schritt 40 kann einen begrenzten SQL-sichtbaren Slice implementieren, falls das Dossier eine ausführbare Abgrenzung samt Datenquellen, Rechten, Datenschutz und Abnahme festlegt. Fehlt dafür eine portable Evidenzbasis, bleibt die Umsetzung offen; DATABASE_MIRRORING ist der nächste getrennte WI-0010-Kandidat. Eine Registryvergabe folgt erst nach dem Dossier gemäß bestehendem Prozess.
 
 ## Abgeschlossen: fünf SSIS-Paketwellen vom 25. Oktober 2026
 
