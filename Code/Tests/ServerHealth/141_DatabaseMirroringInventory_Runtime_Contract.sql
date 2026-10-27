@@ -174,10 +174,10 @@ BEGIN TRY
             SELECT [Ordinal],[ColumnName],[BaseType],[MaxLength],[Precision],[Scale],[IsNullable],[CollationName],[IsIdentity],[IsComputed]
             FROM
             (
-                SELECT [c].[column_id] AS [Ordinal],[c].[name] AS [ColumnName],
-                       TYPE_NAME([c].[system_type_id]) AS [BaseType],[c].[max_length] AS [MaxLength],
+                SELECT ROW_NUMBER() OVER(ORDER BY [c].[column_id]) AS [Ordinal],[c].[name] COLLATE SQL_Latin1_General_CP1_CS_AS AS [ColumnName],
+                       TYPE_NAME([c].[system_type_id]) COLLATE SQL_Latin1_General_CP1_CS_AS AS [BaseType],[c].[max_length] AS [MaxLength],
                        [c].[precision] AS [Precision],[c].[scale] AS [Scale],
-                       [c].[is_nullable] AS [IsNullable],[c].[collation_name] AS [CollationName],
+                       [c].[is_nullable] AS [IsNullable],[c].[collation_name] COLLATE SQL_Latin1_General_CP1_CS_AS AS [CollationName],
                        [c].[is_identity] AS [IsIdentity],[c].[is_computed] AS [IsComputed]
                 FROM tempdb.sys.columns AS [c] WITH (NOLOCK)
                 WHERE [c].[object_id]=OBJECT_ID(N''tempdb..'+@ActualTable+N''')
@@ -186,14 +186,40 @@ BEGIN TRY
             SELECT [Ordinal],[ColumnName],[BaseType],[MaxLength],[Precision],[Scale],[IsNullable],[CollationName],[IsIdentity],[IsComputed]
             FROM
             (
-                SELECT [c].[column_id] AS [Ordinal],[c].[name] AS [ColumnName],
-                       TYPE_NAME([c].[system_type_id]) AS [BaseType],[c].[max_length] AS [MaxLength],
+                SELECT ROW_NUMBER() OVER(ORDER BY [c].[column_id]) AS [Ordinal],[c].[name] COLLATE SQL_Latin1_General_CP1_CS_AS AS [ColumnName],
+                       TYPE_NAME([c].[system_type_id]) COLLATE SQL_Latin1_General_CP1_CS_AS AS [BaseType],[c].[max_length] AS [MaxLength],
                        [c].[precision] AS [Precision],[c].[scale] AS [Scale],
-                       [c].[is_nullable] AS [IsNullable],[c].[collation_name] AS [CollationName],
+                       [c].[is_nullable] AS [IsNullable],[c].[collation_name] COLLATE SQL_Latin1_General_CP1_CS_AS AS [CollationName],
                        [c].[is_identity] AS [IsIdentity],[c].[is_computed] AS [IsComputed]
                 FROM tempdb.sys.columns AS [c] WITH (NOLOCK)
                 WHERE [c].[object_id]=OBJECT_ID(N''tempdb..'+@ExpectedTable+N''')
             ) AS [e]
+        )
+        OR EXISTS
+        (
+            SELECT [Ordinal],[ColumnName],[BaseType],[MaxLength],[Precision],[Scale],[IsNullable],[CollationName],[IsIdentity],[IsComputed]
+            FROM
+            (
+                SELECT ROW_NUMBER() OVER(ORDER BY [c].[column_id]) AS [Ordinal],[c].[name] COLLATE SQL_Latin1_General_CP1_CS_AS AS [ColumnName],
+                       TYPE_NAME([c].[system_type_id]) COLLATE SQL_Latin1_General_CP1_CS_AS AS [BaseType],[c].[max_length] AS [MaxLength],
+                       [c].[precision] AS [Precision],[c].[scale] AS [Scale],
+                       [c].[is_nullable] AS [IsNullable],[c].[collation_name] COLLATE SQL_Latin1_General_CP1_CS_AS AS [CollationName],
+                       [c].[is_identity] AS [IsIdentity],[c].[is_computed] AS [IsComputed]
+                FROM tempdb.sys.columns AS [c] WITH (NOLOCK)
+                WHERE [c].[object_id]=OBJECT_ID(N''tempdb..'+@ExpectedTable+N''')
+            ) AS [e]
+            EXCEPT
+            SELECT [Ordinal],[ColumnName],[BaseType],[MaxLength],[Precision],[Scale],[IsNullable],[CollationName],[IsIdentity],[IsComputed]
+            FROM
+            (
+                SELECT ROW_NUMBER() OVER(ORDER BY [c].[column_id]) AS [Ordinal],[c].[name] COLLATE SQL_Latin1_General_CP1_CS_AS AS [ColumnName],
+                       TYPE_NAME([c].[system_type_id]) COLLATE SQL_Latin1_General_CP1_CS_AS AS [BaseType],[c].[max_length] AS [MaxLength],
+                       [c].[precision] AS [Precision],[c].[scale] AS [Scale],
+                       [c].[is_nullable] AS [IsNullable],[c].[collation_name] COLLATE SQL_Latin1_General_CP1_CS_AS AS [CollationName],
+                       [c].[is_identity] AS [IsIdentity],[c].[is_computed] AS [IsComputed]
+                FROM tempdb.sys.columns AS [c] WITH (NOLOCK)
+                WHERE [c].[object_id]=OBJECT_ID(N''tempdb..'+@ActualTable+N''')
+            ) AS [a]
         )
         THROW 57418,N''Physical result ABI mismatch: '+@ActualTable+N''',1;';
         EXEC [sys].[sp_executesql] @AbiSql;

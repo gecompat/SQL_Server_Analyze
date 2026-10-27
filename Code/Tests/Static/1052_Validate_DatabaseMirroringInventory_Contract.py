@@ -408,6 +408,23 @@ def validate_contract(
                   "[c].[is_identity]", "[c].[is_computed]"):
         if sql_token not in runtime:
             errors.append("physical ABI oracle misses column facet: " + sql_token)
+    abi_start = runtime.find("SET @AbiSql=N'")
+    abi_end = runtime.find("EXEC [sys].[sp_executesql] @AbiSql;", abi_start)
+    abi_contract = runtime[abi_start:abi_end] if abi_start >= 0 and abi_end >= 0 else ""
+    if abi_contract.count("ROW_NUMBER() OVER(ORDER BY [c].[column_id]) AS [Ordinal]") != 4:
+        errors.append("physical ABI oracle must map source column_id gaps to dense one-based ordinals in both directions")
+    if abi_contract.count("EXCEPT") != 2 or "OR EXISTS" not in abi_contract:
+        errors.append("physical ABI oracle must compare actual and expected metadata in both directions")
+    for facet in ("[c].[name] COLLATE SQL_Latin1_General_CP1_CS_AS AS [ColumnName]",
+                  "TYPE_NAME([c].[system_type_id]) COLLATE SQL_Latin1_General_CP1_CS_AS AS [BaseType]",
+                  "[c].[max_length] AS [MaxLength]", "[c].[precision] AS [Precision]",
+                  "[c].[scale] AS [Scale]", "[c].[is_nullable] AS [IsNullable]",
+                  "[c].[collation_name] COLLATE SQL_Latin1_General_CP1_CS_AS AS [CollationName]",
+                  "[c].[is_identity] AS [IsIdentity]", "[c].[is_computed] AS [IsComputed]"):
+        if abi_contract.count(facet) != 4:
+            errors.append("physical ABI oracle must compare every column facet in both directions: " + facet)
+    if "[c].[name] COLLATE SQL_Latin1_General_CP1_CS_AS AS [ColumnName]" not in abi_contract:
+        errors.append("physical ABI column-name matching must be explicitly case-sensitive")
     if "OPENJSON(@JsonNull,N'$.databaseMirroring')" not in runtime or "@NullFieldCount<>10" not in runtime:
         errors.append("runtime fixture must prove a non-vacuous native all-NULL tempdb row")
     for sql_token in ("@MaxZeilen=1", "@SourceRows<2", "@MaxZeilen=0", "@MaxZeilen=NULL"):
@@ -509,6 +526,10 @@ def main() -> int:
         return 2
     errors = validate_contract(**text)
     if args.self_test and not errors:
+        gap_column_ids = (1, 3)
+        dense_ordinals = tuple(range(1, len(gap_column_ids) + 1))
+        if gap_column_ids == dense_ordinals or dense_ordinals != (1, 2):
+            errors.append("synthetic column_id gap fixture must distinguish source IDs from the dense ABI ordinal")
         clean_checkout = dict(text)
         clean_checkout["generated"] = ""
         if validate_contract(**clean_checkout):
@@ -516,6 +537,10 @@ def main() -> int:
         mutations = (
             ("NOLOCK", "procedure", text["procedure"].replace("[master].[sys].[database_mirroring] AS [m] WITH (NOLOCK)", "[master].[sys].[database_mirroring] AS [m]", 1), "native source"),
             ("ABI", "procedure", text["procedure"].replace("[ConfiguredRedoQueueLimitMb] int NULL", "[ConfiguredRedoQueueLimitMb] bigint NULL", 1), "business ABI"),
+            ("ABI_RAW_COLUMN_ID", "runtime", text["runtime"].replace("ROW_NUMBER() OVER(ORDER BY [c].[column_id]) AS [Ordinal]", "[c].[column_id] AS [Ordinal]", 1), "dense one-based ordinals"),
+            ("ABI_ONE_WAY", "runtime", text["runtime"].replace("        OR EXISTS\n        (\n            SELECT [Ordinal]", "        OR FALSE\n        (\n            SELECT [Ordinal]", 1), "compare actual and expected metadata in both directions"),
+            ("ABI_MISSING_FACET", "runtime", text["runtime"].replace("[c].[is_computed] AS [IsComputed]", "CAST(0 AS bit) AS [IsComputed]", 1), "compare every column facet in both directions"),
+            ("ABI_CASE_INSENSITIVE_NAME", "runtime", text["runtime"].replace("[c].[name] COLLATE SQL_Latin1_General_CP1_CS_AS AS [ColumnName]", "[c].[name] AS [ColumnName]", 1), "compare every column facet in both directions"),
             ("PARAM_SIGNATURE", "procedure", text["procedure"].replace("@MaxZeilen int = 1000", "@MaxZeilen int = 500", 1), "public parameter names"),
             ("HELP_PARAMETER", "procedure", text["procedure"].replace("@ErrorMessageOut nvarchar(2048)=NULL OUTPUT", "RemovedHelpParam", 1), "help parameter default or OUTPUT mode"),
             ("HELP_DEFAULT", "procedure", text["procedure"].replace("@MaxZeilen int=1000", "@MaxZeilen int=500", 1), "help parameter default or OUTPUT mode"),
