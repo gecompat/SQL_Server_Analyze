@@ -43,6 +43,8 @@ TABLE_DIAGNOSTICS = (
     (57253, "RLS masking TABLE maskedColumns JSON parity mismatch."),
     (57254, "RLS masking TABLE sourceStatus parity mismatch."),
     (57255, "RLS masking TABLE warnings parity mismatch."),
+    (57256, "RLS masking TABLE execution status or JSON output mismatch."),
+    (57257, "RLS masking TABLE target schema differs from the reviewed seven-result ABI."),
 )
 TABLE_ASSERTION_FRAGMENTS = (
     "[#RlsMaskOutput_moduleStatus])<>1",
@@ -56,6 +58,14 @@ TABLE_ASSERTION_FRAGMENTS = (
     "WHERE [DatabaseName]=@DbB AND [WarningCode]='SOURCE_UNAVAILABLE' AND [SourceKey]='SECURITY_POLICIES'",
     "[Detail]<>N'Die Katalogansicht stellt IsSchemabindingEnabled nicht bereit; das NULL-faehige Feld bleibt NULL.'",
     "[#RlsMaskExpected_securityPolicies]",
+    "EXEC @Return=[monitor].[USP_RowLevelSecurityAndMaskingInventory]",
+    "@StatusCodeOut=@Status OUTPUT,@IsPartialOut=@Partial OUTPUT,@ErrorNumberOut=@Error OUTPUT,@ErrorMessageOut=@Message OUTPUT",
+    "IF @Return<>0 OR @Status<>'AVAILABLE_LIMITED' OR @Partial<>1 OR @Json IS NULL OR ISJSON(@Json)<>1",
+    "ROW_NUMBER() OVER(PARTITION BY [v].[ResultName] ORDER BY [c].[column_id])",
+    "[c].[system_type_id],[c].[max_length],[c].[precision],[c].[scale]",
+    "[c].[collation_name] COLLATE SQL_Latin1_General_CP1_CS_AS,[c].[is_nullable],[c].[is_identity],[c].[is_computed]",
+    "FROM [#RlsMaskTableSchemaActual] EXCEPT SELECT",
+    "FROM [#RlsMaskTableSchemaExpected] EXCEPT SELECT",
     "<>JSON_QUERY(@Json,N'$.moduleStatus')",
     "<>JSON_QUERY(@Json,N'$.databaseContext')",
     "JSON_QUERY(@Json,N'$.securityPolicies')",
@@ -65,6 +75,15 @@ TABLE_ASSERTION_FRAGMENTS = (
     "<>JSON_QUERY(@Json,N'$.warnings')",
     "EXAMPLE_NO_LEAK_PREDICATE_TOKEN",
     "NO_LEAK_MASK_TOKEN",
+)
+TABLE_TARGET_NAMES = (
+    "moduleStatus",
+    "databaseContext",
+    "securityPolicies",
+    "securityPredicates",
+    "maskedColumns",
+    "sourceStatus",
+    "warnings",
 )
 PARAMETERS = [
     ("DatabaseNames", "nvarchar(max)", "NULL"),
@@ -175,6 +194,28 @@ def table_assertion_errors(fixture: str) -> list[str]:
     return errors
 
 
+def table_target_seed_errors(fixture: str) -> list[str]:
+    errors: list[str] = []
+    for result_name in TABLE_TARGET_NAMES:
+        target = f"CREATE TABLE [#RlsMaskOutput_{result_name}]([Seed] int NULL);"
+        if fixture.count(target) != 1:
+            errors.append("each TABLE export target must be one empty seed column for the canonical result-table adapter")
+            break
+    return errors
+
+
+def table_schema_oracle_errors(fixture: str) -> list[str]:
+    errors: list[str] = []
+    compact_fixture = re.sub(r"\s+", "", fixture)
+    for result_name, schema in RESULTS.items():
+        expected_ddl = re.sub(r"\s+", "", f"CREATE TABLE [#RlsMaskExpected_{result_name}]({schema});")
+        if compact_fixture.count(expected_ddl) != 1:
+            errors.append(f"TABLE fixture must retain the typed {result_name} schema oracle")
+    if fixture.count("ROW_NUMBER() OVER(PARTITION BY [v].[ResultName] ORDER BY [c].[column_id])") != 2:
+        errors.append("TABLE ABI comparison must normalize physical column ids to logical ordinals")
+    return errors
+
+
 def validate(root: Path) -> list[str]:
     errors: list[str] = []
     source = (root / SOURCE).read_text(encoding="utf-8-sig")
@@ -257,6 +298,8 @@ def validate(root: Path) -> list[str]:
     fixture = (root / "Code/Tests/ServerHealth/139_RowLevelSecurityAndMasking_Runtime_Contract.sql").read_text(encoding="utf-8-sig")
     errors.extend(optional_policy_field_errors(source, fixture))
     errors.extend(table_assertion_errors(fixture))
+    errors.extend(table_target_seed_errors(fixture))
+    errors.extend(table_schema_oracle_errors(fixture))
     schema_batch_error = fixture_schema_batch_error(fixture)
     if schema_batch_error:
         errors.append(schema_batch_error)
@@ -325,6 +368,16 @@ def main() -> int:
         ) + " " + " ".join(TABLE_ASSERTION_FRAGMENTS)
         assert table_assertion_errors(diagnostic_fixture) == []
         assert table_assertion_errors(diagnostic_fixture.replace("THROW 57244", "THROW 57236"))
+        valid_targets = " ".join(f"CREATE TABLE [#RlsMaskOutput_{name}]([Seed] int NULL);" for name in TABLE_TARGET_NAMES)
+        invalid_targets = valid_targets.replace("[#RlsMaskOutput_moduleStatus]([Seed] int NULL)", "[#RlsMaskOutput_moduleStatus]([FullSchema] int NULL, [Extra] int NULL)")
+        assert table_target_seed_errors(valid_targets) == []
+        assert table_target_seed_errors(invalid_targets)
+        schema_oracles = " ".join(
+            f"CREATE TABLE [#RlsMaskExpected_{name}]({schema});" for name, schema in RESULTS.items()
+        )
+        schema_compare = "ROW_NUMBER() OVER(PARTITION BY [v].[ResultName] ORDER BY [c].[column_id]) " * 2
+        assert table_schema_oracle_errors(schema_oracles + schema_compare) == []
+        assert table_schema_oracle_errors(schema_oracles.replace("[CapturedAtUtc] datetime2(3)", "[CapturedAtUtc] datetime2(7)") + schema_compare)
         print("RLS and masking inventory validator self-test passed.")
         return 0
     errors = validate(args.repository_root.resolve())
