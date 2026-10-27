@@ -58,7 +58,7 @@ wird nicht allein aufgrund eines Planverweises übernommen.
 | 14 | External-Data-, Runtime- und CLR-Abnahmen, `WI-0009` und `RUNTIME-001` | Eigene positive External-Table-Quellen, aktivierte Runtimes und synthetische SAFE-Assembly-Nachweise getrennt abnehmen. Fehlende Infrastruktur bleibt externe Evidenz. |
 | 15 | Eigene SSIS-Kennzahlen, `SSIS-001` | Der [Producervertragsentwurf](../../../Documentation/Architecture/SSIS_Custom_Metrics_Producer_Contract.md) definiert DELTA, CUMULATIVE, GAUGE und FINAL mit Einheiten, Epochen, Duplikaten und Sequenzlücken. PR #470 integriert ein begrenztes Offline-Berichtsprofil und den lokalen Validator mit vier bestandenen Head- und drei bestandenen Main-Prüfungen. Producer, native Captureverifikation, SQL-Aufnahme, Aggregation und Vergleich bleiben offen; es erfolgt keine automatische Paketinstrumentierung. |
 | 16 | Übrige Reifeabschlüsse, `OPS-005`, `OPS-006`, `OPS-007` | Das native SQL-Server-2022-FULL_RELEASE-Gate für `OPS-009` ist als Schritt 33 über [Run 40403446152](https://github.com/gecompat/SQL_Server_Analyze/actions/runs/40403446152) abgeschlossen und im [Evidenznachweis](OPS009_Empty_Inventory_Runtime_Evidence_2026-09-19.md) dokumentiert. Weitere OPS-Fälle werden anhand ihres aktuellen OpenScope ausgewählt; ein erneuter SQL-2022-Lauf folgt nur bei neuem Versionsrisiko oder erforderlicher Releasequalifikation. |
-| 17 | Weitere Sicherheits- und Spezialdiagnosen, `WI-0010` | Schritte 35–38 liefern und integrieren das begrenzte RLS-/Masking-V1 in PR #473; das SQL-Server-2025-Head-Gate und die geforderten Head-/Main-Prüfungen bestanden. Das Modul bleibt PLANNED in der Reifematrix; ein separater Modul-Reifeabschluss ist nicht dokumentiert. Der Katalogvertrag erhebt keinen Enforcement- oder Vollständigkeitsanspruch. Der Schritt-39-Stand zu MSDTC (`DISTRIBUTED_TRANSACTIONS`) ist im [SQL-sichtbaren Inventardossier](../Architecture/MSDTC_Distributed_Transaction_Inventory_Dossier.md) dokumentiert; der Coverage-Status war damals `RESEARCHED_NOT_IMPLEMENTED`. Schritt 40 implementiert das begrenzte read-only-V1 und führt den Coverage-Status als PARTIAL_PRODUCT_FUNCTION in `USP_DistributedTransactionInventory`; der funktionale SQL-Server-2025-Head-Lauf [40555564808](https://github.com/gecompat/SQL_Server_Analyze/actions/runs/40555564808) auf Commit `51c20d073ac0faceef3fad0fb7485f1b4c6e8178` bestand mit `full_suite=true`. Vertrag 140 ist genau einmal in Phase 7 des kanonischen Fail-fast-Release-Gates enthalten; SQL-Erfolgsstdout und separater PASS-Marker wurden nicht exportiert. Die Dokumentationsprüfung im CI1 scheiterte an der lokal korrigierten Source-Closure-Erwartung 202 statt 203; der aktuelle Head- und Integrationsstatus ist in den [Livechecks von PR #479](https://github.com/gecompat/SQL_Server_Analyze/pull/479) nachzuverfolgen. Externe DTC-Infrastruktur sowie positive Commit-/Recovery-Evidenz bleiben offen. `DATABASE_MIRRORING` bleibt der nächste getrennte WI-0010-Kandidat. Klassifikation und Agent-Proxies bleiben ebenfalls offen; abgeschlossene SSIS-Wellen werden nicht wiederholt. |
+| 17 | Weitere Sicherheits- und Spezialdiagnosen, `WI-0010` | Schritte 35–38 liefern und integrieren das begrenzte RLS-/Masking-V1 in PR #473; das SQL-Server-2025-Head-Gate und die geforderten Head-/Main-Prüfungen bestanden. Das Modul bleibt PLANNED in der Reifematrix; ein separater Modul-Reifeabschluss ist nicht dokumentiert. Der Katalogvertrag erhebt keinen Enforcement- oder Vollständigkeitsanspruch. Der Schritt-39-Stand zu MSDTC (`DISTRIBUTED_TRANSACTIONS`) ist im [SQL-sichtbaren Inventardossier](../Architecture/MSDTC_Distributed_Transaction_Inventory_Dossier.md) dokumentiert; der Coverage-Status war damals `RESEARCHED_NOT_IMPLEMENTED`. Schritt 40 implementiert das begrenzte read-only-V1 und führt den Coverage-Status als PARTIAL_PRODUCT_FUNCTION in `USP_DistributedTransactionInventory`; der funktionale SQL-Server-2025-Head-Lauf [40555564808](https://github.com/gecompat/SQL_Server_Analyze/actions/runs/40555564808) auf Commit `51c20d073ac0faceef3fad0fb7485f1b4c6e8178` bestand mit `full_suite=true`. Vertrag 140 ist genau einmal in Phase 7 des kanonischen Fail-fast-Release-Gates enthalten; SQL-Erfolgsstdout und separater PASS-Marker wurden nicht exportiert. Die Dokumentationsprüfung im CI1 scheiterte an der Source-Closure-Erwartung 202 statt 203; die Zählung wurde lokal korrigiert und der fokussierte Test bestand. PR #479 integrierte Schritt 40; die gebundenen Head- und Main-Prüfungen sowie die CI1-Fehlerhistorie stehen im [aktuellen Checkpoint](Next_Steps.md#aktueller-checkpoint-nach-schritt-40). Externe DTC-Infrastruktur sowie positive Commit-/Recovery-Evidenz bleiben offen. `DATABASE_MIRRORING` bleibt der nächste WI-0010-Kandidat; Klassifikation und Agent-Proxies bleiben ebenfalls offen. |
 | 18 | Restore-/Hostnachweise und Fleet-Korrelation, `SC-025` und `SC-024` | Eigene isolierte Restore-/CHECKDB-Nachweise und den externen Fleet-Vertrag getrennt bearbeiten. Externe Infrastruktur, Transport, Mandantenisolation und Betriebsmodell sind eigene Grenzen. |
 
 Die [Abdeckungsmatrix](../../../Metadata/Quality/Diagnostic_Coverage_Landscape.csv)
@@ -91,11 +91,14 @@ Commitbindungen und CI-Ergebnisse werden lokal deterministisch geprüft.
 Weitere fachliche Teilfragen erfordern einen neuen begründeten Schritt.
 
 Der endliche Gesamtscope umfasst die 13 Ränge 6 bis 18, diese Planintegration
-und die betroffene Dokumentationskonsolidierung. Als gemeinsame Obergrenze
-gelten 40 eigene fachliche PR-Schritte einschließlich Korrekturlieferungen
-und Koordination. Bereits abgeschlossene Schritte des früheren separaten
-SSIS-Auftrags werden nicht nachträglich neu gezählt. Neue SSIS-Schritte dieses
-Orchestrators zählen innerhalb derselben Obergrenze mit.
+und die betroffene Dokumentationskonsolidierung. Die ursprüngliche gemeinsame
+Obergrenze von 40 eigenen fachlichen PR-Schritten einschließlich
+Korrekturlieferungen und Koordination sowie der Checkpoint bei 30 sind
+historische Autorisierung. Der Benutzer hat den gemeinsamen Umfang inzwischen
+auf 80 eigene PR-Schritte mit Checkpoint bei 70 erweitert. Bereits
+abgeschlossene Schritte des früheren separaten SSIS-Auftrags werden nicht
+nachträglich neu gezählt. Neue SSIS-Schritte dieses Orchestrators zählen
+innerhalb der aktuellen Obergrenze mit.
 Pro Schritt sind ein Erstentwurf, ein gebündelter Korrekturpass und die
 erforderlichen Gates vorgesehen. Neue fehlgeschlagene Tests werden zunächst
 lokal eingegrenzt. Ein weiterer Versuch benötigt geänderte Inputs, neue
@@ -103,17 +106,19 @@ Evidenz oder ein bisher unerfülltes Gate. Tatsächlicher Verbrauch einschließl
 Reviewer und Wiederholungen wird privat je Checkpoint fortgeschrieben.
 Token-, Kosten- und Kontingentmessung sind nicht verlässlich verfügbar.
 
-Ein Checkpoint folgt nach jeder integrierten Lieferung. Bei 30 verbrauchten
+Ein Checkpoint folgt nach jeder integrierten Lieferung. Bei 70 verbrauchten
 PR-Schritten wird der verbleibende Umfang vor weiterer Arbeit neu bewertet;
-bei 40 beginnen keine neuen Schritte. Offene Arbeit wird dann mit ihrer
+bei 80 beginnen keine neuen Schritte. Offene Arbeit wird dann mit ihrer
 tatsächlichen Grenze gesichert und nicht als abgeschlossen ausgegeben. Ein
-Heartbeat oder Sessionwechsel setzt diese Grenzen nicht zurück.
+Heartbeat oder Sessionwechsel setzt diese Grenzen nicht zurück. Die frühere
+Neubewertung bei 30 und Grenze bei 40 bleiben Teil der Historie und setzen die
+aktuelle Erweiterung nicht zurück.
 
 Der Abschluss eines einzelnen Pull Requests beendet den Gesamtauftrag nicht.
 Der Orchestrator setzt anschließend den nächsten ausführbaren freigegebenen
 Schritt ohne erneute Fortsetzungsaufforderung um. Der stündliche Heartbeat
 bleibt eine zusätzliche Leerlauferkennung und ersetzt diese laufende
-Fortsetzung nicht. Am Checkpoint bei 30 bewertet der Orchestrator den
+Fortsetzung nicht. Am Checkpoint bei 70 bewertet der Orchestrator den
 Restumfang neu und setzt innerhalb der bestehenden Freigaben und Grenzen fort.
 
 Die Testauswahl folgt ausschließlich der
@@ -303,9 +308,12 @@ Cleanup bestehen am Head und auf Main. Der
 bewahrt frühere Fehlläufe und die begrenzte Leerfallkorrektur. Weitere
 Collationkombinationen und Ausgabearten werden damit nicht qualifiziert.
 
-Der Restumfang ist am Checkpoint nach 30 Schritten neu bewertet. Die
-Gesamtgrenze bleibt unverändert; nach zehn verbleibenden Schritten beginnt
-keine neue Arbeit. Der nächste unabhängige geplante Schritt ist der optionale
+Der Restumfang wurde am Checkpoint nach 30 Schritten unter der damaligen
+Obergrenze von 40 Schritten neu bewertet. Die Aussage, nach zehn verbleibenden
+Schritten keine neue Arbeit zu beginnen, gehörte zu dieser ursprünglichen
+Autorisierung. Der Benutzer erweiterte sie danach um weitere 40 Schritte auf
+insgesamt 80; die bereits abgeschlossenen 40 bleiben angerechnet. Der nächste
+unabhängige geplante Schritt war der optionale
 Producervertrag für eigene SSIS-Kennzahlen aus Rang 15. Der aktuelle Abgleich
 bestätigt die Lücke neben den gelieferten festen Kennzahlen. PR #469 ist mit
 allen fünf Head- und vier Main-Prüfungen integriert; Head `2ee97df1` und Merge
@@ -330,3 +338,17 @@ Schritt 33 und im OPS-009-Nachweis dokumentiert; der Lauf belegt keine
 Drei-Versionen-Matrix.
 
 Zum Stand von Schritt 34 beschrieb das Dossier den ersten begrenzten Vertragsentwurf für RLS-Policies, Predicate-Metadaten und masked Columns. Es bindet die drei sichtbaren Katalogquellen, schließt Predicate- und Masking-Expressions, geschützte Tabellenwerte, Gesundheits- und effektive Berechtigungsurteile aus und hält Metadaten-Partialität fest. Der damalige Status war `RESEARCHED_NOT_IMPLEMENTED`; Schritte 35–38 integrierten anschließend das begrenzte V1, ohne Klassifikation, Agent-Proxies, MSDTC oder Legacy-Mirroring zu schließen.
+
+## Fortsetzung nach 40 abgeschlossenen Schritten
+
+Schritt 40 ist über PR #479 integriert. Die gebundenen Merge-, Head- und
+Main-Ergebnisse stehen im [aktuellen Checkpoint](Next_Steps.md#aktueller-checkpoint-nach-schritt-40).
+Der Benutzer erweiterte die ursprüngliche Obergrenze von 40 um weitere 40
+eigene PR-Schritte auf insgesamt 80; die bereits abgeschlossenen 40 bleiben
+angerechnet. Der Checkpoint liegt bei 70. `DATABASE_MIRRORING` ist der nächste
+WI-0010-Kandidat mit Intake-Status `RESEARCHED_NOT_IMPLEMENTED` und Priorität
+P1. Das Dossier steht noch aus; Implementierung und Qualifikation sind nicht
+erfolgt. Die positive aktive DTC-Zeile, verteilte Commit-/Recovery-Evidenz,
+externe MSDTC-/Teilnehmergesundheit und native SQL Server 2019/2022-Evidenz
+bleiben offen. Die Legacy-Lesepfadlücke bleibt als gesonderte
+Dokumentationsaltlast bestehen.

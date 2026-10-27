@@ -13,7 +13,11 @@ stehen in der [Entwicklungsplanung](Development_Waves_2026-10.md).
 Abgeschlossene SSIS-Wellen werden nicht wiederholt; die bestehende SSISDB
 bleibt erhalten. Frühere separate Aufträge sind nachfolgend historisch geführt.
 
+### Aktueller Checkpoint nach Schritt 40
+
 Schritt 39 konkretisierte MSDTC im [Dossier](../Architecture/MSDTC_Distributed_Transaction_Inventory_Dossier.md); Schritt 40 implementiert den begrenzten SQL-sichtbaren read-only-Slice in `USP_DistributedTransactionInventory`. Die funktionale SQL-2025-Head-Prüfung für Commit `51c20d073ac0faceef3fad0fb7485f1b4c6e8178` bestand in [Run 40555564808](https://github.com/gecompat/SQL_Server_Analyze/actions/runs/40555564808); `full_suite=true`, Vertrag 140 ist genau einmal im kanonischen Phase-7-Fail-fast-Gate enthalten. SQL-Erfolgsstdout wurde nicht exportiert, ein separater PASS-Marker liegt nicht vor. Im CI1 scheiterte die Dokumentationsprüfung an der Source-Closure-Erwartung 202 statt 203; die Zählung ist lokal korrigiert und der fokussierte Test besteht. Dieser Absatz dokumentiert den CI1-Snapshot; der jeweilige Head- und Integrationsstatus wird in den [Livechecks von PR #479](https://github.com/gecompat/SQL_Server_Analyze/pull/479) nachverfolgt. Ein Modul-Reifeabschluss bleibt offen; die Coverage ist partiell, die Reifematrix PLANNED. Positive aktive DTC-Zeile, verteilte Commit-/Recovery-Evidenz und externe MSDTC-/Teilnehmergesundheit bleiben unqualifiziert; SQL-Server 2019/2022 wurden nicht separat qualifiziert.
+
+Schritt 40 ist über [PR #479](https://github.com/gecompat/SQL_Server_Analyze/pull/479) regulär integriert. Mergecommit `42273a72927db419be185c030fa9f6c6de6d6544` besitzt den geprüften Baum `580c20e`; alle acht Head- und fünf Main-Prüfungen bestehen. Das funktionale SQL-2025-Head-Gate bestand in [Run 40561907132](https://github.com/gecompat/SQL_Server_Analyze/actions/runs/40561907132) am Commit `0de66635d36d7217eb042f2cd0470a9203a95ab6`; der getrennte Main-Lauf [40563959891](https://github.com/gecompat/SQL_Server_Analyze/actions/runs/40563959891) bestand am Mergecommit. Die Main-Prüfungen für [Dokumentation](https://github.com/gecompat/SQL_Server_Analyze/actions/runs/40563959893), [Datenschutz](https://github.com/gecompat/SQL_Server_Analyze/actions/runs/40563959899), [Commitnachrichten](https://github.com/gecompat/SQL_Server_Analyze/actions/runs/40563959952) und [TestLab](https://github.com/gecompat/SQL_Server_Analyze/actions/runs/40563959912) bestehen ebenfalls. Die frühere CI1-Fehlprüfung bleibt als Fehlerhistorie erhalten. Der Benutzer erweiterte die ursprüngliche Obergrenze von 40 um weitere 40 eigene PR-Schritte auf insgesamt 80; die bereits abgeschlossenen 40 bleiben angerechnet. Der Checkpoint liegt bei 70. `DATABASE_MIRRORING` ist der nächste WI-0010-Kandidat mit Intake-Status `RESEARCHED_NOT_IMPLEMENTED` und Priorität P1. Das Dossier steht noch aus; Implementierung und Qualifikation sind nicht erfolgt. Die positive aktive DTC-Zeile, verteilte Commit-/Recovery-Evidenz, externe MSDTC-/Teilnehmergesundheit und native SQL Server 2019/2022-Evidenz bleiben offen.
 
 
 PR #464 schließt Schritt 26 ab. Source-Head `12bf7fff` und Merge `178a6b38`
@@ -90,9 +94,11 @@ Seit dem 26. Oktober 2026 bündelt dieser Chat die gesamte Weiterentwicklung.
 Die elfte Welle des bisherigen SSIS-Chats ist über PR #457 abgeschlossen.
 Die erhaltene SSISDB bleibt bestehen; Parser und Lineage bleiben im Toolbelt,
 Analyze bleibt CLR-frei. Neue SSIS-Slices zählen im bestehenden Gesamtbudget
-mit. Dessen Obergrenze von 40 PR-Schritten und der Checkpoint bei 30 werden
-nicht zurückgesetzt. Der stündliche Heartbeat dient weiterhin ausschließlich
-zur Wiederaufnahme bei tatsächlichem unerwartetem Leerlauf.
+mit. Die ursprüngliche Obergrenze von 40 PR-Schritten und der Checkpoint bei
+30 bleiben als Historie erhalten. Die aktuelle, ausdrücklich erweiterte
+Obergrenze beträgt 80 PR-Schritte mit Checkpoint bei 70. Der stündliche
+Heartbeat dient weiterhin ausschließlich zur Wiederaufnahme bei tatsächlichem
+unerwartetem Leerlauf.
 
 Die Planung sowie die ersten Server- und Datenbankprincipal-Slices von Rang 6
 sind regulär integriert. [PR #438](https://github.com/gecompat/SQL_Server_Analyze/pull/438)
@@ -159,8 +165,11 @@ Main. Der [Reifeevidenznachweis](Maturity_Closeout_Runtime_Evidence_2026-08-29.m
 erhält alle Fehlläufe und die begrenzte Leerfallkorrektur; die Bestätigung gilt
 für die SQL2025-CI-Baseline, nicht für weitere Collationkombinationen.
 
-Der Checkpoint nach 30 Schritten ist neu bewertet. Innerhalb der unveränderten
-Gesamtgrenze folgt als nächster unabhängiger geplanter Schritt der optionale
+Der Checkpoint nach 30 Schritten wurde unter der damaligen Obergrenze von 40
+Schritten neu bewertet. Die folgende Planung und ihre damalige Grenze von 40
+Schritten sind historische Fortschreibung; der Benutzer erweiterte die
+Obergrenze anschließend um weitere 40 Schritte auf insgesamt 80. Innerhalb der
+damaligen Gesamtgrenze folgte als nächster unabhängiger geplanter Schritt der optionale
 [Producervertrag für eigene SSIS-Kennzahlen](../../../Documentation/Architecture/SSIS_Custom_Metrics_Producer_Contract.md)
 aus Rang 15. Der Vertragsentwurf ist über
 [PR #469](https://github.com/gecompat/SQL_Server_Analyze/pull/469) mit allen
