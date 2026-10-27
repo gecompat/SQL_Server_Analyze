@@ -1704,6 +1704,26 @@
       "source": "Metadata/Quality/Diagnostic_Coverage_Landscape.csv",
       "target": "AI_Metadata/Internal_Documentation/Architecture/MSDTC_Distributed_Transaction_Inventory_Dossier.md",
       "classification": "product-reference"
+    },
+    {
+      "source": "AI_Metadata/Internal_Documentation/Quality/Next_Steps.md",
+      "target": "AI_Metadata/Internal_Documentation/Architecture/Database_Mirroring_Inventory_Dossier.md",
+      "classification": "product-reference"
+    },
+    {
+      "source": "AI_Metadata/Internal_Documentation/Quality/Development_Waves_2026-10.md",
+      "target": "AI_Metadata/Internal_Documentation/Architecture/Database_Mirroring_Inventory_Dossier.md",
+      "classification": "product-reference"
+    },
+    {
+      "source": "Metadata/Quality/Diagnostic_Coverage_Landscape.csv",
+      "target": "AI_Metadata/Internal_Documentation/Architecture/Database_Mirroring_Inventory_Dossier.md",
+      "classification": "product-reference"
+    },
+    {
+      "source": "AI_Metadata/Internal_Documentation/Architecture/Database_Mirroring_Inventory_Dossier.md",
+      "target": "AI_Metadata/Internal_Documentation/Quality/Development_Waves_2026-10.md",
+      "classification": "product-reference"
     }
   ]
 }
