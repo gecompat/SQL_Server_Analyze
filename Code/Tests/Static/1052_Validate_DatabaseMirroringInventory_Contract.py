@@ -4,12 +4,16 @@ from __future__ import annotations
 
 import argparse
 import csv
+import re
 import sys
 from pathlib import Path
 
 PROCEDURE = "Code/08_ServerHealth/310_USP_DatabaseMirroringInventory.sql"
 RUNTIME = "Code/Tests/ServerHealth/141_DatabaseMirroringInventory_Runtime_Contract.sql"
 CANDIDATE_HELPER = "Code/01_Common/083_USP_PrepareDatabaseCandidates.sql"
+RESULT_TABLES_HELPER = "Code/01_Common/096_USP_InternalPrepareResultTables.sql"
+WRITE_RESULT_TABLE_HELPER = "Code/01_Common/095_USP_InternalWriteResultTable.sql"
+CONSOLE_RESULT_HELPER = "Code/01_Common/098_USP_InternalEmitConsoleResult.sql"
 RESULT_NAMES = ("moduleStatus", "databaseMirroring", "sourceStatus", "warnings")
 PARAMETERS = (
     ("DatabaseNames", "nvarchar(max)", "NULL"),
@@ -45,12 +49,166 @@ FIELDS = (
 def csv_rows(value: str) -> list[list[str]]:
     return list(csv.reader(value.splitlines()))
 
+
+def sql_tokens(source: str) -> tuple[tuple[str, str], ...]:
+    """Tokenize executable T-SQL while dropping comments and string literals."""
+    tokens: list[tuple[str, str]] = []
+    i = 0
+    while i < len(source):
+        if source[i].isspace():
+            i += 1
+            continue
+        if source.startswith("--", i):
+            end = source.find("\n", i + 2)
+            i = len(source) if end < 0 else end + 1
+            continue
+        if source.startswith("/*", i):
+            i += 2
+            depth = 1
+            while i < len(source) and depth:
+                if source.startswith("/*", i):
+                    depth += 1
+                    i += 2
+                elif source.startswith("*/", i):
+                    depth -= 1
+                    i += 2
+                else:
+                    i += 1
+            continue
+        if source[i] == "'":
+            i += 1
+            while i < len(source):
+                if source[i] == "'":
+                    if i + 1 < len(source) and source[i + 1] == "'":
+                        i += 2
+                    else:
+                        i += 1
+                        break
+                else:
+                    i += 1
+            continue
+        if source[i] == "[":
+            i += 1
+            value = []
+            while i < len(source):
+                if source[i] == "]":
+                    if i + 1 < len(source) and source[i + 1] == "]":
+                        value.append("]")
+                        i += 2
+                    else:
+                        i += 1
+                        break
+                else:
+                    value.append(source[i])
+                    i += 1
+            tokens.append(("IDENT", "".join(value)))
+            continue
+        if source[i] == '"':
+            i += 1
+            value = []
+            while i < len(source):
+                if source[i] == '"':
+                    if i + 1 < len(source) and source[i + 1] == '"':
+                        value.append('"')
+                        i += 2
+                    else:
+                        i += 1
+                        break
+                else:
+                    value.append(source[i])
+                    i += 1
+            tokens.append(("IDENT", "".join(value)))
+            continue
+        if source[i] == "@" and i + 1 < len(source) and source[i + 1].isalpha():
+            start = i
+            i += 2
+            while i < len(source) and (source[i].isalnum() or source[i] in "_#$"):
+                i += 1
+            tokens.append(("PARAM", source[start:i]))
+            continue
+        if source[i].isalpha() or source[i] == "_":
+            start = i
+            i += 1
+            while i < len(source) and (source[i].isalnum() or source[i] in "_#$"):
+                i += 1
+            tokens.append(("WORD", source[start:i]))
+            continue
+        tokens.append(("SYMBOL", source[i]))
+        i += 1
+    return tuple(tokens)
+
+
+def _keyword(sql_token: tuple[str, str], expected: str) -> bool:
+    return sql_token[0] == "WORD" and sql_token[1].casefold() == expected.casefold()
+
+
+def _name(sql_token: tuple[str, str], expected: str) -> bool:
+    return sql_token[0] in ("IDENT", "WORD") and sql_token[1] == expected
+
+
+def required_helper_parameters(source: str, procedure_name: str) -> tuple[str, ...] | None:
+    tokens = sql_tokens(source)
+    header = (
+        ("WORD", "CREATE"), ("WORD", "OR"), ("WORD", "ALTER"),
+        ("WORD", "PROCEDURE"),
+    )
+    for start in range(max(0, len(tokens) - 6)):
+        if not all(_keyword(tokens[start + offset], word) for offset, (_, word) in enumerate(header)):
+            continue
+        if not (_name(tokens[start + 4], "monitor") and tokens[start + 5] == ("SYMBOL", ".")
+                and _name(tokens[start + 6], procedure_name)):
+            continue
+        signature = tokens[start + 7:]
+        end = next((i for i, sql_token in enumerate(signature) if _keyword(sql_token, "AS")), None)
+        if end is None:
+            return None
+        signature = signature[:end]
+        parameters: list[tuple[str, bool]] = []
+        cross_seen = False
+        positions = [i for i, sql_token in enumerate(signature) if sql_token[0] == "PARAM"]
+        for ordinal, position in enumerate(positions):
+            next_position = positions[ordinal + 1] if ordinal + 1 < len(positions) else len(signature)
+            declaration = signature[position:next_position]
+            has_default = any(sql_token == ("SYMBOL", "=") for sql_token in declaration)
+            is_output = any(_keyword(sql_token, "OUTPUT") for sql_token in declaration)
+            parameters.append((signature[position][1], has_default))
+            if signature[position][1] == "@CrossDatabaseRequested":
+                cross_seen = True
+                if has_default or not is_output:
+                    return None
+        if procedure_name.casefold() == "usp_preparedatabasecandidates" and not cross_seen:
+            return None
+        return tuple(name for name, has_default in parameters if not has_default)
+    return None
+
+
+def helper_call_arguments(body: str, procedure_name: str) -> tuple[tuple[str, ...], ...]:
+    tokens = sql_tokens(body)
+    calls: list[tuple[str, ...]] = []
+    for i in range(len(tokens) - 5):
+        if not (_keyword(tokens[i], "EXEC") or _keyword(tokens[i], "EXECUTE")):
+            continue
+        if not (_name(tokens[i + 1], "monitor") and tokens[i + 2] == ("SYMBOL", ".")
+                and _name(tokens[i + 3], procedure_name)):
+            continue
+        end = next((j for j in range(i + 4, len(tokens)) if tokens[j] == ("SYMBOL", ";")), len(tokens))
+        arguments = tokens[i + 4:end]
+        supplied = tuple(
+            arguments[j][1]
+            for j in range(len(arguments) - 1)
+            if arguments[j][0] == "PARAM" and arguments[j + 1] == ("SYMBOL", "=")
+        )
+        calls.append(supplied)
+    return tuple(calls)
+
 def validate_contract(
     procedure: str, runtime: str, candidate_helper: str, objects: str, parameters: str,
     resultsets: str, sources: str, maturity: str, coverage: str,
     procedure_guide: str, guide_index: str, call_catalog: str,
     release_gate: str, installer: str, generated: str, ops_install: str,
     ops_update: str, docs_review: str, dossier: str,
+    result_tables_helper: str, write_result_table_helper: str,
+    console_result_helper: str,
 ) -> list[str]:
     errors: list[str] = []
     proc_marker = "CREATE OR ALTER PROCEDURE [monitor].[USP_DatabaseMirroringInventory]"
@@ -92,14 +250,14 @@ def validate_contract(
         expected = "@" + name + " " + typ + "=" + default
         if expected not in help_text:
             errors.append("help parameter default or OUTPUT mode differs: @" + name)
-    for token in ("CONSOLE", "RAW", "TABLE", "NONE", "schemaVersion=1", "RESTORING",
+    for sql_token in ("CONSOLE", "RAW", "TABLE", "NONE", "schemaVersion=1", "RESTORING",
                   "AVAILABLE_LIMITED", "VIEW SERVER PERFORMANCE STATE",
                   "keine weitere Serverberechtigung", "sysadmin", "like:", "regex:",
                   "regexi:", "SQL Server 2025", "170", "#Monitor", "116 Zeichen",
                   "@DatabaseNamePattern=N'like:Prod%'", "1 schließt sie ein",
                   "@Json=@Json OUTPUT"):
-        if token not in help_text:
-            errors.append("help omits required option, output, permission, or scope detail: " + token)
+        if sql_token not in help_text:
+            errors.append("help omits required option, output, permission, or scope detail: " + sql_token)
     mapping = "{\"moduleStatus\":\"#DbmiModule\",\"databaseMirroring\":\"#DbmiRows\",\"sourceStatus\":\"#DbmiSources\",\"warnings\":\"#DbmiWarnings\"}"
     if mapping not in help_text:
         errors.append("help TABLE mapping does not identify all four exact result names and local targets")
@@ -120,6 +278,31 @@ def validate_contract(
         errors.append("help must explain separate exact-name and pattern selectors")
     if "[ExampleDatabase]" not in help_block:
         errors.append("help must include a canonical monitor call with a synthetic example database")
+
+    helpers = (
+        ("USP_PrepareDatabaseCandidates", candidate_helper),
+        ("InternalPrepareResultTables", result_tables_helper),
+        ("InternalWriteResultTable", write_result_table_helper),
+        ("InternalEmitConsoleResult", console_result_helper),
+    )
+    for helper_name, helper_source in helpers:
+        required = required_helper_parameters(helper_source, helper_name)
+        calls = helper_call_arguments(body, helper_name)
+        if required is None:
+            if helper_name == "USP_PrepareDatabaseCandidates":
+                errors.append("shared candidate helper CrossDatabaseRequested output must remain required without a default")
+            else:
+                errors.append("required-helper signature source is missing or malformed: " + helper_name)
+            continue
+        if not calls:
+            errors.append("required-helper call is missing: " + helper_name)
+            continue
+        if len(calls) != 1:
+            errors.append("duplicate required-helper calls are not permitted: " + helper_name)
+        for supplied in calls:
+            for parameter in required:
+                if parameter not in supplied:
+                    errors.append("shared helper call omits required parameter " + parameter + " for " + helper_name)
 
     if "@MaxZeilen<0" not in body or "@MaxZeilen IS NULL OR @MaxZeilen=0" not in body:
         errors.append("negative and NULL/zero row-limit semantics are missing")
@@ -210,39 +393,39 @@ def validate_contract(
     if "USP_DatabaseMirroringInventory,BASELINE,,1" not in docs_review:
         errors.append("documentation review manifest omits the new procedure page")
 
-    for token in ("MIRRORING_NULLS_UNINTERPRETED", "ROLE_VISIBILITY_LIMIT", "DENIED_PERMISSION",
+    for sql_token in ("MIRRORING_NULLS_UNINTERPRETED", "ROLE_VISIBILITY_LIMIT", "DENIED_PERMISSION",
                   "SET LOCK_TIMEOUT 0"):
-        if token not in runtime:
-            errors.append("runtime fixture misses contract case: " + token)
-    for token in ("#DbmiOut_moduleStatus]([Seed] int NULL)",
+        if sql_token not in runtime:
+            errors.append("runtime fixture misses contract case: " + sql_token)
+    for sql_token in ("#DbmiOut_moduleStatus]([Seed] int NULL)",
                   "#DbmiOut_databaseMirroring]([Seed] int NULL)",
                   "#DbmiOut_sourceStatus]([Seed] int NULL)",
                   "#DbmiOut_warnings]([Seed] int NULL)"):
-        if token not in runtime:
-            errors.append("runtime fixture lacks empty one-Seed TABLE target: " + token)
-    for token in ("TYPE_NAME([c].[system_type_id])", "[c].[max_length]", "[c].[precision]",
+        if sql_token not in runtime:
+            errors.append("runtime fixture lacks empty one-Seed TABLE target: " + sql_token)
+    for sql_token in ("TYPE_NAME([c].[system_type_id])", "[c].[max_length]", "[c].[precision]",
                   "[c].[scale]", "[c].[is_nullable]", "[c].[collation_name]",
                   "[c].[is_identity]", "[c].[is_computed]"):
-        if token not in runtime:
-            errors.append("physical ABI oracle misses column facet: " + token)
+        if sql_token not in runtime:
+            errors.append("physical ABI oracle misses column facet: " + sql_token)
     if "OPENJSON(@JsonNull,N'$.databaseMirroring')" not in runtime or "@NullFieldCount<>10" not in runtime:
         errors.append("runtime fixture must prove a non-vacuous native all-NULL tempdb row")
-    for token in ("@MaxZeilen=1", "@SourceRows<2", "@MaxZeilen=0", "@MaxZeilen=NULL"):
-        if token not in runtime:
-            errors.append("runtime limit cases must prove one-row and both unlimited forms: " + token)
-    for token in ("N'[Codex_Missing_Database]'", "@DatabaseNamePattern=N'like:%'",
+    for sql_token in ("@MaxZeilen=1", "@SourceRows<2", "@MaxZeilen=0", "@MaxZeilen=NULL"):
+        if sql_token not in runtime:
+            errors.append("runtime limit cases must prove one-row and both unlimited forms: " + sql_token)
+    for sql_token in ("N'[Codex_Missing_Database]'", "@DatabaseNamePattern=N'like:%'",
                   "DENY VIEW SERVER PERFORMANCE STATE", "REVERT;", "DROP LOGIN", "DROP USER"):
-        if token not in runtime:
-            errors.append("runtime fixture misses restricted/negative cleanup case: " + token)
+        if sql_token not in runtime:
+            errors.append("runtime fixture misses restricted/negative cleanup case: " + sql_token)
     if "IF TRY_CONVERT(int,SERVERPROPERTY(N'ProductMajorVersion')) NOT IN (15,16,17)" not in runtime:
         errors.append("runtime fixture must admit its existing SQL Server 2019/2022/2025 release-gate targets")
     if "IF @ProductMajor>=16" not in runtime or "SQL Server 2019: no minimum catalog-denial permission is asserted" not in runtime:
         errors.append("runtime fixture must version-scope the 2022+ permission-denial case and state the 2019 boundary")
     if "sp_executesql] N'DROP USER" in runtime or "sp_executesql] N'DROP LOGIN" in runtime:
         errors.append("runtime cleanup passes concatenated expressions directly to sp_executesql instead of a variable")
-    for token in ("SET @Sql=N'DROP USER '+QUOTENAME(@Login)+N';';\n    EXEC [sys].[sp_executesql] @Sql;",
+    for sql_token in ("SET @Sql=N'DROP USER '+QUOTENAME(@Login)+N';';\n    EXEC [sys].[sp_executesql] @Sql;",
                   "SET @Sql=N'DROP LOGIN '+QUOTENAME(@Login)+N';';\n    EXEC [sys].[sp_executesql] @Sql;"):
-        if token not in runtime:
+        if sql_token not in runtime:
             errors.append("runtime fixture must assign each dynamic cleanup batch before sp_executesql")
     for mode in ("TABLE", "RAW", "CONSOLE", "NONE"):
         if "@ResultSetArt='" + mode + "'" not in runtime:
@@ -251,10 +434,10 @@ def validate_contract(
                    "master].[sys].[database_mirroring] AS [m] WITH (NOLOCK)"):
         if source not in runtime:
             errors.append("runtime oracle misses native NOLOCK source: " + source)
-    for token in ("BEGIN TRANSACTION", "ROLLBACK TRANSACTION", "@@LOCK_TIMEOUT<>137",
+    for sql_token in ("BEGIN TRANSACTION", "ROLLBACK TRANSACTION", "@@LOCK_TIMEOUT<>137",
                   "transaction_isolation_level", "@@TRANCOUNT<>1"):
-        if token not in runtime:
-            errors.append("runtime fixture misses caller-state condition: " + token)
+        if sql_token not in runtime:
+            errors.append("runtime fixture misses caller-state condition: " + sql_token)
     isolation_check = "SET TRANSACTION ISOLATION LEVEL REPEATABLE READ;"
     isolation_level = "transaction_isolation_level] FROM sys.dm_exec_sessions WHERE [session_id]=@@SPID)<>3"
     if isolation_check not in runtime or isolation_level not in runtime or "THROW 57448" not in runtime:
@@ -294,6 +477,9 @@ def main() -> int:
     paths = {
         "procedure": PROCEDURE, "runtime": RUNTIME,
         "candidate_helper": CANDIDATE_HELPER,
+        "result_tables_helper": RESULT_TABLES_HELPER,
+        "write_result_table_helper": WRITE_RESULT_TABLE_HELPER,
+        "console_result_helper": CONSOLE_RESULT_HELPER,
         "objects": "Metadata/Inventory/Objects.csv",
         "parameters": "Metadata/Inventory/Parameters.csv",
         "resultsets": "Metadata/Inventory/ResultSets.csv",
@@ -342,6 +528,14 @@ def main() -> int:
             ("SP_EXECUTESQL_EXPRESSION", "runtime", text["runtime"].replace("SET @Sql=N'DROP USER '+QUOTENAME(@Login)+N';';\n    EXEC [sys].[sp_executesql] @Sql;", "EXEC [sys].[sp_executesql] N'DROP USER '+QUOTENAME(@Login)+N';';", 1), "concatenated expressions directly to sp_executesql"),
             ("ISOLATION_ORDINAL", "runtime", text["runtime"].replace("transaction_isolation_level] FROM sys.dm_exec_sessions WHERE [session_id]=@@SPID)<>3", "transaction_isolation_level] FROM sys.dm_exec_sessions WHERE [session_id]=@@SPID)<>4", 1), "REPEATABLE READ as sys.dm_exec_sessions isolation level 3"),
             ("CALLER_AGGREGATE", "runtime", text["runtime"].replace("IF @Return<>0\n        THROW 57440,", "IF @Return<>0 OR @Status<>'AVAILABLE_LIMITED'\n        THROW 57440,", 1), "caller preservation condition must have its own fixed error"),
+            ("CANDIDATE_REQUIRED_ARGUMENT", "procedure", text["procedure"].replace("@CrossDatabaseRequested=@CrossDatabaseRequested OUTPUT,\n", "", 1), "shared helper call omits required parameter @CrossDatabaseRequested"),
+            ("CANDIDATE_COMMENT_DECOY", "procedure", text["procedure"].replace("@CrossDatabaseRequested=@CrossDatabaseRequested OUTPUT,\n", "", 1).replace("EXEC [monitor].[USP_PrepareDatabaseCandidates]", "/* nested /* EXEC [monitor].[USP_PrepareDatabaseCandidates] @CrossDatabaseRequested=@CrossDatabaseRequested OUTPUT; */ */\nEXEC [monitor].[USP_PrepareDatabaseCandidates]", 1), "shared helper call omits required parameter @CrossDatabaseRequested"),
+            ("CANDIDATE_STRING_DECOY", "procedure", text["procedure"].replace("@CrossDatabaseRequested=@CrossDatabaseRequested OUTPUT,\n", "", 1).replace("EXEC [monitor].[USP_PrepareDatabaseCandidates]", "PRINT N'EXEC [monitor].[USP_PrepareDatabaseCandidates] @CrossDatabaseRequested=@CrossDatabaseRequested OUTPUT;';\n            EXEC [monitor].[USP_PrepareDatabaseCandidates]", 1), "shared helper call omits required parameter @CrossDatabaseRequested"),
+            ("CANDIDATE_DUPLICATE_CALL", "procedure", text["procedure"].replace("@WarningTable=N'#DatabaseMirroringInventory_SelectionWarnings';", "@WarningTable=N'#DatabaseMirroringInventory_SelectionWarnings';\n            EXEC [monitor].[USP_PrepareDatabaseCandidates] @DatabaseNames=@DatabaseNames;", 1), "duplicate required-helper calls are not permitted"),
+            ("CANDIDATE_WRONG_HELPER", "procedure", text["procedure"].replace("EXEC [monitor].[USP_PrepareDatabaseCandidates]", "EXEC [monitor].[USP_PrepareDatabaseCandidate]", 1), "required-helper call is missing: USP_PrepareDatabaseCandidates"),
+            ("CANDIDATE_WRONG_CASE_HELPER", "procedure", text["procedure"].replace("EXEC [monitor].[USP_PrepareDatabaseCandidates]", "EXEC [monitor].[usp_PrepareDatabaseCandidates]", 1), "required-helper call is missing: USP_PrepareDatabaseCandidates"),
+            ("CANDIDATE_WRONG_CASE_ARGUMENT", "procedure", text["procedure"].replace("@CrossDatabaseRequested=@CrossDatabaseRequested OUTPUT", "@crossdatabaserequested=@CrossDatabaseRequested OUTPUT", 1), "shared helper call omits required parameter @CrossDatabaseRequested"),
+            ("CANDIDATE_OUTPUT_DEFAULT", "candidate_helper", text["candidate_helper"].replace("@CrossDatabaseRequested           bit            OUTPUT", "@CrossDatabaseRequested           bit            = 0 OUTPUT", 1), "CrossDatabaseRequested output must remain required without a default"),
             ("CANONICAL_INSTALLER_INCLUDE", "installer", text["installer"].replace("310_USP_DatabaseMirroringInventory.sql", "missing_procedure.sql", 1), "canonical deployment installer must include the procedure"),
         )
         for name, key, changed, expected in mutations:

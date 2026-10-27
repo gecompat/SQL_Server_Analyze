@@ -69926,6 +69926,7 @@ BEGIN
         @SelectionStatus varchar(40),
         @SelectionMessage nvarchar(2048),
         @SelectionError int=NULL,
+        @CrossDatabaseRequested bit,
         @Status varchar(40)='AVAILABLE_LIMITED',
         @Error int=NULL,
         @Message nvarchar(2048)=NULL,
@@ -70087,6 +70088,7 @@ BEGIN
                 @DatabaseNamePattern=@DatabaseNamePattern,
                 @StatusCode=@SelectionStatus OUTPUT,
                 @ErrorMessage=@SelectionMessage OUTPUT,
+                @CrossDatabaseRequested=@CrossDatabaseRequested OUTPUT,
                 @CandidateTable=N'#DatabaseMirroringInventory_Candidates',
                 @WarningTable=N'#DatabaseMirroringInventory_SelectionWarnings';
             SELECT @SelectionError=MIN(CASE WHEN [StatusCode] IS NOT NULL THEN 51011 END)
