@@ -19,7 +19,7 @@ DECLARE @OriginalLock int=@@LOCK_TIMEOUT,
         @ProductMajor int=TRY_CONVERT(int,SERVERPROPERTY(N'ProductMajorVersion')),
         @UserCreated bit=0,
         @LoginCreated bit=0,@Impersonating bit=0,@DbName sysname,
-        @SourceRows bigint,@ReturnRows bigint,@LimitApplied bit,@NullFieldCount int;
+        @SourceRows bigint,@ReturnRows bigint,@LimitApplied bit;
 SELECT @OriginalIsolation=[transaction_isolation_level]
 FROM sys.dm_exec_sessions WHERE [session_id]=@@SPID;
 CREATE TABLE [#DbmiMarker]([Marker] int NOT NULL);
@@ -242,12 +242,38 @@ BEGIN TRY
     IF @Return<>0 OR @Status<>'AVAILABLE_LIMITED' OR @Partial<>1
        OR (SELECT COUNT(*) FROM OPENJSON(@JsonNull,N'$.databaseMirroring'))<>1
         THROW 57420,N'Explicit System-database selection or NULL/unlimited limit failed.',1;
-    SELECT @NullFieldCount=COUNT(*)
+    DECLARE @ExpectedJsonFields TABLE
+    (
+        [FieldName] nvarchar(128) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL PRIMARY KEY,
+        [MustBeNull] bit NOT NULL
+    );
+    DECLARE @ActualJsonFields TABLE
+    (
+        [FieldName] nvarchar(4000) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,
+        [JsonType] int NOT NULL
+    );
+    INSERT @ExpectedJsonFields([FieldName],[MustBeNull])
+    VALUES (N'DatabaseId',0),(N'DatabaseName',0),(N'MirroringState',1),(N'MirroringStateDesc',1),(N'MirroringRole',1),(N'MirroringRoleDesc',1),(N'MirroringSafetyLevel',1),(N'MirroringSafetyLevelDesc',1),(N'MirroringWitnessState',1),(N'MirroringWitnessStateDesc',1),(N'ConfiguredRedoQueueLimitMb',1),(N'RedoQueueLimitType',1);
+    INSERT @ActualJsonFields([FieldName],[JsonType])
+    SELECT [v].[key],[v].[type]
     FROM OPENJSON(@JsonNull,N'$.databaseMirroring') AS [r]
-    CROSS APPLY OPENJSON([r].[value]) AS [v]
-    WHERE [v].[type]=0 AND [v].[key] LIKE N'Mirroring%';
-    IF @NullFieldCount<>10
-        THROW 57421,N'Native NULL fields for the unmirrored tempdb row were not preserved.',1;
+    CROSS APPLY OPENJSON([r].[value]) AS [v];
+    IF (SELECT COUNT(*) FROM @ActualJsonFields)<>12
+       OR EXISTS(SELECT [FieldName] FROM @ExpectedJsonFields
+                 EXCEPT SELECT [FieldName] FROM @ActualJsonFields)
+       OR EXISTS(SELECT [FieldName] FROM @ActualJsonFields
+                 EXCEPT SELECT [FieldName] FROM @ExpectedJsonFields)
+       OR EXISTS(SELECT [FieldName] FROM @ActualJsonFields
+                 GROUP BY [FieldName] HAVING COUNT(*)<>1)
+       OR EXISTS
+       (
+           SELECT 1
+           FROM @ExpectedJsonFields AS [e]
+           INNER JOIN @ActualJsonFields AS [a] ON [a].[FieldName]=[e].[FieldName]
+           WHERE ([e].[MustBeNull]=1 AND [a].[JsonType]<>0)
+              OR ([e].[MustBeNull]=0 AND [a].[JsonType]=0)
+       )
+        THROW 57421,N'Native JSON fields for unmirrored tempdb must match all twelve business keys and preserve all ten NULL values.',1;
 
     EXEC @Return=[monitor].[USP_DatabaseMirroringInventory]
         @SystemdatenbankenEinbeziehen=1,@MaxZeilen=1,@ResultSetArt='NONE',

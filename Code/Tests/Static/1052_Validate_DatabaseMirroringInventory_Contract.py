@@ -425,8 +425,23 @@ def validate_contract(
             errors.append("physical ABI oracle must compare every column facet in both directions: " + facet)
     if "[c].[name] COLLATE SQL_Latin1_General_CP1_CS_AS AS [ColumnName]" not in abi_contract:
         errors.append("physical ABI column-name matching must be explicitly case-sensitive")
-    if "OPENJSON(@JsonNull,N'$.databaseMirroring')" not in runtime or "@NullFieldCount<>10" not in runtime:
-        errors.append("runtime fixture must prove a non-vacuous native all-NULL tempdb row")
+    expected_json_fields = "VALUES (N'DatabaseId',0),(N'DatabaseName',0),(N'MirroringState',1),(N'MirroringStateDesc',1),(N'MirroringRole',1),(N'MirroringRoleDesc',1),(N'MirroringSafetyLevel',1),(N'MirroringSafetyLevelDesc',1),(N'MirroringWitnessState',1),(N'MirroringWitnessStateDesc',1),(N'ConfiguredRedoQueueLimitMb',1),(N'RedoQueueLimitType',1);"
+    json_key_checks = (
+        "DECLARE @ExpectedJsonFields TABLE",
+        "DECLARE @ActualJsonFields TABLE",
+        expected_json_fields,
+        "IF (SELECT COUNT(*) FROM @ActualJsonFields)<>12",
+        "EXCEPT SELECT [FieldName] FROM @ActualJsonFields",
+        "EXCEPT SELECT [FieldName] FROM @ExpectedJsonFields",
+        "GROUP BY [FieldName] HAVING COUNT(*)<>1",
+        "WHERE ([e].[MustBeNull]=1 AND [a].[JsonType]<>0)",
+        "OR ([e].[MustBeNull]=0 AND [a].[JsonType]=0)",
+    )
+    if "OPENJSON(@JsonNull,N'$.databaseMirroring')" not in runtime:
+        errors.append("runtime fixture must inspect the one native tempdb JSON object")
+    for token in json_key_checks:
+        if token not in runtime:
+            errors.append("runtime fixture must prove all twelve JSON keys exactly once and all ten nullable values null: " + token)
     for sql_token in ("@MaxZeilen=1", "@SourceRows<2", "@MaxZeilen=0", "@MaxZeilen=NULL"):
         if sql_token not in runtime:
             errors.append("runtime limit cases must prove one-row and both unlimited forms: " + sql_token)
@@ -541,6 +556,10 @@ def main() -> int:
             ("ABI_ONE_WAY", "runtime", text["runtime"].replace("        OR EXISTS\n        (\n            SELECT [Ordinal]", "        OR FALSE\n        (\n            SELECT [Ordinal]", 1), "compare actual and expected metadata in both directions"),
             ("ABI_MISSING_FACET", "runtime", text["runtime"].replace("[c].[is_computed] AS [IsComputed]", "CAST(0 AS bit) AS [IsComputed]", 1), "compare every column facet in both directions"),
             ("ABI_CASE_INSENSITIVE_NAME", "runtime", text["runtime"].replace("[c].[name] COLLATE SQL_Latin1_General_CP1_CS_AS AS [ColumnName]", "[c].[name] AS [ColumnName]", 1), "compare every column facet in both directions"),
+            ("JSON_NULL_EXPECTATION", "runtime", text["runtime"].replace("N'MirroringRole',1", "N'MirroringRole',0", 1), "all twelve JSON keys exactly once and all ten nullable values null"),
+            ("JSON_KEY_SUBSTITUTION", "runtime", text["runtime"].replace("N'RedoQueueLimitType',1", "N'UnknownRedoQueueField',1", 1), "all twelve JSON keys exactly once and all ten nullable values null"),
+            ("JSON_KEY_UNIQUENESS", "runtime", text["runtime"].replace("GROUP BY [FieldName] HAVING COUNT(*)<>1", "GROUP BY [FieldName] HAVING COUNT(*)<>2", 1), "all twelve JSON keys exactly once and all ten nullable values null"),
+            ("JSON_EXTRA_KEY_DIRECTION", "runtime", text["runtime"].replace("EXCEPT SELECT [FieldName] FROM @ExpectedJsonFields", "EXCEPT SELECT [FieldName] FROM @ActualJsonFields", 1), "all twelve JSON keys exactly once and all ten nullable values null"),
             ("PARAM_SIGNATURE", "procedure", text["procedure"].replace("@MaxZeilen int = 1000", "@MaxZeilen int = 500", 1), "public parameter names"),
             ("HELP_PARAMETER", "procedure", text["procedure"].replace("@ErrorMessageOut nvarchar(2048)=NULL OUTPUT", "RemovedHelpParam", 1), "help parameter default or OUTPUT mode"),
             ("HELP_DEFAULT", "procedure", text["procedure"].replace("@MaxZeilen int=1000", "@MaxZeilen int=500", 1), "help parameter default or OUTPUT mode"),
