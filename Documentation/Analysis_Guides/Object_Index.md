@@ -229,3 +229,5 @@ Für einen Einstieg nach beobachtetem Problem verwenden Sie [Hier beginnen](Star
 - [USP_EndpointTransportAnalysis](Procedures/USP_EndpointTransportAnalysis.md) zeigt Endpoints, TCP-/Mirroringkonfiguration und begrenzte Transportverschlüsselungsevidenz.
 
 - [USP_UpgradeFeatureUsageAnalysis](Procedures/USP_UpgradeFeatureUsageAnalysis.md) trennt native Deprecated-Begegnungen von einer begrenzten Zielversionsregel.
+
+- [USP_DistributedTransactionInventory](Procedures/USP_DistributedTransactionInventory.md) zeigt begrenzte lokale SQL-Konfiguration und sichtbare verteilte Transaktionsmetadaten ohne externen Gesundheitsnachweis.

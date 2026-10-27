@@ -210,6 +210,8 @@ AS
         , (N'USP_EndpointTransportAnalysis','CONFIRM_WITH',N'USP_EncryptionAnalysis',1,N'Transportbefunde getrennt von Daten- und Backupverschlüsselung interpretieren.')
         , (N'USP_UpgradeFeatureUsageAnalysis','CONFIRM_WITH',N'USP_DatabasePortabilityAnalysis',1,N'Instanzweite Begegnungen getrennt von datenbankbezogenen Portabilitätsbefunden prüfen.')
         , (N'USP_UpgradeFeatureUsageAnalysis','CONFIRM_WITH',N'USP_ServerVersionInformation',2,N'Tatsächliche Engineversion und explizit gewählte Zielversion getrennt berücksichtigen.')
+        , (N'USP_DistributedTransactionInventory','CONFIRM_WITH',N'USP_LinkedServerAnalysis',1,N'Flagwerte beschreiben nur lokale SQL-Metadaten; Erreichbarkeit und MSDTC-Dienstzustand benötigen getrennte Evidenz.')
+        , (N'USP_DistributedTransactionInventory','CONFIRM_WITH',N'USP_CurrentTransactions',2,N'Aktive Transaktionsmetadaten sind kein Nachweis eines verteilten Commits oder einer Teilnehmergesundheit.')
     ) AS [v]
     (
           [FromProcedureName], [RelationType], [ToProcedureName]

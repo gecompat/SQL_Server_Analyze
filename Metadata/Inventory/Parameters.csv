@@ -2137,3 +2137,15 @@ USP_UpgradeFeatureUsageAnalysis,StatusCodeOut,varchar(40),NULL OUTPUT
 USP_UpgradeFeatureUsageAnalysis,IsPartialOut,bit,NULL OUTPUT
 USP_UpgradeFeatureUsageAnalysis,ErrorNumberOut,int,NULL OUTPUT
 USP_UpgradeFeatureUsageAnalysis,ErrorMessageOut,nvarchar(2048),NULL OUTPUT
+USP_DistributedTransactionInventory,MaxZeilen,int,1000
+USP_DistributedTransactionInventory,LockTimeoutMs,int,0
+USP_DistributedTransactionInventory,ResultSetArt,varchar(16),'CONSOLE'
+USP_DistributedTransactionInventory,ResultTablesJson,nvarchar(max),NULL
+USP_DistributedTransactionInventory,JsonErzeugen,bit,0
+USP_DistributedTransactionInventory,Json,nvarchar(max),NULL OUTPUT
+USP_DistributedTransactionInventory,PrintMeldungen,bit,1
+USP_DistributedTransactionInventory,Hilfe,bit,0
+USP_DistributedTransactionInventory,StatusCodeOut,varchar(40),NULL OUTPUT
+USP_DistributedTransactionInventory,IsPartialOut,bit,NULL OUTPUT
+USP_DistributedTransactionInventory,ErrorNumberOut,int,NULL OUTPUT
+USP_DistributedTransactionInventory,ErrorMessageOut,nvarchar(2048),NULL OUTPUT

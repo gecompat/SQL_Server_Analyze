@@ -58,12 +58,13 @@ REQUIRED_DOMAINS = {
     "EXTERNAL_SCOPE",
 }
 
-# Cohort credit is limited to these two delivered bounded slices, never any partial row.
+# Only named bounded deliveries may convert a researched gap into partial coverage.
 KNOWN_RESEARCH_TO_PARTIAL_KEYS = {
     "DEPRECATION_BREAKING_CHANGE",
     "RLS_DYNAMIC_MASKING",
+    "DISTRIBUTED_TRANSACTIONS",
 }
-RESEARCH_GAP_COHORT_FLOOR = 25  # Preserve 24 researched gaps plus deprecation promotion.
+RESEARCH_GAP_COHORT_FLOOR = 25  # Preserve the explicit research-gap cohort across named promotions.
 
 REQUIRED_KEYS = {
     "LINUX_CONTAINER_LIMITS",
@@ -241,7 +242,8 @@ def coverage_fixture() -> list[dict[str, str]]:
     researched = {
         'DEPRECATION_BREAKING_CHANGE',
         'RLS_DYNAMIC_MASKING',
-        *(f'SAMPLE_AREA_{index:03d}' for index in range(23)),
+        'DISTRIBUTED_TRANSACTIONS',
+        *(f'SAMPLE_AREA_{index:03d}' for index in range(22)),
     }
     out_of_scope = {f'SAMPLE_AREA_{index:03d}' for index in range(23, 27)}
     domains = sorted(REQUIRED_DOMAINS)
@@ -289,6 +291,13 @@ def self_test() -> None:
     if validate_rows(list(EXPECTED_FIELDS), current_promotions):
         raise AssertionError('RLS and deprecation promotions were rejected')
 
+    distributed_promotion = [dict(row) for row in prior_promotion_state]
+    for row in distributed_promotion:
+        if row['CoverageKey'] == 'DISTRIBUTED_TRANSACTIONS':
+            row['CoverageStatus'] = 'PARTIAL_PRODUCT_FUNCTION'
+    if validate_rows(list(EXPECTED_FIELDS), distributed_promotion):
+        raise AssertionError('named MSDTC promotion was rejected')
+
     unrelated_promotion = [dict(row) for row in prior_promotion_state]
     for row in unrelated_promotion:
         if row['CoverageKey'] == 'SAMPLE_AREA_000':
@@ -301,18 +310,18 @@ def self_test() -> None:
 
     dropped_required_key = [
         dict(row)
-        for row in current_promotions
-        if row['CoverageKey'] != 'RLS_DYNAMIC_MASKING'
+        for row in distributed_promotion
+        if row['CoverageKey'] != 'DISTRIBUTED_TRANSACTIONS'
     ]
     errors = validate_rows(list(EXPECTED_FIELDS), dropped_required_key)
-    if not any('required coverage area missing: RLS_DYNAMIC_MASKING' in e for e in errors):
-        raise AssertionError('dropped RLS key was accepted')
+    if not any('required coverage area missing: DISTRIBUTED_TRANSACTIONS' in e for e in errors):
+        raise AssertionError('dropped MSDTC key was accepted')
     if not any('too few explicit researched gaps' in e for e in errors):
         raise AssertionError('dropped promotion reduced the cohort unnoticed')
 
-    invalid_status = [dict(row) for row in current_promotions]
+    invalid_status = [dict(row) for row in distributed_promotion]
     for row in invalid_status:
-        if row['CoverageKey'] == 'RLS_DYNAMIC_MASKING':
+        if row['CoverageKey'] == 'DISTRIBUTED_TRANSACTIONS':
             row['CoverageStatus'] = 'UNKNOWN_STATUS'
     errors = validate_rows(list(EXPECTED_FIELDS), invalid_status)
     if not any('unknown coverage status' in e for e in errors):
