@@ -494,6 +494,16 @@ Mutationstests. Die vorhandene CurrentRequests-Prüfung 1039 bindet weiterhin
 Tabellenreihenfolge und Feldschemas. Der Installationsartefakt-Neubau verwendet
 den bestehenden Builder; es entsteht kein zusätzlicher Runner. Der lokale
 Abschluss führt die betroffenen statischen Prüfungen und Selbsttests aus.
-Funktionale Abnahme erfolgt nach Review über vorhandene impact-basierte
-SQL2025-Tests; zusätzliche lokale SQL- oder Native-Läufe werden nicht
-angesetzt. Verlässliche Token- und Kostenmessungen liegen nicht vor.
+Funktionale Abnahme erfolgt nach Review über die 14 vom bestehenden Selector
+gewählten SQL2025-Verträge, einschließlich der Callerprüfung mit Timeout 137.
+Der unveränderte funktionale Workflow führt davor weiterhin seine native
+Deploymentregression aus. Diese zusätzliche bestehende Prüfung wird für den
+Kandidaten erhalten; eine spätere Verengung benötigt eine eigene begründete
+Änderung. Lokale SQL-Instanzen und zusätzliche native Engines werden nicht
+gestartet.
+
+Der versionierte OPS-005-Adapter enthält den generierten Vollinstaller und
+muss nach der kanonischen Quelländerung ebenfalls neu gebaut werden.
+Adapterbuilder und Bytevergleich laufen offline. Die bestehende statische
+TestLab-Cleanupprüfung wird durch die Adapteränderung ausgelöst; es entsteht
+kein Provider-Lab. Verlässliche Token- und Kostenmessungen liegen nicht vor.
