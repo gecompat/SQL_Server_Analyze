@@ -45,6 +45,15 @@ Array-Suchoption, Pfadanzahl und Disabled-Status. Konkrete SQL/JSON-Pfade
 bleiben dem enger gefilterten `USP_ObjectInventory` vorbehalten;
 JSON-Dokumentwerte werden in keinem der beiden Pfade gelesen.
 
+Die Erkennung von `sys.vector_indexes` und `sys.query_store_replicas`
+verwendet `sys.all_views` mit dem Schemafilter `sys`, damit Systemviews
+berücksichtigt werden. Ein vorhandener Vector-Katalog ohne sichtbare
+Indexzeilen liefert keine `VECTOR`-Zeile in `specialIndexes`; diese leere
+Menge führt nicht zu `UNAVAILABLE_VERSION`. Die Query-Store-Replica-Capability
+wird bei vorhandenem Katalog als `AVAILABLE` gemeldet. Bei aktivierter
+Replica-Option enthält `QUERY_STORE_REPLICA_GROUP_COUNT` die sichtbare
+Gruppenzahl, einschließlich eines gemessenen Nullwerts.
+
 ## Eine Zeile bedeutet
 
 Im Serverresultset identifiziert `(ScopeName, FeatureName)` eine Capability. Im Datenbankresultset gilt `(DatabaseName, FeatureName)`, im Spezialindexresultset eine konkrete Indexidentität aus Datenbank, Schema, Objekt und Index. Eine Warnungszeile steht für einen fehlgeschlagenen Datenbank- oder Selektionspfad; diese Granularitäten dürfen nicht miteinander gezählt oder gejoint werden, ohne den Resultsettyp zu erhalten.

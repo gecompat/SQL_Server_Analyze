@@ -53,6 +53,7 @@ def validate_contract(
     guide: str,
     coverage: str,
     maturity: str,
+    dossier: str = "",
 ) -> list[str]:
     errors: list[str] = []
     code = strip_comments(procedure)
@@ -248,9 +249,7 @@ def validate_contract(
     coverage_row = next((row for row in _csv_rows(coverage) if row.get("CoverageKey") == "DISTRIBUTED_TRANSACTIONS"), None)
     if not coverage_row or coverage_row.get("CoverageStatus") != "PARTIAL_PRODUCT_FUNCTION":
         errors.append("MSDTC coverage is not recorded as the bounded partial product slice")
-    maturity_row = next((row for row in _csv_rows(maturity) if row.get("PrimaryProcedure") == "USP_DistributedTransactionInventory"), None)
-    if not maturity_row or maturity_row.get("Maturity") != "PLANNED" or maturity_row.get("CIEvidence2025") != "NO":
-        errors.append("module maturity/evidence overclaims before exact-head CI")
+    errors.extend(validate_maturity_evidence(maturity, dossier))
 
     return errors
 
@@ -274,6 +273,57 @@ def _csv_rows(value: str):
     return list(csv.DictReader(io.StringIO(value, newline="")))
 
 
+def _set_csv_value(value: str, column: str, replacement: str) -> str:
+    import io
+    reader = csv.DictReader(io.StringIO(value, newline=""))
+    rows = list(reader)
+    for row in rows:
+        if row.get("PrimaryProcedure") == "USP_DistributedTransactionInventory":
+            row[column] = replacement
+    output = io.StringIO(newline="")
+    writer = csv.DictWriter(output, fieldnames=reader.fieldnames, lineterminator="\n")
+    writer.writeheader()
+    writer.writerows(rows)
+    return output.getvalue()
+
+
+def validate_maturity_evidence(maturity: str, dossier: str) -> list[str]:
+    errors: list[str] = []
+    maturity_row = next((row for row in _csv_rows(maturity) if row.get("PrimaryProcedure") == "USP_DistributedTransactionInventory"), None)
+    if not maturity_row:
+        return ["MSDTC module maturity row is missing"]
+    if maturity_row.get("Maturity") != "PLANNED":
+        errors.append("MSDTC module maturity must remain PLANNED until separately authorized closeout")
+    for version in ("2019", "2022"):
+        if maturity_row.get(f"CIEvidence{version}") != "NO":
+            errors.append(f"SQL Server {version} evidence is unqualified")
+    evidence_2025 = maturity_row.get("CIEvidence2025")
+    if evidence_2025 not in {"NO", "YES"}:
+        errors.append("SQL Server 2025 evidence must be NO or bound to a verified functional qualification")
+    elif evidence_2025 == "YES":
+        notes = maturity_row.get("Notes") or ""
+        note_heads = set(re.findall(r"\b[0-9a-f]{40}\b", notes, re.IGNORECASE))
+        dossier_heads = set(re.findall(r"\b[0-9a-f]{40}\b", dossier, re.IGNORECASE))
+        note_runs = set(re.findall(r"\bRun\s+([0-9]{10,})\b", notes, re.IGNORECASE))
+        dossier_runs = set(re.findall(r"actions/runs/([0-9]{10,})\b", dossier, re.IGNORECASE))
+        evidence_is_cross_bound = (
+            len(note_heads) == 1 and note_heads == dossier_heads
+            and len(note_runs) == 1 and note_runs == dossier_runs
+            and re.search(r"(?<![A-Za-z0-9_])full_suite=true(?![A-Za-z0-9_])", notes, re.IGNORECASE) is not None
+            and re.search(r"(?<![A-Za-z0-9_])full_suite=true(?![A-Za-z0-9_])", dossier, re.IGNORECASE) is not None
+            and "runtime contract 140" in notes.lower()
+            and "exactly once" in notes.lower()
+            and re.search(r"phase[- ]7", notes, re.IGNORECASE) is not None
+            and "gebundene head-evidenz" in dossier.lower()
+            and "140_distributedtransactioninventory_runtime_contract.sql" in dossier.lower()
+            and "genau einmal" in dossier.lower()
+            and "phase-7" in dossier.lower()
+        )
+        if not evidence_is_cross_bound:
+            errors.append("SQL Server 2025 YES requires matching source-head/run evidence in maturity notes and the bound dossier")
+    return errors
+
+
 def repository_errors(root: Path) -> list[str]:
     def read(relative: str) -> str:
         return (root / relative).read_text(encoding="utf-8-sig")
@@ -283,6 +333,7 @@ def repository_errors(root: Path) -> list[str]:
         read("Metadata/Inventory/ResultSets.csv"), read("Code/01_Common/021_VW_AnalysisCatalog.sql"),
         read("Documentation/Analysis_Guides/Procedures/USP_DistributedTransactionInventory.md"),
         read("Metadata/Quality/Diagnostic_Coverage_Landscape.csv"), read("Metadata/Inventory/Module_Maturity.csv"),
+        read("AI_Metadata/Internal_Documentation/Architecture/MSDTC_Distributed_Transaction_Inventory_Dossier.md"),
     )
 
 
@@ -290,6 +341,8 @@ def self_test() -> None:
     root = Path(__file__).resolve().parents[3]
     procedure = (root / PROCEDURE).read_text(encoding="utf-8")
     runtime = (root / RUNTIME).read_text(encoding="utf-8")
+    maturity = (root / "Metadata/Inventory/Module_Maturity.csv").read_text(encoding="utf-8")
+    dossier = (root / "AI_Metadata/Internal_Documentation/Architecture/MSDTC_Distributed_Transaction_Inventory_Dossier.md").read_text(encoding="utf-8")
     if validate_contract(
         procedure, runtime, (root / INSTALLER).read_text(encoding="utf-8"),
         (root / RELEASE_GATE).read_text(encoding="utf-8"),
@@ -299,9 +352,29 @@ def self_test() -> None:
         (root / "Code/01_Common/021_VW_AnalysisCatalog.sql").read_text(encoding="utf-8"),
         (root / "Documentation/Analysis_Guides/Procedures/USP_DistributedTransactionInventory.md").read_text(encoding="utf-8"),
         (root / "Metadata/Quality/Diagnostic_Coverage_Landscape.csv").read_text(encoding="utf-8"),
-        (root / "Metadata/Inventory/Module_Maturity.csv").read_text(encoding="utf-8"),
+        maturity,
+        dossier,
     ):
         raise AssertionError("current contract fixture failed")
+    prequalification = _set_csv_value(_set_csv_value(maturity, "CIEvidence2025", "NO"), "Notes", "")
+    if validate_maturity_evidence(prequalification, ""):
+        raise AssertionError("prequalification SQL Server 2025 NO fixture was rejected")
+    if validate_maturity_evidence(maturity, dossier):
+        raise AssertionError("bound SQL Server 2025 source-head/run qualification was rejected")
+    unbound_yes = _set_csv_value(maturity, "Notes", "")
+    if not any("SQL Server 2025 YES requires matching" in error for error in validate_maturity_evidence(unbound_yes, dossier)):
+        raise AssertionError("unbound SQL Server 2025 YES mutation escaped")
+    maturity_notes = next(row["Notes"] for row in _csv_rows(maturity) if row.get("PrimaryProcedure") == "USP_DistributedTransactionInventory")
+    mislabeled_suite = _set_csv_value(maturity, "Notes", maturity_notes.replace("full_suite=true", "source_full_suite=true", 1))
+    if not any("SQL Server 2025 YES requires matching" in error for error in validate_maturity_evidence(mislabeled_suite, dossier)):
+        raise AssertionError("incorrect CI suite-field label mutation escaped")
+    for version in ("2019", "2022"):
+        unsupported_version = _set_csv_value(maturity, f"CIEvidence{version}", "YES")
+        if not any(f"SQL Server {version} evidence is unqualified" in error for error in validate_maturity_evidence(unsupported_version, dossier)):
+            raise AssertionError(f"unsupported SQL Server {version} YES mutation escaped")
+    complete_maturity = _set_csv_value(maturity, "Maturity", "COMPLETE")
+    if not any("must remain PLANNED" in error for error in validate_maturity_evidence(complete_maturity, dossier)):
+        raise AssertionError("maturity COMPLETE mutation escaped")
     mutated_native_name = procedure.replace("[t].[transaction_begin_time]", "[t].[begin_time]")
     if not any("exact documented names" in error for error in validate_contract(
         mutated_native_name, runtime, "", "", "", "", "", "", "", "", ""

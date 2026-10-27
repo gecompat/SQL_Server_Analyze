@@ -4,8 +4,8 @@ GO
 /*
 ===============================================================================
 Objekt       : monitor.USP_ServerFeatureCapabilities
-Version      : 3.2.0
-Stand        : 2026-07-23
+Version      : 3.2.1
+Stand        : 2026-10-27
 Typ          : Stored Procedure
 Zweck        : Erkennt zusätzliche Diagnosefunktionen versionsadaptiv für eine
                explizite Datenbankliste oder alle zulässigen Datenbanken.
@@ -21,7 +21,9 @@ Ausgabe      : RAW/CONSOLE/NONE sowie JSON mit benannten Arrays.
 Locking      : Systemkataloge READUNCOMMITTED/NOLOCK; kein OBJECT_ID-Aufruf für
                versionsabhängige Objekterkennung. Der vorherige LOCK_TIMEOUT
                wird wiederhergestellt.
-Änderungen   : 3.2.0 - SQL25-002: JSON-Indizes mit Array-Option und
+Änderungen   : 3.2.1 - Systemkataloge für Vector-Indizes und Query-Store-Replikas
+                         über sys.all_views statt sys.views erkennen.
+               3.2.0 - SQL25-002: JSON-Indizes mit Array-Option und
                          Pfadanzahl capability-adaptiv inventarisiert.
                3.1.0 - External-Runtime- und SQL-CLR-Quellen ergänzt.
                3.0.0 - @AlleDatenbanken entfernt; zentraler Datenbankvertrag,
@@ -224,7 +226,7 @@ BEGIN
                 SET @Sql = N'USE ' + QUOTENAME(@Db) + N';
 DECLARE @HasQueryStoreReplicas bit = CONVERT(bit,CASE WHEN EXISTS
 (
-    SELECT 1 FROM [sys].[views] AS [v] WITH (NOLOCK)
+    SELECT 1 FROM [sys].[all_views] AS [v] WITH (NOLOCK)
     INNER JOIN [sys].[schemas] AS [s] WITH (NOLOCK) ON [s].[schema_id]=[v].[schema_id]
     WHERE [s].[name]=N''sys'' AND [v].[name]=N''query_store_replicas''
 ) THEN 1 ELSE 0 END);
@@ -255,7 +257,7 @@ IF @IncludeSpecialIndexes=1
 BEGIN
     IF EXISTS
     (
-        SELECT 1 FROM [sys].[views] AS [v] WITH (NOLOCK)
+        SELECT 1 FROM [sys].[all_views] AS [v] WITH (NOLOCK)
         INNER JOIN [sys].[schemas] AS [s] WITH (NOLOCK) ON [s].[schema_id]=[v].[schema_id]
         WHERE [s].[name]=N''sys'' AND [v].[name]=N''vector_indexes''
     )

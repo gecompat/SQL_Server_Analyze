@@ -1,5 +1,12 @@
 # Releaseübersicht
 
+`USP_ServerFeatureCapabilities` 3.2.1 erkennt die Systemkataloge für
+Vector-Indizes und Query-Store-Replikas über `sys.all_views`. Vorhandene
+SQL-Server-2025-Kataloge werden dadurch nicht mehr wegen der auf
+Benutzerviews begrenzten Suche über `sys.views` als nicht verfügbar gemeldet.
+Die Ausgabearten und die bestehenden Options- und Fallbackverträge bleiben
+erhalten.
+
 
 SSIS: Die optionale lokale Übergabe über `Invoke-SsisQualifiedHandover.ps1`
 und `@LocalHandoverId` bindet einen unabhängig freigegebenen Hostbuild und
@@ -17,7 +24,7 @@ Datenbanksicherheit: `USP_DatabasePrincipalAnalysis` ergänzt sichtbare Datenban
 
 Die neue `USP_CurrentCallerPermissionAnalysis` zeigt native effektive SERVER-/DATABASE-Rechte des aktuellen Ausführungskontexts mit getrennten Quellen und numerischer Kontextbindung. Ein konkreter Objekt- oder Statementzugriff bleibt eine getrennte Prüfung.
 
-MSDTC: Der Quellinstaller ergänzt ein begrenztes SQL-sichtbares Inventar für remote-proc-Konfiguration, caller-sichtbare Linked-Server-Promotionflags und aktive verteilte Transaktionsmetadaten. Externe Dienst-, Netzwerk-, Commit- und Recoverygesundheit sowie positive aktive DTC-Runtime-Evidenz bleiben offen; die SQL-2025-Head-Abnahme steht aus.
+MSDTC: Der Quellinstaller ergänzt ein begrenztes SQL-sichtbares Inventar für remote-proc-Konfiguration, caller-sichtbare Linked-Server-Promotionflags und aktive verteilte Transaktionsmetadaten. Externe Dienst-, Netzwerk-, Commit- und Recoverygesundheit sowie positive aktive DTC-Runtime-Evidenz bleiben offen; die begrenzte SQL-2025-Abnahme ist für Source-Head `51c20d0` durch [Run 40555564808](https://github.com/gecompat/SQL_Server_Analyze/actions/runs/40555564808) belegt. Dieser Eintrag dokumentiert den CI1-Nachweis für den gebundenen Source-Head; der jeweilige Head- und Integrationsstatus ist in den [Livechecks von PR #479](https://github.com/gecompat/SQL_Server_Analyze/pull/479) nachzuverfolgen.
 
 Endpointdiagnostik: `USP_EndpointTransportAnalysis` ergänzt sichtbare Engineendpoints, TCP-/Mirroringkonfiguration und gruppierte native Verbindungsflags. HADR-Flags und logische MARS-Zeilen erhalten eigene Aussagegrenzen; TLS-Version, Cipher und Zertifikatsvertrauen werden nicht daraus abgeleitet.
 
