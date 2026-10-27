@@ -216,6 +216,27 @@ def table_schema_oracle_errors(fixture: str) -> list[str]:
     return errors
 
 
+def principal_context_errors(fixture: str) -> list[str]:
+    errors: list[str] = []
+    patterns = (
+        ("server login creation must execute in master", r"SET @Sql=N'CREATE LOGIN '\s*\+\s*QUOTENAME\(@RestrictedLogin\).*?EXEC \[master\]\.\[sys\]\.\[sp_executesql\] @Sql;"),
+        ("framework user creation must execute in the framework database", r"SET @Sql=N'CREATE USER '\s*\+\s*QUOTENAME\(@RestrictedUser\).*?EXEC \[sys\]\.\[sp_executesql\] @Sql;"),
+        ("synthetic database user creation must execute after selecting that database", r"SET @Sql=N'USE '\s*\+\s*QUOTENAME\(@DbA\)\s*\+\s*N'; CREATE USER '\s*\+\s*QUOTENAME\(@RestrictedUser\).*?EXEC \[master\]\.\[sys\]\.\[sp_executesql\] @Sql;"),
+        ("normal cleanup must drop the synthetic database user after selecting that database", r"SET @Sql=N'USE '\s*\+\s*QUOTENAME\(@DbA\)\s*\+\s*N'; DROP USER '\s*\+\s*QUOTENAME\(@RestrictedUser\)\s*\+\s*N';';\s*EXEC \[master\]\.\[sys\]\.\[sp_executesql\] @Sql;"),
+        ("normal cleanup must drop the framework user in its owning database", r"SET @Sql=N'DROP USER '\s*\+\s*QUOTENAME\(@RestrictedUser\)\s*\+\s*N';';\s*EXEC \[sys\]\.\[sp_executesql\] @Sql;"),
+        ("normal cleanup must revoke the server grant and drop the login in master", r"SET @Sql=N'REVOKE VIEW ANY DATABASE FROM '\s*\+\s*QUOTENAME\(@RestrictedLogin\)\s*\+\s*N'; DROP LOGIN '\s*\+\s*QUOTENAME\(@RestrictedLogin\)\s*\+\s*N';';\s*EXEC \[master\]\.\[sys\]\.\[sp_executesql\] @Sql;"),
+        ("failure cleanup must drop the framework user in its owning database", r"IF @RestrictedLogin IS NOT NULL AND USER_ID\(@RestrictedUser\) IS NOT NULL BEGIN SET @Sql=N'DROP USER '\s*\+\s*QUOTENAME\(@RestrictedUser\)\s*\+\s*N';'; EXEC \[sys\]\.\[sp_executesql\] @Sql; END;"),
+        ("failure cleanup must drop the synthetic database user after selecting that database", r"IF @RestrictedLogin IS NOT NULL AND DB_ID\(@DbA\) IS NOT NULL BEGIN SET @Sql=N'USE '\s*\+\s*QUOTENAME\(@DbA\)\s*\+\s*N'; IF USER_ID\(.*?DROP USER '\s*\+\s*QUOTENAME\(@RestrictedUser\).*?EXEC \[master\]\.\[sys\]\.\[sp_executesql\] @Sql; END;"),
+        ("failure cleanup must revoke the server grant and drop the login in master", r"IF @RestrictedLogin IS NOT NULL AND SUSER_ID\(@RestrictedLogin\) IS NOT NULL BEGIN SET @Sql=N'REVOKE VIEW ANY DATABASE FROM '\s*\+\s*QUOTENAME\(@RestrictedLogin\).*?EXEC \[master\]\.\[sys\]\.\[sp_executesql\] @Sql; END;"),
+    )
+    for message, pattern in patterns:
+        if re.search(pattern, fixture, re.DOTALL) is None:
+            errors.append(message)
+    if re.search(r"SET @Sql=N'DROP USER '\s*\+\s*QUOTENAME\(@RestrictedUser\)\s*\+\s*N';\s*REVOKE VIEW ANY DATABASE FROM", fixture):
+        errors.append("framework-scoped user cleanup must not be combined with server-scoped login cleanup")
+    return errors
+
+
 def validate(root: Path) -> list[str]:
     errors: list[str] = []
     source = (root / SOURCE).read_text(encoding="utf-8-sig")
@@ -300,6 +321,7 @@ def validate(root: Path) -> list[str]:
     errors.extend(table_assertion_errors(fixture))
     errors.extend(table_target_seed_errors(fixture))
     errors.extend(table_schema_oracle_errors(fixture))
+    errors.extend(principal_context_errors(fixture))
     schema_batch_error = fixture_schema_batch_error(fixture)
     if schema_batch_error:
         errors.append(schema_batch_error)
@@ -378,6 +400,19 @@ def main() -> int:
         schema_compare = "ROW_NUMBER() OVER(PARTITION BY [v].[ResultName] ORDER BY [c].[column_id]) " * 2
         assert table_schema_oracle_errors(schema_oracles + schema_compare) == []
         assert table_schema_oracle_errors(schema_oracles.replace("[CapturedAtUtc] datetime2(3)", "[CapturedAtUtc] datetime2(7)") + schema_compare)
+        principal_setup = """
+SET @Sql=N'CREATE LOGIN '+QUOTENAME(@RestrictedLogin)+N';'; EXEC [master].[sys].[sp_executesql] @Sql;
+SET @Sql=N'CREATE USER '+QUOTENAME(@RestrictedUser)+N';'; EXEC [sys].[sp_executesql] @Sql;
+SET @Sql=N'USE '+QUOTENAME(@DbA)+N'; CREATE USER '+QUOTENAME(@RestrictedUser)+N';'; EXEC [master].[sys].[sp_executesql] @Sql;
+SET @Sql=N'USE '+QUOTENAME(@DbA)+N'; DROP USER '+QUOTENAME(@RestrictedUser)+N';'; EXEC [master].[sys].[sp_executesql] @Sql;
+SET @Sql=N'DROP USER '+QUOTENAME(@RestrictedUser)+N';'; EXEC [sys].[sp_executesql] @Sql;
+SET @Sql=N'REVOKE VIEW ANY DATABASE FROM '+QUOTENAME(@RestrictedLogin)+N'; DROP LOGIN '+QUOTENAME(@RestrictedLogin)+N';'; EXEC [master].[sys].[sp_executesql] @Sql;
+IF @RestrictedLogin IS NOT NULL AND DB_ID(@DbA) IS NOT NULL BEGIN SET @Sql=N'USE '+QUOTENAME(@DbA)+N'; IF USER_ID('+QUOTENAME(@RestrictedUser,'''')+N') IS NOT NULL DROP USER '+QUOTENAME(@RestrictedUser)+N';'; EXEC [master].[sys].[sp_executesql] @Sql; END;
+IF @RestrictedLogin IS NOT NULL AND USER_ID(@RestrictedUser) IS NOT NULL BEGIN SET @Sql=N'DROP USER '+QUOTENAME(@RestrictedUser)+N';'; EXEC [sys].[sp_executesql] @Sql; END;
+IF @RestrictedLogin IS NOT NULL AND SUSER_ID(@RestrictedLogin) IS NOT NULL BEGIN SET @Sql=N'REVOKE VIEW ANY DATABASE FROM '+QUOTENAME(@RestrictedLogin)+N'; DROP LOGIN '+QUOTENAME(@RestrictedLogin)+N';'; EXEC [master].[sys].[sp_executesql] @Sql; END;
+"""
+        assert principal_context_errors(principal_setup) == []
+        assert principal_context_errors(principal_setup.replace("DROP USER '+QUOTENAME(@RestrictedUser)+N';'; EXEC [sys]", "DROP USER '+QUOTENAME(@RestrictedUser)+N';'; EXEC [master].[sys]"))
         print("RLS and masking inventory validator self-test passed.")
         return 0
     errors = validate(args.repository_root.resolve())

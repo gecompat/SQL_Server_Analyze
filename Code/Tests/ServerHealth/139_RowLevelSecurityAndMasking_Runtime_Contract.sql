@@ -305,7 +305,9 @@ BEGIN
         CLOSE [RlsMaskDeniedSources]; DEALLOCATE [RlsMaskDeniedSources];
         SET @Sql=N'USE '+QUOTENAME(@DbA)+N'; DROP USER '+QUOTENAME(@RestrictedUser)+N';';
         EXEC [master].[sys].[sp_executesql] @Sql;
-        SET @Sql=N'DROP USER '+QUOTENAME(@RestrictedUser)+N'; REVOKE VIEW ANY DATABASE FROM '+QUOTENAME(@RestrictedLogin)+N'; DROP LOGIN '+QUOTENAME(@RestrictedLogin)+N';';
+        SET @Sql=N'DROP USER '+QUOTENAME(@RestrictedUser)+N';';
+        EXEC [sys].[sp_executesql] @Sql;
+        SET @Sql=N'REVOKE VIEW ANY DATABASE FROM '+QUOTENAME(@RestrictedLogin)+N'; DROP LOGIN '+QUOTENAME(@RestrictedLogin)+N';';
         EXEC [master].[sys].[sp_executesql] @Sql;
         SET @RestrictedLogin=NULL; SET @RestrictedUser=NULL;
         SET @Sql=N'SET LOCK_TIMEOUT '+CONVERT(nvarchar(20),@OriginalLock)+N';'; EXEC [sys].[sp_executesql] @Sql;
