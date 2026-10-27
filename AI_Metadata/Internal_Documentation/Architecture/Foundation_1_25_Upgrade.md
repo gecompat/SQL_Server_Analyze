@@ -474,3 +474,26 @@ und Gegenbeispiele enthalten ausschließlich synthetische Daten; es gibt keine
 zusätzlichen Modellaufrufe zur Bestätigung grüner Ausgaben. Belastbare Token-
 und Kostenmessungen liegen nicht vor. Die abschließenden CI-Gates des
 aktuellen Kandidaten stehen noch aus.
+
+### Verarbeitungsaufwand der begrenzten CurrentRequests-Temp-DDL in Schritt 37
+
+Die drei zusammenhängenden Gruppen eigener lokaler Temp-Tabellen in
+`USP_CurrentRequests` erhalten während der jeweiligen DDL ein Timeout von
+1000 ms. Jede Gruppe fängt DDL-Fehler, stellt den zuvor geltenden Timeout
+wieder her und wirft den Fehler erneut. Vor Quelllesungen, fremder
+Zieltabellenprüfung und Parent-Snapshot-Lesezugriffen gilt weiterhin
+`LOCK_TIMEOUT 0`. Die Tabellenreihenfolge, Schemas, API und Quellenverträge
+bleiben unverändert. Die Änderung kann kurze TempDB-Metadatenkollisionen
+abfangen; anhaltende Kollisionen können weiterhin mit 1222 enden.
+
+Der bekannte CI-Fehllauf enthält keinen erfassten Blocker. Die konkrete
+Sperrursache bleibt UNKNOWN; die Änderung belegt nicht, dass eigene Temp-DDL
+den Fehllauf verursacht hat. Die bestehende statische Prüfung 950 ergänzt
+einen lokalen Strukturvertrag für die drei DDL-Gruppen und gezielte
+Mutationstests. Die vorhandene CurrentRequests-Prüfung 1039 bindet weiterhin
+Tabellenreihenfolge und Feldschemas. Der Installationsartefakt-Neubau verwendet
+den bestehenden Builder; es entsteht kein zusätzlicher Runner. Der lokale
+Abschluss führt die betroffenen statischen Prüfungen und Selbsttests aus.
+Funktionale Abnahme erfolgt nach Review über vorhandene impact-basierte
+SQL2025-Tests; zusätzliche lokale SQL- oder Native-Läufe werden nicht
+angesetzt. Verlässliche Token- und Kostenmessungen liegen nicht vor.
