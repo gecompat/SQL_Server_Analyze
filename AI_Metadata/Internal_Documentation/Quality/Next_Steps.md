@@ -13,7 +13,7 @@ stehen in der [Entwicklungsplanung](Development_Waves_2026-10.md).
 Abgeschlossene SSIS-Wellen werden nicht wiederholt; die bestehende SSISDB
 bleibt erhalten. Frühere separate Aufträge sind nachfolgend historisch geführt.
 
-### Aktueller Checkpoint nach Schritt 41
+### Aktueller Checkpoint nach Schritt 42
 
 Schritt 39 konkretisierte MSDTC im [Dossier](../Architecture/MSDTC_Distributed_Transaction_Inventory_Dossier.md); Schritt 40 implementiert den begrenzten SQL-sichtbaren read-only-Slice in `USP_DistributedTransactionInventory`. Die funktionale SQL-2025-Head-Prüfung für Commit `51c20d073ac0faceef3fad0fb7485f1b4c6e8178` bestand in [Run 40555564808](https://github.com/gecompat/SQL_Server_Analyze/actions/runs/40555564808); `full_suite=true`, Vertrag 140 ist genau einmal im kanonischen Phase-7-Fail-fast-Gate enthalten. SQL-Erfolgsstdout wurde nicht exportiert, ein separater PASS-Marker liegt nicht vor. Im CI1 scheiterte die Dokumentationsprüfung an der Source-Closure-Erwartung 202 statt 203; die Zählung ist lokal korrigiert und der fokussierte Test besteht. Dieser Absatz dokumentiert den CI1-Snapshot; der jeweilige Head- und Integrationsstatus wird in den [Livechecks von PR #479](https://github.com/gecompat/SQL_Server_Analyze/pull/479) nachverfolgt. Ein Modul-Reifeabschluss bleibt offen; die Coverage ist partiell, die Reifematrix PLANNED. Positive aktive DTC-Zeile, verteilte Commit-/Recovery-Evidenz und externe MSDTC-/Teilnehmergesundheit bleiben unqualifiziert; SQL-Server 2019/2022 wurden nicht separat qualifiziert.
 

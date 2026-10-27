@@ -231,3 +231,4 @@ Für einen Einstieg nach beobachtetem Problem verwenden Sie [Hier beginnen](Star
 - [USP_UpgradeFeatureUsageAnalysis](Procedures/USP_UpgradeFeatureUsageAnalysis.md) trennt native Deprecated-Begegnungen von einer begrenzten Zielversionsregel.
 
 - [USP_DistributedTransactionInventory](Procedures/USP_DistributedTransactionInventory.md) zeigt begrenzte lokale SQL-Konfiguration und sichtbare verteilte Transaktionsmetadaten ohne externen Gesundheitsnachweis.
+- [USP_DatabaseMirroringInventory](Procedures/USP_DatabaseMirroringInventory.md) zeigt native Mirroring-Felder für sichtbare ONLINE-Datenbanken, ohne positive Mirror-Rollenqualifikation für RESTORING-Datenbanken.

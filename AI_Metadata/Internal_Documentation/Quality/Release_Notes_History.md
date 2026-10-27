@@ -389,3 +389,7 @@ Der Basisstand vor `1.1.0-special.1` wurde nach Angabe des Projektverantwortlich
 <!-- END API_15_STATEMENT_CONTEXT -->
 
 - `PLAN-001`: eigenständig installierbarer Execution-Plan-Kern mit statementgenauer Operatoranalyse, Evidence JSON, Statistik-/Histogrammkorrelation, `DERIVED_ONLY`-Datenschutzdefault und Integration in den Gesamtinstaller. Der öffentliche V1-Vertrag ist eingefroren. Commit `6938e813b62634b48106852f8e7954c4bd262698` hat Gesamtgate und Permission Matrix auf [SQL Server 2019](https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29851011360), [SQL Server 2022](https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29851011381) und [SQL Server 2025](https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29850785277) bestanden; der 2025-Lauf enthält zusätzlich isolierten Teilinstallervertrag und Regex Matrix. Der [Output-Pilot](https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29851011377) ist auf allen drei Zielversionen erfolgreich.
+
+## Schritt 43 – Database Mirroring Inventar
+
+monitor.USP_DatabaseMirroringInventory liefert ein begrenztes read-only-Kataloginventar für ausgewählte ONLINE-Datenbanken. Das Modul bleibt PARTIAL_PRODUCT_FUNCTION und die Reifematrix PLANNED; positive Mirror-Rollenbeobachtung, native 2019/2022-Qualifikation und Windows-Topologie sind nicht nachgewiesen.

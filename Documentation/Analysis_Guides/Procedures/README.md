@@ -189,3 +189,4 @@ Jede Seite weist jetzt Entscheidungseinsatz, Nichtziele, Resultset-Leserichtung,
 - [USP_UpgradeFeatureUsageAnalysis](USP_UpgradeFeatureUsageAnalysis.md) zeigt instanzweite Deprecated-Begegnungen und eine begrenzte Zielversionsregel.
 
 - [USP_DistributedTransactionInventory](USP_DistributedTransactionInventory.md) zeigt lokale Promotionkonfiguration und sichtbare aktive Transaktionsmetadaten mit expliziten Grenzen.
+- [USP_DatabaseMirroringInventory](USP_DatabaseMirroringInventory.md) zeigt caller-sichtbare Mirroring-Katalogwerte ausgewählter ONLINE-Datenbanken; eine RESTORING-Mirror-Rolle bleibt unqualifiziert.

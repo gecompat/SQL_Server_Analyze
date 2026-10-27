@@ -1,6 +1,6 @@
 # Server Health: CPU, NUMA, Memory, Integrität und Engine-Evidenz
 
-**Procedures:** 17  
+**Procedures:** 28 (20 nummerierte Abschnitte und 8 ergänzende Module)
 **Evidenz:** Momentaufnahme, Konfiguration, kumulative SQLOS-DMVs, kurze Stichprobe, msdb-Historie und vorhandene XE-Dateien  
 **Kosten:** LOW bis HIGH_OPT_IN
 
@@ -905,3 +905,7 @@ EXEC [monitor].[USP_EndpointTransportAnalysis] @MaxZeilen=200, @ResultSetArt='CO
 ## MSDTC und verteilte Transaktionen
 
 [USP_DistributedTransactionInventory](Procedures/USP_DistributedTransactionInventory.md) zeigt lokale SQL-Konfiguration, caller-sichtbare Linked-Server-Promotionflags und aktive verteilte Transaktionsmetadaten. Externe DTC-Gesundheit und Commitnachweise bleiben außerhalb dieses Inventars.
+
+## Database Mirroring
+
+Die [Database-Mirroring-Inventarisierung](Procedures/USP_DatabaseMirroringInventory.md) liest lokale Mirroring-Katalogwerte für ausgewählte ONLINE-Datenbanken. Native NULL-Werte, eingeschränkte Metadatensicht und die fehlende Auswahl nicht ONLINE befindlicher Mirror-Datenbanken bleiben sichtbar; das Verfahren bewertet weder Gesundheit noch Failoverfähigkeit.

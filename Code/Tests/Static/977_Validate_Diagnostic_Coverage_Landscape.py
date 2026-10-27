@@ -63,6 +63,7 @@ KNOWN_RESEARCH_TO_PARTIAL_KEYS = {
     "DEPRECATION_BREAKING_CHANGE",
     "RLS_DYNAMIC_MASKING",
     "DISTRIBUTED_TRANSACTIONS",
+    "DATABASE_MIRRORING",
 }
 RESEARCH_GAP_COHORT_FLOOR = 25  # Preserve the explicit research-gap cohort across named promotions.
 
@@ -243,7 +244,8 @@ def coverage_fixture() -> list[dict[str, str]]:
         'DEPRECATION_BREAKING_CHANGE',
         'RLS_DYNAMIC_MASKING',
         'DISTRIBUTED_TRANSACTIONS',
-        *(f'SAMPLE_AREA_{index:03d}' for index in range(22)),
+        'DATABASE_MIRRORING',
+        *(f'SAMPLE_AREA_{index:03d}' for index in range(21)),
     }
     out_of_scope = {f'SAMPLE_AREA_{index:03d}' for index in range(23, 27)}
     domains = sorted(REQUIRED_DOMAINS)
@@ -290,6 +292,13 @@ def self_test() -> None:
             row['CoverageStatus'] = 'PARTIAL_PRODUCT_FUNCTION'
     if validate_rows(list(EXPECTED_FIELDS), current_promotions):
         raise AssertionError('RLS and deprecation promotions were rejected')
+
+    mirroring_promotion = [dict(row) for row in prior_promotion_state]
+    for row in mirroring_promotion:
+        if row['CoverageKey'] == 'DATABASE_MIRRORING':
+            row['CoverageStatus'] = 'PARTIAL_PRODUCT_FUNCTION'
+    if validate_rows(list(EXPECTED_FIELDS), mirroring_promotion):
+        raise AssertionError('named Database Mirroring promotion was rejected')
 
     distributed_promotion = [dict(row) for row in prior_promotion_state]
     for row in distributed_promotion:

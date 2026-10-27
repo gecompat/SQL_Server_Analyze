@@ -2149,3 +2149,17 @@ USP_DistributedTransactionInventory,StatusCodeOut,varchar(40),NULL OUTPUT
 USP_DistributedTransactionInventory,IsPartialOut,bit,NULL OUTPUT
 USP_DistributedTransactionInventory,ErrorNumberOut,int,NULL OUTPUT
 USP_DistributedTransactionInventory,ErrorMessageOut,nvarchar(2048),NULL OUTPUT
+USP_DatabaseMirroringInventory,DatabaseNames,nvarchar(max),NULL
+USP_DatabaseMirroringInventory,SystemdatenbankenEinbeziehen,bit,0
+USP_DatabaseMirroringInventory,DatabaseNamePattern,nvarchar(4000),NULL
+USP_DatabaseMirroringInventory,MaxZeilen,int,1000
+USP_DatabaseMirroringInventory,ResultSetArt,varchar(16),'CONSOLE'
+USP_DatabaseMirroringInventory,ResultTablesJson,nvarchar(max),NULL
+USP_DatabaseMirroringInventory,JsonErzeugen,bit,0
+USP_DatabaseMirroringInventory,Json,nvarchar(max),NULL OUTPUT
+USP_DatabaseMirroringInventory,PrintMeldungen,bit,1
+USP_DatabaseMirroringInventory,Hilfe,bit,0
+USP_DatabaseMirroringInventory,StatusCodeOut,varchar(40),NULL OUTPUT
+USP_DatabaseMirroringInventory,IsPartialOut,bit,NULL OUTPUT
+USP_DatabaseMirroringInventory,ErrorNumberOut,int,NULL OUTPUT
+USP_DatabaseMirroringInventory,ErrorMessageOut,nvarchar(2048),NULL OUTPUT
