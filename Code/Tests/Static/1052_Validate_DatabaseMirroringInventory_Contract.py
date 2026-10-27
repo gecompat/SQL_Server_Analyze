@@ -272,6 +272,18 @@ def validate_contract(
         errors.append("shared candidate helper no longer enforces the documented exact-name/pattern exclusion")
     if "@DatabaseNames=@DatabaseNames" not in body or "@DatabaseNamePattern=@DatabaseNamePattern" not in body:
         errors.append("procedure does not pass both documented selector parameters to the shared helper")
+    selector_normalization = "NULLIF(LTRIM(RTRIM(COALESCE(@DatabaseNames,N''))),N'') IS NOT NULL"
+    selector_pattern = "@DatabaseNamePattern IS NOT NULL"
+    help_end = body.find("END;", help_start) if help_start >= 0 else -1
+    guard_pos = body.find(selector_normalization)
+    first_temp = body.find("CREATE TABLE [#DatabaseMirroringInventory_moduleStatus]")
+    validation_pos = body.find("IF @Mode NOT IN")
+    validation_end = body.find("END;", validation_pos) if validation_pos >= 0 else -1
+    validation_block = body[validation_pos:validation_end] if validation_pos >= 0 and validation_end >= 0 else ""
+    if (selector_pattern not in validation_block or selector_normalization not in validation_block
+            or "@ErrorNumberOut=51011" not in validation_block or "RETURN 51011;" not in validation_block
+            or help_end < 0 or not (help_end < validation_pos < guard_pos < first_temp)):
+        errors.append("nonblank exact-name plus pattern conflict must return INVALID_PARAMETER after help and before source/temp work; blank exact names normalize to no selector")
     if help_start < 0 or "USP_PrepareDatabaseCandidates" in body[:help_start] or "sys.database_mirroring" in body[:help_start]:
         errors.append("help must return before database selection or source access")
     if "@DatabaseNames" not in help_block or "@DatabaseNamePattern" not in help_block or "getrennt" not in help_block.lower():
@@ -445,6 +457,10 @@ def validate_contract(
     for sql_token in ("@MaxZeilen=1", "@SourceRows<2", "@MaxZeilen=0", "@MaxZeilen=NULL"):
         if sql_token not in runtime:
             errors.append("runtime limit cases must prove one-row and both unlimited forms: " + sql_token)
+    for sql_token in ("@DatabaseNames=N'  ',@SystemdatenbankenEinbeziehen=1,",
+                      "@DatabaseNamePattern=N'like:tempdb'", "THROW 57450"):
+        if sql_token not in runtime:
+            errors.append("runtime fixture must prove blank exact names normalize before valid pattern selection: " + sql_token)
     for sql_token in ("N'[Codex_Missing_Database]'", "@DatabaseNamePattern=N'like:%'",
                   "DENY VIEW SERVER PERFORMANCE STATE", "REVERT;", "DROP LOGIN", "DROP USER"):
         if sql_token not in runtime:
@@ -549,6 +565,22 @@ def main() -> int:
         clean_checkout["generated"] = ""
         if validate_contract(**clean_checkout):
             errors.append("clean tracked checkout without the ignored generated installer must remain valid")
+        selector_clause = """       OR
+       (
+           @DatabaseNamePattern IS NOT NULL
+           AND NULLIF(LTRIM(RTRIM(COALESCE(@DatabaseNames,N''))),N'') IS NOT NULL
+       )
+"""
+        late_selector_guard = """        IF @DatabaseNamePattern IS NOT NULL
+           AND NULLIF(LTRIM(RTRIM(COALESCE(@DatabaseNames,N''))),N'') IS NOT NULL
+        BEGIN
+            SELECT @StatusCodeOut='INVALID_PARAMETER',@IsPartialOut=1,@ErrorNumberOut=51011;
+            RETURN 51011;
+        END;
+"""
+        late_selector_mutation = text["procedure"].replace(selector_clause, "", 1).replace(
+            "        SET @Started=SYSUTCDATETIME();", late_selector_guard + "        SET @Started=SYSUTCDATETIME();", 1
+        )
         mutations = (
             ("NOLOCK", "procedure", text["procedure"].replace("[master].[sys].[database_mirroring] AS [m] WITH (NOLOCK)", "[master].[sys].[database_mirroring] AS [m]", 1), "native source"),
             ("ABI", "procedure", text["procedure"].replace("[ConfiguredRedoQueueLimitMb] int NULL", "[ConfiguredRedoQueueLimitMb] bigint NULL", 1), "business ABI"),
@@ -560,6 +592,9 @@ def main() -> int:
             ("JSON_KEY_SUBSTITUTION", "runtime", text["runtime"].replace("N'RedoQueueLimitType',1", "N'UnknownRedoQueueField',1", 1), "all twelve JSON keys exactly once and all ten nullable values null"),
             ("JSON_KEY_UNIQUENESS", "runtime", text["runtime"].replace("GROUP BY [FieldName] HAVING COUNT(*)<>1", "GROUP BY [FieldName] HAVING COUNT(*)<>2", 1), "all twelve JSON keys exactly once and all ten nullable values null"),
             ("JSON_EXTRA_KEY_DIRECTION", "runtime", text["runtime"].replace("EXCEPT SELECT [FieldName] FROM @ExpectedJsonFields", "EXCEPT SELECT [FieldName] FROM @ActualJsonFields", 1), "all twelve JSON keys exactly once and all ten nullable values null"),
+            ("SELECTOR_GUARD_REMOVED", "procedure", text["procedure"].replace("AND NULLIF(LTRIM(RTRIM(COALESCE(@DatabaseNames,N''))),N'') IS NOT NULL", "AND NULLIF(LTRIM(RTRIM(COALESCE(@DatabaseNames,N''))),N'') IS NULL", 1), "nonblank exact-name plus pattern conflict must return INVALID_PARAMETER"),
+            ("SELECTOR_BLANK_NORMALIZATION", "procedure", text["procedure"].replace("NULLIF(LTRIM(RTRIM(COALESCE(@DatabaseNames,N''))),N'') IS NOT NULL", "COALESCE(@DatabaseNames,N'') IS NOT NULL", 1), "blank exact names normalize to no selector"),
+            ("SELECTOR_GUARD_TOO_LATE", "procedure", late_selector_mutation, "before source/temp work"),
             ("PARAM_SIGNATURE", "procedure", text["procedure"].replace("@MaxZeilen int = 1000", "@MaxZeilen int = 500", 1), "public parameter names"),
             ("HELP_PARAMETER", "procedure", text["procedure"].replace("@ErrorMessageOut nvarchar(2048)=NULL OUTPUT", "RemovedHelpParam", 1), "help parameter default or OUTPUT mode"),
             ("HELP_DEFAULT", "procedure", text["procedure"].replace("@MaxZeilen int=1000", "@MaxZeilen int=500", 1), "help parameter default or OUTPUT mode"),

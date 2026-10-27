@@ -315,6 +315,22 @@ BEGIN TRY
     IF @Return<>51011 OR @Status<>'INVALID_PARAMETER' OR @Error<>51011
         THROW 57425,N'Combining the exact-name filter and pattern was not rejected.',1;
     EXEC @Return=[monitor].[USP_DatabaseMirroringInventory]
+        @DatabaseNames=N'  ',@SystemdatenbankenEinbeziehen=1,
+        @DatabaseNamePattern=N'like:tempdb',@MaxZeilen=0,@ResultSetArt='NONE',
+        @JsonErzeugen=1,@Json=@JsonUnlimited OUTPUT,@PrintMeldungen=0,
+        @StatusCodeOut=@Status OUTPUT,@IsPartialOut=@Partial OUTPUT,
+        @ErrorNumberOut=@Error OUTPUT,@ErrorMessageOut=@Message OUTPUT;
+    IF @Return<>0 OR @Status<>'AVAILABLE_LIMITED' OR @Partial<>1
+       OR (SELECT COUNT(*) FROM OPENJSON(@JsonUnlimited,N'$.databaseMirroring'))<>1
+       OR NOT EXISTS
+          (
+              SELECT 1
+              FROM OPENJSON(@JsonUnlimited,N'$.databaseMirroring')
+                   WITH([DatabaseName] sysname N'$.DatabaseName') AS [j]
+              WHERE [j].[DatabaseName] COLLATE SQL_Latin1_General_CP1_CS_AS=N'tempdb' COLLATE SQL_Latin1_General_CP1_CS_AS
+          )
+        THROW 57450,N'Blank exact-name input must normalize to no selector and allow a valid pattern.',1;
+    EXEC @Return=[monitor].[USP_DatabaseMirroringInventory]
         @MaxZeilen=-1,@ResultSetArt='NONE',@PrintMeldungen=0,
         @StatusCodeOut=@Status OUTPUT,@IsPartialOut=@Partial OUTPUT,
         @ErrorNumberOut=@Error OUTPUT,@ErrorMessageOut=@Message OUTPUT;

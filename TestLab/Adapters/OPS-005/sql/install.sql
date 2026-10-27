@@ -69974,6 +69974,11 @@ BEGIN
     IF @Mode NOT IN ('CONSOLE','RAW','TABLE','NONE')
        OR @MaxZeilen<0
        OR @SystemdatenbankenEinbeziehen IS NULL
+       OR
+       (
+           @DatabaseNamePattern IS NOT NULL
+           AND NULLIF(LTRIM(RTRIM(COALESCE(@DatabaseNames,N''))),N'') IS NOT NULL
+       )
        OR (@Mode<>'TABLE' AND NULLIF(LTRIM(RTRIM(COALESCE(@ResultTablesJson,N''))),N'') IS NOT NULL)
     BEGIN
         SELECT @StatusCodeOut='INVALID_PARAMETER',@IsPartialOut=1,
