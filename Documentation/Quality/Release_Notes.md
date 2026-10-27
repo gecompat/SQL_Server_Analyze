@@ -1,5 +1,12 @@
 # Releaseübersicht
 
+`USP_ServerFeatureCapabilities` 3.2.1 erkennt die Systemkataloge für
+Vector-Indizes und Query-Store-Replikas über `sys.all_views`. Vorhandene
+SQL-Server-2025-Kataloge werden dadurch nicht mehr wegen der auf
+Benutzerviews begrenzten Suche über `sys.views` als nicht verfügbar gemeldet.
+Die Ausgabearten und die bestehenden Options- und Fallbackverträge bleiben
+erhalten.
+
 
 SSIS: Die optionale lokale Übergabe über `Invoke-SsisQualifiedHandover.ps1`
 und `@LocalHandoverId` bindet einen unabhängig freigegebenen Hostbuild und
