@@ -117,3 +117,4 @@ USP_EndpointTransportAnalysis,BASELINE,,1
 USP_SsisExecutionComparison,BASELINE,,1
 USP_SsisExecutionBaseline,BASELINE,,1
 USP_UpgradeFeatureUsageAnalysis,BASELINE,,1
+USP_RowLevelSecurityAndMaskingInventory,BASELINE,,1

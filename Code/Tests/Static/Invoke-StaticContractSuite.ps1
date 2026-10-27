@@ -100,6 +100,7 @@ $selfTestValidators = @(
     '1047_Validate_ObjectInventory_Tempdb_Collation.py'
     '1048_Validate_IndexUsage_Tempdb_Collation.py'
     '1049_Validate_QueryStore_ReferenceLists_Contract.py'
+    '1050_Validate_RlsMaskingInventory_Contract.py'
   )
 $repositoryOnlyValidators = @(
     'Validate_Ssis_Exchange_Contract.py'

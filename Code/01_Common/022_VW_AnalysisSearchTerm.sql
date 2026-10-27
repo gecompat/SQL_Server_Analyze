@@ -289,6 +289,8 @@ AS
         , (N'USP_ServerPrincipalAnalysis',N'server principal role explicit permission login policy','en',95,N'Lists visible direct server security metadata.')
         , (N'USP_DatabasePrincipalAnalysis',N'Datenbank Benutzer Rollen Rechte Schemaowner verwaiste Benutzer','de',100,N'Trennt direkte Rechte von begrenzten sichtbaren Loginbindungen.')
         , (N'USP_DatabasePrincipalAnalysis',N'database principal role permission owner contained user orphan login','en',95,N'Lists visible database security metadata without claiming effective permissions.')
+        , (N'USP_RowLevelSecurityAndMaskingInventory',N'Row-Level Security RLS Security Policy Predicate Dynamic Data Masking masked columns','en',100,N'Lists caller-visible security policy and masking catalog metadata without exposing expressions or data.')
+        , (N'USP_RowLevelSecurityAndMaskingInventory',N'Zeilensicherheit Sicherheitsrichtlinie Predicate dynamische Datenmaskierung maskierte Spalten','de',100,N'Zeigt sichtbare RLS- und Maskingmetadaten ohne Richtlinientexte oder Tabellenwerte.')
         , (N'USP_CurrentCallerPermissionAnalysis',N'eigene effektive Rechte aktueller Kontext Rollen DENY','de',100,N'Zeigt native Rechte des aktiven Kontexts auf SERVER- und DATABASE-Ebene.')
         , (N'USP_CurrentCallerPermissionAnalysis',N'current caller effective permission context native grants deny','en',95,N'Lists native effective permissions at named securable levels.')
         , (N'USP_EndpointTransportAnalysis',N'Endpoint TCP Transport Verschlüsselung TLS Verbindung Zertifikat','de',100,N'Zeigt SQL-sichtbare Konfiguration und native Flags mit Aussagegrenzen.')

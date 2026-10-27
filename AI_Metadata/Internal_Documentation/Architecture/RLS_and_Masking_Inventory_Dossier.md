@@ -1,7 +1,7 @@
 # Sichtbares Inventar für Row-Level Security und Dynamic Data Masking
 
 **Stand:** 26. Oktober 2026.
-**Status:** `RESEARCHED_NOT_IMPLEMENTED`; konkretisierter Vertragsentwurf, keine Laufzeitfunktion.
+**Status:** `IMPLEMENTED_UNREVIEWED`; Produkt- und Testkandidat in Schritt 35. Unabhängiger Review und Laufzeitprüfung stehen aus.
 **Artefakt-UID:** `urn:uuid:01a1727d-1d09-7e6d-9418-6a3a3c2068b1`.
 **Registrierung:** `DEFERRED`; keine lesbare Kennung vergeben.
 **Arbeitselement:** Teil des kontinuierlichen Intake `WI-0010`; kein neues Arbeitselement.
@@ -122,10 +122,13 @@ Resultsets.
 | 7 `warnings` | `DatabaseId int NULL`, `DatabaseName sysname NULL`, `WarningCode varchar(64) NOT NULL`, `SourceKey varchar(64) NULL`, `Detail nvarchar(1000) NOT NULL` |
 
 String-bearing fields above are `COLLATE SQL_Latin1_General_CP1_CS_AS`.
-The `IsSchemabindingEnabled` column preserves the catalog bit including NULL;
-the product does not invert, normalize or interpret it. The database IDs,
-policy IDs and object/column IDs are meaningful only with their database and
-capture context.
+The `IsSchemabindingEnabled` column preserves the native catalog bit including
+NULL when the catalog exposes it. If the catalog view does not expose that
+field, the nullable result field is returned as NULL with a bounded
+`SOURCE_UNAVAILABLE` warning for `SECURITY_POLICIES`. The product does not
+invert, normalize or interpret the native bit. The database IDs, policy IDs
+and object/column IDs are meaningful only with their database and capture
+context.
 
 Der gemeinsame `sourceStatus`- und `warnings`-Vertrag übernimmt Felder,
 Bedeutung und Ausgabegrenzen des Datenbankprincipal-Moduls. Für diese
@@ -189,8 +192,9 @@ exakte Datenbankauswahl, Zeilenlimit und Caller-/Transaktionserhaltung
 abdecken. Unabhängige Schemaprüfungen müssen alle drei Feldmengen und alle
 Ausgabearten binden. Privacyprüfungen müssen sicherstellen, dass weder
 `predicate_definition` noch `masking_function` noch Tabellenwerte ausgegeben
-werden. Es gibt in diesem Dossier keine Implementierung, keinen Testlauf und
-keine Laufzeitevidenz.
+werden. Der Produkt- und Fixturekandidat ist hinzugefügt. Der lokale SQL-Test,
+der unabhängige Review und das erforderliche SQL-Server-2025-Head-Gate sind
+noch nicht abgeschlossen.
 
 ## Primärquellen
 
@@ -202,15 +206,12 @@ keine Laufzeitevidenz.
 
 ## Nächster ausführbarer Schritt
 
-Die nächste Umsetzung kann dieses festgelegte V1-Schema in einem einzelnen
-Modul, den bestehenden Produktinventaren und der Procedure-Bedienungsreferenz
-abbilden. Die erforderlichen fokussierten Tests binden Quelle, Feldreihenfolge,
-Typen, Nullbarkeit, Collation und JSON-Arrays für alle drei Inventare. Weitere
-Fälle prüfen leere und positive synthetische Kataloge, Berechtigungs-/Timeout-
-Partialität, exakte Datenbankauswahl, Zeilenlimits, alle Ausgabearten sowie
-Caller-/Transaktionserhaltung. Ein Privacy-Test weist nach, dass
-`predicate_definition`, `masking_function` und Tabellenwerte in keinem
-Resultset, JSON, Warntext oder Fehlerpfad vorkommen. Es gibt in diesem Dossier
-keine Implementierung, keinen Testlauf und keine Laufzeitevidenz.
+Der Produktkandidat und die öffentliche Referenz bilden das festgelegte
+V1-Schema ab. Der synthetische Laufzeitvertrag prüft positive und leere
+Kataloge, Auswahl, globale Limits, Ausgabearten, Callerzustand und
+Privacy-Sentinels. Der statische Vertragsvalidator bindet Parameter,
+Resultsetinventar und Produktprojektionen. Diese Prüfungen wurden lokal noch
+nicht ausgeführt. Unabhängiger Review, SQL-Server-2025-Head-CI und reguläre
+PR-Gates bleiben erforderlich; Laufzeitevidenz liegt noch nicht vor.
 
 \n

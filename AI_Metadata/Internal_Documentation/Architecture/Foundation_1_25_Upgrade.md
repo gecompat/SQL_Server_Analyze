@@ -475,6 +475,48 @@ zusätzlichen Modellaufrufe zur Bestätigung grüner Ausgaben. Belastbare Token-
 und Kostenmessungen liegen nicht vor. Die abschließenden CI-Gates des
 aktuellen Kandidaten stehen noch aus.
 
+
+### Verarbeitungsaufwand des RLS-/Masking-Moduls in Schritt 35
+
+Der Produkt-SQL-Vertrag wird als ein kanonisches Modul mit sieben Resultsets,
+15 Parametern und drei getrennten Katalogquellen ergänzt. Der
+`1050_Validate_RlsMaskingInventory_Contract.py` bindet die Reihenfolge und
+Defaults der Parameter sowie alle sieben Felddefinitionen einschließlich
+Typ, Nullbarkeit und Collation an die tatsächlichen temporären Quelltabellen.
+Die vorhandenen allgemeinen Metadata- und Dokumentationsvalidatoren prüfen
+Inventare und Lesepfade, vergleichen jedoch nicht die Produktprojektionen mit
+diesem konkreten Reviewvertrag. Der gezielte Validator schließt diese Lücke;
+er erzeugt keine zusätzliche SQL-Server- oder Datenbankprüfung.
+
+Der Produkt- und Testlaufzeitvertrag wird ausschließlich über die synthetischen
+Fixturedatenbanken im vorhandenen funktionalen Runner geprüft. Das Fixture
+enthält keine geschützten Tabellenwerte und vergleicht positive sowie leere
+Kataloge mit unabhängigen Werten aus denselben synthetischen Katalogen. Es
+prüft exakte Auswahl, die globale Begrenzung über zwei gefüllte Datenbanken,
+Quellstatus, sieben TABLE-Zielschema, JSON-Werte, alle Ausgabearten,
+Privacy-Sentinels und den Callerzustand. Ein eigener eingeschränkter Login
+prüft die sichtbare leere Teilmenge; einzelne DENY-Fälle prüfen je Quelle den
+Fehler 229 und die erfolgreiche Isolation der übrigen Quellen. Diese Fälle
+sind im Fixture konfiguriert, aber bis zum CI-Lauf `NOT_EXECUTED`. Die
+vollständigen JSON-Facharrays werden zwischen NONE, CONSOLE, RAW und TABLE
+verglichen; Aufnahmezeiten bleiben getrennte, erwartungsgemäß variable Werte.
+Die Ausgabezeitüberschreitung besitzt derzeit keinen eigenen Laufzeit-Probe im
+Fixture und bleibt `NOT_EXECUTED`. Fehlertexte des Produktes bleiben fest und
+enthalten nur Fehlernummern.
+
+| Tatsächlicher Auslöser | Prüfpfad und begrenzte Auswahl |
+|---|---|
+| Neuer `1050`-Validator | Er wird im vorhandenen `Invoke-StaticContractSuite.ps1` registriert. Dessen Änderung aktiviert einmalig die vorhandenen Validator-Selbsttests; später löst nur eine Änderung an `1050` dessen Selbsttest aus. Die vollständige statische Suite bleibt das bestehende Dokumentationsgate. Datenschutz- und Impact-Selector-Prüfungen werden dort nicht doppelt gestartet, weil der Workflow sie separat ausführt. |
+| Neuer Server-Health-Produktcode, Fixture und Installerinclude | Der CI-Impact-Selector enthält den konkreten Laufzeitvertrag zusätzlich zum Smoke- und Bereichstest. Die Änderung am zentralen `Install_All.sql`-Include löst nach dem bestehenden Selectorvertrag den vollständigen SQL-Server-2025-Gatepfad aus. Dieses Vollgate ist für den aktuellen Kandidaten erforderlich; die kleinere Auswahl wird nicht als ausgeführte Abnahme ausgegeben. |
+| Engine- und Compatibility-Auswahl | Der Katalogvertrag verwendet nur SQL-Server-2019+-Quellen und keine neuen versionsabhängigen Felder oder Zweige. Daher entstehen keine zusätzlichen nativen SQL-2019-/2022-Läufe und keine Compatibility-Level-Matrix. Das Vollgate auf SQL Server 2025 folgt aus der Änderung am zentralen Installerinclude. |
+| Ausgabe und Datenschutz | Das Fixture prüft JSON-Parität der sieben stabilen Resultsetmengen und TABLE-Werte gegen denselben JSON-Vertrag. Fehler- und Warntexte enthalten keine Predicate- oder Masking-Expressions. Vollständige Runtime-Rohlogs bleiben im Runner; die lokale Diagnose wird auf Fehlerstatus, Mengenabweichung, Timeout und Cleanup begrenzt. |
+| Review und Modellkontext | Ein Implementierer und ein unabhängiger Reviewer prüfen denselben stabilen Kandidaten; es gibt keinen Review des Reviews. Folgechecks benötigen einen konkreten Befund. Kosten und Tokenverbrauch sind nicht gemessen; die Luna-Auswahl ist nicht kostenattestiert. |
+
+Lokale Labs und SQL-Instanzen wurden nicht verwendet. Das CI-Gate, die
+unabhängige Prüfung und die danach erforderlichen Head-/Main-Prüfungen stehen
+aus. Diese geplante Auswahl behauptet keine ausgeführte oder erfolgreiche
+Runtimeprüfung.
+
 ### Verarbeitungsaufwand der begrenzten CurrentRequests-Temp-DDL in Schritt 37
 
 Die drei zusammenhängenden Gruppen eigener lokaler Temp-Tabellen in

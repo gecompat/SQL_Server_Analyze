@@ -192,14 +192,20 @@ nativer Berechtigungsmatrix und Cleanup. Der [Evidenznachweis](OPS009_Empty_Inve
 bindet Ziel, Compatibility Level, fehlenden Einzelmarker und Grenzen; daraus
 folgt keine native Drei-Versionen-Matrix.
 
-Schritt 34 konkretisiert den ersten Rang-17-Slice als
+Schritt 34 konkretisierte den ersten Rang-17-Slice als
 [Dossier für ein sichtbares RLS-/Masking-Inventar](../Architecture/RLS_and_Masking_Inventory_Dossier.md).
-Der Vertrag bleibt `RESEARCHED_NOT_IMPLEMENTED`; Policies, Predicate-Typen/
-Operationen und masked Columns werden nur als caller-sichtbare Katalogmetadaten
-vorgesehen. Predicate- und Masking-Expressions, geschützte Tabellenwerte,
-effektive Berechtigungen sowie Gesundheits- und Enforcement-Aussagen bleiben
-ausgeschlossen. Es wurden weder Produktcode noch Tests oder Laufzeitevidenz
-hinzugefügt.
+Schritt 35 setzt den V1-Vertrag in einem öffentlichen read-only-Modul und einem
+synthetischen Laufzeitvertrag um. Predicate- und Masking-Expressions,
+geschützte Tabellenwerte, effektive Berechtigungen sowie Gesundheits- und
+Enforcement-Aussagen bleiben ausgeschlossen. Der statische Vertragsvalidator,
+die unabhängige Prüfung und das SQL-Server-2025-Head-Gate stehen noch aus;
+lokale SQL-Läufe wurden nicht ausgeführt.
+
+Der Selector ordnet dem geänderten Server-Health-Produktcode genau den Smoke-,
+Bereichs- und fokussierten Laufzeitvertrag zu. Die funktionale Abnahme bleibt
+auf SQL Server 2025; dieser Schritt aktiviert weder ältere native Engines noch
+zusätzliche Compatibility Levels. Ein Implementierer und ein unabhängiger
+Reviewer prüfen denselben stabilen Produkt-, Fixture- und Schema-Stand.
 
 ## Abgeschlossen: fünf SSIS-Paketwellen vom 25. Oktober 2026
 
