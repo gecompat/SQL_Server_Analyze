@@ -2,7 +2,8 @@
 
 **Referenz:** `WI-0010`
 
-**Stand:** 29. August 2026
+**Forschungsbaseline:** 29. August 2026
+**Lieferstatusabgleich:** 27. Oktober 2026
 
 **Status:** `RESEARCHED_NOT_IMPLEMENTED`
 **Maschinenlesbare Matrix:** `Metadata/Quality/Diagnostic_Coverage_Landscape.csv`
@@ -37,7 +38,7 @@ Die Matrix betrachtet 106 fachliche Bereiche. Der Frameworkkern deckt die zentra
 - Legacy-Datenbankspiegelung als weiterhin vorhandene, aber abgekündigte Betriebsrealität;
 - verteilte Transaktionen und MSDTC einschließlich Recovery- und HADR-Kontext;
 - Linux-, Container- und cgroup-Ressourcengrenzen, soweit SQL-eigene und externe Plattformwerte sicher korreliert werden können;
-- Row-Level Security und Dynamic Data Masking als aktive Security-Policy-Fläche statt bloßer Objektinventur.
+- Row-Level Security und Dynamic Data Masking als aktive Security-Policy-Fläche statt bloßer Objektinventur. Das caller-sichtbare Kataloginventar V1 ist mit Status `PARTIAL_PRODUCT_FUNCTION` integriert; Enforcement, Wirksamkeit und Vollständigkeit bleiben außerhalb des Vertrags.
 
 ### Priorität P2
 
@@ -74,17 +75,17 @@ Eine vollständige Namensliste beweist weder vollständige Semantik noch Produkt
 4. erst danach eine eigene Registryreferenz vergeben und Analyse, Spezifikation, Implementierung sowie Evidenz als getrennte Schritte planen;
 5. abgelehnte Kandidaten mit Begründung als `OUT_OF_SCOPE` oder `EXTERNAL_EVIDENCE_REQUIRED` in der Matrix erhalten.
 
-## Toolbelt-Übergabe
+## Historischer Toolbelt-Abgleich vom 11. September 2026
 
-**Abgleich:** 11. September 2026, Toolbelt [`f4fe237`](https://github.com/gecompat/SQL_Server_Toolbelt/commit/f4fe23721b203a2e540a7b421024e9cbd85f5f85) und Analyze [`6e46adc`](https://github.com/gecompat/SQL_Server_Analyze/commit/6e46adc22bb5deb6f6c14cd670d8f4023db44ce6).
+**Historischer Abgleich:** 11. September 2026, Toolbelt [`f4fe237`](https://github.com/gecompat/SQL_Server_Toolbelt/commit/f4fe23721b203a2e540a7b421024e9cbd85f5f85) und Analyze [`6e46adc`](https://github.com/gecompat/SQL_Server_Analyze/commit/6e46adc22bb5deb6f6c14cd670d8f4023db44ce6).
 
 Die statische Gegenprobe der Toolbelt-Modulübersicht, SQL-/C#-Quellen und relevanten Grenzfälle ergab keinen belegten Kandidaten für eine Codeverschiebung. Allgemeine Daten-, Parser-, Transformations- und Ausführungshilfen bleiben in Toolbelt. Dazu zählen eigene Ereignis- und Queue-Statussichten, Heartbeat und Recovery, Modulmarker, Korrelationskontext, kooperative Cancellation sowie Prüfungen eigener Provider und Deployments. Die fachliche Bewertung betrieblicher Zustände gehört gemäß der [Toolbelt-Repositorygrenze](https://github.com/gecompat/SQL_Server_Toolbelt/blob/main/Documentation/Architecture/REPOSITORY_BOUNDARIES.md) in Analyze.
 
-Die folgende Übergabe ergänzt den bestehenden Intake `WI-0010`. Sie führt die Herkunft mit vorhandener Abdeckung zusammen und definiert die noch zu klärende Diagnosefrage. Die ausführliche Diagnoseplanung wird hier gepflegt; Toolbelt erhält Quell-ID, Abgrenzung und Rückverweis. Bestehende CoverageKeys, Prioritäten, registrierte Arbeitselemente und Implementierungsstatus bleiben unverändert. Diese Übergabe erzeugt keine neue Matrixzeile, Procedure oder Implementierungsfreigabe.
+Die Übergabe vom 11. September 2026 ergänzte den damaligen Intake `WI-0010`. Sie führte die Herkunft mit der seinerzeit vorhandenen Abdeckung zusammen und definierte die noch zu klärenden Diagnosefragen. Die ausführliche Diagnoseplanung wird hier gepflegt; Toolbelt erhielt Quell-ID, Abgrenzung und Rückverweis. CoverageKeys, Prioritäten, registrierte Arbeitselemente und Implementierungsstatus blieben bei diesem Abgleich unverändert. Die Übergabe erzeugte keine neue Matrixzeile, Procedure oder Implementierungsfreigabe.
 
 | Toolbelt-Quell-ID | Diagnoseanteil und vorhandene Abdeckung | Zuständigkeit und nächster Planungsschritt |
 |---|---|---|
-| [AC-2026-001](https://github.com/gecompat/SQL_Server_Toolbelt/blob/main/Backlog/SQL_SERVER_ANALYZE_CANDIDATES.md#ac-2026-001-read-only-security-feature-katalog) | Der Vorschlag betrifft `PRINCIPALS_ROLE_PERMISSIONS`, `RLS_DYNAMIC_MASKING` und `SENSITIVITY_CLASSIFICATION`; die bestehende `WI-0010`-Matrix führt sie getrennt. Der erste begrenzte RLS-/Masking-Slice ist im [Dossier](../Architecture/RLS_and_Masking_Inventory_Dossier.md) als caller-sichtbares Kataloginventar ohne Expressionstexte oder Schutz-/Wirksamkeitsurteil konkretisiert. Alle Coverage-Statuswerte bleiben unverändert. | Den Dossiervertrag unabhängig prüfen und den konkreten Produktvertrag vor Implementierung festlegen. Principal-, Klassifikations-, Berechtigungs- und Metadatensichtbarkeitsgrenzen bleiben getrennt; kein zusätzliches Arbeitselement für dieselbe Planung eröffnen. |
+| [AC-2026-001](https://github.com/gecompat/SQL_Server_Toolbelt/blob/main/Backlog/SQL_SERVER_ANALYZE_CANDIDATES.md#ac-2026-001-read-only-security-feature-katalog) | Der Vorschlag betrifft `PRINCIPALS_ROLE_PERMISSIONS`, `RLS_DYNAMIC_MASKING` und `SENSITIVITY_CLASSIFICATION`; die bestehende `WI-0010`-Matrix führt sie getrennt. Das [Dossier](../Architecture/RLS_and_Masking_Inventory_Dossier.md) konkretisiert das caller-sichtbare RLS-/Masking-Kataloginventar ohne Expressionstexte oder Schutz-/Wirksamkeitsurteil; PR #473 integriert diesen begrenzten Slice. Der RLS-Eintrag der Matrix steht deshalb auf `PARTIAL_PRODUCT_FUNCTION`; die anderen Coverage-Einträge bleiben eigenständig. | Principal-, Klassifikations-, Berechtigungs- und Metadatensichtbarkeitsgrenzen bleiben getrennt. Kein zusätzliches Arbeitselement für dieselbe Planung eröffnen. |
 | [RI-2026-140](https://github.com/gecompat/SQL_Server_Toolbelt/blob/main/Backlog/TOOLBELT_RESEARCH_INBOX.md) | Toolbelt stellt Parser, Referenzextraktion und definierte Transformation bereit. Daraus folgt keine Abdeckung bewertender Lint-Regeln. Vorhandene Analyze-Query-, Plan- und Schemaanalysen sind keine pauschale Zusage für einen Linter über beliebigen SQL-Text. | Analyze `WI-0010` hält Linting und Bad-Practice-Bewertung als offene Intake-Frage. Zuerst konkrete Regeln und Überschneidungen mit vorhandenen Findings bestimmen; Datenquellen, False Positives und die optionale Nutzung öffentlicher Toolbelt-Verträge bleiben zu klären. |
 | [RI-2026-002](https://github.com/gecompat/SQL_Server_Toolbelt/blob/main/Backlog/TOOLBELT_RESEARCH_INBOX.md) | Der Vergleich zweier vorgegebener Schemazustände und ein überprüfbarer Änderungsplan bleiben Toolbelt. `SCHEMA_CONSTRAINTS` deckt mit `USP_ObjectInventory`, `USP_ObjectAnalysis` und `USP_SchemaDesignAnalysis` bereits Objekt- und Schemaanalysen ab; das beweist keine laufende Schemaüberwachung. | Analyze `WI-0010` klärt nur den zusätzlichen betrieblichen Überwachungs- und Bewertungsbedarf. Vor einer Formalisierung Capture, Zeitbezug, erwartete Änderungen und vorhandene Findings abgleichen. |
 | [RI-2026-009](https://github.com/gecompat/SQL_Server_Toolbelt/blob/main/Backlog/TOOLBELT_RESEARCH_INBOX.md) | Neutrale Fingerprints bleiben Toolbelt. `TIME_SERIES_BASELINES` verweist auf den partiellen Performance-Counter-Slice von `SC-023`; daraus folgt kein Schema- oder Datenfingerprint-Monitor. | Analyze `WI-0010` klärt die konkrete betriebliche Baseline-Frage gegen `SC-023` und dessen bestehende Erweiterungsplanung. Reset-, Vergleichs- und Evidenzgrenzen sind vor einer Erweiterung festzulegen. |

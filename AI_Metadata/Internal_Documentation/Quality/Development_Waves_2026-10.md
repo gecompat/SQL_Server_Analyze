@@ -58,7 +58,7 @@ wird nicht allein aufgrund eines Planverweises übernommen.
 | 14 | External-Data-, Runtime- und CLR-Abnahmen, `WI-0009` und `RUNTIME-001` | Eigene positive External-Table-Quellen, aktivierte Runtimes und synthetische SAFE-Assembly-Nachweise getrennt abnehmen. Fehlende Infrastruktur bleibt externe Evidenz. |
 | 15 | Eigene SSIS-Kennzahlen, `SSIS-001` | Der [Producervertragsentwurf](../../../Documentation/Architecture/SSIS_Custom_Metrics_Producer_Contract.md) definiert DELTA, CUMULATIVE, GAUGE und FINAL mit Einheiten, Epochen, Duplikaten und Sequenzlücken. PR #470 integriert ein begrenztes Offline-Berichtsprofil und den lokalen Validator mit vier bestandenen Head- und drei bestandenen Main-Prüfungen. Producer, native Captureverifikation, SQL-Aufnahme, Aggregation und Vergleich bleiben offen; es erfolgt keine automatische Paketinstrumentierung. |
 | 16 | Übrige Reifeabschlüsse, `OPS-005`, `OPS-006`, `OPS-007` | Das native SQL-Server-2022-FULL_RELEASE-Gate für `OPS-009` ist als Schritt 33 über [Run 40403446152](https://github.com/gecompat/SQL_Server_Analyze/actions/runs/40403446152) abgeschlossen und im [Evidenznachweis](OPS009_Empty_Inventory_Runtime_Evidence_2026-09-19.md) dokumentiert. Weitere OPS-Fälle werden anhand ihres aktuellen OpenScope ausgewählt; ein erneuter SQL-2022-Lauf folgt nur bei neuem Versionsrisiko oder erforderlicher Releasequalifikation. |
-| 17 | Weitere Sicherheits- und Spezialdiagnosen, `WI-0010` | Schritt 35 setzt den ersten RLS-/Masking-Slice als Reviewkandidaten um. Die unabhängige Prüfung, betroffene SQL-Server-2025-Head-CI und spätere PR-Gates stehen noch aus. Klassifikation, Agent-Proxies, MSDTC und Legacy-Mirroring bleiben getrennte offene Themen. |
+| 17 | Weitere Sicherheits- und Spezialdiagnosen, `WI-0010` | Schritte 35–38 liefern und integrieren das begrenzte RLS-/Masking-V1 in PR #473; das SQL-Server-2025-Head-Gate und die geforderten Head-/Main-Prüfungen bestanden. Das Modul bleibt PLANNED in der Reifematrix; ein separater Modul-Reifeabschluss ist nicht dokumentiert. Der Katalogvertrag erhebt keinen Enforcement- oder Vollständigkeitsanspruch. Für Schritt 39 ist ein einzelnes MSDTC-Dossier (`DISTRIBUTED_TRANSACTIONS`) priorisiert. Schritt 40 kann einen begrenzten SQL-sichtbaren Slice implementieren, falls das Dossier eine ausführbare Scope- und Evidenzbasis festlegt; andernfalls bleibt die Umsetzung offen. `DATABASE_MIRRORING` ist der nächste getrennte WI-0010-Kandidat. Klassifikation und Agent-Proxies bleiben ebenfalls offen; abgeschlossene SSIS-Wellen werden nicht wiederholt. |
 | 18 | Restore-/Hostnachweise und Fleet-Korrelation, `SC-025` und `SC-024` | Eigene isolierte Restore-/CHECKDB-Nachweise und den externen Fleet-Vertrag getrennt bearbeiten. Externe Infrastruktur, Transport, Mandantenisolation und Betriebsmodell sind eigene Grenzen. |
 
 Die [Abdeckungsmatrix](../../../Metadata/Quality/Diagnostic_Coverage_Landscape.csv)
@@ -329,11 +329,4 @@ Vier Head- und drei Main-Prüfungen bestanden. Der tatsächliche Umfang ist in
 Schritt 33 und im OPS-009-Nachweis dokumentiert; der Lauf belegt keine
 Drei-Versionen-Matrix.
 
-Schritt 34 ergänzt ausschließlich den ersten begrenzten Vertragsentwurf für
-RLS-Policies, Predicate-Metadaten und masked Columns. Das Dossier bindet die
-drei sichtbaren Katalogquellen, schließt Predicate- und Masking-Expressions,
-geschützte Tabellenwerte, Gesundheits- und effektive Berechtigungsurteile aus
-und hält Metadaten-Partialität fest. `RLS_DYNAMIC_MASKING` bleibt
-`RESEARCHED_NOT_IMPLEMENTED`; es wurden weder Procedure noch Tests oder
-Laufzeitevidenz ergänzt. Klassifikation, Agent-Proxies, MSDTC und
-Legacy-Mirroring bleiben offen.
+Zum Stand von Schritt 34 beschrieb das Dossier den ersten begrenzten Vertragsentwurf für RLS-Policies, Predicate-Metadaten und masked Columns. Es bindet die drei sichtbaren Katalogquellen, schließt Predicate- und Masking-Expressions, geschützte Tabellenwerte, Gesundheits- und effektive Berechtigungsurteile aus und hält Metadaten-Partialität fest. Der damalige Status war `RESEARCHED_NOT_IMPLEMENTED`; Schritte 35–38 integrierten anschließend das begrenzte V1, ohne Klassifikation, Agent-Proxies, MSDTC oder Legacy-Mirroring zu schließen.

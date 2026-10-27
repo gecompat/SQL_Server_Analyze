@@ -1,7 +1,7 @@
 # Sichtbares Inventar für Row-Level Security und Dynamic Data Masking
 
-**Stand:** 26. Oktober 2026.
-**Status:** `IMPLEMENTED_UNREVIEWED`; Produkt- und Testkandidat in Schritt 35. Unabhängiger Review und Laufzeitprüfung stehen aus.
+**Stand:** 27. Oktober 2026.
+**Status:** V1 regulär in PR #473 integriert; erforderliche Head-/Main-Prüfungen bestanden. Ein separater Modul-Reifeabschluss ist nicht dokumentiert. Der Katalogvertrag bleibt caller-sichtbar und erhebt keinen Enforcement- oder Vollständigkeitsanspruch.
 **Artefakt-UID:** `urn:uuid:01a1727d-1d09-7e6d-9418-6a3a3c2068b1`.
 **Registrierung:** `DEFERRED`; keine lesbare Kennung vergeben.
 **Arbeitselement:** Teil des kontinuierlichen Intake `WI-0010`; kein neues Arbeitselement.
@@ -176,25 +176,11 @@ oder Rollback einer Caller-Transaktion. Die genaue Implementierungsfolge und
 Wiederherstellung des Session-Locktimeouts folgen dem bestehenden
 Datenbankprincipal- und Frameworkvertrag.
 
-## Erster Implementierungsschritt und Abnahmekriterien
+## Implementierung und Abnahmekriterien
 
-Der nächste Produkt-PR kann das hier konkretisierte einzelne read-only-Modul
-mit Installer, Navigator, Parameter- und Resultsetinventaren umsetzen. Der
-Scope dieses Dossiers enthält noch keinen Produktcode und keine neue Freigabe-
-oder Bestätigungsbedingung. Die unabhängige Prüfung und vorgeschriebenen
-Head-/Main-Gates bleiben Teil des bestehenden Lieferwegs. Die Implementation
-ändert die Spezialfeatureinventur und Datenbankprincipal-Ausgabe nicht.
+Das Dossier konkretisiert das einzelne read-only-Modul einschließlich Installer, Navigator, Parameter- und Resultsetinventaren. Der integrierte V1-Scope ändert weder Spezialfeatureinventur noch Datenbankprincipal-Ausgabe. Die unabhängige Prüfung und die vorgeschriebenen Head-/Main-Gates erfolgten im regulären Lieferweg.
 
-Die erste fokussierte Testauswahl soll synthetische positive und leere
-Katalogfälle, getrennte Policy-/Predicate-/Masking-Quellenfehler,
-eingeschränkte Metadatensicht mit erhaltenem `AVAILABLE_LIMITED`/Partialstatus,
-exakte Datenbankauswahl, Zeilenlimit und Caller-/Transaktionserhaltung
-abdecken. Unabhängige Schemaprüfungen müssen alle drei Feldmengen und alle
-Ausgabearten binden. Privacyprüfungen müssen sicherstellen, dass weder
-`predicate_definition` noch `masking_function` noch Tabellenwerte ausgegeben
-werden. Der Produkt- und Fixturekandidat ist hinzugefügt. Der lokale SQL-Test,
-der unabhängige Review und das erforderliche SQL-Server-2025-Head-Gate sind
-noch nicht abgeschlossen.
+Der synthetische Vertrag deckt positive und leere Kataloge, Auswahl, globale Limits, TABLE- und JSON-Ausgabe, Callerzustand und Privacy-Sentinels ab. Die statischen Vertragsprüfungen binden Parameter, Resultsetinventar und Produktprojektionen. Das Modul erfasst caller-sichtbare Katalogmetadaten; ein leeres oder begrenztes Ergebnis bleibt `AVAILABLE_LIMITED`/partial und beweist keine Vollständigkeit.
 
 ## Primärquellen
 
@@ -204,14 +190,14 @@ noch nicht abgeschlossen.
 - Microsoft Learn: [Dynamic Data Masking](https://learn.microsoft.com/en-us/sql/relational-databases/security/dynamic-data-masking?view=sql-server-ver17) und [`sys.masked_columns`](https://learn.microsoft.com/en-us/sql/relational-databases/system-catalog-views/sys-masked-columns-transact-sql?view=sql-server-ver17) — Maskingmetadaten; die Maskingfunktion wird nicht ausgegeben.
 - Microsoft Learn: [Metadata Visibility Configuration](https://learn.microsoft.com/en-us/sql/relational-databases/security/metadata-visibility-configuration?view=sql-server-ver17) — Katalogabfragen können sichtbare Teilmengen oder leere Ergebnisse liefern.
 
-## Nächster ausführbarer Schritt
+## Integrierter V1-Stand und Grenzen
 
-Der Produktkandidat und die öffentliche Referenz bilden das festgelegte
-V1-Schema ab. Der synthetische Laufzeitvertrag prüft positive und leere
-Kataloge, Auswahl, globale Limits, Ausgabearten, Callerzustand und
-Privacy-Sentinels. Der statische Vertragsvalidator bindet Parameter,
-Resultsetinventar und Produktprojektionen. Diese Prüfungen wurden lokal noch
-nicht ausgeführt. Unabhängiger Review, SQL-Server-2025-Head-CI und reguläre
-PR-Gates bleiben erforderlich; Laufzeitevidenz liegt noch nicht vor.
+PR #473 integriert den Vertrag mit 15 Parametern und sieben Resultsets. Der erfolgreiche SQL-Server-2025-Funktionslauf [40534609883](https://github.com/gecompat/SQL_Server_Analyze/actions/runs/40534609883) umfasst 139 Verträge jeweils exakt einmal, CL170, Deployment, Berechtigungs- und Regexfälle, Standalone-Execution-Plan sowie Containercleanup. Der erfolgreiche SQL-stdout wurde unterdrückt; ein separat exportierter PASS-Marker-Transcript für Vertrag 139 liegt nicht vor. Der quellgebundene Laufzeit-PASS bleibt belegt. Eine kontrollierte Timeout-Probe wurde nicht ausgeführt. Zusätzliche native SQL-Server-2019-/2022-Qualifikation fand nicht statt. Alle acht Head-Prüfungen und fünf Main-Prüfungen bestanden.
 
-\n
+Die Evidenz umfasst synthetische positive und leere Kataloge, Auswahl, globale Limits, alle sieben unabhängigen physischen Schemas in TABLE- und JSON-Ausgabe, eingeschränkte Sichtbarkeit, isoliertes DENY 229, Caller-Erhaltung und eigens aufgeräumte Fixtures. Native `predicate_id` wird auf `security_predicate_id` abgebildet. Wenn die CI-Engine `is_schemabinding_enabled` nicht bereitstellt, liefert das Modul einen typisierten NULL-Wert mit fester Warnung. Diese Belege zeigen keine unbeschränkte Katalogsicht, effektive Rechte oder Enforcement.
+
+Die 13 Head-CI-Kandidaten einschließlich Wiederholungen bleiben als kompakte Fehlerhistorie erhalten: 1–2 veraltete Zählstände; 3 Legacy-Lock; 4 Fixture-Syntax; 5 Legacy-CurrentRequests-Fehler 1222; 6 CREATE_SCHEMA-Batchfehler; 7 optionales Schemafeld 207; 8 statischer 950-Probe-/Predicate-ID-Fehler 207; 9 TABLE-Aggregat 57228; 10 Legacy-165-PrepareNameFilters-Fehler 1222 vor Vertrag 139; 11 gleiche Head-Diagnose mit TABLE-`moduleStatus`-Zählfehler 57236; 12 fixer Seed und vollständige Sieben-Schema-ABI vor Fixtureframeworkfehler 15151 im falschen Master-Kontext; 13 getrennter PASS-/Cleanup-Lauf. Diese Einträge beschreiben Fehlerfolgen und behaupten keine gemeinsame Ursache.
+
+## Nächste getrennte OpenScope-Kandidaten
+
+Das kontinuierliche WI-0010-Intake priorisiert für Schritt 39 ein Dossier zu MSDTC (`DISTRIBUTED_TRANSACTIONS`). Schritt 40 kann einen begrenzten SQL-sichtbaren Slice implementieren, falls das Dossier eine ausführbare Abgrenzung samt Datenquellen, Rechten, Datenschutz und Abnahme festlegt. Fehlt eine portable Evidenzbasis, bleibt die Umsetzung offen; DATABASE_MIRRORING ist danach der nächste getrennte Kandidat. Klassifikation und Agent-Proxies bleiben weitere offene Themen. Die Planung vergibt keine neue Kennung und behauptet keine Umsetzung.
