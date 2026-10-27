@@ -184,6 +184,7 @@ RAISERROR(N'RELEASE_GATE 34/34: Server Health',10,1) WITH NOWAIT;
 :r ServerHealth/137_CurrentCallerPermission_Runtime_Contract.sql
 :r ServerHealth/138_EndpointTransport_Runtime_Contract.sql
 :r ServerHealth/139_RowLevelSecurityAndMasking_Runtime_Contract.sql
+:r ServerHealth/140_DistributedTransactionInventory_Runtime_Contract.sql
 :r VersionAdaptive/127_WI0007_External_Model_Inventory_Runtime_Contract.sql
 :r VersionAdaptive/129_WI0004_Segment_Overlap_Runtime_Contract.sql
 

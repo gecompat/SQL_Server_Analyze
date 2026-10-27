@@ -297,5 +297,7 @@ AS
         , (N'USP_EndpointTransportAnalysis',N'endpoint transport encryption connection native flag mirroring','en',95,N'Lists visible configuration and native connection flags with explicit evidence limits.')
         , (N'USP_UpgradeFeatureUsageAnalysis',N'Upgrade veraltet Deprecated Begegnungszähler Zielversion','de',100,N'Zeigt begrenzte SQL-sichtbare Nutzung und Konfiguration ohne Upgradefreigabe.')
         , (N'USP_UpgradeFeatureUsageAnalysis',N'upgrade deprecated feature usage target version lightweight pooling','en',95,N'Lists native deprecated encounters and one bounded configuration rule.')
+        , (N'USP_DistributedTransactionInventory',N'MSDTC verteilte Transaktion Remote Procedure Promotion Linked Server DTC','de',100,N'Zeigt lokale SQL-Konfiguration und sichtbare Transaktionsmetadaten mit klaren Grenzen.')
+        , (N'USP_DistributedTransactionInventory',N'MSDTC distributed transaction remote procedure promotion linked server DTC','en',95,N'Lists local SQL configuration and visible transaction metadata with explicit limits.')
     ) AS [v]([ProcedureName],[SearchTerm],[LanguageCode],[SearchWeight],[MatchReason]);
 GO

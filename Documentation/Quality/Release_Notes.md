@@ -17,6 +17,8 @@ Datenbanksicherheit: `USP_DatabasePrincipalAnalysis` ergänzt sichtbare Datenban
 
 Die neue `USP_CurrentCallerPermissionAnalysis` zeigt native effektive SERVER-/DATABASE-Rechte des aktuellen Ausführungskontexts mit getrennten Quellen und numerischer Kontextbindung. Ein konkreter Objekt- oder Statementzugriff bleibt eine getrennte Prüfung.
 
+MSDTC: Der Quellinstaller ergänzt ein begrenztes SQL-sichtbares Inventar für remote-proc-Konfiguration, caller-sichtbare Linked-Server-Promotionflags und aktive verteilte Transaktionsmetadaten. Externe Dienst-, Netzwerk-, Commit- und Recoverygesundheit sowie positive aktive DTC-Runtime-Evidenz bleiben offen; die SQL-2025-Head-Abnahme steht aus.
+
 Endpointdiagnostik: `USP_EndpointTransportAnalysis` ergänzt sichtbare Engineendpoints, TCP-/Mirroringkonfiguration und gruppierte native Verbindungsflags. HADR-Flags und logische MARS-Zeilen erhalten eigene Aussagegrenzen; TLS-Version, Cipher und Zertifikatsvertrauen werden nicht daraus abgeleitet.
 
 ## Aktueller Stand
@@ -33,9 +35,9 @@ commitbezogenen Laufzeitnachweis.
 | ReleaseDate im Installationskatalog | 23. Oktober 2026 |
 | Mindestversion | SQL Server 2019 |
 
-Der aktuelle Inventarvertrag umfasst 201 Objekte: 119 öffentliche Procedures, 8 Views, 29 Table-Valued Functions, 25 interne Procedures und 20 Tabellen.
+Der aktuelle Inventarvertrag umfasst 202 Objekte: 120 öffentliche Procedures, 8 Views, 29 Table-Valued Functions, 25 interne Procedures und 20 Tabellen.
 
-Der Frameworkkern umfasst 177 Objekte mit 116 öffentlichen Procedures und 9 Tabellen. Das optionale Snapshotpaket umfasst 24 Objekte mit 3 öffentlichen Procedures und 11 Tabellen.
+Der Frameworkkern umfasst 178 Objekte mit 117 öffentlichen Procedures und 9 Tabellen. Das optionale Snapshotpaket umfasst 24 Objekte mit 3 öffentlichen Procedures und 11 Tabellen.
 
 Die [Paketgrenzen](../Reference/Scope_and_Limitations.md) unterscheiden
 Diagnose, Installation, lokale TABLE-Ausgabe und persistente Sammlung.

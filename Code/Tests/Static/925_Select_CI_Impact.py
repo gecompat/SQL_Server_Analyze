@@ -627,6 +627,8 @@ def run_self_test() -> None:
         (root / "Code/Tests/Integration").mkdir(parents=True)
         (root / "Code/Tests/Common").mkdir(parents=True)
         (root / "Code/Tests/CurrentState").mkdir(parents=True)
+        (root / "Code/08_ServerHealth").mkdir(parents=True)
+        (root / "Code/Tests/ServerHealth").mkdir(parents=True)
         (root / "Code/01_Common/010_Helper.sql").write_text(
             "CREATE OR ALTER FUNCTION [monitor].[TVF_Helper]() RETURNS TABLE AS RETURN SELECT 1 AS [Value];\n",
             encoding="utf-8",
@@ -643,6 +645,18 @@ def run_self_test() -> None:
         )
         (root / "Code/Tests/CurrentState/110_Test_und_Abnahme_Phase1B.sql").write_text(
             "EXEC [monitor].[USP_Consumer];\n", encoding="utf-8"
+        )
+        msdtc_source = root / "Code/08_ServerHealth/300_USP_DistributedTransactionInventory.sql"
+        msdtc_source.write_text(
+            "CREATE OR ALTER PROCEDURE [monitor].[USP_DistributedTransactionInventory] AS SELECT 1;\n",
+            encoding="utf-8",
+        )
+        msdtc_test = root / "Code/Tests/ServerHealth/140_DistributedTransactionInventory_Runtime_Contract.sql"
+        msdtc_test.write_text(
+            "EXEC [monitor].[USP_DistributedTransactionInventory];\n", encoding="utf-8"
+        )
+        (root / "Code/Tests/ServerHealth/110_Test_und_Abnahme_Phase7.sql").write_text(
+            "EXEC [monitor].[USP_DistributedTransactionInventory] @Hilfe=1;\n", encoding="utf-8"
         )
         subprocess.run(["git", "init", "--quiet", str(root)], check=True)
         synthetic_identity = [
@@ -689,6 +703,25 @@ def run_self_test() -> None:
         assert not code_plan.full_suite
         assert "monitor.usp_consumer" in code_plan.affected_objects
         assert "CurrentState/110_Test_und_Abnahme_Phase1B.sql" in code_plan.selected_tests
+
+        msdtc_source.write_text(
+            "CREATE OR ALTER PROCEDURE [monitor].[USP_DistributedTransactionInventory] AS SELECT 2;\n",
+            encoding="utf-8",
+        )
+        subprocess.run(["git", "-C", str(root), "add", "."], check=True)
+        subprocess.run(
+            ["git", "-C", str(root), *synthetic_identity, "commit", "--quiet", "-m", "msdtc"],
+            check=True,
+        )
+        msdtc_sha = run_git(root, "rev-parse", "HEAD").strip()
+        msdtc_plan = plan_changes(
+            root, msdtc_sha, changed_files(root, code_sha, msdtc_sha), "core"
+        )
+        assert msdtc_plan.run_runtime and not msdtc_plan.full_suite
+        assert "ServerHealth/140_DistributedTransactionInventory_Runtime_Contract.sql" in msdtc_plan.selected_tests
+        msdtc_runner = root / "msdtc-runner.sql"
+        write_runner(msdtc_runner, msdtc_plan)
+        assert ":r ServerHealth/140_DistributedTransactionInventory_Runtime_Contract.sql" in msdtc_runner.read_text(encoding="utf-8")
 
         fixture_plan = plan_changes(
             root,

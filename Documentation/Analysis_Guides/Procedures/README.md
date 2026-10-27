@@ -187,3 +187,5 @@ Jede Seite weist jetzt Entscheidungseinsatz, Nichtziele, Resultset-Leserichtung,
 - [USP_SsisExecutionBaseline](USP_SsisExecutionBaseline.md)
 
 - [USP_UpgradeFeatureUsageAnalysis](USP_UpgradeFeatureUsageAnalysis.md) zeigt instanzweite Deprecated-Begegnungen und eine begrenzte Zielversionsregel.
+
+- [USP_DistributedTransactionInventory](USP_DistributedTransactionInventory.md) zeigt lokale Promotionkonfiguration und sichtbare aktive Transaktionsmetadaten mit expliziten Grenzen.

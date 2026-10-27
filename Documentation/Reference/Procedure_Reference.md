@@ -685,6 +685,25 @@ Quelle: `Code/08_ServerHealth/170_USP_DiagnosticFindings.sql`
     , @ErrorMessageOut              nvarchar(2048)  = NULL OUTPUT
 ```
 
+## `[monitor].[USP_DistributedTransactionInventory]`
+
+Quelle: `Code/08_ServerHealth/300_USP_DistributedTransactionInventory.sql`
+
+```sql
+      @MaxZeilen int = 1000
+    , @LockTimeoutMs int = 0
+    , @ResultSetArt varchar(16) = 'CONSOLE'
+    , @ResultTablesJson nvarchar(max) = NULL
+    , @JsonErzeugen bit = 0
+    , @Json nvarchar(max) = NULL OUTPUT
+    , @PrintMeldungen bit = 1
+    , @Hilfe bit = 0
+    , @StatusCodeOut varchar(40) = NULL OUTPUT
+    , @IsPartialOut bit = NULL OUTPUT
+    , @ErrorNumberOut int = NULL OUTPUT
+    , @ErrorMessageOut nvarchar(2048) = NULL OUTPUT
+```
+
 ## `[monitor].[USP_ExtendedEventsAnalysis]`
 
 Quelle: `Code/06_ExtendedEvents/060_USP_ExtendedEventsAnalysis.sql`

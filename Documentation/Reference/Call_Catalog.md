@@ -226,6 +226,15 @@ EXEC [monitor].[USP_DataCaptureDeepAnalysis] @Hilfe = 1;
 EXEC [monitor].[USP_DiagnosticFindings] @Hilfe = 1;
 ```
 
+## `[monitor].[USP_DistributedTransactionInventory]`
+
+```sql
+EXEC [monitor].[USP_DistributedTransactionInventory] @Hilfe=1;
+EXEC [monitor].[USP_DistributedTransactionInventory] @MaxZeilen=100, @ResultSetArt='CONSOLE';
+```
+
+Aussagegrenzen und die sieben Resultsets stehen in der [Procedure-Seite](../Analysis_Guides/Procedures/USP_DistributedTransactionInventory.md).
+
 ## `[monitor].[USP_ExtendedEventsAnalysis]`
 
 ```sql
