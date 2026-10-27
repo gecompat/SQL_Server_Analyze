@@ -201,8 +201,10 @@ def validate_contract(
         errors.append("runtime contract 141 must be bound exactly once in the existing release gate")
     if "CAST(34 AS int)" not in release_gate:
         errors.append("nested Phase 7 contract must not create a new top-level release suite")
-    if installer.count("310_USP_DatabaseMirroringInventory.sql") != 1 or generated.count("-- BEGIN SOURCE: Code/08_ServerHealth/310_USP_DatabaseMirroringInventory.sql") != 1:
-        errors.append("canonical/generated deployment installers must contain the procedure exactly once")
+    if installer.count("310_USP_DatabaseMirroringInventory.sql") != 1:
+        errors.append("canonical deployment installer must include the procedure exactly once")
+    if generated and generated.count("-- BEGIN SOURCE: Code/08_ServerHealth/310_USP_DatabaseMirroringInventory.sql") != 1:
+        errors.append("available generated deployment artifact must contain the procedure exactly once")
     if ops_install.count("-- BEGIN SOURCE: Code/08_ServerHealth/310_USP_DatabaseMirroringInventory.sql") != 1:
         errors.append("OPS-005 install/update snapshots must contain the new procedure exactly once")
     if "USP_DatabaseMirroringInventory,BASELINE,,1" not in docs_review:
@@ -286,12 +288,21 @@ def main() -> int:
         "dossier": "AI_Metadata/Internal_Documentation/Architecture/Database_Mirroring_Inventory_Dossier.md",
     }
     try:
-        text = {name: (root / rel).read_text(encoding="utf-8-sig") for name, rel in paths.items()}
+        text = {
+            name: (root / rel).read_text(encoding="utf-8-sig")
+            for name, rel in paths.items()
+            if name != "generated" or (root / rel).is_file()
+        }
+        text.setdefault("generated", "")
     except OSError as error:
         print("ERROR: " + str(error), file=sys.stderr)
         return 2
     errors = validate_contract(**text)
     if args.self_test and not errors:
+        clean_checkout = dict(text)
+        clean_checkout["generated"] = ""
+        if validate_contract(**clean_checkout):
+            errors.append("clean tracked checkout without the ignored generated installer must remain valid")
         mutations = (
             ("NOLOCK", "procedure", text["procedure"].replace("[master].[sys].[database_mirroring] AS [m] WITH (NOLOCK)", "[master].[sys].[database_mirroring] AS [m]", 1), "native source"),
             ("ABI", "procedure", text["procedure"].replace("[ConfiguredRedoQueueLimitMb] int NULL", "[ConfiguredRedoQueueLimitMb] bigint NULL", 1), "business ABI"),
@@ -305,19 +316,29 @@ def main() -> int:
             ("LIMIT", "runtime", text["runtime"].replace("@SourceRows<2", "@SourceRows<1", 1), "limit cases"),
             ("NATIVE_VERSION_SCOPE", "runtime", text["runtime"].replace("NOT IN (15,16,17)", "<>17", 1), "existing SQL Server 2019/2022/2025 release-gate targets"),
             ("SP_EXECUTESQL_EXPRESSION", "runtime", text["runtime"].replace("SET @Sql=N'DROP USER '+QUOTENAME(@Login)+N';';\n    EXEC [sys].[sp_executesql] @Sql;", "EXEC [sys].[sp_executesql] N'DROP USER '+QUOTENAME(@Login)+N';';", 1), "concatenated expressions directly to sp_executesql"),
+            ("CANONICAL_INSTALLER_INCLUDE", "installer", text["installer"].replace("310_USP_DatabaseMirroringInventory.sql", "missing_procedure.sql", 1), "canonical deployment installer must include the procedure"),
         )
         for name, key, changed, expected in mutations:
             candidate = dict(text)
             candidate[key] = changed
             if not any(expected in error for error in validate_contract(**candidate)):
                 errors.append("validator self-test did not reject meaningful " + name + " mutation")
+        generated_marker = "-- BEGIN SOURCE: Code/08_ServerHealth/310_USP_DatabaseMirroringInventory.sql"
+        generated_probe = dict(text)
+        generated_probe["generated"] = generated_marker
+        if validate_contract(**generated_probe):
+            errors.append("generated-installer positive binding probe was unexpectedly rejected")
+        generated_mutation = dict(generated_probe)
+        generated_mutation["generated"] = generated_marker.replace("310_USP_DatabaseMirroringInventory.sql", "missing_procedure.sql")
+        if not any("available generated deployment artifact" in error for error in validate_contract(**generated_mutation)):
+            errors.append("validator self-test did not reject a missing source in a generated installer")
     if errors:
         for error in errors:
             print("ERROR: " + error)
         return 1
     print("PASS: Database Mirroring V1 source, metadata, runtime, documentation, and deployment bindings are consistent.")
     if args.self_test:
-        print("PASS: meaningful source, ABI, help, runtime-limit, native-version-scope, and dynamic-cleanup mutations are rejected.")
+        print("PASS: source, ABI, help, runtime, clean-checkout deployment, generated-artifact, and mutation contracts are verified.")
     return 0
 
 if __name__ == "__main__":

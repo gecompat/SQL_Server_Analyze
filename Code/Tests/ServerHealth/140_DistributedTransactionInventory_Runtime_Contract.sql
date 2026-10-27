@@ -2,16 +2,19 @@ USE [DeineDatenbank];
 GO
 SET NOCOUNT ON;
 IF @@TRANCOUNT<>0 OR COALESCE(IS_SRVROLEMEMBER(N'sysadmin'),0)<>1
-    THROW 57400,N'MSDTC contract requires an isolated SQL Server 2025 sysadmin target without an ambient transaction.',1;
-IF TRY_CONVERT(int,SERVERPROPERTY(N'ProductMajorVersion'))<>17
-    THROW 57401,N'MSDTC runtime contract is scoped to SQL Server 2025 CI.',1;
+    THROW 57400,N'MSDTC contract requires an isolated supported-version sysadmin target without an ambient transaction.',1;
+IF TRY_CONVERT(int,SERVERPROPERTY(N'ProductMajorVersion')) IS NULL
+   OR TRY_CONVERT(int,SERVERPROPERTY(N'ProductMajorVersion')) NOT IN (15,16,17)
+    THROW 57401,N'MSDTC runtime contract supports SQL Server 2019, 2022, and 2025 targets.',1;
 GO
 DECLARE @OriginalLock int=@@LOCK_TIMEOUT,
     @OriginalAbort bit=CASE WHEN (@@OPTIONS&16384)=16384 THEN 1 ELSE 0 END,
     @OriginalTx int=@@TRANCOUNT,
     @Json nvarchar(max),@JsonTable nvarchar(max),@JsonNone nvarchar(max),@JsonConsole nvarchar(max),@JsonRaw nvarchar(max),
     @Status varchar(40),@Partial bit,@Error int,@Message nvarchar(2048),@Return int,@Map nvarchar(max),
-    @RestrictedLogin sysname,@RestrictedUser sysname,@Credential nvarchar(128),@Suffix nvarchar(32),@Sql nvarchar(max),@Impersonating bit=0,@MadeRestrictedLogin bit=0,@MadeRestrictedUser bit=0,
+    @RestrictedLogin sysname,@RestrictedUser sysname,@Credential nvarchar(128),@Suffix nvarchar(32),@Sql nvarchar(max),
+    @ProductMajor int=TRY_CONVERT(int,SERVERPROPERTY(N'ProductMajorVersion')),
+    @Impersonating bit=0,@MadeRestrictedLogin bit=0,@MadeRestrictedUser bit=0,
     @ConsoleStatus varchar(40),@ConsolePartial bit,@ConsoleProductMajor nvarchar(128),@ConsoleConfigured int,@ConsoleRunning int,
     @ConsoleLinked bigint,@ConsoleActive bigint,@ConsoleDetail nvarchar(1000),@NativeLinkedRows bigint,@NativeActiveRows bigint,@RestoreLock nvarchar(100);
 CREATE TABLE [#MdtcOut_moduleStatus]([Seed] int NULL);
@@ -370,7 +373,10 @@ BEGIN TRY
         THROW 57422,N'MSDTC restricted-caller fixture name collision.',1;
     SET @Sql=N'CREATE LOGIN '+QUOTENAME(@RestrictedLogin)+N' WITH PASS'+N'WORD='+QUOTENAME(@Credential,'''')+N',CHECK_POLICY=OFF,CHECK_EXPIRATION=OFF;';
     EXEC [master].[sys].[sp_executesql] @Sql; SET @MadeRestrictedLogin=1; SET @Credential=NULL;
-    SET @Sql=N'GRANT VIEW SERVER PERFORMANCE STATE TO '+QUOTENAME(@RestrictedLogin)+N'; GRANT VIEW SERVER SECURITY STATE TO '+QUOTENAME(@RestrictedLogin)+N';';
+    IF @ProductMajor>=16
+        SET @Sql=N'GRANT VIEW SERVER PERFORMANCE STATE TO '+QUOTENAME(@RestrictedLogin)+N'; GRANT VIEW SERVER SECURITY STATE TO '+QUOTENAME(@RestrictedLogin)+N';';
+    ELSE
+        SET @Sql=N'GRANT VIEW SERVER STATE TO '+QUOTENAME(@RestrictedLogin)+N';';
     EXEC [master].[sys].[sp_executesql] @Sql;
     SET @Sql=N'CREATE USER '+QUOTENAME(@RestrictedUser)+N' FOR LOGIN '+QUOTENAME(@RestrictedLogin)+N';';
     EXEC [sys].[sp_executesql] @Sql; SET @MadeRestrictedUser=1;
@@ -393,7 +399,11 @@ BEGIN TRY
     EXEC [sys].[sp_executesql] @Sql;
     SET @Sql=N'DROP USER '+QUOTENAME(@RestrictedUser)+N';';
     EXEC [sys].[sp_executesql] @Sql; SET @MadeRestrictedUser=0;
-    SET @Sql=N'REVOKE VIEW SERVER PERFORMANCE STATE FROM '+QUOTENAME(@RestrictedLogin)+N'; REVOKE VIEW SERVER SECURITY STATE FROM '+QUOTENAME(@RestrictedLogin)+N'; DROP LOGIN '+QUOTENAME(@RestrictedLogin)+N';';
+    IF @ProductMajor>=16
+        SET @Sql=N'REVOKE VIEW SERVER PERFORMANCE STATE FROM '+QUOTENAME(@RestrictedLogin)+N'; REVOKE VIEW SERVER SECURITY STATE FROM '+QUOTENAME(@RestrictedLogin)+N';';
+    ELSE
+        SET @Sql=N'REVOKE VIEW SERVER STATE FROM '+QUOTENAME(@RestrictedLogin)+N';';
+    SET @Sql+=N' DROP LOGIN '+QUOTENAME(@RestrictedLogin)+N';';
     EXEC [master].[sys].[sp_executesql] @Sql; SET @MadeRestrictedLogin=0;
     SET @RestrictedLogin=NULL; SET @RestrictedUser=NULL;
     IF @@TRANCOUNT<>@OriginalTx OR @@LOCK_TIMEOUT<>137 OR (@@OPTIONS&16384)=0
@@ -414,7 +424,11 @@ BEGIN CATCH
         END;
         IF @MadeRestrictedLogin=1 AND @RestrictedLogin IS NOT NULL AND SUSER_ID(@RestrictedLogin) IS NOT NULL
         BEGIN
-            SET @Sql=N'REVOKE VIEW SERVER PERFORMANCE STATE FROM '+QUOTENAME(@RestrictedLogin)+N'; REVOKE VIEW SERVER SECURITY STATE FROM '+QUOTENAME(@RestrictedLogin)+N'; DROP LOGIN '+QUOTENAME(@RestrictedLogin)+N';';
+            IF @ProductMajor>=16
+                SET @Sql=N'REVOKE VIEW SERVER PERFORMANCE STATE FROM '+QUOTENAME(@RestrictedLogin)+N'; REVOKE VIEW SERVER SECURITY STATE FROM '+QUOTENAME(@RestrictedLogin)+N';';
+            ELSE
+                SET @Sql=N'REVOKE VIEW SERVER STATE FROM '+QUOTENAME(@RestrictedLogin)+N';';
+            SET @Sql+=N' DROP LOGIN '+QUOTENAME(@RestrictedLogin)+N';';
             EXEC [master].[sys].[sp_executesql] @Sql; SET @MadeRestrictedLogin=0;
         END;
     END TRY

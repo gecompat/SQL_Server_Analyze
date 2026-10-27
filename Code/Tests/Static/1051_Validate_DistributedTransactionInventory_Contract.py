@@ -119,6 +119,18 @@ def validate_contract(
         errors.append("JSON arrays must preserve native NULL values")
     if "SERVERPROPERTY(N'ProductMajorVersion')" not in code:
         errors.append("server context does not use the major-version property")
+    if "TRY_CONVERT(int,SERVERPROPERTY(N'ProductMajorVersion')) IS NULL\n   OR TRY_CONVERT(int,SERVERPROPERTY(N'ProductMajorVersion')) NOT IN (15,16,17)" not in test:
+        errors.append("runtime contract must allow its SQL Server 2019, 2022, and 2025 release-gate targets")
+    permission_grant = (
+        "IF @ProductMajor>=16\n"
+        "        SET @Sql=N'GRANT VIEW SERVER PERFORMANCE STATE TO '+QUOTENAME(@RestrictedLogin)+N'; GRANT VIEW SERVER SECURITY STATE TO '+QUOTENAME(@RestrictedLogin)+N';';\n"
+        "    ELSE\n"
+        "        SET @Sql=N'GRANT VIEW SERVER STATE TO '+QUOTENAME(@RestrictedLogin)+N';'"
+    )
+    if permission_grant not in test:
+        errors.append("restricted-caller permissions must map 2019 to VIEW SERVER STATE and 2022+ to the documented performance/security grants")
+    if test.count("IF @ProductMajor>=16") != 3 or test.count("REVOKE VIEW SERVER STATE FROM '+QUOTENAME(@RestrictedLogin)") != 2:
+        errors.append("restricted-caller success and failure cleanup must revoke the permissions granted for that engine version")
 
     seed_tables = re.findall(
         r"CREATE TABLE \[#MdtcOut_([A-Za-z]+)\]\(\[Seed\] int NULL\);",
@@ -361,6 +373,21 @@ def self_test() -> None:
         raise AssertionError("prequalification SQL Server 2025 NO fixture was rejected")
     if validate_maturity_evidence(maturity, dossier):
         raise AssertionError("bound SQL Server 2025 source-head/run qualification was rejected")
+    narrowed_runtime = runtime.replace("NOT IN (15,16,17)", "<>17", 1)
+    if not any("allow its SQL Server 2019, 2022, and 2025" in error for error in validate_contract(
+        procedure, narrowed_runtime, "", "", "", "", "", "", "", "", ""
+    )):
+        raise AssertionError("SQL Server 2025-only native runtime guard mutation escaped")
+    wrong_legacy_permission = runtime.replace("GRANT VIEW SERVER STATE TO '+QUOTENAME(@RestrictedLogin)", "GRANT VIEW SERVER PERFORMANCE STATE TO '+QUOTENAME(@RestrictedLogin)", 1)
+    if not any("map 2019 to VIEW SERVER STATE" in error for error in validate_contract(
+        procedure, wrong_legacy_permission, "", "", "", "", "", "", "", "", ""
+    )):
+        raise AssertionError("SQL Server 2019 DMV permission mapping mutation escaped")
+    missing_legacy_cleanup = runtime.replace("REVOKE VIEW SERVER STATE FROM '+QUOTENAME(@RestrictedLogin)", "REVOKE VIEW SERVER PERFORMANCE STATE FROM '+QUOTENAME(@RestrictedLogin)", 1)
+    if not any("success and failure cleanup" in error for error in validate_contract(
+        procedure, missing_legacy_cleanup, "", "", "", "", "", "", "", "", ""
+    )):
+        raise AssertionError("SQL Server 2019 permission cleanup mutation escaped")
     unbound_yes = _set_csv_value(maturity, "Notes", "")
     if not any("SQL Server 2025 YES requires matching" in error for error in validate_maturity_evidence(unbound_yes, dossier)):
         raise AssertionError("unbound SQL Server 2025 YES mutation escaped")
