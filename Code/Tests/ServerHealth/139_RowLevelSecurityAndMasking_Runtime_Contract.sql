@@ -188,26 +188,45 @@ BEGIN
         DECLARE @Map nvarchar(max)=N'{"moduleStatus":"#RlsMaskOutput_moduleStatus","databaseContext":"#RlsMaskOutput_databaseContext","securityPolicies":"#RlsMaskOutput_securityPolicies","securityPredicates":"#RlsMaskOutput_securityPredicates","maskedColumns":"#RlsMaskOutput_maskedColumns","sourceStatus":"#RlsMaskOutput_sourceStatus","warnings":"#RlsMaskOutput_warnings"}';
         EXEC [monitor].[USP_RowLevelSecurityAndMaskingInventory] @DatabaseNames=@NamesBoth,@MaxZeilen=NULL,@ResultSetArt='TABLE',@ResultTablesJson=@Map,@JsonErzeugen=1,@Json=@Json OUTPUT,@PrintMeldungen=0;
         IF (SELECT COUNT(*) FROM [#RlsMaskOutput_moduleStatus])<>1
-           OR (SELECT COUNT(*) FROM [#RlsMaskOutput_databaseContext])<>2
-           OR (SELECT COUNT(*) FROM [#RlsMaskOutput_securityPolicies])<>4
-           OR (SELECT COUNT(*) FROM [#RlsMaskOutput_securityPredicates])<>4
-           OR (SELECT COUNT(*) FROM [#RlsMaskOutput_maskedColumns])<>4
-           OR (SELECT COUNT(*) FROM [#RlsMaskOutput_sourceStatus])<>8
-           OR (SELECT COUNT(*) FROM [#RlsMaskOutput_warnings])<>1+CASE WHEN @PolicyFieldA=0 THEN 1 ELSE 0 END+CASE WHEN @PolicyFieldB=0 THEN 1 ELSE 0 END
-           OR (SELECT COUNT(*) FROM [#RlsMaskOutput_warnings] WHERE [WarningCode]='SOURCE_UNAVAILABLE' AND [SourceKey]='SECURITY_POLICIES')<>CASE WHEN @PolicyFieldA=0 THEN 1 ELSE 0 END+CASE WHEN @PolicyFieldB=0 THEN 1 ELSE 0 END
-           OR (SELECT COUNT(*) FROM [#RlsMaskOutput_warnings] WHERE [DatabaseName]=@DbA AND [WarningCode]='SOURCE_UNAVAILABLE' AND [SourceKey]='SECURITY_POLICIES')<>CASE WHEN @PolicyFieldA=0 THEN 1 ELSE 0 END
-           OR (SELECT COUNT(*) FROM [#RlsMaskOutput_warnings] WHERE [DatabaseName]=@DbB AND [WarningCode]='SOURCE_UNAVAILABLE' AND [SourceKey]='SECURITY_POLICIES')<>CASE WHEN @PolicyFieldB=0 THEN 1 ELSE 0 END
-           OR EXISTS(SELECT 1 FROM [#RlsMaskOutput_warnings] WHERE [WarningCode]='SOURCE_UNAVAILABLE' AND [SourceKey]='SECURITY_POLICIES' AND [Detail]<>N'Die Katalogansicht stellt IsSchemabindingEnabled nicht bereit; das NULL-faehige Feld bleibt NULL.')
-           OR ISJSON(@Json)<>1 OR @Json LIKE N'%EXAMPLE_NO_LEAK_PREDICATE_TOKEN%' OR @Json LIKE N'%NO_LEAK_MASK_TOKEN%'
-           OR (SELECT * FROM [#RlsMaskOutput_moduleStatus] FOR JSON PATH,INCLUDE_NULL_VALUES)<>JSON_QUERY(@Json,N'$.moduleStatus')
-           OR (SELECT * FROM [#RlsMaskOutput_databaseContext] ORDER BY [DatabaseId] FOR JSON PATH,INCLUDE_NULL_VALUES)<>JSON_QUERY(@Json,N'$.databaseContext')
-           OR (SELECT * FROM [#RlsMaskOutput_securityPolicies] ORDER BY [DatabaseId],[PolicyObjectId] FOR JSON PATH,INCLUDE_NULL_VALUES)<>JSON_QUERY(@Json,N'$.securityPolicies')
-           OR (SELECT * FROM [#RlsMaskOutput_securityPolicies] ORDER BY [DatabaseId],[PolicyObjectId] FOR JSON PATH,INCLUDE_NULL_VALUES)<>(SELECT * FROM [#RlsMaskExpected_securityPolicies] ORDER BY [DatabaseId],[PolicyObjectId] FOR JSON PATH,INCLUDE_NULL_VALUES)
-           OR (SELECT * FROM [#RlsMaskOutput_securityPredicates] ORDER BY [DatabaseId],[PolicyObjectId],[PredicateId] FOR JSON PATH,INCLUDE_NULL_VALUES)<>JSON_QUERY(@Json,N'$.securityPredicates')
-           OR (SELECT * FROM [#RlsMaskOutput_maskedColumns] ORDER BY [DatabaseId],[ObjectId],[ColumnId] FOR JSON PATH,INCLUDE_NULL_VALUES)<>JSON_QUERY(@Json,N'$.maskedColumns')
-           OR (SELECT * FROM [#RlsMaskOutput_sourceStatus] ORDER BY [DatabaseId],[DatabaseName],[SourceKey] FOR JSON PATH,INCLUDE_NULL_VALUES)<>JSON_QUERY(@Json,N'$.sourceStatus')
-           OR (SELECT * FROM [#RlsMaskOutput_warnings] ORDER BY [DatabaseId],[DatabaseName],[WarningCode],[SourceKey] FOR JSON PATH,INCLUDE_NULL_VALUES)<>JSON_QUERY(@Json,N'$.warnings')
-            THROW 57228,N'RLS and masking TABLE schema, values, or privacy contract mismatch.',1;
+            THROW 57236,N'RLS masking TABLE moduleStatus row count mismatch.',1;
+        IF (SELECT COUNT(*) FROM [#RlsMaskOutput_databaseContext])<>2
+            THROW 57237,N'RLS masking TABLE databaseContext row count mismatch.',1;
+        IF (SELECT COUNT(*) FROM [#RlsMaskOutput_securityPolicies])<>4
+            THROW 57238,N'RLS masking TABLE securityPolicies row count mismatch.',1;
+        IF (SELECT COUNT(*) FROM [#RlsMaskOutput_securityPredicates])<>4
+            THROW 57239,N'RLS masking TABLE securityPredicates row count mismatch.',1;
+        IF (SELECT COUNT(*) FROM [#RlsMaskOutput_maskedColumns])<>4
+            THROW 57240,N'RLS masking TABLE maskedColumns row count mismatch.',1;
+        IF (SELECT COUNT(*) FROM [#RlsMaskOutput_sourceStatus])<>8
+            THROW 57241,N'RLS masking TABLE sourceStatus row count mismatch.',1;
+        IF (SELECT COUNT(*) FROM [#RlsMaskOutput_warnings])<>1+CASE WHEN @PolicyFieldA=0 THEN 1 ELSE 0 END+CASE WHEN @PolicyFieldB=0 THEN 1 ELSE 0 END
+            THROW 57242,N'RLS masking TABLE warning row count mismatch.',1;
+        IF (SELECT COUNT(*) FROM [#RlsMaskOutput_warnings] WHERE [WarningCode]='SOURCE_UNAVAILABLE' AND [SourceKey]='SECURITY_POLICIES')<>CASE WHEN @PolicyFieldA=0 THEN 1 ELSE 0 END+CASE WHEN @PolicyFieldB=0 THEN 1 ELSE 0 END
+            THROW 57243,N'RLS masking TABLE policy warning count mismatch.',1;
+        IF (SELECT COUNT(*) FROM [#RlsMaskOutput_warnings] WHERE [DatabaseName]=@DbA AND [WarningCode]='SOURCE_UNAVAILABLE' AND [SourceKey]='SECURITY_POLICIES')<>CASE WHEN @PolicyFieldA=0 THEN 1 ELSE 0 END
+            THROW 57244,N'RLS masking TABLE first database warning count mismatch.',1;
+        IF (SELECT COUNT(*) FROM [#RlsMaskOutput_warnings] WHERE [DatabaseName]=@DbB AND [WarningCode]='SOURCE_UNAVAILABLE' AND [SourceKey]='SECURITY_POLICIES')<>CASE WHEN @PolicyFieldB=0 THEN 1 ELSE 0 END
+            THROW 57245,N'RLS masking TABLE second database warning count mismatch.',1;
+        IF EXISTS(SELECT 1 FROM [#RlsMaskOutput_warnings] WHERE [WarningCode]='SOURCE_UNAVAILABLE' AND [SourceKey]='SECURITY_POLICIES' AND [Detail]<>N'Die Katalogansicht stellt IsSchemabindingEnabled nicht bereit; das NULL-faehige Feld bleibt NULL.')
+            THROW 57246,N'RLS masking TABLE policy warning detail mismatch.',1;
+        IF ISJSON(@Json)<>1 OR @Json LIKE N'%EXAMPLE_NO_LEAK_PREDICATE_TOKEN%' OR @Json LIKE N'%NO_LEAK_MASK_TOKEN%'
+            THROW 57247,N'RLS masking TABLE JSON privacy contract mismatch.',1;
+        IF (SELECT * FROM [#RlsMaskOutput_moduleStatus] FOR JSON PATH,INCLUDE_NULL_VALUES)<>JSON_QUERY(@Json,N'$.moduleStatus')
+            THROW 57248,N'RLS masking TABLE moduleStatus parity mismatch.',1;
+        IF (SELECT * FROM [#RlsMaskOutput_databaseContext] ORDER BY [DatabaseId] FOR JSON PATH,INCLUDE_NULL_VALUES)<>JSON_QUERY(@Json,N'$.databaseContext')
+            THROW 57249,N'RLS masking TABLE databaseContext parity mismatch.',1;
+        IF (SELECT * FROM [#RlsMaskOutput_securityPolicies] ORDER BY [DatabaseId],[PolicyObjectId] FOR JSON PATH,INCLUDE_NULL_VALUES)<>JSON_QUERY(@Json,N'$.securityPolicies')
+            THROW 57250,N'RLS masking TABLE securityPolicies JSON parity mismatch.',1;
+        IF (SELECT * FROM [#RlsMaskOutput_securityPolicies] ORDER BY [DatabaseId],[PolicyObjectId] FOR JSON PATH,INCLUDE_NULL_VALUES)<>(SELECT * FROM [#RlsMaskExpected_securityPolicies] ORDER BY [DatabaseId],[PolicyObjectId] FOR JSON PATH,INCLUDE_NULL_VALUES)
+            THROW 57251,N'RLS masking TABLE securityPolicies native oracle mismatch.',1;
+        IF (SELECT * FROM [#RlsMaskOutput_securityPredicates] ORDER BY [DatabaseId],[PolicyObjectId],[PredicateId] FOR JSON PATH,INCLUDE_NULL_VALUES)<>JSON_QUERY(@Json,N'$.securityPredicates')
+            THROW 57252,N'RLS masking TABLE securityPredicates JSON parity mismatch.',1;
+        IF (SELECT * FROM [#RlsMaskOutput_maskedColumns] ORDER BY [DatabaseId],[ObjectId],[ColumnId] FOR JSON PATH,INCLUDE_NULL_VALUES)<>JSON_QUERY(@Json,N'$.maskedColumns')
+            THROW 57253,N'RLS masking TABLE maskedColumns JSON parity mismatch.',1;
+        IF (SELECT * FROM [#RlsMaskOutput_sourceStatus] ORDER BY [DatabaseId],[DatabaseName],[SourceKey] FOR JSON PATH,INCLUDE_NULL_VALUES)<>JSON_QUERY(@Json,N'$.sourceStatus')
+            THROW 57254,N'RLS masking TABLE sourceStatus parity mismatch.',1;
+        IF (SELECT * FROM [#RlsMaskOutput_warnings] ORDER BY [DatabaseId],[DatabaseName],[WarningCode],[SourceKey] FOR JSON PATH,INCLUDE_NULL_VALUES)<>JSON_QUERY(@Json,N'$.warnings')
+            THROW 57255,N'RLS masking TABLE warnings parity mismatch.',1;
 
         -- A minimally privileged caller sees an empty but successful visible subset.
         SELECT @RestrictedLogin=N'ExampleRlsMaskReader_'+@Suffix,@RestrictedUser=N'ExampleRlsMaskReader_'+@Suffix,

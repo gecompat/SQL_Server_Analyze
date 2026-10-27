@@ -22,6 +22,50 @@ RESULTS = {
     "sourceStatus": "[DatabaseId] int NULL, [DatabaseName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL, [SourceKey] varchar(64) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL, [SourceKind] varchar(16) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL, [StartedAtUtc] datetime2(3) NOT NULL, [CompletedAtUtc] datetime2(3) NOT NULL, [StatusCode] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL, [VisibilityScope] varchar(32) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL, [ObservedRows] bigint NULL, [ReturnedRows] bigint NULL, [IsLimited] bit NOT NULL, [ErrorNumber] int NULL, [ErrorMessage] nvarchar(2048) COLLATE SQL_Latin1_General_CP1_CS_AS NULL",
     "warnings": "[DatabaseId] int NULL, [DatabaseName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL, [WarningCode] varchar(64) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL, [SourceKey] varchar(64) COLLATE SQL_Latin1_General_CP1_CS_AS NULL, [Detail] nvarchar(1000) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL",
 }
+TABLE_DIAGNOSTICS = (
+    (57236, "RLS masking TABLE moduleStatus row count mismatch."),
+    (57237, "RLS masking TABLE databaseContext row count mismatch."),
+    (57238, "RLS masking TABLE securityPolicies row count mismatch."),
+    (57239, "RLS masking TABLE securityPredicates row count mismatch."),
+    (57240, "RLS masking TABLE maskedColumns row count mismatch."),
+    (57241, "RLS masking TABLE sourceStatus row count mismatch."),
+    (57242, "RLS masking TABLE warning row count mismatch."),
+    (57243, "RLS masking TABLE policy warning count mismatch."),
+    (57244, "RLS masking TABLE first database warning count mismatch."),
+    (57245, "RLS masking TABLE second database warning count mismatch."),
+    (57246, "RLS masking TABLE policy warning detail mismatch."),
+    (57247, "RLS masking TABLE JSON privacy contract mismatch."),
+    (57248, "RLS masking TABLE moduleStatus parity mismatch."),
+    (57249, "RLS masking TABLE databaseContext parity mismatch."),
+    (57250, "RLS masking TABLE securityPolicies JSON parity mismatch."),
+    (57251, "RLS masking TABLE securityPolicies native oracle mismatch."),
+    (57252, "RLS masking TABLE securityPredicates JSON parity mismatch."),
+    (57253, "RLS masking TABLE maskedColumns JSON parity mismatch."),
+    (57254, "RLS masking TABLE sourceStatus parity mismatch."),
+    (57255, "RLS masking TABLE warnings parity mismatch."),
+)
+TABLE_ASSERTION_FRAGMENTS = (
+    "[#RlsMaskOutput_moduleStatus])<>1",
+    "[#RlsMaskOutput_databaseContext])<>2",
+    "[#RlsMaskOutput_securityPolicies])<>4",
+    "[#RlsMaskOutput_securityPredicates])<>4",
+    "[#RlsMaskOutput_maskedColumns])<>4",
+    "[#RlsMaskOutput_sourceStatus])<>8",
+    "[#RlsMaskOutput_warnings])<>1+CASE WHEN @PolicyFieldA=0 THEN 1 ELSE 0 END+CASE WHEN @PolicyFieldB=0 THEN 1 ELSE 0 END",
+    "WHERE [DatabaseName]=@DbA AND [WarningCode]='SOURCE_UNAVAILABLE' AND [SourceKey]='SECURITY_POLICIES'",
+    "WHERE [DatabaseName]=@DbB AND [WarningCode]='SOURCE_UNAVAILABLE' AND [SourceKey]='SECURITY_POLICIES'",
+    "[Detail]<>N'Die Katalogansicht stellt IsSchemabindingEnabled nicht bereit; das NULL-faehige Feld bleibt NULL.'",
+    "[#RlsMaskExpected_securityPolicies]",
+    "<>JSON_QUERY(@Json,N'$.moduleStatus')",
+    "<>JSON_QUERY(@Json,N'$.databaseContext')",
+    "JSON_QUERY(@Json,N'$.securityPolicies')",
+    "JSON_QUERY(@Json,N'$.securityPredicates')",
+    "JSON_QUERY(@Json,N'$.maskedColumns')",
+    "<>JSON_QUERY(@Json,N'$.sourceStatus')",
+    "<>JSON_QUERY(@Json,N'$.warnings')",
+    "EXAMPLE_NO_LEAK_PREDICATE_TOKEN",
+    "NO_LEAK_MASK_TOKEN",
+)
 PARAMETERS = [
     ("DatabaseNames", "nvarchar(max)", "NULL"),
     ("SystemdatenbankenEinbeziehen", "bit", "0"),
@@ -120,6 +164,17 @@ def predicate_id_mapping_errors(source: str, fixture: str) -> list[str]:
     return errors
 
 
+def table_assertion_errors(fixture: str) -> list[str]:
+    errors: list[str] = []
+    for error_number, message in TABLE_DIAGNOSTICS:
+        marker = f"THROW {error_number},N'{message}',1;"
+        if fixture.count(marker) != 1:
+            errors.append(f"TABLE fixture must preserve one fixed diagnostic for assertion {error_number}")
+    if any(fragment not in fixture for fragment in TABLE_ASSERTION_FRAGMENTS):
+        errors.append("TABLE fixture must retain counts, JSON parity, native catalog oracles, and privacy assertions")
+    return errors
+
+
 def validate(root: Path) -> list[str]:
     errors: list[str] = []
     source = (root / SOURCE).read_text(encoding="utf-8-sig")
@@ -201,6 +256,7 @@ def validate(root: Path) -> list[str]:
         errors.append("release gate suite total changed without enumerating a new top-level suite")
     fixture = (root / "Code/Tests/ServerHealth/139_RowLevelSecurityAndMasking_Runtime_Contract.sql").read_text(encoding="utf-8-sig")
     errors.extend(optional_policy_field_errors(source, fixture))
+    errors.extend(table_assertion_errors(fixture))
     schema_batch_error = fixture_schema_batch_error(fixture)
     if schema_batch_error:
         errors.append(schema_batch_error)
@@ -264,6 +320,11 @@ def main() -> int:
         valid_predicate_fixture = valid_predicate_source * 2
         assert predicate_id_mapping_errors(valid_predicate_source, valid_predicate_fixture) == []
         assert predicate_id_mapping_errors(valid_predicate_source.replace("security_predicate_id", "predicate_id"), valid_predicate_fixture)
+        diagnostic_fixture = " ".join(
+            f"THROW {error_number},N'{message}',1;" for error_number, message in TABLE_DIAGNOSTICS
+        ) + " " + " ".join(TABLE_ASSERTION_FRAGMENTS)
+        assert table_assertion_errors(diagnostic_fixture) == []
+        assert table_assertion_errors(diagnostic_fixture.replace("THROW 57244", "THROW 57236"))
         print("RLS and masking inventory validator self-test passed.")
         return 0
     errors = validate(args.repository_root.resolve())
