@@ -69,6 +69,24 @@ def fixture_schema_batch_error(fixture: str) -> str | None:
     return None
 
 
+def optional_policy_field_errors(source: str, fixture: str) -> list[str]:
+    errors: list[str] = []
+    if "[sys].[columns] AS [c]" not in source or "N''is_schemabinding_enabled''" not in source:
+        errors.append("policy source must detect whether the native schemabinding metadata field is exposed")
+    field_fallback = "CASE WHEN @PolicyFieldAvailable=1 THEN N'[p].[is_schemabinding_enabled]' ELSE N'CAST(NULL AS bit)' END"
+    if source.count(field_fallback) != 1:
+        errors.append("policy source must preserve the native schemabinding bit or return typed NULL when the field is absent")
+    missing_field_warning = "'SOURCE_UNAVAILABLE','SECURITY_POLICIES',N'Die Katalogansicht stellt IsSchemabindingEnabled nicht bereit"
+    if missing_field_warning not in source:
+        errors.append("missing policy-field metadata must produce a bounded source warning")
+    fixture_field_fallback = "THEN N'[p].[is_schemabinding_enabled]' ELSE N'CAST(NULL AS bit)' END"
+    if fixture.count(fixture_field_fallback) != 2 or not all(name in fixture for name in ("@PolicyFieldA", "@PolicyFieldB", "@PolicyFieldEmpty")):
+        errors.append("native fixture oracle must independently handle the native policy field in both populated and empty databases")
+    if "<>7+CASE WHEN @PolicyFieldA=0 THEN 1 ELSE 0 END+CASE WHEN @PolicyFieldB=0 THEN 1 ELSE 0 END" not in fixture:
+        errors.append("global-limit warning oracle must include bounded policy-field warnings for each selected database")
+    return errors
+
+
 def validate(root: Path) -> list[str]:
     errors: list[str] = []
     source = (root / SOURCE).read_text(encoding="utf-8-sig")
@@ -84,7 +102,6 @@ def validate(root: Path) -> list[str]:
     ):
         if required not in source:
             errors.append(f"source missing required contract marker: {required}")
-
     signature_match = re.search(
         r"CREATE OR ALTER PROCEDURE \[monitor\]\.\[USP_RowLevelSecurityAndMaskingInventory\](.*?)\nAS\nBEGIN",
         source,
@@ -149,6 +166,7 @@ def validate(root: Path) -> list[str]:
     if "CAST(34 AS int) AS [ExecutedSuites]" not in release_gate:
         errors.append("release gate suite total changed without enumerating a new top-level suite")
     fixture = (root / "Code/Tests/ServerHealth/139_RowLevelSecurityAndMasking_Runtime_Contract.sql").read_text(encoding="utf-8-sig")
+    errors.extend(optional_policy_field_errors(source, fixture))
     schema_batch_error = fixture_schema_batch_error(fixture)
     if schema_batch_error:
         errors.append(schema_batch_error)
@@ -169,6 +187,9 @@ def validate(root: Path) -> list[str]:
     ):
         if PROCEDURE not in (root / relative).read_text(encoding="utf-8-sig"):
             errors.append(f"missing procedure navigation/documentation registration: {relative}")
+    guide = (root / "Documentation/Analysis_Guides/Procedures/USP_RowLevelSecurityAndMaskingInventory.md").read_text(encoding="utf-8-sig")
+    if "SOURCE_UNAVAILABLE" not in guide or "IsSchemabindingEnabled" not in guide:
+        errors.append("public guide must explain nullable policy-field behavior and its unavailable-field warning")
     return errors
 
 
@@ -191,6 +212,10 @@ def main() -> int:
         )
         assert fixture_schema_batch_error(valid_schema_setup) is None
         assert fixture_schema_batch_error(invalid_schema_setup) is not None
+        field_source = "[sys].[columns] AS [c] N''is_schemabinding_enabled'' CASE WHEN @PolicyFieldAvailable=1 THEN N'[p].[is_schemabinding_enabled]' ELSE N'CAST(NULL AS bit)' END 'SOURCE_UNAVAILABLE','SECURITY_POLICIES',N'Die Katalogansicht stellt IsSchemabindingEnabled nicht bereit'"
+        field_fixture = "@PolicyFieldA @PolicyFieldB @PolicyFieldEmpty <>7+CASE WHEN @PolicyFieldA=0 THEN 1 ELSE 0 END+CASE WHEN @PolicyFieldB=0 THEN 1 ELSE 0 END " + ("THEN N'[p].[is_schemabinding_enabled]' ELSE N'CAST(NULL AS bit)' END " * 2)
+        assert optional_policy_field_errors(field_source, field_fixture) == []
+        assert optional_policy_field_errors(field_source.replace("CAST(NULL AS bit)", "NULL"), field_fixture)
         print("RLS and masking inventory validator self-test passed.")
         return 0
     errors = validate(args.repository_root.resolve())

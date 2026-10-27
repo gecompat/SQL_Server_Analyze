@@ -51828,7 +51828,7 @@ BEGIN
         @FailureError int=NULL,@FailureStatus varchar(40)=NULL,
         @TableStatus varchar(40),@TableError int,@TableMessage nvarchar(2048),
         @Started datetime2(3),@Observed bigint,@DatabaseId int,@DatabaseName sysname,@QuotedDatabase nvarchar(258),
-        @ContextAvailable bit,@ContextStatus varchar(40),@StateDescription nvarchar(60),@ContainmentDescription nvarchar(60),@CrossDatabaseRequested bit;
+        @ContextAvailable bit,@ContextStatus varchar(40),@StateDescription nvarchar(60),@ContainmentDescription nvarchar(60),@CrossDatabaseRequested bit,@PolicyFieldAvailable bit;
     DECLARE @ConsoleResultRequested bit=CASE WHEN @Mode='CONSOLE' THEN 1 ELSE 0 END;
     SET @RestoreLock=N'SET LOCK_TIMEOUT '+CONVERT(nvarchar(20),@PreviousLockTimeout)+N';';
     IF @Hilfe=1
@@ -51890,11 +51890,14 @@ BEGIN
                 SET @ContextStatus=CASE WHEN ERROR_NUMBER() IN(911,924,926,927,942,945,952,978,4060) THEN 'DATABASE_UNAVAILABLE' ELSE 'SOURCE_UNAVAILABLE' END; INSERT [#285_USP_RowLevelSecurityAndMaskingInventory_sourceStatus] VALUES(@DatabaseId,@DatabaseName,'DATABASE_CONTEXT','NATIVE',@Started,SYSUTCDATETIME(),@ContextStatus,'UNPROVEN',NULL,NULL,0,ERROR_NUMBER(),CONCAT(N'Katalogquelle nicht verfuegbar; SQL Server Fehlernummer ',ERROR_NUMBER(),N'.'));
             END CATCH;
             INSERT [#285_USP_RowLevelSecurityAndMaskingInventory_databaseContext] VALUES(@DatabaseId,@DatabaseName,@StateDescription,@ContainmentDescription,@ContextStatus);
-            SET @Started=SYSUTCDATETIME();
+            SET @Started=SYSUTCDATETIME(); SET @PolicyFieldAvailable=0;
             BEGIN TRY
-                SET @Sql=@SetLock+N'USE '+@QuotedDatabase+N'; '+@IdentityGuard+N'INSERT [#285_USP_RowLevelSecurityAndMaskingInventory_securityPolicies] SELECT @Id,@Name,[p].[object_id],[p].[name],[p].[schema_id],[s].[name],[p].[is_enabled],[p].[is_not_for_replication],[p].[uses_database_collation],[p].[is_schemabinding_enabled],[p].[create_date],[p].[modify_date] FROM [sys].[security_policies] AS [p] WITH (NOLOCK) LEFT JOIN [sys].[schemas] AS [s] WITH (NOLOCK) ON [s].[schema_id]=[p].[schema_id]; SET @Rows=@@ROWCOUNT; '+@IdentityGuard;
+                SET @Sql=@SetLock+N'USE '+@QuotedDatabase+N'; '+@IdentityGuard+N'SELECT @Available=CASE WHEN EXISTS(SELECT 1 FROM [sys].[columns] AS [c] WHERE [c].[object_id]=OBJECT_ID(N''sys.security_policies'') AND [c].[name]=N''is_schemabinding_enabled'') THEN 1 ELSE 0 END; '+@IdentityGuard;
+                EXEC [sys].[sp_executesql] @Sql,N'@Id int,@Name sysname,@Created datetime,@Available bit OUTPUT',@Id=@DatabaseId,@Name=@DatabaseName,@Created=@DatabaseCreatedAt,@Available=@PolicyFieldAvailable OUTPUT;
+                SET @Sql=@SetLock+N'USE '+@QuotedDatabase+N'; '+@IdentityGuard+N'INSERT [#285_USP_RowLevelSecurityAndMaskingInventory_securityPolicies] SELECT @Id,@Name,[p].[object_id],[p].[name],[p].[schema_id],[s].[name],[p].[is_enabled],[p].[is_not_for_replication],[p].[uses_database_collation],'+CASE WHEN @PolicyFieldAvailable=1 THEN N'[p].[is_schemabinding_enabled]' ELSE N'CAST(NULL AS bit)' END+N',[p].[create_date],[p].[modify_date] FROM [sys].[security_policies] AS [p] WITH (NOLOCK) LEFT JOIN [sys].[schemas] AS [s] WITH (NOLOCK) ON [s].[schema_id]=[p].[schema_id]; SET @Rows=@@ROWCOUNT; '+@IdentityGuard;
                 EXEC [sys].[sp_executesql] @Sql,N'@Id int,@Name sysname,@Created datetime,@Rows bigint OUTPUT',@Id=@DatabaseId,@Name=@DatabaseName,@Created=@DatabaseCreatedAt,@Rows=@Observed OUTPUT;
                 INSERT [#285_USP_RowLevelSecurityAndMaskingInventory_sourceStatus] VALUES(@DatabaseId,@DatabaseName,'SECURITY_POLICIES','NATIVE',@Started,SYSUTCDATETIME(),'AVAILABLE_LIMITED','VISIBLE_ONLY',@Observed,@Observed,0,NULL,NULL);
+                IF @PolicyFieldAvailable=0 INSERT [#285_USP_RowLevelSecurityAndMaskingInventory_warnings] VALUES(@DatabaseId,@DatabaseName,'SOURCE_UNAVAILABLE','SECURITY_POLICIES',N'Die Katalogansicht stellt IsSchemabindingEnabled nicht bereit; das NULL-faehige Feld bleibt NULL.');
             END TRY
             BEGIN CATCH
                 DELETE FROM [#285_USP_RowLevelSecurityAndMaskingInventory_securityPolicies] WHERE [DatabaseId]=@DatabaseId;

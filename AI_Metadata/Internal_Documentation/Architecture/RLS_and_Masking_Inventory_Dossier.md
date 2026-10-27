@@ -122,10 +122,13 @@ Resultsets.
 | 7 `warnings` | `DatabaseId int NULL`, `DatabaseName sysname NULL`, `WarningCode varchar(64) NOT NULL`, `SourceKey varchar(64) NULL`, `Detail nvarchar(1000) NOT NULL` |
 
 String-bearing fields above are `COLLATE SQL_Latin1_General_CP1_CS_AS`.
-The `IsSchemabindingEnabled` column preserves the catalog bit including NULL;
-the product does not invert, normalize or interpret it. The database IDs,
-policy IDs and object/column IDs are meaningful only with their database and
-capture context.
+The `IsSchemabindingEnabled` column preserves the native catalog bit including
+NULL when the catalog exposes it. If the catalog view does not expose that
+field, the nullable result field is returned as NULL with a bounded
+`SOURCE_UNAVAILABLE` warning for `SECURITY_POLICIES`. The product does not
+invert, normalize or interpret the native bit. The database IDs, policy IDs
+and object/column IDs are meaningful only with their database and capture
+context.
 
 Der gemeinsame `sourceStatus`- und `warnings`-Vertrag übernimmt Felder,
 Bedeutung und Ausgabegrenzen des Datenbankprincipal-Moduls. Für diese

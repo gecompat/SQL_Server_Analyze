@@ -13,7 +13,7 @@ BEGIN
         @Status varchar(40),@Partial bit,@Error int,@Message nvarchar(2048),@Return int,
         @OriginalLock int=@@LOCK_TIMEOUT,@OriginalAbort bit=CASE WHEN (@@OPTIONS&16384)=16384 THEN 1 ELSE 0 END,
         @OriginalTx int=@@TRANCOUNT,@NativeTableCases int=0,@RestrictedLogin sysname,@RestrictedUser sysname,
-        @CatalogObject sysname,@ExpectedSource varchar(64),@FirstDatabaseId int,
+        @CatalogObject sysname,@ExpectedSource varchar(64),@FirstDatabaseId int,@PolicyFieldA bit,@PolicyFieldB bit,@PolicyFieldEmpty bit,
         @Credential nvarchar(128),@Impersonating bit=0;
     CREATE TABLE [#RlsMaskOutput_moduleStatus]([ModuleName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,[CapturedAtUtc] datetime2(3) NOT NULL,[StatusCode] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,[IsPartial] bit NOT NULL,[RowCount] bigint NOT NULL,[Detail] nvarchar(1000) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL);
     CREATE TABLE [#RlsMaskOutput_databaseContext]([DatabaseId] int NOT NULL,[DatabaseName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,[StateDescription] nvarchar(60) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,[ContainmentDescription] nvarchar(60) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,[ContextStatus] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL);
@@ -63,13 +63,19 @@ BEGIN
         SET @Names=QUOTENAME(@DbA);
         SET @NamesBoth=QUOTENAME(@DbA)+N'|'+QUOTENAME(@DbB);
         SET @NamesEmpty=QUOTENAME(@DbEmpty);
+        SET @Sql=N'USE '+QUOTENAME(@DbEmpty)+N'; SELECT @Available=CASE WHEN EXISTS(SELECT 1 FROM [sys].[columns] AS [c] WHERE [c].[object_id]=OBJECT_ID(N''sys.security_policies'') AND [c].[name]=N''is_schemabinding_enabled'') THEN 1 ELSE 0 END;';
+        EXEC [master].[sys].[sp_executesql] @Sql,N'@Available bit OUTPUT',@Available=@PolicyFieldEmpty OUTPUT;
+        SET @Sql=N'USE '+QUOTENAME(@DbA)+N'; SELECT @Available=CASE WHEN EXISTS(SELECT 1 FROM [sys].[columns] AS [c] WHERE [c].[object_id]=OBJECT_ID(N''sys.security_policies'') AND [c].[name]=N''is_schemabinding_enabled'') THEN 1 ELSE 0 END;';
+        EXEC [master].[sys].[sp_executesql] @Sql,N'@Available bit OUTPUT',@Available=@PolicyFieldA OUTPUT;
         SET @Sql=N'USE '+QUOTENAME(@DbA)+N'; '
-            +N'INSERT [#RlsMaskExpected_securityPolicies] SELECT DB_ID(),DB_NAME(),[p].[object_id],[p].[name],[p].[schema_id],[s].[name],[p].[is_enabled],[p].[is_not_for_replication],[p].[uses_database_collation],[p].[is_schemabinding_enabled],[p].[create_date],[p].[modify_date] FROM [sys].[security_policies] AS [p] LEFT JOIN [sys].[schemas] AS [s] ON [s].[schema_id]=[p].[schema_id]; '
+            +N'INSERT [#RlsMaskExpected_securityPolicies] SELECT DB_ID(),DB_NAME(),[p].[object_id],[p].[name],[p].[schema_id],[s].[name],[p].[is_enabled],[p].[is_not_for_replication],[p].[uses_database_collation],'+CASE WHEN @PolicyFieldA=1 THEN N'[p].[is_schemabinding_enabled]' ELSE N'CAST(NULL AS bit)' END+N',[p].[create_date],[p].[modify_date] FROM [sys].[security_policies] AS [p] LEFT JOIN [sys].[schemas] AS [s] ON [s].[schema_id]=[p].[schema_id]; '
             +N'INSERT [#RlsMaskExpected_securityPredicates] SELECT DB_ID(),DB_NAME(),[p].[object_id],[p].[predicate_id],[p].[target_object_id],[p].[predicate_type],[p].[predicate_type_desc],[p].[operation],[p].[operation_desc] FROM [sys].[security_predicates] AS [p]; '
             +N'INSERT [#RlsMaskExpected_maskedColumns] SELECT DB_ID(),DB_NAME(),[m].[object_id],[m].[column_id],[s].[name],[t].[name],[m].[name],[m].[is_masked] FROM [sys].[masked_columns] AS [m] LEFT JOIN [sys].[tables] AS [t] ON [t].[object_id]=[m].[object_id] LEFT JOIN [sys].[schemas] AS [s] ON [s].[schema_id]=[t].[schema_id];';
         EXEC [master].[sys].[sp_executesql] @Sql;
+        SET @Sql=N'USE '+QUOTENAME(@DbB)+N'; SELECT @Available=CASE WHEN EXISTS(SELECT 1 FROM [sys].[columns] AS [c] WHERE [c].[object_id]=OBJECT_ID(N''sys.security_policies'') AND [c].[name]=N''is_schemabinding_enabled'') THEN 1 ELSE 0 END;';
+        EXEC [master].[sys].[sp_executesql] @Sql,N'@Available bit OUTPUT',@Available=@PolicyFieldB OUTPUT;
         SET @Sql=N'USE '+QUOTENAME(@DbB)+N'; '
-            +N'INSERT [#RlsMaskExpected_securityPolicies] SELECT DB_ID(),DB_NAME(),[p].[object_id],[p].[name],[p].[schema_id],[s].[name],[p].[is_enabled],[p].[is_not_for_replication],[p].[uses_database_collation],[p].[is_schemabinding_enabled],[p].[create_date],[p].[modify_date] FROM [sys].[security_policies] AS [p] LEFT JOIN [sys].[schemas] AS [s] ON [s].[schema_id]=[p].[schema_id]; '
+            +N'INSERT [#RlsMaskExpected_securityPolicies] SELECT DB_ID(),DB_NAME(),[p].[object_id],[p].[name],[p].[schema_id],[s].[name],[p].[is_enabled],[p].[is_not_for_replication],[p].[uses_database_collation],'+CASE WHEN @PolicyFieldB=1 THEN N'[p].[is_schemabinding_enabled]' ELSE N'CAST(NULL AS bit)' END+N',[p].[create_date],[p].[modify_date] FROM [sys].[security_policies] AS [p] LEFT JOIN [sys].[schemas] AS [s] ON [s].[schema_id]=[p].[schema_id]; '
             +N'INSERT [#RlsMaskExpected_securityPredicates] SELECT DB_ID(),DB_NAME(),[p].[object_id],[p].[predicate_id],[p].[target_object_id],[p].[predicate_type],[p].[predicate_type_desc],[p].[operation],[p].[operation_desc] FROM [sys].[security_predicates] AS [p]; '
             +N'INSERT [#RlsMaskExpected_maskedColumns] SELECT DB_ID(),DB_NAME(),[m].[object_id],[m].[column_id],[s].[name],[t].[name],[m].[name],[m].[is_masked] FROM [sys].[masked_columns] AS [m] LEFT JOIN [sys].[tables] AS [t] ON [t].[object_id]=[m].[object_id] LEFT JOIN [sys].[schemas] AS [s] ON [s].[schema_id]=[t].[schema_id];';
         EXEC [master].[sys].[sp_executesql] @Sql;
@@ -88,7 +94,6 @@ BEGIN
            OR JSON_VALUE(@Json,N'$.databaseContext[0].DatabaseName')<>@DbA
            OR TRY_CONVERT(int,JSON_VALUE(@Json,N'$.databaseContext[0].DatabaseId'))<>DB_ID(@DbA)
            OR JSON_VALUE(@Json,N'$.databaseContext[0].ContextStatus')<>N'AVAILABLE_LIMITED'
-           OR JSON_VALUE(@Json,N'$.securityPolicies[0].IsSchemabindingEnabled') IS NULL
            OR JSON_QUERY(@Json,N'$.securityPolicies')<>(SELECT * FROM [#RlsMaskExpected_securityPolicies] WHERE [DatabaseName]=@DbA ORDER BY [DatabaseId],[PolicyObjectId] FOR JSON PATH,INCLUDE_NULL_VALUES)
            OR JSON_QUERY(@Json,N'$.securityPredicates')<>(SELECT * FROM [#RlsMaskExpected_securityPredicates] WHERE [DatabaseName]=@DbA ORDER BY [DatabaseId],[PolicyObjectId],[PredicateId] FOR JSON PATH,INCLUDE_NULL_VALUES)
            OR JSON_QUERY(@Json,N'$.maskedColumns')<>(SELECT * FROM [#RlsMaskExpected_maskedColumns] WHERE [DatabaseName]=@DbA ORDER BY [DatabaseId],[ObjectId],[ColumnId] FOR JSON PATH,INCLUDE_NULL_VALUES)
@@ -101,7 +106,9 @@ BEGIN
             THROW 57221,N'RLS and masking source status is incomplete.',1;
         IF EXISTS(SELECT [SourceKey] FROM OPENJSON(@Json,N'$.sourceStatus') WITH([SourceKey] varchar(64) N'$.SourceKey',[StatusCode] varchar(40) N'$.StatusCode',[ObservedRows] bigint N'$.ObservedRows',[ReturnedRows] bigint N'$.ReturnedRows',[IsLimited] bit N'$.IsLimited') WHERE [SourceKey] IN('SECURITY_POLICIES','SECURITY_PREDICATES','MASKED_COLUMNS') AND ([StatusCode]<>'AVAILABLE_LIMITED' OR [ObservedRows]<>[ReturnedRows] OR [IsLimited]<>0))
            OR (SELECT COUNT(*) FROM OPENJSON(@Json,N'$.sourceStatus'))<>4
-           OR (SELECT COUNT(*) FROM OPENJSON(@Json,N'$.warnings'))<>1
+           OR (SELECT COUNT(*) FROM OPENJSON(@Json,N'$.warnings'))<>1+CASE WHEN @PolicyFieldA=0 THEN 1 ELSE 0 END
+           OR (SELECT COUNT(*) FROM OPENJSON(@Json,N'$.warnings') WITH([WarningCode] varchar(64) N'$.WarningCode',[SourceKey] varchar(64) N'$.SourceKey') WHERE [WarningCode]='SOURCE_UNAVAILABLE' AND [SourceKey]='SECURITY_POLICIES')<>CASE WHEN @PolicyFieldA=0 THEN 1 ELSE 0 END
+           OR EXISTS(SELECT 1 FROM OPENJSON(@Json,N'$.warnings') WITH([WarningCode] varchar(64) N'$.WarningCode',[SourceKey] varchar(64) N'$.SourceKey',[Detail] nvarchar(1000) N'$.Detail') WHERE [WarningCode]='SOURCE_UNAVAILABLE' AND [SourceKey]='SECURITY_POLICIES' AND [Detail]<>N'Die Katalogansicht stellt IsSchemabindingEnabled nicht bereit; das NULL-faehige Feld bleibt NULL.')
             THROW 57229,N'RLS and masking source/warning counts or values mismatch.',1;
         IF EXISTS(SELECT 1 FROM OPENJSON(@Json,N'$.securityPolicies') AS [r] CROSS APPLY OPENJSON([r].[value]) AS [f] WHERE [f].[key] IN(N'PredicateDefinition',N'predicate_definition',N'MaskingFunction',N'masking_function'))
             THROW 57227,N'RLS and masking schema exposes a forbidden expression field.',1;
@@ -115,6 +122,7 @@ BEGIN
            OR JSON_QUERY(@Json,N'$.securityPolicies')<>JSON_QUERY(@PositiveJson,N'$.securityPolicies')
            OR JSON_QUERY(@Json,N'$.securityPredicates')<>JSON_QUERY(@PositiveJson,N'$.securityPredicates')
            OR JSON_QUERY(@Json,N'$.maskedColumns')<>JSON_QUERY(@PositiveJson,N'$.maskedColumns')
+           OR JSON_QUERY(@Json,N'$.warnings')<>JSON_QUERY(@PositiveJson,N'$.warnings')
            OR EXISTS(SELECT 1 FROM OPENJSON(@Json,N'$.sourceStatus') WITH([SourceKey] varchar(64) N'$.SourceKey',[ObservedRows] bigint N'$.ObservedRows',[ReturnedRows] bigint N'$.ReturnedRows',[IsLimited] bit N'$.IsLimited') WHERE [SourceKey] IN('SECURITY_POLICIES','SECURITY_PREDICATES','MASKED_COLUMNS') AND ([ObservedRows]<>2 OR [ReturnedRows]<>2 OR [IsLimited]<>0))
             THROW 57235,N'RLS and masking default output-limit contract mismatch.',1;
 
@@ -122,11 +130,13 @@ BEGIN
         EXEC [monitor].[USP_RowLevelSecurityAndMaskingInventory]
             @DatabaseNames=@NamesEmpty,@MaxZeilen=0,@ResultSetArt='NONE',@JsonErzeugen=1,@Json=@Json OUTPUT,
             @PrintMeldungen=0,@StatusCodeOut=@Status OUTPUT,@IsPartialOut=@Partial OUTPUT;
-        IF ISJSON(@Json)<>1 OR JSON_VALUE(@Json,N'$.meta.statusCode')<>'AVAILABLE_LIMITED'
+        IF ISJSON(@Json)<>1 OR @Status<>'AVAILABLE_LIMITED' OR @Partial<>1 OR JSON_VALUE(@Json,N'$.meta.statusCode')<>'AVAILABLE_LIMITED'
            OR (SELECT COUNT(*) FROM OPENJSON(@Json,N'$.securityPolicies'))<>0
            OR (SELECT COUNT(*) FROM OPENJSON(@Json,N'$.securityPredicates'))<>0
            OR (SELECT COUNT(*) FROM OPENJSON(@Json,N'$.maskedColumns'))<>0
-           OR (SELECT COUNT(*) FROM OPENJSON(@Json,N'$.warnings'))=0
+           OR (SELECT COUNT(*) FROM OPENJSON(@Json,N'$.warnings'))<>1+CASE WHEN @PolicyFieldEmpty=0 THEN 1 ELSE 0 END
+           OR (SELECT COUNT(*) FROM OPENJSON(@Json,N'$.warnings') WITH([WarningCode] varchar(64) N'$.WarningCode',[SourceKey] varchar(64) N'$.SourceKey') WHERE [WarningCode]='SOURCE_UNAVAILABLE' AND [SourceKey]='SECURITY_POLICIES')<>CASE WHEN @PolicyFieldEmpty=0 THEN 1 ELSE 0 END
+           OR EXISTS(SELECT 1 FROM OPENJSON(@Json,N'$.warnings') WITH([WarningCode] varchar(64) N'$.WarningCode',[SourceKey] varchar(64) N'$.SourceKey',[Detail] nvarchar(1000) N'$.Detail') WHERE [WarningCode]='SOURCE_UNAVAILABLE' AND [SourceKey]='SECURITY_POLICIES' AND [Detail]<>N'Die Katalogansicht stellt IsSchemabindingEnabled nicht bereit; das NULL-faehige Feld bleibt NULL.')
             THROW 57222,N'RLS and masking empty-visible-source contract mismatch.',1;
 
         -- The global per-inventory limit caps catalog rows across two populated databases.
@@ -146,6 +156,10 @@ BEGIN
            OR (SELECT COUNT(*) FROM OPENJSON(@Json,N'$.sourceStatus') WITH([DatabaseId] int N'$.DatabaseId',[SourceKey] varchar(64) N'$.SourceKey',[ObservedRows] bigint N'$.ObservedRows',[ReturnedRows] bigint N'$.ReturnedRows',[IsLimited] bit N'$.IsLimited') WHERE [SourceKey] IN('SECURITY_POLICIES','SECURITY_PREDICATES','MASKED_COLUMNS') AND [IsLimited]=1)<>6
            OR (SELECT COUNT(*) FROM OPENJSON(@Json,N'$.sourceStatus') WITH([DatabaseId] int N'$.DatabaseId',[SourceKey] varchar(64) N'$.SourceKey',[ObservedRows] bigint N'$.ObservedRows',[ReturnedRows] bigint N'$.ReturnedRows',[IsLimited] bit N'$.IsLimited') WHERE [SourceKey] IN('SECURITY_POLICIES','SECURITY_PREDICATES','MASKED_COLUMNS') AND [IsLimited]=0)<>0
            OR EXISTS(SELECT 1 FROM OPENJSON(@Json,N'$.sourceStatus') WITH([DatabaseId] int N'$.DatabaseId',[SourceKey] varchar(64) N'$.SourceKey',[ObservedRows] bigint N'$.ObservedRows',[ReturnedRows] bigint N'$.ReturnedRows',[IsLimited] bit N'$.IsLimited') WHERE [SourceKey] IN('SECURITY_POLICIES','SECURITY_PREDICATES','MASKED_COLUMNS') AND ([ObservedRows]<>2 OR [ReturnedRows]<>CASE WHEN [DatabaseId]=@FirstDatabaseId THEN 1 ELSE 0 END OR [IsLimited]<>1))
+           OR (SELECT COUNT(*) FROM OPENJSON(@Json,N'$.warnings'))<>7+CASE WHEN @PolicyFieldA=0 THEN 1 ELSE 0 END+CASE WHEN @PolicyFieldB=0 THEN 1 ELSE 0 END
+           OR (SELECT COUNT(*) FROM OPENJSON(@Json,N'$.warnings') WITH([WarningCode] varchar(64) N'$.WarningCode') WHERE [WarningCode]='OUTPUT_LIMIT')<>6
+           OR (SELECT COUNT(*) FROM OPENJSON(@Json,N'$.warnings') WITH([WarningCode] varchar(64) N'$.WarningCode',[SourceKey] varchar(64) N'$.SourceKey') WHERE [WarningCode]='SOURCE_UNAVAILABLE' AND [SourceKey]='SECURITY_POLICIES')<>CASE WHEN @PolicyFieldA=0 THEN 1 ELSE 0 END+CASE WHEN @PolicyFieldB=0 THEN 1 ELSE 0 END
+           OR (SELECT COUNT(*) FROM OPENJSON(@Json,N'$.warnings') WITH([WarningCode] varchar(64) N'$.WarningCode',[SourceKey] varchar(64) N'$.SourceKey',[Detail] nvarchar(1000) N'$.Detail') WHERE [WarningCode]='SOURCE_UNAVAILABLE' AND [SourceKey]='SECURITY_POLICIES' AND [Detail]=N'Die Katalogansicht stellt IsSchemabindingEnabled nicht bereit; das NULL-faehige Feld bleibt NULL.')<>CASE WHEN @PolicyFieldA=0 THEN 1 ELSE 0 END+CASE WHEN @PolicyFieldB=0 THEN 1 ELSE 0 END
             THROW 57223,N'RLS and masking global output limit mismatch.',1;
 
         -- Exercise all output paths and verify caller session/transaction state.
@@ -179,12 +193,16 @@ BEGIN
            OR (SELECT COUNT(*) FROM [#RlsMaskOutput_securityPredicates])<>4
            OR (SELECT COUNT(*) FROM [#RlsMaskOutput_maskedColumns])<>4
            OR (SELECT COUNT(*) FROM [#RlsMaskOutput_sourceStatus])<>8
-           OR (SELECT COUNT(*) FROM [#RlsMaskOutput_warnings])<>1
-           OR NOT EXISTS(SELECT 1 FROM [#RlsMaskOutput_securityPolicies] WHERE [IsSchemabindingEnabled] IS NOT NULL)
+           OR (SELECT COUNT(*) FROM [#RlsMaskOutput_warnings])<>1+CASE WHEN @PolicyFieldA=0 THEN 1 ELSE 0 END+CASE WHEN @PolicyFieldB=0 THEN 1 ELSE 0 END
+           OR (SELECT COUNT(*) FROM [#RlsMaskOutput_warnings] WHERE [WarningCode]='SOURCE_UNAVAILABLE' AND [SourceKey]='SECURITY_POLICIES')<>CASE WHEN @PolicyFieldA=0 THEN 1 ELSE 0 END+CASE WHEN @PolicyFieldB=0 THEN 1 ELSE 0 END
+           OR (SELECT COUNT(*) FROM [#RlsMaskOutput_warnings] WHERE [DatabaseName]=@DbA AND [WarningCode]='SOURCE_UNAVAILABLE' AND [SourceKey]='SECURITY_POLICIES')<>CASE WHEN @PolicyFieldA=0 THEN 1 ELSE 0 END
+           OR (SELECT COUNT(*) FROM [#RlsMaskOutput_warnings] WHERE [DatabaseName]=@DbB AND [WarningCode]='SOURCE_UNAVAILABLE' AND [SourceKey]='SECURITY_POLICIES')<>CASE WHEN @PolicyFieldB=0 THEN 1 ELSE 0 END
+           OR EXISTS(SELECT 1 FROM [#RlsMaskOutput_warnings] WHERE [WarningCode]='SOURCE_UNAVAILABLE' AND [SourceKey]='SECURITY_POLICIES' AND [Detail]<>N'Die Katalogansicht stellt IsSchemabindingEnabled nicht bereit; das NULL-faehige Feld bleibt NULL.')
            OR ISJSON(@Json)<>1 OR @Json LIKE N'%EXAMPLE_NO_LEAK_PREDICATE_TOKEN%' OR @Json LIKE N'%NO_LEAK_MASK_TOKEN%'
            OR (SELECT * FROM [#RlsMaskOutput_moduleStatus] FOR JSON PATH,INCLUDE_NULL_VALUES)<>JSON_QUERY(@Json,N'$.moduleStatus')
            OR (SELECT * FROM [#RlsMaskOutput_databaseContext] ORDER BY [DatabaseId] FOR JSON PATH,INCLUDE_NULL_VALUES)<>JSON_QUERY(@Json,N'$.databaseContext')
            OR (SELECT * FROM [#RlsMaskOutput_securityPolicies] ORDER BY [DatabaseId],[PolicyObjectId] FOR JSON PATH,INCLUDE_NULL_VALUES)<>JSON_QUERY(@Json,N'$.securityPolicies')
+           OR (SELECT * FROM [#RlsMaskOutput_securityPolicies] ORDER BY [DatabaseId],[PolicyObjectId] FOR JSON PATH,INCLUDE_NULL_VALUES)<>(SELECT * FROM [#RlsMaskExpected_securityPolicies] ORDER BY [DatabaseId],[PolicyObjectId] FOR JSON PATH,INCLUDE_NULL_VALUES)
            OR (SELECT * FROM [#RlsMaskOutput_securityPredicates] ORDER BY [DatabaseId],[PolicyObjectId],[PredicateId] FOR JSON PATH,INCLUDE_NULL_VALUES)<>JSON_QUERY(@Json,N'$.securityPredicates')
            OR (SELECT * FROM [#RlsMaskOutput_maskedColumns] ORDER BY [DatabaseId],[ObjectId],[ColumnId] FOR JSON PATH,INCLUDE_NULL_VALUES)<>JSON_QUERY(@Json,N'$.maskedColumns')
            OR (SELECT * FROM [#RlsMaskOutput_sourceStatus] ORDER BY [DatabaseId],[DatabaseName],[SourceKey] FOR JSON PATH,INCLUDE_NULL_VALUES)<>JSON_QUERY(@Json,N'$.sourceStatus')

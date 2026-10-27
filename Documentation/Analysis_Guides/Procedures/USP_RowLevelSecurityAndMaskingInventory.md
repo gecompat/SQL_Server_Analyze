@@ -29,7 +29,7 @@ RAW liefert sieben Resultsets. TABLE exportiert dieselben Namen über `@ResultTa
 |---|---|
 | `moduleStatus` | Aufrufstatus, Partialität und Summe der zurückgegebenen Policy-, Predicate- und Maskingzeilen. |
 | `databaseContext` | Datenbankbindung, Zustand, Containment und Kontextstatus je ausgewähltem Ziel. |
-| `securityPolicies` | Sichtbare Policy-ID, Name, Schema, Schalter und Zeitfelder; `IsSchemabindingEnabled` erhält den rohen Katalogwert einschließlich NULL. |
+| `securityPolicies` | Sichtbare Policy-ID, Name, Schema, Schalter und Zeitfelder; `IsSchemabindingEnabled` erhält den rohen Katalogwert einschließlich NULL. Wenn die Katalogansicht dieses Feld nicht bereitstellt, bleibt es NULL und `warnings` meldet `SOURCE_UNAVAILABLE` für `SECURITY_POLICIES`. |
 | `securityPredicates` | Policy- und Predicate-IDs, Zielobjekt-ID, Typ und Operation. Definitionstext bleibt ausgeschlossen. |
 | `maskedColumns` | Objekt-/Spalten-ID, sichtbare Schema-, Tabellen- und Spaltennamen sowie `IsMasked`. Maskingfunktion und Werte bleiben ausgeschlossen. |
 | `sourceStatus` | Getrennte Zeitklammer, Status, Sichtbarkeitsgrenze und beobachtete beziehungsweise zurückgegebene Zeilen pro Quelle. |
@@ -43,7 +43,7 @@ Eine Policy-Zeile, Predicate-Zeile oder Masked-Column-Zeile ist ein im Caller-Ko
 
 ## So lesen
 
-Prüfen Sie zuerst `databaseContext`, `sourceStatus` und `warnings`. Danach ordnen Sie Fachzeilen über Datenbank- und native Objekt-IDs ein. `VISIBLE_ONLY` beschreibt die tatsächlich abgefragte Sicht; es bestätigt keine vollständige Metadatenberechtigung. `IsSchemabindingEnabled` bleibt der rohe Katalogwert einschließlich NULL.
+Prüfen Sie zuerst `databaseContext`, `sourceStatus` und `warnings`. Danach ordnen Sie Fachzeilen über Datenbank- und native Objekt-IDs ein. `VISIBLE_ONLY` beschreibt die tatsächlich abgefragte Sicht; es bestätigt keine vollständige Metadatenberechtigung. `IsSchemabindingEnabled` bleibt der rohe Katalogwert einschließlich NULL; fehlt das Katalogfeld, kennzeichnet `SOURCE_UNAVAILABLE` in `warnings` die fehlende Metadatenangabe.
 
 ## Aufnahme und Datenschutz
 
@@ -83,7 +83,7 @@ Die Aufnahme liest drei getrennte lokale Katalogquellen. Sie gibt ausschließlic
 
 ### Source Select
 
-Der folgende Quellpfad zeigt Policy-Identitäten und sichtbare Schemanamen. Die beiden anderen Fachquellen werden separat abgefragt:
+Der folgende Quellpfad zeigt Policy-Identitäten und sichtbare Schemanamen. Die beiden anderen Fachquellen werden separat abgefragt. Das optionale Katalogfeld `is_schemabinding_enabled` wird nur gelesen, wenn die Zielansicht es bereitstellt; andernfalls bleibt `IsSchemabindingEnabled` NULL und `warnings` nennt `SOURCE_UNAVAILABLE` für `SECURITY_POLICIES`.
 
 ```sql
 SELECT
@@ -94,7 +94,6 @@ SELECT
     , [p].[is_enabled]
     , [p].[is_not_for_replication]
     , [p].[uses_database_collation]
-    , [p].[is_schemabinding_enabled]
     , [p].[create_date]
     , [p].[modify_date]
 FROM [sys].[security_policies] AS [p] WITH (NOLOCK)
