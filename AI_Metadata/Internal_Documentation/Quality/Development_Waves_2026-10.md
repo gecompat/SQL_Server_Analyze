@@ -339,16 +339,8 @@ Drei-Versionen-Matrix.
 
 Zum Stand von Schritt 34 beschrieb das Dossier den ersten begrenzten Vertragsentwurf für RLS-Policies, Predicate-Metadaten und masked Columns. Es bindet die drei sichtbaren Katalogquellen, schließt Predicate- und Masking-Expressions, geschützte Tabellenwerte, Gesundheits- und effektive Berechtigungsurteile aus und hält Metadaten-Partialität fest. Der damalige Status war `RESEARCHED_NOT_IMPLEMENTED`; Schritte 35–38 integrierten anschließend das begrenzte V1, ohne Klassifikation, Agent-Proxies, MSDTC oder Legacy-Mirroring zu schließen.
 
-## Fortsetzung nach 40 abgeschlossenen Schritten
+## Fortsetzung nach 41 abgeschlossenen Schritten
 
-Schritt 40 ist über PR #479 integriert. Die gebundenen Merge-, Head- und
-Main-Ergebnisse stehen im [aktuellen Checkpoint](Next_Steps.md#aktueller-checkpoint-nach-schritt-40).
-Der Benutzer erweiterte die ursprüngliche Obergrenze von 40 um weitere 40
-eigene PR-Schritte auf insgesamt 80; die bereits abgeschlossenen 40 bleiben
-angerechnet. Der Checkpoint liegt bei 70. `DATABASE_MIRRORING` ist der nächste
-WI-0010-Kandidat mit Intake-Status `RESEARCHED_NOT_IMPLEMENTED` und Priorität
-P1. Das Dossier steht noch aus; Implementierung und Qualifikation sind nicht
-erfolgt. Die positive aktive DTC-Zeile, verteilte Commit-/Recovery-Evidenz,
-externe MSDTC-/Teilnehmergesundheit und native SQL Server 2019/2022-Evidenz
-bleiben offen. Die Legacy-Lesepfadlücke bleibt als gesonderte
-Dokumentationsaltlast bestehen.
+Schritt 40 ist über PR #479 integriert; der [aktuelle Checkpoint](Next_Steps.md#aktueller-checkpoint-nach-schritt-41) bindet die Merge-, Head- und Main-Ergebnisse. Schritt 41 ist über PR #480 in Mergecommit `1c2e9e23680c2be45c6cd9665590f5cc7a5323ea` integriert; alle vier Head- und drei Main-Prüfungen bestanden.
+
+Die autorisierte Obergrenze wurde von 40 um weitere 40 eigene PR-Schritte auf insgesamt 80 erweitert; die abgeschlossenen 40 bleiben angerechnet. Checkpoint 70. DATABASE_MIRRORING bleibt WI-0010/P1/RESEARCHED_NOT_IMPLEMENTED. Das [Dossier aus Schritt 42](../Architecture/Database_Mirroring_Inventory_Dossier.md) definiert ein begrenztes read-only-Kataloginventar; Produktimplementierung und positive Mirroring-Qualifikation sind offen. Die Legacy-Lesepfadlücke bleibt als gesonderte Dokumentationsaltlast bestehen.
