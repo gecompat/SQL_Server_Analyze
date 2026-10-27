@@ -12,6 +12,7 @@ from pathlib import Path
 
 PROCEDURE = "USP_RowLevelSecurityAndMaskingInventory"
 SOURCE = "Code/08_ServerHealth/285_USP_RowLevelSecurityAndMaskingInventory.sql"
+FIXTURE = "Code/Tests/ServerHealth/139_RowLevelSecurityAndMasking_Runtime_Contract.sql"
 RESULTS = {
     "moduleStatus": "[ModuleName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL, [CapturedAtUtc] datetime2(3) NOT NULL, [StatusCode] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL, [IsPartial] bit NOT NULL, [RowCount] bigint NOT NULL, [Detail] nvarchar(1000) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL",
     "databaseContext": "[DatabaseId] int NOT NULL, [DatabaseName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL, [StateDescription] nvarchar(60) COLLATE SQL_Latin1_General_CP1_CS_AS NULL, [ContainmentDescription] nvarchar(60) COLLATE SQL_Latin1_General_CP1_CS_AS NULL, [ContextStatus] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL",
@@ -69,9 +70,30 @@ def fixture_schema_batch_error(fixture: str) -> str | None:
     return None
 
 
+def policy_field_lookup_errors(source: str, fixture: str) -> list[str]:
+    errors: list[str] = []
+    fragments = (
+        "FROM [sys].[all_objects] AS [o] WITH (NOLOCK)",
+        "INNER JOIN [sys].[schemas] AS [s] WITH (NOLOCK)",
+        "INNER JOIN [sys].[all_columns] AS [c] WITH (NOLOCK)",
+        "[o].[name] COLLATE SQL_Latin1_General_CP1_CS_AS=N''security_policies'' COLLATE SQL_Latin1_General_CP1_CS_AS",
+        "[s].[name] COLLATE SQL_Latin1_General_CP1_CS_AS=N''sys'' COLLATE SQL_Latin1_General_CP1_CS_AS",
+        "[c].[name] COLLATE SQL_Latin1_General_CP1_CS_AS=N''is_schemabinding_enabled'' COLLATE SQL_Latin1_General_CP1_CS_AS",
+    )
+    if any(fragment not in source for fragment in fragments):
+        errors.append("policy-field capability lookup must use nonblocking, schema-qualified catalog metadata and exact CS_AS names")
+    if "OBJECT_ID(N''sys.security_policies'')" in source:
+        errors.append("policy-field capability lookup must not use the blocking OBJECT_ID metadata function")
+    fixture_query = "FROM [sys].[all_objects] AS [o] WITH (NOLOCK)"
+    if fixture.count(fixture_query) != 3 or any(fragment not in fixture for fragment in fragments):
+        errors.append("independent fixture probes must use the same nonblocking exact catalog identity in all three databases")
+    return errors
+
+
 def optional_policy_field_errors(source: str, fixture: str) -> list[str]:
     errors: list[str] = []
-    if "[sys].[columns] AS [c]" not in source or "N''is_schemabinding_enabled''" not in source:
+    errors.extend(policy_field_lookup_errors(source, fixture))
+    if "[sys].[all_columns] AS [c]" not in source or "N''is_schemabinding_enabled''" not in source:
         errors.append("policy source must detect whether the native schemabinding metadata field is exposed")
     field_fallback = "CASE WHEN @PolicyFieldAvailable=1 THEN N'[p].[is_schemabinding_enabled]' ELSE N'CAST(NULL AS bit)' END"
     if source.count(field_fallback) != 1:
@@ -87,6 +109,17 @@ def optional_policy_field_errors(source: str, fixture: str) -> list[str]:
     return errors
 
 
+def predicate_id_mapping_errors(source: str, fixture: str) -> list[str]:
+    errors: list[str] = []
+    native_identifier = "[p].[security_predicate_id]"
+    invalid_identifier = "[p].[predicate_id]"
+    if source.count(native_identifier) != 1 or fixture.count(native_identifier) != 2:
+        errors.append("predicate inventory and independent fixture must map the native security_predicate_id column")
+    if invalid_identifier in source or invalid_identifier in fixture:
+        errors.append("predicate inventory must not select a non-native predicate_id catalog column")
+    return errors
+
+
 def validate(root: Path) -> list[str]:
     errors: list[str] = []
     source = (root / SOURCE).read_text(encoding="utf-8-sig")
@@ -94,6 +127,7 @@ def validate(root: Path) -> list[str]:
     for forbidden in ("predicate_definition", "masking_function", "function_name", "execute as", "alter security policy", "create security policy", "drop security policy"):
         if forbidden in lowered:
             errors.append(f"product source contains excluded expression/behavior marker: {forbidden}")
+    errors.extend(predicate_id_mapping_errors(source, (root / FIXTURE).read_text(encoding="utf-8-sig")))
     for required in (
         "[sys].[security_policies]", "[sys].[security_predicates]", "[sys].[masked_columns]",
         "[sys].[schemas]", "[sys].[tables]", "AVAILABLE_LIMITED", "VISIBLE_ONLY", "UNPROVEN",
@@ -212,10 +246,24 @@ def main() -> int:
         )
         assert fixture_schema_batch_error(valid_schema_setup) is None
         assert fixture_schema_batch_error(invalid_schema_setup) is not None
-        field_source = "[sys].[columns] AS [c] N''is_schemabinding_enabled'' CASE WHEN @PolicyFieldAvailable=1 THEN N'[p].[is_schemabinding_enabled]' ELSE N'CAST(NULL AS bit)' END 'SOURCE_UNAVAILABLE','SECURITY_POLICIES',N'Die Katalogansicht stellt IsSchemabindingEnabled nicht bereit'"
-        field_fixture = "@PolicyFieldA @PolicyFieldB @PolicyFieldEmpty <>7+CASE WHEN @PolicyFieldA=0 THEN 1 ELSE 0 END+CASE WHEN @PolicyFieldB=0 THEN 1 ELSE 0 END " + ("THEN N'[p].[is_schemabinding_enabled]' ELSE N'CAST(NULL AS bit)' END " * 2)
+        lookup = (
+            "FROM [sys].[all_objects] AS [o] WITH (NOLOCK) "
+            "INNER JOIN [sys].[schemas] AS [s] WITH (NOLOCK) "
+            "INNER JOIN [sys].[all_columns] AS [c] WITH (NOLOCK) "
+            "[o].[name] COLLATE SQL_Latin1_General_CP1_CS_AS=N''security_policies'' COLLATE SQL_Latin1_General_CP1_CS_AS "
+            "[s].[name] COLLATE SQL_Latin1_General_CP1_CS_AS=N''sys'' COLLATE SQL_Latin1_General_CP1_CS_AS "
+            "[c].[name] COLLATE SQL_Latin1_General_CP1_CS_AS=N''is_schemabinding_enabled'' COLLATE SQL_Latin1_General_CP1_CS_AS"
+        )
+        field_source = lookup + " CASE WHEN @PolicyFieldAvailable=1 THEN N'[p].[is_schemabinding_enabled]' ELSE N'CAST(NULL AS bit)' END 'SOURCE_UNAVAILABLE','SECURITY_POLICIES',N'Die Katalogansicht stellt IsSchemabindingEnabled nicht bereit'"
+        field_fixture = "@PolicyFieldA @PolicyFieldB @PolicyFieldEmpty <>7+CASE WHEN @PolicyFieldA=0 THEN 1 ELSE 0 END+CASE WHEN @PolicyFieldB=0 THEN 1 ELSE 0 END " + (lookup + " THEN N'[p].[is_schemabinding_enabled]' ELSE N'CAST(NULL AS bit)' END ") * 2 + lookup
         assert optional_policy_field_errors(field_source, field_fixture) == []
         assert optional_policy_field_errors(field_source.replace("CAST(NULL AS bit)", "NULL"), field_fixture)
+        assert policy_field_lookup_errors(lookup, lookup * 3) == []
+        assert policy_field_lookup_errors(lookup.replace("WITH (NOLOCK)", ""), lookup * 3)
+        valid_predicate_source = "[p].[security_predicate_id]"
+        valid_predicate_fixture = valid_predicate_source * 2
+        assert predicate_id_mapping_errors(valid_predicate_source, valid_predicate_fixture) == []
+        assert predicate_id_mapping_errors(valid_predicate_source.replace("security_predicate_id", "predicate_id"), valid_predicate_fixture)
         print("RLS and masking inventory validator self-test passed.")
         return 0
     errors = validate(args.repository_root.resolve())
