@@ -60,6 +60,38 @@ TEMP_CREATE = re.compile(
     r"(?:CREATE\s+TABLE|INTO)\s+\[?(?P<name>#(?!#)[A-Za-z_][A-Za-z0-9_]*)",
     re.IGNORECASE,
 )
+CURRENT_REQUESTS_DDL_GROUPS = (
+    ("#CurrentRequests_ResultTableMap",),
+    (
+        "#CurrentRequests_SessionIdFilter",
+        "#CurrentRequests_StringFilter",
+        "#CurrentRequests_Warnings",
+    ),
+    (
+        "#CurrentRequests_Result",
+        "#CurrentRequests_SnapshotStatus",
+        "#CurrentRequests_SourceSessions",
+        "#CurrentRequests_SourceRequests",
+        "#CurrentRequests_SourceConnections",
+        "#CurrentRequests_SourceWaitingTasks",
+        "#CurrentRequests_SourceMemoryGrants",
+        "#CurrentRequests_SourceTasks",
+        "#CurrentRequests_SourceSchedulers",
+        "#CurrentRequests_SourceSessionTransactions",
+        "#CurrentRequests_SourceActiveTransactions",
+        "#CurrentRequests_SourceDatabaseTransactions",
+        "#CurrentRequests_SourceTempDbSessionUsage",
+        "#CurrentRequests_SourceTempDbTaskUsage",
+        "#CurrentRequests_SourceWorkloadGroups",
+        "#CurrentRequests_SourceResourcePools",
+        "#CurrentRequests_SourceSqlText",
+        "#CurrentRequests_SourceInputBuffer",
+        "#CurrentRequests_RequestContext",
+        "#CurrentRequests_Statements",
+        "#CurrentRequests_Batches",
+        "#CurrentRequests_InputBuffers",
+    ),
+)
 
 # One controlled test fixture implements the existing parent's input contract.
 # It remains visible to the ordinary producer inventory; only this exact pair
@@ -129,6 +161,69 @@ def controlled_fixture_errors(text: str) -> list[str]:
     return issues
 
 
+def current_requests_temp_ddl_errors(text: str) -> list[str]:
+    """Keep owned CurrentRequests temp DDL bounded and source reads nonblocking."""
+    executable = without_comments(text)
+    pattern = re.compile(
+        r"SET\s+@OwnTempDdlOriginalLockTimeout\s*=\s*@@LOCK_TIMEOUT\s*;"
+        r"\s*BEGIN\s+TRY\s*SET\s+LOCK_TIMEOUT\s+1000\s*;"
+        r"(?P<ddl>.*?)END\s+TRY\s*BEGIN\s+CATCH\s*"
+        r"(?P<catch>.*?)END\s+CATCH\s*;\s*SET\s+LOCK_TIMEOUT\s+0\s*;",
+        re.IGNORECASE | re.DOTALL,
+    )
+    matches = list(pattern.finditer(executable))
+    issues = []
+    if len(matches) != len(CURRENT_REQUESTS_DDL_GROUPS):
+        return ["CurrentRequests owned temp DDL must use three bounded TRY/CATCH groups"]
+
+    create_pattern = re.compile(
+        r"CREATE\s+TABLE\s+\[?(#CurrentRequests_[A-Za-z0-9_]+)\]?",
+        re.IGNORECASE,
+    )
+    for index, (match, expected_names) in enumerate(zip(matches, CURRENT_REQUESTS_DDL_GROUPS)):
+        actual_names = tuple(item.group(1) for item in create_pattern.finditer(match.group("ddl")))
+        ddl_code = re.sub(
+            r"N?'(?:''|[^'])*'", "''", match.group("ddl"), flags=re.IGNORECASE | re.DOTALL
+        )
+        if tuple(name.casefold() for name in actual_names) != tuple(
+            name.casefold() for name in expected_names
+        ):
+            issues.append(f"CurrentRequests owned DDL group {index + 1} or its table order changed")
+        contains_non_ddl = re.search(
+            r"\b(?:FROM|JOIN|EXEC|INSERT|UPDATE|DELETE|MERGE)\b",
+            ddl_code,
+            re.IGNORECASE,
+        )
+        if contains_non_ddl:
+            issues.append(f"CurrentRequests owned DDL group {index + 1} contains non-DDL work")
+        if re.search(r"\bSET\s+LOCK_TIMEOUT\b", ddl_code, re.IGNORECASE):
+            issues.append(
+                f"CurrentRequests owned DDL group {index + 1} cannot reset its bounded timeout"
+            )
+        catch = match.group("catch")
+        if not re.search(
+            r"SET\s+@OwnTempDdlRestoreSql\s*=\s*N?'SET\s+LOCK_TIMEOUT\s*'\s*\+\s*"
+            r"CONVERT\s*\(\s*nvarchar\s*\(\s*20\s*\)\s*,\s*"
+            r"@OwnTempDdlOriginalLockTimeout\s*\)\s*\+\s*N?';'\s*;\s*"
+            r"EXEC\s+\[sys\]\.\[sp_executesql\]\s+@OwnTempDdlRestoreSql\s*;\s*THROW\s*;",
+            catch,
+            re.IGNORECASE,
+        ):
+            issues.append(
+                f"CurrentRequests owned DDL group {index + 1} must restore timeout and rethrow"
+            )
+
+    prepare_call = executable.find("EXEC [monitor].[InternalPrepareResultTables]")
+    if matches[0].end() > prepare_call:
+        issues.append("CurrentRequests owned mapping DDL must finish before target-table preflight")
+    if matches[1].start() < prepare_call:
+        issues.append("CurrentRequests filter DDL must follow target-table preflight")
+    parent_read = executable.find("IF @StatusCode='AVAILABLE' AND @ParentCurrentStateSnapshotId IS NOT NULL")
+    if parent_read < 0 or matches[2].end() > parent_read:
+        issues.append("CurrentRequests owned result DDL must reset LOCK_TIMEOUT before parent reads")
+    return issues
+
+
 def controlled_collision(name: str, owners: list[str], fixture_valid: bool) -> bool:
     return (fixture_valid and name == SNAPSHOT_NAME and len(owners) == 2
             and {owner.replace("\\", "/") for owner in owners} == {SNAPSHOT_PRODUCER, SNAPSHOT_FIXTURE})
@@ -180,6 +275,42 @@ def self_test() -> None:
     ]
     for mutation in mutations:
         assert controlled_fixture_errors(mutation), "undetected controlled-fixture mutation"
+    requests_path = ROOT / "Code/02_CurrentState/020_USP_CurrentRequests.sql"
+    requests_source = requests_path.read_text(encoding="utf-8-sig")
+    assert not current_requests_temp_ddl_errors(requests_source)
+    first_capture = requests_source.index("@OwnTempDdlOriginalLockTimeout")
+    ddl_start = requests_source.index("SET LOCK_TIMEOUT 1000;", first_capture)
+    mutations = [
+        requests_source[:ddl_start] + requests_source[ddl_start:].replace(
+            "SET LOCK_TIMEOUT 1000;", "SET LOCK_TIMEOUT 0;", 1
+        ),
+        requests_source.replace(
+            "EXEC [sys].[sp_executesql] @OwnTempDdlRestoreSql;", "", 1
+        ),
+    ]
+    for nested_timeout in ("5000", "0"):
+        mutations.append(
+            requests_source[:ddl_start] + requests_source[ddl_start:].replace(
+                "SET LOCK_TIMEOUT 1000;",
+                f"SET LOCK_TIMEOUT 1000; SET LOCK_TIMEOUT {nested_timeout};",
+                1,
+            )
+        )
+    result_group = requests_source.index(
+        "SET LOCK_TIMEOUT 1000;",
+        requests_source.index("CREATE TABLE [#CurrentRequests_Result]") - 200,
+    )
+    mutations.append(
+        requests_source[:result_group] + requests_source[result_group:].replace(
+            "SET LOCK_TIMEOUT 1000;",
+            "SET LOCK_TIMEOUT 1000; EXEC [sys].[sp_executesql] N'SELECT 1';",
+            1,
+        )
+    )
+    for mutation in mutations:
+        assert current_requests_temp_ddl_errors(mutation), (
+            "undetected CurrentRequests DDL mutation"
+        )
     pair = [SNAPSHOT_PRODUCER, SNAPSHOT_FIXTURE]
     assert controlled_collision(SNAPSHOT_NAME, pair, True)
     assert not controlled_collision(SNAPSHOT_NAME, pair, False)
@@ -189,7 +320,10 @@ def self_test() -> None:
     assert controlled_collision(SNAPSHOT_NAME, [owner.replace("/", "\\") for owner in pair], True)
     assert not controlled_collision(SNAPSHOT_NAME, [SNAPSHOT_PRODUCER, SNAPSHOT_PRODUCER], True)
     assert not controlled_collision("#ordinarytemp", ["Code/One.sql", "Code/Two.sql"], True)
-    print("Nonblocking metadata controlled-fixture self-test passed: mutations=9 collision_cases=8.")
+    print(
+        "Nonblocking metadata self-test passed: fixture_mutations=9 "
+        "CurrentRequests_DDL_mutations=5 collision_cases=8."
+    )
 
 
 if "--self-test" in sys.argv[1:]:
@@ -248,6 +382,12 @@ for path in sorted(CODE.rglob("*.sql")):
                 f"{relative}: isolierte LOCK_TIMEOUT-0-Batches für Datenbank, Datei, "
                 "benannte Ressource, Page und Katalog fehlen"
             )
+
+    if relative.as_posix() == "Code/02_CurrentState/020_USP_CurrentRequests.sql":
+        errors.extend(
+            f"{relative}: {issue}"
+            for issue in current_requests_temp_ddl_errors(text)
+        )
 
     if not is_test_source:
         for function_name in FORBIDDEN_METADATA_FUNCTIONS:
