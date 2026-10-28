@@ -50,17 +50,17 @@ nicht rückwirkend als bestanden bewertet; die aktuelle Wiederholung belegt nur
 den angegebenen Scope. Eine Ursache für Msg 55872 ist weiterhin nicht bekannt.
 
 PR #486 (Commit 516992a) ergänzt den beschreibenden Header von
-TVF_QueryStoreWaitCategoryInfo; der Funktionskörper bleibt unverändert. Dieser
-Header-Schritt ist abgeschlossen. PR #487 (Commit 9194606) ergänzt die vier
-Hilfeblöcke für USP_ServerMemory, USP_OSInformation,
-USP_ServerSecurityConfiguration und USP_ServerHealthAnalysis; Head mit acht
-und Main mit sieben Gates bestanden. Der aktuelle Änderungssatz ergänzt die
-Hilfe von USP_ServerCpuTopology, USP_ServerNuma,
-USP_TempDBConfiguration, USP_ServerConfiguration, USP_TraceFlags und
-USP_StartupParameters. Damit sind die verbleibenden sechs Hilfen dieses
-ServerHealth-Umfangs bearbeitet. Die globale semantische Prüfung weiterer
-Hilfetexte und die Prüfung selbsterklärender Nichtprozedur-DDL bleiben offen;
-diese Aussage behauptet keine globale Abdeckung.
+TVF_QueryStoreWaitCategoryInfo; der Funktionskörper bleibt unverändert.
+PR #487 (Commit 9194606) und PR #488 (Commit 595b114) ergänzen die zehn
+ServerHealth-Hilfen 010 bis 100 mit insgesamt 119 deklarierten Parametern.
+Alle erforderlichen Head- und Main-Prüfungen beider Lieferungen bestanden.
+Der aktuelle Änderungssatz bearbeitet die bisher knappen Hilfen von
+USP_MsdbHealthAnalysis, USP_LinkedServerAnalysis und
+USP_SystemDatabaseObjectInventory. Die normale Ausführungslogik und die
+Signaturen bleiben unverändert. Die fehlende NULL-Normalisierung von @MaxZeilen in den begrenzten Ausgaben von LinkedServerAnalysis und SystemDatabaseObjectInventory bleibt eine gesondert zu prüfende Vertragslücke; diese Hilfewelle ändert sie nicht. Die globale semantische Prüfung weiterer
+Hilfetexte und selbsterklärender Nichtprozedur-DDL bleibt offen. Eine rein
+dateibasierte Bestandsaufnahme priorisiert weitere Lücken; vorhandene
+Header und Parameternennungen belegen keine semantische Vollständigkeit.
 
 Der Benutzer hat die vollständige Prüfung erforderlicher Procedure-Parameter,
 Hilfetexte und selbsterklärender Nichtprozedur-DDL angefordert. Schritt 44

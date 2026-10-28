@@ -21,7 +21,19 @@ BEGIN
     SET NOCOUNT ON; SET @Json=NULL;
     DECLARE @Status varchar(40)='AVAILABLE',@Partial bit=0,@Mode varchar(16)=UPPER(LTRIM(RTRIM(COALESCE(@ResultSetArt,''))));
     DECLARE @ErrorNumber int=NULL,@ErrorMessage nvarchar(2048)=NULL,@ServerStatusCode varchar(40)=N'SOURCE_UNAVAILABLE';
-    IF @Hilfe=1 BEGIN PRINT N'monitor.USP_LinkedServerAnalysis'; PRINT N'Default ist lokales Inventar. Remote-Test nur mit @ConnectivityTestEnabled=1 und @HighImpactConfirmed=1.'; RETURN; END;
+    IF @Hilfe=1 BEGIN
+        PRINT N'monitor.USP_LinkedServerAnalysis inventarisiert lokal registrierte Linked Server und zeigt kumulative OLEDB-/REMOTE-Waits. Standardmäßig wird keine Remoteverbindung aufgebaut. sp_testlinkedserver läuft je sichtbarem Linked Server nur mit beiden ausdrücklichen Opt-ins @ConnectivityTestEnabled=1 und @HighImpactConfirmed=1.';
+        PRINT N'Der Test belegt nur den Verbindungsaufbau zum Testzeitpunkt, keine Remoteobjektberechtigung, Abfragelaufzeit oder fachliche Erreichbarkeit. Waitwerte sind kumulativ und keiner Registrierung zugeordnet. @MaxZeilen begrenzt CONSOLE, RAW und JSON, nicht TABLE oder die Anzahl aktivierter Tests. RAW enthält zusätzlich Waitwerte; JSON und TABLE enthalten nur das Inventar.';
+        PRINT N'@ConnectivityTestEnabled bit=0 und @HighImpactConfirmed bit=0 (je 0/1); beide müssen 1 sein, um Tests zu starten. @MaxZeilen int=2000: 0 ist unbegrenzt, positive Werte begrenzen, negative Werte sind ungültig; NULL wird in CONSOLE, RAW und JSON nicht als unbegrenzt normalisiert; verwenden Sie dort 0. TABLE bleibt von dieser Begrenzung unberührt. @ResultSetArt varchar(16)=CONSOLE: CONSOLE, RAW, TABLE oder NONE; Steuerwert ohne Beachtung der Groß-/Kleinschreibung.';
+        PRINT N'@ResultTablesJson nvarchar(max)=NULL: nur TABLE, Schlüssel linkedServers; Ziel vorhandene leere lokale #Temp-Tabelle mit genau einer Platzhalterspalte. @JsonErzeugen bit=0 (0/1); @Json nvarchar(max)=NULL OUTPUT erhält das begrenzte Inventararray. @PrintMeldungen bit=1 und @Hilfe bit=0 (je 0/1); Hilfe zeigt diesen Text und beendet den Aufruf.';
+        PRINT N'@StatusCodeOut varchar(40)=NULL OUTPUT, @IsPartialOut bit=NULL OUTPUT, @ErrorNumberOut int=NULL OUTPUT und @ErrorMessageOut nvarchar(2048)=NULL OUTPUT sind optionale technische Ausgaben; NULL-Defaults erlauben Auslassung. Bei fehlgeschlagenem Remote-Test kann ErrorMessage technische Fehlerdetails enthalten.';
+        PRINT N'CONSOLE-Beispiel, lokales Inventar ohne Remotezugriff:';
+        PRINT N'EXEC [monitor].[USP_LinkedServerAnalysis] @ConnectivityTestEnabled=0, @ResultSetArt=''CONSOLE'';';
+        PRINT N'TABLE-Beispiel; Ziel vorher leer anlegen, modulpräfixierter eindeutiger Name bis 116 Zeichen:';
+        PRINT N'CREATE TABLE [#LinkedServerAnalysis_Help_Result] ([Placeholder] int NULL);';
+        PRINT N'EXEC [monitor].[USP_LinkedServerAnalysis] @ResultSetArt=''TABLE'', @ResultTablesJson=N''{"linkedServers":"#LinkedServerAnalysis_Help_Result"}'';';
+        RETURN;
+    END;
     DECLARE @PreviousLockTimeout int = @@LOCK_TIMEOUT, @RestoreLockTimeoutSql nvarchar(100);
     SET LOCK_TIMEOUT 0;
     DECLARE @TableResultRequested bit=CASE WHEN @Mode='TABLE' THEN 1 ELSE 0 END,@ConsoleResultRequested bit=CASE WHEN @Mode='CONSOLE' THEN 1 ELSE 0 END,@TableTarget sysname=NULL;
