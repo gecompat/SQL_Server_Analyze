@@ -13,19 +13,58 @@ stehen in der [Entwicklungsplanung](Development_Waves_2026-10.md).
 Abgeschlossene SSIS-Wellen werden nicht wiederholt; die bestehende SSISDB
 bleibt erhalten. Frühere separate Aufträge sind nachfolgend historisch geführt.
 
-### Aktueller Checkpoint nach Schritt 43
+### Vorheriger Checkpoint nach Schritt 43
 
 Schritt 43 ist über [PR #482](https://github.com/gecompat/SQL_Server_Analyze/pull/482) vollständig in `origin/main` integriert. Der Mergecommit ist `4203202d1a7a2eb0707816d1685e1cd4eca1c4d8` mit Baum `1770d9b7d105a716de16298b159a90981945bd25`. Das SQL-Server-2025-Head-Gate [40683229458](https://github.com/gecompat/SQL_Server_Analyze/actions/runs/40683229458) sowie die nativen SQL-Server-2019- und 2022-Läufe [40683361125](https://github.com/gecompat/SQL_Server_Analyze/actions/runs/40683361125) und [40683587410](https://github.com/gecompat/SQL_Server_Analyze/actions/runs/40683587410) bestanden. Auf Main bestanden die Workflows für Funktion [40685915590](https://github.com/gecompat/SQL_Server_Analyze/actions/runs/40685915590), Dokumentation [40685915583](https://github.com/gecompat/SQL_Server_Analyze/actions/runs/40685915583), Datenschutz [40685915633](https://github.com/gecompat/SQL_Server_Analyze/actions/runs/40685915633), Commitnachrichten [40685915602](https://github.com/gecompat/SQL_Server_Analyze/actions/runs/40685915602) und TestLab [40685915612](https://github.com/gecompat/SQL_Server_Analyze/actions/runs/40685915612).
 
-### Aktueller Stand nach PR #483 und Schritt 46
+### Aktueller Checkpoint nach PR #485
 
-PR #483 integriert Schritt 44 auf origin/main. Mergecommit: 271cd169c378dc652b803919f45b6c7a342fd7d3; die öffentliche Kohorte umfasst 121 Procedures mit 2.165 Parameterzeilen. Die Signaturparität wird gegen alle erfassten SQL-Module geprüft.
+PR #484 integriert Schritt 46 auf origin/main mit Mergecommit
+16d4ea38e53feb7d52f26e3b6a25c49c40f845f5 und Baum
+70cf93eaa308514265123215bc0437f54fbd976f. Der geprüfte Head
+d9c2c8b8276ad9a29304005b755b7bebc70987d besteht alle acht Checks,
+einschließlich des SQL-Server-2025-Funktionslaufs
+[40718821806](https://github.com/gecompat/SQL_Server_Analyze/actions/runs/40718821806)
+mit 111 impact-basierten Tests auf Compatibility Level 150, 160 und 170.
+Schritt 46 ergänzt die ausführlichen Hilfetexte der öffentlichen Helfer 083/084
+und den globalen strukturellen Nachweis für den Parameter @Hilfe bit = 0. Die
+öffentliche Kohorte umfasst 121 Procedures und 2.167 Parameterzeilen; die
+Signatur ist bei 121/121 Procedures vorhanden. Diese strukturelle Abdeckung
+belegt keine semantische Vollständigkeit aller Hilfetexte.
 
-Schritt 46 ergänzt @Hilfe bit = 0 für die beiden öffentlichen Vorbereitungshelfer 083/084 und verlangt den Parameter strukturell für alle 121 öffentlichen Procedures. Damit besitzen 121/121 Procedures die @Hilfe-Signatur; das belegt weder vollständige noch semantisch ausreichende Hilfetexte. Die spezifischen Parser-, Pattern- und Statusangaben für 083/084 wurden anhand ihrer Implementierungen präzisiert. Die betroffenen statischen Prüfungen bestanden lokal; die erforderlichen Runtime-/PR-Gates sind für diesen Schritt noch nicht ausgeführt.
+PR #485 ist ebenfalls regulär integriert. Er ergänzt ausschließlich eine
+diagnostische Einzelaufnahme für Fehler 138 mit Feld- und Reason-Schlüsseln;
+Messwerte werden dabei nicht gespeichert und ein Produktfehler wird nicht als
+behoben ausgewiesen. Die frühere Main-Ausführung
+[40723731374](https://github.com/gecompat/SQL_Server_Analyze/actions/runs/40723731374)
+scheiterte bei Compatibility Level 160 an Fixture 138 mit Msg 55872; die Ursache
+ist unbekannt und der Fehllauf bleibt historisch ein Fehllauf. Die Head-Läufe
+[40728958435](https://github.com/gecompat/SQL_Server_Analyze/actions/runs/40728958435)
+und
+[40730739951](https://github.com/gecompat/SQL_Server_Analyze/actions/runs/40730739951)
+bestanden. Der aktuelle Main-Lauf
+[40733370012](https://github.com/gecompat/SQL_Server_Analyze/actions/runs/40733370012)
+besteht alle sechs Checks einschließlich direkter Fixture-138-Abdeckung auf
+Compatibility Level 150, 160 und 170 sowie Cleanup. Der frühere Fehler wurde
+nicht rückwirkend als bestanden bewertet; die aktuelle Wiederholung belegt nur
+den angegebenen Scope. Eine Ursache für Msg 55872 ist weiterhin nicht bekannt.
 
-Der Benutzer hat die Übernahme priorisierter offener Arbeiten einschließlich einer vollständigen Prüfung erforderlicher Procedure-Parameter und Hilfebeschreibungen ausdrücklich angefordert. Schritt 44 prüfte die Parität zwischen allen öffentlichen Procedure-Signaturen und `Parameters.csv` und ergänzte eine global wirkende statische Gegenprüfung mit unabhängigen CSV-Mutationsfällen. PR #483 enthält diesen Paritätsschritt; Schritt 44 selbst änderte keine Produkt-SQL-Signaturen und prüfte nicht die inhaltliche Vollständigkeit der Procedure-Hilfe.
+Der aktuelle Änderungsschritt ergänzt ausschließlich den beschreibenden Header
+von TVF_QueryStoreWaitCategoryInfo; der ausführbare Funktionskörper bleibt
+unverändert. Die Dokumentation erläutert Eingabetyp und NULL-Verhalten,
+Ausgabespalten, bekannte Kategoriezuordnungen, Fallbacks und Grenzen. Damit ist
+der fehlende Header für diese Funktion behoben. Eine semantische Prüfung der
+übrigen öffentlichen Hilfetexte und Nichtprozedur-DDL bleibt offen. Der nächste
+begrenzte Inhaltsreview ist weiterhin die ServerHealth-Kohorte
+USP_ServerHealthAnalysis sowie USP_ServerCpuTopology bis USP_StartupParameters;
+diese Aussage schließt keine weiteren DDL-Objekte ein.
 
-Die globale semantische Hilfeprüfung bleibt offen. Vor Schritt 46 hatten 119 von 121 öffentlichen Procedures einen @Hilfe-Parameter; ihre Hilfetexte waren nur stichprobenartig bewertet. Schritt 46 hebt die strukturelle Signaturabdeckung auf 121/121 und ergänzt ausführliche Hilfe für `USP_PrepareDatabaseCandidates` und `USP_PrepareNameFilters`. Das ist kein Nachweis semantischer Vollständigkeit für alle Procedures. Nächster begrenzter Inhaltsreview ist die ServerHealth-Kohorte `USP_ServerHealthAnalysis` sowie `USP_ServerCpuTopology` bis `USP_StartupParameters`. Die Funktion `TVF_QueryStoreWaitCategoryInfo` besitzt noch keinen Header; die Header von `TVF_WaitTypeInfo` und `VW_AnalyseAccessPolicy` sind bereits vorhanden und werden nicht pauschal als fehlend geführt. Die übrige Hilfe- und Nichtprozedur-DDL-Selbstauskunft bleibt bis zur gezielten Review der tatsächlichen Inhalte unbewertet.
+Der Benutzer hat die vollständige Prüfung erforderlicher Procedure-Parameter,
+Hilfetexte und selbsterklärender Nichtprozedur-DDL angefordert. Schritt 44
+prüfte die Parität zwischen öffentlichen Procedure-Signaturen und
+Parameters.csv und ergänzte unabhängige CSV-Mutationsfälle. PR #483 enthält
+diesen Paritätsschritt; er prüfte nicht die semantische Vollständigkeit der
+Hilfetexte.
 
 PR #464 schließt Schritt 26 ab. Source-Head `12bf7fff` und Merge `178a6b38`
 bestehen sieben Head-Checks, den SQL-Server-2025-Lauf

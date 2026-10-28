@@ -1,6 +1,55 @@
 USE [DeineDatenbank];
 GO
 
+/*
+    Ordnet eine Query-Store-Wait-Kategorie einer normalisierten WaitGroup zu und
+    liefert Beschreibungstexte zu typischem Auftreten, Auswirkungen und
+    empfohlenen Prüfschritten. Die Inline-Tabellenwertfunktion liefert genau
+    eine Zeile, verwendet nur @WaitCategoryDesc und liest keine Query-Store-
+    Kataloge, Tabellen oder DMVs. Sie erstellt kein Gesundheitsurteil und ist
+    kein vollständiger Katalog aller Kategorien. Der Eingabewert ist eine
+    Kategoriebezeichnung, kein Wait Type.
+
+    Eingabe:
+      @WaitCategoryDesc nvarchar(128), ohne Default. NULL ist zulässig und wird
+      für WaitGroup wie 'Unknown' behandelt. Andere unbekannte Bezeichnungen
+      bleiben in WaitGroup erhalten und erhalten allgemeine Beschreibungstexte.
+
+    Ausgabe:
+      WaitGroup nvarchar(64) – Eingabetext in Großschreibung, Leerzeichen werden
+      durch Unterstriche ersetzt. Es gibt kein Trimming; längere Werte werden
+      auf 64 Zeichen begrenzt.
+      Meaning nvarchar(1000) – Bedeutung einer bekannten Kategorie oder
+      allgemeiner Hinweis auf eine interne/externe Ressource.
+      TypicalOccurrence nvarchar(1200) – spezialisierte Ursache für CPU, Lock,
+      Buffer IO, Tran Log IO und Memory; sonst allgemeiner Hinweis zu Plan,
+      Workload und Ressource.
+      HighWaitImpact nvarchar(1200) – spezifischer Effekt für CPU, Worker Thread,
+      Lock, Buffer IO und Tran Log IO; sonst allgemeiner Hinweis, hohe Werte mit
+      Laufzeitstatistik und Ausführungsplan zu korrelieren.
+      RecommendedChecks nvarchar(1500) – spezifische Prüfhinweise für CPU, Lock,
+      Buffer IO, Tran Log IO und Memory; sonst Query-Store-Laufzeitstatistik,
+      Planwechsel und betroffene Query-/Plan-Kombination prüfen.
+
+    Meaning-Texte sind für CPU, Worker Thread, Lock, Latch, Buffer Latch,
+    Buffer IO, Tran Log IO, Network IO, Parallelism, Memory und Other Disk IO
+    spezialisiert. Die anderen Spalten verwenden jeweils nur die oben
+    genannten Teilmengen; übrige Kategorien erhalten den Fallbacktext der
+    jeweiligen Spalte. Die CASE-Vergleiche folgen der aktuellen
+    Datenbankcollation und den SQL-Server-Zeichenvergleichsregeln. Es findet
+    kein explizites TRIM oder eine sonstige Eingabenormalisierung für diese
+    Vergleiche statt.
+
+    Beispielaufrufe:
+      SELECT * FROM [monitor].[TVF_QueryStoreWaitCategoryInfo](N'Buffer IO');
+      SELECT * FROM [monitor].[TVF_QueryStoreWaitCategoryInfo](NULL);
+
+      Bei einem unter der aktuellen Datenbankcollation passenden Wert
+      N'Buffer IO' ergibt WaitGroup N'BUFFER_IO' und die spezialisierten
+      Hinweise zu Seiten-I/O, Storage und Reads. Bei NULL ergibt WaitGroup
+      N'UNKNOWN'; die übrigen Spalten liefern ihre allgemeinen Fallbacktexte.
+*/
+
 CREATE OR ALTER FUNCTION [monitor].[TVF_QueryStoreWaitCategoryInfo](@WaitCategoryDesc nvarchar(128))
 RETURNS TABLE
 AS
