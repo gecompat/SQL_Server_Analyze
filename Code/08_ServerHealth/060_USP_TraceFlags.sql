@@ -26,7 +26,15 @@ BEGIN
     DECLARE @TableTarget sysname=NULL;
     IF @TableResultRequested=0 AND NULLIF(LTRIM(RTRIM(COALESCE(@ResultTablesJson,N''))),N'') IS NOT NULL THROW 51011,N'@ResultTablesJson ist ausschließlich mit @ResultSetArt=TABLE zulässig.',1;
     IF @TableResultRequested=1 EXEC [monitor].[InternalPrepareSingleResultTable] @ResultTablesJson=@ResultTablesJson,@ResultName=N'traceFlags',@TargetTable=@TableTarget OUTPUT,@ThrowOnError=1;
-    IF @TableResultRequested = 1 OR @ConsoleResultRequested = 1 SET @ResultSetArtNormalisiert = 'NONE';IF @Hilfe=1 BEGIN PRINT N'monitor.USP_TraceFlags';RETURN;END;
+    IF @TableResultRequested = 1 OR @ConsoleResultRequested = 1 SET @ResultSetArtNormalisiert = 'NONE';IF @Hilfe=1 BEGIN PRINT N'monitor.USP_TraceFlags: Server-Health-Snapshot; read-only, nicht atomar.';
+        PRINT N'Parameter: @PrintMeldungen bit=1 gibt Meldungen aus (0 unterdrückt sie); @Hilfe bit=0 (0/1) druckt bei 1 diese Hilfe vor den Quellen. Bei TABLE läuft der Ziel-Preflight vorher. @ResultSetArt varchar(16)=CONSOLE: CONSOLE, RAW, TABLE oder NONE; Groß-/Kleinschreibung wird normalisiert.';
+        PRINT N'@ResultTablesJson nvarchar(max)=NULL ist für TABLE erforderlich; außerhalb von TABLE sind nur NULL oder leere Werte zulässig. Der unten genannte Ergebnisname muss auf eine vorhandene, leere lokale #temp-Tabelle mit genau einer Platzhalterspalte (z.B. Seed bit NULL) zeigen; kein fertiges Ausgabeschema voranlegen.';
+        PRINT N'@JsonErzeugen bit=0 (0/1) erzeugt bei 1 das JSON-Dokument in @Json nvarchar(max)=NULL OUTPUT. @StatusCodeOut varchar(40)=NULL liefert den Modulstatus, @IsPartialOut bit=NULL die Teilstatuskennzeichnung, @ErrorNumberOut int=NULL die Quellfehlernummer und @ErrorMessageOut nvarchar(2048)=NULL den Fehlertext; alle sind OUTPUT.';
+        PRINT N'Ausgabe: RAW und CONSOLE zeigen traceFlags; TABLE exportiert traceFlags; JSON enthält das traceFlags-Array. JSON-Schlüssel: traceFlags; Modulstatus beschreibt Verfügbarkeit/Fehler.';
+        PRINT N'Quelle und Umfang: DBCC TRACESTATUS(-1) liest aktive globale Traceflags sowie Traceflags der aktuellen Verbindung. Sitzungsflags anderer Verbindungen werden nicht abgefragt. Die Statusabfrage verändert keine Flags und besitzt kein Zeilenlimit.';
+        PRINT N'Berechtigung: Für DBCC TRACESTATUS genügt unter SQL Server die Rolle public; für den Procedure-Aufruf ist EXECUTE erforderlich. Fehler beim Lesen werden über die Status- und Fehlerausgaben gemeldet.';
+        PRINT N'Beispiel: EXEC [monitor].[USP_TraceFlags] @ResultSetArt=''CONSOLE'';';
+        PRINT N'TABLE-Beispiel (nur bei Bedarf): CREATE TABLE [#TraceFlags_HelpExample]([Seed] bit NULL); EXEC [monitor].[USP_TraceFlags] @ResultSetArt=''TABLE'', @ResultTablesJson=N''{"traceFlags":"#TraceFlags_HelpExample"}''; DROP TABLE [#TraceFlags_HelpExample];';RETURN;END;
  DECLARE @T datetime2(3)=SYSUTCDATETIME(),@S varchar(40)='AVAILABLE',@P bit=0,@E int=NULL,@M nvarchar(2048)=NULL;
  IF @ResultSetArtNormalisiert NOT IN('RAW','CONSOLE','NONE') SELECT @S='INVALID_PARAMETER',@P=1,@M=N'@ResultSetArt muss CONSOLE, RAW, TABLE oder NONE enthalten.';
  CREATE TABLE [#TraceFlags_X]([TraceFlag] int,[Status] int,[GlobalFlag] int,[SessionFlag] int);

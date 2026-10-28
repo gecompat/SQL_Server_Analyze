@@ -20,6 +20,8 @@ EXEC [monitor].[USP_ServerNuma]
       @ResultSetArt = 'CONSOLE';
 ```
 
+Die Parameterhilfe ohne Datenerhebung zeigt `EXEC [monitor].[USP_ServerNuma] @Hilfe = 1;` an.
+
 Alle `Example*`-Werte im Aufruf sind synthetisch.
 
 ## Resultsets und Leserichtung

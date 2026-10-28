@@ -26,7 +26,15 @@ BEGIN
     DECLARE @TableTarget sysname=NULL;
     IF @TableResultRequested=0 AND NULLIF(LTRIM(RTRIM(COALESCE(@ResultTablesJson,N''))),N'') IS NOT NULL THROW 51011,N'@ResultTablesJson ist ausschließlich mit @ResultSetArt=TABLE zulässig.',1;
     IF @TableResultRequested=1 EXEC [monitor].[InternalPrepareSingleResultTable] @ResultTablesJson=@ResultTablesJson,@ResultName=N'startupParameters',@TargetTable=@TableTarget OUTPUT,@ThrowOnError=1;
-    IF @TableResultRequested = 1 OR @ConsoleResultRequested = 1 SET @ResultSetArtNormalisiert = 'NONE';IF @Hilfe=1 BEGIN PRINT N'monitor.USP_StartupParameters';RETURN;END;
+    IF @TableResultRequested = 1 OR @ConsoleResultRequested = 1 SET @ResultSetArtNormalisiert = 'NONE';IF @Hilfe=1 BEGIN PRINT N'monitor.USP_StartupParameters: Server-Health-Snapshot; read-only, nicht atomar.';
+        PRINT N'Parameter: @PrintMeldungen bit=1 gibt Meldungen aus (0 unterdrückt sie); @Hilfe bit=0 (0/1) druckt bei 1 diese Hilfe vor den Quellen. Bei TABLE läuft der Ziel-Preflight vorher. @ResultSetArt varchar(16)=CONSOLE: CONSOLE, RAW, TABLE oder NONE; Groß-/Kleinschreibung wird normalisiert.';
+        PRINT N'@ResultTablesJson nvarchar(max)=NULL ist für TABLE erforderlich; außerhalb von TABLE sind nur NULL oder leere Werte zulässig. Der unten genannte Ergebnisname muss auf eine vorhandene, leere lokale #temp-Tabelle mit genau einer Platzhalterspalte (z.B. Seed bit NULL) zeigen; kein fertiges Ausgabeschema voranlegen.';
+        PRINT N'@JsonErzeugen bit=0 (0/1) erzeugt bei 1 das JSON-Dokument in @Json nvarchar(max)=NULL OUTPUT. @StatusCodeOut varchar(40)=NULL liefert den Modulstatus, @IsPartialOut bit=NULL die Teilstatuskennzeichnung, @ErrorNumberOut int=NULL die Quellfehlernummer und @ErrorMessageOut nvarchar(2048)=NULL den Fehlertext; alle sind OUTPUT.';
+        PRINT N'Ausgabe: RAW und CONSOLE zeigen startupParameters; TABLE exportiert startupParameters; JSON enthält das startupParameters-Array. JSON-Schlüssel: startupParameters; Modulstatus beschreibt Verfügbarkeit/Fehler.';
+        PRINT N'Quelle und Umfang: Liest SQLArg*- sowie ImagePath- und ObjectName-Werte aus sys.dm_server_registry und klassifiziert Trace-Flag-, Masterdatei- und Errorlogargumente. Registry-/Dienstkonfiguration ohne Zeilenlimit; Pfade und Dienstkontoangaben können sensibel sein.';
+        PRINT N'Plattform: Fehlt sys.dm_server_registry, meldet die Quelle auf Linux UNAVAILABLE_PLATFORM, sonst UNAVAILABLE_OBJECT.';
+        PRINT N'Beispiel: EXEC [monitor].[USP_StartupParameters] @ResultSetArt=''CONSOLE'';';
+        PRINT N'TABLE-Beispiel (nur bei Bedarf): CREATE TABLE [#StartupParameters_HelpExample]([Seed] bit NULL); EXEC [monitor].[USP_StartupParameters] @ResultSetArt=''TABLE'', @ResultTablesJson=N''{"startupParameters":"#StartupParameters_HelpExample"}''; DROP TABLE [#StartupParameters_HelpExample];';RETURN;END;
  DECLARE @T datetime2(3)=SYSUTCDATETIME(),@S varchar(40)='AVAILABLE',@P bit=0,@E int=NULL,@M nvarchar(2048)=NULL,@Platform nvarchar(60)=NULL;
  IF @ResultSetArtNormalisiert NOT IN('RAW','CONSOLE','NONE') SELECT @S='INVALID_PARAMETER',@P=1,@M=N'@ResultSetArt muss CONSOLE, RAW, TABLE oder NONE enthalten.';
 CREATE TABLE [#StartupParameters_X]
