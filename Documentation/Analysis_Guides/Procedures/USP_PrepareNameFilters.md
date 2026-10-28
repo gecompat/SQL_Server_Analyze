@@ -1,6 +1,6 @@
 # [monitor].[USP_PrepareNameFilters]
 
-**Bereich:** Common, interner Filtervertrag<br>
+**Bereich:** Common, öffentlicher Filtervorbereitungshelfer<br>
 **Zweck:** Validiert und zerlegt case-sensitive, bracket-aware Namensfilter.<br>
 **Beobachtungsart:** Aufrufbezogene Validierung<br>
 **Kostenklasse:** LOW
@@ -15,9 +15,25 @@ Die Procedure beantwortet keine fachliche Performance- oder Verfügbarkeitsursac
 
 ## Sicherer Einstieg
 
-Die Procedure erwartet eine über `@FilterTable` eindeutig benannte lokale Temp-Tabelle mit festem Schema. Benutzer rufen die jeweilige Analyse-Procedure mit deren Filterparametern auf.
+Diese öffentliche Hilfsprocedure bereitet Filter einer Analyse-Procedure vor und liefert keine normalen Analyse-Resultsets. Im normalen Verarbeitungspfad erwartet sie eine über `@FilterTable` benannte lokale Temp-Tabelle mit festem Schema. Der Hilfemodus kann ohne diese Tabelle aufgerufen werden, muss aber weiterhin die erforderlichen OUTPUT-Parameter binden.
 
 Alle `Example*`-Werte im Aufruf sind synthetisch.
+
+### Hilfe anzeigen
+
+Der Hilfemodus gibt Parameter, Listenregeln, Exklusivität und Zielschema aus, bevor er Temp-Tabellen oder Listen verarbeitet. Die erforderlichen OUTPUT-Parameter bleiben auch bei `@Hilfe=1` Teil der SQL-Signatur:
+
+```sql
+DECLARE @StatusCode varchar(40),
+        @ErrorMessage nvarchar(2048);
+
+EXEC [monitor].[USP_PrepareNameFilters]
+      @StatusCode = @StatusCode OUTPUT
+    , @ErrorMessage = @ErrorMessage OUTPUT
+    , @Hilfe = 1;
+```
+
+Listen trennen Elemente mit | nur außerhalb geklammerter Bezeichner. Innerhalb von [...] maskiert ]] eine schließende Klammer; die Parser entquoten die Namen. Leere Elemente, nicht geschlossene Klammern und nicht maskierte schließende Klammern sind ungültig. Einzelne Listen akzeptieren genau einen SQL-Bezeichner mit höchstens 128 Zeichen. Vollständige Objektbezüge erlauben einen, zwei oder drei Teile; bei drei Teilen ist das Schema erforderlich, vier Teile sind ausgeschlossen und jeder Bestandteil ist auf 128 Zeichen begrenzt. Doppelte Werte innerhalb desselben Filtertyps sind unter SQL_Latin1_General_CP1_CS_AS ungültig.
 
 ## Resultsets und Leserichtung
 
@@ -77,7 +93,7 @@ Wurde eine Namenliste syntaktisch eindeutig und unter der case-sensitiven Framew
 
 ### Technischer Hintergrund
 
-Die Procedure ist ein Schutzbaustein für Filter. Quote-/Bracket-aware Parser verhindern, dass Trenner innerhalb korrekt geklammerter Namen falsch zerlegt werden. Validierte Werte werden in Temp-Strukturen geschrieben; ungültige Eingaben führen kontrolliert zu leerem/ungültigem Filterstatus.
+Die Procedure ist ein Schutzbaustein für Filter. Die angegebenen Listenparser prüfen Klammer-/Pipe-Syntax und Zahl sowie Länge der Bezeichnerteile. Validierte Werte werden in Temp-Strukturen geschrieben; ungültige Eingaben führen kontrolliert zu leerem/ungültigem Filterstatus. Die vollständigen Statuswerte sind AVAILABLE, INVALID_PARAMETER, INTERNAL_ERROR, TIMEOUT, DENIED_PERMISSION und ERROR_HANDLED.
 
 ### Datenkette
 

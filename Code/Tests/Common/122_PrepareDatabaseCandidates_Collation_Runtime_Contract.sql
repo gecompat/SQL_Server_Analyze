@@ -84,6 +84,53 @@ IF (SELECT COUNT(*) FROM [tempdb].[sys].[columns] WITH (NOLOCK)
     THROW 55713,N''USP_PrepareDatabaseCandidates target schema count mismatch.'',1;
 ';
 
+-- Both public preparation helpers expose a side-effect-free help path.
+DECLARE @HelpEntryLockTimeout int=@@LOCK_TIMEOUT,@HelpEntryTranCount int=@@TRANCOUNT,@HelpEntryOptions int=@@OPTIONS;
+EXEC [sys].[sp_executesql] N'
+DECLARE @StatusCode varchar(40)=''UNCHANGED_STATUS'';
+DECLARE @ErrorMessage nvarchar(2048)=N''UNCHANGED_ERROR'';
+DECLARE @CrossDatabaseRequested bit=1;
+SET LOCK_TIMEOUT 137;
+DECLARE @EntryOptions int=@@OPTIONS,@EntryTranCount int=@@TRANCOUNT;
+EXEC [monitor].[USP_PrepareDatabaseCandidates]
+      @DatabaseNames=N''bad.name|[DatabaseA]''
+    , @SystemdatenbankenEinbeziehen=NULL
+    , @DatabaseNamePattern=N''regexi:''
+    , @AnalysisClass=''not-a-real-class''
+    , @HighImpactConfirmed=NULL
+    , @StatusCode=@StatusCode OUTPUT
+    , @ErrorMessage=@ErrorMessage OUTPUT
+    , @CrossDatabaseRequested=@CrossDatabaseRequested OUTPUT
+    , @CandidateTable=N''##invalid-global-target''
+    , @WarningTable=N''not-a-temp-table''
+    , @Hilfe=1
+WITH RESULT SETS NONE;
+IF ISNULL(@StatusCode,'''')<>''UNCHANGED_STATUS''
+   OR ISNULL(@ErrorMessage,N'''')<>N''UNCHANGED_ERROR''
+   OR ISNULL(@CrossDatabaseRequested,0)<>1
+   OR @@OPTIONS<>@EntryOptions
+   OR @@LOCK_TIMEOUT<>137 OR @@TRANCOUNT<>@EntryTranCount
+    THROW 55715,N''DatabaseCandidates help path performed functional work or changed caller state.'',1;
+
+SET LOCK_TIMEOUT 0;
+DECLARE @FilterEntryOptions int=@@OPTIONS,@FilterEntryTranCount int=@@TRANCOUNT;
+EXEC [monitor].[USP_PrepareNameFilters]
+      @SchemaNames=N''invalid..schema''
+    , @FullObjectNames=N''four.part.name.reference''
+    , @StatusCode=@StatusCode OUTPUT
+    , @ErrorMessage=@ErrorMessage OUTPUT
+    , @FilterTable=N''##invalid-global-target''
+    , @Hilfe=1
+WITH RESULT SETS NONE;
+IF ISNULL(@StatusCode,'''')<>''UNCHANGED_STATUS''
+   OR ISNULL(@ErrorMessage,N'''')<>N''UNCHANGED_ERROR''
+   OR @@OPTIONS<>@FilterEntryOptions
+   OR @@LOCK_TIMEOUT<>0 OR @@TRANCOUNT<>@FilterEntryTranCount
+    THROW 55716,N''NameFilters help path performed functional work or changed caller state.'',1;
+';
+IF @@LOCK_TIMEOUT<>@HelpEntryLockTimeout OR @@TRANCOUNT<>@HelpEntryTranCount OR @@OPTIONS<>@HelpEntryOptions
+    THROW 55717,N'Preparation helper help probe leaked outer caller state.',1;
+
 IF @@LOCK_TIMEOUT<>@OuterEntryLockTimeout OR @@TRANCOUNT<>@OuterEntryTranCount
     THROW 55714,N'PrepareDatabaseCandidates runtime probe leaked outer caller state.',1;
 DROP TABLE [#PrepareDatabaseCandidates_Runtime];

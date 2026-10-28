@@ -1,6 +1,6 @@
 # Parameter richtig lesen und sicher einsetzen
 
-Exakte Signaturen und Defaultwerte stehen im [Procedure-Referenzhandbuch](../Reference/Procedure_Reference.md) und werden durch `EXEC [monitor].[Procedure] @Hilfe=1` ausgegeben.
+Exakte Signaturen und Defaultwerte stehen im [Procedure-Referenzhandbuch](../Reference/Procedure_Reference.md). Eine Hilfeabfrage mit `@Hilfe=1` gibt die Hilfebeschreibung aus, macht aber keine erforderlichen Parameter optional: Binden Sie alle Pflichtparameter einschließlich OUTPUT-Parametern. Gültige vollständige Beispiele für die beiden öffentlichen Vorbereitungshelfer stehen in [USP_PrepareDatabaseCandidates](Procedures/USP_PrepareDatabaseCandidates.md) und [USP_PrepareNameFilters](Procedures/USP_PrepareNameFilters.md).
 
 ## 1. Erst CONSOLE, dann RAW oder TABLE
 

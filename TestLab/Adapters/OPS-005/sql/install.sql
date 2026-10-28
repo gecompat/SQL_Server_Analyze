@@ -3593,7 +3593,7 @@ GO
 Objekt       : monitor.USP_PrepareDatabaseCandidates
 Version      : 2.0.2
 Stand        : 2026-10-14
-Typ          : Interne Stored Procedure
+Typ          : Öffentlicher Vorbereitungshelfer
 Zweck        : Validiert die frameworkweite Datenbankauswahl, prüft den
                tatsächlich aktivierten Analysepfad und befüllt lokale
                Kandidaten- und Warning-Temp-Tabellen des Aufrufers.
@@ -3615,8 +3615,27 @@ CREATE OR ALTER PROCEDURE [monitor].[USP_PrepareDatabaseCandidates]
     , @CrossDatabaseRequested           bit            OUTPUT
     , @CandidateTable                   sysname        = N'#PrepareDatabaseCandidates_Result'
     , @WarningTable                     sysname        = NULL
+    , @Hilfe                            bit            = 0
 AS
 BEGIN
+    IF @Hilfe = 1
+    BEGIN
+        PRINT N'monitor.USP_PrepareDatabaseCandidates bereitet die Datenbankkandidaten- und optionalen Warning-Temp-Tabellen des Aufrufers vor. Die Procedure liefert keine Analyse-Resultsets. Ein AVAILABLE-Status beweist nicht, dass jede angeforderte Datenbank ausgewählt wurde; prüfen Sie für explizite Namen die befüllte WarningTable auf DATABASE_UNAVAILABLE und SYSTEM_DATABASE_EXCLUDED.';
+        PRINT N'@DatabaseNames nvarchar(max) = NULL: optionale bracket-aware Pipe-Liste einteiliger SQL-Datenbanknamen, zum Beispiel N''[DatabaseA]|[DatabaseB]''. NULL, leer oder nur Leerzeichen bedeutet keine exakte Einschränkung; zusammen mit @DatabaseNamePattern ist die Liste ungültig. Doppelte Werte sind ungültig.';
+        PRINT N'@SystemdatenbankenEinbeziehen bit = 0: 0 schließt master, tempdb, model und msdb aus; 1 erlaubt deren Auswahl. NULL oder andere Werte sind ungültig.';
+        PRINT N'@DatabaseNamePattern nvarchar(4000) = NULL: optionaler Patternfilter. Ohne Präfix oder mit like: gilt SQL LIKE mit den Wildcards %, _ und Zeichenklassen in eckigen Klammern; die Auswertung verwendet SQL_Latin1_General_CP1_CS_AS. regex:<pattern> verwendet REGEXP_LIKE mit Flag c (case-sensitive); regexi:<pattern> verwendet Flag i (case-insensitive). Regex benötigt SQL Server 2025 und Compatibility Level 170 der Installationsdatenbank. Vor der Moduserkennung werden äußere Leerzeichen der Eingabe entfernt; Präfixe werden case-insensitive erkannt. Nach dem Abtrennen eines Präfixes bleiben die Zeichenfolge einschließlich innerer Leerzeichen und Groß-/Kleinschreibung des Patterninhalts erhalten. NULL bedeutet kein Pattern; ein leerer Wert oder ein leeres Präfixmuster ist ungültig. Nicht kombinierbar mit @DatabaseNames.';
+        PRINT N'@AnalysisClass varchar(64) = NULL: optionale Analyseklasse zur Prüfung, ob der Analysepfad verfügbar ist. NULL oder leer überspringt diese Pfadprüfung.';
+        PRINT N'@HighImpactConfirmed bit = 0: 0 ist Standard; 1 bestätigt einen teuren Pfad, falls die gewählte Analyseklasse eine Gruppenfreigabe verlangt. Nur bei einer aktivierten Analyseklasse ausgewertet; NULL oder andere Werte sind ungültig.';
+        PRINT N'@StatusCode varchar(40) OUTPUT: erforderlich. Eigene Statuswerte: AVAILABLE, INVALID_PARAMETER, INTERNAL_ERROR und UNAVAILABLE_FEATURE. Bei nicht leerem @AnalysisClass delegiert die Procedure zusätzlich HIGH_IMPACT_CONFIRMATION_REQUIRED oder DENIED_GROUP; die delegierte Prüfung kann ebenfalls INVALID_PARAMETER liefern.';
+        PRINT N'@ErrorMessage nvarchar(2048) OUTPUT: erforderlich; NULL bei erfolgreicher Vorbereitung, sonst die zugehörige Fehlerbeschreibung.';
+        PRINT N'@CrossDatabaseRequested bit OUTPUT: erforderlich, ohne Default; wird 1 bei keiner exakten Liste oder mehr als einem gültigen Listenelement, sonst 0; der Wert klassifiziert die Auswahlanfrage und bestätigt nicht, dass alle angeforderten Datenbanken verfügbar waren.';
+        PRINT N'@CandidateTable sysname = N''#PrepareDatabaseCandidates_Result'': lokaler #Temp-Tabellenname des Aufrufers. Erforderliche Spalten: DatabaseId int, DatabaseName sysname, StateDesc nvarchar(60), UserAccessDesc nvarchar(60), IsReadOnly bit, CompatibilityLevel tinyint, CollationName sysname, RecoveryModelDesc nvarchar(60), IsSystemDatabase bit, RequestedOrdinal int. Die Kandidatentabelle enthält nur ausgewählte sichtbare, online befindliche Datenbanken. Der Name darf höchstens 116 Zeichen haben; globale ##Temp-Namen sind unzulässig.';
+        PRINT N'@WarningTable sysname = NULL: optionaler lokaler #Temp-Tabellenname mit RequestedName sysname, StatusCode varchar(40), ErrorMessage nvarchar(2048). Explizit angeforderte, aber nicht auswählbare Datenbanken werden dort als DATABASE_UNAVAILABLE oder SYSTEM_DATABASE_EXCLUDED vermerkt; bei NULL oder ungültiger Tabelle werden keine Warnungszeilen befüllt. Der Name darf höchstens 116 Zeichen haben; globale ##Temp-Namen sind unzulässig.';
+        PRINT N'@Hilfe bit = 0: 0 führt die Vorbereitung aus; 1 gibt diese Hilfe aus und kehrt ohne fachliche Verarbeitung zurück; NULL folgt dem normalen Verarbeitungspfad.';
+        PRINT N'Gültiger Hilfeaufruf (alle Pflichtparameter gebunden): DECLARE @StatusCode varchar(40), @ErrorMessage nvarchar(2048), @CrossDatabaseRequested bit; EXEC [monitor].[USP_PrepareDatabaseCandidates] @StatusCode=@StatusCode OUTPUT, @ErrorMessage=@ErrorMessage OUTPUT, @CrossDatabaseRequested=@CrossDatabaseRequested OUTPUT, @Hilfe=1;';
+        RETURN;
+    END;
+
     SET NOCOUNT ON;
     SET LOCK_TIMEOUT 0;
 
@@ -3891,7 +3910,7 @@ GO
 Objekt       : monitor.USP_PrepareNameFilters
 Version      : 1.0.0
 Stand        : 2026-07-15
-Typ          : Interne Stored Procedure
+Typ          : Öffentlicher Vorbereitungshelfer
 Zweck        : Validiert bracket-aware Pipe-Listen für einteilige SQL-Namen und
                vollständige Objektbezüge und befüllt die vom Aufrufer benannte
                Temp-Tabelle.
@@ -3911,8 +3930,27 @@ CREATE OR ALTER PROCEDURE [monitor].[USP_PrepareNameFilters]
     , @StatusCode        varchar(40)    OUTPUT
     , @ErrorMessage      nvarchar(2048) OUTPUT
     , @FilterTable       sysname        = N'#PrepareNameFilters_Result'
+    , @Hilfe             bit            = 0
 AS
 BEGIN
+    IF @Hilfe = 1
+    BEGIN
+        PRINT N'monitor.USP_PrepareNameFilters validiert Namensfilter und befüllt eine vom Aufrufer angelegte lokale Temp-Tabelle. Die Procedure liefert keine Analyse-Resultsets. Hilfe beendet die fachliche Verarbeitung vor Temp-Tabellen-, Parameter- und Namenslistenverarbeitung.';
+        PRINT N'@SchemaNames nvarchar(max) = NULL: optionale Liste einteiliger SQL-Schemanamen, zum Beispiel N''[dbo]|[Sales]''. NULL bedeutet keine Einschränkung. Die Pipe trennt nur außerhalb von [...]; ]] maskiert innerhalb der Klammern eine schließende Klammer. Nach dem Entquoten muss jedes Element genau ein gültiger SQL-Bezeichner mit höchstens 128 Zeichen sein. Leere Elemente, nicht geschlossene Klammern und nicht maskierte schließende Klammern sind ungültig.';
+        PRINT N'@ObjectNames nvarchar(max) = NULL: optionale Liste einteiliger SQL-Objektnamen; gleicher Klammer-, Pipe-, Entquotungs- und 128-Zeichen-Vertrag wie @SchemaNames.';
+        PRINT N'@FullObjectNames nvarchar(max) = NULL: optionale Liste aus Objekt, Schema.Objekt oder Datenbank.Schema.Objekt, zum Beispiel N''[dbo].[TableA]|[DatabaseA].[sales].[TableB]''. Bei drei Teilen ist das Schema erforderlich; vierteilige Linked-Server-Namen sind ungültig. Jeder Bestandteil darf nach dem Entquoten höchstens 128 Zeichen haben. Derselbe Klammer- und Pipe-Vertrag wie bei @SchemaNames gilt. Nicht kombinierbar mit @SchemaNames oder @ObjectNames.';
+        PRINT N'@IndexNames nvarchar(max) = NULL: optionale Liste einteiliger SQL-Indexnamen; gleicher Klammer-, Pipe-, Entquotungs- und 128-Zeichen-Vertrag wie @SchemaNames.';
+        PRINT N'@StatisticsNames nvarchar(max) = NULL: optionale Liste einteiliger SQL-Statistiknamen; gleicher Klammer-, Pipe-, Entquotungs- und 128-Zeichen-Vertrag wie @SchemaNames.';
+        PRINT N'@ColumnNames nvarchar(max) = NULL: optionale Liste einteiliger SQL-Spaltennamen; gleicher Klammer-, Pipe-, Entquotungs- und 128-Zeichen-Vertrag wie @SchemaNames.';
+        PRINT N'@StatusCode varchar(40) OUTPUT: erforderlich. Die vollständigen Statuswerte dieser Procedure sind AVAILABLE, INVALID_PARAMETER, INTERNAL_ERROR, TIMEOUT, DENIED_PERMISSION und ERROR_HANDLED.';
+        PRINT N'@ErrorMessage nvarchar(2048) OUTPUT: erforderlich; NULL bei erfolgreicher Vorbereitung, sonst die zugehörige Fehlerbeschreibung.';
+        PRINT N'@FilterTable sysname = N''#PrepareNameFilters_Result'': Name einer vom Aufrufer angelegten lokalen #Temp-Tabelle mit FilterType varchar(20) (SCHEMA, OBJECT, INDEX, STATISTICS, COLUMN oder FULL_OBJECT), ItemOrdinal int, NameValue sysname NULL, DatabaseName sysname NULL, SchemaName sysname NULL, ObjectName sysname NULL. Der Name darf höchstens 116 Zeichen haben; globale ##Temp-Namen sind unzulässig.';
+        PRINT N'@Hilfe bit = 0: 0 führt die Filtervalidierung aus; 1 gibt diese Hilfe aus und kehrt ohne fachliche Verarbeitung zurück; NULL folgt dem normalen Verarbeitungspfad.';
+        PRINT N'Listenparser: Pipe trennt nur außerhalb von [...]; ]] maskiert darin eine schließende Klammer. Leere Elemente, nicht geschlossene Klammern und nicht maskierte schließende Klammern sind ungültig. Werte werden entquotet und case-sensitiv ausgewertet; Duplikate innerhalb desselben Filtertyps sind ungültig. Beispiel: N''[ColumnA]|[Column|WithPipe]''.';
+        PRINT N'Gültiger Hilfeaufruf (alle Pflichtparameter gebunden): DECLARE @StatusCode varchar(40), @ErrorMessage nvarchar(2048); EXEC [monitor].[USP_PrepareNameFilters] @StatusCode=@StatusCode OUTPUT, @ErrorMessage=@ErrorMessage OUTPUT, @Hilfe=1;';
+        RETURN;
+    END;
+
     SET NOCOUNT ON;
     SET LOCK_TIMEOUT 0;
     SET @StatusCode = 'AVAILABLE';

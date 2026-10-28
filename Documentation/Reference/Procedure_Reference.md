@@ -1345,6 +1345,7 @@ Quelle: `Code/01_Common/083_USP_PrepareDatabaseCandidates.sql`
     , @CrossDatabaseRequested           bit            OUTPUT
     , @CandidateTable                   sysname        = N'#PrepareDatabaseCandidates_Result'
     , @WarningTable                     sysname        = NULL
+    , @Hilfe                            bit            = 0
 ```
 
 ## `[monitor].[USP_PrepareNameFilters]`
@@ -1361,6 +1362,7 @@ Quelle: `Code/01_Common/084_USP_PrepareNameFilters.sql`
     , @StatusCode        varchar(40)    OUTPUT
     , @ErrorMessage      nvarchar(2048) OUTPUT
     , @FilterTable       sysname        = N'#PrepareNameFilters_Result'
+    , @Hilfe             bit            = 0
 ```
 
 ## `[monitor].[USP_QueryHashAnalysis]`

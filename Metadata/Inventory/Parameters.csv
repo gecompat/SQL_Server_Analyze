@@ -30,6 +30,7 @@ USP_PrepareDatabaseCandidates,ErrorMessage,nvarchar(2048),OUTPUT
 USP_PrepareDatabaseCandidates,CrossDatabaseRequested,bit,OUTPUT
 USP_PrepareDatabaseCandidates,CandidateTable,sysname,N'#PrepareDatabaseCandidates_Result'
 USP_PrepareDatabaseCandidates,WarningTable,sysname,NULL
+USP_PrepareDatabaseCandidates,Hilfe,bit,0
 USP_PrepareNameFilters,SchemaNames,nvarchar(max),NULL
 USP_PrepareNameFilters,ObjectNames,nvarchar(max),NULL
 USP_PrepareNameFilters,FullObjectNames,nvarchar(max),NULL
@@ -39,6 +40,7 @@ USP_PrepareNameFilters,ColumnNames,nvarchar(max),NULL
 USP_PrepareNameFilters,StatusCode,varchar(40),OUTPUT
 USP_PrepareNameFilters,ErrorMessage,nvarchar(2048),OUTPUT
 USP_PrepareNameFilters,FilterTable,sysname,N'#PrepareNameFilters_Result'
+USP_PrepareNameFilters,Hilfe,bit,0
 USP_AnalysisNavigator,Suchbegriff,nvarchar(4000),NULL
 USP_AnalysisNavigator,Bereich,varchar(40),NULL
 USP_AnalysisNavigator,Scope,varchar(40),NULL
