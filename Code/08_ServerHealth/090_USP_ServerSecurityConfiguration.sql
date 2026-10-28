@@ -38,7 +38,17 @@ BEGIN
 
     IF @Hilfe = 1
     BEGIN
-        PRINT N'monitor.USP_ServerSecurityConfiguration';
+        PRINT N'monitor.USP_ServerSecurityConfiguration: Erfasst lesend Sicherheits- und Konfigurationseinstellungen, SQL-Dienste, ausgewählte Servereigenschaften und den Status jeder Quelle.';
+        PRINT N'@PrintMeldungen bit=1: Gibt bei einem Status ungleich AVAILABLE Informationsmeldungen aus (1) oder unterdrückt sie (0).';
+        PRINT N'@Hilfe bit=0: Gibt diese Hilfe aus (1) oder erhebt Daten (0). Die Hilfe wird vor der Erhebung ausgegeben; bei TABLE wird zuvor das Tabellenziel geprüft. Für die Hilfe den Standardaufruf verwenden.';
+        PRINT N'@ResultSetArt varchar(16)=CONSOLE: CONSOLE, RAW, TABLE oder NONE. CONSOLE ist interaktiv; RAW liefert technische Resultsets; TABLE schreibt nur das benannte Resultat configuration; NONE unterdrückt Resultsets.';
+        PRINT N'@ResultTablesJson nvarchar(max)=NULL: Für TABLE erforderlich; ordnet den einzelnen Resultatnamen configuration einer bereits vorhandenen, leeren lokalen #temp-Tabelle mit genau einer Seed-Spalte zu. Permanente oder globale ##-Tabellen, nichtleere Tabellen und Ziele mit bereits festgelegtem Ausgabeschema werden abgewiesen.';
+        PRINT N'@JsonErzeugen bit=0: Erzeugt zusätzlich JSON (1) oder nicht (0). @Json nvarchar(max)=NULL OUTPUT nimmt es entgegen.';
+        PRINT N'@StatusCodeOut varchar(40)=NULL OUTPUT und @IsPartialOut bit=NULL OUTPUT: Gesamtstatus der Quellen und Kennzeichen für Teilergebnisse. @ErrorNumberOut int=NULL OUTPUT und @ErrorMessageOut nvarchar(2048)=NULL OUTPUT: erster verfügbarer Quellenfehler.';
+        PRINT N'Berechtigungen und Aufwand: Liest sys.configurations, sys.dm_server_services und SERVERPROPERTY; fehlende Quellberechtigungen können Ergebnisse einschränken. Kurze, rein lesende Server-Momentaufnahme ohne Datenbankbereich, Zeilenlimit oder Änderung an Konfiguration und Diensten.';
+        PRINT N'Dienstkonten und Serveridentität sind betriebliche sensible Angaben. Befunde sind Prüfsignale und keine automatische Einstufung als Richtlinienverstoß oder automatische Behebung.';
+        PRINT N'Beispiele (synthetisch): EXEC [monitor].[USP_ServerSecurityConfiguration] @Hilfe=1;  EXEC [monitor].[USP_ServerSecurityConfiguration] @ResultSetArt=''CONSOLE'';';
+        PRINT N'TABLE-Beispiel (synthetisch): CREATE TABLE #ExampleSecurity(Seed bit NULL); EXEC [monitor].[USP_ServerSecurityConfiguration] @ResultSetArt=''TABLE'', @ResultTablesJson=N''{"configuration":"#ExampleSecurity"}''; DROP TABLE #ExampleSecurity;';
         RETURN;
     END;
 

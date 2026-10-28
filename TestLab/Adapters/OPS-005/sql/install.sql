@@ -44891,7 +44891,21 @@ BEGIN
     IF @TableResultRequested=0 AND NULLIF(LTRIM(RTRIM(COALESCE(@ResultTablesJson,N''))),N'') IS NOT NULL THROW 51011,N'@ResultTablesJson ist ausschließlich mit @ResultSetArt=TABLE zulässig.',1;
     IF @TableResultRequested=1 EXEC [monitor].[InternalPrepareSingleResultTable] @ResultTablesJson=@ResultTablesJson,@ResultName=N'summary',@TargetTable=@TableTarget OUTPUT,@ThrowOnError=1;
     IF @TableResultRequested = 1 OR @ConsoleResultRequested = 1 SET @ResultSetArtNormalisiert = 'NONE';
-    DECLARE @EffectiveMaxZeilen bigint = CASE WHEN @MaxZeilen IS NULL OR @MaxZeilen=0 THEN CONVERT(bigint,9223372036854775807) ELSE CONVERT(bigint,@MaxZeilen) END;IF @Hilfe=1 BEGIN PRINT N'monitor.USP_ServerMemory @MaxZeilen=100';RETURN;END;
+    DECLARE @EffectiveMaxZeilen bigint = CASE WHEN @MaxZeilen IS NULL OR @MaxZeilen=0 THEN CONVERT(bigint,9223372036854775807) ELSE CONVERT(bigint,@MaxZeilen) END;IF @Hilfe=1
+ BEGIN
+        PRINT N'monitor.USP_ServerMemory: Erfasst lesend den Betriebssystem-, SQL-Prozess- und SQLOS-Speicher, aggregierte Memory Clerk-Typen und Memory Grants der Abfragen.';
+        PRINT N'@MaxZeilen int=100: Maximale Zahl ausgegebener aggregierter Clerk-Typen. NULL oder 0 bedeutet kein TOP-Limit; negative Werte sind ungültig. TOP wird nach der Clerk-Gruppierung angewandt und begrenzt daher die Ausgabe, nicht die vorgelagerte Aggregationsarbeit.';
+        PRINT N'@PrintMeldungen bit=1: Gibt bei einem Status ungleich AVAILABLE Informationsmeldungen aus (1) oder unterdrückt sie (0).';
+        PRINT N'@Hilfe bit=0: Gibt diese Hilfe aus (1) oder erhebt Daten (0). Die Hilfe wird vor der Erhebung ausgegeben; bei TABLE wird zuvor das Tabellenziel geprüft. Für die Hilfe den Standardaufruf verwenden.';
+        PRINT N'@ResultSetArt varchar(16)=CONSOLE: CONSOLE, RAW, TABLE oder NONE. CONSOLE ist für die interaktive Ausgabe; RAW liefert technische Resultsets; TABLE schreibt nur das benannte Resultat summary; NONE unterdrückt Resultsets.';
+        PRINT N'@ResultTablesJson nvarchar(max)=NULL: Für TABLE erforderlich; ordnet den einzelnen Resultatnamen summary einer bereits vorhandenen, leeren lokalen #temp-Tabelle mit genau einer Seed-Spalte zu. Permanente oder globale ##-Tabellen, nichtleere Tabellen und Ziele mit bereits festgelegtem Ausgabeschema werden abgewiesen.';
+        PRINT N'@JsonErzeugen bit=0: Erzeugt zusätzlich das JSON-Dokument (1) oder nicht (0). @Json nvarchar(max)=NULL OUTPUT nimmt es entgegen.';
+        PRINT N'@StatusCodeOut varchar(40)=NULL OUTPUT: Gesamtstatus. @IsPartialOut bit=NULL OUTPUT: Kennzeichen für Teilergebnisse. @ErrorNumberOut int=NULL OUTPUT und @ErrorMessageOut nvarchar(2048)=NULL OUTPUT: verfügbare Fehlerangaben der Quelle.';
+        PRINT N'Berechtigungen und Aufwand: Liest sys.dm_os_sys_memory, sys.dm_os_process_memory, sys.dm_os_sys_info, sys.configurations, sys.dm_os_memory_clerks und sys.dm_exec_query_memory_grants. Kleine Momentaufnahme mit Gruppierung der Clerks; fehlende DMV-Berechtigungen können die Verfügbarkeit einschränken.';
+        PRINT N'Beispiele (synthetisch): EXEC [monitor].[USP_ServerMemory] @Hilfe=1;  EXEC [monitor].[USP_ServerMemory] @MaxZeilen=100, @ResultSetArt=''CONSOLE'';';
+        PRINT N'TABLE-Beispiel (synthetisch): CREATE TABLE #ExampleMemory(Seed bit NULL); EXEC [monitor].[USP_ServerMemory] @ResultSetArt=''TABLE'', @ResultTablesJson=N''{"summary":"#ExampleMemory"}''; DROP TABLE #ExampleMemory;';
+        RETURN;
+ END;
  DECLARE @T datetime2(3)=SYSUTCDATETIME(),@S varchar(40)='AVAILABLE',@P bit=0,@E int=NULL,@M nvarchar(2048)=NULL;
  IF @ResultSetArtNormalisiert NOT IN('RAW','CONSOLE','NONE') SELECT @S='INVALID_PARAMETER',@P=1,@M=N'@ResultSetArt muss CONSOLE, RAW, TABLE oder NONE enthalten.';
  CREATE TABLE [#ServerMemory_Summary]([total_physical_memory_kb] bigint,[available_physical_memory_kb] bigint,[system_memory_state_desc] nvarchar(256) COLLATE SQL_Latin1_General_CP1_CS_AS,[physical_memory_in_use_kb] bigint,[locked_page_allocations_kb] bigint,[large_page_allocations_kb] bigint,[process_physical_memory_low] bit,[process_virtual_memory_low] bit,[committed_kb] bigint,[committed_target_kb] bigint,[visible_target_kb] bigint,[sql_memory_model_desc] nvarchar(60) COLLATE SQL_Latin1_General_CP1_CS_AS,[min_server_memory_mb] bigint,[max_server_memory_mb] bigint,[LPIMAssessment] varchar(50) COLLATE SQL_Latin1_General_CP1_CS_AS,[MemoryFinding] varchar(60) COLLATE SQL_Latin1_General_CP1_CS_AS);
@@ -45183,7 +45197,21 @@ BEGIN
     IF @TableResultRequested=0 AND NULLIF(LTRIM(RTRIM(COALESCE(@ResultTablesJson,N''))),N'') IS NOT NULL THROW 51011,N'@ResultTablesJson ist ausschließlich mit @ResultSetArt=TABLE zulässig.',1;
     IF @TableResultRequested=1 EXEC [monitor].[InternalPrepareSingleResultTable] @ResultTablesJson=@ResultTablesJson,@ResultName=N'host',@TargetTable=@TableTarget OUTPUT,@ThrowOnError=1;
     IF @TableResultRequested = 1 OR @ConsoleResultRequested = 1 SET @ResultSetArtNormalisiert = 'NONE';
-    DECLARE @MonitorPrintMessage nvarchar(2048);IF @Hilfe=1 BEGIN PRINT N'monitor.USP_OSInformation';RETURN;END;
+    DECLARE @MonitorPrintMessage nvarchar(2048);IF @Hilfe=1
+ BEGIN
+        PRINT N'monitor.USP_OSInformation: Erfasst lesend Hostidentität, Betriebssystemspeicher, SQL-Prozessspeicher und SQL-Dienstdetails; jede Quelle meldet ihren Status unabhängig.';
+        PRINT N'@PrintMeldungen bit=1: Gibt Informationsmeldungen für teilweise oder nicht verfügbare Quellen aus (1) oder unterdrückt sie (0).';
+        PRINT N'@Hilfe bit=0: Gibt diese Hilfe aus (1) oder erhebt Daten (0). Die Hilfe wird vor der Erhebung ausgegeben; bei TABLE wird zuvor das Tabellenziel geprüft. Für die Hilfe den Standardaufruf verwenden.';
+        PRINT N'@ResultSetArt varchar(16)=CONSOLE: CONSOLE, RAW, TABLE oder NONE. CONSOLE ist für die interaktive Ausgabe; RAW liefert technische Resultsets; TABLE schreibt nur das benannte Resultat host; NONE unterdrückt Resultsets.';
+        PRINT N'@ResultTablesJson nvarchar(max)=NULL: Für TABLE erforderlich; ordnet den einzelnen Resultatnamen host einer bereits vorhandenen, leeren lokalen #temp-Tabelle mit genau einer Seed-Spalte zu. Permanente oder globale ##-Tabellen, nichtleere Tabellen und Ziele mit bereits festgelegtem Ausgabeschema werden abgewiesen.';
+        PRINT N'@JsonErzeugen bit=0: Erzeugt zusätzlich JSON (1) oder nicht (0). @Json nvarchar(max)=NULL OUTPUT nimmt es entgegen.';
+        PRINT N'@StatusCodeOut varchar(40)=NULL OUTPUT und @IsPartialOut bit=NULL OUTPUT: Gesamtstatus der Quellen und Kennzeichen für Teilergebnisse. @ErrorNumberOut int=NULL OUTPUT und @ErrorMessageOut nvarchar(2048)=NULL OUTPUT: erster verfügbarer Quellenfehler.';
+        PRINT N'Berechtigungen und Grenzen: Liest sys.dm_os_host_info, sys.dm_os_sys_memory, sys.dm_os_process_memory und sys.dm_server_services. Vier unabhängige kurze Lesezugriffe; fehlende Plattformobjekte oder DMV-Berechtigungen können zu Teilergebnissen führen. Kein Datenbankbereich und kein Zeilenlimit.';
+        PRINT N'Dienstkonten und Prozessdetails sind betriebliche sensible Angaben und nur mit berechtigten Empfängern zu teilen. Die Hostausgabe bildet weder die vollständige Betriebssystem- noch Hypervisor-Telemetrie ab.';
+        PRINT N'Beispiele (synthetisch): EXEC [monitor].[USP_OSInformation] @Hilfe=1;  EXEC [monitor].[USP_OSInformation] @ResultSetArt=''CONSOLE'';';
+        PRINT N'TABLE-Beispiel (synthetisch): CREATE TABLE #ExampleOS(Seed bit NULL); EXEC [monitor].[USP_OSInformation] @ResultSetArt=''TABLE'', @ResultTablesJson=N''{"host":"#ExampleOS"}''; DROP TABLE #ExampleOS;';
+        RETURN;
+ END;
  DECLARE @T datetime2(3)=SYSUTCDATETIME(),@S varchar(40)='AVAILABLE',@P bit=0,@E int=NULL,@M nvarchar(2048)=NULL;
  IF @ResultSetArtNormalisiert NOT IN('RAW','CONSOLE','NONE') SELECT @S='INVALID_PARAMETER',@P=1,@M=N'@ResultSetArt muss CONSOLE, RAW, TABLE oder NONE enthalten.';
  CREATE TABLE [#OSInformation_Src]([SourceName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS,[StatusCode] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS,[ErrorNumber] int NULL,[ErrorMessage] nvarchar(2048) COLLATE SQL_Latin1_General_CP1_CS_AS NULL);
@@ -45260,7 +45288,17 @@ BEGIN
 
     IF @Hilfe = 1
     BEGIN
-        PRINT N'monitor.USP_ServerSecurityConfiguration';
+        PRINT N'monitor.USP_ServerSecurityConfiguration: Erfasst lesend Sicherheits- und Konfigurationseinstellungen, SQL-Dienste, ausgewählte Servereigenschaften und den Status jeder Quelle.';
+        PRINT N'@PrintMeldungen bit=1: Gibt bei einem Status ungleich AVAILABLE Informationsmeldungen aus (1) oder unterdrückt sie (0).';
+        PRINT N'@Hilfe bit=0: Gibt diese Hilfe aus (1) oder erhebt Daten (0). Die Hilfe wird vor der Erhebung ausgegeben; bei TABLE wird zuvor das Tabellenziel geprüft. Für die Hilfe den Standardaufruf verwenden.';
+        PRINT N'@ResultSetArt varchar(16)=CONSOLE: CONSOLE, RAW, TABLE oder NONE. CONSOLE ist interaktiv; RAW liefert technische Resultsets; TABLE schreibt nur das benannte Resultat configuration; NONE unterdrückt Resultsets.';
+        PRINT N'@ResultTablesJson nvarchar(max)=NULL: Für TABLE erforderlich; ordnet den einzelnen Resultatnamen configuration einer bereits vorhandenen, leeren lokalen #temp-Tabelle mit genau einer Seed-Spalte zu. Permanente oder globale ##-Tabellen, nichtleere Tabellen und Ziele mit bereits festgelegtem Ausgabeschema werden abgewiesen.';
+        PRINT N'@JsonErzeugen bit=0: Erzeugt zusätzlich JSON (1) oder nicht (0). @Json nvarchar(max)=NULL OUTPUT nimmt es entgegen.';
+        PRINT N'@StatusCodeOut varchar(40)=NULL OUTPUT und @IsPartialOut bit=NULL OUTPUT: Gesamtstatus der Quellen und Kennzeichen für Teilergebnisse. @ErrorNumberOut int=NULL OUTPUT und @ErrorMessageOut nvarchar(2048)=NULL OUTPUT: erster verfügbarer Quellenfehler.';
+        PRINT N'Berechtigungen und Aufwand: Liest sys.configurations, sys.dm_server_services und SERVERPROPERTY; fehlende Quellberechtigungen können Ergebnisse einschränken. Kurze, rein lesende Server-Momentaufnahme ohne Datenbankbereich, Zeilenlimit oder Änderung an Konfiguration und Diensten.';
+        PRINT N'Dienstkonten und Serveridentität sind betriebliche sensible Angaben. Befunde sind Prüfsignale und keine automatische Einstufung als Richtlinienverstoß oder automatische Behebung.';
+        PRINT N'Beispiele (synthetisch): EXEC [monitor].[USP_ServerSecurityConfiguration] @Hilfe=1;  EXEC [monitor].[USP_ServerSecurityConfiguration] @ResultSetArt=''CONSOLE'';';
+        PRINT N'TABLE-Beispiel (synthetisch): CREATE TABLE #ExampleSecurity(Seed bit NULL); EXEC [monitor].[USP_ServerSecurityConfiguration] @ResultSetArt=''TABLE'', @ResultTablesJson=N''{"configuration":"#ExampleSecurity"}''; DROP TABLE #ExampleSecurity;';
         RETURN;
     END;
 
@@ -52978,8 +53016,21 @@ BEGIN
 
     IF @Hilfe = 1
     BEGIN
-        PRINT N'monitor.USP_ServerHealthAnalysis';
-        PRINT N'@ResultSetArt = RAW, CONSOLE, TABLE oder NONE; optional JSON mit benannten Modulobjekten.';
+        PRINT N'monitor.USP_ServerHealthAnalysis: Führt aktivierte, nur lesende Serverzustandsmodule nacheinander aus; der Standardpfad besteht aus nicht atomaren Momentaufnahmen. Bei der Erhebung muss mindestens ein Modul aktiviert sein.';
+        PRINT N'@MitCpu bit=1, @MitNuma bit=1, @MitMemory bit=1, @MitTempDB bit=1, @MitConfiguration bit=1, @MitTraceFlags bit=1, @MitStartup bit=1, @MitOS bit=1, @MitSecurity bit=1: Schaltet diese neun kleinen Server-Momentaufnahmen ein (1) oder aus (0).';
+        PRINT N'@MitIntegritaet bit=0, @MitKapazitaet bit=0, @MitPerformanceCounters bit=0, @MitCriticalEvents bit=0, @MitContention bit=0, @MitBufferPool bit=0, @MitFindings bit=0: Aktiviert optional Integritätsevidenz (nur lesend, ohne DBCC CHECKDB), Kapazität, Performance-Counter, system_health-Ereignisse, 5-Sekunden-Contention, Buffer-Pool und abgeleitete Triage-Befunde (1); standardmäßig deaktiviert (0).';
+        PRINT N'@DatabaseNames nvarchar(max)=NULL: Optionale, klammerbewusste Pipe-Liste exakter Datenbanknamen, zum Beispiel N''[ExampleDb]|[ExampleArchive]''. NULL oder leer bedeutet keine Einschränkung auf exakte Namen; Duplikate sind ungültig. Wird nur von aktivierten Datenbankmodulen verwendet.';
+        PRINT N'@SystemdatenbankenEinbeziehen bit=0: Schließt Systemdatenbanken aus (0) oder lässt sie in Datenbankmodulen zu (1). @DatabaseNamePattern nvarchar(4000)=NULL: Alternativer Datenbanknamenfilter, nicht mit @DatabaseNames kombinierbar.';
+        PRINT N'Musterformen: like:<pattern> verwendet SQL-LIKE-Platzhalter und unterscheidet Groß-/Kleinschreibung; regex:<pattern> unterscheidet Groß-/Kleinschreibung, regexi:<pattern> nicht. Regex erfordert SQL Server 2025 und Kompatibilitätsgrad 170 der Installationsdatenbank. Leere Muster sind ungültig.';
+        PRINT N'@HighImpactConfirmed bit=0: Bestätigt nachgelagerte Prüfungen mit hoher Auswirkung nicht (0); übergibt eine Bestätigung (1) nur, wenn der Aufrufer die betreffenden aktivierten Unterprozeduraufrufe ausdrücklich freigibt. Das Flag aktiviert keine Module.';
+        PRINT N'@MaxZeilen int=100: Negative Werte sind ungültig; NULL wird akzeptiert. Der Wert wird unverändert nur an Unterprozeduren mit Zeilenlimit übergeben. Ob NULL/0 unbegrenzt bedeutet und welche Zeilen begrenzt werden, hängt von der jeweiligen Unterprozedur ab.';
+        PRINT N'@ResultSetArt varchar(16)=CONSOLE: CONSOLE, RAW, TABLE oder NONE. TABLE erfordert in @ResultTablesJson die Zuordnung des einzelnen Resultatnamens moduleStatus zu einer vom Aufrufer bereitgestellten Zieltabelle; RAW liefert technische Resultsets; NONE unterdrückt Resultsets.';
+        PRINT N'@ResultTablesJson nvarchar(max)=NULL: Für TABLE erforderlich; ordnet den einzelnen Resultatnamen moduleStatus einer bereits vorhandenen, leeren lokalen #temp-Tabelle mit genau einer Seed-Spalte zu. Permanente oder globale ##-Tabellen, nichtleere Tabellen und Ziele mit bereits festgelegtem Ausgabeschema werden abgewiesen.';
+        PRINT N'@JsonErzeugen bit=0 fordert JSON zusätzlich an (1) oder nicht (0); @Json nvarchar(max)=NULL OUTPUT nimmt benannte Modulobjekte entgegen. @MitFindings=1 fordert intern ebenfalls JSON der Unterprozeduren an.';
+        PRINT N'@PrintMeldungen bit=1: Gibt Statusmeldungen der Unterprozeduren aus (1) oder unterdrückt sie (0). @Hilfe bit=0: Gibt diese Hilfe aus (1) oder führt die Erhebung aus (0). Die Hilfe wird vor Erhebung und Modulprüfung, aber nach Prüfung des TABLE-Ziels ausgegeben; zuvor wird LOCK_TIMEOUT auf 0 gesetzt. Für die Hilfe den Standardaufruf verwenden.';
+        PRINT N'Berechtigungen und Aufwand: Der Standardpfad führt neun kurze Server-Momentaufnahmen aus. Optionale Module können Datenbank-/Katalogarbeit, Eventdateiverarbeitung oder eine feste Contention-Messung von fünf Sekunden ergänzen. Berechtigungs- und Plattformlücken werden je Modul gemeldet; Änderungen werden nicht vorgenommen.';
+        PRINT N'Beispiele (synthetisch): EXEC [monitor].[USP_ServerHealthAnalysis] @Hilfe=1;  EXEC [monitor].[USP_ServerHealthAnalysis] @ResultSetArt=''CONSOLE'';';
+        PRINT N'TABLE-Beispiel (synthetisch): CREATE TABLE #ExampleHealth(Seed bit NULL); EXEC [monitor].[USP_ServerHealthAnalysis] @MitCpu=1, @MitNuma=0, @MitMemory=0, @MitTempDB=0, @MitConfiguration=0, @MitTraceFlags=0, @MitStartup=0, @MitOS=0, @MitSecurity=0, @ResultSetArt=''TABLE'', @ResultTablesJson=N''{"moduleStatus":"#ExampleHealth"}''; DROP TABLE #ExampleHealth;';
         RETURN;
     END;
 
