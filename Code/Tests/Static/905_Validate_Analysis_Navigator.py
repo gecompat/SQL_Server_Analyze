@@ -420,6 +420,153 @@ def strip_sql_comments_and_literals(sql_text: str) -> str:
     return re.sub(r"N?'(?:''|[^'])*'", "''", text, flags=re.DOTALL)
 
 
+
+MODULE_OBJECT_TYPES = {"PROCEDURE"}
+
+
+def strip_sql_comments_preserving_literals(sql_text: str) -> str:
+    """Remove SQL comments while retaining string literals used in defaults."""
+    output: list[str] = []
+    index = 0
+    in_string = False
+    while index < len(sql_text):
+        if in_string:
+            output.append(sql_text[index])
+            if sql_text[index] == "'":
+                if index + 1 < len(sql_text) and sql_text[index + 1] == "'":
+                    output.append(sql_text[index + 1]); index += 2; continue
+                in_string = False
+            index += 1; continue
+        if sql_text[index] == "'":
+            in_string = True; output.append(sql_text[index]); index += 1
+        elif sql_text.startswith("--", index):
+            newline = sql_text.find("\n", index)
+            if newline < 0: break
+            output.append("\n"); index = newline + 1
+        elif sql_text.startswith("/*", index):
+            end = sql_text.find("*/", index + 2)
+            if end < 0: raise ValueError("Unclosed SQL block comment in module declaration")
+            output.extend("\n" for char in sql_text[index:end + 2] if char == "\n"); index = end + 2
+        else:
+            output.append(sql_text[index]); index += 1
+    return "".join(output)
+
+
+def normalize_sql_expression(value: str) -> str:
+    """Collapse insignificant whitespace but preserve quoted literal contents."""
+    result: list[str] = []; index = 0; in_string = False; pending_space = False
+    while index < len(value):
+        char = value[index]
+        if in_string:
+            result.append(char)
+            if char == "'":
+                if index + 1 < len(value) and value[index + 1] == "'":
+                    result.append(value[index + 1]); index += 2; continue
+                in_string = False
+            index += 1; continue
+        if char == "'":
+            if pending_space and result: result.append(" ")
+            pending_space = False; in_string = True; result.append(char)
+        elif char.isspace(): pending_space = True
+        else:
+            if pending_space and result: result.append(" ")
+            pending_space = False; result.append(char)
+        index += 1
+    return "".join(result).strip()
+
+
+def find_top_level_equals(text: str) -> int:
+    depth = 0; in_string = False; index = 0
+    while index < len(text):
+        char = text[index]
+        if in_string:
+            if char == "'":
+                if index + 1 < len(text) and text[index + 1] == "'": index += 2; continue
+                in_string = False
+        elif char == "'": in_string = True
+        elif char == "(": depth += 1
+        elif char == ")": depth -= 1
+        elif char == "=" and depth == 0: return index
+        index += 1
+    return -1
+
+
+def parse_parameter_declaration(declaration: str) -> tuple[str, str, str] | None:
+    """Return exact name, type, and inventory-form default/direction for one declaration."""
+    text = normalize_sql_expression(declaration.strip().rstrip(","))
+    name_match = re.match(r"(@[A-Za-z_][A-Za-z0-9_]*)\b", text)
+    if not name_match: return None
+    name = name_match.group(1)[1:]; remainder = text[name_match.end():].strip()
+    equals = find_top_level_equals(remainder)
+    has_default = equals >= 0
+    if has_default: data_type, default = remainder[:equals].strip(), remainder[equals + 1:].strip()
+    else: data_type, default = remainder, ""
+    output = False
+    if equals >= 0:
+        output = bool(re.search(r"\s+(?:OUTPUT|OUT)\s*$", default, re.IGNORECASE))
+        if output: default = re.sub(r"\s+(?:OUTPUT|OUT)\s*$", "", default, flags=re.IGNORECASE).strip()
+    else:
+        output = bool(re.search(r"\s+(?:OUTPUT|OUT)\s*$", data_type, re.IGNORECASE))
+        if output: data_type = re.sub(r"\s+(?:OUTPUT|OUT)\s*$", "", data_type, flags=re.IGNORECASE).strip()
+    if not data_type: return None
+    inventory_default = normalize_sql_expression(default) if has_default else ""
+    if output:
+        inventory_default = (inventory_default + " OUTPUT").strip() if has_default else "OUTPUT"
+    return name, normalize_sql_expression(data_type), inventory_default
+
+
+def extract_module_parameters(source_text: str, object_name: str) -> list[tuple[str, str, str]]:
+    """Extract parameters from one public procedure declaration."""
+    cleaned = strip_sql_comments_preserving_literals(source_text)
+    marker = rf"(?ims)^\s*CREATE\s+OR\s+ALTER\s+PROCEDURE\s+\[monitor\]\.\[([A-Za-z_][A-Za-z0-9_]*)\](.*?)(?=^\s*AS\s*$)"
+    match = re.search(marker, cleaned)
+    if not match:
+        raise ValueError(f"procedure declaration not found for {object_name}")
+    declared_name = match.group(1)
+    if declared_name != object_name:
+        raise ValueError(f"case-sensitive object name differs from Objects.csv for {object_name}: {declared_name}")
+    raw_parameters = match.group(2).strip()
+    if not raw_parameters:
+        return []
+    parsed = [parse_parameter_declaration(item) for item in split_top_level(raw_parameters)]
+    if any(item is None for item in parsed):
+        raise ValueError(f"unsupported parameter declaration for {object_name}")
+    return [item for item in parsed if item is not None]
+
+def compare_parameter_inventory(object_rows: list[dict[str, str]], parameter_rows: list[dict[str, str]], read_source) -> list[str]:
+    """Compare every inventoried SQL module signature with the ordered CSV rows."""
+    errors: list[str] = []
+    modules = [row for row in object_rows if row.get("ObjectType") in MODULE_OBJECT_TYPES]
+    module_names = [row["ObjectName"] for row in modules]
+    if len(module_names) != len(set(module_names)): errors.append("Objects.csv contains duplicate procedure/function names for parameter parity.")
+    module_by_name = {row["ObjectName"]: row for row in modules}; rows_by_module: dict[str, list[dict[str, str]]] = defaultdict(list); seen: set[tuple[str, str]] = set()
+    for row in parameter_rows:
+        module_name = row.get("ProcedureName", ""); parameter_name = row.get("ParameterName", ""); key = (module_name, parameter_name)
+        if key in seen: errors.append(f"Duplicate Parameters.csv key: {module_name}/@{parameter_name}")
+        seen.add(key)
+        if module_name not in module_by_name: errors.append(f"Parameters.csv references a non-module inventory object: {module_name}/@{parameter_name}")
+        rows_by_module[module_name].append(row)
+    for module_name, object_row in module_by_name.items():
+        try: source_parameters = extract_module_parameters(read_source(object_row["SourcePath"]), module_name)
+        except (OSError, ValueError) as exc:
+            errors.append(f"Cannot read SQL parameter signature for {module_name}: {exc}"); continue
+        inventory_parameters = rows_by_module.get(module_name, [])
+        if len(source_parameters) != len(inventory_parameters):
+            errors.append(f"Parameter count differs between SQL source and Parameters.csv for {module_name}: source={len(source_parameters)}, inventory={len(inventory_parameters)}")
+        for index in range(max(len(source_parameters), len(inventory_parameters))):
+            source = source_parameters[index] if index < len(source_parameters) else None
+            inventory = inventory_parameters[index] if index < len(inventory_parameters) else None
+            if source is None:
+                errors.append(f"Extra Parameters.csv row for {module_name}/@{inventory['ParameterName']}"); continue
+            if inventory is None:
+                errors.append(f"Missing Parameters.csv row for {module_name}/@{source[0]}"); continue
+            source_name, source_type, source_default = source; inventory_name = inventory.get("ParameterName", "")
+            if source_name != inventory_name: errors.append(f"Parameter name/order differs for {module_name} position {index + 1}: source=@{source_name}, inventory=@{inventory_name}")
+            if normalize_sql_expression(source_type) != normalize_sql_expression(inventory.get("DataType", "")): errors.append(f"Parameter type differs for {module_name}/@{source_name}")
+            if normalize_sql_expression(source_default) != normalize_sql_expression(inventory.get("DefaultExpression", "")): errors.append(f"Parameter default/direction differs for {module_name}/@{source_name}")
+    return errors
+
+
 def validate(repository_root: Path) -> list[str]:
     errors: list[str] = []
 
@@ -704,6 +851,13 @@ def validate(repository_root: Path) -> list[str]:
         errors.append("Navigator executes non-renderer procedures: " + ", ".join(unexpected_calls))
 
     parameter_rows = read_csv(repository_root / PARAMETER_INVENTORY_PATH)
+    errors.extend(
+        compare_parameter_inventory(
+            object_rows,
+            parameter_rows,
+            lambda source_path: (repository_root / source_path).read_text(encoding="utf-8-sig"),
+        )
+    )
     parameters_by_procedure: dict[str, set[str]] = defaultdict(set)
     for parameter_row in parameter_rows:
         parameters_by_procedure[parameter_row["ProcedureName"]].add(parameter_row["ParameterName"])
@@ -948,7 +1102,53 @@ def validate(repository_root: Path) -> list[str]:
     return errors
 
 
+def run_parameter_parity_self_test() -> None:
+    objects = [{"ObjectType": "PROCEDURE", "ObjectName": "USP_Fixture", "SourcePath": "fixture.sql"}]
+    source = """CREATE OR ALTER PROCEDURE [monitor].[USP_Fixture]
+    @List nvarchar(100) = N'a,b', -- comma remains inside literal
+    @Required int,
+    @RequiredOutput int OUTPUT,
+    @ExplicitNull int = NULL,
+    @ExplicitNullOutput int = NULL OUTPUT,
+    @Output int OUTPUT
+AS
+SELECT 1;
+"""
+    rows = [
+        {"ProcedureName": "USP_Fixture", "ParameterName": "List", "DataType": "nvarchar(100)", "DefaultExpression": "N'a,b'"},
+        {"ProcedureName": "USP_Fixture", "ParameterName": "Required", "DataType": "int", "DefaultExpression": ""},
+        {"ProcedureName": "USP_Fixture", "ParameterName": "RequiredOutput", "DataType": "int", "DefaultExpression": "OUTPUT"},
+        {"ProcedureName": "USP_Fixture", "ParameterName": "ExplicitNull", "DataType": "int", "DefaultExpression": "NULL"},
+        {"ProcedureName": "USP_Fixture", "ParameterName": "ExplicitNullOutput", "DataType": "int", "DefaultExpression": "NULL OUTPUT"},
+        {"ProcedureName": "USP_Fixture", "ParameterName": "Output", "DataType": "int", "DefaultExpression": "OUTPUT"},
+    ]
+    read_source = lambda path: source
+    if compare_parameter_inventory(objects, rows, read_source):
+        raise AssertionError("A matching SQL procedure signature and independent CSV rows were rejected.")
+    mutations = [
+        rows[1:],
+        rows + [{"ProcedureName": "USP_Fixture", "ParameterName": "Extra", "DataType": "int", "DefaultExpression": "NULL"}],
+        [rows[0], {**rows[1], "DataType": "bigint"}, *rows[2:]],
+        [rows[0], {**rows[1], "DefaultExpression": "NULL"}, *rows[2:]],
+        [*rows[:3], {**rows[3], "DefaultExpression": ""}, *rows[4:]],
+        [*rows[:2], {**rows[2], "DefaultExpression": "NULL OUTPUT"}, *rows[3:]],
+        [*rows[:2], {**rows[2], "DefaultExpression": ""}, *rows[3:]],
+        [*rows[:4], {**rows[4], "DefaultExpression": "NULL"}, *rows[5:]],
+        [rows[0], {**rows[1], "ParameterName": "required"}, *rows[2:]],
+        [rows[1], rows[0], *rows[2:]],
+        rows + [rows[1]],
+        [{**rows[0], "DefaultExpression": "N'A,b'"}, *rows[1:]],
+    ]
+    for index, mutant in enumerate(mutations, start=1):
+        if not compare_parameter_inventory(objects, mutant, read_source):
+            raise AssertionError(f"Parameter parity accepted independent CSV mutation {index}.")
+    source = source.replace("[USP_Fixture]", "[usp_Fixture]")
+    if not compare_parameter_inventory(objects, rows, read_source):
+        raise AssertionError("Parameter parity accepted a case-only SQL object-name mutation.")
+    print(f"Parameter parity self-test passed: 1 positive with required/default/OUTPUT variants, {len(mutations)} negative CSV mutations, and 1 case-sensitive object-name rejection.")
+
 def run_self_test() -> None:
+    run_parameter_parity_self_test()
     sample = """
 CREATE OR ALTER VIEW [monitor].[VW_Example] AS
 SELECT *

@@ -763,6 +763,7 @@ USP_QueryStoreAnalysis,MitPlanChanges,bit,0
 USP_QueryStoreAnalysis,MitRegressionen,bit,0
 USP_QueryStoreAnalysis,MitForcedPlans,bit,0
 USP_QueryStoreAnalysis,MitHints,bit,0
+USP_QueryStoreAnalysis,MitReplicaKontext,bit,1
 USP_QueryStoreAnalysis,MitIQP,bit,0
 USP_QueryStoreAnalysis,MaxZeilen,int,100
 USP_QueryStoreAnalysis,ResultSetArt,varchar(16),'CONSOLE'
@@ -1937,13 +1938,13 @@ USP_SsisCatalogExecutionAnalysis,LockTimeoutMs,int,0
 USP_SsisCatalogExecutionAnalysis,ResultSetArt,varchar(16),'CONSOLE'
 USP_SsisCatalogExecutionAnalysis,ResultTablesJson,nvarchar(max),NULL
 USP_SsisCatalogExecutionAnalysis,JsonErzeugen,bit,0
-USP_SsisCatalogExecutionAnalysis,Json,nvarchar(max),NULL
+USP_SsisCatalogExecutionAnalysis,Json,nvarchar(max),NULL OUTPUT
 USP_SsisCatalogExecutionAnalysis,PrintMeldungen,bit,1
 USP_SsisCatalogExecutionAnalysis,Hilfe,bit,0
-USP_SsisCatalogExecutionAnalysis,StatusCodeOut,varchar(40),NULL
-USP_SsisCatalogExecutionAnalysis,IsPartialOut,bit,NULL
-USP_SsisCatalogExecutionAnalysis,ErrorNumberOut,int,NULL
-USP_SsisCatalogExecutionAnalysis,ErrorMessageOut,nvarchar(4000),NULL
+USP_SsisCatalogExecutionAnalysis,StatusCodeOut,varchar(40),NULL OUTPUT
+USP_SsisCatalogExecutionAnalysis,IsPartialOut,bit,NULL OUTPUT
+USP_SsisCatalogExecutionAnalysis,ErrorNumberOut,int,NULL OUTPUT
+USP_SsisCatalogExecutionAnalysis,ErrorMessageOut,nvarchar(4000),NULL OUTPUT
 USP_SsisLegacyLogAnalysis,LoggingDatabase,sysname,NULL
 USP_SsisLegacyLogAnalysis,LoggingSchema,sysname,N'dbo'
 USP_SsisLegacyLogAnalysis,LoggingTable,sysname,N'sysssislog'
@@ -1957,13 +1958,13 @@ USP_SsisLegacyLogAnalysis,LockTimeoutMs,int,0
 USP_SsisLegacyLogAnalysis,ResultSetArt,varchar(16),'CONSOLE'
 USP_SsisLegacyLogAnalysis,ResultTablesJson,nvarchar(max),NULL
 USP_SsisLegacyLogAnalysis,JsonErzeugen,bit,0
-USP_SsisLegacyLogAnalysis,Json,nvarchar(max),NULL
+USP_SsisLegacyLogAnalysis,Json,nvarchar(max),NULL OUTPUT
 USP_SsisLegacyLogAnalysis,PrintMeldungen,bit,1
 USP_SsisLegacyLogAnalysis,Hilfe,bit,0
-USP_SsisLegacyLogAnalysis,StatusCodeOut,varchar(40),NULL
-USP_SsisLegacyLogAnalysis,IsPartialOut,bit,NULL
-USP_SsisLegacyLogAnalysis,ErrorNumberOut,int,NULL
-USP_SsisLegacyLogAnalysis,ErrorMessageOut,nvarchar(4000),NULL
+USP_SsisLegacyLogAnalysis,StatusCodeOut,varchar(40),NULL OUTPUT
+USP_SsisLegacyLogAnalysis,IsPartialOut,bit,NULL OUTPUT
+USP_SsisLegacyLogAnalysis,ErrorNumberOut,int,NULL OUTPUT
+USP_SsisLegacyLogAnalysis,ErrorMessageOut,nvarchar(4000),NULL OUTPUT
 USP_SsisLegacyLogAnalysis,IncludeTaskAnalysis,bit,0
 USP_SsisLegacyLogAnalysis,IncludeRowFlowAnalysis,bit,0
 USP_SsisLegacyLogAnalysis,IncludeComponentPhaseAnalysis,bit,0
@@ -1981,13 +1982,13 @@ USP_SsisPackageModelAnalysis,LockTimeoutMs,int,0
 USP_SsisPackageModelAnalysis,ResultSetArt,varchar(16),'CONSOLE'
 USP_SsisPackageModelAnalysis,ResultTablesJson,nvarchar(max),NULL
 USP_SsisPackageModelAnalysis,JsonErzeugen,bit,0
-USP_SsisPackageModelAnalysis,Json,nvarchar(max),NULL
+USP_SsisPackageModelAnalysis,Json,nvarchar(max),NULL OUTPUT
 USP_SsisPackageModelAnalysis,PrintMeldungen,bit,1
 USP_SsisPackageModelAnalysis,Hilfe,bit,0
-USP_SsisPackageModelAnalysis,StatusCodeOut,varchar(40),NULL
-USP_SsisPackageModelAnalysis,IsPartialOut,bit,NULL
-USP_SsisPackageModelAnalysis,ErrorNumberOut,int,NULL
-USP_SsisPackageModelAnalysis,ErrorMessageOut,nvarchar(2048),NULL
+USP_SsisPackageModelAnalysis,StatusCodeOut,varchar(40),NULL OUTPUT
+USP_SsisPackageModelAnalysis,IsPartialOut,bit,NULL OUTPUT
+USP_SsisPackageModelAnalysis,ErrorNumberOut,int,NULL OUTPUT
+USP_SsisPackageModelAnalysis,ErrorMessageOut,nvarchar(2048),NULL OUTPUT
 USP_SsisPackageModelAnalysis,IncludePackageViews,bit,0
 USP_SsisPackageModelAnalysis,IncludeObjectRules,bit,0
 USP_SsisPackageModelAnalysis,LocalHandoverId,uniqueidentifier,NULL
