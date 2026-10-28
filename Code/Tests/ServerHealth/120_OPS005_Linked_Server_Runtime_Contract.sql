@@ -17,6 +17,8 @@ SET XACT_ABORT ON;
 DECLARE @ServerName sysname = N'ExampleOps005Linked';
 DECLARE @TimeoutServerName sysname = N'ExampleOps005TimeoutLinked';
 DECLARE @Json nvarchar(max) = NULL;
+DECLARE @JsonNull nvarchar(max) = NULL;
+DECLARE @JsonZero nvarchar(max) = NULL;
 DECLARE @Status varchar(40) = NULL;
 DECLARE @Partial bit = NULL;
 DECLARE @RestrictedLoginPassword nvarchar(128) = N'A!a' + CONVERT(nvarchar(36), NEWID());
@@ -72,6 +74,50 @@ BEGIN TRY
     SET @Json = NULL;
     SET @Status = NULL;
     SET @Partial = NULL;
+
+    EXEC [monitor].[USP_LinkedServerAnalysis]
+          @ConnectivityTestEnabled = 0
+        , @HighImpactConfirmed = 0
+        , @MaxZeilen = NULL
+        , @ResultSetArt = 'NONE'
+        , @JsonErzeugen = 1
+        , @Json = @JsonNull OUTPUT
+        , @PrintMeldungen = 0;
+    EXEC [monitor].[USP_LinkedServerAnalysis]
+          @ConnectivityTestEnabled = 0
+        , @HighImpactConfirmed = 0
+        , @MaxZeilen = 0
+        , @ResultSetArt = 'NONE'
+        , @JsonErzeugen = 1
+        , @Json = @JsonZero OUTPUT
+        , @PrintMeldungen = 0;
+
+    IF COALESCE(ISJSON(@JsonNull), 0) <> 1
+       OR COALESCE(ISJSON(@JsonZero), 0) <> 1
+       OR @JsonNull <> @JsonZero
+       OR NOT EXISTS
+          (
+              SELECT 1
+              FROM OPENJSON(@JsonNull)
+                   WITH ([ServerName] sysname '$.ServerName') AS [j]
+              WHERE [j].[ServerName] = @ServerName
+          )
+        THROW 54866, N'Die NULL-/0-Äquivalenz für das nichtleere Linked-Server-Inventar ist verletzt.', 1;
+
+    EXEC [monitor].[USP_LinkedServerAnalysis]
+          @ConnectivityTestEnabled = 0
+        , @HighImpactConfirmed = 0
+        , @MaxZeilen = NULL
+        , @ResultSetArt = 'RAW'
+        , @JsonErzeugen = 0
+        , @PrintMeldungen = 0;
+    EXEC [monitor].[USP_LinkedServerAnalysis]
+          @ConnectivityTestEnabled = 0
+        , @HighImpactConfirmed = 0
+        , @MaxZeilen = 0
+        , @ResultSetArt = 'RAW'
+        , @JsonErzeugen = 0
+        , @PrintMeldungen = 0;
 
     EXEC [monitor].[USP_LinkedServerAnalysis]
           @ConnectivityTestEnabled = 1
