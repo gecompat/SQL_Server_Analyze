@@ -27,7 +27,21 @@ BEGIN
     IF @TableResultRequested=0 AND NULLIF(LTRIM(RTRIM(COALESCE(@ResultTablesJson,N''))),N'') IS NOT NULL THROW 51011,N'@ResultTablesJson ist ausschließlich mit @ResultSetArt=TABLE zulässig.',1;
     IF @TableResultRequested=1 EXEC [monitor].[InternalPrepareSingleResultTable] @ResultTablesJson=@ResultTablesJson,@ResultName=N'summary',@TargetTable=@TableTarget OUTPUT,@ThrowOnError=1;
     IF @TableResultRequested = 1 OR @ConsoleResultRequested = 1 SET @ResultSetArtNormalisiert = 'NONE';
-    DECLARE @EffectiveMaxZeilen bigint = CASE WHEN @MaxZeilen IS NULL OR @MaxZeilen=0 THEN CONVERT(bigint,9223372036854775807) ELSE CONVERT(bigint,@MaxZeilen) END;IF @Hilfe=1 BEGIN PRINT N'monitor.USP_ServerMemory @MaxZeilen=100';RETURN;END;
+    DECLARE @EffectiveMaxZeilen bigint = CASE WHEN @MaxZeilen IS NULL OR @MaxZeilen=0 THEN CONVERT(bigint,9223372036854775807) ELSE CONVERT(bigint,@MaxZeilen) END;IF @Hilfe=1
+ BEGIN
+        PRINT N'monitor.USP_ServerMemory: Erfasst lesend den Betriebssystem-, SQL-Prozess- und SQLOS-Speicher, aggregierte Memory Clerk-Typen und Memory Grants der Abfragen.';
+        PRINT N'@MaxZeilen int=100: Maximale Zahl ausgegebener aggregierter Clerk-Typen. NULL oder 0 bedeutet kein TOP-Limit; negative Werte sind ungültig. TOP wird nach der Clerk-Gruppierung angewandt und begrenzt daher die Ausgabe, nicht die vorgelagerte Aggregationsarbeit.';
+        PRINT N'@PrintMeldungen bit=1: Gibt bei einem Status ungleich AVAILABLE Informationsmeldungen aus (1) oder unterdrückt sie (0).';
+        PRINT N'@Hilfe bit=0: Gibt diese Hilfe aus (1) oder erhebt Daten (0). Die Hilfe wird vor der Erhebung ausgegeben; bei TABLE wird zuvor das Tabellenziel geprüft. Für die Hilfe den Standardaufruf verwenden.';
+        PRINT N'@ResultSetArt varchar(16)=CONSOLE: CONSOLE, RAW, TABLE oder NONE. CONSOLE ist für die interaktive Ausgabe; RAW liefert technische Resultsets; TABLE schreibt nur das benannte Resultat summary; NONE unterdrückt Resultsets.';
+        PRINT N'@ResultTablesJson nvarchar(max)=NULL: Für TABLE erforderlich; ordnet den einzelnen Resultatnamen summary einer bereits vorhandenen, leeren lokalen #temp-Tabelle mit genau einer Seed-Spalte zu. Permanente oder globale ##-Tabellen, nichtleere Tabellen und Ziele mit bereits festgelegtem Ausgabeschema werden abgewiesen.';
+        PRINT N'@JsonErzeugen bit=0: Erzeugt zusätzlich das JSON-Dokument (1) oder nicht (0). @Json nvarchar(max)=NULL OUTPUT nimmt es entgegen.';
+        PRINT N'@StatusCodeOut varchar(40)=NULL OUTPUT: Gesamtstatus. @IsPartialOut bit=NULL OUTPUT: Kennzeichen für Teilergebnisse. @ErrorNumberOut int=NULL OUTPUT und @ErrorMessageOut nvarchar(2048)=NULL OUTPUT: verfügbare Fehlerangaben der Quelle.';
+        PRINT N'Berechtigungen und Aufwand: Liest sys.dm_os_sys_memory, sys.dm_os_process_memory, sys.dm_os_sys_info, sys.configurations, sys.dm_os_memory_clerks und sys.dm_exec_query_memory_grants. Kleine Momentaufnahme mit Gruppierung der Clerks; fehlende DMV-Berechtigungen können die Verfügbarkeit einschränken.';
+        PRINT N'Beispiele (synthetisch): EXEC [monitor].[USP_ServerMemory] @Hilfe=1;  EXEC [monitor].[USP_ServerMemory] @MaxZeilen=100, @ResultSetArt=''CONSOLE'';';
+        PRINT N'TABLE-Beispiel (synthetisch): CREATE TABLE #ServerMemory_HelpExample(Seed bit NULL); EXEC [monitor].[USP_ServerMemory] @ResultSetArt=''TABLE'', @ResultTablesJson=N''{"summary":"#ServerMemory_HelpExample"}''; DROP TABLE #ServerMemory_HelpExample;';
+        RETURN;
+ END;
  DECLARE @T datetime2(3)=SYSUTCDATETIME(),@S varchar(40)='AVAILABLE',@P bit=0,@E int=NULL,@M nvarchar(2048)=NULL;
  IF @ResultSetArtNormalisiert NOT IN('RAW','CONSOLE','NONE') SELECT @S='INVALID_PARAMETER',@P=1,@M=N'@ResultSetArt muss CONSOLE, RAW, TABLE oder NONE enthalten.';
  CREATE TABLE [#ServerMemory_Summary]([total_physical_memory_kb] bigint,[available_physical_memory_kb] bigint,[system_memory_state_desc] nvarchar(256) COLLATE SQL_Latin1_General_CP1_CS_AS,[physical_memory_in_use_kb] bigint,[locked_page_allocations_kb] bigint,[large_page_allocations_kb] bigint,[process_physical_memory_low] bit,[process_virtual_memory_low] bit,[committed_kb] bigint,[committed_target_kb] bigint,[visible_target_kb] bigint,[sql_memory_model_desc] nvarchar(60) COLLATE SQL_Latin1_General_CP1_CS_AS,[min_server_memory_mb] bigint,[max_server_memory_mb] bigint,[LPIMAssessment] varchar(50) COLLATE SQL_Latin1_General_CP1_CS_AS,[MemoryFinding] varchar(60) COLLATE SQL_Latin1_General_CP1_CS_AS);

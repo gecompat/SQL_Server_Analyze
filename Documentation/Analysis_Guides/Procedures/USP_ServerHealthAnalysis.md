@@ -23,6 +23,8 @@ EXEC [monitor].[USP_ServerHealthAnalysis]
 
 Aktivieren Sie Spezialmodule nur bei konkreter Frage.
 
+Die Parameterhilfe ohne Datenerhebung zeigt `EXEC [monitor].[USP_ServerHealthAnalysis] @Hilfe = 1;` an.
+
 Alle `Example*`-Werte im Aufruf sind synthetisch.
 
 ## Resultsets und Leserichtung
