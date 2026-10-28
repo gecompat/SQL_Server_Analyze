@@ -49,15 +49,18 @@ Compatibility Level 150, 160 und 170 sowie Cleanup. Der frühere Fehler wurde
 nicht rückwirkend als bestanden bewertet; die aktuelle Wiederholung belegt nur
 den angegebenen Scope. Eine Ursache für Msg 55872 ist weiterhin nicht bekannt.
 
-Der aktuelle Änderungsschritt ergänzt ausschließlich den beschreibenden Header
-von TVF_QueryStoreWaitCategoryInfo; der ausführbare Funktionskörper bleibt
-unverändert. Die Dokumentation erläutert Eingabetyp und NULL-Verhalten,
-Ausgabespalten, bekannte Kategoriezuordnungen, Fallbacks und Grenzen. Damit ist
-der fehlende Header für diese Funktion behoben. Eine semantische Prüfung der
-übrigen öffentlichen Hilfetexte und Nichtprozedur-DDL bleibt offen. Der nächste
-begrenzte Inhaltsreview ist weiterhin die ServerHealth-Kohorte
-USP_ServerHealthAnalysis sowie USP_ServerCpuTopology bis USP_StartupParameters;
-diese Aussage schließt keine weiteren DDL-Objekte ein.
+PR #486 (Commit 516992a) ergänzt den beschreibenden Header von
+TVF_QueryStoreWaitCategoryInfo; der Funktionskörper bleibt unverändert. Dieser
+Header-Schritt ist abgeschlossen. PR #487 (Commit 9194606) ergänzt die vier
+Hilfeblöcke für USP_ServerMemory, USP_OSInformation,
+USP_ServerSecurityConfiguration und USP_ServerHealthAnalysis; Head mit acht
+und Main mit sieben Gates bestanden. Der aktuelle Änderungssatz ergänzt die
+Hilfe von USP_ServerCpuTopology, USP_ServerNuma,
+USP_TempDBConfiguration, USP_ServerConfiguration, USP_TraceFlags und
+USP_StartupParameters. Damit sind die verbleibenden sechs Hilfen dieses
+ServerHealth-Umfangs bearbeitet. Die globale semantische Prüfung weiterer
+Hilfetexte und die Prüfung selbsterklärender Nichtprozedur-DDL bleiben offen;
+diese Aussage behauptet keine globale Abdeckung.
 
 Der Benutzer hat die vollständige Prüfung erforderlicher Procedure-Parameter,
 Hilfetexte und selbsterklärender Nichtprozedur-DDL angefordert. Schritt 44

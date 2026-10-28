@@ -20,6 +20,8 @@ EXEC [monitor].[USP_TraceFlags]
       @ResultSetArt = 'CONSOLE';
 ```
 
+Die Parameterhilfe ohne Datenerhebung zeigt `EXEC [monitor].[USP_TraceFlags] @Hilfe = 1;` an.
+
 Alle `Example*`-Werte im Aufruf sind synthetisch.
 
 ## Resultsets und Leserichtung
@@ -114,6 +116,8 @@ Aktiv heißt nicht, dass jeder Workloadpfad betroffen ist. Ein früher notwendig
 ### Folgeanalyse
 
 Für die weitere Analyse gelten folgende Schritte und Quellen: `USP_StartupParameters`, Server Configuration und offizielle versionsspezifische Dokumentation.
+
+Für den [DBCC-Statusbefehl](https://learn.microsoft.com/en-us/sql/t-sql/database-console-commands/dbcc-tracestatus-transact-sql?view=sql-server-ver15) genügt unter SQL Server die Rolle `public`; der Aufruf der Procedure benötigt zusätzlich `EXECUTE`. Sitzungsflags anderer Verbindungen gehören nicht zum Abfrageumfang.
 
 ## Primärquellen
 

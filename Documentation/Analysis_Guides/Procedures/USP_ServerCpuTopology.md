@@ -20,6 +20,8 @@ EXEC [monitor].[USP_ServerCpuTopology]
       @ResultSetArt = 'CONSOLE';
 ```
 
+Die Parameterhilfe ohne Datenerhebung zeigt `EXEC [monitor].[USP_ServerCpuTopology] @Hilfe = 1;` an.
+
 Alle `Example*`-Werte im Aufruf sind synthetisch.
 
 ## Resultsets und Leserichtung
