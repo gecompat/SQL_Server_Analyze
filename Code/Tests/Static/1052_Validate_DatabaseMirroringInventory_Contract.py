@@ -462,37 +462,89 @@ def validate_contract(
         if sql_token not in runtime:
             errors.append("runtime fixture must prove blank exact names normalize before valid pattern selection: " + sql_token)
     for sql_token in ("N'[Codex_Missing_Database]'", "@DatabaseNamePattern=N'like:%'",
-                  "DENY VIEW SERVER PERFORMANCE STATE", "REVERT;", "DROP LOGIN", "DROP USER"):
+                  "DENY SELECT ON [sys].[database_mirroring]", "REVERT;", "DROP LOGIN", "DROP USER"):
         if sql_token not in runtime:
             errors.append("runtime fixture misses restricted/negative cleanup case: " + sql_token)
     if "IF TRY_CONVERT(int,SERVERPROPERTY(N'ProductMajorVersion')) NOT IN (15,16,17)" not in runtime:
         errors.append("runtime fixture must admit its existing SQL Server 2019/2022/2025 release-gate targets")
-    if "IF @ProductMajor>=16" not in runtime or "SQL Server 2019: no minimum catalog-denial permission is asserted" not in runtime:
-        errors.append("runtime fixture must version-scope the 2022+ permission-denial case and state the 2019 boundary")
+    if "DENY VIEW SERVER PERFORMANCE STATE" in runtime:
+        errors.append("runtime fixture must not attribute catalog denial to an unproven server-permission denial")
     login_start = runtime.find("SET @Sql=N'CREATE LOGIN ")
     login_exec = runtime.find("EXEC [sys].[sp_executesql] @Sql;", login_start)
     login_flag = runtime.find("SET @LoginCreated=1;", login_exec)
     grant_start = runtime.find("SET @Sql=N'USE [master]; GRANT VIEW ANY DATABASE", login_flag)
     grant_exec = runtime.find("EXEC [sys].[sp_executesql] @Sql;", grant_start)
-    user_start = runtime.find("SET @Sql=N'CREATE USER ", grant_exec)
+    master_user_start = runtime.find("SET @Sql=N'USE [master]; CREATE USER ", grant_exec)
+    master_user_exec = runtime.find("EXEC [sys].[sp_executesql] @Sql;", master_user_start)
+    master_user_flag = runtime.find("SET @MasterUserCreated=1;", master_user_exec)
+    deny_start = runtime.find("SET @Sql=N'USE [master]; DENY SELECT ON [sys].[database_mirroring]", master_user_flag)
+    deny_exec = runtime.find("EXEC [sys].[sp_executesql] @Sql;", deny_start)
+    user_start = runtime.find("SET @Sql=N'CREATE USER ", deny_exec)
     user_exec = runtime.find("EXEC [sys].[sp_executesql] @Sql;", user_start)
     user_flag = runtime.find("SET @UserCreated=1;", user_exec)
     execute_grant_start = runtime.find("SET @Sql=N'GRANT EXECUTE ON OBJECT::[monitor].[USP_DatabaseMirroringInventory]", user_flag)
     execute_grant_exec = runtime.find("EXEC [sys].[sp_executesql] @Sql;", execute_grant_start)
     login_batch = runtime[login_start:login_exec] if login_start >= 0 and login_exec >= 0 else ""
     grant_batch = runtime[grant_start:grant_exec] if grant_start >= 0 and grant_exec >= 0 else ""
+    master_user_batch = runtime[master_user_start:master_user_exec] if master_user_start >= 0 and master_user_exec >= 0 else ""
+    deny_batch = runtime[deny_start:deny_exec] if deny_start >= 0 and deny_exec >= 0 else ""
     user_batch = runtime[user_start:user_exec] if user_start >= 0 and user_exec >= 0 else ""
     execute_grant_batch = runtime[execute_grant_start:execute_grant_exec] if execute_grant_start >= 0 and execute_grant_exec >= 0 else ""
-    if (min(login_start,login_exec,login_flag,grant_start,grant_exec,user_start,user_exec,user_flag,execute_grant_start,execute_grant_exec)<0
-            or not login_start<login_exec<login_flag<grant_start<grant_exec<user_start<user_exec<user_flag<execute_grant_start<execute_grant_exec
+    if (min(login_start,login_exec,login_flag,grant_start,grant_exec,master_user_start,master_user_exec,master_user_flag,deny_start,deny_exec,user_start,user_exec,user_flag,execute_grant_start,execute_grant_exec)<0
+            or not login_start<login_exec<login_flag<grant_start<grant_exec<master_user_start<master_user_exec<master_user_flag<deny_start<deny_exec<user_start<user_exec<user_flag<execute_grant_start<execute_grant_exec
             or "GRANT VIEW ANY DATABASE" in login_batch
             or "USE [master]; GRANT VIEW ANY DATABASE" not in grant_batch
-            or "DENY VIEW SERVER PERFORMANCE STATE" not in grant_batch
+            or "USE [master]; CREATE USER" not in master_user_batch
+            or "GRANT EXECUTE" in master_user_batch
+            or "DENY SELECT ON [sys].[database_mirroring]" not in deny_batch
+            or "USE [master]" not in deny_batch
             or "GRANT EXECUTE" in user_batch
             or "CREATE USER" not in user_batch
             or "GRANT EXECUTE ON OBJECT::[monitor].[USP_DatabaseMirroringInventory]" not in execute_grant_batch
             or "USE [master]" in user_batch+execute_grant_batch):
-        errors.append("login and user ownership flags must precede grants; server grants use master and the user grant uses the framework database")
+        errors.append("master-user ownership must precede explicit source DENY; framework-user ownership must precede the framework EXECUTE grant")
+    impersonate_start = runtime.find("EXECUTE AS LOGIN=@Login;")
+    candidate_check = runtime.find("FROM [master].[sys].[databases] AS [d] WITH (NOLOCK)", impersonate_start)
+    probe_start = runtime.find("SELECT COUNT_BIG(*) FROM [master].[sys].[database_mirroring] AS [m] WITH (NOLOCK);", candidate_check)
+    probe_error = runtime.find("SET @SourceProbeError=ERROR_NUMBER();", probe_start)
+    probe_assert = runtime.find("IF @SourceProbeError IS NULL OR @SourceProbeError<>229", probe_error)
+    module_call = runtime.find("EXEC @Return=[monitor].[USP_DatabaseMirroringInventory]", probe_assert)
+    revert = runtime.find("REVERT;", module_call)
+    if (min(impersonate_start,candidate_check,probe_start,probe_error,probe_assert,module_call,revert)<0
+            or not impersonate_start<candidate_check<probe_start<probe_error<probe_assert<module_call<revert
+            or "[d].[database_id]=1" not in runtime[candidate_check:probe_start]
+            or "HAS_DBACCESS([d].[name])=1" not in runtime[candidate_check:probe_start]
+            or "IF @MasterVisibleRows<>1" not in runtime[candidate_check:probe_start]
+            or "IF @SourceProbeError IS NULL OR @SourceProbeError<>229" not in runtime[probe_assert:module_call]
+            or "@DatabaseNames=N'[master]'" not in runtime[module_call:revert]):
+        errors.append("same-principal master source counterprobe must prove error 229 after candidate visibility and before the module call")
+    denied_assert_start = runtime.find("IF @Status IS NULL OR @Status<>'DENIED_PERMISSION'", revert)
+    denied_assert_end = runtime.find("THROW 57429,", denied_assert_start)
+    denied_assert = runtime[denied_assert_start:denied_assert_end] if denied_assert_start >= 0 and denied_assert_end >= 0 else ""
+    if (not denied_assert or "@Status IS NULL" not in denied_assert
+            or "@Partial IS NULL" not in denied_assert
+            or "@Error IS NULL" not in denied_assert
+            or "@Status<>'DENIED_PERMISSION'" not in denied_assert
+            or "@Partial<>1" not in denied_assert
+            or "@Error<>229" not in denied_assert):
+        errors.append("denied-permission output assertion must reject NULL status, partial, and error outputs explicitly")
+    normal_master_cleanup = runtime.find("SET @Sql=N'USE [master]; REVOKE SELECT ON [sys].[database_mirroring]", revert)
+    normal_master_cleanup_exec = runtime.find("EXEC [sys].[sp_executesql] @Sql;", normal_master_cleanup)
+    normal_master_cleanup_flag = runtime.find("SET @MasterUserCreated=0;", normal_master_cleanup_exec)
+    normal_framework_cleanup = runtime.find("SET @Sql=N'DROP USER '+QUOTENAME(@Login)+N';';", normal_master_cleanup_flag)
+    if (min(normal_master_cleanup,normal_master_cleanup_exec,normal_master_cleanup_flag,normal_framework_cleanup)<0
+            or not revert<normal_master_cleanup<normal_master_cleanup_exec<normal_master_cleanup_flag<normal_framework_cleanup
+            or "DROP USER '+QUOTENAME(@MasterUser)" not in runtime[normal_master_cleanup:normal_master_cleanup_exec]
+            or "IF @UserCreated=1" not in runtime[runtime.find("BEGIN CATCH",normal_master_cleanup_flag):]):
+        errors.append("normal cleanup must revoke and drop the owned master user before framework-user/login cleanup")
+    master_cleanup_starts = [m.start() for m in re.finditer(r"IF @MasterUserCreated=1", runtime)]
+    for cleanup_start in master_cleanup_starts:
+        cleanup_end = runtime.find("IF @UserCreated=1", cleanup_start)
+        cleanup = runtime[cleanup_start:cleanup_end] if cleanup_end >= 0 else ""
+        if (not cleanup or "USE [master]" not in cleanup
+                or "REVOKE SELECT ON [sys].[database_mirroring]" not in cleanup
+                or "DROP USER '+QUOTENAME(@MasterUser)" not in cleanup):
+            errors.append("owned master mapped user must be revoked and dropped in master before framework-user/login cleanup")
     if "sp_executesql] N'DROP USER" in runtime or "sp_executesql] N'DROP LOGIN" in runtime:
         errors.append("runtime cleanup passes concatenated expressions directly to sp_executesql instead of a variable")
     for sql_token in ("SET @Sql=N'DROP USER '+QUOTENAME(@Login)+N';';\n    EXEC [sys].[sp_executesql] @Sql;",
@@ -612,12 +664,12 @@ def main() -> int:
             "EXEC [sys].[sp_executesql] @Sql;\n    SET @Sql=N'CREATE USER",
             "EXEC [sys].[sp_executesql] @Sql;\n    SET @LoginCreated=1;\n    SET @Sql=N'CREATE USER", 1
         )
-        late_user_flag_mutation = text["runtime"].replace(
-            "EXEC [sys].[sp_executesql] @Sql;\n    SET @UserCreated=1;\n    SET @Sql=N'GRANT EXECUTE",
-            "EXEC [sys].[sp_executesql] @Sql;\n    SET @Sql=N'GRANT EXECUTE", 1
+        late_master_user_flag_mutation = text["runtime"].replace(
+            "EXEC [sys].[sp_executesql] @Sql;\n    SET @MasterUserCreated=1;\n    SET @Sql=N'USE [master]; DENY SELECT",
+            "EXEC [sys].[sp_executesql] @Sql;\n    SET @Sql=N'USE [master]; DENY SELECT", 1
         ).replace(
-            "EXEC [sys].[sp_executesql] @Sql;\n    IF @ProductMajor>=16\n    BEGIN",
-            "EXEC [sys].[sp_executesql] @Sql;\n    SET @UserCreated=1;\n    IF @ProductMajor>=16\n    BEGIN", 1
+            "EXEC [sys].[sp_executesql] @Sql;\n    SET @Sql=N'CREATE USER",
+            "EXEC [sys].[sp_executesql] @Sql;\n    SET @MasterUserCreated=1;\n    SET @Sql=N'CREATE USER", 1
         )
         mutations = (
             ("NOLOCK", "procedure", text["procedure"].replace("[master].[sys].[database_mirroring] AS [m] WITH (NOLOCK)", "[master].[sys].[database_mirroring] AS [m]", 1), "native source"),
@@ -631,10 +683,19 @@ def main() -> int:
             ("JSON_KEY_UNIQUENESS", "runtime", text["runtime"].replace("GROUP BY [FieldName] HAVING COUNT(*)<>1", "GROUP BY [FieldName] HAVING COUNT(*)<>2", 1), "all twelve JSON keys exactly once and all ten nullable values null"),
             ("JSON_EXTRA_KEY_DIRECTION", "runtime", text["runtime"].replace("EXCEPT SELECT [FieldName] FROM @ExpectedJsonFields", "EXCEPT SELECT [FieldName] FROM @ActualJsonFields", 1), "all twelve JSON keys exactly once and all ten nullable values null"),
             ("SELECTOR_GUARD_REMOVED", "procedure", text["procedure"].replace("AND NULLIF(LTRIM(RTRIM(COALESCE(@DatabaseNames,N''))),N'') IS NOT NULL", "AND NULLIF(LTRIM(RTRIM(COALESCE(@DatabaseNames,N''))),N'') IS NULL", 1), "nonblank exact-name plus pattern conflict must return INVALID_PARAMETER"),
-            ("PRIVILEGE_MASTER_CONTEXT", "runtime", text["runtime"].replace("SET @Sql=N'USE [master]; GRANT VIEW ANY DATABASE", "SET @Sql=N'GRANT VIEW ANY DATABASE", 1), "server grants use master"),
-            ("LOGIN_OWNED_BEFORE_GRANT", "runtime", late_login_flag_mutation, "ownership flags must precede grants"),
-            ("USER_OWNED_BEFORE_GRANT", "runtime", late_user_flag_mutation, "user ownership flags must precede grants"),
-            ("USER_GRANT_IN_CREATE_BATCH", "runtime", text["runtime"].replace("N' FOR LOGIN '+QUOTENAME(@Login)+N';';", "N' FOR LOGIN '+QUOTENAME(@Login)+N'; GRANT EXECUTE ON OBJECT::[monitor].[USP_DatabaseMirroringInventory] TO '+QUOTENAME(@Login)+N';';", 1), "user ownership flags must precede grants"),
+            ("PRIVILEGE_MASTER_CONTEXT", "runtime", text["runtime"].replace("SET @Sql=N'USE [master]; GRANT VIEW ANY DATABASE", "SET @Sql=N'GRANT VIEW ANY DATABASE", 1), "master-user ownership must precede explicit source DENY"),
+            ("SOURCE_DENY_REMOVED", "runtime", text["runtime"].replace("DENY SELECT ON [sys].[database_mirroring]", "GRANT SELECT ON [sys].[database_mirroring]", 1), "master-user ownership must precede explicit source DENY"),
+            ("SOURCE_PROBE_MISSING", "runtime", text["runtime"].replace("SELECT COUNT_BIG(*) FROM [master].[sys].[database_mirroring] AS [m] WITH (NOLOCK);", "SELECT COUNT_BIG(*) FROM [master].[sys].[databases] AS [m] WITH (NOLOCK);", 1), "same-principal master source counterprobe"),
+            ("SOURCE_PROBE_ERROR", "runtime", text["runtime"].replace("IF @SourceProbeError IS NULL OR @SourceProbeError<>229", "IF @SourceProbeError IS NULL OR @SourceProbeError<>0", 1), "same-principal master source counterprobe"),
+            ("DENIED_STATUS_NULL_GUARD", "runtime", text["runtime"].replace("IF @Status IS NULL OR @Status<>'DENIED_PERMISSION'", "IF @Status<>'DENIED_PERMISSION'", 1), "denied-permission output assertion must reject NULL status, partial, and error outputs explicitly"),
+            ("DENIED_PARTIAL_NULL_GUARD", "runtime", text["runtime"].replace("OR @Partial IS NULL OR @Partial<>1", "OR @Partial<>1", 1), "denied-permission output assertion must reject NULL status, partial, and error outputs explicitly"),
+            ("DENIED_ERROR_NULL_GUARD", "runtime", text["runtime"].replace("OR @Error IS NULL OR @Error<>229", "OR @Error<>229", 1), "denied-permission output assertion must reject NULL status, partial, and error outputs explicitly"),
+            ("MASTER_USER_CONTEXT", "runtime", text["runtime"].replace("SET @Sql=N'USE [master]; CREATE USER ", "SET @Sql=N'CREATE USER ", 1), "master-user ownership must precede explicit source DENY"),
+            ("MASTER_USER_LATE_FLAG", "runtime", late_master_user_flag_mutation, "master-user ownership must precede explicit source DENY"),
+            ("MASTER_USER_CLEANUP", "runtime", text["runtime"].replace("DROP USER '+QUOTENAME(@MasterUser)+N';';", "DROP USER '+QUOTENAME(@Login)+N';';", 1), "normal cleanup must revoke and drop the owned master user"),
+            ("LOGIN_OWNED_BEFORE_GRANT", "runtime", late_login_flag_mutation, "master-user ownership must precede explicit source DENY"),
+            ("USER_OWNED_BEFORE_GRANT", "runtime", text["runtime"].replace("EXEC [sys].[sp_executesql] @Sql;\n    SET @UserCreated=1;\n    SET @Sql=N'GRANT EXECUTE", "EXEC [sys].[sp_executesql] @Sql;\n    SET @Sql=N'GRANT EXECUTE", 1), "framework-user ownership must precede the framework EXECUTE grant"),
+            ("USER_GRANT_IN_CREATE_BATCH", "runtime", text["runtime"].replace("N' FOR LOGIN '+QUOTENAME(@Login)+N';';", "N' FOR LOGIN '+QUOTENAME(@Login)+N'; GRANT EXECUTE ON OBJECT::[monitor].[USP_DatabaseMirroringInventory] TO '+QUOTENAME(@Login)+N';';", 1), "master-user ownership must precede explicit source DENY"),
             ("SELECTOR_BLANK_NORMALIZATION", "procedure", text["procedure"].replace("NULLIF(LTRIM(RTRIM(COALESCE(@DatabaseNames,N''))),N'') IS NOT NULL", "COALESCE(@DatabaseNames,N'') IS NOT NULL", 1), "blank exact names normalize to no selector"),
             ("SELECTOR_GUARD_TOO_LATE", "procedure", late_selector_mutation, "before source/temp work"),
             ("PARAM_SIGNATURE", "procedure", text["procedure"].replace("@MaxZeilen int = 1000", "@MaxZeilen int = 500", 1), "public parameter names"),

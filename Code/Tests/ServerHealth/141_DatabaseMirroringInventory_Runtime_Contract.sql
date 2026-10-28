@@ -15,11 +15,12 @@ DECLARE @OriginalLock int=@@LOCK_TIMEOUT,
         @JsonUnlimited nvarchar(max),@JsonRestricted nvarchar(max),@JsonDenied nvarchar(max),
         @Status varchar(40),@Partial bit,@Error int,@Message nvarchar(2048),@Return int,
         @Map nvarchar(max)=N'{"moduleStatus":"#DbmiOut_moduleStatus","databaseMirroring":"#DbmiOut_databaseMirroring","sourceStatus":"#DbmiOut_sourceStatus","warnings":"#DbmiOut_warnings"}',
-        @Login sysname,@EphemeralCredential nvarchar(128),@Sql nvarchar(max),
+        @Login sysname,@MasterUser sysname,@EphemeralCredential nvarchar(128),@Sql nvarchar(max),
         @ProductMajor int=TRY_CONVERT(int,SERVERPROPERTY(N'ProductMajorVersion')),
-        @UserCreated bit=0,
+        @UserCreated bit=0,@MasterUserCreated bit=0,
         @LoginCreated bit=0,@Impersonating bit=0,@DbName sysname,
-        @SourceRows bigint,@ReturnRows bigint,@LimitApplied bit;
+        @SourceRows bigint,@ReturnRows bigint,@LimitApplied bit,
+        @MasterVisibleRows int=0,@SourceProbeError int;
 SELECT @OriginalIsolation=[transaction_isolation_level]
 FROM sys.dm_exec_sessions WHERE [session_id]=@@SPID;
 CREATE TABLE [#DbmiMarker]([Marker] int NOT NULL);
@@ -353,40 +354,61 @@ BEGIN TRY
         THROW 57428,N'Help did not return before JSON or source processing.',1;
 
     SET @Login=CONCAT(N'DbmiReader_',REPLACE(CONVERT(nvarchar(36),NEWID()),N'-',N''));
+    SET @MasterUser=CONCAT(@Login,N'_master');
     SET @EphemeralCredential=REPLACE(CONVERT(nvarchar(36),NEWID()),N'-',N'');
     SET @Sql=N'CREATE LOGIN '+QUOTENAME(@Login)+N' WITH PASS'+N'WORD = N'''+REPLACE(@EphemeralCredential,N'''',N'''''')+N''', CHECK_POLICY=OFF;';
     EXEC [sys].[sp_executesql] @Sql;
     SET @LoginCreated=1;
     SET @Sql=N'USE [master]; GRANT VIEW ANY DATABASE TO '+QUOTENAME(@Login)+N';';
-    IF @ProductMajor>=16
-        SET @Sql+=N' DENY VIEW SERVER PERFORMANCE STATE TO '+QUOTENAME(@Login)+N';';
+    EXEC [sys].[sp_executesql] @Sql;
+    SET @Sql=N'USE [master]; CREATE USER '+QUOTENAME(@MasterUser)+N' FOR LOGIN '+QUOTENAME(@Login)+N';';
+    EXEC [sys].[sp_executesql] @Sql;
+    SET @MasterUserCreated=1;
+    SET @Sql=N'USE [master]; DENY SELECT ON [sys].[database_mirroring] TO '+QUOTENAME(@MasterUser)+N';';
     EXEC [sys].[sp_executesql] @Sql;
     SET @Sql=N'CREATE USER '+QUOTENAME(@Login)+N' FOR LOGIN '+QUOTENAME(@Login)+N';';
     EXEC [sys].[sp_executesql] @Sql;
     SET @UserCreated=1;
     SET @Sql=N'GRANT EXECUTE ON OBJECT::[monitor].[USP_DatabaseMirroringInventory] TO '+QUOTENAME(@Login)+N';';
     EXEC [sys].[sp_executesql] @Sql;
-    IF @ProductMajor>=16
-    BEGIN
-        EXECUTE AS LOGIN=@Login;
-        SET @Impersonating=1;
-        EXEC @Return=[monitor].[USP_DatabaseMirroringInventory]
-            @DatabaseNames=N'[master]',@SystemdatenbankenEinbeziehen=1,
-            @ResultSetArt='NONE',@JsonErzeugen=1,@Json=@JsonDenied OUTPUT,
-            @PrintMeldungen=0,@StatusCodeOut=@Status OUTPUT,@IsPartialOut=@Partial OUTPUT,
-            @ErrorNumberOut=@Error OUTPUT,@ErrorMessageOut=@Message OUTPUT;
-        REVERT;
-        SET @Impersonating=0;
-        IF @Status='AVAILABLE_LIMITED' OR @Error IS NULL
-           OR NOT EXISTS(SELECT 1 FROM OPENJSON(@JsonDenied,N'$.sourceStatus')
-                         WHERE JSON_VALUE([value],'$.SourceKey')='DATABASE_MIRRORING_CATALOG'
-                           AND JSON_VALUE([value],'$.StatusCode')='DENIED_PERMISSION'
-                           AND TRY_CONVERT(int,JSON_VALUE([value],'$.ErrorNumber')) IS NOT NULL)
-            THROW 57429,N'DENY VIEW SERVER PERFORMANCE STATE was disguised as an empty successful inventory.',1;
-    END
-    ELSE
-        PRINT N'SQL Server 2019: no minimum catalog-denial permission is asserted; the successful caller-visible catalog/ABI cases remain active.';
 
+    EXECUTE AS LOGIN=@Login;
+    SET @Impersonating=1;
+    SELECT @MasterVisibleRows=COUNT(*)
+    FROM [master].[sys].[databases] AS [d] WITH (NOLOCK)
+    WHERE [d].[database_id]=1 AND [d].[name]=N'master'
+      AND [d].[state]=0 AND HAS_DBACCESS([d].[name])=1;
+    IF @MasterVisibleRows<>1
+        THROW 57451,N'Permission fixture principal cannot select the explicit master candidate.',1;
+    BEGIN TRY
+        SELECT COUNT_BIG(*) FROM [master].[sys].[database_mirroring] AS [m] WITH (NOLOCK);
+    END TRY
+    BEGIN CATCH
+        SET @SourceProbeError=ERROR_NUMBER();
+    END CATCH;
+    IF @SourceProbeError IS NULL OR @SourceProbeError<>229
+        THROW 57452,N'Explicit SELECT DENY did not produce native error 229 on master.sys.database_mirroring.',1;
+    EXEC @Return=[monitor].[USP_DatabaseMirroringInventory]
+        @DatabaseNames=N'[master]',@SystemdatenbankenEinbeziehen=1,
+        @ResultSetArt='NONE',@JsonErzeugen=1,@Json=@JsonDenied OUTPUT,
+        @PrintMeldungen=0,@StatusCodeOut=@Status OUTPUT,@IsPartialOut=@Partial OUTPUT,
+        @ErrorNumberOut=@Error OUTPUT,@ErrorMessageOut=@Message OUTPUT;
+    REVERT;
+    SET @Impersonating=0;
+    IF @Status IS NULL OR @Status<>'DENIED_PERMISSION'
+       OR @Partial IS NULL OR @Partial<>1
+       OR @Error IS NULL OR @Error<>229
+       OR NOT EXISTS(SELECT 1 FROM OPENJSON(@JsonDenied,N'$.sourceStatus')
+                      WHERE JSON_VALUE([value],'$.SourceKey')='DATABASE_MIRRORING_CATALOG'
+                        AND JSON_VALUE([value],'$.StatusCode')='DENIED_PERMISSION'
+                        AND TRY_CONVERT(int,JSON_VALUE([value],'$.ErrorNumber'))=229)
+        THROW 57429,N'Explicit SELECT DENY on master.sys.database_mirroring was disguised as a successful inventory.',1;
+    IF @ProductMajor=15
+        PRINT N'SQL Server 2019: explicit catalog-object SELECT denial was verified; no minimum server-right claim is asserted.';
+
+    SET @Sql=N'USE [master]; REVOKE SELECT ON [sys].[database_mirroring] FROM '+QUOTENAME(@MasterUser)+N'; DROP USER '+QUOTENAME(@MasterUser)+N';';
+    EXEC [sys].[sp_executesql] @Sql;
+    SET @MasterUserCreated=0;
     SET @Sql=N'DROP USER '+QUOTENAME(@Login)+N';';
     EXEC [sys].[sp_executesql] @Sql;
     SET @UserCreated=0;
@@ -408,6 +430,11 @@ END TRY
 BEGIN CATCH
     IF @Impersonating=1 REVERT;
     IF XACT_STATE()<>0 ROLLBACK TRANSACTION;
+    IF @MasterUserCreated=1
+    BEGIN
+        SET @Sql=N'USE [master]; REVOKE SELECT ON [sys].[database_mirroring] FROM '+QUOTENAME(@MasterUser)+N'; DROP USER '+QUOTENAME(@MasterUser)+N';';
+        EXEC [sys].[sp_executesql] @Sql;
+    END;
     IF @UserCreated=1
     BEGIN
         SET @Sql=N'DROP USER '+QUOTENAME(@Login)+N';';
