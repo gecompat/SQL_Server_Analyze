@@ -138,6 +138,11 @@ def sql_tokens(source: str) -> tuple[tuple[str, str], ...]:
     return tuple(tokens)
 
 
+def assigned_sql_literal(source: str, variable: str) -> str | None:
+    match = re.search(r"SET\s+" + re.escape(variable) + r"\s*=\s*N'((?:''|[^'])*)'\s*;", source, re.IGNORECASE)
+    return match.group(1).replace("''", "'") if match else None
+
+
 def _keyword(sql_token: tuple[str, str], expected: str) -> bool:
     return sql_token[0] == "WORD" and sql_token[1].casefold() == expected.casefold()
 
@@ -551,8 +556,9 @@ def validate_contract(
                   "SET @Sql=N'DROP LOGIN '+QUOTENAME(@Login)+N';';\n    EXEC [sys].[sp_executesql] @Sql;"):
         if sql_token not in runtime:
             errors.append("runtime fixture must assign each dynamic cleanup batch before sp_executesql")
+    probe_sql = assigned_sql_literal(runtime, "@ProbeSql") or ""
     for mode in ("TABLE", "RAW", "CONSOLE", "NONE"):
-        if "@ResultSetArt='" + mode + "'" not in runtime:
+        if "@ResultSetArt='" + mode + "'" not in runtime + probe_sql:
             errors.append("runtime fixture omits output mode " + mode)
     for source in ("master].[sys].[databases] AS [d] WITH (NOLOCK)",
                    "master].[sys].[database_mirroring] AS [m] WITH (NOLOCK)"):
@@ -566,6 +572,46 @@ def validate_contract(
     isolation_level = "transaction_isolation_level] FROM sys.dm_exec_sessions WHERE [session_id]=@@SPID)<>3"
     if isolation_check not in runtime or isolation_level not in runtime or "THROW 57448" not in runtime:
         errors.append("runtime fixture must verify REPEATABLE READ as sys.dm_exec_sessions isolation level 3")
+    probe_sql = assigned_sql_literal(runtime, "@ProbeSql")
+    if probe_sql is None:
+        errors.append("runtime TABLE call and caller-state oracles must be in one controlled LOCK_TIMEOUT scope")
+        probe_sql = ""
+    elif ("SET LOCK_TIMEOUT 137;" not in probe_sql
+          or probe_sql.find("SET LOCK_TIMEOUT 137;") > probe_sql.find("EXEC @Return=[monitor].[USP_DatabaseMirroringInventory]")):
+        errors.append("controlled caller-state scope must set LOCK_TIMEOUT 137 before the product call")
+    probe_exec = re.search(
+        r"EXEC\s+\[sys\]\.\[sp_executesql\]\s+@ProbeSql\s*,\s*N'((?:''|[^'])*)'\s*,(?P<arguments>[^;]*);",
+        runtime, re.IGNORECASE | re.DOTALL,
+    )
+    required_bindings = ("@Map", "@Json", "@Status", "@Partial", "@Error", "@Message", "@Return")
+    if not probe_exec:
+        errors.append("controlled probe must execute through sp_executesql with explicit parameter bindings")
+    else:
+        parameter_declaration = probe_exec.group(1).replace("''", "'")
+        arguments = probe_exec.group("arguments")
+        for parameter in required_bindings:
+            if parameter not in parameter_declaration or not re.search(
+                    re.escape(parameter) + r"\s*=\s*" + re.escape(parameter) + r"\b", arguments, re.IGNORECASE):
+                errors.append("controlled probe parameter must be explicitly bound to its outer variable: " + parameter)
+        for output_parameter in ("@Json", "@Status", "@Partial", "@Error", "@Message", "@Return"):
+            if not re.search(re.escape(output_parameter) + r"\s+[^,]*?OUTPUT\b", parameter_declaration, re.IGNORECASE) or not re.search(
+                    re.escape(output_parameter) + r"\s*=\s*" + re.escape(output_parameter) + r"\s+OUTPUT\b", arguments, re.IGNORECASE):
+                errors.append("controlled probe output parameter must be bound OUTPUT: " + output_parameter)
+    if "EXEC @Return=[monitor].[USP_DatabaseMirroringInventory]" not in probe_sql:
+        errors.append("controlled scope must contain the TABLE product call")
+    probe_call = probe_sql.find("EXEC @Return=[monitor].[USP_DatabaseMirroringInventory]")
+    if probe_call < 0 or probe_sql.find("IF @@LOCK_TIMEOUT<>137", probe_call) < probe_call:
+        errors.append("controlled scope must assert LOCK_TIMEOUT after the product call")
+    for condition, error_number in (("IF @@LOCK_TIMEOUT<>137", "57446"),
+                                    ("IF @@TRANCOUNT<>1", "57444"),
+                                    ("IF XACT_STATE()<>1", "57445"),
+                                    ("IF (@@OPTIONS&16384)=0", "57447"),
+                                    ("THROW 57448,", "57448"),
+                                    ("THROW 57449,", "57449")):
+        if condition not in probe_sql or error_number not in probe_sql:
+            errors.append("controlled scope must retain its post-call caller-state oracle: " + error_number)
+    if "IF @@LOCK_TIMEOUT<>@OriginalLock" not in runtime or "THROW 57453," not in runtime:
+        errors.append("controlled probe must assert immediately that the outer LOCK_TIMEOUT was restored")
     caller_checks = (
         ("IF @Return<>0", "57440"),
         ("IF @Status<>'AVAILABLE_LIMITED'", "57441"),
@@ -579,7 +625,7 @@ def validate_contract(
         ("IF (SELECT COUNT(*) FROM [#DbmiMarker] WHERE [Marker]=57412)<>1", "57449"),
     )
     for condition, error_number in caller_checks:
-        if condition + "\n        THROW " + error_number + "," not in runtime:
+        if condition + "\n        THROW " + error_number + "," not in runtime + probe_sql:
             errors.append("caller preservation condition must have its own fixed error: " + error_number)
     if "THROW 57413," in runtime:
         errors.append("caller preservation checks may not be recombined into the former aggregate assertion")
@@ -725,6 +771,18 @@ def main() -> int:
             candidate[key] = changed
             if not any(expected in error for error in validate_contract(**candidate)):
                 errors.append("validator self-test did not reject meaningful " + name + " mutation")
+        scope_escape_mutation = text["runtime"].replace("SET LOCK_TIMEOUT 137;", "SET LOCK_TIMEOUT 137", 1)
+        if not any("controlled caller-state scope" in error for error in validate_contract(**{**text, "runtime": scope_escape_mutation})):
+            errors.append("validator self-test did not reject a controlled LOCK_TIMEOUT scope escape")
+        post_call_mutation = text["runtime"].replace("IF @@LOCK_TIMEOUT<>137", "IF @@LOCK_TIMEOUT=137", 1)
+        if not any("post-call caller-state oracle" in error for error in validate_contract(**{**text, "runtime": post_call_mutation})):
+            errors.append("validator self-test did not reject a missing post-call LOCK_TIMEOUT assertion")
+        output_binding_mutation = text["runtime"].replace("@Map=@Map,@Json=@Json OUTPUT,@Status=@Status OUTPUT", "@Map=@Map,@Json=@Json,@Status=@Status OUTPUT", 1)
+        if not any("output parameter must be bound OUTPUT: @Json" in error for error in validate_contract(**{**text, "runtime": output_binding_mutation})):
+            errors.append("validator self-test did not reject a missing dynamic output binding")
+        outer_restore_mutation = text["runtime"].replace("IF @@LOCK_TIMEOUT<>@OriginalLock", "IF @@LOCK_TIMEOUT=@OriginalLock", 1)
+        if not any("outer LOCK_TIMEOUT was restored" in error for error in validate_contract(**{**text, "runtime": outer_restore_mutation})):
+            errors.append("validator self-test did not reject removal of the outer restore assertion")
         generated_marker = "-- BEGIN SOURCE: Code/08_ServerHealth/310_USP_DatabaseMirroringInventory.sql"
         generated_probe = dict(text)
         generated_probe["generated"] = generated_marker

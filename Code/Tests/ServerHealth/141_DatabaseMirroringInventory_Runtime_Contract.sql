@@ -9,11 +9,11 @@ GO
 DECLARE @OriginalLock int=@@LOCK_TIMEOUT,
         @OriginalAbort bit=CASE WHEN (@@OPTIONS&16384)=16384 THEN 1 ELSE 0 END,
         @OriginalIsolation tinyint,
-        @RestoreLock nvarchar(100),
+
         @OriginalTx int=@@TRANCOUNT,
         @Json nvarchar(max),@JsonNull nvarchar(max),@JsonOne nvarchar(max),@JsonZero nvarchar(max),
         @JsonUnlimited nvarchar(max),@JsonRestricted nvarchar(max),@JsonDenied nvarchar(max),
-        @Status varchar(40),@Partial bit,@Error int,@Message nvarchar(2048),@Return int,
+        @Status varchar(40),@Partial bit,@Error int,@Message nvarchar(2048),@Return int,@ProbeSql nvarchar(max),
         @Map nvarchar(max)=N'{"moduleStatus":"#DbmiOut_moduleStatus","databaseMirroring":"#DbmiOut_databaseMirroring","sourceStatus":"#DbmiOut_sourceStatus","warnings":"#DbmiOut_warnings"}',
         @Login sysname,@MasterUser sysname,@EphemeralCredential nvarchar(128),@Sql nvarchar(max),
         @ProductMajor int=TRY_CONVERT(int,SERVERPROPERTY(N'ProductMajorVersion')),
@@ -40,37 +40,43 @@ INSERT [#DbmiPhysicalPairs] VALUES
 (N'#DbmiOut_warnings',N'#DbmiExpected_warnings');
 
 BEGIN TRY
-    SET LOCK_TIMEOUT 137;
     SET XACT_ABORT ON;
     SET TRANSACTION ISOLATION LEVEL REPEATABLE READ;
     BEGIN TRANSACTION;
     INSERT [#DbmiMarker] VALUES(57412);
+    SET @ProbeSql=N'SET LOCK_TIMEOUT 137;
     EXEC @Return=[monitor].[USP_DatabaseMirroringInventory]
         @DatabaseNames=NULL,@SystemdatenbankenEinbeziehen=0,@DatabaseNamePattern=NULL,
-        @MaxZeilen=0,@ResultSetArt='TABLE',@ResultTablesJson=@Map,
+        @MaxZeilen=0,@ResultSetArt=''TABLE'',@ResultTablesJson=@Map,
         @JsonErzeugen=1,@Json=@Json OUTPUT,@PrintMeldungen=0,
         @StatusCodeOut=@Status OUTPUT,@IsPartialOut=@Partial OUTPUT,
         @ErrorNumberOut=@Error OUTPUT,@ErrorMessageOut=@Message OUTPUT;
     IF @Return<>0
-        THROW 57440,N'TABLE call returned a nonzero procedure return code.',1;
-    IF @Status<>'AVAILABLE_LIMITED'
-        THROW 57441,N'TABLE call did not report its expected successful limited status.',1;
+        THROW 57440,N''TABLE call returned a nonzero procedure return code.'',1;
+    IF @Status<>''AVAILABLE_LIMITED''
+        THROW 57441,N''TABLE call did not report its expected successful limited status.'',1;
     IF @Partial<>1
-        THROW 57442,N'TABLE call did not report partial caller-visible scope.',1;
+        THROW 57442,N''TABLE call did not report partial caller-visible scope.'',1;
     IF ISJSON(@Json)<>1
-        THROW 57443,N'TABLE call did not return the requested JSON envelope.',1;
+        THROW 57443,N''TABLE call did not return the requested JSON envelope.'',1;
     IF @@TRANCOUNT<>1
-        THROW 57444,N'TABLE call changed the caller transaction count.',1;
+        THROW 57444,N''TABLE call changed the caller transaction count.'',1;
     IF XACT_STATE()<>1
-        THROW 57445,N'TABLE call changed the active caller transaction state.',1;
+        THROW 57445,N''TABLE call changed the active caller transaction state.'',1;
     IF @@LOCK_TIMEOUT<>137
-        THROW 57446,N'TABLE call did not restore the caller LOCK_TIMEOUT.',1;
+        THROW 57446,N''TABLE call did not restore the caller LOCK_TIMEOUT.'',1;
     IF (@@OPTIONS&16384)=0
-        THROW 57447,N'TABLE call did not preserve caller XACT_ABORT ON.',1;
+        THROW 57447,N''TABLE call did not preserve caller XACT_ABORT ON.'',1;
     IF (SELECT [transaction_isolation_level] FROM sys.dm_exec_sessions WHERE [session_id]=@@SPID)<>3
-        THROW 57448,N'TABLE call did not preserve the caller REPEATABLE READ isolation level.',1;
+        THROW 57448,N''TABLE call did not preserve the caller REPEATABLE READ isolation level.'',1;
     IF (SELECT COUNT(*) FROM [#DbmiMarker] WHERE [Marker]=57412)<>1
-        THROW 57449,N'TABLE call changed the caller sentinel row.',1;
+        THROW 57449,N''TABLE call changed the caller sentinel row.'',1;';
+    EXEC [sys].[sp_executesql] @ProbeSql,
+        N'@Map nvarchar(max),@Json nvarchar(max) OUTPUT,@Status varchar(40) OUTPUT,@Partial bit OUTPUT,@Error int OUTPUT,@Message nvarchar(2048) OUTPUT,@Return int OUTPUT',
+        @Map=@Map,@Json=@Json OUTPUT,@Status=@Status OUTPUT,@Partial=@Partial OUTPUT,
+        @Error=@Error OUTPUT,@Message=@Message OUTPUT,@Return=@Return OUTPUT;
+    IF @@LOCK_TIMEOUT<>@OriginalLock
+        THROW 57453,N'Controlled probe did not restore the outer caller LOCK_TIMEOUT.',1;
     -- Procedure source reads use SET LOCK_TIMEOUT 0 and restore this caller value.
     IF (SELECT COUNT(*) FROM [#DbmiOut_moduleStatus])<>1
        OR (SELECT COUNT(*) FROM [#DbmiOut_databaseMirroring])<1
@@ -415,8 +421,6 @@ BEGIN TRY
     SET @Sql=N'DROP LOGIN '+QUOTENAME(@Login)+N';';
     EXEC [sys].[sp_executesql] @Sql;
     SET @LoginCreated=0;
-    SET @RestoreLock=N'SET LOCK_TIMEOUT '+CONVERT(nvarchar(20),@OriginalLock)+N';';
-    EXEC [sys].[sp_executesql] @RestoreLock;
     IF @OriginalAbort=1 SET XACT_ABORT ON; ELSE SET XACT_ABORT OFF;
     IF @OriginalIsolation=1 SET TRANSACTION ISOLATION LEVEL READ UNCOMMITTED;
     ELSE IF @OriginalIsolation=2 SET TRANSACTION ISOLATION LEVEL READ COMMITTED;
@@ -445,9 +449,7 @@ BEGIN CATCH
         SET @Sql=N'DROP LOGIN '+QUOTENAME(@Login)+N';';
         EXEC [sys].[sp_executesql] @Sql;
     END;
-    SET @RestoreLock=N'SET LOCK_TIMEOUT '+CONVERT(nvarchar(20),@OriginalLock)+N';';
-    EXEC [sys].[sp_executesql] @RestoreLock;
-    IF @OriginalAbort=1 SET XACT_ABORT ON; ELSE SET XACT_ABORT OFF;
+IF @OriginalAbort=1 SET XACT_ABORT ON; ELSE SET XACT_ABORT OFF;
     IF @OriginalIsolation=1 SET TRANSACTION ISOLATION LEVEL READ UNCOMMITTED;
     ELSE IF @OriginalIsolation=2 SET TRANSACTION ISOLATION LEVEL READ COMMITTED;
     ELSE IF @OriginalIsolation=3 SET TRANSACTION ISOLATION LEVEL REPEATABLE READ;
