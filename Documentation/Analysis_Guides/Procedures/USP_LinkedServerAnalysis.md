@@ -17,6 +17,8 @@ Ein sichtbarer Linked Server beweist nicht, dass jede Datenbank, jedes Objekt od
 
 ## Sicherer Einstieg
 
+`EXEC [monitor].[USP_LinkedServerAnalysis] @Hilfe = 1;` beschreibt alle Parameter, Ausgabeoptionen und Beispielaufrufe direkt in der Procedure.
+
 ```sql
 EXEC [monitor].[USP_LinkedServerAnalysis] @ConnectivityTestEnabled = 0, @ResultSetArt = 'CONSOLE';
 ```

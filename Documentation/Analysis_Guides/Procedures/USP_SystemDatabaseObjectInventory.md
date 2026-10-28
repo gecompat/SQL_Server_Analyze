@@ -17,6 +17,8 @@ Die Procedure beantwortet, welche sichtbaren, nicht als Microsoft-Objekt markier
 
 ## Sicherer Einstieg
 
+`EXEC [monitor].[USP_SystemDatabaseObjectInventory] @Hilfe = 1;` beschreibt alle Parameter, Ausgabeoptionen und Beispielaufrufe direkt in der Procedure.
+
 ```sql
 EXEC [monitor].[USP_SystemDatabaseObjectInventory] @MaxZeilen = 200, @ResultSetArt = 'CONSOLE';
 ```

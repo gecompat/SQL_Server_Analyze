@@ -17,6 +17,8 @@ Eine hohe Zeilenanzahl oder alte Zeile bestimmt keine fachlich richtige Retentio
 
 ## Sicherer Einstieg
 
+`EXEC [monitor].[USP_MsdbHealthAnalysis] @Hilfe = 1;` beschreibt alle Parameter, Ausgabeoptionen und Beispielaufrufe direkt in der Procedure.
+
 ```sql
 EXEC [monitor].[USP_MsdbHealthAnalysis] @MaxZeilen = 200, @ResultSetArt = 'CONSOLE';
 ```

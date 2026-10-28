@@ -11,7 +11,18 @@ BEGIN
  SET NOCOUNT ON; SET @Json=NULL;
  DECLARE @Status varchar(40)='AVAILABLE',@Partial bit=0,@Mode varchar(16)=UPPER(LTRIM(RTRIM(COALESCE(@ResultSetArt,''))));
  DECLARE @ErrorNumber int=NULL,@ErrorMessage nvarchar(2048)=NULL;
- IF @Hilfe=1 BEGIN PRINT N'monitor.USP_SystemDatabaseObjectInventory'; PRINT N'Inventarisiert sichtbare Benutzerobjekte in master, model und msdb; keine DDL-Aktion.'; RETURN; END;
+ IF @Hilfe=1 BEGIN
+        PRINT N'monitor.USP_SystemDatabaseObjectInventory inventarisiert sichtbare, nicht als Microsoft-Objekte markierte Benutzerobjekte in online befindlichen Datenbanken master, model und msdb. Interne Tabellen und Objekte der Typen S und IT sind ausgeschlossen. Es liest Katalogmetadaten, keine Objektinhalte oder Definitionen, und führt keine DDL aus.';
+        PRINT N'Das Inventar hängt vom aktuellen Sicherheitskontext ab; eine leere Ausgabe beweist keine Objektfreiheit. Fehlende Sicht oder Datenbankzugriff kann die Evidenz einschränken. @MaxZeilen begrenzt CONSOLE, RAW und JSON, nicht TABLE oder den Katalogzugriff.';
+        PRINT N'@MaxZeilen int=2000: 0 ist unbegrenzt, positive Werte begrenzen, negative Werte sind ungültig; NULL wird in CONSOLE, RAW und JSON nicht als unbegrenzt normalisiert; verwenden Sie dort 0. TABLE bleibt von dieser Begrenzung unberührt. @ResultSetArt varchar(16)=CONSOLE: CONSOLE, RAW, TABLE oder NONE; Steuerwert ohne Beachtung der Groß-/Kleinschreibung. @ResultTablesJson nvarchar(max)=NULL: nur TABLE, Schlüssel systemDatabaseObjects; Ziel vorhandene leere lokale #Temp-Tabelle mit genau einer Platzhalterspalte.';
+        PRINT N'@JsonErzeugen bit=0 (0/1); @Json nvarchar(max)=NULL OUTPUT erhält das begrenzte Inventararray. @PrintMeldungen bit=1 und @Hilfe bit=0 (je 0/1); Hilfe zeigt diesen Text und beendet den Aufruf. @StatusCodeOut varchar(40)=NULL OUTPUT, @IsPartialOut bit=NULL OUTPUT, @ErrorNumberOut int=NULL OUTPUT und @ErrorMessageOut nvarchar(2048)=NULL OUTPUT sind optionale technische Ausgaben; NULL-Defaults erlauben Auslassung.';
+        PRINT N'CONSOLE-Beispiel:';
+        PRINT N'EXEC [monitor].[USP_SystemDatabaseObjectInventory] @MaxZeilen=200, @ResultSetArt=''CONSOLE'';';
+        PRINT N'TABLE-Beispiel; Ziel vorher leer anlegen, modulpräfixierter eindeutiger Name bis 116 Zeichen:';
+        PRINT N'CREATE TABLE [#SystemDatabaseObjectInventory_Help_Result] ([Placeholder] int NULL);';
+        PRINT N'EXEC [monitor].[USP_SystemDatabaseObjectInventory] @ResultSetArt=''TABLE'', @ResultTablesJson=N''{"systemDatabaseObjects":"#SystemDatabaseObjectInventory_Help_Result"}'';';
+        RETURN;
+    END;
  DECLARE @PreviousLockTimeout int = @@LOCK_TIMEOUT, @RestoreLockTimeoutSql nvarchar(100);
  SET LOCK_TIMEOUT 0;
  DECLARE @TableResultRequested bit=CASE WHEN @Mode='TABLE' THEN 1 ELSE 0 END,@ConsoleResultRequested bit=CASE WHEN @Mode='CONSOLE' THEN 1 ELSE 0 END,@TableTarget sysname=NULL;
