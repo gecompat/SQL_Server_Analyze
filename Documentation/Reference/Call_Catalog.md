@@ -1,6 +1,6 @@
 # Aufrufkatalog aller dokumentierten Procedures
 
-Stand: 2026-07-25 — 98 Procedures
+Stand: 2026-10-27 — 121 eindeutige Procedure-Einträge; alle 121 öffentlichen Inventar-Procedures sind enthalten.
 
 Die Hilfeaufrufe führen keine fachliche Analyse aus. Weitere typische Querschnittsbeispiele stehen am Dokumentanfang.
 
@@ -878,3 +878,14 @@ EXEC [monitor].[USP_UpgradeFeatureUsageAnalysis] @TargetMajorVersion=17, @MaxZei
 ```
 
 Aussagegrenzen und Fehlerbehandlung stehen in der [Procedure-Seite](../Analysis_Guides/Procedures/USP_UpgradeFeatureUsageAnalysis.md).
+
+
+## `[monitor].[USP_DatabaseMirroringInventory]`
+
+EXEC [monitor].[USP_DatabaseMirroringInventory] @Hilfe=1;
+
+EXEC [monitor].[USP_DatabaseMirroringInventory] @ResultSetArt='CONSOLE';
+
+EXEC [monitor].[USP_DatabaseMirroringInventory] @DatabaseNames=N'[ExampleDatabase]', @ResultSetArt='RAW', @JsonErzeugen=1;
+
+Ausgabegrenzen und die vier Resultsets stehen in der [Procedure-Seite](../Analysis_Guides/Procedures/USP_DatabaseMirroringInventory.md).

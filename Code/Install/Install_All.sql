@@ -196,3 +196,4 @@ Der Installer beendet die Verarbeitung beim ersten SQL-Fehler.
 :r ../10_SSIS/045_InternalSsisExecutionMetrics.sql
 :r ../10_SSIS/050_USP_SsisExecutionComparison.sql
 :r ../10_SSIS/060_USP_SsisExecutionBaseline.sql
+:r ../08_ServerHealth/310_USP_DatabaseMirroringInventory.sql

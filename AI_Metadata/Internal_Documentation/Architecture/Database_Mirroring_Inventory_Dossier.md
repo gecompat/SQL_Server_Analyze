@@ -32,14 +32,14 @@ Quorum-/Failoverfähigkeit. Partner-/Witness-Namen, Mirroring-GUIDs und LSNs wer
 | Native Quelle und geprüfte Spalten | Native Typen und Bedeutung | Sichtbarkeit / Grenze |
 |---|---|---|
 | sys.databases: database_id int, name sysname | Lokale ID und Name zur Benennung der Datenbankzeile. | Nur vom Aufrufer sichtbare Datenbankmetadaten; kein Vollständigkeitsbeweis. |
-| sys.database_mirroring: database_id int; mirroring_state tinyint, mirroring_state_desc nvarchar(60); mirroring_role tinyint, mirroring_role_desc nvarchar(60); mirroring_safety_level tinyint, mirroring_safety_level_desc nvarchar(60); mirroring_witness_state tinyint, mirroring_witness_state_desc nvarchar(60); mirroring_redo_queue int, mirroring_redo_queue_type nvarchar(60). | Lokaler Sitzungszustand/Rolle, Safety-Konfiguration, Witness-Zustand und konfigurierte Redo-Obergrenze. | Eine Zeile je Datenbank. Für andere Datenbanken als master/tempdb muss der Caller Datenbankbesitzer oder berechtigt sein über ALTER ANY DATABASE, VIEW ANY DATABASE oder CREATE DATABASE in master. Nicht-NULL-Werte auf einer Mirror-Datenbank erfordern sysadmin. Die Microsoft-Seite nennt für SQL Server 2022+ VIEW SERVER PERFORMANCE STATE. Metadatensicht bleibt zusätzlich auf Securables beschränkt, die der Caller besitzt oder für die er eine Berechtigung hat. Ältere Versionsberechtigungen sind vor Implementierung für die Zielversion exakt zu bestätigen. |
+| sys.database_mirroring: database_id int; mirroring_state tinyint, mirroring_state_desc nvarchar(60); mirroring_role tinyint, mirroring_role_desc nvarchar(60); mirroring_safety_level tinyint, mirroring_safety_level_desc nvarchar(60); mirroring_witness_state tinyint, mirroring_witness_state_desc nvarchar(60); mirroring_redo_queue int, mirroring_redo_queue_type nvarchar(60). | Lokaler Sitzungszustand/Rolle, Safety-Konfiguration, Witness-Zustand und konfigurierte Redo-Obergrenze. | Eine Zeile je Datenbank. Für andere Datenbanken als master/tempdb muss der Caller Datenbankbesitzer oder berechtigt sein über ALTER ANY DATABASE, VIEW ANY DATABASE oder CREATE DATABASE in master. Nicht-NULL-Werte auf einer Mirror-Datenbank erfordern sysadmin. Die Microsoft-Seite nennt für SQL Server 2022+ VIEW SERVER PERFORMANCE STATE. Metadatensicht bleibt zusätzlich auf Securables beschränkt, die der Caller besitzt oder für die er eine Berechtigung hat. Die offizielle Katalogdokumentation nennt ab SQL Server 2022 VIEW SERVER PERFORMANCE STATE. Für SQL Server 2019 spezifiziert sie keine weitere Serverberechtigung; eine solche Anforderung wird nicht aus DMV-Regeln abgeleitet. Nicht-NULL-Werte einer Mirror-Datenbank erfordern sysadmin. [Microsoft Learn: sys.database_mirroring](https://learn.microsoft.com/en-us/sql/relational-databases/system-catalog-views/sys-database-mirroring-transact-sql?view=sql-server-ver17). |
 
 sys.database_mirroring liefert nur database_id, wenn eine Datenbank nicht ONLINE oder nicht
 gespiegelt ist; alle mirroring_-Spalten sind in diesen Fällen NULL. Bei einer sichtbaren, nicht
 gespiegelten Datenbank sind die Mirroring-Spalten ebenfalls NULL. Der Vertrag unterscheidet diese
 dokumentierten nativen NULL-Fälle nicht in erfundene Statuswerte. sys.databases enthält nur vom
 Caller sichtbare Zeilen; insbesondere ist eine OFFLINE-Datenbank für niedrig privilegierte Caller
-nicht sichtbar. Ein fehlendes Resultat beweist daher keine globale Abwesenheit. Der Resultatvertrag
+nicht sichtbar. Ein fehlendes Resultat beweist daher keine globale Abwesenheit. Die Microsoft-Dokumentation bestätigt eine Zeile je Datenbank, NULL-Werte für nicht ONLINE befindliche Datenbanken und die Metadatensichtgrenze; siehe [sys.database_mirroring](https://learn.microsoft.com/en-us/sql/relational-databases/system-catalog-views/sys-database-mirroring-transact-sql?view=sql-server-ver17). Der Resultatvertrag
 verbindet name und database_id aus sys.databases mit dem Mirroring-Katalog über database_id, aber
 deutet NULL-Metadaten nicht in „gesund“ oder „nicht gespiegelt“ um.
 
@@ -68,7 +68,7 @@ Leerlauf-Waits kein Gesundheitsurteil.
 Vorgeschlagene Procedure: monitor.USP_DatabaseMirroringInventory. V1 liest nur die beiden oben genannten Kataloge im durch monitor.USP_PrepareDatabaseCandidates
 bestimmten Datenbankumfang. Ohne Filter umfasst er alle sichtbaren ONLINE-Benutzerdatenbanken;
 Systemdatenbanken sind standardmäßig ausgeschlossen und werden nur mit
-@SystemdatenbankenEinbeziehen=1 einbezogen. Die vorhandenen Selektionsparameter @DatabaseNames
+@SystemdatenbankenEinbeziehen=1 einbezogen. Der gemeinsame Selektor nimmt nur ONLINE-Datenbanken auf. Eine Mirror-Datenbank im Zustand RESTORING ist daher nicht Teil der V1-Auswahl; V1 belegt keine positive Mirror-Rollenbeobachtung auf dieser Partnerseite. Die vorhandenen Selektionsparameter @DatabaseNames
 und @DatabaseNamePattern sowie ihr Fehler- und Filtervertrag werden unverändert übernommen. Es
 werden keine neuen Current-/Max-Datenbankparameter eingeführt. Das Verfahren verwendet feste,
 explizit benannte Spalten, keine SELECT *, keine dynamischen Datenbanknamen, keine Rechtevergabe,
@@ -134,6 +134,8 @@ Vollständigkeit der Katalogsicht nicht bewiesen ist.
 
 ## Liefergates und offene positive Qualifikation
 
+Schritt 43 implementiert diesen Scope als monitor.USP_DatabaseMirroringInventory. Der öffentliche Vertragsumfang enthält moduleStatus, genau eine Fachmenge databaseMirroring, sourceStatus und warnings; die zwölf Fachspalten folgen der nativen Feldfolge. Der ONLINE-Selektor kann eine RESTORING-Mirror-Datenbank ausschließen. Produkt und Tests dürfen deshalb keine positive Mirror-Rollenbeobachtung für diese Partnerseite behaupten.
+
 Die Produktimplementierung kann unabhängig von einer echten Mirroring-Topologie an den
 SQL-sichtbaren Grenzen abgenommen werden: genaue Quellen-/Spaltenprüfung, statische und
 Datenschutzprüfung, SQL-Server-2025-Tests für Standardauswahl, leere und eingeschränkte Sicht,
@@ -142,8 +144,8 @@ physische Typen, Caller-Transaktion/Isolation/LOCK_TIMEOUT-Wiederherstellung sow
 oder externen Probeoperationen. NOLOCK-Lesegrenzen und mögliches Warten auf Schemaänderungen sind
 als Ergebnisgrenze dokumentiert; der Test darf daraus keine Nichtblockierungsgarantie ableiten. Ein leeres Linux-Ergebnis prüft nur die Plattform-/Leergrenze,
 nicht die Windows-Funktion. Versionsrechte sind anhand der offiziellen Katalogquelle zu binden:
-VIEW SERVER PERFORMANCE STATE ab SQL Server 2022; ältere Berechtigungen dürfen nicht aus den
-DMV-Regeln abgeleitet werden und werden vor jeweiligem Nativgate bestätigt.
+VIEW SERVER PERFORMANCE STATE ab SQL Server 2022. Die SQL-Server-2019-Katalogquelle spezifiziert
+keine weitere Serverberechtigung; die versionsspezifische native Qualifikation bleibt offen.
 
 Eine positive Mirroring-Qualifikation bleibt separat offen. Im Repository ist keine konfigurierte
 Windows Principal-/Mirror-/Witness-Umgebung vorhanden. Das Dossier liefert daher weder eine positive

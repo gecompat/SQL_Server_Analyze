@@ -1,4 +1,4 @@
-ModuleArea,PrimaryProcedure,Maturity,CIEvidence2019,CIEvidence2022,CIEvidence2025,LabScenarios,Documentation,Notes
+﻿ModuleArea,PrimaryProcedure,Maturity,CIEvidence2019,CIEvidence2022,CIEvidence2025,LabScenarios,Documentation,Notes
 Current Sessions,USP_CurrentSessions,COMPLETE,YES,YES,YES,LAB-BASE-001,FULL,
 Current Requests,USP_CurrentRequests,COMPLETE,YES,YES,YES,LAB-BASE-001,FULL,
 Current Blocking,USP_CurrentBlocking,COMPLETE,YES,YES,YES,LAB-CONC-001;LAB-CONC-002,FULL,
@@ -87,3 +87,4 @@ Current Caller Permissions,USP_CurrentCallerPermissionAnalysis,PLANNED,YES,NO,YE
 Endpoint Transport,USP_EndpointTransportAnalysis,PLANNED,YES,NO,YES,,FULL,First SQL-visible endpoint TCP mirroring and native connection aggregate qualified at b7498890; full SQL2025 and targeted native2019 pass; SQL2022 not separately executed; host handshake HADR and MARS connection qualification remains open
 Upgrade Feature Usage,USP_UpgradeFeatureUsageAnalysis,PLANNED,YES,NO,YES,,FULL,First bounded slice qualified at72460593 viaPR459: fullSQL2025 CL150/160/170 and native2019 FULL_RELEASE permission matrix cleanup plus separate main gates pass; discontinued breaking host and complete native3matrix remain open
 Distributed Transactions,USP_DistributedTransactionInventory,PLANNED,NO,NO,YES,,PARTIAL,"Bounded SQL-visible V1 runtime qualified in SQL Server 2025 functional run 40555564808 at exact head 51c20d073ac0faceef3fad0fb7485f1b4c6e8178; full_suite=true and runtime contract 140 is bound exactly once in canonical phase 7; SQL success stdout and a separate PASS marker were not exported; documentation CI1 count expectation 202 versus 203 was corrected and the focused local contract passes; current head/integration status is tracked in PR 479 checks; maturity closeout remains open; no separately qualified SQL Server 2019/2022, no controlled positive active DTC row, and external DTC health remains unqualified"
+Database Mirroring,USP_DatabaseMirroringInventory,PLANNED,NO,NO,NO,,PARTIAL,"Bounded SQL-visible catalog V1; ONLINE-only selection, metadata visibility, native NULLs, and absence of positive Mirror-role qualification remain explicit."

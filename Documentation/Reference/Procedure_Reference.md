@@ -2920,3 +2920,26 @@ Quelle: `Code/09_VersionAdaptive/120_USP_UpgradeFeatureUsageAnalysis.sql`
 ```
 
 Die [Procedure-Seite](../Analysis_Guides/Procedures/USP_UpgradeFeatureUsageAnalysis.md) erläutert Quellen, Rechte, Status und Aussagegrenzen.
+
+## `[monitor].[USP_DatabaseMirroringInventory]`
+
+Quelle: `Code/08_ServerHealth/310_USP_DatabaseMirroringInventory.sql`
+
+```sql
+@DatabaseNames nvarchar(max) = NULL
+    , @SystemdatenbankenEinbeziehen bit = 0
+    , @DatabaseNamePattern nvarchar(4000) = NULL
+    , @MaxZeilen int = 1000
+    , @ResultSetArt varchar(16) = 'CONSOLE'
+    , @ResultTablesJson nvarchar(max) = NULL
+    , @JsonErzeugen bit = 0
+    , @Json nvarchar(max) = NULL OUTPUT
+    , @PrintMeldungen bit = 1
+    , @Hilfe bit = 0
+    , @StatusCodeOut varchar(40) = NULL OUTPUT
+    , @IsPartialOut bit = NULL OUTPUT
+    , @ErrorNumberOut int = NULL OUTPUT
+    , @ErrorMessageOut nvarchar(2048) = NULL OUTPUT
+```
+
+Die vier Resultsets und die zwölf nativen Fachfelder stehen auf der [Procedure-Seite](../Analysis_Guides/Procedures/USP_DatabaseMirroringInventory.md). Caller-Sicht, ONLINE-Auswahl, NULL-Grenzen und die Versionsberechtigungen werden dort erläutert.

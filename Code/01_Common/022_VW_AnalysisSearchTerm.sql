@@ -299,5 +299,7 @@ AS
         , (N'USP_UpgradeFeatureUsageAnalysis',N'upgrade deprecated feature usage target version lightweight pooling','en',95,N'Lists native deprecated encounters and one bounded configuration rule.')
         , (N'USP_DistributedTransactionInventory',N'MSDTC verteilte Transaktion Remote Procedure Promotion Linked Server DTC','de',100,N'Zeigt lokale SQL-Konfiguration und sichtbare Transaktionsmetadaten mit klaren Grenzen.')
         , (N'USP_DistributedTransactionInventory',N'MSDTC distributed transaction remote procedure promotion linked server DTC','en',95,N'Lists local SQL configuration and visible transaction metadata with explicit limits.')
+        , (N'USP_DatabaseMirroringInventory',N'Datenbankspiegelung Mirroring Status Redo Queue SQL Server','de',100,N'Zeigt begrenzte caller-sichtbare Database-Mirroring-Katalogwerte ohne Gesundheitsurteil.')
+        , (N'USP_DatabaseMirroringInventory',N'database mirroring state safety witness redo queue','en',95,N'Lists caller-visible database mirroring catalog values with explicit scope and native NULL limits.')
     ) AS [v]([ProcedureName],[SearchTerm],[LanguageCode],[SearchWeight],[MatchReason]);
 GO
