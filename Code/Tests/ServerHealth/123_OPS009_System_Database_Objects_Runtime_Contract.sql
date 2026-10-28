@@ -9,6 +9,8 @@ DECLARE @ObjectName sysname = N'ExampleOps009Object';
 DECLARE @RestrictedLogin sysname = N'ExampleOps009RestrictedLogin';
 DECLARE @RestrictedCredential nvarchar(128) = N'ExampleOps009Aa1' + NCHAR(33) + CONVERT(nvarchar(36), NEWID());
 DECLARE @Json nvarchar(max) = NULL;
+DECLARE @JsonNull nvarchar(max) = NULL;
+DECLARE @JsonZero nvarchar(max) = NULL;
 DECLARE @Status varchar(40) = NULL;
 DECLARE @Sql nvarchar(max) = NULL;
 DECLARE @Partial bit = NULL;
@@ -55,6 +57,37 @@ BEGIN TRY
     SET @Json = NULL;
     SET @Status = NULL;
     SET @Partial = NULL;
+    EXEC [monitor].[USP_SystemDatabaseObjectInventory]
+          @MaxZeilen = NULL
+        , @ResultSetArt = 'NONE'
+        , @JsonErzeugen = 1
+        , @Json = @JsonNull OUTPUT
+        , @PrintMeldungen = 0;
+    EXEC [monitor].[USP_SystemDatabaseObjectInventory]
+          @MaxZeilen = 0
+        , @ResultSetArt = 'NONE'
+        , @JsonErzeugen = 1
+        , @Json = @JsonZero OUTPUT
+        , @PrintMeldungen = 0;
+    IF COALESCE(ISJSON(@JsonNull), 0) <> 1
+       OR COALESCE(ISJSON(@JsonZero), 0) <> 1
+       OR @JsonNull <> @JsonZero
+       OR (SELECT COUNT_BIG(*) FROM OPENJSON(@JsonNull)
+           WITH ([DatabaseName] sysname '$.DatabaseName', [ObjectName] sysname '$.ObjectName')
+           WHERE [DatabaseName] IN (N'master', N'model', N'msdb') AND [ObjectName] = @ObjectName) <> 3
+        THROW 54896, N'Die NULL-/0-Äquivalenz für das nichtleere Systemdatenbank-Inventar ist verletzt.', 1;
+
+    EXEC [monitor].[USP_SystemDatabaseObjectInventory]
+          @MaxZeilen = NULL
+        , @ResultSetArt = 'RAW'
+        , @JsonErzeugen = 0
+        , @PrintMeldungen = 0;
+    EXEC [monitor].[USP_SystemDatabaseObjectInventory]
+          @MaxZeilen = 0
+        , @ResultSetArt = 'RAW'
+        , @JsonErzeugen = 0
+        , @PrintMeldungen = 0;
+
     EXEC [monitor].[USP_SystemDatabaseObjectInventory]
           @MaxZeilen = 1
         , @ResultSetArt = 'NONE'

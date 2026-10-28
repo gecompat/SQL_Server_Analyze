@@ -29,6 +29,11 @@ Der Aufruf materialisiert nur lokale Katalogevidenz. Erst die Kombination aus `@
 
 CONSOLE priorisiert das benannte Resultset `linkedServers`. RAW liefert zunächst den Modulstatus, danach das Inventar und anschließend den kumulativen Waitkontext. TABLE schreibt ausschließlich `linkedServers` in das unter `@ResultTablesJson` benannte lokale Temp-Ziel. JSON enthält dasselbe begrenzte Inventar. Lesen Sie zuerst den Modulstatus und danach je Zeile `ConnectivityStatus`, `StatusCode` und `EvidenceLimit`; Provider- und Optionsspalten sind erst in diesem Kontext zu bewerten.
 
+`@MaxZeilen = NULL` und `0` geben das Inventar in RAW und JSON ohne
+Ausgabebegrenzung aus; positive Werte begrenzen diese beiden Ausgabewege.
+CONSOLE und TABLE verwenden den gesamten materialisierten Bestand. Der
+Katalogzugriff und die Zahl ausdrücklich aktivierter Verbindungstests werden dadurch nicht begrenzt.
+
 ## Beispiele und Gegenbeispiele
 
 Ein passender Positivfall ist ein synthetischer `ExampleLinkedServer`, der lokal registriert und im Standardpfad mit `ConnectivityStatus = 'NOT_EXECUTED'` ausgegeben wird. Nach einer ausdrücklichen Freigabe darf ein kontrollierter Lab-Endpunkt getestet werden; `SUCCEEDED` ist dann ausschließlich Verbindungsevidenz. Ein Gegenbeispiel ist die Deutung eines hohen kumulativen `OLEDB`-Waitwerts als Defekt genau dieses Linked Servers. Ebenso ist `FAILED` kein Beweis für einen dauerhaften Ausfall, weil Netzwerk, Login-Mapping und Gegenstelle zum Testzeitpunkt separat wirken.
@@ -47,7 +52,7 @@ Ein passender Positivfall ist ein synthetischer `ExampleLinkedServer`, der lokal
 | Haupttreiber | Anzahl der Registrierungen sowie Netzwerk-, Provider- und Login-Timeouts |
 | Skalierung | Lokales Inventar skaliert mit Registrierungen; Remotezeit skaliert je Ziel |
 | Ressourcen | Lokale Katalogarbeit; optional Netzwerk, Provider und Remoteanmeldung |
-| Begrenzungswirkung | `@MaxZeilen` begrenzt Ausgabe, nicht die Zahl aktivierter Verbindungstests |
+| Begrenzungswirkung | `@MaxZeilen` begrenzt RAW und JSON, nicht CONSOLE, TABLE oder die Zahl aktivierter Verbindungstests |
 | Locking und Nebenwirkungen | Katalogzugriff ist read-only; der Test kann externe Verbindungen aufbauen |
 | Schutzmechanismus | Doppeltes Opt-in vor dem ersten Remotezugriff |
 | Sicherer Einsatz | Zuerst lokales Inventar, Remotepfad nur im vereinbarten Testfenster |

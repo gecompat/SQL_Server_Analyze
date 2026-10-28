@@ -53,14 +53,21 @@ PR #486 (Commit 516992a) ergänzt den beschreibenden Header von
 TVF_QueryStoreWaitCategoryInfo; der Funktionskörper bleibt unverändert.
 PR #487 (Commit 9194606) und PR #488 (Commit 595b114) ergänzen die zehn
 ServerHealth-Hilfen 010 bis 100 mit insgesamt 119 deklarierten Parametern.
-Alle erforderlichen Head- und Main-Prüfungen beider Lieferungen bestanden.
-Der aktuelle Änderungssatz bearbeitet die bisher knappen Hilfen von
+PR #489 (Commit eb1b4d9) ergänzt die drei Hilfen von
 USP_MsdbHealthAnalysis, USP_LinkedServerAnalysis und
-USP_SystemDatabaseObjectInventory. Die normale Ausführungslogik und die
-Signaturen bleiben unverändert. Die fehlende NULL-Normalisierung von @MaxZeilen in den begrenzten Ausgaben von LinkedServerAnalysis und SystemDatabaseObjectInventory bleibt eine gesondert zu prüfende Vertragslücke; diese Hilfewelle ändert sie nicht. Die globale semantische Prüfung weiterer
-Hilfetexte und selbsterklärender Nichtprozedur-DDL bleibt offen. Eine rein
-dateibasierte Bestandsaufnahme priorisiert weitere Lücken; vorhandene
-Header und Parameternennungen belegen keine semantische Vollständigkeit.
+USP_SystemDatabaseObjectInventory mit 35 deklarierten Parametern. Alle
+erforderlichen Head- und Main-Prüfungen dieser Lieferungen bestanden.
+Der aktuelle Änderungssatz normalisiert @MaxZeilen = NULL wie 0 in den
+RAW- und JSON-Begrenzungen der beiden letztgenannten Inventarprozeduren.
+Die Regressionen vergleichen JSON anhand nicht leerer synthetischer
+Inventare und führen die getrennten RAW-Pfade mit ausgeschalteter
+JSON-Erzeugung aus; eine Erfassung und Gleichheit aller RAW-Zeilen wird
+damit nicht behauptet. CONSOLE und TABLE verwenden weiterhin den gesamten
+materialisierten Bestand; die Ausgabebegrenzung dieser Wege wird nicht
+nachgerüstet. Hilfe und Anleitungen benennen diese tatsächliche Grenze.
+Die globale semantische Prüfung weiterer Hilfetexte und selbsterklärender
+Nichtprozedur-DDL bleibt offen. Parameternennungen und vorhandene Header
+belegen keine semantische Vollständigkeit.
 
 Der Benutzer hat die vollständige Prüfung erforderlicher Procedure-Parameter,
 Hilfetexte und selbsterklärender Nichtprozedur-DDL angefordert. Schritt 44
