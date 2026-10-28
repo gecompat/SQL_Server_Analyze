@@ -6,7 +6,7 @@ GO
 Objekt       : monitor.USP_PrepareNameFilters
 Version      : 1.0.0
 Stand        : 2026-07-15
-Typ          : Interne Stored Procedure
+Typ          : Öffentlicher Vorbereitungshelfer
 Zweck        : Validiert bracket-aware Pipe-Listen für einteilige SQL-Namen und
                vollständige Objektbezüge und befüllt die vom Aufrufer benannte
                Temp-Tabelle.
@@ -26,8 +26,27 @@ CREATE OR ALTER PROCEDURE [monitor].[USP_PrepareNameFilters]
     , @StatusCode        varchar(40)    OUTPUT
     , @ErrorMessage      nvarchar(2048) OUTPUT
     , @FilterTable       sysname        = N'#PrepareNameFilters_Result'
+    , @Hilfe             bit            = 0
 AS
 BEGIN
+    IF @Hilfe = 1
+    BEGIN
+        PRINT N'monitor.USP_PrepareNameFilters validiert Namensfilter und befüllt eine vom Aufrufer angelegte lokale Temp-Tabelle. Die Procedure liefert keine Analyse-Resultsets. Hilfe beendet die fachliche Verarbeitung vor Temp-Tabellen-, Parameter- und Namenslistenverarbeitung.';
+        PRINT N'@SchemaNames nvarchar(max) = NULL: optionale Liste einteiliger SQL-Schemanamen, zum Beispiel N''[dbo]|[Sales]''. NULL bedeutet keine Einschränkung. Die Pipe trennt nur außerhalb von [...]; ]] maskiert innerhalb der Klammern eine schließende Klammer. Nach dem Entquoten muss jedes Element genau ein gültiger SQL-Bezeichner mit höchstens 128 Zeichen sein. Leere Elemente, nicht geschlossene Klammern und nicht maskierte schließende Klammern sind ungültig.';
+        PRINT N'@ObjectNames nvarchar(max) = NULL: optionale Liste einteiliger SQL-Objektnamen; gleicher Klammer-, Pipe-, Entquotungs- und 128-Zeichen-Vertrag wie @SchemaNames.';
+        PRINT N'@FullObjectNames nvarchar(max) = NULL: optionale Liste aus Objekt, Schema.Objekt oder Datenbank.Schema.Objekt, zum Beispiel N''[dbo].[TableA]|[DatabaseA].[sales].[TableB]''. Bei drei Teilen ist das Schema erforderlich; vierteilige Linked-Server-Namen sind ungültig. Jeder Bestandteil darf nach dem Entquoten höchstens 128 Zeichen haben. Derselbe Klammer- und Pipe-Vertrag wie bei @SchemaNames gilt. Nicht kombinierbar mit @SchemaNames oder @ObjectNames.';
+        PRINT N'@IndexNames nvarchar(max) = NULL: optionale Liste einteiliger SQL-Indexnamen; gleicher Klammer-, Pipe-, Entquotungs- und 128-Zeichen-Vertrag wie @SchemaNames.';
+        PRINT N'@StatisticsNames nvarchar(max) = NULL: optionale Liste einteiliger SQL-Statistiknamen; gleicher Klammer-, Pipe-, Entquotungs- und 128-Zeichen-Vertrag wie @SchemaNames.';
+        PRINT N'@ColumnNames nvarchar(max) = NULL: optionale Liste einteiliger SQL-Spaltennamen; gleicher Klammer-, Pipe-, Entquotungs- und 128-Zeichen-Vertrag wie @SchemaNames.';
+        PRINT N'@StatusCode varchar(40) OUTPUT: erforderlich. Die vollständigen Statuswerte dieser Procedure sind AVAILABLE, INVALID_PARAMETER, INTERNAL_ERROR, TIMEOUT, DENIED_PERMISSION und ERROR_HANDLED.';
+        PRINT N'@ErrorMessage nvarchar(2048) OUTPUT: erforderlich; NULL bei erfolgreicher Vorbereitung, sonst die zugehörige Fehlerbeschreibung.';
+        PRINT N'@FilterTable sysname = N''#PrepareNameFilters_Result'': Name einer vom Aufrufer angelegten lokalen #Temp-Tabelle mit FilterType varchar(20) (SCHEMA, OBJECT, INDEX, STATISTICS, COLUMN oder FULL_OBJECT), ItemOrdinal int, NameValue sysname NULL, DatabaseName sysname NULL, SchemaName sysname NULL, ObjectName sysname NULL. Der Name darf höchstens 116 Zeichen haben; globale ##Temp-Namen sind unzulässig.';
+        PRINT N'@Hilfe bit = 0: 0 führt die Filtervalidierung aus; 1 gibt diese Hilfe aus und kehrt ohne fachliche Verarbeitung zurück; NULL folgt dem normalen Verarbeitungspfad.';
+        PRINT N'Listenparser: Pipe trennt nur außerhalb von [...]; ]] maskiert darin eine schließende Klammer. Leere Elemente, nicht geschlossene Klammern und nicht maskierte schließende Klammern sind ungültig. Werte werden entquotet und case-sensitiv ausgewertet; Duplikate innerhalb desselben Filtertyps sind ungültig. Beispiel: N''[ColumnA]|[Column|WithPipe]''.';
+        PRINT N'Gültiger Hilfeaufruf (alle Pflichtparameter gebunden): DECLARE @StatusCode varchar(40), @ErrorMessage nvarchar(2048); EXEC [monitor].[USP_PrepareNameFilters] @StatusCode=@StatusCode OUTPUT, @ErrorMessage=@ErrorMessage OUTPUT, @Hilfe=1;';
+        RETURN;
+    END;
+
     SET NOCOUNT ON;
     SET LOCK_TIMEOUT 0;
     SET @StatusCode = 'AVAILABLE';

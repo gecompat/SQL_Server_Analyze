@@ -1,6 +1,6 @@
 # [monitor].[USP_PrepareDatabaseCandidates]
 
-**Bereich:** Common, interner Auswahlvertrag<br>
+**Bereich:** Common, öffentlicher Vorbereitungshelfer<br>
 **Zweck:** Befüllt die vom Aufrufer bereitgestellte Datenbank-Kandidatenliste.<br>
 **Beobachtungsart:** Snapshot<br>
 **Kostenklasse:** LOW
@@ -15,9 +15,27 @@ Die Procedure beantwortet keine fachliche Performance- oder Verfügbarkeitsursac
 
 ## Sicherer Einstieg
 
-Diese interne Procedure setzt exakt definierte lokale Temp-Tabellen voraus. Deren procedurebezogene Namen werden mit `@CandidateTable` und optional `@WarningTable` übergeben. Sie liefert keine normalen Analyse-Resultsets; die aufrufende Procedure ist der öffentliche Einstieg.
+Diese öffentliche Hilfsprocedure bereitet den Kandidatenscope einer Analyse vor und liefert keine normalen Analyse-Resultsets. Im normalen Verarbeitungspfad setzt sie exakt definierte lokale Temp-Tabellen voraus; deren Namen werden mit `@CandidateTable` und optional `@WarningTable` übergeben. Der Hilfemodus kann ohne diese Tabellen aufgerufen werden, muss aber weiterhin alle erforderlichen OUTPUT-Parameter binden.
 
 Alle `Example*`-Werte im Aufruf sind synthetisch.
+
+### Hilfe anzeigen
+
+Der Hilfemodus gibt Parameter, Listen-/Patternregeln, Zieltabellenschemas und Aufrufvarianten aus, bevor er Zieltabellen oder Datenbanken verarbeitet. Die erforderlichen OUTPUT-Parameter bleiben auch bei `@Hilfe=1` Teil der SQL-Signatur:
+
+```sql
+DECLARE @StatusCode varchar(40),
+        @ErrorMessage nvarchar(2048),
+        @CrossDatabaseRequested bit;
+
+EXEC [monitor].[USP_PrepareDatabaseCandidates]
+      @StatusCode = @StatusCode OUTPUT
+    , @ErrorMessage = @ErrorMessage OUTPUT
+    , @CrossDatabaseRequested = @CrossDatabaseRequested OUTPUT
+    , @Hilfe = 1;
+```
+
+Ein `AVAILABLE`-Status allein belegt nicht, dass jede explizit angeforderte Datenbank ausgewählt wurde. Im normalen Verarbeitungspfad prüfen Sie Kandidaten und gegebenenfalls Warnungen gemeinsam. Ohne Präfix oder mit like: gilt SQL LIKE mit %, _, Zeichenklassen in eckigen Klammern unter SQL_Latin1_General_CP1_CS_AS. regex: nutzt REGEXP_LIKE mit Flag c (case-sensitive), regexi: mit Flag i (case-insensitive); beide benötigen SQL Server 2025 und Compatibility Level 170 der Installationsdatenbank. Vor der Moduserkennung werden äußere Leerzeichen der Eingabe entfernt. Die Präfixerkennung ist case-insensitive; nach dem Abtrennen des Präfixes bleiben innere Leerzeichen und Groß-/Kleinschreibung im Pattern erhalten. Eigene Statuswerte sind AVAILABLE, INVALID_PARAMETER, INTERNAL_ERROR und UNAVAILABLE_FEATURE; bei gesetzter Analyseklasse können HIGH_IMPACT_CONFIRMATION_REQUIRED oder DENIED_GROUP von der delegierten Pfadprüfung zurückkommen.
 
 ## Resultsets und Leserichtung
 

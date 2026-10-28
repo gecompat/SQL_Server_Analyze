@@ -567,6 +567,38 @@ def compare_parameter_inventory(object_rows: list[dict[str, str]], parameter_row
     return errors
 
 
+def validate_public_help_parameters(object_rows: list[dict[str, str]], read_source) -> list[str]:
+    """Require every public procedure to expose the defaulted bit help switch."""
+    errors: list[str] = []
+    for row in object_rows:
+        if row.get("ObjectType") != "PROCEDURE":
+            continue
+        name = row["ObjectName"]
+        try:
+            parameters = extract_module_parameters(read_source(row["SourcePath"]), name)
+        except (OSError, ValueError) as exc:
+            errors.append(f"Cannot read public help signature for {name}: {exc}")
+            continue
+        help_parameters = [parameter for parameter in parameters if parameter[0] == "Hilfe"]
+        if help_parameters != [("Hilfe", "bit", "0")]:
+            errors.append(f"Public procedure must declare exactly @Hilfe bit = 0 without OUTPUT: {name}")
+    return errors
+
+def run_public_help_parameter_self_test() -> None:
+    objects = [{"ObjectType": "PROCEDURE", "ObjectName": "USP_Fixture", "SourcePath": "fixture.sql"}]
+    source = "CREATE OR ALTER PROCEDURE [monitor].[USP_Fixture]\n    @Required int,\n    @Hilfe bit = 0\nAS\nBEGIN\n    RETURN;\nEND;\n"
+    if validate_public_help_parameters(objects, lambda _path: source):
+        raise AssertionError("A public procedure with @Hilfe bit = 0 was rejected.")
+    mutants = (
+        source.replace("    @Hilfe bit = 0\n", ""),
+        source.replace("@Hilfe bit = 0", "@Hilfe tinyint = 0"),
+        source.replace("@Hilfe bit = 0", "@Hilfe bit = 1"),
+        source.replace("@Hilfe bit = 0", "@Hilfe bit = 0 OUTPUT"),
+    )
+    for index, mutant in enumerate(mutants, start=1):
+        if not validate_public_help_parameters(objects, lambda _path: mutant):
+            raise AssertionError(f"Public help validation accepted mutation {index}.")
+
 def validate(repository_root: Path) -> list[str]:
     errors: list[str] = []
 
@@ -851,13 +883,9 @@ def validate(repository_root: Path) -> list[str]:
         errors.append("Navigator executes non-renderer procedures: " + ", ".join(unexpected_calls))
 
     parameter_rows = read_csv(repository_root / PARAMETER_INVENTORY_PATH)
-    errors.extend(
-        compare_parameter_inventory(
-            object_rows,
-            parameter_rows,
-            lambda source_path: (repository_root / source_path).read_text(encoding="utf-8-sig"),
-        )
-    )
+    read_source = lambda source_path: (repository_root / source_path).read_text(encoding="utf-8-sig")
+    errors.extend(compare_parameter_inventory(object_rows, parameter_rows, read_source))
+    errors.extend(validate_public_help_parameters(object_rows, read_source))
     parameters_by_procedure: dict[str, set[str]] = defaultdict(set)
     for parameter_row in parameter_rows:
         parameters_by_procedure[parameter_row["ProcedureName"]].add(parameter_row["ParameterName"])
@@ -1149,6 +1177,7 @@ SELECT 1;
 
 def run_self_test() -> None:
     run_parameter_parity_self_test()
+    run_public_help_parameter_self_test()
     sample = """
 CREATE OR ALTER VIEW [monitor].[VW_Example] AS
 SELECT *
