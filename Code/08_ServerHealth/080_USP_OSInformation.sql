@@ -39,7 +39,7 @@ BEGIN
         PRINT N'Berechtigungen und Grenzen: Liest sys.dm_os_host_info, sys.dm_os_sys_memory, sys.dm_os_process_memory und sys.dm_server_services. Vier unabhängige kurze Lesezugriffe; fehlende Plattformobjekte oder DMV-Berechtigungen können zu Teilergebnissen führen. Kein Datenbankbereich und kein Zeilenlimit.';
         PRINT N'Dienstkonten und Prozessdetails sind betriebliche sensible Angaben und nur mit berechtigten Empfängern zu teilen. Die Hostausgabe bildet weder die vollständige Betriebssystem- noch Hypervisor-Telemetrie ab.';
         PRINT N'Beispiele (synthetisch): EXEC [monitor].[USP_OSInformation] @Hilfe=1;  EXEC [monitor].[USP_OSInformation] @ResultSetArt=''CONSOLE'';';
-        PRINT N'TABLE-Beispiel (synthetisch): CREATE TABLE #ExampleOS(Seed bit NULL); EXEC [monitor].[USP_OSInformation] @ResultSetArt=''TABLE'', @ResultTablesJson=N''{"host":"#ExampleOS"}''; DROP TABLE #ExampleOS;';
+        PRINT N'TABLE-Beispiel (synthetisch): CREATE TABLE #OSInformation_HelpExample(Seed bit NULL); EXEC [monitor].[USP_OSInformation] @ResultSetArt=''TABLE'', @ResultTablesJson=N''{"host":"#OSInformation_HelpExample"}''; DROP TABLE #OSInformation_HelpExample;';
         RETURN;
  END;
  DECLARE @T datetime2(3)=SYSUTCDATETIME(),@S varchar(40)='AVAILABLE',@P bit=0,@E int=NULL,@M nvarchar(2048)=NULL;

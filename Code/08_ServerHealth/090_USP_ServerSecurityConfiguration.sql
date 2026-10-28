@@ -48,7 +48,7 @@ BEGIN
         PRINT N'Berechtigungen und Aufwand: Liest sys.configurations, sys.dm_server_services und SERVERPROPERTY; fehlende Quellberechtigungen können Ergebnisse einschränken. Kurze, rein lesende Server-Momentaufnahme ohne Datenbankbereich, Zeilenlimit oder Änderung an Konfiguration und Diensten.';
         PRINT N'Dienstkonten und Serveridentität sind betriebliche sensible Angaben. Befunde sind Prüfsignale und keine automatische Einstufung als Richtlinienverstoß oder automatische Behebung.';
         PRINT N'Beispiele (synthetisch): EXEC [monitor].[USP_ServerSecurityConfiguration] @Hilfe=1;  EXEC [monitor].[USP_ServerSecurityConfiguration] @ResultSetArt=''CONSOLE'';';
-        PRINT N'TABLE-Beispiel (synthetisch): CREATE TABLE #ExampleSecurity(Seed bit NULL); EXEC [monitor].[USP_ServerSecurityConfiguration] @ResultSetArt=''TABLE'', @ResultTablesJson=N''{"configuration":"#ExampleSecurity"}''; DROP TABLE #ExampleSecurity;';
+        PRINT N'TABLE-Beispiel (synthetisch): CREATE TABLE #ServerSecurityConfiguration_HelpExample(Seed bit NULL); EXEC [monitor].[USP_ServerSecurityConfiguration] @ResultSetArt=''TABLE'', @ResultTablesJson=N''{"configuration":"#ServerSecurityConfiguration_HelpExample"}''; DROP TABLE #ServerSecurityConfiguration_HelpExample;';
         RETURN;
     END;
 

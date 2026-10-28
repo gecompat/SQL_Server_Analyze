@@ -106,7 +106,7 @@ BEGIN
         PRINT N'@PrintMeldungen bit=1: Gibt Statusmeldungen der Unterprozeduren aus (1) oder unterdrückt sie (0). @Hilfe bit=0: Gibt diese Hilfe aus (1) oder führt die Erhebung aus (0). Die Hilfe wird vor Erhebung und Modulprüfung, aber nach Prüfung des TABLE-Ziels ausgegeben; zuvor wird LOCK_TIMEOUT auf 0 gesetzt. Für die Hilfe den Standardaufruf verwenden.';
         PRINT N'Berechtigungen und Aufwand: Der Standardpfad führt neun kurze Server-Momentaufnahmen aus. Optionale Module können Datenbank-/Katalogarbeit, Eventdateiverarbeitung oder eine feste Contention-Messung von fünf Sekunden ergänzen. Berechtigungs- und Plattformlücken werden je Modul gemeldet; Änderungen werden nicht vorgenommen.';
         PRINT N'Beispiele (synthetisch): EXEC [monitor].[USP_ServerHealthAnalysis] @Hilfe=1;  EXEC [monitor].[USP_ServerHealthAnalysis] @ResultSetArt=''CONSOLE'';';
-        PRINT N'TABLE-Beispiel (synthetisch): CREATE TABLE #ExampleHealth(Seed bit NULL); EXEC [monitor].[USP_ServerHealthAnalysis] @MitCpu=1, @MitNuma=0, @MitMemory=0, @MitTempDB=0, @MitConfiguration=0, @MitTraceFlags=0, @MitStartup=0, @MitOS=0, @MitSecurity=0, @ResultSetArt=''TABLE'', @ResultTablesJson=N''{"moduleStatus":"#ExampleHealth"}''; DROP TABLE #ExampleHealth;';
+        PRINT N'TABLE-Beispiel (synthetisch): CREATE TABLE #ServerHealthAnalysis_HelpExample(Seed bit NULL); EXEC [monitor].[USP_ServerHealthAnalysis] @MitCpu=1, @MitNuma=0, @MitMemory=0, @MitTempDB=0, @MitConfiguration=0, @MitTraceFlags=0, @MitStartup=0, @MitOS=0, @MitSecurity=0, @ResultSetArt=''TABLE'', @ResultTablesJson=N''{"moduleStatus":"#ServerHealthAnalysis_HelpExample"}''; DROP TABLE #ServerHealthAnalysis_HelpExample;';
         RETURN;
     END;
 

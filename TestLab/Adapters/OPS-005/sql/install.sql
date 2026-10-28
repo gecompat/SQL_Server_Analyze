@@ -44903,7 +44903,7 @@ BEGIN
         PRINT N'@StatusCodeOut varchar(40)=NULL OUTPUT: Gesamtstatus. @IsPartialOut bit=NULL OUTPUT: Kennzeichen für Teilergebnisse. @ErrorNumberOut int=NULL OUTPUT und @ErrorMessageOut nvarchar(2048)=NULL OUTPUT: verfügbare Fehlerangaben der Quelle.';
         PRINT N'Berechtigungen und Aufwand: Liest sys.dm_os_sys_memory, sys.dm_os_process_memory, sys.dm_os_sys_info, sys.configurations, sys.dm_os_memory_clerks und sys.dm_exec_query_memory_grants. Kleine Momentaufnahme mit Gruppierung der Clerks; fehlende DMV-Berechtigungen können die Verfügbarkeit einschränken.';
         PRINT N'Beispiele (synthetisch): EXEC [monitor].[USP_ServerMemory] @Hilfe=1;  EXEC [monitor].[USP_ServerMemory] @MaxZeilen=100, @ResultSetArt=''CONSOLE'';';
-        PRINT N'TABLE-Beispiel (synthetisch): CREATE TABLE #ExampleMemory(Seed bit NULL); EXEC [monitor].[USP_ServerMemory] @ResultSetArt=''TABLE'', @ResultTablesJson=N''{"summary":"#ExampleMemory"}''; DROP TABLE #ExampleMemory;';
+        PRINT N'TABLE-Beispiel (synthetisch): CREATE TABLE #ServerMemory_HelpExample(Seed bit NULL); EXEC [monitor].[USP_ServerMemory] @ResultSetArt=''TABLE'', @ResultTablesJson=N''{"summary":"#ServerMemory_HelpExample"}''; DROP TABLE #ServerMemory_HelpExample;';
         RETURN;
  END;
  DECLARE @T datetime2(3)=SYSUTCDATETIME(),@S varchar(40)='AVAILABLE',@P bit=0,@E int=NULL,@M nvarchar(2048)=NULL;
@@ -45209,7 +45209,7 @@ BEGIN
         PRINT N'Berechtigungen und Grenzen: Liest sys.dm_os_host_info, sys.dm_os_sys_memory, sys.dm_os_process_memory und sys.dm_server_services. Vier unabhängige kurze Lesezugriffe; fehlende Plattformobjekte oder DMV-Berechtigungen können zu Teilergebnissen führen. Kein Datenbankbereich und kein Zeilenlimit.';
         PRINT N'Dienstkonten und Prozessdetails sind betriebliche sensible Angaben und nur mit berechtigten Empfängern zu teilen. Die Hostausgabe bildet weder die vollständige Betriebssystem- noch Hypervisor-Telemetrie ab.';
         PRINT N'Beispiele (synthetisch): EXEC [monitor].[USP_OSInformation] @Hilfe=1;  EXEC [monitor].[USP_OSInformation] @ResultSetArt=''CONSOLE'';';
-        PRINT N'TABLE-Beispiel (synthetisch): CREATE TABLE #ExampleOS(Seed bit NULL); EXEC [monitor].[USP_OSInformation] @ResultSetArt=''TABLE'', @ResultTablesJson=N''{"host":"#ExampleOS"}''; DROP TABLE #ExampleOS;';
+        PRINT N'TABLE-Beispiel (synthetisch): CREATE TABLE #OSInformation_HelpExample(Seed bit NULL); EXEC [monitor].[USP_OSInformation] @ResultSetArt=''TABLE'', @ResultTablesJson=N''{"host":"#OSInformation_HelpExample"}''; DROP TABLE #OSInformation_HelpExample;';
         RETURN;
  END;
  DECLARE @T datetime2(3)=SYSUTCDATETIME(),@S varchar(40)='AVAILABLE',@P bit=0,@E int=NULL,@M nvarchar(2048)=NULL;
@@ -45298,7 +45298,7 @@ BEGIN
         PRINT N'Berechtigungen und Aufwand: Liest sys.configurations, sys.dm_server_services und SERVERPROPERTY; fehlende Quellberechtigungen können Ergebnisse einschränken. Kurze, rein lesende Server-Momentaufnahme ohne Datenbankbereich, Zeilenlimit oder Änderung an Konfiguration und Diensten.';
         PRINT N'Dienstkonten und Serveridentität sind betriebliche sensible Angaben. Befunde sind Prüfsignale und keine automatische Einstufung als Richtlinienverstoß oder automatische Behebung.';
         PRINT N'Beispiele (synthetisch): EXEC [monitor].[USP_ServerSecurityConfiguration] @Hilfe=1;  EXEC [monitor].[USP_ServerSecurityConfiguration] @ResultSetArt=''CONSOLE'';';
-        PRINT N'TABLE-Beispiel (synthetisch): CREATE TABLE #ExampleSecurity(Seed bit NULL); EXEC [monitor].[USP_ServerSecurityConfiguration] @ResultSetArt=''TABLE'', @ResultTablesJson=N''{"configuration":"#ExampleSecurity"}''; DROP TABLE #ExampleSecurity;';
+        PRINT N'TABLE-Beispiel (synthetisch): CREATE TABLE #ServerSecurityConfiguration_HelpExample(Seed bit NULL); EXEC [monitor].[USP_ServerSecurityConfiguration] @ResultSetArt=''TABLE'', @ResultTablesJson=N''{"configuration":"#ServerSecurityConfiguration_HelpExample"}''; DROP TABLE #ServerSecurityConfiguration_HelpExample;';
         RETURN;
     END;
 
@@ -53030,7 +53030,7 @@ BEGIN
         PRINT N'@PrintMeldungen bit=1: Gibt Statusmeldungen der Unterprozeduren aus (1) oder unterdrückt sie (0). @Hilfe bit=0: Gibt diese Hilfe aus (1) oder führt die Erhebung aus (0). Die Hilfe wird vor Erhebung und Modulprüfung, aber nach Prüfung des TABLE-Ziels ausgegeben; zuvor wird LOCK_TIMEOUT auf 0 gesetzt. Für die Hilfe den Standardaufruf verwenden.';
         PRINT N'Berechtigungen und Aufwand: Der Standardpfad führt neun kurze Server-Momentaufnahmen aus. Optionale Module können Datenbank-/Katalogarbeit, Eventdateiverarbeitung oder eine feste Contention-Messung von fünf Sekunden ergänzen. Berechtigungs- und Plattformlücken werden je Modul gemeldet; Änderungen werden nicht vorgenommen.';
         PRINT N'Beispiele (synthetisch): EXEC [monitor].[USP_ServerHealthAnalysis] @Hilfe=1;  EXEC [monitor].[USP_ServerHealthAnalysis] @ResultSetArt=''CONSOLE'';';
-        PRINT N'TABLE-Beispiel (synthetisch): CREATE TABLE #ExampleHealth(Seed bit NULL); EXEC [monitor].[USP_ServerHealthAnalysis] @MitCpu=1, @MitNuma=0, @MitMemory=0, @MitTempDB=0, @MitConfiguration=0, @MitTraceFlags=0, @MitStartup=0, @MitOS=0, @MitSecurity=0, @ResultSetArt=''TABLE'', @ResultTablesJson=N''{"moduleStatus":"#ExampleHealth"}''; DROP TABLE #ExampleHealth;';
+        PRINT N'TABLE-Beispiel (synthetisch): CREATE TABLE #ServerHealthAnalysis_HelpExample(Seed bit NULL); EXEC [monitor].[USP_ServerHealthAnalysis] @MitCpu=1, @MitNuma=0, @MitMemory=0, @MitTempDB=0, @MitConfiguration=0, @MitTraceFlags=0, @MitStartup=0, @MitOS=0, @MitSecurity=0, @ResultSetArt=''TABLE'', @ResultTablesJson=N''{"moduleStatus":"#ServerHealthAnalysis_HelpExample"}''; DROP TABLE #ServerHealthAnalysis_HelpExample;';
         RETURN;
     END;
 

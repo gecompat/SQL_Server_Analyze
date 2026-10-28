@@ -39,7 +39,7 @@ BEGIN
         PRINT N'@StatusCodeOut varchar(40)=NULL OUTPUT: Gesamtstatus. @IsPartialOut bit=NULL OUTPUT: Kennzeichen für Teilergebnisse. @ErrorNumberOut int=NULL OUTPUT und @ErrorMessageOut nvarchar(2048)=NULL OUTPUT: verfügbare Fehlerangaben der Quelle.';
         PRINT N'Berechtigungen und Aufwand: Liest sys.dm_os_sys_memory, sys.dm_os_process_memory, sys.dm_os_sys_info, sys.configurations, sys.dm_os_memory_clerks und sys.dm_exec_query_memory_grants. Kleine Momentaufnahme mit Gruppierung der Clerks; fehlende DMV-Berechtigungen können die Verfügbarkeit einschränken.';
         PRINT N'Beispiele (synthetisch): EXEC [monitor].[USP_ServerMemory] @Hilfe=1;  EXEC [monitor].[USP_ServerMemory] @MaxZeilen=100, @ResultSetArt=''CONSOLE'';';
-        PRINT N'TABLE-Beispiel (synthetisch): CREATE TABLE #ExampleMemory(Seed bit NULL); EXEC [monitor].[USP_ServerMemory] @ResultSetArt=''TABLE'', @ResultTablesJson=N''{"summary":"#ExampleMemory"}''; DROP TABLE #ExampleMemory;';
+        PRINT N'TABLE-Beispiel (synthetisch): CREATE TABLE #ServerMemory_HelpExample(Seed bit NULL); EXEC [monitor].[USP_ServerMemory] @ResultSetArt=''TABLE'', @ResultTablesJson=N''{"summary":"#ServerMemory_HelpExample"}''; DROP TABLE #ServerMemory_HelpExample;';
         RETURN;
  END;
  DECLARE @T datetime2(3)=SYSUTCDATETIME(),@S varchar(40)='AVAILABLE',@P bit=0,@E int=NULL,@M nvarchar(2048)=NULL;
