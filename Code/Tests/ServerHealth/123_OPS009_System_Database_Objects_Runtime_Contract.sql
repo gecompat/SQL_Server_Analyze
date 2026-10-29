@@ -14,6 +14,10 @@ DECLARE @JsonZero nvarchar(max) = NULL;
 DECLARE @Status varchar(40) = NULL;
 DECLARE @Sql nvarchar(max) = NULL;
 DECLARE @Partial bit = NULL;
+DECLARE @LimitedDatabaseName sysname = NULL;
+DECLARE @LimitedSchemaName sysname = NULL;
+DECLARE @LimitedObjectName sysname = NULL;
+DECLARE @ConsoleRows TABLE ([Ergebnis] nvarchar(200) COLLATE SQL_Latin1_General_CP1_CS_AS,[DatabaseName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS,[SchemaName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS,[ObjectName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS,[ObjectType] nvarchar(60) COLLATE SQL_Latin1_General_CP1_CS_AS,[CreateDate] datetime,[ModifyDate] datetime,[StatusCode] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS,[EvidenceLimit] nvarchar(1000) COLLATE SQL_Latin1_General_CP1_CS_AS);
 DECLARE @MasterCreated bit=0, @ModelCreated bit=0, @MsdbCreated bit=0;
 DECLARE @LoginCreated bit=0, @UserCreated bit=0, @MasterUserCreated bit=0;
 
@@ -33,6 +37,10 @@ BEGIN TRY
     SET @ModelCreated=1;
     EXEC [msdb].[sys].[sp_executesql] N'CREATE TABLE [dbo].[ExampleOps009Object]([SyntheticId] int NOT NULL);';
     SET @MsdbCreated=1;
+
+    SET @Json=NULL; SET @Status=NULL; SET @Partial=NULL;
+    EXEC [monitor].[USP_SystemDatabaseObjectInventory] @MaxZeilen=-1,@ResultSetArt='NONE',@JsonErzeugen=1,@Json=@Json OUTPUT,@PrintMeldungen=0,@StatusCodeOut=@Status OUTPUT,@IsPartialOut=@Partial OUTPUT;
+    IF COALESCE(@Status,'')<>'INVALID_PARAMETER' OR COALESCE(@Partial,0)<>1 OR COALESCE(ISJSON(@Json),0)<>1 OR EXISTS(SELECT 1 FROM OPENJSON(@Json)) THROW 54901,N'Der negative Zeilenlimit-Parameter weist den Systemdatenbank-Aufruf nicht als ungültig ohne Inventarzeilen aus.',1;
 
     EXEC [monitor].[USP_SystemDatabaseObjectInventory]
           @MaxZeilen = 100
@@ -99,6 +107,19 @@ BEGIN TRY
     IF COALESCE(@Status,'') <> 'AVAILABLE' OR COALESCE(@Partial,1) <> 0
        OR COALESCE(ISJSON(@Json),0) <> 1 OR (SELECT COUNT_BIG(*) FROM OPENJSON(@Json)) <> 1
         THROW 54892, N'Die Begrenzung des Systemdatenbank-Inventars ist verletzt.', 1;
+
+    SELECT TOP (1) @LimitedDatabaseName=[DatabaseName],@LimitedSchemaName=[SchemaName],@LimitedObjectName=[ObjectName] FROM OPENJSON(@Json) WITH ([DatabaseName] sysname '$.DatabaseName',[SchemaName] sysname '$.SchemaName',[ObjectName] sysname '$.ObjectName') ORDER BY [DatabaseName],[SchemaName],[ObjectName];
+    CREATE TABLE [#OPS009_System_Database_Objects_Runtime_Contract_LimitTarget] ([Placeholder] int NULL);
+    EXEC [monitor].[USP_SystemDatabaseObjectInventory] @MaxZeilen=1,@ResultSetArt='TABLE',@ResultTablesJson=N'{"systemDatabaseObjects":"#OPS009_System_Database_Objects_Runtime_Contract_LimitTarget"}',@PrintMeldungen=0;
+    IF (SELECT COUNT_BIG(*) FROM [#OPS009_System_Database_Objects_Runtime_Contract_LimitTarget])<>1 OR NOT EXISTS(SELECT 1 FROM [#OPS009_System_Database_Objects_Runtime_Contract_LimitTarget] WHERE [DatabaseName]=@LimitedDatabaseName AND [SchemaName]=@LimitedSchemaName AND [ObjectName]=@LimitedObjectName) THROW 54897,N'Die begrenzte TABLE-Ausgabe stimmt nicht mit JSON überein.',1;
+    INSERT @ConsoleRows EXEC [monitor].[USP_SystemDatabaseObjectInventory] @MaxZeilen=1,@ResultSetArt='CONSOLE',@PrintMeldungen=0;
+    IF (SELECT COUNT_BIG(*) FROM @ConsoleRows)<>1 OR NOT EXISTS(SELECT 1 FROM @ConsoleRows WHERE [DatabaseName]=@LimitedDatabaseName AND [SchemaName]=@LimitedSchemaName AND [ObjectName]=@LimitedObjectName) THROW 54898,N'Die begrenzte CONSOLE-Ausgabe stimmt nicht mit JSON überein.',1;
+    CREATE TABLE [#OPS009_System_Database_Objects_Runtime_Contract_UnboundedTarget] ([Placeholder] int NULL);
+    DELETE FROM @ConsoleRows;
+    EXEC [monitor].[USP_SystemDatabaseObjectInventory] @MaxZeilen=NULL,@ResultSetArt='TABLE',@ResultTablesJson=N'{"systemDatabaseObjects":"#OPS009_System_Database_Objects_Runtime_Contract_UnboundedTarget"}',@PrintMeldungen=0;
+    IF (SELECT COUNT_BIG(*) FROM [#OPS009_System_Database_Objects_Runtime_Contract_UnboundedTarget])<>(SELECT COUNT_BIG(*) FROM OPENJSON(@JsonNull)) THROW 54899,N'Die unbeschränkte TABLE-Ausgabe weicht von JSON ab.',1;
+    INSERT @ConsoleRows EXEC [monitor].[USP_SystemDatabaseObjectInventory] @MaxZeilen=0,@ResultSetArt='CONSOLE',@PrintMeldungen=0;
+    IF (SELECT COUNT_BIG(*) FROM @ConsoleRows)<>(SELECT COUNT_BIG(*) FROM OPENJSON(@JsonZero)) THROW 54900,N'Die unbeschränkte CONSOLE-Ausgabe weicht von JSON ab.',1;
 
     SET @Sql = N'CREATE LOGIN [ExampleOps009RestrictedLogin] WITH '
              + N'PASS' + N'WORD = '
