@@ -5347,8 +5347,25 @@ Version      : 1.0.0
 Stand        : 2026-07-18
 Typ          : Inline Table-valued Function
 Zweck        : Klassifiziert die Aktion eines Agent-Alerts ohne Seiteneffekte.
+Eingaben     : @IsEnabled (bit), @HasJobAction (bit) und
+               @NotificationCount (bigint); NULL wird bei Aktion und Anzahl
+               wie 0 behandelt.
+Ausgabe      : Genau eine Zeile mit FindingCode (varchar(100)) und
+               FindingSeverity (varchar(16)). Die erste passende Regel gilt:
+               aktiv ohne Aktion und ohne Benachrichtigung ergibt
+               ENABLED_ALERT_WITHOUT_ACTION/HIGH; deaktiviert ergibt
+               ALERT_DISABLED/INFO; sonst ALERT_ROUTE_PRESENT/INFO.
+Grenzen      : Negative Anzahlen werden nicht validiert und erfüllen den
+               Nulltest nicht. NULL bei @IsEnabled ist weder aktiv noch
+               deaktiviert und ergibt daher ALERT_ROUTE_PRESENT/INFO.
+               Die Funktion wertet ausschließlich ihre Eingaben aus und liest
+               selbst weder Kataloge noch Alert- oder Verlaufseinträge.
+Beispiel     : SELECT FindingCode, FindingSeverity
+                 FROM monitor.TVF_InterpretAgentAlertRoute(1, 0, 0);
+               Erwartet: ENABLED_ALERT_WITHOUT_ACTION / HIGH.
 Datenschutz  : Verarbeitet nur Schalter und aggregierte Anzahl; keine Operator-
-               oder Empfängerdaten.
+               oder Empfängerdaten. Die Klassifikation belegt weder eine
+               tatsächlich ausgeführte Aktion noch erfolgreichen Versand.
 ===============================================================================
 */
 CREATE OR ALTER FUNCTION [monitor].[TVF_InterpretAgentAlertRoute]
@@ -5385,8 +5402,34 @@ Stand        : 2026-07-18
 Typ          : Inline Table-valued Function
 Zweck        : Klassifiziert den letzten Jobstatus und die zugehörigen
                Zeitpläne ohne Seiteneffekte.
+Eingaben     : @IsEnabled (tinyint) und @LatestRunStatus (int) bezeichnen
+               Aktivierung und letzten Laufstatus. @LatestRunDateTime und
+               @CutoffLocal (je datetime) bilden den Fenstervergleich;
+               @ScheduleCount und @EnabledScheduleCount (je bigint) zählen
+               zugeordnete beziehungsweise aktivierte Zeitpläne.
+               NULL-Anzahlen gelten als 0; ein NULL-Zeitpunkt oder Cutoff
+               erfüllt den Fenstervergleich nicht.
+Ausgabe      : Genau eine Zeile mit FindingCode (varchar(100)) und
+               FindingSeverity (varchar(16)). In CASE-Reihenfolge: aktiver
+               Job mit Status 0 und Zeitpunkt >= Cutoff ergibt
+               LATEST_JOB_RUN_FAILED_IN_WINDOW/HIGH; aktive Jobs mit
+               Zeitplänen, aber ohne aktivierten Zeitplan ergeben
+               ALL_ATTACHED_SCHEDULES_DISABLED/MEDIUM; ohne Zeitplan
+               ENABLED_JOB_WITHOUT_SCHEDULE/INFO; sonst
+               JOB_STATE_INFORMATIONAL/INFO. @IsEnabled qualifiziert nur bei
+               exakt 1; andere Werte einschließlich NULL fallen weiter.
+Grenzen      : Nur der übergebene Zeitpunkt wird inklusiv mit dem Cutoff
+               verglichen. Es gibt keine implizite aktuelle Zeit, Zeitzonen-
+               umrechnung oder Verlaufsabfrage. Negative Anzahlen werden
+               nicht validiert. Die Funktion liest selbst keine Kataloge.
+Beispiel     : SELECT FindingCode, FindingSeverity
+                 FROM monitor.TVF_InterpretAgentJobState
+                      (1, 0, '2026-07-18T10:00:00',
+                       '2026-07-18T09:00:00', 0, 0);
+               Erwartet: LATEST_JOB_RUN_FAILED_IN_WINDOW / HIGH.
 Datenschutz  : Verarbeitet nur technische Status-, Zeit- und Anzahlwerte; keine
-               Jobschritte, Befehle oder Meldungstexte.
+               Jobschritte, Befehle oder Meldungstexte. Die Klassifikation
+               belegt weder eine tatsächliche Ausführung noch deren Erfolg.
 ===============================================================================
 */
 CREATE OR ALTER FUNCTION [monitor].[TVF_InterpretAgentJobState]
@@ -5430,6 +5473,21 @@ Stand        : 2026-07-18
 Typ          : Inline Table-valued Function
 Zweck        : Klassifiziert aggregierte Database-Mail-Status ohne
                Seiteneffekte.
+Eingaben     : @SentStatus (varchar(8)); NULL und alle Werte außerhalb
+               'failed', 'unsent' und 'retrying' fallen in die informative
+               Regel. Der Textvergleich folgt der Datenbankkollation und
+               garantiert keine Unterscheidung von Groß-/Kleinschreibung.
+Ausgabe      : Genau eine Zeile mit FindingCode (varchar(100)) und
+               FindingSeverity (varchar(16)). 'failed' ergibt
+               DATABASE_MAIL_FAILED_IN_WINDOW/HIGH; 'unsent' und 'retrying'
+               ergeben DATABASE_MAIL_PENDING_IN_WINDOW/MEDIUM; sonst
+               DATABASE_MAIL_STATUS_INFORMATIONAL/INFO.
+Beispiel     : SELECT FindingCode, FindingSeverity
+                 FROM monitor.TVF_InterpretDatabaseMailStatus('failed');
+               Erwartet: DATABASE_MAIL_FAILED_IN_WINDOW / HIGH.
+Grenzen      : Die Funktion klassifiziert nur den übergebenen Status; sie
+               liest weder Mail-Verlauf noch Kataloge und führt keinen Versand
+               aus. Das Ergebnis beweist weder Zustellung noch Fehlerursache.
 Datenschutz  : Verarbeitet ausschließlich den technischen Versandstatus; keine
                Adresse, Empfänger, Betreffzeile oder Nachricht.
 ===============================================================================
