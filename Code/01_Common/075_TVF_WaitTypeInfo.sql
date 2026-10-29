@@ -8,7 +8,7 @@ Zweck: Ordnet einen Wait Type dem persistenten Wait-Katalog zu und liefert
 
 Eingabe: @WaitType nvarchar(120) ist ein einzelner Wait-Type-Schlüssel.
          Der Gleichheitsvergleich ist keine Patternsuche; die Datenbankcollation gilt.
-         Ein Kataloggleicherheitstreffer liefert gespeicherte Werte und
+         Ein Katalogtreffer liefert gespeicherte Werte und
          CatalogMatchType = EXACT. Ohne Treffer ordnet eine Regel den Wert
          einer Wait Group zu und erzeugt generische Hinweise mit
          CatalogMatchType = FAMILY_FALLBACK. NULL bezeichnet KEIN_WAIT und
