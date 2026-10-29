@@ -4889,13 +4889,12 @@ und ist kein Sicherheitsmerkmal. Jede Zeile beschreibt eine Regel:
 
 Das Skript legt die Tabelle nur an, wenn sie fehlt. Eine bereits vorhandene
 Tabelle wird nicht migriert oder angepasst. Die Tabelle speichert dauerhaft
-Regelkonfiguration. Das Beispiel liest ausschließlich SQL-Server-
-Katalogmetadaten und erfasst keine Analysedaten:
+Regelkonfiguration. Das Beispiel liest die vorhandenen Regeln mit NOLOCK
+und erfasst keine Analysedaten:
 
-SELECT [c].[name], TYPE_NAME([c].[user_type_id]) AS [DataType]
-FROM [sys].[columns] AS [c]
-WHERE [c].[object_id] = OBJECT_ID(N'monitor.ToolBackgroundQueryPattern')
-ORDER BY [c].[column_id];
+SELECT [RuleCode], [Priority], [IsEnabled], [ProgramNameLikePattern]
+FROM [monitor].[ToolBackgroundQueryPattern] WITH (NOLOCK)
+ORDER BY [Priority] DESC, [RuleCode];
 
 
 ===============================================================================
