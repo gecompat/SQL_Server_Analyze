@@ -78,9 +78,12 @@ Inventarzeilen an den geprüften Main-Stand. @Hilfe bit=0 ist überall vorhanden
 Vorbereitungshelfer und der Snapshot-Konfigurationsbefehl haben andere
 Rückgabeverträge. Der JSON-Konstruktor behält @JsonErzeugen=1. Die API-Seite
 erläutert diese Rollen; der Audit belegt keine globale Laufzeitsemantik.
-Der aktuelle Änderungssatz ergänzt die Hilfe für USP_CurrentTransactions,
+PR #493 ergänzt die Hilfe für USP_CurrentTransactions,
 USP_CurrentMemoryGrants und USP_CurrentCursorAnalysis bei unveränderten
-Signaturen und unveränderter normaler Ausführungslogik.
+Signaturen und unveränderter normaler Ausführungslogik. Alle acht Head- und
+sieben Main-Prüfungen bestanden. Der nächste begrenzte DDL-Schritt erläutert
+TVF_WaitTypeInfo und TVF_WaitTypeSources unmittelbar in ihren Quellheadern;
+Funktionskörper und Signaturen bleiben unverändert.
 Die globale semantische Prüfung weiterer Hilfetexte und selbsterklärender
 Nichtprozedur-DDL bleibt offen. Parameternennungen und vorhandene Header
 belegen keine semantische Vollständigkeit.
