@@ -16594,16 +16594,41 @@ BEGIN
 
     IF @Hilfe = 1
     BEGIN
-        PRINT N'monitor.USP_CurrentIO';
-        PRINT N'Ohne Datenbankfilter werden alle sichtbaren, online befindlichen Benutzerdatenbanken verarbeitet.';
-        PRINT N'@DatabaseNames enthält eine exakte Liste; @DatabaseNamePattern ist eine alternative explizite Einschränkung.';
-        PRINT N'@SystemdatenbankenEinbeziehen=1 aktiviert Systemdatenbanken.';
-        PRINT N'@SampleSeconds=0 liefert kumulative Dateizähler und einen Pending-I/O-Snapshot; 1..60 liefert Datei-Deltas und zwei Pending-I/O-Beobachtungen.';
-        PRINT N'@PendingIoEinbeziehen=1 ergänzt aktuell ausstehende Datenbankdatei-I/Os; @NurWiederholtPending=1 benötigt ein Sample.';
-        PRINT N'@MinPendingIoMs filtert den informational/internal Pending-Zähler. Ein Einzelwert beweist keinen Storagefehler.';
-        PRINT N'@PhysischePfadeEinbeziehen=1 gibt Pfade nur im expliziten Detailresultset pendingIo frei.';
-        PRINT N'@ResultSetArt=CONSOLE|RAW|TABLE|NONE; TABLE verwendet moduleStatus, sourceStatus, files, pendingIo und warnings.';
-        PRINT N'USP_CurrentIO ist leichtgewichtig und benötigt keine High-Impact-Bestätigung.';
+        PRINT N'monitor.USP_CurrentIO — Datei-I/O-Sicht für sichtbare Online-Datenbanken.';
+        PRINT N'Quellen: master.sys.databases/master_files, sys.dm_io_virtual_file_stats (ein Aufruf je Messpunkt), optional dm_io_pending_io_requests sowie Scheduler-/Request-/Task-/Wait-Kontext. Der Datenbankfilter beschränkt behaltene Zeilen, nicht den instanzweiten DMV-Aufruf.';
+        PRINT N'Für den Aufruf gelten EXECUTE-Recht und die installierte STANDARD_CURRENT-Zugriffsrichtlinie; erforderliche DMV-Rechte hängen von SQL Server-Version und Konfiguration ab. Rechte werden nicht vergeben. Abgefangene Fehler stehen in Status/Quellstatus und können die Ausgabe partiell machen.';
+        PRINT N'@DatabaseNames nvarchar(max)=NULL: optionale exakte, bracket-aware Pipe-Liste einteiliger, case-sensitiver Datenbanknamen, z. B. N''[ExampleDb]|[AnotherDb]''. NULL, leer oder Leerzeichen bedeutet alle sichtbaren, online befindlichen Benutzerdatenbanken. Doppelte/ungültige Namen sind ungültig; Systemnamen benötigen das Opt-in. Exklusiv mit @DatabaseNamePattern.';
+        PRINT N'@SystemdatenbankenEinbeziehen bit=0: 0 schließt master, tempdb, model und msdb aus; 1 nimmt sichtbare, online befindliche Systemdatenbanken in den Scope auf. NULL ist ungültig.';
+        PRINT N'@DatabaseNamePattern nvarchar(4000)=NULL: alternative einzelne Einschränkung, exklusiv mit @DatabaseNames. LIKE-Standard oder like: nutzt SQL-LIKE-Wildcards %, _ und [...], case-sensitive; regex: ist case-sensitive, regexi: case-insensitive und benötigt SQL Server 2025 mit Compatibility Level 170 der Installationsdatenbank. Präfixerkennung ignoriert Großschreibung; Patterninhalt bleibt erhalten. Leeres Pattern ist ungültig.';
+        PRINT N'Bit-Parameter werden vor Eintritt in die Procedure in bit konvertiert; numerische Werte ungleich 0 werden dabei zu 1. Die beschriebenen NULL-Prüfungen gelten für den bereits konvertierten Wert.';
+        PRINT N'@HighImpactConfirmed bit=0: wird von dieser Procedure nicht gelesen oder an den Kandidatenhelfer weitergereicht. Der tatsächliche Pfad ist STANDARD_CURRENT; es gibt hier keine High-Impact-Bestätigungsprüfung, unabhängig vom Parameternamen.';
+        PRINT N'@MinLatencyMs decimal(19,3)=0: nichtnegative Mindest-Durchschnittslatenz je Datei in ms; filtert OverallLatencyMs aus kumulativen Zählern oder Sample-Deltas. Bei insgesamt 0 Lese- und Schreiboperationen ist die Latenz NULL und besteht den Filter nicht. NULL oder negative Werte sind ungültig.';
+        PRINT N'@SampleSeconds tinyint=0: 0 verwendet kumulative Datei-Counter seit Engine-/Dateizustand und einen punktuellen Pending-Snapshot; 1..60 verwendet WAITFOR DELAY mit der angegebenen Verzögerung zwischen zwei Dateimesspunkten und berechnet Deltas sowie zwei Pending-Beobachtungen; der tatsächliche Zeitabstand kann durch Ausführung und Scheduling abweichen. NULL ist ungültig. Bei 0 wird Pending-Before als einzelner Messpunkt kopiert (ObservationCount=1, WasPresentInFirstSample=1); erst im positiven Sample belegt ObservationCount=2 dieselbe Requestadresse an beiden Messpunkten. Counterreset/Neustart erhält keinen eigenen Resetstatus.';
+        PRINT N'@PendingIoEinbeziehen bit=1: 1 liest die optionale aktuelle Pending-I/O-Quelle und Schedulerkontext; 0 überspringt beide, die JSON-/TABLE-Pending-Menge bleibt leer. Quellenfehler lassen Dateiwerte bestehen und markieren Status/IsPartial entsprechend. NULL ist ungültig.';
+        PRINT N'@NurWiederholtPending bit=0: 1 zeigt nur Requestadressen, die im positiven Sample an beiden Messpunkten vorkommen; benötigt @SampleSeconds von 1 bis 60. Bei 0 genügt Sichtbarkeit am letzten Messpunkt. NULL ist ungültig.';
+        PRINT N'@MinPendingIoMs bigint=0: nichtnegative Untergrenze für PendingDurationMs aus dm_io_pending_io_requests (informational/internal Enginewert). Ein einzelner Wert beweist weder Storagefehler noch Ursache. NULL oder negative Werte sind ungültig.';
+        PRINT N'@PhysischePfadeEinbeziehen bit=0: 1 füllt pendingIo.PhysicalPath, sofern ein Datei-Pfad auflösbar ist; 0 unterdrückt dieses optionale Pfadfeld. files.PhysicalName wird unabhängig davon ausgegeben. NULL ist ungültig.';
+        PRINT N'@MaxZeilen int=1000: negatives Limit ist ungültig; NULL oder 0 bedeutet unbegrenzt. Positiv begrenzt Dateien und Pending-I/Os jeweils separat nach ihrer Sortierung; die Kandidatenauswahl berücksichtigt bis zu N+1 Zeilen. Es begrenzt nicht die DMV-Erhebung. CONSOLE hat zusätzlich ein gemeinsames TOP mit Pending vor Datei-I/O.';
+        PRINT N'@ResultSetArt varchar(16)=''CONSOLE'': nach Trim/UPPER CONSOLE, RAW, TABLE oder NONE. RAW enthält moduleStatus (13 Spalten), sourceStatus (10), files (19), pendingIo (20) und warnings (3); NONE unterdrückt Resultsets. CONSOLE ist ein gemeinsames 10-Spalten-Grid, kein vollständiger Ersatz für beide Detailmengen.';
+        PRINT N'@ResultTablesJson nvarchar(max)=NULL: nur für TABLE; JSON-Objekt ordnet eine nichtleere Teilmenge von moduleStatus, sourceStatus, files, pendingIo, warnings lokalen #Temp-Zielen zu. Jedes Ziel muss frisch, leer und mit genau einer Platzhalterspalte angelegt sein; unbracketed CREATE TABLE ist zulässig. Andere Modi akzeptieren nur NULL/leer. Ungültige Zuordnungen werfen 51011.';
+        PRINT N'@JsonErzeugen bit=0: 1 erzeugt zusätzlich das JSON-Dokument unabhängig von @ResultSetArt; NULL ist ungültig.';
+        PRINT N'@Json nvarchar(max)=NULL OUTPUT: wird zu Beginn geleert und bei @JsonErzeugen=1 mit meta, sourceStatus, files, pendingIo und warnings befüllt; bei NONE bleibt JSON per OUTPUT verfügbar. JSON enthält kein moduleStatus-Array.';
+        PRINT N'@PrintMeldungen bit=1: 1 sendet Status-/Quellhinweise mit Severity 10; 0 unterdrückt nur diese Meldungen, nicht Statusfelder, Resultsets, Warnings oder JSON. NULL ist ungültig.';
+        PRINT N'@Hilfe bit=0: 1 druckt diese Übersicht und kehrt vor Parameterprüfung, Snapshotprüfung und fachlichen Quellenzugriffen zurück; @Json wurde zu Beginn bereits auf NULL gesetzt.';
+        PRINT N'@ParentCurrentStateSnapshotId uniqueidentifier=NULL: NULL erhebt alle Kontextquellen direkt. Eine ID muss zur laufenden USP_CurrentOverview-Ausführung derselben Session (OwnerSessionId=@@SPID, ContractVersion=2) gehören, sonst INVALID_PARENT_SNAPSHOT. Bei gültiger ID und aktiviertem Pending-I/O stammen Scheduler-/Request-/Task-/Wait-Kontext und Startzeit aus dem Parent; Datei- und Pending-I/O-DMVs werden weiterhin live gelesen.';
+        PRINT N'Modulstatus AVAILABLE bedeutet verfügbare Quellen ohne Auswahlwarnungen; AVAILABLE_LIMITED kennzeichnet Auswahl- oder Pending-Kontextlücken. INVALID_PARAMETER und INVALID_PARENT_SNAPSHOT lehnen die Fachauswertung ab; Quellfehler werden als DENIED_PERMISSION, TIMEOUT oder ERROR_HANDLED ausgewiesen. Regex auf älteren Engines/Kompatibilitätsstufen liefert UNAVAILABLE_FEATURE.';
+        PRINT N'NULL-Werte in Parametern, die explizit validiert werden, führen zu INVALID_PARAMETER; @HighImpactConfirmed ist die Ausnahme, weil es ungenutzt bleibt. Fehlerhafte Datenbankauswahl liefert Status/Warnings; partielle Quellfehler sind in sourceStatus und IsPartial erkennbar. Ein leeres Resultset beweist nicht, dass keine I/O-Aktivität stattfand.';
+        PRINT N'Beispiel — CONSOLE im Standard-Datenbankscope:';
+        PRINT N'EXEC [monitor].[USP_CurrentIO] @SampleSeconds=5, @MaxZeilen=100, @ResultSetArt=''CONSOLE'';';
+        PRINT N'Beispiel — TABLE, nur files; Ziel vorab frisch anlegen, danach lesen und entfernen:';
+        PRINT N'CREATE TABLE #CurrentIO_HelpExample (Placeholder int NULL);';
+        PRINT N'EXEC [monitor].[USP_CurrentIO] @ResultSetArt=''TABLE'', @ResultTablesJson=N''{"files":"#CurrentIO_HelpExample"}'';';
+        PRINT N'SELECT * FROM #CurrentIO_HelpExample;';
+        PRINT N'DROP TABLE #CurrentIO_HelpExample;';
+        PRINT N'Beispiel — JSON ohne Resultsets; @Json bleibt als OUTPUT verfügbar:';
+        PRINT N'DECLARE @CurrentIO_HelpJson nvarchar(max);';
+        PRINT N'EXEC [monitor].[USP_CurrentIO] @ResultSetArt=''NONE'', @JsonErzeugen=1, @Json=@CurrentIO_HelpJson OUTPUT;';
+        PRINT N'SELECT @CurrentIO_HelpJson AS [CurrentIOJson];';
         RETURN;
     END;
 

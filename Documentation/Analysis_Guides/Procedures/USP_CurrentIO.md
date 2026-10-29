@@ -31,6 +31,8 @@ mit `@SystemdatenbankenEinbeziehen = 0` ausgeschlossen. Das Modul ist
 leichtgewichtig und verlangt keine High-Impact-Bestätigung.
 
 Alle `Example*`-Werte im Aufruf sind synthetisch.
+Ein Aufruf mit @Hilfe = 1 gibt die vollständigen Parameterverträge und kopierbare CONSOLE-, TABLE- und JSON-Beispiele aus, bevor die fachliche Verarbeitung beginnt.
+
 
 ## Resultsets und Leserichtung
 
