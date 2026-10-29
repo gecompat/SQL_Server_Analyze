@@ -4724,8 +4724,8 @@ Objekt       : monitor.TVF_StatementText
 Version      : 1.0.0
 Stand        : 2026-07-16
 Typ          : Inline Table-valued Function
-Zweck        : Schneidet ein Statement aus einem übergebenen nvarchar(max)-Batch
-               anhand der Request-Offsets aus und liefert elf transparente
+Zweck        : Die Funktion ermittelt den Statement-Ausschnitt eines übergebenen
+               nvarchar(max)-Batches anhand der Request-Offsets und liefert
                Offset-, Zeichen-, Zeilen-, Längen- und Textausgaben.
 Parameter    : @BatchText, @StatementStartOffsetBytes und
                @StatementEndOffsetBytes sind Pflichtparameter ohne Defaults.
