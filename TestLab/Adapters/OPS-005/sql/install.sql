@@ -4991,7 +4991,18 @@ GO
 -- END SOURCE: Code/01_Common/087d_TVF_ProjectUnicodeText.sql
 
 -- BEGIN SOURCE: Code/01_Common/087e_TVF_ClassifyErrorLogEvent.sql
-/* Reine Klassifizierung; liest und persistiert selbst keine Errorlogdaten. */
+/*
+Die Inline-TVF ordnet eine übergebene Errorlogmeldung genau einer Kategorie zu und liefert stets eine Zeile mit [Category]. Sie liest selbst keine Errorlogdaten und persistiert keine Ergebnisse. @ProductName bezeichnet das Produkt, @RuleCategory die zuvor ermittelte Regelkategorie und @MessageText den Meldungstext; alle drei Eingaben sind erforderlich.
+
+Die erste zutreffende CASE-Bedingung entscheidet: SQL_AGENT überschreibt zuerst alle anderen Hinweise; danach folgen die Fehler 823/824/825, lange I/O-Dauer, fehlgeschlagenes Backup/Restore, Cache-Flush, Autogrow, Stack Dump/Assertion, Login/Verbindung, Log Shipping und Replikation. Trifft nichts zu, wird @RuleCategory übernommen, bei NULL stattdessen UNCLASSIFIED. Ein leerer @RuleCategory wird nicht normalisiert. Die Ausgabe wird in varchar(80) konvertiert; längere Regelkategorien können dadurch abgeschnitten werden.
+
+Die Meldungsmuster verwenden eine explizite CI-Kollation; der Vergleich von @ProductName folgt der Datenbankkollation. Die englischen Teilzeichenfolgen sind Heuristiken, keine Lokalisierung und kein vollständiger Parser. NULL in den Eingaben erzeugt keinen zusätzlichen Fehlerzweig: nicht erfüllte Bedingungen fallen auf die Regelkategorie beziehungsweise UNCLASSIFIED zurück. Andere Produktnamen werden weiterhin anhand der Meldungsmuster klassifiziert und erreichen die Rückfallkategorie nur, wenn kein Muster passt.
+
+Beispiel mit synthetischen Eingaben:
+SELECT *
+FROM [monitor].[TVF_ClassifyErrorLogEvent]
+     ('SQL', 'CUSTOM_RULE', N'Autogrow completed');
+*/
 CREATE OR ALTER FUNCTION [monitor].[TVF_ClassifyErrorLogEvent]
 (
       @ProductName varchar(32)
