@@ -114,8 +114,12 @@ native SQL-Ausführung. PR #503 ergänzt die DDL-Header der vorhandenen
 Statusinterpretatoren für Agent-Alarmrouten, Agent-Jobs und Database Mail bei
 unveränderten Funktionskörpern. Alle erforderlichen Head- und Main-Prüfungen
 bestanden; eine native SQL-Ausführung war für den Kommentardiff nicht
-erforderlich. Der nächste begrenzte Schritt erklärt die beiden Zähler-
-interpretatoren für Performance- und Contention-Werte direkt im DDL.
+erforderlich. PR #504 erklärt die beiden Zählerinterpretatoren für
+Performance- und Contention-Werte direkt im DDL bei unveränderten
+Funktionskörpern. Alle erforderlichen Head- und Main-Prüfungen bestanden;
+eine native SQL-Ausführung war für den Kommentardiff nicht erforderlich.
+Der nächste begrenzte Schritt erklärt die vorhandenen Listenparser für
+SQL-Namen und allgemeine Textwerte direkt im DDL.
 Die globale semantische Prüfung weiterer Hilfetexte und selbsterklärender
 Nichtprozedur-DDL bleibt offen. Parameternennungen und vorhandene Header
 belegen keine semantische Vollständigkeit.

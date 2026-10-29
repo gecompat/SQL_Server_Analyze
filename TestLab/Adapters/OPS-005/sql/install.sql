@@ -3404,10 +3404,39 @@ Objekt       : monitor.TVF_ParseSqlNameList
 Version      : 1.0.0
 Stand        : 2026-07-15
 Typ          : Inline Table-valued Function
-Zweck        : Validiert eine bracket-aware Pipe-Liste aus einteiligen SQL-
-               Namen und liefert die entquoteten sysname-Werte.
-Beispiele    : SELECT * FROM monitor.TVF_ParseSqlNameList(
-                   N'[ColumnOne]|[Column With Spaces]|[Column|WithPipe]');
+Zweck        : Prüft die Namen einer bracket-aware Pipe-Liste anhand von
+               PARSENAME und liefert die in sysname konvertierten Namenswerte.
+Parameter    : @List nvarchar(max) besitzt keinen Default. NULL liefert keine
+               Zeile; N'' liefert eine ungültige Zeile mit EMPTY_LIST.
+Struktur     : | trennt nur außerhalb von [...]; innerhalb gehört es zum Wert.
+               ]] maskiert eine schließende Klammer. TVF_ParsePipeList entfernt
+               äußere Leerzeichen der Elemente und vergibt ItemOrdinal ab 1.
+               Leere Elemente bleiben als ungültige Zeilen erhalten; gleiche
+               Elemente werden nicht zusammengefasst. Ein Rohsegment mit mehr
+               als 4000 UTF-16-Codeeinheiten erhält ITEM_TOO_LONG und ItemText=NULL.
+Ausgabe      : ItemOrdinal und ItemText beschreiben die Eingabe. NameValue wird
+               auch bei ungültigen Zeilen aus PARSENAME(ItemText,1) berechnet.
+               IsValid, ErrorCode und ErrorMessage kennzeichnen die Prüfung;
+               ein nicht leeres NameValue ersetzt deshalb keine IsValid-Prüfung.
+Fehler       : EMPTY_LIST ist der Sonderfall der leeren Eingabe. Für Elemente
+               prüft der gemeinsame Parser zuerst ITEM_TOO_LONG, danach
+               EMPTY_ITEM und danach INVALID_BRACKET_SYNTAX. Seine Fehler
+               haben Vorrang vor der nachfolgenden Namensprüfung.
+               Für dort gültige Elemente prüft diese Funktion Teil 1 auf NULL
+               (INVALID_SQL_NAME), danach Teil 2 auf einen Wert
+               (MULTIPART_NAME_NOT_ALLOWED) und danach LEN(Teil 1)>128
+               (SQL_NAME_TOO_LONG). Für IsValid=1 muss Teil 1 ungleich NULL
+               und Teil 2 gleich NULL sein; LEN(Teil 1) darf höchstens 128 ergeben.
+Grenzen      : Teile 3 und 4 werden nicht gesondert geprüft. Dies ist keine
+               allgemeine SQL-Bezeichnervalidierung und keine Prüfung von
+               Katalogexistenz oder Berechtigungen. Fehlerhafte Zeilen werden
+               ausgegeben und nicht durch die Funktion als Fehler geworfen.
+               Eine physische Reihenfolge ist erst mit ORDER BY ItemOrdinal
+               zugesichert. Die Funktion liest keine Kataloge und speichert nichts.
+Beispiel     : Der folgende Aufruf verwendet synthetische Namen:
+               SELECT * FROM monitor.TVF_ParseSqlNameList(
+                   N'[ColumnOne]|[Column With Spaces]|[Column|WithPipe]')
+               ORDER BY ItemOrdinal;
 ===============================================================================
 */
 CREATE OR ALTER FUNCTION [monitor].[TVF_ParseSqlNameList]
@@ -4246,11 +4275,38 @@ Objekt       : monitor.TVF_ParseStringList
 Version      : 1.0.0
 Stand        : 2026-07-15
 Typ          : Inline Table-valued Function
-Zweck        : Liefert aus einer bracket-aware Pipe-Liste allgemeine Textwerte.
-               Ein Punkt besitzt hier keine Sonderbedeutung. Äußere Brackets
-               werden entfernt; ]] wird zu ].
-Beispiele    : SELECT * FROM monitor.TVF_ParseStringList(
-                   N'[Microsoft SQL Server Management Studio]|Sample.Loader');
+Zweck        : Liefert allgemeine Textwerte aus einer bracket-aware Pipe-Liste;
+               ein Punkt besitzt hier keine Bedeutung als Mehrteilname.
+Parameter    : @List nvarchar(max) besitzt keinen Default. NULL liefert keine
+               Zeile; N'' liefert eine ungültige Zeile mit EMPTY_LIST.
+Struktur     : | trennt nur außerhalb von [...]; innerhalb gehört es zum Wert.
+               ]] maskiert eine schließende Klammer. TVF_ParsePipeList entfernt
+               äußere Leerzeichen und vergibt ItemOrdinal ab 1. Leere Elemente
+               bleiben als ungültige Zeilen erhalten. Gleiche Werte werden
+               nicht zusammengefasst. Rohsegmente mit mehr als 4000 UTF-16-
+               Codeeinheiten erhalten ITEM_TOO_LONG und ItemText=NULL.
+Werte        : ItemText enthält die getrimmte Schreibweise. StringValue entfernt
+               bei bracket-quotierten Elementen die äußeren Klammern und ersetzt
+               ]] durch ]. Der Wert wird in nvarchar(4000) konvertiert und unter
+               SQL_Latin1_General_CP1_CS_AS zurückgegeben. Ein nach der Entquotung
+               leerer Wert ist ebenfalls ungültig.
+Ausgabe      : ItemOrdinal, ItemText, StringValue, IsValid, ErrorCode und
+               ErrorMessage beschreiben jedes Element. StringValue wird auch
+               für ungültige Elemente berechnet; Verbraucher müssen IsValid
+               prüfen und dürfen Gültigkeit nicht aus dem Wert allein ableiten.
+Fehler       : EMPTY_LIST ist der Sonderfall der leeren Eingabe. Bei Elementen
+               prüft der gemeinsame Parser zuerst ITEM_TOO_LONG, danach
+               EMPTY_ITEM und danach INVALID_BRACKET_SYNTAX. Diese Fehler
+               haben Vorrang; erst bei gültigem Parserergebnis kennzeichnet
+               diese Funktion einen leeren entquoteten Wert als EMPTY_VALUE.
+Grenzen      : Fehlerhafte Elemente bleiben als Ergebniszeilen erhalten und
+               werden nicht als Fehler geworfen. Eine physische Reihenfolge ist
+               erst mit ORDER BY ItemOrdinal zugesichert. Die Funktion prüft
+               keine Katalogexistenz und liest oder persistiert keine Fachdaten.
+Beispiel     : Der folgende Aufruf verwendet synthetische Textwerte:
+               SELECT * FROM monitor.TVF_ParseStringList(
+                   N'[Sample.Loader]|[Text with | delimiter]|[right]]bracket]')
+               ORDER BY ItemOrdinal;
 ===============================================================================
 */
 CREATE OR ALTER FUNCTION [monitor].[TVF_ParseStringList]
