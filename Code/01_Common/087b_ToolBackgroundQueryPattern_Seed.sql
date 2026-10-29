@@ -1,7 +1,17 @@
 USE [DeineDatenbank];
 GO
 
-/* Framework-Seed. Lokale Regeln mit IsFrameworkDefault=0 bleiben erhalten. */
+/* Framework-Seed. Lokale Regeln mit IsFrameworkDefault=0 bleiben erhalten.
+Der Seed aktualisiert nur vorhandene Zeilen mit passendem RuleCode und
+IsFrameworkDefault=1. IsEnabled bleibt dabei unverändert. Fehlt ein RuleCode,
+wird er mit IsEnabled=1 und IsFrameworkDefault=1 eingefügt. Eine lokale Zeile
+mit IsFrameworkDefault=0 bleibt auch bei RuleCode-Kollision unverändert; sie
+wird weder aktualisiert noch ersetzt. Nicht mehr im Seed enthaltene Regeln
+werden nicht gelöscht. LastVerifiedUtc wird bei einem Update auf die aktuelle
+UTC-Zeit gesetzt; das ist kein Nachweis einer Hersteller- oder sonstigen
+externen Prüfung. Die Seedwerte definieren den Konfigurationsvertrag dieses
+Skripts; der Kommentar behauptet keine aktuelle Gültigkeit externer Quellen.
+Die Tabelle und ihre Seedwerte bilden dauerhaft gespeicherte Konfiguration. */
 DECLARE @Seed TABLE
 (
       [RuleCode] varchar(64) NOT NULL

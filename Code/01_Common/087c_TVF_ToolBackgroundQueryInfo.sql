@@ -2,6 +2,34 @@ USE [DeineDatenbank];
 GO
 
 /*
+Die Inline-Tabellenfunktion ordnet einen einzelnen clientseitig gelieferten
+program_name-Wert anhand der lokalen Regeltabelle einer Diagnosekategorie zu.
+@ProgramName hat den Typ nvarchar(128) und keinen Default. Die Funktion liest
+nur monitor.ToolBackgroundQueryPattern mit NOLOCK; sie greift weder auf DMVs
+noch auf SQL-Text oder fremde Datenbanken zu und speichert selbst keine Daten.
+
+Das Ergebnis hat genau eine Zeile und fünf Spalten: IsToolBackgroundQuery
+(bit) sowie ToolBackgroundRuleCode, ToolBackgroundCategory,
+ToolBackgroundDetection und ToolBackgroundConfidence. Es gilt die aktivierte
+Regel mit der höchsten Priority; bei Gleichstand entscheidet RuleCode
+aufsteigend gemäß der vorhandenen Collation. Der Vergleich verwendet
+Latin1_General_100_CI_AS und SQL-LIKE-Semantik, einschließlich der
+Platzhalterzeichen %, _ und []. Bei keinem Treffer liefert die Funktion
+IsToolBackgroundQuery=0 und NULL für die vier Metadatenspalten. Ein leerer
+Eingabewert ist kein Sonderfall ohne Treffer und kann eine konfigurierte
+Wildcard-Regel erfüllen.
+
+Ein Treffer ist eine Heuristik ohne Sicherheitswirkung: program_name wird
+clientseitig gesetzt und kann vorgetäuscht werden. Ein Nichttreffer ohne
+Widerspruch autorisiert keine Schlussfolgerung. HIGH, MEDIUM und LOW sind
+Kennzeichnungen und keine Wahrscheinlichkeiten. Dieses synthetische Beispiel
+wertet den Beispielwert gegen die lokal konfigurierte Regelmenge aus und
+erfasst keine Analysedaten:
+
+SELECT *
+FROM [monitor].[TVF_ToolBackgroundQueryInfo](N'Beispielprogramm');
+
+
 ===============================================================================
 Objekt       : monitor.TVF_ToolBackgroundQueryInfo
 Version      : 1.1.0
