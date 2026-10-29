@@ -23,6 +23,8 @@ EXEC [monitor].[USP_CurrentOverview]
       @ResultSetArt = 'CONSOLE';
 ```
 
+Die Hilfe listet alle öffentlichen Parameter mit Typ, Default, Wirkung und synthetischen CONSOLE-, TABLE- und JSON-Aufrufen; vor dem Hilfezweig wird eine angeforderte TABLE-Zuordnung bereits geprüft.
+
 Der Default `@Detailgrad = 'SUMMARY'` liefert genau ein konsolidiertes
 Modul-Summary. `RELEVANT` ergänzt nicht leere diagnostisch relevante Details;
 `ALL` ergänzt alle nicht leeren aktivierten Childdetails. Aktivieren Sie Sampling

@@ -786,8 +786,8 @@ innerhalb eines Grids sind nicht geordnet zugesichert. TABLE `moduleStatus`
 besitzt acht Felder, JSON `moduleStatus` sieben ohne Modulordinal. JSON `meta`
 hat zehn Felder einschließlich Gesamtstatus, Partialität und Modulzählern.
 
-Die 17 TABLE-Namen umfassen Parentstatus und die bedingt materialisierten
-Childmengen einschließlich Requestkontext und Text. Gültige Zuordnungen werden
+Die 18 TABLE-Namen umfassen Parentstatus und die bedingt materialisierten
+Childmengen einschließlich Requestkontext, Text und `versionStore`. Gültige Zuordnungen werden
 vor Hilfe und semantischer Prüfung vorbereitet; fehlerhafte Zuordnungen werfen
 51011. Bei Parameterablehnung bleiben angeforderte Parentstatus-Schemata verfügbar
 und JSON `isPartial` ist true. Hilfe exportiert nichts. Deaktivierte primäre
