@@ -85,8 +85,12 @@ sieben Main-Prüfungen bestanden. PR #494 erläutert
 TVF_WaitTypeInfo und TVF_WaitTypeSources unmittelbar in ihren Quellheadern;
 Funktionskörper und Signaturen bleiben unverändert. Die erforderlichen Head-
 und Main-Prüfungen bestanden; die reine Kommentaränderung erforderte keine
-native SQL-Ausführung. Der folgende begrenzte Schritt ergänzt die Hilfen
+native SQL-Ausführung. PR #495 ergänzt die Hilfen
 für USP_CurrentBlocking und USP_CurrentWaits bei unveränderter normaler Logik.
+Alle acht Head- und sieben Main-Prüfungen einschließlich SQL-Server-2025-
+Laufzeitverträgen und Cleanup bestanden. Der nächste begrenzte Schritt
+ergänzt die Hilfe für USP_CurrentTempDB
+bei unveränderten Signaturen und unveränderter normaler Ausführungslogik.
 Die globale semantische Prüfung weiterer Hilfetexte und selbsterklärender
 Nichtprozedur-DDL bleibt offen. Parameternennungen und vorhandene Header
 belegen keine semantische Vollständigkeit.
