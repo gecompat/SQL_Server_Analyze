@@ -95,9 +95,12 @@ Main-Prüfungen bestanden; die Main-Laufzeitprüfung bestand im zweiten Versuch.
 Der erste Lauf scheiterte in Vertrag 192 mit Fehler 1222; ein Blocker wurde
 nicht erfasst, die Ursache bleibt ungeklärt. PR #497 ergänzt die Hilfe für USP_CurrentIO bei unveränderter Signatur und
 normaler SQL-Logik. Alle acht Head- und sieben Main-Prüfungen einschließlich
-SQL-Server-2025-Laufzeitverträgen und Cleanup bestanden. Der folgende
-begrenzte Schritt ergänzt die Hilfe für USP_CurrentLog; seine Signatur
-und normale SQL-Logik bleiben unverändert.
+SQL-Server-2025-Laufzeitverträgen und Cleanup bestanden. PR #498 ergänzt die Hilfe für USP_CurrentLog bei unveränderter Signatur
+und normaler SQL-Logik. Alle acht Head- und sieben Main-Prüfungen einschließlich
+Cleanup bestanden nach den begrenzten Nachprüfungen. Die früheren
+Laufzeitfehler 207 in Vertrag 122 und 1222 in USP_CurrentOverview bleiben
+mit ungeklärter Ursache dokumentiert. Der nächste begrenzte Schritt ergänzt
+die Hilfe für USP_CurrentSessions bei unveränderter Signatur und normaler SQL-Logik.
 Die globale semantische Prüfung weiterer Hilfetexte und selbsterklärender
 Nichtprozedur-DDL bleibt offen. Parameternennungen und vorhandene Header
 belegen keine semantische Vollständigkeit.
