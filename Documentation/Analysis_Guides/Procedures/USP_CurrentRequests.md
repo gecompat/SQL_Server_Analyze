@@ -1,7 +1,7 @@
 # [monitor].[USP_CurrentRequests]
 
 **Bereich:** Current State<br>
-**Zweck:** Ordnet aktuell laufende Requests nach Laufzeit, CPU, I/O, Wait, Blocking, Memory Grant und Ausführungskontext ein.<br>
+**Zweck:** Ordnet aktuell laufende Requests nach Laufzeit, CPU, I/O, Wait, Blocking, Memory Grant und Ausführungskontext ein.<br>`@Hilfe=1` erläutert den vollständigen Parametervertrag und zeigt kopierbare CONSOLE-, TABLE- und JSON-Aufrufe.<br>
 **Beobachtungsart:** flüchtige Instanz-Momentaufnahme<br>
 **Kostenklasse:** `LOW` bis `MEDIUM`
 
