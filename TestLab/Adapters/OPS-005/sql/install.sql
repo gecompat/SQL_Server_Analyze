@@ -2713,7 +2713,47 @@ GO
 -- END SOURCE: Code/01_Common/074f_WaitTypeCatalog_Source_Seed.sql
 
 -- BEGIN SOURCE: Code/01_Common/075_TVF_WaitTypeInfo.sql
-/* Kataloggestützte Wait-Taxonomie mit exaktem Lookup und regelbasiertem Fallback anhand der Wait Group. */
+/*
+Zweck: Ordnet einen Wait Type dem persistenten Wait-Katalog zu und liefert
+       beschreibende und analytische Hinweise. Die Funktion misst keine Waits
+       und bewertet keine aktuelle Workload.
+
+Eingabe: @WaitType nvarchar(120) ist ein einzelner Wait-Type-Schlüssel.
+         Der Gleichheitsvergleich ist keine Patternsuche; die Datenbankcollation gilt.
+         Ein Kataloggleicherheitstreffer liefert gespeicherte Werte und
+         CatalogMatchType = EXACT. Ohne Treffer ordnet eine Regel den Wert
+         einer Wait Group zu und erzeugt generische Hinweise mit
+         CatalogMatchType = FAMILY_FALLBACK. NULL bezeichnet KEIN_WAIT und
+         erhält ebenfalls den Regel-Fallback. Nicht katalogisierte Werte werden
+         anhand der Familienregeln zugeordnet; erst ohne passende Regel
+         entsteht OTHER_OR_NEW. Die Regeln sind keine Katalogeinträge und
+         belegen weder die Existenz noch die Ursache eines Waits.
+
+Ausgabe: WaitType, WaitGroup, Severity und IsGenerallyBenign beschreiben die
+         Taxonomie. Meaning, TypicalOccurrence, HighWaitImpact und
+         RecommendedChecks enthalten allgemeine Hinweise. DefaultAssessment,
+         AssessmentBasis, CommonCauses, PerformanceImpact, Mitigation,
+         CounterEvidence, RelatedWaitTypes, MeasurementGuidance und
+         AnalysisConfidence liefern die zugehörigen Analysefelder. HelpUrl,
+         DescriptionSource, DescriptionQuality und SourceReference kennzeichnen
+         Beschreibung und Herkunft; SourceCount zählt passende Quellzeilen.
+         InterpretationScope und CatalogMatchType grenzen den Treffer ein.
+
+Abhängigkeit und Aussagegrenze: Der Katalogtreffer stammt aus
+         [monitor].[WaitTypeCatalog]. Der Fallback wird aus dem Wait-Type-Text
+         abgeleitet und kann nur allgemeine Gruppenhinweise liefern. Ein
+         Katalogtreffer ist keine Messung. Die NOLOCK-Lesevorgänge können
+         uncommittierte oder inkonsistente Zwischenstände sehen; SourceCount
+         ist daher ebenfalls nur ein momentaner Kataloghinweis. Für eine
+         Leistungsbewertung sind aktive Tasks, Ressource, zeitliches Delta und
+         Workloadwirkung separat zu prüfen. Die Funktion führt keine Messung,
+         externe Abfrage oder Netzwerkabruf aus; HelpUrl ist nur ein Wert.
+
+Beispiele:
+SELECT * FROM [monitor].[TVF_WaitTypeInfo](N'LCK_M_S');
+SELECT * FROM [monitor].[TVF_WaitTypeInfo](N'CUSTOM_OR_NEW_WAIT');
+SELECT * FROM [monitor].[TVF_WaitTypeInfo](NULL);
+*/
 CREATE OR ALTER FUNCTION [monitor].[TVF_WaitTypeInfo](@WaitType nvarchar(120))
 RETURNS TABLE
 AS
@@ -2856,8 +2896,44 @@ GO
 -- END SOURCE: Code/01_Common/075_TVF_WaitTypeInfo.sql
 
 -- BEGIN SOURCE: Code/01_Common/075a_TVF_WaitTypeSources.sql
-/* Quellen und Aussagezweck eines Wait Types. Unbekannte Waits erhalten einen
-   transparenten generischen Quellenfallback, aber keine erfundene Detailquelle. */
+/*
+Zweck: Gibt Quellenbelege und deren vorgesehenen Aussagebereich für einen
+       einzelnen Wait Type zurück. Die Funktion ruft die angegebenen URLs
+       nicht ab und prüft weder Erreichbarkeit noch aktuellen Inhalt.
+
+Eingabe: @WaitType nvarchar(120) ist ein einzelner Schlüssel. Für einen
+         exakten Treffer in [monitor].[WaitTypeCatalogSource] werden die
+         gespeicherten Quellenzeilen mit CatalogMatchType = EXACT geliefert.
+         Gibt es keine passende Quellenzeile, erzeugt die Funktion für einen
+         Nicht-NULL-Wert drei generische Hinweise (Definition, Messmethodik,
+         Spezialistenreferenz) mit CatalogMatchType = GENERIC_FALLBACK und
+         LastVerifiedUtc = NULL. Diese generischen Einträge sind keine
+         wait-spezifisch verifizierten Quellen. Für NULL gibt es weder einen
+         exakten Treffer noch generische Fallbackzeilen.
+
+Ausgabe: WaitType und SourceOrdinal ordnen die Zeile; SourceType, Publisher,
+         SourceTitle und SourceUrl beschreiben den Quellenverweis.
+         SupportsFields benennt die vorgesehenen Felder, EvidenceLevel die
+         Quellenklasse und SourceNotes den begrenzten Aussagezweck.
+         CatalogMatchType unterscheidet gespeicherte von generischen Zeilen;
+         LastVerifiedUtc stammt nur aus dem Katalog und ist beim generischen
+         Fallback NULL.
+
+Abhängigkeit und Aussagegrenze: Exakte Zeilen kommen aus
+         [monitor].[WaitTypeCatalogSource]. Fehlt eine solche Zeile, wird der
+         Fallback unabhängig von einem Eintrag in [monitor].[WaitTypeCatalog]
+         erzeugt. Daher bedeutet ein Quellenfallback nicht, dass der Wait Type
+         unbekannt ist; umgekehrt belegt ein exakter Quellenzeileneintrag nicht
+         die Richtigkeit oder Aktualität des verlinkten Inhalts. Die NOLOCK-
+         Lesevorgänge können uncommittete oder inkonsistente Katalogstände
+         erfassen. Die Funktion misst keine Laufzeitwerte und lädt keine Seiten
+         aus dem Netzwerk.
+
+Beispiele:
+SELECT * FROM [monitor].[TVF_WaitTypeSources](N'LCK_M_S');
+SELECT * FROM [monitor].[TVF_WaitTypeSources](N'CUSTOM_OR_NEW_WAIT');
+SELECT * FROM [monitor].[TVF_WaitTypeSources](NULL);
+*/
 CREATE OR ALTER FUNCTION [monitor].[TVF_WaitTypeSources]
 (
  @WaitType nvarchar(120)
