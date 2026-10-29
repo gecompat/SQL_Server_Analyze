@@ -3481,12 +3481,42 @@ Objekt       : monitor.TVF_ParseFullObjectNameList
 Version      : 1.0.0
 Stand        : 2026-07-15
 Typ          : Inline Table-valued Function
-Zweck        : Validiert eine bracket-aware Pipe-Liste aus ein-, zwei- oder
-               dreiteiligen Objektbezügen: Objekt, Schema.Objekt oder
-               Datenbank.Schema.Objekt. Vierteilige Linked-Server-Namen werden
-               bewusst nicht unterstützt.
-Beispiele    : SELECT * FROM monitor.TVF_ParseFullObjectNameList(
-                   N'[DeineDatenbank].dbo.[IrgendeinObjekt]|und.noch.eines');
+Zweck        : Zerlegt eine Pipe-Liste und prüft ein-, zwei- oder dreiteilige
+               Objektbezüge: Objekt, Schema.Objekt oder Datenbank.Schema.Objekt.
+               Vierteilige Bezüge mit Linked Server werden abgewiesen.
+Parameter    : @List ist eine nvarchar(max)-Liste ohne Standardwert. NULL liefert
+               keine Zeilen. N'' liefert eine ungültige Zeile mit EMPTY_LIST;
+               eine reine Leerzeichenfolge ergibt nach dem Trimmen EMPTY_ITEM.
+Struktur     : Pipe trennt nur außerhalb von [...]; innerhalb ist sie Teil des
+               Werts. ]] maskiert eine schließende Klammer. Äußere Leerzeichen
+               werden entfernt; Rohsegmente über 4000 UTF-16-Codeeinheiten
+               erhalten ITEM_TOO_LONG und ItemText=NULL.
+Resultset    : ItemOrdinal, ItemText, DatabaseName, SchemaName, ObjectName,
+               PartCount, IsValid, ErrorCode und ErrorMessage. Die drei
+               Namensfelder enthalten die von PARSENAME entquoteten Bestandteile
+               als sysname. PartCount ist 3 bei vorhandenem Teil 3, sonst 2 bei
+               Teil 2, sonst 1 bei Teil 1 und sonst 0; Teil 4 wird dabei nicht
+               gezählt. Dieser Wert wird unabhängig von IsValid berechnet.
+               Ungültige Listenelemente behalten ihre Fehlerangaben; vorhandene
+               Namenswerte oder PartCount beweisen allein keine Gültigkeit.
+               Duplikate bleiben erhalten. Die physische Reihenfolge erfordert
+               ORDER BY ItemOrdinal.
+Prüfung      : Die Funktion löst keinen nicht angegebenen Datenbank- oder
+               Schemanamen auf und prüft weder Existenz noch Berechtigungen.
+               Sie beansprucht keine allgemeine SQL-Syntaxvalidierung.
+Fehlerfolge  : Fehler der Listenzerlegung werden übernommen. Bei leerer Eingabe
+               gilt EMPTY_LIST als Sonderfall. Für Elementfehler gilt danach
+               ITEM_TOO_LONG vor EMPTY_ITEM vor INVALID_BRACKET_SYNTAX. Bei
+               gültiger Listenstruktur folgen INVALID_OBJECT_REFERENCE bei
+               fehlendem Objektteil, FOUR_PART_NAME_NOT_ALLOWED bei vorhandenem
+               Teil 4 und SCHEMA_NAME_REQUIRED bei Teil 3 ohne Teil 2. Die letzte
+               CASE-Regel SQL_NAME_TOO_LONG prüft die Länge geparster Teile.
+               PARSENAME liefert für überlange Bestandteile bereits NULL; daher
+               ist für eine Längenverletzung kein bestimmter Fehlercode
+               zugesichert und eine frühere Regel kann greifen.
+Beispiel     : SELECT * FROM monitor.TVF_ParseFullObjectNameList(
+                   N'[DeineDatenbank].dbo.[IrgendeinObjekt]|dbo.AnderesObjekt')
+               ORDER BY ItemOrdinal;
 ===============================================================================
 */
 CREATE OR ALTER FUNCTION [monitor].[TVF_ParseFullObjectNameList]
@@ -4227,14 +4257,37 @@ Objekt       : monitor.TVF_ParseBigintList
 Version      : 1.1.0
 Stand        : 2026-07-18
 Typ          : Inline Table-valued Function
-Zweck        : Validiert eine mit Pipe, Beistrich oder Strichpunkt getrennte
-               Liste ganzzahliger bigint-Werte. Die Trennzeichen dürfen gemischt
-               verwendet werden. Diese Funktion ist für Session-, Query-,
-               Index- und andere numerische ID-Listen vorgesehen und verwendet
-               bewusst keinen Identifier-Parser.
-SQL-Version  : SQL Server 2019 oder neuer.
-Beispiele    : SELECT * FROM monitor.TVF_ParseBigintList(N'57|61');
-               SELECT * FROM monitor.TVF_ParseBigintList(N'57, 61;72');
+Zweck        : Zerlegt eine Liste ganzzahliger bigint-Werte. Pipe, Beistrich
+               und Strichpunkt sind gleichwertige Trennzeichen und dürfen
+               gemischt auftreten.
+Parameter    : @List ist eine nvarchar(max)-Liste ohne Standardwert. NULL liefert
+               keine Zeilen. N'' liefert eine ungültige Zeile mit EMPTY_LIST;
+               eine reine Leerzeichenfolge ergibt nach dem Trimmen EMPTY_ITEM.
+Struktur     : Pipe trennt nur außerhalb von [...]; innerhalb ist sie Teil des
+               Werts. ]] maskiert eine schließende Klammer. Äußere Leerzeichen
+               werden entfernt; Rohsegmente über 4000 UTF-16-Codeeinheiten
+               erhalten ITEM_TOO_LONG und ItemText=NULL.
+Resultset    : ItemOrdinal, ItemText, NumberValue, IsValid, ErrorCode und
+               ErrorMessage. Die Listenzerlegung erhält Reihenfolge und
+               Duplikate; ungültige Elemente bleiben als Zeilen erhalten.
+Prüfung      : Alle Beistriche und Strichpunkte werden vor der bracket-aware
+               Pipe-Zerlegung in Pipe-Zeichen umgewandelt, auch innerhalb
+               eckiger Klammern. NumberValue entsteht durch TRY_CONVERT(bigint)
+               auf dem an den Rändern getrimmten ItemText. Der Text wird dabei
+               nicht entquotet. Es gibt weder einen zusätzlichen ID-Bereichs-
+               filter noch eine Deduplizierung. NULL in NumberValue kann bei
+               IsValid=0 durch INVALID_BIGINT entstehen; aus einem nicht-NULL-
+               Zahlenwert allein folgt keine gültige Zeile.
+Fehlerfolge  : EMPTY_LIST ist der Sonderfall der leeren Eingabe. Für Elemente
+               gilt ITEM_TOO_LONG vor EMPTY_ITEM vor INVALID_BRACKET_SYNTAX.
+               Erst bei gültiger Listenstruktur kennzeichnet eine gescheiterte
+               bigint-Konvertierung das Element als INVALID_BIGINT.
+Hinweis      : Negative konvertierbare Werte können gültig sein; ein zulässiger
+               ID-Bereich wird erst beim Verbraucher geprüft. NULL in NumberValue
+               ist kein gültiger Zahlenwert. Eine physische Reihenfolge ist nur
+               mit ORDER BY ItemOrdinal zugesichert.
+Beispiel     : SELECT * FROM monitor.TVF_ParseBigintList(N'57|61, -2;57')
+               ORDER BY ItemOrdinal;
 Aenderungen  : 1.1.0 - Beistrich und Strichpunkt als weitere Trennzeichen.
 ===============================================================================
 */
