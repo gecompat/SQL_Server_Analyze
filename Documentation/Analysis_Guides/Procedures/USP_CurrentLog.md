@@ -7,6 +7,8 @@
 
 ## Entscheidungsfrage und Einsatz
 
+Die vollständige Hilfe (@Hilfe = 1) beschreibt alle 14 Parameter mit Typ, Default und tatsächlicher Wirkung und druckt getrennte, kopierbare CONSOLE-, TABLE- und JSON-Beispiele samt Scope-, Berechtigungs-, Status- und Partialitätsgrenzen aus.
+
 Die Procedure beantwortet die Betriebsfrage: **Wie voll ist das Transaktionslog, warum kann es nicht wiederverwendet werden und welches Risiko entsteht?** Sie unterstützt die Entscheidung, ob das aktuelle Symptom im Erfassungsmoment sichtbar ist und welcher engere Live-, Verlaufs- oder Planpfad als Nächstes sinnvoll ist.
 
 ## Nicht beantwortete Fragen

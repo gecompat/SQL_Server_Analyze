@@ -85,13 +85,36 @@ BEGIN
 
     IF @Hilfe = 1
     BEGIN
-        PRINT N'monitor.USP_CurrentLog';
-        PRINT N'@DatabaseNames=N''[Db1]|[Db2]''; NULL=alle zulässigen Datenbanken; N'''' bedeutet keine Einschränkung.';
-        PRINT N'@DatabaseNamePattern: ein Pattern mit like:, regex: oder regexi:; exklusiv zu @DatabaseNames.';
-        PRINT N'Die Datenbankauswahl wird nicht vorab begrenzt.';
-        PRINT N'@MaxZeilen: positiv begrenzt; NULL/0=unbegrenzt; negativ=INVALID_PARAMETER.';
-        PRINT N'@ResultSetArt=CONSOLE (Default)|RAW|TABLE|NONE (case-insensitiv); @JsonErzeugen=1 erzeugt @Json OUTPUT.';
-        PRINT N'@MitVlfInformationen=1 erfordert LOG_VLF_DEEP.';
+        PRINT N'monitor.USP_CurrentLog – Hilfe; Ausgabe ausschließlich über PRINT, ohne fachliche Abfragen.';
+        PRINT N'Zweck: aktueller Transaktionslogplatz, Wiederverwendungsgrund und Logstatistik je ausgewählter Datenbank; optionale VLF-Zählung und PVS-Größe. Keine Verlaufs- oder Ursachenanalyse.';
+        PRINT N'Quellen: master.sys.databases, sys.dm_db_log_space_usage und sys.dm_db_log_stats; optional sys.dm_db_log_info und sys.dm_tran_persistent_version_store_stats. SQL Server 2019 oder neuer.';
+        PRINT N'Scope: sichtbare, zugreifbare, ONLINE befindliche Datenbanken. Ohne Einschränkung alle zulässigen Benutzerdatenbanken; Systemdatenbanken nur mit Opt-in. Die Kandidatenwahl hat keine Vorabbegrenzung.';
+        PRINT N'@DatabaseNames nvarchar(max) = NULL: bracket-aware Pipe-Liste exakter Datenbanknamen, z. B. N''[DbA]|[DbB]''. NULL, leer oder nur Leerzeichen heißt keine Einschränkung. Liste und Pattern sind exklusiv; doppelte Namen sind ungültig; Namen werden case-sensitive verglichen. Nicht verfügbare explizite Namen erscheinen als Auswahlwarning.';
+        PRINT N'@SystemdatenbankenEinbeziehen bit = 0: 0 schließt master, tempdb, model und msdb aus; 1 erlaubt sie. NULL wird vom Auswahlhelfer als INVALID_PARAMETER gemeldet.';
+        PRINT N'@DatabaseNamePattern nvarchar(4000) = NULL: optional exklusiv zur exakten Liste. Ohne Präfix oder mit like: gilt SQL-LIKE (%, _ und Zeichenklassen in []), case-sensitive mit SQL_Latin1_General_CP1_CS_AS. regex: ist case-sensitive; regexi: case-insensitive. Präfixerkennung ist case-insensitive, äußere Leerzeichen werden entfernt; der Patterninhalt bleibt erhalten. Leeres Muster/Präfix ist ungültig. Regex erfordert SQL Server 2025 und Compatibility Level 170 der Installationsdatenbank.';
+        PRINT N'@HighImpactConfirmed bit = 0: 0 bestätigt nicht; 1 bestätigt den angeforderten High-Impact-Pfad. Die Auswahl prüft STANDARD_CURRENT; @MitVlfInformationen=1 prüft zusätzlich LOG_VLF_DEEP. Nur wenn die jeweilige aktivierte Klasse ein Gruppengate verlangt, sind Bestätigung und aktuelle Gruppenfreigabe erforderlich. Bestätigung erteilt keine Gruppenfreigabe. NULL wird bei der Pfadprüfung als INVALID_PARAMETER behandelt.';
+        PRINT N'@MinUsedPercent decimal(5,2) = NULL: optionaler Schwellenwert 0 bis 100; Werte darunter werden nach der Erfassung entfernt. NULL deaktiviert den Filter. NULL-UsedLogPercent wird beim aktiven Filter wie -1 behandelt und damit auch bei Schwelle 0 entfernt; NULL bedeutet unbekannt/nicht verfügbar, nicht 0 %.';
+        PRINT N'@MitVlfInformationen bit = 0: 1 aktiviert nach Freigabe von LOG_VLF_DEEP je Datenbank COUNT_BIG(*) aus dm_db_log_info; ergänzt TotalVlfCount nur, wenn dm_db_log_stats keinen Gesamtwert liefert. 0 oder NULL deaktiviert die Abfrage und ergibt VlfStatus SKIPPED.';
+        PRINT N'@MitPersistentVersionStore bit = 0: 1 liest und aggregiert die PVS-KB aus sys.dm_tran_persistent_version_store_stats für ausgewählte Datenbanken mit ADR. Bei ADR aus: PvsStatus NOT_APPLICABLE; ohne Opt-in: SKIPPED. NULL aktiviert die Abfrage nicht und lässt PvsStatus PENDING.';
+        PRINT N'@MaxZeilen int = 1000: negatives Limit ist INVALID_PARAMETER; NULL oder 0 unbegrenzt; positiv begrenzt die nach Erfassung und Prozentfilter sortierte Ausgabe auf UsedLogPercent DESC, DatabaseName. Das Limit reduziert weder Kandidatenauswahl noch vorherige DMV-/VLF-/PVS-Arbeit. RAW/JSON sortieren; TABLE/CONSOLE besitzen keine Zeilenordnungszusage.';
+        PRINT N'@ResultSetArt varchar(16) = ''CONSOLE'': nach Trim und Großschreibung case-insensitive RAW, CONSOLE, TABLE oder NONE. RAW liefert Status, Logs, Teilquellenfehler; CONSOLE eine Statuszeile, Logzeilen und Warnungen. TABLE schreibt nur logs über @ResultTablesJson. NONE unterdrückt fachliche Resultsets. Ein nichtleeres @ResultTablesJson ist nur mit TABLE zulässig (sonst Fehler 51011).';
+        PRINT N'@ResultTablesJson nvarchar(max) = NULL: TABLE-Zuordnung als JSON-Objekt, genau mit dem erlaubten Namen logs und einem vorhandenen, leeren lokalen #Temp-Ziel mit einer Seed-Spalte; Beispiel unten. Für andere Ausgabearten NULL/leer lassen.';
+        PRINT N'@JsonErzeugen bit = 0: 1 setzt @Json als JSON-Envelope mit meta, logs, databaseStatus und warnings; keine zusätzlichen JSON-Resultsets. 0 oder NULL erzeugt kein JSON; @Json ist beim Eintritt zunächst NULL.';
+        PRINT N'@Json nvarchar(max) = NULL OUTPUT: Ausgabeparameter für das JSON-Envelope, wird beim Eintritt auf NULL gesetzt und bei @JsonErzeugen=1 befüllt.';
+        PRINT N'@PrintMeldungen bit = 1: bei Endstatus ungleich AVAILABLE gibt eine Severity-10-Warnung mit NOWAIT aus. 0 oder NULL unterdrückt diese Meldung; beeinflusst Resultsets/JSON nicht.';
+        PRINT N'@Hilfe bit = 0: 1 gibt diese PRINT-Hilfe aus und kehrt vor fachlicher Verarbeitung zurück; 0 oder NULL führt den normalen Pfad aus. Bei bit-Parametern konvertiert SQL Server numerische Eingaben vor Eintritt in bit; Werte ungleich 0 werden dabei zu 1.';
+        PRINT N'Berechtigung: Sichtbarkeit, HAS_DBACCESS und die installierte Zugriffsrichtlinie begrenzen die Kandidaten. Für dm_db_log_space_usage und dm_db_log_stats gilt auf SQL Server 2019 VIEW SERVER STATE, ab 2022 VIEW SERVER PERFORMANCE STATE auf Serverebene. dm_db_log_info verlangt ab 2022 VIEW DATABASE PERFORMANCE STATE in der Quelldatenbank. PVS-Rechte sind separat versionsbezogen zu prüfen; requiredPermission ist ein Hinweis und keine Zusage, dass damit jede Teilquelle zugänglich ist. Quellfehler und Timeout 1222 werden erfasst, soweit deren TRY/CATCH greift.';
+        PRINT N'Werte und Partialität: SpaceStatus, StatsStatus, VlfStatus und PvsStatus zeigen Teilquellenstatus. NULL ist kein gemessener Nullwert. Datenbankfehler brechen andere Datenbanken nicht ab; Fehler oder Auswahlwarnings ergeben PARTIAL_RESULT bei verbleibenden Zeilen, sonst ERROR_HANDLED. Frühe Auswahl-/Parameterfehler behalten ihren Fehlerstatus. JSON meta enthält statusCode, isPartial, requestedMaxRows, returnedRows, resultLimited/hasMoreRows, requiredPermission, errorNumber/errorMessage und detail; databaseStatus enthält Teilquellenfehler, warnings die Auswahlwarnings. Die Meta-Fehlerfelder können bei abgefangenen Datenbankfehlern NULL sein; deren konkrete Details stehen dann in databaseStatus.';
+        PRINT N'Beispiel CONSOLE (kopierbarer Aufruf; Standard-Scope):';
+        PRINT N'EXEC [monitor].[USP_CurrentLog] @ResultSetArt = ''CONSOLE'';';
+        PRINT N'Beispiel TABLE (PRINT-Zeilen separat kopieren und in derselben Session ausführen):';
+        PRINT N'CREATE TABLE #CurrentLog_HelpExample (Seed int NULL);';
+        PRINT N'EXEC [monitor].[USP_CurrentLog] @ResultSetArt = ''TABLE'', @ResultTablesJson = N''{"logs":"#CurrentLog_HelpExample"}'';';
+        PRINT N'SELECT * FROM #CurrentLog_HelpExample; DROP TABLE #CurrentLog_HelpExample;';
+        PRINT N'Beispiel JSON (kopierbarer Batch; Standard-Scope):';
+        PRINT N'DECLARE @CurrentLogJson nvarchar(max);';
+        PRINT N'EXEC [monitor].[USP_CurrentLog] @ResultSetArt = ''NONE'', @JsonErzeugen = 1, @Json = @CurrentLogJson OUTPUT;';
+        PRINT N'SELECT @CurrentLogJson AS [Json];';
         RETURN;
     END;
 
