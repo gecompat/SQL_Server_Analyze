@@ -61,7 +61,7 @@ BEGIN
         PRINT N'CONSOLE-Beispiel:';
    PRINT N'EXEC [monitor].[USP_CurrentTransactions] @ResultSetArt=''CONSOLE'';';
         PRINT N'TABLE-Beispiel:';
-   PRINT N'DECLARE @Tables nvarchar(max)=N''{"transactions":"#CurrentTransactions_HelpExample"}''; CREATE TABLE [#CurrentTransactions_HelpExample]([Placeholder] int); EXEC [monitor].[USP_CurrentTransactions] @ResultSetArt=''TABLE'',@ResultTablesJson=@Tables; SELECT * FROM [#CurrentTransactions_HelpExample]; DROP TABLE [#CurrentTransactions_HelpExample];';
+   PRINT N'DECLARE @Tables nvarchar(max)=N''{"transactions":"#CurrentTransactions_HelpExample"}''; CREATE TABLE #CurrentTransactions_HelpExample([Placeholder] int); EXEC [monitor].[USP_CurrentTransactions] @ResultSetArt=''TABLE'',@ResultTablesJson=@Tables; SELECT * FROM [#CurrentTransactions_HelpExample]; DROP TABLE [#CurrentTransactions_HelpExample];';
         PRINT N'JSON-Beispiel:';
    PRINT N'DECLARE @J nvarchar(max); EXEC [monitor].[USP_CurrentTransactions] @ResultSetArt=''NONE'',@JsonErzeugen=1,@Json=@J OUTPUT; SELECT @J AS [Json];';
    PRINT N'Das Envelope enthält meta, transactions und warnings.';

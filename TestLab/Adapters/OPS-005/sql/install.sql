@@ -13911,7 +13911,7 @@ BEGIN
         PRINT N'CONSOLE-Beispiel:';
    PRINT N'EXEC [monitor].[USP_CurrentTransactions] @ResultSetArt=''CONSOLE'';';
         PRINT N'TABLE-Beispiel:';
-   PRINT N'DECLARE @Tables nvarchar(max)=N''{"transactions":"#CurrentTransactions_HelpExample"}''; CREATE TABLE [#CurrentTransactions_HelpExample]([Placeholder] int); EXEC [monitor].[USP_CurrentTransactions] @ResultSetArt=''TABLE'',@ResultTablesJson=@Tables; SELECT * FROM [#CurrentTransactions_HelpExample]; DROP TABLE [#CurrentTransactions_HelpExample];';
+   PRINT N'DECLARE @Tables nvarchar(max)=N''{"transactions":"#CurrentTransactions_HelpExample"}''; CREATE TABLE #CurrentTransactions_HelpExample([Placeholder] int); EXEC [monitor].[USP_CurrentTransactions] @ResultSetArt=''TABLE'',@ResultTablesJson=@Tables; SELECT * FROM [#CurrentTransactions_HelpExample]; DROP TABLE [#CurrentTransactions_HelpExample];';
         PRINT N'JSON-Beispiel:';
    PRINT N'DECLARE @J nvarchar(max); EXEC [monitor].[USP_CurrentTransactions] @ResultSetArt=''NONE'',@JsonErzeugen=1,@Json=@J OUTPUT; SELECT @J AS [Json];';
    PRINT N'Das Envelope enthält meta, transactions und warnings.';
@@ -14451,7 +14451,7 @@ BEGIN
         PRINT N'@AktuelleSessionEinbeziehen bit=0 schließt die aufrufende Session aus; 1 erlaubt ihre Einbeziehung. @NurWartende bit=0 lässt gewährte und wartende Grants zu; 1 beschränkt auf Anforderungen ohne grant_time.';
         PRINT N'@MinRequestedMb decimal(19,2)=NULL setzt keine Untergrenze für angeforderte MB. Ein nichtnegativer Wert filtert auf mindestens diesen angeforderten Speicher. @MinGrantedMb decimal(19,2)=NULL setzt keine Untergrenze für gewährte MB; ein Wert filtert entsprechend auf granted_memory.';
         PRINT N'Beide MB-Untergrenzen wirken gemeinsam, wenn sie gesetzt sind. Negative Werte sind ungültig; NULL wird bei der Prüfung wie keine Untergrenze behandelt.';
-        PRINT N'@MitSqlText bit=1 fordert aktuellen Statementtext an; 0 lässt die Textquelle aus. @MaxSqlTextZeichen int=3000 begrenzt positiven Grenzwert auf Zeichen und ergänzt Längen-, Byte- und Kürzungsangaben; NULL oder 0 lässt Text unbegrenzt, negative Werte sind ungültig.';
+        PRINT N'@MitSqlText bit=1; @MitSqlText=1 fordert aktuellen Statementtext an; 0 lässt die Textquelle aus. @MaxSqlTextZeichen int=3000 begrenzt positiven Grenzwert auf Zeichen und ergänzt Längen-, Byte- und Kürzungsangaben; NULL oder 0 lässt Text unbegrenzt, negative Werte sind ungültig.';
         PRINT N'@MaxZeilen int=1000 begrenzt positiv die ausgegebenen Datenzeilen. NULL oder 0 bedeutet ohne diese Zeilenobergrenze; negativ ist ungültig. Bei Begrenzung weisen Metadaten resultLimited und hasMoreRows aus, ob mehr Kandidaten vorhanden waren.';
         PRINT N'@ResultSetArt varchar(16)=''CONSOLE'' wählt CONSOLE (Default), RAW, TABLE oder NONE; Leerraum außen wird entfernt und die Schreibweise ohne Beachtung der Groß-/Kleinschreibung verarbeitet. CONSOLE erzeugt eine lesbare Fachansicht samt Leerzeile, RAW Status- und Datenresultset, TABLE exportiert das benannte Resultset memoryGrants, NONE unterdrückt fachliche Resultsets.';
         PRINT N'@ResultTablesJson nvarchar(max)=NULL ist nur mit TABLE erforderlich und ordnet memoryGrants genau einer lokalen Zieltabelle zu. Diese muss vor dem Aufruf leer und mit genau einer beliebigen Platzhalterspalte angelegt sein; globale oder permanente Ziele sind nicht zulässig.';
@@ -14461,7 +14461,7 @@ BEGIN
         PRINT N'CONSOLE-Beispiel:';
    PRINT N'EXEC [monitor].[USP_CurrentMemoryGrants] @ResultSetArt=''CONSOLE'';';
         PRINT N'TABLE-Beispiel:';
-   PRINT N'DECLARE @Tables nvarchar(max)=N''{"memoryGrants":"#CurrentMemoryGrants_HelpExample"}''; CREATE TABLE [#CurrentMemoryGrants_HelpExample]([Placeholder] int); EXEC [monitor].[USP_CurrentMemoryGrants] @ResultSetArt=''TABLE'',@ResultTablesJson=@Tables; SELECT * FROM [#CurrentMemoryGrants_HelpExample]; DROP TABLE [#CurrentMemoryGrants_HelpExample];';
+   PRINT N'DECLARE @Tables nvarchar(max)=N''{"memoryGrants":"#CurrentMemoryGrants_HelpExample"}''; CREATE TABLE #CurrentMemoryGrants_HelpExample([Placeholder] int); EXEC [monitor].[USP_CurrentMemoryGrants] @ResultSetArt=''TABLE'',@ResultTablesJson=@Tables; SELECT * FROM [#CurrentMemoryGrants_HelpExample]; DROP TABLE [#CurrentMemoryGrants_HelpExample];';
         PRINT N'JSON-Beispiel:';
    PRINT N'DECLARE @J nvarchar(max); EXEC [monitor].[USP_CurrentMemoryGrants] @ResultSetArt=''NONE'',@JsonErzeugen=1,@Json=@J OUTPUT; SELECT @J AS [Json];';
    PRINT N'Das Envelope enthält meta, memoryGrants und warnings.';
