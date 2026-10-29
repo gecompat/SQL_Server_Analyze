@@ -1,6 +1,6 @@
 # Verbindliche Parameter- und API-Konvention
 
-Stand: 2026-07-20
+Stand: 2026-10-29
 
 ## Grundsatz
 
@@ -19,6 +19,34 @@ Textuelle **Steuerwerte** werden dagegen mit `UPPER(LTRIM(RTRIM(...)))` normalis
 - `@SessionIds nvarchar(max)`: Liste numerischer Session-IDs; Pipe, Beistrich und Strichpunkt sind gleichwertige Trennzeichen und dürfen gemischt werden.
 - `@ResultSetArt varchar(16)='CONSOLE'`, `@ResultTablesJson nvarchar(max)=NULL`, `@JsonErzeugen bit=0`, `@Json nvarchar(max)=NULL OUTPUT`.
 - `@PrintMeldungen bit=1`, `@Hilfe bit=0`.
+
+## Geltungsbereich nach Procedure-Rolle
+
+Die gemeinsame Ausgabesteuerung gilt für Procedures mit einem fachlichen
+Resultset-Vertrag. Die öffentlichen Vorbereitungshelfer
+[USP_PrepareDatabaseCandidates](../../Code/01_Common/083_USP_PrepareDatabaseCandidates.sql)
+und [USP_PrepareNameFilters](../../Code/01_Common/084_USP_PrepareNameFilters.sql)
+befüllen dagegen Temp-Tabellen des Aufrufers und liefern technische
+OUTPUT-Werte; sie besitzen keine Renderer- oder JSON-Ausgabesteuerung.
+[USP_ConfigureSnapshotTarget](../../Code/10_SnapshotBaseline/080_USP_ConfigureSnapshotTarget.sql)
+ist ein persistenter Konfigurationsbefehl mit Status-OUTPUTs und ebenfalls
+kein fachlicher Resultset-Renderer. Diese Rollenunterschiede sind keine
+fehlenden Ausgabeparameter. `@Hilfe bit=0` gilt auch für diese Procedures;
+erforderliche Eingabe- und OUTPUT-Argumente ihrer Signaturen bleiben bei
+einem Hilfeaufruf erforderlich.
+
+Ein Zeilenlimit ist nur dort Teil der Schnittstelle, wo die Procedure
+`@MaxZeilen` tatsächlich deklariert. Aus seiner Abwesenheit folgt weder eine
+Begrenzung noch automatisch ein fehlender Pflichtparameter. Wird der Parameter
+angeboten, gilt der oben beschriebene positive, NULL-/0- und Negativvertrag.
+Zusätzliche Status-OUTPUTs sind ebenfalls procedureabhängig; ihre Verfügbarkeit
+ist der jeweiligen Signatur zu entnehmen.
+
+Der [JSON-Konstruktor USP_CreateExecutionEvidenceJson](../Analysis_Guides/Procedures/USP_CreateExecutionEvidenceJson.md)
+hat abweichend vom optionalen Analyseexport den Default `@JsonErzeugen bit=1`,
+weil sein Zweck die Erzeugung eines Execution-Evidence-JSON ist. Dieser
+quellseitige Default bleibt erhalten. JSON wird auch dort über `@Json OUTPUT`
+ausgegeben und ist kein zusätzlicher Wert von `@ResultSetArt`.
 
 ## Query Store
 
