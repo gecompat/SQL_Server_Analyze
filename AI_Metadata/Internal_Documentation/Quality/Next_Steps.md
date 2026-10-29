@@ -121,9 +121,12 @@ eine native SQL-Ausführung war für den Kommentardiff nicht erforderlich.
 PR #505 erklärt die vorhandenen Listenparser für SQL-Namen und allgemeine
 Textwerte direkt im DDL bei unveränderten Funktionskörpern. Alle erforderlichen
 Head- und Main-Prüfungen bestanden; eine native SQL-Ausführung war für den
-Kommentardiff nicht erforderlich. Der nächste begrenzte Schritt präzisiert
-die bit-Konvertierung und frühe NULL-Ablehnung in der Hilfe von
-USP_PrepareDatabaseCandidates bei unveränderter normaler SQL-Logik.
+Kommentardiff nicht erforderlich. PR #506 präzisiert die bit-Konvertierung
+und frühe NULL-Ablehnung in der Hilfe von USP_PrepareDatabaseCandidates bei
+unveränderter normaler SQL-Logik. Alle acht Head- und sieben Main-Prüfungen
+einschließlich 111 ausgewählter SQL-Server-2025-Core-Verträge und Cleanup
+bestanden. Der nächste begrenzte Schritt erklärt die vorhandenen Parser für
+vollständige Objektbezüge und bigint-Listen direkt im DDL.
 Die globale semantische Prüfung weiterer Hilfetexte und selbsterklärender
 Nichtprozedur-DDL bleibt offen. Parameternennungen und vorhandene Header
 belegen keine semantische Vollständigkeit.
