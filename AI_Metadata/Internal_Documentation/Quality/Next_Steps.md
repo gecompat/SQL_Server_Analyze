@@ -103,9 +103,12 @@ mit ungeklärter Ursache dokumentiert. PR #499 ergänzt die Hilfe für USP_Curre
 und normaler SQL-Logik; alle acht Head- und sieben Main-Prüfungen einschließlich
 Cleanup bestanden. PR #500 ergänzt die Hilfe von USP_CurrentRequests bei
 unveränderter Signatur und normaler SQL-Logik; alle acht Head- und sieben
-Main-Prüfungen einschließlich Cleanup bestanden. Der nächste begrenzte
-Schritt ergänzt die Hilfe von USP_CurrentOverview bei unveränderter Signatur
-und normaler SQL-Logik.
+Main-Prüfungen einschließlich Cleanup bestanden. PR #501 ergänzt die Hilfe
+von USP_CurrentOverview mit 31 Parametern und korrigiert den gemeinsamen
+Leitfaden auf 18 TABLE-Namen einschließlich versionStore. Alle acht Head- und
+sieben Main-Prüfungen einschließlich Cleanup bestanden; Signatur und normale
+SQL-Logik bleiben unverändert. Der nächste begrenzte Schritt erklärt
+TVF_ClassifyErrorLogEvent direkt im DDL bei unverändertem Funktionskörper.
 Die globale semantische Prüfung weiterer Hilfetexte und selbsterklärender
 Nichtprozedur-DDL bleibt offen. Parameternennungen und vorhandene Header
 belegen keine semantische Vollständigkeit.
