@@ -4865,6 +4865,39 @@ GO
 
 -- BEGIN SOURCE: Code/01_Common/087a_ToolBackgroundQueryPattern.sql
 /*
+Die Steuertabelle speichert konfigurierbare LIKE-Muster für die diagnostische
+Einordnung des clientseitigen program_name. Sie enthält keine Laufzeitmessung
+und ist kein Sicherheitsmerkmal. Jede Zeile beschreibt eine Regel:
+
+- RuleCode varchar(64) NOT NULL ist der Primärschlüssel.
+- Priority smallint NOT NULL liegt zwischen 1 und 32767; der höchste Wert
+  gewinnt. Bei Gleichstand entscheidet RuleCode aufsteigend.
+- IsEnabled bit NOT NULL hat den Default 1.
+- ProgramNameLikePattern nvarchar(256) NOT NULL verwendet
+  Latin1_General_100_CI_AS.
+- ToolBackgroundCategory varchar(40) NOT NULL und
+  ToolBackgroundDetection varchar(40) NOT NULL benennen Kategorie und
+  Erkennungsart.
+- ToolBackgroundConfidence varchar(16) NOT NULL ist auf HIGH, MEDIUM oder
+  LOW beschränkt; die Bezeichnung ist keine Wahrscheinlichkeit.
+- SourceUrl nvarchar(1000) NULL und SourceNotes nvarchar(1000) NULL sind
+  optionale Textmetadaten und allein kein Nachweis einer aktuellen Prüfung.
+- IsFrameworkDefault bit NOT NULL hat den Default 0 und kennzeichnet
+  Framework-Seedregeln.
+- LastVerifiedUtc datetime2(0) NOT NULL hat den Default SYSUTCDATETIME().
+  Der Zeitstempel ist Metadatum; er belegt keine externe Verifikation.
+
+Das Skript legt die Tabelle nur an, wenn sie fehlt. Eine bereits vorhandene
+Tabelle wird nicht migriert oder angepasst. Die Tabelle speichert dauerhaft
+Regelkonfiguration. Das Beispiel liest ausschließlich SQL-Server-
+Katalogmetadaten und erfasst keine Analysedaten:
+
+SELECT [c].[name], TYPE_NAME([c].[user_type_id]) AS [DataType]
+FROM [sys].[columns] AS [c]
+WHERE [c].[object_id] = OBJECT_ID(N'monitor.ToolBackgroundQueryPattern')
+ORDER BY [c].[column_id];
+
+
 ===============================================================================
 Objekt       : monitor.ToolBackgroundQueryPattern
 Version      : 1.0.0
@@ -4915,7 +4948,17 @@ GO
 -- END SOURCE: Code/01_Common/087a_ToolBackgroundQueryPattern.sql
 
 -- BEGIN SOURCE: Code/01_Common/087b_ToolBackgroundQueryPattern_Seed.sql
-/* Framework-Seed. Lokale Regeln mit IsFrameworkDefault=0 bleiben erhalten. */
+/* Framework-Seed. Lokale Regeln mit IsFrameworkDefault=0 bleiben erhalten.
+Der Seed aktualisiert nur vorhandene Zeilen mit passendem RuleCode und
+IsFrameworkDefault=1. IsEnabled bleibt dabei unverändert. Fehlt ein RuleCode,
+wird er mit IsEnabled=1 und IsFrameworkDefault=1 eingefügt. Eine lokale Zeile
+mit IsFrameworkDefault=0 bleibt auch bei RuleCode-Kollision unverändert; sie
+wird weder aktualisiert noch ersetzt. Nicht mehr im Seed enthaltene Regeln
+werden nicht gelöscht. LastVerifiedUtc wird bei einem Update auf die aktuelle
+UTC-Zeit gesetzt; das ist kein Nachweis einer Hersteller- oder sonstigen
+externen Prüfung. Die Seedwerte definieren den Konfigurationsvertrag dieses
+Skripts; der Kommentar behauptet keine aktuelle Gültigkeit externer Quellen.
+Die Tabelle und ihre Seedwerte bilden dauerhaft gespeicherte Konfiguration. */
 DECLARE @Seed TABLE
 (
       [RuleCode] varchar(64) NOT NULL
@@ -5018,6 +5061,34 @@ GO
 
 -- BEGIN SOURCE: Code/01_Common/087c_TVF_ToolBackgroundQueryInfo.sql
 /*
+Die Inline-Tabellenfunktion ordnet einen einzelnen clientseitig gelieferten
+program_name-Wert anhand der lokalen Regeltabelle einer Diagnosekategorie zu.
+@ProgramName hat den Typ nvarchar(128) und keinen Default. Die Funktion liest
+nur monitor.ToolBackgroundQueryPattern mit NOLOCK; sie greift weder auf DMVs
+noch auf SQL-Text oder fremde Datenbanken zu und speichert selbst keine Daten.
+
+Das Ergebnis hat genau eine Zeile und fünf Spalten: IsToolBackgroundQuery
+(bit) sowie ToolBackgroundRuleCode, ToolBackgroundCategory,
+ToolBackgroundDetection und ToolBackgroundConfidence. Es gilt die aktivierte
+Regel mit der höchsten Priority; bei Gleichstand entscheidet RuleCode
+aufsteigend gemäß der vorhandenen Collation. Der Vergleich verwendet
+Latin1_General_100_CI_AS und SQL-LIKE-Semantik, einschließlich der
+Platzhalterzeichen %, _ und []. Bei keinem Treffer liefert die Funktion
+IsToolBackgroundQuery=0 und NULL für die vier Metadatenspalten. Ein leerer
+Eingabewert ist kein Sonderfall ohne Treffer und kann eine konfigurierte
+Wildcard-Regel erfüllen.
+
+Ein Treffer ist eine Heuristik ohne Sicherheitswirkung: program_name wird
+clientseitig gesetzt und kann vorgetäuscht werden. Ein Nichttreffer ohne
+Widerspruch autorisiert keine Schlussfolgerung. HIGH, MEDIUM und LOW sind
+Kennzeichnungen und keine Wahrscheinlichkeiten. Dieses synthetische Beispiel
+wertet den Beispielwert gegen die lokal konfigurierte Regelmenge aus und
+erfasst keine Analysedaten:
+
+SELECT *
+FROM [monitor].[TVF_ToolBackgroundQueryInfo](N'Beispielprogramm');
+
+
 ===============================================================================
 Objekt       : monitor.TVF_ToolBackgroundQueryInfo
 Version      : 1.1.0
