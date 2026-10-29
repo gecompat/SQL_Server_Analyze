@@ -81,9 +81,12 @@ erläutert diese Rollen; der Audit belegt keine globale Laufzeitsemantik.
 PR #493 ergänzt die Hilfe für USP_CurrentTransactions,
 USP_CurrentMemoryGrants und USP_CurrentCursorAnalysis bei unveränderten
 Signaturen und unveränderter normaler Ausführungslogik. Alle acht Head- und
-sieben Main-Prüfungen bestanden. Der nächste begrenzte DDL-Schritt erläutert
+sieben Main-Prüfungen bestanden. PR #494 erläutert
 TVF_WaitTypeInfo und TVF_WaitTypeSources unmittelbar in ihren Quellheadern;
-Funktionskörper und Signaturen bleiben unverändert.
+Funktionskörper und Signaturen bleiben unverändert. Die erforderlichen Head-
+und Main-Prüfungen bestanden; die reine Kommentaränderung erforderte keine
+native SQL-Ausführung. Der folgende begrenzte Schritt ergänzt die Hilfen
+für USP_CurrentBlocking und USP_CurrentWaits bei unveränderter normaler Logik.
 Die globale semantische Prüfung weiterer Hilfetexte und selbsterklärender
 Nichtprozedur-DDL bleibt offen. Parameternennungen und vorhandene Header
 belegen keine semantische Vollständigkeit.
