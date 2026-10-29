@@ -7,17 +7,26 @@ Objekt       : monitor.TVF_ParsePattern
 Version      : 1.0.0
 Stand        : 2026-07-15
 Typ          : Inline Table-valued Function
-Zweck        : Normalisiert einen textuellen Patternvertrag. Präfixe werden
-               case-insensitiv verarbeitet; der Patterninhalt selbst bleibt
-               unverändert und damit case-sensitive auswertbar.
-SQL-Version  : SQL Server 2019 oder neuer.
-Parameter    : @Pattern nvarchar(4000).
-Modi         : LIKE (Default oder like:), REGEX (regex:), REGEXI (regexi:),
-               NONE bei NULL.
-Hinweis      : REGEX/REGEXI benötigen SQL Server 2025 und Compatibility Level
-               170. Die eigentliche REGEXP_LIKE-Ausführung muss versionsadaptiv
-               über dynamisches SQL erfolgen, damit SQL Server 2019/2022 die
-               Module weiterhin kompilieren können.
+Zweck        : Zerlegt ein optionales LIKE- oder Regex-Präfix und liefert den
+               unverändert verbleibenden Patterninhalt samt Modus und Flags.
+SQL-Version  : Kompilierbar ab SQL Server 2019; die Regex-Ausführung erfolgt
+               versionsadaptiv durch den Aufrufer auf SQL Server 2025 mit
+               Compatibility Level 170. Der Parser prüft diese Voraussetzungen
+               und die Regex-Syntax nicht.
+Parameter    : @Pattern nvarchar(4000), ohne Default. Zuerst werden äußere
+               Leerzeichen mit LTRIM/RTRIM entfernt. Danach wird ein Präfix
+               regexi:, regex: oder like: ohne Beachtung der Großschreibung
+               entfernt; der verbleibende Inhalt wird nicht erneut getrimmt.
+Modi         : NONE bei NULL, REGEXI mit Flag i, REGEX mit Flag c und sonst
+               LIKE. Auch ein leeres Präfix wie „like:“ ergibt LIKE.
+Ergebnis     : Eine Zeile mit PatternMode, PatternValue, RegexFlags, IsRegex,
+               IsValid, ErrorCode und ErrorMessage. NULL ergibt gültiges NONE.
+               Ein leerer oder nur aus Leerzeichen bestehender Eingang sowie
+               ein leeres Präfix-Ergebnis liefern EMPTY_PATTERN. IsValid
+               prüft ausschließlich auf leeren Inhalt, nicht Syntax,
+               Kompatibilität oder Treffer.
+Beispiele   : SELECT * FROM [monitor].[TVF_ParsePattern](N' regexi:^App ');
+               SELECT * FROM [monitor].[TVF_ParsePattern](N'LIKE:');
 ===============================================================================
 */
 CREATE OR ALTER FUNCTION [monitor].[TVF_ParsePattern]
