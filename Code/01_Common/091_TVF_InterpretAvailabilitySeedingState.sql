@@ -7,12 +7,71 @@ Objekt       : monitor.TVF_InterpretAvailabilitySeedingState
 Version      : 1.0.0
 Stand        : 2026-07-18
 Typ          : Inline Table-valued Function
-Zweck        : Berechnet und klassifiziert den Zustand eines physischen
-               Seedings ohne Seiteneffekte.
+Zweck        : Die Funktion berechnet Fortschritt und Restbytes und klassifiziert
+               den übergebenen Momentzustand eines physischen Seedings.
+               Sie wertet ausschließlich Parameter aus und hat keine
+               Seiteneffekte.
 Datenschutz  : Verarbeitet ausschließlich übergebene technische Zahlen- und
                Zeitwerte; freie Fehlermeldungen werden nicht benötigt.
-Grenzen      : Fortschritt basiert auf sichtbaren Bytezählern. Kompression,
-               Momentaufnahme und aktuelle Transferrate begrenzen die Aussage.
+Eingaben     : Alle fünf Parameter sind erforderlich und besitzen keinen
+               Defaultwert: @FailureCode, @TransferredSizeBytes,
+               @DatabaseSizeBytes, @TransferRateBytesPerSecond und
+               @EndTimeUtc.
+Ausgaben     : Eine Zeile mit [ProgressPercent] (decimal(9,4)),
+               [RemainingBytes] (bigint), [FindingCode] (varchar(100)) und
+               [FindingSeverity] (varchar(16)).
+Fortschritt : Bei COALESCE(@DatabaseSizeBytes, 0) <= 0 ist der Fortschritt
+               NULL. Bei positiver Datenbankgröße und
+               COALESCE(@TransferredSizeBytes, 0) <= 0 ist er 0; bei
+               übertragenen Bytes mindestens in Höhe der Größe ist er 100.
+               Dazwischen berechnet die Funktion den Bytequotienten mal 100.
+Restbytes   : Ist COALESCE(@DatabaseSizeBytes, 0) <=
+               COALESCE(@TransferredSizeBytes, 0), liefert die Funktion 0;
+               andernfalls wird @DatabaseSizeBytes -
+               COALESCE(@TransferredSizeBytes, 0) konvertiert. NULL- und
+               negative Eingaben können dadurch unerwartete Werte oder
+               Konvertierungs-/Rechenfehler ergeben. Eine allgemeine
+               Überlaufgarantie besteht nicht.
+Codefolge   : Der erste zutreffende Fall gewinnt: Ein von 0 verschiedener
+               COALESCE(@FailureCode, 0) ergibt SEEDING_FAILED. Danach ergibt
+               ein nicht NULLes @EndTimeUtc zusammen mit
+               COALESCE(@TransferredSizeBytes, 0) >=
+               COALESCE(@DatabaseSizeBytes, 0) SEEDING_COMPLETED. Bei NULLem
+               @EndTimeUtc, noch offenen Bytes und einer zu 0 normalisierten
+               Rate folgt SEEDING_NO_CURRENT_THROUGHPUT. Sonst ergibt NULL
+               bei @EndTimeUtc SEEDING_IN_PROGRESS; verbleibende Fälle
+               ergeben SEEDING_STATE_REVIEW.
+Schweregrad : Der Schweregrad wird separat berechnet: Fehlercode ergibt HIGH.
+               Kein aktueller Durchsatz bei offenen Bytes sowie ein gesetztes
+               Enddatum mit übertragenen Bytes unter der normalisierten Größe
+               ergeben MEDIUM. Alle übrigen Fälle ergeben INFO.
+Zeitgrenze  : @EndTimeUtc wird ausschließlich auf NULL geprüft. Die Funktion
+               vergleicht keine Zeitpunkte und rechnet keine Zeitzone um.
+Grenzen     : COALESCE(NULL, 0) kann bei fehlenden Zählern den Code
+               SEEDING_COMPLETED ermöglichen, wenn auch die normalisierte
+               Größe 0 ist. Die Kennzahlen belegen weder eine ETA noch
+               vollständige Gesundheit oder erfolgreichen Empfang auf einer
+               Zielreplik. Die Rate ist ein übergebener Momentwert.
+Beispiele   : Die Aufrufe verwenden ausschließlich synthetische Konstanten;
+               sie fragen keine Metadaten ab und ändern keine Daten.
+
+               SELECT *
+               FROM [monitor].[TVF_InterpretAvailabilitySeedingState]
+               (
+                   0, NULL, NULL, NULL, '2026-01-01T00:00:00'
+               );
+
+               SELECT *
+               FROM [monitor].[TVF_InterpretAvailabilitySeedingState]
+               (
+                   0, 0, 0, 0, '2026-01-01T00:00:00'
+               );
+
+               SELECT *
+               FROM [monitor].[TVF_InterpretAvailabilitySeedingState]
+               (
+                   0, 0, 100, 0, NULL
+               );
 ===============================================================================
 */
 CREATE OR ALTER FUNCTION [monitor].[TVF_InterpretAvailabilitySeedingState]
