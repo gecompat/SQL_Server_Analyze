@@ -34,6 +34,8 @@ kein Sicherheitsmerkmal.
 
 Alle `Example*`-Werte im Aufruf sind synthetisch.
 
+Der ausführliche Hilfetext lässt sich mit `EXEC [monitor].[USP_CurrentSessions] @Hilfe = 1;` ausgeben; der Hilfezweig kehrt vor Parameterprüfung und Quellenzugriff zurück.
+
 ## Resultsets und Leserichtung
 
 Der typisierte TABLE-Vertrag registriert `sessions` mit 51 Feldern, 22 expliziten Framework-Textcollations und fünf nicht-nullbaren Feldern. Aktive CONSOLE-Ausgaben ergänzen das Feld `Ergebnis`; eine leere Ausgabe besitzt `Ergebnis`, `Status` und `Hinweis`. RAW ergänzt zehn Wait-Felder und stellt ein Statusresultset voran. JSON ergänzt die drei Felder `waitGroup`, `waitSeverity` und `waitMeaning` und enthält `meta`, `sessions` und `warnings`. Status und Scope sind vor den Fachwerten zu lesen. Ein Warning kann auch den Detailtext eines erfolgreichen Aufrufs enthalten.

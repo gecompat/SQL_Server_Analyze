@@ -90,7 +90,7 @@ Die aufrufende Session ist standardmäßig ausgeschlossen. Für einen direkten A
 
 ### Kosten und Grenzen
 
-LOW. Die Session-, Request- und Connectionquellen werden vor der Ergebnisfilterung gelesen. Optionaler SQL-Text löst deduplizierte Handles dieser Quellen vor dem Sessionfilter auf; ein Ergebnislimit begrenzt diese Arbeit nicht. Ohne Regex begrenzt ein positives Limit die materialisierten Kandidaten auf N+1. Ohne serverweite Performanceberechtigung ist nur ein begrenzter Scope sichtbar.
+Die qualitative Kostenklasse ist LOW–MEDIUM; der Umfang hängt insbesondere von der Sessionzahl und der SQL-Textoption ab. Die Session-, Request- und Connectionquellen werden vor der Ergebnisfilterung gelesen. Optionaler SQL-Text löst deduplizierte Handles dieser Quellen vor dem Sessionfilter auf; ein Ergebnislimit begrenzt diese Arbeit nicht. Ohne Regex begrenzt ein positives Limit die materialisierten Kandidaten auf N+1. Ohne serverweite Performanceberechtigung ist nur ein begrenzter Scope sichtbar.
 
 ---
 
