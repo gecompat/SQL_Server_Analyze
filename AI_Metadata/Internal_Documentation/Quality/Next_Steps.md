@@ -130,8 +130,12 @@ Objektbezüge und bigint-Listen direkt im DDL bei unveränderten Funktionskörpe
 Alle erforderlichen Head- und Main-Prüfungen bestanden; die zunächst fehlende
 Execution-Plan-Installerkopie wurde im zweiten Kandidaten synchronisiert.
 Eine native SQL-Ausführung war für den Kommentardiff nicht erforderlich.
-Der nächste begrenzte Schritt erklärt Pattern-Normalisierung und
-Datenbankkandidaten einschließlich der beim Aufrufer verbleibenden Regexprüfung.
+PR #508 erklärt Pattern-Normalisierung und Datenbankkandidaten einschließlich
+der beim Aufrufer verbleibenden Regexprüfung bei unveränderten Funktionskörpern.
+Alle erforderlichen Head- und Main-Prüfungen einschließlich beider
+Adapterparitäten bestanden; eine native SQL-Ausführung war nicht erforderlich.
+Der nächste begrenzte Schritt erklärt Regeltabelle, Seed und
+Tool-Hintergrundklassifikation direkt im Quelltext.
 Die globale semantische Prüfung weiterer Hilfetexte und selbsterklärender
 Nichtprozedur-DDL bleibt offen. Parameternennungen und vorhandene Header
 belegen keine semantische Vollständigkeit.
