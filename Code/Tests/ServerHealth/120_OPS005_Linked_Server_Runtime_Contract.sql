@@ -22,7 +22,7 @@ DECLARE @JsonZero nvarchar(max) = NULL;
 DECLARE @Status varchar(40) = NULL;
 DECLARE @Partial bit = NULL;
 DECLARE @LimitedServerName sysname = NULL;
-DECLARE @ConsoleRows TABLE ([Ergebnis] nvarchar(200),[ServerName] sysname,[Product] nvarchar(128),[Provider] nvarchar(128),[IsDataAccessEnabled] bit,[IsRpcOutEnabled] bit,[IsCollationCompatible] bit,[ConnectivityStatus] varchar(40),[StatusCode] varchar(40),[EvidenceLimit] nvarchar(1000));
+DECLARE @ConsoleRows TABLE ([Ergebnis] nvarchar(200) COLLATE SQL_Latin1_General_CP1_CS_AS,[ServerName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS,[Product] nvarchar(128) COLLATE SQL_Latin1_General_CP1_CS_AS,[Provider] nvarchar(128) COLLATE SQL_Latin1_General_CP1_CS_AS,[IsDataAccessEnabled] bit,[IsRpcOutEnabled] bit,[IsCollationCompatible] bit,[ConnectivityStatus] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS,[StatusCode] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS,[EvidenceLimit] nvarchar(1000) COLLATE SQL_Latin1_General_CP1_CS_AS);
 DECLARE @RestrictedLoginPassword nvarchar(128) = N'A!a' + CONVERT(nvarchar(36), NEWID());
 DECLARE @RestrictedLoginSql nvarchar(max) =
     N'CREATE LOGIN [ExampleOps005RestrictedLogin] WITH PASS' + N'WORD = N''' +
@@ -172,9 +172,9 @@ BEGIN TRY
     EXEC [monitor].[USP_LinkedServerAnalysis] @ConnectivityTestEnabled=0,@HighImpactConfirmed=0,@MaxZeilen=0,@ResultSetArt='NONE',@JsonErzeugen=1,@Json=@JsonZero OUTPUT,@PrintMeldungen=0;
     IF @JsonNull<>@JsonZero OR (SELECT COUNT_BIG(*) FROM OPENJSON(@JsonNull))<2 THROW 54870,N'Die unbeschränkte JSON-Ausgabe enthält nicht das vollständige Linked-Server-Inventar.',1;
     DELETE FROM [#OPS005_Linked_Server_Runtime_Contract_LimitTarget];
-    EXEC [monitor].[USP_LinkedServerAnalysis] @ConnectivityTestEnabled=0,@HighImpactConfirmed=0,@MaxZeilen=NULL,@ResultSetArt='TABLE',@ResultTablesJson=N'{"linkedServers":"#OPS005_Linked_Server_Runtime_Contract_LimitTarget"}',@PrintMeldungen=0;
-    IF (SELECT COUNT_BIG(*) FROM [#OPS005_Linked_Server_Runtime_Contract_LimitTarget])<>(SELECT COUNT_BIG(*) FROM OPENJSON(@JsonNull)) THROW 54871,N'Die unbeschränkte TABLE-Ausgabe weicht von JSON ab.',1;
-    DELETE FROM [#OPS005_Linked_Server_Runtime_Contract_LimitTarget];
+    CREATE TABLE [#OPS005_Linked_Server_Runtime_Contract_UnboundedTarget] ([Placeholder] int NULL);
+    EXEC [monitor].[USP_LinkedServerAnalysis] @ConnectivityTestEnabled=0,@HighImpactConfirmed=0,@MaxZeilen=NULL,@ResultSetArt='TABLE',@ResultTablesJson=N'{"linkedServers":"#OPS005_Linked_Server_Runtime_Contract_UnboundedTarget"}',@PrintMeldungen=0;
+    IF (SELECT COUNT_BIG(*) FROM [#OPS005_Linked_Server_Runtime_Contract_UnboundedTarget])<>(SELECT COUNT_BIG(*) FROM OPENJSON(@JsonNull)) THROW 54871,N'Die unbeschränkte TABLE-Ausgabe weicht von JSON ab.',1;
     DELETE FROM @ConsoleRows;
     INSERT @ConsoleRows EXEC [monitor].[USP_LinkedServerAnalysis] @ConnectivityTestEnabled=0,@HighImpactConfirmed=0,@MaxZeilen=0,@ResultSetArt='CONSOLE',@PrintMeldungen=0;
     IF (SELECT COUNT_BIG(*) FROM @ConsoleRows)<>(SELECT COUNT_BIG(*) FROM OPENJSON(@JsonZero)) THROW 54872,N'Die unbeschränkte CONSOLE-Ausgabe weicht von JSON ab.',1;
