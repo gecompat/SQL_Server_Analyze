@@ -3335,17 +3335,26 @@ Objekt       : monitor.TVF_ParsePattern
 Version      : 1.0.0
 Stand        : 2026-07-15
 Typ          : Inline Table-valued Function
-Zweck        : Normalisiert einen textuellen Patternvertrag. Präfixe werden
-               case-insensitiv verarbeitet; der Patterninhalt selbst bleibt
-               unverändert und damit case-sensitive auswertbar.
-SQL-Version  : SQL Server 2019 oder neuer.
-Parameter    : @Pattern nvarchar(4000).
-Modi         : LIKE (Default oder like:), REGEX (regex:), REGEXI (regexi:),
-               NONE bei NULL.
-Hinweis      : REGEX/REGEXI benötigen SQL Server 2025 und Compatibility Level
-               170. Die eigentliche REGEXP_LIKE-Ausführung muss versionsadaptiv
-               über dynamisches SQL erfolgen, damit SQL Server 2019/2022 die
-               Module weiterhin kompilieren können.
+Zweck        : Zerlegt ein optionales LIKE- oder Regex-Präfix und liefert den
+               unverändert verbleibenden Patterninhalt samt Modus und Flags.
+SQL-Version  : Kompilierbar ab SQL Server 2019; die Regex-Ausführung erfolgt
+               versionsadaptiv durch den Aufrufer auf SQL Server 2025 mit
+               Compatibility Level 170. Der Parser prüft diese Voraussetzungen
+               und die Regex-Syntax nicht.
+Parameter    : @Pattern nvarchar(4000), ohne Default. Zuerst werden äußere
+               Leerzeichen mit LTRIM/RTRIM entfernt. Danach wird ein Präfix
+               regexi:, regex: oder like: ohne Beachtung der Großschreibung
+               entfernt; der verbleibende Inhalt wird nicht erneut getrimmt.
+Modi         : NONE bei NULL, REGEXI mit Flag i, REGEX mit Flag c und sonst
+               LIKE. Auch ein leeres Präfix wie „like:“ ergibt LIKE.
+Ergebnis     : Eine Zeile mit PatternMode, PatternValue, RegexFlags, IsRegex,
+               IsValid, ErrorCode und ErrorMessage. NULL ergibt gültiges NONE.
+               Ein leerer oder nur aus Leerzeichen bestehender Eingang sowie
+               ein leeres Präfix-Ergebnis liefern EMPTY_PATTERN. IsValid
+               prüft ausschließlich auf leeren Inhalt, nicht Syntax,
+               Kompatibilität oder Treffer.
+Beispiele   : SELECT * FROM [monitor].[TVF_ParsePattern](N' regexi:^App ');
+               SELECT * FROM [monitor].[TVF_ParsePattern](N'LIKE:');
 ===============================================================================
 */
 CREATE OR ALTER FUNCTION [monitor].[TVF_ParsePattern]
@@ -3580,16 +3589,33 @@ Objekt       : monitor.TVF_DatabaseCandidates
 Version      : 3.0.0
 Stand        : 2026-07-20
 Typ          : Inline Table-valued Function
-Zweck        : Liefert alle sichtbaren, zugreifbaren und online befindlichen
-               Benutzerdatenbanken oder eine explizit eingeschränkte Menge.
-SQL-Version  : SQL Server 2019 oder neuer.
-Datenquellen : master.sys.databases, monitor.TVF_ParseSqlNameList,
-               monitor.TVF_ParsePattern.
-Semantik     : NULL, N'' und Leerzeichen bedeuten keine Einschränkung.
-               Systemdatenbanken sind ausschließlich per Opt-in enthalten.
-               Die Kandidatenmenge wird niemals vorab mengenmäßig begrenzt.
-Vertrag      : Die Kandidatenmenge wird erst nach vollständiger Ermittlung und
-               ohne willkürliche Vorabbegrenzung an den Aufrufer zurückgegeben.
+Zweck        : Liefert sichtbare, online befindliche, zugreifbare Datenbanken,
+               die den optionalen exakten Namen und das Pattern erfüllen.
+SQL-Version  : SQL Server 2019 oder neuer. Regex-Ausführung übernimmt der
+               Aufrufer versionsadaptiv; REGEX und REGEXI werden hier nicht
+               abgeglichen.
+Parameter    : @DatabaseNames nvarchar(max) = NULL; @SystemdatenbankenEinbeziehen
+               bit = 0; @DatabaseNamePattern nvarchar(4000) = NULL. NULL,
+               leerer Text oder Leerzeichen in der Namensliste bedeuten keine
+               Einschränkung. Der bit-Wert 1 schließt System-IDs bis 4 ein;
+               sonst werden nur IDs größer 4 berücksichtigt.
+Datenquellen : master.sys.databases mit NOLOCK, monitor.TVF_ParseSqlNameList
+               und monitor.TVF_ParsePattern. Snapshots (source_database_id
+               nicht NULL) werden ausgeschlossen. Erforderlich sind ONLINE-
+               Status und HAS_DBACCESS=1.
+Filter       : Gültige exakte Namen werden zusätzlich zum Pattern angewandt;
+               ungültige Listenelemente werden still ignoriert. Doppelte
+               gültige Namen können Zeilen vervielfachen. LIKE wird hier
+               case-sensitive ausgewertet. NONE, REGEX und REGEXI passieren
+               ohne Patternabgleich. Ein ungültiges Parser-Pattern liefert
+               null Kandidaten; die Funktion erzeugt keine Fehlerausgabe.
+Ergebnis     : Zehn Spalten einschließlich RequestedOrdinal, das bei nicht
+               eingeschränkter Namensliste NULL ist. Die Funktion garantiert
+               weder eine Vorabmenge noch einen atomaren Katalogsnapshot,
+               einen Datenbankstatus oder vollständige Erreichbarkeit. Ohne
+               ORDER BY ist keine physische Reihenfolge zugesichert.
+Beispiele   : SELECT * FROM [monitor].[TVF_DatabaseCandidates](NULL, 0, NULL);
+               SELECT * FROM [monitor].[TVF_DatabaseCandidates](N'AppDb', 0, N'App%');
 ===============================================================================
 */
 CREATE OR ALTER FUNCTION [monitor].[TVF_DatabaseCandidates]
