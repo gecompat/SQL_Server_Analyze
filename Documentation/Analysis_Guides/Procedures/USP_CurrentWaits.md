@@ -15,6 +15,8 @@ Die Procedure beantwortet keine lückenlose Historie und allein aus einem Snapsh
 
 ## Sicherer Einstieg
 
+Die vollständige Parameterhilfe zu Quellen, Ausgaben und Grenzen erscheint mit `EXEC [monitor].[USP_CurrentWaits] @Hilfe = 1`.
+
 ```sql
 EXEC [monitor].[USP_CurrentWaits]
       @SampleSeconds = 5,

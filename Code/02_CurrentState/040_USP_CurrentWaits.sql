@@ -57,12 +57,45 @@ BEGIN
 
     IF @Hilfe=1
     BEGIN
-        PRINT N'monitor.USP_CurrentWaits';
-        PRINT N'@SessionIds, @WaitTypes und @WaitGroups akzeptieren bracket-aware Pipe-Listen.';
-        PRINT N'@ToolHintergrundabfragenEinbeziehen=0 blendet erkannte Object-Explorer-, Copilot- und SQL-Prompt-Waiting-Tasks standardmäßig aus; 1 zeigt sie samt Klassifikation.';
-        PRINT N'@WaitTypePattern/@WaitGroupPattern: LIKE (Default/like:), regex: oder regexi:; Liste und Pattern sind gegenseitig exklusiv.';
-        PRINT N'@SampleSeconds=0 liefert kumulative Instanzwerte; 1..60 liefert ein Delta.';
-        PRINT N'@MaxZeilen positiv begrenzt; NULL/0 unbegrenzt. @ResultSetArt CONSOLE (Default), RAW, TABLE oder NONE; optional @Json OUTPUT.';
+        PRINT N'monitor.USP_CurrentWaits; Snapshotdiagnostik, keine Historie.';
+        PRINT N'Daten: sys.dm_os_waiting_tasks plus sys.dm_os_wait_stats kumulativ oder gesampelt.';
+        PRINT N'Berechtigung: VIEW SERVER STATE bis 2019, VIEW SERVER PERFORMANCE STATE ab 2022.';
+        PRINT N'@SessionIds nvarchar(max)=NULL: exakte IDs als Pipe-Liste 1..32767; NULL alle.';
+        PRINT N'@MinWaitMs bigint=0: Mindestdauer der Tasks in ms; >=0.';
+        PRINT N'@WaitTypes nvarchar(max)=NULL: exakte bracket-aware Pipe-Liste; exklusiv mit Pattern.';
+        PRINT N'@WaitTypePattern nvarchar(4000)=NULL: LIKE/like:, regex:, regexi:; exklusiv mit Liste.';
+        PRINT N'@WaitGroups nvarchar(max)=NULL: exakte bracket-aware Pipe-Liste; exklusiv mit Pattern.';
+        PRINT N'@WaitGroupPattern nvarchar(4000)=NULL: LIKE/like:, regex:, regexi:; exklusiv mit Liste.';
+        PRINT N'@SystemSessionsEinbeziehen bit=0: 0 schließt System-Sessions aus Tasks aus; 1 nimmt sie auf.';
+        PRINT N'@ToolHintergrundabfragenEinbeziehen bit=0: 0 blendet erkannte Tools aus; 1 zeigt Tasks samt Klassifikation; nur Taskpfad.';
+        PRINT N'@MitSqlText bit=1: 1 ergänzt Task-SQL-Text; 0 unterdrückt ihn.';
+        PRINT N'@MaxSqlTextZeichen int=2000: maximale Textlänge; >=0.';
+        PRINT N'@SampleSeconds tinyint=0: 0 kumulative Stats; 1..60 misst Delta; Tasks bleiben Snapshot.';
+        PRINT N'@UnkritischeWaitsEinbeziehen bit=0: 0 schließt allgemein unkritische Waits aus; 1 nimmt sie in Stats auf.';
+        PRINT N'@TopWaitPercentage decimal(5,2)=95.00: Top-Cutoff >0 und <=100.';
+        PRINT N'@MaxZeilen int=1000: positiv begrenzt; NULL/0 unbegrenzt; negativ ungültig.';
+        PRINT N'@ResultSetArt varchar(16)=''CONSOLE'': RAW, CONSOLE, TABLE, NONE; case-insensitiv; TABLE nur currentTasks.';
+        PRINT N'@ResultTablesJson nvarchar(max)=NULL: nur TABLE; mappt currentTasks auf vorhandene leere lokale Einspalten-#Temp-Tabelle.';
+        PRINT N'@JsonErzeugen bit=0: 0 unterdrückt JSON; 1 erzeugt JSON mit meta, currentTasks, instanceWaits, warnings.';
+        PRINT N'@Json nvarchar(max)=NULL OUTPUT: initial NULL; bei Erzeugen 1 enthält Envelope.';
+        PRINT N'@PrintMeldungen bit=1: 1 erlaubt Zusatzmeldungen; 0 unterdrückt sie.';
+        PRINT N'@Hilfe bit=0: 0 führt Analyse aus; 1 zeigt Hilfe und beendet Aufruf.';
+        PRINT N'@ParentCurrentStateSnapshotId uniqueidentifier=NULL: optionale Eltern-Snapshot-ID; NULL erzeugt eigene ID.';
+        PRINT N'Regex benötigt SQL Server 2025 und Compatibility Level 170.';
+        PRINT N'RAW/JSON enthalten Status und Warnungen; ungültige Kombinationen ergeben INVALID_PARAMETER, Regex ohne Voraussetzung UNAVAILABLE_FEATURE. JSON enthält meta, currentTasks, instanceWaits und warnings. TABLE-Preflight läuft vor der Hilfe und kann bei ungültigem Mapping werfen.';
+        PRINT N'CONSOLE:';
+        PRINT N'EXEC [monitor].[USP_CurrentWaits] @ResultSetArt=''CONSOLE'';';
+        PRINT N'TABLE-Mapping separat deklarieren; lokale Ziele müssen leere Einspalten-#Temp-Tabellen sein:';
+        PRINT N'DECLARE @Tables nvarchar(max);';
+        PRINT N'SELECT @Tables=(SELECT N''#CurrentWaits_HelpExample'' AS [currentTasks] FOR JSON PATH, WITHOUT_ARRAY_WRAPPER);';
+        PRINT N'CREATE TABLE #CurrentWaits_HelpExample (Seed int NULL);';
+        PRINT N'EXEC [monitor].[USP_CurrentWaits] @ResultSetArt=''TABLE'', @ResultTablesJson=@Tables;';
+        PRINT N'SELECT * FROM #CurrentWaits_HelpExample;';
+        PRINT N'DROP TABLE #CurrentWaits_HelpExample;';
+        PRINT N'JSON:';
+        PRINT N'DECLARE @Json nvarchar(max);';
+        PRINT N'EXEC [monitor].[USP_CurrentWaits] @JsonErzeugen=1, @Json=@Json OUTPUT;';
+        PRINT N'SELECT @Json AS [Json];';
         RETURN;
     END;
 
