@@ -6,10 +6,43 @@ GO
 Objekt       : monitor.TVF_InterpretPerformanceCounter
 Version      : 1.0.0
 Stand        : 2026-07-18
-Zweck        : Interpretiert ein Performance-Counter-Paar deterministisch und
-               ohne Seiteneffekte einschließlich Reset- und
-               Basiscountervertrag.
-Grenzen      : Keine DMV-Abfrage, keine Persistenz und keine Alarmgrenzen.
+Zweck        : Interpretiert ein übergebenes Performance-Counter-Paar nach
+               CounterType und liefert Interpretation, Metrik, Einheit und
+               FindingCode als einzelne Tabellenzeile.
+Eingaben     : @CounterType int; @BeforeValue, @AfterValue,
+               @BaseBeforeValue und @BaseAfterValue bigint; @SampleSeconds
+               decimal(19,6). Die Basiswerte gelten für Basiscountertypen.
+Zuordnung    : 65792 ist RAW_SNAPSHOT und liefert @AfterValue. 272696320 und
+               272696576 sind RATE_PER_SECOND und liefern Delta je
+               Samplesekunde. 537003264 ist FRACTION_DELTA_PERCENT und
+               liefert 100 * Zählerdelta / Basisdelta; 1073874176 ist
+               AVERAGE_DELTA_RATIO und liefert Zählerdelta / Basisdelta.
+               Weitere Typen sind RAW_UNINTERPRETED und liefern @AfterValue.
+               Beide Basisformeln
+               benötigen ebenfalls @SampleSeconds > 0, teilen aber nicht durch
+               diese Zeit. Weitere Typen bleiben RAW_UNINTERPRETED.
+Berechnung   : Delta-Metriken erfordern @SampleSeconds > 0 und einen nicht
+               fallenden Zähler. Basisformeln erfordern zusätzlich einen
+               vorhandenen, steigenden Basiszähler. FindingCode folgt dieser
+               Reihenfolge: SAMPLE_REQUIRED_FOR_DELTA_METRIC,
+               COUNTER_RESET_DURING_SAMPLE, BASE_COUNTER_MISSING,
+               BASE_COUNTER_RESET_DURING_SAMPLE, BASE_COUNTER_DELTA_ZERO,
+               COUNTER_TYPE_NOT_AUTOMATICALLY_INTERPRETED; sonst
+               VALUE_AVAILABLE. Bei unbekanntem oder NULL-CounterType kann
+               NOT IN UNKNOWN ergeben; dann greift VALUE_AVAILABLE.
+Ausgabe      : [Interpretation] varchar, [MetricValue] decimal(38,6),
+               [MetricUnit] varchar und [FindingCode] varchar. NULL-Eingaben
+               können NULL-Metriken ergeben, ohne selbst einen FindingCode
+               auszulösen. Ein verfügbarer Wert belegt weder eine Diagnose
+               noch einen Schwellwertbefund.
+Grenzen      : Liest keine DMVs und persistiert nichts. Die Funktion validiert
+               keine Eingabekonsistenz und schützt nicht vor Überläufen der
+               verwendeten Arithmetik. Roh- und unbekannte Typen liefern
+               @AfterValue als Rohmetrikwert; das ist keine automatische
+               Interpretation des Counters.
+Beispiel     : Synthetische Eingabe (CounterType 537003264, vorher/nachher
+               10/16, Basis 100/120, Sample 5) ergibt FRACTION_DELTA_PERCENT,
+               30.000000, PERCENT und VALUE_AVAILABLE.
 ===============================================================================
 */
 CREATE OR ALTER FUNCTION [monitor].[TVF_InterpretPerformanceCounter]
