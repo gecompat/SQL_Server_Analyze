@@ -7,10 +7,39 @@ Objekt       : monitor.TVF_ParseSqlNameList
 Version      : 1.0.0
 Stand        : 2026-07-15
 Typ          : Inline Table-valued Function
-Zweck        : Validiert eine bracket-aware Pipe-Liste aus einteiligen SQL-
-               Namen und liefert die entquoteten sysname-Werte.
-Beispiele    : SELECT * FROM monitor.TVF_ParseSqlNameList(
-                   N'[ColumnOne]|[Column With Spaces]|[Column|WithPipe]');
+Zweck        : Prüft die Namen einer bracket-aware Pipe-Liste anhand von
+               PARSENAME und liefert die in sysname konvertierten Namenswerte.
+Parameter    : @List nvarchar(max) besitzt keinen Default. NULL liefert keine
+               Zeile; N'' liefert eine ungültige Zeile mit EMPTY_LIST.
+Struktur     : | trennt nur außerhalb von [...]; innerhalb gehört es zum Wert.
+               ]] maskiert eine schließende Klammer. TVF_ParsePipeList entfernt
+               äußere Leerzeichen der Elemente und vergibt ItemOrdinal ab 1.
+               Leere Elemente bleiben als ungültige Zeilen erhalten; gleiche
+               Elemente werden nicht zusammengefasst. Ein Rohsegment mit mehr
+               als 4000 UTF-16-Codeeinheiten erhält ITEM_TOO_LONG und ItemText=NULL.
+Ausgabe      : ItemOrdinal und ItemText beschreiben die Eingabe. NameValue wird
+               auch bei ungültigen Zeilen aus PARSENAME(ItemText,1) berechnet.
+               IsValid, ErrorCode und ErrorMessage kennzeichnen die Prüfung;
+               ein nicht leeres NameValue ersetzt deshalb keine IsValid-Prüfung.
+Fehler       : EMPTY_LIST ist der Sonderfall der leeren Eingabe. Für Elemente
+               prüft der gemeinsame Parser zuerst ITEM_TOO_LONG, danach
+               EMPTY_ITEM und danach INVALID_BRACKET_SYNTAX. Seine Fehler
+               haben Vorrang vor der nachfolgenden Namensprüfung.
+               Für dort gültige Elemente prüft diese Funktion Teil 1 auf NULL
+               (INVALID_SQL_NAME), danach Teil 2 auf einen Wert
+               (MULTIPART_NAME_NOT_ALLOWED) und danach LEN(Teil 1)>128
+               (SQL_NAME_TOO_LONG). Für IsValid=1 muss Teil 1 ungleich NULL
+               und Teil 2 gleich NULL sein; LEN(Teil 1) darf höchstens 128 ergeben.
+Grenzen      : Teile 3 und 4 werden nicht gesondert geprüft. Dies ist keine
+               allgemeine SQL-Bezeichnervalidierung und keine Prüfung von
+               Katalogexistenz oder Berechtigungen. Fehlerhafte Zeilen werden
+               ausgegeben und nicht durch die Funktion als Fehler geworfen.
+               Eine physische Reihenfolge ist erst mit ORDER BY ItemOrdinal
+               zugesichert. Die Funktion liest keine Kataloge und speichert nichts.
+Beispiel     : Der folgende Aufruf verwendet synthetische Namen:
+               SELECT * FROM monitor.TVF_ParseSqlNameList(
+                   N'[ColumnOne]|[Column With Spaces]|[Column|WithPipe]')
+               ORDER BY ItemOrdinal;
 ===============================================================================
 */
 CREATE OR ALTER FUNCTION [monitor].[TVF_ParseSqlNameList]
