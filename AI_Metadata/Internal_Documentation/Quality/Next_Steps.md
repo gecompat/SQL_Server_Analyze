@@ -110,9 +110,12 @@ sieben Main-Prüfungen einschließlich Cleanup bestanden; Signatur und normale
 SQL-Logik bleiben unverändert. PR #502 erklärt TVF_ClassifyErrorLogEvent
 direkt im DDL bei unverändertem Funktionskörper. Alle erforderlichen Head-
 und Main-Prüfungen bestanden; die reine Kommentaränderung erforderte keine
-native SQL-Ausführung. Der nächste begrenzte Schritt erklärt die vorhandenen
-Statusinterpretatoren für Agent-Alarmrouten, Agent-Jobs und Database Mail
-direkt im DDL bei unveränderten Funktionskörpern.
+native SQL-Ausführung. PR #503 ergänzt die DDL-Header der vorhandenen
+Statusinterpretatoren für Agent-Alarmrouten, Agent-Jobs und Database Mail bei
+unveränderten Funktionskörpern. Alle erforderlichen Head- und Main-Prüfungen
+bestanden; eine native SQL-Ausführung war für den Kommentardiff nicht
+erforderlich. Der nächste begrenzte Schritt erklärt die beiden Zähler-
+interpretatoren für Performance- und Contention-Werte direkt im DDL.
 Die globale semantische Prüfung weiterer Hilfetexte und selbsterklärender
 Nichtprozedur-DDL bleibt offen. Parameternennungen und vorhandene Header
 belegen keine semantische Vollständigkeit.
