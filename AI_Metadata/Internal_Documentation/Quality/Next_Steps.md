@@ -125,8 +125,13 @@ Kommentardiff nicht erforderlich. PR #506 präzisiert die bit-Konvertierung
 und frühe NULL-Ablehnung in der Hilfe von USP_PrepareDatabaseCandidates bei
 unveränderter normaler SQL-Logik. Alle acht Head- und sieben Main-Prüfungen
 einschließlich 111 ausgewählter SQL-Server-2025-Core-Verträge und Cleanup
-bestanden. Der nächste begrenzte Schritt erklärt die vorhandenen Parser für
-vollständige Objektbezüge und bigint-Listen direkt im DDL.
+bestanden. PR #507 erklärt die vorhandenen Parser für vollständige
+Objektbezüge und bigint-Listen direkt im DDL bei unveränderten Funktionskörpern.
+Alle erforderlichen Head- und Main-Prüfungen bestanden; die zunächst fehlende
+Execution-Plan-Installerkopie wurde im zweiten Kandidaten synchronisiert.
+Eine native SQL-Ausführung war für den Kommentardiff nicht erforderlich.
+Der nächste begrenzte Schritt erklärt Pattern-Normalisierung und
+Datenbankkandidaten einschließlich der beim Aufrufer verbleibenden Regexprüfung.
 Die globale semantische Prüfung weiterer Hilfetexte und selbsterklärender
 Nichtprozedur-DDL bleibt offen. Parameternennungen und vorhandene Header
 belegen keine semantische Vollständigkeit.
