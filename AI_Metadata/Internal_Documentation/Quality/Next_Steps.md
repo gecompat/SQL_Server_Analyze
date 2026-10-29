@@ -1,6 +1,6 @@
 # Nächste Arbeitsschritte
 
-**Stand:** 28. Oktober 2026
+**Stand:** 29. Oktober 2026
 **Zweck:** aktueller Auftragsstatus und historische Entwicklungswellen für `gecompat/SQL_Server_Analyze`
 
 ## Aktuelle Orchestrierung
@@ -57,14 +57,18 @@ PR #489 (Commit eb1b4d9) ergänzt die drei Hilfen von
 USP_MsdbHealthAnalysis, USP_LinkedServerAnalysis und
 USP_SystemDatabaseObjectInventory mit 35 deklarierten Parametern. Alle
 erforderlichen Head- und Main-Prüfungen dieser Lieferungen bestanden.
-Der aktuelle Änderungssatz normalisiert @MaxZeilen = NULL wie 0 in den
-RAW- und JSON-Begrenzungen der beiden letztgenannten Inventarprozeduren.
-Die Regressionen vergleichen JSON anhand nicht leerer synthetischer
-Inventare und führen die getrennten RAW-Pfade mit ausgeschalteter
-JSON-Erzeugung aus; eine Erfassung und Gleichheit aller RAW-Zeilen wird
-damit nicht behauptet. CONSOLE und TABLE verwenden weiterhin den gesamten
-materialisierten Bestand; die Ausgabebegrenzung dieser Wege wird nicht
-nachgerüstet. Hilfe und Anleitungen benennen diese tatsächliche Grenze.
+PR #490 (Commit 0e803e0) normalisiert @MaxZeilen = NULL wie 0 in den
+RAW- und JSON-Begrenzungen von LinkedServerAnalysis und
+SystemDatabaseObjectInventory. Alle acht Head- und sieben Main-Prüfungen
+bestanden. Die JSON-Gegenproben verwenden nicht leere synthetische Inventare;
+die getrennten RAW-Aufrufe belegen Ausführung ohne Fehler, keine Gleichheit
+erfasster RAW-Zeilen. CONSOLE und TABLE verwenden weiterhin den gesamten
+materialisierten Bestand. Die Vereinheitlichung ihrer positiven Zeilenlimits
+bleibt eine gesonderte Ausgabe-Vertragslücke.
+Der aktuelle Änderungssatz ergänzt die vier Hilfen für
+USP_QueryStorePlanChanges, USP_QueryStoreRegressions,
+USP_QueryStoreForcedPlans und USP_QueryStoreHints. Die Signaturen und die
+gesamte normale Ausführungslogik bleiben unverändert.
 Die globale semantische Prüfung weiterer Hilfetexte und selbsterklärender
 Nichtprozedur-DDL bleibt offen. Parameternennungen und vorhandene Header
 belegen keine semantische Vollständigkeit.

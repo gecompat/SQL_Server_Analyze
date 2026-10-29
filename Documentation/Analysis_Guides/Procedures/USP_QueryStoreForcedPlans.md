@@ -15,6 +15,8 @@ Die Procedure beantwortet keine Ausführungen außerhalb Capture und Retention s
 
 ## Sicherer Einstieg
 
+`EXEC [monitor].[USP_QueryStoreForcedPlans] @Hilfe = 1;` beschreibt alle Parameter, Filter- und Ausgabeoptionen sowie Beispielaufrufe direkt in der Procedure.
+
 ```sql
 EXEC [monitor].[USP_QueryStoreForcedPlans]
       @QueryStoreDatabaseNames = N'[ExampleDatabase]',
