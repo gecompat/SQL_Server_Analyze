@@ -107,8 +107,12 @@ Main-Prüfungen einschließlich Cleanup bestanden. PR #501 ergänzt die Hilfe
 von USP_CurrentOverview mit 31 Parametern und korrigiert den gemeinsamen
 Leitfaden auf 18 TABLE-Namen einschließlich versionStore. Alle acht Head- und
 sieben Main-Prüfungen einschließlich Cleanup bestanden; Signatur und normale
-SQL-Logik bleiben unverändert. Der nächste begrenzte Schritt erklärt
-TVF_ClassifyErrorLogEvent direkt im DDL bei unverändertem Funktionskörper.
+SQL-Logik bleiben unverändert. PR #502 erklärt TVF_ClassifyErrorLogEvent
+direkt im DDL bei unverändertem Funktionskörper. Alle erforderlichen Head-
+und Main-Prüfungen bestanden; die reine Kommentaränderung erforderte keine
+native SQL-Ausführung. Der nächste begrenzte Schritt erklärt die vorhandenen
+Statusinterpretatoren für Agent-Alarmrouten, Agent-Jobs und Database Mail
+direkt im DDL bei unveränderten Funktionskörpern.
 Die globale semantische Prüfung weiterer Hilfetexte und selbsterklärender
 Nichtprozedur-DDL bleibt offen. Parameternennungen und vorhandene Header
 belegen keine semantische Vollständigkeit.
