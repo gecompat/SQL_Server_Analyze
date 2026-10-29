@@ -13897,10 +13897,24 @@ BEGIN
     IF @Hilfe = 1
     BEGIN
         PRINT N'monitor.USP_CurrentTransactions';
-        PRINT N'@SessionIds = N''57|61''; NULL = keine Einschränkung.';
-        PRINT N'@MaxZeilen positiv = begrenzt, NULL/0 = unbegrenzt.';
-        PRINT N'@ResultSetArt = CONSOLE (Default)|RAW|TABLE|NONE; Steuerwert case-insensitiv.';
-        PRINT N'@JsonErzeugen=1 liefert transactions und warnings in @Json OUTPUT.';
+        PRINT N'Erfasst aktuell sichtbare Transaktionen aus den SQL-Server-DMVs und ordnet ihnen Session-, Request- und Statementtext-Kontext zu. Das Ergebnis ist eine Momentaufnahme; es beweist weder eine dauerhafte Ursache noch einen späteren Zustand. Eine über @ParentCurrentStateSnapshotId gelesene Quelle muss aus dem kompatiblen CurrentState-Aufruf stammen.';
+        PRINT N'@SessionIds nvarchar(max)=NULL lässt alle passenden Session-IDs zu. Eine gesetzte Liste akzeptiert Pipe, Komma oder Semikolon als Trenner, zum Beispiel N''57|61''; jede ID muss zwischen 0 und 32767 liegen und doppelte IDs sind ungültig.';
+        PRINT N'@MinAlterSekunden int=0 verlangt ein nichtnegatives Mindestalter der Transaktion in Sekunden. @NurSleeping bit=0 lässt alle Sessionstatus zu; 1 beschränkt auf Sessions mit Status sleeping.';
+        PRINT N'@SystemSessionsEinbeziehen bit=0 schließt Sessions aus, die nicht als Benutzerprozess markiert sind; 1 bezieht sie ein. @MitSqlText bit=1 fordert den Statementtext an; 0 lässt die Textquelle aus.';
+        PRINT N'@MaxSqlTextZeichen int=3000 begrenzt positiven Grenzwert auf Zeichen und ergänzt Längen-, Byte- und Kürzungsangaben. NULL oder 0 lässt Text unbegrenzt; negativ ist ungültig.';
+        PRINT N'@MaxZeilen int=1000 begrenzt positiv die ausgegebenen Datenzeilen. NULL oder 0 bedeutet ohne diese Zeilenobergrenze; negativ ist ungültig. Bei Begrenzung zeigen Metadaten an, ob weitere passende Zeilen vorlagen.';
+        PRINT N'@ResultSetArt varchar(16)=''CONSOLE'' wählt CONSOLE (Default), RAW, TABLE oder NONE; Leerraum außen wird entfernt und die Schreibweise ohne Beachtung der Groß-/Kleinschreibung verarbeitet. CONSOLE erzeugt eine lesbare Fachansicht samt verständlicher Leerzeile, RAW gibt Status-, Daten- und Warnresultsets aus, TABLE schreibt das benannte Resultset transactions in die bereitgestellte lokale #Temp-Tabelle, NONE unterdrückt fachliche Resultsets.';
+        PRINT N'@ResultTablesJson nvarchar(max)=NULL ist nur mit TABLE erforderlich und ordnet den Namen transactions genau einer lokalen Zieltabelle zu. Diese muss vor dem Aufruf leer und mit genau einer beliebigen Platzhalterspalte angelegt sein; globale oder permanente Ziele sind nicht zulässig.';
+        PRINT N'@JsonErzeugen bit=0 deaktiviert JSON; 1 erzeugt unabhängig von der Ausgabeart @Json. @Json nvarchar(max)=NULL OUTPUT nimmt das Envelope mit meta, transactions und warnings entgegen. @PrintMeldungen bit=1 lässt Status- und Textkürzungswarnungen zu; 0 unterdrückt diese Meldungen, nicht die Resultsets.';
+        PRINT N'@Hilfe bit=0 führt die Analyse aus; 1 zeigt diese Hilfe und kehrt vor der Analyse zurück. @ParentCurrentStateSnapshotId uniqueidentifier=NULL verwendet eigenständige Live-Quellen; eine UUID bindet die Analyse an den bereits materialisierten kompatiblen CurrentState-Snapshot.';
+        PRINT N'Berechtigungen richten sich nach den abgefragten DMVs und dem verwendeten SQL-Textzugriff; fehlende Sichtbarkeit kann zu strukturiertem Teilstatus führen. Es wird keine Laufzeitberechtigung durch diese Hilfe zugesichert.';
+        PRINT N'CONSOLE-Beispiel:';
+   PRINT N'EXEC [monitor].[USP_CurrentTransactions] @ResultSetArt=''CONSOLE'';';
+        PRINT N'TABLE-Beispiel:';
+   PRINT N'DECLARE @Tables nvarchar(max)=N''{"transactions":"#CurrentTransactions_HelpExample"}''; CREATE TABLE [#CurrentTransactions_HelpExample]([Placeholder] int); EXEC [monitor].[USP_CurrentTransactions] @ResultSetArt=''TABLE'',@ResultTablesJson=@Tables; SELECT * FROM [#CurrentTransactions_HelpExample]; DROP TABLE [#CurrentTransactions_HelpExample];';
+        PRINT N'JSON-Beispiel:';
+   PRINT N'DECLARE @J nvarchar(max); EXEC [monitor].[USP_CurrentTransactions] @ResultSetArt=''NONE'',@JsonErzeugen=1,@Json=@J OUTPUT; SELECT @J AS [Json];';
+   PRINT N'Das Envelope enthält meta, transactions und warnings.';
         RETURN;
     END;
 
@@ -14432,12 +14446,25 @@ BEGIN
     IF @Hilfe = 1
     BEGIN
         PRINT N'monitor.USP_CurrentMemoryGrants';
-        PRINT N'Die Procedure liefert aktuell wartende und gewährte Query Memory Grants einschließlich der Resource-Governor-Grenzen.';
-        PRINT N'@SessionIds=NULL (Pipe-Liste); @AktuelleSessionEinbeziehen=0; @NurWartende=0; @MinRequestedMb/@MinGrantedMb=NULL.';
-        PRINT N'@MitSqlText=1; @MaxSqlTextZeichen positiv begrenzt, NULL/0 liefert vollständigen Text; @MaxZeilen positiv begrenzt, NULL/0 unbegrenzt.';
-        PRINT N'@ResultSetArt=CONSOLE (Default)|RAW|TABLE|NONE; Steuerwert wird case-insensitiv verarbeitet.';
-        PRINT N'@JsonErzeugen=1 setzt @Json OUTPUT auf ein Envelope mit meta, memoryGrants und warnings.';
-        PRINT N'RequestMaxMemoryGrantPercent ist decimal(9,4); der Datentyp ist nicht Bestandteil des Spaltennamens.';
+        PRINT N'Erfasst aktuell sichtbare gewährte und wartende Query-Memory-Grants samt Request-, Workload-Group-, Resource-Pool- und Semaphore-Kontext aus SQL-Server-DMVs. Die Ausgabe ist eine Momentaufnahme; NULL-Kontext bedeutet, dass ein Zusatzwert nicht aufgelöst wurde, und ist kein Beleg für einen Nullzustand der Quelle.';
+        PRINT N'@SessionIds nvarchar(max)=NULL lässt alle passenden Session-IDs zu. Eine gesetzte Liste akzeptiert Pipe, Komma oder Semikolon als Trenner, zum Beispiel N''57|61''; IDs müssen zwischen 1 und 32767 liegen. Doppelte gültige IDs werden zusammengefasst.';
+        PRINT N'@AktuelleSessionEinbeziehen bit=0 schließt die aufrufende Session aus; 1 erlaubt ihre Einbeziehung. @NurWartende bit=0 lässt gewährte und wartende Grants zu; 1 beschränkt auf Anforderungen ohne grant_time.';
+        PRINT N'@MinRequestedMb decimal(19,2)=NULL setzt keine Untergrenze für angeforderte MB. Ein nichtnegativer Wert filtert auf mindestens diesen angeforderten Speicher. @MinGrantedMb decimal(19,2)=NULL setzt keine Untergrenze für gewährte MB; ein Wert filtert entsprechend auf granted_memory.';
+        PRINT N'Beide MB-Untergrenzen wirken gemeinsam, wenn sie gesetzt sind. Negative Werte sind ungültig; NULL wird bei der Prüfung wie keine Untergrenze behandelt.';
+        PRINT N'@MitSqlText bit=1 fordert aktuellen Statementtext an; 0 lässt die Textquelle aus. @MaxSqlTextZeichen int=3000 begrenzt positiven Grenzwert auf Zeichen und ergänzt Längen-, Byte- und Kürzungsangaben; NULL oder 0 lässt Text unbegrenzt, negative Werte sind ungültig.';
+        PRINT N'@MaxZeilen int=1000 begrenzt positiv die ausgegebenen Datenzeilen. NULL oder 0 bedeutet ohne diese Zeilenobergrenze; negativ ist ungültig. Bei Begrenzung weisen Metadaten resultLimited und hasMoreRows aus, ob mehr Kandidaten vorhanden waren.';
+        PRINT N'@ResultSetArt varchar(16)=''CONSOLE'' wählt CONSOLE (Default), RAW, TABLE oder NONE; Leerraum außen wird entfernt und die Schreibweise ohne Beachtung der Groß-/Kleinschreibung verarbeitet. CONSOLE erzeugt eine lesbare Fachansicht samt Leerzeile, RAW Status- und Datenresultset, TABLE exportiert das benannte Resultset memoryGrants, NONE unterdrückt fachliche Resultsets.';
+        PRINT N'@ResultTablesJson nvarchar(max)=NULL ist nur mit TABLE erforderlich und ordnet memoryGrants genau einer lokalen Zieltabelle zu. Diese muss vor dem Aufruf leer und mit genau einer beliebigen Platzhalterspalte angelegt sein; globale oder permanente Ziele sind nicht zulässig.';
+        PRINT N'@JsonErzeugen bit=0 deaktiviert JSON; 1 erzeugt unabhängig von der Ausgabeart @Json. @Json nvarchar(max)=NULL OUTPUT nimmt das Envelope mit meta, memoryGrants und warnings entgegen. @PrintMeldungen bit=1 lässt Status- und Textkürzungswarnungen zu; 0 unterdrückt diese Meldungen, nicht Resultsets.';
+        PRINT N'@Hilfe bit=0 führt die Analyse aus; 1 zeigt diese Hilfe und kehrt vor der Analyse zurück. @ParentCurrentStateSnapshotId uniqueidentifier=NULL verwendet eigenständige Live-Quellen; eine UUID bindet die Analyse an einen bereits materialisierten kompatiblen CurrentState-Snapshot.';
+        PRINT N'Für DMV-Zugriffe gilt laut Modulvertrag VIEW SERVER STATE oder VIEW SERVER PERFORMANCE STATE, wie die Procedure es im Metadatenfeld requiredPermission ausweist. Die tatsächliche Sichtbarkeit kann von Umgebung und ergänzenden Metadatenzugriffen abhängen; fehlende Werte bleiben strukturiert oder NULL.';
+        PRINT N'CONSOLE-Beispiel:';
+   PRINT N'EXEC [monitor].[USP_CurrentMemoryGrants] @ResultSetArt=''CONSOLE'';';
+        PRINT N'TABLE-Beispiel:';
+   PRINT N'DECLARE @Tables nvarchar(max)=N''{"memoryGrants":"#CurrentMemoryGrants_HelpExample"}''; CREATE TABLE [#CurrentMemoryGrants_HelpExample]([Placeholder] int); EXEC [monitor].[USP_CurrentMemoryGrants] @ResultSetArt=''TABLE'',@ResultTablesJson=@Tables; SELECT * FROM [#CurrentMemoryGrants_HelpExample]; DROP TABLE [#CurrentMemoryGrants_HelpExample];';
+        PRINT N'JSON-Beispiel:';
+   PRINT N'DECLARE @J nvarchar(max); EXEC [monitor].[USP_CurrentMemoryGrants] @ResultSetArt=''NONE'',@JsonErzeugen=1,@Json=@J OUTPUT; SELECT @J AS [Json];';
+   PRINT N'Das Envelope enthält meta, memoryGrants und warnings.';
         RETURN;
     END;
 
@@ -19080,7 +19107,26 @@ BEGIN
  SET @MaxZeilen=COALESCE(@MaxZeilen,0);
  DECLARE @Status varchar(40)='NOT_EXECUTED',@Partial bit=0,@Mode varchar(16)=UPPER(LTRIM(RTRIM(COALESCE(@ResultSetArt,''))));
  DECLARE @ErrorNumber int=NULL,@ErrorMessage nvarchar(2048)=NULL,@TargetSessionId int=@@SPID;
- IF @Hilfe=1 BEGIN PRINT N'monitor.USP_CurrentCursorAnalysis'; PRINT N'Cursor-Details sind opt-in und auf genau eine Session sowie @MaxZeilen begrenzt.'; RETURN; END;
+ IF @Hilfe=1
+ BEGIN
+   PRINT N'monitor.USP_CurrentCursorAnalysis';
+   PRINT N'Erfasst Cursor der aktuell gewählten Session ausschließlich aus sys.dm_exec_cursors(@TargetSessionId). Ohne @IncludeCursorDetails=1 wird kein Cursor-Quellscan ausgeführt; die Analyse ist opt-in und liefert eine begrenzte Momentaufnahme, keine Aussage über frühere oder spätere Cursorzustände.';
+   PRINT N'@IncludeCursorDetails bit=0 deaktiviert das Lesen der Cursor-DMV und ergibt ein leeres Datenresultat. 1 liest Cursorinformationen; FindingContext unterscheidet INVENTORY_ONLY, RESOURCE_CONTEXT und DORMANT_CONTEXT anhand der im Resultat sichtbaren Werte.';
+   PRINT N'@SessionIds nvarchar(max)=NULL verwendet die aufrufende Session. Eine gesetzte Liste muss nach Pipe-, Komma- oder Semikolontrennung genau eine gültige Session-ID zwischen 1 und 32767 enthalten; mehrere, ungültige oder leere Listenelemente führen zum Status INVALID_PARAMETER.';
+   PRINT N'@MaxZeilen int=200 begrenzt positive Werte auf so viele Cursorzeilen. 0 oder NULL wird intern zu 0 und erlaubt bis zu 2147483647 Zeilen; negative Werte sind ungültig.';
+   PRINT N'@ResultSetArt varchar(16)=''CONSOLE'' wählt CONSOLE (Default), RAW, TABLE oder NONE. Die Eingabe wird außen getrimmt und großgeschrieben. CONSOLE erzeugt eine lesbare Cursoransicht samt verständlicher Leerzeile, RAW Status-/Zähler- und optionales Detailresultset, TABLE exportiert cursors, NONE unterdrückt fachliche Resultsets.';
+   PRINT N'@ResultTablesJson nvarchar(max)=NULL wird nur für TABLE verwendet und ordnet cursors genau einer lokalen Zieltabelle zu. Die Tabelle muss vorher leer und mit genau einer beliebigen Platzhalterspalte angelegt sein; globale oder permanente Ziele sind unzulässig.';
+   PRINT N'@JsonErzeugen bit=0 deaktiviert JSON; 1 schreibt @Json. @Json nvarchar(max)=NULL OUTPUT enthält bei aktivierter Ausgabe ein JSON-Array der Cursorzeilen ohne Envelope; ein leerer Bestand ergibt []. @PrintMeldungen bit=1 gibt im NONE-Modus eine Statusmeldung aus; 0 unterdrückt diese Meldung.';
+   PRINT N'@Hilfe bit=0 führt die Analyse aus; 1 zeigt diese Hilfe und kehrt vor dem Setzen des Lock-Timeouts und vor Quellenzugriffen zurück. @StatusCodeOut varchar(40)=NULL OUTPUT liefert StatusCode; @IsPartialOut bit=NULL OUTPUT den Teilstatus; @ErrorNumberOut int=NULL OUTPUT und @ErrorMessageOut nvarchar(2048)=NULL OUTPUT liefern Fehlerdetails, soweit vorhanden.';
+   PRINT N'Die Quelle verlangt ausreichende Sichtbarkeit für sys.dm_exec_cursors; bei verweigertem Zugriff oder nicht verfügbarer Quelle stehen Status und Fehler im RAW-Status und in den Status-OUTPUTs. JSON enthält ausschließlich Cursorzeilen und keine Status- oder Fehlerfelder.';
+   PRINT N'CONSOLE-Beispiel:';
+   PRINT N'EXEC [monitor].[USP_CurrentCursorAnalysis] @IncludeCursorDetails=1,@ResultSetArt=''CONSOLE'';';
+   PRINT N'TABLE-Beispiel:';
+   PRINT N'DECLARE @Tables nvarchar(max)=N''{"cursors":"#CurrentCursorAnalysis_HelpExample"}''; CREATE TABLE [#CurrentCursorAnalysis_HelpExample]([Placeholder] int); EXEC [monitor].[USP_CurrentCursorAnalysis] @IncludeCursorDetails=1,@ResultSetArt=''TABLE'',@ResultTablesJson=@Tables; SELECT * FROM [#CurrentCursorAnalysis_HelpExample]; DROP TABLE [#CurrentCursorAnalysis_HelpExample];';
+   PRINT N'JSON-Beispiel:';
+   PRINT N'DECLARE @J nvarchar(max); EXEC [monitor].[USP_CurrentCursorAnalysis] @IncludeCursorDetails=1,@ResultSetArt=''NONE'',@JsonErzeugen=1,@Json=@J OUTPUT; SELECT @J AS [Json];';
+   PRINT N'Die Ausgabe ist ein JSON-Array.';
+   RETURN; END;
  DECLARE @PreviousLockTimeout int=@@LOCK_TIMEOUT,@RestoreLockTimeoutSql nvarchar(100); SET LOCK_TIMEOUT 0;
  DECLARE @TableResultRequested bit=CASE WHEN @Mode='TABLE' THEN 1 ELSE 0 END,@ConsoleResultRequested bit=CASE WHEN @Mode='CONSOLE' THEN 1 ELSE 0 END,@TableTarget sysname=NULL;
  IF @TableResultRequested=0 AND NULLIF(LTRIM(RTRIM(COALESCE(@ResultTablesJson,N''))),N'') IS NOT NULL THROW 51011,N'@ResultTablesJson ist ausschließlich mit @ResultSetArt=TABLE zulässig.',1;
