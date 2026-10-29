@@ -101,9 +101,11 @@ Cleanup bestanden nach den begrenzten Nachprüfungen. Die früheren
 Laufzeitfehler 207 in Vertrag 122 und 1222 in USP_CurrentOverview bleiben
 mit ungeklärter Ursache dokumentiert. PR #499 ergänzt die Hilfe für USP_CurrentSessions bei unveränderter Signatur
 und normaler SQL-Logik; alle acht Head- und sieben Main-Prüfungen einschließlich
-Cleanup bestanden. Der nächste begrenzte Schritt ergänzt die Hilfe für
-USP_CurrentRequests. USP_CurrentOverview folgt danach eigenständig;
-Signaturen und normale SQL-Logik bleiben in beiden Hilfewellen unverändert.
+Cleanup bestanden. PR #500 ergänzt die Hilfe von USP_CurrentRequests bei
+unveränderter Signatur und normaler SQL-Logik; alle acht Head- und sieben
+Main-Prüfungen einschließlich Cleanup bestanden. Der nächste begrenzte
+Schritt ergänzt die Hilfe von USP_CurrentOverview bei unveränderter Signatur
+und normaler SQL-Logik.
 Die globale semantische Prüfung weiterer Hilfetexte und selbsterklärender
 Nichtprozedur-DDL bleibt offen. Parameternennungen und vorhandene Header
 belegen keine semantische Vollständigkeit.
