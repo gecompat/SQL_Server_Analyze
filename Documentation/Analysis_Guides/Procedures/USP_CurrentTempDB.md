@@ -7,6 +7,8 @@
 
 ## Entscheidungsfrage und Einsatz
 
+Die Hilfe der Procedure grenzt Sessionfilter, Datei-, Governance- und Version-Store-Sichten samt ihrer Zeit- und Berechtigungsgrenzen ab.
+
 Die Procedure beantwortet die Betriebsfrage: **Welche Session verbraucht TempDB-Platz, und wie stehen Dateien und Workload Groups dazu?** Sie unterstützt die Entscheidung, ob das aktuelle Symptom im Erfassungsmoment sichtbar ist und welcher engere Live-, Verlaufs- oder Planpfad als Nächstes sinnvoll ist.
 
 ## Nicht beantwortete Fragen
