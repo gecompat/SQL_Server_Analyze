@@ -4724,13 +4724,43 @@ Objekt       : monitor.TVF_StatementText
 Version      : 1.0.0
 Stand        : 2026-07-16
 Typ          : Inline Table-valued Function
-Zweck        : Ermittelt aus einem SQL-Batch und den Byte-Offsets eines Requests
-               das exakt laufende Statement sowie transparente Zeichen- und
-               Zeilenpositionen.
-Hinweis      : statement_start_offset und statement_end_offset sind Byte-
-               Positionen innerhalb eines nvarchar-Texts. NULL bedeutet, dass
-               kein Statement-Offset verfügbar ist; -1 beim Ende bedeutet das
-               Ende des Batches beziehungsweise persistenten Moduls.
+Zweck        : Die Funktion ermittelt den Statement-Ausschnitt eines übergebenen
+               nvarchar(max)-Batches anhand der Request-Offsets und liefert
+               Offset-, Zeichen-, Zeilen-, Längen- und Textausgaben.
+Parameter    : @BatchText, @StatementStartOffsetBytes und
+               @StatementEndOffsetBytes sind Pflichtparameter ohne Defaults.
+               Die Funktion parst kein SQL, liest keine DMVs und trifft keine
+               Autoritätsentscheidung.
+Offsetregeln : HasStatementOffsets folgt ausschließlich daraus, ob das
+               Startargument angegeben (nicht NULL) ist. Intern wird ein
+               NULL-Start zu 0; die öffentlichen Start- und Endoffsets bleiben
+               dann NULL und HasStatementOffsets ist 0. NULL oder -1 am Ende
+               bedeutet intern Batchende; öffentlich wird -1 ausgegeben,
+               wenn HasStatementOffsets = 1. Sind beide Argumente NULL, wird
+               der ganze Batch projiziert. Ein NULL-Start mit angegebenem Ende
+               kann einen Teilausschnitt vom Batchanfang liefern.
+Gültigkeit   : Text darf nicht NULL sein; beide normalisierten Offsets müssen
+               nichtnegativ, gerade, Start <= Ende und <= DATALENGTH(Text)
+               sein. Das Ende ist inklusiv; SUBSTRING erhält daher
+               ((Ende - Start) / 2) + 1 Zeichen ab Start / 2 + 1 (1-basiert).
+               Der Schnitt endet am Textende. Start = Batchbytes ist gültig
+               und kann ein leeres Statement mit NULL-Endzeichen ergeben.
+Ausgaben     : HasStatementOffsets, IsStatementOffsetValid,
+               StatementStartOffsetBytes, StatementEndOffsetBytes,
+               StatementStartCharacter, StatementEndCharacter,
+               StatementStartLine, StatementEndLine,
+               StatementCharacterCount, BatchCharacterCount und StatementText.
+               Ungültiger Text oder ungültige Positionen ergeben NULL-Text;
+               Flags und Offsets folgen jeweils den obigen Quellregeln und
+               sind nicht pauschal alle NULL.
+Zählung      : Byte-Längen stammen aus DATALENGTH; / 2 zählt UTF-16-Codeunits,
+               keine Supplementary-Character-Codepoints. Zeilen zählen LF
+               (NCHAR(10)); CR allein erhöht die Zeile nicht. LEN und
+               SUBSTRING folgen der wirksamen Kollation. Für Surrogate wird
+               keine allgemeine Behandlungsgarantie gegeben.
+Beispiele    : Synthetische Aufrufe ohne Hostdaten:
+               SELECT * FROM monitor.TVF_StatementText(N'SELECT 1;', NULL, NULL);
+               SELECT * FROM monitor.TVF_StatementText(N'ABCDEF', 2, 5);
 ===============================================================================
 */
 CREATE OR ALTER FUNCTION [monitor].[TVF_StatementText]
@@ -5141,14 +5171,31 @@ Objekt       : monitor.TVF_ProjectUnicodeText
 Version      : 1.0.0
 Stand        : 2026-07-21
 Typ          : Inline Table-Valued Function
-Zweck        : Projiziert einen bereits materialisierten Unicode-MAX-Wert mit
-               messbarer, aufhebbarer und Surrogate-sicherer Begrenzung.
-Semantik     : NULL oder 0 als Grenze bedeutet unbegrenzt; negative Grenzen
-               validiert die aufrufende Procedure vor Verwendung der Funktion.
-Unicode      : Latin1_General_100_CI_AS_SC zählt und schneidet UTF-16-
-               Surrogate-Paare als ein Zeichen. Ein angehängtes Nicht-Leerzeichen
-               sorgt dafür, dass abschließende Leerzeichen mitgezählt werden.
-Nebenwirkung : Keine. Die Funktion liest keine System- oder Benutzerdaten.
+Zweck        : Projiziert einen bereits materialisierten nvarchar(max)-Wert
+               mit messbarer, aufhebbarer und Surrogate-sicherer Begrenzung.
+Parameter    : @Value nvarchar(max) und @MaxCharacters int sind Pflichtparameter
+               ohne Defaults. Die Funktion liest keine System- oder
+               Benutzerdaten und verändert keine Daten.
+Ausgaben     : OriginalCharacters (bigint), OriginalBytes (bigint),
+               IsTruncated (bit) und ProjectedValue (nvarchar(max)).
+               OriginalCharacters zählt unter Latin1_General_100_CI_AS_SC
+               via LEN mit angehängtem NCHAR(1), damit abschließende
+               Leerzeichen mitgezählt werden. OriginalBytes ist
+               DATALENGTH(@Value).
+NULL/Grenze  : Bei NULL-Wert sind Text und beide Zählwerte NULL sowie
+               IsTruncated = 0. NULL oder 0 als Grenze bedeutet unbegrenzt.
+               Eine positive Grenze schneidet nur bei Überschreitung mit LEFT
+               unter Latin1_General_100_CI_AS_SC; diese Collation zählt
+               Surrogate-Paare als ein Zeichen und schneidet sie nicht
+               innerhalb des Paars.
+Aufrufer     : Negative Grenzen validiert die aufrufende Procedure; die
+               Funktion erzeugt dafür keinen eigenen Status. LEFT kann bei
+               negativem Limit fehlschlagen.
+Grenzen      : Zeichen sind keine Grapheme. Es erfolgen keine Reparatur und
+               keine Anonymisierung des Werts.
+Beispiele    : Synthetische Aufrufe ohne Hostdaten:
+               SELECT * FROM monitor.TVF_ProjectUnicodeText(N'Beispiel  ', 4);
+               SELECT * FROM monitor.TVF_ProjectUnicodeText(N'Beispiel', 0);
 ===============================================================================
 */
 CREATE OR ALTER FUNCTION [monitor].[TVF_ProjectUnicodeText]
