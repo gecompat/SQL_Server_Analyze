@@ -15,6 +15,8 @@ Die Procedure beantwortet keine lückenlose Historie und allein aus einem Snapsh
 
 ## Sicherer Einstieg
 
+`EXEC [monitor].[USP_CurrentMemoryGrants] @Hilfe = 1;` beschreibt alle Parameter, Filter- und Ausgabeoptionen sowie Beispielaufrufe direkt in der Procedure.
+
 ```sql
 EXEC [monitor].[USP_CurrentMemoryGrants]
       @NurWartende = 1,

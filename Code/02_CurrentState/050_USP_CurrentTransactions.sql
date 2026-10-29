@@ -47,10 +47,24 @@ BEGIN
     IF @Hilfe = 1
     BEGIN
         PRINT N'monitor.USP_CurrentTransactions';
-        PRINT N'@SessionIds = N''57|61''; NULL = keine Einschränkung.';
-        PRINT N'@MaxZeilen positiv = begrenzt, NULL/0 = unbegrenzt.';
-        PRINT N'@ResultSetArt = CONSOLE (Default)|RAW|TABLE|NONE; Steuerwert case-insensitiv.';
-        PRINT N'@JsonErzeugen=1 liefert transactions und warnings in @Json OUTPUT.';
+        PRINT N'Erfasst aktuell sichtbare Transaktionen aus den SQL-Server-DMVs und ordnet ihnen Session-, Request- und Statementtext-Kontext zu. Das Ergebnis ist eine Momentaufnahme; es beweist weder eine dauerhafte Ursache noch einen späteren Zustand. Eine über @ParentCurrentStateSnapshotId gelesene Quelle muss aus dem kompatiblen CurrentState-Aufruf stammen.';
+        PRINT N'@SessionIds nvarchar(max)=NULL lässt alle passenden Session-IDs zu. Eine gesetzte Liste akzeptiert Pipe, Komma oder Semikolon als Trenner, zum Beispiel N''57|61''; jede ID muss zwischen 0 und 32767 liegen und doppelte IDs sind ungültig.';
+        PRINT N'@MinAlterSekunden int=0 verlangt ein nichtnegatives Mindestalter der Transaktion in Sekunden. @NurSleeping bit=0 lässt alle Sessionstatus zu; 1 beschränkt auf Sessions mit Status sleeping.';
+        PRINT N'@SystemSessionsEinbeziehen bit=0 schließt Sessions aus, die nicht als Benutzerprozess markiert sind; 1 bezieht sie ein. @MitSqlText bit=1 fordert den Statementtext an; 0 lässt die Textquelle aus.';
+        PRINT N'@MaxSqlTextZeichen int=3000 begrenzt positiven Grenzwert auf Zeichen und ergänzt Längen-, Byte- und Kürzungsangaben. NULL oder 0 lässt Text unbegrenzt; negativ ist ungültig.';
+        PRINT N'@MaxZeilen int=1000 begrenzt positiv die ausgegebenen Datenzeilen. NULL oder 0 bedeutet ohne diese Zeilenobergrenze; negativ ist ungültig. Bei Begrenzung zeigen Metadaten an, ob weitere passende Zeilen vorlagen.';
+        PRINT N'@ResultSetArt varchar(16)=''CONSOLE'' wählt CONSOLE (Default), RAW, TABLE oder NONE; Leerraum außen wird entfernt und die Schreibweise ohne Beachtung der Groß-/Kleinschreibung verarbeitet. CONSOLE erzeugt eine lesbare Fachansicht samt verständlicher Leerzeile, RAW gibt Status-, Daten- und Warnresultsets aus, TABLE schreibt das benannte Resultset transactions in die bereitgestellte lokale #Temp-Tabelle, NONE unterdrückt fachliche Resultsets.';
+        PRINT N'@ResultTablesJson nvarchar(max)=NULL ist nur mit TABLE erforderlich und ordnet den Namen transactions genau einer lokalen Zieltabelle zu. Diese muss vor dem Aufruf leer und mit genau einer beliebigen Platzhalterspalte angelegt sein; globale oder permanente Ziele sind nicht zulässig.';
+        PRINT N'@JsonErzeugen bit=0 deaktiviert JSON; 1 erzeugt unabhängig von der Ausgabeart @Json. @Json nvarchar(max)=NULL OUTPUT nimmt das Envelope mit meta, transactions und warnings entgegen. @PrintMeldungen bit=1 lässt Status- und Textkürzungswarnungen zu; 0 unterdrückt diese Meldungen, nicht die Resultsets.';
+        PRINT N'@Hilfe bit=0 führt die Analyse aus; 1 zeigt diese Hilfe und kehrt vor der Analyse zurück. @ParentCurrentStateSnapshotId uniqueidentifier=NULL verwendet eigenständige Live-Quellen; eine UUID bindet die Analyse an den bereits materialisierten kompatiblen CurrentState-Snapshot.';
+        PRINT N'Berechtigungen richten sich nach den abgefragten DMVs und dem verwendeten SQL-Textzugriff; fehlende Sichtbarkeit kann zu strukturiertem Teilstatus führen. Es wird keine Laufzeitberechtigung durch diese Hilfe zugesichert.';
+        PRINT N'CONSOLE-Beispiel:';
+   PRINT N'EXEC [monitor].[USP_CurrentTransactions] @ResultSetArt=''CONSOLE'';';
+        PRINT N'TABLE-Beispiel:';
+   PRINT N'DECLARE @Tables nvarchar(max)=N''{"transactions":"#CurrentTransactions_HelpExample"}''; CREATE TABLE #CurrentTransactions_HelpExample([Placeholder] int); EXEC [monitor].[USP_CurrentTransactions] @ResultSetArt=''TABLE'',@ResultTablesJson=@Tables; SELECT * FROM [#CurrentTransactions_HelpExample]; DROP TABLE [#CurrentTransactions_HelpExample];';
+        PRINT N'JSON-Beispiel:';
+   PRINT N'DECLARE @J nvarchar(max); EXEC [monitor].[USP_CurrentTransactions] @ResultSetArt=''NONE'',@JsonErzeugen=1,@Json=@J OUTPUT; SELECT @J AS [Json];';
+   PRINT N'Das Envelope enthält meta, transactions und warnings.';
         RETURN;
     END;
 

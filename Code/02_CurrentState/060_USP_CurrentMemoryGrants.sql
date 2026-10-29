@@ -87,12 +87,25 @@ BEGIN
     IF @Hilfe = 1
     BEGIN
         PRINT N'monitor.USP_CurrentMemoryGrants';
-        PRINT N'Die Procedure liefert aktuell wartende und gewährte Query Memory Grants einschließlich der Resource-Governor-Grenzen.';
-        PRINT N'@SessionIds=NULL (Pipe-Liste); @AktuelleSessionEinbeziehen=0; @NurWartende=0; @MinRequestedMb/@MinGrantedMb=NULL.';
-        PRINT N'@MitSqlText=1; @MaxSqlTextZeichen positiv begrenzt, NULL/0 liefert vollständigen Text; @MaxZeilen positiv begrenzt, NULL/0 unbegrenzt.';
-        PRINT N'@ResultSetArt=CONSOLE (Default)|RAW|TABLE|NONE; Steuerwert wird case-insensitiv verarbeitet.';
-        PRINT N'@JsonErzeugen=1 setzt @Json OUTPUT auf ein Envelope mit meta, memoryGrants und warnings.';
-        PRINT N'RequestMaxMemoryGrantPercent ist decimal(9,4); der Datentyp ist nicht Bestandteil des Spaltennamens.';
+        PRINT N'Erfasst aktuell sichtbare gewährte und wartende Query-Memory-Grants samt Request-, Workload-Group-, Resource-Pool- und Semaphore-Kontext aus SQL-Server-DMVs. Die Ausgabe ist eine Momentaufnahme; NULL-Kontext bedeutet, dass ein Zusatzwert nicht aufgelöst wurde, und ist kein Beleg für einen Nullzustand der Quelle.';
+        PRINT N'@SessionIds nvarchar(max)=NULL lässt alle passenden Session-IDs zu. Eine gesetzte Liste akzeptiert Pipe, Komma oder Semikolon als Trenner, zum Beispiel N''57|61''; IDs müssen zwischen 1 und 32767 liegen. Doppelte gültige IDs werden zusammengefasst.';
+        PRINT N'@AktuelleSessionEinbeziehen bit=0 schließt die aufrufende Session aus; 1 erlaubt ihre Einbeziehung. @NurWartende bit=0 lässt gewährte und wartende Grants zu; 1 beschränkt auf Anforderungen ohne grant_time.';
+        PRINT N'@MinRequestedMb decimal(19,2)=NULL setzt keine Untergrenze für angeforderte MB. Ein nichtnegativer Wert filtert auf mindestens diesen angeforderten Speicher. @MinGrantedMb decimal(19,2)=NULL setzt keine Untergrenze für gewährte MB; ein Wert filtert entsprechend auf granted_memory.';
+        PRINT N'Beide MB-Untergrenzen wirken gemeinsam, wenn sie gesetzt sind. Negative Werte sind ungültig; NULL wird bei der Prüfung wie keine Untergrenze behandelt.';
+        PRINT N'@MitSqlText bit=1; @MitSqlText=1 fordert aktuellen Statementtext an; 0 lässt die Textquelle aus. @MaxSqlTextZeichen int=3000 begrenzt positiven Grenzwert auf Zeichen und ergänzt Längen-, Byte- und Kürzungsangaben; NULL oder 0 lässt Text unbegrenzt, negative Werte sind ungültig.';
+        PRINT N'@MaxZeilen int=1000 begrenzt positiv die ausgegebenen Datenzeilen. NULL oder 0 bedeutet ohne diese Zeilenobergrenze; negativ ist ungültig. Bei Begrenzung weisen Metadaten resultLimited und hasMoreRows aus, ob mehr Kandidaten vorhanden waren.';
+        PRINT N'@ResultSetArt varchar(16)=''CONSOLE'' wählt CONSOLE (Default), RAW, TABLE oder NONE; Leerraum außen wird entfernt und die Schreibweise ohne Beachtung der Groß-/Kleinschreibung verarbeitet. CONSOLE erzeugt eine lesbare Fachansicht samt Leerzeile, RAW Status- und Datenresultset, TABLE exportiert das benannte Resultset memoryGrants, NONE unterdrückt fachliche Resultsets.';
+        PRINT N'@ResultTablesJson nvarchar(max)=NULL ist nur mit TABLE erforderlich und ordnet memoryGrants genau einer lokalen Zieltabelle zu. Diese muss vor dem Aufruf leer und mit genau einer beliebigen Platzhalterspalte angelegt sein; globale oder permanente Ziele sind nicht zulässig.';
+        PRINT N'@JsonErzeugen bit=0 deaktiviert JSON; 1 erzeugt unabhängig von der Ausgabeart @Json. @Json nvarchar(max)=NULL OUTPUT nimmt das Envelope mit meta, memoryGrants und warnings entgegen. @PrintMeldungen bit=1 lässt Status- und Textkürzungswarnungen zu; 0 unterdrückt diese Meldungen, nicht Resultsets.';
+        PRINT N'@Hilfe bit=0 führt die Analyse aus; 1 zeigt diese Hilfe und kehrt vor der Analyse zurück. @ParentCurrentStateSnapshotId uniqueidentifier=NULL verwendet eigenständige Live-Quellen; eine UUID bindet die Analyse an einen bereits materialisierten kompatiblen CurrentState-Snapshot.';
+        PRINT N'Für DMV-Zugriffe gilt laut Modulvertrag VIEW SERVER STATE oder VIEW SERVER PERFORMANCE STATE, wie die Procedure es im Metadatenfeld requiredPermission ausweist. Die tatsächliche Sichtbarkeit kann von Umgebung und ergänzenden Metadatenzugriffen abhängen; fehlende Werte bleiben strukturiert oder NULL.';
+        PRINT N'CONSOLE-Beispiel:';
+   PRINT N'EXEC [monitor].[USP_CurrentMemoryGrants] @ResultSetArt=''CONSOLE'';';
+        PRINT N'TABLE-Beispiel:';
+   PRINT N'DECLARE @Tables nvarchar(max)=N''{"memoryGrants":"#CurrentMemoryGrants_HelpExample"}''; CREATE TABLE #CurrentMemoryGrants_HelpExample([Placeholder] int); EXEC [monitor].[USP_CurrentMemoryGrants] @ResultSetArt=''TABLE'',@ResultTablesJson=@Tables; SELECT * FROM [#CurrentMemoryGrants_HelpExample]; DROP TABLE [#CurrentMemoryGrants_HelpExample];';
+        PRINT N'JSON-Beispiel:';
+   PRINT N'DECLARE @J nvarchar(max); EXEC [monitor].[USP_CurrentMemoryGrants] @ResultSetArt=''NONE'',@JsonErzeugen=1,@Json=@J OUTPUT; SELECT @J AS [Json];';
+   PRINT N'Das Envelope enthält meta, memoryGrants und warnings.';
         RETURN;
     END;
 

@@ -66,15 +66,21 @@ TABLE blieb in dieser Lieferung offen.
 PR #491 (Commit cf68edd) ergänzt die vier Query-Store-Hilfen für
 PlanChanges, Regressions, ForcedPlans und Hints mit 71 deklarierten
 Parametern. Alle acht Head- und sieben Main-Prüfungen bestanden.
-Der aktuelle Änderungssatz vereinheitlicht positive @MaxZeilen-Werte der
-beiden Inventarprozeduren über RAW, JSON, CONSOLE und TABLE. Eine spät
-materialisierte Projektion wählt dieselbe begrenzte Inventarmenge; Status,
-Zählung, Quellenzugriffe und freigegebene Verbindungstests behalten ihren
-vollständigen Quellenscope. RAW und JSON besitzen eine explizite Sortierung;
-CONSOLE und TABLE versprechen keine physische Zeilenreihenfolge. Vorbereitete
-Regressionen prüfen positive Grenzen, NULL/0 und kontrollierte negative
-Parameterfälle mit nicht leeren synthetischen Inventaren. Die native
-SQL-Server-2025-Abnahme steht für diesen Lieferstand noch aus.
+PR #492 (Commit 74acef0) vereinheitlicht positive @MaxZeilen-Werte von
+LinkedServerAnalysis und SystemDatabaseObjectInventory über die gemeinsame
+Inventarmenge von RAW, JSON, CONSOLE und TABLE. Alle acht Head- und sieben
+Main-Prüfungen bestanden. Quellstatus, Zählung und Verbindungstests behalten
+ihren vollständigen Scope; CONSOLE und TABLE erhalten keine zusätzliche
+physische Reihenfolgegarantie.
+Der rollenbezogene Strukturaudit bindet 121 öffentliche Signaturen und 2.167
+Inventarzeilen an den geprüften Main-Stand. @Hilfe bit=0 ist überall vorhanden;
+118 Procedures besitzen die gemeinsame Ausgabesteuerung. Zwei öffentliche
+Vorbereitungshelfer und der Snapshot-Konfigurationsbefehl haben andere
+Rückgabeverträge. Der JSON-Konstruktor behält @JsonErzeugen=1. Die API-Seite
+erläutert diese Rollen; der Audit belegt keine globale Laufzeitsemantik.
+Der aktuelle Änderungssatz ergänzt die Hilfe für USP_CurrentTransactions,
+USP_CurrentMemoryGrants und USP_CurrentCursorAnalysis bei unveränderten
+Signaturen und unveränderter normaler Ausführungslogik.
 Die globale semantische Prüfung weiterer Hilfetexte und selbsterklärender
 Nichtprozedur-DDL bleibt offen. Parameternennungen und vorhandene Header
 belegen keine semantische Vollständigkeit.
