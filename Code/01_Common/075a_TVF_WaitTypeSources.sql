@@ -1,8 +1,44 @@
 USE [DeineDatenbank];
 GO
 
-/* Quellen und Aussagezweck eines Wait Types. Unbekannte Waits erhalten einen
-   transparenten generischen Quellenfallback, aber keine erfundene Detailquelle. */
+/*
+Zweck: Gibt Quellenbelege und deren vorgesehenen Aussagebereich für einen
+       einzelnen Wait Type zurück. Die Funktion ruft die angegebenen URLs
+       nicht ab und prüft weder Erreichbarkeit noch aktuellen Inhalt.
+
+Eingabe: @WaitType nvarchar(120) ist ein einzelner Schlüssel. Für einen
+         exakten Treffer in [monitor].[WaitTypeCatalogSource] werden die
+         gespeicherten Quellenzeilen mit CatalogMatchType = EXACT geliefert.
+         Gibt es keine passende Quellenzeile, erzeugt die Funktion für einen
+         Nicht-NULL-Wert drei generische Hinweise (Definition, Messmethodik,
+         Spezialistenreferenz) mit CatalogMatchType = GENERIC_FALLBACK und
+         LastVerifiedUtc = NULL. Diese generischen Einträge sind keine
+         wait-spezifisch verifizierten Quellen. Für NULL gibt es weder einen
+         exakten Treffer noch generische Fallbackzeilen.
+
+Ausgabe: WaitType und SourceOrdinal ordnen die Zeile; SourceType, Publisher,
+         SourceTitle und SourceUrl beschreiben den Quellenverweis.
+         SupportsFields benennt die vorgesehenen Felder, EvidenceLevel die
+         Quellenklasse und SourceNotes den begrenzten Aussagezweck.
+         CatalogMatchType unterscheidet gespeicherte von generischen Zeilen;
+         LastVerifiedUtc stammt nur aus dem Katalog und ist beim generischen
+         Fallback NULL.
+
+Abhängigkeit und Aussagegrenze: Exakte Zeilen kommen aus
+         [monitor].[WaitTypeCatalogSource]. Fehlt eine solche Zeile, wird der
+         Fallback unabhängig von einem Eintrag in [monitor].[WaitTypeCatalog]
+         erzeugt. Daher bedeutet ein Quellenfallback nicht, dass der Wait Type
+         unbekannt ist; umgekehrt belegt ein exakter Quellenzeileneintrag nicht
+         die Richtigkeit oder Aktualität des verlinkten Inhalts. Die NOLOCK-
+         Lesevorgänge können uncommittete oder inkonsistente Katalogstände
+         erfassen. Die Funktion misst keine Laufzeitwerte und lädt keine Seiten
+         aus dem Netzwerk.
+
+Beispiele:
+SELECT * FROM [monitor].[TVF_WaitTypeSources](N'LCK_M_S');
+SELECT * FROM [monitor].[TVF_WaitTypeSources](N'CUSTOM_OR_NEW_WAIT');
+SELECT * FROM [monitor].[TVF_WaitTypeSources](NULL);
+*/
 CREATE OR ALTER FUNCTION [monitor].[TVF_WaitTypeSources]
 (
  @WaitType nvarchar(120)

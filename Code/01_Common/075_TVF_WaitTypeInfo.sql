@@ -1,7 +1,47 @@
 USE [DeineDatenbank];
 GO
 
-/* Kataloggestützte Wait-Taxonomie mit exaktem Lookup und regelbasiertem Fallback anhand der Wait Group. */
+/*
+Zweck: Ordnet einen Wait Type dem persistenten Wait-Katalog zu und liefert
+       beschreibende und analytische Hinweise. Die Funktion misst keine Waits
+       und bewertet keine aktuelle Workload.
+
+Eingabe: @WaitType nvarchar(120) ist ein einzelner Wait-Type-Schlüssel.
+         Der Gleichheitsvergleich ist keine Patternsuche; die Datenbankcollation gilt.
+         Ein Kataloggleicherheitstreffer liefert gespeicherte Werte und
+         CatalogMatchType = EXACT. Ohne Treffer ordnet eine Regel den Wert
+         einer Wait Group zu und erzeugt generische Hinweise mit
+         CatalogMatchType = FAMILY_FALLBACK. NULL bezeichnet KEIN_WAIT und
+         erhält ebenfalls den Regel-Fallback. Nicht katalogisierte Werte werden
+         anhand der Familienregeln zugeordnet; erst ohne passende Regel
+         entsteht OTHER_OR_NEW. Die Regeln sind keine Katalogeinträge und
+         belegen weder die Existenz noch die Ursache eines Waits.
+
+Ausgabe: WaitType, WaitGroup, Severity und IsGenerallyBenign beschreiben die
+         Taxonomie. Meaning, TypicalOccurrence, HighWaitImpact und
+         RecommendedChecks enthalten allgemeine Hinweise. DefaultAssessment,
+         AssessmentBasis, CommonCauses, PerformanceImpact, Mitigation,
+         CounterEvidence, RelatedWaitTypes, MeasurementGuidance und
+         AnalysisConfidence liefern die zugehörigen Analysefelder. HelpUrl,
+         DescriptionSource, DescriptionQuality und SourceReference kennzeichnen
+         Beschreibung und Herkunft; SourceCount zählt passende Quellzeilen.
+         InterpretationScope und CatalogMatchType grenzen den Treffer ein.
+
+Abhängigkeit und Aussagegrenze: Der Katalogtreffer stammt aus
+         [monitor].[WaitTypeCatalog]. Der Fallback wird aus dem Wait-Type-Text
+         abgeleitet und kann nur allgemeine Gruppenhinweise liefern. Ein
+         Katalogtreffer ist keine Messung. Die NOLOCK-Lesevorgänge können
+         uncommittierte oder inkonsistente Zwischenstände sehen; SourceCount
+         ist daher ebenfalls nur ein momentaner Kataloghinweis. Für eine
+         Leistungsbewertung sind aktive Tasks, Ressource, zeitliches Delta und
+         Workloadwirkung separat zu prüfen. Die Funktion führt keine Messung,
+         externe Abfrage oder Netzwerkabruf aus; HelpUrl ist nur ein Wert.
+
+Beispiele:
+SELECT * FROM [monitor].[TVF_WaitTypeInfo](N'LCK_M_S');
+SELECT * FROM [monitor].[TVF_WaitTypeInfo](N'CUSTOM_OR_NEW_WAIT');
+SELECT * FROM [monitor].[TVF_WaitTypeInfo](NULL);
+*/
 CREATE OR ALTER FUNCTION [monitor].[TVF_WaitTypeInfo](@WaitType nvarchar(120))
 RETURNS TABLE
 AS
