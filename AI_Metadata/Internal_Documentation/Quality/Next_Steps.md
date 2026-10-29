@@ -88,9 +88,14 @@ und Main-Prüfungen bestanden; die reine Kommentaränderung erforderte keine
 native SQL-Ausführung. PR #495 ergänzt die Hilfen
 für USP_CurrentBlocking und USP_CurrentWaits bei unveränderter normaler Logik.
 Alle acht Head- und sieben Main-Prüfungen einschließlich SQL-Server-2025-
-Laufzeitverträgen und Cleanup bestanden. Der nächste begrenzte Schritt
-ergänzt die Hilfe für USP_CurrentTempDB
-bei unveränderten Signaturen und unveränderter normaler Ausführungslogik.
+Laufzeitverträgen und Cleanup bestanden. PR #496 ergänzt die Hilfe für USP_CurrentTempDB und korrigiert den
+bereits vorhandenen Version-Store-Export im gemeinsamen Lesepfad. Signatur
+und normale SQL-Logik bleiben unverändert. Alle acht Head- und sieben
+Main-Prüfungen bestanden; die Main-Laufzeitprüfung bestand im zweiten Versuch.
+Der erste Lauf scheiterte in Vertrag 192 mit Fehler 1222; ein Blocker wurde
+nicht erfasst, die Ursache bleibt ungeklärt. Der folgende begrenzte Schritt
+ergänzt die Hilfe für USP_CurrentIO bei unveränderter normaler SQL-Logik.
+Die Log-Hilfe bleibt der anschließende eigenständige Schritt.
 Die globale semantische Prüfung weiterer Hilfetexte und selbsterklärender
 Nichtprozedur-DDL bleibt offen. Parameternennungen und vorhandene Header
 belegen keine semantische Vollständigkeit.
