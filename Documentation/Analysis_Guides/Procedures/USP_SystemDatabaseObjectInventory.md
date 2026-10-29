@@ -27,12 +27,10 @@ Der Aufruf verwendet nur Systemkataloge. Führen Sie ihn zunächst unter dem vor
 
 ## Resultsets und Leserichtung
 
-CONSOLE zeigt `systemDatabaseObjects`. RAW liefert den Modulstatus und danach das begrenzte Inventar. TABLE und JSON verwenden dieselbe lokale Materialisierung. Lesen Sie `DatabaseName`, `SchemaName`, `ObjectName`, `ObjectType`, `StatusCode` und `EvidenceLimit` zuerst. `CreateDate` und `ModifyDate` sind Katalogzeitpunkte; bei Tabellen und Views kann sich `ModifyDate` auch durch Indexänderungen verändern und ist deshalb kein verlässlicher Deploymentzeitpunkt.
+CONSOLE zeigt `systemDatabaseObjects`. RAW liefert den Modulstatus und danach das begrenzte Inventar. TABLE und JSON verwenden dieselbe begrenzte Mitgliedschaft. RAW-Inventar und JSON sind nach DatabaseName, SchemaName und ObjectName geordnet; CONSOLE und TABLE garantieren keine physische Zeilenreihenfolge. Lesen Sie `DatabaseName`, `SchemaName`, `ObjectName`, `ObjectType`, `StatusCode` und `EvidenceLimit` zuerst. `CreateDate` und `ModifyDate` sind Katalogzeitpunkte; bei Tabellen und Views kann sich `ModifyDate` auch durch Indexänderungen verändern und ist deshalb kein verlässlicher Deploymentzeitpunkt.
 
-`@MaxZeilen = NULL` und `0` geben das Inventar in RAW und JSON ohne
-Ausgabebegrenzung aus; positive Werte begrenzen diese beiden Ausgabewege.
-CONSOLE und TABLE verwenden den gesamten materialisierten Bestand. Der
-Katalogzugriff wird dadurch nicht begrenzt.
+`@MaxZeilen = NULL` und `0` geben das Inventar in CONSOLE, RAW, TABLE und JSON ohne Ausgabebegrenzung aus; positive Werte bestimmen dieselbe deterministisch nach DatabaseName, SchemaName und ObjectName ausgewählte Mitgliedschaft in allen vier Ausgabewegen. RAW und JSON sind nach diesen Spalten geordnet; CONSOLE und TABLE garantieren keine physische Zeilenreihenfolge. Status und Teilsichtbarkeit beziehen sich weiterhin auf den vollständigen Bestand. Negative Werte setzen `INVALID_PARAMETER` und liefern keine Inventarzeilen. Die Ausgabegrenze reduziert den Katalogzugriff nicht.
+
 
 ## Beispiele und Gegenbeispiele
 
@@ -54,7 +52,7 @@ Für einen kontrollierten Positivtest werden feste Example-Namen vor der Erstell
 | Haupttreiber | Anzahl sichtbarer schema-gebundener Objekte |
 | Skalierung | Sequenziell für `master`, `model` und `msdb` |
 | Ressourcen | Geringe Katalog-CPU und lokale Sortierung |
-| Begrenzungswirkung | `@MaxZeilen` begrenzt RAW und JSON, nicht CONSOLE, TABLE oder den Katalogselect |
+| Begrenzungswirkung | `@MaxZeilen` begrenzt die Inventarzeilen in CONSOLE, RAW, TABLE und JSON, nicht den Katalogselect |
 | Locking und Nebenwirkungen | Read-only mit `NOLOCK`; keine Objektmutation |
 | Schutzmechanismus | Feste Datenbankliste, Katalogfilter und Fehlerisolation |
 | Sicherer Einsatz | Inventar mit Eigentümer-, Deployment- und Upgradeunterlagen vergleichen |

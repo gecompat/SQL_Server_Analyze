@@ -60,15 +60,21 @@ erforderlichen Head- und Main-Prüfungen dieser Lieferungen bestanden.
 PR #490 (Commit 0e803e0) normalisiert @MaxZeilen = NULL wie 0 in den
 RAW- und JSON-Begrenzungen von LinkedServerAnalysis und
 SystemDatabaseObjectInventory. Alle acht Head- und sieben Main-Prüfungen
-bestanden. Die JSON-Gegenproben verwenden nicht leere synthetische Inventare;
-die getrennten RAW-Aufrufe belegen Ausführung ohne Fehler, keine Gleichheit
-erfasster RAW-Zeilen. CONSOLE und TABLE verwenden weiterhin den gesamten
-materialisierten Bestand. Die Vereinheitlichung ihrer positiven Zeilenlimits
-bleibt eine gesonderte Ausgabe-Vertragslücke.
-Der aktuelle Änderungssatz ergänzt die vier Hilfen für
-USP_QueryStorePlanChanges, USP_QueryStoreRegressions,
-USP_QueryStoreForcedPlans und USP_QueryStoreHints. Die Signaturen und die
-gesamte normale Ausführungslogik bleiben unverändert.
+bestanden. Die damaligen RAW-Fälle belegen Ausführung ohne Fehler, keine
+Gleichheit erfasster RAW-Zeilen. Die positive Begrenzung von CONSOLE und
+TABLE blieb in dieser Lieferung offen.
+PR #491 (Commit cf68edd) ergänzt die vier Query-Store-Hilfen für
+PlanChanges, Regressions, ForcedPlans und Hints mit 71 deklarierten
+Parametern. Alle acht Head- und sieben Main-Prüfungen bestanden.
+Der aktuelle Änderungssatz vereinheitlicht positive @MaxZeilen-Werte der
+beiden Inventarprozeduren über RAW, JSON, CONSOLE und TABLE. Eine spät
+materialisierte Projektion wählt dieselbe begrenzte Inventarmenge; Status,
+Zählung, Quellenzugriffe und freigegebene Verbindungstests behalten ihren
+vollständigen Quellenscope. RAW und JSON besitzen eine explizite Sortierung;
+CONSOLE und TABLE versprechen keine physische Zeilenreihenfolge. Vorbereitete
+Regressionen prüfen positive Grenzen, NULL/0 und kontrollierte negative
+Parameterfälle mit nicht leeren synthetischen Inventaren. Die native
+SQL-Server-2025-Abnahme steht für diesen Lieferstand noch aus.
 Die globale semantische Prüfung weiterer Hilfetexte und selbsterklärender
 Nichtprozedur-DDL bleibt offen. Parameternennungen und vorhandene Header
 belegen keine semantische Vollständigkeit.

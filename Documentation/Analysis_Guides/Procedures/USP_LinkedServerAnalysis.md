@@ -27,12 +27,10 @@ Der Aufruf materialisiert nur lokale Katalogevidenz. Erst die Kombination aus `@
 
 ## Resultsets und Leserichtung
 
-CONSOLE priorisiert das benannte Resultset `linkedServers`. RAW liefert zunächst den Modulstatus, danach das Inventar und anschließend den kumulativen Waitkontext. TABLE schreibt ausschließlich `linkedServers` in das unter `@ResultTablesJson` benannte lokale Temp-Ziel. JSON enthält dasselbe begrenzte Inventar. Lesen Sie zuerst den Modulstatus und danach je Zeile `ConnectivityStatus`, `StatusCode` und `EvidenceLimit`; Provider- und Optionsspalten sind erst in diesem Kontext zu bewerten.
+CONSOLE priorisiert das benannte Resultset `linkedServers`. RAW liefert zunächst den Modulstatus, danach das Inventar und anschließend den kumulativen Waitkontext. TABLE schreibt ausschließlich `linkedServers` in das unter `@ResultTablesJson` benannte lokale Temp-Ziel. RAW-Inventar und JSON sind nach ServerName geordnet. CONSOLE und TABLE verwenden dieselbe begrenzte Mitgliedschaft, garantieren aber keine physische Zeilenreihenfolge. Lesen Sie zuerst den Modulstatus und danach je Zeile `ConnectivityStatus`, `StatusCode` und `EvidenceLimit`; Provider- und Optionsspalten sind erst in diesem Kontext zu bewerten.
 
-`@MaxZeilen = NULL` und `0` geben das Inventar in RAW und JSON ohne
-Ausgabebegrenzung aus; positive Werte begrenzen diese beiden Ausgabewege.
-CONSOLE und TABLE verwenden den gesamten materialisierten Bestand. Der
-Katalogzugriff und die Zahl ausdrücklich aktivierter Verbindungstests werden dadurch nicht begrenzt.
+`@MaxZeilen = NULL` und `0` geben das Inventar in CONSOLE, RAW, TABLE und JSON ohne Ausgabebegrenzung aus; positive Werte bestimmen dieselbe deterministisch nach ServerName ausgewählte Mitgliedschaft in allen vier Ausgabewegen. RAW und JSON sind nach ServerName geordnet; CONSOLE und TABLE garantieren keine physische Zeilenreihenfolge. Status, Zählung und Zahl ausdrücklich aktivierter Verbindungstests beziehen sich weiterhin auf den vollständigen Bestand. Negative Werte setzen `INVALID_PARAMETER` und liefern keine Inventarzeilen. Katalogzugriff und Verbindungstests werden durch die Ausgabegrenze nicht begrenzt.
+
 
 ## Beispiele und Gegenbeispiele
 
@@ -52,7 +50,7 @@ Ein passender Positivfall ist ein synthetischer `ExampleLinkedServer`, der lokal
 | Haupttreiber | Anzahl der Registrierungen sowie Netzwerk-, Provider- und Login-Timeouts |
 | Skalierung | Lokales Inventar skaliert mit Registrierungen; Remotezeit skaliert je Ziel |
 | Ressourcen | Lokale Katalogarbeit; optional Netzwerk, Provider und Remoteanmeldung |
-| Begrenzungswirkung | `@MaxZeilen` begrenzt RAW und JSON, nicht CONSOLE, TABLE oder die Zahl aktivierter Verbindungstests |
+| Begrenzungswirkung | `@MaxZeilen` begrenzt die Inventarzeilen in CONSOLE, RAW, TABLE und JSON; Status und Tests bleiben ungekürzt |
 | Locking und Nebenwirkungen | Katalogzugriff ist read-only; der Test kann externe Verbindungen aufbauen |
 | Schutzmechanismus | Doppeltes Opt-in vor dem ersten Remotezugriff |
 | Sicherer Einsatz | Zuerst lokales Inventar, Remotepfad nur im vereinbarten Testfenster |

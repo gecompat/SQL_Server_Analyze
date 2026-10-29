@@ -21,6 +21,8 @@ DECLARE @JsonNull nvarchar(max) = NULL;
 DECLARE @JsonZero nvarchar(max) = NULL;
 DECLARE @Status varchar(40) = NULL;
 DECLARE @Partial bit = NULL;
+DECLARE @LimitedServerName sysname = NULL;
+DECLARE @ConsoleRows TABLE ([Ergebnis] nvarchar(200),[ServerName] sysname,[Product] nvarchar(128),[Provider] nvarchar(128),[IsDataAccessEnabled] bit,[IsRpcOutEnabled] bit,[IsCollationCompatible] bit,[ConnectivityStatus] varchar(40),[StatusCode] varchar(40),[EvidenceLimit] nvarchar(1000));
 DECLARE @RestrictedLoginPassword nvarchar(128) = N'A!a' + CONVERT(nvarchar(36), NEWID());
 DECLARE @RestrictedLoginSql nvarchar(max) =
     N'CREATE LOGIN [ExampleOps005RestrictedLogin] WITH PASS' + N'WORD = N''' +
@@ -151,6 +153,31 @@ BEGIN TRY
         , @srvproduct = N'ExampleSyntheticTimeoutProduct'
         , @provider = N'MSOLEDBSQL'
         , @datasrc = N'example-timeout.invalid:65535';
+
+    SET @Json=NULL; SET @Status=NULL; SET @Partial=NULL;
+    EXEC [monitor].[USP_LinkedServerAnalysis] @ConnectivityTestEnabled=0,@HighImpactConfirmed=0,@MaxZeilen=-1,@ResultSetArt='NONE',@JsonErzeugen=1,@Json=@Json OUTPUT,@PrintMeldungen=0,@StatusCodeOut=@Status OUTPUT,@IsPartialOut=@Partial OUTPUT;
+    IF COALESCE(@Status,'')<>'INVALID_PARAMETER' OR COALESCE(@Partial,0)<>1 OR COALESCE(ISJSON(@Json),0)<>1 OR EXISTS(SELECT 1 FROM OPENJSON(@Json)) THROW 54873,N'Der negative Zeilenlimit-Parameter weist den Linked-Server-Aufruf nicht als ungültig ohne Inventarzeilen aus.',1;
+
+    SET @Json = NULL;
+    EXEC [monitor].[USP_LinkedServerAnalysis] @ConnectivityTestEnabled=0,@HighImpactConfirmed=0,@MaxZeilen=1,@ResultSetArt='NONE',@JsonErzeugen=1,@Json=@Json OUTPUT,@PrintMeldungen=0;
+    IF COALESCE(ISJSON(@Json),0)<>1 OR (SELECT COUNT_BIG(*) FROM OPENJSON(@Json))<>1 THROW 54867,N'Die positive Begrenzung des Linked-Server-Inventars ist verletzt.',1;
+    SELECT TOP (1) @LimitedServerName=[ServerName] FROM OPENJSON(@Json) WITH ([ServerName] sysname '$.ServerName');
+    CREATE TABLE [#OPS005_Linked_Server_Runtime_Contract_LimitTarget] ([Placeholder] int NULL);
+    EXEC [monitor].[USP_LinkedServerAnalysis] @ConnectivityTestEnabled=0,@HighImpactConfirmed=0,@MaxZeilen=1,@ResultSetArt='TABLE',@ResultTablesJson=N'{"linkedServers":"#OPS005_Linked_Server_Runtime_Contract_LimitTarget"}',@PrintMeldungen=0;
+    IF (SELECT COUNT_BIG(*) FROM [#OPS005_Linked_Server_Runtime_Contract_LimitTarget])<>1 OR NOT EXISTS(SELECT 1 FROM [#OPS005_Linked_Server_Runtime_Contract_LimitTarget] WHERE [ServerName]=@LimitedServerName) THROW 54868,N'Die begrenzte TABLE-Ausgabe stimmt nicht mit JSON überein.',1;
+    INSERT @ConsoleRows EXEC [monitor].[USP_LinkedServerAnalysis] @ConnectivityTestEnabled=0,@HighImpactConfirmed=0,@MaxZeilen=1,@ResultSetArt='CONSOLE',@PrintMeldungen=0;
+    IF (SELECT COUNT_BIG(*) FROM @ConsoleRows)<>1 OR NOT EXISTS(SELECT 1 FROM @ConsoleRows WHERE [ServerName]=@LimitedServerName) THROW 54869,N'Die begrenzte CONSOLE-Ausgabe stimmt nicht mit JSON überein.',1;
+    SET @JsonNull=NULL; SET @JsonZero=NULL;
+    EXEC [monitor].[USP_LinkedServerAnalysis] @ConnectivityTestEnabled=0,@HighImpactConfirmed=0,@MaxZeilen=NULL,@ResultSetArt='NONE',@JsonErzeugen=1,@Json=@JsonNull OUTPUT,@PrintMeldungen=0;
+    EXEC [monitor].[USP_LinkedServerAnalysis] @ConnectivityTestEnabled=0,@HighImpactConfirmed=0,@MaxZeilen=0,@ResultSetArt='NONE',@JsonErzeugen=1,@Json=@JsonZero OUTPUT,@PrintMeldungen=0;
+    IF @JsonNull<>@JsonZero OR (SELECT COUNT_BIG(*) FROM OPENJSON(@JsonNull))<2 THROW 54870,N'Die unbeschränkte JSON-Ausgabe enthält nicht das vollständige Linked-Server-Inventar.',1;
+    DELETE FROM [#OPS005_Linked_Server_Runtime_Contract_LimitTarget];
+    EXEC [monitor].[USP_LinkedServerAnalysis] @ConnectivityTestEnabled=0,@HighImpactConfirmed=0,@MaxZeilen=NULL,@ResultSetArt='TABLE',@ResultTablesJson=N'{"linkedServers":"#OPS005_Linked_Server_Runtime_Contract_LimitTarget"}',@PrintMeldungen=0;
+    IF (SELECT COUNT_BIG(*) FROM [#OPS005_Linked_Server_Runtime_Contract_LimitTarget])<>(SELECT COUNT_BIG(*) FROM OPENJSON(@JsonNull)) THROW 54871,N'Die unbeschränkte TABLE-Ausgabe weicht von JSON ab.',1;
+    DELETE FROM [#OPS005_Linked_Server_Runtime_Contract_LimitTarget];
+    DELETE FROM @ConsoleRows;
+    INSERT @ConsoleRows EXEC [monitor].[USP_LinkedServerAnalysis] @ConnectivityTestEnabled=0,@HighImpactConfirmed=0,@MaxZeilen=0,@ResultSetArt='CONSOLE',@PrintMeldungen=0;
+    IF (SELECT COUNT_BIG(*) FROM @ConsoleRows)<>(SELECT COUNT_BIG(*) FROM OPENJSON(@JsonZero)) THROW 54872,N'Die unbeschränkte CONSOLE-Ausgabe weicht von JSON ab.',1;
 
     SET @Json = NULL;
     SET @Status = NULL;
