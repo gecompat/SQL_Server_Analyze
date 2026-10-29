@@ -86,7 +86,7 @@ BEGIN
     IF @Hilfe = 1
     BEGIN
         PRINT N'monitor.USP_CurrentLog – Hilfe; Ausgabe ausschließlich über PRINT, ohne fachliche Abfragen.';
-        PRINT N'Zweck: aktueller Transaktionslogplatz, Wiederverwendungsgrund und Logstatistik je ausgewählter Datenbank; optionale VLF-Zählung und PVS-Größe. Keine Verlaufs- oder Ursachenanalyse.';
+        PRINT N'Die Procedure zeigt den aktuellen Transaktionslogplatz, den Wiederverwendungsgrund und Logstatistiken je ausgewählter Datenbank. Optional ergänzt sie die VLF-Anzahl und die PVS-Größe. Sie liefert keine Verlaufs- oder Ursachenanalyse.';
         PRINT N'Quellen: master.sys.databases, sys.dm_db_log_space_usage und sys.dm_db_log_stats; optional sys.dm_db_log_info und sys.dm_tran_persistent_version_store_stats. SQL Server 2019 oder neuer.';
         PRINT N'Scope: sichtbare, zugreifbare, ONLINE befindliche Datenbanken. Ohne Einschränkung alle zulässigen Benutzerdatenbanken; Systemdatenbanken nur mit Opt-in. Die Kandidatenwahl hat keine Vorabbegrenzung.';
         PRINT N'@DatabaseNames nvarchar(max) = NULL: bracket-aware Pipe-Liste exakter Datenbanknamen, z. B. N''[DbA]|[DbB]''. NULL, leer oder nur Leerzeichen heißt keine Einschränkung. Liste und Pattern sind exklusiv; doppelte Namen sind ungültig; Namen werden case-sensitive verglichen. Nicht verfügbare explizite Namen erscheinen als Auswahlwarning.';
