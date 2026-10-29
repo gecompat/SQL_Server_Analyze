@@ -134,8 +134,12 @@ PR #508 erklärt Pattern-Normalisierung und Datenbankkandidaten einschließlich
 der beim Aufrufer verbleibenden Regexprüfung bei unveränderten Funktionskörpern.
 Alle erforderlichen Head- und Main-Prüfungen einschließlich beider
 Adapterparitäten bestanden; eine native SQL-Ausführung war nicht erforderlich.
-Der nächste begrenzte Schritt erklärt Regeltabelle, Seed und
-Tool-Hintergrundklassifikation direkt im Quelltext.
+PR #509 erklärt Regeltabelle, Seed und Tool-Hintergrundklassifikation direkt
+im Quelltext bei unveränderten DDL-/DML-Anweisungen und Funktionskörpern.
+Das nichtblockierende Kommentar-Beispiel wurde im zweiten Kandidaten korrigiert;
+alle erforderlichen Head- und Main-Prüfungen einschließlich beider
+Adapterparitäten bestanden. Der nächste begrenzte Schritt erklärt die beiden
+Textfunktionen für Statement-Offsets und Unicode-Begrenzung direkt im DDL.
 Die globale semantische Prüfung weiterer Hilfetexte und selbsterklärender
 Nichtprozedur-DDL bleibt offen. Parameternennungen und vorhandene Header
 belegen keine semantische Vollständigkeit.
