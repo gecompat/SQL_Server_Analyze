@@ -6,13 +6,55 @@ GO
 Objekt       : monitor.SqlServerBuildCatalog
 Version      : 1.0.0
 Stand        : 2026-07-21
-Typ          : Framework-Metadatentabelle und idempotenter Seed
-Zweck        : Ermöglicht die offline reproduzierbare Einordnung ausgewählter
-               RTM-, CU-, GDR- und CU-GDR-Builds für SQL Server 2019, 2022 und
-               2025.
+Typ          : Framework-Metadatentabelle und Seed
+Zweck        : Das Skript legt bei Bedarf den Buildkatalog an und ergänzt die
+               dokumentierten SQL-Server-Builds als offline auswertbaren
+               Metadatensnapshot für SQL Server 2019, 2022 und 2025.
+Voraussetzung: Im aktuellen Datenbankkontext muss das Schema [monitor]
+               vorhanden sein. Das Skript ist dort mit ausreichenden Rechten
+               für die Katalogabfrage, Tabellenerstellung und Seed-Inserts
+               auszuführen.
 Quelle       : Microsoft SQL Server build versions; Abruf 2026-07-21.
-Grenze       : Der Katalog ist kein Online-Patchscanner und kein
-               Verwundbarkeits-, Neustart- oder Freigabenachweis.
+Zeitbezug    : [CatalogAsOfDate] und [SourceRetrievedAtUtc] sind feste Werte
+               des am 2026-07-21 abgerufenen Seeds. Sie bezeichnen dessen
+               dokumentierten Snapshot und Abrufzeit, keine Onlineprüfung.
+Grenze       : Enthalten sind ausgewählte Builds, keine vollständige oder
+               aktuelle Releasehistorie. [IsLatestInBranch] ist ein fixer
+               Seedwert dieses Snapshots, keine Laufzeitermittlung. Der
+               Katalog beweist weder installierte Patches noch aktuelle
+               Sicherheits-, Support- oder Freigabeberechtigung.
+Verhalten    : Die Tabelle wird nur angelegt, wenn sie fehlt; vorhandene
+               Tabellen werden nicht migriert oder allgemein repariert.
+               Vorhandene Seed-Schlüssel werden feldweise bytegenau geprüft.
+               Abweichungen lösen Fehler 53931 aus. Übereinstimmende Schlüssel
+               bleiben bestehen, andere vorhandene Zeilen bleiben erhalten
+               und nur fehlende Seed-Schlüssel werden eingefügt. Es gibt kein
+               UPDATE, DELETE oder Ownershipmarker. Die Prüfung ist keine
+               Zusage einer atomaren Gesamtausführung; GO trennt Batches.
+Beispiel     : SELECT [BuildVersion], [ReleaseName], [ServicingBranch],
+                      [ReleaseDate], [IsSecurityRelease], [IsLatestInBranch],
+                      [CatalogAsOfDate], [SourceRetrievedAtUtc]
+               FROM [monitor].[SqlServerBuildCatalog] WITH (NOLOCK)
+               WHERE [ProductMajorVersion] = 17;
+Felder       : Schlüssel und Buildidentität: [BuildVersion] varchar(32) ist
+               Primärschlüssel; [ProductMajorVersion] int, [BuildNumber] int
+               und [RevisionNumber] int zerlegen die Buildnummer.
+               Releasezuordnung: [ReleaseName] nvarchar(64) benennt RTM/CU/
+               GDR-Kombinationen; [ServicingBranch] varchar(16) wird durch
+               CHECK auf RTM, CU, GDR, CU_GDR oder OD begrenzt;
+               [KnowledgeBaseNumber] varchar(16) ist optional; [ReleaseDate]
+               date und [PlatformScope] varchar(32) beschreiben Seeddatum
+               und Plattformumfang.
+               Einordnung und Verweise: [IsSecurityRelease] bit kennzeichnet
+               den Seedstatus; [IsLatestInBranch] bit speichert die
+               Snapshot-Einordnung; [BuildOverviewUrl] nvarchar(512) verweist
+               auf die Buildübersicht; [KnowledgeBaseUrl] nvarchar(512) ist
+               optional.
+               Provenienz: [CatalogAsOfDate] date hält den Stand des
+               Katalogsnapshots fest; [PrimarySourceUrl] nvarchar(512)
+               speichert dessen Hauptquelle; [SourceRetrievedAtUtc]
+               datetime2(0) speichert die Abrufzeit in UTC. Die Textfelder
+               verwenden DATABASE_DEFAULT.
 ===============================================================================
 */
 IF NOT EXISTS
