@@ -298,19 +298,49 @@ Objekt       : monitor.VW_AnalysisCatalog
 Version      : 1.4.0
 Stand        : 2026-10-13
 Typ          : View
-Zweck        : Katalogisiert jede öffentliche Framework-Procedure nach
-               Anwenderrolle, Themenbereich, Scope, Evidenzart, Kostenprofil,
-               Voraussetzung, Paketgrenze und sicherem Einstieg.
-Semantik     : Genau eine Zeile je öffentlicher Procedure aus dem
-               Objektinventar. Eine Procedure besitzt genau eine primäre
-               Navigationsrolle; Mehrfachzuordnungen erfolgen über Suchbegriffe
-               und Relationen, nicht über zusätzliche Katalogzeilen.
-Kosten       : CostRangeCode beschreibt die dokumentierte Spannweite.
-               RepresentativeAnalysisClass verweist, sofern vorhanden, auf
-               monitor.VW_AnalyseClassCatalog und ersetzt nicht die
-               pfadabhängigen Gates der Ziel-Procedure.
-Eigenlast    : Konstante Frameworkmetadaten; keine DMVs, Benutzerkataloge oder
-               produktiven Datenzugriffe.
+Zweck        : Stellt fest eingetragene Navigationsmetadaten für öffentliche
+               Framework-Procedures bereit. Die View nimmt keine Parameter an.
+Quelle       : Die Zeilen stammen aus den statischen VALUES-Einträgen im
+               View-Text. Es werden keine DMVs, Benutzerkataloge oder
+               produktiven Daten gelesen. Die Metadaten belegen weder, dass
+               eine Procedure installiert, ausführbar oder für den aktuellen
+               Aufrufer berechtigt ist, noch dass ein angegebener Pfad existiert.
+Spalten      : Die Projektion enthält 19 Spalten:
+               ProcedureName (sysname) bezeichnet den eingetragenen
+               Procedure-Namen; DisplayName (nvarchar(160)) ist seine
+               lesbare Bezeichnung.
+               PrimaryAreaCode (varchar(40)) und PrimaryAreaName
+               (nvarchar(160)) ordnen den Eintrag einem Themenbereich zu.
+               NavigationRole (varchar(24)) bezeichnet seine Navigationsrolle;
+               ScopeCode (varchar(40)) den dokumentierten Geltungsbereich und
+               EvidenceType (varchar(40)) die dokumentierte Evidenzart.
+               CostRangeCode (varchar(32)) kennzeichnet die dokumentierte
+               Kostenspanne. RepresentativeAnalysisClass
+               (varchar(64)) nennt eine repräsentative Analyseklasse, sofern
+               eine eingetragen ist; sie beschreibt nicht alle Ausführungspfade.
+               RequiresKnownTarget, RequiresHighImpactForSafeStart und
+               HighImpactPathAvailable (jeweils bit) sind statische Hinweise
+               für die Navigation. Sie prüfen weder Ziel, Berechtigung,
+               High-Impact-Freigabe noch konkrete Laufzeitbedingungen.
+               PackageCode (varchar(32)) bezeichnet die Paketzuordnung;
+               DefaultRank (smallint) einen statischen Sortierhinweis, der
+               NULL sein kann und keine eigene Reihenfolge festlegt.
+               Purpose (nvarchar(1000)) beschreibt den Zweck,
+               PrerequisiteSummary (nvarchar(1000)) fasst dokumentierte
+               Voraussetzungen zusammen und SafeCall (nvarchar(2000)) enthält
+               einen Beispielaufruf als Text. SafeCall wird nicht ausgeführt,
+               ist keine automatische Freigabe und ersetzt keine Prüfung der
+               tatsächlichen Procedure-Gates.
+               DocumentationPath und RunbookPath (jeweils nvarchar(400))
+               enthalten Pfadtexte; sie werden nicht auf Existenz geprüft.
+Beispiel     : Die Abfrage liest die View und sortiert ihre statischen Einträge.
+               WITH (NOLOCK) ist ein Lesehinweis und garantiert keine
+               transaktionskonsistente Sicht.
+===============================================================================
+SELECT [ProcedureName], [DisplayName], [NavigationRole], [CostRangeCode],
+       [DefaultRank], [SafeCall]
+FROM [monitor].[VW_AnalysisCatalog] WITH (NOLOCK)
+ORDER BY [DefaultRank], [ProcedureName];
 ===============================================================================
 */
 CREATE OR ALTER VIEW [monitor].[VW_AnalysisCatalog]
@@ -487,12 +517,32 @@ Objekt       : monitor.VW_AnalysisSearchTerm
 Version      : 1.3.0
 Stand        : 2026-10-13
 Typ          : View
-Zweck        : Liefert deutsch- und englischsprachige Symptome, Ziele,
-               Synonyme und technische Suchbegriffe für den Analysis Navigator.
-Semantik     : Mehrere Zeilen je Procedure sind beabsichtigt. SearchWeight
-               priorisiert fachlich spezifische Begriffe; MatchReason erklärt
-               dem Anwender, warum ein Treffer vorgeschlagen wird.
-Eigenlast    : Konstante Frameworkmetadaten; keine fachlichen Datenzugriffe.
+Zweck        : Liefert statisch eingetragene deutsch- und englischsprachige
+               Suchbegriffe für den Analysis Navigator. Die View nimmt keine
+               Parameter an und führt keine Suche oder Rangberechnung aus.
+Quelle       : Die Zeilen stammen aus den VALUES-Einträgen im View-Text. Sie
+               sind keine Laufzeitergebnisse und belegen nicht, dass eine
+               referenzierte Procedure installiert, ausführbar oder für den
+               aktuellen Aufrufer berechtigt ist.
+Spalten      : ProcedureName (sysname) bezeichnet die zugeordnete Procedure.
+               SearchTerm (nvarchar(200)) enthält einen Begriff, ein Symptom,
+               Ziel, Synonym oder technischen Suchtext.
+               LanguageCode (char(2)) kennzeichnet die Sprache des Eintrags;
+               de und en sind eingetragene Sprachcodes. Daraus folgt keine
+               Übersetzung oder automatische Spracherkennung.
+               SearchWeight (tinyint) ist ein statisches Gewicht für eine
+               mögliche spätere Priorisierung, kein berechneter Trefferwert.
+               MatchReason (nvarchar(500)) erläutert den fachlichen Bezug des
+               Begriffs. Mehrere Begriffe je Procedure sind vorgesehen.
+               Die View bewertet weder Suchanfragen noch erzeugt sie Treffer.
+Beispiel     : Die Abfrage zeigt die eingetragenen Begriffe in einer
+               nachvollziehbaren Reihenfolge. WITH (NOLOCK) garantiert keine
+               transaktionskonsistente Sicht.
+===============================================================================
+SELECT [ProcedureName], [SearchTerm], [LanguageCode], [SearchWeight],
+       [MatchReason]
+FROM [monitor].[VW_AnalysisSearchTerm] WITH (NOLOCK)
+ORDER BY [ProcedureName], [LanguageCode], [SearchWeight] DESC, [SearchTerm];
 ===============================================================================
 */
 CREATE OR ALTER VIEW [monitor].[VW_AnalysisSearchTerm]
@@ -792,13 +842,35 @@ Objekt       : monitor.VW_AnalysisRelation
 Version      : 1.2.0
 Stand        : 2026-10-13
 Typ          : View
-Zweck        : Beschreibt fachlich begründete Übergänge zwischen öffentlichen
-               Analyse-Procedures für priorisierte nächste Schritte.
-Semantik     : REFINE_WITH vertieft ein vorhandenes Signal, CONFIRM_WITH liefert
-               eine unabhängige Gegenprobe, ALTERNATIVE_TO nutzt einen anderen
-               Evidenzpfad und PREPARE_WITH stellt eine Voraussetzung her.
-               RelationPriority gilt je Ausgangs-Procedure und Relationstyp.
-Eigenlast    : Konstante Frameworkmetadaten; keine fachlichen Datenzugriffe.
+Zweck        : Beschreibt statisch eingetragene fachliche Beziehungen zwischen
+               Procedures als mögliche Navigationshinweise. Die View nimmt
+               keine Parameter an und führt keine Procedure aus.
+Quelle       : Die Zeilen stammen aus den VALUES-Einträgen im View-Text. Sie
+               belegen weder die Verfügbarkeit der genannten Procedures noch
+               die Erfüllung einer Voraussetzung oder Bedingung.
+Spalten      : FromProcedureName und ToProcedureName (jeweils sysname)
+               bezeichnen Ausgangs- und Ziel-Procedure.
+               RelationType (varchar(24)) benennt die eingetragene Beziehung:
+               REFINE_WITH vertieft ein vorhandenes Signal,
+               CONFIRM_WITH ergänzt eine Gegenprobe,
+               ALTERNATIVE_TO verweist auf einen anderen Evidenzpfad und
+               PREPARE_WITH bezeichnet eine mögliche Vorbereitung.
+               RelationPriority (tinyint) ordnet Einträge je Ausgangs-
+               Procedure und RelationType; sie erzwingt weder eine
+               Ausführungsreihenfolge noch eine Auswahl.
+               ConditionSummary (nvarchar(700)) enthält erläuternden Text.
+               Dieser Text wird nicht als Bedingung ausgewertet.
+               Die View erzwingt keine Beziehungen und prüft keine
+               Voraussetzungen, Gates oder Laufzeitresultate.
+Beispiel     : Die Abfrage zeigt eingetragene Beziehungen geordnet nach
+               Ausgangs-Procedure, Beziehungstyp und Priorität. WITH (NOLOCK)
+               garantiert keine transaktionskonsistente Sicht.
+===============================================================================
+SELECT [FromProcedureName], [RelationType], [ToProcedureName],
+       [RelationPriority], [ConditionSummary]
+FROM [monitor].[VW_AnalysisRelation] WITH (NOLOCK)
+ORDER BY [FromProcedureName], [RelationType], [RelationPriority],
+         [ToProcedureName];
 ===============================================================================
 */
 CREATE OR ALTER VIEW [monitor].[VW_AnalysisRelation]
