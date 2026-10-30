@@ -6,10 +6,43 @@ GO
 Objekt       : monitor.SnapshotTargetConfiguration
 Version      : 1.0.0
 Stand        : 2026-07-21
-Zweck        : Definiert die typisierte Singleton-Konfiguration des optionalen
-               SC-023-Pakets.
-Datenschutz  : Die Tabelle liegt nur im Zielsystem. Repository-Seeds enthalten
-               ausschließlich den generischen, deaktivierten Defaultnamen.
+Zweck        : Die Tabelle konfiguriert das Ziel des optionalen SC-023-Pakets
+               im Frameworksystem. Sie beschreibt es mit TargetDatabaseName;
+               das Frameworksystem enthält die Konfiguration.
+Felder       : ConfigurationId ist der Schlüssel und auf 1 begrenzt.
+               TargetDatabaseName ist der generische Name der Zieldatenbank.
+               IsEnabled schaltet die Konfiguration.
+               DefaultSchedulerType erlaubt MANUAL, EXTERNAL oder SQL_AGENT.
+               PackageContractVersion muss mindestens 1 sein.
+               SeedVersion kennzeichnet den Seed; sein Default ist 0, der
+               Repository-Seed setzt 1.
+               LastUpdatedUtc erhält beim Einfügen standardmäßig die UTC-Zeit;
+               spätere Änderungen aktualisieren den Wert nicht automatisch.
+               RowVersion ist ein von SQL Server erzeugter Versionswert und
+               keine Uhrzeit oder Seed-Version.
+Voraussetzung : Die Tabelle hat einen Primärschlüssel auf ConfigurationId und
+               eine Singleton-Prüfung auf den Wert 1. Dadurch ist höchstens
+               eine Zeile zulässig; eine Zeile ist nicht garantiert. Die Tabelle
+               bleibt bis zum Einfügen des Seeds leer.
+Verhalten    : Das Skript legt die Tabelle nur an, wenn sie fehlt. Es migriert
+               oder repariert keine vorhandene Tabelle. Der Seed fügt nur die
+               fehlende Zeile mit ConfigurationId=1 ein; eine vorhandene Zeile
+               bleibt unverändert. Der Seed verwendet den generischen Namen
+               SQL_Server_Analyze_History, IsEnabled=0, EXTERNAL,
+               PackageContractVersion=1 und SeedVersion=1. Das Repository
+               speichert keine tatsächlichen privaten Zielnamen.
+Grenzen      : TargetDatabaseName ist NOT NULL; das Skript prüft nicht, ob die
+               benannte Datenbank existiert. IsEnabled belegt keine Ausführung.
+               Das Skript erstellt weder Zieldatenbank noch Zeitpläne, Jobs,
+               Collector oder Berechtigungen. Sie prüft auch keine
+               Ausführungscapability.
+               Die GO-Batches enthalten keine eigene Transaktionsgarantie.
+Lesehinweis  : Die vorhandene Konfiguration kann mit folgendem Beispiel gelesen
+               werden:
+               SELECT [ConfigurationId], [TargetDatabaseName], [IsEnabled],
+                      [DefaultSchedulerType], [PackageContractVersion],
+                      [SeedVersion], [LastUpdatedUtc], [RowVersion]
+               FROM [monitor].[SnapshotTargetConfiguration] WITH (NOLOCK);
 ===============================================================================
 */
 IF NOT EXISTS
