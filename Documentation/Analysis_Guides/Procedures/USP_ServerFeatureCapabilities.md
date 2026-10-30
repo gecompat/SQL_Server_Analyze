@@ -25,6 +25,24 @@ EXEC [monitor].[USP_ServerFeatureCapabilities]
 
 Alle `Example*`-Werte im Aufruf sind synthetisch.
 
+### JSON- und TABLE-Beispiele
+
+JSON ist unabhängig von CONSOLE/RAW/TABLE/NONE; OUTPUT muss explizit gebunden werden:
+
+```sql
+DECLARE @FeatureJson nvarchar(max);
+EXEC [monitor].[USP_ServerFeatureCapabilities] @ResultSetArt='NONE', @JsonErzeugen=1, @Json=@FeatureJson OUTPUT;
+```
+
+TABLE akzeptiert nur das Ziel capabilities. Ein vorhandenes leeres Einspalten-Dummyziel genügt; der gemeinsame Writer passt es an das Quellschema an, ohne Seed-Zeile:
+
+```sql
+CREATE TABLE #ServerFeatureCapabilities_HelpExample (Placeholder int NULL);
+EXEC [monitor].[USP_ServerFeatureCapabilities] @ResultSetArt='TABLE', @ResultTablesJson=N'{"capabilities":"#ServerFeatureCapabilities_HelpExample"}';
+```
+
+Der registrierte OBJECT_ANALYSIS_CURRENT-Pfad hat RequiresGroupGate=0; @HighImpactConfirmed aktiviert hier kein Gate und erteilt keine Gruppenberechtigung. Der Kandidatenhelfer lehnt NULL dennoch ab. T-SQL konvertiert numerisch 0 zu bit 0 und jeden Nichtnullwert zu bit 1; Werte als 0/1 übergeben.
+
 ## Resultsets und Leserichtung
 
 RAW und CONSOLE liefern Aufrufstatus, serverweite Capabilities, datenbankbezogene Capabilities, optional Spezialindizes und zuletzt Warnungen. Die Datenbankresultsets sind nicht atomar zum Serverprobe; Statuswechsel während des Datenbankcursors sind möglich. TABLE exportiert ausschließlich das registrierte Resultset `capabilities` und enthält damit weder datenbankbezogene Features noch Spezialindizes. JSON ist für die vollständige maschinelle Hülle geeigneter und enthält `meta`, `capabilities`, `databaseFeatures`, `specialIndexes` und `warnings`.
@@ -94,7 +112,7 @@ Für `USP_ServerFeatureCapabilities` gilt zusätzlich: **keine Zeile** bedeutet,
 | Ressourcen | Vor allem CPU und Katalogseiten, geringe TempDB-/Arbeitstabellenlast sowie dynamischer Compileaufwand je Datenbank. Kein Showplan-, XEL-, Payload- oder Benutzertabellenscan. |
 | Begrenzungswirkung | Datenbankliste/-pattern begrenzen den Cursor früh. `@MaxZeilen` wird erst beim Ausgeben jedes fachlichen Resultsets angewandt; es begrenzt weder die Zahl geprüfter Datenbanken noch die zuvor materialisierten Spezialindizes. |
 | Locking und Nebenwirkungen | Rein lesende `NOLOCK`-/Katalogprobes; keine Konfigurationsänderung. Parallel laufendes DDL, Upgrade oder Failover kann zwischen Server- und Datenbankprobe ein zeitlich uneinheitliches Ergebnis erzeugen. Der vorherige Session-`LOCK_TIMEOUT` wird nach dem Aufruf wiederhergestellt. |
-| Schutzmechanismus | Der Kandidatenpfad nutzt `OBJECT_ANALYSIS_CURRENT`, dessen Katalogeintrag keine High-Impact-Bestätigung verlangt. `@HighImpactConfirmed` schaltet in dieser Procedure keinen zusätzlichen Deep-Pfad frei; der explizite Datenbankscope ist der wirksame Schutz. |
+| Schutzmechanismus | Der Kandidatenpfad nutzt OBJECT_ANALYSIS_CURRENT, dessen Klassenkatalog RequiresGroupGate=0 ausweist. @HighImpactConfirmed schaltet hier weder Gate noch Deep-Pfad frei und verleiht keine Gruppenberechtigung; der explizite Datenbankscope begrenzt die Auswahl. Der Helper lehnt NULL für den Parameter dennoch ab. |
 | Sicherer Einsatz | Eine `ExampleDatabase`; bei reiner Serverroutingfrage optionale Spezialindizes und Query-Store-Replikaprobe deaktivieren. Erst nach vollständigem Status auf weitere Datenbanken erweitern. |
 | Aussagegrenze | Capability und Systemobjektexistenz sind kein Nutzungs-, Berechtigungs- oder Funktionstest. Ein Outputlimit kann relevante spätere Zeilen verbergen, obwohl alle Quellen bereits gelesen wurden. |
 

@@ -33,6 +33,24 @@ EXEC [monitor].[USP_ServerVersionInformation]
       @ResultSetArt = 'RAW';
 ```
 
+### JSON-, TABLE- und OUTPUT-Beispiele
+
+CONSOLE zeigt die verdichtete Build-/Lifecyclezeile; RAW enthält sieben Resultsets. JSON ist unabhängig von ResultSetArt. Die vier Status-/Fehler-OUTPUT-Parameter werden nur bei normalem Abschluss beschrieben; beim frühen Help-Return bleiben sie unverändert, während @Json auf NULL gesetzt ist. Der Help-Return liegt vor TABLE-Mapping und -Preflight:
+
+```sql
+DECLARE @VersionJson nvarchar(max), @Status varchar(40), @Partial bit, @ErrNo int, @ErrMsg nvarchar(2048);
+EXEC [monitor].[USP_ServerVersionInformation] @ResultSetArt='NONE', @JsonErzeugen=1, @Json=@VersionJson OUTPUT, @StatusCodeOut=@Status OUTPUT, @IsPartialOut=@Partial OUTPUT, @ErrorNumberOut=@ErrNo OUTPUT, @ErrorMessageOut=@ErrMsg OUTPUT;
+```
+
+TABLE akzeptiert eine eindeutige Teilmenge der sieben Resultsetnamen. databaseCompatibility bleibt opt-in. Ein leeres lokales Einspalten-Dummyziel reicht; der gemeinsame Writer passt es an, eine Seed-Zeile ist nicht erforderlich:
+
+```sql
+CREATE TABLE #ServerVersionInformation_HelpExample (Placeholder int NULL);
+EXEC [monitor].[USP_ServerVersionInformation] @MitDatenbankKompatibilitaet=1, @ResultSetArt='TABLE', @ResultTablesJson=N'{"databaseCompatibility":"#ServerVersionInformation_HelpExample"}';
+```
+
+T-SQL konvertiert den numerischen Wert 0 zu bit 0 und von 0 verschiedene numerische Werte zu bit 1. Übergeben Sie diese Parameter als 0 oder 1. Wenn @MitDatenbankKompatibilitaet=0 bleibt die Procedure beim Instanz-/Build-/Lifecyclepfad; Datenbankfilter und Systemdatenbankoption werden dann nicht verwendet oder validiert. Ein negatives @MaxZeilen bleibt unabhängig davon ungültig.
+
 ## Resultsets und Leserichtung
 
 Die sieben stabilen Resultsetnamen lauten `serverVersion`, `buildAssessment`, `lifecycle`, `instanceFeatures`, `databaseCompatibility`, `references` und `warnings`. CONSOLE verdichtet Build- und Lifecyclebewertung zu genau einem Grid. RAW liefert alle sieben Resultsets in dieser Reihenfolge. TABLE akzeptiert eine beliebige eindeutige Teilmenge der sieben Namen; JSON verwendet gleichnamige Arrays unter einer gemeinsamen `meta`-Hülle.
