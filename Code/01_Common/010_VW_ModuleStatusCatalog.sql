@@ -7,8 +7,31 @@ Objekt       : monitor.VW_ModuleStatusCatalog
 Version      : 1.2.0
 Stand        : 2026-07-20
 Typ          : View
-Zweck        : Stellt den zentralen Katalog aller maschinenlesbaren Framework-
-               Statuscodes bereit.
+Zweck        : Liefert den statischen Katalog der Framework-Statuscodes.
+Datenquelle  : Die Zeilen und Beschreibungen stammen ausschließlich aus den
+               VALUES-Literalen dieser View; Laufzeitstatus werden hier nicht
+               ermittelt.
+Ausgabe      : StatusCode (varchar(40)) identifiziert den maschinenlesbaren
+               Status. SeverityLevel (tinyint) ist die im Katalog hinterlegte
+               Stufe: 0 für reguläre beziehungsweise nicht anwendbare Zustände,
+               1 für eingeschränkte oder übersprungene Ergebnisse und 2 für
+               Fehler-, Verfügbarkeits- oder Abbruchzustände. Diese Zuordnung
+               beschreibt nur die vorhandenen Literale.
+               IsSuccess, IsQueryable und IsTerminal (bit) sind voneinander
+               unabhängige Eigenschaften. IsSuccess kennzeichnet die im
+               Katalog erklärte Erfolgswertung, IsQueryable die Abfragbarkeit
+               der Quelle und IsTerminal einen abschließenden Zustand. Zum
+               Beispiel hat AVAILABLE_DISABLED IsQueryable = 1, aber
+               IsSuccess = 0; aus SeverityLevel folgt kein Flag.
+               GermanDescription (nvarchar(200)) und TechnicalMeaning
+               (nvarchar(1000)) erklären
+               Status und fachliche Grenze für Anzeige und Interpretation.
+Parameter    : Keine.
+Beispiel     : SELECT [StatusCode], [SeverityLevel], [IsSuccess],
+                      [IsQueryable], [IsTerminal], [GermanDescription],
+                      [TechnicalMeaning]
+               FROM [monitor].[VW_ModuleStatusCatalog] WITH (NOLOCK)
+               ORDER BY [SeverityLevel], [StatusCode];
 Änderungen   : 1.2.0 - Datenbank-, High-Impact-, Childstatus- und TABLE-
                          Preflightstatus des Ausgabe-Vertrags 2.0 ergänzt.
                1.1.0 - Plattform-, Messkontext- und Resetstatus ergänzt.
