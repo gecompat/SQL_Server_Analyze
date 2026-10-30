@@ -5,7 +5,7 @@ GO
 ===============================================================================
 Objekt/Datei : 000_Preflight_und_Schema.sql
 Version      : 2.1.0
-Zweck        : Bereitet die ausgewählte Installationsdatenbank für die folgenden
+Zweck        : Das Skript bereitet die ausgewählte Installationsdatenbank für die folgenden
                Setup-Skripte vor. Das Skript hat keine Prozedurparameter. Ersetzen
                Sie den USE-Platzhalter vor der Ausführung durch den tatsächlichen
                Datenbanknamen; das Skript wählt keine Datenbank automatisch aus.

@@ -6,7 +6,7 @@ GO
 Objekt       : monitor.FrameworkVersion
 Version      : 1.1.2
 Stand        : 2026-10-23
-Zweck        : Speichert kompakte Versionsdeklarationen des Analysepakets in
+Zweck        : Das Skript speichert kompakte Versionsdeklarationen des Analysepakets in
                [monitor].[FrameworkVersion]. Voraussetzung ist das zuvor durch
                000_Preflight_und_Schema.sql bereitgestellte Schema monitor.
                FrameworkName ist der Primärschlüssel; er begrenzt Schlüsselwerte,
