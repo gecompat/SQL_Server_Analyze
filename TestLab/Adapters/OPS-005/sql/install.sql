@@ -3329,20 +3329,52 @@ Objekt       : monitor.TVF_ParsePipeList
 Version      : 1.1.0
 Stand        : 2026-07-15
 Typ          : Multi-statement Table-valued Function
-Zweck        : Zerlegt eine Pipe-Liste. Das Zeichen | trennt ausschließlich
-               außerhalb bracket-quotierter Bereiche. Innerhalb von [...] ist
-               | Bestandteil des Werts; ]] maskiert eine schließende Klammer.
+Zweck        : Zerlegt @List anhand nicht bracket-quotierter Pipe-Zeichen in
+               Elemente. Pipe-Zeichen innerhalb bracket-quotierter Bereiche
+               trennen nicht; ]] wird dort als maskierte schließende Klammer
+               berücksichtigt.
 SQL-Version  : SQL Server 2019 oder neuer.
-Parameter    : @List nvarchar(max).
-Resultset    : ItemOrdinal, ItemText, IsBracketQuoted, IsValid, ErrorCode,
-               ErrorMessage.
-Collation    : Werte werden unter SQL_Latin1_General_CP1_CS_AS zurückgegeben.
-Hinweis      : Die Funktion validiert die Listenstruktur. Die fachliche Prüfung
-               als sysname, Zahl, Hash oder Multipart-Identifier erfolgt beim
-               jeweiligen Verbraucher.
-Beispiele    : SELECT * FROM monitor.TVF_ParsePipeList(N'dbo|monitor');
-               SELECT * FROM monitor.TVF_ParsePipeList(
-                   N'[Das ist | ein komischer Objektname]|[der auch]|der_auch');
+Parameter    : @List nvarchar(max). NULL liefert null Zeilen. Eine exakt leere
+               Zeichenfolge liefert eine Zeile mit EMPTY_LIST; leere oder nur
+               aus äußeren Leerzeichen bestehende Segmente liefern
+               EMPTY_ITEM. Leerzeichen an den Segmenträndern werden entfernt.
+Resultset    : ItemOrdinal int NOT NULL, ItemText nvarchar(4000) NULL,
+               IsBracketQuoted bit NOT NULL, IsValid bit NOT NULL,
+               ErrorCode varchar(40) NULL und ErrorMessage nvarchar(4000) NULL.
+               ItemOrdinal beginnt bei 1 und folgt der Eingabereihenfolge;
+               für diese Reihenfolge ist ORDER BY ItemOrdinal erforderlich.
+               Doppelte Elemente bleiben erhalten. IsValid ist 1, wenn
+               ErrorCode NULL ist, andernfalls 0; ohne Fehler bleiben
+               ErrorCode und ErrorMessage NULL.
+               Text- und Fehlerwerte verwenden die Collation
+               SQL_Latin1_General_CP1_CS_AS.
+Verhalten    : Die Funktion entfernt keine Klammern und entmaskiert ]] nicht.
+               IsBracketQuoted kennzeichnet nur ein nach dem Trimmen mit [
+               beginnendes und mit ] endendes ItemText; das Flag bestätigt
+               keine vollständige SQL-Identifiergrammatik. Die strukturelle
+               Prüfung löst weder Objekte, Kataloge oder Typen auf noch
+               validiert sie alle Regeln gültiger SQL-Bezeichner.
+Fehler       : ErrorMessage ist zum ErrorCode gepaart. Bei mehreren Befunden
+               gilt ITEM_TOO_LONG vor EMPTY_ITEM vor INVALID_BRACKET_SYNTAX.
+               Die Grenze von 4000 Zeichen gilt für das ungetrimmte Segment
+               vor dem Entfernen äußerer Leerzeichen; bei Überlänge ist
+               ItemText NULL.
+Grenze       : Die interne Positionszählung verwendet DATALENGTH(@List) / 2.
+               Daraus wird keine allgemeine Unicode- oder SC-Collation-
+               Korrektheitsgarantie abgeleitet.
+Hinweis      : Die Funktion prüft die Listenstruktur. Fachliche Prüfungen, etwa
+               als sysname, Zahl, Hash oder Multipart-Identifier, bleiben dem
+               jeweiligen Verbraucher vorbehalten.
+Beispiele    : SELECT [ItemOrdinal], [ItemText], [IsBracketQuoted], [IsValid],
+                   [ErrorCode], [ErrorMessage]
+               FROM [monitor].[TVF_ParsePipeList](
+                   N'dbo|[Raum | Name]|[a]]b]')
+               ORDER BY [ItemOrdinal];
+               SELECT * FROM [monitor].[TVF_ParsePipeList](NULL); -- 0 Zeilen
+               SELECT * FROM [monitor].[TVF_ParsePipeList](N'')
+               ORDER BY [ItemOrdinal]; -- eine Zeile: EMPTY_LIST
+               SELECT * FROM [monitor].[TVF_ParsePipeList](N'x||y')
+               ORDER BY [ItemOrdinal]; -- mittleres Element: EMPTY_ITEM
 Änderungen   : 1.1.0 - Nicht maskierte schließende Klammern, leere Elemente und
                          überlange Listenelemente werden zuverlässig erkannt.
 ===============================================================================
