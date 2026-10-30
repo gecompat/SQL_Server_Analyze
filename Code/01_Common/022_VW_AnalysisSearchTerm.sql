@@ -7,12 +7,32 @@ Objekt       : monitor.VW_AnalysisSearchTerm
 Version      : 1.3.0
 Stand        : 2026-10-13
 Typ          : View
-Zweck        : Liefert deutsch- und englischsprachige Symptome, Ziele,
-               Synonyme und technische Suchbegriffe für den Analysis Navigator.
-Semantik     : Mehrere Zeilen je Procedure sind beabsichtigt. SearchWeight
-               priorisiert fachlich spezifische Begriffe; MatchReason erklärt
-               dem Anwender, warum ein Treffer vorgeschlagen wird.
-Eigenlast    : Konstante Frameworkmetadaten; keine fachlichen Datenzugriffe.
+Zweck        : Liefert statisch eingetragene deutsch- und englischsprachige
+               Suchbegriffe für den Analysis Navigator. Die View nimmt keine
+               Parameter an und führt keine Suche oder Rangberechnung aus.
+Quelle       : Die Zeilen stammen aus den VALUES-Einträgen im View-Text. Sie
+               sind keine Laufzeitergebnisse und belegen nicht, dass eine
+               referenzierte Procedure installiert, ausführbar oder für den
+               aktuellen Aufrufer berechtigt ist.
+Spalten      : ProcedureName (sysname) bezeichnet die zugeordnete Procedure.
+               SearchTerm (nvarchar(200)) enthält einen Begriff, ein Symptom,
+               Ziel, Synonym oder technischen Suchtext.
+               LanguageCode (char(2)) kennzeichnet die Sprache des Eintrags;
+               de und en sind eingetragene Sprachcodes. Daraus folgt keine
+               Übersetzung oder automatische Spracherkennung.
+               SearchWeight (tinyint) ist ein statisches Gewicht für eine
+               mögliche spätere Priorisierung, kein berechneter Trefferwert.
+               MatchReason (nvarchar(500)) erläutert den fachlichen Bezug des
+               Begriffs. Mehrere Begriffe je Procedure sind vorgesehen.
+               Die View bewertet weder Suchanfragen noch erzeugt sie Treffer.
+Beispiel     : Die Abfrage zeigt die eingetragenen Begriffe in einer
+               nachvollziehbaren Reihenfolge. WITH (NOLOCK) garantiert keine
+               transaktionskonsistente Sicht.
+===============================================================================
+SELECT [ProcedureName], [SearchTerm], [LanguageCode], [SearchWeight],
+       [MatchReason]
+FROM [monitor].[VW_AnalysisSearchTerm] WITH (NOLOCK)
+ORDER BY [ProcedureName], [LanguageCode], [SearchWeight] DESC, [SearchTerm];
 ===============================================================================
 */
 CREATE OR ALTER VIEW [monitor].[VW_AnalysisSearchTerm]

@@ -7,13 +7,35 @@ Objekt       : monitor.VW_AnalysisRelation
 Version      : 1.2.0
 Stand        : 2026-10-13
 Typ          : View
-Zweck        : Beschreibt fachlich begründete Übergänge zwischen öffentlichen
-               Analyse-Procedures für priorisierte nächste Schritte.
-Semantik     : REFINE_WITH vertieft ein vorhandenes Signal, CONFIRM_WITH liefert
-               eine unabhängige Gegenprobe, ALTERNATIVE_TO nutzt einen anderen
-               Evidenzpfad und PREPARE_WITH stellt eine Voraussetzung her.
-               RelationPriority gilt je Ausgangs-Procedure und Relationstyp.
-Eigenlast    : Konstante Frameworkmetadaten; keine fachlichen Datenzugriffe.
+Zweck        : Beschreibt statisch eingetragene fachliche Beziehungen zwischen
+               Procedures als mögliche Navigationshinweise. Die View nimmt
+               keine Parameter an und führt keine Procedure aus.
+Quelle       : Die Zeilen stammen aus den VALUES-Einträgen im View-Text. Sie
+               belegen weder die Verfügbarkeit der genannten Procedures noch
+               die Erfüllung einer Voraussetzung oder Bedingung.
+Spalten      : FromProcedureName und ToProcedureName (jeweils sysname)
+               bezeichnen Ausgangs- und Ziel-Procedure.
+               RelationType (varchar(24)) benennt die eingetragene Beziehung:
+               REFINE_WITH vertieft ein vorhandenes Signal,
+               CONFIRM_WITH ergänzt eine Gegenprobe,
+               ALTERNATIVE_TO verweist auf einen anderen Evidenzpfad und
+               PREPARE_WITH bezeichnet eine mögliche Vorbereitung.
+               RelationPriority (tinyint) ordnet Einträge je Ausgangs-
+               Procedure und RelationType; sie erzwingt weder eine
+               Ausführungsreihenfolge noch eine Auswahl.
+               ConditionSummary (nvarchar(700)) enthält erläuternden Text.
+               Dieser Text wird nicht als Bedingung ausgewertet.
+               Die View erzwingt keine Beziehungen und prüft keine
+               Voraussetzungen, Gates oder Laufzeitresultate.
+Beispiel     : Die Abfrage zeigt eingetragene Beziehungen geordnet nach
+               Ausgangs-Procedure, Beziehungstyp und Priorität. WITH (NOLOCK)
+               garantiert keine transaktionskonsistente Sicht.
+===============================================================================
+SELECT [FromProcedureName], [RelationType], [ToProcedureName],
+       [RelationPriority], [ConditionSummary]
+FROM [monitor].[VW_AnalysisRelation] WITH (NOLOCK)
+ORDER BY [FromProcedureName], [RelationType], [RelationPriority],
+         [ToProcedureName];
 ===============================================================================
 */
 CREATE OR ALTER VIEW [monitor].[VW_AnalysisRelation]
