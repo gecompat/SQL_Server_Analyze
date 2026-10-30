@@ -319,18 +319,28 @@ Die Procedure führt eine Best-Effort-Tiefenanalyse der sichtbaren In-Memory-OLT
 
 ### Framework-Schwellen
 
-| Parameter | Default | Bedeutung |
-|---|---:|---|
-| `@MinTableMemoryMb` | 1024 | große Tabelle/Indexmemory zur Sichtung |
-| `@HashAvgChainWarn` | 10 | durchschnittliche Hashchain |
-| `@HashMaxChainWarn` | 100 | maximale Hashchain |
-| `@HashMinEmptyBucketPercent` | 10 | sehr geringe Leerbucketquote |
-| `@WaitingCheckpointWarnMb` | 1024 | Checkpointfiles in wartendem Zustand |
-| `@ActiveTransactionWarnCount` | 100 | aktive XTP-Transaktionen |
-| `@PoolUsedWarnPercent` | 80 | Resource-Pool-Auslastung relativ zum Target |
+| Parameter | Typ = Default | Zulässiger Bereich und tatsächlicher Vergleich |
+|---|---|---|
+| `@MinTableMemoryMb` | `decimal(19,2) = 1024 MB` | Ab 0; WARN wird nicht erzeugt. TableUsedMb + IndexUsedMb ab einschließlich Wert erzeugt den INFO-Kontext `LARGE_MEMORY_CONSUMER_CONTEXT`; bei 0 greift der Vergleich für verfügbare Summen ab 0; SQL NULL wird nicht zu 0 konvertiert und erzeugt keinen FindingCode über diesen Vergleich. |
+| `@HashAvgChainWarn` | `decimal(19,4) = 10 Kettenglieder` | 1 bis 100000; WARN bei AverageChainLength strikt größer als Wert. |
+| `@HashMaxChainWarn` | `bigint = 100 Kettenglieder` | Ab 1, ohne explizite Obergrenze; WARN bei MaxChainLength größer oder gleich Wert. |
+| `@HashMinEmptyBucketPercent` | `decimal(9,4) = 10 %` | 0 bis 100; WARN bei EmptyBucketPercent strikt kleiner als Wert. Bei 0 kann dieser Vergleich keine Warnung auslösen. |
+| `@WaitingCheckpointWarnMb` | `decimal(19,2) = 1024 MB` | Ab 0; WARN, wenn die aggregierte Dateigröße im Zustand WAITING FOR LOG TRUNCATION mindestens den Wert erreicht. Bei 0 wird jede passende verfügbare Zeile gewarnt. |
+| `@ActiveTransactionWarnCount` | `int = 100 Transaktionen` | Ab 1, ohne explizite Obergrenze; WARN, wenn die aggregierte Anzahl ACTIVE-/VALIDATING-Transaktionen den Wert erreicht oder überschreitet. |
+| `@PoolUsedWarnPercent` | `decimal(9,4) = 80 %` | 0 bis 100; WARN für benannte Pools bei Used/Target ab diesem Wert oder OutOfMemoryCount > 0. Bei 0 löst ein verfügbarer Quotient den Auslastungsvergleich aus. |
 
-Diese Schwellen sind heuristische Prüfgrenzen, keine automatische Bucket-, Memory- oder Poolbemessung.
+NULL oder ein Wert außerhalb des jeweiligen Bereichs ist `INVALID_PARAMETER`. Nullverhalten bei Schwellenwert 0 ist damit parameterabhängig; 0 ist kein allgemeines Abschaltzeichen. Die Prüfgrenzen sind keine Herstellerlimits, automatisch passende Bucket-/Memorywerte oder Kapazitätsempfehlungen.
 
+
+### Filter, Limit und Ausgabe
+
+`@DatabaseNames` (Default=NULL) akzeptiert einteilige Datenbanknamen in einer bracket-aware Pipe-Liste; `]]` maskiert `]`, äußere Elementleerzeichen werden entfernt. NULL/leer/Leerzeichen bedeutet keine Listenbegrenzung; Systemdatenbanken sind bei `@SystemdatenbankenEinbeziehen=0` ausgeschlossen und bei 1 zugelassen. `@DatabaseNamePattern` (Default=NULL; NULL = kein Patternfilter) akzeptiert unpräfigiert oder `like:` für case-sensitives SQL LIKE mit `%`, `_` und `[...]`, `regex:` für case-sensitive Regex und `regexi:` für case-insensitive Regex. Präfixe sind case-insensitive; leeres Pattern ungültig. Regex erfordert SQL Server 2025 und Compatibility Level 170 der Installationsdatenbank; Datenbankliste und Pattern sind exklusiv. Die exakten Schema-/Objektlisten und ihre eigenen Pattern sind jeweils exklusiv. `@FullObjectNames` (Default=NULL; NULL = kein Filter) verlangt immer ein Objekt und erlaubt die Formen Objekt, Schema.Objekt, Datenbank.Schema.Objekt; nur Qualifier dürfen fehlen. PARSENAME prüft Struktur, keine vollständige SQL-Bezeichnergrammatik. Namen werden case-sensitiv verglichen.
+
+`@MitHashIndexStats` (bit; Default=0) lässt die Hashindex-DMV bei 0 aus und aktiviert sie bei 1; `sys.dm_db_xtp_hash_index_stats` kann vollständige Tabellen scannen, was `@MaxZeilen` nicht begrenzt. Dadurch wird `CATALOG_DEEP` aktiviert. `@HighImpactConfirmed` (bit; Default=0) bestätigt diese High-Impact-Nutzung, verleiht aber keine Gruppenautorisierung; ein erforderliches Gruppengate muss unabhängig autorisiert sein. `@NurProblematisch` (bit; Default=0) lässt bei 0 Findings und alle Detailzeilen zu, bei 1 nur WARN-Findings/-Details; TableMemory ist dann leer (nur INFO/NONE) und MemoryConsumer-Details ohne Severity entfallen. Status, Findingszähler und Quellenzeilen bleiben vollständig. `@MaxZeilen` (int; Default=2000) gilt separat je Findings-/Detailresultset; NULL/0 ist unbegrenzt, negativ ungültig. Es begrenzt weder Status-/Quellenzeilen noch vorgelagerte Quellenarbeit. `@LockTimeoutMs` (int; Default=0) darf 0 bis 60000 ms enthalten; 0 bedeutet NOWAIT, danach wird der Sitzungswert auf 0 zurückgesetzt.
+
+`@ResultSetArt` (varchar(16); Default=CONSOLE) akzeptiert getrimmt und case-insensitive genau CONSOLE (formatiertes Findingsresultat), RAW (Meta, Status-/Quellenstatus und sieben fachliche Resultsets), TABLE (nur `findings` ins benannte Ziel) oder NONE (keine Resultsets). Für TABLE muss `@ResultTablesJson` (Default=NULL) ein JSON-Objekt mit genau dem Key `findings` und dem Stringnamen einer vorhandenen, leeren lokalen #Temp-Tabelle mit einer Seed-Spalte enthalten; keine ##- oder permanenten Tabellen. `@JsonErzeugen` (bit; Default=0) erzeugt JSON nur bei 1 und unabhängig vom Resultsetmodus; für dessen Empfang wird `@Json` optional als OUTPUT gebunden. Die JSON-Keys sind `meta`, `databaseStatus`, `sourceStatus`, `findings`, `tableMemory`, `hashIndexes`, `memoryConsumers`, `checkpointFiles`, `transactions` und `resourcePools`. `@Hilfe` (bit; Default=0) druckt bei 1 die Hilfe und kehrt nach dem TABLE-Preflight zurück; NULL folgt dem normalen Pfad.
+
+Die [Procedure-Anleitung](Procedures/USP_InMemoryOltpAnalysis.md#parametervertrag) enthält für jeden der 30 Eingabe- und OUTPUT-Parameter einen eigenen Eintrag mit Typ, Default, zulässiger Datenform, Optionen, NULL-/Leersemantik, Bindung und Wirkung. Sie führt außerdem sichere Normal-, JSON- und TABLE-Beispiele auf.
 ### Statusresultsets
 
 #### DatabaseStatus
@@ -375,7 +385,7 @@ Es werden bewusst keine realen Transaktions-IDs ausgegeben.
 
 ### Findings
 
-`FindingOrdinal`, Scope, `Severity`, `Confidence`, `FindingCode`, `MetricName`, `MetricValue`, `ThresholdValue`, `Evidence`, `EvidenceLimit`, `RecommendedNextCheck`.
+`FindingOrdinal`, `DatabaseName`, `SchemaName`, `ObjectName`, `IndexName`, `Severity`, `Confidence`, `FindingCode`, `MetricName`, `MetricValue`, `ThresholdValue`, `Evidence`, `EvidenceLimit`, `RecommendedNextCheck`.
 
 ### Interpretation
 
