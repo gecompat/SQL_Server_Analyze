@@ -28583,6 +28583,77 @@ Zweck        : Extrahiert statement- und operatorbezogene Objekt-/Indexreferenze
                ausschließlich aus übergebenem Showplan-XML. Keine Katalogzugriffe.
 SQL-Version  : SQL Server 2019 oder neuer.
 ===============================================================================
+
+Zweck und Eingabe
+-----------------
+Die Funktion liest Objekt- und Indexreferenzen aus dem übergebenen XML-Wert
+@PlanXml. @StatementId ist optional; NULL berücksichtigt alle gefundenen
+StmtSimple-Elemente, ein Wert beschränkt die Ausgabe auf Elemente mit passender
+StatementId. Die Funktion führt den Plan nicht aus, erfasst keinen Plan und
+löst Referenzen nicht gegen Kataloge auf.
+
+Ausgabe
+-------
+ReferenceOrdinal (bigint) nummeriert die ausgegebenen Zeilen anhand der
+Sortierschlüssel im Funktionskörper. StatementOrdinal (int), StatementId (int)
+und StatementCompId (int) ordnen die Zeile dem ausgewählten Statement zu;
+NodeId (int) stammt aus RelOp. StatementOrdinal wird nach dem StatementId-
+Filter berechnet. Bei gleichen Sortierschlüsseln ist die Nummerierung nicht
+stabil als Identität; auch die Abfrage garantiert keine physische Reihenfolge.
+
+ReferenceType und ReferenceSource sind varchar(40). ReferenceType kennzeichnet
+INDEX, wenn ein Indexname vorhanden ist, andernfalls TABLE; Namen mit Präfix
+# beziehungsweise @ ergeben TEMPORARY_OBJECT beziehungsweise TABLE_VARIABLE.
+ReferenceSource ist ACCESS_PATH für den aus RelOp abgeleiteten Operatorpfad und
+DML_TARGET für die im Funktionskörper erkannten Schreiboperatoren. Diese Flags
+beschreiben ausschließlich die XML-Auswertung und beweisen weder Objektart
+noch tatsächliche Ausführung.
+
+DatabaseName, SchemaName, ObjectName, IndexName, AliasName und StorageType
+sind nvarchar(256). Eckige Klammern um erkannte Namensbestandteile werden
+entfernt und verdoppelte schließende Klammern zurückgeführt. PlanObjectId und
+PlanIndexId sind int; PlanObjectId wird aus dem Object-Element gelesen,
+PlanIndexId bleibt NULL. IsTemporaryObject, IsTableVariable, IsRemoteObject und
+IsDmlTarget sind bit. IsRemoteObject ist in dieser Funktion konstant 0;
+IsPartitionColumn oder weitere Katalogeigenschaften werden nicht ermittelt.
+ResolutionCapability und SourceElement sind varchar(40) beziehungsweise
+nvarchar(128). ResolutionCapability meldet ausschließlich die im Funktionskörper
+abgeleitete Einstufung: TEMP_OBJECT_CONTEXT_REQUIRED, PLAN_ONLY,
+INCOMPLETE_REFERENCE oder CATALOG_RESOLVABLE. CATALOG_RESOLVABLE bestätigt
+keine Existenz, Auflösbarkeit oder Gesundheit eines Katalogobjekts. SourceElement
+kennzeichnet Object oder MissingIndex.
+
+Erkennung und Grenzen
+---------------------
+Die Statementsuche verwendet local-name() für StmtSimple und ist damit
+namespace-unabhängig; dies ist keine vollständige Showplan-Validierung. Pro
+Statement werden RelOp/Object-Referenzen und MissingIndex-Elemente separat
+ausgelesen. Fehlende Attribute werden durch NULLIF als NULL ausgegeben.
+TRY_CONVERT liefert bei nicht konvertierbaren numerischen Attributen NULL.
+Referenzen ohne ObjectName werden verworfen. Mehrere passende XML-Stellen
+bleiben mehrere Zeilen; eine eindeutige Referenz oder ein physischer
+Ausführungsnachweis wird nicht zugesichert. Bei NULL- oder strukturell
+unpassendem XML entstehen keine passenden Zeilen. Ungültiger Text kann nicht
+als xml-Parameter übergeben werden; ein Konvertierungsfehler entsteht vor dem
+Funktionsaufruf.
+
+Synthetisches Beispiel
+----------------------
+Das Fragment zeigt nur die von dieser Funktion gelesenen Pfade und ist kein
+vollständiger Showplan:
+
+DECLARE @PlanXml xml = N'<ShowPlanXML>
+  <BatchSequence><Batch><Statements><StmtSimple StatementId="1"
+    StatementCompId="1"><QueryPlan><RelOp NodeId="0" PhysicalOp="Index Seek">
+      <IndexScan><Object Database="[DemoDb]" Schema="[sales]"
+        Table="[Orders]" Index="[IX_Orders]" Alias="[o]"
+        Storage="RowStore" ObjectId="12"/></IndexScan>
+    </RelOp></QueryPlan></StmtSimple></Statements></Batch></BatchSequence>
+</ShowPlanXML>';
+SELECT *
+FROM [monitor].[TVF_ExecutionPlanObjectReferences](@PlanXml, NULL);
+
+===============================================================================
 */
 CREATE OR ALTER FUNCTION [monitor].[TVF_ExecutionPlanObjectReferences]
 (
@@ -28741,6 +28812,66 @@ Zweck        : Extrahiert OptimizerStatsUsage je Statement aus Showplan-XML.
                Die Werte beschreiben den im Plan gespeicherten Compilezeitstand.
 SQL-Version  : SQL Server 2019 oder neuer.
 ===============================================================================
+
+Zweck und Eingabe
+-----------------
+Die Funktion liest StatisticsInfo-Elemente unter OptimizerStatsUsage aus
+@PlanXml. @StatementId ist optional; NULL berücksichtigt alle gefundenen
+StmtSimple-Elemente, ein Wert beschränkt die Ausgabe auf Elemente mit passender
+StatementId. Die Zeit-, Änderungs- und Samplingwerte stammen aus dem im XML
+gespeicherten Compilezeitstand. Die Funktion prüft weder die heutige
+Statistikfrische noch, ob eine Statistik bei einer konkreten Ausführung
+verwendet wurde.
+
+Ausgabe
+-------
+StatisticsUsageOrdinal (bigint) nummeriert Zeilen anhand der Sortierschlüssel im
+Funktionskörper. StatementOrdinal (int), StatementId (int) und
+StatementCompId (int) ordnen jede Zeile dem ausgewählten Statement zu.
+StatementOrdinal wird nach dem StatementId-Filter berechnet. Bei gleichen
+Sortierschlüsseln ist die Nummerierung nicht stabil als Identität; die Abfrage
+garantiert keine physische Ergebnisreihenfolge.
+
+DatabaseName, SchemaName, ObjectName und StatisticsName sind nvarchar(256).
+Erkannte eckige Klammern und verdoppelte schließende Klammern werden normalisiert.
+LastUpdateAtCompile ist datetime2(7), ModificationCountAtCompile bigint und
+SamplingPercentAtCompile decimal(19,6). Diese drei Werte werden mit
+TRY_CONVERT aus den jeweiligen XML-Attributen gelesen; fehlt ein Attribut oder
+ist es nicht konvertierbar, wird NULL ausgegeben. SourceElement ist
+nvarchar(128) und bezeichnet OptimizerStatsUsage/StatisticsInfo.
+ParseStatus ist varchar(40): AVAILABLE wird ausgegeben, wenn Objekt- und
+Statistikname vorhanden sind; andernfalls INCOMPLETE_REFERENCE. Dieser Status
+bewertet nur die gelesenen Namensattribute und ist kein Katalog- oder
+Ausführungsnachweis.
+
+Erkennung und Grenzen
+---------------------
+Die Statementsuche verwendet local-name() für StmtSimple und ist damit
+namespace-unabhängig; dies ist keine vollständige Showplan-Validierung. Nur
+StatisticsInfo-Elemente unter OptimizerStatsUsage werden berücksichtigt.
+Fehlende oder leere Attribute werden NULL. Mehrere passende Stellen und
+Duplikate bleiben getrennte Zeilen. Bei NULL- oder strukturell unpassendem XML
+entstehen keine passenden Zeilen. Ungültiger Text kann nicht als xml-Parameter
+übergeben werden; ein Konvertierungsfehler entsteht vor dem Funktionsaufruf.
+
+Synthetisches Beispiel
+----------------------
+Das Fragment zeigt nur die gelesene Elementstruktur und ist kein vollständiger
+Showplan:
+
+DECLARE @PlanXml xml = N'<ShowPlanXML>
+  <BatchSequence><Batch><Statements><StmtSimple StatementId="1"
+    StatementCompId="1"><QueryPlan><OptimizerStatsUsage>
+      <StatisticsInfo Database="[DemoDb]" Schema="[sales]"
+        Table="[Orders]" Statistics="[IX_Orders]"
+        LastUpdate="2026-01-01T00:00:00" ModificationCount="2"
+        SamplingPercent="100"/>
+    </OptimizerStatsUsage></QueryPlan></StmtSimple></Statements></Batch></BatchSequence>
+</ShowPlanXML>';
+SELECT *
+FROM [monitor].[TVF_ExecutionPlanStatisticsUsage](@PlanXml, NULL);
+
+===============================================================================
 */
 CREATE OR ALTER FUNCTION [monitor].[TVF_ExecutionPlanStatisticsUsage]
 (
@@ -28815,6 +28946,70 @@ Typ          : Inline Table-valued Function
 Zweck        : Normalisiert Spaltenrollen aus Showplan-XML für zielgerichtete
                Index- und Statistikauflösung. Keine Katalogzugriffe.
 SQL-Version  : SQL Server 2019 oder neuer.
+===============================================================================
+
+Zweck und Eingabe
+-----------------
+Die Funktion erkennt ColumnReference-Elemente in ausgewählten RelOp-Pfaden
+unter @PlanXml und ordnet jeder Fundstelle eine Nutzungsrolle zu.
+@StatementId ist optional; NULL berücksichtigt alle gefundenen StmtSimple-
+Elemente, ein Wert beschränkt die Ausgabe auf Elemente mit passender
+StatementId. Die Funktion führt den Plan nicht aus und löst Spaltennamen nicht
+gegen Kataloge auf.
+
+Ausgabe
+-------
+ColumnReferenceOrdinal (bigint) nummeriert die Zeilen nach den Sortierschlüsseln
+im Funktionskörper. StatementOrdinal (int), StatementId (int),
+StatementCompId (int) und NodeId (int) ordnen eine Zeile dem gefundenen
+Statement und RelOp zu. StatementOrdinal wird nach dem StatementId-Filter
+berechnet. Bei gleichen Sortierschlüsseln ist die Nummerierung nicht stabil als
+Identität; die Abfrage garantiert keine physische Ergebnisreihenfolge.
+
+ColumnUsage (varchar(40)) nimmt die Werte SEEK, RESIDUAL, JOIN, ORDER_BY,
+GROUP_BY oder OUTPUT an. ExpressionContext (varchar(80)) beschreibt den
+erkannten Pfad als SEEK_PREDICATE, PREDICATE, JOIN_KEY_OR_PREDICATE,
+ORDER_REQUIREMENT, GROUP_REQUIREMENT oder OUTPUT_LIST. DatabaseName,
+SchemaName, ObjectName, AliasName und ColumnName sind nvarchar(256);
+erkannte eckige Klammern und verdoppelte schließende Klammern werden normalisiert.
+IsSeekColumn, IsResidualPredicateColumn, IsJoinColumn, IsGroupByColumn,
+IsOrderByColumn, IsOutputColumn und IsPartitionColumn sind bit. Die ersten
+sechs Flags werden ausschließlich aus ColumnUsage abgeleitet.
+IsPartitionColumn ist konstant 0 und belegt nicht, dass keine Partitionsspalten
+vorhanden sind.
+
+Erkennung und Grenzen
+---------------------
+Die Statementsuche verwendet local-name() für StmtSimple und die Operator-
+beziehungsweise Spaltenpfade für ihre jeweiligen Elementnamen. Das macht die
+Namenssuche namespace-unabhängig, ist aber keine vollständige Showplan-
+Validierung. Ausgewertet werden SeekPredicates, Predicate, die aufgeführten
+Join-Schlüsselelemente, OrderBy/SortKeys, GroupBy sowie direkte
+OutputList/ColumnReference-Kinder. Andere XML-Pfade werden nicht erfasst.
+Fehlende oder leere Namensattribute werden NULL; Zeilen ohne Column-Attribut
+werden verworfen. Mehrfach vorkommende Spalten und Pfadüberschneidungen können
+mehrere Zeilen erzeugen und werden nicht dedupliziert. Bei NULL- oder
+strukturell unpassendem XML entstehen keine passenden Zeilen. Ungültiger Text
+kann nicht als xml-Parameter übergeben werden; ein Konvertierungsfehler
+entsteht vor dem Funktionsaufruf.
+
+Synthetisches Beispiel
+----------------------
+Das Fragment zeigt einen vom Funktionskörper erkannten Pfad und ist kein
+vollständiger Showplan:
+
+DECLARE @PlanXml xml = N'<ShowPlanXML>
+  <BatchSequence><Batch><Statements><StmtSimple StatementId="1"
+    StatementCompId="1"><QueryPlan><RelOp NodeId="0"><IndexScan>
+      <SeekPredicates><SeekPredicateNew><SeekKeys><Prefix>
+        <ColumnReference Database="[DemoDb]" Schema="[sales]"
+          Table="[Orders]" Column="[OrderId]"/>
+      </Prefix></SeekKeys></SeekPredicateNew></SeekPredicates>
+    </IndexScan></RelOp></QueryPlan></StmtSimple></Statements></Batch></BatchSequence>
+</ShowPlanXML>';
+SELECT *
+FROM [monitor].[TVF_ExecutionPlanColumnReferences](@PlanXml, NULL);
+
 ===============================================================================
 */
 CREATE OR ALTER FUNCTION [monitor].[TVF_ExecutionPlanColumnReferences]
