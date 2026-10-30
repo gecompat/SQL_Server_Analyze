@@ -4636,13 +4636,84 @@ Objekt       : monitor.TVF_ParseBlockingResource
 Version      : 1.0.0
 Stand        : 2026-07-20
 Typ          : Multi-statement Table-valued Function
-Zweck        : Zerlegt die von Requests und Waiting Tasks gelieferten
-               Blocking-Ressourcen ohne Katalog- oder DMV-Zugriff. Die Funktion
-               liefert ausschließlich syntaktische IDs und bewahrt den Rohwert.
-SQL-Version  : SQL Server 2019 oder neuer.
-Eigenlast    : Sehr gering; maximal vier numerische Bestandteile werden gelesen.
-Hinweis      : Namen werden bewusst erst vom aufrufenden Modul für die bereits
-               begrenzte und deduplizierte Kandidatenmenge aufgelöst.
+Zweck        : Die Funktion zerlegt einen Blocking-Ressourcenwert in syntaktisch
+               erkannte IDs und bewahrt den Eingabewert. Sie greift weder auf
+               Kataloge noch auf DMVs zu.
+Eingabe      : @WaitResource nvarchar(3072) ohne Defaultwert. Jeder Aufruf liefert
+               genau eine Ergebniszeile, auch bei NULL oder leerem Eingabewert.
+Ausgabe      : Die zwölf Spalten, Datentypen, NULL-Zulässigkeit und Kollationen
+               entsprechen der RETURNS-Tabelle:
+                 RawResource       nvarchar(3072), NULL, SQL_Latin1_General_CP1_CS_AS
+                 ResourceType      nvarchar(60),   NULL, SQL_Latin1_General_CP1_CS_AS
+                 FormatCode        varchar(40),    NOT NULL, SQL_Latin1_General_CP1_CS_AS
+                 DatabaseId        int,            NULL
+                 EntityId          bigint,         NULL
+                 SubEntityId       bigint,         NULL
+                 FileId            int,            NULL
+                 PageId            bigint,         NULL
+                 RowId             int,            NULL
+                 MetadataSubtype   nvarchar(60),   NULL, SQL_Latin1_General_CP1_CS_AS
+                 ResourceQualifier nvarchar(512),  NULL, SQL_Latin1_General_CP1_CS_AS
+                 ParseStatus       varchar(40),    NOT NULL, SQL_Latin1_General_CP1_CS_AS
+               IDs ohne explizite Kollation verwenden die Datenbankstandardkollation.
+Verarbeitung : Bei NULL oder nach LTRIM/RTRIM leerem Wert ist RawResource der
+               unveränderte Eingabewert; FormatCode und ParseStatus sind EMPTY.
+               Sonst enthält RawResource den an den Rändern mit LTRIM/RTRIM
+               bereinigten Wert. METADATA wird großgeschrieben und von gewöhnlichen
+               Leerzeichen befreit. Der Subtyp wird in der Reihenfolge STATS,
+               SCHEMA, AUDIT, SECURITY_CACHE, METADATA_CACHE,
+               QDS_STATEMENT_STABILITY und OTHER erkannt. Zahlenfelder werden aus
+               den jeweiligen Schlüsseltexten gelesen; je Zahlenfeld wird höchstens
+               ein 128 Zeichen langer Abschnitt untersucht.
+Formate      : EMPTY kennzeichnet NULL oder leere Eingabe. METADATA wird für Werte
+               mit dem Präfix METADATA: gewählt. NUMERIC_PAGE gilt, wenn das erste
+               Zeichen in eine int-Zahl konvertierbar ist. PREFIXED gilt bei einem
+               Doppelpunkt und verwendet den davorstehenden Text als ResourceType.
+               NAMED_RESOURCE gilt ohne Doppelpunkt und verwendet den ersten Namen
+               bis Leerzeichen oder öffnender Klammer. Weitere Formate werden nicht
+               als vollständige SQL-Server-Grammatik beansprucht.
+Zuordnung    : Bei Präfixformaten werden DatabaseId aus Teil 1 und EntityId aus
+               Teil 2 für OBJECT, KEY, HOBT, OIB und ALLOCATION_UNIT gelesen;
+               SubEntityId kommt bei OBJECT aus Teil 3. Für FILE, PAGE, RID und
+               EXTENT stammen FileId aus Teil 2 und PageId bei PAGE, RID und EXTENT
+               aus Teil 3. RowId stammt bei RID aus Teil 4. DATABASE verwendet nur
+               DatabaseId. APPLICATION und XACT übernehmen den Text nach dem
+               Doppelpunkt als ResourceQualifier. Unbekannte Präfixe bleiben
+               RAW_ONLY. Die Zerlegung liest höchstens vier Teile; weitere Teile
+               werden nicht validiert.
+Status       : Die erreichbaren ParseStatus-Werte sind EMPTY, PARSED, PARTIAL,
+               INVALID_FORMAT und RAW_ONLY. Bei METADATA bestimmt allein eine
+               gelesene DatabaseId den Status PARSED; fehlende übrige IDs ändern
+               ihn nicht. Bei FILE führt eine fehlende FileId zu PARTIAL.
+               APPLICATION und XACT liefern PARTIAL. Fehlende EntityId bei den
+               Entitytypen oder fehlende FileId/PageId bei PAGE, RID und EXTENT
+               führen zu INVALID_FORMAT. OBJECT kann trotz fehlender SubEntityId
+               und RID trotz fehlender RowId PARSED sein.
+Beispiele    : Synthetische Eingaben; angegeben sind die durch die Zuordnung
+               belegten Ergebnisse, nicht eine Laufzeitmessung:
+                 PAGE:5:1:123 -> PREFIXED, PAGE, DatabaseId=5, FileId=1,
+                                PageId=123, ParseStatus=PARSED
+                 RID:5:1:123 -> PREFIXED, RID, DatabaseId=5, FileId=1,
+                                PageId=123, RowId=NULL, ParseStatus=PARSED
+                 METADATA:STATS(OBJECT_ID=42,STATS_ID=7,DATABASE_ID=5)
+                              -> METADATA, METADATA, DatabaseId=5, EntityId=42,
+                                 SubEntityId=7, MetadataSubtype=STATS,
+                                 ParseStatus=PARSED
+                 FUTURE_RESOURCE:abc -> PREFIXED, FUTURE_RESOURCE,
+                                       ParseStatus=RAW_ONLY
+                 NULL -> RawResource=NULL, FormatCode=EMPTY, ParseStatus=EMPTY;
+                         genau eine Ergebniszeile
+Aufrufe      : SELECT * FROM [monitor].[TVF_ParseBlockingResource](N'PAGE:5:1:123');
+               SELECT * FROM [monitor].[TVF_ParseBlockingResource](
+                   N'METADATA:STATS(OBJECT_ID=42,STATS_ID=7,DATABASE_ID=5)');
+               SELECT * FROM [monitor].[TVF_ParseBlockingResource](NULL);
+Auflösung    : Namen werden erst vom aufrufenden Modul für dessen begrenzte und
+               deduplizierte Kandidatenmenge aufgelöst.
+Aussagegrenze: Die Funktion liefert syntaktische Werte, keine Katalog- oder DMV-
+               Auflösung und keinen Nachweis für Gültigkeit, Positivität, Existenz,
+               Berechtigung oder Zustand einer Ressource. Die Beispiele sind keine
+               empirischen Ausführungsergebnisse. Die begrenzte Textzerlegung ist
+               keine Garantie sicherer Behandlung jeder fehlerhaften Eingabe.
 ===============================================================================
 */
 CREATE OR ALTER FUNCTION [monitor].[TVF_ParseBlockingResource]
