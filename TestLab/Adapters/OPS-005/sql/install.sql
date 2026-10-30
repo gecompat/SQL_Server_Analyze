@@ -1415,10 +1415,30 @@ BEGIN
 
     IF @Hilfe = 1
     BEGIN
-        PRINT N'monitor.USP_CheckAnalyseAccess';
-        PRINT N'@AnalyseKlasse=NULL liefert alle Analyseklassen; sonst exakter case-sensitiver Code.';
-        PRINT N'@ResultSetArt=RAW, CONSOLE, TABLE oder NONE; Wert wird case-insensitiv verarbeitet.';
-        PRINT N'@JsonErzeugen=1 liefert @Json mit meta, access, policies und warnings.';
+        PRINT N'monitor.USP_CheckAnalyseAccess prüft den Framework-Gruppengate für Analyseklassen im aktuellen Login- und Execution-Kontext. Die Procedure führt keine Fachanalyse aus und vergibt keine SQL-Rechte.';
+        PRINT N'Quellen: Klassenkatalog, VW_AnalyseAccessCurrent, VW_AnalyseAccessPolicy, sys.login_token und IS_MEMBER. Momentaufnahme gegen SYSUTCDATETIME(); kein Live-AD- oder Objektberechtigungsnachweis.';
+        PRINT N'Ohne aktive Policy ist der Gate offen. Sobald global mindestens eine aktive Policy existiert, kann eine geschützte Klasse ohne spezifische oder *-Regel gesperrt sein. Token-Match hat Vorrang vor IS_MEMBER; sonst NO_MATCH.';
+        PRINT N'@AnalyseKlasse varchar(64)=NULL: alle Klassen; sonst vorhandener Katalogcode, exakt und case-sensitiv. NULL ist kein Fehler. Leerer oder unbekannter Code ergibt INVALID_PARAMETER.';
+        PRINT N'@NurGesperrte bit=0: alle Accesszeilen; 1: nur IsAllowed=0. NULL aktiviert den Filter ebenfalls. Dieser Filter betrifft Access, nicht Policies.';
+        PRINT N'@ResultSetArt varchar(16)=''CONSOLE'': CONSOLE (Default), RAW, TABLE oder NONE; NULL/ungültig ergibt INVALID_PARAMETER. Erkennung case-insensitiv, äußere Leerzeichen werden entfernt.';
+        PRINT N'CONSOLE rendert Access als Ergebnis und zeigt zusätzlich Policy- und Warning-Resultsets. RAW liefert Meta, Access, Policies und Warnings als vier technische Resultsets.';
+        PRINT N'TABLE schreibt ausschließlich das benannte access-Resultset mit 12 Accessfeldern in eine vorhandene, leere lokale #temp-Tabelle mit genau einer Seed-Spalte vom Typ bit NULL.';
+        PRINT N'access-Felder: AnalysisClass varchar(64), AnalysisLevel varchar(16), RequiresGroupGate bit, OriginalLoginName sysname NULL, EffectiveLoginName sysname NULL, IsSysadmin bit NULL, ActivePolicyCount bigint NULL, RelevantPolicyCount bigint NULL, IsAllowed bit, AccessReason varchar(20) NULL, MatchedGroupCount bigint NULL, StatusCode varchar(40).';
+        PRINT N'TABLE-Preflight kann vor der Hilfe lokale TempDB-Metadaten per DDL ändern und bei ungültiger Zuordnung mit Fehler 51011/Preflightfehler abbrechen. Kein Max-Zeilen-Parameter.';
+        PRINT N'NONE liefert keine fachlichen Resultsets. Statusmeldungen und JSON sind davon unabhängig; @PrintMeldungen=0 unterdrückt weder Hilfe noch JSON.';
+        PRINT N'@ResultTablesJson nvarchar(max)=NULL: keine Zuordnung; bei TABLE JSON-Objekt access auf vorhandene leere lokale #temp-Tabelle abbilden. Sonst nur mit TABLE zulässig, andernfalls THROW 51011.';
+        PRINT N'@JsonErzeugen bit=0: kein JSON; 1: @Json wird mit meta-Objekt und access-, policies- und warnings-Arrays erzeugt. NULL aktiviert JSON nicht.';
+        PRINT N'@Json nvarchar(max)=NULL OUTPUT: Ausgabeparameter; wird zu Beginn auf NULL gesetzt, auch bei Hilfe. JSON enthält die ermittelten Felder samt NULL-Werten.';
+        PRINT N'@PrintMeldungen bit=1: nur eine behandelte Fehlermeldung wird zusätzlich als Severity-10-Meldung ausgegeben. 0 unterdrückt diese Meldung, nicht RAW/CONSOLE/WARNING-Ausgaben; NULL aktiviert sie nicht.';
+        PRINT N'@Hilfe bit=0: normale Ausführung; 1 gibt diese Hilfe unabhängig von @PrintMeldungen aus und beendet danach. NULL aktiviert Hilfe nicht. TABLE-Preflight liegt davor.';
+        PRINT N'Beispiel – Hilfe: EXEC [monitor].[USP_CheckAnalyseAccess] @Hilfe=1;';
+        PRINT N'Beispiel – Standard: EXEC [monitor].[USP_CheckAnalyseAccess];';
+        PRINT N'Beispiel – Klasse und RAW: EXEC [monitor].[USP_CheckAnalyseAccess] @AnalyseKlasse=''PLAN_CACHE_DEEP'', @ResultSetArt=''RAW'';';
+        PRINT N'Beispiel – nur gesperrte Klassen: EXEC [monitor].[USP_CheckAnalyseAccess] @NurGesperrte=1, @ResultSetArt=''RAW'';';
+        PRINT N'Beispiel – JSON: DECLARE @j nvarchar(max); EXEC [monitor].[USP_CheckAnalyseAccess] @JsonErzeugen=1, @Json=@j OUTPUT; SELECT @j;';
+        PRINT N'Beispiel – NONE: EXEC [monitor].[USP_CheckAnalyseAccess] @ResultSetArt=''NONE'', @JsonErzeugen=1;';
+        PRINT N'Beispiel – TABLE: CREATE TABLE #Access_HelpExample (Seed bit NULL);';
+        PRINT N'DECLARE @map nvarchar(max)=N''{"access":"#Access_HelpExample"}''; EXEC [monitor].[USP_CheckAnalyseAccess] @ResultSetArt=''TABLE'', @ResultTablesJson=@map; DROP TABLE #Access_HelpExample;';
         RETURN;
     END;
 
@@ -7346,10 +7366,29 @@ BEGIN
 
     IF @Hilfe = 1
     BEGIN
-        PRINT N'monitor.USP_CheckFrameworkCapabilities';
-        PRINT N'@DatabaseNames: bracket-aware Pipe-Liste; NULL/leer=alle sichtbaren Online-Benutzerdatenbanken.';
-        PRINT N'@DatabaseNamePattern: like:, regex: oder regexi:; exakte Liste und Pattern sind exklusiv.';
-        PRINT N'@ResultSetArt=RAW, CONSOLE, TABLE oder NONE; optional JSON.';
+        PRINT N'monitor.USP_CheckFrameworkCapabilities prüft katalogisierte Framework-Capabilities serverweit und je ausgewählter Datenbank. Quellen: Featurekatalog, Servereigenschaften, Datenbankkandidaten, Access-View, Permissionfunktionen und leichte dynamische Probe-/Enablementabfragen.';
+        PRINT N'Eine Katalogzeile allein ist keine Laufzeitqualifikation. Die Procedure führt die katalogisierten Probe- und Enablement-SQL-Templates aus, ruft aber nicht automatisch spätere Fachmodule auf. Die Templates sind hinsichtlich Zugriffsumfang zu prüfen.';
+        PRINT N'Die Procedure vergibt keine Rechte. Probeerfolg oder Metadatenrechte belegen weder vollständige Sichtbarkeit späterer Fachdaten noch externe Gesundheit oder erfolgreiche Fachanalyse.';
+        PRINT N'@DatabaseNames nvarchar(max)=NULL: bracket-aware Pipe-Liste exakter Datenbanknamen; NULL, leer oder nur Leerzeichen bedeutet keine Einschränkung. Duplikate/ungültige Namen sind INVALID_PARAMETER. Nicht mit Pattern kombinierbar.';
+        PRINT N'@SystemdatenbankenEinbeziehen bit=0: 0 lässt master, tempdb, model, msdb aus; 1 erlaubt Auswahl. NULL ist INVALID_PARAMETER. Numerisch 0 wird 0, jeder andere Wert wird bit 1.';
+        PRINT N'@DatabaseNamePattern nvarchar(4000)=NULL: NULL ohne Filter; Präfix like: oder ohne Präfix nutzt case-sensitive SQL LIKE (%, _, Zeichenklassen). regex: ist case-sensitive, regexi: case-insensitive; Regex braucht SQL Server 2025 und Installationsdatenbank-Compat 170. Leer/leerem Präfixmuster ungültig; Liste exklusiv.';
+        PRINT N'@HighImpactConfirmed bit=0: Bestätigung für Candidate-Helper. NULL ist INVALID_PARAMETER. Diese Procedure übergibt dem Helper Analyseklasse NULL; dadurch wird hier kein High-Impact-Deep-Gate ausgelöst.';
+        PRINT N'@AnalyseKlasse varchar(64)=NULL: NULL prüft alle katalogisierten Features; sonst ein im Katalog definierter Code. Leer oder unbekannt ergibt INVALID_PARAMETER.';
+        PRINT N'@NurNichtVerfuegbar bit=0: 0 zeigt alle Capabilityzeilen; 1 zeigt nur IsUsable=0. NULL erhält das SQL-Prädikat und zeigt ebenfalls nur IsUsable=0. Die Prüfungen und Summary bleiben ungefiltert.';
+        PRINT N'@MitGruppenpruefung bit=1: 1 prüft je Feature die Access-View; bei Deny oder Prüfungsfehler keine Probe. 0 oder NULL überspringt die Gruppenprüfung; andere numerische Werte werden zu bit 1.';
+        PRINT N'@ResultSetArt varchar(16)=''CONSOLE'': CONSOLE (Default), RAW, TABLE, NONE; case-insensitiv, äußere Leerzeichen entfernt. NULL oder anderer Wert ergibt INVALID_PARAMETER.';
+        PRINT N'CONSOLE übergibt capabilities an den Console-Renderer. RAW liefert vier Resultsets: Meta, Capabilities, Summary und Warnings. TABLE schreibt ausschließlich das benannte capabilities-Resultset; NONE unterdrückt fachliche Resultsets.';
+        PRINT N'@ResultTablesJson nvarchar(max)=NULL: bei TABLE JSON-Objekt capabilities auf vorhandene leere lokale #temp-Tabelle mit einer Seed-Spalte bit NULL abbilden. Außerhalb TABLE führt eine nichtleere Zuordnung zu THROW 51011.';
+        PRINT N'TABLE-Preflight validiert das lokale Ziel vor der Hilfe per temporärer Metadaten-DDL und kann bei ungültigem Ziel mit Fehler abbrechen. @Json wird bereits vor dem Preflight auf NULL gesetzt. @Hilfe=1 gibt danach Hilfe aus; @PrintMeldungen unterdrückt sie nicht.';
+        PRINT N'@JsonErzeugen bit=0: 1 erzeugt JSON mit meta, capabilities, summary und warnings; NULL erzeugt keines. @Json nvarchar(max)=NULL OUTPUT wird zu Beginn zurückgesetzt und ist die Ausgabe.';
+        PRINT N'@PrintMeldungen bit=1: Severity-10-Meldung bei Gesamtfehler oder mindestens einer nicht nutzbaren Capability. 0/NULL unterdrückt nur diese Meldung, nicht Resultsets oder JSON.';
+        PRINT N'@Hilfe bit=0: 1 gibt diesen Hilfetext aus; NULL aktiviert ihn nicht. Hilfe umgeht normale Kandidatenauswahl und Capabilityprobes, aber nicht den davorliegenden TABLE-Preflight.';
+        PRINT N'Beispiel – Hilfe: EXEC [monitor].[USP_CheckFrameworkCapabilities] @Hilfe=1;';
+        PRINT N'Beispiel – Standard: EXEC [monitor].[USP_CheckFrameworkCapabilities];';
+        PRINT N'Beispiel – Scope und RAW: EXEC [monitor].[USP_CheckFrameworkCapabilities] @DatabaseNames=N''[ExampleDb]'', @AnalyseKlasse=''STANDARD_CURRENT'', @ResultSetArt=''RAW'';';
+        PRINT N'Beispiel – JSON/NONE: DECLARE @j nvarchar(max); EXEC [monitor].[USP_CheckFrameworkCapabilities] @ResultSetArt=''NONE'', @JsonErzeugen=1, @Json=@j OUTPUT; SELECT @j;';
+        PRINT N'Beispiel – TABLE-Ziel: CREATE TABLE #Capabilities_HelpExample (Seed bit NULL);';
+        PRINT N'DECLARE @map nvarchar(max)=N''{"capabilities":"#Capabilities_HelpExample"}''; EXEC [monitor].[USP_CheckFrameworkCapabilities] @ResultSetArt=''TABLE'', @ResultTablesJson=@map; DROP TABLE #Capabilities_HelpExample;';
         RETURN;
     END;
 
