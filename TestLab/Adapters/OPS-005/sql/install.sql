@@ -27687,11 +27687,34 @@ Objekt       : monitor.PlanAnalysisProfile
 Version      : 1.0.0
 Stand        : 2026-07-21
 Typ          : Steuertabelle
-Zweck        : Definiert generische Workloadprofile für die eigenständige und
-               frameworkintegrierte Execution-Plan-Analyse.
-Datenschutz  : Enthält ausschließlich generische Frameworkwerte. Lokale reale
-               Zuordnungen werden nicht als Repositoryseed ausgeliefert.
+Zweck        : Das Skript legt generische Workloadprofile für die
+               Execution-Plan-Analyse an und pflegt die ausgelieferten
+               Frameworkprofile.
+Voraussetzung: Das Schema [monitor] und die Zieltabelle müssen in der durch
+               USE gewählten Datenbank angelegt werden können.
+Spalten      : ProfileCode identifiziert ein Profil als varchar(32). Description
+               beschreibt es als nvarchar(1000). Priority legt als smallint
+               eine Rangzahl zwischen 1 und 32767 fest. IsEnabled schaltet die
+               Profilzeile mit bit ein oder aus. IsFrameworkDefault kennzeichnet
+               Frameworkbesitz mit bit. SeedVersion speichert die int-Version
+               der Frameworkwerte. LastUpdatedUtc speichert datetime2(0) in UTC.
+Schlüssel    : ProfileCode ist der gruppierte Primärschlüssel. Die
+               Priority-Prüfung begrenzt den Wert auf 1 bis 32767. Defaults
+               setzen IsEnabled auf 1, IsFrameworkDefault und SeedVersion auf
+               0 sowie LastUpdatedUtc auf SYSUTCDATETIME().
+Seed         : Fehlende Frameworkprofile werden mit IsEnabled=1,
+               IsFrameworkDefault=1 und SeedVersion=1 eingefügt. Ein Update
+               ändert nur Description, Priority, SeedVersion und
+               LastUpdatedUtc, wenn der Schlüssel einem Frameworkdefault
+               gehört und dessen SeedVersion kleiner als die ausgelieferte
+               Version ist. IsEnabled und lokale Zeilen bleiben unverändert;
+               ein vorhandener Schlüssel ohne Frameworkbesitz wird nicht
+               aktualisiert und verhindert das Einfügen desselben Schlüssels.
+Beispiel     : Die folgende Abfrage zeigt Profilcode, Status und Rang.
+               Sie liest keine realen Zuordnungen oder Workloaddaten.
 ===============================================================================
+SELECT [ProfileCode],[IsEnabled],[Priority]
+FROM [monitor].[PlanAnalysisProfile] WITH (NOLOCK);
 */
 IF NOT EXISTS
 (
@@ -27775,11 +27798,66 @@ Objekt       : monitor.PlanAnalysisRuleThreshold
 Version      : 1.0.0
 Stand        : 2026-07-21
 Typ          : Steuertabelle
-Zweck        : Hält ausschließlich Datenwerte für plananalytische Schwellen.
-               Die ausführbare Regellogik verbleibt in geprüftem T-SQL-Code.
-Hinweis      : Alle ausgelieferten Werte sind Triageheuristiken und keine
-               Microsoft-Grenzwerte oder automatische Tuninganweisung.
+Zweck        : Das Skript legt Datenwerte für plananalytische Schwellen an und
+               pflegt die ausgelieferten Frameworkwerte. Die ausführbare
+               Regellogik verbleibt im geprüften T-SQL-Code.
+Voraussetzung: Das Schema [monitor] sowie [monitor].[PlanAnalysisProfile]
+               müssen in der durch USE gewählten Datenbank verfügbar sein.
+Spalten      : RuleCode identifiziert eine Regel als varchar(100), ProfileCode
+               verweist als varchar(32) auf ein Profil, und Severity bezeichnet
+               die Stufe als varchar(16). IsEnabled schaltet den Datensatz mit
+               bit ein oder aus. MinRatio und MaxRatio sind optionale
+               decimal(19,6)-Grenzen. MinAbsoluteRows, MinRowsRead,
+               MinRowsNotReturned, MinExecutionCount, MinLogicalReadsPerExecution,
+               MinTotalLogicalReads, MinElapsedMs, MinCpuMs, MinSpilledPages und
+               MinMemoryKb sind optionale bigint-Schwellen.
+               MinRowsNotReturnedPercent ist optionales decimal(9,4).
+               MinServerMajorVersion ist tinyint und MinCompatibilityLevel
+               smallint; beide sind optionale Mindestwerte. RequiredEvidenceLevel
+               ist ein optionaler varchar(32)-Wert. AdditionalConfigurationJson
+               enthält optionalen nvarchar(max)-JSON-Text. IsFrameworkDefault
+               kennzeichnet Frameworkbesitz mit bit, SeedVersion speichert die
+               int-Version und LastUpdatedUtc speichert datetime2(0) in UTC.
+Schlüssel    : Der gruppierte Primärschlüssel besteht aus RuleCode, ProfileCode
+               und Severity. ProfileCode besitzt einen Fremdschlüssel auf
+               [monitor].[PlanAnalysisProfile]([ProfileCode]). Severity ist auf
+               INFO, LOW, MEDIUM, HIGH oder CRITICAL beschränkt. JSON darf NULL
+               sein; andernfalls muss ISJSON den Wert als JSON erkennen. Es ist
+               kein weiterer Index definiert. Defaults setzen IsEnabled auf 1,
+               IsFrameworkDefault und SeedVersion auf 0 sowie LastUpdatedUtc
+               auf SYSUTCDATETIME().
+Schwellen    : NULL bedeutet zunächst nur, dass im gespeicherten Feld kein Wert
+               steht. Ob eine Regel ein NULL-Feld ignoriert, durch 0 ersetzt
+               oder anders behandelt, ergibt sich ausschließlich aus dem
+               jeweiligen Verbraucher im T-SQL-Code. Die Regelinterpretation
+               und die Bedeutung von JSON-Eigenschaften sind regelbezogen;
+               JSON-Daten führen keinen Code aus und sind keine
+               Ausführungs- oder Sicherheitsfreigabe. Die ausgelieferten Werte
+               sind Triageheuristiken, keine Microsoft-Grenzwerte und keine
+               automatische Tuninganweisung.
+Seed         : Fehlende Frameworkschwellen werden mit IsEnabled=1,
+               IsFrameworkDefault=1 und SeedVersion=1 eingefügt. Das Seed
+               aktualisiert bei Frameworkzeilen mit älterer SeedVersion die
+               Schwellenfelder MinRatio, MaxRatio, MinAbsoluteRows, MinRowsRead,
+               MinRowsNotReturned, MinRowsNotReturnedPercent,
+               MinExecutionCount, MinLogicalReadsPerExecution,
+               MinTotalLogicalReads, MinElapsedMs, MinCpuMs, MinSpilledPages,
+               MinMemoryKb, RequiredEvidenceLevel und
+               AdditionalConfigurationJson sowie SeedVersion und
+               LastUpdatedUtc. Schlüssel, Severity, IsEnabled,
+               MinServerMajorVersion, MinCompatibilityLevel und
+               IsFrameworkDefault werden nicht aktualisiert. Lokale Zeilen
+               bleiben unverändert; ein vorhandener Schlüssel ohne
+               Frameworkbesitz wird nicht aktualisiert und verhindert das
+               Einfügen desselben Schlüssels. LastUpdatedUtc erhält beim
+               Einfügen seinen Default und wird bei einem solchen Seedupdate
+               neu gesetzt; sonstige Änderungen lösen keine automatische
+               Zeitstempelpflege aus.
+Beispiel     : Die Abfrage zeigt Regel, Profil, Stufe, Aktivierung und einige
+               Schwellenwerte. Sie führt keine Regel aus.
 ===============================================================================
+SELECT [RuleCode],[ProfileCode],[Severity],[IsEnabled],[MinRatio],[MaxRatio]
+FROM [monitor].[PlanAnalysisRuleThreshold] WITH (NOLOCK);
 */
 IF NOT EXISTS
 (
@@ -27998,10 +28076,45 @@ Objekt       : monitor.PlanAnalysisProfileAssignment
 Version      : 1.0.0
 Stand        : 2026-07-21
 Typ          : Steuertabelle
-Zweck        : Ordnet Plan- und Workloadkontext optional einem generischen
-               lokalen Analyseprofil zu. Die Auslieferung enthält keine realen
-               Zuordnungen und überschreibt keine lokalen Zeilen.
+Zweck        : Das Skript legt lokale Zuordnungszeilen an, die Plan- oder
+               Workloadkontext mit einem generischen Analyseprofil verbinden
+               können. Die DDL enthält keine INSERTs mit realen Zuordnungen.
+Voraussetzung: Das Schema [monitor] und [monitor].[PlanAnalysisProfile]
+               müssen in der durch USE gewählten Datenbank verfügbar sein.
+Spalten      : AssignmentId ist ein bigint-IDENTITY-Schlüssel. Priority ist
+               smallint; IsEnabled aktiviert oder deaktiviert die Zeile mit
+               bit. ProfileCode verweist als varchar(32) auf ein Profil.
+               DatabaseNamePattern, SchemaNamePattern, ObjectNamePattern und
+               ProgramNameLikePattern sind optionale nvarchar(256)-Muster.
+               QueryHash ist optionales binary(8), QueryStoreQueryId bigint,
+               StatementId int, ResourcePoolId int und WorkloadGroupId int.
+               IsFrameworkDefault kennzeichnet Frameworkbesitz mit bit.
+               Comment enthält optional nvarchar(1000); LastUpdatedUtc speichert
+               datetime2(0) in UTC.
+Schlüssel    : AssignmentId ist der gruppierte Primärschlüssel. ProfileCode
+               besitzt einen Fremdschlüssel auf
+               [monitor].[PlanAnalysisProfile]([ProfileCode]). Priority muss
+               zwischen 1 und 32767 liegen. Die Scope-Prüfung verlangt, dass
+               mindestens eines der neun Filterfelder nicht NULL ist. Der
+               nicht gruppierte Index
+               [IX_PlanAnalysisProfileAssignment_Resolution] beginnt mit
+               IsEnabled, Priority und ProfileCode und enthält die Filterfelder
+               als INCLUDE-Spalten.
+Verwendung   : Diese Tabelle speichert lokale Konfiguration. Sie enthält keine
+               ausgelieferten realen Zuweisungen; ein Profilseed erzeugt keine
+               Zeilen in dieser Tabelle. Der Index belegt keine konkrete
+               Auflösungsreihenfolge. Die Spalten sind Filterdaten, keine
+               Ausführungsanweisung oder Sicherheitsgrenze. Ohne belegten
+               Verbraucher werden weder Mustervergleich, NULL-Verhalten,
+               Prioritätsauflösung noch Zuordnungskonkurrenz festgelegt.
+Datenschutz  : Persistieren Sie nur generische, für das Repository zulässige
+               Muster. Reale Datenbank-, Objekt-, Programm- oder
+               Umgebungsnamen gehören nicht in ausgelieferte Beispiele.
+Beispiel     : Die Abfrage zeigt lokal gespeicherte Zeilen und filtert nicht
+               anhand eines angenommenen Matchingvertrags.
 ===============================================================================
+SELECT [AssignmentId],[ProfileCode],[IsEnabled],[Priority],[DatabaseNamePattern]
+FROM [monitor].[PlanAnalysisProfileAssignment] WITH (NOLOCK);
 */
 IF NOT EXISTS
 (
