@@ -28189,13 +28189,46 @@ Objekt       : monitor.TVF_ParseStatisticsIoText
 Version      : 1.0.1
 Stand        : 2026-07-21
 Typ          : Multi-statement Table-valued Function
-Zweck        : Parst bereits vorliegenden SET STATISTICS IO-Meldungstext ohne
-               eine Query auszuführen. Die Ausgabe bleibt statement-/zeilenbezogen
-               und kennzeichnet unvollständig erkannte Formate.
+Zweck        : Die Funktion wertet bereits vorliegenden Meldungstext aus
+               SET STATISTICS IO aus. Sie führt keine SQL-Anweisung aus und
+               erfasst keine Meldungen selbst.
+Eingabe      : @StatisticsIoText enthält den Meldungstext. NULL und leerer Text
+               ergeben keine Zeilen. CRLF, CR und LF trennen Zeilen; äußere
+               Leerzeichen jeder Zeile werden entfernt. @Line ist nvarchar(4000),
+               daher werden längere Eingabezeilen vor Erkennung und Parsing
+               abgeschnitten. @StatisticsLanguage
+               akzeptiert AUTO, EN und DE (ohne Beachtung der Großschreibung);
+               NULL oder andere Werte werden intern zu AUTO. Dieser Wert
+               beeinflusst die Auswertung nicht: Die Erkennung erfolgt anhand
+               der in der Funktion hinterlegten Bezeichner.
+Ausgabe      : Jede erkannte Zeile mit „scan count“ oder „scananzahl“ erzeugt
+               eine Zeile. Die elf Messspalten enthalten ScanCount,
+               LogicalReads, PhysicalReads, PageServerReads, ReadAheadReads,
+               PageServerReadAheadReads sowie die entsprechenden fünf
+               Lob-Messwerte. Nicht erkannte oder nicht konvertierbare Werte
+               bleiben NULL. ObjectDisplayName enthält den Text zwischen den
+               ersten beiden einfachen Anführungszeichen, falls beide vorhanden
+               sind; der Ausgabepuffer fasst höchstens 512 Zeichen.
+               LanguageDetected meldet EN oder DE anhand des Scan-Labels.
+               ParseStatus ist PARSED, wenn Objektname, ScanCount und
+               LogicalReads vorliegen; andernfalls ist PARSED_PARTIAL. RawLine
+               enthält die getrimmte Eingabezeile, höchstens 4000 Zeichen.
+               MessageOrdinal und ObjectOrdinal zählen erkannte Zeilen in der
+               Verarbeitung; StatementOrdinal ist immer NULL. Die Funktion
+               ordnet Meldungen keinem SQL-Statement zu und legt keine
+               Resultatreihenfolge fest.
+Grenzen      : Nur Zeilen mit einem erkannten Scan-Label werden ausgegeben;
+               andere Zeilen bleiben unberücksichtigt. Messwerte werden aus
+               Ziffern und einem möglichen Minuszeichen nach den hinterlegten
+               englischen oder deutschen Labels mit TRY_CONVERT(bigint)
+               gelesen. PARSED bestätigt nur die genannten Pflichtfelder,
+               nicht die Richtigkeit oder Vollständigkeit aller Messwerte.
+               Der Beispieltext ist synthetisch.
+Beispiel     : SELECT * FROM [monitor].[TVF_ParseStatisticsIoText]
+               (N'Table ''[demo].[Orders]''. Scan count 1, logical reads 8, ' +
+                N'physical reads 0, read-ahead reads 0, lob logical reads 0.',
+                'AUTO');
 SQL-Version  : SQL Server 2019 oder neuer.
-Grenzen      : SQL Server liefert menschenorientierten Meldungstext. Der Parser
-               unterstützt das dokumentierte englische Format und gebräuchliche
-               deutsche Bezeichner; unbekannte Formate werden nicht erfunden.
 ===============================================================================
 */
 CREATE OR ALTER FUNCTION [monitor].[TVF_ParseStatisticsIoText]
@@ -28388,9 +28421,41 @@ Objekt       : monitor.TVF_ParseStatisticsTimeText
 Version      : 1.0.1
 Stand        : 2026-07-21
 Typ          : Multi-statement Table-valued Function
-Zweck        : Parst bereits vorliegenden SET STATISTICS TIME-Meldungstext ohne
-               SQL auszuführen. Parse-/Compile- und Execution-Blöcke bleiben
-               getrennt; mehrdeutige Formate werden als partiell markiert.
+Zweck        : Die Funktion wertet bereits vorliegenden Meldungstext aus
+               SET STATISTICS TIME aus. Sie führt keine SQL-Anweisung aus und
+               erfasst keine Meldungen selbst.
+Eingabe      : @StatisticsTimeText enthält den Meldungstext. NULL und leerer
+               Text ergeben keine Zeilen. CRLF, CR und LF trennen Zeilen;
+               äußere Leerzeichen jeder Zeile werden entfernt. @Line ist
+               nvarchar(4000), daher werden längere Eingabezeilen vor
+               Erkennung und Parsing abgeschnitten.
+               @StatisticsLanguage ist Teil der Signatur, wird im Funktionskörper
+               jedoch nicht verwendet. Seine Werte ändern die Auswertung nicht.
+Ausgabe      : Eine Zeile entsteht für eine Zeile mit „cpu time =“,
+               „cpu-zeit =“, „elapsed time =“ oder „verstrichene zeit =“.
+               CpuMs und ElapsedMs enthalten die nach dem jeweiligen Label
+               mit TRY_CONVERT(bigint) gelesene Zahl; fehlende oder nicht
+               konvertierbare Werte bleiben NULL. TimeCategory ist
+               PARSE_COMPILE, EXECUTION oder UNKNOWN und folgt den im
+               Meldungstext erkannten Überschriften; ohne passende Überschrift
+               bleibt der anfängliche Wert UNKNOWN. LanguageDetected meldet
+               EN oder DE anhand der erkannten Überschrift und bleibt EN, wenn
+               keine Überschrift erkannt wurde. ParseStatus ist
+               PARSED, wenn eine bekannte Kategorie sowie beide Messwerte
+               vorliegen; andernfalls ist PARSED_PARTIAL. RawLine enthält die
+               getrimmte Eingabezeile, höchstens 4000 Zeichen. MessageOrdinal
+               zählt ausgegebene Zeilen; StatementOrdinal ist immer NULL. Die
+               Funktion ordnet Meldungen keinem SQL-Statement zu und legt keine
+               Resultatreihenfolge fest.
+Grenzen      : Der Parser erkennt nur die im Funktionskörper hinterlegten
+               englischen und deutschen Textteile. Die Kategorie bleibt über
+               nachfolgende Zeilen erhalten, bis eine andere Überschrift
+               erkannt wird. PARSED bestätigt nur bekannte Kategorie und beide
+               konvertierten Werte, nicht deren Richtigkeit oder Vollständigkeit.
+               Der Beispieltext ist synthetisch.
+Beispiel     : SELECT * FROM [monitor].[TVF_ParseStatisticsTimeText]
+               (N'SQL Server parse and compile time: CPU time = 3 ms, ' +
+                N'elapsed time = 5 ms.', 'AUTO');
 SQL-Version  : SQL Server 2019 oder neuer.
 ===============================================================================
 */
