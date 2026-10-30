@@ -1560,18 +1560,80 @@ Objekt       : monitor.VW_FrameworkFeatureCatalog
 Version      : 1.7.0
 Stand        : 2026-07-14
 Typ          : View
-Zweck        : Stellt den deklarativen Katalog prüfbarer Monitoring-
-               Datenquellen und Framework-Funktionsklassen für SQL Server 2019
-               und neuer bereit.
+Zweck        : Stellt einen deklarativen Katalog der Feature-Metadaten,
+               Berechtigungshinweise und statischen Probe- und
+               Enablement-Vorlagen bereit. Die View führt diese Vorlagen
+               nicht aus und prüft weder Berechtigungen noch Featurezustände.
 Parameter    : Keine.
-Resultset    : Feature-, Versions-, Berechtigungs-, Kosten- und Probe-Metadaten.
+Resultset    : 22 Spalten: 16 Katalogfelder sowie sechs abgeleitete
+               Berechtigungsausgaben; die Reihenfolge entspricht dem SELECT.
+
+Katalogfelder (Werte und Bedeutung):
+- FeatureOrdinal (smallint) ist ein Hinweis für die Anzeige; er garantiert
+  keine intrinsische Sortierung. FeatureCode (varchar(64)) ist der Code,
+  FeatureName (nvarchar(200)) die lesbare Bezeichnung.
+- ScopeType (varchar(16)) bezeichnet SERVER oder DATABASE. AnalysisClass
+  (varchar(64)) gruppiert Features; AnalysisLevel (varchar(16)) und
+  IsResourceIntensive (bit) sind deklarierte Hinweise, keine Laufzeitmessung.
+- MinimumMajorVersion (tinyint) nennt die deklarierte Mindestversion.
+  Sie qualifiziert weder die tatsächliche Engineversion noch Verfügbarkeit,
+  Zustand oder Berechtigung des Features.
+- PermissionScopeBeforeSql2022 und PermissionScopeFromSql2022
+  (varchar(16)) nennen den deklarierten Scope der jeweiligen
+  Berechtigungshinweise. PermissionBeforeSql2022 und PermissionFromSql2022
+  (nvarchar(128)) bewahren deren Anzeigetext. Beide Varianten werden stets
+  ausgegeben; die View wählt nicht anhand der Laufzeitversion aus.
+- ExpectedWithoutPermission (varchar(32)) enthält die Literaloptionen
+  ERROR, LIMITED und ERROR_OR_LIMITED. Sie beschreiben die deklarierte
+  Erwartung ohne Berechtigung, nicht ein von der View festgestelltes Ergebnis.
+- ProbeSqlTemplate und EnablementSqlTemplate (nvarchar(2000)) sind statische
+  Textvorlagen. Ein Datenbankmarker in einer Vorlage ist gespeicherter Text;
+  seine Ersetzung oder Ausführung ist keine Funktion dieser View.
+  EnablementSqlTemplate kann NULL sein; NULL bedeutet hier keine angegebene
+  Vorlage und keinen nachgewiesenen Fehler.
+- Description (nvarchar(1000)) enthält die deklarierte Featurebeschreibung.
+
+Abgeleitete Berechtigungsausgaben:
+- PermissionCheckTypeBeforeSql2022 und PermissionCheckTypeFromSql2022
+  (varchar(24)) enthalten HAS_PERMS_BY_NAME, wenn der jeweilige Hinweis exakt
+  einem dieser sieben Namen entspricht: VIEW SERVER STATE,
+  VIEW SERVER PERFORMANCE STATE, VIEW DATABASE STATE,
+  VIEW DATABASE PERFORMANCE STATE, VIEW ANY DEFINITION,
+  VIEW ANY DATABASE oder VIEW DEFINITION. Sonst lautet der Wert PROBE_ONLY.
+- PermissionNameBeforeSql2022 und PermissionNameFromSql2022 (sysname) geben
+  bei einem dieser Namen den Namen aus, andernfalls NULL. Die zugehörigen
+  PermissionDisplayTextBeforeSql2022 und PermissionDisplayTextFromSql2022
+  bewahren den jeweiligen ursprünglichen Anzeigetext unverändert.
+
+Die Kennzeichnung HAS_PERMS_BY_NAME ist eine Klassifikation des Textwerts;
+die View ruft HAS_PERMS_BY_NAME nicht auf. PROBE_ONLY kennzeichnet ebenfalls
+nur die Klassifikation und führt keine Probe aus. Die Katalogwerte belegen
+weder vorhandene Berechtigungen noch Vollständigkeit oder einen Zustand.
+Insbesondere ist aus einem Probe-Template keine günstige oder folgenlose
+Ausführung abzuleiten.
+
+Aufruf       : SELECT [FeatureOrdinal], [FeatureCode], [FeatureName],
+                      [ScopeType], [AnalysisClass], [AnalysisLevel],
+                      [IsResourceIntensive], [MinimumMajorVersion],
+                      [PermissionScopeBeforeSql2022],
+                      [PermissionScopeFromSql2022],
+                      [PermissionBeforeSql2022], [PermissionFromSql2022],
+                      [PermissionCheckTypeBeforeSql2022],
+                      [PermissionNameBeforeSql2022],
+                      [PermissionDisplayTextBeforeSql2022],
+                      [PermissionCheckTypeFromSql2022],
+                      [PermissionNameFromSql2022],
+                      [PermissionDisplayTextFromSql2022],
+                      [ExpectedWithoutPermission], [ProbeSqlTemplate],
+                      [EnablementSqlTemplate], [Description]
+               FROM [monitor].[VW_FrameworkFeatureCatalog] WITH (NOLOCK)
+               ORDER BY [FeatureOrdinal];
 Berechtigung : SELECT auf der View. Die genannten Berechtigungen sind Hinweise;
-               das Framework führt niemals GRANT, DENY oder REVOKE aus.
-Sicherheit   : ProbeSqlTemplate enthält ausschließlich statische Framework-
-               Definitionen. Der Datenbank-Platzhalter wird in der Prüf-USP mit QUOTENAME ersetzt.
-Eigenlast    : Die View selbst ist konstant. Die Probe-Statements verwenden TOP(0)
-               beziehungsweise reine Statusabfragen und führen keine Deep-Scans aus.
-Aufruf       : SELECT * FROM monitor.VW_FrameworkFeatureCatalog;
+               die View führt keine Berechtigungsprüfung, Probe, Vorlage oder
+               Enablement-SQL aus und führt niemals GRANT, DENY oder REVOKE aus.
+Eigenlast    : Die View liest deklarative Werte und enthält keine Abfrage von
+               Metadaten- oder Systemkatalogen. Zur Eigenlast einer späteren
+               Ausführung ausgegebener Probe-Texte trifft sie keine Aussage.
 Änderungen   : 1.7.0 - Maschinenlesbare PermissionCheckType-/PermissionName-Spalten ergänzt; freie Hinweistexte werden nur noch per Probe geprüft.
                1.6.0 - Phase-6-Quellen für Agent, Resource Governor, HA/DR, Backup, Replication, CDC und Change Tracking ergänzt.
                1.5.0 - Extended-Events-Katalog, Targetruntime, Filezugriff, Deadlocks und Blocked-Process-Reports differenziert.
