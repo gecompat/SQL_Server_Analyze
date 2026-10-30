@@ -7,7 +7,7 @@
 
 ## Entscheidungsfrage und Einsatz
 
-Die Procedure beantwortet die Betriebsfrage: **Wurde eine Namenliste syntaktisch eindeutig und unter der case-sensitiven Frameworksemantik aufbereitet?** Sie unterstützt die Entscheidung, ob der gewünschte Analysepfad sicher und eindeutig vorbereitet ist oder der Fachaufruf wegen Policy, Capability oder ungültigem Scope unterbleiben muss.
+Die Procedure beantwortet die Betriebsfrage: **Wurde eine Namenliste syntaktisch eindeutig und unter der case-sensitiven Frameworksemantik aufbereitet?** Sie unterstützt die Entscheidung, ob der gewünschte Analysepfad sicher und eindeutig vorbereitet ist oder der Fachaufruf wegen eines ungültigen Scope unterbleiben muss.
 
 ## Nicht beantwortete Fragen
 
@@ -15,7 +15,7 @@ Die Procedure beantwortet keine fachliche Performance- oder Verfügbarkeitsursac
 
 ## Sicherer Einstieg
 
-Diese öffentliche Hilfsprocedure bereitet Filter einer Analyse-Procedure vor und liefert keine normalen Analyse-Resultsets. Im normalen Verarbeitungspfad erwartet sie eine über `@FilterTable` benannte lokale Temp-Tabelle mit festem Schema. Der Hilfemodus kann ohne diese Tabelle aufgerufen werden, muss aber weiterhin die erforderlichen OUTPUT-Parameter binden.
+Diese öffentliche Hilfsprocedure bereitet Filter einer Analyse-Procedure vor und liefert keine normalen Analyse-Resultsets. Im normalen Verarbeitungspfad erwartet sie eine vom Aufrufer angelegte lokale Temp-Tabelle mit dem vollständigen dokumentierten Schema. Die Procedure leert vorhandene Zeilen nicht, sondern hängt validierte Filter an. Der Hilfemodus kann ohne diese Tabelle aufgerufen werden, muss aber weiterhin die erforderlichen OUTPUT-Parameter binden.
 
 Alle `Example*`-Werte im Aufruf sind synthetisch.
 
@@ -33,7 +33,34 @@ EXEC [monitor].[USP_PrepareNameFilters]
     , @Hilfe = 1;
 ```
 
-Listen trennen Elemente mit | nur außerhalb geklammerter Bezeichner. Innerhalb von [...] maskiert ]] eine schließende Klammer; die Parser entquoten die Namen. Leere Elemente, nicht geschlossene Klammern und nicht maskierte schließende Klammern sind ungültig. Einzelne Listen akzeptieren genau einen SQL-Bezeichner mit höchstens 128 Zeichen. Vollständige Objektbezüge erlauben einen, zwei oder drei Teile; bei drei Teilen ist das Schema erforderlich, vier Teile sind ausgeschlossen und jeder Bestandteil ist auf 128 Zeichen begrenzt. Doppelte Werte innerhalb desselben Filtertyps sind unter SQL_Latin1_General_CP1_CS_AS ungültig.
+Listen trennen Elemente mit | nur außerhalb geklammerter Bezeichner. Innerhalb von [...] maskiert ]] eine schließende Klammer; die Parser entquoten die Namen. Leere Elemente, nicht geschlossene Klammern und nicht maskierte schließende Klammern sind ungültig. Einzelne Listen akzeptieren genau einen von PARSENAME strukturell erkannten Namen mit höchstens 128 Zeichen. Vollständige Objektbezüge erlauben einen, zwei oder drei Teile; bei drei Teilen ist das Schema erforderlich, vier Teile sind ausgeschlossen. Die PARSENAME-Prüfung ist keine vollständige SQL-Bezeichnergrammatik und belegt weder Katalogexistenz noch Berechtigungen. Doppelte Werte innerhalb desselben Filtertyps sind unter SQL_Latin1_General_CP1_CS_AS ungültig.
+
+
+### Normalen Aufruf prüfen
+
+Das Beispiel legt eine frische Tabelle mit allen sechs Spalten an. Die Namen sind synthetisch; der Helper prüft keine Katalogexistenz.
+
+~~~sql
+CREATE TABLE #PrepareNameFilters_HelpExample (
+    FilterType varchar(20) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,
+    ItemOrdinal int NOT NULL,
+    NameValue sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL,
+    DatabaseName sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL,
+    SchemaName sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL,
+    ObjectName sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+);
+DECLARE @StatusCode varchar(40), @ErrorMessage nvarchar(2048);
+EXEC [monitor].[USP_PrepareNameFilters]
+     @SchemaNames=N'[ExampleSchema]',
+     @ObjectNames=N'[ExampleObject]',
+     @StatusCode=@StatusCode OUTPUT,
+     @ErrorMessage=@ErrorMessage OUTPUT,
+     @FilterTable=N'#PrepareNameFilters_HelpExample';
+SELECT @StatusCode AS StatusCode, @ErrorMessage AS ErrorMessage;
+SELECT * FROM #PrepareNameFilters_HelpExample
+ORDER BY FilterType, ItemOrdinal;
+DROP TABLE #PrepareNameFilters_HelpExample;
+~~~
 
 ## Resultsets und Leserichtung
 
@@ -41,15 +68,15 @@ Diese Hilfsprocedure besitzt bewusst keinen öffentlichen TABLE-Export. Sie bef�
 
 ## Eine Zeile bedeutet
 
-Eine Zeile in der über `@FilterTable` benannten Tabelle entspricht einem normalisierten Filterelement, beispielsweise Schema, Objekt, Index, Statistik oder vollständig qualifiziertes Objekt.
+Bei einer frisch angelegten Tabelle entspricht jede eingefügte Zeile einem normalisierten Filterelement, etwa Schema, Objekt, Index, Statistik oder vollständigem Objektbezug. Wiederverwendete Tabellen können frühere Zeilen enthalten.
 
 ## So lesen
 
-Prüfen Sie Filtertyp, Status und tatsächliche Zeilenzahl. Bei Fehlern wird die Temp-Tabelle absichtlich geleert.
+Prüfen Sie Filtertyp, Status und die tatsächliche Zeilenzahl. Fehler vor dem abschließenden Insert lassen vorhandene Zeilen unverändert; sie werden nicht geleert. Der abschließende Insert ist nicht umfassend abgefangen.
 
 ## Warum kann das problematisch sein?
 
-Eine leere Filtertabelle nach `INVALID_PARAMETER` darf nicht als „kein Filter“ behandelt werden. Sonst könnte eine nachfolgende Analyse versehentlich zu breit laufen.
+Bei `INVALID_PARAMETER` darf der Parent die vorhandene Tabelle nicht als gültigen Filter behandeln. Der Helper leert das Ziel nicht; vorhandene Zeilen bleiben erhalten.
 
 ## Wann ist es kein Problem?
 
@@ -59,13 +86,7 @@ Unter der case-sensitiven Projektcollation sind `ExampleTable` und `exampletable
 
 **Synthetischer Problemfall (`Example*`):** Doppelte identische Namen führen absichtlich zu einem Fehler; Namen, die sich nur in der Groß- und Kleinschreibung unterscheiden, führen nicht dazu. Korrigieren Sie die Eingabe und wiederholen Sie den öffentlichen Aufruf.
 
-**Ähnlich aussehender Gegenfall:** Unter der case-sensitiven Projektcollation sind `ExampleTable` und `exampletable` unterschiedliche Namen. Der gleiche Einzelwert kann deshalb bei `ExampleDb` ohne Nutzerauswirkung unkritisch sein, während er bei zeitgleicher SLA-Verletzung eine Vertiefung rechtfertigt.
-
-## Leere oder partielle Ausgabe
-
-Bei Hilfsprocedures kann eine leere interne Zieltabelle aus bewusst leerem Filter, ungültiger Eingabe oder fehlender Policy entstehen; diese Fälle dürfen nicht zu einem ungefilterten Parentlauf zusammenfallen.
-
-Für `USP_PrepareNameFilters` gilt zusätzlich: **keine Zeile** bedeutet, dass im sichtbaren und gefilterten Scope kein ausgabefähiger Datensatz entstand. **0** ist ein gemessener Nullwert nur dann, wenn die Quellspalte tatsächlich verfügbar war. **NULL** bedeutet unbekannt, nicht anwendbar oder nicht auflösbar. **PARTIAL/Warning** bedeutet, dass mindestens eine Teilquelle, Datenbank oder Detailstufe fehlt. Ein Limit kann eine nichtleere Quelle vollständig aus dem sichtbaren Ausschnitt verdrängen.
+**Ähnlich aussehender Gegenfall:** Unter der case-sensitiven Projektcollation sind `ExampleTable` und `exampletable` unterschiedliche Namen. 
 
 ## Eigenlast und Grenzen
 
@@ -93,7 +114,7 @@ Wurde eine Namenliste syntaktisch eindeutig und unter der case-sensitiven Framew
 
 ### Technischer Hintergrund
 
-Die Procedure ist ein Schutzbaustein für Filter. Die angegebenen Listenparser prüfen Klammer-/Pipe-Syntax und Zahl sowie Länge der Bezeichnerteile. Validierte Werte werden in Temp-Strukturen geschrieben; ungültige Eingaben führen kontrolliert zu leerem/ungültigem Filterstatus. Die vollständigen Statuswerte sind AVAILABLE, INVALID_PARAMETER, INTERNAL_ERROR, TIMEOUT, DENIED_PERMISSION und ERROR_HANDLED.
+Die Procedure bereitet Listenfilter auf. Die Listenparser prüfen Klammer-/Pipe-Struktur und PARSENAME-Ergebnisse. Validierte Werte werden in eine lokale Worktable geschrieben und nach erfolgreicher Prüfung an das Aufruferziel angehängt. Bei ungültigen Eingaben bleibt das Ziel unverändert; Status und ErrorMessage kennzeichnen den Fehler. Die vollständigen Statuswerte sind AVAILABLE, INVALID_PARAMETER, INTERNAL_ERROR, TIMEOUT, DENIED_PERMISSION und ERROR_HANDLED.
 
 ### Datenkette
 
@@ -122,7 +143,7 @@ Die Filter gelten nur für den aktuellen Aufruf und werden nicht persistiert.
 
 ### Bewertung und Gegenprobe
 
-Behandeln Sie Case-Sensitivität, Duplikate, leere Elemente und ungültige Quote-/Bracketstruktur explizit. Ein absichtlich leerer Filter und ein aufgrund von Fehler geleerter Filter müssen unterscheidbar bleiben.
+Behandeln Sie Case-Sensitivität, Duplikate, leere Elemente und ungültige Quote-/Bracketstruktur explizit. Ein erfolgreicher Aufruf mit ausschließlich NULL-Listen fügt keine Zeilen hinzu. Ein Fehler vor dem Insert lässt vorhandene Zeilen unverändert; unterscheiden Sie diese Fälle anhand von Status und Tabelleninhalt.
 
 ### Typische Fehlinterpretation
 

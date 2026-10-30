@@ -206,91 +206,45 @@ Der Aufwand hängt von ausgewählten SERVER-Features, der Anzahl der Datenbanken
 
 ## 4. [monitor].[USP_PrepareDatabaseCandidates]
 
-### Rolle
+### Rolle und Zieltabellen
 
-Die Procedure implementiert den internen technischen Auswahlvertrag. Sie ist nicht als regulärer Analyseendpunkt vorgesehen.
+Die öffentliche Helper-Procedure bereitet Datenbankkandidaten für aufrufende Module vor. Sie liefert keine Resultsets. Der Aufrufer legt die lokale Tabelle unter dem Namen aus `@CandidateTable` an. Erforderlich sind DatabaseId int, DatabaseName sysname COLLATE SQL_Latin1_General_CP1_CS_AS, StateDesc nvarchar(60) COLLATE SQL_Latin1_General_CP1_CS_AS, UserAccessDesc nvarchar(60) COLLATE SQL_Latin1_General_CP1_CS_AS, IsReadOnly bit, CompatibilityLevel tinyint, CollationName sysname COLLATE SQL_Latin1_General_CP1_CS_AS, RecoveryModelDesc nvarchar(60) COLLATE SQL_Latin1_General_CP1_CS_AS, IsSystemDatabase bit und RequestedOrdinal int. Optional nimmt `@WarningTable` RequestedName sysname COLLATE SQL_Latin1_General_CP1_CS_AS, StatusCode varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS und ErrorMessage nvarchar(2048) COLLATE SQL_Latin1_General_CP1_CS_AS auf.
 
-Die Procedure erwartet, dass der Aufrufer lokale Temp-Tabellen mit exakt definiertem Schema anlegt und deren eindeutige Namen über `@CandidateTable` sowie optional `@WarningTable` übergibt. Sie liefert keine Resultsets.
+Die Procedure hängt Kandidaten und Warnungen an vorhandene Tabellen an; sie leert die Ziele nicht. Verwenden Sie für einen isolierten Aufruf frische Tabellen. Die Kandidatentabellenprüfung bindet nur DatabaseId und DatabaseName mit TOP (0), nicht das vollständige Schema. Spätere Insertfehler können entkommen. Die Warnungstabelle wird separat geprüft; eine fehlende oder nicht passende Tabelle wird still übersprungen. Vorhandene Kandidatenzeilen beeinflussen die Erkennung angeforderter, fehlender Namen. Es gibt keine allgemeine atomare Rücknahme späterer Änderungen.
 
-### Befüllte Temp-Tabelle `@CandidateTable`
+### Parameter und Auswahl
 
-| Spalte | Bedeutung |
-|---|---|
-| `DatabaseId` | Datenbank-ID |
-| `DatabaseName` | sichtbarer Datenbankname |
-| `StateDesc` | Status, typischerweise ONLINE erforderlich |
-| `UserAccessDesc` | Zugriffsmodus |
-| `IsReadOnly` | Read-only-Status |
-| `CompatibilityLevel` | Compatibility Level |
-| `CollationName` | Collation |
-| `RecoveryModelDesc` | Recovery Model |
-| `IsSystemDatabase` | Systemdatenbankkennzeichen |
-| `RequestedOrdinal` | Reihenfolge einer expliziten Liste |
+- `@DatabaseNames` ist eine optionale bracket-aware Pipe-Liste einteiliger Namen. NULL, leer oder Leerzeichen bedeutet keine exakte Einschränkung. Doppelte gültige Werte sind ungültig.
+- `@DatabaseNamePattern` unterstützt SQL LIKE oder die Präfixe regex: und regexi:. Eine Namensliste und ein Pattern sind exklusiv. Regex erfordert SQL Server 2025 und Compatibility Level 170 in der Installationsdatenbank.
+- `@SystemdatenbankenEinbeziehen=0` schließt master, tempdb, model und msdb aus. NULL wird als INVALID_PARAMETER abgelehnt.
+- `@AnalysisClass=NULL` überspringt die optionale Analysepfadprüfung. Nur eine angegebene, tatsächlich aktive Klasse kann das delegierte High-Impact- oder Gruppengate auslösen.
+- `@CrossDatabaseRequested` beschreibt die Form der Anfrage, nicht ob alle Namen ausgewählt wurden.
+- Statuswerte sind AVAILABLE, INVALID_PARAMETER, INTERNAL_ERROR und UNAVAILABLE_FEATURE. Die delegierte Pfadprüfung kann INVALID_PARAMETER, HIGH_IMPACT_CONFIRMATION_REQUIRED oder DENIED_GROUP zurückgeben.
 
-Optional wird `@WarningTable(RequestedName, StatusCode, ErrorMessage)` befüllt.
+### Interpretation
 
-### OUTPUT-Parameter
+Ein Kandidat ist im Ermittlungszeitpunkt sichtbar, online und filterkonform. Das belegt keine spätere CONNECT- oder Objektberechtigung. Explizit angeforderte, aber fehlende Datenbanken können als DATABASE_UNAVAILABLE oder SYSTEM_DATABASE_EXCLUDED in die passende Warnungstabelle geschrieben werden. AVAILABLE allein bestätigt nicht, dass alle angeforderten Namen Kandidaten wurden.
 
-| Parameter | Bedeutung |
-|---|---|
-| `@StatusCode` | `AVAILABLE`, `INVALID_PARAMETER`, `DENIED_GROUP`, `UNAVAILABLE_FEATURE` oder interner Fehler |
-| `@ErrorMessage` | begrenzte Erklärung |
-| `@CrossDatabaseRequested` | 1 bei `NULL` oder mehr als einer expliziten Datenbank |
-
-### Auswahlsemantik
-
-- `@DatabaseNames=N''` oder `NULL`: alle sichtbaren Online-Benutzerdatenbanken.
-- Eine nicht leere Liste oder ein Pattern schränkt explizit ein.
-- Systemdatenbanken benötigen ein ausdrückliches Opt-in.
-- Liste und Pattern sind exklusiv.
-- Doppelte Namen werden case-sensitiv abgelehnt.
-- Regex benötigt SQL Server 2025 und Compatibility Level 170 der Installationsdatenbank.
-- Cross-Database-Modus kann einem Gruppen-Gate unterliegen.
-
-### Fehlinterpretation
-
-Die Kandidatenmenge wird vollständig ermittelt. Ausdrücklich angeforderte, aber
-nicht verfügbare Datenbanken werden als Warning ausgewiesen; sie verschwinden
-nicht still aus dem Auftrag.
-
----
+Die Pattern- und Namensparser prüfen syntaktische Struktur; PARSENAME-basierte Prüfungen sind keine vollständige SQL-Bezeichnergrammatik. Die Kandidatenauswahl liest master.sys.databases und öffnet die ausgewählten Datenbanken nicht. Regex filtert Namen nach der Kandidatenermittlung und darf nicht als frühe Quellbegrenzung verstanden werden.
 
 ## 5. [monitor].[USP_PrepareNameFilters]
 
-### Rolle
+### Rolle und Zieltabelle
 
-Die interne Procedure verarbeitet bracket-aware und case-sensitive Namensfilter. Sie ist nicht als regulärer Direktaufruf vorgesehen und liefert keine fachlichen Resultsets.
+Die öffentliche Helper-Procedure validiert Listen für Schema-, Objekt-, Index-, Statistik-, Spalten- und vollständige Objektnamen. Der Aufrufer legt die lokale Tabelle unter dem Namen aus `@FilterTable` an. Das Schema umfasst FilterType varchar(20) COLLATE SQL_Latin1_General_CP1_CS_AS, ItemOrdinal int, NameValue sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL, DatabaseName sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL, SchemaName sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL und ObjectName sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL. Die Procedure liefert keine Resultsets.
 
-### Erwartete Temp-Tabelle
+Sie leert das Ziel nicht. Validierte Zeilen werden angehängt. Bei einem Fehler vor dem abschließenden Insert bleiben vorhandene Zeilen bestehen. Der abschließende Insert ist nicht umfassend abgefangen. NULL in allen sechs Listen fügt keine Zeilen hinzu und liefert AVAILABLE.
 
-Die über `@FilterTable` eindeutig benannte lokale Tabelle mit dem Schema `(FilterType, ItemOrdinal, NameValue, DatabaseName, SchemaName, ObjectName)`.
+### Filtertypen und Regeln
 
-### Filtertypen
-
-| FilterType | Befüllte Werte |
+| FilterType | Befüllte Felder |
 |---|---|
-| `SCHEMA` | `NameValue` |
-| `OBJECT` | `NameValue` |
-| `INDEX` | `NameValue` |
-| `STATISTICS` | `NameValue` |
-| `COLUMN` | `NameValue` |
+| `SCHEMA`, `OBJECT`, `INDEX`, `STATISTICS`, `COLUMN` | `NameValue` |
 | `FULL_OBJECT` | `DatabaseName`, `SchemaName`, `ObjectName` |
 
-### Regeln
+`@FullObjectNames` ist exklusiv mit `@SchemaNames` und `@ObjectNames`. Pipe trennt nur außerhalb geklammerter Werte; innerhalb von [...] maskiert ]] eine schließende Klammer. Einzelne Listen akzeptieren einen von PARSENAME strukturell erkannten Namen. Vollständige Objektbezüge enthalten ein, zwei oder drei Teile; bei drei Teilen ist das Schema erforderlich, vier Teile sind ungültig. Doppelte Werte innerhalb desselben Filtertyps werden unter SQL_Latin1_General_CP1_CS_AS abgelehnt.
 
-- `@FullObjectNames` ist mit `@SchemaNames` und `@ObjectNames` exklusiv.
-- Jede Liste wird syntaktisch validiert.
-- Duplikate werden unter `SQL_Latin1_General_CP1_CS_AS` erkannt.
-- Bei Fehlern wird die Temp-Tabelle geleert.
-
-### Grenzbeispiele
-
-| Eingabe | Ergebnis |
-|---|---|
-| `N'[ExampleSchema]|[exampleschema]'` | zwei verschiedene Werte unter CS-Collation |
-| `N'[ExampleSchema]|[ExampleSchema]'` | `INVALID_PARAMETER` wegen Duplikat |
-| `@FullObjectNames` plus `@ObjectNames` | `INVALID_PARAMETER` |
-| Name mit Pipe innerhalb korrekt geklammerter Identifier | wird nicht fälschlich getrennt |
+Diese strukturellen Prüfungen sind keine vollständige SQL-Bezeichnergrammatik. Die Procedure prüft nicht, ob Datenbank, Schema, Objekt, Index, Statistik oder Spalte im Katalog existiert oder für den Aufrufer sichtbar ist. Eine leere Tabelle kann bei frischer Tabelle sowohl einen erfolgreichen Aufruf mit ausschließlich NULL-Listen als auch einen vorherigen Fehler anzeigen; Status und Tabelleninhalt sind gemeinsam auszuwerten.
 
 ## Quellen
 

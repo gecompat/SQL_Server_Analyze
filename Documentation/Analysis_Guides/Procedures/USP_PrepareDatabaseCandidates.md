@@ -7,7 +7,7 @@
 
 ## Entscheidungsfrage und Einsatz
 
-Die Procedure beantwortet die Betriebsfrage: **Welche Datenbanken gehören tatsächlich zum Cross-Database-Auftrag und dürfen sicher verarbeitet werden?** Sie unterstützt die Entscheidung, ob der gewünschte Analysepfad sicher und eindeutig vorbereitet ist oder der Fachaufruf wegen Policy, Capability oder ungültigem Scope unterbleiben muss.
+Die Procedure beantwortet die Betriebsfrage: **Welche Datenbanken sind zum Ermittlungszeitpunkt sichtbar, online und filterkonform?** Sie unterstützt die Scope-Vorbereitung. Sie bestätigt keine spätere CONNECT- oder Objektberechtigung und ersetzt keine Capability-Prüfung des Fachmoduls.
 
 ## Nicht beantwortete Fragen
 
@@ -15,7 +15,7 @@ Die Procedure beantwortet keine fachliche Performance- oder Verfügbarkeitsursac
 
 ## Sicherer Einstieg
 
-Diese öffentliche Hilfsprocedure bereitet den Kandidatenscope einer Analyse vor und liefert keine normalen Analyse-Resultsets. Im normalen Verarbeitungspfad setzt sie exakt definierte lokale Temp-Tabellen voraus; deren Namen werden mit `@CandidateTable` und optional `@WarningTable` übergeben. Der Hilfemodus kann ohne diese Tabellen aufgerufen werden, muss aber weiterhin alle erforderlichen OUTPUT-Parameter binden.
+Diese öffentliche Hilfsprocedure bereitet den Kandidatenscope einer Analyse vor und liefert keine normalen Analyse-Resultsets. Im normalen Verarbeitungspfad erwartet sie vom Aufrufer angelegte lokale Temp-Tabellen mit den dokumentierten vollständigen Schemas. Die Procedure hängt Zeilen an und leert vorhandene Tabellen nicht. Für einen isolierten Aufruf sind deshalb frische Tabellen zu verwenden. Der Hilfemodus kann ohne diese Tabellen aufgerufen werden, muss aber weiterhin alle erforderlichen OUTPUT-Parameter binden.
 
 Alle `Example*`-Werte im Aufruf sind synthetisch.
 
@@ -35,7 +35,45 @@ EXEC [monitor].[USP_PrepareDatabaseCandidates]
     , @Hilfe = 1;
 ```
 
-Ein `AVAILABLE`-Status allein belegt nicht, dass jede explizit angeforderte Datenbank ausgewählt wurde. Im normalen Verarbeitungspfad prüfen Sie Kandidaten und gegebenenfalls Warnungen gemeinsam. Ohne Präfix oder mit like: gilt SQL LIKE mit %, _, Zeichenklassen in eckigen Klammern unter SQL_Latin1_General_CP1_CS_AS. regex: nutzt REGEXP_LIKE mit Flag c (case-sensitive), regexi: mit Flag i (case-insensitive); beide benötigen SQL Server 2025 und Compatibility Level 170 der Installationsdatenbank. Vor der Moduserkennung werden äußere Leerzeichen der Eingabe entfernt. Die Präfixerkennung ist case-insensitive; nach dem Abtrennen des Präfixes bleiben innere Leerzeichen und Groß-/Kleinschreibung im Pattern erhalten. Eigene Statuswerte sind AVAILABLE, INVALID_PARAMETER, INTERNAL_ERROR und UNAVAILABLE_FEATURE; bei gesetzter Analyseklasse können HIGH_IMPACT_CONFIRMATION_REQUIRED oder DENIED_GROUP von der delegierten Pfadprüfung zurückkommen.
+Ein `AVAILABLE`-Status allein belegt nicht, dass jede explizit angeforderte Datenbank ausgewählt wurde. Prüfen Sie Kandidaten und gegebenenfalls Warnungen gemeinsam. Die Prüfung der Kandidatentabelle verwendet nur zwei Spalten mit `TOP (0)`; sie bestätigt das vollständige Schema nicht. Eine fehlende oder ungültige Warnungstabelle wird still übersprungen. Warnungen werden angehängt, und vorhandene Kandidatenzeilen beeinflussen, welche angeforderten Namen als fehlend gelten. Ohne Präfix oder mit like: gilt SQL LIKE mit %, _, Zeichenklassen in eckigen Klammern unter SQL_Latin1_General_CP1_CS_AS. regex: nutzt REGEXP_LIKE mit Flag c (case-sensitive), regexi: mit Flag i (case-insensitive); beide benötigen SQL Server 2025 und Compatibility Level 170 der Installationsdatenbank. Vor der Moduserkennung werden äußere Leerzeichen der Eingabe entfernt. Die Präfixerkennung ist case-insensitive; nach dem Abtrennen des Präfixes bleiben innere Leerzeichen und Groß-/Kleinschreibung im Pattern erhalten. Eigene Statuswerte sind AVAILABLE, INVALID_PARAMETER, INTERNAL_ERROR und UNAVAILABLE_FEATURE; bei gesetzter Analyseklasse können HIGH_IMPACT_CONFIRMATION_REQUIRED oder DENIED_GROUP von der delegierten Pfadprüfung zurückkommen.
+
+
+### Normalen Aufruf prüfen
+
+Das Beispiel legt die vollständigen Zielschema-Spalten an. Der synthetische Name kann als Warnung erscheinen, falls er in der aktuellen Instanz nicht auswählbar ist. Die Tabellen sind frisch, damit angehängte Zeilen eindeutig diesem Aufruf zugeordnet werden können.
+
+~~~sql
+CREATE TABLE #PrepareDatabaseCandidates_HelpExample (
+    DatabaseId int NOT NULL,
+    DatabaseName sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,
+    StateDesc nvarchar(60) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,
+    UserAccessDesc nvarchar(60) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,
+    IsReadOnly bit NULL, CompatibilityLevel tinyint NULL,
+    CollationName sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL,
+    RecoveryModelDesc nvarchar(60) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,
+    IsSystemDatabase bit NULL, RequestedOrdinal int NULL
+);
+CREATE TABLE #PrepareDatabaseCandidates_WarningExample (
+    RequestedName sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL,
+    StatusCode varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,
+    ErrorMessage nvarchar(2048) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+);
+DECLARE @StatusCode varchar(40), @ErrorMessage nvarchar(2048),
+        @CrossDatabaseRequested bit;
+EXEC [monitor].[USP_PrepareDatabaseCandidates]
+     @DatabaseNames=N'[ExampleDatabase]',
+     @CandidateTable=N'#PrepareDatabaseCandidates_HelpExample',
+     @WarningTable=N'#PrepareDatabaseCandidates_WarningExample',
+     @StatusCode=@StatusCode OUTPUT,
+     @ErrorMessage=@ErrorMessage OUTPUT,
+     @CrossDatabaseRequested=@CrossDatabaseRequested OUTPUT;
+SELECT @StatusCode AS StatusCode, @ErrorMessage AS ErrorMessage,
+       @CrossDatabaseRequested AS CrossDatabaseRequested;
+SELECT * FROM #PrepareDatabaseCandidates_HelpExample;
+SELECT * FROM #PrepareDatabaseCandidates_WarningExample;
+DROP TABLE #PrepareDatabaseCandidates_WarningExample;
+DROP TABLE #PrepareDatabaseCandidates_HelpExample;
+~~~
 
 ## Resultsets und Leserichtung
 
@@ -43,11 +81,11 @@ Diese Hilfsprocedure besitzt bewusst keinen öffentlichen TABLE-Export. Sie bef�
 
 ## Eine Zeile bedeutet
 
-Eine Zeile in der über `@CandidateTable` benannten Tabelle entspricht einer für den aktuellen Lauf akzeptierten Datenbank. Warnzeilen in `@WarningTable` dokumentieren angeforderte, aber nicht nutzbare Scopes.
+Bei einer frisch angelegten Tabelle entspricht jede eingefügte Zeile einer im Ermittlungszeitpunkt akzeptierten Datenbank. In wiederverwendeten Tabellen können frühere Zeilen stehen. Eine passende Warnungstabelle erhält angeforderte, aber nicht auswählbare Namen.
 
 ## So lesen
 
-Berücksichtigen Sie Kandidaten, Warnungen und OUTPUT-Status gemeinsam. Prüfen, ob jede ausdrücklich angeforderte Datenbank tatsächlich in der Kandidatenliste enthalten ist.
+Berücksichtigen Sie Kandidaten, Warnungen und OUTPUT-Status gemeinsam. Prüfen Sie, ob jede ausdrücklich angeforderte Datenbank tatsächlich in der Kandidatenliste enthalten ist.
 
 ## Warum kann das problematisch sein?
 
@@ -66,12 +104,6 @@ ob `@HighImpactConfirmed = 1` erforderlich ist.
 **Ähnlich aussehender Gegenfall:** Eine große sichtbare Datenbankmenge ist allein kein Deep-Pfad. Die Auswahl wird
 nicht vorab gekürzt; erst die tatsächlich aktivierte Analyseklasse entscheidet,
 ob `@HighImpactConfirmed = 1` erforderlich ist. Der gleiche Einzelwert kann deshalb bei `ExampleDb` ohne Nutzerauswirkung unkritisch sein, während er bei zeitgleicher SLA-Verletzung eine Vertiefung rechtfertigt.
-
-## Leere oder partielle Ausgabe
-
-Bei Hilfsprocedures kann eine leere interne Zieltabelle aus bewusst leerem Filter, ungültiger Eingabe oder fehlender Policy entstehen; diese Fälle dürfen nicht zu einem ungefilterten Parentlauf zusammenfallen.
-
-Für `USP_PrepareDatabaseCandidates` gilt zusätzlich: **keine Zeile** bedeutet, dass im sichtbaren und gefilterten Scope kein ausgabefähiger Datensatz entstand. **0** ist ein gemessener Nullwert nur dann, wenn die Quellspalte tatsächlich verfügbar war. **NULL** bedeutet unbekannt, nicht anwendbar oder nicht auflösbar. **PARTIAL/Warning** bedeutet, dass mindestens eine Teilquelle, Datenbank oder Detailstufe fehlt. Ein Limit kann eine nichtleere Quelle vollständig aus dem sichtbaren Ausschnitt verdrängen.
 
 ## Eigenlast und Grenzen
 
@@ -99,7 +131,7 @@ Welche Datenbanken gehören tatsächlich zum Cross-Database-Auftrag und dürfen 
 
 ### Technischer Hintergrund
 
-Die Procedure bildet aus exakten Namen oder Pattern einen stabilen Kandidatenscope. Ohne explizite Einschränkung liefert sie alle sichtbaren, zugreifbaren und online befindlichen Benutzerdatenbanken. Es gibt keinen CURRENT-Scope und keine Vorabbegrenzung. Systemdatenbanken sind opt-in. Die Procedure prüft zusätzlich die vom Aufrufer tatsächlich aktivierte Analyseklasse und beendet einen bestätigungspflichtigen Pfad vor dem teuren Fachzugriff mit `HIGH_IMPACT_CONFIRMATION_REQUIRED`.
+Die Procedure ermittelt aus exakten Namen oder Pattern einen Kandidatenscope. Ohne explizite Einschränkung ermittelt sie alle sichtbaren, zugreifbaren und online befindlichen Benutzerdatenbanken. Es gibt keinen CURRENT-Scope und keine Vorabbegrenzung. Systemdatenbanken sind opt-in. Die Procedure prüft zusätzlich die vom Aufrufer tatsächlich aktivierte Analyseklasse und beendet einen bestätigungspflichtigen Pfad vor dem teuren Fachzugriff mit `HIGH_IMPACT_CONFIRMATION_REQUIRED`.
 
 ### Datenkette
 
