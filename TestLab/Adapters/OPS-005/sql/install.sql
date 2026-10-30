@@ -57012,7 +57012,7 @@ BEGIN
         PRINT N'EXEC [monitor].[USP_SpecialFeatureInventory] @DatabaseNames=N''[ExampleDatabase]'', @NurErkannteFeatures=1, @ResultSetArt=''CONSOLE'';';
         PRINT N'DECLARE @FeatureJson nvarchar(max); EXEC [monitor].[USP_SpecialFeatureInventory] @DatabaseNames=N''[ExampleDatabase]'', @ResultSetArt=''NONE'', @JsonErzeugen=1, @Json=@FeatureJson OUTPUT;';
         PRINT N'EXEC [monitor].[USP_SpecialFeatureInventory] @DatabaseNames=N''[ExampleDatabase]'', @ResultSetArt=''TABLE'', @ResultTablesJson=N''{"features":"#SpecialFeatureInventory_HelpExample"}'';';
-        PRINT N'Keine externen Locations, Credentials, Broker-Payloads, CLR-Binaries, Moduldefinitionen oder Benutzerdaten werden gelesen. Native JSON verweist für Index-/Pfadmetadaten auf USP_ObjectInventory; SQL-Datenwerte bleiben ungelesen.';
+        PRINT N'Keine externen Locations, Credentials, Broker-Payloads, CLR-Binaries, Moduldefinitionen oder Benutzerdaten werden gelesen. Native JSON verweist für JSON-Index- und Pfadmetadaten auf USP_ObjectInventory; SQL-Datenwerte bleiben ungelesen.';
         RETURN;
     END;
 
