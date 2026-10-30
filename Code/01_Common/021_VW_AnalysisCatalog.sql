@@ -7,19 +7,49 @@ Objekt       : monitor.VW_AnalysisCatalog
 Version      : 1.4.0
 Stand        : 2026-10-13
 Typ          : View
-Zweck        : Katalogisiert jede öffentliche Framework-Procedure nach
-               Anwenderrolle, Themenbereich, Scope, Evidenzart, Kostenprofil,
-               Voraussetzung, Paketgrenze und sicherem Einstieg.
-Semantik     : Genau eine Zeile je öffentlicher Procedure aus dem
-               Objektinventar. Eine Procedure besitzt genau eine primäre
-               Navigationsrolle; Mehrfachzuordnungen erfolgen über Suchbegriffe
-               und Relationen, nicht über zusätzliche Katalogzeilen.
-Kosten       : CostRangeCode beschreibt die dokumentierte Spannweite.
-               RepresentativeAnalysisClass verweist, sofern vorhanden, auf
-               monitor.VW_AnalyseClassCatalog und ersetzt nicht die
-               pfadabhängigen Gates der Ziel-Procedure.
-Eigenlast    : Konstante Frameworkmetadaten; keine DMVs, Benutzerkataloge oder
-               produktiven Datenzugriffe.
+Zweck        : Stellt fest eingetragene Navigationsmetadaten für öffentliche
+               Framework-Procedures bereit. Die View nimmt keine Parameter an.
+Quelle       : Die Zeilen stammen aus den statischen VALUES-Einträgen im
+               View-Text. Es werden keine DMVs, Benutzerkataloge oder
+               produktiven Daten gelesen. Die Metadaten belegen weder, dass
+               eine Procedure installiert, ausführbar oder für den aktuellen
+               Aufrufer berechtigt ist, noch dass ein angegebener Pfad existiert.
+Spalten      : Die Projektion enthält 19 Spalten:
+               ProcedureName (sysname) bezeichnet den eingetragenen
+               Procedure-Namen; DisplayName (nvarchar(160)) ist seine
+               lesbare Bezeichnung.
+               PrimaryAreaCode (varchar(40)) und PrimaryAreaName
+               (nvarchar(160)) ordnen den Eintrag einem Themenbereich zu.
+               NavigationRole (varchar(24)) bezeichnet seine Navigationsrolle;
+               ScopeCode (varchar(40)) den dokumentierten Geltungsbereich und
+               EvidenceType (varchar(40)) die dokumentierte Evidenzart.
+               CostRangeCode (varchar(32)) kennzeichnet die dokumentierte
+               Kostenspanne. RepresentativeAnalysisClass
+               (varchar(64)) nennt eine repräsentative Analyseklasse, sofern
+               eine eingetragen ist; sie beschreibt nicht alle Ausführungspfade.
+               RequiresKnownTarget, RequiresHighImpactForSafeStart und
+               HighImpactPathAvailable (jeweils bit) sind statische Hinweise
+               für die Navigation. Sie prüfen weder Ziel, Berechtigung,
+               High-Impact-Freigabe noch konkrete Laufzeitbedingungen.
+               PackageCode (varchar(32)) bezeichnet die Paketzuordnung;
+               DefaultRank (smallint) einen statischen Sortierhinweis, der
+               NULL sein kann und keine eigene Reihenfolge festlegt.
+               Purpose (nvarchar(1000)) beschreibt den Zweck,
+               PrerequisiteSummary (nvarchar(1000)) fasst dokumentierte
+               Voraussetzungen zusammen und SafeCall (nvarchar(2000)) enthält
+               einen Beispielaufruf als Text. SafeCall wird nicht ausgeführt,
+               ist keine automatische Freigabe und ersetzt keine Prüfung der
+               tatsächlichen Procedure-Gates.
+               DocumentationPath und RunbookPath (jeweils nvarchar(400))
+               enthalten Pfadtexte; sie werden nicht auf Existenz geprüft.
+Beispiel     : Die Abfrage liest die View und sortiert ihre statischen Einträge.
+               WITH (NOLOCK) ist ein Lesehinweis und garantiert keine
+               transaktionskonsistente Sicht.
+===============================================================================
+SELECT [ProcedureName], [DisplayName], [NavigationRole], [CostRangeCode],
+       [DefaultRank], [SafeCall]
+FROM [monitor].[VW_AnalysisCatalog] WITH (NOLOCK)
+ORDER BY [DefaultRank], [ProcedureName];
 ===============================================================================
 */
 CREATE OR ALTER VIEW [monitor].[VW_AnalysisCatalog]
