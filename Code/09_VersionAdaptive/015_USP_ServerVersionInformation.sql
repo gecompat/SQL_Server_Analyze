@@ -55,26 +55,15 @@ BEGIN
 
     IF @Hilfe=1
     BEGIN
-        PRINT N'monitor.USP_ServerVersionInformation: Offlineeinordnung von Build, Servicing-Zweig und Produktlifecycle.';
-        PRINT N'@MitDatenbankKompatibilitaet bit=0: 1 ergänzt databaseCompatibility; 0/NULL überspringt es und ignoriert Filter/System-DB-Option.';
-        PRINT N'Bei bit-Parametern wandelt T-SQL numerisch 0 zu 0 und jeden Nichtnullwert zu 1 um; Werte als 0/1 übergeben.';
-        PRINT N'@DatabaseNames nvarchar(max)=NULL: bei aktivierter Compatibility-Ausgabe NULL/leer=alle Kandidaten; sonst bracket-aware Pipe-Liste.';
-        PRINT N'@DatabaseNamePattern nvarchar(4000)=NULL: like:, regex:, regexi:; alternativ zur Liste und nur bei aktivierter Compatibility-Ausgabe relevant.';
-        PRINT N'@SystemdatenbankenEinbeziehen bit=0: nur bei aktiver Compatibility-Ausgabe ausgewertet; NULL ist im aktiven Kandidatenpfad ungültig.';
-        PRINT N'@MaxZeilen int=2000 gilt nur für databaseCompatibility: NULL/0 unbegrenzt, positiv begrenzt Zeilen, negativ INVALID_PARAMETER.';
-        PRINT N'@ResultSetArt varchar(16)=''CONSOLE'': CONSOLE, RAW, TABLE, NONE; getrimmt/case-insensitiv, andere Werte INVALID_PARAMETER.';
-        PRINT N'@ResultTablesJson nvarchar(max)=NULL mappt eine eindeutige Teilmenge: serverVersion, buildAssessment, lifecycle, instanceFeatures, databaseCompatibility, references, warnings.';
-        PRINT N'@JsonErzeugen bit=0: nur 1 erzeugt JSON unabhängig von ResultSetArt; 0/NULL lässt es aus.';
-        PRINT N'@Json nvarchar(max)=NULL OUTPUT mit OUTPUT binden; @Json wird am Anfang und bei Hilfe auf NULL gesetzt.';
-        PRINT N'@PrintMeldungen bit=1 gibt normale Warnmeldungen bei Status ungleich AVAILABLE aus; NULL/0 unterdrückt sie, Help-PRINT bleibt aktiv.';
-        PRINT N'@Hilfe bit=0: nur 1 druckt Hilfe und kehrt vor Bewertung/Ausgabe zurück; 0/NULL läuft normal weiter.';
-        PRINT N'@StatusCodeOut varchar(40)=NULL OUTPUT und @IsPartialOut bit=NULL OUTPUT binden; liefern bei normalem Abschluss Status/Partialität.';
-        PRINT N'@ErrorNumberOut int=NULL OUTPUT und @ErrorMessageOut nvarchar(2048)=NULL OUTPUT liefern abgefangene Fehler, sonst NULL.';
-        PRINT N'Bei Help wird @Json vorher NULL; Status-/Fehler-OUTPUT-Parameter bleiben wegen frühem RETURN unverändert.';
-        PRINT N'Help kehrt vor TABLE-Mapping und -Preflight zurück; Zieltabellen werden in diesem Pfad nicht validiert.';
-        PRINT N'CONSOLE zeigt Build-/Lifecyclezusammenfassung; RAW liefert sieben Resultsets, JSON dieselben Arrays unter meta.';
-        PRINT N'NONE unterdrückt Resultsets; TABLE schreibt nur die gemappte Teilmenge.';
-        PRINT N'TABLE nimmt eine eindeutige Teilmenge der sieben Schlüssel; lokale leere Einspalten-Dummy-Tabelle genügt, ohne Seed-Zeile.';
+        PRINT N'Die Procedure ordnet aktuellen Build, offline mitgelieferten Servicing-Katalog und Lifecycle getrennt ein. Sie führt keinen Onlinezugriff aus.';
+        PRINT N'@DatabaseNames ist eine bracket-aware Pipe-Liste: | trennt außerhalb von [...], ]] maskiert ], Pipe innerhalb von [...] bleibt Bestandteil; nur einteilige SQL-Namen.';
+        PRINT N'@ResultSetArt: CONSOLE=Build-/Lifecyclezusammenfassung, RAW=sieben Resultsets, TABLE=gemappte Resultsetziele, NONE=keine fachlichen Resultsets.';
+        PRINT N'CONSOLE verdichtet zu einer Zeile. Die sieben Resultsets heißen serverVersion, buildAssessment, lifecycle, instanceFeatures, databaseCompatibility, references und warnings. JSON verwendet gleichnamige Arrays unter meta.';
+        PRINT N'@ResultTablesJson wird bei TABLE als eindeutige Zuordnung dieser sieben Schlüssel zu vorhandenen leeren lokalen #Temp-Tabellen geprüft; ein leeres Einspalten-Dummyziel kann der Writer anpassen. Mapping-Preflight kommt nach dem Help-Return.';
+        PRINT N'databaseCompatibility ist opt-in. Bei @MitDatenbankKompatibilitaet=0 müssen @DatabaseNames und @DatabaseNamePattern NULL bleiben; der Systemdatenbankwert muss dennoch im normalen Aufruf nicht-NULL sein.';
+        PRINT N'@MaxZeilen begrenzt ausschließlich databaseCompatibility; ein negativer Wert wird auch ohne aktivierte Compatibility-Ausgabe abgelehnt.';
+        PRINT N'@Json wird gleich beim Eintritt auf NULL gesetzt. Help lässt Status-/Fehler-OUTPUT-Werte unverändert und liegt vor Tabellenmapping.';
+        PRINT N'Der Offline-Katalog beweist weder vollständige Security-Patches, Verwundbarkeit, Neustartbedarf, Supportentitlement noch betriebliche Freigabe.';
         PRINT N'EXEC [monitor].[USP_ServerVersionInformation] @ResultSetArt=''CONSOLE'';';
         PRINT N'DECLARE @Status varchar(40), @Partial bit, @ErrNo int, @ErrMsg nvarchar(2048);';
         PRINT N'EXEC [monitor].[USP_ServerVersionInformation] @StatusCodeOut=@Status OUTPUT, @IsPartialOut=@Partial OUTPUT, @ErrorNumberOut=@ErrNo OUTPUT, @ErrorMessageOut=@ErrMsg OUTPUT;';
@@ -82,7 +71,21 @@ BEGIN
         PRINT N'EXEC [monitor].[USP_ServerVersionInformation] @ResultSetArt=''NONE'', @JsonErzeugen=1, @Json=@VersionJson OUTPUT;';
         PRINT N'CREATE TABLE #ServerVersionInformation_HelpExample (Placeholder int NULL);';
         PRINT N'EXEC [monitor].[USP_ServerVersionInformation] @MitDatenbankKompatibilitaet=1, @ResultSetArt=''TABLE'', @ResultTablesJson=N''{"databaseCompatibility":"#ServerVersionInformation_HelpExample"}'';';
-        PRINT N'Offline-Katalog ist kein Beleg für vollständige Security-Patches, Verwundbarkeit, Neustartbedarf, Supportentitlement oder betriebliche Freigabe.';
+        PRINT N'@MitDatenbankKompatibilitaet (bit; Default: 0; ausgelassen = Default): Ausgelassen = 0. 1 aktiviert databaseCompatibility. 0 überspringt dessen Kandidatenpfad; dann müssen @DatabaseNames und @DatabaseNamePattern NULL bleiben, sonst INVALID_PARAMETER. NULL ist im normalen Pfad INVALID_PARAMETER. T-SQL konvertiert numerisch 0 zu 0 und jeden Nichtnullwert zu 1.';
+        PRINT N'@DatabaseNames (nvarchar(max); Default: NULL; ausgelassen = Default): Ausgelassen = NULL. Nur bei aktivierter Compatibility-Ausgabe ausgewertet; NULL bedeutet keine Listenbegrenzung, sonst bracket-aware Pipe-Liste einteiliger SQL-Namen (Pipe trennt nur außerhalb von [...], ]] maskiert ]). Wenn Compatibility deaktiviert ist, muss der Parameter NULL sein.';
+        PRINT N'@DatabaseNamePattern (nvarchar(4000); Default: NULL; ausgelassen = Default): Ausgelassen = NULL. Nur bei aktivierter Compatibility-Ausgabe; alternativ zur Liste. Äußere Leerzeichen werden entfernt, Präfixe sind case-insensitiv: like: (SQL-LIKE), regex: (case-sensitive Regex, Flag c), regexi: (case-insensitive Regex, Flag i); ohne Präfix gilt SQL-LIKE. LIKE verwendet %, _ und SQL-Zeichenklassen [...] unter SQL_Latin1_General_CP1_CS_AS. Leerer Patterninhalt ist ungültig. Regex benötigt SQL Server 2025 und Compatibility Level 170 der Installationsdatenbank. Bei deaktivierter Compatibility-Ausgabe muss der Wert NULL sein.';
+        PRINT N'@SystemdatenbankenEinbeziehen (bit; Default: 0; ausgelassen = Default): Ausgelassen = 0. Nur bei aktivierter Compatibility-Ausgabe bewirkt 0 den Ausschluss und 1 die Zulassung von master, tempdb, model und msdb. NULL ist auch bei deaktivierter Compatibility-Ausgabe im normalen Pfad INVALID_PARAMETER. T-SQL konvertiert numerisch 0 zu 0 und jeden Nichtnullwert zu 1.';
+        PRINT N'@MaxZeilen (int; Default: 2000; ausgelassen = Default): Ausgelassen = 2000. NULL oder 0 bedeutet unbegrenzt; positiv begrenzt nur databaseCompatibility nach der Auswahl; negativ setzt INVALID_PARAMETER, auch wenn Compatibility deaktiviert ist.';
+        PRINT N'@ResultSetArt (varchar(16); Default: CONSOLE; ausgelassen = Default): Ausgelassen = CONSOLE. Äußere Leerzeichen entfernen, großschreiben. Die vollständigen Werte sind CONSOLE (verdichtete Consolezeile), RAW (alle sieben technischen Resultsets), TABLE (gemappte Ziele) und NONE (keine fachlichen Resultsets). NULL, leer und andere Werte sind im normalen Pfad INVALID_PARAMETER.';
+        PRINT N'@ResultTablesJson (nvarchar(max); Default: NULL; ausgelassen = Default): Ausgelassen = NULL. Nur TABLE erlaubt; ein JSON-Objekt mit eindeutiger Teilmenge der sieben exakten Schlüssel serverVersion, buildAssessment, lifecycle, instanceFeatures, databaseCompatibility, references und warnings. Jeder Schlüssel erhält ein vorhandenes lokales #Temp-Ziel; alle Ziele sind eindeutig und leer und die JSON-Zuordnung ist vor Quellenzugriff geprüft. Eine leere Einspalten-Dummytabelle kann der Writer an das Quellschema anpassen. Nicht-TABLE mit nichtleerem Mapping ist INVALID_PARAMETER. Der Help-RETURN liegt vor diesem Mapping-Preflight.';
+        PRINT N'@JsonErzeugen (bit; Default: 0; ausgelassen = Default): Ausgelassen = 0. 1 erzeugt JSON unabhängig von ResultSetArt; 0 lässt JSON aus. NULL ist im normalen Pfad INVALID_PARAMETER. T-SQL konvertiert numerisch 0 zu 0 und jeden Nichtnullwert zu 1.';
+        PRINT N'@Json (nvarchar(max) OUTPUT; Default: NULL; ausgelassen = Default): Ausgelassen = NULL als OUTPUT-Parameter. Mit OUTPUT binden. Der Eingabewert wird gleich bei Eintritt auf NULL gesetzt; bei @JsonErzeugen=1 enthält JSON meta und die benannten Ergebnisarrays. Hilfe lässt @Json bei NULL, nachdem es geleert wurde.';
+        PRINT N'@PrintMeldungen (bit; Default: 1; ausgelassen = Default): Ausgelassen = 1. 1 gibt normale Warnmeldungen bei Status ungleich AVAILABLE aus; 0 unterdrückt sie. NULL ist im normalen Pfad INVALID_PARAMETER. Hilfe-PRINT bleibt aktiv. T-SQL konvertiert numerisch 0 zu 0 und jeden Nichtnullwert zu 1.';
+        PRINT N'@Hilfe (bit; Default: 0; ausgelassen = Default): Ausgelassen = 0. Nur 1 druckt Hilfe und kehrt vor Bewertung, normaler Parameter-/Filtervalidierung und TABLE-Mapping-Preflight zurück; 0 und NULL führen normal weiter. @Json ist davor bereits NULL; die Status-/Fehler-OUTPUT-Werte bleiben beim Help-RETURN unverändert. T-SQL konvertiert numerisch 0 zu 0 und jeden Nichtnullwert zu 1.';
+        PRINT N'@StatusCodeOut (varchar(40) OUTPUT; Default: NULL; ausgelassen = Default): Ausgelassen = NULL als OUTPUT-Parameter; mit OUTPUT binden. Wird im normalen Abschluss mit dem tatsächlichen Modulstatus belegt. Die Procedure setzt unter anderem AVAILABLE, AVAILABLE_LIMITED und INVALID_PARAMETER; abgefangene Quellenfehler behalten ihren jeweiligen tatsächlichen Status. Beim Help-RETURN bleibt der übergebene Wert unverändert.';
+        PRINT N'@IsPartialOut (bit OUTPUT; Default: NULL; ausgelassen = Default): Ausgelassen = NULL als OUTPUT-Parameter; mit OUTPUT binden. Liefert im normalen Abschluss 0 für vollständige bzw. 1 für partielle Ausgabe. Beim Help-RETURN bleibt der übergebene Wert unverändert.';
+        PRINT N'@ErrorNumberOut (int OUTPUT; Default: NULL; ausgelassen = Default): Ausgelassen = NULL als OUTPUT-Parameter; mit OUTPUT binden. Liefert die tatsächlich abgefangene Fehlernummer oder NULL, wenn kein Fehler erfasst wurde. Beim Help-RETURN bleibt der übergebene Wert unverändert.';
+        PRINT N'@ErrorMessageOut (nvarchar(2048) OUTPUT; Default: NULL; ausgelassen = Default): Ausgelassen = NULL als OUTPUT-Parameter; mit OUTPUT binden. Liefert den tatsächlich erfassten Fehlertext oder NULL, wenn kein Fehler erfasst wurde. Beim Help-RETURN bleibt der übergebene Wert unverändert.';
         RETURN;
     END;
 
