@@ -38,8 +38,9 @@ wenn ihr Zwischen- oder Root-Blocker ein erkanntes Tool ist.
 
 Die Blocking-Ressourcenauflösung ist durchgereicht: `NONE` deaktiviert sie,
 `STANDARD` ist der auf 100 Kandidaten begrenzte Default. `DEEP` liest zusätzlich
-die Locks beteiligter Blocking-Sessions und verlangt `LOCKS_DEEP` sowie
-`@HighImpactConfirmed = 1`.
+die Locks beteiligter Blocking-Sessions und prüft `LOCKS_DEEP`.
+Gruppenfreigabe und `@HighImpactConfirmed = 1` sind erforderlich, wenn die
+aktive Policy `RequiresGroupGate=1` setzt.
 
 ```sql
 DECLARE @OverviewJson nvarchar(max);
@@ -76,7 +77,7 @@ Die Verträge beschreiben die Parentprüfung und die Weitergabe an die jeweils a
 | `@MitSessions` | bit; Default=1. 1 ruft USP_CurrentSessions genau einmal mit TABLE auf; 0 überspringt es und setzt Modulstatus SKIPPED. Ausgelassen=1, NULL INVALID_PARAMETER; numerisch 0→0, sonst→1 vor Eintritt. |
 | `@MitRequests` | bit; Default=1. 1 ruft USP_CurrentRequests genau einmal mit TABLE auf; 0 überspringt das Child (SKIPPED). Aktiviertes Requests-Child kann Requestkontext, Statements, Batches und InputBuffers liefern. Ausgelassen=1, NULL INVALID_PARAMETER; numerisch 0→0, sonst→1. |
 | `@MitBlocking` | bit; Default=1. 1 ruft USP_CurrentBlocking einmal auf; 0 überspringt Blockingketten und Ressourcenauflösung (SKIPPED). DEEP-Einstellungen wirken nur bei aktiviertem Child. Ausgelassen=1, NULL INVALID_PARAMETER; numerisch 0→0, sonst→1. |
-| `@BlockingObjektTiefe` | varchar(16); Default='STANDARD'. Nach TRIM/UPPER exakt NONE (keine Ressourcenauflösung), STANDARD (Auflösung mit begrenzter Kandidatenzahl) oder DEEP (zusätzlich Locks beteiligter Blocking-Sessions, Gate LOCKS_DEEP plus @HighImpactConfirmed=1). Ausgelassen=STANDARD; NULL/leer/andere Werte ungültig. Wird an Blocking weitergereicht; bei deaktiviertem Blocking keine Childauswirkung. |
+| `@BlockingObjektTiefe` | varchar(16); Default='STANDARD'. Nach TRIM/UPPER exakt NONE (keine Ressourcenauflösung), STANDARD (Auflösung mit begrenzter Kandidatenzahl) oder DEEP (zusätzlich Locks beteiligter Blocking-Sessions, Prüfung von LOCKS_DEEP; Gruppenfreigabe und @HighImpactConfirmed=1 nur bei aktiver Policy RequiresGroupGate=1). Ausgelassen=STANDARD; NULL/leer/andere Werte ungültig. Wird an Blocking weitergereicht; bei deaktiviertem Blocking keine Childauswirkung. |
 | `@MaxObjektAufloesungen` | int; Default=100 Kandidaten. Ganze Zahl 1 bis 1000 einschließlich; begrenzt Blocking-Ressourcenkandidaten, nicht die gesamte Ausgabe. Ausgelassen=100; NULL und Werte außerhalb des Bereichs INVALID_PARAMETER. Child verwendet diesen Wert für die Objektauflösung. |
 | `@MitWaits` | bit; Default=1. 1 ruft USP_CurrentWaits auf; 0 überspringt aktuelle Waiting Tasks und Wait-Analyse. Ausgelassen=1, NULL INVALID_PARAMETER; numerisch 0→0, sonst→1. |
 | `@MitTransactions` | bit; Default=1. 1 ruft USP_CurrentTransactions auf; 0 überspringt das Transaktions-Child. Ausgelassen=1, NULL INVALID_PARAMETER; numerisch 0→0, sonst→1. |
