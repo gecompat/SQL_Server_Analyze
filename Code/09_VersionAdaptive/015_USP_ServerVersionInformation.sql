@@ -55,13 +55,34 @@ BEGIN
 
     IF @Hilfe=1
     BEGIN
-        PRINT N'monitor.USP_ServerVersionInformation';
-        PRINT N'Die Procedure führt eine leichte Offline-Bewertung von Instanzversion, Buildzweig und Microsoft-Lifecycle durch.';
-        PRINT N'@MitDatenbankKompatibilitaet bit=0: 1 ergänzt sichtbare Datenbanken; Namen werden nur in diesem expliziten Resultset ausgegeben.';
-        PRINT N'@DatabaseNames und @DatabaseNamePattern sind alternative Filter; Systemdatenbanken benötigen @SystemdatenbankenEinbeziehen=1.';
-        PRINT N'@MaxZeilen int=2000: positive Werte begrenzen Datenbankzeilen; NULL/0 bedeutet unbegrenzt.';
-        PRINT N'@ResultSetArt=CONSOLE|RAW|TABLE|NONE; TABLE verwendet benannte Ziele in @ResultTablesJson.';
-        PRINT N'Der Offline-Katalog beweist weder vollständige Security-Patches noch Verwundbarkeit, Neustartbedarf oder betriebliche Freigabe.';
+        PRINT N'monitor.USP_ServerVersionInformation: Offlineeinordnung von Build, Servicing-Zweig und Produktlifecycle.';
+        PRINT N'@MitDatenbankKompatibilitaet bit=0: 1 ergänzt databaseCompatibility; 0/NULL überspringt es und ignoriert Filter/System-DB-Option.';
+        PRINT N'Bei bit-Parametern wandelt T-SQL numerisch 0 zu 0 und jeden Nichtnullwert zu 1 um; Werte als 0/1 übergeben.';
+        PRINT N'@DatabaseNames nvarchar(max)=NULL: bei aktivierter Compatibility-Ausgabe NULL/leer=alle Kandidaten; sonst bracket-aware Pipe-Liste.';
+        PRINT N'@DatabaseNamePattern nvarchar(4000)=NULL: like:, regex:, regexi:; alternativ zur Liste und nur bei aktivierter Compatibility-Ausgabe relevant.';
+        PRINT N'@SystemdatenbankenEinbeziehen bit=0: nur bei aktiver Compatibility-Ausgabe ausgewertet; NULL ist im aktiven Kandidatenpfad ungültig.';
+        PRINT N'@MaxZeilen int=2000 gilt nur für databaseCompatibility: NULL/0 unbegrenzt, positiv begrenzt Zeilen, negativ INVALID_PARAMETER.';
+        PRINT N'@ResultSetArt varchar(16)=''CONSOLE'': CONSOLE, RAW, TABLE, NONE; getrimmt/case-insensitiv, andere Werte INVALID_PARAMETER.';
+        PRINT N'@ResultTablesJson nvarchar(max)=NULL mappt eine eindeutige Teilmenge: serverVersion, buildAssessment, lifecycle, instanceFeatures, databaseCompatibility, references, warnings.';
+        PRINT N'@JsonErzeugen bit=0: nur 1 erzeugt JSON unabhängig von ResultSetArt; 0/NULL lässt es aus.';
+        PRINT N'@Json nvarchar(max)=NULL OUTPUT mit OUTPUT binden; @Json wird am Anfang und bei Hilfe auf NULL gesetzt.';
+        PRINT N'@PrintMeldungen bit=1 gibt normale Warnmeldungen bei Status ungleich AVAILABLE aus; NULL/0 unterdrückt sie, Help-PRINT bleibt aktiv.';
+        PRINT N'@Hilfe bit=0: nur 1 druckt Hilfe und kehrt vor Bewertung/Ausgabe zurück; 0/NULL läuft normal weiter.';
+        PRINT N'@StatusCodeOut varchar(40)=NULL OUTPUT und @IsPartialOut bit=NULL OUTPUT binden; liefern bei normalem Abschluss Status/Partialität.';
+        PRINT N'@ErrorNumberOut int=NULL OUTPUT und @ErrorMessageOut nvarchar(2048)=NULL OUTPUT liefern abgefangene Fehler, sonst NULL.';
+        PRINT N'Bei Help wird @Json vorher NULL; Status-/Fehler-OUTPUT-Parameter bleiben wegen frühem RETURN unverändert.';
+        PRINT N'Help kehrt vor TABLE-Mapping und -Preflight zurück; Zieltabellen werden in diesem Pfad nicht validiert.';
+        PRINT N'CONSOLE zeigt Build-/Lifecyclezusammenfassung; RAW liefert sieben Resultsets, JSON dieselben Arrays unter meta.';
+        PRINT N'NONE unterdrückt Resultsets; TABLE schreibt nur die gemappte Teilmenge.';
+        PRINT N'TABLE nimmt eine eindeutige Teilmenge der sieben Schlüssel; lokale leere Einspalten-Dummy-Tabelle genügt, ohne Seed-Zeile.';
+        PRINT N'EXEC [monitor].[USP_ServerVersionInformation] @ResultSetArt=''CONSOLE'';';
+        PRINT N'DECLARE @Status varchar(40), @Partial bit, @ErrNo int, @ErrMsg nvarchar(2048);';
+        PRINT N'EXEC [monitor].[USP_ServerVersionInformation] @StatusCodeOut=@Status OUTPUT, @IsPartialOut=@Partial OUTPUT, @ErrorNumberOut=@ErrNo OUTPUT, @ErrorMessageOut=@ErrMsg OUTPUT;';
+        PRINT N'DECLARE @VersionJson nvarchar(max);';
+        PRINT N'EXEC [monitor].[USP_ServerVersionInformation] @ResultSetArt=''NONE'', @JsonErzeugen=1, @Json=@VersionJson OUTPUT;';
+        PRINT N'CREATE TABLE #ServerVersionInformation_HelpExample (Placeholder int NULL);';
+        PRINT N'EXEC [monitor].[USP_ServerVersionInformation] @MitDatenbankKompatibilitaet=1, @ResultSetArt=''TABLE'', @ResultTablesJson=N''{"databaseCompatibility":"#ServerVersionInformation_HelpExample"}'';';
+        PRINT N'Offline-Katalog ist kein Beleg für vollständige Security-Patches, Verwundbarkeit, Neustartbedarf, Supportentitlement oder betriebliche Freigabe.';
         RETURN;
     END;
 

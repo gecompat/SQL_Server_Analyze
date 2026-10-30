@@ -65,12 +65,31 @@ BEGIN
 
     IF @Hilfe = 1
     BEGIN
-        PRINT N'monitor.USP_ServerFeatureCapabilities';
-        PRINT N'@DatabaseNames=N''[Db1]|[Db2]''; NULL=alle; N'''' bedeutet keine Einschränkung.';
-        PRINT N'@DatabaseNamePattern unterstützt like:, regex:, regexi: und ist exklusiv zu @DatabaseNames.';
-        PRINT N'Die Datenbankauswahl wird nicht vorab begrenzt; @MaxZeilen begrenzt jedes fachliche Resultset global.';
-        PRINT N'@MitSpezialindizes=1 inventarisiert capability-adaptiv Vector- und JSON-Indizes; JSON-Dokumentwerte und SQL/JSON-Pfadwerte werden hier nicht ausgegeben.';
-        PRINT N'@ResultSetArt=CONSOLE (Default)|RAW|TABLE|NONE (case-insensitiv); @JsonErzeugen=1 erzeugt @Json OUTPUT.';
+        PRINT N'monitor.USP_ServerFeatureCapabilities erfasst Feature-Metadaten; kein Healthcheck.';
+        PRINT N'@DatabaseNames nvarchar(max)=NULL: NULL oder N'''' = alle sichtbaren zulässigen Online-DBs; sonst bracket-aware Pipe-Liste.';
+        PRINT N'@SystemdatenbankenEinbeziehen bit=0: 1 nimmt System-DBs auf; bei aktiver Auswahl validiert der Kandidatenhelfer den Wert.';
+        PRINT N'@DatabaseNamePattern nvarchar(4000)=NULL: like:, regex: oder regexi:; exklusiv zur Namensliste und im Auswahlpfad validiert.';
+        PRINT N'@HighImpactConfirmed bit=0 wird an den Helper übergeben; OBJECT_ANALYSIS_CURRENT hat RequiresGroupGate=0; 1 verleiht keine Gruppenberechtigung und aktiviert hier kein Gate.';
+        PRINT N'@MitSpezialindizes bit=1 aktiviert Vector/JSON-Indexinventar; @MitQueryStoreReplicas bit=1 aktiviert Replica-Metadaten.';
+        PRINT N'@MitPlattformdetails bit=1 aktiviert Linux-Host-DMV-Metadaten. Nur exakt 1 schaltet diese optionalen Zweige ein.';
+        PRINT N'@MaxZeilen int=5000: nach Sammlung je fachlichem Export; NULL/0 unbegrenzt, positiv begrenzt, negativ INVALID_PARAMETER.';
+        PRINT N'Das Limit verringert keine Katalogprobes; Warnungen bleiben ungekürzt.';
+        PRINT N'@ResultSetArt varchar(16)=''CONSOLE'': CONSOLE, RAW, TABLE, NONE; getrimmt/case-insensitiv, andere Werte INVALID_PARAMETER.';
+        PRINT N'@ResultTablesJson nvarchar(max)=NULL ist nur bei TABLE zulässig.';
+        PRINT N'@JsonErzeugen bit=0: nur 1 erzeugt JSON unabhängig vom ResultSetArt; 0/NULL nicht. @Json nvarchar(max)=NULL OUTPUT als OUTPUT binden.';
+        PRINT N'@PrintMeldungen bit=1 gibt bei Status ungleich AVAILABLE eine normale Warnmeldung aus; NULL/0 unterdrückt sie, Hilfe bleibt PRINT.';
+        PRINT N'@Hilfe bit=0: nur 1 gibt Hilfe aus und kehrt vor Auswahl/Probes zurück; 0/NULL läuft normal weiter.';
+        PRINT N'Bitparameter verwenden; T-SQL wandelt numerisch 0 zu 0 und jeden Nichtnullwert zu 1 um. SystemDB/HighImpact-NULL ist beim Helper-Aufruf INVALID_PARAMETER.';
+        PRINT N'Hilfe setzt @Json zunächst auf NULL. TABLE-Zielvalidierung erfolgt davor und kann auch beim Hilfeaufruf fehlschlagen.';
+        PRINT N'CONSOLE und RAW liefern Status sowie capabilities, databaseFeatures, specialIndexes und warnings; JSON enthält meta und diese Arrays.';
+        PRINT N'NONE unterdrückt Resultsets; JSON bleibt unabhängig von ResultSetArt.';
+        PRINT N'TABLE exportiert nur capabilities; Ziel kann eine leere einspaltige Dummy-Temp-Tabelle sein, kein Seed-Datensatz.';
+        PRINT N'CREATE TABLE #ServerFeatureCapabilities_HelpExample (Placeholder int NULL);';
+        PRINT N'EXEC [monitor].[USP_ServerFeatureCapabilities] @DatabaseNames=N''[ExampleDatabase]'', @ResultSetArt=''CONSOLE'', @JsonErzeugen=1;';
+        PRINT N'DECLARE @FeatureJson nvarchar(max);';
+        PRINT N'EXEC [monitor].[USP_ServerFeatureCapabilities] @ResultSetArt=''RAW'', @JsonErzeugen=1, @Json=@FeatureJson OUTPUT;';
+        PRINT N'EXEC [monitor].[USP_ServerFeatureCapabilities] @ResultSetArt=''TABLE'', @ResultTablesJson=N''{"capabilities":"#ServerFeatureCapabilities_HelpExample"}'';';
+        PRINT N'JSON-Dokumentwerte und konkrete SQL/JSON-Pfade werden nicht gelesen; Capability-Metadaten sind kein Nutzungs- oder Gesundheitsnachweis.';
         RETURN;
     END;
 

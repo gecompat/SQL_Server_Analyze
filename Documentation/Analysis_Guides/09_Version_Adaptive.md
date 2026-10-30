@@ -95,6 +95,7 @@ JSON-Dokumentwerte.
 | Optimized Locking | Datenbankeigenschaft; mit ADR, RCSI und Workload interpretieren |
 | Query Store Readable Secondary | SQL Server 2025-/Plattformfunktion; Katalogsicht `sys.query_store_replicas` ist maßgeblich |
 
+
 ### Interpretation
 
 - `AVAILABLE` heißt: Diagnosepfad/Katalog ist nach Erkennung verfügbar. Es heißt nicht, dass das Feature aktiviert, genutzt oder gesund ist.
@@ -118,9 +119,45 @@ JSON-Dokumentwerte.
 - Spezialindex → passende Objekt-/Plananalyse
 - JSON-Indexmetadaten → `USP_ObjectInventory`; Präsenz und Pfadzahl sind kein Health- oder Rebuildbefund
 
+### Parametervertrag und Beispiele
+
+| Parameter | Typ = Default | Verhalten |
+|---|---|---|
+| @DatabaseNames | nvarchar(max) = NULL | NULL/leer wählt alle sichtbaren zulässigen Datenbanken; sonst bracket-aware Pipe-Liste. |
+| @SystemdatenbankenEinbeziehen | bit = 0 | 1 nimmt Systemdatenbanken in die Auswahl auf; bei aktiver Auswahl validiert der Kandidatenhelfer den Wert. |
+| @DatabaseNamePattern | nvarchar(4000) = NULL | Alternativ zur Liste; like:, regex: oder regexi:. |
+| @HighImpactConfirmed | bit = 0 | Wird an den Kandidatenhelfer übergeben. OBJECT_ANALYSIS_CURRENT hat RequiresGroupGate=0; 1 aktiviert hier kein Gate und verleiht keine Gruppenberechtigung. NULL ist beim Helper-Aufruf INVALID_PARAMETER. |
+| @MitSpezialindizes / @MitQueryStoreReplicas / @MitPlattformdetails | bit = 1 | Nur 1 aktiviert den jeweiligen optionalen Inventarpfad; 0/NULL überspringt ihn. |
+| @MaxZeilen | int = 5000 | Je fachlichem Resultset; NULL/0 unbegrenzt, positiv begrenzt, negativ INVALID_PARAMETER. Das Limit reduziert keine Probes und kürzt keine Warnungen. |
+| @ResultSetArt | varchar(16) = 'CONSOLE' | CONSOLE, RAW, TABLE oder NONE; getrimmt, case-insensitiv; andere Werte sind INVALID_PARAMETER. |
+| @ResultTablesJson | nvarchar(max) = NULL | Nur TABLE; genau ein Schlüssel capabilities; Zielprüfung vor Help-Return. |
+| @JsonErzeugen / @Json | bit = 0 / nvarchar(max) = NULL OUTPUT | Nur 1 fordert JSON unabhängig vom Modus an; 0/NULL lässt es aus. OUTPUT muss gebunden werden; @Json wird vor Hilfe auf NULL gesetzt. |
+| @PrintMeldungen / @Hilfe | bit = 1 / bit = 0 | Bei Status ungleich AVAILABLE gibt nur 1 eine normale Warnmeldung aus. Hilfe-PRINT mit frühem Return; TABLE-Preflight liegt davor. |
+
+Bitparameter als 0/1 übergeben; T-SQL wandelt numerisch 0 zu 0 und jeden Nichtnullwert zu 1 um. Systemdatenbank- und High-Impact-NULL sind beim Helper-Aufruf ungültig. CONSOLE/RAW liefern Status und capabilities, databaseFeatures, specialIndexes sowie warnings. JSON enthält meta und diese Arrays. TABLE exportiert nur capabilities; NONE unterdrückt Resultsets.
+
+```sql
+EXEC [monitor].[USP_ServerFeatureCapabilities] @DatabaseNames=N'[ExampleDatabase]', @ResultSetArt='CONSOLE';
+```
+
+```sql
+DECLARE @FeatureJson nvarchar(max);
+EXEC [monitor].[USP_ServerFeatureCapabilities] @ResultSetArt='NONE', @JsonErzeugen=1, @Json=@FeatureJson OUTPUT;
+```
+
+Für TABLE muss das lokale Ziel vor dem Aufruf existieren. Das gemeinsame TABLE-Writer-Verfahren akzeptiert eine leere Einspalten-Dummy-Tabelle und passt sie an das Exportspaltenschema an; die leere Tabelle benötigt keine Seed-Zeile. Ein nichtleeres oder mehrspaltiges abweichendes Ziel ist nicht automatisch anpassbar.
+
+```sql
+CREATE TABLE #ServerFeatureCapabilities_HelpExample (Placeholder int NULL);
+EXEC [monitor].[USP_ServerFeatureCapabilities] @ResultSetArt='TABLE', @ResultTablesJson=N'{"capabilities":"#ServerFeatureCapabilities_HelpExample"}';
+```
+
+
 ### Kosten
 
 LOW bis MEDIUM. Cross-Database-Katalogzugriffe und optionales Spezialindexinventar; keine Benutzerdatenscans.
+
+
 
 ---
 
@@ -713,6 +750,44 @@ EXEC [monitor].[USP_ServerVersionInformation]
 `databaseCompatibility` ist opt-in. Die normale Console enthält keine Server-,
 Host-, Instanz-, Konto- oder Pfadidentität.
 
+### Parametervertrag und Ausgabe
+
+| Parameter | Typ = Default | Verhalten |
+|---|---|---|
+| @MitDatenbankKompatibilitaet | bit = 0 | Nur 1 ergänzt databaseCompatibility. Bei 0 werden Name-/Patternfilter und Systemdatenbankoption weder ausgewertet noch validiert. |
+| @DatabaseNames | nvarchar(max) = NULL | Nur für aktivierte Compatibility-Ausgabe; NULL/leer bedeutet keine Listenbegrenzung, sonst bracket-aware Pipe-Liste. |
+| @DatabaseNamePattern | nvarchar(4000) = NULL | Nur für aktivierte Compatibility-Ausgabe; Präfixe like:, regex:, regexi:, alternativ zur Liste. |
+| @SystemdatenbankenEinbeziehen | bit = 0 | Nur bei aktivierter Compatibility-Ausgabe wirksam; NULL ist im aktiven Kandidatenpfad ungültig. |
+| @MaxZeilen | int = 2000 | Begrenzt nur databaseCompatibility nach Auswahl; NULL/0 unbegrenzt, positiv begrenzt, negativ INVALID_PARAMETER. |
+| @ResultSetArt | varchar(16) = 'CONSOLE' | CONSOLE, RAW, TABLE, NONE; getrimmt und case-insensitiv, andere Werte INVALID_PARAMETER. |
+| @ResultTablesJson | nvarchar(max) = NULL | Eindeutige TABLE-Teilmenge: serverVersion, buildAssessment, lifecycle, instanceFeatures, databaseCompatibility, references, warnings. |
+| @JsonErzeugen / @Json | bit = 0 / nvarchar(max) = NULL OUTPUT | Nur 1 erzeugt JSON unabhängig vom Resultsetmodus; 0/NULL lässt es aus. OUTPUT-Bindung erforderlich. |
+| @PrintMeldungen / @Hilfe | bit = 1 / bit = 0 | Nur 1 gibt bei Status ungleich AVAILABLE normale Warnmeldungen aus. Nur @Hilfe=1 druckt Hilfe und kehrt früh zurück; 0/NULL läuft normal. |
+| @StatusCodeOut / @IsPartialOut | varchar(40) = NULL OUTPUT / bit = NULL OUTPUT | Status und Partialität bei normalem Abschluss; mit OUTPUT binden. |
+| @ErrorNumberOut / @ErrorMessageOut | int = NULL OUTPUT / nvarchar(2048) = NULL OUTPUT | Fehlernummer/-text bei abgefangenem Fehler, sonst NULL; mit OUTPUT binden. |
+
+Bitparameter werden von T-SQL numerisch konvertiert: 0 wird 0, jeder Nichtnullwert wird 1; Werte als 0/1 übergeben. Auch bei @MitDatenbankKompatibilitaet=0 wird ein negatives @MaxZeilen vor der Auswertung abgelehnt. Bei Hilfe wird @Json auf NULL gesetzt; wegen des frühen RETURN werden die vier Status-/Fehler-OUTPUT-Parameter nicht beschrieben. Das TABLE-Mapping und sein Preflight erfolgen erst danach, sodass Help keine Zieltabellen prüft. PrintMeldungen steuert normale Meldungen, nicht die Help-PRINT-Zeilen.
+
+TABLE akzeptiert eine eindeutige Teilmenge der sieben benannten Ziele: serverVersion, buildAssessment, lifecycle, instanceFeatures, databaseCompatibility, references und warnings. databaseCompatibility bleibt opt-in. Das Beispiel nutzt das bestätigte leere Einspalten-Dummy-Verfahren des gemeinsamen TABLE-Writers: die leere Zieltabelle wird beim Schreiben an das Quellschema angepasst; eine Seed-Zeile ist nicht erforderlich.
+
+```sql
+CREATE TABLE #ServerVersionInformation_HelpExample (Placeholder int NULL);
+EXEC [monitor].[USP_ServerVersionInformation]
+      @MitDatenbankKompatibilitaet=1,
+      @ResultSetArt='TABLE',
+      @ResultTablesJson=N'{"databaseCompatibility":"#ServerVersionInformation_HelpExample"}';
+```
+
+Standardaufruf und unabhängige JSON-Ausgabe:
+
+```sql
+EXEC [monitor].[USP_ServerVersionInformation] @ResultSetArt='CONSOLE';
+DECLARE @VersionJson nvarchar(max);
+EXEC [monitor].[USP_ServerVersionInformation] @ResultSetArt='NONE', @JsonErzeugen=1, @Json=@VersionJson OUTPUT;
+```
+
+
+
 ### Interpretation
 
 - `EXACT_MATCH` ist ein exakter Offline-Katalogtreffer, keine Patchfreigabe.
@@ -727,6 +802,8 @@ Host-, Instanz-, Konto- oder Pfadidentität.
 - [SERVERPROPERTY](https://learn.microsoft.com/en-us/sql/t-sql/functions/serverproperty-transact-sql?view=sql-server-ver17)
 - [SQL Server build versions](https://learn.microsoft.com/en-us/troubleshoot/sql/releases/download-and-install-latest-updates)
 - [Microsoft Lifecycle](https://learn.microsoft.com/en-us/lifecycle/)
+
+
 
 ---
 
