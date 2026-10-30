@@ -7,20 +7,51 @@ Objekt       : monitor.VW_AnalyseAccessCurrent
 Version      : 1.0.0
 Stand        : 2026-07-14
 Typ          : View
-Zweck        : Ermittelt den effektiven Zugriff des aktuellen Logins auf jede
-               Analyseklasse.
-Priorität    : 1. ungeschützte Klasse, 2. sysadmin-Bypass, 3. offene Policy bei
-               null aktiven Regeln, 4. Match über sys.login_token, 5. IS_MEMBER.
-Parameter    : Keine.
-Resultset    : Login-/Policy-/Matchinformationen und IsAllowed je Analyseklasse.
-Berechtigung : Benötigt Lesbarkeit der Framework-Views und der für den aktuellen
-               Login verfügbaren Tokeninformationen. Keine Rechtevergabe.
-Eigenlast    : Sehr gering; liest nur kleine konstante Views, sys.login_token
-               und führt IS_MEMBER ausschließlich für aktive Policyzeilen aus.
-Locking      : Keine Benutzerobjekte; keine persistierenden Schreibzugriffe.
-Hinweis      : AD-Tokenänderungen werden erst bei einer neuen Anmeldung sicher
-               sichtbar. IS_MEMBER liefert bei SQL Logins typischerweise NULL.
-Aufruf       : SELECT * FROM monitor.VW_AnalyseAccessCurrent;
+Zweck        : Zeigt für jede Katalogklasse den aus den aktuellen Login- und
+               Policyinformationen abgeleiteten IsAllowed-Wert und den Grund.
+Parameter    : Keine. Die Login- und Tokenwerte beziehen sich auf den Aufruf.
+Ausgabe      : AnalysisClass (varchar(64)), AnalysisLevel (varchar(16)),
+               RequiresGroupGate (bit), OriginalLoginName und EffectiveLoginName
+               (nvarchar(128)), IsSysadmin (bit), ActivePolicyCount,
+               RelevantPolicyCount und MatchedGroupCount (bigint), IsAllowed
+               (bit) sowie AccessReason (varchar(20)).
+Policy       : Aktiv sind Zeilen mit IsEnabled=1, ValidFromUtc NULL oder nicht
+               später als SYSUTCDATETIME(), ValidToUtc NULL oder später als
+               SYSUTCDATETIME() sowie nichtleeren, getrimmten Klassen- und
+               Gruppennamen. Gespeicherte Zeichenfolgen werden dadurch nicht
+               getrimmt. Sobald mindestens eine solche Zeile global aktiv ist,
+               kann eine geschützte Klasse ohne relevante Regel gesperrt sein.
+               Eine Regel für '*' gilt zusätzlich für jede geschützte Klasse.
+Abgleich     : Windows-Gruppen aus sys.login_token werden nach Typfilter und
+               case-insensitivem Vergleich unter Latin1_General_100_CI_AS
+               abgeglichen. Login-Token-Paare werden je Klasse und Gruppe
+               dedupliziert; IS_MEMBER zählt nur bei Rückgabewert 1, NULL gilt
+               nicht als Treffer. Der Gruppenabgleich ist keine Live-Abfrage
+               beim Active Directory und belegt keine SQL-Berechtigung.
+Reihenfolge  : Die fachliche Fallauswahl lautet: ungeschützte Klasse,
+               sysadmin, keine aktive Policy, Treffer über Login-Token,
+               IS_MEMBER-Treffer, sonst NO_MATCH. AccessReason liefert dazu
+               NOT_REQUIRED, SYSADMIN, OPEN_POLICY, LOGIN_TOKEN, IS_MEMBER oder
+               NO_MATCH. Priority wird zwar aus der Policy mitgeführt, sortiert
+               oder priorisiert die Freigabe derzeit aber nicht. Die logische
+               Fallreihenfolge garantiert keine physische Kurzschlussauswertung
+               durch den SQL-Server.
+Zählung      : MatchedGroupCount summiert Treffer je Analyseklasse über die
+               spezifische und die '*' Regel. Deshalb kann dieselbe Gruppe bei
+               einer passenden spezifischen und globalen Regel mehrfach in der
+               Summe erscheinen; die Zahl bezeichnet keine eindeutigen Personen
+               oder Active-Directory-Mitglieder.
+Berechtigung : Für den Aufruf sind Leserechte auf die verwendeten Framework-
+               Views und verfügbare Tokeninformationen erforderlich. Die View
+               vergibt oder beweist keine SQL-Rechte. sys.login_token wird mit
+               NOLOCK gelesen; daraus folgt weder ein Live-AD-Nachweis noch ein
+               Nachweis für GRANT-, DENY- oder Objektberechtigungen.
+Beispiel     : SELECT [AnalysisClass], [AnalysisLevel], [RequiresGroupGate],
+                      [OriginalLoginName], [EffectiveLoginName], [IsSysadmin],
+                      [ActivePolicyCount], [RelevantPolicyCount], [IsAllowed],
+                      [AccessReason], [MatchedGroupCount]
+               FROM [monitor].[VW_AnalyseAccessCurrent] WITH (NOLOCK)
+               ORDER BY [AnalysisLevel], [AnalysisClass];
 Änderungen   : 1.0.0 - Erstfassung Phase 1A.
 ===============================================================================
 */
