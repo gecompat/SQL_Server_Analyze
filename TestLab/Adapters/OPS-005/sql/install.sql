@@ -1878,15 +1878,56 @@ GO
 -- BEGIN SOURCE: Code/01_Common/074_WaitTypeCatalog.sql
 /*
 ===============================================================================
-Objekt       : [monitor].[WaitTypeCatalog]
+Objekt       : [monitor].[WaitTypeCatalog] und [monitor].[WaitTypeCatalogSource]
 Version      : 2.2.0
 Stand        : 2026-07-20
-Zweck        : Stellt einen persistenten, erweiterbaren Wait-Katalog mit
-               geprüftem Framework-Seed, analytischer Vertiefung und
-               typisierten Quellen bereit.
-Hinweis      : FRAMEWORK_CURATED kennzeichnet die belegte Namens- und Textprüfung.
-               SQLskills-Inhalte werden nicht kopiert, sondern ausschließlich als
-               optionale HelpUrl verlinkt.
+Zweck        : Das Skript legt den Wait-Type-Katalog und seine typisierten
+               Quellenangaben an und ergänzt ausgewählte fehlende Katalogspalten.
+Vertrag      : Die Katalogtabelle verwendet [WaitType] als gruppierten Primärschlüssel
+               und enthält [WaitType], [WaitGroup], [Severity], [IsGenerallyBenign],
+               [Meaning], [TypicalOccurrence], [HighWaitImpact], [RecommendedChecks],
+               [DefaultAssessment], [AssessmentBasis], [CommonCauses],
+               [PerformanceImpact], [Mitigation], [CounterEvidence],
+               [RelatedWaitTypes], [MeasurementGuidance], [AnalysisConfidence],
+               [HelpUrl], [MinProductMajorVersion], [DescriptionSource],
+               [DescriptionQuality], [SourceReference], [IsFrameworkDefault] und
+               [LastUpdatedUtc]. Die Quellentabelle enthält [WaitType],
+               [SourceOrdinal], [SourceType], [Publisher], [SourceTitle], [SourceUrl],
+               [SupportsFields], [EvidenceLevel], [SourceNotes], [IsFrameworkDefault]
+               und [LastVerifiedUtc].
+               [Severity] ist auf 0 bis 5 beschränkt; Assessment- und Analysefelder
+               erhalten benannte Defaults. Die Quellentabelle verwendet
+               ([WaitType],[SourceOrdinal]) als Primärschlüssel, verweist per
+               Fremdschlüssel auf den Katalog und beschränkt die Ordinalzahl auf
+               1 bis 20. Defaults setzen Severity auf 1, das Benign- und
+               Frameworkkennzeichen auf 0 beziehungsweise 1, die Assessmentwerte
+               auf CONTEXT_DEPENDENT und FAMILY_INFERENCE sowie die Felder für
+               Basis, Ursachen, Wirkung, Gegenbeleg, Gegenmaßnahme und Messhinweis
+               auf erläuternde Standardtexte. LastUpdatedUtc und LastVerifiedUtc
+               erhalten SYSUTCDATETIME() beim Einfügen. Das DDL setzt die Datenbank
+               aus USE und das Schema [monitor] voraus.
+Erweiterung  : Bei einer vorhandenen Katalogtabelle ergänzt das Skript nur die
+               zwölf ausdrücklich geprüften fehlenden Spalten. Es repariert keine
+               anderen Spalten, Schlüssel oder Constraints und migriert keine
+               vorhandene Quellentabelle. Tabellen werden nur angelegt, wenn sie
+               fehlen; vorhandene Objekte werden nicht strukturell abgeglichen.
+Eigentum     : [IsFrameworkDefault]=1 kennzeichnet Frameworkzeilen. Benutzerdefinierte
+               Zeilen mit Wert 0 sind davon getrennt; die nachfolgenden Seeds
+               aktualisieren vorhandene Zeilen nur, wenn sie als Frameworkzeilen
+               markiert sind. Das ist keine allgemeine Erhaltungsgarantie, da
+               Seed-Einfügungen und spätere Skripte eigene Effekte haben.
+Beispiele    : Die folgenden Abfragen lesen die gespeicherten Katalogfelder und
+               die zugeordneten Quellen; sie belegen weder Laufzeitwaits noch
+               externe Aktualität einer Quelle.
+               SELECT [WaitType],[WaitGroup],[Severity],[AnalysisConfidence]
+               FROM [monitor].[WaitTypeCatalog]
+               WHERE [IsFrameworkDefault]=1;
+               SELECT [WaitType],[SourceOrdinal],[SourceType],[Publisher],[SourceUrl],
+                      [EvidenceLevel],[LastVerifiedUtc]
+               FROM [monitor].[WaitTypeCatalogSource]
+               WHERE [WaitType]=N'WRITELOG';
+Hinweis      : Framework-HelpUrls verweisen auf SQLskills. Inhalte werden nicht
+               kopiert; ein Link ist keine Übernahme oder unabhängige Verifikation.
 ===============================================================================
 */
 IF NOT EXISTS
@@ -1964,7 +2005,21 @@ GO
 -- END SOURCE: Code/01_Common/074_WaitTypeCatalog.sql
 
 -- BEGIN SOURCE: Code/01_Common/074a_WaitTypeCatalog_Seed_01.sql
-/* Wait-Type-Katalog: kuratierter Seed-Teil 01 von 04. */
+/* Das Skript verarbeitet den ersten von vier Framework-Seeds und entfernt zuvor
+   ausgewählte, ausdrücklich als Framework markierte Wait Types.
+   Voraussetzung ist [monitor].[WaitTypeCatalog]; die Quellenvorprüfung läuft nur,
+   wenn [monitor].[WaitTypeCatalogSource] vorhanden ist. Sie bricht ab, wenn eine
+   benutzerdefinierte Quelle auf einen zu entfernenden Framework-Wait verweist.
+   Danach löscht das Skript für die ausgewählten Eltern nur Frameworkquellen und
+   löscht nur Framework-Katalogzeilen. Andere benutzerdefinierte Quellen werden
+   nicht gelöscht; ihre Referenz auf ein zu löschendes Elternobjekt führt zur
+   Vorprüfungsfehlermeldung. Die Vorprüfung erfasst genau die im Skript gelisteten
+   Wait Types und ist keine allgemeine Konflikt- oder Transaktionsgarantie.
+   Der Seed aktualisiert vorhandene Katalogzeilen nur, wenn sie Frameworkzeilen
+   sind. Fehlt ein WaitType vollständig, wird eine neue Frameworkzeile eingefügt;
+   eine vorhandene benutzerdefinierte Zeile mit gleichem Schlüssel wird weder
+   aktualisiert noch als Frameworkzeile ersetzt. Die vier nummerierten Seedteile
+   bauen auf dem DDL auf und sind in der vorgesehenen Reihenfolge auszuführen. */
 -- DEPLOYMENT_PREFLIGHT_BEGIN
 IF EXISTS
 (
@@ -2122,7 +2177,17 @@ GO
 -- END SOURCE: Code/01_Common/074a_WaitTypeCatalog_Seed_01.sql
 
 -- BEGIN SOURCE: Code/01_Common/074b_WaitTypeCatalog_Seed_02.sql
-/* Wait-Type-Katalog: kuratierter Seed-Teil 02 von 04. */
+/* Das Skript verarbeitet den zweiten von vier Framework-Seeds und setzt
+   [monitor].[WaitTypeCatalog] aus seinen lokalen Seedwerten fort.
+   Voraussetzung ist die zuvor angelegte Katalogtabelle. Vorhandene Katalogzeilen
+   werden nur aktualisiert, wenn [IsFrameworkDefault]=1 ist. Für einen WaitType,
+   der in der Tabelle noch nicht vorkommt, wird eine Frameworkzeile eingefügt;
+   eine vorhandene benutzerdefinierte Zeile mit demselben Schlüssel bleibt
+   unverändert und verhindert die Einfügung. Der Seed setzt eigene Katalogfelder
+   einschließlich Klassifikation, Bewertungstext und SQLskills-HelpUrl. Er ändert
+   keine benutzerdefinierte Zeile gezielt, bietet aber keine allgemeine Garantie
+   zur Erhaltung benutzerdefinierter Daten durch andere Skripte. Diesen Teil nach
+   dem DDL und Seedteil 01 sowie vor den nummerierten Teilen 03 und 04 ausführen. */
 DECLARE @Seed TABLE
 ([WaitType] nvarchar(120),[WaitGroup] nvarchar(64),[Severity] tinyint,[IsGenerallyBenign] bit,[Meaning] nvarchar(1000),
  [TypicalOccurrence] nvarchar(1200),[HighWaitImpact] nvarchar(1200),[RecommendedChecks] nvarchar(1500),
@@ -2235,7 +2300,17 @@ GO
 -- END SOURCE: Code/01_Common/074b_WaitTypeCatalog_Seed_02.sql
 
 -- BEGIN SOURCE: Code/01_Common/074c_WaitTypeCatalog_Seed_03.sql
-/* Wait-Type-Katalog: kuratierter Seed-Teil 03 von 04. */
+/* Das Skript verarbeitet den dritten von vier Framework-Seeds und setzt
+   [monitor].[WaitTypeCatalog] aus seinen lokalen Seedwerten fort.
+   Voraussetzung ist die zuvor angelegte Katalogtabelle. Vorhandene Katalogzeilen
+   werden nur aktualisiert, wenn [IsFrameworkDefault]=1 ist. Für einen WaitType,
+   der in der Tabelle noch nicht vorkommt, wird eine Frameworkzeile eingefügt;
+   eine vorhandene benutzerdefinierte Zeile mit demselben Schlüssel bleibt
+   unverändert und verhindert die Einfügung. Der Seed setzt eigene Katalogfelder
+   einschließlich Klassifikation, Bewertungstext und SQLskills-HelpUrl. Er ändert
+   keine benutzerdefinierte Zeile gezielt, bietet aber keine allgemeine Garantie
+   zur Erhaltung benutzerdefinierter Daten durch andere Skripte. Diesen Teil nach
+   dem DDL und Seedteil 02 sowie vor Seedteil 04 ausführen. */
 DECLARE @Seed TABLE
 ([WaitType] nvarchar(120),[WaitGroup] nvarchar(64),[Severity] tinyint,[IsGenerallyBenign] bit,[Meaning] nvarchar(1000),
  [TypicalOccurrence] nvarchar(1200),[HighWaitImpact] nvarchar(1200),[RecommendedChecks] nvarchar(1500),
@@ -2346,7 +2421,17 @@ GO
 -- END SOURCE: Code/01_Common/074c_WaitTypeCatalog_Seed_03.sql
 
 -- BEGIN SOURCE: Code/01_Common/074d_WaitTypeCatalog_Seed_04.sql
-/* Wait-Type-Katalog: kuratierter Seed-Teil 04 von 04. */
+/* Das Skript verarbeitet den vierten von vier Framework-Seeds und setzt
+   [monitor].[WaitTypeCatalog] aus seinen lokalen Seedwerten fort.
+   Voraussetzung ist die zuvor angelegte Katalogtabelle. Vorhandene Katalogzeilen
+   werden nur aktualisiert, wenn [IsFrameworkDefault]=1 ist. Für einen WaitType,
+   der in der Tabelle noch nicht vorkommt, wird eine Frameworkzeile eingefügt;
+   eine vorhandene benutzerdefinierte Zeile mit demselben Schlüssel bleibt
+   unverändert und verhindert die Einfügung. Der Seed setzt eigene Katalogfelder
+   einschließlich Klassifikation, Bewertungstext und SQLskills-HelpUrl. Er ändert
+   keine benutzerdefinierte Zeile gezielt, bietet aber keine allgemeine Garantie
+   zur Erhaltung benutzerdefinierter Daten durch andere Skripte. Diesen Teil nach
+   dem DDL und Seedteil 03 ausführen. */
 DECLARE @Seed TABLE
 ([WaitType] nvarchar(120),[WaitGroup] nvarchar(64),[Severity] tinyint,[IsGenerallyBenign] bit,[Meaning] nvarchar(1000),
  [TypicalOccurrence] nvarchar(1200),[HighWaitImpact] nvarchar(1200),[RecommendedChecks] nvarchar(1500),
@@ -2458,11 +2543,27 @@ GO
 -- BEGIN SOURCE: Code/01_Common/074e_WaitTypeCatalog_Analysis.sql
 /*
 ===============================================================================
-Objekt       : Analytische Vertiefung des WaitTypeCatalog
+Objekt       : Analytische Vertiefung von [monitor].[WaitTypeCatalog]
 Stand        : 2026-07-20
-Zweck        : Klassifiziert alle Framework-Waits für System- und
-               Performanceanalysen. Interne, nicht öffentlich dokumentierte
-               Details bleiben ausdrücklich als begrenzte Evidenz markiert.
+Zweck        : Das Skript ergänzt analytische Einschätzungen für Framework-Waits.
+Voraussetzung: Die Tabelle und die Framework-Seeds müssen vorhanden sein.
+Verarbeitung : Zuerst werden Frameworkzeilen der Sammelgruppe OTHER_OR_NEW
+               konservativ ENGINE_INTERNAL zugeordnet. Danach ordnen statische,
+               waitbezogene und gruppenbezogene Regeln erkennbare Fälle neu zu.
+               Eine nachfolgende gemeinsame Aktualisierung setzt Bewertungsbasis,
+               Ursachen, Auswirkungen, Gegenbelege und Messhinweise aus den
+               Katalogfeldern; weitere gezielte Updates überschreiben Felder für
+               bekannte Gruppen und Sonderfälle. Spätere passende Regeln haben
+               damit Vorrang vor früheren Zuordnungen. Alle Updates sind auf
+               [IsFrameworkDefault]=1 begrenzt. Nur die gemeinsame Aktualisierung
+               setzt [LastUpdatedUtc]; spätere Einzelkorrekturen setzen den
+               Zeitstempel nicht erneut.
+Geltungsgrenze: Gruppenzuordnungen und Texte sind statische Frameworkheuristiken,
+               kein Laufzeitbefund. FAMILY_RESEARCHED kennzeichnet eine
+               gruppenbezogene Einordnung, INTERNAL_LIMITED eine begrenzte
+               interne Einordnung; daraus folgen weder exakte Wait-Ursache noch
+               Produktgarantie. Bewertung erfordert weiterhin vergleichbare
+               Messpunkte, aktive Tasks, Workloadbezug und Gegenprüfung.
 ===============================================================================
 */
 SET NOCOUNT ON;
@@ -2801,9 +2902,27 @@ GO
 ===============================================================================
 Objekt       : Quellen-Seed für [monitor].[WaitTypeCatalogSource]
 Stand        : 2026-07-20
-Vertrag      : Definition, Messmethodik, wait-spezifische Fachreferenz und
-               Diagnosequelle je Wait Group werden getrennt ausgewiesen.
-               SQLskills-Inhalte werden nur verlinkt und nicht übernommen.
+Zweck        : Das Skript ersetzt die Frameworkquellen durch typisierte
+               Referenzeinträge für vorhandene Framework-Waits.
+Voraussetzung: [monitor].[WaitTypeCatalog] und die per Fremdschlüssel gebundene
+               [monitor].[WaitTypeCatalogSource] sind vorhanden.
+Verarbeitung : Zuerst werden alle Zeilen mit [IsFrameworkDefault]=1 gelöscht.
+               Danach entstehen je nach vorhandenen Framework-Waits Einträge für
+               Microsoft-Definition, Messmethodik und SQLskills-Spezialistenlink;
+               Gruppen- und ausgewählte Wait-spezifische Quellen kommen hinzu.
+               Die Einfügungen kennzeichnen neue Zeilen als Frameworkdaten.
+Eigentum     : Benutzerdefinierte Quellen mit [IsFrameworkDefault]=0 werden von
+               der Löschung nicht erfasst. Ihr Schutz ist jedoch begrenzt:
+               belegte Schlüssel ([WaitType],[SourceOrdinal]) können mit den
+               Frameworkeinfügungen kollidieren und dann gegen den Primärschlüssel
+               verstoßen. Die Constraints gelten auch für benutzerdefinierte
+               Zeilen. [LastVerifiedUtc] erhält beim Einfügen den UTC-Default;
+               dies belegt keine externe erneute Quellenprüfung.
+Provenienz   : SQLskills-Inhalte werden nicht kopiert, sondern als Links erzeugt.
+               Eine vorhandene HelpUrl im Katalog und diese Quellzeilen sind
+               Referenzmetadaten, keine Laufzeitevidenz für eine konkrete Wait-
+               Ursache. SQLskills-Links sind Spezialistenreferenzen, keine
+               Microsoft-Produktverträge.
 ===============================================================================
 */
 SET NOCOUNT ON;

@@ -5,9 +5,27 @@ GO
 ===============================================================================
 Objekt       : Quellen-Seed für [monitor].[WaitTypeCatalogSource]
 Stand        : 2026-07-20
-Vertrag      : Definition, Messmethodik, wait-spezifische Fachreferenz und
-               Diagnosequelle je Wait Group werden getrennt ausgewiesen.
-               SQLskills-Inhalte werden nur verlinkt und nicht übernommen.
+Zweck        : Das Skript ersetzt die Frameworkquellen durch typisierte
+               Referenzeinträge für vorhandene Framework-Waits.
+Voraussetzung: [monitor].[WaitTypeCatalog] und die per Fremdschlüssel gebundene
+               [monitor].[WaitTypeCatalogSource] sind vorhanden.
+Verarbeitung : Zuerst werden alle Zeilen mit [IsFrameworkDefault]=1 gelöscht.
+               Danach entstehen je nach vorhandenen Framework-Waits Einträge für
+               Microsoft-Definition, Messmethodik und SQLskills-Spezialistenlink;
+               Gruppen- und ausgewählte Wait-spezifische Quellen kommen hinzu.
+               Die Einfügungen kennzeichnen neue Zeilen als Frameworkdaten.
+Eigentum     : Benutzerdefinierte Quellen mit [IsFrameworkDefault]=0 werden von
+               der Löschung nicht erfasst. Ihr Schutz ist jedoch begrenzt:
+               belegte Schlüssel ([WaitType],[SourceOrdinal]) können mit den
+               Frameworkeinfügungen kollidieren und dann gegen den Primärschlüssel
+               verstoßen. Die Constraints gelten auch für benutzerdefinierte
+               Zeilen. [LastVerifiedUtc] erhält beim Einfügen den UTC-Default;
+               dies belegt keine externe erneute Quellenprüfung.
+Provenienz   : SQLskills-Inhalte werden nicht kopiert, sondern als Links erzeugt.
+               Eine vorhandene HelpUrl im Katalog und diese Quellzeilen sind
+               Referenzmetadaten, keine Laufzeitevidenz für eine konkrete Wait-
+               Ursache. SQLskills-Links sind Spezialistenreferenzen, keine
+               Microsoft-Produktverträge.
 ===============================================================================
 */
 SET NOCOUNT ON;
