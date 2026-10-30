@@ -26,6 +26,55 @@ EXEC [monitor].[USP_SpecialFeatureInventory]
 
 Alle `Example*`-Werte im Aufruf sind synthetisch.
 
+## Parameter und Aufrufbeispiele
+
+| Parameter | Typ = Default | Verhalten |
+|---|---|---|
+| `@DatabaseNames` | `nvarchar(max) = NULL` | NULL, leer oder Leerzeichen: keine Einschränkung. Sonst bracket-aware Pipe-Liste einteiliger Namen; ungültige/duplizierte Namen ungültig. Liste und Pattern sind exklusiv. |
+| `@SystemdatenbankenEinbeziehen` | `bit = 0` | 0 schließt `master`, `tempdb`, `model`, `msdb` aus; 1 lässt sie zu. NULL ungültig; numerische Nichtnullwerte konvertieren zu 1. |
+| `@DatabaseNamePattern` | `nvarchar(4000) = NULL` | SQL-LIKE (`%`, `_`, Zeichenklassen) oder `regex:`/`regexi:`. Regex benötigt SQL Server 2025 und Compatibility Level 170 der Installationsdatenbank. |
+| `@HighImpactConfirmed` | `bit = 0` | Wird an den Helfer übergeben. `@AnalysisClass = NULL`, also kein High-Impact-/Gruppengate für diese Procedure. NULL ungültig. |
+| `@NurErkannteFeatures` | `bit = 0` | 1 behält `DETECTED` und `CONFIGURED_ONLY`; 0 zeigt auch nicht erkannte, versionsbedingt nicht verfügbare und fehlerhafte Quellzeilen. NULL ungültig. |
+| `@MaxZeilen` | `int = 2000` | NULL/0 unbegrenzt; positiv begrenzt die sortierte Featureausgabe nach vollständiger Inventur; negativ `INVALID_PARAMETER`. Datenbankstatus und Vollzähler bleiben ungekürzt. |
+| `@LockTimeoutMs` | `int = 0` | 0–60000 für Katalogpfade; vorheriger Sessionwert wird vor Ausgabe wiederhergestellt. Kein Berechtigungs- oder Warte-Opt-in. NULL/außerhalb ungültig. |
+| `@ResultSetArt` | `varchar(16) = 'CONSOLE'` | Getrimmt/case-insensitiv: `CONSOLE`, `RAW`, `TABLE`, `NONE`; sonst `INVALID_PARAMETER`. |
+| `@ResultTablesJson` | `nvarchar(max) = NULL` | Nur TABLE; registrierte Zuordnung `features` auf eine leere vorhandene lokale #Temp-Tabelle mit einer Seed-Spalte. Preflight läuft vor Hilfe und Inventur. |
+| `@JsonErzeugen` | `bit = 0` | 1 erzeugt JSON unabhängig vom Resultsetmodus; 0 lässt es aus. NULL ungültig. |
+| `@Json` | `nvarchar(max) = NULL OUTPUT` | OUTPUT-Bindung erforderlich; Objekt mit `meta`, `databaseStatus`, `features`. Wird beim Eintritt auf NULL gesetzt. |
+| `@PrintMeldungen` | `bit = 1` | Steuert normale Statusmeldungen, nicht Hilfe-PRINTs. NULL ungültig. |
+| `@Hilfe` | `bit = 0` | Nur 1 druckt Hilfe und kehrt früh zurück; NULL läuft normal. Vorher: JSON leeren und bei TABLE Mapping-Preflight. |
+| `@StatusCodeOut`, `@IsPartialOut` | `varchar(40) = NULL OUTPUT`, `bit = NULL OUTPUT` | Normaler Status und Partialität; mit OUTPUT binden. Hilfe lässt übergebene Werte unverändert. |
+| `@ErrorNumberOut`, `@ErrorMessageOut` | `int = NULL OUTPUT`, `nvarchar(2048) = NULL OUTPUT` | Normaler Fehlercode/-text beziehungsweise NULL; mit OUTPUT binden. Hilfe lässt übergebene Werte unverändert. |
+
+Bitparameter unterliegen der T-SQL-Zahlkonvertierung: 0 ergibt 0, jeder Nichtnullwert ergibt 1. Die NULL-Regeln sind parameterabhängig.
+
+`DETECTED` = sichtbarer Katalogmarker; `CONFIGURED_ONLY` = Konfiguration ohne belegte Laufzeitnutzung; `NOT_DETECTED_VISIBLE_SCOPE` = kein Marker im sichtbaren Scope; `UNAVAILABLE_VERSION` = versionsbedingt nicht verfügbar; `SOURCE_UNAVAILABLE` = Quellenfehler/Evidenzlücke. `DetectedItemCount` summiert je Feature unterschiedliche Metadatenarten. 0 ist ein sichtbarer Nullwert; NULL bedeutet unbekannt/nicht verfügbar. Erst Aufruf- und Datenbankstatus, dann DetectionStatus und EvidenceLimit lesen.
+
+CONSOLE gibt Status-/Datenbankstatus-/Featureinformationen und die formatierte Featureausgabe aus. RAW liefert Aufrufstatus, Datenbankstatus und technische Featurezeilen. TABLE exportiert nur `features`; NONE unterdrückt fachliche Resultsets. JSON wird unabhängig über `@JsonErzeugen` erzeugt.
+
+JSON-Aufruf mit unabhängigem OUTPUT-Wert:
+
+```sql
+DECLARE @FeatureJson nvarchar(max);
+EXEC [monitor].[USP_SpecialFeatureInventory]
+      @DatabaseNames=N'[ExampleDatabase]',
+      @ResultSetArt='NONE',
+      @JsonErzeugen=1,
+      @Json=@FeatureJson OUTPUT;
+```
+
+TABLE-Aufruf mit leerem Einspaltenziel; der Writer ersetzt die Dummy-Spalte durch das registrierte Schema:
+
+```sql
+CREATE TABLE #SpecialFeatureInventory_HelpExample (Placeholder int NULL);
+EXEC [monitor].[USP_SpecialFeatureInventory]
+      @DatabaseNames=N'[ExampleDatabase]',
+      @ResultSetArt='TABLE',
+      @ResultTablesJson=N'{"features":"#SpecialFeatureInventory_HelpExample"}';
+```
+
+`ExampleDatabase` ist synthetisch; die Zieltemp-Tabelle muss leer sein.
+
 ## Resultsets und Leserichtung
 
 CONSOLE liefert genau ein fachliches Feature-Resultset; eine leere Auswahl erhält die zentrale Console-Leerzeile. RAW liefert zuerst den Aufrufstatus, danach die Datenbankstatuszeilen und zuletzt die Featurezeilen mit technischen Spalten. TABLE exportiert ausschließlich das registrierte Resultset `features`; Datenbankstatus und Aufrufstatus müssen bei automatisierter Verarbeitung über OUTPUT-Parameter beziehungsweise einen separaten Kontrolllauf gesichert werden. JSON enthält dagegen `meta`, `databaseStatus` und `features` gemeinsam. Berücksichtigen Sie immer zuerst `StatusCode`, `IsPartial`, Datenbankstatus und erst danach `DetectionStatus`.
