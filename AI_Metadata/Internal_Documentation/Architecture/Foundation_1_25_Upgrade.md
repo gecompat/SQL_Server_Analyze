@@ -549,3 +549,17 @@ muss nach der kanonischen Quelländerung ebenfalls neu gebaut werden.
 Adapterbuilder und Bytevergleich laufen offline. Die bestehende statische
 TestLab-Cleanupprüfung wird durch die Adapteränderung ausgelöst; es entsteht
 kein Provider-Lab. Verlässliche Token- und Kostenmessungen liegen nicht vor.
+
+### Verarbeitungsaufwand der präzisierten Parameterhilfe in Schritt 100
+
+Die Benutzeranweisung verlangt für jeden Parameter einen eigenen verständlichen Vertrag mit ausdrücklich gekennzeichnetem Default und Eingabeform. Geschlossene Wertemengen werden vollständig mit der Bedeutung jedes Werts aufgezählt. Die bereits direkt aus AGENTS.md entdeckbare Dokumentationsrichtlinie nimmt diese Abnahme auf; es entsteht kein zusätzlicher Discoverypfad. Die rückwirkende semantische Prüfung früherer Hilfen bleibt offen.
+
+Der aktuelle Schritt verbindet diese Regel mit der begrenzten Nacharbeit der Navigationshilfe. Die vorhandene Dokumentationspipeline führt ihre statische Vertragssuite und nur die durch geänderte Prüfeingaben ausgewählten Selbsttests aus. Datenschutz und Impact-Selector bleiben dort ausgeschlossen, weil ihre vorhandenen Workflows sie separat prüfen. Es werden keine Validatoren, Testorakel oder Workflowtrigger geändert und keine zusätzlichen Prüfläufe allein für einen erfolgreichen Review eingeführt.
+
+Die geänderten SQL-PRINT-Literale lösen über den bestehenden funktionalen Selector den SQL-Server-2025-Pfad mit Deploymentregression und ausgewählten Funktionstests aus. Ein reiner Kommentar- oder Richtliniendiff würde diese Laufzeitprüfung nicht begründen; der aktuelle Schritt enthält jedoch ausführbare PRINT-Änderungen. Zusätzliche native Versionen oder Compatibility Levels sind ohne ein konkretes Versionsrisiko nicht ausgewählt. Aktuelle Head- und getrennte Main-Gates sowie Cleanup bleiben erhalten.
+
+Die OPS-Adapterkopie folgt der kanonischen Hilfe; ihre Änderung aktiviert die bestehende statische TestLab-Cleanupprüfung. Diese Prüfung startet kein Provider-Lab. Adapterparität wird im vorhandenen Dokumentationsgate geprüft. Wegen des Benutzerverbots werden lokal keine Prozesse, Generatoren oder SQL-Instanzen gestartet; zulässig bleiben Dateisystem-, Text- und Hashprüfungen im vorhandenen Node-Runtime. Testausführung und kanonische Generatorprüfung erfolgen in Remote-CI.
+
+Ein begrenzter Implementierungsauftrag und ein unabhängiger Review verwenden ein angefordertes kleineres Modell mit kurzem Kontext. Eine weitere Reviewkette wird nicht eröffnet. Das angeforderte Modell ist keine Attestierung des tatsächlich eingesetzten Modells; Tokenverbrauch und Kosten sind nicht gemessen. CI-Status, Mengen und Hashbindungen werden deterministisch geprüft; vollständige grüne Logs werden nicht an einen weiteren Reviewer übergeben. Ein Timer rechtfertigt keine erneute Analyse eines unveränderten Blockers. Der stündliche Monitor bleibt bei unverändertem oder nicht handlungsfähigem Zustand still.
+
+Diese Auswahl beschreibt die vorgesehenen Prüfungen des neuen Kandidaten; sie behauptet noch keinen erfolgreichen CI-Lauf oder global abgeschlossenen Hilfetextaudit.
