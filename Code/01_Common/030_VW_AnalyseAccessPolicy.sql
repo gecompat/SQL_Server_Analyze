@@ -7,22 +7,32 @@ Objekt       : monitor.VW_AnalyseAccessPolicy
 Version      : 1.0.0
 Stand        : 2026-07-14
 Typ          : View
-Zweck        : Stellt die rein lesende Policyquelle für eine oder mehrere
-               AD-Gruppen je ressourcenintensiver Analyseklasse bereit.
-Standard     : Die ausgelieferte View enthält keine Zeilen. Solange keine aktive
-               Gruppendefinition vorhanden ist, sind alle Analyseklassen erlaubt.
-Policy       : Sobald mindestens eine aktive Definition vorhanden ist, sind
-               gruppengeschützte Analyseklassen nur für passende Gruppen erlaubt.
-               Ein Eintrag mit AnalysisClass='*' gilt für alle geschützten Klassen.
-Sysadmin     : sysadmin wird unabhängig von Gruppenregeln immer zugelassen.
-Fallback     : Die effektive Prüfung verwendet zuerst sys.login_token und danach
-               IS_MEMBER als Fallback.
+Zweck        : Stellt die rein lesende Policyquelle für Analyseklassen und
+               zugeordnete Windows-Gruppen bereit. Die ausgelieferte View gibt
+               wegen WHERE 1 = 0 keine Zeilen zurück; ihre sieben Ausgabespalten
+               behalten dabei die unten angegebenen Typen.
 Parameter    : Keine.
-Resultset    : AnalysisClass, ADGroupName, IsEnabled, ValidFromUtc, ValidToUtc,
-               Priority, Comment.
-Berechtigung : SELECT auf der View; keinerlei GRANT/DENY/REVOKE im Framework.
-Änderung     : Gruppen werden später durch CREATE OR ALTER VIEW gepflegt.
-Beispiel     : Siehe kommentierte VALUES-Vorlage am Dateiende.
+Ausgabe      : AnalysisClass (varchar(64)), ADGroupName (nvarchar(256)),
+               IsEnabled (bit), ValidFromUtc und ValidToUtc (datetime2(0)),
+               Priority (smallint) sowie Comment (nvarchar(1000)).
+Verwendung   : Eine spätere, manuell gepflegte Policy-View kann diese Spalten
+               mit Gruppenregeln befüllen. Die kommentierte VALUES-Vorlage am
+               Dateiende wird nicht ausgeführt und ändert die ausgelieferte
+               leere View nicht. Priority wird vom Verbraucher mitgeführt,
+               steuert derzeit aber weder Auswahlreihenfolge noch Freigabe.
+Wirkung      : VW_AnalyseAccessCurrent wertet aktive Policyzeilen aus. Sind
+               keine aktiven Zeilen vorhanden, ist die Gruppenprüfung offen;
+               sind welche vorhanden, können geschützte Klassen ohne passende
+               spezifische oder globale Regel gesperrt sein. Eine Regel mit
+               AnalysisClass='*' gilt für alle geschützten Klassen. Diese
+               Policyquelle vergibt selbst keine SQL-Berechtigungen.
+Grenzen      : Die View prüft keine Gruppenmitgliedschaft und führt keine
+               Analyse aus. Das Framework nimmt hier keine GRANT-, DENY- oder
+               REVOKE-Änderung vor.
+Beispiel     : SELECT [AnalysisClass], [ADGroupName], [IsEnabled],
+                      [ValidFromUtc], [ValidToUtc], [Priority], [Comment]
+               FROM [monitor].[VW_AnalyseAccessPolicy] WITH (NOLOCK)
+               ORDER BY [AnalysisClass], [Priority], [ADGroupName];
 Änderungen   : 1.0.0 - Erstfassung Phase 1A.
 ===============================================================================
 */
