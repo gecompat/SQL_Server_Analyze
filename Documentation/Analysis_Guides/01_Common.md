@@ -51,7 +51,46 @@ EXEC [monitor].[USP_AnalysisNavigator]
       @ResultSetArt = 'RAW';
 ```
 
+### Hilfe, JSON und TABLE
+
+Die Hilfe zeigt alle zwölf Parameter einschließlich Typ, Default, Validierung und Ausgabegrenzen. `@Json` wird beim Eintritt auf NULL gesetzt; `@Hilfe=1` beendet vor der JSON-Erzeugung. Ein TABLE-Aufruf prüft das leere lokale #Temp-Ziel vor der Hilfe mit kurzzeitigem Marker-DDL in tempdb und kann bei ungültigem Ziel abbrechen.
+
+Bereichs- und Scopecodes sind durch den statischen Katalog bestimmt und lassen sich gezielt abfragen:
+
+```sql
+SELECT DISTINCT [PrimaryAreaCode]
+FROM [monitor].[VW_AnalysisCatalog] WITH (NOLOCK)
+ORDER BY [PrimaryAreaCode];
+
+SELECT DISTINCT [ScopeCode]
+FROM [monitor].[VW_AnalysisCatalog] WITH (NOLOCK)
+ORDER BY [ScopeCode];
+```
+
+JSON bleibt unabhängig von `@ResultSetArt` und enthält `meta` sowie das Array `navigation`:
+
+```sql
+DECLARE @Json nvarchar(max);
+EXEC [monitor].[USP_AnalysisNavigator]
+      @Suchbegriff = N'Benutzer warten',
+      @JsonErzeugen = 1,
+      @Json = @Json OUTPUT;
+SELECT @Json;
+```
+
+TABLE exportiert nur `navigation`. Das Ziel muss vor dem Aufruf leer und lokal sein; eine einzelne Seed-Spalte genügt, weil der Exporthelper das leere Ziel auf das native Resultsetschema erweitert.
+
+```sql
+CREATE TABLE #AnalysisNavigator_HelpExample (Seed bit NULL);
+DECLARE @Map nvarchar(max) = N'{"navigation":"#AnalysisNavigator_HelpExample"}';
+EXEC [monitor].[USP_AnalysisNavigator]
+      @ResultSetArt = 'TABLE',
+      @ResultTablesJson = @Map;
+DROP TABLE #AnalysisNavigator_HelpExample;
+```
 ### RAW-Resultsets
+
+Ein ungültiger Wert für `@ResultSetArt` ergibt `INVALID_PARAMETER` und liefert Status plus `navigation`; die Ausgabe fällt nicht auf `CONSOLE` zurück.
 
 #### Resultset 1: Modulstatus
 
@@ -78,7 +117,7 @@ Der Vergleich ist unabhängig von der Datenbankcollation case- und accent-insens
 
 ### Kosten und Grenzen
 
-LOW. Die Kataloge sind konstant, die Ergebnismenge ist auf 100 Zeilen begrenzt. `IsInstalled` beweist keine Quellberechtigung oder Featureaktivierung. `SafeCall` muss an den realen Scope angepasst werden. Der vollständige Vertrag steht unter [Analysis Navigator](../Reference/Analysis_Navigator.md).
+LOW. Die Kataloge sind konstant. Positive Werte von `@MaxZeilen` begrenzen Treffer auf höchstens 100 Zeilen; `NULL` oder `0` hebt diese Grenze auf. `IsInstalled` beweist keine Quellberechtigung oder Featureaktivierung. `SafeCall` muss an den realen Scope angepasst werden. Der vollständige Vertrag steht unter [Analysis Navigator](../Reference/Analysis_Navigator.md).
 
 ---
 

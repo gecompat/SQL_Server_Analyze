@@ -13,6 +13,44 @@ Ohne Suchtext liefert der Navigator eine kurze, kuratierte Startliste. Mit `@Ber
 
 Der Navigator ist bewusst nur ein Wegweiser. Er führt weder den ersten Treffer noch irgendeine Folgeprocedure aus. Dadurch ist eine Suche nach einem Begriff kein versteckter Live-Snapshot, kein Plan-Cache-Zugriff und kein Cross-Database-Lauf.
 
+## Aufrufe und Parameterhilfe
+
+Die Hilfe erscheint mit `@Hilfe = 1`. Sie druckt die Parameterverträge und beendet die fachliche Auswertung. `@Json` wird beim Eintritt unabhängig von `@Hilfe` zunächst auf `NULL` gesetzt; der Hilfezweig erzeugt kein JSON. `@PrintMeldungen` steuert nur die zusätzliche Severity-10-Meldung eines behandelten Fehlers und hat keinen Einfluss auf die Hilfe. Ein TABLE-Aufruf führt den Zieltabellen-Preflight vor der Hilfe aus; er prüft die leere lokale #Temp-Tabelle mit kurzzeitigem Marker-DDL in tempdb und kann bei einem ungültigen Ziel mit Fehler abbrechen.
+
+| Parameter | Typ und Standard | Vertrag |
+|---|---|---|
+| `@Suchbegriff` | nvarchar(4000), NULL | NULL, leer oder nur Rand-Leerzeichen schaltet die Textsuche aus. Die wirksame Eingabe darf höchstens 400 Zeichen lang sein; längere Eingaben ergeben `INVALID_PARAMETER`. Die Suche vergleicht case- und accent-insensitiv. Für den technischen Namensvergleich werden eckige Klammern entfernt und ein führendes `monitor.` abgeschnitten. Tokens entstehen an Leerzeichen; Tokens unter drei Zeichen und feste deutsche/englische Stoppwörter entfallen. Je Token zählen höchstens 200 Zeichen. Exakte Namen und Phrasen wiegen stärker als Tokenüberschneidungen. |
+| `@Bereich` | varchar(40), NULL | NULL oder leer deaktiviert den Filter. Sonst werden Rand-Leerzeichen entfernt und der Wert case-insensitiv gegen `VW_AnalysisCatalog.PrimaryAreaCode` verglichen. Unbekannte Codes ergeben `INVALID_PARAMETER`. Die aktuell gültigen Werte stammen aus dem Katalog; siehe Abfragen unten. |
+| `@Scope` | varchar(40), NULL | NULL oder leer deaktiviert den Filter. Die normalisierte Eingabe wird case-insensitiv gegen `VW_AnalysisCatalog.ScopeCode` geprüft; unbekannte Codes ergeben `INVALID_PARAMETER`. |
+| `@Navigationsrolle` | varchar(24), NULL | NULL oder leer deaktiviert den Filter. Zulässig sind `ENTRY`, `FOLLOW_UP`, `TARGETED`, `SETUP` und `SUPPORT`; andere Werte ergeben `INVALID_PARAMETER`. |
+| `@NurInstallierte` | bit, 0 | `0` zeigt alle passenden Katalogeinträge, auch optionale nicht installierte Procedures. `1` verlangt den lokalen Eintrag in `sys.procedures`; das ist weder ein Berechtigungs- noch ein Featurefähigkeitsnachweis. NULL ergibt `INVALID_PARAMETER`. |
+| `@MaxZeilen` | int, 12 | NULL oder 0 bedeutet unbegrenzte Katalogtreffer. Positive Werte von 1 bis 100 begrenzen Ausgabe und Transfer. Negative Werte und Werte über 100 ergeben `INVALID_PARAMETER`. |
+| `@ResultSetArt` | varchar(16), CONSOLE | Rand-Leerzeichen werden entfernt und die Eingabe wird in Großbuchstaben normalisiert. Zulässig sind `CONSOLE`, `RAW`, `TABLE` und `NONE`; NULL, leer oder ein anderer Wert ergibt `INVALID_PARAMETER`. |
+| `@ResultTablesJson` | nvarchar(max), NULL | Nur bei `TABLE` zulässig. Eine nichtleere Zuordnung außerhalb von TABLE löst THROW 51011 aus. TABLE verlangt ein JSON-Objekt mit `navigation` auf eine vorhandene, leere lokale #Temp-Tabelle mit genau einer beliebigen Seed-Spalte; der Exporthelper passt sie an das native Schema an. |
+| `@JsonErzeugen` | bit, 0 | Der Wert 1 erzeugt optional `@Json` mit den Feldern `meta` und `navigation`; NULL und 0 deaktivieren JSON. JSON ist unabhängig von der Resultsetart. |
+| `@Json` | nvarchar(max), NULL OUTPUT | Wird zu Beginn auf NULL gesetzt. Bei `@Hilfe=1` bleibt der Wert NULL, weil vor der JSON-Erzeugung zurückgegeben wird. |
+| `@PrintMeldungen` | bit, 1 | Steuert nur die zusätzliche Severity-10-Meldung für einen behandelten Katalogfehler. NULL und 0 unterdrücken die Meldung; Resultsets, JSON und Hilfe bleiben davon unabhängig. |
+| `@Hilfe` | bit, 0 | Nur der Wert 1 aktiviert die Hilfe und beendet die fachliche Auswertung vor Suche und Rendering. NULL deaktiviert sie. Bei TABLE liegt der Zieltabellen-Preflight vor dem Hilfezweig. |
+
+Bereichs- und Scopecodes sind katalogdefiniert. Diese Abfragen zeigen die tatsächlich eingetragenen Werte; `WITH (NOLOCK)` garantiert dabei keine transaktionskonsistente Sicht.
+
+`@MaxZeilen` begrenzt die Zahl der ausgegebenen Treffer, nicht die Größe des statischen Katalogs. Die Suchauswertung berücksichtigt exakte Namen, Anzeigenamen und Phrasen sowie Tokens; relevante Treffer werden nach Score, Rolle und Namen geordnet. Bei Suchtext werden nur Kandidaten mit positivem Score übernommen.
+
+```sql
+SELECT DISTINCT [PrimaryAreaCode]
+FROM [monitor].[VW_AnalysisCatalog] WITH (NOLOCK)
+ORDER BY [PrimaryAreaCode];
+
+SELECT DISTINCT [ScopeCode]
+FROM [monitor].[VW_AnalysisCatalog] WITH (NOLOCK)
+ORDER BY [ScopeCode];
+```
+
+Verwenden Sie `@Hilfe=1`, um denselben Vertrag direkt aus SQL Server auszugeben.
+
+```sql
+EXEC [monitor].[USP_AnalysisNavigator] @Hilfe=1;
+```
 ## Nicht beantwortete Fragen
 
 Der Navigator diagnostiziert keine SQL-Server-Störung. `RelevanceScore` ist keine Schwere, keine Konfidenz der Root Cause und keine Messung der aktuellen Instanz. `IsInstalled = 1` beweist nur, dass die öffentliche Procedure lokal unter `[monitor]` existiert; der Wert beweist nicht, dass der aktuelle Login alle benötigten Quellen lesen darf oder dass Query Store, Extended Events, Availability Groups oder ein Spezialfeature verfügbar sind.
@@ -55,7 +93,7 @@ EXEC [monitor].[USP_AnalysisNavigator]
 
 ## Resultsets und Leserichtung
 
-`CONSOLE` liefert genau die beschriftete Treffermenge `navigation`. Bei einer gültigen Suche ohne Treffer erscheint eine verständliche Leerzeile mit `NO_MATCH`. `RAW` liefert zuerst den Modulstatus und danach das native Resultset `navigation`. `TABLE` exportiert ausschließlich `navigation` in die unter `@ResultTablesJson` zugeordnete lokale Temp-Tabelle. `NONE` unterdrückt alle Resultsets. `@JsonErzeugen = 1` liefert `meta` und `navigation` aus derselben Materialisierung.
+`CONSOLE` liefert genau die beschriftete Treffermenge `navigation`. Bei einer gültigen Suche ohne Treffer erscheint eine verständliche Leerzeile mit `NO_MATCH`. `RAW` liefert zuerst den Modulstatus und danach das native Resultset `navigation`. `TABLE` exportiert ausschließlich `navigation` in die unter `@ResultTablesJson` zugeordnete lokale Temp-Tabelle. `NONE` unterdrückt alle Resultsets. `@JsonErzeugen = 1` liefert `meta` und `navigation` aus derselben Materialisierung. Ein ungültiger Wert für `@ResultSetArt` ergibt `INVALID_PARAMETER` und liefert Status plus `navigation`; er fällt nicht auf `CONSOLE` zurück.
 
 Berücksichtigen Sie im RAW-Status zuerst `StatusCode`, `IsPartial`, `ErrorNumber`, `ErrorMessage` und die normalisierten Filter. Interpretieren Sie erst danach die Treffer. `INVALID_PARAMETER` unterscheidet sich von `NO_MATCH`: Im ersten Fall war ein Wert wie Bereich, Scope, Rolle, Zeilenlimit oder Suchtextlänge ungültig; im zweiten Fall war die Anfrage gültig, aber die Schnittmenge leer.
 
