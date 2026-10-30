@@ -3,11 +3,27 @@ GO
 
 /*
 ===============================================================================
-Objekt       : Analytische Vertiefung des WaitTypeCatalog
+Objekt       : Analytische Vertiefung von [monitor].[WaitTypeCatalog]
 Stand        : 2026-07-20
-Zweck        : Klassifiziert alle Framework-Waits für System- und
-               Performanceanalysen. Interne, nicht öffentlich dokumentierte
-               Details bleiben ausdrücklich als begrenzte Evidenz markiert.
+Zweck        : Das Skript ergänzt analytische Einschätzungen für Framework-Waits.
+Voraussetzung: Die Tabelle und die Framework-Seeds müssen vorhanden sein.
+Verarbeitung : Zuerst werden Frameworkzeilen der Sammelgruppe OTHER_OR_NEW
+               konservativ ENGINE_INTERNAL zugeordnet. Danach ordnen statische,
+               waitbezogene und gruppenbezogene Regeln erkennbare Fälle neu zu.
+               Eine nachfolgende gemeinsame Aktualisierung setzt Bewertungsbasis,
+               Ursachen, Auswirkungen, Gegenbelege und Messhinweise aus den
+               Katalogfeldern; weitere gezielte Updates überschreiben Felder für
+               bekannte Gruppen und Sonderfälle. Spätere passende Regeln haben
+               damit Vorrang vor früheren Zuordnungen. Alle Updates sind auf
+               [IsFrameworkDefault]=1 begrenzt. Nur die gemeinsame Aktualisierung
+               setzt [LastUpdatedUtc]; spätere Einzelkorrekturen setzen den
+               Zeitstempel nicht erneut.
+Geltungsgrenze: Gruppenzuordnungen und Texte sind statische Frameworkheuristiken,
+               kein Laufzeitbefund. FAMILY_RESEARCHED kennzeichnet eine
+               gruppenbezogene Einordnung, INTERNAL_LIMITED eine begrenzte
+               interne Einordnung; daraus folgen weder exakte Wait-Ursache noch
+               Produktgarantie. Bewertung erfordert weiterhin vergleichbare
+               Messpunkte, aktive Tasks, Workloadbezug und Gegenprüfung.
 ===============================================================================
 */
 SET NOCOUNT ON;

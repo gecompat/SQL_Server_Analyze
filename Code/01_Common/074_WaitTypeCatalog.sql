@@ -3,15 +3,56 @@ GO
 
 /*
 ===============================================================================
-Objekt       : [monitor].[WaitTypeCatalog]
+Objekt       : [monitor].[WaitTypeCatalog] und [monitor].[WaitTypeCatalogSource]
 Version      : 2.2.0
 Stand        : 2026-07-20
-Zweck        : Stellt einen persistenten, erweiterbaren Wait-Katalog mit
-               geprüftem Framework-Seed, analytischer Vertiefung und
-               typisierten Quellen bereit.
-Hinweis      : FRAMEWORK_CURATED kennzeichnet die belegte Namens- und Textprüfung.
-               SQLskills-Inhalte werden nicht kopiert, sondern ausschließlich als
-               optionale HelpUrl verlinkt.
+Zweck        : Das Skript legt den Wait-Type-Katalog und seine typisierten
+               Quellenangaben an und ergänzt ausgewählte fehlende Katalogspalten.
+Vertrag      : Die Katalogtabelle verwendet [WaitType] als gruppierten Primärschlüssel
+               und enthält [WaitType], [WaitGroup], [Severity], [IsGenerallyBenign],
+               [Meaning], [TypicalOccurrence], [HighWaitImpact], [RecommendedChecks],
+               [DefaultAssessment], [AssessmentBasis], [CommonCauses],
+               [PerformanceImpact], [Mitigation], [CounterEvidence],
+               [RelatedWaitTypes], [MeasurementGuidance], [AnalysisConfidence],
+               [HelpUrl], [MinProductMajorVersion], [DescriptionSource],
+               [DescriptionQuality], [SourceReference], [IsFrameworkDefault] und
+               [LastUpdatedUtc]. Die Quellentabelle enthält [WaitType],
+               [SourceOrdinal], [SourceType], [Publisher], [SourceTitle], [SourceUrl],
+               [SupportsFields], [EvidenceLevel], [SourceNotes], [IsFrameworkDefault]
+               und [LastVerifiedUtc].
+               [Severity] ist auf 0 bis 5 beschränkt; Assessment- und Analysefelder
+               erhalten benannte Defaults. Die Quellentabelle verwendet
+               ([WaitType],[SourceOrdinal]) als Primärschlüssel, verweist per
+               Fremdschlüssel auf den Katalog und beschränkt die Ordinalzahl auf
+               1 bis 20. Defaults setzen Severity auf 1, das Benign- und
+               Frameworkkennzeichen auf 0 beziehungsweise 1, die Assessmentwerte
+               auf CONTEXT_DEPENDENT und FAMILY_INFERENCE sowie die Felder für
+               Basis, Ursachen, Wirkung, Gegenbeleg, Gegenmaßnahme und Messhinweis
+               auf erläuternde Standardtexte. LastUpdatedUtc und LastVerifiedUtc
+               erhalten SYSUTCDATETIME() beim Einfügen. Das DDL setzt die Datenbank
+               aus USE und das Schema [monitor] voraus.
+Erweiterung  : Bei einer vorhandenen Katalogtabelle ergänzt das Skript nur die
+               zwölf ausdrücklich geprüften fehlenden Spalten. Es repariert keine
+               anderen Spalten, Schlüssel oder Constraints und migriert keine
+               vorhandene Quellentabelle. Tabellen werden nur angelegt, wenn sie
+               fehlen; vorhandene Objekte werden nicht strukturell abgeglichen.
+Eigentum     : [IsFrameworkDefault]=1 kennzeichnet Frameworkzeilen. Benutzerdefinierte
+               Zeilen mit Wert 0 sind davon getrennt; die nachfolgenden Seeds
+               aktualisieren vorhandene Zeilen nur, wenn sie als Frameworkzeilen
+               markiert sind. Das ist keine allgemeine Erhaltungsgarantie, da
+               Seed-Einfügungen und spätere Skripte eigene Effekte haben.
+Beispiele    : Die folgenden Abfragen lesen die gespeicherten Katalogfelder und
+               die zugeordneten Quellen; sie belegen weder Laufzeitwaits noch
+               externe Aktualität einer Quelle.
+               SELECT [WaitType],[WaitGroup],[Severity],[AnalysisConfidence]
+               FROM [monitor].[WaitTypeCatalog]
+               WHERE [IsFrameworkDefault]=1;
+               SELECT [WaitType],[SourceOrdinal],[SourceType],[Publisher],[SourceUrl],
+                      [EvidenceLevel],[LastVerifiedUtc]
+               FROM [monitor].[WaitTypeCatalogSource]
+               WHERE [WaitType]=N'WRITELOG';
+Hinweis      : Framework-HelpUrls verweisen auf SQLskills. Inhalte werden nicht
+               kopiert; ein Link ist keine Übernahme oder unabhängige Verifikation.
 ===============================================================================
 */
 IF NOT EXISTS

@@ -1,7 +1,21 @@
 USE [DeineDatenbank];
 GO
 
-/* Wait-Type-Katalog: kuratierter Seed-Teil 01 von 04. */
+/* Das Skript verarbeitet den ersten von vier Framework-Seeds und entfernt zuvor
+   ausgewählte, ausdrücklich als Framework markierte Wait Types.
+   Voraussetzung ist [monitor].[WaitTypeCatalog]; die Quellenvorprüfung läuft nur,
+   wenn [monitor].[WaitTypeCatalogSource] vorhanden ist. Sie bricht ab, wenn eine
+   benutzerdefinierte Quelle auf einen zu entfernenden Framework-Wait verweist.
+   Danach löscht das Skript für die ausgewählten Eltern nur Frameworkquellen und
+   löscht nur Framework-Katalogzeilen. Andere benutzerdefinierte Quellen werden
+   nicht gelöscht; ihre Referenz auf ein zu löschendes Elternobjekt führt zur
+   Vorprüfungsfehlermeldung. Die Vorprüfung erfasst genau die im Skript gelisteten
+   Wait Types und ist keine allgemeine Konflikt- oder Transaktionsgarantie.
+   Der Seed aktualisiert vorhandene Katalogzeilen nur, wenn sie Frameworkzeilen
+   sind. Fehlt ein WaitType vollständig, wird eine neue Frameworkzeile eingefügt;
+   eine vorhandene benutzerdefinierte Zeile mit gleichem Schlüssel wird weder
+   aktualisiert noch als Frameworkzeile ersetzt. Die vier nummerierten Seedteile
+   bauen auf dem DDL auf und sind in der vorgesehenen Reihenfolge auszuführen. */
 -- DEPLOYMENT_PREFLIGHT_BEGIN
 IF EXISTS
 (

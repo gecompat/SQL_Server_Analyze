@@ -1,7 +1,17 @@
 USE [DeineDatenbank];
 GO
 
-/* Wait-Type-Katalog: kuratierter Seed-Teil 04 von 04. */
+/* Das Skript verarbeitet den vierten von vier Framework-Seeds und setzt
+   [monitor].[WaitTypeCatalog] aus seinen lokalen Seedwerten fort.
+   Voraussetzung ist die zuvor angelegte Katalogtabelle. Vorhandene Katalogzeilen
+   werden nur aktualisiert, wenn [IsFrameworkDefault]=1 ist. Für einen WaitType,
+   der in der Tabelle noch nicht vorkommt, wird eine Frameworkzeile eingefügt;
+   eine vorhandene benutzerdefinierte Zeile mit demselben Schlüssel bleibt
+   unverändert und verhindert die Einfügung. Der Seed setzt eigene Katalogfelder
+   einschließlich Klassifikation, Bewertungstext und SQLskills-HelpUrl. Er ändert
+   keine benutzerdefinierte Zeile gezielt, bietet aber keine allgemeine Garantie
+   zur Erhaltung benutzerdefinierter Daten durch andere Skripte. Diesen Teil nach
+   dem DDL und Seedteil 03 ausführen. */
 DECLARE @Seed TABLE
 ([WaitType] nvarchar(120),[WaitGroup] nvarchar(64),[Severity] tinyint,[IsGenerallyBenign] bit,[Meaning] nvarchar(1000),
  [TypicalOccurrence] nvarchar(1200),[HighWaitImpact] nvarchar(1200),[RecommendedChecks] nvarchar(1500),
