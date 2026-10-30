@@ -7,18 +7,35 @@ Objekt       : monitor.VW_AnalyseClassCatalog
 Version      : 1.9.0
 Stand        : 2026-07-22
 Typ          : View
-Zweck        : Definiert Analyseklassen, Kostenniveau und Pflicht zur
-               AD-Gruppenprüfung für ressourcenintensive Module.
+Zweck        : Liefert den statischen Katalog der Analyseklassen mit
+               Einordnung und hinterlegten Standardhinweisen.
+Datenquelle  : Die Klassen, Werte und Beschreibungen stammen ausschließlich
+               aus den VALUES-Literalen dieser View. Die View wertet weder
+               AD-Gruppenmitgliedschaften noch eine Zugriffspolicy aus.
+Ausgabe      : AnalysisClass (varchar(64)) ist die Kennung der Klasse.
+               AnalysisLevel (varchar(16)) benennt die eingetragene Stufe,
+               zum Beispiel STANDARD, ERWEITERT, DEEP oder FORENSIK.
+               RequiresGroupGate (bit) zeigt den im Katalog hinterlegten
+               Hinweis, ob für die Klasse eine Gruppenprüfung vorgesehen ist;
+               das Feld prüft keine Gruppenmitgliedschaft und erzwingt keine
+               Freigabe.
+               DefaultMaxRows und DefaultTimeoutSeconds (int) sind
+               Klassenhinweise auf Standardwerte für Zeilen und Zeit.
+               Sie begrenzen eine Abfrage durch diese View nicht.
+               Description (nvarchar(1000)) beschreibt den vorgesehenen
+               Analyseumfang und dessen im Literal genannte Grenzen.
 Parameter    : Keine.
-Resultset    : AnalysisClass, AnalysisLevel, RequiresGroupGate,
-               DefaultMaxRows, DefaultTimeoutSeconds, Description.
-Berechtigung : SELECT auf der View; keine Rechtevergabe durch das Framework.
-Policy       : Keine aktive Gruppendefinition = alle Klassen erlaubt; sobald
-               Definitionen vorhanden sind, gelten die Regeln aus
-               monitor.VW_AnalyseAccessPolicy. sysadmin besitzt Bypass.
-Eigenlast    : Konstant.
-Locking      : Keine fachlichen Tabellenzugriffe.
-Aufruf       : SELECT * FROM monitor.VW_AnalyseClassCatalog;
+Berechtigung : Der Aufrufende benötigt SELECT auf der View. Die View selbst
+               wertet keine Zugriffsrechte aus und vergibt keine Rechte.
+Grenzen      : Diese Katalog-View führt keine Analyse aus, prüft oder erzwingt
+               kein AD-Gruppengate und gewährt keine Berechtigung. Sie setzt
+               weder Zeilen- noch Zeitlimits durch. Diese Wirkungen liegen
+               außerhalb ihrer VALUES-Ausgabe.
+Beispiel     : SELECT [AnalysisClass], [AnalysisLevel], [RequiresGroupGate],
+                      [DefaultMaxRows], [DefaultTimeoutSeconds],
+                      [Description]
+               FROM [monitor].[VW_AnalyseClassCatalog] WITH (NOLOCK)
+               ORDER BY [AnalysisLevel], [AnalysisClass];
 Änderungen   : 1.9.0 - EXTERNAL_RUNTIME_CURRENT und CLR_CURRENT ergänzt.
                1.8.0 - SERVER_HEALTH_CURRENT, SERVER_CONFIGURATION_CURRENT und SECURITY_CONFIGURATION_CURRENT ergänzt.
                1.7.0 - SQL_AGENT_CURRENT, RESOURCE_GOVERNOR_CURRENT, HA_DR_CURRENT und ENTERPRISE_TOPOLOGY_DEEP ergänzt.
