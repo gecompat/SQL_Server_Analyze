@@ -65,31 +65,34 @@ BEGIN
 
     IF @Hilfe = 1
     BEGIN
-        PRINT N'monitor.USP_ServerFeatureCapabilities erfasst Feature-Metadaten; kein Healthcheck.';
-        PRINT N'@DatabaseNames nvarchar(max)=NULL: NULL oder N'''' = alle sichtbaren zulässigen Online-DBs; sonst bracket-aware Pipe-Liste.';
-        PRINT N'@SystemdatenbankenEinbeziehen bit=0: 1 nimmt System-DBs auf; bei aktiver Auswahl validiert der Kandidatenhelfer den Wert.';
-        PRINT N'@DatabaseNamePattern nvarchar(4000)=NULL: like:, regex: oder regexi:; exklusiv zur Namensliste und im Auswahlpfad validiert.';
-        PRINT N'@HighImpactConfirmed bit=0 wird an den Helper übergeben; OBJECT_ANALYSIS_CURRENT hat RequiresGroupGate=0; 1 verleiht keine Gruppenberechtigung und aktiviert hier kein Gate.';
-        PRINT N'@MitSpezialindizes bit=1 aktiviert Vector/JSON-Indexinventar; @MitQueryStoreReplicas bit=1 aktiviert Replica-Metadaten.';
-        PRINT N'@MitPlattformdetails bit=1 aktiviert Linux-Host-DMV-Metadaten. Nur exakt 1 schaltet diese optionalen Zweige ein.';
-        PRINT N'@MaxZeilen int=5000: nach Sammlung je fachlichem Export; NULL/0 unbegrenzt, positiv begrenzt, negativ INVALID_PARAMETER.';
-        PRINT N'Das Limit verringert keine Katalogprobes; Warnungen bleiben ungekürzt.';
-        PRINT N'@ResultSetArt varchar(16)=''CONSOLE'': CONSOLE, RAW, TABLE, NONE; getrimmt/case-insensitiv, andere Werte INVALID_PARAMETER.';
-        PRINT N'@ResultTablesJson nvarchar(max)=NULL ist nur bei TABLE zulässig.';
-        PRINT N'@JsonErzeugen bit=0: nur 1 erzeugt JSON unabhängig vom ResultSetArt; 0/NULL nicht. @Json nvarchar(max)=NULL OUTPUT als OUTPUT binden.';
-        PRINT N'@PrintMeldungen bit=1 gibt bei Status ungleich AVAILABLE eine normale Warnmeldung aus; NULL/0 unterdrückt sie, Hilfe bleibt PRINT.';
-        PRINT N'@Hilfe bit=0: nur 1 gibt Hilfe aus und kehrt vor Auswahl/Probes zurück; 0/NULL läuft normal weiter.';
-        PRINT N'Bitparameter verwenden; T-SQL wandelt numerisch 0 zu 0 und jeden Nichtnullwert zu 1 um. SystemDB/HighImpact-NULL ist beim Helper-Aufruf INVALID_PARAMETER.';
-        PRINT N'Hilfe setzt @Json zunächst auf NULL. TABLE-Zielvalidierung erfolgt davor und kann auch beim Hilfeaufruf fehlschlagen.';
-        PRINT N'CONSOLE und RAW liefern Status sowie capabilities, databaseFeatures, specialIndexes und warnings; JSON enthält meta und diese Arrays.';
-        PRINT N'NONE unterdrückt Resultsets; JSON bleibt unabhängig von ResultSetArt.';
-        PRINT N'TABLE exportiert nur capabilities; Ziel kann eine leere einspaltige Dummy-Temp-Tabelle sein, kein Seed-Datensatz.';
+        PRINT N'Feature-Capabilities sind sichtbare Versions-/Plattform-/Datenbankmetadaten und kein Healthcheck.';
+        PRINT N'@DatabaseNames ist eine bracket-aware Pipe-Liste: | trennt außerhalb von [...], ]] maskiert ], Pipe innerhalb von [...] bleibt im Namen; nur einteilige SQL-Namen.';
+        PRINT N'@ResultSetArt: CONSOLE=formatierte Ausgabe, RAW=technische Resultsets, TABLE=capabilities, NONE=keine fachlichen Resultsets.';
+        PRINT N'CONSOLE und RAW geben Aufrufstatus, capabilities, databaseFeatures, specialIndexes und warnings aus; JSON umfasst meta und diese Arrays. TABLE exportiert nur capabilities.';
+        PRINT N'@ResultTablesJson TABLE-JSON muss den Schlüssel capabilities exakt auf eine lokale #Temp-Zieltabelle abbilden. Ein leeres Einspalten-Dummyziel braucht keine Seedzeile. Der Preflight liegt vor Hilfe.';
+        PRINT N'@Json wird bei Eintritt auf NULL gesetzt. @JsonErzeugen=1 liefert JSON unabhängig vom ResultSetArt.';
+        PRINT N'@HighImpactConfirmed wird an die Klasse OBJECT_ANALYSIS_CURRENT übergeben; RequiresGroupGate=0. Die Prozedur bestätigt dadurch keine Berechtigung für Datenbankgruppen.';
+        PRINT N'Das Featurelimit wirkt nach Sammlung separat auf capabilities, databaseFeatures und specialIndexes; es reduziert keine Katalogprobes. Warnungen bleiben ungekürzt.';
+        PRINT N'Spezialindexdetail enthält Array-Suchoption, Pfadanzahl und Disabled-Status; konkrete SQL/JSON-Pfade und JSON-Dokumentwerte werden nicht gelesen.';
         PRINT N'CREATE TABLE #ServerFeatureCapabilities_HelpExample (Placeholder int NULL);';
         PRINT N'EXEC [monitor].[USP_ServerFeatureCapabilities] @DatabaseNames=N''[ExampleDatabase]'', @ResultSetArt=''CONSOLE'', @JsonErzeugen=1;';
         PRINT N'DECLARE @FeatureJson nvarchar(max);';
         PRINT N'EXEC [monitor].[USP_ServerFeatureCapabilities] @ResultSetArt=''RAW'', @JsonErzeugen=1, @Json=@FeatureJson OUTPUT;';
         PRINT N'EXEC [monitor].[USP_ServerFeatureCapabilities] @ResultSetArt=''TABLE'', @ResultTablesJson=N''{"capabilities":"#ServerFeatureCapabilities_HelpExample"}'';';
-        PRINT N'JSON-Dokumentwerte und konkrete SQL/JSON-Pfade werden nicht gelesen; Capability-Metadaten sind kein Nutzungs- oder Gesundheitsnachweis.';
+        PRINT N'@DatabaseNames (nvarchar(max); Default: NULL; ausgelassen = Default): Ausgelassen = NULL. NULL, leer oder nur Leerzeichen: alle sichtbaren zulässigen Online-Datenbanken (Systemdatenbanken abhängig von @SystemdatenbankenEinbeziehen); sonst bracket-aware Pipe-Liste einteiliger SQL-Namen. Ein Pipe trennt nur außerhalb von [...]; ]] maskiert eine schließende Klammer, | innerhalb [...] bleibt im Namen. Leere, ungültige, mehrteilige, zu lange oder doppelte Namen führen im Helfer zur Auswahlfehlermeldung.';
+        PRINT N'@SystemdatenbankenEinbeziehen (bit; Default: 0; ausgelassen = Default): Ausgelassen = 0. 0 schließt master, tempdb, model und msdb aus; 1 lässt Systemdatenbanken im Kandidatenscope zu. NULL wird vom Kandidatenhelfer als INVALID_PARAMETER abgelehnt. T-SQL konvertiert numerisch 0 zu 0 und jeden Nichtnullwert zu 1.';
+        PRINT N'@DatabaseNamePattern (nvarchar(4000); Default: NULL; ausgelassen = Default): Ausgelassen = NULL. NULL lässt den Patternfilter aus; andernfalls alternativ zu @DatabaseNames. Äußere Leerzeichen werden entfernt; Präfixe werden ohne Beachtung der Groß-/Kleinschreibung erkannt: like: (SQL-LIKE), regex: (case-sensitive Regex, Flag c), regexi: (case-insensitive Regex, Flag i); ohne Präfix gilt SQL-LIKE. LIKE nutzt %, _ und SQL-Zeichenklassen [...] mit SQL_Latin1_General_CP1_CS_AS. Nach Präfixentfernung bleibt der Patterninhalt unverändert; leeres Pattern ist ungültig. Regex benötigt SQL Server 2025 und Compatibility Level 170 der Installationsdatenbank; Syntax und Treffer werden erst bei Ausführung bewertet.';
+        PRINT N'@HighImpactConfirmed (bit; Default: 0; ausgelassen = Default): Ausgelassen = 0. Der Wert wird an USP_PrepareDatabaseCandidates übergeben. Die tatsächlich aktivierte Klasse OBJECT_ANALYSIS_CURRENT hat RequiresGroupGate=0; weder 0 noch 1 schaltet hier ein High-Impact-Gruppengate oder verleiht Gruppenberechtigung. NULL wird auch ohne aktives Gate als INVALID_PARAMETER abgelehnt. Numerisch 0 wird bit 0, jeder Nichtnullwert bit 1.';
+        PRINT N'@MitSpezialindizes (bit; Default: 1; ausgelassen = Default): Ausgelassen = 1. 1 erfasst die optionalen Vector-/JSON-Spezialindizes; 0 und NULL lassen diesen Zweig aus. T-SQL konvertiert numerisch 0 zu 0 und jeden Nichtnullwert zu 1.';
+        PRINT N'@MitQueryStoreReplicas (bit; Default: 1; ausgelassen = Default): Ausgelassen = 1. 1 erfasst Query-Store-Replica-Metadaten; 0 und NULL lassen diesen Zweig aus. T-SQL konvertiert numerisch 0 zu 0 und jeden Nichtnullwert zu 1.';
+        PRINT N'@MitPlattformdetails (bit; Default: 1; ausgelassen = Default): Ausgelassen = 1. 1 ergänzt Linux-Host-DMV-Capabilities; 0 und NULL lassen diesen Zweig aus. T-SQL konvertiert numerisch 0 zu 0 und jeden Nichtnullwert zu 1.';
+        PRINT N'@MaxZeilen (int; Default: 5000; ausgelassen = Default): Ausgelassen = 5000. NULL oder 0 bedeutet unbegrenzt; ein positiver Wert begrenzt nach der Erhebung unabhängig je capabilities-, databaseFeatures- und specialIndexes-Export in deren dokumentierter Sortierung. Ein negativer Wert setzt INVALID_PARAMETER. Das Limit reduziert keine Katalogprobes und kürzt keine Warnungen.';
+        PRINT N'@ResultSetArt (varchar(16); Default: CONSOLE; ausgelassen = Default): Ausgelassen = CONSOLE. Äußere Leerzeichen werden entfernt und der Wert wird großgeschrieben. Zulässig sind vollständig: CONSOLE (eine formatierte Ausgabe pro Resultset, einschließlich Leerhinweis), RAW (technische Resultsets), TABLE (nur capabilities in Zieltabellen) und NONE (keine fachlichen Resultsets). NULL, leer und jeder andere Wert sind INVALID_PARAMETER.';
+        PRINT N'@ResultTablesJson (nvarchar(max); Default: NULL; ausgelassen = Default): Ausgelassen = NULL. Nur bei ResultSetArt=TABLE zulässig; das JSON-Objekt muss genau die registrierte Zuordnung capabilities auf eine vorhandene lokale #Temp-Tabelle enthalten. Nicht-TABLE mit nichtleerem Wert wirft Fehler 51011. TABLE-Preflight läuft vor Hilfe und Katalogprobes. Eine leere vorhandene lokale Tabelle mit einer beliebigen Dummyspalte wird vom Writer an das Quellschema angepasst; keine Seed-Zeile erforderlich.';
+        PRINT N'@JsonErzeugen (bit; Default: 0; ausgelassen = Default): Ausgelassen = 0. 1 erzeugt JSON unabhängig von ResultSetArt; 0 und NULL erzeugen kein JSON. T-SQL konvertiert numerisch 0 zu 0 und jeden Nichtnullwert zu 1.';
+        PRINT N'@Json (nvarchar(max) OUTPUT; Default: NULL; ausgelassen = Default): Ausgelassen = NULL als OUTPUT-Parameter. Mit OUTPUT binden. Der Eingabewert wird beim Eintritt auf NULL gesetzt; bei @JsonErzeugen=1 enthält der Rückgabewert meta, capabilities, databaseFeatures, specialIndexes und warnings. Hilfe kehrt nach dem TABLE-Preflight ebenfalls mit NULL zurück.';
+        PRINT N'@PrintMeldungen (bit; Default: 1; ausgelassen = Default): Ausgelassen = 1. 1 gibt bei einem Status ungleich AVAILABLE die normale Statuswarnung aus; 0 und NULL unterdrücken diese Meldung. Die Hilfe-PRINT-Ausgabe wird dadurch nicht unterdrückt. T-SQL konvertiert numerisch 0 zu 0 und jeden Nichtnullwert zu 1.';
+        PRINT N'@Hilfe (bit; Default: 0; ausgelassen = Default): Ausgelassen = 0. Nur 1 druckt Hilfe und kehrt vor Auswahl, Katalogprobes und normaler Parameter-/Filtervalidierung zurück; 0 und NULL führen den normalen Ablauf aus. @Json wird davor auf NULL gesetzt. Der TABLE-Zielpreflight und die Ablehnung eines nichtleeren @ResultTablesJson außerhalb von TABLE liegen davor. T-SQL konvertiert numerisch 0 zu 0 und jeden Nichtnullwert zu 1.';
         RETURN;
     END;
 
