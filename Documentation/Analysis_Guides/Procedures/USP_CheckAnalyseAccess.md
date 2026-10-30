@@ -59,10 +59,10 @@ SELECT @Json;
 -- Keine fachlichen Resultsets
 EXEC [monitor].[USP_CheckAnalyseAccess] @ResultSetArt='NONE', @JsonErzeugen=1;
 -- TABLE-Ziel
-CREATE TABLE #Access_HelpExample (Seed bit NULL);
-DECLARE @Map nvarchar(max)=N'{"access":"#Access_HelpExample"}';
+CREATE TABLE #CheckAnalyseAccess_HelpExample (Seed bit NULL);
+DECLARE @Map nvarchar(max)=N'{"access":"#CheckAnalyseAccess_HelpExample"}';
 EXEC [monitor].[USP_CheckAnalyseAccess] @ResultSetArt='TABLE', @ResultTablesJson=@Map;
-DROP TABLE #Access_HelpExample;
+DROP TABLE #CheckAnalyseAccess_HelpExample;
 ~~~
 
 ## Resultsets und Leserichtung

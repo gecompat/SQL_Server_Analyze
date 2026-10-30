@@ -3,7 +3,7 @@
 **Bereich:** Common<br>
 **Zweck:** Prüft Version, Policy, Berechtigung, Abfragbarkeit und Featurestatus für Diagnosepfade.<br>
 **Beobachtungsart:** Snapshot<br>
-**Kostenklasse:** Nicht empirisch bestimmt
+**Kostenklasse:** LOW–MEDIUM
 
 ## Entscheidungsfrage und Einsatz
 
@@ -54,10 +54,10 @@ DECLARE @Json nvarchar(max);
 EXEC [monitor].[USP_CheckFrameworkCapabilities] @ResultSetArt='NONE', @JsonErzeugen=1, @Json=@Json OUTPUT;
 SELECT @Json;
 -- TABLE exportiert nur capabilities
-CREATE TABLE #Capabilities_HelpExample (Seed bit NULL);
-DECLARE @Map nvarchar(max)=N'{"capabilities":"#Capabilities_HelpExample"}';
+CREATE TABLE #CheckFrameworkCapabilities_HelpExample (Seed bit NULL);
+DECLARE @Map nvarchar(max)=N'{"capabilities":"#CheckFrameworkCapabilities_HelpExample"}';
 EXEC [monitor].[USP_CheckFrameworkCapabilities] @ResultSetArt='TABLE', @ResultTablesJson=@Map;
-DROP TABLE #Capabilities_HelpExample;
+DROP TABLE #CheckFrameworkCapabilities_HelpExample;
 ~~~
 
 CONSOLE übergibt capabilities an den Console-Renderer. RAW liefert Meta, Capabilities, Summary und Warnings als vier Resultsets. TABLE schreibt ausschließlich capabilities; NONE unterdrückt fachliche Resultsets. Meldungen und JSON sind unabhängig von diesen Modi. JSON enthält meta, capabilities, summary und warnings, kein Datenbankstatus-Array.
@@ -100,7 +100,7 @@ Leere Capability-Ausgaben sind anhand von Meta, Summary und Warnings zu lesen. O
 
 | Dimension | Aussage für diese Procedure |
 |---|---|
-| Kostenklasse | Nicht empirisch bestimmt |
+| Kostenklasse | LOW–MEDIUM; deklarative Einordnung, keine Laufzeitmessung. |
 | Standardpfad | Ohne Scope werden alle sichtbaren Online-Benutzerdatenbanken mit allen Katalogfeatures kombiniert. Für jede Serverfeaturezeile und jede `(Datenbank, Feature)`-Zeile führt der Code die anwendbaren Versions-, Gruppen-, Berechtigungs-, Probe- und Enablementprüfungen aus. |
 | Teuerster Pfad | Viele Datenbanken × viele Datenbankfeatures mit `@MitGruppenpruefung = 1`; jede Kombination kann dynamische Permission-, Probe- und Enablementstatements ausführen. Die Templates des Katalogs werden tatsächlich ausgeführt; ihre Kosten und ihr Zugriffsumfang sind ohne Einzelfallprüfung nicht aus der Featuredefinition abzuleiten. Dadurch wird kein Fachmodul allein wegen seiner Katalogzeile aufgerufen. |
 | Haupttreiber | Produkt aus Zahl der ausgewählten Datenbanken und DATABASE-Features plus konstante SERVER-Features. Dynamisches SQL wird je Kombination kompiliert/ausgeführt. |

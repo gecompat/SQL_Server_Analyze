@@ -127,10 +127,10 @@ SELECT @Json;
 -- Keine fachlichen Resultsets
 EXEC [monitor].[USP_CheckAnalyseAccess] @ResultSetArt='NONE', @JsonErzeugen=1;
 -- TABLE
-CREATE TABLE #Access_HelpExample (Seed bit NULL);
-DECLARE @Map nvarchar(max)=N'{"access":"#Access_HelpExample"}';
+CREATE TABLE #CheckAnalyseAccess_HelpExample (Seed bit NULL);
+DECLARE @Map nvarchar(max)=N'{"access":"#CheckAnalyseAccess_HelpExample"}';
 EXEC [monitor].[USP_CheckAnalyseAccess] @ResultSetArt='TABLE', @ResultTablesJson=@Map;
-DROP TABLE #Access_HelpExample;
+DROP TABLE #CheckAnalyseAccess_HelpExample;
 ~~~
 
 ### RAW-Resultsets
@@ -182,10 +182,10 @@ DECLARE @Json nvarchar(max);
 EXEC [monitor].[USP_CheckFrameworkCapabilities] @ResultSetArt='NONE', @JsonErzeugen=1, @Json=@Json OUTPUT;
 SELECT @Json;
 -- TABLE exportiert ausschließlich capabilities
-CREATE TABLE #Capabilities_HelpExample (Seed bit NULL);
-DECLARE @Map nvarchar(max)=N'{"capabilities":"#Capabilities_HelpExample"}';
+CREATE TABLE #CheckFrameworkCapabilities_HelpExample (Seed bit NULL);
+DECLARE @Map nvarchar(max)=N'{"capabilities":"#CheckFrameworkCapabilities_HelpExample"}';
 EXEC [monitor].[USP_CheckFrameworkCapabilities] @ResultSetArt='TABLE', @ResultTablesJson=@Map;
-DROP TABLE #Capabilities_HelpExample;
+DROP TABLE #CheckFrameworkCapabilities_HelpExample;
 ~~~
 
 ### Ausgabe und Interpretation

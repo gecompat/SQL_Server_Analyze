@@ -69,8 +69,8 @@ BEGIN
         PRINT N'Beispiel – Standard: EXEC [monitor].[USP_CheckFrameworkCapabilities];';
         PRINT N'Beispiel – Scope und RAW: EXEC [monitor].[USP_CheckFrameworkCapabilities] @DatabaseNames=N''[ExampleDb]'', @AnalyseKlasse=''STANDARD_CURRENT'', @ResultSetArt=''RAW'';';
         PRINT N'Beispiel – JSON/NONE: DECLARE @j nvarchar(max); EXEC [monitor].[USP_CheckFrameworkCapabilities] @ResultSetArt=''NONE'', @JsonErzeugen=1, @Json=@j OUTPUT; SELECT @j;';
-        PRINT N'Beispiel – TABLE-Ziel: CREATE TABLE #Capabilities_HelpExample (Seed bit NULL);';
-        PRINT N'DECLARE @map nvarchar(max)=N''{"capabilities":"#Capabilities_HelpExample"}''; EXEC [monitor].[USP_CheckFrameworkCapabilities] @ResultSetArt=''TABLE'', @ResultTablesJson=@map; DROP TABLE #Capabilities_HelpExample;';
+        PRINT N'Beispiel – TABLE-Ziel: CREATE TABLE #CheckFrameworkCapabilities_HelpExample (Seed bit NULL);';
+        PRINT N'DECLARE @map nvarchar(max)=N''{"capabilities":"#CheckFrameworkCapabilities_HelpExample"}''; EXEC [monitor].[USP_CheckFrameworkCapabilities] @ResultSetArt=''TABLE'', @ResultTablesJson=@map; DROP TABLE #CheckFrameworkCapabilities_HelpExample;';
         RETURN;
     END;
 

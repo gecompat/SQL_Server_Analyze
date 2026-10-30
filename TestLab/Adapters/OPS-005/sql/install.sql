@@ -1437,8 +1437,8 @@ BEGIN
         PRINT N'Beispiel – nur gesperrte Klassen: EXEC [monitor].[USP_CheckAnalyseAccess] @NurGesperrte=1, @ResultSetArt=''RAW'';';
         PRINT N'Beispiel – JSON: DECLARE @j nvarchar(max); EXEC [monitor].[USP_CheckAnalyseAccess] @JsonErzeugen=1, @Json=@j OUTPUT; SELECT @j;';
         PRINT N'Beispiel – NONE: EXEC [monitor].[USP_CheckAnalyseAccess] @ResultSetArt=''NONE'', @JsonErzeugen=1;';
-        PRINT N'Beispiel – TABLE: CREATE TABLE #Access_HelpExample (Seed bit NULL);';
-        PRINT N'DECLARE @map nvarchar(max)=N''{"access":"#Access_HelpExample"}''; EXEC [monitor].[USP_CheckAnalyseAccess] @ResultSetArt=''TABLE'', @ResultTablesJson=@map; DROP TABLE #Access_HelpExample;';
+        PRINT N'Beispiel – TABLE: CREATE TABLE #CheckAnalyseAccess_HelpExample (Seed bit NULL);';
+        PRINT N'DECLARE @map nvarchar(max)=N''{"access":"#CheckAnalyseAccess_HelpExample"}''; EXEC [monitor].[USP_CheckAnalyseAccess] @ResultSetArt=''TABLE'', @ResultTablesJson=@map; DROP TABLE #CheckAnalyseAccess_HelpExample;';
         RETURN;
     END;
 
@@ -7387,8 +7387,8 @@ BEGIN
         PRINT N'Beispiel – Standard: EXEC [monitor].[USP_CheckFrameworkCapabilities];';
         PRINT N'Beispiel – Scope und RAW: EXEC [monitor].[USP_CheckFrameworkCapabilities] @DatabaseNames=N''[ExampleDb]'', @AnalyseKlasse=''STANDARD_CURRENT'', @ResultSetArt=''RAW'';';
         PRINT N'Beispiel – JSON/NONE: DECLARE @j nvarchar(max); EXEC [monitor].[USP_CheckFrameworkCapabilities] @ResultSetArt=''NONE'', @JsonErzeugen=1, @Json=@j OUTPUT; SELECT @j;';
-        PRINT N'Beispiel – TABLE-Ziel: CREATE TABLE #Capabilities_HelpExample (Seed bit NULL);';
-        PRINT N'DECLARE @map nvarchar(max)=N''{"capabilities":"#Capabilities_HelpExample"}''; EXEC [monitor].[USP_CheckFrameworkCapabilities] @ResultSetArt=''TABLE'', @ResultTablesJson=@map; DROP TABLE #Capabilities_HelpExample;';
+        PRINT N'Beispiel – TABLE-Ziel: CREATE TABLE #CheckFrameworkCapabilities_HelpExample (Seed bit NULL);';
+        PRINT N'DECLARE @map nvarchar(max)=N''{"capabilities":"#CheckFrameworkCapabilities_HelpExample"}''; EXEC [monitor].[USP_CheckFrameworkCapabilities] @ResultSetArt=''TABLE'', @ResultTablesJson=@map; DROP TABLE #CheckFrameworkCapabilities_HelpExample;';
         RETURN;
     END;
 
