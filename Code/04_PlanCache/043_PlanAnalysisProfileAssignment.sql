@@ -7,10 +7,45 @@ Objekt       : monitor.PlanAnalysisProfileAssignment
 Version      : 1.0.0
 Stand        : 2026-07-21
 Typ          : Steuertabelle
-Zweck        : Ordnet Plan- und Workloadkontext optional einem generischen
-               lokalen Analyseprofil zu. Die Auslieferung enthält keine realen
-               Zuordnungen und überschreibt keine lokalen Zeilen.
+Zweck        : Das Skript legt lokale Zuordnungszeilen an, die Plan- oder
+               Workloadkontext mit einem generischen Analyseprofil verbinden
+               können. Die DDL enthält keine INSERTs mit realen Zuordnungen.
+Voraussetzung: Das Schema [monitor] und [monitor].[PlanAnalysisProfile]
+               müssen in der durch USE gewählten Datenbank verfügbar sein.
+Spalten      : AssignmentId ist ein bigint-IDENTITY-Schlüssel. Priority ist
+               smallint; IsEnabled aktiviert oder deaktiviert die Zeile mit
+               bit. ProfileCode verweist als varchar(32) auf ein Profil.
+               DatabaseNamePattern, SchemaNamePattern, ObjectNamePattern und
+               ProgramNameLikePattern sind optionale nvarchar(256)-Muster.
+               QueryHash ist optionales binary(8), QueryStoreQueryId bigint,
+               StatementId int, ResourcePoolId int und WorkloadGroupId int.
+               IsFrameworkDefault kennzeichnet Frameworkbesitz mit bit.
+               Comment enthält optional nvarchar(1000); LastUpdatedUtc speichert
+               datetime2(0) in UTC.
+Schlüssel    : AssignmentId ist der gruppierte Primärschlüssel. ProfileCode
+               besitzt einen Fremdschlüssel auf
+               [monitor].[PlanAnalysisProfile]([ProfileCode]). Priority muss
+               zwischen 1 und 32767 liegen. Die Scope-Prüfung verlangt, dass
+               mindestens eines der neun Filterfelder nicht NULL ist. Der
+               nicht gruppierte Index
+               [IX_PlanAnalysisProfileAssignment_Resolution] beginnt mit
+               IsEnabled, Priority und ProfileCode und enthält die Filterfelder
+               als INCLUDE-Spalten.
+Verwendung   : Diese Tabelle speichert lokale Konfiguration. Sie enthält keine
+               ausgelieferten realen Zuweisungen; ein Profilseed erzeugt keine
+               Zeilen in dieser Tabelle. Der Index belegt keine konkrete
+               Auflösungsreihenfolge. Die Spalten sind Filterdaten, keine
+               Ausführungsanweisung oder Sicherheitsgrenze. Ohne belegten
+               Verbraucher werden weder Mustervergleich, NULL-Verhalten,
+               Prioritätsauflösung noch Zuordnungskonkurrenz festgelegt.
+Datenschutz  : Persistieren Sie nur generische, für das Repository zulässige
+               Muster. Reale Datenbank-, Objekt-, Programm- oder
+               Umgebungsnamen gehören nicht in ausgelieferte Beispiele.
+Beispiel     : Die Abfrage zeigt lokal gespeicherte Zeilen und filtert nicht
+               anhand eines angenommenen Matchingvertrags.
 ===============================================================================
+SELECT [AssignmentId],[ProfileCode],[IsEnabled],[Priority],[DatabaseNamePattern]
+FROM [monitor].[PlanAnalysisProfileAssignment] WITH (NOLOCK);
 */
 IF NOT EXISTS
 (
