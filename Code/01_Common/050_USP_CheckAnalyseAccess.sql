@@ -40,10 +40,30 @@ BEGIN
 
     IF @Hilfe = 1
     BEGIN
-        PRINT N'monitor.USP_CheckAnalyseAccess';
-        PRINT N'@AnalyseKlasse=NULL liefert alle Analyseklassen; sonst exakter case-sensitiver Code.';
-        PRINT N'@ResultSetArt=RAW, CONSOLE, TABLE oder NONE; Wert wird case-insensitiv verarbeitet.';
-        PRINT N'@JsonErzeugen=1 liefert @Json mit meta, access, policies und warnings.';
+        PRINT N'monitor.USP_CheckAnalyseAccess prüft den Framework-Gruppengate für Analyseklassen im aktuellen Login- und Execution-Kontext. Die Procedure führt keine Fachanalyse aus und vergibt keine SQL-Rechte.';
+        PRINT N'Quellen: Klassenkatalog, VW_AnalyseAccessCurrent, VW_AnalyseAccessPolicy, sys.login_token und IS_MEMBER. Momentaufnahme gegen SYSUTCDATETIME(); kein Live-AD- oder Objektberechtigungsnachweis.';
+        PRINT N'Ohne aktive Policy ist der Gate offen. Sobald global mindestens eine aktive Policy existiert, kann eine geschützte Klasse ohne spezifische oder *-Regel gesperrt sein. Token-Match hat Vorrang vor IS_MEMBER; sonst NO_MATCH.';
+        PRINT N'@AnalyseKlasse varchar(64)=NULL: alle Klassen; sonst vorhandener Katalogcode, exakt und case-sensitiv. NULL ist kein Fehler. Leerer oder unbekannter Code ergibt INVALID_PARAMETER.';
+        PRINT N'@NurGesperrte bit=0: alle Accesszeilen; 1: nur IsAllowed=0. NULL aktiviert den Filter ebenfalls. Dieser Filter betrifft Access, nicht Policies.';
+        PRINT N'@ResultSetArt varchar(16)=''CONSOLE'': CONSOLE (Default), RAW, TABLE oder NONE; NULL/ungültig ergibt INVALID_PARAMETER. Erkennung case-insensitiv, äußere Leerzeichen werden entfernt.';
+        PRINT N'CONSOLE rendert Access als Ergebnis und zeigt zusätzlich Policy- und Warning-Resultsets. RAW liefert Meta, Access, Policies und Warnings als vier technische Resultsets.';
+        PRINT N'TABLE schreibt ausschließlich das benannte access-Resultset mit 12 Accessfeldern in eine vorhandene, leere lokale #temp-Tabelle mit genau einer Seed-Spalte vom Typ bit NULL.';
+        PRINT N'access-Felder: AnalysisClass varchar(64), AnalysisLevel varchar(16), RequiresGroupGate bit, OriginalLoginName sysname NULL, EffectiveLoginName sysname NULL, IsSysadmin bit NULL, ActivePolicyCount bigint NULL, RelevantPolicyCount bigint NULL, IsAllowed bit, AccessReason varchar(20) NULL, MatchedGroupCount bigint NULL, StatusCode varchar(40).';
+        PRINT N'TABLE-Preflight kann vor der Hilfe lokale TempDB-Metadaten per DDL ändern und bei ungültiger Zuordnung mit Fehler 51011/Preflightfehler abbrechen. Kein Max-Zeilen-Parameter.';
+        PRINT N'NONE liefert keine fachlichen Resultsets. Statusmeldungen und JSON sind davon unabhängig; @PrintMeldungen=0 unterdrückt weder Hilfe noch JSON.';
+        PRINT N'@ResultTablesJson nvarchar(max)=NULL: keine Zuordnung; bei TABLE JSON-Objekt access auf vorhandene leere lokale #temp-Tabelle abbilden. Sonst nur mit TABLE zulässig, andernfalls THROW 51011.';
+        PRINT N'@JsonErzeugen bit=0: kein JSON; 1: @Json wird mit meta-Objekt und access-, policies- und warnings-Arrays erzeugt. NULL aktiviert JSON nicht.';
+        PRINT N'@Json nvarchar(max)=NULL OUTPUT: Ausgabeparameter; wird zu Beginn auf NULL gesetzt, auch bei Hilfe. JSON enthält die ermittelten Felder samt NULL-Werten.';
+        PRINT N'@PrintMeldungen bit=1: nur eine behandelte Fehlermeldung wird zusätzlich als Severity-10-Meldung ausgegeben. 0 unterdrückt diese Meldung, nicht RAW/CONSOLE/WARNING-Ausgaben; NULL aktiviert sie nicht.';
+        PRINT N'@Hilfe bit=0: normale Ausführung; 1 gibt diese Hilfe unabhängig von @PrintMeldungen aus und beendet danach. NULL aktiviert Hilfe nicht. TABLE-Preflight liegt davor.';
+        PRINT N'Beispiel – Hilfe: EXEC [monitor].[USP_CheckAnalyseAccess] @Hilfe=1;';
+        PRINT N'Beispiel – Standard: EXEC [monitor].[USP_CheckAnalyseAccess];';
+        PRINT N'Beispiel – Klasse und RAW: EXEC [monitor].[USP_CheckAnalyseAccess] @AnalyseKlasse=''PLAN_CACHE_DEEP'', @ResultSetArt=''RAW'';';
+        PRINT N'Beispiel – nur gesperrte Klassen: EXEC [monitor].[USP_CheckAnalyseAccess] @NurGesperrte=1, @ResultSetArt=''RAW'';';
+        PRINT N'Beispiel – JSON: DECLARE @j nvarchar(max); EXEC [monitor].[USP_CheckAnalyseAccess] @JsonErzeugen=1, @Json=@j OUTPUT; SELECT @j;';
+        PRINT N'Beispiel – NONE: EXEC [monitor].[USP_CheckAnalyseAccess] @ResultSetArt=''NONE'', @JsonErzeugen=1;';
+        PRINT N'Beispiel – TABLE: CREATE TABLE #Access_HelpExample (Seed bit NULL);';
+        PRINT N'DECLARE @map nvarchar(max)=N''{"access":"#Access_HelpExample"}''; EXEC [monitor].[USP_CheckAnalyseAccess] @ResultSetArt=''TABLE'', @ResultTablesJson=@map; DROP TABLE #Access_HelpExample;';
         RETURN;
     END;
 

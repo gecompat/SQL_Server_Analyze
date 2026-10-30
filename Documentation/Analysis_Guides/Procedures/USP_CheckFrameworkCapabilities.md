@@ -3,7 +3,7 @@
 **Bereich:** Common<br>
 **Zweck:** Prüft Version, Policy, Berechtigung, Abfragbarkeit und Featurestatus für Diagnosepfade.<br>
 **Beobachtungsart:** Snapshot<br>
-**Kostenklasse:** LOW–MEDIUM
+**Kostenklasse:** Nicht empirisch bestimmt
 
 ## Entscheidungsfrage und Einsatz
 
@@ -23,9 +23,48 @@ EXEC [monitor].[USP_CheckFrameworkCapabilities]
 
 Alle `Example*`-Werte im Aufruf sind synthetisch.
 
+## Hilfe und Parameter
+
+@Hilfe=1 gibt den SQL-seitigen Hilfetext aus. @Json wird zu Beginn zurückgesetzt. Ein TABLE-Ziel wird zuvor validiert; ein fehlerhafter Preflight kann vor der Hilfe abbrechen.
+
+| Parameter | Typ und Standard | Wirkung und NULL-Verhalten |
+|---|---|---|
+| @DatabaseNames | nvarchar(max), NULL | Bracket-aware Pipe-Liste exakter Namen; NULL/leer/Whitespace ohne Einschränkung. Duplikate oder ungültige Listenform sind INVALID_PARAMETER; nicht verfügbare angeforderte Datenbanken erscheinen als Warning. Exklusive Kombination mit Pattern. |
+| @SystemdatenbankenEinbeziehen | bit, 0 | 0 schließt master, tempdb, model und msdb aus; 1 erlaubt die Auswahl. NULL ist ungültig. |
+| @DatabaseNamePattern | nvarchar(4000), NULL | NULL ohne Filter. like: oder kein Präfix nutzt case-sensitive SQL LIKE mit %, _ und Zeichenklassen. regex: ist case-sensitiv, regexi: case-insensitiv; Regex erfordert SQL Server 2025 und Compatibility Level 170 der Installationsdatenbank. Leer/leerem Präfixmuster ungültig; exklusiv mit exakter Liste. |
+| @HighImpactConfirmed | bit, 0 | 0 oder 1 wird an den Kandidatenhelper übergeben; NULL ist ungültig. Da die Analyseklasse dort NULL ist, löst diese Procedure kein High-Impact-Deep-Gate aus. |
+| @AnalyseKlasse | varchar(64), NULL | NULL nimmt alle Katalogfeatures; sonst ein definierter Katalogcode. Leer oder unbekannt ist INVALID_PARAMETER. |
+| @NurNichtVerfuegbar | bit, 0 | 1 filtert die ausgegebenen Capabilityzeilen auf IsUsable=0. NULL ergibt durch das SQL-Prädikat denselben Filter. Erhebungen und Summary werden nicht eingeschränkt. |
+| @MitGruppenpruefung | bit, 1 | 1 fragt VW_AnalyseAccessCurrent pro Feature ab; 0 oder NULL überspringt diese Gruppenprüfung. |
+| @ResultSetArt | varchar(16), CONSOLE | CONSOLE, RAW, TABLE oder NONE; case-insensitiv, äußere Leerzeichen getrimmt. NULL/ungültig ergibt INVALID_PARAMETER. |
+| @ResultTablesJson | nvarchar(max), NULL | TABLE-Zuordnung als JSON-Objekt capabilities auf vorhandenes, leeres lokales Temp-Table-Ziel mit genau einer Seed-Spalte bit NULL. Nichtleere Zuordnung außerhalb TABLE führt zu THROW 51011. |
+| @JsonErzeugen | bit, 0 | 1 erzeugt JSON; NULL aktiviert es nicht. |
+| @Json | nvarchar(max), NULL OUTPUT | Ausgabeparameter; wird bei Aufrufbeginn zurückgesetzt. |
+| @PrintMeldungen | bit, 1 | Severity-10-Meldung bei Gesamtfehler oder mindestens einer nicht nutzbaren Capability. 0/NULL unterdrückt nur diese Meldung. |
+| @Hilfe | bit, 0 | 1 gibt Hilfe aus und überspringt Kandidatenauswahl und Capabilityprobes. NULL aktiviert sie nicht; TABLE-Preflight liegt davor. |
+
+~~~sql
+-- Hilfe und Standard
+EXEC [monitor].[USP_CheckFrameworkCapabilities] @Hilfe=1;
+EXEC [monitor].[USP_CheckFrameworkCapabilities];
+-- Datenbank-/Klassen-Scope und RAW
+EXEC [monitor].[USP_CheckFrameworkCapabilities] @DatabaseNames=N'[ExampleDb]', @AnalyseKlasse='STANDARD_CURRENT', @ResultSetArt='RAW';
+-- JSON unabhängig von fachlichen Resultsets
+DECLARE @Json nvarchar(max);
+EXEC [monitor].[USP_CheckFrameworkCapabilities] @ResultSetArt='NONE', @JsonErzeugen=1, @Json=@Json OUTPUT;
+SELECT @Json;
+-- TABLE exportiert nur capabilities
+CREATE TABLE #Capabilities_HelpExample (Seed bit NULL);
+DECLARE @Map nvarchar(max)=N'{"capabilities":"#Capabilities_HelpExample"}';
+EXEC [monitor].[USP_CheckFrameworkCapabilities] @ResultSetArt='TABLE', @ResultTablesJson=@Map;
+DROP TABLE #Capabilities_HelpExample;
+~~~
+
+CONSOLE übergibt capabilities an den Console-Renderer. RAW liefert Meta, Capabilities, Summary und Warnings als vier Resultsets. TABLE schreibt ausschließlich capabilities; NONE unterdrückt fachliche Resultsets. Meldungen und JSON sind unabhängig von diesen Modi. JSON enthält meta, capabilities, summary und warnings, kein Datenbankstatus-Array.
+
 ## Resultsets und Leserichtung
 
-Der typisierte TABLE-Vertrag registriert `capabilities`. Status, Scope und Warnings sind vor den Fachergebnissen zu lesen. CONSOLE dient der interaktiven Triage; RAW und JSON erhalten den technischen Kontext, während TABLE nur die ausdrücklich benannten stabilen Resultsets schreibt. Resultsets mit unterschiedlicher Zeilengranularität dürfen nicht ungeprüft vereinigt oder summiert werden.
+Der typisierte TABLE-Vertrag registriert ausschließlich `capabilities`. RAW beginnt mit dem Meta-Resultset und endet mit Datenbank-Warnings; das Capabilityresultset enthält den Scope pro Feature. CONSOLE übergibt die Capabilitydaten an den Console-Renderer. JSON erhält den technischen Kontext in `meta`, `capabilities`, `summary` und `warnings`. Resultsets mit unterschiedlicher Zeilengranularität dürfen nicht ungeprüft vereinigt oder summiert werden.
 
 RAW, CONSOLE, TABLE und das JSON-Array `capabilities` verwenden denselben nach der vollständigen Prüfung materialisierten Export mit 27 Feldern und 15 explizit collatierten Textspalten. `@NurNichtVerfuegbar=1` beschränkt ihn auf `IsUsable=0`; auch ein NULL-Wert dieses Parameters erhält das bestehende Prädikat und zeigt nur diese Zeilen. Die Zusammenfassung und der Gesamtstatus bewerten weiterhin alle geprüften Capabilities. JSON enthält `meta`, `capabilities`, `summary` und `warnings`; ein zusätzliches Datenbankstatus-Array wird nicht ausgegeben.
 
@@ -53,29 +92,25 @@ Ein deaktiviertes Feature ist kein Serverfehler, wenn es nicht benötigt wird. E
 
 ## Leere oder partielle Ausgabe
 
-Bei Hilfsprocedures kann eine leere interne Zieltabelle aus bewusst leerem Filter, ungültiger Eingabe oder fehlender Policy entstehen; diese Fälle dürfen nicht zu einem ungefilterten Parentlauf zusammenfallen.
+Leere Capability-Ausgaben sind anhand von Meta, Summary und Warnings zu lesen. Ohne auswählbare Datenbankkandidaten fehlen Datenbank-Scoped Zeilen; SERVER-Scoped Features können dennoch geprüft und ausgegeben werden, wenn die Kandidatenauswahl insgesamt verfügbar ist. Ein Feature mit DATABASE-Scope kann ohne Kandidat keine Zeile liefern. Explizit angeforderte, nicht verfügbare Datenbanken werden in Warnings ausgewiesen.
 
-Für `USP_CheckFrameworkCapabilities` gilt zusätzlich: **keine Zeile** bedeutet, dass im sichtbaren und gefilterten Scope kein ausgabefähiger Datensatz entstand. **0** ist ein gemessener Nullwert nur dann, wenn die Quellspalte tatsächlich verfügbar war. **NULL** bedeutet unbekannt, nicht anwendbar oder nicht auflösbar. Der Gesamtstatus `AVAILABLE_LIMITED` bezeichnet mindestens eine geprüfte Capability mit `IsUsable=0`. Eine Auswahlwarning bleibt separat sichtbar und verändert diesen Gesamtstatus nicht selbst. Der Ausgabefilter kann ausschließlich nutzbare Capabilities ausblenden; ein Mengenlimit besitzt die Procedure nicht.
-
-Fehlende Capability-Zeilen können durch eine explizite Datenbankauswahl, Rechte
-oder nicht verfügbare Datenbanken entstehen. Status und Warnings gehören
-zwingend zur Bewertung.
+`@NurNichtVerfuegbar=1` filtert die ausgegebenen Capabilityzeilen auf `IsUsable=0`; NULL bewirkt durch das SQL-Prädikat denselben Filter. Summary und Gesamtstatus basieren auf allen gesammelten Capabilityzeilen. Deshalb kann die Capabilityausgabe leer sein, während Summary-Zeilen vorhanden sind. Ein ungültiger Analyseklassen- oder Scopeparameter ist am Status in `meta` (RAW oder JSON) zu erkennen; Kandidatenwarnungen beschreiben die konkret nicht auswählbaren Datenbanken. CONSOLE rendert nur Capabilities und zeigt bei leerer Ausgabe „Keine fachlichen Ergebnisse“. JSON enthält `meta`, `summary` und `warnings` zusätzlich zum `capabilities`-Array.
 
 ## Eigenlast und Grenzen
 
 | Dimension | Aussage für diese Procedure |
 |---|---|
-| Kostenklasse | LOW–MEDIUM |
-| Standardpfad | Ohne Scope werden alle sichtbaren Online-Benutzerdatenbanken mit allen Katalogfeatures kombiniert. Für jede Serverfeaturezeile und jede `(Datenbank, Feature)`-Zeile prüft der Code Version, Gruppe, Berechtigung, Abfragbarkeit und optional Enablement. |
-| Teuerster Pfad | Viele Datenbanken × viele Datenbankfeatures mit `@MitGruppenpruefung = 1`; jede Kombination führt kleine dynamische Permission-/Probe-/Enablementstatements aus. Es sind Metadatenprobes, keine Fachanalyse- oder Nutzdatenscans. |
+| Kostenklasse | Nicht empirisch bestimmt |
+| Standardpfad | Ohne Scope werden alle sichtbaren Online-Benutzerdatenbanken mit allen Katalogfeatures kombiniert. Für jede Serverfeaturezeile und jede `(Datenbank, Feature)`-Zeile führt der Code die anwendbaren Versions-, Gruppen-, Berechtigungs-, Probe- und Enablementprüfungen aus. |
+| Teuerster Pfad | Viele Datenbanken × viele Datenbankfeatures mit `@MitGruppenpruefung = 1`; jede Kombination kann dynamische Permission-, Probe- und Enablementstatements ausführen. Die Templates des Katalogs werden tatsächlich ausgeführt; ihre Kosten und ihr Zugriffsumfang sind ohne Einzelfallprüfung nicht aus der Featuredefinition abzuleiten. Dadurch wird kein Fachmodul allein wegen seiner Katalogzeile aufgerufen. |
 | Haupttreiber | Produkt aus Zahl der ausgewählten Datenbanken und DATABASE-Features plus konstante SERVER-Features. Dynamisches SQL wird je Kombination kompiliert/ausgeführt. |
 | Skalierung | Annähernd linear mit den Featurekombinationen. Eine einzelne Analyseklasse reduziert den Featurekatalog früh; Datenbankscope reduziert DATABASE-Kombinationen. JSON/Sortierung sind nachgeordnet. |
-| Ressourcen | Frameworkkatalogviews, `master`-Datenbankkandidaten, Login-/Permissionchecks und kurze Metadatenprobes per `sp_executesql`; Temp-Tabellen für Capability- und Warningzeilen. |
-| Begrenzungswirkung | `@DatabaseNames` und `@AnalyseKlasse` begrenzen tatsächliche Probeanzahl. `@NurNichtVerfuegbar` filtert erst die Ausgabe und spart keine Probes. Es gibt kein `@MaxZeilen`. |
-| Locking und Nebenwirkungen | Read-only; Probe- und Enablementtemplates werden nur abgefragt, nicht konfiguriert. Datenbankstatus/Berechtigung kann sich während der Schleife ändern, daher sind Capabilityzeilen kein atomarer Snapshot. |
-| Schutzmechanismus | Der Aufruf an `USP_PrepareDatabaseCandidates` verwendet bewusst `@AnalysisClass = NULL`; damit löst `@HighImpactConfirmed` hier kein Deep-Gate aus. Schutz sind Feature-/Datenbankscope und ausschließlich leichte Capabilityprobes. |
+| Ressourcen | Frameworkkatalogviews, Datenbankkandidaten, Login-/Permissionchecks und SQL-Templates per `sp_executesql`; Temp-Tabellen für Capability- und Warningzeilen. |
+| Begrenzungswirkung | `@DatabaseNames` und `@AnalyseKlasse` begrenzen tatsächliche Probeanzahl. `@NurNichtVerfuegbar` filtert erst die Ausgabe und spart keine Probe-/Enablementaufrufe.  |
+| Locking und Nebenwirkungen | Die Procedure vergibt keine Rechte. Probe- und Enablementtemplates werden ausgeführt; ein Probeerfolg ist keine Aussage über Kosten, Vollständigkeit späterer Fachdaten oder externe Gesundheit. Datenbankstatus/Berechtigung kann sich während der Schleife ändern, daher sind Capabilityzeilen kein atomarer Snapshot. |
+| Schutzmechanismus | Der Aufruf an `USP_PrepareDatabaseCandidates` verwendet bewusst `@AnalysisClass = NULL`; damit löst `@HighImpactConfirmed` hier kein Deep-Gate aus. Die ausgeführten Probe- und Enablementtemplates sind anhand ihrer konkreten SQL-Definitionen zu beurteilen. |
 | Sicherer Einsatz | Eine `ExampleDatabase` und eine konkrete Analyseklasse prüfen; die vollständige Matrix nur für Inventar-/Upgradeaudits ausführen. `@NurNichtVerfuegbar` dient Lesbarkeit, nicht Lastreduktion. |
-| Aussagegrenze | `IsUsable` beweist, dass der kleine Capabilityprobe im aktuellen Kontext funktioniert. Es garantiert weder Berechtigung auf jede spätere Fachzeile noch geringe Kosten, Datenvollständigkeit oder erfolgreiche Ausführung des eigentlichen Analysemoduls. |
+| Aussagegrenze | `IsUsable` bezeichnet das Ergebnis der katalogbasierten Prüfungen im aktuellen Kontext. Es garantiert weder Berechtigung auf jede spätere Fachzeile noch geringe Kosten, Datenvollständigkeit oder erfolgreiche Ausführung des eigentlichen Analysemoduls. |
 
 ## Technische Vertiefung
 
@@ -110,7 +145,7 @@ WHERE [f].[AnalysisClass] = 'STANDARD_CURRENT'
       <= TRY_CONVERT(int, SERVERPROPERTY(N'ProductMajorVersion'));
 ```
 
-**Wichtig für die Eigenlast:** Analyseklasse und Datenbankscope vor dem Ausführen der Probe-Statements einschränken. Die Probes verwenden leichte Status- beziehungsweise `TOP (0)`-Abfragen, werden aber je Datenbank wiederholt.
+**Wichtig für die Eigenlast:** Analyseklasse und Datenbankscope vor dem Ausführen der Probe-Statements einschränken. Die Probes führen die im Katalog hinterlegten Templates aus. `TOP (0)` an einzelnen Stellen ist kein empirischer Kosten- oder Sicherheitstest; die Templates können je Datenbank wiederholt werden.
 
 ### Zeit- und Scope-Modell
 
