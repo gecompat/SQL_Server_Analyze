@@ -15,7 +15,7 @@ Die Procedure beantwortet keine fachliche Performance- oder Verfügbarkeitsursac
 
 ## Sicherer Einstieg
 
-Diese öffentliche Hilfsprocedure bereitet den Kandidatenscope einer Analyse vor und liefert keine normalen Analyse-Resultsets. Im normalen Verarbeitungspfad erwartet sie vom Aufrufer angelegte lokale Temp-Tabellen mit den dokumentierten vollständigen Schemas. Die Procedure hängt Zeilen an und leert vorhandene Tabellen nicht. Für einen isolierten Aufruf sind deshalb frische Tabellen zu verwenden. Der Hilfemodus kann ohne diese Tabellen aufgerufen werden, muss aber weiterhin alle erforderlichen OUTPUT-Parameter binden.
+Diese öffentliche Hilfsprocedure bereitet den Kandidatenscope einer Analyse vor und liefert keine normalen Analyse-Resultsets. Im normalen Verarbeitungspfad erwartet sie vom Aufrufer angelegte lokale Temp-Tabellen mit den dokumentierten vollständigen Schemas. Im Listen- und LIKE-Pfad hängt die Procedure Kandidaten und Warnungen an und leert die Ziele nicht. Beim Regexpfad bearbeitet sie alle Zeilen der Kandidatentabelle, auch bereits vorhandene: nicht passende Zeilen werden gelöscht; bei UNAVAILABLE_FEATURE löscht sie sämtliche Kandidatenzeilen. Für einen isolierten Aufruf sind deshalb frische Tabellen zu verwenden. Der Hilfemodus kann ohne diese Tabellen aufgerufen werden, muss aber weiterhin alle erforderlichen OUTPUT-Parameter binden.
 
 Alle `Example*`-Werte im Aufruf sind synthetisch.
 
@@ -35,7 +35,7 @@ EXEC [monitor].[USP_PrepareDatabaseCandidates]
     , @Hilfe = 1;
 ```
 
-Ein `AVAILABLE`-Status allein belegt nicht, dass jede explizit angeforderte Datenbank ausgewählt wurde. Prüfen Sie Kandidaten und gegebenenfalls Warnungen gemeinsam. Die Prüfung der Kandidatentabelle verwendet nur zwei Spalten mit `TOP (0)`; sie bestätigt das vollständige Schema nicht. Eine fehlende oder ungültige Warnungstabelle wird still übersprungen. Warnungen werden angehängt, und vorhandene Kandidatenzeilen beeinflussen, welche angeforderten Namen als fehlend gelten. Ohne Präfix oder mit like: gilt SQL LIKE mit %, _, Zeichenklassen in eckigen Klammern unter SQL_Latin1_General_CP1_CS_AS. regex: nutzt REGEXP_LIKE mit Flag c (case-sensitive), regexi: mit Flag i (case-insensitive); beide benötigen SQL Server 2025 und Compatibility Level 170 der Installationsdatenbank. Vor der Moduserkennung werden äußere Leerzeichen der Eingabe entfernt. Die Präfixerkennung ist case-insensitive; nach dem Abtrennen des Präfixes bleiben innere Leerzeichen und Groß-/Kleinschreibung im Pattern erhalten. Eigene Statuswerte sind AVAILABLE, INVALID_PARAMETER, INTERNAL_ERROR und UNAVAILABLE_FEATURE; bei gesetzter Analyseklasse können HIGH_IMPACT_CONFIRMATION_REQUIRED oder DENIED_GROUP von der delegierten Pfadprüfung zurückkommen.
+Ein `AVAILABLE`-Status allein belegt nicht, dass jede explizit angeforderte Datenbank ausgewählt wurde. Prüfen Sie Kandidaten und gegebenenfalls Warnungen gemeinsam. Die Prüfung der Kandidatentabelle verwendet nur zwei Spalten mit `TOP (0)`; sie bestätigt das vollständige Schema nicht. Scheitert der TOP (0)-Probe der Warnungstabelle, wird sie still als nicht verfügbar behandelt; ein späterer Warnungsinsert kann weiterhin einen Fehler auslösen. Warnungen werden angehängt, und vorhandene Kandidatenzeilen beeinflussen, welche angeforderten Namen als fehlend gelten. Ohne Präfix oder mit like: gilt SQL LIKE mit %, _, Zeichenklassen in eckigen Klammern unter SQL_Latin1_General_CP1_CS_AS. regex: nutzt REGEXP_LIKE mit Flag c (case-sensitive), regexi: mit Flag i (case-insensitive); beide benötigen SQL Server 2025 und Compatibility Level 170 der Installationsdatenbank. Vor der Moduserkennung werden äußere Leerzeichen der Eingabe entfernt. Die Präfixerkennung ist case-insensitive; nach dem Abtrennen des Präfixes bleiben innere Leerzeichen und Groß-/Kleinschreibung im Pattern erhalten. Eigene Statuswerte sind AVAILABLE, INVALID_PARAMETER, INTERNAL_ERROR und UNAVAILABLE_FEATURE; bei gesetzter Analyseklasse können HIGH_IMPACT_CONFIRMATION_REQUIRED oder DENIED_GROUP von der delegierten Pfadprüfung zurückkommen.
 
 
 ### Normalen Aufruf prüfen
@@ -105,20 +105,24 @@ ob `@HighImpactConfirmed = 1` erforderlich ist.
 nicht vorab gekürzt; erst die tatsächlich aktivierte Analyseklasse entscheidet,
 ob `@HighImpactConfirmed = 1` erforderlich ist. Der gleiche Einzelwert kann deshalb bei `ExampleDb` ohne Nutzerauswirkung unkritisch sein, während er bei zeitgleicher SLA-Verletzung eine Vertiefung rechtfertigt.
 
+## Leere oder partielle Ausgabe
+
+Bei frisch angelegter Kandidatentabelle bedeutet eine leere Tabelle nach dem Aufruf, dass sie keine Kandidaten enthält. Ursachen sind fehlende Treffer oder Regexfilterung; Regex kann zuvor eingefügte Zeilen wieder löschen. Prüfen Sie deshalb Status und gegebenenfalls Warnungen gemeinsam. Prüfen Sie bei expliziten Namen den Status und eine erfolgreich geprüfte Warnungstabelle. Ein fehlgeschlagener TOP (0)-Probe wird still als nicht verfügbare Warnungstabelle behandelt, und spätere Warnungsinserts können Fehler auslösen. Bei wiederverwendeten Tabellen können frühere Zeilen fortbestehen. Der Regexpfad löscht nicht passende Zeilen; wenn die Regexvoraussetzungen fehlen, löscht er alle Zeilen vor UNAVAILABLE_FEATURE. Spätere Fehler werden nicht durch eine allgemeine atomare Rücknahme abgesichert.
+
 ## Eigenlast und Grenzen
 
 | Dimension | Aussage für diese Procedure |
 |---|---|
 | Kostenklasse | LOW |
-| Standardpfad | Validiert Listen/Pattern und lokale Zieltabellenschemas, prüft optional genau eine Analyseklasse und materialisiert alle passenden sichtbaren Online-Datenbanken aus `TVF_DatabaseCandidates`. Ohne Scope sind das alle Benutzerdatenbanken. |
+| Standardpfad | Validiert Listen/Pattern; der TOP (0)-Probe prüft bei der Kandidatentabelle nur DatabaseId und DatabaseName, nicht das vollständige Zielschema. Optional wird genau eine Analyseklasse geprüft. Die Procedure materialisiert alle passenden sichtbaren Online-Datenbanken aus `TVF_DatabaseCandidates`. Ohne Scope sind das alle Benutzerdatenbanken. |
 | Teuerster Pfad | Sehr lange explizite Liste oder Regex über eine Instanz mit vielen Datenbanken, Systemdatenbanken eingeschlossen und Warningtabelle aktiv. Die Procedure öffnet die Kandidatendatenbanken nicht und liest keine Fachkataloge. |
-| Haupttreiber | Zahl der `master.sys.databases`-Zeilen und Eingabeelemente. Dynamisches SQL prüft nur die vom Parent angelegten lokalen Temp-Tabellenschemas und kopiert Kandidaten/Warnings. |
+| Haupttreiber | Zahl der `master.sys.databases`-Zeilen und Eingabeelemente. Dynamisches SQL prüft ausgewählte Spalten der lokalen Temp-Tabellen und fügt Kandidaten/Warnings ein. |
 | Skalierung | Linear mit Datenbank- und Listenzahl; case-sensitive Duplikat-/Syntaxprüfung ist klein. Regex kann auf allen Datenbanknamen arbeiten, bleibt aber reine Namensfilterung. |
-| Ressourcen | Master-Metadaten, Parser-TVFs und lokale Temp-Tabellen. Kein Login-Token-, Capability-, `msdb`- oder Nutzdatenscan. |
-| Begrenzungswirkung | Es gibt absichtlich keine Datenbank-Mengenbegrenzung. Exakte Liste/Pattern reduzieren Kandidaten; der Parent muss spätere Facharbeit selbst limitieren. Fehlende explizite Namen werden separat als Warning erzeugt. |
+| Ressourcen | Master-Metadaten, Parser-TVFs und lokale Temp-Tabellen. Mit nichtleerem `@AnalysisClass` prüft der delegierte Pfad zusätzlich Frameworkzugriff und Policy; dabei kann auch ein Login-Token gelesen werden. Es gibt keinen Capability-, `msdb`- oder Nutzdatenscan. |
+| Begrenzungswirkung | Es gibt absichtlich keine Datenbank-Mengenbegrenzung. Exakte Liste/Pattern reduzieren Kandidaten; der Parent muss spätere Facharbeit selbst limitieren. Nicht ausgewählte explizite Namen werden nur bei erfolgreich geprüftem Warnungsziel als Warning angehängt. |
 | Locking und Nebenwirkungen | Read-only gegenüber Systemkatalogen und Schreibzugriff nur auf lokale Parent-Temp-Tabellen. Datenbankstatus kann sich nach Kandidatenermittlung ändern. |
-| Schutzmechanismus | Nur bei nichtleerem `@AnalysisClass` ruft die Procedure `InternalCheckAnalysisPath` auf; verlangt diese Klasse ein Gruppengate, ist `@HighImpactConfirmed = 1` nötig. `NULL` bedeutet bewusst keine Gateprüfung, nicht automatische Freigabe eines späteren Childpfads. |
-| Sicherer Einsatz | Nur als Parent-Helfer mit korrekt angelegter Kandidaten-/Warningtabelle; für Produktionsanalysen eine `ExampleDatabase` statt des NULL-Scopes dokumentieren. |
+| Schutzmechanismus | Bei nichtleerem `@AnalysisClass` delegiert die Procedure Pfad- und Policyprüfungen. Die High-Impact-Bestätigung und die Gruppenautorisierung sind getrennte Prüfungen: `@HighImpactConfirmed = 1` bestätigt einen bestätigungspflichtigen Analysepfad, gewährt aber keine Gruppenfreigabe. `NULL` überspringt diese delegierte Prüfung und autorisiert keinen späteren Childpfad. |
+| Sicherer Einsatz | Nur als Parent-Helfer mit korrekt angelegter Kandidaten-/Warningtabelle; für Produktionsanalysen einen ausdrücklich abgegrenzten, zur Zielumgebung passenden Datenbanknamen statt des NULL-Scopes angeben. |
 | Aussagegrenze | Kandidat bedeutet sichtbar, online und filterkonform zum Ermittlungszeitpunkt. Es beweist weder spätere CONNECT-/Objektberechtigung noch erfolgreichen Cross-Database-Zugriff; Statuswechsel bleiben Sache des Fachmoduls. |
 
 ## Technische Vertiefung
