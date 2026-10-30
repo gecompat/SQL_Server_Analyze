@@ -21,22 +21,22 @@ Unterstützende Views, TVFs, interne Procedures und Tabellen stehen vollständig
 
 ## Parameter
 
-| Parameter | Default | Vertrag |
+| Parameter | Typ und Default | Eingabeform, Grenzen und Wirkung |
 |---|---|---|
-| `@Suchbegriff nvarchar(4000)` | `NULL` | maximal 400 tatsächlich belegte Zeichen; Symptom, Ziel, Fachbegriff, Anzeigename oder Procedure; DE und EN |
-| `@Bereich varchar(40)` | `NULL` | exakter `PrimaryAreaCode`; case- und accent-insensitiv |
-| `@Scope varchar(40)` | `NULL` | exakter `ScopeCode`; case- und accent-insensitiv |
-| `@Navigationsrolle varchar(24)` | `NULL` | `ENTRY`, `FOLLOW_UP`, `TARGETED`, `SETUP` oder `SUPPORT` |
-| `@NurInstallierte bit` | `0` | `0` zeigt den vollständigen Katalog; `1` nur lokal vorhandene Procedures |
-| `@MaxZeilen int` | `12` | `NULL` oder `0` ohne Ergebnisbegrenzung; positive Werte von 1 bis 100 begrenzen die priorisierten Treffer |
-| `@ResultSetArt varchar(16)` | `CONSOLE` | `CONSOLE`, `RAW`, `TABLE` oder `NONE` |
-| `@ResultTablesJson nvarchar(max)` | `NULL` | bei `TABLE` genau `{"navigation":"#LokalesZiel"}` |
-| `@JsonErzeugen bit` | `0` | erzeugt `meta` und `navigation` aus derselben Materialisierung |
-| `@Json nvarchar(max) OUTPUT` | `NULL` | JSON-Ausgabeparameter |
-| `@PrintMeldungen bit` | `1` | kontrolliert behandelte Informationsmeldungen |
-| `@Hilfe bit` | `0` | gibt den kompakten Aufrufvertrag aus und beendet die Procedure |
+| @Suchbegriff | nvarchar(4000), Default=NULL | Freier Unicode-Suchtext; NULL, leer oder nur Rand-Leerzeichen deaktiviert die Textsuche. Ohne Bereichs-, Scope- und Rollenfilter erscheint die kuratierte Startliste; mit solchen Filtern die passende Katalogmenge. Getrimmt höchstens 400 Zeichen, sonst INVALID_PARAMETER. Der Vergleich ist case- und accent-insensitiv. Für den technischen Namensvergleich werden [ und ] entfernt und ein führendes monitor. abgeschnitten. Tokens werden an Leerzeichen getrennt; Tokens unter drei Zeichen und feste deutsche/englische Stoppwörter entfallen, je Token zählen höchstens 200 Zeichen. Exakte Namen und Phrasen wiegen stärker als Tokenüberschneidungen. |
+| @Bereich | varchar(40), Default=NULL | NULL/leer deaktiviert den Filter; sonst Rand-Leerzeichen entfernen und uppercase normalisieren, dann case-/accent-insensitiv mit PrimaryAreaCode vergleichen. Nur diese katalogdefinierten Werte sind gültig: NAVIGATION=Einstieg und Orientierung; FRAMEWORK=Framework und Zugriff; LIVE=akute Störung, laufende Requests, aktuelle Aktivität, Blocking und Ressourcen; OBJECT=Objekte, Indizes und Statistiken; PLAN=langsame Query und Ausführungsplan; QUERY_STORE=Query Store, Laufzeithistorie und Regressionen; EXTENDED_EVENTS=Extended Events und Forensik; OPERATIONS=Backup, Agent, HA/DR und Betrieb; SERVER=CPU, Memory, Worker, Serverzustand/Ressourcen, Server Health, Konfiguration und Sicherheit; SPECIAL_FEATURE=Konfiguration, Sicherheit und Spezialfeatures; SNAPSHOT=optionales Snapshot- und Baseline-Paket. Unbekannter Code ergibt INVALID_PARAMETER. |
+| @Scope | varchar(40), Default=NULL | NULL/leer deaktiviert den Filter; sonst trimmen, uppercase normalisieren und case-/accent-insensitiv mit ScopeCode vergleichen. Gültige Codes samt dokumentierter Einheit: DATABASE=eine Datenbank; EVENT_HISTORY=persistierte Ereignishistorie; EVENT_SESSION=Ereignissitzung; FRAMEWORK=Frameworkmetadaten; INFRASTRUCTURE=Infrastruktur; MULTI_DATABASE=mehrere Datenbanken; OBJECT=Objekt; PLAN_XML=Ausführungsplan-XML; QUERY=Query; SERVER=Instanz; SESSION_REQUEST=Session oder Request; SNAPSHOT_TARGET=Snapshotziel. Unbekannter Code ergibt INVALID_PARAMETER. Die Codes bezeichnen den dokumentierten Scope einer Procedure, keine Berechtigungs- oder Verfügbarkeitsgarantie. |
+| @Navigationsrolle | varchar(24), Default=NULL | NULL/leer deaktiviert den Filter; sonst trimmen und uppercase normalisieren, case-/accent-insensitiv vergleichen. Die vollständige Wertemenge lautet: ENTRY=allgemeiner sicherer Einstieg; FOLLOW_UP=Folgepfad für ein bereits beobachtetes Signal; TARGETED=gezielter Pfad mit bekanntem Ziel; SETUP=Setup- oder Betriebspfad; SUPPORT=interner Unterstützungs-/Aufrufvertrag. Andere Werte ergeben INVALID_PARAMETER. |
+| @NurInstallierte | bit, Default=0 | Eingabewerte 0 und 1: 0 zeigt alle passenden Katalogeinträge einschließlich optional nicht installierter Procedures; 1 verlangt lokale Existenz im Schema monitor in sys.procedures. NULL ergibt INVALID_PARAMETER. Der Test belegt weder Ausführungsrechte noch Featurefähigkeit. |
+| @MaxZeilen | int, Default=12 | NULL oder 0 hebt die Ergebnisbegrenzung auf. Werte von 1 bis 100 begrenzen Treffer auf diese Zeilenzahl. Negative Werte und Werte über 100 ergeben INVALID_PARAMETER. |
+| @ResultSetArt | varchar(16), Default=CONSOLE | Rand-Leerzeichen entfernen und uppercase normalisieren. Vollständige Wertemenge: CONSOLE rendert navigation mit verständlicher Leerzeile; RAW liefert zuerst Status, dann navigation; TABLE schreibt navigation in das zugeordnete Ziel; NONE unterdrückt Resultsets. NULL, leer oder andere Werte ergeben INVALID_PARAMETER; kein Rückfall auf CONSOLE. Ein ungültiger Ausgabewert liefert Status und navigation. |
+| @ResultTablesJson | nvarchar(max); Default=NULL | Bei TABLE ist ein JSON-Objekt mit genau einem Schlüssel navigation und einem JSON-String als Wert erforderlich. Der String benennt eine vorhandene, leere lokale #Temp-Tabelle mit genau einer beliebigen Seed-Spalte. NULL, leer oder nur Leerzeichen ist bei TABLE ungültig; außerhalb TABLE darf nur NULL, leerer Text oder ein Text nur aus Leerzeichen stehen. Eine nichtleere Zuordnung außerhalb TABLE löst THROW 51011 aus. Zielprüfung mit Marker-DDL läuft vor Hilfe. |
+| @JsonErzeugen | bit, Default=0 | 1 erzeugt optional @Json mit meta und navigation aus derselben Ergebnismenge. 0 oder NULL deaktiviert JSON. Unabhängig von @ResultSetArt. |
+| @Json | nvarchar(max), Default=NULL OUTPUT | Optionale Bindung einer nvarchar(max)-Variablen mit OUTPUT, wenn JSON empfangen werden soll; Default=NULL bedeutet keinen Eingabewert. Der Ausgabeparameter wird beim Eintritt auf NULL gesetzt. Bei @JsonErzeugen=1 enthält die gebundene Variable meta und das Array navigation; bei @Hilfe=1 bleibt sie NULL, weil der Hilfezweig vor der JSON-Erzeugung zurückkehrt. |
+| @PrintMeldungen | bit, Default=1 | Nur 1 aktiviert die zusätzliche Severity-10-Meldung für einen behandelten Fehler im CATCH. 0 oder NULL unterdrückt diese Meldung; Hilfe, Resultsets und JSON bleiben davon unabhängig. |
+| @Hilfe | bit, Default=0 | Nur 1 druckt die Parameterhilfe und beendet vor Suche und Rendering. 0 oder NULL deaktiviert die Hilfe. Bei TABLE läuft der Zieltabellen-Preflight vorher und kann bei ungültiger Zuordnung abbrechen. |
 
-Leere Werte für Suchtext oder Filter werden wie `NULL` behandelt. Unbekannte Bereichs-, Scope- oder Rollenwerte führen zu `INVALID_PARAMETER`, nicht zu einer stillen leeren Treffermenge.
+Für alle bit-Parameter gelten 0 und 1 als logische Werte; andere durch T-SQL nach bit konvertierbare Nichtnullwerte werden zu 1. Die individuellen NULL-Regeln stehen in den Einträgen. Die TABLE-Vorprüfung läuft vor dem Hilfereturn und prüft das lokale Ziel mit kurzzeitigem Marker-DDL.
 
 ## Such- und Rankingmodell
 

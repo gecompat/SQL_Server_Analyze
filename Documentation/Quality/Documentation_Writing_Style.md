@@ -44,6 +44,18 @@ Eine Empfehlung nennt die fachliche Begründung und die wesentlichen Auswirkunge
 
 Versions-, Berechtigungs-, Plattform-, Locking- und Kostenangaben werden mit dem aktuellen T-SQL, den Repositoryverträgen und geeigneten Primärquellen abgeglichen. Quellen werden nur angegeben, wenn sie die konkrete Aussage tatsächlich stützen.
 
+## Parameterverträge und Aufrufbeispiele
+
+Jeder einzelne Parameter wird in der eingebauten Hilfe und im sachlich betroffenen Referenztext eindeutig erklärt. Der Eintrag nennt den Parameternamen, den Datentyp, die zulässige Eingabeform und den ausdrücklich als `Default` bezeichneten Vorgabewert. Dazu gehören die Bedeutung von NULL, Leerwerten und ausgelassenen Argumenten sowie die Wirkung des Parameters. Ein gemeinsamer Hinweis darf ergänzen, aber keinen individuellen Parametervertrag ersetzen.
+
+Für Parameter mit einer geschlossenen Wertemenge werden sämtliche erlaubten Werte taxativ aufgezählt und jeweils in ihrer Bedeutung beschrieben. Eine Auswahl mit „zum Beispiel“, „unter anderem“ oder Auslassungspunkten genügt nicht. Das gilt auch für Auswahlcodes in einem versionierten Katalog. Bei tatsächlich offenen Wertebereichen wird der offene Bereich mit seinen Grenzen beschrieben; eine endliche Wertemenge wird dafür nicht erfunden.
+
+Die Eingabeform erklärt die anwendbare Syntax: etwa einen einzelnen Namen, qualifizierte Namen, Listentrennzeichen und deren Maskierung, ein Pattern mit allen erlaubten Präfixen, eine Zahl mit Einheit und Bereich oder ein JSON-Objekt mit seinen erlaubten Schlüsseln und Werttypen. Normalisierung, Groß-/Kleinschreibung, relevante Typkonvertierungen, ungültige Kombinationen und Fehlerverhalten werden anhand der Implementierung erläutert. Für Schalter sind die Bedeutungen von 0 und 1 sowie das tatsächliche NULL-Verhalten einzeln erkennbar. Bei OUTPUT-Parametern werden Bindung, Typ und Bedeutung der empfangenen Daten erklärt.
+
+Beispielaufrufe verwenden die dokumentierten Formen und sind als ausgegebenes beziehungsweise kopiertes T-SQL syntaktisch gültig. Beispiele ersetzen weder die vollständige Wertemenge noch den Parametervertrag. Bei Funktionen und anderen Nichtprozedur-Objekten steht die entsprechende Funktions- und Schnittstellenbeschreibung im DDL, damit das Objekt ohne externe Recherche verständlich ist.
+
+Die Prüfung gleicht jeden Eintrag mit Signatur, Validierung und tatsächlich genutzten Helferverträgen ab. Eine reine Prüfung auf vorhandene Parameternamen, Defaults in der Signatur oder Header gilt nicht als Nachweis semantischer Vollständigkeit.
+
 ## Erhaltung technischer Verträge
 
 Eine rein redaktionelle Überarbeitung darf die fachliche Bedeutung nicht verändern. Dies gilt insbesondere für:
