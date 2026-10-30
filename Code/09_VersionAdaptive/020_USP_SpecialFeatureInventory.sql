@@ -78,13 +78,30 @@ BEGIN
     IF @Hilfe=1
     BEGIN
         PRINT N'monitor.USP_SpecialFeatureInventory';
-        PRINT N'Die Procedure führt eine leichtgewichtige Nutzungsinventur sichtbarer Spezialfeature-Metadaten durch und gibt kein Gesundheitsurteil ab.';
-        PRINT N'@DatabaseNames=N''[Db1]|[Db2]''; NULL=alle; N'''' bedeutet keine Einschränkung. Pattern separat.';
-        PRINT N'@NurErkannteFeatures=1 unterdrückt NOT_DETECTED_VISIBLE_SCOPE und UNAVAILABLE_VERSION in der Ausgabe.';
-        PRINT N'Die Datenbankauswahl wird nicht vorab begrenzt; ein positiver Wert in @MaxZeilen begrenzt die Ausgaben, während NULL oder 0 keine Begrenzung setzt.';
-        PRINT N'@ResultSetArt=CONSOLE|RAW|TABLE|NONE; TABLE verwendet @ResultTablesJson; @JsonErzeugen=1 erzeugt @Json OUTPUT.';
-        PRINT N'Keine externen Locations, Credentials, Payloads, CLR-Binaries oder Moduldefinitionen werden gelesen.';
-        PRINT N'Für native JSON-Spalten verweist das Inventar auf USP_ObjectInventory; dort werden capability-adaptiv JSON-Index- und Pfadmetadaten gelesen, jedoch keine JSON-Dokumentwerte.';
+        PRINT N'Aggregierte, sichtbare Feature-Metadaten je Datenbank; kein Gesundheits- oder Laufzeitnutzungsurteil.';
+        PRINT N'@DatabaseNames nvarchar(max)=NULL: alle sichtbaren Online-Datenbanken; NULL/leer/Leerzeichen keine Einschränkung. Sonst bracket-aware Pipe-Liste einteiliger Namen; ungültige oder doppelte Namen ungültig.';
+        PRINT N'@SystemdatenbankenEinbeziehen bit=0: 0 schließt master, tempdb, model, msdb aus; 1 lässt sie zu. NULL ungültig; numerische Nichtnullwerte werden zu 1.';
+        PRINT N'@DatabaseNamePattern nvarchar(4000)=NULL: SQL-LIKE oder regex:/regexi:. Regex benötigt SQL Server 2025 und Compatibility Level 170 der Installationsdatenbank. Liste und Pattern exklusiv.';
+        PRINT N'@HighImpactConfirmed bit=0: wird übergeben; @AnalysisClass=NULL, daher kein High-Impact-/Gruppengate aktiv. NULL ungültig.';
+        PRINT N'@NurErkannteFeatures bit=0: 1 behält DETECTED und CONFIGURED_ONLY; 0 zeigt zusätzlich NOT_DETECTED_VISIBLE_SCOPE, UNAVAILABLE_VERSION und SOURCE_UNAVAILABLE.';
+        PRINT N'@MaxZeilen int=2000: NULL/0 unbegrenzt; positiv begrenzt nur Featureausgabe nach DatabaseName, FeatureCode; negativ INVALID_PARAMETER. Inventur und Datenbankstatus bleiben vollständig.';
+        PRINT N'@LockTimeoutMs int=0: 0 bis 60000 für Katalogpfade; vorheriger Sessionwert wird vor Ausgabe wiederhergestellt. Kein Berechtigungs- oder Warte-Opt-in.';
+        PRINT N'@ResultSetArt varchar(16)=''CONSOLE'': getrimmt/case-insensitive CONSOLE, RAW, TABLE, NONE; sonst INVALID_PARAMETER.';
+        PRINT N'@ResultTablesJson nvarchar(max)=NULL: nur TABLE; registrierter Name features auf leere vorhandene lokale #Temp-Tabelle mit einer Seed-Spalte. Preflight vor Hilfe und Inventur.';
+        PRINT N'@JsonErzeugen bit=0: 1 erzeugt JSON unabhängig vom Resultsetmodus; 0 lässt es aus. NULL ungültig.';
+        PRINT N'@Json nvarchar(max)=NULL OUTPUT: mit OUTPUT binden; JSON-Objekt mit meta, databaseStatus, features. Wird beim Eintritt auf NULL gesetzt.';
+        PRINT N'@PrintMeldungen bit=1: steuert normale Statusmeldungen, nicht Hilfe-PRINTs. NULL ungültig.';
+        PRINT N'@Hilfe bit=0: nur 1 druckt Hilfe und kehrt früh zurück; NULL läuft normal. TABLE-Preflight und JSON-Leeren geschehen davor.';
+        PRINT N'@StatusCodeOut varchar(40)=NULL OUTPUT, @IsPartialOut bit=NULL OUTPUT: normaler Status/Teilstatus, OUTPUT-Bindung. Hilfe lässt übergebene Werte unverändert.';
+        PRINT N'@ErrorNumberOut int=NULL OUTPUT, @ErrorMessageOut nvarchar(2048)=NULL OUTPUT: normaler Fehlercode/-text, sonst NULL; Hilfe lässt übergebene Werte unverändert.';
+        PRINT N'DETECTED=sichtbarer Katalogmarker; CONFIGURED_ONLY=Konfiguration; NOT_DETECTED_VISIBLE_SCOPE=kein sichtbarer Marker; UNAVAILABLE_VERSION=versionsbedingt nicht verfügbar; SOURCE_UNAVAILABLE=Quellenfehler.';
+        PRINT N'Zähler fassen je Feature unterschiedliche Metadatenobjekte zusammen. 0 ist sichtbarer Nullbefund; NULL unbekannt/nicht verfügbar. Erst Aufruf-/Datenbankstatus, dann DetectionStatus und EvidenceLimit lesen.';
+        PRINT N'CONSOLE: genau die zentrale formatierte Featureausgabe; leerer Scope erhält deren Console-Leerzeile. RAW: Aufrufstatus, Datenbankstatus, Features. TABLE: nur features. NONE: keine fachlichen Resultsets. JSON separat.';
+        PRINT N'CREATE TABLE #SpecialFeatureInventory_HelpExample (Placeholder int NULL);';
+        PRINT N'EXEC [monitor].[USP_SpecialFeatureInventory] @DatabaseNames=N''[ExampleDatabase]'', @NurErkannteFeatures=1, @ResultSetArt=''CONSOLE'';';
+        PRINT N'DECLARE @FeatureJson nvarchar(max); EXEC [monitor].[USP_SpecialFeatureInventory] @DatabaseNames=N''[ExampleDatabase]'', @ResultSetArt=''NONE'', @JsonErzeugen=1, @Json=@FeatureJson OUTPUT;';
+        PRINT N'EXEC [monitor].[USP_SpecialFeatureInventory] @DatabaseNames=N''[ExampleDatabase]'', @ResultSetArt=''TABLE'', @ResultTablesJson=N''{"features":"#SpecialFeatureInventory_HelpExample"}'';';
+        PRINT N'Keine externen Locations, Credentials, Broker-Payloads, CLR-Binaries, Moduldefinitionen oder Benutzerdaten werden gelesen. Native JSON verweist für Index-/Pfadmetadaten auf USP_ObjectInventory; SQL-Datenwerte bleiben ungelesen.';
         RETURN;
     END;
 
