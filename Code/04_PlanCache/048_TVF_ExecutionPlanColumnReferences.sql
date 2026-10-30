@@ -11,6 +11,70 @@ Zweck        : Normalisiert Spaltenrollen aus Showplan-XML für zielgerichtete
                Index- und Statistikauflösung. Keine Katalogzugriffe.
 SQL-Version  : SQL Server 2019 oder neuer.
 ===============================================================================
+
+Zweck und Eingabe
+-----------------
+Die Funktion erkennt ColumnReference-Elemente in ausgewählten RelOp-Pfaden
+unter @PlanXml und ordnet jeder Fundstelle eine Nutzungsrolle zu.
+@StatementId ist optional; NULL berücksichtigt alle gefundenen StmtSimple-
+Elemente, ein Wert beschränkt die Ausgabe auf Elemente mit passender
+StatementId. Die Funktion führt den Plan nicht aus und löst Spaltennamen nicht
+gegen Kataloge auf.
+
+Ausgabe
+-------
+ColumnReferenceOrdinal (bigint) nummeriert die Zeilen nach den Sortierschlüsseln
+im Funktionskörper. StatementOrdinal (int), StatementId (int),
+StatementCompId (int) und NodeId (int) ordnen eine Zeile dem gefundenen
+Statement und RelOp zu. StatementOrdinal wird nach dem StatementId-Filter
+berechnet. Bei gleichen Sortierschlüsseln ist die Nummerierung nicht stabil als
+Identität; die Abfrage garantiert keine physische Ergebnisreihenfolge.
+
+ColumnUsage (varchar(40)) nimmt die Werte SEEK, RESIDUAL, JOIN, ORDER_BY,
+GROUP_BY oder OUTPUT an. ExpressionContext (varchar(80)) beschreibt den
+erkannten Pfad als SEEK_PREDICATE, PREDICATE, JOIN_KEY_OR_PREDICATE,
+ORDER_REQUIREMENT, GROUP_REQUIREMENT oder OUTPUT_LIST. DatabaseName,
+SchemaName, ObjectName, AliasName und ColumnName sind nvarchar(256);
+erkannte eckige Klammern und verdoppelte schließende Klammern werden normalisiert.
+IsSeekColumn, IsResidualPredicateColumn, IsJoinColumn, IsGroupByColumn,
+IsOrderByColumn, IsOutputColumn und IsPartitionColumn sind bit. Die ersten
+sechs Flags werden ausschließlich aus ColumnUsage abgeleitet.
+IsPartitionColumn ist konstant 0 und belegt nicht, dass keine Partitionsspalten
+vorhanden sind.
+
+Erkennung und Grenzen
+---------------------
+Die Statementsuche verwendet local-name() für StmtSimple und die Operator-
+beziehungsweise Spaltenpfade für ihre jeweiligen Elementnamen. Das macht die
+Namenssuche namespace-unabhängig, ist aber keine vollständige Showplan-
+Validierung. Ausgewertet werden SeekPredicates, Predicate, die aufgeführten
+Join-Schlüsselelemente, OrderBy/SortKeys, GroupBy sowie direkte
+OutputList/ColumnReference-Kinder. Andere XML-Pfade werden nicht erfasst.
+Fehlende oder leere Namensattribute werden NULL; Zeilen ohne Column-Attribut
+werden verworfen. Mehrfach vorkommende Spalten und Pfadüberschneidungen können
+mehrere Zeilen erzeugen und werden nicht dedupliziert. Bei NULL- oder
+strukturell unpassendem XML entstehen keine passenden Zeilen. Ungültiger Text
+kann nicht als xml-Parameter übergeben werden; ein Konvertierungsfehler
+entsteht vor dem Funktionsaufruf.
+
+Synthetisches Beispiel
+----------------------
+Das Fragment zeigt einen vom Funktionskörper erkannten Pfad und ist kein
+vollständiger Showplan:
+
+DECLARE @PlanXml xml = N'<ShowPlanXML>
+  <BatchSequence><Batch><Statements><StmtSimple StatementId="1"
+    StatementCompId="1"><QueryPlan><RelOp NodeId="0"><IndexScan>
+      <SeekPredicates><SeekPredicateNew><SeekKeys><Prefix>
+        <ColumnReference Database="[DemoDb]" Schema="[sales]"
+          Table="[Orders]" Column="[OrderId]"/>
+      </Prefix></SeekKeys></SeekPredicateNew></SeekPredicates>
+    </IndexScan></RelOp></QueryPlan></StmtSimple></Statements></Batch></BatchSequence>
+</ShowPlanXML>';
+SELECT *
+FROM [monitor].[TVF_ExecutionPlanColumnReferences](@PlanXml, NULL);
+
+===============================================================================
 */
 CREATE OR ALTER FUNCTION [monitor].[TVF_ExecutionPlanColumnReferences]
 (

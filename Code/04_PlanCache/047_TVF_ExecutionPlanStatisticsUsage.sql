@@ -11,6 +11,66 @@ Zweck        : Extrahiert OptimizerStatsUsage je Statement aus Showplan-XML.
                Die Werte beschreiben den im Plan gespeicherten Compilezeitstand.
 SQL-Version  : SQL Server 2019 oder neuer.
 ===============================================================================
+
+Zweck und Eingabe
+-----------------
+Die Funktion liest StatisticsInfo-Elemente unter OptimizerStatsUsage aus
+@PlanXml. @StatementId ist optional; NULL berücksichtigt alle gefundenen
+StmtSimple-Elemente, ein Wert beschränkt die Ausgabe auf Elemente mit passender
+StatementId. Die Zeit-, Änderungs- und Samplingwerte stammen aus dem im XML
+gespeicherten Compilezeitstand. Die Funktion prüft weder die heutige
+Statistikfrische noch, ob eine Statistik bei einer konkreten Ausführung
+verwendet wurde.
+
+Ausgabe
+-------
+StatisticsUsageOrdinal (bigint) nummeriert Zeilen anhand der Sortierschlüssel im
+Funktionskörper. StatementOrdinal (int), StatementId (int) und
+StatementCompId (int) ordnen jede Zeile dem ausgewählten Statement zu.
+StatementOrdinal wird nach dem StatementId-Filter berechnet. Bei gleichen
+Sortierschlüsseln ist die Nummerierung nicht stabil als Identität; die Abfrage
+garantiert keine physische Ergebnisreihenfolge.
+
+DatabaseName, SchemaName, ObjectName und StatisticsName sind nvarchar(256).
+Erkannte eckige Klammern und verdoppelte schließende Klammern werden normalisiert.
+LastUpdateAtCompile ist datetime2(7), ModificationCountAtCompile bigint und
+SamplingPercentAtCompile decimal(19,6). Diese drei Werte werden mit
+TRY_CONVERT aus den jeweiligen XML-Attributen gelesen; fehlt ein Attribut oder
+ist es nicht konvertierbar, wird NULL ausgegeben. SourceElement ist
+nvarchar(128) und bezeichnet OptimizerStatsUsage/StatisticsInfo.
+ParseStatus ist varchar(40): AVAILABLE wird ausgegeben, wenn Objekt- und
+Statistikname vorhanden sind; andernfalls INCOMPLETE_REFERENCE. Dieser Status
+bewertet nur die gelesenen Namensattribute und ist kein Katalog- oder
+Ausführungsnachweis.
+
+Erkennung und Grenzen
+---------------------
+Die Statementsuche verwendet local-name() für StmtSimple und ist damit
+namespace-unabhängig; dies ist keine vollständige Showplan-Validierung. Nur
+StatisticsInfo-Elemente unter OptimizerStatsUsage werden berücksichtigt.
+Fehlende oder leere Attribute werden NULL. Mehrere passende Stellen und
+Duplikate bleiben getrennte Zeilen. Bei NULL- oder strukturell unpassendem XML
+entstehen keine passenden Zeilen. Ungültiger Text kann nicht als xml-Parameter
+übergeben werden; ein Konvertierungsfehler entsteht vor dem Funktionsaufruf.
+
+Synthetisches Beispiel
+----------------------
+Das Fragment zeigt nur die gelesene Elementstruktur und ist kein vollständiger
+Showplan:
+
+DECLARE @PlanXml xml = N'<ShowPlanXML>
+  <BatchSequence><Batch><Statements><StmtSimple StatementId="1"
+    StatementCompId="1"><QueryPlan><OptimizerStatsUsage>
+      <StatisticsInfo Database="[DemoDb]" Schema="[sales]"
+        Table="[Orders]" Statistics="[IX_Orders]"
+        LastUpdate="2026-01-01T00:00:00" ModificationCount="2"
+        SamplingPercent="100"/>
+    </OptimizerStatsUsage></QueryPlan></StmtSimple></Statements></Batch></BatchSequence>
+</ShowPlanXML>';
+SELECT *
+FROM [monitor].[TVF_ExecutionPlanStatisticsUsage](@PlanXml, NULL);
+
+===============================================================================
 */
 CREATE OR ALTER FUNCTION [monitor].[TVF_ExecutionPlanStatisticsUsage]
 (
