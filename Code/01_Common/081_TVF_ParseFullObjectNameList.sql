@@ -40,7 +40,7 @@ Fehlerfolge  : Fehler der Listenzerlegung werden übernommen. Bei leerer Eingabe
                PARSENAME liefert für überlange Bestandteile bereits NULL; daher
                ist für eine Längenverletzung kein bestimmter Fehlercode
                zugesichert und eine frühere Regel kann greifen.
-Beispiel     : SELECT * FROM monitor.TVF_ParseFullObjectNameList(
+Beispiel     : SELECT * FROM [monitor].[TVF_ParseFullObjectNameList](
                    N'[DeineDatenbank].dbo.[IrgendeinObjekt]|dbo.AnderesObjekt')
                ORDER BY ItemOrdinal;
 ===============================================================================

@@ -37,7 +37,7 @@ Grenzen      : Teile 3 und 4 werden nicht gesondert geprüft. Dies ist keine
                Eine physische Reihenfolge ist erst mit ORDER BY ItemOrdinal
                zugesichert. Die Funktion liest keine Kataloge und speichert nichts.
 Beispiel     : Der folgende Aufruf verwendet synthetische Namen:
-               SELECT * FROM monitor.TVF_ParseSqlNameList(
+               SELECT * FROM [monitor].[TVF_ParseSqlNameList](
                    N'[ColumnOne]|[Column With Spaces]|[Column|WithPipe]')
                ORDER BY ItemOrdinal;
 ===============================================================================
