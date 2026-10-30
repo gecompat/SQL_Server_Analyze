@@ -61,17 +61,30 @@ GO
 ===============================================================================
 Objekt/Datei : 000_Preflight_und_Schema.sql
 Version      : 2.1.0
-Zweck        : Prüft die SQL-Server-Baseline und die Collation der aktuell mit
-               USE ausgewählten Installationsdatenbank. Legt das Schema monitor
-               idempotent an. Der Platzhalter DeineDatenbank ist vor Ausführung
-               durch den tatsächlichen Datenbanknamen zu ersetzen.
-Voraussetzung: SQL Server 2019 oder höher; notwendige DDL-Rechte.
-Seiteneffekte: Legt ausschließlich das Schema monitor an, sofern es fehlt.
-Collation    : Das Framework verwendet durchgängig explizite COLLATE-Klauseln
-               und funktioniert auf beliebigen Collations. Getestet und
-               garantiert wird ausschließlich SQL_Latin1_General_CP1_CS_AS.
-               Bei abweichender Collation wird eine Warnung ausgegeben;
-               die Installation wird nicht blockiert.
+Zweck        : Bereitet die ausgewählte Installationsdatenbank für die folgenden
+               Setup-Skripte vor. Das Skript hat keine Prozedurparameter. Ersetzen
+               Sie den USE-Platzhalter vor der Ausführung durch den tatsächlichen
+               Datenbanknamen; das Skript wählt keine Datenbank automatisch aus.
+Voraussetzung: SQL Server 2019 oder höher sowie die für die Schemaanlage nötigen
+               DDL-Rechte. Die erste Batch prüft SERVERPROPERTY('ProductMajorVersion');
+               NULL oder ein Wert unter 15 löst dort THROW 50001 aus. Die Prüfung
+               umfasst keine vollständige Feature- oder Berechtigungsqualifikation.
+Seiteneffekte: Das Skript setzt NOCOUNT und XACT_ABORT für die Sitzung auf ON.
+               Vorherige Werte werden weder gesichert noch wiederhergestellt.
+               GO trennt Baseline-/Collation-Prüfung und Schemaanlage. Abweichungen
+               der Server-, tempdb- oder Zieldatenbank-Collation erzeugen Meldungen
+               mit Severity 10 und blockieren die Fortsetzung nicht. SQL_Latin1_General_CP1_CS_AS ist die getestete Collation; die Warnung ist keine
+               Qualifikation beliebiger Collations oder aller Vergleichspfade.
+               Das Schema monitor wird nur angelegt, wenn es fehlt, dann mit dbo-
+               Autorisierung. Ein vorhandenes Schema wird weder validiert noch in
+               Ownership oder Berechtigungen korrigiert. Fehler sind vom Aufrufer
+               anhand der Meldungen zu behandeln; Batches versprechen keinen
+               atomaren Abbruch oder Rollback des gesamten Installationspakets.
+Prüfbeispiel: Ein synthetischer Schema-Check kann nach dem Skript lesend erfolgen:
+               SELECT [name], [principal_id]
+               FROM [sys].[schemas] WITH (NOLOCK)
+               WHERE [name] = N'monitor';
+               Das Beispiel prüft Sichtbarkeit und Namen, nicht die Ownership.
 Änderungen   : 2.1.0 - Collation-Prüfung von Abbruch auf Warnung geändert;
                          das Framework arbeitet collation-agnostisch durch
                          explizite COLLATE-Klauseln in allen Vergleichen.
@@ -3361,10 +3374,37 @@ GO
 Objekt       : monitor.FrameworkVersion
 Version      : 1.1.2
 Stand        : 2026-10-23
-Zweck        : Liefert eine kompakte Versionsinformation für das installierte
-               Ad-hoc-Analysepaket. Die Tabelle bildet weder eine
-               Installationshistorie noch ein Deployment-Framework ab.
-Seiteneffekte: Eine Zeile wird bei Installation oder Upgrade aktualisiert.
+Zweck        : Speichert kompakte Versionsdeklarationen des Analysepakets in
+               [monitor].[FrameworkVersion]. Voraussetzung ist das zuvor durch
+               000_Preflight_und_Schema.sql bereitgestellte Schema monitor.
+               FrameworkName ist der Primärschlüssel; er begrenzt Schlüsselwerte,
+               erzwingt aber keine globale Beschränkung auf eine Tabellenzeile.
+Tabellenform : FrameworkName sysname NOT NULL ist der Primärschlüssel.
+               FrameworkVersion varchar(32) NOT NULL enthält die deklarierte
+               Paketversion; ReleaseDate date NOT NULL das deklarierte Datum;
+               MinimumProductMajorVersion int NOT NULL die deklarierte Mindest-
+               Majorversion; ContractVersion varchar(16) NOT NULL die deklarierte
+               Vertragsversion; LastInstalledUtc datetime2(0) NOT NULL den UTC-
+               Zeitstempel dieses Skript-UPDATE oder -INSERT; ReleaseNotes
+               nvarchar(2000) NULL enthält optionale Versionshinweise.
+Seiteneffekte: Die Tabelle wird nur angelegt, wenn sie fehlt. Eine vorhandene
+               Tabelle oder ein vorhandenes Schema wird nicht migriert oder auf
+               Struktur, Ownership und Berechtigungen validiert. Das UPDATE setzt
+               ausschließlich SQLServerMonitoringFramework; falls keine Zeile
+               getroffen wurde, fügt das Skript diesen Namen ein. Andere Namen
+               bleiben erhalten. Release-, Vertrags- und Mindestversionswerte sind
+               fest deklarierte Paketangaben und keine Prüfung der Engineversion.
+               LastInstalledUtc wird bei jedem erneuten UPDATE/INSERT neu gesetzt.
+               Der Wert belegt weder den Abschluss des Gesamtpakets noch Rollback,
+               Installationshistorie oder eine vertrauenswürdige Attestierung.
+Beispiel     : Die folgende lesende Abfrage zeigt die tatsächlichen gespeicherten
+               Werte des kanonischen Framework-Eintrags; sie setzt voraus, dass
+               Schema und Tabelle vorhanden und für den Aufrufer sichtbar sind:
+               SELECT [FrameworkName], [FrameworkVersion], [ReleaseDate],
+                      [MinimumProductMajorVersion], [ContractVersion],
+                      [LastInstalledUtc], [ReleaseNotes]
+               FROM [monitor].[FrameworkVersion] WITH (NOLOCK)
+               WHERE [FrameworkName] = N'SQLServerMonitoringFramework';
 ===============================================================================
 */
 IF NOT EXISTS
