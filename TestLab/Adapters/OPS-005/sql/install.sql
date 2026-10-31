@@ -25943,7 +25943,7 @@ GO
 Objekt       : monitor.USP_SchemaDesignAnalysis
 Version      : 1.0.0
 Stand        : 2026-07-17
-Zweck        : Leitet katalogbasierte Schema-/Designfindings je ausgewählter Datenbank ab.
+Zweck        : Die Procedure leitet katalogbasierte Schema-/Designfindings je ausgewählter Datenbank ab.
 Datenquellen : sys.foreign_keys, sys.foreign_key_columns,
                sys.check_constraints, sys.indexes, sys.index_columns,
                sys.identity_columns, sys.sequences, sys.schemas
