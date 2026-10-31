@@ -65,7 +65,7 @@ BEGIN TRY
  DROP TABLE #PerformanceCounters_HelpExample;
 END TRY
 BEGIN CATCH
- IF OBJECT_ID(N'tempdb..#PerformanceCounters_HelpExample') IS NOT NULL DROP TABLE #PerformanceCounters_HelpExample;
+ DROP TABLE IF EXISTS #PerformanceCounters_HelpExample;
  THROW;
 END CATCH;
 ```

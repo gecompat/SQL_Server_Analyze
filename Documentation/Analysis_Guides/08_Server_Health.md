@@ -1167,7 +1167,7 @@ BEGIN TRY
  DROP TABLE #PerformanceCounters_HelpExample;
 END TRY
 BEGIN CATCH
- IF OBJECT_ID(N'tempdb..#PerformanceCounters_HelpExample') IS NOT NULL DROP TABLE #PerformanceCounters_HelpExample;
+ DROP TABLE IF EXISTS #PerformanceCounters_HelpExample;
  THROW;
 END CATCH;
 ```
@@ -1268,7 +1268,7 @@ EXEC [monitor].[USP_CriticalEngineEvents] @VonUtc=@ExampleFromUtc,@ResultSetArt=
  DROP TABLE #CriticalEngineEvents_HelpExample;
 END TRY
 BEGIN CATCH
- IF OBJECT_ID(N'tempdb..#CriticalEngineEvents_HelpExample') IS NOT NULL DROP TABLE #CriticalEngineEvents_HelpExample;
+ DROP TABLE IF EXISTS #CriticalEngineEvents_HelpExample;
  THROW;
 END CATCH;
 ```
