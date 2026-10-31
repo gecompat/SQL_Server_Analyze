@@ -33,6 +33,64 @@ sind ungültig. Der native Cache
 wird vor dem Limit aufgebaut. NativeCounterRows und ReturnedCounterRows zeigen
 die beiden Mengen, OutputLimited meldet die Kürzung.
 
+## Parameter und weitere Aufrufbeispiele
+
+| Parameter | Datentyp | Default | Eingabeform und Wirkung |
+|---|---|---|---|
+| `@TargetMajorVersion` | `int` | `NULL` | Eingabeform: einzelne SQL-int-Zahl 15, 16 oder 17; andere Werte sind ungültig. NULL wählt keine Zielbewertung. Ausgelassen entspricht Default NULL. Leerwert ist für int keine eigene Eingabeform und wird bei expliziter Konvertierung gemäß SQL Server behandelt. Zulässige Werte taxativ: 15 = SQL Server 2019, 16 = SQL Server 2022, 17 = SQL Server 2025. Bei beobachteter Source-Major 15/16/17 muss das Ziel mindestens der Source-Major entsprechen. Eine nicht unterstützte oder nicht ermittelte Sourceversion verhindert diese Sourcebewertung. Wirkung: Zielregel gilt nur für lightweight pooling ab Ziel 17; Usage-Zeilen bleiben TARGET_NOT_SELECTED bei NULL beziehungsweise UNMAPPED_SOURCE_FEATURE bei ausgewähltem Ziel. |
+| `@MaxZeilen` | `int` | `1000` | Eingabeform: SQL-int; NULL oder 0 bedeutet unbegrenzte Ausgabe der nativen Counterzeilen, positive Werte 1 bis 2147483647 begrenzen ausschließlich deprecatedUsage/Counter-Ausgabe, negative Werte sind ungültig. Ausgelassen entspricht 1000. Leerwert ist keine eigene int-Eingabeform; explizite Konvertierung folgt SQL Server. Der vollständige gefilterte native Countercache wird vor diesem Limit gelesen; context, configuration und sources werden nicht dadurch gekürzt. OutputLimited vergleicht NativeCounterRows mit ReturnedCounterRows. |
+| `@ResultSetArt` | `varchar(16)` | `'CONSOLE'` | Eingabeform: Zeichenwert; äußere U+0020-Leerzeichen werden entfernt, dann mit UPPER normalisiert; zulässige Werte taxativ: CONSOLE = vier fachliche Gruppen formatiert ausgeben; RAW = vier typisierte Resultsets in Reihenfolge context, deprecatedUsage, configuration, sources; TABLE = zugeordnete Gruppen in Caller-Temp-Tabellen schreiben; NONE = fachliche Resultsets unterdrücken. Maßgeblich ist der bei Eintritt bereits an varchar(16) zugewiesene SQL-Wert; längere Textargumente können davor auf diese Typbreite gekürzt werden. Erst dieser Wert wird normalisiert und gegen die vier Optionen geprüft. NULL und leer oder nur U+0020-Leerzeichen werden zu leer und sind ungültig; ausgelassen verwendet Default 'CONSOLE'. Andere nach Typzuweisung und Normalisierung verbleibende Werte sind ungültig. Bei TABLE muss @ResultTablesJson eine gültige Zuordnung enthalten; bei allen anderen Modi muss es NULL, leer oder nur U+0020-Leerzeichen sein. NONE unterdrückt nur fachliche Resultsets; JSON, Status-OUTPUTs und durch @PrintMeldungen gesteuerte Meldungen bleiben möglich. |
+| `@ResultTablesJson` | `nvarchar(max)` | `NULL` | Eingabeform: bei @ResultSetArt=TABLE ein nichtleeres gültiges JSON-Objekt, dessen Schlüssel taxativ folgende Bedeutung haben: context = Aufnahme-, Versions- und Enginekontext; deprecatedUsage = native Deprecated-Counter; configuration = begrenzte Optionsbewertung; sources = vier Quellenzustände und Fehler und dessen Werte eindeutige Namen vorhandener leerer lokaler #Temp-Tabellen sind. Jede Zuordnung ist optional; mindestens eine ist erforderlich. Resultset-Schlüssel werden binär und damit einschließlich Groß-/Kleinschreibung verglichen. Zielnamen dürfen höchstens LEN 116 umfassen; doppelte Ziele werden case-insensitiv erkannt. JSON-Werte müssen Strings sein; doppelte Resultsetnamen, doppelte Zieltabellen und unbekannte Schlüssel sind unzulässig. Jede Ziel-Temp-Tabelle muss eine beliebige einzelne Seed-Spalte haben; Typ und Spaltenname sind nicht festgelegt, und eine Seed-Zeile ist nicht zulässig. Ziel muss lokale #Temp-Tabelle, nicht ##Temp oder #Monitor-Präfix sein. Ein Teilmapping exportiert nur die benannten Gruppen. NULL/leer oder nur U+0020-Leerzeichen wird außerhalb TABLE akzeptiert; in TABLE ungültig. Ausgelassen entspricht NULL. Ungültige Zuordnung schlägt vor den fachlichen Quellenreads fehl. |
+| `@JsonErzeugen` | `bit` | `0` | Eingabeform: bit-Schalter. 0 = kein JSON erzeugen; 1 = JSON im OUTPUT @Json erzeugen. NULL ist ungültig. Ausgelassen entspricht 0. Andere bitkonvertierbare Nichtnullwerte werden durch SQL-bit-Konvertierung auf 0 oder 1 abgebildet (0 bleibt 0, jeder Nichtnullwert ungleich 0 wird 1). Hilfe und Parameter-/Setup-/Ausgabefehler liefern @Json=NULL; regulär abgefangene Quellenfehler erlauben weiterhin ein partielles JSON. |
+| `@Json` | `nvarchar(max) OUTPUT` | `NULL` | OUTPUT-Argument optional; für den Rückgabewert eine Variable des deklarierten Typs mit OUTPUT binden. Default NULL; initial wird der empfangene Wert auf NULL zurückgesetzt. Bei @Hilfe=1 oder Parameter-/Setup-/Ausgabefehlern bleibt beziehungsweise wird er NULL; regulär abgefangene Quellenfehler erlauben partielles JSON. Bei regulärer Analyse und @JsonErzeugen=1 enthält er ein JSON-Objekt mit meta sowie context, deprecatedUsage, configuration und sources als Arrays; bei @JsonErzeugen=0 bleibt er NULL. Eingabeinhalt wird nicht als Steuerwert verwendet; ausgelassen ist die OUTPUT-Bindung optional, der Default initialisiert intern NULL. |
+| `@PrintMeldungen` | `bit` | `1` | Eingabeform: bit-Schalter. 0 = keine zusätzlichen Severity-10-Meldungen über RAISERROR bei regulären Quellenfehlern oder im CATCH; 1 = solche Meldungen ausgeben, wenn der jeweilige Fehlerpfad eintritt. NULL ist ungültig. Ausgelassen entspricht 1. Andere bitkonvertierbare Nichtnullwerte werden als 0 oder 1 abgebildet (0 bleibt 0, jeder Nichtnullwert ungleich 0 wird 1). Steuert weder Resultsets noch Status-OUTPUTs. Die Hilfe-PRINTs bleiben unabhängig von diesem Schalter aktiv. |
+| `@Hilfe` | `bit` | `0` | Eingabeform: bit-Schalter. 0 = normale Parameterprüfung und Analyse; 1 = Hilfe-PRINTs ausgeben und ohne gewöhnliche Parameter-/Quellenvalidierung RETURN ausführen. NULL ist ungültig, wenn nicht 1. Ausgelassen entspricht 0. Andere bitkonvertierbare Nichtnullwerte werden als 0 oder 1 abgebildet (0 bleibt 0, jeder Nichtnullwert ungleich 0 wird 1). Vor dem Hilfepfad werden @Json=NULL, @StatusCodeOut=PARTIAL, @IsPartialOut=1 und Fehler-OUTPUTs NULL initialisiert; Hilfe überschreibt Status auf AVAILABLE und IsPartial auf 0. |
+| `@StatusCodeOut` | `varchar(40) OUTPUT` | `NULL` | OUTPUT-Bindung: Caller bindet varchar(40) OUTPUT; Eingabewert wird zurückgesetzt. Default NULL. Taxative Statuswerte: AVAILABLE = Hilfe wurde ausgegeben; PARTIAL = reguläre Analyse mit beobachteten Counter- oder Optionszeilen; DENIED_PERMISSION = keine fachlichen Zeilen und ausschließlich Rechtefehler; ERROR_HANDLED = sonstiger Fehler beziehungsweise abgefangener Ausgabe-/Setupfehler; EMPTY_UNPROVEN = erfolgreiche leere Beobachtung ohne Nutzungsfrei- oder Kompatibilitätsnachweis; UNAVAILABLE_OBJECT = tatsächliche Source-Major nicht unterstützt/nicht ermittelbar; INVALID_PARAMETER = ungültige Aufruf-/TABLE-Zuordnung. Normale Quellenfehler werden als Status gemeldet und liefern RETURN 0; technische Fehler liefern nonzero RETURN. Bei Ausgabe-/Setupfehlern wird der technische Fehlerstatus über die Fehlerprojektion auf ERROR_HANDLED oder bei 51011 auf INVALID_PARAMETER abgebildet. |
+| `@IsPartialOut` | `bit OUTPUT` | `NULL` | OUTPUT-Bindung: Caller bindet bit OUTPUT; Eingabewert wird zurückgesetzt. Default NULL. Reguläre Analyse setzt 1, weil AssessmentCoverage stets LIMITED_OBSERVATION ist; Hilfe setzt 0, weil keine Analyse ausgeführt wurde. Bei ungültigen Parametern oder technischen Fehlern bleibt der Teilstatus 1; beim Eintritt wird 1 initialisiert. Die Eingabewerte NULL, 0 und 1 steuern den Aufruf nicht. |
+| `@ErrorNumberOut` | `int OUTPUT` | `NULL` | OUTPUT-Bindung: Caller bindet int OUTPUT; Eingabewert wird zurückgesetzt. Default NULL. Hilfe und fehlerfreie Ausführung liefern NULL. Bei regulären Quellenfehlern wird der erste tatsächliche SQL-Fehler nach Quellenreihenfolge ausgegeben; bei Parameterfehlern 51011; bei technischem Ausgabe-/Setupfehler der tatsächliche Fehler beziehungsweise der gesetzte technische Fehlercode. Ohne Fehler bleibt NULL. |
+| `@ErrorMessageOut` | `nvarchar(2048) OUTPUT` | `NULL` | OUTPUT-Bindung: Caller bindet nvarchar(2048) OUTPUT; Eingabewert wird zurückgesetzt. Default NULL. Hilfe und fehlerfreie Ausführung liefern NULL. Vorrang hat die Meldung des ersten Quellenfehlers mit Fehlernummer nach Quellenreihenfolge; ohne Fehlernummer folgt die erste vorhandene Quellenmeldung. Auch eine fehlende Enginebindung kann eine Meldung ohne Fehlernummer liefern; bei Parameter-/TABLE-Preflightfehlern oder technischem Fehler wird die tatsächlich gesetzte Fehlermeldung ausgegeben. Die vollständige quellenbezogene Fehlerlage bleibt im sources-Ergebnis, soweit dieses Ergebnis erreicht wird. |
+
+```sql
+-- Hilfe; überspringt die gewöhnliche Parameter- und Quellenvalidierung.
+EXEC [monitor].[USP_UpgradeFeatureUsageAnalysis] @Hilfe = 1;
+GO
+
+-- RAW mit explizitem Ziel SQL Server 2025.
+EXEC [monitor].[USP_UpgradeFeatureUsageAnalysis]
+      @TargetMajorVersion = 17,
+      @ResultSetArt = 'RAW';
+GO
+
+-- JSON-OUTPUT mit Status- und Fehler-OUTPUTs.
+DECLARE @Json nvarchar(max), @Status varchar(40), @Partial bit,
+        @ErrorNumber int, @ErrorMessage nvarchar(2048);
+EXEC [monitor].[USP_UpgradeFeatureUsageAnalysis]
+      @TargetMajorVersion = 17,
+      @ResultSetArt = 'NONE',
+      @JsonErzeugen = 1,
+      @Json = @Json OUTPUT,
+      @StatusCodeOut = @Status OUTPUT,
+      @IsPartialOut = @Partial OUTPUT,
+      @ErrorNumberOut = @ErrorNumber OUTPUT,
+      @ErrorMessageOut = @ErrorMessage OUTPUT;
+SELECT @Status AS [StatusCode], @Partial AS [IsPartial],
+       @ErrorNumber AS [ErrorNumber], @ErrorMessage AS [ErrorMessage], @Json AS [Json];
+GO
+
+-- TABLE: nur zwei Gruppen exportieren; lokale Ziele sind leer und besitzen je eine beliebige Seed-Spalte.
+CREATE TABLE #UsageOut ([Seed] int NULL);
+CREATE TABLE #SourcesOut ([Seed] int NULL);
+EXEC [monitor].[USP_UpgradeFeatureUsageAnalysis]
+      @TargetMajorVersion = 17,
+      @ResultSetArt = 'TABLE',
+      @ResultTablesJson = N'{"deprecatedUsage":"#UsageOut","sources":"#SourcesOut"}';
+SELECT * FROM #UsageOut;
+SELECT * FROM #SourcesOut;
+DROP TABLE #UsageOut;
+DROP TABLE #SourcesOut;
+GO
+```
+
 ## Eine Zeile bedeutet
 
 RAW liefert vier typisierte Resultsets in der Reihenfolge context,
