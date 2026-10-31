@@ -11,9 +11,14 @@ GO
     Kategoriebezeichnung, kein Wait Type.
 
     Eingabe:
-      @WaitCategoryDesc nvarchar(128), ohne Default. NULL ist zulässig und wird
-      für WaitGroup wie 'Unknown' behandelt. Andere unbekannte Bezeichnungen
-      bleiben in WaitGroup erhalten und erhalten allgemeine Beschreibungstexte.
+      @WaitCategoryDesc nvarchar(128); Default: keiner. Das Argument ist beim
+      Funktionsaufruf anzugeben, etwa als N'Buffer IO' oder NULL. Die
+      Parameterbindung erfolgt an nvarchar(128), also höchstens 128 UTF-16-
+      Codeeinheiten; längere Textwerte können dabei vor dem Funktionskörper
+      gekürzt werden. NULL, N'' und unbekannte Bezeichnungen sind zulässig.
+      NULL wird für WaitGroup wie N'Unknown' behandelt. Bei N'' bleibt
+      WaitGroup leer. Andere unbekannte Bezeichnungen durchlaufen dieselbe
+      WaitGroup-Transformation und erhalten allgemeine Beschreibungstexte.
 
     Ausgabe:
       WaitGroup nvarchar(64) – Eingabetext in Großschreibung, Leerzeichen werden
@@ -31,6 +36,20 @@ GO
       Buffer IO, Tran Log IO und Memory; sonst Query-Store-Laufzeitstatistik,
       Planwechsel und betroffene Query-/Plan-Kombination prüfen.
 
+    Erkannte CASE-Bezeichnungen und ihre Meaning-Texte:
+      CPU: CPU-Verbrauch oder Schedulerzeit während der Queryausführung.
+      Worker Thread: Warten auf verfügbare Workerthreads.
+      Lock: Warten auf inkompatible Locks.
+      Latch: Interne Synchronisationslatches.
+      Buffer Latch: Latches auf Seiten im Buffer Pool, häufig Hot-Page-Contention.
+      Buffer IO: Warten auf Daten-I/O für Seiten.
+      Tran Log IO: Warten auf Transaktionslog-I/O.
+      Network IO: Warten auf Netzwerk oder Clientabnahme.
+      Parallelism: Synchronisation paralleler Ausführungszweige.
+      Memory: Warten auf Query- oder interne Speicherressourcen.
+      Other Disk IO: Sonstiger persistenter I/O außerhalb Buffer- und Log-I/O.
+
+    Diese Bezeichnungen sind keine geschlossene Eingabewertemenge.
     Meaning-Texte sind für CPU, Worker Thread, Lock, Latch, Buffer Latch,
     Buffer IO, Tran Log IO, Network IO, Parallelism, Memory und Other Disk IO
     spezialisiert. Die anderen Spalten verwenden jeweils nur die oben
