@@ -22,32 +22,28 @@ Datenquellen : master.sys.databases sowie je Zieldatenbank sys.objects,
                sys.columns, sys.partitions, sys.allocation_units,
                sys.data_spaces und capability-abhängig sys.json_indexes
                sowie sys.json_index_paths.
-Parameter    :
-  @DatabaseName                  sysname        = NULL  - Zieldatenbank; bei Einzelmodus Pflicht.
-  @CrossDatabaseRequestedInternal               bit            = 0     - sichtbare Online-Datenbanken analysieren.
-  @SystemdatenbankenEinbeziehen  bit            = 0     - master/model/msdb/tempdb einbeziehen.
-  @DatenbankNameLike             nvarchar(256)  = NULL  - Filter im Cross-Database-Modus.
-  @SchemaNamePattern                nvarchar(256)  = NULL  - LIKE-Filter auf Schema.
-  @ObjectNamePattern                nvarchar(256)  = NULL  - LIKE-Filter auf Objekt.
-  @MaxZeilen                     int            = 5000  - positive Werte begrenzen; NULL/0 = unbegrenzt.
-  @LockTimeoutMs                 int            = 0     - 0 = nicht auf Metadatenlocks warten.
-  @PrintMeldungen                bit            = 1     - Warnungen via RAISERROR 10.
-  @Hilfe                         bit            = 0     - Hilfe via PRINT, keine Analyse.
-  @ObjectType varchar(16) = 'TABLE' - TABLE|VIEW|ALLE.
-  @AnalyseModus varchar(16) = 'GEZIELT' - GEZIELT benötigt Filter; VOLL prüft CATALOG_DEEP.
-  @MitIndizes bit = 1 - Indexdetails; 0 liefert je Objekt eine Summenzeile.
-  @MitSpaltenlisten bit = 1 - Key-/Include-Spaltenlisten erzeugen.
-Resultsets   : 1. Modulstatus. 2. Status je Datenbank. 3. Objekt-/Indexinventar.
-Berechtigung : Katalogsicht gemäß Metadata Visibility; Cross-Database zusätzlich Gruppenpolicy. Keine Rechtevergabe.
-Eigenlast    : Gezielte Einzel-Datenbank-Abfrage gering bis moderat; Cross-Database und Spaltenlisten begrenzt durch TOP.
-Locking      : READUNCOMMITTED/NOLOCK auf Systemkatalogen und konfigurierbares
-               LOCK_TIMEOUT; der vorherige Sessionwert wird wiederhergestellt.
+Parameter    : Signatur und Defaults stehen unmittelbar unter diesem DDL-Kommentar.
+               Die PRINT-Hilfe beschreibt jeden Parameter mit Eingabeform,
+               NULL-/Leerwertregeln, Grenzen und allen festen Optionen.
+               GEZIELT benötigt einen Objektfilter; VOLL prüft zusätzlich
+               CATALOG_DEEP mit Bestätigung und separater Gruppenfreigabe.
+Ausgabe      : RAW liefert Modulstatus, Datenbankstatus und Fachdaten.
+               CONSOLE und TABLE liefern ausschließlich objects.
+               JSON enthält meta, objects und databaseStatus; NONE
+               unterdrückt direkte Resultsets. Hilfe folgt der bereits
+               erfolgten Filtervorbereitung und gegebenenfalls TABLE-Preflight.
+Berechtigung : Katalogsicht gemäß Metadata Visibility; VOLL prüft zusätzlich CATALOG_DEEP. Keine Rechtevergabe.
+Eigenlast    : TOP begrenzt Inventarzeilen je Datenbank, nicht verlässlich die gesamte Katalogaggregation oder Spaltenlistenarbeit.
+Locking      : READUNCOMMITTED/NOLOCK auf Systemkatalogen; @LockTimeoutMs
+               steht im dynamischen Hauptbatch. Separate JSON-Metadatenbatches
+               enthalten diesen SET-Befehl nicht. SET-Gültigkeit folgt dem
+               jeweiligen Prozedur-/dynamischen Batch-Scope.
 Partial      : Fehler je Datenbank bzw. Teilquelle werden isoliert; vorhandene
                Teilergebnisse bleiben erhalten. Das Framework vergibt keine Rechte.
 Beispiele    :
-  EXEC monitor.USP_ObjectInventory @DatabaseNames=N'[SampleDatabase]', @ObjectNamePattern=N'like:Fact%';
-  EXEC monitor.USP_ObjectInventory @DatabaseNames=N'[SampleDatabase]', @SchemaNames=N'[dbo]', @ObjectNamePattern=N'like:Fact%';
-  EXEC monitor.USP_ObjectInventory @CrossDatabaseRequestedInternal=0, @AnalyseModus='VOLL', @MaxZeilen=20000;
+  EXEC monitor.USP_ObjectInventory @DatabaseNames=N'[ExampleDatabase]', @ObjectNamePattern=N'like:Fact%';
+  EXEC monitor.USP_ObjectInventory @DatabaseNames=N'[ExampleDatabase]', @SchemaNames=N'[dbo]', @ObjectNamePattern=N'like:Fact%';
+  EXEC monitor.USP_ObjectInventory @DatabaseNames=N'[ExampleDatabase]', @AnalyseModus='VOLL', @HighImpactConfirmed=1, @MaxZeilen=20000;
   EXEC monitor.USP_ObjectInventory @Hilfe=1;
 Änderungen   : 1.1.0 - SQL25-002: JSON-Indizes und aggregierte SQL/JSON-Pfade
                          ohne Lesen von JSON-Dokumentwerten ergänzt.
@@ -134,18 +130,43 @@ BEGIN
 
     IF @Hilfe = 1
     BEGIN
-        PRINT N'monitor.USP_ObjectInventory';        PRINT N'@DatabaseNames: exakter Name oder bracket-aware Pipe-Liste; NULL = alle zulässigen Datenbanken; N'''' = keine Einschränkung.';        PRINT N'@SystemdatenbankenEinbeziehen bit = 0: Systemdatenbanken einbeziehen.';        PRINT N'Exakte Listen und ...NamePattern sind gegenseitig exklusiv. Pattern: LIKE (Default/like:), regex: oder regexi:.';
-        PRINT N'Datenbankauswahl ohne Vorabbegrenzung; @MaxZeilen int: harte Ergebnismengenbegrenzung.';
-        PRINT N'@LockTimeoutMs int = 0: Metadatenzugriff wartet standardmäßig nicht auf Locks.';
-        PRINT N'@PrintMeldungen bit = 1: strukturierte Warnungen zusätzlich in der Console.';
-        PRINT N'Die Procedure liefert ein Objekt-, Größen-, Partitions-, Kompressions- und Indexinventar.';
-        PRINT N'Ab SQL Server 2025 werden sichtbare JSON-Indizes und SQL/JSON-Pfade nach Objekt- und Spaltenprüfung ergänzt; JSON-Dokumentwerte werden nicht gelesen.';
-        PRINT N'@ObjectType varchar(16) = TABLE: TABLE, VIEW oder ALLE.';
-        PRINT N'@AnalyseModus varchar(16) = GEZIELT: GEZIELT benötigt Schema-/Objektfilter; VOLL prüft CATALOG_DEEP.';
-        PRINT N'@MitIndizes bit = 1: 0 liefert nur Objektsummen.';
-        PRINT N'@MitSpaltenlisten bit = 1: Key- und Include-Spaltenlisten ergänzen.';
-        PRINT N'Beispiel: EXEC monitor.USP_ObjectInventory @DatabaseNames=N''[DWH]'', @ObjectNamePattern=N''like:Fact%'';';
-        PRINT N'@Hilfe bit = 0: 1 zeigt diese Hilfe und führt keine Analyse aus.';
+        PRINT N'monitor.USP_ObjectInventory';
+        PRINT N'Liefert einen gefilterten Katalogsnapshot zu Tabellen und Sichten mit Objekt-/Indexgrößen, Zeilen, Partitionierung, Kompression und optionalen Schlüssel-/Include- sowie SQL-Server-2025-JSON-Indexmetadaten. Der GEZIELT-Modus benötigt einen Objektfilter; VOLL prüft zusätzlich CATALOG_DEEP.';
+        PRINT N'Die PRINT-Hilfe folgt der Namens-/Datenbank- und Gate-Vorbereitung sowie gegebenenfalls TABLE-Preflight. Sie kehrt vor der eigenen Fachanalyse zurück.';
+        PRINT N'@DatabaseNames nvarchar(max); Default: NULL. Ein einzelner Datenbankname oder bracket-aware Pipe-Liste einteiliger SQL-Namen. NULL oder nach Trim leere Eingabe bedeutet keine explizite Auswahl und lässt die Datenbankauswahl alle zulässigen sichtbaren Online-Datenbanken bestimmen. Nichtleere Liste: äußere Elementleerzeichen werden getrimmt, [] quotiert Namen und ]] maskiert ]; Pipe trennt außerhalb von Klammern. Leere Elemente, ungültige SQL-Namen und case-sensitive Duplikate führen zu INVALID_PARAMETER. Eine nichtleere Liste ist mit @DatabaseNamePattern gegenseitig exklusiv; NULL/Leerraum plus Pattern ist möglich. Die Namensprüfung verlangt PARSENAME-Teil 1 ungleich NULL, Teil 2 gleich NULL und LEN von Teil 1 höchstens 128; Teile 3 und 4 werden nicht gesondert geprüft. Rohsegmente über 4000 UTF-16-Codeeinheiten sind ungültig.';
+        PRINT N'@SystemdatenbankenEinbeziehen bit; Default: 0. bit-Schalter: 0 schließt master, model, msdb und tempdb aus; 1 erlaubt ihre Aufnahme, soweit sichtbar und online. SQL Server konvertiert beim Binden von 0 verschiedene, zu bit konvertierbare Zahlenwerte eines bit-Parameters zu 1. NULL wird vom Datenbankauswahlhelfer als INVALID_PARAMETER abgewiesen.';
+        PRINT N'@DatabaseNamePattern nvarchar(4000); Default: NULL. Optionales Pattern für Datenbanknamen nach TVF_ParsePattern: äußere Leerzeichen trimmen; Präfixe like:, regex: und regexi: werden ohne Beachtung der Großschreibung erkannt; ohne Präfix gilt LIKE. Der verbleibende Inhalt wird nicht erneut getrimmt; NULL bedeutet kein Pattern, leerer Wert oder leeres Präfix ist ungültig. Datenbankname-Pattern ist mit nichtleerer @DatabaseNames-Liste exklusiv. LIKE-Wildcards gelten im Datenbankkandidatenpfad. regex: setzt Flag c, regexi: Flag i; Regex-Verfügbarkeit wird am Installationsdatenbank-Kontext geprüft und erfordert SQL Server 2025 sowie Compatibility Level 170. LIKE nutzt %, _ und Zeichenklassen [...] unter expliziter case-sensitiver Framework-Collation. Ein Übergabebeispiel ist N''like:App%''; nach Präfixentfernung wird nicht erneut getrimmt.';
+        PRINT N'@HighImpactConfirmed bit; Default: 0. bit-Bestätigung für den VOLL-Pfad CATALOG_DEEP, der erst nach OBJECT_ANALYSIS_CURRENT aktiviert wird: 0 bestätigt den Deep-Pfad nicht; 1 erfüllt die Bestätigungsanforderung, erteilt selbst aber keine Berechtigung. SQL Server konvertiert gebundene von 0 verschiedene, zu bit konvertierbare Zahlenwerte eines bit-Parameters zu 1. NULL wird vom Datenbankauswahlhelfer als INVALID_PARAMETER abgewiesen. GEZIELT nutzt OBJECT_ANALYSIS_CURRENT und verlangt diese Bestätigung nicht.';
+        PRINT N'@SchemaNames nvarchar(max); Default: NULL. Exakte einteilige Schemanamen als bracket-aware Pipe-Liste. NULL bedeutet kein Filter; eine leere oder nur aus Leerzeichen bestehende Liste ist kein NULL und wird als ungültige Namensliste abgewiesen. Pipe trennt außerhalb von [...]; ]] maskiert eine Klammer. Namen werden getrimmt, als einteilige SQL-Namen mit höchstens 128 Zeichen geprüft und case-sensitive verglichen; Rohsegmente über 4000 UTF-16-Codeeinheiten sind ungültig. Doppelte Werte derselben Namensart sind ungültig. Nicht gemeinsam mit @SchemaNamePattern. Bei @FullObjectNames ist die Kombination mit @SchemaNames oder @ObjectNames ungültig.';
+        PRINT N'@SchemaNamePattern nvarchar(4000); Default: NULL. Optionales Schemanamen-Pattern als nvarchar(4000). NULL deaktiviert den Filter; leer, nur U+0020-Leerzeichen oder ein Präfix ohne Inhalt ist ungültig. Äußere U+0020-Leerzeichen werden zuerst getrimmt; nach Präfixentfernung bleibt der Inhalt unverändert. Präfixe werden ohne Beachtung der Großschreibung erkannt: unpräfigiert oder like: bedeutet case-sensitive SQL-LIKE mit %, _ und [...]; regex: verwendet Flag c, regexi: Flag i. Der dynamische REGEXP_LIKE-Ausdruck wird in der jeweiligen Quelldatenbank ausgeführt und benötigt dort SQL Server 2025 mit Compatibility Level 170. Für diesen Feldfilter gibt es keine separate Versions-/Kompatibilitätsvorprüfung; fehlende Regexunterstützung kann erst beim Ausführen als datenbankweise isolierter ERROR_HANDLED-Fehler erscheinen. Nicht mit einem nicht-NULL @SchemaNames kombinieren. Übergabe zum Beispiel N''like:App%''.';
+        PRINT N'@ObjectNames nvarchar(max); Default: NULL. Exakte einteilige Objektnamen als bracket-aware Pipe-Liste; NULL bedeutet kein Filter, eine leere Liste ist ungültig. Pipe trennt außerhalb geklammerter Namen; ]] maskiert ]. Elemente werden getrimmt und als einteilige SQL-Namen mit höchstens 128 Zeichen validiert, case-sensitive verglichen; Rohsegmente über 4000 UTF-16-Codeeinheiten sind ungültig; Duplikate derselben Namensart sind ungültig. Nicht gemeinsam mit @ObjectNamePattern. Bei @FullObjectNames ist die Kombination mit @SchemaNames oder @ObjectNames ungültig.';
+        PRINT N'@ObjectNamePattern nvarchar(4000); Default: NULL. Optionales Objektnamen-Pattern als nvarchar(4000). NULL deaktiviert den Filter; leer, nur U+0020-Leerzeichen oder ein Präfix ohne Inhalt ist ungültig. Äußere U+0020-Leerzeichen werden zuerst getrimmt; nach Präfixentfernung bleibt der Inhalt unverändert. Präfixe werden ohne Beachtung der Großschreibung erkannt: unpräfigiert oder like: bedeutet case-sensitive SQL-LIKE mit %, _ und [...]; regex: verwendet Flag c, regexi: Flag i. Der dynamische REGEXP_LIKE-Ausdruck wird in der jeweiligen Quelldatenbank ausgeführt und benötigt dort SQL Server 2025 mit Compatibility Level 170. Für diesen Feldfilter gibt es keine separate Versions-/Kompatibilitätsvorprüfung; fehlende Regexunterstützung kann erst beim Ausführen als datenbankweise isolierter ERROR_HANDLED-Fehler erscheinen. Nicht mit einem nicht-NULL @ObjectNames kombinieren. Übergabe zum Beispiel N''like:App%''.';
+        PRINT N'@FullObjectNames nvarchar(max); Default: NULL. Bracket-aware Pipe-Liste vollständiger Objektbezüge mit 1 bis 3 Teilen: Objekt, Schema.Objekt oder Datenbank.Schema.Objekt; bei Datenbankteil ist das Schema erforderlich, vier Teile sind unzulässig. Rohsegmente über 4000 UTF-16-Codeeinheiten sind ungültig; Namensbestandteile werden nach PARSENAME und sysname-Länge geprüft. Pipe trennt nur außerhalb von [...]; ]] maskiert ]. NULL bedeutet kein Filter; N'''' ist EMPTY_LIST, Leerzeichen erzeugt ein ungültiges Element. Bestandteile werden case-sensitive verglichen; nicht angegebene Datenbank-/Schemaanteile bleiben im Prädikat offen. Doppelte vollständige Bezüge sind ungültig. Der Helper weist @FullObjectNames zusammen mit @SchemaNames oder @ObjectNames ab, sobald die betreffenden Eingaben nicht NULL sind; auch leere Nicht-NULL-Listen sind also eine Kombination.';
+        PRINT N'@ObjectType varchar(16); Default: ''TABLE''. Wählen Sie TABLE für Benutzertabellen, VIEW für Sichten oder ALLE für beide Objektarten. Der Wert wird mit LTRIM/RTRIM und UPPER normalisiert; Groß-/Kleinschreibung und äußere Leerzeichen ändern die Auswahl nicht. NULL wird vor der Prüfung zu TABLE. Ein leerer oder anderer Wert führt zu INVALID_PARAMETER.';
+        PRINT N'@AnalyseModus varchar(16); Default: ''GEZIELT''. GEZIELT analysiert einen durch exakte Namenslisten, @FullObjectNames oder ein Schema-/Objekt-Pattern begrenzten Scope; mindestens eine solche Objektbegrenzung muss vorhanden sein. VOLL wählt den Katalogpfad und prüft zusätzlich die Freigabe CATALOG_DEEP. Der Wert wird getrimmt und in Großbuchstaben umgewandelt; NULL wird zu GEZIELT, GEZIELT und VOLL sind die einzigen gültigen Werte. Leertext und andere Werte führen zu INVALID_PARAMETER. VOLL ohne Freigabe wird abgewiesen. VOLL erfordert außerdem ausdrücklich @HighImpactConfirmed=1; eine Bestätigung ersetzt keine Gruppen- oder SQL-Berechtigung.';
+        PRINT N'@MitIndizes bit; Default: 1. 1 gibt Indexdetails aus; bei Tabellen entstehen dadurch grundsätzlich Zeilen je Index, und Index- sowie JSON-Indexfelder werden befüllt, soweit ihre Quellen verfügbar sind. 0 unterdrückt Indexdetails und liefert je Objekt eine Summenzeile mit den Objektgesamtwerten; Index- und JSON-Indexfelder bleiben NULL. Für bit-Eingaben sind 0 und 1 die Schalterwerte. NULL wird nicht auf einen Schalterwert normalisiert: Der Index-Join wird dadurch nicht aktiviert; Tabellenzeilen erfüllen anschließend den Filter nicht, Views können ihn erfüllen, während ihre Indexdetails NULL bleiben. Binden Sie deshalb ausdrücklich 0 oder 1. Numerisch 0 bleibt beim Binden 0; von 0 verschiedene zu bit konvertierbare Zahlenwerte werden 1.';
+        PRINT N'@MitSpaltenlisten bit; Default: 1. 1 ergänzt bei angeforderten Indexdetails KeyColumns und IncludedColumns. Schlüsselspalten folgen key_ordinal und enthalten DESC für absteigende Schlüssel; Include-Spalten folgen index_column_id. 0 unterdrückt beide Listen. NULL wird nicht zu 0 oder 1 normalisiert und erfüllt die CASE-Bedingung nicht, daher bleiben die Listen NULL. Auch bei @MitIndizes=0 werden keine Spaltenlisten ausgegeben. Für bit-Eingaben sind 0 und 1 die Schalterwerte. Numerisch 0 bleibt beim Binden 0; von 0 verschiedene zu bit konvertierbare Zahlenwerte werden 1.';
+        PRINT N'@MaxZeilen int; Default: 5000. Nichtnegative ganze Zahl von 0 bis 2147483647. NULL oder 0 wird intern zur bigint-TOP-Grenze 9223372036854775807; negative Werte sind INVALID_PARAMETER. TOP begrenzt die Inventarzeilen je Datenbank, geordnet nach reservierten Objektseiten absteigend, danach ObjectId und IndexId. Die Endausgabe sortiert nach ObjectReservedMb absteigend, Datenbank, Schema, Objekt und IndexId. Keine globale Zeilengrenze und keine verlässliche Begrenzung der vorherigen Katalogaggregation.';
+        PRINT N'@LockTimeoutMs int; Default: 0. Ganzzahlige Millisekunden von 0 bis 60000; andere nicht-NULL-Werte sind INVALID_PARAMETER. Der dynamische Hauptbatch enthält SET LOCK_TIMEOUT und die Inventarabfrage im selben Batch: 0 wartet dort nicht auf Locks, positive Werte begrenzen das Warten. Separate JSON-Metadatenbatches beginnen mit USE und enthalten diesen SET-Befehl nicht. Der Code speichert den Eingangswert und baut vor beziehungsweise nach der Sammlung eigene SET-/Restore-Batches; SET-Änderungen gelten nach den SQL-Server-Regeln im jeweiligen Prozedur-/dynamischen Batch-Scope und werden bei dessen Rückkehr zurückgenommen. Aus den separaten Hilfsbatches folgt keine übergreifende Timeout-Steuerung der JSON-Metadaten. Hilfe kehrt vor diesen eigenen SET-/Restore-Blöcken zurück. NULL passiert den Bereichstest als UNKNOWN und erzeugt durch Verkettung NULL statt des SET- beziehungsweise Hauptbatches; ein Fehler- oder No-op-Verhalten des NULL-Statements wird daraus nicht behauptet.';
+        PRINT N'@ResultSetArt varchar(16); Default: ''CONSOLE''. varchar(16), nach LTRIM/RTRIM und UPPER genau CONSOLE, RAW, TABLE oder NONE. NULL und leer werden als leerer String normalisiert und als INVALID_PARAMETER validiert, nicht als NONE behandelt. CONSOLE gibt nur das menschenlesbare Objektinventar-Fachresultset als Resultset aus; RAW gibt Modulstatus, Datenbankstatus und Fachresultset aus; TABLE schreibt das Fachresultset ins Ziel; NONE unterdrückt normale Resultsets. JSON entsteht unabhängig über @JsonErzeugen. Statuswarnungen können bei @PrintMeldungen=1 zusätzlich als Meldung ausgegeben werden.';
+        PRINT N'@ResultTablesJson nvarchar(max); Default: NULL. Nur für TABLE wird ein JSON-Objekt mit exakt einem erlaubten, case-sensitiven Resultnamen und Stringziel erwartet: objects als Schlüssel. Ziel ist eine vorhandene, leere lokale #Temp-Tabelle, kein ##Temp oder #Monitor*-Name, mit genau einer Seed-Spalte; Zielzuordnungen sind eindeutig. NULL/leer bei TABLE scheitert am Preflight. Bei jeder nicht-TABLE-Ausgabe löst ein nichtleerer, nicht aus Leerzeichen bestehender Wert THROW 51011 aus; NULL, leerer oder nur aus Leerzeichen bestehender Wert ist zulässig. Der Zielname darf höchstens 116 Zeichen haben; Beispiel: N''{"objects":"#IndexHelpTarget"}''.';
+        PRINT N'@JsonErzeugen bit; Default: 0. bit-Schalter: 0 erzeugt kein JSON; 1 erstellt JSON unabhängig von @ResultSetArt. Das JSON-Objekt enthält die Schlüssel meta, objects und databaseStatus. Von 0 verschiedene, zu bit konvertierbare Zahlenwerte eines gebundenen bit-Parameters werden zu 1 konvertiert; NULL aktiviert die IF-Bedingung nicht und erzeugt kein JSON.';
+        PRINT N'@Json nvarchar(max) OUTPUT; Default: NULL. nvarchar(max)-OUTPUT-Parameter; zum Empfangen des JSON eine nvarchar(max)-Variable mit OUTPUT binden; der Parameter darf ausgelassen werden, dann gilt der deklarierte Default NULL. Die Procedure setzt den Wert beim Eintritt auf NULL; wenn @JsonErzeugen=1, wird das JSON-Dokument mit meta, objects und databaseStatus zurückgegeben, andernfalls bleibt der Output NULL; der frühe @Hilfe-Zweig gibt ebenfalls kein JSON zurück.';
+        PRINT N'@PrintMeldungen bit; Default: 1. bit-Schalter: 0 unterdrückt strukturierte Warnmeldungen; 1 sendet bei Status ungleich AVAILABLE eine RAISERROR-Meldung mit Severity 10 und NOWAIT. Von 0 verschiedene, zu bit konvertierbare Zahlenwerte werden beim Binden zu 1 konvertiert. NULL erfüllt IF @PrintMeldungen=1 nicht und unterdrückt die Meldung.';
+        PRINT N'@Hilfe bit; Default: 0. bit-Schalter: 0 führt nach Auswahl-/Filtervorbereitung die Fachanalyse aus; 1 gibt die eingebauten PRINT-Zeilen aus und kehrt vor der fachlichen DMV-/Katalogerhebung zurück. Namefilter- und Datenbankkandidatenauswahl sowie Gate-Prüfungen liegen davor; TABLE führt außerdem das Mapping-Preflight vorher aus. Die Vorbereitung wird durch den Hilfezweig nicht unterlassen. Von 0 verschiedene, zu bit konvertierbare Zahlenwerte werden beim Binden zu 1 konvertiert; NULL erfüllt den Hilfezweig nicht.';
+        PRINT N'Beispiel RAW: EXEC [monitor].[USP_ObjectInventory] @DatabaseNames=N''[ExampleDatabase]'', @FullObjectNames=N''[ExampleSchema].[ExampleTable]'', @ResultSetArt=''RAW'';';
+        PRINT N'Hilfe: EXEC [monitor].[USP_ObjectInventory] @Hilfe=1;';
+
+
+
+
+
+
+
+
+
+
+
         RETURN;
     END;
 
