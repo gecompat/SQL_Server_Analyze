@@ -65,15 +65,15 @@ DECLARE @ExampleJson nvarchar(max);
 EXEC [monitor].[USP_Statistics] @DatabaseNames=N'[ExampleDatabase]', @FullObjectNames=N'[ExampleSchema].[ExampleTable]', @ResultSetArt='NONE', @JsonErzeugen=1, @Json=@ExampleJson OUTPUT;
 SELECT @ExampleJson AS [ExampleJson];
 
-CREATE TABLE [#ExampleStatistics]([Seed] int NULL);
+CREATE TABLE [#Statistics_HelpExample]([Seed] int NULL);
 BEGIN TRY
-    EXEC [monitor].[USP_Statistics] @DatabaseNames=N'[ExampleDatabase]', @FullObjectNames=N'[ExampleSchema].[ExampleTable]', @ResultSetArt='TABLE', @ResultTablesJson=N'{"statistics":"#ExampleStatistics"}';
+    EXEC [monitor].[USP_Statistics] @DatabaseNames=N'[ExampleDatabase]', @FullObjectNames=N'[ExampleSchema].[ExampleTable]', @ResultSetArt='TABLE', @ResultTablesJson=N'{"statistics":"#Statistics_HelpExample"}';
 END TRY
 BEGIN CATCH
-    DROP TABLE [#ExampleStatistics];
+    DROP TABLE [#Statistics_HelpExample];
     THROW;
 END CATCH;
-DROP TABLE [#ExampleStatistics];
+DROP TABLE [#Statistics_HelpExample];
 
 EXEC [monitor].[USP_Statistics] @Hilfe=1;
 ```

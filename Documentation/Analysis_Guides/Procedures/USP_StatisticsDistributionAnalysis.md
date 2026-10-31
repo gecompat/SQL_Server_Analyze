@@ -73,15 +73,15 @@ DECLARE @ExampleJson nvarchar(max), @ExampleStatus varchar(40), @ExamplePartial 
 EXEC [monitor].[USP_StatisticsDistributionAnalysis] @DatabaseNames=N'[ExampleDatabase]', @FullObjectNames=N'[ExampleSchema].[ExampleTable]', @HighImpactConfirmed=1, @MaxVerteilungsStatistiken=10, @ResultSetArt='NONE', @JsonErzeugen=1, @Json=@ExampleJson OUTPUT, @StatusCodeOut=@ExampleStatus OUTPUT, @IsPartialOut=@ExamplePartial OUTPUT, @ErrorNumberOut=@ExampleError OUTPUT, @ErrorMessageOut=@ExampleMessage OUTPUT;
 SELECT @ExampleJson AS [ExampleJson], @ExampleStatus AS [StatusCode], @ExamplePartial AS [IsPartial], @ExampleError AS [ErrorNumber], @ExampleMessage AS [ErrorMessage];
 
-CREATE TABLE [#ExampleFindings]([Seed] int NULL);
+CREATE TABLE [#StatisticsDistributionAnalysis_HelpExample]([Seed] int NULL);
 BEGIN TRY
-    EXEC [monitor].[USP_StatisticsDistributionAnalysis] @DatabaseNames=N'[ExampleDatabase]', @FullObjectNames=N'[ExampleSchema].[ExampleTable]', @HighImpactConfirmed=1, @MaxVerteilungsStatistiken=10, @ResultSetArt='TABLE', @ResultTablesJson=N'{"findings":"#ExampleFindings"}';
+    EXEC [monitor].[USP_StatisticsDistributionAnalysis] @DatabaseNames=N'[ExampleDatabase]', @FullObjectNames=N'[ExampleSchema].[ExampleTable]', @HighImpactConfirmed=1, @MaxVerteilungsStatistiken=10, @ResultSetArt='TABLE', @ResultTablesJson=N'{"findings":"#StatisticsDistributionAnalysis_HelpExample"}';
 END TRY
 BEGIN CATCH
-    DROP TABLE [#ExampleFindings];
+    DROP TABLE [#StatisticsDistributionAnalysis_HelpExample];
     THROW;
 END CATCH;
-DROP TABLE [#ExampleFindings];
+DROP TABLE [#StatisticsDistributionAnalysis_HelpExample];
 
 EXEC [monitor].[USP_StatisticsDistributionAnalysis] @Hilfe=1;
 ```

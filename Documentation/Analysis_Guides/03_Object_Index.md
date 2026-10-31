@@ -534,15 +534,15 @@ DECLARE @ExampleJson nvarchar(max);
 EXEC [monitor].[USP_Statistics] @DatabaseNames=N'[ExampleDatabase]', @FullObjectNames=N'[ExampleSchema].[ExampleTable]', @ResultSetArt='NONE', @JsonErzeugen=1, @Json=@ExampleJson OUTPUT;
 SELECT @ExampleJson AS [ExampleJson];
 
-CREATE TABLE [#ExampleStatistics]([Seed] int NULL);
+CREATE TABLE [#Statistics_HelpExample]([Seed] int NULL);
 BEGIN TRY
-    EXEC [monitor].[USP_Statistics] @DatabaseNames=N'[ExampleDatabase]', @FullObjectNames=N'[ExampleSchema].[ExampleTable]', @ResultSetArt='TABLE', @ResultTablesJson=N'{"statistics":"#ExampleStatistics"}';
+    EXEC [monitor].[USP_Statistics] @DatabaseNames=N'[ExampleDatabase]', @FullObjectNames=N'[ExampleSchema].[ExampleTable]', @ResultSetArt='TABLE', @ResultTablesJson=N'{"statistics":"#Statistics_HelpExample"}';
 END TRY
 BEGIN CATCH
-    DROP TABLE [#ExampleStatistics];
+    DROP TABLE [#Statistics_HelpExample];
     THROW;
 END CATCH;
-DROP TABLE [#ExampleStatistics];
+DROP TABLE [#Statistics_HelpExample];
 
 EXEC [monitor].[USP_Statistics] @Hilfe=1;
 ```
@@ -644,15 +644,15 @@ DECLARE @ExampleJson nvarchar(max), @ExampleStatus varchar(40), @ExamplePartial 
 EXEC [monitor].[USP_StatisticsDistributionAnalysis] @DatabaseNames=N'[ExampleDatabase]', @FullObjectNames=N'[ExampleSchema].[ExampleTable]', @HighImpactConfirmed=1, @MaxVerteilungsStatistiken=10, @ResultSetArt='NONE', @JsonErzeugen=1, @Json=@ExampleJson OUTPUT, @StatusCodeOut=@ExampleStatus OUTPUT, @IsPartialOut=@ExamplePartial OUTPUT, @ErrorNumberOut=@ExampleError OUTPUT, @ErrorMessageOut=@ExampleMessage OUTPUT;
 SELECT @ExampleJson AS [ExampleJson], @ExampleStatus AS [StatusCode], @ExamplePartial AS [IsPartial], @ExampleError AS [ErrorNumber], @ExampleMessage AS [ErrorMessage];
 
-CREATE TABLE [#ExampleFindings]([Seed] int NULL);
+CREATE TABLE [#StatisticsDistributionAnalysis_HelpExample]([Seed] int NULL);
 BEGIN TRY
-    EXEC [monitor].[USP_StatisticsDistributionAnalysis] @DatabaseNames=N'[ExampleDatabase]', @FullObjectNames=N'[ExampleSchema].[ExampleTable]', @HighImpactConfirmed=1, @MaxVerteilungsStatistiken=10, @ResultSetArt='TABLE', @ResultTablesJson=N'{"findings":"#ExampleFindings"}';
+    EXEC [monitor].[USP_StatisticsDistributionAnalysis] @DatabaseNames=N'[ExampleDatabase]', @FullObjectNames=N'[ExampleSchema].[ExampleTable]', @HighImpactConfirmed=1, @MaxVerteilungsStatistiken=10, @ResultSetArt='TABLE', @ResultTablesJson=N'{"findings":"#StatisticsDistributionAnalysis_HelpExample"}';
 END TRY
 BEGIN CATCH
-    DROP TABLE [#ExampleFindings];
+    DROP TABLE [#StatisticsDistributionAnalysis_HelpExample];
     THROW;
 END CATCH;
-DROP TABLE [#ExampleFindings];
+DROP TABLE [#StatisticsDistributionAnalysis_HelpExample];
 
 EXEC [monitor].[USP_StatisticsDistributionAnalysis] @Hilfe=1;
 ```
