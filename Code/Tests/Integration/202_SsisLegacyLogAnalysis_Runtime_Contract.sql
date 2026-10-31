@@ -14,7 +14,7 @@ CREATE TABLE [#ExampleSsisLegacyOwnership]([OwnedTableId] int NULL,[OwnedUserId]
 DECLARE @OwnershipTempId int=OBJECT_ID(N'tempdb..#ExampleSsisLegacyOwnership');
 INSERT [#ExampleSsisLegacyOwnership] VALUES(NULL,NULL);
 BEGIN TRY
-    EXEC(N'CREATE PROCEDURE [dbo].[ExampleSsisLegacyFixtureScope] @OwnedTableId int OUTPUT AS BEGIN
+    DECLARE @FixtureCreateSql nvarchar(max)=N'CREATE PROCEDURE [dbo].[ExampleSsisLegacyFixtureScope] @OwnedTableId int OUTPUT AS BEGIN
 
 SET NOCOUNT ON;
 DECLARE @CiOrdinal int=0,@CiMarker nvarchar(1000);
@@ -497,8 +497,13 @@ IF @@OPTIONS<>@CallerOptions OR @@LOCK_TIMEOUT<>137 OR @@TRANCOUNT<>@InitialTran
 SET @CiOrdinal+=1; SET @CiMarker=CONCAT(N''CI_CASE|202|C024|'',@CiOrdinal,N''|'',CONVERT(varchar(27),SYSUTCDATETIME(),126),N''Z|'',@@SPID,N''|'',@@LOCK_TIMEOUT,N''|'',LEFT(CONCAT(N''Cap='',@Cap,N'';'',N''''),180)); RAISERROR(N''%s'',10,1,@CiMarker) WITH NOWAIT;
 EXEC [monitor].[USP_SsisLegacyLogAnalysis] @LoggingDatabase=@Db,@LoggingTable=N''ExampleSsisLegacy.Log]Source'',@ExecutionId=@Id,@ResultSetArt=''RAW''; SET @CiMarker=CONCAT(N''CI_AFTER|202|C024|'',@CiOrdinal,N''|'',CONVERT(varchar(27),SYSUTCDATETIME(),126),N''Z|'',@@SPID,N''|'',@@LOCK_TIMEOUT,N''|'',LEFT(CONCAT(N''Cap='',@Cap,N'';'',N''''),180)); RAISERROR(N''%s'',10,1,@CiMarker) WITH NOWAIT;
 
-END;');
+END;';
+    EXEC [sys].[sp_executesql]
+        N'SET QUOTED_IDENTIFIER ON; EXEC [sys].[sp_executesql] @CreateSql;',
+        N'@CreateSql nvarchar(max)',@CreateSql=@FixtureCreateSql;
     SELECT @OwnedProc=object_id FROM sys.procedures WITH (NOLOCK) WHERE schema_id=1 AND name COLLATE SQL_Latin1_General_CP1_CS_AS=N'ExampleSsisLegacyFixtureScope';
+    IF NOT EXISTS(SELECT 1 FROM [sys].[sql_modules] WITH (NOLOCK) WHERE [object_id]=@OwnedProc AND [uses_quoted_identifier]=1)
+        THROW 56337,N'LEGACY_FIXTURE_QUOTED_IDENTIFIER_NOT_ON',1;
     EXEC [dbo].[ExampleSsisLegacyFixtureScope] @OwnedTableId=@OwnedTable OUTPUT;
     SELECT @OwnedUser=OwnedUserId FROM [#ExampleSsisLegacyOwnership];
     IF @@OPTIONS<>@OuterOptions OR @@LOCK_TIMEOUT<>@OuterLock OR @@TRANCOUNT<>@OuterTran THROW 56328,N'LEGACY_OUTER_CALLER_STATE',1;
