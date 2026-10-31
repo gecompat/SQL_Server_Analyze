@@ -25,11 +25,54 @@ EXEC [monitor].[USP_QueryStoreHints]
 
 Alle `Example*`-Werte im Aufruf sind synthetisch.
 
+## Parameter und weitere Aufrufbeispiele
+
+| Parameter | Datentyp | Default | Eingabeform und Wirkung |
+|---|---|---|---|
+| `@QueryStoreDatabaseNames` | `nvarchar(max)` | `NULL` | Ausgelassen/NULL, N'' oder nur äußere U+0020-Leerzeichen: keine Einschränkung. Sonst bracket-aware Pipe-Liste exakter einteiliger SQL-Datenbanknamen, zum Beispiel N'[ExampleDatabase]&#124;[OtherDatabase]'; &#124; trennt außerhalb von [...], ]] maskiert ]. Leere Elemente, ungültige Namen und Duplikate sind INVALID_PARAMETER. Eine effektive nichtleere Liste ist exklusiv mit dem nicht-NULL Quellpattern. Ohne Filter werden sichtbare geeignete Online-Benutzerdatenbanken gewählt; Systemdatenbanken bleiben ausgeschlossen. |
+| `@QueryStoreDatabaseNamePattern` | `nvarchar(4000)` | `NULL` | ausgelassen/NULL kein Filter. Äußeres Trimmen, dann like: bedeutet SQL-LIKE-Muster, regex: regulärer Ausdruck mit Flag c (case-sensitiv), regexi: regulärer Ausdruck mit Flag i (case-insensitiv); Präfixe ohne Beachtung der Großschreibung entfernen. Ohne Präfix gilt LIKE; Rest wird nicht erneut getrimmt. Leer oder leer nach Präfix ist ungültig; exklusiv mit @QueryStoreDatabaseNames. REGEX/REGEXI laufen in der Installationsdatenbank und benötigen SQL Server 2025 plus CL170 dort; Syntax wird nicht vorab validiert. |
+| `@HighImpactConfirmed` | `bit` | `0` | ausgelassen/0 = nicht bestätigt. NULL ist im Datenbankhelfer INVALID_PARAMETER. 1 bestätigt nur ein aktiviertes Gruppengate: QUERY_STORE_CURRENT hat kein Gruppengate, QUERY_STORE_DEEP verwendet es. Die Bestätigung ändert keinen Scope und erteilt weder SQL-Berechtigung noch Gruppenmitgliedschaft. Als bit 0 oder 1 übergeben; SQL-Typkonvertierung kann andere numerische Nichtnullwerte auf 1 abbilden. In diesem Modul wird Deep ausschließlich bei normalisiertem Zeilenlimit &gt;1000, also auch NULL/0 unbegrenzt, zusätzlich geprüft. |
+| `@QueryId` | `bigint` | `NULL` | Ausgelassen/NULL: kein Query-ID-Filter. Einen ganzzahligen bigint-Wert von -9223372036854775808 bis 9223372036854775807 übergeben; keine zusätzliche Positivitäts- oder Existenzprüfung. Exakter Vergleich je Quelle; Query-IDs sind quellenspezifisch. |
+| `@NurMitFehler` | `bit` | `0` | Ausgelassen/0: alle gespeicherten Hints. 1 oder NULL: nur Hints mit QueryHintFailureCount &gt; 0 ODER LastQueryHintFailureReason ungleich 0; NULL wird nicht auf 0 normalisiert, sondern wirkt durch SQL-Dreiwertlogik wie der Fehlerfilter. Als bit 0 oder 1 übergeben; konvertierbare numerische Werte ungleich 0 werden 1. |
+| `@MaxZeilen` | `int` | `100` | Weglassen verwendet 100. NULL oder 0 bedeutet unbegrenzt; ein positiver Wert ist die globale Höchstzahl exportierter Zeilen. Pro Datenbank wird bei endlichem Limit lokal bis zu Limit+1 gelesen, anschließend wird global sortiert und begrenzt. Negative Werte liefern INVALID_PARAMETER. Wenn das normalisierte Limit &gt; 1000 ist, wird nach QUERY_STORE_CURRENT zusätzlich QUERY_STORE_DEEP geprüft; NULL/0 normalisieren auf unbegrenzt und lösen diese Prüfung ebenfalls aus. Bei int-Maximum 2147483647 wird lokal N ohne +1 verwendet. Ganze Zahlen von 1 bis 2147483647 sind positive Limits. Lokal und global werden Fehlergrund ungleich 0 zuerst, dann QueryHintFailureCount absteigend und QueryHintId aufsteigend gereiht. Hint-IDs sind quellenspezifisch, gleiche Sortwerte zwischen Quellen legen keine eindeutige Auswahl fest. Textprojektion, Warnungen und Zähler beziehen sich auf alle lokalen Kandidaten vor dem globalen Limit. |
+| `@MaxSqlTextZeichen` | `int` | `4000` | Weglassen verwendet 4000 Zeichen. NULL oder 0 bedeutet unbegrenzten QuerySqlText; ein positiver Wert begrenzt nur den projizierten Querytext nach dem Einlesen und Join. QueryHintText wird nicht gekürzt; das Limit begrenzt weder die Quelllesung noch die Hinttextlänge. Negative Werte liefern INVALID_PARAMETER. Gekürzte Querytexte erhalten Längen-/Byte-/Truncationmetadaten; bei aktivierten Meldungen erscheint höchstens eine Kürzungswarnung. Als positive ganze Zahl bis 2147483647 übergeben. Unicode-SC-Zählung lässt Surrogatpaare zusammen und zählt keine Grapheme. |
+| `@ResultSetArt` | `varchar(16)` | `'CONSOLE'` | Weglassen verwendet CONSOLE. Zulässige feste Werte sind RAW, CONSOLE, TABLE und NONE; Groß-/Kleinschreibung wird ignoriert und äußere Leerzeichen werden entfernt. NULL sowie leerer/nur aus Leerzeichen bestehender Text und alle anderen Werte liefern INVALID_PARAMETER. CONSOLE gibt nur die fachliche Hint-Tabelle über den aktiven Console-Helper aus; RAW liefert Statusmetadaten, vollständige Exportdaten und Warnungen als Resultsets; TABLE schreibt das vollständige fachliche Exportset in das zugeordnete Ziel; NONE gibt keine Resultsets aus. Die Bindung an varchar(16) erfolgt vor der Prüfung; LTRIM/RTRIM entfernt nur äußere U+0020-Leerzeichen. CONSOLE ergänzt bei nichtleerer Fachmenge das Ergebnislabel; bei Leere liefert es eine Hinweiszeile. JSON bleibt unabhängig. |
+| `@ResultTablesJson` | `nvarchar(max)` | `NULL` | außerhalb TABLE nur NULL, leer oder äußere U+0020-Leerzeichen zulässig; anderer nichtleerer Inhalt wirft 51011. Bei TABLE nichtleeres JSON-Objekt mit genau dem Schlüssel queryHints und einem Ziel. Ziel: vorhandene, leere lokale #Temp-Tabelle (kein ##), maximal 116 Zeichen und genau eine beliebige Seed-Spalte; das volle Ergebnis-Schema muss nicht angelegt werden. Fehlendes/ungültiges Mapping/Ziel wird im frühen Preflight abgelehnt; leerer Wert ist in TABLE ungültig. Schlüssel binär exakt und ohne Duplikate; Ziele dürfen weder ## noch das reservierte #Monitor-Präfix verwenden. Ein Seed-Datensatz ist nicht zulässig; der Writer ersetzt die Seed-Struktur durch das Ergebnisschema. |
+| `@JsonErzeugen` | `bit` | `0` | Ausgelassen/0 oder NULL: kein JSON. 1 erzeugt @Json als Objekt mit meta (Metadaten), queryHints (globale Hint-Exportmenge) und warnings (Warnungen), unabhängig von @ResultSetArt. Als bit 0 oder 1 übergeben; konvertierbare numerische Werte ungleich 0 werden 1. |
+| `@Json` | `nvarchar(max) OUTPUT` | `NULL` | OUTPUT-Parameter. Zum Empfang nvarchar(max)-Variable als @Json=@Variable OUTPUT binden. Beim Eintritt auf NULL gesetzt und nur bei @JsonErzeugen=1 gefüllt; bei Hilfe bleibt es NULL. Ausgelassen gilt der Vorgabewert, das Ergebnis ist dann nicht abrufbar. Leerwert als Eingabe wird nicht ausgewertet. Bei ungefangenem THROW besteht keine Zusage einer OUTPUT-Rückübertragung. |
+| `@PrintMeldungen` | `bit` | `1` | ausgelassen lässt Meldungen zu. 1 erlaubt Fehlerhinweise und die Truncationwarnung; 0 unterdrückt diese Meldungen. NULL unterdrückt die Truncationwarnung und erfüllt die direkte Fehlerausgabebedingung nicht. Status, Resultsets und Datenmenge bleiben davon unberührt. Als bit 0 oder 1 übergeben; SQL-Typkonvertierung kann andere numerische Nichtnullwerte auf 1 abbilden. |
+| `@Hilfe` | `bit` | `0` | ausgelassen/NULL führt normal aus. Nur 1 druckt die Hilfe und beendet vor normaler Parameter- und Datenvalidierung. Rohe SQL-Bindung und früher TABLE-Mapping-Preflight bleiben aktiv und können vorher scheitern; @Json wurde beim Eintritt geleert. Als bit 0 oder 1 übergeben; SQL-Typkonvertierung kann andere numerische Nichtnullwerte auf 1 abbilden. |
+
+```sql
+EXEC [monitor].[USP_QueryStoreHints] @Hilfe=1;
+```
+
+```sql
+EXEC [monitor].[USP_QueryStoreHints] @QueryStoreDatabaseNames=N'[ExampleDatabase]', @ResultSetArt='RAW';
+```
+
+```sql
+DECLARE @ExampleJson nvarchar(max); EXEC [monitor].[USP_QueryStoreHints] @QueryStoreDatabaseNames=N'[ExampleDatabase]', @ResultSetArt='NONE', @JsonErzeugen=1, @Json=@ExampleJson OUTPUT; SELECT @ExampleJson AS [Json];
+```
+
+```sql
+CREATE TABLE [#QueryStoreHints_HelpExample]([Seed] int NULL);
+BEGIN TRY
+ EXEC [monitor].[USP_QueryStoreHints] @QueryStoreDatabaseNames=N'[ExampleDatabase]', @ResultSetArt='TABLE', @ResultTablesJson=N'{"queryHints":"#QueryStoreHints_HelpExample"}';
+ SELECT * FROM [#QueryStoreHints_HelpExample];
+ DROP TABLE IF EXISTS [#QueryStoreHints_HelpExample];
+END TRY
+BEGIN CATCH
+ DROP TABLE IF EXISTS [#QueryStoreHints_HelpExample];
+ THROW;
+END CATCH;
+```
+
 ## Resultsets und Leserichtung
 
-Der typisierte TABLE-Vertrag registriert `queryHints`. Status, Scope und Warnings sind vor den Fachergebnissen zu lesen. CONSOLE dient der interaktiven Triage; RAW und JSON erhalten den technischen Kontext, während TABLE nur die ausdrücklich benannten stabilen Resultsets schreibt. Resultsets mit unterschiedlicher Zeilengranularität dürfen nicht ungeprüft vereinigt oder summiert werden.
+Der typisierte TABLE-Vertrag ordnet das Resultset `queryHints` einem bereits vorhandenen, leeren lokalen #Temp-Ziel mit genau einer Seed-Spalte zu; die Procedure erstellt das Ziel nicht. CONSOLE gibt nur die fachliche Hint-Tabelle über den Console-Helper aus. RAW liefert Statusmetadaten, die vollständigen Exportdaten und Warnungen. JSON wird auf Wunsch als Ausgabeparameter `@Json` mit `meta`, `queryHints` und `warnings` zurückgegeben. TABLE schreibt die vollständigen Exportdaten in das zugeordnete Ziel.
 
-RAW, CONSOLE, TABLE und JSON verwenden denselben global begrenzten Export mit 22 Feldern und neun expliziten Frameworktextcollations. `QueryStoreDatabaseName` und `QuerySqlTextIsTruncated` sind NOT NULL; die übrigen Felder sind nullable, keine Spalte ist eine Identity. NULL und 0 bei `@MaxZeilen` bleiben unbegrenzt; negative Zeilen- oder Textlimits liefern kontrolliert `INVALID_PARAMETER` mit leerem Export. NULL und 0 bei `@MaxSqlTextZeichen` erhalten den ungekürzten Querytext. Die Auswahl priorisiert einen Fehlergrund ungleich 0, danach `QueryHintFailureCount` absteigend und `QueryHintId` aufsteigend. Hint-IDs sind datenbanklokal; gleiche Sortwerte zwischen Datenbanken erlauben unterschiedliche gültige Auswahlen in getrennten Aufrufen. Innerhalb eines Aufrufs bleibt die exportierte Menge für alle Ausgabearten identisch.
+RAW, CONSOLE, TABLE und JSON verwenden denselben global begrenzten Export mit 22 Feldern und neun expliziten Frameworktextcollations. `QuerySqlTextIsTruncated` ist NOT NULL; die übrigen 21 Felder einschließlich `QueryStoreDatabaseName` sind nullable. Keine Spalte ist eine Identity. NULL und 0 bei `@MaxZeilen` bleiben unbegrenzt; negative Zeilen- oder Textlimits liefern kontrolliert `INVALID_PARAMETER` mit leerem Export. NULL und 0 bei `@MaxSqlTextZeichen` erhalten den ungekürzten Querytext. Die Auswahl priorisiert einen Fehlergrund ungleich 0, danach `QueryHintFailureCount` absteigend und `QueryHintId` aufsteigend. Hint-IDs sind datenbanklokal; gleiche Sortwerte zwischen Datenbanken erlauben unterschiedliche gültige Auswahlen in getrennten Aufrufen. Innerhalb eines Aufrufs bleibt die exportierte Menge für alle Ausgabearten identisch.
 
 Status, `hasMoreRows` und Truncationwarnungen entstehen vor der globalen Ausgabegrenze aus der lokal mit N+1 gesammelten Menge. Der Fehlerfilter bleibt unverändert: 0 umfasst alle Hints; 1 oder NULL behält nur positive Failurecounts oder einen Fehlergrund ungleich 0.
 
@@ -57,9 +100,9 @@ Ein dokumentierter, getesteter Hint kann eine bewusste Maßnahme sein.
 
 ## Leere oder partielle Ausgabe
 
-Query Store kann nutzbar sein, obwohl das gewählte Fenster leer ist. Prüfen Sie zuerst Capturemodus, Read-only-Status, Retention und UTC-Fenster.
+Eine leere Ausgabe bedeutet, dass im ausgewählten und gefilterten Datenbank-Scope keine Hintzeile exportiert wurde. Prüfen Sie die Datenbankauswahl, QueryId und Fehlerfilter; bei Teilstatus zusätzlich die ausgegebenen Warnungen und den Zugriffsstatus der ausgewählten Datenbanken. Diese Procedure wertet kein Zeitfenster aus.
 
-Für `USP_QueryStoreHints` gilt zusätzlich: **keine Zeile** bedeutet, dass im sichtbaren und gefilterten Scope kein ausgabefähiger Datensatz entstand. **0** ist ein gemessener Nullwert nur dann, wenn die Quellspalte tatsächlich verfügbar war. **NULL** bedeutet unbekannt, nicht anwendbar oder nicht auflösbar. **PARTIAL/Warning** bedeutet, dass mindestens eine Teilquelle, Datenbank oder Detailstufe fehlt. Ein Limit kann eine nichtleere Quelle vollständig aus dem sichtbaren Ausschnitt verdrängen.
+Für `USP_QueryStoreHints` bedeutet **keine Zeile**, dass im sichtbaren und gefilterten Datenbank-Scope kein ausgabefähiger Hint exportiert wurde; der Fehlerfilter mit NULL lässt nur Hints mit positivem Failurecount oder Fehlergrund ungleich 0 durch. **0** ist ein gemessener Nullwert nur dann, wenn die Quellspalte verfügbar war. **NULL** bedeutet unbekannt, nicht anwendbar oder nicht auflösbar. Ein partieller Status oder eine Warnung weist auf mindestens eine nicht lesbare oder fehlende Datenbankteilquelle hin. Ein globales Limit kann vorhandene Hintzeilen aus dem Export ausschließen.
 
 ## Eigenlast und Grenzen
 
