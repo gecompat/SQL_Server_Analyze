@@ -48,6 +48,7 @@ Jede Seite weist jetzt Entscheidungseinsatz, Nichtziele, Resultset-Leserichtung,
 - [USP_ErrorLogAnalysis](USP_ErrorLogAnalysis.md)
 - [USP_CurrentLog](USP_CurrentLog.md)
 - [USP_CurrentOverview](USP_CurrentOverview.md)
+- [USP_CurrentCursorAnalysis](USP_CurrentCursorAnalysis.md)
 
 ## Object und Index
 
@@ -137,7 +138,6 @@ Jede Seite weist jetzt Entscheidungseinsatz, Nichtziele, Resultset-Leserichtung,
 - [USP_DiagnosticFindings](USP_DiagnosticFindings.md)
 - [USP_WorkerPressureAnalysis](USP_WorkerPressureAnalysis.md)
 - [USP_DatabaseConfigurationAnalysis](USP_DatabaseConfigurationAnalysis.md)
-- [USP_CurrentCursorAnalysis](USP_CurrentCursorAnalysis.md)
 - [USP_DatabasePortabilityAnalysis](USP_DatabasePortabilityAnalysis.md)
 - [USP_SystemDatabaseObjectInventory](USP_SystemDatabaseObjectInventory.md)
 
