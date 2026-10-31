@@ -166,16 +166,16 @@ BEGIN
         PRINT N'RAW und JSON: DECLARE @Json nvarchar(max); EXEC [monitor].[USP_IndexOperationalStats] @DatabaseNames=N''[ExampleDatabase]'', @FullObjectNames=N''dbo.ExampleTable'', @ResultSetArt=''RAW'', @JsonErzeugen=1, @Json=@Json OUTPUT; SELECT @Json;';
         PRINT N'TABLE: CREATE TABLE #IndexOperationalStatsTarget([Seed] int NULL); BEGIN TRY EXEC [monitor].[USP_IndexOperationalStats] @DatabaseNames=N''[ExampleDatabase]'', @FullObjectNames=N''dbo.ExampleTable'', @ResultSetArt=''TABLE'', @ResultTablesJson=N''{"indexOperationalStats":"#IndexOperationalStatsTarget"}''; END TRY BEGIN CATCH DROP TABLE #IndexOperationalStatsTarget; THROW; END CATCH; DROP TABLE #IndexOperationalStatsTarget;';
         PRINT N'Hilfe: EXEC [monitor].[USP_IndexOperationalStats] @Hilfe=1;';
-        
-                
-        
-        
-        
-        
-        
-        
-        
-        
+
+
+
+
+
+
+
+
+
+
         RETURN;
     END;
 
