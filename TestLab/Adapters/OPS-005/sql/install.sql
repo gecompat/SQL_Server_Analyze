@@ -3414,9 +3414,14 @@ GO
     Kategoriebezeichnung, kein Wait Type.
 
     Eingabe:
-      @WaitCategoryDesc nvarchar(128), ohne Default. NULL ist zulässig und wird
-      für WaitGroup wie 'Unknown' behandelt. Andere unbekannte Bezeichnungen
-      bleiben in WaitGroup erhalten und erhalten allgemeine Beschreibungstexte.
+      @WaitCategoryDesc nvarchar(128); Default: keiner. Das Argument ist beim
+      Funktionsaufruf anzugeben, etwa als N'Buffer IO' oder NULL. Die
+      Parameterbindung erfolgt an nvarchar(128), also höchstens 128 UTF-16-
+      Codeeinheiten; längere Textwerte können dabei vor dem Funktionskörper
+      gekürzt werden. NULL, N'' und unbekannte Bezeichnungen sind zulässig.
+      NULL wird für WaitGroup wie N'Unknown' behandelt. Bei N'' bleibt
+      WaitGroup leer. Andere unbekannte Bezeichnungen durchlaufen dieselbe
+      WaitGroup-Transformation und erhalten allgemeine Beschreibungstexte.
 
     Ausgabe:
       WaitGroup nvarchar(64) – Eingabetext in Großschreibung, Leerzeichen werden
@@ -3434,6 +3439,20 @@ GO
       Buffer IO, Tran Log IO und Memory; sonst Query-Store-Laufzeitstatistik,
       Planwechsel und betroffene Query-/Plan-Kombination prüfen.
 
+    Erkannte CASE-Bezeichnungen und ihre Meaning-Texte:
+      CPU: CPU-Verbrauch oder Schedulerzeit während der Queryausführung.
+      Worker Thread: Warten auf verfügbare Workerthreads.
+      Lock: Warten auf inkompatible Locks.
+      Latch: Interne Synchronisationslatches.
+      Buffer Latch: Latches auf Seiten im Buffer Pool, häufig Hot-Page-Contention.
+      Buffer IO: Warten auf Daten-I/O für Seiten.
+      Tran Log IO: Warten auf Transaktionslog-I/O.
+      Network IO: Warten auf Netzwerk oder Clientabnahme.
+      Parallelism: Synchronisation paralleler Ausführungszweige.
+      Memory: Warten auf Query- oder interne Speicherressourcen.
+      Other Disk IO: Sonstiger persistenter I/O außerhalb Buffer- und Log-I/O.
+
+    Diese Bezeichnungen sind keine geschlossene Eingabewertemenge.
     Meaning-Texte sind für CPU, Worker Thread, Lock, Latch, Buffer Latch,
     Buffer IO, Tran Log IO, Network IO, Parallelism, Memory und Other Disk IO
     spezialisiert. Die anderen Spalten verwenden jeweils nur die oben
@@ -35520,23 +35539,33 @@ Objekt       : monitor.TVF_QueryStoreReplicaRoleInfo
 Version      : 1.0.0
 Stand        : 2026-07-27
 Typ          : Inline Table-Valued Function
-Zweck        : Die Funktion ordnet den Parameter @RoleType den stabilen Rollen-
-               und Scopeklassen des Query Store zu, ohne versionsspezifische
-               Kataloge zu referenzieren.
-Eingabe      : @RoleType tinyint nimmt NULL, 0 oder die Werte 1 bis 5 an.
-               NULL und 0 ergeben UNKNOWN und UNKNOWN_ROLE. Die Werte 1 bis 5
-               werden PRIMARY, SECONDARY, GEO_PRIMARY, GEO_SECONDARY und
-               NAMED_REPLICA zugeordnet. Werte größer als 5 werden ebenfalls
-               als NAMED_REPLICA und READ_ONLY_ROLE klassifiziert; dies folgt
-               der Frameworkkonvention und garantiert keine künftigen
+Zweck        : Die Funktion ordnet @RoleType einer Query-Store-Rollenbeschreibung,
+               einer Scopeklasse und den zugehörigen Flags zu. Sie referenziert
+               keine versionsspezifischen Kataloge.
+Eingabe      : @RoleType tinyint; Default: keiner. Das Argument ist als
+               Zahl, etwa 1, oder NULL beim Funktionsaufruf anzugeben. Zulässig sind NULL und die tinyint-Werte 0
+               bis 255. NULL und 0 ergeben UNKNOWN und UNKNOWN_ROLE. Die Werte
+               1, 2, 3, 4 und 5 ergeben der Reihe nach PRIMARY, SECONDARY,
+               GEO_PRIMARY, GEO_SECONDARY und NAMED_REPLICA. Werte 6 bis 255
+               werden ebenfalls als NAMED_REPLICA und READ_ONLY_ROLE
+               klassifiziert. Dieser offene Fallbackbereich folgt der
+               Frameworkkonvention und garantiert keine künftigen
                Herstellercodes.
-Ausgabe      : Die Funktion liefert stets genau eine Zeile mit RoleType tinyint,
-               RoleTypeDesc varchar(40), RoleClass varchar(24), den Flags
-               IsPrimaryRole, IsSecondaryRole und IsNamedReplica vom Typ bit
-               sowie EvidenceLimit nvarchar(500).
-Aussagegrenze: Die Rollenabbildung beschreibt die Klassifikation des Parameters.
-               Sie liest keine Live-Daten und belegt weder tatsächliche
-               Replikatkonfiguration noch Erreichbarkeit, Gesundheit oder eine
+Ausgabe      : Genau eine Zeile mit RoleType tinyint (der Eingabewert, NULL
+               bleibt NULL), RoleTypeDesc varchar(40), RoleClass varchar(24),
+               IsPrimaryRole, IsSecondaryRole und IsNamedReplica jeweils bit
+               sowie EvidenceLimit nvarchar(500). Für NULL und 0 sind alle
+               drei Flags 0. Für 1 und 3 ist RoleClass READ_WRITE_ROLE und
+               nur IsPrimaryRole 1. Für 2 und 4 ist RoleClass READ_ONLY_ROLE
+               und nur IsSecondaryRole 1. Für 5 bis 255 ist RoleClass
+               READ_ONLY_ROLE, IsSecondaryRole und IsNamedReplica sind 1,
+               IsPrimaryRole ist 0.
+Aussagegrenze: EvidenceLimit weist die Rollenabbildung für
+               sys.query_store_replicas.role_type aus und stellt klar, dass
+               beobachtete Rollen keine aktuelle Erreichbarkeits- oder
+               Healthaussage sind. Die Klassifikation des Parameters liest
+               keine Live-Daten und belegt weder tatsächliche
+               Replikatkonfiguration noch Erreichbarkeit, Gesundheit oder
                aktuelle Schreibberechtigung.
 SQL-Version  : SQL Server 2019 oder neuer.
 Eigenlast    : Konstante Projektion; keine Katalog- oder DMV-Zugriffe.
