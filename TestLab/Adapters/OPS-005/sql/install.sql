@@ -47871,8 +47871,8 @@ GO
 Objekt       : monitor.USP_StartupParameters
 Version      : 2.0.0
 Stand        : 2026-07-15
-Zweck        : Liefert Startparameter und Registry-basierte Dienstparameter
-               einschließlich eines Plattformhinweises.
+Zweck        : Die Procedure liest SQL-Startparameter und Registry-basierte
+               Dienstparameter und weist auf eine nicht verfügbare Plattformquelle hin.
 Datenquellen : sys.dm_server_registry
 Vertrag      : Resultset 1 ist immer Modulstatus; @ResultSetArt=NONE unterdrückt Resultsets; RAW und CONSOLE liefern unterschiedliche Projektionen. Optional JSON.
 ===============================================================================
@@ -47891,15 +47891,31 @@ BEGIN
     DECLARE @TableTarget sysname=NULL;
     IF @TableResultRequested=0 AND NULLIF(LTRIM(RTRIM(COALESCE(@ResultTablesJson,N''))),N'') IS NOT NULL THROW 51011,N'@ResultTablesJson ist ausschließlich mit @ResultSetArt=TABLE zulässig.',1;
     IF @TableResultRequested=1 EXEC [monitor].[InternalPrepareSingleResultTable] @ResultTablesJson=@ResultTablesJson,@ResultName=N'startupParameters',@TargetTable=@TableTarget OUTPUT,@ThrowOnError=1;
-    IF @TableResultRequested = 1 OR @ConsoleResultRequested = 1 SET @ResultSetArtNormalisiert = 'NONE';IF @Hilfe=1 BEGIN PRINT N'monitor.USP_StartupParameters: Server-Health-Snapshot; read-only, nicht atomar.';
-        PRINT N'Parameter: @PrintMeldungen bit=1 gibt Meldungen aus (0 unterdrückt sie); @Hilfe bit=0 (0/1) druckt bei 1 diese Hilfe vor den Quellen. Bei TABLE läuft der Ziel-Preflight vorher. @ResultSetArt varchar(16)=CONSOLE: CONSOLE, RAW, TABLE oder NONE; Groß-/Kleinschreibung wird normalisiert.';
-        PRINT N'@ResultTablesJson nvarchar(max)=NULL ist für TABLE erforderlich; außerhalb von TABLE sind nur NULL oder leere Werte zulässig. Der unten genannte Ergebnisname muss auf eine vorhandene, leere lokale #temp-Tabelle mit genau einer Platzhalterspalte (z.B. Seed bit NULL) zeigen; kein fertiges Ausgabeschema voranlegen.';
-        PRINT N'@JsonErzeugen bit=0 (0/1) erzeugt bei 1 das JSON-Dokument in @Json nvarchar(max)=NULL OUTPUT. @StatusCodeOut varchar(40)=NULL liefert den Modulstatus, @IsPartialOut bit=NULL die Teilstatuskennzeichnung, @ErrorNumberOut int=NULL die Quellfehlernummer und @ErrorMessageOut nvarchar(2048)=NULL den Fehlertext; alle sind OUTPUT.';
-        PRINT N'Ausgabe: RAW und CONSOLE zeigen startupParameters; TABLE exportiert startupParameters; JSON enthält das startupParameters-Array. JSON-Schlüssel: startupParameters; Modulstatus beschreibt Verfügbarkeit/Fehler.';
-        PRINT N'Quelle und Umfang: Liest SQLArg*- sowie ImagePath- und ObjectName-Werte aus sys.dm_server_registry und klassifiziert Trace-Flag-, Masterdatei- und Errorlogargumente. Registry-/Dienstkonfiguration ohne Zeilenlimit; Pfade und Dienstkontoangaben können sensibel sein.';
-        PRINT N'Plattform: Fehlt sys.dm_server_registry, meldet die Quelle auf Linux UNAVAILABLE_PLATFORM, sonst UNAVAILABLE_OBJECT.';
-        PRINT N'Beispiel: EXEC [monitor].[USP_StartupParameters] @ResultSetArt=''CONSOLE'';';
-        PRINT N'TABLE-Beispiel (nur bei Bedarf): CREATE TABLE [#StartupParameters_HelpExample]([Seed] bit NULL); EXEC [monitor].[USP_StartupParameters] @ResultSetArt=''TABLE'', @ResultTablesJson=N''{"startupParameters":"#StartupParameters_HelpExample"}''; DROP TABLE [#StartupParameters_HelpExample];';RETURN;END;
+    IF @TableResultRequested = 1 OR @ConsoleResultRequested = 1 SET @ResultSetArtNormalisiert = 'NONE';IF @Hilfe=1 BEGIN PRINT N'monitor.USP_StartupParameters';
+        PRINT N'Erfasst lesend SQL-Startargumente sowie ImagePath und ObjectName aus sys.dm_server_registry; die Momentaufnahme ist nicht atomar.';
+        PRINT N'Die Hilfe läuft nach einem eventuellen TABLE-Preflight und vor Plattform- und Quellenabfrage. JSON ist unabhängig von ResultSetArt.';
+        PRINT N'@PrintMeldungen bit; Default: 1. 1 gibt nach der Quellenprüfung bei einem Status ungleich AVAILABLE eine Statusmeldung aus; 0 unterdrückt sie. NULL wirkt wie 0; numerische 0 bleibt 0, von 0 verschiedene konvertierbare Zahlen werden bit 1, da nur der Vergleich mit 1 die Ausgabe auslöst.';
+        PRINT N'@Hilfe bit; Default: 0. 1 gibt die Parameterhilfe aus und beendet vor den Fachquellen; 0 erhebt Daten. NULL wirkt wie 0; numerische 0 bleibt 0, von 0 verschiedene konvertierbare Zahlen werden bit 1. Bei ResultSetArt TABLE wird der Ziel-Preflight vor der Hilfe ausgeführt.';
+        PRINT N'@ResultSetArt varchar(16); Default: ''CONSOLE''. Nach Bindung an varchar(16): CONSOLE beschriftet startupParameters, RAW liefert die technischen Zeilen und TABLE exportiert startupParameters; NONE unterdrückt Resultsets. Äußere U+0020-Leerzeichen werden entfernt, Großschreibung vereinheitlicht; NULL wird leer und ist ungültig. TABLE/CONSOLE werden intern für reguläre Resultsets zu NONE und danach über eigene Exportzweige bedient. Ungültige Werte setzen INVALID_PARAMETER und IsPartial=1; Quellprüfung läuft dennoch. Bei einem Quellenfehler ersetzt dessen Status INVALID_PARAMETER; bei erfolgreicher Quellenprüfung bleibt INVALID_PARAMETER bestehen.';
+        PRINT N'@ResultTablesJson nvarchar(max); Default: NULL. Bei TABLE ist ein JSON-Objekt mit startupParameters erforderlich, das auf eine existierende leere lokale #temp-Tabelle mit genau einer Seed-Spalte zeigt. Andernfalls wirft der Preflight vor der Hilfe Fehler 51011. Außerhalb von TABLE ist nur NULL oder leerer/nur aus Leerzeichen bestehender Inhalt zulässig.';
+        PRINT N'@JsonErzeugen bit; Default: 0. 1 erzeugt unabhängig von ResultSetArt zusätzlich JSON, 0 erzeugt es nicht; NULL wirkt wie 0; numerische 0 bleibt 0, von 0 verschiedene konvertierbare Zahlen werden bit 1. NONE unterdrückt Resultsets, nicht aber Quellenabfragen oder angefordertes JSON. @Hilfe=1 kehrt vor der JSON-Erzeugung zurück; @Json ist beim Eintritt bereits auf NULL gesetzt.';
+        PRINT N'@Json nvarchar(max) OUTPUT; Default: NULL. Die OUTPUT-Bindung ist optional; zum Empfang eine nvarchar(max)-Variable binden, z. B. @Json=@j OUTPUT. Der Eingangswert wird zu Beginn auf NULL gesetzt. Bei @JsonErzeugen=1 wird nach der Sammlung das JSON-Dokument geschrieben; sonst bleibt er NULL. Der Hilfezweig beendet vor der Erzeugung.';
+        PRINT N'@StatusCodeOut varchar(40) OUTPUT; Default: NULL. Die OUTPUT-Bindung ist optional; zum Empfang eine varchar(40)-Variable binden. Statuswerte: AVAILABLE; INVALID_PARAMETER; UNAVAILABLE_PLATFORM (DMV fehlt und Host ist Linux); UNAVAILABLE_OBJECT (DMV fehlt und Linux ist nicht erkannt); DENIED_PERMISSION (Fehler 229, 297, 300 oder 371); ERROR_HANDLED (sonstiger Registrylesefehler). Zuweisung erst nach Quellenprüfung, nicht bei Hilfe; eine gebundene, mit NULL initialisierte Variable bleibt NULL.';
+        PRINT N'@IsPartialOut bit OUTPUT; Default: NULL. Die OUTPUT-Bindung ist optional; zum Empfang eine bit-Variable binden. 0 bei AVAILABLE, 1 bei invalidem Modus, nicht verfügbarer DMV oder abgefangenem Quellfehler. Im Hilfezweig keine Zuweisung; eine gebundene, mit NULL initialisierte Variable bleibt NULL.';
+        PRINT N'@ErrorNumberOut int OUTPUT; Default: NULL. Die OUTPUT-Bindung ist optional; zum Empfang eine int-Variable binden. Fehlernummer eines abgefangenen Registrylesefehlers, sonst NULL. Im Hilfezweig keine Zuweisung; eine gebundene, mit NULL initialisierte Variable bleibt NULL.';
+        PRINT N'@ErrorMessageOut nvarchar(2048) OUTPUT; Default: NULL. Die OUTPUT-Bindung ist optional; zum Empfang eine nvarchar(2048)-Variable binden. Enthält Quell-/Validierungshinweis oder NULL bei AVAILABLE. Im Hilfezweig keine Zuweisung; eine gebundene, mit NULL initialisierte Variable bleibt NULL.';
+        PRINT N'EXEC [monitor].[USP_StartupParameters] @ResultSetArt=''RAW'';';
+        PRINT N'DECLARE @j nvarchar(max); EXEC [monitor].[USP_StartupParameters] @ResultSetArt=''NONE'', @JsonErzeugen=1, @Json=@j OUTPUT; SELECT @j;';
+        PRINT N'CREATE TABLE [#StartupParameters_HelpExample]([Seed] bit NULL); BEGIN TRY EXEC [monitor].[USP_StartupParameters] @ResultSetArt=''TABLE'', @ResultTablesJson=N''{"startupParameters":"#StartupParameters_HelpExample"}''; END TRY BEGIN CATCH DROP TABLE [#StartupParameters_HelpExample]; THROW; END CATCH; DROP TABLE [#StartupParameters_HelpExample];';
+        PRINT N'EXEC [monitor].[USP_StartupParameters] @Hilfe=1;';
+
+
+
+
+
+
+
+        RETURN;END;
  DECLARE @T datetime2(3)=SYSUTCDATETIME(),@S varchar(40)='AVAILABLE',@P bit=0,@E int=NULL,@M nvarchar(2048)=NULL,@Platform nvarchar(60)=NULL;
  IF @ResultSetArtNormalisiert NOT IN('RAW','CONSOLE','NONE') SELECT @S='INVALID_PARAMETER',@P=1,@M=N'@ResultSetArt muss CONSOLE, RAW, TABLE oder NONE enthalten.';
 CREATE TABLE [#StartupParameters_X]
@@ -47939,8 +47955,8 @@ GO
 Objekt       : monitor.USP_OSInformation
 Version      : 2.0.0
 Stand        : 2026-07-15
-Zweck        : Liefert Host-, Speicher-, Prozess- und Dienstinformationen. Jede
-               optionale Quelle besitzt eine eigene Fehlergrenze.
+Zweck        : Die Procedure liest Host-, Betriebssystem-Speicher-, SQL-Prozess-
+               und Dienstdaten; jede optionale Quelle hat eine eigene Fehlergrenze.
 Datenquellen : sys.dm_os_host_info, sys.dm_os_sys_memory, sys.dm_os_process_memory, sys.dm_server_services
 Vertrag      : Resultset 1 ist immer Modulstatus; @ResultSetArt=NONE unterdrückt Resultsets; RAW und CONSOLE liefern unterschiedliche Projektionen. Optional JSON.
 ===============================================================================
@@ -47962,17 +47978,33 @@ BEGIN
     IF @TableResultRequested = 1 OR @ConsoleResultRequested = 1 SET @ResultSetArtNormalisiert = 'NONE';
     DECLARE @MonitorPrintMessage nvarchar(2048);IF @Hilfe=1
  BEGIN
-        PRINT N'monitor.USP_OSInformation: Erfasst lesend Hostidentität, Betriebssystemspeicher, SQL-Prozessspeicher und SQL-Dienstdetails; jede Quelle meldet ihren Status unabhängig.';
-        PRINT N'@PrintMeldungen bit=1: Gibt Informationsmeldungen für teilweise oder nicht verfügbare Quellen aus (1) oder unterdrückt sie (0).';
-        PRINT N'@Hilfe bit=0: Gibt diese Hilfe aus (1) oder erhebt Daten (0). Die Hilfe wird vor der Erhebung ausgegeben; bei TABLE wird zuvor das Tabellenziel geprüft. Für die Hilfe den Standardaufruf verwenden.';
-        PRINT N'@ResultSetArt varchar(16)=CONSOLE: CONSOLE, RAW, TABLE oder NONE. CONSOLE ist für die interaktive Ausgabe; RAW liefert technische Resultsets; TABLE schreibt nur das benannte Resultat host; NONE unterdrückt Resultsets.';
-        PRINT N'@ResultTablesJson nvarchar(max)=NULL: Für TABLE erforderlich; ordnet den einzelnen Resultatnamen host einer bereits vorhandenen, leeren lokalen #temp-Tabelle mit genau einer Seed-Spalte zu. Permanente oder globale ##-Tabellen, nichtleere Tabellen und Ziele mit bereits festgelegtem Ausgabeschema werden abgewiesen.';
-        PRINT N'@JsonErzeugen bit=0: Erzeugt zusätzlich JSON (1) oder nicht (0). @Json nvarchar(max)=NULL OUTPUT nimmt es entgegen.';
-        PRINT N'@StatusCodeOut varchar(40)=NULL OUTPUT und @IsPartialOut bit=NULL OUTPUT: Gesamtstatus der Quellen und Kennzeichen für Teilergebnisse. @ErrorNumberOut int=NULL OUTPUT und @ErrorMessageOut nvarchar(2048)=NULL OUTPUT: erster verfügbarer Quellenfehler.';
-        PRINT N'Berechtigungen und Grenzen: Liest sys.dm_os_host_info, sys.dm_os_sys_memory, sys.dm_os_process_memory und sys.dm_server_services. Vier unabhängige kurze Lesezugriffe; fehlende Plattformobjekte oder DMV-Berechtigungen können zu Teilergebnissen führen. Kein Datenbankbereich und kein Zeilenlimit.';
-        PRINT N'Dienstkonten und Prozessdetails sind betriebliche sensible Angaben und nur mit berechtigten Empfängern zu teilen. Die Hostausgabe bildet weder die vollständige Betriebssystem- noch Hypervisor-Telemetrie ab.';
-        PRINT N'Beispiele (synthetisch): EXEC [monitor].[USP_OSInformation] @Hilfe=1;  EXEC [monitor].[USP_OSInformation] @ResultSetArt=''CONSOLE'';';
-        PRINT N'TABLE-Beispiel (synthetisch): CREATE TABLE #OSInformation_HelpExample(Seed bit NULL); EXEC [monitor].[USP_OSInformation] @ResultSetArt=''TABLE'', @ResultTablesJson=N''{"host":"#OSInformation_HelpExample"}''; DROP TABLE #OSInformation_HelpExample;';
+        PRINT N'monitor.USP_OSInformation';
+        PRINT N'Erfasst Hostidentität, Betriebssystemspeicher, SQL-Prozessspeicher und SQL-Dienstdetails aus vier unabhängigen Quellen.';
+        PRINT N'Die Hilfe läuft nach einem eventuellen TABLE-Preflight und vor Quellabfragen. Teilfehler bleiben pro Quelle sichtbar.';
+        PRINT N'@PrintMeldungen bit; Default: 1. 1 gibt nach der Quellenprüfung bei einem Status ungleich AVAILABLE eine Statusmeldung aus; 0 unterdrückt sie. NULL wirkt wie 0; numerische 0 bleibt 0, von 0 verschiedene konvertierbare Zahlen werden bit 1, da nur der Vergleich mit 1 die Ausgabe auslöst.';
+        PRINT N'@Hilfe bit; Default: 0. 1 gibt die Parameterhilfe aus und beendet vor den Fachquellen; 0 erhebt Daten. NULL wirkt wie 0; numerische 0 bleibt 0, von 0 verschiedene konvertierbare Zahlen werden bit 1. Bei ResultSetArt TABLE wird der Ziel-Preflight vor der Hilfe ausgeführt.';
+        PRINT N'@ResultSetArt varchar(16); Default: ''CONSOLE''. Nach Bindung an varchar(16): CONSOLE gibt ausschließlich host unter dem Label OSInformation aus; bei leerer host-Tabelle liefert der Helfer eine Leerzeile; die weiteren Quellresultate stehen in RAW beziehungsweise JSON; RAW liefert technische Resultsets; TABLE exportiert nur host; NONE unterdrückt Resultsets. Äußere U+0020-Leerzeichen werden entfernt, Großschreibung vereinheitlicht; NULL wird leer und ist ungültig. TABLE/CONSOLE werden für reguläre Resultsets zu NONE und separat ausgegeben. Ungültige Werte setzen INVALID_PARAMETER und IsPartial=1; Quellprüfung läuft dennoch.';
+        PRINT N'@ResultTablesJson nvarchar(max); Default: NULL. Bei TABLE ist ein JSON-Objekt mit dem einzelnen Resultatnamen host erforderlich, abgebildet auf eine vorhandene, leere lokale #temp-Tabelle mit genau einer Seed-Spalte. Permanente und globale ##-Tabellen, nichtleere Ziele und Ziele mit fertigem Ausgabeschema werden vom Preflight zurückgewiesen; er läuft vor der Hilfe und Fehler lösen 51011 aus. Außerhalb von TABLE sind NULL, Leertext oder Leerzeichen erlaubt; sonst wird 51011 ausgelöst.';
+        PRINT N'@JsonErzeugen bit; Default: 0. 1 erstellt JSON mit meta, sources, host, systemMemory, processMemory, services und warnings als leerem Array; 0 bzw. NULL unterdrückt die Erstellung; numerische 0 bleibt 0 und von 0 verschiedene konvertierbare Zahlen werden bit 1. @Hilfe=1 kehrt vor der JSON-Erzeugung zurück; @Json ist beim Eintritt bereits auf NULL gesetzt.';
+        PRINT N'@Json nvarchar(max) OUTPUT; Default: NULL. Die OUTPUT-Bindung ist optional; zum Empfang eine nvarchar(max)-Variable binden, z. B. @Json=@j OUTPUT. Der Eingangswert wird zu Beginn auf NULL gesetzt. Bei @JsonErzeugen=1 wird nach der Sammlung das JSON-Dokument geschrieben; sonst bleibt er NULL. Der Hilfezweig beendet vor der Erzeugung.';
+        PRINT N'@StatusCodeOut varchar(40) OUTPUT; Default: NULL. Die OUTPUT-Bindung ist optional; zum Empfang eine varchar(40)-Variable binden. AVAILABLE bei vier verfügbaren Quellen; PARTIAL bei mindestens einer verfügbaren und einer fehlgeschlagenen Quelle; INVALID_PARAMETER für ungültige ResultSetArt; bei Gesamtausfall DENIED_PERMISSION für Fehler 229/297/300/371, sonst ERROR_HANDLED. Zuweisung nach Quellversuchen, nicht bei Hilfe; eine gebundene, mit NULL initialisierte Variable bleibt NULL.';
+        PRINT N'@IsPartialOut bit OUTPUT; Default: NULL. Die OUTPUT-Bindung ist optional; zum Empfang eine bit-Variable binden. 0 bei AVAILABLE, sonst 1 sobald eine Quelle ausfällt oder ResultSetArt ungültig ist. Im Hilfezweig keine Zuweisung; eine gebundene, mit NULL initialisierte Variable bleibt NULL.';
+        PRINT N'@ErrorNumberOut int OUTPUT; Default: NULL. Die OUTPUT-Bindung ist optional; zum Empfang eine int-Variable binden. Fehlernummer des ersten Fehlers aus einer fehlgeschlagenen Quelle; die Auswahl ist ohne explizite Sortierung, sonst NULL; im Hilfezweig keine Zuweisung.';
+        PRINT N'@ErrorMessageOut nvarchar(2048) OUTPUT; Default: NULL. Die OUTPUT-Bindung ist optional; zum Empfang eine nvarchar(2048)-Variable binden. Meldung der ersten fehlgeschlagenen Quelle oder Validierungstext, sonst NULL; im Hilfezweig keine Zuweisung.';
+        PRINT N'EXEC [monitor].[USP_OSInformation] @ResultSetArt=''RAW'';';
+        PRINT N'DECLARE @j nvarchar(max); EXEC [monitor].[USP_OSInformation] @ResultSetArt=''NONE'', @JsonErzeugen=1, @Json=@j OUTPUT; SELECT @j;';
+        PRINT N'CREATE TABLE [#OSInformation_HelpExample]([Seed] bit NULL); BEGIN TRY EXEC [monitor].[USP_OSInformation] @ResultSetArt=''TABLE'', @ResultTablesJson=N''{"host":"#OSInformation_HelpExample"}''; END TRY BEGIN CATCH DROP TABLE [#OSInformation_HelpExample]; THROW; END CATCH; DROP TABLE [#OSInformation_HelpExample];';
+        PRINT N'EXEC [monitor].[USP_OSInformation] @Hilfe=1;';
+
+
+
+
+
+
+
+
+
+
         RETURN;
  END;
  DECLARE @T datetime2(3)=SYSUTCDATETIME(),@S varchar(40)='AVAILABLE',@P bit=0,@E int=NULL,@M nvarchar(2048)=NULL;
@@ -48019,8 +48051,8 @@ GO
 Objekt       : monitor.USP_ServerSecurityConfiguration
 Version      : 2.0.1
 Stand        : 2026-07-15
-Zweck        : Liest die Sicherheits- und Dienstkonfiguration, ohne sie zu
-               verändern.
+Zweck        : Die Procedure liest ausgewählte sicherheitsrelevante Serveroptionen,
+               Dienstinformationen und Servereigenschaften, ohne sie zu verändern.
 Datenquellen : sys.configurations, sys.dm_server_services, SERVERPROPERTY
 Vertrag      : Resultset 1 ist immer Modulstatus; @ResultSetArt=NONE unterdrückt
                Resultsets und liefert Status ausschließlich über OUTPUT-Parameter.
@@ -48051,17 +48083,33 @@ BEGIN
 
     IF @Hilfe = 1
     BEGIN
-        PRINT N'monitor.USP_ServerSecurityConfiguration: Erfasst lesend Sicherheits- und Konfigurationseinstellungen, SQL-Dienste, ausgewählte Servereigenschaften und den Status jeder Quelle.';
-        PRINT N'@PrintMeldungen bit=1: Gibt bei einem Status ungleich AVAILABLE Informationsmeldungen aus (1) oder unterdrückt sie (0).';
-        PRINT N'@Hilfe bit=0: Gibt diese Hilfe aus (1) oder erhebt Daten (0). Die Hilfe wird vor der Erhebung ausgegeben; bei TABLE wird zuvor das Tabellenziel geprüft. Für die Hilfe den Standardaufruf verwenden.';
-        PRINT N'@ResultSetArt varchar(16)=CONSOLE: CONSOLE, RAW, TABLE oder NONE. CONSOLE ist interaktiv; RAW liefert technische Resultsets; TABLE schreibt nur das benannte Resultat configuration; NONE unterdrückt Resultsets.';
-        PRINT N'@ResultTablesJson nvarchar(max)=NULL: Für TABLE erforderlich; ordnet den einzelnen Resultatnamen configuration einer bereits vorhandenen, leeren lokalen #temp-Tabelle mit genau einer Seed-Spalte zu. Permanente oder globale ##-Tabellen, nichtleere Tabellen und Ziele mit bereits festgelegtem Ausgabeschema werden abgewiesen.';
-        PRINT N'@JsonErzeugen bit=0: Erzeugt zusätzlich JSON (1) oder nicht (0). @Json nvarchar(max)=NULL OUTPUT nimmt es entgegen.';
-        PRINT N'@StatusCodeOut varchar(40)=NULL OUTPUT und @IsPartialOut bit=NULL OUTPUT: Gesamtstatus der Quellen und Kennzeichen für Teilergebnisse. @ErrorNumberOut int=NULL OUTPUT und @ErrorMessageOut nvarchar(2048)=NULL OUTPUT: erster verfügbarer Quellenfehler.';
-        PRINT N'Berechtigungen und Aufwand: Liest sys.configurations, sys.dm_server_services und SERVERPROPERTY; fehlende Quellberechtigungen können Ergebnisse einschränken. Kurze, rein lesende Server-Momentaufnahme ohne Datenbankbereich, Zeilenlimit oder Änderung an Konfiguration und Diensten.';
-        PRINT N'Dienstkonten und Serveridentität sind betriebliche sensible Angaben. Befunde sind Prüfsignale und keine automatische Einstufung als Richtlinienverstoß oder automatische Behebung.';
-        PRINT N'Beispiele (synthetisch): EXEC [monitor].[USP_ServerSecurityConfiguration] @Hilfe=1;  EXEC [monitor].[USP_ServerSecurityConfiguration] @ResultSetArt=''CONSOLE'';';
-        PRINT N'TABLE-Beispiel (synthetisch): CREATE TABLE #ServerSecurityConfiguration_HelpExample(Seed bit NULL); EXEC [monitor].[USP_ServerSecurityConfiguration] @ResultSetArt=''TABLE'', @ResultTablesJson=N''{"configuration":"#ServerSecurityConfiguration_HelpExample"}''; DROP TABLE #ServerSecurityConfiguration_HelpExample;';
+        PRINT N'monitor.USP_ServerSecurityConfiguration';
+        PRINT N'Erfasst ausgewählte sicherheitsrelevante Serveroptionen, SQL-Dienste und Servereigenschaften lesend.';
+        PRINT N'Die Hilfe läuft nach einem eventuellen TABLE-Preflight und vor der Erhebung. Befunde sind Prüfsignale, keine automatische Richtlinienentscheidung.';
+        PRINT N'@PrintMeldungen bit; Default: 1. 1 gibt nach der Quellenprüfung bei einem Status ungleich AVAILABLE eine Statusmeldung aus; 0 unterdrückt sie. NULL wirkt wie 0; numerische 0 bleibt 0, von 0 verschiedene konvertierbare Zahlen werden bit 1, da nur der Vergleich mit 1 die Ausgabe auslöst.';
+        PRINT N'@Hilfe bit; Default: 0. 1 gibt die Parameterhilfe aus und beendet vor den Fachquellen; 0 erhebt Daten. NULL wirkt wie 0; numerische 0 bleibt 0, von 0 verschiedene konvertierbare Zahlen werden bit 1. Bei ResultSetArt TABLE wird der Ziel-Preflight vor der Hilfe ausgeführt.';
+        PRINT N'@ResultSetArt varchar(16); Default: ''CONSOLE''. Nach Bindung an varchar(16): CONSOLE gibt ausschließlich die Sicherheitskonfiguration unter dem Label ServerSecurityConfiguration aus; bei leerer Konfiguration liefert der Helfer eine Leerzeile; Quellenstatus, Dienste und Eigenschaften stehen in RAW beziehungsweise JSON; RAW liefert technische Resultsets; TABLE exportiert nur configuration; NONE unterdrückt Resultsets. Äußere U+0020-Leerzeichen werden entfernt, Großschreibung vereinheitlicht; NULL wird leer und ist ungültig. TABLE/CONSOLE werden für reguläre Resultsets zu NONE und separat ausgegeben. Ungültige Werte setzen INVALID_PARAMETER und IsPartial=1; Quellprüfung läuft dennoch.';
+        PRINT N'@ResultTablesJson nvarchar(max); Default: NULL. Bei TABLE ist ein JSON-Objekt mit dem einzelnen Resultatnamen configuration erforderlich, abgebildet auf eine vorhandene, leere lokale #temp-Tabelle mit genau einer Seed-Spalte. Permanente und globale ##-Tabellen, nichtleere Ziele und Ziele mit fertigem Ausgabeschema werden vom Preflight zurückgewiesen; er läuft vor der Hilfe und Fehler lösen 51011 aus. Außerhalb von TABLE sind NULL, Leertext oder Leerzeichen erlaubt; sonst wird 51011 ausgelöst.';
+        PRINT N'@JsonErzeugen bit; Default: 0. 1 erstellt JSON mit meta, sources, configuration, services, properties und warnings als leerem Array; 0 bzw. NULL unterdrückt die Erstellung. NULL wirkt wie 0; numerische 0 bleibt bit 0, von 0 verschiedene konvertierbare Zahlen werden bit 1. @Hilfe=1 kehrt vor der JSON-Erzeugung zurück; @Json ist beim Eintritt bereits auf NULL gesetzt.';
+        PRINT N'@Json nvarchar(max) OUTPUT; Default: NULL. Die OUTPUT-Bindung ist optional; zum Empfang eine nvarchar(max)-Variable binden, z. B. @Json=@j OUTPUT. Der Eingangswert wird zu Beginn auf NULL gesetzt. Bei @JsonErzeugen=1 wird nach der Sammlung das JSON-Dokument geschrieben; sonst bleibt er NULL. Der Hilfezweig beendet vor der Erzeugung.';
+        PRINT N'@StatusCodeOut varchar(40) OUTPUT; Default: NULL. Die OUTPUT-Bindung ist optional; zum Empfang eine varchar(40)-Variable binden. AVAILABLE bei Erfolg, PARTIAL bei gemischter Quellenverfügbarkeit, INVALID_PARAMETER bei ungültiger ResultSetArt. Bei Gesamtausfall gilt der alphabetisch erste Quellenfehler: DENIED_PERMISSION (229/297/300/371), TIMEOUT (1222) oder ERROR_HANDLED (sonst). Ein ungültiger Modus wird durch Quellenfehlerstatus ersetzt. Zuweisung nach Quellenversuchen, nicht bei Hilfe; eine gebundene, mit NULL initialisierte Variable bleibt NULL.';
+        PRINT N'@IsPartialOut bit OUTPUT; Default: NULL. Die OUTPUT-Bindung ist optional; zum Empfang eine bit-Variable binden. 0 bei AVAILABLE, sonst 1 für invaliden Modus oder mindestens einen ausgefallenen Quellzweig. Im Hilfezweig keine Zuweisung; eine gebundene, mit NULL initialisierte Variable bleibt NULL.';
+        PRINT N'@ErrorNumberOut int OUTPUT; Default: NULL. Die OUTPUT-Bindung ist optional; zum Empfang eine int-Variable binden. Fehlernummer des alphabetisch ersten ausgefallenen Quellenzweigs, sonst NULL. Im Hilfezweig keine Zuweisung; eine gebundene, mit NULL initialisierte Variable bleibt NULL.';
+        PRINT N'@ErrorMessageOut nvarchar(2048) OUTPUT; Default: NULL. Die OUTPUT-Bindung ist optional; zum Empfang eine nvarchar(2048)-Variable binden. Fehlermeldung des alphabetisch ersten ausgefallenen Quellenzweigs, Validierungstext oder NULL bei Erfolg. Im Hilfezweig keine Zuweisung; eine gebundene, mit NULL initialisierte Variable bleibt NULL.';
+        PRINT N'EXEC [monitor].[USP_ServerSecurityConfiguration] @ResultSetArt=''RAW'';';
+        PRINT N'DECLARE @j nvarchar(max); EXEC [monitor].[USP_ServerSecurityConfiguration] @ResultSetArt=''NONE'', @JsonErzeugen=1, @Json=@j OUTPUT; SELECT @j;';
+        PRINT N'CREATE TABLE [#ServerSecurityConfiguration_HelpExample]([Seed] bit NULL); BEGIN TRY EXEC [monitor].[USP_ServerSecurityConfiguration] @ResultSetArt=''TABLE'', @ResultTablesJson=N''{"configuration":"#ServerSecurityConfiguration_HelpExample"}''; END TRY BEGIN CATCH DROP TABLE [#ServerSecurityConfiguration_HelpExample]; THROW; END CATCH; DROP TABLE [#ServerSecurityConfiguration_HelpExample];';
+        PRINT N'EXEC [monitor].[USP_ServerSecurityConfiguration] @Hilfe=1;';
+
+
+
+
+
+
+
+
+
+
         RETURN;
     END;
 
