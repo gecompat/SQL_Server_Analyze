@@ -36168,7 +36168,7 @@ BEGIN
         PRINT N'EXEC [monitor].[USP_QueryStoreRuntimeStats] @Hilfe=1;';
         PRINT N'EXEC [monitor].[USP_QueryStoreRuntimeStats] @QueryStoreDatabaseNames=N''[ExampleDatabase]'', @ResultSetArt=''RAW'';';
         PRINT N'DECLARE @Json nvarchar(max); EXEC [monitor].[USP_QueryStoreRuntimeStats] @QueryStoreDatabaseNames=N''[ExampleDatabase]'', @ResultSetArt=''NONE'', @JsonErzeugen=1, @Json=@Json OUTPUT; SELECT @Json AS [Json];';
-        PRINT N'CREATE TABLE [#RuntimeStatsSink] ([seed] int NULL); EXEC [monitor].[USP_QueryStoreRuntimeStats] @QueryStoreDatabaseNames=N''[ExampleDatabase]'', @ResultSetArt=''TABLE'', @ResultTablesJson=N''{"runtimeStats":"#RuntimeStatsSink"}''; SELECT * FROM [#RuntimeStatsSink]; DROP TABLE [#RuntimeStatsSink];';
+        PRINT N'CREATE TABLE [#QueryStoreRuntimeStats_HelpExample] ([seed] int NULL); EXEC [monitor].[USP_QueryStoreRuntimeStats] @QueryStoreDatabaseNames=N''[ExampleDatabase]'', @ResultSetArt=''TABLE'', @ResultTablesJson=N''{"runtimeStats":"#QueryStoreRuntimeStats_HelpExample"}''; SELECT * FROM [#QueryStoreRuntimeStats_HelpExample]; DROP TABLE [#QueryStoreRuntimeStats_HelpExample];';
         RETURN;
     END;
 
