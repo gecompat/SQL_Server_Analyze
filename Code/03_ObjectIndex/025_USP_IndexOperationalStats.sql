@@ -15,30 +15,25 @@ Zweck        : Analysiert aktuelle kumulative Zugriffs-, Lock-, Latch-, I/O-
 SQL-Version  : SQL Server 2019 oder neuer.
 Datenquellen : sys.dm_db_index_operational_stats sowie sys.objects, sys.schemas,
                sys.indexes und sys.tables der jeweiligen Zieldatenbank.
-Parameter    :
-  @DatabaseNames nvarchar(max) = NULL - Zieldatenbank; im Einzelmodus Pflicht.
-  @CrossDatabaseRequestedInternal bit = 0 - Cross-Database; CROSS_DATABASE_DEEP erforderlich.
-  @SystemdatenbankenEinbeziehen bit = 0 - Systemdatenbanken einbeziehen.
-  @DatenbankNameLike nvarchar(256) = NULL - Datenbank-LIKE-Filter.
-  @SchemaNamePattern nvarchar(256) = NULL - GEZIELT: exakter Schemaname (Equality); VOLL: LIKE.
-  @ObjectNamePattern nvarchar(256) = NULL - GEZIELT: exakter Objektname (Equality); VOLL: LIKE.
-  @IndexNamePattern nvarchar(256) = NULL - optionaler Index-LIKE-Filter.
-  @AnalyseModus varchar(16) = 'GEZIELT' - GEZIELT genau ein Objekt; VOLL
-               prüft INDEX_OPERATIONAL_DEEP und kann die Datenbank breit lesen.
-  @PartitionNumber int = NULL - nur GEZIELT; NULL = alle Partitionen des Objekts.
-  @NurMitAktivitaet bit = 1 - nur Zeilen mit wenigstens einem relevanten Counter.
-  @MinLeafPageAllocations bigint = 0 - Mindestzahl Leaf-Page-Allokationen.
-  @MinLockWaitMs bigint = 0 - Mindestwartezeit aus Row- und Page-Locks.
-  @MaxZeilen int = 5000 - positive Werte begrenzen; NULL/0 = unbegrenzt; begrenzt Ausgabe, nicht DMF-Arbeit.
-  @LockTimeoutMs int = 0 - 0 bis 60000; begrenzt Lock-Wartezeit.
-  @PrintMeldungen bit = 1 - Warnungen via RAISERROR Severity 10.
-  @Hilfe bit = 0 - Hilfe via PRINT; keine Analyse.
-Resultsets   : 1. Modulstatus. 2. Status je Datenbank. 3. Operational Stats.
+Parameter    : Signatur und Defaults stehen unmittelbar unter diesem DDL-Kommentar.
+               Die PRINT-Hilfe beschreibt jeden Parameter mit Eingabeform,
+               NULL-Regeln, Grenzen und den vollständigen festen Optionen.
+               GEZIELT verlangt FullObjectNames oder exakte SchemaNames und
+               ObjectNames. Zusätzliche Pattern bleiben Patternfilter; sie
+               ersetzen diese Anforderung nicht. VOLL prüft
+               INDEX_OPERATIONAL_DEEP einschließlich Bestätigung und separater
+               Gruppenberechtigung; PartitionNumber ist dann unzulässig.
+Ausgabe      : RAW liefert Modulstatus, Datenbankstatus und Operational Stats.
+               CONSOLE und TABLE liefern nur Operational Stats; JSON enthält
+               meta, indexOperationalStats und databaseStatus. NONE
+               unterdrückt direkte Resultsets. Hilfe folgt bereits erfolgter
+               Filtervorbereitung und gegebenenfalls TABLE-Preflight.
 Berechtigung : GEZIELT: CONTROL auf dem Objekt oder ausreichender Database-State-
                Zugriff. VOLL: SQL 2019 VIEW DATABASE STATE, SQL 2022+
                VIEW DATABASE PERFORMANCE STATE. Keine Rechtevergabe.
-Eigenlast    : GEZIELT ruft die DMF für genau ein zuvor sicher aufgelöstes Objekt
-               auf. VOLL kann alle Heap-/B-Tree-/Columnstore-Rowsets lesen und ist
+Eigenlast    : GEZIELT ruft die DMF je Datenbank für eine zugewiesene ObjectId
+               auf. Bei mehreren passenden Objekten ist die Auswahl nicht
+               festgelegt; ohne Treffer wird keine NULL-Wildcard übergeben. VOLL kann alle Heap-/B-Tree-/Columnstore-Rowsets lesen und ist
                deshalb explizit gruppengeschützt. TOP reduziert nicht zwingend
                die DMF-Arbeit.
 Locking      : Rein lesend, kann Metadaten-/Objektzugriffe auslösen; LOCK_TIMEOUT
@@ -48,9 +43,9 @@ Partial      : Datenbankfehler werden isoliert. Ein nicht auflösbares Zielobjek
                wird niemals als NULL-Wildcard an die DMF übergeben.
 Beispiele    :
   EXEC monitor.USP_IndexOperationalStats @DatabaseNames=N'SampleDatabase',
-       @SchemaNamePattern=N'dbo', @ObjectNamePattern=N'FactSales';
+       @SchemaNames=N'dbo', @ObjectNames=N'FactSales';
   EXEC monitor.USP_IndexOperationalStats @DatabaseNames=N'SampleDatabase',
-       @AnalyseModus='VOLL', @ObjectNamePattern=N'Fact%', @MaxZeilen=10000;
+       @AnalyseModus='VOLL', @HighImpactConfirmed=1, @ObjectNamePattern=N'Fact%', @MaxZeilen=10000;
   EXEC monitor.USP_IndexOperationalStats @Hilfe=1;
 Änderungen   : 1.1.0 - Exakte Equality-Auflösung erlaubt Unterstriche und andere reguläre Namenszeichen.
                1.0.0 - Erstfassung Phase 2.
@@ -140,16 +135,47 @@ BEGIN
     IF @Hilfe=1
     BEGIN
         PRINT N'monitor.USP_IndexOperationalStats';
-        PRINT N'Die Procedure liefert kumulative Zugriffs-, Lock-, Latch-, I/O-Latch-, Page-Split- und Eskalationszähler je Indexpartition.';
-        PRINT N'@DatabaseNames nvarchar(max) = NULL: im Einzelmodus Pflicht.';        PRINT N'@SystemdatenbankenEinbeziehen bit = 0; @DatenbankNameLike nvarchar(256) = NULL.';
-        PRINT N'@SchemaNamePattern/@ObjectNamePattern: GEZIELT benötigt beide und vergleicht per Equality; Zeichen wie Unterstrich sind zulässig. VOLL behandelt sie als LIKE-Filter.';
-        PRINT N'@IndexNamePattern nvarchar(256) = NULL: optionaler LIKE-Filter.';
-        PRINT N'@AnalyseModus varchar(16) = GEZIELT: VOLL erfordert INDEX_OPERATIONAL_DEEP.';
-        PRINT N'@PartitionNumber int = NULL: nur im GEZIELT-Modus.';
-        PRINT N'@NurMitAktivitaet bit = 1; @MinLeafPageAllocations bigint = 0; @MinLockWaitMs bigint = 0.';
-        PRINT N'Datenbankauswahl ohne Vorabbegrenzung; @MaxZeilen int = 5000; @LockTimeoutMs int = 0.';
-        PRINT N'@PrintMeldungen bit = 1; @Hilfe bit = 0.';
-        PRINT N'Beispiel: EXEC monitor.USP_IndexOperationalStats @DatabaseNames=N''DWH'', @SchemaNamePattern=N''dbo'', @ObjectNamePattern=N''FactSales'';';
+        PRINT N'Liefert kumulative Operational-Stats-Zähler je Indexpartition; darunter DML, Page-Allokationen, Locks, Latches, I/O-Latches, Scans und Lookups. Metadata-Cache-Eviction kann die Counter zurücksetzen.';
+        PRINT N'GEZIELT verlangt @FullObjectNames oder beide exakten Listen @SchemaNames und @ObjectNames. Muster können zusätzlich filtern; sie ersetzen diese Auswahlvoraussetzung nicht. VOLL prüft INDEX_OPERATIONAL_DEEP und verlangt Freigabe sowie @HighImpactConfirmed=1.';
+        PRINT N'@Hilfe=1 gibt PRINT-Hilfe aus und kehrt vor der fachlichen DMF-Abfrage zurück. Filter-/Datenbankauswahl und ein angefordertes TABLE-Mapping laufen zuvor.';
+        PRINT N'@DatabaseNames nvarchar(max); Default: NULL. Ein einzelner Datenbankname oder bracket-aware Pipe-Liste einteiliger SQL-Namen. NULL oder nach Trim leere Eingabe bedeutet keine explizite Auswahl und lässt die Datenbankauswahl alle zulässigen sichtbaren Online-Datenbanken bestimmen. Nichtleere Liste: äußere Elementleerzeichen werden getrimmt, [] quotiert Namen und ]] maskiert ]; Pipe trennt außerhalb von Klammern. Leere Elemente, ungültige SQL-Namen und case-sensitive Duplikate führen zu INVALID_PARAMETER. Eine nichtleere Liste ist mit @DatabaseNamePattern gegenseitig exklusiv; NULL/Leerraum plus Pattern ist möglich. Eine Datenbankliste allein erfüllt den GEZIELT-Objektfilter nicht. Die Namensprüfung verlangt PARSENAME-Teil 1 ungleich NULL, Teil 2 gleich NULL und LEN von Teil 1 höchstens 128; Teile 3 und 4 werden nicht gesondert geprüft. Rohsegmente über 4000 UTF-16-Codeeinheiten sind ungültig.';
+        PRINT N'@SystemdatenbankenEinbeziehen bit; Default: 0. bit-Schalter: 0 schließt master, model, msdb und tempdb aus; 1 erlaubt ihre Aufnahme, soweit sichtbar und online. SQL Server konvertiert beim Binden von 0 verschiedene, zu bit konvertierbare Zahlenwerte eines bit-Parameters zu 1. NULL wird vom Datenbankauswahlhelfer als INVALID_PARAMETER abgewiesen.';
+        PRINT N'@DatabaseNamePattern nvarchar(4000); Default: NULL. Optionales Pattern für Datenbanknamen nach TVF_ParsePattern: äußere Leerzeichen trimmen; Präfixe like:, regex: und regexi: werden ohne Beachtung der Großschreibung erkannt; ohne Präfix gilt LIKE. Der verbleibende Inhalt wird nicht erneut getrimmt; NULL bedeutet kein Pattern, leerer Wert oder leeres Präfix ist ungültig. Datenbankname-Pattern ist mit nichtleerer @DatabaseNames-Liste exklusiv. LIKE-Wildcards gelten im Datenbankkandidatenpfad. regex: setzt Flag c, regexi: Flag i; Regex-Verfügbarkeit wird am Installationsdatenbank-Kontext geprüft und erfordert SQL Server 2025 sowie Compatibility Level 170. LIKE nutzt %, _ und Zeichenklassen [...] unter expliziter case-sensitiver Framework-Collation. Ein Übergabebeispiel ist N''like:App%''; nach Präfixentfernung wird nicht erneut getrimmt.';
+        PRINT N'@HighImpactConfirmed bit; Default: 0. bit-Bestätigung für den VOLL-Pfad INDEX_OPERATIONAL_DEEP, der erst nach OBJECT_ANALYSIS_CURRENT aktiviert wird: 0 bestätigt den Deep-Pfad nicht; 1 erfüllt die Bestätigungsanforderung, erteilt selbst aber keine Berechtigung. SQL Server konvertiert gebundene von 0 verschiedene, zu bit konvertierbare Zahlenwerte eines bit-Parameters zu 1. NULL wird vom Datenbankauswahlhelfer als INVALID_PARAMETER abgewiesen. GEZIELT nutzt OBJECT_ANALYSIS_CURRENT und verlangt diese Bestätigung nicht.';
+        PRINT N'@SchemaNames nvarchar(max); Default: NULL. Exakte einteilige Schemanamen als bracket-aware Pipe-Liste. NULL bedeutet kein Filter; eine leere oder nur aus Leerzeichen bestehende Liste ist kein NULL und wird als ungültige Namensliste abgewiesen. Pipe trennt außerhalb von [...]; ]] maskiert eine Klammer. Namen werden getrimmt, als einteilige SQL-Namen mit höchstens 128 Zeichen geprüft und case-sensitive verglichen; Rohsegmente über 4000 UTF-16-Codeeinheiten sind ungültig. Doppelte Werte derselben Namensart sind ungültig. Nicht gemeinsam mit @SchemaNamePattern. Bei @FullObjectNames ist die Kombination mit @SchemaNames oder @ObjectNames ungültig. In GEZIELT benötigt diese Liste zusätzlich die exakte @ObjectNames-Liste; alternativ wird ausschließlich @FullObjectNames verwendet.';
+        PRINT N'@SchemaNamePattern nvarchar(4000); Default: NULL. Optionales Schema-Pattern gemäß TVF_ParsePattern: NULL = keines; äußere Leerzeichen trimmen, Präfix like:/regex:/regexi: ohne Beachtung der Großschreibung, sonst LIKE; leerer Inhalt oder leeres Präfix ungültig. LIKE-Schemavergleiche sind case-sensitive und nutzen SQL-LIKE-Wildcards. regex: verwendet Flag c, regexi: Flag i. Schema-Regex wird am Schemaquellpfad ausgeführt; dieser Pfad prüft SQL Server 2025 und Compatibility Level 170. Exakte Liste und Pattern derselben Eigenschaft sind exklusiv. In GEZIELT ersetzt ein Muster nicht die Voraussetzung aus FullObjectNames oder beiden exakten Listen. LIKE nutzt %, _ und Zeichenklassen [...] unter expliziter case-sensitiver Framework-Collation. Ein Übergabebeispiel ist N''like:App%''; nach Präfixentfernung wird nicht erneut getrimmt.';
+        PRINT N'@ObjectNames nvarchar(max); Default: NULL. Exakte einteilige Objektnamen als bracket-aware Pipe-Liste; NULL bedeutet kein Filter, eine leere Liste ist ungültig. Pipe trennt außerhalb geklammerter Namen; ]] maskiert ]. Elemente werden getrimmt und als einteilige SQL-Namen mit höchstens 128 Zeichen validiert, case-sensitive verglichen; Rohsegmente über 4000 UTF-16-Codeeinheiten sind ungültig; Duplikate derselben Namensart sind ungültig. Nicht gemeinsam mit @ObjectNamePattern. Bei @FullObjectNames ist die Kombination mit @SchemaNames oder @ObjectNames ungültig. Im GEZIELT-Modus benötigt diese Liste zusätzlich eine exakte @SchemaNames-Liste; Pattern ersetzt diese nicht. @FullObjectNames ist eine alternative Auswahl und darf nicht damit kombiniert werden.';
+        PRINT N'@ObjectNamePattern nvarchar(4000); Default: NULL. Optionales Objekt-Pattern gemäß TVF_ParsePattern: NULL = keines; äußerer Trim; Präfix like:/regex:/regexi: wird ohne Beachtung der Großschreibung erkannt, sonst LIKE; leere Werte oder leeres Präfix sind ungültig. LIKE-Objektvergleiche sind case-sensitive und nutzen SQL-LIKE-Wildcards. regex: verwendet Flag c, regexi: Flag i; Objekt-Regex wird im Objektquellpfad ausgeführt und prüft SQL Server 2025/Compatibility Level 170. Nicht gemeinsam mit @ObjectNames. Ein Muster allein erfüllt die GEZIELT-Auswahlvoraussetzung nicht. LIKE nutzt %, _ und Zeichenklassen [...] unter expliziter case-sensitiver Framework-Collation. Ein Übergabebeispiel ist N''like:App%''; nach Präfixentfernung wird nicht erneut getrimmt.';
+        PRINT N'@FullObjectNames nvarchar(max); Default: NULL. Bracket-aware Pipe-Liste vollständiger Objektbezüge mit 1 bis 3 Teilen: Objekt, Schema.Objekt oder Datenbank.Schema.Objekt; bei Datenbankteil ist das Schema erforderlich, vier Teile sind unzulässig. Rohsegmente über 4000 UTF-16-Codeeinheiten sind ungültig; Namensbestandteile werden nach PARSENAME und sysname-Länge geprüft. Pipe trennt nur außerhalb von [...]; ]] maskiert ]. NULL bedeutet kein Filter; N'''' ist EMPTY_LIST, Leerzeichen erzeugt ein ungültiges Element. Bestandteile werden case-sensitive verglichen; nicht angegebene Datenbank-/Schemaanteile bleiben im Prädikat offen. Doppelte vollständige Bezüge sind ungültig. Der Helper weist @FullObjectNames zusammen mit @SchemaNames oder @ObjectNames ab, sobald die betreffenden Eingaben nicht NULL sind; auch leere Nicht-NULL-Listen sind also eine Kombination. Dient als zulässiger Objektfilter für GEZIELT.';
+        PRINT N'@IndexNames nvarchar(max); Default: NULL. Exakte einteilige Indexnamen als bracket-aware Pipe-Liste; NULL bedeutet kein Indexnamenfilter, eine leere oder nur aus Leerzeichen bestehende Liste ist ungültig. Pipe trennt außerhalb von [...]; ]] maskiert ]. Elemente werden getrimmt, als einteilige SQL-Namen validiert und case-sensitive verglichen. Rohsegmente über 4000 UTF-16-Codeeinheiten und Namen über die sysname-Grenze werden abgewiesen. Case-sensitive Duplikate sind ungültig. Nicht gemeinsam mit @IndexNamePattern verwenden.';
+        PRINT N'@IndexNamePattern nvarchar(4000); Default: NULL. Optionales Indexnamen-Pattern gemäß TVF_ParsePattern: NULL = keines; äußerer Trim; Präfix like:, regex: oder regexi: ohne Beachtung der Großschreibung, sonst LIKE. Leerer Rest/Präfix ist ungültig. LIKE ist case-sensitive mit SQL-Wildcards; regex: verwendet Flag c und regexi: Flag i und benötigt SQL Server 2025/Compatibility Level 170, geprüft am Indexquellpfad. Nicht gemeinsam mit @IndexNames. LIKE nutzt %, _ und Zeichenklassen [...] unter expliziter case-sensitiver Framework-Collation. Ein Übergabebeispiel ist N''like:App%''; nach Präfixentfernung wird nicht erneut getrimmt.';
+        PRINT N'@AnalyseModus varchar(16); Default: ''GEZIELT''. Nach LTRIM/RTRIM und Großschreibung sind nur GEZIELT und VOLL gültig; NULL wird wie GEZIELT normalisiert. GEZIELT verlangt @FullObjectNames oder beide exakten Listen @SchemaNames und @ObjectNames. Die Filter können mehrere Objekte bezeichnen; der Quellcode löst @ObjectIdFilter per SELECT-Variablenzuweisung auf passende Objekte auf und garantiert dabei keine bestimmte Auswahl, falls mehrere übereinstimmen. VOLL aktiviert INDEX_OPERATIONAL_DEEP und benötigt dessen Freigabe sowie @HighImpactConfirmed=1. Leer oder nur Leerzeichen sowie andere Werte sind INVALID_PARAMETER.';
+        PRINT N'@PartitionNumber int; Default: NULL. Optionale positive int-Partitionsnummer, Bereich 1 bis 2147483647. In GEZIELT wird sie für die zugewiesene ObjectId an die DMF übergeben; NULL umfasst dort alle Partitionen dieses Objekts. VOLL verlangt NULL und verwendet den breiten Rowset-Pfad; nur ein nicht-NULL-Wert ist auf GEZIELT beschränkt. Werte kleiner 1 sind INVALID_PARAMETER.';
+        PRINT N'@NurMitAktivitaet bit; Default: 1. bit-Filter: 0 lässt auch Nullaktivitätszeilen zu; 1 verlangt mindestens einen der im Quellprädikat addierten DML-, Range-/Lookup-, Lock-, Page-Latch- oder I/O-Latch-Zähler größer Null. Von 0 verschiedene, zu bit konvertierbare Zahlenwerte konvertieren beim Binden zu 1. Bei NULL wird die Bedingung @P=0 OR Aktivitätsausdruck>0 für Nullaktivität nicht TRUE, sodass solche Zeilen ausgeschlossen werden.';
+        PRINT N'@MinLeafPageAllocations bigint; Default: 0. Nichtnegative bigint-Mindestzahl kumulativer Leaf-Page-Allokationen je Partition, Bereich 0 bis 9223372036854775807; Default 0 schränkt nicht ein. Negative Werte sind INVALID_PARAMETER. NULL besteht den negativen Wertecheck durch UNKNOWN, macht aber leaf_allocation_count >= @P UNKNOWN und lässt keine Zeile passieren.';
+        PRINT N'@MinLockWaitMs bigint; Default: 0. Nichtnegative bigint-Mindestzeit in Millisekunden für Row- plus Page-Lock-Wait-Zeit, Bereich 0 bis 9223372036854775807; Default 0 schränkt nicht ein. Negative Werte sind INVALID_PARAMETER. NULL besteht den negativen Wertecheck durch UNKNOWN, macht aber den nachfolgenden Summenvergleich UNKNOWN und lässt keine Zeile passieren.';
+        PRINT N'@MaxZeilen int; Default: 5000. Nichtnegative int-TOP-Grenze, Bereich 0 bis 2147483647, Default 5000; 0 oder NULL wird intern zu der bigint-Grenze 9223372036854775807 umgerechnet. Negative Werte führen zu INVALID_PARAMETER. TOP gilt für die Operational-Stats-Quellabfrage je Datenbank. Die Auswahl sortiert vorab nach I/O-Latch-Wartezeit, Page-Latch-Wartezeit, Row-/Page-Lock-Wartezeit und Leaf-Page-Allokationen absteigend; die Endausgabe verwendet eine eigene Sortierung. Keine globale Zeilenobergrenze und kein Limit für die vorherige DMF-/Katalogarbeit.';
+        PRINT N'@LockTimeoutMs int; Default: 0. int in Millisekunden; gültiger nicht-NULL-Wertebereich 0 bis 60000, 0 setzt vor den fachlichen Zugriffen NOWAIT. Der Bereichstest @LockTimeoutMs NOT BETWEEN 0 AND 60000 wertet NULL als UNKNOWN; mit nichtnegativen übrigen Zahlen wird NULL dadurch nicht als INVALID_PARAMETER erkannt. Anschließend wird der Wert mit N''SET LOCK_TIMEOUT '' + CONVERT(nvarchar(11), @LockTimeoutMs) + ... in dynamisches SQL konkateniniert. Bei NULL wird der zusammengebaute SQL-Text NULL; der Quellcode setzt darin keinen konkreten Wert. Vor der Datenbankschleife setzt die Procedure ausdrücklich LOCK_TIMEOUT 0. Der NULL-Batch setzt keine andere konkrete Wartezeit; die zuvor gesetzte NOWAIT-Einstellung bleibt für diesen Ausführungspfad maßgeblich.';
+        PRINT N'@ResultSetArt varchar(16); Default: ''CONSOLE''. varchar(16), nach LTRIM/RTRIM und UPPER genau CONSOLE, RAW, TABLE oder NONE. NULL und leer werden als leerer String normalisiert und als INVALID_PARAMETER validiert, nicht als NONE behandelt. CONSOLE gibt nur das menschenlesbare Operational-Stats-Fachresultset als Resultset aus; RAW gibt Modulstatus, Datenbankstatus und Fachresultset aus; TABLE schreibt das Fachresultset ins Ziel; NONE unterdrückt normale Resultsets. JSON entsteht unabhängig über @JsonErzeugen. Statuswarnungen können bei @PrintMeldungen=1 zusätzlich als Meldung ausgegeben werden.';
+        PRINT N'@ResultTablesJson nvarchar(max); Default: NULL. Nur für TABLE wird ein JSON-Objekt mit exakt einem erlaubten, case-sensitiven Resultnamen und Stringziel erwartet: indexOperationalStats als Schlüssel. Ziel ist eine vorhandene, leere lokale #Temp-Tabelle, kein ##Temp oder #Monitor*-Name, mit genau einer Seed-Spalte; Zielzuordnungen sind eindeutig. NULL/leer bei TABLE scheitert am Preflight. Bei jeder nicht-TABLE-Ausgabe löst ein nichtleerer, nicht aus Leerzeichen bestehender Wert THROW 51011 aus; NULL, leerer oder nur aus Leerzeichen bestehender Wert ist zulässig. Der Zielname darf höchstens 116 Zeichen haben; Beispiel: N''{"indexOperationalStats":"#IndexHelpTarget"}''.';
+        PRINT N'@JsonErzeugen bit; Default: 0. bit-Schalter: 0 erzeugt kein JSON; 1 erstellt JSON unabhängig von @ResultSetArt. Das JSON-Objekt enthält die Schlüssel meta, indexOperationalStats und databaseStatus. Von 0 verschiedene, zu bit konvertierbare Zahlenwerte eines gebundenen bit-Parameters werden zu 1 konvertiert; NULL aktiviert die IF-Bedingung nicht und erzeugt kein JSON.';
+        PRINT N'@Json nvarchar(max) OUTPUT; Default: NULL. nvarchar(max)-OUTPUT-Parameter; zum Empfangen des JSON eine nvarchar(max)-Variable mit OUTPUT binden; der Parameter darf ausgelassen werden, dann gilt der deklarierte Default NULL. Die Procedure setzt den Wert beim Eintritt auf NULL; wenn @JsonErzeugen=1, wird das JSON-Dokument mit meta, indexOperationalStats und databaseStatus zurückgegeben, andernfalls bleibt der Output NULL; der frühe @Hilfe-Zweig gibt ebenfalls kein JSON zurück.';
+        PRINT N'@PrintMeldungen bit; Default: 1. bit-Schalter: 0 unterdrückt strukturierte Warnmeldungen; 1 sendet bei Status ungleich AVAILABLE eine RAISERROR-Meldung mit Severity 10 und NOWAIT. Von 0 verschiedene, zu bit konvertierbare Zahlenwerte werden beim Binden zu 1 konvertiert. NULL erfüllt IF @PrintMeldungen=1 nicht und unterdrückt die Meldung.';
+        PRINT N'@Hilfe bit; Default: 0. bit-Schalter: 0 führt nach Auswahl-/Filtervorbereitung die Fachanalyse aus; 1 gibt die eingebauten PRINT-Zeilen aus und kehrt vor der fachlichen DMV-/Katalogerhebung zurück. Namefilter- und Datenbankkandidatenauswahl sowie Gate-Prüfungen liegen davor; TABLE führt außerdem das Mapping-Preflight vorher aus. Die Vorbereitung wird durch den Hilfezweig nicht unterlassen. Von 0 verschiedene, zu bit konvertierbare Zahlenwerte werden beim Binden zu 1 konvertiert; NULL erfüllt den Hilfezweig nicht.';
+        PRINT N'CONSOLE: EXEC [monitor].[USP_IndexOperationalStats] @DatabaseNames=N''[ExampleDatabase]'', @SchemaNames=N''dbo'', @ObjectNames=N''ExampleTable'', @ResultSetArt=''CONSOLE'';';
+        PRINT N'RAW und JSON: DECLARE @Json nvarchar(max); EXEC [monitor].[USP_IndexOperationalStats] @DatabaseNames=N''[ExampleDatabase]'', @FullObjectNames=N''dbo.ExampleTable'', @ResultSetArt=''RAW'', @JsonErzeugen=1, @Json=@Json OUTPUT; SELECT @Json;';
+        PRINT N'TABLE: CREATE TABLE #IndexOperationalStatsTarget([Seed] int NULL); BEGIN TRY EXEC [monitor].[USP_IndexOperationalStats] @DatabaseNames=N''[ExampleDatabase]'', @FullObjectNames=N''dbo.ExampleTable'', @ResultSetArt=''TABLE'', @ResultTablesJson=N''{"indexOperationalStats":"#IndexOperationalStatsTarget"}''; END TRY BEGIN CATCH DROP TABLE #IndexOperationalStatsTarget; THROW; END CATCH; DROP TABLE #IndexOperationalStatsTarget;';
+        PRINT N'Hilfe: EXEC [monitor].[USP_IndexOperationalStats] @Hilfe=1;';
+
+
+
+
+
+
+
+
+
+
         RETURN;
     END;
 
