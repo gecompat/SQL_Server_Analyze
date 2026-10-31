@@ -26,6 +26,73 @@ EXEC [monitor].[USP_Columnstore]
 
 Alle `Example*`-Werte im Aufruf sind synthetisch.
 
+## Parameter und weitere Aufrufbeispiele
+
+| Parameter | Datentyp | Default | Eingabeform und Wirkung |
+|---|---|---|---|
+| `@DatabaseNames` | `nvarchar(max)` | `NULL` | Optionaler einteiliger Datenbankname oder bracket-aware Pipe-Liste solcher Namen. &#124; trennt außerhalb von [...]; ]] maskiert ]. Elemente werden außen getrimmt; case-sensitive Duplikate und ungültige/leere Elemente sind INVALID_PARAMETER. NULL, N'' und nur Leerzeichen bedeuten keine exakte Einschränkung und wählen alle zulässigen sichtbaren ONLINE-Datenbanken. Nichtleere Liste und nicht-NULL @DatabaseNamePattern sind gegenseitig exklusiv. PARSENAME-Prüfung: Teil 1 vorhanden, Teil 2 NULL, LEN höchstens 128; keine vollständige SQL-Namensgrammatik. Rohsegmente über 4000 UTF-16-Codeeinheiten sind ungültig. |
+| `@SystemdatenbankenEinbeziehen` | `bit` | `0` | 0 (Default) schließt master, model, msdb und tempdb aus; 1 lässt sie in der Auswahl zu. NULL wird vom Datenbankhelfer als INVALID_PARAMETER abgewiesen. Beim Binden an bit werden konvertierbare numerische Werte ungleich 0 zu 1. |
+| `@DatabaseNamePattern` | `nvarchar(4000)` | `NULL` | Optionales Pattern; NULL kein Filter, leer/Whitespace oder leeres Präfix-Ergebnis ungültig. Außen trimmen; Präfixe like:, regex:, regexi: werden ohne Beachtung der Großschreibung erkannt; Rest nicht nochmals trimmen; ohne Präfix LIKE. LIKE-Wildcards %, _ und [...] sind case-sensitiv. regex: übergibt c, regexi: i; Syntax wird nicht vorgeprüft. Der Datenbankpattern-Helfer prüft Regexverfügbarkeit im Installationsdatenbankkontext (SQL Server 2025 und Compatibility Level 170), sonst UNAVAILABLE_FEATURE. Feldregex für Schema/Objekt hat diese Vorprüfung nicht. Mit wirksamer Datenbankliste exklusiv. |
+| `@HighImpactConfirmed` | `bit` | `0` | 0 (Default) bestätigt kein Gate; 1 bestätigt nur die Anforderung eines tatsächlich aktivierten Analysepfads. NULL ungültig. Datenbankauswahl prüft COLUMNSTORE_CURRENT; Physical-/Segment-/Dictionaryoptionen sowie Segmentüberlappung zusätzlich COLUMNSTORE_DEEP; VOLL prüft CATALOG_DEEP. Ob ein aktivierter Pfad eine Gruppengate-Bestätigung verlangt, bestimmt dessen Policy. Bestätigung ersetzt weder Freigabe noch Scopegrenzen. Bit-Bindung mappt konvertierbare numerische Nichtnullwerte auf 1. |
+| `@SchemaNames` | `nvarchar(max)` | `NULL` | Optionale exakte einteilige Schemanamen als bracket-aware Pipe-Liste; &#124; trennt außerhalb von [...], ]] maskiert ]; Elemente außen getrimmt und case-sensitiv verglichen. NULL bedeutet kein Filter; nicht-NULL leere/Whitespace-Liste, leere Elemente, Duplikate, ungültiger PARSENAME-Name oder Rohsegment über 4000 UTF-16-Codeeinheiten sind ungültig. LEN höchstens 128. Nicht mit nicht-NULL @SchemaNamePattern oder @FullObjectNames kombinieren. |
+| `@SchemaNamePattern` | `nvarchar(4000)` | `NULL` | Optionales Pattern; NULL kein Filter, Leerwert/Whitespace oder Präfix ohne Inhalt ungültig. Außen trimmen; like:, regex:, regexi: ohne Beachtung der Großschreibung; Restinhalt nicht erneut trimmen; ohne Präfix LIKE. LIKE-Wildcards %, _ und [...] case-sensitiv; regex: Flag c, regexi: Flag i. Regex wird in der jeweiligen Zieldatenbank ausgeführt, ohne separate Versions-/Kompatibilitätsvorprüfung; fehlende Unterstützung kann als datenbankweise isolierter ERROR_HANDLED-Fehler erscheinen. Nicht mit nicht-NULL @SchemaNames kombinieren. |
+| `@ObjectNames` | `nvarchar(max)` | `NULL` | Optionale exakte einteilige Objektnamen als bracket-aware Pipe-Liste; &#124; trennt außerhalb von [...], ]] maskiert ]; außen getrimmt, case-sensitiv. NULL bedeutet kein Filter; nicht-NULL leer/Whitespace, leere Elemente, Duplikate, ungültiger PARSENAME-Name oder Rohsegment über 4000 UTF-16-Codeeinheiten ungültig. LEN höchstens 128. Mit nicht-NULL @ObjectNamePattern oder @FullObjectNames exklusiv. |
+| `@ObjectNamePattern` | `nvarchar(4000)` | `NULL` | Optionales Objektpattern; NULL deaktiviert, leeres/Whitespace-Muster oder Präfix ohne Inhalt ungültig. Außen trimmen; Präfixe like:, regex:, regexi: ohne Beachtung der Großschreibung; Rest danach nicht erneut trimmen; ohne Präfix LIKE. LIKE-Wildcards %, _ und [...] case-sensitiv; regex: c, regexi: i. Regex läuft in der jeweiligen Zieldatenbank ohne separate Versions-/Kompatibilitätsvorprüfung; fehlende Unterstützung kann je Datenbank als ERROR_HANDLED erscheinen. Nicht mit nicht-NULL @ObjectNames kombinieren. |
+| `@FullObjectNames` | `nvarchar(max)` | `NULL` | Optionale bracket-aware Pipe-Liste ein-, zwei- oder dreiteiliger Bezüge: Objekt, Schema.Objekt oder Datenbank.Schema.Objekt. &#124; trennt außerhalb von [...], ]] maskiert ]; PARSENAME/sysname-Grenzen, Rohsegment höchstens 4000 UTF-16-Codeeinheiten. Datenbankteil verlangt Schema; vier Teile unzulässig. NULL kein Filter; nicht-NULL leere Liste ungültig. Vergleiche case-sensitive; nicht angegebene Datenbank-/Schemaanteile bleiben offen. Mit nicht-NULL @SchemaNames oder @ObjectNames exklusiv. |
+| `@AnalyseModus` | `varchar(16)` | `'GEZIELT'` | GEZIELT oder VOLL; bei deaktivierter Segmentüberlappung wird NULL zu GEZIELT normalisiert, Außenleerzeichen werden entfernt und die Großschreibung vereinheitlicht. Andere Werte einschließlich leerer Eingabe führen zu INVALID_PARAMETER. Bei @MitSegmentUeberlappung=1 prüft die normale Vorbedingung vor dieser Normalisierung auf ausdrücklich übergebenes GEZIELT; NULL wird in diesem Pfad als INVALID_PARAMETER abgewiesen. VOLL prüft CATALOG_DEEP samt aktueller Aktivierung/Freigabe und ggf. High-Impact-Gate. |
+| `@MitPhysicalStats` | `bit` | `0` | Opt-in: 0 lässt zusätzliche Physical-Rowgroup-Stats aus; 1 fordert sie an und prüft COLUMNSTORE_DEEP. NULL wird nicht ausdrücklich abgewiesen und aktiviert den =1-Zweig nicht. Detailwerte und Berechtigungen hängen von Quelle und Version ab. |
+| `@MitSegmenten` | `bit` | `0` | Opt-in: 0 lässt Segmentmetadaten aus; 1 fordert sie an und prüft COLUMNSTORE_DEEP. NULL wird nicht eigens validiert und aktiviert den =1-Zweig nicht. Die Segmentzahl wächst ungefähr mit Rowgroups × Spalten; TOP begrenzt die je Datenbank materialisierten Zeilen, nicht zuverlässig die vorgelagerte Rowgroupermittlung. |
+| `@MitDictionaries` | `bit` | `0` | Opt-in: 0 lässt Dictionarymetadaten aus; 1 fordert sie an und prüft COLUMNSTORE_DEEP. NULL wird nicht eigens abgewiesen und aktiviert den =1-Zweig nicht. Ergebnisverfügbarkeit und erforderliche Rechte hängen vom Quellpfad ab. |
+| `@MinDeletedPercent` | `decimal(9,2)` | `0` | Rowgroup-Schwelle in Prozentpunkten, einschließlich 0 bis 100; außerhalb INVALID_PARAMETER. NULL passiert den &lt;0/&gt;100-Test aufgrund SQL-Dreiwertlogik, macht aber den nachfolgenden &gt;=-Vergleich UNKNOWN, sodass keine Zeile den Vergleich erfüllt. Kein Rebuildurteil. |
+| `@NurProblematisch` | `bit` | `0` | 0 lässt die Rowgroup-Auswahl ungefiltert; 1 filtert auf Zustand ungleich COMPRESSED oder vorhandene gelöschte Zeilen. NULL wird nicht separat validiert, sondern an SQL-Prädikate weitergereicht; deren Dreiwertlogik gilt. |
+| `@MaxZeilen` | `int` | `10000` | Positive int begrenzt TOP je relevanter Ergebnismenge und Ziel-Datenbank; 0 oder NULL bedeutet unbegrenzt; negative Werte INVALID_PARAMETER. Die Grenze begrenzt nicht zuverlässig vorgelagerte Katalog-/DMV-Arbeit. Segmentüberlappung hat die separate Grenze @MaxSegmenteAnalyse. |
+| `@LockTimeoutMs` | `int` | `0` | Lockwartezeit in Millisekunden von 0 bis 60000; außerhalb INVALID_PARAMETER. 0 bedeutet NOWAIT. Der Parameter wird in dynamischen Datenbankzugriffs-Batches als SET LOCK_TIMEOUT gesetzt; der Modulablauf setzt außerhalb dieser Batches außerdem stellenweise LOCK_TIMEOUT 0. NULL wird von der Bereichsprüfung nicht als ungültig erkannt; die spätere dynamische SET-LOCK_TIMEOUT-Textbildung wird durch den NULL-Wert NULL. Ein konkreter Ausführungsstatus dieses NULL-Batches wird hier nicht zugesichert. |
+| `@ResultSetArt` | `varchar(16)` | `'CONSOLE'` | Nach TRIM/UPPER einer der endlichen Werte CONSOLE, RAW, TABLE, NONE; NULL/leer wird ungültig. CONSOLE zeigt Statuskontext und menschenlesbare Fachansicht; RAW gibt getrennte Status- und Fachmengen; TABLE schreibt nur gemappte Mengen; NONE unterdrückt reguläre Resultsets. JSON ist unabhängig über @JsonErzeugen steuerbar. TABLE-Mapping wird vor dem Hilfezweig vorgeprüft. |
+| `@ResultTablesJson` | `nvarchar(max)` | `NULL` | Nur mit TABLE: JSON-Objekt Resultsetname zu lokaler #Temp-Zieltabelle. Für TABLE ist NULL/leeres oder ungültiges Objekt ungültig; außerhalb TABLE führt nichtleerer Inhalt zu THROW 51011. Erlaubte exakte Namen: rowgroups, ordering; segmentOverlap zusätzlich nur bei aktivierter Segmentüberlappung. Ziele müssen eindeutig, lokal, leer und mit genau einer Seed-Spalte angelegt sein; der Helper prüft und wirft bei Fehler. |
+| `@JsonErzeugen` | `bit` | `0` | 0 unterdrückt JSON; 1 erzeugt es in @Json. NULL wird nicht eigens als ungültig geprüft und führt nicht in den IF-Zweig. JSON-Schema 1 ohne Segmentüberlappung, Schema 2 mit ihr; Schlüssel meta, rowgroups, ordering, physicalStats, segments, dictionaries, databaseStatus und beim Opt-in segmentOverlap. |
+| `@Json` | `nvarchar(max) OUTPUT` | `NULL` | Optionaler nvarchar(max)-OUTPUT-Empfänger; zu Beginn auf NULL gesetzt. Bei @JsonErzeugen=1 enthält er das erzeugte JSON, sonst NULL. Zum Empfangen Variable passenden Typs mit OUTPUT binden; ohne OUTPUT wird die Zuweisung nicht zurückgegeben. Im Hilfezweig ist die Variable NULL. |
+| `@PrintMeldungen` | `bit` | `1` | 0 unterdrückt die ergänzende Severity-10-Warnmeldung; 1 (Default) gibt sie bei Status ungleich AVAILABLE aus. NULL wird nicht separat validiert und die Meldungsbedingung greift nicht. Keine zusätzliche Fachmenge. |
+| `@Hilfe` | `bit` | `0` | 0 normaler Ablauf; 1 druckt Hilfe und beendet vor der Analyse. Der Return liegt nach Filter-, TABLE-Mapping-, Kandidaten- und Gateprüfungen, diese können also vorher stattfinden. NULL wird nicht als 1 behandelt. |
+| `@MitSegmentUeberlappung` | `bit` | `0` | 0 (auch NULL, durch COALESCE zu 0 normalisiert) lässt segmentOverlap aus; 1 fordert die Diagnose und COLUMNSTORE_DEEP-Prüfung. Normaler Aufruf verlangt außerdem GEZIELT, genau eine explizite Datenbank, genau ein zweigliedriges FullObjectNames-Objekt, keine konkurrierenden Schema-/Objektfilter und @MaxSegmenteAnalyse 1..10000; sonst INVALID_PARAMETER. Opt-in ergänzt RAW/TABLE/JSON/CONSOLE; JSON wechselt zu Schema 2. |
+| `@MaxSegmenteAnalyse` | `int` | `2000` | Nur im aktivierten Segmentüberlappungspfad gültige Grenze 1..10000 einschließlich; NULL/außerhalb ungültig. Höchstens N+1 Segmentzeilen als Sentinel werden materialisiert; bei Überschreitung entfällt die gesamte Paarberechnung. Kein globales TOP-/Zeitlimit; bei ausgeschaltetem Pfad ungeprüft. |
+
+~~~sql
+EXEC [monitor].[USP_Columnstore]
+      @DatabaseNames=N'[ExampleDatabase]'
+    , @FullObjectNames=N'[ExampleSchema].[ExampleTable]'
+    , @ResultSetArt='RAW';
+~~~
+
+~~~sql
+DECLARE @Columnstore_JsonExample nvarchar(max);
+EXEC [monitor].[USP_Columnstore]
+      @DatabaseNames=N'[ExampleDatabase]'
+    , @FullObjectNames=N'[ExampleSchema].[ExampleTable]'
+    , @JsonErzeugen=1
+    , @Json=@Columnstore_JsonExample OUTPUT;
+SELECT @Columnstore_JsonExample AS [JsonDocument];
+~~~
+
+~~~sql
+CREATE TABLE #Columnstore_RowgroupsExample ([Seed] bit NULL);
+BEGIN TRY
+    EXEC [monitor].[USP_Columnstore]
+          @DatabaseNames=N'[ExampleDatabase]'
+        , @FullObjectNames=N'[ExampleSchema].[ExampleTable]'
+        , @ResultSetArt='TABLE'
+        , @ResultTablesJson=N'{"rowgroups":"#Columnstore_RowgroupsExample"}';
+END TRY
+BEGIN CATCH
+    DROP TABLE #Columnstore_RowgroupsExample;
+    THROW;
+END CATCH;
+DROP TABLE #Columnstore_RowgroupsExample;
+~~~
+
+~~~sql
+EXEC [monitor].[USP_Columnstore] @Hilfe=1;
+~~~
+
 ## Resultsets und Leserichtung
 
 Der typisierte TABLE-Vertrag registriert `rowgroups` und `ordering`. Status, Scope und Warnings sind vor den Fachergebnissen zu lesen. CONSOLE dient der interaktiven Triage; RAW und JSON erhalten den technischen Kontext, während TABLE nur die ausdrücklich benannten stabilen Resultsets schreibt. Resultsets mit unterschiedlicher Zeilengranularität dürfen nicht ungeprüft vereinigt oder summiert werden.
@@ -70,7 +137,7 @@ Für `USP_Columnstore` gilt zusätzlich: **keine Zeile** bedeutet, dass im sicht
 | Haupttreiber | Zahl gewählter Columnstore-Indizes/Partitionen und Rowgroups; optionale Physical-Stats-, Segment- und Dictionaryzeilen vervielfachen die Detailmenge. Objektfilter wirken früh, während Limits typischerweise erst nach der Katalog-/DMV-Erhebung greifen. |
 | Skalierung | Laufzeit und CPU wachsen mit dem Haupttreiber. Sortierung/Aggregation erhöht Speicher- und gegebenenfalls TempDB-Bedarf; breite Texte/XML sowie viele Zeilen erhöhen Netzwerk- und Clientkosten. Für USP_Columnstore ist insbesondere die im Datenkettenabschnitt beschriebene Reihenfolge maßgeblich. |
 | Ressourcen | CPU und Columnstore-Katalog-/DMV-I/O; optionale Physical-Stats-, Segment- und Dictionarypfade können große interne Metadatenmengen materialisieren. Kein Histogramm- oder XML-Pfad. |
-| Begrenzungswirkung | Datenbank-/Objektfilter sind echte Schutzgrenzen. `@MaxZeilen`/TOP begrenzen die Ausgabe, nicht zuverlässig die vorgelagerte Rowgroup-, Segment- oder Dictionaryermittlung; Segmentzahl wächst ungefähr mit Rowgroups × Spalten. |
+| Begrenzungswirkung | Datenbank-/Objektfilter sind echte Schutzgrenzen. `@MaxZeilen` begrenzt die je Datenbank materialisierten Zeilen der jeweiligen Ergebnismenge, nicht zuverlässig die vorgelagerte Ermittlung. Segmentzeilen wachsen ungefähr mit Rowgroups × Spalten. Der separate Segmentüberlappungspfad materialisiert höchstens `@MaxSegmenteAnalyse + 1` Segmentzeilen; bei Erreichen des Sentinels entfällt die gesamte Paarberechnung. |
 | Locking und Nebenwirkungen | Read-only mit Katalog-/Strukturzugriffen; parallele DDL-, Load- oder Wartungsaktivität kann kurz kollidieren und inkonsistente Momentbilder erzeugen. |
 | Schutzmechanismus | Der Code prüft die Analyseklassen `CATALOG_DEEP`, `COLUMNSTORE_CURRENT`, `COLUMNSTORE_DEEP`. Verlangt deren Policy ein Gruppengate, ist zusätzlich `@HighImpactConfirmed = 1` nötig; Freigabe und Bestätigung ersetzen keine Scopebegrenzung. |
 | Sicherer Einsatz | Nur einen synthetisch identifizierten Kandidaten vertiefen; breite VOLL-/Deep-Pfade mit High-Impact-Freigabe und außerhalb der Lastspitze. |
