@@ -19,6 +19,78 @@ Die Procedure wird eingesetzt, wenn sichtbare Vector-Indizes und ihre aktuelle W
 
 Die Procedure misst keinen Recall, keine Suchqualität und keinen geschäftlichen Nutzen. Sie liest weder Vektorinhalte noch interne Buildparameter. Ein aktueller Wartungsstatus erklärt keine historische Entwicklung. Auch ein Preview-Featurestatus auf Product Major Version 17 garantiert nicht, dass alle Systemobjekte im konkreten Build vorhanden oder aktiviert sind.
 
+## Parameter und weitere Aufrufbeispiele
+
+| Parameter | Datentyp | Default | Eingabeform und Wirkung |
+|---|---|---|---|
+| `@DatabaseNames` | `nvarchar(max)` | `NULL` | Optionaler einteiliger Datenbankname oder bracket-aware Pipe-Liste; &#124; trennt außerhalb von [...], ]] maskiert ]; Elemente außen getrimmt und case-sensitive. NULL, N'' oder nur Leerzeichen bedeutet keine exakte Auswahl und prüft alle zulässigen sichtbaren ONLINE-Benutzerdatenbanken. Nichtleere Liste ist mit nicht-NULL @DatabaseNamePattern exklusiv. Leere/ungültige Elemente, Duplikate, ungültiger PARSENAME-Name oder Rohsegment über 4000 UTF-16-Codeeinheiten sind INVALID_PARAMETER; LEN höchstens 128. |
+| `@SystemdatenbankenEinbeziehen` | `bit` | `0` | 0 (Default) schließt master, model, msdb und tempdb aus; 1 lässt sie in die Auswahl zu. NULL INVALID_PARAMETER. Beim Binden an bit werden konvertierbare numerische Werte ungleich 0 auf 1 abgebildet. |
+| `@DatabaseNamePattern` | `nvarchar(4000)` | `NULL` | Optionales Datenbankpattern; NULL kein Filter, leer/Whitespace oder Präfix ohne Inhalt ungültig. Außen trimmen; like:, regex:, regexi: ohne Beachtung der Großschreibung; Rest nicht erneut trimmen; ohne Präfix LIKE. LIKE nutzt %, _ und [...] case-sensitiv. regex: Flag c, regexi: Flag i; Syntax wird nicht vorgeprüft. Dieser Datenbankpatternpfad prüft Regex-Verfügbarkeit im Installationsdatenbankkontext (SQL Server 2025, Compatibility Level 170), sonst UNAVAILABLE_FEATURE. Nicht mit wirksamer nichtleerer Datenbankliste kombinieren. |
+| `@HighImpactConfirmed` | `bit` | `0` | 0 (Default) bestätigt kein High-Impact-Gate; 1 bestätigt die Anforderung eines tatsächlich aktivierten Analysepfads. NULL INVALID_PARAMETER. Dieses Modul übergibt OBJECT_ANALYSIS_CURRENT an den Kandidatenhelfer. Bestätigung ersetzt weder Aktivierung/Freigabe noch die Prüfung, ob die Klasse ein Gruppengate verlangt. Bit-Bindung bildet konvertierbare numerische Nichtnullwerte auf 1 ab. |
+| `@SchemaNames` | `nvarchar(max)` | `NULL` | Optionale exakte einteilige Schemanamen als bracket-aware Pipe-Liste; &#124; trennt außerhalb von [...], ]] maskiert ]; außen getrimmt und case-sensitive. NULL kein Filter; nicht-NULL leer/Whitespace, leere/ungültige Elemente, Duplikate, ungültiger PARSENAME-Name oder Rohsegment über 4000 UTF-16-Codeeinheiten ungültig. Teil 1 muss vorhanden, Teil 2 NULL und LEN höchstens 128 sein. Nicht mit nicht-NULL @SchemaNamePattern oder @FullObjectNames kombinieren. |
+| `@SchemaNamePattern` | `nvarchar(4000)` | `NULL` | Optionales Schema-Pattern; NULL deaktiviert, leer/Whitespace oder leeres Präfix ungültig. Außen trimmen; Präfixe like:, regex:, regexi: ohne Beachtung der Großschreibung; Rest nicht erneut trimmen; ohne Präfix LIKE. LIKE-Wildcards %, _ und [...] case-sensitiv; regex: c, regexi: i. Regex läuft in der jeweiligen Zieldatenbank ohne separate Versions-/Kompatibilitätsvorprüfung; fehlende Funktion kann als datenbankweise isolierter ERROR_HANDLED-Fehler erscheinen. Nicht mit nicht-NULL @SchemaNames kombinieren. |
+| `@ObjectNames` | `nvarchar(max)` | `NULL` | Optionale exakte einteilige Objektnamen als bracket-aware Pipe-Liste; &#124; trennt außerhalb von [...], ]] maskiert ]; außen getrimmt, case-sensitive. NULL kein Filter; nicht-NULL leere Liste, leere/ungültige Elemente, Duplikate, PARSENAME-Fehler oder Rohsegment über 4000 UTF-16-Codeeinheiten ungültig; LEN höchstens 128. Nicht mit nicht-NULL @ObjectNamePattern oder @FullObjectNames kombinieren. |
+| `@ObjectNamePattern` | `nvarchar(4000)` | `NULL` | Optionales Objektpattern; NULL deaktiviert, leer/Whitespace oder Präfix ohne Inhalt ungültig. Außen trimmen; Präfixe like:, regex:, regexi: case-insensitiv erkannt; Rest nicht erneut trimmen; ohne Präfix LIKE. LIKE-Wildcards %, _ und [...] case-sensitiv; regex: c, regexi: i. Feldregex läuft in Zieldatenbank ohne eigene Versions-/Kompatibilitätsvorprüfung und kann je Datenbank als ERROR_HANDLED isoliert werden. Nicht mit nicht-NULL @ObjectNames kombinieren. |
+| `@FullObjectNames` | `nvarchar(max)` | `NULL` | Optionale bracket-aware Pipe-Liste vollständiger Objektbezüge mit 1 bis 3 Teilen: Objekt, Schema.Objekt oder Datenbank.Schema.Objekt. &#124; trennt außerhalb von [...], ]] maskiert ]; geparst mit PARSENAME, case-sensitive, Rohsegment bis 4000 UTF-16-Codeeinheiten und Bestandteile sysname-limitiert. Datenbankteil braucht Schema; vier Teile unzulässig. NULL kein Filter; nicht-NULL leere Liste ungültig. Nicht angegebene Datenbank-/Schemaanteile bleiben offen. Mit nicht-NULL @SchemaNames oder @ObjectNames exklusiv. |
+| `@IndexNames` | `nvarchar(max)` | `NULL` | Optionale exakte einteilige Indexnamen als bracket-aware Pipe-Liste; &#124; trennt außerhalb von [...], ]] maskiert ]; außen getrimmt und case-sensitive. NULL kein Filter; nicht-NULL leer/Whitespace, ungültige/leere Elemente, Duplikate oder ungültiger PARSENAME-/sysname-Wert INVALID_PARAMETER. Rohsegmente bis 4000 UTF-16-Codeeinheiten. Mit nicht-NULL @IndexNamePattern exklusiv. |
+| `@IndexNamePattern` | `nvarchar(4000)` | `NULL` | Optionales Indexpattern; NULL kein Filter, leer/Whitespace oder Präfix ohne Inhalt ungültig. Außen trimmen; like:, regex:, regexi: ohne Beachtung der Großschreibung; Rest danach nicht erneut trimmen; ohne Präfix LIKE. LIKE-Wildcards %, _ und [...] case-sensitiv; regex: c, regexi: i. Regex wird in Zieldatenbank ohne separate Versions-/Kompatibilitätsvorprüfung ausgeführt und kann datenbankweise isoliert fehlschlagen. Nicht mit nicht-NULL @IndexNames kombinieren. |
+| `@StalenessReviewPercent` | `decimal(5,2)` | `15.00` | Optionaler Reviewgrenzwert in Prozent, 0 bis 100 einschließlich; NULL deaktiviert nur das VECTOR_STALENESS_REVIEW-Finding. Default 15.00: Finding bei verfügbarer ungefährer Staleness &gt;= Grenzwert. Kein universeller Fehler-/Rebuildgrenzwert. |
+| `@MaxZeilen` | `int` | `2000` | Nichtnegative int-Grenze; 0 oder NULL bedeutet unbegrenzt, negative Werte führen zu INVALID_PARAMETER. Nur in RAW und JSON begrenzt ein positiver Wert vectorIndexes, maintenance und findings jeweils separat; hasMore meldet weitere Zeilen. CONSOLE zeigt alle Findings, TABLE schreibt die vollständigen gemappten Quellen. Status-, Quellenstatus- und Warnmengen bleiben ungekürzt; Ermittlung und Korrelation werden dadurch nicht global begrenzt. |
+| `@LockTimeoutMs` | `int` | `0` | Lockwartezeit in Millisekunden von 0 bis 60000 einschließlich; 0 bedeutet NOWAIT, außerhalb INVALID_PARAMETER. Im Analysepfad wird der Wert dynamisch gesetzt; vor der Ausgabe wird aus dem zuvor gespeicherten @@LOCK_TIMEOUT ein separater Wiederherstellungsbatch gebildet. NULL wird von der Bereichsprüfung nicht als ungültig erkannt; die spätere dynamische SET-LOCK_TIMEOUT-Textbildung wird durch den NULL-Wert NULL. Ein konkreter Ausführungsstatus dieses NULL-Batches wird hier nicht zugesichert. |
+| `@ResultSetArt` | `varchar(16)` | `'CONSOLE'` | Nach TRIM/UPPER genau CONSOLE, RAW, TABLE oder NONE; NULL/leer wird ungültig. CONSOLE zeigt eine menschenlesbare Findings-Ansicht. RAW liefert sechs getrennte Mengen: moduleStatus, vectorIndexes, maintenance, findings, sourceStatus, warnings. TABLE schreibt gemappte Namen; NONE unterdrückt reguläre Resultsets. JSON-OUTPUT unabhängig über @JsonErzeugen. |
+| `@ResultTablesJson` | `nvarchar(max)` | `NULL` | Nur für TABLE ein JSON-Objekt Resultsetname→vorhandene lokale #Temp-Tabelle. TABLE erfordert gültiges nichtleeres Objekt mit ausschließlich moduleStatus, vectorIndexes, maintenance, findings, sourceStatus oder warnings. Ziele eindeutig, lokal, leer und mit genau einer Seed-Spalte; der Helper prüft und wirft bei Fehler. Außerhalb TABLE führt nichtleerer Inhalt zu INVALID_PARAMETER; NULL/leer dort zulässig. |
+| `@JsonErzeugen` | `bit` | `0` | 0 unterdrückt JSON-Erzeugung; 1 befüllt @Json mit Schema 1 und Schlüsseln meta, vectorIndexes, maintenance, findings, sourceStatus, warnings. NULL ist INVALID_PARAMETER. JSON-Facharrays folgen der jeweiligen @MaxZeilen-Grenze; hasMore… zeigt weitere Zeilen an. |
+| `@Json` | `nvarchar(max) OUTPUT` | `NULL` | Optionaler nvarchar(max)-OUTPUT-Empfänger, zu Beginn auf NULL gesetzt; mit @JsonErzeugen=1 enthält er das JSON-Dokument. Zum Empfang Variable des passenden Typs mit OUTPUT binden; ohne OUTPUT kommt Zuweisung nicht beim Aufrufer an. Hilfe kehrt nach dem NULL-Set zurück. |
+| `@PrintMeldungen` | `bit` | `1` | 0 unterdrückt Severity-10-Statusmeldung; 1 (Default) sendet sie bei Abschluss außer bei AVAILABLE, AVAILABLE_WITH_FINDING und NOT_APPLICABLE. NULL INVALID_PARAMETER. Meldung ergänzt Status-/Warnings-Ausgaben. |
+| `@Hilfe` | `bit` | `0` | 1 druckt fünf Hilfezeilen und kehrt sofort vor Filter-, Ausgabe-, Datenbank- und Engineprüfungen sowie vor OUTPUT-Statuszuweisungen zurück. @Json ist zuvor bereits NULL. 0 normaler Ablauf; NULL wird nicht als 1 behandelt. |
+| `@StatusCodeOut` | `varchar(40) OUTPUT` | `NULL` | Optionaler OUTPUT-Empfänger varchar(40); erhält am regulären Ablaufende den finalen Modulstatus. Mit passender varchar(40)-Aufrufervariable samt OUTPUT binden; ohne OUTPUT erreicht die Zuweisung den Aufrufer nicht. Default NULL; bei frühem @Hilfe-Return unverändert. AVAILABLE bedeutet verfügbare Erhebung ohne Finding/Partialität; AVAILABLE_WITH_FINDING kennzeichnet mindestens ein WARN-Finding; AVAILABLE_LIMITED bedeutet partielle Erhebung; NOT_APPLICABLE: keine sichtbaren Vector-Indizes; UNAVAILABLE_VERSION: Product Major Version fehlt oder kleiner 17; UNAVAILABLE_FEATURE: keine verfügbare Vector-Quelle. Bei fehlendem erfolgreichem Katalogstatus kann zusätzlich der erste Katalogquellenstatus wie DENIED_PERMISSION, TIMEOUT, ERROR_HANDLED oder UNAVAILABLE_SOURCE_SCHEMA ausgegeben werden; ungültige Eingabe ergibt INVALID_PARAMETER. Quellenstatus bleibt separat in sourceStatus. |
+| `@IsPartialOut` | `bit OUTPUT` | `NULL` | Optionaler OUTPUT-Empfänger bit; erhält am regulären Ablaufende den Partialitätsindikator. 1 kennzeichnet unvollständige/abgewiesene Erhebung; 0 eine nicht als partiell markierte Erhebung. Mit bit-Variable samt OUTPUT binden; ohne OUTPUT keine Rückgabe. Default NULL und bei frühem Hilfe-Return unverändert. |
+| `@ErrorNumberOut` | `int OUTPUT` | `NULL` | Optionaler OUTPUT-Empfänger int; erhält am normalen Ablaufende die gesetzte Fehlernummer oder NULL, wenn keine Fehlernummer für den Modulstatus gewählt wurde. Eine int-Variable mit OUTPUT bindet den Rückgabewert; ohne OUTPUT keine Rückgabe. Default NULL und bei Hilfe unverändert. |
+| `@ErrorMessageOut` | `nvarchar(2048) OUTPUT` | `NULL` | Optionaler OUTPUT-Empfänger nvarchar(2048); erhält am normalen Ablaufende die gewählte Fehler-/Warnmeldung oder NULL. Bei fehlendem expliziten Fehlertext wird die erste Warnmeldung gewählt. Eine nvarchar(2048)-Variable mit OUTPUT bindet den Rückgabewert; ohne OUTPUT keine Rückgabe. Default NULL und bei Hilfe unverändert. |
+
+~~~sql
+EXEC [monitor].[USP_VectorIndexAnalysis]
+      @DatabaseNames=N'[ExampleDatabase]'
+    , @FullObjectNames=N'[ExampleSchema].[ExampleTable]'
+    , @ResultSetArt='RAW';
+~~~
+
+~~~sql
+DECLARE @VectorIndexAnalysis_JsonExample nvarchar(max);
+DECLARE @VectorIndexAnalysis_StatusExample varchar(40);
+DECLARE @VectorIndexAnalysis_PartialExample bit;
+DECLARE @VectorIndexAnalysis_ErrorNumberExample int;
+DECLARE @VectorIndexAnalysis_ErrorMessageExample nvarchar(2048);
+EXEC [monitor].[USP_VectorIndexAnalysis]
+      @DatabaseNames=N'[ExampleDatabase]'
+    , @JsonErzeugen=1
+    , @Json=@VectorIndexAnalysis_JsonExample OUTPUT
+    , @StatusCodeOut=@VectorIndexAnalysis_StatusExample OUTPUT
+    , @IsPartialOut=@VectorIndexAnalysis_PartialExample OUTPUT
+    , @ErrorNumberOut=@VectorIndexAnalysis_ErrorNumberExample OUTPUT
+    , @ErrorMessageOut=@VectorIndexAnalysis_ErrorMessageExample OUTPUT;
+SELECT @VectorIndexAnalysis_StatusExample AS [StatusCode], @VectorIndexAnalysis_JsonExample AS [JsonDocument];
+~~~
+
+~~~sql
+CREATE TABLE #VectorIndexAnalysis_ModuleExample ([Seed] bit NULL);
+BEGIN TRY
+    EXEC [monitor].[USP_VectorIndexAnalysis]
+          @DatabaseNames=N'[ExampleDatabase]'
+        , @ResultSetArt='TABLE'
+        , @ResultTablesJson=N'{"moduleStatus":"#VectorIndexAnalysis_ModuleExample"}';
+END TRY
+BEGIN CATCH
+    DROP TABLE #VectorIndexAnalysis_ModuleExample;
+    THROW;
+END CATCH;
+DROP TABLE #VectorIndexAnalysis_ModuleExample;
+~~~
+
+~~~sql
+EXEC [monitor].[USP_VectorIndexAnalysis] @Hilfe=1;
+~~~
+
 ## Resultsets und Leserichtung
 
 RAW, TABLE und JSON trennen `moduleStatus`, `sourceStatus`, `vectorIndexes`, `maintenance` und `findings`; CONSOLE priorisiert die fachlichen Reviewhinweise. Lesen Sie Version und Quelle vor Katalog- oder Runtimewerten. TABLE verwendet nur die im Resultsetinventar benannten Ziele und erhält dieselben nativen Spaltentypen.
@@ -68,7 +140,7 @@ Ein passender Example-Fall verwendet eine synthetische Tabelle mit einem kontrol
 | Haupttreiber | Datenbank-, Objekt- und Indexanzahl |
 | Skalierung | Sequenziell je ausgewählter Datenbank |
 | Ressourcen | Katalog- und DMV-I/O sowie lokale Korrelation |
-| Begrenzungswirkung | Datenbank-/Objektfilter und `@MaxZeilen` |
+| Begrenzungswirkung | Datenbank-/Objektfilter schränken den Scope ein. Ein positives `@MaxZeilen` begrenzt vectorIndexes, maintenance und findings jeweils separat nur in RAW und JSON; CONSOLE und TABLE erhalten die vollständigen jeweiligen Quellen. Status-, Quellenstatus- und Warnmengen bleiben ungekürzt. |
 | Locking und Nebenwirkungen | Read-only; kein Build, Rebuild oder DDL |
 | Schutzmechanismus | Versions-, Objekt- und Spaltenprobes vor dynamischen Zugriffen |
 | Sicherer Einsatz | Kleine explizite Datenbank- und Objektmenge |
