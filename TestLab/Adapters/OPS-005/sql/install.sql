@@ -21618,19 +21618,19 @@ BEGIN
         PRINT N'CONSOLE: EXEC [monitor].[USP_IndexUsage] @DatabaseNames=N''[ExampleDatabase]'', @SchemaNames=N''dbo'', @ObjectNames=N''ExampleTable'', @ResultSetArt=''CONSOLE'';';
         PRINT N'RAW und JSON: DECLARE @Json nvarchar(max); EXEC [monitor].[USP_IndexUsage] @DatabaseNames=N''[ExampleDatabase]'', @SchemaNames=N''dbo'', @ObjectNames=N''ExampleTable'', @ResultSetArt=''RAW'', @JsonErzeugen=1, @Json=@Json OUTPUT; SELECT @Json;';
         PRINT N'TABLE: CREATE TABLE #IndexUsageTarget([Seed] int NULL); BEGIN TRY EXEC [monitor].[USP_IndexUsage] @DatabaseNames=N''[ExampleDatabase]'', @SchemaNames=N''dbo'', @ObjectNames=N''ExampleTable'', @ResultSetArt=''TABLE'', @ResultTablesJson=N''{"rowstoreIndexes":"#IndexUsageTarget"}''; END TRY BEGIN CATCH DROP TABLE #IndexUsageTarget; THROW; END CATCH; DROP TABLE #IndexUsageTarget;';
-        PRINT N'Hilfe: EXEC [monitor].[USP_IndexUsage] @Hilfe=1;';                        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
+        PRINT N'Hilfe: EXEC [monitor].[USP_IndexUsage] @Hilfe=1;';
+
+
+
+
+
+
+
+
+
+
+
+
         RETURN;
     END;
 
@@ -22072,16 +22072,16 @@ BEGIN
         PRINT N'RAW und JSON: DECLARE @Json nvarchar(max); EXEC [monitor].[USP_IndexOperationalStats] @DatabaseNames=N''[ExampleDatabase]'', @FullObjectNames=N''dbo.ExampleTable'', @ResultSetArt=''RAW'', @JsonErzeugen=1, @Json=@Json OUTPUT; SELECT @Json;';
         PRINT N'TABLE: CREATE TABLE #IndexOperationalStatsTarget([Seed] int NULL); BEGIN TRY EXEC [monitor].[USP_IndexOperationalStats] @DatabaseNames=N''[ExampleDatabase]'', @FullObjectNames=N''dbo.ExampleTable'', @ResultSetArt=''TABLE'', @ResultTablesJson=N''{"indexOperationalStats":"#IndexOperationalStatsTarget"}''; END TRY BEGIN CATCH DROP TABLE #IndexOperationalStatsTarget; THROW; END CATCH; DROP TABLE #IndexOperationalStatsTarget;';
         PRINT N'Hilfe: EXEC [monitor].[USP_IndexOperationalStats] @Hilfe=1;';
-        
-                
-        
-        
-        
-        
-        
-        
-        
-        
+
+
+
+
+
+
+
+
+
+
         RETURN;
     END;
 
