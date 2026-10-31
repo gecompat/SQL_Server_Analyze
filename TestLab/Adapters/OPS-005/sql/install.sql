@@ -36899,10 +36899,72 @@ BEGIN
     IF @Hilfe=1
     BEGIN
         PRINT N'monitor.USP_QueryStoreWaitStats';
-        PRINT N'@QueryStoreDatabaseNames: exakte bracket-aware Pipe-Liste; NULL=alle; N''''=keine Einschränkung.';
-        PRINT N'@ReferencedDatabaseNames/Pattern: optionaler Showplan-Referenzfilter.';
-        PRINT N'@MaxZeilen ist global; lokal werden N+1 Kandidaten je DB gelesen.';
-        PRINT N'@ResultSetArt RAW|CONSOLE|TABLE|NONE; @JsonErzeugen=1 setzt @Json OUTPUT.';
+        PRINT N'monitor.USP_QueryStoreWaitStats liefert aggregierte, retentionbegrenzte Query-Store-Wait-Statistiken aus geeigneten Quelldatenbanken. Optionale Filter begrenzen Query, Waitkategorie, UTC-Intervall und Datenbankreferenzen in gespeicherten Showplans; je Quelldatenbank werden lokale N+1-Kandidaten gesammelt, danach gilt das globale @MaxZeilen-Limit.';
+        PRINT N'@Hilfe=1 gibt die Hilfe aus und beendet den normalen Ablauf. Rohe SQL-Typbindung und der frühe TABLE-Mapping-Preflight laufen davor; ein fehlendes oder ungültiges TABLE-Mapping kann die Hilfe verhindern.';
+        PRINT N'Die folgenden Validierungsregeln gelten im normalen Analysepfad. @Hilfe=1 beendet vorher; SQL-Typbindung und die vorangestellten Mappingprüfungen bleiben aktiv. Zeichenparameter unterliegen bereits bei der Bindung ihrer deklarierten SQL-Typbreite.';
+        PRINT N'@QueryStoreDatabaseNames nvarchar(max); Default: NULL. Ausgelassen/NULL, N'''' oder nur äußere U+0020-Leerzeichen: keine Einschränkung. Sonst bracket-aware Pipe-Liste exakter einteiliger SQL-Datenbanknamen, zum Beispiel N''[ExampleDatabase]|[OtherDatabase]''; | trennt außerhalb von [...], ]] maskiert ]. Leere Elemente, ungültige Namen und Duplikate sind INVALID_PARAMETER. Eine effektive nichtleere Liste ist exklusiv mit dem nicht-NULL Quellpattern. Ohne Filter werden sichtbare geeignete Online-Benutzerdatenbanken gewählt; Systemdatenbanken bleiben ausgeschlossen.';
+        PRINT N'@QueryStoreDatabaseNamePattern nvarchar(4000); Default: NULL. ausgelassen/NULL kein Filter. Äußeres Trimmen, dann like: bedeutet SQL-LIKE-Muster, regex: regulärer Ausdruck mit Flag c (case-sensitiv), regexi: regulärer Ausdruck mit Flag i (case-insensitiv); Präfixe ohne Beachtung der Großschreibung entfernen. Ohne Präfix gilt LIKE; Rest wird nicht erneut getrimmt. Leer oder leer nach Präfix ist ungültig; exklusiv mit @QueryStoreDatabaseNames. REGEX/REGEXI laufen in der Installationsdatenbank und benötigen SQL Server 2025 plus CL170 dort; Syntax wird nicht vorab validiert.';
+        PRINT N'@HighImpactConfirmed bit; Default: 0. ausgelassen/0 = nicht bestätigt. NULL ist im Datenbankhelfer INVALID_PARAMETER. 1 bestätigt nur ein aktiviertes Gruppengate: QUERY_STORE_CURRENT hat kein Gruppengate, QUERY_STORE_DEEP verwendet es. Die Bestätigung ändert keinen Scope und erteilt weder SQL-Berechtigung noch Gruppenmitgliedschaft. Als bit 0 oder 1 übergeben; SQL-Typkonvertierung kann andere numerische Nichtnullwerte auf 1 abbilden.';
+        PRINT N'@ReferencedDatabaseNames nvarchar(max); Default: NULL. ausgelassen/NULL kein Showplan-Referenzfilter. Sonst nichtleere bracket-aware Pipe-Liste einteiliger SQL-Namen; | trennt außerhalb von [...], ]] maskiert ]. Leerwert/Leerzeichen ungültig. Teil 1 muss nicht NULL, Teil 2 NULL und LEN(Teil 1) höchstens 128 sein; Teile 3/4 werden nicht gesondert geprüft. Gültige Namen werden mit expliziter Framework-Collation SQL_Latin1_General_CP1_CS_AS verglichen. Duplikate sind erlaubt; EXISTS vervielfacht keine Zeilen. Exklusiv mit @ReferencedDatabaseNamePattern; setzt QUERY_STORE_DEEP voraus.';
+        PRINT N'@ReferencedDatabaseNamePattern nvarchar(4000); Default: NULL. ausgelassen/NULL kein Filter. Äußeres Trimmen, dann like: bedeutet SQL-LIKE-Muster, regex: regulärer Ausdruck mit Flag c (case-sensitiv), regexi: regulärer Ausdruck mit Flag i (case-insensitiv); Präfixe ohne Beachtung der Großschreibung. Ohne Präfix LIKE; Rest wird nicht erneut getrimmt; leer/leer nach Präfix ungültig. Exklusiv mit @ReferencedDatabaseNames; setzt QUERY_STORE_DEEP voraus. REGEX/REGEXI laufen je Quelldatenbank und benötigen SQL Server 2025 sowie CL170 dort; Syntax wird nicht vorab validiert.';
+        PRINT N'@QueryId bigint; Default: NULL. Ausgelassen/NULL: kein Query-ID-Filter. Einen ganzzahligen bigint-Wert von -9223372036854775808 bis 9223372036854775807 übergeben; keine zusätzliche Positivitäts- oder Existenzprüfung. Exakter Vergleich je Quelle; Query-IDs sind quellenspezifisch.';
+        PRINT N'@QueryHash binary(8); Default: NULL. Ausgelassen/NULL: kein Hashfilter. Acht Byte als Binärwert übergeben, zum Beispiel 0x0123456789ABCDEF; exakter Vergleich ohne zusätzliche Werte- oder Existenzprüfung. SQL-Typkonvertierungen erfolgen vor dem Procedurekörper.';
+        PRINT N'@WaitCategory nvarchar(128); Default: NULL. ausgelassen/NULL kein Filter. Einzelner Literalwert ohne Trim, Liste, LIKE oder Regex. wait_category_desc wird mit seiner nativen Quellcollation verglichen; keine allgemeine Case-Zusage. Zusätzlich vergleicht CONVERT(nvarchar(10),wait_category) explizit mit SQL_Latin1_General_CP1_CS_AS; 03 ist nicht 3. Leer-, Leerzeichen- und unbekannte Werte sind zulässige Literalfilter. Höchstens 128 Zeichen. Kein abgeschlossener Modul-Optionskatalog: native Beschreibung oder dezimaler Kategoriencode als Text, zum Beispiel N''3'', werden als Filterwert verwendet.';
+        PRINT N'@VonUtc datetime2(7); Default: NULL. ausgelassen/NULL wird nach Ermittlung von @BisUtc auf @BisUtc minus eine Stunde gesetzt. UTC-Start muss kleiner als @BisUtc sein, sonst INVALID_PARAMETER. Überlappung: Intervallende > @VonUtc und Intervallstart < @BisUtc; vollständige Intervalle, keine anteilige Kürzung. Leerwert ist keine datetime2-Eingabe. Als datetime2(7)-Variable oder ISO-8601-Literal wie 2026-01-01T12:00:00.0000000 in UTC übergeben; keine Zeitzonenumrechnung. Keine Leerzeichenfolge als Datum verwenden.';
+        PRINT N'@BisUtc datetime2(7); Default: NULL. ausgelassen/NULL = SYSUTCDATETIME(). UTC-Überlappungsfenster mit @VonUtc; Intervallende > Startparameter und Intervallstart < Endparameter. @VonUtc >= @BisUtc ist INVALID_PARAMETER; bei NULLem @VonUtc reicht das Fenster eine Stunde zurück. DATEDIFF(HOUR,@VonUtc,@BisUtc)>24 fordert QUERY_STORE_DEEP an. Leerwert ist keine datetime2-Eingabe. Als datetime2(7)-Variable oder ISO-8601-Literal wie 2026-01-01T12:00:00.0000000 in UTC übergeben; keine Zeitzonenumrechnung. Keine Leerzeichenfolge als Datum verwenden.';
+        PRINT N'@AnalyseModus varchar(16); Default: ''TOP''. ausgelassen/NULL = TOP; äußeres Trim und Großschreibungsnormalisierung. Geschlossene Wertemenge: TOP sammelt lokale N+1-Kandidaten je Datenbank und begrenzt danach global; VOLL fordert QUERY_STORE_DEEP an. VOLL hebt @MaxZeilen nicht auf. Leer/Leerzeichen/andere Werte sind ungültig.';
+        PRINT N'@MaxZeilen int; Default: 100. ausgelassen verwendet diesen Wert. NULL/0 global unbegrenzt; positiver int begrenzt global nach TotalQueryWaitTimeMs DESC, LastIntervalEndUtc DESC. Je DB bis N+1 lokale Kandidaten, bei INT_MAX ohne +1. Negative Werte INVALID_PARAMETER; keine Tie-Garantie. Unbegrenzt oder >1000 fordert QUERY_STORE_DEEP an. VOLL hebt das Limit nicht auf. Zähler, HasMoreRows, Textprojektion und Warnungen entstehen vor dem globalen Limit.';
+        PRINT N'@MaxSqlTextZeichen int; Default: 4000. ausgelassen verwendet diesen Wert. NULL/0 vollständiger SQL-Text; positiver Wert begrenzt Zeichen und liefert Originalzeichen/-bytes sowie Truncation-Flag. Negativ = INVALID_PARAMETER mit leerer fachlicher Exportmenge. Kürzung erzeugt bei @PrintMeldungen=1 eine technische Severity-10-Warnung. NULL/0 löst allein kein QUERY_STORE_DEEP aus. Surrogatpaare zählen als ein SC-Zeichen, keine Grapheme.';
+        PRINT N'@ResultSetArt varchar(16); Default: ''CONSOLE''. ausgelassen verwendet diesen Wert. Nach Trim/Upper exakt RAW (Metadaten, Rohdaten, Warnungen), CONSOLE (Waitdaten und Formatierungshinweis; keine zusätzlichen Metadaten-/Warnungsgrids), TABLE (nur waitStats ins geprüfte lokale Ziel) oder NONE (keine normalen Resultsets). NULL/leer/Leerzeichen/andere Werte ungültig. JSON wird separat gesteuert. TABLE-Preflight läuft vor Hilfe und Fachvalidierung.';
+        PRINT N'@ResultTablesJson nvarchar(max); Default: NULL. außerhalb TABLE nur NULL, leer oder Leerzeichen zulässig; anderer nichtleerer Inhalt wirft 51011. Bei TABLE nichtleeres JSON-Objekt mit genau dem Schlüssel waitStats und einem Ziel. Ziel: vorhandene, leere lokale #Temp-Tabelle (kein ##), maximal 116 Zeichen und genau eine beliebige Seed-Spalte; das volle Ergebnis-Schema muss nicht angelegt werden. Fehlendes/ungültiges Mapping/Ziel wird im frühen Preflight abgelehnt; leerer Wert ist in TABLE ungültig. Schlüssel binär exakt und ohne Duplikate; Ziele dürfen weder ## noch das reservierte #Monitor-Präfix verwenden. Ein Seed-Datensatz ist nicht zulässig; der Writer ersetzt die Seed-Struktur durch das Ergebnisschema.';
+        PRINT N'@JsonErzeugen bit; Default: 0. ausgelassen/0/NULL erzeugt kein JSON. 1 erzeugt @Json mit meta, waitStats und warnings aus der Exportmenge. Unabhängig von @ResultSetArt, auch mit NONE; erweitert den Scope nicht. Als bit 0 oder 1 übergeben; SQL-Typkonvertierung kann andere numerische Nichtnullwerte auf 1 abbilden.';
+        PRINT N'@Json nvarchar(max) OUTPUT; Default: NULL. OUTPUT-Parameter. Zum Empfang nvarchar(max)-Variable als @Json=@Variable OUTPUT binden. Beim Eintritt auf NULL gesetzt und nur bei @JsonErzeugen=1 gefüllt; bei Hilfe bleibt es NULL. Ausgelassen gilt der Vorgabewert, das Ergebnis ist dann nicht abrufbar. Leerwert als Eingabe wird nicht ausgewertet. Bei ungefangenem THROW besteht keine Zusage einer OUTPUT-Rückübertragung.';
+        PRINT N'@PrintMeldungen bit; Default: 1. ausgelassen lässt Meldungen zu. 1 erlaubt Fehlerhinweise und die Truncationwarnung; 0 unterdrückt diese Meldungen. NULL unterdrückt die Truncationwarnung und erfüllt die direkte Fehlerausgabebedingung nicht. Status, Resultsets und Datenmenge bleiben davon unberührt. Als bit 0 oder 1 übergeben; SQL-Typkonvertierung kann andere numerische Nichtnullwerte auf 1 abbilden.';
+        PRINT N'@Hilfe bit; Default: 0. ausgelassen/NULL führt normal aus. Nur 1 druckt die Hilfe und beendet vor normaler Parameter- und Datenvalidierung. Rohe SQL-Bindung und früher TABLE-Mapping-Preflight bleiben aktiv und können vorher scheitern; @Json wurde beim Eintritt geleert. Als bit 0 oder 1 übergeben; SQL-Typkonvertierung kann andere numerische Nichtnullwerte auf 1 abbilden.';
+        PRINT N'EXEC [monitor].[USP_QueryStoreWaitStats]
+      @Hilfe = 1;';
+        PRINT N'DECLARE @ExampleBisUtc datetime2(7) = SYSUTCDATETIME();
+DECLARE @ExampleVonUtc datetime2(7) = DATEADD(HOUR, -1, @ExampleBisUtc);
+
+EXEC [monitor].[USP_QueryStoreWaitStats]
+      @QueryStoreDatabaseNames = N''[ExampleDatabase]''
+    , @VonUtc = @ExampleVonUtc
+    , @BisUtc = @ExampleBisUtc
+    , @MaxZeilen = 100
+    , @ResultSetArt = ''RAW'';';
+        PRINT N'DECLARE @ExampleJson nvarchar(max);
+DECLARE @ExampleBisUtc datetime2(7) = SYSUTCDATETIME();
+DECLARE @ExampleVonUtc datetime2(7) = DATEADD(HOUR, -1, @ExampleBisUtc);
+
+EXEC [monitor].[USP_QueryStoreWaitStats]
+      @QueryStoreDatabaseNames = N''[ExampleDatabase]''
+    , @VonUtc = @ExampleVonUtc
+    , @BisUtc = @ExampleBisUtc
+    , @ResultSetArt = ''NONE''
+    , @JsonErzeugen = 1
+    , @Json = @ExampleJson OUTPUT;
+
+SELECT @ExampleJson AS [Json];';
+        PRINT N'CREATE TABLE [#QueryStoreWaitStats_HelpExample]([Seed] int NULL);
+DECLARE @ExampleBisUtc datetime2(7) = SYSUTCDATETIME();
+DECLARE @ExampleVonUtc datetime2(7) = DATEADD(HOUR, -1, @ExampleBisUtc);
+
+BEGIN TRY
+    EXEC [monitor].[USP_QueryStoreWaitStats]
+          @QueryStoreDatabaseNames = N''[ExampleDatabase]''
+        , @VonUtc = @ExampleVonUtc
+        , @BisUtc = @ExampleBisUtc
+        , @MaxZeilen = 100
+        , @ResultSetArt = ''TABLE''
+        , @ResultTablesJson = N''{"waitStats":"#QueryStoreWaitStats_HelpExample"}'';
+
+    SELECT * FROM [#QueryStoreWaitStats_HelpExample];
+    DROP TABLE IF EXISTS [#QueryStoreWaitStats_HelpExample];
+END TRY
+BEGIN CATCH
+    DROP TABLE IF EXISTS [#QueryStoreWaitStats_HelpExample];
+    THROW;
+END CATCH;';
         RETURN;
     END;
     IF @BisUtc IS NULL SET @BisUtc=SYSUTCDATETIME();
@@ -37055,14 +37117,67 @@ BEGIN
     IF @TableResultRequested = 1 OR @ConsoleResultRequested = 1 SET @Out = 'NONE';
  IF @Hilfe=1
  BEGIN
-  PRINT N'monitor.USP_QueryStorePlanChanges vergleicht gespeicherte Query-Store-Pläne aus sichtbaren Benutzerdatenbanken und liefert Query-Zusammenfassungen sowie Plandetails. Historische Metadaten, kein aktueller Laufzeitplan und kein Performance-/Gesundheitsnachweis.';
-  PRINT N'@QueryStoreDatabaseNames nvarchar(max)=NULL: exakte bracket-aware Pipe-Liste der Quellen; NULL/leer/Leerzeichen wählt sichtbare Online-Benutzerdatenbanken. @QueryStoreDatabaseNamePattern nvarchar(4000)=NULL ist alternativ; Liste und Pattern exklusiv. Ohne Präfix oder mit like: gilt SQL LIKE; regex:/regexi: benötigen SQL Server 2025 und Compatibility Level 170. Systemdatenbanken bleiben ausgeschlossen.';
-  PRINT N'@HighImpactConfirmed bit=0: 1 bestätigt den jeweils ausgewählten QUERY_STORE_CURRENT- oder QUERY_STORE_DEEP-Pfad; bei RequiresGroupGate=1 der jeweiligen Klasse ist diese Bestätigung erforderlich. 0 bestätigt nicht. Die aktive Zugriffsrichtlinie kann die Ausführung dennoch sperren. @ReferencedDatabaseNames nvarchar(max)=NULL filtert Plan-XML-Objektreferenzen nach Datenbanknamen (bracket-aware Pipe-Liste); @ReferencedDatabaseNamePattern nvarchar(4000)=NULL ist die exklusive Patternalternative. @QueryId bigint=NULL beschränkt auf eine QueryId in der jeweiligen Quelle; @QueryHash binary(8)=NULL auf den Query-Hash. @VonUtc datetime2(7)=NULL behält Pläne mit Kompilierungs- oder letzter Ausführungszeit ab diesem UTC-Zeitpunkt.';
-  PRINT N'@NurMehrerePlaene bit=1 filtert auf Queries mit mehreren Plänen; 0 deaktiviert diesen Filter. @MitPlanXml bit=0 fordert gespeicherte Plan-XML an, keinen aktuellen Ausführungsplan. @AnalyseModus varchar(16)=''TOP'': TOP oder VOLL (getrimmt/großgeschrieben); Deep-Analyse wird bei VOLL, @MitPlanXml=1, einem Referenzfilter oder normalisiertem @Limit>1000 geprüft; NULL/0 bei @MaxZeilen ist unbegrenzt und löst diesen Grenzwert ebenfalls aus. Der Katalog kann Bestätigung verlangen; die aktive Zugriffsrichtlinie kann sperren.';
-  PRINT N'@MaxZeilen int=100: positives globales Exportlimit; NULL/0 unbegrenzt; negativ ungültig. Der Query-Pfad holt lokale N+1-Kandidaten je Datenbank und bewertet global; dies begrenzt nicht pauschal jede interne Plan-XML-Arbeit. Ein normalisiertes @Limit>1000 aktiviert Deep-Analyse. @MaxSqlTextZeichen int=4000 begrenzt projizierten SQL-Text, nicht XML; NULL/0 unbegrenzt, negativ ungültig.';
-  PRINT N'@ResultSetArt varchar(16)=''CONSOLE'': RAW, CONSOLE, TABLE oder NONE; Steuerwert case-insensitiv. CONSOLE ist formatierte Ad-hoc-Ausgabe, RAW der technische Vertrag, NONE unterdrückt Fachresultsets. @ResultTablesJson nvarchar(max)=NULL gilt nur mit TABLE und mappt queries sowie plans auf leere lokale #Temp-Ziele. @JsonErzeugen bit=0 aktiviert JSON; @Json nvarchar(max)=NULL OUTPUT erhält meta, queries, plans und warnings. @PrintMeldungen bit=1 steuert Meldungen; @Hilfe bit=0 gibt Hilfe aus und beendet den Aufruf.';
-  PRINT N'CONSOLE-Beispiel: EXEC [monitor].[USP_QueryStorePlanChanges] @QueryStoreDatabaseNames=N''[ExampleDatabase]'', @ResultSetArt=''CONSOLE'';';
-  PRINT N'TABLE-Beispiel: CREATE TABLE #QueryStorePlanChanges_queries(Placeholder int); CREATE TABLE #QueryStorePlanChanges_HelpPlans(Placeholder int); EXEC [monitor].[USP_QueryStorePlanChanges] @QueryStoreDatabaseNames=N''[ExampleDatabase]'', @ResultSetArt=''TABLE'', @ResultTablesJson=N''{"queries":"#QueryStorePlanChanges_queries","plans":"#QueryStorePlanChanges_HelpPlans"}'';';
+        PRINT N'monitor.USP_QueryStorePlanChanges';
+        PRINT N'monitor.USP_QueryStorePlanChanges wertet gespeicherte Query-Store-Metadaten sichtbarer Benutzerdatenbanken aus. Ausgabe sind historische Pläne und Querydaten, kein aktueller Laufzeitplan und kein Performance-/Gesundheitsnachweis.';
+        PRINT N'@Hilfe=1 überspringt normale Parameterprüfung und Datenbankanalyse; SQL-Typbindung und die vorangestellte TABLE-Zielprüfung bleiben erforderlich. @Json wird beim Eintritt auf NULL gesetzt.';
+        PRINT N'Die folgenden Validierungsregeln gelten im normalen Analysepfad. @Hilfe=1 beendet vorher; SQL-Typbindung und die vorangestellten Mappingprüfungen bleiben aktiv. Zeichenparameter unterliegen bereits bei der Bindung ihrer deklarierten SQL-Typbreite.';
+        PRINT N'@QueryStoreDatabaseNames nvarchar(max); Default: NULL. Ausgelassen/NULL, N'''' oder nur äußere U+0020-Leerzeichen: keine Einschränkung. Sonst bracket-aware Pipe-Liste exakter einteiliger SQL-Datenbanknamen, zum Beispiel N''[ExampleDatabase]|[OtherDatabase]''; | trennt außerhalb von [...], ]] maskiert ]. Leere Elemente, ungültige Namen und Duplikate sind INVALID_PARAMETER. Eine effektive nichtleere Liste ist exklusiv mit dem nicht-NULL Quellpattern. Ohne Filter werden sichtbare geeignete Online-Benutzerdatenbanken gewählt; Systemdatenbanken bleiben ausgeschlossen.';
+        PRINT N'@QueryStoreDatabaseNamePattern nvarchar(4000); Default: NULL. ausgelassen/NULL kein Filter. Äußeres Trimmen, dann like: bedeutet SQL-LIKE-Muster, regex: regulärer Ausdruck mit Flag c (case-sensitiv), regexi: regulärer Ausdruck mit Flag i (case-insensitiv); Präfixe ohne Beachtung der Großschreibung entfernen. Ohne Präfix gilt LIKE; Rest wird nicht erneut getrimmt. Leer oder leer nach Präfix ist ungültig; exklusiv mit @QueryStoreDatabaseNames. REGEX/REGEXI laufen in der Installationsdatenbank und benötigen SQL Server 2025 plus CL170 dort; Syntax wird nicht vorab validiert.';
+        PRINT N'@HighImpactConfirmed bit; Default: 0. ausgelassen/0 = nicht bestätigt. NULL ist im Datenbankhelfer INVALID_PARAMETER. 1 bestätigt nur ein aktiviertes Gruppengate: QUERY_STORE_CURRENT hat kein Gruppengate, QUERY_STORE_DEEP verwendet es. Die Bestätigung ändert keinen Scope und erteilt weder SQL-Berechtigung noch Gruppenmitgliedschaft. Als bit 0 oder 1 übergeben; SQL-Typkonvertierung kann andere numerische Nichtnullwerte auf 1 abbilden.';
+        PRINT N'@ReferencedDatabaseNames nvarchar(max); Default: NULL. ausgelassen/NULL kein Showplan-Referenzfilter. Sonst nichtleere bracket-aware Pipe-Liste einteiliger SQL-Namen; | trennt außerhalb von [...], ]] maskiert ]. Leerwert/Leerzeichen ungültig. Teil 1 muss nicht NULL, Teil 2 NULL und LEN(Teil 1) höchstens 128 sein; Teile 3/4 werden nicht gesondert geprüft. Gültige Namen werden mit expliziter Framework-Collation SQL_Latin1_General_CP1_CS_AS verglichen. Duplikate sind erlaubt; EXISTS vervielfacht keine Zeilen. Exklusiv mit @ReferencedDatabaseNamePattern; setzt QUERY_STORE_DEEP voraus. Der Filter wirkt auf die Summaryaggregation; der Planexport enthält anschließend alle gespeicherten Pläne der ausgewählten Datenbank-/Querykeys.';
+        PRINT N'@ReferencedDatabaseNamePattern nvarchar(4000); Default: NULL. ausgelassen/NULL kein Filter. Äußeres Trimmen, dann like: bedeutet SQL-LIKE-Muster, regex: regulärer Ausdruck mit Flag c (case-sensitiv), regexi: regulärer Ausdruck mit Flag i (case-insensitiv); Präfixe ohne Beachtung der Großschreibung. Ohne Präfix LIKE; Rest wird nicht erneut getrimmt; leer/leer nach Präfix ungültig. Exklusiv mit @ReferencedDatabaseNames; setzt QUERY_STORE_DEEP voraus. REGEX/REGEXI laufen je Quelldatenbank und benötigen SQL Server 2025 sowie CL170 dort; Syntax wird nicht vorab validiert. Der Filter wirkt auf die Summaryaggregation; der Planexport enthält anschließend alle gespeicherten Pläne der ausgewählten Datenbank-/Querykeys.';
+        PRINT N'@QueryId bigint; Default: NULL. Ausgelassen/NULL: kein Query-ID-Filter. Einen ganzzahligen bigint-Wert von -9223372036854775808 bis 9223372036854775807 übergeben; keine zusätzliche Positivitäts- oder Existenzprüfung. Exakter Vergleich je Quelle; Query-IDs sind quellenspezifisch.';
+        PRINT N'@QueryHash binary(8); Default: NULL. Ausgelassen/NULL: kein Hashfilter. Acht Byte als Binärwert übergeben, zum Beispiel 0x0123456789ABCDEF; exakter Vergleich ohne zusätzliche Werte- oder Existenzprüfung. SQL-Typkonvertierungen erfolgen vor dem Procedurekörper.';
+        PRINT N'@VonUtc datetime2(7); Default: NULL. NULL ohne Zeitfilter. Sonst skalarer UTC-Grenzzeitpunkt; Query qualifiziert, wenn ein Plan last_compile_start_time >= Wert ODER last_execution_time >= Wert erfüllt. Keine relative Stunde/obere Grenze; Plandetails bleiben zeitlich unbeschränkt. Als datetime2(7)-Variable oder ISO-8601-Literal wie 2026-01-01T12:00:00.0000000 in UTC übergeben; keine Zeitzonenumrechnung. Keine Leerzeichenfolge als Datum verwenden.';
+        PRINT N'@NurMehrerePlaene bit; Default: 1. 1 und NULL verlangen HAVING COUNT_BIG(*)>1; NULL wird nicht coalesced. 0 schließt auch Queries mit genau einem Plan ein. Als bit 0 oder 1 übergeben; SQL-Typkonvertierung kann andere numerische Nichtnullwerte auf 1 abbilden. Gezählt werden Planzeilen nach Zeit-/Referenzfilter der Summaryaggregation; nicht zwingend gleichzeitig aktive oder verschiedene Planhashes.';
+        PRINT N'@MitPlanXml bit; Default: 0. 1 fordert gespeicherte XML für alle lokal gesammelten Pläne an, parst/exportiert vor globalem Querylimit; Deep-Prüfung. 0 unterdrückt Ausgabe/Parsing mit NOT_REQUESTED. NULL unterdrückt ebenfalls, Status PENDING. Referenzfilter können XML unabhängig vom Export lesen. Als bit 0 oder 1 übergeben; SQL-Typkonvertierung kann andere numerische Nichtnullwerte auf 1 abbilden. Gespeicherter historischer Showplan, kein aktueller Laufzeitplan. Ungültiges XML bleibt als Rohtext mit Fehler-/Partialhinweis erhalten.';
+        PRINT N'@AnalyseModus varchar(16); Default: ''TOP''. Ausgelassen/NULL: TOP. Nach äußerem Trimmen von U+0020 und Großschreibungsnormalisierung sind genau TOP und VOLL erlaubt: TOP verwendet lokale N+1-Querykandidaten und das globale Querylimit; VOLL aktiviert QUERY_STORE_DEEP, hebt @MaxZeilen aber nicht auf. Leer, nur Leerzeichen oder andere Werte sind ungültig. Deep wird außerdem durch @MitPlanXml=1, ein normalisiertes Zeilenlimit über 1000 (einschließlich NULL/0 unbegrenzt) oder einen nicht-NULL Referenzfilter aktiviert; @VonUtc allein aktiviert Deep nicht.';
+        PRINT N'@MaxZeilen int; Default: 100. Positiv: globales Limit an Query-Summaryzeilen. NULL/0 unbegrenzt; negativ ungültig. Je Quelle lokale N+1-Kandidaten (bei int.MaxValue N ohne Überlauf), danach globale Sortierung LastExecutionTimeUtc DESC, LastCompileTimeUtc DESC; gleiche Sortwerte nicht eindeutig. Limit zählt Queries, nicht Pläne; alle Pläne der Querykeys bleiben. >1000 sowie NULL/0 unbegrenzt aktivieren Deep.';
+        PRINT N'@MaxSqlTextZeichen int; Default: 4000. Begrenzt nur QuerySqlText in Unicode-Zeichen/SC-Codepoints, nicht Grapheme und nicht Plan-XML. NULL/0 vollständig; negativ ungültig. Projektion/Truncationbewertung vor globaler Querybegrenzung.';
+        PRINT N'@ResultSetArt varchar(16); Default: ''CONSOLE''. Ausgelassen: CONSOLE. Nach U+0020-Trim/Großschreibung sind genau vier Werte erlaubt: RAW liefert vier Resultsets (Metadaten, Querysummaries, Plandetails, Warnungen); CONSOLE liefert die Querysummary und einen Formatierungshinweis; TABLE schreibt nur die angeforderte nichtleere Teilmenge queries/plans in geprüfte lokale Temp-Ziele; NONE unterdrückt normale Fachresultsets. JSON ist unabhängig. NULL, leer, nur Leerzeichen und andere Werte sind im normalen Analysepfad ungültig. Der TABLE-Preflight läuft bereits vor Hilfe und Fachvalidierung.';
+        PRINT N'@ResultTablesJson nvarchar(max); Default: NULL. Nur TABLE. Nichtleerer Wert außerhalb TABLE löst vor Hilfe/Normalvalidierung Fehler aus. NULL/leer sind im TABLE-Aufruf ungültig. Erforderlich ist ein nichtleeres JSON-Objekt mit einem oder beiden Schlüsseln queries/plans; Werte sind unterschiedliche, vorhandene, leere lokale #Temp-Tabellen mit genau einer beliebigen Seed-Spalte. Resultsetnamen werden exakt und case-sensitiv geprüft; doppelte Namen, doppelte Ziele, unbekannte Namen, Nicht-Stringwerte, Zielnamen >116 Zeichen, ##-Ziele und Namen mit #Monitor-Präfix sind ungültig. Eine Seed-Zeile ist nicht zulässig; der Writer ersetzt die Seed-Struktur durch das jeweilige Ergebnisschema. queries bezeichnet die begrenzte Querysummary, plans alle gespeicherten Pläne ihrer ausgewählten Querykeys.';
+        PRINT N'@JsonErzeugen bit; Default: 0. 1 erzeugt JSON unabhängig von ResultSetArt. 0 oder NULL deaktiviert. Als bit 0 oder 1 übergeben; SQL-Typkonvertierung kann andere numerische Nichtnullwerte auf 1 abbilden. Die JSON-Objekte heißen meta (Metadaten), queries (begrenzte Summaries), plans (alle Pläne ausgewählter Querykeys), warnings (Warnungen).';
+        PRINT N'@Json nvarchar(max) OUTPUT; Default: NULL. OUTPUT-Parameter für JSON mit meta, queries, plans und warnings; beim Eintritt NULL, nur bei @JsonErzeugen=1 befüllt. Zum Empfang eine nvarchar(max)-Variable als @Json=@Variable OUTPUT binden. Ausgelassen wird kein Ergebnis an den Aufrufer zurückgegeben; ein Eingabewert wird überschrieben. Bei Hilfe bleibt NULL; bei einem ungefangenen THROW besteht keine Zusage einer OUTPUT-Rückübertragung. Summaries sind global begrenzt, Pläne vollständig je ausgewähltem Querykey.';
+        PRINT N'@PrintMeldungen bit; Default: 1. ausgelassen lässt Meldungen zu. 1 erlaubt Fehlerhinweise und die Truncationwarnung; 0 unterdrückt diese Meldungen. NULL unterdrückt die Truncationwarnung und erfüllt die direkte Fehlerausgabebedingung nicht. Status, Resultsets und Datenmenge bleiben davon unberührt. Als bit 0 oder 1 übergeben; SQL-Typkonvertierung kann andere numerische Nichtnullwerte auf 1 abbilden.';
+        PRINT N'@Hilfe bit; Default: 0. 1 gibt Hilfe aus und kehrt vor normaler Parameterprüfung/Datenbankverarbeitung zurück. Typbindung bleibt erforderlich; frühe TABLE-Mapping-Prüfung läuft vorher. 0/NULL normale Ausführung. @Json beim Eintritt auch für Hilfe NULL; PrintMeldungen steuert Hilfe-PRINTs nicht. Als bit 0 oder 1 übergeben; SQL-Typkonvertierung kann andere numerische Nichtnullwerte auf 1 abbilden.';
+        PRINT N'EXEC [monitor].[USP_QueryStorePlanChanges]
+      @Hilfe = 1;';
+        PRINT N'DECLARE @ExampleVonUtc datetime2(7) = DATEADD(HOUR, -1, SYSUTCDATETIME());
+
+EXEC [monitor].[USP_QueryStorePlanChanges]
+      @QueryStoreDatabaseNames = N''[ExampleDatabase]''
+    , @VonUtc = @ExampleVonUtc
+    , @MaxZeilen = 100
+    , @ResultSetArt = ''RAW'';';
+        PRINT N'DECLARE @ExampleJson nvarchar(max);
+DECLARE @ExampleVonUtc datetime2(7) = DATEADD(HOUR, -1, SYSUTCDATETIME());
+
+EXEC [monitor].[USP_QueryStorePlanChanges]
+      @QueryStoreDatabaseNames = N''[ExampleDatabase]''
+    , @VonUtc = @ExampleVonUtc
+    , @ResultSetArt = ''NONE''
+    , @JsonErzeugen = 1
+    , @Json = @ExampleJson OUTPUT;
+
+SELECT @ExampleJson AS [Json];';
+        PRINT N'CREATE TABLE [#QueryStorePlanChanges_HelpQueries]([Seed] int NULL);
+DECLARE @ExampleVonUtc datetime2(7) = DATEADD(HOUR, -1, SYSUTCDATETIME());
+
+BEGIN TRY
+    EXEC [monitor].[USP_QueryStorePlanChanges]
+          @QueryStoreDatabaseNames = N''[ExampleDatabase]''
+        , @VonUtc = @ExampleVonUtc
+        , @MaxZeilen = 100
+        , @ResultSetArt = ''TABLE''
+        , @ResultTablesJson = N''{"queries":"#QueryStorePlanChanges_HelpQueries"}'';
+
+    SELECT * FROM [#QueryStorePlanChanges_HelpQueries];
+    DROP TABLE IF EXISTS [#QueryStorePlanChanges_HelpQueries];
+END TRY
+BEGIN CATCH
+    DROP TABLE IF EXISTS [#QueryStorePlanChanges_HelpQueries];
+    THROW;
+END CATCH;';
   RETURN;
  END;
  DECLARE @Now datetime2(3)=SYSUTCDATETIME(),@Status varchar(40)='AVAILABLE',@Partial bit=0,@Error nvarchar(2048)=NULL,@Cross bit=0,@Allowed bit=1,@Db sysname,@Compat tinyint,@Sql nvarchar(max),@Count bigint=0,@HasMore bit=0,@Msg nvarchar(2048),@RefMode varchar(8),@RefValue nvarchar(4000),@RefFlags varchar(8),@RefValid bit,@RefPredicate nvarchar(max)=N'';
