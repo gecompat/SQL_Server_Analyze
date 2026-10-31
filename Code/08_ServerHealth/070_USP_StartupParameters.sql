@@ -6,8 +6,8 @@ GO
 Objekt       : monitor.USP_StartupParameters
 Version      : 2.0.0
 Stand        : 2026-07-15
-Zweck        : Liefert Startparameter und Registry-basierte Dienstparameter
-               einschließlich eines Plattformhinweises.
+Zweck        : Die Procedure liest SQL-Startparameter und Registry-basierte
+               Dienstparameter und weist auf eine nicht verfügbare Plattformquelle hin.
 Datenquellen : sys.dm_server_registry
 Vertrag      : Resultset 1 ist immer Modulstatus; @ResultSetArt=NONE unterdrückt Resultsets; RAW und CONSOLE liefern unterschiedliche Projektionen. Optional JSON.
 ===============================================================================
@@ -26,15 +26,31 @@ BEGIN
     DECLARE @TableTarget sysname=NULL;
     IF @TableResultRequested=0 AND NULLIF(LTRIM(RTRIM(COALESCE(@ResultTablesJson,N''))),N'') IS NOT NULL THROW 51011,N'@ResultTablesJson ist ausschließlich mit @ResultSetArt=TABLE zulässig.',1;
     IF @TableResultRequested=1 EXEC [monitor].[InternalPrepareSingleResultTable] @ResultTablesJson=@ResultTablesJson,@ResultName=N'startupParameters',@TargetTable=@TableTarget OUTPUT,@ThrowOnError=1;
-    IF @TableResultRequested = 1 OR @ConsoleResultRequested = 1 SET @ResultSetArtNormalisiert = 'NONE';IF @Hilfe=1 BEGIN PRINT N'monitor.USP_StartupParameters: Server-Health-Snapshot; read-only, nicht atomar.';
-        PRINT N'Parameter: @PrintMeldungen bit=1 gibt Meldungen aus (0 unterdrückt sie); @Hilfe bit=0 (0/1) druckt bei 1 diese Hilfe vor den Quellen. Bei TABLE läuft der Ziel-Preflight vorher. @ResultSetArt varchar(16)=CONSOLE: CONSOLE, RAW, TABLE oder NONE; Groß-/Kleinschreibung wird normalisiert.';
-        PRINT N'@ResultTablesJson nvarchar(max)=NULL ist für TABLE erforderlich; außerhalb von TABLE sind nur NULL oder leere Werte zulässig. Der unten genannte Ergebnisname muss auf eine vorhandene, leere lokale #temp-Tabelle mit genau einer Platzhalterspalte (z.B. Seed bit NULL) zeigen; kein fertiges Ausgabeschema voranlegen.';
-        PRINT N'@JsonErzeugen bit=0 (0/1) erzeugt bei 1 das JSON-Dokument in @Json nvarchar(max)=NULL OUTPUT. @StatusCodeOut varchar(40)=NULL liefert den Modulstatus, @IsPartialOut bit=NULL die Teilstatuskennzeichnung, @ErrorNumberOut int=NULL die Quellfehlernummer und @ErrorMessageOut nvarchar(2048)=NULL den Fehlertext; alle sind OUTPUT.';
-        PRINT N'Ausgabe: RAW und CONSOLE zeigen startupParameters; TABLE exportiert startupParameters; JSON enthält das startupParameters-Array. JSON-Schlüssel: startupParameters; Modulstatus beschreibt Verfügbarkeit/Fehler.';
-        PRINT N'Quelle und Umfang: Liest SQLArg*- sowie ImagePath- und ObjectName-Werte aus sys.dm_server_registry und klassifiziert Trace-Flag-, Masterdatei- und Errorlogargumente. Registry-/Dienstkonfiguration ohne Zeilenlimit; Pfade und Dienstkontoangaben können sensibel sein.';
-        PRINT N'Plattform: Fehlt sys.dm_server_registry, meldet die Quelle auf Linux UNAVAILABLE_PLATFORM, sonst UNAVAILABLE_OBJECT.';
-        PRINT N'Beispiel: EXEC [monitor].[USP_StartupParameters] @ResultSetArt=''CONSOLE'';';
-        PRINT N'TABLE-Beispiel (nur bei Bedarf): CREATE TABLE [#StartupParameters_HelpExample]([Seed] bit NULL); EXEC [monitor].[USP_StartupParameters] @ResultSetArt=''TABLE'', @ResultTablesJson=N''{"startupParameters":"#StartupParameters_HelpExample"}''; DROP TABLE [#StartupParameters_HelpExample];';RETURN;END;
+    IF @TableResultRequested = 1 OR @ConsoleResultRequested = 1 SET @ResultSetArtNormalisiert = 'NONE';IF @Hilfe=1 BEGIN PRINT N'monitor.USP_StartupParameters';
+        PRINT N'Erfasst lesend SQL-Startargumente sowie ImagePath und ObjectName aus sys.dm_server_registry; die Momentaufnahme ist nicht atomar.';
+        PRINT N'Die Hilfe läuft nach einem eventuellen TABLE-Preflight und vor Plattform- und Quellenabfrage. JSON ist unabhängig von ResultSetArt.';
+        PRINT N'@PrintMeldungen bit; Default: 1. 1 gibt nach der Quellenprüfung bei einem Status ungleich AVAILABLE eine Statusmeldung aus; 0 unterdrückt sie. NULL wirkt wie 0; numerische 0 bleibt 0, von 0 verschiedene konvertierbare Zahlen werden bit 1, da nur der Vergleich mit 1 die Ausgabe auslöst.';
+        PRINT N'@Hilfe bit; Default: 0. 1 gibt die Parameterhilfe aus und beendet vor den Fachquellen; 0 erhebt Daten. NULL wirkt wie 0; numerische 0 bleibt 0, von 0 verschiedene konvertierbare Zahlen werden bit 1. Bei ResultSetArt TABLE wird der Ziel-Preflight vor der Hilfe ausgeführt.';
+        PRINT N'@ResultSetArt varchar(16); Default: ''CONSOLE''. Nach Bindung an varchar(16): CONSOLE beschriftet startupParameters, RAW liefert die technischen Zeilen und TABLE exportiert startupParameters; NONE unterdrückt Resultsets. Äußere U+0020-Leerzeichen werden entfernt, Großschreibung vereinheitlicht; NULL wird leer und ist ungültig. TABLE/CONSOLE werden intern für reguläre Resultsets zu NONE und danach über eigene Exportzweige bedient. Ungültige Werte setzen INVALID_PARAMETER und IsPartial=1; Quellprüfung läuft dennoch. Bei einem Quellenfehler ersetzt dessen Status INVALID_PARAMETER; bei erfolgreicher Quellenprüfung bleibt INVALID_PARAMETER bestehen.';
+        PRINT N'@ResultTablesJson nvarchar(max); Default: NULL. Bei TABLE ist ein JSON-Objekt mit startupParameters erforderlich, das auf eine existierende leere lokale #temp-Tabelle mit genau einer Seed-Spalte zeigt. Andernfalls wirft der Preflight vor der Hilfe Fehler 51011. Außerhalb von TABLE ist nur NULL oder leerer/nur aus Leerzeichen bestehender Inhalt zulässig.';
+        PRINT N'@JsonErzeugen bit; Default: 0. 1 erzeugt unabhängig von ResultSetArt zusätzlich JSON, 0 erzeugt es nicht; NULL wirkt wie 0; numerische 0 bleibt 0, von 0 verschiedene konvertierbare Zahlen werden bit 1. NONE unterdrückt Resultsets, nicht aber Quellenabfragen oder angefordertes JSON. @Hilfe=1 kehrt vor der JSON-Erzeugung zurück; @Json ist beim Eintritt bereits auf NULL gesetzt.';
+        PRINT N'@Json nvarchar(max) OUTPUT; Default: NULL. Die OUTPUT-Bindung ist optional; zum Empfang eine nvarchar(max)-Variable binden, z. B. @Json=@j OUTPUT. Der Eingangswert wird zu Beginn auf NULL gesetzt. Bei @JsonErzeugen=1 wird nach der Sammlung das JSON-Dokument geschrieben; sonst bleibt er NULL. Der Hilfezweig beendet vor der Erzeugung.';
+        PRINT N'@StatusCodeOut varchar(40) OUTPUT; Default: NULL. Die OUTPUT-Bindung ist optional; zum Empfang eine varchar(40)-Variable binden. Statuswerte: AVAILABLE; INVALID_PARAMETER; UNAVAILABLE_PLATFORM (DMV fehlt und Host ist Linux); UNAVAILABLE_OBJECT (DMV fehlt und Linux ist nicht erkannt); DENIED_PERMISSION (Fehler 229, 297, 300 oder 371); ERROR_HANDLED (sonstiger Registrylesefehler). Zuweisung erst nach Quellenprüfung, nicht bei Hilfe; eine gebundene, mit NULL initialisierte Variable bleibt NULL.';
+        PRINT N'@IsPartialOut bit OUTPUT; Default: NULL. Die OUTPUT-Bindung ist optional; zum Empfang eine bit-Variable binden. 0 bei AVAILABLE, 1 bei invalidem Modus, nicht verfügbarer DMV oder abgefangenem Quellfehler. Im Hilfezweig keine Zuweisung; eine gebundene, mit NULL initialisierte Variable bleibt NULL.';
+        PRINT N'@ErrorNumberOut int OUTPUT; Default: NULL. Die OUTPUT-Bindung ist optional; zum Empfang eine int-Variable binden. Fehlernummer eines abgefangenen Registrylesefehlers, sonst NULL. Im Hilfezweig keine Zuweisung; eine gebundene, mit NULL initialisierte Variable bleibt NULL.';
+        PRINT N'@ErrorMessageOut nvarchar(2048) OUTPUT; Default: NULL. Die OUTPUT-Bindung ist optional; zum Empfang eine nvarchar(2048)-Variable binden. Enthält Quell-/Validierungshinweis oder NULL bei AVAILABLE. Im Hilfezweig keine Zuweisung; eine gebundene, mit NULL initialisierte Variable bleibt NULL.';
+        PRINT N'EXEC [monitor].[USP_StartupParameters] @ResultSetArt=''RAW'';';
+        PRINT N'DECLARE @j nvarchar(max); EXEC [monitor].[USP_StartupParameters] @ResultSetArt=''NONE'', @JsonErzeugen=1, @Json=@j OUTPUT; SELECT @j;';
+        PRINT N'CREATE TABLE [#StartupParameters_HelpExample]([Seed] bit NULL); BEGIN TRY EXEC [monitor].[USP_StartupParameters] @ResultSetArt=''TABLE'', @ResultTablesJson=N''{"startupParameters":"#StartupParameters_HelpExample"}''; END TRY BEGIN CATCH DROP TABLE [#StartupParameters_HelpExample]; THROW; END CATCH; DROP TABLE [#StartupParameters_HelpExample];';
+        PRINT N'EXEC [monitor].[USP_StartupParameters] @Hilfe=1;';
+
+
+
+
+
+
+
+        RETURN;END;
  DECLARE @T datetime2(3)=SYSUTCDATETIME(),@S varchar(40)='AVAILABLE',@P bit=0,@E int=NULL,@M nvarchar(2048)=NULL,@Platform nvarchar(60)=NULL;
  IF @ResultSetArtNormalisiert NOT IN('RAW','CONSOLE','NONE') SELECT @S='INVALID_PARAMETER',@P=1,@M=N'@ResultSetArt muss CONSOLE, RAW, TABLE oder NONE enthalten.';
 CREATE TABLE [#StartupParameters_X]
