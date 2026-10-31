@@ -146,6 +146,4 @@ Prüfen Sie `USP_CurrentRequests`, `USP_CurrentBlocking` und den zugehörigen Pl
 
 [Technische Detailbeschreibung](../../../Code/02_CurrentState/110_USP_CurrentCursorAnalysis.sql)
 
-## Weiterführende Vertiefung
-
 [Current-State-Bereichsleitfaden](../02_Current_State.md)
