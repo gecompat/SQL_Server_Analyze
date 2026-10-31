@@ -1116,3 +1116,69 @@ BEGIN CATCH
  THROW;
 END CATCH;
 ```
+## Framework-Nutzung aus Query Store
+
+USP_FrameworkUsageFromQueryStore aggregiert ausschließlich die sichtbare Query-Store-Evidenz der aktuellen Frameworkdatenbank für SQL-Procedures im Schema monitor. Eine Nutzungszeile fasst erfasste Statement-Ausführungszähler zusammen; sie zählt keine äußeren EXEC-Aufrufe. Capture, Retention und Metadatensichtbarkeit begrenzen die Aussage.
+
+RAW liefert moduleStatus, usage, sourceStatus und warnings; CONSOLE nur die Nutzungsmenge mit Ergebnislabel beziehungsweise eine Leeranzeige. TABLE erlaubt eine nichtleere Teilmenge der vier benannten Gruppen. JSON enthält meta, usage, sourceStatus und warnings; ein moduleStatus-Array gehört nicht dazu. Das Zeilenlimit gilt nur für usage nach Aggregation und Mindestfilter, nicht für Quellenstatus oder Warnungen.
+
+Ein positiver Zeitraum verwendet last_execution_time >= CutoffUtc der gespeicherten Runtime-Stats-Zeile; die gesamte Statistikzeile wird übernommen, keine anteilige Zerlegung. Ohne Zeitraum gilt die gesamte sichtbare Retention. Dauer, CPU, logische Reads und der beobachtete maximale Speichereinsatz werden nach Ausführungsanzahl gewichtet; AvgMemoryGrantKB basiert auf avg_query_max_used_memory mal acht und ist kein Nachweis einer tatsächlich gewährten Speicheranforderung.
+
+
+### Parameter und weitere Aufrufbeispiele
+
+| Parameter | Datentyp | Default | Eingabeform und Wirkung |
+|---|---|---|---|
+| `@MaxZeilen` | `int` | `100` | NULL oder 0 bedeutet unbegrenzt; positive Werte begrenzen nur usage nach Aggregation und Mindestfilter. Negative Werte sind ungültig. HasMoreRows nutzt einen zusätzlichen Kandidaten mit BIGINT-Arithmetik, auch bei int.MaxValue; ReturnedRowCount ist die endgültige usage-Anzahl. Der frameworkUsage-Eintrag im sourceStatus meldet ebenfalls nur die endgültige ausgegebene Anzahl, nicht die vollständige Kandidatenmenge. Als positive ganze Zahl von 1 bis 2147483647 übergeben. Sortierung nach ExecutionCount absteigend, danach ProcedureName aufsteigend. Status- und Warningmengen werden nicht begrenzt; ein Limit allein setzt IsPartial nicht. |
+| `@MinAusfuehrungen` | `bigint` | `1` | Mindestens 1; NULL und kleinere Werte sind ungültig. Filtert nach Aggregation je Procedure anhand der Summe erfasster Statementausführungen, nicht äußerer EXEC-Aufrufe. Als ganze bigint-Zahl von 1 bis 9223372036854775807 übergeben. |
+| `@ZeitraumTage` | `int` | `NULL` | NULL oder 0 bedeutet gesamte sichtbare Retention; 1 bis 365000 ist zulässig. Negative Werte und größere Werte sind ungültig. Positiv berechnet CutoffUtc aus SYSUTCDATETIME() und verwendet last_execution_time &gt;= CutoffUtc; die vollständige Runtime-Stats-Zeile zählt, keine anteilige Intervallüberlappung. Ganze Tage übergeben. NULL und 0 erscheinen in der Fenstermetadatenangabe als NULL; die Procedure setzt weder Retention noch Query-Store-Capture um. |
+| `@LockTimeoutMs` | `int` | `0` | 0 bis 60000 zulässig; NULL und Werte außerhalb ungültig. 0 bedeutet kein Warten auf gesperrte Ressourcen. Setzt ein SQL-Lock-Timeout, kein Ausführungszeitbudget; im regulären Finalize-Pfad wird der vorherige @@LOCK_TIMEOUT wiederhergestellt. Positive ganze Millisekunden von 1 bis 60000 übergeben; eine allgemeine Wiederherstellungszusage bei ungefangenen Fehlern folgt daraus nicht. |
+| `@ResultSetArt` | `varchar(16)` | `'CONSOLE'` | Trimmen und Großschreibung. Geschlossene Werte: CONSOLE liefert nur usage mit Ergebnislabel oder Leeranzeige; RAW liefert moduleStatus, usage, sourceStatus, warnings; TABLE schreibt eine nichtleere Teilmenge der vier erlaubten Gruppen in lokale Ziele; NONE unterdrückt fachliche Resultsets. NULL, leerer Text und andere Werte sind ungültig. LTRIM/RTRIM entfernt nur äußere U+0020-Leerzeichen; ein solcher Leerwert ist ungültig. Die SQL-Bindung an varchar(16) erfolgt vor der Prüfung. JSON und technische Meldungen werden unabhängig gesteuert. |
+| `@ResultTablesJson` | `nvarchar(max)` | `NULL` | Ausgelassen/NULL, leer oder nur äußere U+0020-Leerzeichen sind außerhalb TABLE zulässig; anderer nichtleerer Inhalt liefert dort im normalen Ablauf INVALID_PARAMETER, keinen frühen Mapping-THROW. Bei TABLE ist ein nichtleeres JSON-Objekt mit einer nichtleeren Teilmenge von vier binär exakten Schlüsseln erforderlich: moduleStatus (Gesamtstatus und Zähler), usage (Nutzungsaggregate), sourceStatus (Quellenstatus), warnings (Warnungen). Jeder Stringwert benennt ein eigenes vorhandenes, leeres lokales #Temp-Ziel mit genau einer beliebigen Seed-Spalte und keiner Seed-Zeile; kein ##, LEN höchstens 116 und kein reserviertes #Monitor-Präfix. Unbekannte/doppelte Schlüssel, case-insensitiv doppelte Ziele, Nicht-Stringwerte oder ungültige Ziele scheitern im ThrowOnError-Preflight nach Hilfe, aber vor normaler Fachvalidierung. Der Writer ersetzt die Seed-Struktur; nicht angeforderte Ziele werden nicht verändert. |
+| `@JsonErzeugen` | `bit` | `0` | NULL ungültig. 0 erzeugt kein JSON; 1 erzeugt meta, usage, sourceStatus und warnings, kein moduleStatus-Array. Als bit 0 oder 1 übergeben; konvertierbare numerische Werte ungleich 0 werden 1. JSON ist unabhängig von ResultSetArt. meta beschreibt Gesamtstatus/Zähler, usage die begrenzte Nutzungsmenge, sourceStatus die Quellenlage und warnings Warnungen. |
+| `@Json` | `nvarchar(max) OUTPUT` | `NULL` | OUTPUT wird am Aufrufanfang auf NULL gesetzt, auch bei HELP. Bei normaler Ausführung wird es nur mit @JsonErzeugen=1 als JSON-Objekt gesetzt. Zum Empfang eine nvarchar(max)-Variable als Json=@Variable OUTPUT binden; der Eingabewert wird verworfen. Ohne OUTPUT-Bindung gibt es keinen übernommenen Wert; ungefangene Fehler garantieren keine OUTPUT-Rückübertragung. |
+| `@PrintMeldungen` | `bit` | `1` | NULL ungültig. 0 ist still; 1 gibt nur bei Status außerhalb AVAILABLE und AVAILABLE_EMPTY eine Meldung mit Schweregrad 10 aus. Als bit 0 oder 1 übergeben; konvertierbare numerische Werte ungleich 0 werden 1. |
+| `@Hilfe` | `bit` | `0` | Nur 1 aktiviert HELP. HELP beendet nach Hilfetexten vor TABLE-Preflight und regulärer Parameterprüfung; @Json ist bereits NULL, die vier Status-/Fehler-OUTPUT-Parameter bleiben unverändert. NULL aktiviert HELP nicht und wird nicht separat geprüft. Als bit 0 oder 1 übergeben; konvertierbare numerische Werte ungleich 0 werden 1. |
+| `@StatusCodeOut` | `varchar(40) OUTPUT` | `NULL` | OUTPUT des abschließenden Modulstatus, kein Eingabefilter. Eine varchar(40)-Variable mit OUTPUT binden. Vollständige aktuelle Statusmenge: AVAILABLE (ausgabefähige Nutzung), AVAILABLE_EMPTY (lesbarer Query Store ohne Treffer nach Filtern), INVALID_PARAMETER (ungültiger Aufruf), UNAVAILABLE_FEATURE (Query Store nicht lesbar aktiv), DENIED_PERMISSION (kontrollierter Berechtigungsfehler) und ERROR_HANDLED (anderer kontrollierter Quellenfehler, auch Locktimeout 1222). Bei Hilfe bleibt der Eingabewert unverändert; im normalen Ablauf wird erst nach Resultset-/TABLE-/Meldungsausgabe zugewiesen. Bei ungefangenem THROW keine zugesicherte Rückübertragung. |
+| `@IsPartialOut` | `bit OUTPUT` | `NULL` | OUTPUT der abschließenden Partialität; eine bit-Variable mit OUTPUT binden, kein Eingabeschalter. 1 steht bei ungültigen Parametern und kontrolliertem Quellenfehler; 0 bei regulären Nutzungsdaten, leerem Ergebnis und UNAVAILABLE_FEATURE. Das Zeilenlimit allein setzt das Bit nicht. Bei Hilfe bleibt der Eingabewert einschließlich NULL unverändert. Normale Zuweisung erst am Ende nach der Ausgabe; bei ungefangenem THROW keine zugesicherte Rückübertragung. |
+| `@ErrorNumberOut` | `int OUTPUT` | `NULL` | OUTPUT der Modulfehlernummer; eine int-Variable mit OUTPUT binden, kein Eingabefilter. Im normalen Ablauf enthält sie bei kontrolliertem Quellenfehler ERROR_NUMBER(), sonst NULL; ein Validierungs- oder Featurestatus benötigt keine technische Fehlernummer. Bei Hilfe bleibt der Eingabewert unverändert. Zuweisung erst am Ende nach der Ausgabe; bei ungefangenem THROW keine zugesicherte Rückübertragung. |
+| `@ErrorMessageOut` | `nvarchar(2048) OUTPUT` | `NULL` | OUTPUT des Modulfehlertexts; eine nvarchar(2048)-Variable mit OUTPUT binden, kein Eingabefilter. Im normalen Ablauf NULL ohne Modulfehler; sonst gesetzte Validierungs-/Featuremeldung oder Meldung des kontrollierten Quellenfehlers, nötigenfalls erste Warning nach WarningOrdinal. Bei Hilfe bleibt der Eingabewert unverändert. Zuweisung erst am Ende nach der Ausgabe; bei ungefangenem THROW keine zugesicherte Rückübertragung. |
+
+```sql
+EXEC [monitor].[USP_FrameworkUsageFromQueryStore]
+      @Hilfe = 1;
+```
+
+```sql
+EXEC [monitor].[USP_FrameworkUsageFromQueryStore]
+      @MaxZeilen = 100,
+      @MinAusfuehrungen = 1,
+      @ResultSetArt = 'RAW';
+```
+
+```sql
+DECLARE @FrameworkUsageHelpJson nvarchar(max);
+EXEC [monitor].[USP_FrameworkUsageFromQueryStore]
+      @ResultSetArt = 'NONE',
+      @JsonErzeugen = 1,
+      @Json = @FrameworkUsageHelpJson OUTPUT;
+SELECT @FrameworkUsageHelpJson AS [Json];
+```
+
+```sql
+CREATE TABLE [#FrameworkUsageFromQueryStore_HelpExample]
+(
+    [Seed] int NULL
+);
+BEGIN TRY
+    EXEC [monitor].[USP_FrameworkUsageFromQueryStore]
+          @ResultSetArt = 'TABLE',
+          @ResultTablesJson = N'{"usage":"#FrameworkUsageFromQueryStore_HelpExample"}';
+    SELECT * FROM [#FrameworkUsageFromQueryStore_HelpExample];
+    DROP TABLE [#FrameworkUsageFromQueryStore_HelpExample];
+END TRY
+BEGIN CATCH
+    DROP TABLE IF EXISTS [#FrameworkUsageFromQueryStore_HelpExample];
+    THROW;
+END CATCH;
+```
