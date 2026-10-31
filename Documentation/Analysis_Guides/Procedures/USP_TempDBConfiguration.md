@@ -24,13 +24,77 @@ Die Parameterhilfe ohne Datenerhebung zeigt `EXEC [monitor].[USP_TempDBConfigura
 
 Alle `Example*`-Werte im Aufruf sind synthetisch.
 
+## Parameter und weitere Aufrufbeispiele
+
+| Parameter | Datentyp | Default | Eingabeform und Wirkung |
+|---|---|---|---|
+| `@PrintMeldungen` | `bit` | `1` | Eingabeform: SQL-bit; 0 bedeutet unterdrückt den Severity-10-Hinweis bei Status ungleich AVAILABLE, 1 bedeutet gibt den Severity-10-Hinweis mit Fehlertext aus. NULL ist zulässig und wird in der jeweiligen IF/CASE-Bedingung nicht als 0 behandelt: die Bedingung =1 ist dann nicht wahr. Ein leerer String wird bei SQL-bit-Konvertierung zu 0; andere nicht konvertierbare Eingaben lösen einen Konvertierungsfehler aus. Zahlen 0 bleiben 0, jeder konvertierbare Nichtnullwert ungleich 0 wird zu 1. Bei ausgelassenem Argument gilt der Default. |
+| `@Hilfe` | `bit` | `0` | Eingabeform: SQL-bit; 0 bedeutet setzt die Hilfeprüfung nicht auf wahr und führt nach dem Preflight die Erhebung fort, 1 bedeutet druckt die Hilfe und kehrt vor Quellenabfrage und Statusoutputs zurück. NULL ist zulässig und wird in der jeweiligen IF/CASE-Bedingung nicht als 0 behandelt: die Bedingung =1 ist dann nicht wahr. Ein leerer String wird bei SQL-bit-Konvertierung zu 0; andere nicht konvertierbare Eingaben lösen einen Konvertierungsfehler aus. Zahlen 0 bleiben 0, jeder konvertierbare Nichtnullwert ungleich 0 wird zu 1. Bei ausgelassenem Argument gilt der Default. |
+| `@ResultSetArt` | `varchar(16)` | `'CONSOLE'` | Eingabeform: ein einzelner Code CONSOLE, RAW, TABLE oder NONE; führende/abschließende Leerzeichen werden entfernt und Groß-/Kleinschreibung wird mit UPPER vereinheitlicht. NULL wird durch COALESCE zu leerem Text, ein leerer oder nur aus Leerzeichen bestehender Wert bleibt leer; alle drei Fälle sind ungültig. Nur die vier genannten Werte sind gültig. CONSOLE und TABLE wählen ihre Fachprojektion und setzen den internen Modus anschließend auf NONE, damit kein generisches Fachresultset zusätzlich ausgegeben wird; RAW liefert rohe Fachresultsets, NONE unterdrückt Resultsets. Ungültige Codes (einschließlich NULL/leer) setzen INVALID_PARAMETER und IsPartial=1; intern werden wegen des nicht-NONE-Modus Status und die nicht-RAW-Fachprojektion ausgegeben. Bei TABLE erfolgt zuerst der Ziel-Preflight; sein Fehler wird geworfen. JSON-Erzeugung ist unabhängig vom ResultSetArt. |
+| `@ResultTablesJson` | `nvarchar(max)` | `NULL` | Eingabeform: ein gültiges JSON-Objekt mit genau einer Eigenschaft, deren Name exakt files lautet und deren Stringwert eine vorhandene lokale #temp-Tabelle bezeichnet. Das Ziel muss vor dem Aufruf existieren, leer sein und genau eine Seed-/Platzhalterspalte besitzen; globale ##-Tabellen, permanente Tabellen, Namen mit reserviertem Präfix #Monitor und Namen über 116 Zeichen sind unzulässig. Der Helper ergänzt das Ausgabeschema. Nur bei ResultSetArt=TABLE erforderlich. Außerhalb TABLE werden NULL, leerer oder nur aus Leerzeichen bestehender Inhalt akzeptiert; nichtleerer Inhalt wirft Fehler 51011. Bei TABLE validiert der Preflight JSON und Ziel und wirft bei ungültiger oder fehlender Angabe Fehler 51011; Status-OUTPUT-Parameter werden dann nicht zugewiesen. |
+| `@JsonErzeugen` | `bit` | `0` | Eingabeform: SQL-bit; 0 bedeutet lässt @Json nach dem anfänglichen Zurücksetzen auf NULL, 1 bedeutet erstellt das JSON-Dokument mit meta, files, configuration und warnings. NULL ist zulässig und wird in der jeweiligen IF/CASE-Bedingung nicht als 0 behandelt: die Bedingung =1 ist dann nicht wahr. Ein leerer String wird bei SQL-bit-Konvertierung zu 0; andere nicht konvertierbare Eingaben lösen einen Konvertierungsfehler aus. Zahlen 0 bleiben 0, jeder konvertierbare Nichtnullwert ungleich 0 wird zu 1. Bei ausgelassenem Argument gilt der Default. |
+| `@Json` | `nvarchar(max) OUTPUT` | `NULL` | Optionaler OUTPUT-Empfang des JSON-Dokuments, etwa @Json=@Payload OUTPUT mit einer nvarchar(max)-Variablen. Der Eingabewert wird beim Eintritt vor TABLE-Preflight und Hilfe auf NULL gesetzt. Bei erfolgreicher Hilfe-Rückkehr bleibt @Json NULL; andere Status-/Fehler-OUTPUTs werden dort nicht zugewiesen. Im normalen Pfad wird @Json nur bei @JsonErzeugen=1 nach der Quellverarbeitung befüllt; sonst bleibt es NULL. Ohne OUTPUT-Bindung wird kein Wert empfangen. |
+| `@StatusCodeOut` | `varchar(40) OUTPUT` | `NULL` | Optionaler OUTPUT-Empfang, etwa @StatusCodeOut=@Status OUTPUT mit einer varchar(40)-Variablen. Werte und Bedeutungen: AVAILABLE (kein festgestellter Eingabe- oder abgefangener Quellfehler), INVALID_PARAMETER (ungültige ResultSetArt), DENIED_PERMISSION (abgefangene Quellfehler 229, 297, 300, 371 oder 916), TIMEOUT (Quellfehler 1222), ERROR_HANDLED (übrige abgefangene Quellfehler). Die reguläre Zuweisung erfolgt nach der Quellverarbeitung; Hilfe lässt einen gebundenen Anfangswert einschließlich NULL unverändert und ein früher Preflight-THROW erreicht die Zuweisung nicht. Ohne OUTPUT-Bindung wird kein Wert empfangen. |
+| `@IsPartialOut` | `bit OUTPUT` | `NULL` | Optionaler OUTPUT-Parameter für 0 bei AVAILABLE; 1 bei ungültiger ResultSetArt oder abgefangenem Quellfehler. Die Procedure weist den Wert erst nach der Quellverarbeitung zu; bei frühem HELP-Rücksprung bleibt der Empfängerwert außer @Json unverändert. Zum Binden eine passende lokale Variable deklarieren und z.B. @IsPartialOut=@Empfaenger OUTPUT angeben; die Variable muss bit sein. OUTPUT-Bindung ist optional, wenn der Rückgabewert nicht benötigt wird. |
+| `@ErrorNumberOut` | `int OUTPUT` | `NULL` | Optionaler OUTPUT-Parameter für bei abgefangenem Quellfehler die Quellfehlernummer; sonst NULL. Die Procedure weist den Wert erst nach der Quellverarbeitung zu; bei frühem HELP-Rücksprung bleibt der Empfängerwert außer @Json unverändert. Zum Binden eine passende lokale Variable deklarieren und z.B. @ErrorNumberOut=@Empfaenger OUTPUT angeben; die Variable muss int sein. OUTPUT-Bindung ist optional, wenn der Rückgabewert nicht benötigt wird. |
+| `@ErrorMessageOut` | `nvarchar(2048) OUTPUT` | `NULL` | Optionaler OUTPUT-Parameter für bei Fehler den Fehlertext beziehungsweise bei INVALID_PARAMETER den Hinweis auf die zulässigen ResultSetArt-Werte; sonst NULL. Die Procedure weist den Wert erst nach der Quellverarbeitung zu; bei frühem HELP-Rücksprung bleibt der Empfängerwert außer @Json unverändert. Zum Binden eine passende lokale Variable deklarieren und z.B. @ErrorMessageOut=@Empfaenger OUTPUT angeben; die Variable muss nvarchar(2048) sein. OUTPUT-Bindung ist optional, wenn der Rückgabewert nicht benötigt wird. |
+
+### Aufrufbeispiele
+
+CONSOLE:
+
+```sql
+EXEC [monitor].[USP_TempDBConfiguration] @ResultSetArt = 'CONSOLE';
+```
+
+RAW:
+
+```sql
+EXEC [monitor].[USP_TempDBConfiguration] @ResultSetArt = 'RAW';
+```
+
+JSON (unabhängig von der Resultsetausgabe):
+
+```sql
+DECLARE @Json nvarchar(max);
+EXEC [monitor].[USP_TempDBConfiguration]
+      @ResultSetArt = 'NONE'
+    , @JsonErzeugen = 1
+    , @Json = @Json OUTPUT;
+SELECT @Json AS [Json];
+```
+
+TABLE (Ziel vor dem TRY als Seed-Tabelle anlegen; beide Pfade räumen sie auf):
+
+```sql
+CREATE TABLE [#TempDBConfiguration_HelpExample] ([Seed] bit NULL);
+BEGIN TRY
+    EXEC [monitor].[USP_TempDBConfiguration]
+          @ResultSetArt = 'TABLE'
+        , @ResultTablesJson = N'{"files":"#TempDBConfiguration_HelpExample"}';
+    DROP TABLE [#TempDBConfiguration_HelpExample];
+END TRY
+BEGIN CATCH
+    IF OBJECT_ID('tempdb..#TempDBConfiguration_HelpExample') IS NOT NULL
+        DROP TABLE [#TempDBConfiguration_HelpExample];
+    THROW;
+END CATCH;
+```
+
+HELP (führt keine Quellenabfrage aus; bei TABLE würde der Ziel-Preflight vor HELP laufen):
+
+```sql
+EXEC [monitor].[USP_TempDBConfiguration] @Hilfe = 1;
+```
+
+
 ## Resultsets und Leserichtung
 
 Der typisierte TABLE-Vertrag registriert `files`. Status, Scope und Warnings sind vor den Fachergebnissen zu lesen. CONSOLE dient der interaktiven Triage; RAW und JSON erhalten den technischen Kontext, während TABLE nur die ausdrücklich benannten stabilen Resultsets schreibt. Resultsets mit unterschiedlicher Zeilengranularität dürfen nicht ungeprüft vereinigt oder summiert werden.
 
 ## Eine Zeile bedeutet
 
-Je Resultset entspricht eine Zeile einer TempDB-Datei, Konfigurationseigenschaft oder einem Finding.
+Die Dateisicht enthält eine Zeile je TempDB-Datei. RAW ergänzt ein separates Resultset mit den aus sys.configurations verfügbaren ausgewählten Einstellungen; dieses kann je Einstellung eine Zeile enthalten. Die Procedure erzeugt keine Findings.
 
 ## So lesen
 
@@ -52,9 +116,7 @@ Nicht jede Instanz benötigt acht Dateien. CPU, Contention und Workload entschei
 
 ## Leere oder partielle Ausgabe
 
-Server-DMVs können plattform-, editions- oder berechtigungsbedingt fehlen. NULL und PARTIAL sind dann Evidenzgrenzen, keine Nullmessung.
-
-Für `USP_TempDBConfiguration` gilt zusätzlich: **keine Zeile** bedeutet, dass im sichtbaren und gefilterten Scope kein ausgabefähiger Datensatz entstand. **0** ist ein gemessener Nullwert nur dann, wenn die Quellspalte tatsächlich verfügbar war. **NULL** bedeutet unbekannt, nicht anwendbar oder nicht auflösbar. **PARTIAL/Warning** bedeutet, dass mindestens eine Teilquelle, Datenbank oder Detailstufe fehlt. Ein Limit kann eine nichtleere Quelle vollständig aus dem sichtbaren Ausschnitt verdrängen.
+Die Procedure liest tempdb.sys.database_files und die drei benannten Einstellungen aus sys.configurations. Fehler der Quellabfragen werden abgefangen und als Status mit IsPartial=1, Fehlernummer und Fehlertext ausgegeben. Es gibt keinen Zeilenlimitparameter; die sichtbaren Dateizeilen bilden den aktuellen TempDB-Dateikatalog ab. Eine nicht vorhandene Konfigurationszeile kann auch bedeuten, dass die Einstellung in der Engineversion nicht verfügbar ist.
 
 ## Eigenlast und Grenzen
 
@@ -66,7 +128,7 @@ Für `USP_TempDBConfiguration` gilt zusätzlich: **keine Zeile** bedeutet, dass 
 | Haupttreiber | Anzahl der Zeilen in `tempdb.sys.database_files`; die `sys.configurations`-Quelle ist auf drei Namen begrenzt. Dateigröße beeinflusst die Abfragekosten nicht. |
 | Skalierung | Linear mit der Zahl der TempDB-Dateien. Umrechnung von Pages in MB, Growthtyp und Sortierung nach `file_id` sind konstante beziehungsweise sehr kleine CPU-Arbeit. |
 | Ressourcen | Zwei kurze Katalogabfragen und kleine Temp-Tabellen. Kein Zugriff auf `sys.dm_db_file_space_usage`, Dateiinhalte, PFS/GAM/SGAM oder Nutzerobjekte. |
-| Begrenzungswirkung | Es gibt bewusst kein `@MaxZeilen`: die vollständige Dateiliste ist Teil der Konfigurationsbewertung. `@ResultSetArt = 'NONE'` spart nur Ausgabe, nicht die beiden Quellabfragen. |
+| Begrenzungswirkung | Kein Zeilenlimit; erfasst werden alle TempDB-Dateizeilen und die verfügbaren Zeilen für drei festgelegte Konfigurationsnamen. `@ResultSetArt = 'NONE'` spart nur Resultsetausgabe, nicht die Quellabfragen. |
 | Locking und Nebenwirkungen | Read-only; kurze Metadatenzugriffe auf TempDB und Serverkonfiguration. Gleichzeitiges Datei-ADD/GROWTH kann dazu führen, dass Dateiliste und Konfigurationssicht verschiedene Momente abbilden. |
 | Schutzmechanismus | Kein Gate und kein Scopeparameter. Die feste Begrenzung ist die reale TempDB-Dateizahl plus genau drei abgefragte Konfigurationsnamen; Benutzerdaten, Allokationsseiten und Dateiinhalte liegen außerhalb des implementierten Pfads. |
 | Sicherer Einsatz | CONSOLE ist kostengünstig; physische Dateipfade aus RAW/JSON/TABLE nur im geschützten Betriebskontext speichern oder weitergeben. |
