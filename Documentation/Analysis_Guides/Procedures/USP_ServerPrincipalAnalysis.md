@@ -33,6 +33,62 @@ Caller: Die Procedure qualifiziert ausschließlich sichtbare Metadaten und
 berechnet keinen Vollständigkeitsnachweis. Dieser erwartete Zustand ist nicht
 mit einem Quellenfehler gleichzusetzen.
 
+## Parameter und weitere Aufrufbeispiele
+
+| Parameter | Datentyp | Default | Eingabeform und Wirkung |
+|---|---|---|---|
+| `@MaxZeilen` | `int` | `1000` | Begrenzt jede der vier Fachmengen einzeln. NULL oder 0 bedeutet unbegrenzt; positive Werte sind je Menge die Höchstzahl. Negative Werte sind INVALID_PARAMETER. Das Limit greift nach vollständiger sichtbarer Katalogmaterialisierung und beschränkt nicht die Namensbasis oder Kataloglesearbeit. |
+| `@LockTimeoutMs` | `int` | `0` | Millisekunden 0–60000; NULL und Werte außerhalb sind ungültig. 0 setzt NOWAIT für jede Quellenabfrage; sonst gilt der Wert je Quellbatch. Bei eingehendem @@LOCK_TIMEOUT=0 erhalten eigene Temp-DDL zunächst 1000 ms. Erfolg und gefangener äußerer Fehler stellen den Eingangswert wieder her. |
+| `@ResultSetArt` | `varchar(16)` | `'CONSOLE'` | Trimmen und Großschreibung normalisieren den einzelnen Modus: CONSOLE eine Übersicht; RAW sieben Sets in der Reihenfolge moduleStatus, principals, roleMemberships, permissions, loginPolicies, sourceStatus, warnings; TABLE angeforderte Sets in lokale Seed-Temp-Tabellen; NONE keine Resultsets. NULL/Leertext und andere Werte sind ungültig. |
+| `@ResultTablesJson` | `nvarchar(max)` | `NULL` | Nur TABLE erlaubt eine nichtleere Zuordnung; sonst nur NULL/U+0020-Leerzeichen. TABLE verlangt ein gültiges, nichtleeres JSON-Objekt. Exakte Schlüssel: moduleStatus, principals, roleMemberships, permissions, loginPolicies, sourceStatus, warnings. Jeder Wert muss eine vorhandene, leere lokale #Temp-Tabelle (max. 116 Zeichen) mit einer Seed-Spalte benennen. Unzulässig: ##-/permanente/#Monitor*-Ziele, doppelte Schlüssel/Ziele, unbekannte Schlüssel, leere oder nicht-stringförmige Werte und nicht prüfbare Ziele. Helper-Preflight erfolgt vor Fachquellenzugriff; Writer ersetzt das Seed-Schema. Die Schlüssel bedeuten: moduleStatus Modulstatus, principals sichtbare Serverprincipals, roleMemberships direkte Rollenmitgliedschaften, permissions explizite Serverrechte, loginPolicies SQL-Login-Policykennzeichen, sourceStatus Quellenstatus und warnings Warnungen. |
+| `@JsonErzeugen` | `bit` | `0` | Bit: 1 erzeugt JSON unabhängig vom Ausgabemodus; 0/NULL nicht. Hilfe und Validierungsfehler erzeugen keines. SQL-Konvertierung nach bit: numerische 0 ergibt 0; von 0 verschiedene numerische Werte ergeben 1. |
+| `@Json` | `nvarchar(max) OUTPUT` | `NULL` | OUTPUT, bei Eintritt NULL. Mit @JsonErzeugen=1 enthält es meta und sieben benannte Arrays. Hilfe, Validierungs- und gefangener äußerer Fehler lassen es NULL. Zum Empfangen eine nvarchar(max)-Variable mit OUTPUT binden; der Empfänger darf ausgelassen werden. |
+| `@PrintMeldungen` | `bit` | `1` | Bit: 1 sendet bei Validierungs-, Quellen- oder äußerem Fehler eine Zusatzmeldung mit Severity 10; 0/NULL unterdrückt sie. OUTPUT und RETURN sind weiter zu prüfen. SQL-Konvertierung nach bit: numerische 0 ergibt 0; von 0 verschiedene numerische Werte ergeben 1. |
+| `@Hilfe` | `bit` | `0` | Bit: 1 druckt die eingebaute Parameterhilfe und Beispiele, setzt AVAILABLE/IsPartialOut=0 und kehrt vor Validierung und Quellenzugriff ohne Resultset zurück. JSON-/Fehler-OUTPUTs bleiben NULL. 0/NULL analysiert. SQL-Konvertierung nach bit: numerische 0 ergibt 0; von 0 verschiedene numerische Werte ergeben 1. |
+| `@StatusCodeOut` | `varchar(40) OUTPUT` | `NULL` | Hilfe liefert AVAILABLE und IsPartialOut=0. Eingabevalidierung liefert INVALID_PARAMETER mit RETURN 51011. Regulär lautet der Status AVAILABLE_LIMITED, sobald mindestens eine der vier Quellen ohne ErrorNumber vorliegt. Schlagen alle vier Quellen fehl, gilt aus der alphabetisch ersten SourceKey-Zeile DENIED_PERMISSION bei verweigerter Quelle (Fehler 229, 297, 300, 371), TIMEOUT bei Sperrtimeout 1222 oder ERROR_HANDLED bei anderem abgefangenen Quellenfehler. Der äußere CATCH liefert ERROR_HANDLED. Reguläre Quellenfehler ändern RETURN 0 nicht; Diagnose-OUTPUTs sind getrennt zu prüfen. Optionaler OUTPUT-Empfänger vom Typ varchar(40); zum Empfangen eine Variable mit OUTPUT binden, andernfalls auslassen. Der Eintritt setzt auch einen anfänglichen NULL- oder anderen Wert zunächst auf NULL. |
+| `@IsPartialOut` | `bit OUTPUT` | `NULL` | OUTPUT; Eintritt NULL. Hilfe 0; Analyse, Validierung und äußerer Fehler 1. Jede Analyse bleibt partiell, auch wenn alle Quellen lesbar sind. Optionaler Empfänger: Zum Empfangen eine Variable des deklarierten Typs mit OUTPUT binden; andernfalls das Argument auslassen. Ein anfänglicher NULL- oder anderer Wert wird am Eintritt zurückgesetzt. |
+| `@ErrorNumberOut` | `int OUTPUT` | `NULL` | OUTPUT; Eintritt NULL. Validierung 51011; regulär Fehlernummer der alphabetisch ersten fehlerhaften SourceKey-Quelle, sonst NULL. Äußerer Fehler: TABLE-Fehlercode, sonst ERROR_NUMBER(). Quellenfehler allein ändern RETURN nicht. Optionaler Empfänger: Zum Empfangen eine Variable des deklarierten Typs mit OUTPUT binden; andernfalls das Argument auslassen. Ein anfänglicher NULL- oder anderer Wert wird am Eintritt zurückgesetzt. |
+| `@ErrorMessageOut` | `nvarchar(2048) OUTPUT` | `NULL` | OUTPUT; Eintritt NULL. Validierung: feste Meldung; regulär: Meldung der alphabetisch ersten fehlerhaften Quelle, sonst NULL; äußerer Fehler: ERROR_MESSAGE(). Hilfe lässt NULL. Optionaler Empfänger: Zum Empfangen eine Variable des deklarierten Typs mit OUTPUT binden; andernfalls das Argument auslassen. Ein anfänglicher NULL- oder anderer Wert wird am Eintritt zurückgesetzt. |
+
+### RAW-Ausgabe
+
+```sql
+EXEC [monitor].[USP_ServerPrincipalAnalysis] @ResultSetArt='RAW', @MaxZeilen=100;
+```
+
+### JSON und Diagnose-OUTPUTs
+
+```sql
+DECLARE @Json nvarchar(max), @Status varchar(40), @Partial bit, @ErrorNumber int, @ErrorMessage nvarchar(2048), @ReturnCode int;
+EXEC @ReturnCode=[monitor].[USP_ServerPrincipalAnalysis]
+      @ResultSetArt='NONE', @JsonErzeugen=1, @Json=@Json OUTPUT
+    , @StatusCodeOut=@Status OUTPUT, @IsPartialOut=@Partial OUTPUT
+    , @ErrorNumberOut=@ErrorNumber OUTPUT, @ErrorMessageOut=@ErrorMessage OUTPUT;
+SELECT @ReturnCode AS [ReturnCode], @Status AS [StatusCode], @Partial AS [IsPartial], @ErrorNumber AS [ErrorNumber], @ErrorMessage AS [ErrorMessage], @Json AS [Json];
+```
+
+### TABLE-Ausgabe
+
+```sql
+CREATE TABLE [#ServerPrincipalAnalysis_HelpExample] ([Seed] int NULL);
+DECLARE @Map nvarchar(max)=N'{"principals":"#ServerPrincipalAnalysis_HelpExample"}';
+BEGIN TRY
+    EXEC [monitor].[USP_ServerPrincipalAnalysis] @ResultSetArt='TABLE', @ResultTablesJson=@Map;
+    SELECT * FROM [#ServerPrincipalAnalysis_HelpExample];
+    DROP TABLE IF EXISTS [#ServerPrincipalAnalysis_HelpExample];
+END TRY
+BEGIN CATCH
+    DROP TABLE IF EXISTS [#ServerPrincipalAnalysis_HelpExample];
+    THROW;
+END CATCH;
+```
+
+### Eingebaute Hilfe
+
+```sql
+EXEC [monitor].[USP_ServerPrincipalAnalysis] @Hilfe=1;
+```
+
 ## Resultsets und Leserichtung
 
 RAW liefert in dieser Reihenfolge moduleStatus, principals, roleMemberships,
@@ -131,20 +187,13 @@ Engineabbruch, Deadlockopfer oder Verbindungsabbruch bleiben außerhalb einer
 Garantie des Callerzustands. NOLOCK bedeutet keine atomare oder unveränderliche
 Sicherheitsaufnahme und schützt nicht vor allen Metadatenlocks.
 
-Parameter- und TABLE-Ablehnungen sowie gefangene äußere Fehler kehren regulär
-mit Status, Diagnose-OUTPUT und dem Diagnosecode als RETURN-Wert zurück.
-Ungültige Parameter verwenden INVALID_PARAMETER und 51011; eine abgelehnte
-TABLE-Zuordnung verwendet ERROR_HANDLED und 51011. Schreibfehler behalten den
-nativen Helpercode, soweit vorhanden, andernfalls 51010. Bei diesen Fehlern
-bleibt JSON NULL. Der Caller muss Status und Rückgabecode prüfen; eine
-optionale Meldung mit Schweregrad 10 ersetzt diese Prüfung nicht.
+Die Procedure setzt @Json, @StatusCodeOut, @IsPartialOut, @ErrorNumberOut und @ErrorMessageOut beim Eintritt auf NULL. Hilfe setzt anschließend AVAILABLE und IsPartialOut=0 und kehrt ohne Resultset und JSON zurück. Ungültige Parameter liefern INVALID_PARAMETER, Fehlernummer 51011, IsPartialOut=1 und RETURN 51011; optionale Meldungen haben Schweregrad 10.
 
-Die reguläre Rückkehr überträgt die OUTPUT-Werte auch an T-SQL-Caller. Im
-gefangenen Fehlerpfad bleibt XACT_ABORT bis zum Procedureende deaktiviert;
-die Proceduregrenze stellt den Callerwert wieder her. Der Caller behält die
-Entscheidung über Commit oder Rollback seiner bestehenden Transaktion.
-Fachliche Quellenfehler bleiben im sourceStatus isoliert. Nicht gefangene
-Engine- oder Verbindungsabbrüche besitzen diese Rückgabegarantie nicht.
+Bei regulärer Analyse bleibt IsPartialOut stets 1. Quellenfehler werden einzeln in sourceStatus festgehalten; andere Quellen werden weiter ausgewertet und die Procedure kehrt regulär mit RETURN 0 zurück. Status und Fehler-OUTPUTs spiegeln die alphabetisch erste fehlerhafte SourceKey-Quelle wider. Sind alle vier Quellen fehlgeschlagen, entspricht der Status dem Status dieser Quelle; andernfalls lautet er AVAILABLE_LIMITED. Ohne Quellenfehler sind Fehlernummer und -meldung NULL.
+
+Eine ungültige TABLE-Zuordnung setzt den äußeren Fehlercode auf 51011. Ein Schreibfehler verwendet den Helpercode, falls geliefert, sonst 51010. Gefangene äußere Fehler liefern ERROR_HANDLED, IsPartialOut=1 und den Diagnosecode als RETURN-Wert; @Json bleibt NULL. @PrintMeldungen=1 sendet zusätzlich eine Meldung der Schwere 10. OUTPUT-Werte sind an passende typisierte T-SQL-Variablen zu binden; ohne OUTPUT-Bindung empfängt der Caller keine Werte. Quellenfehler sind keine Procedurefehler und verursachen keinen nichtnulligen RETURN.
+
+Die Procedure stellt nach Erfolg oder gefangenem Fehler den eingehenden LOCK_TIMEOUT-Wert wieder her. XACT_ABORT wird im geschützten Pfad ausgesetzt und nach Erfolg wiederhergestellt; im CATCH bleibt es bis zum Ende aus. Die Procedure beginnt oder beendet keine Callertransaktion. Nicht gefangene Engine- oder Verbindungsabbrüche haben keine OUTPUT- oder RETURN-Garantie.
 
 Passwort-Hashes, Passwörter, Credentials, Tokens und Schlüssel werden nicht
 ausgewählt. Es gibt keine Namensanonymisierung der tatsächlich zurückgegebenen

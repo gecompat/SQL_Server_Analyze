@@ -6,8 +6,9 @@ GO
 Objekt       : monitor.USP_ServerPrincipalAnalysis
 Version      : 1.0.1
 Stand        : 2026-10-25
-Zweck        : Zeigt sichtbare Serverprincipals, direkte Rollenmitgliedschaften,
-               explizite Berechtigungen und konfigurierte SQL-Login-Policies.
+Zweck        : Die Procedure zeigt sichtbare Serverprincipals, direkte
+               Rollenmitgliedschaften, explizite Berechtigungen und konfigurierte
+               SQL-Login-Policies.
 Quellen      : sys.server_principals, sys.server_role_members,
                sys.server_permissions und sys.sql_logins.
 Grenzen      : Sichtbare Metadaten sind kein Vollständigkeitsnachweis. Implizite
@@ -53,6 +54,41 @@ BEGIN
         PRINT N'RAW/TABLE/JSON: moduleStatus, principals, roleMemberships, permissions, loginPolicies, sourceStatus, warnings.';
         PRINT N'@MaxZeilen begrenzt jedes der vier Fachresultsets; 0 oder NULL bedeutet unbegrenzt. @LockTimeoutMs erlaubt 0 bis 60000.';
         PRINT N'Parameter- und gefangene Ausgabefehler liefern Status, Diagnose-OUTPUT und einen Rückgabecode; optionale Meldungen haben Schweregrad 10.';
+        PRINT N'@MaxZeilen int; Default: 1000. Begrenzt jede der vier Fachmengen einzeln. NULL oder 0 bedeutet unbegrenzt; positive Werte sind je Menge die Höchstzahl. Negative Werte sind INVALID_PARAMETER. Das Limit greift nach vollständiger sichtbarer Katalogmaterialisierung und beschränkt nicht die Namensbasis oder Kataloglesearbeit.';
+        PRINT N'@LockTimeoutMs int; Default: 0. Millisekunden 0–60000; NULL und Werte außerhalb sind ungültig. 0 setzt NOWAIT für jede Quellenabfrage; sonst gilt der Wert je Quellbatch. Bei eingehendem @@LOCK_TIMEOUT=0 erhalten eigene Temp-DDL zunächst 1000 ms. Erfolg und gefangener äußerer Fehler stellen den Eingangswert wieder her.';
+        PRINT N'@ResultSetArt varchar(16); Default: ''CONSOLE''. Trimmen und Großschreibung normalisieren den einzelnen Modus: CONSOLE eine Übersicht; RAW sieben Sets in der Reihenfolge moduleStatus, principals, roleMemberships, permissions, loginPolicies, sourceStatus, warnings; TABLE angeforderte Sets in lokale Seed-Temp-Tabellen; NONE keine Resultsets. NULL/Leertext und andere Werte sind ungültig.';
+        PRINT N'@ResultTablesJson nvarchar(max); Default: NULL. Nur TABLE erlaubt eine nichtleere Zuordnung; sonst nur NULL/U+0020-Leerzeichen. TABLE verlangt ein gültiges, nichtleeres JSON-Objekt. Exakte Schlüssel: moduleStatus, principals, roleMemberships, permissions, loginPolicies, sourceStatus, warnings. Jeder Wert muss eine vorhandene, leere lokale #Temp-Tabelle (max. 116 Zeichen) mit einer Seed-Spalte benennen. Unzulässig: ##-/permanente/#Monitor*-Ziele, doppelte Schlüssel/Ziele, unbekannte Schlüssel, leere oder nicht-stringförmige Werte und nicht prüfbare Ziele. Helper-Preflight erfolgt vor Fachquellenzugriff; Writer ersetzt das Seed-Schema. Die Schlüssel bedeuten: moduleStatus Modulstatus, principals sichtbare Serverprincipals, roleMemberships direkte Rollenmitgliedschaften, permissions explizite Serverrechte, loginPolicies SQL-Login-Policykennzeichen, sourceStatus Quellenstatus und warnings Warnungen.';
+        PRINT N'@JsonErzeugen bit; Default: 0. Bit: 1 erzeugt JSON unabhängig vom Ausgabemodus; 0/NULL nicht. Hilfe und Validierungsfehler erzeugen keines. SQL-Konvertierung nach bit: numerische 0 ergibt 0; von 0 verschiedene numerische Werte ergeben 1.';
+        PRINT N'@Json nvarchar(max) OUTPUT; Default: NULL. OUTPUT, bei Eintritt NULL. Mit @JsonErzeugen=1 enthält es meta und sieben benannte Arrays. Hilfe, Validierungs- und gefangener äußerer Fehler lassen es NULL. Zum Empfangen eine nvarchar(max)-Variable mit OUTPUT binden; der Empfänger darf ausgelassen werden.';
+        PRINT N'@PrintMeldungen bit; Default: 1. Bit: 1 sendet bei Validierungs-, Quellen- oder äußerem Fehler eine Zusatzmeldung mit Severity 10; 0/NULL unterdrückt sie. OUTPUT und RETURN sind weiter zu prüfen. SQL-Konvertierung nach bit: numerische 0 ergibt 0; von 0 verschiedene numerische Werte ergeben 1.';
+        PRINT N'@Hilfe bit; Default: 0. Bit: 1 druckt die eingebaute Parameterhilfe und Beispiele, setzt AVAILABLE/IsPartialOut=0 und kehrt vor Validierung und Quellenzugriff ohne Resultset zurück. JSON-/Fehler-OUTPUTs bleiben NULL. 0/NULL analysiert. SQL-Konvertierung nach bit: numerische 0 ergibt 0; von 0 verschiedene numerische Werte ergeben 1.';
+        PRINT N'@StatusCodeOut varchar(40) OUTPUT; Default: NULL. Hilfe liefert AVAILABLE und IsPartialOut=0. Eingabevalidierung liefert INVALID_PARAMETER mit RETURN 51011. Regulär lautet der Status AVAILABLE_LIMITED, sobald mindestens eine der vier Quellen ohne ErrorNumber vorliegt. Schlagen alle vier Quellen fehl, gilt aus der alphabetisch ersten SourceKey-Zeile DENIED_PERMISSION bei verweigerter Quelle (Fehler 229, 297, 300, 371), TIMEOUT bei Sperrtimeout 1222 oder ERROR_HANDLED bei anderem abgefangenen Quellenfehler. Der äußere CATCH liefert ERROR_HANDLED. Reguläre Quellenfehler ändern RETURN 0 nicht; Diagnose-OUTPUTs sind getrennt zu prüfen. Optionaler OUTPUT-Empfänger vom Typ varchar(40); zum Empfangen eine Variable mit OUTPUT binden, andernfalls auslassen. Der Eintritt setzt auch einen anfänglichen NULL- oder anderen Wert zunächst auf NULL.';
+        PRINT N'@IsPartialOut bit OUTPUT; Default: NULL. OUTPUT; Eintritt NULL. Hilfe 0; Analyse, Validierung und äußerer Fehler 1. Jede Analyse bleibt partiell, auch wenn alle Quellen lesbar sind. Optionaler Empfänger: Zum Empfangen eine Variable des deklarierten Typs mit OUTPUT binden; andernfalls das Argument auslassen. Ein anfänglicher NULL- oder anderer Wert wird am Eintritt zurückgesetzt.';
+        PRINT N'@ErrorNumberOut int OUTPUT; Default: NULL. OUTPUT; Eintritt NULL. Validierung 51011; regulär Fehlernummer der alphabetisch ersten fehlerhaften SourceKey-Quelle, sonst NULL. Äußerer Fehler: TABLE-Fehlercode, sonst ERROR_NUMBER(). Quellenfehler allein ändern RETURN nicht. Optionaler Empfänger: Zum Empfangen eine Variable des deklarierten Typs mit OUTPUT binden; andernfalls das Argument auslassen. Ein anfänglicher NULL- oder anderer Wert wird am Eintritt zurückgesetzt.';
+        PRINT N'@ErrorMessageOut nvarchar(2048) OUTPUT; Default: NULL. OUTPUT; Eintritt NULL. Validierung: feste Meldung; regulär: Meldung der alphabetisch ersten fehlerhaften Quelle, sonst NULL; äußerer Fehler: ERROR_MESSAGE(). Hilfe lässt NULL. Optionaler Empfänger: Zum Empfangen eine Variable des deklarierten Typs mit OUTPUT binden; andernfalls das Argument auslassen. Ein anfänglicher NULL- oder anderer Wert wird am Eintritt zurückgesetzt.';
+        PRINT N'EXEC [monitor].[USP_ServerPrincipalAnalysis] @ResultSetArt=''RAW'', @MaxZeilen=100;';
+        PRINT N'DECLARE @Json nvarchar(max), @Status varchar(40), @Partial bit, @ErrorNumber int, @ErrorMessage nvarchar(2048), @ReturnCode int;
+EXEC @ReturnCode=[monitor].[USP_ServerPrincipalAnalysis]
+      @ResultSetArt=''NONE'', @JsonErzeugen=1, @Json=@Json OUTPUT
+    , @StatusCodeOut=@Status OUTPUT, @IsPartialOut=@Partial OUTPUT
+    , @ErrorNumberOut=@ErrorNumber OUTPUT, @ErrorMessageOut=@ErrorMessage OUTPUT;
+SELECT @ReturnCode AS [ReturnCode], @Status AS [StatusCode], @Partial AS [IsPartial], @ErrorNumber AS [ErrorNumber], @ErrorMessage AS [ErrorMessage], @Json AS [Json];';
+        PRINT N'CREATE TABLE [#ServerPrincipalAnalysis_HelpExample] ([Seed] int NULL);
+DECLARE @Map nvarchar(max)=N''{"principals":"#ServerPrincipalAnalysis_HelpExample"}'';
+BEGIN TRY
+    EXEC [monitor].[USP_ServerPrincipalAnalysis] @ResultSetArt=''TABLE'', @ResultTablesJson=@Map;
+    SELECT * FROM [#ServerPrincipalAnalysis_HelpExample];
+    DROP TABLE IF EXISTS [#ServerPrincipalAnalysis_HelpExample];
+END TRY
+BEGIN CATCH
+    DROP TABLE IF EXISTS [#ServerPrincipalAnalysis_HelpExample];
+    THROW;
+END CATCH;';
+        PRINT N'EXEC [monitor].[USP_ServerPrincipalAnalysis] @Hilfe=1;';
+
+
+
+
         SELECT @StatusCodeOut='AVAILABLE',@IsPartialOut=0;
         RETURN;
     END;
