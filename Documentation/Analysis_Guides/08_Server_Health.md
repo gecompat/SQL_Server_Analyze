@@ -1778,6 +1778,64 @@ Auditlog-Payloads, Ereignisinhalte, Dateien und Zielpfade werden nicht gelesen. 
 - [SQL Server Audit](https://learn.microsoft.com/en-us/sql/relational-databases/security/auditing/sql-server-audit-database-engine?view=sql-server-ver17)
 - [sys.server_audits](https://learn.microsoft.com/en-us/sql/relational-databases/system-catalog-views/sys-server-audits-transact-sql?view=sql-server-ver17)
 
+### Parameter und weitere Aufrufbeispiele
+
+| Parameter | Datentyp | Default | Eingabeform und Wirkung |
+|---|---|---|---|
+| `@DatabaseNames` | `nvarchar(max)` | `NULL` | Filter für lokale Spezifikationen. NULL, Leertext oder nur U+0020-Leerzeichen: sichtbare, zugreifbare ONLINE-Benutzerdatenbanken ohne Datenbanksnapshots; Systemdatenbanken nur mit Opt-in. Sonst bracket-aware Pipe-Liste exakter SQL-Namen; Pipes in [Klammern] trennen nicht, ]] maskiert ]. Leere/ungültige Segmente oder Namen sind ungültig. Nur eine aktive, nichtleere Liste ist mit einem nicht-NULL-Pattern unvereinbar. Fehlende, offline oder nicht zugängliche Namen erzeugen interne Kandidatenwarnungen, die diese Procedure nicht ausgibt und nicht allein in ihre Partialitätsbewertung übernimmt. Eine leere Spezifikationsmenge belegt deshalb keine vollständige Auswahl. |
+| `@SystemdatenbankenEinbeziehen` | `bit` | `0` | 0 schließt master, tempdb, model und msdb aus; 1 erlaubt sie. NULL ist im Kandidatenhelper ungültig und setzt INVALID_PARAMETER. Explizit angeforderte Systemdatenbanken ohne Opt-in erzeugen intern SYSTEM_DATABASE_EXCLUDED; diese Auswahlwarnung wird nicht ausgegeben. Weitergabe an den Kandidatenhelper. SQL-Konvertierung nach bit: numerische 0 ergibt 0, von 0 verschiedene numerische Werte ergeben 1. |
+| `@DatabaseNamePattern` | `nvarchar(4000)` | `NULL` | Alternativer Datenbankfilter, unvereinbar mit einer aktiven nichtleeren Datenbankliste. NULL: kein Pattern. Helper trimmt außen; erkennt LIKE:, REGEX:, REGEXI: ohne Beachtung der Großschreibung, sonst LIKE. Rest wird nicht erneut getrimmt. REGEX arbeitet case-sensitiv (Flag c), REGEXI ohne Beachtung der Groß-/Kleinschreibung (Flag i); leerer Rest ungültig. Regex erfordert SQL Server 2025 und Compatibility Level 170 der Installationsdatenbank, sonst UNAVAILABLE_FEATURE; Syntax wird nicht vorab geprüft. Eine fehlerhafte Regex kann bei REGEXP_LIKE im Kandidatenhelper einen nicht abgefangenen Fehler auslösen und den normalen Modulabschluss umgehen. |
+| `@HighImpactConfirmed` | `bit` | `0` | 0 und 1 sind gültige Bestätigungswerte, werden in diesem Aufruf aber keinem Analyseklassen-/Gruppengate vorgelegt: AnalysisClass ist fest NULL. Beide Werte aktivieren dasselbe lesende Inventar. NULL ist im Kandidatenhelper ungültig und setzt INVALID_PARAMETER; der Wert ist keine Berechtigungserteilung. SQL-Konvertierung nach bit: numerische 0 ergibt 0, von 0 verschiedene numerische Werte ergeben 1. |
+| `@AuditNames` | `nvarchar(max)` | `NULL` | Exakte Auditnamen für audits und beide Spezifikationsscopes als bracket-aware Pipe-Liste; NULL: kein Filter. Pipes in [Klammern] trennen nicht, ]] maskiert ]. Leere Segmente und ungültige SQL-Namen sind ungültig; gültige Werte werden dedupliziert. Exklusiv mit @AuditNamePattern. Vergleich ist SQL_Latin1_General_CP1_CS_AS (case-sensitive); kein Treffer erzeugt keinen eigenen Fehlerstatus. |
+| `@AuditNamePattern` | `nvarchar(4000)` | `NULL` | Alternativer Auditnamenfilter mit LIKE, exklusiv mit @AuditNames. NULL: kein Filter. Parser trimmt außen, entfernt optional LIKE: ohne Groß-/Kleinschreibung und trimmt danach nicht erneut. REGEX:/REGEXI: werden erkannt, aber von dieser Procedure als INVALID_PARAMETER zurückgewiesen. Leerwert/Leerrest ungültig. Vergleich case-sensitive. Dieses Pattern begrenzt ausschließlich audits; serverSpecifications und databaseSpecifications werden dadurch nicht gefiltert. Für einen Namensfilter in allen drei Fachmengen ist stattdessen @AuditNames zu verwenden. |
+| `@NurProblematisch` | `bit` | `0` | 0 lässt INFO und MEDIUM in den drei Fachresultaten zu. 1 entfernt INFO; NULL entfernt INFO ebenfalls und wirkt wie 1. Quellenstatus und Warnings bleiben ungefiltert; Warnings entstehen vor diesem INFO-Filter. SQL-Konvertierung nach bit: numerische 0 ergibt 0, von 0 verschiedene numerische Werte ergeben 1. |
+| `@MaxZeilen` | `int` | `1000` | Obergrenze je Fachresultat einzeln. Reihenfolge: AuditName/AuditId, SpecificationName/SpecificationId, DatabaseName/SpecificationName/DatabaseId/SpecificationId. NULL oder 0 unbegrenzt; negative Werte INVALID_PARAMETER. Quellenstatus, Warnings und Statusresultat bleiben ungekürzt. |
+| `@LockTimeoutMs` | `int` | `0` | Wird nur auf negative Werte geprüft; im Body aber nicht zum Setzen eines Timeouts genutzt. NULL besteht den Negativtest und wird nicht angewendet. Die Procedure setzt danach LOCK_TIMEOUT 0; SET-Werte werden bei Rückkehr aus der Procedure zurückgenommen. |
+| `@ResultSetArt` | `varchar(16)` | `'CONSOLE'` | Nach Entfernen äußerer U+0020-Leerzeichen und Großschreibung sind genau RAW, CONSOLE, TABLE und NONE erlaubt. RAW liefert Modulstatus und danach audits, serverSpecifications, databaseSpecifications, sourceStatus, warnings. CONSOLE wird intern auf NONE normalisiert und zeigt ausschließlich die beschriftete audits-Ansicht, ohne separates Modulstatusresultset. TABLE schreibt nur zugeordnete Gruppen, NONE liefert keine regulären Resultsets. JSON wird unabhängig gesteuert. NULL, Leertext und andere Werte sind ungültig. |
+| `@ResultTablesJson` | `nvarchar(max)` | `NULL` | Nur für TABLE; gültiges JSON-Objekt mit mindestens einer Zuordnung aus exakt audits, serverSpecifications, databaseSpecifications, sourceStatus, warnings zu einem Ziel. Keys binär exakt, keine doppelten Keys/Ziele. Ziel: vorhandene leere lokale #Temp mit genau einer Seed-Spalte, max. 116 Zeichen, kein ##- oder reserviertes #Monitor-Präfix. Mapping wird vor fachlichem Zugriff validiert; Bei einem ungültigen Ziel kann der Helper mit Fehler 51011 abbrechen; dann ist die abschließende Zuweisung der Modul-OUTPUTs nicht garantiert. audits bedeutet Auditkonfigurationen, serverSpecifications Serverspezifikationen, databaseSpecifications Datenbankspezifikationen, sourceStatus Quellenstatus und warnings Warnungen. In TABLE sind NULL, Leertext und ein leeres Objekt ungültig. Außerhalb von TABLE bleiben NULL, Leertext und nur U+0020-Leerzeichen unbeachtet; ein anderer nichtleerer Wert kann vor der Analyse Fehler 51011 auslösen. |
+| `@JsonErzeugen` | `bit` | `0` | 1 erstellt JSON in @Json; 0 oder NULL erzeugt keines. Unabhängig von Resultsetart; für JSON ohne Resultsets NONE verwenden. Dokument enthält meta und fünf Arrays audits, serverSpecifications, databaseSpecifications, sourceStatus, warnings. meta: resultName, schemaVersion, generatedAtUtc, statusCode, isPartial, crossDatabaseRequested. Facharrays wenden Filter und Limit an; Status/Warnungen bleiben vollständig. SQL-Konvertierung nach bit: numerische 0 ergibt 0, von 0 verschiedene numerische Werte ergeben 1. |
+| `@Json` | `nvarchar(max) OUTPUT` | `NULL` | OUTPUT-Empfänger. Zu Beginn NULL; bei JsonErzeugen=1 Dokument, sonst NULL. OUTPUT-Variable nvarchar(max) mit OUTPUT im EXEC binden. Hilfe kehrt vorher zurück und lässt den Wert NULL. Der Empfänger kann ausgelassen werden, wenn kein JSON empfangen werden soll. |
+| `@PrintMeldungen` | `bit` | `1` | Der Parameter wird im Procedure-Body nicht gelesen und beeinflusst weder PRINT-Meldungen noch Resultsets. Der Hilfezweig gibt seine PRINT-Zeilen unabhängig von diesem Eingabewert aus. SQL-Konvertierung nach bit: numerische 0 ergibt 0, von 0 verschiedene numerische Werte ergeben 1. |
+| `@Hilfe` | `bit` | `0` | 1 gibt PRINT-Hilfe aus und kehrt ohne Analyse und abschließende OUTPUT-Zuweisung zurück. Die Hilfe erklärt Zweck, Parameterverträge und Beispielaufrufe. 0 führt aus; NULL löst Früh-Rückkehr nicht aus. SQL-Konvertierung nach bit: numerische 0 ergibt 0, von 0 verschiedene numerische Werte ergeben 1. |
+| `@StatusCodeOut` | `varchar(40) OUTPUT` | `NULL` | Bei regulärem Abschluss: AVAILABLE ohne gemeldeten Befund, AVAILABLE_WITH_FINDING bei MEDIUM-Warnungen ohne Partialität, AVAILABLE_LIMITED bei partiellen Quellen, INVALID_PARAMETER bei ungültigen Modul-/Kandidatenparametern, INTERNAL_ERROR bei internem Kandidatenschemafehler, UNAVAILABLE_FEATURE bei fehlender Regex-Voraussetzung. Behandelte Quellenfehler stehen in Quellenstatus/Warnungen; Partialität setzt AVAILABLE_LIMITED. Zuweisung erfolgt am normalen Ende. Die Bindung ist optional: Zum Empfang eine Variable des deklarierten Typs mit OUTPUT übergeben; andernfalls das Argument auslassen. Im Hilfezweig bleibt ein anfänglicher NULL- oder anderer Empfängerwert erhalten. |
+| `@IsPartialOut` | `bit OUTPUT` | `NULL` | OUTPUT-Bit der Partialität: 0 ohne partielle Quellenlesung, 1 bei behandelten unvollständigen Lesungen. Normale Endzuweisung; Hilfe weist nicht zu. Die Bindung ist optional: Zum Empfang eine Variable des deklarierten Typs mit OUTPUT übergeben; andernfalls das Argument auslassen. Im Hilfezweig bleibt ein anfänglicher NULL- oder anderer Empfängerwert erhalten. Interne Kandidatenwarnungen über fehlende oder ausgeschlossene Namen werden hierbei nicht ausgewertet; 0 belegt keine vollständige Datenbanksicht. |
+| `@ErrorNumberOut` | `int OUTPUT` | `NULL` | OUTPUT int der zuerst gespeicherten behandelten Serverquellen-Fehlernummer. Zweiter Server-CATCH setzt nur bei noch NULL. Datenbank-CATCHes setzen Partialität und schreiben interne, nicht ausgegebene Warnungen, aber keine Modulnummer. Parameterfehler haben keine Fehlernummer; Hilfe weist nicht zu. Die Bindung ist optional: Zum Empfang eine Variable des deklarierten Typs mit OUTPUT übergeben; andernfalls das Argument auslassen. Im Hilfezweig bleibt ein anfänglicher NULL- oder anderer Empfängerwert erhalten. |
+| `@ErrorMessageOut` | `nvarchar(2048) OUTPUT` | `NULL` | OUTPUT nvarchar(2048) zur zuerst gespeicherten Serverquellenstörung; spätere Serverfehler überschreiben sie nicht. Datenbankfehler setzen Partialität und schreiben interne, nicht ausgegebene Warnungen statt einer Modulmeldung. Ungültige Parameter liefern Validierungstext; Hilfe weist nicht zu. Die Bindung ist optional: Zum Empfang eine Variable des deklarierten Typs mit OUTPUT übergeben; andernfalls das Argument auslassen. Im Hilfezweig bleibt ein anfänglicher NULL- oder anderer Empfängerwert erhalten. |
+
+### RAW-Ausgabe
+
+```sql
+EXEC [monitor].[USP_AuditConfigurationAnalysis] @ResultSetArt='RAW', @MaxZeilen=100;
+```
+
+### JSON-Ausgabe
+
+```sql
+DECLARE @Json nvarchar(max); EXEC [monitor].[USP_AuditConfigurationAnalysis] @ResultSetArt='NONE', @JsonErzeugen=1, @Json=@Json OUTPUT; SELECT @Json AS [Json];
+```
+
+### TABLE-Ausgabe
+
+```sql
+CREATE TABLE [#AuditConfigurationAnalysis_HelpExample] ([Seed] int NULL);
+DECLARE @Map nvarchar(max)=N'{"audits":"#AuditConfigurationAnalysis_HelpExample"}';
+BEGIN TRY
+    EXEC [monitor].[USP_AuditConfigurationAnalysis] @ResultSetArt='TABLE', @ResultTablesJson=@Map;
+    SELECT * FROM [#AuditConfigurationAnalysis_HelpExample];
+    DROP TABLE IF EXISTS [#AuditConfigurationAnalysis_HelpExample];
+END TRY
+BEGIN CATCH
+    DROP TABLE IF EXISTS [#AuditConfigurationAnalysis_HelpExample];
+    THROW;
+END CATCH;
+```
+
+### Eingebaute Hilfe
+
+```sql
+EXEC [monitor].[USP_AuditConfigurationAnalysis] @Hilfe=1;
+```
+
 ## [monitor].[USP_CompileContextAnalysis]
 
 Die [Analysebeschreibung](Procedures/USP_CompileContextAnalysis.md) trennt lokale
@@ -1786,6 +1844,60 @@ und zwei aggregierten Memory-Cache-Klassen. Standardmäßig werden nur
 Momentaufnahmen gelesen. Ein aktiviertes Sample verwendet genau ein
 begrenztes WAITFOR mit getrennten Quellenintervallen. Keine Ausgabe
 identifiziert automatisch eine Query, Datenbank oder Compileursache.
+
+### Parameter und weitere Aufrufbeispiele
+
+| Parameter | Datentyp | Default | Eingabeform und Wirkung |
+|---|---|---|---|
+| `@DatabaseNames` | `nvarchar(max)` | `NULL` | NULL, N'' und eine nach außen getrimmte leere Zeichenfolge bedeuten keine Einschränkung; andernfalls ist eine eindeutige Pipe-Liste exakter SQL-Datenbanknamen zulässig. Es gilt die bracket-aware Namenslistenprüfung des Datenbankauswahlhelfers: äußere Segmentleerzeichen werden entfernt, Namen mit Leerzeichen oder Pipe können bracket-quotiert werden, und ]] maskiert darin eine schließende Klammer. Ungültige Elemente, doppelte gültige Namen sowie eine gleichzeitige nichtleere Namensliste und ein gesetztes Pattern führen zu INVALID_PARAMETER. Die Procedure fordert für die Auswahlklasse STANDARD_CURRENT an; der gebundene Klassenvertrag setzt dafür kein High-Impact-Gruppengate. Die Auswahl umfasst sichtbare, zugreifbare, online befindliche Datenbanken ohne Datenbank-Snapshots; fehlende oder nicht auswählbare explizite Namen werden als DATABASE_SELECTION-Warnings gemeldet. Ohne Einschränkung gibt es keinen CURRENT-Scope und kein Vorab- oder Datenbankanzahllimit. |
+| `@SystemdatenbankenEinbeziehen` | `bit` | `0` | 0 schließt Datenbanken mit database_id 1 bis 4 aus; 1 lässt master, tempdb, model und msdb in die Auswahl zu. NULL wird als ungültiger Parameter behandelt. Der Schalter gewährt selbst keine Berechtigung und macht nicht zugreifbare Datenbanken nicht sichtbar. SQL-Konvertierung nach bit: numerische 0 ergibt 0, von 0 verschiedene numerische Werte ergeben 1. |
+| `@DatabaseNamePattern` | `nvarchar(4000)` | `NULL` | NULL bedeutet kein Pattern. Ein gesetztes Pattern wird nach dem gemeinsamen Parservertrag außen getrimmt; die Präfixe like:, regex: und regexi: wählen LIKE, case-sensitive Regex beziehungsweise case-insensitive Regex, ohne Beachtung der Präfixgroßschreibung. Ohne Präfix gilt LIKE. Nach dem Präfix darf der Inhalt nicht leer sein; ein ungültiges/leeres Pattern und die gleichzeitige Verwendung mit einer nichtleeren exakten Namensliste führen zu INVALID_PARAMETER. LIKE wird case-sensitive ausgewertet. Regex erfordert SQL Server 2025 und Compatibility Level 170 in der Installationsdatenbank; andernfalls meldet der Auswahlhelfer UNAVAILABLE_FEATURE. Der Regextext wird nicht vorab syntaktisch geprüft. NULL ist damit von leerem Text und einem leeren Präfix zu unterscheiden. Eine fehlerhafte Regex kann im Auswahlhelfer beim Ausführen scheitern; der umgebende CATCH dokumentiert eine partielle DATABASE_SELECTION-Quelle, während unabhängige Serverquellen weiterlaufen können. |
+| `@SampleSeconds` | `tinyint` | `0` | 0 liest Counter und Waits jeweils einmal als Momentaufnahme; Before-, Delta-, Rate- und Intervallwerte sind dabei NULL. 1 bis 60 führt zwei Aufnahmen aus und genau ein gemeinsames WAITFOR mit der angegebenen Anzahl Sekunden dazwischen aus. Counter und Waits erhalten getrennte, unmittelbar nach ihrer jeweiligen Aufnahme gebundene UTC-Intervalle; die tatsächliche Dauer kann von der angeforderten Wartezeit abweichen. NULL oder ein Wert über 60 ist INVALID_PARAMETER; ein negativer Wert kann im tinyint-Eingabetyp nicht dargestellt werden. Sampling bleibt serverweit und wird nicht den ausgewählten Datenbanken zugeordnet. |
+| `@MaxZeilen` | `int` | `2000` | 0 und NULL bedeuten keine Zeilenbegrenzung. Jeder positive int-Wert von 1 bis 2.147.483.647 begrenzt jeweils configurations, counters, waits, cache, sourceStatus und warnings nach deren Erhebung; moduleStatus bleibt eine einzelne Zeile. Die jeweiligen Gruppen werden nach ihren festen Schlüsseln sortiert und unabhängig gekürzt. Die Begrenzung reduziert weder die gelesenen Datenquellen noch die Zahl ausgewählter Datenbanken; die gemeldete RowCount zählt die materialisierten Zeilen aus configurations, counters, waits und cache vor der nachfolgenden Kürzung und nicht die ausgegebenen Zeilen. Negative Werte führen zu INVALID_PARAMETER. |
+| `@ResultSetArt` | `varchar(16)` | `'CONSOLE'` | Der Wert wird außen getrimmt und ohne Beachtung der Großschreibung normalisiert. Zulässig sind genau RAW (sieben fachliche Resultsets in der Reihenfolge moduleStatus, configurations, counters, waits, cache, sourceStatus, warnings), TABLE (nur die per JSON-Mapping ausgewählten Resultgruppen in lokale Temp-Tabellen schreiben), CONSOLE (eine formatierte Übersicht aus Konfigurationen, Counter-Rohwerten, Waitzeit und Cacheeinträgen sowie einer Modulstatuszeile mit Status und RowCount) und NONE (keine fachlichen Resultsets). NULL oder ein anderer Wert wird zu einem leeren beziehungsweise nicht erlaubten Modus und führt zu INVALID_PARAMETER. JSON-Erzeugung und Meldungsausgabe werden unabhängig davon gesteuert. |
+| `@ResultTablesJson` | `nvarchar(max)` | `NULL` | Nur mit TABLE wird die JSON-Zuordnung verarbeitet; bei einem anderen Modus führt ein nichtleerer, außen getrimmter Wert zu einer ausgelösten Ausnahme. Für TABLE ist ein gültiges, nichtleeres JSON-Objekt mit mindestens einer Zuordnung erforderlich. Erlaubte, exakt groß-/kleinschreibungsabhängige Schlüssel sind moduleStatus, configurations, counters, waits, cache, sourceStatus und warnings; jeder Wert benennt eine vorhandene, leere lokale #Temp-Tabelle. Die Zielnamen müssen höchstens 116 Zeichen lang sein, dürfen nicht mit ## beginnen und nicht dem reservierten Präfix #Monitor entsprechen. Doppelte Schlüssel oder Ziele, unbekannte Schlüssel, NULL-/Nicht-String-Werte, fehlende oder gefüllte Ziele sowie Ziele mit mehr als einer Seed-Spalte werden vor den fachlichen Quellenzugriffen abgelehnt. Der spätere Writer ersetzt die Seed-Spalte durch das fachliche Ergebnisschema. NULL, leerer oder nur aus U+0020-Leerzeichen bestehender Wert genügt bei TABLE nicht und löst INVALID_RESULT_TABLE_MAPPING aus. moduleStatus bedeutet Modulstatus, configurations Konfigurationen, counters Counterwerte, waits Waitwerte, cache Cacheaggregate, sourceStatus Quellenstatus und warnings Warnungen. |
+| `@JsonErzeugen` | `bit` | `0` | 1 erzeugt unabhängig von der ResultSetArt ein JSON-Dokument im OUTPUT-Parameter, einschließlich Metadaten und der sieben Gruppen moduleStatus, configurations, counters, waits, cache, sourceStatus und warnings. 0 erzeugt es nicht; dann bleibt @Json NULL. NULL ist INVALID_PARAMETER. Schema 1 enthält eine einzelne meta-Struktur mit resultName, schemaVersion, generatedAtUtc, statusCode, isPartial, errorNumber und errorMessage; Gruppen sind Arrays, leere Gruppen werden als [] ausgegeben und NULL-Spalten bleiben enthalten. SQL-Konvertierung nach bit: numerische 0 ergibt 0, von 0 verschiedene numerische Werte ergeben 1. |
+| `@Json` | `nvarchar(max) OUTPUT` | `NULL` | Zum Empfang ist eine passend typisierte lokale Variable mit OUTPUT-Bindung zu übergeben. Der Wert wird zu Beginn des Aufrufs vor dem HELP-Zweig auf NULL gesetzt. Bei aktivierter JSON-Erzeugung enthält er das Schema-1-Dokument; bei deaktivierter Erzeugung und auch bei HELP bleibt er NULL. Die Initialisierung findet vor möglichen Ausnahmen statt. Der Empfänger kann ausgelassen werden, wenn kein JSON empfangen werden soll. |
+| `@PrintMeldungen` | `bit` | `1` | 1 lässt bei einem nicht AVAILABLE-Gesamtstatus eine Statusmeldung mit Schweregrad 10 und WITH NOWAIT ausgeben; 0 unterdrückt diese Meldung. NULL ist INVALID_PARAMETER. Der Schalter unterdrückt weder CONSOLE-Ausgaben noch fachliche Resultsets oder die OUTPUT-Bindungen. SQL-Konvertierung nach bit: numerische 0 ergibt 0, von 0 verschiedene numerische Werte ergeben 1. |
+| `@Hilfe` | `bit` | `0` | 1 druckt die eingebauten Hilfetexte, setzt die vier Status-/Fehler-OUTPUTs auf AVAILABLE, 0, NULL und NULL und kehrt vor Validierung, Kandidatenauswahl und Quellenzugriff zurück. @Json wurde bereits vorher auf NULL gesetzt. 0 führt den normalen Ablauf aus; NULL wird durch die IF-Prüfung wie 0 behandelt und ist kein eigener Validierungsfehler. SQL-Konvertierung nach bit: numerische 0 ergibt 0, von 0 verschiedene numerische Werte ergeben 1. |
+| `@StatusCodeOut` | `varchar(40) OUTPUT` | `NULL` | Bei HELP wird AVAILABLE zugewiesen. Nach normaler Verarbeitung sind die Gesamtwerte: AVAILABLE ohne markierte Partialität, AVAILABLE_LIMITED bei tatsächlich partieller Evidenz, INVALID_PARAMETER bei ungültigen geprüften Modus-, Mengen-, Sample-, Bit- oder Auswahlparametern, INTERNAL_ERROR bei internem Kandidatenschemafehler, UNAVAILABLE_FEATURE bei fehlenden Regex-Voraussetzungen. Eine abgefangene Auswahl-Ausnahme wird als partielle DATABASE_SELECTION-Quelle erfasst; unabhängige Serverquellen können danach weiterlaufen. Nicht abgefangene Mapping-/Ausgabefehler umgehen den normalen Abschlusssatz. Die Bindung ist optional: zum Empfangen eine varchar(40)-Variable mit OUTPUT übergeben; andernfalls auslassen. HELP überschreibt einen anfänglichen NULL- oder anderen Empfängerwert mit AVAILABLE. |
+| `@IsPartialOut` | `bit OUTPUT` | `NULL` | HELP setzt sie auf 0. Im normalen Abschluss ist 1 gesetzt, wenn eine Quelle oder explizite Datenbankauswahl-Warnung partiell ist oder ein Counter-/Wait-Sample nicht vergleichbar ist; dann wird ein zuvor AVAILABLE-Status zu AVAILABLE_LIMITED. 0 bedeutet nur, dass diese Implementierungsbedingungen keine Partialität markiert haben, nicht dass zwischenzeitliche Resets ausgeschlossen sind. Bei ungültigen geprüften Eingaben wird 1 gesetzt. Bei nicht abgefangenen Ausnahmen wird der normale Abschluss nicht erreicht. Die Bindung ist optional: Zum Empfang eine Variable des deklarierten Typs mit OUTPUT übergeben; andernfalls das Argument auslassen. Der Hilfezweig überschreibt auch anfängliche NULL- oder andere Empfängerwerte mit den beschriebenen festen Rückgaben. |
+| `@ErrorNumberOut` | `int OUTPUT` | `NULL` | HELP setzt sie auf NULL. Im normalen Abschluss enthält sie die erste tatsächlich gespeicherte Fehlernummer in der Quellenreihenfolge und innerhalb einer Quelle in Beobachtungsreihenfolge: Konfiguration/Datenbankauswahl, Serverstartzeit oder Counter, Waits, danach Cache. Fehlende Zeilen und Versionsfallbacks ohne ausgelöste SQL-Ausnahme liefern für sich keine Fehlernummer; ein vom Auswahlhelfer zurückgegebener Status kann dennoch eine Fehlermeldung ohne Fehlernummer hinterlassen. Bei keinem gespeicherten Fehler ist der Wert NULL; nicht abgefangene Ausnahmen umgehen den normalen Abschluss. Die Bindung ist optional: Zum Empfang eine Variable des deklarierten Typs mit OUTPUT übergeben; andernfalls das Argument auslassen. Der Hilfezweig überschreibt auch anfängliche NULL- oder andere Empfängerwerte mit den beschriebenen festen Rückgaben. |
+| `@ErrorMessageOut` | `nvarchar(2048) OUTPUT` | `NULL` | HELP setzt sie auf NULL. Im normalen Abschluss enthält sie die zur ersten gespeicherten ErrorNumber gehörende SQL-Fehlermeldung in derselben Quellenreihenfolge; wenn weder eine gespeicherte SQL-Ausnahme noch eine Fehlermeldung des Auswahlhelfers vorliegt, ist der Wert NULL. Hinweise zu fehlenden Zeilen, Versionsfallbacks oder sonstigen Quellenlimits stehen in sourceStatus und warnings. Nicht abgefangene Ausnahmen umgehen den normalen Abschluss. Die Bindung ist optional: Zum Empfang eine Variable des deklarierten Typs mit OUTPUT übergeben; andernfalls das Argument auslassen. Der Hilfezweig überschreibt auch anfängliche NULL- oder andere Empfängerwerte mit den beschriebenen festen Rückgaben. |
+
+### RAW-Ausgabe
+
+```sql
+EXEC [monitor].[USP_CompileContextAnalysis] @ResultSetArt='RAW', @MaxZeilen=100;
+```
+
+### JSON-Ausgabe
+
+```sql
+DECLARE @Json nvarchar(max); EXEC [monitor].[USP_CompileContextAnalysis] @ResultSetArt='NONE', @JsonErzeugen=1, @Json=@Json OUTPUT; SELECT @Json AS [Json];
+```
+
+### TABLE-Ausgabe
+
+```sql
+CREATE TABLE [#CompileContextAnalysis_HelpExample] ([Seed] int NULL);
+DECLARE @Map nvarchar(max)=N'{"configurations":"#CompileContextAnalysis_HelpExample"}';
+BEGIN TRY
+    EXEC [monitor].[USP_CompileContextAnalysis] @ResultSetArt='TABLE', @ResultTablesJson=@Map;
+    SELECT * FROM [#CompileContextAnalysis_HelpExample];
+    DROP TABLE IF EXISTS [#CompileContextAnalysis_HelpExample];
+END TRY
+BEGIN CATCH
+    DROP TABLE IF EXISTS [#CompileContextAnalysis_HelpExample];
+    THROW;
+END CATCH;
+```
+
+### Eingebaute Hilfe
+
+```sql
+EXEC [monitor].[USP_CompileContextAnalysis] @Hilfe=1;
+```
 
 ## Serverprincipals, Rollen und Login-Policies
 
