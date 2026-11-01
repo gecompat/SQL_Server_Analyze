@@ -58,13 +58,14 @@ EXEC [monitor].[USP_EndpointTransportAnalysis]
     @MaxZeilen=200, @LockTimeoutMs=0, @ResultSetArt='CONSOLE';
 ```
 
-CONSOLE verwendet den gemeinsamen Renderer und enthält Fachzeilen,
-Quellenzustände und Warnungen in einer formatierten Menge. RAW liefert die
-sieben nachfolgend benannten nativen Schemas in der angegebenen Reihenfolge.
-NONE unterdrückt fachliche Resultsets; optionales JSON bleibt über den
-OUTPUT-Parameter verfügbar. JSON besitzt SchemaVersion 1 und die sieben
-benannten Arrays neben meta. Alle Ausgabearten verwenden dieselbe
-Materialisierung innerhalb eines Aufrufs.
+CONSOLE verwendet den gemeinsamen Renderer für Fachzeilen, Quellenzustände
+und Warnungen. RAW liefert in
+Reihenfolge moduleStatus, endpoints, tcpEndpoints, mirroringEndpoints,
+connectionEncryptionSummary, sourceStatus und warnings. NONE unterdrückt
+fachliche Resultsets. JSON besitzt SchemaVersion 1, meta mit resultName,
+schemaVersion, generatedAtUtc, statusCode, isPartial, errorNumber und
+errorMessage sowie dieselben sieben Arrays. TABLE schreibt nur gewählte Mengen.
+Quellenstatus und Warnungen werden nicht durch @MaxZeilen gekappt.
 
 ```sql
 DECLARE @Json nvarchar(max), @Status varchar(40), @Partial bit, @Error int;
@@ -76,13 +77,57 @@ SELECT @Status AS [StatusCode], @Partial AS [IsPartial],
        @Error AS [ErrorNumber], @Json AS [DiagnosticJson];
 ```
 
-TABLE verwendet ausschließlich ResultTablesJson mit benannten lokalen
-Temp-Tabellen. Unbekannte Namen, doppelte Ziele und ungültige Zuordnungen
-werden vor Fachzugriff abgelehnt; die Zielfelder werden entsprechend dem
+TABLE verwendet ResultTablesJson als JSON-Objekt mit mindestens einem Paar aus
+Resultsetname und Stringwert für ein vorhandenes lokales #Temp-Ziel. Jedes Ziel
+muss leer sein und genau eine Seed-Spalte besitzen; der Name darf höchstens
+116 Zeichen lang sein und weder ## noch das reservierte Präfix #Monitor
+verwenden. Doppelte Schlüssel werden abgelehnt, doppelte Ziele werden
+case-insensitiv geprüft. Die Schlüssel sind in exakter Schreibweise unten
+einzeln erklärt. Ziele werden nacheinander beschrieben; ein späterer
+Writerfehler kann bereits geschriebene Mengen stehen lassen; die Zielfelder werden entsprechend dem
 [gemeinsamen TABLE-Vertrag](../../Architecture/Output_RAW_CONSOLE_JSON.md) geprüft.
 MaxZeilen ist standardmäßig 1000, 0 oder NULL bedeutet unbegrenzt; negative
 Werte sind ungültig. Jedes der vier Fachresultsets erhält sein eigenes Limit.
 moduleStatus, sourceStatus und warnings bleiben ungekürzt.
+
+### Individuelle Parameterverträge
+
+Die folgenden Einträge erklären jeden Parameter einschließlich Eingabeform und Default. OUTPUT-Werte werden nur mit einer passenden, mit OUTPUT gebundenen Variable empfangen.
+
+| Parameter und Typ | Default | Eingabeform, Wirkung und Grenzen |
+|---|---|---|
+| `@MaxZeilen int` | `1000` | Ganze Zahl als Zeilenlimit je Fachmenge: endpoints, tcpEndpoints, mirroringEndpoints und connectionEncryptionSummary werden unabhängig begrenzt. Positiv begrenzt; NULL oder 0 bedeutet unbegrenzt, negativ ist ungültig. Vollständige Aufnahme und Gruppierung erfolgen davor; sourceStatus.IsLimited zeigt Kürzung. moduleStatus.RowCount summiert ausgegebene Fachzeilen; moduleStatus, sourceStatus und warnings bleiben ungekürzt. |
+| `@LockTimeoutMs int` | `0` | Timeout in ms je Quellenbatch: 0–60000; 0 wartet nicht, NULL/außerhalb ungültig. Kein Gesamtzeitlimit. Eigene Temp-DDL erhält 1000 ms. SET im dynamischen Batch gilt nur dort und wird bei Rückkehr zurückgenommen. |
+| `@ResultSetArt varchar(16)` | `'CONSOLE'` | Ein einzelner Textwert wird mit LTRIM/RTRIM um U+0020-Leerzeichen bereinigt und mit UPPER normalisiert. NULL, Leerstring und reine Leerzeichen sind ungültig. Sämtliche erlaubten Werte: CONSOLE liefert Fach-, Quellen- und Warnzeilen in einer formatierten Menge, RAW sieben native Resultsets, TABLE nur die benannten ausgewählten Zielmengen, NONE keine fachlichen Resultsets. Die optionale JSON-Erzeugung bleibt unabhängig. |
+| `@ResultTablesJson nvarchar(max)` | `NULL` | Bei TABLE ein JSON-Objekt mit mindestens einem Schlüssel-Ziel-Paar und Stringwerten. Alle zulässigen Schlüssel mit exakter Schreibweise: moduleStatus liefert den Gesamtstatus, endpoints die sichtbaren Endpoints, tcpEndpoints die TCP-Port-/IP-Konfiguration, mirroringEndpoints die Mirroringkonfiguration, connectionEncryptionSummary gruppierte Verbindungsflags, sourceStatus Quellenstatus und Zählwerte, warnings Hinweise und Grenzen. Jeder Schlüssel ist einzeln optional; doppelte Schlüssel werden abgelehnt. Ziele müssen vorhandene, leere lokale #Temp-Tabellen mit genau einer Seed-Spalte sein; höchstens 116 Zeichen, kein ## und kein reserviertes Präfix #Monitor (case-insensitiv). Doppelte Ziele werden case-insensitiv abgelehnt. Bei TABLE sind NULL, Leerstring und Leerzeichen ungültig; außerhalb TABLE sind nur NULL, Leerstring oder U+0020-Leerzeichen erlaubt. Die Vorprüfung erfolgt vor den Fachquellen; nacheinander geschriebene Mengen werden bei späterem Fehler nicht zurückgenommen. |
+| `@JsonErzeugen bit` | `0` | 0 unterdrückt, 1 erzeugt meta und sieben Arrays: moduleStatus, endpoints, tcpEndpoints, mirroringEndpoints, connectionEncryptionSummary, sourceStatus, warnings. Bit-Konvertierung: Ein numerischer Wert ungleich 0 wird bei der bit-Konvertierung 1; NULL erzeugt nichts. |
+| `@Json nvarchar(max) OUTPUT` | `NULL` | OUTPUT nvarchar(max), anfangs NULL. Bei @JsonErzeugen=1 normal meta (resultName, schemaVersion, generatedAtUtc, statusCode, isPartial, errorNumber, errorMessage) plus sieben Arrays, auch bei Quellenfehlern; sonst und im CATCH NULL. Empfang per nvarchar(max)-Variable OUTPUT. |
+| `@PrintMeldungen bit` | `1` | 0 unterdrückt, 1 gibt RAISERROR-Meldungen niedriger Schwere bei Parameter-, Quellen- und äußeren Fehlern aus. Bit-Konvertierung: Ein numerischer Wert ungleich 0 wird bei der bit-Konvertierung 1; NULL wirkt 0. Hilfe-PRINTs sind unabhängig. |
+| `@Hilfe bit` | `0` | Konvertierter Wert 1 gibt vor Prüfung/Zugriff die Hilfetexte aus, setzt Status AVAILABLE und Partial 0, dann vorzeitiges RETURN ohne ausdrücklich angegebenen Wert. NULL wirkt 0; Ein numerischer Wert ungleich 0 wird bei der bit-Konvertierung 1. Andere Outputs bleiben NULL. |
+| `@StatusCodeOut varchar(40) OUTPUT` | `NULL` | Optionale OUTPUT-Bindung an eine varchar(40)-Variable; der Eingangswert wird auf NULL gesetzt. Alle möglichen Werte: AVAILABLE kennzeichnet den Hilfeabbruch ohne Analyse; INVALID_PARAMETER kennzeichnet ungültige Eingaben beziehungsweise den gespeicherten TABLE-Fehlercode 51011; AVAILABLE_LIMITED bezeichnet mindestens eine erfolgreiche nichtleere native Quelle; EMPTY_UNPROVEN mindestens eine erfolgreiche leere Quelle, sofern keine native Quelle nichtleer erfolgreich ist. Erst ohne erfolgreiche native Quelle wird der erste Fehler nach ENDPOINTS, TCP_ENDPOINTS, MIRRORING_ENDPOINTS, CONNECTIONS übernommen: DENIED_PERMISSION bedeutet einen als Berechtigungsfehler eingestuften Fehler (229, 297, 300, 371), TIMEOUT einen Sperrtimeout 1222 und ERROR_HANDLED einen sonstigen abgefangenen Fehler. Im äußeren CATCH gilt INVALID_PARAMETER bei gespeichertem TABLE-Fehlercode 51011, sonst ERROR_HANDLED. Reguläre Quellenfehler liefern weiterhin RETURN 0; Status und Fehler-OUTPUTs sind getrennt zu lesen. |
+| `@IsPartialOut bit OUTPUT` | `NULL` | Optionale OUTPUT-Bindung an eine bit-Variable; der Eingangswert wird auf NULL gesetzt. Hilfe liefert 0, da keine Analyse ausgeführt wird. Parameterfehler, regulärer Bericht und äußerer CATCH liefern 1; eine normale Analyse bleibt wegen begrenzter Metadatensicht ausdrücklich partiell. 0 aus der Hilfe bestätigt keine vollständige Inventur. |
+| `@ErrorNumberOut int OUTPUT` | `NULL` | OUTPUT int, anfangs NULL: Parameterfehler 51011; normal erster Quellenfehler nach ENDPOINTS, TCP_ENDPOINTS, MIRRORING_ENDPOINTS, CONNECTIONS, danach Ableitungsfehler. TABLE: Vorprüfung 51011, Writerfehler dessen Code oder 51010; CATCH Fehlercode. Empfang int-Variable OUTPUT. Im äußeren CATCH ist dieser Wert zugleich der Diagnose-RETURN-Wert; reguläre Quellenfehler ändern den normalen RETURN 0 nicht. Ohne erfassten Fehler bleibt der Wert NULL. |
+| `@ErrorMessageOut nvarchar(2048) OUTPUT` | `NULL` | OUTPUT nvarchar(2048), anfangs NULL; erhält Validierungs-, priorisierten Quellen-/Ableitungs- oder CATCH-Text. Hilfe belässt NULL. Empfang nvarchar(2048)-Variable OUTPUT. |
+
+### Kopierbare Aufrufbeispiele
+
+Die Beispiele verwenden getrennte Aufrufe für RAW, Diagnose-JSON, einen TABLE-Teilexport und die Hilfe. Das TABLE-Ziel wird vor dem Aufruf mit einer Seed-Spalte angelegt und in beiden Abschlusswegen entfernt.
+
+```sql
+EXEC [monitor].[USP_EndpointTransportAnalysis] @MaxZeilen=200, @LockTimeoutMs=0, @ResultSetArt='RAW', @PrintMeldungen=0;
+```
+
+```sql
+DECLARE @Json nvarchar(max), @Status varchar(40), @Partial bit, @Error int, @Message nvarchar(2048), @ReturnCode int; EXEC @ReturnCode=[monitor].[USP_EndpointTransportAnalysis] @ResultSetArt='NONE', @JsonErzeugen=1, @Json=@Json OUTPUT, @StatusCodeOut=@Status OUTPUT, @IsPartialOut=@Partial OUTPUT, @ErrorNumberOut=@Error OUTPUT, @ErrorMessageOut=@Message OUTPUT, @PrintMeldungen=0; SELECT @ReturnCode AS [ReturnCode], @Status AS [StatusCode], @Partial AS [IsPartial], @Error AS [ErrorNumber], @Message AS [ErrorMessage], @Json AS [DiagnosticJson];
+```
+
+```sql
+CREATE TABLE [#EndpointTransportAnalysis_HelpExample] ([Seed] int NULL); BEGIN TRY EXEC [monitor].[USP_EndpointTransportAnalysis] @ResultSetArt='TABLE', @ResultTablesJson=N'{"endpoints":"#EndpointTransportAnalysis_HelpExample"}', @PrintMeldungen=0; SELECT * FROM [#EndpointTransportAnalysis_HelpExample]; DROP TABLE IF EXISTS [#EndpointTransportAnalysis_HelpExample]; END TRY BEGIN CATCH DROP TABLE IF EXISTS [#EndpointTransportAnalysis_HelpExample]; THROW; END CATCH;
+```
+
+```sql
+EXEC [monitor].[USP_EndpointTransportAnalysis] @Hilfe=1;
+```
 
 ## Eine Zeile bedeutet
 
@@ -114,21 +159,24 @@ bei TSQL TSQL_FLAG_ONLY und sonst NATIVE_FLAG_UNQUALIFIED. Fehlende Metadaten
 werden nicht durch eine geratene Protokollklassifikation ersetzt.
 
 Mindestens eine erfolgreiche nichtleere native Quelle ergibt insgesamt
-AVAILABLE_LIMITED und IsPartial=1. Nur erfolgreiche leere native Quellen
-ergeben EMPTY_UNPROVEN. Bei vier fehlgeschlagenen nativen Quellen gilt der
-erste konkrete Fehler in der Reihenfolge ENDPOINTS, TCP_ENDPOINTS,
-MIRRORING_ENDPOINTS, CONNECTIONS. Die abgeleitete Zeile verdeckt diesen
+AVAILABLE_LIMITED und IsPartial=1. Wenn keine native Quelle nichtleer verfügbar
+ist, ergibt mindestens eine erfolgreiche leere Quelle EMPTY_UNPROVEN; erst wenn
+keine Quelle leer oder nichtleer erfolgreich ist, übernimmt der erste native
+Fehler in der Reihenfolge ENDPOINTS, TCP_ENDPOINTS, MIRRORING_ENDPOINTS,
+CONNECTIONS den Gesamtstatus. Die abgeleitete Zeile verdeckt diesen
 Fehler nicht. sourceStatus enthält auch erfolgreich leere Quellen ausdrücklich;
 eine leere Sicht beweist keine instanzweite Abwesenheit.
 
 Quellenfehler behalten unbekannte Counts. Die abhängige Zusammenfassung ist
 bei fehlgeschlagener CONNECTIONS-Quelle SOURCE_UNAVAILABLE; andere Quellen
 bleiben auswertbar. Ein eigener Ableitungsfehler besitzt ERROR_HANDLED mit
-nativen Fehlerdetails. Error-OUTPUT nennt den ersten Fehler in der genannten
-Quellenreihenfolge, danach einen eigenen Ableitungsfehler. Fachliche
-Quellenfehler liefern den materialisierten Bericht mit RETURN 0. Erwartete
-API-/TABLE-Ablehnungen und gefangene äußere Fehler liefern Diagnose-RETURN
-und JSON-NULL. Status, Error-OUTPUT, sourceStatus und warnings sind gemeinsam
+nativen Fehlerdetails. Error-OUTPUT nennt den ersten Fehler nach ENDPOINTS, TCP_ENDPOINTS,
+MIRRORING_ENDPOINTS, CONNECTIONS und danach einen Ableitungsfehler. Fachliche
+Quellenfehler liefern den materialisierten Bericht mit RETURN 0. Ungültige
+Parameter und TABLE-Vorprüfungsfehler liefern INVALID_PARAMETER, RETURN 51011
+und JSON-NULL. Ein TABLE-Writerfehler setzt ErrorNumberOut und RETURN auf den gespeicherten
+Writerfehler (Fallback 51010), StatusCodeOut auf ERROR_HANDLED und Json auf NULL; andere gefangene
+äußere Fehler liefern ebenfalls Diagnose-RETURN und JSON-NULL. Status, Error-OUTPUT, sourceStatus und warnings sind gemeinsam
 zu lesen. Ein Engine- oder Verbindungsabbruch erhält keine erfundene
 Wiederherstellungsgarantie.
 
