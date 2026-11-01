@@ -6,8 +6,9 @@ GO
 Objekt       : monitor.USP_AuditConfigurationAnalysis
 Version      : 1.0.0
 Stand        : 2026-09-19
-Zweck        : Inventarisiert die sichtbare SQL-Server-Auditkonfiguration und
-               deren zur Laufzeit gemeldeten Zustand.
+Zweck        : Die Procedure inventarisiert die sichtbare SQL-Server-Auditkonfiguration
+               und deren zur Laufzeit gemeldeten Zustand. Datenbankspezifikationen
+               werden je ausgewählter sichtbarer Online-Datenbank gelesen.
 Datenquellen : sys.server_audits, sys.server_audit_specifications,
                sys.server_audit_specification_details,
                sys.database_audit_specifications,
@@ -55,10 +56,48 @@ BEGIN
     IF @Hilfe=1
     BEGIN
         PRINT N'monitor.USP_AuditConfigurationAnalysis';
-        PRINT N'Inventarisiert sichtbare Audit-, Spezifikations- und Runtime-Metadaten; Auditlog-Payloads, Dateipfade und Ereignisinhalte bleiben ausgeschlossen.';
-        PRINT N'@DatabaseNames und @AuditNames verwenden bracket-aware Pipe-Listen; die Patternparameter unterstützen LIKE.';
-        PRINT N'@MaxZeilen begrenzt jedes Fachresultset; NULL oder 0 bedeutet unbegrenzt.';
-        PRINT N'TABLE erwartet Zuordnungen für audits, serverSpecifications, databaseSpecifications, sourceStatus oder warnings.';
+        PRINT N'Inventarisiert sichtbare Auditkonfiguration, Spezifikationen und verfügbaren Runtimezustand; Dateien, Pfade, Ereignisinhalte und überwachte Nutzdaten werden nicht gelesen.';
+        PRINT N'Datenbank- und Auditnamenfilter sind jeweils exklusiv mit ihrem Pattern. Auditpattern unterstützen nur LIKE.';
+        PRINT N'@MaxZeilen begrenzt jedes Fachresultat; Status und Warnings bleiben ungekürzt.';
+        PRINT N'RAW, CONSOLE, TABLE und NONE steuern Resultsets; JSON wird mit @JsonErzeugen angefordert.';
+        PRINT N'@Hilfe=1 druckt Hilfe und kehrt ohne Analyse zurück.';
+        PRINT N'@DatabaseNames nvarchar(max); Default: NULL. Filter für lokale Spezifikationen. NULL, Leertext oder nur U+0020-Leerzeichen: sichtbare, zugreifbare ONLINE-Benutzerdatenbanken ohne Datenbanksnapshots; Systemdatenbanken nur mit Opt-in. Sonst bracket-aware Pipe-Liste exakter SQL-Namen; Pipes in [Klammern] trennen nicht, ]] maskiert ]. Leere/ungültige Segmente oder Namen sind ungültig. Nur eine aktive, nichtleere Liste ist mit einem nicht-NULL-Pattern unvereinbar. Fehlende, offline oder nicht zugängliche Namen erzeugen interne Kandidatenwarnungen, die diese Procedure nicht ausgibt und nicht allein in ihre Partialitätsbewertung übernimmt. Eine leere Spezifikationsmenge belegt deshalb keine vollständige Auswahl.';
+        PRINT N'@SystemdatenbankenEinbeziehen bit; Default: 0. 0 schließt master, tempdb, model und msdb aus; 1 erlaubt sie. NULL ist im Kandidatenhelper ungültig und setzt INVALID_PARAMETER. Explizit angeforderte Systemdatenbanken ohne Opt-in erzeugen intern SYSTEM_DATABASE_EXCLUDED; diese Auswahlwarnung wird nicht ausgegeben. Weitergabe an den Kandidatenhelper. SQL-Konvertierung nach bit: numerische 0 ergibt 0, von 0 verschiedene numerische Werte ergeben 1.';
+        PRINT N'@DatabaseNamePattern nvarchar(4000); Default: NULL. Alternativer Datenbankfilter, unvereinbar mit einer aktiven nichtleeren Datenbankliste. NULL: kein Pattern. Helper trimmt außen; erkennt LIKE:, REGEX:, REGEXI: ohne Beachtung der Großschreibung, sonst LIKE. Rest wird nicht erneut getrimmt. REGEX arbeitet case-sensitiv (Flag c), REGEXI ohne Beachtung der Groß-/Kleinschreibung (Flag i); leerer Rest ungültig. Regex erfordert SQL Server 2025 und Compatibility Level 170 der Installationsdatenbank, sonst UNAVAILABLE_FEATURE; Syntax wird nicht vorab geprüft. Eine fehlerhafte Regex kann bei REGEXP_LIKE im Kandidatenhelper einen nicht abgefangenen Fehler auslösen und den normalen Modulabschluss umgehen.';
+        PRINT N'@HighImpactConfirmed bit; Default: 0. 0 und 1 sind gültige Bestätigungswerte, werden in diesem Aufruf aber keinem Analyseklassen-/Gruppengate vorgelegt: AnalysisClass ist fest NULL. Beide Werte aktivieren dasselbe lesende Inventar. NULL ist im Kandidatenhelper ungültig und setzt INVALID_PARAMETER; der Wert ist keine Berechtigungserteilung. SQL-Konvertierung nach bit: numerische 0 ergibt 0, von 0 verschiedene numerische Werte ergeben 1.';
+        PRINT N'@AuditNames nvarchar(max); Default: NULL. Exakte Auditnamen für audits und beide Spezifikationsscopes als bracket-aware Pipe-Liste; NULL: kein Filter. Pipes in [Klammern] trennen nicht, ]] maskiert ]. Leere Segmente und ungültige SQL-Namen sind ungültig; gültige Werte werden dedupliziert. Exklusiv mit @AuditNamePattern. Vergleich ist SQL_Latin1_General_CP1_CS_AS (case-sensitive); kein Treffer erzeugt keinen eigenen Fehlerstatus.';
+        PRINT N'@AuditNamePattern nvarchar(4000); Default: NULL. Alternativer Auditnamenfilter mit LIKE, exklusiv mit @AuditNames. NULL: kein Filter. Parser trimmt außen, entfernt optional LIKE: ohne Groß-/Kleinschreibung und trimmt danach nicht erneut. REGEX:/REGEXI: werden erkannt, aber von dieser Procedure als INVALID_PARAMETER zurückgewiesen. Leerwert/Leerrest ungültig. Vergleich case-sensitive. Dieses Pattern begrenzt ausschließlich audits; serverSpecifications und databaseSpecifications werden dadurch nicht gefiltert. Für einen Namensfilter in allen drei Fachmengen ist stattdessen @AuditNames zu verwenden.';
+        PRINT N'@NurProblematisch bit; Default: 0. 0 lässt INFO und MEDIUM in den drei Fachresultaten zu. 1 entfernt INFO; NULL entfernt INFO ebenfalls und wirkt wie 1. Quellenstatus und Warnings bleiben ungefiltert; Warnings entstehen vor diesem INFO-Filter. SQL-Konvertierung nach bit: numerische 0 ergibt 0, von 0 verschiedene numerische Werte ergeben 1.';
+        PRINT N'@MaxZeilen int; Default: 1000. Obergrenze je Fachresultat einzeln. Reihenfolge: AuditName/AuditId, SpecificationName/SpecificationId, DatabaseName/SpecificationName/DatabaseId/SpecificationId. NULL oder 0 unbegrenzt; negative Werte INVALID_PARAMETER. Quellenstatus, Warnings und Statusresultat bleiben ungekürzt.';
+        PRINT N'@LockTimeoutMs int; Default: 0. Wird nur auf negative Werte geprüft; im Body aber nicht zum Setzen eines Timeouts genutzt. NULL besteht den Negativtest und wird nicht angewendet. Die Procedure setzt danach LOCK_TIMEOUT 0; SET-Werte werden bei Rückkehr aus der Procedure zurückgenommen.';
+        PRINT N'@ResultSetArt varchar(16); Default: ''CONSOLE''. Nach Entfernen äußerer U+0020-Leerzeichen und Großschreibung sind genau RAW, CONSOLE, TABLE und NONE erlaubt. RAW liefert Modulstatus und danach audits, serverSpecifications, databaseSpecifications, sourceStatus, warnings. CONSOLE wird intern auf NONE normalisiert und zeigt ausschließlich die beschriftete audits-Ansicht, ohne separates Modulstatusresultset. TABLE schreibt nur zugeordnete Gruppen, NONE liefert keine regulären Resultsets. JSON wird unabhängig gesteuert. NULL, Leertext und andere Werte sind ungültig.';
+        PRINT N'@ResultTablesJson nvarchar(max); Default: NULL. Nur für TABLE; gültiges JSON-Objekt mit mindestens einer Zuordnung aus exakt audits, serverSpecifications, databaseSpecifications, sourceStatus, warnings zu einem Ziel. Keys binär exakt, keine doppelten Keys/Ziele. Ziel: vorhandene leere lokale #Temp mit genau einer Seed-Spalte, max. 116 Zeichen, kein ##- oder reserviertes #Monitor-Präfix. Mapping wird vor fachlichem Zugriff validiert; Bei einem ungültigen Ziel kann der Helper mit Fehler 51011 abbrechen; dann ist die abschließende Zuweisung der Modul-OUTPUTs nicht garantiert. audits bedeutet Auditkonfigurationen, serverSpecifications Serverspezifikationen, databaseSpecifications Datenbankspezifikationen, sourceStatus Quellenstatus und warnings Warnungen. In TABLE sind NULL, Leertext und ein leeres Objekt ungültig. Außerhalb von TABLE bleiben NULL, Leertext und nur U+0020-Leerzeichen unbeachtet; ein anderer nichtleerer Wert kann vor der Analyse Fehler 51011 auslösen.';
+        PRINT N'@JsonErzeugen bit; Default: 0. 1 erstellt JSON in @Json; 0 oder NULL erzeugt keines. Unabhängig von Resultsetart; für JSON ohne Resultsets NONE verwenden. Dokument enthält meta und fünf Arrays audits, serverSpecifications, databaseSpecifications, sourceStatus, warnings. meta: resultName, schemaVersion, generatedAtUtc, statusCode, isPartial, crossDatabaseRequested. Facharrays wenden Filter und Limit an; Status/Warnungen bleiben vollständig. SQL-Konvertierung nach bit: numerische 0 ergibt 0, von 0 verschiedene numerische Werte ergeben 1.';
+        PRINT N'@Json nvarchar(max) OUTPUT; Default: NULL. OUTPUT-Empfänger. Zu Beginn NULL; bei JsonErzeugen=1 Dokument, sonst NULL. OUTPUT-Variable nvarchar(max) mit OUTPUT im EXEC binden. Hilfe kehrt vorher zurück und lässt den Wert NULL. Der Empfänger kann ausgelassen werden, wenn kein JSON empfangen werden soll.';
+        PRINT N'@PrintMeldungen bit; Default: 1. Der Parameter wird im Procedure-Body nicht gelesen und beeinflusst weder PRINT-Meldungen noch Resultsets. Der Hilfezweig gibt seine PRINT-Zeilen unabhängig von diesem Eingabewert aus. SQL-Konvertierung nach bit: numerische 0 ergibt 0, von 0 verschiedene numerische Werte ergeben 1.';
+        PRINT N'@Hilfe bit; Default: 0. 1 gibt PRINT-Hilfe aus und kehrt ohne Analyse und abschließende OUTPUT-Zuweisung zurück. Die Hilfe erklärt Zweck, Parameterverträge und Beispielaufrufe. 0 führt aus; NULL löst Früh-Rückkehr nicht aus. SQL-Konvertierung nach bit: numerische 0 ergibt 0, von 0 verschiedene numerische Werte ergeben 1.';
+        PRINT N'@StatusCodeOut varchar(40) OUTPUT; Default: NULL. Bei regulärem Abschluss: AVAILABLE ohne gemeldeten Befund, AVAILABLE_WITH_FINDING bei MEDIUM-Warnungen ohne Partialität, AVAILABLE_LIMITED bei partiellen Quellen, INVALID_PARAMETER bei ungültigen Modul-/Kandidatenparametern, INTERNAL_ERROR bei internem Kandidatenschemafehler, UNAVAILABLE_FEATURE bei fehlender Regex-Voraussetzung. Behandelte Quellenfehler stehen in Quellenstatus/Warnungen; Partialität setzt AVAILABLE_LIMITED. Zuweisung erfolgt am normalen Ende. Die Bindung ist optional: Zum Empfang eine Variable des deklarierten Typs mit OUTPUT übergeben; andernfalls das Argument auslassen. Im Hilfezweig bleibt ein anfänglicher NULL- oder anderer Empfängerwert erhalten.';
+        PRINT N'@IsPartialOut bit OUTPUT; Default: NULL. OUTPUT-Bit der Partialität: 0 ohne partielle Quellenlesung, 1 bei behandelten unvollständigen Lesungen. Normale Endzuweisung; Hilfe weist nicht zu. Die Bindung ist optional: Zum Empfang eine Variable des deklarierten Typs mit OUTPUT übergeben; andernfalls das Argument auslassen. Im Hilfezweig bleibt ein anfänglicher NULL- oder anderer Empfängerwert erhalten. Interne Kandidatenwarnungen über fehlende oder ausgeschlossene Namen werden hierbei nicht ausgewertet; 0 belegt keine vollständige Datenbanksicht.';
+        PRINT N'@ErrorNumberOut int OUTPUT; Default: NULL. OUTPUT int der zuerst gespeicherten behandelten Serverquellen-Fehlernummer. Zweiter Server-CATCH setzt nur bei noch NULL. Datenbank-CATCHes setzen Partialität und schreiben interne, nicht ausgegebene Warnungen, aber keine Modulnummer. Parameterfehler haben keine Fehlernummer; Hilfe weist nicht zu. Die Bindung ist optional: Zum Empfang eine Variable des deklarierten Typs mit OUTPUT übergeben; andernfalls das Argument auslassen. Im Hilfezweig bleibt ein anfänglicher NULL- oder anderer Empfängerwert erhalten.';
+        PRINT N'@ErrorMessageOut nvarchar(2048) OUTPUT; Default: NULL. OUTPUT nvarchar(2048) zur zuerst gespeicherten Serverquellenstörung; spätere Serverfehler überschreiben sie nicht. Datenbankfehler setzen Partialität und schreiben interne, nicht ausgegebene Warnungen statt einer Modulmeldung. Ungültige Parameter liefern Validierungstext; Hilfe weist nicht zu. Die Bindung ist optional: Zum Empfang eine Variable des deklarierten Typs mit OUTPUT übergeben; andernfalls das Argument auslassen. Im Hilfezweig bleibt ein anfänglicher NULL- oder anderer Empfängerwert erhalten.';
+        PRINT N'EXEC [monitor].[USP_AuditConfigurationAnalysis] @ResultSetArt=''RAW'', @MaxZeilen=100;';
+        PRINT N'DECLARE @Json nvarchar(max); EXEC [monitor].[USP_AuditConfigurationAnalysis] @ResultSetArt=''NONE'', @JsonErzeugen=1, @Json=@Json OUTPUT; SELECT @Json AS [Json];';
+        PRINT N'CREATE TABLE [#AuditConfigurationAnalysis_HelpExample] ([Seed] int NULL);
+DECLARE @Map nvarchar(max)=N''{"audits":"#AuditConfigurationAnalysis_HelpExample"}'';
+BEGIN TRY
+    EXEC [monitor].[USP_AuditConfigurationAnalysis] @ResultSetArt=''TABLE'', @ResultTablesJson=@Map;
+    SELECT * FROM [#AuditConfigurationAnalysis_HelpExample];
+    DROP TABLE IF EXISTS [#AuditConfigurationAnalysis_HelpExample];
+END TRY
+BEGIN CATCH
+    DROP TABLE IF EXISTS [#AuditConfigurationAnalysis_HelpExample];
+    THROW;
+END CATCH;';
+        PRINT N'EXEC [monitor].[USP_AuditConfigurationAnalysis] @Hilfe=1;';
+
+
+
+
         RETURN;
     END;
 
