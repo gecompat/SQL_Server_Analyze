@@ -1347,23 +1347,23 @@ Alle Example-Werte und Tabellennamen sind synthetisch.
 
 #### RAW
 
-~~~sql
+```sql
 EXEC [monitor].[USP_InternalContentionAnalysis] @SampleSeconds=5,@MitSpinlocks=1,@MitHotPages=1,@MitPageDetails=0,@MaxZeilen=50,@ResultSetArt='RAW';
-~~~
+```
 
 #### JSON
 
-~~~sql
+```sql
 DECLARE @JsonOut nvarchar(max);
 EXEC [monitor].[USP_InternalContentionAnalysis] @SampleSeconds=5,@JsonErzeugen=1,@Json=@JsonOut OUTPUT,@ResultSetArt='NONE';
 SELECT @JsonOut AS [Json];
-~~~
+```
 
 #### TABLE
 
 Die Seed-Tabelle mit einer einzelnen Dummy-Spalte wird außerhalb des TRY-Blocks angelegt. Beide Pfade räumen sie mit DROP TABLE IF EXISTS auf.
 
-~~~sql
+```sql
 CREATE TABLE [#InternalContentionAnalysis_HelpExample]([Seed] int NULL);
 BEGIN TRY
     EXEC [monitor].[USP_InternalContentionAnalysis] @ResultSetArt='TABLE',@ResultTablesJson=N'{"latches":"#InternalContentionAnalysis_HelpExample"}';
@@ -1374,13 +1374,13 @@ BEGIN CATCH
     DROP TABLE IF EXISTS [#InternalContentionAnalysis_HelpExample];
     THROW;
 END CATCH;
-~~~
+```
 
 #### Hilfe
 
-~~~sql
+```sql
 EXEC [monitor].[USP_InternalContentionAnalysis] @Hilfe=1;
-~~~
+```
 
 ---
 
@@ -1443,23 +1443,23 @@ Alle Example-Werte und Tabellennamen sind synthetisch.
 
 #### RAW
 
-~~~sql
+```sql
 EXEC [monitor].[USP_BufferPoolAnalysis] @MitMemoryClerks=1,@MitBufferPoolVerteilung=0,@MaxZeilen=50,@ResultSetArt='RAW';
-~~~
+```
 
 #### JSON
 
-~~~sql
+```sql
 DECLARE @JsonOut nvarchar(max);
 EXEC [monitor].[USP_BufferPoolAnalysis] @MitMemoryClerks=1,@MitBufferPoolVerteilung=0,@JsonErzeugen=1,@Json=@JsonOut OUTPUT,@ResultSetArt='NONE';
 SELECT @JsonOut AS [Json];
-~~~
+```
 
 #### TABLE
 
 Die Seed-Tabelle mit einer einzelnen Dummy-Spalte wird außerhalb des TRY-Blocks angelegt. Beide Pfade räumen sie mit DROP TABLE IF EXISTS auf.
 
-~~~sql
+```sql
 CREATE TABLE [#BufferPoolAnalysis_HelpExample]([Seed] int NULL);
 BEGIN TRY
     EXEC [monitor].[USP_BufferPoolAnalysis] @ResultSetArt='TABLE',@ResultTablesJson=N'{"memory":"#BufferPoolAnalysis_HelpExample"}';
@@ -1470,13 +1470,13 @@ BEGIN CATCH
     DROP TABLE IF EXISTS [#BufferPoolAnalysis_HelpExample];
     THROW;
 END CATCH;
-~~~
+```
 
 #### Hilfe
 
-~~~sql
+```sql
 EXEC [monitor].[USP_BufferPoolAnalysis] @Hilfe=1;
-~~~
+```
 
 ---
 
