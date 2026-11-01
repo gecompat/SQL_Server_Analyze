@@ -106,6 +106,38 @@ INSERT [dbo].[ExampleOps006Compressed]([Id],[Payload]) VALUES (1,''SyntheticFeat
           )
         THROW 54865, N'Die synthetische persistierte SKU-Feature-Evidenz fehlt.', 1;
 
+    -- Prüft die Zeilengrenze mit derselben positiven, synthetischen Featurequelle.
+    DECLARE @ZeroJson nvarchar(max), @ZeroStatus varchar(40), @ZeroPartial bit;
+    EXEC [monitor].[USP_DatabasePortabilityAnalysis]
+          @DatabaseNames=N'[ExampleOps006Feature]', @MaxZeilen=0
+        , @ResultSetArt='NONE', @JsonErzeugen=1, @Json=@ZeroJson OUTPUT
+        , @PrintMeldungen=0, @StatusCodeOut=@ZeroStatus OUTPUT, @IsPartialOut=@ZeroPartial OUTPUT;
+    IF COALESCE(ISJSON(@ZeroJson),0)<>1 OR @ZeroPartial IS NULL
+       OR COALESCE(@ZeroStatus,'') NOT IN('AVAILABLE','AVAILABLE_LIMITED')
+       OR NOT EXISTS(SELECT 1 FROM OPENJSON(@ZeroJson))
+        THROW 54866, N'Die positive unbegrenzte Portabilitätsreferenz fehlt.', 1;
+
+    SELECT @Json=NULL, @Status=NULL, @Partial=NULL;
+    EXEC [monitor].[USP_DatabasePortabilityAnalysis]
+          @DatabaseNames=N'[ExampleOps006Feature]', @MaxZeilen=NULL
+        , @ResultSetArt='RAW', @JsonErzeugen=1, @Json=@Json OUTPUT
+        , @PrintMeldungen=0, @StatusCodeOut=@Status OUTPUT, @IsPartialOut=@Partial OUTPUT;
+    IF COALESCE(ISJSON(@Json),0)<>1
+       OR COALESCE(@Status,'')<>@ZeroStatus OR COALESCE(CONVERT(int,@Partial),-1)<>CONVERT(int,@ZeroPartial)
+       OR (SELECT COUNT_BIG(*) FROM OPENJSON(@Json))<>(SELECT COUNT_BIG(*) FROM OPENJSON(@ZeroJson))
+       OR EXISTS(SELECT [value] FROM OPENJSON(@Json) EXCEPT SELECT [value] FROM OPENJSON(@ZeroJson))
+       OR EXISTS(SELECT [value] FROM OPENJSON(@ZeroJson) EXCEPT SELECT [value] FROM OPENJSON(@Json))
+        THROW 54867, N'NULL und 0 liefern nicht dieselbe JSON-Evidenz oder der RAW-Abschluss fehlt.', 1;
+
+    SELECT @Json=NULL, @Status=NULL, @Partial=NULL;
+    EXEC [monitor].[USP_DatabasePortabilityAnalysis]
+          @DatabaseNames=N'[ExampleOps006Feature]', @MaxZeilen=-1
+        , @ResultSetArt='RAW', @JsonErzeugen=1, @Json=@Json OUTPUT
+        , @PrintMeldungen=0, @StatusCodeOut=@Status OUTPUT, @IsPartialOut=@Partial OUTPUT;
+    IF COALESCE(@Status,'')<>'INVALID_PARAMETER' OR COALESCE(@Partial,0)<>1
+       OR COALESCE(ISJSON(@Json),0)<>1 OR EXISTS(SELECT 1 FROM OPENJSON(@Json))
+        THROW 54868, N'Die negative Zeilengrenze erreicht den sicheren leeren RAW-/JSON-Abschluss nicht.', 1;
+
     SET @Json = NULL;
     SET @Status = NULL;
     EXEC [monitor].[USP_DatabasePortabilityAnalysis]

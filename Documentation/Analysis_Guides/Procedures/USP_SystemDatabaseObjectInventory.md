@@ -25,6 +25,56 @@ EXEC [monitor].[USP_SystemDatabaseObjectInventory] @MaxZeilen = 200, @ResultSetA
 
 Der Aufruf verwendet nur Systemkataloge. Führen Sie ihn zunächst unter dem vorgesehenen Diagnosekonto aus und vergleichen Sie einen eingeschränkten Lauf separat, wenn Vollständigkeit relevant ist. Ein Objekt wird erst nach dokumentierter Eigentümer- und Abhängigkeitsprüfung außerhalb dieser Procedure verändert.
 
+## Parameter und weitere Aufrufbeispiele
+
+| Parameter | Datentyp | Default | Eingabeform und Wirkung |
+|---|---|---|---|
+| `@MaxZeilen` | `int` | `2000` | NULL wird zu 0; 0 bedeutet unbegrenzt. Positive Werte behalten nach DatabaseName, SchemaName und ObjectName sortiert die ersten Zeilen. Begrenzung erfolgt nach vollständiger Katalogabfrage und reduziert deren Aufwand nicht; Status/ObjectCount beziehen sich auf den vollen Scope. Negative Werte ergeben INVALID_PARAMETER und keine Inventarzeilen. |
+| `@ResultSetArt` | `varchar(16)` | `'CONSOLE'` | Wählt CONSOLE (beschriftete Fachansicht mit Leeranzeige), RAW (Status/Zählkopf und rohe Zeilen), TABLE (benannte Tabellenausgabe) oder NONE (keine Zeilenresultsets). Äußere Leerzeichen werden entfernt und Groß-/Kleinschreibung ignoriert. TABLE und CONSOLE werden intern im NONE-Pfad gerendert. Ungültige Werte sowie NULL/leer ergeben INVALID_PARAMETER. |
+| `@ResultTablesJson` | `nvarchar(max)` | `NULL` | Nur bei ResultSetArt=TABLE ausgewertetes JSON-Objekt mit genau einem Schlüssel systemDatabaseObjects und dem Zielnamen. Das Ziel muss eine bereits vorhandene, leere lokale #Temp-Tabelle mit genau einer Seed-/Platzhalterspalte sein. NULL/leer reicht im TABLE-Pfad nicht. Außerhalb TABLE wird nur ein nichtleerer Wert mit Fehler 51011 abgewiesen; NULL oder U+0020-Leerzeichen wird ignoriert. Preflight validiert das Ziel vor dem Schreiben. Der Schlüssel ist case-sensitiv. Zielnamen dürfen höchstens 116 Zeichen haben; globale ##Tabellen und das ohne Beachtung der Groß-/Kleinschreibung reservierte Präfix #Monitor sind unzulässig. Der Preflight prüft Form und leere Seed-Tabelle; erst der Writer ersetzt die Seed-Spalte durch das Ergebnisschema. |
+| `@JsonErzeugen` | `bit` | `0` | 0 lässt @Json NULL; 1 serialisiert die nach @MaxZeilen begrenzten LimitedRows sortiert nach den drei Namen. NULL aktiviert IF nicht; leere Auswahl wird []. Bei der SQL-Konvertierung nach bit ergibt numerische 0 den Wert 0; von 0 verschiedene numerische Werte ergeben 1. |
+| `@Json` | `nvarchar(max) OUTPUT` | `NULL` | Optionaler OUTPUT-Empfänger für ein JSON-Array der Fachzeilen. Am Eintritt wird @Json auch vor @Hilfe=1 auf NULL gesetzt; nur @JsonErzeugen=1 erzeugt danach das Array, bei leerer Fachmenge []. Zum Empfangen eine nvarchar(max)-Variable mit OUTPUT binden; das Argument kann ausgelassen werden. Ein anfänglicher NULL- oder anderer Variablenwert wird überschrieben. |
+| `@PrintMeldungen` | `bit` | `1` | 0 unterdrückt die Status-PRINT-Meldung; Nicht-NULL-Bitwerte ungleich 0 aktivieren sie. NULL aktiviert sie nicht. Die Statusmeldung erscheint bei den vom Aufrufer gewählten Modi NONE, CONSOLE und TABLE; diese beiden Ansichtsmodi werden intern auf NONE normalisiert. RAW erzeugt diese Statusmeldung nicht. @Hilfe=1 kehrt vor dieser Meldung zurück. Bei der SQL-Konvertierung nach bit ergibt numerische 0 den Wert 0; von 0 verschiedene numerische Werte ergeben 1. |
+| `@Hilfe` | `bit` | `0` | 0 führt die Analyse aus; jeder Nicht-NULL-Wert ungleich 0 druckt die Hilfe und beendet den Aufruf früh. NULL startet die Hilfe nicht. Der RETURN erfolgt vor Analyse und OUTPUT-Zuweisungen, daher bleiben gebundene OUTPUT-Empfänger unverändert. Bei der SQL-Konvertierung nach bit ergibt numerische 0 den Wert 0; von 0 verschiedene numerische Werte ergeben 1. |
+| `@StatusCodeOut` | `varchar(40) OUTPUT` | `NULL` | OUTPUT-Empfänger für den in diesem Modul ermittelten Gesamtstatus. Gesamtwerte: AVAILABLE, AVAILABLE_EMPTY (keine sichtbaren Inventarzeilen), AVAILABLE_LIMITED (fehlender Zugriff/Quellenfehler) und INVALID_PARAMETER (negative Grenze oder ungültige Ausgabeart). Zeilenstatus ist AVAILABLE, DENIED_PERMISSION oder SOURCE_UNAVAILABLE. NULL-Default erlaubt das Auslassen des Arguments; um den Wert zu empfangen, muss eine kompatible Variable ausdrücklich mit OUTPUT gebunden werden. Im Hilfezweig bleibt ein gebundener Empfänger wegen des frühen RETURN unverändert. |
+| `@IsPartialOut` | `bit OUTPUT` | `NULL` | Optionale OUTPUT-Variable: 0 bedeutet nicht partiell, 1 bedeutet eingeschränkte/partielle Evidenz. NULL-Default erlaubt Auslassen und ist kein Ergebniswert. Empfang erfordert eine passende OUTPUT-Bindung; Hilfe-RETURN lässt sie unverändert. |
+| `@ErrorNumberOut` | `int OUTPUT` | `NULL` | Bei regulärem Abschluss bleibt die technische Fehlernummer in dieser Implementierung NULL. Fehler einzelner Quellen werden als Fach-/Quellenzeilen dokumentiert und nicht in diesen Empfänger kopiert. Optionale OUTPUT-Bindung an eine Variable des deklarierten Typs; ohne Empfang kann das Argument entfallen. @Hilfe=1 weist den Wert nicht zu und erhält einen anfänglichen NULL- oder anderen Empfängerwert. |
+| `@ErrorMessageOut` | `nvarchar(2048) OUTPUT` | `NULL` | Bei regulärem Abschluss eine Meldung bei ungültigen Parametern; sonst NULL. Fehler einzelner Datenbankquellen stehen in den Inventarzeilen, ohne automatische Übernahme. Optionale OUTPUT-Bindung an eine Variable des deklarierten Typs; ohne Empfang kann das Argument entfallen. @Hilfe=1 weist den Wert nicht zu und erhält einen anfänglichen NULL- oder anderen Empfängerwert. |
+
+### RAW-Ausgabe
+
+```sql
+EXEC [monitor].[USP_SystemDatabaseObjectInventory] @ResultSetArt='RAW', @MaxZeilen=100;
+```
+
+### JSON-Ausgabe
+
+```sql
+DECLARE @Json nvarchar(max); EXEC [monitor].[USP_SystemDatabaseObjectInventory] @ResultSetArt='NONE', @JsonErzeugen=1, @Json=@Json OUTPUT; SELECT @Json AS [Json];
+```
+
+### TABLE-Ausgabe
+
+```sql
+CREATE TABLE [#SystemDatabaseObjectInventory_HelpExample] ([Seed] int NULL);
+DECLARE @ResultTablesJson nvarchar(max)=N'{"systemDatabaseObjects":"#SystemDatabaseObjectInventory_HelpExample"}';
+BEGIN TRY
+    EXEC [monitor].[USP_SystemDatabaseObjectInventory] @ResultSetArt='TABLE', @ResultTablesJson=@ResultTablesJson;
+    SELECT * FROM [#SystemDatabaseObjectInventory_HelpExample];
+    DROP TABLE IF EXISTS [#SystemDatabaseObjectInventory_HelpExample];
+END TRY
+BEGIN CATCH
+    DROP TABLE IF EXISTS [#SystemDatabaseObjectInventory_HelpExample];
+    THROW;
+END CATCH;
+```
+
+### Eingebaute Hilfe
+
+```sql
+EXEC [monitor].[USP_SystemDatabaseObjectInventory] @Hilfe=1;
+```
+
 ## Resultsets und Leserichtung
 
 CONSOLE zeigt `systemDatabaseObjects`. RAW liefert den Modulstatus und danach das begrenzte Inventar. TABLE und JSON verwenden dieselbe begrenzte Mitgliedschaft. RAW-Inventar und JSON sind nach DatabaseName, SchemaName und ObjectName geordnet; CONSOLE und TABLE garantieren keine physische Zeilenreihenfolge. Lesen Sie `DatabaseName`, `SchemaName`, `ObjectName`, `ObjectType`, `StatusCode` und `EvidenceLimit` zuerst. `CreateDate` und `ModifyDate` sind Katalogzeitpunkte; bei Tabellen und Views kann sich `ModifyDate` auch durch Indexänderungen verändern und ist deshalb kein verlässlicher Deploymentzeitpunkt.
