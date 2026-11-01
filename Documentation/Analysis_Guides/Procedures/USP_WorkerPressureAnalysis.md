@@ -7,7 +7,7 @@
 
 ## Entscheidungsfrage und Einsatz
 
-Die Procedure beantwortet: **Warten Tasks auf einen Worker, warten bereits gebundene Worker auf CPU oder ist im kurzen Sample keine solche Queue sichtbar?** Dafür werden sichtbare Online-Scheduler zweimal beobachtet, Worker sofort je Scheduler aggregiert und `THREADPOOL`, Blocking sowie begrenzte laufende Requests als gleichzeitiger Kontext ergänzt. SQL-, Plan-, Login-, Host- und Programmnamen werden nicht gelesen.
+Die Procedure beantwortet: **Warten Tasks auf einen Worker, warten bereits gebundene Worker auf CPU oder ist im kurzen Sample keine solche Queue sichtbar?** Bei positivem `@SampleSeconds` werden sichtbare Online-Scheduler zweimal beobachtet; bei 0 bleibt es bei einer Aufnahme ohne Deltas. Worker werden sofort je Scheduler aggregiert; `THREADPOOL`, Blocking sowie begrenzte laufende Requests ergänzen den Kontext am Sampleende. SQL-, Plan-, Login-, Host- und Programmnamen werden nicht gelesen.
 
 Die Trennung ist zentral: `work_queue_count` beschreibt Tasks, die auf einen Worker warten. `runnable_tasks_count` beschreibt Worker mit gebundener Task, die auf Schedulerzeit warten. Ein positiver Runnable-Wert ist deshalb CPU-Kontext und kein Beleg für Worker-Erschöpfung. Das Summary priorisiert sichtbare Worker-Queues und `THREADPOOL`; es empfiehlt niemals automatisch, `max worker threads` zu ändern.
 
@@ -27,7 +27,70 @@ EXEC [monitor].[USP_WorkerPressureAnalysis]
       @ResultSetArt = 'CONSOLE';
 ```
 
-Für einen synthetisch leeren Requestkontext kann `@MinRequestElapsedMs = 2147483647` verwendet werden. Vermeiden Sie mehrere parallele Sampler. Variieren Sie den Zeitraum erst bei wiederholter Queue-Evidenz und korrelieren Sie anschließend unabhängige CPU-, Wait- und Requestdaten.
+`@MinRequestElapsedMs = 2147483647` begrenzt die Aufnahme allein über die Laufzeit; `THREADPOOL`- und blockierte Requests bleiben unabhängig davon enthalten. Ein leerer Requestkontext ist damit nicht garantiert. Vermeiden Sie mehrere parallele Sampler. Variieren Sie den Zeitraum erst bei wiederholter Queue-Evidenz und korrelieren Sie anschließend unabhängige CPU-, Wait- und Requestdaten.
+
+## Parameter und weitere Aufrufbeispiele
+
+| Parameter | Datentyp | Default | Eingabeform und Wirkung |
+|---|---|---|---|
+| `@SampleSeconds` | `tinyint` | `1` | Legt das Scheduler-Sample in Sekunden fest. Zulässig sind 0 bis 60. 0 verwendet eine Scheduleraufnahme und liefert keine Deltas; 1 bis 60 warten für die angegebene Dauer zwischen zwei Scheduleraufnahmen und berechnen daraus Deltas. Worker-, Wait- und Requestdaten bleiben Snapshots am Sampleende. NULL ist ungültig. |
+| `@MinRequestElapsedMs` | `int` | `5000` | Schließt aktuelle Requests ab dieser Laufzeit in Millisekunden in den Requestkontext ein. Zulässig sind 0 bis 2.147.483.647; 0 nimmt alle aktuellen Requests auf, sofern sie nicht bereits wegen THREADPOOL oder Blocking erfasst werden. THREADPOOL- und blockierte Requests werden unabhängig von diesem Mindestwert berücksichtigt. Der Wert begrenzt weder die Sampledauer noch die Gesamtzahl der Serverrequests. NULL ist ungültig. |
+| `@MaxZeilen` | `int` | `1000` | Begrenzt nur die ausgegebenen Requestzeilen, nicht Scheduler, Waits oder andere Gruppen. Ein positiver Wert ist die Höchstzahl; 0 oder NULL bedeutet unbegrenzt. Negative Werte sind ungültig. Für Werte von 1 bis 2.147.483.646 werden höchstens eine zusätzliche Requestzeile als Kürzungssentinel materialisiert und danach entfernt; die Ausgabe priorisiert THREADPOOL, danach blockierte Requests, danach lange Requests und sortiert innerhalb der Gruppen nach Laufzeit absteigend. Bei 2.147.483.647 gilt die Integer-Obergrenze; es wird keine zusätzliche Sentinelzeile angefordert. Der Statusdatensatz weist eine erkannte Kürzung über HasMoreRequestRows aus. |
+| `@ResultSetArt` | `varchar(16)` | `'CONSOLE'` | Wählt die Resultsetausgabe. Nach Entfernen führender und nachfolgender Leerzeichen und Umwandlung in Großbuchstaben sind genau CONSOLE, RAW, TABLE und NONE zulässig. CONSOLE liefert eine beschriftete Summary-Ansicht. RAW liefert sieben getrennte Resultsets in der Reihenfolge moduleStatus, summary, schedulers, waits, requests, sourceStatus, warnings. TABLE schreibt nur die in @ResultTablesJson gemappten Gruppen in bereits vorhandene lokale #Temp-Tabellen. NONE erzeugt keine regulären Resultsets. NULL, Leertext und andere Werte sind ungültig. @JsonErzeugen steuert unabhängig davon die JSON-OUTPUT-Ausgabe. |
+| `@ResultTablesJson` | `nvarchar(max)` | `NULL` | Enthält eine TABLE-Zuordnung als JSON-Objekt, etwa {"summary":"#WorkerSummary"}. Erlaubte Namen: moduleStatus, summary, schedulers, waits, requests, sourceStatus, warnings. Ziele müssen vorhandene leere lokale #Temp-Tabellen mit genau einer Seed-Spalte sein; globale Tabellen, reservierte #Monitor-Namen, unbekannte Namen sowie doppelte Zuordnungen oder Ziele werden abgewiesen. Außerhalb von TABLE akzeptiert die Validierung NULL, leeren Text oder nur U+0020-Leerzeichen; jeder andere nichtleere Wert ist ungültig. In TABLE muss der gemeinsame Preflight ein gültiges nichtleeres Mapping und passende Seed-Tabellen validieren. Zielnamen sind höchstens 116 Zeichen lang. Der Preflight prüft die Zuordnung und Ziele; der spätere Writer ersetzt die Seed-Spalte durch das Ergebnisschema. Die Gruppen bedeuten: moduleStatus Modulstatus, summary Zusammenfassung, schedulers Schedulerwerte, waits Wartegruppen, requests Requestkontext, sourceStatus Quellenstatus, warnings Warnungen. |
+| `@JsonErzeugen` | `bit` | `0` | 0 lässt @Json NULL; 1 erzeugt das JSON-Dokument unabhängig von @ResultSetArt. NULL ist ungültig. Die Eingabe wird auf bit konvertiert: numerische 0 ergibt 0, von 0 verschiedene numerische Werte ergeben 1. Das Dokument enthält meta, summary, schedulers, waits, requests, sourceStatus und warnings; requests folgt dem Zeilenlimit. |
+| `@Json` | `nvarchar(max) OUTPUT` | `NULL` | OUTPUT-Parameter für das optionale JSON-Dokument. Wird am Eintritt auf NULL gesetzt und nur bei @JsonErzeugen=1 befüllt. Ein gebundener Variablenwert kann mit OUTPUT empfangen werden; das Argument darf ausgelassen werden, wenn kein JSON benötigt wird. |
+| `@PrintMeldungen` | `bit` | `1` | Steuert nur die Zusatzmeldung mit RAISERROR-Schweregrad 10 und NOWAIT bei einem Status ungleich AVAILABLE. 0 unterdrückt die Meldung, 1 gibt sie aus; Resultsets und OUTPUT-Werte bleiben unabhängig. NULL ist ungültig. Die Eingabe wird auf bit konvertiert: numerische 0 ergibt 0, von 0 verschiedene numerische Werte ergeben 1. |
+| `@Hilfe` | `bit` | `0` | Bei 1 wird die PRINT-Hilfe ausgegeben und vor Validierung sowie Fachabfragen zurückgekehrt. @Json ist zu diesem Zeitpunkt NULL; Status-OUTPUT-Parameter werden nicht zugewiesen. Bei 0 oder NULL läuft die normale Analyse. Die Eingabe wird auf bit konvertiert: numerische 0 ergibt 0, von 0 verschiedene numerische Werte ergeben 1. |
+| `@StatusCodeOut` | `varchar(40) OUTPUT` | `NULL` | OUTPUT-Status im normalen Analysepfad: AVAILABLE bedeutet keine Teilquellenwarnung; AVAILABLE_LIMITED kennzeichnet mindestens eine eingeschränkte Quelle; INVALID_PARAMETER bezeichnet ungültige Parameter; DENIED_PERMISSION meldet verweigerte Schedulerquelle; TIMEOUT meldet ein Scheduler-Timeout; ERROR_HANDLED meldet einen sonstigen abgefangenen Schedulerfehler. Fehler der Worker-, Wait- und Requestquellen werden als Teilstatus/Warnungen aggregiert und ergeben typischerweise AVAILABLE_LIMITED. Im Hilfe-Pfad erfolgt keine Zuweisung. Das OUTPUT-Argument kann ausgelassen werden, wenn der Status nicht empfangen werden soll. |
+| `@IsPartialOut` | `bit OUTPUT` | `NULL` | OUTPUT-Bit: 0 für AVAILABLE, 1 bei AVAILABLE_LIMITED oder Fehlerstatus. Im Hilfe-Pfad erfolgt keine Zuweisung; ein gebundener NULL-Eingang bleibt NULL, ein anderer Anfangswert unverändert. Das OUTPUT-Argument kann ausgelassen werden, wenn der Wert nicht empfangen werden soll. |
+| `@ErrorNumberOut` | `int OUTPUT` | `NULL` | OUTPUT-Fehlernummer, sofern für eine maßgebliche Warnung oder einen Schedulerfehler verfügbar, sonst NULL. Im Hilfe-Pfad erfolgt keine Zuweisung; ein gebundener Anfangswert bleibt erhalten. Das OUTPUT-Argument kann ausgelassen werden, wenn der Wert nicht empfangen werden soll. |
+| `@ErrorMessageOut` | `nvarchar(2048) OUTPUT` | `NULL` | OUTPUT-Fehler- oder Hinweismeldung, sofern vorhanden, sonst NULL. Im Hilfe-Pfad erfolgt keine Zuweisung; ein gebundener Anfangswert bleibt erhalten. Das OUTPUT-Argument kann ausgelassen werden, wenn der Wert nicht empfangen werden soll. |
+
+### RAW-Resultsets
+
+```sql
+EXEC [monitor].[USP_WorkerPressureAnalysis]
+      @SampleSeconds=0
+    , @ResultSetArt='RAW';
+```
+
+### JSON ohne reguläre Resultsets
+
+```sql
+DECLARE @WorkerJson nvarchar(max);
+EXEC [monitor].[USP_WorkerPressureAnalysis]
+      @SampleSeconds=0
+    , @ResultSetArt='NONE'
+    , @JsonErzeugen=1
+    , @Json=@WorkerJson OUTPUT;
+SELECT @WorkerJson AS [WorkerPressureAnalysisJson];
+```
+
+### TABLE in eine lokale Temp-Tabelle
+
+```sql
+CREATE TABLE #WorkerPressureAnalysis_HelpExample (Seed int NULL);
+DECLARE @WorkerTableMap nvarchar(max)=N'{"summary":"#WorkerPressureAnalysis_HelpExample"}';
+BEGIN TRY
+    EXEC [monitor].[USP_WorkerPressureAnalysis]
+          @SampleSeconds=0
+        , @ResultSetArt='TABLE'
+        , @ResultTablesJson=@WorkerTableMap;
+    SELECT * FROM #WorkerPressureAnalysis_HelpExample;
+    DROP TABLE IF EXISTS #WorkerPressureAnalysis_HelpExample;
+END TRY
+BEGIN CATCH
+    DROP TABLE IF EXISTS #WorkerPressureAnalysis_HelpExample;
+    THROW;
+END CATCH;
+```
+
+### Eingebaute Hilfe
+
+```sql
+EXEC [monitor].[USP_WorkerPressureAnalysis] @Hilfe=1;
+```
 
 ## Resultsets und Leserichtung
 
