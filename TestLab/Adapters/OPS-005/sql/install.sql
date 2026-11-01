@@ -52577,7 +52577,34 @@ BEGIN
     BEGIN
         PRINT N'monitor.USP_DatabasePortabilityAnalysis';
         PRINT N'Inventarisiert persistierte Edition-Features und uncontained dependencies sichtbarer Datenbanken.';
-        PRINT N'Es wird keine DDL erzeugt oder ausgeführt. @ResultSetArt=CONSOLE|RAW|NONE.';
+        PRINT N'@DatabaseNames nvarchar(max); Default: NULL. Bracket-aware Pipe-Liste expliziter, einteiliger Datenbanknamen. NULL, leer oder nur U+0020-Leerzeichen wählt alle online befindlichen, zugänglichen Benutzerdatenbanken (database_id>4). Ungültige/duplizierte Namen oder keine gültigen Namen ergeben INVALID_PARAMETER. Abgleich ist case-sensitiv unter SQL_Latin1_General_CP1_CS_AS; Systemdatenbanken sind ausgeschlossen. Sind alle explizit angeforderten Namen offline/unsichtbar, Status NOT_FOUND; bei teilweise fehlendem Scope AVAILABLE_LIMITED. Der Trenner | wirkt außerhalb eckiger Klammern; ]] maskiert eine schließende Klammer. Äußere U+0020-Leerzeichen je Element werden entfernt. Leere Listenelemente sind ungültig; ein rohes Element ist auf 4.000 Zeichen und der ausgewertete Namensbestandteil auf 128 Zeichen begrenzt.';
+        PRINT N'@MaxZeilen int; Default: 2000. Positive Werte von 1 bis 2.147.483.647 begrenzen ausschließlich RAW- und JSON-Evidenzzeilen, sortiert nach DatabaseName, EvidenceType und FeatureName. 0 und NULL verwenden dort die technische Höchstgrenze 2.147.483.647 und bedeuten praktisch unbegrenzt. CONSOLE und TABLE übernehmen die gesamte materialisierte Evidenzmenge ohne dieses Limit; Status und Zählkopf beziehen sich ebenfalls auf die Vollmenge. Die Grenze reduziert die Quellabfragen nicht. Negative Werte sind ungültig, setzen INVALID_PARAMETER/IsPartial=1 und überspringen Quellenabfragen; RAW/JSON liefern dann eine leere Evidenzmenge mit sicherer TOP-Grenze 0.';
+        PRINT N'@ResultSetArt varchar(16); Default: ''CONSOLE''. Wählt CONSOLE (beschriftete Fachansicht mit Leeranzeige), RAW (Status/Zählkopf und rohe Zeilen), TABLE (benannte Tabellenausgabe) oder NONE (keine Zeilenresultsets). Äußere Leerzeichen werden entfernt und Groß-/Kleinschreibung ignoriert. TABLE und CONSOLE werden intern im NONE-Pfad gerendert. Ungültige Werte sowie NULL/leer ergeben INVALID_PARAMETER.';
+        PRINT N'@ResultTablesJson nvarchar(max); Default: NULL. Nur bei ResultSetArt=TABLE ausgewertetes JSON-Objekt mit genau einem Schlüssel portability und dem Zielnamen. Das Ziel muss eine bereits vorhandene, leere lokale #Temp-Tabelle mit genau einer Seed-/Platzhalterspalte sein. NULL/leer reicht im TABLE-Pfad nicht. Außerhalb TABLE wird nur ein nichtleerer Wert mit Fehler 51011 abgewiesen; NULL oder U+0020-Leerzeichen wird ignoriert. Preflight validiert das Ziel vor dem Schreiben. Der Schlüssel ist case-sensitiv. Zielnamen dürfen höchstens 116 Zeichen haben; globale ##Tabellen und das ohne Beachtung der Groß-/Kleinschreibung reservierte Präfix #Monitor sind unzulässig. Der Preflight prüft Form und leere Seed-Tabelle; erst der Writer ersetzt die Seed-Spalte durch das Ergebnisschema.';
+        PRINT N'@JsonErzeugen bit; Default: 0. 0 lässt @Json NULL; 1 erzeugt nach DatabaseName, EvidenceType und FeatureName sortiertes Array mit derselben TOP-Grenze wie die Zeilenausgabe. NULL aktiviert IF nicht; leer wird []. Bei der SQL-Konvertierung nach bit ergibt numerische 0 den Wert 0; von 0 verschiedene numerische Werte ergeben 1.';
+        PRINT N'@Json nvarchar(max) OUTPUT; Default: NULL. Optionaler OUTPUT-Empfänger für ein JSON-Array der Fachzeilen. Am Eintritt wird @Json auch vor @Hilfe=1 auf NULL gesetzt; nur @JsonErzeugen=1 erzeugt danach das Array, bei leerer Fachmenge []. Zum Empfangen eine nvarchar(max)-Variable mit OUTPUT binden; das Argument kann ausgelassen werden. Ein anfänglicher NULL- oder anderer Variablenwert wird überschrieben.';
+        PRINT N'@PrintMeldungen bit; Default: 1. 0 unterdrückt die Status-PRINT-Meldung; Nicht-NULL-Bitwerte ungleich 0 aktivieren sie. NULL aktiviert sie nicht. Die Statusmeldung erscheint bei den vom Aufrufer gewählten Modi NONE, CONSOLE und TABLE; diese beiden Ansichtsmodi werden intern auf NONE normalisiert. RAW erzeugt diese Statusmeldung nicht. @Hilfe=1 kehrt vor dieser Meldung zurück. Bei der SQL-Konvertierung nach bit ergibt numerische 0 den Wert 0; von 0 verschiedene numerische Werte ergeben 1.';
+        PRINT N'@Hilfe bit; Default: 0. 0 führt die Analyse aus; jeder Nicht-NULL-Wert ungleich 0 druckt die Hilfe und beendet den Aufruf früh. NULL startet die Hilfe nicht. Der RETURN erfolgt vor Analyse und OUTPUT-Zuweisungen, daher bleiben gebundene OUTPUT-Empfänger unverändert. Bei der SQL-Konvertierung nach bit ergibt numerische 0 den Wert 0; von 0 verschiedene numerische Werte ergeben 1.';
+        PRINT N'@StatusCodeOut varchar(40) OUTPUT; Default: NULL. OUTPUT-Empfänger für den in diesem Modul ermittelten Gesamtstatus. Im regulären Aufruf werden AVAILABLE (Quellen liefen), AVAILABLE_EMPTY (beide Evidenzquellen lieferten keine Zeile), AVAILABLE_LIMITED (mindestens eine Quelle/Datenbank eingeschränkt), NOT_FOUND (alle explizit genannten Benutzerdatenbanken offline oder unsichtbar) oder INVALID_PARAMETER (ungültige Zeilengrenze, Ausgabeart oder Namensliste) zurückgegeben. Die einzelnen Quellenzeilen haben zusätzlich AVAILABLE oder SOURCE_STATUS mit DENIED_PERMISSION, UNSUPPORTED_SOURCE, LOCK_TIMEOUT oder SOURCE_UNAVAILABLE. NULL-Default erlaubt das Auslassen des Arguments; um den Wert zu empfangen, muss eine kompatible Variable ausdrücklich mit OUTPUT gebunden werden. Im Hilfezweig bleibt ein gebundener Empfänger wegen des frühen RETURN unverändert.';
+        PRINT N'@IsPartialOut bit OUTPUT; Default: NULL. Optionale OUTPUT-Variable: 0 bedeutet nicht partiell, 1 bedeutet eingeschränkte/partielle Evidenz. NULL-Default erlaubt Auslassen und ist kein Ergebniswert. Empfang erfordert eine passende OUTPUT-Bindung; Hilfe-RETURN lässt sie unverändert.';
+        PRINT N'@ErrorNumberOut int OUTPUT; Default: NULL. Bei regulärem Abschluss bleibt die technische Fehlernummer in dieser Implementierung NULL. Fehler einzelner Quellen werden als Fach-/Quellenzeilen dokumentiert und nicht in diesen Empfänger kopiert. Optionale OUTPUT-Bindung an eine Variable des deklarierten Typs; ohne Empfang kann das Argument entfallen. @Hilfe=1 weist den Wert nicht zu und erhält einen anfänglichen NULL- oder anderen Empfängerwert.';
+        PRINT N'@ErrorMessageOut nvarchar(2048) OUTPUT; Default: NULL. Bei regulärem Abschluss eine Meldung zu ungültigen Eingaben oder nicht verfügbaren angeforderten Datenbanken; sonst NULL. Einzelne Quellenfehler stehen in den Evidenzzeilen, ohne automatische Übernahme in diesen Parameter. Optionale OUTPUT-Bindung an eine Variable des deklarierten Typs; ohne Empfang kann das Argument entfallen. @Hilfe=1 weist den Wert nicht zu und erhält einen anfänglichen NULL- oder anderen Empfängerwert.';
+        PRINT N'EXEC [monitor].[USP_DatabasePortabilityAnalysis] @ResultSetArt=''RAW'', @MaxZeilen=100;';
+        PRINT N'DECLARE @Json nvarchar(max); EXEC [monitor].[USP_DatabasePortabilityAnalysis] @ResultSetArt=''NONE'', @JsonErzeugen=1, @Json=@Json OUTPUT; SELECT @Json AS [Json];';
+        PRINT N'CREATE TABLE [#DatabasePortabilityAnalysis_HelpExample] ([Seed] int NULL);
+DECLARE @ResultTablesJson nvarchar(max)=N''{"portability":"#DatabasePortabilityAnalysis_HelpExample"}'';
+BEGIN TRY
+    EXEC [monitor].[USP_DatabasePortabilityAnalysis] @ResultSetArt=''TABLE'', @ResultTablesJson=@ResultTablesJson;
+    SELECT * FROM [#DatabasePortabilityAnalysis_HelpExample];
+    DROP TABLE IF EXISTS [#DatabasePortabilityAnalysis_HelpExample];
+END TRY
+BEGIN CATCH
+    DROP TABLE IF EXISTS [#DatabasePortabilityAnalysis_HelpExample];
+    THROW;
+END CATCH;';
+        PRINT N'EXEC [monitor].[USP_DatabasePortabilityAnalysis] @Hilfe=1;';
+
+
         RETURN;
     END;
     DECLARE @PreviousLockTimeout int=@@LOCK_TIMEOUT,@RestoreLockTimeoutSql nvarchar(100); SET LOCK_TIMEOUT 0;
@@ -52720,13 +52747,13 @@ FROM ' + QUOTENAME(@Db) + N'.[sys].[dm_db_uncontained_entities];';
     END;
 
     IF @JsonErzeugen=1
-        SELECT @Json=COALESCE((SELECT TOP (CASE WHEN @MaxZeilen=0 THEN 2147483647 ELSE @MaxZeilen END) *
+        SELECT @Json=COALESCE((SELECT TOP (CASE WHEN @MaxZeilen<0 THEN 0 WHEN COALESCE(@MaxZeilen,0)=0 THEN 2147483647 ELSE @MaxZeilen END) *
                       FROM [#DatabasePortabilityAnalysis_Portability] ORDER BY [DatabaseName],[EvidenceType],[FeatureName] FOR JSON PATH),N'[]');
     IF @Mode IN('CONSOLE','RAW')
     BEGIN
         SELECT @Status AS [StatusCode],@Partial AS [IsPartial],COUNT_BIG(*) AS [EvidenceRows],
                @ErrorMessage AS [ErrorMessage] FROM [#DatabasePortabilityAnalysis_Portability];
-        SELECT TOP (CASE WHEN @MaxZeilen=0 THEN 2147483647 ELSE @MaxZeilen END) *
+        SELECT TOP (CASE WHEN @MaxZeilen<0 THEN 0 WHEN COALESCE(@MaxZeilen,0)=0 THEN 2147483647 ELSE @MaxZeilen END) *
         FROM [#DatabasePortabilityAnalysis_Portability] ORDER BY [DatabaseName],[EvidenceType],[FeatureName];
     END;
     IF @PrintMeldungen=1 AND @Mode='NONE' PRINT CONCAT(N'Status: ',@Status);
@@ -52758,15 +52785,42 @@ BEGIN
     DECLARE @Status varchar(40)='AVAILABLE',@Partial bit=0,@Mode varchar(16)=UPPER(LTRIM(RTRIM(COALESCE(@ResultSetArt,''))));
     DECLARE @ErrorNumber int=NULL,@ErrorMessage nvarchar(2048)=NULL;
     IF @Hilfe=1 BEGIN
-        PRINT N'monitor.USP_MsdbHealthAnalysis inventarisiert msdb-Dateigröße und sichtbare Aggregate ausgewählter Backup-, Restore-, Agent-, Database-Mail- und Maintenance-Plan-Quellen. Es ändert oder löscht keine Daten.';
+        PRINT N'monitor.USP_MsdbHealthAnalysis';
+        PRINT N'inventarisiert msdb-Dateigröße und sichtbare Aggregate ausgewählter Backup-, Restore-, Agent-, Database-Mail- und Maintenance-Plan-Quellen. Es ändert oder löscht keine Daten.';
         PRINT N'Die Auswertung zählt Quellzeilen und ermittelt verfügbare Zeitgrenzen; Agent-Historienzeilen erhalten keine Zeitgrenzen. Sie belegt weder fachlich richtige Retention noch Restorefähigkeit, Jobausführung, Mailzustellung, freien Speicher oder nötige Dateiverkleinerung. Große Aggregate können I/O verursachen. @MaxZeilen begrenzt die Ausgabe, nicht die Quellaggregation. Quellenfehler können partielle Evidenz ergeben.';
-        PRINT N'@MaxZeilen int=2000: NULL oder 0 gibt alle Quellenzeilen aus, positive Werte begrenzen, negative Werte sind ungültig. @ResultSetArt varchar(16)=CONSOLE: CONSOLE, RAW, TABLE oder NONE; Steuerwert ohne Beachtung der Groß-/Kleinschreibung. @ResultTablesJson nvarchar(max)=NULL: nur für TABLE, Schlüssel msdbHealth; Ziel muss eine vorhandene leere lokale #Temp-Tabelle mit genau einer Platzhalterspalte sein. @JsonErzeugen bit=0 (0/1); @Json nvarchar(max)=NULL OUTPUT erhält bei Erzeugung das Quellenarray.';
-        PRINT N'@PrintMeldungen bit=1 (0/1) steuert die Status-PRINT-Meldung. @Hilfe bit=0 (0/1) zeigt diese Hilfe und beendet den Aufruf. @StatusCodeOut varchar(40)=NULL OUTPUT, @IsPartialOut bit=NULL OUTPUT, @ErrorNumberOut int=NULL OUTPUT und @ErrorMessageOut nvarchar(2048)=NULL OUTPUT sind optionale technische Ausgaben; NULL-Defaults erlauben Auslassung.';
-        PRINT N'CONSOLE-Beispiel:';
-        PRINT N'EXEC [monitor].[USP_MsdbHealthAnalysis] @MaxZeilen=200, @ResultSetArt=''CONSOLE'';';
-        PRINT N'TABLE-Beispiel; Ziel vorher leer anlegen, modulpräfixierter eindeutiger Name bis 116 Zeichen:';
-        PRINT N'CREATE TABLE [#MsdbHealthAnalysis_Help_Result] ([Placeholder] int NULL);';
-        PRINT N'EXEC [monitor].[USP_MsdbHealthAnalysis] @ResultSetArt=''TABLE'', @ResultTablesJson=N''{"msdbHealth":"#MsdbHealthAnalysis_Help_Result"}'';';
+        PRINT N'@MaxZeilen int; Default: 2000. NULL wird vor der Validierung zu 0; 0 bedeutet unbegrenzt. Positive Werte behalten nach Area sortiert die ersten Zeilen. EvidenceRows wird vor dem Kürzen gezählt. Negative Werte ergeben INVALID_PARAMETER und verhindern Quellenaggregation.';
+        PRINT N'@ResultSetArt varchar(16); Default: ''CONSOLE''. Wählt CONSOLE (beschriftete Fachansicht mit Leeranzeige), RAW (Status/Zählkopf und rohe Zeilen), TABLE (benannte Tabellenausgabe) oder NONE (keine Zeilenresultsets). Äußere Leerzeichen werden entfernt und Groß-/Kleinschreibung ignoriert. TABLE und CONSOLE werden intern im NONE-Pfad gerendert. Ungültige Werte sowie NULL/leer ergeben INVALID_PARAMETER.';
+        PRINT N'@ResultTablesJson nvarchar(max); Default: NULL. Nur bei ResultSetArt=TABLE ausgewertetes JSON-Objekt mit genau einem Schlüssel msdbHealth und dem Zielnamen. Das Ziel muss eine bereits vorhandene, leere lokale #Temp-Tabelle mit genau einer Seed-/Platzhalterspalte sein. NULL/leer reicht im TABLE-Pfad nicht. Außerhalb TABLE wird nur ein nichtleerer Wert mit Fehler 51011 abgewiesen; NULL oder U+0020-Leerzeichen wird ignoriert. Preflight validiert das Ziel vor dem Schreiben. Der Schlüssel ist case-sensitiv. Zielnamen dürfen höchstens 116 Zeichen haben; globale ##Tabellen und das ohne Beachtung der Groß-/Kleinschreibung reservierte Präfix #Monitor sind unzulässig. Der Preflight prüft Form und leere Seed-Tabelle; erst der Writer ersetzt die Seed-Spalte durch das Ergebnisschema.';
+        PRINT N'@JsonErzeugen bit; Default: 0. 0 lässt @Json NULL; 1 serialisiert die bereits nach @MaxZeilen gekürzten Zeilen nach Area sortiert. NULL aktiviert IF nicht; leere Menge wird []. Bei der SQL-Konvertierung nach bit ergibt numerische 0 den Wert 0; von 0 verschiedene numerische Werte ergeben 1.';
+        PRINT N'@Json nvarchar(max) OUTPUT; Default: NULL. Optionaler OUTPUT-Empfänger für ein JSON-Array der Fachzeilen. Am Eintritt wird @Json auch vor @Hilfe=1 auf NULL gesetzt; nur @JsonErzeugen=1 erzeugt danach das Array, bei leerer Fachmenge []. Zum Empfangen eine nvarchar(max)-Variable mit OUTPUT binden; das Argument kann ausgelassen werden. Ein anfänglicher NULL- oder anderer Variablenwert wird überschrieben.';
+        PRINT N'@PrintMeldungen bit; Default: 1. 0 unterdrückt die Status-PRINT-Meldung; Nicht-NULL-Bitwerte ungleich 0 aktivieren sie. NULL aktiviert sie nicht. Die Statusmeldung erscheint bei den vom Aufrufer gewählten Modi NONE, CONSOLE und TABLE; diese beiden Ansichtsmodi werden intern auf NONE normalisiert. RAW erzeugt diese Statusmeldung nicht. @Hilfe=1 kehrt vor dieser Meldung zurück. Bei der SQL-Konvertierung nach bit ergibt numerische 0 den Wert 0; von 0 verschiedene numerische Werte ergeben 1.';
+        PRINT N'@Hilfe bit; Default: 0. 0 führt die Analyse aus; jeder Nicht-NULL-Wert ungleich 0 druckt die Hilfe und beendet den Aufruf früh. NULL startet die Hilfe nicht. Der RETURN erfolgt vor Analyse und OUTPUT-Zuweisungen, daher bleiben gebundene OUTPUT-Empfänger unverändert. Bei der SQL-Konvertierung nach bit ergibt numerische 0 den Wert 0; von 0 verschiedene numerische Werte ergeben 1.';
+        PRINT N'@StatusCodeOut varchar(40) OUTPUT; Default: NULL. OUTPUT-Empfänger für den in diesem Modul ermittelten Gesamtstatus. Mögliche Gesamtwerte sind AVAILABLE (Auswertung ohne gemeldete Quellfehler), AVAILABLE_LIMITED (mindestens eine Quelle nicht lesbar), UNSUPPORTED (msdb fehlt) und INVALID_PARAMETER (negative Zeilengrenze oder ungültige Ausgabeart). Evidenzzeilen haben AVAILABLE, UNSUPPORTED (Objekt fehlt) oder SOURCE_UNAVAILABLE. NULL-Default erlaubt das Auslassen des Arguments; um den Wert zu empfangen, muss eine kompatible Variable ausdrücklich mit OUTPUT gebunden werden. Im Hilfezweig bleibt ein gebundener Empfänger wegen des frühen RETURN unverändert.';
+        PRINT N'@IsPartialOut bit OUTPUT; Default: NULL. Optionale OUTPUT-Variable: 0 bedeutet nicht partiell, 1 bedeutet eingeschränkte/partielle Evidenz. NULL-Default erlaubt Auslassen und ist kein Ergebniswert. Empfang erfordert eine passende OUTPUT-Bindung; Hilfe-RETURN lässt sie unverändert.';
+        PRINT N'@ErrorNumberOut int OUTPUT; Default: NULL. Bei regulärem Abschluss bleibt die technische Fehlernummer in dieser Implementierung NULL. Fehler einzelner Quellen werden als Fach-/Quellenzeilen dokumentiert und nicht in diesen Empfänger kopiert. Optionale OUTPUT-Bindung an eine Variable des deklarierten Typs; ohne Empfang kann das Argument entfallen. @Hilfe=1 weist den Wert nicht zu und erhält einen anfänglichen NULL- oder anderen Empfängerwert.';
+        PRINT N'@ErrorMessageOut nvarchar(2048) OUTPUT; Default: NULL. Bei regulärem Abschluss eine Meldung zu ungültigen Parametern oder fehlender msdb; sonst NULL. Fehler einzelner Historienquellen stehen in den Fachzeilen. Optionale OUTPUT-Bindung an eine Variable des deklarierten Typs; ohne Empfang kann das Argument entfallen. @Hilfe=1 weist den Wert nicht zu und erhält einen anfänglichen NULL- oder anderen Empfängerwert.';
+        PRINT N'EXEC [monitor].[USP_MsdbHealthAnalysis] @ResultSetArt=''RAW'', @MaxZeilen=100;';
+        PRINT N'DECLARE @Json nvarchar(max); EXEC [monitor].[USP_MsdbHealthAnalysis] @ResultSetArt=''NONE'', @JsonErzeugen=1, @Json=@Json OUTPUT; SELECT @Json AS [Json];';
+        PRINT N'CREATE TABLE [#MsdbHealthAnalysis_HelpExample] ([Seed] int NULL);
+DECLARE @ResultTablesJson nvarchar(max)=N''{"msdbHealth":"#MsdbHealthAnalysis_HelpExample"}'';
+BEGIN TRY
+    EXEC [monitor].[USP_MsdbHealthAnalysis] @ResultSetArt=''TABLE'', @ResultTablesJson=@ResultTablesJson;
+    SELECT * FROM [#MsdbHealthAnalysis_HelpExample];
+    DROP TABLE IF EXISTS [#MsdbHealthAnalysis_HelpExample];
+END TRY
+BEGIN CATCH
+    DROP TABLE IF EXISTS [#MsdbHealthAnalysis_HelpExample];
+    THROW;
+END CATCH;';
+        PRINT N'EXEC [monitor].[USP_MsdbHealthAnalysis] @Hilfe=1;';
+
+
+
+
+
+
+
+
         RETURN;
     END;
     DECLARE @PreviousLockTimeout int = @@LOCK_TIMEOUT, @RestoreLockTimeoutSql nvarchar(100);
@@ -52875,16 +52929,45 @@ BEGIN
     DECLARE @Status varchar(40)='AVAILABLE',@Partial bit=0,@Mode varchar(16)=UPPER(LTRIM(RTRIM(COALESCE(@ResultSetArt,''))));
     DECLARE @ErrorNumber int=NULL,@ErrorMessage nvarchar(2048)=NULL,@ServerStatusCode varchar(40)=N'SOURCE_UNAVAILABLE';
     IF @Hilfe=1 BEGIN
-        PRINT N'monitor.USP_LinkedServerAnalysis inventarisiert lokal registrierte Linked Server und zeigt kumulative OLEDB-/REMOTE-Waits. Standardmäßig wird keine Remoteverbindung aufgebaut. sp_testlinkedserver läuft je sichtbarem Linked Server nur mit beiden ausdrücklichen Opt-ins @ConnectivityTestEnabled=1 und @HighImpactConfirmed=1.';
+        PRINT N'monitor.USP_LinkedServerAnalysis';
+        PRINT N'inventarisiert lokal registrierte Linked Server und zeigt kumulative OLEDB-/REMOTE-Waits. Standardmäßig wird keine Remoteverbindung aufgebaut. sp_testlinkedserver läuft je sichtbarem Linked Server nur mit beiden ausdrücklichen Opt-ins @ConnectivityTestEnabled=1 und @HighImpactConfirmed=1.';
         PRINT N'Der Test belegt nur den Verbindungsaufbau zum Testzeitpunkt, keine Remoteobjektberechtigung, Abfragelaufzeit oder fachliche Erreichbarkeit. Waitwerte sind kumulativ und keiner Registrierung zugeordnet. @MaxZeilen begrenzt die Inventarzeilen in CONSOLE, RAW, TABLE und JSON auf dieselbe Mitgliedschaft. Die positive Grenze wählt deterministisch nach ServerName; RAW und JSON geben diese Zeilen sortiert aus, CONSOLE und TABLE garantieren keine physische Zeilenreihenfolge. RAW enthält zusätzlich Waitwerte. Status und Remote-Tests beziehen sich weiterhin auf das vollständige Inventar.';
-        PRINT N'@ConnectivityTestEnabled bit=0 und @HighImpactConfirmed bit=0 (je 0/1); beide müssen 1 sein, um Tests zu starten. @MaxZeilen int=2000: NULL und 0 sind unbegrenzt, positive Werte begrenzen CONSOLE, RAW, TABLE und JSON auf dieselben Inventarzeilen; negative Werte setzen INVALID_PARAMETER und liefern keine Inventarzeilen. @ResultSetArt varchar(16)=CONSOLE: CONSOLE, RAW, TABLE oder NONE; Steuerwert ohne Beachtung der Groß-/Kleinschreibung.';
-        PRINT N'@ResultTablesJson nvarchar(max)=NULL: nur TABLE, Schlüssel linkedServers; Ziel vorhandene leere lokale #Temp-Tabelle mit genau einer Platzhalterspalte. @JsonErzeugen bit=0 (0/1); @Json nvarchar(max)=NULL OUTPUT erhält dasselbe gegebenenfalls begrenzte Inventararray wie die Zeilenausgaben. @PrintMeldungen bit=1 und @Hilfe bit=0 (je 0/1); Hilfe zeigt diesen Text und beendet den Aufruf.';
-        PRINT N'@StatusCodeOut varchar(40)=NULL OUTPUT, @IsPartialOut bit=NULL OUTPUT, @ErrorNumberOut int=NULL OUTPUT und @ErrorMessageOut nvarchar(2048)=NULL OUTPUT sind optionale technische Ausgaben; NULL-Defaults erlauben Auslassung. Bei fehlgeschlagenem Remote-Test kann ErrorMessage technische Fehlerdetails enthalten.';
-        PRINT N'CONSOLE-Beispiel, lokales Inventar ohne Remotezugriff:';
-        PRINT N'EXEC [monitor].[USP_LinkedServerAnalysis] @ConnectivityTestEnabled=0, @ResultSetArt=''CONSOLE'';';
-        PRINT N'TABLE-Beispiel; Ziel vorher leer anlegen, modulpräfixierter eindeutiger Name bis 116 Zeichen:';
-        PRINT N'CREATE TABLE [#LinkedServerAnalysis_Help_Result] ([Placeholder] int NULL);';
-        PRINT N'EXEC [monitor].[USP_LinkedServerAnalysis] @ResultSetArt=''TABLE'', @ResultTablesJson=N''{"linkedServers":"#LinkedServerAnalysis_Help_Result"}'';';
+        PRINT N'@ConnectivityTestEnabled bit; Default: 0. 0 führt keinen Remote-Test aus; 1 fordert ihn an und startet ihn nur gemeinsam mit @HighImpactConfirmed=1. NULL ist ungültig und ergibt INVALID_PARAMETER. sp_testlinkedserver läuft für jeden inventarisierten Linked Server. Bei der SQL-Konvertierung nach bit ergibt numerische 0 den Wert 0; von 0 verschiedene numerische Werte ergeben 1.';
+        PRINT N'@HighImpactConfirmed bit; Default: 0. 0 bestätigt den Remotezugriff nicht; 1 bestätigt ihn. NULL ist ungültig. Tests starten nur bei @ConnectivityTestEnabled=1 und diesem Schalter=1. Bei aktivem Test und fehlender Bestätigung lautet der Status AUTHORIZATION_REQUIRED; allein aktiviert dieser Schalter keinen Test. Bei der SQL-Konvertierung nach bit ergibt numerische 0 den Wert 0; von 0 verschiedene numerische Werte ergeben 1.';
+        PRINT N'@MaxZeilen int; Default: 2000. NULL wird zu 0; 0 bedeutet unbegrenzt. Positive Werte wählen nach ServerName sortierte Inventarzeilen für RAW/CONSOLE/TABLE/JSON. Inventarisierung und Remoteprüfungen laufen vollständig vor Begrenzung; Status und LinkedServerCount beziehen sich auf alle Server. Negative Werte ergeben INVALID_PARAMETER und keine begrenzten Zeilen.';
+        PRINT N'@ResultSetArt varchar(16); Default: ''CONSOLE''. Wählt CONSOLE für die beschriftete Linked-Server-Ansicht, RAW für Status, Inventarzeilen und zusätzliche kumulative Waitwerte, TABLE für die benannte Tabellenausgabe oder NONE ohne reguläre Resultsets. Äußere U+0020-Leerzeichen werden entfernt und Groß-/Kleinschreibung normalisiert. JSON enthält nur Linked-Server-Zeilen und wird unabhängig über @JsonErzeugen angefordert. NULL, Leertext oder andere Werte ergeben INVALID_PARAMETER.';
+        PRINT N'@ResultTablesJson nvarchar(max); Default: NULL. Nur bei ResultSetArt=TABLE ausgewertetes JSON-Objekt mit genau einem Schlüssel linkedServers und dem Zielnamen. Das Ziel muss eine bereits vorhandene, leere lokale #Temp-Tabelle mit genau einer Seed-/Platzhalterspalte sein. NULL/leer reicht im TABLE-Pfad nicht. Außerhalb TABLE wird nur ein nichtleerer Wert mit Fehler 51011 abgewiesen; NULL oder U+0020-Leerzeichen wird ignoriert. Preflight validiert das Ziel vor dem Schreiben. Der Schlüssel ist case-sensitiv. Zielnamen dürfen höchstens 116 Zeichen haben; globale ##Tabellen und das ohne Beachtung der Groß-/Kleinschreibung reservierte Präfix #Monitor sind unzulässig. Der Preflight prüft Form und leere Seed-Tabelle; erst der Writer ersetzt die Seed-Spalte durch das Ergebnisschema.';
+        PRINT N'@JsonErzeugen bit; Default: 0. 0 lässt @Json NULL; 1 serialisiert LimitedRows nach ServerName sortiert, also dieselbe begrenzte Auswahl wie die Inventar-Zeilenausgaben. NULL aktiviert IF nicht; leer wird []. Waitwerte sind nicht Teil des JSON-Arrays. Bei der SQL-Konvertierung nach bit ergibt numerische 0 den Wert 0; von 0 verschiedene numerische Werte ergeben 1.';
+        PRINT N'@Json nvarchar(max) OUTPUT; Default: NULL. Optionaler OUTPUT-Empfänger für ein JSON-Array der Fachzeilen. Am Eintritt wird @Json auch vor @Hilfe=1 auf NULL gesetzt; nur @JsonErzeugen=1 erzeugt danach das Array, bei leerer Fachmenge []. Zum Empfangen eine nvarchar(max)-Variable mit OUTPUT binden; das Argument kann ausgelassen werden. Ein anfänglicher NULL- oder anderer Variablenwert wird überschrieben.';
+        PRINT N'@PrintMeldungen bit; Default: 1. 0 unterdrückt die Status-PRINT-Meldung; Nicht-NULL-Bitwerte ungleich 0 aktivieren sie. NULL aktiviert sie nicht. Die Statusmeldung erscheint bei den vom Aufrufer gewählten Modi NONE, CONSOLE und TABLE; diese beiden Ansichtsmodi werden intern auf NONE normalisiert. RAW erzeugt diese Statusmeldung nicht. @Hilfe=1 kehrt vor dieser Meldung zurück. Bei der SQL-Konvertierung nach bit ergibt numerische 0 den Wert 0; von 0 verschiedene numerische Werte ergeben 1.';
+        PRINT N'@Hilfe bit; Default: 0. 0 führt die Analyse aus; jeder Nicht-NULL-Wert ungleich 0 druckt die Hilfe und beendet den Aufruf früh. NULL startet die Hilfe nicht. Der RETURN erfolgt vor Analyse und OUTPUT-Zuweisungen, daher bleiben gebundene OUTPUT-Empfänger unverändert. Bei der SQL-Konvertierung nach bit ergibt numerische 0 den Wert 0; von 0 verschiedene numerische Werte ergeben 1.';
+        PRINT N'@StatusCodeOut varchar(40) OUTPUT; Default: NULL. OUTPUT-Empfänger für den in diesem Modul ermittelten Gesamtstatus. Gesamtwerte: AVAILABLE, AVAILABLE_EMPTY (kein Linked Server), AVAILABLE_LIMITED (Remoteprüfung teilweise fehlgeschlagen), AUTHORIZATION_REQUIRED (Test angefordert, zweites Opt-in fehlt), INVALID_PARAMETER (ungültige Ausgabeart, Zeilengrenze oder NULL-Opt-in). Zeilenstatus: AVAILABLE oder bei Remotefehler DENIED_PERMISSION, SOURCE_TIMEOUT, SOURCE_UNAVAILABLE; ConnectivityStatus ist NOT_EXECUTED, AUTHORIZATION_REQUIRED, SUCCEEDED oder FAILED. NULL-Default erlaubt das Auslassen des Arguments; um den Wert zu empfangen, muss eine kompatible Variable ausdrücklich mit OUTPUT gebunden werden. Im Hilfezweig bleibt ein gebundener Empfänger wegen des frühen RETURN unverändert.';
+        PRINT N'@IsPartialOut bit OUTPUT; Default: NULL. Optionale OUTPUT-Variable: 0 bedeutet nicht partiell, 1 bedeutet eingeschränkte/partielle Evidenz. NULL-Default erlaubt Auslassen und ist kein Ergebniswert. Empfang erfordert eine passende OUTPUT-Bindung; Hilfe-RETURN lässt sie unverändert.';
+        PRINT N'@ErrorNumberOut int OUTPUT; Default: NULL. Bei regulärem Abschluss NULL ohne abgefangenen Remote-Testfehler. Andernfalls enthält der Wert ERROR_NUMBER() des zuletzt abgefangenen Remote-Testfehlers; mehrere Fehler überschreiben den Wert jeweils. Die Einzelzeilen behalten ihre jeweiligen Fehlerhinweise. Optionale OUTPUT-Bindung an eine Variable des deklarierten Typs; ohne Empfang kann das Argument entfallen. @Hilfe=1 weist den Wert nicht zu und erhält einen anfänglichen NULL- oder anderen Empfängerwert.';
+        PRINT N'@ErrorMessageOut nvarchar(2048) OUTPUT; Default: NULL. Bei regulärem Abschluss eine Meldung zu ungültigen Parametern oder fehlender Remote-Testbestätigung. Bei abgefangenen Remote-Testfehlern enthält der Wert die letzte ERROR_MESSAGE(); sonst NULL. Optionale OUTPUT-Bindung an eine Variable des deklarierten Typs; ohne Empfang kann das Argument entfallen. @Hilfe=1 weist den Wert nicht zu und erhält einen anfänglichen NULL- oder anderen Empfängerwert.';
+        PRINT N'EXEC [monitor].[USP_LinkedServerAnalysis] @ResultSetArt=''RAW'', @MaxZeilen=100;';
+        PRINT N'DECLARE @Json nvarchar(max); EXEC [monitor].[USP_LinkedServerAnalysis] @ResultSetArt=''NONE'', @JsonErzeugen=1, @Json=@Json OUTPUT; SELECT @Json AS [Json];';
+        PRINT N'CREATE TABLE [#LinkedServerAnalysis_HelpExample] ([Seed] int NULL);
+DECLARE @ResultTablesJson nvarchar(max)=N''{"linkedServers":"#LinkedServerAnalysis_HelpExample"}'';
+BEGIN TRY
+    EXEC [monitor].[USP_LinkedServerAnalysis] @ResultSetArt=''TABLE'', @ResultTablesJson=@ResultTablesJson;
+    SELECT * FROM [#LinkedServerAnalysis_HelpExample];
+    DROP TABLE IF EXISTS [#LinkedServerAnalysis_HelpExample];
+END TRY
+BEGIN CATCH
+    DROP TABLE IF EXISTS [#LinkedServerAnalysis_HelpExample];
+    THROW;
+END CATCH;';
+        PRINT N'EXEC [monitor].[USP_LinkedServerAnalysis] @Hilfe=1;';
+
+
+
+
+
+
+
+
+
         RETURN;
     END;
     DECLARE @PreviousLockTimeout int = @@LOCK_TIMEOUT, @RestoreLockTimeoutSql nvarchar(100);
@@ -52967,15 +53050,42 @@ BEGIN
  DECLARE @Status varchar(40)='AVAILABLE',@Partial bit=0,@Mode varchar(16)=UPPER(LTRIM(RTRIM(COALESCE(@ResultSetArt,''))));
  DECLARE @ErrorNumber int=NULL,@ErrorMessage nvarchar(2048)=NULL;
  IF @Hilfe=1 BEGIN
-        PRINT N'monitor.USP_SystemDatabaseObjectInventory inventarisiert sichtbare, nicht als Microsoft-Objekte markierte Benutzerobjekte in online befindlichen Datenbanken master, model und msdb. Interne Tabellen und Objekte der Typen S und IT sind ausgeschlossen. Es liest Katalogmetadaten, keine Objektinhalte oder Definitionen, und führt keine DDL aus.';
+        PRINT N'monitor.USP_SystemDatabaseObjectInventory';
+        PRINT N'inventarisiert sichtbare, nicht als Microsoft-Objekte markierte Benutzerobjekte in online befindlichen Datenbanken master, model und msdb. Interne Tabellen und Objekte der Typen S und IT sind ausgeschlossen. Es liest Katalogmetadaten, keine Objektinhalte oder Definitionen, und führt keine DDL aus.';
         PRINT N'Das Inventar hängt vom aktuellen Sicherheitskontext ab; eine leere Ausgabe beweist keine Objektfreiheit. Fehlende Sicht oder Datenbankzugriff kann die Evidenz einschränken. @MaxZeilen begrenzt CONSOLE, RAW, TABLE und JSON auf dieselbe Mitgliedschaft. Die positive Grenze wählt deterministisch nach DatabaseName, SchemaName und ObjectName; RAW und JSON geben diese Zeilen sortiert aus, CONSOLE und TABLE garantieren keine physische Zeilenreihenfolge. Status und Teilsichtbarkeit beziehen sich auf das vollständige Inventar. Die Grenze reduziert den Katalogzugriff nicht.';
-        PRINT N'@MaxZeilen int=2000: NULL und 0 sind unbegrenzt, positive Werte begrenzen CONSOLE, RAW, TABLE und JSON auf dieselben Inventarzeilen; negative Werte setzen INVALID_PARAMETER und liefern keine Inventarzeilen. @ResultSetArt varchar(16)=CONSOLE: CONSOLE, RAW, TABLE oder NONE; Steuerwert ohne Beachtung der Groß-/Kleinschreibung. @ResultTablesJson nvarchar(max)=NULL: nur TABLE, Schlüssel systemDatabaseObjects; Ziel vorhandene leere lokale #Temp-Tabelle mit genau einer Platzhalterspalte.';
-        PRINT N'@JsonErzeugen bit=0 (0/1); @Json nvarchar(max)=NULL OUTPUT erhält das begrenzte Inventararray. @PrintMeldungen bit=1 und @Hilfe bit=0 (je 0/1); Hilfe zeigt diesen Text und beendet den Aufruf. @StatusCodeOut varchar(40)=NULL OUTPUT, @IsPartialOut bit=NULL OUTPUT, @ErrorNumberOut int=NULL OUTPUT und @ErrorMessageOut nvarchar(2048)=NULL OUTPUT sind optionale technische Ausgaben; NULL-Defaults erlauben Auslassung.';
-        PRINT N'CONSOLE-Beispiel:';
-        PRINT N'EXEC [monitor].[USP_SystemDatabaseObjectInventory] @MaxZeilen=200, @ResultSetArt=''CONSOLE'';';
-        PRINT N'TABLE-Beispiel; Ziel vorher leer anlegen, modulpräfixierter eindeutiger Name bis 116 Zeichen:';
-        PRINT N'CREATE TABLE [#SystemDatabaseObjectInventory_Help_Result] ([Placeholder] int NULL);';
-        PRINT N'EXEC [monitor].[USP_SystemDatabaseObjectInventory] @ResultSetArt=''TABLE'', @ResultTablesJson=N''{"systemDatabaseObjects":"#SystemDatabaseObjectInventory_Help_Result"}'';';
+        PRINT N'@MaxZeilen int; Default: 2000. NULL wird zu 0; 0 bedeutet unbegrenzt. Positive Werte behalten nach DatabaseName, SchemaName und ObjectName sortiert die ersten Zeilen. Begrenzung erfolgt nach vollständiger Katalogabfrage und reduziert deren Aufwand nicht; Status/ObjectCount beziehen sich auf den vollen Scope. Negative Werte ergeben INVALID_PARAMETER und keine Inventarzeilen.';
+        PRINT N'@ResultSetArt varchar(16); Default: ''CONSOLE''. Wählt CONSOLE (beschriftete Fachansicht mit Leeranzeige), RAW (Status/Zählkopf und rohe Zeilen), TABLE (benannte Tabellenausgabe) oder NONE (keine Zeilenresultsets). Äußere Leerzeichen werden entfernt und Groß-/Kleinschreibung ignoriert. TABLE und CONSOLE werden intern im NONE-Pfad gerendert. Ungültige Werte sowie NULL/leer ergeben INVALID_PARAMETER.';
+        PRINT N'@ResultTablesJson nvarchar(max); Default: NULL. Nur bei ResultSetArt=TABLE ausgewertetes JSON-Objekt mit genau einem Schlüssel systemDatabaseObjects und dem Zielnamen. Das Ziel muss eine bereits vorhandene, leere lokale #Temp-Tabelle mit genau einer Seed-/Platzhalterspalte sein. NULL/leer reicht im TABLE-Pfad nicht. Außerhalb TABLE wird nur ein nichtleerer Wert mit Fehler 51011 abgewiesen; NULL oder U+0020-Leerzeichen wird ignoriert. Preflight validiert das Ziel vor dem Schreiben. Der Schlüssel ist case-sensitiv. Zielnamen dürfen höchstens 116 Zeichen haben; globale ##Tabellen und das ohne Beachtung der Groß-/Kleinschreibung reservierte Präfix #Monitor sind unzulässig. Der Preflight prüft Form und leere Seed-Tabelle; erst der Writer ersetzt die Seed-Spalte durch das Ergebnisschema.';
+        PRINT N'@JsonErzeugen bit; Default: 0. 0 lässt @Json NULL; 1 serialisiert die nach @MaxZeilen begrenzten LimitedRows sortiert nach den drei Namen. NULL aktiviert IF nicht; leere Auswahl wird []. Bei der SQL-Konvertierung nach bit ergibt numerische 0 den Wert 0; von 0 verschiedene numerische Werte ergeben 1.';
+        PRINT N'@Json nvarchar(max) OUTPUT; Default: NULL. Optionaler OUTPUT-Empfänger für ein JSON-Array der Fachzeilen. Am Eintritt wird @Json auch vor @Hilfe=1 auf NULL gesetzt; nur @JsonErzeugen=1 erzeugt danach das Array, bei leerer Fachmenge []. Zum Empfangen eine nvarchar(max)-Variable mit OUTPUT binden; das Argument kann ausgelassen werden. Ein anfänglicher NULL- oder anderer Variablenwert wird überschrieben.';
+        PRINT N'@PrintMeldungen bit; Default: 1. 0 unterdrückt die Status-PRINT-Meldung; Nicht-NULL-Bitwerte ungleich 0 aktivieren sie. NULL aktiviert sie nicht. Die Statusmeldung erscheint bei den vom Aufrufer gewählten Modi NONE, CONSOLE und TABLE; diese beiden Ansichtsmodi werden intern auf NONE normalisiert. RAW erzeugt diese Statusmeldung nicht. @Hilfe=1 kehrt vor dieser Meldung zurück. Bei der SQL-Konvertierung nach bit ergibt numerische 0 den Wert 0; von 0 verschiedene numerische Werte ergeben 1.';
+        PRINT N'@Hilfe bit; Default: 0. 0 führt die Analyse aus; jeder Nicht-NULL-Wert ungleich 0 druckt die Hilfe und beendet den Aufruf früh. NULL startet die Hilfe nicht. Der RETURN erfolgt vor Analyse und OUTPUT-Zuweisungen, daher bleiben gebundene OUTPUT-Empfänger unverändert. Bei der SQL-Konvertierung nach bit ergibt numerische 0 den Wert 0; von 0 verschiedene numerische Werte ergeben 1.';
+        PRINT N'@StatusCodeOut varchar(40) OUTPUT; Default: NULL. OUTPUT-Empfänger für den in diesem Modul ermittelten Gesamtstatus. Gesamtwerte: AVAILABLE, AVAILABLE_EMPTY (keine sichtbaren Inventarzeilen), AVAILABLE_LIMITED (fehlender Zugriff/Quellenfehler) und INVALID_PARAMETER (negative Grenze oder ungültige Ausgabeart). Zeilenstatus ist AVAILABLE, DENIED_PERMISSION oder SOURCE_UNAVAILABLE. NULL-Default erlaubt das Auslassen des Arguments; um den Wert zu empfangen, muss eine kompatible Variable ausdrücklich mit OUTPUT gebunden werden. Im Hilfezweig bleibt ein gebundener Empfänger wegen des frühen RETURN unverändert.';
+        PRINT N'@IsPartialOut bit OUTPUT; Default: NULL. Optionale OUTPUT-Variable: 0 bedeutet nicht partiell, 1 bedeutet eingeschränkte/partielle Evidenz. NULL-Default erlaubt Auslassen und ist kein Ergebniswert. Empfang erfordert eine passende OUTPUT-Bindung; Hilfe-RETURN lässt sie unverändert.';
+        PRINT N'@ErrorNumberOut int OUTPUT; Default: NULL. Bei regulärem Abschluss bleibt die technische Fehlernummer in dieser Implementierung NULL. Fehler einzelner Quellen werden als Fach-/Quellenzeilen dokumentiert und nicht in diesen Empfänger kopiert. Optionale OUTPUT-Bindung an eine Variable des deklarierten Typs; ohne Empfang kann das Argument entfallen. @Hilfe=1 weist den Wert nicht zu und erhält einen anfänglichen NULL- oder anderen Empfängerwert.';
+        PRINT N'@ErrorMessageOut nvarchar(2048) OUTPUT; Default: NULL. Bei regulärem Abschluss eine Meldung bei ungültigen Parametern; sonst NULL. Fehler einzelner Datenbankquellen stehen in den Inventarzeilen, ohne automatische Übernahme. Optionale OUTPUT-Bindung an eine Variable des deklarierten Typs; ohne Empfang kann das Argument entfallen. @Hilfe=1 weist den Wert nicht zu und erhält einen anfänglichen NULL- oder anderen Empfängerwert.';
+        PRINT N'EXEC [monitor].[USP_SystemDatabaseObjectInventory] @ResultSetArt=''RAW'', @MaxZeilen=100;';
+        PRINT N'DECLARE @Json nvarchar(max); EXEC [monitor].[USP_SystemDatabaseObjectInventory] @ResultSetArt=''NONE'', @JsonErzeugen=1, @Json=@Json OUTPUT; SELECT @Json AS [Json];';
+        PRINT N'CREATE TABLE [#SystemDatabaseObjectInventory_HelpExample] ([Seed] int NULL);
+DECLARE @ResultTablesJson nvarchar(max)=N''{"systemDatabaseObjects":"#SystemDatabaseObjectInventory_HelpExample"}'';
+BEGIN TRY
+    EXEC [monitor].[USP_SystemDatabaseObjectInventory] @ResultSetArt=''TABLE'', @ResultTablesJson=@ResultTablesJson;
+    SELECT * FROM [#SystemDatabaseObjectInventory_HelpExample];
+    DROP TABLE IF EXISTS [#SystemDatabaseObjectInventory_HelpExample];
+END TRY
+BEGIN CATCH
+    DROP TABLE IF EXISTS [#SystemDatabaseObjectInventory_HelpExample];
+    THROW;
+END CATCH;';
+        PRINT N'EXEC [monitor].[USP_SystemDatabaseObjectInventory] @Hilfe=1;';
+
+
+
+
+
+
+
+
         RETURN;
     END;
  DECLARE @PreviousLockTimeout int = @@LOCK_TIMEOUT, @RestoreLockTimeoutSql nvarchar(100);
