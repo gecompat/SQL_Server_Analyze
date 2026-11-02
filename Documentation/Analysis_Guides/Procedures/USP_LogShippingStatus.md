@@ -2,7 +2,7 @@
 
 **Bereich:** Infrastruktur<br>
 **Zweck:** Zeigt Backup-, Copy- und Restorefortschritt von Log Shipping.<br>
-**Beobachtungsart:** Konfigurationssnapshot + retentionbegrenzte Historie<br>
+**Beobachtungsart:** lokaler Konfigurations- und Monitorstatus-Snapshot<br>
 **Kostenklasse:** LOW
 
 ## Entscheidungsfrage und Einsatz
@@ -22,9 +22,35 @@ EXEC [monitor].[USP_LogShippingStatus]
 
 Alle `Example*`-Werte im Aufruf sind synthetisch.
 
+## Parameterverträge
+
+| Parameter | Datentyp | Default | Eingabeform und Wirkung |
+|---|---|---|---|
+| `@MaxZeilen` | `int` | Default: `5000` | Eine positive Grenze ist eine ganze Zeilenzahl von 1 bis 2147483647. Negative Werte setzen `INVALID_PARAMETER`; NULL oder 0 werden als unbegrenzte Obergrenze interpretiert. Ein positiver Wert wird getrennt als TOP-Grenze auf Primary- und Secondary-Resultat angewandt, nicht als gemeinsames Gesamtlimit; nach der jeweiligen Sortierung können später eingeordnete Konfigurationen fehlen. Die Eingabe begrenzt nur die ausgegebenen lokalen Konfigurations-/Monitorzeilen, nicht Backup- oder Jobhistory, da solche Quellen nicht abgefragt werden. Bei ausgelassenem Argument gilt der angegebene Default. |
+| `@ResultSetArt` | `varchar(16)` | Default: `'CONSOLE'` | Nach Trim und Umwandlung in Großbuchstaben sind ausschließlich `CONSOLE`, `RAW`, `TABLE` und `NONE` gültig; NULL und andere Werte erzeugen `INVALID_PARAMETER`. CONSOLE liefert ausschließlich eine formatierte Primary-Ausgabe ohne zusätzliches Modulstatus- oder Secondary-Resultset; bei leerer Primary-Menge erscheint eine verständliche Hinweiszeile, RAW liefert technische Resultsets, TABLE schreibt das registrierte `primary`-Resultset, NONE unterdrückt Resultsets. CONSOLE und TABLE setzen den internen Resultsetpfad zunächst auf NONE und laufen danach über ihren Ausgabeadapter. Diese Auswahl steuert JSON nicht. Bei ausgelassenem Argument gilt der angegebene Default. |
+| `@ResultTablesJson` | `nvarchar(max)` | Default: `NULL` | Bei `TABLE` ist ein nichtleeres JSON-Objekt erforderlich, in der Form {"primary":"#ExampleTarget"}: genau dieser case-sensitive Schlüssel mit einem lokalen Zielnamen als JSON-Stringwert, keine weiteren Eigenschaften. Das Ziel muss leer sein und genau eine Seed-Spalte besitzen. Unbekannte oder doppelte Resultsetnamen, doppelte Ziele, globale/reservierte Ziele, ungültige Namen/Schemas oder fehlende Ziele lösen den TABLE-Preflightfehler 51011 aus. Der Preflight fügt dem Ziel vorübergehend eine Marker-Spalte hinzu und entfernt sie wieder. Außerhalb von TABLE sind NULL und Leer-/Whitespacewerte zulässig; ein nichtleeres Mapping löst 51011 aus. Die Zielnamen dürfen höchstens 116 Zeichen lang sein. Zielnamen-Duplikate werden ohne Beachtung der Groß-/Kleinschreibung geprüft; Resultset-Schlüssel müssen dagegen exakt einschließlich Groß-/Kleinschreibung stimmen. Bei ausgelassenem Argument gilt der angegebene Default. |
+| `@JsonErzeugen` | `bit` | Default: `0` | 1 erzeugt JSON; 0 oder NULL lässt `@Json` nach der initialen Rücksetzung NULL. Das Root-Objekt enthält `meta` (u. a. resultName, schemaVersion, generatedAtUtc, statusCode, isPartial, errorNumber und errorMessage), `primary` und `secondary`. Die JSON-Ausgabe ist unabhängig von der Resultsetart. SQL Server bindet das Argument vor Eintritt an bit: 0 wird 0, ein konvertierbarer numerischer Wert ungleich 0 wird 1. Andere Literalformen unterliegen der SQL-Typkonvertierung; Bindungsfehler treten vor dem Prozedurcode auf. Bei ausgelassenem Argument gilt der angegebene Default. |
+| `@Json` | `nvarchar(max) OUTPUT` | Default: `NULL` | OUTPUT-Empfangsparameter für das erzeugte JSON. Zu Beginn wird er auf NULL gesetzt; nur bei `@JsonErzeugen = 1` weist die Procedure den JSON-Text zu. Die Struktur ist im Vertrag von `@JsonErzeugen` beschrieben. Bei HELP oder deaktivierter JSON-Erzeugung bleibt der Wert NULL. Binden Sie eine nvarchar(max)-Variable mit @Json=@Variable OUTPUT. Ohne OUTPUT-Bindung wird kein Wert an eine aufrufende Variable zurückgegeben. |
+| `@PrintMeldungen` | `bit` | Default: `1` | 1 lässt bei einem behandelten Lesefehler eine Severity-10-Informationsmeldung mit `RAISERROR ... WITH NOWAIT` ausgeben; 0 unterdrückt diese Meldung. NULL wird durch `IF @PrintMeldungen = 1` nicht aktiviert. Der Schalter ändert weder Status noch Resultset-/JSON-Ausgabe. SQL Server bindet das Argument vor Eintritt an bit: 0 wird 0, ein konvertierbarer numerischer Wert ungleich 0 wird 1. Andere Literalformen unterliegen der SQL-Typkonvertierung; Bindungsfehler treten vor dem Prozedurcode auf. Bei ausgelassenem Argument gilt der angegebene Default. |
+| `@Hilfe` | `bit` | Default: `0` | 1 gibt die Hilfe mit PRINT aus und kehrt vor Quellenverfügbarkeitsprüfung, Primary-/Secondary-Abfrage und Resultset-/JSON-Erzeugung zurück; 0 führt den normalen Ablauf aus. NULL aktiviert die Hilfe nicht. Die Prüfung von @ResultTablesJson sowie der TABLE-Zielpreflight liegen vor dem Hilfezweig. Ein ungültiges Mapping kann deshalb auch mit @Hilfe=1 Fehler 51011 auslösen; ein gültiges TABLE-Ziel wird bereits vor dem Hilferücksprung durch temporäres Hinzufügen und Entfernen einer Marker-Spalte geprüft. SQL Server bindet das Argument vor Eintritt an bit: 0 wird 0, ein konvertierbarer numerischer Wert ungleich 0 wird 1. Andere Literalformen unterliegen der SQL-Typkonvertierung; Bindungsfehler treten vor dem Prozedurcode auf. Bei ausgelassenem Argument gilt der angegebene Default. |
+
+## Aufrufbeispiele zu den Parameterverträgen
+
+Die Beispiele verwenden synthetische Namen. Die TABLE-Ziele dürfen vor dem Beispiel noch nicht existieren; sie werden leer mit einer Seed-Spalte angelegt und nach dem Aufruf oder einem Aufruffehler entfernt. Eine positive Zeilengrenze ist kein gemeinsames Gesamtlimit und begrenzt keinen vorherigen Historyscan.
+
+```sql
+EXEC [monitor].[USP_LogShippingStatus] @Hilfe=1;
+
+EXEC [monitor].[USP_LogShippingStatus] @MaxZeilen=100, @ResultSetArt='RAW';
+
+DECLARE @LogShippingJson nvarchar(max); EXEC [monitor].[USP_LogShippingStatus] @MaxZeilen=100, @ResultSetArt='NONE', @JsonErzeugen=1, @Json=@LogShippingJson OUTPUT; SELECT @LogShippingJson AS [Json];
+
+CREATE TABLE #LogShipping_HelpExample ([Seed] int NULL); BEGIN TRY EXEC [monitor].[USP_LogShippingStatus] @MaxZeilen=100, @ResultSetArt='TABLE', @ResultTablesJson=N'{"primary":"#LogShipping_HelpExample"}'; SELECT * FROM #LogShipping_HelpExample; DROP TABLE #LogShipping_HelpExample; END TRY BEGIN CATCH DROP TABLE #LogShipping_HelpExample; THROW; END CATCH;
+```
+
 ## Resultsets und Leserichtung
 
-Der typisierte TABLE-Vertrag registriert `primary`. Status, Scope und Warnings sind vor den Fachergebnissen zu lesen. CONSOLE dient der interaktiven Triage; RAW und JSON erhalten den technischen Kontext, während TABLE nur die ausdrücklich benannten stabilen Resultsets schreibt. Resultsets mit unterschiedlicher Zeilengranularität dürfen nicht ungeprüft vereinigt oder summiert werden.
+RAW liefert zuerst den Modulstatus und anschließend Primary- und Secondary-Zeilen. CONSOLE liefert ausschließlich eine Primary-Ausgabe; bei leerer Menge erscheint eine Hinweiszeile. Der typisierte TABLE-Vertrag exportiert nur `primary`. JSON enthält `meta`, `primary` und `secondary`; eine separate Warningsammlung gibt es nicht. Die beiden fachlichen Mengen besitzen getrennte Zeilengrenzen und dürfen nicht ungeprüft vereinigt werden.
 
 ## Eine Zeile bedeutet
 
@@ -50,9 +76,9 @@ Ein geplanter Restore Delay erzeugt absichtlich Verzögerung.
 
 ## Leere oder partielle Ausgabe
 
-Ein leerer Historypfad kann Retention/Cleanup, deaktivierte Komponente oder falschen Scope bedeuten; er beweist keine erfolgreiche Ausführung.
+Fehlende Primary-/Secondary-Konfigurationen oder Monitorzeilen können eine deaktivierte Komponente, unvollständige Konfiguration oder einen anderen lokalen Scope bedeuten; sie belegen keine erfolgreiche Ausführung.
 
-Für `USP_LogShippingStatus` gilt zusätzlich: **keine Zeile** bedeutet, dass im sichtbaren und gefilterten Scope kein ausgabefähiger Datensatz entstand. **0** ist ein gemessener Nullwert nur dann, wenn die Quellspalte tatsächlich verfügbar war. **NULL** bedeutet unbekannt, nicht anwendbar oder nicht auflösbar. **PARTIAL/Warning** bedeutet, dass mindestens eine Teilquelle, Datenbank oder Detailstufe fehlt. Ein Limit kann eine nichtleere Quelle vollständig aus dem sichtbaren Ausschnitt verdrängen.
+Bei `USP_LogShippingStatus` setzt ein ungültiger Parameter `INVALID_PARAMETER` mit `IsPartial=1`; ein abgefangener Lesefehler ergibt `ERROR_HANDLED` mit `IsPartial=1`. Fehlen erforderliche Log-Shipping-Tabellen, lautet der aktuelle Status dagegen `UNAVAILABLE_FEATURE`, während `IsPartial=0` bleibt. Status, Fehlerangaben und sichtbarer Scope sind daher zusammen zu lesen; das Partialflag allein belegt keine Verfügbarkeit. Es gibt keine separate Warningausgabe und keinen automatischen Kürzungsnachweis.
 
 ## Eigenlast und Grenzen
 
@@ -69,8 +95,8 @@ Für `USP_LogShippingStatus` gilt zusätzlich: **keine Zeile** bedeutet, dass im
 | Begrenzungswirkung | `@MaxZeilen` wird als TOP in Primary- und Secondarypfad getrennt angewandt. Es ist keine gemeinsame Gesamtgrenze und kann relevante später sortierte Konfigurationen ausblenden. |
 | Locking und Nebenwirkungen | Read-only; kurze Schema-Stability-Zugriffe auf msdb/Systemkataloge. Jobs, Backups oder Wartung laufen parallel weiter, daher ist das Ergebnis nicht atomar. |
 | Schutzmechanismus | Kein Gate und kein Datenbankfilter. Das endliche Defaultlimit wird getrennt auf Primary- und Secondary-Monitorzeilen angewandt; der Quellpfad bleibt auf aktuelle lokale Log-Shipping-Konfiguration beschränkt und öffnet keine Job- oder Backuphistorie. |
-| Sicherer Einsatz | Defaultlimit und CONSOLE; bei mehr als 5000 Konfigurationen RAW/JSON-Vollständigkeitsmarker und Sortierung prüfen, bevor das Limit erhöht wird. |
-| Aussagegrenze | Scope- oder Zeilenbegrenzungen können relevante, seltene oder später einsortierte Zeilen ausblenden. Die Aussage bleibt auf das Modell „Konfigurationssnapshot + retentionbegrenzte Historie“, die dokumentierte Granularität und den sichtbaren Quellenscope begrenzt; ein kleines Resultset ist weder automatisch vollständig noch repräsentativ. |
+| Sicherer Einsatz | CONSOLE zeigt nur Primary-Zeilen. RAW und JSON enthalten die getrennt begrenzten Primary-/Secondary-Mengen ohne Vollständigkeitsmarker. Für einen größeren Ausschnitt kann `@MaxZeilen` erhöht oder mit 0 aufgehoben werden; erwarteten Scope und aktuelle Änderungen unabhängig gegenprüfen. |
+| Aussagegrenze | Scope- oder Zeilenbegrenzungen können relevante, seltene oder später einsortierte Zeilen ausblenden. Die Aussage bleibt auf den aktuellen lokalen msdb-Konfigurations-/Monitor-Snapshot, die dokumentierte Granularität und den sichtbaren Quellenscope begrenzt; ein kleines Resultset ist weder automatisch vollständig noch repräsentativ. |
 
 ## Technische Vertiefung
 
@@ -110,7 +136,7 @@ WHERE [p].[primary_database] = N'ExampleDatabase';
 
 ### Zeit- und Scope-Modell
 
-Die Auswertung verwendet Monitor-Metadaten mit eigener Aktualisierungszeit und die Jobhistorie. Zeitabweichungen und veraltete Monitordaten beeinflussen die Interpretation.
+Die Auswertung verwendet aktuelle lokale Konfigurations- und Monitor-Metadaten mit ihren gespeicherten Zeitwerten; sie liest keine Jobhistorie. Zeitabweichungen und veraltete Monitordaten beeinflussen die Interpretation.
 
 ### Bewertung und Gegenprobe
 
