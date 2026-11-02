@@ -161,6 +161,21 @@ EXEC [monitor].[USP_AgentJobs] @NurProblematisch=1, @LongRunningMinutes=60, @Max
 
 Die Procedure vergleicht gespeicherte und effektive Resource-Governor-Konfiguration, Pools, Workload Groups und optionale Sessions.
 
+### Parameter und Aufrufbeispiele
+
+| Parameter | Typ | Default | Eingabe und Wirkung |
+|---|---|---|---|
+| `@MitSessions` | `bit` | `1` | 1 erfasst sichtbare Benutzerprozesse aus sys.dm_exec_sessions und ordnet sie nach GroupId zu. 0 überspringt die Quelle und die Sessionausgabe in RAW und CONSOLE. JSON enthält dann ein leeres sessions-Array. NULL ergibt INVALID_PARAMETER. |
+| `@MaxZeilen` | `int` | `5000` | Eine positive ganze Zahl begrenzt Pools, Workload Groups, tempdbGovernance und Sessions jeweils separat. NULL oder 0 hebt die Grenze auf. Negative Werte ergeben INVALID_PARAMETER. Die Konfigurationszeile bleibt unberührt. Sessions werden vor der Gruppenzuordnung nach CPU-Zeit absteigend und SessionId begrenzt. |
+| `@ResultSetArt` | `varchar(16)` | `'CONSOLE'` | CONSOLE zeigt beschriftete Fachergebnisse. RAW gibt zuerst Status und Metadaten, dann die Daten und Warnungen aus. TABLE schreibt nur zugeordnete Fachergebnisse in lokale Temp-Tabellen. NONE unterdrückt diese Ausgaben. Leerzeichen am Rand werden entfernt und Groß-/Kleinschreibung wird normalisiert. NULL, leere Eingaben und alle anderen Werte ergeben INVALID_PARAMETER. JSON und Statusmeldungen werden separat gesteuert. |
+| `@ResultTablesJson` | `nvarchar(max)` | `NULL` | Bei TABLE ist ein nichtleeres JSON-Objekt erforderlich. Die exakten Schlüssel sind configuration für Konfiguration, resourcePools für Pools, workloadGroups für Gruppen, sessions für Sessions und tempdbGovernance für TempDB-Limits und Laufzeitevidenz. Wählen Sie mindestens einen Schlüssel. Jeder Wert ist der Name einer vorhandenen leeren lokalen #Temp-Tabelle mit genau einer Seed-Spalte. Der Name darf höchstens 116 Zeichen lang sein. ## und #Monitor als Präfix sind unzulässig. Doppelte Schlüssel und Ziele sind unzulässig. Die Vorprüfung erfolgt vor dem Lesen der fachlichen Quellen. Außerhalb von TABLE sind nur NULL, die leere Zeichenfolge und reine Leerzeichen zulässig. |
+| `@JsonErzeugen` | `bit` | `0` | 1 erzeugt das JSON-Dokument unabhängig von @ResultSetArt. 0 lässt @Json auf NULL. NULL ergibt INVALID_PARAMETER. |
+| `@Json` | `nvarchar(max) OUTPUT` | `NULL` | Binden Sie eine nvarchar(max)-Variable mit OUTPUT. Die Procedure setzt den Wert vor Hilfe und Validierung auf NULL. Bei @JsonErzeugen=1 erhält die Variable das Dokument der SchemaVersion 2 mit Metadaten, Konfiguration, Pools, Gruppen, TempDB-Governance, Sessions und Warnungen einschließlich NULL-Feldern. |
+| `@PrintMeldungen` | `bit` | `1` | 1 gibt bei einem Status ungleich AVAILABLE eine informative Meldung mit Schweregrad 10 aus. 0 oder NULL unterdrückt diese Meldung. |
+| `@Hilfe` | `bit` | `0` | 1 zeigt diese Hilfe und beendet den Aufruf vor Validierung, TABLE-Vorprüfung, fachlichen Quellzugriffen und JSON-Erzeugung. 0 oder NULL führt die Analyse aus. |
+
+Der [Procedure-Guide](Procedures/USP_ResourceGovernorAnalysis.md#aufrufbeispiele) enthält Beispiele für Hilfe, RAW, JSON und TABLE.
+
 ### Configuration
 
 `ClassifierFunctionId`, `IsEnabled`, `ReconfigurationPending`, `ClassifierFunctionName`.

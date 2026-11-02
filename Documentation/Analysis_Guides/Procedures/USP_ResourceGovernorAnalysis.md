@@ -23,6 +23,53 @@ EXEC [monitor].[USP_ResourceGovernorAnalysis]
 
 Alle `Example*`-Werte im Aufruf sind synthetisch.
 
+## Parameter
+
+| Parameter | Typ | Default | Eingabe und Wirkung |
+|---|---|---|---|
+| `@MitSessions` | `bit` | `1` | 1 erfasst sichtbare Benutzerprozesse aus sys.dm_exec_sessions und ordnet sie nach GroupId zu. 0 überspringt die Quelle und die Sessionausgabe in RAW und CONSOLE. JSON enthält dann ein leeres sessions-Array. NULL ergibt INVALID_PARAMETER. |
+| `@MaxZeilen` | `int` | `5000` | Eine positive ganze Zahl begrenzt Pools, Workload Groups, tempdbGovernance und Sessions jeweils separat. NULL oder 0 hebt die Grenze auf. Negative Werte ergeben INVALID_PARAMETER. Die Konfigurationszeile bleibt unberührt. Sessions werden vor der Gruppenzuordnung nach CPU-Zeit absteigend und SessionId begrenzt. |
+| `@ResultSetArt` | `varchar(16)` | `'CONSOLE'` | CONSOLE zeigt beschriftete Fachergebnisse. RAW gibt zuerst Status und Metadaten, dann die Daten und Warnungen aus. TABLE schreibt nur zugeordnete Fachergebnisse in lokale Temp-Tabellen. NONE unterdrückt diese Ausgaben. Leerzeichen am Rand werden entfernt und Groß-/Kleinschreibung wird normalisiert. NULL, leere Eingaben und alle anderen Werte ergeben INVALID_PARAMETER. JSON und Statusmeldungen werden separat gesteuert. |
+| `@ResultTablesJson` | `nvarchar(max)` | `NULL` | Bei TABLE ist ein nichtleeres JSON-Objekt erforderlich. Die exakten Schlüssel sind configuration für Konfiguration, resourcePools für Pools, workloadGroups für Gruppen, sessions für Sessions und tempdbGovernance für TempDB-Limits und Laufzeitevidenz. Wählen Sie mindestens einen Schlüssel. Jeder Wert ist der Name einer vorhandenen leeren lokalen #Temp-Tabelle mit genau einer Seed-Spalte. Der Name darf höchstens 116 Zeichen lang sein. ## und #Monitor als Präfix sind unzulässig. Doppelte Schlüssel und Ziele sind unzulässig. Die Vorprüfung erfolgt vor dem Lesen der fachlichen Quellen. Außerhalb von TABLE sind nur NULL, die leere Zeichenfolge und reine Leerzeichen zulässig. |
+| `@JsonErzeugen` | `bit` | `0` | 1 erzeugt das JSON-Dokument unabhängig von @ResultSetArt. 0 lässt @Json auf NULL. NULL ergibt INVALID_PARAMETER. |
+| `@Json` | `nvarchar(max) OUTPUT` | `NULL` | Binden Sie eine nvarchar(max)-Variable mit OUTPUT. Die Procedure setzt den Wert vor Hilfe und Validierung auf NULL. Bei @JsonErzeugen=1 erhält die Variable das Dokument der SchemaVersion 2 mit Metadaten, Konfiguration, Pools, Gruppen, TempDB-Governance, Sessions und Warnungen einschließlich NULL-Feldern. |
+| `@PrintMeldungen` | `bit` | `1` | 1 gibt bei einem Status ungleich AVAILABLE eine informative Meldung mit Schweregrad 10 aus. 0 oder NULL unterdrückt diese Meldung. |
+| `@Hilfe` | `bit` | `0` | 1 zeigt diese Hilfe und beendet den Aufruf vor Validierung, TABLE-Vorprüfung, fachlichen Quellzugriffen und JSON-Erzeugung. 0 oder NULL führt die Analyse aus. |
+
+## Aufrufbeispiele
+
+Hilfe anzeigen.
+
+```sql
+EXEC [monitor].[USP_ResourceGovernorAnalysis] @Hilfe=1;
+```
+
+RAW ohne Sessionabfrage.
+
+```sql
+EXEC [monitor].[USP_ResourceGovernorAnalysis] @MitSessions=0, @MaxZeilen=100, @ResultSetArt='RAW';
+```
+
+Nur JSON ausgeben.
+
+```sql
+DECLARE @GovernorJson nvarchar(max);
+EXEC [monitor].[USP_ResourceGovernorAnalysis] @MitSessions=0, @MaxZeilen=100, @ResultSetArt='NONE', @JsonErzeugen=1, @Json=@GovernorJson OUTPUT;
+SELECT @GovernorJson AS [Json];
+```
+
+Konfigurationszeile in eine lokale Temp-Tabelle schreiben.
+
+```sql
+CREATE TABLE #ResourceGovernorAnalysis_HelpExample ([Seed] int NULL);
+BEGIN TRY EXEC [monitor].[USP_ResourceGovernorAnalysis] @MitSessions=0, @MaxZeilen=100, @ResultSetArt='TABLE', @ResultTablesJson=N'{"configuration":"#ResourceGovernorAnalysis_HelpExample"}';
+SELECT * FROM #ResourceGovernorAnalysis_HelpExample;
+DROP TABLE #ResourceGovernorAnalysis_HelpExample;
+END TRY BEGIN CATCH DROP TABLE #ResourceGovernorAnalysis_HelpExample;
+THROW;
+END CATCH;
+```
+
 ## Resultsets und Leserichtung
 
 Der typisierte TABLE-Vertrag registriert `configuration`, `resourcePools`,
@@ -79,7 +126,7 @@ Für `USP_ResourceGovernorAnalysis` gilt zusätzlich: **keine Zeile** bedeutet, 
 | Skalierung | Pool-/Gruppenkonfiguration ist klein; der optionale Sessionpfad wächst mit aktiven Sessions und deren Gruppenzuordnung. |
 | Ressourcen | Geringe bis mittlere CPU-/Speicherlast auf Resource-Governor-Katalogen/-DMVs und optional `sys.dm_exec_sessions`; kein History- oder Benutzerdatenscan. |
 | Begrenzungswirkung | `@MitSessions = 0` lässt den größten variablen Pfad aus. `@MaxZeilen` wird je ausgegebenem Konfigurations-/Runtime-/Sessionresultset angewandt und ist keine gemeinsame Gesamtgrenze. |
-| Locking und Nebenwirkungen | Read-only; kurze Schema-Stability-Zugriffe auf msdb/Systemkataloge. Jobs, Backups oder Wartung laufen parallel weiter, daher ist das Ergebnis nicht atomar. |
+| Locking und Nebenwirkungen | Die Procedure liest Kataloge und DMVs mit NOLOCK. Im TABLE-Modus fügt die Vorprüfung vorübergehend eine Prüfspalte in den angegebenen lokalen Temp-Tabellen hinzu. Beim Export formt die Procedure deren Schema und schreibt die Ergebniszeilen. Die Abfragen liefern eine Momentaufnahme aus mehreren Quellen. |
 | Schutzmechanismus | Kein High-Impact-Gate. `@MitSessions = 0` ist der wirksame Opt-out für den einzigen großen variablen Pfad; `@MaxZeilen` begrenzt die Resultsets separat. Der Default aktiviert Sessions allerdings, daher ist für reine Konfigurationsfragen ein explizites Abschalten sinnvoll. |
 | Sicherer Einsatz | Zuerst `@MitSessions = 0` für Konfiguration/Runtime; Sessions nur bei einer konkreten Pool-/Gruppenfrage mit endlichem Limit ergänzen. |
 | Aussagegrenze | Scope- oder Zeilenbegrenzungen können relevante, seltene oder später einsortierte Zeilen ausblenden. Die Aussage bleibt auf das Modell „Konfigurations- und Runtime-Snapshot“, die dokumentierte Granularität und den sichtbaren Quellenscope begrenzt; ein kleines Resultset ist weder automatisch vollständig noch repräsentativ. |
