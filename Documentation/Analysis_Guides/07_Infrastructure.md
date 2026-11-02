@@ -352,7 +352,7 @@ EXEC [monitor].[USP_BackupRecovery] @DatabaseNames=N'[ExampleDatabase]', @MitRes
 
 DECLARE @BackupRecoveryJson nvarchar(max); EXEC [monitor].[USP_BackupRecovery] @DatabaseNames=N'[ExampleDatabase]', @MaxZeilen=100, @ResultSetArt='NONE', @JsonErzeugen=1, @Json=@BackupRecoveryJson OUTPUT; SELECT @BackupRecoveryJson AS [Json];
 
-CREATE TABLE #BackupFreshness_HelpExample ([Seed] int NULL); CREATE TABLE #BackupCompression_HelpExample ([Seed] int NULL); BEGIN TRY EXEC [monitor].[USP_BackupRecovery] @DatabaseNames=N'[ExampleDatabase]', @MaxZeilen=100, @ResultSetArt='TABLE', @ResultTablesJson=N'{"freshness":"#BackupFreshness_HelpExample","compression":"#BackupCompression_HelpExample"}'; SELECT * FROM #BackupFreshness_HelpExample; SELECT * FROM #BackupCompression_HelpExample; DROP TABLE #BackupCompression_HelpExample; DROP TABLE #BackupFreshness_HelpExample; END TRY BEGIN CATCH DROP TABLE #BackupCompression_HelpExample; DROP TABLE #BackupFreshness_HelpExample; THROW; END CATCH;
+CREATE TABLE #BackupRecovery_Freshness_HelpExample ([Seed] int NULL); CREATE TABLE #BackupRecovery_Compression_HelpExample ([Seed] int NULL); BEGIN TRY EXEC [monitor].[USP_BackupRecovery] @DatabaseNames=N'[ExampleDatabase]', @MaxZeilen=100, @ResultSetArt='TABLE', @ResultTablesJson=N'{"freshness":"#BackupRecovery_Freshness_HelpExample","compression":"#BackupRecovery_Compression_HelpExample"}'; SELECT * FROM #BackupRecovery_Freshness_HelpExample; SELECT * FROM #BackupRecovery_Compression_HelpExample; DROP TABLE #BackupRecovery_Compression_HelpExample; DROP TABLE #BackupRecovery_Freshness_HelpExample; END TRY BEGIN CATCH DROP TABLE #BackupRecovery_Compression_HelpExample; DROP TABLE #BackupRecovery_Freshness_HelpExample; THROW; END CATCH;
 
 EXEC [monitor].[USP_BackupRecovery] @DatabaseNamePattern=N'like:ExampleDatabase%', @MaxZeilen=100, @ResultSetArt='RAW';
 
@@ -408,7 +408,7 @@ EXEC [monitor].[USP_LogShippingStatus] @MaxZeilen=100, @ResultSetArt='RAW';
 
 DECLARE @LogShippingJson nvarchar(max); EXEC [monitor].[USP_LogShippingStatus] @MaxZeilen=100, @ResultSetArt='NONE', @JsonErzeugen=1, @Json=@LogShippingJson OUTPUT; SELECT @LogShippingJson AS [Json];
 
-CREATE TABLE #LogShipping_HelpExample ([Seed] int NULL); BEGIN TRY EXEC [monitor].[USP_LogShippingStatus] @MaxZeilen=100, @ResultSetArt='TABLE', @ResultTablesJson=N'{"primary":"#LogShipping_HelpExample"}'; SELECT * FROM #LogShipping_HelpExample; DROP TABLE #LogShipping_HelpExample; END TRY BEGIN CATCH DROP TABLE #LogShipping_HelpExample; THROW; END CATCH;
+CREATE TABLE #LogShippingStatus_HelpExample ([Seed] int NULL); BEGIN TRY EXEC [monitor].[USP_LogShippingStatus] @MaxZeilen=100, @ResultSetArt='TABLE', @ResultTablesJson=N'{"primary":"#LogShippingStatus_HelpExample"}'; SELECT * FROM #LogShippingStatus_HelpExample; DROP TABLE #LogShippingStatus_HelpExample; END TRY BEGIN CATCH DROP TABLE #LogShippingStatus_HelpExample; THROW; END CATCH;
 ```
 
 ---
