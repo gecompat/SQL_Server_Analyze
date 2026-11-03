@@ -357,6 +357,8 @@ Die Kostenklasse ist bei mehreren oder großen Plänen HIGH_OPT_IN. XML-XQuery b
 
 ## 6. [monitor].[USP_PlanCacheAnalysis]
 
+Die [Parameterreferenz](Procedures/USP_PlanCacheAnalysis.md#parameter) beschreibt die Modulschalter, Filter, Grenzen und Ausgabearten. Die [Aufrufbeispiele](Procedures/USP_PlanCacheAnalysis.md#aufrufbeispiele) zeigen Hilfe, RAW, JSON und TABLE.
+
 ### Zweck
 
 Die Procedure orchestriert folgende Teilanalysen:

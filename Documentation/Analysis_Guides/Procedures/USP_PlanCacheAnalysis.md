@@ -25,21 +25,83 @@ EXEC [monitor].[USP_PlanCacheAnalysis]
 
 Aktivieren Sie Showplan erst nach Kandidatenpriorisierung.
 
-Der hier gewählte unselektierte Query-Stats-Childpfad benötigt `PLAN_CACHE_DEEP`. Die Bestätigung ersetzt weder ein kleines Limit noch die getrennte Prüfung, ob nach der Triage überhaupt Showplan benötigt wird.
+Der gezeigte Aufruf aktiviert nur Query Stats im Modus TOP mit höchstens 100 Zeilen. Dieser Pfad erfordert keine High-Impact-Bestätigung. Die im Beispiel gesetzte Bestätigung erweitert den Umfang nicht.
 
 Alle `Example*`-Werte im Aufruf sind synthetisch.
+
+## Parameter
+
+| Parameter | Typ | Default | Eingabe und Wirkung |
+|---|---|---|---|
+| `@MitQueryStats` | `bit` | `1` | 1 aktiviert QueryStats, 0 deaktiviert. TOP/100 ohne Hash ist nicht per se PLAN_CACHE_DEEP geschützt. NULL aktiviert Child nicht. |
+| `@MitQueryHashAnalysis` | `bit` | `0` | 1 aktiviert Hash-Child. NULL QueryHash verlangt Deep-Gate. Einzelner Hash TOP <=1000 nicht. NULL deaktiviert Child. |
+| `@MitPlanCacheHealth` | `bit` | `0` | 1 aktiviert Health. TOP wird SUMMARY, VOLL wird VOLL plus Datenbankverteilung und Deep-Gate. NULL deaktiviert Child. |
+| `@MitShowplanAnalysis` | `bit` | `0` | 1 aktiviert Showplan. TOP wird GEZIELT, VOLL bleibt VOLL. NULL deaktiviert Child. |
+| `@DatabaseNames` | `nvarchar(max)` | `NULL` | Pipe-Liste exakter einteiliger Datenbanknamen bis 128 Zeichen. &#124; trennt außerhalb [...], ]] maskiert ]. Segmentränder getrimmt. NULL/leer/Whitespace = kein Filter. Ungültig INVALID_PARAMETER. Nicht mit wirksamem DatabaseNamePattern kombinierbar. |
+| `@SystemdatenbankenEinbeziehen` | `bit` | `0` | 0 schließt master/tempdb/model/msdb aus, 1 lässt zu. NULL kann bei aktivem Scope-Child ungültig sein. |
+| `@DatabaseNamePattern` | `nvarchar(4000)` | `NULL` | LIKE oder Präfix like:/regex:/regexi:. Case-insensitive Präfix, außen getrimmt, Rest nicht. NULL kein Filter, leer ungültig. Nicht mit DatabaseNames kombinierbar. Regex nur SQL Server 2025 + Installations-DB Compat 170. |
+| `@HighImpactConfirmed` | `bit` | `0` | 1 bestätigt einen geschützten Pfad, wenn dessen Policy eine Bestätigung verlangt. Berechtigungen und Grenzwerte gelten weiterhin. 0 bestätigt den Pfad nicht und NULL ist für die Pfadprüfung ungültig. Der Parent prüft PLAN_CACHE_DEEP bei mindestens zwei Snapshot-Consumern, wenn ein Queryhash fehlt, VOLL gewählt ist oder das Zeilenlimit unbegrenzt beziehungsweise größer als 1000 ist. Die aufgerufenen Module prüfen ihre eigenen Gates. Als Snapshot-Consumer zählen Query Stats, Query Hash und Showplan ohne direkten Planhandle. Verweigert das Parent-Gate den gemeinsamen Zugriff, laufen die Module nicht. Schlägt die erlaubte Materialisierung fehl, können die Module frisch lesen. |
+| `@QueryHash` | `binary(8)` | `NULL` | Optionaler exakter Queryhashfilter für QueryStats/Hash/Showplan. Hash-Child ohne Hash braucht Deep-Gate. Einzelner Hash mit TOP/<=1000 nicht. |
+| `@QueryPlanHash` | `binary(8)` | `NULL` | Optionaler exakter Planhashfilter für QueryStats/Showplan. |
+| `@PlanHandle` | `varbinary(64)` | `NULL` | Optionaler Handlefilter. Showplan fügt Nicht-NULL direkt als Kandidat hinzu. |
+| `@TextPattern` | `nvarchar(4000)` | `NULL` | SQL-Textfilter, Präfix like:/regex:/regexi:, sonst LIKE. Außen getrimmt, Rest nicht. Leer ungültig, keine Pipe-Liste. LIKE %/_. Regex SQL Server 2025 + Compat 170. |
+| `@Sortierung` | `varchar(32)` | `'CPU_TOTAL'` | Die unterstützten Ränge hängen vom aktivierten Modul ab. QueryStats, QueryHashAnalysis und ShowplanAnalysis verstehen CPU_TOTAL für gesamte CPU, ELAPSED_TOTAL für gesamte Laufzeit, READS_TOTAL für logische Reads, EXECUTIONS für Ausführungen und SPILLS_TOTAL für Spills. QueryStats und QueryHashAnalysis unterstützen zusätzlich WRITES_TOTAL für logische Writes. QueryStats und ShowplanAnalysis unterstützen GRANT_MAX für maximalen Grant und LAST_EXECUTION für die letzte Ausführung. Nur QueryStats unterstützt CPU_AVG, ELAPSED_AVG, READS_AVG und WRITES_AVG für den jeweiligen Mittelwert je Ausführung sowie ROWS_TOTAL für die Gesamtzahl der Zeilen. Nur QueryHashAnalysis unterstützt PLAN_VARIANTS für die Zahl der Planvarianten. PlanCacheHealth verwendet den Wert nicht. NULL entspricht CPU_TOTAL. Die Empfänger trimmen Leerzeichen und normalisieren die Groß- und Kleinschreibung. Leertext und nicht unterstützte Werte sind im jeweiligen Modul ungültig. |
+| `@AnalyseModus` | `varchar(16)` | `'TOP'` | TOP => QueryStats/Hash TOP, Health SUMMARY, Showplan GEZIELT. VOLL => QueryStats/Hash VOLL, Health VOLL+Datenbankverteilung, Showplan VOLL. Trim/Upper, NULL TOP, leer/sonst ungültig. |
+| `@MaxZeilen` | `int` | `100` | Je Child weitergereicht. Positiv begrenzt, NULL/0 unbegrenzt, negativ Parent INVALID_PARAMETER ohne Children. Unbegrenzt/>1000 oder VOLL kann Deep-Gate auslösen. SUMMARY Health nutzt den Wert nicht. |
+| `@MaxAnalyseobjekte` | `int` | `20` | Showplan-Kandidatenlimit. Positiv begrenzt, 0/NULL unbegrenzt, negativ Parent INVALID_PARAMETER. >20/unbegrenzt kann Deep-Gate auslösen. VOLL zusätzlich SHOWPLAN_XML_DEEP. |
+| `@MaxDurationSeconds` | `int` | `30` | Ganzzahl von 1 bis 3600 Sekunden. Der Parent lehnt Zahlen außerhalb des Bereichs ab. Das Zeitbudget gilt für Showplan und wird zwischen Kandidaten geprüft. Es unterbricht keine laufende XML-Analyse. NULL wird im Parent nicht ausdrücklich abgefangen. Die zentrale XML-Analyse weist NULL zurück. |
+| `@ResultSetArt` | `varchar(16)` | `'CONSOLE'` | RAW gibt zuerst die Resultsets der aufgerufenen Module aus, gefolgt vom Parentstatus und der Modulstatusliste. CONSOLE zeigt die beschriftete Modulstatusliste. TABLE schreibt nur moduleStatus. NONE unterdrückt die fachlichen Resultsets. Die Module erhalten bei CONSOLE, TABLE und NONE intern NONE. JSON ist separat wählbar. Leerzeichen am Rand und die Groß- und Kleinschreibung werden normalisiert. NULL, Leertext und andere Werte sind ungültig. |
+| `@ResultTablesJson` | `nvarchar(max)` | `NULL` | Nur TABLE: Objekt exakt mit moduleStatus und Stringziel. Ziel vorhandene leere lokale #Temp mit genau einer Seed-Spalte, <=116 Zeichen, kein ##/#Monitor. Andere Modi nur NULL/leer/Whitespace, sonst 51011. Preflight vor Hilfe-Return. |
+| `@JsonErzeugen` | `bit` | `0` | 1 erzeugt zusätzlich @Json. 0/NULL erzeugt kein Dokument. |
+| `@Json` | `nvarchar(max) OUTPUT` | `NULL` | bei Eintritt NULL. Bei JsonErzeugen=1 Dokument mit meta, queryStats, queryHashes, planCacheHealth, showplan, modules, warnings. Nicht verfügbare Childobjekte null. OUTPUT nvarchar(max) binden. |
+| `@PrintMeldungen` | `bit` | `1` | 1 aktiviert informative Meldungen der aufgerufenen Module. 0 und NULL deaktivieren diese Meldungen. Der Parent reicht den Wert weiter. |
+| `@Hilfe` | `bit` | `0` | 1 druckt Hilfe und RETURN vor Validierung/Analyse. Vorher @Json=NULL, Monitor-Temp-DDL, Locktimeout, TABLE-Mapping-Preflight. 0/NULL regulärer Ablauf. |
+
+## Aufrufbeispiele
+
+Hilfe anzeigen.
+
+```sql
+EXEC [monitor].[USP_PlanCacheAnalysis] @Hilfe=1;
+```
+
+Modulstatus als RAW lesen.
+
+```sql
+EXEC [monitor].[USP_PlanCacheAnalysis] @MitQueryStats=1, @MitQueryHashAnalysis=0, @MitPlanCacheHealth=0, @MitShowplanAnalysis=0, @QueryHash=0x0102030405060708, @MaxZeilen=50, @ResultSetArt='RAW';
+```
+
+Nur JSON ausgeben.
+
+```sql
+DECLARE @ResultJson nvarchar(max);
+EXEC [monitor].[USP_PlanCacheAnalysis] @MitQueryStats=1, @MitQueryHashAnalysis=0, @MitPlanCacheHealth=0, @MitShowplanAnalysis=0, @QueryHash=0x0102030405060708, @MaxZeilen=50, @ResultSetArt='NONE', @JsonErzeugen=1, @Json=@ResultJson OUTPUT;
+SELECT @ResultJson AS [Json];
+```
+
+Modulstatus in eine lokale Temp-Tabelle schreiben.
+
+```sql
+CREATE TABLE #PlanCacheAnalysis_HelpExample ([Seed] int NULL);
+BEGIN TRY EXEC [monitor].[USP_PlanCacheAnalysis] @MitQueryStats=1, @MitQueryHashAnalysis=0, @MitPlanCacheHealth=0, @MitShowplanAnalysis=0, @QueryHash=0x0102030405060708, @MaxZeilen=50, @ResultSetArt='TABLE', @ResultTablesJson=N'{"moduleStatus":"#PlanCacheAnalysis_HelpExample"}';
+SELECT * FROM #PlanCacheAnalysis_HelpExample;
+DROP TABLE #PlanCacheAnalysis_HelpExample;
+END TRY BEGIN CATCH DROP TABLE #PlanCacheAnalysis_HelpExample;
+THROW;
+END CATCH;
+```
 
 ## Resultsets und Leserichtung
 
 Der typisierte TABLE-Vertrag registriert `moduleStatus`. Status, Scope und Warnings sind vor den Fachergebnissen zu lesen. CONSOLE dient der interaktiven Triage; RAW und JSON erhalten den technischen Kontext, während TABLE nur die ausdrücklich benannten stabilen Resultsets schreibt. Resultsets mit unterschiedlicher Zeilengranularität dürfen nicht ungeprüft vereinigt oder summiert werden.
 
-TABLE und CONSOLE verwenden dieselbe vollständig materialisierte Modulstatusmenge mit fünf Feldern. Die drei Textfelder besitzen explizit `SQL_Latin1_General_CP1_CS_AS`. CONSOLE ergänzt bei vorhandenen Modulzeilen die Ergebnisbeschriftung; bei leerer Menge liefert es genau die bestehende dreifeldrige Leeranzeige. Der Parentstatus steht im RAW-Metaresultset beziehungsweise in `meta.statusCode` des JSON.
+TABLE und CONSOLE verwenden dieselbe vollständig materialisierte Modulstatusmenge mit fünf Feldern. Die drei Textfelder besitzen explizit `SQL_Latin1_General_CP1_CS_AS`. CONSOLE ergänzt bei vorhandenen Modulzeilen die Ergebnisbeschriftung; bei leerer Menge liefert es genau die bestehende dreifeldrige Leeranzeige. RAW liefert nach den aufgerufenen Modulen den Parentstatus mit Modulname, Erhebungszeit, Statuscode, Partialitätsflag und Detail sowie die Modulstatusliste. Im JSON steht der Parentstatus in `meta.statusCode`.
 
 Das JSON-Array `modules` verwendet dieselbe Modulstatusmenge. `REUSED_PARENT_SNAPSHOT` beschreibt die laufinterne Wiederverwendung des Query-Stats-Snapshots.
 
 ## Eine Zeile bedeutet
 
-In TABLE und CONSOLE bedeutet eine Modulstatuszeile einen tatsächlich aufgerufenen Childpfad mit seiner Aufrufreihenfolge und seinem Invocationstatus. Die fachlichen RAW- und JSON-Childresultate behalten ihre jeweils eigene Granularität.
+In TABLE und CONSOLE bedeutet eine Modulstatuszeile einen tatsächlich aufgerufenen Childpfad mit seiner Aufrufreihenfolge und seinem Invocationstatus. Die fachlichen Childresultate in RAW und JSON behalten ihre jeweilige Granularität.
 
 ## So lesen
 
@@ -80,7 +142,7 @@ Für `USP_PlanCacheAnalysis` gilt zusätzlich: **keine Zeile** bedeutet, dass im
 | Begrenzungswirkung | `@MaxZeilen` gilt je Child, `@MaxAnalyseobjekte` nur für Showplan. `@MaxDurationSeconds` ist dessen kooperative Deadline und begrenzt weder Query Stats noch Cache Health. Text-/Hash-/Handlefilter können früh Kandidaten reduzieren; Top-N entsteht ansonsten erst nach Cachezugriff und Sortierung. |
 | Locking und Nebenwirkungen | Der Parent ändert weder Nutzdaten noch Cachekonfiguration. Childaufrufe sind nacheinander und nicht atomar; Cacheeinträge können zwischen Query Stats, Hash, Health und Showplan evicted oder neu kompiliert werden. |
 | Schutzmechanismus | Der Code prüft die Analyseklassen `PLAN_CACHE_DEEP`. Verlangt deren Policy ein Gruppengate, ist zusätzlich `@HighImpactConfirmed = 1` nötig; Freigabe und Bestätigung ersetzen keine Scopebegrenzung. |
-| Sicherer Einsatz | TOP 100, nur Query Stats, möglichst Datenbank-/Hashselektor und `@HighImpactConfirmed = 1` für den dokumentierten unselektierten Einstieg. Danach nur den auffälligen Childpfad separat vertiefen. |
+| Sicherer Einsatz | TOP 100, nur Query Stats, möglichst Datenbank-/Hashselektor. Danach nur den auffälligen Childpfad separat vertiefen. |
 | Aussagegrenze | Scope- oder Zeilenbegrenzungen können relevante, seltene oder später einsortierte Zeilen ausblenden. Die Aussage bleibt auf das Modell „nicht atomarer Plan-Cache-Snapshot“, die dokumentierte Granularität und den sichtbaren Quellenscope begrenzt; ein kleines Resultset ist weder automatisch vollständig noch repräsentativ. |
 
 ## Technische Vertiefung
