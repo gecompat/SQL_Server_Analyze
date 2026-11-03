@@ -22,6 +22,7 @@ EXEC [monitor].[USP_PlanDetails]
       @MitLastActualPlan = 0,
       @MitLivePlan = 0,
       @MaxAnalyseobjekte = 5,
+      @HighImpactConfirmed = 1,
       @ResultSetArt = 'CONSOLE';
 ```
 
