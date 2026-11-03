@@ -23,6 +23,57 @@ EXEC [monitor].[USP_PlanCacheHealth]
 
 Alle `Example*`-Werte im Aufruf sind synthetisch.
 
+## Parameter
+
+| Parameter | Typ | Default | Eingabe und Wirkung |
+|---|---|---|---|
+| `@AnalyseModus` | `varchar(16)` | `'SUMMARY'` | SUMMARY liefert Gesamtübersicht und Kategorien. VOLL prüft PLAN_CACHE_DEEP und erlaubt optionale Details. NULL entspricht SUMMARY. Rand-Leerzeichen und Groß- und Kleinschreibung werden normalisiert. Leere und andere Werte ergeben INVALID_PARAMETER. |
+| `@MitDatenbankVerteilung` | `bit` | `0` | Bei 1 ergänzt die Zuordnung der gecachten Pläne nach dbid/Datenbank und aktiviert PLAN_CACHE_DEEP; nur zusammen mit @AnalyseModus=VOLL gültig. Bei 0 wird dieses Resultset ausgelassen. NULL verhält sich wie 0. |
+| `@MitSingleUseDetails` | `bit` | `0` | Bei 1 ergänzt bis zu @MaxZeilen Single-use-Pläne samt SQL-Text, absteigend nach Cachegröße, und aktiviert PLAN_CACHE_DEEP; nur mit VOLL gültig. Bei 0 werden keine Einzeltexte geladen. NULL verhält sich wie 0. |
+| `@MaxZeilen` | `int` | `100` | Begrenzt die Anzahl der Single-use-Detailpläne in der Detailausgabe. Positiv begrenzt; NULL oder 0 bedeutet unbegrenzt. Negative Werte sind ungültig. In SUMMARY ohne Detailausgabe hat der Wert keine fachliche Wirkung. |
+| `@HighImpactConfirmed` | `bit` | `0` | 1 bestätigt den geschützten Pfad für VOLL oder angeforderte Details. Die Berechtigung wird zusätzlich geprüft. 0 bestätigt ihn nicht und NULL ist für die Pfadprüfung ungültig. Bei SUMMARY ohne Details wird diese Prüfung nicht aufgerufen. |
+| `@MaxSqlTextZeichen` | `int` | `4000` | Maximale Unicode-Zeichenlänge der SQL-Texte in der optionalen Single-use-Detailausgabe. Positiv kürzt und kennzeichnet; NULL oder 0 lässt vollständig. Negative Werte sind ungültig. Ohne Details wird kein SQL-Text projiziert. |
+| `@ResultSetArt` | `varchar(16)` | `'CONSOLE'` | CONSOLE zeigt beschriftete Cachekategorien. RAW liefert Modulstatus, Gesamtübersicht, Kategorien und angeforderte Details. TABLE schreibt die Kategorien unter dem Schlüssel overview. NONE unterdrückt die fachlichen Resultsets. Rand-Leerzeichen werden entfernt und die Groß- und Kleinschreibung normalisiert. NULL, leere Eingaben und andere Werte ergeben INVALID_PARAMETER. |
+| `@ResultTablesJson` | `nvarchar(max)` | `NULL` | Bei TABLE ist ein JSON-Objekt mit genau dem Schlüssel overview und einem Tabellennamen als Zeichenfolgenwert erforderlich. Verwenden Sie eine vorhandene, leere lokale #Temp-Tabelle mit genau einer Seed-Spalte. Der Name darf höchstens 116 Zeichen lang sein. Globale Tabellen und das Präfix #Monitor sind ausgeschlossen. Bei den übrigen Ausgabearten sind nur NULL, die leere Zeichenfolge und Leerzeichen erlaubt. Die Prüfung läuft vor der Hilfe und kann Fehler 51011 auslösen. |
+| `@JsonErzeugen` | `bit` | `0` | 1 erzeugt JSON in @Json zusätzlich zur gewählten Ausgabeart. 0 oder NULL deaktiviert JSON. |
+| `@Json` | `nvarchar(max) OUTPUT` | `NULL` | Binden Sie eine nvarchar(max)-Variable mit OUTPUT. Der Aufruf setzt sie zunächst auf NULL. Bei @JsonErzeugen=1 enthält sie das JSON-Dokument mit Statusmetadaten, Gesamtübersicht, Kategorien und optionalen Details. |
+| `@PrintMeldungen` | `bit` | `1` | 1 gibt informative Meldungen zu Status und gegebenenfalls Textkürzung aus. 0 und NULL unterdrücken diese Meldungen. |
+| `@Hilfe` | `bit` | `0` | 1 gibt die Hilfe aus und beendet den Aufruf vor der fachlichen Analyse. Die Initialisierung von @Json und die Prüfung der TABLE-Zuordnung laufen zuerst. 0 und NULL setzen den regulären Aufruf fort. |
+
+## Aufrufbeispiele
+
+Hilfe anzeigen.
+
+```sql
+EXEC [monitor].[USP_PlanCacheHealth] @Hilfe=1;
+```
+
+Technische Resultsets lesen.
+
+```sql
+EXEC [monitor].[USP_PlanCacheHealth] @AnalyseModus='SUMMARY', @ResultSetArt='RAW';
+```
+
+Nur JSON ausgeben.
+
+```sql
+DECLARE @ResultJson nvarchar(max);
+EXEC [monitor].[USP_PlanCacheHealth] @AnalyseModus='SUMMARY', @ResultSetArt='NONE', @JsonErzeugen=1, @Json=@ResultJson OUTPUT;
+SELECT @ResultJson AS [Json];
+```
+
+Benanntes Resultset in eine lokale Temp-Tabelle schreiben.
+
+```sql
+CREATE TABLE #PlanCacheHealth_HelpExample ([Seed] int NULL);
+BEGIN TRY EXEC [monitor].[USP_PlanCacheHealth] @AnalyseModus='SUMMARY', @ResultSetArt='TABLE', @ResultTablesJson=N'{"overview":"#PlanCacheHealth_HelpExample"}';
+SELECT * FROM #PlanCacheHealth_HelpExample;
+DROP TABLE #PlanCacheHealth_HelpExample;
+END TRY BEGIN CATCH DROP TABLE #PlanCacheHealth_HelpExample;
+THROW;
+END CATCH;
+```
+
 ## Resultsets und Leserichtung
 
 Der typisierte TABLE-Vertrag `overview` enthält acht Felder je Cache-/Objekttyp und entspricht `JSON.categories`. Er ist von der siebenfeldrigen RAW-Gesamtübersicht und dem sechsfeldrigen JSON-Objekt `overview` zu unterscheiden. RAW ergänzt den neunfeldrigen Modulstatus und die angeforderten Detailresultsets. Die aktive CONSOLE-Ausgabe zeigt ausschließlich die Kategorien mit einer Ergebnisbeschriftung, also neun Felder; bei leerer Kategoriequelle liefert sie drei Felder mit der Ergebnismeldung „Keine fachlichen Ergebnisse“ sowie NULL für Status und Hinweis. TABLE und CONSOLE garantieren keine Anzeigeordnung. RAW und JSON sortieren Kategorien nach `TotalSizeBytes DESC, PlanCount DESC`.

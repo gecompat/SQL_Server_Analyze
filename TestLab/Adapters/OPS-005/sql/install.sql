@@ -26825,14 +26825,33 @@ BEGIN
     IF @Hilfe = 1
     BEGIN
         PRINT N'monitor.USP_QueryStats';
-        PRINT N'@DatabaseNames: Pipe-Liste; N''''/NULL = keine Datenbankeinschränkung.';
-        PRINT N'@DatabaseNamePattern: ein like:/regex:/regexi:-Pattern; nicht mit einer exakten Liste kombinieren.';
-        PRINT N'@TextPattern: ein LIKE-/Regex-Pattern für SQL-Text; Pattern wird nicht als Pipe-Liste zerlegt.';
-        PRINT N'@Sortierung: CPU_TOTAL, CPU_AVG, ELAPSED_TOTAL, ELAPSED_AVG, READS_TOTAL, READS_AVG, WRITES_TOTAL, WRITES_AVG, EXECUTIONS, GRANT_MAX, SPILLS_TOTAL, ROWS_TOTAL, LAST_EXECUTION.';
-        PRINT N'@MaxZeilen positiv = begrenzt, NULL/0 = unbegrenzt; VOLL oder mehr als 1000 Zeilen benötigt PLAN_CACHE_DEEP.';
-        PRINT N'@MaxSqlTextZeichen positiv = gekürzt; NULL/0 = vollständiger Statement- und Batchtext.';
-        PRINT N'@ParentQueryStatsSnapshot ist nur für die laufinterne Wiederverwendung durch USP_PlanCacheAnalysis bestimmt; 0 liest frisch.';
-        PRINT N'@ResultSetArt = CONSOLE (Default)|RAW|TABLE|NONE; Steuerwerte sind case-insensitiv.';
+        PRINT N'Die Procedure rangiert aktuell gecachte Statements nach Verbrauch, Ausführungszahl und letzter Ausführung. Der Cache erfasst nur die derzeit sichtbaren Einträge.';
+        PRINT N'@DatabaseNames nvarchar(max). Default ist NULL. Pipe-Liste exakter Datenbanknamen; NULL, leer oder nur Leerzeichen = keine exakte Einschränkung. | trennt außerhalb von [...]; ]] maskiert ] innerhalb; äußere Segmentleerzeichen entfernt. Elemente einteilige Namen bis 128 Zeichen; ungültige Liste INVALID_PARAMETER.';
+        PRINT N'@SystemdatenbankenEinbeziehen bit. Default ist 0. 0 schließt master, tempdb, model und msdb aus; 1 lässt sie zu. NULL führt zur Parameterablehnung; ausgelassen = 0. SQL-bit-Konvertierung kann numerische Nichtnullwerte als 1 abbilden.';
+        PRINT N'@DatabaseNamePattern nvarchar(4000). Default ist NULL. Ein LIKE-Pattern oder Präfix like:, regex:, regexi:. Erkennung ohne Beachtung der Großschreibung; äußere Leerzeichen getrimmt, Musterrest nicht erneut. NULL = kein Pattern; leerer Inhalt ungültig. Nicht mit wirksamer @DatabaseNames-Liste kombinierbar. Regex Flag c/i und Ausführung nur SQL Server 2025 + Compatibility Level 170 der Installationsdatenbank; sonst UNAVAILABLE_FEATURE.';
+        PRINT N'@HighImpactConfirmed bit. Default ist 0. 0 lässt den hohen Aufwand unbestätigt. 1 bestätigt einen geschützten Pfad. Die Berechtigung wird zusätzlich geprüft. NULL ist für die Pfadprüfung ungültig.';
+        PRINT N'@QueryHash binary(8). Default ist NULL. Optionaler exakter 8-Byte Query Hash; NULL = kein Hashfilter. Andere Längen/Typkonvertierungen richten sich nach T-SQL-Bindung; keine zusätzliche Hexstring-Validierung im Procedurecode.';
+        PRINT N'@QueryPlanHash binary(8). Default ist NULL. Optionaler exakter 8-Byte Planhash; NULL = kein Planhashfilter.';
+        PRINT N'@SqlHandle varbinary(64). Default ist NULL. Optionaler SQL-Handle bis 64 Byte; NULL = kein Handlefilter.';
+        PRINT N'@PlanHandle varbinary(64). Default ist NULL. Optionaler Plan-Handle bis 64 Byte; NULL = kein Handlefilter.';
+        PRINT N'@TextPattern nvarchar(4000). Default ist NULL. SQL-Textpattern. NULL = kein Filter; Parser erkennt case-insensitive like:, regex:, regexi:, sonst LIKE. Außenleerzeichen getrimmt, Patternrest nicht. Leerer effektiver Inhalt INVALID_PARAMETER. Nicht als Pipe-Liste zerlegt. LIKE nutzt %/_/SQL LIKE-Syntax; Regex braucht SQL Server 2025 und Installations-DB-Kompatibilität 170, Syntaxfehler werden von Regex-Ausführung gemeldet.';
+        PRINT N'@Sortierung varchar(32). Default ist ''CPU_TOTAL''. Case-insensitive nach LTRIM/RTRIM; geschlossene Menge: CPU_TOTAL = kumulative CPU; CPU_AVG = CPU je Ausführung; ELAPSED_TOTAL = kumulative Laufzeit; ELAPSED_AVG = Laufzeit je Ausführung; READS_TOTAL = kumulative logische Reads; READS_AVG = logische Reads je Ausführung; WRITES_TOTAL = kumulative logische Writes; WRITES_AVG = logische Writes je Ausführung; EXECUTIONS = Ausführungszahl; GRANT_MAX = maximaler Grant; SPILLS_TOTAL = kumulative Spills; ROWS_TOTAL = kumulative Zeilen; LAST_EXECUTION = letzte Ausführungszeit. NULL normalisiert auf Default. Ungültiger Wert INVALID_PARAMETER.';
+        PRINT N'@AnalyseModus varchar(16). Default ist ''TOP''. TOP verwendet bei einem positiven Limit bis 1000 den aktuellen Plan-Cache-Pfad. VOLL prüft PLAN_CACHE_DEEP und behält das Zeilenlimit bei. NULL entspricht TOP. Rand-Leerzeichen und Groß- und Kleinschreibung werden normalisiert. Leere und andere Werte ergeben INVALID_PARAMETER.';
+        PRINT N'@MinExecutionCount bigint. Default ist 1. Ganzzahliges Minimum für execution_count. 0 lässt auch Einträge mit 0 Ausführungen zu. Negative Werte ergeben INVALID_PARAMETER. Bei NULL trifft der Vergleich auf keine Zeile.';
+        PRINT N'@VonUtc datetime2(7). Default ist NULL. Inklusiver Grenzwert für last_execution_time als datetime2-Wert, z. B. 2026-01-01T00:00:00. Die Procedure vergleicht direkt mit dem Cachewert und rechnet keine Zeitzone um. NULL lässt den Zeitfilter aus.';
+        PRINT N'@MaxZeilen int. Default ist 100. Positiv begrenzt Ausgabe; NULL oder 0 bedeutet unbegrenzt; negativ INVALID_PARAMETER. Ausgelassen = 100. Unbegrenzt oder >1000 sowie VOLL erfordern PLAN_CACHE_DEEP. Positive Auswahl sammelt bis Limit+1 zur HasMoreRows-Ermittlung.';
+        PRINT N'@MaxSqlTextZeichen int. Default ist 4000. Positiv kürzt Statement- und Batchtext auf Zeichenlimit; NULL oder 0 bedeutet ungekürzt; negativ INVALID_PARAMETER. Zeichenprojektion zählt unter SC-Collation, nicht Grapheme.';
+        PRINT N'@ParentQueryStatsSnapshot bit. Default ist 0. 0 = DMV frisch lesen; 1 = ausschließlich laufinterne Wiederverwendung durch USP_PlanCacheAnalysis. NULL INVALID_PARAMETER. Schalter ist kein öffentlicher externer Snapshotvertrag.';
+        PRINT N'@ResultSetArt varchar(16). Default ist ''CONSOLE''. CONSOLE zeigt die beschriftete Abfrageauswahl. RAW liefert Modulstatus, Abfragezeilen und Auswahlwarnungen. TABLE schreibt das benannte Resultset queries. NONE unterdrückt die fachlichen Resultsets. Rand-Leerzeichen werden entfernt und die Groß- und Kleinschreibung normalisiert. NULL, leere Eingaben und andere Werte ergeben INVALID_PARAMETER.';
+        PRINT N'@ResultTablesJson nvarchar(max). Default ist NULL. Bei TABLE ist ein JSON-Objekt mit genau dem Schlüssel queries und einem Tabellennamen als Zeichenfolgenwert erforderlich. Verwenden Sie eine vorhandene, leere lokale #Temp-Tabelle mit genau einer Seed-Spalte. Der Name darf höchstens 116 Zeichen lang sein. Globale Tabellen und das Präfix #Monitor sind ausgeschlossen. Bei den übrigen Ausgabearten sind nur NULL, die leere Zeichenfolge und Leerzeichen erlaubt. Die Prüfung läuft vor der Hilfe und kann Fehler 51011 auslösen.';
+        PRINT N'@JsonErzeugen bit. Default ist 0. 1 erzeugt JSON in @Json zusätzlich zur gewählten Ausgabeart. 0 deaktiviert JSON. NULL ergibt INVALID_PARAMETER.';
+        PRINT N'@Json nvarchar(max) OUTPUT. Default ist NULL. Binden Sie eine nvarchar(max)-Variable mit OUTPUT. Der Aufruf setzt sie zunächst auf NULL. Bei @JsonErzeugen=1 enthält sie das JSON-Dokument mit meta, queries und warnings.';
+        PRINT N'@PrintMeldungen bit. Default ist 1. 1 gibt informative Meldungen zu Status und gegebenenfalls Textkürzung aus. 0 und NULL unterdrücken diese Meldungen.';
+        PRINT N'@Hilfe bit. Default ist 0. 1 gibt die Hilfe aus und beendet den Aufruf vor der fachlichen Analyse. Die Initialisierung von @Json und die Prüfung der TABLE-Zuordnung laufen zuerst. 0 und NULL setzen den regulären Aufruf fort.';
+        PRINT N'Hilfe anzeigen. EXEC [monitor].[USP_QueryStats] @Hilfe=1;';
+        PRINT N'Technische Resultsets lesen. EXEC [monitor].[USP_QueryStats] @QueryHash=0x0000000000000001, @MaxZeilen=50, @ResultSetArt=''RAW'';';
+        PRINT N'Nur JSON ausgeben. DECLARE @ResultJson nvarchar(max); EXEC [monitor].[USP_QueryStats] @QueryHash=0x0000000000000001, @MaxZeilen=50, @ResultSetArt=''NONE'', @JsonErzeugen=1, @Json=@ResultJson OUTPUT; SELECT @ResultJson AS [Json];';
+        PRINT N'Benanntes Resultset in eine lokale Temp-Tabelle schreiben. CREATE TABLE #QueryStats_HelpExample ([Seed] int NULL); BEGIN TRY EXEC [monitor].[USP_QueryStats] @QueryHash=0x0000000000000001, @MaxZeilen=50, @ResultSetArt=''TABLE'', @ResultTablesJson=N''{"queries":"#QueryStats_HelpExample"}''; SELECT * FROM #QueryStats_HelpExample; DROP TABLE #QueryStats_HelpExample; END TRY BEGIN CATCH DROP TABLE #QueryStats_HelpExample; THROW; END CATCH;';
         RETURN;
     END;
 
@@ -27395,14 +27414,26 @@ BEGIN
     IF @Hilfe=1
     BEGIN
         PRINT N'monitor.USP_QueryHashAnalysis';
-        PRINT N'@QueryHash binary(8)=NULL: optional exakt auf einen Query Hash begrenzen.';
-        PRINT N'@Sortierung: CPU_TOTAL, ELAPSED_TOTAL, READS_TOTAL, WRITES_TOTAL, EXECUTIONS, PLAN_VARIANTS, SPILLS_TOTAL.';
-        PRINT N'@AnalyseModus TOP oder VOLL; VOLL sowie ein Lauf ohne konkreten @QueryHash prüfen PLAN_CACHE_DEEP.';
-        PRINT N'@MinExecutionCount bigint=1; @MinPlanVarianten int=1; @MaxZeilen int=100.';
-        PRINT N'@MaxSqlTextZeichen positiv = gekürzt; NULL/0 = vollständiger Beispielstatementtext.';
-        PRINT N'@ParentQueryStatsSnapshot ist nur für die laufinterne Wiederverwendung durch USP_PlanCacheAnalysis bestimmt; 0 liest frisch.';
-        PRINT N'@ResultSetArt RAW|CONSOLE|TABLE|NONE; @JsonErzeugen=1 setzt @Json OUTPUT; Steuerwerte sind case-insensitiv.';
-        PRINT N'@PrintMeldungen bit=1; @Hilfe bit=0. Die Auswertung ist cachegebunden und keine Historie.';
+        PRINT N'Die Procedure gruppiert aktuell sichtbare Cacheeinträge nach Query Hash und zeigt Verbrauch und Planvarianten.';
+        PRINT N'@QueryHash binary(8). Default ist NULL. Optionaler Filter auf genau diesen 8-Byte-query_hash. NULL aggregiert alle Hashes und aktiviert PLAN_CACHE_DEEP; für einen einzelnen Hash wird dieser breite Pfad vermieden. Ein angegebener Hash kann im aktuellen Cache fehlen.';
+        PRINT N'@Sortierung varchar(32). Default ist ''CPU_TOTAL''. CPU_TOTAL ordnet nach kumulierter CPU, ELAPSED_TOTAL nach kumulierter Laufzeit, READS_TOTAL nach logischen Reads, WRITES_TOTAL nach logischen Writes, EXECUTIONS nach Ausführungszahl, PLAN_VARIANTS nach Anzahl verschiedener Plan-Hashes und SPILLS_TOTAL nach kumulierten Spills. Auswahl absteigend und bei Gleichstand nach letzter Ausführung absteigend. NULL entspricht CPU_TOTAL. Rand-Leerzeichen und Groß- und Kleinschreibung werden normalisiert. Leere und andere Werte ergeben INVALID_PARAMETER.';
+        PRINT N'@AnalyseModus varchar(16). Default ist ''TOP''. TOP prüft bei angegebenem Query Hash und positivem Limit bis 1000 keinen tiefen Pfad. VOLL prüft PLAN_CACHE_DEEP. Das Zeilenlimit gilt in beiden Modi. NULL entspricht TOP. Rand-Leerzeichen und Groß- und Kleinschreibung werden normalisiert. Leere und andere Werte ergeben INVALID_PARAMETER.';
+        PRINT N'@MinExecutionCount bigint. Default ist 1. Ganzzahliges Minimum der Summe der Ausführungen je Hash. 0 lässt auch Gruppen mit Summe 0 zu. Bei NULL trifft der Vergleich auf keine Gruppe. Negative Werte ergeben INVALID_PARAMETER.';
+        PRINT N'@MinPlanVarianten int. Default ist 1. Mindestens 1 verschiedener query_plan_hash je Query Hash. Bei NULL trifft der Vergleich auf keine Gruppe. Werte unter 1 ergeben INVALID_PARAMETER.';
+        PRINT N'@MaxZeilen int. Default ist 100. Maximale Zahl der Hash-Gruppen. Positiv begrenzt; NULL oder 0 bedeutet unbegrenzt und aktiviert damit PLAN_CACHE_DEEP. Negative Werte sind ungültig; mehr als 1000 Zeilen aktiviert ebenfalls den geschützten Pfad.';
+        PRINT N'@MaxSqlTextZeichen int. Default ist 4000. Maximale Unicode-Zeichenlänge des Beispielstatements. Positiv kürzt und kennzeichnet den Text; NULL oder 0 lässt ihn vollständig. Negative Werte sind ungültig.';
+        PRINT N'@ParentQueryStatsSnapshot bit. Default ist 0. 0 liest die DMV frisch. 1 liest ausschließlich den lokalen Snapshot des laufenden Aufrufs von USP_PlanCacheAnalysis. Fehlt er, meldet die Analyse ERROR_HANDLED. NULL ergibt INVALID_PARAMETER.';
+        PRINT N'@HighImpactConfirmed bit. Default ist 0. Muss für einen aktivierten PLAN_CACHE_DEEP-Pfad 1 sein und bestätigt den Hochaufwandspfad; zusätzlich gelten dessen aktuelle Freigabe und Berechtigungen. 0 oder NULL lässt den geschützten Pfad nicht zu. Bei einem einzelnen Hash im TOP-Modus mit höchstens 1000 Zeilen wird dieser Gate nicht aktiviert.';
+        PRINT N'@ResultSetArt varchar(16). Default ist ''CONSOLE''. CONSOLE zeigt die beschrifteten Hashgruppen. RAW liefert Modulstatus und Hashgruppen. TABLE schreibt das benannte Resultset queryHashes. NONE unterdrückt die fachlichen Resultsets. Rand-Leerzeichen werden entfernt und die Groß- und Kleinschreibung normalisiert. NULL, leere Eingaben und andere Werte ergeben INVALID_PARAMETER.';
+        PRINT N'@ResultTablesJson nvarchar(max). Default ist NULL. Bei TABLE ist ein JSON-Objekt mit genau dem Schlüssel queryHashes und einem Tabellennamen als Zeichenfolgenwert erforderlich. Verwenden Sie eine vorhandene, leere lokale #Temp-Tabelle mit genau einer Seed-Spalte. Der Name darf höchstens 116 Zeichen lang sein. Globale Tabellen und das Präfix #Monitor sind ausgeschlossen. Bei den übrigen Ausgabearten sind nur NULL, die leere Zeichenfolge und Leerzeichen erlaubt. Die Prüfung läuft vor der Hilfe und kann Fehler 51011 auslösen.';
+        PRINT N'@JsonErzeugen bit. Default ist 0. 1 erzeugt JSON in @Json zusätzlich zur gewählten Ausgabeart. 0 oder NULL deaktiviert JSON.';
+        PRINT N'@Json nvarchar(max) OUTPUT. Default ist NULL. Binden Sie eine nvarchar(max)-Variable mit OUTPUT. Der Aufruf setzt sie zunächst auf NULL. Bei @JsonErzeugen=1 enthält sie das JSON-Dokument mit meta, queryHashes und warnings.';
+        PRINT N'@PrintMeldungen bit. Default ist 1. 1 gibt informative Meldungen zu Status und gegebenenfalls Textkürzung aus. 0 und NULL unterdrücken diese Meldungen.';
+        PRINT N'@Hilfe bit. Default ist 0. 1 gibt die Hilfe aus und beendet den Aufruf vor der fachlichen Analyse. Die Initialisierung von @Json und die Prüfung der TABLE-Zuordnung laufen zuerst. 0 und NULL setzen den regulären Aufruf fort.';
+        PRINT N'Hilfe anzeigen. EXEC [monitor].[USP_QueryHashAnalysis] @Hilfe=1;';
+        PRINT N'Technische Resultsets lesen. EXEC [monitor].[USP_QueryHashAnalysis] @QueryHash=0x0000000000000001, @MaxZeilen=50, @ResultSetArt=''RAW'';';
+        PRINT N'Nur JSON ausgeben. DECLARE @ResultJson nvarchar(max); EXEC [monitor].[USP_QueryHashAnalysis] @QueryHash=0x0000000000000001, @MaxZeilen=50, @ResultSetArt=''NONE'', @JsonErzeugen=1, @Json=@ResultJson OUTPUT; SELECT @ResultJson AS [Json];';
+        PRINT N'Benanntes Resultset in eine lokale Temp-Tabelle schreiben. CREATE TABLE #QueryHashAnalysis_HelpExample ([Seed] int NULL); BEGIN TRY EXEC [monitor].[USP_QueryHashAnalysis] @QueryHash=0x0000000000000001, @MaxZeilen=50, @ResultSetArt=''TABLE'', @ResultTablesJson=N''{"queryHashes":"#QueryHashAnalysis_HelpExample"}''; SELECT * FROM #QueryHashAnalysis_HelpExample; DROP TABLE #QueryHashAnalysis_HelpExample; END TRY BEGIN CATCH DROP TABLE #QueryHashAnalysis_HelpExample; THROW; END CATCH;';
         RETURN;
     END;
 
@@ -27671,12 +27702,23 @@ BEGIN
     IF @Hilfe=1
     BEGIN
         PRINT N'monitor.USP_PlanCacheHealth';
-        PRINT N'@AnalyseModus SUMMARY oder VOLL. VOLL prüft PLAN_CACHE_DEEP.';
-        PRINT N'@MitDatenbankVerteilung bit=0: wertet dbid-Planattribute aus; benötigt VOLL.';
-        PRINT N'@MitSingleUseDetails bit=0: liefert begrenzte Texte großer Single-use-Pläne; benötigt VOLL.';
-        PRINT N'@MaxZeilen int=100; @MaxSqlTextZeichen positiv = gekürzt, NULL/0 = vollständig; @ResultSetArt CONSOLE (Default)|RAW|TABLE|NONE; optional @Json OUTPUT.';
-        PRINT N'@PrintMeldungen bit=1; @Hilfe bit=0.';
-        PRINT N'usecounts kann durch Showplan-Nutzung beeinflusst werden; Resultate sind eine Momentaufnahme.';
+        PRINT N'Die Procedure zeigt Größe und Zusammensetzung des sichtbaren Plan Cache und kann Single-Use-Pläne und Datenbankverteilung aufschlüsseln. Showplan-Nutzung kann usecounts beeinflussen.';
+        PRINT N'@AnalyseModus varchar(16). Default ist ''SUMMARY''. SUMMARY liefert Gesamtübersicht und Kategorien. VOLL prüft PLAN_CACHE_DEEP und erlaubt optionale Details. NULL entspricht SUMMARY. Rand-Leerzeichen und Groß- und Kleinschreibung werden normalisiert. Leere und andere Werte ergeben INVALID_PARAMETER.';
+        PRINT N'@MitDatenbankVerteilung bit. Default ist 0. Bei 1 ergänzt die Zuordnung der gecachten Pläne nach dbid/Datenbank und aktiviert PLAN_CACHE_DEEP; nur zusammen mit @AnalyseModus=VOLL gültig. Bei 0 wird dieses Resultset ausgelassen. NULL verhält sich wie 0.';
+        PRINT N'@MitSingleUseDetails bit. Default ist 0. Bei 1 ergänzt bis zu @MaxZeilen Single-use-Pläne samt SQL-Text, absteigend nach Cachegröße, und aktiviert PLAN_CACHE_DEEP; nur mit VOLL gültig. Bei 0 werden keine Einzeltexte geladen. NULL verhält sich wie 0.';
+        PRINT N'@MaxZeilen int. Default ist 100. Begrenzt die Anzahl der Single-use-Detailpläne in der Detailausgabe. Positiv begrenzt; NULL oder 0 bedeutet unbegrenzt. Negative Werte sind ungültig. In SUMMARY ohne Detailausgabe hat der Wert keine fachliche Wirkung.';
+        PRINT N'@HighImpactConfirmed bit. Default ist 0. 1 bestätigt den geschützten Pfad für VOLL oder angeforderte Details. Die Berechtigung wird zusätzlich geprüft. 0 bestätigt ihn nicht und NULL ist für die Pfadprüfung ungültig. Bei SUMMARY ohne Details wird diese Prüfung nicht aufgerufen.';
+        PRINT N'@MaxSqlTextZeichen int. Default ist 4000. Maximale Unicode-Zeichenlänge der SQL-Texte in der optionalen Single-use-Detailausgabe. Positiv kürzt und kennzeichnet; NULL oder 0 lässt vollständig. Negative Werte sind ungültig. Ohne Details wird kein SQL-Text projiziert.';
+        PRINT N'@ResultSetArt varchar(16). Default ist ''CONSOLE''. CONSOLE zeigt beschriftete Cachekategorien. RAW liefert Modulstatus, Gesamtübersicht, Kategorien und angeforderte Details. TABLE schreibt die Kategorien unter dem Schlüssel overview. NONE unterdrückt die fachlichen Resultsets. Rand-Leerzeichen werden entfernt und die Groß- und Kleinschreibung normalisiert. NULL, leere Eingaben und andere Werte ergeben INVALID_PARAMETER.';
+        PRINT N'@ResultTablesJson nvarchar(max). Default ist NULL. Bei TABLE ist ein JSON-Objekt mit genau dem Schlüssel overview und einem Tabellennamen als Zeichenfolgenwert erforderlich. Verwenden Sie eine vorhandene, leere lokale #Temp-Tabelle mit genau einer Seed-Spalte. Der Name darf höchstens 116 Zeichen lang sein. Globale Tabellen und das Präfix #Monitor sind ausgeschlossen. Bei den übrigen Ausgabearten sind nur NULL, die leere Zeichenfolge und Leerzeichen erlaubt. Die Prüfung läuft vor der Hilfe und kann Fehler 51011 auslösen.';
+        PRINT N'@JsonErzeugen bit. Default ist 0. 1 erzeugt JSON in @Json zusätzlich zur gewählten Ausgabeart. 0 oder NULL deaktiviert JSON.';
+        PRINT N'@Json nvarchar(max) OUTPUT. Default ist NULL. Binden Sie eine nvarchar(max)-Variable mit OUTPUT. Der Aufruf setzt sie zunächst auf NULL. Bei @JsonErzeugen=1 enthält sie das JSON-Dokument mit Statusmetadaten, Gesamtübersicht, Kategorien und optionalen Details.';
+        PRINT N'@PrintMeldungen bit. Default ist 1. 1 gibt informative Meldungen zu Status und gegebenenfalls Textkürzung aus. 0 und NULL unterdrücken diese Meldungen.';
+        PRINT N'@Hilfe bit. Default ist 0. 1 gibt die Hilfe aus und beendet den Aufruf vor der fachlichen Analyse. Die Initialisierung von @Json und die Prüfung der TABLE-Zuordnung laufen zuerst. 0 und NULL setzen den regulären Aufruf fort.';
+        PRINT N'Hilfe anzeigen. EXEC [monitor].[USP_PlanCacheHealth] @Hilfe=1;';
+        PRINT N'Technische Resultsets lesen. EXEC [monitor].[USP_PlanCacheHealth] @AnalyseModus=''SUMMARY'', @ResultSetArt=''RAW'';';
+        PRINT N'Nur JSON ausgeben. DECLARE @ResultJson nvarchar(max); EXEC [monitor].[USP_PlanCacheHealth] @AnalyseModus=''SUMMARY'', @ResultSetArt=''NONE'', @JsonErzeugen=1, @Json=@ResultJson OUTPUT; SELECT @ResultJson AS [Json];';
+        PRINT N'Benanntes Resultset in eine lokale Temp-Tabelle schreiben. CREATE TABLE #PlanCacheHealth_HelpExample ([Seed] int NULL); BEGIN TRY EXEC [monitor].[USP_PlanCacheHealth] @AnalyseModus=''SUMMARY'', @ResultSetArt=''TABLE'', @ResultTablesJson=N''{"overview":"#PlanCacheHealth_HelpExample"}''; SELECT * FROM #PlanCacheHealth_HelpExample; DROP TABLE #PlanCacheHealth_HelpExample; END TRY BEGIN CATCH DROP TABLE #PlanCacheHealth_HelpExample; THROW; END CATCH;';
         RETURN;
     END;
 
