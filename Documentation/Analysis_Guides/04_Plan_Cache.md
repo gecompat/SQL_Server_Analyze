@@ -16,6 +16,8 @@
 
 ## 1. [monitor].[USP_QueryStats]
 
+Die [Parameterreferenz](Procedures/USP_QueryStats.md#parameter) beschreibt Eingabeform, Default und Wirkung jedes Parameters. Der Abschnitt [Aufrufbeispiele](Procedures/USP_QueryStats.md#aufrufbeispiele) zeigt Hilfe, RAW, JSON und TABLE.
+
 ### Zweck
 
 Die Procedure rangiert aktuell gecachte Statements nach CPU, Laufzeit, Reads, Writes, Ausführungen, Grants, Spills, Zeilen oder letzter Ausführung.
@@ -85,6 +87,8 @@ Eine Query mit einer Million Ausführungen zu jeweils 2 ms verbraucht insgesamt 
 
 ## 2. [monitor].[USP_QueryHashAnalysis]
 
+Die [Parameterreferenz](Procedures/USP_QueryHashAnalysis.md#parameter) beschreibt Eingabeform, Default und Wirkung jedes Parameters. Der Abschnitt [Aufrufbeispiele](Procedures/USP_QueryHashAnalysis.md#aufrufbeispiele) zeigt Hilfe, RAW, JSON und TABLE.
+
 ### Zweck
 
 Die Procedure aggregiert alle aktuellen Cachezeilen eines Query Hash und zeigt Planvarianz, Compile-/Handlezahl und Gesamtressourcen.
@@ -134,6 +138,8 @@ Der Defaultscope besitzt keinen Hashfilter und prüft `PLAN_CACHE_DEEP`; diese P
 ---
 
 ## 3. [monitor].[USP_PlanCacheHealth]
+
+Die [Parameterreferenz](Procedures/USP_PlanCacheHealth.md#parameter) beschreibt Eingabeform, Default und Wirkung jedes Parameters. Der Abschnitt [Aufrufbeispiele](Procedures/USP_PlanCacheHealth.md#aufrufbeispiele) zeigt Hilfe, RAW, JSON und TABLE.
 
 ### Zweck
 

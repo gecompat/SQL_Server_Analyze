@@ -59,12 +59,23 @@ BEGIN
     IF @Hilfe=1
     BEGIN
         PRINT N'monitor.USP_PlanCacheHealth';
-        PRINT N'@AnalyseModus SUMMARY oder VOLL. VOLL prüft PLAN_CACHE_DEEP.';
-        PRINT N'@MitDatenbankVerteilung bit=0: wertet dbid-Planattribute aus; benötigt VOLL.';
-        PRINT N'@MitSingleUseDetails bit=0: liefert begrenzte Texte großer Single-use-Pläne; benötigt VOLL.';
-        PRINT N'@MaxZeilen int=100; @MaxSqlTextZeichen positiv = gekürzt, NULL/0 = vollständig; @ResultSetArt CONSOLE (Default)|RAW|TABLE|NONE; optional @Json OUTPUT.';
-        PRINT N'@PrintMeldungen bit=1; @Hilfe bit=0.';
-        PRINT N'usecounts kann durch Showplan-Nutzung beeinflusst werden; Resultate sind eine Momentaufnahme.';
+        PRINT N'Die Procedure zeigt Größe und Zusammensetzung des sichtbaren Plan Cache und kann Single-Use-Pläne und Datenbankverteilung aufschlüsseln. Showplan-Nutzung kann usecounts beeinflussen.';
+        PRINT N'@AnalyseModus varchar(16). Default ist ''SUMMARY''. SUMMARY liefert Gesamtübersicht und Kategorien. VOLL prüft PLAN_CACHE_DEEP und erlaubt optionale Details. NULL entspricht SUMMARY. Rand-Leerzeichen und Groß- und Kleinschreibung werden normalisiert. Leere und andere Werte ergeben INVALID_PARAMETER.';
+        PRINT N'@MitDatenbankVerteilung bit. Default ist 0. Bei 1 ergänzt die Zuordnung der gecachten Pläne nach dbid/Datenbank und aktiviert PLAN_CACHE_DEEP; nur zusammen mit @AnalyseModus=VOLL gültig. Bei 0 wird dieses Resultset ausgelassen. NULL verhält sich wie 0.';
+        PRINT N'@MitSingleUseDetails bit. Default ist 0. Bei 1 ergänzt bis zu @MaxZeilen Single-use-Pläne samt SQL-Text, absteigend nach Cachegröße, und aktiviert PLAN_CACHE_DEEP; nur mit VOLL gültig. Bei 0 werden keine Einzeltexte geladen. NULL verhält sich wie 0.';
+        PRINT N'@MaxZeilen int. Default ist 100. Begrenzt die Anzahl der Single-use-Detailpläne in der Detailausgabe. Positiv begrenzt; NULL oder 0 bedeutet unbegrenzt. Negative Werte sind ungültig. In SUMMARY ohne Detailausgabe hat der Wert keine fachliche Wirkung.';
+        PRINT N'@HighImpactConfirmed bit. Default ist 0. 1 bestätigt den geschützten Pfad für VOLL oder angeforderte Details. Die Berechtigung wird zusätzlich geprüft. 0 bestätigt ihn nicht und NULL ist für die Pfadprüfung ungültig. Bei SUMMARY ohne Details wird diese Prüfung nicht aufgerufen.';
+        PRINT N'@MaxSqlTextZeichen int. Default ist 4000. Maximale Unicode-Zeichenlänge der SQL-Texte in der optionalen Single-use-Detailausgabe. Positiv kürzt und kennzeichnet; NULL oder 0 lässt vollständig. Negative Werte sind ungültig. Ohne Details wird kein SQL-Text projiziert.';
+        PRINT N'@ResultSetArt varchar(16). Default ist ''CONSOLE''. CONSOLE zeigt beschriftete Cachekategorien. RAW liefert Modulstatus, Gesamtübersicht, Kategorien und angeforderte Details. TABLE schreibt die Kategorien unter dem Schlüssel overview. NONE unterdrückt die fachlichen Resultsets. Rand-Leerzeichen werden entfernt und die Groß- und Kleinschreibung normalisiert. NULL, leere Eingaben und andere Werte ergeben INVALID_PARAMETER.';
+        PRINT N'@ResultTablesJson nvarchar(max). Default ist NULL. Bei TABLE ist ein JSON-Objekt mit genau dem Schlüssel overview und einem Tabellennamen als Zeichenfolgenwert erforderlich. Verwenden Sie eine vorhandene, leere lokale #Temp-Tabelle mit genau einer Seed-Spalte. Der Name darf höchstens 116 Zeichen lang sein. Globale Tabellen und das Präfix #Monitor sind ausgeschlossen. Bei den übrigen Ausgabearten sind nur NULL, die leere Zeichenfolge und Leerzeichen erlaubt. Die Prüfung läuft vor der Hilfe und kann Fehler 51011 auslösen.';
+        PRINT N'@JsonErzeugen bit. Default ist 0. 1 erzeugt JSON in @Json zusätzlich zur gewählten Ausgabeart. 0 oder NULL deaktiviert JSON.';
+        PRINT N'@Json nvarchar(max) OUTPUT. Default ist NULL. Binden Sie eine nvarchar(max)-Variable mit OUTPUT. Der Aufruf setzt sie zunächst auf NULL. Bei @JsonErzeugen=1 enthält sie das JSON-Dokument mit Statusmetadaten, Gesamtübersicht, Kategorien und optionalen Details.';
+        PRINT N'@PrintMeldungen bit. Default ist 1. 1 gibt informative Meldungen zu Status und gegebenenfalls Textkürzung aus. 0 und NULL unterdrücken diese Meldungen.';
+        PRINT N'@Hilfe bit. Default ist 0. 1 gibt die Hilfe aus und beendet den Aufruf vor der fachlichen Analyse. Die Initialisierung von @Json und die Prüfung der TABLE-Zuordnung laufen zuerst. 0 und NULL setzen den regulären Aufruf fort.';
+        PRINT N'Hilfe anzeigen. EXEC [monitor].[USP_PlanCacheHealth] @Hilfe=1;';
+        PRINT N'Technische Resultsets lesen. EXEC [monitor].[USP_PlanCacheHealth] @AnalyseModus=''SUMMARY'', @ResultSetArt=''RAW'';';
+        PRINT N'Nur JSON ausgeben. DECLARE @ResultJson nvarchar(max); EXEC [monitor].[USP_PlanCacheHealth] @AnalyseModus=''SUMMARY'', @ResultSetArt=''NONE'', @JsonErzeugen=1, @Json=@ResultJson OUTPUT; SELECT @ResultJson AS [Json];';
+        PRINT N'Benanntes Resultset in eine lokale Temp-Tabelle schreiben. CREATE TABLE #PlanCacheHealth_HelpExample ([Seed] int NULL); BEGIN TRY EXEC [monitor].[USP_PlanCacheHealth] @AnalyseModus=''SUMMARY'', @ResultSetArt=''TABLE'', @ResultTablesJson=N''{"overview":"#PlanCacheHealth_HelpExample"}''; SELECT * FROM #PlanCacheHealth_HelpExample; DROP TABLE #PlanCacheHealth_HelpExample; END TRY BEGIN CATCH DROP TABLE #PlanCacheHealth_HelpExample; THROW; END CATCH;';
         RETURN;
     END;
 

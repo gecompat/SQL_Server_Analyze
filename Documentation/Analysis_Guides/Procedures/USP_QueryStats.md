@@ -24,6 +24,67 @@ EXEC [monitor].[USP_QueryStats]
 
 Alle `Example*`-Werte im Aufruf sind synthetisch.
 
+## Parameter
+
+| Parameter | Typ | Default | Eingabe und Wirkung |
+|---|---|---|---|
+| `@DatabaseNames` | `nvarchar(max)` | `NULL` | Pipe-Liste exakter Datenbanknamen; NULL, leer oder nur Leerzeichen = keine exakte Einschränkung. &#124; trennt außerhalb von [...]; ]] maskiert ] innerhalb; äußere Segmentleerzeichen entfernt. Elemente einteilige Namen bis 128 Zeichen; ungültige Liste INVALID_PARAMETER. |
+| `@SystemdatenbankenEinbeziehen` | `bit` | `0` | 0 schließt master, tempdb, model und msdb aus; 1 lässt sie zu. NULL führt zur Parameterablehnung; ausgelassen = 0. SQL-bit-Konvertierung kann numerische Nichtnullwerte als 1 abbilden. |
+| `@DatabaseNamePattern` | `nvarchar(4000)` | `NULL` | Ein LIKE-Pattern oder Präfix like:, regex:, regexi:. Erkennung ohne Beachtung der Großschreibung; äußere Leerzeichen getrimmt, Musterrest nicht erneut. NULL = kein Pattern; leerer Inhalt ungültig. Nicht mit wirksamer @DatabaseNames-Liste kombinierbar. Regex Flag c/i und Ausführung nur SQL Server 2025 + Compatibility Level 170 der Installationsdatenbank; sonst UNAVAILABLE_FEATURE. |
+| `@HighImpactConfirmed` | `bit` | `0` | 0 lässt den hohen Aufwand unbestätigt. 1 bestätigt einen geschützten Pfad. Die Berechtigung wird zusätzlich geprüft. NULL ist für die Pfadprüfung ungültig. |
+| `@QueryHash` | `binary(8)` | `NULL` | Optionaler exakter 8-Byte Query Hash; NULL = kein Hashfilter. Andere Längen/Typkonvertierungen richten sich nach T-SQL-Bindung; keine zusätzliche Hexstring-Validierung im Procedurecode. |
+| `@QueryPlanHash` | `binary(8)` | `NULL` | Optionaler exakter 8-Byte Planhash; NULL = kein Planhashfilter. |
+| `@SqlHandle` | `varbinary(64)` | `NULL` | Optionaler SQL-Handle bis 64 Byte; NULL = kein Handlefilter. |
+| `@PlanHandle` | `varbinary(64)` | `NULL` | Optionaler Plan-Handle bis 64 Byte; NULL = kein Handlefilter. |
+| `@TextPattern` | `nvarchar(4000)` | `NULL` | SQL-Textpattern. NULL = kein Filter; Parser erkennt case-insensitive like:, regex:, regexi:, sonst LIKE. Außenleerzeichen getrimmt, Patternrest nicht. Leerer effektiver Inhalt INVALID_PARAMETER. Nicht als Pipe-Liste zerlegt. LIKE nutzt %/_/SQL LIKE-Syntax; Regex braucht SQL Server 2025 und Installations-DB-Kompatibilität 170, Syntaxfehler werden von Regex-Ausführung gemeldet. |
+| `@Sortierung` | `varchar(32)` | `'CPU_TOTAL'` | Case-insensitive nach LTRIM/RTRIM; geschlossene Menge: CPU_TOTAL = kumulative CPU; CPU_AVG = CPU je Ausführung; ELAPSED_TOTAL = kumulative Laufzeit; ELAPSED_AVG = Laufzeit je Ausführung; READS_TOTAL = kumulative logische Reads; READS_AVG = logische Reads je Ausführung; WRITES_TOTAL = kumulative logische Writes; WRITES_AVG = logische Writes je Ausführung; EXECUTIONS = Ausführungszahl; GRANT_MAX = maximaler Grant; SPILLS_TOTAL = kumulative Spills; ROWS_TOTAL = kumulative Zeilen; LAST_EXECUTION = letzte Ausführungszeit. NULL normalisiert auf Default. Ungültiger Wert INVALID_PARAMETER. |
+| `@AnalyseModus` | `varchar(16)` | `'TOP'` | TOP verwendet bei einem positiven Limit bis 1000 den aktuellen Plan-Cache-Pfad. VOLL prüft PLAN_CACHE_DEEP und behält das Zeilenlimit bei. NULL entspricht TOP. Rand-Leerzeichen und Groß- und Kleinschreibung werden normalisiert. Leere und andere Werte ergeben INVALID_PARAMETER. |
+| `@MinExecutionCount` | `bigint` | `1` | Ganzzahliges Minimum für execution_count. 0 lässt auch Einträge mit 0 Ausführungen zu. Negative Werte ergeben INVALID_PARAMETER. Bei NULL trifft der Vergleich auf keine Zeile. |
+| `@VonUtc` | `datetime2(7)` | `NULL` | Inklusiver Grenzwert für last_execution_time als datetime2-Wert, z. B. 2026-01-01T00:00:00. Die Procedure vergleicht direkt mit dem Cachewert und rechnet keine Zeitzone um. NULL lässt den Zeitfilter aus. |
+| `@MaxZeilen` | `int` | `100` | Positiv begrenzt Ausgabe; NULL oder 0 bedeutet unbegrenzt; negativ INVALID_PARAMETER. Ausgelassen = 100. Unbegrenzt oder >1000 sowie VOLL erfordern PLAN_CACHE_DEEP. Positive Auswahl sammelt bis Limit+1 zur HasMoreRows-Ermittlung. |
+| `@MaxSqlTextZeichen` | `int` | `4000` | Positiv kürzt Statement- und Batchtext auf Zeichenlimit; NULL oder 0 bedeutet ungekürzt; negativ INVALID_PARAMETER. Zeichenprojektion zählt unter SC-Collation, nicht Grapheme. |
+| `@ParentQueryStatsSnapshot` | `bit` | `0` | 0 = DMV frisch lesen; 1 = ausschließlich laufinterne Wiederverwendung durch USP_PlanCacheAnalysis. NULL INVALID_PARAMETER. Schalter ist kein öffentlicher externer Snapshotvertrag. |
+| `@ResultSetArt` | `varchar(16)` | `'CONSOLE'` | CONSOLE zeigt die beschriftete Abfrageauswahl. RAW liefert Modulstatus, Abfragezeilen und Auswahlwarnungen. TABLE schreibt das benannte Resultset queries. NONE unterdrückt die fachlichen Resultsets. Rand-Leerzeichen werden entfernt und die Groß- und Kleinschreibung normalisiert. NULL, leere Eingaben und andere Werte ergeben INVALID_PARAMETER. |
+| `@ResultTablesJson` | `nvarchar(max)` | `NULL` | Bei TABLE ist ein JSON-Objekt mit genau dem Schlüssel queries und einem Tabellennamen als Zeichenfolgenwert erforderlich. Verwenden Sie eine vorhandene, leere lokale #Temp-Tabelle mit genau einer Seed-Spalte. Der Name darf höchstens 116 Zeichen lang sein. Globale Tabellen und das Präfix #Monitor sind ausgeschlossen. Bei den übrigen Ausgabearten sind nur NULL, die leere Zeichenfolge und Leerzeichen erlaubt. Die Prüfung läuft vor der Hilfe und kann Fehler 51011 auslösen. |
+| `@JsonErzeugen` | `bit` | `0` | 1 erzeugt JSON in @Json zusätzlich zur gewählten Ausgabeart. 0 deaktiviert JSON. NULL ergibt INVALID_PARAMETER. |
+| `@Json` | `nvarchar(max) OUTPUT` | `NULL` | Binden Sie eine nvarchar(max)-Variable mit OUTPUT. Der Aufruf setzt sie zunächst auf NULL. Bei @JsonErzeugen=1 enthält sie das JSON-Dokument mit meta, queries und warnings. |
+| `@PrintMeldungen` | `bit` | `1` | 1 gibt informative Meldungen zu Status und gegebenenfalls Textkürzung aus. 0 und NULL unterdrücken diese Meldungen. |
+| `@Hilfe` | `bit` | `0` | 1 gibt die Hilfe aus und beendet den Aufruf vor der fachlichen Analyse. Die Initialisierung von @Json und die Prüfung der TABLE-Zuordnung laufen zuerst. 0 und NULL setzen den regulären Aufruf fort. |
+
+## Aufrufbeispiele
+
+Hilfe anzeigen.
+
+```sql
+EXEC [monitor].[USP_QueryStats] @Hilfe=1;
+```
+
+Technische Resultsets lesen.
+
+```sql
+EXEC [monitor].[USP_QueryStats] @QueryHash=0x0000000000000001, @MaxZeilen=50, @ResultSetArt='RAW';
+```
+
+Nur JSON ausgeben.
+
+```sql
+DECLARE @ResultJson nvarchar(max);
+EXEC [monitor].[USP_QueryStats] @QueryHash=0x0000000000000001, @MaxZeilen=50, @ResultSetArt='NONE', @JsonErzeugen=1, @Json=@ResultJson OUTPUT;
+SELECT @ResultJson AS [Json];
+```
+
+Benanntes Resultset in eine lokale Temp-Tabelle schreiben.
+
+```sql
+CREATE TABLE #QueryStats_HelpExample ([Seed] int NULL);
+BEGIN TRY EXEC [monitor].[USP_QueryStats] @QueryHash=0x0000000000000001, @MaxZeilen=50, @ResultSetArt='TABLE', @ResultTablesJson=N'{"queries":"#QueryStats_HelpExample"}';
+SELECT * FROM #QueryStats_HelpExample;
+DROP TABLE #QueryStats_HelpExample;
+END TRY BEGIN CATCH DROP TABLE #QueryStats_HelpExample;
+THROW;
+END CATCH;
+```
+
 ## Resultsets und Leserichtung
 
 Der typisierte TABLE-Vertrag registriert `queries` mit 60 Feldern, fünf expliziten Frameworktextcollations und ohne Identity. RAW und JSON projizieren 59 Felder ohne `SortValue`; die aktive CONSOLE ergänzt die 60 Felder um `Ergebnis` und liefert damit 61 Felder. Eine leere CONSOLE verwendet den bestehenden Dreifeldvertrag `Ergebnis`, `Status`, `Hinweis`. RAW liefert außerdem den neunfeldrigen Modulstatus und die dreifeldrigen Auswahlwarnings; JSON enthält `meta`, `queries` und `warnings` mit zehn Metafeldern einschließlich NULL-Werten. Zusätzliche Helperproben können davor leere Resultsets liefern.
