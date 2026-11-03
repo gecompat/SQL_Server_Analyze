@@ -87,7 +87,7 @@ BEGIN
         PRINT N'@BisUtc datetime2(7). Default ist NULL. Exklusive Obergrenze als UTC-Zeitwert. NULL lässt sie aus. Bei zwei Grenzen muss diese später als @VonUtc liegen.';
         PRINT N'@MaxZeilen int. Default ist 1000. Eine positive Ganzzahl begrenzt die zurückgehaltenen Events. NULL oder 0 hebt das Limit auf. Negative Werte sind ungültig. Das Limit begrenzt den physischen XEL-Scan nicht zuverlässig.';
         PRINT N'@MitEventXml bit. Default ist 1. 1 liefert vollständiges Event-XML in RAW und JSON. 0 oder NULL lässt es dort aus. CONSOLE und TABLE enthalten EventXml weiterhin. Die XML-Konvertierung und Feldextraktion bleiben aktiv.';
-        PRINT N'@BestaetigeTargetFlush bit. Default ist 0. 1 bestätigt, dass der Zugriff auf sys.dm_xe_session_targets einen Flush auslösen kann. 0 verweigert RING_BUFFER. Für einen AUTO-Fallback muss der Wert 1 sein. Verwenden Sie für bestätigten Ringbufferzugriff ausdrücklich 1. Übergeben Sie kein NULL. Beim expliziten RING_BUFFER-Aufruf prüft die aktuelle Implementierung nur auf 0. NULL kann deshalb den Zugriff auslösen. AUTO wechselt nur bei 1 zum Ringbuffer.';
+        PRINT N'@BestaetigeTargetFlush bit. Default ist 0. Nur 1 bestätigt, dass der Zugriff auf sys.dm_xe_session_targets einen Flush auslösen kann. 0 oder NULL verweigert RING_BUFFER ohne DMV-Zugriff. Für einen AUTO-Fallback muss der Wert 1 sein. Verwenden Sie für bestätigten Ringbufferzugriff ausdrücklich 1.';
         PRINT N'@HighImpactConfirmed bit. Default ist 0. 1 bestätigt den Pfad EXTENDED_EVENTS_FORENSICS_DEEP. 0 bestätigt ihn nicht und NULL ist für die Gate-Prüfung ungültig. Die aktuelle Berechtigung wird zusätzlich geprüft.';
         PRINT N'@ResultSetArt varchar(16). Default ist ''CONSOLE''. CONSOLE zeigt beschriftete Ergebnisse. RAW liefert Modulstatus, Ereignisse und Quellenstatus. TABLE schreibt die zugeordneten Resultsets. NONE unterdrückt Datenresultsets. Rand-Leerzeichen werden entfernt und die Groß- und Kleinschreibung normalisiert. NULL, Leertext und andere Werte sind ungültig.';
         PRINT N'@ResultTablesJson nvarchar(max). Default ist NULL. Bei TABLE ist ein gültiges, nichtleeres JSON-Objekt erforderlich. Der einzige zulässige Schlüssel ist events. Jeder Wert benennt als Zeichenfolge eine vorhandene, leere lokale #Temp-Tabelle mit genau einer Seed-Spalte. Ziele müssen verschieden sein. Erlaubt sind höchstens 116 Zeichen und weder ## noch #Monitor als Präfix. Außerhalb von TABLE sind nur NULL, Leertext und reine Leerzeichen zulässig. Die Prüfung läuft vor der Hilfe.';
@@ -258,7 +258,7 @@ BEGIN
 
     IF @StatusCode = 'AVAILABLE' AND @ResolvedSource = 'RING_BUFFER'
     BEGIN
-        IF @BestaetigeTargetFlush = 0
+        IF @BestaetigeTargetFlush IS NULL OR @BestaetigeTargetFlush = 0
         BEGIN
             SET @StatusCode = 'AVAILABLE_DISABLED';
             SET @ErrorMessage = N'RING_BUFFER erfordert @BestaetigeTargetFlush=1.';
