@@ -32,6 +32,65 @@ noch XEL-Dateien und löst deshalb keinen Target-Flush aus.
 
 Alle `Example*`-Werte im Aufruf sind synthetisch.
 
+## Parameter
+
+| Parameter | Typ | Default | Eingabe und Wirkung |
+|---|---|---|---|
+| `@ExtendedEventSessionNames` | `nvarchar(max)` | `NULL` | Pipe-Liste exakter einteiliger SQL-Namen. Einträge können in eckigen Klammern stehen. Pipe trennt nur außerhalb der Klammern. Eine schließende Klammer wird innen verdoppelt. NULL deaktiviert den Filter. Leere und ungültige Einträge werden abgelehnt. Verwenden Sie für dieselbe Eigenschaft entweder die Liste oder das Muster. |
+| `@ExtendedEventSessionNamePattern` | `nvarchar(4000)` | `NULL` | Ohne Präfix oder mit LIKE: gilt SQL LIKE mit % und _. REGEX: ist ein Regex mit Beachtung der Groß- und Kleinschreibung. REGEXI: ignoriert sie. Regex benötigt SQL Server 2025 und Compatibility Level 170. NULL deaktiviert den Filter. Ein leeres Muster ist ungültig. Verwenden Sie entweder Liste oder Muster. |
+| `@EventNames` | `nvarchar(max)` | `NULL` | Pipe-Liste exakter einteiliger SQL-Namen. Einträge können in eckigen Klammern stehen. Pipe trennt nur außerhalb der Klammern. Eine schließende Klammer wird innen verdoppelt. NULL deaktiviert den Filter. Leere und ungültige Einträge werden abgelehnt. Verwenden Sie für dieselbe Eigenschaft entweder die Liste oder das Muster. |
+| `@EventNamePattern` | `nvarchar(4000)` | `NULL` | Ohne Präfix oder mit LIKE: gilt SQL LIKE mit % und _. REGEX: ist ein Regex mit Beachtung der Groß- und Kleinschreibung. REGEXI: ignoriert sie. Regex benötigt SQL Server 2025 und Compatibility Level 170. NULL deaktiviert den Filter. Ein leeres Muster ist ungültig. Verwenden Sie entweder Liste oder Muster. |
+| `@TargetNames` | `nvarchar(max)` | `NULL` | Pipe-Liste exakter einteiliger SQL-Namen. Einträge können in eckigen Klammern stehen. Pipe trennt nur außerhalb der Klammern. Eine schließende Klammer wird innen verdoppelt. NULL deaktiviert den Filter. Leere und ungültige Einträge werden abgelehnt. Verwenden Sie für dieselbe Eigenschaft entweder die Liste oder das Muster. |
+| `@TargetNamePattern` | `nvarchar(4000)` | `NULL` | Ohne Präfix oder mit LIKE: gilt SQL LIKE mit % und _. REGEX: ist ein Regex mit Beachtung der Groß- und Kleinschreibung. REGEXI: ignoriert sie. Regex benötigt SQL Server 2025 und Compatibility Level 170. NULL deaktiviert den Filter. Ein leeres Muster ist ungültig. Verwenden Sie entweder Liste oder Muster. |
+| `@NurLaufend` | `bit` | `0` | 0 lässt laufende und gestoppte Sessions zu. 1 beschränkt die Auswahl auf laufende Sessions. NULL wird bei aktivierten Zeitgrenzen auf 1 gesetzt und erfüllt den Vergleich mit 0 auch sonst nicht. |
+| `@MitLaufzeitstatus` | `bit` | `1` | 1 ergänzt verfügbare Werte aus sys.dm_xe_sessions. 0 oder NULL lässt diese Erhebung aus. |
+| `@MitEvents` | `bit` | `1` | 1 liest konfigurierte Events. 0 oder NULL lässt diese Details aus. |
+| `@MitActions` | `bit` | `1` | 1 liest konfigurierte Actions. 0 oder NULL lässt diese Details aus. |
+| `@MitTargets` | `bit` | `1` | 1 liest Targetdefinitionen. 0 oder NULL lässt diese Details aus. |
+| `@MitFeldern` | `bit` | `0` | 1 liest explizit konfigurierte Felder. 0 oder NULL lässt diese Details aus. |
+| `@MaxZeilen` | `int` | `5000` | Eine positive Ganzzahl begrenzt die einzelnen Sammlungen. NULL oder 0 hebt das Limit auf. Negative Werte sind ungültig. |
+| `@ResultSetArt` | `varchar(16)` | `'CONSOLE'` | CONSOLE zeigt beschriftete Ergebnisse. RAW liefert Status und die technischen Inventurresultsets. TABLE schreibt die zugeordneten Resultsets. NONE unterdrückt Datenresultsets. Rand-Leerzeichen werden entfernt und die Groß- und Kleinschreibung normalisiert. NULL, Leertext und andere Werte sind ungültig. |
+| `@ResultTablesJson` | `nvarchar(max)` | `NULL` | Bei TABLE ist ein gültiges, nichtleeres JSON-Objekt erforderlich. Ohne Zeitgrenzen ist sessions der einzige Schlüssel. Mit @MitZeitgrenzen=1 können Sie sessions, timeBounds oder beide zuordnen. Jeder Wert benennt als Zeichenfolge eine vorhandene, leere lokale #Temp-Tabelle mit genau einer Seed-Spalte. Ziele müssen verschieden sein. Erlaubt sind höchstens 116 Zeichen und weder ## noch #Monitor als Präfix. Außerhalb von TABLE sind nur NULL, Leertext und reine Leerzeichen zulässig. Die Prüfung läuft vor der Hilfe. |
+| `@JsonErzeugen` | `bit` | `0` | 1 erzeugt das JSON-Dokument unabhängig von der Ausgabeart. 0 oder NULL erzeugt kein JSON. |
+| `@Json` | `nvarchar(max) OUTPUT` | `NULL` | Binden Sie eine nvarchar(max)-Variable mit OUTPUT. Der Aufruf setzt sie zunächst auf NULL und füllt sie bei @JsonErzeugen=1. |
+| `@PrintMeldungen` | `bit` | `1` | 1 gibt informative Warnmeldungen aus. 0 oder NULL unterdrückt sie. |
+| `@Hilfe` | `bit` | `0` | 1 gibt die Hilfe nach der Prüfung von @ResultTablesJson aus und beendet den Aufruf vor dem fachlichen Zugriff. 0 oder NULL setzt den normalen Aufruf fort. |
+| `@MitZeitgrenzen` | `bit` | `0` | 1 ergänzt timeBounds und verwendet JSON-Schema 2. Eine Restzeit ist eine Schätzung. 0 oder NULL verwendet JSON-Schema 1 ohne timeBounds. |
+
+## Aufrufbeispiele
+
+Hilfe anzeigen.
+
+```sql
+EXEC [monitor].[USP_ExtendedEventsSessions] @Hilfe=1;
+```
+
+Technische Resultsets lesen.
+
+```sql
+EXEC [monitor].[USP_ExtendedEventsSessions] @ExtendedEventSessionNames=N'ExampleXeSession', @MaxZeilen=100, @ResultSetArt='RAW';
+```
+
+Nur JSON ausgeben.
+
+```sql
+DECLARE @ResultJson nvarchar(max);
+EXEC [monitor].[USP_ExtendedEventsSessions] @ExtendedEventSessionNames=N'ExampleXeSession', @MaxZeilen=100, @ResultSetArt='NONE', @JsonErzeugen=1, @Json=@ResultJson OUTPUT;
+SELECT @ResultJson AS [Json];
+```
+
+Ein Resultset in eine lokale Temp-Tabelle schreiben.
+
+```sql
+CREATE TABLE #ExtendedEventsSessions_HelpExample ([Seed] int NULL);
+BEGIN TRY EXEC [monitor].[USP_ExtendedEventsSessions] @ExtendedEventSessionNames=N'ExampleXeSession', @MaxZeilen=100, @ResultSetArt='TABLE', @ResultTablesJson=N'{"sessions":"#ExtendedEventsSessions_HelpExample"}';
+SELECT * FROM #ExtendedEventsSessions_HelpExample;
+DROP TABLE #ExtendedEventsSessions_HelpExample;
+END TRY BEGIN CATCH DROP TABLE #ExtendedEventsSessions_HelpExample;
+THROW;
+END CATCH;
+```
+
 ## Resultsets und Leserichtung
 
 Der typisierte TABLE-Vertrag registriert `sessions` und das optionale `timeBounds`. Mit `@MitZeitgrenzen = 1` wird `timeBounds` als letztes RAW-Resultset sowie als zusätzliches JSON-Array mit Schemaversion 2 ausgegeben. Bei deaktiviertem Pfad bleiben die alten RAW-Resultsets und JSON-Version 1 erhalten; ein explizites TABLE-Ziel `timeBounds` bleibt typisiert leer. CONSOLE behält die Sessionübersicht. Status, Scope und Warnings sind vor den Fachergebnissen zu lesen. CONSOLE dient der interaktiven Triage; RAW und JSON erhalten den technischen Kontext, während TABLE nur die ausdrücklich benannten stabilen Resultsets schreibt. Resultsets mit unterschiedlicher Zeilengranularität dürfen nicht ungeprüft vereinigt oder summiert werden.

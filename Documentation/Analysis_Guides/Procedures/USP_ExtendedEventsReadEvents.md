@@ -48,6 +48,62 @@ EXEC [monitor].[USP_ExtendedEventsReadEvents]
 
 Keinen realen `@FilePath` in ungeschützte Dokumentation oder Tickets kopieren. SourceStatus, Event XML, SQL-Text, Login, Host und Clientanwendung können in einer Laufzeitumgebung interne Pfade oder schutzbedürftige Inhalte enthalten.
 
+## Parameter
+
+| Parameter | Typ | Default | Eingabe und Wirkung |
+|---|---|---|---|
+| `@SourceExtendedEventSessionName` | `nvarchar(258)` | `N'system_health'` | Genau ein einteiliger Name der serverweiten XE-Session, optional in eckigen Klammern. NULL, Leertext und mehrere Namen sind ungültig. |
+| `@Quelle` | `varchar(20)` | `'EVENT_FILE'` | EVENT_FILE liest XEL-Dateien. RING_BUFFER liest den Ringbuffer. AUTO wählt EVENT_FILE, wenn ein expliziter oder konfigurierter Dateipfad vorliegt. Ohne Pfad kann AUTO mit bestätigtem Flush den Ringbuffer wählen. Ein Lesefehler löst keinen Fallback aus. Rand-Leerzeichen und Groß- und Kleinschreibung werden normalisiert. NULL, Leertext und andere Werte sind ungültig. |
+| `@FilePath` | `nvarchar(4000)` | `NULL` | XEL-Pfad, Muster oder URL für EVENT_FILE. NULL oder eine leere Zeichenfolge verwendet bei der Pfadauflösung den konfigurierten Pfad. Ein lokaler Dateiname kann zu einem Rollvermuster erweitert werden. Begrenzen Sie den Zugriff auf die benötigten Dateien. |
+| `@EventNames` | `nvarchar(max)` | `NULL` | Pipe-Liste exakter einteiliger SQL-Namen. Einträge können in eckigen Klammern stehen. Pipe trennt nur außerhalb der Klammern. Eine schließende Klammer wird innen verdoppelt. NULL deaktiviert den Filter. Leere und ungültige Einträge werden abgelehnt. Verwenden Sie für dieselbe Eigenschaft entweder die Liste oder das Muster. |
+| `@EventNamePattern` | `nvarchar(4000)` | `NULL` | Ohne Präfix oder mit LIKE: gilt SQL LIKE mit % und _. REGEX: ist ein Regex mit Beachtung der Groß- und Kleinschreibung. REGEXI: ignoriert sie. Regex benötigt SQL Server 2025 und Compatibility Level 170. NULL deaktiviert den Filter. Ein leeres Muster ist ungültig. Verwenden Sie entweder Liste oder Muster. Regex wird nach der Materialisierung angewandt. |
+| `@VonUtc` | `datetime2(7)` | `NULL` | Inklusive Untergrenze als UTC-Zeitwert, z. B. 2026-01-01T00:00:00. NULL lässt die Untergrenze aus. |
+| `@BisUtc` | `datetime2(7)` | `NULL` | Exklusive Obergrenze als UTC-Zeitwert. NULL lässt sie aus. Bei zwei Grenzen muss diese später als @VonUtc liegen. |
+| `@MaxZeilen` | `int` | `1000` | Eine positive Ganzzahl begrenzt die zurückgehaltenen Events. NULL oder 0 hebt das Limit auf. Negative Werte sind ungültig. Das Limit begrenzt den physischen XEL-Scan nicht zuverlässig. |
+| `@MitEventXml` | `bit` | `1` | 1 liefert vollständiges Event-XML in RAW und JSON. 0 oder NULL lässt es dort aus. CONSOLE und TABLE enthalten EventXml weiterhin. Die XML-Konvertierung und Feldextraktion bleiben aktiv. |
+| `@BestaetigeTargetFlush` | `bit` | `0` | 1 bestätigt, dass der Zugriff auf sys.dm_xe_session_targets einen Flush auslösen kann. 0 verweigert RING_BUFFER. Für einen AUTO-Fallback muss der Wert 1 sein. Verwenden Sie für bestätigten Ringbufferzugriff ausdrücklich 1. Übergeben Sie kein NULL. Beim expliziten RING_BUFFER-Aufruf prüft die aktuelle Implementierung nur auf 0. NULL kann deshalb den Zugriff auslösen. AUTO wechselt nur bei 1 zum Ringbuffer. |
+| `@HighImpactConfirmed` | `bit` | `0` | 1 bestätigt den Pfad EXTENDED_EVENTS_FORENSICS_DEEP. 0 bestätigt ihn nicht und NULL ist für die Gate-Prüfung ungültig. Die aktuelle Berechtigung wird zusätzlich geprüft. |
+| `@ResultSetArt` | `varchar(16)` | `'CONSOLE'` | CONSOLE zeigt beschriftete Ergebnisse. RAW liefert Modulstatus, Ereignisse und Quellenstatus. TABLE schreibt die zugeordneten Resultsets. NONE unterdrückt Datenresultsets. Rand-Leerzeichen werden entfernt und die Groß- und Kleinschreibung normalisiert. NULL, Leertext und andere Werte sind ungültig. |
+| `@ResultTablesJson` | `nvarchar(max)` | `NULL` | Bei TABLE ist ein gültiges, nichtleeres JSON-Objekt erforderlich. Der einzige zulässige Schlüssel ist events. Jeder Wert benennt als Zeichenfolge eine vorhandene, leere lokale #Temp-Tabelle mit genau einer Seed-Spalte. Ziele müssen verschieden sein. Erlaubt sind höchstens 116 Zeichen und weder ## noch #Monitor als Präfix. Außerhalb von TABLE sind nur NULL, Leertext und reine Leerzeichen zulässig. Die Prüfung läuft vor der Hilfe. |
+| `@JsonErzeugen` | `bit` | `0` | 1 erzeugt das JSON-Dokument unabhängig von der Ausgabeart. 0 oder NULL erzeugt kein JSON. |
+| `@Json` | `nvarchar(max) OUTPUT` | `NULL` | Binden Sie eine nvarchar(max)-Variable mit OUTPUT. Der Aufruf setzt sie zunächst auf NULL und füllt sie bei @JsonErzeugen=1. |
+| `@PrintMeldungen` | `bit` | `1` | 1 gibt informative Warnmeldungen aus. 0 oder NULL unterdrückt sie. |
+| `@Hilfe` | `bit` | `0` | 1 gibt die Hilfe nach der Prüfung von @ResultTablesJson aus und beendet den Aufruf vor dem fachlichen Zugriff. 0 oder NULL setzt den normalen Aufruf fort. |
+
+## Aufrufbeispiele
+
+Hilfe anzeigen.
+
+```sql
+EXEC [monitor].[USP_ExtendedEventsReadEvents] @Hilfe=1;
+```
+
+Technische Resultsets lesen.
+
+```sql
+EXEC [monitor].[USP_ExtendedEventsReadEvents] @SourceExtendedEventSessionName=N'ExampleXeSession', @Quelle='EVENT_FILE', @VonUtc='2026-01-01T00:00:00', @BisUtc='2026-01-02T00:00:00', @MaxZeilen=100, @MitEventXml=0, @HighImpactConfirmed=1, @ResultSetArt='RAW';
+```
+
+Nur JSON ausgeben.
+
+```sql
+DECLARE @ResultJson nvarchar(max);
+EXEC [monitor].[USP_ExtendedEventsReadEvents] @SourceExtendedEventSessionName=N'ExampleXeSession', @Quelle='EVENT_FILE', @VonUtc='2026-01-01T00:00:00', @BisUtc='2026-01-02T00:00:00', @MaxZeilen=100, @MitEventXml=0, @HighImpactConfirmed=1, @ResultSetArt='NONE', @JsonErzeugen=1, @Json=@ResultJson OUTPUT;
+SELECT @ResultJson AS [Json];
+```
+
+Ein Resultset in eine lokale Temp-Tabelle schreiben.
+
+```sql
+CREATE TABLE #ExtendedEventsReadEvents_HelpExample ([Seed] int NULL);
+BEGIN TRY EXEC [monitor].[USP_ExtendedEventsReadEvents] @SourceExtendedEventSessionName=N'ExampleXeSession', @Quelle='EVENT_FILE', @VonUtc='2026-01-01T00:00:00', @BisUtc='2026-01-02T00:00:00', @MaxZeilen=100, @MitEventXml=0, @HighImpactConfirmed=1, @ResultSetArt='TABLE', @ResultTablesJson=N'{"events":"#ExtendedEventsReadEvents_HelpExample"}';
+SELECT * FROM #ExtendedEventsReadEvents_HelpExample;
+DROP TABLE #ExtendedEventsReadEvents_HelpExample;
+END TRY BEGIN CATCH DROP TABLE #ExtendedEventsReadEvents_HelpExample;
+THROW;
+END CATCH;
+```
+
 ## Resultsets und Leserichtung
 
 - `RAW` liefert zuerst Modulstatus, danach angereicherte Eventzeilen und zuletzt SourceStatus. Leserichtung: `StatusCode`/`IsPartial` → SourceStatus → Events.
@@ -111,7 +167,7 @@ Selbst dann lautet die Aussage nur: „In dieser geprüften Capturequelle wurde 
 - Dateiberechtigung und Lesbarkeit auf dem SQL-Server-Host,
 - Eventname, LIKE-/Regexmodus und Zeilenlimit.
 
-`AUTO` bevorzugt Event Files. Ist kein lesbarer Pfad vorhanden, wechselt es nur mit `@BestaetigeTargetFlush = 1` zum Ring Buffer; andernfalls endet es als `AVAILABLE_DISABLED`. Ein expliziter Ring-Buffer-Lauf ohne diese Bestätigung liest `sys.dm_xe_session_targets` nicht.
+`AUTO` bevorzugt Event Files. Ist kein lesbarer Pfad vorhanden, wechselt es nur mit `@BestaetigeTargetFlush = 1` zum Ring Buffer; andernfalls endet es als `AVAILABLE_DISABLED`. Ein expliziter Ring-Buffer-Lauf mit 0 liest `sys.dm_xe_session_targets` nicht. Übergeben Sie kein NULL, da der aktuelle Zweig nur auf 0 prüft.
 
 Bei Regex wird zunächst bis `@MaxZeilen` nach Zeit sortierte Rohmenge gelesen und erst danach in der Temp-Tabelle gelöscht. Dadurch können weniger Zeilen als angefordert zurückkommen; ältere Regex-Treffer außerhalb der vorab begrenzten Rohmenge werden nicht nachgeladen. Für eine Vollständigkeitsbehauptung ist dieser Pfad ungeeignet, solange der Kandidatenscope nicht anderweitig vollständig begrenzt ist.
 

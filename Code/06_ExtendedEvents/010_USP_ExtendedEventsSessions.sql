@@ -91,18 +91,31 @@ BEGIN
     IF @Hilfe = 1
     BEGIN
         PRINT N'monitor.USP_ExtendedEventsSessions';
-        PRINT N'@ExtendedEventSessionNames: bracket-aware Pipe-Liste; @ExtendedEventSessionNamePattern: LIKE/Regex-Pattern.';
-        PRINT N'@NurLaufend bit=0: 1 zeigt nur aktuell laufende Sessions.';
-        PRINT N'@MitLaufzeitstatus bit=1: ergänzt Laufzeitinformationen aus sys.dm_xe_sessions; liest keine Targetdaten.';
-        PRINT N'@MitZeitgrenzen bit=0: 1 ergänzt timeBounds und JSON-Schema2; der Default behält Schema1. Restzeit ist eine begrenzte Schätzung, keine Stopgarantie.';
-        PRINT N'@MitEvents bit=1: gibt konfigurierte Events aus.';
-        PRINT N'@MitActions bit=1: gibt konfigurierte Actions aus.';
-        PRINT N'@MitTargets bit=1: gibt konfigurierte Targets aus.';
-        PRINT N'@MitFeldern bit=0: gibt explizit konfigurierte Event-/Targetfelder aus.';
-        PRINT N'@MaxZeilen int=5000: positive Werte begrenzen jedes Detailresultset; NULL/0 = unbegrenzt.';
-        PRINT N'@PrintMeldungen bit=1: Warnungen zusätzlich via RAISERROR Severity 10.';
-        PRINT N'@Hilfe bit=0: 1 zeigt diese Hilfe und beendet die Procedure.';
-        PRINT N'Die Procedure erstellt, startet, stoppt, ändert oder löscht keine Extended-Events-Session.';
+        PRINT N'Die Procedure inventarisiert serverweite Extended-Events-Sessions und ergänzt auf Wunsch Laufzeitwerte und Zeitgrenzen.';
+        PRINT N'@ExtendedEventSessionNames nvarchar(max). Default ist NULL. Pipe-Liste exakter einteiliger SQL-Namen. Einträge können in eckigen Klammern stehen. Pipe trennt nur außerhalb der Klammern. Eine schließende Klammer wird innen verdoppelt. NULL deaktiviert den Filter. Leere und ungültige Einträge werden abgelehnt. Verwenden Sie für dieselbe Eigenschaft entweder die Liste oder das Muster.';
+        PRINT N'@ExtendedEventSessionNamePattern nvarchar(4000). Default ist NULL. Ohne Präfix oder mit LIKE: gilt SQL LIKE mit % und _. REGEX: ist ein Regex mit Beachtung der Groß- und Kleinschreibung. REGEXI: ignoriert sie. Regex benötigt SQL Server 2025 und Compatibility Level 170. NULL deaktiviert den Filter. Ein leeres Muster ist ungültig. Verwenden Sie entweder Liste oder Muster.';
+        PRINT N'@EventNames nvarchar(max). Default ist NULL. Pipe-Liste exakter einteiliger SQL-Namen. Einträge können in eckigen Klammern stehen. Pipe trennt nur außerhalb der Klammern. Eine schließende Klammer wird innen verdoppelt. NULL deaktiviert den Filter. Leere und ungültige Einträge werden abgelehnt. Verwenden Sie für dieselbe Eigenschaft entweder die Liste oder das Muster.';
+        PRINT N'@EventNamePattern nvarchar(4000). Default ist NULL. Ohne Präfix oder mit LIKE: gilt SQL LIKE mit % und _. REGEX: ist ein Regex mit Beachtung der Groß- und Kleinschreibung. REGEXI: ignoriert sie. Regex benötigt SQL Server 2025 und Compatibility Level 170. NULL deaktiviert den Filter. Ein leeres Muster ist ungültig. Verwenden Sie entweder Liste oder Muster.';
+        PRINT N'@TargetNames nvarchar(max). Default ist NULL. Pipe-Liste exakter einteiliger SQL-Namen. Einträge können in eckigen Klammern stehen. Pipe trennt nur außerhalb der Klammern. Eine schließende Klammer wird innen verdoppelt. NULL deaktiviert den Filter. Leere und ungültige Einträge werden abgelehnt. Verwenden Sie für dieselbe Eigenschaft entweder die Liste oder das Muster.';
+        PRINT N'@TargetNamePattern nvarchar(4000). Default ist NULL. Ohne Präfix oder mit LIKE: gilt SQL LIKE mit % und _. REGEX: ist ein Regex mit Beachtung der Groß- und Kleinschreibung. REGEXI: ignoriert sie. Regex benötigt SQL Server 2025 und Compatibility Level 170. NULL deaktiviert den Filter. Ein leeres Muster ist ungültig. Verwenden Sie entweder Liste oder Muster.';
+        PRINT N'@NurLaufend bit. Default ist 0. 0 lässt laufende und gestoppte Sessions zu. 1 beschränkt die Auswahl auf laufende Sessions. NULL wird bei aktivierten Zeitgrenzen auf 1 gesetzt und erfüllt den Vergleich mit 0 auch sonst nicht.';
+        PRINT N'@MitLaufzeitstatus bit. Default ist 1. 1 ergänzt verfügbare Werte aus sys.dm_xe_sessions. 0 oder NULL lässt diese Erhebung aus.';
+        PRINT N'@MitEvents bit. Default ist 1. 1 liest konfigurierte Events. 0 oder NULL lässt diese Details aus.';
+        PRINT N'@MitActions bit. Default ist 1. 1 liest konfigurierte Actions. 0 oder NULL lässt diese Details aus.';
+        PRINT N'@MitTargets bit. Default ist 1. 1 liest Targetdefinitionen. 0 oder NULL lässt diese Details aus.';
+        PRINT N'@MitFeldern bit. Default ist 0. 1 liest explizit konfigurierte Felder. 0 oder NULL lässt diese Details aus.';
+        PRINT N'@MaxZeilen int. Default ist 5000. Eine positive Ganzzahl begrenzt die einzelnen Sammlungen. NULL oder 0 hebt das Limit auf. Negative Werte sind ungültig.';
+        PRINT N'@ResultSetArt varchar(16). Default ist ''CONSOLE''. CONSOLE zeigt beschriftete Ergebnisse. RAW liefert Status und die technischen Inventurresultsets. TABLE schreibt die zugeordneten Resultsets. NONE unterdrückt Datenresultsets. Rand-Leerzeichen werden entfernt und die Groß- und Kleinschreibung normalisiert. NULL, Leertext und andere Werte sind ungültig.';
+        PRINT N'@ResultTablesJson nvarchar(max). Default ist NULL. Bei TABLE ist ein gültiges, nichtleeres JSON-Objekt erforderlich. Ohne Zeitgrenzen ist sessions der einzige Schlüssel. Mit @MitZeitgrenzen=1 können Sie sessions, timeBounds oder beide zuordnen. Jeder Wert benennt als Zeichenfolge eine vorhandene, leere lokale #Temp-Tabelle mit genau einer Seed-Spalte. Ziele müssen verschieden sein. Erlaubt sind höchstens 116 Zeichen und weder ## noch #Monitor als Präfix. Außerhalb von TABLE sind nur NULL, Leertext und reine Leerzeichen zulässig. Die Prüfung läuft vor der Hilfe.';
+        PRINT N'@JsonErzeugen bit. Default ist 0. 1 erzeugt das JSON-Dokument unabhängig von der Ausgabeart. 0 oder NULL erzeugt kein JSON.';
+        PRINT N'@Json nvarchar(max) OUTPUT. Default ist NULL. Binden Sie eine nvarchar(max)-Variable mit OUTPUT. Der Aufruf setzt sie zunächst auf NULL und füllt sie bei @JsonErzeugen=1.';
+        PRINT N'@PrintMeldungen bit. Default ist 1. 1 gibt informative Warnmeldungen aus. 0 oder NULL unterdrückt sie.';
+        PRINT N'@Hilfe bit. Default ist 0. 1 gibt die Hilfe nach der Prüfung von @ResultTablesJson aus und beendet den Aufruf vor dem fachlichen Zugriff. 0 oder NULL setzt den normalen Aufruf fort.';
+        PRINT N'@MitZeitgrenzen bit. Default ist 0. 1 ergänzt timeBounds und verwendet JSON-Schema 2. Eine Restzeit ist eine Schätzung. 0 oder NULL verwendet JSON-Schema 1 ohne timeBounds.';
+        PRINT N'Hilfe anzeigen. EXEC [monitor].[USP_ExtendedEventsSessions] @Hilfe=1;';
+        PRINT N'Technische Resultsets lesen. EXEC [monitor].[USP_ExtendedEventsSessions] @ExtendedEventSessionNames=N''ExampleXeSession'', @MaxZeilen=100, @ResultSetArt=''RAW'';';
+        PRINT N'Nur JSON ausgeben. DECLARE @ResultJson nvarchar(max); EXEC [monitor].[USP_ExtendedEventsSessions] @ExtendedEventSessionNames=N''ExampleXeSession'', @MaxZeilen=100, @ResultSetArt=''NONE'', @JsonErzeugen=1, @Json=@ResultJson OUTPUT; SELECT @ResultJson AS [Json];';
+        PRINT N'Ein Resultset in eine lokale Temp-Tabelle schreiben. CREATE TABLE #ExtendedEventsSessions_HelpExample ([Seed] int NULL); BEGIN TRY EXEC [monitor].[USP_ExtendedEventsSessions] @ExtendedEventSessionNames=N''ExampleXeSession'', @MaxZeilen=100, @ResultSetArt=''TABLE'', @ResultTablesJson=N''{"sessions":"#ExtendedEventsSessions_HelpExample"}''; SELECT * FROM #ExtendedEventsSessions_HelpExample; DROP TABLE #ExtendedEventsSessions_HelpExample; END TRY BEGIN CATCH DROP TABLE #ExtendedEventsSessions_HelpExample; THROW; END CATCH;';
         RETURN;
     END;
 
