@@ -200,6 +200,8 @@ TABLE `overview` entspricht diesen acht Kategorienfeldern und `JSON.categories`,
 
 ## 4. [monitor].[USP_PlanDetails]
 
+Die [Parameterreferenz](Procedures/USP_PlanDetails.md#parameter) beschreibt Eingabeform, Default und Wirkung jedes Parameters. Der Abschnitt [Aufrufbeispiele](Procedures/USP_PlanDetails.md#aufrufbeispiele) zeigt Hilfe, RAW, JSON und TABLE.
+
 ### Zweck
 
 Die Procedure löst gezielt Plan-Kandidaten über Session, Plan Handle, SQL Handle oder Query Hash auf und liefert Planattribute sowie Compile-, Text-, Last-Actual- oder Live-Plan.
@@ -253,6 +255,8 @@ Wichtige Attribute sind etwa `dbid`, `set_options`, `user_id`, `language_id`, `d
 ---
 
 ## 5. [monitor].[USP_ShowplanAnalysis]
+
+Die [Parameterreferenz](Procedures/USP_ShowplanAnalysis.md#parameter) beschreibt Eingabeform, Default und Wirkung jedes Parameters. Der Abschnitt [Aufrufbeispiele](Procedures/USP_ShowplanAnalysis.md#aufrufbeispiele) zeigt Hilfe, RAW, JSON und TABLE.
 
 ### Zweck
 
