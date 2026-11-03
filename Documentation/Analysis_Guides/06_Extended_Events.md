@@ -17,6 +17,8 @@
 
 ## 1. [monitor].[USP_ExtendedEventsSessions]
 
+Die [Parameterreferenz](Procedures/USP_ExtendedEventsSessions.md#parameter) beschreibt Eingabeform, Default und Wirkung jedes Parameters. Der Abschnitt [Aufrufbeispiele](Procedures/USP_ExtendedEventsSessions.md#aufrufbeispiele) zeigt Hilfe, RAW, JSON und TABLE.
+
 ### Zweck
 
 Die Procedure inventarisiert serverweite XE-Sessions, deren Laufzeitstatus, Events, Actions, Targets und optional explizit konfigurierte Felder. Targetdaten selbst werden nicht gelesen.
@@ -102,6 +104,8 @@ LOW. Nur Kataloge und optional `sys.dm_xe_sessions`; keine Targetdaten.
 ---
 
 ## 2. [monitor].[USP_ExtendedEventsReadEvents]
+
+Die [Parameterreferenz](Procedures/USP_ExtendedEventsReadEvents.md#parameter) beschreibt Eingabeform, Default und Wirkung jedes Parameters. Der Abschnitt [Aufrufbeispiele](Procedures/USP_ExtendedEventsReadEvents.md#aufrufbeispiele) zeigt Hilfe, RAW, JSON und TABLE.
 
 ### Zweck
 
