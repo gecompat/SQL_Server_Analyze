@@ -177,8 +177,9 @@ class Sqlcmd:
 
 
 class Observation:
-    def __init__(self, factory):
+    def __init__(self, factory, deployment_expected=False):
         self.factory = factory
+        self.deployment_expected = deployment_expected
         self.case = None
         self.samples = deque(maxlen=40)
         self.frozen = None
@@ -189,13 +190,23 @@ class Observation:
         self.thread = threading.Thread(target=self._observe, daemon=True)
         self.lock = threading.Lock()
         self.started = None
+        self.deployment_session = None
+        self.deployment_phase_seen = False
 
     def feed(self, line):
         item = marker(line)
         with self.lock:
             if item:
                 self.case = None if item["kind"] == "END" else item
-                if self.started is None and item["kind"] != "END":
+                if item["suite"] == "DEPLOYMENT" and item["kind"] == "BEGIN":
+                    self.deployment_session = item["spid"]
+                deployment_phase = (item["suite"] == "DEPLOYMENT" and item["kind"] == "CASE"
+                    and item["site"] == "SnapshotSchema"
+                    and item["spid"] == self.deployment_session)
+                if deployment_phase:
+                    self.deployment_phase_seen = True
+                if self.started is None and item["kind"] != "END" and (
+                        item["suite"] != "DEPLOYMENT" or deployment_phase):
                     self.started = time.monotonic()
                     self.thread.start()
             error = re.match(r"^Msg (\d+), Level \d+, State \d+", line)
@@ -256,6 +267,10 @@ class Observation:
             self.thread.join(timeout=8)
             if self.thread.is_alive():
                 self.errors.append("OBSERVER_CLEANUP_DEADLINE")
+        if self.deployment_expected and self.deployment_session is None:
+            self.errors.append("DEPLOYMENT_BEGIN_NOT_OBSERVED")
+        if (self.deployment_expected or self.deployment_session is not None) and not self.deployment_phase_seen:
+            self.errors.append("DEPLOYMENT_PHASE_NOT_OBSERVED")
         with self.lock:
             if self.frozen is None:
                 return {"status": "NO_1222", "errors": list(self.errors), "details": list(self.details)}
@@ -341,7 +356,8 @@ GO"""
 def run(args):
     """Keep the original test return code even if collection or publication fails."""
     ephemeral_value = os.environ["MSSQL_EPHEMERAL_CREDENTIAL"]
-    observer = Observation(lambda: Sqlcmd(args.container, args.sqlcmd))
+    observer = Observation(lambda: Sqlcmd(args.container, args.sqlcmd),
+                           deployment_expected=getattr(args, "deployment", False))
     log = Path(args.log)
     log.parent.mkdir(parents=True, exist_ok=True)
     env = dict(os.environ, SQLCMDPASSWORD=ephemeral_value)

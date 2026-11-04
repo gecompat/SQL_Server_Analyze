@@ -363,6 +363,32 @@ sys.exit(7)
                 self.assertIn("##ExampleCiLockProbe", verified[0])
 
 
+    def test_deployment_waits_for_same_session_snapshot_phase_and_requires_marker(self):
+        begin = "CI_BEGIN|DEPLOYMENT|Deployment|0|2000-01-01T00:00:00Z|51|0|generated"
+        phase = "CI_CASE|DEPLOYMENT|SnapshotSchema|1|2000-01-01T00:00:01Z|51|0|generated"
+        observer = ci.Observation(lambda: None)
+        with patch.object(observer.thread, "start") as start:
+            observer.feed(begin)
+            self.assertIsNone(observer.started)
+            observer.feed(phase.replace("|51|", "|52|"))
+            start.assert_not_called()
+            observer.feed(phase)
+            start.assert_called_once()
+            self.assertTrue(observer.deployment_phase_seen)
+        missing = ci.Observation(lambda: None)
+        missing.feed(begin)
+        self.assertIn("DEPLOYMENT_PHASE_NOT_OBSERVED", missing.finish()["errors"])
+        absent = ci.Observation(lambda: None, deployment_expected=True)
+        absent.feed(phase)
+        errors = absent.finish()["errors"]
+        self.assertIn("DEPLOYMENT_BEGIN_NOT_OBSERVED", errors)
+        self.assertIn("DEPLOYMENT_PHASE_NOT_OBSERVED", errors)
+        self.assertIsNone(absent.started)
+        source = (Path(__file__).with_name("Deployment_Prepare_Runtime.py")).read_text(encoding="utf-8")
+        marker = source.index("CI_CASE|DEPLOYMENT|SnapshotSchema|1|")
+        self.assertLess(marker, source.index("out.append(snapshot_schema_cases(deployed,tables))", marker))
+        self.assertIn("MAX_SECONDS = 600", Path(ci.__file__).read_text(encoding="utf-8"))
+
     def test_summary_is_bounded_redacted_and_does_not_mutate_full_report(self):
         case = ci.marker(CASE)
         report = dict(status="BLOCKER_OBSERVED", case=case, sqlcmd_exit_code=7, errors=[],
@@ -424,7 +450,8 @@ sys.exit(7)
             artifacts = Path(directory)/"deployment"
             begin = "CI_BEGIN|DEPLOYMENT|Deployment|0|2000-01-01T00:00:00Z|51|0|generated"
             process = SimpleNamespace(stdin=captured, stdout=io.BytesIO(b"SyntheticCredential\n"),
-                stderr=io.BytesIO((begin+"\nMsg 1222, Level 16, State 1\n").encode()), wait=lambda: 7)
+                stderr=io.BytesIO((begin+"\n"+begin.replace("CI_BEGIN|DEPLOYMENT|Deployment|0|",
+                    "CI_CASE|DEPLOYMENT|SnapshotSchema|1|")+"\nMsg 1222, Level 16, State 1\n").encode()), wait=lambda: 7)
             args = SimpleNamespace(container="synthetic", sqlcmd="synthetic", input="Run_Impact_Gate.sql",
                 deployment=True, log=str(log), artifacts=str(artifacts))
             with patch.dict(os.environ, MSSQL_EPHEMERAL_CREDENTIAL="SyntheticCredential"), \
