@@ -76,13 +76,13 @@ SELECT @ExampleJson AS ExampleJson;
 ```
 
 ```sql
-CREATE TABLE #ExampleDeadlocks ([Seed] int NULL);
+CREATE TABLE #ExtendedEventsDeadlocks_HelpExample ([Seed] int NULL);
 BEGIN TRY DECLARE @ExampleBisUtc datetime2(7)=SYSUTCDATETIME();
 DECLARE @ExampleVonUtc datetime2(7)=DATEADD(HOUR,-1,@ExampleBisUtc);
-EXEC [monitor].[USP_ExtendedEventsDeadlocks] @SourceExtendedEventSessionName=N'system_health',@VonUtc=@ExampleVonUtc,@BisUtc=@ExampleBisUtc,@MaxZeilen=25,@MitDeadlockXml=0,@MitProcessDetails=0,@MitResourceDetails=0,@HighImpactConfirmed=1,@ResultSetArt='TABLE',@ResultTablesJson=N'{"deadlocks":"#ExampleDeadlocks"}';
-SELECT * FROM #ExampleDeadlocks;
-DROP TABLE #ExampleDeadlocks;
-END TRY BEGIN CATCH DROP TABLE #ExampleDeadlocks;
+EXEC [monitor].[USP_ExtendedEventsDeadlocks] @SourceExtendedEventSessionName=N'system_health',@VonUtc=@ExampleVonUtc,@BisUtc=@ExampleBisUtc,@MaxZeilen=25,@MitDeadlockXml=0,@MitProcessDetails=0,@MitResourceDetails=0,@HighImpactConfirmed=1,@ResultSetArt='TABLE',@ResultTablesJson=N'{"deadlocks":"#ExtendedEventsDeadlocks_HelpExample"}';
+SELECT * FROM #ExtendedEventsDeadlocks_HelpExample;
+DROP TABLE #ExtendedEventsDeadlocks_HelpExample;
+END TRY BEGIN CATCH DROP TABLE #ExtendedEventsDeadlocks_HelpExample;
 THROW;
 END CATCH;
 ```

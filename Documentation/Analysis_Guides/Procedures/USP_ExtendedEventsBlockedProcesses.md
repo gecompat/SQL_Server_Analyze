@@ -74,13 +74,13 @@ SELECT @ExampleJson AS ExampleJson;
 ```
 
 ```sql
-CREATE TABLE #ExampleBlockedReports ([Seed] int NULL);
+CREATE TABLE #ExtendedEventsBlockedProcesses_HelpExample ([Seed] int NULL);
 BEGIN TRY DECLARE @ExampleBisUtc datetime2(7)=SYSUTCDATETIME();
 DECLARE @ExampleVonUtc datetime2(7)=DATEADD(HOUR,-1,@ExampleBisUtc);
-EXEC [monitor].[USP_ExtendedEventsBlockedProcesses] @SourceExtendedEventSessionName=N'system_health',@VonUtc=@ExampleVonUtc,@BisUtc=@ExampleBisUtc,@MaxZeilen=25,@MitReportXml=0,@MitProcessXml=0,@HighImpactConfirmed=1,@ResultSetArt='TABLE',@ResultTablesJson=N'{"reports":"#ExampleBlockedReports"}';
-SELECT * FROM #ExampleBlockedReports;
-DROP TABLE #ExampleBlockedReports;
-END TRY BEGIN CATCH DROP TABLE #ExampleBlockedReports;
+EXEC [monitor].[USP_ExtendedEventsBlockedProcesses] @SourceExtendedEventSessionName=N'system_health',@VonUtc=@ExampleVonUtc,@BisUtc=@ExampleBisUtc,@MaxZeilen=25,@MitReportXml=0,@MitProcessXml=0,@HighImpactConfirmed=1,@ResultSetArt='TABLE',@ResultTablesJson=N'{"reports":"#ExtendedEventsBlockedProcesses_HelpExample"}';
+SELECT * FROM #ExtendedEventsBlockedProcesses_HelpExample;
+DROP TABLE #ExtendedEventsBlockedProcesses_HelpExample;
+END TRY BEGIN CATCH DROP TABLE #ExtendedEventsBlockedProcesses_HelpExample;
 THROW;
 END CATCH;
 ```
