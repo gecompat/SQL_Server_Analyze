@@ -24,7 +24,7 @@ MAX_BYTES = 50 * 1024 * 1024
 REPORT_BYTES = 5 * 1024 * 1024
 LOG_BYTES = 44 * 1024 * 1024
 MARKER = re.compile(
-    r"CI_(BEGIN|CASE|AFTER|END)\|(20[2-7])\|([A-Za-z0-9_]+)\|(\d+)\|"
+    r"CI_(BEGIN|CASE|AFTER|END)\|((?:20[2-7]|DEPLOYMENT))\|([A-Za-z0-9_]+)\|(\d+)\|"
     r"([\dT:.Z-]+)\|(\d+)\|(-?\d+)\|([^|\r\n]{0,180})$"
 )
 RESOURCE_FIELDS = (
@@ -112,6 +112,7 @@ GO
 
 TEST_FILES = {p.name[:3]: "Code/Tests/Integration/"+p.name
               for p in Path(__file__).parent.glob("20[2-7]*.sql")}
+TEST_FILES["DEPLOYMENT"] = "Code/Install/generated/Deployment_Runtime.generated.sql"
 
 
 class Sqlcmd:
@@ -309,6 +310,34 @@ def encode_report(report, secret, limit=REPORT_BYTES):
     return payload
 
 
+def diagnostic_summary(report, secret):
+    """Expose one bounded, sanitized sample without mutating the artifact report."""
+    samples = report.get("samples", [])
+    case = report.get("case")
+    selected = next((sample for sample in reversed(samples)
+                     if case and observed_blocker([sample], case)), samples[-1] if samples else None)
+    summary = dict(status=report["status"], trigger=report.get("trigger"), case=case,
+                   samples=[selected] if selected else [], errors=list(report.get("errors", [])),
+                   sqlcmd_exit_code=report["sqlcmd_exit_code"], truncated=report.get("truncated", False))
+    summary = json.loads(json.dumps(summary))
+    return encode_report(summary, secret, 16 * 1024).decode("utf-8")
+
+
+def deployment_query():
+    """Bracket generated deployment in the same SQLCMD session with DEPLOYMENT markers."""
+    return """SET NOCOUNT ON;
+DECLARE @CiDeploymentMarker nvarchar(400)=CONCAT(N'CI_BEGIN|DEPLOYMENT|Deployment|0|',
+    CONVERT(varchar(27),SYSUTCDATETIME(),126),N'Z|',@@SPID,N'|',@@LOCK_TIMEOUT,N'|generated');
+RAISERROR(N'%s',10,1,@CiDeploymentMarker) WITH NOWAIT;
+GO
+:r /work/Code/Install/generated/Deployment_Runtime.generated.sql
+GO
+DECLARE @CiDeploymentMarker nvarchar(400)=CONCAT(N'CI_END|DEPLOYMENT|Deployment|0|',
+    CONVERT(varchar(27),SYSUTCDATETIME(),126),N'Z|',@@SPID,N'|',@@LOCK_TIMEOUT,N'|generated');
+RAISERROR(N'%s',10,1,@CiDeploymentMarker) WITH NOWAIT;
+GO"""
+
+
 def run(args):
     """Keep the original test return code even if collection or publication fails."""
     ephemeral_value = os.environ["MSSQL_EPHEMERAL_CREDENTIAL"]
@@ -322,7 +351,7 @@ def run(args):
     # A completed BEGIN batch makes SQLCMD deliver the session marker before
     # executing the test batch. CASE messages may still arrive after the wait;
     # the observer's server timestamps retain their phase association.
-    query = getattr(args, "query", None)
+    query = deployment_query() if getattr(args, "deployment", False) else getattr(args, "query", None)
     if query:
         command.insert(2, "-i")
         command += ["-q", "SET NOCOUNT ON;"]
@@ -399,6 +428,7 @@ def run(args):
         except OSError:
             print(f"CI lock diagnostics publication failed; sqlcmd exit={code}")
             return code or 1
+        print("CI lock diagnostic summary: " + diagnostic_summary(report, ephemeral_value))
         print(f"CI lock diagnostics: {report['status']}; sqlcmd exit={code}; "
               f"observer errors={len(report['errors'])}; incomplete={writer.incomplete}")
     return code if code else (1 if report["errors"] or writer.incomplete else 0)
@@ -409,6 +439,8 @@ def main():
     parser.add_argument("--container", default="sqlserver-analyze-impact-2025")
     parser.add_argument("--sqlcmd", required=True)
     parser.add_argument("--input", default="Run_Impact_Gate.sql")
+    parser.add_argument("--deployment", action="store_true",
+                        help="observe generated deployment in the current SQLCMD session")
     parser.add_argument("--log", required=True)
     parser.add_argument("--artifacts", required=True)
     return run(parser.parse_args())

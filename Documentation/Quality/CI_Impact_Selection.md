@@ -119,7 +119,7 @@ kann zwischen Stichproben liegen. Eine fehlende Beobachtung belegt keinen
 fehlenden Blocker. Fehler des Beobachters und abgeschnittene Stichproben
 werden gesondert ausgewiesen; der ursprüngliche SQLCMD-Fehler bleibt erhalten.
 
-Bei einem fehlgeschlagenen Impact-Lauf oder einem Erfassungsfehler sichert der
+Bei einem fehlgeschlagenen Impact- oder Deploymentlauf sowie bei einem Erfassungsfehler sichert der
 Workflow das bereinigte SQLCMD-Log und die Diagnose vor dem Container-Cleanup.
 Das Log ist auf 44 MiB, die strukturierte Diagnose auf 5 MiB begrenzt; die
 synthetische Abnahme verwendet höchstens 1 MiB. Größenüberschreitungen werden
@@ -138,6 +138,14 @@ SSIS-Paket oder eine neue Python-Abhängigkeit wird dafür nicht benötigt.
 Die separate Cleanupverbindung prüft nach dem Schließen des Halters auch bei
 einer fehlgeschlagenen Assertion die Probe-Tabelle und die bekannte Halter-ID.
 Ein solcher Cleanupfehler ersetzt den ursprünglichen Abnahmefehler nicht.
+
+## Sperrdiagnose für das synthetische Deployment
+
+Der Schalter `--deployment` desselben Beobachters erfasst den generierten nativen Deploymentvertrag. Ein fester Startmarker mit der Kennung `DEPLOYMENT` steht in einem eigenen, mit `GO` abgeschlossenen Batch vor dem SQLCMD-Include. Der Include und die Abschlussmarkierung laufen in derselben SQLCMD-Session. Die Kennung bezeichnet den generierten Deploymentlauf und belegt keine einzelne fehlgeschlagene Migrationsphase. Numerische Vertragskennungen werden dafür nicht neu vergeben.
+
+Eine zusätzliche, auf 16 KiB begrenzte und bereinigte JSON-Zusammenfassung im Joblog zeigt nach einem Fehler höchstens eine ausgewählte Stichprobe. Sie bevorzugt eine Stichprobe mit beobachtetem direktem Blocker; fehlende oder gekürzte Evidenz wird nicht als Blockernachweis ausgegeben. Der ausführlichere Artefaktbericht bleibt davon unverändert.
+
+Es gelten dieselben Grenzen für Stichproben, Laufzeit, Bereinigung und Datenschutz wie bei der vorstehenden Sperrdiagnose. Deploymentartefakte liegen getrennt im Unterordner `deployment` des vorhandenen Diagnoseverzeichnisses; der ursprüngliche SQLCMD-Fehlercode bleibt erhalten. Die Selbsttests und die begrenzte native Sperrgegenprobe für geänderte CI-Diagnostik laufen vor dem Deployment, damit auch ein früh scheiternder Deploymentlauf auf geprüfter Beobachtung beruht. Die Beobachtung ändert weder Produkt-Timeouts noch Migrationsassertionen und wiederholt keine fehlgeschlagene Migration.
 
 ## Compatibility-Level-Auswahl
 
