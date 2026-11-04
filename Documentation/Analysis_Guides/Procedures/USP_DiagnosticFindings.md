@@ -25,6 +25,68 @@ EXEC [monitor].[USP_DiagnosticFindings]
 
 Alle `Example*`-Werte im Aufruf sind synthetisch.
 
+## Parameter
+
+| Parameter | Typ | Default | Eingabe und Wirkung |
+|---|---|---|---|
+| `@DatabaseNames` | `nvarchar(max)` | `NULL` | Pipe-Liste exakter einteiliger SQL-Namen für die datenbankbezogenen Empfänger. NULL, Leertext und Leerzeichen lassen die exakte Auswahl aus. Liste und Muster schließen sich aus. |
+| `@SystemdatenbankenEinbeziehen` | `bit` | `0` | 0 schließt Systemdatenbanken bei den datenbankbezogenen Empfängern aus. 1 bezieht sie nach deren Regeln ein. NULL wird als Argument weitergereicht und kann bei der Kandidatenprüfung abgelehnt werden. |
+| `@DatabaseNamePattern` | `nvarchar(4000)` | `NULL` | Alternatives Muster für die datenbankbezogenen Empfänger. Ohne Präfix oder mit LIKE: gilt SQL LIKE mit % und _. REGEX: berücksichtigt Groß- und Kleinschreibung, REGEXI: ignoriert sie. Regex benötigt SQL Server 2025 und Compatibility Level 170. NULL deaktiviert das Muster. Leere Muster sind ungültig. Nicht mit einer nicht-NULL-Liste kombinieren. |
+| `@HighImpactConfirmed` | `bit` | `0` | Der Wert wird an Empfänger mit Kandidaten- oder Klassenprüfung weitergereicht. 1 bestätigt einen tatsächlich aktivierten geschützten Pfad. 0 bestätigt ihn nicht. NULL kann von diesen Prüfungen abgelehnt werden. |
+| `@MitIntegritaet` | `bit` | `1` | 1 aktiviert DatabaseIntegrityAnalysis. 0 oder NULL lässt diesen Aufruf aus. |
+| `@MitKapazitaet` | `bit` | `1` | 1 aktiviert DatabaseCapacityAnalysis. 0 oder NULL lässt diesen Aufruf aus. |
+| `@MitSpeicher` | `bit` | `1` | 1 aktiviert BufferPoolAnalysis. 0 oder NULL lässt diesen Aufruf aus. |
+| `@MitBackupketten` | `bit` | `1` | 1 aktiviert BackupChainAnalysis. 0 oder NULL lässt diesen Aufruf aus. |
+| `@MitAvailability` | `bit` | `1` | 1 aktiviert AvailabilityDeepAnalysis. 0 oder NULL lässt diesen Aufruf aus. |
+| `@MitAgentMonitoring` | `bit` | `1` | 1 aktiviert AgentMonitoringAnalysis. 0 oder NULL lässt diesen Aufruf aus. |
+| `@MitSchemaDesign` | `bit` | `0` | 1 aktiviert SchemaDesignAnalysis. 0 oder NULL lässt diesen Aufruf aus. |
+| `@MitStatistikverteilung` | `bit` | `0` | 1 aktiviert StatisticsDistributionAnalysis. 0 oder NULL lässt diesen Aufruf aus. |
+| `@MitIQP` | `bit` | `0` | 1 aktiviert IntelligentQueryProcessingAnalysis. 0 oder NULL lässt diesen Aufruf aus. |
+| `@MitContention` | `bit` | `0` | 1 aktiviert InternalContentionAnalysis. 0 oder NULL lässt diesen Aufruf aus. |
+| `@ContentionSampleSeconds` | `tinyint` | `5` | Sekunden für das aktivierte Contention-Modul. 1 bis 60 fordert ein Intervalldelta an. 0 überspringt WAITFOR und liefert positive kumulative Zähler seit Serverstart. Werte über 60 sind ungültig. NULL überspringt die Wartezeit und liefert keine Latch- oder Spinlock-Deltazeilen. Raten bleiben unbekannt. |
+| `@ContentionMinWaitMs` | `bigint` | `1000` | Nichtnegative Mindestwartezeit in Millisekunden für Latch-Findings aus der Contention-Auswertung. Ein Wert ab der Grenze erfüllt den Vergleich. Bei NULL entstehen aus diesem Vergleich keine Latch-Findings. Negative Werte sind ungültig. |
+| `@ParentIntegrityJson` | `nvarchar(max)` | `NULL` | Laufinternes JSON zur Wiederverwendung von DatabaseIntegrityAnalysis. NULL erhebt bei aktiviertem Modul frisch. Ein nicht-NULL-Wert muss gültiges JSON mit meta.resultName=DatabaseIntegrityAnalysis und meta.schemaVersion=1 enthalten. Leertext und falsche Kennungen sind ungültig. Verwenden Sie nur kontextgleiche Ergebnisse desselben Parent-Laufs. |
+| `@ParentCapacityJson` | `nvarchar(max)` | `NULL` | Laufinternes JSON zur Wiederverwendung von DatabaseCapacityAnalysis. NULL erhebt bei aktiviertem Modul frisch. Ein nicht-NULL-Wert muss gültiges JSON mit meta.resultName=DatabaseCapacityAnalysis und meta.schemaVersion=1 enthalten. Leertext und falsche Kennungen sind ungültig. Verwenden Sie nur kontextgleiche Ergebnisse desselben Parent-Laufs. |
+| `@ParentBufferPoolJson` | `nvarchar(max)` | `NULL` | Laufinternes JSON zur Wiederverwendung von BufferPoolAnalysis. NULL erhebt bei aktiviertem Modul frisch. Ein nicht-NULL-Wert muss gültiges JSON mit meta.resultName=BufferPoolAnalysis und meta.schemaVersion=1 enthalten. Leertext und falsche Kennungen sind ungültig. Verwenden Sie nur kontextgleiche Ergebnisse desselben Parent-Laufs. |
+| `@NurAbPrioritaet` | `varchar(16)` | `'INFO'` | INFO umfasst alle Prioritätsstufen. LOW lässt INFO aus. MEDIUM umfasst MEDIUM und HIGH. HIGH lässt nur HIGH zu. Die Filterung erfolgt nach der Erhebung. Rand-Leerzeichen und Groß- und Kleinschreibung werden normalisiert. NULL, Leertext und andere Werte sind ungültig. |
+| `@MaxZeilen` | `int` | `1000` | Eine positive ganze Zahl begrenzt die finale Findingmenge nach Prioritätsfilterung und wird an die Empfänger weitergereicht. NULL oder 0 hebt die Grenze auf. Negative Werte sind ungültig. Die Grenze begrenzt den gesamten Quellenaufwand nicht. |
+| `@ResultSetArt` | `varchar(16)` | `'CONSOLE'` | CONSOLE zeigt beschriftete Findings. RAW liefert technische Ergebnis- und Statusmengen. TABLE schreibt ausschließlich findings. NONE unterdrückt die fachlichen Resultsets. Die Empfänger laufen mit NONE. JSON ist separat wählbar. Rand-Leerzeichen und Groß- und Kleinschreibung werden normalisiert. NULL, Leertext und andere Werte sind ungültig. |
+| `@ResultTablesJson` | `nvarchar(max)` | `NULL` | Bei TABLE ist ein nichtleeres JSON-Objekt mit genau dem Schlüssel findings erforderlich. Der Wert benennt eine vorhandene leere lokale #Temp-Tabelle mit einer Seed-Spalte. Erlaubt sind maximal 116 Zeichen und weder ## noch #Monitor als Präfix. Außerhalb von TABLE sind nur NULL, Leertext und Leerzeichen zulässig. Die Prüfung läuft vor der Hilfe. |
+| `@JsonErzeugen` | `bit` | `0` | 1 erzeugt JSON in Json unabhängig von der Ausgabeart. 0 und NULL erzeugen kein Dokument. |
+| `@Json` | `nvarchar(max) OUTPUT` | `NULL` | Wird beim Eintritt auf NULL gesetzt und bei aktivierter JSON-Erzeugung gefüllt. Binden Sie eine nvarchar(max)-Variable mit OUTPUT. |
+| `@PrintMeldungen` | `bit` | `1` | 1 aktiviert Meldungen der aufgerufenen Module. 0 und NULL unterdrücken sie. |
+| `@Hilfe` | `bit` | `0` | 1 zeigt die Hilfe nach der TABLE-Vorprüfung und beendet vor der fachlichen Analyse. 0 und NULL führen die Analyse aus. |
+| `@StatusCodeOut` | `varchar(40) OUTPUT` | `NULL` | Empfängt den Laufstatus. Binden Sie eine varchar(40)-Variable mit OUTPUT. |
+| `@IsPartialOut` | `bit OUTPUT` | `NULL` | Empfängt das Partialitätsflag für die erreichbare Evidenz. Binden Sie eine bit-Variable mit OUTPUT. |
+| `@ErrorNumberOut` | `int OUTPUT` | `NULL` | Empfängt eine erfasste Fehlernummer oder NULL. Binden Sie eine int-Variable mit OUTPUT. |
+| `@ErrorMessageOut` | `nvarchar(2048) OUTPUT` | `NULL` | Empfängt eine erfasste Fehlermeldung oder NULL. Binden Sie eine nvarchar(2048)-Variable mit OUTPUT. |
+
+## Aufrufbeispiele
+
+```sql
+EXEC [monitor].[USP_DiagnosticFindings] @Hilfe=1;
+```
+
+```sql
+EXEC [monitor].[USP_DiagnosticFindings] @MitIntegritaet=0, @MitKapazitaet=0, @MitSpeicher=1, @MitBackupketten=0, @MitAvailability=0, @MitAgentMonitoring=0, @MaxZeilen=50, @ResultSetArt='RAW';
+```
+
+```sql
+DECLARE @ResultJson nvarchar(max);
+EXEC [monitor].[USP_DiagnosticFindings] @MitIntegritaet=0, @MitKapazitaet=0, @MitSpeicher=1, @MitBackupketten=0, @MitAvailability=0, @MitAgentMonitoring=0, @MaxZeilen=50, @ResultSetArt='NONE', @JsonErzeugen=1, @Json=@ResultJson OUTPUT;
+SELECT @ResultJson AS [Json];
+```
+
+```sql
+CREATE TABLE #DiagnosticFindings_HelpExample ([Seed] int NULL);
+BEGIN TRY EXEC [monitor].[USP_DiagnosticFindings] @MitIntegritaet=0, @MitKapazitaet=0, @MitSpeicher=1, @MitBackupketten=0, @MitAvailability=0, @MitAgentMonitoring=0, @MaxZeilen=50, @ResultSetArt='TABLE', @ResultTablesJson=N'{"findings":"#DiagnosticFindings_HelpExample"}';
+SELECT * FROM #DiagnosticFindings_HelpExample;
+DROP TABLE #DiagnosticFindings_HelpExample;
+END TRY BEGIN CATCH DROP TABLE #DiagnosticFindings_HelpExample;
+THROW;
+END CATCH;
+```
+
 ## Resultsets und Leserichtung
 
 Der typisierte TABLE-Vertrag registriert `findings`. Status, Scope und Warnings sind vor den Fachergebnissen zu lesen. CONSOLE dient der interaktiven Triage; RAW und JSON erhalten den technischen Kontext, während TABLE nur die ausdrücklich benannten stabilen Resultsets schreibt. Resultsets mit unterschiedlicher Zeilengranularität dürfen nicht ungeprüft vereinigt oder summiert werden.
