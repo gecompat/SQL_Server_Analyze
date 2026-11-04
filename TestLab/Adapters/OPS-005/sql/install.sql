@@ -51260,10 +51260,41 @@ BEGIN
     IF @Hilfe = 1
     BEGIN
         PRINT N'monitor.USP_DiagnosticFindings';
-        PRINT N'Aggregiert Befunde aus den Spezialfallmodulen; verändert keine Konfiguration und maskiert keine Resultsets.';
-        PRINT N'Kostenintensive Schema-, Statistikverteilungs-, IQP- und Contention-Module sind standardmäßig deaktiviert.';
-        PRINT N'@NurAbPrioritaet=INFO|LOW|MEDIUM|HIGH; @MaxZeilen positiv, NULL/0 = unbegrenzt.';
-        PRINT N'@Parent...Json dient ausschließlich der Wiederverwendung bereits erhobener Ergebnisse innerhalb eines Orchestratoraufrufs; NULL liest frisch.';
+        PRINT N'@DatabaseNames nvarchar(max). Default ist NULL. Pipe-Liste exakter einteiliger SQL-Namen für die datenbankbezogenen Empfänger. NULL, Leertext und Leerzeichen lassen die exakte Auswahl aus. Liste und Muster schließen sich aus.';
+        PRINT N'@SystemdatenbankenEinbeziehen bit. Default ist 0. 0 schließt Systemdatenbanken bei den datenbankbezogenen Empfängern aus. 1 bezieht sie nach deren Regeln ein. NULL wird als Argument weitergereicht und kann bei der Kandidatenprüfung abgelehnt werden.';
+        PRINT N'@DatabaseNamePattern nvarchar(4000). Default ist NULL. Alternatives Muster für die datenbankbezogenen Empfänger. Ohne Präfix oder mit LIKE: gilt SQL LIKE mit % und _. REGEX: berücksichtigt Groß- und Kleinschreibung, REGEXI: ignoriert sie. Regex benötigt SQL Server 2025 und Compatibility Level 170. NULL deaktiviert das Muster. Leere Muster sind ungültig. Nicht mit einer nicht-NULL-Liste kombinieren.';
+        PRINT N'@HighImpactConfirmed bit. Default ist 0. Der Wert wird an Empfänger mit Kandidaten- oder Klassenprüfung weitergereicht. 1 bestätigt einen tatsächlich aktivierten geschützten Pfad. 0 bestätigt ihn nicht. NULL kann von diesen Prüfungen abgelehnt werden.';
+        PRINT N'@MitIntegritaet bit. Default ist 1. 1 aktiviert DatabaseIntegrityAnalysis. 0 oder NULL lässt diesen Aufruf aus.';
+        PRINT N'@MitKapazitaet bit. Default ist 1. 1 aktiviert DatabaseCapacityAnalysis. 0 oder NULL lässt diesen Aufruf aus.';
+        PRINT N'@MitSpeicher bit. Default ist 1. 1 aktiviert BufferPoolAnalysis. 0 oder NULL lässt diesen Aufruf aus.';
+        PRINT N'@MitBackupketten bit. Default ist 1. 1 aktiviert BackupChainAnalysis. 0 oder NULL lässt diesen Aufruf aus.';
+        PRINT N'@MitAvailability bit. Default ist 1. 1 aktiviert AvailabilityDeepAnalysis. 0 oder NULL lässt diesen Aufruf aus.';
+        PRINT N'@MitAgentMonitoring bit. Default ist 1. 1 aktiviert AgentMonitoringAnalysis. 0 oder NULL lässt diesen Aufruf aus.';
+        PRINT N'@MitSchemaDesign bit. Default ist 0. 1 aktiviert SchemaDesignAnalysis. 0 oder NULL lässt diesen Aufruf aus.';
+        PRINT N'@MitStatistikverteilung bit. Default ist 0. 1 aktiviert StatisticsDistributionAnalysis. 0 oder NULL lässt diesen Aufruf aus.';
+        PRINT N'@MitIQP bit. Default ist 0. 1 aktiviert IntelligentQueryProcessingAnalysis. 0 oder NULL lässt diesen Aufruf aus.';
+        PRINT N'@MitContention bit. Default ist 0. 1 aktiviert InternalContentionAnalysis. 0 oder NULL lässt diesen Aufruf aus.';
+        PRINT N'@ContentionSampleSeconds tinyint. Default ist 5. Sekunden für das aktivierte Contention-Modul. 1 bis 60 fordert ein Intervalldelta an. 0 überspringt WAITFOR und liefert positive kumulative Zähler seit Serverstart. Werte über 60 sind ungültig. NULL überspringt die Wartezeit und liefert keine Latch- oder Spinlock-Deltazeilen. Raten bleiben unbekannt.';
+        PRINT N'@ContentionMinWaitMs bigint. Default ist 1000. Nichtnegative Mindestwartezeit in Millisekunden für Latch-Findings aus der Contention-Auswertung. Ein Wert ab der Grenze erfüllt den Vergleich. Bei NULL entstehen aus diesem Vergleich keine Latch-Findings. Negative Werte sind ungültig.';
+        PRINT N'@ParentIntegrityJson nvarchar(max). Default ist NULL. Laufinternes JSON zur Wiederverwendung von DatabaseIntegrityAnalysis. NULL erhebt bei aktiviertem Modul frisch. Ein nicht-NULL-Wert muss gültiges JSON mit meta.resultName=DatabaseIntegrityAnalysis und meta.schemaVersion=1 enthalten. Leertext und falsche Kennungen sind ungültig. Verwenden Sie nur kontextgleiche Ergebnisse desselben Parent-Laufs.';
+        PRINT N'@ParentCapacityJson nvarchar(max). Default ist NULL. Laufinternes JSON zur Wiederverwendung von DatabaseCapacityAnalysis. NULL erhebt bei aktiviertem Modul frisch. Ein nicht-NULL-Wert muss gültiges JSON mit meta.resultName=DatabaseCapacityAnalysis und meta.schemaVersion=1 enthalten. Leertext und falsche Kennungen sind ungültig. Verwenden Sie nur kontextgleiche Ergebnisse desselben Parent-Laufs.';
+        PRINT N'@ParentBufferPoolJson nvarchar(max). Default ist NULL. Laufinternes JSON zur Wiederverwendung von BufferPoolAnalysis. NULL erhebt bei aktiviertem Modul frisch. Ein nicht-NULL-Wert muss gültiges JSON mit meta.resultName=BufferPoolAnalysis und meta.schemaVersion=1 enthalten. Leertext und falsche Kennungen sind ungültig. Verwenden Sie nur kontextgleiche Ergebnisse desselben Parent-Laufs.';
+        PRINT N'@NurAbPrioritaet varchar(16). Default ist ''INFO''. INFO umfasst alle Prioritätsstufen. LOW lässt INFO aus. MEDIUM umfasst MEDIUM und HIGH. HIGH lässt nur HIGH zu. Die Filterung erfolgt nach der Erhebung. Rand-Leerzeichen und Groß- und Kleinschreibung werden normalisiert. NULL, Leertext und andere Werte sind ungültig.';
+        PRINT N'@MaxZeilen int. Default ist 1000. Eine positive ganze Zahl begrenzt die finale Findingmenge nach Prioritätsfilterung und wird an die Empfänger weitergereicht. NULL oder 0 hebt die Grenze auf. Negative Werte sind ungültig. Die Grenze begrenzt den gesamten Quellenaufwand nicht.';
+        PRINT N'@ResultSetArt varchar(16). Default ist ''CONSOLE''. CONSOLE zeigt beschriftete Findings. RAW liefert technische Ergebnis- und Statusmengen. TABLE schreibt ausschließlich findings. NONE unterdrückt die fachlichen Resultsets. Die Empfänger laufen mit NONE. JSON ist separat wählbar. Rand-Leerzeichen und Groß- und Kleinschreibung werden normalisiert. NULL, Leertext und andere Werte sind ungültig.';
+        PRINT N'@ResultTablesJson nvarchar(max). Default ist NULL. Bei TABLE ist ein nichtleeres JSON-Objekt mit genau dem Schlüssel findings erforderlich. Der Wert benennt eine vorhandene leere lokale #Temp-Tabelle mit einer Seed-Spalte. Erlaubt sind maximal 116 Zeichen und weder ## noch #Monitor als Präfix. Außerhalb von TABLE sind nur NULL, Leertext und Leerzeichen zulässig. Die Prüfung läuft vor der Hilfe.';
+        PRINT N'@JsonErzeugen bit. Default ist 0. 1 erzeugt JSON in Json unabhängig von der Ausgabeart. 0 und NULL erzeugen kein Dokument.';
+        PRINT N'@Json nvarchar(max) OUTPUT. Default ist NULL. Wird beim Eintritt auf NULL gesetzt und bei aktivierter JSON-Erzeugung gefüllt. Binden Sie eine nvarchar(max)-Variable mit OUTPUT.';
+        PRINT N'@PrintMeldungen bit. Default ist 1. 1 aktiviert Meldungen der aufgerufenen Module. 0 und NULL unterdrücken sie.';
+        PRINT N'@Hilfe bit. Default ist 0. 1 zeigt die Hilfe nach der TABLE-Vorprüfung und beendet vor der fachlichen Analyse. 0 und NULL führen die Analyse aus.';
+        PRINT N'@StatusCodeOut varchar(40) OUTPUT. Default ist NULL. Empfängt den Laufstatus. Binden Sie eine varchar(40)-Variable mit OUTPUT.';
+        PRINT N'@IsPartialOut bit OUTPUT. Default ist NULL. Empfängt das Partialitätsflag für die erreichbare Evidenz. Binden Sie eine bit-Variable mit OUTPUT.';
+        PRINT N'@ErrorNumberOut int OUTPUT. Default ist NULL. Empfängt eine erfasste Fehlernummer oder NULL. Binden Sie eine int-Variable mit OUTPUT.';
+        PRINT N'@ErrorMessageOut nvarchar(2048) OUTPUT. Default ist NULL. Empfängt eine erfasste Fehlermeldung oder NULL. Binden Sie eine nvarchar(2048)-Variable mit OUTPUT.';
+        PRINT N'Beispiel 1. EXEC [monitor].[USP_DiagnosticFindings] @Hilfe=1;';
+        PRINT N'Beispiel 2. EXEC [monitor].[USP_DiagnosticFindings] @MitIntegritaet=0, @MitKapazitaet=0, @MitSpeicher=1, @MitBackupketten=0, @MitAvailability=0, @MitAgentMonitoring=0, @MaxZeilen=50, @ResultSetArt=''RAW'';';
+        PRINT N'Beispiel 3. DECLARE @ResultJson nvarchar(max); EXEC [monitor].[USP_DiagnosticFindings] @MitIntegritaet=0, @MitKapazitaet=0, @MitSpeicher=1, @MitBackupketten=0, @MitAvailability=0, @MitAgentMonitoring=0, @MaxZeilen=50, @ResultSetArt=''NONE'', @JsonErzeugen=1, @Json=@ResultJson OUTPUT; SELECT @ResultJson AS [Json];';
+        PRINT N'Beispiel 4. CREATE TABLE #DiagnosticFindings_HelpExample ([Seed] int NULL); BEGIN TRY EXEC [monitor].[USP_DiagnosticFindings] @MitIntegritaet=0, @MitKapazitaet=0, @MitSpeicher=1, @MitBackupketten=0, @MitAvailability=0, @MitAgentMonitoring=0, @MaxZeilen=50, @ResultSetArt=''TABLE'', @ResultTablesJson=N''{"findings":"#DiagnosticFindings_HelpExample"}''; SELECT * FROM #DiagnosticFindings_HelpExample; DROP TABLE #DiagnosticFindings_HelpExample; END TRY BEGIN CATCH DROP TABLE #DiagnosticFindings_HelpExample; THROW; END CATCH;';
         RETURN;
     END;
 
