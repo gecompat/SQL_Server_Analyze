@@ -71,16 +71,16 @@ SELECT @xeJson AS JsonResult;
 ### Beispiel 4
 
 ```sql
-CREATE TABLE #USP_ExtendedEventsTargetRuntime_targets (Seed int NULL);
+CREATE TABLE #ExtendedEventsTargetRuntime_HelpExample (Seed int NULL);
 BEGIN TRY
- EXEC [monitor].[USP_ExtendedEventsTargetRuntime] @ExtendedEventSessionNames=N'ExampleXeSession', @TargetNames=N'ring_buffer', @BestaetigeTargetFlush=1, @HighImpactConfirmed=1, @ResultSetArt='TABLE', @ResultTablesJson=N'{"targets":"#USP_ExtendedEventsTargetRuntime_targets"}';
- SELECT * FROM #USP_ExtendedEventsTargetRuntime_targets;
+ EXEC [monitor].[USP_ExtendedEventsTargetRuntime] @ExtendedEventSessionNames=N'ExampleXeSession', @TargetNames=N'ring_buffer', @BestaetigeTargetFlush=1, @HighImpactConfirmed=1, @ResultSetArt='TABLE', @ResultTablesJson=N'{"targets":"#ExtendedEventsTargetRuntime_HelpExample"}';
+ SELECT * FROM #ExtendedEventsTargetRuntime_HelpExample;
 END TRY
 BEGIN CATCH
- IF OBJECT_ID('tempdb..#USP_ExtendedEventsTargetRuntime_targets') IS NOT NULL DROP TABLE #USP_ExtendedEventsTargetRuntime_targets;
+ IF OBJECT_ID('tempdb..#ExtendedEventsTargetRuntime_HelpExample') IS NOT NULL DROP TABLE #ExtendedEventsTargetRuntime_HelpExample;
  THROW;
 END CATCH;
-DROP TABLE #USP_ExtendedEventsTargetRuntime_targets;
+DROP TABLE #ExtendedEventsTargetRuntime_HelpExample;
 ```
 
 ## Resultsets und Leserichtung

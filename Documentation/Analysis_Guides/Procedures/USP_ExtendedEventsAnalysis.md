@@ -82,16 +82,16 @@ SELECT @xeJson AS JsonResult;
 ### Beispiel 4
 
 ```sql
-CREATE TABLE #USP_ExtendedEventsAnalysis_moduleStatus (Seed int NULL);
+CREATE TABLE #ExtendedEventsAnalysis_HelpExample (Seed int NULL);
 BEGIN TRY
- EXEC [monitor].[USP_ExtendedEventsAnalysis] @MitSessionInventar=1, @MitTargetRuntime=0, @MitEvents=0, @MitDeadlocks=0, @MitBlockedProcesses=0, @ResultSetArt='TABLE', @ResultTablesJson=N'{"moduleStatus":"#USP_ExtendedEventsAnalysis_moduleStatus"}';
- SELECT * FROM #USP_ExtendedEventsAnalysis_moduleStatus;
+ EXEC [monitor].[USP_ExtendedEventsAnalysis] @MitSessionInventar=1, @MitTargetRuntime=0, @MitEvents=0, @MitDeadlocks=0, @MitBlockedProcesses=0, @ResultSetArt='TABLE', @ResultTablesJson=N'{"moduleStatus":"#ExtendedEventsAnalysis_HelpExample"}';
+ SELECT * FROM #ExtendedEventsAnalysis_HelpExample;
 END TRY
 BEGIN CATCH
- IF OBJECT_ID('tempdb..#USP_ExtendedEventsAnalysis_moduleStatus') IS NOT NULL DROP TABLE #USP_ExtendedEventsAnalysis_moduleStatus;
+ IF OBJECT_ID('tempdb..#ExtendedEventsAnalysis_HelpExample') IS NOT NULL DROP TABLE #ExtendedEventsAnalysis_HelpExample;
  THROW;
 END CATCH;
-DROP TABLE #USP_ExtendedEventsAnalysis_moduleStatus;
+DROP TABLE #ExtendedEventsAnalysis_HelpExample;
 ```
 
 ## Resultsets und Leserichtung
