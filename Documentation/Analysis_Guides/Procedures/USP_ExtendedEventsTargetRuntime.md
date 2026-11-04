@@ -77,7 +77,7 @@ BEGIN TRY
  SELECT * FROM #ExtendedEventsTargetRuntime_HelpExample;
 END TRY
 BEGIN CATCH
- IF OBJECT_ID('tempdb..#ExtendedEventsTargetRuntime_HelpExample') IS NOT NULL DROP TABLE #ExtendedEventsTargetRuntime_HelpExample;
+ DROP TABLE #ExtendedEventsTargetRuntime_HelpExample;
  THROW;
 END CATCH;
 DROP TABLE #ExtendedEventsTargetRuntime_HelpExample;

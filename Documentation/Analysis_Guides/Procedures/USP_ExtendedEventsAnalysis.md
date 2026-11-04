@@ -88,7 +88,7 @@ BEGIN TRY
  SELECT * FROM #ExtendedEventsAnalysis_HelpExample;
 END TRY
 BEGIN CATCH
- IF OBJECT_ID('tempdb..#ExtendedEventsAnalysis_HelpExample') IS NOT NULL DROP TABLE #ExtendedEventsAnalysis_HelpExample;
+ DROP TABLE #ExtendedEventsAnalysis_HelpExample;
  THROW;
 END CATCH;
 DROP TABLE #ExtendedEventsAnalysis_HelpExample;
