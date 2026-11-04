@@ -60,13 +60,24 @@ BEGIN
     IF @Hilfe=1
     BEGIN
         PRINT N'monitor.USP_ExtendedEventsTargetRuntime';
-        PRINT N'@ExtendedEventSessionNamePattern nvarchar(256)=NULL: LIKE-Filter auf laufende Sessionnamen.';
-        PRINT N'@TargetNamePattern nvarchar(256)=NULL: LIKE-Filter auf Targetnamen.';
-        PRINT N'@MitTargetData bit=0: 1 gibt target_data begrenzt als nvarchar aus.';
-        PRINT N'@MaxTargetDataZeichen int=4000: positiver Wert begrenzt die Ausgabe; 0 liefert mit @MitTargetData=1 den vollständigen MAX-Wert.';
-        PRINT N'@BestaetigeTargetFlush bit=0: muss 1 sein; sys.dm_xe_session_targets kann einen Target-Flush auslösen.';
-        PRINT N'@PrintMeldungen bit=1: Warnungen Severity 10; @Hilfe bit=0: 1 zeigt diese Hilfe.';
-        PRINT N'Es werden keine Sessions oder Targets verändert.';
+        PRINT N'@ExtendedEventSessionNames nvarchar(max). Default ist NULL. NULL deaktiviert den Exaktnamenfilter. Andernfalls pipe-getrennte Liste exakter einteiliger SQL-Namen; geklammerte Namen und maskierte ]] sind zulässig. Leere Listen und ungültige Namen werden abgelehnt. Nicht mit ExtendedEventSessionNamePattern kombinierbar.';
+        PRINT N'@ExtendedEventSessionNamePattern nvarchar(4000). Default ist NULL. NULL deaktiviert den Musterfilter. Andernfalls nichtleeres LIKE-Muster, optional mit LIKE:, REGEX: oder REGEXI:; äußere Leerzeichen werden entfernt. Leeres Muster oder leerer Präfixwert ist ungültig. LIKE unterstützt % und _. Regex benötigt SQL Server 2025 mit Compatibility Level 170 und wird nach Materialisierung angewandt. Nicht mit ExtendedEventSessionNames kombinierbar.';
+        PRINT N'@TargetNames nvarchar(max). Default ist NULL. NULL deaktiviert den Exaktnamenfilter. Andernfalls pipe-getrennte Liste exakter einteiliger SQL-Namen; geklammerte Namen und maskierte ]] sind zulässig. Leere Listen und ungültige Namen werden abgelehnt. Nicht mit TargetNamePattern kombinierbar.';
+        PRINT N'@TargetNamePattern nvarchar(4000). Default ist NULL. NULL deaktiviert den Musterfilter. Andernfalls nichtleeres Muster mit optionalem LIKE:, REGEX: oder REGEXI:-Präfix; äußere Leerzeichen werden getrimmt. Leeres Muster oder leerer Präfixwert ungültig. LIKE verwendet % und _. Regex benötigt SQL Server 2025 / Compatibility Level 170 und wird nach Materialisierung angewandt. Nicht mit TargetNames kombinierbar.';
+        PRINT N'@MitTargetData bit. Default ist 0. 1 projiziert target_data und Zeichen-/Byteumfang; 0 setzt TargetData NULL und TargetDataStatus auf NOT_REQUESTED.';
+        PRINT N'@MaxTargetDataZeichen int. Default ist 4000. Negative Werte ungültig. 0 bedeutet unbegrenzte nvarchar(max)-Projektion; positiver Wert begrenzt Ausgabezeichen. Gilt nur bei MitTargetData=1; gekürzte Werte erhalten OUTPUT_VALUE_TRUNCATED und können Warnung auslösen.';
+        PRINT N'@BestaetigeTargetFlush bit. Default ist 0. 1 bestätigt den möglichen Flush beim Lesen von sys.dm_xe_session_targets. 0 sperrt den Zugriff. NULL kann die bestehende Prüfung auf 0 passieren und den DMV-Zugriff auslösen. Verwenden Sie ausdrücklich 0 oder 1.';
+        PRINT N'@HighImpactConfirmed bit. Default ist 0. Bestätigung für den Policycheck EXTENDED_EVENTS_FORENSICS_DEEP; Standard 0.';
+        PRINT N'@ResultSetArt varchar(16). Default ist ''CONSOLE''. Wird getrimmt und großgeschrieben. Zulässig: RAW, CONSOLE, NONE, TABLE. RAW gibt Status und rohe Targets aus; CONSOLE Status und lesbare Übersicht; NONE unterdrückt Resultsets; TABLE schreibt targets. Andere Werte sind ungültig.';
+        PRINT N'@ResultTablesJson nvarchar(max). Default ist NULL. Nur mit ResultSetArt=TABLE zulässig. Nichtleeres JSON-Objekt mit genau dem Schlüssel targets und dem Namen einer vorhandenen, leeren lokalen #temp-Tabelle mit genau einer NULL-zulässigen Seed-Spalte. NULL/Leerwert, fehlerhafte Zuordnung, Zusatzschlüssel, befülltes Ziel, globale/permanente Tabelle und #Monitor-Präfix werden abgelehnt. Der Writer passt das Ziel an das Resultatschema an.';
+        PRINT N'@JsonErzeugen bit. Default ist 0. 1 erstellt JSON unabhängig von ResultSetArt; 0 lässt @Json NULL.';
+        PRINT N'@Json nvarchar(max). Default ist NULL. OUTPUT, anfangs NULL; bei JsonErzeugen=1 JSON-Objekt mit meta, targets und warnings.';
+        PRINT N'@PrintMeldungen bit. Default ist 1. 1 gibt Warnungen als Severity-10-Meldungen aus; 0 unterdrückt sie.';
+        PRINT N'@Hilfe bit. Default ist 0. 1 druckt Hilfe und kehrt vor der Ausführung zurück.';
+        PRINT N'Beispiel 1: EXEC [monitor].[USP_ExtendedEventsTargetRuntime] @Hilfe=1;';
+        PRINT N'Beispiel 2: EXEC [monitor].[USP_ExtendedEventsTargetRuntime] @ExtendedEventSessionNames=N''ExampleXeSession'', @TargetNames=N''ring_buffer'', @BestaetigeTargetFlush=1, @HighImpactConfirmed=1, @ResultSetArt=''RAW'';';
+        PRINT N'Beispiel 3: DECLARE @xeJson nvarchar(max); EXEC [monitor].[USP_ExtendedEventsTargetRuntime] @ExtendedEventSessionNames=N''ExampleXeSession'', @TargetNames=N''ring_buffer'', @BestaetigeTargetFlush=1, @HighImpactConfirmed=1, @ResultSetArt=''NONE'', @JsonErzeugen=1, @Json=@xeJson OUTPUT; SELECT @xeJson AS JsonResult;';
+        PRINT N'Beispiel 4: CREATE TABLE #USP_ExtendedEventsTargetRuntime_targets (Seed int NULL); BEGIN TRY EXEC [monitor].[USP_ExtendedEventsTargetRuntime] @ExtendedEventSessionNames=N''ExampleXeSession'', @TargetNames=N''ring_buffer'', @BestaetigeTargetFlush=1, @HighImpactConfirmed=1, @ResultSetArt=''TABLE'', @ResultTablesJson=N''{"targets":"#USP_ExtendedEventsTargetRuntime_targets"}''; SELECT * FROM #USP_ExtendedEventsTargetRuntime_targets; END TRY BEGIN CATCH IF OBJECT_ID(''tempdb..#USP_ExtendedEventsTargetRuntime_targets'') IS NOT NULL DROP TABLE #USP_ExtendedEventsTargetRuntime_targets; THROW; END CATCH; DROP TABLE #USP_ExtendedEventsTargetRuntime_targets;';
         RETURN;
     END;
 

@@ -27,6 +27,62 @@ Der Aufruf passiert das zwingende `EXTENDED_EVENTS_FORENSICS_DEEP`-Gate, bestät
 
 Alle `Example*`-Werte im Aufruf sind synthetisch.
 
+## Parametervertrag
+
+| Parameter | Typ | Default | Vertrag |
+|---|---|---|---|
+| `@ExtendedEventSessionNames` | `nvarchar(max)` | `NULL` | NULL deaktiviert den Exaktnamenfilter. Andernfalls pipe-getrennte Liste exakter einteiliger SQL-Namen; geklammerte Namen und maskierte ]] sind zulässig. Leere Listen und ungültige Namen werden abgelehnt. Nicht mit ExtendedEventSessionNamePattern kombinierbar. |
+| `@ExtendedEventSessionNamePattern` | `nvarchar(4000)` | `NULL` | NULL deaktiviert den Musterfilter. Andernfalls nichtleeres LIKE-Muster, optional mit LIKE:, REGEX: oder REGEXI:; äußere Leerzeichen werden entfernt. Leeres Muster oder leerer Präfixwert ist ungültig. LIKE unterstützt % und _. Regex benötigt SQL Server 2025 mit Compatibility Level 170 und wird nach Materialisierung angewandt. Nicht mit ExtendedEventSessionNames kombinierbar. |
+| `@TargetNames` | `nvarchar(max)` | `NULL` | NULL deaktiviert den Exaktnamenfilter. Andernfalls pipe-getrennte Liste exakter einteiliger SQL-Namen; geklammerte Namen und maskierte ]] sind zulässig. Leere Listen und ungültige Namen werden abgelehnt. Nicht mit TargetNamePattern kombinierbar. |
+| `@TargetNamePattern` | `nvarchar(4000)` | `NULL` | NULL deaktiviert den Musterfilter. Andernfalls nichtleeres Muster mit optionalem LIKE:, REGEX: oder REGEXI:-Präfix; äußere Leerzeichen werden getrimmt. Leeres Muster oder leerer Präfixwert ungültig. LIKE verwendet % und _. Regex benötigt SQL Server 2025 / Compatibility Level 170 und wird nach Materialisierung angewandt. Nicht mit TargetNames kombinierbar. |
+| `@MitTargetData` | `bit` | `0` | 1 projiziert target_data und Zeichen-/Byteumfang; 0 setzt TargetData NULL und TargetDataStatus auf NOT_REQUESTED. |
+| `@MaxTargetDataZeichen` | `int` | `4000` | Negative Werte ungültig. 0 bedeutet unbegrenzte nvarchar(max)-Projektion; positiver Wert begrenzt Ausgabezeichen. Gilt nur bei MitTargetData=1; gekürzte Werte erhalten OUTPUT_VALUE_TRUNCATED und können Warnung auslösen. |
+| `@BestaetigeTargetFlush` | `bit` | `0` | 1 bestätigt den möglichen Flush beim Lesen von sys.dm_xe_session_targets. 0 sperrt den Zugriff. NULL kann die bestehende Prüfung auf 0 passieren und den DMV-Zugriff auslösen. Verwenden Sie ausdrücklich 0 oder 1. |
+| `@HighImpactConfirmed` | `bit` | `0` | Bestätigung für den Policycheck EXTENDED_EVENTS_FORENSICS_DEEP; Standard 0. |
+| `@ResultSetArt` | `varchar(16)` | `'CONSOLE'` | Wird getrimmt und großgeschrieben. Zulässig: RAW, CONSOLE, NONE, TABLE. RAW gibt Status und rohe Targets aus; CONSOLE Status und lesbare Übersicht; NONE unterdrückt Resultsets; TABLE schreibt targets. Andere Werte sind ungültig. |
+| `@ResultTablesJson` | `nvarchar(max)` | `NULL` | Nur mit ResultSetArt=TABLE zulässig. Nichtleeres JSON-Objekt mit genau dem Schlüssel targets und dem Namen einer vorhandenen, leeren lokalen #temp-Tabelle mit genau einer NULL-zulässigen Seed-Spalte. NULL/Leerwert, fehlerhafte Zuordnung, Zusatzschlüssel, befülltes Ziel, globale/permanente Tabelle und #Monitor-Präfix werden abgelehnt. Der Writer passt das Ziel an das Resultatschema an. |
+| `@JsonErzeugen` | `bit` | `0` | 1 erstellt JSON unabhängig von ResultSetArt; 0 lässt @Json NULL. |
+| `@Json` | `nvarchar(max)` | `NULL` | OUTPUT, anfangs NULL; bei JsonErzeugen=1 JSON-Objekt mit meta, targets und warnings. |
+| `@PrintMeldungen` | `bit` | `1` | 1 gibt Warnungen als Severity-10-Meldungen aus; 0 unterdrückt sie. |
+| `@Hilfe` | `bit` | `0` | 1 druckt Hilfe und kehrt vor der Ausführung zurück. |
+
+## Beispiele
+
+### Beispiel 1
+
+```sql
+EXEC [monitor].[USP_ExtendedEventsTargetRuntime] @Hilfe=1;
+```
+
+### Beispiel 2
+
+```sql
+EXEC [monitor].[USP_ExtendedEventsTargetRuntime] @ExtendedEventSessionNames=N'ExampleXeSession', @TargetNames=N'ring_buffer', @BestaetigeTargetFlush=1, @HighImpactConfirmed=1, @ResultSetArt='RAW';
+```
+
+### Beispiel 3
+
+```sql
+DECLARE @xeJson nvarchar(max);
+EXEC [monitor].[USP_ExtendedEventsTargetRuntime] @ExtendedEventSessionNames=N'ExampleXeSession', @TargetNames=N'ring_buffer', @BestaetigeTargetFlush=1, @HighImpactConfirmed=1, @ResultSetArt='NONE', @JsonErzeugen=1, @Json=@xeJson OUTPUT;
+SELECT @xeJson AS JsonResult;
+```
+
+### Beispiel 4
+
+```sql
+CREATE TABLE #USP_ExtendedEventsTargetRuntime_targets (Seed int NULL);
+BEGIN TRY
+ EXEC [monitor].[USP_ExtendedEventsTargetRuntime] @ExtendedEventSessionNames=N'ExampleXeSession', @TargetNames=N'ring_buffer', @BestaetigeTargetFlush=1, @HighImpactConfirmed=1, @ResultSetArt='TABLE', @ResultTablesJson=N'{"targets":"#USP_ExtendedEventsTargetRuntime_targets"}';
+ SELECT * FROM #USP_ExtendedEventsTargetRuntime_targets;
+END TRY
+BEGIN CATCH
+ IF OBJECT_ID('tempdb..#USP_ExtendedEventsTargetRuntime_targets') IS NOT NULL DROP TABLE #USP_ExtendedEventsTargetRuntime_targets;
+ THROW;
+END CATCH;
+DROP TABLE #USP_ExtendedEventsTargetRuntime_targets;
+```
+
 ## Resultsets und Leserichtung
 
 Der typisierte TABLE-Vertrag registriert `targets`. Status, Scope und Warnings sind vor den Fachergebnissen zu lesen. CONSOLE dient der interaktiven Triage; RAW und JSON erhalten den technischen Kontext, während TABLE nur die ausdrücklich benannten stabilen Resultsets schreibt. Resultsets mit unterschiedlicher Zeilengranularität dürfen nicht ungeprüft vereinigt oder summiert werden.

@@ -27,6 +27,73 @@ EXEC [monitor].[USP_ExtendedEventsAnalysis]
 
 Alle `Example*`-Werte im Aufruf sind synthetisch.
 
+## Parametervertrag
+
+| Parameter | Typ | Default | Vertrag |
+|---|---|---|---|
+| `@SourceExtendedEventSessionName` | `nvarchar(258)` | `N'system_health'` | Einzelner Forensik-Quell-Sessionsname, Standard system_health. Nur an aktivierte ReadEvents-, Deadlocks- und BlockedProcesses-Children; nicht an Inventar-Children. ReadEvents und Deadlocks lehnen NULL/leeren/ungültigen/mehrteiligen Namen ab. BlockedProcesses verwendet NULL zur automatischen Auswahl und lehnt leere/ungültige explizite Namen ab. |
+| `@ExtendedEventSessionNames` | `nvarchar(max)` | `NULL` | NULL deaktiviert den Exaktnamenfilter. Sonst pipe-getrennte Liste exakter einteiliger SQL-Namen; Klammerung und ]] Escape unterstützt. Leere Liste/ungültige Namen ungültig. Nicht kombinierbar mit ExtendedEventSessionNamePattern. Wird an Sessions- und TargetRuntime-Children geleitet. |
+| `@ExtendedEventSessionNamePattern` | `nvarchar(4000)` | `NULL` | NULL deaktiviert den Musterfilter. Andernfalls nichtleeres LIKE-Muster, optional mit LIKE:, REGEX: oder REGEXI:; äußere Leerzeichen werden entfernt. Leeres Muster oder leerer Präfixwert ist ungültig. LIKE unterstützt % und _. Regex benötigt SQL Server 2025 mit Compatibility Level 170 und wird nach Materialisierung angewandt. Nicht mit ExtendedEventSessionNames kombinierbar. Wird an Sessions-/TargetRuntime-Children geleitet. |
+| `@EventNames` | `nvarchar(max)` | `NULL` | NULL deaktiviert den exakten Eventnamenfilter. Andernfalls pipe-getrennte Liste exakter einteiliger SQL-Namen; leere Liste/ungültige Namen werden abgelehnt. Nicht mit EventNamePattern kombinierbar. Wird an Sessions- und ReadEvents-Children geleitet. |
+| `@EventNamePattern` | `nvarchar(4000)` | `NULL` | NULL deaktiviert den Musterfilter. Andernfalls nichtleeres Muster mit optionalem LIKE:, REGEX: oder REGEXI:-Präfix; äußere Leerzeichen werden getrimmt. Leeres Muster/Präfixwert ungültig. LIKE unterstützt % und _. Regex erfordert SQL Server 2025 / Compatibility Level 170 und wird nach Materialisierung angewandt. Nicht mit EventNames kombinierbar. |
+| `@TargetNames` | `nvarchar(max)` | `NULL` | NULL deaktiviert den Exaktnamenfilter. Sonst pipe-getrennte Liste exakter einteiliger SQL-Namen; Klammerung und ]] Escape unterstützt. Leere Liste/ungültige Namen ungültig. Nicht kombinierbar mit TargetNamePattern. Wird an Sessions-/TargetRuntime-Children geleitet. |
+| `@TargetNamePattern` | `nvarchar(4000)` | `NULL` | NULL deaktiviert den Musterfilter. Andernfalls nichtleeres Muster mit optionalem LIKE:, REGEX: oder REGEXI:-Präfix; äußere Leerzeichen werden getrimmt. Leeres Muster oder leerer Präfixwert ungültig. LIKE verwendet % und _. Regex benötigt SQL Server 2025 / Compatibility Level 170 und wird nach Materialisierung angewandt. Nicht mit TargetNames kombinierbar. Wird an Sessions-/TargetRuntime-Children geleitet. |
+| `@Quelle` | `varchar(20)` | `'AUTO'` | Getrimmt/großgeschrieben; zulässig AUTO, EVENT_FILE, RING_BUFFER. Quellwahl für Forensik-Children. |
+| `@FilePath` | `nvarchar(4000)` | `NULL` | Optionaler XEL-Dateipfad, an aktivierte Forensik-Children geleitet; NULL überlässt Pfadauswahl dem Child. Leerverhalten childabhängig. |
+| `@VonUtc` | `datetime2(7)` | `NULL` | Unverändert an ReadEvents, Deadlocks und BlockedProcesses geleitet. ReadEvents: NULL lässt untere inklusive Grenze aus. Deadlocks/BlockedProcesses: NULL bedeutet UTC jetzt minus 24 Stunden. |
+| `@BisUtc` | `datetime2(7)` | `NULL` | Unverändert an die aktivierten Forensik-Children geleitet. NULL lässt die exklusive obere Grenze aus. |
+| `@MitSessionInventar` | `bit` | `1` | 1 ruft USP_ExtendedEventsSessions mit Session-/Event-/Targetfiltern und MaxZeilen auf; erhält SourceExtendedEventSessionName nicht. |
+| `@MitTargetRuntime` | `bit` | `0` | 1 ruft USP_ExtendedEventsTargetRuntime mit Session-/Targetfiltern auf. Das DMV-Lesen verlangt Flushbestätigung 1 und Deep-Analysis-Gate. |
+| `@MitEvents` | `bit` | `0` | 1 ruft USP_ExtendedEventsReadEvents auf und leitet SourceExtendedEventSessionName, Quelle, FilePath, Eventfilter, UTC-Grenzen, MaxZeilen sowie Schutzbestätigungen weiter. |
+| `@MitDeadlocks` | `bit` | `0` | 1 ruft USP_ExtendedEventsDeadlocks auf und leitet Session, Quelle, Datei, UTC-Grenzen, MaxZeilen und Schutzbestätigungen weiter. |
+| `@MitBlockedProcesses` | `bit` | `0` | 1 ruft USP_ExtendedEventsBlockedProcesses auf und leitet Session, Quelle, Datei, UTC-Grenzen, MaxZeilen und Schutzbestätigungen weiter. |
+| `@MaxZeilen` | `int` | `100` | Negative Werte ungültig. An Children weitergeleitet; NULL oder 0 bedeutet dort unbegrenzt. Ein Zeilenlimit garantiert kein vorzeitiges oder vollständiges Überspringen des physischen XEL-Lesens. Modulstatus wird nicht gekürzt. |
+| `@BestaetigeTargetFlush` | `bit` | `0` | Explizit 0 oder 1 übergeben; nicht NULL. An Children geleitet. 1 nur nach bewusster Bestätigung setzen, weil Targetzugriffe einen Flush auslösen können. |
+| `@HighImpactConfirmed` | `bit` | `0` | An aktivierte Forensikchildren und TargetRuntime geleitete Policybestätigung für Deep-Analysis. |
+| `@ResultSetArt` | `varchar(16)` | `'CONSOLE'` | Getrimmt/großgeschrieben; zulässig RAW, CONSOLE, NONE, TABLE. TABLE schreibt moduleStatus; CONSOLE/TABLE unterdrücken Child-Resultsets intern. |
+| `@ResultTablesJson` | `nvarchar(max)` | `NULL` | Nur mit TABLE. Nichtleeres JSON-Objekt mit genau dem Schlüssel moduleStatus und dem Namen einer vorhandenen, leeren lokalen #temp-Tabelle mit genau einer NULL-zulässigen Seed-Spalte. NULL/Leerwert, fehlerhafte Zuordnung, Zusatzschlüssel, befülltes Ziel, globale/permanente Tabelle und #Monitor-Präfix werden abgelehnt. |
+| `@JsonErzeugen` | `bit` | `0` | 1 erzeugt Parent-JSON-Hülle mit meta, inventory, targetRuntime, events, deadlocks, blockedProcesses und warnings; 0 lässt @Json NULL. |
+| `@Json` | `nvarchar(max)` | `NULL` | OUTPUT, wird anfangs NULL gesetzt; enthält bei JsonErzeugen=1 die Parent-JSON-Hülle. |
+| `@PrintMeldungen` | `bit` | `1` | 1 aktiviert Child-/Parent-Warnmeldungen; 0 unterdrückt sie. |
+| `@Hilfe` | `bit` | `0` | 1 druckt Kurzhilfe und kehrt vor Ausführung zurück. |
+
+## Beispiele
+
+### Beispiel 1
+
+```sql
+EXEC [monitor].[USP_ExtendedEventsAnalysis] @Hilfe=1;
+```
+
+### Beispiel 2
+
+```sql
+EXEC [monitor].[USP_ExtendedEventsAnalysis] @ExtendedEventSessionNames=N'ExampleXeSession', @MitSessionInventar=1, @MitTargetRuntime=0, @MitEvents=0, @MitDeadlocks=0, @MitBlockedProcesses=0, @ResultSetArt='RAW';
+```
+
+### Beispiel 3
+
+```sql
+DECLARE @xeFrom datetime2(7)=DATEADD(hour,-1,SYSUTCDATETIME()), @xeTo datetime2(7)=SYSUTCDATETIME(), @xeJson nvarchar(max);
+EXEC [monitor].[USP_ExtendedEventsAnalysis] @SourceExtendedEventSessionName=N'ExampleXeSession', @Quelle='AUTO', @VonUtc=@xeFrom, @BisUtc=@xeTo, @MitSessionInventar=0, @MitEvents=1, @MaxZeilen=50, @BestaetigeTargetFlush=1, @HighImpactConfirmed=1, @ResultSetArt='NONE', @JsonErzeugen=1, @Json=@xeJson OUTPUT;
+SELECT @xeJson AS JsonResult;
+```
+
+### Beispiel 4
+
+```sql
+CREATE TABLE #USP_ExtendedEventsAnalysis_moduleStatus (Seed int NULL);
+BEGIN TRY
+ EXEC [monitor].[USP_ExtendedEventsAnalysis] @MitSessionInventar=1, @MitTargetRuntime=0, @MitEvents=0, @MitDeadlocks=0, @MitBlockedProcesses=0, @ResultSetArt='TABLE', @ResultTablesJson=N'{"moduleStatus":"#USP_ExtendedEventsAnalysis_moduleStatus"}';
+ SELECT * FROM #USP_ExtendedEventsAnalysis_moduleStatus;
+END TRY
+BEGIN CATCH
+ IF OBJECT_ID('tempdb..#USP_ExtendedEventsAnalysis_moduleStatus') IS NOT NULL DROP TABLE #USP_ExtendedEventsAnalysis_moduleStatus;
+ THROW;
+END CATCH;
+DROP TABLE #USP_ExtendedEventsAnalysis_moduleStatus;
+```
+
 ## Resultsets und Leserichtung
 
 Der typisierte TABLE-Vertrag registriert `moduleStatus`. Status, Scope und Warnings sind vor den Fachergebnissen zu lesen. CONSOLE dient der interaktiven Triage; RAW und JSON erhalten den technischen Kontext, während TABLE nur die ausdrücklich benannten stabilen Resultsets schreibt. Resultsets mit unterschiedlicher Zeilengranularität dürfen nicht ungeprüft vereinigt oder summiert werden.
@@ -76,7 +143,7 @@ Für `USP_ExtendedEventsAnalysis` gilt zusätzlich: **keine Zeile** bedeutet, da
 | Skalierung | Die Children laufen nacheinander und teilen keinen materialisierten Ereignissnapshot. Drei aktivierte Ereignis-Children können dieselbe Quelle daher dreimal lesen und parsen; breite Reports erhöhen CPU, Arbeitsspeicher, TempDB und Transfer. |
 | Ressourcen | Im Standard nur XE-Katalog-/Runtime-CPU. Optional kommen Datei-I/O über `sys.fn_xe_file_target_read_file`, Ring-Buffer-/Targetzugriff und XML-Shredding hinzu; `msdb` und Datenbankscans gehören nicht zu diesem Orchestrator. |
 | Begrenzungswirkung | Session-/Event-/Targetfilter gelten nicht für jedes Child gleich: Inventarfilter steuern Katalogresultsets, die Forensikchildren verwenden die einzelne `@SourceExtendedEventSessionName`, Quelle, Datei und Zeitgrenzen. `@MaxZeilen` wird an Ereignischildren weitergegeben, begrenzt aber nicht zwingend das vorgelagerte Datei- und XML-Lesen; Targetruntime besitzt kein Parent-Zeilenlimit. |
-| Locking und Nebenwirkungen | Keine Nutzdatenänderung. Nur der Targetruntimepfad kann durch das Lesen von `sys.dm_xe_session_targets` einen Flush bewirken; er benötigt deshalb zusätzlich `@BestaetigeTargetFlush = 1`. Die sequenziellen Childresultate sind kein atomarer Ereignissnapshot. |
+| Locking und Nebenwirkungen | Keine Nutzdatenänderung. TargetRuntime und bestätigte Ringbuffer-Lesezugriffe können durch das Lesen von `sys.dm_xe_session_targets` einen Flush auslösen. Geben Sie die Bestätigung ausdrücklich als 0 oder 1 an. NULL kann bei TargetRuntime sowie den expliziten Deadlock- und Blocking-Ringbufferpfaden die Prüfung auf 0 passieren. Die sequenziellen Childresultate sind kein atomarer Ereignissnapshot. |
 | Schutzmechanismus | Ereignisforensik und Targetruntime prüfen `EXTENDED_EVENTS_FORENSICS_DEEP` über `@HighImpactConfirmed`. Für Targetruntime ist die Flushbestätigung ein zweites, unabhängiges Gate. Keiner der beiden Schalter ist ein Laufzeit- oder Mengenlimit. |
 | Sicherer Einsatz | Zuerst nur das Inventar ausführen. Danach genau ein Forensik-Child, eine `ExampleSession`, einen engen UTC-Zeitraum und ein kleines `@MaxZeilen` wählen; Targetruntime erst nach bewusster Flushentscheidung aktivieren. |
 | Aussagegrenze | Ein erfolgreiches Inventar beweist keine Ereigniserfassung. Ein begrenztes Ereignisresultset beschreibt nur die noch vorhandene gewählte Quelle; Rollover, Drops und ein spätes Zeilenlimit können relevante Events unsichtbar machen. Childresultate dürfen wegen getrennter Lesezeitpunkte nicht als transaktional konsistent behandelt werden. |
