@@ -24,6 +24,60 @@ EXEC [monitor].[USP_MaintenanceOperations]
 
 Alle `Example*`-Werte im Aufruf sind synthetisch.
 
+## Parameter
+
+| Parameter | Typ | Default | Eingabe und Wirkung |
+|---|---|---|---|
+| `@DatabaseNames` | `nvarchar(max)` | `NULL` | Pipe-Liste exakter einteiliger SQL-Namen. Klammern schützen enthaltene Pipe-Zeichen. ]] maskiert eine schließende Klammer. Äußere Segmentleerzeichen werden entfernt. Ungültige Elemente werden abgelehnt. NULL, Leertext und reine Leerzeichen bedeuten keine exakte Einschränkung. Eine wirksame Liste darf nicht mit DatabaseNamePattern kombiniert werden. |
+| `@SystemdatenbankenEinbeziehen` | `bit` | `0` | 0 schließt Systemdatenbanken aus. 1 erlaubt ihre Einbeziehung in Kandidaten. Ändert nicht die separaten Ausschlüsse fest kodierter Datenbanken/Quellen. NULL wird als ungültiger Bit-Wert abgelehnt. |
+| `@DatabaseNamePattern` | `nvarchar(4000)` | `NULL` | NULL deaktiviert das Muster. Ohne Präfix oder mit LIKE: gilt SQL LIKE mit % und _. REGEX: berücksichtigt Groß- und Kleinschreibung, REGEXI: ignoriert sie. Regex benötigt SQL Server 2025 und Compatibility Level 170. Leertext ist ungültig. Nicht mit wirksamer exakter Liste kombinieren. |
+| `@HighImpactConfirmed` | `bit` | `0` | 0 bestätigt keinen geschützten Pfad. 1 bestätigt einen tatsächlich aktivierten Pfad. NULL wird vom Candidate-Helper abgelehnt. Dieser Aufruf übergibt AnalysisClass=NULL und aktiviert damit keine zusätzliche Klassenprüfung. |
+| `@JobNames` | `nvarchar(max)` | `NULL` | Pipe-Liste exakter einteiliger SQL-Namen. Klammern schützen enthaltene Pipe-Zeichen. ]] maskiert eine schließende Klammer. Äußere Segmentleerzeichen werden entfernt. Ungültige Elemente werden abgelehnt. Ohne wirksame Jobliste und ohne Jobmuster liest die Procedure keine Jobdaten. Eine nichtleere ungültige Liste ergibt INVALID_PARAMETER. Nicht mit JobNamePattern kombinieren. |
+| `@JobNamePattern` | `nvarchar(4000)` | `NULL` | NULL deaktiviert das Jobmuster. Ohne Präfix oder mit LIKE: gilt SQL LIKE. REGEX: und REGEXI: ergeben UNAVAILABLE_FEATURE. Leertext und reine Leerzeichen ergeben INVALID_PARAMETER. Nicht mit JobNames kombinieren. |
+| `@NurProblematisch` | `bit` | `0` | 0 zeigt alle bewerteten Befunde. 1 und NULL beschränken die vier fachlichen Mengen auf HIGH und MEDIUM. Die Filterung erfolgt nach dem Quellenlesen. |
+| `@ResumablePausedWarnMinutes` | `int` | `60` | Warnschwelle in Minuten von 1 bis 525600. Zahlen außerhalb des Bereichs sind ungültig. NULL wird nicht ausdrücklich abgelehnt und erfüllt den Schwellwertvergleich nicht. |
+| `@BlockedWarnMs` | `bigint` | `5000` | Nichtnegative Warnschwelle in Millisekunden bei positiver BlockingSessionId. Negative Werte sind ungültig. NULL erfüllt den Schwellwertvergleich nicht. |
+| `@PvsWarnMb` | `decimal(19,2)` | `1024` | Nichtnegative PVS-Warnschwelle in MB. Die Warnung setzt zusätzlich die Grenze für abgebrochene Transaktionen voraus. Negative Werte sind ungültig. Bei NULL ist der gemeinsame Schwellwertvergleich nicht wahr. |
+| `@AbortedTransactionsWarnCount` | `bigint` | `1` | Nichtnegative Mindestzahl abgebrochener Transaktionen für die gemeinsame PVS-Warnung. Negative Werte sind ungültig. Bei NULL ist der gemeinsame Schwellwertvergleich nicht wahr. |
+| `@MaxZeilen` | `int` | `1000` | Je fachliche Menge: NULL oder 0 unbegrenzt, positiv Top-N nach jeweiliger Sortierung, negativ INVALID_PARAMETER. Wirkt nach vollständiger Quellenmaterialisierung und NurProblematisch-Auswahl. |
+| `@LockTimeoutMs` | `int` | `0` | Nichtnegative Millisekunden für datenbanklokale Abfragen. 0 bedeutet NOWAIT. Negative Werte sind ungültig. NULL wird im Vorfeld nicht abgelehnt und kann beim Aufbau des dynamischen SQL zu fehlender Teilevidenz führen. |
+| `@ResultSetArt` | `varchar(16)` | `'CONSOLE'` | CONSOLE zeigt resumableOperations mit Beschriftung. RAW liefert Modulstatus, fachliche Mengen und Quellenstatus. TABLE exportiert ausschließlich resumableOperations. NONE unterdrückt die Datenresultsets. Rand-Leerzeichen und Groß- und Kleinschreibung werden normalisiert. NULL, Leertext und andere Werte sind ungültig. |
+| `@ResultTablesJson` | `nvarchar(max)` | `NULL` | Nur mit ResultSetArt=TABLE erlaubt. JSON-Objekt mit genau dem Schlüssel resumableOperations und Zielnamen einer vorher angelegten, leeren lokalen #Temp-Tabelle mit genau einer Seed-Spalte. mapping wird vor fachlichen Quellen geprüft. NULL/leer bei TABLE führt zu Mapping-Fehler. Bei anderen Modi muss NULL/leer sein, sonst THROW 51011. Keine persistente Tabelle. |
+| `@JsonErzeugen` | `bit` | `0` | 1 erzeugt JSON in Json unabhängig von der Ausgabeart. 0 und NULL erzeugen kein Dokument. |
+| `@Json` | `nvarchar(max) OUTPUT` | `NULL` | Ausgabeparameter. wird beim Eintritt auf NULL gesetzt und bei JSON-Erzeugung befüllt. Eingabewert wird ignoriert. Für den Empfang eine Variable des deklarierten Typs mit OUTPUT binden. |
+| `@PrintMeldungen` | `bit` | `1` | 1 aktiviert informative Statusmeldungen. 0 und NULL unterdrücken sie. |
+| `@Hilfe` | `bit` | `0` | 1 zeigt die Hilfe nach der TABLE-Vorprüfung und beendet vor dem Quellzugriff. 0 und NULL setzen die normale Verarbeitung fort. |
+| `@StatusCodeOut` | `varchar(40) OUTPUT` | `NULL` | Ausgabeparameter. Statuscode des Laufs, z.B. AVAILABLE/AVAILABLE_LIMITED/INVALID_PARAMETER. Eingabe ignoriert. Für den Empfang eine Variable des deklarierten Typs mit OUTPUT binden. |
+| `@IsPartialOut` | `bit OUTPUT` | `NULL` | Ausgabeparameter. 1 kennzeichnet unvollständige Evidenz, 0 vollständig im erreichbaren Scope. Eingabe ignoriert. Für den Empfang eine Variable des deklarierten Typs mit OUTPUT binden. |
+| `@ErrorNumberOut` | `int OUTPUT` | `NULL` | Ausgabeparameter für erfasste SQL-Fehlernummer. NULL wenn keiner erfasst wurde. Eingabe ignoriert. Für den Empfang eine Variable des deklarierten Typs mit OUTPUT binden. |
+| `@ErrorMessageOut` | `nvarchar(2048) OUTPUT` | `NULL` | Ausgabeparameter für erfasste Fehlermeldung. NULL ohne Fehler. Eingabe ignoriert. Für den Empfang eine Variable des deklarierten Typs mit OUTPUT binden. |
+
+## Aufrufbeispiele
+
+```sql
+EXEC [monitor].[USP_MaintenanceOperations] @Hilfe=1;
+```
+
+```sql
+EXEC [monitor].[USP_MaintenanceOperations] @DatabaseNames=N'[ExampleDatabase]', @MaxZeilen=50, @ResultSetArt='RAW';
+```
+
+```sql
+DECLARE @ResultJson nvarchar(max);
+EXEC [monitor].[USP_MaintenanceOperations] @DatabaseNames=N'[ExampleDatabase]', @MaxZeilen=50, @ResultSetArt='NONE', @JsonErzeugen=1, @Json=@ResultJson OUTPUT;
+SELECT @ResultJson AS [Json];
+```
+
+```sql
+CREATE TABLE #MaintenanceOperations_HelpExample ([Seed] int NULL);
+BEGIN TRY EXEC [monitor].[USP_MaintenanceOperations] @DatabaseNames=N'[ExampleDatabase]', @MaxZeilen=50, @ResultSetArt='TABLE', @ResultTablesJson=N'{"resumableOperations":"#MaintenanceOperations_HelpExample"}';
+SELECT * FROM #MaintenanceOperations_HelpExample;
+DROP TABLE #MaintenanceOperations_HelpExample;
+END TRY BEGIN CATCH DROP TABLE #MaintenanceOperations_HelpExample;
+THROW;
+END CATCH;
+```
+
 ## Resultsets und Leserichtung
 
 Der typisierte TABLE-Vertrag registriert ausschließlich `resumableOperations` mit 15 Feldern. Das aktive CONSOLE zeigt dieselbe fachliche Menge. RAW und JSON enthalten zusätzlich Requests, ADR/PVS und ausdrücklich ausgewählte Jobs sowie Quellenstatus; Auswahlwarnings bleiben im vorhandenen RAW-Resultset. JSON besitzt kein zusätzliches Warning-Array. Resultsets mit unterschiedlicher Zeilengranularität dürfen nicht ungeprüft vereinigt oder summiert werden.
