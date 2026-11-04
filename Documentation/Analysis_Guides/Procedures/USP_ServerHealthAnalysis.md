@@ -27,6 +27,62 @@ Die Parameterhilfe ohne Datenerhebung zeigt `EXEC [monitor].[USP_ServerHealthAna
 
 Alle `Example*`-Werte im Aufruf sind synthetisch.
 
+## Parameter
+
+| Parameter | Typ | Default | Eingabe und Wirkung |
+|---|---|---|---|
+| `@MitCpu` | `bit` | `1` | NULL/0 deaktiviert, 1 ruft USP_ServerCpuTopology auf. Bestandteil des mindestens-ein-Modul-Gates. |
+| `@MitNuma` | `bit` | `1` | NULL/0 deaktiviert, 1 ruft USP_ServerNuma auf. Standardpfad. |
+| `@MitMemory` | `bit` | `1` | NULL/0 deaktiviert, 1 ruft USP_ServerMemory auf. Standardpfad. |
+| `@MitTempDB` | `bit` | `1` | NULL/0 deaktiviert, 1 ruft USP_TempDBConfiguration auf. Standardpfad. |
+| `@MitConfiguration` | `bit` | `1` | NULL/0 deaktiviert, 1 ruft USP_ServerConfiguration auf. Standardpfad. |
+| `@MitTraceFlags` | `bit` | `1` | NULL/0 deaktiviert, 1 ruft USP_TraceFlags auf. Standardpfad. |
+| `@MitStartup` | `bit` | `1` | NULL/0 deaktiviert, 1 ruft USP_StartupParameters auf. Standardpfad. |
+| `@MitOS` | `bit` | `1` | NULL/0 deaktiviert, 1 ruft USP_OSInformation auf. Standardpfad. |
+| `@MitSecurity` | `bit` | `1` | NULL/0 deaktiviert, 1 ruft USP_ServerSecurityConfiguration auf. Standardpfad. |
+| `@MitIntegritaet` | `bit` | `0` | NULL/0 deaktiviert, 1 ruft USP_DatabaseIntegrityAnalysis für ausgewählte Datenbanken auf. page details bleiben aus. High-Impact-Pfad. |
+| `@MitKapazitaet` | `bit` | `0` | NULL/0 deaktiviert, 1 ruft USP_DatabaseCapacityAnalysis im Datenbankscope auf. High-Impact-Pfad. |
+| `@MitPerformanceCounters` | `bit` | `0` | NULL/0 deaktiviert, 1 ruft USP_PerformanceCounters mit SampleSeconds=0 auf. keine Warte-Samplingrunde. |
+| `@MitCriticalEvents` | `bit` | `0` | NULL/0 deaktiviert, 1 ruft USP_CriticalEngineEvents mit system_health an, ServerDiagnostics und EventXML aus. |
+| `@MitContention` | `bit` | `0` | NULL/0 deaktiviert, 1 ruft USP_InternalContentionAnalysis mit SampleSeconds=5 und PageDetails=0 auf. Sampling wartet bis zu fünf Sekunden. |
+| `@MitBufferPool` | `bit` | `0` | NULL/0 deaktiviert, 1 ruft USP_BufferPoolAnalysis ohne Verteilungsdetail auf. High-Impact-Pfad. |
+| `@MitFindings` | `bit` | `0` | NULL/0 deaktiviert, 1 ruft USP_DiagnosticFindings. Parent JSON-Ergebnisse von Integrity/Capacity/BufferPool werden zur Wiederverwendung übergeben, sofern diese erzeugt wurden. |
+| `@DatabaseNames` | `nvarchar(max)` | `NULL` | Pipe-Liste exakter einteiliger SQL-Namen für die datenbankbezogenen Empfänger. NULL, Leertext und Leerzeichen lassen die exakte Auswahl aus. Liste und Muster schließen sich aus. |
+| `@SystemdatenbankenEinbeziehen` | `bit` | `0` | 1 lässt Systemdatenbanken für die datenbankbezogenen Empfänger nach deren Regeln zu. 0 schließt sie dort aus. NULL wird weitergereicht und kann bei deren Kandidatenprüfung abgelehnt werden. |
+| `@DatabaseNamePattern` | `nvarchar(4000)` | `NULL` | Alternatives Muster für die datenbankbezogenen Empfänger. Ohne Präfix oder mit LIKE: gilt SQL LIKE mit % und _. REGEX: berücksichtigt Groß- und Kleinschreibung, REGEXI: ignoriert sie. Regex benötigt SQL Server 2025 und Compatibility Level 170. NULL deaktiviert das Muster. Leere Muster sind ungültig. Nicht mit einer nicht-NULL-Liste kombinieren. |
+| `@HighImpactConfirmed` | `bit` | `0` | 0 bestätigt keine High-Impact-Ausführung. 1 erfüllt eine tatsächlich aktive Bestätigungsprüfung im aufgerufenen Modul, erteilt aber keine Berechtigung. Der Wert wird nur an aktivierte Integritäts-, Kapazitäts- und Findings-Aufrufe weitergegeben. NULL wird ebenfalls weitergegeben und kann dort als ungültiger Parameter abgewiesen werden. |
+| `@MaxZeilen` | `int` | `100` | nichtnegatives Maximum an Zeilen, an Datenbank- und Spezialmodule weitergereicht. Negativer Wert setzt INVALID_PARAMETER/partial und unterbindet Modulaufrufe. NULL führt im Vergleichsgate nicht zum Fehler, kann aber Kindmodule beeinflussen. keine positive Begrenzung zusichern. |
+| `@ResultSetArt` | `varchar(16)` | `'CONSOLE'` | CONSOLE zeigt die beschriftete Modulstatusliste. RAW liefert die Ergebnisse der aufgerufenen Module, danach den Parentstatus und die Modulstatusliste. TABLE schreibt ausschließlich moduleStatus. NONE unterdrückt die fachlichen Resultsets. CONSOLE und TABLE reichen intern NONE an die Module weiter. JSON wird separat gesteuert. Rand-Leerzeichen und Groß- und Kleinschreibung werden normalisiert. NULL, Leertext und andere Werte sind ungültig. |
+| `@ResultTablesJson` | `nvarchar(max)` | `NULL` | Bei TABLE ist ein nichtleeres JSON-Objekt mit genau dem Schlüssel moduleStatus erforderlich. Der Wert benennt eine vorhandene leere lokale #Temp-Tabelle mit genau einer Seed-Spalte. Erlaubt sind maximal 116 Zeichen und weder ## noch #Monitor als Präfix. Außerhalb von TABLE sind nur NULL, Leertext und reine Leerzeichen zulässig. Die Vorprüfung läuft vor der Hilfe und kann Fehler 51011 auslösen. |
+| `@JsonErzeugen` | `bit` | `0` | 1 erzeugt das Parent-JSON in Json. 0 und NULL lassen Json auf NULL. Bei MitFindings=1 fordert der Parent zusätzlich die JSON-Ergebnisse von Integrität, Kapazität und BufferPool zur Wiederverwendung an, auch wenn kein Parent-JSON angefordert wurde. |
+| `@Json` | `nvarchar(max) OUTPUT` | `NULL` | wird beim Eintritt auf NULL gesetzt. Bei @JsonErzeugen=1 erhält der Empfänger JSON mit meta, cpuTopology, numa, memory, tempdb, configuration, traceFlags, startupParameters, operatingSystem, security, databaseIntegrity, databaseCapacity, performanceCounters, criticalEngineEvents, internalContention, bufferPool, diagnosticFindings und warnings. Deaktivierte/nicht angeforderte Module erscheinen als JSON null. Mit lokaler nvarchar(max)-Variablen und OUTPUT binden. |
+| `@PrintMeldungen` | `bit` | `1` | 1 gibt bei globalem Status ungleich AVAILABLE eine Severity-10-Meldung mit Status aus. 0 oder NULL unterdrückt sie. Keine Steuerung der Resultsets/JSON. |
+| `@Hilfe` | `bit` | `0` | 1 druckt Parameterbeschreibung und Beispiele, danach RETURN vor Erhebung und Output-Statuszuweisung. 0 oder NULL führt normalen Aufruf aus. Eintrittsreset setzt @Json dennoch auf NULL. TABLE-Preflight/Mappingprüfung erfolgt vor Hilfezweig. |
+
+## Aufrufbeispiele
+
+```sql
+EXEC [monitor].[USP_ServerHealthAnalysis] @Hilfe=1;
+```
+
+```sql
+EXEC [monitor].[USP_ServerHealthAnalysis] @MitCpu=1,@MitNuma=0,@MitMemory=0,@MitTempDB=0,@MitConfiguration=0,@MitTraceFlags=0,@MitStartup=0,@MitOS=0,@MitSecurity=0,@MitIntegritaet=0,@MitKapazitaet=0,@MitPerformanceCounters=0,@MitCriticalEvents=0,@MitContention=0,@MitBufferPool=0,@MitFindings=0,@MaxZeilen=100,@ResultSetArt='RAW';
+```
+
+```sql
+DECLARE @HealthJson nvarchar(max)=NULL;
+EXEC [monitor].[USP_ServerHealthAnalysis] @MitCpu=1,@MitNuma=0,@MitMemory=0,@MitTempDB=0,@MitConfiguration=0,@MitTraceFlags=0,@MitStartup=0,@MitOS=0,@MitSecurity=0,@MitIntegritaet=0,@MitKapazitaet=0,@MitPerformanceCounters=0,@MitCriticalEvents=0,@MitContention=0,@MitBufferPool=0,@MitFindings=0,@MaxZeilen=100,@ResultSetArt='NONE',@JsonErzeugen=1,@Json=@HealthJson OUTPUT;
+SELECT @HealthJson AS [HealthJson];
+```
+
+```sql
+DECLARE @HealthTablesJson nvarchar(max)=N'{"moduleStatus":"#ServerHealthAnalysis_HelpExample"}';
+CREATE TABLE #ServerHealthAnalysis_HelpExample([Seed] bit NULL);
+EXEC [monitor].[USP_ServerHealthAnalysis] @MitCpu=1,@MitNuma=0,@MitMemory=0,@MitTempDB=0,@MitConfiguration=0,@MitTraceFlags=0,@MitStartup=0,@MitOS=0,@MitSecurity=0,@MitIntegritaet=0,@MitKapazitaet=0,@MitPerformanceCounters=0,@MitCriticalEvents=0,@MitContention=0,@MitBufferPool=0,@MitFindings=0,@MaxZeilen=100,@ResultSetArt='TABLE',@ResultTablesJson=@HealthTablesJson;
+SELECT * FROM #ServerHealthAnalysis_HelpExample;
+DROP TABLE #ServerHealthAnalysis_HelpExample;
+```
+
 ## Resultsets und Leserichtung
 
 Der typisierte TABLE-Vertrag registriert `moduleStatus`. Status, Scope und Warnings sind vor den Fachergebnissen zu lesen. CONSOLE dient der interaktiven Triage; RAW und JSON erhalten den technischen Kontext, während TABLE nur die ausdrücklich benannten stabilen Resultsets schreibt. Resultsets mit unterschiedlicher Zeilengranularität dürfen nicht ungeprüft vereinigt oder summiert werden.
