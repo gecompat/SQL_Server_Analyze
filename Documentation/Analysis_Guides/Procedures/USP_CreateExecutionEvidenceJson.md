@@ -124,9 +124,9 @@ EXEC [monitor].[USP_CreateExecutionEvidenceJson] @ExistingEvidenceJson=N'{"stati
 ```
 
 ```sql
-CREATE TABLE #ExecutionEvidence_HelpExample (Seed bit NULL);
-EXEC [monitor].[USP_CreateExecutionEvidenceJson] @ResultSetArt='TABLE', @ResultTablesJson=N'{"captureStatus":"#ExecutionEvidence_HelpExample"}', @JsonErzeugen=0;
-DROP TABLE #ExecutionEvidence_HelpExample;
+CREATE TABLE #CreateExecutionEvidenceJson_HelpExample (Seed bit NULL);
+EXEC [monitor].[USP_CreateExecutionEvidenceJson] @ResultSetArt='TABLE', @ResultTablesJson=N'{"captureStatus":"#CreateExecutionEvidenceJson_HelpExample"}', @JsonErzeugen=0;
+DROP TABLE #CreateExecutionEvidenceJson_HelpExample;
 ```
 
 ## Resultsets und Leserichtung

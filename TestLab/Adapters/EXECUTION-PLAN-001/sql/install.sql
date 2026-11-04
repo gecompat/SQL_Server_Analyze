@@ -5443,7 +5443,7 @@ BEGIN
         PRINT N'Beispiel 1. EXEC [monitor].[USP_CreateExecutionEvidenceJson] @Hilfe=1;';
         PRINT N'Beispiel 2. DECLARE @EvidenceJson nvarchar(max); EXEC [monitor].[USP_CreateExecutionEvidenceJson] @StatisticsIoText=N''Table ''''[demo].[Orders]''''. Scan count 1, logical reads 2, physical reads 0, read-ahead reads 0, lob logical reads 0.'', @StatisticsLanguage=''AUTO'', @ResultSetArt=''NONE'', @Json=@EvidenceJson OUTPUT;';
         PRINT N'Beispiel 3. DECLARE @EvidenceJson nvarchar(max); EXEC [monitor].[USP_CreateExecutionEvidenceJson] @ExistingEvidenceJson=N''{"statisticsIo":[],"statisticsTime":[]}'', @JsonErzeugen=1, @ResultSetArt=''NONE'', @Json=@EvidenceJson OUTPUT;';
-        PRINT N'Beispiel 4. CREATE TABLE #ExecutionEvidence_HelpExample (Seed bit NULL); EXEC [monitor].[USP_CreateExecutionEvidenceJson] @ResultSetArt=''TABLE'', @ResultTablesJson=N''{"captureStatus":"#ExecutionEvidence_HelpExample"}'', @JsonErzeugen=0; DROP TABLE #ExecutionEvidence_HelpExample;';
+        PRINT N'Beispiel 4. CREATE TABLE #CreateExecutionEvidenceJson_HelpExample (Seed bit NULL); EXEC [monitor].[USP_CreateExecutionEvidenceJson] @ResultSetArt=''TABLE'', @ResultTablesJson=N''{"captureStatus":"#CreateExecutionEvidenceJson_HelpExample"}'', @JsonErzeugen=0; DROP TABLE #CreateExecutionEvidenceJson_HelpExample;';
         RETURN;
     END;
 
