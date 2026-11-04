@@ -16,15 +16,66 @@ Die Procedure beantwortet keinen erfolgreichen Restore, Failover oder End-to-End
 ## Sicherer Einstieg
 
 ```sql
-EXEC [monitor].[USP_InfrastructureAnalysis]
-      @DatabaseNames = N'[ExampleDatabase]',
-      @MaxZeilen = 100,
-      @ResultSetArt = 'CONSOLE';
+EXEC [monitor].[USP_InfrastructureAnalysis] @MitAgent=0, @MitAgentJobs=0, @MitResourceGovernor=1, @MitAvailabilityGroups=0, @MitBackupRecovery=0, @MitLogShipping=0, @MitReplication=0, @MitDataCapture=0, @MaxZeilen=50, @ResultSetArt='CONSOLE';
 ```
 
 Aktivieren Sie Tiefenmodule nur bei konkreter Fragestellung.
 
 Alle `Example*`-Werte im Aufruf sind synthetisch.
+
+## Parameter
+
+| Parameter | Typ | Default | Eingabe und Wirkung |
+|---|---|---|---|
+| `@MitAgent` | `bit` | `1` | Schaltet monitor.USP_AgentStatus ein (1) oder aus (0). NULL wirkt wegen der IF-Prüfung wie aus. sonstige bit-konvertierbare Werte werden vor Eintritt von SQL Server zu bit konvertiert (ungleich 0 wird 1), Konvertierungsfehler treten davor auf. Bei Auslassung gilt 1. |
+| `@MitAgentJobs` | `bit` | `1` | Schaltet monitor.USP_AgentJobs ein (1) oder aus (0). NULL wirkt wie aus. Bei Auslassung gilt 1. |
+| `@MitResourceGovernor` | `bit` | `1` | Schaltet monitor.USP_ResourceGovernorAnalysis ein (1) oder aus (0). NULL wirkt wie aus. Bei Auslassung gilt 1. |
+| `@MitAvailabilityGroups` | `bit` | `1` | Schaltet monitor.USP_AvailabilityGroups ein (1) oder aus (0). NULL wirkt wie aus. Bei Auslassung gilt 1. |
+| `@MitBackupRecovery` | `bit` | `1` | Schaltet monitor.USP_BackupRecovery ein (1) oder aus (0). NULL wirkt wie aus. Bei Auslassung gilt 1. |
+| `@MitLogShipping` | `bit` | `1` | Schaltet monitor.USP_LogShippingStatus ein (1) oder aus (0). NULL wirkt wie aus. Bei Auslassung gilt 1. |
+| `@MitReplication` | `bit` | `1` | Schaltet monitor.USP_ReplicationStatus ein (1) oder aus (0). NULL wirkt wie aus. Bei Auslassung gilt 1. |
+| `@MitDataCapture` | `bit` | `1` | Schaltet monitor.USP_DataCaptureStatus ein (1) oder aus (0). NULL wirkt wie aus. Bei Auslassung gilt 1. |
+| `@MitReplicationDetails` | `bit` | `0` | Gibt den Wert als @MitDistributionDetails an USP_ReplicationStatus weiter. steuert damit dessen Distributiondetails. NULL wird als Child-Argument weitergereicht. weitere Semantik bestimmt der Child. Bei Auslassung gilt 0. |
+| `@MitBackupChain` | `bit` | `0` | Schaltet das optionale Child USP_BackupChainAnalysis ein (1) oder aus (0). NULL wirkt wie aus. Bei Auslassung gilt 0. |
+| `@MitAvailabilityDeep` | `bit` | `0` | Schaltet das optionale Child USP_AvailabilityDeepAnalysis ein (1) oder aus (0). NULL wirkt wie aus. Bei Auslassung gilt 0. |
+| `@MitAgentMonitoring` | `bit` | `0` | Schaltet das optionale Child USP_AgentMonitoringAnalysis ein (1) oder aus (0). NULL wirkt wie aus. Bei Auslassung gilt 0. |
+| `@DatabaseNames` | `nvarchar(max)` | `NULL` | Pipe-Liste exakter einteiliger SQL-Namen für BackupRecovery, DataCaptureStatus und BackupChainAnalysis. Eckige Klammern schützen enthaltene Pipe-Zeichen und ]] maskiert eine schließende Klammer. Die Empfänger behandeln NULL, Leertext und reine Leerzeichen als keine exakte Einschränkung. Ungültige Einträge werden abgelehnt. Der Parent lehnt jede Kombination aus nicht-NULL-Liste und nicht-NULL-Muster ab. |
+| `@SystemdatenbankenEinbeziehen` | `bit` | `0` | Gibt die Einbeziehung von Systemdatenbanken an Backup-, Data-Capture- und Backup-Chain-Children weiter. NULL und 0 werden weitergereicht und sind keine Parent-seitige Freigabe. fachliche Wirkung entscheidet der jeweilige Child. Bit-Konvertierungsfehler entstehen vor dem Prozeduraufruf. Bei Auslassung gilt 0. |
+| `@DatabaseNamePattern` | `nvarchar(4000)` | `NULL` | Alternatives Muster für die datenbankbezogenen Empfänger. Ohne Präfix oder mit LIKE: gilt SQL LIKE mit % und _. REGEX: berücksichtigt Groß- und Kleinschreibung, REGEXI: ignoriert sie. Regex benötigt SQL Server 2025 und Compatibility Level 170. NULL deaktiviert das Muster. Leere Muster sind ungültig. Nicht mit einer nicht-NULL-Liste kombinieren. |
+| `@HighImpactConfirmed` | `bit` | `0` | Der Parent reicht den Wert an BackupRecovery, DataCaptureStatus, BackupChainAnalysis und ReplicationStatus weiter. BackupRecovery und BackupChain aktivieren damit keine Analyseklasse. DataCapture prüft HA_DR_CURRENT ohne High-Impact-Pflicht. Replication prüft bei aktivierten Distributiondetails den geschützten Topologiepfad. 1 bestätigt dessen hohen Aufwand. 0 bestätigt ihn nicht. NULL kann beim Empfänger als ungültig abgelehnt werden. |
+| `@MaxZeilen` | `int` | `2000` | Eine positive ganze Zahl begrenzt die Ergebnisse der jeweiligen Empfänger. NULL oder 0 bedeutet dort unbegrenzt. AgentStatus erhält den Parameter nicht. Negative Werte ergeben bereits im Parent INVALID_PARAMETER. Die Modulstatusliste wird nicht gekürzt. |
+| `@ResultSetArt` | `varchar(16)` | `'CONSOLE'` | NULL wird zunächst zu leerem Text normalisiert. andernfalls werden äußere Leerzeichen getrimmt und der Vergleich erfolgt groß-/kleinschreibungsunabhängig. Zulässig sind RAW, CONSOLE, TABLE, NONE. RAW liefert Summary und Modultabelle mit technischen Spalten. CONSOLE lässt den internen Console-Adapter beschriftete Ergebnisse ausgeben. NONE unterdrückt fachliche Resultsets. TABLE exportiert ausschließlich moduleStatus in das Ziel aus @ResultTablesJson. Vor den Children werden TABLE und CONSOLE intern zu NONE normalisiert und dämpfen damit Childresultsets. Andere Werte ergeben INVALID_PARAMETER, außer der vorherige Hilfezweig kehrt zurück. Bei Auslassung gilt CONSOLE. |
+| `@ResultTablesJson` | `nvarchar(max)` | `NULL` | Nur bei @ResultSetArt=TABLE wird ein nichtleeres JSON-Objekt benötigt, mit genau dem case-sensitiven Schlüssel "moduleStatus" und Stringwert des Zielnamens, z.B. {"moduleStatus":"#InfraExample"}. Ziel muss eine bereits angelegte, leere lokale #Temp-Tabelle mit genau einer Seed-Spalte sein. globale ##-, #Monitor*- oder überlange Ziele sind unzulässig. Der Helper validiert das einzelne Ziel und wirft bei Fehlern 51011 vor Hilfezweig/Childzugriff. Außerhalb TABLE werden NULL, leerer oder nur aus Leerzeichen bestehender Text ignoriert. nichtleere Werte lösen 51011 aus, ebenfalls vor Hilfe. Bei Auslassung gilt NULL. |
+| `@JsonErzeugen` | `bit` | `0` | Bei 1 erzeugt der Parent @Json OUTPUT einschließlich meta, benannter Childfelder und warnings. deaktivierte/fehlende Childobjekte stehen als JSON null. Bei 0 oder NULL wird kein JSON erzeugt und @Json bleibt NULL. Child-JSON wird ebenfalls nur angefordert, wenn dieser Schalter 1 ist. SQL-Bitkonvertierung erfolgt vor Eintritt. bei Auslassung gilt 0. |
+| `@Json` | `nvarchar(max) OUTPUT` | `NULL` | OUTPUT-Parameter: mit einer nvarchar(max)-Variablen als @Json=@Variable OUTPUT binden. Der Parent setzt ihn zu Beginn auf NULL und befüllt ihn nur bei @JsonErzeugen=1. Ohne OUTPUT-Bindung wird kein Wert in eine Aufrufervariable kopiert. |
+| `@PrintMeldungen` | `bit` | `1` | Wird an alle aktivierten Children weitergereicht und steuert dortige Meldungen. der Parent leitet daraus keine eigene Meldung ab. NULL wird weitergereicht. Bit-Konvertierung geschieht vor Eintritt. bei Auslassung gilt 1. |
+| `@Hilfe` | `bit` | `0` | Bei 1 gibt die Procedure ihre knappe Hilfe mit PRINT aus und kehrt vor Childaufrufen zurück. NULL wirkt wie 0. SQL konvertiert vor Eintritt zu bit. TABLE-Zuordnung wird vorher geprüft. bei TABLE ist der Preflight somit auch im Hilfemodus aktiv, und ein nichtleeres ResultTablesJson außerhalb TABLE löst ebenfalls vorher Fehler 51011 aus. Ungültige normale Parameter werden nach diesem Hilfe-Rücksprung erst als INVALID_PARAMETER gemeldet. Bei Auslassung gilt 0. |
+
+## Aufrufbeispiele
+
+```sql
+EXEC [monitor].[USP_InfrastructureAnalysis] @Hilfe=1;
+```
+
+```sql
+EXEC [monitor].[USP_InfrastructureAnalysis] @MitAgent=0, @MitAgentJobs=0, @MitResourceGovernor=1, @MitAvailabilityGroups=0, @MitBackupRecovery=0, @MitLogShipping=0, @MitReplication=0, @MitDataCapture=0, @MaxZeilen=50, @ResultSetArt='RAW';
+```
+
+```sql
+DECLARE @ResultJson nvarchar(max);
+EXEC [monitor].[USP_InfrastructureAnalysis] @MitAgent=0, @MitAgentJobs=0, @MitResourceGovernor=1, @MitAvailabilityGroups=0, @MitBackupRecovery=0, @MitLogShipping=0, @MitReplication=0, @MitDataCapture=0, @MaxZeilen=50, @ResultSetArt='NONE', @JsonErzeugen=1, @Json=@ResultJson OUTPUT;
+SELECT @ResultJson AS [Json];
+```
+
+```sql
+CREATE TABLE #InfrastructureAnalysis_HelpExample ([Seed] int NULL);
+BEGIN TRY EXEC [monitor].[USP_InfrastructureAnalysis] @MitAgent=0, @MitAgentJobs=0, @MitResourceGovernor=1, @MitAvailabilityGroups=0, @MitBackupRecovery=0, @MitLogShipping=0, @MitReplication=0, @MitDataCapture=0, @MaxZeilen=50, @ResultSetArt='TABLE', @ResultTablesJson=N'{"moduleStatus":"#InfrastructureAnalysis_HelpExample"}';
+SELECT * FROM #InfrastructureAnalysis_HelpExample;
+DROP TABLE #InfrastructureAnalysis_HelpExample;
+END TRY BEGIN CATCH DROP TABLE #InfrastructureAnalysis_HelpExample;
+THROW;
+END CATCH;
+```
 
 ## Resultsets und Leserichtung
 
@@ -79,7 +130,7 @@ Für `USP_InfrastructureAnalysis` gilt zusätzlich: **keine Zeile** bedeutet, da
 | Ressourcen | Vor allem `msdb`-I/O, Server-/HA-DMVs, Datenbankkataloge, CPU für Aggregation und JSON/Ergebnistransfer. Der Orchestrator enthält weder Sampling noch XEL-/Plan-XML-Parsing. |
 | Begrenzungswirkung | `@MaxZeilen` wird je Child weitergereicht, aber nicht an `USP_AgentStatus`, dessen Quelle ohnehin konstant klein ist. Historien- und Statuschildren setzen Limits an unterschiedlichen Stellen; ein kleines Parentlimit verhindert deshalb nicht jede `msdb`-Aggregation oder Datenbankenumeration. |
 | Locking und Nebenwirkungen | Read-only und sequenziell. Es werden weder Jobs gestartet noch Backup-, HA-, Replikations- oder Capturekonfigurationen geändert; Status kann sich zwischen den Childaufrufen ändern. `LOCK_TIMEOUT 0` am Parent ist keine globale Laufzeitgrenze für Children. |
-| Schutzmechanismus | Die drei tieferen Zusatzmodule sind standardmäßig aus; Distributiondetails besitzen einen eigenen Schalter. `@HighImpactConfirmed` wird nur an Children weitergegeben, die ein Policygate auswerten. Er ersetzt weder Datenbankscope noch Historienlimit. |
+| Schutzmechanismus | Die drei tieferen Zusatzmodule sind standardmäßig aus; Distributiondetails besitzen einen eigenen Schalter. `@HighImpactConfirmed` wird an BackupRecovery, DataCaptureStatus, BackupChainAnalysis und ReplicationStatus weitergereicht. Der geschützte Topologiepfad wird bei aktivierten Distributiondetails in Replication geprüft. Er ersetzt weder Datenbankscope noch Historienlimit. |
 | Sicherer Einsatz | Eine Datenbank und kleines `@MaxZeilen` wählen, die vier Opt-ins aus lassen und nicht benötigte Standardchildren explizit deaktivieren. Modulstatus vor fachlichen Resultsets lesen. |
 | Aussagegrenze | Ein leerer Child kann „Feature nicht genutzt“, „nicht lokal sichtbar“ oder „Berechtigung/Quelle fehlt“ bedeuten. Wegen getrennten Messzeitpunkten dürfen Job-, Backup- und HA-Zustände nicht als atomarer Infrastrukturzustand zusammeninterpretiert werden. |
 
