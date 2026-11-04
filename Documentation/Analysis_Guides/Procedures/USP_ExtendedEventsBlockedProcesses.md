@@ -32,6 +32,59 @@ Jeder fachliche Lauf ist als `EXTENDED_EVENTS_FORENSICS_DEEP` geschützt. Die Be
 
 Alle `Example*`-Werte im Aufruf sind synthetisch.
 
+## Parameter
+
+| Parameter | Typ | Default | Eingabe und Wirkung |
+|---|---|---|---|
+| `@SourceExtendedEventSessionName` | `nvarchar(258)` | `NULL` | Bezeichnet optional eine konkrete vorhandene Session mit blocked_process_report. NULL sucht automatisch nach einer passenden Session. Ein expliziter Wert muss genau einen gültigen, optional geklammerten sysname ergeben. ungültige oder mehrfache Namen führen zu INVALID_PARAMETER. Leertext ist ungültig. |
+| `@Quelle` | `varchar(20)` | `'AUTO'` | Geschlossene Auswahl: AUTO wählt EVENT_FILE, wenn ein expliziter oder konfigurierter Dateipfad vorliegt. andernfalls wird RING_BUFFER nur bei bestätigtem Target-Flush gewählt. EVENT_FILE erzwingt das Dateiziel, RING_BUFFER das laufende Ring-Buffer-Ziel. NULL, leer oder ein anderer Wert ist ungültig. Werte werden getrimmt und in Großbuchstaben umgewandelt. |
+| `@FilePath` | `nvarchar(4000)` | `NULL` | Expliziter XEL-Pfad oder URL. NULL oder leer verwendet den Eventfile-Pfad aus der Sessiondefinition. Endet der Pfad auf .xel, wird die Endung durch *.xel ersetzt. andernfalls wird *.xel angehängt, sofern noch kein * enthalten ist. |
+| `@VonUtc` | `datetime2(7)` | `NULL` | Untere UTC-Zeitgrenze einschließlich. NULL wird zur Laufzeit auf UTC jetzt minus 24 Stunden gesetzt. |
+| `@BisUtc` | `datetime2(7)` | `NULL` | Obere UTC-Zeitgrenze ausschließlich. NULL lässt die Obergrenze offen. Sind beide Grenzen gesetzt, muss @VonUtc kleiner als @BisUtc sein. |
+| `@MaxZeilen` | `int` | `200` | Begrenzt die ausgewählten Reports vor der XML-Zerlegung. NULL oder 0 bedeutet unbegrenzt. negative Werte sind ungültig. Die Begrenzung garantiert keinen frühen oder vollständigen Ausschluss des XEL-Dateiscans. |
+| `@MitReportXml` | `bit` | `1` | 1 aktiviert die beschriebene Funktion. 0 und NULL deaktivieren sie. Steuert, ob das vollständige blocked_process_report-XML in der Summary ausgegeben wird. 0 unterdrückt die XML-Ausgabe, verhindert aber nicht das Parsing der strukturierten Prozessfelder. |
+| `@MitProcessXml` | `bit` | `0` | 1 aktiviert die beschriebene Funktion. 0 und NULL deaktivieren sie. Steuert die Ausgabe des vollständigen Prozess-XML in den Detailresultaten. 0 unterdrückt diese XML-Ausgabe. strukturierte Prozessfelder werden weiterhin extrahiert. |
+| `@BestaetigeTargetFlush` | `bit` | `0` | 1 bestätigt den möglichen Target-Flush beim Ringbuffer-Lesen. 0 sperrt den expliziten Ringbufferzugriff. Beim expliziten Aufruf kann NULL die bestehende Prüfung auf 0 passieren. Verwenden Sie ausdrücklich 0 oder 1. AUTO wechselt nur bei 1 zum Ringbuffer. |
+| `@HighImpactConfirmed` | `bit` | `0` | 1 bestätigt einen geschützten Pfad nach der aktiven Policy für EXTENDED_EVENTS_FORENSICS_DEEP. 0 bestätigt ihn nicht. NULL ist für die Gate-Prüfung ungültig. Die aktuelle Berechtigung wird zusätzlich geprüft. |
+| `@ResultSetArt` | `varchar(16)` | `'CONSOLE'` | Geschlossene Auswahl nach Trimmen und Umwandlung in Großbuchstaben: RAW gibt technische Rohresultate aus, CONSOLE dient der interaktiven Ausgabe, NONE unterdrückt Resultsets zugunsten des OUTPUT-JSON, TABLE schreibt das registrierte Fachresultat in ein bereitgestelltes Ziel. CONSOLE und TABLE werden intern auf NONE gesetzt. NULL, leer und andere Werte sind ungültig. |
+| `@ResultTablesJson` | `nvarchar(max)` | `NULL` | Bei TABLE ist ein nichtleeres JSON-Objekt mit genau dem Schlüssel reports erforderlich. Der Wert benennt eine vorhandene, leere lokale #Temp-Tabelle mit genau einer Seed-Spalte. Der Name darf höchstens 116 Zeichen lang sein. Globale Tabellen und #Monitor als Präfix sind ausgeschlossen. Außerhalb von TABLE sind nur NULL, Leertext und Leerzeichen erlaubt. Die Prüfung läuft vor der Hilfe und kann Fehler 51011 auslösen. |
+| `@JsonErzeugen` | `bit` | `0` | 1 erzeugt JSON in @Json unabhängig von der Ausgabeart. 0 und NULL erzeugen kein Dokument. |
+| `@Json` | `nvarchar(max) OUTPUT` | `NULL` | OUTPUT-Parameter für das JSON-Ergebnis. Der Wert wird am Prozedurbeginn auf NULL gesetzt. NULL bedeutet, dass kein JSON geliefert wurde oder die Erzeugung nicht bis zu einem Ergebnis gelangte. |
+| `@PrintMeldungen` | `bit` | `1` | 1 gibt bei Status außerhalb AVAILABLE und AVAILABLE_LIMITED eine Warnung mit Severity 10 aus. 0 unterdrückt sie. NULL verhält sich über die IF-Bedingung wie aus. |
+| `@Hilfe` | `bit` | `0` | 1 zeigt die Hilfe nach der TABLE-Zuordnungsprüfung und beendet den Aufruf vor dem Quellzugriff. 0 und NULL setzen den normalen Aufruf fort. |
+
+## Aufrufbeispiele
+
+```sql
+EXEC [monitor].[USP_ExtendedEventsBlockedProcesses] @Hilfe=1;
+```
+
+```sql
+DECLARE @ExampleBisUtc datetime2(7)=SYSUTCDATETIME();
+DECLARE @ExampleVonUtc datetime2(7)=DATEADD(HOUR,-1,@ExampleBisUtc);
+EXEC [monitor].[USP_ExtendedEventsBlockedProcesses] @SourceExtendedEventSessionName=N'system_health',@VonUtc=@ExampleVonUtc,@BisUtc=@ExampleBisUtc,@MaxZeilen=25,@MitReportXml=0,@MitProcessXml=0,@HighImpactConfirmed=1,@ResultSetArt='RAW';
+```
+
+```sql
+DECLARE @ExampleJson nvarchar(max);
+DECLARE @ExampleBisUtc datetime2(7)=SYSUTCDATETIME();
+DECLARE @ExampleVonUtc datetime2(7)=DATEADD(HOUR,-1,@ExampleBisUtc);
+EXEC [monitor].[USP_ExtendedEventsBlockedProcesses] @SourceExtendedEventSessionName=N'system_health',@VonUtc=@ExampleVonUtc,@BisUtc=@ExampleBisUtc,@MaxZeilen=25,@MitReportXml=0,@MitProcessXml=0,@HighImpactConfirmed=1,@ResultSetArt='NONE',@JsonErzeugen=1,@Json=@ExampleJson OUTPUT;
+SELECT @ExampleJson AS ExampleJson;
+```
+
+```sql
+CREATE TABLE #ExampleBlockedReports ([Seed] int NULL);
+BEGIN TRY DECLARE @ExampleBisUtc datetime2(7)=SYSUTCDATETIME();
+DECLARE @ExampleVonUtc datetime2(7)=DATEADD(HOUR,-1,@ExampleBisUtc);
+EXEC [monitor].[USP_ExtendedEventsBlockedProcesses] @SourceExtendedEventSessionName=N'system_health',@VonUtc=@ExampleVonUtc,@BisUtc=@ExampleBisUtc,@MaxZeilen=25,@MitReportXml=0,@MitProcessXml=0,@HighImpactConfirmed=1,@ResultSetArt='TABLE',@ResultTablesJson=N'{"reports":"#ExampleBlockedReports"}';
+SELECT * FROM #ExampleBlockedReports;
+DROP TABLE #ExampleBlockedReports;
+END TRY BEGIN CATCH DROP TABLE #ExampleBlockedReports;
+THROW;
+END CATCH;
+```
+
 ## Resultsets und Leserichtung
 
 Der typisierte TABLE-Vertrag registriert `reports`. Status, Scope und Warnings sind vor den Fachergebnissen zu lesen. CONSOLE dient der interaktiven Triage; RAW und JSON erhalten den technischen Kontext, während TABLE nur die ausdrücklich benannten stabilen Resultsets schreibt. Resultsets mit unterschiedlicher Zeilengranularität dürfen nicht ungeprüft vereinigt oder summiert werden.
