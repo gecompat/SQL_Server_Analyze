@@ -723,11 +723,16 @@ Quelle: `Code/01_Common/099_USP_InternalEmitTruncationWarning.sql`
 
 | Dimension | Beschreibung |
 |---|---|
-| Aufgabe | Meldet eine sichtbare Textkürzung einschließlich des passenden Parameterhinweises. |
-| Schnittstelle | Interne Stored Procedure; Parameter: `@TruncatedValueCount bigint`; `@ParameterName sysname`; `@ParameterValue int`; `@LargestRequiredCharacters bigint`; `@PrintMeldungen bit = 1`. Status-, Fehler- und weitere OUTPUT-Parameter werden ausschließlich zwischen Frameworkbausteinen weitergereicht. |
-| Verwendung | Öffentliche Procedures im Schema `monitor` rufen diesen Baustein zur Orchestrierung auf. Anwendungen sollen ihn weder direkt ausführen noch von seiner Parameterreihenfolge oder seinen temporären Zwischenstrukturen abhängen. |
-| Last und Sperren | Die Procedure koordiniert interne Verarbeitung ohne fachliche Persistenz unter `LOCK_TIMEOUT 0`. Sie darf nur über den zugehörigen öffentlichen Einstieg ausgeführt werden. |
-| Vertrag | Nicht öffentlicher Vertrag. Fehlerbehandlung, OUTPUT-Parameter und Seiteneffekte sind nur für den versiongleichen internen Aufrufer zugesichert. |
+| Aufgabe | Gibt genau eine technische Severity-10-Warning aus, wenn die Ausgabe aktiviert ist und der Zähler positiv ist. Die Nachricht wird intern durch nvarchar(2048) begrenzt; eine vollständige Clientanzeige ist nicht zugesichert. |
+| Schnittstelle | Interne Stored Procedure ohne fachliches Resultset und ohne OUTPUT-Parameter. Die vier ersten Eingabeparameter sind Pflichtargumente; `@PrintMeldungen bit` hat den expliziten Default `1`. |
+| `@TruncatedValueCount` | `bigint`, Default: keiner; Pflichtargument. Der Caller meldet damit die Anzahl gekürzter Werte; der Helper ermittelt diese Anzahl nicht selbst und gleicht sie nicht mit Quelldaten ab. Bei NULL, 0 oder negativen Werten wird keine Meldung ausgegeben; nur ein Wert größer 0 kann eine Meldung auslösen. Der Wert wird als Zählertext angezeigt. |
+| `@ParameterName` | `sysname`, Default: keiner; Pflichtargument und ausschließlich Textlabel; es erfolgt keine Objektauflösung und keine SQL-Ausführung. NULL wird im ersten Textvorkommen zu `<unbekannter Parameter>` und im Vorschlag zu `den begrenzenden Parameter`. Ein leerer Wert wird nicht ersetzt. |
+| `@ParameterValue` | `int`, Default: keiner; Pflichtargument und ausschließlich angezeigter Wert; NULL erscheint als `NULL`. Es gibt keine fachliche Bereichsvalidierung. |
+| `@LargestRequiredCharacters` | `bigint`, Default: keiner; Pflichtargument. Der Caller meldet damit den größten benötigten Zeichenbedarf; der Helper berechnet oder prüft diesen Wert nicht. Der Parameter ist ausschließlich angezeigter Bedarfs- und Vorschlagswert. NULL erscheint im Bedarfstext als `NULL` und im Vorschlag als `0`. Negative und inkonsistente Werte werden nicht geprüft. |
+| `@PrintMeldungen` | `bit`, Default `1`. 0 oder NULL unterdrückt die Meldung; 1 erlaubt eine Meldung, wenn `@TruncatedValueCount` positiv ist. Die normale SQL-bit-Konvertierung kann von 0 verschiedene konvertierbare Zahlen auf 1 abbilden. |
+| Verwendung | Ausschließlich für den versiongleichen internen Frameworkcaller vorgesehen. Anwendungen sollen den Baustein weder direkt ausführen noch von Parameterreihenfolge oder temporären Zwischenstrukturen abhängen. |
+| Last und Sperren | Die Procedure führt `SET LOCK_TIMEOUT 0` aus und erzeugt bei erfüllter Bedingung ein `RAISERROR` mit Severity 10, State 1 und `WITH NOWAIT`. Es werden keine Parameterwerte verändert; der Helper berechnet weder Kürzungen noch deren Anzahl und prüft keinen objektbezogenen Grenzvertrag. |
+| Vertrag | Nicht öffentlicher Vertrag für den versiongleichen internen Frameworkcaller. Genau dann, wenn `COALESCE(@PrintMeldungen,0)=1` und `COALESCE(@TruncatedValueCount,0)>0` gilt, wird ein `RAISERROR` ausgeführt; sonst erfolgt keine Meldung. Die Nachricht wird mit `CONCAT` und `LEFT` auf `nvarchar(2048)` begrenzt. Es wird keine vollständige Clientanzeige und keine Wiederherstellung von `SET`-Einstellungen zugesichert. |
 
 ### `[monitor].[InternalParseXmlText]`
 

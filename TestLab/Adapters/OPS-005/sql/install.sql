@@ -7488,6 +7488,25 @@ Zweck        : Gibt höchstens eine technische Severity-10-Warning für alle im
 Resultsets   : Keine.
 Nebenwirkung : Ausschließlich RAISERROR Severity 10 WITH NOWAIT, wenn die
                Ausgabe aktiviert und mindestens ein Wert gekürzt ist.
+Parameter    : @TruncatedValueCount bigint, Default: keiner; Pflichtargument. Der
+               Caller meldet damit die Anzahl gekürzter Werte; der Helper
+               ermittelt diese Anzahl nicht selbst und gleicht sie nicht mit Quelldaten ab.
+               NULL, 0 und negative Werte unterdrücken die Meldung.
+               @ParameterName sysname, Default: keiner; Pflichtargument und
+               ausschließlich Textlabel. NULL wird im ersten Textvorkommen zu
+               <unbekannter Parameter> und im Vorschlag zu den begrenzenden
+               Parameter; ein leerer Wert bleibt leer.
+               @ParameterValue int, Default: keiner; Pflichtargument und ausschließlich
+               Anzeigewert; NULL wird als NULL ausgegeben. Es erfolgt keine Bereichsprüfung.
+               @LargestRequiredCharacters bigint, Default: keiner; Pflichtargument. Der
+               Caller meldet damit den größten benötigten Zeichenbedarf; der
+               Helper berechnet oder prüft diesen Wert nicht. NULL wird im
+               Bedarfstext als NULL und im Vorschlag als 0 ausgegeben.
+               @PrintMeldungen bit hat den Default 1; 0 und NULL unterdrücken
+               die Meldung, 1 erlaubt sie bei positivem Zähler. Die normale
+               SQL-bit-Konvertierung kann von 0 verschiedene konvertierbare
+               Zahlen auf 1 abbilden.
+               Keine Parameter sind OUTPUT-Parameter.
 ===============================================================================
 */
 CREATE OR ALTER PROCEDURE [monitor].[InternalEmitTruncationWarning]
