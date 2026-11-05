@@ -699,11 +699,16 @@ Quelle: `Code/01_Common/098_USP_InternalEmitConsoleResult.sql`
 
 | Dimension | Beschreibung |
 |---|---|
-| Aufgabe | Erzeugt die standardisierte CONSOLE-Darstellung aus der kanonischen Datenbasis. |
-| Schnittstelle | Interne Stored Procedure; Parameter: `@SourceTable sysname`; `@ResultLabel nvarchar(200)`; `@EmptyMessage nvarchar(200)`; `@StatusCode varchar(40) = NULL`; `@StatusMessage nvarchar(2048) = NULL`. Status-, Fehler- und weitere OUTPUT-Parameter werden ausschließlich zwischen Frameworkbausteinen weitergereicht. |
-| Verwendung | Öffentliche Procedures im Schema `monitor` rufen diesen Baustein zur Orchestrierung auf. Anwendungen sollen ihn weder direkt ausführen noch von seiner Parameterreihenfolge oder seinen temporären Zwischenstrukturen abhängen. |
-| Last und Sperren | Die Procedure koordiniert interne Verarbeitung ohne fachliche Persistenz und kann lokale Temp-Tabellen materialisieren, unter `LOCK_TIMEOUT 0`. Sie darf nur über den zugehörigen öffentlichen Einstieg ausgeführt werden. |
-| Vertrag | Nicht öffentlicher Vertrag. Fehlerbehandlung, OUTPUT-Parameter und Seiteneffekte sind nur für den versiongleichen internen Aufrufer zugesichert. |
+| Aufgabe | Rendert aus der materialisierten lokalen Temp-Tabelle eine Fachansicht oder Leerzeile. |
+| Schnittstelle | Interne Stored Procedure: drei Pflichtparameter ohne Default und zwei INPUT-Parameter mit Default NULL; keine OUTPUTs. Für den unveränderten versionsgleichen internen Frameworkcaller, nicht für Anwendungs-Direktaufrufe. |
+| `@SourceTable` | sysname; Default: keiner; Pflichtargument. Einzelner roher unqualifizierter lokaler #Name. NULL, fehlendes #, ##Name oder LEN(Name)>116 lösen 51012 aus; keine Liste/SQL-Expression. Kein Existenz-/Schematest. |
+| `@ResultLabel` | nvarchar(200); Default: keiner; Pflichtargument. Unicode-Text. LTRIM/RTRIM trimmt U+0020; NULL oder Leerwert nach Trim wird Ergebnis. Für nichtleere Quelle Wert in [Ergebnis]. |
+| `@EmptyMessage` | nvarchar(200); Default: keiner; Pflichtargument. Unicode-Text. LTRIM/RTRIM trimmt U+0020; NULL oder Leerwert nach Trim wird Keine Ergebnisse. Für leere Quelle Wert in [Ergebnis]. |
+| `@StatusCode` | varchar(40); Default: NULL; INPUT. Im Leerfall unverändert als [Status]; NULL/Leer bleiben. Keine Enum- oder Whitelist-Prüfung. |
+| `@StatusMessage` | nvarchar(2048); Default: NULL; INPUT. Im Leerfall unverändert als [Hinweis]; NULL/Leer bleiben. |
+| Verwendung | Bei nichtleerer Quelle genau ein Resultset mit [Ergebnis] und src.*. Bei leerer Quelle genau eine Zeile mit [Ergebnis], [Status] und [Hinweis]; Statusinputs werden nur dann unverändert ausgegeben. |
+| Last und Sperren | LOCK_TIMEOUT 0. Erzeugt keine Temp-Tabelle und greift nicht auf fachliche Systemquellen zu. |
+| Vertrag | Keine Sortierung oder Kappung; StatusCode hat keine feste Whitelist. Der Statuscode ist ein unverändert weitergereichter Text ohne eigene Wertemengenprüfung. |
 
 ### `[monitor].[InternalProjectUnicodeTextColumn]`
 
@@ -711,11 +716,19 @@ Quelle: `Code/01_Common/098_USP_InternalProjectUnicodeTextColumn.sql`
 
 | Dimension | Beschreibung |
 |---|---|
-| Aufgabe | Projiziert eine Langtextspalte für Ausgabearten mit konsistenter Kürzung. |
-| Schnittstelle | Interne Stored Procedure; Parameter: `@SourceTable sysname`; `@TextColumn sysname`; `@CharactersColumn sysname`; `@BytesColumn sysname`; `@IsTruncatedColumn sysname`; `@MaxCharacters int`; `@TruncatedValueCount bigint OUTPUT`; `@LargestRequiredCharacters bigint OUTPUT`. Status-, Fehler- und weitere OUTPUT-Parameter werden ausschließlich zwischen Frameworkbausteinen weitergereicht. |
-| Verwendung | Öffentliche Procedures im Schema `monitor` rufen diesen Baustein zur Orchestrierung auf. Anwendungen sollen ihn weder direkt ausführen noch von seiner Parameterreihenfolge oder seinen temporären Zwischenstrukturen abhängen. |
-| Last und Sperren | Die Procedure schreibt nur in die ausdrücklich vorgesehenen Framework-, Snapshot- oder lokalen Ergebnisspeicher unter `LOCK_TIMEOUT 0`. Sie darf nur über den zugehörigen öffentlichen Einstieg ausgeführt werden. |
-| Vertrag | Nicht öffentlicher Vertrag. Fehlerbehandlung, OUTPUT-Parameter und Seiteneffekte sind nur für den versiongleichen internen Aufrufer zugesichert. |
+| Aufgabe | Projiziert eine bereits materialisierte nvarchar(max)-Spalte, aktualisiert Metadaten und überschreibt den Text IN PLACE. |
+| Schnittstelle | Interne Stored Procedure mit acht Pflichtparametern ohne Default: fünf sysname, int-Grenze und zwei bigint OUTPUTs. Nur für den unveränderten, versionsgleichen internen Frameworkcaller; keine Anwendungs-Direktaufrufe. |
+| `@SourceTable` | sysname; Default: keiner; Pflichtargument. Einzelner roher unqualifizierter lokaler #Name. NULL, fehlendes # oder ##Name lösen 51021 aus; keine Liste/SQL-Expression. Kein eigener 116-Zeichen-Check; keine Existenz-/Schema-Vorprüfung. |
+| `@TextColumn` | sysname; Default: keiner; Pflichtargument. Einzelner roher Spaltenbezeichner; NULL 51021; QUOTENAME angewandt. Erwartet materialisierte nvarchar(max)-Textspalte, die IN PLACE überschrieben wird. |
+| `@CharactersColumn` | sysname; Default: keiner; Pflichtargument. Einzelner roher Spaltenbezeichner; NULL 51021; QUOTENAME angewandt. Ziel bigint OriginalCharacters je Zeile: SC-Zeichenanzahl des Originalwerts einschließlich nachgestellter Leerzeichen; Surrogatpaar zählt als ein Zeichen. |
+| `@BytesColumn` | sysname; Default: keiner; Pflichtargument. Einzelner roher Spaltenbezeichner; NULL 51021; QUOTENAME angewandt. Ziel bigint OriginalBytes je Zeile, gemessen durch DATALENGTH des Originalwerts. |
+| `@IsTruncatedColumn` | sysname; Default: keiner; Pflichtargument. Einzelner roher Spaltenbezeichner; NULL 51021; QUOTENAME angewandt. Ziel bit IsTruncated je Zeile gemäß TVF_ProjectUnicodeText. |
+| `@MaxCharacters` | int; Default: keiner; Pflichtargument. Negativ 51021. NULL passiert Guard und bedeutet wie 0 unbegrenzt; positiv setzt TVF-Limit auf diese Anzahl SC-Zeichen. Die TVF zählt jedes Surrogatpaar als ein Zeichen und teilt es nicht; keine Graphemgarantie. |
+| `@TruncatedValueCount` | bigint OUTPUT; Default: keiner; Pflichtargument. Binden mit @TruncatedValueCount=@bigintVariable OUTPUT. Nach Guard 0; danach COUNT_BIG nur gekürzter Zeilen; ohne Kürzung 0. |
+| `@LargestRequiredCharacters` | bigint OUTPUT; Default: keiner; Pflichtargument. Binden mit @LargestRequiredCharacters=@bigintVariable OUTPUT. Nach Guard NULL; danach MAX OriginalCharacters nur gekürzter Zeilen; ohne Kürzung NULL. |
+| Verwendung | Caller materialisiert die vollständige fachliche Quelle vorab. Die Abhängigkeit monitor.TVF_ProjectUnicodeText zählt unter Latin1_General_100_CI_AS_SC Surrogatpaare als ein Zeichen, zählt nachgestellte Leerzeichen, liefert Bytes als DATALENGTH und garantiert keine Grapheme. |
+| Last und Sperren | LOCK_TIMEOUT 0; dynamisches UPDATE der lokalen Caller-Tabelle. Keine eigene Transaktion oder CATCH-Behandlung. |
+| Vertrag | Alle drei Metadaten werden für alle Zeilen geschrieben. Nach Guard OUTPUTs 0/NULL; danach COUNT_BIG/MAX ausschließlich gekürzter Zeilen, ohne Kürzung 0/NULL. Leere/fehlende/typinkompatible Spalten werden nicht vorab geprüft und können normale dynamische SQL-Fehler auslösen. |
 
 ### `[monitor].[InternalEmitTruncationWarning]`
 
