@@ -7,8 +7,8 @@ Objekt       : monitor.USP_RunSnapshotCollectionCycle
 Version      : 1.2.0
 Stand        : 2026-10-26
 Zweck        : Stellt den schedulerneutralen SC-023-Einstieg für genau einen
-               leichten Performance-Counter-Sammler und seine persistente
-               Evidenz bereit.
+               ausdrücklich ausgewählten Performance-Counter-, WAIT_STATS-
+               oder FILE_IO-Collector und dessen persistente Evidenz bereit.
 Concurrency  : Benannte Session-Applock, Wartezeit 0; Parallelaufrufe lesen
                keine Quelle und enden als SKIPPED_CONCURRENT.
 ===============================================================================
