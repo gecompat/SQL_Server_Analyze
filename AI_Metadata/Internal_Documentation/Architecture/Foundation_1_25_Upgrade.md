@@ -69,6 +69,14 @@ verweist. Der TestLab-Lesepfad wurde separat geklärt. Diese Nachführungen
 ändern keine Governance-Regel und behaupten keine vollständige
 Dokumentationskonformität.
 
+
+Der vorhandene Scopeindex klassifiziert die neuen Archivverweise ausdrücklich
+als historischen Kontext; das Archiv wird keine ausgewählte Governancequelle.
+Die Gegenprüfung erhält die Ablehnung nicht klassifizierter Verweise.
+Vorhandene statische Head-/Main-Gates und deren konservative Auswahl bleiben
+unverändert. Es entstehen keine neuen Workflows, Validatoren oder SQL-Läufe;
+der konkrete CI-Befund begründet nur diese begrenzte Korrekturprüfung.
+
 ## Semantische Erhaltung und Verarbeitungsaufwand
 
 | Tatsächlicher Weg | Disposition und begrenzte Begründung |

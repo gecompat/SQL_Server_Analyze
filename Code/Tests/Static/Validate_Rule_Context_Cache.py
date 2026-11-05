@@ -295,6 +295,48 @@ class SessionContracts(unittest.TestCase):
         with self.assertRaises(ValueError):
             self.snapshot()
 
+    def test_planning_archive_references_are_excluded_and_classified(self):
+        self.session_setup()
+        next_steps = "AI_Metadata/Internal_Documentation/Quality/Next_Steps.md"
+        development = "AI_Metadata/Internal_Documentation/Quality/Development_Waves_2026-10.md"
+        archive = "AI_Metadata/Internal_Documentation/Quality/Next_Steps_History_2026-11-05.md"
+        matrix = "Metadata/Quality/Diagnostic_Coverage_Landscape.csv"
+        sources = ["AGENTS.md", next_steps, development]
+        scope = {
+            "schema_version": 2,
+            "profile": "development",
+            "discovery_sources": sources,
+            "scopes": {"planning": ["AGENTS.md", next_steps, development]},
+            "semantic_dependencies": {path: [] for path in sources},
+            "excluded_references": [
+                {"source": next_steps, "target": archive, "classification": "historical-context"},
+                {"source": development, "target": archive, "classification": "historical-context"},
+                {"source": next_steps, "target": matrix, "classification": "product-reference"},
+            ],
+        }
+        self.index.write_text(json.dumps(scope), encoding="utf-8")
+        for path in [*sources, archive, matrix]:
+            target = self.root / path
+            target.parent.mkdir(parents=True, exist_ok=True)
+            target.write_text("Synthetic selected source.\n", encoding="utf-8")
+        (self.root / next_steps).write_text(
+            "[History](Next_Steps_History_2026-11-05.md)\n"
+            "[Coverage](../../../Metadata/Quality/Diagnostic_Coverage_Landscape.csv)\n",
+            encoding="utf-8")
+        (self.root / development).write_text(
+            "[History](Next_Steps_History_2026-11-05.md)\n", encoding="utf-8")
+
+        selected, _ = adapter.selected_scope(scope, "planning")
+        self.assertNotIn(archive, selected)
+        adapter.validate_session_links(self.root, selected, scope)
+
+        scope["excluded_references"] = [
+            row for row in scope["excluded_references"]
+            if not (row["source"] == next_steps and row["target"] == archive)
+        ]
+        with self.assertRaisesRegex(ValueError, "unclassified selected rule reference"):
+            adapter.validate_session_links(self.root, selected, scope)
+
     def test_project_normative_dependencies_invalidate_consumers(self):
         self.session_setup()
         index = json.loads((ROOT / adapter.INDEX).read_bytes())
