@@ -50,9 +50,26 @@ BEGIN
 
     IF @Hilfe=1
     BEGIN
-        PRINT N'monitor.USP_PurgeSnapshotData';
-        PRINT N'Löscht ausschließlich abgelaufene Child- und Laufzeilen in begrenzten Batches.';
-        PRINT N'@Force=1 umgeht nur das Purgeintervall. Nicht abgelaufene Daten werden auch bei Budgetüberschreitung nicht gelöscht.';
+        PRINT N'monitor.USP_PurgeSnapshotData erläutert alle Parameter; Hilfe bestätigt weder Target noch erfolgreichen Lauf.';
+        PRINT N'@MaxBatches: Datentyp int. Ganzzahl von 1 bis 1000 einschließlich; Obergrenze der Child-first-Schleifendurchläufe, keine globale Zeilenzahl. Je Durchlauf erfolgen begrenzte Deletes für MetricSample, PayloadSnapshot, ModuleStatus, CaptureRun und verwaiste Nicht-Server-Scopes; PurgeBatchRows begrenzt jedes Delete. Ein Durchlauf ohne Deletes beendet früher. NULL oder Werte außerhalb 1 bis 1000 sind ungültig. Default: 10.';
+        PRINT N'@Force: Datentyp bit. 0 beachtet Purgeintervall; 1 umgeht nur dieses Intervall. Nicht abgelaufene Daten bleiben geschützt. NULL ungültig. Default: 0. Die SQL-bit-Konvertierung bildet numerische Werte ungleich 0 auf 1 ab.';
+        PRINT N'@ResultSetArt: Datentyp varchar(16). CONSOLE zeigt die priorisierte Purge-Laufzusammenfassung; RAW liefert die technische purge-Zeile; TABLE schreibt diese Zeile in das gemappte lokale Temp-Ziel; JSON stellt den JSON-Vertrag im @Json-OUTPUT bereit; NONE unterdrückt reguläre Resultsets. Zulässige Werte ausschließlich CONSOLE, RAW, TABLE, JSON, NONE. Außen getrimmt, Groß-/Kleinschreibung ignoriert; NULL/leer ungültig. Default: ''CONSOLE''.';
+        PRINT N'@ResultTablesJson: Datentyp nvarchar(max). Nur TABLE: JSON-Objekt mit genau dem Schlüssel purge und einem Textwert als lokalem Temp-Tabellennamen, etwa N''{"purge":"#MyPurge"}''. Die Zieltabelle muss in derselben Sitzung vorhanden, leer und mit genau einer Seed-Spalte angelegt sein; der Writer passt sie an das Ergebnis an. Leeres Objekt, unbekannte oder doppelte Schlüssel, Nicht-Textwerte, ##- oder permanente Tabellen, Namen über 116 Zeichen sowie das reservierte Präfix #Monitor (ohne Beachtung der Großschreibung) sind unzulässig. Der Schlüssel purge ist case-sensitive. Bei TABLE sind NULL/leer/Leerzeichen ungültig; außerhalb TABLE sind sie zulässig, nichtleere Werte ungültig. Default: NULL.';
+        PRINT N'@JsonErzeugen: Datentyp bit. 0 erzeugt JSON nur bei ResultSetArt JSON; 1 befüllt JSON-OUTPUT zusätzlich zu anderer Ausgabeart. NULL ungültig. Default: 0. Die SQL-bit-Konvertierung bildet numerische Werte ungleich 0 auf 1 ab.';
+        PRINT N'@Json: Datentyp nvarchar(max) OUTPUT. nvarchar(max)-Variable mit OUTPUT; am Eintritt NULL. Bei JsonErzeugen=1 oder Ausgabeart JSON enthält das Objekt meta (contractVersion 1, resultName SnapshotPurge) und purge als Objekt, jeweils mit enthaltenen NULL-Werten. Bei Hilfe bleibt NULL. Default: NULL OUTPUT. Zum Empfang ist OUTPUT auch am Aufruf erforderlich; ein übergebener Eingangswert wird initial überschrieben.';
+        PRINT N'@PrintMeldungen: Datentyp bit. 1 gibt am Ende für Statuswerte außer AVAILABLE, AVAILABLE_LIMITED und SKIPPED_NOT_DUE RAISERROR severity 10 mit NOWAIT aus; 0 unterdrückt. NULL wird nicht validiert und löst die IF-Ausgabe nicht aus. Default: 1. Die SQL-bit-Konvertierung bildet numerische Werte ungleich 0 auf 1 ab.';
+        PRINT N'@Hilfe: Datentyp bit. 1 druckt Hilfe und kehrt mit RETURN zurück; 0 normaler Ablauf. NULL wird nicht als 1 behandelt. OUTPUTs werden zuvor initialisiert. Default: 0. Die SQL-bit-Konvertierung bildet numerische Werte ungleich 0 auf 1 ab.';
+        PRINT N'@PurgeRunIdOut: Datentyp bigint OUTPUT. bigint-Variable mit OUTPUT; initial NULL, enthält PurgeRun-ID falls vorhanden. Bei Hilfe NULL. Default: NULL OUTPUT. Zum Empfang ist OUTPUT auch am Aufruf erforderlich; ein übergebener Eingangswert wird initial überschrieben.';
+        PRINT N'@StatusCodeOut: Datentyp varchar(40) OUTPUT. varchar(40)-Variable mit OUTPUT; initial AVAILABLE, danach tatsächlicher Status. Bei Hilfe AVAILABLE. Default: NULL OUTPUT. Zum Empfang ist OUTPUT auch am Aufruf erforderlich; ein übergebener Eingangswert wird initial überschrieben.';
+        PRINT N'@IsPartialOut: Datentyp bit OUTPUT. bit-Variable mit OUTPUT; initial 0, danach gemäß Fehler-/Laufpfad. Bei Hilfe 0. Default: NULL OUTPUT. Zum Empfang ist OUTPUT auch am Aufruf erforderlich; ein übergebener Eingangswert wird initial überschrieben.';
+        PRINT N'@ErrorNumberOut: Datentyp int OUTPUT. int-Variable mit OUTPUT; initial NULL, bei Fehler gegebenenfalls Fehlernummer. Default: NULL OUTPUT. Zum Empfang ist OUTPUT auch am Aufruf erforderlich; ein übergebener Eingangswert wird initial überschrieben.';
+        PRINT N'@ErrorMessageOut: Datentyp nvarchar(2048) OUTPUT. OUTPUT-Parameter nvarchar(2048), mit nvarchar(2048)-Variable und OUTPUT zu binden; Kapazität entspricht 2048 UTF-16-Codeeinheiten. Initial NULL, bei Fehler gegebenenfalls Meldung. Default: NULL OUTPUT. Zum Empfang ist OUTPUT auch am Aufruf erforderlich; ein übergebener Eingangswert wird initial überschrieben.';
+        PRINT N'Ausgelassene Argumente verwenden den jeweiligen Signaturdefault. Zeichenfolgen werden als T-SQL-Literale, Unicodewerte mit N-Präfix übergeben; Zahlen und bit-Werte als skalare Werte. Typkonvertierungen erfolgen vor der Procedure. Der normale Aufruf kann im optionalen Snapshotziel schreiben; @Hilfe=1 beendet vor diesen fachlichen Writes.';
+        PRINT N'Sichere Hilfeaufrufe ohne Collection beziehungsweise Purge:';
+        PRINT N'EXEC [monitor].[USP_PurgeSnapshotData] @Hilfe=1;';
+        PRINT N'EXEC [monitor].[USP_PurgeSnapshotData] @Hilfe=1, @MaxBatches=1;';
+        PRINT N'EXEC [monitor].[USP_PurgeSnapshotData] @Hilfe=1, @Force=1;';
+        PRINT N'EXEC [monitor].[USP_PurgeSnapshotData] @Hilfe=1, @ResultSetArt=''RAW'';';
         RETURN;
     END;
 
