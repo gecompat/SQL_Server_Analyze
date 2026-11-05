@@ -363,6 +363,12 @@ sys.exit(7)
                 self.assertIn("##ExampleCiLockProbe", verified[0])
 
 
+    def test_deployment_has_its_own_finite_observation_limit(self):
+        self.assertEqual(ci.Observation(lambda: None).max_seconds, 600)
+        self.assertEqual(ci.Observation(lambda: None, deployment_expected=True).max_seconds, 1200)
+        self.assertEqual(ci.MAX_SECONDS, 600)
+        self.assertEqual(ci.MAX_DEPLOYMENT_SECONDS, 1200)
+
     def test_deployment_waits_for_same_session_snapshot_phase_and_requires_marker(self):
         begin = "CI_BEGIN|DEPLOYMENT|Deployment|0|2000-01-01T00:00:00Z|51|0|generated"
         phase = "CI_CASE|DEPLOYMENT|SnapshotSchema|1|2000-01-01T00:00:01Z|51|0|generated"

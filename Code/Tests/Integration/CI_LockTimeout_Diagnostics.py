@@ -19,6 +19,7 @@ import time
 INTERVAL = 0.250
 WINDOW = 10.0
 MAX_SECONDS = 600
+MAX_DEPLOYMENT_SECONDS = 1200
 MAX_ROWS = 200
 MAX_BYTES = 50 * 1024 * 1024
 REPORT_BYTES = 5 * 1024 * 1024
@@ -180,6 +181,7 @@ class Observation:
     def __init__(self, factory, deployment_expected=False):
         self.factory = factory
         self.deployment_expected = deployment_expected
+        self.max_seconds = MAX_DEPLOYMENT_SECONDS if deployment_expected else MAX_SECONDS
         self.case = None
         self.samples = deque(maxlen=40)
         self.frozen = None
@@ -235,7 +237,7 @@ class Observation:
             connection = self.factory()
             while not self.stop.is_set():
                 tick = time.monotonic()
-                if tick - self.started >= MAX_SECONDS:
+                if tick - self.started >= self.max_seconds:
                     self.errors.append("OBSERVATION_TIME_LIMIT")
                     break
                 with self.lock:
@@ -333,7 +335,8 @@ def diagnostic_summary(report, secret):
                      if case and observed_blocker([sample], case)), samples[-1] if samples else None)
     summary = dict(status=report["status"], trigger=report.get("trigger"), case=case,
                    samples=[selected] if selected else [], errors=list(report.get("errors", [])),
-                   sqlcmd_exit_code=report["sqlcmd_exit_code"], truncated=report.get("truncated", False))
+                   sqlcmd_exit_code=report["sqlcmd_exit_code"], truncated=report.get("truncated", False),
+                   observation_limit_seconds=report.get("observation_limit_seconds", MAX_SECONDS))
     summary = json.loads(json.dumps(summary))
     return encode_report(summary, secret, 16 * 1024).decode("utf-8")
 
@@ -432,7 +435,8 @@ def run(args):
     report["errors"].extend(read_errors)
     report.update(sqlcmd_exit_code=code, log_incomplete=writer.incomplete,
                   commit=os.environ.get("GITHUB_SHA"), run_id=os.environ.get("GITHUB_RUN_ID"),
-                  attempt=os.environ.get("GITHUB_RUN_ATTEMPT"))
+                  attempt=os.environ.get("GITHUB_RUN_ATTEMPT"),
+                  observation_limit_seconds=observer.max_seconds)
     if code or report["errors"] or writer.incomplete:
         try:
             destination = Path(args.artifacts)
