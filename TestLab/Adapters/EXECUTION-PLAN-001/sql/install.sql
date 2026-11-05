@@ -911,17 +911,131 @@ Objekt       : monitor.InternalWriteResultTable
 Version      : 1.1.0
 Stand        : 2026-07-19
 Typ          : Interne Stored Procedure
-Zweck        : Kopiert genau ein bereits materialisiertes Analyseergebnis in
-               eine lokale Temp-Tabelle des Aufrufers. Eine leere Tabelle mit
-               genau einer beliebigen Dummy-Spalte wird sicher an die native
-               Quellstruktur angepasst; eine bereits passende Struktur wird
-               zum Anhängen verwendet.
-Sicherheit   : Ausschließlich lokale #Temp-Tabellen. Globale ##Temp-Tabellen
-               und permanente Tabellen sind bewusst nicht zugelassen.
-Locking      : Katalogauflösung ausschließlich über tempdb.sys.* WITH (NOLOCK)
-               und LOCK_TIMEOUT 0 für fremde Tabellen. Eigene lokale Temp-DDL
-               erhält bei eingehendem Timeout 0 je Anlage bis zu 1000 ms.
+Zweck        : Kopiert die Spaltenwerte eines bereits materialisierten
+               Analyseergebnisses in eine lokale Temp-Tabelle des Aufrufers.
+               Eine leere Tabelle mit genau einer beliebigen Dummy-Spalte kann
+               an die Quellstruktur angepasst werden; eine passende Tabelle
+               erhält die Zeilen als Anhang.
+Sicherheit   : Quelle und Ziel müssen vorhandene lokale #Temp-Tabellen sein.
+               Globale ##Temp-Tabellen, permanente Tabellen und das reservierte
+               Zielpräfix #Monitor sind nicht zugelassen.
+Locking      : Fremde Tabellenoperationen verwenden LOCK_TIMEOUT 0 und die
+               tempdb-Katalogauflösung verwendet WITH (NOLOCK). Eigene lokale
+               Temp-DDL erhält bei eingehendem Timeout 0 je Anlage bis zu
+               1000 ms.
 ===============================================================================
+
+PARAMETER
+
+@SourceTable sysname
+  Default: kein Default (Pflichtparameter). Erwartet den unqualifizierten Namen einer
+  vorhandenen lokalen #Temp-Quelltabelle, etwa in Form eines einzelnen
+  Tabellennamens. NULL, der Leerwert, Namen ohne führendes #, globale ##Namen
+  und Namen mit LEN größer als 116 nach der SQL-Server-Bindung sind ungültig.
+  Der Wert wird nicht getrimmt. Die Eingabe ist kein Schema- oder
+  Klammerausdruck; die Procedure quotiert den Namen nativ. Die Quell- und
+  Zielnamen werden ohne Beachtung der Groß-/Kleinschreibung verglichen, um
+  identische Namen zurückzuweisen. Für die Quelle ist das Präfix #Monitor
+  nicht reserviert.
+
+@TargetTable sysname
+  Default: kein Default (Pflichtparameter). Erwartet den unqualifizierten Namen einer
+  vorhandenen lokalen #Temp-Zieltabelle. NULL, der Leerwert, Namen ohne
+  führendes #, globale ##Namen und Namen mit LEN größer als 116 nach der
+  SQL-Server-Bindung sind ungültig. Der Wert wird nicht getrimmt. Die Eingabe
+  ist kein Schema- oder Klammerausdruck; die Procedure quotiert den Namen
+  nativ. Namen mit dem Präfix #Monitor sind ohne Beachtung der
+  Groß-/Kleinschreibung reserviert und ungültig. Quelle und Ziel dürfen nach
+  einem Vergleich ohne Beachtung der Groß-/Kleinschreibung nicht identisch
+  sein.
+
+@InsertedRows bigint = NULL OUTPUT
+  Optionaler OUTPUT-Parameter mit Default NULL. Der eingehende Wert wird
+  ignoriert. Nach erfolgreicher Anlage der internen Temp-Tabellen wird der
+  Parameter auf 0 initialisiert. Nach dem finalen INSERT SELECT enthält er
+  @@ROWCOUNT dieses INSERTs. Der Wert zählt nicht unabhängig davon die gesamte
+  Historie der Zieltabelle und garantiert keine Rücknahme bei einem späteren
+  Fehler. Zum Empfang muss ein gebundener Aufruf eine bigint-Variable mit
+  OUTPUT übergeben; das Argument kann ausgelassen werden.
+
+@StatusCode varchar(40) = NULL OUTPUT
+  Optionaler OUTPUT-Parameter mit Default NULL. Der eingehende Wert wird
+  ignoriert und nach erfolgreicher Anlage der internen Temp-Tabellen auf
+  AVAILABLE initialisiert. Der Parameter liefert genau einen dieser Status:
+  AVAILABLE bezeichnet einen erfolgreichen Schreibvorgang;
+  INVALID_PARAMETER bezeichnet ungültige Parameter;
+  LOCK_TIMEOUT bezeichnet den abgefangenen Sperrtimeout in den dafür
+  vorgesehenen Markierungs-, Leerheitsprüfungs- oder Schemaanpassungsschritten;
+  SOURCE_NOT_FOUND und TARGET_NOT_FOUND bezeichnen eine nicht auflösbare
+  Quell- beziehungsweise Zieltabelle;
+  METADATA_NOT_VISIBLE bezeichnet eine vorhandene Tabelle, deren Katalogzeile
+  nicht sichtbar war;
+  UNSUPPORTED_SOURCE_SCHEMA bezeichnet eine Quelle ohne exportierbare Spalten
+  oder mit nicht unterstützter Spaltenstruktur;
+  TARGET_SCHEMA_MISMATCH bezeichnet ein Ziel, das weder exakt passt noch
+  angepasst werden kann;
+  TABLE_WRITE_ERROR bezeichnet einen sonstigen abgefangenen Fehler bei
+  Tabellenänderungen oder beim finalen INSERT SELECT. Der finale INSERT SELECT
+  wird auch bei Fehler 1222 als TABLE_WRITE_ERROR gemeldet. Zum Empfang muss
+  ein gebundener Aufruf eine varchar(40)-Variable mit OUTPUT übergeben; das
+  Argument kann ausgelassen werden.
+
+@ErrorNumber int = NULL OUTPUT
+  Optionaler OUTPUT-Parameter mit Default NULL. Der eingehende Wert wird
+  ignoriert und nach erfolgreicher Anlage der internen Temp-Tabellen auf NULL
+  initialisiert. Bei einem abgefangenen nativen Fehler enthält er dessen
+  Fehlernummer; bei Validierungsfehlern ohne abgefangenen nativen Fehler bleibt
+  er NULL. Fehler, die nicht abgefangen werden, etwa ein Fehler bei der
+  anfänglichen Anlage der internen Temp-Tabellen, werden nicht durch diesen
+  Parameter zugesichert. Zum Empfang muss ein gebundener Aufruf eine
+  int-Variable mit OUTPUT übergeben; das Argument kann ausgelassen werden.
+
+@ErrorMessage nvarchar(2048) = NULL OUTPUT
+  Optionaler OUTPUT-Parameter mit Default NULL. Der eingehende Wert wird
+  ignoriert und nach erfolgreicher Anlage der internen Temp-Tabellen auf NULL
+  initialisiert. Bei einem behandelten Fehler enthält er Validierungs- oder
+  Fehlerdiagnostik; bei Erfolg bleibt er NULL. Zum Empfang muss ein gebundener
+  Aufruf eine nvarchar(2048)-Variable mit OUTPUT übergeben; das Argument kann
+  ausgelassen werden.
+
+@ThrowOnError bit = 0
+  Optionaler Eingabeparameter mit Default 0; beim Auslassen gilt 0. Leerer
+  Text ist keine unterstützte Schalterform. Der Wert 0 gibt behandelte
+  Fehler über die OUTPUT-Parameter zurück. Der Wert 1 löst für einen
+  behandelten Fehler Fehlernummer 51010 aus. NULL ist ungültig, wird als
+  INVALID_PARAMETER zurückgegeben und löst selbst keinen Fehler 51010 aus.
+  Auch bei 1 werden nicht alle nativen Fehler abgefangen und in Fehler 51010
+  umgewandelt.
+
+VERARBEITUNG UND GRENZEN
+
+Die vier OUTPUT-Parameter werden erst nach der eigenen Temp-DDL initialisiert.
+Schlägt diese DDL fehl, werden ihre neuen Werte nicht zugesichert. Bei dieser
+Anlage bleiben positive oder unbegrenzte eingehende LOCK_TIMEOUT-Werte erhalten;
+nach erfolgreicher Anlage setzt der Baustein LOCK_TIMEOUT 0.
+
+Die Quelle darf keine berechneten Spalten, benutzerdefinierten oder
+Assembly-Datentypen, typisiertes XML sowie timestamp-/rowversion-Spalten
+enthalten. Bei einer Identitätsspalte der Quelle werden die Werte in eine
+gewöhnliche Zielspalte kopiert; das Ziel erhält dadurch keine
+Identitätseigenschaft.
+
+Eine bereits passende Zielstruktur muss in Spaltenanzahl und -reihenfolge,
+Spaltennamen, vergleichbarem Datentyp, Länge, Genauigkeit, Skala, Sortierung
+und NULL-Zulässigkeit übereinstimmen. Sie darf keine Identitäts- oder
+berechneten Spalten, benutzerdefinierten oder Assembly-Datentypen oder
+typisiertes XML enthalten. Eine abweichende Zieltabelle kann nur angepasst
+werden, wenn sie leer ist und genau eine beliebige Dummy-Spalte besitzt.
+Passende vorhandene Ziele dürfen bereits Zeilen enthalten; die neuen Zeilen
+werden angehängt.
+
+Die interne Auflösung fügt Quell- und Zieltabellen vorübergehend
+Markierungsspalten hinzu und entfernt sie wieder. Die Schemaanpassung verwendet
+einen Brücken- und ALTER-TABLE-Batch. Diese DDL kann sichtbare Tabellenänderungen
+hinterlassen, wenn ein späterer Schritt fehlschlägt. Die Procedure garantiert
+weder eine Transaktion noch atomaren Rollback oder Bereinigung nach Fehlern.
+Die interne Schnittstelle ist an den versiongleichen Framework-Aufrufer
+gebunden.
 */
 SET ANSI_NULLS ON;
 GO
