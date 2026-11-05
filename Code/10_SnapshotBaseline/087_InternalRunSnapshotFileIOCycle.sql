@@ -5,7 +5,7 @@ GO
 Objekt       : monitor.InternalRunSnapshotFileIOCycle
 Version      : 1.0.0
 Stand        : 2026-10-26
-Zweck        : Erfasst den nativen Datei-I/O-Cache für ausgewählte Online-
+Zweck        : Die Procedure erfasst den nativen Datei-I/O-Cache für ausgewählte Online-
                datenbanken und bindet ihn an beobachtete Engine-, Datenbank-
                und Dateimetadaten sowie den eigenen Targetlauf.
 Grenze       : Der vollständige VFS-Read belegt keine atomare Sicht. Vorher-/Nachher-
