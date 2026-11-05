@@ -636,11 +636,62 @@ Quelle: `Code/01_Common/083a_USP_InternalCheckAnalysisPath.sql`
 
 | Dimension | Beschreibung |
 |---|---|
-| Aufgabe | Prüft vor der Ausführung den internen Kosten- und Berechtigungspfad. |
-| Schnittstelle | Interne Stored Procedure; Parameter: `@AnalysisClass varchar(64)`; `@HighImpactConfirmed bit`; `@StatusCode varchar(40) OUTPUT`; `@ErrorMessage nvarchar(2048) OUTPUT`. Status-, Fehler- und weitere OUTPUT-Parameter werden ausschließlich zwischen Frameworkbausteinen weitergereicht. |
-| Verwendung | Öffentliche Procedures im Schema `monitor` rufen diesen Baustein zur Orchestrierung auf. Anwendungen sollen ihn weder direkt ausführen noch von seiner Parameterreihenfolge oder seinen temporären Zwischenstrukturen abhängen. |
-| Last und Sperren | Die Procedure koordiniert interne Verarbeitung ohne fachliche Persistenz unter `LOCK_TIMEOUT 0`. Sie darf nur über den zugehörigen öffentlichen Einstieg ausgeführt werden. |
-| Vertrag | Nicht öffentlicher Vertrag. Fehlerbehandlung, OUTPUT-Parameter und Seiteneffekte sind nur für den versiongleichen internen Aufrufer zugesichert. |
+| Aufgabe | Prüft den aktivierten fachlichen Analysepfad auf bekannte Klasse, erforderliche Bestätigung und den aktuellen Freigabepfad. Zuerst werden die Framework-Views `VW_AnalyseClassCatalog` und `VW_AnalyseAccessCurrent` gelesen. |
+| Schnittstelle | Interne Stored Procedure mit vier Pflichtargumenten ohne Default. Die einzelnen Parameterverträge und die vollständige Klassenmenge folgen unten. |
+| Verwendung | Versiongleiche Framework-Aufrufer führen den Helfer vor den fachlichen DMV-, Cache-, Query-Store- oder Katalogzugriffen aus. Anwendungen sollen ihn nicht direkt aufrufen oder von seiner Parameterreihenfolge abhängen. |
+| Last und Sperren | Liest Framework-Katalog, Policy und über die Zugriffssicht Login-/Gruppeninformationen. Der Code setzt `LOCK_TIMEOUT 0`; fachliche Daten werden nicht persistiert. Eine eigene Wiederherstellung eines eingehenden Timeoutwerts wird nicht zugesagt. |
+| Vertrag | Nicht öffentlicher, versionsgebundener Vertrag. Ein bestandenes Gate erteilt keine SQL-Berechtigungen und belegt keine Live-Abfrage von Active Directory. Nicht abgefangene native Fehler können entweichen. |
+
+#### Parameter von InternalCheckAnalysisPath
+
+| Parameter | Typ und Default | Eingabeform und Wirkung |
+|---|---|---|
+| `@AnalysisClass` | `varchar(64)`; Default: kein Default, Pflichtparameter | Ein einzelner Code der unten taxativ beschriebenen Katalogfassung 1.9.0, keine Liste und kein Pattern. NULL und leere Zeichenfolge sind ungültig; Weglassen ist nicht zulässig. Es gibt keine explizite Trim- oder Schreibweisennormalisierung; der Katalogvergleich folgt der Datenbankkollation und ist nicht fest binär oder case-insensitive. Das Policy-Wildcard `*` ist kein Katalogcode dieses Parameters. |
+| `@HighImpactConfirmed` | `bit`; Default: kein Default, Pflichtparameter | `0` bestätigt keine High-Impact-Ausführung; für eine Klasse mit `RequiresGroupGate=1` folgt `HIGH_IMPACT_CONFIRMATION_REQUIRED`. `1` bestätigt diese Ausführung und setzt keine Gruppenfreigabe außer Kraft. NULL ergibt `INVALID_PARAMETER`; Leertext ist keine unterstützte Schalterform. Weglassen ist nicht zulässig. Für ungeschützte Klassen ist `0` zulässig. Auch bei `sysadmin` oder offener Policy bleibt die Bestätigung geschützter Klassen erforderlich und wird vor einer Gruppenablehnung geprüft. |
+| `@StatusCode` | `varchar(40) OUTPUT`; Default: kein Default, Pflichtargument | Eingehendes NULL, Leertext oder andere Anfangswerte werden sofort durch `AVAILABLE` ersetzt. Die geschlossene Ausgabe lautet `AVAILABLE` (Klasse, erforderliche Bestätigung und Freigabepfad bestanden), `INVALID_PARAMETER` (`@AnalysisClass` ist NULL, leer oder unbekannt beziehungsweise `@HighImpactConfirmed` ist ungültig), `HIGH_IMPACT_CONFIRMATION_REQUIRED` (erforderliche Bestätigung fehlt) oder `DENIED_GROUP` (Freigabepfad nicht erlaubt). Zum Empfang eine passende Variable mit `OUTPUT` binden; ohne dieses Schlüsselwort kann der Ausgabewert verworfen werden. Das Argument darf nicht ausgelassen werden. Ausgelassene Pflichtargumente verursachen einen Aufruffehler vor der Statusinitialisierung; ein nativer Fehler ist kein zusätzlicher Statuswert. |
+| `@ErrorMessage` | `nvarchar(2048) OUTPUT`; Default: kein Default, Pflichtargument | Eingehendes NULL, Leertext oder andere Anfangswerte werden sofort durch NULL ersetzt. Bei behandeltem Fehler folgt der zugehörige Meldungstext; bei `AVAILABLE` bleibt NULL. Zum Empfang eine passende Variable mit `OUTPUT` binden; ohne dieses Schlüsselwort kann der Ausgabewert verworfen werden. Das Argument darf nicht ausgelassen werden. |
+
+#### Klassen von InternalCheckAnalysisPath
+
+Die 31 Kennungen der ausgelieferten `VW_AnalyseClassCatalog`-Fassung 1.9.0 bilden die folgende geschlossene Menge. `RequiresGroupGate=1` löst in diesem Helfer sowohl die Bestätigungsanforderung als auch den geschützten Freigabepfad aus. Die Kataloghinweise `DefaultMaxRows` und `DefaultTimeoutSeconds` werden von diesem Helfer nicht durchgesetzt.
+
+| Kennung | Stufe | RequiresGroupGate | Bedeutung |
+|---|---|---|---|
+| `STANDARD_CURRENT` | `STANDARD` | `0` | Leichtgewichtige Current-State-Abfragen für Sessions, Requests, Blocking, Waits, Memory, TempDB und I/O. |
+| `EXTENDED_CURRENT` | `ERWEITERT` | `0` | Gezielte Current-State-Vertiefung mit begrenzter SQL-Text-, Plan- und Objektauflösung. |
+| `PLAN_CACHE_CURRENT` | `ERWEITERT` | `0` | Begrenzte Query-Stats- und Plan-Cache-Auswertungen ohne vollständiges XML-Shredding. |
+| `SHOWPLAN_TARGETED` | `ERWEITERT` | `0` | Gezielte Showplan-Extraktion und XML-Analyse für konkret gefilterte Planhandles oder Query Hashes. |
+| `OBJECT_ANALYSIS_CURRENT` | `ERWEITERT` | `0` | Gezielte Objekt-, Index-, Partitions- und Columnstore-Kataloganalyse einer Datenbank. |
+| `EXTERNAL_RUNTIME_CURRENT` | `ERWEITERT` | `0` | Lesende Konfigurations-, Katalog-, Request-, Pool- und Counteranalyse externer SQL-Server-Runtimes ohne Testausführung. |
+| `CLR_CURRENT` | `ERWEITERT` | `0` | Lesende SQL-CLR-Katalog-, Host-, AppDomain-, Task-, Request-, Speicher- und Counteranalyse ohne Assemblyausführung. |
+| `MISSING_INDEX_CURRENT` | `ERWEITERT` | `0` | Flüchtige Missing-Index-Hinweise mit begrenzter Ergebnismenge; keine automatische DDL-Ausführung. |
+| `STATISTICS_TARGETED` | `ERWEITERT` | `0` | Gezielte Statistik-Eigenschaftsanalyse für gefilterte Objekte. |
+| `COLUMNSTORE_CURRENT` | `ERWEITERT` | `0` | Gezielte Columnstore-Rowgroup-Analyse über Katalogsicht ohne Segment-/Dictionary-Vollscan. |
+| `LOCKS_DEEP` | `DEEP` | `1` | Detaillierte Materialisierung von sys.dm_tran_locks für die aktuell relevante Sessionmenge. |
+| `LOG_VLF_DEEP` | `DEEP` | `1` | Datenbankübergreifende VLF-Auswertung über sys.dm_db_log_info. |
+| `PLAN_CACHE_DEEP` | `DEEP` | `1` | Breite oder vollständige Analyse von Query Stats und Plan Cache. |
+| `SHOWPLAN_XML_DEEP` | `DEEP` | `1` | XML-Analyse gecachter oder aktueller Showplans einschließlich Warnings, Spills, Objekten und Statistiken. |
+| `CATALOG_DEEP` | `DEEP` | `1` | Breite Systemkatalog-, Objekt-, Index-, Statistik- und Partitionsanalyse. |
+| `PHYSICAL_STATS_DEEP` | `DEEP` | `1` | Explizite Auswertung von sys.dm_db_index_physical_stats in einem bewusst gewählten Modus. |
+| `INDEX_OPERATIONAL_DEEP` | `DEEP` | `1` | Breite kumulative Index-Operational-Stats mit Lock-, Latch-, I/O-Latch- und Page-Split-Zählern. |
+| `QUERY_STORE_CURRENT` | `ERWEITERT` | `0` | Gezielte lesende Query-Store-Status-, Runtime-, Wait-, Plan- und Force-Auswertung mit engem Zeit- und Zeilenlimit. |
+| `EXTENDED_EVENTS_CURRENT` | `ERWEITERT` | `0` | Leichte Inventarisierung vorhandener Extended-Events-Definitionen und laufender Sessions ohne Targetdaten oder Eventhistorie. |
+| `QUERY_STORE_DEEP` | `DEEP` | `1` | Breite Query-Store-Historie, Regressionen, Planwechsel und Wait-Auswertungen. |
+| `CROSS_DATABASE_DEEP` | `DEEP` | `1` | Datenbankübergreifende Inventarisierung und Diagnose. |
+| `COLUMNSTORE_DEEP` | `DEEP` | `1` | Breite Columnstore-Analyse einschließlich Rowgroups, Deleted Rows, Dictionaries und Segmenten. |
+| `EXTENDED_EVENTS_FORENSICS_DEEP` | `FORENSIK` | `1` | Optionale Auswertung vorhandener Extended-Events-Sessions und Event-Dateien; niemals Primärquelle des Standardlaufs. |
+| `SERVER_HEALTH_CURRENT` | `ERWEITERT` | `0` | CPU-, NUMA-, Memory-, TempDB-, OS- und Dienstzustand der aktuellen Instanz. |
+| `SERVER_CONFIGURATION_CURRENT` | `ERWEITERT` | `0` | Lesende Serverkonfiguration, Trace Flags und Startup-Parameter. |
+| `SECURITY_CONFIGURATION_CURRENT` | `ERWEITERT` | `0` | Lesende sicherheits- und dienstbezogene Betriebsparameter. |
+| `SQL_AGENT_CURRENT` | `ERWEITERT` | `0` | Lesende SQL-Server-Agent-Status-, Job-, Schedule- und Historienanalyse aus msdb. |
+| `RESOURCE_GOVERNOR_CURRENT` | `ERWEITERT` | `0` | Lesende Resource-Governor-Konfigurations- und Laufzeitanalyse. |
+| `HA_DR_CURRENT` | `ERWEITERT` | `0` | Begrenzte lesende Analyse von Availability Groups, Backup, Log Shipping, Replication, CDC und Change Tracking. |
+| `ENTERPRISE_TOPOLOGY_DEEP` | `DEEP` | `1` | Vertiefte enterpriseweite Topologie- und Distribution-Analyse für HA/DR und Replication. |
+| `DATA_PLATFORM_ADAPTER_CURRENT` | `ERWEITERT` | `0` | Optionale Current-State-Anreicherung aus kundenspezifischen Data-Platform-/ETL-Loggingobjekten mit isolierter Existenz- und Rechteprüfung. |
+
+Nur die Fehlernummern `229`, `371` und `916` im initialen TRY-Zugriff auf die Framework-Views führen zum datenbankgebundenen Fallback; andere Fehler werden erneut ausgelöst. Auch Katalog- und Policyzugriffe im Fallback können nativ fehlschlagen. Der Fallback erlaubt ungeschützte Klassen, einen erkannten `sysadmin` oder den Fall ohne global aktive Policyzeilen. Aktiv sind Zeilen mit `IsEnabled=1`, `ValidFromUtc` NULL oder nicht später als `SYSUTCDATETIME()`, `ValidToUtc` NULL oder später als diese UTC-Zeit sowie nichtleeren, mit `LTRIM/RTRIM` geprüften Klassen- und Gruppennamen. Die Prüfung entfernt diese Randzeichen nicht aus den gespeicherten Werten.
+
+Eine aktive Policy für eine andere Klasse kann im Fallback bereits zur Ablehnung einer geschützten Klasse führen, wenn der serverseitige Token im Datenbankkontext nicht lesbar ist. Eine einzelne Gruppenmitgliedschaft wird dort nicht geprüft. Die High-Impact-Bestätigung bleibt unabhängig davon erforderlich. Die normale Zugriffssicht und der Fallback sind keine SQL-Rechtevergabe oder allgemeine Umwandlung nativer Fehler in Statuswerte.
 
 ### `[monitor].[InternalWriteResultTable]`
 
