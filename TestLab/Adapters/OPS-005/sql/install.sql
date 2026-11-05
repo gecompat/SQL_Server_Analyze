@@ -7389,7 +7389,7 @@ Objekt       : monitor.InternalPrepareSingleResultTable
 Version      : 1.0.0
 Stand        : 2026-07-20
 Typ          : Interne Stored Procedure
-Zweck        : Leitet eine TABLE-Zuordnung an den Mehrfach-Preflight weiter
+Zweck        : Die Procedure leitet eine TABLE-Zuordnung an den Mehrfach-Preflight weiter
                und gibt bei erfolgreicher Namensauflösung das lokale Ziel
                zurück. Der JSON-Vertrag kann mehrere Schlüssel-Wert-Paare
                enthalten.
