@@ -1059,11 +1059,68 @@ Quelle: `Code/10_SnapshotBaseline/055_InternalCompleteWaitStatsCycle.sql`
 
 | Dimension | Beschreibung |
 |---|---|
-| Aufgabe | Prüft einen vollständigen internen Source-v1-Vertrag und persistiert Rohwerte, Status, Vergleichskontext und zulässige monotone Kandidaten atomar. |
-| Schnittstelle | Interne Stored Procedure; Parameter: `@CaptureRunId bigint`; `@CollectorJson nvarchar(max)`; `@ExpectedTargetDatabaseId int`; `@ExpectedTargetDatabaseName sysname`; `@ExpectedTargetCreateDate datetime`; `@StatusCodeOut varchar(40) OUTPUT`; `@IsPartialOut bit OUTPUT`; `@ErrorNumberOut int OUTPUT`; `@ErrorMessageOut nvarchar(2048) OUTPUT`. |
-| Verwendung | Der passende interne Frameworkbaustein übergibt den vollständig erfassten Sourcevertrag. Das Target-Backend allein stellt noch keinen öffentlichen Wait-Collector bereit. |
-| Last und Sperren | Der Helper schreibt nur den gebundenen eigenen Wait-Run in einer eigenen kurzen Transaktion unter `LOCK_TIMEOUT 0`. Callertransaktionen und implizite Transaktionen werden vor Fachzugriff abgelehnt. |
-| Vertrag | Der interne Vertrag ist nur für den passenden Paketstand zugesichert. Fehlende Vorwerte werden als Status erhalten; Sourcefehler erhalten keine erfundene Epoche. Der [Snapshotvertrag](../Architecture/Snapshot_Baseline_Package_Contract.md) führt Installation und Aktivierungsgrenze. |
+| Aufgabe | Die Procedure validiert Source-v1 und finalisiert ausschließlich einen unbeschriebenen eigenen Wait-Run. Erfolgreich gespeicherte Aufnahmen erhalten PARTIAL, weil Vergleichskandidaten keine lückenlose Resetkontinuität beweisen. |
+| Schnittstelle | Interne Stored Procedure mit neun erforderlichen Parametern ohne Defaults: fünf Eingaben und vier OUTPUT-Ausgaben. Die einzelnen Typ-, NULL-, Leerwert-, Bindungs- und JSON-Regeln stehen in den folgenden Parameter- und Source-v1-Verträgen. |
+| Verwendung | Der interne Frameworkbaustein übergibt den vollständigen JSON-Vertrag inline; ein Dateipfad ist keine Eingabe. Das Target-Backend allein stellt keinen öffentlichen Wait-Collector bereit. |
+| Last und Sperren | Die Procedure setzt nach den frühen Guards NOCOUNT, LOCK_TIMEOUT 0 und XACT_ABORT ON. Sie schreibt nur den gebundenen eigenen Wait-Run in einer eigenen Transaktion; MaxRows begrenzt die Backend-Schreibmenge. |
+| Vertrag | Frühe ungültige Run-/Transaktionsparameter ergeben INVALID_PARAMETER/51011. Fehlerhafte Sourceverträge nach Übernahme des eigenen Runs werden als ERROR_HANDLED behandelt; ein gültiger Fehlervertrag behält seinen Source-Status. Die Fehlerfinalisierung ist ein Versuch, dessen Erfolg nicht garantiert ist. Installations- und Aktivierungsgrenzen beschreibt der [Snapshotvertrag](../Architecture/Snapshot_Baseline_Package_Contract.md). |
+
+#### InternalCompleteWaitStatsCycle – Parameterverträge
+
+| Parameter | Vertrag |
+|---|---|
+| @CaptureRunId | bigint; Default: Kein Default. Erforderlich und größer als 0. NULL oder kleiner gleich 0, Callertransaktion und IMPLICIT_TRANSACTIONS ON lösen vor Fachzugriff INVALID_PARAMETER/RETURN 51011 aus. Leertext ist keine unterstützte bigint-Eingabe. |
+| @CollectorJson | nvarchar(max); Default: Kein Default. Erforderlicher vollständiger JSON-Source-v1-Text inline, kein Dateipfad. NULL, leerer oder ungültiger JSON-Text scheitert an der Sourcevalidierung: Sie erfolgt erst nach Übernahme des eigenen Runs und führt bei Fehler zu ERROR_HANDLED / 53763 und einem Versuch der Fehlerfinalisierung. Eine zuvor abgewiesene Runbindung ergibt stattdessen INVALID_PARAMETER / 51011. |
+| @ExpectedTargetDatabaseId | int; Default: Kein Default. Erforderliche ID der aktuellen Datenbank, größer als 4. NULL, andere aktuelle ID oder Abweichung führt zu TARGET_UNAVAILABLE/53764. Leertext ist keine unterstützte int-Eingabe. |
+| @ExpectedTargetDatabaseName | sysname; Default: Kein Default. Erforderlicher roher Name, binär mit master.sys.databases.name verglichen, ohne Trimmen oder Normalisierung der Schreibweise. NULL oder Leertext passt nicht und führt zu TARGET_UNAVAILABLE/53764. |
+| @ExpectedTargetCreateDate | datetime; Default: Kein Default. Erforderlicher typisierter Wert aus master.sys.databases.create_date für dieselbe aktuelle Datenbank. NULL oder Abweichung führt zu TARGET_UNAVAILABLE/53764. Leertext ist keine unterstützte Datumsform. |
+| @StatusCodeOut | varchar(40) OUTPUT; Default: Kein Default. Erforderliches Argument, anfänglich AVAILABLE. Gebundener Eingang einschließlich NULL oder Leertext wird ignoriert. Ohne OUTPUT am Aufruf kann ein typkompatibler skalarer Wert oder NULL als Pflichtargument übergeben und die Ausgabe verworfen werden; zum Empfang sind eine typkompatible Variable und OUTPUT erforderlich. |
+| @IsPartialOut | bit OUTPUT; Default: Kein Default. Erforderliches Argument, anfänglich 0 als Nicht-Partialwert; gebundener Eingang einschließlich NULL wird ignoriert. Nach jedem fachlichen Ergebnis wird 1 als partiell oder nicht vollständig bestätigt ausgegeben. Variable plus OUTPUT ist zum Empfang nötig. |
+| @ErrorNumberOut | int OUTPUT; Default: Kein Default. Erforderliches Argument, anfänglich NULL; gebundener Eingang einschließlich NULL wird ignoriert. Guards und behandelte Fehler können eine Fehlernummer setzen; erfolgreicher gespeicherter PARTIAL-Abschluss gibt NULL aus. Variable plus OUTPUT ist zum Empfang nötig. |
+| @ErrorMessageOut | nvarchar(2048) OUTPUT; Default: Kein Default. Erforderliches Argument, anfänglich NULL; gebundener Eingang einschließlich NULL oder Leertext wird ignoriert. Ausgabe kann Guard-/Fehlertext, einen der zwölf im Abschnitt Vergleichsgründe aufgezählten Codes, NULL oder Leertext enthalten. Variable plus OUTPUT ist zum Empfang nötig. |
+
+Keiner der neun Parameter ist auslassbar. OUTPUT-Eingabewerte werden für alle vier Ausgabeparameter ignoriert; ohne OUTPUT-Kennzeichnung kann der Aufruf den Wert verwerfen, mit typkompatibler Variable und OUTPUT wird er empfangen.
+
+Die normalen SQL-Typkonvertierungen gelten vor dem Eintritt in die Prozedur. Ohne Rückgabe darf jedes obligatorische OUTPUT-Argument als typkompatibler Skalar oder NULL gebunden werden; für numerische Typen ist Leertext keine unterstützte Eingabeform. Die Initialisierung ersetzt erst den erfolgreich gebundenen Eingangswert.
+
+#### InternalCompleteWaitStatsCycle – Source-v1-JSON-Vertrag
+
+Der Root ist ein JSON-Objekt mit genau meta als Objekt und waits als Array. Zusätzliche und doppelte Eigenschaften sind unzulässig; Namen werden binär verglichen, also groß-/kleinschreibungsabhängig. Alle Pflichtfelder müssen vorhanden sein, auch wenn sie JSON null enthalten.
+
+| Objekt | Genau vorgeschriebene Felder und JSON-Typen |
+|---|---|
+| meta | Genau elf Pflichtfelder: schemaVersion als JSON-Zahl exakt 1; resultName als Zeichenfolge exakt SnapshotWaitStats; measurementStartUtc und measurementEndUtc jeweils als NULL oder 24 Zeichen YYYY-MM-DDTHH:mm:ss.fffZ; statusCode als eine der fünf Source-Statuszeichenfolgen; isPartial und sourceComplete als JSON-Boolean; errorNumber als NULL oder kanonische JSON-Ganzzahl 1..2147483647; errorMessage als NULL oder Unicode-Zeichenfolge bis 2048 UTF-16-Codeeinheiten; nativeRows als NULL oder kanonische nichtnegative bigint-Dezimalzeichenfolge 0..9223372036854775807; engineContext als NULL oder vollständiges Engineobjekt. |
+| engineContext | Genau drei Eigenschaften, alle JSON-Zeichenfolgen: serverName mit 1..128 UTF-16-Codeeinheiten; sqlServerStartTimeLocal mit exakt 23 Zeichen YYYY-MM-DDTHH:mm:ss.fff ohne Z im lokalen DATETIME-Rundtripformat; sqlServerStartTimeMsTicks als kanonische nichtnegative bigint-Dezimalzeichenfolge 0..9223372036854775807. |
+| jedes waits-Element | JSON-Objekt mit genau WaitType als Zeichenfolge mit 1..60 UTF-16-Codeeinheiten und WaitingTasksCount, WaitTimeMs, MaxWaitTimeMs sowie SignalWaitTimeMs als kanonische JSON-Ganzzahlen 0..9223372036854775807. Die vier numerischen Felder erlauben weder Vorzeichen noch führende Nullen, Dezimalpunkt oder Exponent. WaitType-Identitäten dürfen nicht doppelt vorkommen. |
+
+Ein vorhandenes UTC-Messfenster enthält beide Zeitpunkte und ist geordnet. Vollständige Source verlangt beide Zeitpunkte; Start liegt nicht vor dem Runstart und Ende nicht nach aktueller UTC. Für sourceComplete=true sind nur AVAILABLE (nichtleere Zeilenmenge, isPartial=false) und EMPTY_UNPROVEN (leere Menge, isPartial=true) erlaubt; errorNumber und errorMessage müssen NULL, Enginekontext und Zeitpunkte vorhanden und nativeRows gleich der tatsächlichen Zeilenzahl sein. Für sourceComplete=false sind nur DENIED_PERMISSION, UNAVAILABLE_OBJECT und ERROR_HANDLED erlaubt; isPartial muss true, waits leer und nativeRows NULL sein. Der Fehlerzweig darf ein gültiges Engineobjekt enthalten; es muss nicht NULL sein. Die Messzeitpunkte dürfen dort gemeinsam NULL oder gemeinsam vorhanden und geordnet sein.
+
+Die fünf Source-Statuswerte bedeuten: AVAILABLE = vollständige, nichtleere Aufnahme; EMPTY_UNPROVEN = vollständige, aber leere und deshalb als partiell markierte Aufnahme; DENIED_PERMISSION = behandelter Berechtigungsfehler; UNAVAILABLE_OBJECT = nicht verfügbares natives Objekt; ERROR_HANDLED = sonstiger behandelter Fehler bei der nativen Erfassung.
+
+#### InternalCompleteWaitStatsCycle – Vergleichsgründe in @ErrorMessageOut
+
+Bei einem erfolgreich gespeicherten PARTIAL-Ergebnis enthält @ErrorMessageOut genau einen der folgenden zwölf geschlossenen Vergleichsgründe. Die Auswahl folgt der Reihenfolge der ersten zutreffenden Prüfung in der Liste; die Codes sind keine Werte von @StatusCodeOut.
+- SOURCE_EMPTY_UNPROVEN: Die vollständige Sourceaufnahme enthält keine Waitzeilen.
+- WRITE_LIMITED: MaxRows ließ nicht alle zur Speicherung berücksichtigungsfähigen WaitTypes zur Speicherung zu.
+- FIRST_OBSERVATION: Es gibt keinen früheren finalisierten Wait-Run.
+- PREVIOUS_CAPTURE_PARTIAL: Der frühere Lauf war technisch partiell oder enthielt einen Fehler.
+- PREVIOUS_CONTEXT_INVALID: Der frühere Vergleichskontext besteht seine Vertragsprüfung nicht.
+- PREVIOUS_RAW_INCOMPLETE: Der frühere Lauf enthält nicht alle erforderlichen Rohmetriken.
+- ENGINE_CONTEXT_CHANGED: Der native Enginekontext unterscheidet sich vom vorherigen.
+- INTERVAL_NOT_POSITIVE: Das Fenster überlappt oder läuft rückwärts; insbesondere liegt der aktuelle Start vor dem vorherigen Ende oder das aktuelle Ende ist nicht später als das vorherige Ende.
+- WAIT_TYPE_MISSING: Ein erforderlicher vorheriger WaitType fehlt in der aktuellen Aufnahme.
+- COUNTER_DECREASE: Mindestens ein verglichener Counter ist gegenüber dem Vorwert gesunken.
+- NO_COMPARABLE_TYPES: Es gibt keinen ausgewählten aktuellen WaitType mit passendem Vorwert.
+- MONOTONIC_CONTINUITY_UNPROVEN: Vergleichbare Werte sind monoton, aber daraus folgt keine lückenlose Resetkontinuität.
+
+#### InternalCompleteWaitStatsCycle – Persistenz- und Ausgabevertrag
+
+Die Targetprüfung liegt vor TRY und erfordert die aktuelle, online befindliche und schreibbare Datenbank mit ID größer als 4 sowie binär passendem Namen und passendem create_date; der Vorprüfungszugriff kann selbst einen ungefangenen SQL-Fehler auslösen. Zulässig ist genau eine passende SC-023-Paketzeile: 1.2.1 mit Schema 2, 1.3.0 mit Schema 3 oder 1.3.1 mit Schema 3. Der Retentions-Handshake muss den zugehörigen Vertrag 1, 2 beziehungsweise 3 bestätigen.
+
+Der eigene WAIT_STATS-Run muss RUNNING, unbeschrieben, ohne Endzeit und ResetEpochId sowie ohne Sample-, Payload- oder ModuleStatus-Zeilen sein. Die aktive Policy muss enabled sein und MaxRows zwischen 1 und 100000 liegen; dieser Wert begrenzt nur Backend-Schreibvorgänge. Je ausgewähltem WaitType werden vier rohe numerische Metriken und ein Vergleichsstatus gespeichert. Hinzu kommen höchstens drei numerische Differenzkandidaten je vergleichbarem Typ und ein Serverkontextsample insgesamt. Vorzustand und Vergleichskontext entscheiden über die Zulässigkeit; ein beliebiger vorheriger Zustand oder eine lückenlose Resetkontinuität ist nicht garantiert. Bei aktiver Payload-Policy wird der Sourcevertrag als JSON-Payload mit GZIP gespeichert. Schreibvorgänge und Abschluss liegen in einer eigenen Transaktion und werden gemeinsam committet.
+
+Die sieben möglichen Ausgabe-Statuswerte bedeuten: AVAILABLE ist nur der anfängliche OUTPUT-Wert und bestätigt keinen abgeschlossenen Wait-Run; INVALID_PARAMETER bezeichnet die frühen Run-/Callertransaktions-/Implizittransaktions-Guards und eine mit 53763 abgewiesene Runbindung vor Übernahme des eigenen Runs; TARGET_UNAVAILABLE bezeichnet eine nicht passende Targetidentität oder einen nicht passenden Paket-/Retentionsvertrag; DENIED_PERMISSION bezeichnet einen behandelten Berechtigungsfehler; UNAVAILABLE_OBJECT übernimmt den Status eines gültigen Source-Fehlervertrags für ein nicht verfügbares Objekt; ERROR_HANDLED bezeichnet sonstige behandelte Vertrags-, Backend-, Transaktions- oder Finalisierungsfehler einschließlich Sourcefehlern mit 53763 nach Übernahme des eigenen Runs; PARTIAL bezeichnet einen erfolgreich gespeicherten vollständigen oder leeren Sourceabschluss. Ein erfolgreicher PARTIAL-Abschluss gibt IsPartial=1, ErrorNumber=NULL und im ErrorMessageOut die Vergleichsentscheidung aus. Fehlerhafte Sourceverträge nach Übernahme des eigenen Runs erzeugen keine Rohsamples, kein Kontextsample und keine erfundene Epoche. Ein gültiger Source-Fehlervertrag wird ohne numerische Roh- oder Kontextsamples und ohne Epoche abgeschlossen; nur dieser reguläre Fehlerpfad speichert bei aktivierter Payload-Policy auch den übergebenen Sourcevertrag als GZIP-Payload. Bei einem SQL- oder Validierungsfehler rollt der CATCH eine aktive Schreibtransaktion zurück. Nur nach Übernahme eines eigenen Runs und bei weiterhin bestätigter Targetidentität versucht er einen getrennten Fehlerabschluss mit ModuleStatus und Run-Update, ohne Payload. Dieser Versuch kann scheitern oder die nötigen Runbedingungen nicht mehr vorfinden; dann ist keine abgeschlossene Finalisierung zugesichert. FINALIZATION_UNCONFIRMED ist kein Status dieser Procedure.
+
 
 ### `[snapshot].[InternalCompleteFileIOCycle]`
 
