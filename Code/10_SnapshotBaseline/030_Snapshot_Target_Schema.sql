@@ -147,7 +147,7 @@ BEGIN TRY
 IF @SnapshotSchemaOwnTransaction=1 BEGIN TRANSACTION;
 ELSE SAVE TRANSACTION SQLSA_SnapshotSchema2;
 -- SNAPSHOT_SCHEMA_PREFLIGHT_BEGIN
--- Derived model SHA256: d42ec6e732bf1b9580d82fd6c149a84e9564ccd1a0b6d872ebe1b164801f4b42
+-- Derived model SHA256: fa33b864057b788e2e94865ed5d0e69cecb6dce17e8f09518caa6329fa0da123
 SET NOCOUNT ON; SET LOCK_TIMEOUT 10000;
 IF ISNULL(HAS_PERMS_BY_NAME(DB_NAME(),'DATABASE','CONTROL'),0)<>1 OR ISNULL(HAS_PERMS_BY_NAME(NULL,NULL,'VIEW ANY DEFINITION'),0)<>1 THROW 53901,N'Deployment requires CONTROL DATABASE and visible server metadata.',1;
 IF EXISTS(SELECT 1 FROM sys.triggers WHERE parent_class=0 AND is_disabled=0) OR EXISTS(SELECT 1 FROM sys.server_triggers WHERE is_disabled=0) THROW 53902,N'Active DDL triggers are unsupported.',1;
@@ -1182,7 +1182,7 @@ IF EXISTS(SELECT 1 FROM [snapshot].[MetricDefinition] AS [d]
  OR CONVERT(varbinary(max),[d].[Unit])<>CONVERT(varbinary(max),[e].[Unit]) OR [d].[ContractVersion]<>1)
  THROW 53780,N''Eine vorhandene Datei-I/O-Metrik widerspricht dem Vertrag.'',1;
 ';
-IF OBJECT_ID(N'[snapshot].[InternalCompleteFileIOCycle]',N'P') IS NOT NULL AND OBJECT_ID(N'[snapshot].[PackageVersion]',N'U') IS NOT NULL EXEC sys.sp_executesql N'IF NOT EXISTS(SELECT 1 FROM [snapshot].[PackageVersion] WHERE CONVERT(varbinary(max),PackageCode)=CONVERT(varbinary(max),''SC-023'') AND CONVERT(varbinary(max),PackageVersion) IN(CONVERT(varbinary(max),''1.3.0''),CONVERT(varbinary(max),''1.3.1'')) AND SchemaVersion=3) AND (OBJECT_DEFINITION(OBJECT_ID(N''[snapshot].[InternalCompleteFileIOCycle]'',N''P'')) IS NULL OR HASHBYTES(''SHA2_256'',CONVERT(varbinary(max),TRIM(NCHAR(9)+NCHAR(10)+NCHAR(13)+N'' '' FROM REPLACE(OBJECT_DEFINITION(OBJECT_ID(N''[snapshot].[InternalCompleteFileIOCycle]'',N''P'')),NCHAR(13)+NCHAR(10),NCHAR(10))))) NOT IN(0xe12d4cb08759d3201f76340d20a6450f3cc632bc83ea789d93a38fe3fd753cbf,0x5a2846e5b919adb69eae95cc4869f5a43b4b69b0b7fe57192a0a0dc002cee592)) THROW 53762,N''A noncanonical object occupies the new Wait helper name.'',1;';
+IF OBJECT_ID(N'[snapshot].[InternalCompleteFileIOCycle]',N'P') IS NOT NULL AND OBJECT_ID(N'[snapshot].[PackageVersion]',N'U') IS NOT NULL EXEC sys.sp_executesql N'IF NOT EXISTS(SELECT 1 FROM [snapshot].[PackageVersion] WHERE CONVERT(varbinary(max),PackageCode)=CONVERT(varbinary(max),''SC-023'') AND CONVERT(varbinary(max),PackageVersion) IN(CONVERT(varbinary(max),''1.3.0''),CONVERT(varbinary(max),''1.3.1'')) AND SchemaVersion=3) AND (OBJECT_DEFINITION(OBJECT_ID(N''[snapshot].[InternalCompleteFileIOCycle]'',N''P'')) IS NULL OR HASHBYTES(''SHA2_256'',CONVERT(varbinary(max),TRIM(NCHAR(9)+NCHAR(10)+NCHAR(13)+N'' '' FROM REPLACE(OBJECT_DEFINITION(OBJECT_ID(N''[snapshot].[InternalCompleteFileIOCycle]'',N''P'')),NCHAR(13)+NCHAR(10),NCHAR(10))))) NOT IN(0x92e85c1a4615841092f1dbaddd334cc50dc352a6a3c19ccdcff23a653395ad59,0x5a2846e5b919adb69eae95cc4869f5a43b4b69b0b7fe57192a0a0dc002cee592)) THROW 53762,N''A noncanonical object occupies the new Wait helper name.'',1;';
 DROP TABLE #SnapshotTargetSchema_ConstraintMap,#SnapshotTargetSchema_KnownForeignKeys,[#SnapshotTargetSchema_Expected_1],[#SnapshotTargetSchema_Expected_2],[#SnapshotTargetSchema_Expected_3],[#SnapshotTargetSchema_Expected_4],[#SnapshotTargetSchema_Expected_5],[#SnapshotTargetSchema_Expected_6],[#SnapshotTargetSchema_Expected_7],[#SnapshotTargetSchema_Expected_8],[#SnapshotTargetSchema_Expected_9],[#SnapshotTargetSchema_Expected_10];
 SET LOCK_TIMEOUT 0;
 -- SNAPSHOT_SCHEMA_PREFLIGHT_END
