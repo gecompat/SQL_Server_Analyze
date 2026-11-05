@@ -995,13 +995,63 @@ Native SQL-Fehler werden nicht durch CATCH abgefangen. Die Procedure besitzt kei
 
 Quelle: `Code/10_SnapshotBaseline/050_InternalCompletePerformanceCounterCycle.sql`
 
+Die Procedure übernimmt Ergebnisse eines Performance-Counter-Collectors aus einem JSON-Text und schreibt typisierte Snapshotdaten. Sie führt keine Quellmessung und keine Ratenberechnung aus. Der aufrufende Collector begrenzt die Eingabezeilen; diese Procedure setzt `CollectorPolicy.MaxRows` nicht durch.
+
 | Dimension | Beschreibung |
 |---|---|
-| Aufgabe | Normalisiert den transient übergebenen Performance-Counter-JSON-Vertrag und persistiert optionale Payloads. |
-| Schnittstelle | Interne Stored Procedure; Parameter: `@CaptureRunId bigint`; `@CollectorJson nvarchar(max)`; `@SourceStatusCode varchar(40)`; `@SourceIsPartial bit`; `@SourceErrorNumber int`; `@SourceErrorMessage nvarchar(2048)`; `@StatusCodeOut varchar(40) OUTPUT`; `@IsPartialOut bit OUTPUT`; `@ErrorNumberOut int OUTPUT`; `@ErrorMessageOut nvarchar(2048) OUTPUT`. Status-, Fehler- und weitere OUTPUT-Parameter werden ausschließlich zwischen Frameworkbausteinen weitergereicht. |
-| Verwendung | Öffentliche Procedures im Schema `monitor` rufen diesen Baustein zur Orchestrierung auf. Anwendungen sollen ihn weder direkt ausführen noch von seiner Parameterreihenfolge oder seinen temporären Zwischenstrukturen abhängen. |
-| Last und Sperren | Die Procedure schreibt nur in die ausdrücklich vorgesehenen Framework-, Snapshot- oder lokalen Ergebnisspeicher und kann lokale Temp-Tabellen materialisieren, unter `LOCK_TIMEOUT 0`. Sie darf nur über den zugehörigen öffentlichen Einstieg ausgeführt werden. |
-| Vertrag | Nicht öffentlicher Vertrag. Fehlerbehandlung, OUTPUT-Parameter und Seiteneffekte sind nur für den versiongleichen internen Aufrufer zugesichert. |
+| Aufgabe | Verarbeitet Counterdaten für eine vorhandene `CaptureRunId` und schreibt Scope-, Sample-, optional Payload- und Modulstatusdaten. |
+| Schnittstelle | Interne Stored Procedure mit zehn Pflichtargumenten ohne SQL-Defaults. Die Tabelle unten beschreibt jeden Parameter einzeln. |
+| Verwendung | Öffentliche Procedures im Schema `monitor` rufen diesen Baustein zur Orchestrierung auf. Anwendungen sollen ihn weder direkt ausführen noch von Parameterreihenfolge oder temporären Zwischenstrukturen abhängen. |
+| Last und Sperren | Die Procedure erstellt eine lokale Counterprojektion unter `LOCK_TIMEOUT 0` und schreibt in Snapshot- und Frameworktabellen. Die Eingabe wird nicht anhand von `CollectorPolicy.MaxRows` begrenzt. |
+| Vertrag | Nicht öffentlicher Vertrag für versiongleiche interne Aufrufer. Die Procedure besitzt keine eigene Transaktion und keine Atomaritäts- oder Rollback-Zusage; sie setzt `CaptureRun.EndedAtUtc` nicht. |
+
+#### `InternalCompletePerformanceCounterCycle`: Parametervertrag
+
+Jedes Argument ist bei jedem Aufruf anzugeben; die Signatur enthält keinen SQL-Default. Bei Auslassung entsteht ein Aufruffehler. Zulässiges NULL ersetzt die Pflicht zur Argumentübergabe nicht.
+
+| Parameter und Typ | Default und Pflicht | Eingabeform, NULL, Leerwert und Wirkung |
+|---|---|---|
+| `@CaptureRunId bigint` | Kein Default; Pflichtargument. | Erwartet eine vorhandene Lauf-ID. NULL ist syntaktisch übergebbar, kann aber bei abhängigen Constraints scheitern; ein fehlender Lauf wird nicht angelegt und kann bei schreibenden Vorgängen an Fremdschlüsseln scheitern. Die Procedure prüft weder Collectorfamilie noch offenen Lauf oder Quellidentität. Eine Leertexteingabe ist keine unterstützte Zahlenform; ein bestimmter Konvertierungsfehler wird nicht zugesichert. Samples, Payload und Modulstatus werden dieser ID zugeordnet. |
+| `@CollectorJson nvarchar(max)` | Kein Default; Pflichtargument. | Erwartet einen JSON-Text, keinen Dateinamen oder Pfad. NULL, leerer Text und ungültiges JSON werden als ungültiger Vertrag behandelt. Gültiges JSON wird mit OPENJSON projiziert; es gibt keine strikte Objekt-/Array-Schema-Prüfung. Ein gültiges Objekt oder Array ohne passende Counter kann null Samples ergeben, wobei Quellstatus und Partial-Wert unverändert initial bleiben. Bei passender Form gilt die Feldtabelle. |
+| `@SourceStatusCode varchar(40)` | Kein Default; Pflichtargument. | Akzeptiert NULL, einen Statuswert oder leeren Text; der Bereich wird nicht als Enum validiert. Bei gültigem JSON wird der Wert initial weitergereicht, NULL wird zu ERROR_HANDLED und leer bleibt leer. Bei ungültigem JSON bleiben DENIED_PERMISSION und UNAVAILABLE_OBJECT erhalten; alle anderen Werte ergeben ERROR_HANDLED. |
+| `@SourceIsPartial bit` | Kein Default; Pflichtargument. | Akzeptiert 0 (als nicht partiell markiert), 1 (als partiell markiert) oder NULL. NULL wird initial zur Laufzeit zu 1; kein SQL-Default. Leertext ist keine unterstützte Bit-Eingabeform; ein bestimmter Konvertierungsfehler wird nicht zugesichert. Bei gültigem JSON werden 0 oder 1 weitergereicht; ungültiges JSON setzt 1. Status und Partial-Wert werden nicht auf Konsistenz geprüft. |
+| `@SourceErrorNumber int` | Kein Default; Pflichtargument. | Akzeptiert NULL oder eine vorzeichenbehaftete int-Diagnosezahl; Leertext ist keine unterstützte Zahlenform, ohne Zusage eines bestimmten Konvertierungsfehlers. Die Zahl löst selbst keinen SQL-Fehler aus und wird zunächst weitergereicht. Ungültiges JSON ändert sie nicht; ein abgefangener Fehler ersetzt sie durch die native Fehlernummer. |
+| `@SourceErrorMessage nvarchar(2048)` | Kein Default; Pflichtargument. | Akzeptiert NULL oder Aufrufertext bis zur Typgrenze; SQL-leerer Text ist gültig und bleibt leer. Der Wert wird zunächst weitergereicht. Bei ungültigem JSON ersetzt eingebauter Text nur NULL. Ein abgefangener SQL-Fehler setzt ERROR_MESSAGE(). |
+| `@StatusCodeOut varchar(40) OUTPUT` | Kein Default; Pflichtargument. | Das Argument muss vom Typ varchar(40) sein. Sein eingehender Variablenwert wird ignoriert und darf uninitialisiert sein. Der Startwert ist COALESCE(@SourceStatusCode,'ERROR_HANDLED'). OUTPUT ist nur zum Empfangen in einer Variablen erforderlich; ohne OUTPUT kann das Pflichtargument übergeben und das Ergebnis verworfen werden. Bei ungültigem JSON gilt die Statusregel der Eingabe. Im CATCH ergeben Fehlernummern 229, 262, 297, 300 und 371 DENIED_PERMISSION, andere Fehler ERROR_HANDLED. Bei entweichenden nativen Fehlern ist keine erfolgreiche Ausgabe zugesichert. |
+| `@IsPartialOut bit OUTPUT` | Kein Default; Pflichtargument. | Argumenttyp bit; eingehender Variablenwert wird ignoriert und darf uninitialisiert sein. Startwert ist COALESCE(@SourceIsPartial,1). 0 markiert das Ergebnis als nicht partiell, 1 als partiell; die tatsächliche Vollständigkeit wird nicht nachgeprüft. Ungültiges JSON und abgefangene Fehler setzen 1. OUTPUT ist nur für den Empfang erforderlich; ohne OUTPUT kann das Pflichtargument übergeben und das Ergebnis verworfen werden. |
+| `@ErrorNumberOut int OUTPUT` | Kein Default; Pflichtargument. | Argumenttyp int; eingehender Wert wird ignoriert und darf uninitialisiert sein. Startwert ist `@SourceErrorNumber`; ungültiges JSON ändert ihn nicht, ein abgefangener Fehler ersetzt ihn durch die native Fehlernummer. OUTPUT ist nur zum Empfangen erforderlich; ohne OUTPUT kann das Pflichtargument übergeben und das Ergebnis verworfen werden. Bei entweichenden nativen Fehlern ist keine erfolgreiche Ausgabe zugesichert. |
+| `@ErrorMessageOut nvarchar(2048) OUTPUT` | Kein Default; Pflichtargument. | Argumenttyp nvarchar(2048); eingehender Wert wird ignoriert und darf uninitialisiert sein. Startwert ist `@SourceErrorMessage`; ungültiges JSON verwendet eingebauten Text nur bei NULL, leer bleibt leer. Ein abgefangener Fehler ersetzt den Wert durch ERROR_MESSAGE(). OUTPUT ist nur zum Empfangen erforderlich; ohne OUTPUT kann das Pflichtargument übergeben und das Ergebnis verworfen werden. Bei entweichenden nativen Fehlern ist keine erfolgreiche Ausgabe zugesichert. |
+
+#### `InternalCompletePerformanceCounterCycle`: JSON-Feldprojektion
+
+OPENJSON verwendet für `$.counters` den lax-Modus und ordnet Pfadschlüssel case-sensitiv zu. Zuerst wird `$.counters` gewählt; die Tabelle nennt die expliziten Pfade relativ zum jeweiligen Objekt oder Arrayelement. Die vier als erforderlich markierten Felder werden nach der Projektion auf NULL geprüft und filtern betroffene Zeilen still heraus. Konvertierungsfehler eines nicht passenden Werts können dagegen in den CATCH-Pfad gelangen.
+
+| JSON-Pfad | Zieltyp | NULL und Wirkung |
+|---|---|---|
+| `$.ObjectName` | nvarchar(128) | Erforderlich nach Projektion; NULL filtert die Zeile. Leerer Text ist zulässig. |
+| `$.CounterName` | nvarchar(128) | Erforderlich nach Projektion; NULL filtert die Zeile. Leerer Text ist zulässig. |
+| `$.InstanceName` | nvarchar(128) | Erforderlich nach Projektion; NULL filtert die Zeile. Leerer Text ist zulässig. |
+| `$.CounterType` | int | Erforderlich nach Projektion; NULL filtert die Zeile. |
+| `$.MetricValue` | decimal(38,6) | Optional; ein Wert erzeugt ein interpretiertes Sample. Der Collector liefert ihn, die Procedure berechnet ihn nicht. |
+| `$.MetricUnit` | varchar(40) | Optional; wird in die Counter-Scope-Identität aufgenommen. Der Wert wird nicht aus einer Metrik abgeleitet. |
+| `$.AfterValue` | bigint | Optional; ein Wert erzeugt ein Rohsample. |
+| `$.FindingCode` | varchar(80) | Optional; NULL oder leer wird zu MEASURED, sonst wird der Text als QualityCode übernommen. Keine Enum-Prüfung. |
+
+Wenn sowohl `MetricValue` als auch `AfterValue` vorhanden sind, entstehen beide Samplearten. Fehlende erforderliche Felder können ohne Fehler null Samples ergeben. Nicht konvertierbare Werte können einen SQL-Fehler verursachen und werden nicht als stille Filterung zugesichert. Ein Strukturbeispiel mit hypothetischen Werten hat die Form `{"meta":{"sqlServerStartTime":"2026-07-21T10:00:00"},"counters":[{"ObjectName":"SQLServer:General Statistics","CounterName":"User Connections","InstanceName":"_Total","CounterType":65792,"MetricValue":12.000000,"MetricUnit":"connections","AfterValue":12,"FindingCode":null}]}`.
+
+#### `InternalCompletePerformanceCounterCycle`: Persistenz, Metadaten und Grenzen
+
+Bei gültigem JSON wird `$.meta.sqlServerStartTime` mit TRY_CONVERT als datetime2(3) gelesen; fehlender oder nicht konvertierbarer Inhalt ergibt NULL, ohne UTC-Umrechnung. JSON ohne Counter kann null Samples ergeben; in diesem Fall bleibt der initiale Quellstatus und Partial-Wert bestehen.
+
+Vor TRY initialisiert die Procedure die OUTPUT-Werte und erstellt unter `LOCK_TIMEOUT 0` eine lokale Temp-Tabelle. Fehler bei diesem CREATE liegen außerhalb des CATCH. Im TRY-Pfad verwendet oder ergänzt sie SERVER- und PERFORMANCE_COUNTER-Scope-Zeilen, schlägt die festen Metrikdefinitionen PERFORMANCE_COUNTER_RAW und PERFORMANCE_COUNTER_INTERPRETED nach und schreibt MetricSample- sowie ModuleStatus-Zeilen.
+
+Nur bei `PayloadEnabled=1` für PERFORMANCE_COUNTERS wird der originale JSON-Text als GZIP in PayloadSnapshot geschrieben. Hash und Payload beziehen sich auf den Originaltext ohne Kanonisierung; die mittels LEN gespeicherte Zeichenanzahl ist keine vollständige Speicherbytezählung. Die Procedure aktualisiert CaptureRun.SqlServerStartTimeUtc und CaptureRun.ResetEpochId, nicht aber StartedAtUtc oder EndedAtUtc. Sie verwendet die Epoch aus dem Lauf mit höchster CaptureRunId, dessen geparste Startzeit übereinstimmt und dessen Epoch nicht NULL ist; andernfalls erzeugt sie NEWID(). Dies beweist keine Identität des Quellservers.
+
+Im CATCH werden native Fehler 229, 262, 297, 300 und 371 als DENIED_PERMISSION, andere native Fehler als ERROR_HANDLED ausgegeben; Partial wird auf 1 und Fehlernummer/-text auf die nativen Werte gesetzt. Danach versucht der CATCH einen weiteren ModuleStatus-INSERT, der selbst scheitern kann, etwa wegen einer bereits vorhandenen Modulzeile. Entweichende native Fehler, darunter Fehler außerhalb TRY und Fehler des zweiten INSERT, haben keine zugesicherte erfolgreiche Ausgabe. Es gibt keine eigene Transaktion und keine Atomaritäts- oder Rollback-Zusage. Ein separater Finalisierer setzt EndedAtUtc. Die Procedure setzt CollectorPolicy.MaxRows nicht durch; diese Begrenzung muss der Collector vor dem Aufruf einhalten.
+
+#### `InternalCompletePerformanceCounterCycle`: JSON-Quellen
+
+Die SQL-Server-Dokumentation beschreibt die case-sensitive BIN2-Zuordnung von JSON-Pfaden und den lax-Standardmodus in [OPENJSON (Transact-SQL)](https://learn.microsoft.com/en-us/sql/t-sql/functions/openjson-transact-sql?view=sql-server-ver17). Die Projektion eines Objekts oder von Arrayelementen mit explizitem WITH-Schema ist in [OPENJSON mit explizitem Schema](https://learn.microsoft.com/en-us/sql/relational-databases/json/use-openjson-with-an-explicit-schema-sql-server?view=sql-server-ver17) beschrieben.
 
 ### `[snapshot].[InternalCompleteWaitStatsCycle]`
 
