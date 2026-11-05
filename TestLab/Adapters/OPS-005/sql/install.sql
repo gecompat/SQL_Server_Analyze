@@ -7607,7 +7607,6 @@ BEGIN
     END CATCH;
 END;
 GO
-
 -- END SOURCE: Code/01_Common/099a_USP_InternalParseXmlText.sql
 
 -- BEGIN SOURCE: Code/01_Common/070_USP_CheckFrameworkCapabilities.sql
