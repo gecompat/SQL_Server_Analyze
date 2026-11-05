@@ -60,6 +60,15 @@ haben jeweils Maintainerrolle und Trigger. Die Übernahme erklärt deshalb
 keine vollständige Dokumentationskonformität. Breite Migrationen und
 historische Umbenennungen sind nicht Teil dieses Upgrades.
 
+**Aktuelle Disposition (5. November 2026):** Die damalige Sichtung oben bleibt
+als Assessment vom 22. Oktober erhalten. Der kurze Metadaten-Einstieg wurde
+nachgeführt; die Next-Steps-Historie ist in ein separates Archiv ausgelagert,
+während [Next Steps](../Quality/Next_Steps.md) als aktueller Einstieg auf die
+[maßgebliche Entwicklungsplanung](../Quality/Development_Waves_2026-10.md)
+verweist. Der TestLab-Lesepfad wurde separat geklärt. Diese Nachführungen
+ändern keine Governance-Regel und behaupten keine vollständige
+Dokumentationskonformität.
+
 ## Semantische Erhaltung und Verarbeitungsaufwand
 
 | Tatsächlicher Weg | Disposition und begrenzte Begründung |
