@@ -955,11 +955,41 @@ Quelle: `Code/10_SnapshotBaseline/040_InternalPrepareCollectionCycle.sql`
 
 | Dimension | Beschreibung |
 |---|---|
-| Aufgabe | Prüft Due-Zeit und Softbudget vor jedem Quellread und eröffnet den Lauf. |
-| Schnittstelle | Interne Stored Procedure; Parameter: `@SourceDatabaseName sysname`; `@SchedulerType varchar(16)`; `@RunEvenIfNotDue bit`; `@CaptureRunIdOut bigint OUTPUT`; `@ShouldCollectOut bit OUTPUT`; `@StatusCodeOut varchar(40) OUTPUT`; `@ErrorMessageOut nvarchar(2048) OUTPUT`. Additive Target-Backendparameter: `@CollectorCode varchar(64)`; `@ExpectedTargetDatabaseId int`; `@ExpectedTargetDatabaseName sysname`; `@ExpectedTargetCreateDate datetime`; `@PolicyOnly bit=0`. Mit `1` prüft der Waitpfad Enabled und Due ohne Budgetread oder Writes und liefert keine Run-ID. Status-, Fehler- und weitere OUTPUT-Parameter werden ausschließlich zwischen Frameworkbausteinen weitergereicht. |
-| Verwendung | Öffentliche Procedures im Schema `monitor` rufen diesen Baustein zur Orchestrierung auf. Anwendungen sollen ihn weder direkt ausführen noch von seiner Parameterreihenfolge oder seinen temporären Zwischenstrukturen abhängen. |
-| Last und Sperren | Die Procedure schreibt nur in die ausdrücklich vorgesehenen Framework-, Snapshot- oder lokalen Ergebnisspeicher unter `LOCK_TIMEOUT 0`. Sie darf nur über den zugehörigen öffentlichen Einstieg ausgeführt werden. |
-| Vertrag | Nicht öffentlicher Vertrag. Fehlerbehandlung, OUTPUT-Parameter und Seiteneffekte sind nur für den versiongleichen internen Aufrufer zugesichert. |
+| Aufgabe | Prüft Zielidentität, Collectorvertrag, Aktivierung, Datenbudget und Fälligkeit; eröffnet abhängig vom Collector einen Lauf oder gibt einen Policy-Status zurück. |
+| Schnittstelle | Interne Stored Procedure mit zwölf Parametern. Die vier OUTPUT-Parameter sind `@CaptureRunIdOut` bigint OUTPUT, `@ShouldCollectOut` bit OUTPUT, `@StatusCodeOut` varchar(40) OUTPUT und `@ErrorMessageOut` nvarchar(2048) OUTPUT; die übrigen acht sind Eingaben. |
+| Verwendung | Öffentliche Procedures im Schema monitor rufen den Baustein zur Orchestrierung auf. Anwendungen sollen ihn nicht direkt ausführen und nicht von Parameterreihenfolge oder internen Zwischenstrukturen abhängen. |
+| Last und Sperren | Liest Richtlinien, Laufhistorie, Zieldatenbankmetadaten und außerhalb PolicyOnly die Größe aktueller Datenbankdateien. Kann CaptureRun und bei nicht sammelndem PERFORMANCE_COUNTERS ModuleStatus schreiben. Setzt LOCK_TIMEOUT 0; keine eigene Transaktion und kein CATCH für native Fehler. |
+| Vertrag | Nicht öffentlicher Vertrag für versiongleiche interne Aufrufer. Keine globale Serialisierung oder atomare Mehrstatement-Ausführung zugesichert. |
+
+#### Parameter von InternalPrepareCollectionCycle
+
+| Parameter | Vertrag |
+|---|---|
+| `@SourceDatabaseName` | sysname; **Default: Kein Default. Weglassen ist nicht zulässig.** Obligatorischer Rohname und reines Label der Quellmetadaten; keine Validierung einer existierenden Datenbank, kein Datenbankwechsel oder Lookup. Leertext wird beim INSERT gespeichert. NULL scheitert nur bei einem tatsächlich ausgeführten INSERT an NOT NULL; ohne INSERT wird er nicht geschrieben. |
+| `@SchedulerType` | varchar(16); **Default: Kein Default. Weglassen ist nicht zulässig.** Pflichtwert MANUAL (manueller Aufruf), EXTERNAL (externer Scheduler) oder SQL_AGENT (SQL Server Agent). Herkunftslabel, startet/verifiziert keinen Scheduler. Keine explizite Normalisierung. NULL, leer oder ungültig kann beim INSERT an NOT NULL/CHECK scheitern; ohne INSERT ungenutzt. |
+| `@RunEvenIfNotDue` | bit; **Default: Kein Default. Weglassen ist nicht zulässig.** 0 prüft Due, 1 übergeht nur Due. Leerer Text ist keine unterstützte Schalterform. NULL wird nicht validiert und umgeht durch den =0-Test ebenfalls Due. Disabled-, Budget- und Target-Gates bleiben wirksam. |
+| `@CaptureRunIdOut` | bigint OUTPUT; **Default: Kein Default. Weglassen ist nicht zulässig.** Eintritt NULL, Eingang ignoriert; ohne OUTPUT wird die Ausgabe verworfen. Zum Empfang ist eine gebundene Variable als OUTPUT-Argument erforderlich. ID erst nach INSERT. Performance-Counter-Abbrüche durch Disabled/Budget/Due schreiben beendeten partiellen Lauf samt ModuleStatus; ID ist kein Sammlungsbeweis. Wait/File frühe Abbrüche ohne ID; PolicyOnly immer ohne Lauf/ID. |
+| `@ShouldCollectOut` | bit OUTPUT; **Default: Kein Default. Weglassen ist nicht zulässig.** Eintritt 0, Eingang ignoriert; ohne OUTPUT kann die Ausgabe verworfen werden. Zum Empfang ist eine gebundene Variable als OUTPUT-Argument erforderlich. Nach INSERT nur bei AVAILABLE 1; PolicyOnly bleibt 0. |
+| `@StatusCodeOut` | varchar(40) OUTPUT; **Default: Kein Default. Weglassen ist nicht zulässig.** Eintritt AVAILABLE, Eingang ignoriert; ohne OUTPUT kann die Ausgabe verworfen werden. Zum Empfang ist eine gebundene Variable als OUTPUT-Argument erforderlich. Genau AVAILABLE (bereit), INVALID_PARAMETER (ungültiger Collector/PolicyOnly/Wait-Transaktionszustand), TARGET_UNAVAILABLE (Ziel/Vertrag nicht verfügbar), DISABLED (Policy deaktiviert/fehlt), STOPPED_SIZE_BUDGET (Budget überschritten), SKIPPED_NOT_DUE (Intervall offen). RUNNING ist CaptureRun-Zeilenstatus, kein Ausgabe-Enum; native Fehler werden nicht allgemein übersetzt. |
+| `@ErrorMessageOut` | nvarchar(2048) OUTPUT; **Default: Kein Default. Weglassen ist nicht zulässig.** Eintritt NULL, Eingang ignoriert; ohne OUTPUT kann die Ausgabe verworfen werden. Zum Empfang ist eine gebundene Variable als OUTPUT-Argument erforderlich. Statusdiagnose oder NULL; native SQL-Fehler können direkt abbrechen. |
+| `@CollectorCode` | varchar(64); **Default: PERFORMANCE_COUNTERS. Weglassen verwendet PERFORMANCE_COUNTERS.** NULL wird leer, dann UPPER und Entfernen äußerer U+0020-Leerzeichen. Exakt PERFORMANCE_COUNTERS (Performance Counter), WAIT_STATS (Wait-Statistiken), FILE_IO (Datei-I/O); leer/anderer normalisierter Wert ergibt INVALID_PARAMETER. |
+| `@ExpectedTargetDatabaseId` | int; **Default: NULL. Weglassen verwendet NULL.** Ziel-ID; NULL nur bei identitätslosem Performance-Counter-Aufruf. Sobald irgendeine Identitätskomponente gesetzt ist und immer für Wait/File sind alle drei Pflicht. Die ID ist eine ganze Zahl größer als 4 und muss DB_ID() der aktuellen Datenbank entsprechen; die master-Zieldatenbank muss online und beschreibbar sein. Leertext ist keine unterstützte Ganzzahleingabe; eine abweichende Identität ergibt TARGET_UNAVAILABLE. |
+| `@ExpectedTargetDatabaseName` | sysname; **Default: NULL. Weglassen verwendet NULL.** Zielname, binärer Vergleich. NULL nur im identitätslosen Performance-Counter-Fall; sonst alle drei Pflicht. Leertext ist keine unterstützte Eingabe; ein nicht passender gesetzter Name ergibt TARGET_UNAVAILABLE. |
+| `@ExpectedTargetCreateDate` | datetime; **Default: NULL. Weglassen verwendet NULL.** Exakter datetime-Wert von master.sys.databases.create_date, ohne UTC-Umrechnung. NULL nur im identitätslosen PERFORMANCE_COUNTERS-Fall; sonst sind alle drei Identitätsfelder Pflicht. Leertext ist keine unterstützte Datumsangabe. Abweichung ergibt TARGET_UNAVAILABLE. |
+| `@PolicyOnly` | bit; **Default: 0. Weglassen verwendet 0.** 0 normaler Pfad mit Budgetread und vorgesehenen Writes. 1 nur WAIT_STATS/FILE_IO: Enabled/Due aus abgeschlossener Historie; der SoftBudgetMB-Policywert wird zuvor gelesen, Dateigrößenmessung, Budgetvergleich und Writes entfallen, keine Run-ID und ShouldCollect 0 auch bei AVAILABLE. NULL ergibt INVALID_PARAMETER; leerer Text ist keine unterstützte Eingabe. Wait/File sind auch hier nur ohne Callertransaktion und ohne aktivierte implizite Transaktionen zulässig. |
+
+
+#### Zulassung und Grenzen von InternalPrepareCollectionCycle
+
+Die Target-Identität wird für WAIT_STATS und FILE_IO immer verlangt. Für PERFORMANCE_COUNTERS wird sie geprüft, sobald ein Identitätsfeld übergeben ist. Der Wait-/File-Paketcheck verlangt genau eine PackageVersion mit SC-023-Version 1.2.1 und Schema 2 oder 1.3.0 beziehungsweise 1.3.1 und Schema 3 sowie die Procedure InternalCompleteWaitStatsCycle und den Parameter `@ContractOnly` von InternalPurgeExpiredData. FILE_IO erfordert zusätzlich Version 1.3.1 mit Schema 3. PERFORMANCE_COUNTERS hat kein entsprechendes Package-Gate. Diese Prüfung führt kein Purge aus.
+
+Das Softbudget wird exakt als SUM(size der sys.database_files-Zeilen mit type=0) * 8 / 1024 MB berechnet. Es beschreibt die allokierte Kapazität der Datendateien der aktuellen Datenbank. Logdateien gehen nicht in die Summe ein; der Wert misst keine tatsächlich belegten Snapshot- oder Payloadbytes. Ein Wert strikt über SoftBudgetMB stoppt die Admission, Gleichheit besteht die Prüfung. Die Procedure selbst führt kein Purge aus.
+
+Die Due-Prüfung verwendet den jüngsten abgeschlossenen Lauf nach CaptureRunId, also eine Zeile mit nicht-NULL EndedAtUtc. Im normalen PERFORMANCE_COUNTERS-Pfad zählen nur Status AVAILABLE oder PARTIAL. WAIT_STATS und FILE_IO sowie PolicyOnly werten jeden abgeschlossenen Status aus. RunEvenIfNotDue=1 übergeht nur die Due-Prüfung.
+
+PolicyOnly ist ausschließlich für WAIT_STATS und FILE_IO verfügbar. Es liest den SoftBudgetMB-Policywert mit der Policyquelle und prüft Enabled sowie Due anhand der Historie; es misst keine Dateigrößen, führt keinen Budgetvergleich aus und schreibt nichts; es erzeugt keine CaptureRun-ID und ShouldCollectOut bleibt auch bei AVAILABLE 0. Bei fehlgeschlagener normaler Admission schreiben WAIT_STATS und FILE_IO ebenfalls keine Zeilen. PERFORMANCE_COUNTERS schreibt bei Disabled, Budgetstopp oder Due-Skip dagegen einen beendeten partiellen CaptureRun samt ModuleStatus ohne Quellread.
+
+Native SQL-Fehler werden nicht durch CATCH abgefangen. Die Procedure besitzt keine eigene Transaktion und keine Admission-Reservierung oder Serialisierung. Die beiden Writes des PERFORMANCE_COUNTERS-Abbruchpfads können bei einem nativen Fehler teilweise erfolgt sein; parallele Aufrufe bilden keine globale genau-einmalige Admission.
 
 ### `[snapshot].[InternalCompletePerformanceCounterCycle]`
 
@@ -1003,11 +1033,28 @@ Quelle: `Code/10_SnapshotBaseline/060_InternalFinalizeCollectionCycle.sql`
 
 | Dimension | Beschreibung |
 |---|---|
-| Aufgabe | Schließt einen eröffneten Lauf mit Status und technischen Zeilensummen ab. |
-| Schnittstelle | Interne Stored Procedure; Parameter: `@CaptureRunId bigint`; `@StatusCode varchar(40)`; `@IsPartial bit`; `@ErrorNumber int`; `@ErrorMessage nvarchar(2048)`. Status-, Fehler- und weitere OUTPUT-Parameter werden ausschließlich zwischen Frameworkbausteinen weitergereicht. |
-| Verwendung | Öffentliche Procedures im Schema `monitor` rufen diesen Baustein zur Orchestrierung auf. Anwendungen sollen ihn weder direkt ausführen noch von seiner Parameterreihenfolge oder seinen temporären Zwischenstrukturen abhängen. |
-| Last und Sperren | Die Procedure schreibt nur in die ausdrücklich vorgesehenen Framework-, Snapshot- oder lokalen Ergebnisspeicher unter `LOCK_TIMEOUT 0`. Sie darf nur über den zugehörigen öffentlichen Einstieg ausgeführt werden. |
-| Vertrag | Nicht öffentlicher Vertrag. Fehlerbehandlung, OUTPUT-Parameter und Seiteneffekte sind nur für den versiongleichen internen Aufrufer zugesichert. |
+| Aufgabe | Schreibt Abschlussstatus und Diagnosedaten in die adressierte CaptureRun-Zeile und zählt zugehörige MetricSample- und PayloadSnapshot-Zeilen. |
+| Schnittstelle | Interne Stored Procedure mit fünf obligatorischen Eingabeparametern. Keine OUTPUT-Parameter und kein Resultset. |
+| Verwendung | Öffentliche Procedures im Schema monitor rufen den Baustein zur Orchestrierung auf. Anwendungen sollen ihn nicht direkt ausführen und nicht von Parameterreihenfolge oder internen Zwischenstrukturen abhängen. |
+| Last und Sperren | Aktualisiert die passende CaptureRun-Zeile, setzt EndedAtUtc auf SYSUTCDATETIME() und berechnet MetricSampleCount sowie PayloadCount per COUNT_BIG aus MetricSample und PayloadSnapshot. Eine beendete Zeile darf erneut finalisiert werden. Es gibt keine zugesicherte stabile gemeinsame Momentaufnahme bei konkurrierenden Änderungen, keine eigene Transaktion und keinen CATCH für native Fehler; LOCK_TIMEOUT ist 0. |
+| Vertrag | Nicht öffentlicher Vertrag für versiongleiche interne Aufrufer. Keine einmalige Finalisierung oder stabile gemeinsame Zählmomentaufnahme zugesichert. |
+
+#### Parameter von InternalFinalizeCollectionCycle
+
+| Parameter | Vertrag |
+|---|---|
+| `@CaptureRunId` | bigint; **Default: Kein Default. Weglassen ist nicht zulässig.** Einzelne Pflicht-ID, keine Positivitäts-/Existenzprüfung. NULL/kein Treffer aktualisiert null Zeilen ohne eigene Fehlermeldung; erneute Finalisierung möglich. Fehlendes Argument scheitert beim Aufruf, nicht gleich NULL. |
+| `@StatusCode` | varchar(40); **Default: Kein Default. Weglassen ist nicht zulässig.** Pflichttext unverändert. CaptureRun hat keine Status-CHECK-Wertemenge; jeder nicht-NULL-Text inklusive Leertext ist speicherbar. NULL scheitert bei Treffer an NOT NULL. Keine IsPartial-Konsistenzprüfung. |
+| `@IsPartial` | bit; **Default: Kein Default. Weglassen ist nicht zulässig.** Pflichtwert 0 = nicht partiell, 1 = partiell; leerer Text ist keine unterstützte Schalterform; direkte Speicherung. NULL scheitert bei Treffer an NOT NULL. Keine Statuskonsistenzprüfung. |
+| `@ErrorNumber` | int; **Default: Kein Default. Weglassen ist nicht zulässig.** Pflichtargument; NULL löscht den nullable Spaltenwert. Jede vorzeichenbehaftete int-Zahl wird als Callerdiagnose gespeichert, ohne Validierung oder Fehlerauslösung. |
+| `@ErrorMessage` | nvarchar(2048); **Default: Kein Default. Weglassen ist nicht zulässig.** Pflichtargument; NULL löscht, Leertext wird gespeichert. Unveränderter Unicode-Rohtext wird nicht ausgeführt oder normalisiert. |
+
+
+#### Abschluss und Grenzen von InternalFinalizeCollectionCycle
+
+Bei passender CaptureRunId setzt die Procedure EndedAtUtc auf SYSUTCDATETIME(), übernimmt die Eingaben StatusCode, IsPartial, ErrorNumber und ErrorMessage und setzt MetricSampleCount sowie PayloadCount auf die jeweiligen COUNT_BIG-Ergebnisse aus MetricSample und PayloadSnapshot. Eine beendete Zeile darf erneut finalisiert werden.
+
+Die beiden Zählabfragen garantieren bei konkurrierenden Änderungen keine stabile gemeinsame Momentaufnahme. Es gibt keine eigene Transaktion und keinen CATCH für native Fehler; LOCK_TIMEOUT ist 0. Ohne passende Lauf-ID bleibt die Zeilenanzahl null, ohne Resultset oder eigene Fehlermeldung.
 
 ### `[snapshot].[InternalPurgeExpiredData]`
 
