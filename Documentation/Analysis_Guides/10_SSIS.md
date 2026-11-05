@@ -17,6 +17,8 @@ Der erste SSIS-001-Slice liest ausschließlich direkt übergebenes DTSX-v2-XML. 
 
 Schema v3 ergänzt `variables` als dreizehntes RAW-Resultset. TABLE und JSON verwenden denselben begrenzten Variablenexport mit Scopezuordnung, Namespace, Name, Datentypcode und Booleanmetadaten. Event-Handler-Scope bleibt ausdrücklich begrenzt; Variablenwerte werden nicht gelesen oder ausgegeben. Der [öffentliche Vertrag](../Architecture/SSIS_001_Phase0_Public_Contract.md) beschreibt Schema, Defaults, NULL-Werte und Partialität.
 
+Die [individuelle Parameterreferenz](Procedures/USP_SsisPackageAnalysis.md#parameter-und-eingabeformen) erklärt alle 19 Argumente und ihre tatsächlichen Grenzen. PackageParametersJson wird hier nicht ausgewertet; MaxDurationSeconds prüft nur den Zahlenbereich und erzwingt keine Laufzeitfrist. RAW-Zeilenlimits und die ausschließlich auf variables wirkende Begrenzung für TABLE/JSON sind getrennt beschrieben.
+
 ## [monitor].[USP_SsisCatalogExecutionAnalysis]
 
 Der Kataloganalyzer liest genau eine explizite lokale SSISDB-Ausführung. Er trennt Ausführungsstatus, Executable-Statistik, strukturierte Ereignisse, Parameterdefinitionen, Phasen und Row-Flow von Quellenfehlern. Meldungstexte, Parameterwerte, Pfade und Identitäten bleiben ausgeschlossen. Der [freigegebene Katalogvertrag](../Architecture/SSIS_001_Phase0_Public_Contract.md#konkreter-katalogvertrag-vom-16-oktober-2026) und die [Procedure-Anleitung](Procedures/USP_SsisCatalogExecutionAnalysis.md) beschreiben Limits, Sichtbarkeit und Aussagegrenzen. Der separate Legacy-Analyzer besitzt den nachfolgend beschriebenen freigegebenen Umfang.
