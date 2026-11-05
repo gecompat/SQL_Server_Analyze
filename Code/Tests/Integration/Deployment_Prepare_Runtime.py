@@ -3615,6 +3615,28 @@ LEGACY_TARGET_V1_3_0_PATCHES = {'020_InternalConfigureSnapshotPolicy.sql': ('d6d
                                         '                  )\n'
                                         '              );\n')])}
 
+# Frozen leading headers from public-main source 9c6c392bcade88e270a0a0d65b16c16dc4bde856; fixture compatibility metadata only.
+# Historical route digests continue to bind the restored complete helper text.
+LEGACY_SNAPSHOT_HEADERS = {
+    "020_InternalConfigureSnapshotPolicy.sql": "/*\n===============================================================================\nObjekt       : snapshot.InternalConfigureSnapshotPolicy\nVersion      : 1.2.0\nStand        : 2026-10-26\nZweck        : Schreibt die typisierten SC-023-Policies in der aktuell\n               verbundenen Snapshot-Datenbank.\n===============================================================================\n*/\n",
+    "040_InternalPrepareCollectionCycle.sql": "/*\n===============================================================================\nObjekt       : snapshot.InternalPrepareCollectionCycle\nVersion      : 1.2.0\nStand        : 2026-10-26\nZweck        : Prüft Intervall und Größenbudget und eröffnet genau einen Lauf.\n===============================================================================\n*/\n",
+    "055_InternalCompleteWaitStatsCycle.sql": "/*\n===============================================================================\nObjekt       : snapshot.InternalCompleteWaitStatsCycle\nVersion      : 1.0.1\nStand        : 2026-10-26\nZweck        : Die Procedure bindet einen vollständigen Waitread an seinen Run\n               und speichert Rohwerte und Differenzkandidaten atomar.\nGrenze       : Monotonie beweist keine ununterbrochene Resetkontinuität.\n===============================================================================\n*/\n",
+    "070_InternalPurgeExpiredData.sql": "/*\n===============================================================================\nObjekt       : snapshot.InternalPurgeExpiredData\nVersion      : 1.1.0\nStand        : 2026-10-25\nZweck        : Löscht ausschließlich abgelaufene Snapshotdaten child-first in\n               begrenzten Batches; nicht abgelaufene Daten bleiben erhalten.\n===============================================================================\n*/\n",
+    "057_InternalCompleteFileIOCycle.sql": "/*\n===============================================================================\nObjekt       : snapshot.InternalCompleteFileIOCycle\nVersion      : 1.1.0\nStand        : 2026-10-26\nZweck        : Die Procedure bindet Datei-I/O-Rohwerte und Vergleichskontexte\n               atomar an einen vorbereiteten eigenen Lauf.\nGrenze       : Monotone Kandidaten beweisen keine Resetkontinuität.\n===============================================================================\n*/\n",
+}
+
+def restore_historical_snapshot_header(name, text):
+    header=LEGACY_SNAPSHOT_HEADERS.get(name)
+    if header is None:
+        raise RuntimeError('Missing frozen Snapshot header: '+name)
+    tokens=g.tokens(text)
+    procedure='['+Path(name).stem.split('_',1)[1]+']'
+    expected=('CREATE','OR','ALTER','PROCEDURE','[snapshot]','.',procedure)
+    if len(tokens)<len(expected) or tuple(token.value for token in tokens[:len(expected)])!=expected:
+        raise RuntimeError('Frozen Snapshot header requires its canonical module: '+name)
+    return header+text[tokens[0].start:]
+
+
 FILE_IO_METRIC_CODES = ('IO_READ_COUNT', 'IO_READ_BYTES', 'IO_READ_STALL_MS', 'IO_WRITE_COUNT', 'IO_WRITE_BYTES', 'IO_WRITE_STALL_MS', 'IO_SIZE_ON_DISK_BYTES', 'IO_READ_COUNT_DELTA_CANDIDATE', 'IO_READ_BYTES_DELTA_CANDIDATE', 'IO_READ_STALL_MS_DELTA_CANDIDATE', 'IO_WRITE_COUNT_DELTA_CANDIDATE', 'IO_WRITE_BYTES_DELTA_CANDIDATE', 'IO_WRITE_STALL_MS_DELTA_CANDIDATE', 'IO_DELTA_STATUS', 'IO_FILE_CONTEXT', 'IO_CAPTURE_CONTEXT')
 
 def snapshot_schema_cases(deployed, tables):
@@ -3646,7 +3668,7 @@ def snapshot_schema_cases(deployed, tables):
         raise RuntimeError('Released Wait recovery hash does not bind the actual 1.2.0 fixture')
     historical_ready={}
     for name,(digest,patches) in LEGACY_TARGET_V1_2_1_PATCHES.items():
-        text=current[name]
+        text=restore_historical_snapshot_header(name,current[name])
         for fragment,released in patches:
             if text.count(fragment)!=1: raise RuntimeError('Released1.2.1 fixture fragment changed: '+name)
             text=text.replace(fragment,released,1)
@@ -3657,7 +3679,7 @@ def snapshot_schema_cases(deployed, tables):
         raise RuntimeError('Released1.2.1 stored helper binding changed')
     historical_file_io={}
     for name,(digest,patches) in LEGACY_TARGET_V1_3_0_PATCHES.items():
-        text=current[name]
+        text=restore_historical_snapshot_header(name,current[name])
         for fragment,released in patches:
             if text.count(fragment)!=1: raise RuntimeError('Released1.3.0 fixture fragment changed: '+name)
             text=text.replace(fragment,released,1)
