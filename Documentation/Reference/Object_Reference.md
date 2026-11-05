@@ -1423,11 +1423,44 @@ Quelle: `Code/10_SnapshotBaseline/076_InternalValidateSnapshotWaitTarget.sql`
 
 | Dimension | Beschreibung |
 |---|---|
-| Aufgabe | Prüft die tatsächliche Wait-Zielidentität, Abschlussversion, verwendeten Signaturen, neun Metrikdefinitionen und den lesenden Retentionsvertrag. |
-| Schnittstelle | Zielname, optional erwartete ID/Erstellungszeit und Collectorcode mit Default WAIT_STATS; FILE_IO verlangt 1.3.1 / Schema 3 und 16 Datei-I/O-Metrikdefinitionen. OUTPUT liefert die tatsächliche ID, Erstellungszeit, Status und Fehlergrenze. Der Retentionsprobeaufruf muss beim vollständigen Target 1.2.1 / Schema 2 Vertragsversion 1 und bei 1.3.0 / Schema 3 Vertragsversion 2 beziehungsweise bei 1.3.1 / Schema 3 Vertragsversion 3 sowie AVAILABLE und keine Fehlernummer bestätigen; Die Run-ID bleibt NULL und das Budgetsignal 0. Eine abweichende Signatur verhindert die Aufnahme vor Writes. |
-| Verwendung | Konfiguration und Collection verwenden denselben internen Aufnahmevertrag. Anwendungen verwenden die öffentlichen Snapshot-Procedures. |
-| Last und Sperren | Wenige Katalog- und Policyreads ohne persistente Writes; der Retentionsaufruf verwendet ausschließlich ContractOnly. |
-| Vertrag | Ein Versionsmarker allein reicht nicht. Der interne Vertrag setzt eine vertrauenswürdige installierte Paketnamespace voraus; er beweist keine administrative Codeintegrität. |
+| Aufgabe | Prüft die gebundene Zielidentität, tatsächlich benötigte Wait- oder Datei-I/O-Signaturen, erforderliche Metrikdefinitionen und den lesenden Retentionsvertrag vor der Aufnahme. |
+| Schnittstelle | Sechs Argumente sind erforderlich: Zielname und fünf OUTPUT-Parameter. Erwartete ID und Erstellungsdatum sind gemeinsam NULL oder gemeinsam angegeben. CollectorCode hat Default WAIT_STATS; zugelassen sind exakt WAIT_STATS und FILE_IO. |
+| Verwendung | Interner gemeinsamer Eintritt für Konfiguration und Waitlauf; Anwendungen verwenden die öffentlichen Snapshot-Procedures. |
+| Last und Sperren | Liest Datenbank-, Prozedur-, Parameter-, Metrik- und Policykataloge und führt eine ContractOnly-Retentionsprobe aus. Die Aussage ohne Produktwrite gilt für den vertrauenswürdigen kanonischen ContractOnly-Helper; andere installierte Inhalte werden dadurch nicht als schreibfrei bewiesen. |
+| Vertrag | Ziel muss eine separate, online befindliche und beschreibbare Benutzerdatenbank mit ID > 4 sein. WAIT_STATS akzeptiert SC-023 1.2.1/Schema 2, 1.3.0/Schema 3 und 1.3.1/Schema 3; FILE_IO nur 1.3.1/Schema 3. Erwartete Retentionsvertragsversionen sind 1, 2 und 3 in derselben Paketversionsreihenfolge. Die neun Wait- beziehungsweise 16 Datei-I/O-Metriken sind erforderliche Teilmengen; zusätzliche Definitionen sind zulässig. CollectorPolicy muss vorhanden sein; ihre Aktivierung wird nicht geprüft. |
+
+#### [monitor].[InternalValidateSnapshotWaitTarget] – Parametervertrag
+
+| Parameter | Typ und Eingabeform | Default | Erforderlichkeit und Verhalten |
+|---|---|---|---|
+| @TargetDatabaseName | sysname; einzelner Name bis 128 Zeichen, Punkte bleiben Teil desselben Namens | kein Default | Erforderlich. NULL, leer oder nur Rand-Leerzeichen ist ungültig. Binärer Vergleich ohne Trimmen oder Fallnormalisierung; keine Qualifizierungsauslegung. |
+| @ExpectedTargetDatabaseId | int; einzelner typisierter Skalar oder NULL | NULL | Optional. NULL bedeutet keine erwartete ID; bei Wert Vergleich mit tatsächlicher ID. Muss gemeinsam mit @ExpectedTargetCreateDate NULL oder angegeben sein. Leerer Text ist keine zulässige Eingabeform. |
+| @ExpectedTargetCreateDate | datetime; einzelner typisierter Skalar oder NULL | NULL | Optional. NULL bedeutet kein erwartetes Erstellungsdatum; bei Wert Vergleich mit tatsächlichem datetime-Wert. Muss gemeinsam mit @ExpectedTargetDatabaseId NULL oder angegeben sein. Leerer Text ist keine zulässige Eingabeform. |
+| @TargetDatabaseIdOut | int OUTPUT; typisierter Wert/NULL oder Empfangsvariable | kein Default | Erforderliches Argument; Eingabewert wird ignoriert und Ausgang auf NULL initialisiert. Liefert später die tatsächliche ID, die auch vor einem späteren Fehler befüllt sein kann. Für Rückgabe Variable und OUTPUT/OUT-Schlüsselwort erforderlich. |
+| @TargetCreateDateOut | datetime OUTPUT; typisierter Wert/NULL oder Empfangsvariable | kein Default | Erforderliches Argument; Eingabewert wird ignoriert und Ausgang auf NULL initialisiert. Liefert später das tatsächliche Erstellungsdatum, das auch vor einem späteren Fehler befüllt sein kann. Für Rückgabe Variable und OUTPUT/OUT-Schlüsselwort erforderlich. |
+| @StatusCodeOut | varchar(40) OUTPUT; typisierter Wert/NULL oder Empfangsvariable | kein Default | Erforderliches Argument; Eingabewert wird ignoriert und Status auf AVAILABLE initialisiert. Für Rückgabe Variable und OUTPUT/OUT-Schlüsselwort erforderlich. |
+| @ErrorNumberOut | int OUTPUT; typisierter Wert/NULL oder Empfangsvariable | kein Default | Erforderliches Argument; Eingabewert wird ignoriert und Fehlernummer auf NULL initialisiert. Für Rückgabe Variable und OUTPUT/OUT-Schlüsselwort erforderlich. |
+| @ErrorMessageOut | nvarchar(2048) OUTPUT; typisierter Wert/NULL oder Empfangsvariable | kein Default | Erforderliches Argument; Eingabewert wird ignoriert und Meldung auf NULL initialisiert. Für Rückgabe Variable und OUTPUT/OUT-Schlüsselwort erforderlich. |
+| @CollectorCode | varchar(64); einzelner Auswahlcode | WAIT_STATS | Optional. WAIT_STATS wählt Waitstatistik, FILE_IO Datei-I/O. Ausschließlich diese beiden binär exakt verglichenen Werte sind gültig; NULL, andere Groß-/Kleinschreibung und Rand-Leerzeichen werden abgewiesen. |
+
+Die sechs erforderlichen Argumente sind @TargetDatabaseName und die fünf OUTPUT-Parameter. Jeder OUTPUT-Ausgang wird beim Prozedurstart initialisiert: ID, Erstellungsdatum, Fehlernummer und Fehlermeldung auf NULL, Status auf AVAILABLE. Die Eingabewerte der OUTPUT-Argumente werden ignoriert. Für einen zurückzugebenden Ausgangswert muss eine passende Variable gebunden und OUTPUT/OUT angegeben werden; ohne Rückgabewunsch kann ein typisierter Wert oder NULL als Argument dienen.
+
+#### [monitor].[InternalValidateSnapshotWaitTarget] – Aufnahmestatus
+
+| Status | Bedeutung |
+|---|---|
+| AVAILABLE | Ziel- und Vertragsprüfung bestätigt die Aufnahme. |
+| INVALID_PARAMETER | Eingabe, erwartete Identität oder Transaktionskontext ist ungültig; die frühe Parameterprüfung setzt Fehler 51011. |
+| TARGET_UNAVAILABLE | Ziel oder erforderlicher Vertrag wurde nicht bestätigt. |
+| DENIED_PERMISSION | Ein abgefangener Berechtigungsfehler verhinderte die Prüfung. |
+
+#### [monitor].[InternalValidateSnapshotWaitTarget] – Aufnahme- und Probegrenzen
+
+Eine explizite oder implizite Callertransaktion wird bereits bei der frühen Eingabeprüfung mit INVALID_PARAMETER / 51011 abgewiesen. Die Zielsuche in master.sys.databases liegt außerhalb des TRY/CATCH. Berechtigungsfehler 229, 262, 297, 300 und 371 werden innerhalb des TRY/CATCH als DENIED_PERMISSION abgebildet.
+
+Die Retentionsprobe verlangt AVAILABLE, NULL für Fehlernummer und Run-ID, ein gesetztes Budgetsignal 0 sowie die erwartete Retentionvertragsversion. Eine Probe-Meldung darf befüllt sein und der Rückgabecode wird nicht geprüft. Für FILE_IO werden zuerst Existenz, Sichtbarkeit und ANSI-Einstellungen der Wait-Abschlussprozedur geprüft. Der anschließende Signaturabgleich betrifft stattdessen InternalCompleteFileIOCycle, nicht zusätzlich die Wait-Abschlusssignatur. Signatur- und Probeerfolg vertrauen dem installierten kanonischen Paketnamensraum; sie weisen weder Codeintegrität noch ein vollständiges Schemaaudit nach.
+Der Helper prüft bei den ausgewählten Methoden Existenz, Sichtbarkeit, ANSI_NULLS und QUOTED_IDENTIFIER sowie die genaue Anzahl der Parameter mit Namen, Systemtypen, Maximallängen und OUTPUT-Flags. Defaults, Reihenfolge und Modultext werden nicht abgeglichen. Für die erforderlichen Metriken müssen Code, Typ und Einheit binär passen und ContractVersion muss 1 sein. Eine fehlende Zielidentität oder ein nicht passendes erwartetes Paar ergibt TARGET_UNAVAILABLE / 53764; bei einer späteren Vertragsabweichung können die tatsächlichen Identitätsausgänge bereits befüllt sein.
+
 
 ### `[monitor].[InternalRunSnapshotWaitStatsCycle]`
 
