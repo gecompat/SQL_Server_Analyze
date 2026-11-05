@@ -648,11 +648,37 @@ Quelle: `Code/01_Common/095_USP_InternalWriteResultTable.sql`
 
 | Dimension | Beschreibung |
 |---|---|
-| Aufgabe | Schreibt eine kanonische Ergebnismenge in eine bereits vorbereitete lokale Ergebnistabelle. |
-| Schnittstelle | Interne Stored Procedure; Parameter: `@SourceTable sysname`; `@TargetTable sysname`; `@InsertedRows bigint = NULL OUTPUT`; `@StatusCode varchar(40) = NULL OUTPUT`; `@ErrorNumber int = NULL OUTPUT`; `@ErrorMessage nvarchar(2048) = NULL OUTPUT`; `@ThrowOnError bit = 0`. Status-, Fehler- und weitere OUTPUT-Parameter werden ausschließlich zwischen Frameworkbausteinen weitergereicht. |
+| Aufgabe | Schreibt die Spaltenwerte eines bereits materialisierten Analyseergebnisses in eine vorhandene lokale Ergebnistabelle. Eine leere Zieltabelle mit genau einer beliebigen Dummy-Spalte kann an die Quelle angepasst werden; ein passendes Ziel erhält die Zeilen als Anhang. |
+| Schnittstelle | Interne Stored Procedure. Die Einzelverträge der sieben Parameter einschließlich Typ, Default, Eingabeform, NULL- und Leerwertverhalten, Statusmenge sowie OUTPUT-Bindung stehen in der folgenden Parametertabelle. |
 | Verwendung | Öffentliche Procedures im Schema `monitor` rufen diesen Baustein zur Orchestrierung auf. Anwendungen sollen ihn weder direkt ausführen noch von seiner Parameterreihenfolge oder seinen temporären Zwischenstrukturen abhängen. |
-| Last und Sperren | Die Procedure akzeptiert ausschließlich lokale `#Temp`-Tabellen als Quelle und Ziel und schreibt unter `LOCK_TIMEOUT 0`. Eigene lokale Temp-DDL erhält bei eingehendem Timeout 0 je Anlage bis zu 1000 ms; positive beziehungsweise unbegrenzte Eingangswerte bleiben für diese Anlage erhalten. Fremde Tabellenoperationen bleiben NOWAIT. Sie darf nur über den zugehörigen öffentlichen Einstieg ausgeführt werden. |
-| Vertrag | Nicht öffentlicher Vertrag. Fehlerbehandlung, OUTPUT-Parameter und Seiteneffekte sind nur für den versiongleichen internen Aufrufer zugesichert. |
+| Last und Sperren | Quelle und Ziel sind vorhandene lokale `#Temp`-Tabellen. Fremde Tabellenoperationen verwenden `LOCK_TIMEOUT 0`; eigene lokale Temp-DDL erhält bei eingehendem Timeout 0 je Anlage bis zu 1000 ms. Positive und unbegrenzte Eingangswerte bleiben während der eigenen Anlage erhalten. Die temporäre Markierungs-DDL verändert Quelle und Ziel. |
+| Vertrag | Nicht öffentlicher, an den versiongleichen internen Framework-Aufrufer gebundener Vertrag. Die Procedure garantiert weder eine Transaktion noch atomaren Rollback oder Bereinigung nach Fehlern. |
+
+| Parameter | Typ und Default | Vertrag |
+|---|---|---|
+| `@SourceTable` | `sysname`; Default: kein Default, Pflichtparameter | Erwartet einen unqualifizierten, ungetrimmten Namen einer vorhandenen lokalen `#`-Temp-Tabelle. NULL, Leerwert, fehlendes `#`, `##` und `LEN` größer als 116 nach SQL-Server-Bindung sind ungültig. Es wird nativ quotiert; Schema- oder Klammerausdrücke sind keine Eingabeform. Quell- und Zielname werden ohne Beachtung der Groß-/Kleinschreibung verglichen. `#Monitor` ist als Quellpräfix nicht reserviert. |
+| `@TargetTable` | `sysname`; Default: kein Default, Pflichtparameter | Erwartet einen unqualifizierten, ungetrimmten Namen einer vorhandenen lokalen `#`-Temp-Tabelle. NULL, Leerwert, fehlendes `#`, `##` und `LEN` größer als 116 nach SQL-Server-Bindung sind ungültig. Es wird nativ quotiert; Schema- oder Klammerausdrücke sind keine Eingabeform. `#Monitor` ist als Zielpräfix ohne Beachtung der Groß-/Kleinschreibung reserviert. Quell- und Zielname dürfen nicht identisch sein. |
+| `@InsertedRows` | `bigint`; Default NULL; optional OUTPUT | Der Eingabewert wird ignoriert und nach der internen Temp-Tabellenanlage auf 0 gesetzt. Bei Erfolg enthält er `@@ROWCOUNT` des abschließenden `INSERT SELECT`, nicht eine unabhängig ermittelte Gesamtzahl der Zielhistorie. Ein gebundener Empfänger braucht eine bigint-Variable mit OUTPUT; das Argument darf ausgelassen werden. |
+| `@StatusCode` | `varchar(40)`; Default NULL; optional OUTPUT | Der Eingabewert wird ignoriert und nach der internen Temp-Tabellenanlage auf `AVAILABLE` gesetzt. Die geschlossene Wertemenge lautet: `AVAILABLE` (erfolgreich), `INVALID_PARAMETER` (ungültige Parameter), `LOCK_TIMEOUT` (abgefangener Timeout bei Markierung, Leerheitsprüfung oder Schemaanpassung), `SOURCE_NOT_FOUND` (Quelle nicht auflösbar), `TARGET_NOT_FOUND` (Ziel nicht auflösbar), `METADATA_NOT_VISIBLE` (Katalogzeile nicht sichtbar), `UNSUPPORTED_SOURCE_SCHEMA` (nicht unterstützte Quelle), `TARGET_SCHEMA_MISMATCH` (Zielstruktur nicht passend/anpassbar) und `TABLE_WRITE_ERROR` (sonstiger abgefangener Tabellenfehler). Fehler 1222 beim finalen INSERT SELECT ergibt `TABLE_WRITE_ERROR`. Zum Empfang ist eine varchar(40)-Variable mit OUTPUT zu binden; das Argument darf ausgelassen werden. |
+| `@ErrorNumber` | `int`; Default NULL; optional OUTPUT | Der Eingabewert wird ignoriert und nach der internen Temp-Tabellenanlage auf NULL gesetzt. Bei einem abgefangenen nativen Fehler enthält er dessen Fehlernummer; bei Validierungsfehlern ohne nativen Fehler bleibt er NULL. Nicht abgefangene Fehler, einschließlich eines Fehlers vor dieser Initialisierung, sind nicht über diesen Parameter zugesichert. Zum Empfang ist eine int-Variable mit OUTPUT zu binden; das Argument darf ausgelassen werden. |
+| `@ErrorMessage` | `nvarchar(2048)`; Default NULL; optional OUTPUT | Der Eingabewert wird ignoriert und nach der internen Temp-Tabellenanlage auf NULL gesetzt. Bei einem behandelten Fehler enthält er Validierungs- oder Fehlerdiagnostik; bei Erfolg bleibt er NULL. Zum Empfang ist eine nvarchar(2048)-Variable mit OUTPUT zu binden; das Argument darf ausgelassen werden. |
+| `@ThrowOnError` | `bit`; Default 0; optional Eingabe | Auslassen verwendet Default 0. Leerer Text ist keine unterstützte Schalterform. 0 gibt behandelte Fehler über die OUTPUT-Parameter zurück; 1 löst bei einem behandelten Fehler Fehlernummer 51010 aus. NULL ist ungültig, ergibt `INVALID_PARAMETER` und löst selbst keinen Fehler 51010 aus. Nicht alle nativen Fehler werden abgefangen und umgewandelt. |
+
+Die vier OUTPUT-Parameter werden erst nach der eigenen Temp-DDL initialisiert; bei einem Fehler davor werden keine neu gesetzten Werte zugesichert.
+
+Die Quelle darf keine berechneten Spalten, benutzerdefinierten oder
+Assembly-Datentypen, typisiertes XML sowie timestamp-/rowversion-Spalten
+enthalten. Quellidentitätswerte werden in gewöhnliche Zielspalten kopiert; eine
+Identitätseigenschaft wird nicht übertragen. Ein passendes Ziel muss hinsichtlich
+Spaltenanzahl und -reihenfolge, Name, vergleichbarem Typ, Länge, Genauigkeit,
+Skala, Sortierung und NULL-Zulässigkeit übereinstimmen und darf keine
+Identitäts- oder berechneten Spalten, benutzerdefinierten oder
+Assembly-Datentypen oder typisiertes XML enthalten. Eine abweichende Zielstruktur
+wird nur bei einer leeren Tabelle mit genau einer Dummy-Spalte angepasst.
+Passende Ziele müssen nicht leer sein und werden beschrieben, indem Zeilen
+angehängt werden. Markierungs-DDL, Leerheitsprüfung und Schemaanpassung können
+bei Fehler sichtbare Änderungen hinterlassen; eine Transaktions-, Rollback- oder
+Cleanup-Garantie besteht nicht.
 
 Bei bereits abgefangenen Fehlern mit `StatusCode=LOCK_TIMEOUT` und
 `ErrorNumber=1222` nennt `ErrorMessage` zusätzlich `TargetTable` und `SqlStep`.
