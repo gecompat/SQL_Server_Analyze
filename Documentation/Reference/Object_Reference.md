@@ -1474,6 +1474,53 @@ Quelle: `Code/10_SnapshotBaseline/085_InternalRunSnapshotWaitStatsCycle.sql`
 | Last und Sperren | Ein Sessionlock mit Wartezeit null umfasst Aufnahmeprüfung, Purge, Vorbereitung, vollständigen DMV-Read, Abschluss und Ausgabe. MaxRows begrenzt nur Targetwrites. |
 | Vertrag | Enabled und Due werden vor Writes geprüft. Ein noch nicht fälliger Purge verhindert den Capture nicht. Enginekontext vor/nach dem Read beweist keine atomare Sicht oder Resetkontinuität; ein Ausgabefehler hebt einen bereits bestätigten Capture nicht auf. |
 
+#### InternalRunSnapshotWaitStatsCycle – Parametervertrag
+
+Alle acht Parameter sind erforderlich; keiner hat einen Default. Die ersten beiden sind Eingaben. Die sechs OUTPUT-Parameter müssen auch beim Verwerfen der Ausgabe gebunden werden. Zum Empfang sind eine Variable passenden Typs und das Schlüsselwort OUTPUT erforderlich. Eingehende OUTPUT-Werte werden ignoriert.
+
+- `@SchedulerType` (varchar(16); Default: Kein Default): MANUAL (manueller Aufruf), EXTERNAL (externer Scheduler) oder SQL_AGENT (SQL Server Agent). Der Wert ist ein Herkunftslabel und startet keinen Scheduler. NULL oder ein anderer Wert führt zu INVALID_PARAMETER und RETURN 51011. Der Vergleich folgt der Datenbankkollation und SQL-Server-Paddingregeln; nachgestellte Leerzeichen können gleichwertig sein. Es gibt weder binären Vergleich noch Trimmen oder Normalisieren.
+- `@RunEvenIfNotDue` (bit; Default: Kein Default): 0 prüft Fälligkeit; 1 umgeht nur den Due-Check. NULL ist INVALID_PARAMETER mit RETURN 51011. Leertext ist keine unterstützte Eingabe. Disabled-, Target-, Budget- und Sperrprüfungen bleiben aktiv.
+- `@CaptureRunIdOut` (bigint OUTPUT; Default: Kein Default): Eintritt NULL; Eingangswert ignoriert. Kann bei der Vorbereitung gesetzt werden und bei einem späteren Fehler erhalten bleiben. Die ID beweist keine erfolgreiche Sammlung oder Finalisierung. Zum Empfang bigint-kompatible Variable mit OUTPUT.
+- `@TargetDatabaseNameOut` (sysname OUTPUT; Default: Kein Default): Eintritt NULL; Eingangswert ignoriert. Gibt den konfigurierten Targetnamen zurück, auch bei deaktiviertem Collector, sobald die Konfiguration gelesen wurde. Zum Empfang sysname-kompatible Variable mit OUTPUT.
+- `@StatusCodeOut` (varchar(40) OUTPUT; Default: Kein Default): Eintritt AVAILABLE; Eingangswert ignoriert. Lokale kanonische Ergebnisse: AVAILABLE, INVALID_PARAMETER, TARGET_UNAVAILABLE, DENIED_PERMISSION, DISABLED, SKIPPED_CONCURRENT, SKIPPED_NOT_DUE, STOPPED_SIZE_BUDGET, PARTIAL, UNAVAILABLE_OBJECT und ERROR_HANDLED. AVAILABLE_LIMITED ist nur ein akzeptiertes Purge-Zwischenergebnis und kein finaler Wait-Status. Der erfolgreiche Backendstatus wird weitergereicht; eine lokale vollständige Allowlist für Backendstatus besteht nicht.
+- `@IsPartialOut` (bit OUTPUT; Default: Kein Default): Eintritt 0; Eingangswert ignoriert. Frühe Abbrüche und Fehler liefern 1; sonst wird der Backendwert übernommen. Zum Empfang bit-kompatible Variable mit OUTPUT.
+- `@ErrorNumberOut` (int OUTPUT; Default: Kein Default): Eintritt NULL; Eingangswert ignoriert. Erkannte Fehlernummer oder NULL, wenn der Pfad keine Nummer setzt. Zum Empfang int-kompatible Variable mit OUTPUT.
+- `@ErrorMessageOut` (nvarchar(2048) OUTPUT; Default: Kein Default): Eintritt NULL; Eingangswert ignoriert. Diagnose oder NULL. Zum Empfang Unicode-Variable bis 2048 Zeichen mit OUTPUT.
+
+Ohne Rückgabe kann jeder obligatorische OUTPUT-Parameter als typisierter Wert oder NULL übergeben werden. Eine Empfangsvariable und OUTPUT oder OUT sind nur erforderlich, um den Ausgangswert zurückzulesen. Für numerische und zeitbezogene Typen ist Leertext keine unterstützte Eingabeform; textuelle Eingangswerte der OUTPUT-Parameter einschließlich Leertext werden durch die Initialisierung ersetzt.
+
+#### InternalRunSnapshotWaitStatsCycle – Scheduler, Fälligkeit und Sperre
+
+Zulässige Schedulerlabels sind MANUAL, EXTERNAL und SQL_AGENT. Sie bezeichnen nur die Aufrufherkunft. RunEvenIfNotDue=1 übergeht ausschließlich die Fälligkeitsprüfung und deaktiviert weder den Collector noch Target-, Budget- oder Lock-Gates.
+
+Die gemeinsame Session-Exclusive-Applockressource `SQL_Server_Analyze.SC023.CollectionCycle` wird ohne Wartezeit beansprucht und auch vom Purge verwendet. Jeder negative Rückgabewert ergibt SKIPPED_CONCURRENT; die genaue Ursache wird nicht behauptet. Der Purge wird nach einer schreibfreien Policyprüfung ausgeführt. AVAILABLE, AVAILABLE_LIMITED und SKIPPED_NOT_DUE erlauben anschließend die erneute Targetprüfung und normale Vorbereitung. Ein nicht fälliger Purge blockiert den Capture nicht.
+
+#### InternalRunSnapshotWaitStatsCycle – DMV-Read und Ergebnisgrenzen
+
+Die Quelle wird mit genau einer vollständigen Enumeration von `sys.dm_os_wait_stats` gelesen. MaxRows begrenzt Backendwrites, nicht die Enumeration. EMPTY_UNPROVEN ist ein interner Quellstatus. Auch bei gesundem Backendpfad lautet das Ergebnis PARTIAL mit Vergleichsstatuscode; es wird nicht AVAILABLE. Enginekontext vor und nach dem Read belegt keine atomare DMV-Sicht und keine durchgehende Resetkontinuität.
+
+Der Aufrufer muss kompatible temporäre Tabellen `#RunSnapshotCollectionCycle_Run` und `#RunSnapshotCollectionCycle_Modules` vorab anlegen; dieses Objekt führt kein DDL aus. Ein fehlendes Ziel oder Projektionsfehler wird behandelt. Ein Modulnachweis wird bestmöglich geschrieben. Der Run-Nachweis setzt einen passenden eigenen WAIT_STATS-Lauf voraus. Bereits committete Backenddaten bleiben bei späterem Projektions- oder Applockfreigabefehler bestehen; Run-ID allein belegt keine Finalisierung.
+
+Ein aktives Transaktionsfragment wird im CATCH zurückgerollt. Fehler bei der Applockfreigabe überschreiben den Status mit ERROR_HANDLED. Es gibt keinen Legacy-Fallback und keine erfundene Nullprojektion. Ein ergänzender Modulfehlernachweis ist Best Effort; bei dessen Scheitern bleiben die Fehlerausgaben maßgeblich.
+
+Die genannten geschlossenen Statuswerte beschreiben die lokalen Zweige. Weitergereichte Helper- oder Backendstatus werden nicht lokal vollständig allowlisted; die Dokumentation garantiert deshalb keine beliebige Statusmenge einer installierten Version.
+
+#### InternalRunSnapshotWaitStatsCycle – Statusbedeutung
+
+Die folgenden Werte umfassen die aktuellen lokalen Zweige und kanonischen Helperergebnisse; weitergereichte Statuswerte werden an dieser Aufrufstelle nicht erneut vollständig begrenzt.
+
+- AVAILABLE: Initialzustand oder weitergereichte Bestätigung; kein Beleg einer erfolgreich persistierten Waitaufnahme.
+- INVALID_PARAMETER: Ungültige Scheduler-/Force-Eingabe, unzulässiger Transaktionskontext oder entsprechender Helperbefund.
+- TARGET_UNAVAILABLE: Zielidentität, Paket oder erforderlicher Helpervertrag nicht bestätigt.
+- DENIED_PERMISSION: Abgefangener oder weitergereichter Berechtigungsfehler.
+- DISABLED: Snapshotpaket oder Wait-Collector nicht aktiviert.
+- SKIPPED_CONCURRENT: Die Session-Applock wurde mit negativem Rückgabewert nicht bestätigt.
+- SKIPPED_NOT_DUE: Die Capture-Vorbereitung hat die Aufnahme wegen noch nicht erreichter Fälligkeit übersprungen.
+- STOPPED_SIZE_BUDGET: Die Vorbereitung bestätigt die zulässige Größenbudgetgrenze nicht.
+- PARTIAL: Der kanonische Waitabschluss hat die Aufnahme gespeichert; Vergleichskandidaten beweisen keine ununterbrochene Resetkontinuität.
+- UNAVAILABLE_OBJECT: Die native Quelle meldet ein nicht verfügbares Objekt; das Backend übernimmt den Quellfehler.
+- ERROR_HANDLED: Sonstiger behandelter Ablauf-, Backend-, Projektions- oder Sperrfreigabefehler.
+
 ### `[monitor].[InternalRunSnapshotFileIOCycle]`
 
 Quelle: `Code/10_SnapshotBaseline/087_InternalRunSnapshotFileIOCycle.sql`
