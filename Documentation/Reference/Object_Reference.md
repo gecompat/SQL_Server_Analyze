@@ -675,11 +675,26 @@ Quelle: `Code/01_Common/096_USP_InternalPrepareResultTables.sql`
 
 | Dimension | Beschreibung |
 |---|---|
-| Aufgabe | Bereitet alle im TABLE-Vertrag angeforderten lokalen Ergebnistabellen vor. |
-| Schnittstelle | Interne Stored Procedure; Parameter: `@ResultTablesJson nvarchar(max)`; `@AllowedResultNames nvarchar(max)`; `@MappingTable sysname`; `@StatusCode varchar(40) = NULL OUTPUT`; `@ErrorMessage nvarchar(2048) = NULL OUTPUT`; `@ThrowOnError bit = 0`. Status-, Fehler- und weitere OUTPUT-Parameter werden ausschließlich zwischen Frameworkbausteinen weitergereicht. |
-| Verwendung | Öffentliche Procedures im Schema `monitor` rufen diesen Baustein zur Orchestrierung auf. Anwendungen sollen ihn weder direkt ausführen noch von seiner Parameterreihenfolge oder seinen temporären Zwischenstrukturen abhängen. |
-| Last und Sperren | Die Procedure schreibt nur in die ausdrücklich vorgesehenen Framework-, Snapshot- oder lokalen Ergebnisspeicher und kann lokale Temp-Tabellen materialisieren, unter `LOCK_TIMEOUT 0`. Eigene lokale Temp-DDL erhält bei eingehendem Timeout 0 je Anlage bis zu 1000 ms; positive beziehungsweise unbegrenzte Eingangswerte bleiben für diese Anlage erhalten. Fremde Tabellenoperationen bleiben NOWAIT. Sie darf nur über den zugehörigen öffentlichen Einstieg ausgeführt werden. |
-| Vertrag | Nicht öffentlicher Vertrag. Fehlerbehandlung, OUTPUT-Parameter und Seiteneffekte sind nur für den versiongleichen internen Aufrufer zugesichert. |
+| Aufgabe | Prüft die angeforderten Zuordnungen und hängt sie an die vom Aufrufer bereitgestellte Mapping-Temp-Tabelle an. |
+| Schnittstelle | Interne Stored Procedure; Parameter: `@ResultTablesJson nvarchar(max)`; `@AllowedResultNames nvarchar(max)`; `@MappingTable sysname`; `@StatusCode varchar(40) = NULL OUTPUT`; `@ErrorMessage nvarchar(2048) = NULL OUTPUT`; `@ThrowOnError bit = 0`. |
+| Verwendung | Öffentliche Procedures im Schema `monitor` rufen diesen Baustein im versiongleichen internen Ablauf auf. Anwendungen sollen ihn nicht direkt ausführen. |
+| Last und Sperren | Erzeugt lokale Prüftabellen und prüft vorhandene lokale Ziele mit NOWAIT; eigene Temp-DDL erhält je Anlage bei eingehendem Timeout 0 bis zu 1000 ms. Zielprüfung fügt temporär eine Marker-Spalte hinzu und entfernt sie best effort. Es werden keine Framework- oder Snapshot-Daten persistiert. |
+| Vertrag | Nicht öffentlicher, versionsgebundener Vertrag. Mapping-Zeilen werden angehängt; vorhandene Mapping-Zeilen bleiben bestehen. Es gibt keine atomare Transaktions- oder Rollback-Zusage. |
+
+#### Parameterverträge
+
+| Parameter | Typ und Default | Eingabeform, NULL/leer/ausgelassen und Wirkung |
+|---|---|---|
+| `@ResultTablesJson` | `nvarchar(max)`; Default: kein Default, Pflichtparameter | JSON-Objekt, keine Liste. NULL, leerer Text, `{}` und Objekt ohne Zuordnung sind ungültig. Werte und Schlüssel müssen Zeichenketten sein. Schlüssel und Ziele werden vor Guards nach `sysname` konvertiert. Schlüssel ohne Vorab-Trim werden binär exakt verglichen; doppelte konvertierte Schlüssel sind ungültig. |
+| `@AllowedResultNames` | `nvarchar(max)`; Default: kein Default, Pflichtparameter | Pipe-getrennte offene Liste des Aufrufers. NULL, leer oder nur leere Tokens bedeutet keine erlaubten Namen. `|` wird nicht escaped. Nur U+0020 an Tokengrenzen wird entfernt; leere Tokens ignoriert. Tokens werden nach `sysname` konvertiert und binär verglichen. Doppelte konvertierte Tokens können beim ungeschützten INSERT einen nativen Fehler auslösen. |
+| `@MappingTable` | `sysname`; Default: kein Default, Pflichtparameter | NULL oder leer ungültig; kein Trimmen. Roher, unqualifizierter Name ohne Klammer- oder Schemaangabe einer vorhandenen lokalen `#Temp`-Tabelle, kein `##`, maximal 116 Zeichen nach sysname-Konvertierung. Aufrufer erstellt sie mit `ResultName sysname` und `TargetTable sysname`. TOP (0) prüft Lookup/Konvertierung, nicht das exakte physische Schema. |
+| `@StatusCode` | `varchar(40)`; Default: `NULL OUTPUT` | OUTPUT-Variable vom Typ `varchar(40)`; nach eigener DDL auf `AVAILABLE` gesetzt; eingehende NULL-, Leertext- oder andere Werte werden überschrieben. AVAILABLE = erfolgreich; INVALID_PARAMETER = ungültiger Schalter/Mappingname; INVALID_RESULT_TABLE_MAPPING = JSON-/Namens-/Duplikat-/Whitelistfehler; INVALID_RESULT_TABLE_TARGET = fehlendes, nicht leeres oder nicht genau eine Seed-Spalte enthaltendes oder nicht sicher prüfbares Ziel; INTERNAL_ERROR = Mapping-Spalten nicht auflösbar/konvertierbar. Auslassen setzt den Default; Empfang erfordert Caller-Variable mit OUTPUT. |
+| `@ErrorMessage` | `nvarchar(2048)`; Default: `NULL OUTPUT` | OUTPUT-Variable vom Typ `nvarchar(2048)`; nach eigener DDL auf NULL, bei erkanntem Fehler auf Meldung gesetzt; eingehende NULL-, Leertext- oder andere Werte werden überschrieben. Auslassen setzt den Default; Empfang erfordert Caller-Variable mit OUTPUT. |
+| `@ThrowOnError` | `bit`; Default: `0` | 0 unterdrückt behandelte Preflightfehler und gibt Status/Meldung zurück; 1 wirft dafür 51011. NULL ist ungültig, ergibt INVALID_PARAMETER, wirft wegen NULL aber nicht 51011. Leerer Text ist keine unterstützte Bit-Eingabe; ausgelassen gilt 0. Unbehandelte native Fehler werden nicht unterdrückt. |
+
+JSON-Zielwerte werden nach sysname-Konvertierung als rohe, unqualifizierte lokale #Temp-Namen geprüft: kein ##, kein #Monitor-Präfix (CI), LEN höchstens 116. Es wird nicht getrimmt; doppelte Ziele werden CI verglichen. Klammer- und Schemanamen sind unzulässig. Ziele müssen vorbestehen, leer sein und genau eine Seed-Spalte haben. Marker-ADD und -DROP sind temporäre Schemaänderungen; Bereinigung im Fehlerpfad ist best effort. Keine permanente Spaltenanpassung oder atomare Rücknahmezusage.
+
+Eigene Temp-DDL liegt vor Initialisierung der Status-OUTPUTs. Die Allowed-Liste wird ohne TRY/CATCH eingefügt; doppelte konvertierte Tokens können nativ fehlschlagen. Das finale Mapping-INSERT liegt ebenfalls außerhalb TRY/CATCH. Solche Fehler können entweichen. Bei ThrowOnError 1 werden nur behandelte Fehler als 51011 geworfen.
 
 ### `[monitor].[InternalPrepareSingleResultTable]`
 
@@ -687,11 +702,22 @@ Quelle: `Code/01_Common/097_USP_InternalPrepareSingleResultTable.sql`
 
 | Dimension | Beschreibung |
 |---|---|
-| Aufgabe | Validiert und richtet eine einzelne lokale Ergebnistabelle des TABLE-Vertrags ein. |
-| Schnittstelle | Interne Stored Procedure; Parameter: `@ResultTablesJson nvarchar(max)`; `@ResultName sysname`; `@TargetTable sysname OUTPUT`; `@ThrowOnError bit = 1`. Status-, Fehler- und weitere OUTPUT-Parameter werden ausschließlich zwischen Frameworkbausteinen weitergereicht. |
-| Verwendung | Öffentliche Procedures im Schema `monitor` rufen diesen Baustein zur Orchestrierung auf. Anwendungen sollen ihn weder direkt ausführen noch von seiner Parameterreihenfolge oder seinen temporären Zwischenstrukturen abhängen. |
-| Last und Sperren | Die Procedure koordiniert interne Verarbeitung ohne fachliche Persistenz und kann lokale Temp-Tabellen materialisieren, unter `LOCK_TIMEOUT 0`. Eigene lokale Mapping-DDL erhält je Anlage bis zu 1000 ms. Fremde Tabellenauflösung bleibt NOWAIT. Sie darf nur über den zugehörigen öffentlichen Einstieg ausgeführt werden. |
-| Vertrag | Nicht öffentlicher Vertrag. Fehlerbehandlung, OUTPUT-Parameter und Seiteneffekte sind nur für den versiongleichen internen Aufrufer zugesichert. |
+| Aufgabe | Leitet eine TABLE-Zuordnung an den Mehrfach-Preflight weiter und gibt bei erfolgreicher Auflösung ein Ziel zurück. |
+| Schnittstelle | Interne Stored Procedure; Parameter: `@ResultTablesJson nvarchar(max)`; `@ResultName sysname`; `@TargetTable sysname OUTPUT`; `@ThrowOnError bit = 1`. |
+| Verwendung | Öffentliche Procedures im Schema `monitor` rufen diesen Baustein im versiongleichen internen Ablauf auf. Anwendungen sollen ihn nicht direkt ausführen. |
+| Last und Sperren | Erzeugt die lokale Mapping-Temp-Tabelle und delegiert Zielprüfung mit NOWAIT; die Prüfung fügt am Ziel temporär eine Marker-Spalte hinzu und entfernt sie best effort. Eigene Mapping-DDL erhält 1000 ms. Es werden keine Framework- oder Snapshot-Daten persistiert. |
+| Vertrag | Nicht öffentlicher, versionsgebundener Vertrag. Gibt das aufgelöste Ziel zurück; richtet keine dauerhafte Ergebnisspaltenstruktur ein. Es gibt keine atomare Transaktions- oder Rollback-Zusage. |
+
+#### Parameterverträge
+
+| Parameter | Typ und Default | Eingabeform, NULL/leer/ausgelassen und Wirkung |
+|---|---|---|
+| `@ResultTablesJson` | `nvarchar(max)`; Default: kein Default, Pflichtparameter | JSON-Objekt, keine Liste; NULL, leerer Text, `{}` oder kein Paar ist ungültig. Mehrere Paare werden nicht grundsätzlich ausgeschlossen. Schlüssel und Werte müssen Zeichenketten sein; der Mehrfachbaustein konvertiert sie vor Guards zu `sysname`. Zielwerte sind rohe, unqualifizierte lokale `#Temp`-Namen ohne Klammer- oder Schemaangabe, kein `##` und kein `#Monitor`-Präfix (CI), `LEN` höchstens 116 nach Konvertierung. Namen/Ziele werden nicht getrimmt; Schlüssel müssen binär der erlaubten Liste entsprechen. Doppelte Schlüssel sind binär, doppelte Ziele unter `Latin1_General_100_CI_AS` unzulässig. |
+| `@ResultName` | `sysname`; Default: kein Default, Pflichtparameter | Wird als Allowed-Liste weitergereicht. NULL, leer oder leere Tokens ergibt keine erlaubten Namen. `|` ohne Escape; nur U+0020 an Tokengrenzen wird entfernt. Der spätere Lookup nutzt den ursprünglichen Wert unter CS-Kollation, daher kann Normalisierung trotz AVAILABLE ohne Treffer bleiben. |
+| `@TargetTable` | `sysname`; Default: kein Default, OUTPUT, Pflichtparameter | Argument muss angegeben werden; zum Empfang wird eine Variable mit OUTPUT gebunden. Eingabewert wird ignoriert und beim Eintritt auf NULL gesetzt. Bei behandeltem Fehler oder fehlendem originalen CS-Treffer bleibt NULL. Ein übergebener NULL-, Leertext- oder anderer Anfangswert wird ignoriert. |
+| `@ThrowOnError` | `bit`; Default: `1` | 0 unterdrückt behandelte Fehler; 1 lässt den Mehrfachbaustein 51011 werfen. NULL wird als INVALID_PARAMETER behandelt, löst aber nicht 51011 aus. Leerer Text ist keine unterstützte Bit-Eingabe; ausgelassen gilt 1. Unbehandelte native Fehler entweichen. |
+
+Der Mehrfachbaustein verlangt ein bestehendes, leeres lokales #Temp-Ziel mit genau einer Seed-Spalte. Temporärer Marker-ADD/DROP verändert das Zielschema während der Prüfung; Bereinigung ist best effort. Es gibt keine permanente Ergebnisspaltenanpassung und keine atomare Rücknahmezusage. Eigene Mapping-DDL liegt vor Statusinitialisierung; Fehler werden erneut ausgelöst. Danach setzt der Baustein LOCK_TIMEOUT 0.
 
 ### `[monitor].[InternalEmitConsoleResult]`
 
