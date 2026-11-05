@@ -176,10 +176,12 @@ DROP TABLE #ModuleStatus;
 
 ## [monitor].[USP_SsisPackageModelAnalysis]
 
+Die [Parameterreferenz](Procedures/USP_SsisPackageModelAnalysis.md#parameter-und-eingabeformen) beschreibt alle 32 Argumente mit Default, Eingabeform und NULL-Regeln. Einzelmodell und Ausführungsscope haben exklusive JSON-/Übergabeformen; Pipelinekorrelation und Diagnose setzen den Scopemodus voraus. TABLE-Ziele und JSON-Gruppen werden für den jeweils aktivierten Umfang ausdrücklich benannt. Die bestehenden Installations- und Berechtigungsgrenzen bleiben erhalten.
+
 Der [native Modellimport](Procedures/USP_SsisPackageModelAnalysis.md) validiert
 optional übergebenes JSON ohne CLR oder Toolbelt-Installation. Er prüft Felder,
 Kennungen, Scopes und Referenzen; Originalbytes erlauben einen unabhängigen
-Paketbytevergleich. Die Producerherkunft bleibt UNVERIFIED. Der Importer
+Paketbytevergleich. Ohne qualifizierte lokale Übergabe bleibt die Producerherkunft UNVERIFIED. Der Importer
 berechnet keine neue Lineage und führt weder Pakete noch enthaltenes SQL aus.
 Mit `@IncludePackageViews=1` kommen Paketübersicht, Executables, beobachtete
 Datenflussscopes, Komponenten und direkte Spaltenbeziehungen hinzu. Die
