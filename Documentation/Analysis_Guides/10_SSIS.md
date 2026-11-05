@@ -217,8 +217,8 @@ fasst diese gebundenen Einzelbelege je Aufrufinstanz zusammen. Sie zeigt
 Phasenkennzahlen, Pfadtransfers und versionierte Regelhinweise mit Quellenbezug.
 Fehlende Beobachtungen und unbekannte Rollen bleiben als Evidenzgrenzen sichtbar.
 
-Der [gebundene Ausführungsvergleich](Procedures/USP_SsisExecutionComparison.md) vergleicht zwei Captures desselben exakten Modellexports. Herkunft, Version, Laufzeitkontext und Coverage begrenzen die Aussage; Parser und Lineage bleiben in Toolbelt.
+Der [gebundene Ausführungsvergleich](Procedures/USP_SsisExecutionComparison.md) vergleicht zwei Captures desselben exakten Modellexports. Die [Parameterreferenz](Procedures/USP_SsisExecutionComparison.md#parameter-und-eingabeformen) erläutert alle 23 Argumente mit Default, JSON-/GUID-Formen, NULL-Regeln und Ausgabeoptionen. Herkunft, Version, Laufzeitkontext und Coverage begrenzen die Aussage; Parser und Lineage bleiben in Toolbelt.
 
-Die [Mehrlauf-Baseline](Procedures/USP_SsisExecutionBaseline.md) ergänzt den Paarvergleich für eine explizite Kohorte von bis zu 20 Basisläufen. Verwendbare Laufzahl, Median und Spannweite gelten je Kennzahl; Ausschlüsse bleiben einzeln nachvollziehbar.
+Die [Mehrlauf-Baseline](Procedures/USP_SsisExecutionBaseline.md) ergänzt den Paarvergleich für eine explizite Kohorte von bis zu 20 Basisläufen. Die [Parameterreferenz](Procedures/USP_SsisExecutionBaseline.md#parameter-und-eingabeformen) beschreibt alle 20 Argumente einschließlich des äußeren JSON-Arrays mit vier Stringwerten je Basislauf, Dauergrenzen und Status-OUTPUTs. Verwendbare Laufzahl, Median und Spannweite gelten je Kennzahl; Ausschlüsse bleiben einzeln nachvollziehbar.
 
 Der [Vertrag für eigene Kennzahlenproduzenten](../Architecture/SSIS_Custom_Metrics_Producer_Contract.md) beschreibt optionale `DELTA`-, `CUMULATIVE`-, `GAUGE`- und `FINAL`-Beobachtungen sowie ihre Bindungs- und Vergleichsgrenzen. Ein begrenzter Offline-Validator prüft `ssis-reported-metrics/v1`-Berichte syntaktisch und auf deklarierte Konsistenz. Er verifiziert weder Capture- oder Producerherkunft noch Wahrheitsgehalt und bildet keine Laufwerte, Vergleiche oder Baselines.
