@@ -4010,6 +4010,8 @@ def prepare(packaged_installer=None):
     old_columns=','.join('CONVERT(varbinary(max),'+g.q(c)+') AS '+g.q(c) for c in remaining)
     comparison=equal_rows('qa.BeforeOldWait','monitor_deployment.[ARCHIVE]',old_columns,'known old Wait shape')
     out.append('SET @Compare=REPLACE('+g.lit(comparison)+",N'[ARCHIVE]',QUOTENAME(@State)); EXEC sys.sp_executesql @Compare;\nGO\n")
+    # Observe only the Snapshot migration phase; keep the global ten-minute cap.
+    out.append("GO\nDECLARE @CiSnapshotPhase nvarchar(400)=CONCAT(N'CI_CASE|DEPLOYMENT|SnapshotSchema|1|',\n    CONVERT(varchar(27),SYSUTCDATETIME(),126),N'Z|',@@SPID,N'|',@@LOCK_TIMEOUT,N'|generated');\nRAISERROR(N'%s',10,1,@CiSnapshotPhase) WITH NOWAIT;\nGO\n")
     out.append(snapshot_schema_cases(deployed,tables))
     out.append("SELECT N'PASS' AS DeploymentRuntimeContract,N'Fresh, filled all20, binary archives, custom/legacy/policy/identity, Snapshot migration and preflight rejection' AS Scope;\nGO\n")
     return ''.join(out)

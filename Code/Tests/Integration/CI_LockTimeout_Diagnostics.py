@@ -19,12 +19,13 @@ import time
 INTERVAL = 0.250
 WINDOW = 10.0
 MAX_SECONDS = 600
+MAX_DEPLOYMENT_SECONDS = 1200
 MAX_ROWS = 200
 MAX_BYTES = 50 * 1024 * 1024
 REPORT_BYTES = 5 * 1024 * 1024
 LOG_BYTES = 44 * 1024 * 1024
 MARKER = re.compile(
-    r"CI_(BEGIN|CASE|AFTER|END)\|(20[2-7])\|([A-Za-z0-9_]+)\|(\d+)\|"
+    r"CI_(BEGIN|CASE|AFTER|END)\|((?:20[2-7]|DEPLOYMENT))\|([A-Za-z0-9_]+)\|(\d+)\|"
     r"([\dT:.Z-]+)\|(\d+)\|(-?\d+)\|([^|\r\n]{0,180})$"
 )
 RESOURCE_FIELDS = (
@@ -112,6 +113,7 @@ GO
 
 TEST_FILES = {p.name[:3]: "Code/Tests/Integration/"+p.name
               for p in Path(__file__).parent.glob("20[2-7]*.sql")}
+TEST_FILES["DEPLOYMENT"] = "Code/Install/generated/Deployment_Runtime.generated.sql"
 
 
 class Sqlcmd:
@@ -176,8 +178,10 @@ class Sqlcmd:
 
 
 class Observation:
-    def __init__(self, factory):
+    def __init__(self, factory, deployment_expected=False):
         self.factory = factory
+        self.deployment_expected = deployment_expected
+        self.max_seconds = MAX_DEPLOYMENT_SECONDS if deployment_expected else MAX_SECONDS
         self.case = None
         self.samples = deque(maxlen=40)
         self.frozen = None
@@ -188,13 +192,23 @@ class Observation:
         self.thread = threading.Thread(target=self._observe, daemon=True)
         self.lock = threading.Lock()
         self.started = None
+        self.deployment_session = None
+        self.deployment_phase_seen = False
 
     def feed(self, line):
         item = marker(line)
         with self.lock:
             if item:
                 self.case = None if item["kind"] == "END" else item
-                if self.started is None and item["kind"] != "END":
+                if item["suite"] == "DEPLOYMENT" and item["kind"] == "BEGIN":
+                    self.deployment_session = item["spid"]
+                deployment_phase = (item["suite"] == "DEPLOYMENT" and item["kind"] == "CASE"
+                    and item["site"] == "SnapshotSchema"
+                    and item["spid"] == self.deployment_session)
+                if deployment_phase:
+                    self.deployment_phase_seen = True
+                if self.started is None and item["kind"] != "END" and (
+                        item["suite"] != "DEPLOYMENT" or deployment_phase):
                     self.started = time.monotonic()
                     self.thread.start()
             error = re.match(r"^Msg (\d+), Level \d+, State \d+", line)
@@ -223,7 +237,7 @@ class Observation:
             connection = self.factory()
             while not self.stop.is_set():
                 tick = time.monotonic()
-                if tick - self.started >= MAX_SECONDS:
+                if tick - self.started >= self.max_seconds:
                     self.errors.append("OBSERVATION_TIME_LIMIT")
                     break
                 with self.lock:
@@ -255,6 +269,10 @@ class Observation:
             self.thread.join(timeout=8)
             if self.thread.is_alive():
                 self.errors.append("OBSERVER_CLEANUP_DEADLINE")
+        if self.deployment_expected and self.deployment_session is None:
+            self.errors.append("DEPLOYMENT_BEGIN_NOT_OBSERVED")
+        if (self.deployment_expected or self.deployment_session is not None) and not self.deployment_phase_seen:
+            self.errors.append("DEPLOYMENT_PHASE_NOT_OBSERVED")
         with self.lock:
             if self.frozen is None:
                 return {"status": "NO_1222", "errors": list(self.errors), "details": list(self.details)}
@@ -309,10 +327,40 @@ def encode_report(report, secret, limit=REPORT_BYTES):
     return payload
 
 
+def diagnostic_summary(report, secret):
+    """Expose one bounded, sanitized sample without mutating the artifact report."""
+    samples = report.get("samples", [])
+    case = report.get("case")
+    selected = next((sample for sample in reversed(samples)
+                     if case and observed_blocker([sample], case)), samples[-1] if samples else None)
+    summary = dict(status=report["status"], trigger=report.get("trigger"), case=case,
+                   samples=[selected] if selected else [], errors=list(report.get("errors", [])),
+                   sqlcmd_exit_code=report["sqlcmd_exit_code"], truncated=report.get("truncated", False),
+                   observation_limit_seconds=report.get("observation_limit_seconds", MAX_SECONDS))
+    summary = json.loads(json.dumps(summary))
+    return encode_report(summary, secret, 16 * 1024).decode("utf-8")
+
+
+def deployment_query():
+    """Bracket generated deployment in the same SQLCMD session with DEPLOYMENT markers."""
+    return """SET NOCOUNT ON;
+DECLARE @CiDeploymentMarker nvarchar(400)=CONCAT(N'CI_BEGIN|DEPLOYMENT|Deployment|0|',
+    CONVERT(varchar(27),SYSUTCDATETIME(),126),N'Z|',@@SPID,N'|',@@LOCK_TIMEOUT,N'|generated');
+RAISERROR(N'%s',10,1,@CiDeploymentMarker) WITH NOWAIT;
+GO
+:r /work/Code/Install/generated/Deployment_Runtime.generated.sql
+GO
+DECLARE @CiDeploymentMarker nvarchar(400)=CONCAT(N'CI_END|DEPLOYMENT|Deployment|0|',
+    CONVERT(varchar(27),SYSUTCDATETIME(),126),N'Z|',@@SPID,N'|',@@LOCK_TIMEOUT,N'|generated');
+RAISERROR(N'%s',10,1,@CiDeploymentMarker) WITH NOWAIT;
+GO"""
+
+
 def run(args):
     """Keep the original test return code even if collection or publication fails."""
     ephemeral_value = os.environ["MSSQL_EPHEMERAL_CREDENTIAL"]
-    observer = Observation(lambda: Sqlcmd(args.container, args.sqlcmd))
+    observer = Observation(lambda: Sqlcmd(args.container, args.sqlcmd),
+                           deployment_expected=getattr(args, "deployment", False))
     log = Path(args.log)
     log.parent.mkdir(parents=True, exist_ok=True)
     env = dict(os.environ, SQLCMDPASSWORD=ephemeral_value)
@@ -322,7 +370,7 @@ def run(args):
     # A completed BEGIN batch makes SQLCMD deliver the session marker before
     # executing the test batch. CASE messages may still arrive after the wait;
     # the observer's server timestamps retain their phase association.
-    query = getattr(args, "query", None)
+    query = deployment_query() if getattr(args, "deployment", False) else getattr(args, "query", None)
     if query:
         command.insert(2, "-i")
         command += ["-q", "SET NOCOUNT ON;"]
@@ -387,7 +435,8 @@ def run(args):
     report["errors"].extend(read_errors)
     report.update(sqlcmd_exit_code=code, log_incomplete=writer.incomplete,
                   commit=os.environ.get("GITHUB_SHA"), run_id=os.environ.get("GITHUB_RUN_ID"),
-                  attempt=os.environ.get("GITHUB_RUN_ATTEMPT"))
+                  attempt=os.environ.get("GITHUB_RUN_ATTEMPT"),
+                  observation_limit_seconds=observer.max_seconds)
     if code or report["errors"] or writer.incomplete:
         try:
             destination = Path(args.artifacts)
@@ -399,6 +448,7 @@ def run(args):
         except OSError:
             print(f"CI lock diagnostics publication failed; sqlcmd exit={code}")
             return code or 1
+        print("CI lock diagnostic summary: " + diagnostic_summary(report, ephemeral_value))
         print(f"CI lock diagnostics: {report['status']}; sqlcmd exit={code}; "
               f"observer errors={len(report['errors'])}; incomplete={writer.incomplete}")
     return code if code else (1 if report["errors"] or writer.incomplete else 0)
@@ -409,6 +459,8 @@ def main():
     parser.add_argument("--container", default="sqlserver-analyze-impact-2025")
     parser.add_argument("--sqlcmd", required=True)
     parser.add_argument("--input", default="Run_Impact_Gate.sql")
+    parser.add_argument("--deployment", action="store_true",
+                        help="observe generated deployment in the current SQLCMD session")
     parser.add_argument("--log", required=True)
     parser.add_argument("--artifacts", required=True)
     return run(parser.parse_args())

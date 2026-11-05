@@ -230,9 +230,12 @@ for line in sys.stdin:
             process = SimpleNamespace(stdout=io.BytesIO(b"SyntheticCredential\n"),
                                       stderr=io.BytesIO((CASE+"\nMsg 1222, Level 16, State 1\n").encode()), wait=lambda: 7)
             with patch.dict(os.environ, MSSQL_EPHEMERAL_CREDENTIAL="SyntheticCredential"), \
-                 patch.object(ci.subprocess, "Popen", return_value=process), \
+                 patch.object(ci.subprocess, "Popen", return_value=process) as launch, \
                  patch.object(ci, "Sqlcmd", side_effect=OSError("synthetic")):
                 self.assertEqual(ci.run(args), 7)
+            command = launch.call_args.args[0]
+            self.assertEqual(command[command.index("-i")+1], "synthetic.sql")
+            self.assertNotIn("-q", command)
             report = json.loads((Path(args.artifacts)/"diagnostics.json").read_text())
             self.assertIn("OBSERVATION_FAILED", report["errors"])
             self.assertEqual(report["sqlcmd_exit_code"], 7)
@@ -358,6 +361,121 @@ sys.exit(7)
                 self.assertEqual(len(verified), 1)
                 self.assertIn("session_id=51", verified[0])
                 self.assertIn("##ExampleCiLockProbe", verified[0])
+
+
+    def test_deployment_has_its_own_finite_observation_limit(self):
+        self.assertEqual(ci.Observation(lambda: None).max_seconds, 600)
+        self.assertEqual(ci.Observation(lambda: None, deployment_expected=True).max_seconds, 1200)
+        self.assertEqual(ci.MAX_SECONDS, 600)
+        self.assertEqual(ci.MAX_DEPLOYMENT_SECONDS, 1200)
+
+    def test_deployment_waits_for_same_session_snapshot_phase_and_requires_marker(self):
+        begin = "CI_BEGIN|DEPLOYMENT|Deployment|0|2000-01-01T00:00:00Z|51|0|generated"
+        phase = "CI_CASE|DEPLOYMENT|SnapshotSchema|1|2000-01-01T00:00:01Z|51|0|generated"
+        observer = ci.Observation(lambda: None)
+        with patch.object(observer.thread, "start") as start:
+            observer.feed(begin)
+            self.assertIsNone(observer.started)
+            observer.feed(phase.replace("|51|", "|52|"))
+            start.assert_not_called()
+            observer.feed(phase)
+            start.assert_called_once()
+            self.assertTrue(observer.deployment_phase_seen)
+        missing = ci.Observation(lambda: None)
+        missing.feed(begin)
+        self.assertIn("DEPLOYMENT_PHASE_NOT_OBSERVED", missing.finish()["errors"])
+        absent = ci.Observation(lambda: None, deployment_expected=True)
+        absent.feed(phase)
+        errors = absent.finish()["errors"]
+        self.assertIn("DEPLOYMENT_BEGIN_NOT_OBSERVED", errors)
+        self.assertIn("DEPLOYMENT_PHASE_NOT_OBSERVED", errors)
+        self.assertIsNone(absent.started)
+        source = (Path(__file__).with_name("Deployment_Prepare_Runtime.py")).read_text(encoding="utf-8")
+        marker = source.index("CI_CASE|DEPLOYMENT|SnapshotSchema|1|")
+        self.assertLess(marker, source.index("out.append(snapshot_schema_cases(deployed,tables))", marker))
+        self.assertIn("MAX_SECONDS = 600", Path(ci.__file__).read_text(encoding="utf-8"))
+
+    def test_summary_is_bounded_redacted_and_does_not_mutate_full_report(self):
+        case = ci.marker(CASE)
+        report = dict(status="BLOCKER_OBSERVED", case=case, sqlcmd_exit_code=7, errors=[],
+                      samples=[dict(case=case, rows=[dict(kind="request", session_id=51,
+                          blocking_session_id=52, wait_type="LCK_M_S")])])
+        before = json.loads(json.dumps(report))
+        summary = ci.diagnostic_summary(report, "SyntheticCredential")
+        self.assertEqual(json.loads(summary)["samples"][0]["rows"][0]["blocking_session_id"], 52)
+        self.assertEqual(report, before)
+        report["errors"] = ["SyntheticCredential" + "x" * 20000]
+        summary = ci.diagnostic_summary(report, "SyntheticCredential")
+        self.assertLessEqual(len(summary.encode("utf-8")), 16 * 1024)
+        self.assertNotIn("SyntheticCredential", summary)
+        self.assertEqual(json.loads(summary)["sqlcmd_exit_code"], 7)
+
+    def test_deployment_query_brackets_runtime_include_in_separate_batches(self):
+        query = ci.deployment_query()
+        self.assertRegex(query, r"RAISERROR\(N'%s',10,1,@CiDeploymentMarker\) WITH NOWAIT;\nGO\n:r /work/Code/Install/generated/Deployment_Runtime.generated.sql\nGO\nDECLARE")
+        self.assertIn("CI_BEGIN|DEPLOYMENT|Deployment|0|", query)
+        self.assertIn("CI_END|DEPLOYMENT|Deployment|0|", query)
+        self.assertIsNone(ci.marker("CI_BEGIN|208|Deployment|0|2000-01-01T00:00:00Z|51|0|generated"))
+        self.assertEqual(ci.marker("CI_BEGIN|DEPLOYMENT|Deployment|0|2000-01-01T00:00:00Z|51|0|generated")["test_file"],
+                         "Code/Install/generated/Deployment_Runtime.generated.sql")
+
+    def test_diagnostics_qualification_precedes_deployment(self):
+        workflow = (Path(__file__).resolve().parents[3]/".github/workflows/ci-functional-impact.yml").read_text(encoding="utf-8")
+        self.assertLess(workflow.index("Qualify changed CI lock diagnostics"), workflow.index("--deployment"))
+        self.assertLess(workflow.index('--sql-probe "$SQLCMD_PATH"'), workflow.index("--deployment"))
+        self.assertIn("ci-lock-diagnostics/deployment/impact.log", workflow)
+        native = workflow.split("      - name: Run native deployment regression", 1)[1].split("      - name: Run impacted contracts", 1)[0]
+        impacted = workflow.split("      - name: Run impacted contracts", 1)[1].split("      - name: Run isolated OPS-008", 1)[0]
+        self.assertIn("--deployment", native)
+        self.assertNotIn("--deployment", impacted)
+        self.assertIn("-i Install_All.sql", impacted)
+
+    def test_deployment_flag_is_exposed_by_cli(self):
+        with patch.object(sys, "argv", ["CI_LockTimeout_Diagnostics.py", "--sqlcmd", "synthetic",
+                                         "--deployment", "--log", "raw.log", "--artifacts", "artifacts"]), \
+             patch.object(ci, "run", return_value=7) as invoke:
+            self.assertEqual(ci.main(), 7)
+        self.assertTrue(invoke.call_args.args[0].deployment)
+        self.assertEqual(invoke.call_args.args[0].input, "Run_Impact_Gate.sql")
+
+    def test_deployment_flag_runs_query_mode_and_preserves_failure_privacy(self):
+        class CapturedInput:
+            def __init__(self):
+                self.parts = []
+                self.closed = False
+            def write(self, value):
+                self.parts.append(value)
+            def close(self):
+                self.closed = True
+            def value(self):
+                return b"".join(self.parts).decode("utf-8")
+
+        with tempfile.TemporaryDirectory() as directory:
+            captured = CapturedInput()
+            log = Path(directory)/"raw.log"
+            artifacts = Path(directory)/"deployment"
+            begin = "CI_BEGIN|DEPLOYMENT|Deployment|0|2000-01-01T00:00:00Z|51|0|generated"
+            process = SimpleNamespace(stdin=captured, stdout=io.BytesIO(b"SyntheticCredential\n"),
+                stderr=io.BytesIO((begin+"\n"+begin.replace("CI_BEGIN|DEPLOYMENT|Deployment|0|",
+                    "CI_CASE|DEPLOYMENT|SnapshotSchema|1|")+"\nMsg 1222, Level 16, State 1\n").encode()), wait=lambda: 7)
+            args = SimpleNamespace(container="synthetic", sqlcmd="synthetic", input="Run_Impact_Gate.sql",
+                deployment=True, log=str(log), artifacts=str(artifacts))
+            with patch.dict(os.environ, MSSQL_EPHEMERAL_CREDENTIAL="SyntheticCredential"), \
+                 patch.object(ci.subprocess, "Popen", return_value=process) as launch, \
+                 patch.object(ci, "Sqlcmd", side_effect=OSError("SyntheticCredential observer failure")):
+                self.assertEqual(ci.run(args), 7)
+            command = launch.call_args.args[0]
+            self.assertIn("-i", command)
+            self.assertIn("-q", command)
+            self.assertNotIn("Run_Impact_Gate.sql", command)
+            self.assertTrue(captured.closed)
+            self.assertIn("CI_BEGIN|DEPLOYMENT|Deployment", captured.value())
+            self.assertIn(":r /work/Code/Install/generated/Deployment_Runtime.generated.sql", captured.value())
+            self.assertTrue(captured.value().endswith("\nGO\n:QUIT\n"))
+            self.assertEqual((artifacts/"diagnostics.json").exists(), True)
+            saved_log = (artifacts/"impact.log").read_text(encoding="utf-8")
+            self.assertNotIn("SyntheticCredential", saved_log)
+            self.assertIn("Msg 1222", saved_log)
 
 
 def sql_probe(sqlcmd, artifacts):
