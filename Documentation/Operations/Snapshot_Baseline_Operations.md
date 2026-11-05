@@ -54,6 +54,8 @@ GO
    genannten Policywerte; bei einem Upgrade mit unverändertem Ziel wird er
    nicht erneut ausgeführt:
 
+Die [Parameterreferenz](../Analysis_Guides/Procedures/USP_ConfigureSnapshotTarget.md#parameter) nennt alle 22 Eingabeformen und Defaults. Der Zielname ist auch bei einem [Hilfeaufruf](../Analysis_Guides/Procedures/USP_ConfigureSnapshotTarget.md#aufrufbeispiele) ein Pflichtargument; die Hilfe prüft keine Zielgültigkeit und führt keine Konfigurationswrites aus.
+
 ```sql
 DECLARE @Status varchar(40), @Partial bit, @Error int, @Message nvarchar(2048);
 EXEC [monitor].[USP_ConfigureSnapshotTarget]
