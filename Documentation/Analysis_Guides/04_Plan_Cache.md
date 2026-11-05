@@ -438,6 +438,8 @@ flowchart TD
 
 ## Standalone Execution Plan Analysis
 
+Die [Parameterreferenz](Procedures/USP_ExecutionPlanAnalysis.md#parameter) erklärt Eingabeformen, Defaults, feste Optionen und NULL-Verhalten. Die [Aufrufbeispiele](Procedures/USP_ExecutionPlanAnalysis.md#aufrufbeispiele) verwenden ausschließlich synthetisches XML. Statementfilter und Ausgabekappen begrenzen nicht die vorgelagerte vollständige XML-Analyse; die Zeitprüfung ist ein abschließender Hinweis auf Partialität.
+
 `monitor.USP_ExecutionPlanAnalysis` analysiert genau ein Plan-XML ohne zwingenden Plan-Cache- oder Query-Store-Zugriff. Die technische Identität lautet `AnalysisObjectId + StatementOrdinal + NodeId`; gleiche NodeIds verschiedener Statements bleiben getrennt. Compile- und Runtimewerte werden nicht vermischt, fehlende Capabilities bleiben `NULL` mit Status.
 
 Die unterstützenden Referenz-TVFs verwenden explizit `SQL_Latin1_General_CP1_CS_AS` für ihre Textprojektionen. Spaltenrollen werden am jeweiligen materialisierten `RelOp` gelesen; verschachtelte Operatoren liefern ihre eigenen Spaltenreferenzen mit getrennten Node-Kontexten. Diese XML-Referenzen allein belegen weder eine erfolgreiche Katalogauflösung noch eine tatsächliche Workloadmessung.
