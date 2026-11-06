@@ -33400,10 +33400,10 @@ BEGIN
         PRINT N'@Regelsatz varchar(32). Default ist ''DEFAULT''. Ausschließlich DEFAULT ist unterstützt. NULL wird wie DEFAULT behandelt; Trim/Großschreibung normalisieren. Andere Codes ergeben INVALID_PARAMETER; ein konfigurierbarer zusätzlicher Regelsatz ist nicht implementiert.';
         PRINT N'@MinSchweregrad varchar(16). Default ist ''INFO''. Geschlossene Auswahl INFO, LOW, MEDIUM, HIGH, CRITICAL; NULL wird wie INFO behandelt. Trim/Großschreibung normalisieren; leer/unbekannt ist INVALID_PARAMETER. Legt die untere Findings-Schweregradgrenze fest, nicht die Analysequelle.';
         PRINT N'@MitThreadRuntime bit. Default ist 0. 0 entfernt die bereits materialisierten Thread-Laufzeitzeilen vor der Ausgabe; 1 behält vorhandene Threadzähler bei. NULL kann die äußere NOT-IN-Prüfung passieren, wird vom gemeinsamen Analyzer jedoch vor dessen Profilabfrage und Ergebnistabellenzugriff als INVALID_PARAMETER abgewiesen. Dieser Analyzer-Aufruf materialisiert dann keine Threadzeilen. T-SQL konvertiert numerische Nichtnullwerte vor der Procedureprüfung zu bit 1; verwenden Sie ausdrücklich 0 oder 1.';
-        PRINT N'@MitSqlText bit. Default ist 0. Geschlossene Auswahl 0 oder 1; NULL und Werte außerhalb dieser Auswahl ergeben INVALID_PARAMETER. 0 setzt StatementText vor der Ausgabe auf NULL. 1 behält Statementtext nur nach @SensitiveDataConfirmed=1 bei; 0 oder NULL als Bestätigung führt zu SENSITIVE_DATA_CONFIRMATION_REQUIRED. T-SQL konvertiert numerische Nichtnullwerte vor der Procedureprüfung zu bit 1.';
+        PRINT N'@MitSqlText bit. Default ist 0. Geschlossene Auswahl 0 oder 1; NULL und Werte außerhalb dieser Auswahl ergeben INVALID_PARAMETER. 0 setzt StatementText vor der Ausgabe auf NULL. 1 behält Statementtext nur nach @SensitiveDataConfirmed=1 bei; 0 oder NULL als Bestätigung führt zu SENSITIVE_DATA_CONFIRMATION_REQUIRED und lässt StatementText in JSON- und TABLE-Ausgaben NULL. T-SQL konvertiert numerische Nichtnullwerte vor der Procedureprüfung zu bit 1.';
         PRINT N'@EvidenzDatenschutzModus varchar(24). Default ist ''DERIVED_ONLY''. Geschlossene Auswahl DERIVED_ONLY, TOKENIZED, STRUCTURE_ONLY, RAW. NULL wird wie DERIVED_ONLY behandelt; Trim/Großschreibung normalisieren, unbekannter Code ergibt INVALID_PARAMETER. DERIVED_ONLY gibt abgeleitete Werte ohne konkrete Parameter-/Predicate-/Histogrammgrenzwerte aus; TOKENIZED ersetzt sensible Werte durch laufzeitlokale Tokens; STRUCTURE_ONLY beschränkt sensible Inhalte auf Struktur; RAW gibt konkrete Werte aus und benötigt @SensitiveDataConfirmed=1. Der Schalter beeinflusst die Analyseausgabe, nicht die Beschaffung der Planquelle.';
         PRINT N'@IdentifierDatenschutzModus varchar(16). Default ist ''RAW''. Geschlossene Auswahl RAW, TOKENIZED, OMIT. NULL wird wie RAW behandelt; Trim/Großschreibung normalisieren, unbekannter Code ergibt INVALID_PARAMETER. RAW erhält Objekt-/Identifikatorwerte, TOKENIZED ersetzt sie durch laufzeitlokale Tokens, OMIT lässt sie aus. Ein zusätzlicher Rohtextmodus ist in 053 nicht vorhanden.';
-        PRINT N'@SensitiveDataConfirmed bit. Default ist 0. Bit-Bestätigung: 1 erlaubt die angeforderten sensiblen Ausgaben, insbesondere Evidenzmodus RAW und @MitSqlText=1. 0 oder NULL bestätigt diese Pfade nicht und führt bei angeforderter sensibler Ausgabe zu SENSITIVE_DATA_CONFIRMATION_REQUIRED; NULL wird außerhalb solcher Pfade nicht global abgewiesen. Es gibt in 053 keinen INCLUDE-Rohzeilenmodus und keine additionalEvidence-Einbettung. T-SQL konvertiert numerische Nichtnullwerte vor der Procedureprüfung zu bit 1.';
+        PRINT N'@SensitiveDataConfirmed bit. Default ist 0. Bit-Bestätigung: 1 erlaubt die angeforderten sensiblen Ausgaben, insbesondere Evidenzmodus RAW und @MitSqlText=1. 0 oder NULL bestätigt diese Pfade nicht und führt bei angeforderter sensibler Ausgabe zu SENSITIVE_DATA_CONFIRMATION_REQUIRED; dann bleiben RangeHighKey und StatementText in JSON- und TABLE-Ausgaben NULL. NULL wird außerhalb solcher Pfade nicht global abgewiesen. Es gibt in 053 keinen INCLUDE-Rohzeilenmodus und keine additionalEvidence-Einbettung. T-SQL konvertiert numerische Nichtnullwerte vor der Procedureprüfung zu bit 1.';
         PRINT N'@MaxOperatoren int. Default ist 50000. Positive ganze Zahl; NULL oder Wert <1 ergibt INVALID_PARAMETER, eine obere Grenze wird nicht validiert. Die Operatorbegrenzung wird nach der Analyse angewandt und bereinigt abhängige Detailzeilen; sie begrenzt nicht die vorgelagerte Analysearbeit.';
         PRINT N'@MaxFindings int. Default ist 5000. Positive ganze Zahl als Höchstzahl der Findings; NULL oder Wert <1 ergibt INVALID_PARAMETER. Es gibt keine obere Bereichsvalidierung; weitere Findings können dadurch außerhalb der Ausgabe bleiben.';
         PRINT N'@MaxStatistiken int. Default ist 100. Begrenzung der Zahl aktueller Statistiken. NULL ist unzulässig; gültiger Bereich 1 bis 1000 einschließlich, andernfalls INVALID_PARAMETER. Der Grenzwert wirkt auf die zielgerichtete aktuelle Statistikerhebung.';
@@ -35044,12 +35044,15 @@ OUTER APPLY
         DELETE FROM [#ExecutionPlanAnalysis_Statements] WHERE [StatementQueryPlanHash]<>@QueryPlanHashText OR [StatementQueryPlanHash] IS NULL;
     END;
 
-    IF @MitSqlText=0 UPDATE [#ExecutionPlanAnalysis_Statements] SET [StatementText]=NULL;
+    IF @MitSqlText IS NULL OR @MitSqlText<>1
+       OR @SensitiveDataConfirmed IS NULL OR @SensitiveDataConfirmed<>1
+        UPDATE [#ExecutionPlanAnalysis_Statements] SET [StatementText]=NULL;
 
-    /* Sensitive Histogrammwerte nochmals am öffentlichen Ausgaberand sichern.
-       Der Evidence-Generator hat sie bereits normalisiert; diese Projektion ist
-       bewusst Defense in Depth für spätere interne Integrationspfade. */
+    /* Konkrete RangeHighKey-Werte werden an der öffentlichen Ausgabe nur
+       nach ausdrücklicher Bestätigung ausgegeben. Diese Projektion schützt
+       importierte Evidenz vor JSON- und TABLE-Ausgaben. */
     IF @PrivacyMode<>'RAW'
+       OR @SensitiveDataConfirmed IS NULL OR @SensitiveDataConfirmed<>1
         UPDATE [#ExecutionPlanAnalysis_HistogramSteps] SET [RangeHighKey]=NULL;
     IF @PrivacyMode<>'TOKENIZED'
         UPDATE [#ExecutionPlanAnalysis_HistogramSteps] SET [RangeHighKeyToken]=NULL;

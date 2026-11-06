@@ -955,6 +955,31 @@ IF @PrivacyJson=N'caller sentinel' OR @PrivacyMessage=N'caller sentinel'
    OR CHARINDEX(N'SensitiveEvidenceSentinelPublicNull',COALESCE(@PrivacyJson,N''))>0
     THROW 53663,N'053 RAW hat NULL als sensitive-data-Bestätigung akzeptiert oder den synthetischen Rohwert ausgegeben.',1;
 
+/* 053 RAW: 0 als Bestätigung muss Rohwerte ebenfalls unterdrücken. */
+SELECT @PrivacyJson=N'caller sentinel',@PrivacyStatus='STALE',@PrivacyPartial=NULL,@PrivacyError=999,@PrivacyMessage=N'caller sentinel';
+EXEC [monitor].[USP_ExecutionPlanAnalysis]
+      @PlanXml=@PrivacyPlan
+    , @EvidenzJson=@PrivacyEvidence
+    , @EvidenzDatenschutzModus='RAW'
+    , @IdentifierDatenschutzModus='RAW'
+    , @MitSqlText=0
+    , @SensitiveDataConfirmed=0
+    , @ResultSetArt='NONE'
+    , @JsonErzeugen=1
+    , @Json=@PrivacyJson OUTPUT
+    , @PrintMeldungen=0
+    , @StatusCodeOut=@PrivacyStatus OUTPUT
+    , @IsPartialOut=@PrivacyPartial OUTPUT
+    , @ErrorNumberOut=@PrivacyError OUTPUT
+    , @ErrorMessageOut=@PrivacyMessage OUTPUT;
+IF @PrivacyJson=N'caller sentinel' OR @PrivacyMessage=N'caller sentinel'
+   OR COALESCE(@PrivacyStatus,'')<>'SENSITIVE_DATA_CONFIRMATION_REQUIRED'
+   OR @PrivacyPartial IS NULL OR @PrivacyPartial<>1
+   OR @PrivacyError IS NOT NULL
+   OR NULLIF(LTRIM(RTRIM(@PrivacyMessage)),N'') IS NULL
+   OR CHARINDEX(N'SensitiveEvidenceSentinelPublicNull',COALESCE(@PrivacyJson,N''))>0
+    THROW 53669,N'053 RAW hat Bestätigung 0 akzeptiert oder den synthetischen Rohwert ausgegeben.',1;
+
 /* 053 SQL-Text: NULL als Bestätigung darf Text nicht freigeben. */
 SELECT @PrivacyJson=N'caller sentinel',@PrivacyStatus='STALE',@PrivacyPartial=NULL,@PrivacyError=999,@PrivacyMessage=N'caller sentinel';
 EXEC [monitor].[USP_ExecutionPlanAnalysis]
@@ -977,10 +1002,35 @@ IF @PrivacyJson=N'caller sentinel' OR @PrivacyMessage=N'caller sentinel'
    OR CHARINDEX(N'SqlTextSentinelPublicNull',COALESCE(@PrivacyJson,N''))>0
     THROW 53664,N'053 hat SQL-Text trotz NULL-Bestätigung ausgegeben.',1;
 
+/* 053 SQL-Text: 0 als Bestätigung muss Text ebenfalls unterdrücken. */
+SELECT @PrivacyJson=N'caller sentinel',@PrivacyStatus='STALE',@PrivacyPartial=NULL,@PrivacyError=999,@PrivacyMessage=N'caller sentinel';
+EXEC [monitor].[USP_ExecutionPlanAnalysis]
+      @PlanXml=@PrivacyPlan
+    , @MitSqlText=1
+    , @SensitiveDataConfirmed=0
+    , @ResultSetArt='NONE'
+    , @JsonErzeugen=1
+    , @Json=@PrivacyJson OUTPUT
+    , @PrintMeldungen=0
+    , @StatusCodeOut=@PrivacyStatus OUTPUT
+    , @IsPartialOut=@PrivacyPartial OUTPUT
+    , @ErrorNumberOut=@PrivacyError OUTPUT
+    , @ErrorMessageOut=@PrivacyMessage OUTPUT;
+IF @PrivacyJson=N'caller sentinel' OR @PrivacyMessage=N'caller sentinel'
+   OR COALESCE(@PrivacyStatus,'')<>'SENSITIVE_DATA_CONFIRMATION_REQUIRED'
+   OR @PrivacyPartial IS NULL OR @PrivacyPartial<>1
+   OR @PrivacyError IS NOT NULL
+   OR NULLIF(LTRIM(RTRIM(@PrivacyMessage)),N'') IS NULL
+   OR CHARINDEX(N'SqlTextSentinelPublicNull',COALESCE(@PrivacyJson,N''))>0
+    THROW 53670,N'053 hat SQL-Text trotz Bestätigung 0 ausgegeben.',1;
+
 /* 053 MitSqlText ist geschlossen: NULL ist ungültig, unabhängig von Bestätigung. */
 SELECT @PrivacyJson=N'caller sentinel',@PrivacyStatus='STALE',@PrivacyPartial=NULL,@PrivacyError=999,@PrivacyMessage=N'caller sentinel';
 EXEC [monitor].[USP_ExecutionPlanAnalysis]
       @PlanXml=@PrivacyPlan
+    , @EvidenzJson=@PrivacyEvidence
+    , @EvidenzDatenschutzModus='RAW'
+    , @IdentifierDatenschutzModus='RAW'
     , @MitSqlText=NULL
     , @SensitiveDataConfirmed=0
     , @ResultSetArt='NONE'
@@ -997,7 +1047,8 @@ IF @PrivacyJson=N'caller sentinel' OR @PrivacyMessage=N'caller sentinel'
    OR @PrivacyError IS NOT NULL
    OR NULLIF(LTRIM(RTRIM(@PrivacyMessage)),N'') IS NULL
    OR CHARINDEX(N'SqlTextSentinelPublicNull',COALESCE(@PrivacyJson,N''))>0
-    THROW 53665,N'053 hat MitSqlText=NULL mit fehlender Bestätigung nicht als ungültig abgewiesen.',1;
+   OR CHARINDEX(N'SensitiveEvidenceSentinelPublicNull',COALESCE(@PrivacyJson,N''))>0
+    THROW 53665,N'053 hat MitSqlText=NULL mit RAW-Evidenz nicht sicher als ungültig abgewiesen.',1;
 
 SELECT @PrivacyJson=N'caller sentinel',@PrivacyStatus='STALE',@PrivacyPartial=NULL,@PrivacyError=999,@PrivacyMessage=N'caller sentinel';
 EXEC [monitor].[USP_ExecutionPlanAnalysis]
