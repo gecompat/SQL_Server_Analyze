@@ -1739,6 +1739,141 @@
       "source": "AI_Metadata/Internal_Documentation/Quality/Next_Steps.md",
       "target": "Metadata/Quality/Diagnostic_Coverage_Landscape.csv",
       "classification": "product-reference"
+    },
+    {
+      "source": "AI_Metadata/Internal_Documentation/Quality/Development_Waves_2026-10.md",
+      "target": "Code/01_Common/099a_USP_InternalParseXmlText.sql",
+      "classification": "product-reference"
+    },
+    {
+      "source": "AI_Metadata/Internal_Documentation/Quality/Development_Waves_2026-10.md",
+      "target": "Code/01_Common/099_USP_InternalEmitTruncationWarning.sql",
+      "classification": "product-reference"
+    },
+    {
+      "source": "AI_Metadata/Internal_Documentation/Quality/Development_Waves_2026-10.md",
+      "target": "Code/01_Common/098_USP_InternalProjectUnicodeTextColumn.sql",
+      "classification": "product-reference"
+    },
+    {
+      "source": "AI_Metadata/Internal_Documentation/Quality/Development_Waves_2026-10.md",
+      "target": "Code/01_Common/098_USP_InternalEmitConsoleResult.sql",
+      "classification": "product-reference"
+    },
+    {
+      "source": "AI_Metadata/Internal_Documentation/Quality/Development_Waves_2026-10.md",
+      "target": "Code/01_Common/096_USP_InternalPrepareResultTables.sql",
+      "classification": "product-reference"
+    },
+    {
+      "source": "AI_Metadata/Internal_Documentation/Quality/Development_Waves_2026-10.md",
+      "target": "Code/01_Common/097_USP_InternalPrepareSingleResultTable.sql",
+      "classification": "product-reference"
+    },
+    {
+      "source": "AI_Metadata/Internal_Documentation/Quality/Development_Waves_2026-10.md",
+      "target": "Code/01_Common/095_USP_InternalWriteResultTable.sql",
+      "classification": "product-reference"
+    },
+    {
+      "source": "AI_Metadata/Internal_Documentation/Quality/Development_Waves_2026-10.md",
+      "target": "Code/01_Common/083a_USP_InternalCheckAnalysisPath.sql",
+      "classification": "product-reference"
+    },
+    {
+      "source": "AI_Metadata/Internal_Documentation/Quality/Development_Waves_2026-10.md",
+      "target": "Code/10_SnapshotBaseline/020_InternalConfigureSnapshotPolicy.sql",
+      "classification": "product-reference"
+    },
+    {
+      "source": "AI_Metadata/Internal_Documentation/Quality/Development_Waves_2026-10.md",
+      "target": "Code/10_SnapshotBaseline/040_InternalPrepareCollectionCycle.sql",
+      "classification": "product-reference"
+    },
+    {
+      "source": "AI_Metadata/Internal_Documentation/Quality/Development_Waves_2026-10.md",
+      "target": "Code/10_SnapshotBaseline/060_InternalFinalizeCollectionCycle.sql",
+      "classification": "product-reference"
+    },
+    {
+      "source": "AI_Metadata/Internal_Documentation/Quality/Development_Waves_2026-10.md",
+      "target": "Code/10_SnapshotBaseline/050_InternalCompletePerformanceCounterCycle.sql",
+      "classification": "product-reference"
+    },
+    {
+      "source": "AI_Metadata/Internal_Documentation/Quality/Development_Waves_2026-10.md",
+      "target": "Code/10_SnapshotBaseline/070_InternalPurgeExpiredData.sql",
+      "classification": "product-reference"
+    },
+    {
+      "source": "AI_Metadata/Internal_Documentation/Quality/Development_Waves_2026-10.md",
+      "target": "Code/10_SnapshotBaseline/076_InternalValidateSnapshotWaitTarget.sql",
+      "classification": "product-reference"
+    },
+    {
+      "source": "AI_Metadata/Internal_Documentation/Quality/Development_Waves_2026-10.md",
+      "target": "Code/10_SnapshotBaseline/085_InternalRunSnapshotWaitStatsCycle.sql",
+      "classification": "product-reference"
+    },
+    {
+      "source": "AI_Metadata/Internal_Documentation/Quality/Development_Waves_2026-10.md",
+      "target": "Code/10_SnapshotBaseline/087_InternalRunSnapshotFileIOCycle.sql",
+      "classification": "product-reference"
+    },
+    {
+      "source": "AI_Metadata/Internal_Documentation/Quality/Development_Waves_2026-10.md",
+      "target": "Code/10_SnapshotBaseline/055_InternalCompleteWaitStatsCycle.sql",
+      "classification": "product-reference"
+    },
+    {
+      "source": "AI_Metadata/Internal_Documentation/Quality/Development_Waves_2026-10.md",
+      "target": "Code/10_SnapshotBaseline/057_InternalCompleteFileIOCycle.sql",
+      "classification": "product-reference"
+    },
+    {
+      "source": "AI_Metadata/Internal_Documentation/Quality/Development_Waves_2026-10.md",
+      "target": "Code/02_CurrentState/005_InternalCaptureCurrentStateSnapshot.sql",
+      "classification": "product-reference"
+    },
+    {
+      "source": "AI_Metadata/Internal_Documentation/Quality/Development_Waves_2026-10.md",
+      "target": "Code/04_PlanCache/049_InternalCollectExecutionPlanMetadata.sql",
+      "classification": "product-reference"
+    },
+    {
+      "source": "AI_Metadata/Internal_Documentation/Quality/Development_Waves_2026-10.md",
+      "target": "Code/04_PlanCache/051_InternalAnalyzeExecutionPlan.sql",
+      "classification": "product-reference"
+    },
+    {
+      "source": "AI_Metadata/Internal_Documentation/Quality/Development_Waves_2026-10.md",
+      "target": "Documentation/Reference/Object_Reference.md",
+      "classification": "product-reference"
+    },
+    {
+      "source": "AI_Metadata/Internal_Documentation/Quality/Development_Waves_2026-10.md",
+      "target": "Code/10_SSIS/035_InternalSsisExecutionScopes.sql",
+      "classification": "product-reference"
+    },
+    {
+      "source": "AI_Metadata/Internal_Documentation/Quality/Development_Waves_2026-10.md",
+      "target": "Code/10_SSIS/036_InternalSsisPipelineCorrelation.sql",
+      "classification": "product-reference"
+    },
+    {
+      "source": "AI_Metadata/Internal_Documentation/Quality/Development_Waves_2026-10.md",
+      "target": "Code/10_SSIS/037_InternalSsisPipelineDiagnostics.sql",
+      "classification": "product-reference"
+    },
+    {
+      "source": "AI_Metadata/Internal_Documentation/Quality/Development_Waves_2026-10.md",
+      "target": "Code/10_SSIS/045_InternalSsisExecutionMetrics.sql",
+      "classification": "product-reference"
+    },
+    {
+      "source": "AI_Metadata/Internal_Documentation/Quality/Development_Waves_2026-10.md",
+      "target": "Code/10_SnapshotBaseline/030_Snapshot_Target_Schema.sql",
+      "classification": "product-reference"
     }
   ]
 }

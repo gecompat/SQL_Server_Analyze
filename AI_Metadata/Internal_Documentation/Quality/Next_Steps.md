@@ -1,13 +1,23 @@
 # Nächste Arbeitsschritte
 
-**Stand:** 5. November 2026  
+**Stand:** 6. November 2026  
 **Zweck:** aktueller Auftragsstatus und Einstieg in die erhaltene Entwicklungshistorie für `gecompat/SQL_Server_Analyze`.
 
 ## Aktuelle Orchestrierung
 
 Die [Entwicklungsplanung](Development_Waves_2026-10.md) ist die einzige maßgebliche Quelle für Reihenfolge, Zuständigkeit und nächste ausführbare Welle. Dieser kurze Einstieg hält den aktuellen Stand, seine Evidenzgrenzen und die wichtigsten Fortsetzungsregeln fest. Abgeschlossene Planungs- und Ausführungsnachweise bleiben im [Historienarchiv](Next_Steps_History_2026-11-05.md).
 
+## Quellenstand nach PR #633
+
+**Stand:** 6. November 2026.
+
+Die interne Prozedurprüfung umfasst 21 von 25 Inventareinträgen mit 196 Parameterzeilen; die vier SSIS-Referenzeinträge sind noch nicht einzeln gegen Parameterverträge geprüft. Die bisherige öffentliche Kohorte umfasst 121 Procedures mit 2.167 Parameterzeilen. Die getrennte Nichtprozedurkohorte umfasst 57 TABLE-, VIEW- und FUNCTION-Objekte aus 47 Quelldateien. Diese Zählungen gelten jeweils nur für die gebundenen Kohorten und belegen keine globale Fehlerfreiheit oder allgemeine Laufzeitqualifikation.
+
+Die PRs #631 bis #633 wurden mit den erforderlichen Head- und Main-Prüfungen, der vollständigen statischen Vertragssuite mit 80 Validatoren und Selbsttestauswahl `Changed`, Adapterparität und erfolgreichem TestLab-Cleanup-Vertrag integriert. Native SQL-Läufe wurden wegen reiner Kommentaränderungen übersprungen; daraus entsteht keine neue Laufzeitqualifikation. Die ausführbare Reihenfolge und der Objektstatus stehen in der [Entwicklungsplanung](Development_Waves_2026-10.md#quellenstand-nach-pr-633).
+
 ## Aktueller Stand nach Schritt 178
+
+Der folgende Abschnitt dokumentiert den Quellenstand vom 5. November 2026 nach Schritt 178. Er bleibt als Historie erhalten; maßgeblich für den aktuellen Stand ist [Quellenstand nach PR #633](#quellenstand-nach-pr-633).
 
 Die Hilfeprüfung der bisherigen Inventarkohorte erfasst 121 Procedures mit 2.167 Parameterzeilen; PR #610 bis PR #612 sind integriert. Die Nichtprozedurkohorte umfasst 57 TABLE-, VIEW- und FUNCTION-Objekte aus 47 Quelldateien. Die gebundenen DDL-Revisionen und Inventarzuordnung sind für diese Kohorte unabhängig geprüft. Diese Abschlüsse gelten ausschließlich für die bezeichneten Inventare und belegen weder globale Fehlerfreiheit noch allgemeine Laufzeit- oder Plattformqualifikation. Positive Windows-/Mirroring-Topologie, MSDTC-Dienst, externe Teilnehmer sowie Commit-/Recovery-Evidenz sind nicht belegt.
 
