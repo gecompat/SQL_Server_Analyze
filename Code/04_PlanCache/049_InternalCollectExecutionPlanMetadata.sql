@@ -42,20 +42,15 @@ Eingabe      :
   @QuellumgebungBestaetigt bit, Default: 0. Eingabeform: einzelner SQL-bit-
                Wert oder Variable; leere Zeichenfolge ist keine vorgesehene
                Typform und wird vor Eintritt konvertiert. SQL-bit-Eingabe: 1 bestätigt die
-               Quellumgebung, 0 bestätigt sie nicht; ausgelassen führt 0 zu
-               INVALID_PARAMETER. NULL wird nicht ausdrücklich geprüft:
-               NULL <> 1 ist UNKNOWN und kann die anfängliche Ablehnung
-               passieren.
+               Quellumgebung; 0 oder NULL ergeben INVALID_PARAMETER. Ausgelassen
+               bindet den Default 0 und ergibt ebenfalls INVALID_PARAMETER.
                Leerer Zeichenfolgeneingang wird vor Eintritt zu bit 0 konvertiert und wie
                fehlende Bestätigung abgelehnt.
   @MitPredicateHistogramMap bit, Default: 1. Eingabeform: einzelner SQL-bit-
                Wert oder Variable; leere Zeichenfolge ist keine vorgesehene
                Typform und wird vor Eintritt konvertiert. SQL-bit-Eingabe: 1 ordnet
-               extrahierte Planparameterwerte Histogrammschritten zu, 0
-               überspringt die Zuordnung. NULL wird nicht ausdrücklich
-               geprüft, passiert die anfängliche NOT IN-Prüfung wegen UNKNOWN
-               und überspringt später die Zuordnung, da nur = 1 ausgeführt
-               wird.
+               extrahierte Planparameterwerte Histogrammschritten zu; 0
+               überspringt die Zuordnung. NULL ergibt INVALID_PARAMETER.
                Leerer Zeichenfolgeneingang wird vor Eintritt zu bit 0 konvertiert und
                überspringt die Zuordnung.
   @MaxStatistiken int, Default: 100. Eingabeform: einzelner SQL-int-Wert oder
@@ -94,14 +89,12 @@ Eingabe      :
                und wird vor Eintritt konvertiert. SQL-bit-Eingabe: 1 bestätigt den
                High-Impact-Pfad, 0 nicht. Für RELEVANT, OBJECT_ALL und STEPS
                führt 0 zu HIGH_IMPACT_CONFIRMATION_REQUIRED; SUMMARY allein
-               verlangt die Bestätigung nicht. NULL wird in der anfänglichen
-               NOT IN-Prüfung nicht ausdrücklich abgefangen und <> 1 blockiert
-               NULL lokal ebenfalls nicht. Der optionale Gate-Helper kann NULL
-               als INVALID_PARAMETER ablehnen. Gate-Ergebnisse können außerdem
-               HIGH_IMPACT_CONFIRMATION_REQUIRED oder DENIED_GROUP sein;
-               INVALID_PARAMETER bedeutet dort ungültige Klasse/Bestätigung,
-               DENIED_GROUP einen nicht freigegebenen Pfad. Bei SQL-bit-Konvertierung kann
-               ein numerischer Nichtnullwert ungleich 0 zu 1 werden.
+               verlangt die Bestätigung nicht. NULL ergibt vor den Temp-Tabellen-
+               Prüfungen INVALID_PARAMETER. Die lokale Bestätigungsprüfung
+               erfolgt vor dem optionalen Gate-Aufruf; dessen Ergebnisse können
+               außerdem HIGH_IMPACT_CONFIRMATION_REQUIRED, INVALID_PARAMETER
+               oder DENIED_GROUP sein. Bei SQL-bit-Konvertierung kann ein
+               numerischer Nichtnullwert ungleich 0 zu 1 werden.
                Leerer Zeichenfolgeneingang wird vor Eintritt zu bit 0 konvertiert; für
                einen breiten Pfad fehlt damit die Bestätigung.
   @StatusCodeOut varchar(40), Default: NULL OUTPUT. Eingabeform: einzelner
@@ -219,12 +212,12 @@ BEGIN
     IF @PlanXml IS NULL
        OR @StatistikEvidenzModus NOT IN ('USED','RELEVANT','OBJECT_ALL')
        OR @HistogrammModus NOT IN ('NONE','SUMMARY','STEPS')
-       OR @QuellumgebungBestaetigt<>1
-       OR @MitPredicateHistogramMap NOT IN (0,1)
+       OR @QuellumgebungBestaetigt IS NULL OR @QuellumgebungBestaetigt<>1
+       OR @MitPredicateHistogramMap IS NULL OR @MitPredicateHistogramMap NOT IN (0,1)
        OR @MaxStatistiken IS NULL OR @MaxStatistiken NOT BETWEEN 1 AND 1000
        OR @MaxHistogrammSchritte IS NULL OR @MaxHistogrammSchritte NOT BETWEEN 0 AND 200000
        OR @LockTimeoutMs IS NULL OR @LockTimeoutMs NOT BETWEEN 0 AND 60000
-       OR @HighImpactConfirmed NOT IN (0,1)
+       OR @HighImpactConfirmed IS NULL OR @HighImpactConfirmed NOT IN (0,1)
     BEGIN
         SELECT @StatusCodeOut='INVALID_PARAMETER',@IsPartialOut=1,
                @ErrorMessageOut=N'Ungültiger Plan-, Modus-, Bestätigungs-, Mengen- oder Lock-Timeout-Parameter.';

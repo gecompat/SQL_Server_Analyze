@@ -7,17 +7,23 @@
 
 Die [Entwicklungsplanung](Development_Waves_2026-10.md) ist die einzige maßgebliche Quelle für Reihenfolge, Zuständigkeit und nächste ausführbare Welle. Dieser kurze Einstieg hält den aktuellen Stand, seine Evidenzgrenzen und die wichtigsten Fortsetzungsregeln fest. Abgeschlossene Planungs- und Ausführungsnachweise bleiben im [Historienarchiv](Next_Steps_History_2026-11-05.md).
 
+## NULL-Guards der internen Plananalyse
+
+Die fachliche Prüfung belegt sechs fehlende NULL-Ablehnungen. InternalCollectExecutionPlanMetadata weist NULL für QuellumgebungBestaetigt, MitPredicateHistogramMap und HighImpactConfirmed jetzt vor seinen Temp-Tabellenprüfungen als INVALID_PARAMETER zurück. InternalAnalyzeExecutionPlan lehnt NULL für PlanSource, RuntimeCounterScope und MitThreadRuntime vor Profilzugriff und Temp-Tabellenprüfungen ab. Insbesondere darf ein fehlender Thread-Schalter nicht entgegen dem Default 0 Threadzeilen erhalten. Die absichtlichen NULL-Fallbacks für Modi und die optionalen Kontextwerte bleiben erhalten; der ausdrückliche Scope UNKNOWN bleibt gültig.
+
+Die [Entwicklungsplanung](Development_Waves_2026-10.md#null-guards-der-internen-plananalyse) bindet die Quellen, die Verhaltenstests und die Grenzen der öffentlichen Aufrufer. DDL-Kommentare, Objektreferenz, betroffene öffentliche Hilfetexte und ihre Guides sind abgeglichen. Unabhängiger Review, erforderliche Remote-Tests, Cleanup und Main-Nachprüfung bleiben Integrationsbedingungen. Die Bestätigungs- und Datenschutzgrenzen der öffentlichen Aufrufer sind als getrennter nächster Prüfumfang festgehalten; dieser interne Abschluss behebt sie nicht vollständig.
+
 ## Phasenbezogene File-IO-Fehlerausgänge
 
 Die beiden File-IO-Fehlerausgänge sind in ihren Einzelparameterverträgen nach Prüfphase und Finalisierungspfad beschrieben. Sourcefehler können nach validierter Source auch bei einem Backendfehler einschließlich NULL oder Leertext erhalten bleiben; ein Fehler der inneren Finalisierung kann stattdessen seine eigene Diagnose ausgeben. Die SQL-Logik des Helpers bleibt unverändert; seine kommentarabhängige Fingerprintbindung im abgeleiteten Snapshot-Preflight ist nachgeführt. Die [Entwicklungsplanung](Development_Waves_2026-10.md#phasenbezogene-file-io-fehlerausgänge) bindet den Quellstand und hält die verbleibenden Evidenzgrenzen fest. Die erforderlichen Review- und Remote-Gates bleiben Voraussetzung für die Integration.
 
-Die getrennte fachliche Prüfung dokumentierter NULL-Guard-Verhaltensweisen bleibt offen. Sie ist keine bereits beschlossene Änderung der erlaubten Parameterwerte. Fehlende Plattform- und Transaktionsevidenz bleibt ausdrücklich unbelegt.
+Die damals folgende fachliche NULL-Guard-Prüfung ist im aktuellen Abschnitt abgegrenzt; die öffentlichen Bestätigungs- und Datenschutzgrenzen bleiben ein eigener Folgeschritt. Fehlende Plattform- und Transaktionsevidenz bleibt ausdrücklich unbelegt.
 
 ## Snapshot-Target-Diagnose 53781
 
 Fehler 53781 nennt nun das vom FILE_IO-Guard tatsächlich verlangte Target 1.3.1 mit Schema 3. Fehlernummer, Status und Guard bleiben unverändert; DDL-Kommentar und Objektreferenz sind abgeglichen. Die [Entwicklungsplanung](Development_Waves_2026-10.md#snapshot-target-diagnose-53781) bindet den neuen Quellstand und trennt ihn vom historischen Blobnachweis. Die erforderlichen Remote-Gates bleiben Voraussetzung für die Integration.
 
-Die damals folgenden File-IO-Einzelverträge sind im aktuellen Abschnitt präzisiert. Dokumentierte NULL-Guard-Verhaltensweisen bleiben eine getrennte fachliche Prüfung; nicht vorhandene Plattform- und Transaktionsevidenz wird nicht als erbracht behandelt.
+Die damals folgenden File-IO-Einzelverträge sind im aktuellen Abschnitt präzisiert. Die nachfolgende NULL-Guard-Prüfung steht im aktuellen Abschnitt; nicht vorhandene Plattform- und Transaktionsevidenz wird nicht als erbracht behandelt.
 
 ## SSIS-Referenzabgleich vom 6. November 2026
 
@@ -37,7 +43,7 @@ Die PRs #631 bis #633 wurden mit den erforderlichen Head- und Main-Prüfungen, d
 
 ## Aktueller Stand nach Schritt 178
 
-Der folgende Abschnitt dokumentiert den Quellenstand vom 5. November 2026 nach Schritt 178. Er bleibt als Historie erhalten; maßgeblich für den aktuellen Stand ist [Phasenbezogene File-IO-Fehlerausgänge](#phasenbezogene-file-io-fehlerausgänge).
+Der folgende Abschnitt dokumentiert den Quellenstand vom 5. November 2026 nach Schritt 178. Er bleibt als Historie erhalten; maßgeblich für den aktuellen Stand ist [NULL-Guards der internen Plananalyse](#null-guards-der-internen-plananalyse).
 
 Die Hilfeprüfung der bisherigen Inventarkohorte erfasst 121 Procedures mit 2.167 Parameterzeilen; PR #610 bis PR #612 sind integriert. Die Nichtprozedurkohorte umfasst 57 TABLE-, VIEW- und FUNCTION-Objekte aus 47 Quelldateien. Die gebundenen DDL-Revisionen und Inventarzuordnung sind für diese Kohorte unabhängig geprüft. Diese Abschlüsse gelten ausschließlich für die bezeichneten Inventare und belegen weder globale Fehlerfreiheit noch allgemeine Laufzeit- oder Plattformqualifikation. Positive Windows-/Mirroring-Topologie, MSDTC-Dienst, externe Teilnehmer sowie Commit-/Recovery-Evidenz sind nicht belegt.
 

@@ -35,17 +35,16 @@ abgedeckt.
   für StmtSimple und validiert kein bestimmtes Root-Element oder Namespace.
 - @PlanSource varchar(24), Eingabe, erforderlich, kein Default: Codes IMPORTED
   (importiertes XML), COMPILE (Kompilierungsplan), LAST_ACTUAL (letzter Actual Plan),
-  CURRENT_ACTUAL (aktueller Actual Plan), QUERY_STORE (Query-Store-Plan). '' ist
-  ungültig. Keine Normalisierung. NULL wird von der NOT-IN-Prüfung nicht als ungültig erkannt und kann
-  bei ansonsten gültigen Parametern die Validierung passieren. Der Wert klassifiziert die Quelle und beschafft keinen Plan.
+  CURRENT_ACTUAL (aktueller Actual Plan), QUERY_STORE (Query-Store-Plan). '' und NULL
+  sind ungültig und ergeben INVALID_PARAMETER. Keine Normalisierung. Der Wert
+  klassifiziert die Quelle und beschafft keinen Plan.
 - @RuntimeCounterScope varchar(32), Eingabe, erforderlich, kein Default: Codes NONE
   (keine Runtimecounter beansprucht), LAST_COMPLETED_EXECUTION (letzte abgeschlossene
   Ausführung), CURRENT_PARTIAL_EXECUTION (aktuelle möglicherweise unvollständige
   Ausführung), IMPORTED_ACTUAL (importiertes Actual-Plan-XML), QUERY_STORE_AGGREGATE
-  (aggregierte Query-Store-Zuordnung), UNKNOWN (Scope unbekannt). '' ist ungültig.
-  Keine Normalisierung. NULL wird von der NOT-IN-Prüfung nicht als ungültig
-  erkannt und kann bei ansonsten gültigen Parametern die Validierung passieren. Klassifiziert die gelieferten
-  Daten, beschafft oder verifiziert aber keine Runtimecounter.
+  (aggregierte Query-Store-Zuordnung), UNKNOWN (Scope unbekannt). '' und NULL sind
+  ungültig und ergeben INVALID_PARAMETER. Keine Normalisierung. Klassifiziert die
+  gelieferten Daten, beschafft oder verifiziert aber keine Runtimecounter.
 - @WorkloadProfile varchar(32), Eingabe, Default 'BALANCED': offene, tabellengesteuerte
   Allowlist monitor.PlanAnalysisProfile. NULL wird BALANCED; Rand-Leerraum wird
   entfernt und Großschreibung hergestellt. Unbekannte, deaktivierte und leere Werte
@@ -81,9 +80,8 @@ abgedeckt.
   {"capture":{"sameExecutionConfidence":"UNCONFIRMED"},"statisticsIo":[{"statementOrdinal":1,"objectDisplayName":"[dbo].[Sample]","logicalReads":12,"physicalReads":0,"readAheadReads":0,"scanCount":1,"parseStatus":"PARSED"}],"statisticsTime":[{"statementOrdinal":1,"timeCategory":"SQL","cpuMs":2.5,"elapsedMs":3,"parseStatus":"PARSED"}]}
 - @MitThreadRuntime bit, Eingabe, Default 0: 0 löscht die Threadzeilen nach ihrer
   Materialisierung und der Ableitung aggregierter Runtimewerte; 1 behält sie.
-  Numerische Werte ungleich 0 werden bei Bindung zu 1; '' kann zu 0 konvertieren.
-  NULL wird nicht ausdrücklich abgewiesen und erfüllt den Löschzweig = 0 nicht,
-  sodass Threadzeilen verbleiben.
+  NULL ergibt INVALID_PARAMETER. Numerische Werte ungleich 0 werden bei Bindung
+  zu 1; '' kann zu 0 konvertieren.
 - @EvidenzDatenschutzModus varchar(24), Eingabe, Default 'DERIVED_ONLY': geschlossene
   Codes DERIVED_ONLY (Werte weglassen, abgeleitete Evidenz führen), TOKENIZED (Werte
   weglassen, vorhandene Werte mit frischem lokalem Zufallssalt tokenisieren), RAW
@@ -198,10 +196,10 @@ BEGIN
         , @ErrorMessageOut=NULL;
 
     IF @AnalysisObjectId IS NULL OR @AnalysisObjectId<1 OR @PlanXml IS NULL
-       OR @PlanSource NOT IN ('IMPORTED','COMPILE','LAST_ACTUAL','CURRENT_ACTUAL','QUERY_STORE')
-       OR @RuntimeCounterScope NOT IN ('NONE','LAST_COMPLETED_EXECUTION','CURRENT_PARTIAL_EXECUTION','IMPORTED_ACTUAL','QUERY_STORE_AGGREGATE','UNKNOWN')
+       OR @PlanSource IS NULL OR @PlanSource NOT IN ('IMPORTED','COMPILE','LAST_ACTUAL','CURRENT_ACTUAL','QUERY_STORE')
+       OR @RuntimeCounterScope IS NULL OR @RuntimeCounterScope NOT IN ('NONE','LAST_COMPLETED_EXECUTION','CURRENT_PARTIAL_EXECUTION','IMPORTED_ACTUAL','QUERY_STORE_AGGREGATE','UNKNOWN')
        OR @MinSeverity NOT IN ('INFO','LOW','MEDIUM','HIGH','CRITICAL')
-       OR @MitThreadRuntime NOT IN (0,1)
+       OR @MitThreadRuntime IS NULL OR @MitThreadRuntime NOT IN (0,1)
        OR @EvidenzDatenschutzModus NOT IN ('DERIVED_ONLY','TOKENIZED','RAW','STRUCTURE_ONLY')
        OR @IdentifierDatenschutzModus NOT IN ('RAW','TOKENIZED','OMIT')
     BEGIN
