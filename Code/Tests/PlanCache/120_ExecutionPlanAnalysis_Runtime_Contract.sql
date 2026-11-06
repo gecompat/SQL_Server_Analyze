@@ -59,6 +59,8 @@ EXEC [monitor].[USP_ExecutionPlanAnalysis]
 
 IF @Status NOT IN ('AVAILABLE','PARTIAL') OR ISJSON(@AnalysisJson)<>1
     THROW 53600,N'Die eigenständige Plananalyse lieferte keinen gültigen Vertrag.',1;
+IF (SELECT COUNT(*) FROM OPENJSON(@AnalysisJson,N'$.operatorThreadRuntime'))=0
+    THROW 53646,N'@MitThreadRuntime=1 hat keine synthetischen Threadzeilen ausgegeben.',1;
 IF TRY_CONVERT(int,JSON_VALUE(@AnalysisJson,N'$.meta.schemaVersion'))<>3
    OR JSON_VALUE(@AnalysisJson,N'$.meta.resultName')<>N'ExecutionPlanAnalysis'
    OR JSON_VALUE(@AnalysisJson,N'$.meta.evidencePrivacyMode')<>N'DERIVED_ONLY'
@@ -582,4 +584,219 @@ IF @Diag003Status<>'UNAVAILABLE_OBJECT'
    OR JSON_VALUE(@Diag003Json,N'$.parameters[0].ValueStatus')<>N'REQUEST_FINISHED'
    OR TRY_CONVERT(int,JSON_VALUE(@Diag003Json,N'$.parameters[0].SessionId'))<>@MissingSessionId
     THROW 53645,N'Ein beendeter Request wurde nicht als REQUEST_FINISHED ausgewiesen.',1;
+GO
+
+/* NULL-Eingaben an internen Grenzen werden vor Resultat-Temp-Tabellen abgelehnt. */
+DECLARE @GuardPlan xml=N'
+<ShowPlanXML xmlns="http://schemas.microsoft.com/sqlserver/2004/07/showplan" Version="1.600" Build="17.0.1000.1">
+  <BatchSequence><Batch><Statements>
+    <StmtSimple StatementId="1" StatementCompId="1" StatementType="SELECT" StatementText="SELECT ExampleColumn FROM ExampleSchema.ExampleObject" StatementSubTreeCost="1.0" StatementEstRows="10" StatementOptmLevel="FULL" QueryHash="0x0101010101010101" QueryPlanHash="0x1111111111111111">
+      <QueryPlan CardinalityEstimationModelVersion="170" CompileTime="2" CompileCPU="2" CompileMemory="128">
+        <MemoryGrantInfo RequestedMemory="20480" GrantedMemory="20480" MaxUsedMemory="1024" GrantWaitTime="0" />
+        <OptimizerStatsUsage><StatisticsInfo Database="[ExampleDatabase]" Schema="[ExampleSchema]" Table="[ExampleObject]" Statistics="[ExampleStatistics]" LastUpdate="2026-01-01T00:00:00" ModificationCount="0" SamplingPercent="100" /></OptimizerStatsUsage>
+        <RelOp NodeId="0" PhysicalOp="Select" LogicalOp="Select" EstimateRows="10" EstimatedTotalSubtreeCost="1.0">
+          <OutputList><ColumnReference Database="[ExampleDatabase]" Schema="[ExampleSchema]" Table="[ExampleObject]" Column="[ExampleColumn]" /></OutputList>
+          <Select>
+            <RelOp NodeId="1" PhysicalOp="Index Seek" LogicalOp="Index Seek" EstimateRows="10" EstimatedRowsRead="100" EstimateExecutions="1" EstimatedTotalSubtreeCost="0.9">
+              <RunTimeInformation><RunTimeCountersPerThread Thread="0" ActualRows="10" ActualRowsRead="100" ActualExecutions="1" ActualLogicalReads="8" ActualCPUms="1" ActualElapsedms="2" /></RunTimeInformation>
+              <IndexScan Ordered="1" ScanDirection="FORWARD"><Object Database="[ExampleDatabase]" Schema="[ExampleSchema]" Table="[ExampleObject]" Index="[ExampleIndex]" Storage="RowStore" /></IndexScan>
+            </RelOp>
+          </Select>
+        </RelOp>
+        <ParameterList><ColumnReference Column="@ExampleParameter" ParameterDataType="int" ParameterCompiledValue="(7)" ParameterRuntimeValue="(9)" /></ParameterList>
+      </QueryPlan>
+    </StmtSimple>
+    <StmtSimple StatementId="2" StatementCompId="2" StatementType="SELECT" StatementText="SELECT ExampleOtherColumn FROM ExampleSchema.ExampleOtherObject" StatementSubTreeCost="0.1" StatementEstRows="1" StatementOptmLevel="TRIVIAL" QueryHash="0x0202020202020202" QueryPlanHash="0x2222222222222222">
+      <QueryPlan CardinalityEstimationModelVersion="170" CompileTime="1" CompileCPU="1" CompileMemory="64">
+        <RelOp NodeId="0" PhysicalOp="Select" LogicalOp="Select" EstimateRows="1" EstimatedTotalSubtreeCost="0.1">
+          <Select><RelOp NodeId="1" PhysicalOp="Constant Scan" LogicalOp="Constant Scan" EstimateRows="1" EstimatedTotalSubtreeCost="0.0"><RunTimeInformation><RunTimeCountersPerThread Thread="0" ActualRows="1" ActualExecutions="1" /></RunTimeInformation><ConstantScan /></RelOp></Select>
+        </RelOp>
+      </QueryPlan>
+    </StmtSimple>
+  </Statements></Batch></BatchSequence>
+</ShowPlanXML>';
+DECLARE @AnalysisJson nvarchar(max),@Status varchar(40),@Partial bit,@Error int,@Message nvarchar(2048);
+DECLARE @NullGuardStatus varchar(40),@NullGuardPartial bit,@NullGuardError int,@NullGuardMessage nvarchar(2048);
+
+SET @NullGuardStatus='SENTINEL';SET @NullGuardPartial=0;SET @NullGuardError=53699;SET @NullGuardMessage=N'SENTINEL';
+EXEC [monitor].[InternalCollectExecutionPlanMetadata]
+      @PlanXml=@GuardPlan
+    , @QuellumgebungBestaetigt=NULL
+    , @StatusCodeOut=@NullGuardStatus OUTPUT
+    , @IsPartialOut=@NullGuardPartial OUTPUT
+    , @ErrorNumberOut=@NullGuardError OUTPUT
+    , @ErrorMessageOut=@NullGuardMessage OUTPUT;
+IF COALESCE(@NullGuardStatus,'')<>'INVALID_PARAMETER' OR COALESCE(@NullGuardPartial,0)<>1 OR @NullGuardError IS NOT NULL OR NULLIF(LTRIM(RTRIM(@NullGuardMessage)),N'') IS NULL
+    THROW 53647,N'NULL in @QuellumgebungBestaetigt wurde nicht vor den Temp-Tabellen-Prüfungen abgelehnt.',1;
+
+SET @NullGuardStatus='SENTINEL';SET @NullGuardPartial=0;SET @NullGuardError=53699;SET @NullGuardMessage=N'SENTINEL';
+EXEC [monitor].[InternalCollectExecutionPlanMetadata]
+      @PlanXml=@GuardPlan
+    , @QuellumgebungBestaetigt=1
+    , @MitPredicateHistogramMap=NULL
+    , @StatusCodeOut=@NullGuardStatus OUTPUT
+    , @IsPartialOut=@NullGuardPartial OUTPUT
+    , @ErrorNumberOut=@NullGuardError OUTPUT
+    , @ErrorMessageOut=@NullGuardMessage OUTPUT;
+IF COALESCE(@NullGuardStatus,'')<>'INVALID_PARAMETER' OR COALESCE(@NullGuardPartial,0)<>1 OR @NullGuardError IS NOT NULL OR NULLIF(LTRIM(RTRIM(@NullGuardMessage)),N'') IS NULL
+    THROW 53648,N'NULL in @MitPredicateHistogramMap wurde nicht vor den Temp-Tabellen-Prüfungen abgelehnt.',1;
+
+SET @NullGuardStatus='SENTINEL';SET @NullGuardPartial=0;SET @NullGuardError=53699;SET @NullGuardMessage=N'SENTINEL';
+EXEC [monitor].[InternalCollectExecutionPlanMetadata]
+      @PlanXml=@GuardPlan
+    , @StatistikEvidenzModus='RELEVANT'
+    , @QuellumgebungBestaetigt=1
+    , @HighImpactConfirmed=NULL
+    , @StatusCodeOut=@NullGuardStatus OUTPUT
+    , @IsPartialOut=@NullGuardPartial OUTPUT
+    , @ErrorNumberOut=@NullGuardError OUTPUT
+    , @ErrorMessageOut=@NullGuardMessage OUTPUT;
+IF COALESCE(@NullGuardStatus,'')<>'INVALID_PARAMETER' OR COALESCE(@NullGuardPartial,0)<>1 OR @NullGuardError IS NOT NULL OR NULLIF(LTRIM(RTRIM(@NullGuardMessage)),N'') IS NULL
+    THROW 53649,N'NULL in @HighImpactConfirmed wurde nicht vor den Temp-Tabellen-Prüfungen abgelehnt.',1;
+
+SET @NullGuardStatus='SENTINEL';SET @NullGuardPartial=0;SET @NullGuardError=53699;SET @NullGuardMessage=N'SENTINEL';
+EXEC [monitor].[InternalAnalyzeExecutionPlan]
+      @AnalysisObjectId=120
+    , @PlanXml=@GuardPlan
+    , @PlanSource=NULL
+    , @RuntimeCounterScope='NONE'
+    , @StatusCodeOut=@NullGuardStatus OUTPUT
+    , @IsPartialOut=@NullGuardPartial OUTPUT
+    , @ErrorNumberOut=@NullGuardError OUTPUT
+    , @ErrorMessageOut=@NullGuardMessage OUTPUT;
+IF COALESCE(@NullGuardStatus,'')<>'INVALID_PARAMETER' OR COALESCE(@NullGuardPartial,0)<>1 OR @NullGuardError IS NOT NULL OR NULLIF(LTRIM(RTRIM(@NullGuardMessage)),N'') IS NULL
+    THROW 53650,N'NULL in @PlanSource wurde nicht vor den Temp-Tabellen-Prüfungen abgelehnt.',1;
+
+SET @NullGuardStatus='SENTINEL';SET @NullGuardPartial=0;SET @NullGuardError=53699;SET @NullGuardMessage=N'SENTINEL';
+EXEC [monitor].[InternalAnalyzeExecutionPlan]
+      @AnalysisObjectId=120
+    , @PlanXml=@GuardPlan
+    , @PlanSource='IMPORTED'
+    , @RuntimeCounterScope=NULL
+    , @StatusCodeOut=@NullGuardStatus OUTPUT
+    , @IsPartialOut=@NullGuardPartial OUTPUT
+    , @ErrorNumberOut=@NullGuardError OUTPUT
+    , @ErrorMessageOut=@NullGuardMessage OUTPUT;
+IF COALESCE(@NullGuardStatus,'')<>'INVALID_PARAMETER' OR COALESCE(@NullGuardPartial,0)<>1 OR @NullGuardError IS NOT NULL OR NULLIF(LTRIM(RTRIM(@NullGuardMessage)),N'') IS NULL
+    THROW 53651,N'NULL in @RuntimeCounterScope wurde nicht vor den Temp-Tabellen-Prüfungen abgelehnt.',1;
+
+SET @NullGuardStatus='SENTINEL';SET @NullGuardPartial=0;SET @NullGuardError=53699;SET @NullGuardMessage=N'SENTINEL';
+EXEC [monitor].[InternalAnalyzeExecutionPlan]
+      @AnalysisObjectId=120
+    , @PlanXml=@GuardPlan
+    , @PlanSource='IMPORTED'
+    , @RuntimeCounterScope='NONE'
+    , @MitThreadRuntime=NULL
+    , @StatusCodeOut=@NullGuardStatus OUTPUT
+    , @IsPartialOut=@NullGuardPartial OUTPUT
+    , @ErrorNumberOut=@NullGuardError OUTPUT
+    , @ErrorMessageOut=@NullGuardMessage OUTPUT;
+IF COALESCE(@NullGuardStatus,'')<>'INVALID_PARAMETER' OR COALESCE(@NullGuardPartial,0)<>1 OR @NullGuardError IS NOT NULL OR NULLIF(LTRIM(RTRIM(@NullGuardMessage)),N'') IS NULL
+    THROW 53652,N'NULL in @MitThreadRuntime wurde nicht vor den Temp-Tabellen-Prüfungen abgelehnt.',1;
+
+/* Gültige Grenzen passieren die Parameterprüfung; ohne Hilfstabellen folgt INTERNAL_ERROR. */
+DECLARE @BoundaryStatus varchar(40),@BoundaryPartial bit,@BoundaryError int,@BoundaryMessage nvarchar(2048);
+SET @BoundaryStatus=NULL;SET @BoundaryPartial=NULL;SET @BoundaryError=NULL;SET @BoundaryMessage=NULL;
+EXEC [monitor].[InternalCollectExecutionPlanMetadata]
+      @PlanXml=@GuardPlan
+    , @StatistikEvidenzModus=NULL
+    , @HistogrammModus=NULL
+    , @QuellumgebungBestaetigt=1
+    , @MitPredicateHistogramMap=0
+    , @HighImpactConfirmed=0
+    , @StatusCodeOut=@BoundaryStatus OUTPUT
+    , @IsPartialOut=@BoundaryPartial OUTPUT
+    , @ErrorNumberOut=@BoundaryError OUTPUT
+    , @ErrorMessageOut=@BoundaryMessage OUTPUT;
+IF COALESCE(@BoundaryStatus,'')<>'INTERNAL_ERROR' OR COALESCE(@BoundaryPartial,0)<>1 OR @BoundaryError IS NULL
+    THROW 53653,N'Gültige Bestätigungs-/Schalterwerte oder NULL-Modusfallbacks passierten die Eingabeprüfung nicht.',1;
+
+SET @BoundaryStatus=NULL;SET @BoundaryPartial=NULL;SET @BoundaryError=NULL;SET @BoundaryMessage=NULL;
+EXEC [monitor].[InternalCollectExecutionPlanMetadata]
+      @PlanXml=@GuardPlan
+    , @StatistikEvidenzModus=NULL
+    , @HistogrammModus=NULL
+    , @QuellumgebungBestaetigt=1
+    , @MitPredicateHistogramMap=1
+    , @HighImpactConfirmed=1
+    , @StatusCodeOut=@BoundaryStatus OUTPUT
+    , @IsPartialOut=@BoundaryPartial OUTPUT
+    , @ErrorNumberOut=@BoundaryError OUTPUT
+    , @ErrorMessageOut=@BoundaryMessage OUTPUT;
+IF COALESCE(@BoundaryStatus,'')<>'INTERNAL_ERROR' OR COALESCE(@BoundaryPartial,0)<>1 OR @BoundaryError IS NULL
+    THROW 53654,N'Explizite Einswerte oder NULL-Modusfallbacks passierten die Eingabeprüfung nicht.',1;
+
+SET @BoundaryStatus=NULL;SET @BoundaryPartial=NULL;SET @BoundaryError=NULL;SET @BoundaryMessage=NULL;
+EXEC [monitor].[InternalAnalyzeExecutionPlan]
+      @AnalysisObjectId=120
+    , @PlanXml=@GuardPlan
+    , @PlanSource='IMPORTED'
+    , @RuntimeCounterScope='UNKNOWN'
+    , @MitThreadRuntime=0
+    , @StatusCodeOut=@BoundaryStatus OUTPUT
+    , @IsPartialOut=@BoundaryPartial OUTPUT
+    , @ErrorNumberOut=@BoundaryError OUTPUT
+    , @ErrorMessageOut=@BoundaryMessage OUTPUT;
+IF COALESCE(@BoundaryStatus,'')<>'INTERNAL_ERROR' OR COALESCE(@BoundaryPartial,0)<>1 OR @BoundaryError IS NULL
+    THROW 53655,N'Der gültige UNKNOWN-Scope oder @MitThreadRuntime=0 passierte die Eingabeprüfung nicht.',1;
+
+SET @BoundaryStatus=NULL;SET @BoundaryPartial=NULL;SET @BoundaryError=NULL;SET @BoundaryMessage=NULL;
+EXEC [monitor].[InternalAnalyzeExecutionPlan]
+      @AnalysisObjectId=120
+    , @PlanXml=@GuardPlan
+    , @PlanSource='IMPORTED'
+    , @RuntimeCounterScope='NONE'
+    , @MitThreadRuntime=1
+    , @StatusCodeOut=@BoundaryStatus OUTPUT
+    , @IsPartialOut=@BoundaryPartial OUTPUT
+    , @ErrorNumberOut=@BoundaryError OUTPUT
+    , @ErrorMessageOut=@BoundaryMessage OUTPUT;
+IF COALESCE(@BoundaryStatus,'')<>'INTERNAL_ERROR' OR COALESCE(@BoundaryPartial,0)<>1 OR @BoundaryError IS NULL
+    THROW 53656,N'@MitThreadRuntime=1 passierte die Eingabeprüfung nicht.',1;
+
+/* Die öffentliche Analyse muss die explizite Eins behalten und 0/Default unterdrücken. */
+SET @AnalysisJson=NULL;SET @Status=NULL;SET @Partial=NULL;SET @Error=NULL;SET @Message=NULL;
+EXEC [monitor].[USP_ExecutionPlanAnalysis]
+      @PlanXml=@GuardPlan
+    , @MitThreadRuntime=0
+    , @ResultSetArt='NONE'
+    , @JsonErzeugen=1
+    , @Json=@AnalysisJson OUTPUT
+    , @PrintMeldungen=0
+    , @StatusCodeOut=@Status OUTPUT
+    , @IsPartialOut=@Partial OUTPUT
+    , @ErrorNumberOut=@Error OUTPUT
+    , @ErrorMessageOut=@Message OUTPUT;
+IF COALESCE(@Status,'') NOT IN ('AVAILABLE','PARTIAL')
+   OR COALESCE(ISJSON(@AnalysisJson),0)<>1
+   OR @Partial IS NULL
+   OR (SELECT COUNT(*) FROM OPENJSON(@AnalysisJson,N'$.operatorThreadRuntime'))<>0
+   OR NOT EXISTS
+      (SELECT 1 FROM OPENJSON(@AnalysisJson,N'$.operatorRuntime')
+       WITH ([StatementOrdinal] int N'$.StatementOrdinal',[NodeId] int N'$.NodeId',[PairedActualRows] decimal(38,4) N'$.PairedActualRows')
+       WHERE [StatementOrdinal]=1 AND [NodeId]=1 AND [PairedActualRows]=10)
+    THROW 53657,N'@MitThreadRuntime=0 hat Threadzeilen behalten oder aggregierte Runtimewerte verloren.',1;
+
+SET @AnalysisJson=NULL;SET @Status=NULL;SET @Partial=NULL;SET @Error=NULL;SET @Message=NULL;
+EXEC [monitor].[USP_ExecutionPlanAnalysis]
+      @PlanXml=@GuardPlan
+    , @ResultSetArt='NONE'
+    , @JsonErzeugen=1
+    , @Json=@AnalysisJson OUTPUT
+    , @PrintMeldungen=0
+    , @StatusCodeOut=@Status OUTPUT
+    , @IsPartialOut=@Partial OUTPUT
+    , @ErrorNumberOut=@Error OUTPUT
+    , @ErrorMessageOut=@Message OUTPUT;
+IF COALESCE(@Status,'') NOT IN ('AVAILABLE','PARTIAL')
+   OR COALESCE(ISJSON(@AnalysisJson),0)<>1
+   OR @Partial IS NULL
+   OR (SELECT COUNT(*) FROM OPENJSON(@AnalysisJson,N'$.operatorThreadRuntime'))<>0
+   OR NOT EXISTS
+      (SELECT 1 FROM OPENJSON(@AnalysisJson,N'$.operatorRuntime')
+       WITH ([StatementOrdinal] int N'$.StatementOrdinal',[NodeId] int N'$.NodeId',[PairedActualRows] decimal(38,4) N'$.PairedActualRows')
+       WHERE [StatementOrdinal]=1 AND [NodeId]=1 AND [PairedActualRows]=10)
+    THROW 53658,N'Der Default von @MitThreadRuntime hat Threadzeilen behalten oder aggregierte Runtimewerte verloren.',1;
+
+
 GO
