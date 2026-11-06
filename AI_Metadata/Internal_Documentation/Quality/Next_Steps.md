@@ -7,7 +7,15 @@
 
 Die [Entwicklungsplanung](Development_Waves_2026-10.md) ist die einzige maßgebliche Quelle für Reihenfolge, Zuständigkeit und nächste ausführbare Welle. Dieser kurze Einstieg hält den aktuellen Stand, seine Evidenzgrenzen und die wichtigsten Fortsetzungsregeln fest. Abgeschlossene Planungs- und Ausführungsnachweise bleiben im [Historienarchiv](Next_Steps_History_2026-11-05.md).
 
+## SSIS-Referenzabgleich vom 6. November 2026
+
+Der ergänzende Abgleich beschreibt alle vier zuvor offenen SSIS-Helfer mit zusammen 42 Einzelparameterverträgen. Die bezeichnete interne Kohorte umfasst damit 25 Prozeduren mit 238 Parametern; die bisherigen 21 Quell-Blobs und das gebundene Inventar sind unverändert. PR #635 und PR #636 sind einschließlich Main-Nachprüfung integriert. Die vorliegende Änderung ergänzt InternalSsisExecutionMetrics; Review und erforderliche CI-Gates bleiben die Integrationsbedingung. Es handelt sich um einen begrenzten Kommentar- und Referenzabgleich, keine allgemeine Laufzeitqualifikation. Die öffentliche Kohorte und die Nichtprozedurkohorte behalten ihre separat bezeichneten Evidenzgrenzen.
+
+Die [Entwicklungsplanung](Development_Waves_2026-10.md#ssis-referenzabgleich-vom-6-november-2026) bindet die vier Quellen und hält die nächsten belegten Lücken fest: Snapshot-Diagnosetext 53781, phasenbezogene Fehlerausgänge bei File-IO sowie die getrennte fachliche Prüfung dokumentierter NULL-Guard-Verhaltensweisen. Fehlende Windows-/Mirroring- und MSDTC-Topologieevidenz bleibt offen. Die modulare Kerninstallation ohne obligatorische LLM-Komponenten bleibt unverändert.
+
 ## Quellenstand nach PR #633
+
+Dieser Abschnitt ist der historische Ausgangsstand; der aktuelle Folgeabgleich steht unter [SSIS-Referenzabgleich vom 6. November 2026](#ssis-referenzabgleich-vom-6-november-2026).
 
 **Stand:** 6. November 2026.
 
@@ -17,7 +25,7 @@ Die PRs #631 bis #633 wurden mit den erforderlichen Head- und Main-Prüfungen, d
 
 ## Aktueller Stand nach Schritt 178
 
-Der folgende Abschnitt dokumentiert den Quellenstand vom 5. November 2026 nach Schritt 178. Er bleibt als Historie erhalten; maßgeblich für den aktuellen Stand ist [Quellenstand nach PR #633](#quellenstand-nach-pr-633).
+Der folgende Abschnitt dokumentiert den Quellenstand vom 5. November 2026 nach Schritt 178. Er bleibt als Historie erhalten; maßgeblich für den aktuellen Stand ist [SSIS-Referenzabgleich vom 6. November 2026](#ssis-referenzabgleich-vom-6-november-2026).
 
 Die Hilfeprüfung der bisherigen Inventarkohorte erfasst 121 Procedures mit 2.167 Parameterzeilen; PR #610 bis PR #612 sind integriert. Die Nichtprozedurkohorte umfasst 57 TABLE-, VIEW- und FUNCTION-Objekte aus 47 Quelldateien. Die gebundenen DDL-Revisionen und Inventarzuordnung sind für diese Kohorte unabhängig geprüft. Diese Abschlüsse gelten ausschließlich für die bezeichneten Inventare und belegen weder globale Fehlerfreiheit noch allgemeine Laufzeit- oder Plattformqualifikation. Positive Windows-/Mirroring-Topologie, MSDTC-Dienst, externe Teilnehmer sowie Commit-/Recovery-Evidenz sind nicht belegt.
 
