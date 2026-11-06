@@ -804,3 +804,261 @@ IF COALESCE(@Status,'') NOT IN ('AVAILABLE','PARTIAL')
 
 
 GO
+/* Öffentliche NULL-Datenschutzgrenzen: synthetische Rohwerte und SQL-Texte. */
+DECLARE @PrivacyPlan xml=N'
+<ShowPlanXML xmlns="http://schemas.microsoft.com/sqlserver/2004/07/showplan" Version="1.600" Build="17.0.1000.1">
+  <BatchSequence><Batch><Statements>
+    <StmtSimple StatementId="1" StatementCompId="1" StatementType="SELECT" StatementText="SELECT SqlTextSentinelPublicNull FROM ExampleSchema.ExampleObject WHERE ExampleColumn = 7" StatementSubTreeCost="0.1" StatementEstRows="1" StatementOptmLevel="TRIVIAL">
+      <QueryPlan CardinalityEstimationModelVersion="170">
+        <RelOp NodeId="0" PhysicalOp="Constant Scan" LogicalOp="Constant Scan" EstimateRows="1" EstimatedTotalSubtreeCost="0.1"><ConstantScan /></RelOp>
+      </QueryPlan>
+    </StmtSimple>
+  </Statements></Batch></BatchSequence>
+</ShowPlanXML>';
+DECLARE @PrivacyEvidence nvarchar(max)=N'{
+  "statistics": {
+    "currentSnapshot": [{
+      "databaseName":"ExampleDatabase","schemaName":"ExampleSchema","objectName":"ExampleObject","objectId":1,
+      "statisticsName":"ExampleStatistics","statisticsId":1,"isIndexStatistics":true,"isFiltered":true,
+      "filterDefinition":"SensitiveEvidenceSentinelPublicNull","leadingColumnName":"ExampleColumn","collectionStatus":"AVAILABLE"
+    }]
+  }
+}';
+DECLARE @PrivacyIo nvarchar(max)=N'Table ''SensitiveIoSentinelPublicNull''. Scan count 1, logical reads 2, physical reads 0, read-ahead reads 0, lob logical reads 0, lob physical reads 0, lob read-ahead reads 0.';
+DECLARE
+      @PrivacyJson nvarchar(max)
+    , @PrivacyStatus varchar(40)
+    , @PrivacyPartial bit
+    , @PrivacyError int
+    , @PrivacyMessage nvarchar(2048);
+
+/* 052 RAW: NULL must not let imported filter definitions through. */
+SELECT @PrivacyJson=N'caller sentinel',@PrivacyStatus='STALE',@PrivacyPartial=NULL,@PrivacyError=999,@PrivacyMessage=N'caller sentinel';
+EXEC [monitor].[USP_CreateExecutionEvidenceJson]
+      @StatisticsEvidenceJson=@PrivacyEvidence
+    , @EvidenzDatenschutzModus='RAW'
+    , @SensitiveDataConfirmed=NULL
+    , @ResultSetArt='NONE'
+    , @JsonErzeugen=1
+    , @Json=@PrivacyJson OUTPUT
+    , @PrintMeldungen=0
+    , @StatusCodeOut=@PrivacyStatus OUTPUT
+    , @IsPartialOut=@PrivacyPartial OUTPUT
+    , @ErrorNumberOut=@PrivacyError OUTPUT
+    , @ErrorMessageOut=@PrivacyMessage OUTPUT;
+IF @PrivacyJson=N'caller sentinel' OR @PrivacyMessage=N'caller sentinel'
+   OR COALESCE(@PrivacyStatus,'')<>'SENSITIVE_DATA_CONFIRMATION_REQUIRED'
+   OR @PrivacyPartial IS NULL OR @PrivacyPartial<>1
+   OR @PrivacyError IS NOT NULL
+   OR NULLIF(LTRIM(RTRIM(@PrivacyMessage)),N'') IS NULL
+   OR CHARINDEX(N'SensitiveEvidenceSentinelPublicNull',COALESCE(@PrivacyJson,N''))>0
+    THROW 53659,N'052 RAW hat NULL als sensitive-data-Bestätigung akzeptiert oder den synthetischen Rohwert ausgegeben.',1;
+
+/* 052 INCLUDE: NULL muss geparste Meldungsrohzeilen unterdrücken. */
+SELECT @PrivacyJson=N'caller sentinel',@PrivacyStatus='STALE',@PrivacyPartial=NULL,@PrivacyError=999,@PrivacyMessage=N'caller sentinel';
+EXEC [monitor].[USP_CreateExecutionEvidenceJson]
+      @StatisticsIoText=@PrivacyIo
+    , @RawTextHandling='INCLUDE'
+    , @IdentifierDatenschutzModus='RAW'
+    , @SensitiveDataConfirmed=NULL
+    , @ResultSetArt='NONE'
+    , @JsonErzeugen=1
+    , @Json=@PrivacyJson OUTPUT
+    , @PrintMeldungen=0
+    , @StatusCodeOut=@PrivacyStatus OUTPUT
+    , @IsPartialOut=@PrivacyPartial OUTPUT
+    , @ErrorNumberOut=@PrivacyError OUTPUT
+    , @ErrorMessageOut=@PrivacyMessage OUTPUT;
+IF @PrivacyJson=N'caller sentinel' OR @PrivacyMessage=N'caller sentinel'
+   OR COALESCE(@PrivacyStatus,'')<>'SENSITIVE_DATA_CONFIRMATION_REQUIRED'
+   OR @PrivacyPartial IS NULL OR @PrivacyPartial<>1
+   OR @PrivacyError IS NOT NULL
+   OR NULLIF(LTRIM(RTRIM(@PrivacyMessage)),N'') IS NULL
+   OR CHARINDEX(N'SensitiveIoSentinelPublicNull',COALESCE(@PrivacyJson,N''))>0
+    THROW 53660,N'052 INCLUDE hat NULL als sensitive-data-Bestätigung akzeptiert oder die synthetische Rohzeile ausgegeben.',1;
+
+/* Harmloser 052-Aufruf: NULL bleibt auf DERIVED_ONLY zulässig und redigiert Rohwerte. */
+SELECT @PrivacyJson=N'caller sentinel',@PrivacyStatus='STALE',@PrivacyPartial=NULL,@PrivacyError=999,@PrivacyMessage=N'caller sentinel';
+EXEC [monitor].[USP_CreateExecutionEvidenceJson]
+      @StatisticsEvidenceJson=@PrivacyEvidence
+    , @SensitiveDataConfirmed=NULL
+    , @ResultSetArt='NONE'
+    , @JsonErzeugen=1
+    , @Json=@PrivacyJson OUTPUT
+    , @PrintMeldungen=0
+    , @StatusCodeOut=@PrivacyStatus OUTPUT
+    , @IsPartialOut=@PrivacyPartial OUTPUT
+    , @ErrorNumberOut=@PrivacyError OUTPUT
+    , @ErrorMessageOut=@PrivacyMessage OUTPUT;
+IF @PrivacyJson=N'caller sentinel' OR @PrivacyMessage=N'caller sentinel'
+   OR COALESCE(@PrivacyStatus,'') NOT IN ('AVAILABLE','PARTIAL')
+   OR @PrivacyPartial IS NULL
+   OR COALESCE(ISJSON(@PrivacyJson),0)<>1
+   OR @PrivacyError IS NOT NULL
+   OR CHARINDEX(N'SensitiveEvidenceSentinelPublicNull',COALESCE(@PrivacyJson,N''))>0
+    THROW 53661,N'052 hat NULL außerhalb sensibler Ausgabe global abgewiesen oder DERIVED_ONLY nicht redigiert.',1;
+
+/* Bestätigte 052-RAW/INCLUDE-Kontrolle: beide synthetischen Werte bleiben erreichbar. */
+SELECT @PrivacyJson=N'caller sentinel',@PrivacyStatus='STALE',@PrivacyPartial=NULL,@PrivacyError=999,@PrivacyMessage=N'caller sentinel';
+EXEC [monitor].[USP_CreateExecutionEvidenceJson]
+      @StatisticsEvidenceJson=@PrivacyEvidence
+    , @StatisticsIoText=@PrivacyIo
+    , @EvidenzDatenschutzModus='RAW'
+    , @RawTextHandling='INCLUDE'
+    , @IdentifierDatenschutzModus='RAW'
+    , @SensitiveDataConfirmed=1
+    , @ResultSetArt='NONE'
+    , @JsonErzeugen=1
+    , @Json=@PrivacyJson OUTPUT
+    , @PrintMeldungen=0
+    , @StatusCodeOut=@PrivacyStatus OUTPUT
+    , @IsPartialOut=@PrivacyPartial OUTPUT
+    , @ErrorNumberOut=@PrivacyError OUTPUT
+    , @ErrorMessageOut=@PrivacyMessage OUTPUT;
+IF @PrivacyJson=N'caller sentinel' OR @PrivacyMessage=N'caller sentinel'
+   OR COALESCE(@PrivacyStatus,'') NOT IN ('AVAILABLE','PARTIAL')
+   OR @PrivacyPartial IS NULL
+   OR COALESCE(ISJSON(@PrivacyJson),0)<>1
+   OR @PrivacyError IS NOT NULL
+   OR CHARINDEX(N'SensitiveEvidenceSentinelPublicNull',COALESCE(@PrivacyJson,N''))=0
+   OR CHARINDEX(N'SensitiveIoSentinelPublicNull',COALESCE(@PrivacyJson,N''))=0
+    THROW 53662,N'Explizit bestätigte 052-RAW/INCLUDE-Kontrolle hat die erwartete synthetische Evidenz nicht erhalten.',1;
+
+/* 053 RAW-Plan-Evidenz: NULL muss den öffentlichen Bestätigungsstatus liefern. */
+SELECT @PrivacyJson=N'caller sentinel',@PrivacyStatus='STALE',@PrivacyPartial=NULL,@PrivacyError=999,@PrivacyMessage=N'caller sentinel';
+EXEC [monitor].[USP_ExecutionPlanAnalysis]
+      @PlanXml=@PrivacyPlan
+    , @EvidenzJson=@PrivacyEvidence
+    , @EvidenzDatenschutzModus='RAW'
+    , @IdentifierDatenschutzModus='RAW'
+    , @MitSqlText=0
+    , @SensitiveDataConfirmed=NULL
+    , @ResultSetArt='NONE'
+    , @JsonErzeugen=1
+    , @Json=@PrivacyJson OUTPUT
+    , @PrintMeldungen=0
+    , @StatusCodeOut=@PrivacyStatus OUTPUT
+    , @IsPartialOut=@PrivacyPartial OUTPUT
+    , @ErrorNumberOut=@PrivacyError OUTPUT
+    , @ErrorMessageOut=@PrivacyMessage OUTPUT;
+IF @PrivacyJson=N'caller sentinel' OR @PrivacyMessage=N'caller sentinel'
+   OR COALESCE(@PrivacyStatus,'')<>'SENSITIVE_DATA_CONFIRMATION_REQUIRED'
+   OR @PrivacyPartial IS NULL OR @PrivacyPartial<>1
+   OR @PrivacyError IS NOT NULL
+   OR NULLIF(LTRIM(RTRIM(@PrivacyMessage)),N'') IS NULL
+   OR CHARINDEX(N'SensitiveEvidenceSentinelPublicNull',COALESCE(@PrivacyJson,N''))>0
+    THROW 53663,N'053 RAW hat NULL als sensitive-data-Bestätigung akzeptiert oder den synthetischen Rohwert ausgegeben.',1;
+
+/* 053 SQL-Text: NULL als Bestätigung darf Text nicht freigeben. */
+SELECT @PrivacyJson=N'caller sentinel',@PrivacyStatus='STALE',@PrivacyPartial=NULL,@PrivacyError=999,@PrivacyMessage=N'caller sentinel';
+EXEC [monitor].[USP_ExecutionPlanAnalysis]
+      @PlanXml=@PrivacyPlan
+    , @MitSqlText=1
+    , @SensitiveDataConfirmed=NULL
+    , @ResultSetArt='NONE'
+    , @JsonErzeugen=1
+    , @Json=@PrivacyJson OUTPUT
+    , @PrintMeldungen=0
+    , @StatusCodeOut=@PrivacyStatus OUTPUT
+    , @IsPartialOut=@PrivacyPartial OUTPUT
+    , @ErrorNumberOut=@PrivacyError OUTPUT
+    , @ErrorMessageOut=@PrivacyMessage OUTPUT;
+IF @PrivacyJson=N'caller sentinel' OR @PrivacyMessage=N'caller sentinel'
+   OR COALESCE(@PrivacyStatus,'')<>'SENSITIVE_DATA_CONFIRMATION_REQUIRED'
+   OR @PrivacyPartial IS NULL OR @PrivacyPartial<>1
+   OR @PrivacyError IS NOT NULL
+   OR NULLIF(LTRIM(RTRIM(@PrivacyMessage)),N'') IS NULL
+   OR CHARINDEX(N'SqlTextSentinelPublicNull',COALESCE(@PrivacyJson,N''))>0
+    THROW 53664,N'053 hat SQL-Text trotz NULL-Bestätigung ausgegeben.',1;
+
+/* 053 MitSqlText ist geschlossen: NULL ist ungültig, unabhängig von Bestätigung. */
+SELECT @PrivacyJson=N'caller sentinel',@PrivacyStatus='STALE',@PrivacyPartial=NULL,@PrivacyError=999,@PrivacyMessage=N'caller sentinel';
+EXEC [monitor].[USP_ExecutionPlanAnalysis]
+      @PlanXml=@PrivacyPlan
+    , @MitSqlText=NULL
+    , @SensitiveDataConfirmed=0
+    , @ResultSetArt='NONE'
+    , @JsonErzeugen=1
+    , @Json=@PrivacyJson OUTPUT
+    , @PrintMeldungen=0
+    , @StatusCodeOut=@PrivacyStatus OUTPUT
+    , @IsPartialOut=@PrivacyPartial OUTPUT
+    , @ErrorNumberOut=@PrivacyError OUTPUT
+    , @ErrorMessageOut=@PrivacyMessage OUTPUT;
+IF @PrivacyJson=N'caller sentinel' OR @PrivacyMessage=N'caller sentinel'
+   OR COALESCE(@PrivacyStatus,'')<>'INVALID_PARAMETER'
+   OR @PrivacyPartial IS NULL OR @PrivacyPartial<>1
+   OR @PrivacyError IS NOT NULL
+   OR NULLIF(LTRIM(RTRIM(@PrivacyMessage)),N'') IS NULL
+   OR CHARINDEX(N'SqlTextSentinelPublicNull',COALESCE(@PrivacyJson,N''))>0
+    THROW 53665,N'053 hat MitSqlText=NULL mit fehlender Bestätigung nicht als ungültig abgewiesen.',1;
+
+SELECT @PrivacyJson=N'caller sentinel',@PrivacyStatus='STALE',@PrivacyPartial=NULL,@PrivacyError=999,@PrivacyMessage=N'caller sentinel';
+EXEC [monitor].[USP_ExecutionPlanAnalysis]
+      @PlanXml=@PrivacyPlan
+    , @MitSqlText=NULL
+    , @SensitiveDataConfirmed=1
+    , @ResultSetArt='NONE'
+    , @JsonErzeugen=1
+    , @Json=@PrivacyJson OUTPUT
+    , @PrintMeldungen=0
+    , @StatusCodeOut=@PrivacyStatus OUTPUT
+    , @IsPartialOut=@PrivacyPartial OUTPUT
+    , @ErrorNumberOut=@PrivacyError OUTPUT
+    , @ErrorMessageOut=@PrivacyMessage OUTPUT;
+IF @PrivacyJson=N'caller sentinel' OR @PrivacyMessage=N'caller sentinel'
+   OR COALESCE(@PrivacyStatus,'')<>'INVALID_PARAMETER'
+   OR @PrivacyPartial IS NULL OR @PrivacyPartial<>1
+   OR @PrivacyError IS NOT NULL
+   OR NULLIF(LTRIM(RTRIM(@PrivacyMessage)),N'') IS NULL
+   OR CHARINDEX(N'SqlTextSentinelPublicNull',COALESCE(@PrivacyJson,N''))>0
+    THROW 53666,N'Explizite Sensitivity-Bestätigung hat MitSqlText=NULL nicht ungültig gelassen.',1;
+
+/* Harmloser 053-Aufruf: SensitiveDataConfirmed=NULL mit MitSqlText=0 bleibt erlaubt. */
+SELECT @PrivacyJson=N'caller sentinel',@PrivacyStatus='STALE',@PrivacyPartial=NULL,@PrivacyError=999,@PrivacyMessage=N'caller sentinel';
+EXEC [monitor].[USP_ExecutionPlanAnalysis]
+      @PlanXml=@PrivacyPlan
+    , @MitSqlText=0
+    , @SensitiveDataConfirmed=NULL
+    , @ResultSetArt='NONE'
+    , @JsonErzeugen=1
+    , @Json=@PrivacyJson OUTPUT
+    , @PrintMeldungen=0
+    , @StatusCodeOut=@PrivacyStatus OUTPUT
+    , @IsPartialOut=@PrivacyPartial OUTPUT
+    , @ErrorNumberOut=@PrivacyError OUTPUT
+    , @ErrorMessageOut=@PrivacyMessage OUTPUT;
+IF @PrivacyJson=N'caller sentinel' OR @PrivacyMessage=N'caller sentinel'
+   OR COALESCE(@PrivacyStatus,'') NOT IN ('AVAILABLE','PARTIAL')
+   OR @PrivacyPartial IS NULL
+   OR COALESCE(ISJSON(@PrivacyJson),0)<>1
+   OR @PrivacyError IS NOT NULL
+   OR CHARINDEX(N'SqlTextSentinelPublicNull',COALESCE(@PrivacyJson,N''))>0
+    THROW 53667,N'053 hat SensitiveDataConfirmed=NULL außerhalb sensibler Ausgabe global abgewiesen oder StatementText ausgegeben.',1;
+
+/* Explizite Bestätigung erhält RAW-Evidenz und SQL-Text im 053-Aufruf. */
+SELECT @PrivacyJson=N'caller sentinel',@PrivacyStatus='STALE',@PrivacyPartial=NULL,@PrivacyError=999,@PrivacyMessage=N'caller sentinel';
+EXEC [monitor].[USP_ExecutionPlanAnalysis]
+      @PlanXml=@PrivacyPlan
+    , @EvidenzJson=@PrivacyEvidence
+    , @MitSqlText=1
+    , @EvidenzDatenschutzModus='RAW'
+    , @IdentifierDatenschutzModus='RAW'
+    , @SensitiveDataConfirmed=1
+    , @ResultSetArt='NONE'
+    , @JsonErzeugen=1
+    , @Json=@PrivacyJson OUTPUT
+    , @PrintMeldungen=0
+    , @StatusCodeOut=@PrivacyStatus OUTPUT
+    , @IsPartialOut=@PrivacyPartial OUTPUT
+    , @ErrorNumberOut=@PrivacyError OUTPUT
+    , @ErrorMessageOut=@PrivacyMessage OUTPUT;
+IF @PrivacyJson=N'caller sentinel' OR @PrivacyMessage=N'caller sentinel'
+   OR COALESCE(@PrivacyStatus,'') NOT IN ('AVAILABLE','PARTIAL')
+   OR @PrivacyPartial IS NULL
+   OR COALESCE(ISJSON(@PrivacyJson),0)<>1
+   OR @PrivacyError IS NOT NULL
+   OR CHARINDEX(N'SensitiveEvidenceSentinelPublicNull',COALESCE(@PrivacyJson,N''))=0
+   OR CHARINDEX(N'SqlTextSentinelPublicNull',COALESCE(@PrivacyJson,N''))=0
+    THROW 53668,N'Explizit bestätigte 053-RAW-/SQL-Text-Kontrolle hat die synthetischen Werte nicht ausgegeben.',1;
+GO

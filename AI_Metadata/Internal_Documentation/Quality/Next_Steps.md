@@ -9,9 +9,11 @@ Die [Entwicklungsplanung](Development_Waves_2026-10.md) ist die einzige maßgebl
 
 ## NULL-Guards der internen Plananalyse
 
+PR #640 ist einschließlich der erforderlichen Head- und Main-Gates, der nativen SQL-Server-2025- und Standalone-Verträge sowie Cleanup integriert.
+
 Die fachliche Prüfung belegt sechs fehlende NULL-Ablehnungen. InternalCollectExecutionPlanMetadata weist NULL für QuellumgebungBestaetigt, MitPredicateHistogramMap und HighImpactConfirmed jetzt vor seinen Temp-Tabellenprüfungen als INVALID_PARAMETER zurück. InternalAnalyzeExecutionPlan lehnt NULL für PlanSource, RuntimeCounterScope und MitThreadRuntime vor Profilzugriff und Temp-Tabellenprüfungen ab. Insbesondere darf ein fehlender Thread-Schalter nicht entgegen dem Default 0 Threadzeilen erhalten. Die absichtlichen NULL-Fallbacks für Modi und die optionalen Kontextwerte bleiben erhalten; der ausdrückliche Scope UNKNOWN bleibt gültig.
 
-Die [Entwicklungsplanung](Development_Waves_2026-10.md#null-guards-der-internen-plananalyse) bindet die Quellen, die Verhaltenstests und die Grenzen der öffentlichen Aufrufer. DDL-Kommentare, Objektreferenz, betroffene öffentliche Hilfetexte und ihre Guides sind abgeglichen. Unabhängiger Review, erforderliche Remote-Tests, Cleanup und Main-Nachprüfung bleiben Integrationsbedingungen. Die Bestätigungs- und Datenschutzgrenzen der öffentlichen Aufrufer sind als getrennter nächster Prüfumfang festgehalten; dieser interne Abschluss behebt sie nicht vollständig.
+Die [Entwicklungsplanung](Development_Waves_2026-10.md#null-guards-der-internen-plananalyse) bindet die Quellen, die Verhaltenstests und die Grenzen der öffentlichen Aufrufer. DDL-Kommentare, Objektreferenz, betroffene öffentliche Hilfetexte und ihre Guides sind abgeglichen. Die begrenzte Korrektur der öffentlichen Datenschutzgrenzen umfasst folgende Regeln: NULL bei SensitiveDataConfirmed gilt nur auf angeforderten sensiblen Pfaden als unbestätigt; MitSqlText=NULL wird als INVALID_PARAMETER abgewiesen. Nicht-sensitive NULL-Aufrufe und absichtliche Modus-/Kontextfallbacks bleiben erhalten. HighImpactConfirmed und weitere öffentliche Bestätigungsschalter bleiben ein separater Folgeschritt. Unabhängiger Review, erforderliche Remote-Tests, Cleanup und Main-Nachprüfung sind Integrationsbedingungen dieser Korrektur.
 
 ## Phasenbezogene File-IO-Fehlerausgänge
 
