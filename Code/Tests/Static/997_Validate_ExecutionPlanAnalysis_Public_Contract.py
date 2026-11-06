@@ -597,31 +597,43 @@ END;
 IF @StatusCodeOut='AVAILABLE' AND @MetadataSourceMode='CURRENT_SERVER'
    AND (@QuellumgebungBestaetigt IS NULL OR @QuellumgebungBestaetigt<>1)
 BEGIN
-    SELECT @StatusCodeOut='SOURCE_ENVIRONMENT_CONFIRMATION_REQUIRED',@IsPartialOut=1;
+    SELECT @StatusCodeOut='SOURCE_ENVIRONMENT_CONFIRMATION_REQUIRED',@IsPartialOut=1,
+           @ErrorMessageOut=N'Confirmation required.';
 END;
 IF @StatusCodeOut='AVAILABLE' AND @MetadataMode='CURRENT_SERVER'
    AND (@QuellumgebungBestaetigt IS NULL OR @QuellumgebungBestaetigt<>1)
 BEGIN
-    SELECT @StatusCodeOut='SOURCE_ENVIRONMENT_CONFIRMATION_REQUIRED',@IsPartialOut=1;
+    SELECT @StatusCodeOut='SOURCE_ENVIRONMENT_CONFIRMATION_REQUIRED',@IsPartialOut=1,
+           @ErrorMessageOut=N'Confirmation required.';
 END;
 """
     assert not source_environment_confirmation_errors(source_confirmation_guards, "MetadataSourceMode")
     assert not source_environment_confirmation_errors(source_confirmation_guards, "MetadataMode")
     missing_source_null_052 = source_confirmation_guards.replace(
-        "(@QuellumgebungBestaetigt IS NULL OR @QuellumgebungBestaetigt<>1)",
-        "@QuellumgebungBestaetigt<>1",
+        "IF @StatusCodeOut='AVAILABLE' AND @MetadataSourceMode='CURRENT_SERVER'\n"
+        "   AND (@QuellumgebungBestaetigt IS NULL OR @QuellumgebungBestaetigt<>1)",
+        "IF @StatusCodeOut='AVAILABLE' AND @MetadataSourceMode='CURRENT_SERVER'\n"
+        "   AND @QuellumgebungBestaetigt<>1",
         1,
     )
     assert source_environment_confirmation_errors(missing_source_null_052, "MetadataSourceMode"), (
         "CURRENT_SERVER source NULL gate in 052 was not enforced."
     )
+    assert not source_environment_confirmation_errors(missing_source_null_052, "MetadataMode"), (
+        "The unrelated 053 source gate was changed by the 052 mutant."
+    )
     missing_source_null_053 = source_confirmation_guards.replace(
-        "(@QuellumgebungBestaetigt IS NULL OR @QuellumgebungBestaetigt<>1)",
-        "@QuellumgebungBestaetigt<>1",
-        2,
+        "IF @StatusCodeOut='AVAILABLE' AND @MetadataMode='CURRENT_SERVER'\n"
+        "   AND (@QuellumgebungBestaetigt IS NULL OR @QuellumgebungBestaetigt<>1)",
+        "IF @StatusCodeOut='AVAILABLE' AND @MetadataMode='CURRENT_SERVER'\n"
+        "   AND @QuellumgebungBestaetigt<>1",
+        1,
     )
     assert source_environment_confirmation_errors(missing_source_null_053, "MetadataMode"), (
         "CURRENT_SERVER source NULL gate in 053 was not enforced."
+    )
+    assert not source_environment_confirmation_errors(missing_source_null_053, "MetadataSourceMode"), (
+        "The unrelated 052 source gate was changed by the 053 mutant."
     )
     statement_output_guard = """IF @MitSqlText IS NULL OR @MitSqlText<>1
    OR @SensitiveDataConfirmed IS NULL OR @SensitiveDataConfirmed<>1
