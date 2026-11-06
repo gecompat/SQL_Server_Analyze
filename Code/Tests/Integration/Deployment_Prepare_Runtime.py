@@ -2131,7 +2131,7 @@ LEGACY_TARGET_V1_2_1_PATCHES = {'020_InternalConfigureSnapshotPolicy.sql': ('397
                                                '    BEGIN\n'
                                                '        SELECT '
                                                "@StatusCodeOut='TARGET_UNAVAILABLE',@ErrorNumberOut=53781,@ErrorMessageOut=N'Das "
-                                               "vollständige Datei-I/O-Target 1.3.0 fehlt.';\n"
+                                               "vollständige Datei-I/O-Target 1.3.1 mit Schema 3 fehlt.';\n"
                                                '        RETURN;\n'
                                                '    END;\n'
                                                '\n'
@@ -2612,7 +2612,7 @@ LEGACY_TARGET_V1_3_0_PATCHES = {'020_InternalConfigureSnapshotPolicy.sql': ('d6d
                                                '    BEGIN\n'
                                                '        SELECT '
                                                "@StatusCodeOut='TARGET_UNAVAILABLE',@ErrorNumberOut=53781,@ErrorMessageOut=N'Das "
-                                               "vollständige Datei-I/O-Target 1.3.0 fehlt.';\n"
+                                               "vollständige Datei-I/O-Target 1.3.1 mit Schema 3 fehlt.';\n"
                                                '        RETURN;\n',
                                                '        END;\n'
                                                '    END;\n'
