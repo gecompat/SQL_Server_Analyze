@@ -7,9 +7,17 @@ keine neuen Arbeitselementkennungen.
 
 ## Auftrag und maßgebliche Quellen
 
+## Snapshot-Target-Diagnose 53781
+
+Die Fehlermeldung 53781 nennt für FILE_IO jetzt Target 1.3.1 mit Schema 3 und entspricht damit dem bestehenden Guard. Fehlernummer, Status TARGET_UNAVAILABLE und die Zulassungsprüfung bleiben unverändert; der allgemeinere erweiterte Paketvertrag darf weiterhin 1.2.1/Schema 2 oder 1.3.0 beziehungsweise 1.3.1/Schema 3 annehmen. Die vorliegende Korrektur ändert nur den Diagnosewortlaut und die dazugehörige Beschreibung, keine Paket- oder Datenbankschemaversion.
+
+Die [Konfigurationsprocedure](../../../Code/10_SnapshotBaseline/020_InternalConfigureSnapshotPolicy.sql) ist mit Quell-Blob `745bbcefa810294d6a960d5f0d68294140111f7f` gebunden. Die alte Blobzeile im datierten Ausgangsstand nach PR #633 bleibt dessen historischer Nachweis; der dortige Wortlaut wurde nicht als aktuell unverändert übernommen. Die Referenz und der DDL-Kommentar nennen die alte Diagnoseabweichung nicht mehr als offenen Fehler. Die erforderliche Remote-CI richtet sich nach dem SQL-Impact dieser Literaländerung.
+
+Als nächste belegte Lücke bleiben die phasenbezogenen Einzelverträge für ErrorNumberOut und ErrorMessageOut des File-IO-Abschlusses. Die getrennten fachlichen NULL-Guard-Prüfungen sowie die fehlende positive Windows-/Mirroring- und MSDTC-Evidenz bleiben offen. Kerninstallation ohne LLM-Voraussetzungen, SSISDB-Erhalt und CLR-freies Analyze bleiben unverändert.
+
 ## SSIS-Referenzabgleich vom 6. November 2026
 
-Der ergänzende SSIS-Abgleich erfasst vier interne Prozeduren mit 42 Einzelparameterverträgen in DDL-Kommentaren und Objektreferenz. Zusammen mit den unveränderten 21 zuvor gebundenen Helfern mit 196 Parametern umfasst die bezeichnete interne Inventarkohorte damit 25 Prozeduren und 238 Parameter. Das Inventar bleibt über Objects.csv-Blob `2a52ac84e04c9791a1b9e02d68273fae5a37cc0e` gebunden. Diese Zählung ist ein Dokumentationsabgleich dieser Kohorte und keine globale Fehlerfreiheits- oder Laufzeitbehauptung.
+Der ergänzende SSIS-Abgleich erfasst vier interne Prozeduren mit 42 Einzelparameterverträgen in DDL-Kommentaren und Objektreferenz. Zusammen mit den beim SSIS-Abgleich unveränderten 21 zuvor gebundenen Helfern mit 196 Parametern umfasst die bezeichnete interne Inventarkohorte damit 25 Prozeduren und 238 Parameter. Das Inventar bleibt über Objects.csv-Blob `2a52ac84e04c9791a1b9e02d68273fae5a37cc0e` gebunden. Diese Zählung ist ein Dokumentationsabgleich dieser Kohorte und keine globale Fehlerfreiheits- oder Laufzeitbehauptung.
 
 | Interner Helfer | Parameter | Quelle | Abgleich | Quell-Blob |
 |---|---:|---|---|---|
@@ -20,7 +28,7 @@ Der ergänzende SSIS-Abgleich erfasst vier interne Prozeduren mit 42 Einzelparam
 
 PR #635 und PR #636 sind regulär integriert und bestanden jeweils die erforderlichen PR- und Main-Gates, die vollständige statische Vertragssuite mit 80 Validatoren, kanonische OPS-Installer-Parität und den Cleanup-Vertrag mit 18 actual-finally-Szenarien. Der vorliegende Abgleich ergänzt InternalSsisExecutionMetrics; dessen Freigabe bleibt an den zugehörigen Review und die erforderlichen CI-Gates gebunden. Die Änderungen betreffen Kommentare und Referenztexte; die SQL-Impact-Auswahl der integrierten Änderungen übersprang deshalb native SQL-Läufe. Daraus entsteht keine neue SQL-, SSISDB- oder Plattformqualifikation.
 
-Als Nächstes folgt die Snapshot-Diagnosemeldung 53781: Der FILE_IO-Guard verlangt Paket 1.3.1 und Schema 3, der Meldungstext nennt weiterhin 1.3.0. In `057_InternalCompleteFileIOCycle.sql` bleibt eine phasenbezogene Präzisierung der Einzelzeilen für `@ErrorNumberOut` und `@ErrorMessageOut` offen: Die Issue-Projektion ist an bereits validierte Quelldaten gebunden; zuvor können andere Fehlerdiagnosen entstehen. Die dokumentierten NULL-Guard-Verhaltensweisen in `049_InternalCollectExecutionPlanMetadata.sql` und `051_InternalAnalyzeExecutionPlan.sql` sind als separate fachliche Prüfung offen und wurden nicht als Fehlerkorrekturen umgesetzt. Positive Evidenz für Windows-/Mirroring-Topologie, MSDTC-Dienst und externe Teilnehmer einschließlich Commit-/Recovery bleibt offen. Der Kerninstallationsumfang und die Verträge für optionale LLM-Funktionen, SSISDB, Toolbelt und CLR bleiben unverändert. Eine Planungszeile erteilt keine Ausführungsfreigabe.
+Die damals nächste Diagnoseabweichung 53781 ist durch den oben gebundenen Folgeabgleich behoben. In `057_InternalCompleteFileIOCycle.sql` bleibt eine phasenbezogene Präzisierung der Einzelzeilen für `@ErrorNumberOut` und `@ErrorMessageOut` offen: Die Issue-Projektion ist an bereits validierte Quelldaten gebunden; zuvor können andere Fehlerdiagnosen entstehen. Die dokumentierten NULL-Guard-Verhaltensweisen in `049_InternalCollectExecutionPlanMetadata.sql` und `051_InternalAnalyzeExecutionPlan.sql` sind als separate fachliche Prüfung offen und wurden nicht als Fehlerkorrekturen umgesetzt. Positive Evidenz für Windows-/Mirroring-Topologie, MSDTC-Dienst und externe Teilnehmer einschließlich Commit-/Recovery bleibt offen. Der Kerninstallationsumfang und die Verträge für optionale LLM-Funktionen, SSISDB, Toolbelt und CLR bleiben unverändert. Eine Planungszeile erteilt keine Ausführungsfreigabe.
 
 ## Quellenstand nach PR #633
 
@@ -71,7 +79,7 @@ Zum damaligen Stand waren die vier SSIS-Referenzeinträge noch offen; ihr Folgea
 
 ## Aktueller Stand nach Schritt 178
 
-Der folgende Abschnitt dokumentiert den Quellenstand vom 5. November 2026 nach Schritt 178. Er bleibt als Historie erhalten; maßgeblich für den aktuellen Stand ist [SSIS-Referenzabgleich vom 6. November 2026](#ssis-referenzabgleich-vom-6-november-2026).
+Der folgende Abschnitt dokumentiert den Quellenstand vom 5. November 2026 nach Schritt 178. Er bleibt als Historie erhalten; maßgeblich für den aktuellen Stand ist [Snapshot-Target-Diagnose 53781](#snapshot-target-diagnose-53781).
 
 Die bisherige öffentliche Inventarkohorte ist abgearbeitet: Die Hilfeprüfung erfasst 121 Procedures mit 2.167 Parameterzeilen. PR #610 bis PR #612 sind mit den erforderlichen Head- und Main-Prüfungen integriert. Ebenfalls abgeschlossen ist die bisherige Nichtprozedurkohorte mit 57 TABLE-, VIEW- und FUNCTION-Objekten aus 47 Quelldateien. Alle 47 Dateien stimmen bytegenau mit den unabhängig geprüften integrierten DDL-Revisionen überein. Die Main-Bindung lautet `b08b7df8d6eb99fa9ebfe6f2ab64636641df46b7`; `Objects.csv` ist über Blob `2a52ac84e04c9791a1b9e02d68273fae5a37cc0e` gebunden, und die vollständige Zeilenzuordnung ist unabhängig geprüft.
 
