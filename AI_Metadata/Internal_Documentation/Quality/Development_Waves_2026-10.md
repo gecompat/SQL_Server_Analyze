@@ -7,13 +7,23 @@ keine neuen Arbeitselementkennungen.
 
 ## Auftrag und maßgebliche Quellen
 
+## Phasenbezogene File-IO-Fehlerausgänge
+
+Die Einzelverträge von ErrorNumberOut und ErrorMessageOut im File-IO-Abschluss unterscheiden jetzt die frühe Prüfung, die vollständig validierte Source und die getrennte Fehlerfinalisierung. Ein Backendfehler kann nach bestätigter Sourcevalidierung deren ursprüngliche Nummer und Meldung einschließlich NULL oder Leertext als Ausgabe erhalten; ein Fehler der inneren Finalisierung kann diese Werte durch seine eigene Diagnose ersetzen. Eine unbestätigte Finalisierungsgrenze allein bedeutet deshalb nicht immer, dass beide Ausgänge einen Finalisierungsfehler enthalten.
+
+Der [File-IO-Abschluss](../../../Code/10_SnapshotBaseline/057_InternalCompleteFileIOCycle.sql) ist mit Quell-Blob `61895dfb83acc1effadd6aa5a6a88d055dd3d89f` gebunden. Die Änderung betrifft nur die beiden Parameterzeilen im DDL-Kommentar und in der Objektreferenz; der ausführbare Modultext bleibt unverändert. Die historische Blobzeile nach PR #633 bezeichnet weiterhin dessen damaligen Stand. PR #638 ist einschließlich der nativen SQL-Server-2025-Verträge und Main-Nachprüfung integriert; seine Korrektur von Diagnose 53781 wird nicht wiederholt. Die erforderlichen Gates dieses Abgleichs bleiben eine eigene Integrationsbedingung und begründen keine allgemeine Laufzeit- oder Plattformqualifikation.
+
+Der kanonische Modul-Fingerprint berücksichtigt auch den vorangestellten Kommentar. Deshalb sind im abgeleiteten Snapshot-Preflight der aktuelle File-IO-Modulhash und der darüberliegende Modellhash nachgeführt; der eingefrorene historische Modulhash und alle übrigen Guardbytes bleiben unverändert. Das ist eine Bindungsaktualisierung im vorhandenen Guard und keine Änderung des Tabellen- oder Datenbankschemas. Die vollständige kanonische Generatorprüfung und die ausgewählten nativen Verträge bleiben Aufgabe der Remote-CI. Der Preflight ist mit Quell-Blob `e285ecc384e08c07ef7256f79d2333ec1ce3a923` gebunden.
+
+Die bislang bezeichneten Parameterhilfe- und DDL-Kohorten bleiben auf ihren belegten Inventarumfang begrenzt. Die dokumentierten NULL-Guard-Verhaltensweisen in den Plan-Cache-Helfern stehen als getrennte fachliche Prüfung offen; eine Planungszeile ändert weder deren aktuellen Vertrag noch eine Ausführungsfreigabe. Positive Windows-/Mirroring-, MSDTC- und Commit-/Recovery-Evidenz bleibt offen. Keine lokalen Labs und keine obligatorische LLM- oder CLR-Installation werden daraus abgeleitet.
+
 ## Snapshot-Target-Diagnose 53781
 
 Die Fehlermeldung 53781 nennt für FILE_IO jetzt Target 1.3.1 mit Schema 3 und entspricht damit dem bestehenden Guard. Fehlernummer, Status TARGET_UNAVAILABLE und die Zulassungsprüfung bleiben unverändert; der allgemeinere erweiterte Paketvertrag darf weiterhin 1.2.1/Schema 2 oder 1.3.0 beziehungsweise 1.3.1/Schema 3 annehmen. Die vorliegende Korrektur ändert nur den Diagnosewortlaut und die dazugehörige Beschreibung, keine Paket- oder Datenbankschemaversion.
 
 Die [Konfigurationsprocedure](../../../Code/10_SnapshotBaseline/020_InternalConfigureSnapshotPolicy.sql) ist mit Quell-Blob `745bbcefa810294d6a960d5f0d68294140111f7f` gebunden. Die alte Blobzeile im datierten Ausgangsstand nach PR #633 bleibt dessen historischer Nachweis; der dortige Wortlaut wurde nicht als aktuell unverändert übernommen. Die Referenz und der DDL-Kommentar nennen die alte Diagnoseabweichung nicht mehr als offenen Fehler. Die erforderliche Remote-CI richtet sich nach dem SQL-Impact dieser Literaländerung.
 
-Als nächste belegte Lücke bleiben die phasenbezogenen Einzelverträge für ErrorNumberOut und ErrorMessageOut des File-IO-Abschlusses. Die getrennten fachlichen NULL-Guard-Prüfungen sowie die fehlende positive Windows-/Mirroring- und MSDTC-Evidenz bleiben offen. Kerninstallation ohne LLM-Voraussetzungen, SSISDB-Erhalt und CLR-freies Analyze bleiben unverändert.
+Die damals folgende Präzisierung der File-IO-Fehlerausgänge ist im aktuellen Abschnitt gebunden. Die getrennten fachlichen NULL-Guard-Prüfungen sowie die fehlende positive Windows-/Mirroring- und MSDTC-Evidenz bleiben offen. Kerninstallation ohne LLM-Voraussetzungen, SSISDB-Erhalt und CLR-freies Analyze bleiben unverändert.
 
 ## SSIS-Referenzabgleich vom 6. November 2026
 
@@ -79,7 +89,7 @@ Zum damaligen Stand waren die vier SSIS-Referenzeinträge noch offen; ihr Folgea
 
 ## Aktueller Stand nach Schritt 178
 
-Der folgende Abschnitt dokumentiert den Quellenstand vom 5. November 2026 nach Schritt 178. Er bleibt als Historie erhalten; maßgeblich für den aktuellen Stand ist [Snapshot-Target-Diagnose 53781](#snapshot-target-diagnose-53781).
+Der folgende Abschnitt dokumentiert den Quellenstand vom 5. November 2026 nach Schritt 178. Er bleibt als Historie erhalten; maßgeblich für den aktuellen Stand ist [Phasenbezogene File-IO-Fehlerausgänge](#phasenbezogene-file-io-fehlerausgänge).
 
 Die bisherige öffentliche Inventarkohorte ist abgearbeitet: Die Hilfeprüfung erfasst 121 Procedures mit 2.167 Parameterzeilen. PR #610 bis PR #612 sind mit den erforderlichen Head- und Main-Prüfungen integriert. Ebenfalls abgeschlossen ist die bisherige Nichtprozedurkohorte mit 57 TABLE-, VIEW- und FUNCTION-Objekten aus 47 Quelldateien. Alle 47 Dateien stimmen bytegenau mit den unabhängig geprüften integrierten DDL-Revisionen überein. Die Main-Bindung lautet `b08b7df8d6eb99fa9ebfe6f2ab64636641df46b7`; `Objects.csv` ist über Blob `2a52ac84e04c9791a1b9e02d68273fae5a37cc0e` gebunden, und die vollständige Zeilenzuordnung ist unabhängig geprüft.
 
