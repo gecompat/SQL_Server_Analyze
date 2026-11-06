@@ -876,6 +876,240 @@ IF COALESCE(@Status,'') NOT IN ('AVAILABLE','PARTIAL')
       )
     THROW 53673,N'Unbenutztes NULL oder NULL-Modusfallbacks wurden global abgewiesen oder die synthetische Statement-/Operatorzeile fehlt.',1;
 
+DECLARE
+      @SourceJson nvarchar(max)
+    , @SourceStatus varchar(40)
+    , @SourcePartial bit
+    , @SourceError int
+    , @SourceMessage nvarchar(2048);
+
+/* 052 verlangt die Quellbestätigung auch ohne angeforderte Erhebung. */
+SET @SourceJson=NULL;SET @SourceStatus='STALE';SET @SourcePartial=NULL;SET @SourceError=999;SET @SourceMessage=N'SENTINEL';
+EXEC [monitor].[USP_CreateExecutionEvidenceJson]
+      @PlanXml=@GuardPlan
+    , @StatistikEvidenzModus='NONE'
+    , @HistogrammModus='NONE'
+    , @MetadatenQuellenmodus='CURRENT_SERVER'
+    , @QuellumgebungBestaetigt=0
+    , @ResultSetArt='NONE'
+    , @JsonErzeugen=1
+    , @Json=@SourceJson OUTPUT
+    , @PrintMeldungen=0
+    , @StatusCodeOut=@SourceStatus OUTPUT
+    , @IsPartialOut=@SourcePartial OUTPUT
+    , @ErrorNumberOut=@SourceError OUTPUT
+    , @ErrorMessageOut=@SourceMessage OUTPUT;
+IF COALESCE(@SourceStatus,'')<>'SOURCE_ENVIRONMENT_CONFIRMATION_REQUIRED'
+   OR COALESCE(@SourcePartial,0)<>1 OR @SourceError IS NOT NULL
+   OR NULLIF(LTRIM(RTRIM(@SourceMessage)),N'') IS NULL
+   OR COALESCE(ISJSON(@SourceJson),0)<>1
+    THROW 53674,N'052 hat @QuellumgebungBestaetigt=0 bei CURRENT_SERVER ohne Erhebung nicht abgewiesen.',1;
+
+SET @SourceJson=NULL;SET @SourceStatus='STALE';SET @SourcePartial=NULL;SET @SourceError=999;SET @SourceMessage=N'SENTINEL';
+EXEC [monitor].[USP_CreateExecutionEvidenceJson]
+      @PlanXml=@GuardPlan
+    , @StatistikEvidenzModus='NONE'
+    , @HistogrammModus='NONE'
+    , @MetadatenQuellenmodus='CURRENT_SERVER'
+    , @QuellumgebungBestaetigt=NULL
+    , @ResultSetArt='NONE'
+    , @JsonErzeugen=1
+    , @Json=@SourceJson OUTPUT
+    , @PrintMeldungen=0
+    , @StatusCodeOut=@SourceStatus OUTPUT
+    , @IsPartialOut=@SourcePartial OUTPUT
+    , @ErrorNumberOut=@SourceError OUTPUT
+    , @ErrorMessageOut=@SourceMessage OUTPUT;
+IF COALESCE(@SourceStatus,'')<>'SOURCE_ENVIRONMENT_CONFIRMATION_REQUIRED'
+   OR COALESCE(@SourcePartial,0)<>1 OR @SourceError IS NOT NULL
+   OR NULLIF(LTRIM(RTRIM(@SourceMessage)),N'') IS NULL
+   OR COALESCE(ISJSON(@SourceJson),0)<>1
+    THROW 53675,N'052 hat @QuellumgebungBestaetigt=NULL bei CURRENT_SERVER ohne Erhebung nicht abgewiesen.',1;
+
+SET @SourceJson=NULL;SET @SourceStatus='STALE';SET @SourcePartial=NULL;SET @SourceError=999;SET @SourceMessage=N'SENTINEL';
+EXEC [monitor].[USP_CreateExecutionEvidenceJson]
+      @PlanXml=@GuardPlan
+    , @StatistikEvidenzModus='NONE'
+    , @HistogrammModus='NONE'
+    , @MetadatenQuellenmodus='CURRENT_SERVER'
+    , @QuellumgebungBestaetigt=1
+    , @ResultSetArt='NONE'
+    , @JsonErzeugen=1
+    , @Json=@SourceJson OUTPUT
+    , @PrintMeldungen=0
+    , @StatusCodeOut=@SourceStatus OUTPUT
+    , @IsPartialOut=@SourcePartial OUTPUT
+    , @ErrorNumberOut=@SourceError OUTPUT
+    , @ErrorMessageOut=@SourceMessage OUTPUT;
+IF COALESCE(@SourceStatus,'') NOT IN ('AVAILABLE','PARTIAL')
+   OR @SourcePartial IS NULL OR @SourceError IS NOT NULL
+   OR COALESCE(ISJSON(@SourceJson),0)<>1
+   OR NULLIF(JSON_VALUE(@SourceJson,N'$.planIdentity.planDocumentHash'),N'') IS NULL
+    THROW 53676,N'052 hat die explizite CURRENT_SERVER-Bestätigung nicht bis zur synthetischen Planidentität verarbeitet.',1;
+
+SET @SourceJson=NULL;SET @SourceStatus='STALE';SET @SourcePartial=NULL;SET @SourceError=999;SET @SourceMessage=N'SENTINEL';
+EXEC [monitor].[USP_CreateExecutionEvidenceJson]
+      @PlanXml=@GuardPlan
+    , @StatistikEvidenzModus='NONE'
+    , @HistogrammModus='NONE'
+    , @MetadatenQuellenmodus='EVIDENCE_ONLY'
+    , @QuellumgebungBestaetigt=NULL
+    , @ResultSetArt='NONE'
+    , @JsonErzeugen=1
+    , @Json=@SourceJson OUTPUT
+    , @PrintMeldungen=0
+    , @StatusCodeOut=@SourceStatus OUTPUT
+    , @IsPartialOut=@SourcePartial OUTPUT
+    , @ErrorNumberOut=@SourceError OUTPUT
+    , @ErrorMessageOut=@SourceMessage OUTPUT;
+IF COALESCE(@SourceStatus,'') NOT IN ('AVAILABLE','PARTIAL')
+   OR @SourcePartial IS NULL OR @SourceError IS NOT NULL
+   OR COALESCE(ISJSON(@SourceJson),0)<>1
+   OR NULLIF(JSON_VALUE(@SourceJson,N'$.planIdentity.planDocumentHash'),N'') IS NULL
+    THROW 53677,N'052 hat das unbenutzte EVIDENCE_ONLY-NULL global abgewiesen oder die synthetische Planidentität fehlt.',1;
+
+/* 053 hat denselben Quellvertrag und muss die Planzeilen auch ohne Erhebung abbilden. */
+SET @SourceJson=NULL;SET @SourceStatus='STALE';SET @SourcePartial=NULL;SET @SourceError=999;SET @SourceMessage=N'SENTINEL';
+EXEC [monitor].[USP_ExecutionPlanAnalysis]
+      @PlanXml=@GuardPlan
+    , @StatistikEvidenzModus='NONE'
+    , @HistogrammModus='NONE'
+    , @MetadatenQuellenmodus='CURRENT_SERVER'
+    , @QuellumgebungBestaetigt=0
+    , @ResultSetArt='NONE'
+    , @JsonErzeugen=1
+    , @Json=@SourceJson OUTPUT
+    , @PrintMeldungen=0
+    , @StatusCodeOut=@SourceStatus OUTPUT
+    , @IsPartialOut=@SourcePartial OUTPUT
+    , @ErrorNumberOut=@SourceError OUTPUT
+    , @ErrorMessageOut=@SourceMessage OUTPUT;
+IF COALESCE(@SourceStatus,'')<>'SOURCE_ENVIRONMENT_CONFIRMATION_REQUIRED'
+   OR COALESCE(@SourcePartial,0)<>1 OR @SourceError IS NOT NULL
+   OR NULLIF(LTRIM(RTRIM(@SourceMessage)),N'') IS NULL
+   OR COALESCE(ISJSON(@SourceJson),0)<>1
+    THROW 53678,N'053 hat @QuellumgebungBestaetigt=0 bei CURRENT_SERVER ohne Erhebung nicht abgewiesen.',1;
+
+SET @SourceJson=NULL;SET @SourceStatus='STALE';SET @SourcePartial=NULL;SET @SourceError=999;SET @SourceMessage=N'SENTINEL';
+EXEC [monitor].[USP_ExecutionPlanAnalysis]
+      @PlanXml=@GuardPlan
+    , @StatistikEvidenzModus='NONE'
+    , @HistogrammModus='NONE'
+    , @MetadatenQuellenmodus='CURRENT_SERVER'
+    , @QuellumgebungBestaetigt=NULL
+    , @ResultSetArt='NONE'
+    , @JsonErzeugen=1
+    , @Json=@SourceJson OUTPUT
+    , @PrintMeldungen=0
+    , @StatusCodeOut=@SourceStatus OUTPUT
+    , @IsPartialOut=@SourcePartial OUTPUT
+    , @ErrorNumberOut=@SourceError OUTPUT
+    , @ErrorMessageOut=@SourceMessage OUTPUT;
+IF COALESCE(@SourceStatus,'')<>'SOURCE_ENVIRONMENT_CONFIRMATION_REQUIRED'
+   OR COALESCE(@SourcePartial,0)<>1 OR @SourceError IS NOT NULL
+   OR NULLIF(LTRIM(RTRIM(@SourceMessage)),N'') IS NULL
+   OR COALESCE(ISJSON(@SourceJson),0)<>1
+    THROW 53679,N'053 hat @QuellumgebungBestaetigt=NULL bei CURRENT_SERVER ohne Erhebung nicht abgewiesen.',1;
+
+SET @SourceJson=NULL;SET @SourceStatus='STALE';SET @SourcePartial=NULL;SET @SourceError=999;SET @SourceMessage=N'SENTINEL';
+EXEC [monitor].[USP_ExecutionPlanAnalysis]
+      @PlanXml=@GuardPlan
+    , @StatistikEvidenzModus='NONE'
+    , @HistogrammModus='NONE'
+    , @MetadatenQuellenmodus='CURRENT_SERVER'
+    , @QuellumgebungBestaetigt=1
+    , @ResultSetArt='NONE'
+    , @JsonErzeugen=1
+    , @Json=@SourceJson OUTPUT
+    , @PrintMeldungen=0
+    , @StatusCodeOut=@SourceStatus OUTPUT
+    , @IsPartialOut=@SourcePartial OUTPUT
+    , @ErrorNumberOut=@SourceError OUTPUT
+    , @ErrorMessageOut=@SourceMessage OUTPUT;
+IF COALESCE(@SourceStatus,'') NOT IN ('AVAILABLE','PARTIAL')
+   OR @SourcePartial IS NULL OR @SourceError IS NOT NULL
+   OR COALESCE(ISJSON(@SourceJson),0)<>1
+   OR (SELECT COUNT(*) FROM OPENJSON(@SourceJson,N'$.statements'))<>2
+   OR (SELECT COUNT(*) FROM OPENJSON(@SourceJson,N'$.operatorTree'))<>4
+   OR NOT EXISTS
+      (
+          SELECT 1
+          FROM OPENJSON(@SourceJson,N'$.operatorTree')
+          WITH ([StatementOrdinal] int N'$.StatementOrdinal',[NodeId] int N'$.NodeId')
+          WHERE [StatementOrdinal]=1 AND [NodeId]=0
+      )
+   OR NOT EXISTS
+      (
+          SELECT 1
+          FROM OPENJSON(@SourceJson,N'$.operatorTree')
+          WITH ([StatementOrdinal] int N'$.StatementOrdinal',[NodeId] int N'$.NodeId')
+          WHERE [StatementOrdinal]=1 AND [NodeId]=1
+      )
+   OR NOT EXISTS
+      (
+          SELECT 1
+          FROM OPENJSON(@SourceJson,N'$.operatorTree')
+          WITH ([StatementOrdinal] int N'$.StatementOrdinal',[NodeId] int N'$.NodeId')
+          WHERE [StatementOrdinal]=2 AND [NodeId]=0
+      )
+   OR NOT EXISTS
+      (
+          SELECT 1
+          FROM OPENJSON(@SourceJson,N'$.operatorTree')
+          WITH ([StatementOrdinal] int N'$.StatementOrdinal',[NodeId] int N'$.NodeId')
+          WHERE [StatementOrdinal]=2 AND [NodeId]=1
+      )
+    THROW 53680,N'053 hat die explizite CURRENT_SERVER-Bestätigung nicht bis zu den zwei synthetischen Statements und ihren vier Operatorzeilen verarbeitet.',1;
+
+SET @SourceJson=NULL;SET @SourceStatus='STALE';SET @SourcePartial=NULL;SET @SourceError=999;SET @SourceMessage=N'SENTINEL';
+EXEC [monitor].[USP_ExecutionPlanAnalysis]
+      @PlanXml=@GuardPlan
+    , @StatistikEvidenzModus='NONE'
+    , @HistogrammModus='NONE'
+    , @MetadatenQuellenmodus='EVIDENCE_ONLY'
+    , @QuellumgebungBestaetigt=NULL
+    , @ResultSetArt='NONE'
+    , @JsonErzeugen=1
+    , @Json=@SourceJson OUTPUT
+    , @PrintMeldungen=0
+    , @StatusCodeOut=@SourceStatus OUTPUT
+    , @IsPartialOut=@SourcePartial OUTPUT
+    , @ErrorNumberOut=@SourceError OUTPUT
+    , @ErrorMessageOut=@SourceMessage OUTPUT;
+IF COALESCE(@SourceStatus,'') NOT IN ('AVAILABLE','PARTIAL')
+   OR @SourcePartial IS NULL OR @SourceError IS NOT NULL
+   OR COALESCE(ISJSON(@SourceJson),0)<>1
+   OR (SELECT COUNT(*) FROM OPENJSON(@SourceJson,N'$.statements'))<>2
+   OR (SELECT COUNT(*) FROM OPENJSON(@SourceJson,N'$.operatorTree'))<>4
+   OR NOT EXISTS
+      (
+          SELECT 1
+          FROM OPENJSON(@SourceJson,N'$.operatorTree')
+          WITH ([StatementOrdinal] int N'$.StatementOrdinal',[NodeId] int N'$.NodeId')
+          WHERE [StatementOrdinal]=1 AND [NodeId]=0
+      )
+   OR NOT EXISTS
+      (
+          SELECT 1
+          FROM OPENJSON(@SourceJson,N'$.operatorTree')
+          WITH ([StatementOrdinal] int N'$.StatementOrdinal',[NodeId] int N'$.NodeId')
+          WHERE [StatementOrdinal]=1 AND [NodeId]=1
+      )
+   OR NOT EXISTS
+      (
+          SELECT 1
+          FROM OPENJSON(@SourceJson,N'$.operatorTree')
+          WITH ([StatementOrdinal] int N'$.StatementOrdinal',[NodeId] int N'$.NodeId')
+          WHERE [StatementOrdinal]=2 AND [NodeId]=0
+      )
+   OR NOT EXISTS
+      (
+          SELECT 1
+          FROM OPENJSON(@SourceJson,N'$.operatorTree')
+          WITH ([StatementOrdinal] int N'$.StatementOrdinal',[NodeId] int N'$.NodeId')
+          WHERE [StatementOrdinal]=2 AND [NodeId]=1
+      )
+    THROW 53681,N'053 hat das unbenutzte EVIDENCE_ONLY-NULL global abgewiesen oder die zwei synthetischen Statements mit vier Operatorzeilen fehlen.',1;
 
 GO
 /* Öffentliche NULL-Datenschutzgrenzen: synthetische Rohwerte und SQL-Texte. */

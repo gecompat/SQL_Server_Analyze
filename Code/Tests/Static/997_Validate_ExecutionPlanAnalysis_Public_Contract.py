@@ -148,6 +148,21 @@ def privacy_consent_errors(text: str) -> list[str]:
     return errors
 
 
+def source_environment_confirmation_errors(text: str, mode_variable: str) -> list[str]:
+    normalized = normalize_space(text).lower()
+    mode = mode_variable.lower()
+    guard = (
+        f"if @statuscodeout='available' and @{mode}='current_server' and "
+        "(@quellumgebungbestaetigt is null or @quellumgebungbestaetigt<>1)"
+    )
+    denial = "select @statuscodeout='source_environment_confirmation_required',@ispartialout=1,"
+    if guard not in normalized or denial not in normalized:
+        return [
+            f"CURRENT_SERVER in {mode_variable} must reject NULL and non-1 confirmation with SOURCE_ENVIRONMENT_CONFIRMATION_REQUIRED."
+        ]
+    return []
+
+
 def high_impact_confirmation_errors(text: str) -> list[str]:
     normalized = normalize_space(text).lower()
     requested_path = (
@@ -455,6 +470,8 @@ def validate(repository_root: Path) -> list[str]:
     require_fragments(analysis_text, privacy_markers, "analysis privacy invariant", errors)
     errors.extend(privacy_consent_errors(analysis_text))
     errors.extend(high_impact_confirmation_errors(analysis_text))
+    errors.extend(source_environment_confirmation_errors(analysis_text, "MetadataMode"))
+    errors.extend(source_environment_confirmation_errors(evidence_text, "MetadataSourceMode"))
     evidence_privacy_markers = [
         "@RawMode='INCLUDE'",
         "@SensitiveDataConfirmed<>1 OR @IdentifierMode<>'RAW'",
@@ -576,6 +593,36 @@ END;
         1,
     )
     assert high_impact_confirmation_errors(missing_high_impact_null), "Missing public HighImpactConfirmed NULL rejection was accepted."
+    source_confirmation_guards = """
+IF @StatusCodeOut='AVAILABLE' AND @MetadataSourceMode='CURRENT_SERVER'
+   AND (@QuellumgebungBestaetigt IS NULL OR @QuellumgebungBestaetigt<>1)
+BEGIN
+    SELECT @StatusCodeOut='SOURCE_ENVIRONMENT_CONFIRMATION_REQUIRED',@IsPartialOut=1;
+END;
+IF @StatusCodeOut='AVAILABLE' AND @MetadataMode='CURRENT_SERVER'
+   AND (@QuellumgebungBestaetigt IS NULL OR @QuellumgebungBestaetigt<>1)
+BEGIN
+    SELECT @StatusCodeOut='SOURCE_ENVIRONMENT_CONFIRMATION_REQUIRED',@IsPartialOut=1;
+END;
+"""
+    assert not source_environment_confirmation_errors(source_confirmation_guards, "MetadataSourceMode")
+    assert not source_environment_confirmation_errors(source_confirmation_guards, "MetadataMode")
+    missing_source_null_052 = source_confirmation_guards.replace(
+        "(@QuellumgebungBestaetigt IS NULL OR @QuellumgebungBestaetigt<>1)",
+        "@QuellumgebungBestaetigt<>1",
+        1,
+    )
+    assert source_environment_confirmation_errors(missing_source_null_052, "MetadataSourceMode"), (
+        "CURRENT_SERVER source NULL gate in 052 was not enforced."
+    )
+    missing_source_null_053 = source_confirmation_guards.replace(
+        "(@QuellumgebungBestaetigt IS NULL OR @QuellumgebungBestaetigt<>1)",
+        "@QuellumgebungBestaetigt<>1",
+        2,
+    )
+    assert source_environment_confirmation_errors(missing_source_null_053, "MetadataMode"), (
+        "CURRENT_SERVER source NULL gate in 053 was not enforced."
+    )
     statement_output_guard = """IF @MitSqlText IS NULL OR @MitSqlText<>1
    OR @SensitiveDataConfirmed IS NULL OR @SensitiveDataConfirmed<>1
     UPDATE [#ExecutionPlanAnalysis_Statements] SET [StatementText]=NULL;
