@@ -9,7 +9,7 @@ Die [Entwicklungsplanung](Development_Waves_2026-10.md) ist die einzige maßgebl
 
 ## Phasenbezogene File-IO-Fehlerausgänge
 
-Die beiden File-IO-Fehlerausgänge sind in ihren Einzelparameterverträgen nach Prüfphase und Finalisierungspfad beschrieben. Sourcefehler können nach validierter Source auch bei einem Backendfehler einschließlich NULL oder Leertext erhalten bleiben; ein Fehler der inneren Finalisierung kann stattdessen seine eigene Diagnose ausgeben. Die SQL-Logik bleibt unverändert. Die [Entwicklungsplanung](Development_Waves_2026-10.md#phasenbezogene-file-io-fehlerausgänge) bindet den Quellstand und hält die verbleibenden Evidenzgrenzen fest. Die erforderlichen Review- und Remote-Gates bleiben Voraussetzung für die Integration.
+Die beiden File-IO-Fehlerausgänge sind in ihren Einzelparameterverträgen nach Prüfphase und Finalisierungspfad beschrieben. Sourcefehler können nach validierter Source auch bei einem Backendfehler einschließlich NULL oder Leertext erhalten bleiben; ein Fehler der inneren Finalisierung kann stattdessen seine eigene Diagnose ausgeben. Die SQL-Logik des Helpers bleibt unverändert; seine kommentarabhängige Fingerprintbindung im abgeleiteten Snapshot-Preflight ist nachgeführt. Die [Entwicklungsplanung](Development_Waves_2026-10.md#phasenbezogene-file-io-fehlerausgänge) bindet den Quellstand und hält die verbleibenden Evidenzgrenzen fest. Die erforderlichen Review- und Remote-Gates bleiben Voraussetzung für die Integration.
 
 Die getrennte fachliche Prüfung dokumentierter NULL-Guard-Verhaltensweisen bleibt offen. Sie ist keine bereits beschlossene Änderung der erlaubten Parameterwerte. Fehlende Plattform- und Transaktionsevidenz bleibt ausdrücklich unbelegt.
 
