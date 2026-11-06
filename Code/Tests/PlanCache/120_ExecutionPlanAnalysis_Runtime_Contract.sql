@@ -802,6 +802,80 @@ IF COALESCE(@Status,'') NOT IN ('AVAILABLE','PARTIAL')
        WHERE [StatementOrdinal]=1 AND [NodeId]=1 AND [PairedActualRows]=10)
     THROW 53658,N'Der Default von @MitThreadRuntime hat Threadzeilen behalten oder aggregierte Runtimewerte verloren.',1;
 
+/* Der öffentliche High-Impact-Pfad verlangt auch mit installiertem Helfer eine 1. */
+SET @AnalysisJson=NULL;SET @Status=NULL;SET @Partial=NULL;SET @Error=NULL;SET @Message=NULL;
+EXEC [monitor].[USP_ExecutionPlanAnalysis]
+      @PlanXml=@GuardPlan
+    , @AnalyseTiefe='FULL'
+    , @HighImpactConfirmed=0
+    , @ResultSetArt='NONE'
+    , @JsonErzeugen=1
+    , @Json=@AnalysisJson OUTPUT
+    , @PrintMeldungen=0
+    , @StatusCodeOut=@Status OUTPUT
+    , @IsPartialOut=@Partial OUTPUT
+    , @ErrorNumberOut=@Error OUTPUT
+    , @ErrorMessageOut=@Message OUTPUT;
+IF COALESCE(@Status,'')<>'HIGH_IMPACT_CONFIRMATION_REQUIRED'
+   OR COALESCE(@Partial,0)<>1 OR @Error IS NOT NULL
+   OR NULLIF(LTRIM(RTRIM(@Message)),N'') IS NULL
+   OR COALESCE(ISJSON(@AnalysisJson),0)<>1
+    THROW 53671,N'@HighImpactConfirmed=0 wurde im angeforderten FULL-Pfad nicht abgewiesen.',1;
+
+SET @AnalysisJson=NULL;SET @Status=NULL;SET @Partial=NULL;SET @Error=NULL;SET @Message=NULL;
+EXEC [monitor].[USP_ExecutionPlanAnalysis]
+      @PlanXml=@GuardPlan
+    , @AnalyseTiefe='FULL'
+    , @HighImpactConfirmed=NULL
+    , @ResultSetArt='NONE'
+    , @JsonErzeugen=1
+    , @Json=@AnalysisJson OUTPUT
+    , @PrintMeldungen=0
+    , @StatusCodeOut=@Status OUTPUT
+    , @IsPartialOut=@Partial OUTPUT
+    , @ErrorNumberOut=@Error OUTPUT
+    , @ErrorMessageOut=@Message OUTPUT;
+IF COALESCE(@Status,'')<>'HIGH_IMPACT_CONFIRMATION_REQUIRED'
+   OR COALESCE(@Partial,0)<>1 OR @Error IS NOT NULL
+   OR NULLIF(LTRIM(RTRIM(@Message)),N'') IS NULL
+   OR COALESCE(ISJSON(@AnalysisJson),0)<>1
+    THROW 53672,N'NULL wurde im angeforderten FULL-Pfad als HIGH_IMPACT-Bestätigung behandelt.',1;
+
+/* Unbenutztes NULL bleibt mit den dokumentierten Modusfallbacks zulässig. */
+SET @AnalysisJson=NULL;SET @Status=NULL;SET @Partial=NULL;SET @Error=NULL;SET @Message=NULL;
+EXEC [monitor].[USP_ExecutionPlanAnalysis]
+      @PlanXml=@GuardPlan
+    , @AnalyseTiefe='STANDARD'
+    , @StatistikEvidenzModus=NULL
+    , @HistogrammModus=NULL
+    , @HighImpactConfirmed=NULL
+    , @ResultSetArt='NONE'
+    , @JsonErzeugen=1
+    , @Json=@AnalysisJson OUTPUT
+    , @PrintMeldungen=0
+    , @StatusCodeOut=@Status OUTPUT
+    , @IsPartialOut=@Partial OUTPUT
+    , @ErrorNumberOut=@Error OUTPUT
+    , @ErrorMessageOut=@Message OUTPUT;
+IF COALESCE(@Status,'') NOT IN ('AVAILABLE','PARTIAL')
+   OR @Partial IS NULL OR @Error IS NOT NULL
+   OR COALESCE(ISJSON(@AnalysisJson),0)<>1
+   OR NOT EXISTS
+      (
+          SELECT 1
+          FROM OPENJSON(@AnalysisJson,N'$.statements')
+          WITH ([StatementOrdinal] int N'$.StatementOrdinal')
+          WHERE [StatementOrdinal]=1
+      )
+   OR NOT EXISTS
+      (
+          SELECT 1
+          FROM OPENJSON(@AnalysisJson,N'$.operatorTree')
+          WITH ([StatementOrdinal] int N'$.StatementOrdinal',[NodeId] int N'$.NodeId')
+          WHERE [StatementOrdinal]=1 AND [NodeId]=0
+      )
+    THROW 53673,N'Unbenutztes NULL oder NULL-Modusfallbacks wurden global abgewiesen oder die synthetische Statement-/Operatorzeile fehlt.',1;
+
 
 GO
 /* Öffentliche NULL-Datenschutzgrenzen: synthetische Rohwerte und SQL-Texte. */
