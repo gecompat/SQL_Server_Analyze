@@ -86,6 +86,21 @@ def owned_temp_setup_errors(text: str) -> list[str]:
     return []
 
 
+def privacy_consent_errors(text: str) -> list[str]:
+    normalized = normalize_space(text).lower()
+    errors: list[str] = []
+    sensitive_output_guard = (
+        "if @statuscodeout='available' and @mitsqltext=1 and "
+        "(@sensitivedataconfirmed is null or @sensitivedataconfirmed<>1)"
+    )
+    if sensitive_output_guard not in normalized:
+        errors.append("SQL-text disclosure must require an explicit non-NULL sensitivity confirmation.")
+    closed_bit_guard = "@mitsqltext is null or @mitsqltext not in (0,1)"
+    if closed_bit_guard not in normalized:
+        errors.append("MitSqlText must reject NULL and values outside its closed bit domain.")
+    return errors
+
+
 def validate(repository_root: Path) -> list[str]:
     errors: list[str] = []
     contract_file = repository_root / CONTRACT_PATH
@@ -364,7 +379,6 @@ def validate(repository_root: Path) -> list[str]:
 
     privacy_markers = [
         "Jede externe oder intern erzeugte Evidenz wird vor der",
-        "@MitSqlText=1 AND @SensitiveDataConfirmed<>1",
         "UPDATE [#ExecutionPlanAnalysis_HistogramSummaries]",
         "UPDATE [#ExecutionPlanAnalysis_HistogramSteps]",
         "UPDATE [#ExecutionPlanAnalysis_PredicateHistogramMappings]",
@@ -373,6 +387,7 @@ def validate(repository_root: Path) -> list[str]:
         "@EvidencePrivacyMode=''TOKENIZED''",
     ]
     require_fragments(analysis_text, privacy_markers, "analysis privacy invariant", errors)
+    errors.extend(privacy_consent_errors(analysis_text))
     evidence_privacy_markers = [
         "@RawMode='INCLUDE'",
         "@SensitiveDataConfirmed<>1 OR @IdentifierMode<>'RAW'",
@@ -416,6 +431,27 @@ END;
     actual = extract_parameters(sample, "USP_Example")
     if actual != expected:
         raise AssertionError(f"Parameter parser self-test failed: {actual!r}")
+    consent_guard = """
+IF @StatusCodeOut='AVAILABLE' AND @MitSqlText=1
+   AND (@SensitiveDataConfirmed IS NULL OR @SensitiveDataConfirmed<>1)
+BEGIN
+    SET @StatusCodeOut='SENSITIVE_DATA_CONFIRMATION_REQUIRED';
+END;
+IF @MitSqlText IS NULL OR @MitSqlText NOT IN (0,1)
+    SET @StatusCodeOut='INVALID_PARAMETER';
+"""
+    assert not privacy_consent_errors(consent_guard)
+    assert not privacy_consent_errors(normalize_space(consent_guard))
+    unsafe_null_guard = consent_guard.replace(
+        "(@SensitiveDataConfirmed IS NULL OR @SensitiveDataConfirmed<>1)",
+        "@SensitiveDataConfirmed<>1",
+    )
+    assert privacy_consent_errors(unsafe_null_guard), "Missing NULL confirmation rejection was accepted."
+    missing_closed_bit = consent_guard.replace(
+        "@MitSqlText IS NULL OR @MitSqlText NOT IN (0,1)",
+        "@MitSqlText NOT IN (0,1)",
+    )
+    assert privacy_consent_errors(missing_closed_bit), "Missing MitSqlText NULL rejection was accepted."
     setup = "BEGIN TRY\nSET LOCK_TIMEOUT 100;\n" + "\n".join(
         f"CREATE TABLE [#ExecutionPlanAnalysis_Example{i}]([Value] int);" for i in range(25)
     ) + "\nSET LOCK_TIMEOUT 0;\nEND TRY\nBEGIN CATCH\nSET LOCK_TIMEOUT 0;\nTHROW;\nEND CATCH;"

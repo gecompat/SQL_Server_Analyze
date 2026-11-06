@@ -821,6 +821,12 @@ DECLARE @PrivacyEvidence nvarchar(max)=N'{
       "databaseName":"ExampleDatabase","schemaName":"ExampleSchema","objectName":"ExampleObject","objectId":1,
       "statisticsName":"ExampleStatistics","statisticsId":1,"isIndexStatistics":true,"isFiltered":true,
       "filterDefinition":"SensitiveEvidenceSentinelPublicNull","leadingColumnName":"ExampleColumn","collectionStatus":"AVAILABLE"
+    }],
+    "histogramSteps": [{
+      "databaseName":"ExampleDatabase","schemaName":"ExampleSchema","objectName":"ExampleObject",
+      "statisticsName":"ExampleStatistics","statisticsId":1,"leadingColumnName":"ExampleColumn",
+      "stepOrdinal":1,"rangeHighKey":"SensitiveEvidenceSentinelPublicNull","rangeRows":5,"equalRows":5,
+      "distinctRangeRows":1,"averageRangeRows":5,"isPredicateTarget":true,"predicateMatchCount":1
     }]
   }
 }';
@@ -1053,6 +1059,16 @@ EXEC [monitor].[USP_ExecutionPlanAnalysis]
     , @IsPartialOut=@PrivacyPartial OUTPUT
     , @ErrorNumberOut=@PrivacyError OUTPUT
     , @ErrorMessageOut=@PrivacyMessage OUTPUT;
+DECLARE @PrivacyHasRangeHighKey bit,@PrivacyHasStatementText bit;
+SELECT
+      @PrivacyHasRangeHighKey=CASE WHEN EXISTS
+          (SELECT 1 FROM OPENJSON(CASE WHEN ISJSON(@PrivacyJson)=1 THEN @PrivacyJson ELSE N'{}' END,N'$.histogramSteps')
+           WITH ([RangeHighKey] nvarchar(max) N'$.RangeHighKey')
+           WHERE [RangeHighKey]=N'SensitiveEvidenceSentinelPublicNull') THEN 1 ELSE 0 END
+    , @PrivacyHasStatementText=CASE WHEN EXISTS
+          (SELECT 1 FROM OPENJSON(CASE WHEN ISJSON(@PrivacyJson)=1 THEN @PrivacyJson ELSE N'{}' END,N'$.statements')
+           WITH ([StatementText] nvarchar(max) N'$.StatementText')
+           WHERE [StatementText]=N'SELECT SqlTextSentinelPublicNull FROM ExampleSchema.ExampleObject WHERE ExampleColumn = 7') THEN 1 ELSE 0 END;
 IF @PrivacyJson=N'caller sentinel' OR @PrivacyMessage=N'caller sentinel'
    OR COALESCE(@PrivacyStatus,'') NOT IN ('AVAILABLE','PARTIAL')
    OR @PrivacyPartial IS NULL
@@ -1060,5 +1076,19 @@ IF @PrivacyJson=N'caller sentinel' OR @PrivacyMessage=N'caller sentinel'
    OR @PrivacyError IS NOT NULL
    OR CHARINDEX(N'SensitiveEvidenceSentinelPublicNull',COALESCE(@PrivacyJson,N''))=0
    OR CHARINDEX(N'SqlTextSentinelPublicNull',COALESCE(@PrivacyJson,N''))=0
-    THROW 53668,N'Explizit bestätigte 053-RAW-/SQL-Text-Kontrolle hat die synthetischen Werte nicht ausgegeben.',1;
+   OR COALESCE(@PrivacyHasRangeHighKey,0)<>1
+   OR COALESCE(@PrivacyHasStatementText,0)<>1
+BEGIN
+    DECLARE @PrivacyDiagnostic nvarchar(2048)=CONCAT(
+        N'053 confirmation control failed: status=',COALESCE(@PrivacyStatus,'<NULL>'),
+        N'; partial=',COALESCE(CONVERT(varchar(1),@PrivacyPartial),'<NULL>'),
+        N'; error=',COALESCE(CONVERT(varchar(12),@PrivacyError),'<NULL>'),
+        N'; json=',COALESCE(CONVERT(varchar(1),ISJSON(@PrivacyJson)),'<NULL>'),
+        N'; raw=',CONVERT(varchar(1),CASE WHEN CHARINDEX(N'SensitiveEvidenceSentinelPublicNull',COALESCE(@PrivacyJson,N''))>0 THEN 1 ELSE 0 END),
+        N'; sql=',CONVERT(varchar(1),CASE WHEN CHARINDEX(N'SqlTextSentinelPublicNull',COALESCE(@PrivacyJson,N''))>0 THEN 1 ELSE 0 END),
+        N'; rangeHighKey=',COALESCE(CONVERT(varchar(1),@PrivacyHasRangeHighKey),'<NULL>'),
+        N'; statementText=',COALESCE(CONVERT(varchar(1),@PrivacyHasStatementText),'<NULL>')
+    );
+    THROW 53668,@PrivacyDiagnostic,1;
+END;
 GO
