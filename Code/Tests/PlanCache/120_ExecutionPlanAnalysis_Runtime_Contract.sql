@@ -694,65 +694,69 @@ EXEC [monitor].[InternalAnalyzeExecutionPlan]
 IF COALESCE(@NullGuardStatus,'')<>'INVALID_PARAMETER' OR COALESCE(@NullGuardPartial,0)<>1 OR @NullGuardError IS NOT NULL OR NULLIF(LTRIM(RTRIM(@NullGuardMessage)),N'') IS NULL
     THROW 53652,N'NULL in @MitThreadRuntime wurde nicht vor den Temp-Tabellen-Prüfungen abgelehnt.',1;
 
-/* Gültige Grenzen passieren die Parameterprüfung; ohne Hilfstabellen folgt INTERNAL_ERROR. */
-DECLARE @BoundaryStatus varchar(40),@BoundaryPartial bit,@BoundaryError int,@BoundaryMessage nvarchar(2048);
-SET @BoundaryStatus=NULL;SET @BoundaryPartial=NULL;SET @BoundaryError=NULL;SET @BoundaryMessage=NULL;
-EXEC [monitor].[InternalCollectExecutionPlanMetadata]
-      @PlanXml=@GuardPlan
-    , @StatistikEvidenzModus=NULL
-    , @HistogrammModus=NULL
-    , @QuellumgebungBestaetigt=1
-    , @MitPredicateHistogramMap=0
-    , @HighImpactConfirmed=0
-    , @StatusCodeOut=@BoundaryStatus OUTPUT
-    , @IsPartialOut=@BoundaryPartial OUTPUT
-    , @ErrorNumberOut=@BoundaryError OUTPUT
-    , @ErrorMessageOut=@BoundaryMessage OUTPUT;
-IF COALESCE(@BoundaryStatus,'')<>'INTERNAL_ERROR' OR COALESCE(@BoundaryPartial,0)<>1 OR @BoundaryError IS NULL
-    THROW 53653,N'Gültige Bestätigungs-/Schalterwerte oder NULL-Modusfallbacks passierten die Eingabeprüfung nicht.',1;
+/* Gültige Eingaben erreichen die erste fehlende Ergebnistabelle; der Aufrufer fängt den 208 ab. */
+DECLARE @BoundaryError int,@BoundaryMessage nvarchar(2048);
+SET @BoundaryError=NULL;SET @BoundaryMessage=NULL;
+BEGIN TRY
+    EXEC [monitor].[InternalCollectExecutionPlanMetadata]
+          @PlanXml=@GuardPlan
+        , @StatistikEvidenzModus=NULL
+        , @HistogrammModus=NULL
+        , @QuellumgebungBestaetigt=1
+        , @MitPredicateHistogramMap=0
+        , @HighImpactConfirmed=0;
+END TRY
+BEGIN CATCH
+    SELECT @BoundaryError=ERROR_NUMBER(),@BoundaryMessage=ERROR_MESSAGE();
+END CATCH;
+IF COALESCE(@BoundaryError,0)<>208 OR CHARINDEX(N'#CreateExecutionEvidenceJson_StatisticsCurrent',COALESCE(@BoundaryMessage,N''))=0
+    THROW 53653,N'Gültige NULL-Modusfallbacks und explizite Nullen passierten die Validierung nicht bis zur ersten fehlenden Ergebnistabelle.',1;
 
-SET @BoundaryStatus=NULL;SET @BoundaryPartial=NULL;SET @BoundaryError=NULL;SET @BoundaryMessage=NULL;
-EXEC [monitor].[InternalCollectExecutionPlanMetadata]
-      @PlanXml=@GuardPlan
-    , @StatistikEvidenzModus=NULL
-    , @HistogrammModus=NULL
-    , @QuellumgebungBestaetigt=1
-    , @MitPredicateHistogramMap=1
-    , @HighImpactConfirmed=1
-    , @StatusCodeOut=@BoundaryStatus OUTPUT
-    , @IsPartialOut=@BoundaryPartial OUTPUT
-    , @ErrorNumberOut=@BoundaryError OUTPUT
-    , @ErrorMessageOut=@BoundaryMessage OUTPUT;
-IF COALESCE(@BoundaryStatus,'')<>'INTERNAL_ERROR' OR COALESCE(@BoundaryPartial,0)<>1 OR @BoundaryError IS NULL
-    THROW 53654,N'Explizite Einswerte oder NULL-Modusfallbacks passierten die Eingabeprüfung nicht.',1;
+SET @BoundaryError=NULL;SET @BoundaryMessage=NULL;
+BEGIN TRY
+    EXEC [monitor].[InternalCollectExecutionPlanMetadata]
+          @PlanXml=@GuardPlan
+        , @StatistikEvidenzModus=NULL
+        , @HistogrammModus=NULL
+        , @QuellumgebungBestaetigt=1
+        , @MitPredicateHistogramMap=1
+        , @HighImpactConfirmed=1;
+END TRY
+BEGIN CATCH
+    SELECT @BoundaryError=ERROR_NUMBER(),@BoundaryMessage=ERROR_MESSAGE();
+END CATCH;
+IF COALESCE(@BoundaryError,0)<>208 OR CHARINDEX(N'#CreateExecutionEvidenceJson_StatisticsCurrent',COALESCE(@BoundaryMessage,N''))=0
+    THROW 53654,N'Gültige NULL-Modusfallbacks und explizite Einsen passierten die Validierung nicht bis zur ersten fehlenden Ergebnistabelle.',1;
 
-SET @BoundaryStatus=NULL;SET @BoundaryPartial=NULL;SET @BoundaryError=NULL;SET @BoundaryMessage=NULL;
-EXEC [monitor].[InternalAnalyzeExecutionPlan]
-      @AnalysisObjectId=120
-    , @PlanXml=@GuardPlan
-    , @PlanSource='IMPORTED'
-    , @RuntimeCounterScope='UNKNOWN'
-    , @MitThreadRuntime=0
-    , @StatusCodeOut=@BoundaryStatus OUTPUT
-    , @IsPartialOut=@BoundaryPartial OUTPUT
-    , @ErrorNumberOut=@BoundaryError OUTPUT
-    , @ErrorMessageOut=@BoundaryMessage OUTPUT;
-IF COALESCE(@BoundaryStatus,'')<>'INTERNAL_ERROR' OR COALESCE(@BoundaryPartial,0)<>1 OR @BoundaryError IS NULL
-    THROW 53655,N'Der gültige UNKNOWN-Scope oder @MitThreadRuntime=0 passierte die Eingabeprüfung nicht.',1;
+SET @BoundaryError=NULL;SET @BoundaryMessage=NULL;
+BEGIN TRY
+    EXEC [monitor].[InternalAnalyzeExecutionPlan]
+          @AnalysisObjectId=120
+        , @PlanXml=@GuardPlan
+        , @PlanSource='IMPORTED'
+        , @RuntimeCounterScope='UNKNOWN'
+        , @MitThreadRuntime=0;
+END TRY
+BEGIN CATCH
+    SELECT @BoundaryError=ERROR_NUMBER(),@BoundaryMessage=ERROR_MESSAGE();
+END CATCH;
+IF COALESCE(@BoundaryError,0)<>208 OR CHARINDEX(N'#ExecutionPlanAnalysis_Capabilities',COALESCE(@BoundaryMessage,N''))=0
+    THROW 53655,N'Der gültige UNKNOWN-Scope und @MitThreadRuntime=0 passierten die Validierung nicht bis zur ersten fehlenden Ergebnistabelle.',1;
 
-SET @BoundaryStatus=NULL;SET @BoundaryPartial=NULL;SET @BoundaryError=NULL;SET @BoundaryMessage=NULL;
-EXEC [monitor].[InternalAnalyzeExecutionPlan]
-      @AnalysisObjectId=120
-    , @PlanXml=@GuardPlan
-    , @PlanSource='IMPORTED'
-    , @RuntimeCounterScope='NONE'
-    , @MitThreadRuntime=1
-    , @StatusCodeOut=@BoundaryStatus OUTPUT
-    , @IsPartialOut=@BoundaryPartial OUTPUT
-    , @ErrorNumberOut=@BoundaryError OUTPUT
-    , @ErrorMessageOut=@BoundaryMessage OUTPUT;
-IF COALESCE(@BoundaryStatus,'')<>'INTERNAL_ERROR' OR COALESCE(@BoundaryPartial,0)<>1 OR @BoundaryError IS NULL
-    THROW 53656,N'@MitThreadRuntime=1 passierte die Eingabeprüfung nicht.',1;
+SET @BoundaryError=NULL;SET @BoundaryMessage=NULL;
+BEGIN TRY
+    EXEC [monitor].[InternalAnalyzeExecutionPlan]
+          @AnalysisObjectId=120
+        , @PlanXml=@GuardPlan
+        , @PlanSource='IMPORTED'
+        , @RuntimeCounterScope='NONE'
+        , @MitThreadRuntime=1;
+END TRY
+BEGIN CATCH
+    SELECT @BoundaryError=ERROR_NUMBER(),@BoundaryMessage=ERROR_MESSAGE();
+END CATCH;
+IF COALESCE(@BoundaryError,0)<>208 OR CHARINDEX(N'#ExecutionPlanAnalysis_Capabilities',COALESCE(@BoundaryMessage,N''))=0
+    THROW 53656,N'@MitThreadRuntime=1 passierte die Validierung nicht bis zur ersten fehlenden Ergebnistabelle.',1;
 
 /* Die öffentliche Analyse muss die explizite Eins behalten und 0/Default unterdrücken. */
 SET @AnalysisJson=NULL;SET @Status=NULL;SET @Partial=NULL;SET @Error=NULL;SET @Message=NULL;
