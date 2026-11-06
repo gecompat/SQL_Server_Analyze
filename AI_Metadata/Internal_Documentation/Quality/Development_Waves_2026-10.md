@@ -7,7 +7,54 @@ keine neuen Arbeitselementkennungen.
 
 ## Auftrag und maßgebliche Quellen
 
+## Quellenstand nach PR #633
+
+**Stand:** 6. November 2026. PR #633 ist auf Main mit Commit `60e0c8c0e3f21468745b5a66dbac1f1a994bcb61` integriert. Die aktuelle interne Kohorte umfasst 21 von 25 internen Prozeduren mit zusammen 196 Parameterzeilen. Die vier verbleibenden SSIS-Einträge sind Referenzeinträge ohne individuell belegte Parameterverträge; ihre DDL-Quellen sind damit nicht neu qualifiziert. Die bisherige öffentliche Kohorte (121 Procedures, 2.167 Parameterzeilen) und die Nichtprozedurkohorte (57 TABLE-, VIEW- und FUNCTION-Objekte aus 47 Quelldateien) bleiben getrennte, begrenzte Bestände.
+
+| Objekt | Parameter | Quelldatei | PR | Aktueller Quell-Blob |
+|---|---:|---|---|---|
+| InternalParseXmlText | 5 | [Code/01_Common/099a_USP_InternalParseXmlText.sql](../../../Code/01_Common/099a_USP_InternalParseXmlText.sql) | [#616](https://github.com/gecompat/SQL_Server_Analyze/pull/616) | `d1efa093fbae3a130450e1669e96f2d690c233cf` |
+| InternalEmitTruncationWarning | 5 | [Code/01_Common/099_USP_InternalEmitTruncationWarning.sql](../../../Code/01_Common/099_USP_InternalEmitTruncationWarning.sql) | [#617](https://github.com/gecompat/SQL_Server_Analyze/pull/617) | `98ee9bcff3155f32b3a396157cce3bc7ce8e7117` |
+| InternalProjectUnicodeTextColumn | 8 | [Code/01_Common/098_USP_InternalProjectUnicodeTextColumn.sql](../../../Code/01_Common/098_USP_InternalProjectUnicodeTextColumn.sql) | [#618](https://github.com/gecompat/SQL_Server_Analyze/pull/618) | `82a60a8ca3e0a0bf34449025a6232900c5b0828a` |
+| InternalEmitConsoleResult | 5 | [Code/01_Common/098_USP_InternalEmitConsoleResult.sql](../../../Code/01_Common/098_USP_InternalEmitConsoleResult.sql) | [#618](https://github.com/gecompat/SQL_Server_Analyze/pull/618) | `50c2b764fad20afa8c47974065edc368338a9f6c` |
+| InternalPrepareResultTables | 6 | [Code/01_Common/096_USP_InternalPrepareResultTables.sql](../../../Code/01_Common/096_USP_InternalPrepareResultTables.sql) | [#619](https://github.com/gecompat/SQL_Server_Analyze/pull/619) | `ce2fec7f2291fadb294e6aab6ed8125a91715ab2` |
+| InternalPrepareSingleResultTable | 4 | [Code/01_Common/097_USP_InternalPrepareSingleResultTable.sql](../../../Code/01_Common/097_USP_InternalPrepareSingleResultTable.sql) | [#619](https://github.com/gecompat/SQL_Server_Analyze/pull/619) | `0c0d7258c2d1e20c2ec1ad2ff3daa7dabdb7e247` |
+| InternalWriteResultTable | 7 | [Code/01_Common/095_USP_InternalWriteResultTable.sql](../../../Code/01_Common/095_USP_InternalWriteResultTable.sql) | [#620](https://github.com/gecompat/SQL_Server_Analyze/pull/620) | `fedf70b3ef7095ee0e81825d885b73ddcc3ac788` |
+| InternalCheckAnalysisPath | 4 | [Code/01_Common/083a_USP_InternalCheckAnalysisPath.sql](../../../Code/01_Common/083a_USP_InternalCheckAnalysisPath.sql) | [#621](https://github.com/gecompat/SQL_Server_Analyze/pull/621) | `1f883b6c413fc225263939e193fee69863fabc58` |
+| InternalConfigureSnapshotPolicy | 20 | [Code/10_SnapshotBaseline/020_InternalConfigureSnapshotPolicy.sql](../../../Code/10_SnapshotBaseline/020_InternalConfigureSnapshotPolicy.sql) | [#622](https://github.com/gecompat/SQL_Server_Analyze/pull/622) | `9c156d1b5e46aea73b1e7c02465bc9c6eb2081e7` |
+| InternalPrepareCollectionCycle | 12 | [Code/10_SnapshotBaseline/040_InternalPrepareCollectionCycle.sql](../../../Code/10_SnapshotBaseline/040_InternalPrepareCollectionCycle.sql) | [#623](https://github.com/gecompat/SQL_Server_Analyze/pull/623) | `8cf94d1a02c8b26a82f0a664b2df3290aabf10c1` |
+| InternalFinalizeCollectionCycle | 5 | [Code/10_SnapshotBaseline/060_InternalFinalizeCollectionCycle.sql](../../../Code/10_SnapshotBaseline/060_InternalFinalizeCollectionCycle.sql) | [#623](https://github.com/gecompat/SQL_Server_Analyze/pull/623) | `bae422ff900339262b55ceea2c9e99743e0e8be8` |
+| InternalCompletePerformanceCounterCycle | 10 | [Code/10_SnapshotBaseline/050_InternalCompletePerformanceCounterCycle.sql](../../../Code/10_SnapshotBaseline/050_InternalCompletePerformanceCounterCycle.sql) | [#624](https://github.com/gecompat/SQL_Server_Analyze/pull/624) | `4f57d033b1eaa994dbdf97fa743587cea3be8752` |
+| InternalPurgeExpiredData | 12 | [Code/10_SnapshotBaseline/070_InternalPurgeExpiredData.sql](../../../Code/10_SnapshotBaseline/070_InternalPurgeExpiredData.sql) | [#625](https://github.com/gecompat/SQL_Server_Analyze/pull/625) | `768c33ffa6e5fed6ac86d855d803dde6613c62c1` |
+| InternalValidateSnapshotWaitTarget | 9 | [Code/10_SnapshotBaseline/076_InternalValidateSnapshotWaitTarget.sql](../../../Code/10_SnapshotBaseline/076_InternalValidateSnapshotWaitTarget.sql) | [#626](https://github.com/gecompat/SQL_Server_Analyze/pull/626) | `84be642bfae1f86f24acb7c062551f07153c5115` |
+| InternalRunSnapshotWaitStatsCycle | 8 | [Code/10_SnapshotBaseline/085_InternalRunSnapshotWaitStatsCycle.sql](../../../Code/10_SnapshotBaseline/085_InternalRunSnapshotWaitStatsCycle.sql) | [#627](https://github.com/gecompat/SQL_Server_Analyze/pull/627) | `6d81d7dea0f3e737e782d5eb968d86f16f0bd1dc` |
+| InternalRunSnapshotFileIOCycle | 11 | [Code/10_SnapshotBaseline/087_InternalRunSnapshotFileIOCycle.sql](../../../Code/10_SnapshotBaseline/087_InternalRunSnapshotFileIOCycle.sql) | [#628](https://github.com/gecompat/SQL_Server_Analyze/pull/628) | `55cb91e6d901ead59248ef3d3fd251b0f2d87df5` |
+| InternalCompleteWaitStatsCycle | 9 | [Code/10_SnapshotBaseline/055_InternalCompleteWaitStatsCycle.sql](../../../Code/10_SnapshotBaseline/055_InternalCompleteWaitStatsCycle.sql) | [#629](https://github.com/gecompat/SQL_Server_Analyze/pull/629) | `6901ff63110d0d52ef48ca00238d04ad3a37fd8c` |
+| InternalCompleteFileIOCycle | 9 | [Code/10_SnapshotBaseline/057_InternalCompleteFileIOCycle.sql](../../../Code/10_SnapshotBaseline/057_InternalCompleteFileIOCycle.sql) | [#630](https://github.com/gecompat/SQL_Server_Analyze/pull/630) | `a57ab0a637c9258c0f8c1307e176a602c5a25767` |
+| InternalCaptureCurrentStateSnapshot | 14 | [Code/02_CurrentState/005_InternalCaptureCurrentStateSnapshot.sql](../../../Code/02_CurrentState/005_InternalCaptureCurrentStateSnapshot.sql) | [#631](https://github.com/gecompat/SQL_Server_Analyze/pull/631) | `8d7a74ef1c3b196dc0b22d2076e973b5af46d25e` |
+| InternalCollectExecutionPlanMetadata | 13 | [Code/04_PlanCache/049_InternalCollectExecutionPlanMetadata.sql](../../../Code/04_PlanCache/049_InternalCollectExecutionPlanMetadata.sql) | [#632](https://github.com/gecompat/SQL_Server_Analyze/pull/632) | `f63829c9fb65ad9149fdaaa21fcb94d5d02b5f75` |
+| InternalAnalyzeExecutionPlan | 20 | [Code/04_PlanCache/051_InternalAnalyzeExecutionPlan.sql](../../../Code/04_PlanCache/051_InternalAnalyzeExecutionPlan.sql) | [#633](https://github.com/gecompat/SQL_Server_Analyze/pull/633) | `f06bb20a5a93fdaa7f0e2265247ce1bb57a512c6` |
+
+Die Tabelle bindet die gezählten Parameter jeder Procedure an ihren Quell-Blob und den zugehörigen PR. Zusammen mit dem gebundenen Main-Stand `60e0c8c0e3f21468745b5a66dbac1f1a994bcb61` ist `Objects.csv` über Blob `2a52ac84e04c9791a1b9e02d68273fae5a37cc0e` referenziert. Die öffentliche Prozedurkohorte wurde zuvor in ihrem bezeichneten Umfang geprüft. Bei den Nichtprozedurquellen sind 46 von 47 Dateien bytegleich zum geprüften Stand; die einzige geänderte Datei `Code/10_SnapshotBaseline/030_Snapshot_Target_Schema.sql` unterscheidet sich ausschließlich in drei Hash-Strings innerhalb eines Guards (Quell-Blob vorher `5182d9615a76e727151dae67d8738bd9cb98953b`, jetzt `aeeff050f5acbf3bfd2a8c88bc599d8a20c8f1d6`). Das wurde in den öffentlichen PRs #629 und #630 geprüft; es handelt sich nicht um eine DDL-Tabellenänderung.
+
+Die PRs #631, #632 und #633 bestanden jeweils die erforderlichen Head- und Main-Prüfungen, die vollständige statische Vertragssuite mit 80 Validatoren und Selbsttestauswahl `Changed`, die kanonische Adapterparität und den TestLab-Cleanup-Vertrag. Native SQL-Läufe wurden bei allen drei PRs wegen reiner Kommentaränderungen übersprungen. Diese Integrations- und Selbsttestnachweise begründen keine neue native SQL-Laufzeitqualifikation.
+
+### Offene SSIS-Referenzverträge
+
+In der [Objektreferenz](../../../Documentation/Reference/Object_Reference.md) fehlen für die folgenden vier Einträge Einzelparameterverträge. Ihre DDL-Signaturen und Eingaberegeln müssen vor einer Änderung gesondert geprüft werden; diese Quellen sind nicht Teil der 21 geprüften Helfer.
+
+| Interner Helfer | Zu prüfende Quelle |
+|---|---|
+| InternalSsisExecutionScopes | [Code/10_SSIS/035_InternalSsisExecutionScopes.sql](../../../Code/10_SSIS/035_InternalSsisExecutionScopes.sql) |
+| InternalSsisPipelineCorrelation | [Code/10_SSIS/036_InternalSsisPipelineCorrelation.sql](../../../Code/10_SSIS/036_InternalSsisPipelineCorrelation.sql) |
+| InternalSsisPipelineDiagnostics | [Code/10_SSIS/037_InternalSsisPipelineDiagnostics.sql](../../../Code/10_SSIS/037_InternalSsisPipelineDiagnostics.sql) |
+| InternalSsisExecutionMetrics | [Code/10_SSIS/045_InternalSsisExecutionMetrics.sql](../../../Code/10_SSIS/045_InternalSsisExecutionMetrics.sql) |
+
+Als Nächstes werden die vier SSIS-Referenzeinträge einzeln mit ihren Parameterverträgen abgeglichen. Danach folgt die Snapshot-Diagnosemeldung 53781: Der FILE_IO-Guard verlangt Paket 1.3.1 und Schema 3, der Meldungstext nennt weiterhin 1.3.0. In `057_InternalCompleteFileIOCycle.sql` bleibt eine phasenbezogene Präzisierung der Einzelzeilen für `@ErrorNumberOut` und `@ErrorMessageOut` offen: Die Issue-Projektion ist an bereits validierte Quelldaten gebunden; zuvor können andere Fehlerdiagnosen entstehen. Die dokumentierten NULL-Guard-Verhaltensweisen in `049_InternalCollectExecutionPlanMetadata.sql` und `051_InternalAnalyzeExecutionPlan.sql` sind als separate fachliche Prüfung offen und wurden nicht als Fehlerkorrekturen umgesetzt. Positive Evidenz für Windows-/Mirroring-Topologie, MSDTC-Dienst und externe Teilnehmer einschließlich Commit-/Recovery bleibt offen. Der Kerninstallationsumfang und die Verträge für optionale LLM-Funktionen, SSISDB, Toolbelt und CLR bleiben unverändert. Eine Planungszeile erteilt keine Ausführungsfreigabe.
+
 ## Aktueller Stand nach Schritt 178
+
+Der folgende Abschnitt dokumentiert den Quellenstand vom 5. November 2026 nach Schritt 178. Er bleibt als Historie erhalten; maßgeblich für den aktuellen Stand ist [Quellenstand nach PR #633](#quellenstand-nach-pr-633).
 
 Die bisherige öffentliche Inventarkohorte ist abgearbeitet: Die Hilfeprüfung erfasst 121 Procedures mit 2.167 Parameterzeilen. PR #610 bis PR #612 sind mit den erforderlichen Head- und Main-Prüfungen integriert. Ebenfalls abgeschlossen ist die bisherige Nichtprozedurkohorte mit 57 TABLE-, VIEW- und FUNCTION-Objekten aus 47 Quelldateien. Alle 47 Dateien stimmen bytegenau mit den unabhängig geprüften integrierten DDL-Revisionen überein. Die Main-Bindung lautet `b08b7df8d6eb99fa9ebfe6f2ab64636641df46b7`; `Objects.csv` ist über Blob `2a52ac84e04c9791a1b9e02d68273fae5a37cc0e` gebunden, und die vollständige Zeilenzuordnung ist unabhängig geprüft.
 
@@ -121,9 +168,7 @@ Der Abschluss eines einzelnen Pull Requests beendet den Gesamtauftrag nicht.
 Der Orchestrator setzt anschließend den nächsten ausführbaren freigegebenen
 Schritt ohne erneute Fortsetzungsaufforderung um. Der stündliche Heartbeat
 bleibt eine zusätzliche Leerlauferkennung und ersetzt diese laufende
-Fortsetzung nicht. Am nächsten Umfangscheckpoint bei 150 bewertet der
-Orchestrator den Restumfang neu und setzt innerhalb der bestehenden Freigaben
-und Grenzen fort; daraus entsteht keine zusätzliche Zustimmungspflicht.
+Fortsetzung nicht. Der Restumfang wird an den jeweils geltenden autorisierten Checkpoints anhand des verbleibenden Auftrags neu bewertet. Frühere Checkpoints setzen den aktuellen Verbrauch nicht zurück; bestehende Einzelgrenzen und Sperren gelten fort.
 
 Die Testauswahl folgt ausschließlich der
 [CI-Teststrategie](../../../Documentation/Quality/CI_Test_Strategy.md).
