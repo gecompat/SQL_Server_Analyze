@@ -45,6 +45,8 @@ jobs:
           builders = {
               "Code/Install/Build-StandaloneInstaller.ps1": "39a751bc73536d430204f505e7974d92343b30d5",
               "TestLab/Adapters/OPS-005/Build-AdapterInstall.ps1": "4160bdd1e1df6c557ba2c25dffd502eee1383b15",
+              "Code/Install/Build-ExecutionPlanAnalysisInstaller.ps1": "d2fdc1cae65ed521162d5936c2015db11d3215f2",
+              "TestLab/Adapters/EXECUTION-PLAN-001/Build-AdapterInstall.ps1": "47a4cd3dde1ae85a6ad549fcb6ed2dc683b83979",
           }
           for path, expected in builders.items():
               if blob_sha(Path(path).read_bytes()) != expected:
@@ -89,12 +91,20 @@ jobs:
             -InstallOutputPath (Join-Path $env:RUNNER_TEMP 'ops-install.sql') `
             -UpdateOutputPath (Join-Path $env:RUNNER_TEMP 'ops-update.sql')
 
-      - name: Store the exact reviewed Git blob
+      - name: Build the canonical Execution Plan artifact
+        shell: pwsh
+        run: |
+          & ./TestLab/Adapters/EXECUTION-PLAN-001/Build-AdapterInstall.ps1 `
+            -RepositoryRoot $env:GITHUB_WORKSPACE `
+            -OutputPath (Join-Path $env:RUNNER_TEMP 'execution-plan-install.sql')
+
+      - name: Store canonical candidates for independent review
         shell: python
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           import base64
+          import gzip
           import hashlib
           import json
           import os
@@ -102,30 +112,72 @@ jobs:
           import urllib.error
           import urllib.request
 
-          expected = "de0ecce452bee4a699fd33af6e815d842d3ee953"
-          data = (Path(os.environ["RUNNER_TEMP"]) / "ops-install.sql").read_bytes()
-          actual = hashlib.sha1(b"blob " + str(len(data)).encode("ascii") + b"\0" + data).hexdigest()
-          if len(data) > 8000000 or actual != expected:
-              raise SystemExit("Generated OPS blob does not match the reviewed artifact")
-          payload = json.dumps({
-              "encoding": "base64",
-              "content": base64.b64encode(data).decode("ascii"),
-          }).encode("utf-8")
-          request = urllib.request.Request(
-              "https://api.github.com/repos/gecompat/SQL_Server_Analyze/git/blobs",
-              data=payload,
-              headers={
-                  "Authorization": "Bearer " + os.environ["GH_TOKEN"],
-                  "Accept": "application/vnd.github+json",
-                  "Content-Type": "application/json",
-                  "X-GitHub-Api-Version": "2022-11-28",
+          def git_sha(data):
+              return hashlib.sha1(b"blob " + str(len(data)).encode("ascii") + b"\0" + data).hexdigest()
+
+          def store_blob(data):
+              payload = json.dumps({
+                  "encoding": "base64",
+                  "content": base64.b64encode(data).decode("ascii"),
+              }).encode("utf-8")
+              request = urllib.request.Request(
+                  "https://api.github.com/repos/gecompat/SQL_Server_Analyze/git/blobs",
+                  data=payload,
+                  headers={
+                      "Authorization": "Bearer " + os.environ["GH_TOKEN"],
+                      "Accept": "application/vnd.github+json",
+                      "Content-Type": "application/json",
+                      "X-GitHub-Api-Version": "2022-11-28",
+                  },
+                  method="POST")
+              try:
+                  with urllib.request.urlopen(request, timeout=60) as response:
+                      raw = response.read(4097)
+              except urllib.error.HTTPError as error:
+                  raise SystemExit("CANDIDATE_UPLOAD_HTTP_STATUS=" + str(error.code)) from None
+              expected = git_sha(data)
+              if len(raw) > 4096 or json.loads(raw).get("sha") != expected:
+                  raise SystemExit("Candidate upload response binding failed")
+              return expected
+
+          files = {
+              "TestLab/Adapters/OPS-005/sql/install.sql": "ops-install.sql",
+              "TestLab/Adapters/EXECUTION-PLAN-001/sql/install.sql": "execution-plan-install.sql",
+          }
+          artifacts = {}
+          envelope = {
+              "kind": "CANONICAL_REVIEW_CANDIDATES",
+              "baseCommit": "10718d919cbc68204ebddc3abb47aec1826101b4",
+              "sourceBlobs": {
+                  "Code/04_PlanCache/052_USP_CreateExecutionEvidenceJson.sql": "f7ac73f82c786d47e4bebe1ac2e30da87c5134a1",
+                  "Code/04_PlanCache/053_USP_ExecutionPlanAnalysis.sql": "fdabbabc39183962d988262fd568541435f94760",
               },
-              method="POST")
-          try:
-              with urllib.request.urlopen(request, timeout=60) as response:
-                  raw = response.read(4097)
-          except urllib.error.HTTPError as error:
-              raise SystemExit("OPS_UPLOAD_HTTP_STATUS=" + str(error.code)) from None
-          if len(raw) > 4096 or json.loads(raw).get("sha") != expected:
-              raise SystemExit("Uploaded OPS blob response binding failed")
-          print("OPS_INSTALLER_BLOB=" + expected)
+              "builderBlobs": {
+                  "Code/Install/Build-StandaloneInstaller.ps1": "39a751bc73536d430204f505e7974d92343b30d5",
+                  "TestLab/Adapters/OPS-005/Build-AdapterInstall.ps1": "4160bdd1e1df6c557ba2c25dffd502eee1383b15",
+                  "Code/Install/Build-ExecutionPlanAnalysisInstaller.ps1": "d2fdc1cae65ed521162d5936c2015db11d3215f2",
+                  "TestLab/Adapters/EXECUTION-PLAN-001/Build-AdapterInstall.ps1": "47a4cd3dde1ae85a6ad549fcb6ed2dc683b83979",
+              },
+              "files": {},
+          }
+          for path, filename in files.items():
+              data = (Path(os.environ["RUNNER_TEMP"]) / filename).read_bytes()
+              if len(data) > 8000000:
+                  raise SystemExit("Canonical candidate exceeded size bound")
+              artifacts[path] = data
+              envelope["files"][path] = {
+                  "gitBlobSha": git_sha(data),
+                  "byteLength": len(data),
+                  "gzipBase64": base64.b64encode(gzip.compress(data, compresslevel=9, mtime=0)).decode("ascii"),
+              }
+          encoded = json.dumps(envelope, sort_keys=True, separators=(",", ":")).encode("ascii")
+          if len(encoded) > 2000000:
+              raise SystemExit("Review envelope exceeded size bound")
+
+          # Exactly three bounded blob POSTs; no refs, commits or installation.
+          review_sha = store_blob(encoded)
+          print("CANONICAL_REVIEW_ENVELOPE_BLOB=" + review_sha, flush=True)
+          for path, data in artifacts.items():
+              actual = store_blob(data)
+              print("CANONICAL_CANDIDATE_BLOB=" + path + ":" + actual, flush=True)
+          print("INDEPENDENT_ARTIFACT_REVIEW_REQUIRED", flush=True)
