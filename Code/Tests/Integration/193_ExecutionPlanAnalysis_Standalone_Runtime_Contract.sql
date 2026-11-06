@@ -299,7 +299,120 @@ VALUES
 );
 GO
 
-/* 3. Zweite Installation zur realen Idempotenzprüfung. */
+/* 3. Die öffentliche Bestätigung darf ohne optionalen Pfadprüfer nicht ausfallen. */
+IF OBJECT_ID(N'monitor.InternalCheckAnalysisPath',N'P') IS NULL
+    THROW 53638,N'Der interne Pfadprüfer fehlt vor der isolierten Abwesenheitsprobe.',1;
+DROP PROCEDURE [monitor].[InternalCheckAnalysisPath];
+GO
+IF OBJECT_ID(N'monitor.InternalCheckAnalysisPath',N'P') IS NOT NULL
+    THROW 53639,N'Der optionale Pfadprüfer ist für die Abwesenheitsprobe noch vorhanden.',1;
+
+DECLARE @StandaloneGatePlan xml=N'
+<ShowPlanXML xmlns="http://schemas.microsoft.com/sqlserver/2004/07/showplan" Version="1.600" Build="17.0.1000.1">
+  <BatchSequence><Batch><Statements>
+    <StmtSimple StatementId="1" StatementCompId="1" StatementType="SELECT" StatementText="SELECT ExampleValue" StatementSubTreeCost="0.1" StatementEstRows="1" StatementOptmLevel="TRIVIAL">
+      <QueryPlan CardinalityEstimationModelVersion="170">
+        <RelOp NodeId="0" PhysicalOp="Constant Scan" LogicalOp="Constant Scan" EstimateRows="1" EstimatedTotalSubtreeCost="0.1"><ConstantScan /></RelOp>
+      </QueryPlan>
+    </StmtSimple>
+  </Statements></Batch></BatchSequence>
+</ShowPlanXML>';
+DECLARE
+      @StandaloneGateJson nvarchar(max)
+    , @StandaloneGateStatus varchar(40)
+    , @StandaloneGatePartial bit
+    , @StandaloneGateError int
+    , @StandaloneGateMessage nvarchar(2048);
+
+/* 0 und NULL müssen denselben öffentlichen Status liefern, ohne den Helfer. */
+SELECT @StandaloneGateJson=NULL,@StandaloneGateStatus='STALE',@StandaloneGatePartial=NULL,
+       @StandaloneGateError=999,@StandaloneGateMessage=N'SENTINEL';
+EXEC [monitor].[USP_ExecutionPlanAnalysis]
+      @PlanXml=@StandaloneGatePlan
+    , @AnalyseTiefe='FULL'
+    , @HighImpactConfirmed=0
+    , @ResultSetArt='NONE'
+    , @JsonErzeugen=1
+    , @Json=@StandaloneGateJson OUTPUT
+    , @PrintMeldungen=0
+    , @StatusCodeOut=@StandaloneGateStatus OUTPUT
+    , @IsPartialOut=@StandaloneGatePartial OUTPUT
+    , @ErrorNumberOut=@StandaloneGateError OUTPUT
+    , @ErrorMessageOut=@StandaloneGateMessage OUTPUT;
+IF COALESCE(@StandaloneGateStatus,'')<>'HIGH_IMPACT_CONFIRMATION_REQUIRED'
+   OR COALESCE(@StandaloneGatePartial,0)<>1 OR @StandaloneGateError IS NOT NULL
+   OR NULLIF(LTRIM(RTRIM(@StandaloneGateMessage)),N'') IS NULL
+   OR COALESCE(ISJSON(@StandaloneGateJson),0)<>1
+    THROW 53640,N'Der öffentliche FULL-Pfad hat @HighImpactConfirmed=0 ohne Helfer nicht abgewiesen.',1;
+
+SELECT @StandaloneGateJson=NULL,@StandaloneGateStatus='STALE',@StandaloneGatePartial=NULL,
+       @StandaloneGateError=999,@StandaloneGateMessage=N'SENTINEL';
+EXEC [monitor].[USP_ExecutionPlanAnalysis]
+      @PlanXml=@StandaloneGatePlan
+    , @AnalyseTiefe='FULL'
+    , @HighImpactConfirmed=NULL
+    , @ResultSetArt='NONE'
+    , @JsonErzeugen=1
+    , @Json=@StandaloneGateJson OUTPUT
+    , @PrintMeldungen=0
+    , @StatusCodeOut=@StandaloneGateStatus OUTPUT
+    , @IsPartialOut=@StandaloneGatePartial OUTPUT
+    , @ErrorNumberOut=@StandaloneGateError OUTPUT
+    , @ErrorMessageOut=@StandaloneGateMessage OUTPUT;
+IF COALESCE(@StandaloneGateStatus,'')<>'HIGH_IMPACT_CONFIRMATION_REQUIRED'
+   OR COALESCE(@StandaloneGatePartial,0)<>1 OR @StandaloneGateError IS NOT NULL
+   OR NULLIF(LTRIM(RTRIM(@StandaloneGateMessage)),N'') IS NULL
+   OR COALESCE(ISJSON(@StandaloneGateJson),0)<>1
+    THROW 53641,N'Der öffentliche FULL-Pfad hat @HighImpactConfirmed=NULL ohne Helfer nicht abgewiesen.',1;
+
+/* Explizite 1 erreicht die Analyse, wenn der optionale Helfer nicht installiert ist. */
+SELECT @StandaloneGateJson=NULL,@StandaloneGateStatus='STALE',@StandaloneGatePartial=NULL,
+       @StandaloneGateError=999,@StandaloneGateMessage=N'SENTINEL';
+EXEC [monitor].[USP_ExecutionPlanAnalysis]
+      @PlanXml=@StandaloneGatePlan
+    , @AnalyseTiefe='FULL'
+    , @HighImpactConfirmed=1
+    , @ResultSetArt='NONE'
+    , @JsonErzeugen=1
+    , @Json=@StandaloneGateJson OUTPUT
+    , @PrintMeldungen=0
+    , @StatusCodeOut=@StandaloneGateStatus OUTPUT
+    , @IsPartialOut=@StandaloneGatePartial OUTPUT
+    , @ErrorNumberOut=@StandaloneGateError OUTPUT
+    , @ErrorMessageOut=@StandaloneGateMessage OUTPUT;
+IF COALESCE(@StandaloneGateStatus,'') NOT IN ('AVAILABLE','PARTIAL')
+   OR @StandaloneGatePartial IS NULL OR @StandaloneGateError IS NOT NULL
+   OR COALESCE(ISJSON(@StandaloneGateJson),0)<>1
+   OR (SELECT COUNT(*) FROM OPENJSON(@StandaloneGateJson,N'$.statements'))<>1
+   OR (SELECT COUNT(*) FROM OPENJSON(@StandaloneGateJson,N'$.operatorTree'))<>1
+    THROW 53642,N'Der öffentliche FULL-Pfad hat @HighImpactConfirmed=1 ohne Helfer nicht erreicht oder lieferte nicht genau eine synthetische Statement- und Operatorzeile.',1;
+
+/* Nicht angeforderter High-Impact-Pfad und NULL-Modusfallbacks bleiben zulässig. */
+SELECT @StandaloneGateJson=NULL,@StandaloneGateStatus='STALE',@StandaloneGatePartial=NULL,
+       @StandaloneGateError=999,@StandaloneGateMessage=N'SENTINEL';
+EXEC [monitor].[USP_ExecutionPlanAnalysis]
+      @PlanXml=@StandaloneGatePlan
+    , @AnalyseTiefe='STANDARD'
+    , @StatistikEvidenzModus=NULL
+    , @HistogrammModus=NULL
+    , @HighImpactConfirmed=NULL
+    , @ResultSetArt='NONE'
+    , @JsonErzeugen=1
+    , @Json=@StandaloneGateJson OUTPUT
+    , @PrintMeldungen=0
+    , @StatusCodeOut=@StandaloneGateStatus OUTPUT
+    , @IsPartialOut=@StandaloneGatePartial OUTPUT
+    , @ErrorNumberOut=@StandaloneGateError OUTPUT
+    , @ErrorMessageOut=@StandaloneGateMessage OUTPUT;
+IF COALESCE(@StandaloneGateStatus,'') NOT IN ('AVAILABLE','PARTIAL')
+   OR @StandaloneGatePartial IS NULL OR @StandaloneGateError IS NOT NULL
+   OR COALESCE(ISJSON(@StandaloneGateJson),0)<>1
+   OR (SELECT COUNT(*) FROM OPENJSON(@StandaloneGateJson,N'$.statements'))<>1
+   OR (SELECT COUNT(*) FROM OPENJSON(@StandaloneGateJson,N'$.operatorTree'))<>1
+    THROW 53643,N'Unbenutztes NULL oder NULL-Modusfallbacks wurden ohne Helfer global abgewiesen oder lieferten nicht genau eine synthetische Statement- und Operatorzeile.',1;
+GO
+
+/* 4. Zweite Installation stellt den Helfer wieder her und prüft Idempotenz. */
 :r Install_ExecutionPlanAnalysis.sql
 
 USE [DeineDatenbank];
@@ -344,7 +457,7 @@ IF NOT EXISTS
 )
     THROW 53627,N'Die erneute Installation hat die synthetische lokale Profilzuordnung verändert oder entfernt.',1;
 
-/* 4. Nur die transitive PLAN-001-Abhängigkeitsschließung darf vorhanden sein. */
+/* 5. Nur die transitive PLAN-001-Abhängigkeitsschließung darf vorhanden sein. */
 DECLARE @ExpectedObjects TABLE
 (
       [ObjectName] sysname NOT NULL PRIMARY KEY
@@ -405,7 +518,7 @@ IF EXISTS
 )
     THROW 53629,N'Die Standalone-Installation enthält ein unnötiges Frameworkmodul.',1;
 
-/* 5. Keine unresolved Abhängigkeit zu einem nicht installierten monitor-Modul. */
+/* 6. Keine unresolved Abhängigkeit zu einem nicht installierten monitor-Modul. */
 IF EXISTS
 (
     SELECT 1

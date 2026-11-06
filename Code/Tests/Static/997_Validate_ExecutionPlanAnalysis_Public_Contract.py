@@ -148,6 +148,25 @@ def privacy_consent_errors(text: str) -> list[str]:
     return errors
 
 
+def high_impact_confirmation_errors(text: str) -> list[str]:
+    normalized = normalize_space(text).lower()
+    requested_path = (
+        "if @statuscodeout='available' and "
+        "(@depth='full' or @statisticsmode in ('relevant','object_all') or @histogrammode='steps')"
+    )
+    denial = (
+        "if @highimpactconfirmed is null or @highimpactconfirmed<>1 "
+        "begin select @statuscodeout='high_impact_confirmation_required',@ispartialout=1,"
+    )
+    if requested_path not in normalized or denial not in normalized:
+        return ["Requested public HighImpactConfirmed gates must reject NULL with the confirmation-required status."]
+    guard_position = normalized.find("if @highimpactconfirmed is null or @highimpactconfirmed<>1")
+    helper_position = normalized.find("analysisclass=''showplan_xml_deep''")
+    if helper_position < 0 or guard_position < 0 or guard_position > helper_position:
+        return ["The public HighImpactConfirmed denial must precede the optional analysis-path helper."]
+    return []
+
+
 def validate(repository_root: Path) -> list[str]:
     errors: list[str] = []
     contract_file = repository_root / CONTRACT_PATH
@@ -435,6 +454,7 @@ def validate(repository_root: Path) -> list[str]:
     ]
     require_fragments(analysis_text, privacy_markers, "analysis privacy invariant", errors)
     errors.extend(privacy_consent_errors(analysis_text))
+    errors.extend(high_impact_confirmation_errors(analysis_text))
     evidence_privacy_markers = [
         "@RawMode='INCLUDE'",
         "@SensitiveDataConfirmed<>1 OR @IdentifierMode<>'RAW'",
@@ -533,6 +553,29 @@ END;
         1,
     )
     assert privacy_consent_errors(missing_range_null_gate), "Missing RangeHighKey NULL gate was accepted."
+    high_impact_gate = """
+IF @StatusCodeOut='AVAILABLE'
+   AND (@Depth='FULL' OR @StatisticsMode IN ('RELEVANT','OBJECT_ALL') OR @HistogramMode='STEPS')
+BEGIN
+    IF @HighImpactConfirmed IS NULL OR @HighImpactConfirmed<>1
+    BEGIN
+        SELECT @StatusCodeOut='HIGH_IMPACT_CONFIRMATION_REQUIRED',@IsPartialOut=1,
+               @ErrorMessageOut=N'Confirmation required.';
+    END;
+    ELSE IF EXISTS
+       (SELECT 1 FROM [sys].[procedures] WHERE [name]=N'InternalCheckAnalysisPath')
+    BEGIN
+        EXEC [monitor].[InternalCheckAnalysisPath] @AnalysisClass=''SHOWPLAN_XML_DEEP'';
+    END;
+END;
+"""
+    assert not high_impact_confirmation_errors(high_impact_gate)
+    missing_high_impact_null = high_impact_gate.replace(
+        "@HighImpactConfirmed IS NULL OR ",
+        "",
+        1,
+    )
+    assert high_impact_confirmation_errors(missing_high_impact_null), "Missing public HighImpactConfirmed NULL rejection was accepted."
     statement_output_guard = """IF @MitSqlText IS NULL OR @MitSqlText<>1
    OR @SensitiveDataConfirmed IS NULL OR @SensitiveDataConfirmed<>1
     UPDATE [#ExecutionPlanAnalysis_Statements] SET [StatementText]=NULL;
