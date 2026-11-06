@@ -86,6 +86,68 @@ def owned_temp_setup_errors(text: str) -> list[str]:
     return []
 
 
+def privacy_consent_errors(text: str) -> list[str]:
+    normalized = normalize_space(text).lower()
+    errors: list[str] = []
+    sensitive_output_guard = (
+        "if @statuscodeout='available' and @mitsqltext=1 and "
+        "(@sensitivedataconfirmed is null or @sensitivedataconfirmed<>1)"
+    )
+    if sensitive_output_guard not in normalized:
+        errors.append("SQL-text disclosure must require an explicit non-NULL sensitivity confirmation.")
+    closed_bit_guard = "@mitsqltext is null or @mitsqltext not in (0,1)"
+    if closed_bit_guard not in normalized:
+        errors.append("MitSqlText must reject NULL and values outside its closed bit domain.")
+
+    output_guards = (
+        (
+            r"if\s+([^;]+?)\s+update \[#executionplananalysis_statements\] "
+            r"set \[statementtext\]=null\s*;",
+            (
+                "@mitsqltext is null",
+                "@mitsqltext<>1",
+                "@sensitivedataconfirmed is null",
+                "@sensitivedataconfirmed<>1",
+            ),
+            "StatementText",
+        ),
+        (
+            r"if\s+([^;]+?)\s+update \[#executionplananalysis_histogramsteps\] "
+            r"set \[rangehighkey\]=null\s*;",
+            (
+                "@privacymode<>'raw'",
+                "@sensitivedataconfirmed is null",
+                "@sensitivedataconfirmed<>1",
+            ),
+            "RangeHighKey",
+        ),
+    )
+    output_guard_positions: list[tuple[str, int]] = []
+    for pattern, required_conditions, label in output_guards:
+        match = re.search(pattern, normalized)
+        condition = match.group(1) if match else ""
+        if not condition or any(fragment not in condition for fragment in required_conditions):
+            errors.append(f"{label} output must require explicit non-NULL sensitivity confirmation.")
+        elif match is not None:
+            output_guard_positions.append((label, match.start()))
+
+    final_output_markers = (
+        "if @jsonerzeugen=1",
+        "if @outputmode='raw'",
+        "if @tablerequested=1",
+    )
+    marker_positions = [normalized.rfind(marker) for marker in final_output_markers]
+    if any(position < 0 for position in marker_positions):
+        errors.append("Missing a final JSON, RAW or TABLE output branch.")
+    elif len(output_guard_positions) != len(output_guards) or any(
+        guard_position >= marker_position
+        for _label, guard_position in output_guard_positions
+        for marker_position in marker_positions
+    ):
+        errors.append("Sensitive output guards must precede final JSON, RAW and TABLE emission.")
+    return errors
+
+
 def validate(repository_root: Path) -> list[str]:
     errors: list[str] = []
     contract_file = repository_root / CONTRACT_PATH
@@ -364,7 +426,6 @@ def validate(repository_root: Path) -> list[str]:
 
     privacy_markers = [
         "Jede externe oder intern erzeugte Evidenz wird vor der",
-        "@MitSqlText=1 AND @SensitiveDataConfirmed<>1",
         "UPDATE [#ExecutionPlanAnalysis_HistogramSummaries]",
         "UPDATE [#ExecutionPlanAnalysis_HistogramSteps]",
         "UPDATE [#ExecutionPlanAnalysis_PredicateHistogramMappings]",
@@ -373,6 +434,7 @@ def validate(repository_root: Path) -> list[str]:
         "@EvidencePrivacyMode=''TOKENIZED''",
     ]
     require_fragments(analysis_text, privacy_markers, "analysis privacy invariant", errors)
+    errors.extend(privacy_consent_errors(analysis_text))
     evidence_privacy_markers = [
         "@RawMode='INCLUDE'",
         "@SensitiveDataConfirmed<>1 OR @IdentifierMode<>'RAW'",
@@ -416,6 +478,81 @@ END;
     actual = extract_parameters(sample, "USP_Example")
     if actual != expected:
         raise AssertionError(f"Parameter parser self-test failed: {actual!r}")
+    consent_guard = """
+IF @StatusCodeOut='AVAILABLE' AND @MitSqlText=1
+   AND (@SensitiveDataConfirmed IS NULL OR @SensitiveDataConfirmed<>1)
+BEGIN
+    SET @StatusCodeOut='SENSITIVE_DATA_CONFIRMATION_REQUIRED';
+END;
+IF @MitSqlText IS NULL OR @MitSqlText NOT IN (0,1)
+    SET @StatusCodeOut='INVALID_PARAMETER';
+"""
+    output_projection = consent_guard + """
+IF @MitSqlText IS NULL OR @MitSqlText<>1
+   OR @SensitiveDataConfirmed IS NULL OR @SensitiveDataConfirmed<>1
+    UPDATE [#ExecutionPlanAnalysis_Statements] SET [StatementText]=NULL;
+IF @PrivacyMode<>'RAW'
+   OR @SensitiveDataConfirmed IS NULL OR @SensitiveDataConfirmed<>1
+    UPDATE [#ExecutionPlanAnalysis_HistogramSteps] SET [RangeHighKey]=NULL;
+IF @JsonErzeugen=1
+BEGIN
+    SET @OutputMode='JSON';
+END;
+IF @OutputMode='RAW'
+BEGIN
+    SELECT * FROM [#ExecutionPlanAnalysis_ModuleStatus];
+END;
+IF @TableRequested=1
+BEGIN
+    SELECT @ResultName=[ResultName] FROM [#ExecutionPlanAnalysis_ResultTables];
+END;
+"""
+    assert not privacy_consent_errors(output_projection)
+    assert not privacy_consent_errors(normalize_space(output_projection))
+    unsafe_null_guard = output_projection.replace(
+        "(@SensitiveDataConfirmed IS NULL OR @SensitiveDataConfirmed<>1)",
+        "@SensitiveDataConfirmed<>1",
+        1,
+    )
+    assert privacy_consent_errors(unsafe_null_guard), "Missing NULL confirmation rejection was accepted."
+    missing_closed_bit = output_projection.replace(
+        "@MitSqlText IS NULL OR @MitSqlText NOT IN (0,1)",
+        "@MitSqlText NOT IN (0,1)",
+        1,
+    )
+    assert privacy_consent_errors(missing_closed_bit), "Missing MitSqlText NULL rejection was accepted."
+    missing_text_null_gate = output_projection.replace(
+        "IF @MitSqlText IS NULL OR @MitSqlText<>1\n   OR @SensitiveDataConfirmed IS NULL OR @SensitiveDataConfirmed<>1",
+        "IF @MitSqlText IS NULL OR @MitSqlText<>1\n   OR @SensitiveDataConfirmed<>1",
+        1,
+    )
+    assert privacy_consent_errors(missing_text_null_gate), "Missing StatementText NULL gate was accepted."
+    missing_range_null_gate = output_projection.replace(
+        "IF @PrivacyMode<>'RAW'\n   OR @SensitiveDataConfirmed IS NULL OR @SensitiveDataConfirmed<>1",
+        "IF @PrivacyMode<>'RAW'\n   OR @SensitiveDataConfirmed<>1",
+        1,
+    )
+    assert privacy_consent_errors(missing_range_null_gate), "Missing RangeHighKey NULL gate was accepted."
+    statement_output_guard = """IF @MitSqlText IS NULL OR @MitSqlText<>1
+   OR @SensitiveDataConfirmed IS NULL OR @SensitiveDataConfirmed<>1
+    UPDATE [#ExecutionPlanAnalysis_Statements] SET [StatementText]=NULL;
+"""
+    moved_text_guard = output_projection.replace(statement_output_guard, "", 1).replace(
+        "IF @JsonErzeugen=1\nBEGIN",
+        "IF @JsonErzeugen=1\nBEGIN\n" + statement_output_guard,
+        1,
+    )
+    assert privacy_consent_errors(moved_text_guard), "StatementText guard moved inside JSON emission was accepted."
+    range_output_guard = """IF @PrivacyMode<>'RAW'
+   OR @SensitiveDataConfirmed IS NULL OR @SensitiveDataConfirmed<>1
+    UPDATE [#ExecutionPlanAnalysis_HistogramSteps] SET [RangeHighKey]=NULL;
+"""
+    moved_range_guard = output_projection.replace(range_output_guard, "", 1).replace(
+        "IF @TableRequested=1\nBEGIN",
+        "IF @TableRequested=1\nBEGIN\n" + range_output_guard,
+        1,
+    )
+    assert privacy_consent_errors(moved_range_guard), "RangeHighKey guard after TABLE emission was accepted."
     setup = "BEGIN TRY\nSET LOCK_TIMEOUT 100;\n" + "\n".join(
         f"CREATE TABLE [#ExecutionPlanAnalysis_Example{i}]([Value] int);" for i in range(25)
     ) + "\nSET LOCK_TIMEOUT 0;\nEND TRY\nBEGIN CATCH\nSET LOCK_TIMEOUT 0;\nTHROW;\nEND CATCH;"
