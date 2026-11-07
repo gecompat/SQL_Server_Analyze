@@ -290,11 +290,28 @@ BEGIN
     BEGIN CATCH
         THROW;
     END CATCH;
-    IF COALESCE(@StatusCode,'''')<>''INVALID_PARAMETER'' OR COALESCE(@IsPartial,0)<>1 OR @ErrorNumber IS NOT NULL
-       OR NULLIF(@ErrorMessage,N'''') IS NULL OR @ErrorMessage=N''OUTPUT_SENTINEL''
-       OR @@LOCK_TIMEOUT<>{{TIMEOUT_SENTINEL}} OR EXISTS(SELECT 1 FROM #DurationPackageNull UNION ALL SELECT 1 FROM #DurationPackageZero UNION ALL SELECT 1 FROM #DurationPackageNegative UNION ALL SELECT 1 FROM #DurationPackageAboveMax UNION ALL SELECT 1 FROM #DurationPackageIntMin UNION ALL SELECT 1 FROM #DurationPackageIntMax)
-       OR COALESCE(JSON_QUERY(@Json,''$.package''),N'''')<>N''[]''
-       THROW 56121,N''SSIS-001 invalid MaxDurationSeconds must reject package inventory and preserve outputs and caller LOCK_TIMEOUT.'',1;
+    DECLARE @DurationFailureMessage nvarchar(2048);
+    IF COALESCE(@StatusCode,'''')<>''INVALID_PARAMETER'' OR COALESCE(@IsPartial,0)<>1
+       OR @ErrorNumber IS NOT NULL OR NULLIF(@ErrorMessage,N'''') IS NULL OR @ErrorMessage=N''OUTPUT_SENTINEL''
+    BEGIN
+        SET @DurationFailureMessage=CONCAT(N''SSIS-001 MaxDurationSeconds diagnostic; Pass='',@MaxDurationPass,N''; Predicate=status_outputs; Target='',@DurationTarget);
+        THROW 56211,@DurationFailureMessage,1;
+    END;
+    IF @@LOCK_TIMEOUT<>{{TIMEOUT_SENTINEL}}
+    BEGIN
+        SET @DurationFailureMessage=CONCAT(N''SSIS-001 MaxDurationSeconds diagnostic; Pass='',@MaxDurationPass,N''; Predicate=caller_lock_timeout; Target='',@DurationTarget);
+        THROW 56212,@DurationFailureMessage,1;
+    END;
+    IF EXISTS(SELECT 1 FROM #DurationPackageNull UNION ALL SELECT 1 FROM #DurationPackageZero UNION ALL SELECT 1 FROM #DurationPackageNegative UNION ALL SELECT 1 FROM #DurationPackageAboveMax UNION ALL SELECT 1 FROM #DurationPackageIntMin UNION ALL SELECT 1 FROM #DurationPackageIntMax)
+    BEGIN
+        SET @DurationFailureMessage=CONCAT(N''SSIS-001 MaxDurationSeconds diagnostic; Pass='',@MaxDurationPass,N''; Predicate=package_inventory; Target='',@DurationTarget);
+        THROW 56213,@DurationFailureMessage,1;
+    END;
+    IF COALESCE(JSON_QUERY(@Json,''$.package''),N'''')<>N''[]''
+    BEGIN
+        SET @DurationFailureMessage=CONCAT(N''SSIS-001 MaxDurationSeconds diagnostic; Pass='',@MaxDurationPass,N''; Predicate=json_package; Target='',@DurationTarget);
+        THROW 56214,@DurationFailureMessage,1;
+    END;
     SET @MaxDurationPass+=1;
 END;
 
