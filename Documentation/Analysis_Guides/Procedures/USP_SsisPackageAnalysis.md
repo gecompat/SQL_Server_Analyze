@@ -53,7 +53,7 @@ Die Beschreibung folgt dem aktuellen direkten XML-Einstieg. Reservierte Argument
 
 ### @MaxDurationSeconds
 
-**Datentyp:** `int`. Vorgesehene Dauergrenze in Sekunden; Default: 30. Der Code prüft Werte außerhalb 1 bis 60 als ungültig. NULL wird durch den NOT BETWEEN-Ausdruck jedoch nicht als ungültig erkannt und passiert diese Prüfung, wenn keine andere Bedingung fehlschlägt. Der Parameter wird danach nicht für eine Frist, Abbruch- oder Laufzeitbegrenzung verwendet; die geprüften Zahlen erzeugen daher kein tatsächliches Laufzeitlimit.
+**Datentyp:** `int` (SQL-int-Skalarwert in Sekunden). Default: 30. Zulässig sind Ganzzahlen von 1 bis 60. NULL sowie Werte außerhalb dieses Bereichs werden als `INVALID_PARAMETER` mit Teilstatus und Diagnose zurückgegeben. Ein als Leertext übergebenes Argument kann bei SQL Server implizit zu 0 konvertiert werden und ist deshalb ungültig. Der Parameter wird nicht für eine Frist, einen Abbruch oder ein Laufzeitlimit verwendet; eine tatsächliche Zeitbegrenzung besteht nicht.
 
 ### @LockTimeoutMs
 
@@ -69,7 +69,7 @@ Die Beschreibung folgt dem aktuellen direkten XML-Einstieg. Reservierte Argument
 
 ### @JsonErzeugen
 
-**Datentyp:** `bit`. Steuert die Ausgabe über @Json; Default: 0. 0 erzeugt kein JSON; 1 weist das erzeugte JSON @Json zu. NULL ist ungültig. Das JSON-Wurzelobjekt enthält 13 Arrays mit den Schlüsseln moduleStatus, package, executables, controlFlowConstraints, dataFlowComponents, connections, parameters, expressions, lineage, findings, sourceStatus, warnings und variables; ein zusätzliches meta-Objekt ist nicht implementiert. Nur variables wird mit INCLUDE_NULL_VALUES serialisiert. Das JSON wird unabhängig von @ResultSetArt erzeugt, sofern der reguläre Analysepfad erreicht wird. SQL-bit-Konvertierung bildet numerische Werte ungleich 0 auf 1 ab.
+**Datentyp:** `bit`. Steuert die Ausgabe über @Json; Default: 0. 0 erzeugt kein JSON; 1 weist das erzeugte JSON @Json zu. NULL ist ungültig. Das JSON-Wurzelobjekt enthält 13 Arrays mit den Schlüsseln moduleStatus, package, executables, controlFlowConstraints, dataFlowComponents, connections, parameters, expressions, lineage, findings, sourceStatus, warnings und variables; ein zusätzliches meta-Objekt ist nicht implementiert. Das package-Array wird bei leerem Paketinventar ausdrücklich als [] ausgegeben. Nur variables wird mit INCLUDE_NULL_VALUES serialisiert. Das JSON wird unabhängig von @ResultSetArt erzeugt, sofern der reguläre Analysepfad erreicht wird. SQL-bit-Konvertierung bildet numerische Werte ungleich 0 auf 1 ab.
 
 ### @Json
 
