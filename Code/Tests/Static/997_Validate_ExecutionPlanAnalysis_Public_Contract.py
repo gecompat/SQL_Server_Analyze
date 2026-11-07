@@ -163,6 +163,37 @@ def source_environment_confirmation_errors(text: str, mode_variable: str) -> lis
     return []
 
 
+def thread_runtime_public_null_errors(text: str) -> list[str]:
+    normalized = normalize_space(text).lower()
+    null_gate = "@mitthreadruntime is null or @mitthreadruntime not in (0,1)"
+    gate_position = normalized.find(null_gate)
+    if gate_position < 0:
+        return ["The public MitThreadRuntime bit guard must reject NULL."]
+    invalid_status_position = normalized.find(
+        "select @statuscodeout='invalid_parameter',@ispartialout=1,",
+        gate_position,
+    )
+    cache_position = normalized.find(
+        "if @statuscodeout='available' and @planhandle is not null"
+    )
+    source_position = normalized.find("exec [monitor].[usp_createexecutionevidencejson]")
+    analyzer_position = normalized.find("exec [monitor].[internalanalyzeexecutionplan]")
+    if (
+        invalid_status_position < 0
+        or cache_position < 0
+        or source_position < 0
+        or analyzer_position < 0
+        or gate_position >= cache_position
+        or invalid_status_position >= cache_position
+        or gate_position >= source_position
+        or gate_position >= analyzer_position
+        or invalid_status_position >= source_position
+        or invalid_status_position >= analyzer_position
+    ):
+        return ["The public MitThreadRuntime NULL rejection must return INVALID_PARAMETER before plan-handle resolution, source handling and the analyzer."]
+    return []
+
+
 def high_impact_confirmation_errors(text: str) -> list[str]:
     normalized = normalize_space(text).lower()
     requested_path = (
@@ -472,6 +503,7 @@ def validate(repository_root: Path) -> list[str]:
     errors.extend(high_impact_confirmation_errors(analysis_text))
     errors.extend(source_environment_confirmation_errors(analysis_text, "MetadataMode"))
     errors.extend(source_environment_confirmation_errors(evidence_text, "MetadataSourceMode"))
+    errors.extend(thread_runtime_public_null_errors(analysis_text))
     evidence_privacy_markers = [
         "@RawMode='INCLUDE'",
         "@SensitiveDataConfirmed<>1 OR @IdentifierMode<>'RAW'",
@@ -634,6 +666,54 @@ END;
     )
     assert not source_environment_confirmation_errors(missing_source_null_053, "MetadataSourceMode"), (
         "The unrelated 052 source gate was changed by the 053 mutant."
+    )
+    thread_runtime_guard_clause = """IF @MitThreadRuntime IS NULL OR @MitThreadRuntime NOT IN (0,1)
+BEGIN
+    SELECT @StatusCodeOut='INVALID_PARAMETER',@IsPartialOut=1,
+           @ErrorMessageOut=N'Invalid public parameter.';
+END;
+"""
+    cache_context_marker = """IF @StatusCodeOut='AVAILABLE' AND @PlanHandle IS NOT NULL
+BEGIN
+    SELECT @StatusCodeOut='UNAVAILABLE_OBJECT';
+END;
+"""
+    thread_runtime_public_guard = thread_runtime_guard_clause + cache_context_marker + """
+EXEC [monitor].[USP_CreateExecutionEvidenceJson];
+EXEC [monitor].[InternalAnalyzeExecutionPlan];
+"""
+    assert not thread_runtime_public_null_errors(thread_runtime_public_guard)
+    missing_thread_null = thread_runtime_public_guard.replace(
+        "@MitThreadRuntime IS NULL OR ",
+        "",
+        1,
+    )
+    assert thread_runtime_public_null_errors(missing_thread_null), (
+        "The public MitThreadRuntime NULL mutant was accepted."
+    )
+    moved_thread_after_cache = thread_runtime_public_guard.replace(
+        thread_runtime_guard_clause,
+        "",
+        1,
+    ).replace(
+        cache_context_marker,
+        cache_context_marker + thread_runtime_guard_clause,
+        1,
+    )
+    assert thread_runtime_public_null_errors(moved_thread_after_cache), (
+        "The public MitThreadRuntime NULL guard after plan-handle resolution was accepted."
+    )
+    moved_thread_guard = thread_runtime_public_guard.replace(
+        thread_runtime_guard_clause,
+        "",
+        1,
+    ).replace(
+        "EXEC [monitor].[USP_CreateExecutionEvidenceJson];",
+        "EXEC [monitor].[USP_CreateExecutionEvidenceJson];\n" + thread_runtime_guard_clause,
+        1,
+    )
+    assert thread_runtime_public_null_errors(moved_thread_guard), (
+        "The public MitThreadRuntime NULL guard after source handling was accepted."
     )
     statement_output_guard = """IF @MitSqlText IS NULL OR @MitSqlText<>1
    OR @SensitiveDataConfirmed IS NULL OR @SensitiveDataConfirmed<>1

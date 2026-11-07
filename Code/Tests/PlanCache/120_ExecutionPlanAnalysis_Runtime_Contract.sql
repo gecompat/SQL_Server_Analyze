@@ -1111,6 +1111,121 @@ IF COALESCE(@SourceStatus,'') NOT IN ('AVAILABLE','PARTIAL')
       )
     THROW 53681,N'053 hat das unbenutzte EVIDENCE_ONLY-NULL global abgewiesen oder die zwei synthetischen Statements mit vier Operatorzeilen fehlen.',1;
 
+/* Unbenutztes NULL für Predicate-Mapping bleibt in EVIDENCE_ONLY zulässig. */
+SET @SourceJson=NULL;SET @SourceStatus='STALE';SET @SourcePartial=NULL;SET @SourceError=999;SET @SourceMessage=N'SENTINEL';
+EXEC [monitor].[USP_CreateExecutionEvidenceJson]
+      @PlanXml=@GuardPlan
+    , @StatistikEvidenzModus='NONE'
+    , @HistogrammModus='NONE'
+    , @MetadatenQuellenmodus='EVIDENCE_ONLY'
+    , @MitPredicateHistogramMap=NULL
+    , @ResultSetArt='NONE'
+    , @JsonErzeugen=1
+    , @Json=@SourceJson OUTPUT
+    , @PrintMeldungen=0
+    , @StatusCodeOut=@SourceStatus OUTPUT
+    , @IsPartialOut=@SourcePartial OUTPUT
+    , @ErrorNumberOut=@SourceError OUTPUT
+    , @ErrorMessageOut=@SourceMessage OUTPUT;
+IF COALESCE(@SourceStatus,'') NOT IN ('AVAILABLE','PARTIAL')
+   OR @SourcePartial IS NULL OR @SourceError IS NOT NULL
+   OR COALESCE(ISJSON(@SourceJson),0)<>1
+   OR NULLIF(JSON_VALUE(@SourceJson,N'$.planIdentity.planDocumentHash'),N'') IS NULL
+    THROW 53682,N'052 hat unbenutztes @MitPredicateHistogramMap=NULL global abgewiesen oder die synthetische Planidentität fehlt.',1;
+
+SET @SourceJson=NULL;SET @SourceStatus='STALE';SET @SourcePartial=NULL;SET @SourceError=999;SET @SourceMessage=N'SENTINEL';
+EXEC [monitor].[USP_ExecutionPlanAnalysis]
+      @PlanXml=@GuardPlan
+    , @StatistikEvidenzModus='NONE'
+    , @HistogrammModus='NONE'
+    , @MetadatenQuellenmodus='EVIDENCE_ONLY'
+    , @MitPredicateHistogramMap=NULL
+    , @ResultSetArt='NONE'
+    , @JsonErzeugen=1
+    , @Json=@SourceJson OUTPUT
+    , @PrintMeldungen=0
+    , @StatusCodeOut=@SourceStatus OUTPUT
+    , @IsPartialOut=@SourcePartial OUTPUT
+    , @ErrorNumberOut=@SourceError OUTPUT
+    , @ErrorMessageOut=@SourceMessage OUTPUT;
+IF COALESCE(@SourceStatus,'') NOT IN ('AVAILABLE','PARTIAL')
+   OR @SourcePartial IS NULL OR @SourceError IS NOT NULL
+   OR COALESCE(ISJSON(@SourceJson),0)<>1
+   OR (SELECT COUNT(*) FROM OPENJSON(@SourceJson,N'$.statements'))<>2
+   OR (SELECT COUNT(*) FROM OPENJSON(@SourceJson,N'$.operatorTree'))<>4
+   OR NOT EXISTS
+      (
+          SELECT 1
+          FROM OPENJSON(@SourceJson,N'$.operatorTree')
+          WITH ([StatementOrdinal] int N'$.StatementOrdinal',[NodeId] int N'$.NodeId')
+          WHERE [StatementOrdinal]=1 AND [NodeId]=0
+      )
+   OR NOT EXISTS
+      (
+          SELECT 1
+          FROM OPENJSON(@SourceJson,N'$.operatorTree')
+          WITH ([StatementOrdinal] int N'$.StatementOrdinal',[NodeId] int N'$.NodeId')
+          WHERE [StatementOrdinal]=1 AND [NodeId]=1
+      )
+   OR NOT EXISTS
+      (
+          SELECT 1
+          FROM OPENJSON(@SourceJson,N'$.operatorTree')
+          WITH ([StatementOrdinal] int N'$.StatementOrdinal',[NodeId] int N'$.NodeId')
+          WHERE [StatementOrdinal]=2 AND [NodeId]=0
+      )
+   OR NOT EXISTS
+      (
+          SELECT 1
+          FROM OPENJSON(@SourceJson,N'$.operatorTree')
+          WITH ([StatementOrdinal] int N'$.StatementOrdinal',[NodeId] int N'$.NodeId')
+          WHERE [StatementOrdinal]=2 AND [NodeId]=1
+      )
+    THROW 53683,N'053 hat unbenutztes @MitPredicateHistogramMap=NULL global abgewiesen oder die synthetischen Planzeilen fehlen.',1;
+
+/* Der gepaarte Null-Schaltertest unterscheidet öffentliche Validierung vom selben nicht verfügbaren Handle. */
+DECLARE @MissingThreadPlanHandle varbinary(64)=CONVERT(varbinary(64),REPLICATE('01',64),2);
+SET @SourceJson=NULL;SET @SourceStatus='STALE';SET @SourcePartial=NULL;SET @SourceError=999;SET @SourceMessage=N'SENTINEL';
+EXEC [monitor].[USP_ExecutionPlanAnalysis]
+      @PlanHandle=@MissingThreadPlanHandle
+    , @PlanQuelle='COMPILE'
+    , @StatistikEvidenzModus='NONE'
+    , @HistogrammModus='NONE'
+    , @MetadatenQuellenmodus='EVIDENCE_ONLY'
+    , @MitThreadRuntime=0
+    , @ResultSetArt='NONE'
+    , @JsonErzeugen=1
+    , @Json=@SourceJson OUTPUT
+    , @PrintMeldungen=0
+    , @StatusCodeOut=@SourceStatus OUTPUT
+    , @IsPartialOut=@SourcePartial OUTPUT
+    , @ErrorNumberOut=@SourceError OUTPUT
+    , @ErrorMessageOut=@SourceMessage OUTPUT;
+IF COALESCE(@SourceStatus,'')<>'UNAVAILABLE_OBJECT'
+   OR (@SourceError IS NOT NULL AND @SourceError<>569)
+    THROW 53684,N'Der synthetische Planhandle muss mit @MitThreadRuntime=0 bis zur UNAVAILABLE_OBJECT-Quellenantwort gelangen.',1;
+
+SET @SourceJson=NULL;SET @SourceStatus='STALE';SET @SourcePartial=NULL;SET @SourceError=999;SET @SourceMessage=N'SENTINEL';
+EXEC [monitor].[USP_ExecutionPlanAnalysis]
+      @PlanHandle=@MissingThreadPlanHandle
+    , @PlanQuelle='COMPILE'
+    , @StatistikEvidenzModus='NONE'
+    , @HistogrammModus='NONE'
+    , @MetadatenQuellenmodus='EVIDENCE_ONLY'
+    , @MitThreadRuntime=NULL
+    , @ResultSetArt='NONE'
+    , @JsonErzeugen=1
+    , @Json=@SourceJson OUTPUT
+    , @PrintMeldungen=0
+    , @StatusCodeOut=@SourceStatus OUTPUT
+    , @IsPartialOut=@SourcePartial OUTPUT
+    , @ErrorNumberOut=@SourceError OUTPUT
+    , @ErrorMessageOut=@SourceMessage OUTPUT;
+IF COALESCE(@SourceStatus,'')<>'INVALID_PARAMETER'
+   OR COALESCE(@SourcePartial,0)<>1 OR @SourceError IS NOT NULL
+   OR NULLIF(LTRIM(RTRIM(@SourceMessage)),N'') IS NULL
+    THROW 53685,N'@MitThreadRuntime=NULL muss vor der synthetisch nicht verfügbaren Planquelle als INVALID_PARAMETER enden.',1;
+
 GO
 /* Öffentliche NULL-Datenschutzgrenzen: synthetische Rohwerte und SQL-Texte. */
 DECLARE @PrivacyPlan xml=N'
