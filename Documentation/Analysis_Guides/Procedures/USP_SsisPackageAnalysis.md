@@ -53,7 +53,7 @@ Die Beschreibung folgt dem aktuellen direkten XML-Einstieg. Reservierte Argument
 
 ### @MaxDurationSeconds
 
-**Datentyp:** `int`. Vorgesehene Dauergrenze in Sekunden; Default: 30. Der Code prüft Werte außerhalb 1 bis 60 als ungültig. NULL wird durch den NOT BETWEEN-Ausdruck jedoch nicht als ungültig erkannt und passiert diese Prüfung, wenn keine andere Bedingung fehlschlägt. Der Parameter wird danach nicht für eine Frist, Abbruch- oder Laufzeitbegrenzung verwendet; die geprüften Zahlen erzeugen daher kein tatsächliches Laufzeitlimit.
+**Datentyp:** `int` (SQL-int-Skalarwert in Sekunden). Default: 30. Zulässig sind Ganzzahlen von 1 bis 60. NULL sowie Werte außerhalb dieses Bereichs werden als `INVALID_PARAMETER` mit Teilstatus und Diagnose zurückgegeben. Ein als Leertext übergebenes Argument kann bei SQL Server implizit zu 0 konvertiert werden und ist deshalb ungültig. Der Parameter wird nicht für eine Frist, einen Abbruch oder ein Laufzeitlimit verwendet; eine tatsächliche Zeitbegrenzung besteht nicht.
 
 ### @LockTimeoutMs
 
