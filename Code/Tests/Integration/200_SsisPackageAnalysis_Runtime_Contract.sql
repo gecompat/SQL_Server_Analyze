@@ -197,6 +197,76 @@ EXEC [monitor].[USP_SsisPackageAnalysis]
 IF @StatusCode <> 'AVAILABLE_LIMITED' OR @IsPartial <> 1 OR @ErrorNumber IS NOT NULL OR @ErrorMessage IS NOT NULL
     THROW 56106, N'SSIS-001 parser RAW output contract failed.', 1;
 
+
+DECLARE @LockTimeoutValues TABLE ([Pass] int PRIMARY KEY, [Value] int NULL);
+INSERT @LockTimeoutValues VALUES (1,NULL),(2,-2),(3,-1),(4,60001),(5,2147483647);
+DECLARE @LockTimeoutPass int=1,@RequestedLockTimeout int,@LockTimeoutCaught bit;
+DECLARE @SavedEntryLockTimeout int=@@LOCK_TIMEOUT;
+DECLARE @LockTimeoutSql nvarchar(64);
+SET LOCK_TIMEOUT 4321;
+BEGIN TRY
+WHILE @LockTimeoutPass<=5
+BEGIN
+    SELECT @RequestedLockTimeout=[Value] FROM @LockTimeoutValues WHERE [Pass]=@LockTimeoutPass;
+    SET @StatusCode='OUTPUT_SENTINEL'; SET @IsPartial=0; SET @ErrorNumber=73117;
+    SET @ErrorMessage=N'OUTPUT_SENTINEL'; SET @Json=N'OUTPUT_SENTINEL';
+    SET @LockTimeoutCaught=0;
+    BEGIN TRY
+        EXEC [monitor].[USP_SsisPackageAnalysis]
+             @PackageXml=@PackageXml,@LockTimeoutMs=@RequestedLockTimeout,@ResultSetArt='NONE',
+             @JsonErzeugen=1,@Json=@Json OUTPUT,@StatusCodeOut=@StatusCode OUTPUT,
+             @IsPartialOut=@IsPartial OUTPUT,@ErrorNumberOut=@ErrorNumber OUTPUT,@ErrorMessageOut=@ErrorMessage OUTPUT;
+    END TRY
+    BEGIN CATCH
+        SET @LockTimeoutCaught=1;
+    END CATCH;
+    IF @LockTimeoutCaught=1
+       THROW 56117,N'SSIS-001 invalid LockTimeoutMs raised an unexpected SQL exception.',1;
+    IF COALESCE(@StatusCode,'')<>'INVALID_PARAMETER' OR COALESCE(@IsPartial,0)<>1 OR @ErrorNumber IS NOT NULL
+       OR NULLIF(@ErrorMessage,N'') IS NULL OR @ErrorMessage=N'OUTPUT_SENTINEL' OR @@LOCK_TIMEOUT<>4321
+       THROW 56117,N'SSIS-001 invalid LockTimeoutMs must return a diagnostic without changing caller LOCK_TIMEOUT.',1;
+    SET @LockTimeoutPass+=1;
+END;
+
+DECLARE @LockTimeoutControls TABLE ([Pass] int PRIMARY KEY, [Value] int NULL);
+INSERT @LockTimeoutControls VALUES (1,0),(2,1),(3,60000);
+DECLARE @LockTimeoutControlPass int=1;
+WHILE @LockTimeoutControlPass<=3
+BEGIN
+    SELECT @RequestedLockTimeout=[Value] FROM @LockTimeoutControls WHERE [Pass]=@LockTimeoutControlPass;
+    SET @StatusCode='OUTPUT_SENTINEL'; SET @IsPartial=0; SET @ErrorNumber=73118;
+    SET @ErrorMessage=N'OUTPUT_SENTINEL'; SET @Json=N'OUTPUT_SENTINEL';
+    EXEC [monitor].[USP_SsisPackageAnalysis]
+         @PackageXml=@PackageXml,@LockTimeoutMs=@RequestedLockTimeout,@ResultSetArt='NONE',
+         @JsonErzeugen=1,@Json=@Json OUTPUT,@StatusCodeOut=@StatusCode OUTPUT,
+         @IsPartialOut=@IsPartial OUTPUT,@ErrorNumberOut=@ErrorNumber OUTPUT,@ErrorMessageOut=@ErrorMessage OUTPUT;
+    IF COALESCE(@StatusCode,'')<>'AVAILABLE_LIMITED' OR COALESCE(@IsPartial,0)<>1 OR @ErrorNumber IS NOT NULL OR @ErrorMessage IS NOT NULL
+       OR @@LOCK_TIMEOUT<>4321 OR COALESCE(JSON_VALUE(@Json,'$.package[0].PackageName'),N'')<>N'SSIS-001 Runtime Fixture'
+       THROW 56118,N'SSIS-001 valid LockTimeoutMs must retain parsed output and caller LOCK_TIMEOUT.',1;
+    SET @LockTimeoutControlPass+=1;
+END;
+SET @StatusCode='OUTPUT_SENTINEL'; SET @IsPartial=0; SET @ErrorNumber=73119;
+SET @ErrorMessage=N'OUTPUT_SENTINEL'; SET @Json=N'OUTPUT_SENTINEL';
+EXEC [monitor].[USP_SsisPackageAnalysis]
+     @PackageXml=@PackageXml,@ResultSetArt='NONE',@JsonErzeugen=1,@Json=@Json OUTPUT,
+     @StatusCodeOut=@StatusCode OUTPUT,@IsPartialOut=@IsPartial OUTPUT,
+     @ErrorNumberOut=@ErrorNumber OUTPUT,@ErrorMessageOut=@ErrorMessage OUTPUT;
+IF COALESCE(@StatusCode,'')<>'AVAILABLE_LIMITED' OR COALESCE(@IsPartial,0)<>1 OR @ErrorNumber IS NOT NULL OR @ErrorMessage IS NOT NULL
+   OR @@LOCK_TIMEOUT<>4321 OR COALESCE(JSON_VALUE(@Json,'$.package[0].PackageName'),N'')<>N'SSIS-001 Runtime Fixture'
+   THROW 56119,N'SSIS-001 default LockTimeoutMs must retain parsed output and caller LOCK_TIMEOUT.',1;
+SET @LockTimeoutSql=N'SET LOCK_TIMEOUT '+CONVERT(nvarchar(20),@SavedEntryLockTimeout)+N';';
+EXEC [sys].[sp_executesql] @LockTimeoutSql;
+IF @@LOCK_TIMEOUT<>@SavedEntryLockTimeout
+    THROW 56120,N'SSIS-001 lock-timeout test cleanup did not restore the caller entry value.',1;
+END TRY
+BEGIN CATCH
+    SET @LockTimeoutSql=N'SET LOCK_TIMEOUT '+CONVERT(nvarchar(20),@SavedEntryLockTimeout)+N';';
+    EXEC [sys].[sp_executesql] @LockTimeoutSql;
+    IF @@LOCK_TIMEOUT<>@SavedEntryLockTimeout
+        THROW 56120,N'SSIS-001 lock-timeout test cleanup did not restore the caller entry value.',1;
+    THROW;
+END CATCH;
+
 EXEC [monitor].[USP_SsisPackageAnalysis]
       @PackageXml = N'<root />'
     , @ResultSetArt = 'NONE'
