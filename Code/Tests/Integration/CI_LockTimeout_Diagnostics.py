@@ -79,6 +79,61 @@ def observed_blocker(samples, case):
     return False
 
 
+def _blocker_rows(sample, case):
+    """Return one observed request anchor and bounded optional corroboration rows."""
+    if not case or sample.get("case") != case:
+        return [], [], set()
+    rows = sample.get("rows", [])
+    target = next((row for row in reversed(rows)
+                   if row.get("kind") == "request"
+                   and row.get("session_id") == case["spid"]
+                   and row.get("blocking_session_id", 0) > 0
+                   and str(row.get("wait_type", "")).startswith("LCK_")), None)
+    if target is None:
+        return [], [], set()
+    blocker_id = target["blocking_session_id"]
+    blocker_requests = [row for row in rows
+                        if row is not target and row.get("kind") == "request"
+                        and row.get("session_id") == blocker_id]
+    blocker_request = blocker_requests[0] if blocker_requests else None
+    waits = [row for row in rows if row.get("kind") == "lock"
+             and row.get("request_session_id") == case["spid"]
+             and row.get("request_status") == "WAIT"]
+    grants_by_key = {}
+    grants = []
+    for grant in rows:
+        if grant.get("kind") == "lock" and grant.get("request_session_id") == blocker_id \
+           and grant.get("request_status") == "GRANT":
+            grants.append(grant)
+            grants_by_key.setdefault(resource_key(grant), grant)
+    pair = next(((wait, grants_by_key[resource_key(wait)]) for wait in waits
+                 if resource_key(wait) in grants_by_key), None)
+    optional = [blocker_request] if blocker_request is not None else []
+    if pair:
+        optional.extend(pair)
+    mandatory = [target]
+    retained_ids = {id(target)}
+    selected_optional = []
+    for row in optional:
+        if id(row) not in retained_ids:
+            selected_optional.append(row)
+            retained_ids.add(id(row))
+    target_requests = [row for row in rows if row.get("kind") == "request"
+                       and row.get("session_id") == case["spid"]
+                       and row.get("blocking_session_id", 0) > 0
+                       and str(row.get("wait_type", "")).startswith("LCK_")]
+    candidate_rows = [*target_requests, *blocker_requests, *waits, *grants]
+    discarded_ids = {id(row) for row in candidate_rows if id(row) not in retained_ids}
+    return mandatory, selected_optional, discarded_ids
+
+
+
+def _summary_bytes(summary, secret, compact=False):
+    text = json.dumps(summary, ensure_ascii=True, separators=(",", ":") if compact else None,
+                      indent=None if compact else 2)
+    return redact(text, secret).encode("utf-8")
+
+
 def sample_sql(spid):
     spid = int(spid)
     if not 1 <= spid <= 32767:
@@ -328,18 +383,51 @@ def encode_report(report, secret, limit=REPORT_BYTES):
 
 
 def diagnostic_summary(report, secret):
-    """Expose one bounded, sanitized sample without mutating the artifact report."""
+    """Expose a bounded sanitized summary without mutating the artifact report."""
     samples = report.get("samples", [])
     case = report.get("case")
     selected = next((sample for sample in reversed(samples)
-                     if case and observed_blocker([sample], case)), samples[-1] if samples else None)
+                     if case and _blocker_rows(sample, case)[0]),
+                    samples[-1] if samples else None)
+    mandatory_rows, optional_rows, discarded_ids = _blocker_rows(selected, case) if selected else ([], [], set())
+    preferred_rows = [*mandatory_rows, *optional_rows]
+    retained_ids = {id(row) for row in preferred_rows}
+    retained_ids.update(discarded_ids)
+    rows = list(preferred_rows)
+    if selected:
+        for row in selected.get("rows", []):
+            if id(row) not in retained_ids:
+                rows.append(row)
+                retained_ids.add(id(row))
+    summary_sample = dict(selected, rows=rows) if selected else None
     summary = dict(status=report["status"], trigger=report.get("trigger"), case=case,
-                   samples=[selected] if selected else [], errors=list(report.get("errors", [])),
+                   samples=[summary_sample] if summary_sample else [], errors=list(report.get("errors", [])),
                    sqlcmd_exit_code=report["sqlcmd_exit_code"], truncated=report.get("truncated", False),
                    observation_limit_seconds=report.get("observation_limit_seconds", MAX_SECONDS))
+    if summary["status"] == "BLOCKER_OBSERVED" and not mandatory_rows:
+        summary["status"] = "BLOCKER_NOT_CAPTURED"
+        summary["truncated"] = True
     summary = json.loads(json.dumps(summary))
-    return encode_report(summary, secret, 16 * 1024).decode("utf-8")
-
+    payload = _summary_bytes(summary, secret)
+    while len(payload) > 16 * 1024 and summary["samples"] and len(summary["samples"][0]["rows"]) > len(preferred_rows):
+        summary["samples"][0]["rows"].pop()
+        summary["truncated"] = True
+        payload = _summary_bytes(summary, secret)
+    if len(payload) > 16 * 1024 and optional_rows and summary["samples"]:
+        summary["samples"][0]["rows"] = summary["samples"][0]["rows"][:len(mandatory_rows)]
+        summary["truncated"] = True
+        payload = _summary_bytes(summary, secret)
+    if len(payload) > 16 * 1024:
+        if summary["status"] == "BLOCKER_OBSERVED":
+            summary["status"] = "BLOCKER_NOT_CAPTURED"
+        summary["truncated"] = True
+        if summary["samples"]:
+            summary["samples"][0]["rows"] = []
+        payload = _summary_bytes(summary, secret)
+    if len(payload) > 16 * 1024:
+        summary.pop("errors", None)
+        payload = _summary_bytes(summary, secret, compact=True)
+    return payload.decode("utf-8")
 
 def deployment_query():
     """Bracket generated deployment in the same SQLCMD session with DEPLOYMENT markers."""

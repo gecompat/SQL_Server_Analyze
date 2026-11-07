@@ -410,6 +410,155 @@ sys.exit(7)
         self.assertNotIn("SyntheticCredential", summary)
         self.assertEqual(json.loads(summary)["sqlcmd_exit_code"], 7)
 
+    def test_summary_preserves_request_only_blocker_observation(self):
+        case = ci.marker(CASE)
+        target = dict(kind="request", session_id=51, blocking_session_id=52,
+                      wait_type="LCK_M_S", wait_time=5000, wait_resource="OBJECT: 2:51")
+        sample = dict(clock=1.25, utc="2000-01-01T00:00:01Z",
+                      server_utc="2000-01-01T00:00:01Z", case=case, sampled_case=case,
+                      rows=[target], truncated=False)
+        report = dict(status="BLOCKER_OBSERVED", trigger="SQLCMD_ERROR", case=case,
+                      samples=[sample], errors=[], sqlcmd_exit_code=7, truncated=False)
+        summary = json.loads(ci.diagnostic_summary(report, "SyntheticCredential"))
+        self.assertEqual(summary["status"], "BLOCKER_OBSERVED")
+        self.assertEqual(summary["samples"][0]["rows"], [target])
+
+    def test_summary_retains_complete_blocker_proof_before_unrelated_noise(self):
+        case = ci.marker(CASE)
+        resource = dict(zip(ci.RESOURCE_FIELDS, ("OBJECT", "", 2, "obj-51", 51, 0)))
+        target = dict(kind="request", session_id=51, blocking_session_id=52,
+                      wait_type="LCK_M_S", wait_time=5000, wait_resource="OBJECT: 2:51")
+        holder = dict(kind="request", session_id=52, blocking_session_id=0,
+                      wait_type=None, wait_time=0, wait_resource="")
+        wait = dict(resource, kind="lock", request_session_id=51, request_status="WAIT")
+        grant = dict(resource, kind="lock", request_session_id=52, request_status="GRANT")
+        noise = [dict(kind="unrelated", payload=("noise-" + str(i)) * 1200) for i in range(25)]
+        sample = dict(clock=1.25, utc="2000-01-01T00:00:01Z",
+                      server_utc="2000-01-01T00:00:01Z", case=case, sampled_case=case,
+                      rows=[*noise, target, holder, wait, grant], truncated=False)
+        report = dict(status="BLOCKER_OBSERVED", trigger="SQLCMD_ERROR", case=case,
+                      samples=[sample], errors=["SYNTHETIC_OBSERVER_ERROR"],
+                      sqlcmd_exit_code=7, truncated=False, observation_limit_seconds=600)
+        before = json.loads(json.dumps(report))
+        summary_text = ci.diagnostic_summary(report, "SyntheticCredential")
+        summary = json.loads(summary_text)
+        retained = summary["samples"][0]
+        self.assertLessEqual(len(summary_text.encode("utf-8")), 16 * 1024)
+        self.assertEqual(summary["status"], "BLOCKER_OBSERVED")
+        self.assertEqual(retained["utc"], sample["utc"])
+        self.assertEqual(retained["server_utc"], sample["server_utc"])
+        self.assertEqual(retained["case"], case)
+        self.assertTrue(summary["truncated"])
+        self.assertTrue(any(row.get("kind") == "request" and row.get("session_id") == 51
+                            and row.get("blocking_session_id") == 52 for row in retained["rows"]))
+        self.assertTrue(any(row.get("kind") == "request" and row.get("session_id") == 52
+                            for row in retained["rows"]))
+        self.assertEqual(matching_locks(retained, 51, 52), [next(row for row in retained["rows"]
+                            if row.get("kind") == "lock" and row.get("request_status") == "WAIT")])
+        self.assertLess(sum(row.get("kind") == "unrelated" for row in retained["rows"]), len(noise))
+        self.assertEqual(summary["errors"], report["errors"])
+        self.assertEqual(summary["sqlcmd_exit_code"], 7)
+        self.assertEqual(report, before)
+
+        sleeping_holder_sample = dict(sample, rows=[row for row in sample["rows"] if row is not holder])
+        sleeping_holder_report = dict(report, samples=[sleeping_holder_sample])
+        sleeping_holder_summary = json.loads(ci.diagnostic_summary(sleeping_holder_report, "SyntheticCredential"))
+        self.assertEqual(sleeping_holder_summary["status"], "BLOCKER_OBSERVED")
+        self.assertFalse(any(row.get("kind") == "request" and row.get("session_id") == 52
+                             for row in sleeping_holder_summary["samples"][0]["rows"]))
+        self.assertEqual(len(matching_locks(sleeping_holder_summary["samples"][0], 51, 52)), 1)
+
+    def test_summary_bounds_duplicate_lock_pairs_without_dropping_request_anchor(self):
+        case = ci.marker(CASE)
+        resource = dict(zip(ci.RESOURCE_FIELDS, ("OBJECT", "", 2, "dup-resource", 51, 0)))
+        target = dict(kind="request", session_id=51, blocking_session_id=52,
+                      wait_type="LCK_M_S", wait_time=5000, wait_resource="OBJECT: 2:51")
+        holder = dict(kind="request", session_id=52, blocking_session_id=0,
+                      wait_type=None, wait_time=0, wait_resource="")
+        waits = [dict(resource, kind="lock", request_session_id=51, request_status="WAIT")
+                 for _ in range(40)]
+        grants = [dict(resource, kind="lock", request_session_id=52, request_status="GRANT")
+                  for _ in range(40)]
+        noise = [dict(kind="unrelated", payload=("noise-" + str(i)) * 1000) for i in range(20)]
+        sample = dict(clock=1.25, utc="2000-01-01T00:00:01Z",
+                      server_utc="2000-01-01T00:00:01Z", case=case, sampled_case=case,
+                      rows=[*noise, *waits, *grants, holder, target], truncated=False)
+        report = dict(status="BLOCKER_OBSERVED", trigger="SQLCMD_ERROR", case=case,
+                      samples=[sample], errors=[], sqlcmd_exit_code=7, truncated=False)
+        summary_text = ci.diagnostic_summary(report, "SyntheticCredential")
+        summary = json.loads(summary_text)
+        retained = summary["samples"][0]
+        self.assertLessEqual(len(summary_text.encode("utf-8")), 16 * 1024)
+        self.assertEqual(summary["status"], "BLOCKER_OBSERVED")
+        self.assertTrue(summary["truncated"])
+        self.assertTrue(any(row.get("kind") == "request" and row.get("session_id") == 51
+                            and row.get("blocking_session_id") == 52 for row in retained["rows"]))
+        self.assertEqual(len(matching_locks(retained, 51, 52)), 1)
+        self.assertEqual(sum(1 for row in retained["rows"] if row.get("kind") == "lock"
+                             and row.get("request_status") == "WAIT"), 1)
+        self.assertEqual(sum(1 for row in retained["rows"] if row.get("kind") == "lock"
+                             and row.get("request_status") == "GRANT"), 1)
+        no_target_report = dict(report, status="BLOCKER_NOT_CAPTURED",
+                                samples=[dict(sample, rows=[holder, *waits, *grants])])
+        no_target_summary = json.loads(ci.diagnostic_summary(no_target_report, "SyntheticCredential"))
+        self.assertEqual(no_target_summary["status"], "BLOCKER_NOT_CAPTURED")
+
+    def test_summary_redacts_unicode_proof_and_stays_within_byte_cap(self):
+        case = ci.marker(CASE)
+        resource = dict(zip(ci.RESOURCE_FIELDS, ("OBJECT", "", 2,
+                          "SyntheticCredential-Ω🔐", 51, 0)))
+        target = dict(kind="request", session_id=51, blocking_session_id=52,
+                      wait_type="LCK_M_S", wait_time=5000, wait_resource="SyntheticCredential-Ω🔐")
+        holder = dict(kind="request", session_id=52, blocking_session_id=0,
+                      wait_type=None, wait_time=0, wait_resource="")
+        wait = dict(resource, kind="lock", request_session_id=51, request_status="WAIT")
+        grant = dict(resource, kind="lock", request_session_id=52, request_status="GRANT")
+        sample = dict(clock=1.25, utc="2000-01-01T00:00:01Z",
+                      server_utc="2000-01-01T00:00:01Z", case=case, sampled_case=case,
+                      rows=[target, holder, wait, grant], truncated=False)
+        report = dict(status="BLOCKER_OBSERVED", trigger="SQLCMD_ERROR", case=case,
+                      samples=[sample], errors=["SyntheticCredential observer Ω🔐"],
+                      sqlcmd_exit_code=7, truncated=False)
+        summary = ci.diagnostic_summary(report, "SyntheticCredential")
+        decoded = json.loads(summary)
+        self.assertLessEqual(len(summary.encode("utf-8")), 16 * 1024)
+        self.assertEqual(decoded["status"], "BLOCKER_OBSERVED")
+        self.assertNotIn("SyntheticCredential", summary)
+        self.assertIn("[REDACTED]", summary)
+        self.assertEqual(decoded["samples"][0]["rows"][2]["resource_description"],
+                         "[REDACTED]-Ω🔐")
+        self.assertEqual(decoded["errors"], ["[REDACTED] observer Ω🔐"])
+
+    def test_summary_with_indispensable_oversize_proof_falls_back_nonobserved(self):
+        case = ci.marker(CASE)
+        long_identity = "resource-" + "R" * (18 * 1024)
+        resource = dict(zip(ci.RESOURCE_FIELDS, ("OBJECT", "", 2, long_identity, 51, 0)))
+        target = dict(kind="request", session_id=51, blocking_session_id=52,
+                      wait_type="LCK_M_S", wait_time=5000, wait_resource=long_identity)
+        holder = dict(kind="request", session_id=52, blocking_session_id=0,
+                      wait_type=None, wait_time=0, wait_resource="")
+        wait = dict(resource, kind="lock", request_session_id=51, request_status="WAIT")
+        grant = dict(resource, kind="lock", request_session_id=52, request_status="GRANT")
+        sample = dict(clock=1.25, utc="2000-01-01T00:00:01Z",
+                      server_utc="2000-01-01T00:00:01Z", case=case, sampled_case=case,
+                      rows=[target, holder, wait, grant], truncated=False)
+        report = dict(status="BLOCKER_OBSERVED", trigger="SQLCMD_ERROR", case=case,
+                      samples=[sample], errors=["SYNTHETIC_OBSERVER_ERROR"],
+                      sqlcmd_exit_code=7, truncated=False, observation_limit_seconds=600)
+        before = json.loads(json.dumps(report))
+        summary_text = ci.diagnostic_summary(report, "SyntheticCredential")
+        summary = json.loads(summary_text)
+        self.assertLessEqual(len(summary_text.encode("utf-8")), 16 * 1024)
+        self.assertEqual(summary["status"], "BLOCKER_NOT_CAPTURED")
+        self.assertTrue(summary["truncated"])
+        self.assertEqual(summary["samples"][0]["rows"], [])
+        self.assertEqual(summary["samples"][0]["utc"], sample["utc"])
+        self.assertEqual(summary["case"], case)
+        self.assertEqual(summary["sqlcmd_exit_code"], 7)
+        self.assertEqual(summary["errors"], report["errors"])
+        self.assertNotIn("BLOCKER_OBSERVED", summary_text)
+        self.assertEqual(report, before)
+
     def test_deployment_query_brackets_runtime_include_in_separate_batches(self):
         query = ci.deployment_query()
         self.assertRegex(query, r"RAISERROR\(N'%s',10,1,@CiDeploymentMarker\) WITH NOWAIT;\nGO\n:r /work/Code/Install/generated/Deployment_Runtime.generated.sql\nGO\nDECLARE")

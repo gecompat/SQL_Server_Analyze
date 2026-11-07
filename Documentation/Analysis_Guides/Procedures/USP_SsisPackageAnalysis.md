@@ -57,7 +57,7 @@ Die Beschreibung folgt dem aktuellen direkten XML-Einstieg. Reservierte Argument
 
 ### @LockTimeoutMs
 
-**Datentyp:** `int`. SQL-Sperrwartezeit in Millisekunden; Default: 0. 0 verlangt NOWAIT; 1 bis 60000 geben eine endliche Wartezeit vor. Der Code markiert Zahlen außerhalb 0 bis 60000 als INVALID_PARAMETER, führt die dynamische SET-Anweisung aber anschließend trotzdem aus; nicht verwendbare SET-Werte können daher als ungefangener SQL-Fehler enden. NULL passiert die NOT BETWEEN-Prüfung; die verkettete SET-Anweisung wird NULL. Für NULL ist keine ausdrückliche Steuerregel implementiert; verwenden Sie einen expliziten Wert 0 bis 60000. Am regulären Ende versucht der Code, den vorher gelesenen LOCK_TIMEOUT wiederherzustellen; frühe Fehler sind davon nicht abgedeckt.
+**Datentyp:** `int`. SQL-int-Skalarwert in Millisekunden; bei ausgelassenem Argument gilt der Default 0. Leertext kann bei SQL Server implizit zu 0 konvertiert werden und wird nicht als eigenständige Leerwerteingabe geprüft. 0 verlangt NOWAIT; 1 bis 60000 geben eine endliche Wartezeit vor. NULL und Zahlen außerhalb 0 bis 60000 werden als INVALID_PARAMETER zurückgegeben; die dynamische SET-Anweisung wird in diesem Fall übersprungen. Am regulären Ende versucht der Code, den vorher gelesenen LOCK_TIMEOUT wiederherzustellen; frühe Fehler sind davon nicht abgedeckt.
 
 ### @ResultSetArt
 
