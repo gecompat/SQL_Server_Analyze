@@ -357,7 +357,7 @@ IF COALESCE(@StatusCode,'''')<>''AVAILABLE_LIMITED'' OR COALESCE(@IsPartial,0)<>
     THROW 56123,N''SSIS-001 default MaxDurationSeconds must retain package inventory and caller LOCK_TIMEOUT.'',1;
 
 IF @@LOCK_TIMEOUT<>{{TIMEOUT_SENTINEL}}
-    THROW 56127,N''SSIS-001 scoped lock-timeout suite changed its local caller setting.'',1;'''
+    THROW 56127,N''SSIS-001 scoped lock-timeout suite changed its local caller setting.'',1;';
 SET @LockTimeoutTestSql=REPLACE(@LockTimeoutTestSql,N'{{TIMEOUT_SENTINEL}}',CONVERT(nvarchar(12),@TestLockTimeout));
 BEGIN TRY
     EXEC [sys].[sp_executesql] @LockTimeoutTestSql,N'@PackageXml xml',@PackageXml=@PackageXml;
