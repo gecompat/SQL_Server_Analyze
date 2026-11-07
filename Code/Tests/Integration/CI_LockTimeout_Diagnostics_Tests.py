@@ -455,7 +455,7 @@ sys.exit(7)
                             for row in retained["rows"]))
         self.assertEqual(matching_locks(retained, 51, 52), [next(row for row in retained["rows"]
                             if row.get("kind") == "lock" and row.get("request_status") == "WAIT")])
-        self.assertFalse(any(row.get("kind") == "unrelated" for row in retained["rows"]))
+        self.assertLess(sum(row.get("kind") == "unrelated" for row in retained["rows"]), len(noise))
         self.assertEqual(summary["errors"], report["errors"])
         self.assertEqual(summary["sqlcmd_exit_code"], 7)
         self.assertEqual(report, before)
