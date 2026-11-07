@@ -198,22 +198,22 @@ IF @StatusCode <> 'AVAILABLE_LIMITED' OR @IsPartial <> 1 OR @ErrorNumber IS NOT 
     THROW 56106, N'SSIS-001 parser RAW output contract failed.', 1;
 
 
+DECLARE @SavedEntryLockTimeout int=@@LOCK_TIMEOUT;
+DECLARE @TestLockTimeout int=CASE WHEN @@LOCK_TIMEOUT<>4321 THEN 4321 ELSE 4322 END;
+DECLARE @LockTimeoutTestSql nvarchar(max)=N'DECLARE @StatusCode varchar(40), @IsPartial bit, @ErrorNumber int, @ErrorMessage nvarchar(2048), @Json nvarchar(max);
 DECLARE @LockTimeoutValues TABLE ([Pass] int PRIMARY KEY, [Value] int NULL);
 INSERT @LockTimeoutValues VALUES (1,NULL),(2,-2),(3,-1),(4,60001),(5,2147483647);
 DECLARE @LockTimeoutPass int=1,@RequestedLockTimeout int,@LockTimeoutCaught bit;
-DECLARE @SavedEntryLockTimeout int=@@LOCK_TIMEOUT;
-DECLARE @LockTimeoutSql nvarchar(64);
-SET LOCK_TIMEOUT 4321;
-BEGIN TRY
+SET LOCK_TIMEOUT {{TIMEOUT_SENTINEL}};
 WHILE @LockTimeoutPass<=5
 BEGIN
     SELECT @RequestedLockTimeout=[Value] FROM @LockTimeoutValues WHERE [Pass]=@LockTimeoutPass;
-    SET @StatusCode='OUTPUT_SENTINEL'; SET @IsPartial=0; SET @ErrorNumber=73117;
-    SET @ErrorMessage=N'OUTPUT_SENTINEL'; SET @Json=N'OUTPUT_SENTINEL';
+    SET @StatusCode=''OUTPUT_SENTINEL''; SET @IsPartial=0; SET @ErrorNumber=73117;
+    SET @ErrorMessage=N''OUTPUT_SENTINEL''; SET @Json=N''OUTPUT_SENTINEL'';
     SET @LockTimeoutCaught=0;
     BEGIN TRY
         EXEC [monitor].[USP_SsisPackageAnalysis]
-             @PackageXml=@PackageXml,@LockTimeoutMs=@RequestedLockTimeout,@ResultSetArt='NONE',
+             @PackageXml=@PackageXml,@LockTimeoutMs=@RequestedLockTimeout,@ResultSetArt=''NONE'',
              @JsonErzeugen=1,@Json=@Json OUTPUT,@StatusCodeOut=@StatusCode OUTPUT,
              @IsPartialOut=@IsPartial OUTPUT,@ErrorNumberOut=@ErrorNumber OUTPUT,@ErrorMessageOut=@ErrorMessage OUTPUT;
     END TRY
@@ -221,10 +221,10 @@ BEGIN
         SET @LockTimeoutCaught=1;
     END CATCH;
     IF @LockTimeoutCaught=1
-       THROW 56117,N'SSIS-001 invalid LockTimeoutMs raised an unexpected SQL exception.',1;
-    IF COALESCE(@StatusCode,'')<>'INVALID_PARAMETER' OR COALESCE(@IsPartial,0)<>1 OR @ErrorNumber IS NOT NULL
-       OR NULLIF(@ErrorMessage,N'') IS NULL OR @ErrorMessage=N'OUTPUT_SENTINEL' OR @@LOCK_TIMEOUT<>4321
-       THROW 56117,N'SSIS-001 invalid LockTimeoutMs must return a diagnostic without changing caller LOCK_TIMEOUT.',1;
+       THROW 56117,N''SSIS-001 invalid LockTimeoutMs raised an unexpected SQL exception.'',1;
+    IF COALESCE(@StatusCode,'''')<>''INVALID_PARAMETER'' OR COALESCE(@IsPartial,0)<>1 OR @ErrorNumber IS NOT NULL
+       OR NULLIF(@ErrorMessage,N'''') IS NULL OR @ErrorMessage=N''OUTPUT_SENTINEL'' OR @@LOCK_TIMEOUT<>{{TIMEOUT_SENTINEL}}
+       THROW 56117,N''SSIS-001 invalid LockTimeoutMs must return a diagnostic without changing caller LOCK_TIMEOUT.'',1;
     SET @LockTimeoutPass+=1;
 END;
 
@@ -234,26 +234,26 @@ DECLARE @LockTimeoutControlPass int=1;
 WHILE @LockTimeoutControlPass<=3
 BEGIN
     SELECT @RequestedLockTimeout=[Value] FROM @LockTimeoutControls WHERE [Pass]=@LockTimeoutControlPass;
-    SET @StatusCode='OUTPUT_SENTINEL'; SET @IsPartial=0; SET @ErrorNumber=73118;
-    SET @ErrorMessage=N'OUTPUT_SENTINEL'; SET @Json=N'OUTPUT_SENTINEL';
+    SET @StatusCode=''OUTPUT_SENTINEL''; SET @IsPartial=0; SET @ErrorNumber=73118;
+    SET @ErrorMessage=N''OUTPUT_SENTINEL''; SET @Json=N''OUTPUT_SENTINEL'';
     EXEC [monitor].[USP_SsisPackageAnalysis]
-         @PackageXml=@PackageXml,@LockTimeoutMs=@RequestedLockTimeout,@ResultSetArt='NONE',
+         @PackageXml=@PackageXml,@LockTimeoutMs=@RequestedLockTimeout,@ResultSetArt=''NONE'',
          @JsonErzeugen=1,@Json=@Json OUTPUT,@StatusCodeOut=@StatusCode OUTPUT,
          @IsPartialOut=@IsPartial OUTPUT,@ErrorNumberOut=@ErrorNumber OUTPUT,@ErrorMessageOut=@ErrorMessage OUTPUT;
-    IF COALESCE(@StatusCode,'')<>'AVAILABLE_LIMITED' OR COALESCE(@IsPartial,0)<>1 OR @ErrorNumber IS NOT NULL OR @ErrorMessage IS NOT NULL
-       OR @@LOCK_TIMEOUT<>4321 OR COALESCE(JSON_VALUE(@Json,'$.package[0].PackageName'),N'')<>N'SSIS-001 Runtime Fixture'
-       THROW 56118,N'SSIS-001 valid LockTimeoutMs must retain parsed output and caller LOCK_TIMEOUT.',1;
+    IF COALESCE(@StatusCode,'''')<>''AVAILABLE_LIMITED'' OR COALESCE(@IsPartial,0)<>1 OR @ErrorNumber IS NOT NULL OR @ErrorMessage IS NOT NULL
+       OR @@LOCK_TIMEOUT<>{{TIMEOUT_SENTINEL}} OR COALESCE(JSON_VALUE(@Json,''$.package[0].PackageName''),N'''')<>N''SSIS-001 Runtime Fixture''
+       THROW 56118,N''SSIS-001 valid LockTimeoutMs must retain parsed output and caller LOCK_TIMEOUT.'',1;
     SET @LockTimeoutControlPass+=1;
 END;
-SET @StatusCode='OUTPUT_SENTINEL'; SET @IsPartial=0; SET @ErrorNumber=73119;
-SET @ErrorMessage=N'OUTPUT_SENTINEL'; SET @Json=N'OUTPUT_SENTINEL';
+SET @StatusCode=''OUTPUT_SENTINEL''; SET @IsPartial=0; SET @ErrorNumber=73119;
+SET @ErrorMessage=N''OUTPUT_SENTINEL''; SET @Json=N''OUTPUT_SENTINEL'';
 EXEC [monitor].[USP_SsisPackageAnalysis]
-     @PackageXml=@PackageXml,@ResultSetArt='NONE',@JsonErzeugen=1,@Json=@Json OUTPUT,
+     @PackageXml=@PackageXml,@ResultSetArt=''NONE'',@JsonErzeugen=1,@Json=@Json OUTPUT,
      @StatusCodeOut=@StatusCode OUTPUT,@IsPartialOut=@IsPartial OUTPUT,
      @ErrorNumberOut=@ErrorNumber OUTPUT,@ErrorMessageOut=@ErrorMessage OUTPUT;
-IF COALESCE(@StatusCode,'')<>'AVAILABLE_LIMITED' OR COALESCE(@IsPartial,0)<>1 OR @ErrorNumber IS NOT NULL OR @ErrorMessage IS NOT NULL
-   OR @@LOCK_TIMEOUT<>4321 OR COALESCE(JSON_VALUE(@Json,'$.package[0].PackageName'),N'')<>N'SSIS-001 Runtime Fixture'
-   THROW 56119,N'SSIS-001 default LockTimeoutMs must retain parsed output and caller LOCK_TIMEOUT.',1;
+IF COALESCE(@StatusCode,'''')<>''AVAILABLE_LIMITED'' OR COALESCE(@IsPartial,0)<>1 OR @ErrorNumber IS NOT NULL OR @ErrorMessage IS NOT NULL
+   OR @@LOCK_TIMEOUT<>{{TIMEOUT_SENTINEL}} OR COALESCE(JSON_VALUE(@Json,''$.package[0].PackageName''),N'''')<>N''SSIS-001 Runtime Fixture''
+   THROW 56119,N''SSIS-001 default LockTimeoutMs must retain parsed output and caller LOCK_TIMEOUT.'',1;
 DECLARE @MaxDurationValues TABLE ([Pass] int PRIMARY KEY, [Value] int NULL);
 INSERT @MaxDurationValues VALUES (1,NULL),(2,0),(3,-1),(4,61),(5,-2147483648),(6,2147483647);
 DECLARE @MaxDurationPass int=1,@RequestedDurationSeconds int,@DurationCaught bit;
@@ -261,13 +261,13 @@ WHILE @MaxDurationPass<=6
 BEGIN
     SELECT @RequestedDurationSeconds=[Value] FROM @MaxDurationValues WHERE [Pass]=@MaxDurationPass;
     TRUNCATE TABLE #ssisPackage;
-    SET @StatusCode='OUTPUT_SENTINEL'; SET @IsPartial=0; SET @ErrorNumber=73121;
-    SET @ErrorMessage=N'OUTPUT_SENTINEL'; SET @Json=N'OUTPUT_SENTINEL';
+    SET @StatusCode=''OUTPUT_SENTINEL''; SET @IsPartial=0; SET @ErrorNumber=73121;
+    SET @ErrorMessage=N''OUTPUT_SENTINEL''; SET @Json=N''OUTPUT_SENTINEL'';
     SET @DurationCaught=0;
     BEGIN TRY
         EXEC [monitor].[USP_SsisPackageAnalysis]
              @PackageXml=@PackageXml,@MaxDurationSeconds=@RequestedDurationSeconds,
-             @ResultSetArt='TABLE',@ResultTablesJson=N'{"package":"#ssisPackage"}',
+             @ResultSetArt=''TABLE'',@ResultTablesJson=N''{"package":"#ssisPackage"}'',
              @JsonErzeugen=1,@Json=@Json OUTPUT,@StatusCodeOut=@StatusCode OUTPUT,
              @IsPartialOut=@IsPartial OUTPUT,@ErrorNumberOut=@ErrorNumber OUTPUT,@ErrorMessageOut=@ErrorMessage OUTPUT;
     END TRY
@@ -275,34 +275,34 @@ BEGIN
         SET @DurationCaught=1;
     END CATCH;
     IF @DurationCaught=1
-       THROW 56121,N'SSIS-001 invalid MaxDurationSeconds raised an unexpected SQL exception.',1;
-    IF COALESCE(@StatusCode,'')<>'INVALID_PARAMETER' OR COALESCE(@IsPartial,0)<>1 OR @ErrorNumber IS NOT NULL
-       OR NULLIF(@ErrorMessage,N'') IS NULL OR @ErrorMessage=N'OUTPUT_SENTINEL'
-       OR @@LOCK_TIMEOUT<>4321 OR EXISTS(SELECT 1 FROM #ssisPackage)
-       OR COALESCE(JSON_QUERY(@Json,'$.package'),N'')<>N'[]'
-       THROW 56121,N'SSIS-001 invalid MaxDurationSeconds must reject package inventory and preserve outputs and caller LOCK_TIMEOUT.',1;
+       THROW 56121,N''SSIS-001 invalid MaxDurationSeconds raised an unexpected SQL exception.'',1;
+    IF COALESCE(@StatusCode,'''')<>''INVALID_PARAMETER'' OR COALESCE(@IsPartial,0)<>1 OR @ErrorNumber IS NOT NULL
+       OR NULLIF(@ErrorMessage,N'''') IS NULL OR @ErrorMessage=N''OUTPUT_SENTINEL''
+       OR @@LOCK_TIMEOUT<>{{TIMEOUT_SENTINEL}} OR EXISTS(SELECT 1 FROM #ssisPackage)
+       OR COALESCE(JSON_QUERY(@Json,''$.package''),N'''')<>N''[]''
+       THROW 56121,N''SSIS-001 invalid MaxDurationSeconds must reject package inventory and preserve outputs and caller LOCK_TIMEOUT.'',1;
     SET @MaxDurationPass+=1;
 END;
 
 TRUNCATE TABLE #ssisPackage;
-SET @StatusCode='OUTPUT_SENTINEL'; SET @IsPartial=0; SET @ErrorNumber=73124;
-SET @ErrorMessage=N'OUTPUT_SENTINEL'; SET @Json=N'OUTPUT_SENTINEL';
+SET @StatusCode=''OUTPUT_SENTINEL''; SET @IsPartial=0; SET @ErrorNumber=73124;
+SET @ErrorMessage=N''OUTPUT_SENTINEL''; SET @Json=N''OUTPUT_SENTINEL'';
 SET @DurationCaught=0;
 BEGIN TRY
     EXEC [monitor].[USP_SsisPackageAnalysis]
-         @PackageXml=@PackageXml,@MaxDurationSeconds='',
-         @ResultSetArt='TABLE',@ResultTablesJson=N'{"package":"#ssisPackage"}',
+         @PackageXml=@PackageXml,@MaxDurationSeconds='''',
+         @ResultSetArt=''TABLE'',@ResultTablesJson=N''{"package":"#ssisPackage"}'',
          @JsonErzeugen=1,@Json=@Json OUTPUT,@StatusCodeOut=@StatusCode OUTPUT,
          @IsPartialOut=@IsPartial OUTPUT,@ErrorNumberOut=@ErrorNumber OUTPUT,@ErrorMessageOut=@ErrorMessage OUTPUT;
 END TRY
 BEGIN CATCH
     SET @DurationCaught=1;
 END CATCH;
-IF @DurationCaught=1 OR COALESCE(@StatusCode,'')<>'INVALID_PARAMETER' OR COALESCE(@IsPartial,0)<>1 OR @ErrorNumber IS NOT NULL
-   OR NULLIF(@ErrorMessage,N'') IS NULL OR @ErrorMessage=N'OUTPUT_SENTINEL'
-   OR @@LOCK_TIMEOUT<>4321 OR EXISTS(SELECT 1 FROM #ssisPackage)
-   OR COALESCE(JSON_QUERY(@Json,'$.package'),N'')<>N'[]'
-    THROW 56124,N'SSIS-001 empty MaxDurationSeconds text must convert to invalid zero without package inventory.',1;
+IF @DurationCaught=1 OR COALESCE(@StatusCode,'''')<>''INVALID_PARAMETER'' OR COALESCE(@IsPartial,0)<>1 OR @ErrorNumber IS NOT NULL
+   OR NULLIF(@ErrorMessage,N'''') IS NULL OR @ErrorMessage=N''OUTPUT_SENTINEL''
+   OR @@LOCK_TIMEOUT<>{{TIMEOUT_SENTINEL}} OR EXISTS(SELECT 1 FROM #ssisPackage)
+   OR COALESCE(JSON_QUERY(@Json,''$.package''),N'''')<>N''[]''
+    THROW 56124,N''SSIS-001 empty MaxDurationSeconds text must convert to invalid zero without package inventory.'',1;
 
 DECLARE @MaxDurationControls TABLE ([Pass] int PRIMARY KEY, [Value] int);
 INSERT @MaxDurationControls VALUES (1,1),(2,30),(3,60);
@@ -311,42 +311,62 @@ WHILE @MaxDurationControlPass<=3
 BEGIN
     SELECT @RequestedDurationSeconds=[Value] FROM @MaxDurationControls WHERE [Pass]=@MaxDurationControlPass;
     TRUNCATE TABLE #ssisPackage;
-    SET @StatusCode='OUTPUT_SENTINEL'; SET @IsPartial=0; SET @ErrorNumber=73122;
-    SET @ErrorMessage=N'OUTPUT_SENTINEL'; SET @Json=N'OUTPUT_SENTINEL';
+    SET @StatusCode=''OUTPUT_SENTINEL''; SET @IsPartial=0; SET @ErrorNumber=73122;
+    SET @ErrorMessage=N''OUTPUT_SENTINEL''; SET @Json=N''OUTPUT_SENTINEL'';
     EXEC [monitor].[USP_SsisPackageAnalysis]
          @PackageXml=@PackageXml,@MaxDurationSeconds=@RequestedDurationSeconds,
-         @ResultSetArt='TABLE',@ResultTablesJson=N'{"package":"#ssisPackage"}',
+         @ResultSetArt=''TABLE'',@ResultTablesJson=N''{"package":"#ssisPackage"}'',
          @JsonErzeugen=1,@Json=@Json OUTPUT,@StatusCodeOut=@StatusCode OUTPUT,
          @IsPartialOut=@IsPartial OUTPUT,@ErrorNumberOut=@ErrorNumber OUTPUT,@ErrorMessageOut=@ErrorMessage OUTPUT;
-    IF COALESCE(@StatusCode,'')<>'AVAILABLE_LIMITED' OR COALESCE(@IsPartial,0)<>1 OR @ErrorNumber IS NOT NULL OR @ErrorMessage IS NOT NULL
-       OR @@LOCK_TIMEOUT<>4321 OR (SELECT COUNT(*) FROM #ssisPackage)<>1
-       OR COALESCE(JSON_VALUE(@Json,'$.package[0].PackageName'),N'')<>N'SSIS-001 Runtime Fixture'
-       THROW 56122,N'SSIS-001 valid MaxDurationSeconds must retain package inventory and caller LOCK_TIMEOUT.',1;
+    IF COALESCE(@StatusCode,'''')<>''AVAILABLE_LIMITED'' OR COALESCE(@IsPartial,0)<>1 OR @ErrorNumber IS NOT NULL OR @ErrorMessage IS NOT NULL
+       OR @@LOCK_TIMEOUT<>{{TIMEOUT_SENTINEL}} OR (SELECT COUNT(*) FROM #ssisPackage)<>1
+       OR COALESCE(JSON_VALUE(@Json,''$.package[0].PackageName''),N'''')<>N''SSIS-001 Runtime Fixture''
+       THROW 56122,N''SSIS-001 valid MaxDurationSeconds must retain package inventory and caller LOCK_TIMEOUT.'',1;
     SET @MaxDurationControlPass+=1;
 END;
 TRUNCATE TABLE #ssisPackage;
-SET @StatusCode='OUTPUT_SENTINEL'; SET @IsPartial=0; SET @ErrorNumber=73123;
-SET @ErrorMessage=N'OUTPUT_SENTINEL'; SET @Json=N'OUTPUT_SENTINEL';
+SET @StatusCode=''OUTPUT_SENTINEL''; SET @IsPartial=0; SET @ErrorNumber=73123;
+SET @ErrorMessage=N''OUTPUT_SENTINEL''; SET @Json=N''OUTPUT_SENTINEL'';
 EXEC [monitor].[USP_SsisPackageAnalysis]
-     @PackageXml=@PackageXml,@ResultSetArt='TABLE',@ResultTablesJson=N'{"package":"#ssisPackage"}',
+     @PackageXml=@PackageXml,@ResultSetArt=''TABLE'',@ResultTablesJson=N''{"package":"#ssisPackage"}'',
      @JsonErzeugen=1,@Json=@Json OUTPUT,@StatusCodeOut=@StatusCode OUTPUT,
      @IsPartialOut=@IsPartial OUTPUT,@ErrorNumberOut=@ErrorNumber OUTPUT,@ErrorMessageOut=@ErrorMessage OUTPUT;
-IF COALESCE(@StatusCode,'')<>'AVAILABLE_LIMITED' OR COALESCE(@IsPartial,0)<>1 OR @ErrorNumber IS NOT NULL OR @ErrorMessage IS NOT NULL
-   OR @@LOCK_TIMEOUT<>4321 OR (SELECT COUNT(*) FROM #ssisPackage)<>1
-   OR COALESCE(JSON_VALUE(@Json,'$.package[0].PackageName'),N'')<>N'SSIS-001 Runtime Fixture'
-    THROW 56123,N'SSIS-001 default MaxDurationSeconds must retain package inventory and caller LOCK_TIMEOUT.',1;
-SET @LockTimeoutSql=N'SET LOCK_TIMEOUT '+CONVERT(nvarchar(20),@SavedEntryLockTimeout)+N';';
-EXEC [sys].[sp_executesql] @LockTimeoutSql;
-IF @@LOCK_TIMEOUT<>@SavedEntryLockTimeout
-    THROW 56120,N'SSIS-001 lock-timeout test cleanup did not restore the caller entry value.',1;
+IF COALESCE(@StatusCode,'''')<>''AVAILABLE_LIMITED'' OR COALESCE(@IsPartial,0)<>1 OR @ErrorNumber IS NOT NULL OR @ErrorMessage IS NOT NULL
+   OR @@LOCK_TIMEOUT<>{{TIMEOUT_SENTINEL}} OR (SELECT COUNT(*) FROM #ssisPackage)<>1
+   OR COALESCE(JSON_VALUE(@Json,''$.package[0].PackageName''),N'''')<>N''SSIS-001 Runtime Fixture''
+    THROW 56123,N''SSIS-001 default MaxDurationSeconds must retain package inventory and caller LOCK_TIMEOUT.'',1;
+
+IF @@LOCK_TIMEOUT<>{{TIMEOUT_SENTINEL}}
+    THROW 56127,N''SSIS-001 scoped lock-timeout suite changed its local caller setting.'',1;';
+SET @LockTimeoutTestSql=REPLACE(@LockTimeoutTestSql,N'{{TIMEOUT_SENTINEL}}',CONVERT(nvarchar(12),@TestLockTimeout));
+BEGIN TRY
+    EXEC [sys].[sp_executesql] @LockTimeoutTestSql,N'@PackageXml xml',@PackageXml=@PackageXml;
 END TRY
 BEGIN CATCH
-    SET @LockTimeoutSql=N'SET LOCK_TIMEOUT '+CONVERT(nvarchar(20),@SavedEntryLockTimeout)+N';';
-    EXEC [sys].[sp_executesql] @LockTimeoutSql;
     IF @@LOCK_TIMEOUT<>@SavedEntryLockTimeout
-        THROW 56120,N'SSIS-001 lock-timeout test cleanup did not restore the caller entry value.',1;
+        PRINT N'SSIS-001 unexpected runtime assertion failed; outer caller LOCK_TIMEOUT changed before original error rethrow.';
     THROW;
 END CATCH;
+IF @@LOCK_TIMEOUT<>@SavedEntryLockTimeout
+    THROW 56120,N'SSIS-001 scoped lock-timeout suite did not restore the actual caller entry value after success.',1;
+
+DECLARE @FailureProbeSql nvarchar(max)=N'SET LOCK_TIMEOUT '+CONVERT(nvarchar(12),@TestLockTimeout)+N'; THROW 56125,N''SSIS-001 deliberate scoped cleanup failure.'',1;';
+DECLARE @FailureProbeErrorNumber int=NULL;
+BEGIN TRY
+    EXEC [sys].[sp_executesql] @FailureProbeSql;
+END TRY
+BEGIN CATCH
+    IF @@LOCK_TIMEOUT<>@SavedEntryLockTimeout
+        PRINT N'SSIS-001 deliberate failure scope changed the actual caller value before original error handling.';
+    IF ERROR_NUMBER()<>56125
+       OR ERROR_MESSAGE()<>N'SSIS-001 deliberate scoped cleanup failure.'
+       OR ERROR_STATE()<>1
+        THROW;
+    SET @FailureProbeErrorNumber=ERROR_NUMBER();
+END CATCH;
+IF @FailureProbeErrorNumber IS NULL OR @FailureProbeErrorNumber<>56125
+   OR @@LOCK_TIMEOUT<>@SavedEntryLockTimeout
+    THROW 56128,N'SSIS-001 failure scope did not preserve the actual caller entry value.',1;
 
 EXEC [monitor].[USP_SsisPackageAnalysis]
       @PackageXml = N'<root />'
