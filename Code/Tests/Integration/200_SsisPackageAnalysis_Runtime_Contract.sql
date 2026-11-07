@@ -265,6 +265,30 @@ EXEC [monitor].[USP_SsisPackageAnalysis]
 IF COALESCE(@StatusCode,'''')<>''AVAILABLE_LIMITED'' OR COALESCE(@IsPartial,0)<>1 OR @ErrorNumber IS NOT NULL OR @ErrorMessage IS NOT NULL
    OR @@LOCK_TIMEOUT<>{{TIMEOUT_SENTINEL}} OR COALESCE(JSON_VALUE(@Json,''$.package[0].PackageName''),N'''')<>N''SSIS-001 Runtime Fixture''
    THROW 56119,N''SSIS-001 default LockTimeoutMs must retain parsed output and caller LOCK_TIMEOUT.'',1;
+-- Validate the empty-package oracle with synthetic JSON shapes before procedure calls.
+DECLARE @PackageJsonFixtures TABLE ([FixtureId] int PRIMARY KEY,[Payload] nvarchar(max) NULL,[ExpectedEmptyArray] bit NOT NULL);
+INSERT @PackageJsonFixtures VALUES
+ (1,N''{"package":[]}'',1),(2,N''{"package":[  ]}'',1),(3,NULL,0),(4,N''{}'',0),
+ (5,N''{"package":null}'',0),(6,N''{"package":"[]"}'',0),(7,N''{"package":{}}'',0),
+ (8,N''{"package":[{}]}'',0),(9,N''{"package":[null]}'',0),(10,N''invalid JSON'',0),
+ (11,N''{"package":[],"package":[]}'',0),(12,N''{"Package":[]}'',0);
+DECLARE @PackageJsonFixtureId int=1,@PackageJsonFixture nvarchar(max),@ExpectedEmptyArray bit,@ActualEmptyArray bit;
+DECLARE @PackageArrayCount int,@PackageArrayType int,@PackageArray nvarchar(max);
+WHILE @PackageJsonFixtureId<=12
+BEGIN
+    SELECT @PackageJsonFixture=[Payload],@ExpectedEmptyArray=[ExpectedEmptyArray]
+    FROM @PackageJsonFixtures WHERE [FixtureId]=@PackageJsonFixtureId;
+    SELECT @PackageArrayCount=COUNT(*),@PackageArrayType=MAX([type]),@PackageArray=MAX([value])
+    FROM OPENJSON(CASE WHEN ISJSON(@PackageJsonFixture)=1 THEN @PackageJsonFixture ELSE N''{}'' END)
+    WHERE [key] COLLATE SQL_Latin1_General_CP1_CS_AS=N''package'';
+    SET @ActualEmptyArray=CASE WHEN ISJSON(@PackageJsonFixture)=1 AND @PackageArrayCount=1 AND @PackageArrayType=4
+        AND NOT EXISTS(SELECT 1 FROM OPENJSON(CASE WHEN @PackageArrayCount=1 AND @PackageArrayType=4 THEN @PackageArray ELSE N''[]'' END))
+        THEN 1 ELSE 0 END;
+    IF @ActualEmptyArray<>@ExpectedEmptyArray
+        THROW 56215,N''SSIS-001 semantic empty-package JSON oracle rejected its synthetic shape contract.'',1;
+    SET @PackageJsonFixtureId+=1;
+END;
+
 DECLARE @MaxDurationValues TABLE ([Pass] int PRIMARY KEY, [Value] int NULL, [TargetName] sysname NOT NULL);
 INSERT @MaxDurationValues VALUES
     (1,NULL,N''#DurationPackageNull''),
@@ -307,11 +331,21 @@ BEGIN
         SET @DurationFailureMessage=CONCAT(N''SSIS-001 MaxDurationSeconds diagnostic; Pass='',@MaxDurationPass,N''; Predicate=package_inventory; Target='',@DurationTarget);
         THROW 56213,@DurationFailureMessage,1;
     END;
-    IF COALESCE(JSON_QUERY(@Json,''$.package''),N'''')<>N''[]''
+    SELECT @PackageArrayCount=COUNT(*),@PackageArrayType=MAX([type]),@PackageArray=MAX([value])
+    FROM OPENJSON(CASE WHEN ISJSON(@Json)=1 THEN @Json ELSE N''{}'' END)
+    WHERE [key] COLLATE SQL_Latin1_General_CP1_CS_AS=N''package'';
+    IF ISNULL(ISJSON(@Json),0)<>1 OR @PackageArrayCount<>1 OR ISNULL(@PackageArrayType,-1)<>4
+       OR EXISTS(SELECT 1 FROM OPENJSON(CASE WHEN @PackageArrayCount=1 AND @PackageArrayType=4 THEN @PackageArray ELSE N''[]'' END))
     BEGIN
-        SET @DurationFailureMessage=CONCAT(N''SSIS-001 MaxDurationSeconds diagnostic; Pass='',@MaxDurationPass,N''; Predicate=json_package; Target='',@DurationTarget);
+        SET @DurationFailureMessage=CONCAT(N''SSIS-001 MaxDurationSeconds diagnostic; Pass='',@MaxDurationPass,N''; Predicate=json_package; Target='',@DurationTarget,N''; JsonValid='',ISNULL(ISJSON(@Json),0),N''; PackageKeys='',@PackageArrayCount,N''; PackageType='',ISNULL(@PackageArrayType,-1),N''; ArrayBytes='',CASE WHEN @PackageArrayCount=1 AND @PackageArrayType=4 THEN DATALENGTH(@PackageArray) ELSE NULL END);
         THROW 56214,@DurationFailureMessage,1;
     END;
+    IF @MaxDurationPass=1
+        PRINT CONCAT(N''SSIS-001 empty package JSON proof; JsonValid='',ISNULL(ISJSON(@Json),0),
+            N''; PackageKeys='',@PackageArrayCount,N''; PackageType='',@PackageArrayType,N''; Elements=0'',
+            N''; ArrayBytes='',DATALENGTH(@PackageArray),N''; QueryBytes='',DATALENGTH(JSON_QUERY(@Json,''$.package'')),
+            N''; QueryIsNull='',CASE WHEN JSON_QUERY(@Json,''$.package'') IS NULL THEN 1 ELSE 0 END,
+            N''; LegacyExactMatch='',CASE WHEN COALESCE(JSON_QUERY(@Json,''$.package''),N'''')=N''[]'' THEN 1 ELSE 0 END);
     SET @MaxDurationPass+=1;
 END;
 
@@ -329,10 +363,14 @@ END TRY
 BEGIN CATCH
     THROW;
 END CATCH;
+SELECT @PackageArrayCount=COUNT(*),@PackageArrayType=MAX([type]),@PackageArray=MAX([value])
+    FROM OPENJSON(CASE WHEN ISJSON(@Json)=1 THEN @Json ELSE N''{}'' END)
+    WHERE [key] COLLATE SQL_Latin1_General_CP1_CS_AS=N''package'';
 IF COALESCE(@StatusCode,'''')<>''INVALID_PARAMETER'' OR COALESCE(@IsPartial,0)<>1 OR @ErrorNumber IS NOT NULL
    OR NULLIF(@ErrorMessage,N'''') IS NULL OR @ErrorMessage=N''OUTPUT_SENTINEL''
    OR @@LOCK_TIMEOUT<>{{TIMEOUT_SENTINEL}} OR EXISTS(SELECT 1 FROM #DurationPackageNull UNION ALL SELECT 1 FROM #DurationPackageZero UNION ALL SELECT 1 FROM #DurationPackageNegative UNION ALL SELECT 1 FROM #DurationPackageAboveMax UNION ALL SELECT 1 FROM #DurationPackageIntMin UNION ALL SELECT 1 FROM #DurationPackageIntMax UNION ALL SELECT 1 FROM #DurationPackageEmptyText)
-   OR COALESCE(JSON_QUERY(@Json,''$.package''),N'''')<>N''[]''
+   OR ISNULL(ISJSON(@Json),0)<>1 OR @PackageArrayCount<>1 OR ISNULL(@PackageArrayType,-1)<>4
+       OR EXISTS(SELECT 1 FROM OPENJSON(CASE WHEN @PackageArrayCount=1 AND @PackageArrayType=4 THEN @PackageArray ELSE N''[]'' END))
     THROW 56124,N''SSIS-001 empty MaxDurationSeconds text must convert to invalid zero without package inventory.'',1;
 
 DECLARE @MaxDurationControls TABLE ([Pass] int PRIMARY KEY, [Value] int, [TargetName] sysname NOT NULL);
