@@ -34,9 +34,9 @@ Alle `Example*`-Werte im Aufruf sind synthetisch.
 | Parameter | Typ | Default | Eingabe und Wirkung |
 |---|---|---|---|
 | `@MitQueryStats` | `bit` | `1` | 1 aktiviert QueryStats, 0 deaktiviert. TOP/100 ohne Hash ist nicht per se PLAN_CACHE_DEEP geschützt. NULL aktiviert Child nicht. |
-| `@MitQueryHashAnalysis` | `bit` | `0` | 1 aktiviert Hash-Child. NULL QueryHash verlangt Deep-Gate. Einzelner Hash TOP <=1000 nicht. NULL deaktiviert Child. |
-| `@MitPlanCacheHealth` | `bit` | `0` | 1 aktiviert Health. TOP wird SUMMARY, VOLL wird VOLL plus Datenbankverteilung und Deep-Gate. NULL deaktiviert Child. |
-| `@MitShowplanAnalysis` | `bit` | `0` | 1 aktiviert Showplan. TOP wird GEZIELT, VOLL bleibt VOLL. NULL deaktiviert Child. |
+| `@MitQueryHashAnalysis` | `bit` | `0` | Der Parameter nimmt 0, 1 oder NULL an; bei Auslassung gilt 0. 1 aktiviert den Hash-Child, 0 oder NULL deaktiviert ihn. Bei aktiviertem Child verlangt ein fehlender QueryHash das Deep-Gate; ein einzelner Hash mit TOP <=1000 nicht. |
+| `@MitPlanCacheHealth` | `bit` | `0` | Der Parameter nimmt 0, 1 oder NULL an; bei Auslassung gilt 0. 1 aktiviert Health, 0 oder NULL deaktiviert den Child. TOP wird SUMMARY; VOLL wird VOLL mit Datenbankverteilung und Deep-Gate. |
+| `@MitShowplanAnalysis` | `bit` | `0` | Der Parameter nimmt 0, 1 oder NULL an; bei Auslassung gilt 0. 1 aktiviert Showplan, 0 oder NULL deaktiviert den Child. TOP wird GEZIELT, VOLL bleibt VOLL. |
 | `@DatabaseNames` | `nvarchar(max)` | `NULL` | Pipe-Liste exakter einteiliger Datenbanknamen bis 128 Zeichen. &#124; trennt außerhalb [...], ]] maskiert ]. Segmentränder getrimmt. NULL/leer/Whitespace = kein Filter. Ungültig INVALID_PARAMETER. Nicht mit wirksamem DatabaseNamePattern kombinierbar. |
 | `@SystemdatenbankenEinbeziehen` | `bit` | `0` | 0 schließt master/tempdb/model/msdb aus, 1 lässt zu. NULL kann bei aktivem Scope-Child ungültig sein. |
 | `@DatabaseNamePattern` | `nvarchar(4000)` | `NULL` | LIKE oder Präfix like:/regex:/regexi:. Case-insensitive Präfix, außen getrimmt, Rest nicht. NULL kein Filter, leer ungültig. Nicht mit DatabaseNames kombinierbar. Regex nur SQL Server 2025 + Installations-DB Compat 170. |

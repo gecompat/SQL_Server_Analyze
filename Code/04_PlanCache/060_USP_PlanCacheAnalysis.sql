@@ -133,9 +133,9 @@ BEGIN
         PRINT N'monitor.USP_PlanCacheAnalysis';
         PRINT N'Die Procedure koordiniert Query Stats, Query Hash, Plan Cache Health und Showplan. Sie liefert den Modulstatus und kann die Ergebnisse der aufgerufenen Module als JSON zusammenführen.';
         PRINT N'@MitQueryStats bit. Default ist 1. 1 aktiviert QueryStats, 0 deaktiviert. TOP/100 ohne Hash ist nicht per se PLAN_CACHE_DEEP geschützt. NULL aktiviert Child nicht.';
-        PRINT N'@MitQueryHashAnalysis bit. Default ist 0. 1 aktiviert Hash-Child. NULL QueryHash verlangt Deep-Gate. Einzelner Hash TOP <=1000 nicht. NULL deaktiviert Child.';
-        PRINT N'@MitPlanCacheHealth bit. Default ist 0. 1 aktiviert Health. TOP wird SUMMARY, VOLL wird VOLL plus Datenbankverteilung und Deep-Gate. NULL deaktiviert Child.';
-        PRINT N'@MitShowplanAnalysis bit. Default ist 0. 1 aktiviert Showplan. TOP wird GEZIELT, VOLL bleibt VOLL. NULL deaktiviert Child.';
+        PRINT N'@MitQueryHashAnalysis bit. Default ist 0. Der bit-Parameter nimmt 0, 1 oder NULL an; bei Auslassung gilt 0. 1 aktiviert den Hash-Child, 0 deaktiviert ihn. NULL deaktiviert den Child. Bei aktiviertem Child verlangt ein fehlender QueryHash das Deep-Gate; ein einzelner Hash mit TOP <=1000 nicht.';
+        PRINT N'@MitPlanCacheHealth bit. Default ist 0. Der bit-Parameter nimmt 0, 1 oder NULL an; bei Auslassung gilt 0. 1 aktiviert Health, 0 deaktiviert den Child. NULL deaktiviert den Child. TOP wird SUMMARY; VOLL wird VOLL mit Datenbankverteilung und Deep-Gate.';
+        PRINT N'@MitShowplanAnalysis bit. Default ist 0. Der bit-Parameter nimmt 0, 1 oder NULL an; bei Auslassung gilt 0. 1 aktiviert Showplan, 0 deaktiviert den Child. NULL deaktiviert den Child. TOP wird GEZIELT, VOLL bleibt VOLL.';
         PRINT N'Mindestens einer der vier Modulschalter muss exakt 1 sein. 0 und NULL gelten jeweils als deaktiviert.';
         PRINT N'@DatabaseNames nvarchar(max). Default ist NULL. Pipe-Liste exakter einteiliger Datenbanknamen bis 128 Zeichen. | trennt außerhalb [...], ]] maskiert ]. Segmentränder getrimmt. NULL/leer/Whitespace = kein Filter. Ungültig INVALID_PARAMETER. Nicht mit wirksamem DatabaseNamePattern kombinierbar.';
         PRINT N'@SystemdatenbankenEinbeziehen bit. Default ist 0. 0 schließt master/tempdb/model/msdb aus, 1 lässt zu. NULL kann bei aktivem Scope-Child ungültig sein.';
