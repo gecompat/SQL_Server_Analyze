@@ -89,7 +89,7 @@ Jeder Eintrag nennt den SQL-Datentyp, den ausdrücklich bezeichneten Default und
 
 ### @LockTimeoutMs
 
-**Datentyp:** `int`; **Default:** `0`. SQL-Server-Sitzungs-Locktimeout in Millisekunden; zulässig sind 0 bis 60000. 0 bedeutet NOWAIT (nicht auf eine Sperre warten). Positive Werte begrenzen das Warten. NULL und Werte außerhalb des Bereichs sind ungültig; -1 für unbegrenztes Warten ist ausdrücklich unzulässig. Der ursprüngliche Sitzungswert wird anschließend wiederhergestellt.
+**Datentyp:** `int`; einzelner skalarer SQL-int-Wert in Millisekunden. **Default:** `0`; ausgelassen ergibt `0`. NULL oder Werte außerhalb 0 bis 60000 sind ungültig; Leertext kann vor Eintritt durch implizite SQL-Konvertierung zu `0` werden. Der SQL-Wert `0` bedeutet `NOWAIT`, positive Werte erlauben begrenztes Warten und `-1` für unbegrenztes Warten ist unzulässig. Die Procedure prüft den Bereich und übergibt den Wert für jede Captureanalyse an `InternalSsisExecutionMetrics`. Ihr eigenes `SET LOCK_TIMEOUT` läuft in einem separaten dynamischen `sp_executesql`-Batch; es begrenzt daher nicht die anschließenden direkten Vergleichs- und Ausgabeanweisungen. `InternalSsisExecutionMetrics` führt ebenfalls ein dynamisches `SET` aus und übergibt den Wert an `USP_SsisPackageModelAnalysis` im Scope-Modus. Diese delegiert an `InternalSsisExecutionScopes`, das den Wert validiert und `SET LOCK_TIMEOUT` ebenfalls dynamisch ausführt; diese Einstellung begrenzt die anschließenden direkten Anweisungen des Scopes-Helpers nicht.
 
 ### @ResultSetArt
 
