@@ -57,7 +57,7 @@ Die Beschreibung folgt dem aktuellen direkten XML-Einstieg. Reservierte Argument
 
 ### @LockTimeoutMs
 
-**Datentyp:** `int`. SQL-int-Skalarwert in Millisekunden; bei ausgelassenem Argument gilt der Default 0. Leertext kann bei SQL Server implizit zu 0 konvertiert werden und wird nicht als eigenständige Leerwerteingabe geprüft. 0 verlangt NOWAIT; 1 bis 60000 geben eine endliche Wartezeit vor. NULL und Zahlen außerhalb 0 bis 60000 werden als INVALID_PARAMETER zurückgegeben; die dynamische SET-Anweisung wird in diesem Fall übersprungen. Am regulären Ende versucht der Code, den vorher gelesenen LOCK_TIMEOUT wiederherzustellen; frühe Fehler sind davon nicht abgedeckt.
+**Datentyp:** `int`. SQL-int-Skalarwert in Millisekunden; Default: 0. Leertext kann bei SQL Server implizit zu 0 konvertiert werden und wirkt dann wie 0. Zulässig sind 0 bis 60000: 0 bedeutet NOWAIT ohne Warten auf eine Sperre; 1 bis 60000 setzen die maximale Sperrwartezeit in Millisekunden. NULL und Werte außerhalb dieses Bereichs werden als INVALID_PARAMETER zurückgegeben; die SET-Anweisung wird dann übersprungen. Nach erfolgreicher Parameterprüfung gilt der Wert im Prozedur-Scope für die nachfolgende Analyse und den TABLE-Writer. Vorgezogene Temp-Tabellen- und Mappingprüfungen verwenden noch die Einstellung des Aufrufers. Beim Verlassen der Prozedur stellt SQL Server den Caller-Wert auch nach einer SQL-Ausnahme wieder her.
 
 ### @ResultSetArt
 

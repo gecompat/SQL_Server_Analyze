@@ -411,6 +411,110 @@ IF COALESCE(@StatusCode,'''')<>''AVAILABLE_LIMITED'' OR COALESCE(@IsPartial,0)<>
    OR COALESCE(JSON_VALUE(@Json,''$.package[0].PackageName''),N'''')<>N''SSIS-001 Runtime Fixture''
     THROW 56123,N''SSIS-001 default MaxDurationSeconds must retain package inventory and caller LOCK_TIMEOUT.'',1;
 
+
+-- Observe in-work SET scope in a guarded, test-owned copy in the framework database.
+-- The unmodified public calls above remain the validation/output/caller oracle.
+CREATE TABLE #SsisLockTimeoutObservation([Stage] varchar(24) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,[TimeoutMs] int NOT NULL);
+CREATE TABLE #SsisLockTimeoutProbeControl([RaiseAfterSet] bit NOT NULL);
+INSERT #SsisLockTimeoutProbeControl VALUES(0);
+CREATE TABLE #SsisLockScopePackageZero([seed] int NULL);
+CREATE TABLE #SsisLockScopePackageOne([seed] int NULL);
+CREATE TABLE #SsisLockScopePackageMax([seed] int NULL);
+CREATE TABLE #SsisLockScopePackageDefault([seed] int NULL);
+DECLARE @ScopeDefinition nvarchar(max)=OBJECT_DEFINITION(OBJECT_ID(N''monitor.USP_SsisPackageAnalysis''));
+DECLARE @ScopeHeader nvarchar(max)=CASE
+    WHEN CHARINDEX(N''CREATE OR ALTER PROCEDURE [monitor].[USP_SsisPackageAnalysis]'',@ScopeDefinition)>0
+        THEN N''CREATE OR ALTER PROCEDURE [monitor].[USP_SsisPackageAnalysis]''
+    WHEN CHARINDEX(N''CREATE PROCEDURE [monitor].[USP_SsisPackageAnalysis]'',@ScopeDefinition)>0
+        THEN N''CREATE PROCEDURE [monitor].[USP_SsisPackageAnalysis]''
+    WHEN CHARINDEX(N''ALTER PROCEDURE [monitor].[USP_SsisPackageAnalysis]'',@ScopeDefinition)>0
+        THEN N''ALTER PROCEDURE [monitor].[USP_SsisPackageAnalysis]''
+    ELSE NULL END;
+DECLARE @ScopeSet nvarchar(max)=N''    IF @StatusCode = ''''AVAILABLE_LIMITED''''
+        SET LOCK_TIMEOUT @LockTimeoutMs;'';
+DECLARE @ScopeTable nvarchar(max)=N''    IF @TableRequested = 1
+    BEGIN
+        DECLARE @TargetTable sysname;'';
+IF @ScopeDefinition IS NULL OR @ScopeHeader IS NULL
+   OR (DATALENGTH(@ScopeDefinition)-DATALENGTH(REPLACE(@ScopeDefinition,@ScopeHeader,N'''')))<>DATALENGTH(@ScopeHeader)
+   OR (DATALENGTH(@ScopeDefinition)-DATALENGTH(REPLACE(@ScopeDefinition,@ScopeSet,N'''')))<>DATALENGTH(@ScopeSet)
+   OR (DATALENGTH(@ScopeDefinition)-DATALENGTH(REPLACE(@ScopeDefinition,@ScopeTable,N'''')))<>DATALENGTH(@ScopeTable)
+    THROW 56220,N''SSIS-001 current module does not match the unique lock-scope probe anchors.'',1;
+DECLARE @ScopeInjectedSet nvarchar(max)=N''    IF @StatusCode = ''''AVAILABLE_LIMITED''''
+    BEGIN
+        SET LOCK_TIMEOUT @LockTimeoutMs;
+        INSERT #SsisLockTimeoutObservation([Stage],[TimeoutMs]) VALUES (''''BeforeParser'''',@@LOCK_TIMEOUT);
+        IF EXISTS(SELECT 1 FROM #SsisLockTimeoutProbeControl WHERE [RaiseAfterSet]=1)
+            THROW 56224,N''''SSIS-001 deliberate in-procedure lock-timeout scope failure.'''',1;
+    END;'';
+DECLARE @ScopeInjectedTable nvarchar(max)=N''    IF @TableRequested = 1
+    BEGIN
+        INSERT #SsisLockTimeoutObservation([Stage],[TimeoutMs]) VALUES (''''BeforeTableWriter'''',@@LOCK_TIMEOUT);
+        DECLARE @TargetTable sysname;'';
+DECLARE @ScopeProbeDefinition nvarchar(max)=REPLACE(REPLACE(REPLACE(@ScopeDefinition,@ScopeHeader,N''CREATE PROCEDURE [monitor].[InternalSsisPackageLockTimeoutScopeProbe]''),@ScopeSet,@ScopeInjectedSet),@ScopeTable,@ScopeInjectedTable);
+DECLARE @ScopeRoundTrip nvarchar(max)=REPLACE(REPLACE(REPLACE(@ScopeProbeDefinition,N''CREATE PROCEDURE [monitor].[InternalSsisPackageLockTimeoutScopeProbe]'',@ScopeHeader),@ScopeInjectedSet,@ScopeSet),@ScopeInjectedTable,@ScopeTable);
+IF DATALENGTH(@ScopeRoundTrip)<>DATALENGTH(@ScopeDefinition)
+   OR HASHBYTES(''SHA2_256'',@ScopeRoundTrip)<>HASHBYTES(''SHA2_256'',@ScopeDefinition)
+    THROW 56221,N''SSIS-001 instrumented lock-scope copy must preserve all other installed module text.'',1;
+IF OBJECT_ID(N''monitor.InternalSsisPackageLockTimeoutScopeProbe'',N''P'') IS NOT NULL
+    THROW 56226,N''SSIS-001 lock-scope test fixture already exists; do not replace an existing object.'',1;
+DECLARE @ScopeProbeCreated bit=0;
+BEGIN TRY
+    EXEC [sys].[sp_executesql] @ScopeProbeDefinition;
+    SET @ScopeProbeCreated=1;
+    DECLARE @ScopeValues TABLE([Pass] int PRIMARY KEY,[Value] int NOT NULL,[Target] sysname NOT NULL);
+    INSERT @ScopeValues VALUES(1,0,N''#SsisLockScopePackageZero''),(2,1,N''#SsisLockScopePackageOne''),(3,60000,N''#SsisLockScopePackageMax''),(4,0,N''#SsisLockScopePackageDefault'');
+    DECLARE @ScopePass int=1,@ScopeRequested int,@ScopeTarget sysname,@ScopeTablesJson nvarchar(400);
+    WHILE @ScopePass<=4
+    BEGIN
+        SELECT @ScopeRequested=[Value],@ScopeTarget=[Target] FROM @ScopeValues WHERE [Pass]=@ScopePass;
+        TRUNCATE TABLE #SsisLockTimeoutObservation;
+        SET @ScopeTablesJson=N''{"package":"'' + @ScopeTarget + N''"}'';
+        SET @StatusCode=''OUTPUT_SENTINEL''; SET @IsPartial=0; SET @ErrorNumber=73130;
+        SET @ErrorMessage=N''OUTPUT_SENTINEL''; SET @Json=N''OUTPUT_SENTINEL'';
+        IF @ScopePass=4
+            EXEC [monitor].[InternalSsisPackageLockTimeoutScopeProbe] @PackageXml=@PackageXml,@ResultSetArt=''TABLE'',@ResultTablesJson=@ScopeTablesJson,
+                @JsonErzeugen=1,@Json=@Json OUTPUT,@StatusCodeOut=@StatusCode OUTPUT,@IsPartialOut=@IsPartial OUTPUT,@ErrorNumberOut=@ErrorNumber OUTPUT,@ErrorMessageOut=@ErrorMessage OUTPUT;
+        ELSE
+            EXEC [monitor].[InternalSsisPackageLockTimeoutScopeProbe] @PackageXml=@PackageXml,@LockTimeoutMs=@ScopeRequested,@ResultSetArt=''TABLE'',@ResultTablesJson=@ScopeTablesJson,
+                @JsonErzeugen=1,@Json=@Json OUTPUT,@StatusCodeOut=@StatusCode OUTPUT,@IsPartialOut=@IsPartial OUTPUT,@ErrorNumberOut=@ErrorNumber OUTPUT,@ErrorMessageOut=@ErrorMessage OUTPUT;
+        IF (SELECT COUNT(*) FROM #SsisLockTimeoutObservation)<>2
+           OR (SELECT COUNT(*) FROM #SsisLockTimeoutObservation WHERE [Stage]=''BeforeParser'' AND [TimeoutMs]=@ScopeRequested)<>1
+           OR (SELECT COUNT(*) FROM #SsisLockTimeoutObservation WHERE [Stage]=''BeforeTableWriter'' AND [TimeoutMs]=@ScopeRequested)<>1
+           OR (@ScopePass=1 AND (SELECT COUNT(*) FROM #SsisLockScopePackageZero)<>1)
+           OR (@ScopePass=2 AND (SELECT COUNT(*) FROM #SsisLockScopePackageOne)<>1)
+           OR (@ScopePass=3 AND (SELECT COUNT(*) FROM #SsisLockScopePackageMax)<>1)
+           OR (@ScopePass=4 AND (SELECT COUNT(*) FROM #SsisLockScopePackageDefault)<>1)
+           OR @@LOCK_TIMEOUT<>{{TIMEOUT_SENTINEL}}
+           OR COALESCE(@StatusCode,'''')<>''AVAILABLE_LIMITED'' OR COALESCE(@IsPartial,0)<>1 OR @ErrorNumber IS NOT NULL OR @ErrorMessage IS NOT NULL
+           OR COALESCE(JSON_VALUE(@Json,''$.package[0].PackageName''),N'''')<>N''SSIS-001 Runtime Fixture''
+            THROW 56222,N''SSIS-001 requested lock timeout must govern parser/writer work and preserve caller state.'',1;
+        SET @ScopePass+=1;
+    END;
+    UPDATE #SsisLockTimeoutProbeControl SET [RaiseAfterSet]=1;
+    TRUNCATE TABLE #SsisLockTimeoutObservation;
+    DECLARE @ScopeFailureNumber int=NULL;
+    BEGIN TRY
+        EXEC [monitor].[InternalSsisPackageLockTimeoutScopeProbe] @PackageXml=@PackageXml,@LockTimeoutMs=1,@ResultSetArt=''NONE'';
+    END TRY
+    BEGIN CATCH
+        IF ERROR_NUMBER()<>56224 OR ERROR_MESSAGE()<>N''SSIS-001 deliberate in-procedure lock-timeout scope failure.'' OR ERROR_STATE()<>1
+            THROW;
+        SET @ScopeFailureNumber=ERROR_NUMBER();
+    END CATCH;
+    IF @ScopeFailureNumber IS NULL OR @@LOCK_TIMEOUT<>{{TIMEOUT_SENTINEL}}
+       OR (SELECT COUNT(*) FROM #SsisLockTimeoutObservation WHERE [Stage]=''BeforeParser'' AND [TimeoutMs]=1)<>1
+       OR (SELECT COUNT(*) FROM #SsisLockTimeoutObservation)<>1
+        THROW 56223,N''SSIS-001 procedure-scoped lock timeout must restore the caller after a SQL exception.'',1;
+    DROP PROCEDURE [monitor].[InternalSsisPackageLockTimeoutScopeProbe];
+    SET @ScopeProbeCreated=0;
+END TRY
+BEGIN CATCH
+    IF @ScopeProbeCreated=1
+        DROP PROCEDURE IF EXISTS [monitor].[InternalSsisPackageLockTimeoutScopeProbe];
+    THROW;
+END CATCH;
+
 IF @@LOCK_TIMEOUT<>{{TIMEOUT_SENTINEL}}
     THROW 56127,N''SSIS-001 scoped lock-timeout suite changed its local caller setting.'',1;';
 SET @LockTimeoutTestSql=REPLACE(@LockTimeoutTestSql,N'{{TIMEOUT_SENTINEL}}',CONVERT(nvarchar(12),@TestLockTimeout));
