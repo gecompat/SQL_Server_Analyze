@@ -65,7 +65,7 @@ Die folgenden 32 Verträge unterscheiden den flachen Einzelmodellimport und den 
 
 ### @LockTimeoutMs
 
-**Datentyp:** `int`. Default 0 Millisekunden; zulässig 0–60.000, NULL ungültig. Der Code setzt SQL Server LOCK_TIMEOUT und stellt den vorher gelesenen Wert auf seinen vorgesehenen Abschluss-/Fehlerpfaden wieder her; dies ersetzt keine allgemeine Garantie bei einem vorzeitigen Abbruch. 0 bedeutet NOWAIT: eine durch Sperre verzögerte Anweisung bricht sofort mit Timeout ab. Es bedeutet nicht unbegrenztes Warten; -1 wäre unbegrenzt, ist hier aber außerhalb des zulässigen Bereichs. Die TABLE-Vorprüfung kann für eigene DDL lokal begrenzt abweichen. Vor Eintritt in die Procedure liegende Sperren begrenzt dieser Parameter nicht.
+**Datentyp:** `int`; einzelner skalarer SQL-int-Wert in Millisekunden. **Default:** `0`; ausgelassen ergibt `0`. NULL oder Werte außerhalb 0–60.000 sind ungültig; Leertext kann vor Eintritt durch implizite SQL-Konvertierung zu `0` werden. Der SQL-Wert `0` bedeutet `NOWAIT`, positive Werte erlauben begrenztes Warten und `-1` wäre unbegrenzt, ist hier aber unzulässig. Im flachen Einzelmodellpfad wird der Wert validiert und `SET LOCK_TIMEOUT` in einem dynamischen `sp_executesql`-Batch ausgeführt; nach dessen Rückkehr begrenzt die Einstellung die anschließenden direkten Prozeduranweisungen nicht. Im Scope-Modus wird der Wert an `InternalSsisExecutionScopes` weitergegeben. Der Helper validiert den Bereich und führt `SET LOCK_TIMEOUT` ebenfalls dynamisch aus; diese Einstellung begrenzt seine anschließenden direkten Anweisungen nicht.
 
 ### @ResultSetArt
 
