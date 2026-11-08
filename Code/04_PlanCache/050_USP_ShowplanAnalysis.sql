@@ -93,7 +93,7 @@ BEGIN
         PRINT N'@Sortierung varchar(32). Default ist ''CPU_TOTAL''. Trim/Upper, bestimmt Top-Kandidaten-Ranking. CPU_TOTAL=gesamte Workerzeit. ELAPSED_TOTAL=gesamte Laufzeit. READS_TOTAL=gesamte Reads. EXECUTIONS=Ausführungszahl. SPILLS_TOTAL=Spillmaß. GRANT_MAX=größtes Grant. LAST_EXECUTION=letzte Ausführung. Alle sieben erlaubten Codes, NULL fällt auf CPU_TOTAL zurück. Leer ungültig.';
         PRINT N'@MinExecutionCount bigint. Default ist 1. Ganzzahliges Minimum für die Ausführungszahl in der Cacheauswahl. 0 lässt auch Einträge mit 0 Ausführungen zu. Negative Werte ergeben INVALID_PARAMETER. Bei NULL trifft der Vergleich auf keine Cachezeile. Ein direkt angegebener Planhandle bleibt ein eigener Kandidatenpfad.';
         PRINT N'@MaxAnalyseobjekte int. Default ist 20. Positive Grenze der Kandidaten vor Planladen. 0/NULL unbegrenzt. Negativ ungültig. >20 oder unbegrenzt prüft PLAN_CACHE_DEEP, danach kann VOLL zusätzlich SHOWPLAN_XML_DEEP prüfen.';
-        PRINT N'@MaxDurationSeconds int. Default ist 30. Ganzzahl von 1 bis 3600 Sekunden. Das Zeitbudget wird zwischen Kandidaten geprüft. Es unterbricht eine laufende XML-Analyse nicht. NULL setzt auf Wrapper-Ebene keine wirksame Deadline und wird an die Child-Analyse weitergegeben. Die Child-Analyse weist NULL als ungültig zurück.';
+        PRINT N'@MaxDurationSeconds int. Default ist 30. Ganzzahl von 1 bis 3600 Sekunden. Das Zeitbudget wird zwischen Kandidaten geprüft. Es unterbricht eine laufende XML-Analyse nicht. NULL ist ungültig und wird auf Wrapper-Ebene abgelehnt.';
         PRINT N'@MaxZeilen int. Default ist 50000. Positiv begrenzt Ergebniszeilen/Findingbudget. 0/NULL unbegrenzt (Childbudget wird intern auf 50000 gedeckelt). Negativ ungültig. Resultset-TOP und Candidate-Limit sind getrennte Grenzen.';
         PRINT N'@ParentQueryStatsSnapshot bit. Default ist 0. 0 liest Query Stats frisch. 1 verwendet den laufgebundenen Snapshot von USP_PlanCacheAnalysis. NULL aktiviert den Snapshot-Zweig nicht. Verwenden Sie 0 für eigenständige Aufrufe.';
         PRINT N'@WorkloadProfil varchar(32). Default ist ''AUTO''. Auswahl des aktiven Workloadprofils für Regeln und Schwellwerte. AUTO wählt innerhalb der Analyse aus der aktivierten Profilkonfiguration (monitor.PlanAnalysisProfile). Der konkrete gültige Profilcode ist damit installations-/konfigurationsabhängig, keine im Wrapper geschlossene Liste. Profilcodes werden im Child auf Großschreibung normalisiert. Unbekannter/deaktivierter Code fällt intern kontrolliert auf BALANCED zurück. NULL wird vom Child auf AUTO normalisiert. Leerwert führt zum unbekannten Profil und Fallback BALANCED.';
@@ -304,7 +304,7 @@ BEGIN
        OR @Mode NOT IN ('GEZIELT','VOLL') OR @Source NOT IN ('AUTO','COMPILE','LAST_ACTUAL')
        OR @Order NOT IN ('CPU_TOTAL','ELAPSED_TOTAL','READS_TOTAL','EXECUTIONS','SPILLS_TOTAL','GRANT_MAX','LAST_EXECUTION')
        OR @MaxAnalyseobjekte<0 OR @MaxZeilen<0 OR @MinExecutionCount<0
-       OR @MaxDurationSeconds NOT BETWEEN 1 AND 3600 OR @ParentQueryStatsSnapshot NOT IN (0,1)
+       OR @MaxDurationSeconds IS NULL OR @MaxDurationSeconds NOT BETWEEN 1 AND 3600 OR @ParentQueryStatsSnapshot NOT IN (0,1)
        OR @JsonErzeugen NOT IN (0,1)
     BEGIN
         SELECT @StatusCode='INVALID_PARAMETER',@IsPartial=1,@ErrorMessage=N'Ungültiger Modus-, Grenzwert-, Quell- oder Ausgabeparameter.';
