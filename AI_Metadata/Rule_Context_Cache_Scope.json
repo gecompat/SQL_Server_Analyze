@@ -1884,6 +1884,26 @@
       "source": "AI_Metadata/Internal_Documentation/Quality/Development_Waves_2026-10.md",
       "target": "AI_Metadata/Internal_Documentation/Quality/Next_Steps_History_2026-11-08.md",
       "classification": "historical-context"
+    },
+    {
+      "source": "AI_Metadata/Internal_Documentation/Quality/Development_Waves_2026-10.md",
+      "target": "Code/04_PlanCache/060_USP_PlanCacheAnalysis.sql",
+      "classification": "product-reference"
+    },
+    {
+      "source": "AI_Metadata/Internal_Documentation/Quality/Development_Waves_2026-10.md",
+      "target": "Code/07_Infrastructure/090_USP_InfrastructureAnalysis.sql",
+      "classification": "product-reference"
+    },
+    {
+      "source": "AI_Metadata/Internal_Documentation/Quality/Development_Waves_2026-10.md",
+      "target": "Documentation/Analysis_Guides/Procedures/USP_PlanCacheAnalysis.md",
+      "classification": "product-reference"
+    },
+    {
+      "source": "AI_Metadata/Internal_Documentation/Quality/Development_Waves_2026-10.md",
+      "target": "Documentation/Analysis_Guides/Procedures/USP_InfrastructureAnalysis.md",
+      "classification": "product-reference"
     }
   ]
 }

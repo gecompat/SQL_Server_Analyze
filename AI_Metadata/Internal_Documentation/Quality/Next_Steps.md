@@ -1,11 +1,11 @@
 # Nächste Arbeitsschritte
 
-**Stand:** 8. November 2026  
+**Stand:** 9. November 2026  
 **Zweck:** aktueller Fortsetzungseinstieg für `gecompat/SQL_Server_Analyze`.
 
 ## Aktuelle Orchestrierung
 
-Die [Entwicklungsplanung](Development_Waves_2026-10.md) ist die maßgebliche Quelle für Reihenfolge, Zuständigkeit und nächste ausführbare Welle. PR #653 und Schritt 219 sind mit der ersten Main-Nachprüfung abgeschlossen; gebundener Stand und Evidenzgrenzen stehen unter [Abschluss von PR #653](Development_Waves_2026-10.md#abgeschlossen-pr-653). Die nächste ausführbare Welle 220 konsolidiert diesen Einstieg und erhält die vorherigen Status- und Ausführungsnachweise im [Historienarchiv](Next_Steps_History_2026-11-08.md).
+Die [Entwicklungsplanung](Development_Waves_2026-10.md) ist die maßgebliche Quelle für Reihenfolge, Zuständigkeit und nächste ausführbare Welle. PR #654 und Schritt 220 sind mit der ersten Main-Nachprüfung abgeschlossen; Umfang und Evidenzgrenzen stehen unter [Abschluss von PR #654](Development_Waves_2026-10.md#abgeschlossen-pr-654). Die nächste ausführbare Welle präzisiert vier einzelne Schalterverträge in PlanCache- und Infrastrukturhilfe. Der frühere Status- und Ausführungsverlauf bleibt im [Historienarchiv](Next_Steps_History_2026-11-08.md) erhalten.
 
 Die Fortsetzung richtet sich nach der tatsächlich erteilten Benutzerautorisierung und deren privater Checkpointfortschreibung. Dieses Dokument veröffentlicht keine privaten Grenzen oder Verbrauchswerte. Heartbeat, Sessionwechsel und PR-Abschluss setzen die Fortschreibung nicht zurück. Bestehende Sicherheits-, Datenschutz-, Lizenz-, Identitäts-, Laufzeit- und Lieferbedingungen gelten.
 
