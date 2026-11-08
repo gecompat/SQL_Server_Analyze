@@ -541,7 +541,7 @@ DECLARE @ScopeTableCount int=CASE WHEN @ScopeDefinition IS NULL THEN 0
     ELSE (DATALENGTH(@ScopeDefinition)-DATALENGTH(REPLACE(@ScopeDefinition,@ScopeTable,N'''')))/NULLIF(DATALENGTH(@ScopeTable),0) END;
 SET @ScopeAnchorDiagnostic=CONCAT(
     N''SSIS-001 source-bound probe anchors; definition='',CASE WHEN @ScopeDefinition IS NULL THEN 0 ELSE 1 END,
-    N''; prefix-scan='',@ScopePrefixScanComplete,N''; object-token='',@ScopeIdentifierOccurrences,
+    N''; prefix-scan='',@ScopePrefixScanComplete,N''; object-identifier='',@ScopeIdentifierOccurrences,
     N''; bounded-header='',@ScopeHeaderBounded,N''; accepted-form='',@ScopeHeaderFormAccepted,
     N''; header-count='',@ScopeHeaderCount,N''; self-call='',@ScopeSelfCallCount,
     N''; preflight='',@ScopePreflightCount,N''; parser='',@ScopeParserCount,N''; table='',@ScopeTableCount);
@@ -632,7 +632,8 @@ IF DATABASE_PRINCIPAL_ID(@RestrictedUser) IS NOT NULL
    OR OBJECT_ID(N''monitor.InternalSsisLockTimeoutNestedCaller'',N''P'') IS NOT NULL
     THROW 56227,N''SSIS-001 restricted-principal fixtures already exist; do not replace them.'',1;
 DECLARE @RestrictedUserCreated bit=0,@RestrictedWrapperCreated bit=0,@RestrictedContextEntered bit=0;
-DECLARE @RestrictedRevertCookie varbinary(100)=NULL,@RestrictedReturnCode int=-73131;
+DECLARE @RestrictedOriginalUser sysname=USER_NAME();
+DECLARE @RestrictedReturnCode int=-73131;
 DECLARE @RestrictedWrapperSql nvarchar(max)=N''CREATE PROCEDURE [monitor].[InternalSsisLockTimeoutNestedCaller]
       @Depth tinyint
     , @PackageXml xml
@@ -666,8 +667,10 @@ BEGIN TRY
     SET @RestrictedWrapperCreated=1;
     GRANT EXECUTE ON OBJECT::[monitor].[InternalSsisLockTimeoutNestedCaller] TO [SsisLockTimeoutSyntheticPrincipal];
     DENY EXECUTE ON OBJECT::[monitor].[USP_SsisPackageAnalysis] TO [SsisLockTimeoutSyntheticPrincipal];
-    EXECUTE AS USER=N''SsisLockTimeoutSyntheticPrincipal'' WITH COOKIE INTO @RestrictedRevertCookie;
+    EXECUTE AS USER=N''SsisLockTimeoutSyntheticPrincipal'';
     SET @RestrictedContextEntered=1;
+    IF USER_NAME()<>N''SsisLockTimeoutSyntheticPrincipal''
+        THROW 56230,N''SSIS-001 restricted principal context switch failed.'',1;
     IF ISNULL(HAS_PERMS_BY_NAME(N''monitor.USP_SsisPackageAnalysis'',N''OBJECT'',N''EXECUTE''),-1)<>0
         THROW 56229,N''SSIS-001 restricted principal must not have effective EXECUTE on the public procedure.'',1;
     SET @StatusCode=''OUTPUT_SENTINEL''; SET @IsPartial=0; SET @ErrorNumber=73131;
@@ -676,13 +679,13 @@ BEGIN TRY
           @Depth=0,@PackageXml=@PackageXml,@LockTimeoutMs=1
         , @Json=@Json OUTPUT,@StatusCodeOut=@StatusCode OUTPUT,@IsPartialOut=@IsPartial OUTPUT
         , @ErrorNumberOut=@ErrorNumber OUTPUT,@ErrorMessageOut=@ErrorMessage OUTPUT;
-    REVERT WITH COOKIE=@RestrictedRevertCookie;
+    REVERT;
     SET @RestrictedContextEntered=0;
-    IF @@LOCK_TIMEOUT<>{{TIMEOUT_SENTINEL}} OR @RestrictedReturnCode<>0
+    IF USER_NAME()<>@RestrictedOriginalUser OR @@LOCK_TIMEOUT<>{{TIMEOUT_SENTINEL}} OR @RestrictedReturnCode<>0
        OR COALESCE(@StatusCode,'''')<>''AVAILABLE_LIMITED'' OR COALESCE(@IsPartial,0)<>1
        OR @ErrorNumber IS NOT NULL OR @ErrorMessage IS NOT NULL
        OR COALESCE(JSON_VALUE(@Json,''$.package[0].PackageName''),N'''')<>N''SSIS-001 Runtime Fixture''
-        THROW 56228,N''SSIS-001 restricted principal wrapper call must preserve package output, return code, and caller timeout.'',1;
+        THROW 56228,N''SSIS-001 restricted principal wrapper call must restore caller context and timeout and preserve package output and return code.'',1;
     DROP PROCEDURE [monitor].[InternalSsisLockTimeoutNestedCaller];
     SET @RestrictedWrapperCreated=0;
     DROP USER [SsisLockTimeoutSyntheticPrincipal];
@@ -691,7 +694,7 @@ END TRY
 BEGIN CATCH
     IF @RestrictedContextEntered=1
     BEGIN
-        REVERT WITH COOKIE=@RestrictedRevertCookie;
+        REVERT;
         SET @RestrictedContextEntered=0;
     END;
     IF @RestrictedWrapperCreated=1
