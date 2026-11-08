@@ -7,7 +7,25 @@ keine neuen Arbeitselementkennungen.
 
 ## Auftrag und maßgebliche Quellen
 
-## Nächste ausführbare Welle: Timeoutbeschreibungen interner SSIS-Helfer
+## Nächste ausführbare Welle: NULL-Dauergrenze der PlanCache-Wrapper
+
+Die begrenzte Korrektur ergänzt in `USP_ShowplanAnalysis` und `USP_PlanCacheAnalysis` die ausdrückliche Ablehnung von `MaxDurationSeconds=NULL` an der bestehenden Parameterprüfung. Beide Wrapper prüfen bereits den geschlossenen Bereich 1 bis 3600, normalisieren NULL aber nicht. Beim Showplan-Wrapper ergibt NULL zunächst eine fehlende Wrapper-Deadline; die zentrale XML-Analyse lehnt es erst ab, wenn sie erreicht wird. Das ist ein Quellbefund, kein beobachteter Produktionsvorfall.
+
+Die beiden neuen NULL-Prädikate bewahren Default 30, gültige Werte, die kooperative Prüfung zwischen Kandidaten und alle übrigen Parameterverträge. Eine laufende XML-Analyse wird dadurch nicht hart unterbrochen. Hilfeaufrufe und die bestehende Reihenfolge von TABLE-Vorbereitung und Eingabeprüfung bleiben erhalten; eine Ablehnung vor jeder vorbereitenden Arbeit wird nicht zugesichert. Die individuellen Hilfezeilen und Guideeinträge werden entsprechend berichtigt.
+
+Der bestehende Vertrag 126 bleibt vollständig erhalten und erhält direkte Regressionsaufrufe der beiden Wrapper. Sechs ungültige Werte einschließlich NULL und der Bereichsgrenzen außerhalb des Vertrags müssen `INVALID_PARAMETER` ohne Kinddaten liefern. Die Werte 1, 30 und 3600 sowie der ausgelassene Default bilden positive Kontrollen. Frische JSON-OUTPUT-Sentinels, NULL-sichere Statusprüfungen und leere Ausgabemengen sichern die Fehlerfälle. Beim PlanCache-Wrapper ist QueryStats tatsächlich eingeschaltet; die positiven Kontrollen verlangen genau dessen ausgeführten Modulstatus. Showplan verwendet den bestehenden Datenbankselektor und die hohe Mindestanzahl mit höchstens einem Kandidaten. Es werden keine Plan-XML-Nutzdaten protokolliert. Die nativen Ergebnisse stehen noch aus.
+
+Der unabhängige Quellen- und Testreview ist PASS. Die Quellen sind an `9637b1c4906ec735e776f80959bde20db73575a3` und `232efbc797e8ffec0978bf2b4f3b36eae8c56b75` gebunden, der erweiterte Vertrag 126 an `a93569dd016289de6469db790794cac8101451b1`. Die Rückersetzung der beiden neuen Prädikate und Hilfezeilen reproduziert die bisherigen Quelldateien vollständig.
+
+Der kanonische Lauf [42516191958](https://github.com/gecompat/SQL_Server_Analyze/actions/runs/42516191958), Job `128839619195`, erzeugte den OPS-Installer `44fc004ef9cd5a1ca5fa2b3b06aab5f7902b4411` mit 6.518.101 Bytes. Beide vollständigen Module einschließlich Headern wurden unabhängig abgeleitet; die Rückersetzung rekonstruiert die vollständige Basis. Kanonische Bytegleichheit, unveränderter Rest und unveränderte Update-Datei wurden vor den beiden Blob-Uploads geprüft. Das vollständige Installer-Readback entspricht der Ableitung. Das Envelope ist an `e5fe8973e758886d61d38a60c058ec83e45e112c` gebunden. Der Hilfsbranch ist regulär mit `eef5ea401521d51a2f178c284117f63515d6a2a4` auf den ursprünglichen Baum `4df10207a1a5d94703a49257d1e24670b0211664` zurückgestellt. Dabei wurde keine SQL-Instanz gestartet; der Produktstand enthält keine Workflowänderung.
+
+Alle erforderlichen Head-Gates und Cleanup am exakten Produkthead sowie nach regulärer Integration die erste Main-Nachprüfung stehen noch aus. Die Laufzeitqualifikation und der tatsächliche Auswahlumfang werden erst aus diesen Remote-Ergebnissen berichtet.
+
+## Abgeschlossen: Timeoutbeschreibungen interner SSIS-Helfer
+
+PR #650 ist einschließlich erster Main-Nachprüfung abgeschlossen. Merge/Main `b4a0b25bf94ec957daf0507c6e9e0bb8ac6f53fa` enthält den geprüften Baum `8c526ad2c0b4be5d12bccc434e6b1c24aa0e80f1`; die geordneten Eltern sind `e8417ac685a8dd3d4df5f807a6b59d82102502fc` und `c30bc7340db377d1106712161884289598176a43`. Die Quellen ändern ausschließlich die beiden individuellen Timeoutbeschreibungen und zugehörige Wiederherstellungsprosa; die ausführbaren Prozedurdefinitionen bleiben bytegleich.
+
+Head [42513295311](https://github.com/gecompat/SQL_Server_Analyze/actions/runs/42513295311) und Main [42513852739](https://github.com/gecompat/SQL_Server_Analyze/actions/runs/42513852739) wurden von der kanonischen Auswahl als reine SQL-Kommentaränderungen eingeordnet. Alle sechs Head- und fünf Main-Workflows bestanden. Sie umfassen sieben erfolgreiche Head-Checks und sechs erfolgreiche Main-Checks; der jeweils nicht ausgewählte SQL-Laufzeitjob wurde übersprungen. Beide Stände bestanden 80 statische Validatoren, beide kanonischen Installervergleiche und 18 Cleanup-Szenarien. Eine neue SQL-Instanz, ein Deployment, StopSynthetic oder eine native Laufzeitqualifikation wurde damit nicht ausgeführt. Eine unabhängige Container-Abwesenheitsprobe wurde nicht ausgeführt.
 
 Die begrenzte Kohorte berichtigt die individuellen `LockTimeoutMs`-Absätze in `InternalSsisExecutionScopes` und `InternalSsisExecutionMetrics` sowie unmittelbar zugehörige Erklärungen der Wiederherstellungsbatches. Die neue SET-Scope-Evidenz betrifft genau diese Beschreibungen; sie eröffnet keine erneute Prüfung der übrigen abgeschlossenen Parameterkohorten. Die ausführbaren Prozedurdefinitionen einschließlich des zuletzt qualifizierten NULL-Kindstatus-Guards bleiben bytegleich.
 
@@ -17,7 +35,7 @@ Die Quellen `a56f7e57f0ed342b6b2dda42439716c6dcc62a4b` und `395affa2678fa7a7502b
 
 Der kanonische Lauf [42512700442](https://github.com/gecompat/SQL_Server_Analyze/actions/runs/42512700442), Job `128829017902`, erzeugte den OPS-Installer `78e4d0067f93d56e91d52fbbcb189dd7c6462f23` mit 6.518.213 Bytes. Beide vollständigen Quellblöcke einschließlich Headern wurden unabhängig abgeleitet und rückwärts zur vollständigen Basis rekonstruiert. Vor den beiden Blob-Uploads wurden kanonische Bytegleichheit, unveränderter Rest und unveränderte Update-Datei geprüft. Das tatsächliche vollständige Installer-Readback entspricht der Ableitung. Das Envelope ist an `f8fdc191c6b05470448f1a3cbafa18e5a9fadb47` gebunden. Der Hilfsbranch ist regulär mit `c68a569c1294c4bfc1364e28000654b19f749b9c` auf den ursprünglichen Baum `4df10207a1a5d94703a49257d1e24670b0211664` zurückgestellt. Dabei wurde keine SQL-Instanz gestartet; der Produktstand enthält keine Workflowänderung.
 
-Die erforderlichen Head-Gates und Cleanup sowie nach regulärem Merge die erste Main-Nachprüfung des vollständigen Produktkandidaten stehen noch aus. Die kanonische CI entscheidet den Testumfang für diese reinen Kommentaränderungen; eine neue native Laufzeit- oder Plattformqualifikation wird nicht vorweggenommen.
+Die unabhängigen Quellen- und Artefaktreviews sowie die erforderlichen Head- und Main-Gates und Cleanup sind abgeschlossen. Der Nachweis enthält keine neue native Laufzeitqualifikation.
 
 ## Abgeschlossen: NULL-Kindstatus im SSIS-Kennzahlenconsumer
 
