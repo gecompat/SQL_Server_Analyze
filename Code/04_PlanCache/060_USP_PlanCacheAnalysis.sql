@@ -136,6 +136,7 @@ BEGIN
         PRINT N'@MitQueryHashAnalysis bit. Default ist 0. 1 aktiviert Hash-Child. NULL QueryHash verlangt Deep-Gate. Einzelner Hash TOP <=1000 nicht. NULL deaktiviert Child.';
         PRINT N'@MitPlanCacheHealth bit. Default ist 0. 1 aktiviert Health. TOP wird SUMMARY, VOLL wird VOLL plus Datenbankverteilung und Deep-Gate. NULL deaktiviert Child.';
         PRINT N'@MitShowplanAnalysis bit. Default ist 0. 1 aktiviert Showplan. TOP wird GEZIELT, VOLL bleibt VOLL. NULL deaktiviert Child.';
+        PRINT N'Mindestens einer der vier Modulschalter muss exakt 1 sein. 0 und NULL gelten jeweils als deaktiviert.';
         PRINT N'@DatabaseNames nvarchar(max). Default ist NULL. Pipe-Liste exakter einteiliger Datenbanknamen bis 128 Zeichen. | trennt außerhalb [...], ]] maskiert ]. Segmentränder getrimmt. NULL/leer/Whitespace = kein Filter. Ungültig INVALID_PARAMETER. Nicht mit wirksamem DatabaseNamePattern kombinierbar.';
         PRINT N'@SystemdatenbankenEinbeziehen bit. Default ist 0. 0 schließt master/tempdb/model/msdb aus, 1 lässt zu. NULL kann bei aktivem Scope-Child ungültig sein.';
         PRINT N'@DatabaseNamePattern nvarchar(4000). Default ist NULL. LIKE oder Präfix like:/regex:/regexi:. Case-insensitive Präfix, außen getrimmt, Rest nicht. NULL kein Filter, leer ungültig. Nicht mit DatabaseNames kombinierbar. Regex nur SQL Server 2025 + Installations-DB Compat 170.';
@@ -169,8 +170,8 @@ BEGIN
        OR @MaxDurationSeconds NOT BETWEEN 1 AND 3600
        OR @OutputMode NOT IN ('RAW', 'CONSOLE', 'NONE')
        OR @Mode NOT IN ('TOP', 'VOLL')
-       OR (@MitQueryStats = 0 AND @MitQueryHashAnalysis = 0
-           AND @MitPlanCacheHealth = 0 AND @MitShowplanAnalysis = 0)
+       OR (COALESCE(@MitQueryStats,0) = 0 AND COALESCE(@MitQueryHashAnalysis,0) = 0
+           AND COALESCE(@MitPlanCacheHealth,0) = 0 AND COALESCE(@MitShowplanAnalysis,0) = 0)
     BEGIN
         SET @StatusCode = 'INVALID_PARAMETER';
         SET @Detail = N'Ungültiger Parameter oder kein Teilmodul aktiviert.';

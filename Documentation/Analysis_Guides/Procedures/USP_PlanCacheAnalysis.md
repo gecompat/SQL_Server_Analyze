@@ -57,6 +57,8 @@ Alle `Example*`-Werte im Aufruf sind synthetisch.
 | `@PrintMeldungen` | `bit` | `1` | 1 aktiviert informative Meldungen der aufgerufenen Module. 0 und NULL deaktivieren diese Meldungen. Der Parent reicht den Wert weiter. |
 | `@Hilfe` | `bit` | `0` | 1 druckt Hilfe und RETURN vor Validierung/Analyse. Vorher @Json=NULL, Monitor-Temp-DDL, Locktimeout, TABLE-Mapping-Preflight. 0/NULL regulärer Ablauf. |
 
+Mindestens einer der vier Modulschalter muss exakt `1` sein. Die Werte `0` und `NULL` deaktivieren den jeweiligen Childpfad; wenn kein Schalter exakt `1` ist, antwortet die Procedure mit `INVALID_PARAMETER` und führt kein Child aus.
+
 ## Aufrufbeispiele
 
 Hilfe anzeigen.
