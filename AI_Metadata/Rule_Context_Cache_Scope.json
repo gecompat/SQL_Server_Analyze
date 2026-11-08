@@ -1874,6 +1874,16 @@
       "source": "AI_Metadata/Internal_Documentation/Quality/Development_Waves_2026-10.md",
       "target": "Code/10_SnapshotBaseline/030_Snapshot_Target_Schema.sql",
       "classification": "product-reference"
+    },
+    {
+      "source": "AI_Metadata/Internal_Documentation/Quality/Next_Steps.md",
+      "target": "AI_Metadata/Internal_Documentation/Quality/Next_Steps_History_2026-11-08.md",
+      "classification": "historical-context"
+    },
+    {
+      "source": "AI_Metadata/Internal_Documentation/Quality/Development_Waves_2026-10.md",
+      "target": "AI_Metadata/Internal_Documentation/Quality/Next_Steps_History_2026-11-08.md",
+      "classification": "historical-context"
     }
   ]
 }

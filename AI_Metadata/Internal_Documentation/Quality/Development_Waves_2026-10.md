@@ -7,21 +7,30 @@ keine neuen Arbeitselementkennungen.
 
 ## Auftrag und maßgebliche Quellen
 
+## Abgeschlossen: PR #653
+
+PR #653 ist regulär integriert und die erste Main-Nachprüfung ist abgeschlossen. Head ee24af0aaca06c6784f4a9e482157932a662f039 und Main 75d3b885e31814793f681839f82ff66be6974556 haben den identischen Baum 55cd3d9c532dc61dedf49548403781accf626081; die geordneten Eltern lauten 9520ff4f651c2a9df8e3aaec0fc9eeba1c2c8264 und ee24af0aaca06c6784f4a9e482157932a662f039.
+
+Head [42525923914](https://github.com/gecompat/SQL_Server_Analyze/actions/runs/42525923914) und Main [42527038519](https://github.com/gecompat/SQL_Server_Analyze/actions/runs/42527038519) bestanden Deployment, die ausgewählten SQL-Server-2025-Verträge auf CL170 sowie die 80 Validatoren, beide kanonischen Installervergleiche, 18 Cleanup-Szenarien und den tatsächlichen StopSynthetic-Schritt. Head umfasst sechs Workflows mit acht Checks, Main fünf Workflows mit sieben Checks. Der gebundene Quellenstand 6c9e923fb3a3678153cb549b686b55d22c38c56e und Guide 9e1be6da3179ee3441b8f1df28b0f588f6e238ce umfassen fünf Strings und fünf Zeilen. Die gebundenen Verträge sind Common 124/165, Extended Events 110 und Integration 110/196/198. Gesonderte Help-stdout-Nachweise liegen nicht vor. Permission-/Regex-Matrizen und ExecutionPlanStandalone waren nicht ausgewählt; eine unabhängige Container-Abwesenheitsprobe wurde nicht ausgeführt. Die früheren Fehlerursachen bleiben UNKNOWN. PR #653 qualifizierte den OPS-005-Installer, Blob 015cc793868f4d764d4022e23e27c417e8b3e017 mit 6.520.447 Bytes. Schritt 220 ändert diesen Installer nicht.
+
+## Nächste ausführbare Welle: Fortsetzungsroute konsolidieren
+
+**Status:** Kandidat vorbereitet. Erforderliche Head-Prüfungen und Cleanup, reguläre PR-Integration sowie die erste Main-Nachprüfung stehen aus.
+
+Der gebündelte Änderungssatz aktualisiert den aktuellen Fortsetzungseinstieg, erhält den vollständigen früheren Next-Steps-Stand und den bisherigen Ausführungs- und Kontrollabschnitt im [Historienarchiv](Next_Steps_History_2026-11-08.md) und führt genau zwei historische Kontextbeziehungen im Scopeindex. Bestehende Überschriften und HTML-Anker bleiben als kompatible Archivverweise erhalten. Die Archivdatei ist mit UUIDv7-URN und Registrierungsstatus DEFERRED gekennzeichnet; eine Registryänderung und eine finale lesbare Referenz sind nicht Teil dieser Welle.
+
+Vor jeder weiteren Arbeitseinheit und jeder CI-Reservierung prüft der verantwortliche Implementierer anhand aktueller, verifizierbarer Informationen die tatsächlich erteilte Benutzerautorisierung, den verbrauchten und reservierten Umfang sowie die einschlägigen Einzelgrenzen. Ohne diese aktuelle Bindung beginnt kein weiterer Arbeitsschritt und wird keine CI-Ausführung reserviert. Der Änderungskandidat wird vor einer Wirkung im privaten Journal innerhalb der verifizierten Grenzen des tatsächlich autorisierten Umfangs als reserviert geführt. Private Werte, Journalinhalte und Pfade werden nicht in Repositorytext übernommen.
+
+Der Umfang umfasst ausschließlich drei Markdown-Dateien und den projektspezifischen Scopeindex. SQL, Installer, Generatoren, Workflows und Testcode bleiben unverändert. Die bestehenden Regelkontext-Prüfungen kontrollieren Pfade und Indexklassifikationen der ausgewählten Quellen. Fragmentverweise und erhaltene Anker dieser AI_Metadata-Seiten werden im unabhängigen Quellenreview und durch den deterministischen Erhaltungsabgleich geprüft; die vorhandene automatische Dokumentations-Ankerprüfung deckt diesen Bereich nicht ab. Der bestehende historische Gegenfall bleibt erhalten. Ein Implementierer und eine unabhängige Prüfung bearbeiten den begrenzten Änderungssatz. Der vorbereitete PR wird direkt prüfbereit eröffnet; ein gesonderter Generatorlauf oder zusätzlicher Ready-Übergang ist nicht vorgesehen. Die erforderlichen Gates folgen der kanonischen CI-Teststrategie; ihr tatsächlicher Auswahlumfang wird erst aus dem Lauf berichtet. Eine Token- oder Kostenersparnis wird nicht behauptet.
+
 ## Nächste ausführbare Welle: fünf XE-Modulschalter vollständig beschreiben
 
-Die begrenzte Kohorte ergänzt ausschließlich die individuellen Hilfeeinträge und Guidezeilen von `MitSessionInventar`, `MitTargetRuntime`, `MitEvents`, `MitDeadlocks` und `MitBlockedProcesses` in `USP_ExtendedEventsAnalysis`. Der neue Quellabgleich zeigt, dass diese Einträge zwar Default und Aktivierung bei 1 beschreiben, aber die eigene Bedeutung von 0 und NULL auslassen. Andere abgeschlossene Parameterkohorten werden dadurch nicht erneut pauschal geöffnet.
+Historischer Kompatibilitätsanker: Der frühere Schritt-219-Auftrag ist abgeschlossen und wird hier nicht erneut ausgeführt.
 
-Jeder Eintrag erhält die Eingabeform als bit, seinen unveränderten ausdrücklich bezeichneten Default, die Bedeutung von 0 und 1 sowie die tatsächliche NULL-Behandlung. Andere SQL-Argumente unterliegen vor Prozedureintritt der Typkonvertierung; die Procedure besitzt keine eigene Leertextnormalisierung. Childzweck, Argumentweitergabe und die bisherigen Schutzbedingungen bleiben beschrieben. Eine Bestätigungsvariable wird dabei nicht mit der gesamten Deep-Analysis-Freigabe gleichgesetzt.
-
-Das XE-Ausführungsverhalten bleibt erhalten. NULL aktiviert das jeweilige Teilmodul nicht und wird nicht auf 0 normalisiert. Die bestehende Leerscope-Prüfung lehnt nur fünf exakte 0-Werte ab. Enthält eine sonst inaktive Auswahl NULL, kann der Parent deshalb `AVAILABLE` ohne Kindaufruf liefern. Die Hilfe beschreibt diese Grenze; eine Änderung wie beim zuletzt korrigierten PlanCache-Guard gehört nicht zu diesem Umfang. Es werden keine Rechte, Analysepfade, Defaults, Tests oder Reihenfolgen geändert. Der Quellbefund ist kein beobachteter Produktionsvorfall.
-
-Der unabhängige Quellen- und Guidereview ist PASS. Die Quelle ist an `6c9e923fb3a3678153cb549b686b55d22c38c56e` und der Guide an `9e1be6da3179ee3441b8f1df28b0f588f6e238ce` gebunden. Die Rückersetzung genau der fünf Hilfe-PRINTs und der fünf Guidezeilen reproduziert die vollständigen Basisdateien. Beispiele, übrige Hilfeeinträge und Analyseanweisungen bleiben unverändert.
-
-Der kanonische Lauf [42525448242](https://github.com/gecompat/SQL_Server_Analyze/actions/runs/42525448242), Job `128867960460`, erzeugte den OPS-Installer `015cc793868f4d764d4022e23e27c417e8b3e017` mit 6.520.447 Bytes. Das vollständige Modul einschließlich Header wurde unabhängig abgeleitet; die Rückersetzung rekonstruiert die vollständige Basis. Kanonische Bytegleichheit, unveränderter Rest und unveränderte Update-Datei wurden vor den beiden Blob-Uploads geprüft. Das vollständige Installer-Readback entspricht der Ableitung. Das Envelope ist an `b77c56e6cc768ef4ba4b5c835971c6c3349b531d` gebunden. Der Hilfsbranch ist regulär mit `dfa1f35dafc0b59122290c6cbe10e673565c2715` auf den ursprünglichen Baum `4df10207a1a5d94703a49257d1e24670b0211664` zurückgestellt. Dabei wurde keine SQL-Instanz gestartet; der Produktstand enthält keine Workflowänderung.
-
-Die erforderlichen Head-Gates und Cleanup am exakten Produkthead sowie nach regulärer Integration die erste Main-Nachprüfung stehen noch aus. Für diese reine Hilfeänderung werden keine neuen Tests geschrieben; die kanonische CI bestimmt den erforderlichen Auswahlumfang. Eine neue native Laufzeit- oder Plattformqualifikation wird nicht vorweggenommen.
+Historischer Abschnitt: [Archiv öffnen](Next_Steps_History_2026-11-08.md#n%C3%A4chste-ausf%C3%BChrbare-welle-f%C3%BCnf-xe-modulschalter-vollst%C3%A4ndig-beschreiben).
 
 <a id="nächste-ausführbare-welle-inaktive-null-modulschalter-im-plancache-wrapper"></a>
+
 
 ## Abgeschlossen: inaktive NULL-Modulschalter im PlanCache-Wrapper
 
@@ -373,60 +382,15 @@ Fehlläufe bleiben erhalten; ein neuer fachlicher Fehler wäre ein neuer Auslös
 
 ## Ausführung, Review und endliche Grenzen
 
-Je kohärentem Schritt arbeitet ein Implementierer mit höchstens einem
-unabhängigen Reviewer. Ein begrenzter Folgecheck betrifft ausschließlich
-konkrete Befunde an geänderten Inputs. Hashes, Mengen, Registrykollisionen,
-Commitbindungen und CI-Ergebnisse werden lokal deterministisch geprüft.
-Weitere fachliche Teilfragen erfordern einen neuen begründeten Schritt.
+Der endliche Entwicklungsumfang umfasst die 13 Ränge 6 bis 18, die zugehörige Planintegration und die betroffene Dokumentationskonsolidierung. Vor jeder neuen Arbeitseinheit und jeder CI-Reservierung werden die tatsächliche Benutzerautorisierung, der verbrauchte und reservierte Umfang sowie die einschlägigen Einzelgrenzen anhand aktueller, verifizierbarer Informationen frisch geprüft. Ohne verifizierbare Autorisierung und Fortschreibung beginnt keine neue Arbeit und es wird keine CI-Reservierung vorgenommen. Der jeweilige Arbeitsschritt wird vor jeder Wirkung im privaten Journal innerhalb der verifizierten Autorisierung und Einzelgrenzen als reserviert geführt. Private Werte und Journalpfade werden hier nicht veröffentlicht. Heartbeat, Sessionwechsel und PR-Abschluss setzen die Fortschreibung nicht zurück.
 
-Der endliche Gesamtscope umfasst die 13 Ränge 6 bis 18, diese Planintegration
-und die betroffene Dokumentationskonsolidierung. Die ursprüngliche gemeinsame
-Obergrenze von 40 eigenen fachlichen PR-Schritten einschließlich
-Korrekturlieferungen und Koordination sowie der Checkpoint bei 30 sind
-historische Autorisierung. Der Benutzer hat den gemeinsamen Umfang inzwischen
-am 3. November 2026 auf 200 eigene PR-Schritte mit Checkpoint bei 190
-erweitert. Die früheren Grenzen von 40, 80, 120 und 160 bleiben historische
-Freigaben ohne Verbrauchsreset. Die ersten 160 Schritte sind abgeschlossen. Bereits
-abgeschlossene Schritte des früheren separaten SSIS-Auftrags werden nicht
-nachträglich neu gezählt. Neue SSIS-Schritte dieses Orchestrators zählen
-innerhalb der aktuellen Obergrenze mit.
-Pro Schritt sind ein Erstentwurf, ein gebündelter Korrekturpass und die
-erforderlichen Gates vorgesehen. Neue fehlgeschlagene Tests werden zunächst
-lokal eingegrenzt. Ein weiterer Versuch benötigt geänderte Inputs, neue
-Evidenz oder ein bisher unerfülltes Gate. Tatsächlicher Verbrauch einschließlich
-Reviewer und Wiederholungen wird privat je Checkpoint fortgeschrieben.
-Token-, Kosten- und Kontingentmessung sind nicht verlässlich verfügbar.
+Je kohärentem Schritt arbeitet ein Implementierer mit höchstens einem unabhängigen Reviewer. Ein Folgecheck setzt geänderte Eingaben, neue verifizierte Evidenz oder eine ausdrücklich autorisierte begrenzte Nachprüfung voraus; ein unerfüllter Status allein rechtfertigt keinen blinden Wiederholungsversuch. Hashes, Mengen, Registrykollisionen, Commitbindungen und CI-Ergebnisse werden deterministisch geprüft. Zusätzliche fachliche Teilfragen werden nur als begründeter Schritt behandelt. Bei einem bereits autorisierten Checkpoint wird der Restumfang innerhalb der fortbestehenden Autorisierung neu bewertet. Der Abschluss eines PR beendet den Gesamtauftrag nicht: Nach erforderlicher erster Main-Nachprüfung und frischer Autorisierungs-/Budgetprüfung wird der nächste konkrete freigegebene Umfang autonom fortgesetzt; eine generische Weiter-Aufforderung ist nicht erforderlich. Heartbeat dient nur als letzte Leerlauferkennung und ersetzt die Fortsetzung nicht. Nach einem ausdrücklichen Stopp, dem tatsächlichen Ende der Autorisierung oder der Erschöpfung einer bindenden Grenze beginnt keine weitere Arbeit und keine neue CI-Reservierung. Lässt sich die aktuelle Bindung nicht verifizieren, wird ebenfalls nicht weitergearbeitet; der belegte Stand und die Wiederaufnahmebedingung werden erhalten. Routinemäßige Fortsetzung innerhalb bestehender Autorisierung verlangt keine erneute Zustimmung.
 
-Ein Checkpoint folgt nach jeder integrierten Lieferung. Bei 190 verbrauchten
-PR-Schritten wird der verbleibende Umfang vor weiterer Arbeit neu bewertet;
-bei 200 beginnen keine neuen Schritte. Offene Arbeit wird dann mit ihrer
-tatsächlichen Grenze gesichert und nicht als abgeschlossen ausgegeben. Ein
-Heartbeat oder Sessionwechsel setzt diese Grenzen nicht zurück. Die frühere
-Neubewertung bei 30 und Grenze bei 40 bleiben Teil der Historie und setzen die
-aktuelle Erweiterung nicht zurück.
+Neue Kernelstarts, Runtime-Probes, Neustarts oder Resetoperationen sowie lokale Child-Prozesse und Host-, SQL- oder SSIS-Labs sind nicht freigegeben. Ausführungsprüfungen erfolgen ausschließlich über Remote-CI. Die bereits gesondert autorisierte Journal-Runtime darf ausschließlich für private Journal-, Budget- und Reservierungsoperationen verwendet werden. Repositorydateien, Tests und Generatoren werden ihr nicht übergeben. Eine Planungszeile erteilt weder Runtime- noch lokale Testberechtigung. Sicherheits-, Datenschutz-, Lizenz-, Identitäts-, Laufzeit- und Liefergrenzen sowie die Kerninstallation ohne LLM bleiben verbindlich; der Kern bleibt CLR-frei. Optionale Funktionen oder Laufzeiten werden durch einen Plan nicht freigegeben.
 
-Der Abschluss eines einzelnen Pull Requests beendet den Gesamtauftrag nicht.
-Der Orchestrator setzt anschließend den nächsten ausführbaren freigegebenen
-Schritt ohne erneute Fortsetzungsaufforderung um. Der stündliche Heartbeat
-bleibt eine zusätzliche Leerlauferkennung und ersetzt diese laufende
-Fortsetzung nicht. Der Restumfang wird an den jeweils geltenden autorisierten Checkpoints anhand des verbleibenden Auftrags neu bewertet. Frühere Checkpoints setzen den aktuellen Verbrauch nicht zurück; bestehende Einzelgrenzen und Sperren gelten fort.
+Die Testauswahl folgt ausschließlich der [CI-Teststrategie](../../../Documentation/Quality/CI_Test_Strategy.md). Dokumentationsänderungen erhalten die betroffenen statischen Remote-Gates ohne SQL-Instanz; Produktänderungen erhalten die direkt und transitiv betroffene SQL-Server-2025-Prüfung. Native ältere Engines, zusätzliche Compatibility Levels, Windows und externe Features werden nur bei einem konkreten Versions- oder Vertragsrisiko ergänzt. Eine bestandene Prüfung wird bei unveränderten Eingaben nicht allein wegen Zeitablaufs wiederholt. Offene Required Checks, Reviews oder Cleanupnachweise verhindern die Abschlussbehauptung.
 
-Die Testauswahl folgt ausschließlich der
-[CI-Teststrategie](../../../Documentation/Quality/CI_Test_Strategy.md).
-Dokumentation erhält die betroffenen statischen Gates ohne SQL-Instanz;
-Produktänderungen erhalten die direkt und transitiv betroffene SQL2025-Prüfung.
-Native ältere Engines, zusätzliche Compatibility Levels, Windows und externe
-Features werden nur am konkreten Vertragsrisiko ergänzt. Keine bestandene
-Prüfung wird allein wegen Zeitablaufs wiederholt. Offene Required Checks,
-Reviews oder Cleanupnachweise verhindern die Abschlussbehauptung.
-
-Eine Lieferung wird auf einem eigenen Branch gegen aktuelles `origin/main`
-vorbereitet, unabhängig geprüft und nach erfolgreichen erforderlichen
-Head-Checks regulär per PR integriert. Main-Nachläufe sind getrennte Evidenz.
-Es gibt keinen direkten Main-Push, Force-Push, pauschalen Release oder
-automatischen Eingriff in bestehende beziehungsweise fremde Systeme.
-Ein blockierter Rang wird mit Ursache und Wiederaufnahmebedingung erhalten;
-der nächste unabhängige autorisierte Rang kann währenddessen fortgesetzt werden.
+Eine Lieferung wird auf einem eigenen Branch gegen aktuelles origin/main vorbereitet, unabhängig geprüft und nach erfolgreichen erforderlichen Head-Checks regulär per PR integriert. Eine bereits bereite PR benötigt keinen zusätzlichen Ready-Übergangslauf. Der erste Main-Nachlauf nach Integration ist obligatorisch und bleibt getrennte Evidenz. Es gibt keinen direkten Main-Push, Force-Push, pauschalen Release oder automatischen Eingriff in bestehende beziehungsweise fremde Systeme.
 
 ## Heartbeat und Fortsetzung
 
@@ -444,6 +408,8 @@ Automationskennung, Chatkennung und private Runtimebelege bleiben außerhalb
 des Repositorys.
 
 ## Aktueller Checkpoint
+
+Historischer Checkpoint: Der folgende PR-431-Checkpoint und die anschließenden Fortsetzungsabschnitte dokumentieren damalige Zustände, keine aktuelle Ausführungsanweisung; maßgeblich sind der aktuelle Einstieg und die nächste Welle am Anfang dieses Dokuments.
 
 Die Planung ist über PR #431 nach unabhängigem Review, dem konkreten
 Regelkontextfolgecheck und vier erfolgreichen Head-Prüfungen regulär integriert.
