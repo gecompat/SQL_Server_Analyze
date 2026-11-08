@@ -57,7 +57,7 @@ Die Beschreibung folgt dem aktuellen direkten XML-Einstieg. Reservierte Argument
 
 ### @LockTimeoutMs
 
-**Datentyp:** `int`. SQL-int-Skalarwert in Millisekunden; bei ausgelassenem Argument gilt der Default 0. Leertext kann bei SQL Server implizit zu 0 konvertiert werden und wird nicht als eigenständige Leerwerteingabe geprüft. 0 verlangt NOWAIT; 1 bis 60000 geben eine endliche Wartezeit vor. NULL und Zahlen außerhalb 0 bis 60000 werden als INVALID_PARAMETER zurückgegeben; die dynamische SET-Anweisung wird in diesem Fall übersprungen. Am regulären Ende versucht der Code, den vorher gelesenen LOCK_TIMEOUT wiederherzustellen; frühe Fehler sind davon nicht abgedeckt.
+**Datentyp:** `int`. SQL-int-Skalarwert in Millisekunden; bei ausgelassenem Argument gilt der Default 0. Leertext kann bei SQL Server implizit zu 0 konvertiert werden und wird nicht als eigenständige Leerwerteingabe geprüft. Zulässig sind 0 bis 60000; NULL und Zahlen außerhalb dieses Bereichs werden als `INVALID_PARAMETER` zurückgegeben. Der Parameter ist derzeit reserviert: Zulässige Werte werden validiert, ändern aber die Sperrwartezeit der nachfolgenden Analyse nicht. Die direkte Prozedurarbeit verwendet die beim Aufruf geltende `LOCK_TIMEOUT`-Einstellung. Der dynamische SET-Batch endet vor der Analyse; SQL Server stellt seine Einstellung bei der Rückkehr aus dem Batch wieder her. TABLE-Hilfsprocedures behalten ihre eigene Sperrwartezeitregel für die geerbte Sitzungseinstellung: Bei initialer Temp-Tabellen-DDL erhöhen sie einen eingehenden Wert 0 auf 1000 ms, behalten andere eingehende Werte für diese Anlage bei und setzen für Zieloperationen 0 (NOWAIT). Die Sitzungseinstellung des Aufrufers bleibt erhalten.
 
 ### @ResultSetArt
 

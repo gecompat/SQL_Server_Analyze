@@ -411,6 +411,89 @@ IF COALESCE(@StatusCode,'''')<>''AVAILABLE_LIMITED'' OR COALESCE(@IsPartial,0)<>
    OR COALESCE(JSON_VALUE(@Json,''$.package[0].PackageName''),N'''')<>N''SSIS-001 Runtime Fixture''
     THROW 56123,N''SSIS-001 default MaxDurationSeconds must retain package inventory and caller LOCK_TIMEOUT.'',1;
 
+
+-- These calls cover validation, outputs, and caller-state preservation; they do not prove that @LockTimeoutMs is applied during analysis.
+
+-- A synthetic principal receives EXECUTE on only a same-owner wrapper.
+-- Four recursive wrapper steps exercise a bounded, ordinary nested call.
+DECLARE @RestrictedUser sysname=N''SsisLockTimeoutSyntheticPrincipal'';
+DECLARE @RestrictedWrapper sysname=N''InternalSsisLockTimeoutNestedCaller'';
+IF DATABASE_PRINCIPAL_ID(@RestrictedUser) IS NOT NULL
+   OR OBJECT_ID(N''monitor.InternalSsisLockTimeoutNestedCaller'',N''P'') IS NOT NULL
+    THROW 56227,N''SSIS-001 restricted-principal fixtures already exist; do not replace them.'',1;
+DECLARE @RestrictedUserCreated bit=0,@RestrictedWrapperCreated bit=0,@RestrictedContextEntered bit=0;
+DECLARE @RestrictedOriginalUser sysname=USER_NAME();
+DECLARE @RestrictedReturnCode int=-73131;
+DECLARE @RestrictedWrapperSql nvarchar(max)=N''CREATE PROCEDURE [monitor].[InternalSsisLockTimeoutNestedCaller]
+      @Depth tinyint
+    , @PackageXml xml
+    , @LockTimeoutMs int
+    , @Json nvarchar(max) OUTPUT
+    , @StatusCodeOut varchar(40) OUTPUT
+    , @IsPartialOut bit OUTPUT
+    , @ErrorNumberOut int OUTPUT
+    , @ErrorMessageOut nvarchar(2048) OUTPUT
+AS
+BEGIN
+    SET NOCOUNT ON;
+    DECLARE @ReturnCode int=0;
+    DECLARE @NextDepth tinyint=@Depth+1;
+    IF @Depth<4
+        EXEC @ReturnCode=[monitor].[InternalSsisLockTimeoutNestedCaller]
+              @Depth=@NextDepth,@PackageXml=@PackageXml,@LockTimeoutMs=@LockTimeoutMs
+            , @Json=@Json OUTPUT,@StatusCodeOut=@StatusCodeOut OUTPUT,@IsPartialOut=@IsPartialOut OUTPUT
+            , @ErrorNumberOut=@ErrorNumberOut OUTPUT,@ErrorMessageOut=@ErrorMessageOut OUTPUT;
+    ELSE
+        EXEC @ReturnCode=[monitor].[USP_SsisPackageAnalysis]
+              @PackageXml=@PackageXml,@LockTimeoutMs=@LockTimeoutMs,@ResultSetArt=''''NONE''''
+            , @JsonErzeugen=1,@Json=@Json OUTPUT,@StatusCodeOut=@StatusCodeOut OUTPUT,@IsPartialOut=@IsPartialOut OUTPUT
+            , @ErrorNumberOut=@ErrorNumberOut OUTPUT,@ErrorMessageOut=@ErrorMessageOut OUTPUT;
+    RETURN @ReturnCode;
+END;'';
+BEGIN TRY
+    CREATE USER [SsisLockTimeoutSyntheticPrincipal] WITHOUT LOGIN;
+    SET @RestrictedUserCreated=1;
+    EXEC [sys].[sp_executesql] @RestrictedWrapperSql;
+    SET @RestrictedWrapperCreated=1;
+    GRANT EXECUTE ON OBJECT::[monitor].[InternalSsisLockTimeoutNestedCaller] TO [SsisLockTimeoutSyntheticPrincipal];
+    DENY EXECUTE ON OBJECT::[monitor].[USP_SsisPackageAnalysis] TO [SsisLockTimeoutSyntheticPrincipal];
+    EXECUTE AS USER=N''SsisLockTimeoutSyntheticPrincipal'';
+    SET @RestrictedContextEntered=1;
+    IF USER_NAME()<>N''SsisLockTimeoutSyntheticPrincipal''
+        THROW 56230,N''SSIS-001 restricted principal context switch failed.'',1;
+    IF ISNULL(HAS_PERMS_BY_NAME(N''monitor.USP_SsisPackageAnalysis'',N''OBJECT'',N''EXECUTE''),-1)<>0
+        THROW 56229,N''SSIS-001 restricted principal must not have effective EXECUTE on the public procedure.'',1;
+    SET @StatusCode=''OUTPUT_SENTINEL''; SET @IsPartial=0; SET @ErrorNumber=73131;
+    SET @ErrorMessage=N''OUTPUT_SENTINEL''; SET @Json=N''OUTPUT_SENTINEL'';
+    EXEC @RestrictedReturnCode=[monitor].[InternalSsisLockTimeoutNestedCaller]
+          @Depth=0,@PackageXml=@PackageXml,@LockTimeoutMs=1
+        , @Json=@Json OUTPUT,@StatusCodeOut=@StatusCode OUTPUT,@IsPartialOut=@IsPartial OUTPUT
+        , @ErrorNumberOut=@ErrorNumber OUTPUT,@ErrorMessageOut=@ErrorMessage OUTPUT;
+    REVERT;
+    SET @RestrictedContextEntered=0;
+    IF USER_NAME()<>@RestrictedOriginalUser OR @@LOCK_TIMEOUT<>{{TIMEOUT_SENTINEL}} OR @RestrictedReturnCode<>0
+       OR COALESCE(@StatusCode,'''')<>''AVAILABLE_LIMITED'' OR COALESCE(@IsPartial,0)<>1
+       OR @ErrorNumber IS NOT NULL OR @ErrorMessage IS NOT NULL
+       OR COALESCE(JSON_VALUE(@Json,''$.package[0].PackageName''),N'''')<>N''SSIS-001 Runtime Fixture''
+        THROW 56228,N''SSIS-001 restricted principal wrapper call must restore caller context and timeout and preserve package output and return code.'',1;
+    DROP PROCEDURE [monitor].[InternalSsisLockTimeoutNestedCaller];
+    SET @RestrictedWrapperCreated=0;
+    DROP USER [SsisLockTimeoutSyntheticPrincipal];
+    SET @RestrictedUserCreated=0;
+END TRY
+BEGIN CATCH
+    IF @RestrictedContextEntered=1
+    BEGIN
+        REVERT;
+        SET @RestrictedContextEntered=0;
+    END;
+    IF @RestrictedWrapperCreated=1
+        DROP PROCEDURE IF EXISTS [monitor].[InternalSsisLockTimeoutNestedCaller];
+    IF @RestrictedUserCreated=1
+        DROP USER IF EXISTS [SsisLockTimeoutSyntheticPrincipal];
+    THROW;
+END CATCH;
+
 IF @@LOCK_TIMEOUT<>{{TIMEOUT_SENTINEL}}
     THROW 56127,N''SSIS-001 scoped lock-timeout suite changed its local caller setting.'',1;';
 SET @LockTimeoutTestSql=REPLACE(@LockTimeoutTestSql,N'{{TIMEOUT_SENTINEL}}',CONVERT(nvarchar(12),@TestLockTimeout));
