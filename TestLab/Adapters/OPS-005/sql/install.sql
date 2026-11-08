@@ -69505,6 +69505,9 @@ BEGIN
     SET NOCOUNT ON;
     SET @Json = NULL;
 
+    DECLARE @OriginalLockTimeout int = @@LOCK_TIMEOUT;
+    DECLARE @LockTimeoutDispatchSql nvarchar(max);
+    DECLARE @ScopedReturnCodeOut int = NULL;
     DECLARE @Now datetime2(3) = SYSUTCDATETIME();
     DECLARE @OutputMode varchar(16) = UPPER(LTRIM(RTRIM(COALESCE(@ResultSetArt,''))));
     DECLARE @TableRequested bit = CASE WHEN @OutputMode = 'TABLE' THEN 1 ELSE 0 END;
@@ -69531,7 +69534,7 @@ BEGIN
         PRINT N'@HighImpactConfirmed: Datentyp bit. Bestätigungsschalter; Default: 0. Beide Bitwerte 0 und 1 werden angenommen; NULL wird als ungültiger Parameter bewertet. Der Wert wird nicht zur Freigabe oder Erweiterung einer Analyse verwendet und ändert den Parserumfang nicht. SQL-bit-Konvertierung bildet numerische Werte ungleich 0 auf 1 ab.';
         PRINT N'@MaxZeilen: Datentyp int. Zeilengrenze; Default: 1000. Zulässig sind NULL, 0 oder positive Ganzzahlen von 1 bis 2147483647; negative Werte sind ungültig. NULL und 0 bedeuten unbegrenzt. Bei RAW begrenzt der Wert acht Detailgruppen (Executables, Constraints, Data-Flow-Komponenten, Connections, Parameter, Expressions, Lineage und Variablen); Modulstatus, Paket, Findings, Quellenstatus und Warnungen werden davon nicht begrenzt. Das interne Inventar wird nicht vorab auf diese Grenze beschränkt. Für TABLE und JSON begrenzt @MaxZeilen nur das Variableninventar; die übrigen Arrays/Zieltabellen werden nicht durch diesen Parameter gekürzt.';
         PRINT N'@MaxDurationSeconds: Datentyp int; SQL-int-Skalarwert in Sekunden; Default: 30. Zulässig sind Ganzzahlen von 1 bis 60. NULL sowie Werte außerhalb dieses Bereichs werden als INVALID_PARAMETER mit Teilstatus und Diagnose zurückgegeben. Ein als Leertext übergebenes Argument kann bei SQL Server implizit zu 0 konvertiert werden und ist deshalb ungültig. Der Parameter wird nicht für eine Frist, einen Abbruch oder ein Laufzeitlimit verwendet; eine tatsächliche Zeitbegrenzung besteht nicht.';
-        PRINT N'@LockTimeoutMs: Datentyp int. SQL-int-Skalarwert in Millisekunden; Default: 0. Leertext kann bei SQL Server implizit zu 0 konvertiert werden und wirkt dann wie 0. Zulässig sind 0 bis 60000: 0 bedeutet NOWAIT ohne Warten auf eine Sperre; 1 bis 60000 setzen die maximale Sperrwartezeit in Millisekunden. NULL und Werte außerhalb dieses Bereichs werden als INVALID_PARAMETER zurückgegeben; die SET-Anweisung wird dann übersprungen. Nach erfolgreicher Parameterprüfung gilt der Wert im Prozedur-Scope für die nachfolgende Analyse und den TABLE-Writer. Vorgezogene Temp-Tabellen- und Mappingprüfungen verwenden noch die Einstellung des Aufrufers. Beim Verlassen der Prozedur stellt SQL Server den Caller-Wert auch nach einer SQL-Ausnahme wieder her.';
+        PRINT N'@LockTimeoutMs: Datentyp int. SQL-int-Skalarwert in Millisekunden; Default: 0. Leertext kann bei SQL Server implizit zu 0 konvertiert werden und wirkt dann wie 0. Zulässig sind 0 bis 60000: 0 bedeutet, dass bei einer Sperre nicht gewartet wird; 1 bis 60000 begrenzen die Sperrwartezeit in Millisekunden. NULL und Werte außerhalb dieses Bereichs ergeben INVALID_PARAMETER. Für gültige Werte, die von der aktuellen Sitzungseinstellung abweichen, startet die Procedure nach dem Hilfezweig vor Temp-Tabellen-, Mapping- und Parserarbeit eine zusätzliche innere Ausführung in einem dynamischen Batch mit dem angeforderten LOCK_TIMEOUT. Die angeforderte Einstellung gilt für die direkte Arbeit der inneren Procedure, einschließlich eigener Temp-Tabellen- und Parseranweisungen, und liegt beim Aufruf ihrer TABLE-Hilfsprocedures an. Diese Hilfsprocedures wenden intern ihre eigene Sperrwartezeitregel an: Bei der initialen Temp-Tabellen-DDL erhöhen sie einen eingehenden Wert 0 auf 1000 ms, übernehmen positive Werte und setzen für Zieloperationen 0 (NOWAIT). Bei gleichem Timeout erfolgt keine zusätzliche Ausführung. Ungültige Werte werden ohne Timeout-Dispatch normal validiert. SQL Server stellt den beim Aufruf geltenden Wert beim Verlassen der Procedure auch nach einer SQL-Ausnahme wieder her. Die zusätzliche innere Ausführung benötigt eine weitere Prozedurebene; bei bereits tiefen Aufrufketten kann die SQL-Server-Grenze von 32 Ebenen erreicht werden.';
         PRINT N'@ResultSetArt: Datentyp varchar(16). Ausgabeform; Default: CONSOLE. Der Wert wird getrimmt und in Großbuchstaben umgewandelt. Zulässige Werte: CONSOLE gibt die Zusammenfassung über InternalEmitConsoleResult aus; RAW gibt die dreizehn Resultsets in dokumentierter Reihenfolge aus; TABLE schreibt angeforderte Gruppen in benannte lokale #Temp-Ziele; NONE gibt keine fachlichen Resultsets dieser drei Formen aus. NULL, Leerwert und andere Werte sind ungültig. TABLE erfordert eine gültige, nichtleere Zuordnung in @ResultTablesJson. Außerhalb von TABLE muss @ResultTablesJson NULL oder leer oder nur aus U+0020-Leerzeichen bestehend sein. JSON ist keine zulässige Ausgabeart; JSON wird separat mit @JsonErzeugen angefordert.';
         PRINT N'@ResultTablesJson: Datentyp nvarchar(max). JSON-Zuordnung für TABLE-Ausgabe; Default: NULL. Nur bei @ResultSetArt = TABLE wird die Eingabe als nichtleeres JSON-Objekt ausgewertet. Zulässige Schlüssel sind exakt (groß-/kleinschreibungssensitiv): moduleStatus = Zusammenfassungsstatus; package = Paketmetadaten; executables = Executable-Inventar; controlFlowConstraints = direkte Kontrollflusskanten; dataFlowComponents = Pipeline-Komponenten; connections = Connection-Manager-Metadaten; parameters = Paketparameter-Metadaten; expressions = direkte Property-Expressions; lineage = direkte Pipeline-Verbindungen; findings = Befunde; sourceStatus = Quellenstatus; warnings = Hinweise; variables = Variablendefinitionen. Jeder Wert muss ein nichtleerer Tabellenname als JSON-String sein. Jede Zuordnung muss auf eine bereits angelegte, leere lokale #Temp-Tabelle mit genau einer Seed-Spalte zeigen; ##-Tabellen, Namen über 116 Zeichen und #Monitor*-Ziele sind unzulässig. Eine nichtleere Teilmenge der 13 Gruppen ist zulässig; nicht zugeordnete Gruppen werden nicht geschrieben. Beispiel: N''{"moduleStatus":"#SsisModuleStatus"}''. Resultsetnamen dürfen nicht doppelt vorkommen; doppelte Zielnamen und das reservierte Präfix #Monitor werden ohne Beachtung der Großschreibung geprüft; unbekannte Schlüssel werden abgelehnt. Die Zuordnung wird vor dem fachlichen XML-Parsing vollständig geprüft. Bei TABLE führen NULL, ungültiges JSON, ein leeres Objekt oder fehlende/unzulässige Ziele zum Fehler. Bei anderen Ausgabeformen wird ein nichtleerer Wert als ungültige Kombination abgewiesen; NULL und Leer-/U+0020-Leerzeichen-Text werden ignoriert.';
         PRINT N'@JsonErzeugen: Datentyp bit. Steuert die Ausgabe über @Json; Default: 0. 0 erzeugt kein JSON; 1 weist das erzeugte JSON @Json zu. NULL ist ungültig. Das JSON-Wurzelobjekt enthält 13 Arrays mit den Schlüsseln moduleStatus, package, executables, controlFlowConstraints, dataFlowComponents, connections, parameters, expressions, lineage, findings, sourceStatus, warnings und variables; ein zusätzliches meta-Objekt ist nicht implementiert. Das package-Array wird bei leerem Paketinventar ausdrücklich als [] ausgegeben. Nur variables wird mit INCLUDE_NULL_VALUES serialisiert. Das JSON wird unabhängig von @ResultSetArt erzeugt, sofern der reguläre Analysepfad erreicht wird. SQL-bit-Konvertierung bildet numerische Werte ungleich 0 auf 1 ab.';
@@ -69549,6 +69552,61 @@ BEGIN
         PRINT N'EXEC [monitor].[USP_SsisPackageAnalysis] @Hilfe = 1, @ResultSetArt = ''RAW'';';
         PRINT N'DECLARE @Json nvarchar(max); EXEC [monitor].[USP_SsisPackageAnalysis] @Hilfe = 1, @JsonErzeugen = 1, @Json = @Json OUTPUT; SELECT @Json AS [Json];';
         RETURN;
+    END;
+
+    IF @LockTimeoutMs IS NOT NULL
+       AND @LockTimeoutMs BETWEEN 0 AND 60000
+       AND @@LOCK_TIMEOUT <> @LockTimeoutMs
+    BEGIN
+        SET @LockTimeoutDispatchSql =
+            N'SET LOCK_TIMEOUT ' + CONVERT(nvarchar(11),@LockTimeoutMs)
+            + N'; EXEC @ScopedReturnCodeOut = [monitor].[USP_SsisPackageAnalysis]
+                @PackageXml=@PackageXml
+                , @PackageParametersJson=@PackageParametersJson
+                , @AnalysisDepth=@AnalysisDepth
+                , @ResolveSqlMetadata=@ResolveSqlMetadata
+                , @CheckLookupData=@CheckLookupData
+                , @HighImpactConfirmed=@HighImpactConfirmed
+                , @MaxZeilen=@MaxZeilen
+                , @MaxDurationSeconds=@MaxDurationSeconds
+                , @LockTimeoutMs=@LockTimeoutMs
+                , @ResultSetArt=@ResultSetArt
+                , @ResultTablesJson=@ResultTablesJson
+                , @JsonErzeugen=@JsonErzeugen
+                , @Json=@Json OUTPUT
+                , @PrintMeldungen=@PrintMeldungen
+                , @Hilfe=@Hilfe
+                , @StatusCodeOut=@StatusCodeOut OUTPUT
+                , @IsPartialOut=@IsPartialOut OUTPUT
+                , @ErrorNumberOut=@ErrorNumberOut OUTPUT
+                , @ErrorMessageOut=@ErrorMessageOut OUTPUT;';
+        EXEC [sys].[sp_executesql]
+              @LockTimeoutDispatchSql
+            , N'@PackageXml xml, @PackageParametersJson nvarchar(max), @AnalysisDepth varchar(16), @ResolveSqlMetadata bit, @CheckLookupData bit, @HighImpactConfirmed bit, @MaxZeilen int, @MaxDurationSeconds int, @LockTimeoutMs int, @ResultSetArt varchar(16), @ResultTablesJson nvarchar(max), @JsonErzeugen bit, @Json nvarchar(max) OUTPUT, @PrintMeldungen bit, @Hilfe bit, @StatusCodeOut varchar(40) OUTPUT, @IsPartialOut bit OUTPUT, @ErrorNumberOut int OUTPUT, @ErrorMessageOut nvarchar(2048) OUTPUT, @ScopedReturnCodeOut int OUTPUT'
+            , @PackageXml=@PackageXml
+            , @PackageParametersJson=@PackageParametersJson
+            , @AnalysisDepth=@AnalysisDepth
+            , @ResolveSqlMetadata=@ResolveSqlMetadata
+            , @CheckLookupData=@CheckLookupData
+            , @HighImpactConfirmed=@HighImpactConfirmed
+            , @MaxZeilen=@MaxZeilen
+            , @MaxDurationSeconds=@MaxDurationSeconds
+            , @LockTimeoutMs=@LockTimeoutMs
+            , @ResultSetArt=@ResultSetArt
+            , @ResultTablesJson=@ResultTablesJson
+            , @JsonErzeugen=@JsonErzeugen
+            , @Json=@Json OUTPUT
+            , @PrintMeldungen=@PrintMeldungen
+            , @Hilfe=@Hilfe
+            , @StatusCodeOut=@StatusCodeOut OUTPUT
+            , @IsPartialOut=@IsPartialOut OUTPUT
+            , @ErrorNumberOut=@ErrorNumberOut OUTPUT
+            , @ErrorMessageOut=@ErrorMessageOut OUTPUT
+            , @ScopedReturnCodeOut=@ScopedReturnCodeOut OUTPUT;
+
+        IF @@LOCK_TIMEOUT <> @OriginalLockTimeout
+            THROW 56129, N'SSIS-001 lock-timeout dispatch changed the caller setting.', 1;
+        RETURN @ScopedReturnCodeOut;
     END;
 
     CREATE TABLE [#SsisPackageAnalysis_ResultTables]
@@ -69730,9 +69788,6 @@ BEGIN
         SELECT @StatusCode = 'INVALID_PARAMETER', @IsPartial = 1,
                @ErrorMessage = N'Ungültiger Paket-, Analyse-, Limit-, Lock-Timeout- oder Ausgabeparameter. SQL-Metadaten- und Lookupprüfungen gehören nicht zu diesem Parser-Slice.';
     END;
-
-    IF @StatusCode = 'AVAILABLE_LIMITED'
-        SET LOCK_TIMEOUT @LockTimeoutMs;
 
     IF @StatusCode = 'AVAILABLE_LIMITED'
        AND @PackageXml.exist('/*[local-name(.)="Executable" and namespace-uri(.)="www.microsoft.com/SqlServer/Dts"]') = 0
@@ -70008,6 +70063,8 @@ BEGIN
             , @EmptyMessage=N'Keine fachlichen Ergebnisse';
     END;
 
+    IF @@LOCK_TIMEOUT <> @OriginalLockTimeout
+        THROW 56129, N'SSIS-001 procedure changed the caller LOCK_TIMEOUT.', 1;
 END;
 GO
 -- END SOURCE: Code/10_SSIS/010_USP_SsisPackageAnalysis.sql

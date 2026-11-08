@@ -412,10 +412,10 @@ IF COALESCE(@StatusCode,'''')<>''AVAILABLE_LIMITED'' OR COALESCE(@IsPartial,0)<>
     THROW 56123,N''SSIS-001 default MaxDurationSeconds must retain package inventory and caller LOCK_TIMEOUT.'',1;
 
 
--- Observe in-work SET scope in a guarded, test-owned copy in the framework database.
--- The unmodified public calls above remain the validation/output/caller oracle.
+-- Observe in-work LOCK_TIMEOUT scope in a guarded, source-bound test copy.
+-- Public calls above remain the validation, output, and caller-state oracle.
 CREATE TABLE #SsisLockTimeoutObservation([Stage] varchar(24) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,[TimeoutMs] int NOT NULL);
-CREATE TABLE #SsisLockTimeoutProbeControl([RaiseAfterSet] bit NOT NULL);
+CREATE TABLE #SsisLockTimeoutProbeControl([RaiseAtBeforePreflight] bit NOT NULL);
 INSERT #SsisLockTimeoutProbeControl VALUES(0);
 CREATE TABLE #SsisLockScopePackageZero([seed] int NULL);
 CREATE TABLE #SsisLockScopePackageOne([seed] int NULL);
@@ -430,29 +430,35 @@ DECLARE @ScopeHeader nvarchar(max)=CASE
     WHEN CHARINDEX(N''ALTER PROCEDURE [monitor].[USP_SsisPackageAnalysis]'',@ScopeDefinition)>0
         THEN N''ALTER PROCEDURE [monitor].[USP_SsisPackageAnalysis]''
     ELSE NULL END;
-DECLARE @ScopeSet nvarchar(max)=N''    IF @StatusCode = ''''AVAILABLE_LIMITED''''
-        SET LOCK_TIMEOUT @LockTimeoutMs;'';
+DECLARE @ScopeSelfCall nvarchar(max)=N''EXEC @ScopedReturnCodeOut = [monitor].[USP_SsisPackageAnalysis]'';
+DECLARE @ScopeBeforePreflight nvarchar(max)=N''    CREATE TABLE [#SsisPackageAnalysis_ResultTables]'';
+DECLARE @ScopeParser nvarchar(max)=N''    IF @StatusCode = ''''AVAILABLE_LIMITED''''
+       AND @PackageXml.exist(''''/*[local-name(.)="Executable" and namespace-uri(.)="www.microsoft.com/SqlServer/Dts"]'''') = 0'';
 DECLARE @ScopeTable nvarchar(max)=N''    IF @TableRequested = 1
     BEGIN
         DECLARE @TargetTable sysname;'';
 IF @ScopeDefinition IS NULL OR @ScopeHeader IS NULL
    OR (DATALENGTH(@ScopeDefinition)-DATALENGTH(REPLACE(@ScopeDefinition,@ScopeHeader,N'''')))<>DATALENGTH(@ScopeHeader)
-   OR (DATALENGTH(@ScopeDefinition)-DATALENGTH(REPLACE(@ScopeDefinition,@ScopeSet,N'''')))<>DATALENGTH(@ScopeSet)
+   OR (DATALENGTH(@ScopeDefinition)-DATALENGTH(REPLACE(@ScopeDefinition,@ScopeSelfCall,N'''')))<>DATALENGTH(@ScopeSelfCall)
+   OR (DATALENGTH(@ScopeDefinition)-DATALENGTH(REPLACE(@ScopeDefinition,@ScopeBeforePreflight,N'''')))<>DATALENGTH(@ScopeBeforePreflight)
+   OR (DATALENGTH(@ScopeDefinition)-DATALENGTH(REPLACE(@ScopeDefinition,@ScopeParser,N'''')))<>DATALENGTH(@ScopeParser)
    OR (DATALENGTH(@ScopeDefinition)-DATALENGTH(REPLACE(@ScopeDefinition,@ScopeTable,N'''')))<>DATALENGTH(@ScopeTable)
     THROW 56220,N''SSIS-001 current module does not match the unique lock-scope probe anchors.'',1;
-DECLARE @ScopeInjectedSet nvarchar(max)=N''    IF @StatusCode = ''''AVAILABLE_LIMITED''''
-    BEGIN
-        SET LOCK_TIMEOUT @LockTimeoutMs;
-        INSERT #SsisLockTimeoutObservation([Stage],[TimeoutMs]) VALUES (''''BeforeParser'''',@@LOCK_TIMEOUT);
-        IF EXISTS(SELECT 1 FROM #SsisLockTimeoutProbeControl WHERE [RaiseAfterSet]=1)
-            THROW 56224,N''''SSIS-001 deliberate in-procedure lock-timeout scope failure.'''',1;
-    END;'';
+DECLARE @ScopeProbeHeader nvarchar(max)=N''CREATE PROCEDURE [monitor].[InternalSsisPackageLockTimeoutScopeProbe]'';
+DECLARE @ScopeProbeSelfCall nvarchar(max)=N''EXEC @ScopedReturnCodeOut = [monitor].[InternalSsisPackageLockTimeoutScopeProbe]'';
+DECLARE @ScopeInjectedBeforePreflight nvarchar(max)=N''    INSERT #SsisLockTimeoutObservation([Stage],[TimeoutMs]) VALUES (''''BeforePreflight'''',@@LOCK_TIMEOUT);
+    IF EXISTS(SELECT 1 FROM #SsisLockTimeoutProbeControl WHERE [RaiseAtBeforePreflight]=1)
+        THROW 56224,N''''SSIS-001 deliberate in-procedure lock-timeout scope failure.'''',1;
+    CREATE TABLE [#SsisPackageAnalysis_ResultTables]'';
+DECLARE @ScopeInjectedParser nvarchar(max)=N''    INSERT #SsisLockTimeoutObservation([Stage],[TimeoutMs]) VALUES (''''BeforeParser'''',@@LOCK_TIMEOUT);
+    IF @StatusCode = ''''AVAILABLE_LIMITED''''
+       AND @PackageXml.exist(''''/*[local-name(.)="Executable" and namespace-uri(.)="www.microsoft.com/SqlServer/Dts"]'''') = 0'';
 DECLARE @ScopeInjectedTable nvarchar(max)=N''    IF @TableRequested = 1
     BEGIN
-        INSERT #SsisLockTimeoutObservation([Stage],[TimeoutMs]) VALUES (''''BeforeTableWriter'''',@@LOCK_TIMEOUT);
+        INSERT #SsisLockTimeoutObservation([Stage],[TimeoutMs]) VALUES (''''BeforeTableHelper'''',@@LOCK_TIMEOUT);
         DECLARE @TargetTable sysname;'';
-DECLARE @ScopeProbeDefinition nvarchar(max)=REPLACE(REPLACE(REPLACE(@ScopeDefinition,@ScopeHeader,N''CREATE PROCEDURE [monitor].[InternalSsisPackageLockTimeoutScopeProbe]''),@ScopeSet,@ScopeInjectedSet),@ScopeTable,@ScopeInjectedTable);
-DECLARE @ScopeRoundTrip nvarchar(max)=REPLACE(REPLACE(REPLACE(@ScopeProbeDefinition,N''CREATE PROCEDURE [monitor].[InternalSsisPackageLockTimeoutScopeProbe]'',@ScopeHeader),@ScopeInjectedSet,@ScopeSet),@ScopeInjectedTable,@ScopeTable);
+DECLARE @ScopeProbeDefinition nvarchar(max)=REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(@ScopeDefinition,@ScopeHeader,@ScopeProbeHeader),@ScopeSelfCall,@ScopeProbeSelfCall),@ScopeBeforePreflight,@ScopeInjectedBeforePreflight),@ScopeParser,@ScopeInjectedParser),@ScopeTable,@ScopeInjectedTable);
+DECLARE @ScopeRoundTrip nvarchar(max)=REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(@ScopeProbeDefinition,@ScopeProbeHeader,@ScopeHeader),@ScopeProbeSelfCall,@ScopeSelfCall),@ScopeInjectedBeforePreflight,@ScopeBeforePreflight),@ScopeInjectedParser,@ScopeParser),@ScopeInjectedTable,@ScopeTable);
 IF DATALENGTH(@ScopeRoundTrip)<>DATALENGTH(@ScopeDefinition)
    OR HASHBYTES(''SHA2_256'',@ScopeRoundTrip)<>HASHBYTES(''SHA2_256'',@ScopeDefinition)
     THROW 56221,N''SSIS-001 instrumented lock-scope copy must preserve all other installed module text.'',1;
@@ -464,34 +470,36 @@ BEGIN TRY
     SET @ScopeProbeCreated=1;
     DECLARE @ScopeValues TABLE([Pass] int PRIMARY KEY,[Value] int NOT NULL,[Target] sysname NOT NULL);
     INSERT @ScopeValues VALUES(1,0,N''#SsisLockScopePackageZero''),(2,1,N''#SsisLockScopePackageOne''),(3,60000,N''#SsisLockScopePackageMax''),(4,0,N''#SsisLockScopePackageDefault'');
-    DECLARE @ScopePass int=1,@ScopeRequested int,@ScopeTarget sysname,@ScopeTablesJson nvarchar(400);
+    DECLARE @ScopePass int=1,@ScopeRequested int,@ScopeTarget sysname,@ScopeTablesJson nvarchar(400),@ScopeReturnCode int;
     WHILE @ScopePass<=4
     BEGIN
         SELECT @ScopeRequested=[Value],@ScopeTarget=[Target] FROM @ScopeValues WHERE [Pass]=@ScopePass;
         TRUNCATE TABLE #SsisLockTimeoutObservation;
-        SET @ScopeTablesJson=N''{"package":"'' + @ScopeTarget + N''"}'';
+        SET @ScopeTablesJson=N''{"package":"''+@ScopeTarget+N''"}'';
         SET @StatusCode=''OUTPUT_SENTINEL''; SET @IsPartial=0; SET @ErrorNumber=73130;
-        SET @ErrorMessage=N''OUTPUT_SENTINEL''; SET @Json=N''OUTPUT_SENTINEL'';
+        SET @ErrorMessage=N''OUTPUT_SENTINEL''; SET @Json=N''OUTPUT_SENTINEL''; SET @ScopeReturnCode=-73130;
         IF @ScopePass=4
-            EXEC [monitor].[InternalSsisPackageLockTimeoutScopeProbe] @PackageXml=@PackageXml,@ResultSetArt=''TABLE'',@ResultTablesJson=@ScopeTablesJson,
+            EXEC @ScopeReturnCode = [monitor].[InternalSsisPackageLockTimeoutScopeProbe] @PackageXml=@PackageXml,@ResultSetArt=''TABLE'',@ResultTablesJson=@ScopeTablesJson,
                 @JsonErzeugen=1,@Json=@Json OUTPUT,@StatusCodeOut=@StatusCode OUTPUT,@IsPartialOut=@IsPartial OUTPUT,@ErrorNumberOut=@ErrorNumber OUTPUT,@ErrorMessageOut=@ErrorMessage OUTPUT;
         ELSE
-            EXEC [monitor].[InternalSsisPackageLockTimeoutScopeProbe] @PackageXml=@PackageXml,@LockTimeoutMs=@ScopeRequested,@ResultSetArt=''TABLE'',@ResultTablesJson=@ScopeTablesJson,
+            EXEC @ScopeReturnCode = [monitor].[InternalSsisPackageLockTimeoutScopeProbe] @PackageXml=@PackageXml,@LockTimeoutMs=@ScopeRequested,@ResultSetArt=''TABLE'',@ResultTablesJson=@ScopeTablesJson,
                 @JsonErzeugen=1,@Json=@Json OUTPUT,@StatusCodeOut=@StatusCode OUTPUT,@IsPartialOut=@IsPartial OUTPUT,@ErrorNumberOut=@ErrorNumber OUTPUT,@ErrorMessageOut=@ErrorMessage OUTPUT;
-        IF (SELECT COUNT(*) FROM #SsisLockTimeoutObservation)<>2
+        IF (SELECT COUNT(*) FROM #SsisLockTimeoutObservation)<>3
+           OR (SELECT COUNT(*) FROM #SsisLockTimeoutObservation WHERE [Stage]=''BeforePreflight'' AND [TimeoutMs]=@ScopeRequested)<>1
            OR (SELECT COUNT(*) FROM #SsisLockTimeoutObservation WHERE [Stage]=''BeforeParser'' AND [TimeoutMs]=@ScopeRequested)<>1
-           OR (SELECT COUNT(*) FROM #SsisLockTimeoutObservation WHERE [Stage]=''BeforeTableWriter'' AND [TimeoutMs]=@ScopeRequested)<>1
+           OR (SELECT COUNT(*) FROM #SsisLockTimeoutObservation WHERE [Stage]=''BeforeTableHelper'' AND [TimeoutMs]=@ScopeRequested)<>1
            OR (@ScopePass=1 AND (SELECT COUNT(*) FROM #SsisLockScopePackageZero)<>1)
            OR (@ScopePass=2 AND (SELECT COUNT(*) FROM #SsisLockScopePackageOne)<>1)
            OR (@ScopePass=3 AND (SELECT COUNT(*) FROM #SsisLockScopePackageMax)<>1)
            OR (@ScopePass=4 AND (SELECT COUNT(*) FROM #SsisLockScopePackageDefault)<>1)
            OR @@LOCK_TIMEOUT<>{{TIMEOUT_SENTINEL}}
+           OR @ScopeReturnCode<>0
            OR COALESCE(@StatusCode,'''')<>''AVAILABLE_LIMITED'' OR COALESCE(@IsPartial,0)<>1 OR @ErrorNumber IS NOT NULL OR @ErrorMessage IS NOT NULL
            OR COALESCE(JSON_VALUE(@Json,''$.package[0].PackageName''),N'''')<>N''SSIS-001 Runtime Fixture''
-            THROW 56222,N''SSIS-001 requested lock timeout must govern parser/writer work and preserve caller state.'',1;
+            THROW 56222,N''SSIS-001 requested lock timeout must be observed before preflight setup, parser evaluation, and TABLE-helper calls and preserve caller state, return code, outputs, and package data.'',1;
         SET @ScopePass+=1;
     END;
-    UPDATE #SsisLockTimeoutProbeControl SET [RaiseAfterSet]=1;
+    UPDATE #SsisLockTimeoutProbeControl SET [RaiseAtBeforePreflight]=1;
     TRUNCATE TABLE #SsisLockTimeoutObservation;
     DECLARE @ScopeFailureNumber int=NULL;
     BEGIN TRY
@@ -503,15 +511,92 @@ BEGIN TRY
         SET @ScopeFailureNumber=ERROR_NUMBER();
     END CATCH;
     IF @ScopeFailureNumber IS NULL OR @@LOCK_TIMEOUT<>{{TIMEOUT_SENTINEL}}
-       OR (SELECT COUNT(*) FROM #SsisLockTimeoutObservation WHERE [Stage]=''BeforeParser'' AND [TimeoutMs]=1)<>1
+       OR (SELECT COUNT(*) FROM #SsisLockTimeoutObservation WHERE [Stage]=''BeforePreflight'' AND [TimeoutMs]=1)<>1
        OR (SELECT COUNT(*) FROM #SsisLockTimeoutObservation)<>1
-        THROW 56223,N''SSIS-001 procedure-scoped lock timeout must restore the caller after a SQL exception.'',1;
+        THROW 56223,N''SSIS-001 procedure-scoped lock timeout must restore the caller after an in-scope SQL exception.'',1;
     DROP PROCEDURE [monitor].[InternalSsisPackageLockTimeoutScopeProbe];
     SET @ScopeProbeCreated=0;
 END TRY
 BEGIN CATCH
     IF @ScopeProbeCreated=1
         DROP PROCEDURE IF EXISTS [monitor].[InternalSsisPackageLockTimeoutScopeProbe];
+    THROW;
+END CATCH;
+
+-- A synthetic principal receives EXECUTE on only a same-owner wrapper.
+-- Four recursive wrapper steps exercise a bounded, ordinary nested call.
+DECLARE @RestrictedUser sysname=N''SsisLockTimeoutSyntheticPrincipal'';
+DECLARE @RestrictedWrapper sysname=N''InternalSsisLockTimeoutNestedCaller'';
+IF DATABASE_PRINCIPAL_ID(@RestrictedUser) IS NOT NULL
+   OR OBJECT_ID(N''monitor.InternalSsisLockTimeoutNestedCaller'',N''P'') IS NOT NULL
+    THROW 56227,N''SSIS-001 restricted-principal fixtures already exist; do not replace them.'',1;
+DECLARE @RestrictedUserCreated bit=0,@RestrictedWrapperCreated bit=0,@RestrictedContextEntered bit=0;
+DECLARE @RestrictedRevertCookie varbinary(100)=NULL,@RestrictedReturnCode int=-73131;
+DECLARE @RestrictedWrapperSql nvarchar(max)=N''CREATE PROCEDURE [monitor].[InternalSsisLockTimeoutNestedCaller]
+      @Depth tinyint
+    , @PackageXml xml
+    , @LockTimeoutMs int
+    , @Json nvarchar(max) OUTPUT
+    , @StatusCodeOut varchar(40) OUTPUT
+    , @IsPartialOut bit OUTPUT
+    , @ErrorNumberOut int OUTPUT
+    , @ErrorMessageOut nvarchar(2048) OUTPUT
+AS
+BEGIN
+    SET NOCOUNT ON;
+    DECLARE @ReturnCode int=0;
+    DECLARE @NextDepth tinyint=@Depth+1;
+    IF @Depth<4
+        EXEC @ReturnCode=[monitor].[InternalSsisLockTimeoutNestedCaller]
+              @Depth=@NextDepth,@PackageXml=@PackageXml,@LockTimeoutMs=@LockTimeoutMs
+            , @Json=@Json OUTPUT,@StatusCodeOut=@StatusCodeOut OUTPUT,@IsPartialOut=@IsPartialOut OUTPUT
+            , @ErrorNumberOut=@ErrorNumberOut OUTPUT,@ErrorMessageOut=@ErrorMessageOut OUTPUT;
+    ELSE
+        EXEC @ReturnCode=[monitor].[USP_SsisPackageAnalysis]
+              @PackageXml=@PackageXml,@LockTimeoutMs=@LockTimeoutMs,@ResultSetArt=''''NONE''''
+            , @JsonErzeugen=1,@Json=@Json OUTPUT,@StatusCodeOut=@StatusCodeOut OUTPUT,@IsPartialOut=@IsPartialOut OUTPUT
+            , @ErrorNumberOut=@ErrorNumberOut OUTPUT,@ErrorMessageOut=@ErrorMessageOut OUTPUT;
+    RETURN @ReturnCode;
+END;'';
+BEGIN TRY
+    CREATE USER [SsisLockTimeoutSyntheticPrincipal] WITHOUT LOGIN;
+    SET @RestrictedUserCreated=1;
+    EXEC [sys].[sp_executesql] @RestrictedWrapperSql;
+    SET @RestrictedWrapperCreated=1;
+    GRANT EXECUTE ON OBJECT::[monitor].[InternalSsisLockTimeoutNestedCaller] TO [SsisLockTimeoutSyntheticPrincipal];
+    DENY EXECUTE ON OBJECT::[monitor].[USP_SsisPackageAnalysis] TO [SsisLockTimeoutSyntheticPrincipal];
+    EXECUTE AS USER=N''SsisLockTimeoutSyntheticPrincipal'' WITH COOKIE INTO @RestrictedRevertCookie;
+    SET @RestrictedContextEntered=1;
+    IF ISNULL(HAS_PERMS_BY_NAME(N''monitor.USP_SsisPackageAnalysis'',N''OBJECT'',N''EXECUTE''),-1)<>0
+        THROW 56229,N''SSIS-001 restricted principal must not have effective EXECUTE on the public procedure.'',1;
+    SET @StatusCode=''OUTPUT_SENTINEL''; SET @IsPartial=0; SET @ErrorNumber=73131;
+    SET @ErrorMessage=N''OUTPUT_SENTINEL''; SET @Json=N''OUTPUT_SENTINEL'';
+    EXEC @RestrictedReturnCode=[monitor].[InternalSsisLockTimeoutNestedCaller]
+          @Depth=0,@PackageXml=@PackageXml,@LockTimeoutMs=1
+        , @Json=@Json OUTPUT,@StatusCodeOut=@StatusCode OUTPUT,@IsPartialOut=@IsPartial OUTPUT
+        , @ErrorNumberOut=@ErrorNumber OUTPUT,@ErrorMessageOut=@ErrorMessage OUTPUT;
+    REVERT WITH COOKIE=@RestrictedRevertCookie;
+    SET @RestrictedContextEntered=0;
+    IF @@LOCK_TIMEOUT<>{{TIMEOUT_SENTINEL}} OR @RestrictedReturnCode<>0
+       OR COALESCE(@StatusCode,'''')<>''AVAILABLE_LIMITED'' OR COALESCE(@IsPartial,0)<>1
+       OR @ErrorNumber IS NOT NULL OR @ErrorMessage IS NOT NULL
+       OR COALESCE(JSON_VALUE(@Json,''$.package[0].PackageName''),N'''')<>N''SSIS-001 Runtime Fixture''
+        THROW 56228,N''SSIS-001 restricted principal wrapper call must preserve package output, return code, and caller timeout.'',1;
+    DROP PROCEDURE [monitor].[InternalSsisLockTimeoutNestedCaller];
+    SET @RestrictedWrapperCreated=0;
+    DROP USER [SsisLockTimeoutSyntheticPrincipal];
+    SET @RestrictedUserCreated=0;
+END TRY
+BEGIN CATCH
+    IF @RestrictedContextEntered=1
+    BEGIN
+        REVERT WITH COOKIE=@RestrictedRevertCookie;
+        SET @RestrictedContextEntered=0;
+    END;
+    IF @RestrictedWrapperCreated=1
+        DROP PROCEDURE IF EXISTS [monitor].[InternalSsisLockTimeoutNestedCaller];
+    IF @RestrictedUserCreated=1
+        DROP USER IF EXISTS [SsisLockTimeoutSyntheticPrincipal];
     THROW;
 END CATCH;
 
