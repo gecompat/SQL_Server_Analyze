@@ -17,9 +17,176 @@ DECLARE @BId uniqueidentifier=NEWID(),@CId uniqueidentifier=NEWID(),@BName sysna
  @CreatedB bit=0,@CreatedC bit=0,@Case int=0,@Json nvarchar(max),@Status varchar(40),@Reason nvarchar(2048),
  @Abs bigint,@Pct decimal(9,4),@Limit int,@Duration int,@RequestedCandidate bigint,@RequestedHandover uniqueidentifier,
  @Failure nvarchar(2048),@i int,@Path nvarchar(128),@Extra nvarchar(max),@OriginalLock int=@@LOCK_TIMEOUT,
+ @MetricsCloneCreated bit=0,
  @OriginalX bit=CASE WHEN @@OPTIONS&16384=16384 THEN 1 ELSE 0 END;
 SET @BName=N'SSIS_SCOPE_'+LOWER(CONVERT(nvarchar(36),@BId));SET @CName=N'SSIS_SCOPE_'+LOWER(CONVERT(nvarchar(36),@CId));
 BEGIN TRY
+
+ -- Der Regressionstest bindet die Kopie an das Rohmodul und ersetzt nur die bekannte Call-Stelle.
+ DECLARE @MetricsCloneName sysname=N'InternalSsisExecutionMetrics_NullStatusRegression',
+  @MetricsModule nvarchar(max),@MetricsModuleAfter nvarchar(max),@MetricsClone nvarchar(max),@MetricsReconstructed nvarchar(max),
+  @MetricsOriginalPrefix nvarchar(max),@MetricsCloneDeclarationPrefix nvarchar(max),
+  @MetricsSignature nvarchar(max)=N'@RunOrdinal int,',
+  @MetricsInjectedSignature nvarchar(max)=N'@InjectedChildStatus varchar(40),@InjectedAnalysisJson nvarchar(max),',
+  @MetricsExpandedSignature nvarchar(max),
+  @MetricsChildCall nvarchar(max)=N'EXEC monitor.USP_SsisPackageModelAnalysis @IncludeExecutionScopes=1,@IncludePipelineCorrelation=1,@IncludePipelineDiagnostics=1,@ProjectModelsJson=@Models,@ScopeSnapshotJson=@Capture,@ScopeHandoverId=@handover,@ExecutionId=@execution,@MaxZeilen=0,@MaxDurationSeconds=@remaining,@LockTimeoutMs=@LockTimeoutMs,@ResultSetArt=''NONE'',@JsonErzeugen=1,@Json=@analysis OUTPUT,@StatusCodeOut=@childStatus OUTPUT;',
+  @MetricsChildStub nvarchar(max)=N'SET @analysis=@InjectedAnalysisJson;SET @childStatus=@InjectedChildStatus;',
+  @MetricsModuleLength int,@MetricsModuleHash varbinary(32),
+  @MetricsInjectedStatus varchar(40),@MetricsInjectedAnalysis nvarchar(max),
+  @MetricsAnalysisOut nvarchar(max),@MetricsStatusOut varchar(40),@MetricsBitnessOut bit,
+  @MetricsBoundOut bit,@MetricsJsonOut nvarchar(max),@MetricsErrorOut int,@MetricsReasonOut varchar(64),
+  @MetricsDeadline datetime2(3),@MetricsLockTimeout int=1000,@MetricsOuterLock int,
+  @MetricsSignatureAt int,@MetricsCallAt int,@MetricsStubAt int,@MetricsExpandedAt int;
+ IF OBJECT_ID(N'monitor.'+QUOTENAME(@MetricsCloneName),N'P') IS NOT NULL
+  THROW 57931,N'METRICS_NULL_CLONE_ALREADY_EXISTS',1;
+ SELECT @MetricsModule=OBJECT_DEFINITION(OBJECT_ID(N'monitor.InternalSsisExecutionMetrics'));
+ IF @MetricsModule IS NULL THROW 57931,N'METRICS_NULL_SOURCE_UNAVAILABLE',1;
+ SELECT @MetricsModuleLength=DATALENGTH(@MetricsModule),@MetricsModuleHash=HASHBYTES('SHA2_256',CONVERT(varbinary(max),@MetricsModule));
+ SET @MetricsSignatureAt=CHARINDEX(@MetricsSignature,@MetricsModule);
+ IF @MetricsSignatureAt=0 OR CHARINDEX(@MetricsSignature,@MetricsModule,@MetricsSignatureAt+1)>0
+  THROW 57931,N'METRICS_NULL_SIGNATURE_ANCHOR',1;
+ SET @MetricsOriginalPrefix=SUBSTRING(@MetricsModule,1,@MetricsSignatureAt-1);
+ SET @MetricsCloneDeclarationPrefix=N'CREATE PROCEDURE [monitor].'+QUOTENAME(@MetricsCloneName)+N' ';
+ SET @MetricsClone=@MetricsCloneDeclarationPrefix
+  +SUBSTRING(@MetricsModule,@MetricsSignatureAt,DATALENGTH(@MetricsModule)/2);
+ IF CHARINDEX(@MetricsCloneDeclarationPrefix,@MetricsClone)<>1
+  OR CHARINDEX(@MetricsCloneDeclarationPrefix,@MetricsClone,2)>0
+  THROW 57931,N'METRICS_NULL_CLONE_DECLARATION_ANCHOR',1;
+ SET @MetricsExpandedSignature=@MetricsSignature+@MetricsInjectedSignature;
+ SET @MetricsExpandedAt=CHARINDEX(@MetricsSignature,@MetricsClone);
+ IF @MetricsExpandedAt=0 OR CHARINDEX(@MetricsSignature,@MetricsClone,@MetricsExpandedAt+1)>0
+  THROW 57931,N'METRICS_NULL_CLONE_SIGNATURE_ANCHOR',1;
+ SET @MetricsClone=STUFF(@MetricsClone,@MetricsExpandedAt,LEN(@MetricsSignature),@MetricsExpandedSignature);
+ SET @MetricsCallAt=CHARINDEX(@MetricsChildCall,@MetricsClone);
+ IF @MetricsCallAt=0 OR CHARINDEX(@MetricsChildCall,@MetricsClone,@MetricsCallAt+1)>0
+  THROW 57931,N'METRICS_NULL_CHILD_CALL_ANCHOR',1;
+ SET @MetricsClone=STUFF(@MetricsClone,@MetricsCallAt,LEN(@MetricsChildCall),@MetricsChildStub);
+
+ -- Vor der Ausführung werden Call-Stelle, Parameterergänzung und Deklarationspräfix rückgängig gemacht.
+ SET @MetricsStubAt=CHARINDEX(@MetricsChildStub,@MetricsClone);
+ IF @MetricsStubAt=0 OR CHARINDEX(@MetricsChildStub,@MetricsClone,@MetricsStubAt+1)>0
+  THROW 57931,N'METRICS_NULL_CLONE_STUB_ANCHOR',1;
+ SET @MetricsReconstructed=STUFF(@MetricsClone,@MetricsStubAt,LEN(@MetricsChildStub),@MetricsChildCall);
+ SET @MetricsExpandedAt=CHARINDEX(@MetricsExpandedSignature,@MetricsReconstructed);
+ IF @MetricsExpandedAt=0 OR CHARINDEX(@MetricsExpandedSignature,@MetricsReconstructed,@MetricsExpandedAt+1)>0
+  THROW 57931,N'METRICS_NULL_CLONE_PARAMETER_ANCHOR',1;
+ SET @MetricsReconstructed=STUFF(@MetricsReconstructed,@MetricsExpandedAt,LEN(@MetricsExpandedSignature),@MetricsSignature);
+ IF CONVERT(varbinary(max),LEFT(@MetricsReconstructed,DATALENGTH(@MetricsCloneDeclarationPrefix)/2))
+   <>CONVERT(varbinary(max),@MetricsCloneDeclarationPrefix)
+  THROW 57931,N'METRICS_NULL_CLONE_DECLARATION_ANCHOR',1;
+ SET @MetricsReconstructed=@MetricsOriginalPrefix
+  +SUBSTRING(@MetricsReconstructed,DATALENGTH(@MetricsCloneDeclarationPrefix)/2+1,
+   DATALENGTH(@MetricsReconstructed)/2);
+ IF DATALENGTH(@MetricsReconstructed)<>@MetricsModuleLength
+  OR HASHBYTES('SHA2_256',CONVERT(varbinary(max),@MetricsReconstructed))<>@MetricsModuleHash
+  THROW 57931,N'METRICS_NULL_CLONE_REVERSAL_MISMATCH',1;
+ EXEC sys.sp_executesql @MetricsClone;
+ SET @MetricsCloneCreated=1;
+ SET @MetricsOuterLock=@@LOCK_TIMEOUT;
+
+ -- NULL-Status mit leerem Analyseobjekt muss geschlossen zurückkehren.
+ SET @MetricsInjectedAnalysis=N'{}';SET @MetricsInjectedStatus=NULL;
+ SET @MetricsAnalysisOut=N'PROBE_STALE';SET @MetricsStatusOut='PROBE_STALE';SET @MetricsBitnessOut=1;
+ SET @MetricsBoundOut=1;SET @MetricsJsonOut=N'PROBE_STALE';SET @MetricsErrorOut=-2147483647;SET @MetricsReasonOut='PROBE_STALE';
+ SET @MetricsDeadline=DATEADD(minute,1,SYSUTCDATETIME());
+ EXEC monitor.InternalSsisExecutionMetrics_NullStatusRegression
+  @RunOrdinal=0,@Models=@Models,@Capture=@Capture,@HandoverId=NULL,@ExecutionId=9007199254740993,
+  @Deadline=@MetricsDeadline,@LockTimeoutMs=@MetricsLockTimeout,
+  @InjectedChildStatus=@MetricsInjectedStatus,@InjectedAnalysisJson=@MetricsInjectedAnalysis,
+  @AnalysisJson=@MetricsAnalysisOut OUTPUT,@StatusCodeOut=@MetricsStatusOut OUTPUT,
+  @Use32BitRuntimeOut=@MetricsBitnessOut OUTPUT,@BoundOut=@MetricsBoundOut OUTPUT,
+  @MetricsJson=@MetricsJsonOut OUTPUT,@ErrorNumberOut=@MetricsErrorOut OUTPUT,@ReasonCodeOut=@MetricsReasonOut OUTPUT;
+ IF @MetricsBoundOut IS NULL OR @MetricsBoundOut<>0 OR @MetricsJsonOut IS NULL OR @MetricsJsonOut<>N'[]'
+  OR @MetricsAnalysisOut IS NULL OR @MetricsAnalysisOut<>@MetricsInjectedAnalysis OR @MetricsStatusOut IS NOT NULL
+  OR @MetricsBitnessOut IS NOT NULL OR @MetricsErrorOut IS NOT NULL OR @MetricsReasonOut IS NOT NULL
+  OR @@LOCK_TIMEOUT<>@MetricsOuterLock THROW 57931,N'METRICS_NULL_STATUS_EMPTY_ANALYSIS',1;
+
+ -- NULL-Status mit SQL-NULL-Analyse muss den NULL-Ausgang erhalten.
+ SET @MetricsInjectedAnalysis=NULL;SET @MetricsInjectedStatus=NULL;
+ SET @MetricsAnalysisOut=N'PROBE_STALE';SET @MetricsStatusOut='PROBE_STALE';SET @MetricsBitnessOut=1;
+ SET @MetricsBoundOut=1;SET @MetricsJsonOut=N'PROBE_STALE';SET @MetricsErrorOut=-2147483647;SET @MetricsReasonOut='PROBE_STALE';
+ SET @MetricsDeadline=DATEADD(minute,1,SYSUTCDATETIME());
+ EXEC monitor.InternalSsisExecutionMetrics_NullStatusRegression
+  @RunOrdinal=0,@Models=@Models,@Capture=@Capture,@HandoverId=NULL,@ExecutionId=9007199254740993,
+  @Deadline=@MetricsDeadline,@LockTimeoutMs=@MetricsLockTimeout,
+  @InjectedChildStatus=@MetricsInjectedStatus,@InjectedAnalysisJson=@MetricsInjectedAnalysis,
+  @AnalysisJson=@MetricsAnalysisOut OUTPUT,@StatusCodeOut=@MetricsStatusOut OUTPUT,
+  @Use32BitRuntimeOut=@MetricsBitnessOut OUTPUT,@BoundOut=@MetricsBoundOut OUTPUT,
+  @MetricsJson=@MetricsJsonOut OUTPUT,@ErrorNumberOut=@MetricsErrorOut OUTPUT,@ReasonCodeOut=@MetricsReasonOut OUTPUT;
+ IF @MetricsBoundOut IS NULL OR @MetricsBoundOut<>0 OR @MetricsJsonOut IS NULL OR @MetricsJsonOut<>N'[]'
+  OR @MetricsAnalysisOut IS NOT NULL OR @MetricsStatusOut IS NOT NULL OR @MetricsBitnessOut IS NOT NULL
+  OR @MetricsErrorOut IS NOT NULL OR @MetricsReasonOut IS NOT NULL OR @@LOCK_TIMEOUT<>@MetricsOuterLock
+  THROW 57931,N'METRICS_NULL_STATUS_NULL_ANALYSIS',1;
+
+ -- Ein nicht unterstützter Status muss erhalten, aber abgewiesen werden.
+ SET @MetricsInjectedAnalysis=N'{}';SET @MetricsInjectedStatus='UNSUPPORTED_STATUS';
+ SET @MetricsAnalysisOut=N'PROBE_STALE';SET @MetricsStatusOut='PROBE_STALE';SET @MetricsBitnessOut=1;
+ SET @MetricsBoundOut=1;SET @MetricsJsonOut=N'PROBE_STALE';SET @MetricsErrorOut=-2147483647;SET @MetricsReasonOut='PROBE_STALE';
+ SET @MetricsDeadline=DATEADD(minute,1,SYSUTCDATETIME());
+ EXEC monitor.InternalSsisExecutionMetrics_NullStatusRegression
+  @RunOrdinal=0,@Models=@Models,@Capture=@Capture,@HandoverId=NULL,@ExecutionId=9007199254740993,
+  @Deadline=@MetricsDeadline,@LockTimeoutMs=@MetricsLockTimeout,
+  @InjectedChildStatus=@MetricsInjectedStatus,@InjectedAnalysisJson=@MetricsInjectedAnalysis,
+  @AnalysisJson=@MetricsAnalysisOut OUTPUT,@StatusCodeOut=@MetricsStatusOut OUTPUT,
+  @Use32BitRuntimeOut=@MetricsBitnessOut OUTPUT,@BoundOut=@MetricsBoundOut OUTPUT,
+  @MetricsJson=@MetricsJsonOut OUTPUT,@ErrorNumberOut=@MetricsErrorOut OUTPUT,@ReasonCodeOut=@MetricsReasonOut OUTPUT;
+ IF @MetricsBoundOut IS NULL OR @MetricsBoundOut<>0 OR @MetricsJsonOut IS NULL OR @MetricsJsonOut<>N'[]'
+  OR @MetricsAnalysisOut IS NULL OR @MetricsAnalysisOut<>@MetricsInjectedAnalysis
+  OR @MetricsStatusOut IS NULL OR @MetricsStatusOut<>@MetricsInjectedStatus OR @MetricsBitnessOut IS NOT NULL
+  OR @MetricsErrorOut IS NOT NULL OR @MetricsReasonOut IS NOT NULL OR @@LOCK_TIMEOUT<>@MetricsOuterLock
+  THROW 57931,N'METRICS_UNSUPPORTED_STATUS_REJECTED',1;
+
+ -- Gebundener Status mit unbewiesener Pipelineabdeckung muss abgewiesen werden.
+ SET @MetricsInjectedStatus='SCOPE_CAPTURE_BOUND';
+ SET @MetricsInjectedAnalysis=N'{"pipelineCoverage":[{"StatusCode":"PIPELINE_BINDING_UNPROVEN"}]}';
+ SET @MetricsAnalysisOut=N'PROBE_STALE';SET @MetricsStatusOut='PROBE_STALE';SET @MetricsBitnessOut=1;
+ SET @MetricsBoundOut=1;SET @MetricsJsonOut=N'PROBE_STALE';SET @MetricsErrorOut=-2147483647;SET @MetricsReasonOut='PROBE_STALE';
+ SET @MetricsDeadline=DATEADD(minute,1,SYSUTCDATETIME());
+ EXEC monitor.InternalSsisExecutionMetrics_NullStatusRegression
+  @RunOrdinal=0,@Models=@Models,@Capture=@Capture,@HandoverId=NULL,@ExecutionId=9007199254740993,
+  @Deadline=@MetricsDeadline,@LockTimeoutMs=@MetricsLockTimeout,
+  @InjectedChildStatus=@MetricsInjectedStatus,@InjectedAnalysisJson=@MetricsInjectedAnalysis,
+  @AnalysisJson=@MetricsAnalysisOut OUTPUT,@StatusCodeOut=@MetricsStatusOut OUTPUT,
+  @Use32BitRuntimeOut=@MetricsBitnessOut OUTPUT,@BoundOut=@MetricsBoundOut OUTPUT,
+  @MetricsJson=@MetricsJsonOut OUTPUT,@ErrorNumberOut=@MetricsErrorOut OUTPUT,@ReasonCodeOut=@MetricsReasonOut OUTPUT;
+ IF @MetricsBoundOut IS NULL OR @MetricsBoundOut<>0 OR @MetricsJsonOut IS NULL OR @MetricsJsonOut<>N'[]'
+  OR @MetricsAnalysisOut IS NULL OR @MetricsAnalysisOut<>@MetricsInjectedAnalysis
+  OR @MetricsStatusOut IS NULL OR @MetricsStatusOut<>@MetricsInjectedStatus OR @MetricsBitnessOut IS NOT NULL
+  OR @MetricsErrorOut IS NOT NULL OR @MetricsReasonOut IS NOT NULL OR @@LOCK_TIMEOUT<>@MetricsOuterLock
+  THROW 57931,N'METRICS_PIPELINE_BINDING_REJECTED',1;
+
+ -- Gebundener Status ohne unbewiesene Pipelineabdeckung erzeugt Kennzahlen.
+ SET @MetricsInjectedAnalysis=N'{}';
+ SET @MetricsAnalysisOut=N'PROBE_STALE';SET @MetricsStatusOut='PROBE_STALE';SET @MetricsBitnessOut=1;
+ SET @MetricsBoundOut=0;SET @MetricsJsonOut=N'PROBE_STALE';SET @MetricsErrorOut=-2147483647;SET @MetricsReasonOut='PROBE_STALE';
+ SET @MetricsDeadline=DATEADD(minute,1,SYSUTCDATETIME());
+ EXEC monitor.InternalSsisExecutionMetrics_NullStatusRegression
+  @RunOrdinal=0,@Models=@Models,@Capture=@Capture,@HandoverId=NULL,@ExecutionId=9007199254740993,
+  @Deadline=@MetricsDeadline,@LockTimeoutMs=@MetricsLockTimeout,
+  @InjectedChildStatus=@MetricsInjectedStatus,@InjectedAnalysisJson=@MetricsInjectedAnalysis,
+  @AnalysisJson=@MetricsAnalysisOut OUTPUT,@StatusCodeOut=@MetricsStatusOut OUTPUT,
+  @Use32BitRuntimeOut=@MetricsBitnessOut OUTPUT,@BoundOut=@MetricsBoundOut OUTPUT,
+  @MetricsJson=@MetricsJsonOut OUTPUT,@ErrorNumberOut=@MetricsErrorOut OUTPUT,@ReasonCodeOut=@MetricsReasonOut OUTPUT;
+ IF @MetricsBoundOut IS NULL OR @MetricsBoundOut<>1 OR @MetricsJsonOut IS NULL OR @MetricsJsonOut=N'[]'
+  OR COALESCE(ISJSON(@MetricsJsonOut),0)<>1 OR NOT EXISTS
+   (SELECT 1 FROM OPENJSON(@MetricsJsonOut) WHERE JSON_VALUE([value],'$.MetricName')='EXECUTION_STATUS')
+  OR @MetricsAnalysisOut IS NULL OR @MetricsAnalysisOut<>@MetricsInjectedAnalysis
+  OR @MetricsStatusOut IS NULL OR @MetricsStatusOut<>@MetricsInjectedStatus OR @MetricsBitnessOut IS NOT NULL
+  OR @MetricsErrorOut IS NOT NULL OR @MetricsReasonOut IS NOT NULL OR @@LOCK_TIMEOUT<>@MetricsOuterLock
+  THROW 57931,N'METRICS_VALID_BINDING_REJECTED',1;
+
+ -- Die Definition des Produktionsobjekts muss während der Probe unverändert bleiben.
+ SELECT @MetricsModuleAfter=OBJECT_DEFINITION(OBJECT_ID(N'monitor.InternalSsisExecutionMetrics'));
+ IF @MetricsModuleAfter IS NULL OR DATALENGTH(@MetricsModuleAfter)<>@MetricsModuleLength
+  OR HASHBYTES('SHA2_256',CONVERT(varbinary(max),@MetricsModuleAfter))<>@MetricsModuleHash
+  THROW 57931,N'METRICS_NULL_SOURCE_MODULE_CHANGED',1;
+
+ IF @MetricsCloneCreated=1
+ BEGIN
+  DROP PROCEDURE monitor.InternalSsisExecutionMetrics_NullStatusRegression;
+  SET @MetricsCloneCreated=0;
+ END;
+ PRINT N'SSIS_EXECUTION_METRICS_NULL_GUARD_PASS cases=5';
  WHILE @Case<36
  BEGIN
   SELECT @B=@Capture,@C=@Capture,@CM=@Models,@Abs=NULL,@Pct=NULL,@Limit=1000,@Duration=30,
@@ -148,6 +315,7 @@ BEGIN TRY
  PRINT N'SSIS_EXECUTION_COMPARISON_PASS cases=38';
 END TRY
 BEGIN CATCH
+ IF @MetricsCloneCreated=1 DROP PROCEDURE monitor.InternalSsisExecutionMetrics_NullStatusRegression;
  IF @CreatedB=1 EXEC sys.sp_dropextendedproperty @name=@BName,@level0type=N'SCHEMA',@level0name=N'monitor',@level1type=N'PROCEDURE',@level1name=N'USP_SsisPackageModelAnalysis';
  IF @CreatedC=1 EXEC sys.sp_dropextendedproperty @name=@CName,@level0type=N'SCHEMA',@level0name=N'monitor',@level1type=N'PROCEDURE',@level1name=N'USP_SsisPackageModelAnalysis';
  THROW;
