@@ -422,20 +422,115 @@ CREATE TABLE #SsisLockScopePackageOne([seed] int NULL);
 CREATE TABLE #SsisLockScopePackageMax([seed] int NULL);
 CREATE TABLE #SsisLockScopePackageDefault([seed] int NULL);
 DECLARE @ScopeDefinition nvarchar(max)=OBJECT_DEFINITION(OBJECT_ID(N''monitor.USP_SsisPackageAnalysis''));
-DECLARE @ScopeHeader nvarchar(max)=CASE
-    WHEN CHARINDEX(N''CREATE OR ALTER PROCEDURE [monitor].[USP_SsisPackageAnalysis]'',@ScopeDefinition)>0
-        THEN N''CREATE OR ALTER PROCEDURE [monitor].[USP_SsisPackageAnalysis]''
-    WHEN CHARINDEX(N''CREATE PROCEDURE [monitor].[USP_SsisPackageAnalysis]'',@ScopeDefinition)>0
-        THEN N''CREATE PROCEDURE [monitor].[USP_SsisPackageAnalysis]''
-    WHEN CHARINDEX(N''ALTER PROCEDURE [monitor].[USP_SsisPackageAnalysis]'',@ScopeDefinition)>0
-        THEN N''ALTER PROCEDURE [monitor].[USP_SsisPackageAnalysis]''
-    ELSE NULL END;
+DECLARE @ScopePublicIdentifier nvarchar(128)=N''[monitor].[USP_SsisPackageAnalysis]'';
+DECLARE @ScopeHeader nvarchar(512)=NULL,@ScopeHeaderCandidate nvarchar(512)=NULL,@ScopeHeaderNormalized nvarchar(512)=NULL,@ScopeHeaderKeywordCopy nvarchar(512)=NULL;
+DECLARE @ScopeHeaderPrefix nvarchar(128)=NULL,@ScopeAnchorDiagnostic nvarchar(2048);
+DECLARE @ScopeDefinitionLength bigint=COALESCE(DATALENGTH(@ScopeDefinition)/2,0);
+DECLARE @ScopeScanLimit int=4096,@ScopeScan int=1,@ScopeHeaderStart int=NULL,@ScopeHeaderEnd int=NULL;
+DECLARE @ScopeCurrentChar nchar(1),@ScopeBlockEnd int,@ScopeNestedStart int,@ScopeLineCr int,@ScopeLineLf int,@ScopeLineEnd int;
+DECLARE @ScopePrefixScanComplete bit=CASE WHEN @ScopeDefinition IS NULL THEN 0 ELSE 1 END;
+DECLARE @ScopeHeaderBounded bit=0,@ScopeHeaderFormAccepted bit=0;
+DECLARE @ScopeIdentifierPosition int=0,@ScopeIdentifierOccurrences int=0,@ScopeHeaderCount int=0;
+DECLARE @ScopeWhitespacePass int,@ScopeSeparatorPosition int,@ScopeHeaderIdentityExact bit=0;
 DECLARE @ScopeSelfCall nvarchar(max)=N''EXEC @ScopedReturnCodeOut = [monitor].[USP_SsisPackageAnalysis]'';
 DECLARE @ScopeBeforePreflight nvarchar(max)=N''CREATE ''+N''TABLE [#SsisPackageAnalysis_ResultTables]'';
 DECLARE @ScopeParser nvarchar(max)=N''IF @PackageXml IS NULL'';
 DECLARE @ScopeTable nvarchar(max)=N''DECLARE @TargetTable sysname;'';
-DECLARE @ScopeHeaderCount int=CASE WHEN @ScopeDefinition IS NULL OR @ScopeHeader IS NULL THEN 0
-    ELSE (DATALENGTH(@ScopeDefinition)-DATALENGTH(REPLACE(@ScopeDefinition,@ScopeHeader,N'''')))/NULLIF(DATALENGTH(@ScopeHeader),0) END;
+
+-- Skip only bounded leading SQL whitespace and comments; reject nested or unterminated block comments.
+IF @ScopePrefixScanComplete=1
+BEGIN
+    WHILE @ScopeScan<=@ScopeScanLimit
+    BEGIN
+        IF @ScopeScan>@ScopeDefinitionLength
+            BREAK;
+        SET @ScopeCurrentChar=SUBSTRING(@ScopeDefinition,@ScopeScan,1);
+        IF @ScopeCurrentChar IN (N'' '',NCHAR(9),NCHAR(10),NCHAR(13))
+            SET @ScopeScan+=1;
+        ELSE IF SUBSTRING(@ScopeDefinition,@ScopeScan,2)=N''/*''
+        BEGIN
+            SET @ScopeBlockEnd=CHARINDEX(N''*/'',@ScopeDefinition,@ScopeScan+2);
+            SET @ScopeNestedStart=CHARINDEX(N''/*'',@ScopeDefinition,@ScopeScan+2);
+            IF @ScopeBlockEnd=0 OR @ScopeBlockEnd+1>@ScopeScanLimit
+               OR (@ScopeNestedStart>0 AND @ScopeNestedStart<@ScopeBlockEnd)
+            BEGIN
+                SET @ScopePrefixScanComplete=0;
+                BREAK;
+            END;
+            SET @ScopeScan=@ScopeBlockEnd+2;
+        END
+        ELSE IF SUBSTRING(@ScopeDefinition,@ScopeScan,2)=N''--''
+        BEGIN
+            SET @ScopeLineCr=CHARINDEX(NCHAR(13),@ScopeDefinition,@ScopeScan+2);
+            SET @ScopeLineLf=CHARINDEX(NCHAR(10),@ScopeDefinition,@ScopeScan+2);
+            SET @ScopeLineEnd=CASE
+                WHEN @ScopeLineCr=0 THEN @ScopeLineLf
+                WHEN @ScopeLineLf=0 THEN @ScopeLineCr
+                WHEN @ScopeLineCr<@ScopeLineLf THEN @ScopeLineCr
+                ELSE @ScopeLineLf END;
+            IF @ScopeLineEnd=0 OR @ScopeLineEnd>@ScopeScanLimit
+            BEGIN
+                SET @ScopePrefixScanComplete=0;
+                BREAK;
+            END;
+            SET @ScopeScan=@ScopeLineEnd+1;
+        END
+        ELSE
+            BREAK;
+    END;
+    IF @ScopeScan>@ScopeScanLimit
+        SET @ScopePrefixScanComplete=0;
+    IF @ScopePrefixScanComplete=1 AND @ScopeScan<=@ScopeDefinitionLength
+        SET @ScopeHeaderStart=@ScopeScan;
+END;
+
+-- Bind only the first exact procedure identifier after the declaration start.
+IF @ScopeHeaderStart IS NOT NULL
+BEGIN
+    SET @ScopeIdentifierPosition=CHARINDEX(
+          @ScopePublicIdentifier COLLATE SQL_Latin1_General_CP1_CS_AS
+        , @ScopeDefinition COLLATE SQL_Latin1_General_CP1_CS_AS
+        , @ScopeHeaderStart);
+    IF @ScopeIdentifierPosition>0
+    BEGIN
+        SET @ScopeIdentifierOccurrences=1;
+        SET @ScopeHeaderEnd=@ScopeIdentifierPosition+LEN(@ScopePublicIdentifier)-1;
+        IF @ScopeHeaderEnd-@ScopeHeaderStart+1<=512
+        BEGIN
+            SET @ScopeHeaderBounded=1;
+            SET @ScopeHeaderCandidate=SUBSTRING(@ScopeDefinition,@ScopeHeaderStart,@ScopeHeaderEnd-@ScopeHeaderStart+1);
+            SET @ScopeHeaderNormalized=REPLACE(REPLACE(REPLACE(@ScopeHeaderCandidate,NCHAR(9),N'' ''),NCHAR(10),N'' ''),NCHAR(13),N'' '');
+            SET @ScopeHeaderNormalized=LTRIM(RTRIM(@ScopeHeaderNormalized));
+            SET @ScopeWhitespacePass=0;
+            WHILE CHARINDEX(N''  '',@ScopeHeaderNormalized)>0 AND @ScopeWhitespacePass<512
+            BEGIN
+                SET @ScopeHeaderNormalized=REPLACE(@ScopeHeaderNormalized,N''  '',N'' '');
+                SET @ScopeWhitespacePass+=1;
+            END;
+            IF CHARINDEX(N''  '',@ScopeHeaderNormalized)=0
+            BEGIN
+                SET @ScopeHeaderKeywordCopy=UPPER(@ScopeHeaderNormalized);
+                SET @ScopeHeaderPrefix=RTRIM(LEFT(@ScopeHeaderKeywordCopy,LEN(@ScopeHeaderKeywordCopy)-LEN(@ScopePublicIdentifier)));
+                SET @ScopeSeparatorPosition=LEN(@ScopeHeaderNormalized)-LEN(@ScopePublicIdentifier);
+                SET @ScopeHeaderIdentityExact=CASE
+                    WHEN RIGHT(@ScopeHeaderNormalized,LEN(@ScopePublicIdentifier)) COLLATE SQL_Latin1_General_CP1_CS_AS
+                         = @ScopePublicIdentifier COLLATE SQL_Latin1_General_CP1_CS_AS
+                     AND SUBSTRING(@ScopeHeaderNormalized,@ScopeSeparatorPosition,1)=N'' ''
+                        THEN 1 ELSE 0 END;
+                IF @ScopeHeaderIdentityExact=1
+                   AND @ScopeHeaderPrefix IN
+                       (N''CREATE PROCEDURE'',N''CREATE PROC'',N''CREATE OR ALTER PROCEDURE'',
+                        N''CREATE OR ALTER PROC'',N''ALTER PROCEDURE'',N''ALTER PROC'')
+                BEGIN
+                    SET @ScopeHeaderFormAccepted=1;
+                    SET @ScopeHeader=@ScopeHeaderCandidate;
+                    SET @ScopeHeaderCount=(DATALENGTH(@ScopeDefinition)-DATALENGTH(REPLACE(@ScopeDefinition,@ScopeHeader,N'''')))/NULLIF(DATALENGTH(@ScopeHeader),0);
+                END;
+            END;
+        END;
+    END;
+END;
+
 DECLARE @ScopeSelfCallCount int=CASE WHEN @ScopeDefinition IS NULL THEN 0
     ELSE (DATALENGTH(@ScopeDefinition)-DATALENGTH(REPLACE(@ScopeDefinition,@ScopeSelfCall,N'''')))/NULLIF(DATALENGTH(@ScopeSelfCall),0) END;
 DECLARE @ScopePreflightCount int=CASE WHEN @ScopeDefinition IS NULL THEN 0
@@ -444,15 +539,15 @@ DECLARE @ScopeParserCount int=CASE WHEN @ScopeDefinition IS NULL THEN 0
     ELSE (DATALENGTH(@ScopeDefinition)-DATALENGTH(REPLACE(@ScopeDefinition,@ScopeParser,N'''')))/NULLIF(DATALENGTH(@ScopeParser),0) END;
 DECLARE @ScopeTableCount int=CASE WHEN @ScopeDefinition IS NULL THEN 0
     ELSE (DATALENGTH(@ScopeDefinition)-DATALENGTH(REPLACE(@ScopeDefinition,@ScopeTable,N'''')))/NULLIF(DATALENGTH(@ScopeTable),0) END;
-IF @ScopeDefinition IS NULL OR @ScopeHeader IS NULL OR @ScopeHeaderCount<>1
+SET @ScopeAnchorDiagnostic=CONCAT(
+    N''SSIS-001 source-bound probe anchors; definition='',CASE WHEN @ScopeDefinition IS NULL THEN 0 ELSE 1 END,
+    N''; prefix-scan='',@ScopePrefixScanComplete,N''; object-token='',@ScopeIdentifierOccurrences,
+    N''; bounded-header='',@ScopeHeaderBounded,N''; accepted-form='',@ScopeHeaderFormAccepted,
+    N''; header-count='',@ScopeHeaderCount,N''; self-call='',@ScopeSelfCallCount,
+    N''; preflight='',@ScopePreflightCount,N''; parser='',@ScopeParserCount,N''; table='',@ScopeTableCount);
+IF @ScopeDefinition IS NULL OR @ScopeHeaderCount<>1
    OR @ScopeSelfCallCount<>1 OR @ScopePreflightCount<>1 OR @ScopeParserCount<>1 OR @ScopeTableCount<>1
-BEGIN
-    DECLARE @ScopeAnchorDiagnostic nvarchar(2048)=CONCAT(
-        N''SSIS-001 source-bound probe anchor counts; definition='',CASE WHEN @ScopeDefinition IS NULL THEN 0 ELSE 1 END,
-        N''; header='',@ScopeHeaderCount,N''; self-call='',@ScopeSelfCallCount,
-        N''; preflight='',@ScopePreflightCount,N''; parser='',@ScopeParserCount,N''; table='',@ScopeTableCount);
     THROW 56220,@ScopeAnchorDiagnostic,1;
-END;
 DECLARE @ScopeProbeHeader nvarchar(max)=N''CREATE PROCEDURE [monitor].[InternalSsisPackageLockTimeoutScopeProbe]'';
 DECLARE @ScopeProbeSelfCall nvarchar(max)=N''EXEC @ScopedReturnCodeOut = [monitor].[InternalSsisPackageLockTimeoutScopeProbe]'';
 DECLARE @ScopeInjectedBeforePreflight nvarchar(max)=N''INSERT #SsisLockTimeoutObservation([Stage],[TimeoutMs]) VALUES (''''BeforePreflight'''',@@LOCK_TIMEOUT);
