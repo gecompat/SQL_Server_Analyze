@@ -431,31 +431,37 @@ DECLARE @ScopeHeader nvarchar(max)=CASE
         THEN N''ALTER PROCEDURE [monitor].[USP_SsisPackageAnalysis]''
     ELSE NULL END;
 DECLARE @ScopeSelfCall nvarchar(max)=N''EXEC @ScopedReturnCodeOut = [monitor].[USP_SsisPackageAnalysis]'';
-DECLARE @ScopeBeforePreflight nvarchar(max)=N''    CREATE TABLE [#SsisPackageAnalysis_ResultTables]'';
-DECLARE @ScopeParser nvarchar(max)=N''    IF @StatusCode = ''''AVAILABLE_LIMITED''''
-       AND @PackageXml.exist(''''/*[local-name(.)="Executable" and namespace-uri(.)="www.microsoft.com/SqlServer/Dts"]'''') = 0'';
-DECLARE @ScopeTable nvarchar(max)=N''    IF @TableRequested = 1
-    BEGIN
-        DECLARE @TargetTable sysname;'';
-IF @ScopeDefinition IS NULL OR @ScopeHeader IS NULL
-   OR (DATALENGTH(@ScopeDefinition)-DATALENGTH(REPLACE(@ScopeDefinition,@ScopeHeader,N'''')))<>DATALENGTH(@ScopeHeader)
-   OR (DATALENGTH(@ScopeDefinition)-DATALENGTH(REPLACE(@ScopeDefinition,@ScopeSelfCall,N'''')))<>DATALENGTH(@ScopeSelfCall)
-   OR (DATALENGTH(@ScopeDefinition)-DATALENGTH(REPLACE(@ScopeDefinition,@ScopeBeforePreflight,N'''')))<>DATALENGTH(@ScopeBeforePreflight)
-   OR (DATALENGTH(@ScopeDefinition)-DATALENGTH(REPLACE(@ScopeDefinition,@ScopeParser,N'''')))<>DATALENGTH(@ScopeParser)
-   OR (DATALENGTH(@ScopeDefinition)-DATALENGTH(REPLACE(@ScopeDefinition,@ScopeTable,N'''')))<>DATALENGTH(@ScopeTable)
-    THROW 56220,N''SSIS-001 current module does not match the unique lock-scope probe anchors.'',1;
+DECLARE @ScopeBeforePreflight nvarchar(max)=N''CREATE ''+N''TABLE [#SsisPackageAnalysis_ResultTables]'';
+DECLARE @ScopeParser nvarchar(max)=N''IF @PackageXml IS NULL'';
+DECLARE @ScopeTable nvarchar(max)=N''DECLARE @TargetTable sysname;'';
+DECLARE @ScopeHeaderCount int=CASE WHEN @ScopeDefinition IS NULL OR @ScopeHeader IS NULL THEN 0
+    ELSE (DATALENGTH(@ScopeDefinition)-DATALENGTH(REPLACE(@ScopeDefinition,@ScopeHeader,N'''')))/NULLIF(DATALENGTH(@ScopeHeader),0) END;
+DECLARE @ScopeSelfCallCount int=CASE WHEN @ScopeDefinition IS NULL THEN 0
+    ELSE (DATALENGTH(@ScopeDefinition)-DATALENGTH(REPLACE(@ScopeDefinition,@ScopeSelfCall,N'''')))/NULLIF(DATALENGTH(@ScopeSelfCall),0) END;
+DECLARE @ScopePreflightCount int=CASE WHEN @ScopeDefinition IS NULL THEN 0
+    ELSE (DATALENGTH(@ScopeDefinition)-DATALENGTH(REPLACE(@ScopeDefinition,@ScopeBeforePreflight,N'''')))/NULLIF(DATALENGTH(@ScopeBeforePreflight),0) END;
+DECLARE @ScopeParserCount int=CASE WHEN @ScopeDefinition IS NULL THEN 0
+    ELSE (DATALENGTH(@ScopeDefinition)-DATALENGTH(REPLACE(@ScopeDefinition,@ScopeParser,N'''')))/NULLIF(DATALENGTH(@ScopeParser),0) END;
+DECLARE @ScopeTableCount int=CASE WHEN @ScopeDefinition IS NULL THEN 0
+    ELSE (DATALENGTH(@ScopeDefinition)-DATALENGTH(REPLACE(@ScopeDefinition,@ScopeTable,N'''')))/NULLIF(DATALENGTH(@ScopeTable),0) END;
+IF @ScopeDefinition IS NULL OR @ScopeHeader IS NULL OR @ScopeHeaderCount<>1
+   OR @ScopeSelfCallCount<>1 OR @ScopePreflightCount<>1 OR @ScopeParserCount<>1 OR @ScopeTableCount<>1
+BEGIN
+    DECLARE @ScopeAnchorDiagnostic nvarchar(2048)=CONCAT(
+        N''SSIS-001 source-bound probe anchor counts; definition='',CASE WHEN @ScopeDefinition IS NULL THEN 0 ELSE 1 END,
+        N''; header='',@ScopeHeaderCount,N''; self-call='',@ScopeSelfCallCount,
+        N''; preflight='',@ScopePreflightCount,N''; parser='',@ScopeParserCount,N''; table='',@ScopeTableCount);
+    THROW 56220,@ScopeAnchorDiagnostic,1;
+END;
 DECLARE @ScopeProbeHeader nvarchar(max)=N''CREATE PROCEDURE [monitor].[InternalSsisPackageLockTimeoutScopeProbe]'';
 DECLARE @ScopeProbeSelfCall nvarchar(max)=N''EXEC @ScopedReturnCodeOut = [monitor].[InternalSsisPackageLockTimeoutScopeProbe]'';
-DECLARE @ScopeInjectedBeforePreflight nvarchar(max)=N''    INSERT #SsisLockTimeoutObservation([Stage],[TimeoutMs]) VALUES (''''BeforePreflight'''',@@LOCK_TIMEOUT);
+DECLARE @ScopeInjectedBeforePreflight nvarchar(max)=N''INSERT #SsisLockTimeoutObservation([Stage],[TimeoutMs]) VALUES (''''BeforePreflight'''',@@LOCK_TIMEOUT);
     IF EXISTS(SELECT 1 FROM #SsisLockTimeoutProbeControl WHERE [RaiseAtBeforePreflight]=1)
         THROW 56224,N''''SSIS-001 deliberate in-procedure lock-timeout scope failure.'''',1;
-    CREATE TABLE [#SsisPackageAnalysis_ResultTables]'';
-DECLARE @ScopeInjectedParser nvarchar(max)=N''    INSERT #SsisLockTimeoutObservation([Stage],[TimeoutMs]) VALUES (''''BeforeParser'''',@@LOCK_TIMEOUT);
-    IF @StatusCode = ''''AVAILABLE_LIMITED''''
-       AND @PackageXml.exist(''''/*[local-name(.)="Executable" and namespace-uri(.)="www.microsoft.com/SqlServer/Dts"]'''') = 0'';
-DECLARE @ScopeInjectedTable nvarchar(max)=N''    IF @TableRequested = 1
-    BEGIN
-        INSERT #SsisLockTimeoutObservation([Stage],[TimeoutMs]) VALUES (''''BeforeTableHelper'''',@@LOCK_TIMEOUT);
+    '' + @ScopeBeforePreflight;
+DECLARE @ScopeInjectedParser nvarchar(max)=N''INSERT #SsisLockTimeoutObservation([Stage],[TimeoutMs]) VALUES (''''BeforeParser'''',@@LOCK_TIMEOUT);
+    IF @PackageXml IS NULL'';
+DECLARE @ScopeInjectedTable nvarchar(max)=N''INSERT #SsisLockTimeoutObservation([Stage],[TimeoutMs]) VALUES (''''BeforeTableHelper'''',@@LOCK_TIMEOUT);
         DECLARE @TargetTable sysname;'';
 DECLARE @ScopeProbeDefinition nvarchar(max)=REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(@ScopeDefinition,@ScopeHeader,@ScopeProbeHeader),@ScopeSelfCall,@ScopeProbeSelfCall),@ScopeBeforePreflight,@ScopeInjectedBeforePreflight),@ScopeParser,@ScopeInjectedParser),@ScopeTable,@ScopeInjectedTable);
 DECLARE @ScopeRoundTrip nvarchar(max)=REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(@ScopeProbeDefinition,@ScopeProbeHeader,@ScopeHeader),@ScopeProbeSelfCall,@ScopeSelfCall),@ScopeInjectedBeforePreflight,@ScopeBeforePreflight),@ScopeInjectedParser,@ScopeParser),@ScopeInjectedTable,@ScopeTable);
