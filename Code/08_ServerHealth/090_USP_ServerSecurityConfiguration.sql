@@ -9,8 +9,10 @@ Stand        : 2026-07-15
 Zweck        : Die Procedure liest ausgewählte sicherheitsrelevante Serveroptionen,
                Dienstinformationen und Servereigenschaften, ohne sie zu verändern.
 Datenquellen : sys.configurations, sys.dm_server_services, SERVERPROPERTY
-Vertrag      : Resultset 1 ist immer Modulstatus; @ResultSetArt=NONE unterdrückt
-               Resultsets und liefert Status ausschließlich über OUTPUT-Parameter.
+Vertrag      : Im regulären Pfad liefert RAW zuerst Modulstatus, danach vier technische Fachresultsets.
+               CONSOLE gibt nur die Console-Helferausgabe für configuration aus; TABLE schreibt ausschließlich das gemappte configuration-Resultset.
+               CONSOLE und TABLE liefern kein separates Modulstatusresultset; NONE unterdrückt Resultsets.
+               Optionales JSON wird im regulären Pfad unabhängig von @ResultSetArt durch @JsonErzeugen gesteuert; im Hilfezweig wird es nicht erzeugt.
 ===============================================================================
 */
 

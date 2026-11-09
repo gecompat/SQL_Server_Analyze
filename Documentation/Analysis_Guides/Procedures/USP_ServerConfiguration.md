@@ -92,7 +92,7 @@ EXEC [monitor].[USP_ServerConfiguration] @Hilfe = 1;
 
 ## Resultsets und Leserichtung
 
-Der TABLE-Vertrag registriert ausschließlich `configuration`. Der Modulstatus wird als Resultset ausgegeben, sofern die Resultsetausgabe nicht unterdrückt ist. RAW liefert das Konfigurationsresultset; CONSOLE rendert dieselbe Fachquelle. JSON enthält meta, configuration und warnings. Die Konfigurationstabelle ist nicht mit anders granularen Resultsets zu summieren.
+Der TABLE-Vertrag registriert ausschließlich `configuration`. RAW liefert zuerst Modulstatus, danach das technische Konfigurationsresultset. CONSOLE rendert ausschließlich die Konfiguration; TABLE schreibt ausschließlich das gemappte `configuration`-Ziel. Beide liefern kein separates Modulstatusresultset; `NONE` unterdrückt Resultsets. Optionales JSON enthält `meta`, `configuration` und `warnings` und wird im regulären Pfad unabhängig von `@ResultSetArt` durch `@JsonErzeugen` gesteuert; der Hilfezweig erzeugt es nicht. Die Konfigurationstabelle ist nicht mit anders granularen Resultsets zu summieren.
 
 ## Eine Zeile bedeutet
 

@@ -9,7 +9,10 @@ Stand        : 2026-07-15
 Zweck        : Die Procedure liest Serverkonfigurationswerte und ergänzt
                kontextabhängige Reviewhinweise als aktuellen Katalogsnapshot.
 Datenquellen : sys.configurations, sys.dm_os_sys_info
-Vertrag      : Resultset 1 ist immer Modulstatus; @ResultSetArt=NONE unterdrückt Resultsets; RAW und CONSOLE liefern unterschiedliche Projektionen. Optional JSON.
+Vertrag      : Im regulären Pfad liefert RAW zuerst Modulstatus, danach ein technisches Fachresultset.
+               CONSOLE gibt nur die Console-Helferausgabe für configuration aus; TABLE schreibt ausschließlich das gemappte configuration-Resultset.
+               CONSOLE und TABLE liefern kein separates Modulstatusresultset; NONE unterdrückt Resultsets.
+               Optionales JSON wird im regulären Pfad unabhängig von @ResultSetArt durch @JsonErzeugen gesteuert; im Hilfezweig wird es nicht erzeugt.
 ===============================================================================
 */
 

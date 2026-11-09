@@ -1974,6 +1974,66 @@
       "source": "AI_Metadata/Internal_Documentation/Quality/Development_Waves_2026-10.md",
       "target": "Documentation/Analysis_Guides/Procedures/USP_ServerNuma.md",
       "classification": "product-reference"
+    },
+    {
+      "source": "AI_Metadata/Internal_Documentation/Quality/Development_Waves_2026-10.md",
+      "target": "Code/08_ServerHealth/040_USP_TempDBConfiguration.sql",
+      "classification": "product-reference"
+    },
+    {
+      "source": "AI_Metadata/Internal_Documentation/Quality/Development_Waves_2026-10.md",
+      "target": "Documentation/Analysis_Guides/Procedures/USP_TempDBConfiguration.md",
+      "classification": "product-reference"
+    },
+    {
+      "source": "AI_Metadata/Internal_Documentation/Quality/Development_Waves_2026-10.md",
+      "target": "Code/08_ServerHealth/050_USP_ServerConfiguration.sql",
+      "classification": "product-reference"
+    },
+    {
+      "source": "AI_Metadata/Internal_Documentation/Quality/Development_Waves_2026-10.md",
+      "target": "Documentation/Analysis_Guides/Procedures/USP_ServerConfiguration.md",
+      "classification": "product-reference"
+    },
+    {
+      "source": "AI_Metadata/Internal_Documentation/Quality/Development_Waves_2026-10.md",
+      "target": "Code/08_ServerHealth/060_USP_TraceFlags.sql",
+      "classification": "product-reference"
+    },
+    {
+      "source": "AI_Metadata/Internal_Documentation/Quality/Development_Waves_2026-10.md",
+      "target": "Documentation/Analysis_Guides/Procedures/USP_TraceFlags.md",
+      "classification": "product-reference"
+    },
+    {
+      "source": "AI_Metadata/Internal_Documentation/Quality/Development_Waves_2026-10.md",
+      "target": "Code/08_ServerHealth/070_USP_StartupParameters.sql",
+      "classification": "product-reference"
+    },
+    {
+      "source": "AI_Metadata/Internal_Documentation/Quality/Development_Waves_2026-10.md",
+      "target": "Documentation/Analysis_Guides/Procedures/USP_StartupParameters.md",
+      "classification": "product-reference"
+    },
+    {
+      "source": "AI_Metadata/Internal_Documentation/Quality/Development_Waves_2026-10.md",
+      "target": "Code/08_ServerHealth/080_USP_OSInformation.sql",
+      "classification": "product-reference"
+    },
+    {
+      "source": "AI_Metadata/Internal_Documentation/Quality/Development_Waves_2026-10.md",
+      "target": "Documentation/Analysis_Guides/Procedures/USP_OSInformation.md",
+      "classification": "product-reference"
+    },
+    {
+      "source": "AI_Metadata/Internal_Documentation/Quality/Development_Waves_2026-10.md",
+      "target": "Code/08_ServerHealth/090_USP_ServerSecurityConfiguration.sql",
+      "classification": "product-reference"
+    },
+    {
+      "source": "AI_Metadata/Internal_Documentation/Quality/Development_Waves_2026-10.md",
+      "target": "Documentation/Analysis_Guides/Procedures/USP_ServerSecurityConfiguration.md",
+      "classification": "product-reference"
     }
   ]
 }
