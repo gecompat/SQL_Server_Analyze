@@ -50836,12 +50836,15 @@ GO
 Objekt       : monitor.USP_CriticalEngineEvents
 Version      : 1.0.0
 Stand        : 2026-07-17
-Zweck        : Liest begrenzte kritische Ereignisse aus vorhandenen
+Zweck        : Liest ausgewählte kritische Ereignisse aus vorhandenen
                XEL-Dateien der benannten Extended-Events-Session und optional
                einen einmaligen sys.sp_server_diagnostics-Snapshot.
 Nebenwirkung : Keine XE- oder Serveränderung. Eventfiles werden nur gelesen.
                sp_server_diagnostics läuft ausschließlich als One-Shot.
-Eigenlast    : Eventfile-Lesen MEDIUM und begrenzt; XML-Transfer opt-in.
+Eigenlast    : Eventfile-Lesen MEDIUM. Positive @MaxZeilen-Werte begrenzen
+               das gefilterte XEL-Kandidatenset vor XML-Extraktion und
+               Severity-Auswertung, garantieren aber keine Begrenzung des
+               physischen Dateilesens. XML-Transfer ist opt-in.
 ===============================================================================
 */
 CREATE OR ALTER PROCEDURE [monitor].[USP_CriticalEngineEvents]
