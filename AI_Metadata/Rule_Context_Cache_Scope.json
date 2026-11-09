@@ -1944,6 +1944,16 @@
       "source": "AI_Metadata/Internal_Documentation/Quality/Development_Waves_2026-10.md",
       "target": "Documentation/Analysis_Guides/Procedures/USP_PlanDetails.md",
       "classification": "product-reference"
+    },
+    {
+      "source": "AI_Metadata/Internal_Documentation/Quality/Development_Waves_2026-10.md",
+      "target": "Code/08_ServerHealth/030_USP_ServerMemory.sql",
+      "classification": "product-reference"
+    },
+    {
+      "source": "AI_Metadata/Internal_Documentation/Quality/Development_Waves_2026-10.md",
+      "target": "Documentation/Analysis_Guides/Procedures/USP_ServerMemory.md",
+      "classification": "product-reference"
     }
   ]
 }
