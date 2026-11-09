@@ -57630,8 +57630,10 @@ GO
 Objekt       : monitor.USP_ServerHealthAnalysis
 Version      : 3.2.0
 Stand        : 2026-07-19
-Zweck        : Orchestriert alle Server-Health-Module. RAW/CONSOLE werden an
-               Child-Module weitergereicht; JSON enthält benannte Modulobjekte.
+Zweck        : Orchestriert alle Server-Health-Module. RAW reicht Child-Resultsets
+               durch; CONSOLE zeigt die beschriftete Modulstatusliste.
+               TABLE schreibt ausschließlich moduleStatus; NONE unterdrückt Resultsets.
+               Optionales JSON enthält benannte Modulobjekte.
 Änderungen   : 3.2.0 - Bereits erhobene Integritäts-, Kapazitäts- und
                          Buffer-Pool-Ergebnisse im Findings-Child wiederverwendet.
                3.1.0 - Spezialfallmodule und normalisierte Befunde als opt-in.
