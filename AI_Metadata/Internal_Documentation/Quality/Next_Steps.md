@@ -5,7 +5,7 @@
 
 ## Aktuelle Orchestrierung
 
-Die [Entwicklungsplanung](Development_Waves_2026-10.md) ist die maßgebliche Quelle für Reihenfolge, Zuständigkeit und nächste ausführbare Welle. PR #656 ist mit der ersten Main-Nachprüfung abgeschlossen; Umfang und Evidenzgrenzen stehen unter [Abschluss von PR #656](Development_Waves_2026-10.md#abgeschlossen-pr-656). Die nächste ausführbare Welle präzisiert den einzelnen weitergereichten Infrastrukturparameter `PrintMeldungen`. Der frühere Status- und Ausführungsverlauf bleibt im [Historienarchiv](Next_Steps_History_2026-11-08.md) erhalten.
+Die [Entwicklungsplanung](Development_Waves_2026-10.md) ist die maßgebliche Quelle für Reihenfolge, Zuständigkeit und nächste ausführbare Welle. PR #657 ist mit der ersten Main-Nachprüfung abgeschlossen; Umfang und Evidenzgrenzen stehen unter [Abschluss von PR #657](Development_Waves_2026-10.md#abgeschlossen-pr-657). Die nächste ausführbare Welle präzisiert zwei weitergereichte Schalterverträge: `HighImpactConfirmed` im Infrastrukturwrapper und `SystemdatenbankenEinbeziehen` im PlanCache-Wrapper einschließlich des zugehörigen Showplan-Vertrags. Der frühere Status- und Ausführungsverlauf bleibt im [Historienarchiv](Next_Steps_History_2026-11-08.md) erhalten.
 
 Die Fortsetzung richtet sich nach der tatsächlich erteilten Benutzerautorisierung und deren privater Checkpointfortschreibung. Dieses Dokument veröffentlicht keine privaten Grenzen oder Verbrauchswerte. Heartbeat, Sessionwechsel und PR-Abschluss setzen die Fortschreibung nicht zurück. Bestehende Sicherheits-, Datenschutz-, Lizenz-, Identitäts-, Laufzeit- und Lieferbedingungen gelten.
 
