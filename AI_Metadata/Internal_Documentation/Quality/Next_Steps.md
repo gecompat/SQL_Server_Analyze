@@ -5,7 +5,7 @@
 
 ## Aktuelle Orchestrierung
 
-Die [Entwicklungsplanung](Development_Waves_2026-10.md) ist die maßgebliche Quelle für Reihenfolge, Zuständigkeit und nächste ausführbare Welle. PR #662 ist mit der ersten Main-Nachprüfung abgeschlossen; Umfang und Evidenzgrenzen stehen unter [Abschluss von PR #662](Development_Waves_2026-10.md#abgeschlossen-pr-662). Die nächste ausführbare Welle gleicht zwei Meldungsschalterverträge mit ihrer tatsächlichen Weitergabe und der fehlenden eigenen Statusmeldung im Parent ab. Der frühere Status- und Ausführungsverlauf bleibt im [Historienarchiv](Next_Steps_History_2026-11-08.md) erhalten.
+Die [Entwicklungsplanung](Development_Waves_2026-10.md) ist die maßgebliche Quelle für Reihenfolge, Zuständigkeit und nächste ausführbare Welle. PR #663 ist mit der ersten Main-Nachprüfung abgeschlossen; Umfang und Evidenzgrenzen stehen unter [Abschluss von PR #663](Development_Waves_2026-10.md#abgeschlossen-pr-663). Die nächste ausführbare Welle gleicht die Meldungsweitergabe von PlanCache und den tatsächlichen Showplan-Warnkanal ab. Die Restbewertung bleibt innerhalb bestehender Freigaben an konkrete Quellbefunde gebunden. Der frühere Status- und Ausführungsverlauf bleibt im [Historienarchiv](Next_Steps_History_2026-11-08.md) erhalten.
 
 Die Fortsetzung richtet sich nach der tatsächlich erteilten Benutzerautorisierung und deren privater Checkpointfortschreibung. Dieses Dokument veröffentlicht keine privaten Grenzen oder Verbrauchswerte. Heartbeat, Sessionwechsel und PR-Abschluss setzen die Fortschreibung nicht zurück. Bestehende Sicherheits-, Datenschutz-, Lizenz-, Identitäts-, Laufzeit- und Lieferbedingungen gelten.
 
