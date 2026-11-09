@@ -9,7 +9,10 @@ Stand        : 2026-07-15
 Zweck        : Die Procedure liefert CPU-, Scheduler- und NUMA-Topologie
                einschließlich der momentanen Schedulerlast.
 Datenquellen : sys.dm_os_sys_info, sys.dm_os_schedulers, sys.dm_os_nodes
-Vertrag      : Resultset 1 ist immer Modulstatus; @ResultSetArt=NONE unterdrückt Resultsets; RAW und CONSOLE liefern unterschiedliche Projektionen. Optional JSON.
+Vertrag      : Im regulären Pfad liefert RAW zuerst Modulstatus, danach drei technische Fachresultsets.
+               CONSOLE gibt nur die Console-Helferausgabe der CPU-Topologie aus; TABLE schreibt ausschließlich das gemappte cpuTopology-Resultset.
+               Beide liefern kein separates Modulstatusresultset; NONE unterdrückt Resultsets.
+               Optionales JSON wird im regulären Pfad unabhängig von @ResultSetArt durch @JsonErzeugen gesteuert; im Hilfezweig wird es nicht erzeugt.
 ===============================================================================
 */
 
