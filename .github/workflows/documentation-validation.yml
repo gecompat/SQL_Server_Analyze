@@ -1,678 +1,233 @@
-name: PR670 Main qualification after service recovery
+name: Documentation validation
+
 on:
+  pull_request:
+    paths:
+      - '.github/workflows/documentation-validation.yml'
+      - 'AGENTS.md'
+      - '.ai/**'
+      - 'README.md'
+      - 'AI_Metadata/**/*.md'
+      - 'Code/**/*.sql'
+      - 'Code/Install/*.ps1'
+      - 'Code/Install/*.py'
+      - 'Code/Tests/Integration/Deployment_*.py'
+      - 'Code/Tests/Static/**'
+      - 'Code/Tools/Rule_Context_Cache.py'
+      - 'Code/Tools/Linux_Cgroup_Values.py'
+      - 'Code/Tools/Linux_Cgroup_Metadata.py'
+      - 'Code/Tools/Linux_Cgroup_Native.py'
+      - 'Code/Tools/Linux_Cgroup_Reader.py'
+      - 'AI_Metadata/Rule_Context_Cache_Scope.json'
+      - 'Code/Tests/Integration/191_Standalone_Installer_Contract.ps1'
+      - 'Code/Tests/Integration/192_ExecutionPlanAnalysis_Installer_Contract.ps1'
+      - 'Code/Tests/Integration/194_SnapshotBaseline_Installer_Contract.ps1'
+      - 'Documentation/**/*.md'
+      - 'Metadata/**'
   push:
-    branches: [codex/ops-installer-upload]
-    paths: [.github/workflows/documentation-validation.yml]
+    branches:
+      - main
+    paths:
+      - '.github/workflows/documentation-validation.yml'
+      - 'AGENTS.md'
+      - '.ai/**'
+      - 'README.md'
+      - 'AI_Metadata/**/*.md'
+      - 'Code/**/*.sql'
+      - 'Code/Install/*.ps1'
+      - 'Code/Install/*.py'
+      - 'Code/Tests/Integration/Deployment_*.py'
+      - 'Code/Tests/Static/**'
+      - 'Code/Tools/Rule_Context_Cache.py'
+      - 'Code/Tools/Linux_Cgroup_Values.py'
+      - 'Code/Tools/Linux_Cgroup_Metadata.py'
+      - 'Code/Tools/Linux_Cgroup_Native.py'
+      - 'Code/Tools/Linux_Cgroup_Reader.py'
+      - 'AI_Metadata/Rule_Context_Cache_Scope.json'
+      - 'Code/Tests/Integration/191_Standalone_Installer_Contract.ps1'
+      - 'Code/Tests/Integration/192_ExecutionPlanAnalysis_Installer_Contract.ps1'
+      - 'Code/Tests/Integration/194_SnapshotBaseline_Installer_Contract.ps1'
+      - 'Documentation/**/*.md'
+      - 'Metadata/**'
+  workflow_dispatch:
+
 permissions:
   contents: read
-  actions: read
-  pull-requests: read
-concurrency:
-  group: pr670-main-after-service-recovery
-  cancel-in-progress: false
-jobs:
-  bind:
-    if: github.repository == 'gecompat/SQL_Server_Analyze' && github.ref == 'refs/heads/codex/ops-installer-upload' && github.event_name == 'push' && github.event.before == '5df4af26dd3a0d906493a798787bebd51e49c92d' && github.run_attempt == 1
-    runs-on: ubuntu-24.04
-    timeout-minutes: 3
-    steps:
-      - uses: actions/checkout@v6
-        with:
-          ref: 5b8e75b1b6c29420627bcb61a7196b1458e03dcc
-          fetch-depth: 0
-          persist-credentials: false
-      - name: Verify target Main graph and retained original gates
-        shell: bash
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          set -euo pipefail
-          test "$(git rev-parse HEAD)" = '5b8e75b1b6c29420627bcb61a7196b1458e03dcc'
-          test "$(git rev-parse HEAD^{tree})" = 'c5de0fd5e5c2062148d89e968078267cc2a6a959'
-          test "$(git show -s --format=%P HEAD)" = 'a070b28c31ffe1229a55745786eb9b6e800a87d0 c283ab740716b8ca85fb22bf4d6801a1a9eff23e'
-          test "$(gh api repos/gecompat/SQL_Server_Analyze/git/ref/heads/main --jq .object.sha)" = '5b8e75b1b6c29420627bcb61a7196b1458e03dcc'
-          test "$(gh api repos/gecompat/SQL_Server_Analyze/pulls/670 --jq .head.sha)" = 'c283ab740716b8ca85fb22bf4d6801a1a9eff23e'
-          test "$(gh api repos/gecompat/SQL_Server_Analyze/pulls/670 --jq .merged)" = true
-          test "$(gh api repos/gecompat/SQL_Server_Analyze/pulls/670 --jq .merge_commit_sha)" = '5b8e75b1b6c29420627bcb61a7196b1458e03dcc'
-          for run_id in 42671590065 42671590102; do
-            test "$(gh api repos/gecompat/SQL_Server_Analyze/actions/runs/$run_id --jq .head_sha)" = '5b8e75b1b6c29420627bcb61a7196b1458e03dcc'
-            test "$(gh api repos/gecompat/SQL_Server_Analyze/actions/runs/$run_id --jq .run_attempt)" = 1
-            test "$(gh api repos/gecompat/SQL_Server_Analyze/actions/runs/$run_id --jq .conclusion)" = success
-          done
-          for run_id in 42671590417 42671589910 42671590179; do
-            test "$(gh api repos/gecompat/SQL_Server_Analyze/actions/runs/$run_id --jq .head_sha)" = '5b8e75b1b6c29420627bcb61a7196b1458e03dcc'
-            test "$(gh api repos/gecompat/SQL_Server_Analyze/actions/runs/$run_id --jq .run_attempt)" = 1
-            test "$(gh api repos/gecompat/SQL_Server_Analyze/actions/runs/$run_id --jq .conclusion)" = failure
-          done
-          printf 'Target Main: %s\nBase: %s\nRecovery run on helper; no Main/source mutation.\n' '5b8e75b1b6c29420627bcb61a7196b1458e03dcc' 'a070b28c31ffe1229a55745786eb9b6e800a87d0' >> "$GITHUB_STEP_SUMMARY"
+  statuses: write
 
-  impact:
-    needs: bind
-    name: Select functional impact
+concurrency:
+  group: documentation-validation-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    name: Validate impacted documentation contracts
     runs-on: ubuntu-24.04
-    outputs:
-      run_runtime: ${{ steps.select.outputs.run_runtime }}
-      full_suite: ${{ steps.select.outputs.full_suite }}
-      run_release_tests: ${{ steps.select.outputs.run_release_tests }}
-      permission_matrix: ${{ steps.select.outputs.permission_matrix }}
-      regex_matrix: ${{ steps.select.outputs.regex_matrix }}
-      plan_standalone: ${{ steps.select.outputs.plan_standalone }}
-      ops008_agent_history: ${{ steps.select.outputs.ops008_agent_history }}
-      compatibility_matrix: ${{ steps.select.outputs.compatibility_matrix }}
-      snapshot_required: ${{ steps.snapshot.outputs.run_runtime }}
-      snapshot_runtime: ${{ steps.snapshot.outputs.snapshot_runtime }}
-      snapshot_concurrency: ${{ steps.snapshot.outputs.snapshot_concurrency }}
+    timeout-minutes: 15
 
     steps:
       - name: Check out repository history
         uses: actions/checkout@v6
         with:
-          ref: 5b8e75b1b6c29420627bcb61a7196b1458e03dcc
           fetch-depth: 0
           persist-credentials: false
           show-progress: false
 
-      - id: select
-        name: Select executable SQL impact
+      - id: impact
+        name: Select impacted documentation checks
         shell: bash
         env:
-          BASE_SHA: a070b28c31ffe1229a55745786eb9b6e800a87d0
-          HEAD_SHA: 5b8e75b1b6c29420627bcb61a7196b1458e03dcc
+          BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before || '' }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
         run: |
           set -euo pipefail
-          if [[ ! "$BASE_SHA" =~ ^[0-9a-f]{40}$ ]] || \
-             ! git cat-file -e "${BASE_SHA}^{commit}" || \
-             ! git cat-file -e "${HEAD_SHA}^{commit}" || \
-             ! git diff --quiet "$BASE_SHA" "$HEAD_SHA" -- \
-               Code/Tests/Static/925_Select_CI_Impact.py \
-               .github/workflows/ci-functional-impact.yml; then
-            python3 ./Code/Tests/Static/925_Select_CI_Impact.py --self-test
+
+          changed_file="$RUNNER_TEMP/documentation-changed-files.txt"
+          if [ "${{ github.event_name }}" = 'workflow_dispatch' ] || \
+             [[ ! "$BASE_SHA" =~ ^[0-9a-f]{40}$ ]] || \
+             [[ "$BASE_SHA" =~ ^0{40}$ ]]; then
+            git ls-files > "$changed_file"
+            manual_full=true
           else
-            echo 'Impact-selector self-test not applicable to this change.'
+            git diff --name-only "$BASE_SHA" "$HEAD_SHA" > "$changed_file"
+            manual_full=false
           fi
-          python3 ./Code/Tests/Static/925_Select_CI_Impact.py \
-            --repository-root . \
-            --base-sha "$BASE_SHA" \
-            --head-sha "$HEAD_SHA" \
-            --scope core \
-            --github-output "$GITHUB_OUTPUT" \
-            --plan-json "$RUNNER_TEMP/ci-impact.json"
+
+          set_flag() {
+            local name="$1"
+            local pattern="$2"
+            local value=false
+            if grep -Eq "$pattern" "$changed_file"; then
+              value=true
+            fi
+            echo "$name=$value" >> "$GITHUB_OUTPUT"
+          }
+
+          set_flag docs '^(AGENTS\.md|README\.md|Documentation/.*\.md|AI_Metadata/(CONTINUATION_GUIDE|PROJECT_CONTEXT)\.md|AI_Metadata/Internal_Documentation/.*\.md|Metadata/Quality/CI_Test_Policy\.csv|Code/Tests/Static/915_Validate_Documentation_Style\.py|\.github/workflows/documentation-validation\.yml)$'
+          set_flag navigator '^(Code/01_Common/(020_VW_AnalyseClassCatalog|021_VW_AnalysisCatalog|022_VW_AnalysisSearchTerm|023_VW_AnalysisRelation|100_USP_AnalysisNavigator)\.sql|Code/Install/Install_(All|ExecutionPlanAnalysis)\.sql|Code/Tests/Static/905_Validate_Analysis_Navigator\.py|Metadata/Inventory/(Objects|Parameters|ResultSets)\.csv|Documentation/Analysis_Guides/Start_Here\.md|Documentation/Reference/Analysis_Navigator\.md|Documentation/Analysis_Guides/Procedures/USP_AnalysisNavigator\.md)$'
+          set_flag waits '^(Code/01_Common/07[45].*WaitType.*\.sql|Code/Tests/Static/940_Validate_Wait_Type_Catalog\.py|Documentation/Operations/Wait_Type_Catalog\.md|AI_Metadata/Internal_Documentation/Quality/Wait_Type_Curation\.md|Metadata/Quality/Wait_Type_Curation_Evidence\.json)$'
+          set_flag procedures '^(Code/.*\.sql|Documentation/Analysis_Guides/Procedures/.*\.md|Code/Tests/Static/900_Validate_Analysis_Documentation\.ps1)$'
+          set_flag installers '^(Code/Install/.*\.ps1|Code/Tests/Integration/(191_Standalone|192_ExecutionPlanAnalysis|194_SnapshotBaseline)_Installer_Contract\.ps1)$'
+          set_flag linux_reader '^(\.github/workflows/documentation-validation\.yml|Code/Tools/Linux_Cgroup_(Native|Reader|Values|Metadata)\.py|Code/Tests/Static/(Validate_Linux_Cgroup_(Reader|Values)|Invoke-StaticContractSuite)\.(py|ps1)|AI_Metadata/Internal_Documentation/Architecture/Linux_Cgroup_Resource_Boundary_Dossier\.md|Documentation/Analysis_Guides/Linux_Cgroup_Reader(_Contract)?\.md)$'
+
+          check_network=false
+          if grep -Fxq 'Code/Tests/Static/980_Validate_External_Documentation_Links.py' "$changed_file"; then
+            check_network=true
+          elif [ "$manual_full" = false ] && \
+               git diff --unified=0 "$BASE_SHA" "$HEAD_SHA" -- \
+                 | grep -E '^\+[^+].*https?://' >/dev/null; then
+            check_network=true
+          elif [ "$manual_full" = true ]; then
+            check_network=true
+          fi
+
+          echo "check_network=$check_network" >> "$GITHUB_OUTPUT"
+          echo "manual_full=$manual_full" >> "$GITHUB_OUTPUT"
+          echo "changed_files_path=$changed_file" >> "$GITHUB_OUTPUT"
+          suite_scope=Full
+          if [ "$manual_full" = false ] && [ -s "$changed_file" ] && \
+             ! grep -Ev '^(AGENTS\.md|\.ai/.*|AI_Metadata/CONTINUATION_GUIDE\.md|AI_Metadata/Rule_Context_Cache(_Scope\.json|\.md)|AI_Metadata/Internal_Documentation/Architecture/Foundation_[^/]+\.(md|json)|Code/Tools/Rule_Context_Cache\.py|Code/Tests/Static/Validate_Rule_Context_Cache\.py)$' "$changed_file"; then
+            suite_scope=FoundationGovernance
+          fi
+          echo "suite_scope=$suite_scope" >> "$GITHUB_OUTPUT"
+
           {
-            echo '## Functional impact selection'
-            echo '```json'
-            cat "$RUNNER_TEMP/ci-impact.json"
-            echo '```'
+            echo '## Documentation validation impact'
+            echo ''
+            echo "- Documentation/style: $(grep -Eq '^(AGENTS\.md|README\.md|Documentation/.*\.md|AI_Metadata/(CONTINUATION_GUIDE|PROJECT_CONTEXT)\.md|AI_Metadata/Internal_Documentation/.*\.md|Metadata/Quality/CI_Test_Policy\.csv|Code/Tests/Static/915_Validate_Documentation_Style\.py|\.github/workflows/documentation-validation\.yml)$' "$changed_file" && echo true || echo false)"
+            echo "- Static contract scope: $suite_scope"
           } >> "$GITHUB_STEP_SUMMARY"
 
-      - id: snapshot
-        name: Select optional Snapshot impact
-        shell: bash
-        env:
-          BASE_SHA: a070b28c31ffe1229a55745786eb9b6e800a87d0
-          HEAD_SHA: 5b8e75b1b6c29420627bcb61a7196b1458e03dcc
+      - name: Run repository static contract suite
+        shell: pwsh
         run: |
-          set -euo pipefail
-          python3 ./Code/Tests/Static/925_Select_CI_Impact.py \
-            --repository-root . \
-            --base-sha "$BASE_SHA" \
-            --head-sha "$HEAD_SHA" \
-            --scope snapshot \
-            --github-output "$GITHUB_OUTPUT" \
-            --plan-json "$RUNNER_TEMP/snapshot-impact.json"
-          {
-            echo '## Snapshot impact selection'
-            echo '```json'
-            cat "$RUNNER_TEMP/snapshot-impact.json"
-            echo '```'
-          } >> "$GITHUB_STEP_SUMMARY"
+          $logPath = Join-Path $env:RUNNER_TEMP 'analysis-documentation-validation.log'
+          & pwsh -NoLogo -NoProfile -File ./Code/Tests/Static/Invoke-StaticContractSuite.ps1 `
+              -Scope '${{ steps.impact.outputs.suite_scope }}' `
+              -SelfTestMode Changed `
+              -ChangedFilesPath '${{ steps.impact.outputs.changed_files_path }}' `
+              -ExcludePrivacy -ExcludeImpactSelector *>&1 |
+              Tee-Object -FilePath $logPath
+          exit $LASTEXITCODE
 
-      - name: Require documentation-only impact
-        shell: bash
-        env:
-          CORE_REQUIRED: ${{ steps.select.outputs.run_runtime }}
-          SNAPSHOT_REQUIRED: ${{ steps.snapshot.outputs.run_runtime }}
-        run: |
-          set -euo pipefail
-          test "$CORE_REQUIRED" = false
-          test "$SNAPSHOT_REQUIRED" = false
-
-  runtime:
-    if: needs.impact.outputs.run_runtime == 'true' || needs.impact.outputs.snapshot_required == 'true'
-    needs: impact
-    name: SQL Server 2025 impacted runtime
-    runs-on: ubuntu-24.04
-    timeout-minutes: 45
-
-    steps:
-      - name: Check out repository
-        uses: actions/checkout@v6
+      - name: Set up Python 3.11 for Linux cgroup reader contracts
+        if: steps.impact.outputs.linux_reader == 'true'
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
         with:
-          ref: 5b8e75b1b6c29420627bcb61a7196b1458e03dcc
-          fetch-depth: 0
-          persist-credentials: false
-          show-progress: false
+          python-version: '3.11'
+          architecture: x64
+          check-latest: false
 
-      - name: Prepare isolated SQL files
+      - name: Run Linux cgroup parser and portable reader contracts
+        if: steps.impact.outputs.linux_reader == 'true'
         shell: bash
-        env:
-          RUN_OPS008_AGENT_HISTORY: ${{ needs.impact.outputs.ops008_agent_history }}
         run: |
           set -euo pipefail
-          cp -R Code "$RUNNER_TEMP/Code"
-          find "$RUNNER_TEMP/Code" -type f -name '*.sql' -print0 \
-            | xargs -0 perl -pi -e 's/\[DeineDatenbank\]/[SQLServerAnalyzeTest]/g'
-          python3 ./Code/Tests/Integration/Deployment_Prepare_Runtime.py \
-            --output "$RUNNER_TEMP/Code/Install/generated/Deployment_Runtime.generated.sql"
-          if [ "$RUN_OPS008_AGENT_HISTORY" = 'true' ]; then
-            mkdir -p "$RUNNER_TEMP/Code/Tests/ServerHealth"
-            perl -pe 's/\[DeineDatenbank\]/[SQLServerAnalyzeTest]/g' \
-              TestLab/Scenarios/OPS-008/agent-history.sql \
-              > "$RUNNER_TEMP/Code/Tests/ServerHealth/OPS008_AgentHistory_CI.sql"
-          fi
+          python - <<'PY'
+          import platform
+          import sys
+          if sys.version_info[:2] != (3, 11) or platform.machine().lower() not in {'x86_64', 'amd64'}:
+              raise SystemExit('LINUX_CGROUP_RUNTIME_MISMATCH')
+          print('LINUX_CGROUP_RUNTIME_311_X64')
+          PY
+          python Code/Tests/Static/Validate_Linux_Cgroup_Values.py --repository-root . --self-test
+          python Code/Tests/Static/Validate_Linux_Cgroup_Reader.py --repository-root . --self-test
 
-      - name: Build impact-selected SQLCMD runner
+      - name: Run required native Linux cgroup reader contracts
+        if: steps.impact.outputs.linux_reader == 'true'
         shell: bash
-        env:
-          BASE_SHA: a070b28c31ffe1229a55745786eb9b6e800a87d0
-          HEAD_SHA: 5b8e75b1b6c29420627bcb61a7196b1458e03dcc
+        run: python Code/Tests/Static/Validate_Linux_Cgroup_Reader.py --repository-root . --native
+
+      - name: Validate installer contracts
+        if: steps.impact.outputs.installers == 'true'
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          foreach ($contract in @(
+              './Code/Tests/Integration/191_Standalone_Installer_Contract.ps1',
+              './Code/Tests/Integration/192_ExecutionPlanAnalysis_Installer_Contract.ps1',
+              './Code/Tests/Integration/194_SnapshotBaseline_Installer_Contract.ps1'
+          )) {
+              & pwsh -NoLogo -NoProfile -File $contract
+              if ($LASTEXITCODE -ne 0) {
+                  throw "Installer contract failed: $contract"
+              }
+          }
+
+      - name: Validate external documentation links
+        if: steps.impact.outputs.check_network == 'true'
+        shell: bash
         run: |
           set -euo pipefail
-          python3 ./Code/Tests/Static/925_Select_CI_Impact.py \
+          python3 ./Code/Tests/Static/980_Validate_External_Documentation_Links.py \
             --repository-root . \
-            --base-sha "$BASE_SHA" \
-            --head-sha "$HEAD_SHA" \
-            --scope core \
-            --write-runner "$RUNNER_TEMP/Code/Tests/Run_Impact_Gate.sql"
+            --self-test \
+            --check-network
 
-      - name: Generate ephemeral SQL credential
-        shell: bash
-        run: |
-          set -euo pipefail
-          credential="A$(openssl rand -hex 16)a1!"
-          echo "::add-mask::$credential"
-          echo "MSSQL_EPHEMERAL_CREDENTIAL=$credential" >> "$GITHUB_ENV"
-
-      - name: Start SQL Server 2025 Linux
-        shell: bash
-        run: |
-          set -euo pipefail
-          image_reference='mcr.microsoft.com/mssql/server:2025-latest'
-          docker pull --quiet "$image_reference" >/dev/null
-          image_digest=$(docker image inspect --format='{{index .RepoDigests 0}}' "$image_reference")
-          if [[ ! "$image_digest" =~ ^mcr\.microsoft\.com/mssql/server@sha256:[0-9a-f]{64}$ ]]; then
-            echo 'SQL Server container image digest validation failed.'
-            exit 1
-          fi
-          echo "SQLSERVER_IMAGE_REFERENCE=$image_reference" >> "$GITHUB_ENV"
-          echo "SQLSERVER_IMAGE_DIGEST=$image_digest" >> "$GITHUB_ENV"
-          docker run --name sqlserver-analyze-impact-2025 \
-            --hostname sqlserver-analyze-ci \
-            --detach \
-            --env ACCEPT_EULA=Y \
-            --env MSSQL_PID=Developer \
-            --env MSSQL_COLLATION=SQL_Latin1_General_CP1_CS_AS \
-            --env MSSQL_SA_PASSWORD="$MSSQL_EPHEMERAL_CREDENTIAL" \
-            --volume "$RUNNER_TEMP/Code:/work/Code:ro" \
-            "$image_digest" >/dev/null
-
-      - name: Wait for SQL Server readiness
-        shell: bash
-        run: |
-          set -euo pipefail
-          sqlcmd_path=''
-          ready=0
-          readiness_query="SET NOCOUNT ON; IF TRY_CONVERT(int,SERVERPROPERTY(N'ProductMajorVersion'))<>17 THROW 50000,N'VERSION_NOT_READY',1; IF CONVERT(sysname,SERVERPROPERTY(N'Collation'))<>N'SQL_Latin1_General_CP1_CS_AS' OR CONVERT(sysname,DATABASEPROPERTYEX(N'tempdb',N'Collation'))<>N'SQL_Latin1_General_CP1_CS_AS' THROW 50001,N'COLLATION_NOT_READY',1; SELECT 1;"
-          for attempt in $(seq 1 120); do
-            sqlcmd_path=$(docker exec sqlserver-analyze-impact-2025 bash -lc \
-              "if [ -x /opt/mssql-tools18/bin/sqlcmd ]; then echo /opt/mssql-tools18/bin/sqlcmd; elif [ -x /opt/mssql-tools/bin/sqlcmd ]; then echo /opt/mssql-tools/bin/sqlcmd; fi" \
-              || true)
-            if [ -n "$sqlcmd_path" ] && docker exec \
-              --env SQLCMDPASSWORD="$MSSQL_EPHEMERAL_CREDENTIAL" \
-              sqlserver-analyze-impact-2025 \
-              "$sqlcmd_path" -S localhost -U sa -C -b -Q "$readiness_query" >/dev/null 2>&1; then
-              ready=1
-              break
-            fi
-            sleep 2
-          done
-          if [ "$ready" -ne 1 ]; then
-            docker logs --tail 40 sqlserver-analyze-impact-2025
-            exit 1
-          fi
-          echo "SQLCMD_PATH=$sqlcmd_path" >> "$GITHUB_ENV"
-
-      - name: Qualify changed CI lock diagnostics
-        if: github.event_name == 'pull_request'
-        shell: bash
-        env:
-          BASE_SHA: a070b28c31ffe1229a55745786eb9b6e800a87d0
-          HEAD_SHA: 5b8e75b1b6c29420627bcb61a7196b1458e03dcc
-        run: |
-          set -euo pipefail
-          if ! git diff --quiet "$BASE_SHA" "$HEAD_SHA" -- \
-            .github/workflows/ci-functional-impact.yml \
-            Code/Tests/Integration/CI_LockTimeout_Diagnostics.py \
-            Code/Tests/Integration/CI_LockTimeout_Diagnostics_Tests.py; then
-            python3 ./Code/Tests/Integration/CI_LockTimeout_Diagnostics_Tests.py
-            timeout 60s python3 ./Code/Tests/Integration/CI_LockTimeout_Diagnostics_Tests.py \
-              --sql-probe "$SQLCMD_PATH" --artifacts "$RUNNER_TEMP/ci-lock-probe"
-          fi
-
-      - name: Run native deployment regression
-        shell: bash
-        run: |
-          set -euo pipefail
-          deployment_result=0
-          python3 ./Code/Tests/Integration/CI_LockTimeout_Diagnostics.py \
-            --sqlcmd "$SQLCMD_PATH" --deployment \
-            --log "$RUNNER_TEMP/sqlserver-analyze-deployment-runtime.log" \
-            --artifacts "$RUNNER_TEMP/ci-lock-diagnostics/deployment" || deployment_result=$?
-          if [ "$deployment_result" != '0' ]; then
-            echo 'Native deployment regression failed.'
-            grep -B 2 -A 4 -E 'Msg [0-9]+|Sqlcmd: Error|Error:' "$RUNNER_TEMP/ci-lock-diagnostics/deployment/impact.log" | tail -n 160 || true
-            exit "$deployment_result"
-          fi
-
-      - name: Run impacted contracts
-        shell: bash
-        env:
-          AUTO_COMPATIBILITY_MATRIX: ${{ needs.impact.outputs.compatibility_matrix }}
-          MANUAL_COMPATIBILITY_MATRIX: ${{ github.event_name == 'workflow_dispatch' && inputs.compatibility_matrix }}
-          LABELED_COMPATIBILITY_MATRIX: ${{ github.event_name == 'pull_request' && contains(github.event.pull_request.labels.*.name, 'ci:compatibility-matrix') }}
-          RUN_RELEASE_TESTS: ${{ needs.impact.outputs.run_release_tests }}
-          RUN_PERMISSION_MATRIX: ${{ needs.impact.outputs.permission_matrix }}
-          RUN_REGEX_MATRIX: ${{ needs.impact.outputs.regex_matrix }}
-        run: |
-          set -euo pipefail
-          levels=(170)
-          if [ "$AUTO_COMPATIBILITY_MATRIX" = 'true' ] || \
-             [ "$MANUAL_COMPATIBILITY_MATRIX" = 'true' ] || \
-             [ "$LABELED_COMPATIBILITY_MATRIX" = 'true' ]; then
-            levels=(150 160 170)
-          fi
-
-          for compatibility_level in "${levels[@]}"; do
-            log_prefix="$RUNNER_TEMP/sqlserver-analyze-cl-${compatibility_level}"
-            docker exec \
-              --env SQLCMDPASSWORD="$MSSQL_EPHEMERAL_CREDENTIAL" \
-              sqlserver-analyze-impact-2025 \
-              "$SQLCMD_PATH" -S localhost -U sa -C -b -Q \
-              "IF DB_ID(N'SQLServerAnalyzeTest') IS NOT NULL BEGIN ALTER DATABASE [SQLServerAnalyzeTest] SET SINGLE_USER WITH ROLLBACK IMMEDIATE; DROP DATABASE [SQLServerAnalyzeTest]; END; CREATE DATABASE [SQLServerAnalyzeTest] COLLATE SQL_Latin1_General_CP1_CS_AS; ALTER DATABASE [SQLServerAnalyzeTest] SET COMPATIBILITY_LEVEL = ${compatibility_level};" \
-              >"${log_prefix}-database.log" 2>&1
-
-            if ! docker exec \
-              --env SQLCMDPASSWORD="$MSSQL_EPHEMERAL_CREDENTIAL" \
-              --workdir /work/Code/Install \
-              sqlserver-analyze-impact-2025 \
-              "$SQLCMD_PATH" -S localhost -U sa -C -b -i Install_All.sql \
-              >"${log_prefix}-install.log" 2>&1; then
-              echo "Framework installation failed for compatibility level ${compatibility_level}."
-              grep -B 2 -A 4 -E 'Msg [0-9]+|Sqlcmd: Error|Error:' "${log_prefix}-install.log" | tail -n 120 || true
-              exit 1
-            fi
-
-            if [ "$RUN_RELEASE_TESTS" = 'true' ]; then
-              impact_result=0
-              python3 ./Code/Tests/Integration/CI_LockTimeout_Diagnostics.py \
-                --sqlcmd "$SQLCMD_PATH" --log "${log_prefix}-impact.log" \
-                --artifacts "$RUNNER_TEMP/ci-lock-diagnostics" || impact_result=$?
-              if [ "$impact_result" != '0' ]; then
-                echo "Impact gate failed for compatibility level ${compatibility_level}."
-                grep -B 2 -A 4 -E 'Msg [0-9]+|Sqlcmd: Error|Error:' "$RUNNER_TEMP/ci-lock-diagnostics/impact.log" | tail -n 160 || true
-                exit "$impact_result"
-              fi
-            fi
-
-            if [ "$compatibility_level" = '170' ] && [ "$RUN_PERMISSION_MATRIX" = 'true' ]; then
-              if ! docker exec \
-                --env SQLCMDPASSWORD="$MSSQL_EPHEMERAL_CREDENTIAL" \
-                --workdir /work/Code/Tests \
-                sqlserver-analyze-impact-2025 \
-                "$SQLCMD_PATH" -S localhost -U sa -C -b \
-                -v PermissionMatrixPassword="$MSSQL_EPHEMERAL_CREDENTIAL" ExpectedMajorVersion=17 \
-                -i Permissions/110_SQL_Server_2022_Permission_Matrix.sql \
-                >"${log_prefix}-permissions.log" 2>&1; then
-                echo 'Permission matrix failed for SQL Server 2025.'
-                grep -B 2 -A 4 -E 'Msg [0-9]+|Sqlcmd: Error|Error:' "${log_prefix}-permissions.log" | tail -n 160 || true
-                exit 1
-              fi
-            fi
-
-            if [ "$compatibility_level" = '170' ] && [ "$RUN_REGEX_MATRIX" = 'true' ]; then
-              if ! docker exec \
-                --env SQLCMDPASSWORD="$MSSQL_EPHEMERAL_CREDENTIAL" \
-                --workdir /work/Code/Tests \
-                sqlserver-analyze-impact-2025 \
-                "$SQLCMD_PATH" -S localhost -U sa -C -b \
-                -i VersionAdaptive/120_SQL_Server_2025_Regex_Matrix.sql \
-                >"${log_prefix}-regex.log" 2>&1; then
-                echo 'Regex matrix failed for SQL Server 2025.'
-                grep -B 2 -A 4 -E 'Msg [0-9]+|Sqlcmd: Error|Error:' "${log_prefix}-regex.log" | tail -n 160 || true
-                exit 1
-              fi
-            fi
-
-          done
-
-          {
-            echo '## Functional runtime'
-            echo '- Engine: SQL Server 2025 Developer on Linux'
-            echo "- Compatibility levels: ${levels[*]}"
-            echo '- Scope: impact-selected tests plus required special contracts'
-          } >> "$GITHUB_STEP_SUMMARY"
-
-      - name: Run isolated OPS-008 Agent history fixture
-        if: needs.impact.outputs.ops008_agent_history == 'true'
-        shell: bash
-        run: |
-          set -euo pipefail
-          guard_log="$RUNNER_TEMP/ops008-agent-history-guard.log"
-          fixture_log="$RUNNER_TEMP/ops008-agent-history-fixture.log"
-          safe_report_failure() {
-            local log_path="$1"
-            local stage="$2"
-            local sql_error='UNCLASSIFIED'
-            local calendar_case='NONE'
-            local table_rows='NONE'
-            local json_rows='NONE'
-            local json_keyset='NONE'
-            local json_value_mask='NONE'
-            local error_match
-            local case_match
-            local diagnostic_match
-            local diagnostic_case
-            local parsed_mask
-            local allowed_errors='54943|54944|54945|54946|54947|54948|55155|55197|55198|55199|56214|56215|56216|56217|56218|56219|56220|56221|56222|56223|56230|56231|56232|56233|56234'
-            error_match=$(grep -Eo "Msg (${allowed_errors})," "$log_path" | tail -n 1 || true)
-            if [ -n "$error_match" ]; then
-              sql_error=$(printf '%s' "$error_match" | sed -E 's/^Msg ([0-9]+),$/\1/')
-            fi
-            case_match=$(grep -Eo 'OPS-008 AgentJobs-TABLE (schema|metadata|row-count|JSON-parity|known-row) case ordinal: [0-9]+' \
-              "$log_path" | tail -n 1 || true)
-            if [ -n "$case_match" ]; then
-              local parsed_case
-              parsed_case=$(printf '%s' "$case_match" | awk '{print $NF}')
-              if [[ "$parsed_case" =~ ^([1-9]|1[0-2])$ ]]; then
-                calendar_case="$parsed_case"
-              fi
-            fi
-            if [ "$sql_error" = '56221' ]; then
-              diagnostic_match=$(grep -Eo 'OPS-008 AgentJobs-TABLE row-count case ordinal: (1[0-2]|[1-9]) TABLE_ROWS=(ZERO|ONE|OTHER)' \
-                "$log_path" | tail -n 1 || true)
-              if [ -n "$diagnostic_match" ]; then
-                diagnostic_case=$(printf '%s' "$diagnostic_match" | awk '{print $6}')
-                if [ "$diagnostic_case" = "$calendar_case" ]; then
-                  table_rows=$(printf '%s' "$diagnostic_match" | sed -E 's/.* TABLE_ROWS=(ZERO|ONE|OTHER)$/\1/')
-                fi
-              fi
-            elif [ "$sql_error" = '56223' ]; then
-              diagnostic_match=$(grep -Eo 'OPS-008 AgentJobs-TABLE JSON-parity case ordinal: (1[0-2]|[1-9]) TABLE_ROWS=(ZERO|ONE|OTHER) JSON_ROWS=(ZERO|ONE|OTHER) JSON_KEYSET=(MATCH|MISMATCH) JSON_VALUE_MASK=(0|[1-9][0-9]*)' \
-                "$log_path" | tail -n 1 || true)
-              if [ -n "$diagnostic_match" ]; then
-                diagnostic_case=$(printf '%s' "$diagnostic_match" | awk '{print $6}')
-                if [ "$diagnostic_case" = "$calendar_case" ]; then
-                  table_rows=$(printf '%s' "$diagnostic_match" | sed -E 's/.* TABLE_ROWS=(ZERO|ONE|OTHER) JSON_ROWS=.*/\1/')
-                  json_rows=$(printf '%s' "$diagnostic_match" | sed -E 's/.* JSON_ROWS=(ZERO|ONE|OTHER) JSON_KEYSET=.*/\1/')
-                  json_keyset=$(printf '%s' "$diagnostic_match" | sed -E 's/.* JSON_KEYSET=(MATCH|MISMATCH) JSON_VALUE_MASK=.*/\1/')
-                  parsed_mask=$(printf '%s' "$diagnostic_match" | sed -E 's/.* JSON_VALUE_MASK=([0-9]+)$/\1/')
-                  if [[ "$parsed_mask" =~ ^(0|[1-9][0-9]{0,5})$ ]] && [ "$parsed_mask" -le 131071 ]; then
-                    json_value_mask="$parsed_mask"
-                  else
-                    table_rows='NONE'
-                    json_rows='NONE'
-                    json_keyset='NONE'
-                  fi
-                fi
-              fi
-            fi
-            echo "OPS008_AGENT_HISTORY_FAILED SQL_STAGE=${stage} SQL_ERROR=${sql_error} CALENDAR_CASE=${calendar_case} TABLE_ROWS=${table_rows} JSON_ROWS=${json_rows} JSON_KEYSET=${json_keyset} JSON_VALUE_MASK=${json_value_mask}"
-            exit 1
-          }
-
-          guard_query="IF COALESCE(DB_NAME(),N'')<>N'SQLServerAnalyzeTest' THROW 56230,N'OPS008_WRONG_DATABASE',1; IF COALESCE(TRY_CONVERT(int,SERVERPROPERTY(N'ProductMajorVersion')),-1)<>17 THROW 56231,N'OPS008_WRONG_ENGINE',1; IF COALESCE((SELECT compatibility_level FROM sys.databases WHERE database_id=DB_ID()),-1)<>170 THROW 56232,N'OPS008_WRONG_COMPATIBILITY_LEVEL',1; IF OBJECT_ID(N'monitor.USP_AgentJobs',N'P') IS NULL OR OBJECT_ID(N'monitor.USP_AgentMonitoringAnalysis',N'P') IS NULL THROW 56234,N'OPS008_AGENT_MODULES_MISSING',1; IF EXISTS(SELECT 1 FROM sys.extended_properties WHERE class=0 AND name=N'SQLANALYZE.Ops008Disposable') THROW 56233,N'OPS008_MARKER_ALREADY_EXISTS',1; EXEC sys.sp_addextendedproperty @name=N'SQLANALYZE.Ops008Disposable',@value=1;"
-          if ! docker exec \
-            --env SQLCMDPASSWORD="$MSSQL_EPHEMERAL_CREDENTIAL" \
-            sqlserver-analyze-impact-2025 \
-            "$SQLCMD_PATH" -S localhost -U sa -C -b -d SQLServerAnalyzeTest -Q "$guard_query" \
-            >"$guard_log" 2>&1; then
-            safe_report_failure "$guard_log" GUARD
-          fi
-          if ! docker exec \
-            --env SQLCMDPASSWORD="$MSSQL_EPHEMERAL_CREDENTIAL" \
-            sqlserver-analyze-impact-2025 \
-            "$SQLCMD_PATH" -S localhost -U sa -C -b -d SQLServerAnalyzeTest \
-            -i /work/Code/Tests/ServerHealth/OPS008_AgentHistory_CI.sql \
-            >"$fixture_log" 2>&1; then
-            safe_report_failure "$fixture_log" FIXTURE
-          fi
-          echo 'OPS008_AGENT_HISTORY_NATIVE_PASS'
-
-      - name: Qualify standalone Execution Plan contract
-        if: needs.impact.outputs.plan_standalone == 'true'
-        shell: bash
-        run: |
-          set -euo pipefail
-          log_prefix="$RUNNER_TEMP/sqlserver-analyze-cl-170"
-          docker exec \
-            --env SQLCMDPASSWORD="$MSSQL_EPHEMERAL_CREDENTIAL" \
-            sqlserver-analyze-impact-2025 \
-            "$SQLCMD_PATH" -S localhost -U sa -C -b -Q \
-            "ALTER DATABASE [SQLServerAnalyzeTest] SET SINGLE_USER WITH ROLLBACK IMMEDIATE; DROP DATABASE [SQLServerAnalyzeTest]; CREATE DATABASE [SQLServerAnalyzeTest] COLLATE SQL_Latin1_General_CP1_CS_AS; ALTER DATABASE [SQLServerAnalyzeTest] SET COMPATIBILITY_LEVEL = 170; ALTER DATABASE [SQLServerAnalyzeTest] SET QUERY_STORE = OFF;" \
-            >"${log_prefix}-standalone-database.log" 2>&1
-          if ! docker exec \
-            --env SQLCMDPASSWORD="$MSSQL_EPHEMERAL_CREDENTIAL" \
-            --workdir /work/Code/Install \
-            sqlserver-analyze-impact-2025 \
-            "$SQLCMD_PATH" -S localhost -U sa -C -b \
-            -i ../Tests/Integration/193_ExecutionPlanAnalysis_Standalone_Runtime_Contract.sql \
-            >"${log_prefix}-standalone.log" 2>&1; then
-            echo 'Execution Plan standalone contract failed for SQL Server 2025.'
-            grep -B 2 -A 4 -E 'Msg [0-9]+|Sqlcmd: Error|Error:' "${log_prefix}-standalone.log" | tail -n 160 || true
-            exit 1
-          fi
-
-      - name: Run selected Snapshot contracts
-        if: needs.impact.outputs.snapshot_required == 'true'
-        shell: bash
-        env:
-          RUN_SNAPSHOT_RUNTIME: ${{ needs.impact.outputs.snapshot_runtime }}
-          RUN_SNAPSHOT_CONCURRENCY: ${{ needs.impact.outputs.snapshot_concurrency }}
-        run: |
-          set -euo pipefail
-          log_prefix="$RUNNER_TEMP/sqlserver-analyze-snapshot"
-          sql_exec() {
-            docker exec --env SQLCMDPASSWORD="$MSSQL_EPHEMERAL_CREDENTIAL" \
-              --workdir /work/Code/Install sqlserver-analyze-impact-2025 \
-              "$SQLCMD_PATH" -S localhost -U sa -C -b "$@"
-          }
-          report_failure() {
-            echo "Snapshot contract failed: $1"
-            grep -B 2 -A 4 -E 'Msg [0-9]+|Sqlcmd: Error|Error:' "$2" | tail -n 120 || true
-            exit 1
-          }
-          sql_exec -Q "IF DB_ID(N'SQLServerAnalyzeTest') IS NOT NULL BEGIN ALTER DATABASE [SQLServerAnalyzeTest] SET SINGLE_USER WITH ROLLBACK IMMEDIATE; DROP DATABASE [SQLServerAnalyzeTest]; END; CREATE DATABASE [SQLServerAnalyzeTest] COLLATE SQL_Latin1_General_CP1_CS_AS; ALTER DATABASE [SQLServerAnalyzeTest] SET COMPATIBILITY_LEVEL = 170; CREATE DATABASE [SQLServerAnalyzeSnapshotTest] COLLATE Latin1_General_100_CI_AS; ALTER DATABASE [SQLServerAnalyzeSnapshotTest] SET COMPATIBILITY_LEVEL = 170;" \
-            >"${log_prefix}-database.log" 2>&1
-          sql_exec -i Install_All.sql >"${log_prefix}-install.log" 2>&1 \
-            || report_failure 'core installation' "${log_prefix}-install.log"
-          sql_exec -i ../Tests/Integration/110_Smoke_Test.sql >"${log_prefix}-smoke.log" 2>&1 \
-            || report_failure 'core smoke' "${log_prefix}-smoke.log"
-          if [ "$RUN_SNAPSHOT_RUNTIME" = 'true' ] || [ "$RUN_SNAPSHOT_CONCURRENCY" = 'true' ]; then
-            sql_exec -i ../Tests/Integration/195_SnapshotBaseline_Runtime_Contract.sql \
-              >"${log_prefix}-runtime.log" 2>&1 \
-              || report_failure 'runtime' "${log_prefix}-runtime.log"
-          fi
-          if [ "$RUN_SNAPSHOT_CONCURRENCY" = 'true' ]; then
-            sql_exec -i ../Tests/Integration/196_SnapshotBaseline_Concurrency_Holder.sql \
-              >"${log_prefix}-holder.log" 2>&1 &
-            holder_pid=$!
-            lock_ready=0
-            for attempt in $(seq 1 30); do
-              if sql_exec -d SQLServerAnalyzeTest -Q "IF APPLOCK_TEST(N'public',N'SQL_Server_Analyze.SC023.CollectionCycle',N'Exclusive',N'Session')<>0 THROW 53740,N'SC023_LOCK_NOT_READY',1;" >/dev/null 2>&1; then
-                lock_ready=1
-                break
-              fi
-              if ! kill -0 "$holder_pid" 2>/dev/null; then break; fi
-              sleep 0.2
-            done
-            if [ "$lock_ready" != '1' ]; then
-              wait "$holder_pid" || true
-              report_failure 'concurrency holder readiness' "${log_prefix}-holder.log"
-            fi
-            assert_result=0
-            sql_exec -i ../Tests/Integration/197_SnapshotBaseline_Concurrency_Assert.sql \
-              >"${log_prefix}-concurrency.log" 2>&1 || assert_result=$?
-            wait "$holder_pid" || report_failure 'concurrency holder' "${log_prefix}-holder.log"
-            if [ "$assert_result" != '0' ]; then
-              report_failure 'concurrency assertion' "${log_prefix}-concurrency.log"
-            fi
-          fi
-          {
-            echo '## Snapshot runtime'
-            echo '- Engine: SQL Server 2025 Developer on Linux; compatibility level 170'
-            echo '- Scope: selected Snapshot runtime and concurrency contracts'
-          } >> "$GITHUB_STEP_SUMMARY"
-
-      - name: Retain bounded sanitized lock diagnostics
-        if: always()
+      - name: Upload failed documentation log
+        if: failure()
         uses: actions/upload-artifact@v7
         with:
-          name: ci-lock-1222-${{ github.run_id }}-${{ github.run_attempt }}
-          path: |
-            ${{ runner.temp }}/ci-lock-diagnostics/
-            ${{ runner.temp }}/ci-lock-probe/
+          name: analysis-documentation-validation-log
+          path: ${{ runner.temp }}/analysis-documentation-validation.log
           if-no-files-found: ignore
           retention-days: 1
 
-      - name: Stop synthetic SQL Server
+      - name: Publish documentation validation status
         if: always()
-        shell: bash
-        run: docker rm --force sqlserver-analyze-impact-2025 >/dev/null 2>&1 || true
-
-  gate:
-    if: always()
-    needs:
-      - bind
-      - impact
-      - runtime
-    name: Functional impact gate
-    runs-on: ubuntu-24.04
-
-    steps:
-      - name: Confirm selected gate result
-        shell: bash
-        env:
-          IMPACT_RESULT: ${{ needs.impact.result }}
-          RUNTIME_REQUIRED: ${{ needs.impact.outputs.run_runtime }}
-          SNAPSHOT_REQUIRED: ${{ needs.impact.outputs.snapshot_required }}
-          RUNTIME_RESULT: ${{ needs.runtime.result }}
-        run: |
-          set -euo pipefail
-          if [ "$IMPACT_RESULT" != 'success' ]; then
-            echo 'CI impact selection failed.'
-            exit 1
-          fi
-          if { [ "$RUNTIME_REQUIRED" = 'true' ] || [ "$SNAPSHOT_REQUIRED" = 'true' ]; } && [ "$RUNTIME_RESULT" != 'success' ]; then
-            echo 'Required SQL Server runtime checks did not pass.'
-            exit 1
-          fi
-          if [ "$RUNTIME_REQUIRED" != 'true' ] && [ "$SNAPSHOT_REQUIRED" != 'true' ] && [ "$RUNTIME_RESULT" != 'skipped' ]; then
-            echo 'SQL Server runtime was expected to be skipped.'
-            exit 1
-          fi
-          echo 'Relevant functional checks passed; unrelated runtime checks were skipped.'
-
-  privacy:
-    needs: bind
-    name: Validate repository and ZIP privacy
-    runs-on: ubuntu-24.04
-    timeout-minutes: 10
-
-    steps:
-      - name: Check out repository
-        uses: actions/checkout@v6
-        with:
-          ref: 5b8e75b1b6c29420627bcb61a7196b1458e03dcc
-          fetch-depth: 2
-
-      - name: Run privacy-gate self-tests
-        shell: bash
-        env:
-          BASE_SHA: a070b28c31ffe1229a55745786eb9b6e800a87d0
-          HEAD_SHA: 5b8e75b1b6c29420627bcb61a7196b1458e03dcc
-        run: |
-          set -euo pipefail
-          if [[ ! "$BASE_SHA" =~ ^[0-9a-f]{40}$ ]] || \
-             ! git cat-file -e "${BASE_SHA}^{commit}" || \
-             ! git cat-file -e "${HEAD_SHA}^{commit}" || \
-             ! git diff --quiet "$BASE_SHA" "$HEAD_SHA" -- \
-               Code/Tests/Static/910_Validate_Repository_Privacy.py \
-               Metadata/Quality/Repository_Privacy_Allowlist.csv \
-               .github/workflows/repository-privacy-validation.yml; then
-            python3 ./Code/Tests/Static/910_Validate_Repository_Privacy.py \
-              --repository-root . \
-              --self-test
-          else
-            echo 'Privacy validator self-test not applicable to this change.'
-          fi
-
-      - name: Validate tracked repository files
-        shell: bash
-        run: |
-          set -euo pipefail
-          python3 ./Code/Tests/Static/910_Validate_Repository_Privacy.py \
-            --repository-root .
-
-      - name: Build and validate delivery ZIP
-        shell: bash
-        run: |
-          set -euo pipefail
-          archive_path="$RUNNER_TEMP/SQL_Server_Analyze.zip"
-          git archive \
-            --format=zip \
-            --prefix=SQL_Server_Analyze/ \
-            --output="$archive_path" \
-            HEAD
-          python3 ./Code/Tests/Static/910_Validate_Repository_Privacy.py \
-            --repository-root . \
-            --archive-path "$archive_path"
-
-  cleanup:
-    needs: bind
-    runs-on: ubuntu-latest
-    timeout-minutes: 3
-    steps:
-      - uses: actions/checkout@v6
-        with:
-          ref: 5b8e75b1b6c29420627bcb61a7196b1458e03dcc
-          persist-credentials: false
-      - name: Verify actual cleanup blocks without SQL or provider access
-        shell: pwsh
-        run: ./TestLab/Tests/Invoke-CleanupStatusChecks.ps1
-
-  recovery_result:
-    if: always()
-    needs: [bind, impact, runtime, gate, privacy, cleanup]
-    runs-on: ubuntu-24.04
-    timeout-minutes: 3
-    steps:
-      - name: Require all target Main results
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
-          BIND: ${{ needs.bind.result }}
-          IMPACT: ${{ needs.impact.result }}
-          RUNTIME: ${{ needs.runtime.result }}
-          GATE: ${{ needs.gate.result }}
-          PRIVACY: ${{ needs.privacy.result }}
-          CLEANUP: ${{ needs.cleanup.result }}
+          JOB_STATUS: ${{ job.status }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         run: |
           set -euo pipefail
-          for result in "$BIND" "$IMPACT" "$GATE" "$PRIVACY" "$CLEANUP"; do test "$result" = success; done
-          test "$RUNTIME" = skipped
-          test "$(gh api repos/gecompat/SQL_Server_Analyze/git/ref/heads/main --jq .object.sha)" = '5b8e75b1b6c29420627bcb61a7196b1458e03dcc'
-          for run_id in 42671590065 42671590102; do
-            test "$(gh api repos/gecompat/SQL_Server_Analyze/actions/runs/$run_id --jq .head_sha)" = '5b8e75b1b6c29420627bcb61a7196b1458e03dcc'
-            test "$(gh api repos/gecompat/SQL_Server_Analyze/actions/runs/$run_id --jq .run_attempt)" = 1
-            test "$(gh api repos/gecompat/SQL_Server_Analyze/actions/runs/$run_id --jq .conclusion)" = success
-          done
-          printf 'PASS: missing stock checks at target Main %s, base %s; successful Docs and Commit retained at original attempt. SQL runtime not selected. No synthetic Main statuses published.\n' '5b8e75b1b6c29420627bcb61a7196b1458e03dcc' 'a070b28c31ffe1229a55745786eb9b6e800a87d0' >> "$GITHUB_STEP_SUMMARY"
+          state='success'
+          if [ "$JOB_STATUS" != 'success' ]; then
+            state='failure'
+          fi
+          gh api --method POST "repos/${GITHUB_REPOSITORY}/statuses/${GITHUB_SHA}" \
+            -f state="$state" \
+            -f target_url="$RUN_URL" \
+            -f description='Impact-selected documentation validation' \
+            -f context='documentation-validation' >/dev/null
