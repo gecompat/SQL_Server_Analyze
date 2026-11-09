@@ -48840,7 +48840,10 @@ Stand        : 2026-07-15
 Zweck        : Die Procedure inventarisiert TempDB-Dateien und ausgewählte
                TempDB-Konfigurationswerte als nicht atomaren Katalogsnapshot.
 Datenquellen : tempdb.sys.database_files, sys.configurations
-Vertrag      : Resultset 1 ist immer Modulstatus; @ResultSetArt=NONE unterdrückt Resultsets; RAW und CONSOLE liefern unterschiedliche Projektionen. Optional JSON.
+Vertrag      : Im regulären Pfad liefert RAW zuerst Modulstatus, danach zwei technische Fachresultsets.
+               CONSOLE gibt nur die Console-Helferausgabe für files aus; TABLE schreibt ausschließlich das gemappte files-Resultset.
+               CONSOLE und TABLE liefern kein separates Modulstatusresultset; NONE unterdrückt Resultsets.
+               Optionales JSON wird im regulären Pfad unabhängig von @ResultSetArt durch @JsonErzeugen gesteuert; im Hilfezweig wird es nicht erzeugt.
 ===============================================================================
 */
 
@@ -48926,7 +48929,10 @@ Stand        : 2026-07-15
 Zweck        : Die Procedure liest Serverkonfigurationswerte und ergänzt
                kontextabhängige Reviewhinweise als aktuellen Katalogsnapshot.
 Datenquellen : sys.configurations, sys.dm_os_sys_info
-Vertrag      : Resultset 1 ist immer Modulstatus; @ResultSetArt=NONE unterdrückt Resultsets; RAW und CONSOLE liefern unterschiedliche Projektionen. Optional JSON.
+Vertrag      : Im regulären Pfad liefert RAW zuerst Modulstatus, danach ein technisches Fachresultset.
+               CONSOLE gibt nur die Console-Helferausgabe für configuration aus; TABLE schreibt ausschließlich das gemappte configuration-Resultset.
+               CONSOLE und TABLE liefern kein separates Modulstatusresultset; NONE unterdrückt Resultsets.
+               Optionales JSON wird im regulären Pfad unabhängig von @ResultSetArt durch @JsonErzeugen gesteuert; im Hilfezweig wird es nicht erzeugt.
 ===============================================================================
 */
 
@@ -49016,7 +49022,10 @@ Stand        : 2026-07-15
 Zweck        : Die Procedure liest aktive globale und zur aufrufenden Session
                gehörende Trace Flags über DBCC TRACESTATUS(-1).
 Datenquellen : DBCC TRACESTATUS
-Vertrag      : Resultset 1 ist immer Modulstatus; @ResultSetArt=NONE unterdrückt Resultsets; RAW und CONSOLE liefern unterschiedliche Projektionen. Optional JSON.
+Vertrag      : Im regulären Pfad liefert RAW zuerst Modulstatus, danach ein technisches Fachresultset.
+               CONSOLE gibt nur die Console-Helferausgabe für traceFlags aus; TABLE schreibt ausschließlich das gemappte traceFlags-Resultset.
+               CONSOLE und TABLE liefern kein separates Modulstatusresultset; NONE unterdrückt Resultsets.
+               Optionales JSON wird im regulären Pfad unabhängig von @ResultSetArt durch @JsonErzeugen gesteuert; im Hilfezweig wird es nicht erzeugt.
 ===============================================================================
 */
 
@@ -49098,7 +49107,10 @@ Stand        : 2026-07-15
 Zweck        : Die Procedure liest SQL-Startparameter und Registry-basierte
                Dienstparameter und weist auf eine nicht verfügbare Plattformquelle hin.
 Datenquellen : sys.dm_server_registry
-Vertrag      : Resultset 1 ist immer Modulstatus; @ResultSetArt=NONE unterdrückt Resultsets; RAW und CONSOLE liefern unterschiedliche Projektionen. Optional JSON.
+Vertrag      : Im regulären Pfad liefert RAW zuerst Modulstatus, danach ein technisches Fachresultset.
+               CONSOLE gibt nur die Console-Helferausgabe für startupParameters aus; TABLE schreibt ausschließlich das gemappte startupParameters-Resultset.
+               CONSOLE und TABLE liefern kein separates Modulstatusresultset; NONE unterdrückt Resultsets.
+               Optionales JSON wird im regulären Pfad unabhängig von @ResultSetArt durch @JsonErzeugen gesteuert; im Hilfezweig wird es nicht erzeugt.
 ===============================================================================
 */
 
@@ -49182,7 +49194,10 @@ Stand        : 2026-07-15
 Zweck        : Die Procedure liest Host-, Betriebssystem-Speicher-, SQL-Prozess-
                und Dienstdaten; jede optionale Quelle hat eine eigene Fehlergrenze.
 Datenquellen : sys.dm_os_host_info, sys.dm_os_sys_memory, sys.dm_os_process_memory, sys.dm_server_services
-Vertrag      : Resultset 1 ist immer Modulstatus; @ResultSetArt=NONE unterdrückt Resultsets; RAW und CONSOLE liefern unterschiedliche Projektionen. Optional JSON.
+Vertrag      : Im regulären Pfad liefert RAW zuerst Modulstatus, danach fünf technische Fachresultsets.
+               CONSOLE gibt nur die Console-Helferausgabe für host aus; TABLE schreibt ausschließlich das gemappte host-Resultset.
+               CONSOLE und TABLE liefern kein separates Modulstatusresultset; NONE unterdrückt Resultsets.
+               Optionales JSON wird im regulären Pfad unabhängig von @ResultSetArt durch @JsonErzeugen gesteuert; im Hilfezweig wird es nicht erzeugt.
 ===============================================================================
 */
 
@@ -49278,8 +49293,10 @@ Stand        : 2026-07-15
 Zweck        : Die Procedure liest ausgewählte sicherheitsrelevante Serveroptionen,
                Dienstinformationen und Servereigenschaften, ohne sie zu verändern.
 Datenquellen : sys.configurations, sys.dm_server_services, SERVERPROPERTY
-Vertrag      : Resultset 1 ist immer Modulstatus; @ResultSetArt=NONE unterdrückt
-               Resultsets und liefert Status ausschließlich über OUTPUT-Parameter.
+Vertrag      : Im regulären Pfad liefert RAW zuerst Modulstatus, danach vier technische Fachresultsets.
+               CONSOLE gibt nur die Console-Helferausgabe für configuration aus; TABLE schreibt ausschließlich das gemappte configuration-Resultset.
+               CONSOLE und TABLE liefern kein separates Modulstatusresultset; NONE unterdrückt Resultsets.
+               Optionales JSON wird im regulären Pfad unabhängig von @ResultSetArt durch @JsonErzeugen gesteuert; im Hilfezweig wird es nicht erzeugt.
 ===============================================================================
 */
 
