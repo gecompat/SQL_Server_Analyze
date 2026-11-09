@@ -1934,6 +1934,16 @@
       "source": "AI_Metadata/Internal_Documentation/Quality/Development_Waves_2026-10.md",
       "target": "Documentation/Analysis_Guides/Procedures/USP_DiagnosticFindings.md",
       "classification": "product-reference"
+    },
+    {
+      "source": "AI_Metadata/Internal_Documentation/Quality/Development_Waves_2026-10.md",
+      "target": "Code/04_PlanCache/040_USP_PlanDetails.sql",
+      "classification": "product-reference"
+    },
+    {
+      "source": "AI_Metadata/Internal_Documentation/Quality/Development_Waves_2026-10.md",
+      "target": "Documentation/Analysis_Guides/Procedures/USP_PlanDetails.md",
+      "classification": "product-reference"
     }
   ]
 }
