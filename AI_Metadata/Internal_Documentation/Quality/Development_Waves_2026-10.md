@@ -6,6 +6,26 @@
 
 ## Auftrag und maßgebliche Quellen
 
+## Abgeschlossen: PR #678
+
+PR #678 berichtigte genau eine RowCount-Klausel in der MaxZeilen-Hilfe von CompileContextAnalysis und den zwei passenden Dokumentationszeilen. Der Modulwert summiert nach den jeweiligen Limits verbliebene configurations-, counters-, waits- und cache-Zeilen; sourceStatus und warnings zählen nicht mit. Er ist keine vom Ausgabepfad unabhängige Zählung tatsächlich gelieferter Zeilen. Zähllogik, alle übrigen Anweisungen, Typen, Defaults, Guards, Rechte, Schemas und Tests blieben unverändert. Kanonische OPS-Kopie, aktuelle Planung und zwei Produktreferenzklassifikationen wurden abgeglichen.
+
+Regulärer Merge/Main `3140beb62df281132d32ab895761d3082429eb16` enthält exakt den geprüften Baum `9cc68c53b2e3427c1b768c6de8f0f35169d3066f`; geordnete Eltern sind `273ebd9bdada3756e5812e5848943c6e6f8705fe` und `9626386947b998dc9c005e19c473080938eef5c8`. Main-Ref und PR-Merge wurden nach finalem Grün erneut verifiziert. Head [42765200957](https://github.com/gecompat/SQL_Server_Analyze/actions/runs/42765200957), Runtime 129660046790 und Gate 129665850603, sowie Main [42767260173](https://github.com/gecompat/SQL_Server_Analyze/actions/runs/42767260173), Runtime 129666653984 und Gate 129670934918, bestanden Deployment und sechs ausgewählte SQL-Server-2025-Verträge bei Compatibility Level 170: Common124, Integration110/196/198 und ServerHealth110/134. Die tatsächlichen Stop-Schritte waren erfolgreich. Head bestand sechs Workflows und acht Checks, Main fünf Workflows und sieben Checks. Permission-, Regex- und Compatibility-Matrizen sowie Standalone waren nicht ausgewählt.
+
+HeadDocs [42765201041](https://github.com/gecompat/SQL_Server_Analyze/actions/runs/42765201041), Job 129659945152, und MainDocs [42767259776](https://github.com/gecompat/SQL_Server_Analyze/actions/runs/42767259776), Job 129666546245, bestanden 80 Validatoren, 25 Regelkontext-Selbsttests, den Regelkontextvertrag und beide kanonischen Installervergleiche mit 584.191 und 6.549.411 Bytes. Links bestanden mit 160 beziehungsweise 101 vorübergehenden Netzwerkwarnungen; daraus folgt keine globale Erreichbarkeit. Head-Cleanup 42765200921 und Main-Cleanup 42767261054 bestanden jeweils 18 tatsächliche Finally-Szenarien. Separate Hilfeausgabe, unabhängige Container-Abwesenheitsprobe und Behebung historischer Locktimeoutursachen werden nicht behauptet. Kanonischer Generator und tatsächliche unabhängige Vollartefaktbindung sind im nachfolgenden historischen Umfang gebunden; der zurückgestellte Helper bleibt unverändert.
+
+## Nächste ausführbare Welle: JSON-Rückgabe beim Portabilitäts-Hilfeaufruf präzisieren
+
+**Status:** Quellen-/Guide-/Plan-/Scope- und Generatorprotokollreview bestanden. Kanonische OPS-Erzeugung und tatsächliche unabhängige Artefaktbindung sind bestanden. Pflichtgates, reguläre Integration und erste Main-Nachprüfung stehen noch aus.
+
+`Code/08_ServerHealth/200_USP_DatabasePortabilityAnalysis.sql` setzt Json am Eintritt auf NULL, bevor Hilfe ausgewertet wird. Die Hilfeaussage zu Hilfe verspricht dagegen pauschal unveränderte OUTPUT-Empfänger. Nur die vier Status-/Fehlerempfänger bleiben wegen des frühen RETURN unverändert. Die eigene Json-Parameterbeschreibung ist bereits zutreffend und bleibt erhalten.
+
+Genau diese eine Klausel im Hilfe-PRINT und in der passenden Reihe von `Documentation/Analysis_Guides/Procedures/USP_DatabasePortabilityAnalysis.md` wird angeglichen. Typ, expliziter Default, 0-/1-/NULL-Semantik und Konvertierungsregel des Hilfeschalters bleiben erhalten. Analyse, Initialisierung, früher RETURN, restliche Parameterverträge, Defaults, Guards, Rechte, Tests und alle übrigen ausführbaren Anweisungen ändern sich nicht. Der Umfang umfasst außerdem kanonische OPS-Kopie, aktuelle Planung und nur die erforderlichen Produktreferenzklassifikationen. Keine zweite technische Parameterkopie ist im technischen Server-Health-Dokument vorhanden.
+
+Der kanonische Generator [42769560788](https://github.com/gecompat/SQL_Server_Analyze/actions/runs/42769560788), Job 129673898798, bestand als gebundener Push im ersten Versuch. OPS `3ba0d2cc9e4b3c7aeea80059704909adfca70b89` umfasst 6.549.484 Bytes; Reviewenvelope `28d0006234f5af5ee578233ef510cc2edaf840b6` umfasst 1.663.968 Bytes. Root hat beide tatsächlich vollständig gelesen und den Installer mit der vollständigen Modulableitung und unverändertem Rest bytegleich verglichen. Der Helper wurde regulär mit `8bb205f723aaeb8329cf2abcd90d2f576a965c87` auf Originalbaum `4df10207a1a5d94703a49257d1e24670b0211664` zurückgestellt; es entstand kein Restorelauf. Derselbe unabhängige Reviewer hat Job, Log, Envelope, vollständigen Installer, Modulableitung und unveränderten Rest tatsächlich geprüft: PASS. Eine unabhängige Gzip-Dekompression wird nicht behauptet.
+
+Ein kleiner Implementierer und ein unabhängiger Reviewer prüfen den begrenzten Abgleich. Ein gebundener kanonischer Generatorlauf prüft vollständiges Modul, Rückbau, unveränderten Installerrest und kanonische Bytes vor dem Upload; derselbe Reviewer prüft anschließend die tatsächlichen Artefakte. Danach folgen ein direkt als bereit veröffentlichter Produktkandidat und die erforderliche erste Main-Nachprüfung mit den bestehenden impact-basierten Gates. Kein neuer Test, keine zusätzliche Engine, kein Ready-Übergang und keine lokale Ausführung sind vorgesehen. Die tatsächlich gewählte CI-Auswahl bleibt maßgeblich; vorab wird kein SQL-Erfolg behauptet. Weitere Arbeit setzt einen eigenen belegten Befund und frisch geprüfte Autorität voraus.
+
 ## Abgeschlossen: PR #677
 
 PR #677 präzisierte eine Aussage zum Linked-Server-Teststatus und sieben Aussagen zum Systemobjektinventar. ConnectivityStatus FAILED bleibt von den vorhandenen StatusCode-Klassen getrennt; die Katalogmarkierung und Schemazuordnung werden nicht als Herkunfts- oder SCHEMABINDING-Nachweis beschrieben. Die zwei aktuellen Planungsseiten und vier Produktreferenzklassifikationen wurden abgeglichen. SQL, Hilfe, Parameterverträge, Installer, Workflows und Tests blieben unverändert.
@@ -14,7 +34,7 @@ Regulärer Merge/Main `273ebd9bdada3756e5812e5848943c6e6f8705fe` enthält exakt 
 
 ## Nächste ausführbare Welle: RowCount nach der Compile-Kontext-Zeilenkürzung beschreiben
 
-**Status:** Quellen-/Guide-/Plan-/Scope- und Generatorprotokollreview bestanden. Kanonische OPS-Erzeugung und tatsächliche unabhängige Artefaktbindung sind bestanden. Pflichtgates, reguläre Integration und erste Main-Nachprüfung stehen noch aus.
+**Status:** mit PR #678 abgeschlossen. Der folgende Abschnitt hält den damaligen Umfang fest und ist keine erneute Ausführungsvorgabe.
 
 In `Code/08_ServerHealth/250_USP_CompileContextAnalysis.sql` behauptet die MaxZeilen-Hilfe, RowCount zähle vor der Kürzung. Der tatsächliche Ablauf entfernt zuerst überzählige Zeilen aus den sechs begrenzten Gruppen und summiert danach die verbliebenen Zeilen aus configurations, counters, waits und cache. sourceStatus und warnings zählen nicht mit. Der Wert ist keine vom Ausgabemodus unabhängige Anzahl tatsächlich ausgelieferter Zeilen, etwa bei NONE oder einem TABLE-Teilmapping.
 
