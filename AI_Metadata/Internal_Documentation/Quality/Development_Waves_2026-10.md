@@ -6,6 +6,24 @@
 
 ## Auftrag und maßgebliche Quellen
 
+## Abgeschlossen: PR #677
+
+PR #677 präzisierte eine Aussage zum Linked-Server-Teststatus und sieben Aussagen zum Systemobjektinventar. ConnectivityStatus FAILED bleibt von den vorhandenen StatusCode-Klassen getrennt; die Katalogmarkierung und Schemazuordnung werden nicht als Herkunfts- oder SCHEMABINDING-Nachweis beschrieben. Die zwei aktuellen Planungsseiten und vier Produktreferenzklassifikationen wurden abgeglichen. SQL, Hilfe, Parameterverträge, Installer, Workflows und Tests blieben unverändert.
+
+Regulärer Merge/Main `273ebd9bdada3756e5812e5848943c6e6f8705fe` enthält exakt den geprüften Baum `cc5b58131d8721fc0b2620e3f6d352e00f3d99c3`; geordnete Eltern sind `79873ced35ed72d3e156c384f7696aec5e3d1926` und `de6f3d670bd47deb50ad904c1dc1683cd84ca45c`. Main-Ref und PR-Merge wurden nach finalem Grün erneut verifiziert. Head [42762995476](https://github.com/gecompat/SQL_Server_Analyze/actions/runs/42762995476), Job 129652853855, und Main [42763465443](https://github.com/gecompat/SQL_Server_Analyze/actions/runs/42763465443), Job 129654360426, bestanden 80 Validatoren, 25 Regelkontext-Selbsttests, den Regelkontextvertrag und beide kanonischen Installervergleiche mit 584.191 und 6.549.316 Bytes. Links bestanden mit 155 beziehungsweise 126 vorübergehenden Netzwerkwarnungen; daraus folgt keine globale Erreichbarkeit. Alle vier Head-Workflows und drei Main-Workflows sowie ihre Checks waren erfolgreich. Die vorhandenen Metadatenfilter lösten weder Functional noch Cleanup aus; daraus folgen keine neue SQL-, Cleanup- oder Stop-Ausführung. Ein kleiner angeforderter Autor und ein unabhängiger Reviewer schlossen den begrenzten Textabgleich mit PASS ab.
+
+## Nächste ausführbare Welle: RowCount nach der Compile-Kontext-Zeilenkürzung beschreiben
+
+**Status:** Quellen-/Guide-/Plan-/Scope- und Generatorprotokollreview bestanden. Kanonische OPS-Erzeugung und tatsächliche unabhängige Artefaktbindung sind bestanden. Pflichtgates, reguläre Integration und erste Main-Nachprüfung stehen noch aus.
+
+In `Code/08_ServerHealth/250_USP_CompileContextAnalysis.sql` behauptet die MaxZeilen-Hilfe, RowCount zähle vor der Kürzung. Der tatsächliche Ablauf entfernt zuerst überzählige Zeilen aus den sechs begrenzten Gruppen und summiert danach die verbliebenen Zeilen aus configurations, counters, waits und cache. sourceStatus und warnings zählen nicht mit. Der Wert ist keine vom Ausgabemodus unabhängige Anzahl tatsächlich ausgelieferter Zeilen, etwa bei NONE oder einem TABLE-Teilmapping.
+
+Genau diese Klausel wird im Hilfe-PRINT, in `Documentation/Analysis_Guides/Procedures/USP_CompileContextAnalysis.md` und in der passenden Parameterzeile von `Documentation/Analysis_Guides/08_Server_Health.md` berichtigt. Der vorhandene öffentliche Compile-Kontext-Vertrag enthält keine gegenteilige Vor-Kürzungszusage und bleibt unverändert. Alle übrigen Hilfetexte, Typen, Defaults, NULL-/Leerwertregeln, festen Optionen, Guards, Rechte, Schemas, Tests und ausführbaren SQL-Anweisungen bleiben erhalten. Der Umfang umfasst außerdem kanonische OPS-Kopie, aktuelle Planung und nur die erforderlichen Produktreferenzklassifikationen.
+
+Der kanonische Generator [42764695677](https://github.com/gecompat/SQL_Server_Analyze/actions/runs/42764695677), Job 129658312096, bestand als gebundener Push im ersten Versuch. OPS `bc9f5982cbdf277262b0246b21c0c48f64112a22` umfasst 6.549.411 Bytes; Reviewenvelope `56d65cf5d8d7076f36dca43697bc11fc6b31d88f` umfasst 1.663.906 Bytes. Root hat beide tatsächlich vollständig gelesen und den Installer mit der vollständigen Modulableitung und unverändertem Rest bytegleich verglichen. Der Helper wurde regulär mit `d18ebc68c5cd9aa58fda428fa1d171b6bd0e8aed` auf Originalbaum `4df10207a1a5d94703a49257d1e24670b0211664` zurückgestellt; es entstand kein Restorelauf. Derselbe unabhängige Reviewer hat Job, Log, Envelope, vollständigen Installer, Modulableitung und unveränderten Rest tatsächlich geprüft: PASS. Eine unabhängige Gzip-Dekompression wird nicht behauptet.
+
+Ein kleiner Implementierer und ein unabhängiger Reviewer bearbeiten den begrenzten Abgleich. Ein gebundener kanonischer Generatorlauf prüft vollständiges Modul, Rückbau, unveränderten Installerrest und kanonische Bytes vor dem Upload; derselbe Reviewer prüft anschließend die tatsächlichen Artefakte. Danach folgen ein direkt als bereit veröffentlichter Produktkandidat und die erforderliche erste Main-Nachprüfung mit den bestehenden impact-basierten Gates. Kein neuer Test, keine zusätzliche Engine, kein Ready-Übergang und keine lokale Ausführung sind vorgesehen. Ein grüner Dokumentationsvertrag allein belegt keine neue native SQL-Ausführung oder Ursachenbehebung historischer Locktimeouts. Weitere Arbeit setzt einen eigenen belegten Befund und frisch geprüfte Autorität voraus.
+
 ## Abgeschlossen: PR #676
 
 PR #676 glich Quellkopf, Guide und technische Referenz von DatabaseIntegrityAnalysis an die tatsächlich unbekannte CHECKDB-Evidenz an. LastGoodCheckDbTime und CheckdbAgeHours bleiben NULL; CheckdbWarnHours wird nur validiert. Geändert wurden eine Datenquellenzeile im Kommentar, zwei Guideabsätze und drei Aussagen in Abschnitt 11 der technischen Referenz sowie kanonische OPS-Kopie, aktuelle Planung und drei Produktreferenzklassifikationen. Alle ausführbaren SQL-Anweisungen, Hilfe, Parameterverträge, Defaults, Guards, Rechte und Tests blieben unverändert. Die Procedure liefert keine neue Messung und führt weder CHECKDB, Restore noch Repair aus.
@@ -16,7 +34,7 @@ Der kanonische Generator [42758763434](https://github.com/gecompat/SQL_Server_An
 
 ## Nächste ausführbare Welle: Befundstatus und Katalogscope der Inventur-Guides präzisieren
 
-**Status:** in Vorbereitung. Der unabhängige Quellen-/Guide-/Plan-/Scope-Review, Pflichtgates, reguläre Integration und erste Main-Nachprüfung stehen aus.
+**Status:** mit PR #677 abgeschlossen. Der folgende Abschnitt hält den damaligen Umfang fest und ist keine erneute Ausführungsvorgabe.
 
 Der Abschnitt zur partiellen Ausgabe in `Documentation/Analysis_Guides/Procedures/USP_LinkedServerAnalysis.md` fasst fehlgeschlagene optionale Verbindungstests pauschal als SOURCE_UNAVAILABLE zusammen. `Code/08_ServerHealth/220_USP_LinkedServerAnalysis.sql` setzt stattdessen ConnectivityStatus auf FAILED und klassifiziert den separaten StatusCode als DENIED_PERMISSION, SOURCE_TIMEOUT oder SOURCE_UNAVAILABLE. Die einzelne Guidepassage muss diese vorhandenen Unterschiede erhalten; andere Inventarzeilen und das doppelte Opt-in bleiben unverändert.
 
