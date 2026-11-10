@@ -898,7 +898,7 @@ EXEC [monitor].[USP_ServerHealthAnalysis]
 
 ### Zweck
 
-Die Procedure korreliert ausschließlich lesende Integritätsevidenz aus Datenbankstatus, PAGE_VERIFY, dem letzten dokumentierten guten CHECKDB, `suspect_pages`, Backupflags, HADR Auto Page Repair und optionaler Seitenauflösung.
+Die Procedure korreliert ausschließlich lesende Integritätsevidenz aus Datenbankstatus, PAGE_VERIFY, `suspect_pages`, Backupflags, HADR Auto Page Repair und optionaler Seitenauflösung. Letzte erfolgreiche CHECKDB-Zeit und CHECKDB-Alter werden nicht erhoben und bleiben NULL.
 
 Die Procedure führt **kein** DBCC CHECKDB, Restore oder Repair aus.
 
@@ -916,7 +916,7 @@ Fehlt `VIEW SERVER STATE` auf SQL Server 2019 beziehungsweise `VIEW SERVER PERFO
 |---|---|
 | `DatabaseId`, `DatabaseName`, `StateDesc` | Datenbankscope |
 | `PageVerifyOptionDesc` | PAGE_VERIFY-Konfiguration |
-| `LastGoodCheckDbTime`, `CheckdbAgeHours` | Metadatenevidenz des letzten guten CHECKDB |
+| `LastGoodCheckDbTime`, `CheckdbAgeHours` | bleiben mangels CHECKDB-Zeitstempel immer NULL; das Modul bewertet kein Prüfalter |
 | `SuspectPageCount`, `LatestSuspectPageUtc` | suspect-pages-Evidenz |
 | `DamagedBackupCount` | Backups mit Damageflag im Historienfenster |
 | `BackupWithoutChecksumCount` | Backups ohne Backupchecksum |
@@ -935,7 +935,7 @@ Fehlt `VIEW SERVER STATE` auf SQL Server 2019 beziehungsweise `VIEW SERVER PERFO
 | Befund | Bewertung |
 |---|---|
 | alle Zähler 0 | keine negative Evidenz, aber kein Integritätsbeweis |
-| `CheckdbAgeHours > 168` | Framework-Policyhinweis |
+| `CheckdbAgeHours > 168` | tritt im aktuellen Modul nicht ein; NULL bedeutet, dass keine CHECKDB-Evidenz oder Altersbewertung vorliegt. Ein separat erhobener erfolgreicher CHECKDB-Nachweis ist für den Policyvergleich erforderlich. |
 | `SuspectPageCount > 0` | sofortige Nachverfolgung |
 | `DamagedBackupCount > 0` | hohe Priorität |
 | Page Repair succeeded | weiterhin Korruptions-/I/O-Evidenz; CHECKDB und Infrastruktur prüfen |
