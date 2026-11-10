@@ -1,11 +1,11 @@
 # Nächste Arbeitsschritte
 
-**Stand:** 9. November 2026  
+**Stand:** 10. November 2026  
 **Zweck:** aktueller Fortsetzungseinstieg für `gecompat/SQL_Server_Analyze`.
 
 ## Aktuelle Orchestrierung
 
-Die [Entwicklungsplanung](Development_Waves_2026-10.md) bleibt maßgeblich für Reihenfolge und Zuständigkeit. PR #673 ist in Main `b00d9170e6821f3d477432e2239f37922ac66d0c` enthalten; Abschluss und Evidenzgrenzen stehen unter [Abschluss von PR #673](Development_Waves_2026-10.md#abgeschlossen-pr-673). Der PerformanceCounters-Hilfeabgleich ist abgeschlossen. Aus diesem Abschluss wird keine neue ausführbare Produktwelle ausgewählt. Weitere Produktarbeit setzt einen konkreten Quellbefund und bestehende Freigaben voraus. Dieser Stand ist keine globale Fehlerfreiheits- oder Plattformqualifikation. Der frühere Status- und Ausführungsverlauf bleibt im [Historienarchiv](Next_Steps_History_2026-11-08.md) erhalten.
+Die [Entwicklungsplanung](Development_Waves_2026-10.md) bleibt maßgeblich für Reihenfolge und Zuständigkeit. PR #674 hat den tatsächlich qualifizierten PerformanceCounters-Abschluss in den aktuellen Planungsseiten festgehalten; der Lieferstand steht unter [Abschluss von PR #674](Development_Waves_2026-10.md#abgeschlossen-pr-674). Der nächste belegte Schritt gleicht die Entscheidungsfragen und Interpretation im BufferPoolAnalysis-Guide mit der vorhandenen Datenbankgranularität ab. Die Procedure liefert keine Objekt-, Datei- oder Seitenartverteilung und erhebt weder Page Life Expectancy noch Readmetriken. SQL, Parameterhilfe, Installer und Tests bleiben unverändert. Weitere Produktarbeit setzt konkrete Quellbefunde und frisch geprüfte Freigaben voraus. Dieser Stand ist keine globale Fehlerfreiheits- oder Plattformqualifikation. Der frühere Status- und Ausführungsverlauf bleibt im [Historienarchiv](Next_Steps_History_2026-11-08.md) erhalten.
 
 Die Fortsetzung richtet sich nach der tatsächlich erteilten Benutzerautorisierung und deren privater Checkpointfortschreibung. Dieses Dokument veröffentlicht keine privaten Grenzen oder Verbrauchswerte. Heartbeat, Sessionwechsel und PR-Abschluss setzen die Fortschreibung nicht zurück. Bestehende Sicherheits-, Datenschutz-, Lizenz-, Identitäts-, Laufzeit- und Lieferbedingungen gelten.
 
