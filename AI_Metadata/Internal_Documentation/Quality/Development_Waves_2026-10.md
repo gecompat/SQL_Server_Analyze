@@ -6,6 +6,24 @@
 
 ## Auftrag und maßgebliche Quellen
 
+## Abgeschlossen: PR #675
+
+PR #675 präzisierte sieben erklärende Absätze im BufferPoolAnalysis-Guide. Die Fragen und Interpretation unterscheiden nun die vorhandenen Memory-/Semaphorewerte, Clerktypgruppen und optionale Datenbankverteilung von nicht erhobenen Objekt-, Datei-, Seitenart-, PLE- und Readinformationen. Freier Platz ist auf gecachte Seiten bezogen; OS- und Prozessspeicherwerte bleiben von ergänzender Verlaufsevidenz getrennt. Parameter, Beispiele, Kostentabelle, SQL, eingebaute Hilfe, Installer, Workflows und Tests blieben unverändert. Zwei aktuelle Planungsseiten und zwei Produktreferenzklassifikationen wurden abgeglichen.
+
+Regulärer Merge/Main `292f302f31ca6761487f811cd6708327f24c0a28` enthält exakt den geprüften Baum `6ce6083c92e79029d93759b05aa064afa8838409`; geordnete Eltern sind `b763e7c0605e2ec3c1bb52023789d373d147f308` und `05571d000b01b1042cae389ee14b34e5df8522db`. PR-Merge und Main-Ref wurden nach finalem Grün erneut verifiziert. Head [42756163957](https://github.com/gecompat/SQL_Server_Analyze/actions/runs/42756163957), Job 129630951135, und Main [42756613803](https://github.com/gecompat/SQL_Server_Analyze/actions/runs/42756613803), Job 129632358651, bestanden 80 Validatoren, 25 Regelkontext-Selbsttests, den Regelkontextvertrag und beide kanonischen Installervergleiche mit 584.191 und 6.549.336 Bytes. Links bestanden mit 166 beziehungsweise 92 vorübergehenden Netzwerkwarnungen; daraus folgt keine globale Erreichbarkeit. Alle vier Head-Workflows und drei Main-Workflows mit jeweils gleich vielen Checks sind grün. Functional und Cleanup wurden nicht ausgelöst; neue SQL-, Cleanup- oder Stop-Ausführungen werden daraus nicht abgeleitet.
+
+## Nächste ausführbare Welle: unbekannte CHECKDB-Evidenz konsistent beschreiben
+
+**Status:** Quellen-/Referenz-/Plan-/Ableitungs- und Protokollreview bestanden; kanonische Installererzeugung abgeschlossen. Die unabhängige Bindung der tatsächlich erzeugten Artefakte ist bestanden. Pflichtgates, Integration und erste Main-Nachprüfung stehen aus.
+
+Der kanonische Generator [42758763434](https://github.com/gecompat/SQL_Server_Analyze/actions/runs/42758763434), Job 129639227103, bestand auf Helper `42d5bb09b859f50f8ca9f784a62a8d661e82bb6c` beim ersten Pushversuch. OPS `9c79effeb4e134ac79181a15334d6b50f7f51dea` umfasst 6.549.316 Bytes; Envelope `dcb4cdfa4cf72380d48f41b191e4943c8818096d` umfasst 1.663.880 Bytes. Vollständige Modulableitung, Rückbau, unveränderter Rest und kanonische Bytegleichheit wurden vor dem Upload geprüft. Das tatsächliche Vollreadback entspricht der vorbereiteten Ableitung. Der Helper wurde regulär mit `db5caad626a3f1786540f0141472a6c1c82330d4` auf Originalbaum `4df10207a1a5d94703a49257d1e24670b0211664` zurückgestellt. Eine unabhängige Gzip-Dekompression wird nicht behauptet.
+
+`Code/08_ServerHealth/110_USP_DatabaseIntegrityAnalysis.sql` setzt LastGoodCheckDbTime und CheckdbAgeHours im aktuellen Sammelpfad ausdrücklich auf NULL; CheckdbWarnHours wird nur validiert und nicht mit einem Alter verglichen. Der Quellkopf nennt dennoch DATABASEPROPERTYEX als Datenquelle. `Documentation/Analysis_Guides/Procedures/USP_DatabaseIntegrityAnalysis.md` und Abschnitt 11 von `Documentation/Analysis_Guides/08_Server_Health.md` vermischen diese unbekannte Evidenz mit einem letzten guten CHECKDB-Nachweis und einer vermeintlichen Altersbewertung.
+
+Der enge Abgleich entfernt nur die ungenutzte Datenquelle aus dem Quellkopf und präzisiert die betroffenen Erklärungen, Feldbedeutungen und Gegenprüfungen. Ein separater erfolgreicher CHECKDB-Nachweis bleibt eine externe Voraussetzung für einen Policyvergleich; NULL liefert weder Prüfzeitpunkt noch Prüfalter. Die Procedure erhält keine neue Messung und führt weder CHECKDB, Restore noch Repair aus. Alle SQL-Anweisungen außerhalb des Dateikopfs, die vorhandene Hilfe, Parameterverträge, Defaults, Guards, Rechte und Tests bleiben unverändert. Die kanonische OPS-Kopie, aktuelle Planungsseiten und genau drei Produktreferenzklassifikationen werden gemeinsam abgeglichen; Discovery, Scopes, semantische Abhängigkeiten und Validatoren bleiben erhalten.
+
+Ein kleiner Implementierer und ein unabhängiger Reviewer bearbeiten den kohärenten Umfang. Vorgesehen sind eine kanonische Remote-Erzeugung mit vollständiger Modulableitung und tatsächlicher Artefaktbindung sowie die bestehenden impact-basierten Head-/Main-Gates. Die Quelländerung betrifft nur einen Kommentar; der vorhandene Selektor entscheidet über die funktionale Auswahl. Der OPS-Pfad aktiviert den bestehenden Cleanup-Vertrag. Zusätzliche Engines, neue Tests und eine Ready-Transition sind nicht vorgesehen. Historische Locktimeoutursachen bleiben ungeklärt; der Textabgleich ist keine Ursachenbehebung.
+
 ## Abgeschlossen: PR #674
 
 PR #674 änderte ausschließlich die beiden aktuellen Planungsseiten, um den integrierten und auf Main qualifizierten PerformanceCounters-Hilfeabgleich von PR #673 als abgeschlossen auszuweisen. Produktcode, Hilfe, Referenzen, OPS, Regelkontextindex, Workflows und Tests blieben unverändert; ein Generator war nicht erforderlich. Regulärer Merge/Main `b763e7c0605e2ec3c1bb52023789d373d147f308` enthält exakt den geprüften Baum `568ce03a337ec5555b4f2b0ceb55b2b6e0363903` mit den geordneten Eltern `b00d9170e6821f3d477432e2239f37922ac66d0c` und `e897cf2316109508d3cef1426ca747f7b678ad72`. Main-Ref und PR-Merge wurden nach finalem Grün erneut verifiziert.
@@ -14,7 +32,7 @@ Head [42710412941](https://github.com/gecompat/SQL_Server_Analyze/actions/runs/4
 
 ## Nächste ausführbare Welle: Ergebnisgranularität im BufferPoolAnalysis-Guide abgleichen
 
-**Status:** in Vorbereitung. Der unabhängige Quellen-/Referenz-/Planreview, die erforderlichen Head-Gates, reguläre Integration und erste Main-Nachprüfung stehen aus.
+**Status:** mit PR #675 abgeschlossen. Der folgende Vorbereitungsumfang ist historischer Kontext; der aktuelle Nachweis steht unter [Abschluss von PR #675](#abgeschlossen-pr-675).
 
 Die Entscheidungsfrage und technische Leitfrage in `Documentation/Analysis_Guides/Procedures/USP_BufferPoolAnalysis.md` versprechen Verteilungen nach Objekten und Seitenarten. Verwandte Interpretationssätze vermischen die Modulausgabe mit separaten Objekt-, Page-Life- und Readmetriken. Tatsächlich aggregiert `Code/08_ServerHealth/160_USP_BufferPoolAnalysis.sql` den optionalen Buffer-Descriptorpfad ausschließlich nach Datenbankkennung und aufgelöstem Namen. Die weiteren Fachmengen sind MemorySnapshot, Resource Semaphores und Memory Clerks. Die bereits zutreffende Parameterhilfe und verlinkte technische Detailbeschreibung bleiben unverändert.
 
