@@ -6,6 +6,22 @@
 
 ## Auftrag und maßgebliche Quellen
 
+## Abgeschlossen: PR #674
+
+PR #674 änderte ausschließlich die beiden aktuellen Planungsseiten, um den integrierten und auf Main qualifizierten PerformanceCounters-Hilfeabgleich von PR #673 als abgeschlossen auszuweisen. Produktcode, Hilfe, Referenzen, OPS, Regelkontextindex, Workflows und Tests blieben unverändert; ein Generator war nicht erforderlich. Regulärer Merge/Main `b763e7c0605e2ec3c1bb52023789d373d147f308` enthält exakt den geprüften Baum `568ce03a337ec5555b4f2b0ceb55b2b6e0363903` mit den geordneten Eltern `b00d9170e6821f3d477432e2239f37922ac66d0c` und `e897cf2316109508d3cef1426ca747f7b678ad72`. Main-Ref und PR-Merge wurden nach finalem Grün erneut verifiziert.
+
+Head [42710412941](https://github.com/gecompat/SQL_Server_Analyze/actions/runs/42710412941), Job 129478138498, und Main [42711130798](https://github.com/gecompat/SQL_Server_Analyze/actions/runs/42711130798), Job 129480632296, bestanden 80 Validatoren, den Regelkontextvertrag und beide kanonischen Installervergleiche mit 584.191 und 6.549.336 Bytes. Die Linkprüfungen bestanden mit 44 beziehungsweise 79 vorübergehenden Netzwerkwarnungen; daraus folgt keine globale Erreichbarkeit. Alle vier Head-Workflows und drei Main-Workflows mit jeweils gleich vielen Checks bestanden. Functional und Cleanup wurden durch die Metadatenfilter nicht ausgelöst. Die nativen SQL- und Stop-Nachweise von PR #673 bleiben dort gebunden; PR #674 liefert keine neue SQL-, Cleanup- oder Stop-Ausführung.
+
+## Nächste ausführbare Welle: Ergebnisgranularität im BufferPoolAnalysis-Guide abgleichen
+
+**Status:** in Vorbereitung. Der unabhängige Quellen-/Referenz-/Planreview, die erforderlichen Head-Gates, reguläre Integration und erste Main-Nachprüfung stehen aus.
+
+Die Entscheidungsfrage und technische Leitfrage in `Documentation/Analysis_Guides/Procedures/USP_BufferPoolAnalysis.md` versprechen Verteilungen nach Objekten und Seitenarten. Verwandte Interpretationssätze vermischen die Modulausgabe mit separaten Objekt-, Page-Life- und Readmetriken. Tatsächlich aggregiert `Code/08_ServerHealth/160_USP_BufferPoolAnalysis.sql` den optionalen Buffer-Descriptorpfad ausschließlich nach Datenbankkennung und aufgelöstem Namen. Die weiteren Fachmengen sind MemorySnapshot, Resource Semaphores und Memory Clerks. Die bereits zutreffende Parameterhilfe und verlinkte technische Detailbeschreibung bleiben unverändert.
+
+Der begrenzte Abgleich präzisiert nur die betroffenen Fragen, Granularitäts- und Interpretationsaussagen im Guide. Er trennt vorhandene Snapshotwerte von gesondert zu erhebender Gegenprobe und liefert weder neue Objekt-/Seitenartverteilungen noch Page-Life- oder Readmetriken. SQL, Parameterverträge, Defaults, Guards, Rechte, Installer und Tests bleiben unverändert. Die zwei aktuellen Planungsseiten führen den tatsächlichen Abschluss und nächsten Umfang; zwei zusätzliche Produktreferenzklassifikationen binden Quelle und Guide im bestehenden Regelkontextindex. Discovery, Scopes, semantische Abhängigkeiten und Validatoren bleiben erhalten.
+
+Ein kleiner Implementierer und ein unabhängiger Reviewer bearbeiten den kohärenten Textabgleich. Die vorhandenen Dokumentations- und Metadatengates bestimmen den Prüfpfad; ein Generator, zusätzliche Engines, neue Tests und eine Ready-Transition sind nicht vorgesehen. Die bestehenden Pathfilter lösen für diesen Dokumentationsumfang weder Functional noch Cleanup aus. Weitere Arbeit benötigt einen eigenen belegten Befund und frisch geprüfte Autorität; verfügbare Kapazität ist keine Mengenvorgabe.
+
 ## Abgeschlossen: PR #671
 
 PR #671 hat ausschließlich die zwei aktuellen Planungsseiten an den tatsächlich abgeschlossenen Inhalt von PR #670 angeglichen. Ausführbarer Code, Referenzen, Installer, Regelkontextindex, Workflows und Tests blieben unverändert. Merge/Main `f2879657eaf96aab20a1568603532393bd59a492` enthält den geprüften Baum `dc85d9f0bafe8200bba29f48d31e1afde7e79fa1`; die geordneten Eltern sind `5b8e75b1b6c29420627bcb61a7196b1458e03dcc` und `837d610b5d5553966343f0306c42b6df1fc1923f`.
