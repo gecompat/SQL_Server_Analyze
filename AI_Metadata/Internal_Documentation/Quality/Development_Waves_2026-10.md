@@ -6,6 +6,22 @@
 
 ## Auftrag und maßgebliche Quellen
 
+## Aktuelle Fortsetzung
+
+PR #680 ist einschließlich seiner Main-Prüfungen abgeschlossen. Die enge Korrektur des Hilfe-Rückgabevertrags für drei benachbarte Inventare ist damit geschlossen. Ein neuer Produktkandidat wurde nicht gewählt. Die ausschließlich geprüften Hilfe-/Json-Rückgabefragen in AuditConfigurationAnalysis und CompileContextAnalysis sind zutreffend beschrieben; daraus folgt kein weiterer Korrekturscope und keine vollständige Modul-, Parameter- oder globale Fehlerfreiheitsabnahme. Die autonome Fortsetzung bleibt bei einem neuen konkreten Quellbefund innerhalb frisch geprüfter Autorität aktiv.
+
+## Abgeschlossen: PR #680
+
+PR #680 korrigierte je eine Hilfeaussage und Guidereihe von MsdbHealthAnalysis, LinkedServerAnalysis und SystemDatabaseObjectInventory: `@Json` wird vor dem Hilfezweig auf NULL gesetzt; die vier Status-/Fehler-OUTPUTs bleiben unverändert. Ausführbare Abläufe und übrige Parameterverträge blieben unverändert.
+
+Merge/Main `9c857e85506df9da205d052966eaa2a887b0abfb` enthält den geprüften Baum `553f5fedf7ea40911c3548a457ab98e25b831d08`; geordnete Eltern sind `3d8c05b81ea193a899baed19a75480c7296d35e0` und `481f1077b705ac5f8c9ac96686712586d1172d49`. Main-Ref und PR-Merge wurden nach der Integration erneut verifiziert.
+
+Head [42775388243](https://github.com/gecompat/SQL_Server_Analyze/actions/runs/42775388243) und Main [42777271480](https://github.com/gecompat/SQL_Server_Analyze/actions/runs/42777271480) bestanden Deployment und acht ausgewählte SQL-Server-2025-Verträge bei Compatibility Level 170: Common124, Integration110/196/198 und ServerHealth110/120/122/123. Die Stop-Schritte waren erfolgreich. Head bestand sechs Workflows und acht Checks, Main fünf Workflows und sieben Checks.
+
+Head-Dokumentation [42775388566](https://github.com/gecompat/SQL_Server_Analyze/actions/runs/42775388566) und Main-Dokumentation [42777271370](https://github.com/gecompat/SQL_Server_Analyze/actions/runs/42777271370) bestanden jeweils 80 Validatoren, 25 Regelkontext-Selbsttests, den Regelkontextvertrag und Installervergleiche mit 584.191 und 6.549.703 Bytes. Die Linkprüfungen meldeten 166 beziehungsweise 164 vorübergehende Warnungen; daraus folgt keine globale Erreichbarkeit. Head-Cleanup [42775388332](https://github.com/gecompat/SQL_Server_Analyze/actions/runs/42775388332) und Main-Cleanup [42777271422](https://github.com/gecompat/SQL_Server_Analyze/actions/runs/42777271422) bestanden jeweils 18 tatsächliche Finally-Szenarien.
+
+Isolierter Agentenverlauf, Berechtigungs-, Regex- und Compatibility-Level-Matrizen sowie Standalone waren nicht ausgewählt. Separate Hilfeausgabe, unabhängige Container-Abwesenheitsprobe und eine kausale Behebung historischer Locktimeouts werden nicht behauptet.
+
 ## Abgeschlossen: PR #679
 
 PR #679 präzisierte genau eine Hilfeaussage und die passende Guidereihe von DatabasePortabilityAnalysis. Json wird vor dem Hilfezweig auf NULL gesetzt; nur die vier Status-/Fehlerempfänger behalten ihre gebundenen Werte. Früher RETURN, Analyse, Initialisierung, übrige Parameterverträge, Defaults, Guards, Rechte und Tests blieben unverändert. Kanonische OPS-Kopie, aktuelle Planung und zwei Produktreferenzklassifikationen wurden abgeglichen.
@@ -16,7 +32,7 @@ HeadDocs [42770331507](https://github.com/gecompat/SQL_Server_Analyze/actions/ru
 
 ## Nächste ausführbare Welle: Hilfe-Rückgaben dreier benachbarter Inventare präzisieren
 
-**Status:** Quellen-/Guide-/Plan-/Scope- und Generatorprotokollreview bestanden. Kanonische OPS-Erzeugung und tatsächliche unabhängige Artefaktbindung sind bestanden. Pflichtgates, reguläre Integration und erste Main-Nachprüfung stehen noch aus.
+**Status:** mit PR #680 abgeschlossen. Der folgende Abschnitt dokumentiert den historischen Umfang und ist keine aktuelle Ausführungsvorgabe.
 
 Drei tatsächliche Nachbarquellen enthalten dieselbe falsche pauschale OUTPUT-Erhaltungszusage in ihrer Hilfe: `Code/08_ServerHealth/210_USP_MsdbHealthAnalysis.sql`, `Code/08_ServerHealth/220_USP_LinkedServerAnalysis.sql` und `Code/08_ServerHealth/230_USP_SystemDatabaseObjectInventory.sql`. Jede initialisiert Json vor dem Hilfezweig auf NULL. Der frühe RETURN überspringt erst die vier abschließenden Status-/Fehler-OUTPUT-Zuweisungen. Diese vier Empfänger behalten ihre Werte, Json dagegen nicht.
 
