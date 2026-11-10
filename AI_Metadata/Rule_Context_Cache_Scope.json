@@ -2079,6 +2079,26 @@
       "source": "AI_Metadata/Internal_Documentation/Quality/Development_Waves_2026-10.md",
       "target": "Documentation/Analysis_Guides/08_Server_Health.md",
       "classification": "product-reference"
+    },
+    {
+      "source": "AI_Metadata/Internal_Documentation/Quality/Development_Waves_2026-10.md",
+      "target": "Code/08_ServerHealth/220_USP_LinkedServerAnalysis.sql",
+      "classification": "product-reference"
+    },
+    {
+      "source": "AI_Metadata/Internal_Documentation/Quality/Development_Waves_2026-10.md",
+      "target": "Documentation/Analysis_Guides/Procedures/USP_LinkedServerAnalysis.md",
+      "classification": "product-reference"
+    },
+    {
+      "source": "AI_Metadata/Internal_Documentation/Quality/Development_Waves_2026-10.md",
+      "target": "Code/08_ServerHealth/230_USP_SystemDatabaseObjectInventory.sql",
+      "classification": "product-reference"
+    },
+    {
+      "source": "AI_Metadata/Internal_Documentation/Quality/Development_Waves_2026-10.md",
+      "target": "Documentation/Analysis_Guides/Procedures/USP_SystemDatabaseObjectInventory.md",
+      "classification": "product-reference"
     }
   ]
 }
