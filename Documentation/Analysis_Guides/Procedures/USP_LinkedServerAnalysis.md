@@ -90,7 +90,7 @@ Ein passender Positivfall ist ein synthetischer `ExampleLinkedServer`, der lokal
 
 ## Leere oder partielle Ausgabe
 
-`AVAILABLE_EMPTY` bedeutet, dass im sichtbaren Scope kein Linked Server registriert ist. Eine leere Ausgabe beweist nicht, dass keine externe Abhängigkeit über Anwendungscode, SSIS, CLR oder andere Mechanismen besteht. Ein fehlgeschlagener optionaler Test setzt die betroffene Zeile auf `SOURCE_UNAVAILABLE` und macht den Gesamtaufruf partiell; andere lokale Inventarzeilen bleiben erhalten. Bei fehlender High-Impact-Bestätigung wird kein Remoteversuch begonnen.
+`AVAILABLE_EMPTY` bedeutet, dass im sichtbaren Scope kein Linked Server registriert ist. Eine leere Ausgabe beweist nicht, dass keine externe Abhängigkeit über Anwendungscode, SSIS, CLR oder andere Mechanismen besteht. Ein fehlgeschlagener optionaler Test setzt `ConnectivityStatus` der betroffenen Zeile auf `FAILED`; deren `StatusCode` lautet gemäß der vorhandenen Fehlerklassifikation `DENIED_PERMISSION`, `SOURCE_TIMEOUT` oder `SOURCE_UNAVAILABLE`. Die partielle Evidenz führt bei regulärem Abschluss zu `AVAILABLE_LIMITED`; andere lokale Inventarzeilen bleiben erhalten. Bei fehlender High-Impact-Bestätigung wird kein Remoteversuch begonnen.
 
 ## Eigenlast und Grenzen
 

@@ -1,9 +1,9 @@
 # [monitor].[USP_SystemDatabaseObjectInventory]
 
-Inventarisiert sichtbare, nicht von Microsoft gelieferte Objekte in `master`, `model` und `msdb`, ohne DDL auszuführen.
+Inventarisiert sichtbare, schema-zugeordnete Katalogobjekte in `master`, `model` und `msdb`, deren `is_ms_shipped`-Wert 0 ist, ohne DDL auszuführen.
 
 **Bereich:** Server Health, Wartbarkeit und Upgradevorbereitung
-**Zweck:** Liefert ein sichtbares Kataloginventar benutzerdefinierter schema-gebundener Objekte in drei Systemdatenbanken.
+**Zweck:** Liefert ein sichtbares Kataloginventar schema-zugeordneter Objekte mit `is_ms_shipped = 0` und einem Typ außerhalb `S` und `IT` in drei Systemdatenbanken.
 **Beobachtungsart:** sequenzieller datenbanklokaler Katalogsnapshot
 **Kostenklasse:** LOW
 
@@ -98,8 +98,8 @@ Für einen kontrollierten Positivtest werden feste Example-Namen vor der Erstell
 |---|---|
 | Kostenklasse | `LOW` |
 | Standardpfad | Drei begrenzte Katalogzugriffe auf `sys.objects` und `sys.schemas` |
-| Teuerster Pfad | Viele sichtbare benutzerdefinierte Objekte in allen drei Datenbanken |
-| Haupttreiber | Anzahl sichtbarer schema-gebundener Objekte |
+| Teuerster Pfad | Viele sichtbare Objekteinträge in allen drei Datenbanken |
+| Haupttreiber | Anzahl sichtbarer, einem Schema zugeordneter Objekteinträge |
 | Skalierung | Sequenziell für `master`, `model` und `msdb` |
 | Ressourcen | Geringe Katalog-CPU und lokale Sortierung |
 | Begrenzungswirkung | `@MaxZeilen` begrenzt die Inventarzeilen in CONSOLE, RAW, TABLE und JSON, nicht den Katalogselect |
@@ -110,7 +110,7 @@ Für einen kontrollierten Positivtest werden feste Example-Namen vor der Erstell
 
 ## Eine Zeile bedeutet
 
-Eine Zeile beschreibt ein Benutzerobjekt mit Datenbank, Schema, Typ sowie Erstellungs- und Änderungszeit.
+Eine Zeile beschreibt einen sichtbaren Objekteintrag im dokumentierten Katalogscope mit Datenbank, Schema, Typ sowie Erstellungs- und Änderungszeit.
 
 ## So lesen
 
@@ -130,7 +130,7 @@ Freigegebene administrative oder Monitoringobjekte können betrieblich gewollt s
 
 ### Leitfrage
 
-Welche Benutzerobjekte benötigen Eigentümer-, Zweck- und Upgradeevidenz?
+Welche sichtbaren Objekteinträge benötigen Eigentümer-, Zweck- und Upgradeevidenz?
 
 ### Technischer Hintergrund
 
@@ -161,7 +161,7 @@ Vergleichen Sie Objekt, Eigentümer, Quellcode, Deploymentpfad, Backup und Upgra
 
 ### Typische Fehlinterpretation
 
-`is_ms_shipped = 0` bedeutet benutzererstellt, nicht automatisch unerlaubt.
+`is_ms_shipped = 0` bedeutet, dass das Objekt nicht als von einer internen SQL-Server-Komponente erstellt markiert ist. Der Wert belegt weder die tatsächliche Herkunft noch die Angemessenheit oder Sicherheit des Objekts; die Procedure prüft auch keine SCHEMABINDING-Eigenschaft.
 
 ### Folgeanalyse
 
