@@ -22,6 +22,25 @@ DECLARE @Status varchar(40), @Partial bit;
 DECLARE @DateCase int = 1, @Consumer int, @Calls int = 0;
 DECLARE @RunDate int, @RunTime int, @RunDuration int, @ExpectedSeconds int;
 DECLARE @ExpectedStart datetime, @Error int, @Message nvarchar(2048);
+DECLARE @PositiveTableCalls int = 0, @PositiveTableRows bigint;
+DECLARE @PositiveTableJobId uniqueidentifier, @PositiveTableStart datetime;
+DECLARE @PositiveTableSeconds int, @PositiveTableJson nvarchar(max);
+DECLARE @PositiveNoneJobsJson nvarchar(max);
+DECLARE @PositiveTableActualSchema TABLE
+([LogicalOrdinal] int, [ColumnName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS,
+ [SystemTypeId] tinyint);
+DECLARE @PositiveTableExpectedSchema TABLE
+([LogicalOrdinal] int, [ColumnName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS,
+ [SystemTypeId] tinyint);
+INSERT @PositiveTableExpectedSchema VALUES
+(1, N'JobId', 36), (2, N'JobName', 231), (3, N'Enabled', 104),
+(4, N'OwnerName', 231), (5, N'CategoryName', 231), (6, N'IsRunning', 104),
+(7, N'RunStart', 61), (8, N'RunningMinutes', 56),
+(9, N'LastRunDateTime', 61), (10, N'LastRunStatus', 56),
+(11, N'LastRunStatusDesc', 231), (12, N'LastRunDurationSeconds', 56),
+(13, N'LastMessage', 231), (14, N'ScheduleCount', 56),
+(15, N'EnabledScheduleCount', 56), (16, N'StepCount', 56),
+(17, N'ProblemCode', 167);
 DECLARE @DateCases TABLE
 ([CaseId] int PRIMARY KEY, [RunDate] int, [RunTime] int, [RunDuration] int,
  [ExpectedStart] datetime, [ExpectedSeconds] int);
@@ -189,6 +208,96 @@ BEGIN TRY
                       AND [LastRunDurationSeconds] = @ExpectedSeconds
                       AND [LastRunStatus] = 1 AND [Enabled] = 0 AND [StepCount] = 0
                 ) THROW 55198, N'Die AgentJobs-Datums- oder Sekundeninterpretation ist verletzt.', 1;
+                SET @PositiveNoneJobsJson = JSON_QUERY(@Json, '$.jobs');
+                SELECT @After = (SELECT
+                    JSON_QUERY((SELECT * FROM [msdb].[dbo].[sysjobs]
+                        ORDER BY [job_id] FOR JSON PATH, INCLUDE_NULL_VALUES)) AS [Jobs],
+                    JSON_QUERY((SELECT * FROM [msdb].[dbo].[sysjobsteps]
+                        ORDER BY [job_id], [step_id] FOR JSON PATH, INCLUDE_NULL_VALUES)) AS [Steps],
+                    JSON_QUERY((SELECT * FROM [msdb].[dbo].[sysjobhistory]
+                        ORDER BY [instance_id] FOR JSON PATH, INCLUDE_NULL_VALUES)) AS [History],
+                    JSON_QUERY((SELECT * FROM [msdb].[dbo].[sysjobactivity]
+                        ORDER BY [session_id], [job_id] FOR JSON PATH, INCLUDE_NULL_VALUES)) AS [Activity],
+                    JSON_QUERY((SELECT * FROM [msdb].[dbo].[sysjobservers]
+                        ORDER BY [job_id], [server_id] FOR JSON PATH, INCLUDE_NULL_VALUES)) AS [Servers],
+                    JSON_QUERY((SELECT * FROM [msdb].[dbo].[sysjobschedules]
+                        ORDER BY [job_id], [schedule_id] FOR JSON PATH, INCLUDE_NULL_VALUES)) AS [Schedules]
+                    FOR JSON PATH, WITHOUT_ARRAY_WRAPPER, INCLUDE_NULL_VALUES);
+                IF @Before IS NULL OR @After IS NULL
+                   OR @Before COLLATE SQL_Latin1_General_CP1_CS_AS <> @After COLLATE SQL_Latin1_General_CP1_CS_AS
+                   OR (SELECT COUNT_BIG(*) FROM [msdb].[dbo].[sysjobhistory]) <> 3 + @DateCase
+                   OR XACT_STATE() <> 1 OR @@TRANCOUNT <> 1
+                   OR @@LOCK_TIMEOUT <> @PreviousLockTimeout OR (@@OPTIONS & 16384) <> 16384
+                    THROW 55199, N'Der AgentJobs-NONE-Aufruf hat Agentquellen oder Callerzustand verändert.', 1;
+                CREATE TABLE [#AgentJobsPositiveTable] ([Placeholder] int NULL);
+                SELECT @Json = NULL, @PositiveTableRows = NULL, @PositiveTableJobId = NULL,
+                    @PositiveTableStart = NULL, @PositiveTableSeconds = NULL, @PositiveTableJson = NULL;
+                EXEC [monitor].[USP_AgentJobs] @JobNames = N'[ExampleOps008HistoryJob]',
+                    @MaxZeilen = 0, @ResultSetArt = 'TABLE',
+                    @ResultTablesJson = N'{"jobs":"#AgentJobsPositiveTable"}',
+                    @JsonErzeugen = 1, @Json = @Json OUTPUT, @PrintMeldungen = 0;
+                SET @PositiveTableCalls += 1;
+                SET @Calls += 1;
+                EXEC [sys].[sp_executesql]
+                    N'SELECT @rows = (SELECT COUNT_BIG(*) FROM [#AgentJobsPositiveTable]),
+                             @jobId = (SELECT TOP (1) [JobId] FROM [#AgentJobsPositiveTable]),
+                             @runStart = (SELECT TOP (1) [LastRunDateTime] FROM [#AgentJobsPositiveTable]),
+                             @seconds = (SELECT TOP (1) [LastRunDurationSeconds] FROM [#AgentJobsPositiveTable]),
+                             @jobsJson = (SELECT * FROM [#AgentJobsPositiveTable]
+                                 ORDER BY [JobName] FOR JSON PATH, INCLUDE_NULL_VALUES);',
+                    N'@rows bigint OUTPUT, @jobId uniqueidentifier OUTPUT,
+                      @runStart datetime OUTPUT, @seconds int OUTPUT,
+                      @jobsJson nvarchar(max) OUTPUT',
+                    @rows = @PositiveTableRows OUTPUT, @jobId = @PositiveTableJobId OUTPUT,
+                    @runStart = @PositiveTableStart OUTPUT,
+                    @seconds = @PositiveTableSeconds OUTPUT,
+                    @jobsJson = @PositiveTableJson OUTPUT;
+                DELETE FROM @PositiveTableActualSchema;
+                INSERT @PositiveTableActualSchema
+                    ([LogicalOrdinal], [ColumnName], [SystemTypeId])
+                SELECT CONVERT(int, ROW_NUMBER() OVER (ORDER BY [c].[column_id])),
+                    [c].[name] COLLATE SQL_Latin1_General_CP1_CS_AS,
+                    [c].[system_type_id]
+                FROM [tempdb].[sys].[columns] AS [c]
+                WHERE [c].[object_id] = OBJECT_ID(N'tempdb..#AgentJobsPositiveTable');
+                IF (SELECT COUNT(*) FROM @PositiveTableActualSchema) <> 17
+                   OR EXISTS
+                   (
+                       SELECT [LogicalOrdinal], [ColumnName], [SystemTypeId]
+                       FROM @PositiveTableActualSchema
+                       EXCEPT
+                       SELECT [LogicalOrdinal], [ColumnName], [SystemTypeId]
+                       FROM @PositiveTableExpectedSchema
+                   )
+                   OR EXISTS
+                   (
+                       SELECT [LogicalOrdinal], [ColumnName], [SystemTypeId]
+                       FROM @PositiveTableExpectedSchema
+                       EXCEPT
+                       SELECT [LogicalOrdinal], [ColumnName], [SystemTypeId]
+                       FROM @PositiveTableActualSchema
+                   )
+                    THROW 55198, N'Das positive AgentJobs-TABLE-Schema ist verletzt.', 1;
+                IF @PositiveTableRows IS NULL OR @PositiveTableRows <> 1 OR @PositiveTableJobId IS NULL
+                   OR @PositiveTableJobId <> @JobId OR @PositiveTableStart IS NULL
+                   OR @PositiveTableStart <> @ExpectedStart OR @PositiveTableSeconds IS NULL
+                   OR @PositiveTableSeconds <> @ExpectedSeconds
+                    THROW 55198, N'Die positive AgentJobs-TABLE-Datums- oder Sekundeninterpretation ist verletzt.', 1;
+                IF COALESCE(ISJSON(@Json), 0) <> 1
+                   OR COALESCE(JSON_VALUE(@Json, '$.meta.statusCode'), '') <> 'AVAILABLE'
+                   OR COALESCE(JSON_VALUE(@Json, '$.meta.isPartial'), '') <> 'false'
+                   OR JSON_VALUE(@Json, '$.meta.errorNumber') IS NOT NULL
+                   OR JSON_VALUE(@Json, '$.meta.errorMessage') IS NOT NULL
+                   OR COALESCE(JSON_QUERY(@Json, '$.steps'), '') <> '[]'
+                   OR JSON_QUERY(@Json, '$.jobs') IS NULL
+                   OR (SELECT COUNT_BIG(*) FROM OPENJSON(@Json, '$.jobs')) <> 1
+                   OR @PositiveNoneJobsJson IS NULL OR @PositiveTableJson IS NULL
+                   OR @PositiveTableJson COLLATE SQL_Latin1_General_CP1_CS_AS
+                      <> JSON_QUERY(@Json, '$.jobs') COLLATE SQL_Latin1_General_CP1_CS_AS
+                   OR @PositiveTableJson COLLATE SQL_Latin1_General_CP1_CS_AS
+                      <> @PositiveNoneJobsJson COLLATE SQL_Latin1_General_CP1_CS_AS
+                    THROW 55198, N'Die positive AgentJobs-TABLE-/JSON-Parität ist verletzt.', 1;
+                DROP TABLE [#AgentJobsPositiveTable];
             END
             ELSE
             BEGIN
@@ -241,8 +350,8 @@ BEGIN TRY
         END;
         SET @DateCase += 1;
     END;
-    IF @DateCase <> 4 OR @Calls <> 12
-        THROW 55199, N'Die drei Datumsfälle oder zwölf Consumeraufrufe fehlen.', 1;
+    IF @DateCase <> 4 OR @Calls <> 15 OR @PositiveTableCalls <> 3
+        THROW 55199, N'Die drei Datumsfälle, 15 Consumeraufrufe oder drei AgentJobs-TABLE-Aufrufe fehlen.', 1;
     -- Eigene Stepdefinitionen und injizierte History werden niemals ausgeführt.
     EXEC @StepReturn = [msdb].[dbo].[sp_add_jobstep] @job_id = @JobId, @step_id = 1,
         @step_name = N'ExampleHistoryStepOne', @subsystem = N'TSQL',
@@ -414,8 +523,8 @@ BEGIN TRY
         END;
         SET @StepCase += 1;
     END;
-    IF @StepCase <> 4 OR @Calls <> 21
-        THROW 55199, N'Die drei Stepfälle oder 21 Consumeraufrufe fehlen.', 1;
+    IF @StepCase <> 4 OR @Calls <> 24
+        THROW 55199, N'Die drei Stepfälle oder 24 Consumeraufrufe fehlen.', 1;
     IF EXISTS (SELECT 1 FROM [msdb].[dbo].[sysjobactivity] WHERE [job_id] = @JobId)
        OR EXISTS (SELECT 1 FROM [msdb].[dbo].[sysjobservers] WHERE [job_id] = @JobId)
        OR EXISTS (SELECT 1 FROM [msdb].[dbo].[sysjobschedules] WHERE [job_id] = @JobId)
