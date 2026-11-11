@@ -2149,6 +2149,16 @@
       "source": "AI_Metadata/Internal_Documentation/Quality/Development_Waves_2026-10.md",
       "target": "Documentation/Analysis_Guides/Procedures/USP_DatabaseCapacityAnalysis.md",
       "classification": "product-reference"
+    },
+    {
+      "source": "AI_Metadata/Internal_Documentation/Quality/Development_Waves_2026-10.md",
+      "target": "TestLab/Scenarios/OPS-008/agent-history.sql",
+      "classification": "product-reference"
+    },
+    {
+      "source": "AI_Metadata/Internal_Documentation/Quality/Development_Waves_2026-10.md",
+      "target": "Code/07_Infrastructure/020_USP_AgentJobs.sql",
+      "classification": "product-reference"
     }
   ]
 }
