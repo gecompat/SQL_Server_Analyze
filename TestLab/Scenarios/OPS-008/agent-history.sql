@@ -548,7 +548,7 @@ BEGIN TRY
                     OR (SELECT COUNT_BIG(*) FROM OPENJSON(@Json, '$.steps')) <> 0
                     THROW 56216, N'Der abgefangene AgentJobs-Kalenderfehler ist verletzt.', 1;
 
-                IF @CalendarCase <= 4
+                IF @CalendarCase <= 12
                 BEGIN
                     CREATE TABLE [#AgentJobsCalendarTable] ([Placeholder] int NULL);
                     EXEC [monitor].[USP_AgentJobs] @JobNames = N'[ExampleOps008HistoryJob]',
@@ -817,8 +817,8 @@ BEGIN TRY
         END;
         SET @CalendarCase += 1;
     END;
-    IF @CalendarCalls <> 40 OR @CalendarRollbacks <> 36
-        THROW 56218, N'Die 40 Kalender-/Uhrzeitaufrufe oder 36 Rollbacks fehlen.', 1;
+    IF @CalendarCalls <> 48 OR @CalendarRollbacks <> 36
+        THROW 56218, N'Die 48 Kalender-/Uhrzeitaufrufe oder 36 Rollbacks fehlen.', 1;
 END TRY
 BEGIN CATCH
     IF XACT_STATE() <> 0 ROLLBACK TRANSACTION;

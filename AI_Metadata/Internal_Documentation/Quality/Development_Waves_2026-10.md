@@ -8,7 +8,27 @@
 
 ## Aktuelle Fortsetzung
 
-PR #682 ist einschließlich seiner erforderlichen Main-Prüfungen abgeschlossen. Ein neuer, eng belegter Guideabgleich betrifft die Prognosegrenze von DatabaseCapacityAnalysis: Der einzelne Snapshot liefert weder eine Wachstumsrate noch eine Zeit-bis-voll-Prognose. Der vorherige Zählbedeutungsabgleich bleibt geschlossen. Der autonome Auftrag bleibt innerhalb der tatsächlich freigegebenen Grenzen aktiv; weitere Arbeit benötigt jeweils einen eigenen Quellbefund und frisch geprüfte Autorität.
+PR #683 ist einschließlich seiner erforderlichen Main-Prüfungen abgeschlossen. Die nächste belegte Welle ergänzt im vorhandenen OPS-008-Laufzeitvertrag die noch fehlende TABLE-/JSON-Parität für acht ungültige Uhrzeitfälle. Der vorherige Guideabgleich bleibt geschlossen. Der autonome Auftrag bleibt innerhalb der tatsächlich freigegebenen Grenzen aktiv; weitere Arbeit benötigt jeweils einen eigenen Quellbefund und frisch geprüfte Autorität.
+
+## Abgeschlossen: PR #683
+
+PR #683 ersetzte genau einen Satz im DatabaseCapacity-Guide: Aus dem Snapshot lässt sich keine Zeit-bis-voll-Prognose ableiten. Der nächste konfigurierte Wachstumsschritt bleibt eine aktuelle Konfigurationsgröße. SQL, Hilfe, Parameterverträge, Schemas, Installer, Tests und Workflows blieben unverändert. Aktuelle Planung und zwei Produktreferenzklassifikationen wurden abgeglichen.
+
+Regulärer Merge/Main `5d477beca628f73460b0bd69624bdc59a3411dd4` enthält den geprüften Baum `1dd1efe62670dcdef1a3369dd75a85d10ea598b1`; geordnete Eltern sind `2ccb7b62666e2bc37ad35ded203f2c3896f9dd31` und `aa76b304322ecd3d09096036c3fbf2a0ec72c9d2`. Main-Ref und PR-Merge wurden nach finalem Grün erneut verifiziert.
+
+Head-Dokumentation [43075452732](https://github.com/gecompat/SQL_Server_Analyze/actions/runs/43075452732), Job 130713959878, und Main-Dokumentation [43075978856](https://github.com/gecompat/SQL_Server_Analyze/actions/runs/43075978856), Job 130715784952, bestanden jeweils 80 Validatoren, 25 Regelkontext-Selbsttests, den Regelkontextvertrag und bestehende kanonische Installervergleiche mit 584.191 und 6.549.703 Bytes. Die Linkprüfungen bestanden mit 161 beziehungsweise 167 vorübergehenden Netzwerkwarnungen; daraus folgt keine globale Erreichbarkeit. Vier Head-Workflows und drei Main-Workflows samt Checks waren erfolgreich. Die vorhandenen Metadatenfilter lösten weder Functional noch Cleanup aus; eine neue SQL-, Cleanup- oder Stop-Ausführung wird daraus nicht abgeleitet.
+
+## Nächste ausführbare Welle: AgentHistory-TABLE-Parität für ungültige Uhrzeiten ergänzen
+
+**Status:** in Vorbereitung. Unabhängiger Test-/Quellen-/Plan-/Scope-Review, native Head-Gates, reguläre Integration und erste Main-Nachprüfung stehen aus.
+
+Die vorhandene `TestLab/Scenarios/OPS-008/agent-history.sql` verwendet zwölf feste Kalender-/Uhrzeitfälle und drei Consumer mit jeweils frischer eigener Transaktion. Der zusätzliche TABLE-Aufruf von AgentJobs ist bislang auf die ersten vier Kalenderfälle beschränkt. Acht Uhrzeitfälle sind nur über NONE mit JSON abgedeckt: 236060, 240000, 6000 und 60 werden jeweils als ungültiger Job- oder Stepzeitwert injiziert. Die Job-/Stepquelle `Code/07_Infrastructure/020_USP_AgentJobs.sql` bleibt unverändert.
+
+Die bestehende TABLE-Prüfung wird auf alle zwölf Fälle ausgedehnt. Dadurch steigt die verbindliche Zahl der Kalender-/Uhrzeitconsumeraufrufe von 40 auf 48; 36 Rollbacks bleiben erforderlich. Jeder zusätzliche Aufruf verwendet ein frisches leeres Seed-Ziel, das nach der Prüfung entfernt wird. Bestehende Prüfungen für das 17-spaltige Schema, ERROR_HANDLED/Partial/242, erwartete Zeilenmengen, vollständige gleichzeitige JSON-Parität und das bekannte erhaltene Jobteilergebnis bleiben unverändert. Erhaltung aller sechs Quellen, schreibfähige Callertransaktion, XACT_ABORT, Lock-Timeout und vollständiger Rollback bleiben verbindlich. Die 21 positiven Consumeraufrufe werden nicht geändert. Es wird kein Agent-Job ausgeführt.
+
+Ein kleiner angeforderter Autor und ein unabhängiger Reviewer prüfen die drei Testzeilen, die aktuelle Planung und die notwendigen Produktreferenzklassifikationen. Die bestehende funktionale Impact-CI wählt bei einer Fixtureänderung ihren OPS-008-Schalter und den vorhandenen MSDB-Vertrag auf SQL Server 2025 mit CL170. Die Fixture läuft danach genau einmal im selben eigenen Container; vorhandener Stop und Cleanup bleiben erforderlich. Ein Produktkandidat und die erste Main-Prüfung sind vorgesehen. Kein Generator, neue Fixtureumgebung, zusätzliche Engine, Compatibility-Matrix, Ready-Übergang oder lokale Ausführung ist nötig. Der native Erfolg wird erst nach tatsächlichem Gateabschluss behauptet.
+
+Produktcode, öffentliche Hilfe, Guides, Parameterverträge, Schemas, Installer, Selector und Workflows bleiben unverändert. Die Änderung qualifiziert ausschließlich diese injizierten ungültigen Uhrzeiten im TABLE-/JSON-Pfad. RAW, CONSOLE, tatsächliche Agent-Ausführung, weitere Dauerwerte, andere Engines und externe Infrastruktur werden dadurch nicht abgenommen. Eine Ursache früherer Locktimeoutfehler wird nicht behauptet.
 
 ## Abgeschlossen: PR #682
 
@@ -20,7 +40,7 @@ Head-Dokumentation [43042294662](https://github.com/gecompat/SQL_Server_Analyze/
 
 ## Nächste ausführbare Welle: Kapazitätssnapshot von Wachstumsprognose abgrenzen
 
-**Status:** in Vorbereitung. Unabhängiger Quellen-/Guide-/Plan-/Scope-Review, Pflichtgates, reguläre Integration und erste Main-Nachprüfung stehen aus.
+**Status:** mit PR #683 abgeschlossen. Der folgende Abschnitt dokumentiert den damaligen Umfang und ist keine aktuelle Ausführungsvorgabe.
 
 `Code/08_ServerHealth/120_USP_DatabaseCapacityAnalysis.sql` bewertet aktuelle Dateigröße, belegten und freien Platz, Volumeinformationen, Growthkonfiguration, MaxSize und den nächsten konfigurierten Wachstumsschritt. Die Quelle erzeugt keine Wachstumsrate oder Zeit-bis-voll-Prognose und kennzeichnet die Momentaufnahme ausdrücklich. Der nächste konfigurierte Wachstumsschritt ist keine zeitliche Prognose.
 
