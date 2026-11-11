@@ -525,6 +525,138 @@ BEGIN TRY
     END;
     IF @StepCase <> 4 OR @Calls <> 24
         THROW 55199, N'Die drei Stepfälle oder 24 Consumeraufrufe fehlen.', 1;
+    -- Der zuletzt injizierte Step bleibt derselbe; nur sein jüngster Status wechselt.
+    DECLARE @StepStatus int = 0, @StepProblemFlag int,
+        @StepStatusDesc nvarchar(60), @StepStatusCalls int = 0,
+        @StepJobsJson nvarchar(max), @StepActualJobsJson nvarchar(max);
+    WHILE @StepStatus <= 4
+    BEGIN
+        SET @StepStatusDesc = CASE @StepStatus
+            WHEN 0 THEN N'FAILED' WHEN 1 THEN N'SUCCEEDED'
+            WHEN 2 THEN N'RETRY' WHEN 3 THEN N'CANCELED'
+            WHEN 4 THEN N'IN_PROGRESS' END;
+        UPDATE [msdb].[dbo].[sysjobhistory]
+        SET [run_status] = @StepStatus
+        WHERE [instance_id] = @StepOneHistoryId
+          AND [job_id] = @JobId AND [step_id] = 1;
+        IF @@ROWCOUNT <> 1
+            THROW 55199, N'Der jüngste eigene Stepstatus wurde nicht eindeutig gesetzt.', 1;
+        SELECT @Before = (SELECT
+        JSON_QUERY((SELECT * FROM [msdb].[dbo].[sysjobs]
+            ORDER BY [job_id] FOR JSON PATH, INCLUDE_NULL_VALUES)) AS [Jobs],
+        JSON_QUERY((SELECT * FROM [msdb].[dbo].[sysjobsteps]
+            ORDER BY [job_id], [step_id] FOR JSON PATH, INCLUDE_NULL_VALUES)) AS [Steps],
+        JSON_QUERY((SELECT * FROM [msdb].[dbo].[sysjobhistory]
+            ORDER BY [instance_id] FOR JSON PATH, INCLUDE_NULL_VALUES)) AS [History],
+        JSON_QUERY((SELECT * FROM [msdb].[dbo].[sysjobactivity]
+            ORDER BY [session_id], [job_id] FOR JSON PATH, INCLUDE_NULL_VALUES)) AS [Activity],
+        JSON_QUERY((SELECT * FROM [msdb].[dbo].[sysjobservers]
+            ORDER BY [job_id], [server_id] FOR JSON PATH, INCLUDE_NULL_VALUES)) AS [Servers],
+        JSON_QUERY((SELECT * FROM [msdb].[dbo].[sysjobschedules]
+            ORDER BY [job_id], [schedule_id] FOR JSON PATH, INCLUDE_NULL_VALUES)) AS [Schedules]
+        FOR JSON PATH, WITHOUT_ARRAY_WRAPPER, INCLUDE_NULL_VALUES);
+        IF @Before IS NULL OR XACT_STATE() <> 1 OR @@TRANCOUNT <> 1
+           OR @@LOCK_TIMEOUT <> @PreviousLockTimeout OR (@@OPTIONS & 16384) <> 16384
+            THROW 55199, N'Die Stepstatus-Fixture benötigt unveränderte Quellen und Calleroptionen.', 1;
+        SET @StepProblemFlag = 0;
+        WHILE @StepProblemFlag <= 1
+        BEGIN
+            SELECT @Json = NULL, @StepActualJobsJson = NULL;
+            EXEC [monitor].[USP_AgentJobs] @JobNames = N'[ExampleOps008HistoryJob]',
+                @MaxZeilen = 0, @NurProblematisch = @StepProblemFlag,
+                @ResultSetArt = 'NONE', @JsonErzeugen = 1,
+                @Json = @Json OUTPUT, @PrintMeldungen = 0;
+            IF XACT_STATE() <> 1 OR @@TRANCOUNT <> 1
+               OR @@LOCK_TIMEOUT <> @PreviousLockTimeout OR (@@OPTIONS & 16384) <> 16384
+                THROW 55199, N'Der Stepstatus-Aufruf hat Calleroptionen oder den Transaktionszustand verändert.', 1;
+            IF COALESCE(ISJSON(@Json), 0) <> 1
+                THROW 55198, N'Der Stepstatus-Aufruf lieferte kein gültiges JSON.', 1;
+            IF COALESCE(JSON_VALUE(@Json, '$.meta.statusCode'), N'') <> N'AVAILABLE'
+               OR COALESCE(JSON_VALUE(@Json, '$.meta.isPartial'), N'') <> N'false'
+               OR JSON_VALUE(@Json, '$.meta.errorNumber') IS NOT NULL
+               OR JSON_VALUE(@Json, '$.meta.errorMessage') IS NOT NULL
+               OR COALESCE(LEFT(LTRIM(JSON_QUERY(@Json, '$.jobs')), 1), N'') <> N'['
+               OR COALESCE(LEFT(LTRIM(JSON_QUERY(@Json, '$.steps')), 1), N'') <> N'['
+               OR COALESCE(TRY_CONVERT(bigint, JSON_VALUE(@Json, '$.meta.jobCount')), -1) <> 1
+               OR COALESCE(TRY_CONVERT(bigint, JSON_VALUE(@Json, '$.meta.stepCount')), -1)
+                    <> CASE WHEN @StepProblemFlag = 0 THEN 2
+                            WHEN @StepStatus IN (0, 2, 3) THEN 1 ELSE 0 END
+                THROW 55198, N'Die Stepstatus-Metadaten oder erforderlichen Arrays sind verletzt.', 1;
+            IF (SELECT COUNT_BIG(*) FROM OPENJSON(@Json, '$.jobs')) <> 1
+               OR NOT EXISTS
+            (
+                SELECT 1 FROM OPENJSON(@Json, '$.jobs')
+                WITH ([JobId] uniqueidentifier, [JobName] nvarchar(128),
+                      [LastRunDateTime] datetime, [LastRunDurationSeconds] int,
+                      [LastRunStatus] int, [LastRunStatusDesc] nvarchar(60),
+                      [Enabled] bit, [StepCount] int, [ProblemCode] varchar(40))
+                WHERE [JobId] = @JobId AND [JobName] = N'ExampleOps008HistoryJob'
+                  AND [LastRunDateTime] = CONVERT(datetime, '2025-01-02T23:59:59', 126)
+                  AND [LastRunDurationSeconds] = 360000
+                  AND [LastRunStatus] = 1 AND [LastRunStatusDesc] = N'SUCCEEDED'
+                  AND [Enabled] = 0 AND [StepCount] = 2 AND [ProblemCode] = 'DISABLED'
+            ) THROW 55198, N'Der eigene deaktivierte Job wurde nicht unverändert ausgegeben.', 1;
+            SET @StepActualJobsJson = JSON_QUERY(@Json, '$.jobs');
+            IF @StepJobsJson IS NULL
+                SET @StepJobsJson = @StepActualJobsJson;
+            ELSE IF @StepJobsJson COLLATE SQL_Latin1_General_CP1_CS_AS
+                    <> @StepActualJobsJson COLLATE SQL_Latin1_General_CP1_CS_AS
+                THROW 55198, N'Die Jobausgabe hängt unzulässig vom Stepstatusschalter ab.', 1;
+            DELETE FROM @ExpectedSteps;
+            IF @StepProblemFlag = 0 OR @StepStatus IN (0, 2, 3)
+                INSERT @ExpectedSteps VALUES
+                (N'ExampleOps008HistoryJob', 1, N'ExampleHistoryStepOne', N'TSQL',
+                 @StepStatus, @StepStatusDesc,
+                 CONVERT(datetime, '2025-01-02T23:59:59', 126), 360000, 2,
+                 N'Example controlled step outcome');
+            IF @StepProblemFlag = 0
+                INSERT @ExpectedSteps VALUES
+                (N'ExampleOps008HistoryJob', 2, N'ExampleHistoryStepTwo', N'TSQL',
+                 1, N'SUCCEEDED', CONVERT(datetime, '2000-12-31T11:22:33', 126),
+                 91801, 0, N'Example step counterexample');
+            DELETE FROM @ActualSteps;
+            INSERT @ActualSteps
+            SELECT * FROM OPENJSON(@Json, '$.steps')
+            WITH ([JobName] nvarchar(128), [StepId] int, [StepName] nvarchar(128),
+                  [Subsystem] nvarchar(40), [LastRunOutcome] int,
+                  [LastRunOutcomeDesc] nvarchar(60), [LastRunDateTime] datetime,
+                  [LastRunDurationSeconds] int, [LastRunRetries] int,
+                  [LastRunMessage] nvarchar(4000));
+            IF (SELECT COUNT_BIG(*) FROM @ActualSteps)
+                   <> CASE WHEN @StepProblemFlag = 0 THEN 2
+                           WHEN @StepStatus IN (0, 2, 3) THEN 1 ELSE 0 END
+               OR EXISTS (SELECT * FROM @ExpectedSteps EXCEPT SELECT * FROM @ActualSteps)
+               OR EXISTS (SELECT * FROM @ActualSteps EXCEPT SELECT * FROM @ExpectedSteps)
+                THROW 55198, N'Die zehn Stepwerte oder die statusabhängige Auswahl sind verletzt.', 1;
+            SELECT @After = (SELECT
+            JSON_QUERY((SELECT * FROM [msdb].[dbo].[sysjobs]
+                ORDER BY [job_id] FOR JSON PATH, INCLUDE_NULL_VALUES)) AS [Jobs],
+            JSON_QUERY((SELECT * FROM [msdb].[dbo].[sysjobsteps]
+                ORDER BY [job_id], [step_id] FOR JSON PATH, INCLUDE_NULL_VALUES)) AS [Steps],
+            JSON_QUERY((SELECT * FROM [msdb].[dbo].[sysjobhistory]
+                ORDER BY [instance_id] FOR JSON PATH, INCLUDE_NULL_VALUES)) AS [History],
+            JSON_QUERY((SELECT * FROM [msdb].[dbo].[sysjobactivity]
+                ORDER BY [session_id], [job_id] FOR JSON PATH, INCLUDE_NULL_VALUES)) AS [Activity],
+            JSON_QUERY((SELECT * FROM [msdb].[dbo].[sysjobservers]
+                ORDER BY [job_id], [server_id] FOR JSON PATH, INCLUDE_NULL_VALUES)) AS [Servers],
+            JSON_QUERY((SELECT * FROM [msdb].[dbo].[sysjobschedules]
+                ORDER BY [job_id], [schedule_id] FOR JSON PATH, INCLUDE_NULL_VALUES)) AS [Schedules]
+            FOR JSON PATH, WITHOUT_ARRAY_WRAPPER, INCLUDE_NULL_VALUES);
+            IF @After IS NULL
+               OR @Before COLLATE SQL_Latin1_General_CP1_CS_AS
+                    <> @After COLLATE SQL_Latin1_General_CP1_CS_AS
+               OR (SELECT COUNT_BIG(*) FROM [msdb].[dbo].[sysjobhistory]) <> 12
+               OR XACT_STATE() <> 1 OR @@TRANCOUNT <> 1
+               OR @@LOCK_TIMEOUT <> @PreviousLockTimeout OR (@@OPTIONS & 16384) <> 16384
+                THROW 55199, N'Der Stepstatus-Aufruf hat Agentquellen oder Callerzustand verändert.', 1;
+            SET @Calls += 1;
+            SET @StepStatusCalls += 1;
+            SET @StepProblemFlag += 1;
+        END;
+        SET @StepStatus += 1;
+    END;
+    IF @StepStatus <> 5 OR @StepStatusCalls <> 10 OR @Calls <> 34
+        THROW 55199, N'Die zehn Stepstatus-Aufrufe oder 34 positiven Consumeraufrufe fehlen.', 1;
     IF EXISTS (SELECT 1 FROM [msdb].[dbo].[sysjobactivity] WHERE [job_id] = @JobId)
        OR EXISTS (SELECT 1 FROM [msdb].[dbo].[sysjobservers] WHERE [job_id] = @JobId)
        OR EXISTS (SELECT 1 FROM [msdb].[dbo].[sysjobschedules] WHERE [job_id] = @JobId)
