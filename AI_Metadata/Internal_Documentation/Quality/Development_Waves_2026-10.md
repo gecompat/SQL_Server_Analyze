@@ -8,7 +8,29 @@
 
 ## Aktuelle Fortsetzung
 
-PR #684 ist einschließlich der erforderlichen Main-Abnahme abgeschlossen. Ein neuer belegter Laufzeit-Testumfang ergänzt im bestehenden OPS-008-Pfad die noch fehlende dauerhafte Gegenprobe mit eingehendem XACT_ABORT OFF. Die ON-Fälle und abgeschlossenen Guidekorrekturen werden nicht ersetzt. Der autonome Auftrag bleibt innerhalb der tatsächlich freigegebenen Grenzen aktiv; weitere Arbeit benötigt jeweils einen eigenen Quellbefund und frisch geprüfte Autorität.
+PR #685 ist einschließlich der erforderlichen ersten Main-Abnahme abgeschlossen. Der nächste belegte Laufzeit-Testumfang ergänzt TABLE-/JSON-Parität für drei bereits vorhandene gültige Agent-Dauerwerte. Die qualifizierten ON-/OFF-Fehlerfälle und abgeschlossenen Guidekorrekturen werden nicht ersetzt. Der autonome Auftrag bleibt innerhalb der tatsächlich freigegebenen Grenzen aktiv; weitere Arbeit benötigt jeweils einen eigenen Quellbefund und frisch geprüfte Autorität.
+
+## Abgeschlossen: PR #685
+
+PR #685 erweiterte die bestehende `TestLab/Scenarios/OPS-008/agent-history.sql` um eine zweite XACT_ABORT-Einstellung für dieselben zwölf injizierten Kalender-/Uhrzeitfehlerfälle. Je Einstellung werden 48 Aufrufe und 36 eigene Rollbacks geprüft, insgesamt 96 und 72. Die 21 positiven Consumeraufrufe blieben unverändert. Ein Guard nach AgentJobs NONE verhindert, dass TABLE eine vorherige Optionsänderung verdeckt; der Rollback prüft ebenfalls Calleroption und Lock-Timeout. Schema-, Fehler-, Zeilenmengen-, vollständige TABLE-/JSON-Paritäts- und Quellschutz-Oracles bleiben erhalten. Die Fixture führt keinen Agent-Job aus. Produktcode, Hilfe, Guides, Installer, Selector, Scopeindex und Workflows blieben unverändert.
+
+Regulärer Merge/Main `c0fc4d0cadf56f1acd4bbc3bfd85204fd24006f3` enthält exakt Baum `ce1ab022fb7e7d64f87e9950f02c5e4f2f026de7`; geordnete Eltern sind `93f8208e3b24218d13fed517390db2d4eacd2f54` und `d27988cdf87f07dcf30eb555a18cd8691e693443`. Main-Ref, PR-Merge, Baum und Eltern wurden nach finalem Grün erneut verifiziert.
+
+Head [43089288918](https://github.com/gecompat/SQL_Server_Analyze/actions/runs/43089288918), Runtime 130761881411 und Gate 130767873838, sowie Main [43091177123](https://github.com/gecompat/SQL_Server_Analyze/actions/runs/43091177123), Runtime 130768443983 und Gate 130776884201, bestanden jeweils im ersten Versuch Deployment, MSDB-Vertrag 122 und den tatsächlichen AgentHistory-PASS-Marker auf SQL Server 2025 bei CL170. Stop war jeweils erfolgreich. Head bestand sechs Workflows und acht Checks; Main fünf Workflows und sieben Checks.
+
+HeadDocs 43089290551, Job 130761799842, und MainDocs 43091177192, Job 130768329803, bestanden jeweils 80 Validatoren, den Regelkontextvertrag und beide kanonischen Installervergleiche mit 584.191 und 6.549.703 Bytes. Die 25 Regelkontext-Selbsttests waren nicht ausgewählt. Links bestanden mit 68 beziehungsweise 157 transienten Warnungen; daraus folgt keine globale Erreichbarkeit. Head-Cleanup 43089289090 und Main-Cleanup 43091177266 bestanden jeweils 18 tatsächliche Finally-Szenarien. Berechtigungs-, Regex- und Compatibility-Matrizen, Snapshot-Runtime und Standalone waren nicht ausgewählt. RAW, CONSOLE, tatsächliche Agent-Ausführung, unabhängige Container-Abwesenheitsprobe und eine kausale Behebung früherer Locktimeouts werden nicht behauptet.
+
+## Nächste ausführbare Welle: gültige Agent-Dauern über TABLE und JSON abgleichen
+
+**Status:** in Vorbereitung. Unabhängiger Test-/Quellen-/Plan-Review, native Head-Gates, reguläre Integration und erste Main-Nachprüfung stehen aus.
+
+Die bestehende AgentHistory-Fixture besitzt drei positive Datum-/Dauerfälle: Mitternacht am 29. Februar 2024 mit 0 Sekunden, 01:02:03 am selben Tag mit 85 Sekunden und 23:59:59 am 2. Januar 2025 mit 360.000 Sekunden. Sie prüft die AgentJobs-Ausgabe dafür bislang über NONE mit JSON. Die vorhandene TABLE-Parität betrifft dagegen Fehlerfälle und ein erhaltenes Jobteilergebnis mit 85 Sekunden. Die gültige Null- und Mehrstunden-Dauer sowie die vollständige positive TABLE-Parität sind damit noch nicht durch diese Fixture abgenommen.
+
+Genau diese drei vorhandenen positiven Fälle erhalten je einen zusätzlichen TABLE-Aufruf mit frischem Seed-Ziel. Geprüft werden das 17-spaltige Jobschema mit seinen nativen Typen, eine Zeile für den eigenen Job, der feste erwartete Startwert, die erwarteten Sekunden und AVAILABLE ohne Partial- oder Fehlerstatus. Die vollständigen TABLE-Zeilen müssen mit der gleichzeitigen JSON-Ausgabe und der vorherigen NONE-/JSON-Ausgabe übereinstimmen. Ein Caller- und Transaktionsguard vor TABLE verhindert, dass der zweite Aufruf eine Änderung durch NONE verdeckt. Die bestehende vollständige Quellenerhaltung und der gemeinsame positive Rollback bleiben erhalten.
+
+Die Zahl positiver Consumeraufrufe steigt von 21 auf 24; drei TABLE-Aufrufe müssen ausdrücklich gezählt werden. Die gesamte bestehende Kalender-/Uhrzeitsektion mit beiden XACT_ABORT-Einstellungen, 96 Aufrufen und 72 Rollbacks bleibt unverändert. Produktcode, Hilfe, Guides, Parameterverträge, Schemas, Installer, Selector, Scopeindex und Workflows ändern sich nicht. Es wird kein Agent-Job ausgeführt.
+
+Ein kleiner angeforderter Autor und ein unabhängiger Reviewer bearbeiten ausschließlich die Fixture und die notwendige aktuelle Planung, mit GitHub-Lesezugriffen und Verarbeitung im V8-Orchestrator. Lokale Prozesse, lokale Repositorydateien und Ausweichwege sind auch für Unteragenten verboten. Die vorhandene Impact-CI führt Vertrag 122 und die feste Fixture einmal im bestehenden SQL-Server-2025-Container bei CL170 aus; Stop und Cleanup bleiben erforderlich. Ein Produktkandidat und die erste Main-Prüfung sind vorgesehen. Kein Generator, neue Engine, zusätzliche Matrix, Ready-Übergang oder neue Labumgebung ist nötig. Der native Erfolg wird erst nach tatsächlichem Gateabschluss behauptet. Weitere Dauerwerte, RAW, CONSOLE, tatsächliche Agent-Ausführung und externe Infrastruktur bleiben außerhalb dieses Umfangs.
 
 ## Abgeschlossen: PR #684
 
@@ -24,7 +46,7 @@ HeadDocs 43078401026, Job 130724276389, und MainDocs 43080477772, Job 1307314093
 
 ## Nächste ausführbare Welle: AgentHistory-Calleroptionen bei XACT_ABORT ON und OFF prüfen
 
-**Status:** in Vorbereitung. Unabhängiger Test-/Quellen-/Plan-Review, native Head-Gates, reguläre Integration und erste Main-Nachprüfung stehen aus.
+**Status:** mit PR #685 einschließlich erster Main-Abnahme abgeschlossen. Der folgende Abschnitt dokumentiert den damaligen Umfang und ist keine aktuelle Ausführungsvorgabe.
 
 Die bestehende AgentHistory-Fixture setzt für ihre Kalender-/Uhrzeitfälle bislang ausschließlich XACT_ABORT ON. Beide Agent-Consumer sichern die beim Eintritt vorgefundene Einstellung für ihre Fehlerisolation; die dauerhafte Fixture belegt deren Wiederherstellung bei OFF noch nicht. Der neue Umfang führt dieselben zwölf festen Fälle und dieselben Consumer zusätzlich mit OFF aus. Neue Fehlerwerte, Ausgabearten, Agent-Jobs oder Labumgebungen werden nicht hinzugefügt.
 
