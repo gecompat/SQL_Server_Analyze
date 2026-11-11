@@ -8,7 +8,25 @@
 
 ## Aktuelle Fortsetzung
 
-PR #681 ist einschließlich seiner erforderlichen Main-Prüfungen abgeschlossen. Ein neuer, eng belegter Guideabgleich betrifft die Zählbedeutung von moduleStatus.RowCount in DatabasePrincipalAnalysis. Der vorherige Hilfe-/Json-Rückgabeabgleich bleibt geschlossen. Der autonome Auftrag bleibt innerhalb der tatsächlich freigegebenen Grenzen aktiv; weitere Arbeit benötigt jeweils einen eigenen Quellbefund und frisch geprüfte Autorität.
+PR #682 ist einschließlich seiner erforderlichen Main-Prüfungen abgeschlossen. Ein neuer, eng belegter Guideabgleich betrifft die Prognosegrenze von DatabaseCapacityAnalysis: Der einzelne Snapshot liefert weder eine Wachstumsrate noch eine Zeit-bis-voll-Prognose. Der vorherige Zählbedeutungsabgleich bleibt geschlossen. Der autonome Auftrag bleibt innerhalb der tatsächlich freigegebenen Grenzen aktiv; weitere Arbeit benötigt jeweils einen eigenen Quellbefund und frisch geprüfte Autorität.
+
+## Abgeschlossen: PR #682
+
+PR #682 präzisierte genau die moduleStatus-Resultsetbeschreibung im DatabasePrincipal-Guide. RowCount summiert fünf nach den jeweiligen Limits verbliebene materialisierte Fachmengen und zählt weder unterschiedliche Identitäten noch die vom gewählten Ausgabeweg tatsächlich gelieferten Zeilen. SQL, Hilfe, Parameterverträge, Resultsetschema, Signaturreferenz, Installer, Workflows und Tests blieben unverändert. Aktuelle Planung und zwei Produktreferenzklassifikationen wurden abgeglichen.
+
+Regulärer Merge/Main `2ccb7b62666e2bc37ad35ded203f2c3896f9dd31` enthält den geprüften Baum `b864d2a2f0c18ece9753ce3903a3a211ce18dc37`; geordnete Eltern sind `7d82659a9f1343b9d806f97043a09854f31b4fa0` und `632db98efa14e63ab5c2492702b96f45af11aba9`. Main-Ref und PR-Merge wurden nach finalem Grün erneut verifiziert.
+
+Head-Dokumentation [43042294662](https://github.com/gecompat/SQL_Server_Analyze/actions/runs/43042294662), Job 130596992293, und Main-Dokumentation [43043108398](https://github.com/gecompat/SQL_Server_Analyze/actions/runs/43043108398), Job 130599845616, bestanden jeweils 80 Validatoren, 25 Regelkontext-Selbsttests, den Regelkontextvertrag und bestehende kanonische Installervergleiche mit 584.191 und 6.549.703 Bytes. Die Linkprüfungen bestanden mit 163 beziehungsweise 68 vorübergehenden Netzwerkwarnungen; daraus folgt keine globale Erreichbarkeit. Vier Head-Workflows und drei Main-Workflows samt Checks waren erfolgreich. Die vorhandenen Metadatenfilter lösten weder Functional noch Cleanup aus; eine neue SQL-, Cleanup- oder Stop-Ausführung wird daraus nicht abgeleitet.
+
+## Nächste ausführbare Welle: Kapazitätssnapshot von Wachstumsprognose abgrenzen
+
+**Status:** in Vorbereitung. Unabhängiger Quellen-/Guide-/Plan-/Scope-Review, Pflichtgates, reguläre Integration und erste Main-Nachprüfung stehen aus.
+
+`Code/08_ServerHealth/120_USP_DatabaseCapacityAnalysis.sql` bewertet aktuelle Dateigröße, belegten und freien Platz, Volumeinformationen, Growthkonfiguration, MaxSize und den nächsten konfigurierten Wachstumsschritt. Die Quelle erzeugt keine Wachstumsrate oder Zeit-bis-voll-Prognose und kennzeichnet die Momentaufnahme ausdrücklich. Der nächste konfigurierte Wachstumsschritt ist keine zeitliche Prognose.
+
+`Documentation/Analysis_Guides/Procedures/USP_DatabaseCapacityAnalysis.md` beschreibt die Beobachtungsart und das Zeitmodell bereits zutreffend als Snapshot ohne Wachstumsprognose. Nur der letzte Satz unter „Typische Fehlinterpretation“ bezeichnet dagegen einen Forecast aus einem Snapshot als Heuristik. Genau dieser Satz wird durch die klare Aussage ersetzt, dass sich aus diesem Snapshot keine Zeit-bis-voll-Prognose ableiten lässt. Die technischen Vertiefungen bestätigen diese Grenze und bleiben unverändert. SQL, Hilfe, sämtliche Parameterverträge, Resultsets, Installer, Tests und Workflows bleiben erhalten.
+
+Ein kleiner angeforderter Autor und ein unabhängiger Reviewer prüfen diesen Textabgleich, die notwendigen Fortsetzungsseiten und zwei Produktreferenzklassifikationen. Die bestehenden Dokumentations- und Metadatengates sind vorgesehen; Functional und Cleanup werden für diesen Dateiumfang durch die vorhandenen Pathfilter nicht ausgelöst. Ein Produktkandidat und die erforderliche erste Main-Prüfung sind vorgesehen. Kein Generator, neuer Test, zusätzliche Engine, Ready-Übergang oder lokale Ausführung ist nötig. Der Quellenvergleich ist keine neue native SQL- oder globale Modulabnahme. Weitere Arbeit benötigt einen neuen belegten Umfang und frisch geprüfte Autorität.
 
 ## Abgeschlossen: PR #681
 
@@ -18,7 +36,7 @@ Head [42781099913](https://github.com/gecompat/SQL_Server_Analyze/actions/runs/4
 
 ## Nächste ausführbare Welle: materialisierte Fachzeilen von tatsächlich gelieferten Zeilen unterscheiden
 
-**Status:** in Vorbereitung. Unabhängiger Quellen-/Guide-/Plan-/Scope-Review, Pflichtgates, reguläre Integration und erste Main-Nachprüfung stehen aus.
+**Status:** mit PR #682 abgeschlossen. Der folgende Abschnitt dokumentiert den damaligen Umfang und ist keine aktuelle Ausführungsvorgabe.
 
 `Code/08_ServerHealth/270_USP_DatabasePrincipalAnalysis.sql` kürzt zuerst fünf materialisierte Fachmengen und summiert deren verbliebene Zeilen für moduleStatus.RowCount. Die Zählung erfolgt vor den getrennten RAW-, TABLE-, CONSOLE- und JSON-Ausgabepfaden. Ein gültiges TABLE-Mapping kann ausschließlich moduleStatus anfordern, ohne die fünf gezählten Fachmengen zu exportieren. Der Wert ist deshalb keine Zählung der tatsächlich gelieferten Resultsetzeilen.
 
