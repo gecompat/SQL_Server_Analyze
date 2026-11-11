@@ -8,7 +8,31 @@
 
 ## Aktuelle Fortsetzung
 
-PR #683 ist einschließlich seiner erforderlichen Main-Prüfungen abgeschlossen. Die nächste belegte Welle ergänzt im vorhandenen OPS-008-Laufzeitvertrag die noch fehlende TABLE-/JSON-Parität für acht ungültige Uhrzeitfälle. Der vorherige Guideabgleich bleibt geschlossen. Der autonome Auftrag bleibt innerhalb der tatsächlich freigegebenen Grenzen aktiv; weitere Arbeit benötigt jeweils einen eigenen Quellbefund und frisch geprüfte Autorität.
+PR #684 ist einschließlich der erforderlichen Main-Abnahme abgeschlossen. Ein neuer belegter Laufzeit-Testumfang ergänzt im bestehenden OPS-008-Pfad die noch fehlende dauerhafte Gegenprobe mit eingehendem XACT_ABORT OFF. Die ON-Fälle und abgeschlossenen Guidekorrekturen werden nicht ersetzt. Der autonome Auftrag bleibt innerhalb der tatsächlich freigegebenen Grenzen aktiv; weitere Arbeit benötigt jeweils einen eigenen Quellbefund und frisch geprüfte Autorität.
+
+## Abgeschlossen: PR #684
+
+PR #684 erweiterte die bestehende `TestLab/Scenarios/OPS-008/agent-history.sql` um TABLE-/JSON-Parität für acht bereits vorhandene ungültige Uhrzeitfälle. Genau drei Testzeilen änderten sich: TABLE-Fallgrenze 4 auf 12, Aufrufzahl 40 auf 48 und zugehörige Fehlermeldung. Alle Schema-, Fehler-, Zeilenmengen-, JSON-Paritäts-, Quellen-, Caller- und Rollback-Oracles blieben erhalten. Die Fixture verlangt 21 positive Consumeraufrufe, 48 Kalender-/Uhrzeitaufrufe und 36 eigene Rollbacks; sie führt keinen Agent-Job aus. Produktcode, Hilfe, Guides, Installer, Selector und Workflows blieben unverändert.
+
+Regulärer Merge/Main `93f8208e3b24218d13fed517390db2d4eacd2f54` enthält den geprüften Baum `575f8a09af88a3ceb828caf1f238608d9aec17ff`; geordnete Eltern sind `5d477beca628f73460b0bd69624bdc59a3411dd4` und `65e5dedd1418b78171f8bba6c5fee17e77c55ec3`. Main-Ref, PR-Merge, Baum und Eltern wurden nach finalem Grün erneut verifiziert.
+
+Head [43078401059](https://github.com/gecompat/SQL_Server_Analyze/actions/runs/43078401059), Runtime 130724380049 und Gate 130730679223, bestand Deployment, MSDB-Vertrag 122 und den tatsächlichen AgentHistory-PASS-Marker auf SQL Server 2025 bei CL170. Stop war erfolgreich. Head bestand sechs Workflows und acht Checks. Die erste Main-Prüfung [43080477863](https://github.com/gecompat/SQL_Server_Analyze/actions/runs/43080477863), Runtime 130731512041 und Gate 130736097595, scheiterte vor Vertrag und Fixture im Deployment: CompletedStage 0, NativeError 53906/53908 und SQL 1222 in Zeile 627. BLOCKER_NOT_CAPTURED, Beobachterfehler 0, gekürzte Summary und Wrapper incomplete=false belegen keinen tatsächlichen Blocker; Ursache bleibt unbekannt. Stop war erfolgreich. Das Vollarchiv wurde nicht entpackt oder vollständig ausgewertet.
+
+Der Benutzer genehmigte genau eine Nachprüfung nur fehlgeschlagener Main-Jobs. Derselbe Lauf, Versuch 2 mit Runtime 130745234089 und Gate 130751788356, bestand Deployment, Vertrag 122, die Fixture und Stop. Der tatsächliche native PASS-Marker ist belegt. Alle fünf Main-Workflows und sieben Checks waren anschließend erfolgreich. Der Selector wurde mit ursprünglichem Start 18:43:38Z übernommen; keine neue Selector-Ausführung wird behauptet.
+
+HeadDocs 43078401026, Job 130724276389, und MainDocs 43080477772, Job 130731409351, bestanden 80 Validatoren, 25 Regelkontext-Selbsttests, den Regelkontextvertrag und Installervergleiche mit 584.191 und 6.549.703 Bytes. Links bestanden mit 166 beziehungsweise 35 transienten Warnungen; daraus folgt keine globale Erreichbarkeit. Head-Cleanup 43078401207, Job 130724242186, und Main-Cleanup 43080477722, Job 130731410170, bestanden 18 tatsächliche Finally-Szenarien. MainDocs, Cleanup, Privacy 43080477831 und Commit 43080477793 behielten Versuch 1 und ihren ursprünglichen Start am 11. November 2026 um 18:43:35Z. Sie wurden nicht wiederholt. RAW, CONSOLE, tatsächliche Agent-Ausführung, zusätzliche Engines, Matrizen und Standalone waren nicht ausgewählt. Container-Abwesenheitsprobe und eine kausale Behebung des ersten Locktimeouts werden nicht behauptet.
+
+## Nächste ausführbare Welle: AgentHistory-Calleroptionen bei XACT_ABORT ON und OFF prüfen
+
+**Status:** in Vorbereitung. Unabhängiger Test-/Quellen-/Plan-Review, native Head-Gates, reguläre Integration und erste Main-Nachprüfung stehen aus.
+
+Die bestehende AgentHistory-Fixture setzt für ihre Kalender-/Uhrzeitfälle bislang ausschließlich XACT_ABORT ON. Beide Agent-Consumer sichern die beim Eintritt vorgefundene Einstellung für ihre Fehlerisolation; die dauerhafte Fixture belegt deren Wiederherstellung bei OFF noch nicht. Der neue Umfang führt dieselben zwölf festen Fälle und dieselben Consumer zusätzlich mit OFF aus. Neue Fehlerwerte, Ausgabearten, Agent-Jobs oder Labumgebungen werden nicht hinzugefügt.
+
+Pro Einstellung bleiben 48 Kalender-/Uhrzeitaufrufe und 36 Rollbacks verbindlich; insgesamt werden 96 Aufrufe und 72 Rollbacks verlangt. Die 21 positiven Consumeraufrufe bleiben unverändert. Vor den Aufrufen, nach dem AgentJobs-NONE-Aufruf vor TABLE, nach jedem Consumerblock und nach Rollback werden die jeweilige XACT_ABORT-Einstellung, Transaktionsbasis und der ursprüngliche Lock-Timeout geprüft. Schema-, ERROR_HANDLED-/Partial-/242-, Zeilenmengen-, TABLE-/JSON-Paritäts- und vollständige Quellenerhaltungsprüfungen bleiben erhalten. Der Fehler- und Normalabschluss stellt die ursprüngliche eingehende Einstellung weiterhin wieder her.
+
+Ein kleiner angeforderter Autor und ein unabhängiger Reviewer bearbeiten ausschließlich die Fixture und die notwendige aktuelle Planung. Bestehende Produktreferenzklassifikationen gelten für die bereits eingeordneten unveränderten Pfade; der Scopeindex bleibt unverändert. Die bestehende Impact-CI führt den MSDB-Vertrag und die feste Fixture einmal im eigenen SQL-Server-2025-Container bei CL170 aus; Stop und Cleanup bleiben erforderlich. Ein Produktkandidat und die erste Main-Prüfung sind vorgesehen. Kein Generator, zusätzlicher Workflow, neue Engine, Compatibility-Matrix, Ready-Übergang oder lokale Ausführung ist nötig.
+
+Produktcode, öffentliche Hilfe, Guides, Parameterverträge, Schemas, Installer, Selector und Workflows bleiben unverändert. Der Quellenvergleich ersetzt keine native Abnahme. Der spätere Erfolg gilt ausschließlich für diese injizierten Fehlerfälle und Calleroptionen; RAW, CONSOLE, tatsächliche Agent-Ausführung, externe Infrastruktur und weitere Engines bleiben außerhalb des Umfangs.
 
 ## Abgeschlossen: PR #683
 
@@ -20,7 +44,7 @@ Head-Dokumentation [43075452732](https://github.com/gecompat/SQL_Server_Analyze/
 
 ## Nächste ausführbare Welle: AgentHistory-TABLE-Parität für ungültige Uhrzeiten ergänzen
 
-**Status:** in Vorbereitung. Unabhängiger Test-/Quellen-/Plan-/Scope-Review, native Head-Gates, reguläre Integration und erste Main-Nachprüfung stehen aus.
+**Status:** mit PR #684 einschließlich erforderlicher Main-Abnahme abgeschlossen. Der folgende Abschnitt dokumentiert den damaligen Umfang und ist keine aktuelle Ausführungsvorgabe.
 
 Die vorhandene `TestLab/Scenarios/OPS-008/agent-history.sql` verwendet zwölf feste Kalender-/Uhrzeitfälle und drei Consumer mit jeweils frischer eigener Transaktion. Der zusätzliche TABLE-Aufruf von AgentJobs ist bislang auf die ersten vier Kalenderfälle beschränkt. Acht Uhrzeitfälle sind nur über NONE mit JSON abgedeckt: 236060, 240000, 6000 und 60 werden jeweils als ungültiger Job- oder Stepzeitwert injiziert. Die Job-/Stepquelle `Code/07_Infrastructure/020_USP_AgentJobs.sql` bleibt unverändert.
 
