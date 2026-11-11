@@ -174,7 +174,7 @@ Berücksichtigen Sie absolute freie MB und Prozent, Dateigröße, Growthtyp und 
 
 ### Typische Fehlinterpretation
 
-Viel freier Platz im File bedeutet nicht freien Volumeplatz; viel Volumeplatz bedeutet nicht passende MaxSize/Growth. Forecast aus einem Snapshot ist Heuristik.
+Viel freier Platz im File bedeutet nicht freien Volumeplatz; viel Volumeplatz bedeutet nicht passende MaxSize/Growth. Eine Zeit-bis-voll-Prognose lässt sich aus diesem Snapshot nicht ableiten.
 
 ### Folgeanalyse
 
