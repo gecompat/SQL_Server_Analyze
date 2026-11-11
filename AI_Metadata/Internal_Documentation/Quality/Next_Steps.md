@@ -1,11 +1,11 @@
 # Nächste Arbeitsschritte
 
-**Stand:** 10. November 2026  
+**Stand:** 11. November 2026  
 **Zweck:** aktueller Fortsetzungseinstieg für `gecompat/SQL_Server_Analyze`.
 
 ## Aktuelle Orchestrierung
 
-Die [Entwicklungsplanung](Development_Waves_2026-10.md) bleibt maßgeblich für Reihenfolge und Zuständigkeit. PR #680 ist einschließlich seiner Main-Prüfungen abgeschlossen; der aktuelle Abschluss steht unter [Abschluss von PR #680](Development_Waves_2026-10.md#abgeschlossen-pr-680). Damit ist die enge Hilfe-Rückgabekorrektur für MsdbHealthAnalysis, LinkedServerAnalysis und SystemDatabaseObjectInventory geschlossen. Ein neuer Produktkandidat ist nicht gewählt. Die autonome Fortsetzung bei einem neuen konkreten Quellbefund innerhalb frisch geprüfter Autorität bleibt aktiv. Der frühere Status- und Ausführungsverlauf bleibt im [Historienarchiv](Next_Steps_History_2026-11-08.md) erhalten.
+Die [Entwicklungsplanung](Development_Waves_2026-10.md) bleibt maßgeblich für Reihenfolge und Zuständigkeit. PR #681 ist einschließlich seiner Main-Prüfungen abgeschlossen. Der nächste belegte Schritt präzisiert im DatabasePrincipal-Guide die Bedeutung von moduleStatus.RowCount: Der Wert summiert die nach den jeweiligen Limits verbliebenen materialisierten Fachzeilen, unabhängig vom tatsächlich gewählten Ausgabeweg oder einem gültigen TABLE-Teilmapping. SQL, Hilfe, Parameterverträge, Installer und Tests bleiben unverändert. Weitere Arbeit setzt einen eigenen konkreten Quellbefund und frisch geprüfte Autorität voraus. Der frühere Status- und Ausführungsverlauf bleibt im [Historienarchiv](Next_Steps_History_2026-11-08.md) erhalten.
 
 Die Fortsetzung richtet sich nach der tatsächlich erteilten Benutzerautorisierung und deren privater Checkpointfortschreibung. Dieses Dokument veröffentlicht keine privaten Grenzen oder Verbrauchswerte. Heartbeat, Sessionwechsel und PR-Abschluss setzen die Fortschreibung nicht zurück. Bestehende Sicherheits-, Datenschutz-, Lizenz-, Identitäts-, Laufzeit- und Lieferbedingungen gelten.
 

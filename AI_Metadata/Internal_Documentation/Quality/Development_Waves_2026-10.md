@@ -8,7 +8,23 @@
 
 ## Aktuelle Fortsetzung
 
-PR #680 ist einschließlich seiner Main-Prüfungen abgeschlossen. Die enge Korrektur des Hilfe-Rückgabevertrags für drei benachbarte Inventare ist damit geschlossen. Ein neuer Produktkandidat wurde nicht gewählt. Die ausschließlich geprüften Hilfe-/Json-Rückgabefragen in AuditConfigurationAnalysis und CompileContextAnalysis sind zutreffend beschrieben; daraus folgt kein weiterer Korrekturscope und keine vollständige Modul-, Parameter- oder globale Fehlerfreiheitsabnahme. Die autonome Fortsetzung bleibt bei einem neuen konkreten Quellbefund innerhalb frisch geprüfter Autorität aktiv.
+PR #681 ist einschließlich seiner erforderlichen Main-Prüfungen abgeschlossen. Ein neuer, eng belegter Guideabgleich betrifft die Zählbedeutung von moduleStatus.RowCount in DatabasePrincipalAnalysis. Der vorherige Hilfe-/Json-Rückgabeabgleich bleibt geschlossen. Der autonome Auftrag bleibt innerhalb der tatsächlich freigegebenen Grenzen aktiv; weitere Arbeit benötigt jeweils einen eigenen Quellbefund und frisch geprüfte Autorität.
+
+## Abgeschlossen: PR #681
+
+PR #681 glich ausschließlich die zwei aktuellen Planungsseiten an den tatsächlichen Abschluss von PR #680 und die begrenzte Anschlussprüfung an. Produktcode, Guides, Installer, Scopeindex, Workflows und Tests blieben unverändert. Regulärer Merge/Main `7d82659a9f1343b9d806f97043a09854f31b4fa0` enthält den geprüften Baum `9687be08e1a97f8f47f8bf11748618dc1449c8a9`; geordnete Eltern sind `9c857e85506df9da205d052966eaa2a887b0abfb` und `70743db60458ece3854cb01e559f03543fd61ffb`. Main-Ref und PR-Merge wurden nach finalem Grün erneut verifiziert.
+
+Head [42781099913](https://github.com/gecompat/SQL_Server_Analyze/actions/runs/42781099913), Job 129711083622, und Main [42781603171](https://github.com/gecompat/SQL_Server_Analyze/actions/runs/42781603171), Job 129712712756, bestanden 80 Validatoren, den Regelkontextvertrag und bestehende kanonische Installervergleiche mit 584.191 und 6.549.703 Bytes. Die Linkprüfungen bestanden mit 158 beziehungsweise 0 vorübergehenden Netzwerkwarnungen; daraus folgt keine globale Erreichbarkeit. Alle vier Head-Workflows und drei Main-Workflows sowie ihre Checks waren erfolgreich. Die vorhandenen Metadatenfilter lösten weder Functional noch Cleanup aus; eine neue SQL-, Cleanup- oder Stop-Ausführung wird daraus nicht abgeleitet.
+
+## Nächste ausführbare Welle: materialisierte Fachzeilen von tatsächlich gelieferten Zeilen unterscheiden
+
+**Status:** in Vorbereitung. Unabhängiger Quellen-/Guide-/Plan-/Scope-Review, Pflichtgates, reguläre Integration und erste Main-Nachprüfung stehen aus.
+
+`Code/08_ServerHealth/270_USP_DatabasePrincipalAnalysis.sql` kürzt zuerst fünf materialisierte Fachmengen und summiert deren verbliebene Zeilen für moduleStatus.RowCount. Die Zählung erfolgt vor den getrennten RAW-, TABLE-, CONSOLE- und JSON-Ausgabepfaden. Ein gültiges TABLE-Mapping kann ausschließlich moduleStatus anfordern, ohne die fünf gezählten Fachmengen zu exportieren. Der Wert ist deshalb keine Zählung der tatsächlich gelieferten Resultsetzeilen.
+
+`Documentation/Analysis_Guides/Procedures/USP_DatabasePrincipalAnalysis.md` beschreibt den Wert bisher pauschal als Summe ausgegebener Zeilen. Genau diese Resultset-Tabellenzeile wird präzisiert: gezählt werden die nach den jeweiligen Limits verbliebenen materialisierten Zeilen aus principals, roleMemberships, permissions, schemaOwners und loginBindings. Der Wert zählt keine unterschiedlichen Identitäten und bleibt von der gültigen TABLE-Auswahl unabhängig. Die Quellanweisung, Hilfe, Parameterverträge, CSV-Schemas, technische Signaturreferenz, Installer, Tests und Workflows bleiben unverändert. Erforderlich sind außerdem die aktuelle Planung und zwei Produktreferenzklassifikationen; ein Generator ist nicht erforderlich.
+
+Ein verantwortlicher Autor und ein unabhängiger Reviewer prüfen den begrenzten Textabgleich gegen Zählreihenfolge, Ausgabezweige und vorhandenen Resultsetvertrag. Die bestehenden Dokumentations- und Metadatengates sind vorgesehen; für diesen Umfang werden Functional und Cleanup durch die vorhandenen Pathfilter nicht ausgelöst. Kein neuer Test, keine zusätzliche Engine, kein Ready-Übergang und keine lokale Ausführung sind vorgesehen. Der Kontrollflussbeleg ist keine neue native SQL-Abnahme oder globale Modulabnahme. Weitere Arbeit setzt einen neuen belegten Umfang und frisch geprüfte Freigaben voraus.
 
 ## Abgeschlossen: PR #680
 

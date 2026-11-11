@@ -115,7 +115,7 @@ Mengen in einer formatierten Übersicht zusammen.
 
 | Resultset | Bedeutung |
 |---|---|
-| `moduleStatus` | Status, Aufnahmezeit und Summe der ausgegebenen Zeilen der fünf begrenzbaren Fachmengen. Die Summe ist keine Anzahl unterschiedlicher Identitäten. |
+| `moduleStatus` | Status und Aufnahmezeit. `RowCount` summiert die nach den jeweiligen Zeilenlimits verbliebenen materialisierten Zeilen aus `principals`, `roleMemberships`, `permissions`, `schemaOwners` und `loginBindings`. Er ist weder die Anzahl unterschiedlicher Identitäten noch die Zahl der vom gewählten Ausgabepfad tatsächlich gelieferten Resultsetzeilen; ein gültiges TABLE-Teilmapping verändert ihn nicht. |
 | `databaseContext` | Zielidentität, Zustand, Containment und begrenzte Ownerbindung je Kandidat. |
 | `principals` | Sichtbare Datenbankprincipals mit Typ, Authentifizierung, Standardschema, Zeitfeldern und Rollenownership. |
 | `roleMemberships` | Direkte Rollen-/Mitgliedkanten mit optional sichtbaren Namen. |
