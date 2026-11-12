@@ -527,7 +527,8 @@ BEGIN TRY
         THROW 55199, N'Die drei Stepfälle oder 24 Consumeraufrufe fehlen.', 1;
     -- Der zuletzt injizierte Step bleibt derselbe; nur sein jüngster Status wechselt.
     DECLARE @StepStatus int = 0, @StepProblemFlag int,
-        @StepStatusDesc nvarchar(60), @StepStatusCalls int = 0,
+        @StepProblemValue bit, @StepStatusDesc nvarchar(60),
+        @StepStatusCalls int = 0, @StepNullProblemCalls int = 0,
         @StepJobsJson nvarchar(max), @StepActualJobsJson nvarchar(max);
     WHILE @StepStatus <= 4
     BEGIN
@@ -559,11 +560,13 @@ BEGIN TRY
            OR @@LOCK_TIMEOUT <> @PreviousLockTimeout OR (@@OPTIONS & 16384) <> 16384
             THROW 55199, N'Die Stepstatus-Fixture benötigt unveränderte Quellen und Calleroptionen.', 1;
         SET @StepProblemFlag = 0;
-        WHILE @StepProblemFlag <= 1
+        WHILE @StepProblemFlag <= 2
         BEGIN
+            SET @StepProblemValue = CASE WHEN @StepProblemFlag = 2
+                                         THEN NULL ELSE @StepProblemFlag END;
             SELECT @Json = NULL, @StepActualJobsJson = NULL;
             EXEC [monitor].[USP_AgentJobs] @JobNames = N'[ExampleOps008HistoryJob]',
-                @MaxZeilen = 0, @NurProblematisch = @StepProblemFlag,
+                @MaxZeilen = 0, @NurProblematisch = @StepProblemValue,
                 @ResultSetArt = 'NONE', @JsonErzeugen = 1,
                 @Json = @Json OUTPUT, @PrintMeldungen = 0;
             IF XACT_STATE() <> 1 OR @@TRANCOUNT <> 1
@@ -651,12 +654,14 @@ BEGIN TRY
                 THROW 55199, N'Der Stepstatus-Aufruf hat Agentquellen oder Callerzustand verändert.', 1;
             SET @Calls += 1;
             SET @StepStatusCalls += 1;
+            IF @StepProblemValue IS NULL SET @StepNullProblemCalls += 1;
             SET @StepProblemFlag += 1;
         END;
         SET @StepStatus += 1;
     END;
-    IF @StepStatus <> 5 OR @StepStatusCalls <> 10 OR @Calls <> 34
-        THROW 55199, N'Die zehn Stepstatus-Aufrufe oder 34 positiven Consumeraufrufe fehlen.', 1;
+    IF @StepStatus <> 5 OR @StepStatusCalls <> 15 OR @StepNullProblemCalls <> 5
+       OR @Calls <> 39
+        THROW 55199, N'Die 15 Stepstatus-Aufrufe, fünf NULL-Aufrufe oder 39 positiven Consumeraufrufe fehlen.', 1;
     IF EXISTS (SELECT 1 FROM [msdb].[dbo].[sysjobactivity] WHERE [job_id] = @JobId)
        OR EXISTS (SELECT 1 FROM [msdb].[dbo].[sysjobservers] WHERE [job_id] = @JobId)
        OR EXISTS (SELECT 1 FROM [msdb].[dbo].[sysjobschedules] WHERE [job_id] = @JobId)
