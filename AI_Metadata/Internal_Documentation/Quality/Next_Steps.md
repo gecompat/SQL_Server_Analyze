@@ -1,11 +1,11 @@
 # Nächste Arbeitsschritte
 
-**Stand:** 11. November 2026  
+**Stand:** 12. November 2026  
 **Zweck:** aktueller Fortsetzungseinstieg für `gecompat/SQL_Server_Analyze`.
 
 ## Aktuelle Orchestrierung
 
-Die [Entwicklungsplanung](Development_Waves_2026-10.md) bleibt maßgeblich für Reihenfolge und Zuständigkeit. PR #686 ist mit seiner ersten Main-Abnahme abgeschlossen. Die drei positiven AgentJobs-TABLE-/JSON-Paritätsfälle für 0, 85 und 360.000 Sekunden sind in der OPS-008-Fixture integriert. Die nächste begrenzte Welle prüft die fünf festen Agent-Stepstatuswerte 0 bis 4 bei `@NurProblematisch=0` und `1` in zehn zusätzlichen NONE-/JSON-Aufrufen. Der eigene deaktivierte Job bleibt in beiden Schalterstellungen ausgewählt; die Prüfung betrifft die Step-Auswahl, nicht die Qualifikation des Jobfilters. Die bestehende Kalender-/Uhrzeitsektion mit 96 Aufrufen und 72 Rollbacks bleibt erhalten. Für den neuen Statusumfang stehen unabhängiger Review, native Head-Gates und erste Main-Abnahme noch aus. Produktcode, Hilfe, Guides, Installer, Workflow und Selector bleiben erhalten. Weitere Arbeit benötigt einen eigenen konkreten Quellbefund und frisch geprüfte Autorität. Der frühere Verlauf bleibt im [Historienarchiv](Next_Steps_History_2026-11-08.md) erhalten.
+Die [Entwicklungsplanung](Development_Waves_2026-10.md) bleibt maßgeblich für Reihenfolge und Zuständigkeit. PR #687 qualifizierte die fünf festen Agent-Stepstatuswerte 0 bis 4 mit `@NurProblematisch=0` und `1` in zehn zusätzlichen NONE-/JSON-Aufrufen; die positiven Consumeraufrufe stiegen auf 34. Der vorbereitete Folgekandidat ergänzt fünf NONE-/JSON-Aufrufe mit `@NurProblematisch=NULL` in denselben Statusschleifen und setzt die erwartete Gesamtzahl auf 39. Die Prüfung behält das Stepstatusoracle, die Jobauswahl und die Caller- und Transaktionsprüfungen nach jedem Aufruf bei; der deaktivierte Job bleibt ausgewählt, ohne dass damit der Jobfilter qualifiziert wird. Die Kalender-/Uhrzeitsektion behält 96 Aufrufe und 72 Rollbacks. Der Folgekandidat liegt vor; der unabhängige Review ist PASS. Native Head-Gates und erste Main-Abnahme stehen aus. Produktcode, Hilfe, Guides, Installer, Workflow und Selector bleiben erhalten. Weitere Arbeit benötigt einen eigenen konkreten Quellbefund und frisch geprüfte Autorität. Der frühere Verlauf bleibt im [Historienarchiv](Next_Steps_History_2026-11-08.md) erhalten.
 
 Die Fortsetzung richtet sich nach der tatsächlich erteilten Benutzerautorisierung und deren privater Checkpointfortschreibung. Dieses Dokument veröffentlicht keine privaten Grenzen oder Verbrauchswerte. Heartbeat, Sessionwechsel und PR-Abschluss setzen die Fortschreibung nicht zurück. Bestehende Sicherheits-, Datenschutz-, Lizenz-, Identitäts-, Laufzeit- und Lieferbedingungen gelten.
 
