@@ -662,6 +662,249 @@ BEGIN TRY
     IF @StepStatus <> 5 OR @StepStatusCalls <> 15 OR @StepNullProblemCalls <> 5
        OR @Calls <> 39
         THROW 55199, N'Die 15 Stepstatus-Aufrufe, fünf NULL-Aufrufe oder 39 positiven Consumeraufrufe fehlen.', 1;
+    -- Null-Datumswerte betreffen jeweils nur die jüngste eigene Job- oder Step-History.
+    DECLARE @ZeroDateCase int = 1, @ZeroDateCalls int = 0,
+        @ZeroDateTableCalls int = 0, @ZeroJobHistoryId int,
+        @ZeroJobRunDate int, @ZeroJobRunTime int,
+        @ZeroExpectedJobStart datetime,
+        @ZeroNoneJobsJson nvarchar(max), @ZeroNoneStepsJson nvarchar(max),
+        @ZeroTableJobsJson nvarchar(max), @ZeroTableRows bigint,
+        @ZeroTableJobId uniqueidentifier, @ZeroTableStart datetime,
+        @ZeroTableSeconds int;
+    SELECT TOP (1) @ZeroJobHistoryId = [instance_id],
+        @ZeroJobRunDate = [run_date], @ZeroJobRunTime = [run_time]
+    FROM [msdb].[dbo].[sysjobhistory]
+    WHERE [job_id] = @JobId AND [step_id] = 0
+    ORDER BY [instance_id] DESC;
+    IF @ZeroJobHistoryId IS NULL OR @StepOneHistoryId IS NULL
+       OR @ZeroJobRunDate <> 20250102 OR @ZeroJobRunTime <> 235959
+       OR (SELECT COUNT_BIG(*) FROM [msdb].[dbo].[sysjobhistory]) <> 12
+        THROW 55199, N'Die jüngste eigene Job- oder Step-History für Null-Datumsfälle fehlt.', 1;
+    WHILE @ZeroDateCase <= 2
+    BEGIN
+        IF @ZeroDateCase = 1
+        BEGIN
+            UPDATE [msdb].[dbo].[sysjobhistory]
+            SET [run_date] = 0, [run_time] = 0
+            WHERE [instance_id] = @ZeroJobHistoryId
+              AND [job_id] = @JobId AND [step_id] = 0;
+            IF @@ROWCOUNT <> 1
+                THROW 55199, N'Die eigene jüngste Job-History wurde nicht eindeutig gesetzt.', 1;
+        END
+        ELSE
+        BEGIN
+            UPDATE [msdb].[dbo].[sysjobhistory]
+            SET [run_date] = CASE WHEN [instance_id] = @ZeroJobHistoryId
+                                  THEN @ZeroJobRunDate ELSE 0 END,
+                [run_time] = CASE WHEN [instance_id] = @ZeroJobHistoryId
+                                  THEN @ZeroJobRunTime ELSE 0 END
+            WHERE [job_id] = @JobId
+              AND (([instance_id] = @ZeroJobHistoryId AND [step_id] = 0)
+                OR ([instance_id] = @StepOneHistoryId AND [step_id] = 1));
+            IF @@ROWCOUNT <> 2
+                THROW 55199, N'Die eigenen Job- und Step-History-Daten wurden nicht eindeutig gesetzt.', 1;
+        END;
+        SET @ZeroExpectedJobStart = CASE WHEN @ZeroDateCase = 1 THEN NULL
+            ELSE CONVERT(datetime, '2025-01-02T23:59:59', 126) END;
+        DELETE FROM @ExpectedSteps;
+        INSERT @ExpectedSteps VALUES
+        (N'ExampleOps008HistoryJob', 1, N'ExampleHistoryStepOne', N'TSQL',
+         4, N'IN_PROGRESS',
+         CASE WHEN @ZeroDateCase = 2 THEN NULL
+              ELSE CONVERT(datetime, '2025-01-02T23:59:59', 126) END,
+         360000, 2, N'Example controlled step outcome'),
+        (N'ExampleOps008HistoryJob', 2, N'ExampleHistoryStepTwo', N'TSQL',
+         1, N'SUCCEEDED', CONVERT(datetime, '2000-12-31T11:22:33', 126),
+         91801, 0, N'Example step counterexample');
+        SET @Consumer = 1;
+        WHILE @Consumer <= 2
+        BEGIN
+            SELECT @Before = (SELECT
+        JSON_QUERY((SELECT * FROM [msdb].[dbo].[sysjobs]
+            ORDER BY [job_id] FOR JSON PATH, INCLUDE_NULL_VALUES)) AS [Jobs],
+        JSON_QUERY((SELECT * FROM [msdb].[dbo].[sysjobsteps]
+            ORDER BY [job_id], [step_id] FOR JSON PATH, INCLUDE_NULL_VALUES)) AS [Steps],
+        JSON_QUERY((SELECT * FROM [msdb].[dbo].[sysjobhistory]
+            ORDER BY [instance_id] FOR JSON PATH, INCLUDE_NULL_VALUES)) AS [History],
+        JSON_QUERY((SELECT * FROM [msdb].[dbo].[sysjobactivity]
+            ORDER BY [session_id], [job_id] FOR JSON PATH, INCLUDE_NULL_VALUES)) AS [Activity],
+        JSON_QUERY((SELECT * FROM [msdb].[dbo].[sysjobservers]
+            ORDER BY [job_id], [server_id] FOR JSON PATH, INCLUDE_NULL_VALUES)) AS [Servers],
+        JSON_QUERY((SELECT * FROM [msdb].[dbo].[sysjobschedules]
+            ORDER BY [job_id], [schedule_id] FOR JSON PATH, INCLUDE_NULL_VALUES)) AS [Schedules]
+        FOR JSON PATH, WITHOUT_ARRAY_WRAPPER, INCLUDE_NULL_VALUES);
+            IF @Before IS NULL OR XACT_STATE() <> 1 OR @@TRANCOUNT <> 1
+               OR @@LOCK_TIMEOUT <> @PreviousLockTimeout OR (@@OPTIONS & 16384) <> 16384
+                THROW 55199, N'Die Null-Datums-Fixture benötigt unveränderte Quellen und Calleroptionen.', 1;
+            SELECT @Json = NULL, @ZeroTableJobsJson = NULL,
+                @ZeroTableRows = NULL, @ZeroTableJobId = NULL,
+                @ZeroTableStart = NULL, @ZeroTableSeconds = NULL;
+            IF @Consumer = 1
+            BEGIN
+                EXEC [monitor].[USP_AgentJobs] @JobNames = N'[ExampleOps008HistoryJob]',
+                    @MaxZeilen = 0, @NurProblematisch = 0,
+                    @ResultSetArt = 'NONE', @JsonErzeugen = 1,
+                    @Json = @Json OUTPUT, @PrintMeldungen = 0;
+            END
+            ELSE
+            BEGIN
+                CREATE TABLE [#AgentJobsZeroDateTable] ([Placeholder] int NULL);
+                EXEC [monitor].[USP_AgentJobs] @JobNames = N'[ExampleOps008HistoryJob]',
+                    @MaxZeilen = 0, @NurProblematisch = 0,
+                    @ResultSetArt = 'TABLE',
+                    @ResultTablesJson = N'{"jobs":"#AgentJobsZeroDateTable"}',
+                    @JsonErzeugen = 1, @Json = @Json OUTPUT, @PrintMeldungen = 0;
+                SET @ZeroDateTableCalls += 1;
+            END;
+            IF XACT_STATE() <> 1 OR @@TRANCOUNT <> 1
+               OR @@LOCK_TIMEOUT <> @PreviousLockTimeout OR (@@OPTIONS & 16384) <> 16384
+                THROW 55199, N'Der Null-Datums-Aufruf hat Calleroptionen oder den Transaktionszustand verändert.', 1;
+            IF COALESCE(ISJSON(@Json), 0) <> 1
+               OR COALESCE(JSON_VALUE(@Json, '$.meta.statusCode'), N'') <> N'AVAILABLE'
+               OR COALESCE(JSON_VALUE(@Json, '$.meta.isPartial'), N'') <> N'false'
+               OR (SELECT COUNT(*) FROM OPENJSON(@Json, '$.meta')
+                   WHERE [key] = N'errorNumber' AND [type] = 0) <> 1
+               OR (SELECT COUNT(*) FROM OPENJSON(@Json, '$.meta')
+                   WHERE [key] = N'errorMessage' AND [type] = 0) <> 1
+               OR COALESCE(TRY_CONVERT(bigint, JSON_VALUE(@Json, '$.meta.jobCount')), -1) <> 1
+               OR COALESCE(TRY_CONVERT(bigint, JSON_VALUE(@Json, '$.meta.stepCount')), -1) <> 2
+               OR COALESCE(LEFT(LTRIM(JSON_QUERY(@Json, '$.jobs')), 1), N'') <> N'['
+               OR COALESCE(LEFT(LTRIM(JSON_QUERY(@Json, '$.steps')), 1), N'') <> N'['
+               OR (SELECT COUNT_BIG(*) FROM OPENJSON(@Json, '$.jobs')) <> 1
+               OR (SELECT COUNT_BIG(*) FROM OPENJSON(@Json, '$.steps')) <> 2
+                THROW 55198, N'Die Null-Datums-Metadaten oder Ergebnismengen sind verletzt.', 1;
+            IF NOT EXISTS
+            (
+                SELECT 1 FROM OPENJSON(@Json, '$.jobs')
+                WITH ([JobId] uniqueidentifier, [JobName] nvarchar(128),
+                      [LastRunDateTime] datetime, [LastRunDurationSeconds] int,
+                      [LastRunStatus] int, [LastRunStatusDesc] nvarchar(60),
+                      [Enabled] bit, [StepCount] int, [ProblemCode] varchar(40))
+                WHERE [JobId] = @JobId AND [JobName] = N'ExampleOps008HistoryJob'
+                  AND ((@ZeroDateCase = 1 AND [LastRunDateTime] IS NULL)
+                    OR (@ZeroDateCase = 2 AND [LastRunDateTime] = @ZeroExpectedJobStart))
+                  AND [LastRunDurationSeconds] = 360000
+                  AND [LastRunStatus] = 1 AND [LastRunStatusDesc] = N'SUCCEEDED'
+                  AND [Enabled] = 0 AND [StepCount] = 2 AND [ProblemCode] = 'DISABLED'
+            )
+                THROW 55198, N'Der eigene Job mit Null-Datum wurde nicht vertragsgemäß ausgegeben.', 1;
+            IF @ZeroDateCase = 1
+               AND (SELECT COUNT(*) FROM OPENJSON(@Json, '$.jobs') AS [j]
+                    CROSS APPLY OPENJSON([j].[value]) AS [p]
+                    WHERE [p].[key] = N'LastRunDateTime' AND [p].[type] = 0) <> 1
+                THROW 55198, N'Das Job-Null-Datum fehlt als ausdrückliche JSON-Null.', 1;
+            DELETE FROM @ActualSteps;
+            INSERT @ActualSteps
+            SELECT * FROM OPENJSON(@Json, '$.steps')
+            WITH ([JobName] nvarchar(128), [StepId] int, [StepName] nvarchar(128),
+                  [Subsystem] nvarchar(40), [LastRunOutcome] int,
+                  [LastRunOutcomeDesc] nvarchar(60), [LastRunDateTime] datetime,
+                  [LastRunDurationSeconds] int, [LastRunRetries] int,
+                  [LastRunMessage] nvarchar(4000));
+            IF (SELECT COUNT_BIG(*) FROM @ActualSteps) <> 2
+               OR EXISTS (SELECT * FROM @ExpectedSteps EXCEPT SELECT * FROM @ActualSteps)
+               OR EXISTS (SELECT * FROM @ActualSteps EXCEPT SELECT * FROM @ExpectedSteps)
+                THROW 55198, N'Die zehn Stepwerte der Null-Datums-Fälle sind verletzt.', 1;
+            IF @ZeroDateCase = 2
+               AND (SELECT COUNT(*) FROM OPENJSON(@Json, '$.steps') AS [s]
+                    CROSS APPLY OPENJSON([s].[value]) AS [p]
+                    WHERE TRY_CONVERT(int, JSON_VALUE([s].[value], '$.StepId')) = 1
+                      AND [p].[key] = N'LastRunDateTime' AND [p].[type] = 0) <> 1
+                THROW 55198, N'Das Step-Null-Datum fehlt als ausdrückliche JSON-Null.', 1;
+            IF @Consumer = 1
+            BEGIN
+                SET @ZeroNoneJobsJson = JSON_QUERY(@Json, '$.jobs');
+                SET @ZeroNoneStepsJson = JSON_QUERY(@Json, '$.steps');
+            END
+            ELSE
+            BEGIN
+                EXEC [sys].[sp_executesql]
+                    N'SELECT @rows = (SELECT COUNT_BIG(*) FROM [#AgentJobsZeroDateTable]),
+                             @jobId = (SELECT TOP (1) [JobId] FROM [#AgentJobsZeroDateTable]),
+                             @runStart = (SELECT TOP (1) [LastRunDateTime] FROM [#AgentJobsZeroDateTable]),
+                             @seconds = (SELECT TOP (1) [LastRunDurationSeconds] FROM [#AgentJobsZeroDateTable]),
+                             @jobsJson = (SELECT * FROM [#AgentJobsZeroDateTable]
+                                 ORDER BY [JobName] FOR JSON PATH, INCLUDE_NULL_VALUES);',
+                    N'@rows bigint OUTPUT, @jobId uniqueidentifier OUTPUT,
+                      @runStart datetime OUTPUT, @seconds int OUTPUT,
+                      @jobsJson nvarchar(max) OUTPUT',
+                    @rows = @ZeroTableRows OUTPUT, @jobId = @ZeroTableJobId OUTPUT,
+                    @runStart = @ZeroTableStart OUTPUT, @seconds = @ZeroTableSeconds OUTPUT,
+                    @jobsJson = @ZeroTableJobsJson OUTPUT;
+                DELETE FROM @PositiveTableActualSchema;
+                INSERT @PositiveTableActualSchema
+                    ([LogicalOrdinal], [ColumnName], [SystemTypeId])
+                SELECT CONVERT(int, ROW_NUMBER() OVER (ORDER BY [c].[column_id])),
+                    [c].[name] COLLATE SQL_Latin1_General_CP1_CS_AS,
+                    [c].[system_type_id]
+                FROM [tempdb].[sys].[columns] AS [c]
+                WHERE [c].[object_id] = OBJECT_ID(N'tempdb..#AgentJobsZeroDateTable');
+                IF (SELECT COUNT(*) FROM @PositiveTableActualSchema) <> 17
+                   OR EXISTS
+                   (
+                       SELECT [LogicalOrdinal], [ColumnName], [SystemTypeId]
+                       FROM @PositiveTableActualSchema
+                       EXCEPT
+                       SELECT [LogicalOrdinal], [ColumnName], [SystemTypeId]
+                       FROM @PositiveTableExpectedSchema
+                   )
+                   OR EXISTS
+                   (
+                       SELECT [LogicalOrdinal], [ColumnName], [SystemTypeId]
+                       FROM @PositiveTableExpectedSchema
+                       EXCEPT
+                       SELECT [LogicalOrdinal], [ColumnName], [SystemTypeId]
+                       FROM @PositiveTableActualSchema
+                   )
+                    THROW 55198, N'Das AgentJobs-Null-Datums-TABLE-Schema ist verletzt.', 1;
+                IF @ZeroTableRows IS NULL OR @ZeroTableRows <> 1
+                   OR @ZeroTableJobId IS NULL OR @ZeroTableJobId <> @JobId
+                   OR @ZeroTableSeconds IS NULL OR @ZeroTableSeconds <> 360000
+                   OR (@ZeroDateCase = 1 AND @ZeroTableStart IS NOT NULL)
+                   OR (@ZeroDateCase = 2 AND
+                       (@ZeroTableStart IS NULL OR @ZeroTableStart <> @ZeroExpectedJobStart))
+                    THROW 55198, N'Die nativen AgentJobs-TABLE-Null-Datumswerte sind verletzt.', 1;
+                IF @ZeroTableJobsJson IS NULL OR @ZeroNoneJobsJson IS NULL
+                   OR @ZeroNoneStepsJson IS NULL
+                   OR @ZeroTableJobsJson COLLATE SQL_Latin1_General_CP1_CS_AS
+                      <> JSON_QUERY(@Json, '$.jobs') COLLATE SQL_Latin1_General_CP1_CS_AS
+                   OR @ZeroTableJobsJson COLLATE SQL_Latin1_General_CP1_CS_AS
+                      <> @ZeroNoneJobsJson COLLATE SQL_Latin1_General_CP1_CS_AS
+                   OR @ZeroNoneStepsJson COLLATE SQL_Latin1_General_CP1_CS_AS
+                      <> JSON_QUERY(@Json, '$.steps') COLLATE SQL_Latin1_General_CP1_CS_AS
+                    THROW 55198, N'Die Null-Datums-TABLE-/JSON-Parität ist verletzt.', 1;
+                DROP TABLE [#AgentJobsZeroDateTable];
+            END;
+            SELECT @After = (SELECT
+            JSON_QUERY((SELECT * FROM [msdb].[dbo].[sysjobs]
+                ORDER BY [job_id] FOR JSON PATH, INCLUDE_NULL_VALUES)) AS [Jobs],
+            JSON_QUERY((SELECT * FROM [msdb].[dbo].[sysjobsteps]
+                ORDER BY [job_id], [step_id] FOR JSON PATH, INCLUDE_NULL_VALUES)) AS [Steps],
+            JSON_QUERY((SELECT * FROM [msdb].[dbo].[sysjobhistory]
+                ORDER BY [instance_id] FOR JSON PATH, INCLUDE_NULL_VALUES)) AS [History],
+            JSON_QUERY((SELECT * FROM [msdb].[dbo].[sysjobactivity]
+                ORDER BY [session_id], [job_id] FOR JSON PATH, INCLUDE_NULL_VALUES)) AS [Activity],
+            JSON_QUERY((SELECT * FROM [msdb].[dbo].[sysjobservers]
+                ORDER BY [job_id], [server_id] FOR JSON PATH, INCLUDE_NULL_VALUES)) AS [Servers],
+            JSON_QUERY((SELECT * FROM [msdb].[dbo].[sysjobschedules]
+                ORDER BY [job_id], [schedule_id] FOR JSON PATH, INCLUDE_NULL_VALUES)) AS [Schedules]
+            FOR JSON PATH, WITHOUT_ARRAY_WRAPPER, INCLUDE_NULL_VALUES);
+            IF @After IS NULL
+               OR @Before COLLATE SQL_Latin1_General_CP1_CS_AS
+                    <> @After COLLATE SQL_Latin1_General_CP1_CS_AS
+               OR (SELECT COUNT_BIG(*) FROM [msdb].[dbo].[sysjobhistory]) <> 12
+               OR XACT_STATE() <> 1 OR @@TRANCOUNT <> 1
+               OR @@LOCK_TIMEOUT <> @PreviousLockTimeout OR (@@OPTIONS & 16384) <> 16384
+                THROW 55199, N'Der Null-Datums-Aufruf hat Agentquellen oder Callerzustand verändert.', 1;
+            SET @Calls += 1;
+            SET @ZeroDateCalls += 1;
+            SET @Consumer += 1;
+        END;
+        SET @ZeroDateCase += 1;
+    END;
+    IF @ZeroDateCase <> 3 OR @ZeroDateCalls <> 4
+       OR @ZeroDateTableCalls <> 2 OR @Calls <> 43
+        THROW 55199, N'Die vier Null-Datums-Aufrufe oder 43 positiven Consumeraufrufe fehlen.', 1;
     IF EXISTS (SELECT 1 FROM [msdb].[dbo].[sysjobactivity] WHERE [job_id] = @JobId)
        OR EXISTS (SELECT 1 FROM [msdb].[dbo].[sysjobservers] WHERE [job_id] = @JobId)
        OR EXISTS (SELECT 1 FROM [msdb].[dbo].[sysjobschedules] WHERE [job_id] = @JobId)
