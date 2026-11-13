@@ -662,10 +662,12 @@ BEGIN TRY
     IF @StepStatus <> 5 OR @StepStatusCalls <> 15 OR @StepNullProblemCalls <> 5
        OR @Calls <> 39
         THROW 55199, N'Die 15 Stepstatus-Aufrufe, fünf NULL-Aufrufe oder 39 positiven Consumeraufrufe fehlen.', 1;
-    -- Null-Datumswerte betreffen jeweils nur die jüngste eigene Job- oder Step-History.
-    DECLARE @ZeroDateCase int = 1, @ZeroDateCalls int = 0,
-        @ZeroDateTableCalls int = 0, @ZeroJobHistoryId int,
-        @ZeroJobRunDate int, @ZeroJobRunTime int,
+    -- Ein Null-Datum wird mit fünf Uhrzeiten getrennt für Job und Step geprüft.
+    DECLARE @ZeroClockCase int = 1, @ZeroClock int, @ZeroDateCase int,
+        @ZeroDateCases int = 0, @ZeroDateCalls int = 0,
+        @ZeroDateTableCalls int = 0, @ZeroNonzeroCalls int = 0,
+        @ZeroJobHistoryId int, @ZeroJobRunDate int, @ZeroJobRunTime int,
+        @ZeroStepRunDate int, @ZeroStepRunTime int,
         @ZeroExpectedJobStart datetime,
         @ZeroNoneJobsJson nvarchar(max), @ZeroNoneStepsJson nvarchar(max),
         @ZeroTableJobsJson nvarchar(max), @ZeroTableRows bigint,
@@ -676,34 +678,35 @@ BEGIN TRY
     FROM [msdb].[dbo].[sysjobhistory]
     WHERE [job_id] = @JobId AND [step_id] = 0
     ORDER BY [instance_id] DESC;
+    SELECT @ZeroStepRunDate = [run_date], @ZeroStepRunTime = [run_time]
+    FROM [msdb].[dbo].[sysjobhistory]
+    WHERE [instance_id] = @StepOneHistoryId
+      AND [job_id] = @JobId AND [step_id] = 1;
     IF @ZeroJobHistoryId IS NULL OR @StepOneHistoryId IS NULL
        OR @ZeroJobRunDate <> 20250102 OR @ZeroJobRunTime <> 235959
+       OR @ZeroStepRunDate <> 20250102 OR @ZeroStepRunTime <> 235959
        OR (SELECT COUNT_BIG(*) FROM [msdb].[dbo].[sysjobhistory]) <> 12
         THROW 55199, N'Die jüngste eigene Job- oder Step-History für Null-Datumsfälle fehlt.', 1;
-    WHILE @ZeroDateCase <= 2
+    WHILE @ZeroClockCase <= 5
     BEGIN
-        IF @ZeroDateCase = 1
-        BEGIN
-            UPDATE [msdb].[dbo].[sysjobhistory]
-            SET [run_date] = 0, [run_time] = 0
-            WHERE [instance_id] = @ZeroJobHistoryId
-              AND [job_id] = @JobId AND [step_id] = 0;
-            IF @@ROWCOUNT <> 1
-                THROW 55199, N'Die eigene jüngste Job-History wurde nicht eindeutig gesetzt.', 1;
-        END
-        ELSE
+        SET @ZeroClock = CASE @ZeroClockCase
+            WHEN 1 THEN 0 WHEN 2 THEN 236060 WHEN 3 THEN 240000
+            WHEN 4 THEN 6000 ELSE 60 END;
+        SET @ZeroDateCase = 1;
+        WHILE @ZeroDateCase <= 2
         BEGIN
             UPDATE [msdb].[dbo].[sysjobhistory]
             SET [run_date] = CASE WHEN [instance_id] = @ZeroJobHistoryId
-                                  THEN @ZeroJobRunDate ELSE 0 END,
+                    THEN CASE WHEN @ZeroDateCase = 1 THEN 0 ELSE @ZeroJobRunDate END
+                    ELSE CASE WHEN @ZeroDateCase = 2 THEN 0 ELSE @ZeroStepRunDate END END,
                 [run_time] = CASE WHEN [instance_id] = @ZeroJobHistoryId
-                                  THEN @ZeroJobRunTime ELSE 0 END
+                    THEN CASE WHEN @ZeroDateCase = 1 THEN @ZeroClock ELSE @ZeroJobRunTime END
+                    ELSE CASE WHEN @ZeroDateCase = 2 THEN @ZeroClock ELSE @ZeroStepRunTime END END
             WHERE [job_id] = @JobId
               AND (([instance_id] = @ZeroJobHistoryId AND [step_id] = 0)
                 OR ([instance_id] = @StepOneHistoryId AND [step_id] = 1));
             IF @@ROWCOUNT <> 2
                 THROW 55199, N'Die eigenen Job- und Step-History-Daten wurden nicht eindeutig gesetzt.', 1;
-        END;
         SET @ZeroExpectedJobStart = CASE WHEN @ZeroDateCase = 1 THEN NULL
             ELSE CONVERT(datetime, '2025-01-02T23:59:59', 126) END;
         DELETE FROM @ExpectedSteps;
@@ -898,13 +901,18 @@ BEGIN TRY
                 THROW 55199, N'Der Null-Datums-Aufruf hat Agentquellen oder Callerzustand verändert.', 1;
             SET @Calls += 1;
             SET @ZeroDateCalls += 1;
+            IF @ZeroClock <> 0 SET @ZeroNonzeroCalls += 1;
             SET @Consumer += 1;
         END;
+        SET @ZeroDateCases += 1;
         SET @ZeroDateCase += 1;
+        END;
+        SET @ZeroClockCase += 1;
     END;
-    IF @ZeroDateCase <> 3 OR @ZeroDateCalls <> 4
-       OR @ZeroDateTableCalls <> 2 OR @Calls <> 43
-        THROW 55199, N'Die vier Null-Datums-Aufrufe oder 43 positiven Consumeraufrufe fehlen.', 1;
+    IF @ZeroClockCase <> 6 OR @ZeroDateCase <> 3 OR @ZeroDateCases <> 10
+       OR @ZeroDateCalls <> 20 OR @ZeroDateTableCalls <> 10
+       OR @ZeroNonzeroCalls <> 16 OR @Calls <> 59
+        THROW 55199, N'Die zehn Null-Datumsfälle, 20 Aufrufe oder 59 positiven Consumeraufrufe fehlen.', 1;
     IF EXISTS (SELECT 1 FROM [msdb].[dbo].[sysjobactivity] WHERE [job_id] = @JobId)
        OR EXISTS (SELECT 1 FROM [msdb].[dbo].[sysjobservers] WHERE [job_id] = @JobId)
        OR EXISTS (SELECT 1 FROM [msdb].[dbo].[sysjobschedules] WHERE [job_id] = @JobId)
