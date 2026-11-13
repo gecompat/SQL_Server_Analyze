@@ -294,7 +294,7 @@ BEGIN TRY
     EXEC [sys].[sp_executesql] @Sql;
     SET @Sql=N'USE '+QUOTENAME(@EmptyDb)+N'; CREATE USER '+QUOTENAME(@Reader)+N' FOR LOGIN '+QUOTENAME(@Reader)+N';';
     EXEC [sys].[sp_executesql] @Sql;
-    SET @Sql=N'GRANT VIEW ANY DATABASE TO '+QUOTENAME(@Reader)+N';';
+    SET @Sql=N'USE [master]; GRANT VIEW ANY DATABASE TO '+QUOTENAME(@Reader)+N';';
     EXEC [sys].[sp_executesql] @Sql;
     EXECUTE AS LOGIN=@Reader;
     SET @Impersonating=1;
