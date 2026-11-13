@@ -78,9 +78,9 @@ Vergleichen Sie bei Bedarf die drei nativen Katalogzählungen mit demselben Call
 
 ### Folgeanalyse
 
-[USP_DatabasePrincipalAnalysis](USP_DatabasePrincipalAnalysis.md) kann direkte Datenbankrechte getrennt darstellen. Der [Klassifikations-Dossiervertrag](../../../AI_Metadata/Internal_Documentation/Architecture/Sensitivity_Classification_Summary_Dossier.md) dokumentiert die Grenzen des neuen Slices. Diese Folgeanalyse berechnet keine Schutzwirkung und ersetzt keine fachliche Datenklassifikationsentscheidung.
+[USP_DatabasePrincipalAnalysis](USP_DatabasePrincipalAnalysis.md) kann direkte Datenbankrechte getrennt darstellen. Der [Bereichsleitfaden](../08_Server_Health.md#sensitivity-classification) dokumentiert die Grenzen des neuen Slices. Diese Folgeanalyse berechnet keine Schutzwirkung und ersetzt keine fachliche Datenklassifikationsentscheidung.
 
-[Technische Detailbeschreibung](../../../AI_Metadata/Internal_Documentation/Architecture/Sensitivity_Classification_Summary_Dossier.md) und [Gemeinsames Execution-, Zeit- und Evidenzmodell](../Technical_Foundations.md) ergänzen den Resultsetvertrag.
+[Technische Detailbeschreibung](../08_Server_Health.md#sensitivity-classification) und [Gemeinsames Execution-, Zeit- und Evidenzmodell](../Technical_Foundations.md) ergänzen den Resultsetvertrag.
 
 ## Parameter
 
@@ -119,7 +119,7 @@ Ohne ausgewählte Datenbank bleibt die Klassifikationsquelle SKIPPED und es gibt
 ```sql
 EXEC [monitor].[USP_SensitivityClassificationSummary] @DatabaseNames=N'[ExampleDatabase]', @ResultSetArt='RAW', @PrintMeldungen=0;
 DECLARE @Json nvarchar(max); EXEC [monitor].[USP_SensitivityClassificationSummary] @ResultSetArt='NONE', @JsonErzeugen=1, @Json=@Json OUTPUT; SELECT @Json AS [Json];
-CREATE TABLE #SensitivitySummaryExample ([Seed] int NULL); EXEC [monitor].[USP_SensitivityClassificationSummary] @ResultSetArt='TABLE', @ResultTablesJson=N'{"classificationSummary":"#SensitivitySummaryExample"}'; SELECT * FROM #SensitivitySummaryExample; DROP TABLE #SensitivitySummaryExample;
+CREATE TABLE #SensitivityClassificationSummaryExample ([Seed] int NULL); EXEC [monitor].[USP_SensitivityClassificationSummary] @ResultSetArt='TABLE', @ResultTablesJson=N'{"classificationSummary":"#SensitivityClassificationSummaryExample"}'; SELECT * FROM #SensitivityClassificationSummaryExample; DROP TABLE #SensitivityClassificationSummaryExample;
 ```
 
-Eine [technische Abgrenzung und Fixture-Spezifikation](../../../AI_Metadata/Internal_Documentation/Architecture/Sensitivity_Classification_Summary_Dossier.md) erläutert Quelle, Rechte, Aufwand und Aussagegrenzen. [Microsoft Learn: sys.sensitivity_classifications](https://learn.microsoft.com/en-us/sql/relational-databases/system-catalog-views/sys-sensitivity-classifications-transact-sql?view=sql-server-ver17) beschreibt die native Katalogsicht.
+Der [öffentliche Quelltext](../../../Code/08_ServerHealth/320_USP_SensitivityClassificationSummary.sql) zeigt die konkrete Katalogabfrage; der [Bereichsleitfaden](../08_Server_Health.md#sensitivity-classification) erläutert die Ausgabegrenzen. [Microsoft Learn: sys.sensitivity_classifications](https://learn.microsoft.com/en-us/sql/relational-databases/system-catalog-views/sys-sensitivity-classifications-transact-sql?view=sql-server-ver17) beschreibt die native Katalogsicht.

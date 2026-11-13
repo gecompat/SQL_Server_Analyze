@@ -7,7 +7,7 @@ IF TRY_CONVERT(int,SERVERPROPERTY(N'ProductMajorVersion'))<>17
     THROW 57501,N'Sensitivity summary contract requires the selected SQL Server 2025 native CI target.',1;
 GO
 DECLARE @Suffix nvarchar(48)=CONVERT(nvarchar(12),@@SPID)+N'_'+LEFT(REPLACE(CONVERT(nvarchar(36),NEWID()),N'-',N''),16),
-        @PositiveDb sysname,@EmptyDb sysname,@Reader sysname,@Password nvarchar(128),
+        @PositiveDb sysname,@EmptyDb sysname,@Reader sysname,@FixtureCredential nvarchar(128),
         @Sql nvarchar(max),@Names nvarchar(max),@Json nvarchar(max),@TableJson nvarchar(max),
         @Status varchar(40),@Partial bit,@Error int,@Message nvarchar(2048),@Return int,
         @ExpectedTables bigint,@ExpectedColumns bigint,@ExpectedClassified bigint,
@@ -19,7 +19,7 @@ DECLARE @Suffix nvarchar(48)=CONVERT(nvarchar(12),@@SPID)+N'_'+LEFT(REPLACE(CONV
 SELECT @PositiveDb=N'ExampleClassificationPos_'+@Suffix,
        @EmptyDb=N'ExampleClassificationEmpty_'+@Suffix,
        @Reader=N'ExampleClassificationReader_'+@Suffix,
-       @Password=N'Example!'+CONVERT(nvarchar(36),NEWID());
+       @FixtureCredential=N'Example!'+CONVERT(nvarchar(36),NEWID());
 IF DB_ID(@PositiveDb) IS NOT NULL OR DB_ID(@EmptyDb) IS NOT NULL
    OR EXISTS(SELECT 1 FROM sys.server_principals WHERE [name]=@Reader)
     THROW 57502,N'Sensitivity summary owned fixture name collision.',1;
@@ -290,21 +290,24 @@ BEGIN TRY
       @ErrorNumberOut=@Error OUTPUT;
     IF @Return<>51011 OR @Error<>51011 OR @Json IS NOT NULL
         THROW 57517,N'Invalid TABLE mapping was not rejected before catalog access.',1;
-    BEGIN TRANSACTION;
-    SET XACT_ABORT ON;
-    SET LOCK_TIMEOUT 7000;
-    EXEC @Return=[monitor].[USP_SensitivityClassificationSummary]
-      @DatabaseNames=@Names,@LockTimeoutMs=250,@ResultSetArt='NONE',@PrintMeldungen=0;
-    IF @Return<>0 OR @@TRANCOUNT<>1 OR XACT_STATE()<>1 OR @@LOCK_TIMEOUT<>7000
-       OR (@@OPTIONS&16384)=0
-        THROW 57509,N'Caller transaction or session state changed.',1;
-    ROLLBACK TRANSACTION;
-    SET @Sql=N'SET LOCK_TIMEOUT '+CONVERT(nvarchar(20),@OriginalLock)+N';'; EXEC [sys].[sp_executesql] @Sql;
-    IF @OriginalAbort=1 SET XACT_ABORT ON; ELSE SET XACT_ABORT OFF;
-    SET @Sql=N'CREATE LOGIN '+QUOTENAME(@Reader)+N' WITH PASS'+N'WORD='+QUOTENAME(@Password,'''')+N',CHECK_POLICY=OFF,CHECK_EXPIRATION=OFF;';
+    SET @Sql=N'BEGIN TRANSACTION;
+      SET XACT_ABORT ON;
+      SET LOCK_TIMEOUT 7000;
+      DECLARE @NestedReturn int;
+      EXEC @NestedReturn=[monitor].[USP_SensitivityClassificationSummary]
+        @DatabaseNames=@NestedNames,@LockTimeoutMs=250,@ResultSetArt=''NONE'',@PrintMeldungen=0;
+      IF @NestedReturn<>0 OR @@TRANCOUNT<>1 OR XACT_STATE()<>1 OR @@LOCK_TIMEOUT<>7000
+         OR (@@OPTIONS&16384)=0
+          THROW 57509,N''Caller transaction or session state changed.'',1;
+      ROLLBACK TRANSACTION;';
+    EXEC [sys].[sp_executesql] @Sql,N'@NestedNames nvarchar(max)',@NestedNames=@Names;
+    IF @@TRANCOUNT<>@OriginalTx OR @@LOCK_TIMEOUT<>@OriginalLock
+       OR (CASE WHEN (@@OPTIONS&16384)=16384 THEN 1 ELSE 0 END)<>@OriginalAbort
+        THROW 57512,N'Caller state was not restored.',1;
+    SET @Sql=N'CREATE LOGIN '+QUOTENAME(@Reader)+N' WITH PASS'+N'WORD='+QUOTENAME(@FixtureCredential,'''')+N',CHECK_POLICY=OFF,CHECK_EXPIRATION=OFF;';
     EXEC [master].[sys].[sp_executesql] @Sql;
     SET @LoginCreated=1;
-    SET @Password=NULL;
+    SET @FixtureCredential=NULL;
     SET @Sql=N'CREATE USER '+QUOTENAME(@Reader)+N' FOR LOGIN '+QUOTENAME(@Reader)+N';
       GRANT EXECUTE ON [monitor].[USP_SensitivityClassificationSummary] TO '+QUOTENAME(@Reader)+N';
       GRANT EXECUTE ON [monitor].[USP_PrepareDatabaseCandidates] TO '+QUOTENAME(@Reader)+N';';

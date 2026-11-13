@@ -6,7 +6,7 @@ GO
 Objekt       : monitor.USP_SensitivityClassificationSummary
 Version      : 1.0.0
 Stand        : 2026-11-13
-Zweck        : Aggregierte Klassifikationsmetadaten je caller-sichtbarer Datenbank.
+Zweck        : Die Procedure zählt Klassifikationsmetadaten je caller-sichtbarer Datenbank.
 Quellen      : sys.tables, sys.columns, sys.sensitivity_classifications.
 Grenzen      : Nur sichtbare Tabellen und Spalten; kein Vollständigkeits-,
                Schutzwirkungs- oder Datenqualitätsurteil.
@@ -36,13 +36,13 @@ BEGIN
     SELECT @Json=NULL,@StatusCodeOut=NULL,@IsPartialOut=NULL,
            @ErrorNumberOut=NULL,@ErrorMessageOut=NULL;
 
+    DECLARE @OriginalLockTimeout int=@@LOCK_TIMEOUT;
     DECLARE @CapturedAtUtc datetime2(3)=SYSUTCDATETIME(),
         @Mode varchar(16)=UPPER(LTRIM(RTRIM(COALESCE(@ResultSetArt,'')))),
         @Limit bigint=CASE WHEN @MaxZeilen IS NULL OR @MaxZeilen=0
                            THEN CONVERT(bigint,9223372036854775807) ELSE @MaxZeilen END,
-        @PreviousLockTimeout int=@@LOCK_TIMEOUT,
         @PreviousXactAbort bit=CASE WHEN (@@OPTIONS & 16384)=16384 THEN 1 ELSE 0 END,
-        @RestoreLock nvarchar(100),
+        @LockTimeoutSql nvarchar(100),
         @Started datetime2(3),
         @Observed bigint=NULL,
         @SelectionStatus varchar(40),
@@ -58,7 +58,7 @@ BEGIN
         @TableFailureError int=NULL,
         @Sql nvarchar(max);
     DECLARE @ConsoleResultRequested bit=CASE WHEN @Mode='CONSOLE' THEN 1 ELSE 0 END;
-    SET @RestoreLock=N'SET LOCK_TIMEOUT '+CONVERT(nvarchar(20),@PreviousLockTimeout)+N';';
+    SET @LockTimeoutSql=N'SET LOCK_TIMEOUT '+CONVERT(nvarchar(20),@OriginalLockTimeout)+N';';
 
     IF @Hilfe=1
     BEGIN
@@ -81,7 +81,7 @@ BEGIN
         PRINT N'@ErrorMessageOut nvarchar(2048) OUTPUT; Default: NULL. Optional mit OUTPUT binden; Eingang wird zurückgesetzt. Bei negativer/unklarer Rechteprüfung gibt es einen festen Text; gefangene SQL-Fehler bewahren ERROR_MESSAGE links auf 2048 Zeichen. Hilfe/erfolgreicher Lauf lassen NULL.';
         PRINT N'EXEC [monitor].[USP_SensitivityClassificationSummary] @DatabaseNames=N''[ExampleDatabase]'', @ResultSetArt=''RAW'', @PrintMeldungen=0;';
         PRINT N'DECLARE @Json nvarchar(max); EXEC [monitor].[USP_SensitivityClassificationSummary] @ResultSetArt=''NONE'', @JsonErzeugen=1, @Json=@Json OUTPUT; SELECT @Json AS [Json];';
-        PRINT N'CREATE TABLE #SensitivitySummaryExample ([Seed] int NULL); EXEC [monitor].[USP_SensitivityClassificationSummary] @ResultSetArt=''TABLE'', @ResultTablesJson=N''{"classificationSummary":"#SensitivitySummaryExample"}''; SELECT * FROM #SensitivitySummaryExample; DROP TABLE #SensitivitySummaryExample;';
+        PRINT N'CREATE TABLE #SensitivityClassificationSummaryExample ([Seed] int NULL); EXEC [monitor].[USP_SensitivityClassificationSummary] @ResultSetArt=''TABLE'', @ResultTablesJson=N''{"classificationSummary":"#SensitivityClassificationSummaryExample"}''; SELECT * FROM #SensitivityClassificationSummaryExample; DROP TABLE #SensitivityClassificationSummaryExample;';
         SELECT @StatusCodeOut='AVAILABLE',@IsPartialOut=0;
         RETURN;
     END;
@@ -507,7 +507,7 @@ BEGIN
                @ErrorNumberOut=@Error,@ErrorMessageOut=@Message;
         IF @PrintMeldungen=1 AND @Error IS NOT NULL
             RAISERROR(N'USP_SensitivityClassificationSummary: mindestens eine Quelle ist nicht verfügbar; siehe sourceStatus.',10,1) WITH NOWAIT;
-        EXEC [sys].[sp_executesql] @RestoreLock;
+        EXEC [sys].[sp_executesql] @LockTimeoutSql;
         IF @PreviousXactAbort=1 SET XACT_ABORT ON; ELSE SET XACT_ABORT OFF;
     END TRY
     BEGIN CATCH
@@ -515,7 +515,7 @@ BEGIN
                @Message=LEFT(ERROR_MESSAGE(),2048),@Json=NULL;
         SELECT @Status='ERROR_HANDLED',@StatusCodeOut='ERROR_HANDLED',@IsPartialOut=1,
                @ErrorNumberOut=@Error,@ErrorMessageOut=@Message;
-        EXEC [sys].[sp_executesql] @RestoreLock;
+        EXEC [sys].[sp_executesql] @LockTimeoutSql;
         IF @PreviousXactAbort=1 SET XACT_ABORT ON; ELSE SET XACT_ABORT OFF;
         IF @PrintMeldungen=1 RAISERROR(N'%s',10,1,@Message) WITH NOWAIT;
         RETURN @Error;
