@@ -1,8 +1,8 @@
 # Plan Cache und Showplan
 
-**Procedures:** 6  
-**Evidenz:** flüchtiger Cache, Compile-Plan, optional Last Actual oder Live Plan  
-**Kosten:** MEDIUM bis HIGH_OPT_IN
+**Procedures:** 7  
+**Evidenz:** flüchtiger Cache, Compile-Plan, optional Last Actual oder Live Plan sowie getrennte Plan-Guide-Katalogmetadaten  
+**Kosten:** LOW bis HIGH_OPT_IN
 
 ## Grundregeln
 
@@ -435,6 +435,17 @@ flowchart TD
 - [sys.dm_exec_query_plan_stats](https://learn.microsoft.com/en-us/sql/relational-databases/system-dynamic-management-objects/sys-dm-exec-query-plan-stats-transact-sql?view=sql-server-ver17)
 - [sys.dm_exec_query_statistics_xml](https://learn.microsoft.com/en-us/sql/relational-databases/system-dynamic-management-objects/sys-dm-exec-query-statistics-xml-transact-sql?view=sql-server-ver17)
 - [Showplan XML schema](https://learn.microsoft.com/sql/relational-databases/showplan-logical-and-physical-operators-reference)
+
+## 7. [monitor].[USP_PlanGuideInventory]
+
+Die [Procedure-Referenz](Procedures/USP_PlanGuideInventory.md) beschreibt alle Parameter, vier benannten Resultsets und die Aussagegrenzen. Die Procedure liest caller-sichtbare Plan-Guide-Katalogmetadaten in ausgewählten ONLINE-Datenbanken. Sie ergänzt die flüchtigen Plan-Cache- und Showplan-Pfade um einen getrennten Konfigurationsblick. `IsDisabled` ist ein Katalogschalter; `ValidationStatus=UNASSESSED` und eine erfolgreiche leere Sicht belegen weder Guide-Wirksamkeit noch globale Abwesenheit. SQL-, Batch-, Parameter- und Hint-Definitionen werden nicht gelesen.
+
+```sql
+EXEC [monitor].[USP_PlanGuideInventory]
+    @DatabaseNames=N'[ExampleDatabase]',
+    @ResultSetArt='RAW';
+```
+
 
 ## Standalone Execution Plan Analysis
 

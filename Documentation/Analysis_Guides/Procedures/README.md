@@ -1,7 +1,7 @@
 # Eigenständige Analysebeschreibungen je Procedure
 
-**Stand:** 22. Juli 2026<br>
-**Strukturelle Abdeckung:** 123 Procedures<br>
+**Stand:** 13. November 2026<br>
+**Strukturelle Abdeckung:** 124 Procedures<br>
 **Tief geprüfte Seiten:** 92 Procedures
 
 Jede Seite verbindet den sicheren Einstieg mit der fachlichen Leserichtung. Sie beantwortet insbesondere:
@@ -75,6 +75,7 @@ Jede Seite weist jetzt Entscheidungseinsatz, Nichtziele, Resultset-Leserichtung,
 - [USP_ExecutionPlanAnalysis](USP_ExecutionPlanAnalysis.md)
 - [USP_ShowplanAnalysis](USP_ShowplanAnalysis.md)
 - [USP_PlanCacheAnalysis](USP_PlanCacheAnalysis.md)
+- [USP_PlanGuideInventory](USP_PlanGuideInventory.md)
 
 ## Query Store
 

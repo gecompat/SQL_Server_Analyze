@@ -75,6 +75,7 @@ PROCEDURE,USP_PlanCacheHealth,Code/04_PlanCache/030_USP_PlanCacheHealth.sql
 PROCEDURE,USP_PlanDetails,Code/04_PlanCache/040_USP_PlanDetails.sql
 PROCEDURE,USP_ShowplanAnalysis,Code/04_PlanCache/050_USP_ShowplanAnalysis.sql
 PROCEDURE,USP_PlanCacheAnalysis,Code/04_PlanCache/060_USP_PlanCacheAnalysis.sql
+PROCEDURE,USP_PlanGuideInventory,Code/04_PlanCache/070_USP_PlanGuideInventory.sql
 PROCEDURE,USP_QueryStoreStatus,Code/05_QueryStore/010_USP_QueryStoreStatus.sql
 PROCEDURE,USP_QueryStoreRuntimeStats,Code/05_QueryStore/020_USP_QueryStoreRuntimeStats.sql
 PROCEDURE,USP_QueryStoreWaitStats,Code/05_QueryStore/030_USP_QueryStoreWaitStats.sql

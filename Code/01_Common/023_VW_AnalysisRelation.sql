@@ -103,6 +103,7 @@ AS
         , (N'USP_ShowplanAnalysis','CONFIRM_WITH',N'USP_QueryStoreRuntimeStats',1,N'Planbefunde bei aktivem Query Store gegen reale Laufzeitintervalle abgleichen.')
         , (N'USP_PlanCacheAnalysis','REFINE_WITH',N'USP_ShowplanAnalysis',1,N'Auffällige Cachepläne als begrenztes Plan-XML fachlich vertiefen.')
         , (N'USP_PlanCacheAnalysis','CONFIRM_WITH',N'USP_QueryStoreAnalysis',1,N'Flüchtige Cache-Evidenz gegen persistierte Query-Store-Evidenz prüfen.')
+        , (N'USP_PlanGuideInventory','ALTERNATIVE_TO',N'USP_PlanCacheAnalysis',1,N'Der Katalog zeigt Konfiguration, der flüchtige Plan Cache getrennte Laufzeitbefunde; beide belegen keine Guide-Anwendung.')
         , (N'USP_CreateExecutionEvidenceJson','REFINE_WITH',N'USP_ExecutionPlanAnalysis',1,N'Das erzeugte Evidenzartefakt zusammen mit der vollständigen Plananalyse interpretieren.')
         , (N'USP_ExecutionPlanAnalysis','CONFIRM_WITH',N'USP_QueryStoreRuntimeStats',1,N'Planstruktur bei verfügbarem Query Store gegen gemessene Laufzeitintervalle prüfen.')
         , (N'USP_ExecutionPlanAnalysis','ALTERNATIVE_TO',N'USP_ShowplanAnalysis',1,N'Für einen bereits in SQL Server verfügbaren Planhandle kann der integrierte Showplanpfad geeigneter sein.')

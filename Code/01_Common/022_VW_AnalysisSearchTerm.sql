@@ -130,6 +130,8 @@ AS
         , (N'USP_ShowplanAnalysis',N'showplan operator warning cardinality','en',95,N'Gezielte Showplan-XML-Analyse.')
         , (N'USP_PlanCacheAnalysis',N'Plan Cache vollständig analysieren','de',100,N'Orchestriert die Plan-Cache-Analysen.')
         , (N'USP_PlanCacheAnalysis',N'plan cache analysis orchestrator','en',95,N'Gebündelte Plan-Cache-Tiefenanalyse.')
+        , (N'USP_PlanGuideInventory',N'Plan Guide Katalog aktiv deaktiviert OBJECT SQL TEMPLATE','de',100,N'Inventarisiert sichtbare Plan Guides ohne Definitionen oder Validierung.')
+        , (N'USP_PlanGuideInventory',N'plan guide inventory enabled disabled object sql template','en',95,N'Lists caller-visible plan guide metadata without validity or effectiveness claim.')
         , (N'USP_CreateExecutionEvidenceJson',N'STATISTICS IO TIME normalisieren','de',100,N'Erzeugt ein normalisiertes Evidence-JSON aus bereits erfasster Evidenz.')
         , (N'USP_CreateExecutionEvidenceJson',N'execution evidence json statistics io time','en',95,N'Normalisiert Ausführungsevidenz für die Plananalyse.')
         , (N'USP_ExecutionPlanAnalysis',N'Plan XML analysieren','de',100,N'Eigenständiger Einstieg für ein vorhandenes Showplan-XML.')
