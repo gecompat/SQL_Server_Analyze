@@ -1,6 +1,6 @@
 # Aufrufkatalog aller dokumentierten Procedures
 
-Stand: 2026-10-27 — 121 eindeutige Procedure-Einträge; alle 121 öffentlichen Inventar-Procedures sind enthalten.
+Stand: 2026-10-27 — 122 eindeutige Procedure-Einträge; alle 122 öffentlichen Inventar-Procedures sind enthalten.
 
 Die Hilfeaufrufe führen keine fachliche Analyse aus. Weitere typische Querschnittsbeispiele stehen am Dokumentanfang.
 
@@ -47,6 +47,12 @@ EXEC [monitor].[USP_ObjectInventory] @DatabaseNames=N'[DeineDatenbank]|[Beispiel
 
 ```sql
 EXEC [monitor].[USP_AgentJobs] @Hilfe = 1;
+```
+
+## `[monitor].[USP_AgentProxyInventory]`
+
+```sql
+EXEC [monitor].[USP_AgentProxyInventory] @Hilfe = 1;
 ```
 
 ## `[monitor].[USP_AgentMonitoringAnalysis]`

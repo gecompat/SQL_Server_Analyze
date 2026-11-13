@@ -1,6 +1,6 @@
 # Infrastruktur: Agent, Recovery, Hochverfügbarkeit und Datenerfassung
 
-**Procedures:** 12  
+**Procedures:** 15  
 **Evidenz:** Dienststatus, msdb-Historie, HADR-/Resource-Governor-DMVs und Featurekataloge  
 **Kosten:** LOW bis HIGH_OPT_IN
 
@@ -950,3 +950,24 @@ oder löscht kein Log und persistiert keinen Meldungstext.
 ### Primärquelle
 
 - [sp_readerrorlog](https://learn.microsoft.com/en-us/sql/relational-databases/system-stored-procedures/sp-readerrorlog-transact-sql?view=sql-server-ver17)
+
+---
+
+## 15. [monitor].[USP_AgentProxyInventory]
+
+Die [Procedure-Referenz](Procedures/USP_AgentProxyInventory.md) beschreibt Parameter, Ausgabe und Quellenstatus.
+
+### Zweck und Voraussetzung
+
+Die Procedure liest SQL-Agent-Proxies, ihre Credentialreferenzen und zugeordnete Subsysteme. Die drei Agenttabellen in `msdb` erfordern `sysadmin`-Sicht. Die Procedure erteilt keine Rechte und nimmt keine Änderung an Agent oder Credentials vor.
+
+### Leserichtung
+
+1. Prüfen Sie zuerst `StatusCode`, `IsPartial` und die drei Quellenstatuswerte. `DENIED_PERMISSION` und `AVAILABLE_LIMITED` lassen keine Aussage über eine leere Gesamtmenge zu.
+2. Vergleichen Sie `TotalProxyCount`, `ReturnedProxyCount` und `IsTruncated`. Ein positives `@MaxZeilen` begrenzt nur die ausgegebenen Proxies und deren Subsystemzuordnungen.
+3. Lesen Sie `CredentialReferencePresent` als gespeicherte ID-Referenz. `CredentialCatalogStatus=VISIBLE` belegt einen sichtbaren Namensmatch; `NOT_VISIBLE_OR_MISSING` und `NOT_CHECKED` begrenzen die Aussage.
+4. Ordnen Sie die Zeilen aus `proxySubsystems` anhand von `ProxyId` zu. Die Zuordnung sagt nichts über die Ausführbarkeit eines Jobsteps aus.
+
+### Grenzen und Gegenprobe
+
+Die Lesung verwendet `LOCK_TIMEOUT 0` und `WITH (NOLOCK)`; bei Sperren kann sie sofort einen Quellenfehler melden. Zählung und Auswahl sind kein atomarer Snapshot. Es werden keine Credentialidentitäten, Secrets, SIDs, Loginzuordnungen, Befehle, Pfade, Jobläufe oder effektiven Betriebssystemrechte gelesen. Für Jobzustand und Historie dient `USP_AgentJobs` als eigene Gegenprobe; deren Ausgabe beweist ebenfalls keine Proxy-Ausführung. Die Kataloglesung ist niedrig im vorgesehenen Umfang, eine unbegrenzte Auswahl liest dennoch die verfügbaren Katalogquellen vollständig.

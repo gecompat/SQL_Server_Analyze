@@ -1,7 +1,7 @@
 # Objektindex der eigenständigen Analysebeschreibungen
 
 **Stand:** 23. Juli 2026
-**Abdeckung:** alle 106 inventarisierten `USP_*`-Procedures des Frameworks einschließlich der optionalen Pakete
+**Abdeckung:** alle 122 inventarisierten `USP_*`-Procedures des Frameworks einschließlich der optionalen Pakete
 
 Jeder Link führt zu einer in sich geschlossenen Procedure-Seite. Dort stehen sicherer Einstieg, Zeilengranularität, Leserichtung, technische Problembegründung, unkritischer Gegenkontext, synthetisches Beispiel, Folgeanalyse und der Link zur vollständigen technischen Spaltenreferenz.
 
@@ -109,6 +109,7 @@ Für einen Einstieg nach beobachtetem Problem verwenden Sie [Hier beginnen](Star
 |---|---|
 | `[monitor].[USP_AgentStatus]` | [Agentdienst und Plattformstatus](Procedures/USP_AgentStatus.md) |
 | `[monitor].[USP_AgentJobs]` | [Jobs, Schritte, Historie und Laufzeit](Procedures/USP_AgentJobs.md) |
+| `[monitor].[USP_AgentProxyInventory]` | [Proxy-, Credentialreferenz- und Subsystemkatalog](Procedures/USP_AgentProxyInventory.md) |
 | `[monitor].[USP_ResourceGovernorAnalysis]` | [Pools, Gruppen, Limits und Sessions](Procedures/USP_ResourceGovernorAnalysis.md) |
 | `[monitor].[USP_AvailabilityGroups]` | [AG-, Replica-, Datenbank- und Routingstatus](Procedures/USP_AvailabilityGroups.md) |
 | `[monitor].[USP_BackupRecovery]` | [Backupalter, Recovery Model und Restoreevidenz](Procedures/USP_BackupRecovery.md) |

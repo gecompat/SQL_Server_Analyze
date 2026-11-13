@@ -176,6 +176,8 @@ AS
         , (N'USP_AgentStatus',N'sql server agent service status','en',95,N'Leichter Agentstatus.')
         , (N'USP_AgentJobs',N'Job fehlgeschlagen lange Laufzeit','de',100,N'Zeigt problematische Jobs und Historie.')
         , (N'USP_AgentJobs',N'failed long running agent job','en',95,N'Jobstatus-, Dauer- und Fehleranalyse.')
+        , (N'USP_AgentProxyInventory',N'SQL Agent Proxy Credential Subsystem','de',95,N'Zeigt Proxy- und Subsystemkatalog mit Credentialreferenz.')
+        , (N'USP_AgentProxyInventory',N'sql server agent proxy credential subsystem','en',95,N'Reads proxy, credential reference and subsystem catalog metadata.')
         , (N'USP_ResourceGovernorAnalysis',N'Resource Governor Pool Gruppe','de',100,N'Zeigt Pools, Gruppen, Limits und Sessions.')
         , (N'USP_ResourceGovernorAnalysis',N'resource governor pool workload group','en',95,N'Resource-Governor-Kontext.')
         , (N'USP_ResourceGovernorAnalysis',N'TempDB Resource Governance Wirksamkeit','de',100,N'Zeigt gespeichertes und wirksames Workload-Group-Limit getrennt.')

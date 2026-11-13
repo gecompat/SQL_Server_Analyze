@@ -49,7 +49,7 @@ Die Matrix betrachtet 106 fachliche Bereiche. Der Frameworkkern deckt die zentra
 - unveränderbare URL-Backups und SQL-Server-2025-Backups auf Secondary Replicas;
 - FILESTREAM/FileTable-Betrieb über die bestehende leichte Erkennung hinaus;
 - Change Event Streaming, Fabric Mirroring und External REST Endpoint Invocation mit strikter Trennung lokaler Kataloge von externen Endpoints, Credentials und Payloads;
-- Plan Guides sowie SQL-Agent-Proxies und deren Berechtigungsabhängigkeiten.
+- Plan Guides sowie [SQL-Agent-Proxies](../Architecture/Agent_Proxy_Dependency_Inventory_Dossier.md) und deren Berechtigungsabhängigkeiten; der Proxy-V1-Source-Preview ist noch nicht nativ qualifiziert.
 
 ### Priorität P3 und bedingte Vertiefung
 

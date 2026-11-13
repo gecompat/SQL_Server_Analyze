@@ -461,8 +461,18 @@
       "classification": "product-reference"
     },
     {
+      "source": "AI_Metadata/Internal_Documentation/Quality/Development_Waves_2026-10.md",
+      "target": "AI_Metadata/Internal_Documentation/Architecture/Agent_Proxy_Dependency_Inventory_Dossier.md",
+      "classification": "product-reference"
+    },
+    {
       "source": "AI_Metadata/Internal_Documentation/Quality/Next_Steps.md",
       "target": "AI_Metadata/Internal_Documentation/Architecture/RLS_and_Masking_Inventory_Dossier.md",
+      "classification": "product-reference"
+    },
+    {
+      "source": "AI_Metadata/Internal_Documentation/Quality/Next_Steps.md",
+      "target": "AI_Metadata/Internal_Documentation/Architecture/Agent_Proxy_Dependency_Inventory_Dossier.md",
       "classification": "product-reference"
     },
     {
@@ -2158,6 +2168,26 @@
     {
       "source": "AI_Metadata/Internal_Documentation/Quality/Development_Waves_2026-10.md",
       "target": "Code/07_Infrastructure/020_USP_AgentJobs.sql",
+      "classification": "product-reference"
+    },
+    {
+      "source": "AI_Metadata/Internal_Documentation/Quality/Development_Waves_2026-10.md",
+      "target": "Code/Install/Install_All.sql",
+      "classification": "product-reference"
+    },
+    {
+      "source": "AI_Metadata/Internal_Documentation/Quality/Next_Steps.md",
+      "target": "Code/Install/Install_All.sql",
+      "classification": "product-reference"
+    },
+    {
+      "source": "AI_Metadata/Internal_Documentation/Quality/Next_Steps.md",
+      "target": "TestLab/Adapters/OPS-005/sql/install.sql",
+      "classification": "product-reference"
+    },
+    {
+      "source": "AI_Metadata/Internal_Documentation/Quality/Development_Waves_2026-10.md",
+      "target": "TestLab/Adapters/OPS-005/sql/install.sql",
       "classification": "product-reference"
     }
   ]

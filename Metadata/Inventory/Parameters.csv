@@ -2166,3 +2166,13 @@ USP_DatabaseMirroringInventory,StatusCodeOut,varchar(40),NULL OUTPUT
 USP_DatabaseMirroringInventory,IsPartialOut,bit,NULL OUTPUT
 USP_DatabaseMirroringInventory,ErrorNumberOut,int,NULL OUTPUT
 USP_DatabaseMirroringInventory,ErrorMessageOut,nvarchar(2048),NULL OUTPUT
+USP_AgentProxyInventory,MaxZeilen,int,1000
+USP_AgentProxyInventory,ResultSetArt,varchar(16),'CONSOLE'
+USP_AgentProxyInventory,ResultTablesJson,nvarchar(max),NULL
+USP_AgentProxyInventory,JsonErzeugen,bit,0
+USP_AgentProxyInventory,Json,nvarchar(max),NULL OUTPUT
+USP_AgentProxyInventory,Hilfe,bit,0
+USP_AgentProxyInventory,StatusCodeOut,varchar(40),NULL OUTPUT
+USP_AgentProxyInventory,IsPartialOut,bit,NULL OUTPUT
+USP_AgentProxyInventory,ErrorNumberOut,int,NULL OUTPUT
+USP_AgentProxyInventory,ErrorMessageOut,nvarchar(2048),NULL OUTPUT
