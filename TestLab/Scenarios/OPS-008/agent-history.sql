@@ -1605,6 +1605,223 @@ BEGIN TRY
     IF @ProblemStatus <> 2 OR @ProblemCases <> 6 OR @ProblemCalls <> 12
        OR @ProblemTableCalls <> 6 OR @ProblemNullCalls <> 4 OR @Calls <> 95
         THROW 55199, N'Die sechs Jobproblemfälle, zwölf Aufrufe oder 95 positiven Consumeraufrufe fehlen.', 1;
+
+    -- Die bestehende positive Fixture prüft hier erstmals tatsächliche History-Zeilen unter einer Grenze.
+    DECLARE @HistoryLimitCase int = 1, @HistoryLimitConsumer int,
+        @HistoryMaxZeilen int, @HistoryExpectedStepCount int,
+        @HistoryLimitCases int = 0, @HistoryLimitCalls int = 0,
+        @HistoryLimitTableCalls int = 0, @HistoryLimitNullCalls int = 0,
+        @HistoryLimitTableRows bigint, @HistoryLimitTableJobs nvarchar(max),
+        @HistoryLimitNoneJobs nvarchar(max), @HistoryLimitNoneSteps nvarchar(max);
+    IF NOT EXISTS
+    (
+        SELECT 1 FROM [msdb].[dbo].[sysjobs]
+        WHERE [job_id] = @JobId AND [name] = N'ExampleOps008HistoryJob' AND [enabled] = 1
+    )
+       OR NOT EXISTS
+    (
+        SELECT 1 FROM [msdb].[dbo].[sysjobhistory]
+        WHERE [instance_id] = @ZeroJobHistoryId AND [job_id] = @JobId
+          AND [step_id] = 0 AND [run_status] = 1
+          AND [run_date] = 20250102 AND [run_time] = 235959
+          AND [run_duration] = 1000000
+          AND [message] = N'Example controlled date and duration'
+    )
+       OR NOT EXISTS
+    (
+        SELECT 1 FROM [msdb].[dbo].[sysjobhistory]
+        WHERE [instance_id] = @StepOneHistoryId AND [job_id] = @JobId
+          AND [step_id] = 1 AND [run_status] = 4
+          AND [run_date] = 20250102 AND [run_time] = 235959
+          AND [run_duration] = 1000000
+          AND [retries_attempted] = 2
+          AND [message] = N'Example controlled step outcome'
+    )
+       OR NOT EXISTS
+    (
+        SELECT 1 FROM [msdb].[dbo].[sysjobhistory]
+        WHERE [job_id] = @JobId AND [step_id] = 2 AND [run_status] = 1
+          AND [run_date] = 20001231 AND [run_time] = 112233
+          AND [run_duration] = 253001 AND [retries_attempted] = 0
+          AND [message] = N'Example step counterexample'
+    )
+       OR (SELECT COUNT_BIG(*) FROM [msdb].[dbo].[sysjobhistory]) <> 12
+       OR EXISTS (SELECT 1 FROM [msdb].[dbo].[sysjobactivity] WHERE [job_id] = @JobId)
+       OR EXISTS (SELECT 1 FROM [msdb].[dbo].[sysjobservers] WHERE [job_id] = @JobId)
+       OR EXISTS (SELECT 1 FROM [msdb].[dbo].[sysjobschedules] WHERE [job_id] = @JobId)
+       OR XACT_STATE() <> 1 OR @@TRANCOUNT <> 1
+       OR @@LOCK_TIMEOUT <> @PreviousLockTimeout OR (@@OPTIONS & 16384) <> 16384
+        THROW 55199, N'Die feste Ausgangslage der History-Grenzfälle ist verletzt.', 1;
+    WHILE @HistoryLimitCase <= 4
+    BEGIN
+        SET @HistoryMaxZeilen = CASE @HistoryLimitCase
+            WHEN 1 THEN NULL WHEN 2 THEN 0 WHEN 3 THEN 1 ELSE 2 END;
+        SET @HistoryExpectedStepCount = CASE WHEN @HistoryLimitCase = 3 THEN 1 ELSE 2 END;
+        SET @HistoryLimitNoneJobs = NULL;
+        SET @HistoryLimitNoneSteps = NULL;
+        SELECT @Before = (SELECT
+  JSON_QUERY((SELECT * FROM [msdb].[dbo].[sysjobs] ORDER BY [job_id] FOR JSON PATH, INCLUDE_NULL_VALUES)) AS [Jobs],
+  JSON_QUERY((SELECT * FROM [msdb].[dbo].[sysjobsteps] ORDER BY [job_id], [step_id] FOR JSON PATH, INCLUDE_NULL_VALUES)) AS [Steps],
+  JSON_QUERY((SELECT * FROM [msdb].[dbo].[sysjobhistory] ORDER BY [instance_id] FOR JSON PATH, INCLUDE_NULL_VALUES)) AS [History],
+  JSON_QUERY((SELECT * FROM [msdb].[dbo].[sysjobactivity] ORDER BY [session_id], [job_id] FOR JSON PATH, INCLUDE_NULL_VALUES)) AS [Activity],
+  JSON_QUERY((SELECT * FROM [msdb].[dbo].[sysjobservers] ORDER BY [job_id], [server_id] FOR JSON PATH, INCLUDE_NULL_VALUES)) AS [Servers],
+  JSON_QUERY((SELECT * FROM [msdb].[dbo].[sysjobschedules] ORDER BY [job_id], [schedule_id] FOR JSON PATH, INCLUDE_NULL_VALUES)) AS [Schedules]
+  FOR JSON PATH, WITHOUT_ARRAY_WRAPPER, INCLUDE_NULL_VALUES);
+        IF @Before IS NULL OR XACT_STATE() <> 1 OR @@TRANCOUNT <> 1
+           OR @@LOCK_TIMEOUT <> @PreviousLockTimeout OR (@@OPTIONS & 16384) <> 16384
+            THROW 55199, N'Der History-Grenzfall benötigt einen vollständigen Quell- und Callerguard.', 1;
+        SET @HistoryLimitConsumer = 1;
+        WHILE @HistoryLimitConsumer <= 2
+        BEGIN
+            SELECT @Json = NULL, @HistoryLimitTableRows = NULL, @HistoryLimitTableJobs = NULL;
+            IF @HistoryLimitConsumer = 1
+                EXEC [monitor].[USP_AgentJobs] @JobNames = N'[ExampleOps008HistoryJob]',
+                    @MaxZeilen = @HistoryMaxZeilen, @NurProblematisch = 0,
+                    @ResultSetArt = 'NONE', @JsonErzeugen = 1,
+                    @Json = @Json OUTPUT, @PrintMeldungen = 0;
+            ELSE
+            BEGIN
+                CREATE TABLE [#AgentJobsHistoryLimitTable] ([Placeholder] int NULL);
+                EXEC [monitor].[USP_AgentJobs] @JobNames = N'[ExampleOps008HistoryJob]',
+                    @MaxZeilen = @HistoryMaxZeilen, @NurProblematisch = 0,
+                    @ResultSetArt = 'TABLE',
+                    @ResultTablesJson = N'{"jobs":"#AgentJobsHistoryLimitTable"}',
+                    @JsonErzeugen = 1, @Json = @Json OUTPUT, @PrintMeldungen = 0;
+            END;
+            SELECT @After = (SELECT
+  JSON_QUERY((SELECT * FROM [msdb].[dbo].[sysjobs] ORDER BY [job_id] FOR JSON PATH, INCLUDE_NULL_VALUES)) AS [Jobs],
+  JSON_QUERY((SELECT * FROM [msdb].[dbo].[sysjobsteps] ORDER BY [job_id], [step_id] FOR JSON PATH, INCLUDE_NULL_VALUES)) AS [Steps],
+  JSON_QUERY((SELECT * FROM [msdb].[dbo].[sysjobhistory] ORDER BY [instance_id] FOR JSON PATH, INCLUDE_NULL_VALUES)) AS [History],
+  JSON_QUERY((SELECT * FROM [msdb].[dbo].[sysjobactivity] ORDER BY [session_id], [job_id] FOR JSON PATH, INCLUDE_NULL_VALUES)) AS [Activity],
+  JSON_QUERY((SELECT * FROM [msdb].[dbo].[sysjobservers] ORDER BY [job_id], [server_id] FOR JSON PATH, INCLUDE_NULL_VALUES)) AS [Servers],
+  JSON_QUERY((SELECT * FROM [msdb].[dbo].[sysjobschedules] ORDER BY [job_id], [schedule_id] FOR JSON PATH, INCLUDE_NULL_VALUES)) AS [Schedules]
+  FOR JSON PATH, WITHOUT_ARRAY_WRAPPER, INCLUDE_NULL_VALUES);
+            IF @After IS NULL
+               OR @Before COLLATE SQL_Latin1_General_CP1_CS_AS
+                  <> @After COLLATE SQL_Latin1_General_CP1_CS_AS
+               OR (SELECT COUNT_BIG(*) FROM [msdb].[dbo].[sysjobhistory]) <> 12
+               OR XACT_STATE() <> 1 OR @@TRANCOUNT <> 1
+               OR @@LOCK_TIMEOUT <> @PreviousLockTimeout OR (@@OPTIONS & 16384) <> 16384
+               OR EXISTS (SELECT 1 FROM [msdb].[dbo].[sysjobactivity] WHERE [job_id] = @JobId)
+               OR EXISTS (SELECT 1 FROM [msdb].[dbo].[sysjobservers] WHERE [job_id] = @JobId)
+               OR EXISTS (SELECT 1 FROM [msdb].[dbo].[sysjobschedules] WHERE [job_id] = @JobId)
+                THROW 55199, N'Der History-Grenzaufruf hat Quellen oder Callerzustand verändert.', 1;
+            IF COALESCE(ISJSON(@Json), 0) <> 1
+               OR COALESCE(JSON_VALUE(@Json, '$.meta.statusCode'), N'') <> N'AVAILABLE'
+               OR COALESCE(JSON_VALUE(@Json, '$.meta.isPartial'), N'') <> N'false'
+               OR (SELECT COUNT(*) FROM OPENJSON(@Json, '$.meta')
+                   WHERE [key] = N'errorNumber' AND [type] = 0) <> 1
+               OR (SELECT COUNT(*) FROM OPENJSON(@Json, '$.meta')
+                   WHERE [key] = N'errorMessage' AND [type] = 0) <> 1
+               OR COALESCE(TRY_CONVERT(bigint, JSON_VALUE(@Json, '$.meta.jobCount')), -1) <> 1
+               OR COALESCE(TRY_CONVERT(bigint, JSON_VALUE(@Json, '$.meta.stepCount')), -1)
+                  <> @HistoryExpectedStepCount
+               OR COALESCE(LEFT(LTRIM(JSON_QUERY(@Json, '$.jobs')), 1), N'') <> N'['
+               OR COALESCE(LEFT(LTRIM(JSON_QUERY(@Json, '$.steps')), 1), N'') <> N'['
+               OR (SELECT COUNT_BIG(*) FROM OPENJSON(@Json, '$.jobs')) <> 1
+               OR (SELECT COUNT_BIG(*) FROM OPENJSON(@Json, '$.steps'))
+                  <> @HistoryExpectedStepCount
+               OR (@HistoryMaxZeilen IS NULL AND
+                   (SELECT COUNT(*) FROM OPENJSON(@Json, '$.meta')
+                    WHERE [key] = N'requestedMaxRows' AND [type] = 0) <> 1)
+               OR (@HistoryMaxZeilen IS NOT NULL AND
+                   (SELECT COUNT(*) FROM OPENJSON(@Json, '$.meta')
+                    WHERE [key] = N'requestedMaxRows' AND [type] = 2
+                      AND TRY_CONVERT(int, [value]) = @HistoryMaxZeilen) <> 1)
+                THROW 55198, N'Die History-Grenzmetadaten oder Ergebnismengen sind verletzt.', 1;
+            IF NOT EXISTS
+            (
+                SELECT 1 FROM OPENJSON(@Json, '$.jobs')
+                WITH ([JobId] uniqueidentifier, [JobName] nvarchar(128),
+                      [Enabled] bit, [IsRunning] bit, [RunStart] datetime,
+                      [RunningMinutes] int, [LastRunDateTime] datetime,
+                      [LastRunStatus] int, [LastRunStatusDesc] nvarchar(60),
+                      [LastRunDurationSeconds] int, [LastMessage] nvarchar(4000),
+                      [ScheduleCount] int, [EnabledScheduleCount] int,
+                      [StepCount] int, [ProblemCode] varchar(40))
+                WHERE [JobId] = @JobId AND [JobName] = N'ExampleOps008HistoryJob'
+                  AND [Enabled] = 1 AND [IsRunning] = 0
+                  AND [RunStart] IS NULL AND [RunningMinutes] IS NULL
+                  AND [LastRunDateTime] = CONVERT(datetime, '2025-01-02T23:59:59', 126)
+                  AND [LastRunStatus] = 1 AND [LastRunStatusDesc] = N'SUCCEEDED'
+                  AND [LastRunDurationSeconds] = 360000
+                  AND [LastMessage] = N'Example controlled date and duration'
+                  AND [ScheduleCount] = 0 AND [EnabledScheduleCount] = 0
+                  AND [StepCount] = 2 AND [ProblemCode] = 'NO_SCHEDULE'
+            )
+                THROW 55198, N'Die festen Jobwerte der History-Grenzfälle sind verletzt.', 1;
+            DELETE FROM @ExpectedSteps;
+            INSERT @ExpectedSteps VALUES
+                (N'ExampleOps008HistoryJob', 1, N'ExampleHistoryStepOne', N'TSQL',
+                 4, N'IN_PROGRESS', CONVERT(datetime, '2025-01-02T23:59:59', 126),
+                 360000, 2, N'Example controlled step outcome');
+            IF @HistoryExpectedStepCount = 2
+                INSERT @ExpectedSteps VALUES
+                    (N'ExampleOps008HistoryJob', 2, N'ExampleHistoryStepTwo', N'TSQL',
+                     1, N'SUCCEEDED', CONVERT(datetime, '2000-12-31T11:22:33', 126),
+                     91801, 0, N'Example step counterexample');
+            DELETE FROM @ActualSteps;
+            INSERT @ActualSteps SELECT * FROM OPENJSON(@Json, '$.steps')
+            WITH ([JobName] nvarchar(128), [StepId] int, [StepName] nvarchar(128),
+                  [Subsystem] nvarchar(40), [LastRunOutcome] int,
+                  [LastRunOutcomeDesc] nvarchar(60), [LastRunDateTime] datetime,
+                  [LastRunDurationSeconds] int, [LastRunRetries] int,
+                  [LastRunMessage] nvarchar(4000));
+            IF (SELECT COUNT_BIG(*) FROM @ActualSteps) <> @HistoryExpectedStepCount
+               OR EXISTS (SELECT * FROM @ExpectedSteps EXCEPT SELECT * FROM @ActualSteps)
+               OR EXISTS (SELECT * FROM @ActualSteps EXCEPT SELECT * FROM @ExpectedSteps)
+                THROW 55198, N'Die zehn Stepwerte der History-Grenzfälle sind verletzt.', 1;
+            IF @HistoryLimitConsumer = 1
+            BEGIN
+                SET @HistoryLimitNoneJobs = JSON_QUERY(@Json, '$.jobs');
+                SET @HistoryLimitNoneSteps = JSON_QUERY(@Json, '$.steps');
+            END
+            ELSE
+            BEGIN
+                EXEC [sys].[sp_executesql]
+                    N'SELECT @rows = (SELECT COUNT_BIG(*) FROM [#AgentJobsHistoryLimitTable]),
+                             @jobsJson = (SELECT * FROM [#AgentJobsHistoryLimitTable]
+                                 ORDER BY [JobName] FOR JSON PATH, INCLUDE_NULL_VALUES);',
+                    N'@rows bigint OUTPUT, @jobsJson nvarchar(max) OUTPUT',
+                    @rows = @HistoryLimitTableRows OUTPUT,
+                    @jobsJson = @HistoryLimitTableJobs OUTPUT;
+                DELETE FROM @PositiveTableActualSchema;
+                INSERT @PositiveTableActualSchema
+                    ([LogicalOrdinal], [ColumnName], [SystemTypeId])
+                SELECT CONVERT(int, ROW_NUMBER() OVER (ORDER BY [c].[column_id])),
+                    [c].[name] COLLATE SQL_Latin1_General_CP1_CS_AS, [c].[system_type_id]
+                FROM [tempdb].[sys].[columns] AS [c]
+                WHERE [c].[object_id] = OBJECT_ID(N'tempdb..#AgentJobsHistoryLimitTable');
+                IF (SELECT COUNT(*) FROM @PositiveTableActualSchema) <> 17
+                   OR EXISTS (SELECT * FROM @PositiveTableActualSchema
+                              EXCEPT SELECT * FROM @PositiveTableExpectedSchema)
+                   OR EXISTS (SELECT * FROM @PositiveTableExpectedSchema
+                              EXCEPT SELECT * FROM @PositiveTableActualSchema)
+                   OR @HistoryLimitTableRows IS NULL OR @HistoryLimitTableRows <> 1
+                   OR @HistoryLimitTableJobs IS NULL
+                   OR @HistoryLimitNoneJobs IS NULL OR @HistoryLimitNoneSteps IS NULL
+                   OR @HistoryLimitTableJobs COLLATE SQL_Latin1_General_CP1_CS_AS
+                      <> JSON_QUERY(@Json, '$.jobs') COLLATE SQL_Latin1_General_CP1_CS_AS
+                   OR @HistoryLimitTableJobs COLLATE SQL_Latin1_General_CP1_CS_AS
+                      <> @HistoryLimitNoneJobs COLLATE SQL_Latin1_General_CP1_CS_AS
+                   OR JSON_QUERY(@Json, '$.steps') COLLATE SQL_Latin1_General_CP1_CS_AS
+                      <> @HistoryLimitNoneSteps COLLATE SQL_Latin1_General_CP1_CS_AS
+                    THROW 55198, N'Die History-Grenzparität von TABLE und JSON ist verletzt.', 1;
+                DROP TABLE [#AgentJobsHistoryLimitTable];
+                SET @HistoryLimitTableCalls += 1;
+            END;
+            SET @Calls += 1;
+            SET @HistoryLimitCalls += 1;
+            IF @HistoryMaxZeilen IS NULL SET @HistoryLimitNullCalls += 1;
+            SET @HistoryLimitConsumer += 1;
+        END;
+        SET @HistoryLimitCases += 1;
+        SET @HistoryLimitCase += 1;
+    END;
+    IF @HistoryLimitCase <> 5 OR @HistoryLimitCases <> 4
+       OR @HistoryLimitCalls <> 8 OR @HistoryLimitTableCalls <> 4
+       OR @HistoryLimitNullCalls <> 2 OR @Calls <> 103
+        THROW 55199, N'Die vier History-Grenzfälle, acht Aufrufe oder 103 positiven Consumeraufrufe fehlen.', 1;
     IF EXISTS (SELECT 1 FROM [msdb].[dbo].[sysjobactivity] WHERE [job_id] = @JobId)
        OR EXISTS (SELECT 1 FROM [msdb].[dbo].[sysjobservers] WHERE [job_id] = @JobId)
        OR EXISTS (SELECT 1 FROM [msdb].[dbo].[sysjobschedules] WHERE [job_id] = @JobId)
