@@ -210,9 +210,18 @@ BEGIN TRY
          OR @R IS NULL OR @R<>0 OR COALESCE(@S,'''')<>''AVAILABLE_LIMITED''
          THROW 57612,N''Plan guide inner caller state changed.'',1;
       ROLLBACK TRANSACTION;
+      DECLARE @AfterRollbackTxCount int=@@TRANCOUNT,
+              @AfterRollbackXactState int=XACT_STATE(),
+              @AfterRollbackLockTimeout int=@@LOCK_TIMEOUT,
+              @AfterRollbackAbortBit int=CASE WHEN (@@OPTIONS&16384)=16384 THEN 1 ELSE 0 END;
       IF @@TRANCOUNT<>@ExpectedTx OR XACT_STATE()<>0 OR @@LOCK_TIMEOUT<>7000
          OR (CASE WHEN (@@OPTIONS&16384)=16384 THEN 1 ELSE 0 END)<>1
-         THROW 57618,N''Plan guide inner rollback or caller state changed.'',1;';
+      BEGIN
+         RAISERROR(N''Plan guide post-rollback state: tx=%d xact=%d lock=%d abort=%d.'',10,1,
+                   @AfterRollbackTxCount,@AfterRollbackXactState,
+                   @AfterRollbackLockTimeout,@AfterRollbackAbortBit) WITH NOWAIT;
+         THROW 57618,N''Plan guide inner rollback or caller state changed.'',1;
+      END;';
     SELECT @Json=NULL,@Status=NULL,@Partial=NULL,@Error=NULL,@Message=NULL,@Return=NULL;
     EXEC [sys].[sp_executesql] @Sql,
         N'@N nvarchar(max),@R int OUTPUT,@J nvarchar(max) OUTPUT,@S varchar(40) OUTPUT,
