@@ -64,6 +64,7 @@ KNOWN_RESEARCH_TO_PARTIAL_KEYS = {
     "RLS_DYNAMIC_MASKING",
     "DISTRIBUTED_TRANSACTIONS",
     "DATABASE_MIRRORING",
+    "AGENT_PROXIES_CREDENTIALS",
 }
 RESEARCH_GAP_COHORT_FLOOR = 25  # Preserve the explicit research-gap cohort across named promotions.
 

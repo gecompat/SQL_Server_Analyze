@@ -148,6 +148,7 @@ AS
         , (N'USP_BackupChainAnalysis','CONFIRM_WITH',N'USP_DatabaseIntegrityAnalysis',1,N'Eine formal lückenlose Kette durch Integritäts- und Restoretests ergänzen.')
         , (N'USP_AvailabilityDeepAnalysis','CONFIRM_WITH',N'USP_CurrentLog',1,N'Queue- und Sendesignale mit Logzustand und Reuse-Wait abgleichen.')
         , (N'USP_AgentMonitoringAnalysis','CONFIRM_WITH',N'USP_ErrorLogAnalysis',1,N'Agentfehler und Laufzeitabweichungen mit Engine- und Agent-Logsignalen abgleichen.')
+        , (N'USP_AgentProxyInventory','CONFIRM_WITH',N'USP_AgentStatus',1,N'Nach der lesenden Proxy- und Subsysteminventur den Agent-Dienstzustand getrennt prüfen; daraus keine Proxy-Ausführung ableiten.')
         , (N'USP_MaintenanceOperations','CONFIRM_WITH',N'USP_AgentMonitoringAnalysis',1,N'Wartungsaktivität und Jobausführung gemeinsam bewerten.')
         , (N'USP_ErrorLogAnalysis','CONFIRM_WITH',N'USP_CriticalEngineEvents',1,N'Logmuster mit strukturierten kritischen Engine-Ereignissen gegenprüfen.')
 

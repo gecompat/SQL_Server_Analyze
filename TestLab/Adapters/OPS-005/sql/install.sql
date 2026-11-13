@@ -999,6 +999,7 @@ AS
         , (N'USP_BackupChainAnalysis','CONFIRM_WITH',N'USP_DatabaseIntegrityAnalysis',1,N'Eine formal lückenlose Kette durch Integritäts- und Restoretests ergänzen.')
         , (N'USP_AvailabilityDeepAnalysis','CONFIRM_WITH',N'USP_CurrentLog',1,N'Queue- und Sendesignale mit Logzustand und Reuse-Wait abgleichen.')
         , (N'USP_AgentMonitoringAnalysis','CONFIRM_WITH',N'USP_ErrorLogAnalysis',1,N'Agentfehler und Laufzeitabweichungen mit Engine- und Agent-Logsignalen abgleichen.')
+        , (N'USP_AgentProxyInventory','CONFIRM_WITH',N'USP_AgentStatus',1,N'Nach der lesenden Proxy- und Subsysteminventur den Agent-Dienstzustand getrennt prüfen; daraus keine Proxy-Ausführung ableiten.')
         , (N'USP_MaintenanceOperations','CONFIRM_WITH',N'USP_AgentMonitoringAnalysis',1,N'Wartungsaktivität und Jobausführung gemeinsam bewerten.')
         , (N'USP_ErrorLogAnalysis','CONFIRM_WITH',N'USP_CriticalEngineEvents',1,N'Logmuster mit strukturierten kritischen Engine-Ereignissen gegenprüfen.')
 
@@ -43718,7 +43719,7 @@ BEGIN
         PRINT N'Beispiel 1: EXEC [monitor].[USP_AgentProxyInventory] @Hilfe=1;';
         PRINT N'Beispiel 2: EXEC [monitor].[USP_AgentProxyInventory] @MaxZeilen=100, @ResultSetArt=''RAW'';';
         PRINT N'Beispiel 3: DECLARE @ProxyJson nvarchar(max); EXEC [monitor].[USP_AgentProxyInventory] @ResultSetArt=''NONE'', @JsonErzeugen=1, @Json=@ProxyJson OUTPUT; SELECT @ProxyJson AS [Json];';
-        PRINT N'Beispiel 4: CREATE TABLE #ProxyExample ([Seed] int NULL); BEGIN TRY EXEC [monitor].[USP_AgentProxyInventory] @ResultSetArt=''TABLE'', @ResultTablesJson=N''{"proxies":"#ProxyExample"}''; SELECT * FROM #ProxyExample; DROP TABLE #ProxyExample; END TRY BEGIN CATCH DROP TABLE #ProxyExample; THROW; END CATCH;';
+        PRINT N'Beispiel 4: CREATE TABLE #AgentProxyInventory_Example ([Seed] int NULL); BEGIN TRY EXEC [monitor].[USP_AgentProxyInventory] @ResultSetArt=''TABLE'', @ResultTablesJson=N''{"proxies":"#AgentProxyInventory_Example"}''; SELECT * FROM #AgentProxyInventory_Example; DROP TABLE #AgentProxyInventory_Example; END TRY BEGIN CATCH DROP TABLE #AgentProxyInventory_Example; THROW; END CATCH;';
         RETURN;
     END;
 
@@ -43799,7 +43800,7 @@ BEGIN
             SET @ProxySourceStatus = 'AVAILABLE';
         END TRY
         BEGIN CATCH
-            SELECT @StatusCode = CASE WHEN ERROR_NUMBER() IN (229, 230, 297)
+            SELECT @StatusCode = CASE WHEN ERROR_NUMBER() IN (229, 230, 297, 371)
                                       THEN 'DENIED_PERMISSION' ELSE 'AVAILABLE_LIMITED' END,
                    @IsPartial = 1, @ErrorNumber = ERROR_NUMBER(),
                    @ErrorMessage = N'SQL-Agent-Proxy-Katalog nicht vollständig lesbar.',
