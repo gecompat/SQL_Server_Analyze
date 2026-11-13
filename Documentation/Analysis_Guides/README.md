@@ -1,6 +1,6 @@
 # Analysehandbuch für SQL_Server_Analyze
 
-**Stand:** 25. Oktober 2026
+**Stand:** 13. November 2026
 **Geltungsbereich:** öffentliche Procedures im [Objektindex](Object_Index.md)
 **Zielgruppe:** Analyseanfänger, Datenbankentwickler und SQL-Server-Administratoren
 
@@ -57,11 +57,11 @@ Der [Reviewkatalog](../../Metadata/Quality/Analysis_Documentation_Review.csv) f�
 | Query Store | [05_Query_Store.md](05_Query_Store.md) | 11 |
 | Extended Events | [06_Extended_Events.md](06_Extended_Events.md) | 6 |
 | Infrastruktur | [07_Infrastructure.md](07_Infrastructure.md) | 15 |
-| Server Health | [08_Server_Health.md](08_Server_Health.md) | 21 |
+| Server Health | [08_Server_Health.md](08_Server_Health.md) | 22 |
 | Versionsadaptive Spezialanalysen | [09_Version_Adaptive.md](09_Version_Adaptive.md) | 11 |
-| **Integriertes Framework gesamt** | | **101** |
+| **Integriertes Framework gesamt** | | **102** |
 
-Die zwei PLAN-001-Procedures sind zusätzlich eigenständig installierbar, gehören aber auch zum Gesamtinstaller. Die drei SC-023-Procedures bleiben vollständig optional und außerhalb von `Install_All.sql`; beide Pakete besitzen separate Architektur- und Betriebshandbücher. Der vollständige Dokumentationsbestand umfasst damit 104 Procedures.
+Die zwei PLAN-001-Procedures sind zusätzlich eigenständig installierbar, gehören aber auch zum Gesamtinstaller. Die drei SC-023-Procedures bleiben vollständig optional und außerhalb von `Install_All.sql`; beide Pakete besitzen separate Architektur- und Betriebshandbücher. Der vollständige Dokumentationsbestand umfasst damit 105 Procedures.
 
 ## Schnellwahl nach Symptom
 
@@ -93,4 +93,4 @@ Kein einzelnes Resultset rechtfertigt automatisch `KILL`, DDL, Rebuild, Plan For
 
 ## Vollständigkeit
 
-Der [Objektindex](Object_Index.md) enthält alle 119 öffentlichen Procedures. Die [Objektreferenz](../Reference/Object_Reference.md) dokumentiert zusätzlich alle 82 unterstützenden Views, TVFs, internen Procedures und Tabellen. Der [Navigator-Vertrag](../Reference/Analysis_Navigator.md) erklärt die fachliche Zuordnung, Suchbegriffe, Rollen und Beziehungen.
+Der [Objektindex](Object_Index.md) enthält alle 123 öffentlichen Procedures. Die [Objektreferenz](../Reference/Object_Reference.md) dokumentiert zusätzlich alle 82 unterstützenden Views, TVFs, internen Procedures und Tabellen. Der [Navigator-Vertrag](../Reference/Analysis_Navigator.md) erklärt die fachliche Zuordnung, Suchbegriffe, Rollen und Beziehungen.

@@ -1,5 +1,7 @@
 # Releaseübersicht
 
+Die neue `USP_SensitivityClassificationSummary` ergänzt eine caller-sichtbare, read-only Katalogzählung je ausgewählter Datenbank. Sie zählt sichtbare Tabellen und Spalten sowie die klassifizierte Teilmenge, ohne Tabellenwerte oder Klassifikationstexte zu lesen. Fehlendes Klassifikationsrecht liefert NULL-Zähler und einen expliziten Quellenstatus. Die native Qualifikation und Maturity-Abnahme bleiben bis zum Remote-CI-Nachweis offen.
+
 `USP_ServerFeatureCapabilities` 3.2.1 erkennt die Systemkataloge für
 Vector-Indizes und Query-Store-Replikas über `sys.all_views`. Vorhandene
 SQL-Server-2025-Kataloge werden dadurch nicht mehr wegen der auf
@@ -42,9 +44,9 @@ commitbezogenen Laufzeitnachweis.
 | ReleaseDate im Installationskatalog | 23. Oktober 2026 |
 | Mindestversion | SQL Server 2019 |
 
-Der aktuelle Inventarvertrag umfasst 204 Objekte: 122 öffentliche Procedures, 8 Views, 29 Table-Valued Functions, 25 interne Procedures und 20 Tabellen.
+Der aktuelle Inventarvertrag umfasst 205 Objekte: 123 öffentliche Procedures, 8 Views, 29 Table-Valued Functions, 25 interne Procedures und 20 Tabellen.
 
-Der Frameworkkern umfasst 180 Objekte mit 119 öffentlichen Procedures und 9 Tabellen. Das optionale Snapshotpaket umfasst 24 Objekte mit 3 öffentlichen Procedures und 11 Tabellen.
+Der Frameworkkern umfasst 181 Objekte mit 120 öffentlichen Procedures und 9 Tabellen. Das optionale Snapshotpaket umfasst 24 Objekte mit 3 öffentlichen Procedures und 11 Tabellen.
 
 Die [Paketgrenzen](../Reference/Scope_and_Limitations.md) unterscheiden
 Diagnose, Installation, lokale TABLE-Ausgabe und persistente Sammlung.

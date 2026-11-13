@@ -2195,6 +2195,8 @@ EXEC [monitor].[USP_DistributedTransactionInventory] @Hilfe=1;
 
 ## Database Mirroring
 
+Die [Sensitivity-Classification-Zählung](Procedures/USP_SensitivityClassificationSummary.md) gibt je ausgewählter, caller-sichtbarer ONLINE-Datenbank drei Katalogzahlen aus: sichtbare Tabellen, deren Spalten und die klassifizierte Teilmenge. Ohne wirksames `VIEW ANY SENSITIVITY CLASSIFICATION` oder bei fehlgeschlagener Katalogaufnahme bleiben die Zähler NULL und der Quellenstatus nennt die Grenze. Die drei Zählabfragen laufen nacheinander; gleichzeitige Metadatenänderungen können die Werte gegeneinander verschieben. Ein erfolgreiches Nullergebnis beweist weder fehlende sensible Daten noch vollständige Klassifikation.
+
 Die [Database-Mirroring-Inventarisierung](Procedures/USP_DatabaseMirroringInventory.md) liest lokale Mirroring-Katalogwerte für ausgewählte ONLINE-Datenbanken. Native NULL-Werte, eingeschränkte Metadatensicht und die fehlende Auswahl nicht ONLINE befindlicher Mirror-Datenbanken bleiben sichtbar; das Verfahren bewertet weder Gesundheit noch Failoverfähigkeit.
 ### Individuelle Parameterverträge
 

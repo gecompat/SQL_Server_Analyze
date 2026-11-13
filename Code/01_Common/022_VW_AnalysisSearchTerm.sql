@@ -323,5 +323,7 @@ AS
         , (N'USP_DistributedTransactionInventory',N'MSDTC distributed transaction remote procedure promotion linked server DTC','en',95,N'Lists local SQL configuration and visible transaction metadata with explicit limits.')
         , (N'USP_DatabaseMirroringInventory',N'Datenbankspiegelung Mirroring Status Redo Queue SQL Server','de',100,N'Zeigt begrenzte caller-sichtbare Database-Mirroring-Katalogwerte ohne Gesundheitsurteil.')
         , (N'USP_DatabaseMirroringInventory',N'database mirroring state safety witness redo queue','en',95,N'Lists caller-visible database mirroring catalog values with explicit scope and native NULL limits.')
+        , (N'USP_SensitivityClassificationSummary',N'Sensitivitätsklassifikation klassifizierte Spalten sichtbare Tabellen','de',100,N'Zählt sichtbare Tabellen, Spalten und klassifizierte Teilmengen ohne Klassifikationstexte.')
+        , (N'USP_SensitivityClassificationSummary',N'sensitivity classification classified columns visible tables','en',95,N'Counts caller-visible table columns with classification metadata without reading values or labels.')
     ) AS [v]([ProcedureName],[SearchTerm],[LanguageCode],[SearchWeight],[MatchReason]);
 GO

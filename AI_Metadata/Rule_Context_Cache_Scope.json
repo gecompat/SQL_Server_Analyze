@@ -2189,6 +2189,36 @@
       "source": "AI_Metadata/Internal_Documentation/Quality/Development_Waves_2026-10.md",
       "target": "TestLab/Adapters/OPS-005/sql/install.sql",
       "classification": "product-reference"
+    },
+    {
+      "source": "AI_Metadata/Internal_Documentation/Quality/Next_Steps.md",
+      "target": "AI_Metadata/Internal_Documentation/Architecture/Sensitivity_Classification_Summary_Dossier.md",
+      "classification": "product-reference"
+    },
+    {
+      "source": "AI_Metadata/Internal_Documentation/Quality/Next_Steps.md",
+      "target": "Code/08_ServerHealth/320_USP_SensitivityClassificationSummary.sql",
+      "classification": "product-reference"
+    },
+    {
+      "source": "AI_Metadata/Internal_Documentation/Quality/Next_Steps.md",
+      "target": "Code/Tests/ServerHealth/142_SensitivityClassificationSummary_Runtime_Contract.sql",
+      "classification": "product-reference"
+    },
+    {
+      "source": "AI_Metadata/Internal_Documentation/Quality/Development_Waves_2026-10.md",
+      "target": "AI_Metadata/Internal_Documentation/Architecture/Sensitivity_Classification_Summary_Dossier.md",
+      "classification": "product-reference"
+    },
+    {
+      "source": "AI_Metadata/Internal_Documentation/Quality/Development_Waves_2026-10.md",
+      "target": "Code/08_ServerHealth/320_USP_SensitivityClassificationSummary.sql",
+      "classification": "product-reference"
+    },
+    {
+      "source": "AI_Metadata/Internal_Documentation/Quality/Development_Waves_2026-10.md",
+      "target": "Code/Tests/ServerHealth/142_SensitivityClassificationSummary_Runtime_Contract.sql",
+      "classification": "product-reference"
     }
   ]
 }

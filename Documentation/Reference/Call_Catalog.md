@@ -1,6 +1,6 @@
 # Aufrufkatalog aller dokumentierten Procedures
 
-Stand: 2026-10-27 — 122 eindeutige Procedure-Einträge; alle 122 öffentlichen Inventar-Procedures sind enthalten.
+Stand: 2026-11-13 — 123 eindeutige Procedure-Einträge; alle 123 öffentlichen Inventar-Procedures sind enthalten.
 
 Die Hilfeaufrufe führen keine fachliche Analyse aus. Weitere typische Querschnittsbeispiele stehen am Dokumentanfang.
 
@@ -895,3 +895,12 @@ EXEC [monitor].[USP_DatabaseMirroringInventory] @ResultSetArt='CONSOLE';
 EXEC [monitor].[USP_DatabaseMirroringInventory] @DatabaseNames=N'[ExampleDatabase]', @ResultSetArt='RAW', @JsonErzeugen=1;
 
 Ausgabegrenzen und die vier Resultsets stehen in der [Procedure-Seite](../Analysis_Guides/Procedures/USP_DatabaseMirroringInventory.md).
+
+## `[monitor].[USP_SensitivityClassificationSummary]`
+
+```sql
+EXEC [monitor].[USP_SensitivityClassificationSummary] @Hilfe=1;
+EXEC [monitor].[USP_SensitivityClassificationSummary] @DatabaseNames=N'[ExampleDatabase]', @ResultSetArt='CONSOLE';
+```
+
+Die drei sichtbaren Zähler, Rechte- und NULL-Grenzen stehen auf der [Procedure-Seite](../Analysis_Guides/Procedures/USP_SensitivityClassificationSummary.md).

@@ -236,6 +236,7 @@ AS
         , (N'USP_DistributedTransactionInventory','CONFIRM_WITH',N'USP_LinkedServerAnalysis',1,N'Flagwerte beschreiben nur lokale SQL-Metadaten; Erreichbarkeit und MSDTC-Dienstzustand benötigen getrennte Evidenz.')
         , (N'USP_DistributedTransactionInventory','CONFIRM_WITH',N'USP_CurrentTransactions',2,N'Aktive Transaktionsmetadaten sind kein Nachweis eines verteilten Commits oder einer Teilnehmergesundheit.')
         , (N'USP_DatabaseMirroringInventory','CONFIRM_WITH',N'USP_InfrastructureAnalysis',1,N'Sichtbare lokale Mirroring-Katalogwerte in den übrigen HA/DR-Kontext einordnen; sie belegen keine Partnergesundheit oder Failoverfähigkeit.')
+        , (N'USP_SensitivityClassificationSummary','CONFIRM_WITH',N'USP_DatabasePrincipalAnalysis',1,N'Direkte Datenbankrechte bei fehlendem Klassifikationszugriff getrennt einordnen; die Zählung bewertet keine effektiven Schutzregeln.')
     ) AS [v]
     (
           [FromProcedureName], [RelationType], [ToProcedureName]

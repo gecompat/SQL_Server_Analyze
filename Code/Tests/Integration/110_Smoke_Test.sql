@@ -79,7 +79,8 @@ VALUES
 (N'monitor.USP_ServerPrincipalAnalysis','P'),
 (N'monitor.USP_DatabasePrincipalAnalysis','P'),
 (N'monitor.USP_CurrentCallerPermissionAnalysis','P'),
-(N'monitor.USP_EndpointTransportAnalysis','P');
+(N'monitor.USP_EndpointTransportAnalysis','P'),
+(N'monitor.USP_SensitivityClassificationSummary','P');
 
 SELECT @Missing = STRING_AGG([ObjectName],N', ')
 FROM @Expected AS [e]
@@ -112,8 +113,8 @@ IF NOT EXISTS
 )
     THROW 54001,N'FrameworkVersion fehlt oder entspricht nicht Release 1.1.2.',1;
 
-IF (SELECT COUNT_BIG(*) FROM [monitor].[VW_AnalysisCatalog]) <> 122
-    THROW 54025,N'Der Analysis Catalog enthält nicht genau alle 122 öffentlichen Procedures.',1;
+IF (SELECT COUNT_BIG(*) FROM [monitor].[VW_AnalysisCatalog]) <> 123
+    THROW 54025,N'Der Analysis Catalog enthält nicht genau alle 123 öffentlichen Procedures.',1;
 
 IF EXISTS
 (

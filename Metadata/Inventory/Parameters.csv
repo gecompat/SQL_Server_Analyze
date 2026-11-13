@@ -2176,3 +2176,18 @@ USP_AgentProxyInventory,StatusCodeOut,varchar(40),NULL OUTPUT
 USP_AgentProxyInventory,IsPartialOut,bit,NULL OUTPUT
 USP_AgentProxyInventory,ErrorNumberOut,int,NULL OUTPUT
 USP_AgentProxyInventory,ErrorMessageOut,nvarchar(2048),NULL OUTPUT
+USP_SensitivityClassificationSummary,DatabaseNames,nvarchar(max),NULL
+USP_SensitivityClassificationSummary,SystemdatenbankenEinbeziehen,bit,0
+USP_SensitivityClassificationSummary,DatabaseNamePattern,nvarchar(4000),NULL
+USP_SensitivityClassificationSummary,MaxZeilen,int,1000
+USP_SensitivityClassificationSummary,LockTimeoutMs,int,0
+USP_SensitivityClassificationSummary,ResultSetArt,varchar(16),'CONSOLE'
+USP_SensitivityClassificationSummary,ResultTablesJson,nvarchar(max),NULL
+USP_SensitivityClassificationSummary,JsonErzeugen,bit,0
+USP_SensitivityClassificationSummary,Json,nvarchar(max),NULL OUTPUT
+USP_SensitivityClassificationSummary,PrintMeldungen,bit,1
+USP_SensitivityClassificationSummary,Hilfe,bit,0
+USP_SensitivityClassificationSummary,StatusCodeOut,varchar(40),NULL OUTPUT
+USP_SensitivityClassificationSummary,IsPartialOut,bit,NULL OUTPUT
+USP_SensitivityClassificationSummary,ErrorNumberOut,int,NULL OUTPUT
+USP_SensitivityClassificationSummary,ErrorMessageOut,nvarchar(2048),NULL OUTPUT
