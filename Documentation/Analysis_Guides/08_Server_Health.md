@@ -2193,6 +2193,14 @@ CREATE TABLE [#DistributedTransactionInventory_HelpExample] ([Seed] int NULL); B
 EXEC [monitor].[USP_DistributedTransactionInventory] @Hilfe=1;
 ```
 
+## Sensitivity Classification
+
+Die [Sensitivity-Classification-Zählung](Procedures/USP_SensitivityClassificationSummary.md) gibt je ausgewählter, caller-sichtbarer ONLINE-Datenbank drei Katalogzahlen aus: sichtbare Tabellen, deren Spalten und die klassifizierte Teilmenge. Ohne wirksames `VIEW ANY SENSITIVITY CLASSIFICATION` oder bei fehlgeschlagener Katalogaufnahme bleiben die Zähler NULL und der Quellenstatus nennt die Grenze. Die drei Zählabfragen laufen nacheinander; gleichzeitige Metadatenänderungen können die Werte gegeneinander verschieben. Ein erfolgreiches Nullergebnis beweist weder fehlende sensible Daten noch vollständige Klassifikation.
+
+`classificationSummary` enthält `DatabaseId`, `DatabaseName`, die drei nullable `bigint`-Zähler `VisibleTableCount`, `VisibleTableColumnCount` und `ClassifiedVisibleTableColumnCount` sowie `StatusCode`, `VisibilityScope`, `ErrorNumber` und `ErrorMessage`. `sourceStatus` trennt die Datenbankauswahl von jeder Katalogaufnahme und hält den Quellenstatus auch bei abgeschnittenen Fachzeilen fest. `moduleStatus` fasst den Lauf zusammen; `warnings` benennt Aussagegrenzen. `RAW` gibt diese vier Mengen aus, `CONSOLE` eine formatierte Menge. `TABLE` schreibt nur zugeordnete lokale Temp-Tabellen; `NONE` gibt keine Resultsets zurück. JSON mit denselben vier Arrays kann unabhängig davon angefordert werden.
+
+Die Baseline zählt alle caller-sichtbaren `sys.tables` und deren `sys.columns`, ohne hidden oder Microsoft-shipped Tabellen oder Spalten gesondert auszuschließen. Die klassifizierte Teilmenge verbindet nur `class=1`, `major_id` und `minor_id` aus `sys.sensitivity_classifications`; Labels, Informationstypen, IDs und Tabellenwerte werden nicht gelesen. Ein abgelehntes oder unbewiesenes Recht und ein Katalogfehler liefern NULL-Zähler. Ein erfolgreicher leerer Katalog liefert drei Nullen und `AVAILABLE_LIMITED`. Die Katalogabfragen verwenden `WITH (NOLOCK)` und sind weder atomar noch ein Vollständigkeitsbeweis.
+
 ## Database Mirroring
 
 Die [Database-Mirroring-Inventarisierung](Procedures/USP_DatabaseMirroringInventory.md) liest lokale Mirroring-Katalogwerte für ausgewählte ONLINE-Datenbanken. Native NULL-Werte, eingeschränkte Metadatensicht und die fehlende Auswahl nicht ONLINE befindlicher Mirror-Datenbanken bleiben sichtbar; das Verfahren bewertet weder Gesundheit noch Failoverfähigkeit.

@@ -1,7 +1,7 @@
 # Eigenständige Analysebeschreibungen je Procedure
 
 **Stand:** 22. Juli 2026<br>
-**Strukturelle Abdeckung:** 122 Procedures<br>
+**Strukturelle Abdeckung:** 123 Procedures<br>
 **Tief geprüfte Seiten:** 92 Procedures
 
 Jede Seite verbindet den sicheren Einstieg mit der fachlichen Leserichtung. Sie beantwortet insbesondere:
@@ -190,4 +190,5 @@ Jede Seite weist jetzt Entscheidungseinsatz, Nichtziele, Resultset-Leserichtung,
 - [USP_UpgradeFeatureUsageAnalysis](USP_UpgradeFeatureUsageAnalysis.md) zeigt instanzweite Deprecated-Begegnungen und eine begrenzte Zielversionsregel.
 
 - [USP_DistributedTransactionInventory](USP_DistributedTransactionInventory.md) zeigt lokale Promotionkonfiguration und sichtbare aktive Transaktionsmetadaten mit expliziten Grenzen.
+- [USP_SensitivityClassificationSummary](USP_SensitivityClassificationSummary.md) zählt caller-sichtbare Tabellen, Spalten und klassifizierte Tabellenspalten je ausgewählter Datenbank ohne Werte oder Klassifikationstexte.
 - [USP_DatabaseMirroringInventory](USP_DatabaseMirroringInventory.md) zeigt caller-sichtbare Mirroring-Katalogwerte ausgewählter ONLINE-Datenbanken; eine RESTORING-Mirror-Rolle bleibt unqualifiziert.

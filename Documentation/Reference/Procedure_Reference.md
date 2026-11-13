@@ -2962,3 +2962,27 @@ Quelle: `Code/08_ServerHealth/310_USP_DatabaseMirroringInventory.sql`
 ```
 
 Die vier Resultsets und die zwölf nativen Fachfelder stehen auf der [Procedure-Seite](../Analysis_Guides/Procedures/USP_DatabaseMirroringInventory.md). Caller-Sicht, ONLINE-Auswahl, NULL-Grenzen und die Versionsberechtigungen werden dort erläutert.
+
+## `[monitor].[USP_SensitivityClassificationSummary]`
+
+Quelle: `Code/08_ServerHealth/320_USP_SensitivityClassificationSummary.sql`
+
+```sql
+      @DatabaseNames nvarchar(max) = NULL
+    , @SystemdatenbankenEinbeziehen bit = 0
+    , @DatabaseNamePattern nvarchar(4000) = NULL
+    , @MaxZeilen int = 1000
+    , @LockTimeoutMs int = 0
+    , @ResultSetArt varchar(16) = 'CONSOLE'
+    , @ResultTablesJson nvarchar(max) = NULL
+    , @JsonErzeugen bit = 0
+    , @Json nvarchar(max) = NULL OUTPUT
+    , @PrintMeldungen bit = 1
+    , @Hilfe bit = 0
+    , @StatusCodeOut varchar(40) = NULL OUTPUT
+    , @IsPartialOut bit = NULL OUTPUT
+    , @ErrorNumberOut int = NULL OUTPUT
+    , @ErrorMessageOut nvarchar(2048) = NULL OUTPUT
+```
+
+Die vier Resultsets und die sichtbaren Zähl- und Rechteverträge stehen auf der [Procedure-Seite](../Analysis_Guides/Procedures/USP_SensitivityClassificationSummary.md).

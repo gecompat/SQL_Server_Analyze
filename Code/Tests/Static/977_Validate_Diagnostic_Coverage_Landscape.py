@@ -65,6 +65,7 @@ KNOWN_RESEARCH_TO_PARTIAL_KEYS = {
     "DISTRIBUTED_TRANSACTIONS",
     "DATABASE_MIRRORING",
     "AGENT_PROXIES_CREDENTIALS",
+    "SENSITIVITY_CLASSIFICATION",
 }
 RESEARCH_GAP_COHORT_FLOOR = 25  # Preserve the explicit research-gap cohort across named promotions.
 
@@ -307,6 +308,13 @@ def self_test() -> None:
             row['CoverageStatus'] = 'PARTIAL_PRODUCT_FUNCTION'
     if validate_rows(list(EXPECTED_FIELDS), distributed_promotion):
         raise AssertionError('named MSDTC promotion was rejected')
+
+    classification_promotion = [dict(row) for row in prior_promotion_state]
+    for row in classification_promotion:
+        if row['CoverageKey'] == 'SENSITIVITY_CLASSIFICATION':
+            row['CoverageStatus'] = 'PARTIAL_PRODUCT_FUNCTION'
+    if validate_rows(list(EXPECTED_FIELDS), classification_promotion):
+        raise AssertionError('named Sensitivity Classification promotion was rejected')
 
     unrelated_promotion = [dict(row) for row in prior_promotion_state]
     for row in unrelated_promotion:

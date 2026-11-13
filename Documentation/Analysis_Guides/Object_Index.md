@@ -1,7 +1,7 @@
 # Objektindex der eigenständigen Analysebeschreibungen
 
 **Stand:** 23. Juli 2026
-**Abdeckung:** alle 122 inventarisierten `USP_*`-Procedures des Frameworks einschließlich der optionalen Pakete
+**Abdeckung:** alle 123 inventarisierten `USP_*`-Procedures des Frameworks einschließlich der optionalen Pakete
 
 Jeder Link führt zu einer in sich geschlossenen Procedure-Seite. Dort stehen sicherer Einstieg, Zeilengranularität, Leserichtung, technische Problembegründung, unkritischer Gegenkontext, synthetisches Beispiel, Folgeanalyse und der Link zur vollständigen technischen Spaltenreferenz.
 
@@ -186,7 +186,7 @@ Für einen Einstieg nach beobachtetem Problem verwenden Sie [Hier beginnen](Star
 | Query Store | 11 |
 | Extended Events | 6 |
 | Infrastruktur | 15 |
-| Server Health | 21 |
+| Server Health | 22 |
 | Versionsadaptive Spezialanalysen | 11 |
 | Snapshot und Baseline | 3 |
 | **Gesamt** | **104** |
@@ -232,4 +232,5 @@ Für einen Einstieg nach beobachtetem Problem verwenden Sie [Hier beginnen](Star
 - [USP_UpgradeFeatureUsageAnalysis](Procedures/USP_UpgradeFeatureUsageAnalysis.md) trennt native Deprecated-Begegnungen von einer begrenzten Zielversionsregel.
 
 - [USP_DistributedTransactionInventory](Procedures/USP_DistributedTransactionInventory.md) zeigt begrenzte lokale SQL-Konfiguration und sichtbare verteilte Transaktionsmetadaten ohne externen Gesundheitsnachweis.
+- [USP_SensitivityClassificationSummary](Procedures/USP_SensitivityClassificationSummary.md) zählt sichtbare Tabellen und Tabellenspalten sowie die klassifizierte Teilmenge ohne Klassifikationstexte oder Datenwerte.
 - [USP_DatabaseMirroringInventory](Procedures/USP_DatabaseMirroringInventory.md) zeigt native Mirroring-Felder für sichtbare ONLINE-Datenbanken, ohne positive Mirror-Rollenqualifikation für RESTORING-Datenbanken.
