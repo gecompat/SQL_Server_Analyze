@@ -2179,6 +2179,16 @@
       "source": "AI_Metadata/Internal_Documentation/Quality/Next_Steps.md",
       "target": "Code/Install/Install_All.sql",
       "classification": "product-reference"
+    },
+    {
+      "source": "AI_Metadata/Internal_Documentation/Quality/Next_Steps.md",
+      "target": "TestLab/Adapters/OPS-005/sql/install.sql",
+      "classification": "product-reference"
+    },
+    {
+      "source": "AI_Metadata/Internal_Documentation/Quality/Development_Waves_2026-10.md",
+      "target": "TestLab/Adapters/OPS-005/sql/install.sql",
+      "classification": "product-reference"
     }
   ]
 }
