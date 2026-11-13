@@ -9,7 +9,7 @@ GO
 DECLARE @Suffix nvarchar(48)=CONVERT(nvarchar(12),@@SPID)+N'_'+LEFT(REPLACE(CONVERT(nvarchar(36),NEWID()),N'-',N''),16),
         @PositiveDb sysname,@EmptyDb sysname,@Reader sysname,@FixtureCredential nvarchar(128),
         @PositiveDbId int,@RestrictedObserved bigint,@RestrictedNativeError int,
-        @Sql nvarchar(max),@GuideBatch nvarchar(max),@Names nvarchar(max),@Json nvarchar(max),
+        @Sql nvarchar(max),@GuideBatch nvarchar(max),@Names nvarchar(max),@Json nvarchar(max),@TablePayload nvarchar(max),
         @Status varchar(40),@Partial bit,@Error int,@Message nvarchar(2048),@Return int,
         @OriginalLock int=@@LOCK_TIMEOUT,@OriginalTx int=@@TRANCOUNT,
         @OriginalAbort bit=CASE WHEN (@@OPTIONS&16384)=16384 THEN 1 ELSE 0 END,
@@ -50,15 +50,15 @@ BEGIN TRY
     SET @EmptyDbCreated=1;
     SET @Sql=N'USE '+QUOTENAME(@PositiveDb)+N';
       CREATE TABLE dbo.ExamplePlanGuideData(ExampleId int NOT NULL,ExampleValue int NULL);
-      EXEC(N''CREATE PROCEDURE dbo.ExamplePlanGuideObject AS SELECT 2 AS ExampleValue;'');';
-    EXEC [sys].[sp_executesql] @Sql;
-    SET @Sql=N'USE '+QUOTENAME(@PositiveDb)+N';
+      DECLARE @SqlStatement nvarchar(max)=N''SELECT ExampleValue FROM dbo.ExamplePlanGuideData WHERE ExampleId=1'',
+              @ObjectStatement nvarchar(max)=N''SELECT ExampleValue FROM dbo.ExamplePlanGuideData WHERE ExampleId=2'';
+      EXEC(N''CREATE PROCEDURE dbo.ExamplePlanGuideObject AS ''+@ObjectStatement);
       EXEC [sys].[sp_create_plan_guide]
-          @name=N''ExamplePlanGuideSql'',@stmt=N''SELECT 1 AS ExampleValue'',
-          @type=N''SQL'',@module_or_batch=N''SELECT 1 AS ExampleValue'',
+          @name=N''ExamplePlanGuideSql'',@stmt=@SqlStatement,
+          @type=N''SQL'',@module_or_batch=@SqlStatement,
           @params=NULL,@hints=N''OPTION (MAXDOP 1)'';
       EXEC [sys].[sp_create_plan_guide]
-          @name=N''ExamplePlanGuideObject'',@stmt=N''SELECT 2 AS ExampleValue'',
+          @name=N''ExamplePlanGuideObject'',@stmt=@ObjectStatement,
           @type=N''OBJECT'',@module_or_batch=N''dbo.ExamplePlanGuideObject'',
           @params=NULL,@hints=N''OPTION (MAXDOP 1)'';
       DECLARE @Template nvarchar(max),@TemplateParams nvarchar(max);
@@ -94,6 +94,11 @@ BEGIN TRY
         @JsonErzeugen=1,@Json=@Json OUTPUT,@PrintMeldungen=0,
         @StatusCodeOut=@Status OUTPUT,@IsPartialOut=@Partial OUTPUT,
         @ErrorNumberOut=@Error OUTPUT,@ErrorMessageOut=@Message OUTPUT;
+    SELECT @TablePayload=
+        (SELECT * FROM #PlanGuideOut_moduleStatus FOR JSON PATH)
+       +(SELECT * FROM #PlanGuideOut_planGuides FOR JSON PATH)
+       +(SELECT * FROM #PlanGuideOut_sourceStatus FOR JSON PATH)
+       +(SELECT * FROM #PlanGuideOut_warnings FOR JSON PATH);
     IF (@Return IS NULL OR @Return<>0) OR COALESCE(@Status,'')<>'AVAILABLE_LIMITED'
        OR COALESCE(@Partial,0)<>1 OR @Error IS NOT NULL OR @Message IS NOT NULL
        OR COALESCE(ISJSON(@Json),0)<>1
@@ -144,8 +149,19 @@ BEGIN TRY
                      WHERE DatabaseName=@EmptyDb AND SourceKey='PLAN_GUIDES_CATALOG'
                        AND StatusCode='AVAILABLE_LIMITED' AND ObservedRows=0
                        AND ReturnedRows=0 AND IsLimited=0 AND ErrorNumber IS NULL)
+       OR @TablePayload IS NULL
+       OR CHARINDEX(N'ExamplePlanGuideData',@Json)>0
        OR CHARINDEX(N'OPTION (MAXDOP 1)',@Json)>0
-       OR CHARINDEX(N'SELECT 1 AS ExampleValue',@Json)>0
+       OR CHARINDEX(N'PARAMETERIZATION FORCED',@Json)>0
+       OR CHARINDEX(N'ExampleId=1',@Json)>0
+       OR CHARINDEX(N'ExampleId=2',@Json)>0
+       OR CHARINDEX(N'ExampleId=3',@Json)>0
+       OR CHARINDEX(N'ExamplePlanGuideData',@TablePayload)>0
+       OR CHARINDEX(N'OPTION (MAXDOP 1)',@TablePayload)>0
+       OR CHARINDEX(N'PARAMETERIZATION FORCED',@TablePayload)>0
+       OR CHARINDEX(N'ExampleId=1',@TablePayload)>0
+       OR CHARINDEX(N'ExampleId=2',@TablePayload)>0
+       OR CHARINDEX(N'ExampleId=3',@TablePayload)>0
        THROW 57603,N'Plan guide positive TABLE/JSON/catalog contract failed.',1;
     SELECT @Json=NULL,@Status=NULL,@Partial=NULL,@Error=NULL,@Message=NULL;
     SET @Names=QUOTENAME(@EmptyDb);

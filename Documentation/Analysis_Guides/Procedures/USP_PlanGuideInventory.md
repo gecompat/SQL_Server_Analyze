@@ -56,3 +56,64 @@ DROP TABLE #ExamplePlanGuides;
 ```
 
 Die Syntax und Aussagegrenzen der Datenbankauswahl stehen in [Common Contracts](../Common_Contracts.md). Die [Plan-Cache-Übersicht](../04_Plan_Cache.md) trennt diesen Katalog-Slice von flüchtigen Cache- und Showplan-Metriken.
+
+## Eine Zeile bedeutet
+
+Eine Zeile bezeichnet genau einen für den Caller im abgefragten Moment sichtbaren Plan Guide in einer ausgewählten Datenbank. `DatabaseId` und `PlanGuideId` ordnen die Katalogzeile zu; `PlanGuideName` ist der Katalogname. Der Deaktivierungsschalter und der Scope beschreiben die gespeicherte Konfiguration. Ob sie gültig ist oder einer Abfrage tatsächlich zugeordnet wird, bleibt `UNASSESSED`.
+
+## So lesen
+
+Beginnen Sie mit `moduleStatus` und `sourceStatus`: Prüfen Sie `StatusCode`, `IsPartial` und je Datenbank `ObservedRows` und `ReturnedRows`. Lesen Sie `planGuides` erst im Kontext dieser Quellenlage. `warnings` enthält Auswahl- oder Quellenhinweise. Bei `IsLimited=1` kann `@MaxZeilen` die Ausgabe kürzen, ohne die Katalogarbeit zu begrenzen.
+
+## Warum kann das problematisch sein?
+
+Eine Inventurliste kann leicht als Beleg wirksamer Plansteuerung missverstanden werden. Ein nicht deaktivierter Guide kann ungültig, unpassend oder wirkungslos sein; ein sichtbarer Nullbestand kann auf eingeschränkter Metadatensicht beruhen. Hohe Datenbank- oder Guide-Zahlen erhöhen Auswahl-, Lese- und Sortierarbeit auch bei kleinem Ausgabelimit.
+
+## Wann ist es kein Problem?
+
+Wenn lediglich die im Caller-Kontext sichtbaren Plan-Guide-Katalogmetadaten benötigt werden, reicht diese Aufnahme als begrenztes Inventar. Ein leerer erfolgreicher Lauf ist für diesen sichtbaren Scope aussagekräftig, sofern die `sourceStatus`-Zeilen geprüft wurden. Für Wirksamkeit oder Validität ist eine getrennte, ausdrücklich autorisierte Untersuchung erforderlich.
+
+## Technische Vertiefung
+
+### Leitfrage
+
+Welche Plan Guides sind in den ausgewählten ONLINE-Datenbanken für diesen Caller als Katalogzeilen sichtbar, und welche Quellen wurden erfolgreich gelesen? Die Procedure beantwortet weder, ob ein Guide gültig ist, noch, ob SQL Server ihn auf eine konkrete Anweisung angewendet hat.
+
+### Technischer Hintergrund
+
+`sys.plan_guides` stellt Katalogmetadaten je Datenbank bereit. Die Procedure liest die Metadaten im Caller-Kontext. Sie verlangt vorab kein pauschales `VIEW DEFINITION`; dadurch kann eine eingeschränkte Sicht als erfolgreiche, aber partielle Aufnahme erscheinen. Die Scope-Werte OBJECT, SQL und TEMPLATE benennen Arten des Guides, keine Qualitätsstufen.
+
+### Datenkette
+
+Der gemeinsame Auswahlhelfer ermittelt Datenbankkandidaten. Für jede zugreifbare ONLINE-Datenbank prüft der Lauf die Datenbankidentität, liest sichtbare `sys.plan_guides`-Zeilen, erfasst den Quellenstatus und ordnet die Ausgabe nach `DatabaseId, PlanGuideId`. Danach schreiben die Ausgabehelfer RAW, TABLE, CONSOLE oder JSON. Die Quelle selbst wird durch `@MaxZeilen` nicht kleiner.
+
+### Source Select
+
+Der folgende Ausschnitt zeigt die fachliche Projektion im dynamischen Batch der ausgewählten Datenbank. `@Id` und `@Name` sind zuvor geprüfte, gebundene Werte der Procedure; der Ausschnitt ist kein eigenständiger Aufruf. Identitätsgegenprobe, Fehlerbehandlung und Ausgabezustand stehen im vollständigen Source.
+
+```sql
+SELECT @Id, @Name, [plan_guide_id], [name], [scope_type],
+       [scope_type_desc], [is_disabled], [scope_object_id],
+       [create_date], [modify_date], 'UNASSESSED'
+FROM [sys].[plan_guides] WITH (NOLOCK);
+```
+
+**Wichtig für die Eigenlast:** Dieser Select liest den sichtbaren Katalog der jeweiligen Datenbank. Ein kleines `@MaxZeilen` begrenzt nur die spätere Ausgabe; Datenbankauswahl, Quellenlesung und Sortierung bleiben davon unberührt. `WITH (NOLOCK)` verhindert keine inkonsistenten Momentaufnahmen.
+
+### Zeit- und Scope-Modell
+
+Die Datenbanken werden nacheinander gelesen; zwischen zwei Quellen kann sich der Katalog ändern. `CreateDate` und `ModifyDate` bleiben SQL-Server-Katalogwerte ohne Zeitzonenumrechnung. Vor und nach dem jeweiligen Katalogbatch wird die Zielidentität geprüft, doch der Gesamtlauf ist keine atomare, globale Inventur. Der Lock-Timeout gilt pro Batch.
+
+### Bewertung und Gegenprobe
+
+Vergleichen Sie eine erwartete Zeile anhand von Datenbank-ID, Guide-ID und Namen mit dem nativen Katalog unter demselben Caller und in derselben Datenbank. Prüfen Sie vorher `sourceStatus` auf `AVAILABLE_LIMITED`, Fehler oder Ausgabekürzung. Ein solcher Vergleich belegt sichtbare Metadaten; für Guide-Validität wäre ein gesonderter Prüfpfad mit eigenen Rechten und Kosten nötig.
+
+### Typische Fehlinterpretation
+
+`IsDisabled=0` heißt nur, dass der Schalter nicht deaktiviert ist. `ValidationStatus=UNASSESSED` bleibt auch für diese Zeile bestehen. `ObservedRows=0` bei erfolgreicher Quelle bedeutet keinen globalen Nullbestand, und ein Berechtigungsfehler darf nicht als leere Quelle gezählt werden.
+
+### Folgeanalyse
+
+Bei unerwarteter Leere prüfen Sie Datenbankauswahl, Caller-Rechte und `sourceStatus`. Bei einem konkreten Performanceproblem verbinden Sie das sichtbare Inventar erst in einer separaten Untersuchung mit der betroffenen Abfrage und deren Plan-Evidenz. Diese Procedure liefert dafür weder SQL-Definitionen noch Plan-XML.
+
+[Technische Detailbeschreibung](../../../Code/04_PlanCache/070_USP_PlanGuideInventory.sql) zeigt die kanonische Implementierung. Das Dokument [Gemeinsames Execution-, Zeit- und Evidenzmodell](../Technical_Foundations.md) erläutert die allgemeinen Beobachtungsgrenzen.
