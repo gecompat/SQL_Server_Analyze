@@ -913,6 +913,240 @@ BEGIN TRY
        OR @ZeroDateCalls <> 20 OR @ZeroDateTableCalls <> 10
        OR @ZeroNonzeroCalls <> 16 OR @Calls <> 59
         THROW 55199, N'Die zehn Null-Datumsfälle, 20 Aufrufe oder 59 positiven Consumeraufrufe fehlen.', 1;
+    -- Sieben codierte Dauergrenzen werden getrennt von Datum und Status geprüft.
+    DECLARE @DurationCases TABLE
+    ([CaseId] int PRIMARY KEY, [RunDuration] int, [ExpectedSeconds] int);
+    INSERT @DurationCases VALUES
+    (1, 59, 59), (2, 100, 60), (3, 5959, 3599),
+    (4, 10000, 3600), (5, 235959, 86399), (6, 240000, 86400),
+    (7, 2147483647, 773095007);
+    DECLARE @DurationCase int = 1, @DurationRaw int, @DurationSeconds int,
+        @DurationCasesSeen int = 0, @DurationCalls int = 0,
+        @DurationTableCalls int = 0, @DurationNoneCalls int = 0,
+        @DurationNoneJobsJson nvarchar(max), @DurationNoneStepsJson nvarchar(max),
+        @DurationTableJobsJson nvarchar(max), @DurationTableRows bigint,
+        @DurationTableJobId uniqueidentifier, @DurationTableStart datetime,
+        @DurationTableSeconds int;
+    UPDATE [msdb].[dbo].[sysjobhistory]
+    SET [run_date] = CASE WHEN [instance_id] = @ZeroJobHistoryId
+            THEN @ZeroJobRunDate ELSE @ZeroStepRunDate END,
+        [run_time] = CASE WHEN [instance_id] = @ZeroJobHistoryId
+            THEN @ZeroJobRunTime ELSE @ZeroStepRunTime END
+    WHERE [job_id] = @JobId
+      AND (([instance_id] = @ZeroJobHistoryId AND [step_id] = 0)
+        OR ([instance_id] = @StepOneHistoryId AND [step_id] = 1));
+    IF @@ROWCOUNT <> 2
+        THROW 55199, N'Die eigenen Job- und Step-Datumwerte wurden nicht eindeutig wiederhergestellt.', 1;
+    WHILE @DurationCase <= 7
+    BEGIN
+        SELECT @DurationRaw = [RunDuration],
+            @DurationSeconds = [ExpectedSeconds]
+        FROM @DurationCases WHERE [CaseId] = @DurationCase;
+        IF @DurationRaw IS NULL OR @DurationSeconds IS NULL
+            THROW 55199, N'Der codierte Dauergrenzfall fehlt.', 1;
+        UPDATE [msdb].[dbo].[sysjobhistory]
+        SET [run_duration] = @DurationRaw
+        WHERE [job_id] = @JobId
+          AND (([instance_id] = @ZeroJobHistoryId AND [step_id] = 0)
+            OR ([instance_id] = @StepOneHistoryId AND [step_id] = 1));
+        IF @@ROWCOUNT <> 2
+            THROW 55199, N'Die eigenen Job- und Step-Dauern wurden nicht eindeutig gesetzt.', 1;
+        DELETE FROM @ExpectedSteps;
+        INSERT @ExpectedSteps VALUES
+        (N'ExampleOps008HistoryJob', 1, N'ExampleHistoryStepOne', N'TSQL',
+         4, N'IN_PROGRESS', CONVERT(datetime, '2025-01-02T23:59:59', 126),
+         @DurationSeconds, 2, N'Example controlled step outcome'),
+        (N'ExampleOps008HistoryJob', 2, N'ExampleHistoryStepTwo', N'TSQL',
+         1, N'SUCCEEDED', CONVERT(datetime, '2000-12-31T11:22:33', 126),
+         91801, 0, N'Example step counterexample');
+        SELECT @Before = (SELECT
+            JSON_QUERY((SELECT * FROM [msdb].[dbo].[sysjobs]
+                ORDER BY [job_id] FOR JSON PATH, INCLUDE_NULL_VALUES)) AS [Jobs],
+            JSON_QUERY((SELECT * FROM [msdb].[dbo].[sysjobsteps]
+                ORDER BY [job_id], [step_id] FOR JSON PATH, INCLUDE_NULL_VALUES)) AS [Steps],
+            JSON_QUERY((SELECT * FROM [msdb].[dbo].[sysjobhistory]
+                ORDER BY [instance_id] FOR JSON PATH, INCLUDE_NULL_VALUES)) AS [History],
+            JSON_QUERY((SELECT * FROM [msdb].[dbo].[sysjobactivity]
+                ORDER BY [session_id], [job_id] FOR JSON PATH, INCLUDE_NULL_VALUES)) AS [Activity],
+            JSON_QUERY((SELECT * FROM [msdb].[dbo].[sysjobservers]
+                ORDER BY [job_id], [server_id] FOR JSON PATH, INCLUDE_NULL_VALUES)) AS [Servers],
+            JSON_QUERY((SELECT * FROM [msdb].[dbo].[sysjobschedules]
+                ORDER BY [job_id], [schedule_id] FOR JSON PATH, INCLUDE_NULL_VALUES)) AS [Schedules]
+            FOR JSON PATH, WITHOUT_ARRAY_WRAPPER, INCLUDE_NULL_VALUES);
+        IF @Before IS NULL OR (SELECT COUNT_BIG(*) FROM [msdb].[dbo].[sysjobhistory]) <> 12
+           OR XACT_STATE() <> 1 OR @@TRANCOUNT <> 1
+           OR @@LOCK_TIMEOUT <> @PreviousLockTimeout OR (@@OPTIONS & 16384) <> 16384
+            THROW 55199, N'Die Dauergrenzfälle benötigen unveränderte Quellen und Calleroptionen.', 1;
+        SET @Consumer = 1;
+        WHILE @Consumer <= 2
+        BEGIN
+            SELECT @Json = NULL, @DurationTableJobsJson = NULL,
+                @DurationTableRows = NULL, @DurationTableJobId = NULL,
+                @DurationTableStart = NULL, @DurationTableSeconds = NULL;
+            IF @Consumer = 1
+            BEGIN
+                EXEC [monitor].[USP_AgentJobs] @JobNames = N'[ExampleOps008HistoryJob]',
+                    @MaxZeilen = 0, @NurProblematisch = 0,
+                    @ResultSetArt = 'NONE', @JsonErzeugen = 1,
+                    @Json = @Json OUTPUT, @PrintMeldungen = 0;
+                SET @DurationNoneCalls += 1;
+            END
+            ELSE
+            BEGIN
+                CREATE TABLE [#AgentJobsDurationBoundaryTable] ([Placeholder] int NULL);
+                EXEC [monitor].[USP_AgentJobs] @JobNames = N'[ExampleOps008HistoryJob]',
+                    @MaxZeilen = 0, @NurProblematisch = 0,
+                    @ResultSetArt = 'TABLE',
+                    @ResultTablesJson = N'{"jobs":"#AgentJobsDurationBoundaryTable"}',
+                    @JsonErzeugen = 1, @Json = @Json OUTPUT, @PrintMeldungen = 0;
+                SET @DurationTableCalls += 1;
+            END;
+            IF XACT_STATE() <> 1 OR @@TRANCOUNT <> 1
+               OR @@LOCK_TIMEOUT <> @PreviousLockTimeout OR (@@OPTIONS & 16384) <> 16384
+                THROW 55199, N'Der Dauergrenzfall hat Calleroptionen oder den Transaktionszustand verändert.', 1;
+            IF COALESCE(ISJSON(@Json), 0) <> 1
+               OR COALESCE(JSON_VALUE(@Json, '$.meta.statusCode'), N'') <> N'AVAILABLE'
+               OR COALESCE(JSON_VALUE(@Json, '$.meta.isPartial'), N'') <> N'false'
+               OR (SELECT COUNT(*) FROM OPENJSON(@Json, '$.meta')
+                   WHERE [key] = N'errorNumber' AND [type] = 0) <> 1
+               OR (SELECT COUNT(*) FROM OPENJSON(@Json, '$.meta')
+                   WHERE [key] = N'errorMessage' AND [type] = 0) <> 1
+               OR COALESCE(TRY_CONVERT(bigint, JSON_VALUE(@Json, '$.meta.jobCount')), -1) <> 1
+               OR COALESCE(TRY_CONVERT(bigint, JSON_VALUE(@Json, '$.meta.stepCount')), -1) <> 2
+               OR COALESCE(LEFT(LTRIM(JSON_QUERY(@Json, '$.jobs')), 1), N'') <> N'['
+               OR COALESCE(LEFT(LTRIM(JSON_QUERY(@Json, '$.steps')), 1), N'') <> N'['
+               OR (SELECT COUNT_BIG(*) FROM OPENJSON(@Json, '$.jobs')) <> 1
+               OR (SELECT COUNT_BIG(*) FROM OPENJSON(@Json, '$.steps')) <> 2
+                THROW 55198, N'Die Dauergrenzfall-Metadaten oder Ergebnismengen sind verletzt.', 1;
+            IF NOT EXISTS
+            (
+                SELECT 1 FROM OPENJSON(@Json, '$.jobs')
+                WITH ([JobId] uniqueidentifier, [JobName] nvarchar(128),
+                      [Enabled] bit, [IsRunning] bit, [RunStart] datetime,
+                      [RunningMinutes] int, [LastRunDateTime] datetime,
+                      [LastRunStatus] int, [LastRunStatusDesc] nvarchar(60),
+                      [LastRunDurationSeconds] int, [LastMessage] nvarchar(4000),
+                      [ScheduleCount] int, [EnabledScheduleCount] int,
+                      [StepCount] int, [ProblemCode] varchar(40))
+                WHERE [JobId] = @JobId AND [JobName] = N'ExampleOps008HistoryJob'
+                  AND [Enabled] = 0 AND [IsRunning] = 0
+                  AND [RunStart] IS NULL AND [RunningMinutes] IS NULL
+                  AND [LastRunDateTime] = CONVERT(datetime, '2025-01-02T23:59:59', 126)
+                  AND [LastRunStatus] = 1 AND [LastRunStatusDesc] = N'SUCCEEDED'
+                  AND [LastRunDurationSeconds] = @DurationSeconds
+                  AND [LastMessage] = N'Example controlled date and duration'
+                  AND [ScheduleCount] = 0 AND [EnabledScheduleCount] = 0
+                  AND [StepCount] = 2 AND [ProblemCode] = 'DISABLED'
+            )
+                THROW 55198, N'Der eigene Job mit codierter Dauer wurde nicht vertragsgemäß ausgegeben.', 1;
+            DELETE FROM @ActualSteps;
+            INSERT @ActualSteps
+            SELECT * FROM OPENJSON(@Json, '$.steps')
+            WITH ([JobName] nvarchar(128), [StepId] int, [StepName] nvarchar(128),
+                  [Subsystem] nvarchar(40), [LastRunOutcome] int,
+                  [LastRunOutcomeDesc] nvarchar(60), [LastRunDateTime] datetime,
+                  [LastRunDurationSeconds] int, [LastRunRetries] int,
+                  [LastRunMessage] nvarchar(4000));
+            IF (SELECT COUNT_BIG(*) FROM @ActualSteps) <> 2
+               OR EXISTS (SELECT * FROM @ExpectedSteps EXCEPT SELECT * FROM @ActualSteps)
+               OR EXISTS (SELECT * FROM @ActualSteps EXCEPT SELECT * FROM @ExpectedSteps)
+                THROW 55198, N'Die zehn Stepwerte der Dauergrenzfälle sind verletzt.', 1;
+            IF @Consumer = 1
+            BEGIN
+                SET @DurationNoneJobsJson = JSON_QUERY(@Json, '$.jobs');
+                SET @DurationNoneStepsJson = JSON_QUERY(@Json, '$.steps');
+            END
+            ELSE
+            BEGIN
+                EXEC [sys].[sp_executesql]
+                    N'SELECT @rows = (SELECT COUNT_BIG(*) FROM [#AgentJobsDurationBoundaryTable]),
+                             @jobId = (SELECT TOP (1) [JobId] FROM [#AgentJobsDurationBoundaryTable]),
+                             @runStart = (SELECT TOP (1) [LastRunDateTime] FROM [#AgentJobsDurationBoundaryTable]),
+                             @seconds = (SELECT TOP (1) [LastRunDurationSeconds] FROM [#AgentJobsDurationBoundaryTable]),
+                             @jobsJson = (SELECT * FROM [#AgentJobsDurationBoundaryTable]
+                                 ORDER BY [JobName] FOR JSON PATH, INCLUDE_NULL_VALUES);',
+                    N'@rows bigint OUTPUT, @jobId uniqueidentifier OUTPUT,
+                      @runStart datetime OUTPUT, @seconds int OUTPUT,
+                      @jobsJson nvarchar(max) OUTPUT',
+                    @rows = @DurationTableRows OUTPUT, @jobId = @DurationTableJobId OUTPUT,
+                    @runStart = @DurationTableStart OUTPUT,
+                    @seconds = @DurationTableSeconds OUTPUT,
+                    @jobsJson = @DurationTableJobsJson OUTPUT;
+                DELETE FROM @PositiveTableActualSchema;
+                INSERT @PositiveTableActualSchema
+                    ([LogicalOrdinal], [ColumnName], [SystemTypeId])
+                SELECT CONVERT(int, ROW_NUMBER() OVER (ORDER BY [c].[column_id])),
+                    [c].[name] COLLATE SQL_Latin1_General_CP1_CS_AS,
+                    [c].[system_type_id]
+                FROM [tempdb].[sys].[columns] AS [c]
+                WHERE [c].[object_id] = OBJECT_ID(N'tempdb..#AgentJobsDurationBoundaryTable');
+                IF (SELECT COUNT(*) FROM @PositiveTableActualSchema) <> 17
+                   OR EXISTS
+                   (
+                       SELECT [LogicalOrdinal], [ColumnName], [SystemTypeId]
+                       FROM @PositiveTableActualSchema
+                       EXCEPT
+                       SELECT [LogicalOrdinal], [ColumnName], [SystemTypeId]
+                       FROM @PositiveTableExpectedSchema
+                   )
+                   OR EXISTS
+                   (
+                       SELECT [LogicalOrdinal], [ColumnName], [SystemTypeId]
+                       FROM @PositiveTableExpectedSchema
+                       EXCEPT
+                       SELECT [LogicalOrdinal], [ColumnName], [SystemTypeId]
+                       FROM @PositiveTableActualSchema
+                   )
+                    THROW 55198, N'Das AgentJobs-Dauergrenzfall-TABLE-Schema ist verletzt.', 1;
+                IF @DurationTableRows IS NULL OR @DurationTableRows <> 1
+                   OR @DurationTableJobId IS NULL OR @DurationTableJobId <> @JobId
+                   OR @DurationTableStart IS NULL
+                   OR @DurationTableStart <> CONVERT(datetime, '2025-01-02T23:59:59', 126)
+                   OR @DurationTableSeconds IS NULL OR @DurationTableSeconds <> @DurationSeconds
+                    THROW 55198, N'Die nativen AgentJobs-TABLE-Dauerwerte sind verletzt.', 1;
+                IF @DurationTableJobsJson IS NULL OR @DurationNoneJobsJson IS NULL
+                   OR @DurationNoneStepsJson IS NULL
+                   OR @DurationTableJobsJson COLLATE SQL_Latin1_General_CP1_CS_AS
+                      <> JSON_QUERY(@Json, '$.jobs') COLLATE SQL_Latin1_General_CP1_CS_AS
+                   OR @DurationTableJobsJson COLLATE SQL_Latin1_General_CP1_CS_AS
+                      <> @DurationNoneJobsJson COLLATE SQL_Latin1_General_CP1_CS_AS
+                   OR @DurationNoneStepsJson COLLATE SQL_Latin1_General_CP1_CS_AS
+                      <> JSON_QUERY(@Json, '$.steps') COLLATE SQL_Latin1_General_CP1_CS_AS
+                    THROW 55198, N'Die Dauergrenzfall-TABLE-/JSON-Parität ist verletzt.', 1;
+                DROP TABLE [#AgentJobsDurationBoundaryTable];
+            END;
+            SELECT @After = (SELECT
+                JSON_QUERY((SELECT * FROM [msdb].[dbo].[sysjobs]
+                    ORDER BY [job_id] FOR JSON PATH, INCLUDE_NULL_VALUES)) AS [Jobs],
+                JSON_QUERY((SELECT * FROM [msdb].[dbo].[sysjobsteps]
+                    ORDER BY [job_id], [step_id] FOR JSON PATH, INCLUDE_NULL_VALUES)) AS [Steps],
+                JSON_QUERY((SELECT * FROM [msdb].[dbo].[sysjobhistory]
+                    ORDER BY [instance_id] FOR JSON PATH, INCLUDE_NULL_VALUES)) AS [History],
+                JSON_QUERY((SELECT * FROM [msdb].[dbo].[sysjobactivity]
+                    ORDER BY [session_id], [job_id] FOR JSON PATH, INCLUDE_NULL_VALUES)) AS [Activity],
+                JSON_QUERY((SELECT * FROM [msdb].[dbo].[sysjobservers]
+                    ORDER BY [job_id], [server_id] FOR JSON PATH, INCLUDE_NULL_VALUES)) AS [Servers],
+                JSON_QUERY((SELECT * FROM [msdb].[dbo].[sysjobschedules]
+                    ORDER BY [job_id], [schedule_id] FOR JSON PATH, INCLUDE_NULL_VALUES)) AS [Schedules]
+                FOR JSON PATH, WITHOUT_ARRAY_WRAPPER, INCLUDE_NULL_VALUES);
+            IF @After IS NULL
+               OR @Before COLLATE SQL_Latin1_General_CP1_CS_AS
+                    <> @After COLLATE SQL_Latin1_General_CP1_CS_AS
+               OR (SELECT COUNT_BIG(*) FROM [msdb].[dbo].[sysjobhistory]) <> 12
+               OR XACT_STATE() <> 1 OR @@TRANCOUNT <> 1
+               OR @@LOCK_TIMEOUT <> @PreviousLockTimeout OR (@@OPTIONS & 16384) <> 16384
+                THROW 55199, N'Der Dauergrenzfall hat Agentquellen oder Callerzustand verändert.', 1;
+            SET @Calls += 1;
+            SET @DurationCalls += 1;
+            SET @Consumer += 1;
+        END;
+        SET @DurationCasesSeen += 1;
+        SET @DurationCase += 1;
+    END;
+    IF @DurationCase <> 8 OR @DurationCasesSeen <> 7
+       OR @DurationCalls <> 14 OR @DurationNoneCalls <> 7
+       OR @DurationTableCalls <> 7 OR @Calls <> 73
+        THROW 55199, N'Die sieben Dauergrenzfälle, 14 Aufrufe oder 73 positiven Consumeraufrufe fehlen.', 1;
     IF EXISTS (SELECT 1 FROM [msdb].[dbo].[sysjobactivity] WHERE [job_id] = @JobId)
        OR EXISTS (SELECT 1 FROM [msdb].[dbo].[sysjobservers] WHERE [job_id] = @JobId)
        OR EXISTS (SELECT 1 FROM [msdb].[dbo].[sysjobschedules] WHERE [job_id] = @JobId)
