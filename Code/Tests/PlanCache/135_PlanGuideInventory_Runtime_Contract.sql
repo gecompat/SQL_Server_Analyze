@@ -199,23 +199,71 @@ BEGIN TRY
     IF (@Return IS NULL OR @Return<>51011) OR COALESCE(@Status,'')<>'ERROR_HANDLED' OR COALESCE(@Partial,0)<>1 OR COALESCE(@Error,-1)<>51011
        THROW 57607,N'Plan guide invalid TABLE mapping failed.',1;
     SET @Names=QUOTENAME(@PositiveDb);
-    SET @Sql=N'BEGIN TRANSACTION; SET XACT_ABORT ON; SET LOCK_TIMEOUT 7000;
+    SET @Sql=N'SET XACT_ABORT ON; SET LOCK_TIMEOUT 7000;
+      DECLARE @ReferenceBeforeState int,@ReferenceBeforeTx int,
+              @ReferenceDuringState int,@ReferenceDuringTx int,
+              @ReferenceAfterState int,@ReferenceAfterTx int,
+              @ReferenceAfterMixedState int,@ReferenceAfterMixedTx int,
+              @SutActiveState int,
+              @AfterRollbackTxCount int,@AfterRollbackXactState int,
+              @AfterRollbackLockTimeout int,@AfterRollbackAbortBit int;
+      SET @ReferenceBeforeState=XACT_STATE();
+      SET @ReferenceBeforeTx=@@TRANCOUNT;
+      DECLARE @ReferenceMixedTx int=@@TRANCOUNT,
+              @ReferenceMixedState int=XACT_STATE(),
+              @ReferenceMixedLock int=@@LOCK_TIMEOUT,
+              @ReferenceMixedAbort int=CASE WHEN (@@OPTIONS&16384)=16384 THEN 1 ELSE 0 END;
+      SET @ReferenceAfterMixedState=XACT_STATE();
+      SET @ReferenceAfterMixedTx=@@TRANCOUNT;
+      IF @ReferenceBeforeState<>0 OR @ReferenceBeforeTx<>@ExpectedTx
+         OR @ReferenceAfterMixedState<>0 OR @ReferenceAfterMixedTx<>@ExpectedTx
+      BEGIN
+         RAISERROR(N''Plan guide reference before: tx=%d xact=%d afterTx=%d afterXact=%d.'',10,1,
+                   @ReferenceBeforeTx,@ReferenceBeforeState,
+                   @ReferenceAfterMixedTx,@ReferenceAfterMixedState) WITH NOWAIT;
+         THROW 57620,N''Plan guide reference transaction before BEGIN differs.'',1;
+      END;
+      BEGIN TRANSACTION;
+      SET @ReferenceDuringState=XACT_STATE();
+      SET @ReferenceDuringTx=@@TRANCOUNT;
+      IF @ReferenceDuringState<>1 OR @ReferenceDuringTx<>@ExpectedTx+1
+      BEGIN
+         RAISERROR(N''Plan guide reference during: tx=%d xact=%d.'',10,1,
+                   @ReferenceDuringTx,@ReferenceDuringState) WITH NOWAIT;
+         IF @@TRANCOUNT>0 ROLLBACK TRANSACTION;
+         THROW 57621,N''Plan guide reference transaction after BEGIN differs.'',1;
+      END;
+      ROLLBACK TRANSACTION;
+      SET @ReferenceAfterState=XACT_STATE();
+      SET @ReferenceAfterTx=@@TRANCOUNT;
+      IF @ReferenceAfterState<>0 OR @ReferenceAfterTx<>@ExpectedTx
+      BEGIN
+         RAISERROR(N''Plan guide reference after: tx=%d xact=%d.'',10,1,
+                   @ReferenceAfterTx,@ReferenceAfterState) WITH NOWAIT;
+         THROW 57622,N''Plan guide reference transaction after ROLLBACK differs.'',1;
+      END;
+      BEGIN TRANSACTION; SET XACT_ABORT ON; SET LOCK_TIMEOUT 7000;
       EXEC @R=[monitor].[USP_PlanGuideInventory]
           @DatabaseNames=@N,@MaxZeilen=1,@ResultSetArt=''NONE'',
           @JsonErzeugen=1,@Json=@J OUTPUT,@PrintMeldungen=0,
           @StatusCodeOut=@S OUTPUT,@IsPartialOut=@P OUTPUT,
           @ErrorNumberOut=@E OUTPUT,@ErrorMessageOut=@M OUTPUT;
-      IF @@TRANCOUNT<>@ExpectedTx+1 OR XACT_STATE()<>1 OR @@LOCK_TIMEOUT<>7000
+      SET @SutActiveState=XACT_STATE();
+      IF @@TRANCOUNT<>@ExpectedTx+1 OR @SutActiveState<>1 OR @@LOCK_TIMEOUT<>7000
          OR (CASE WHEN (@@OPTIONS&16384)=16384 THEN 1 ELSE 0 END)<>1
          OR @R IS NULL OR @R<>0 OR COALESCE(@S,'''')<>''AVAILABLE_LIMITED''
          THROW 57612,N''Plan guide inner caller state changed.'',1;
       ROLLBACK TRANSACTION;
-      DECLARE @AfterRollbackTxCount int=@@TRANCOUNT,
-              @AfterRollbackXactState int=XACT_STATE(),
-              @AfterRollbackLockTimeout int=@@LOCK_TIMEOUT,
-              @AfterRollbackAbortBit int=CASE WHEN (@@OPTIONS&16384)=16384 THEN 1 ELSE 0 END;
-      IF @@TRANCOUNT<>@ExpectedTx OR XACT_STATE()<>0 OR @@LOCK_TIMEOUT<>7000
-         OR (CASE WHEN (@@OPTIONS&16384)=16384 THEN 1 ELSE 0 END)<>1
+      SET @AfterRollbackXactState=XACT_STATE();
+      SET @AfterRollbackTxCount=@@TRANCOUNT;
+      SET @AfterRollbackLockTimeout=@@LOCK_TIMEOUT;
+      SET @AfterRollbackAbortBit=CASE WHEN (@@OPTIONS&16384)=16384 THEN 1 ELSE 0 END;
+      RAISERROR(N''Plan guide XACT_STATE observation: before=%d mixed=%d mixedTx=%d mixedAbort=%d afterMixed=%d active=%d afterRollback=%d.'',10,1,
+                @ReferenceBeforeState,@ReferenceMixedState,@ReferenceMixedTx,
+                @ReferenceMixedAbort,@ReferenceAfterMixedState,
+                @SutActiveState,@AfterRollbackXactState) WITH NOWAIT;
+      IF @AfterRollbackTxCount<>@ExpectedTx OR @AfterRollbackXactState<>0
+         OR @AfterRollbackLockTimeout<>7000 OR @AfterRollbackAbortBit<>1
       BEGIN
          RAISERROR(N''Plan guide post-rollback state: tx=%d xact=%d lock=%d abort=%d.'',10,1,
                    @AfterRollbackTxCount,@AfterRollbackXactState,
