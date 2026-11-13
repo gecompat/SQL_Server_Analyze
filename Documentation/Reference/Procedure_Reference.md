@@ -22,6 +22,23 @@ Quelle: `Code/07_Infrastructure/020_USP_AgentJobs.sql`
     , @Hilfe             bit            = 0
 ```
 
+## `[monitor].[USP_AgentProxyInventory]`
+
+Quelle: `Code/07_Infrastructure/025_USP_AgentProxyInventory.sql`
+
+```sql
+      @MaxZeilen       int            = 1000
+    , @ResultSetArt    varchar(16)    = 'CONSOLE'
+    , @ResultTablesJson nvarchar(max) = NULL
+    , @JsonErzeugen    bit            = 0
+    , @Json            nvarchar(max)  = NULL OUTPUT
+    , @Hilfe           bit            = 0
+    , @StatusCodeOut   varchar(40)    = NULL OUTPUT
+    , @IsPartialOut    bit            = NULL OUTPUT
+    , @ErrorNumberOut  int            = NULL OUTPUT
+    , @ErrorMessageOut nvarchar(2048) = NULL OUTPUT
+```
+
 ## `[monitor].[USP_AgentMonitoringAnalysis]`
 
 Quelle: `Code/07_Infrastructure/120_USP_AgentMonitoringAnalysis.sql`

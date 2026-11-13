@@ -125,6 +125,7 @@ Der Installer beendet die Verarbeitung beim ersten SQL-Fehler.
 :r ../06_ExtendedEvents/060_USP_ExtendedEventsAnalysis.sql
 :r ../07_Infrastructure/010_USP_AgentStatus.sql
 :r ../07_Infrastructure/020_USP_AgentJobs.sql
+:r ../07_Infrastructure/025_USP_AgentProxyInventory.sql
 :r ../07_Infrastructure/030_USP_ResourceGovernorAnalysis.sql
 :r ../07_Infrastructure/040_USP_AvailabilityGroups.sql
 :r ../07_Infrastructure/050_USP_BackupRecovery.sql

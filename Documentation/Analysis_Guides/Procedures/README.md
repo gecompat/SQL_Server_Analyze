@@ -1,7 +1,7 @@
 # Eigenständige Analysebeschreibungen je Procedure
 
 **Stand:** 22. Juli 2026<br>
-**Strukturelle Abdeckung:** 106 Procedures<br>
+**Strukturelle Abdeckung:** 122 Procedures<br>
 **Tief geprüfte Seiten:** 92 Procedures
 
 Jede Seite verbindet den sicheren Einstieg mit der fachlichen Leserichtung. Sie beantwortet insbesondere:
@@ -17,7 +17,7 @@ Die vollständigen technischen Spaltentabellen bleiben in den verlinkten Bereich
 
 ## Reifegrad richtig lesen
 
-92 Procedures besitzen eine am aktuellen T-SQL geprüfte `DEEP_REVIEWED`-Seite. Die zwei PLAN-001-, drei SC-023- und die SQL25-001-Seite stehen als vollständig strukturierte `BASELINE` bereit. Beide Stufen enthalten Zweck, sichere Aufrufe, Resultset-Leserichtung, Grenzen, Kostenprofil und technische Quellen; `DEEP_REVIEWED` kennzeichnet zusätzlich den vollständig abgeglichenen technischen Vertiefungsvertrag.
+92 Procedures besitzen eine am aktuellen T-SQL geprüfte `DEEP_REVIEWED`-Seite. Die zwei PLAN-001-, drei SC-023-, die SQL25-001- und die Agent-Proxy-Seite stehen als vollständig strukturierte `BASELINE` bereit. Beide Stufen enthalten Zweck, sichere Aufrufe, Resultset-Leserichtung, Grenzen, Kostenprofil und technische Quellen; `DEEP_REVIEWED` kennzeichnet zusätzlich den vollständig abgeglichenen technischen Vertiefungsvertrag.
 
 Als fachliche Kalibrierungsfälle für unterschiedliche Beobachtungs- und Kostenmodelle dienen:
 
@@ -103,6 +103,7 @@ Jede Seite weist jetzt Entscheidungseinsatz, Nichtziele, Resultset-Leserichtung,
 
 - [USP_AgentStatus](USP_AgentStatus.md)
 - [USP_AgentJobs](USP_AgentJobs.md)
+- [USP_AgentProxyInventory](USP_AgentProxyInventory.md)
 - [USP_ResourceGovernorAnalysis](USP_ResourceGovernorAnalysis.md)
 - [USP_AvailabilityGroups](USP_AvailabilityGroups.md)
 - [USP_BackupRecovery](USP_BackupRecovery.md)
