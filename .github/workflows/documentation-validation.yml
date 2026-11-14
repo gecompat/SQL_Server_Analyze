@@ -1,185 +1,233 @@
-name: OPS installer transport
+name: Documentation validation
 
 on:
+  pull_request:
+    paths:
+      - '.github/workflows/documentation-validation.yml'
+      - 'AGENTS.md'
+      - '.ai/**'
+      - 'README.md'
+      - 'AI_Metadata/**/*.md'
+      - 'Code/**/*.sql'
+      - 'Code/Install/*.ps1'
+      - 'Code/Install/*.py'
+      - 'Code/Tests/Integration/Deployment_*.py'
+      - 'Code/Tests/Static/**'
+      - 'Code/Tools/Rule_Context_Cache.py'
+      - 'Code/Tools/Linux_Cgroup_Values.py'
+      - 'Code/Tools/Linux_Cgroup_Metadata.py'
+      - 'Code/Tools/Linux_Cgroup_Native.py'
+      - 'Code/Tools/Linux_Cgroup_Reader.py'
+      - 'AI_Metadata/Rule_Context_Cache_Scope.json'
+      - 'Code/Tests/Integration/191_Standalone_Installer_Contract.ps1'
+      - 'Code/Tests/Integration/192_ExecutionPlanAnalysis_Installer_Contract.ps1'
+      - 'Code/Tests/Integration/194_SnapshotBaseline_Installer_Contract.ps1'
+      - 'Documentation/**/*.md'
+      - 'Metadata/**'
   push:
-    branches: ['codex/ops-installer-upload']
-    paths: ['.github/workflows/documentation-validation.yml']
+    branches:
+      - main
+    paths:
+      - '.github/workflows/documentation-validation.yml'
+      - 'AGENTS.md'
+      - '.ai/**'
+      - 'README.md'
+      - 'AI_Metadata/**/*.md'
+      - 'Code/**/*.sql'
+      - 'Code/Install/*.ps1'
+      - 'Code/Install/*.py'
+      - 'Code/Tests/Integration/Deployment_*.py'
+      - 'Code/Tests/Static/**'
+      - 'Code/Tools/Rule_Context_Cache.py'
+      - 'Code/Tools/Linux_Cgroup_Values.py'
+      - 'Code/Tools/Linux_Cgroup_Metadata.py'
+      - 'Code/Tools/Linux_Cgroup_Native.py'
+      - 'Code/Tools/Linux_Cgroup_Reader.py'
+      - 'AI_Metadata/Rule_Context_Cache_Scope.json'
+      - 'Code/Tests/Integration/191_Standalone_Installer_Contract.ps1'
+      - 'Code/Tests/Integration/192_ExecutionPlanAnalysis_Installer_Contract.ps1'
+      - 'Code/Tests/Integration/194_SnapshotBaseline_Installer_Contract.ps1'
+      - 'Documentation/**/*.md'
+      - 'Metadata/**'
+  workflow_dispatch:
 
-permissions: {}
+permissions:
+  contents: read
+  statuses: write
 
 concurrency:
-  group: ops-installer-transport
-  cancel-in-progress: false
+  group: documentation-validation-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
-  transport:
-    if: github.repository == 'gecompat/SQL_Server_Analyze' && github.ref == 'refs/heads/codex/ops-installer-upload' && github.event_name == 'push' && github.event.before == 'c8d0e1abcf61752b623ddcfcc4fa02a610317fce' && github.run_attempt == '1'
+  validate:
+    name: Validate impacted documentation contracts
     runs-on: ubuntu-24.04
-    timeout-minutes: 8
-    permissions:
-      contents: write
+    timeout-minutes: 15
+
     steps:
-      - name: Check out the bound source tree
-        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+      - name: Check out repository history
+        uses: actions/checkout@v6
         with:
-          ref: 8dd39a7e08aa2c73ff73c64bd75bb09181511a00
-          fetch-depth: 1
+          fetch-depth: 0
           persist-credentials: false
           show-progress: false
 
-      - name: Retrieve and verify frozen public sources
-        shell: python
+      - id: impact
+        name: Select impacted documentation checks
+        shell: bash
         env:
-          GH_TOKEN: ${{ github.token }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before || '' }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
         run: |
-          import base64, hashlib, json, os, urllib.request
-          from pathlib import Path
-          C = json.loads(r'''{"base":"8dd39a7e08aa2c73ff73c64bd75bb09181511a00","source":"7e4ca986c04e2f075c97dcad07f8fb4a2ce84938","helperBefore":"c8d0e1abcf61752b623ddcfcc4fa02a610317fce","sources":[{"path":"Code/01_Common/021_VW_AnalysisCatalog.sql","before":"2c8a26d2af649fabfe17bc46af4f04452efe18d5","after":"e887fbc0b0d79314117dc685ccd48ed6103d4f66"},{"path":"Code/01_Common/022_VW_AnalysisSearchTerm.sql","before":"c2a35861fdb3bb20b570efe34892f36d26ec8239","after":"0d82f4a0d46d1c2681ffc430e3adaadba7a9acd1"},{"path":"Code/01_Common/023_VW_AnalysisRelation.sql","before":"3df01e94857c97d4339c270b0e032bb338acc899","after":"4ba57e7ec0fa9dff14d315cb0dd1c8e5c575d8a7"},{"path":"Code/08_ServerHealth/330_USP_LoadedModuleInventory.sql","before":null,"after":"ffd035fdddc682cdc663b3599a3bddcd31047fc8"},{"path":"Code/Install/Install_All.sql","before":"b3f796be1d3eee577b362128f8b57c3952f01696","after":"d6956f698842efadd196754fdef993690755243c"}],"builders":{"Code/Install/Build-StandaloneInstaller.ps1":"39a751bc73536d430204f505e7974d92343b30d5","TestLab/Adapters/OPS-005/Build-AdapterInstall.ps1":"4160bdd1e1df6c557ba2c25dffd502eee1383b15","Code/Install/Build-ExecutionPlanAnalysisInstaller.ps1":"d2fdc1cae65ed521162d5936c2015db11d3215f2","TestLab/Adapters/EXECUTION-PLAN-001/Build-AdapterInstall.ps1":"47a4cd3dde1ae85a6ad549fcb6ed2dc683b83979"},"opsBefore":"eb29de34f89c38e6a254ab50f0a8708ea5041973","opsAfter":"e11a04b8e5a7320d8431e0a14b3cd1c6fa22cf83","opsBeforeBytes":6678197,"opsAfterBytes":6706266,"standalone":"edcb190a15d7a8b67fbb3adbc46abd8ff2d8e286","standaloneBytes":584191,"update":"1f7ff87dda9ab630ea9ab720945d77f8c1bb6358","updateBytes":17380}''')
-          def gitsha(data):
-              return hashlib.sha1(b"blob " + str(len(data)).encode("ascii") + b"\0" + data).hexdigest()
-          def fetch(sha):
-              request = urllib.request.Request("https://api.github.com/repos/gecompat/SQL_Server_Analyze/git/blobs/" + sha, headers={"Authorization":"Bearer " + os.environ["GH_TOKEN"],"Accept":"application/vnd.github+json","X-GitHub-Api-Version":"2022-11-28"})
-              with urllib.request.urlopen(request, timeout=60) as response:
-                  raw = response.read(1000001)
-              if len(raw)>1000000:
-                  raise SystemExit("SOURCE_RESPONSE_BOUND")
-              record=json.loads(raw)
-              if record.get("sha")!=sha or record.get("encoding")!="base64":
-                  raise SystemExit("SOURCE_RESPONSE_BINDING")
-              data=base64.b64decode(record["content"],validate=False)
-              if len(data)>300000 or gitsha(data)!=sha:
-                  raise SystemExit("SOURCE_BYTE_BINDING")
-              data.decode("utf-8").encode("utf-8")
-              return data
-          for path, sha in C["builders"].items():
-              if gitsha(Path(path).read_bytes())!=sha:
-                  raise SystemExit("BUILDER_BINDING: "+path)
-          baseline=[("TestLab/Adapters/OPS-005/sql/install.sql",C["opsBefore"],C["opsBeforeBytes"]),("TestLab/Adapters/EXECUTION-PLAN-001/sql/install.sql",C["standalone"],C["standaloneBytes"]),("TestLab/Adapters/OPS-005/sql/update.sql",C["update"],C["updateBytes"])]
-          for path, sha, size in baseline:
-              data=Path(path).read_bytes()
-              if len(data)!=size or gitsha(data)!=sha:
-                  raise SystemExit("BASELINE_ARTIFACT_BINDING: "+path)
-          root=Path.cwd().resolve()
-          for source in C["sources"]:
-              path=Path(source["path"])
-              if not path.resolve().is_relative_to(root):
-                  raise SystemExit("SOURCE_PATH_BOUNDARY")
-              if source["before"] is None:
-                  if path.exists():
-                      raise SystemExit("NEW_SOURCE_ALREADY_EXISTS")
-              elif not path.is_file() or gitsha(path.read_bytes())!=source["before"]:
-                  raise SystemExit("SOURCE_BEFORE_BINDING: "+source["path"])
-              data=fetch(source["after"])
-              path.parent.mkdir(parents=True,exist_ok=True)
-              path.write_bytes(data)
-          print("FROZEN_LOADED_MODULE_V1_SOURCES_VERIFIED")
+          set -euo pipefail
 
-      - name: Run both canonical installer builders
+          changed_file="$RUNNER_TEMP/documentation-changed-files.txt"
+          if [ "${{ github.event_name }}" = 'workflow_dispatch' ] || \
+             [[ ! "$BASE_SHA" =~ ^[0-9a-f]{40}$ ]] || \
+             [[ "$BASE_SHA" =~ ^0{40}$ ]]; then
+            git ls-files > "$changed_file"
+            manual_full=true
+          else
+            git diff --name-only "$BASE_SHA" "$HEAD_SHA" > "$changed_file"
+            manual_full=false
+          fi
+
+          set_flag() {
+            local name="$1"
+            local pattern="$2"
+            local value=false
+            if grep -Eq "$pattern" "$changed_file"; then
+              value=true
+            fi
+            echo "$name=$value" >> "$GITHUB_OUTPUT"
+          }
+
+          set_flag docs '^(AGENTS\.md|README\.md|Documentation/.*\.md|AI_Metadata/(CONTINUATION_GUIDE|PROJECT_CONTEXT)\.md|AI_Metadata/Internal_Documentation/.*\.md|Metadata/Quality/CI_Test_Policy\.csv|Code/Tests/Static/915_Validate_Documentation_Style\.py|\.github/workflows/documentation-validation\.yml)$'
+          set_flag navigator '^(Code/01_Common/(020_VW_AnalyseClassCatalog|021_VW_AnalysisCatalog|022_VW_AnalysisSearchTerm|023_VW_AnalysisRelation|100_USP_AnalysisNavigator)\.sql|Code/Install/Install_(All|ExecutionPlanAnalysis)\.sql|Code/Tests/Static/905_Validate_Analysis_Navigator\.py|Metadata/Inventory/(Objects|Parameters|ResultSets)\.csv|Documentation/Analysis_Guides/Start_Here\.md|Documentation/Reference/Analysis_Navigator\.md|Documentation/Analysis_Guides/Procedures/USP_AnalysisNavigator\.md)$'
+          set_flag waits '^(Code/01_Common/07[45].*WaitType.*\.sql|Code/Tests/Static/940_Validate_Wait_Type_Catalog\.py|Documentation/Operations/Wait_Type_Catalog\.md|AI_Metadata/Internal_Documentation/Quality/Wait_Type_Curation\.md|Metadata/Quality/Wait_Type_Curation_Evidence\.json)$'
+          set_flag procedures '^(Code/.*\.sql|Documentation/Analysis_Guides/Procedures/.*\.md|Code/Tests/Static/900_Validate_Analysis_Documentation\.ps1)$'
+          set_flag installers '^(Code/Install/.*\.ps1|Code/Tests/Integration/(191_Standalone|192_ExecutionPlanAnalysis|194_SnapshotBaseline)_Installer_Contract\.ps1)$'
+          set_flag linux_reader '^(\.github/workflows/documentation-validation\.yml|Code/Tools/Linux_Cgroup_(Native|Reader|Values|Metadata)\.py|Code/Tests/Static/(Validate_Linux_Cgroup_(Reader|Values)|Invoke-StaticContractSuite)\.(py|ps1)|AI_Metadata/Internal_Documentation/Architecture/Linux_Cgroup_Resource_Boundary_Dossier\.md|Documentation/Analysis_Guides/Linux_Cgroup_Reader(_Contract)?\.md)$'
+
+          check_network=false
+          if grep -Fxq 'Code/Tests/Static/980_Validate_External_Documentation_Links.py' "$changed_file"; then
+            check_network=true
+          elif [ "$manual_full" = false ] && \
+               git diff --unified=0 "$BASE_SHA" "$HEAD_SHA" -- \
+                 | grep -E '^\+[^+].*https?://' >/dev/null; then
+            check_network=true
+          elif [ "$manual_full" = true ]; then
+            check_network=true
+          fi
+
+          echo "check_network=$check_network" >> "$GITHUB_OUTPUT"
+          echo "manual_full=$manual_full" >> "$GITHUB_OUTPUT"
+          echo "changed_files_path=$changed_file" >> "$GITHUB_OUTPUT"
+          suite_scope=Full
+          if [ "$manual_full" = false ] && [ -s "$changed_file" ] && \
+             ! grep -Ev '^(AGENTS\.md|\.ai/.*|AI_Metadata/CONTINUATION_GUIDE\.md|AI_Metadata/Rule_Context_Cache(_Scope\.json|\.md)|AI_Metadata/Internal_Documentation/Architecture/Foundation_[^/]+\.(md|json)|Code/Tools/Rule_Context_Cache\.py|Code/Tests/Static/Validate_Rule_Context_Cache\.py)$' "$changed_file"; then
+            suite_scope=FoundationGovernance
+          fi
+          echo "suite_scope=$suite_scope" >> "$GITHUB_OUTPUT"
+
+          {
+            echo '## Documentation validation impact'
+            echo ''
+            echo "- Documentation/style: $(grep -Eq '^(AGENTS\.md|README\.md|Documentation/.*\.md|AI_Metadata/(CONTINUATION_GUIDE|PROJECT_CONTEXT)\.md|AI_Metadata/Internal_Documentation/.*\.md|Metadata/Quality/CI_Test_Policy\.csv|Code/Tests/Static/915_Validate_Documentation_Style\.py|\.github/workflows/documentation-validation\.yml)$' "$changed_file" && echo true || echo false)"
+            echo "- Static contract scope: $suite_scope"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Run repository static contract suite
+        shell: pwsh
+        run: |
+          $logPath = Join-Path $env:RUNNER_TEMP 'analysis-documentation-validation.log'
+          & pwsh -NoLogo -NoProfile -File ./Code/Tests/Static/Invoke-StaticContractSuite.ps1 `
+              -Scope '${{ steps.impact.outputs.suite_scope }}' `
+              -SelfTestMode Changed `
+              -ChangedFilesPath '${{ steps.impact.outputs.changed_files_path }}' `
+              -ExcludePrivacy -ExcludeImpactSelector *>&1 |
+              Tee-Object -FilePath $logPath
+          exit $LASTEXITCODE
+
+      - name: Set up Python 3.11 for Linux cgroup reader contracts
+        if: steps.impact.outputs.linux_reader == 'true'
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
+        with:
+          python-version: '3.11'
+          architecture: x64
+          check-latest: false
+
+      - name: Run Linux cgroup parser and portable reader contracts
+        if: steps.impact.outputs.linux_reader == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import platform
+          import sys
+          if sys.version_info[:2] != (3, 11) or platform.machine().lower() not in {'x86_64', 'amd64'}:
+              raise SystemExit('LINUX_CGROUP_RUNTIME_MISMATCH')
+          print('LINUX_CGROUP_RUNTIME_311_X64')
+          PY
+          python Code/Tests/Static/Validate_Linux_Cgroup_Values.py --repository-root . --self-test
+          python Code/Tests/Static/Validate_Linux_Cgroup_Reader.py --repository-root . --self-test
+
+      - name: Run required native Linux cgroup reader contracts
+        if: steps.impact.outputs.linux_reader == 'true'
+        shell: bash
+        run: python Code/Tests/Static/Validate_Linux_Cgroup_Reader.py --repository-root . --native
+
+      - name: Validate installer contracts
+        if: steps.impact.outputs.installers == 'true'
         shell: pwsh
         run: |
           $ErrorActionPreference = 'Stop'
-          & ./TestLab/Adapters/OPS-005/Build-AdapterInstall.ps1 `
-            -RepositoryRoot $env:GITHUB_WORKSPACE `
-            -InstallOutputPath (Join-Path $env:RUNNER_TEMP 'ops-install.sql') `
-            -UpdateOutputPath (Join-Path $env:RUNNER_TEMP 'ops-update.sql')
-          & ./TestLab/Adapters/EXECUTION-PLAN-001/Build-AdapterInstall.ps1 `
-            -RepositoryRoot $env:GITHUB_WORKSPACE `
-            -OutputPath (Join-Path $env:RUNNER_TEMP 'plan-install.sql')
+          foreach ($contract in @(
+              './Code/Tests/Integration/191_Standalone_Installer_Contract.ps1',
+              './Code/Tests/Integration/192_ExecutionPlanAnalysis_Installer_Contract.ps1',
+              './Code/Tests/Integration/194_SnapshotBaseline_Installer_Contract.ps1'
+          )) {
+              & pwsh -NoLogo -NoProfile -File $contract
+              if ($LASTEXITCODE -ne 0) {
+                  throw "Installer contract failed: $contract"
+              }
+          }
 
-      - name: Prove canonical bytes and upload two review blobs
-        shell: python
+      - name: Validate external documentation links
+        if: steps.impact.outputs.check_network == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 ./Code/Tests/Static/980_Validate_External_Documentation_Links.py \
+            --repository-root . \
+            --self-test \
+            --check-network
+
+      - name: Upload failed documentation log
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: analysis-documentation-validation-log
+          path: ${{ runner.temp }}/analysis-documentation-validation.log
+          if-no-files-found: ignore
+          retention-days: 1
+
+      - name: Publish documentation validation status
+        if: always()
+        shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
+          JOB_STATUS: ${{ job.status }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         run: |
-          import base64, gzip, hashlib, json, os, re, urllib.request, urllib.error
-          from pathlib import Path
-          C = json.loads(r'''{"base":"8dd39a7e08aa2c73ff73c64bd75bb09181511a00","source":"7e4ca986c04e2f075c97dcad07f8fb4a2ce84938","helperBefore":"c8d0e1abcf61752b623ddcfcc4fa02a610317fce","sources":[{"path":"Code/01_Common/021_VW_AnalysisCatalog.sql","before":"2c8a26d2af649fabfe17bc46af4f04452efe18d5","after":"e887fbc0b0d79314117dc685ccd48ed6103d4f66"},{"path":"Code/01_Common/022_VW_AnalysisSearchTerm.sql","before":"c2a35861fdb3bb20b570efe34892f36d26ec8239","after":"0d82f4a0d46d1c2681ffc430e3adaadba7a9acd1"},{"path":"Code/01_Common/023_VW_AnalysisRelation.sql","before":"3df01e94857c97d4339c270b0e032bb338acc899","after":"4ba57e7ec0fa9dff14d315cb0dd1c8e5c575d8a7"},{"path":"Code/08_ServerHealth/330_USP_LoadedModuleInventory.sql","before":null,"after":"ffd035fdddc682cdc663b3599a3bddcd31047fc8"},{"path":"Code/Install/Install_All.sql","before":"b3f796be1d3eee577b362128f8b57c3952f01696","after":"d6956f698842efadd196754fdef993690755243c"}],"builders":{"Code/Install/Build-StandaloneInstaller.ps1":"39a751bc73536d430204f505e7974d92343b30d5","TestLab/Adapters/OPS-005/Build-AdapterInstall.ps1":"4160bdd1e1df6c557ba2c25dffd502eee1383b15","Code/Install/Build-ExecutionPlanAnalysisInstaller.ps1":"d2fdc1cae65ed521162d5936c2015db11d3215f2","TestLab/Adapters/EXECUTION-PLAN-001/Build-AdapterInstall.ps1":"47a4cd3dde1ae85a6ad549fcb6ed2dc683b83979"},"opsBefore":"eb29de34f89c38e6a254ab50f0a8708ea5041973","opsAfter":"e11a04b8e5a7320d8431e0a14b3cd1c6fa22cf83","opsBeforeBytes":6678197,"opsAfterBytes":6706266,"standalone":"edcb190a15d7a8b67fbb3adbc46abd8ff2d8e286","standaloneBytes":584191,"update":"1f7ff87dda9ab630ea9ab720945d77f8c1bb6358","updateBytes":17380}''')
-          def gitsha(data):
-              return hashlib.sha1(b"blob " + str(len(data)).encode("ascii") + b"\0" + data).hexdigest()
-          def fetch(sha):
-              request=urllib.request.Request("https://api.github.com/repos/gecompat/SQL_Server_Analyze/git/blobs/"+sha,headers={"Authorization":"Bearer "+os.environ["GH_TOKEN"],"Accept":"application/vnd.github+json","X-GitHub-Api-Version":"2022-11-28"})
-              with urllib.request.urlopen(request,timeout=60) as response:
-                  raw=response.read(1000001)
-              if len(raw)>1000000:
-                  raise SystemExit("DERIVATION_RESPONSE_BOUND")
-              record=json.loads(raw)
-              if record.get("sha")!=sha or record.get("encoding")!="base64":
-                  raise SystemExit("DERIVATION_RESPONSE_BINDING")
-              data=base64.b64decode(record["content"],validate=False)
-              if len(data)>300000 or gitsha(data)!=sha:
-                  raise SystemExit("DERIVATION_SOURCE_BINDING")
-              return data
-          def module(data):
-              text=data.decode("utf-8")
-              if "\r" in text:
-                  raise SystemExit("MODULE_NEWLINE_BOUNDARY")
-              text=re.sub(r"^\ufeff?USE \[DeineDatenbank\];\r?\nGO\r?\n\r?\n","",text).rstrip()
-              return re.sub(r"[\t ]+(?=\r?$)","",text,flags=re.MULTILINE).encode("utf-8")
-          def block(path, body):
-              return b"-- BEGIN SOURCE: "+path.encode("utf-8")+b"\n"+body+b"\n-- END SOURCE: "+path.encode("utf-8")
-          baseline=Path("TestLab/Adapters/OPS-005/sql/install.sql").read_bytes()
-          if len(baseline)!=C["opsBeforeBytes"] or gitsha(baseline)!=C["opsBefore"]:
-              raise SystemExit("BASELINE_CHANGED_BEFORE_DERIVATION")
-          derived=baseline
-          reverse=[]
-          for source in C["sources"][:3]:
-              old=block(source["path"],module(fetch(source["before"])))
-              new_data=Path(source["path"]).read_bytes()
-              if gitsha(new_data)!=source["after"]:
-                  raise SystemExit("FINAL_NAV_SOURCE_BINDING")
-              new=block(source["path"],module(new_data))
-              if derived.count(old)!=1:
-                  raise SystemExit("OLD_WHOLE_MODULE_OCCURRENCE")
-              derived=derived.replace(old,new,1)
-              if derived.count(new)!=1:
-                  raise SystemExit("NEW_WHOLE_MODULE_OCCURRENCE")
-              reverse.append((old,new))
-          source=C["sources"][3]
-          new_data=Path(source["path"]).read_bytes()
-          if source["before"] is not None or gitsha(new_data)!=source["after"]:
-              raise SystemExit("ADDED_MODULE_SOURCE_BINDING")
-          added=b"\n"+block(source["path"],module(new_data))+b"\n"
-          anchor=b"-- END SOURCE: Code/08_ServerHealth/320_USP_SensitivityClassificationSummary.sql\n"
-          if derived.count(anchor)!=1 or b"-- BEGIN SOURCE: "+source["path"].encode("utf-8") in derived:
-              raise SystemExit("ADDED_MODULE_BOUNDARY")
-          derived=derived.replace(anchor,anchor+added,1)
-          reconstructed=derived.replace(added,b"",1)
-          for old,new in reversed(reverse):
-              if reconstructed.count(new)!=1:
-                  raise SystemExit("REVERSE_MODULE_BOUNDARY")
-              reconstructed=reconstructed.replace(new,old,1)
-          if reconstructed!=baseline:
-              raise SystemExit("UNCHANGED_INSTALLER_REMAINDER")
-          if len(derived)!=C["opsAfterBytes"] or gitsha(derived)!=C["opsAfter"]:
-              raise SystemExit("PREBOUND_EXPECTED_INSTALLER_IDENTITY")
-          temp=Path(os.environ["RUNNER_TEMP"])
-          generated=(temp/"ops-install.sql").read_bytes()
-          if generated!=derived:
-              raise SystemExit("CANONICAL_GENERATOR_DIFFERENT_FROM_FULL_MODULE_DERIVATION")
-          updated=(temp/"ops-update.sql").read_bytes()
-          if len(updated)!=C["updateBytes"] or gitsha(updated)!=C["update"]:
-              raise SystemExit("UNCHANGED_UPDATE_IDENTITY")
-          plan=(temp/"plan-install.sql").read_bytes()
-          if len(plan)!=C["standaloneBytes"] or gitsha(plan)!=C["standalone"] or plan!=Path("TestLab/Adapters/EXECUTION-PLAN-001/sql/install.sql").read_bytes():
-              raise SystemExit("UNCHANGED_STANDALONE_CANONICAL_IDENTITY")
-          envelope={"kind":"CANONICAL_REVIEW_CANDIDATES","baseCommit":C["base"],"sourcePreviewCommit":C["source"],"sourceBlobs":{s["path"]:s["after"] for s in C["sources"]},"builderBlobs":C["builders"],"derivation":{"baselineInstallerBlob":C["opsBefore"],"changedModules":C["sources"][:4],"wholeModuleOccurrences":4,"newModuleInserted":True,"unchangedRemainder":True,"canonicalBytesEqual":True,"unchangedUpdateBlob":C["update"],"unchangedStandaloneBlob":C["standalone"]},"files":{"TestLab/Adapters/OPS-005/sql/install.sql":{"gitBlobSha":gitsha(generated),"byteLength":len(generated),"gzipBase64":base64.b64encode(gzip.compress(generated,compresslevel=9,mtime=0)).decode("ascii")}}}
-          encoded=json.dumps(envelope,sort_keys=True,separators=(",",":")).encode("ascii")
-          if len(encoded)>2000000 or len(generated)>8000000:
-              raise SystemExit("REVIEW_ARTIFACT_SIZE_BOUND")
-          def upload(data):
-              payload=json.dumps({"encoding":"base64","content":base64.b64encode(data).decode("ascii")}).encode("utf-8")
-              request=urllib.request.Request("https://api.github.com/repos/gecompat/SQL_Server_Analyze/git/blobs",data=payload,headers={"Authorization":"Bearer "+os.environ["GH_TOKEN"],"Accept":"application/vnd.github+json","Content-Type":"application/json","X-GitHub-Api-Version":"2022-11-28"},method="POST")
-              try:
-                  with urllib.request.urlopen(request,timeout=60) as response:
-                      raw=response.read(4097)
-              except urllib.error.HTTPError as error:
-                  raise SystemExit("CANDIDATE_UPLOAD_HTTP_STATUS="+str(error.code)) from None
-              if len(raw)>4096 or json.loads(raw).get("sha")!=gitsha(data):
-                  raise SystemExit("UPLOAD_RESPONSE_BINDING")
-              return gitsha(data)
-          # Exactly two bounded blob POSTs, after every source/canonical/reverse proof.
-          review_sha=upload(encoded)
-          installer_sha=upload(generated)
-          print("CANONICAL_REVIEW_ENVELOPE="+review_sha+" BYTES="+str(len(encoded)))
-          print("CANONICAL_OPS_INSTALLER="+installer_sha+" BYTES="+str(len(generated)))
-          print("CANONICAL_LOADED_MODULE_V1_TRANSPORT_PASS")
+          set -euo pipefail
+          state='success'
+          if [ "$JOB_STATUS" != 'success' ]; then
+            state='failure'
+          fi
+          gh api --method POST "repos/${GITHUB_REPOSITORY}/statuses/${GITHUB_SHA}" \
+            -f state="$state" \
+            -f target_url="$RUN_URL" \
+            -f description='Impact-selected documentation validation' \
+            -f context='documentation-validation' >/dev/null
