@@ -34,7 +34,7 @@ Die Matrix betrachtet 106 fachliche Bereiche. Der Frameworkkern deckt die zentra
 - Server- und Datenbankprincipals, Rollen, Ownership, explizite Berechtigungen und verwaiste Zuordnungen;
 - Authentisierungs- und Login-Lifecycle einschließlich Entra-fähiger Principals, ohne Identitäten oder Secrets ungeschützt auszugeben;
 - TDS-/TLS-, Zertifikats-, Extended-Protection- und Endpoint-Posture mit klarer Grenze zwischen SQL- und Hostevidenz;
-- deprecated, discontinued und breaking Features als versionsbezogene Upgrade- und Migrationsfläche;
+- Deprecated-Usage besitzt mit [USP_UpgradeFeatureUsageAnalysis](../../../Documentation/Analysis_Guides/Procedures/USP_UpgradeFeatureUsageAnalysis.md) einen instanzweiten Rohcounter-Slice seit dem SQL-Serverstart und genau eine begrenzte lightweight-pooling-Zielversionsregel. SQL Server 2019 und 2025 wurden nativ qualifiziert; Discontinued, Breaking Changes, Hostfolgen, vollständige Featurezuordnung und Upgradefreigabe bleiben offen;
 - Legacy-Datenbankspiegelung als weiterhin vorhandene, aber abgekündigte Betriebsrealität;
 - verteilte Transaktionen und MSDTC einschließlich Recovery- und HADR-Kontext;
 - Linux-, Container- und cgroup-Ressourcengrenzen, soweit SQL-eigene und externe Plattformwerte sicher korreliert werden können;
@@ -50,7 +50,7 @@ Die Matrix betrachtet 106 fachliche Bereiche. Der Frameworkkern deckt die zentra
 - FILESTREAM/FileTable-Betrieb über die bestehende leichte Erkennung hinaus;
 - Change Event Streaming, Fabric Mirroring und External REST Endpoint Invocation mit strikter Trennung lokaler Kataloge von externen Endpoints, Credentials und Payloads;
 - Plan Guides besitzen einen begrenzten caller-sichtbaren Katalog-Slice in [USP_PlanGuideInventory](../../../Documentation/Analysis_Guides/Procedures/USP_PlanGuideInventory.md). Die SQL-Server-2025-/CL170-Head- und Main-Gates für PR #699 sind bestanden; Validität, Anwendung, Wirksamkeit, Vollständigkeit und ein kontrollierter nativer DENIED_PERMISSION-Fall bleiben unqualifiziert.
-- Datenbank-DDL-Trigger besitzen mit [USP_DatabaseDdlTriggerInventory](../../../Documentation/Analysis_Guides/Procedures/USP_DatabaseDdlTriggerInventory.md) einen caller-sichtbaren Metadaten-Slice. Die native Qualifikation steht noch aus. Server-DDL- und LOGON-Trigger, Definitionen, Ereignisse, Ausführung, Rollback-Wirkung und globale Vollständigkeit bleiben offen.
+- Datenbank-DDL-Trigger besitzen mit [USP_DatabaseDdlTriggerInventory](../../../Documentation/Analysis_Guides/Procedures/USP_DatabaseDdlTriggerInventory.md) einen caller-sichtbaren Metadaten-Slice. Die vollständigen SQL-Server-2025-/CL170-Head- und Main-Gates für PR #700 bestanden einschließlich Vertrag 124. Server-DDL- und LOGON-Trigger, Definitionen, Ereignisse, Ausführung, Rollback-Wirkung, globale Vollständigkeit und ein kontrolliert erzwungener nativer Rechtefehler bleiben unqualifiziert.
 - [SQL-Agent-Proxies](../Architecture/Agent_Proxy_Dependency_Inventory_Dossier.md) besitzen einen getrennten V1-Slice. Er bestand nach PR #696 die SQL-Server-2025-/CL170-Head- und Main-Gates; ein positiver Proxy- oder Ausführungsfall bleibt unqualifiziert.
 
 ### Priorität P3 und bedingte Vertiefung

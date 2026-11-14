@@ -61,6 +61,7 @@ REQUIRED_DOMAINS = {
 # Only named bounded deliveries may convert a researched gap into partial coverage.
 KNOWN_RESEARCH_TO_PARTIAL_KEYS = {
     "DEPRECATION_BREAKING_CHANGE",
+    "DEPRECATED_RUNTIME_USE",
     "RLS_DYNAMIC_MASKING",
     "DISTRIBUTED_TRANSACTIONS",
     "DATABASE_MIRRORING",
@@ -74,6 +75,7 @@ RESEARCH_GAP_COHORT_FLOOR = 25  # Preserve the explicit research-gap cohort acro
 REQUIRED_KEYS = {
     "LINUX_CONTAINER_LIMITS",
     "DEPRECATION_BREAKING_CHANGE",
+    "DEPRECATED_RUNTIME_USE",
     "DATABASE_SNAPSHOTS",
     "PLAN_GUIDES",
     "BACKUP_IMMUTABILITY_SECONDARY",
@@ -246,11 +248,12 @@ def coverage_fixture() -> list[dict[str, str]]:
 
     researched = {
         'DEPRECATION_BREAKING_CHANGE',
+        'DEPRECATED_RUNTIME_USE',
         'RLS_DYNAMIC_MASKING',
         'DISTRIBUTED_TRANSACTIONS',
         'DATABASE_MIRRORING',
         'PLAN_GUIDES',
-        *(f'SAMPLE_AREA_{index:03d}' for index in range(20)),
+        *(f'SAMPLE_AREA_{index:03d}' for index in range(19)),
     }
     out_of_scope = {f'SAMPLE_AREA_{index:03d}' for index in range(23, 27)}
     domains = sorted(REQUIRED_DOMAINS)
@@ -325,6 +328,23 @@ def self_test() -> None:
             row['CoverageStatus'] = 'PARTIAL_PRODUCT_FUNCTION'
     if validate_rows(list(EXPECTED_FIELDS), plan_guide_promotion):
         raise AssertionError('named Plan Guide promotion was rejected')
+
+    runtime_use_promotion = [dict(row) for row in prior_promotion_state]
+    for row in runtime_use_promotion:
+        if row['CoverageKey'] == 'DEPRECATED_RUNTIME_USE':
+            row['CoverageStatus'] = 'PARTIAL_PRODUCT_FUNCTION'
+    if validate_rows(list(EXPECTED_FIELDS), runtime_use_promotion):
+        raise AssertionError('named Deprecated Runtime Use promotion was rejected')
+
+    unrelated_after_runtime = [dict(row) for row in runtime_use_promotion]
+    for row in unrelated_after_runtime:
+        if row['CoverageKey'] == 'SAMPLE_AREA_000':
+            row['CoverageStatus'] = 'PARTIAL_PRODUCT_FUNCTION'
+    if not any(
+        'too few explicit researched gaps' in error
+        for error in validate_rows(list(EXPECTED_FIELDS), unrelated_after_runtime)
+    ):
+        raise AssertionError('unrelated promotion after Deprecated Runtime Use reduced the research cohort')
 
     unrelated_promotion = [dict(row) for row in prior_promotion_state]
     for row in unrelated_promotion:
