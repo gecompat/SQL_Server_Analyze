@@ -1,7 +1,7 @@
 # Objektindex der eigenständigen Analysebeschreibungen
 
-**Stand:** 23. Juli 2026
-**Abdeckung:** alle 123 inventarisierten `USP_*`-Procedures des Frameworks einschließlich der optionalen Pakete
+**Stand:** 13. November 2026
+**Abdeckung:** alle 124 inventarisierten `USP_*`-Procedures des Frameworks einschließlich der optionalen Pakete
 
 Jeder Link führt zu einer in sich geschlossenen Procedure-Seite. Dort stehen sicherer Einstieg, Zeilengranularität, Leserichtung, technische Problembegründung, unkritischer Gegenkontext, synthetisches Beispiel, Folgeanalyse und der Link zur vollständigen technischen Spaltenreferenz.
 
@@ -75,6 +75,7 @@ Für einen Einstieg nach beobachtetem Problem verwenden Sie [Hier beginnen](Star
 
 | `[monitor].[USP_ShowplanAnalysis]` | [Operatoren, Schätzfehler, Grants und Parameter](Procedures/USP_ShowplanAnalysis.md) |
 | `[monitor].[USP_PlanCacheAnalysis]` | [Orchestrierte Plan-Cache-Analyse](Procedures/USP_PlanCacheAnalysis.md) |
+| `[monitor].[USP_PlanGuideInventory]` | [Caller-sichtbare Plan-Guide-Katalogmetadaten](Procedures/USP_PlanGuideInventory.md) |
 
 ## Query Store
 

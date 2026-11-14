@@ -1,6 +1,6 @@
 # Aufrufkatalog aller dokumentierten Procedures
 
-Stand: 2026-11-13 — 123 eindeutige Procedure-Einträge; alle 123 öffentlichen Inventar-Procedures sind enthalten.
+Stand: 2026-11-13 — 124 eindeutige Procedure-Einträge; alle 124 öffentlichen Inventar-Procedures sind enthalten.
 
 Die Hilfeaufrufe führen keine fachliche Analyse aus. Weitere typische Querschnittsbeispiele stehen am Dokumentanfang.
 
@@ -371,6 +371,17 @@ EXEC [monitor].[USP_PerformanceCounters] @Hilfe = 1;
 
 ```sql
 EXEC [monitor].[USP_PlanCacheAnalysis] @Hilfe = 1;
+```
+
+## `[monitor].[USP_PlanGuideInventory]`
+
+Der Hilfeaufruf liest keine Plan-Guide-Quelle. Der begrenzte Fachaufruf liest nur caller-sichtbare Katalogmetadaten der synthetisch benannten Beispieldatenbank. Die [Procedure-Seite](../Analysis_Guides/Procedures/USP_PlanGuideInventory.md) erläutert die vier Resultsets und `ValidationStatus=UNASSESSED`.
+
+```sql
+EXEC [monitor].[USP_PlanGuideInventory] @Hilfe = 1;
+EXEC [monitor].[USP_PlanGuideInventory]
+    @DatabaseNames=N'[ExampleDatabase]',
+    @ResultSetArt='CONSOLE';
 ```
 
 ## `[monitor].[USP_PlanCacheHealth]`

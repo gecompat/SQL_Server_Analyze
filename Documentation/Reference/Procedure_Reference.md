@@ -1,6 +1,6 @@
 # Referenzhandbuch der öffentlichen Procedures
 
-Stand: 2026-07-27
+Stand: 2026-11-13
 
 `@ResultSetArt` verwendet frameworkweit `CONSOLE` als Default. Technische Verbraucher setzen `RAW` oder die benannte Mehrfachzuordnung `TABLE` mit `@ResultTablesJson`; JSON-only verwendet `NONE` mit `@JsonErzeugen = 1`. Die Signaturen werden aus dem kanonischen Codebestand abgeleitet.
 
@@ -1302,6 +1302,30 @@ Quelle: `Code/04_PlanCache/060_USP_PlanCacheAnalysis.sql`
     , @PrintMeldungen                   bit            = 1
     , @Hilfe                            bit            = 0
 ```
+
+## `[monitor].[USP_PlanGuideInventory]`
+
+Quelle: `Code/04_PlanCache/070_USP_PlanGuideInventory.sql`
+
+```sql
+@DatabaseNames nvarchar(max) = NULL
+    , @SystemdatenbankenEinbeziehen bit = 0
+    , @DatabaseNamePattern nvarchar(4000) = NULL
+    , @MaxZeilen int = 1000
+    , @LockTimeoutMs int = 0
+    , @ResultSetArt varchar(16) = 'CONSOLE'
+    , @ResultTablesJson nvarchar(max) = NULL
+    , @JsonErzeugen bit = 0
+    , @Json nvarchar(max) = NULL OUTPUT
+    , @PrintMeldungen bit = 1
+    , @Hilfe bit = 0
+    , @StatusCodeOut varchar(40) = NULL OUTPUT
+    , @IsPartialOut bit = NULL OUTPUT
+    , @ErrorNumberOut int = NULL OUTPUT
+    , @ErrorMessageOut nvarchar(2048) = NULL OUTPUT
+```
+
+Die [Procedure-Seite](../Analysis_Guides/Procedures/USP_PlanGuideInventory.md) erklärt die elf Katalogfelder, vier Resultsets, Parameter und Metadatengrenzen. `ValidationStatus` bleibt `UNASSESSED`; der Deaktivierungsschalter belegt keine Anwendung eines Plan Guides.
 
 ## `[monitor].[USP_PlanCacheHealth]`
 

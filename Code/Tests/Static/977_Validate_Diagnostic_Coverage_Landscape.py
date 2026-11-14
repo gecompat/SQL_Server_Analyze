@@ -66,6 +66,7 @@ KNOWN_RESEARCH_TO_PARTIAL_KEYS = {
     "DATABASE_MIRRORING",
     "AGENT_PROXIES_CREDENTIALS",
     "SENSITIVITY_CLASSIFICATION",
+    "PLAN_GUIDES",
 }
 RESEARCH_GAP_COHORT_FLOOR = 25  # Preserve the explicit research-gap cohort across named promotions.
 
@@ -247,7 +248,8 @@ def coverage_fixture() -> list[dict[str, str]]:
         'RLS_DYNAMIC_MASKING',
         'DISTRIBUTED_TRANSACTIONS',
         'DATABASE_MIRRORING',
-        *(f'SAMPLE_AREA_{index:03d}' for index in range(21)),
+        'PLAN_GUIDES',
+        *(f'SAMPLE_AREA_{index:03d}' for index in range(20)),
     }
     out_of_scope = {f'SAMPLE_AREA_{index:03d}' for index in range(23, 27)}
     domains = sorted(REQUIRED_DOMAINS)
@@ -315,6 +317,13 @@ def self_test() -> None:
             row['CoverageStatus'] = 'PARTIAL_PRODUCT_FUNCTION'
     if validate_rows(list(EXPECTED_FIELDS), classification_promotion):
         raise AssertionError('named Sensitivity Classification promotion was rejected')
+
+    plan_guide_promotion = [dict(row) for row in prior_promotion_state]
+    for row in plan_guide_promotion:
+        if row['CoverageKey'] == 'PLAN_GUIDES':
+            row['CoverageStatus'] = 'PARTIAL_PRODUCT_FUNCTION'
+    if validate_rows(list(EXPECTED_FIELDS), plan_guide_promotion):
+        raise AssertionError('named Plan Guide promotion was rejected')
 
     unrelated_promotion = [dict(row) for row in prior_promotion_state]
     for row in unrelated_promotion:

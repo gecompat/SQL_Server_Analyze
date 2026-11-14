@@ -49,7 +49,8 @@ Die Matrix betrachtet 106 fachliche Bereiche. Der Frameworkkern deckt die zentra
 - unveränderbare URL-Backups und SQL-Server-2025-Backups auf Secondary Replicas;
 - FILESTREAM/FileTable-Betrieb über die bestehende leichte Erkennung hinaus;
 - Change Event Streaming, Fabric Mirroring und External REST Endpoint Invocation mit strikter Trennung lokaler Kataloge von externen Endpoints, Credentials und Payloads;
-- Plan Guides sowie [SQL-Agent-Proxies](../Architecture/Agent_Proxy_Dependency_Inventory_Dossier.md) und deren Berechtigungsabhängigkeiten; der Proxy-V1-Slice bestand nach PR #696 die SQL-Server-2025-/CL170-Head- und Main-Gates; ein positiver Proxy- oder Ausführungsfall bleibt unqualifiziert.
+- Plan Guides besitzen einen begrenzten caller-sichtbaren Katalog-Slice in [USP_PlanGuideInventory](../../../Documentation/Analysis_Guides/Procedures/USP_PlanGuideInventory.md). Validität, Anwendung, Wirksamkeit, Vollständigkeit und ein kontrollierter nativer DENIED_PERMISSION-Fall bleiben unqualifiziert.
+- [SQL-Agent-Proxies](../Architecture/Agent_Proxy_Dependency_Inventory_Dossier.md) besitzen einen getrennten V1-Slice. Er bestand nach PR #696 die SQL-Server-2025-/CL170-Head- und Main-Gates; ein positiver Proxy- oder Ausführungsfall bleibt unqualifiziert.
 
 ### Priorität P3 und bedingte Vertiefung
 

@@ -106,6 +106,7 @@ Der Installer beendet die Verarbeitung beim ersten SQL-Fehler.
 :r ../04_PlanCache/053_USP_ExecutionPlanAnalysis.sql
 :r ../04_PlanCache/050_USP_ShowplanAnalysis.sql
 :r ../04_PlanCache/060_USP_PlanCacheAnalysis.sql
+:r ../04_PlanCache/070_USP_PlanGuideInventory.sql
 :r ../05_QueryStore/005_TVF_QueryStoreReplicaRoleInfo.sql
 :r ../05_QueryStore/010_USP_QueryStoreStatus.sql
 :r ../05_QueryStore/020_USP_QueryStoreRuntimeStats.sql
