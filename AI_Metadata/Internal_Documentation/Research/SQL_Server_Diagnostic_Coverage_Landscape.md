@@ -49,7 +49,8 @@ Die Matrix betrachtet 106 fachliche Bereiche. Der Frameworkkern deckt die zentra
 - unveränderbare URL-Backups und SQL-Server-2025-Backups auf Secondary Replicas;
 - FILESTREAM/FileTable-Betrieb über die bestehende leichte Erkennung hinaus;
 - Change Event Streaming, Fabric Mirroring und External REST Endpoint Invocation mit strikter Trennung lokaler Kataloge von externen Endpoints, Credentials und Payloads;
-- Plan Guides besitzen einen begrenzten caller-sichtbaren Katalog-Slice in [USP_PlanGuideInventory](../../../Documentation/Analysis_Guides/Procedures/USP_PlanGuideInventory.md). Validität, Anwendung, Wirksamkeit, Vollständigkeit und ein kontrollierter nativer DENIED_PERMISSION-Fall bleiben unqualifiziert.
+- Plan Guides besitzen einen begrenzten caller-sichtbaren Katalog-Slice in [USP_PlanGuideInventory](../../../Documentation/Analysis_Guides/Procedures/USP_PlanGuideInventory.md). Die SQL-Server-2025-/CL170-Head- und Main-Gates für PR #699 sind bestanden; Validität, Anwendung, Wirksamkeit, Vollständigkeit und ein kontrollierter nativer DENIED_PERMISSION-Fall bleiben unqualifiziert.
+- Datenbank-DDL-Trigger besitzen mit [USP_DatabaseDdlTriggerInventory](../../../Documentation/Analysis_Guides/Procedures/USP_DatabaseDdlTriggerInventory.md) einen caller-sichtbaren Metadaten-Slice. Die native Qualifikation steht noch aus. Server-DDL- und LOGON-Trigger, Definitionen, Ereignisse, Ausführung, Rollback-Wirkung und globale Vollständigkeit bleiben offen.
 - [SQL-Agent-Proxies](../Architecture/Agent_Proxy_Dependency_Inventory_Dossier.md) besitzen einen getrennten V1-Slice. Er bestand nach PR #696 die SQL-Server-2025-/CL170-Head- und Main-Gates; ein positiver Proxy- oder Ausführungsfall bleibt unqualifiziert.
 
 ### Priorität P3 und bedingte Vertiefung
@@ -58,7 +59,6 @@ Die Matrix betrachtet 106 fachliche Bereiche. Der Frameworkkern deckt die zentra
 - Graph-, Spatial-, XML- und native JSON-Deep-Analysen nur bei nachgewiesener Nutzung und konkreter Betriebsfrage;
 - Legacy SQL Trace beziehungsweise Default Trace als Migrations- und Observability-Abhängigkeit;
 - DQS- und MDS-Restbestände als Upgradehinweis für Quellsysteme vor SQL Server 2025;
-- DDL-, Datenbank- und Logon-Trigger als Security- und Betriebsoberfläche.
 
 ## Bewusste Grenzen
 

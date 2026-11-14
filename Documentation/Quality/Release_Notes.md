@@ -1,6 +1,8 @@
 # Releaseübersicht
 
-`USP_PlanGuideInventory` ergänzt einen lesenden Katalog-Slice für caller-sichtbare Plan Guides ausgewählter ONLINE-Datenbanken. Die elf Fachfelder enthalten keine SQL-, Batch-, Parameter- oder Hint-Definition. `ValidationStatus=UNASSESSED` und `IsDisabled` belegen keine Gültigkeit oder Wirksamkeit. Die native Abnahme dieses neuen Scopes steht aus; `Module_Maturity` bleibt `PLANNED`. Die [Procedure-Seite](../Analysis_Guides/Procedures/USP_PlanGuideInventory.md) beschreibt Eingaben, vier Resultsets und Sichtbarkeitsgrenzen.
+`USP_DatabaseDdlTriggerInventory` ergänzt eine lesende Inventur caller-sichtbarer Datenbank-DDL-Trigger in ausgewählten ONLINE-Datenbanken. Die zwölf Fachfelder stammen ausschließlich aus Metadaten von `sys.triggers` mit `parent_class=0`; Definitionen, Ereignisse, Payloads und Ausführung werden nicht gelesen. `MetadataVisibility=VISIBLE_ONLY` und `IsDisabled` belegen weder globale Vollständigkeit noch Wirksamkeit oder Rollback-Wirkung. Der neue native Scope steht noch zur Abnahme an; `Module_Maturity` bleibt `PLANNED`. Die [Procedure-Seite](../Analysis_Guides/Procedures/USP_DatabaseDdlTriggerInventory.md) dokumentiert den Aufrufvertrag.
+
+`USP_PlanGuideInventory` ergänzt einen lesenden Katalog-Slice für caller-sichtbare Plan Guides ausgewählter ONLINE-Datenbanken. Die elf Fachfelder enthalten keine SQL-, Batch-, Parameter- oder Hint-Definition. `ValidationStatus=UNASSESSED` und `IsDisabled` belegen keine Gültigkeit oder Wirksamkeit. Die SQL-Server-2025-/CL170-Head- und Main-Gates für PR #699 sind bestanden; `Module_Maturity` bleibt bis zur gesonderten Reifeabnahme `PLANNED`. Die [Procedure-Seite](../Analysis_Guides/Procedures/USP_PlanGuideInventory.md) beschreibt Eingaben, vier Resultsets und Sichtbarkeitsgrenzen.
 
 Die neue `USP_SensitivityClassificationSummary` ergänzt eine caller-sichtbare, read-only Katalogzählung je ausgewählter Datenbank. Sie zählt sichtbare Tabellen und Spalten sowie die klassifizierte Teilmenge, ohne Tabellenwerte oder Klassifikationstexte zu lesen. Fehlendes Klassifikationsrecht liefert NULL-Zähler und einen expliziten Quellenstatus. Die SQL-Server-2025-/CL170-Head- und Main-Gates für PR #697 wurden am integrierten Stand erfolgreich abgeschlossen; Klassifikationsqualität, globale Vollständigkeit und weitere native Engines sind dadurch nicht belegt. Die Maturity-Abnahme bleibt offen.
 
@@ -46,9 +48,9 @@ commitbezogenen Laufzeitnachweis.
 | ReleaseDate im Installationskatalog | 23. Oktober 2026 |
 | Mindestversion | SQL Server 2019 |
 
-Der aktuelle Inventarvertrag umfasst 206 Objekte: 124 öffentliche Procedures, 8 Views, 29 Table-Valued Functions, 25 interne Procedures und 20 Tabellen.
+Der aktuelle Inventarvertrag umfasst 207 Objekte: 125 öffentliche Procedures, 8 Views, 29 Table-Valued Functions, 25 interne Procedures und 20 Tabellen.
 
-Der Frameworkkern umfasst 182 Objekte mit 121 öffentlichen Procedures und 9 Tabellen. Das optionale Snapshotpaket umfasst 24 Objekte mit 3 öffentlichen Procedures und 11 Tabellen.
+Der Frameworkkern umfasst 183 Objekte mit 122 öffentlichen Procedures und 9 Tabellen. Das optionale Snapshotpaket umfasst 24 Objekte mit 3 öffentlichen Procedures und 11 Tabellen.
 
 Die [Paketgrenzen](../Reference/Scope_and_Limitations.md) unterscheiden
 Diagnose, Installation, lokale TABLE-Ausgabe und persistente Sammlung.

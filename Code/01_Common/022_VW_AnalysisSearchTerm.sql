@@ -117,6 +117,8 @@ AS
         , (N'USP_ObjectAnalysis',N'object index deep analysis','en',95,N'Bündelt mehrere Objekt- und Indexpfade.')
         , (N'USP_SchemaDesignAnalysis',N'Schema Design Foreign Key Constraint','de',100,N'Erzeugt Reviewfindings zu Schema- und Constraintdesign.')
         , (N'USP_SchemaDesignAnalysis',N'schema design foreign key constraint identity','en',95,N'Vertiefter Katalogreview.')
+        , (N'USP_DatabaseDdlTriggerInventory',N'Datenbank DDL Trigger aktiv deaktiviert Katalog','de',100,N'Listet sichtbare Datenbank-DDL-Trigger ohne Definitionen oder Ausführungsurteil.')
+        , (N'USP_DatabaseDdlTriggerInventory',N'database DDL trigger inventory enabled disabled','en',95,N'Lists caller-visible database DDL trigger metadata only.')
 
         , (N'USP_QueryStats',N'langsame Query Plan Cache','de',100,N'Rangiert gecachte Statements nach Ressourcenverbrauch.')
         , (N'USP_QueryStats',N'top CPU query logical reads','en',95,N'Plan-Cache-Einstieg nach Ressourcenmetrik.')

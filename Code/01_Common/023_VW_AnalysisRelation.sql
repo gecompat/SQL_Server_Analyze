@@ -92,6 +92,7 @@ AS
         , (N'USP_ObjectAnalysis','REFINE_WITH',N'USP_VectorIndexAnalysis',3,N'Bei SQL-Server-2025-Vector-Indizes den aktuellen Katalog- und Wartungszustand gezielt ergänzen.')
         , (N'USP_ObjectAnalysis','CONFIRM_WITH',N'USP_QueryStats',1,N'Objektbefunde gegen Query- und Plannutzung validieren.')
         , (N'USP_SchemaDesignAnalysis','CONFIRM_WITH',N'USP_ObjectAnalysis',1,N'Schemadesignhinweise mit Objektgröße, Nutzung, Indizes und Statistiken abgleichen.')
+        , (N'USP_DatabaseDdlTriggerInventory','CONFIRM_WITH',N'USP_SchemaDesignAnalysis',1,N'Die sichtbare Triggerkonfiguration im separaten Schema- und Constraintkontext einordnen; dies belegt keine Triggerausführung oder Rollback-Wirkung.')
 
         , (N'USP_QueryStats','REFINE_WITH',N'USP_PlanDetails',1,N'Auffällige Query- oder Planhandles auf Details und begrenztes Plan-XML eingrenzen.')
         , (N'USP_QueryStats','CONFIRM_WITH',N'USP_QueryStoreRuntimeStats',1,N'Cache-Evidenz bei aktivem Query Store gegen ein explizites Zeitfenster prüfen.')

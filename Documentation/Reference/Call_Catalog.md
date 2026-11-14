@@ -1,6 +1,6 @@
 # Aufrufkatalog aller dokumentierten Procedures
 
-Stand: 2026-11-13 — 124 eindeutige Procedure-Einträge; alle 124 öffentlichen Inventar-Procedures sind enthalten.
+Stand: 2026-11-14 — 125 eindeutige Procedure-Einträge; alle 125 öffentlichen Inventar-Procedures sind enthalten.
 
 Die Hilfeaufrufe führen keine fachliche Analyse aus. Weitere typische Querschnittsbeispiele stehen am Dokumentanfang.
 
@@ -371,6 +371,17 @@ EXEC [monitor].[USP_PerformanceCounters] @Hilfe = 1;
 
 ```sql
 EXEC [monitor].[USP_PlanCacheAnalysis] @Hilfe = 1;
+```
+
+## `[monitor].[USP_DatabaseDdlTriggerInventory]`
+
+Der Hilfeaufruf liest keinen Triggerkatalog. Der Fachaufruf liest nur caller-sichtbare Datenbank-DDL-Trigger-Metadaten der ausgewählten Online-Datenbank. Die [Procedure-Seite](../Analysis_Guides/Procedures/USP_DatabaseDdlTriggerInventory.md) erklärt die zwölf Fachfelder, vier Ausgabegruppen und Sichtbarkeitsgrenzen.
+
+```sql
+EXEC [monitor].[USP_DatabaseDdlTriggerInventory] @Hilfe = 1;
+EXEC [monitor].[USP_DatabaseDdlTriggerInventory]
+    @DatabaseNames=N'[ExampleDatabase]',
+    @ResultSetArt='CONSOLE';
 ```
 
 ## `[monitor].[USP_PlanGuideInventory]`

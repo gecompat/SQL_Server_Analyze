@@ -123,3 +123,4 @@ USP_DatabaseMirroringInventory,BASELINE,,1
 USP_AgentProxyInventory,BASELINE,,1
 USP_SensitivityClassificationSummary,BASELINE,,1
 USP_PlanGuideInventory,BASELINE,,1
+USP_DatabaseDdlTriggerInventory,BASELINE,,1

@@ -1,7 +1,7 @@
 # Eigenständige Analysebeschreibungen je Procedure
 
-**Stand:** 13. November 2026<br>
-**Strukturelle Abdeckung:** 124 Procedures<br>
+**Stand:** 14. November 2026<br>
+**Strukturelle Abdeckung:** 125 Procedures<br>
 **Tief geprüfte Seiten:** 92 Procedures
 
 Jede Seite verbindet den sicheren Einstieg mit der fachlichen Leserichtung. Sie beantwortet insbesondere:
@@ -63,6 +63,7 @@ Jede Seite weist jetzt Entscheidungseinsatz, Nichtziele, Resultset-Leserichtung,
 - [USP_IndexPhysicalStats](USP_IndexPhysicalStats.md)
 - [USP_VectorIndexAnalysis](USP_VectorIndexAnalysis.md)
 - [USP_SchemaDesignAnalysis](USP_SchemaDesignAnalysis.md)
+- [USP_DatabaseDdlTriggerInventory](USP_DatabaseDdlTriggerInventory.md)
 - [USP_ObjectAnalysis](USP_ObjectAnalysis.md)
 
 ## Plan Cache und Showplan
