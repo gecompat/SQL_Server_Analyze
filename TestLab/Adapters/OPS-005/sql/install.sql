@@ -77855,7 +77855,7 @@ BEGIN
             @TableStatus varchar(40),@TableMessage nvarchar(2048),@TableError int,
             @TechnicalError int=NULL,@ResultName sysname,@TargetTable sysname,
             @SourceTable sysname,@GroupOrdinal int=1;
-    DECLARE @ConsoleRequested bit=CASE WHEN @Mode='CONSOLE' THEN 1 ELSE 0 END;
+    DECLARE @ConsoleResultRequested bit=CASE WHEN @Mode='CONSOLE' THEN 1 ELSE 0 END;
 
     IF @Hilfe=1
     BEGIN
@@ -78140,7 +78140,7 @@ BEGIN
                 SET @GroupOrdinal+=1;
             END;
         END
-        ELSE IF @ConsoleRequested=1
+        ELSE IF @ConsoleResultRequested=1
         BEGIN
             INSERT [#LoadedModuleInventory_Console]
             SELECT N'Geladenes Modul',[ModuleName],
