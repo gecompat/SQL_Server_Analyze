@@ -70,6 +70,7 @@ KNOWN_RESEARCH_TO_PARTIAL_KEYS = {
     "PLAN_GUIDES",
     "DDL_LOGON_TRIGGERS",
     "LOADED_MODULES_FILTER_DRIVERS",
+    "LINUX_CONTAINER_LIMITS",
 }
 RESEARCH_GAP_COHORT_FLOOR = 25  # Preserve the explicit research-gap cohort across named promotions.
 
@@ -345,6 +346,28 @@ def self_test() -> None:
             row['CoverageStatus'] = 'PARTIAL_PRODUCT_FUNCTION'
     if validate_rows(list(EXPECTED_FIELDS), loaded_module_promotion):
         raise AssertionError('named Loaded Module promotion was rejected')
+    linux_promotion_base = [dict(row) for row in loaded_module_promotion]
+    for row in linux_promotion_base:
+        if row['CoverageKey'] == 'LINUX_CONTAINER_LIMITS':
+            row['CoverageStatus'] = 'RESEARCHED_NOT_IMPLEMENTED'
+        elif row['CoverageKey'] == 'SAMPLE_AREA_000':
+            row['CoverageStatus'] = 'IMPLEMENTED_BASELINE'
+    if validate_rows(list(EXPECTED_FIELDS), linux_promotion_base):
+        raise AssertionError('isolated Linux research fixture was rejected')
+    linux_promotion = [dict(row) for row in linux_promotion_base]
+    for row in linux_promotion:
+        if row['CoverageKey'] == 'LINUX_CONTAINER_LIMITS':
+            row['CoverageStatus'] = 'PARTIAL_PRODUCT_FUNCTION'
+    if validate_rows(list(EXPECTED_FIELDS), linux_promotion):
+        raise AssertionError('named Linux reader promotion was rejected')
+    unrelated_after_linux = [dict(row) for row in linux_promotion]
+    for row in unrelated_after_linux:
+        if row['CoverageKey'] == 'SAMPLE_AREA_001':
+            row['CoverageStatus'] = 'PARTIAL_PRODUCT_FUNCTION'
+    if not any('too few explicit researched gaps' in error
+               for error in validate_rows(list(EXPECTED_FIELDS), unrelated_after_linux)):
+        raise AssertionError('unrelated promotion after Linux reader reduced the research cohort')
+
     unrelated_after_loaded = [dict(row) for row in loaded_module_promotion]
     for row in unrelated_after_loaded:
         if row['CoverageKey'] == 'SAMPLE_AREA_000':
