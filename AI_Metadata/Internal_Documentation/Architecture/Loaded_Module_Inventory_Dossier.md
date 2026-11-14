@@ -1,0 +1,37 @@
+# Loaded Module Inventory – Dossier
+
+**Artefaktkennung:** `urn:uuid:01a1da89-adc0-73b2-b88b-14b93f311a79`  
+**Registrierung:** DEFERRED; keine lesbare Referenz vergeben  
+**Status:** Source-, Metadaten- und Protokollverträge unabhängig statisch geprüft; tatsächliche Generatorartefakte unabhängig geprüft; native Head- und Main-Abnahme ausstehend  
+**Quelle:** [monitor.USP_LoadedModuleInventory](../../../Code/08_ServerHealth/330_USP_LoadedModuleInventory.sql)  
+**Öffentlicher Leseweg:** [USP_LoadedModuleInventory](../../../Documentation/Analysis_Guides/Procedures/USP_LoadedModuleInventory.md)
+
+## Diagnosefrage und Produktgrenze
+
+Die Procedure beantwortet, welche nativen Modulnamen und ergänzenden Basenamen `sys.dm_os_loaded_modules` im aktuellen SQL-Server-Prozess und Caller-Kontext zum Lesezeitpunkt liefert. Die Coverage-Familie `LOADED_MODULES_FILTER_DRIVERS` war im qualifizierten Main vor diesem Änderungsschritt `RESEARCHED_NOT_IMPLEMENTED`. V1 deckt ausschließlich geladene SQL-Prozessmodule ab. Aus der DMV folgt kein Bestand von Host- oder Filtertreibern, kein Signatur-, Malware-, Vertrauens- oder Gesundheitsurteil.
+
+Ein eigener kleiner Endpunkt ist gegenüber einer Erweiterung von `USP_OSInformation` sinnvoll: Deren sechs feste Outputs und Standardaufruf würden eine zusätzliche DMV-Quelle und potenziell umfangreiche Modulzeilen in den Defaultpfad aufnehmen. Das würde ABI und Eigenlast bestehender Caller verändern. `USP_ClrAnalysis` betrachtet CLR-Assemblies und beantwortet eine andere Frage.
+
+## Quellen- und Datenschutzvertrag
+
+Die einzige Fachquelle ist `sys.dm_os_loaded_modules WITH (NOLOCK)`. `ModuleName` übernimmt `name nvarchar(255)` unverändert und kann einen vollständigen Pfad enthalten. `ModuleBasename` wird zusätzlich im Quell-Select als letzter Bestandteil nach `\` oder `/` abgeleitet; leere oder doppelpunkttragende Kandidaten werden NULL. Die fachlich nicht benötigten Spalten `base_address`, `company` und `description` werden nicht gelesen. Native SQL-Fehlernummern und auf 2048 Zeichen begrenzte native beziehungsweise TABLE-Helfer-Fehlertexte bleiben im Laufzeitvertrag erhalten. Die Procedure erteilt keine Rechte und ruft keine Host-, Dateisystem-, DLL-, Assembly- oder Signaturfunktion auf.
+
+Die zehn öffentlichen Felder sind `ModuleName nvarchar(255) NULL`, `ModuleBasename nvarchar(255) NULL`, `FileVersion varchar(23) NULL`, `ProductVersion varchar(23) NULL`, `Debug bit NULL`, `Patched bit NULL`, `Prerelease bit NULL`, `PrivateBuild bit NULL`, `SpecialBuild bit NULL` und `Language int NULL`. Doppelte projizierte Zeilen bleiben erhalten. Es gibt keinen global eindeutigen Modulschlüssel.
+
+Der Datenschutzvertrag für Repository-Artefakte begrenzt gespeicherte Test- und Betriebsnachweise, nicht die nativen Runtime-Spalten. Die erwarteten und behandelten Fixturepfade geben nur konstante oder numerische Diagnosen aus. Eine allgemeine Freiheit von Engine- oder Compile-Ausgaben ist damit nicht zugesichert. Vor der Ablage von CI-Logs oder eines Exports in Repository-Artefakten ist der Artefakt-Datenschutzvertrag anzuwenden.
+
+SQL Server 2019 verlangt laut nativer DMV-Dokumentation `VIEW SERVER STATE`; ab SQL Server 2022 gilt `VIEW SERVER PERFORMANCE STATE`. Der Produktpfad führt keine vorgelagerte Rechteprüfung aus. Er unterscheidet eine erfolgreiche leere Quelle mit `EMPTY_UNPROVEN` und Zählern 0 von einem tatsächlich gefangenen Rechtefehler mit `DENIED_PERMISSION` und NULL-Zählern. Ein kontrolliert erzwungener nativer DENIED-Pfad ist im vorgesehenen Fixture nicht garantiert und wird nicht als qualifiziert behauptet.
+
+## API und Kosten
+
+Die Signatur enthält zwölf Parameter: `@NurBuildFlags`, `@MaxZeilen`, `@ResultSetArt`, `@ResultTablesJson`, `@JsonErzeugen`, `@Json`, `@PrintMeldungen`, `@Hilfe` sowie die vier Status-, Partial-, ErrorNumber- und ErrorMessage-Outputs. Ihre exakten Typen, Defaults und Eingabeformen stehen in der eingebauten Hilfe und im öffentlichen Guide. Der normale Pfad verlangt `@@TRANCOUNT=0` und `IMPLICIT_TRANSACTIONS OFF`; eine Verletzung gibt `INVALID_PARAMETER`/51011 vor dem DMV-Read zurück und ändert den Caller-Zustand nicht. Die Hilfe ist auch in einer Caller-Transaktion erlaubt.
+
+`@NurBuildFlags=1` wählt erst nach einer vollständigen Quellenaufnahme Zeilen mit mindestens einem nativen Build-Flag gleich 1. `@MaxZeilen` beschränkt nur die anschließend sortierte Ausgabe; NULL und 0 sind unbegrenzt, der Default ist 1000. Die Sortierung umfasst alle zehn öffentlichen Felder. Gleiche Zeilen besitzen keine behauptete individuelle Reihenfolge. `ObservedRows`, `MatchedRows` und `ReturnedRows` trennen Quellenarbeit, Auswahl und Ausgabe. Ein kleines Ausgabelimit ist weder Quellenbudget noch Deadline. Der Lauf stellt `LOCK_TIMEOUT` und `XACT_ABORT` wieder her.
+
+Die Ausgabefamilie umfasst `moduleStatus`, `loadedModules`, `sourceStatus` und `warnings`. `RAW` gibt vier Resultsets, `TABLE` schreibt ausgewählte benannte Caller-Temp-Ziele, `CONSOLE` gibt eine formatierte Fachmenge und `NONE` keine Fachresultsets. Optionales JSON enthält `meta` und alle vier Arrays. Normale Ergebnisse sind immer partiell, weil Quelle und Zeitbezug auf den SQL-Prozess beschränkt sind.
+
+## Geplanter Nachweis und offene Grenzen
+
+Der native Vertragstest ist primär für den bestehenden SQL-Server-2025-Lauf mit Compatibility Level 170 vorgesehen; derselbe Vertrag wird für den gezielten SQL-Server-2019-/CL150-Rechtegrenzlauf eingebunden. Er soll die vorhandenen DMV-Zeilen direkt vor und nach dem Procedure-Aufruf in derselben zehnfeldrigen Projektion mit unverändertem nativem Namen vergleichen, einschließlich aller zehn Felder und Mehrfachvorkommen. Weitere Orakel prüfen TABLE/JSON-Typen, Schema und Bag-Parität, Build-Flag-Auswahl, Ausgabelimit nach voller Quellenarbeit, ungültige Eingaben, Caller-Zustand und die direkte DMV-Sicht eines eigenen eingeschränkten Test-Callers. Der Test lädt kein Modul und erzeugt keine Host- oder CLR-Ressource. Ein leerer positiver DMV-Bestand ist keine erzwungene Fixturebedingung. Wegen der unterschiedlichen DMV-Rechte ist zusätzlich ein gezieltes natives SQL-Server-2019-/CL150-FULL_RELEASE-Gate geplant; sein Ergebnis ist offen. SQL Server 2022 wird nicht separat nativ qualifiziert.
+
+Quelle, Fixture, Installer-Include, Navigator, Inventare und öffentliche Leserichtung sind gebunden. Der erfolgreiche kanonische Generatorlauf [43617846175](https://github.com/gecompat/SQL_Server_Analyze/actions/runs/43617846175), Job 132516720074, erzeugte die OPS-005-Installationskopie `74a67a32d1034867a6fbb531480ab896834335ef` und das Envelope `a59abad3dbda98e1682ec8d99d9b12c27aa5cb70`. Root prüfte beide tatsächlichen Artefakte vollständig und gegen die unabhängige Sollableitung; die unabhängige Artefaktprüfung bestand ebenfalls. Bis zum nativen Head-Gate und zur Main-Abnahme bleibt die Reife `PLANNED`. Diese Planung behauptet weder eine erfolgreiche Laufzeit noch einen bereits verifizierten DENIED-Pfad.

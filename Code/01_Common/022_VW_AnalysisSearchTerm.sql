@@ -329,5 +329,7 @@ AS
         , (N'USP_DatabaseMirroringInventory',N'database mirroring state safety witness redo queue','en',95,N'Lists caller-visible database mirroring catalog values with explicit scope and native NULL limits.')
         , (N'USP_SensitivityClassificationSummary',N'Sensitivitätsklassifikation klassifizierte Spalten sichtbare Tabellen','de',100,N'Zählt sichtbare Tabellen, Spalten und klassifizierte Teilmengen ohne Klassifikationstexte.')
         , (N'USP_SensitivityClassificationSummary',N'sensitivity classification classified columns visible tables','en',95,N'Counts caller-visible table columns with classification metadata without reading values or labels.')
+        , (N'USP_LoadedModuleInventory',N'geladene SQL-Prozessmodule DLL nativer Pfad Basename Buildflags','de',100,N'Inventarisiert native DMV-Metadaten des SQL-Prozesses ohne Host- oder Signatururteil.')
+        , (N'USP_LoadedModuleInventory',N'loaded SQL process modules native name path basename build flags','en',95,N'Lists native SQL-process DMV metadata without host-driver or trust claims.')
     ) AS [v]([ProcedureName],[SearchTerm],[LanguageCode],[SearchWeight],[MatchReason]);
 GO

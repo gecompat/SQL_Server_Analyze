@@ -3034,3 +3034,24 @@ Quelle: `Code/08_ServerHealth/320_USP_SensitivityClassificationSummary.sql`
 ```
 
 Die vier Resultsets und die sichtbaren Zähl- und Rechteverträge stehen auf der [Procedure-Seite](../Analysis_Guides/Procedures/USP_SensitivityClassificationSummary.md).
+
+## `[monitor].[USP_LoadedModuleInventory]`
+
+Quelle: `Code/08_ServerHealth/330_USP_LoadedModuleInventory.sql`
+
+```sql
+      @NurBuildFlags bit = 0
+    , @MaxZeilen int = 1000
+    , @ResultSetArt varchar(16) = 'CONSOLE'
+    , @ResultTablesJson nvarchar(max) = NULL
+    , @JsonErzeugen bit = 0
+    , @Json nvarchar(max) = NULL OUTPUT
+    , @PrintMeldungen bit = 1
+    , @Hilfe bit = 0
+    , @StatusCodeOut varchar(40) = NULL OUTPUT
+    , @IsPartialOut bit = NULL OUTPUT
+    , @ErrorNumberOut int = NULL OUTPUT
+    , @ErrorMessageOut nvarchar(2048) = NULL OUTPUT
+```
+
+Die [Procedure-Seite](../Analysis_Guides/Procedures/USP_LoadedModuleInventory.md) beschreibt die vier Resultsets, die benötigten Rechte, den unveränderten nativen Modulnamen, den ergänzenden Basenamen und die Caller-Zustandsgrenzen.
