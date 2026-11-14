@@ -151,6 +151,7 @@ RAISERROR(N'RELEASE_GATE 29/34: Object und Index',10,1) WITH NOWAIT;
 :r ObjectIndex/120_SQL25_Vector_Index_Runtime_Contract.sql
 :r ObjectIndex/121_SQL25_JSON_Index_Inventory_Runtime_Contract.sql
 :r ObjectIndex/123_SQL25_Readable_Secondary_Statistics_Runtime_Contract.sql
+:r ObjectIndex/124_DatabaseDdlTriggerInventory_Runtime_Contract.sql
 
 RAISERROR(N'RELEASE_GATE 30/34: Plan Cache',10,1) WITH NOWAIT;
 :r PlanCache/110_Test_und_Abnahme_Phase3.sql

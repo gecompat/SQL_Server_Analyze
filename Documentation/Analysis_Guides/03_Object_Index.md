@@ -1,6 +1,6 @@
 # Object und Index: Inventar, Nutzung, Struktur und Statistiken
 
-**Procedures:** 11  
+**Procedures:** 13  
 **Evidenz:** Katalog, kumulative DMVs, DMFs und Histogramme  
 **Kosten:** LOW bis HIGH_OPT_IN
 
@@ -1306,6 +1306,27 @@ DROP TABLE [#ObjectAnalysis_HelpExample];
 ```sql
 EXEC [monitor].[USP_ObjectAnalysis] @Hilfe = 1;
 ```
+
+## 13. [monitor].[USP_DatabaseDdlTriggerInventory]
+
+### Zweck
+
+Die Procedure inventarisiert ausschließlich caller-sichtbare Datenbank-DDL-Trigger aus `sys.triggers` mit `parent_class=0` je ausgewählter ONLINE-Datenbank. Die zwölf Fachfelder enthalten ID, Name, Elternklasse, nativen Typ, Deaktivierungsstatus und Katalogzeitpunkte. `MetadataVisibility=VISIBLE_ONLY` bezeichnet die Sichtbarkeitsgrenze.
+
+### Resultsets und Grenzen
+
+`moduleStatus`, `ddlTriggers`, `sourceStatus` und `warnings` trennen Fachzeilen, Quellenstatus und Einschränkungen. Eine leere erfolgreiche Quelle bedeutet nur null caller-sichtbare Zeilen; `IsDisabled=0` beweist keine Ausführung. Definitionen, Ereignisse, Payloads, Server-/LOGON-Trigger, Eigentümer und Rollback-Wirkung gehören nicht zum V1-Vertrag.
+
+### Aufruf
+
+```sql
+EXEC [monitor].[USP_DatabaseDdlTriggerInventory]
+    @DatabaseNames=N'[ExampleDatabase]',
+    @MaxZeilen=100,
+    @ResultSetArt='RAW';
+```
+
+`@MaxZeilen` begrenzt die Ausgabe nach vollständiger Auswahl und Kataloglektüre, nicht den Quellenaufwand. Die [eigenständige Procedure-Seite](Procedures/USP_DatabaseDdlTriggerInventory.md) enthält alle fünfzehn Parameter, Feldtypen und Gegenproben.
 
 ## Anfänger-Entscheidungsbaum
 

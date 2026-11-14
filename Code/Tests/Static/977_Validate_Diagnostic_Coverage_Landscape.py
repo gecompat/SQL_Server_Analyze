@@ -67,6 +67,7 @@ KNOWN_RESEARCH_TO_PARTIAL_KEYS = {
     "AGENT_PROXIES_CREDENTIALS",
     "SENSITIVITY_CLASSIFICATION",
     "PLAN_GUIDES",
+    "DDL_LOGON_TRIGGERS",
 }
 RESEARCH_GAP_COHORT_FLOOR = 25  # Preserve the explicit research-gap cohort across named promotions.
 

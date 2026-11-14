@@ -88,6 +88,7 @@ Der Installer beendet die Verarbeitung beim ersten SQL-Fehler.
 :r ../03_ObjectIndex/075_USP_VectorIndexAnalysis.sql
 :r ../03_ObjectIndex/090_USP_SchemaDesignAnalysis.sql
 :r ../03_ObjectIndex/080_USP_ObjectAnalysis.sql
+:r ../03_ObjectIndex/100_USP_DatabaseDdlTriggerInventory.sql
 :r ../04_PlanCache/010_USP_QueryStats.sql
 :r ../04_PlanCache/020_USP_QueryHashAnalysis.sql
 :r ../04_PlanCache/030_USP_PlanCacheHealth.sql

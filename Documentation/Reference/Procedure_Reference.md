@@ -1,6 +1,6 @@
 # Referenzhandbuch der öffentlichen Procedures
 
-Stand: 2026-11-13
+Stand: 2026-11-14
 
 `@ResultSetArt` verwendet frameworkweit `CONSOLE` als Default. Technische Verbraucher setzen `RAW` oder die benannte Mehrfachzuordnung `TABLE` mit `@ResultTablesJson`; JSON-only verwendet `NONE` mit `@JsonErzeugen = 1`. Die Signaturen werden aus dem kanonischen Codebestand abgeleitet.
 
@@ -1302,6 +1302,30 @@ Quelle: `Code/04_PlanCache/060_USP_PlanCacheAnalysis.sql`
     , @PrintMeldungen                   bit            = 1
     , @Hilfe                            bit            = 0
 ```
+
+## `[monitor].[USP_DatabaseDdlTriggerInventory]`
+
+Quelle: `Code/03_ObjectIndex/100_USP_DatabaseDdlTriggerInventory.sql`
+
+```sql
+@DatabaseNames nvarchar(max) = NULL
+    , @SystemdatenbankenEinbeziehen bit = 0
+    , @DatabaseNamePattern nvarchar(4000) = NULL
+    , @MaxZeilen int = 1000
+    , @LockTimeoutMs int = 0
+    , @ResultSetArt varchar(16) = 'CONSOLE'
+    , @ResultTablesJson nvarchar(max) = NULL
+    , @JsonErzeugen bit = 0
+    , @Json nvarchar(max) = NULL OUTPUT
+    , @PrintMeldungen bit = 1
+    , @Hilfe bit = 0
+    , @StatusCodeOut varchar(40) = NULL OUTPUT
+    , @IsPartialOut bit = NULL OUTPUT
+    , @ErrorNumberOut int = NULL OUTPUT
+    , @ErrorMessageOut nvarchar(2048) = NULL OUTPUT
+```
+
+Die [Procedure-Seite](../Analysis_Guides/Procedures/USP_DatabaseDdlTriggerInventory.md) erläutert zwölf caller-sichtbare Katalogfelder und vier Ausgabegruppen. `MetadataVisibility=VISIBLE_ONLY` begrenzt die Aussage; `IsDisabled` ist nur der Katalogschalter, keine Ausführungs- oder Wirksamkeitsevidenz.
 
 ## `[monitor].[USP_PlanGuideInventory]`
 

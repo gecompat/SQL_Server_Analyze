@@ -1,7 +1,7 @@
 # Objektindex der eigenständigen Analysebeschreibungen
 
-**Stand:** 13. November 2026
-**Abdeckung:** alle 124 inventarisierten `USP_*`-Procedures des Frameworks einschließlich der optionalen Pakete
+**Stand:** 14. November 2026
+**Abdeckung:** alle 125 inventarisierten `USP_*`-Procedures des Frameworks einschließlich der optionalen Pakete
 
 Jeder Link führt zu einer in sich geschlossenen Procedure-Seite. Dort stehen sicherer Einstieg, Zeilengranularität, Leserichtung, technische Problembegründung, unkritischer Gegenkontext, synthetisches Beispiel, Folgeanalyse und der Link zur vollständigen technischen Spaltenreferenz.
 
@@ -60,6 +60,7 @@ Für einen Einstieg nach beobachtetem Problem verwenden Sie [Hier beginnen](Star
 | `[monitor].[USP_IndexPhysicalStats]` | [Fragmentierung, Seitendichte und Page Count](Procedures/USP_IndexPhysicalStats.md) |
 | `[monitor].[USP_VectorIndexAnalysis]` | [Vector-Index-Katalog und Hintergrundwartung](Procedures/USP_VectorIndexAnalysis.md) |
 | `[monitor].[USP_SchemaDesignAnalysis]` | [Constraints, FKs, Indizes und Identity-Risiken](Procedures/USP_SchemaDesignAnalysis.md) |
+| `[monitor].[USP_DatabaseDdlTriggerInventory]` | [Caller-sichtbare Datenbank-DDL-Trigger-Metadaten](Procedures/USP_DatabaseDdlTriggerInventory.md) |
 | `[monitor].[USP_ObjectAnalysis]` | [Orchestrierte Objekt- und Indextiefenanalyse](Procedures/USP_ObjectAnalysis.md) |
 
 ## Plan Cache und Showplan
@@ -180,17 +181,19 @@ Für einen Einstieg nach beobachtetem Problem verwenden Sie [Hier beginnen](Star
 
 | Bereich | Anzahl |
 |---|---:|
+| SSIS | 6 |
 | Common | 5 |
 | Current State | 12 |
-| Object und Index | 12 |
-| Plan Cache und Showplan | 8 |
+| Object und Index | 13 |
+| Plan Cache und Showplan | 9 |
 | Query Store | 11 |
 | Extended Events | 6 |
-| Infrastruktur | 15 |
+| Infrastruktur | 16 |
 | Server Health | 22 |
 | Versionsadaptive Spezialanalysen | 11 |
 | Snapshot und Baseline | 3 |
-| **Gesamt** | **104** |
+| Weitere einzeln verlinkte Analysen | 11 |
+| **Gesamt** | **125** |
 
 ## Weitere Einstiege
 

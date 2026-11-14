@@ -1,6 +1,6 @@
 # Analysehandbuch für SQL_Server_Analyze
 
-**Stand:** 13. November 2026
+**Stand:** 14. November 2026
 **Geltungsbereich:** öffentliche Procedures im [Objektindex](Object_Index.md)
 **Zielgruppe:** Analyseanfänger, Datenbankentwickler und SQL-Server-Administratoren
 
@@ -52,7 +52,7 @@ Der [Reviewkatalog](../../Metadata/Quality/Analysis_Documentation_Review.csv) f�
 |---|---|---:|
 | Common und Navigation | [01_Common.md](01_Common.md) | 5 |
 | Current State | [02_Current_State.md](02_Current_State.md) | 12 |
-| Object und Index | [03_Object_Index.md](03_Object_Index.md) | 12 |
+| Object und Index | [03_Object_Index.md](03_Object_Index.md) | 13 |
 | Plan Cache | [04_Plan_Cache.md](04_Plan_Cache.md) | 9 |
 | Query Store | [05_Query_Store.md](05_Query_Store.md) | 11 |
 | Extended Events | [06_Extended_Events.md](06_Extended_Events.md) | 6 |
@@ -93,4 +93,4 @@ Kein einzelnes Resultset rechtfertigt automatisch `KILL`, DDL, Rebuild, Plan For
 
 ## Vollständigkeit
 
-Der [Objektindex](Object_Index.md) enthält alle 124 öffentlichen Procedures. Die [Objektreferenz](../Reference/Object_Reference.md) dokumentiert zusätzlich alle 82 unterstützenden Views, TVFs, internen Procedures und Tabellen. Der [Navigator-Vertrag](../Reference/Analysis_Navigator.md) erklärt die fachliche Zuordnung, Suchbegriffe, Rollen und Beziehungen.
+Der [Objektindex](Object_Index.md) enthält alle 125 öffentlichen Procedures. Die [Objektreferenz](../Reference/Object_Reference.md) dokumentiert zusätzlich alle 82 unterstützenden Views, TVFs, internen Procedures und Tabellen. Der [Navigator-Vertrag](../Reference/Analysis_Navigator.md) erklärt die fachliche Zuordnung, Suchbegriffe, Rollen und Beziehungen.

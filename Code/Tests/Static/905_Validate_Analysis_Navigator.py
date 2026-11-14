@@ -655,8 +655,8 @@ def validate(repository_root: Path) -> list[str]:
     catalog_names = [str(row["ProcedureName"]) for row in catalog_rows]
     catalog_procedures = set(catalog_names)
 
-    if len(public_rows) != 124:
-        errors.append(f"Public procedure inventory has {len(public_rows)} rows; expected 124.")
+    if len(public_rows) != 125:
+        errors.append(f"Public procedure inventory has {len(public_rows)} rows; expected 125.")
     if len(catalog_rows) != len(public_rows):
         errors.append(
             f"Analysis catalog has {len(catalog_rows)} rows; public inventory has {len(public_rows)}."
