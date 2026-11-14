@@ -3,8 +3,8 @@ GO
 SET NOCOUNT ON;
 IF @@TRANCOUNT<>0 OR COALESCE(IS_SRVROLEMEMBER(N'sysadmin'),0)<>1
     THROW 57600,N'Plan guide contract requires the isolated remote CI sysadmin target without an ambient transaction.',1;
-IF TRY_CONVERT(int,SERVERPROPERTY(N'ProductMajorVersion'))<>17
-    THROW 57601,N'Plan guide contract requires the selected SQL Server 2025 native CI target.',1;
+IF COALESCE(TRY_CONVERT(int,SERVERPROPERTY(N'ProductMajorVersion')),-1) NOT IN (15,16,17)
+    THROW 57601,N'Plan guide contract requires a selected SQL Server 2019, 2022, or 2025 native CI target.',1;
 GO
 DECLARE @Suffix nvarchar(48)=CONVERT(nvarchar(12),@@SPID)+N'_'+LEFT(REPLACE(CONVERT(nvarchar(36),NEWID()),N'-',N''),16),
         @PositiveDb sysname,@EmptyDb sysname,@Reader sysname,@FixtureCredential nvarchar(128),
