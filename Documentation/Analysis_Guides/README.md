@@ -57,7 +57,7 @@ Der [Reviewkatalog](../../Metadata/Quality/Analysis_Documentation_Review.csv) f�
 | Query Store | [05_Query_Store.md](05_Query_Store.md) | 11 |
 | Extended Events | [06_Extended_Events.md](06_Extended_Events.md) | 6 |
 | Infrastruktur | [07_Infrastructure.md](07_Infrastructure.md) | 15 |
-| Server Health | [08_Server_Health.md](08_Server_Health.md) | 22 |
+| Server Health | [08_Server_Health.md](08_Server_Health.md) | 23 |
 | Versionsadaptive Spezialanalysen | [09_Version_Adaptive.md](09_Version_Adaptive.md) | 11 |
 | **Integriertes Framework gesamt** | | **102** |
 
@@ -93,4 +93,4 @@ Kein einzelnes Resultset rechtfertigt automatisch `KILL`, DDL, Rebuild, Plan For
 
 ## Vollständigkeit
 
-Der [Objektindex](Object_Index.md) enthält alle 125 öffentlichen Procedures. Die [Objektreferenz](../Reference/Object_Reference.md) dokumentiert zusätzlich alle 82 unterstützenden Views, TVFs, internen Procedures und Tabellen. Der [Navigator-Vertrag](../Reference/Analysis_Navigator.md) erklärt die fachliche Zuordnung, Suchbegriffe, Rollen und Beziehungen.
+Der [Objektindex](Object_Index.md) enthält alle 126 öffentlichen Procedures. Die [Objektreferenz](../Reference/Object_Reference.md) dokumentiert zusätzlich alle 82 unterstützenden Views, TVFs, internen Procedures und Tabellen. Der [Navigator-Vertrag](../Reference/Analysis_Navigator.md) erklärt die fachliche Zuordnung, Suchbegriffe, Rollen und Beziehungen.

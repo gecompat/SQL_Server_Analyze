@@ -239,6 +239,7 @@ AS
         , (N'USP_DistributedTransactionInventory','CONFIRM_WITH',N'USP_CurrentTransactions',2,N'Aktive Transaktionsmetadaten sind kein Nachweis eines verteilten Commits oder einer Teilnehmergesundheit.')
         , (N'USP_DatabaseMirroringInventory','CONFIRM_WITH',N'USP_InfrastructureAnalysis',1,N'Sichtbare lokale Mirroring-Katalogwerte in den übrigen HA/DR-Kontext einordnen; sie belegen keine Partnergesundheit oder Failoverfähigkeit.')
         , (N'USP_SensitivityClassificationSummary','CONFIRM_WITH',N'USP_DatabasePrincipalAnalysis',1,N'Direkte Datenbankrechte bei fehlendem Klassifikationszugriff getrennt einordnen; die Zählung bewertet keine effektiven Schutzregeln.')
+        , (N'USP_LoadedModuleInventory','CONFIRM_WITH',N'USP_OSInformation',1,N'SQL-Prozess-DMV getrennt von sichtbaren Plattform- und Hostgrenzen lesen; keine Filtertreiber- oder Signaturbewertung.')
     ) AS [v]
     (
           [FromProcedureName], [RelationType], [ToProcedureName]

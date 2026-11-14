@@ -69,6 +69,7 @@ KNOWN_RESEARCH_TO_PARTIAL_KEYS = {
     "SENSITIVITY_CLASSIFICATION",
     "PLAN_GUIDES",
     "DDL_LOGON_TRIGGERS",
+    "LOADED_MODULES_FILTER_DRIVERS",
 }
 RESEARCH_GAP_COHORT_FLOOR = 25  # Preserve the explicit research-gap cohort across named promotions.
 
@@ -86,6 +87,7 @@ REQUIRED_KEYS = {
     "TLS_NETWORK_ENDPOINTS",
     "RLS_DYNAMIC_MASKING",
     "SENSITIVITY_CLASSIFICATION",
+    "LOADED_MODULES_FILTER_DRIVERS",
     "LEDGER_INTEGRITY",
     "POLICY_BASED_MANAGEMENT",
     "CHANGE_EVENT_STREAMING",
@@ -253,7 +255,8 @@ def coverage_fixture() -> list[dict[str, str]]:
         'DISTRIBUTED_TRANSACTIONS',
         'DATABASE_MIRRORING',
         'PLAN_GUIDES',
-        *(f'SAMPLE_AREA_{index:03d}' for index in range(19)),
+        'LOADED_MODULES_FILTER_DRIVERS',
+        *(f'SAMPLE_AREA_{index:03d}' for index in range(18)),
     }
     out_of_scope = {f'SAMPLE_AREA_{index:03d}' for index in range(23, 27)}
     domains = sorted(REQUIRED_DOMAINS)
@@ -335,6 +338,20 @@ def self_test() -> None:
             row['CoverageStatus'] = 'PARTIAL_PRODUCT_FUNCTION'
     if validate_rows(list(EXPECTED_FIELDS), runtime_use_promotion):
         raise AssertionError('named Deprecated Runtime Use promotion was rejected')
+
+    loaded_module_promotion = [dict(row) for row in prior_promotion_state]
+    for row in loaded_module_promotion:
+        if row['CoverageKey'] == 'LOADED_MODULES_FILTER_DRIVERS':
+            row['CoverageStatus'] = 'PARTIAL_PRODUCT_FUNCTION'
+    if validate_rows(list(EXPECTED_FIELDS), loaded_module_promotion):
+        raise AssertionError('named Loaded Module promotion was rejected')
+    unrelated_after_loaded = [dict(row) for row in loaded_module_promotion]
+    for row in unrelated_after_loaded:
+        if row['CoverageKey'] == 'SAMPLE_AREA_000':
+            row['CoverageStatus'] = 'PARTIAL_PRODUCT_FUNCTION'
+    if not any('too few explicit researched gaps' in error
+               for error in validate_rows(list(EXPECTED_FIELDS), unrelated_after_loaded)):
+        raise AssertionError('unrelated promotion after Loaded Module reduced the research cohort')
 
     unrelated_after_runtime = [dict(row) for row in runtime_use_promotion]
     for row in unrelated_after_runtime:
