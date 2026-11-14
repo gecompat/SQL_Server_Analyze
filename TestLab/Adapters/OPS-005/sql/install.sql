@@ -77906,8 +77906,8 @@ BEGIN
         );
         CREATE TABLE [#LoadedModuleInventory_loadedModules]
         (
-            [ModuleName] nvarchar(255) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,
-            [ModuleBasename] nvarchar(255) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,
+            [ModuleName] nvarchar(512) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,
+            [ModuleBasename] nvarchar(512) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,
             [FileVersion] varchar(23) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,
             [ProductVersion] varchar(23) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,
             [Debug] bit NULL,[Patched] bit NULL,[Prerelease] bit NULL,
@@ -77916,8 +77916,8 @@ BEGIN
         );
         CREATE TABLE [#LoadedModuleInventory_Raw]
         (
-            [ModuleName] nvarchar(255) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,
-            [ModuleBasename] nvarchar(255) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,
+            [ModuleName] nvarchar(512) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,
+            [ModuleBasename] nvarchar(512) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,
             [FileVersion] varchar(23) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,
             [ProductVersion] varchar(23) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,
             [Debug] bit NULL,[Patched] bit NULL,[Prerelease] bit NULL,
@@ -77926,8 +77926,8 @@ BEGIN
         );
         CREATE TABLE [#LoadedModuleInventory_Matched]
         (
-            [ModuleName] nvarchar(255) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,
-            [ModuleBasename] nvarchar(255) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,
+            [ModuleName] nvarchar(512) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,
+            [ModuleBasename] nvarchar(512) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,
             [FileVersion] varchar(23) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,
             [ProductVersion] varchar(23) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,
             [Debug] bit NULL,[Patched] bit NULL,[Prerelease] bit NULL,
@@ -77959,7 +77959,7 @@ BEGIN
         CREATE TABLE [#LoadedModuleInventory_Console]
         (
             [Bereich] nvarchar(64) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,
-            [Objekt] nvarchar(255) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,
+            [Objekt] nvarchar(512) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,
             [Detail] nvarchar(1000) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
         );
 

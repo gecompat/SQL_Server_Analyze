@@ -31,8 +31,8 @@ IF SUSER_ID(@Reader) IS NOT NULL OR DATABASE_PRINCIPAL_ID(@Reader) IS NOT NULL
 
 CREATE TABLE [#ExpectedBefore]
 (
-    [ModuleName] nvarchar(255) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,
-    [ModuleBasename] nvarchar(255) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,
+    [ModuleName] nvarchar(512) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,
+    [ModuleBasename] nvarchar(512) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,
     [FileVersion] varchar(23) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,
     [ProductVersion] varchar(23) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,
     [Debug] bit NULL,[Patched] bit NULL,[Prerelease] bit NULL,
@@ -49,8 +49,8 @@ CREATE TABLE [#Lm_Flagged]([Seed] int NULL);
 CREATE TABLE [#Lm_Limited]([Seed] int NULL);
 CREATE TABLE [#Lm_Json]
 (
-    [ModuleName] nvarchar(255) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,
-    [ModuleBasename] nvarchar(255) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,
+    [ModuleName] nvarchar(512) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,
+    [ModuleBasename] nvarchar(512) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,
     [FileVersion] varchar(23) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,
     [ProductVersion] varchar(23) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,
     [Debug] bit NULL,[Patched] bit NULL,[Prerelease] bit NULL,
@@ -63,13 +63,25 @@ BEGIN TRY
     FROM [sys].[all_columns] WITH (NOLOCK)
     WHERE [object_id]=OBJECT_ID(N'sys.dm_os_loaded_modules') AND [name]=N'name';
     SET @NativeNameMetadataRows=@@ROWCOUNT;
-    IF COALESCE(@NativeNameType,-1)<>231 OR COALESCE(@NativeNameMaxLength,-1)<>510
+    IF (CASE WHEN @NativeNameType=231 AND @NativeNameMaxLength>0 AND @NativeNameMaxLength<=1024 AND @NativeNameMaxLength%2=0 THEN 1 ELSE 0 END)=0
     BEGIN
         SET @NativeNameTypeReported=COALESCE(@NativeNameType,-1);
         SET @NativeNameMaxLengthReported=COALESCE(@NativeNameMaxLength,-1);
         RAISERROR(N'Native DMV schema diagnostic: object_present=%d, metadata_rows=%d, system_type_id=%d, max_length=%d',10,1,@NativeDmvObjectPresent,@NativeNameMetadataRows,@NativeNameTypeReported,@NativeNameMaxLengthReported) WITH NOWAIT;
-        THROW 57527,N'Native DMV name type exceeds the reviewed nvarchar(255) contract.',1;
+        THROW 57527,N'Native DMV name type does not fit the reviewed nvarchar(512) contract.',1;
     END;
+    /* Capacity controls use the same type and positive even-byte predicate as the native guard. */
+    IF EXISTS
+    (
+        SELECT 1
+        FROM (VALUES (231,1024,1),(231,510,1),(231,2,1),
+                     (231,1026,0),(231,-1,0),(231,0,0),(231,511,0),
+                     (231,CAST(NULL AS int),0),(167,510,0),(CAST(NULL AS int),510,0))
+             AS [v]([TypeId],[NameBytes],[Expected])
+        WHERE CASE WHEN [v].[TypeId]=231 AND [v].[NameBytes]>0
+                        AND [v].[NameBytes]<=1024 AND [v].[NameBytes]%2=0
+                   THEN 1 ELSE 0 END<>[v].[Expected]
+    ) THROW 57531,N'Native name capacity predicate boundary controls failed.',1;
     /* Independent literal counterexamples for both separator families and ambiguity. */
     IF EXISTS
     (
@@ -261,7 +273,7 @@ BEGIN TRY
     FROM OPENJSON(@Json,'$.loadedModules')
     WITH
     (
-        [ModuleName] nvarchar(255),[ModuleBasename] nvarchar(255),[FileVersion] varchar(23),[ProductVersion] varchar(23),
+        [ModuleName] nvarchar(512),[ModuleBasename] nvarchar(512),[FileVersion] varchar(23),[ProductVersion] varchar(23),
         [Debug] bit,[Patched] bit,[Prerelease] bit,[PrivateBuild] bit,
         [SpecialBuild] bit,[Language] int
     );
@@ -488,7 +500,7 @@ BEGIN CATCH
         SET @CleanupNativeError=ERROR_NUMBER();
         RAISERROR(N'Owned loaded-module fixture cleanup login failed: %d',10,1,@CleanupNativeError) WITH NOWAIT;
     END CATCH;
-    IF @CaughtNativeNumber BETWEEN 57501 AND 57529 THROW;
+    IF (@CaughtNativeNumber BETWEEN 57501 AND 57529 OR @CaughtNativeNumber=57531) THROW;
     RAISERROR(N'Unexpected loaded-module fixture native number: %d',10,1,@CaughtNativeNumber) WITH NOWAIT;
     THROW 57530,N'Unexpected native loaded-module fixture failure.',1;
 END CATCH;
