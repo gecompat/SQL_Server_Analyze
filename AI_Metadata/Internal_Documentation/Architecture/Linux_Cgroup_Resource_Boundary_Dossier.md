@@ -1,21 +1,21 @@
 # Linux-cgroup-Ressourcen: begrenzter externer Beobachtungsvertrag
 
-**Status:** Ressourcen-, Parser- und Reader-Verträge sind dokumentiert; Native-Primitiven und Reader liegen als PR-Kandidat vor. Unabhängiger Reader-Review und Linux-Native-CI stehen aus. Eine Host- oder cgroup-Grenzqualifikation liegt nicht vor.
+**Status:** Externer cgroup-v2-Reader und Native-Primitiven sind mit PR #466 integriert und auf Linux x86_64/Python 3.11 begrenzt geprüft. Konfigurierte cgroup-Grenzwirkung, SQL-Instanzbindung und Hostqualifikation bleiben offen.
 **Artefakt-UID:** `urn:uuid:01a17804-0079-7079-9643-0c639808a4ff`.
 **Registrierung:** `DEFERRED`; keine finale lesbare Arbeitselementkennung vergeben.
-**Stand:** 26. Oktober 2026.
+**Stand:** 14. November 2026; ursprünglicher Vertrag vom 26. Oktober 2026.
 
 ## Zweck und erster Lieferumfang
 
 Rang 11 der [Entwicklungsplanung](../Quality/Development_Waves_2026-10.md)
-trennt SQL-sichtbare Upgradehinweise von Linux-Ressourcengrenzen. Dieser
-Vertrag bereitet einen extern gestarteten, lesenden cgroup-v2-Reader vor.
-Er beobachtet genau einen ausdrücklich ausgewählten Prozess und dessen
-sichtbare cgroup-Hierarchie. Der aktuelle Reader-Kandidat benötigt unabhängigen
-Review und den ausgewiesenen Linux-Native-CI-Lauf.
+trennt SQL-sichtbare Upgradehinweise von Linux-Ressourcengrenzen. Der
+integrierte externe cgroup-v2-Reader beobachtet lesend genau einen
+ausdrücklich ausgewählten Prozess und dessen sichtbare cgroup-Hierarchie.
+Unabhängiger Review und der ausgewiesene Linux-Native-CI-Lauf sind für PR #466
+abgeschlossen.
 
 `monitor.USP_OSInformation` bleibt für SQL-sichtbare Host-, Prozessspeicher-
-und Dienstinformationen zuständig. Ein späterer Collector ergänzt diese
+und Dienstinformationen zuständig. Der gelieferte Reader ergänzt diese
 Beobachtung außerhalb der Engine. Ein SQL-Importer, eine Datenbankinstallation,
 automatische Korrelation mit einer SQL-Instanz sowie eine dauerhafte Erfassung
 gehören nicht zum ersten Reader. Der gemeinsame Wire- und ABI-Vertrag
@@ -51,11 +51,11 @@ virtualisieren Mitgliedschaftspfade und können Vorfahren verbergen.
 beschreibt Mount-ID, Dateisystemwurzel, Mountpunkt und Dateisystemtyp in einem
 Mount-Namespace. Ein sichtbarer Wurzelpfad beweist deshalb keine globale
 Hierarchievollständigkeit. Die folgenden Auswahl-, Ausgabe- und Prüfregeln
-sind der hier vorgeschlagene Projektvertrag.
+bilden den begrenzten Projektvertrag.
 
 ## Aufruf, Zuständigkeit und Vertrauensgrenze
 
-Der geplante lokale Aufruf verlangt eine positive numerische `target_pid`.
+Der lokale Aufruf verlangt eine positive numerische `target_pid`.
 Es gibt keinen Prozessnamenscan, keinen impliziten PID-1-Default und keine
 vom Aufrufer frei angegebenen Dateipfade. Betriebssystem und `/proc` müssen
 Linux sein. Der Collector liest mit den vorhandenen Rechten seines Aufrufers;
@@ -139,7 +139,7 @@ Vorfahren werden ausschließlich memory.max, memory.high, memory.swap.max und
 cpu.max gelesen. Fehlende Felder an einer sichtbaren Wurzel werden ausdrücklich
 als fehlend berichtet und nicht durch Standardwerte ersetzt.
 
-| Quelldatei | Geplante typisierte Projektion und Aussagegrenze |
+| Quelldatei | Typisierte Projektion und Aussagegrenze |
 |---|---|
 | memory.max | Ein endlicher Bytewert oder UNLIMITED bleibt vom Readzustand getrennt. |
 | memory.high | Ein endlicher Bytewert oder UNLIMITED wird als Drosselungsgrenze geführt. |
@@ -177,7 +177,7 @@ kanonisch beschrieben.
 
 ## Hierarchie, Zeit und Partialität
 
-Die geplanten sichtbaren Minima heißen `visible_memory_max_ceiling_bytes`,
+Die sichtbaren Minima heißen `visible_memory_max_ceiling_bytes`,
 `visible_swap_max_ceiling_bytes` und `visible_cpu_quota_ratio`. Sie verwenden
 nur erfolgreich gelesene und geparste endliche Werte derselben gebundenen
 Aufnahme. Jede Ableitung nennt ihre tatsächlich verwendeten Quellordinale.

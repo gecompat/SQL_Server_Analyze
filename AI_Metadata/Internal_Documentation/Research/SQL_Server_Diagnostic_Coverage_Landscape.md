@@ -3,7 +3,7 @@
 **Referenz:** `WI-0010`
 
 **Forschungsbaseline:** 29. August 2026
-**Lieferstatusabgleich:** 27. Oktober 2026; Loaded-Module-Teilabgleich 14. November 2026
+**Lieferstatusabgleich:** 27. Oktober 2026; Loaded-Module- und Linux-cgroup-Teilabgleich 14. November 2026
 
 **Status:** `RESEARCHED_NOT_IMPLEMENTED`
 **Maschinenlesbare Matrix:** `Metadata/Quality/Diagnostic_Coverage_Landscape.csv`
@@ -37,7 +37,7 @@ Die Matrix betrachtet 106 fachliche Bereiche. Der Frameworkkern deckt die zentra
 - Deprecated-Usage besitzt mit [USP_UpgradeFeatureUsageAnalysis](../../../Documentation/Analysis_Guides/Procedures/USP_UpgradeFeatureUsageAnalysis.md) einen instanzweiten Rohcounter-Slice seit dem SQL-Serverstart und genau eine begrenzte lightweight-pooling-Zielversionsregel. SQL Server 2019 und 2025 wurden nativ qualifiziert; Discontinued, Breaking Changes, Hostfolgen, vollständige Featurezuordnung und Upgradefreigabe bleiben offen;
 - Legacy-Datenbankspiegelung als weiterhin vorhandene, aber abgekündigte Betriebsrealität;
 - verteilte Transaktionen und MSDTC einschließlich Recovery- und HADR-Kontext;
-- Linux-, Container- und cgroup-Ressourcengrenzen, soweit SQL-eigene und externe Plattformwerte sicher korreliert werden können;
+- Linux-, Container- und cgroup-Ressourcengrenzen bleiben als Korrelationsfrage offen. Der mit PR #466 integrierte externe cgroup-v2-Reader liefert einen begrenzten, lesenden Prozess- und Sicht-Hierarchie-Slice; 223 portable Reader-, 113 Parser- und 19 native Fälle bestanden auf Linux x86_64/Python 3.11 am Head und auf Main. Konfigurierte Grenzwirkung, SQL-Instanzbindung, SQL-Import und globale Hierarchievollständigkeit sind nicht belegt;
 - Row-Level Security und Dynamic Data Masking als aktive Security-Policy-Fläche statt bloßer Objektinventur. Das caller-sichtbare Kataloginventar V1 ist mit Status `PARTIAL_PRODUCT_FUNCTION` integriert; Enforcement, Wirksamkeit und Vollständigkeit bleiben außerhalb des Vertrags.
 
 ### Priorität P2
