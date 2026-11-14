@@ -18,6 +18,8 @@ DECLARE @Reader sysname,@FixtureCredential nvarchar(128),@Sql nvarchar(max),
         @Message nvarchar(2048),@Json nvarchar(max),
         @BeforeCount bigint,@AfterCount bigint,@DirectCount bigint,
         @NativeNameType int,@NativeNameMaxLength int,
+        @NativeDmvObjectPresent int,@NativeNameMetadataRows int,
+        @NativeNameTypeReported int,@NativeNameMaxLengthReported int,
         @DirectError int,@DirectState varchar(40),
         @ChildStatus varchar(40),@ChildPartial bit,@ChildReturn int,
         @ChildLock int,@ChildAbort bit,@ChildXact int,@ChildTx int;
@@ -56,11 +58,18 @@ CREATE TABLE [#Lm_Json]
     [Language] int NULL
 );
 BEGIN TRY
+    SET @NativeDmvObjectPresent=CASE WHEN OBJECT_ID(N'sys.dm_os_loaded_modules') IS NULL THEN 0 ELSE 1 END;
     SELECT @NativeNameType=[system_type_id],@NativeNameMaxLength=[max_length]
     FROM [sys].[all_columns] WITH (NOLOCK)
     WHERE [object_id]=OBJECT_ID(N'sys.dm_os_loaded_modules') AND [name]=N'name';
+    SET @NativeNameMetadataRows=@@ROWCOUNT;
     IF COALESCE(@NativeNameType,-1)<>231 OR COALESCE(@NativeNameMaxLength,-1)<>510
+    BEGIN
+        SET @NativeNameTypeReported=COALESCE(@NativeNameType,-1);
+        SET @NativeNameMaxLengthReported=COALESCE(@NativeNameMaxLength,-1);
+        RAISERROR(N'Native DMV schema diagnostic: object_present=%d, metadata_rows=%d, system_type_id=%d, max_length=%d',10,1,@NativeDmvObjectPresent,@NativeNameMetadataRows,@NativeNameTypeReported,@NativeNameMaxLengthReported) WITH NOWAIT;
         THROW 57527,N'Native DMV name type exceeds the reviewed nvarchar(255) contract.',1;
+    END;
     /* Independent literal counterexamples for both separator families and ambiguity. */
     IF EXISTS
     (
