@@ -201,3 +201,4 @@ Der Installer beendet die Verarbeitung beim ersten SQL-Fehler.
 :r ../10_SSIS/060_USP_SsisExecutionBaseline.sql
 :r ../08_ServerHealth/310_USP_DatabaseMirroringInventory.sql
 :r ../08_ServerHealth/320_USP_SensitivityClassificationSummary.sql
+:r ../08_ServerHealth/330_USP_LoadedModuleInventory.sql

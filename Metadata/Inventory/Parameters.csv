@@ -2221,3 +2221,15 @@ USP_DatabaseDdlTriggerInventory,StatusCodeOut,varchar(40),NULL OUTPUT
 USP_DatabaseDdlTriggerInventory,IsPartialOut,bit,NULL OUTPUT
 USP_DatabaseDdlTriggerInventory,ErrorNumberOut,int,NULL OUTPUT
 USP_DatabaseDdlTriggerInventory,ErrorMessageOut,nvarchar(2048),NULL OUTPUT
+USP_LoadedModuleInventory,NurBuildFlags,bit,0
+USP_LoadedModuleInventory,MaxZeilen,int,1000
+USP_LoadedModuleInventory,ResultSetArt,varchar(16),'CONSOLE'
+USP_LoadedModuleInventory,ResultTablesJson,nvarchar(max),NULL
+USP_LoadedModuleInventory,JsonErzeugen,bit,0
+USP_LoadedModuleInventory,Json,nvarchar(max),NULL OUTPUT
+USP_LoadedModuleInventory,PrintMeldungen,bit,1
+USP_LoadedModuleInventory,Hilfe,bit,0
+USP_LoadedModuleInventory,StatusCodeOut,varchar(40),NULL OUTPUT
+USP_LoadedModuleInventory,IsPartialOut,bit,NULL OUTPUT
+USP_LoadedModuleInventory,ErrorNumberOut,int,NULL OUTPUT
+USP_LoadedModuleInventory,ErrorMessageOut,nvarchar(2048),NULL OUTPUT

@@ -1,6 +1,6 @@
 # Aufrufkatalog aller dokumentierten Procedures
 
-Stand: 2026-11-14 — 125 eindeutige Procedure-Einträge; alle 125 öffentlichen Inventar-Procedures sind enthalten.
+Stand: 2026-11-14 — 126 eindeutige Procedure-Einträge; alle 126 öffentlichen Inventar-Procedures sind enthalten.
 
 Die Hilfeaufrufe führen keine fachliche Analyse aus. Weitere typische Querschnittsbeispiele stehen am Dokumentanfang.
 
@@ -926,3 +926,12 @@ EXEC [monitor].[USP_SensitivityClassificationSummary] @DatabaseNames=N'[ExampleD
 ```
 
 Die drei sichtbaren Zähler, Rechte- und NULL-Grenzen stehen auf der [Procedure-Seite](../Analysis_Guides/Procedures/USP_SensitivityClassificationSummary.md).
+
+## `[monitor].[USP_LoadedModuleInventory]`
+
+```sql
+EXEC [monitor].[USP_LoadedModuleInventory] @Hilfe=1;
+EXEC [monitor].[USP_LoadedModuleInventory] @NurBuildFlags=0, @MaxZeilen=100, @ResultSetArt='CONSOLE', @PrintMeldungen=0;
+```
+
+Die [Procedure-Seite](../Analysis_Guides/Procedures/USP_LoadedModuleInventory.md) beschreibt die SQL-Prozess-DMV-Aufnahme mit nativem Namen einschließlich möglichem Pfad, den Caller-Rechtebedarf und die Ausgabegrenzen.

@@ -1,6 +1,6 @@
 # Server Health: CPU, NUMA, Memory, Integrität und Engine-Evidenz
 
-**Procedures:** 28 (20 nummerierte Abschnitte und 8 ergänzende Module)
+**Procedures:** 29 (20 nummerierte Abschnitte und 9 ergänzende Module)
 **Evidenz:** Momentaufnahme, Konfiguration, kumulative SQLOS-DMVs, kurze Stichprobe, msdb-Historie und vorhandene XE-Dateien  
 **Kosten:** LOW bis HIGH_OPT_IN
 
@@ -2245,3 +2245,16 @@ CREATE TABLE [#DatabaseMirroringInventory_HelpExample] ([Seed] int NULL); BEGIN 
 EXEC [monitor].[USP_DatabaseMirroringInventory] @Hilfe=1;
 ```
 
+## Ergänzendes Modul: [monitor].[USP_LoadedModuleInventory]
+
+Die Procedure liest unter Caller-Rechten eine Momentaufnahme aus `sys.dm_os_loaded_modules`. Sie gibt den nativen Modulnamen einschließlich eines möglichen Pfads unverändert aus und ergänzt den abgeleiteten Basenamen, Versionen, fünf Build-Flags und den Sprachwert. Die fachlich nicht benötigte Prozessadresse sowie Company- und Description-Texte werden nicht gelesen. Eine Quellenstörung bleibt in `sourceStatus` von einer erfolgreichen leeren Menge getrennt. `@NurBuildFlags` wählt nach dem vollständigen DMV-Read, `@MaxZeilen` begrenzt nur die sortierte Ausgabe.
+
+```sql
+EXEC [monitor].[USP_LoadedModuleInventory]
+    @NurBuildFlags=0,
+    @MaxZeilen=100,
+    @ResultSetArt='CONSOLE',
+    @PrintMeldungen=0;
+```
+
+Die [eigenständige Procedure-Seite](Procedures/USP_LoadedModuleInventory.md) erläutert alle zwölf Parameter, vier Ausgabengruppen, Berechtigungen, Caller-Zustand und die Grenze zwischen Runtimewerten und Repository-Artefakten. Die Aufnahme enthält keine Host- oder Filtertreiber-, Signatur-, Malware- oder Gesundheitsbewertung.

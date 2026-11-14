@@ -42,6 +42,7 @@ Die Matrix betrachtet 106 fachliche Bereiche. Der Frameworkkern deckt die zentra
 
 ### Priorität P2
 
+- Geladene SQL-Prozessmodule besitzen in der aktuellen Vorschau einen DMV-Inventarslice mit unverändertem nativem Namen einschließlich möglichem Pfad und ergänzendem Basenamen über [USP_LoadedModuleInventory](../../../Documentation/Analysis_Guides/Procedures/USP_LoadedModuleInventory.md). Native Head-/Main-Qualifikation steht noch aus; Host- und Filtertreiber, Signaturen, Malware, Vertrauens- und Gesundheitsbewertungen bleiben außerhalb dieses V1-Vertrags;
 - Database Snapshots mit Source-Abhängigkeit, Sparse-File-Wachstum, Alter und Suspect-Grenzen;
 - Policy-Based Management einschließlich Policies, Bedingungen, Evaluationsmodi und letzter Auswertung, ohne Regeln auszuführen oder zu erzwingen;
 - Sensitivity Classification, Ledger-Digest-/Verifikationsstatus, EKM und Credentialabhängigkeiten;
