@@ -2233,3 +2233,18 @@ USP_LoadedModuleInventory,StatusCodeOut,varchar(40),NULL OUTPUT
 USP_LoadedModuleInventory,IsPartialOut,bit,NULL OUTPUT
 USP_LoadedModuleInventory,ErrorNumberOut,int,NULL OUTPUT
 USP_LoadedModuleInventory,ErrorMessageOut,nvarchar(2048),NULL OUTPUT
+USP_DatabaseSnapshotInventory,SnapshotNames,nvarchar(max),NULL
+USP_DatabaseSnapshotInventory,NurOnline,bit,1
+USP_DatabaseSnapshotInventory,SystemdatenbankenEinbeziehen,bit,0
+USP_DatabaseSnapshotInventory,MaxZeilen,int,1000
+USP_DatabaseSnapshotInventory,LockTimeoutMs,int,0
+USP_DatabaseSnapshotInventory,ResultSetArt,varchar(16),'CONSOLE'
+USP_DatabaseSnapshotInventory,ResultTablesJson,nvarchar(max),NULL
+USP_DatabaseSnapshotInventory,JsonErzeugen,bit,0
+USP_DatabaseSnapshotInventory,Json,nvarchar(max),NULL OUTPUT
+USP_DatabaseSnapshotInventory,PrintMeldungen,bit,1
+USP_DatabaseSnapshotInventory,Hilfe,bit,0
+USP_DatabaseSnapshotInventory,StatusCodeOut,varchar(40),NULL OUTPUT
+USP_DatabaseSnapshotInventory,IsPartialOut,bit,NULL OUTPUT
+USP_DatabaseSnapshotInventory,ErrorNumberOut,int,NULL OUTPUT
+USP_DatabaseSnapshotInventory,ErrorMessageOut,nvarchar(2048),NULL OUTPUT

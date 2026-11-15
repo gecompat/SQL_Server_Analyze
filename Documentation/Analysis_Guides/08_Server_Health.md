@@ -1,6 +1,6 @@
 # Server Health: CPU, NUMA, Memory, Integrität und Engine-Evidenz
 
-**Procedures:** 29 (20 nummerierte Abschnitte und 9 ergänzende Module)
+**Procedures:** 30 (20 nummerierte Abschnitte und 10 ergänzende Module)
 **Evidenz:** Momentaufnahme, Konfiguration, kumulative SQLOS-DMVs, kurze Stichprobe, msdb-Historie und vorhandene XE-Dateien  
 **Kosten:** LOW bis HIGH_OPT_IN
 
@@ -2258,3 +2258,19 @@ EXEC [monitor].[USP_LoadedModuleInventory]
 ```
 
 Die [eigenständige Procedure-Seite](Procedures/USP_LoadedModuleInventory.md) erläutert alle zwölf Parameter, vier Ausgabengruppen, Berechtigungen, Caller-Zustand und die Grenze zwischen Runtimewerten und Repository-Artefakten. Die Aufnahme enthält keine Host- oder Filtertreiber-, Signatur-, Malware- oder Gesundheitsbewertung.
+
+## Ergänzendes Modul: [monitor].[USP_DatabaseSnapshotInventory]
+
+Die Procedure liest caller-sichtbare Snapshots und deren Sparse-Dateikatalogzeilen aus `master.sys.databases` und `master.sys.master_files`. `source_database_id` grenzt Snapshots ab; ein verborgener Quellname bleibt NULL, die numerische SourceDatabaseId erhalten. `size` beschreibt die maximale Snapshot-Dateikapazität in 8-KiB-Seiten, keine physische Belegung. Die Kataloglesungen sind nicht atomar. Eine fehlende sichtbare Dateizeile liefert einen unbekannten Dateistatus, keinen belegten Nullbestand. Der Produktpfad ändert keine persistenten Datenbank- oder Snapshot-Objekte; lokale Temp-DDL dient der Aufbereitung und TABLE-Ausgabe.
+
+```sql
+EXEC [monitor].[USP_DatabaseSnapshotInventory] @Hilfe=1;
+EXEC [monitor].[USP_DatabaseSnapshotInventory]
+    @SnapshotNames=N'[ExampleSnapshot]',
+    @NurOnline=1,
+    @MaxZeilen=100,
+    @ResultSetArt='CONSOLE',
+    @PrintMeldungen=0;
+```
+
+Die [eigenständige Procedure-Seite](Procedures/USP_DatabaseSnapshotInventory.md) erläutert alle 15 Parameter, fünf Ergebnisgruppen, Berechtigungen und Caller-Zustand. Die Aufnahme begründet weder physische Dateinutzung noch Snapshot-Gesundheit oder Restore-Eignung.

@@ -1,6 +1,6 @@
 # Scope und Grenzen des Frameworks
 
-**Stand:** 22. Oktober 2026
+**Stand:** 15. November 2026
 
 Dieses Dokument fasst zusammen, was SQL Server Analyze **tut** und was es
 **ausdrücklich nicht tut**. Die modulspezifischen Aussagegrenzen stehen
@@ -26,6 +26,7 @@ die garantierte Collation und behauptet keine Prüfung jedes verfügbaren CU.
 - Normalisierte diagnostische Findings mit Priorität und Konfidenz.
 - Versionsadaptive Capability-Erkennung und Feature-Inventar.
 - Optionales Snapshot-/Baseline-Paket für Verlaufsvergleiche.
+- Lesendes Inventar caller-sichtbarer Datenbank-Snapshots und Sparse-Dateikatalogzeilen; die angegebene Dateigröße ist maximale Kapazität, keine physische Belegung. Dieses Inventar gehört zum Diagnosekern und ist vom optionalen Snapshot-/Baseline-Paket getrennt.
 
 ## Was das Framework NICHT tut
 

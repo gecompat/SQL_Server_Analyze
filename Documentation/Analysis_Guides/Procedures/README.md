@@ -1,7 +1,7 @@
 # Eigenständige Analysebeschreibungen je Procedure
 
-**Stand:** 14. November 2026<br>
-**Strukturelle Abdeckung:** 126 Procedures<br>
+**Stand:** 15. November 2026<br>
+**Strukturelle Abdeckung:** 127 Procedures<br>
 **Tief geprüfte Seiten:** 92 Procedures
 
 Jede Seite verbindet den sicheren Einstieg mit der fachlichen Leserichtung. Sie beantwortet insbesondere:
@@ -129,6 +129,7 @@ Jede Seite weist jetzt Entscheidungseinsatz, Nichtziele, Resultset-Leserichtung,
 - [USP_StartupParameters](USP_StartupParameters.md)
 - [USP_OSInformation](USP_OSInformation.md)
 - [USP_LoadedModuleInventory](USP_LoadedModuleInventory.md) inventarisiert native Modulnamen einschließlich möglicher Pfade und ergänzende Basenamen im SQL-Prozess ohne Host- oder Filtertreiberurteil.
+- [USP_DatabaseSnapshotInventory](USP_DatabaseSnapshotInventory.md) inventarisiert caller-sichtbare Datenbank-Snapshots und Sparse-Dateikatalogzeilen ohne Aussage zur physischen Belegung.
 - [USP_ServerSecurityConfiguration](USP_ServerSecurityConfiguration.md)
 - [USP_AuditConfigurationAnalysis](USP_AuditConfigurationAnalysis.md)
 - [USP_ServerHealthAnalysis](USP_ServerHealthAnalysis.md)

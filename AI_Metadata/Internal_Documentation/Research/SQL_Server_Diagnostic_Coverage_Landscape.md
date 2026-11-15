@@ -43,7 +43,7 @@ Die Matrix betrachtet 106 fachliche Bereiche. Der Frameworkkern deckt die zentra
 ### Priorität P2
 
 - Geladene SQL-Prozessmodule besitzen mit [USP_LoadedModuleInventory](../../../Documentation/Analysis_Guides/Procedures/USP_LoadedModuleInventory.md) einen begrenzten DMV-Inventarslice mit unverändertem nativem Namen einschließlich möglichem Pfad und ergänzendem Basenamen. PR #702 bestand SQL-Server-2025-/CL170-Head- und Main-Gates sowie ein natives SQL-Server-2019-/CL150-FULL_RELEASE-Gate für diesen V1-Vertrag. SQL Server 2022 wurde nicht separat nativ qualifiziert; Host- und Filtertreiber, Signaturen, Malware, Vertrauens- und Gesundheitsbewertungen bleiben außerhalb des Vertrags;
-- Database Snapshots mit Source-Abhängigkeit, Sparse-File-Wachstum, Alter und Suspect-Grenzen;
+- Datenbank-Snapshots erhalten mit [USP_DatabaseSnapshotInventory](../../../Documentation/Analysis_Guides/Procedures/USP_DatabaseSnapshotInventory.md) einen begrenzten Katalogkandidaten für caller-sichtbare Source-Beziehungen und Sparse-Dateizeilen. Die maximale Dateikapazität ist keine physische Belegung; Alter, zeitliches Wachstum, Gesundheit, Suspect- und Restore-Eignung bleiben offen. Für den neuen Slice steht die native SQL-Laufzeitabnahme noch aus;
 - Policy-Based Management einschließlich Policies, Bedingungen, Evaluationsmodi und letzter Auswertung, ohne Regeln auszuführen oder zu erzwingen;
 - Sensitivity Classification, Ledger-Digest-/Verifikationsstatus, EKM und Credentialabhängigkeiten;
 - Failover Cluster Instances und WSFC-/Pacemaker-Hostevidenz als getrennter externer Adapter;
