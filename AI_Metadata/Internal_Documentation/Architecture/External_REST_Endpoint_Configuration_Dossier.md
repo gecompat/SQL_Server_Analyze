@@ -1,14 +1,14 @@
 # Lesender REST-Endpunkt-Konfigurationswert im Security-Inventar
 
-**Stand:** 15. November 2026.  
-**Status:** begrenzter Source-/Fixture-Kandidat; native SQL- und Main-Abnahme stehen aus.  
+**Stand:** 16. November 2026.  
+**Status:** begrenzter Konfigurationsslice; native SQL-Server-2025-/CL170-Head- und Main-Abnahme mit PR #710 bestanden.  
 **Artefakt-UID:** `urn:uuid:01a1e10d-b498-703c-940c-1f611bfcd466`.  
 **Registrierung:** `DEFERRED`; keine neue lesbare Arbeitselementkennung vergeben.  
 **Bezug:** bestehender CoverageKey `EXTERNAL_REST_ENDPOINT` und bestehende Procedure `monitor.USP_ServerSecurityConfiguration`.
 
 ## Diagnosefrage und bestehender Vertrag
 
-Die bestehende [Produktquelle](../../../Code/08_ServerHealth/090_USP_ServerSecurityConfiguration.sql) liest eine kuratierte Auswahl aus `sys.configurations`. Der Kandidat ergänzt darin ausschließlich `external rest endpoint enabled`. Auf SQL Server 2025 zeigt die zusätzliche Zeile den caller-sichtbaren konfigurierten und aktiven Wert. Microsoft dokumentiert für die Option 0 oder 1 und den Default 0. Das Modul liest den tatsächlichen Wert; es setzt keinen Sollwert und ändert die Konfiguration nicht. Der vorhandene `Finding`-Zweig liefert `OK_OR_CONTEXT_DEPENDENT`. Eine sichtbare oder aktivierte Option belegt weder einen erfolgreichen REST-Aufruf noch Endpoint-Erreichbarkeit, Aufrufberechtigungen, Credentials, Ziel-URLs, Nutzungshistorie oder Sicherheitswirkung.
+Die bestehende [Produktquelle](../../../Code/08_ServerHealth/090_USP_ServerSecurityConfiguration.sql) liest eine kuratierte Auswahl aus `sys.configurations`. PR #710 ergänzte darin ausschließlich `external rest endpoint enabled`. Auf SQL Server 2025 zeigt die zusätzliche Zeile den caller-sichtbaren konfigurierten und aktiven Wert. Microsoft dokumentiert für die Option 0 oder 1 und den Default 0. Das Modul liest den tatsächlichen Wert; es setzt keinen Sollwert und ändert die Konfiguration nicht. Der vorhandene `Finding`-Zweig liefert `OK_OR_CONTEXT_DEPENDENT`. Eine sichtbare oder aktivierte Option belegt weder einen erfolgreichen REST-Aufruf noch Endpoint-Erreichbarkeit, Aufrufberechtigungen, Credentials, Ziel-URLs, Nutzungshistorie oder Sicherheitswirkung.
 
 Der Security-Endpunkt ist bereits vorhanden; insbesondere `USP_ServerConfiguration` kann mit seinem anderen Scope Konfigurationswerte lesen. Der neue Slice beansprucht nur die bisher fehlende kuratierte Security-Sicht. Er ruft weder `sp_configure` noch `RECONFIGURE` oder `sp_invoke_external_rest_endpoint` auf. Quelle, Dienste und Servereigenschaften werden wie zuvor getrennt und nicht atomar gelesen. Die bestehenden RAW-Dienst- und Eigenschaftsdaten können ServiceAccount und MachineName enthalten; die neue Konfigurationszeile ergänzt keine URL, Identität oder Secret.
 
@@ -22,7 +22,7 @@ Die `configuration`-Zeile behält vier Spalten: `ConfigurationName nvarchar(128)
 
 Die bestehende [Fixture 133](../../../Code/Tests/Common/133_ServerSecurity_Collation_Runtime_Contract.sql) behält ihre bidirektionalen nativen TABLE-/JSON-Mengenvergleiche, Quellenstatus- und Collation-Orakel. Sie ergänzt den Optionsnamen in der erwarteten Menge. Auf einem nativen SQL Server 2025 mit Major Version 17 verlangt sie genau eine Katalog- und TABLE-Zeile, konfigurierte und aktive Werte im Bereich 0/1, exakte Parität mit `sys.configurations` und den bestehenden `Finding`-Code `OK_OR_CONTEXT_DEPENDENT`. Die vorhandene JSON-Parität bindet dieselbe Zeile. Auf älteren Versionen kann die Option fehlen; die Fixture behauptet keine dortige Ausführung oder Unterstützung. Sie erzeugt keine aktivierte Konfiguration und führt keinen REST-Aufruf aus.
 
-Die vorgesehene V1-Prüfung soll nur Katalogpräsenz und caller-sichtbare Werte auf dem freigegebenen SQL-Server-2025-/CL170-Ziel belegen; die native Abnahme steht aus. Die Option ist kein Test für REST-Nutzbarkeit, Policy, Rechte, Netzwerk, Endpoint oder Credential. Ein zusätzlicher nativer SQL-Server-2019-/2022-Lauf ist für diesen unveränderten Katalogschema-Filter ohne konkretes Versionsrisiko nicht ausgewählt.
+Die native V1-Prüfung belegte auf SQL Server 2025/CL170 genau eine Katalog- und eine TABLE-Zeile für die Option, konfigurierte und aktive Werte von 0 oder 1, die exakte Parität mit `sys.configurations`, die bestehende TABLE-/JSON-Parität und `OK_OR_CONTEXT_DEPENDENT`. Head [43764003280](https://github.com/gecompat/SQL_Server_Analyze/actions/runs/43764003280) und Main [43765394674](https://github.com/gecompat/SQL_Server_Analyze/actions/runs/43765394674) bestanden Deployment und den nativen Vertrag 133; PR #710 wurde regulär auf Main `e33b9549b1b828e396e1cbedf852d5666162af1a` integriert. Die Prüfung las die vorhandene Konfiguration und erzeugte keinen aktivierten Option-1-Zustand. Die Option ist kein Test für REST-Nutzbarkeit, Policy, Rechte, Netzwerk, Endpoint oder Credential. Ein zusätzlicher nativer SQL-Server-2019-/2022-Lauf ist für diesen unveränderten Katalogschema-Filter ohne konkretes Versionsrisiko nicht ausgewählt.
 
 ## Primärquellen
 
