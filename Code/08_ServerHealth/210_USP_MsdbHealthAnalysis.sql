@@ -1,7 +1,7 @@
 USE [DeineDatenbank];
 GO
 
-/* OPS-008: bounded msdb history and size inventory; never deletes history. */
+/* OPS-008: Die Procedure inventarisiert msdb-Historien, Dateigröße und PBM-Zählwerte, ohne Historien zu löschen. */
 CREATE OR ALTER PROCEDURE [monitor].[USP_MsdbHealthAnalysis]
       @MaxZeilen       int            = 2000
     , @ResultSetArt    varchar(16)    = 'CONSOLE'
@@ -22,8 +22,9 @@ BEGIN
     DECLARE @ErrorNumber int=NULL,@ErrorMessage nvarchar(2048)=NULL;
     IF @Hilfe=1 BEGIN
         PRINT N'monitor.USP_MsdbHealthAnalysis';
-        PRINT N'inventarisiert msdb-Dateigröße und sichtbare Aggregate ausgewählter Backup-, Restore-, Agent-, Database-Mail- und Maintenance-Plan-Quellen. Es ändert oder löscht keine Daten.';
-        PRINT N'Die Auswertung zählt Quellzeilen und ermittelt verfügbare Zeitgrenzen; Agent-Historienzeilen erhalten keine Zeitgrenzen. Sie belegt weder fachlich richtige Retention noch Restorefähigkeit, Jobausführung, Mailzustellung, freien Speicher oder nötige Dateiverkleinerung. Große Aggregate können I/O verursachen. @MaxZeilen begrenzt die Ausgabe, nicht die Quellaggregation. Quellenfehler können partielle Evidenz ergeben.';
+        PRINT N'Die Procedure inventarisiert msdb-Dateigröße, sichtbare Aggregate ausgewählter Backup-, Restore-, Agent-, Database-Mail- und Maintenance-Plan-Quellen sowie reine Zählwerte für PBM-Policies, -Conditions und -Categories. Es ändert oder löscht keine Daten.';
+        PRINT N'Die Auswertung zählt Quellzeilen und ermittelt Zeitgrenzen nur für datierte Historien; Agent-Historie und PBM-Katalogzählungen erhalten keine Zeitgrenzen. PBM-Zeilen liefern weder Identitäten noch Ausdrücke oder Policy-Evaluation. Sie belegt weder fachlich richtige Retention noch Restorefähigkeit, Jobausführung, Mailzustellung, freien Speicher, nötige Dateiverkleinerung oder PBM-Gesundheit. Große Aggregate können I/O verursachen. @MaxZeilen begrenzt die Ausgabe, nicht die Quellaggregation. Quellenfehler können partielle Evidenz ergeben.';
+        PRINT N'PBM_POLICIES, PBM_CONDITIONS und PBM_CATEGORIES lesen msdb.dbo.syspolicy_policies, syspolicy_conditions und syspolicy_policy_categories direkt. Sie liefern nur COUNT_BIG; OldestUtc, NewestUtc und SizeMb bleiben NULL. Die Views erfordern PolicyAdministratorRole in msdb; das Produkt vergibt keine Rolle. Ein Lesefehler liefert SOURCE_UNAVAILABLE mit unbekanntem RowCount statt UNSUPPORTED oder Nullbestand.';
         PRINT N'@MaxZeilen int; Default: 2000. NULL wird vor der Validierung zu 0; 0 bedeutet unbegrenzt. Positive Werte behalten nach Area sortiert die ersten Zeilen. EvidenceRows wird vor dem Kürzen gezählt. Negative Werte ergeben INVALID_PARAMETER und verhindern Quellenaggregation.';
         PRINT N'@ResultSetArt varchar(16); Default: ''CONSOLE''. Wählt CONSOLE (beschriftete Fachansicht mit Leeranzeige), RAW (Status/Zählkopf und rohe Zeilen), TABLE (benannte Tabellenausgabe) oder NONE (keine Zeilenresultsets). Äußere Leerzeichen werden entfernt und Groß-/Kleinschreibung ignoriert. TABLE und CONSOLE werden intern im NONE-Pfad gerendert. Ungültige Werte sowie NULL/leer ergeben INVALID_PARAMETER.';
         PRINT N'@ResultTablesJson nvarchar(max); Default: NULL. Nur bei ResultSetArt=TABLE ausgewertetes JSON-Objekt mit genau einem Schlüssel msdbHealth und dem Zielnamen. Das Ziel muss eine bereits vorhandene, leere lokale #Temp-Tabelle mit genau einer Seed-/Platzhalterspalte sein. NULL/leer reicht im TABLE-Pfad nicht. Außerhalb TABLE wird nur ein nichtleerer Wert mit Fehler 51011 abgewiesen; NULL oder U+0020-Leerzeichen wird ignoriert. Preflight validiert das Ziel vor dem Schreiben. Der Schlüssel ist case-sensitiv. Zielnamen dürfen höchstens 116 Zeichen haben; globale ##Tabellen und das ohne Beachtung der Groß-/Kleinschreibung reservierte Präfix #Monitor sind unzulässig. Der Preflight prüft Form und leere Seed-Tabelle; erst der Writer ersetzt die Seed-Spalte durch das Ergebnisschema.';
@@ -31,10 +32,10 @@ BEGIN
         PRINT N'@Json nvarchar(max) OUTPUT; Default: NULL. Optionaler OUTPUT-Empfänger für ein JSON-Array der Fachzeilen. Am Eintritt wird @Json auch vor @Hilfe=1 auf NULL gesetzt; nur @JsonErzeugen=1 erzeugt danach das Array, bei leerer Fachmenge []. Zum Empfangen eine nvarchar(max)-Variable mit OUTPUT binden; das Argument kann ausgelassen werden. Ein anfänglicher NULL- oder anderer Variablenwert wird überschrieben.';
         PRINT N'@PrintMeldungen bit; Default: 1. 0 unterdrückt die Status-PRINT-Meldung; Nicht-NULL-Bitwerte ungleich 0 aktivieren sie. NULL aktiviert sie nicht. Die Statusmeldung erscheint bei den vom Aufrufer gewählten Modi NONE, CONSOLE und TABLE; diese beiden Ansichtsmodi werden intern auf NONE normalisiert. RAW erzeugt diese Statusmeldung nicht. @Hilfe=1 kehrt vor dieser Meldung zurück. Bei der SQL-Konvertierung nach bit ergibt numerische 0 den Wert 0; von 0 verschiedene numerische Werte ergeben 1.';
         PRINT N'@Hilfe bit; Default: 0. 0 führt die Analyse aus; jeder Nicht-NULL-Wert ungleich 0 druckt die Hilfe und beendet den Aufruf früh. NULL startet die Hilfe nicht. Der RETURN erfolgt vor Analyse und den abschließenden Status-/Fehler-OUTPUT-Zuweisungen; diese vier Empfänger bleiben unverändert. @Json wurde bereits am Eintritt auf NULL gesetzt. Bei der SQL-Konvertierung nach bit ergibt numerische 0 den Wert 0; von 0 verschiedene numerische Werte ergeben 1.';
-        PRINT N'@StatusCodeOut varchar(40) OUTPUT; Default: NULL. OUTPUT-Empfänger für den in diesem Modul ermittelten Gesamtstatus. Mögliche Gesamtwerte sind AVAILABLE (Auswertung ohne gemeldete Quellfehler), AVAILABLE_LIMITED (mindestens eine Quelle nicht lesbar), UNSUPPORTED (msdb fehlt) und INVALID_PARAMETER (negative Zeilengrenze oder ungültige Ausgabeart). Evidenzzeilen haben AVAILABLE, UNSUPPORTED (Objekt fehlt) oder SOURCE_UNAVAILABLE. NULL-Default erlaubt das Auslassen des Arguments; um den Wert zu empfangen, muss eine kompatible Variable ausdrücklich mit OUTPUT gebunden werden. Im Hilfezweig bleibt ein gebundener Empfänger wegen des frühen RETURN unverändert.';
+        PRINT N'@StatusCodeOut varchar(40) OUTPUT; Default: NULL. OUTPUT-Empfänger für den in diesem Modul ermittelten Gesamtstatus. Mögliche Gesamtwerte sind AVAILABLE (Auswertung ohne gemeldete Quellfehler), AVAILABLE_LIMITED (mindestens eine Quelle nicht lesbar), UNSUPPORTED (msdb fehlt) und INVALID_PARAMETER (negative Zeilengrenze oder ungültige Ausgabeart). Evidenzzeilen haben AVAILABLE, UNSUPPORTED (fehlendes bisheriges Historienobjekt) oder SOURCE_UNAVAILABLE (Quellenfehler; PBM-Views werden ohne Sichtbarkeitsvorprüfung direkt gelesen). NULL-Default erlaubt das Auslassen des Arguments; um den Wert zu empfangen, muss eine kompatible Variable ausdrücklich mit OUTPUT gebunden werden. Im Hilfezweig bleibt ein gebundener Empfänger wegen des frühen RETURN unverändert.';
         PRINT N'@IsPartialOut bit OUTPUT; Default: NULL. Optionale OUTPUT-Variable: 0 bedeutet nicht partiell, 1 bedeutet eingeschränkte/partielle Evidenz. NULL-Default erlaubt Auslassen und ist kein Ergebniswert. Empfang erfordert eine passende OUTPUT-Bindung; Hilfe-RETURN lässt sie unverändert.';
         PRINT N'@ErrorNumberOut int OUTPUT; Default: NULL. Bei regulärem Abschluss bleibt die technische Fehlernummer in dieser Implementierung NULL. Fehler einzelner Quellen werden als Fach-/Quellenzeilen dokumentiert und nicht in diesen Empfänger kopiert. Optionale OUTPUT-Bindung an eine Variable des deklarierten Typs; ohne Empfang kann das Argument entfallen. @Hilfe=1 weist den Wert nicht zu und erhält einen anfänglichen NULL- oder anderen Empfängerwert.';
-        PRINT N'@ErrorMessageOut nvarchar(2048) OUTPUT; Default: NULL. Bei regulärem Abschluss eine Meldung zu ungültigen Parametern oder fehlender msdb; sonst NULL. Fehler einzelner Historienquellen stehen in den Fachzeilen. Optionale OUTPUT-Bindung an eine Variable des deklarierten Typs; ohne Empfang kann das Argument entfallen. @Hilfe=1 weist den Wert nicht zu und erhält einen anfänglichen NULL- oder anderen Empfängerwert.';
+        PRINT N'@ErrorMessageOut nvarchar(2048) OUTPUT; Default: NULL. Bei regulärem Abschluss eine Meldung zu ungültigen Parametern oder fehlender msdb; sonst NULL. Fehler einzelner Historien- und PBM-Quellen stehen in den Fachzeilen. Optionale OUTPUT-Bindung an eine Variable des deklarierten Typs; ohne Empfang kann das Argument entfallen. @Hilfe=1 weist den Wert nicht zu und erhält einen anfänglichen NULL- oder anderen Empfängerwert.';
         PRINT N'EXEC [monitor].[USP_MsdbHealthAnalysis] @ResultSetArt=''RAW'', @MaxZeilen=100;';
         PRINT N'DECLARE @Json nvarchar(max); EXEC [monitor].[USP_MsdbHealthAnalysis] @ResultSetArt=''NONE'', @JsonErzeugen=1, @Json=@Json OUTPUT; SELECT @Json AS [Json];';
         PRINT N'CREATE TABLE [#MsdbHealthAnalysis_HelpExample] ([Seed] int NULL);
@@ -91,13 +92,32 @@ END CATCH;';
         INSERT @Defs VALUES
           ('BACKUP_HISTORY','backupset','backup_finish_date'),('RESTORE_HISTORY','restorehistory','restore_date'),
           ('AGENT_HISTORY','sysjobhistory',NULL),('DATABASE_MAIL','sysmail_allitems','send_request_date'),
-          ('MAINTENANCE_PLAN','sysmaintplan_log','start_time');
+          ('MAINTENANCE_PLAN','sysmaintplan_log','start_time'),
+          ('PBM_POLICIES','syspolicy_policies',NULL),
+          ('PBM_CONDITIONS','syspolicy_conditions',NULL),
+          ('PBM_CATEGORIES','syspolicy_policy_categories',NULL);
         DECLARE @Area varchar(40),@Obj sysname,@Date sysname,@Sql nvarchar(max),@Source nvarchar(256);
         DECLARE [d] CURSOR LOCAL FAST_FORWARD FOR SELECT [Area],[ObjectName],[DateColumn] FROM @Defs;
         OPEN [d]; FETCH NEXT FROM [d] INTO @Area,@Obj,@Date;
         WHILE @@FETCH_STATUS=0
         BEGIN
-            IF NOT EXISTS
+            IF @Area IN('PBM_POLICIES','PBM_CONDITIONS','PBM_CATEGORIES')
+            BEGIN
+                BEGIN TRY
+                    SET @Source=N'msdb.dbo.'+@Obj;
+                    SET @Sql=N'INSERT [#MsdbHealthAnalysis_Health] SELECT @Area,@Source,COUNT_BIG(*),NULL,NULL,NULL,''AVAILABLE'',@EvidenceLimit FROM [msdb].[dbo].'+QUOTENAME(@Obj)+N' WITH (NOLOCK);';
+                    EXEC [sys].[sp_executesql] @Sql,
+                        N'@Area varchar(40),@Source nvarchar(256),@EvidenceLimit nvarchar(1000)',
+                        @Area,@Source,
+                        @EvidenceLimit=N'Caller-sichtbare PBM-Kataloganzahl; keine Policy-Auswertung, Retentions- oder Gesundheitsbewertung.';
+                END TRY BEGIN CATCH
+                    INSERT [#MsdbHealthAnalysis_Health]
+                    VALUES(@Area,N'msdb.dbo.'+@Obj,NULL,NULL,NULL,NULL,'SOURCE_UNAVAILABLE',
+                           CONCAT(N'Fehler ',ERROR_NUMBER(),N': ',LEFT(ERROR_MESSAGE(),800)));
+                    SET @Partial=1;
+                END CATCH;
+            END
+            ELSE IF NOT EXISTS
             (
                 SELECT 1
                 FROM [msdb].[sys].[objects] AS [o] WITH (NOLOCK)

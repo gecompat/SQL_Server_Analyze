@@ -76,6 +76,7 @@ KNOWN_RESEARCH_TO_PARTIAL_KEYS = {
     "COMPILE_STORMS",
     "EXTERNAL_MODELS",
     "EXTERNAL_DATA_POLYBASE",
+    "POLICY_BASED_MANAGEMENT",
 }
 RESEARCH_GAP_COHORT_FLOOR = 25  # Preserve the explicit research-gap cohort across named promotions.
 
@@ -88,6 +89,7 @@ REQUIRED_KEYS = {
     "COMPILE_STORMS",
     "EXTERNAL_MODELS",
     "EXTERNAL_DATA_POLYBASE",
+    "POLICY_BASED_MANAGEMENT",
     "PLAN_GUIDES",
     "BACKUP_IMMUTABILITY_SECONDARY",
     "DATABASE_MIRRORING",
@@ -99,7 +101,6 @@ REQUIRED_KEYS = {
     "SENSITIVITY_CLASSIFICATION",
     "LOADED_MODULES_FILTER_DRIVERS",
     "LEDGER_INTEGRITY",
-    "POLICY_BASED_MANAGEMENT",
     "CHANGE_EVENT_STREAMING",
     "FABRIC_MIRRORING",
     "EXTERNAL_REST_ENDPOINT",
@@ -270,7 +271,8 @@ def coverage_fixture() -> list[dict[str, str]]:
         'COMPILE_STORMS',
         'EXTERNAL_MODELS',
         'EXTERNAL_DATA_POLYBASE',
-        *(f'SAMPLE_AREA_{index:03d}' for index in range(14)),
+        'POLICY_BASED_MANAGEMENT',
+        *(f'SAMPLE_AREA_{index:03d}' for index in range(13)),
     }
     out_of_scope = {f'SAMPLE_AREA_{index:03d}' for index in range(23, 27)}
     domains = sorted(REQUIRED_DOMAINS)
@@ -414,6 +416,20 @@ def self_test() -> None:
     if not any('too few explicit researched gaps' in error
                for error in validate_rows(list(EXPECTED_FIELDS), unrelated_after_delivery)):
         raise AssertionError('unrelated promotion after WI-0005/6/7/9 escaped the cohort floor')
+
+    pbm_candidate = [dict(row) for row in all_researched_fixture]
+    for row in pbm_candidate:
+        if row['CoverageKey'] == 'POLICY_BASED_MANAGEMENT':
+            row['CoverageStatus'] = 'PARTIAL_PRODUCT_FUNCTION'
+    if validate_rows(list(EXPECTED_FIELDS), pbm_candidate):
+        raise AssertionError('named bounded PBM candidate promotion was rejected')
+    unrelated_after_pbm = [dict(row) for row in pbm_candidate]
+    for row in unrelated_after_pbm:
+        if row['CoverageKey'] == 'SAMPLE_AREA_001':
+            row['CoverageStatus'] = 'PARTIAL_PRODUCT_FUNCTION'
+    if not any('too few explicit researched gaps' in error
+               for error in validate_rows(list(EXPECTED_FIELDS), unrelated_after_pbm)):
+        raise AssertionError('unrelated promotion after PBM candidate escaped the cohort floor')
 
     unrelated_after_snapshot = [dict(row) for row in snapshot_promotion]
     for row in unrelated_after_snapshot:
