@@ -219,7 +219,44 @@ BEGIN TRY
        OR (SELECT COUNT_BIG(*) FROM OPENJSON(@Json)
            WITH ([Area] varchar(40)) AS [j]
            WHERE [j].[Area] IN ('PBM_POLICIES','PBM_CONDITIONS','PBM_CATEGORIES'))<>3
+    BEGIN
+        DECLARE @PbmDiagJsonValid int=COALESCE(ISJSON(@Json),0),
+                @PbmDiagTotalRows bigint,
+                @PbmDiagRows bigint,
+                @PbmDiagExactUnknown bigint,
+                @PbmDiagAvailable bigint,
+                @PbmDiagUnsupported bigint,
+                @PbmDiagMessage nvarchar(2048);
+        SELECT @PbmDiagTotalRows=COUNT_BIG(*) FROM OPENJSON(@Json);
+        SELECT
+              @PbmDiagRows=COUNT_BIG(*)
+            , @PbmDiagAvailable=COALESCE(SUM(CASE WHEN [j].[StatusCode]='AVAILABLE' THEN CONVERT(bigint,1) ELSE CONVERT(bigint,0) END),0)
+            , @PbmDiagUnsupported=COALESCE(SUM(CASE WHEN [j].[StatusCode]='UNSUPPORTED' THEN CONVERT(bigint,1) ELSE CONVERT(bigint,0) END),0)
+        FROM OPENJSON(@Json) WITH ([Area] varchar(40),[StatusCode] varchar(40)) AS [j]
+        WHERE [j].[Area] IN ('PBM_POLICIES','PBM_CONDITIONS','PBM_CATEGORIES');
+        SELECT @PbmDiagExactUnknown=COUNT_BIG(*)
+        FROM OPENJSON(@Json)
+             WITH ([Area] varchar(40),[SourceObject] nvarchar(256),[RowCount] bigint,
+                   [OldestUtc] datetime2(3),[NewestUtc] datetime2(3),
+                   [SizeMb] decimal(19,2),[StatusCode] varchar(40)) AS [j]
+        INNER JOIN (VALUES ('PBM_POLICIES',N'msdb.dbo.syspolicy_policies'),
+                           ('PBM_CONDITIONS',N'msdb.dbo.syspolicy_conditions'),
+                           ('PBM_CATEGORIES',N'msdb.dbo.syspolicy_policy_categories'))
+            AS [e]([Area],[SourceObject])
+            ON [j].[Area] COLLATE SQL_Latin1_General_CP1_CS_AS
+                =[e].[Area] COLLATE SQL_Latin1_General_CP1_CS_AS
+           AND [j].[SourceObject] COLLATE SQL_Latin1_General_CP1_CS_AS
+                =[e].[SourceObject] COLLATE SQL_Latin1_General_CP1_CS_AS
+        WHERE [j].[StatusCode]='SOURCE_UNAVAILABLE' AND [j].[RowCount] IS NULL
+          AND [j].[OldestUtc] IS NULL AND [j].[NewestUtc] IS NULL
+          AND [j].[SizeMb] IS NULL;
+        SET @PbmDiagMessage=CONCAT(N'OPS-008 restricted PBM unknown diagnostic: jsonValid=',
+            @PbmDiagJsonValid,N'; totalRows=',@PbmDiagTotalRows,
+            N'; pbmRows=',@PbmDiagRows,N'; exactUnknown=',@PbmDiagExactUnknown,
+            N'; available=',@PbmDiagAvailable,N'; unsupported=',@PbmDiagUnsupported);
+        RAISERROR(@PbmDiagMessage,10,1) WITH NOWAIT;
         THROW 54961,N'OPS-008 restricted PBM views must remain unknown rather than unsupported or zero.',1;
+    END;
 END TRY
 BEGIN CATCH
     IF USER_NAME() = N'ExampleOps008RestrictedUser' REVERT;
