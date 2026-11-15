@@ -72,6 +72,10 @@ KNOWN_RESEARCH_TO_PARTIAL_KEYS = {
     "LOADED_MODULES_FILTER_DRIVERS",
     "LINUX_CONTAINER_LIMITS",
     "DATABASE_SNAPSHOTS",
+    "TIME_BOUND_XE",
+    "COMPILE_STORMS",
+    "EXTERNAL_MODELS",
+    "EXTERNAL_DATA_POLYBASE",
 }
 RESEARCH_GAP_COHORT_FLOOR = 25  # Preserve the explicit research-gap cohort across named promotions.
 
@@ -80,6 +84,10 @@ REQUIRED_KEYS = {
     "DEPRECATION_BREAKING_CHANGE",
     "DEPRECATED_RUNTIME_USE",
     "DATABASE_SNAPSHOTS",
+    "TIME_BOUND_XE",
+    "COMPILE_STORMS",
+    "EXTERNAL_MODELS",
+    "EXTERNAL_DATA_POLYBASE",
     "PLAN_GUIDES",
     "BACKUP_IMMUTABILITY_SECONDARY",
     "DATABASE_MIRRORING",
@@ -258,7 +266,11 @@ def coverage_fixture() -> list[dict[str, str]]:
         'DATABASE_MIRRORING',
         'PLAN_GUIDES',
         'LOADED_MODULES_FILTER_DRIVERS',
-        *(f'SAMPLE_AREA_{index:03d}' for index in range(18)),
+        'TIME_BOUND_XE',
+        'COMPILE_STORMS',
+        'EXTERNAL_MODELS',
+        'EXTERNAL_DATA_POLYBASE',
+        *(f'SAMPLE_AREA_{index:03d}' for index in range(14)),
     }
     out_of_scope = {f'SAMPLE_AREA_{index:03d}' for index in range(23, 27)}
     domains = sorted(REQUIRED_DOMAINS)
@@ -375,6 +387,34 @@ def self_test() -> None:
             row['CoverageStatus'] = 'PARTIAL_PRODUCT_FUNCTION'
     if validate_rows(list(EXPECTED_FIELDS), snapshot_promotion):
         raise AssertionError('named Database Snapshot promotion was rejected')
+    historical_delivery_keys = (
+        'TIME_BOUND_XE',
+        'COMPILE_STORMS',
+        'EXTERNAL_MODELS',
+        'EXTERNAL_DATA_POLYBASE',
+    )
+    for delivered_key in historical_delivery_keys:
+        individual = [dict(row) for row in all_researched_fixture]
+        for row in individual:
+            if row['CoverageKey'] == delivered_key:
+                row['CoverageStatus'] = 'PARTIAL_PRODUCT_FUNCTION'
+        if validate_rows(list(EXPECTED_FIELDS), individual):
+            raise AssertionError(f'named {delivered_key} promotion was rejected')
+
+    combined_delivery = [dict(row) for row in all_researched_fixture]
+    for row in combined_delivery:
+        if row['CoverageKey'] in historical_delivery_keys:
+            row['CoverageStatus'] = 'PARTIAL_PRODUCT_FUNCTION'
+    if validate_rows(list(EXPECTED_FIELDS), combined_delivery):
+        raise AssertionError('combined named WI-0005/6/7/9 promotions were rejected')
+    unrelated_after_delivery = [dict(row) for row in combined_delivery]
+    for row in unrelated_after_delivery:
+        if row['CoverageKey'] == 'SAMPLE_AREA_001':
+            row['CoverageStatus'] = 'PARTIAL_PRODUCT_FUNCTION'
+    if not any('too few explicit researched gaps' in error
+               for error in validate_rows(list(EXPECTED_FIELDS), unrelated_after_delivery)):
+        raise AssertionError('unrelated promotion after WI-0005/6/7/9 escaped the cohort floor')
+
     unrelated_after_snapshot = [dict(row) for row in snapshot_promotion]
     for row in unrelated_after_snapshot:
         if row['CoverageKey'] == 'SAMPLE_AREA_001':
