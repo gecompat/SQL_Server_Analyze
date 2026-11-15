@@ -108,7 +108,7 @@ FROM [#ExampleEncryptionNative] [n] WHERE [DatabaseName]=@pName;';
       (N'msdb.dbo.backupset','AVAILABLE',0),
       (N'sys.column_master_keys + sys.column_encryption_keys + sys.columns + sys.tables','AVAILABLE',0);
     DECLARE @Parity TABLE([CheckName] nvarchar(32),[ExpectedJson] nvarchar(max),[ActualJson] nvarchar(max));
-    WHILE @Case<22
+    WHILE @Case<26
     BEGIN
         SELECT @Limit=CASE WHEN @Case=1 THEN NULL WHEN @Case IN(2,19,21) THEN 1 WHEN @Case=11 THEN -1 ELSE 0 END,
                @SafeLimit=CASE WHEN @Case IN(2,19,21) THEN 1 WHEN @Case=11 THEN 0 ELSE CONVERT(bigint,9223372036854775807) END,
@@ -125,11 +125,11 @@ FROM [#ExampleEncryptionNative] [n] WHERE [DatabaseName]=@pName;';
                            WHEN @Case=20 THEN N'[ExampleEncryptionSourceÄ]|[ExampleEncryptionMissingß]'
                            ELSE N'[ExampleEncryptionSourceÄ]|[ExampleEncryptionSourceÖ]|[ExampleEncryptionSourceÜ]' END,
                @Pattern=CASE WHEN @Case=17 THEN N'like:ExampleEncryption%' ELSE NULL END,
-               @Timeout=CASE WHEN @Case=12 THEN -1 ELSE 0 END,
-               @Transition=CASE WHEN @Case=13 THEN 0 ELSE 60 END,
-               @Expiry=CASE WHEN @Case=14 THEN 0 ELSE 90 END,
-               @Lookback=CASE WHEN @Case=15 THEN 0 ELSE 35 END,
-               @Invalid=CASE WHEN @Case BETWEEN 11 AND 18 THEN 1 ELSE 0 END,
+               @Timeout=CASE WHEN @Case=12 THEN -1 WHEN @Case=22 THEN NULL ELSE 0 END,
+               @Transition=CASE WHEN @Case=13 THEN 0 WHEN @Case=23 THEN NULL ELSE 60 END,
+               @Expiry=CASE WHEN @Case=14 THEN 0 WHEN @Case=24 THEN NULL ELSE 90 END,
+               @Lookback=CASE WHEN @Case=15 THEN 0 WHEN @Case=25 THEN NULL ELSE 35 END,
+               @Invalid=CASE WHEN @Case BETWEEN 11 AND 18 OR @Case BETWEEN 22 AND 25 THEN 1 ELSE 0 END,
                @WarningName=CASE WHEN @Case IN(7,8,20,21) THEN N'ExampleEncryptionMissingß'
                                  WHEN @Case=9 THEN N'exampleEncryptionSourceÄ' WHEN @Case=10 THEN N'exampleEncryptionSourceÖ' ELSE NULL END,
                @Json=NULL,@Status=NULL,@Partial=NULL;
