@@ -3,7 +3,7 @@
 **Referenz:** `WI-0010`
 
 **Forschungsbaseline:** 29. August 2026
-**Lieferstatusabgleich:** 27. Oktober 2026; Loaded-Module- und Linux-cgroup-Teilabgleich 14. November 2026; Snapshot- und WI-0005/0006/0007/0009-Teilabgleich 15. November 2026
+**Lieferstatusabgleich:** 27. Oktober 2026; Loaded-Module- und Linux-cgroup-Teilabgleich 14. November 2026; Snapshot-, WI-0005/0006/0007/0009- und REST-Konfigurations-Teilabgleich 15. November 2026
 
 **Status:** `RESEARCHED_NOT_IMPLEMENTED`
 **Maschinenlesbare Matrix:** `Metadata/Quality/Diagnostic_Coverage_Landscape.csv`
@@ -53,7 +53,7 @@ Die Matrix betrachtet 106 fachliche Bereiche. Der Frameworkkern deckt die zentra
 - Failover Cluster Instances und WSFC-/Pacemaker-Hostevidenz als getrennter externer Adapter;
 - unveränderbare URL-Backups und SQL-Server-2025-Backups auf Secondary Replicas;
 - FILESTREAM/FileTable-Betrieb über die bestehende leichte Erkennung hinaus;
-- Change Event Streaming, Fabric Mirroring und External REST Endpoint Invocation mit strikter Trennung lokaler Kataloge von externen Endpoints, Credentials und Payloads;
+- Change Event Streaming und Fabric Mirroring bleiben offene Integrationsfragen. Für External REST Endpoint Invocation liegt ein begrenzter, noch nicht nativ abgenommener Kandidat in `USP_ServerSecurityConfiguration` vor: Er liest allein den caller-sichtbaren Wert `external rest endpoint enabled` aus `sys.configurations`. Das [REST-Konfigurationsdossier](../Architecture/External_REST_Endpoint_Configuration_Dossier.md) trennt die lokale Option von Aufrufberechtigung, Endpoint-Erreichbarkeit, Credentials, Ziel-URLs, Nutzung und Sicherheitswirkung;
 - Plan Guides besitzen einen begrenzten caller-sichtbaren Katalog-Slice in [USP_PlanGuideInventory](../../../Documentation/Analysis_Guides/Procedures/USP_PlanGuideInventory.md). Die SQL-Server-2025-/CL170-Head- und Main-Gates für PR #699 sind bestanden; Validität, Anwendung, Wirksamkeit, Vollständigkeit und ein kontrollierter nativer DENIED_PERMISSION-Fall bleiben unqualifiziert.
 - Datenbank-DDL-Trigger besitzen mit [USP_DatabaseDdlTriggerInventory](../../../Documentation/Analysis_Guides/Procedures/USP_DatabaseDdlTriggerInventory.md) einen caller-sichtbaren Metadaten-Slice. Die vollständigen SQL-Server-2025-/CL170-Head- und Main-Gates für PR #700 bestanden einschließlich Vertrag 124. Server-DDL- und LOGON-Trigger, Definitionen, Ereignisse, Ausführung, Rollback-Wirkung, globale Vollständigkeit und ein kontrolliert erzwungener nativer Rechtefehler bleiben unqualifiziert.
 - [SQL-Agent-Proxies](../Architecture/Agent_Proxy_Dependency_Inventory_Dossier.md) besitzen einen getrennten V1-Slice. Er bestand nach PR #696 die SQL-Server-2025-/CL170-Head- und Main-Gates; ein positiver Proxy- oder Ausführungsfall bleibt unqualifiziert.
