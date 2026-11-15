@@ -51,6 +51,48 @@ CREATE TABLE #RestrictedNativeFiles
  IsSparse bit NOT NULL,FileStateDesc nvarchar(60) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,
  MaximumSnapshotSizePages int NOT NULL,MaximumSnapshotSizeBytes bigint NOT NULL);
 BEGIN TRY
+    DECLARE @InstalledConsoleDefinition nvarchar(max),
+            @ExpectedConsoleProjection nvarchar(max)=N'        ELSE IF @ConsoleResultRequested=1
+        BEGIN
+            INSERT #DatabaseSnapshotInventory_Console
+            SELECT N''Snapshot'',SnapshotName,
+                   CONCAT(N''SourceId='',SourceDatabaseId,N''; SourceName='',COALESCE(SourceDatabaseName,N''NULL''),
+                          N''; Zustand='',SnapshotStateDesc,N''; Sparse-Dateien='',
+                          COALESCE(CONVERT(nvarchar(30),VisibleSparseFileCount),N''NULL''))
+            FROM #DatabaseSnapshotInventory_snapshots;
+            INSERT #DatabaseSnapshotInventory_Console
+            SELECT N''Datei'',PhysicalName,
+                   CONCAT(N''SnapshotId='',SnapshotDatabaseId,N''; FileId='',FileId,
+                          N''; max. Seiten='',MaximumSnapshotSizePages)
+            FROM #DatabaseSnapshotInventory_snapshotFiles;
+            INSERT #DatabaseSnapshotInventory_Console
+            SELECT N''Quelle'',SourceKey,
+                   CONCAT(StatusCode,N''; beobachtet='',COALESCE(CONVERT(nvarchar(30),ObservedRows),N''NULL''))
+            FROM #DatabaseSnapshotInventory_sourceStatus;
+            INSERT #DatabaseSnapshotInventory_Console
+            SELECT N''Aussagegrenze'',WarningCode,Detail FROM #DatabaseSnapshotInventory_warnings;
+            EXEC [monitor].[InternalEmitConsoleResult]
+                @SourceTable=N''#DatabaseSnapshotInventory_Console'',
+                @ResultLabel=N''Sichtbare Datenbank-Snapshots'',
+                @EmptyMessage=N''Keine sichtbaren Snapshot-Zeilen; Quellenstatus und Auswahl pruefen.'';
+        END;',
+            @ProjectionStart bigint;
+    SET @InstalledConsoleDefinition=REPLACE(
+        OBJECT_DEFINITION(OBJECT_ID(N'[monitor].[USP_DatabaseSnapshotInventory]')),
+        NCHAR(13)+NCHAR(10),NCHAR(10));
+    SET @ProjectionStart=CHARINDEX(
+        @ExpectedConsoleProjection COLLATE Latin1_General_100_BIN2,
+        @InstalledConsoleDefinition COLLATE Latin1_General_100_BIN2);
+    IF @InstalledConsoleDefinition IS NULL OR COALESCE(@ProjectionStart,0)=0
+       OR CHARINDEX(@ExpectedConsoleProjection COLLATE Latin1_General_100_BIN2,
+                    @InstalledConsoleDefinition COLLATE Latin1_General_100_BIN2,
+                    @ProjectionStart+LEN(@ExpectedConsoleProjection))<>0
+       OR DATALENGTH(SUBSTRING(@InstalledConsoleDefinition,@ProjectionStart,
+                               LEN(@ExpectedConsoleProjection)))<>DATALENGTH(@ExpectedConsoleProjection)
+       OR CONVERT(varbinary(max),SUBSTRING(@InstalledConsoleDefinition,@ProjectionStart,
+                                          LEN(@ExpectedConsoleProjection)))
+          <>CONVERT(varbinary(max),@ExpectedConsoleProjection)
+        THROW 57771,N'Database snapshot installed CONSOLE projection differs from the reviewed source block.',1;
     SET @Sql=N'CREATE DATABASE '+QUOTENAME(@SourceDb)+N' COLLATE SQL_Latin1_General_CP1_CS_AS;';
     EXEC [master].[sys].[sp_executesql] @Sql;
     SET @SourceCreated=1;
@@ -301,14 +343,80 @@ BEGIN TRY
          SourceKey varchar(64),Detail nvarchar(1000))
     );
 
+    DECLARE @TableSnapshotsJson nvarchar(max)=JSON_QUERY(@Json,'$.snapshots'),
+            @TableFilesJson nvarchar(max)=JSON_QUERY(@Json,'$.snapshotFiles'),
+            @ConsoleSnapshotsJson nvarchar(max),@ConsoleFilesJson nvarchar(max);
+    IF @TableSnapshotsJson IS NULL OR @TableFilesJson IS NULL
+        THROW 57772,N'Database snapshot proven TABLE JSON arrays were unavailable before CONSOLE.',1;
+
+    SELECT @Return=NULL,@Status=NULL,@Partial=NULL,@Error=NULL,@Message=NULL,@Json=NULL;
     INSERT #SnapshotConsole
-    EXEC [monitor].[USP_DatabaseSnapshotInventory]
-        @SnapshotNames=@Names,@ResultSetArt='CONSOLE',@PrintMeldungen=0;
-    IF (SELECT COUNT_BIG(*) FROM #SnapshotConsole WHERE Bereich=N'Snapshot'
-        AND Objekt IN(@SnapshotA,@SnapshotB))<>2
-       OR NOT EXISTS(SELECT 1 FROM #SnapshotConsole WHERE Bereich=N'Datei')
-       OR NOT EXISTS(SELECT 1 FROM #SnapshotConsole WHERE Bereich=N'Quelle')
-        THROW 57763,N'Database snapshot CONSOLE one-result-set synthetic oracle failed.',1;
+    EXEC @Return=[monitor].[USP_DatabaseSnapshotInventory]
+        @SnapshotNames=@Names,@ResultSetArt='CONSOLE',@JsonErzeugen=1,
+        @Json=@Json OUTPUT,@PrintMeldungen=0,
+        @StatusCodeOut=@Status OUTPUT,@IsPartialOut=@Partial OUTPUT,
+        @ErrorNumberOut=@Error OUTPUT,@ErrorMessageOut=@Message OUTPUT;
+    SELECT @TransactionCount=@@TRANCOUNT;
+    SELECT @TransactionXactState=XACT_STATE();
+    IF COALESCE(@Return,-1)<>51011 OR COALESCE(@Status,'')<>'INVALID_PARAMETER'
+       OR COALESCE(@Partial,0)<>1 OR COALESCE(@Error,-1)<>51011
+       OR @Message IS NULL OR @Json IS NOT NULL
+       OR EXISTS(SELECT 1 FROM #SnapshotConsole)
+       OR @TransactionCount<>0 OR @TransactionXactState<>0
+       OR @@LOCK_TIMEOUT<>@OriginalLock
+       OR CASE WHEN (@@OPTIONS&16384)=16384 THEN 1 ELSE 0 END<>@OriginalAbort
+        THROW 57773,N'Database snapshot INSERT EXEC negative control did not preserve the caller guard and state.',1;
+
+    SELECT @Return=NULL,@Status=NULL,@Partial=NULL,@Error=NULL,@Message=NULL,@Json=NULL;
+    EXEC @Return=[monitor].[USP_DatabaseSnapshotInventory]
+        @SnapshotNames=@Names,@ResultSetArt='CONSOLE',@JsonErzeugen=1,
+        @Json=@Json OUTPUT,@PrintMeldungen=0,
+        @StatusCodeOut=@Status OUTPUT,@IsPartialOut=@Partial OUTPUT,
+        @ErrorNumberOut=@Error OUTPUT,@ErrorMessageOut=@Message OUTPUT
+    WITH RESULT SETS
+    (
+        (Ergebnis nvarchar(200),Bereich nvarchar(64),Objekt nvarchar(260),Detail nvarchar(1000))
+    );
+    SELECT @TransactionCount=@@TRANCOUNT;
+    SELECT @TransactionXactState=XACT_STATE();
+    SELECT @ConsoleSnapshotsJson=JSON_QUERY(@Json,'$.snapshots'),
+           @ConsoleFilesJson=JSON_QUERY(@Json,'$.snapshotFiles');
+    IF COALESCE(@Return,-1)<>0 OR COALESCE(@Status,'')<>'AVAILABLE_LIMITED'
+       OR COALESCE(@Partial,0)<>1 OR @Error IS NOT NULL OR @Message IS NOT NULL
+       OR @TransactionCount<>0 OR @TransactionXactState<>0
+       OR @@LOCK_TIMEOUT<>@OriginalLock
+       OR CASE WHEN (@@OPTIONS&16384)=16384 THEN 1 ELSE 0 END<>@OriginalAbort
+       OR COALESCE(ISJSON(@Json),0)<>1
+       OR @ConsoleSnapshotsJson IS NULL OR @ConsoleFilesJson IS NULL
+       OR DATALENGTH(@ConsoleSnapshotsJson)<>DATALENGTH(@TableSnapshotsJson)
+       OR DATALENGTH(@ConsoleFilesJson)<>DATALENGTH(@TableFilesJson)
+       OR @ConsoleSnapshotsJson COLLATE SQL_Latin1_General_CP1_CS_AS
+          <>@TableSnapshotsJson COLLATE SQL_Latin1_General_CP1_CS_AS
+       OR @ConsoleFilesJson COLLATE SQL_Latin1_General_CP1_CS_AS
+          <>@TableFilesJson COLLATE SQL_Latin1_General_CP1_CS_AS
+       OR (SELECT COUNT_BIG(*) FROM OPENJSON(@Json,'$.snapshots')
+           WITH (SnapshotName sysname)
+           WHERE SnapshotName COLLATE SQL_Latin1_General_CP1_CS_AS
+                 IN(@SnapshotA COLLATE SQL_Latin1_General_CP1_CS_AS,
+                    @SnapshotB COLLATE SQL_Latin1_General_CP1_CS_AS))<>2
+       OR (SELECT COUNT_BIG(*) FROM OPENJSON(@Json,'$.snapshotFiles'))<>4
+       OR (SELECT COUNT_BIG(*) FROM OPENJSON(@Json,'$.sourceStatus'))<>3
+       OR (SELECT COUNT_BIG(*) FROM OPENJSON(@Json,'$.sourceStatus')
+           WITH (SourceKey varchar(64),DatabaseId int,StatusCode varchar(40),
+                 ObservedRows bigint,ReturnedRows bigint)
+           WHERE SourceKey='SNAPSHOT_CATALOG' AND DatabaseId IS NULL
+             AND StatusCode='AVAILABLE_LIMITED' AND ObservedRows=2 AND ReturnedRows=2)<>1
+       OR (SELECT COUNT_BIG(*) FROM OPENJSON(@Json,'$.sourceStatus')
+           WITH (SourceKey varchar(64),DatabaseId int,StatusCode varchar(40),
+                 ObservedRows bigint,ReturnedRows bigint)
+           WHERE SourceKey='SNAPSHOT_FILES'
+             AND DatabaseId IN(DB_ID(@SnapshotA),DB_ID(@SnapshotB))
+             AND StatusCode='AVAILABLE_LIMITED' AND ObservedRows=2 AND ReturnedRows=2)<>2
+       OR (SELECT COUNT(DISTINCT DatabaseId) FROM OPENJSON(@Json,'$.sourceStatus')
+           WITH (SourceKey varchar(64),DatabaseId int)
+           WHERE SourceKey='SNAPSHOT_FILES'
+             AND DatabaseId IN(DB_ID(@SnapshotA),DB_ID(@SnapshotB)))<>2
+        THROW 57763,N'Database snapshot CONSOLE schema, same-call data or caller state failed.',1;
 
     SET @Sql=N'CREATE LOGIN '+QUOTENAME(@Reader)
         +N' WITH PASS'+N'WORD='+QUOTENAME(@FixtureCredential,N'''')
