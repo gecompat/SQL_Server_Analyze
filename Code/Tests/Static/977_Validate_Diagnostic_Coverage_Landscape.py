@@ -77,6 +77,7 @@ KNOWN_RESEARCH_TO_PARTIAL_KEYS = {
     "EXTERNAL_MODELS",
     "EXTERNAL_DATA_POLYBASE",
     "POLICY_BASED_MANAGEMENT",
+    "EXTERNAL_REST_ENDPOINT",
 }
 RESEARCH_GAP_COHORT_FLOOR = 25  # Preserve the explicit research-gap cohort across named promotions.
 
@@ -272,7 +273,8 @@ def coverage_fixture() -> list[dict[str, str]]:
         'EXTERNAL_MODELS',
         'EXTERNAL_DATA_POLYBASE',
         'POLICY_BASED_MANAGEMENT',
-        *(f'SAMPLE_AREA_{index:03d}' for index in range(13)),
+        'EXTERNAL_REST_ENDPOINT',
+        *(f'SAMPLE_AREA_{index:03d}' for index in range(12)),
     }
     out_of_scope = {f'SAMPLE_AREA_{index:03d}' for index in range(23, 27)}
     domains = sorted(REQUIRED_DOMAINS)
@@ -430,6 +432,26 @@ def self_test() -> None:
     if not any('too few explicit researched gaps' in error
                for error in validate_rows(list(EXPECTED_FIELDS), unrelated_after_pbm)):
         raise AssertionError('unrelated promotion after PBM candidate escaped the cohort floor')
+
+    rest_candidate = [dict(row) for row in all_researched_fixture]
+    for row in rest_candidate:
+        if row['CoverageKey'] == 'EXTERNAL_REST_ENDPOINT':
+            row['CoverageStatus'] = 'PARTIAL_PRODUCT_FUNCTION'
+    if validate_rows(list(EXPECTED_FIELDS), rest_candidate):
+        raise AssertionError('named bounded external REST configuration candidate was rejected')
+    unrelated_after_rest = [dict(row) for row in rest_candidate]
+    for row in unrelated_after_rest:
+        if row['CoverageKey'] == 'SAMPLE_AREA_001':
+            row['CoverageStatus'] = 'PARTIAL_PRODUCT_FUNCTION'
+    if not any('too few explicit researched gaps' in error
+               for error in validate_rows(list(EXPECTED_FIELDS), unrelated_after_rest)):
+        raise AssertionError('unrelated promotion after external REST candidate escaped the cohort floor')
+    missing_rest_key = [dict(row) for row in rest_candidate if row['CoverageKey'] != 'EXTERNAL_REST_ENDPOINT']
+    errors = validate_rows(list(EXPECTED_FIELDS), missing_rest_key)
+    if not any('required coverage area missing: EXTERNAL_REST_ENDPOINT' in error for error in errors):
+        raise AssertionError('dropped external REST coverage key was accepted')
+    if not any('too few explicit researched gaps' in error for error in errors):
+        raise AssertionError('dropped external REST promotion reduced the cohort unnoticed')
 
     unrelated_after_snapshot = [dict(row) for row in snapshot_promotion]
     for row in unrelated_after_snapshot:

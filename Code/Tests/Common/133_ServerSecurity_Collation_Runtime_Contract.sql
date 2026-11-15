@@ -5,7 +5,8 @@ SET NOCOUNT ON;
 DECLARE @Json nvarchar(max), @Status varchar(40), @Partial bit;
 DECLARE @Options TABLE([Name] sysname COLLATE SQL_Latin1_General_CP1_CS_AS PRIMARY KEY);
 INSERT @Options VALUES(N'xp_cmdshell'),(N'Ole Automation Procedures'),(N'clr enabled'),
-    (N'clr strict security'),(N'external scripts enabled'),(N'remote admin connections'),
+    (N'clr strict security'),(N'external scripts enabled'),(N'external rest endpoint enabled'),
+    (N'remote admin connections'),
     (N'contained database authentication');
 CREATE TABLE [#ExampleSecurityExport]([Dummy] int NULL);
 EXEC [monitor].[USP_ServerSecurityConfiguration]
@@ -43,6 +44,33 @@ IF NOT EXISTS(SELECT 1 FROM [#ExampleSecurityExport] WHERE [ConfigurationName]=N
              EXCEPT SELECT [ConfigurationName] COLLATE SQL_Latin1_General_CP1_CS_AS,
                            TRY_CONVERT(int,[ConfiguredValue]),TRY_CONVERT(int,[RunningValue]) FROM [#ExampleSecurityExport])
     THROW 55822,N'Die positive Security-Konfiguration stimmt nicht mit der nativen Quelle überein.',1;
+IF TRY_CONVERT(int,SERVERPROPERTY(N'ProductMajorVersion'))=17
+BEGIN
+    IF (SELECT COUNT_BIG(*) FROM [sys].[configurations]
+        WHERE [name] COLLATE SQL_Latin1_General_CP1_CS_AS
+              =N'external rest endpoint enabled' COLLATE SQL_Latin1_General_CP1_CS_AS)<>1
+       OR (SELECT COUNT_BIG(*) FROM [#ExampleSecurityExport]
+           WHERE [ConfigurationName] COLLATE SQL_Latin1_General_CP1_CS_AS
+                 =N'external rest endpoint enabled' COLLATE SQL_Latin1_General_CP1_CS_AS)<>1
+       OR NOT EXISTS
+       (
+           SELECT 1
+           FROM [#ExampleSecurityExport] AS [e]
+           INNER JOIN [sys].[configurations] AS [c]
+               ON [e].[ConfigurationName] COLLATE SQL_Latin1_General_CP1_CS_AS
+                  =[c].[name] COLLATE SQL_Latin1_General_CP1_CS_AS
+           WHERE [c].[name] COLLATE SQL_Latin1_General_CP1_CS_AS
+                 =N'external rest endpoint enabled' COLLATE SQL_Latin1_General_CP1_CS_AS
+             AND COALESCE(TRY_CONVERT(int,[c].[value]),-1) IN(0,1)
+             AND COALESCE(TRY_CONVERT(int,[c].[value_in_use]),-1) IN(0,1)
+             AND TRY_CONVERT(int,[e].[ConfiguredValue])=CONVERT(int,[c].[value])
+             AND TRY_CONVERT(int,[e].[RunningValue])=CONVERT(int,[c].[value_in_use])
+             AND [e].[Finding] COLLATE SQL_Latin1_General_CP1_CS_AS
+                 ='OK_OR_CONTEXT_DEPENDENT' COLLATE SQL_Latin1_General_CP1_CS_AS
+       )
+        THROW 55824,N'Der SQL-Server-2025-REST-Konfigurationswert ist nicht nativ und in TABLE gebunden.',1;
+END;
+
 IF (SELECT COUNT_BIG(*) FROM [#ExampleSecurityExport])<>(SELECT COUNT_BIG(*) FROM OPENJSON(@Json,N'$.configuration'))
    OR EXISTS(SELECT [ConfigurationName] COLLATE SQL_Latin1_General_CP1_CS_AS,
                     CONVERT(nvarchar(4000),[ConfiguredValue]),CONVERT(nvarchar(4000),[RunningValue]),
