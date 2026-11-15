@@ -71,6 +71,7 @@ KNOWN_RESEARCH_TO_PARTIAL_KEYS = {
     "DDL_LOGON_TRIGGERS",
     "LOADED_MODULES_FILTER_DRIVERS",
     "LINUX_CONTAINER_LIMITS",
+    "DATABASE_SNAPSHOTS",
 }
 RESEARCH_GAP_COHORT_FLOOR = 25  # Preserve the explicit research-gap cohort across named promotions.
 
@@ -360,6 +361,28 @@ def self_test() -> None:
             row['CoverageStatus'] = 'PARTIAL_PRODUCT_FUNCTION'
     if validate_rows(list(EXPECTED_FIELDS), linux_promotion):
         raise AssertionError('named Linux reader promotion was rejected')
+    snapshot_promotion_base = [dict(row) for row in all_researched_fixture]
+    for row in snapshot_promotion_base:
+        if row['CoverageKey'] == 'DATABASE_SNAPSHOTS':
+            row['CoverageStatus'] = 'RESEARCHED_NOT_IMPLEMENTED'
+        elif row['CoverageKey'] == 'SAMPLE_AREA_000':
+            row['CoverageStatus'] = 'IMPLEMENTED_BASELINE'
+    if validate_rows(list(EXPECTED_FIELDS), snapshot_promotion_base):
+        raise AssertionError('isolated Database Snapshot research fixture was rejected')
+    snapshot_promotion = [dict(row) for row in snapshot_promotion_base]
+    for row in snapshot_promotion:
+        if row['CoverageKey'] == 'DATABASE_SNAPSHOTS':
+            row['CoverageStatus'] = 'PARTIAL_PRODUCT_FUNCTION'
+    if validate_rows(list(EXPECTED_FIELDS), snapshot_promotion):
+        raise AssertionError('named Database Snapshot promotion was rejected')
+    unrelated_after_snapshot = [dict(row) for row in snapshot_promotion]
+    for row in unrelated_after_snapshot:
+        if row['CoverageKey'] == 'SAMPLE_AREA_001':
+            row['CoverageStatus'] = 'PARTIAL_PRODUCT_FUNCTION'
+    if not any('too few explicit researched gaps' in error
+               for error in validate_rows(list(EXPECTED_FIELDS), unrelated_after_snapshot)):
+        raise AssertionError('unrelated promotion after Database Snapshot reduced the research cohort')
+
     unrelated_after_linux = [dict(row) for row in linux_promotion]
     for row in unrelated_after_linux:
         if row['CoverageKey'] == 'SAMPLE_AREA_001':

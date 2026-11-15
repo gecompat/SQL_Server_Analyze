@@ -202,3 +202,4 @@ Der Installer beendet die Verarbeitung beim ersten SQL-Fehler.
 :r ../08_ServerHealth/310_USP_DatabaseMirroringInventory.sql
 :r ../08_ServerHealth/320_USP_SensitivityClassificationSummary.sql
 :r ../08_ServerHealth/330_USP_LoadedModuleInventory.sql
+:r ../08_ServerHealth/340_USP_DatabaseSnapshotInventory.sql

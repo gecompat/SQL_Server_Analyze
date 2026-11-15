@@ -1,7 +1,7 @@
 # Objektindex der eigenständigen Analysebeschreibungen
 
-**Stand:** 14. November 2026
-**Abdeckung:** alle 126 inventarisierten `USP_*`-Procedures des Frameworks einschließlich der optionalen Pakete
+**Stand:** 15. November 2026
+**Abdeckung:** alle 127 inventarisierten `USP_*`-Procedures des Frameworks einschließlich der optionalen Pakete
 
 Jeder Link führt zu einer in sich geschlossenen Procedure-Seite. Dort stehen sicherer Einstieg, Zeilengranularität, Leserichtung, technische Problembegründung, unkritischer Gegenkontext, synthetisches Beispiel, Folgeanalyse und der Link zur vollständigen technischen Spaltenreferenz.
 
@@ -139,6 +139,7 @@ Für einen Einstieg nach beobachtetem Problem verwenden Sie [Hier beginnen](Star
 | `[monitor].[USP_StartupParameters]` | [Startparameter, Pfade und persistente Flags](Procedures/USP_StartupParameters.md) |
 | `[monitor].[USP_OSInformation]` | [OS, Virtualisierung, Speicher und Uptime](Procedures/USP_OSInformation.md) |
 | `[monitor].[USP_LoadedModuleInventory]` | [Native Modulnamen und Basenamen im SQL-Prozess](Procedures/USP_LoadedModuleInventory.md) |
+| `[monitor].[USP_DatabaseSnapshotInventory]` | [Sichtbare Datenbank-Snapshots und Sparse-Dateikatalogzeilen](Procedures/USP_DatabaseSnapshotInventory.md) |
 | `[monitor].[USP_ServerSecurityConfiguration]` | [Sicherheitsrelevante Konfiguration](Procedures/USP_ServerSecurityConfiguration.md) |
 | `[monitor].[USP_AuditConfigurationAnalysis]` | [SQL-Auditkonfiguration und Runtimezustand](Procedures/USP_AuditConfigurationAnalysis.md) |
 | `[monitor].[USP_ServerHealthAnalysis]` | [Orchestrierter Server-Health-Überblick](Procedures/USP_ServerHealthAnalysis.md) |
@@ -190,11 +191,11 @@ Für einen Einstieg nach beobachtetem Problem verwenden Sie [Hier beginnen](Star
 | Query Store | 11 |
 | Extended Events | 6 |
 | Infrastruktur | 16 |
-| Server Health | 23 |
+| Server Health | 24 |
 | Versionsadaptive Spezialanalysen | 11 |
 | Snapshot und Baseline | 3 |
 | Weitere einzeln verlinkte Analysen | 11 |
-| **Gesamt** | **126** |
+| **Gesamt** | **127** |
 
 ## Weitere Einstiege
 

@@ -240,6 +240,7 @@ AS
         , (N'USP_DatabaseMirroringInventory','CONFIRM_WITH',N'USP_InfrastructureAnalysis',1,N'Sichtbare lokale Mirroring-Katalogwerte in den übrigen HA/DR-Kontext einordnen; sie belegen keine Partnergesundheit oder Failoverfähigkeit.')
         , (N'USP_SensitivityClassificationSummary','CONFIRM_WITH',N'USP_DatabasePrincipalAnalysis',1,N'Direkte Datenbankrechte bei fehlendem Klassifikationszugriff getrennt einordnen; die Zählung bewertet keine effektiven Schutzregeln.')
         , (N'USP_LoadedModuleInventory','CONFIRM_WITH',N'USP_OSInformation',1,N'SQL-Prozess-DMV getrennt von sichtbaren Plattform- und Hostgrenzen lesen; keine Filtertreiber- oder Signaturbewertung.')
+        , (N'USP_DatabaseSnapshotInventory','CONFIRM_WITH',N'USP_DatabaseCapacityAnalysis',1,N'Snapshot-Katalogkapazitaet getrennt von Datei- und Volumenfreiraum normaler Datenbanken interpretieren; keine physische Snapshot-Belegung ableiten.')
     ) AS [v]
     (
           [FromProcedureName], [RelationType], [ToProcedureName]

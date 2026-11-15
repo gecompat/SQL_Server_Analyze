@@ -71,6 +71,7 @@ Der vollständige Such-, Bewertungs- und Ausgabevertrag steht in der [Navigator-
 | Agentjob schlägt fehl oder läuft zu lange | `USP_AgentJobs` | `USP_AgentMonitoringAnalysis` | [Infrastruktur](07_Infrastructure.md) |
 | Servergrundzustand ist unklar | `USP_ServerHealthAnalysis` | Memory, Worker, Configuration oder Findings | [Server Health](08_Server_Health.md) |
 | Datenbanken wachsen oder Volumes werden knapp | `USP_DatabaseCapacityAnalysis` | aktuelle I/O- und Wachstumsursache prüfen | [Server Health](08_Server_Health.md) |
+| Sichtbare Datenbank-Snapshots und ihre Dateien sind unklar | `USP_DatabaseSnapshotInventory` | maximale Sparse-Dateikapazität von physischer Belegung trennen | [Snapshot-Inventar](Procedures/USP_DatabaseSnapshotInventory.md) |
 | Deadlock liegt in Extended Events vor | `USP_ExtendedEventsDeadlocks` | aktuellen Blockingzustand gegenprüfen | [Extended Events](06_Extended_Events.md) |
 | Backup, Agent, AG und Betrieb gemeinsam sichten | `USP_InfrastructureAnalysis` | betroffenen Infrastrukturpfad vertiefen | [Infrastruktur](07_Infrastructure.md) |
 | SQL-Server-Build, CU oder Lifecycle prüfen | `USP_ServerVersionInformation` | `USP_ServerFeatureCapabilities` | [Versionsadaptive Analyse](09_Version_Adaptive.md) |

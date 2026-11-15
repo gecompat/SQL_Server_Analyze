@@ -1,6 +1,6 @@
 # Aufrufkatalog aller dokumentierten Procedures
 
-Stand: 2026-11-14 — 126 eindeutige Procedure-Einträge; alle 126 öffentlichen Inventar-Procedures sind enthalten.
+Stand: 2026-11-15 — 127 eindeutige Procedure-Einträge; alle 127 öffentlichen Inventar-Procedures sind enthalten.
 
 Die Hilfeaufrufe führen keine fachliche Analyse aus. Weitere typische Querschnittsbeispiele stehen am Dokumentanfang.
 
@@ -935,3 +935,12 @@ EXEC [monitor].[USP_LoadedModuleInventory] @NurBuildFlags=0, @MaxZeilen=100, @Re
 ```
 
 Die [Procedure-Seite](../Analysis_Guides/Procedures/USP_LoadedModuleInventory.md) beschreibt die SQL-Prozess-DMV-Aufnahme mit nativem Namen einschließlich möglichem Pfad, den Caller-Rechtebedarf und die Ausgabegrenzen.
+
+## `[monitor].[USP_DatabaseSnapshotInventory]`
+
+```sql
+EXEC [monitor].[USP_DatabaseSnapshotInventory] @Hilfe=1;
+EXEC [monitor].[USP_DatabaseSnapshotInventory] @SnapshotNames=N'[ExampleSnapshot]', @NurOnline=1, @MaxZeilen=100, @ResultSetArt='CONSOLE', @PrintMeldungen=0;
+```
+
+Die [Procedure-Seite](../Analysis_Guides/Procedures/USP_DatabaseSnapshotInventory.md) beschreibt die caller-sichtbaren Kataloggrenzen, fünf Ergebnisgruppen und den Unterschied zwischen maximaler Sparse-Dateikapazität und tatsächlich belegtem Speicher.
