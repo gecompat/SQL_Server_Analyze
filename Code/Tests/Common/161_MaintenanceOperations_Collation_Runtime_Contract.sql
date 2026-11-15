@@ -128,7 +128,7 @@ THROW 56508,N''Maintenance own resumable scope is not empty.'',1;'; EXEC(@Sql);
       (N'sys.dm_tran_persistent_version_store_stats','AVAILABLE',0),
       (N'msdb.dbo.sysjobs + msdb.dbo.sysjobactivity','NOT_REQUESTED',0);
     DECLARE @Parity TABLE([ExpectedJson] nvarchar(max),[ActualJson] nvarchar(max));
-    WHILE @Case<24
+    WHILE @Case<29
     BEGIN
         SELECT @Limit=CASE WHEN @Case=0 THEN NULL WHEN @Case IN(2,5,20) THEN 1 WHEN @Case=11 THEN -1 ELSE 0 END,
                @SafeLimit=CASE WHEN @Case IN(2,5,20) THEN 1 WHEN @Case=11 THEN 0 ELSE CONVERT(bigint,9223372036854775807) END,
@@ -145,11 +145,12 @@ THROW 56508,N''Maintenance own resumable scope is not empty.'',1;'; EXEC(@Sql);
                @Pattern=CASE WHEN @Case=18 THEN N'like:ExampleMaintenance%' ELSE NULL END,
                @Jobs=CASE WHEN @Case=23 THEN N'ExampleMaintenanceUncreatedJob' ELSE NULL END,
                @JobPattern=CASE WHEN @Case=22 THEN N'regex:ExampleMaintenance' WHEN @Case=23 THEN N'like:ExampleMaintenance%' ELSE NULL END,
-               @Timeout=CASE WHEN @Case=12 THEN -1 ELSE 0 END,@Paused=CASE WHEN @Case=13 THEN 0 ELSE 60 END,
-               @Blocked=CASE WHEN @Case=14 THEN -1 ELSE 5000 END,
-               @Pvs=CASE WHEN @Case=15 THEN -1 WHEN @Case IN(4,5,6,7,8,9,10,20,21) THEN 0 ELSE 1024 END,
-               @Aborted=CASE WHEN @Case=16 THEN -1 ELSE 1 END,
-               @Invalid=CASE WHEN @Case BETWEEN 11 AND 19 OR @Case=23 THEN 1 ELSE 0 END,
+               @Timeout=CASE WHEN @Case=12 THEN -1 WHEN @Case=24 THEN NULL ELSE 0 END,
+               @Paused=CASE WHEN @Case=13 THEN 0 WHEN @Case=25 THEN NULL ELSE 60 END,
+               @Blocked=CASE WHEN @Case=14 THEN -1 WHEN @Case=26 THEN NULL ELSE 5000 END,
+               @Pvs=CASE WHEN @Case=15 THEN -1 WHEN @Case=27 THEN NULL WHEN @Case IN(4,5,6,7,8,9,10,20,21) THEN 0 ELSE 1024 END,
+               @Aborted=CASE WHEN @Case=16 THEN -1 WHEN @Case=28 THEN NULL ELSE 1 END,
+               @Invalid=CASE WHEN @Case BETWEEN 11 AND 19 OR @Case=23 OR @Case BETWEEN 24 AND 28 THEN 1 ELSE 0 END,
                @Unavailable=CASE WHEN @Case=22 THEN 1 ELSE 0 END,
                @WarningName=CASE WHEN @Case=8 THEN N'exampleMaintenanceSourceÖ' WHEN @Case IN(9,10,21) THEN N'ExampleMaintenanceMissingß' ELSE NULL END,
                @Json=NULL,@Status=NULL,@Partial=NULL;
