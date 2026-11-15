@@ -258,7 +258,7 @@ BEGIN TRY
         WHERE [policy_category_id]=@PbmCategoryId AND [name] COLLATE SQL_Latin1_General_CP1_CS_AS=@PbmCategoryName COLLATE SQL_Latin1_General_CP1_CS_AS
           AND [mandate_database_subscriptions]=0)<>1
        OR EXISTS(SELECT 1 FROM [msdb].[dbo].[syspolicy_policies]
-                 WHERE [policy_category]=@PbmCategoryId)
+                 WHERE [policy_category_id]=@PbmCategoryId)
        OR EXISTS(SELECT 1 FROM [msdb].[dbo].[syspolicy_policy_category_subscriptions]
                  WHERE [policy_category_id]=@PbmCategoryId)
         THROW 54964,N'OPS-008 owned PBM category identity or non-mandated isolation failed.',1;
