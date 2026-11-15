@@ -46,6 +46,72 @@ RAW liefert die Gruppen in dieser Reihenfolge:
 
 MetadataVisibility=VISIBLE_ONLY gilt für zurückgegebene Zeilen, nicht für einen globalen Bestand. VisibleSparseFileCount ist nur bei mindestens einer sichtbaren Sparse-Dateizeile positiv; NULL bedeutet unbekannt. sourceStatus unterscheidet Auswahl- und Dateikatalogquelle. JSON enthält meta und dieselben fünf Gruppen; TABLE schreibt die ausdrücklich gemappten Gruppen. Eine normale leere Auswahl bleibt SKIPPED und belegt keinen globalen Snapshot-Nullbestand.
 
+## Eine Zeile bedeutet
+
+Eine Zeile in `snapshots` beschreibt genau einen caller-sichtbaren Datenbank-Snapshot. `snapshotFiles` enthält je sichtbarer Sparse-Dateikatalogzeile eine eigene Zeile mit der maximalen Dateikapazität. `sourceStatus` enthält eine `SNAPSHOT_CATALOG`-Zeile und je aufgenommenem Snapshot vor dem Ausgabelimit eine `SNAPSHOT_FILES`-Zeile. Für einen später ausgeblendeten Snapshot kann `ReturnedRows=0` bleiben; bei leerer Auswahl oder frühem Katalogfehler liegt nur die Katalogstatuszeile vor. `warnings` hält begrenzte Sicht- und Ausgabefunde fest.
+
+## So lesen
+
+Prüfen Sie zuerst `moduleStatus` und alle vorhandenen `sourceStatus`-Zeilen. Ordnen Sie danach `snapshotFiles` über `SnapshotDatabaseId` dem Snapshot zu. `SourceDatabaseId` bleibt auch bei verborgenem `SourceDatabaseName` erhalten. Ein NULL in `VisibleSparseFileCount` bedeutet unbekannte Dateisicht; ein kleiner `@MaxZeilen` begrenzt ausgegebene Snapshots, aber keine Dateizeile des behaltenen Snapshots.
+
+## Warum kann das problematisch sein?
+
+Ein Snapshot mit unerwarteter Source-Beziehung, unbekannter Dateisicht oder großer maximaler Sparse-Dateikapazität begründet eine gezielte Prüfung der Katalogsicht und der tatsächlichen Speicherung. Die maximale Kapazität allein belegt weder aktuellen Verbrauch noch einen akuten Speicherengpass.
+
+## Wann ist es kein Problem?
+
+`SKIPPED` bei fehlendem sichtbarem Treffer ist für sich kein Fehler. Auch eine große maximale Sparse-Dateikapazität ist ohne tatsächliche Belegungs- und Betriebsevidenz kein Gesundheitsbefund. Die begrenzte Caller-Sicht erlaubt keinen Schluss auf den globalen Bestand.
+
+## Technische Vertiefung
+
+### Leitfrage
+
+Welche Datenbank-Snapshots und zugehörigen Sparse-Dateikatalogzeilen sind für diesen Caller sichtbar, und welcher Quell-Datenbank-ID sind sie zugeordnet?
+
+### Technischer Hintergrund
+
+`master.sys.databases.source_database_id IS NOT NULL` kennzeichnet Snapshot-Datenbanken. `master.sys.master_files` liefert die caller-sichtbaren Sparse-Dateizeilen. `size` wird in 8-KiB-Seiten als maximale Snapshot-Dateikapazität gelesen; eine physische Nutzungs-DMV wird nicht abgefragt.
+
+### Datenkette
+
+Die Procedure liest zuerst Snapshot- und Quellmetadaten, danach Dateikatalogzeilen für die sichtbaren Kandidaten. Sie erfasst Status und Fehler getrennt, begrenzt anschließend die ausgegebenen Snapshot-Zeilen und behält alle sichtbaren Dateizeilen dieser Auswahl. RAW und JSON geben dieselben fünf fachlichen Gruppen aus; TABLE schreibt nur ausdrücklich gemappte lokale Ziele.
+
+### Source Select
+
+Der Ausschnitt zeigt die Snapshot-Erkennung im Katalog. Die Procedure ergänzt Filter, Fehlergrenzen und den zweiten Dateikatalogread.
+
+```sql
+SELECT d.database_id AS SnapshotDatabaseId,
+       d.name AS SnapshotName,
+       d.source_database_id AS SourceDatabaseId,
+       src.name AS SourceDatabaseName,
+       d.create_date AS CatalogCreateDate
+FROM master.sys.databases AS d WITH (NOLOCK)
+LEFT JOIN master.sys.databases AS src WITH (NOLOCK)
+  ON src.database_id=d.source_database_id
+WHERE d.source_database_id IS NOT NULL;
+```
+
+**Wichtig für die Eigenlast:** Die Katalogkandidaten werden vor `@MaxZeilen` gelesen; der Parameter ist kein Quellenbudget. Die zweite Kataloglesung ist nicht atomar mit der ersten. Für die Sicht auf eine Zeile in `sys.master_files` ist eines der dokumentierten Datenbank- oder Serverrechte erforderlich.
+
+### Zeit- und Scope-Modell
+
+`CapturedAtUtc` markiert den Aufnahmebeginn und keine atomare Katalogversion. `CatalogCreateDate` bleibt ein nativer `datetime`-Wert ohne UTC-Deutung; Umbenennung kann seinen Bezug ändern. `MetadataVisibility=VISIBLE_ONLY` gilt nur für zurückgegebene Zeilen.
+
+### Bewertung und Gegenprobe
+
+Vergleichen Sie bei unerwarteten Zeilen `SnapshotDatabaseId`, `SourceDatabaseId` und die sichtbaren `FileId`-Werte unter demselben Caller mit den beiden Systemkatalogen. Für tatsächliche Dateibelegung ist eine gesonderte Quelle erforderlich. Ein nicht sichtbarer Quellname darf nicht durch einen geratenen Namen ersetzt werden.
+
+### Typische Fehlinterpretation
+
+`MaximumSnapshotSizeBytes` ist die maximale mögliche Kapazität der Sparse-Datei, kein gemessener Verbrauch. `VisibleSparseFileCount=NULL` ist kein Dateizähler von null. `CatalogCreateDate` belegt nach einer Umbenennung kein verlässliches Snapshot-Alter.
+
+### Folgeanalyse
+
+Prüfen Sie bei `SOURCE_UNAVAILABLE` den nativen Fehler und die Caller-Rechte. Bei Kapazitätsfragen betrachten Sie tatsächliche Datei- und Volumeevidenz getrennt; bei Restore- oder Gesundheitsfragen verwenden Sie einen ausdrücklich dafür qualifizierten Betriebsvertrag.
+
+Die [Technische Detailbeschreibung](../../../Code/08_ServerHealth/340_USP_DatabaseSnapshotInventory.sql) zeigt den kanonischen Produktcode. Die Seite [Gemeinsames Execution-, Zeit- und Evidenzmodell](../Technical_Foundations.md) erklärt die allgemeinen Beobachtungsgrenzen.
+
 ## Synthetische Aufrufe
 
 ~~~sql

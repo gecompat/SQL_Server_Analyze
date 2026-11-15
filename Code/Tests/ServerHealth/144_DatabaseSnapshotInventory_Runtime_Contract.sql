@@ -284,7 +284,7 @@ BEGIN TRY
     WITH RESULT SETS
     (
         (ModuleName nvarchar(128),CapturedAtUtc datetime2(3),StatusCode varchar(40),
-         IsPartial bit,RowCount bigint,Detail nvarchar(1000)),
+         IsPartial bit,[RowCount] bigint,Detail nvarchar(1000)),
         (SnapshotDatabaseId int,SnapshotName nvarchar(128),SourceDatabaseId int,
          SourceDatabaseName nvarchar(128),CatalogCreateDate datetime,
          SnapshotStateDesc nvarchar(60),IsReadOnly bit,VisibleSparseFileCount bigint,

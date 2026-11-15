@@ -6,8 +6,8 @@ GO
 Objekt       : monitor.USP_DatabaseSnapshotInventory
 Version      : 1.0.0
 Stand        : 2026-11-15
-Zweck        : Inventar caller-sichtbarer Datenbank-Snapshots und ihrer
-               caller-sichtbaren Dateikatalogzeilen.
+Zweck        : Inventarisiert caller-sichtbare Datenbank-Snapshots und
+               ihre caller-sichtbaren Dateikatalogzeilen.
 Quellen      : master.sys.databases, master.sys.master_files.
 Grenzen      : Keine physische Belegung, Gesundheit, Restore-Eignung oder
                globale Vollständigkeit. Keine persistente Datenbank- oder Snapshot-
@@ -91,8 +91,8 @@ BEGIN
 
     BEGIN TRY
         SET XACT_ABORT OFF;
-        CREATE TABLE #SnapshotRequested (NameValue sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL PRIMARY KEY);
-        CREATE TABLE #SnapshotCandidates
+        CREATE TABLE #DatabaseSnapshotInventory_Requested (NameValue sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL PRIMARY KEY);
+        CREATE TABLE #DatabaseSnapshotInventory_Candidates
         (
             SnapshotDatabaseId int NOT NULL PRIMARY KEY,
             SnapshotName sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,
@@ -107,7 +107,7 @@ BEGIN
             ModuleName sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,
             CapturedAtUtc datetime2(3) NOT NULL,
             StatusCode varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,
-            IsPartial bit NOT NULL, RowCount bigint NOT NULL,
+            IsPartial bit NOT NULL, [RowCount] bigint NOT NULL,
             Detail nvarchar(1000) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
         );
         CREATE TABLE #DatabaseSnapshotInventory_snapshots
@@ -175,7 +175,7 @@ BEGIN
                 IF @PreviousXactAbort=1 SET XACT_ABORT ON; ELSE SET XACT_ABORT OFF;
                 RETURN 51011;
             END;
-            INSERT #SnapshotRequested(NameValue)
+            INSERT #DatabaseSnapshotInventory_Requested(NameValue)
             SELECT NameValue FROM [monitor].[TVF_ParseSqlNameList](@SnapshotNames) WHERE IsValid=1;
         END;
         IF @Mode='TABLE'
@@ -198,7 +198,7 @@ BEGIN
 
         SET @Started=SYSUTCDATETIME();
         SET @Sql=N'SET LOCK_TIMEOUT '+CONVERT(nvarchar(20),@LockTimeoutMs)+N';
-            INSERT #SnapshotCandidates
+            INSERT #DatabaseSnapshotInventory_Candidates
             SELECT d.database_id,d.name,d.source_database_id,src.name,d.create_date,d.state_desc,d.is_read_only
             FROM master.sys.databases AS d WITH (NOLOCK)
             LEFT JOIN master.sys.databases AS src WITH (NOLOCK) ON src.database_id=d.source_database_id
@@ -206,7 +206,7 @@ BEGIN
               AND (@Online=0 OR d.state=0)
               AND (@System=1 OR d.source_database_id>4)
               AND (@Filter=0 OR EXISTS
-                  (SELECT 1 FROM #SnapshotRequested AS r WHERE r.NameValue=d.name COLLATE SQL_Latin1_General_CP1_CS_AS));';
+                  (SELECT 1 FROM #DatabaseSnapshotInventory_Requested AS r WHERE r.NameValue=d.name COLLATE SQL_Latin1_General_CP1_CS_AS));';
         BEGIN TRY
             EXEC [sys].[sp_executesql] @Sql,N'@Online bit,@System bit,@Filter bit',
                  @Online=@NurOnline,@System=@SystemdatenbankenEinbeziehen,@Filter=@NamesActive;
@@ -222,7 +222,7 @@ BEGIN
         END CATCH;
         IF @Error IS NULL
         BEGIN
-        SET @Observed=(SELECT COUNT_BIG(*) FROM #SnapshotCandidates);
+        SET @Observed=(SELECT COUNT_BIG(*) FROM #DatabaseSnapshotInventory_Candidates);
         INSERT #DatabaseSnapshotInventory_sourceStatus
         VALUES(NULL,NULL,'SNAPSHOT_CATALOG','CATALOG',@Started,SYSUTCDATETIME(),
                CASE WHEN @Observed=0 THEN 'SKIPPED' ELSE 'AVAILABLE_LIMITED' END,
@@ -230,7 +230,7 @@ BEGIN
         INSERT #DatabaseSnapshotInventory_snapshots
         SELECT SnapshotDatabaseId,SnapshotName,SourceDatabaseId,SourceDatabaseName,CatalogCreateDate,
                SnapshotStateDesc,IsReadOnly,NULL,'SOURCE_UNAVAILABLE','VISIBLE_ONLY'
-        FROM #SnapshotCandidates;
+        FROM #DatabaseSnapshotInventory_Candidates;
 
         SET @Started=SYSUTCDATETIME();
         SET @Sql=N'SET LOCK_TIMEOUT '+CONVERT(nvarchar(20),@LockTimeoutMs)+N';
@@ -238,7 +238,7 @@ BEGIN
             SELECT c.SnapshotDatabaseId,c.SnapshotName,f.file_id,f.name,f.physical_name,
                    f.is_sparse,f.state_desc,f.size,CONVERT(bigint,f.size)*CONVERT(bigint,8192),
                    ''VISIBLE_ONLY''
-            FROM #SnapshotCandidates AS c
+            FROM #DatabaseSnapshotInventory_Candidates AS c
             INNER JOIN master.sys.master_files AS f WITH (NOLOCK)
               ON f.database_id=c.SnapshotDatabaseId
             WHERE f.is_sparse=1;';
@@ -280,9 +280,9 @@ BEGIN
             INSERT #DatabaseSnapshotInventory_warnings
             SELECT NULL,r.NameValue,'SNAPSHOT_UNAVAILABLE','SNAPSHOT_CATALOG',
                    N'Der angeforderte Snapshot ist im ausgewählten Caller-Scope nicht sichtbar.'
-            FROM #SnapshotRequested AS r
+            FROM #DatabaseSnapshotInventory_Requested AS r
             WHERE NOT EXISTS
-            (SELECT 1 FROM #SnapshotCandidates AS c WHERE c.SnapshotName=r.NameValue);
+            (SELECT 1 FROM #DatabaseSnapshotInventory_Candidates AS c WHERE c.SnapshotName=r.NameValue);
         ;WITH Bounded AS
         (SELECT SnapshotDatabaseId,ROW_NUMBER() OVER(ORDER BY SnapshotDatabaseId) AS rn
          FROM #DatabaseSnapshotInventory_snapshots)
