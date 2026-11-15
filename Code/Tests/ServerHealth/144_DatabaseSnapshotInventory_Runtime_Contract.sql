@@ -172,7 +172,7 @@ BEGIN TRY
         THROW 57749,N'Database snapshot positive result cardinality or native TABLE type failed.',1;
     IF EXISTS
     (
-        SELECT d.database_id,d.name,d.source_database_id,src.name,d.create_date,d.state_desc,d.is_read_only
+        SELECT d.database_id,d.name COLLATE SQL_Latin1_General_CP1_CS_AS,d.source_database_id,src.name COLLATE SQL_Latin1_General_CP1_CS_AS,d.create_date,d.state_desc COLLATE SQL_Latin1_General_CP1_CS_AS,d.is_read_only
         FROM master.sys.databases AS d
         LEFT JOIN master.sys.databases AS src ON src.database_id=d.source_database_id
         WHERE d.database_id IN(DB_ID(@SnapshotA),DB_ID(@SnapshotB))
@@ -187,7 +187,7 @@ BEGIN TRY
                CatalogCreateDate,SnapshotStateDesc,IsReadOnly
         FROM #SnapshotOut_snapshots
         EXCEPT
-        SELECT d.database_id,d.name,d.source_database_id,src.name,d.create_date,d.state_desc,d.is_read_only
+        SELECT d.database_id,d.name COLLATE SQL_Latin1_General_CP1_CS_AS,d.source_database_id,src.name COLLATE SQL_Latin1_General_CP1_CS_AS,d.create_date,d.state_desc COLLATE SQL_Latin1_General_CP1_CS_AS,d.is_read_only
         FROM master.sys.databases AS d
         LEFT JOIN master.sys.databases AS src ON src.database_id=d.source_database_id
         WHERE d.database_id IN(DB_ID(@SnapshotA),DB_ID(@SnapshotB))
@@ -195,7 +195,7 @@ BEGIN TRY
         THROW 57750,N'Database snapshot TABLE snapshot identities differ from native catalog.',1;
     IF EXISTS
     (
-        SELECT f.database_id,f.file_id,f.name,f.physical_name,f.is_sparse,f.state_desc,
+        SELECT f.database_id,f.file_id,f.name COLLATE SQL_Latin1_General_CP1_CS_AS,f.physical_name COLLATE SQL_Latin1_General_CP1_CS_AS,f.is_sparse,f.state_desc COLLATE SQL_Latin1_General_CP1_CS_AS,
                f.size,CONVERT(bigint,f.size)*8192
         FROM master.sys.master_files AS f
         WHERE f.database_id IN(DB_ID(@SnapshotA),DB_ID(@SnapshotB)) AND f.is_sparse=1
@@ -210,7 +210,7 @@ BEGIN TRY
                MaximumSnapshotSizePages,MaximumSnapshotSizeBytes
         FROM #SnapshotOut_snapshotFiles
         EXCEPT
-        SELECT f.database_id,f.file_id,f.name,f.physical_name,f.is_sparse,f.state_desc,
+        SELECT f.database_id,f.file_id,f.name COLLATE SQL_Latin1_General_CP1_CS_AS,f.physical_name COLLATE SQL_Latin1_General_CP1_CS_AS,f.is_sparse,f.state_desc COLLATE SQL_Latin1_General_CP1_CS_AS,
                f.size,CONVERT(bigint,f.size)*8192
         FROM master.sys.master_files AS f
         WHERE f.database_id IN(DB_ID(@SnapshotA),DB_ID(@SnapshotB)) AND f.is_sparse=1
@@ -222,8 +222,8 @@ BEGIN TRY
                CatalogCreateDate,SnapshotStateDesc,IsReadOnly
         FROM #SnapshotOut_snapshots
         EXCEPT
-        SELECT SnapshotDatabaseId,SnapshotName,SourceDatabaseId,SourceDatabaseName,
-               CatalogCreateDate,SnapshotStateDesc,IsReadOnly
+        SELECT SnapshotDatabaseId,SnapshotName COLLATE SQL_Latin1_General_CP1_CS_AS,SourceDatabaseId,SourceDatabaseName COLLATE SQL_Latin1_General_CP1_CS_AS,
+               CatalogCreateDate,SnapshotStateDesc COLLATE SQL_Latin1_General_CP1_CS_AS,IsReadOnly
         FROM OPENJSON(@Json,'$.snapshots') WITH
         (
             SnapshotDatabaseId int,SnapshotName sysname,SourceDatabaseId int,
@@ -233,8 +233,8 @@ BEGIN TRY
     )
        OR EXISTS
     (
-        SELECT SnapshotDatabaseId,SnapshotName,SourceDatabaseId,SourceDatabaseName,
-               CatalogCreateDate,SnapshotStateDesc,IsReadOnly
+        SELECT SnapshotDatabaseId,SnapshotName COLLATE SQL_Latin1_General_CP1_CS_AS,SourceDatabaseId,SourceDatabaseName COLLATE SQL_Latin1_General_CP1_CS_AS,
+               CatalogCreateDate,SnapshotStateDesc COLLATE SQL_Latin1_General_CP1_CS_AS,IsReadOnly
         FROM OPENJSON(@Json,'$.snapshots') WITH
         (
             SnapshotDatabaseId int,SnapshotName sysname,SourceDatabaseId int,
@@ -253,8 +253,8 @@ BEGIN TRY
                FileStateDesc,MaximumSnapshotSizePages,MaximumSnapshotSizeBytes
         FROM #SnapshotOut_snapshotFiles
         EXCEPT
-        SELECT SnapshotDatabaseId,FileId,LogicalFileName,PhysicalName,IsSparse,
-               FileStateDesc,MaximumSnapshotSizePages,MaximumSnapshotSizeBytes
+        SELECT SnapshotDatabaseId,FileId,LogicalFileName COLLATE SQL_Latin1_General_CP1_CS_AS,PhysicalName COLLATE SQL_Latin1_General_CP1_CS_AS,IsSparse,
+               FileStateDesc COLLATE SQL_Latin1_General_CP1_CS_AS,MaximumSnapshotSizePages,MaximumSnapshotSizeBytes
         FROM OPENJSON(@Json,'$.snapshotFiles') WITH
         (
             SnapshotDatabaseId int,FileId int,LogicalFileName sysname,PhysicalName nvarchar(260),
@@ -264,8 +264,8 @@ BEGIN TRY
     )
        OR EXISTS
     (
-        SELECT SnapshotDatabaseId,FileId,LogicalFileName,PhysicalName,IsSparse,
-               FileStateDesc,MaximumSnapshotSizePages,MaximumSnapshotSizeBytes
+        SELECT SnapshotDatabaseId,FileId,LogicalFileName COLLATE SQL_Latin1_General_CP1_CS_AS,PhysicalName COLLATE SQL_Latin1_General_CP1_CS_AS,IsSparse,
+               FileStateDesc COLLATE SQL_Latin1_General_CP1_CS_AS,MaximumSnapshotSizePages,MaximumSnapshotSizeBytes
         FROM OPENJSON(@Json,'$.snapshotFiles') WITH
         (
             SnapshotDatabaseId int,FileId int,LogicalFileName sysname,PhysicalName nvarchar(260),
@@ -373,16 +373,16 @@ BEGIN TRY
         SELECT SnapshotDatabaseId,SnapshotName,SourceDatabaseId,SourceDatabaseName,
                CatalogCreateDate,SnapshotStateDesc,IsReadOnly FROM #RestrictedNativeSnapshots
         EXCEPT
-        SELECT SnapshotDatabaseId,SnapshotName,SourceDatabaseId,SourceDatabaseName,
-               CatalogCreateDate,SnapshotStateDesc,IsReadOnly
+        SELECT SnapshotDatabaseId,SnapshotName COLLATE SQL_Latin1_General_CP1_CS_AS,SourceDatabaseId,SourceDatabaseName COLLATE SQL_Latin1_General_CP1_CS_AS,
+               CatalogCreateDate,SnapshotStateDesc COLLATE SQL_Latin1_General_CP1_CS_AS,IsReadOnly
         FROM OPENJSON(@Json,'$.snapshots') WITH
         (SnapshotDatabaseId int,SnapshotName sysname,SourceDatabaseId int,
          SourceDatabaseName sysname,CatalogCreateDate datetime,SnapshotStateDesc nvarchar(60),IsReadOnly bit)
     )
        OR EXISTS
     (
-        SELECT SnapshotDatabaseId,SnapshotName,SourceDatabaseId,SourceDatabaseName,
-               CatalogCreateDate,SnapshotStateDesc,IsReadOnly
+        SELECT SnapshotDatabaseId,SnapshotName COLLATE SQL_Latin1_General_CP1_CS_AS,SourceDatabaseId,SourceDatabaseName COLLATE SQL_Latin1_General_CP1_CS_AS,
+               CatalogCreateDate,SnapshotStateDesc COLLATE SQL_Latin1_General_CP1_CS_AS,IsReadOnly
         FROM OPENJSON(@Json,'$.snapshots') WITH
         (SnapshotDatabaseId int,SnapshotName sysname,SourceDatabaseId int,
          SourceDatabaseName sysname,CatalogCreateDate datetime,SnapshotStateDesc nvarchar(60),IsReadOnly bit)
@@ -395,16 +395,16 @@ BEGIN TRY
         SELECT SnapshotDatabaseId,FileId,LogicalFileName,PhysicalName,IsSparse,
                FileStateDesc,MaximumSnapshotSizePages,MaximumSnapshotSizeBytes FROM #RestrictedNativeFiles
         EXCEPT
-        SELECT SnapshotDatabaseId,FileId,LogicalFileName,PhysicalName,IsSparse,
-               FileStateDesc,MaximumSnapshotSizePages,MaximumSnapshotSizeBytes
+        SELECT SnapshotDatabaseId,FileId,LogicalFileName COLLATE SQL_Latin1_General_CP1_CS_AS,PhysicalName COLLATE SQL_Latin1_General_CP1_CS_AS,IsSparse,
+               FileStateDesc COLLATE SQL_Latin1_General_CP1_CS_AS,MaximumSnapshotSizePages,MaximumSnapshotSizeBytes
         FROM OPENJSON(@Json,'$.snapshotFiles') WITH
         (SnapshotDatabaseId int,FileId int,LogicalFileName sysname,PhysicalName nvarchar(260),
          IsSparse bit,FileStateDesc nvarchar(60),MaximumSnapshotSizePages int,MaximumSnapshotSizeBytes bigint)
     )
        OR EXISTS
     (
-        SELECT SnapshotDatabaseId,FileId,LogicalFileName,PhysicalName,IsSparse,
-               FileStateDesc,MaximumSnapshotSizePages,MaximumSnapshotSizeBytes
+        SELECT SnapshotDatabaseId,FileId,LogicalFileName COLLATE SQL_Latin1_General_CP1_CS_AS,PhysicalName COLLATE SQL_Latin1_General_CP1_CS_AS,IsSparse,
+               FileStateDesc COLLATE SQL_Latin1_General_CP1_CS_AS,MaximumSnapshotSizePages,MaximumSnapshotSizeBytes
         FROM OPENJSON(@Json,'$.snapshotFiles') WITH
         (SnapshotDatabaseId int,FileId int,LogicalFileName sysname,PhysicalName nvarchar(260),
          IsSparse bit,FileStateDesc nvarchar(60),MaximumSnapshotSizePages int,MaximumSnapshotSizeBytes bigint)
