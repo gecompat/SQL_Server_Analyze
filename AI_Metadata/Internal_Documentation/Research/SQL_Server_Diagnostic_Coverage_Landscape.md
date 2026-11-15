@@ -3,7 +3,7 @@
 **Referenz:** `WI-0010`
 
 **Forschungsbaseline:** 29. August 2026
-**Lieferstatusabgleich:** 27. Oktober 2026; Loaded-Module- und Linux-cgroup-Teilabgleich 14. November 2026
+**Lieferstatusabgleich:** 27. Oktober 2026; Loaded-Module- und Linux-cgroup-Teilabgleich 14. November 2026; Snapshot- und WI-0005/0006/0007/0009-Teilabgleich 15. November 2026
 
 **Status:** `RESEARCHED_NOT_IMPLEMENTED`
 **Maschinenlesbare Matrix:** `Metadata/Quality/Diagnostic_Coverage_Landscape.csv`
@@ -43,7 +43,11 @@ Die Matrix betrachtet 106 fachliche Bereiche. Der Frameworkkern deckt die zentra
 ### Priorität P2
 
 - Geladene SQL-Prozessmodule besitzen mit [USP_LoadedModuleInventory](../../../Documentation/Analysis_Guides/Procedures/USP_LoadedModuleInventory.md) einen begrenzten DMV-Inventarslice mit unverändertem nativem Namen einschließlich möglichem Pfad und ergänzendem Basenamen. PR #702 bestand SQL-Server-2025-/CL170-Head- und Main-Gates sowie ein natives SQL-Server-2019-/CL150-FULL_RELEASE-Gate für diesen V1-Vertrag. SQL Server 2022 wurde nicht separat nativ qualifiziert; Host- und Filtertreiber, Signaturen, Malware, Vertrauens- und Gesundheitsbewertungen bleiben außerhalb des Vertrags;
-- Datenbank-Snapshots erhalten mit [USP_DatabaseSnapshotInventory](../../../Documentation/Analysis_Guides/Procedures/USP_DatabaseSnapshotInventory.md) einen begrenzten Katalogkandidaten für caller-sichtbare Source-Beziehungen und Sparse-Dateizeilen. Die maximale Dateikapazität ist keine physische Belegung; Alter, zeitliches Wachstum, Gesundheit, Suspect- und Restore-Eignung bleiben offen. Für den neuen Slice steht die native SQL-Laufzeitabnahme noch aus;
+- Datenbank-Snapshots besitzen mit [USP_DatabaseSnapshotInventory](../../../Documentation/Analysis_Guides/Procedures/USP_DatabaseSnapshotInventory.md) einen begrenzten caller-sichtbaren Katalog-Slice für Source-Beziehungen und Sparse-Dateizeilen. PR #706 bestand die SQL-Server-2025-/CL170-Head- und Main-Gates einschließlich nativen Vertrags 144. Die maximale Dateikapazität ist keine physische Belegung; Alter nach Umbenennung, zeitliches Wachstum, Gesundheit, Suspect- und Restore-Eignung bleiben offen. Die CONSOLE-Zellen sind durch exakte Quellprojektionsbindung, gleichaufrufbezogenes JSON und ein typisiertes Resultset indirekt belegt; SQL Server 2019/2022 wurden dafür nicht nativ ausgeführt;
+- zeitbegrenzte Extended-Events-Sessions besitzen in `USP_ExtendedEventsSessions` einen opt-in-Katalog- und Runtime-Slice für `MAX_DURATION` und begrenzte Restzeitschätzungen. Der [historische WI-0005-Nachweis](../Quality/WI0005_TimeBounds_Runtime_Evidence_2026-10-14.md) bindet positive SQL-Server-2025-Fälle und den SQL-Server-2019-Fallback. Capturezweck, Lastwirkung und ein genauer Beendigungszeitpunkt folgen daraus nicht;
+- Compile-Druck erhält mit `USP_CompileContextAnalysis` eine begrenzte Sicht auf `OPTIMIZED_SP_EXECUTESQL`, serverweite Counter, Waits und Cacheklassen. Der [historische WI-0006-Nachweis](../Quality/WI0006_WI0007_Runtime_Evidence_2026-10-14.md) bindet SQL Server 2025 und den gezielten SQL-Server-2019-Fallback; Query-Zuordnung, Storm-Ursache und Resetkontinuität bleiben unbelegt;
+- externe Modelle werden in `USP_SpecialFeatureInventory` je ausgewählter Datenbank sichtbar gezählt. Der [historische WI-0007-Nachweis](../Quality/WI0006_WI0007_Runtime_Evidence_2026-10-14.md) umfasst ein eigenes positives Modellobjekt unter SQL Server 2025 und den SQL-Server-2019-Versionsfallback; Endpoint, Ausführung, Qualität und Credentials bleiben außerhalb der leichten Inventur;
+- externe Daten besitzen mit `USP_ExternalDataAnalysis` einen begrenzten lokalen Metadatenkern. Der [historische WI-0009-Nachweis](../Quality/WI0009_Local_Metadata_Runtime_Evidence_2026-10-14.md) bindet native leere Kataloge unter SQL Server 2025 und 2019 sowie synthetische Referenzprojektionen. Positive echte External-Table-Referenzen, Remote-Endpunkte und Konnektivität bleiben als eigenes Feature-Gate offen;
 - Policy-Based Management einschließlich Policies, Bedingungen, Evaluationsmodi und letzter Auswertung, ohne Regeln auszuführen oder zu erzwingen;
 - Sensitivity Classification, Ledger-Digest-/Verifikationsstatus, EKM und Credentialabhängigkeiten;
 - Failover Cluster Instances und WSFC-/Pacemaker-Hostevidenz als getrennter externer Adapter;
@@ -71,7 +75,7 @@ Eine vollständige Namensliste beweist weder vollständige Semantik noch Produkt
 
 `WI-0010` bleibt als kontinuierliches Intake-Arbeitselement aktiv. Bei der späteren Planung gilt:
 
-1. zuerst offene Reife- und Collationverträge der aktuellen Welle abschließen;
+1. zuerst den aktuellen begrenzten Evidenz- und Reifeabgleich abschließen;
 2. bereits registrierte `WI-0002` bis `WI-0009` nicht durch neue Kandidaten überspringen;
 3. pro ausgewähltem `CoverageKey` die Überschneidung mit bestehenden Modulen erneut prüfen;
 4. erst danach eine eigene Registryreferenz vergeben und Analyse, Spezifikation, Implementierung sowie Evidenz als getrennte Schritte planen;
