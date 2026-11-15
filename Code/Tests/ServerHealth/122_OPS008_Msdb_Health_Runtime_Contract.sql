@@ -181,22 +181,155 @@ IF @Status <> 'INVALID_PARAMETER' OR @Partial <> 1 OR @Json <> N'[]'
 
 IF USER_ID(N'ExampleOps008RestrictedUser') IS NOT NULL
     THROW 54960,N'OPS-008 restricted fixture user name collision.',1;
-DECLARE @RestrictedUserCreated bit=0;
+DECLARE @RestrictedUserCreated bit=0,@RestrictedMsdbVisible bigint=0;
 BEGIN TRY
     CREATE USER [ExampleOps008RestrictedUser] WITHOUT LOGIN;
     SET @RestrictedUserCreated=1;
     GRANT EXECUTE ON [monitor].[USP_MsdbHealthAnalysis] TO [ExampleOps008RestrictedUser];
     EXECUTE AS USER = N'ExampleOps008RestrictedUser';
-    SET @Json = NULL;
+    SELECT @RestrictedMsdbVisible=COUNT_BIG(*) FROM [sys].[databases] WHERE [database_id]=4;
+    SET @Json=NULL; SET @Status=NULL; SET @Partial=NULL;
     EXEC [monitor].[USP_MsdbHealthAnalysis]
           @MaxZeilen = 20
         , @ResultSetArt = 'NONE'
         , @JsonErzeugen = 1
         , @Json = @Json OUTPUT
-        , @PrintMeldungen = 0;
+        , @PrintMeldungen = 0
+        , @StatusCodeOut = @Status OUTPUT
+        , @IsPartialOut = @Partial OUTPUT;
     REVERT;
     IF COALESCE(ISJSON(@Json), 0) <> 1
         THROW 54872, N'Der eingeschränkte msdb-Pfad lieferte kein gültiges JSON.', 1;
+    IF @RestrictedMsdbVisible<>0 OR COALESCE(@Status,'')<>'UNSUPPORTED'
+       OR COALESCE(@Partial,0)<>1 OR DATALENGTH(@Json)<>4 OR @Json<>N'[]'
+        THROW 54975,N'OPS-008 database-scoped loginless caller must retain hidden-msdb preflight semantics.',1;
+END TRY
+BEGIN CATCH
+    IF USER_NAME() = N'ExampleOps008RestrictedUser' REVERT;
+    IF @RestrictedUserCreated=1 DROP USER IF EXISTS [ExampleOps008RestrictedUser];
+    THROW;
+END CATCH;
+IF @RestrictedUserCreated=1 DROP USER [ExampleOps008RestrictedUser];
+IF USER_ID(N'ExampleOps008RestrictedUser') IS NOT NULL
+    THROW 54973,N'OPS-008 restricted fixture user remained after cleanup.',1;
+
+DECLARE @PbmOwnLogin sysname=N'ExampleOps008PbmDeniedLogin',
+        @PbmOwnUser sysname=N'ExampleOps008PbmDeniedUser';
+IF EXISTS(SELECT 1 FROM [sys].[server_principals] WHERE [name] COLLATE SQL_Latin1_General_CP1_CS_AS=@PbmOwnLogin COLLATE SQL_Latin1_General_CP1_CS_AS)
+   OR EXISTS(SELECT 1 FROM [sys].[database_principals] WHERE [name] COLLATE SQL_Latin1_General_CP1_CS_AS=@PbmOwnUser COLLATE SQL_Latin1_General_CP1_CS_AS)
+   OR EXISTS(SELECT 1 FROM [msdb].[sys].[database_principals] WHERE [name] COLLATE SQL_Latin1_General_CP1_CS_AS=@PbmOwnUser COLLATE SQL_Latin1_General_CP1_CS_AS)
+    THROW 54976,N'OPS-008 owned PBM login or user name collision.',1;
+DECLARE @PbmOwnLoginCreated bit=0,@PbmOwnFrameworkUserCreated bit=0,
+        @PbmOwnMsdbUserCreated bit=0,@PbmOwnImpersonated bit=0,
+        @PbmOwnLoginId int,@PbmOwnFrameworkUserId int,@PbmOwnMsdbUserId int,
+        @PbmOwnSid varbinary(85),@PbmOwnSidHex varchar(32),@PbmOwnCredential nvarchar(128),
+        @PbmOwnSql nvarchar(max),@PbmVisible bigint=0,
+        @PbmDirectCount bigint,@PbmDirectError int,@PbmDeniedCount int=0,
+        @PbmOriginalLogin sysname=SUSER_SNAME(),@PbmOriginalUser sysname=USER_NAME(),
+        @PbmOriginalLock int=@@LOCK_TIMEOUT,
+        @PbmOriginalAbort bit=CASE WHEN (@@OPTIONS&16384)=16384 THEN 1 ELSE 0 END,
+        @PbmOriginalTran int,@PbmOriginalXact int;
+SELECT @PbmOriginalTran=@@TRANCOUNT;
+SELECT @PbmOriginalXact=XACT_STATE();
+BEGIN TRY
+    SET @PbmOwnSid=CRYPT_GEN_RANDOM(16);
+    SET @PbmOwnSidHex=CONVERT(varchar(32),@PbmOwnSid,2);
+    IF @PbmOwnSid IS NULL OR DATALENGTH(@PbmOwnSid)<>16
+       OR EXISTS(SELECT 1 FROM [sys].[server_principals] WHERE [sid]=@PbmOwnSid)
+        THROW 54976,N'OPS-008 owned PBM login SID collision or generation failure.',1;
+    SET @PbmOwnCredential=N'Example!'+CONVERT(nvarchar(36),NEWID());
+    SET @PbmOwnSql=N'CREATE LOGIN '+QUOTENAME(@PbmOwnLogin)
+        +N' WITH PASSWORD '+N'= '+QUOTENAME(@PbmOwnCredential,'''')
+        +N',SID=0x'+@PbmOwnSidHex+N',CHECK_POLICY=OFF,CHECK_EXPIRATION=OFF;';
+    EXEC [master].[sys].[sp_executesql] @PbmOwnSql;
+    SET @PbmOwnLoginCreated=1;
+    SET @PbmOwnCredential=NULL; SET @PbmOwnSql=NULL;
+    SELECT @PbmOwnLoginId=[principal_id]
+    FROM [sys].[server_principals]
+    WHERE [name] COLLATE SQL_Latin1_General_CP1_CS_AS
+         =@PbmOwnLogin COLLATE SQL_Latin1_General_CP1_CS_AS
+      AND [sid]=@PbmOwnSid;
+    IF @PbmOwnLoginId IS NULL
+        THROW 54977,N'OPS-008 owned PBM login identity binding failed.',1;
+    CREATE USER [ExampleOps008PbmDeniedUser] FOR LOGIN [ExampleOps008PbmDeniedLogin];
+    SET @PbmOwnFrameworkUserCreated=1;
+    SELECT @PbmOwnFrameworkUserId=[principal_id]
+    FROM [sys].[database_principals]
+    WHERE [name] COLLATE SQL_Latin1_General_CP1_CS_AS
+         =@PbmOwnUser COLLATE SQL_Latin1_General_CP1_CS_AS
+      AND [sid]=@PbmOwnSid;
+    IF @PbmOwnFrameworkUserId IS NULL
+        THROW 54978,N'OPS-008 owned PBM framework user SID binding failed.',1;
+    EXEC [msdb].[sys].[sp_executesql]
+        N'CREATE USER [ExampleOps008PbmDeniedUser] FOR LOGIN [ExampleOps008PbmDeniedLogin];';
+    SET @PbmOwnMsdbUserCreated=1;
+    SELECT @PbmOwnMsdbUserId=[principal_id]
+    FROM [msdb].[sys].[database_principals]
+    WHERE [name] COLLATE SQL_Latin1_General_CP1_CS_AS
+         =@PbmOwnUser COLLATE SQL_Latin1_General_CP1_CS_AS
+      AND [sid]=@PbmOwnSid;
+    IF @PbmOwnMsdbUserId IS NULL
+        THROW 54980,N'OPS-008 owned PBM msdb user SID binding failed.',1;
+    GRANT EXECUTE ON [monitor].[USP_MsdbHealthAnalysis] TO [ExampleOps008PbmDeniedUser];
+    EXEC [master].[sys].[sp_executesql]
+        N'GRANT VIEW ANY DATABASE TO [ExampleOps008PbmDeniedLogin];';
+    EXEC [msdb].[sys].[sp_executesql]
+        N'DENY SELECT ON OBJECT::[dbo].[syspolicy_policies] TO [ExampleOps008PbmDeniedUser];
+          DENY SELECT ON OBJECT::[dbo].[syspolicy_conditions] TO [ExampleOps008PbmDeniedUser];
+          DENY SELECT ON OBJECT::[dbo].[syspolicy_policy_categories] TO [ExampleOps008PbmDeniedUser];';
+    EXECUTE AS LOGIN=N'ExampleOps008PbmDeniedLogin';
+    SET @PbmOwnImpersonated=1;
+    SELECT @PbmVisible=COUNT_BIG(*) FROM [sys].[databases] WHERE [database_id]=4;
+    IF @PbmVisible<>1
+        THROW 54981,N'OPS-008 owned login must see msdb before PBM denial probe.',1;
+    SET @PbmDirectError=0;
+    BEGIN TRY
+        EXEC [sys].[sp_executesql]
+            N'SELECT @Count=COUNT_BIG(*) FROM [msdb].[dbo].[syspolicy_policies];',
+            N'@Count bigint OUTPUT',@Count=@PbmDirectCount OUTPUT;
+    END TRY
+    BEGIN CATCH
+        SET @PbmDirectError=ERROR_NUMBER();
+    END CATCH;
+    IF @PbmDirectError<>229
+        THROW 54979,N'OPS-008 each owned-login PBM view SELECT must fail with SQL 229.',1;
+    SET @PbmDeniedCount+=1;
+    SET @PbmDirectError=0;
+    BEGIN TRY
+        EXEC [sys].[sp_executesql]
+            N'SELECT @Count=COUNT_BIG(*) FROM [msdb].[dbo].[syspolicy_conditions];',
+            N'@Count bigint OUTPUT',@Count=@PbmDirectCount OUTPUT;
+    END TRY
+    BEGIN CATCH
+        SET @PbmDirectError=ERROR_NUMBER();
+    END CATCH;
+    IF @PbmDirectError<>229
+        THROW 54979,N'OPS-008 each owned-login PBM view SELECT must fail with SQL 229.',1;
+    SET @PbmDeniedCount+=1;
+    SET @PbmDirectError=0;
+    BEGIN TRY
+        EXEC [sys].[sp_executesql]
+            N'SELECT @Count=COUNT_BIG(*) FROM [msdb].[dbo].[syspolicy_policy_categories];',
+            N'@Count bigint OUTPUT',@Count=@PbmDirectCount OUTPUT;
+    END TRY
+    BEGIN CATCH
+        SET @PbmDirectError=ERROR_NUMBER();
+    END CATCH;
+    IF @PbmDirectError<>229
+        THROW 54979,N'OPS-008 each owned-login PBM view SELECT must fail with SQL 229.',1;
+    SET @PbmDeniedCount+=1;
+    IF @PbmDeniedCount<>3
+        THROW 54982,N'OPS-008 three owned-login PBM denials were not observed.',1;
+    SET @Json=NULL; SET @Status=NULL; SET @Partial=NULL;
+    EXEC [monitor].[USP_MsdbHealthAnalysis]
+          @MaxZeilen=20,@ResultSetArt='NONE',@JsonErzeugen=1,
+          @Json=@Json OUTPUT,@PrintMeldungen=0,
+          @StatusCodeOut=@Status OUTPUT,@IsPartialOut=@Partial OUTPUT;
+    REVERT;
+    SET @PbmOwnImpersonated=0;
+    IF COALESCE(@Status,'')<>'AVAILABLE_LIMITED' OR COALESCE(@Partial,0)<>1
+       OR COALESCE(ISJSON(@Json),0)<>1
+        THROW 54987,N'OPS-008 owned-login PBM source-error module status is not limited and partial.',1;
     IF EXISTS
     (
         SELECT 1 FROM
@@ -257,15 +390,97 @@ BEGIN TRY
         RAISERROR(@PbmDiagMessage,10,1) WITH NOWAIT;
         THROW 54961,N'OPS-008 restricted PBM views must remain unknown rather than unsupported or zero.',1;
     END;
+    IF @PbmOwnMsdbUserCreated=1
+    BEGIN
+        IF NOT EXISTS(SELECT 1 FROM [msdb].[sys].[database_principals]
+                      WHERE [principal_id]=@PbmOwnMsdbUserId AND [sid]=@PbmOwnSid
+                        AND [name] COLLATE SQL_Latin1_General_CP1_CS_AS
+                            =@PbmOwnUser COLLATE SQL_Latin1_General_CP1_CS_AS)
+            THROW 54986,N'OPS-008 owned PBM msdb user binding changed before cleanup.',1;
+        EXEC [msdb].[sys].[sp_executesql] N'DROP USER [ExampleOps008PbmDeniedUser];';
+        SET @PbmOwnMsdbUserCreated=0;
+    END;
+    IF @PbmOwnFrameworkUserCreated=1
+    BEGIN
+        IF NOT EXISTS(SELECT 1 FROM [sys].[database_principals]
+                      WHERE [principal_id]=@PbmOwnFrameworkUserId AND [sid]=@PbmOwnSid
+                        AND [name] COLLATE SQL_Latin1_General_CP1_CS_AS
+                            =@PbmOwnUser COLLATE SQL_Latin1_General_CP1_CS_AS)
+            THROW 54986,N'OPS-008 owned PBM framework user binding changed before cleanup.',1;
+        DROP USER [ExampleOps008PbmDeniedUser];
+        SET @PbmOwnFrameworkUserCreated=0;
+    END;
+    IF @PbmOwnLoginCreated=1
+    BEGIN
+        IF NOT EXISTS(SELECT 1 FROM [sys].[server_principals]
+                      WHERE [principal_id]=@PbmOwnLoginId AND [sid]=@PbmOwnSid
+                        AND [name] COLLATE SQL_Latin1_General_CP1_CS_AS
+                            =@PbmOwnLogin COLLATE SQL_Latin1_General_CP1_CS_AS)
+            THROW 54986,N'OPS-008 owned PBM login binding changed before cleanup.',1;
+        EXEC [master].[sys].[sp_executesql] N'DROP LOGIN [ExampleOps008PbmDeniedLogin];';
+        SET @PbmOwnLoginCreated=0;
+    END;
 END TRY
 BEGIN CATCH
-    IF USER_NAME() = N'ExampleOps008RestrictedUser' REVERT;
-    IF @RestrictedUserCreated=1 DROP USER IF EXISTS [ExampleOps008RestrictedUser];
+    IF @PbmOwnImpersonated=1 REVERT;
+    SET @PbmOwnCredential=NULL; SET @PbmOwnSql=NULL;
+    IF @PbmOwnMsdbUserCreated=1
+       AND EXISTS(SELECT 1 FROM [msdb].[sys].[database_principals]
+                  WHERE (@PbmOwnMsdbUserId IS NULL OR [principal_id]=@PbmOwnMsdbUserId) AND [sid]=@PbmOwnSid
+                    AND [name] COLLATE SQL_Latin1_General_CP1_CS_AS
+                        =@PbmOwnUser COLLATE SQL_Latin1_General_CP1_CS_AS)
+        EXEC [msdb].[sys].[sp_executesql] N'DROP USER [ExampleOps008PbmDeniedUser];';
+    IF @PbmOwnFrameworkUserCreated=1
+       AND EXISTS(SELECT 1 FROM [sys].[database_principals]
+                  WHERE (@PbmOwnFrameworkUserId IS NULL OR [principal_id]=@PbmOwnFrameworkUserId) AND [sid]=@PbmOwnSid
+                    AND [name] COLLATE SQL_Latin1_General_CP1_CS_AS
+                        =@PbmOwnUser COLLATE SQL_Latin1_General_CP1_CS_AS)
+        DROP USER [ExampleOps008PbmDeniedUser];
+    IF @PbmOwnLoginCreated=1
+       AND EXISTS(SELECT 1 FROM [sys].[server_principals]
+                  WHERE (@PbmOwnLoginId IS NULL OR [principal_id]=@PbmOwnLoginId) AND [sid]=@PbmOwnSid
+                    AND [name] COLLATE SQL_Latin1_General_CP1_CS_AS
+                        =@PbmOwnLogin COLLATE SQL_Latin1_General_CP1_CS_AS)
+        EXEC [master].[sys].[sp_executesql] N'DROP LOGIN [ExampleOps008PbmDeniedLogin];';
+    IF EXISTS(SELECT 1 FROM [sys].[server_principals]
+              WHERE [name] COLLATE SQL_Latin1_General_CP1_CS_AS=@PbmOwnLogin COLLATE SQL_Latin1_General_CP1_CS_AS OR ([sid]=@PbmOwnSid AND (@PbmOwnLoginId IS NULL OR [principal_id]=@PbmOwnLoginId)))
+       OR EXISTS(SELECT 1 FROM [sys].[database_principals]
+                 WHERE [name] COLLATE SQL_Latin1_General_CP1_CS_AS=@PbmOwnUser COLLATE SQL_Latin1_General_CP1_CS_AS OR ([sid]=@PbmOwnSid AND (@PbmOwnFrameworkUserId IS NULL OR [principal_id]=@PbmOwnFrameworkUserId)))
+       OR EXISTS(SELECT 1 FROM [msdb].[sys].[database_principals]
+                 WHERE [name] COLLATE SQL_Latin1_General_CP1_CS_AS=@PbmOwnUser COLLATE SQL_Latin1_General_CP1_CS_AS OR ([sid]=@PbmOwnSid AND (@PbmOwnMsdbUserId IS NULL OR [principal_id]=@PbmOwnMsdbUserId)))
+        THROW 54986,N'OPS-008 owned PBM principal remained after cleanup.',1;
+    IF SUSER_SNAME() COLLATE SQL_Latin1_General_CP1_CS_AS
+           <>@PbmOriginalLogin COLLATE SQL_Latin1_General_CP1_CS_AS
+       OR USER_NAME() COLLATE SQL_Latin1_General_CP1_CS_AS
+           <>@PbmOriginalUser COLLATE SQL_Latin1_General_CP1_CS_AS
+       OR @@LOCK_TIMEOUT<>@PbmOriginalLock
+       OR CASE WHEN (@@OPTIONS&16384)=16384 THEN 1 ELSE 0 END<>@PbmOriginalAbort
+        THROW 54983,N'OPS-008 owned-login caller identity or options changed.',1;
+    IF @@TRANCOUNT<>@PbmOriginalTran
+        THROW 54984,N'OPS-008 owned-login caller transaction count changed.',1;
+    IF XACT_STATE()<>@PbmOriginalXact
+        THROW 54985,N'OPS-008 owned-login caller transaction state changed.',1;
     THROW;
 END CATCH;
-IF @RestrictedUserCreated=1 DROP USER [ExampleOps008RestrictedUser];
-IF USER_ID(N'ExampleOps008RestrictedUser') IS NOT NULL
-    THROW 54973,N'OPS-008 restricted fixture user remained after cleanup.',1;
+IF EXISTS(SELECT 1 FROM [sys].[server_principals]
+          WHERE [name] COLLATE SQL_Latin1_General_CP1_CS_AS=@PbmOwnLogin COLLATE SQL_Latin1_General_CP1_CS_AS OR ([sid]=@PbmOwnSid AND (@PbmOwnLoginId IS NULL OR [principal_id]=@PbmOwnLoginId)))
+   OR EXISTS(SELECT 1 FROM [sys].[database_principals]
+             WHERE [name] COLLATE SQL_Latin1_General_CP1_CS_AS=@PbmOwnUser COLLATE SQL_Latin1_General_CP1_CS_AS OR ([sid]=@PbmOwnSid AND (@PbmOwnFrameworkUserId IS NULL OR [principal_id]=@PbmOwnFrameworkUserId)))
+   OR EXISTS(SELECT 1 FROM [msdb].[sys].[database_principals]
+             WHERE [name] COLLATE SQL_Latin1_General_CP1_CS_AS=@PbmOwnUser COLLATE SQL_Latin1_General_CP1_CS_AS OR ([sid]=@PbmOwnSid AND (@PbmOwnMsdbUserId IS NULL OR [principal_id]=@PbmOwnMsdbUserId)))
+    THROW 54986,N'OPS-008 owned PBM principal remained after cleanup.',1;
+IF SUSER_SNAME() COLLATE SQL_Latin1_General_CP1_CS_AS
+       <>@PbmOriginalLogin COLLATE SQL_Latin1_General_CP1_CS_AS
+   OR USER_NAME() COLLATE SQL_Latin1_General_CP1_CS_AS
+       <>@PbmOriginalUser COLLATE SQL_Latin1_General_CP1_CS_AS
+   OR @@LOCK_TIMEOUT<>@PbmOriginalLock
+   OR CASE WHEN (@@OPTIONS&16384)=16384 THEN 1 ELSE 0 END<>@PbmOriginalAbort
+    THROW 54983,N'OPS-008 owned-login caller identity or options changed.',1;
+IF @@TRANCOUNT<>@PbmOriginalTran
+    THROW 54984,N'OPS-008 owned-login caller transaction count changed.',1;
+IF XACT_STATE()<>@PbmOriginalXact
+    THROW 54985,N'OPS-008 owned-login caller transaction state changed.',1;
+
 
 DECLARE @PbmCategoryName sysname=N'ExampleOps008Pbm_'+LEFT(REPLACE(CONVERT(nvarchar(36),NEWID()),N'-',N''),20),
         @PbmCategoryId int=NULL,@PbmAddReturn int=NULL,@PbmDeleteReturn int=NULL,
