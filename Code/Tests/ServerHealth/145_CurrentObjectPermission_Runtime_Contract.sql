@@ -193,6 +193,125 @@ BEGIN
   IF COALESCE(@Ret,-1)<>0 THROW 63157,N'OBJECT_FIXTURE_NONE_MODE',1;
   EXEC @Ret=[monitor].[USP_CurrentObjectPermissionAnalysis] @DatabaseNames=@Names,@SchemaName=N'dbo',@ObjectName=N'NoSuchObject',@ResultSetArt='NONE',@JsonErzeugen=1,@Json=@Json OUTPUT,@PrintMeldungen=0;
   IF COALESCE(@Ret,-1)<>0 OR ISJSON(@Json)<>1 OR EXISTS(SELECT 1 FROM OPENJSON(@Json,N'$.sourceStatus') WITH([SourceKey] varchar(64),[StatusCode] varchar(40)) WHERE [SourceKey]='OBJECT_CURRENT_PERMISSIONS' AND [StatusCode] NOT IN ('EMPTY_UNPROVEN','ERROR_HANDLED')) THROW 63156,N'OBJECT_FIXTURE_UNPROVEN_MISSING',1;
+
+  -- Eigene Spaltenfreigabe: direkter nativer Callerbeweis und TABLE/JSON unter demselben Login.
+  SET @Sql=N'USE '+QUOTENAME(@DbA)+N';CREATE TABLE [dbo].[ExampleColumnProbe]([Value] int NOT NULL,[OtherValue] int NULL);GRANT SELECT ([Value]) ON OBJECT::[dbo].[ExampleColumnProbe] TO '+QUOTENAME(@DbUser)+N';';
+  EXEC [sys].[sp_executesql] @Sql;
+  CREATE TABLE [#ExampleColumn_Native]
+  ([DatabaseId] int NOT NULL,[DatabaseName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,
+   [RequestedSchemaName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,
+   [RequestedObjectName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,
+   [EntityName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL,
+   [SubentityName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL,
+   [PermissionName] nvarchar(128) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL);
+  DECLARE @ColumnMap nvarchar(max)=N'{"moduleStatus":"#ExampleColumn_moduleStatus","callerContexts":"#ExampleColumn_callerContexts","objectPermissions":"#ExampleColumn_objectPermissions","sourceStatus":"#ExampleColumn_sourceStatus","warnings":"#ExampleColumn_warnings"}',
+   @ColumnJson nvarchar(max)=NULL,@ColumnModule nvarchar(max)=NULL,@ColumnContexts nvarchar(max)=NULL,
+   @ColumnPermissions nvarchar(max)=NULL,@ColumnSources nvarchar(max)=NULL,@ColumnWarnings nvarchar(max)=NULL,
+   @ColumnNames nvarchar(max)=QUOTENAME(@DbA),@ColumnStatus varchar(40)=NULL,@ColumnPartial bit=NULL,
+   @ColumnError int=NULL,@ColumnMessage nvarchar(2048)=NULL,@ColumnReturn int=NULL,
+   @ColumnParentDb int=DB_ID(),@ColumnParentLogin int=SUSER_ID(),@ColumnParentTx int=@@TRANCOUNT,
+   @ColumnParentLock int=@@LOCK_TIMEOUT,@ColumnParentAbort int=CASE WHEN (@@OPTIONS&16384)=16384 THEN 1 ELSE 0 END;
+  SET @Sql=N'EXECUTE AS LOGIN='+QUOTENAME(@Login,'''')+N';
+BEGIN TRY
+ IF DB_ID()<>@FrameworkId OR SUSER_ID()<>@ExpectedLoginId THROW 63310,N''OBJECT_COLUMN_CALLER_ENTRY'',1;
+ IF OBJECT_ID(N''tempdb..#ExampleColumn_moduleStatus'') IS NOT NULL OR OBJECT_ID(N''tempdb..#ExampleColumn_callerContexts'') IS NOT NULL OR OBJECT_ID(N''tempdb..#ExampleColumn_objectPermissions'') IS NOT NULL OR OBJECT_ID(N''tempdb..#ExampleColumn_sourceStatus'') IS NOT NULL OR OBJECT_ID(N''tempdb..#ExampleColumn_warnings'') IS NOT NULL THROW 63311,N''OBJECT_COLUMN_TABLE_COLLISION'',1;
+ CREATE TABLE #ExampleColumn_moduleStatus([Seed] int NULL);
+ CREATE TABLE #ExampleColumn_callerContexts([Seed] int NULL);
+ CREATE TABLE #ExampleColumn_objectPermissions([Seed] int NULL);
+ CREATE TABLE #ExampleColumn_sourceStatus([Seed] int NULL);
+ CREATE TABLE #ExampleColumn_warnings([Seed] int NULL);
+ USE '+QUOTENAME(@DbA)+N';
+ INSERT #ExampleColumn_Native SELECT @Id,@Name,N''dbo'',N''ExampleColumnProbe'',[entity_name],[subentity_name],CONVERT(nvarchar(128),[permission_name]) FROM [sys].[fn_my_permissions](N''[dbo].[ExampleColumnProbe]'',N''OBJECT'');
+ USE '+QUOTENAME(@FrameworkDb)+N';
+ IF DB_ID()<>@FrameworkId OR SUSER_ID()<>@ExpectedLoginId THROW 63312,N''OBJECT_COLUMN_CALLER_RETURN'',1;
+ EXEC @Rc=[monitor].[USP_CurrentObjectPermissionAnalysis] @DatabaseNames=@Names,@SchemaName=N''dbo'',@ObjectName=N''ExampleColumnProbe'',@ResultSetArt=''TABLE'',@ResultTablesJson=@Map,@JsonErzeugen=1,@Json=@J OUTPUT,@PrintMeldungen=0,@StatusCodeOut=@St OUTPUT,@IsPartialOut=@Part OUTPUT,@ErrorNumberOut=@Er OUTPUT,@ErrorMessageOut=@Msg OUTPUT;
+ IF DB_ID()<>@FrameworkId OR SUSER_ID()<>@ExpectedLoginId THROW 63313,N''OBJECT_COLUMN_CALLER_AFTER_PRODUCT'',1;
+ SET @Tm=(SELECT * FROM #ExampleColumn_moduleStatus FOR JSON PATH,INCLUDE_NULL_VALUES);
+ SET @Tc=(SELECT * FROM #ExampleColumn_callerContexts ORDER BY [DatabaseId],[SourceKey] FOR JSON PATH,INCLUDE_NULL_VALUES);
+ SET @Tp=(SELECT * FROM #ExampleColumn_objectPermissions ORDER BY [DatabaseId],[EntityName],[SubentityName],[PermissionName] FOR JSON PATH,INCLUDE_NULL_VALUES);
+ SET @Ts=(SELECT * FROM #ExampleColumn_sourceStatus ORDER BY [DatabaseId],[DatabaseName],[SourceKey] FOR JSON PATH,INCLUDE_NULL_VALUES);
+ SET @Tw=(SELECT * FROM #ExampleColumn_warnings ORDER BY [DatabaseId],[DatabaseName],[WarningCode],[SourceKey] FOR JSON PATH,INCLUDE_NULL_VALUES);
+ REVERT;
+END TRY
+BEGIN CATCH
+ USE '+QUOTENAME(@FrameworkDb)+N';
+ REVERT;
+ THROW;
+END CATCH;';
+  EXEC [sys].[sp_executesql] @Sql,
+   N'@Id int,@Name sysname,@Names nvarchar(max),@Map nvarchar(max),@FrameworkId int,@ExpectedLoginId int,
+     @Rc int OUTPUT,@J nvarchar(max) OUTPUT,@St varchar(40) OUTPUT,@Part bit OUTPUT,@Er int OUTPUT,@Msg nvarchar(2048) OUTPUT,
+     @Tm nvarchar(max) OUTPUT,@Tc nvarchar(max) OUTPUT,@Tp nvarchar(max) OUTPUT,@Ts nvarchar(max) OUTPUT,@Tw nvarchar(max) OUTPUT',
+   @Id=@DbAId,@Name=@DbA,@Names=@ColumnNames,@Map=@ColumnMap,@FrameworkId=@OriginalDb,@ExpectedLoginId=@LoginId,
+   @Rc=@ColumnReturn OUTPUT,@J=@ColumnJson OUTPUT,@St=@ColumnStatus OUTPUT,@Part=@ColumnPartial OUTPUT,
+   @Er=@ColumnError OUTPUT,@Msg=@ColumnMessage OUTPUT,@Tm=@ColumnModule OUTPUT,@Tc=@ColumnContexts OUTPUT,
+   @Tp=@ColumnPermissions OUTPUT,@Ts=@ColumnSources OUTPUT,@Tw=@ColumnWarnings OUTPUT;
+  IF DB_ID()<>@ColumnParentDb OR SUSER_ID()<>@ColumnParentLogin OR @@TRANCOUNT<>@ColumnParentTx
+   OR @@LOCK_TIMEOUT<>@ColumnParentLock OR (CASE WHEN (@@OPTIONS&16384)=16384 THEN 1 ELSE 0 END)<>@ColumnParentAbort
+   THROW 63314,N'OBJECT_COLUMN_PARENT_CALLER_RESTORE',1;
+  IF NOT EXISTS(SELECT 1 FROM [#ExampleColumn_Native]
+    WHERE [DatabaseId]=@DbAId AND [DatabaseName] COLLATE SQL_Latin1_General_CP1_CS_AS=@DbA COLLATE SQL_Latin1_General_CP1_CS_AS
+      AND [RequestedObjectName]=N'ExampleColumnProbe' AND [PermissionName]=N'SELECT'
+      AND [SubentityName] COLLATE SQL_Latin1_General_CP1_CS_AS=N'Value'
+      AND DATALENGTH([SubentityName])=DATALENGTH(N'Value'))
+   THROW 63315,N'OBJECT_COLUMN_NATIVE_POSITIVE',1;
+  IF COALESCE(@ColumnReturn,-1)<>0 OR COALESCE(@ColumnStatus,'')<>'AVAILABLE_LIMITED'
+   OR COALESCE(@ColumnPartial,0)<>1 OR @ColumnError IS NOT NULL OR ISJSON(@ColumnJson)<>1
+   THROW 63316,N'OBJECT_COLUMN_PRODUCT_STATUS',1;
+  IF (SELECT COUNT(*) FROM OPENJSON(@ColumnJson))<>6
+   OR (SELECT COUNT(*) FROM OPENJSON(@ColumnJson) WHERE [key]=N'meta' AND [type]=5)<>1
+   OR (SELECT COUNT(*) FROM OPENJSON(@ColumnJson) WHERE [key]=N'moduleStatus' AND [type]=4)<>1
+   OR (SELECT COUNT(*) FROM OPENJSON(@ColumnJson) WHERE [key]=N'callerContexts' AND [type]=4)<>1
+   OR (SELECT COUNT(*) FROM OPENJSON(@ColumnJson) WHERE [key]=N'objectPermissions' AND [type]=4)<>1
+   OR (SELECT COUNT(*) FROM OPENJSON(@ColumnJson) WHERE [key]=N'sourceStatus' AND [type]=4)<>1
+   OR (SELECT COUNT(*) FROM OPENJSON(@ColumnJson) WHERE [key]=N'warnings' AND [type]=4)<>1
+   THROW 63317,N'OBJECT_COLUMN_JSON_GROUPS',1;
+  IF EXISTS(SELECT 1 FROM (VALUES
+    (N'moduleStatus',@ColumnModule),(N'callerContexts',@ColumnContexts),
+    (N'objectPermissions',@ColumnPermissions),(N'sourceStatus',@ColumnSources),(N'warnings',@ColumnWarnings)) AS [p]([Key],[Rows])
+    WHERE JSON_QUERY(@ColumnJson,N'$.'+[p].[Key]) IS NULL
+       OR COALESCE(DATALENGTH([p].[Rows]),-1)<>COALESCE(DATALENGTH(JSON_QUERY(@ColumnJson,N'$.'+[p].[Key])),-1)
+       OR [p].[Rows] COLLATE SQL_Latin1_General_CP1_CS_AS<>JSON_QUERY(@ColumnJson,N'$.'+[p].[Key]) COLLATE SQL_Latin1_General_CP1_CS_AS)
+   THROW 63318,N'OBJECT_COLUMN_TABLE_JSON_PARITY',1;
+  IF (SELECT COUNT_BIG(*) FROM OPENJSON(@ColumnJson,N'$.objectPermissions'))<>(SELECT COUNT_BIG(*) FROM [#ExampleColumn_Native])
+   OR (SELECT COUNT_BIG(*) FROM OPENJSON(@ColumnPermissions))<>(SELECT COUNT_BIG(*) FROM [#ExampleColumn_Native])
+   THROW 63319,N'OBJECT_COLUMN_NATIVE_COUNT',1;
+  IF EXISTS(SELECT [DatabaseId],[DatabaseName] COLLATE SQL_Latin1_General_CP1_CS_AS,[RequestedSchemaName] COLLATE SQL_Latin1_General_CP1_CS_AS,
+                   [RequestedObjectName] COLLATE SQL_Latin1_General_CP1_CS_AS,[EntityName] COLLATE SQL_Latin1_General_CP1_CS_AS,
+                   [SubentityName] COLLATE SQL_Latin1_General_CP1_CS_AS,[PermissionName] COLLATE SQL_Latin1_General_CP1_CS_AS
+            FROM OPENJSON(@ColumnJson,N'$.objectPermissions') WITH
+              ([DatabaseId] int,[DatabaseName] sysname,[RequestedSchemaName] sysname,[RequestedObjectName] sysname,
+               [EntityName] sysname,[SubentityName] sysname,[PermissionName] nvarchar(128))
+            EXCEPT SELECT [DatabaseId],[DatabaseName],[RequestedSchemaName],[RequestedObjectName],[EntityName],[SubentityName],[PermissionName]
+                   FROM [#ExampleColumn_Native])
+   OR EXISTS(SELECT [DatabaseId],[DatabaseName],[RequestedSchemaName],[RequestedObjectName],[EntityName],[SubentityName],[PermissionName]
+             FROM [#ExampleColumn_Native]
+             EXCEPT SELECT [DatabaseId],[DatabaseName] COLLATE SQL_Latin1_General_CP1_CS_AS,
+                           [RequestedSchemaName] COLLATE SQL_Latin1_General_CP1_CS_AS,[RequestedObjectName] COLLATE SQL_Latin1_General_CP1_CS_AS,
+                           [EntityName] COLLATE SQL_Latin1_General_CP1_CS_AS,[SubentityName] COLLATE SQL_Latin1_General_CP1_CS_AS,
+                           [PermissionName] COLLATE SQL_Latin1_General_CP1_CS_AS
+                    FROM OPENJSON(@ColumnJson,N'$.objectPermissions') WITH
+                      ([DatabaseId] int,[DatabaseName] sysname,[RequestedSchemaName] sysname,[RequestedObjectName] sysname,
+                       [EntityName] sysname,[SubentityName] sysname,[PermissionName] nvarchar(128)))
+   THROW 63320,N'OBJECT_COLUMN_NATIVE_PRODUCT_PARITY',1;
+  IF EXISTS(SELECT [DatabaseId],[DatabaseName] COLLATE SQL_Latin1_General_CP1_CS_AS,[RequestedSchemaName] COLLATE SQL_Latin1_General_CP1_CS_AS,
+                   [RequestedObjectName] COLLATE SQL_Latin1_General_CP1_CS_AS,[EntityName] COLLATE SQL_Latin1_General_CP1_CS_AS,
+                   [SubentityName] COLLATE SQL_Latin1_General_CP1_CS_AS,[PermissionName] COLLATE SQL_Latin1_General_CP1_CS_AS
+            FROM OPENJSON(@ColumnPermissions) WITH
+              ([DatabaseId] int,[DatabaseName] sysname,[RequestedSchemaName] sysname,[RequestedObjectName] sysname,
+               [EntityName] sysname,[SubentityName] sysname,[PermissionName] nvarchar(128))
+            EXCEPT SELECT [DatabaseId],[DatabaseName],[RequestedSchemaName],[RequestedObjectName],[EntityName],[SubentityName],[PermissionName]
+                   FROM [#ExampleColumn_Native])
+   OR EXISTS(SELECT [DatabaseId],[DatabaseName],[RequestedSchemaName],[RequestedObjectName],[EntityName],[SubentityName],[PermissionName]
+             FROM [#ExampleColumn_Native]
+             EXCEPT SELECT [DatabaseId],[DatabaseName] COLLATE SQL_Latin1_General_CP1_CS_AS,
+                           [RequestedSchemaName] COLLATE SQL_Latin1_General_CP1_CS_AS,[RequestedObjectName] COLLATE SQL_Latin1_General_CP1_CS_AS,
+                           [EntityName] COLLATE SQL_Latin1_General_CP1_CS_AS,[SubentityName] COLLATE SQL_Latin1_General_CP1_CS_AS,
+                           [PermissionName] COLLATE SQL_Latin1_General_CP1_CS_AS
+                    FROM OPENJSON(@ColumnPermissions) WITH
+                      ([DatabaseId] int,[DatabaseName] sysname,[RequestedSchemaName] sysname,[RequestedObjectName] sysname,
+                       [EntityName] sysname,[SubentityName] sysname,[PermissionName] nvarchar(128)))
+   THROW 63321,N'OBJECT_COLUMN_NATIVE_TABLE_PARITY',1;
  END TRY
  BEGIN CATCH
   SET @Failure=ERROR_NUMBER();
