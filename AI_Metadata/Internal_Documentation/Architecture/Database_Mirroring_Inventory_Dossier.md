@@ -1,7 +1,7 @@
 # SQL-sichtbares Inventar für Database Mirroring
 
 **Stand:** 16. November 2026.
-**Status:** begrenzter V1-Katalogpfad als Produkt implementiert; dieses Dossier bindet noch keine native SQL-Server-2025-Abnahme oder positive Windows-Mirroring-Qualifikation.
+**Status:** begrenzter V1-Katalogpfad als Produkt implementiert und im SQL-Server-2019-/CL150-Full-Release-Gate nativ geprüft; native SQL-Server-2022-/2025-Abnahme und positive Windows-Mirroring-Qualifikation sind hier nicht gebunden.
 **Artefakt-UID:** urn:uuid:01a17ef8-7d19-7e63-9c8a-7d33cb449857.
 **Registrierung:** DEFERRED; keine lesbare Kennung vergeben.
 **Arbeitselement:** kontinuierlicher WI-0010-Intake; kein neues Arbeitselement.
@@ -147,7 +147,9 @@ oder externen Probeoperationen. NOLOCK-Lesegrenzen und mögliches Warten auf Sch
 als Ergebnisgrenze dokumentiert; der Test darf daraus keine Nichtblockierungsgarantie ableiten. Ein leeres Linux-Ergebnis prüft nur die Plattform-/Leergrenze,
 nicht die Windows-Funktion. Versionsrechte sind anhand der offiziellen Katalogquelle zu binden:
 VIEW SERVER PERFORMANCE STATE ab SQL Server 2022. Die SQL-Server-2019-Katalogquelle spezifiziert
-keine weitere Serverberechtigung; die versionsspezifische native Qualifikation bleibt offen.
+keine weitere Serverberechtigung; der begrenzte native SQL-Server-2019-Katalogvertrag ist unten gebunden. Native SQL-Server-2022-/2025-Abnahmen bleiben in diesem Dossier offen.
+
+Der [SQL-Server-2019-Nativlauf 43643920546](https://github.com/gecompat/SQL_Server_Analyze/actions/runs/43643920546), Job 132597678295, checkte den exakten Head `cecde05f9b592881cdee7e820ffb7b39434ed0fe` aus und bestand als `FULL_RELEASE` auf Linux mit Compatibility Level 150. Das erfolgreiche Release-Gate band Fixture 141 genau einmal ein. Die Quelle 310 (`ae465eb3dfc1390592b577d9b6bf90b2edf9d0e1`) und Fixture 141 (`7ed85802c0b41b907661f8a0e688a4eccbb2f6bf`) sind an diesem Head und aktuell bytegleich. Der verpflichtende Fixturepfad prüft Katalogwerte, zwölf Fachfelder, native NULL-Werte, Ausgabe-ABI und Caller-Zustand sowie bei einem eigenen Login eine direkte SQL-229-Verweigerung und den getrennten Produktstatus. Ein eigener Fixture-141-SQL-stdout-Marker wurde nicht ausgewertet. Der Lauf belegt keine positive Mirroring-Session, keinen Windows-Partner oder Witness und keine produktiven Mindestberechtigungen.
 
 Eine positive Mirroring-Qualifikation bleibt separat offen. Im Repository ist keine konfigurierte
 Windows Principal-/Mirror-/Witness-Umgebung vorhanden. Das Dossier liefert daher weder eine positive
@@ -157,7 +159,7 @@ Witness vorhanden/fehlend und die konfigurierte Redo-Obergrenze prüfen. SQL Ser
 keine positive Mirroring-Session qualifizieren.
 
 Der begrenzte Produktpfad ist durch die aktuelle Quelle und die kanonische OPS-Kopie belegt. WI-0010
-bleibt als kontinuierlicher Intake für die in diesem Dossier nicht gebundene native Abnahme und den
+bleibt als kontinuierlicher Intake für die hier nicht gebundenen nativen SQL-Server-2022-/2025-Abnahmen und den
 positiven Windows-Mirroring-Nachweis offen. Reife, Vollständigkeit, Gesundheit, automatisches Failover,
 aktuelle Queue-Größe, externe Konnektivität, Migrationssicherheit und positives Mirroring werden nicht
 behauptet.
