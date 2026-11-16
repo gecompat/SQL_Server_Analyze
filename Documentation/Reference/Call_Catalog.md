@@ -1,6 +1,6 @@
 # Aufrufkatalog aller dokumentierten Procedures
 
-Stand: 2026-11-15 — 127 eindeutige Procedure-Einträge; alle 127 öffentlichen Inventar-Procedures sind enthalten.
+Stand: 2026-11-16 — 128 eindeutige Procedure-Einträge; alle 128 öffentlichen Inventar-Procedures sind enthalten.
 
 Die Hilfeaufrufe führen keine fachliche Analyse aus. Weitere typische Querschnittsbeispiele stehen am Dokumentanfang.
 
@@ -874,6 +874,15 @@ EXEC [monitor].[USP_RowLevelSecurityAndMaskingInventory] @Hilfe=1;
 
 ```sql
 EXEC [monitor].[USP_CurrentCallerPermissionAnalysis] @Hilfe=1;
+```
+
+## `[monitor].[USP_CurrentObjectPermissionAnalysis]`
+
+```sql
+EXEC [monitor].[USP_CurrentObjectPermissionAnalysis] @Hilfe=1;
+EXEC [monitor].[USP_CurrentObjectPermissionAnalysis]
+    @SchemaName=N'dbo', @ObjectName=N'ExampleObject',
+    @ResultSetArt='CONSOLE';
 ```
 
 ## `[monitor].[USP_EndpointTransportAnalysis]`

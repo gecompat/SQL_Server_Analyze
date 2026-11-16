@@ -2379,6 +2379,16 @@
       "source": "AI_Metadata/Internal_Documentation/Quality/Development_Waves_2026-10.md",
       "target": "AI_Metadata/Internal_Documentation/Quality/WI0008_Absent_Audit_Runtime_Evidence_2026-09-19.md",
       "classification": "product-reference"
+    },
+    {
+      "source": "AI_Metadata/Internal_Documentation/Quality/Next_Steps.md",
+      "target": "AI_Metadata/Internal_Documentation/Architecture/Current_Object_Permission_Analysis_Dossier.md",
+      "classification": "product-reference"
+    },
+    {
+      "source": "AI_Metadata/Internal_Documentation/Quality/Development_Waves_2026-10.md",
+      "target": "AI_Metadata/Internal_Documentation/Architecture/Current_Object_Permission_Analysis_Dossier.md",
+      "classification": "product-reference"
     }
   ]
 }

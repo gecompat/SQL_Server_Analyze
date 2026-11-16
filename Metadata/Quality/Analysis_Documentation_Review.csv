@@ -126,3 +126,4 @@ USP_PlanGuideInventory,BASELINE,,1
 USP_DatabaseDdlTriggerInventory,BASELINE,,1
 USP_LoadedModuleInventory,BASELINE,,1
 USP_DatabaseSnapshotInventory,BASELINE,,1
+USP_CurrentObjectPermissionAnalysis,BASELINE,,1

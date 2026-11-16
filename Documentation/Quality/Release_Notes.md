@@ -1,5 +1,7 @@
 # Releaseübersicht
 
+`USP_CurrentObjectPermissionAnalysis` ergänzt als noch nicht nativ qualifizierter Produktkandidat eine lesende OBJECT-Rechteaufnahme für genau ein benanntes Schema-/Objektpaar je ausgewählter Datenbank. Die native Quelle bewertet den tatsächlichen Caller-Kontext; leere und fehlerhafte Quellen beweisen weder Objektabwesenheit noch einen konkreten DENY. Die [Procedure-Seite](../Analysis_Guides/Procedures/USP_CurrentObjectPermissionAnalysis.md) beschreibt die 17 Parameter und fünf Ausgabegruppen.
+
 `USP_DatabaseSnapshotInventory` ergänzt ein lesendes Inventar caller-sichtbarer Datenbank-Snapshots und Sparse-Dateikatalogzeilen. `sys.master_files.size` wird als maximale Snapshot-Dateikapazität ausgewiesen, nicht als tatsächlich belegter Speicher. Verborgene Quellnamen bleiben NULL, ihre numerische SourceDatabaseId erhalten; fehlende sichtbare Dateizeilen werden nicht als Nullbestand gewertet. Die Source- und native Fixture stehen als Kandidat bereit; eine SQL-Laufzeitabnahme für diesen neuen Vertrag ist noch offen. Die [Procedure-Seite](../Analysis_Guides/Procedures/USP_DatabaseSnapshotInventory.md) dokumentiert Eingaben, Rechte und Aussagegrenzen.
 
 `USP_LoadedModuleInventory` ergänzt eine lesende Aufnahme nativer Modulmetadaten des SQL-Server-Prozesses aus `sys.dm_os_loaded_modules`. Die zehn Fachfelder enthalten den unveränderten nativen Modulnamen einschließlich möglichem vollständigem Pfad und den zusätzlich abgeleiteten Basenamen; Prozessadresse, Company- und Description-Texte werden nicht gelesen. Eine Build-Flag-Auswahl und `@MaxZeilen` begrenzen nur die Ausgabe nach vollständigem Quellenread. Host- und Filtertreiber, Signaturen, Malware und Gesundheitszustand bleiben unbewertet. Die Laufzeitabnahme auf SQL Server 2025 mit Compatibility Level 170 und für die SQL-Server-2019-Rechte steht noch aus. `Module_Maturity` bleibt `PLANNED`. Die [Procedure-Seite](../Analysis_Guides/Procedures/USP_LoadedModuleInventory.md) erklärt Rechte und Statusgrenzen.
@@ -52,9 +54,9 @@ commitbezogenen Laufzeitnachweis.
 | ReleaseDate im Installationskatalog | 23. Oktober 2026 |
 | Mindestversion | SQL Server 2019 |
 
-Der aktuelle Inventarvertrag umfasst 209 Objekte: 127 öffentliche Procedures, 8 Views, 29 Table-Valued Functions, 25 interne Procedures und 20 Tabellen.
+Der aktuelle Inventarvertrag umfasst 210 Objekte: 128 öffentliche Procedures, 8 Views, 29 Table-Valued Functions, 25 interne Procedures und 20 Tabellen.
 
-Der Frameworkkern umfasst 185 Objekte mit 124 öffentlichen Procedures und 9 Tabellen. Das optionale Snapshotpaket umfasst 24 Objekte mit 3 öffentlichen Procedures und 11 Tabellen.
+Der Frameworkkern umfasst 186 Objekte mit 125 öffentlichen Procedures und 9 Tabellen. Das optionale Snapshotpaket umfasst 24 Objekte mit 3 öffentlichen Procedures und 11 Tabellen.
 
 Die [Paketgrenzen](../Reference/Scope_and_Limitations.md) unterscheiden
 Diagnose, Installation, lokale TABLE-Ausgabe und persistente Sammlung.

@@ -103,6 +103,7 @@ $selfTestValidators = @(
     '1050_Validate_RlsMaskingInventory_Contract.py'
     '1051_Validate_DistributedTransactionInventory_Contract.py'
     '1052_Validate_DatabaseMirroringInventory_Contract.py'
+    '1053_Validate_CurrentObjectPermission_Contract.py'
   )
 $repositoryOnlyValidators = @(
     'Validate_Ssis_Exchange_Contract.py'

@@ -1,7 +1,7 @@
 # Eigenständige Analysebeschreibungen je Procedure
 
 **Stand:** 15. November 2026<br>
-**Strukturelle Abdeckung:** 127 Procedures<br>
+**Strukturelle Abdeckung:** 128 Procedures<br>
 **Tief geprüfte Seiten:** 92 Procedures
 
 Jede Seite verbindet den sicheren Einstieg mit der fachlichen Leserichtung. Sie beantwortet insbesondere:
@@ -186,6 +186,7 @@ Jede Seite weist jetzt Entscheidungseinsatz, Nichtziele, Resultset-Leserichtung,
 - [USP_RowLevelSecurityAndMaskingInventory](USP_RowLevelSecurityAndMaskingInventory.md) zeigt sichtbare Policies, Predicate-Metadaten und Masked Columns ohne Ausdrücke oder Tabellenwerte.
 
 - [USP_CurrentCallerPermissionAnalysis](USP_CurrentCallerPermissionAnalysis.md) zeigt native effektive Rechte des aktuellen Ausführungskontexts.
+- [USP_CurrentObjectPermissionAnalysis](USP_CurrentObjectPermissionAnalysis.md) zeigt native OBJECT-Rechte des aktuellen Aufrufers für ein benanntes Schema-/Objektpaar je ausgewählter Datenbank.
 
 - [USP_EndpointTransportAnalysis](USP_EndpointTransportAnalysis.md) zeigt sichtbare Endpointkonfiguration und gruppierte native Verbindungsflags.
 

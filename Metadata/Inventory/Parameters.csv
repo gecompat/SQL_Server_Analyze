@@ -2248,3 +2248,20 @@ USP_DatabaseSnapshotInventory,StatusCodeOut,varchar(40),NULL OUTPUT
 USP_DatabaseSnapshotInventory,IsPartialOut,bit,NULL OUTPUT
 USP_DatabaseSnapshotInventory,ErrorNumberOut,int,NULL OUTPUT
 USP_DatabaseSnapshotInventory,ErrorMessageOut,nvarchar(2048),NULL OUTPUT
+USP_CurrentObjectPermissionAnalysis,DatabaseNames,nvarchar(max),NULL
+USP_CurrentObjectPermissionAnalysis,SystemdatenbankenEinbeziehen,bit,0
+USP_CurrentObjectPermissionAnalysis,DatabaseNamePattern,nvarchar(4000),NULL
+USP_CurrentObjectPermissionAnalysis,SchemaName,nvarchar(max),NULL
+USP_CurrentObjectPermissionAnalysis,ObjectName,nvarchar(max),NULL
+USP_CurrentObjectPermissionAnalysis,MaxZeilen,int,1000
+USP_CurrentObjectPermissionAnalysis,LockTimeoutMs,int,0
+USP_CurrentObjectPermissionAnalysis,ResultSetArt,varchar(16),'CONSOLE'
+USP_CurrentObjectPermissionAnalysis,ResultTablesJson,nvarchar(max),NULL
+USP_CurrentObjectPermissionAnalysis,JsonErzeugen,bit,0
+USP_CurrentObjectPermissionAnalysis,Json,nvarchar(max),NULL OUTPUT
+USP_CurrentObjectPermissionAnalysis,PrintMeldungen,bit,1
+USP_CurrentObjectPermissionAnalysis,Hilfe,bit,0
+USP_CurrentObjectPermissionAnalysis,StatusCodeOut,varchar(40),NULL OUTPUT
+USP_CurrentObjectPermissionAnalysis,IsPartialOut,bit,NULL OUTPUT
+USP_CurrentObjectPermissionAnalysis,ErrorNumberOut,int,NULL OUTPUT
+USP_CurrentObjectPermissionAnalysis,ErrorMessageOut,nvarchar(2048),NULL OUTPUT
