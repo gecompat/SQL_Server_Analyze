@@ -3,6 +3,10 @@ __pycache__/
 .pytest_cache/
 *.backup
 
+.env
+*.env
+
+
 # Generated installer output (directory-local guard exists as well).
 Code/Install/generated/*.generated.sql
 
