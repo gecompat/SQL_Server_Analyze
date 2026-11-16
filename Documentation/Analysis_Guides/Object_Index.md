@@ -1,7 +1,7 @@
 # Objektindex der eigenständigen Analysebeschreibungen
 
-**Stand:** 15. November 2026
-**Abdeckung:** alle 127 inventarisierten `USP_*`-Procedures des Frameworks einschließlich der optionalen Pakete
+**Stand:** 16. November 2026
+**Abdeckung:** alle 128 inventarisierten `USP_*`-Procedures des Frameworks einschließlich der optionalen Pakete
 
 Jeder Link führt zu einer in sich geschlossenen Procedure-Seite. Dort stehen sicherer Einstieg, Zeilengranularität, Leserichtung, technische Problembegründung, unkritischer Gegenkontext, synthetisches Beispiel, Folgeanalyse und der Link zur vollständigen technischen Spaltenreferenz.
 
@@ -194,8 +194,8 @@ Für einen Einstieg nach beobachtetem Problem verwenden Sie [Hier beginnen](Star
 | Server Health | 24 |
 | Versionsadaptive Spezialanalysen | 11 |
 | Snapshot und Baseline | 3 |
-| Weitere einzeln verlinkte Analysen | 11 |
-| **Gesamt** | **127** |
+| Weitere einzeln verlinkte Analysen | 12 |
+| **Gesamt** | **128** |
 
 ## Weitere Einstiege
 
@@ -232,6 +232,7 @@ Für einen Einstieg nach beobachtetem Problem verwenden Sie [Hier beginnen](Star
 - [USP_RowLevelSecurityAndMaskingInventory](Procedures/USP_RowLevelSecurityAndMaskingInventory.md) inventarisiert sichtbare RLS- und Maskingmetadaten ohne Wirksamkeits- oder Vollständigkeitsurteil.
 
 - [USP_CurrentCallerPermissionAnalysis](Procedures/USP_CurrentCallerPermissionAnalysis.md) zeigt native Rechte des aktiven Kontexts auf SERVER- und DATABASE-Ebene.
+- [USP_CurrentObjectPermissionAnalysis](Procedures/USP_CurrentObjectPermissionAnalysis.md) zeigt native OBJECT-Rechte des aktiven Kontexts für ein benanntes Schema-/Objektpaar je ausgewählter Datenbank.
 
 - [USP_EndpointTransportAnalysis](Procedures/USP_EndpointTransportAnalysis.md) zeigt Endpoints, TCP-/Mirroringkonfiguration und begrenzte Transportverschlüsselungsevidenz.
 

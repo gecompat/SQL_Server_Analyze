@@ -231,6 +231,7 @@ AS
         , (N'USP_ServerPrincipalAnalysis','CONFIRM_WITH',N'USP_ServerSecurityConfiguration',1,N'Direkte Principal-Evidenz mit Sicherheitskonfiguration abgleichen.')
         , (N'USP_DatabasePrincipalAnalysis','CONFIRM_WITH',N'USP_ServerPrincipalAnalysis',1,N'Sichtbare Datenbankrechte und Loginbindungen mit den getrennten Servermetadaten abgleichen.')
         , (N'USP_RowLevelSecurityAndMaskingInventory','CONFIRM_WITH',N'USP_DatabasePrincipalAnalysis',1,N'Sichtbare Policy- und Maskingmetadaten getrennt von Principals und direkten Rechten interpretieren.')
+        , (N'USP_CurrentObjectPermissionAnalysis','CONFIRM_WITH',N'USP_CurrentCallerPermissionAnalysis',1,N'Objektrechte für das vorgegebene Ziel vom breiteren SERVER- und DATABASE-Kontext getrennt einordnen.')
         , (N'USP_CurrentCallerPermissionAnalysis','CONFIRM_WITH',N'USP_DatabasePrincipalAnalysis',1,N'Native Rechte des aktuellen Kontexts mit getrennten sichtbaren Katalogkanten abgleichen.')
         , (N'USP_EndpointTransportAnalysis','CONFIRM_WITH',N'USP_EncryptionAnalysis',1,N'Transportbefunde getrennt von Daten- und Backupverschlüsselung interpretieren.')
         , (N'USP_UpgradeFeatureUsageAnalysis','CONFIRM_WITH',N'USP_DatabasePortabilityAnalysis',1,N'Instanzweite Begegnungen getrennt von datenbankbezogenen Portabilitätsbefunden prüfen.')

@@ -60,7 +60,7 @@ Der [Reviewkatalog](../../Metadata/Quality/Analysis_Documentation_Review.csv) f�
 | Server Health | [08_Server_Health.md](08_Server_Health.md) |
 | Versionsadaptive Spezialanalysen | [09_Version_Adaptive.md](09_Version_Adaptive.md) |
 
-Die zwei PLAN-001-Procedures sind zusätzlich eigenständig installierbar und gehören zum Gesamtinstaller. Der Frameworkkern umfasst 124 öffentliche Procedures; die drei SC-023-Procedures bleiben optional und außerhalb von `Install_All.sql`. Der vollständige Inventarbestand umfasst 127 öffentliche Procedures. Beide Pakete besitzen separate Architektur- und Betriebshandbücher.
+Die zwei PLAN-001-Procedures sind zusätzlich eigenständig installierbar und gehören zum Gesamtinstaller. Der Frameworkkern umfasst 125 öffentliche Procedures; die drei SC-023-Procedures bleiben optional und außerhalb von `Install_All.sql`. Der vollständige Inventarbestand umfasst 128 öffentliche Procedures. Beide Pakete besitzen separate Architektur- und Betriebshandbücher.
 
 ## Schnellwahl nach Symptom
 
@@ -92,4 +92,4 @@ Kein einzelnes Resultset rechtfertigt automatisch `KILL`, DDL, Rebuild, Plan For
 
 ## Vollständigkeit
 
-Der [Objektindex](Object_Index.md) enthält alle 127 öffentlichen Procedures. Die [Objektreferenz](../Reference/Object_Reference.md) dokumentiert zusätzlich alle 82 unterstützenden Views, TVFs, internen Procedures und Tabellen. Der [Navigator-Vertrag](../Reference/Analysis_Navigator.md) erklärt die fachliche Zuordnung, Suchbegriffe, Rollen und Beziehungen.
+Der [Objektindex](Object_Index.md) enthält alle 128 öffentlichen Procedures. Die [Objektreferenz](../Reference/Object_Reference.md) dokumentiert zusätzlich alle 82 unterstützenden Views, TVFs, internen Procedures und Tabellen. Der [Navigator-Vertrag](../Reference/Analysis_Navigator.md) erklärt die fachliche Zuordnung, Suchbegriffe, Rollen und Beziehungen.
