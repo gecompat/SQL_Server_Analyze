@@ -133,6 +133,92 @@ BEGIN TRY
         DROP TABLE [#ExampleRecoveryFresh];
         SET @Case+=1;
     END;
+    /* Drei isolierte NULL-Grenzfälle; der bestehende positive Viererloop bleibt unverändert. */
+    CREATE TABLE [#ExampleRecoveryExpectedFreshSchema]
+    (
+          [DatabaseName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS
+        , [StateDesc] nvarchar(60) COLLATE SQL_Latin1_General_CP1_CS_AS
+        , [RecoveryModelDesc] nvarchar(60) COLLATE SQL_Latin1_General_CP1_CS_AS
+        , [LastFullFinish] datetime
+        , [FullAgeMinutes] int
+        , [LastDiffFinish] datetime
+        , [DiffAgeMinutes] int
+        , [LastLogFinish] datetime
+        , [LogAgeMinutes] int
+        , [LastCopyOnlyFullFinish] datetime
+        , [BackupStatus] varchar(100) COLLATE SQL_Latin1_General_CP1_CS_AS
+    );
+    CREATE TABLE [#ExampleRecoveryExpectedCompressionSchema]
+    (
+          [EvidenceScope] varchar(32) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [DatabaseName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [BackupSetId] int NULL
+        , [BackupFinishDate] datetime NULL
+        , [ConfigurationName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [ConfiguredValue] int NULL
+        , [AlgorithmName] nvarchar(32) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [SourceStatus] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [ErrorNumber] int NULL
+        , [ErrorMessage] nvarchar(2048) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [CollectionTimeUtc] datetime2(3) NOT NULL
+    );
+    DECLARE @NullCase tinyint=0,@NullFull int,@NullDiff int,@NullLog int;
+    WHILE @NullCase<3
+    BEGIN
+        SELECT @NullFull=CASE WHEN @NullCase=0 THEN NULL ELSE 48 END,
+               @NullDiff=CASE WHEN @NullCase=1 THEN NULL ELSE 24 END,
+               @NullLog=CASE WHEN @NullCase=2 THEN NULL ELSE 30 END,@Json=NULL;
+        CREATE TABLE [#ExampleRecoveryInvalidFresh]([Dummy] int NULL);
+        CREATE TABLE [#ExampleRecoveryInvalidCompression]([Dummy] int NULL);
+        EXEC [monitor].[USP_BackupRecovery]
+             @DatabaseNames=@Names,@FullWarnHours=@NullFull,@DiffWarnHours=@NullDiff,@LogWarnMinutes=@NullLog,
+             @MitRestoreHistory=1,@MaxZeilen=NULL,@ResultSetArt='TABLE',
+             @ResultTablesJson=N'{"freshness":"#ExampleRecoveryInvalidFresh","compression":"#ExampleRecoveryInvalidCompression"}',
+             @JsonErzeugen=1,@Json=@Json OUTPUT,@PrintMeldungen=0;
+        IF COALESCE(ISJSON(@Json),0)<>1
+           OR COALESCE(JSON_VALUE(@Json,N'$.meta.statusCode'),N'')<>N'INVALID_PARAMETER'
+           OR COALESCE(JSON_VALUE(@Json,N'$.meta.isPartial'),N'')<>N'true'
+           OR JSON_VALUE(@Json,N'$.meta.errorNumber') IS NOT NULL
+           OR NULLIF(JSON_VALUE(@Json,N'$.meta.errorMessage'),N'') IS NULL
+           OR COALESCE(JSON_QUERY(@Json,N'$.freshness'),N'')<>N'[]'
+           OR COALESCE(JSON_QUERY(@Json,N'$.backups'),N'')<>N'[]'
+           OR COALESCE(JSON_QUERY(@Json,N'$.compression'),N'')<>N'[]'
+           OR COALESCE(JSON_QUERY(@Json,N'$.restores'),N'')<>N'[]'
+           OR COALESCE(JSON_QUERY(@Json,N'$.warnings'),N'')<>N'[]'
+           OR (SELECT COUNT_BIG(*) FROM [#ExampleRecoveryInvalidFresh])<>0
+           OR (SELECT COUNT_BIG(*) FROM [#ExampleRecoveryInvalidCompression])<>0
+            THROW 55956,N'Der Backup-Recovery-NULL-Grenzfall lieferte keinen leeren INVALID_PARAMETER-Vertrag.',1;
+        IF EXISTS(SELECT CONVERT(int,ROW_NUMBER() OVER(ORDER BY [column_id])) AS [ColumnOrdinal],[name] COLLATE SQL_Latin1_General_CP1_CS_AS,[system_type_id],[max_length],[precision],[scale],
+                         [collation_name] COLLATE SQL_Latin1_General_CP1_CS_AS,[is_nullable]
+                  FROM [tempdb].[sys].[columns] WHERE [object_id]=OBJECT_ID(N'tempdb..#ExampleRecoveryInvalidFresh')
+                  EXCEPT SELECT CONVERT(int,ROW_NUMBER() OVER(ORDER BY [column_id])) AS [ColumnOrdinal],[name] COLLATE SQL_Latin1_General_CP1_CS_AS,[system_type_id],[max_length],[precision],[scale],
+                         [collation_name] COLLATE SQL_Latin1_General_CP1_CS_AS,[is_nullable]
+                  FROM [tempdb].[sys].[columns] WHERE [object_id]=OBJECT_ID(N'tempdb..#ExampleRecoveryExpectedFreshSchema'))
+           OR EXISTS(SELECT CONVERT(int,ROW_NUMBER() OVER(ORDER BY [column_id])) AS [ColumnOrdinal],[name] COLLATE SQL_Latin1_General_CP1_CS_AS,[system_type_id],[max_length],[precision],[scale],
+                            [collation_name] COLLATE SQL_Latin1_General_CP1_CS_AS,[is_nullable]
+                     FROM [tempdb].[sys].[columns] WHERE [object_id]=OBJECT_ID(N'tempdb..#ExampleRecoveryExpectedFreshSchema')
+                     EXCEPT SELECT CONVERT(int,ROW_NUMBER() OVER(ORDER BY [column_id])) AS [ColumnOrdinal],[name] COLLATE SQL_Latin1_General_CP1_CS_AS,[system_type_id],[max_length],[precision],[scale],
+                            [collation_name] COLLATE SQL_Latin1_General_CP1_CS_AS,[is_nullable]
+                     FROM [tempdb].[sys].[columns] WHERE [object_id]=OBJECT_ID(N'tempdb..#ExampleRecoveryInvalidFresh'))
+           OR EXISTS(SELECT CONVERT(int,ROW_NUMBER() OVER(ORDER BY [column_id])) AS [ColumnOrdinal],[name] COLLATE SQL_Latin1_General_CP1_CS_AS,[system_type_id],[max_length],[precision],[scale],
+                            [collation_name] COLLATE SQL_Latin1_General_CP1_CS_AS,[is_nullable]
+                     FROM [tempdb].[sys].[columns] WHERE [object_id]=OBJECT_ID(N'tempdb..#ExampleRecoveryInvalidCompression')
+                     EXCEPT SELECT CONVERT(int,ROW_NUMBER() OVER(ORDER BY [column_id])) AS [ColumnOrdinal],[name] COLLATE SQL_Latin1_General_CP1_CS_AS,[system_type_id],[max_length],[precision],[scale],
+                            [collation_name] COLLATE SQL_Latin1_General_CP1_CS_AS,[is_nullable]
+                     FROM [tempdb].[sys].[columns] WHERE [object_id]=OBJECT_ID(N'tempdb..#ExampleRecoveryExpectedCompressionSchema'))
+           OR EXISTS(SELECT CONVERT(int,ROW_NUMBER() OVER(ORDER BY [column_id])) AS [ColumnOrdinal],[name] COLLATE SQL_Latin1_General_CP1_CS_AS,[system_type_id],[max_length],[precision],[scale],
+                            [collation_name] COLLATE SQL_Latin1_General_CP1_CS_AS,[is_nullable]
+                     FROM [tempdb].[sys].[columns] WHERE [object_id]=OBJECT_ID(N'tempdb..#ExampleRecoveryExpectedCompressionSchema')
+                     EXCEPT SELECT CONVERT(int,ROW_NUMBER() OVER(ORDER BY [column_id])) AS [ColumnOrdinal],[name] COLLATE SQL_Latin1_General_CP1_CS_AS,[system_type_id],[max_length],[precision],[scale],
+                            [collation_name] COLLATE SQL_Latin1_General_CP1_CS_AS,[is_nullable]
+                     FROM [tempdb].[sys].[columns] WHERE [object_id]=OBJECT_ID(N'tempdb..#ExampleRecoveryInvalidCompression'))
+            THROW 55957,N'Die beiden leeren Backup-Recovery-TABLE-Schemas weichen vom Vertrag ab.',1;
+        DROP TABLE [#ExampleRecoveryInvalidCompression];
+        DROP TABLE [#ExampleRecoveryInvalidFresh];
+        SET @NullCase+=1;
+    END;
+    DROP TABLE [#ExampleRecoveryExpectedCompressionSchema];
+    DROP TABLE [#ExampleRecoveryExpectedFreshSchema];
     DROP TABLE [#ExampleRecoveryNativeFresh]; DROP TABLE [#ExampleRecoveryNativeBackups];
 END TRY
 BEGIN CATCH
