@@ -131,7 +131,9 @@ INSERT #ExampleCurrentWaitsCases VALUES
  (14,0,N'32767',0,0,0,NULL,0,0,100,N'ExampleMissingWait187',NULL,NULL,NULL,'INVALID_PARAMETER'),
  (15,0,N'32767',0,0,0,1,0,0,100,N'ExampleMissingWait187',NULL,N'LOCKING',N'like:LOCK%','INVALID_PARAMETER'),
  (16,0,N'32767|32767',0,0,0,1,0,0,100,N'ExampleMissingWait187',NULL,NULL,NULL,'AVAILABLE'),
- (17,0,N'32767',0,0,0,1,NULL,0,100,N'ExampleMissingWait187',NULL,NULL,NULL,'AVAILABLE');
+ (17,0,N'32767',0,0,0,1,NULL,0,100,N'ExampleMissingWait187',NULL,NULL,NULL,'INVALID_PARAMETER'),
+ (18,0,N'32767',0,0,0,1,0,NULL,100,N'ExampleMissingWait187',NULL,NULL,NULL,'INVALID_PARAMETER'),
+ (19,0,N'32767',0,0,0,1,0,0,NULL,N'ExampleMissingWait187',NULL,NULL,NULL,'INVALID_PARAMETER');
 CREATE TABLE #ExampleCurrentWaitsFixtureProbe(OwnObjects int NOT NULL);
 DECLARE @FixtureDatabase sysname,@FixtureProbeSql nvarchar(max);
 DECLARE @Context nvarchar(max)=TRY_CONVERT(nvarchar(max),SESSION_CONTEXT(N'ExampleCurrentWaitsFixtureIds')),
@@ -234,7 +236,7 @@ BEGIN TRY
   IF (SELECT COUNT(*) FROM OPENJSON(@Json,N'$.meta'))<>13 OR EXISTS(SELECT [key] FROM OPENJSON(@Json,N'$.meta') GROUP BY [key] HAVING COUNT(*)<>1)
    OR EXISTS(SELECT 1 FROM OPENJSON(@Json,N'$.meta')m LEFT JOIN(VALUES(N'resultName',1),(N'schemaVersion',2),(N'generatedAtUtc',1),(N'evidenceSnapshotStartedAtUtc',1),(N'evidenceSnapshotId',1),
     (N'measurementStartUtc',CASE WHEN @Status='AVAILABLE' THEN 1 ELSE 0 END),(N'measurementEndUtc',CASE WHEN @Status='AVAILABLE' THEN 1 ELSE 0 END),
-    (N'statusCode',1),(N'isPartial',3),(N'measurementStatusCode',CASE WHEN @Sample IS NULL THEN 0 ELSE 1 END),(N'currentTaskRows',2),(N'instanceWaitRows',2),(N'toolBackgroundQueriesIncluded',CASE WHEN @Tools IS NULL THEN 0 ELSE 3 END))v(k,t)
+    (N'statusCode',1),(N'isPartial',3),(N'measurementStatusCode',1),(N'currentTaskRows',2),(N'instanceWaitRows',2),(N'toolBackgroundQueriesIncluded',CASE WHEN @Tools IS NULL THEN 0 ELSE 3 END))v(k,t)
     ON m.[key] COLLATE Latin1_General_100_BIN2=v.k COLLATE Latin1_General_100_BIN2 WHERE v.k IS NULL OR m.[type]<>v.t)
    OR JSON_VALUE(@Json,N'$.meta.resultName')<>N'USP_CurrentWaits' OR ISNULL(TRY_CONVERT(int,JSON_VALUE(@Json,N'$.meta.schemaVersion')),-1)<>3
    OR JSON_VALUE(@Json,N'$.meta.statusCode')<>@Status OR JSON_VALUE(@Json,N'$.meta.isPartial')<>N'false'
