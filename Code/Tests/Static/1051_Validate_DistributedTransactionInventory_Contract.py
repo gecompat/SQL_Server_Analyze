@@ -306,33 +306,69 @@ def validate_maturity_evidence(maturity: str, dossier: str) -> list[str]:
         return ["MSDTC module maturity row is missing"]
     if maturity_row.get("Maturity") != "PLANNED":
         errors.append("MSDTC module maturity must remain PLANNED until separately authorized closeout")
-    for version in ("2019", "2022"):
-        if maturity_row.get(f"CIEvidence{version}") != "NO":
-            errors.append(f"SQL Server {version} evidence is unqualified")
+    if maturity_row.get("CIEvidence2022") != "NO":
+        errors.append("SQL Server 2022 evidence is unqualified")
+
+    notes = maturity_row.get("Notes") or ""
     evidence_2025 = maturity_row.get("CIEvidence2025")
     if evidence_2025 not in {"NO", "YES"}:
         errors.append("SQL Server 2025 evidence must be NO or bound to a verified functional qualification")
     elif evidence_2025 == "YES":
-        notes = maturity_row.get("Notes") or ""
-        note_heads = set(re.findall(r"\b[0-9a-f]{40}\b", notes, re.IGNORECASE))
-        dossier_heads = set(re.findall(r"\b[0-9a-f]{40}\b", dossier, re.IGNORECASE))
-        note_runs = set(re.findall(r"\bRun\s+([0-9]{10,})\b", notes, re.IGNORECASE))
-        dossier_runs = set(re.findall(r"actions/runs/([0-9]{10,})\b", dossier, re.IGNORECASE))
+        notes_2025 = notes.split("2019-CI:", 1)[0]
+        dossier_2025 = dossier.split("## Gebundene Head-Evidenz", 1)[-1].split("## Gebundene SQL-Server-2019-Evidenz", 1)[0]
+        note_heads = set(re.findall(r"\b[0-9a-f]{40}\b", notes_2025, re.IGNORECASE))
+        dossier_heads = set(re.findall(r"\b[0-9a-f]{40}\b", dossier_2025, re.IGNORECASE))
+        note_runs = set(re.findall(r"\bRun\s+([0-9]{10,})\b", notes_2025, re.IGNORECASE))
+        dossier_runs = set(re.findall(r"actions/runs/([0-9]{10,})\b", dossier_2025, re.IGNORECASE))
         evidence_is_cross_bound = (
-            len(note_heads) == 1 and note_heads == dossier_heads
+            "## Gebundene Head-Evidenz" in dossier
+            and len(note_heads) == 1 and note_heads == dossier_heads
             and len(note_runs) == 1 and note_runs == dossier_runs
-            and re.search(r"(?<![A-Za-z0-9_])full_suite=true(?![A-Za-z0-9_])", notes, re.IGNORECASE) is not None
-            and re.search(r"(?<![A-Za-z0-9_])full_suite=true(?![A-Za-z0-9_])", dossier, re.IGNORECASE) is not None
-            and "runtime contract 140" in notes.lower()
-            and "exactly once" in notes.lower()
-            and re.search(r"phase[- ]7", notes, re.IGNORECASE) is not None
+            and re.search(r"(?<![A-Za-z0-9_])full_suite=true(?![A-Za-z0-9_])", notes_2025, re.IGNORECASE) is not None
+            and re.search(r"(?<![A-Za-z0-9_])full_suite=true(?![A-Za-z0-9_])", dossier_2025, re.IGNORECASE) is not None
+            and "runtime contract 140" in notes_2025.lower()
+            and "exactly once" in notes_2025.lower()
+            and re.search(r"phase[- ]7", notes_2025, re.IGNORECASE) is not None
             and "gebundene head-evidenz" in dossier.lower()
-            and "140_distributedtransactioninventory_runtime_contract.sql" in dossier.lower()
-            and "genau einmal" in dossier.lower()
-            and "phase-7" in dossier.lower()
+            and "140_distributedtransactioninventory_runtime_contract.sql" in dossier_2025.lower()
+            and "genau einmal" in dossier_2025.lower()
+            and "phase-7" in dossier_2025.lower()
         )
         if not evidence_is_cross_bound:
             errors.append("SQL Server 2025 YES requires matching source-head/run evidence in maturity notes and the bound dossier")
+
+    evidence_2019 = maturity_row.get("CIEvidence2019")
+    if evidence_2019 not in {"NO", "YES"}:
+        errors.append("SQL Server 2019 evidence must be NO or separately bound")
+    elif evidence_2019 == "YES":
+        note_parts = notes.split("2019-CI:")
+        dossier_parts = dossier.split("## Gebundene SQL-Server-2019-Evidenz")
+        notes_2019 = note_parts[1] if len(note_parts) == 2 else ""
+        dossier_2019 = dossier_parts[1].split("## Primärquellen", 1)[0] if len(dossier_parts) == 2 else ""
+        note_heads = set(re.findall(r"\b[0-9a-f]{40}\b", notes_2019, re.IGNORECASE))
+        dossier_heads = set(re.findall(r"\b[0-9a-f]{40}\b", dossier_2019, re.IGNORECASE))
+        note_runs = set(re.findall(r"\bRun\s+([0-9]{10,})\b", notes_2019, re.IGNORECASE))
+        dossier_runs = set(re.findall(r"actions/runs/([0-9]{10,})\b", dossier_2019, re.IGNORECASE))
+        expected_head = "cecde05f9b592881cdee7e820ffb7b39434ed0fe"
+        expected_run = "43643920546"
+        evidence_is_cross_bound = (
+            len(note_parts) == 2 and len(dossier_parts) == 2
+            and note_heads == dossier_heads == {expected_head}
+            and note_runs == dossier_runs == {expected_run}
+            and len(re.findall(r"\b[0-9a-f]{40}\b", notes_2019, re.IGNORECASE)) == 1
+            and len(re.findall(r"\b[0-9a-f]{40}\b", dossier_2019, re.IGNORECASE)) == 1
+            and len(re.findall(r"\bRun\s+[0-9]{10,}\b", notes_2019, re.IGNORECASE)) == 1
+            and len(re.findall(r"actions/runs/[0-9]{10,}\b", dossier_2019, re.IGNORECASE)) == 1
+            and re.search(r"(?<![A-Za-z0-9_])FULL_RELEASE(?![A-Za-z0-9_])", notes_2019) is not None
+            and re.search(r"(?<![A-Za-z0-9_])FULL_RELEASE(?![A-Za-z0-9_])", dossier_2019) is not None
+            and re.search(r"(?<![A-Za-z0-9_])CL150(?![A-Za-z0-9_])", notes_2019) is not None
+            and re.search(r"(?<![A-Za-z0-9_])CL150(?![A-Za-z0-9_])", dossier_2019) is not None
+            and "fixture 140 bound exactly once in Run_Release_Gate.sql" in notes_2019
+            and "140_DistributedTransactionInventory_Runtime_Contract.sql" in dossier_2019
+            and "verpflichtend genau einmal" in dossier_2019
+        )
+        if not evidence_is_cross_bound:
+            errors.append("SQL Server 2019 YES requires matching exact-head/run FULL_RELEASE CL150 fixture-140 evidence in maturity notes and the separate dossier section")
     return errors
 
 
@@ -368,11 +404,11 @@ def self_test() -> None:
         dossier,
     ):
         raise AssertionError("current contract fixture failed")
-    prequalification = _set_csv_value(_set_csv_value(maturity, "CIEvidence2025", "NO"), "Notes", "")
+    prequalification = _set_csv_value(_set_csv_value(_set_csv_value(maturity, "CIEvidence2019", "NO"), "CIEvidence2025", "NO"), "Notes", "")
     if validate_maturity_evidence(prequalification, ""):
-        raise AssertionError("prequalification SQL Server 2025 NO fixture was rejected")
+        raise AssertionError("prequalification SQL Server 2019/2025 NO fixture was rejected")
     if validate_maturity_evidence(maturity, dossier):
-        raise AssertionError("bound SQL Server 2025 source-head/run qualification was rejected")
+        raise AssertionError("bound SQL Server 2019/2025 source-head/run qualification was rejected")
     narrowed_runtime = runtime.replace("NOT IN (15,16,17)", "<>17", 1)
     if not any("allow its SQL Server 2019, 2022, and 2025" in error for error in validate_contract(
         procedure, narrowed_runtime, "", "", "", "", "", "", "", "", ""
@@ -395,10 +431,39 @@ def self_test() -> None:
     mislabeled_suite = _set_csv_value(maturity, "Notes", maturity_notes.replace("full_suite=true", "source_full_suite=true", 1))
     if not any("SQL Server 2025 YES requires matching" in error for error in validate_maturity_evidence(mislabeled_suite, dossier)):
         raise AssertionError("incorrect CI suite-field label mutation escaped")
-    for version in ("2019", "2022"):
-        unsupported_version = _set_csv_value(maturity, f"CIEvidence{version}", "YES")
-        if not any(f"SQL Server {version} evidence is unqualified" in error for error in validate_maturity_evidence(unsupported_version, dossier)):
-            raise AssertionError(f"unsupported SQL Server {version} YES mutation escaped")
+    unsupported_2022 = _set_csv_value(maturity, "CIEvidence2022", "YES")
+    if not any("SQL Server 2022 evidence is unqualified" in error for error in validate_maturity_evidence(unsupported_2022, dossier)):
+        raise AssertionError("unsupported SQL Server 2022 YES mutation escaped")
+
+    def require_2019_rejection(mutated_maturity: str, mutated_dossier: str, label: str) -> None:
+        if not any("SQL Server 2019 YES requires matching" in error for error in validate_maturity_evidence(mutated_maturity, mutated_dossier)):
+            raise AssertionError(f"unbound SQL Server 2019 {label} mutation escaped")
+
+    unbound_2019 = _set_csv_value(maturity, "Notes", maturity_notes.replace("2019-CI:", "2019-unbound:", 1))
+    require_2019_rejection(unbound_2019, dossier, "section marker")
+    wrong_2019_head = _set_csv_value(maturity, "Notes", maturity_notes.replace("cecde05f9b592881cdee7e820ffb7b39434ed0fe", "0" * 40, 1))
+    require_2019_rejection(wrong_2019_head, dossier, "wrong head")
+    missing_2019_head = _set_csv_value(maturity, "Notes", maturity_notes.replace("cecde05f9b592881cdee7e820ffb7b39434ed0fe", "", 1))
+    require_2019_rejection(missing_2019_head, dossier, "missing head")
+    wrong_2019_run = _set_csv_value(maturity, "Notes", maturity_notes.replace("Run 43643920546", "Run 00000000000", 1))
+    require_2019_rejection(wrong_2019_run, dossier, "wrong run")
+    missing_2019_run = _set_csv_value(maturity, "Notes", maturity_notes.replace("Run 43643920546", "Run ", 1))
+    require_2019_rejection(missing_2019_run, dossier, "missing run")
+    missing_full_release = _set_csv_value(maturity, "Notes", maturity_notes.replace("FULL_RELEASE", "UNBOUND", 1))
+    require_2019_rejection(missing_full_release, dossier, "FULL_RELEASE")
+    missing_cl150 = _set_csv_value(maturity, "Notes", maturity_notes.replace("CL150", "UNBOUND", 1))
+    require_2019_rejection(missing_cl150, dossier, "CL150")
+    mislabeled_full_release = _set_csv_value(maturity, "Notes", maturity_notes.replace("FULL_RELEASE", "NOT_FULL_RELEASE", 1))
+    require_2019_rejection(mislabeled_full_release, dossier, "mislabeled FULL_RELEASE")
+    mislabeled_cl150 = _set_csv_value(maturity, "Notes", maturity_notes.replace("CL150", "CL1500", 1))
+    require_2019_rejection(mislabeled_cl150, dossier, "mislabeled CL150")
+    require_2019_rejection(maturity, dossier.replace("mit `FULL_RELEASE` und CL150", "mit `FULL_RELEASE_UNBOUND` und CL150", 1), "dossier mislabeled FULL_RELEASE")
+    require_2019_rejection(maturity, dossier.replace("mit `FULL_RELEASE` und CL150", "mit `FULL_RELEASE` und source_CL150", 1), "dossier mislabeled CL150")
+    missing_fixture_140 = _set_csv_value(maturity, "Notes", maturity_notes.replace("fixture 140 bound exactly once in Run_Release_Gate.sql", "fixture unbound", 1))
+    require_2019_rejection(missing_fixture_140, dossier, "fixture 140")
+    require_2019_rejection(maturity, dossier.replace("## Gebundene SQL-Server-2019-Evidenz", "## Ungebundene SQL-Server-2019-Evidenz", 1), "dossier section")
+    require_2019_rejection(maturity, dossier.replace("cecde05f9b592881cdee7e820ffb7b39434ed0fe", "0" * 40, 1), "dossier head")
+    require_2019_rejection(maturity, dossier.replace("actions/runs/43643920546", "actions/runs/00000000000", 1), "dossier run")
     complete_maturity = _set_csv_value(maturity, "Maturity", "COMPLETE")
     if not any("must remain PLANNED" in error for error in validate_maturity_evidence(complete_maturity, dossier)):
         raise AssertionError("maturity COMPLETE mutation escaped")

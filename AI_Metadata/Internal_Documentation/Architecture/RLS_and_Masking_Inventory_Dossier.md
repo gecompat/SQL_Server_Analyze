@@ -1,6 +1,6 @@
 # Sichtbares Inventar für Row-Level Security und Dynamic Data Masking
 
-**Stand:** 27. Oktober 2026.
+**Stand:** 16. November 2026.
 **Status:** V1 regulär in PR #473 integriert; erforderliche Head-/Main-Prüfungen bestanden. Ein separater Modul-Reifeabschluss ist nicht dokumentiert. Der Katalogvertrag bleibt caller-sichtbar und erhebt keinen Enforcement- oder Vollständigkeitsanspruch.
 **Artefakt-UID:** `urn:uuid:01a1727d-1d09-7e6d-9418-6a3a3c2068b1`.
 **Registrierung:** `DEFERRED`; keine lesbare Kennung vergeben.
@@ -192,11 +192,15 @@ Der synthetische Vertrag deckt positive und leere Kataloge, Auswahl, globale Lim
 
 ## Integrierter V1-Stand und Grenzen
 
-PR #473 integriert den Vertrag mit 15 Parametern und sieben Resultsets. Der erfolgreiche SQL-Server-2025-Funktionslauf [40534609883](https://github.com/gecompat/SQL_Server_Analyze/actions/runs/40534609883) umfasst 139 Verträge jeweils exakt einmal, CL170, Deployment, Berechtigungs- und Regexfälle, Standalone-Execution-Plan sowie Containercleanup. Der erfolgreiche SQL-stdout wurde unterdrückt; ein separat exportierter PASS-Marker-Transcript für Vertrag 139 liegt nicht vor. Der quellgebundene Laufzeit-PASS bleibt belegt. Eine kontrollierte Timeout-Probe wurde nicht ausgeführt. Zusätzliche native SQL-Server-2019-/2022-Qualifikation fand nicht statt. Alle acht Head-Prüfungen und fünf Main-Prüfungen bestanden.
+PR #473 integriert den Vertrag mit 15 Parametern und sieben Resultsets. Der erfolgreiche SQL-Server-2025-Funktionslauf [40534609883](https://github.com/gecompat/SQL_Server_Analyze/actions/runs/40534609883) umfasst 139 Verträge jeweils exakt einmal, CL170, Deployment, Berechtigungs- und Regexfälle, Standalone-Execution-Plan sowie Containercleanup. Der erfolgreiche SQL-stdout wurde unterdrückt; ein separat exportierter PASS-Marker-Transcript für Vertrag 139 liegt nicht vor. Der quellgebundene Laufzeit-PASS bleibt belegt. Eine kontrollierte Timeout-Probe wurde nicht ausgeführt. Zum damaligen PR-473-Stand fand keine zusätzliche native SQL-Server-2019-/2022-Qualifikation statt. Alle acht Head-Prüfungen und fünf Main-Prüfungen bestanden.
 
 Die Evidenz umfasst synthetische positive und leere Kataloge, Auswahl, globale Limits, alle sieben unabhängigen physischen Schemas in TABLE- und JSON-Ausgabe, eingeschränkte Sichtbarkeit, isoliertes DENY 229, Caller-Erhaltung und eigens aufgeräumte Fixtures. Native `predicate_id` wird auf `security_predicate_id` abgebildet. Wenn die CI-Engine `is_schemabinding_enabled` nicht bereitstellt, liefert das Modul einen typisierten NULL-Wert mit fester Warnung. Diese Belege zeigen keine unbeschränkte Katalogsicht, effektive Rechte oder Enforcement.
 
 Die 13 Head-CI-Kandidaten einschließlich Wiederholungen bleiben als kompakte Fehlerhistorie erhalten: 1–2 veraltete Zählstände; 3 Legacy-Lock; 4 Fixture-Syntax; 5 Legacy-CurrentRequests-Fehler 1222; 6 CREATE_SCHEMA-Batchfehler; 7 optionales Schemafeld 207; 8 statischer 950-Probe-/Predicate-ID-Fehler 207; 9 TABLE-Aggregat 57228; 10 Legacy-165-PrepareNameFilters-Fehler 1222 vor Vertrag 139; 11 gleiche Head-Diagnose mit TABLE-`moduleStatus`-Zählfehler 57236; 12 fixer Seed und vollständige Sieben-Schema-ABI vor Fixtureframeworkfehler 15151 im falschen Master-Kontext; 13 getrennter PASS-/Cleanup-Lauf. Diese Einträge beschreiben Fehlerfolgen und behaupten keine gemeinsame Ursache.
+
+## Gebundene SQL-Server-2019-Evidenz
+
+Der spätere [native SQL-Server-2019-Lauf 43643920546](https://github.com/gecompat/SQL_Server_Analyze/actions/runs/43643920546), Job 132597678295, bestand auf dem exakten PR-702-Head `cecde05f9b592881cdee7e820ffb7b39434ed0fe` mit `FULL_RELEASE` und CL150. `Run_Release_Gate.sql` band `139_RowLevelSecurityAndMasking_Runtime_Contract.sql` verpflichtend genau einmal ein; der Full-Release-Gate-Schritt und die native Berechtigungsmatrix bestanden. Die aktuelle Produktquelle, Fixture und erreichbaren Frameworkhelfer sind zum gebundenen Head bytegleich. Die Fixture prüft eigene synthetische positive und leere Kataloge, sieben Resultsets, begrenzte Sichtbarkeit und einen isolierten DENY-229-Fall. Ein separater Fixture-139-SQL-stdout-Marker wurde nicht ausgewertet. Der Lauf belegt keine vollständige Katalogsicht, wirksame Sicherheitsregeln, Enforcement, geschützte Daten oder SQL-Server-2022-Abnahme. Der frühere SQL-Server-2025-Nachweis aus PR #473 bleibt getrennt gebunden.
 
 ## Nächste getrennte OpenScope-Kandidaten
 
