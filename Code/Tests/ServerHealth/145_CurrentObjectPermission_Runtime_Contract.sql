@@ -18,6 +18,8 @@ BEGIN
   @Status varchar(40),@Partial bit,@Error int,@Message nvarchar(2048),@Ret int,@ProbeError int,
   @NativeCountA bigint,@NativeCountB bigint,@Failure int=NULL,@CleanupError int=NULL,
   @BeforeXact int,@AfterXact int,@BeforeTran int,@AfterTran int,@Pairs int=0;
+ DECLARE @FrameworkDb sysname=DB_NAME(@OriginalDb);
+ IF @FrameworkDb IS NULL THROW 63207,N'OBJECT_FIXTURE_FRAMEWORK_DB_UNBOUND',1;
  IF @OriginalTx<>0 OR COALESCE(IS_SRVROLEMEMBER(N'sysadmin'),0)<>1 THROW 63051,N'OBJECT_FIXTURE_REQUIRES_ISOLATED_SYSADMIN',1;
  SELECT @DbA=N'ExampleObjectA|'+@Suffix,@DbB=N'ExampleObjectB]'+@Suffix,
   @Login=N'ExampleObjectLogin_'+@Suffix,@FrameworkUser=N'ExampleObjectFramework_'+@Suffix,@DbUser=N'ExampleObjectUser_'+@Suffix;
@@ -70,7 +72,7 @@ BEGIN
   SET @Sql=N'USE '+QUOTENAME(@DbB)+N';CREATE USER '+QUOTENAME(@DbUser)+N' FOR LOGIN '+QUOTENAME(@Login)+N';CREATE TABLE [dbo].[ExampleObjectProbe]([Value] int NOT NULL,[OtherValue] int NULL);DENY SELECT ON OBJECT::[dbo].[ExampleObjectProbe] TO '+QUOTENAME(@DbUser)+N';';
   EXEC [sys].[sp_executesql] @Sql;
   SET @Sql=N'USE '+QUOTENAME(@DbA)+N';CREATE TABLE [dbo].'+QUOTENAME(@Long120)+N'([Value] int NOT NULL);GRANT SELECT ON OBJECT::[dbo].'+QUOTENAME(@Long120)+N' TO '+QUOTENAME(@DbUser)+N';';EXEC [sys].[sp_executesql] @Sql;
-  SET @Sql=N'EXECUTE AS LOGIN='+QUOTENAME(@Login,'''')+N';BEGIN TRY USE '+QUOTENAME(@DbA)+N';SELECT @Rows=COUNT_BIG(*) FROM [sys].[fn_my_permissions](@Qualified,N''OBJECT'') WHERE [permission_name]=N''SELECT'';REVERT;END TRY BEGIN CATCH REVERT;THROW;END CATCH;';
+  SET @Sql=N'EXECUTE AS LOGIN='+QUOTENAME(@Login,'''')+N';BEGIN TRY USE '+QUOTENAME(@DbA)+N';SELECT @Rows=COUNT_BIG(*) FROM [sys].[fn_my_permissions](@Qualified,N''OBJECT'') WHERE [permission_name]=N''SELECT'';USE '+QUOTENAME(@FrameworkDb)+N';REVERT;END TRY BEGIN CATCH USE '+QUOTENAME(@FrameworkDb)+N';REVERT;THROW;END CATCH;';
   SET @NativeCountA=NULL;DECLARE @LongQualified sysname=CONVERT(sysname,N'[dbo].'+QUOTENAME(@Long120));
   EXEC [sys].[sp_executesql] @Sql,N'@Qualified sysname,@Rows bigint OUTPUT',@Qualified=@LongQualified,@Rows=@NativeCountA OUTPUT;
   IF COALESCE(@NativeCountA,0)=0 THROW 63204,N'OBJECT_FIXTURE_128_NATIVE_POSITIVE',1;
@@ -84,16 +86,16 @@ BEGIN
   EXEC [sys].[sp_executesql] @Sql,N'@Names nvarchar(max),@Obj nvarchar(max),@Rc int OUTPUT,@J nvarchar(max) OUTPUT,@St varchar(40) OUTPUT',@Names=@OnlyA,@Obj=@Long121,@Rc=@Ret OUTPUT,@J=@Json OUTPUT,@St=@Status OUTPUT;
   IF COALESCE(@Ret,-1)<>51011 OR COALESCE(@Status,'')<>'INVALID_PARAMETER' OR @Json IS NOT NULL
     THROW 63206,N'OBJECT_FIXTURE_129_QUALIFIED_REJECTED',1;
-  SET @Sql=N'EXECUTE AS LOGIN='+QUOTENAME(@Login,'''')+N';BEGIN TRY USE '+QUOTENAME(@DbA)+N';SELECT TOP(0) [Value] FROM [dbo].[ExampleObjectProbe];REVERT;END TRY BEGIN CATCH REVERT;THROW;END CATCH;';
+  SET @Sql=N'EXECUTE AS LOGIN='+QUOTENAME(@Login,'''')+N';BEGIN TRY USE '+QUOTENAME(@DbA)+N';SELECT TOP(0) [Value] FROM [dbo].[ExampleObjectProbe];USE '+QUOTENAME(@FrameworkDb)+N';REVERT;END TRY BEGIN CATCH USE '+QUOTENAME(@FrameworkDb)+N';REVERT;THROW;END CATCH;';
   EXEC [sys].[sp_executesql] @Sql;
-  SET @Sql=N'EXECUTE AS LOGIN='+QUOTENAME(@Login,'''')+N';BEGIN TRY USE '+QUOTENAME(@DbB)+N';BEGIN TRY SELECT TOP(0) [Value] FROM [dbo].[ExampleObjectProbe];END TRY BEGIN CATCH SET @Err=ERROR_NUMBER();END CATCH;REVERT;END TRY BEGIN CATCH REVERT;THROW;END CATCH;';
+  SET @Sql=N'EXECUTE AS LOGIN='+QUOTENAME(@Login,'''')+N';BEGIN TRY USE '+QUOTENAME(@DbB)+N';BEGIN TRY SELECT TOP(0) [Value] FROM [dbo].[ExampleObjectProbe];END TRY BEGIN CATCH SET @Err=ERROR_NUMBER();END CATCH;USE '+QUOTENAME(@FrameworkDb)+N';REVERT;END TRY BEGIN CATCH USE '+QUOTENAME(@FrameworkDb)+N';REVERT;THROW;END CATCH;';
   SET @ProbeError=NULL;EXEC [sys].[sp_executesql] @Sql,N'@Err int OUTPUT',@Err=@ProbeError OUTPUT;
   IF COALESCE(@ProbeError,0)<>229 THROW 63057,N'OBJECT_FIXTURE_DIRECT_DENY_229',1;
-  SET @Sql=N'EXECUTE AS LOGIN='+QUOTENAME(@Login,'''')+N';BEGIN TRY USE '+QUOTENAME(@DbA)+N';INSERT [#ExampleObject_Native] SELECT @Id,@Name,N''dbo'',N''ExampleObjectProbe'',[entity_name],[subentity_name],CONVERT(nvarchar(128),[permission_name]) FROM sys.fn_my_permissions(N''[dbo].[ExampleObjectProbe]'',N''OBJECT'');REVERT;END TRY BEGIN CATCH REVERT;THROW;END CATCH;';
+  SET @Sql=N'EXECUTE AS LOGIN='+QUOTENAME(@Login,'''')+N';BEGIN TRY USE '+QUOTENAME(@DbA)+N';INSERT [#ExampleObject_Native] SELECT @Id,@Name,N''dbo'',N''ExampleObjectProbe'',[entity_name],[subentity_name],CONVERT(nvarchar(128),[permission_name]) FROM sys.fn_my_permissions(N''[dbo].[ExampleObjectProbe]'',N''OBJECT'');USE '+QUOTENAME(@FrameworkDb)+N';REVERT;END TRY BEGIN CATCH USE '+QUOTENAME(@FrameworkDb)+N';REVERT;THROW;END CATCH;';
   EXEC [sys].[sp_executesql] @Sql,N'@Id int,@Name sysname',@Id=@DbAId,@Name=@DbA;
   SET @NativeCountA=(SELECT COUNT_BIG(*) FROM [#ExampleObject_Native] WHERE [DatabaseId]=@DbAId);
   IF @NativeCountA=0 OR NOT EXISTS(SELECT 1 FROM [#ExampleObject_Native] WHERE [DatabaseId]=@DbAId AND [PermissionName]=N'SELECT') THROW 63058,N'OBJECT_FIXTURE_NATIVE_POSITIVE',1;
-  SET @Sql=N'EXECUTE AS LOGIN='+QUOTENAME(@Login,'''')+N';BEGIN TRY USE '+QUOTENAME(@DbB)+N';INSERT [#ExampleObject_Native] SELECT @Id,@Name,N''dbo'',N''ExampleObjectProbe'',[entity_name],[subentity_name],CONVERT(nvarchar(128),[permission_name]) FROM sys.fn_my_permissions(N''[dbo].[ExampleObjectProbe]'',N''OBJECT'');REVERT;END TRY BEGIN CATCH SET @Err=ERROR_NUMBER();REVERT;END CATCH;';
+  SET @Sql=N'EXECUTE AS LOGIN='+QUOTENAME(@Login,'''')+N';BEGIN TRY USE '+QUOTENAME(@DbB)+N';INSERT [#ExampleObject_Native] SELECT @Id,@Name,N''dbo'',N''ExampleObjectProbe'',[entity_name],[subentity_name],CONVERT(nvarchar(128),[permission_name]) FROM sys.fn_my_permissions(N''[dbo].[ExampleObjectProbe]'',N''OBJECT'');USE '+QUOTENAME(@FrameworkDb)+N';REVERT;END TRY BEGIN CATCH SET @Err=ERROR_NUMBER();USE '+QUOTENAME(@FrameworkDb)+N';REVERT;END CATCH;';
   SET @ProbeError=NULL;EXEC [sys].[sp_executesql] @Sql,N'@Id int,@Name sysname,@Err int OUTPUT',@Id=@DbBId,@Name=@DbB,@Err=@ProbeError OUTPUT;
   SET @NativeCountB=(SELECT COUNT_BIG(*) FROM [#ExampleObject_Native] WHERE [DatabaseId]=@DbBId);
   IF @ProbeError IS NULL AND EXISTS(SELECT 1 FROM [#ExampleObject_Native] WHERE [DatabaseId]=@DbBId AND [PermissionName]=N'SELECT') THROW 63059,N'OBJECT_FIXTURE_DENY_REPORTED_SELECT',1;
