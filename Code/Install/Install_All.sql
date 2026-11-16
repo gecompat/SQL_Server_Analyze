@@ -88,6 +88,7 @@ Der Installer beendet die Verarbeitung beim ersten SQL-Fehler.
 :r ../03_ObjectIndex/075_USP_VectorIndexAnalysis.sql
 :r ../03_ObjectIndex/090_USP_SchemaDesignAnalysis.sql
 :r ../03_ObjectIndex/080_USP_ObjectAnalysis.sql
+:r ../03_ObjectIndex/100_USP_DatabaseDdlTriggerInventory.sql
 :r ../04_PlanCache/010_USP_QueryStats.sql
 :r ../04_PlanCache/020_USP_QueryHashAnalysis.sql
 :r ../04_PlanCache/030_USP_PlanCacheHealth.sql
@@ -106,6 +107,7 @@ Der Installer beendet die Verarbeitung beim ersten SQL-Fehler.
 :r ../04_PlanCache/053_USP_ExecutionPlanAnalysis.sql
 :r ../04_PlanCache/050_USP_ShowplanAnalysis.sql
 :r ../04_PlanCache/060_USP_PlanCacheAnalysis.sql
+:r ../04_PlanCache/070_USP_PlanGuideInventory.sql
 :r ../05_QueryStore/005_TVF_QueryStoreReplicaRoleInfo.sql
 :r ../05_QueryStore/010_USP_QueryStoreStatus.sql
 :r ../05_QueryStore/020_USP_QueryStoreRuntimeStats.sql
@@ -125,6 +127,7 @@ Der Installer beendet die Verarbeitung beim ersten SQL-Fehler.
 :r ../06_ExtendedEvents/060_USP_ExtendedEventsAnalysis.sql
 :r ../07_Infrastructure/010_USP_AgentStatus.sql
 :r ../07_Infrastructure/020_USP_AgentJobs.sql
+:r ../07_Infrastructure/025_USP_AgentProxyInventory.sql
 :r ../07_Infrastructure/030_USP_ResourceGovernorAnalysis.sql
 :r ../07_Infrastructure/040_USP_AvailabilityGroups.sql
 :r ../07_Infrastructure/050_USP_BackupRecovery.sql
@@ -197,3 +200,6 @@ Der Installer beendet die Verarbeitung beim ersten SQL-Fehler.
 :r ../10_SSIS/050_USP_SsisExecutionComparison.sql
 :r ../10_SSIS/060_USP_SsisExecutionBaseline.sql
 :r ../08_ServerHealth/310_USP_DatabaseMirroringInventory.sql
+:r ../08_ServerHealth/320_USP_SensitivityClassificationSummary.sql
+:r ../08_ServerHealth/330_USP_LoadedModuleInventory.sql
+:r ../08_ServerHealth/340_USP_DatabaseSnapshotInventory.sql

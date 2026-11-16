@@ -8,7 +8,7 @@ Version      : 1.0.2
 Stand        : 2026-07-18
 Zweck        : Die Procedure liefert korrelierte, rein lesende Integritätsindikatoren je
                ausgewählter Datenbank, ohne DBCC CHECKDB auszuführen.
-Datenquellen : master.sys.databases, DATABASEPROPERTYEX,
+Datenquellen : master.sys.databases,
                msdb.dbo.suspect_pages, msdb.dbo.backupset,
                sys.dm_hadr_auto_page_repair und optional sys.dm_db_page_info.
 Grenzen      : Leere Indikatoren beweisen keine Integrität. Die Procedure führt

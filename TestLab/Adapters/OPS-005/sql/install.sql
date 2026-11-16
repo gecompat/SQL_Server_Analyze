@@ -410,6 +410,7 @@ AS
         , (N'USP_VectorIndexAnalysis',N'Vector-Index-Katalog und Wartung','OBJECT',N'Objekte, Indizes und Statistiken','TARGETED','OBJECT','MIXED','LOW_HIGH_OPT_IN','OBJECT_ANALYSIS_CURRENT',1,0,1,'CORE',NULL,N'Korreliert sichtbare SQL-Server-2025-Vector-Indizes mit ihrem aktuellen Hintergrundwartungszustand.',N'SQL Server 2025 und ein bekannter Datenbank- oder Objektscope; ältere Versionen liefern einen expliziten Verfügbarkeitsstatus.',N'EXEC [monitor].[USP_VectorIndexAnalysis] @DatabaseNames = N''[ExampleDatabase]'', @FullObjectNames = N''[ExampleSchema].[ExampleTable]'', @StalenessReviewPercent = 15, @ResultSetArt = ''CONSOLE'';',N'Documentation/Analysis_Guides/Procedures/USP_VectorIndexAnalysis.md',NULL)
         , (N'USP_ObjectAnalysis',N'Orchestrierte Objektanalyse','OBJECT',N'Objekte, Indizes und Statistiken','ENTRY','OBJECT','MIXED','LOW_HIGH_OPT_IN','OBJECT_ANALYSIS_CURRENT',1,0,1,'CORE',6,N'Orchestriert Inventar einschließlich SQL-Server-2025-JSON-Indexmetadaten, Usage, Missing Indexes und optionale Tiefenmodule mit gemeinsamem Filtervertrag.',N'Für den sicheren Einstieg eine Datenbank und ein Objekt angeben; Tiefenmodule einzeln aktivieren.',N'EXEC [monitor].[USP_ObjectAnalysis] @DatabaseNames = N''[ExampleDatabase]'', @FullObjectNames = N''[ExampleSchema].[ExampleTable]'', @MitObjectInventory = 1, @MitIndexUsage = 0, @MitMissingIndexes = 0, @ResultSetArt = ''CONSOLE'';',N'Documentation/Analysis_Guides/Procedures/USP_ObjectAnalysis.md',NULL)
         , (N'USP_SchemaDesignAnalysis',N'Schema- und Constraint-Review','OBJECT',N'Objekte, Indizes und Statistiken','TARGETED','MULTI_DATABASE','CATALOG_CONFIGURATION','MEDIUM_HIGH_OPT_IN','CATALOG_DEEP',1,1,1,'CORE',NULL,N'Erzeugt normalisierte Findings zu Constraints, Foreign Keys, Indizes und Identity-Risiken.',N'Datenbankscope und High-Impact-Bestätigung erforderlich; Findings sind Reviewaufträge, keine DDL-Anweisungen.',N'EXEC [monitor].[USP_SchemaDesignAnalysis] @DatabaseNames = N''[ExampleDatabase]'', @HighImpactConfirmed = 1, @ResultSetArt = ''CONSOLE'';',N'Documentation/Analysis_Guides/Procedures/USP_SchemaDesignAnalysis.md',NULL)
+        , (N'USP_DatabaseDdlTriggerInventory',N'Datenbank-DDL-Triggerinventar','OBJECT',N'Objekte, Indizes und Statistiken','TARGETED','MULTI_DATABASE','CATALOG_CONFIGURATION','LOW_MEDIUM','OBJECT_ANALYSIS_CURRENT',0,0,0,'CORE',NULL,N'Inventarisiert caller-sichtbare Datenbank-DDL-Trigger-Metadaten in ausgewählten Online-Datenbanken.',N'Enabled-Status ist nur Katalogzustand; Definitionen, Ereignisse, Ausführung, Rollback-Wirkung und Vollständigkeit werden nicht bewertet.',N'EXEC [monitor].[USP_DatabaseDdlTriggerInventory] @DatabaseNames=N''[ExampleDatabase]'', @ResultSetArt=''CONSOLE'';',N'Documentation/Analysis_Guides/Procedures/USP_DatabaseDdlTriggerInventory.md',NULL)
 
         , (N'USP_QueryStats',N'Plan-Cache-Ressourcenverbrauch','PLAN',N'Langsame Query und Ausführungsplan','ENTRY','QUERY','CUMULATIVE_DMV','LOW_HIGH_OPT_IN','PLAN_CACHE_CURRENT',0,0,1,'CORE',NULL,N'Rangiert gecachte Statements nach CPU, Dauer, I/O, Ausführungen, Grants, Spills oder Zeilen.',N'Plan Cache ist flüchtig und kumulativ je Cacheeintrag; historische Aussagen mit Query Store bestätigen.',N'EXEC [monitor].[USP_QueryStats] @Sortierung = ''CPU_TOTAL'', @MaxZeilen = 50, @ResultSetArt = ''CONSOLE'';',N'Documentation/Analysis_Guides/Procedures/USP_QueryStats.md',N'Documentation/Analysis_Guides/Runbooks/02_High_CPU.md')
         , (N'USP_QueryHashAnalysis',N'Query-Hash- und Planvarianten','PLAN',N'Langsame Query und Ausführungsplan','FOLLOW_UP','QUERY','CUMULATIVE_DMV','LOW_HIGH_OPT_IN','PLAN_CACHE_DEEP',1,1,1,'CORE',NULL,N'Aggregiert Cachezeilen je Query Hash und zeigt Planvarianten, Handles und Ressourcen.',N'Query Hash oder enger Top-Scope empfohlen; breite Cacheanalyse benötigt High-Impact-Bestätigung.',N'EXEC [monitor].[USP_QueryHashAnalysis] @AnalyseModus = ''TOP'', @MaxZeilen = 100, @HighImpactConfirmed = 1, @ResultSetArt = ''CONSOLE'';',N'Documentation/Analysis_Guides/Procedures/USP_QueryHashAnalysis.md',NULL)
@@ -417,6 +418,7 @@ AS
         , (N'USP_PlanDetails',N'Gezielte Plandetails','PLAN',N'Langsame Query und Ausführungsplan','TARGETED','PLAN_XML','LIVE_SNAPSHOT','MEDIUM_HIGH_OPT_IN','PLAN_CACHE_DEEP',1,1,1,'CORE',NULL,N'Löst gezielte Plankandidaten auf und liefert Attribute sowie Compile-, Last-Actual- oder Live-Plan.',N'Planhandle, Session oder Query-Identität vorgeben; Live- und Last-Actual-Plan sind nicht immer verfügbar.',N'EXEC [monitor].[USP_PlanDetails] @SessionIds = N''57'', @MitCompilePlan = 1, @MitLastActualPlan = 0, @MitLivePlan = 0, @MaxAnalyseobjekte = 5, @HighImpactConfirmed = 1, @ResultSetArt = ''CONSOLE'';',N'Documentation/Analysis_Guides/Procedures/USP_PlanDetails.md',NULL)
         , (N'USP_ShowplanAnalysis',N'Gezielte Showplan-Analyse','PLAN',N'Langsame Query und Ausführungsplan','TARGETED','PLAN_XML','LIVE_SNAPSHOT','MEDIUM_HIGH_OPT_IN','SHOWPLAN_TARGETED',1,0,1,'CORE',NULL,N'Extrahiert Statements, Warnungen, Objekte, Statistiken, Operatoren, Kardinalität, Memory und Parameter aus Plan-XML.',N'Query Hash, Planhandle oder enger Kandidatenscope erforderlich; XML-Tiefe kann High-Impact werden.',N'EXEC [monitor].[USP_ShowplanAnalysis] @QueryHash = 0x0102030405060708, @AnalyseModus = ''GEZIELT'', @MaxAnalyseobjekte = 5, @MaxDurationSeconds = 10, @MaxZeilen = 1000, @ResultSetArt = ''CONSOLE'';',N'Documentation/Analysis_Guides/Procedures/USP_ShowplanAnalysis.md',NULL)
         , (N'USP_PlanCacheAnalysis',N'Orchestrierte Plan-Cache-Analyse','PLAN',N'Langsame Query und Ausführungsplan','ENTRY','QUERY','MIXED','LOW_HIGH_OPT_IN','PLAN_CACHE_DEEP',0,1,1,'CORE',NULL,N'Orchestriert Query Stats, Query Hash, Cache Health und optional Showplan.',N'Der gezeigte vollständige Einstieg benötigt High-Impact-Bestätigung; für leichte Triage zuerst USP_QueryStats verwenden.',N'EXEC [monitor].[USP_PlanCacheAnalysis] @MitQueryStats = 1, @MaxZeilen = 100, @HighImpactConfirmed = 1, @ResultSetArt = ''CONSOLE'';',N'Documentation/Analysis_Guides/Procedures/USP_PlanCacheAnalysis.md',NULL)
+        , (N'USP_PlanGuideInventory',N'Plan-Guide-Kataloginventar','PLAN',N'Langsame Query und Ausführungsplan','TARGETED','MULTI_DATABASE','CATALOG_CONFIGURATION','LOW_MEDIUM','PLAN_CACHE_CURRENT',0,0,0,'CORE',NULL,N'Inventarisiert caller-sichtbare Plan-Guide-Katalogmetadaten ausgewählter Online-Datenbanken.',N'Kein Validitäts-, Wirksamkeits- oder Vollständigkeitsurteil; SQL-, Batch-, Parameter- und Hint-Definitionen werden nicht gelesen.',N'EXEC [monitor].[USP_PlanGuideInventory] @DatabaseNames=N''[ExampleDatabase]'', @ResultSetArt=''CONSOLE'';',N'Documentation/Analysis_Guides/Procedures/USP_PlanGuideInventory.md',NULL)
         , (N'USP_CreateExecutionEvidenceJson',N'Ausführungsevidenz normalisieren','PLAN',N'Langsame Query und Ausführungsplan','TARGETED','PLAN_XML','STATIC_INPUT','LOW_HIGH_OPT_IN','CATALOG_DEEP',1,0,1,'CORE_PLAN_STANDALONE',NULL,N'Normalisiert übergebene Plan-, STATISTICS-IO-, STATISTICS-TIME- und Statistik-/Histogrammevidenz in JSON.',N'Benötigt bereits erfasste synthetische oder autorisiert erhobene Evidenz; übermittelt oder speichert sie nicht extern.',N'EXEC [monitor].[USP_CreateExecutionEvidenceJson] @Hilfe = 1;',N'Documentation/Analysis_Guides/Procedures/USP_CreateExecutionEvidenceJson.md',NULL)
         , (N'USP_ExecutionPlanAnalysis',N'Eigenständige Execution-Plan-Analyse','PLAN',N'Langsame Query und Ausführungsplan','ENTRY','PLAN_XML','STATIC_INPUT','MEDIUM_HIGH_OPT_IN','SHOWPLAN_XML_DEEP',1,0,1,'CORE_PLAN_STANDALONE',5,N'Analysiert genau ein übergebenes oder gezielt beschafftes Showplan-XML statement- und operatorbezogen.',N'Plan-XML oder eindeutig begrenzte Planquelle erforderlich; tatsächliche Laufzeitwerte existieren nur in Actual Plans.',N'EXEC [monitor].[USP_ExecutionPlanAnalysis] @Hilfe = 1;',N'Documentation/Analysis_Guides/Procedures/USP_ExecutionPlanAnalysis.md',NULL)
 
@@ -440,6 +442,7 @@ AS
 
         , (N'USP_AgentStatus',N'SQL-Server-Agent-Status','OPERATIONS',N'Backup, Agent, HA/DR und Betrieb','FOLLOW_UP','INFRASTRUCTURE','LIVE_SNAPSHOT','LOW','SQL_AGENT_CURRENT',0,0,0,'CORE',NULL,N'Zeigt Plattformunterstützung, Dienststatus und SQL-Agent-Basisinventar.',N'SQL Server Agent ist nicht auf jeder Plattform oder Dienstvariante verfügbar.',N'EXEC [monitor].[USP_AgentStatus] @ResultSetArt = ''CONSOLE'';',N'Documentation/Analysis_Guides/Procedures/USP_AgentStatus.md',NULL)
         , (N'USP_AgentJobs',N'Jobs, Laufzeit und Fehler','OPERATIONS',N'Backup, Agent, HA/DR und Betrieb','ENTRY','INFRASTRUCTURE','PERSISTED_HISTORY','LOW_MEDIUM','SQL_AGENT_CURRENT',0,0,0,'CORE',NULL,N'Zeigt Jobs, Schritte, Laufstatus, Historie, Dauer und Fehler.',N'msdb-Retention und Berechtigungen bestimmen die sichtbare Historie; Jobinhalte können sensibel sein.',N'EXEC [monitor].[USP_AgentJobs] @NurProblematisch = 1, @LongRunningMinutes = 60, @ResultSetArt = ''CONSOLE'';',N'Documentation/Analysis_Guides/Procedures/USP_AgentJobs.md',NULL)
+        , (N'USP_AgentProxyInventory',N'Agent-Proxies und Subsysteme','OPERATIONS',N'Backup, Agent, HA/DR und Betrieb','FOLLOW_UP','SERVER','CATALOG_CONFIGURATION','LOW','SQL_AGENT_CURRENT',0,0,0,'CORE',NULL,N'Inventarisiert Agent-Proxies, Credentialreferenzen und Subsystemzuordnungen ohne Jobausführung.',N'Benötigt sysadmin-Sicht; Katalogzuordnungen belegen keine nutzbaren Credentials oder effektiven Privilegien.',N'EXEC [monitor].[USP_AgentProxyInventory] @MaxZeilen = 100, @ResultSetArt = ''CONSOLE'';',N'Documentation/Analysis_Guides/Procedures/USP_AgentProxyInventory.md',NULL)
         , (N'USP_ResourceGovernorAnalysis',N'Resource-Governor-Zustand','OPERATIONS',N'Backup, Agent, HA/DR und Betrieb','FOLLOW_UP','SERVER','MIXED','LOW_MEDIUM','RESOURCE_GOVERNOR_CURRENT',0,0,0,'CORE',NULL,N'Zeigt Pools, Workload Groups, Limits und Sessions sowie ab SQL Server 2025 die TempDB-Governance mit Wirksamkeit und Resetgrenze.',N'Konfiguriertes und wirksames Limit trennen; Verletzungen beweisen weder Ursache noch aktuelle Überlastung.',N'EXEC [monitor].[USP_ResourceGovernorAnalysis] @MitSessions = 1, @ResultSetArt = ''CONSOLE'';',N'Documentation/Analysis_Guides/Procedures/USP_ResourceGovernorAnalysis.md',NULL)
         , (N'USP_AvailabilityGroups',N'Availability-Groups-Status','OPERATIONS',N'Backup, Agent, HA/DR und Betrieb','ENTRY','INFRASTRUCTURE','LIVE_SNAPSHOT','LOW_MEDIUM','HA_DR_CURRENT',0,0,0,'CORE',NULL,N'Zeigt Availability-Group-, Replica-, Datenbank- und Routingzustand.',N'Verteilter, nicht atomarer Snapshot; Cluster-, Netzwerk- und Gegenstellenkontext kann fehlen.',N'EXEC [monitor].[USP_AvailabilityGroups] @MitRouting = 1, @ResultSetArt = ''CONSOLE'';',N'Documentation/Analysis_Guides/Procedures/USP_AvailabilityGroups.md',N'Documentation/Analysis_Guides/Runbooks/10_Availability_Group_Lag.md')
         , (N'USP_BackupRecovery',N'Backupalter und Recovery','OPERATIONS',N'Backup, Agent, HA/DR und Betrieb','ENTRY','MULTI_DATABASE','PERSISTED_HISTORY','LOW_MEDIUM','HA_DR_CURRENT',0,0,0,'CORE',NULL,N'Bewertet Backupalter, Recovery Model, Logbackupbedarf und Restorehistorie.',N'msdb-Historie ist kein Beweis der Wiederherstellbarkeit; echten Restore-Test separat nachweisen.',N'EXEC [monitor].[USP_BackupRecovery] @DatabaseNames = N''[ExampleDatabase]'', @ResultSetArt = ''CONSOLE'';',N'Documentation/Analysis_Guides/Procedures/USP_BackupRecovery.md',N'Documentation/Analysis_Guides/Runbooks/09_Backup_Integrity_Risk.md')
@@ -511,6 +514,9 @@ AS
         , (N'USP_UpgradeFeatureUsageAnalysis',N'Begrenzte Upgrade-Featurebeobachtung','SERVER',N'CPU, Memory, Worker und Server Health','TARGETED','SERVER','MIXED','LOW_MEDIUM','SERVER_HEALTH_CURRENT',0,0,0,'CORE',NULL,N'Zeigt native Deprecated-Begegnungszähler und eine begrenzte Zielversionsregel für lightweight pooling.',N'Instanzweite Begegnungen seit Enginebeginn; keine Datenbankattribution oder Upgradefreigabe. Ohne Zielversion erfolgt keine Zielbewertung.',N'EXEC [monitor].[USP_UpgradeFeatureUsageAnalysis] @TargetMajorVersion=17, @MaxZeilen=100, @ResultSetArt=''CONSOLE'';',N'Documentation/Analysis_Guides/Procedures/USP_UpgradeFeatureUsageAnalysis.md',NULL)
         , (N'USP_DistributedTransactionInventory',N'Verteilte Transaktionen und Promotion','SERVER','Serverzustand und Ressourcen','TARGETED','SERVER','CATALOG_CONFIGURATION','LOW','SERVER_HEALTH_CURRENT',0,0,0,'CORE',NULL,N'Inventarisiert caller-sichtbare Promotionkonfiguration und aktive verteilte Transaktionsmetadaten.','Nur lokale SQL-Metadaten; kein MSDTC-Dienst-, Netzwerk-, Teilnehmer-, Commit- oder Recoverynachweis.',N'EXEC [monitor].[USP_DistributedTransactionInventory] @MaxZeilen=100, @ResultSetArt=''CONSOLE'';',N'Documentation/Analysis_Guides/Procedures/USP_DistributedTransactionInventory.md',NULL)
         , (N'USP_DatabaseMirroringInventory',N'Database-Mirroring-Kataloginventar','OPERATIONS',N'Backup, Agent, HA/DR und Betrieb','TARGETED','MULTI_DATABASE','CATALOG_CONFIGURATION','LOW_MEDIUM','HA_DR_CURRENT',0,0,0,'CORE',NULL,N'Zeigt caller-sichtbare native Database-Mirroring-Katalogwerte für ausgewählte Online-Datenbanken.',N'Nur sichtbare Online-Auswahl; NULL bedeutet weder Abwesenheit noch Health. RESTORING-Partner, Partnernamen und Gesundheitsurteile sind ausgeschlossen.',N'EXEC [monitor].[USP_DatabaseMirroringInventory] @ResultSetArt = ''CONSOLE'';',N'Documentation/Analysis_Guides/Procedures/USP_DatabaseMirroringInventory.md',NULL)
+        , (N'USP_SensitivityClassificationSummary',N'Sichtbare Sensitivity-Classification-Zählung','SERVER',N'Konfiguration und Sicherheit','TARGETED','MULTI_DATABASE','CATALOG_CONFIGURATION','LOW_MEDIUM','SECURITY_CONFIGURATION_CURRENT',0,0,0,'CORE',NULL,N'Zählt caller-sichtbare Tabellen, Spalten und klassifizierte Tabellenspalten je ausgewählter Datenbank.',N'Nur sichtbare Katalogaufnahme; keine Labels, Informationstypen, Werte, Klassifikationsqualität, Schutzwirkung oder globale Vollständigkeit.',N'EXEC [monitor].[USP_SensitivityClassificationSummary] @DatabaseNames=N''[ExampleDatabase]'', @ResultSetArt=''CONSOLE'';',N'Documentation/Analysis_Guides/Procedures/USP_SensitivityClassificationSummary.md',NULL)
+        , (N'USP_LoadedModuleInventory',N'Geladene SQL-Prozessmodule','SERVER',N'CPU, Memory, Worker und Server Health','TARGETED','SERVER','LIVE_SNAPSHOT','LOW_MEDIUM','SERVER_HEALTH_CURRENT',0,0,0,'CORE',NULL,N'Inventarisiert native Modulnamen einschliesslich moeglicher Pfade und abgeleitete Basenamen im SQL-Prozess.',N'Nur SQL-Prozess-DMV unter Caller-Rechten; keine Host-, Filtertreiber-, Signatur-, Malware- oder Gesundheitsbewertung.',N'EXEC [monitor].[USP_LoadedModuleInventory] @MaxZeilen=100, @ResultSetArt=''CONSOLE'';',N'Documentation/Analysis_Guides/Procedures/USP_LoadedModuleInventory.md',NULL)
+        , (N'USP_DatabaseSnapshotInventory',N'Datenbank-Snapshot-Kataloginventar','SERVER',N'CPU, Memory, Worker und Server Health','TARGETED','SERVER','CATALOG_CONFIGURATION','LOW_MEDIUM','SERVER_HEALTH_CURRENT',0,0,0,'CORE',NULL,N'Inventarisiert caller-sichtbare Datenbank-Snapshots und Sparse-Dateikatalogmetadaten.',N'Nur sichtbare Snapshot- und Dateizeilen; keine physische Belegung, Restore-Eignung oder globale Vollstaendigkeit.',N'EXEC [monitor].[USP_DatabaseSnapshotInventory] @MaxZeilen=100, @ResultSetArt=''CONSOLE'';',N'Documentation/Analysis_Guides/Procedures/USP_DatabaseSnapshotInventory.md',NULL)
     ) AS [v]
     (
           [ProcedureName], [DisplayName], [PrimaryAreaCode], [PrimaryAreaName]
@@ -640,6 +646,8 @@ AS
         , (N'USP_ObjectAnalysis',N'object index deep analysis','en',95,N'Bündelt mehrere Objekt- und Indexpfade.')
         , (N'USP_SchemaDesignAnalysis',N'Schema Design Foreign Key Constraint','de',100,N'Erzeugt Reviewfindings zu Schema- und Constraintdesign.')
         , (N'USP_SchemaDesignAnalysis',N'schema design foreign key constraint identity','en',95,N'Vertiefter Katalogreview.')
+        , (N'USP_DatabaseDdlTriggerInventory',N'Datenbank DDL Trigger aktiv deaktiviert Katalog','de',100,N'Listet sichtbare Datenbank-DDL-Trigger ohne Definitionen oder Ausführungsurteil.')
+        , (N'USP_DatabaseDdlTriggerInventory',N'database DDL trigger inventory enabled disabled','en',95,N'Lists caller-visible database DDL trigger metadata only.')
 
         , (N'USP_QueryStats',N'langsame Query Plan Cache','de',100,N'Rangiert gecachte Statements nach Ressourcenverbrauch.')
         , (N'USP_QueryStats',N'top CPU query logical reads','en',95,N'Plan-Cache-Einstieg nach Ressourcenmetrik.')
@@ -653,6 +661,8 @@ AS
         , (N'USP_ShowplanAnalysis',N'showplan operator warning cardinality','en',95,N'Gezielte Showplan-XML-Analyse.')
         , (N'USP_PlanCacheAnalysis',N'Plan Cache vollständig analysieren','de',100,N'Orchestriert die Plan-Cache-Analysen.')
         , (N'USP_PlanCacheAnalysis',N'plan cache analysis orchestrator','en',95,N'Gebündelte Plan-Cache-Tiefenanalyse.')
+        , (N'USP_PlanGuideInventory',N'Plan Guide Katalog aktiv deaktiviert OBJECT SQL TEMPLATE','de',100,N'Inventarisiert sichtbare Plan Guides ohne Definitionen oder Validierung.')
+        , (N'USP_PlanGuideInventory',N'plan guide inventory enabled disabled object sql template','en',95,N'Lists caller-visible plan guide metadata without validity or effectiveness claim.')
         , (N'USP_CreateExecutionEvidenceJson',N'STATISTICS IO TIME normalisieren','de',100,N'Erzeugt ein normalisiertes Evidence-JSON aus bereits erfasster Evidenz.')
         , (N'USP_CreateExecutionEvidenceJson',N'execution evidence json statistics io time','en',95,N'Normalisiert Ausführungsevidenz für die Plananalyse.')
         , (N'USP_ExecutionPlanAnalysis',N'Plan XML analysieren','de',100,N'Eigenständiger Einstieg für ein vorhandenes Showplan-XML.')
@@ -699,6 +709,8 @@ AS
         , (N'USP_AgentStatus',N'sql server agent service status','en',95,N'Leichter Agentstatus.')
         , (N'USP_AgentJobs',N'Job fehlgeschlagen lange Laufzeit','de',100,N'Zeigt problematische Jobs und Historie.')
         , (N'USP_AgentJobs',N'failed long running agent job','en',95,N'Jobstatus-, Dauer- und Fehleranalyse.')
+        , (N'USP_AgentProxyInventory',N'SQL Agent Proxy Credential Subsystem','de',95,N'Zeigt Proxy- und Subsystemkatalog mit Credentialreferenz.')
+        , (N'USP_AgentProxyInventory',N'sql server agent proxy credential subsystem','en',95,N'Reads proxy, credential reference and subsystem catalog metadata.')
         , (N'USP_ResourceGovernorAnalysis',N'Resource Governor Pool Gruppe','de',100,N'Zeigt Pools, Gruppen, Limits und Sessions.')
         , (N'USP_ResourceGovernorAnalysis',N'resource governor pool workload group','en',95,N'Resource-Governor-Kontext.')
         , (N'USP_ResourceGovernorAnalysis',N'TempDB Resource Governance Wirksamkeit','de',100,N'Zeigt gespeichertes und wirksames Workload-Group-Limit getrennt.')
@@ -844,6 +856,12 @@ AS
         , (N'USP_DistributedTransactionInventory',N'MSDTC distributed transaction remote procedure promotion linked server DTC','en',95,N'Lists local SQL configuration and visible transaction metadata with explicit limits.')
         , (N'USP_DatabaseMirroringInventory',N'Datenbankspiegelung Mirroring Status Redo Queue SQL Server','de',100,N'Zeigt begrenzte caller-sichtbare Database-Mirroring-Katalogwerte ohne Gesundheitsurteil.')
         , (N'USP_DatabaseMirroringInventory',N'database mirroring state safety witness redo queue','en',95,N'Lists caller-visible database mirroring catalog values with explicit scope and native NULL limits.')
+        , (N'USP_SensitivityClassificationSummary',N'Sensitivitätsklassifikation klassifizierte Spalten sichtbare Tabellen','de',100,N'Zählt sichtbare Tabellen, Spalten und klassifizierte Teilmengen ohne Klassifikationstexte.')
+        , (N'USP_SensitivityClassificationSummary',N'sensitivity classification classified columns visible tables','en',95,N'Counts caller-visible table columns with classification metadata without reading values or labels.')
+        , (N'USP_LoadedModuleInventory',N'geladene SQL-Prozessmodule DLL nativer Pfad Basename Buildflags','de',100,N'Inventarisiert native DMV-Metadaten des SQL-Prozesses ohne Host- oder Signatururteil.')
+        , (N'USP_LoadedModuleInventory',N'loaded SQL process modules native name path basename build flags','en',95,N'Lists native SQL-process DMV metadata without host-driver or trust claims.')
+        , (N'USP_DatabaseSnapshotInventory',N'Datenbank-Snapshot Quelle Sparse-Datei maximale Kapazitaet','de',100,N'Zeigt caller-sichtbare Snapshot- und Dateikatalogwerte ohne physische Belegungsbehauptung.')
+        , (N'USP_DatabaseSnapshotInventory',N'database snapshot source sparse file maximum capacity','en',95,N'Lists caller-visible snapshot and sparse-file catalog metadata without physical-usage claims.')
     ) AS [v]([ProcedureName],[SearchTerm],[LanguageCode],[SearchWeight],[MatchReason]);
 GO
 -- END SOURCE: Code/01_Common/022_VW_AnalysisSearchTerm.sql
@@ -940,6 +958,7 @@ AS
         , (N'USP_ObjectAnalysis','REFINE_WITH',N'USP_VectorIndexAnalysis',3,N'Bei SQL-Server-2025-Vector-Indizes den aktuellen Katalog- und Wartungszustand gezielt ergänzen.')
         , (N'USP_ObjectAnalysis','CONFIRM_WITH',N'USP_QueryStats',1,N'Objektbefunde gegen Query- und Plannutzung validieren.')
         , (N'USP_SchemaDesignAnalysis','CONFIRM_WITH',N'USP_ObjectAnalysis',1,N'Schemadesignhinweise mit Objektgröße, Nutzung, Indizes und Statistiken abgleichen.')
+        , (N'USP_DatabaseDdlTriggerInventory','CONFIRM_WITH',N'USP_SchemaDesignAnalysis',1,N'Die sichtbare Triggerkonfiguration im separaten Schema- und Constraintkontext einordnen; dies belegt keine Triggerausführung oder Rollback-Wirkung.')
 
         , (N'USP_QueryStats','REFINE_WITH',N'USP_PlanDetails',1,N'Auffällige Query- oder Planhandles auf Details und begrenztes Plan-XML eingrenzen.')
         , (N'USP_QueryStats','CONFIRM_WITH',N'USP_QueryStoreRuntimeStats',1,N'Cache-Evidenz bei aktivem Query Store gegen ein explizites Zeitfenster prüfen.')
@@ -951,6 +970,7 @@ AS
         , (N'USP_ShowplanAnalysis','CONFIRM_WITH',N'USP_QueryStoreRuntimeStats',1,N'Planbefunde bei aktivem Query Store gegen reale Laufzeitintervalle abgleichen.')
         , (N'USP_PlanCacheAnalysis','REFINE_WITH',N'USP_ShowplanAnalysis',1,N'Auffällige Cachepläne als begrenztes Plan-XML fachlich vertiefen.')
         , (N'USP_PlanCacheAnalysis','CONFIRM_WITH',N'USP_QueryStoreAnalysis',1,N'Flüchtige Cache-Evidenz gegen persistierte Query-Store-Evidenz prüfen.')
+        , (N'USP_PlanGuideInventory','ALTERNATIVE_TO',N'USP_PlanCacheAnalysis',1,N'Der Katalog zeigt Konfiguration, der flüchtige Plan Cache getrennte Laufzeitbefunde; beide belegen keine Guide-Anwendung.')
         , (N'USP_CreateExecutionEvidenceJson','REFINE_WITH',N'USP_ExecutionPlanAnalysis',1,N'Das erzeugte Evidenzartefakt zusammen mit der vollständigen Plananalyse interpretieren.')
         , (N'USP_ExecutionPlanAnalysis','CONFIRM_WITH',N'USP_QueryStoreRuntimeStats',1,N'Planstruktur bei verfügbarem Query Store gegen gemessene Laufzeitintervalle prüfen.')
         , (N'USP_ExecutionPlanAnalysis','ALTERNATIVE_TO',N'USP_ShowplanAnalysis',1,N'Für einen bereits in SQL Server verfügbaren Planhandle kann der integrierte Showplanpfad geeigneter sein.')
@@ -996,6 +1016,7 @@ AS
         , (N'USP_BackupChainAnalysis','CONFIRM_WITH',N'USP_DatabaseIntegrityAnalysis',1,N'Eine formal lückenlose Kette durch Integritäts- und Restoretests ergänzen.')
         , (N'USP_AvailabilityDeepAnalysis','CONFIRM_WITH',N'USP_CurrentLog',1,N'Queue- und Sendesignale mit Logzustand und Reuse-Wait abgleichen.')
         , (N'USP_AgentMonitoringAnalysis','CONFIRM_WITH',N'USP_ErrorLogAnalysis',1,N'Agentfehler und Laufzeitabweichungen mit Engine- und Agent-Logsignalen abgleichen.')
+        , (N'USP_AgentProxyInventory','CONFIRM_WITH',N'USP_AgentStatus',1,N'Nach der lesenden Proxy- und Subsysteminventur den Agent-Dienstzustand getrennt prüfen; daraus keine Proxy-Ausführung ableiten.')
         , (N'USP_MaintenanceOperations','CONFIRM_WITH',N'USP_AgentMonitoringAnalysis',1,N'Wartungsaktivität und Jobausführung gemeinsam bewerten.')
         , (N'USP_ErrorLogAnalysis','CONFIRM_WITH',N'USP_CriticalEngineEvents',1,N'Logmuster mit strukturierten kritischen Engine-Ereignissen gegenprüfen.')
 
@@ -1083,6 +1104,9 @@ AS
         , (N'USP_DistributedTransactionInventory','CONFIRM_WITH',N'USP_LinkedServerAnalysis',1,N'Flagwerte beschreiben nur lokale SQL-Metadaten; Erreichbarkeit und MSDTC-Dienstzustand benötigen getrennte Evidenz.')
         , (N'USP_DistributedTransactionInventory','CONFIRM_WITH',N'USP_CurrentTransactions',2,N'Aktive Transaktionsmetadaten sind kein Nachweis eines verteilten Commits oder einer Teilnehmergesundheit.')
         , (N'USP_DatabaseMirroringInventory','CONFIRM_WITH',N'USP_InfrastructureAnalysis',1,N'Sichtbare lokale Mirroring-Katalogwerte in den übrigen HA/DR-Kontext einordnen; sie belegen keine Partnergesundheit oder Failoverfähigkeit.')
+        , (N'USP_SensitivityClassificationSummary','CONFIRM_WITH',N'USP_DatabasePrincipalAnalysis',1,N'Direkte Datenbankrechte bei fehlendem Klassifikationszugriff getrennt einordnen; die Zählung bewertet keine effektiven Schutzregeln.')
+        , (N'USP_LoadedModuleInventory','CONFIRM_WITH',N'USP_OSInformation',1,N'SQL-Prozess-DMV getrennt von sichtbaren Plattform- und Hostgrenzen lesen; keine Filtertreiber- oder Signaturbewertung.')
+        , (N'USP_DatabaseSnapshotInventory','CONFIRM_WITH',N'USP_DatabaseCapacityAnalysis',1,N'Snapshot-Katalogkapazitaet getrennt von Datei- und Volumenfreiraum normaler Datenbanken interpretieren; keine physische Snapshot-Belegung ableiten.')
     ) AS [v]
     (
           [FromProcedureName], [RelationType], [ToProcedureName]
@@ -4170,15 +4194,101 @@ Objekt       : monitor.InternalCheckAnalysisPath
 Version      : 1.1.0
 Stand        : 2026-07-21
 Typ          : Interne Stored Procedure
-Zweck        : Prüft einen tatsächlich aktivierten Analysepfad auf bekannte
-               Klasse, High-Impact-Bestätigung und aktuelle Freigabe, bevor
-               fachliche DMV-, Cache-, Query-Store- oder Katalogzugriffe
-               beginnen.
-Fallback     : Kann der serverseitige Login-Token unter EXECUTE AS USER oder
-               einem vergleichbaren datenbankgebundenen Kontext nicht gelesen
-               werden, bleiben ungeschützte Klassen, sysadmin und offene Policy
-               erlaubt. Eine aktive gruppengeschützte Policy wird konservativ
-               als DENIED_GROUP behandelt; sie wird niemals still umgangen.
+Zweck        : Prüft vor fachlichen DMV-, Cache-, Query-Store- oder
+               Katalogzugriffen die einzelne Analyseklasse, erforderliche
+               High-Impact-Bestätigung und den aktuell ausgewerteten
+               Freigabepfad. Die Prüfung liest zuerst die Framework-Views
+               VW_AnalyseClassCatalog und VW_AnalyseAccessCurrent.
+Eingabe      :
+  @AnalysisClass varchar(64), Default: kein Default; obligatorisch.
+               Ein einzelner Katalogcode, keine Liste und kein Pattern.
+               NULL und '' sind ungültig. Es erfolgt keine ausdrückliche
+               Leerzeichenentfernung oder Groß-/Kleinschreibungsnormalisierung;
+               Vergleiche folgen der Datenbankkollation, die nicht zwingend
+               binär oder case-insensitive ist. Die gültigen Codes dieser
+               ausgelieferten Katalogfassung 1.9.0 sind abschließend:
+               STANDARD_CURRENT (STANDARD, RequiresGroupGate=0): Leichtgewichtige Current-State-Abfragen für Sessions, Requests, Blocking, Waits, Memory, TempDB und I/O.
+               EXTENDED_CURRENT (ERWEITERT, RequiresGroupGate=0): Gezielte Current-State-Vertiefung mit begrenzter SQL-Text-, Plan- und Objektauflösung.
+               PLAN_CACHE_CURRENT (ERWEITERT, RequiresGroupGate=0): Begrenzte Query-Stats- und Plan-Cache-Auswertungen ohne vollständiges XML-Shredding.
+               SHOWPLAN_TARGETED (ERWEITERT, RequiresGroupGate=0): Gezielte Showplan-Extraktion und XML-Analyse für konkret gefilterte Planhandles oder Query Hashes.
+               OBJECT_ANALYSIS_CURRENT (ERWEITERT, RequiresGroupGate=0): Gezielte Objekt-, Index-, Partitions- und Columnstore-Kataloganalyse einer Datenbank.
+               EXTERNAL_RUNTIME_CURRENT (ERWEITERT, RequiresGroupGate=0): Lesende Konfigurations-, Katalog-, Request-, Pool- und Counteranalyse externer SQL-Server-Runtimes ohne Testausführung.
+               CLR_CURRENT (ERWEITERT, RequiresGroupGate=0): Lesende SQL-CLR-Katalog-, Host-, AppDomain-, Task-, Request-, Speicher- und Counteranalyse ohne Assemblyausführung.
+               MISSING_INDEX_CURRENT (ERWEITERT, RequiresGroupGate=0): Flüchtige Missing-Index-Hinweise mit begrenzter Ergebnismenge; keine automatische DDL-Ausführung.
+               STATISTICS_TARGETED (ERWEITERT, RequiresGroupGate=0): Gezielte Statistik-Eigenschaftsanalyse für gefilterte Objekte.
+               COLUMNSTORE_CURRENT (ERWEITERT, RequiresGroupGate=0): Gezielte Columnstore-Rowgroup-Analyse über Katalogsicht ohne Segment-/Dictionary-Vollscan.
+               LOCKS_DEEP (DEEP, RequiresGroupGate=1): Detaillierte Materialisierung von sys.dm_tran_locks für die aktuell relevante Sessionmenge.
+               LOG_VLF_DEEP (DEEP, RequiresGroupGate=1): Datenbankübergreifende VLF-Auswertung über sys.dm_db_log_info.
+               PLAN_CACHE_DEEP (DEEP, RequiresGroupGate=1): Breite oder vollständige Analyse von Query Stats und Plan Cache.
+               SHOWPLAN_XML_DEEP (DEEP, RequiresGroupGate=1): XML-Analyse gecachter oder aktueller Showplans einschließlich Warnings, Spills, Objekten und Statistiken.
+               CATALOG_DEEP (DEEP, RequiresGroupGate=1): Breite Systemkatalog-, Objekt-, Index-, Statistik- und Partitionsanalyse.
+               PHYSICAL_STATS_DEEP (DEEP, RequiresGroupGate=1): Explizite Auswertung von sys.dm_db_index_physical_stats in einem bewusst gewählten Modus.
+               INDEX_OPERATIONAL_DEEP (DEEP, RequiresGroupGate=1): Breite kumulative Index-Operational-Stats mit Lock-, Latch-, I/O-Latch- und Page-Split-Zählern.
+               QUERY_STORE_CURRENT (ERWEITERT, RequiresGroupGate=0): Gezielte lesende Query-Store-Status-, Runtime-, Wait-, Plan- und Force-Auswertung mit engem Zeit- und Zeilenlimit.
+               EXTENDED_EVENTS_CURRENT (ERWEITERT, RequiresGroupGate=0): Leichte Inventarisierung vorhandener Extended-Events-Definitionen und laufender Sessions ohne Targetdaten oder Eventhistorie.
+               QUERY_STORE_DEEP (DEEP, RequiresGroupGate=1): Breite Query-Store-Historie, Regressionen, Planwechsel und Wait-Auswertungen.
+               CROSS_DATABASE_DEEP (DEEP, RequiresGroupGate=1): Datenbankübergreifende Inventarisierung und Diagnose.
+               COLUMNSTORE_DEEP (DEEP, RequiresGroupGate=1): Breite Columnstore-Analyse einschließlich Rowgroups, Deleted Rows, Dictionaries und Segmenten.
+               EXTENDED_EVENTS_FORENSICS_DEEP (FORENSIK, RequiresGroupGate=1): Optionale Auswertung vorhandener Extended-Events-Sessions und Event-Dateien; niemals Primärquelle des Standardlaufs.
+               SERVER_HEALTH_CURRENT (ERWEITERT, RequiresGroupGate=0): CPU-, NUMA-, Memory-, TempDB-, OS- und Dienstzustand der aktuellen Instanz.
+               SERVER_CONFIGURATION_CURRENT (ERWEITERT, RequiresGroupGate=0): Lesende Serverkonfiguration, Trace Flags und Startup-Parameter.
+               SECURITY_CONFIGURATION_CURRENT (ERWEITERT, RequiresGroupGate=0): Lesende sicherheits- und dienstbezogene Betriebsparameter.
+               SQL_AGENT_CURRENT (ERWEITERT, RequiresGroupGate=0): Lesende SQL-Server-Agent-Status-, Job-, Schedule- und Historienanalyse aus msdb.
+               RESOURCE_GOVERNOR_CURRENT (ERWEITERT, RequiresGroupGate=0): Lesende Resource-Governor-Konfigurations- und Laufzeitanalyse.
+               HA_DR_CURRENT (ERWEITERT, RequiresGroupGate=0): Begrenzte lesende Analyse von Availability Groups, Backup, Log Shipping, Replication, CDC und Change Tracking.
+               ENTERPRISE_TOPOLOGY_DEEP (DEEP, RequiresGroupGate=1): Vertiefte enterpriseweite Topologie- und Distribution-Analyse für HA/DR und Replication.
+               DATA_PLATFORM_ADAPTER_CURRENT (ERWEITERT, RequiresGroupGate=0): Optionale Current-State-Anreicherung aus kundenspezifischen Data-Platform-/ETL-Loggingobjekten mit isolierter Existenz- und Rechteprüfung.
+               Die Katalog-DefaultMaxRows- und DefaultTimeoutSeconds-Werte
+               sind Hinweise der Katalogzeilen und werden von dieser Prüfung
+               nicht erzwungen.
+  @HighImpactConfirmed bit, Default: kein Default; obligatorisch.
+               1 bestätigt die angeforderte High-Impact-Ausführung; 0
+               bestätigt sie nicht und ist bei RequiresGroupGate=1 unzulässig.
+               NULL ist ungültig; ein Leerwert ist für bit nicht unterstützt.
+               Die Bestätigung ist auch bei sysadmin oder offener Policy
+               erforderlich. Ihr Fehlen wird vor DENIED_GROUP gemeldet.
+  @StatusCode varchar(40) OUTPUT, Default: kein Default; obligatorisches
+               Argument. Eingehendes NULL, Leertext und andere Werte werden auf AVAILABLE
+               zurückgesetzt und bei behandeltem Ergebnis auf genau einen
+               Status gesetzt: AVAILABLE (Klasse und Gateprüfung bestanden),
+               INVALID_PARAMETER (@AnalysisClass ist NULL, leer oder unbekannt
+               oder @HighImpactConfirmed ist ungültig), HIGH_IMPACT_CONFIRMATION_REQUIRED
+               (erforderliche Bestätigung fehlt), DENIED_GROUP (Gruppenpfad
+               nicht freigegeben). Eine aufrufende Variable mit passendem
+               Typ ist zum Empfangen erforderlich; ohne OUTPUT beim Aufruf
+               kann der Wert verworfen werden.
+  @ErrorMessage nvarchar(2048) OUTPUT, Default: kein Default; obligatorisches
+               Argument. Der Eingabewert wird sofort auf NULL zurückgesetzt;
+               bei behandeltem Fehler enthält er den zugehörigen Text, bei
+               AVAILABLE bleibt er NULL. Der anfängliche NULL- oder Leerwert
+               wird ignoriert. Eine aufrufende Variable mit passendem Typ ist
+               zum Empfangen erforderlich; ohne OUTPUT beim Aufruf kann der
+               Wert verworfen werden.
+Aufruf        : Alle vier Argumente müssen beim EXEC angegeben werden.
+               Ausgelassene Pflichtargumente verursachen einen Aufruffehler,
+               bevor diese Procedure einen Status setzen kann.
+               OUTPUT-Argumente dürfen ohne das Schlüsselwort OUTPUT
+               übergeben werden, wenn ihr Ergebnis verworfen wird.
+Fehler        : Nur Fehlernummern 229, 371 und 916 beim initialen Zugriff auf
+               die Framework-Views lösen den Datenbank-only-Fallback aus.
+               Andere Fehler werden erneut ausgelöst. Auch Unterabfragen des
+               Fallbacks können fehlschlagen. Es wird keine Zusage gemacht,
+               native Fehler in Statuswerte umzuwandeln.
+Fallback      : Ohne lesbaren serverseitigen Login-Token erlaubt der
+               Datenbank-only-Fallback ungeschützte Klassen, sysadmin oder
+               den Fall ohne global aktive Policyzeilen. Eine aktive Policy
+               an anderer Stelle kann eine geschützte Klasse verweigern,
+               wenn der serverseitige Token nicht lesbar ist. Der Fallback
+               prüft keine einzelne Gruppenmitgliedschaft und übergeht nie
+               die High-Impact-Bestätigung. Global aktiv sind Policyzeilen
+               mit IsEnabled=1, ValidFromUtc NULL oder nicht später als jetzt,
+               ValidToUtc NULL oder später als jetzt sowie nichtleeren, mit
+               LTRIM/RTRIM geprüften Klassen- und Gruppennamen; die Zeitbasis
+               ist SYSUTCDATETIME().
+Wirkung       : Keine SQL-Berechtigung wird erteilt und keine AD-
+               Gruppenmitgliedschaft live verifiziert. Es erfolgt keine
+               fachliche Persistenz. Der Code setzt LOCK_TIMEOUT 0; eine
+               Wiederherstellung eines vorherigen Werts wird nicht zugesagt.
 ===============================================================================
 */
 CREATE OR ALTER PROCEDURE [monitor].[InternalCheckAnalysisPath]
@@ -5899,6 +6009,17 @@ Zweck        : Projiziert eine bereits materialisierte nvarchar(max)-Spalte
                Unicode-sicher und befüllt deren Längen-/Kürzungsmetadaten.
 Grenze       : Liest ausschließlich die übergebene lokale Temp-Tabelle; kein
                erneuter Zugriff auf die fachliche Systemquelle.
+Parameterverträge:
+@SourceTable sysname. Default: keiner; Pflichtargument. Einzelner roher, unqualifizierter lokaler #Tabellenname; NULL, Name ohne # und ##Name lösen Guard-Fehler 51021 aus. Keine Liste oder SQL-Ausdruck. Der Projektor prüft keine eigene 116-Zeichen-Grenze und validiert Existenz/Schema nicht vorab.
+@TextColumn sysname. Default: keiner; Pflichtargument. Einzelner roher Spaltenbezeichner; NULL löst 51021 aus. QUOTENAME wird angewandt; Listen und SQL-Ausdrücke sind keine Eingabeform. Muss auf die bereits materialisierte nvarchar(max)-Textspalte zeigen, die IN PLACE überschrieben wird.
+@CharactersColumn sysname. Default: keiner; Pflichtargument. Einzelner roher Spaltenbezeichner; NULL löst 51021 aus; QUOTENAME wird angewandt. Empfängt für jede Zeile OriginalCharacters als bigint: Anzahl der Originalzeichen nach TVF_ProjectUnicodeText unter Latin1_General_100_CI_AS_SC, einschließlich nachgestellter Leerzeichen; Surrogatpaare zählen als ein Zeichen.
+@BytesColumn sysname. Default: keiner; Pflichtargument. Einzelner roher Spaltenbezeichner; NULL löst 51021 aus; QUOTENAME wird angewandt. Empfängt für jede Zeile OriginalBytes als bigint, entsprechend DATALENGTH des Originalwerts.
+@IsTruncatedColumn sysname. Default: keiner; Pflichtargument. Einzelner roher Spaltenbezeichner; NULL löst 51021 aus; QUOTENAME wird angewandt. Empfängt für jede Zeile IsTruncated als bit aus der TVF-Kürzungsentscheidung.
+@MaxCharacters int. Default: keiner; Pflichtargument. Negativ löst 51021 aus. NULL passiert den Guard und wird unverändert an die TVF übergeben; diese behandelt NULL ebenso wie 0 als unbegrenzt; positive Werte begrenzen auf diese Anzahl SC-Zeichen. Die TVF zählt Surrogatpaare als ein Zeichen und schneidet nicht innerhalb des Paars; Zeichen sind keine Grapheme.
+@TruncatedValueCount bigint OUTPUT. Default: keiner; Pflichtargument. An eine bigint-Variable mit @TruncatedValueCount=@bigintVariable OUTPUT binden. Nach erfolgreicher Parameterprüfung und vor der dynamischen Ausführung 0; nach Verarbeitung COUNT_BIG ausschließlich der gekürzten Zeilen, bei keiner Kürzung 0.
+@LargestRequiredCharacters bigint OUTPUT. Default: keiner; Pflichtargument. An eine bigint-Variable mit @LargestRequiredCharacters=@bigintVariable OUTPUT binden. Nach erfolgreicher Guard-Initialisierung NULL; nach Verarbeitung MAX der OriginalCharacters ausschließlich gekürzter Zeilen, bei keiner Kürzung NULL.
+Abhängigkeit: monitor.TVF_ProjectUnicodeText bestimmt Zeichen-, Byte- und Kürzungssemantik. Surrogatpaare zählen als ein SC-Zeichen, nachgestellte Leerzeichen werden gezählt, Bytes entsprechen DATALENGTH; es gibt keine Graphemgarantie.
+Die vollständige fachliche Quelle muss der interne Caller vorab materialisieren. Alle drei Metadatenspalten werden für jede Zeile aktualisiert. Nicht vorhandene, leere oder typinkompatible Spalten werden nicht vorab geprüft; dynamisches SQL kann normale native Fehler auslösen. Es gibt keine eigene Transaktion oder CATCH-Behandlung.
 ===============================================================================
 */
 CREATE OR ALTER PROCEDURE [monitor].[InternalProjectUnicodeTextColumn]
@@ -6536,17 +6657,131 @@ Objekt       : monitor.InternalWriteResultTable
 Version      : 1.1.0
 Stand        : 2026-07-19
 Typ          : Interne Stored Procedure
-Zweck        : Kopiert genau ein bereits materialisiertes Analyseergebnis in
-               eine lokale Temp-Tabelle des Aufrufers. Eine leere Tabelle mit
-               genau einer beliebigen Dummy-Spalte wird sicher an die native
-               Quellstruktur angepasst; eine bereits passende Struktur wird
-               zum Anhängen verwendet.
-Sicherheit   : Ausschließlich lokale #Temp-Tabellen. Globale ##Temp-Tabellen
-               und permanente Tabellen sind bewusst nicht zugelassen.
-Locking      : Katalogauflösung ausschließlich über tempdb.sys.* WITH (NOLOCK)
-               und LOCK_TIMEOUT 0 für fremde Tabellen. Eigene lokale Temp-DDL
-               erhält bei eingehendem Timeout 0 je Anlage bis zu 1000 ms.
+Zweck        : Kopiert die Spaltenwerte eines bereits materialisierten
+               Analyseergebnisses in eine lokale Temp-Tabelle des Aufrufers.
+               Eine leere Tabelle mit genau einer beliebigen Dummy-Spalte kann
+               an die Quellstruktur angepasst werden; eine passende Tabelle
+               erhält die Zeilen als Anhang.
+Sicherheit   : Quelle und Ziel müssen vorhandene lokale #Temp-Tabellen sein.
+               Globale ##Temp-Tabellen, permanente Tabellen und das reservierte
+               Zielpräfix #Monitor sind nicht zugelassen.
+Locking      : Fremde Tabellenoperationen verwenden LOCK_TIMEOUT 0 und die
+               tempdb-Katalogauflösung verwendet WITH (NOLOCK). Eigene lokale
+               Temp-DDL erhält bei eingehendem Timeout 0 je Anlage bis zu
+               1000 ms.
 ===============================================================================
+
+PARAMETER
+
+@SourceTable sysname
+  Default: kein Default (Pflichtparameter). Erwartet den unqualifizierten Namen einer
+  vorhandenen lokalen #Temp-Quelltabelle, etwa in Form eines einzelnen
+  Tabellennamens. NULL, der Leerwert, Namen ohne führendes #, globale ##Namen
+  und Namen mit LEN größer als 116 nach der SQL-Server-Bindung sind ungültig.
+  Der Wert wird nicht getrimmt. Die Eingabe ist kein Schema- oder
+  Klammerausdruck; die Procedure quotiert den Namen nativ. Die Quell- und
+  Zielnamen werden ohne Beachtung der Groß-/Kleinschreibung verglichen, um
+  identische Namen zurückzuweisen. Für die Quelle ist das Präfix #Monitor
+  nicht reserviert.
+
+@TargetTable sysname
+  Default: kein Default (Pflichtparameter). Erwartet den unqualifizierten Namen einer
+  vorhandenen lokalen #Temp-Zieltabelle. NULL, der Leerwert, Namen ohne
+  führendes #, globale ##Namen und Namen mit LEN größer als 116 nach der
+  SQL-Server-Bindung sind ungültig. Der Wert wird nicht getrimmt. Die Eingabe
+  ist kein Schema- oder Klammerausdruck; die Procedure quotiert den Namen
+  nativ. Namen mit dem Präfix #Monitor sind ohne Beachtung der
+  Groß-/Kleinschreibung reserviert und ungültig. Quelle und Ziel dürfen nach
+  einem Vergleich ohne Beachtung der Groß-/Kleinschreibung nicht identisch
+  sein.
+
+@InsertedRows bigint = NULL OUTPUT
+  Optionaler OUTPUT-Parameter mit Default NULL. Der eingehende Wert wird
+  ignoriert. Nach erfolgreicher Anlage der internen Temp-Tabellen wird der
+  Parameter auf 0 initialisiert. Nach dem finalen INSERT SELECT enthält er
+  @@ROWCOUNT dieses INSERTs. Der Wert zählt nicht unabhängig davon die gesamte
+  Historie der Zieltabelle und garantiert keine Rücknahme bei einem späteren
+  Fehler. Zum Empfang muss ein gebundener Aufruf eine bigint-Variable mit
+  OUTPUT übergeben; das Argument kann ausgelassen werden.
+
+@StatusCode varchar(40) = NULL OUTPUT
+  Optionaler OUTPUT-Parameter mit Default NULL. Der eingehende Wert wird
+  ignoriert und nach erfolgreicher Anlage der internen Temp-Tabellen auf
+  AVAILABLE initialisiert. Der Parameter liefert genau einen dieser Status:
+  AVAILABLE bezeichnet einen erfolgreichen Schreibvorgang;
+  INVALID_PARAMETER bezeichnet ungültige Parameter;
+  LOCK_TIMEOUT bezeichnet den abgefangenen Sperrtimeout in den dafür
+  vorgesehenen Markierungs-, Leerheitsprüfungs- oder Schemaanpassungsschritten;
+  SOURCE_NOT_FOUND und TARGET_NOT_FOUND bezeichnen eine nicht auflösbare
+  Quell- beziehungsweise Zieltabelle;
+  METADATA_NOT_VISIBLE bezeichnet eine vorhandene Tabelle, deren Katalogzeile
+  nicht sichtbar war;
+  UNSUPPORTED_SOURCE_SCHEMA bezeichnet eine Quelle ohne exportierbare Spalten
+  oder mit nicht unterstützter Spaltenstruktur;
+  TARGET_SCHEMA_MISMATCH bezeichnet ein Ziel, das weder exakt passt noch
+  angepasst werden kann;
+  TABLE_WRITE_ERROR bezeichnet einen sonstigen abgefangenen Fehler bei
+  Tabellenänderungen oder beim finalen INSERT SELECT. Der finale INSERT SELECT
+  wird auch bei Fehler 1222 als TABLE_WRITE_ERROR gemeldet. Zum Empfang muss
+  ein gebundener Aufruf eine varchar(40)-Variable mit OUTPUT übergeben; das
+  Argument kann ausgelassen werden.
+
+@ErrorNumber int = NULL OUTPUT
+  Optionaler OUTPUT-Parameter mit Default NULL. Der eingehende Wert wird
+  ignoriert und nach erfolgreicher Anlage der internen Temp-Tabellen auf NULL
+  initialisiert. Bei einem abgefangenen nativen Fehler enthält er dessen
+  Fehlernummer; bei Validierungsfehlern ohne abgefangenen nativen Fehler bleibt
+  er NULL. Fehler, die nicht abgefangen werden, etwa ein Fehler bei der
+  anfänglichen Anlage der internen Temp-Tabellen, werden nicht durch diesen
+  Parameter zugesichert. Zum Empfang muss ein gebundener Aufruf eine
+  int-Variable mit OUTPUT übergeben; das Argument kann ausgelassen werden.
+
+@ErrorMessage nvarchar(2048) = NULL OUTPUT
+  Optionaler OUTPUT-Parameter mit Default NULL. Der eingehende Wert wird
+  ignoriert und nach erfolgreicher Anlage der internen Temp-Tabellen auf NULL
+  initialisiert. Bei einem behandelten Fehler enthält er Validierungs- oder
+  Fehlerdiagnostik; bei Erfolg bleibt er NULL. Zum Empfang muss ein gebundener
+  Aufruf eine nvarchar(2048)-Variable mit OUTPUT übergeben; das Argument kann
+  ausgelassen werden.
+
+@ThrowOnError bit = 0
+  Optionaler Eingabeparameter mit Default 0; beim Auslassen gilt 0. Leerer
+  Text ist keine unterstützte Schalterform. Der Wert 0 gibt behandelte
+  Fehler über die OUTPUT-Parameter zurück. Der Wert 1 löst für einen
+  behandelten Fehler Fehlernummer 51010 aus. NULL ist ungültig, wird als
+  INVALID_PARAMETER zurückgegeben und löst selbst keinen Fehler 51010 aus.
+  Auch bei 1 werden nicht alle nativen Fehler abgefangen und in Fehler 51010
+  umgewandelt.
+
+VERARBEITUNG UND GRENZEN
+
+Die vier OUTPUT-Parameter werden erst nach der eigenen Temp-DDL initialisiert.
+Schlägt diese DDL fehl, werden ihre neuen Werte nicht zugesichert. Bei dieser
+Anlage bleiben positive oder unbegrenzte eingehende LOCK_TIMEOUT-Werte erhalten;
+nach erfolgreicher Anlage setzt der Baustein LOCK_TIMEOUT 0.
+
+Die Quelle darf keine berechneten Spalten, benutzerdefinierten oder
+Assembly-Datentypen, typisiertes XML sowie timestamp-/rowversion-Spalten
+enthalten. Bei einer Identitätsspalte der Quelle werden die Werte in eine
+gewöhnliche Zielspalte kopiert; das Ziel erhält dadurch keine
+Identitätseigenschaft.
+
+Eine bereits passende Zielstruktur muss in Spaltenanzahl und -reihenfolge,
+Spaltennamen, vergleichbarem Datentyp, Länge, Genauigkeit, Skala, Sortierung
+und NULL-Zulässigkeit übereinstimmen. Sie darf keine Identitäts- oder
+berechneten Spalten, benutzerdefinierten oder Assembly-Datentypen oder
+typisiertes XML enthalten. Eine abweichende Zieltabelle kann nur angepasst
+werden, wenn sie leer ist und genau eine beliebige Dummy-Spalte besitzt.
+Passende vorhandene Ziele dürfen bereits Zeilen enthalten; die neuen Zeilen
+werden angehängt.
+
+Die interne Auflösung fügt Quell- und Zieltabellen vorübergehend
+Markierungsspalten hinzu und entfernt sie wieder. Die Schemaanpassung verwendet
+einen Brücken- und ALTER-TABLE-Batch. Diese DDL kann sichtbare Tabellenänderungen
+hinterlassen, wenn ein späterer Schritt fehlschlägt. Die Procedure garantiert
+weder eine Transaktion noch atomaren Rollback oder Bereinigung nach Fehlern.
+Die interne Schnittstelle ist an den versiongleichen Framework-Aufrufer
+gebunden.
 */
 SET ANSI_NULLS ON;
 GO
@@ -7101,12 +7336,18 @@ Objekt       : monitor.InternalPrepareResultTables
 Version      : 1.0.0
 Stand        : 2026-07-20
 Typ          : Interne Stored Procedure
-Zweck        : Validiert eine benannte TABLE-Mehrfachzuordnung vollständig vor
-               dem ersten fachlichen Systemzugriff und befüllt eine lokale
-               Mapping-Temp-Tabelle des Aufrufers.
-Sicherheit   : Nur vorhandene, leere lokale #Temp-Tabellen mit genau einer
-               Seed-Spalte. Doppelte Ziele und unbekannte Resultsetnamen werden
-               atomar abgelehnt. Keine fachlichen Datenquellen werden gelesen.
+Zweck        : Prüft ein JSON-Objekt mit TABLE-Zuordnungen gegen die vom
+               Aufrufer übergebene Namensliste, validiert vorhandene lokale
+               Ergebnistabellen und hängt Zuordnungen an die Mapping-Tabelle
+               des Aufrufers an.
+Parameter:
+@ResultTablesJson nvarchar(max), Default: kein Default (Pflichtparameter). Erwartet ein JSON-Objekt, keine Liste; NULL, leerer Text, {} und Objekte ohne Zuordnung sind ungültig. Jedes Schlüssel-Wert-Paar muss Zeichenketten enthalten. Schlüssel und Zielwerte werden vor den Guards nach sysname konvertiert. Schlüssel werden nach der Konvertierung binär exakt mit @AllowedResultNames verglichen; es gibt keine Vorab-Trim-Regel. Doppelte Schlüssel werden binär erkannt. Werte müssen unqualifizierte, rohe lokale #Temp-Namen sein: kein ## und kein #Monitor-Präfix (CI), LEN höchstens 116 nach sysname-Konvertierung. Werte werden nicht getrimmt; doppelte Ziele werden CI erkannt. Klammer- oder Schemanamen sind nicht zulässig.
+@AllowedResultNames nvarchar(max), Default: kein Default (Pflichtparameter). Vom Aufrufer gelieferte Pipe-Liste; NULL, leer oder nur leere Einträge ergibt keine zulässigen Namen. | hat keine Escape-Syntax. Nur U+0020 an den Rändern jedes Tokens wird entfernt; leere Tokens werden ignoriert. Tokens werden nach sysname konvertiert und binär verglichen. Doppelte Tokens nach Konvertierung können im nicht abgefangenen INSERT einen nativen Fehler auslösen. Die Wertemenge bleibt der offene Aufrufervertrag.
+@MappingTable sysname, Default: kein Default (Pflichtparameter). NULL oder leer ist ungültig; kein Trimmen. Name einer vom Aufrufer erstellten lokalen #Temp-Tabelle, kein ##, höchstens 116 Zeichen nach sysname-Konvertierung. Erwartet werden ResultName und TargetTable als sysname. TOP (0) mit Variablen beweist die Auflösung/Konvertierung dieser Spalten, nicht das exakte physische Tabellenschema. Zuordnungen werden angehängt; bestehende Zeilen werden nicht gelöscht.
+@StatusCode varchar(40), Default: NULL OUTPUT. OUTPUT-Bindung vom Typ varchar(40); nach eigener Temp-DDL auf AVAILABLE initialisiert; eingehende NULL-, Leertext- oder andere Werte werden dabei überschrieben. AVAILABLE bedeutet Preflight erfolgreich; INVALID_PARAMETER bedeutet ungültiger @ThrowOnError oder @MappingTable; INVALID_RESULT_TABLE_MAPPING bedeutet ungültige JSON-Form oder unzulässige, doppelte bzw. nicht erlaubte Zuordnung; INVALID_RESULT_TABLE_TARGET bedeutet Ziel fehlt, ist nicht leer, besteht nicht aus genau einer Seed-Spalte oder kann nicht sicher geprüft werden; INTERNAL_ERROR bedeutet, dass Mapping-Spalten nicht wie erwartet auflösbar/konvertierbar sind. Bei Auslassen gilt Default NULL; Aufrufer bindet eine Variable mit OUTPUT. NULL/leer als Eingabeform ist für einen Status-OUTPUT nicht anwendbar.
+@ErrorMessage nvarchar(2048), Default: NULL OUTPUT. OUTPUT-Bindung vom Typ nvarchar(2048); nach eigener Temp-DDL auf NULL initialisiert, bei erkanntem Fehler mit Meldung befüllt; eingehende NULL-, Leertext- oder andere Werte werden dabei überschrieben. Bei Auslassen gilt Default NULL; zum Empfang ist eine Aufrufervariable mit OUTPUT nötig. NULL/leer als Eingabeform ist für einen Status-OUTPUT nicht anwendbar.
+@ThrowOnError bit, Default: 0. Kann ausgelassen werden. 0 unterdrückt nur behandelte Preflightfehler und gibt Status/Meldung zurück; 1 wirft für behandelte Fehler 51011. NULL ist ungültig, ergibt INVALID_PARAMETER und löst wegen der NULL-Prüfung auf 1 keinen Fehler 51011 aus. Leerer Text ist keine unterstützte Bit-Eingabe.
+Fehler- und Seiteneffektgrenzen: Eigene Prüftabellen-DDL liegt vor der Initialisierung von @StatusCode und @ErrorMessage; DDL-Fehler werden nach Wiederherstellung des vorherigen Lock-Timeouts erneut ausgelöst. Die Allowed-Liste wird außerhalb TRY/CATCH eingefügt, ebenso das finale Mapping-INSERT; native Fehler dort können entweichen. Ziele werden mit temporärer Marker-Spalte geprüft; ADD/DROP sind reale temporäre Schemaänderungen, Bereinigung im Fehlerpfad ist best effort. Es gibt keine atomare Rücknahmezusage. Es erfolgt keine Erstellung oder dauerhafte Anpassung der Ergebnisspaltenstruktur. Eingehender LOCK_TIMEOUT 0 erhält pro eigener Temp-DDL-Anlage 1000 ms; andere Werte bleiben während dieser Anlage bestehen. Nach erfolgreicher Anlage wird LOCK_TIMEOUT 0 gesetzt; Zieloperationen verwenden NOWAIT.
 ===============================================================================
 */
 CREATE OR ALTER PROCEDURE [monitor].[InternalPrepareResultTables]
@@ -7372,9 +7613,16 @@ Objekt       : monitor.InternalPrepareSingleResultTable
 Version      : 1.0.0
 Stand        : 2026-07-20
 Typ          : Interne Stored Procedure
-Zweck        : Führt den benannten TABLE-Preflight für eine Procedure mit genau
-               einem exportierbaren Resultset aus und gibt das validierte lokale
-               Ziel zurück. Fachliche Systemquellen werden nicht gelesen.
+Zweck        : Die Procedure leitet eine TABLE-Zuordnung an den Mehrfach-Preflight weiter
+               und gibt bei erfolgreicher Namensauflösung das lokale Ziel
+               zurück. Der JSON-Vertrag kann mehrere Schlüssel-Wert-Paare
+               enthalten.
+Parameter:
+@ResultTablesJson nvarchar(max), Default: kein Default (Pflichtparameter). JSON-Objekt, keine Liste; NULL, leerer Text, {} oder kein Paar ist ungültig. Werte und Schlüssel müssen Zeichenketten sein. Der Mehrfachbaustein konvertiert Schlüssel und Ziel nach sysname vor seinen Guards. Zielwerte müssen rohe, unqualifizierte lokale #Temp-Namen ohne ## oder #Monitor-Präfix (CI) mit LEN höchstens 116 sein; sie werden nicht getrimmt. Doppelte konvertierte Schlüssel werden binär und doppelte Ziele unter Latin1_General_100_CI_AS erkannt. Ziele müssen existieren, leer sein und genau eine Seed-Spalte besitzen. Der Schlüssel wird gegen die normalisierte Whitelist geprüft; die spätere Einzelauflösung nutzt den ursprünglichen @ResultName unter CS-Kollation, weshalb trotz AVAILABLE @TargetTable NULL bleiben kann.
+@ResultName sysname, Default: kein Default (Pflichtparameter). Wird als @AllowedResultNames weitergereicht. NULL, leer oder nur leere Tokens ergibt keine zulässigen Namen. Der Wert wird als Pipe-Liste verarbeitet; | wird nicht escaped, nur U+0020 am Rand jedes Tokens wird entfernt. Der spätere Lookup vergleicht den ursprünglichen Wert unter CS-Kollation. Normalisierung oder Pipe-Aufteilung kann daher trotz AVAILABLE zu keinem Treffer und NULL in @TargetTable führen.
+@TargetTable sysname, Default: kein Default, OUTPUT (Pflichtparameter). Argument muss angegeben werden; zum Empfang wird eine Aufrufervariable mit OUTPUT gebunden; Eingabewert wird ignoriert und beim Eintritt auf NULL gesetzt. Der sysname-Typ begrenzt die Länge bereits bei der Parameterbindung. Bei unterdrücktem Fehler oder fehlendem originalen CS-Lookup-Treffer bleibt der Wert NULL. Ein übergebener NULL-, Leertext- oder anderer Anfangswert wird nicht ausgewertet.
+@ThrowOnError bit, Default: 1. Kann ausgelassen werden. 0 unterdrückt nur behandelte Fehler des weitergeleiteten Preflights; 1 lässt für solche Fehler 51011 auslösen. NULL wird als INVALID_PARAMETER behandelt, löst aber wegen NULL keinen Fehler 51011 aus. Leerer Text ist keine unterstützte Bit-Eingabe.
+Fehler- und Seiteneffektgrenzen: Eigene Mapping-Temp-DDL erfolgt vor dem Aufruf des Mehrfachbausteins und dessen Statusinitialisierung; Fehler werden erneut ausgelöst. Das Ziel wird durch den Mehrfachbaustein mit einer temporären Marker-Spalte geprüft; ADD/DROP sind reale temporäre Schemaänderungen mit best-effort Bereinigung. Es erfolgt keine Erstellung oder dauerhafte Anpassung an Resultatspalten, keine atomare Rücknahmezusage. Eigene Mapping-DDL erhält 1000 ms; im CATCH wird der zuvor erfasste LOCK_TIMEOUT-Wert wieder gesetzt und der Fehler erneut ausgelöst. Nach Erfolg wird LOCK_TIMEOUT 0 gesetzt, Zielauflösung bleibt NOWAIT.
 ===============================================================================
 */
 CREATE OR ALTER PROCEDURE [monitor].[InternalPrepareSingleResultTable]
@@ -7438,6 +7686,13 @@ Vertrag      : Keine fachlichen Systemzugriffe. Nicht leere Quellen liefern
                eine beschriftete Fachansicht. Leere Quellen liefern genau eine
                verständliche Console-Zeile; RAW und TABLE verwenden den Helper
                nicht und erhalten deshalb keine künstlichen Datenzeilen.
+Parameterverträge:
+@SourceTable sysname. Default: keiner; Pflichtargument. Einzelner roher, unqualifizierter lokaler #Tabellenname; NULL, Name ohne #, ##Name oder LEN(Name)>116 lösen Guard-Fehler 51012 aus. Keine Liste oder SQL-Ausdruck. Es erfolgt kein Existenz- oder Schematest.
+@ResultLabel nvarchar(200). Default: keiner; Pflichtargument. Unicode-Text. LTRIM/RTRIM entfernt U+0020 am Anfang und Ende; NULL oder danach leer wird Ergebnis. Bei nichtleerer Quelle erscheint der Wert als Spalte [Ergebnis].
+@EmptyMessage nvarchar(200). Default: keiner; Pflichtargument. Unicode-Text. LTRIM/RTRIM entfernt U+0020 am Anfang und Ende; NULL oder danach leer wird Keine Ergebnisse. Bei leerer Quelle erscheint der Wert als [Ergebnis].
+@StatusCode varchar(40). Default: NULL; INPUT-Argument. Im Leerfall unverändert als [Status] ausgegeben; NULL und Leerwerte bleiben erhalten. Der Helper führt keine eigene Prüfung einer Statuscode-Wertemenge durch.
+@StatusMessage nvarchar(2048). Default: NULL; INPUT-Argument. Im Leerfall unverändert als [Hinweis] ausgegeben; NULL und Leerwerte bleiben erhalten.
+Die Procedure erzeugt keine Temp-Tabelle und hat keine OUTPUT-Parameter. Bei nichtleerer Quelle entsteht genau ein Resultset mit [Ergebnis] und src.*. Bei leerer Quelle entsteht genau eine Zeile mit [Ergebnis], [Status] und [Hinweis]. Es werden keine Sortierung oder Kappung hinzugefügt.
 ===============================================================================
 */
 CREATE OR ALTER PROCEDURE [monitor].[InternalEmitConsoleResult]
@@ -7488,6 +7743,25 @@ Zweck        : Gibt höchstens eine technische Severity-10-Warning für alle im
 Resultsets   : Keine.
 Nebenwirkung : Ausschließlich RAISERROR Severity 10 WITH NOWAIT, wenn die
                Ausgabe aktiviert und mindestens ein Wert gekürzt ist.
+Parameter    : @TruncatedValueCount bigint, Default: keiner; Pflichtargument. Der
+               Caller meldet damit die Anzahl gekürzter Werte; der Helper
+               ermittelt diese Anzahl nicht selbst und gleicht sie nicht mit Quelldaten ab.
+               NULL, 0 und negative Werte unterdrücken die Meldung.
+               @ParameterName sysname, Default: keiner; Pflichtargument und
+               ausschließlich Textlabel. NULL wird im ersten Textvorkommen zu
+               <unbekannter Parameter> und im Vorschlag zu den begrenzenden
+               Parameter; ein leerer Wert bleibt leer.
+               @ParameterValue int, Default: keiner; Pflichtargument und ausschließlich
+               Anzeigewert; NULL wird als NULL ausgegeben. Es erfolgt keine Bereichsprüfung.
+               @LargestRequiredCharacters bigint, Default: keiner; Pflichtargument. Der
+               Caller meldet damit den größten benötigten Zeichenbedarf; der
+               Helper berechnet oder prüft diesen Wert nicht. NULL wird im
+               Bedarfstext als NULL und im Vorschlag als 0 ausgegeben.
+               @PrintMeldungen bit hat den Default 1; 0 und NULL unterdrücken
+               die Meldung, 1 erlaubt sie bei positivem Zähler. Die normale
+               SQL-bit-Konvertierung kann von 0 verschiedene konvertierbare
+               Zahlen auf 1 abbilden.
+               Keine Parameter sind OUTPUT-Parameter.
 ===============================================================================
 */
 CREATE OR ALTER PROCEDURE [monitor].[InternalEmitTruncationWarning]
@@ -7544,6 +7818,38 @@ Resultsets   : Keine; ausschließlich OUTPUT-Parameter.
 Grenze       : Die aufrufende Procedure materialisiert den Quelltext genau
                einmal und entscheidet, ob ein Textfallback exportiert wird.
 ===============================================================================
+*/
+/*
+Parametervertrag:
+- @XmlText nvarchar(max): Eingabe als vollständiger Quelltext, den CONVERT(xml, ...)
+  nach nativer XML-Syntax konvertiert. Default: keiner; Pflichtargument. NULL
+  beendet die Verarbeitung mit SOURCE_NULL. Bei nicht-NULL Eingaben ist
+  XML_EMPTY nur dann der erfolgreiche Status, wenn LTRIM/RTRIM mit U+0020
+  einen leeren Wert ergibt; andernfalls ist eine erfolgreiche Konvertierung
+  AVAILABLE. Tabs werden dadurch nicht pauschal als leer klassifiziert.
+- @XmlValue xml: OUTPUT-Empfänger für den nativen XML-Wert. Default: NULL.
+  Ein bestehender Empfängerwert wird zu Beginn auf NULL gesetzt; bei SOURCE_NULL und bei
+  einem gefangenen Konvertierungsfehler bleibt der Empfänger NULL. Bei
+  erfolgreicher Konvertierung enthält er den konvertierten Wert, auch bei XML_EMPTY.
+- @StatusCode varchar(40): OUTPUT-Empfänger für den Verarbeitungsstatus.
+  Default: NULL. Ein bestehender Empfängerwert wird als Eingabe ignoriert. Normale Endstatus
+  sind SOURCE_NULL (Quellwert ist NULL), XML_EMPTY (Konvertierung erfolgreich
+  und LTRIM/RTRIM(U+0020) ist leer), AVAILABLE (Konvertierung erfolgreich
+  und LTRIM/RTRIM(U+0020) ist nicht leer), XML_UNAVAILABLE_LIMIT (gefangener
+  Fehler 6335, 6336 oder 6337) und XML_INVALID (jeder andere gefangene Fehler).
+  PENDING ist nur der initiale Zwischenwert vor CONVERT und kein normaler
+  Endstatus.
+- @ErrorNumber int: OUTPUT-Empfänger für ERROR_NUMBER() eines gefangenen
+  Fehlers. Default: NULL. Ein bestehender Empfängerwert wird auf NULL gesetzt; ohne
+  gefangenen Fehler, auch bei SOURCE_NULL, bleibt der Wert NULL.
+- @ErrorMessage nvarchar(2048): OUTPUT-Empfänger für den nativen
+  ERROR_MESSAGE()-Text eines gefangenen Fehlers, begrenzt durch nvarchar(2048). Default: NULL. Der
+  bisherige Empfängerwert wird auf NULL gesetzt; ohne gefangenen Fehler, auch bei
+  SOURCE_NULL, bleibt der Wert NULL.
+
+Jeder OUTPUT-Wert wird durch Bindung als @Parameter=@typisierteVariable
+OUTPUT empfangen. Ausgelassene optionale OUTPUT-Argumente empfangen keine
+Daten.
 */
 CREATE OR ALTER PROCEDURE [monitor].[InternalParseXmlText]
       @XmlText       nvarchar(max)
@@ -8690,15 +8996,91 @@ Objekt       : monitor.InternalCaptureCurrentStateSnapshot
 Version      : 2.1.0
 Stand        : 2026-07-23
 Typ          : Interne Stored Procedure
-Zweck        : Schreibt die vom aufrufenden Orchestrator angelegten lokalen
-               Snapshot-Tabellen. Jede aktivierte Systemquelle wird genau
-               einmal gelesen; nicht angeforderte Quellen werden nicht berührt.
-               SQL25-003 ergänzt den vorhandenen Workload-Group-Snapshot
+Zweck        : Die Procedure materialisiert die vom Orchestrator angeforderten
+               DMV- und SQL-Textquellen einmalig in dessen lokalen
+               Snapshot-Tabellen. Nicht aktivierte Quellen werden nicht
+               angefordert. SQL25-003 erweitert die Workload-Group-Erfassung
                versions- und capability-adaptiv.
-Lebensdauer  : Der Aufrufer besitzt die lokalen Temp-Tabellen. Sie verschwinden
-               mit dessen Procedure-Scope und können von einem späteren
-               Einzelaufruf nicht wiederverwendet werden.
-Sicherheit   : Read-only. Keine Konfiguration, Persistenz oder Rechtevergabe.
+Lebensdauer  : Der Aufrufer legt den Temp-Table-Vertrag Version 2 an und
+               besitzt dessen Lebensdauer; die Tabellen gelten nur im Scope
+               des aufrufenden Orchestrators.
+Sicherheit   : Read-only unter LOCK_TIMEOUT 0. Fehler einzelner Quellen werden
+               mit Source-Status protokolliert; der TRY/CATCH-Aufbau garantiert
+               keine globale Atomarität der Quellenerfassung.
+Parameter    : Alle Parameter sind INPUT. @SnapshotId ist erforderlich und hat
+               keinen Default. Nur optionale Parameter können ausgelassen werden;
+               dann gilt ihr jeweiliger Default. Die bit-Werte 0 und 1 gelten
+               nach der SQL-Typkonvertierung. Andere konvertierbare Quellwerte
+               sind nicht generell ausgeschlossen; ein numerischer Wert ungleich
+               null wird beispielsweise zu bit 1.
+               @SnapshotId uniqueidentifier; einzelner GUID-Skalar; Default: keiner; NULL
+               wird abgelehnt. Eine leere Zeichenfolge kann nicht in uniqueidentifier
+               konvertiert werden. Auch der Null-GUID ist zulässig; der Aufrufer verwendet
+               gemäß Konvention eine frische ID. Eine im aktuellen Context bereits
+               vorhandene ID wird als Duplikat abgelehnt.
+               @CaptureSessions bit; Skalar 0 oder 1; Default: 0; NULL wird abgelehnt.
+               Leere Textwerte sind keine vorgesehene Eingabeform; SQL Server konvertiert
+               vor Prozedureintritt in bit. 0 lässt Sessions aus; 1 erfasst Sessions.
+               @CaptureRequests bit; Skalar 0 oder 1; Default: 0; NULL wird abgelehnt.
+               Leere Textwerte sind keine vorgesehene Eingabeform; SQL Server konvertiert
+               vor Prozedureintritt in bit. 0 lässt Requests aus; 1 erfasst Requests.
+               @CaptureConnections bit; Skalar 0 oder 1; Default: 0; NULL wird abgelehnt.
+               Leere Textwerte sind keine vorgesehene Eingabeform; SQL Server konvertiert
+               vor Prozedureintritt in bit. 0 lässt Connections aus; 1 erfasst
+               Connections.
+               @CaptureWaitingTasks bit; Skalar 0 oder 1; Default: 0; NULL wird abgelehnt.
+               Leere Textwerte sind keine vorgesehene Eingabeform; SQL Server konvertiert
+               vor Prozedureintritt in bit. 0 lässt wartende Tasks aus; 1 erfasst wartende
+               Tasks.
+               @CaptureMemoryGrants bit; Skalar 0 oder 1; Default: 0; NULL wird abgelehnt.
+               Leere Textwerte sind keine vorgesehene Eingabeform; SQL Server konvertiert
+               vor Prozedureintritt in bit. 0 lässt Memory Grants und Resource Semaphores
+               aus; 1 erfasst beide Quellen.
+               @CaptureResourceGovernor bit; Skalar 0 oder 1; Default: 0; NULL wird
+               abgelehnt. Leere Textwerte sind keine vorgesehene Eingabeform; SQL Server
+               konvertiert vor Prozedureintritt in bit. 0 lässt die Quellen aus; 1 erfasst
+               Workload Groups, Resource Pools und versions- und quellenabhängige
+               TempDB-Governance-Daten.
+               @CaptureTasks bit; Skalar 0 oder 1; Default: 0; NULL wird abgelehnt. Leere
+               Textwerte sind keine vorgesehene Eingabeform; SQL Server konvertiert vor
+               Prozedureintritt in bit. 0 lässt Tasks aus; 1 erfasst Tasks zu bereits
+               erfassten Requests.
+               @CaptureSchedulers bit; Skalar 0 oder 1; Default: 0; NULL wird abgelehnt.
+               Leere Textwerte sind keine vorgesehene Eingabeform; SQL Server konvertiert
+               vor Prozedureintritt in bit. 0 lässt Schedulers aus; 1 erfasst Scheduler zu
+               IDs bereits erfasster Requests oder Tasks.
+               @CaptureTransactions bit; Skalar 0 oder 1; Default: 0; NULL wird abgelehnt.
+               Leere Textwerte sind keine vorgesehene Eingabeform; SQL Server konvertiert
+               vor Prozedureintritt in bit. 0 lässt die Transaktionsquellen aus; 1 erfasst
+               Session-, aktive und Datenbanktransaktionen zu bereits erfassten Sessions.
+               @CaptureTempDbUsage bit; Skalar 0 oder 1; Default: 0; NULL wird abgelehnt.
+               Leere Textwerte sind keine vorgesehene Eingabeform; SQL Server konvertiert
+               vor Prozedureintritt in bit. 0 lässt TempDB-Nutzungsquellen aus; 1 erfasst
+               Session-Nutzung zu bereits erfassten Sessions und Task-Nutzung zu bereits
+               erfassten Requests.
+               @CaptureVersionStore bit; Skalar 0 oder 1; Default: 0; NULL wird abgelehnt.
+               Leere Textwerte sind keine vorgesehene Eingabeform; SQL Server konvertiert
+               vor Prozedureintritt in bit. 0 lässt Version-Store-Quellen aus; 1 erfasst
+               traditionellen und persistenten Version Store innerhalb des
+               Sessions-Zweigs.
+               @CaptureSqlText bit; Skalar 0 oder 1; Default: 0; NULL wird abgelehnt.
+               Leere Textwerte sind keine vorgesehene Eingabeform; SQL Server konvertiert
+               vor Prozedureintritt in bit. 0 lässt SQL-Text aus; 1 ermittelt Text zu
+               Handles bereits erfasster Requests und Connections. Diese Quellen werden
+               nicht automatisch aktiviert.
+               @MaxSqlTextHandles int; Ganzzahl von 0 bis 2147483647 als Skalar;
+               Default: 1000;
+               NULL und negative konvertierte Werte werden abgelehnt. Leere Textwerte sind
+               keine vorgesehene Eingabeform; SQL Server konvertiert vor Prozedureintritt
+               in int. 0 bedeutet unbegrenzte Handles; ein positiver Wert begrenzt
+               deterministisch auf die nach binärem SqlHandle sortierten unterschiedlichen
+               Handles. Validierung auch bei @CaptureSqlText=0.
+Vertrag      : Die Procedure schreibt Context- und Source-Status-Daten in die
+               vom Aufrufer angelegten Temp-Tabellen. Die Probe prüft deren
+               Existenz, nicht das vollständige Spaltenschema. Der Status einer Quelle und der
+               Evidenzstatus eines einzelnen SQL-Text-Handles sind getrennt;
+               TEXT_UNAVAILABLE kann bei erfolgreichem SQL_TEXT-Quellstatus
+               vorkommen.
 ===============================================================================
 */
 CREATE OR ALTER PROCEDURE [monitor].[InternalCaptureCurrentStateSnapshot]
@@ -26765,6 +27147,503 @@ END;
 GO
 -- END SOURCE: Code/03_ObjectIndex/080_USP_ObjectAnalysis.sql
 
+-- BEGIN SOURCE: Code/03_ObjectIndex/100_USP_DatabaseDdlTriggerInventory.sql
+/*
+===============================================================================
+Objekt       : monitor.USP_DatabaseDdlTriggerInventory
+Version      : 1.0.0
+Stand        : 2026-11-14
+Zweck        : Inventarisiert caller-sichtbare datenbankweite DDL-Trigger
+               in ausgewählten ONLINE-Datenbanken.
+Quellen      : sys.triggers mit parent_class=0.
+Grenzen      : Kein Nachweis für Ausführung, Wirkung, Ownership oder Vollständigkeit.
+Datenschutz  : Keine Triggerdefinitionen, Ereignisinhalte oder Nutzdaten.
+Nebenwirkung : Read-only im Caller-Kontext; keine Trigger- oder DDL-Aktion.
+===============================================================================
+*/
+CREATE OR ALTER PROCEDURE [monitor].[USP_DatabaseDdlTriggerInventory]
+      @DatabaseNames nvarchar(max) = NULL
+    , @SystemdatenbankenEinbeziehen bit = 0
+    , @DatabaseNamePattern nvarchar(4000) = NULL
+    , @MaxZeilen int = 1000
+    , @LockTimeoutMs int = 0
+    , @ResultSetArt varchar(16) = 'CONSOLE'
+    , @ResultTablesJson nvarchar(max) = NULL
+    , @JsonErzeugen bit = 0
+    , @Json nvarchar(max) = NULL OUTPUT
+    , @PrintMeldungen bit = 1
+    , @Hilfe bit = 0
+    , @StatusCodeOut varchar(40) = NULL OUTPUT
+    , @IsPartialOut bit = NULL OUTPUT
+    , @ErrorNumberOut int = NULL OUTPUT
+    , @ErrorMessageOut nvarchar(2048) = NULL OUTPUT
+AS
+BEGIN
+    SET NOCOUNT ON;
+    SELECT @Json=NULL,@StatusCodeOut=NULL,@IsPartialOut=NULL,
+           @ErrorNumberOut=NULL,@ErrorMessageOut=NULL;
+
+    DECLARE @OriginalLockTimeout int=@@LOCK_TIMEOUT;
+    DECLARE @CapturedAtUtc datetime2(3)=SYSUTCDATETIME(),
+        @Mode varchar(16)=UPPER(LTRIM(RTRIM(COALESCE(@ResultSetArt,'')))),
+        @Limit bigint=CASE WHEN @MaxZeilen IS NULL OR @MaxZeilen=0
+                           THEN CONVERT(bigint,9223372036854775807) ELSE @MaxZeilen END,
+        @PreviousXactAbort bit=CASE WHEN (@@OPTIONS & 16384)=16384 THEN 1 ELSE 0 END,
+        @LockTimeoutSql nvarchar(100),
+        @Started datetime2(3),
+        @Observed bigint=NULL,
+        @SelectionStatus varchar(40),
+        @SelectionMessage nvarchar(2048),
+        @SelectionError int=NULL,
+        @CrossDatabaseRequested bit,
+        @Status varchar(40)='SKIPPED',
+        @Error int=NULL,
+        @Message nvarchar(2048)=NULL,
+        @TableStatus varchar(40),
+        @TableMessage nvarchar(2048),
+        @TableError int,
+        @TableFailureError int=NULL,
+        @Sql nvarchar(max);
+    DECLARE @ConsoleResultRequested bit=CASE WHEN @Mode='CONSOLE' THEN 1 ELSE 0 END;
+    SET @LockTimeoutSql=N'SET LOCK_TIMEOUT '+CONVERT(nvarchar(20),@OriginalLockTimeout)+N';';
+
+    IF @Hilfe=1
+    BEGIN
+        PRINT N'monitor.USP_DatabaseDdlTriggerInventory';
+        PRINT N'Die Procedure liest pro ausgewählter ONLINE-Datenbank caller-sichtbare sys.triggers-Zeilen mit parent_class=0: datenbankweite DDL-Trigger. ParentClassDesc stammt aus dem nativen Katalog; TriggerType TR bezeichnet SQL-, TA CLR-Trigger, weitere native Werte bleiben erhalten. IsDisabled ist ein Konfigurationswert, kein Beleg für Ausführung oder Wirkung. MetadataVisibility ist stets VISIBLE_ONLY. Es werden weder Definitionen oder Ereignisinhalte gelesen noch Trigger ausgeführt. Leere Fachzeilen belegen nur eine leere sichtbare Menge.';
+        PRINT N'@DatabaseNames nvarchar(max); Default: NULL. NULL, leerer Text oder äußere U+0020-Leerzeichen bedeuten keine exakte Einschränkung. Eine aktive bracket-aware Pipe-Liste enthält einteilige Datenbanknamen; | innerhalb [...] ist Namensinhalt und ]] maskiert ]. Äußere Leerzeichen werden getrimmt; leere oder doppelte Segmente und Namen über 128 Zeichen sind ungültig. Jedes rohe Segment darf höchstens 4000 UTF-16-Codeeinheiten enthalten, die Gesamtliste ist offen. Eine aktive Liste und ein nicht-NULL-Pattern sind unzulässig. Standard sind caller-sichtbare zugreifbare ONLINE-Benutzerdatenbanken ohne Snapshots.';
+        PRINT N'@SystemdatenbankenEinbeziehen bit; Default: 0. 0 schließt Datenbank-IDs bis 4 aus; 1 lässt sie als Kandidaten zu. NULL ist INVALID_PARAMETER. Numerische 0 wird 0, andere numerische Werte werden 1; Sichtbarkeit und Zugriff bleiben erforderlich.';
+        PRINT N'@DatabaseNamePattern nvarchar(4000); Default: NULL. NULL bedeutet kein Pattern; nicht-NULL-Leertext ist ungültig. like:, regex: und regexi: sind zulässige Präfixe, ohne Präfix gilt LIKE. LIKE und regex sind case-sensitiv, regexi ist case-insensitiv. LIKE verwendet SQL-LIKE-Syntax mit %, _, Zeichenklassen und ohne eigene ESCAPE-Klausel. Regex verlangt SQL Server 2025 und Compatibility Level 170 der Installationsdatenbank. Eine aktive exakte Liste und Pattern sind unzulässig.';
+        PRINT N'@MaxZeilen int; Default: 1000. NULL oder 0 bedeuten unbegrenzt; negative Werte sind INVALID_PARAMETER. Positive Werte 1 bis 2147483647 begrenzen ausschließlich ausgegebene ddlTriggers-Zeilen in der Reihenfolge DatabaseId, TriggerObjectId. Auswahl und Kataloglesearbeit bleiben unbegrenzt; echte Kürzung erhält OUTPUT_LIMIT.';
+        PRINT N'@LockTimeoutMs int; Default: 0. Nur 0 bis 60000 Millisekunden sind zulässig; NULL ist INVALID_PARAMETER. 0 ist NOWAIT. Der Wert gilt je dynamischem Datenbank-Katalogbatch und ist keine Gesamtdauergrenze. Der vorherige Sessionwert wird wiederhergestellt.';
+        PRINT N'@ResultSetArt varchar(16); Default: ''CONSOLE''. Nach äußerem U+0020-Trimmen und Großschreibung sind CONSOLE, RAW, TABLE und NONE zulässig. NULL oder leer ist INVALID_PARAMETER. CONSOLE liefert eine formatierte Fachmenge, RAW moduleStatus, ddlTriggers, sourceStatus und warnings in dieser Reihenfolge, TABLE schreibt benannte Mengen, NONE liefert keine Fachresultsets. JSON ist unabhängig.';
+        PRINT N'@ResultTablesJson nvarchar(max); Default: NULL. Nur TABLE akzeptiert ein JSON-Objekt mit wenigstens einer Zuordnung der exakt case-sensitiven Schlüssel moduleStatus, ddlTriggers, sourceStatus, warnings zu verschiedenen lokalen #Temp-Zielen. Ziele müssen existieren, leer sein und genau eine Seed-Spalte haben; Namen höchstens 116 Zeichen, nicht ## oder #Monitor. Doppelte und unbekannte Schlüssel, doppelte oder ungültige Ziele werden vor Quellenzugriff abgewiesen. Ein späterer Writer-Fehler kann frühere Zielschreibungen belassen. Außerhalb TABLE sind nur NULL, leer oder U+0020-Leerzeichen zulässig.';
+        PRINT N'@JsonErzeugen bit; Default: 0. 1 erzeugt unabhängig von ResultSetArt JSON mit schemaVersion 1, meta und allen vier Arrays; NULL und 0 erzeugen keines. Numerische 0 wird 0, andere numerische Werte werden 1.';
+        PRINT N'@Json nvarchar(max) OUTPUT; Default: NULL. Optional an eine nvarchar(max)-Variable mit OUTPUT binden; Eingang wird auf NULL gesetzt. Bei JsonErzeugen=1 entsteht JSON im normalen Pfad. Hilfe, direkte Parameterfehler und äußerer CATCH lassen NULL.';
+        PRINT N'@PrintMeldungen bit; Default: 1. 1 gibt zusätzliche niedrige Severity-Meldungen zu Fehlern aus; 0 und NULL unterdrücken sie. Andere Ergebnisse bleiben gleich. Numerische 0 wird 0, andere numerische Werte werden 1.';
+        PRINT N'@Hilfe bit; Default: 0. 1 gibt diese Hilfe vor Auswahl und Katalogzugriff aus, setzt StatusCodeOut=AVAILABLE und IsPartialOut=0 und kehrt mit 0 zurück. NULL und 0 führen den normalen Pfad aus.';
+        PRINT N'@StatusCodeOut varchar(40) OUTPUT; Default: NULL. Optional an varchar(40) mit OUTPUT binden; Eingang wird zurückgesetzt. AVAILABLE bedeutet nur Hilfe; AVAILABLE_LIMITED erfolgreiche sichtbare Quelle, auch leer; SKIPPED keine Kandidatendatenbank; INVALID_PARAMETER ungültige Eingabe oder Auswahl; INTERNAL_ERROR Auswahlhelferfehler; SELECTION_UNAVAILABLE fehlender Auswahlstatus; UNAVAILABLE_FEATURE fehlende Regexvoraussetzung; DATABASE_UNAVAILABLE fehlende, nicht online befindliche oder nicht zugreifbare Datenbank; SYSTEM_DATABASE_EXCLUDED explizit ausgeschlossene Systemdatenbank; DENIED_PERMISSION native Berechtigungsfehler; SOURCE_UNAVAILABLE unbekanntes Prüfergebnis oder Quellenfehler; TIMEOUT SQL 1222; ERROR_HANDLED äußerer Fehler. Der erste relevante Quellenfehler bestimmt den globalen Status.';
+        PRINT N'@IsPartialOut bit OUTPUT; Default: NULL. Optional an bit mit OUTPUT binden; Eingang wird zurückgesetzt. Hilfe liefert 0; jeder normale Lauf und Fehlerpfad 1. Numerische 0/1-Ausgabe kennzeichnet begrenzte Metadatensicht, nicht eine Fehlerursache.';
+        PRINT N'@ErrorNumberOut int OUTPUT; Default: NULL. Optional an int mit OUTPUT binden; Eingang wird zurückgesetzt. Erfolg und Hilfe lassen NULL; direkte Parameterfehler liefern 51011; gefangene SQL-Fehler ihre native oder Writer-Fehlernummer.';
+        PRINT N'@ErrorMessageOut nvarchar(2048) OUTPUT; Default: NULL. Optional an nvarchar(2048) mit OUTPUT binden; Eingang wird zurückgesetzt. Erfolg und Hilfe lassen NULL; gefangene SQL-Fehler liefern die links auf 2048 Zeichen gekürzte Meldung.';
+        PRINT N'EXEC [monitor].[USP_DatabaseDdlTriggerInventory] @DatabaseNames=N''[ExampleDatabase]'', @ResultSetArt=''RAW'', @PrintMeldungen=0;';
+        PRINT N'DECLARE @Json nvarchar(max); EXEC [monitor].[USP_DatabaseDdlTriggerInventory] @ResultSetArt=''NONE'', @JsonErzeugen=1, @Json=@Json OUTPUT; SELECT @Json AS [Json];';
+        PRINT N'CREATE TABLE #DatabaseDdlTriggerInventoryExample ([Seed] int NULL); EXEC [monitor].[USP_DatabaseDdlTriggerInventory] @ResultSetArt=''TABLE'', @ResultTablesJson=N''{"ddlTriggers":"#DatabaseDdlTriggerInventoryExample"}''; SELECT * FROM #DatabaseDdlTriggerInventoryExample; DROP TABLE #DatabaseDdlTriggerInventoryExample;';
+        SELECT @StatusCodeOut='AVAILABLE',@IsPartialOut=0;
+        RETURN;
+    END;
+
+    IF @Mode NOT IN ('CONSOLE','RAW','TABLE','NONE')
+       OR @MaxZeilen<0
+       OR @LockTimeoutMs IS NULL OR @LockTimeoutMs<0 OR @LockTimeoutMs>60000
+       OR @SystemdatenbankenEinbeziehen IS NULL
+       OR
+       (
+           @DatabaseNamePattern IS NOT NULL
+           AND NULLIF(LTRIM(RTRIM(COALESCE(@DatabaseNames,N''))),N'') IS NOT NULL
+       )
+       OR (@Mode<>'TABLE' AND NULLIF(LTRIM(RTRIM(COALESCE(@ResultTablesJson,N''))),N'') IS NOT NULL)
+    BEGIN
+        SELECT @StatusCodeOut='INVALID_PARAMETER',@IsPartialOut=1,
+               @ErrorNumberOut=51011,
+               @ErrorMessageOut=N'Ungueltiger Ausgabe-, Datenbankauswahl-, Limit- oder TABLE-Parameter.';
+        IF @PrintMeldungen=1 RAISERROR(N'%s',10,1,@ErrorMessageOut) WITH NOWAIT;
+        RETURN 51011;
+    END;
+
+    BEGIN TRY
+        SET XACT_ABORT OFF;
+        CREATE TABLE [#DatabaseDdlTriggerInventory_moduleStatus]
+        (
+            [ModuleName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,
+            [CapturedAtUtc] datetime2(3) NOT NULL,
+            [StatusCode] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,
+            [IsPartial] bit NOT NULL,
+            [RowCount] bigint NOT NULL,
+            [Detail] nvarchar(1000) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        );
+        CREATE TABLE [#DatabaseDdlTriggerInventory_ddlTriggers]
+        (
+            [DatabaseId] int NOT NULL,
+            [DatabaseName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,
+            [TriggerObjectId] int NOT NULL,
+            [TriggerName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,
+            [ParentClass] tinyint NOT NULL,
+            [ParentClassDesc] nvarchar(60) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,
+            [TriggerType] char(2) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,
+            [TriggerTypeDesc] nvarchar(60) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,
+            [IsDisabled] bit NOT NULL,
+            [CreateDate] datetime NOT NULL,
+            [ModifyDate] datetime NOT NULL,
+            [MetadataVisibility] varchar(16) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        );
+        CREATE TABLE [#DatabaseDdlTriggerInventory_sourceStatus]
+        (
+            [DatabaseId] int NULL,
+            [DatabaseName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL,
+            [SourceKey] varchar(64) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,
+            [SourceKind] varchar(16) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,
+            [StartedAtUtc] datetime2(3) NOT NULL,
+            [CompletedAtUtc] datetime2(3) NOT NULL,
+            [StatusCode] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,
+            [VisibilityScope] varchar(32) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,
+            [ObservedRows] bigint NULL,
+            [ReturnedRows] bigint NULL,
+            [IsLimited] bit NOT NULL,
+            [ErrorNumber] int NULL,
+            [ErrorMessage] nvarchar(2048) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        );
+        CREATE TABLE [#DatabaseDdlTriggerInventory_warnings]
+        (
+            [DatabaseId] int NULL,
+            [DatabaseName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL,
+            [WarningCode] varchar(64) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,
+            [SourceKey] varchar(64) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,
+            [Detail] nvarchar(1000) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        );
+        CREATE TABLE [#DatabaseDdlTriggerInventory_Map]
+        (
+            [ResultName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,
+            [TargetTable] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        );
+        CREATE TABLE [#DatabaseDdlTriggerInventory_Candidates]
+        (
+            [DatabaseId] int NOT NULL,
+            [DatabaseName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,
+            [StateDesc] nvarchar(60) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,
+            [UserAccessDesc] nvarchar(60) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,
+            [IsReadOnly] bit NULL,
+            [CompatibilityLevel] tinyint NULL,
+            [CollationName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL,
+            [RecoveryModelDesc] nvarchar(60) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,
+            [IsSystemDatabase] bit NULL,
+            [RequestedOrdinal] int NULL
+        );
+        CREATE TABLE [#DatabaseDdlTriggerInventory_SelectionWarnings]
+        (
+            [RequestedName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL,
+            [StatusCode] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,
+            [ErrorMessage] nvarchar(2048) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        );
+        CREATE TABLE [#DatabaseDdlTriggerInventory_Console]
+        (
+            [Bereich] nvarchar(64) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,
+            [Objekt] nvarchar(256) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,
+            [Detail] nvarchar(1000) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        );
+
+        IF @Mode='TABLE'
+        BEGIN
+            EXEC [monitor].[InternalPrepareResultTables]
+                @ResultTablesJson=@ResultTablesJson,
+                @AllowedResultNames=N'moduleStatus|ddlTriggers|sourceStatus|warnings',
+                @MappingTable=N'#DatabaseDdlTriggerInventory_Map',
+                @StatusCode=@TableStatus OUTPUT,
+                @ErrorMessage=@TableMessage OUTPUT,
+                @ThrowOnError=0;
+            IF COALESCE(@TableStatus,'')<>'AVAILABLE'
+            BEGIN
+                SET @TableFailureError=51011;
+                RAISERROR(N'%s',16,1,@TableMessage);
+            END;
+        END;
+
+        SET @Started=SYSUTCDATETIME();
+        BEGIN TRY
+            EXEC [monitor].[USP_PrepareDatabaseCandidates]
+                @DatabaseNames=@DatabaseNames,
+                @SystemdatenbankenEinbeziehen=@SystemdatenbankenEinbeziehen,
+                @DatabaseNamePattern=@DatabaseNamePattern,
+                @StatusCode=@SelectionStatus OUTPUT,
+                @ErrorMessage=@SelectionMessage OUTPUT,
+                @CrossDatabaseRequested=@CrossDatabaseRequested OUTPUT,
+                @CandidateTable=N'#DatabaseDdlTriggerInventory_Candidates',
+                @WarningTable=N'#DatabaseDdlTriggerInventory_SelectionWarnings';
+            SELECT @SelectionError=MIN(CASE WHEN [StatusCode] IS NOT NULL THEN 51011 END)
+            FROM [#DatabaseDdlTriggerInventory_SelectionWarnings];
+            INSERT [#DatabaseDdlTriggerInventory_sourceStatus]
+            SELECT NULL,[RequestedName],'DATABASE_SELECTION','SELECTION',@Started,SYSUTCDATETIME(),
+                   COALESCE([StatusCode],'AVAILABLE_LIMITED'),
+                   CASE WHEN [StatusCode] IS NULL THEN 'VISIBLE_ONLY' ELSE 'UNPROVEN' END,
+                   NULL,NULL,0,
+                   CASE WHEN [StatusCode] IS NULL THEN NULL ELSE 51011 END,
+                   [ErrorMessage]
+            FROM [#DatabaseDdlTriggerInventory_SelectionWarnings];
+            INSERT [#DatabaseDdlTriggerInventory_warnings]
+            SELECT NULL,[RequestedName],'TARGET_SELECTION','DATABASE_SELECTION',
+                   LEFT(COALESCE([ErrorMessage],N'Die angeforderte Datenbank ist nicht verfügbar.'),1000)
+            FROM [#DatabaseDdlTriggerInventory_SelectionWarnings];
+            IF COALESCE(@SelectionStatus,'')<>'AVAILABLE'
+            BEGIN
+                SET @Error=COALESCE(@SelectionError,51011);
+                SET @Message=COALESCE(@SelectionMessage,N'Die Datenbankauswahl konnte nicht erstellt werden.');
+                SET @Status=COALESCE(@SelectionStatus,'SELECTION_UNAVAILABLE');
+                IF NOT EXISTS(SELECT 1 FROM [#DatabaseDdlTriggerInventory_sourceStatus]
+                              WHERE [SourceKey]='DATABASE_SELECTION')
+                    INSERT [#DatabaseDdlTriggerInventory_sourceStatus]
+                    VALUES(NULL,NULL,'DATABASE_SELECTION','SELECTION',@Started,SYSUTCDATETIME(),
+                           @Status,'UNPROVEN',NULL,NULL,0,@Error,@Message);
+            END
+            ELSE
+            BEGIN
+                SELECT @Observed=COUNT_BIG(*) FROM [#DatabaseDdlTriggerInventory_Candidates];
+                INSERT [#DatabaseDdlTriggerInventory_sourceStatus]
+                VALUES(NULL,NULL,'DATABASE_SELECTION','SELECTION',@Started,SYSUTCDATETIME(),
+                       'AVAILABLE_LIMITED','CALLER_VISIBLE',@Observed,@Observed,0,NULL,NULL);
+            END;
+        END TRY
+        BEGIN CATCH
+            SET @Error=ERROR_NUMBER();
+            SET @Message=LEFT(ERROR_MESSAGE(),2048);
+            SET @Status=CASE WHEN ERROR_NUMBER() IN (229,297,300,371) THEN 'DENIED_PERMISSION'
+                             WHEN ERROR_NUMBER()=1222 THEN 'TIMEOUT' ELSE 'ERROR_HANDLED' END;
+            INSERT [#DatabaseDdlTriggerInventory_sourceStatus]
+            VALUES(NULL,NULL,'DATABASE_SELECTION','SELECTION',@Started,SYSUTCDATETIME(),
+                   @Status,'UNPROVEN',NULL,NULL,0,@Error,@Message);
+            INSERT [#DatabaseDdlTriggerInventory_warnings]
+            VALUES(NULL,NULL,'SOURCE_UNAVAILABLE','DATABASE_SELECTION',
+                   N'Die Datenbankauswahl ist fehlgeschlagen; es wurde keine Datenbank-DDL-Trigger-Quelle als erfolgreich leer ausgewertet.');
+        END CATCH;
+
+        IF @Error IS NULL
+        BEGIN
+            DECLARE @DatabaseId int,@DatabaseName sysname,@DatabaseCreatedAt datetime,
+                    @DbStatus varchar(40),@DbVisibility varchar(32),
+                    @DbError int,@DbMessage nvarchar(2048),@QuotedDatabase nvarchar(258),
+                    @DbObserved bigint;
+            DECLARE [DdlTriggerTargets] CURSOR LOCAL FAST_FORWARD FOR
+                SELECT [DatabaseId],[DatabaseName]
+                FROM [#DatabaseDdlTriggerInventory_Candidates] ORDER BY [DatabaseId];
+            OPEN [DdlTriggerTargets];
+            FETCH NEXT FROM [DdlTriggerTargets] INTO @DatabaseId,@DatabaseName;
+            WHILE @@FETCH_STATUS=0
+            BEGIN
+                SELECT @Started=SYSUTCDATETIME(),@DbStatus='SOURCE_UNAVAILABLE',
+                       @DbVisibility='UNPROVEN',@DbError=NULL,@DbMessage=NULL,
+                       @DatabaseCreatedAt=NULL,@DbObserved=NULL,
+                       @QuotedDatabase=QUOTENAME(@DatabaseName);
+                BEGIN TRY
+                    SELECT @DatabaseCreatedAt=[create_date]
+                    FROM [master].[sys].[databases] WITH (NOLOCK)
+                    WHERE [database_id]=@DatabaseId
+                      AND [name] COLLATE SQL_Latin1_General_CP1_CS_AS
+                          =@DatabaseName COLLATE SQL_Latin1_General_CP1_CS_AS;
+                    IF @DatabaseCreatedAt IS NULL
+                        THROW 51012,N'Target database identity changed or is not available for this source.',1;
+                    SET @Sql=N'SET LOCK_TIMEOUT '+CONVERT(nvarchar(20),@LockTimeoutMs)+N'; USE '+@QuotedDatabase+N';
+                        IF DB_ID()<>@Id OR NOT EXISTS
+                          (SELECT 1 FROM [master].[sys].[databases] WITH (NOLOCK)
+                           WHERE [database_id]=@Id
+                             AND [name] COLLATE SQL_Latin1_General_CP1_CS_AS
+                                 =@Name COLLATE SQL_Latin1_General_CP1_CS_AS
+                             AND [create_date]=@Created)
+                            THROW 51012,N''Target database identity changed or is not available for this source.'',1;
+                        INSERT [#DatabaseDdlTriggerInventory_ddlTriggers]
+                            ([DatabaseId],[DatabaseName],[TriggerObjectId],[TriggerName],
+                             [ParentClass],[ParentClassDesc],[TriggerType],[TriggerTypeDesc],
+                             [IsDisabled],[CreateDate],[ModifyDate],[MetadataVisibility])
+                        SELECT @Id,@Name,[object_id],[name],[parent_class],
+                               [parent_class_desc],[type],[type_desc],
+                               [is_disabled],[create_date],[modify_date],''VISIBLE_ONLY''
+                        FROM [sys].[triggers] WITH (NOLOCK)
+                        WHERE [parent_class]=0;
+                        SET @Rows=@@ROWCOUNT;
+                        IF DB_ID()<>@Id OR NOT EXISTS
+                          (SELECT 1 FROM [master].[sys].[databases] WITH (NOLOCK)
+                           WHERE [database_id]=@Id
+                             AND [name] COLLATE SQL_Latin1_General_CP1_CS_AS
+                                 =@Name COLLATE SQL_Latin1_General_CP1_CS_AS
+                             AND [create_date]=@Created)
+                            THROW 51012,N''Target database identity changed or is not available for this source.'',1;';
+                    EXEC [sys].[sp_executesql] @Sql,
+                        N'@Id int,@Name sysname,@Created datetime,@Rows bigint OUTPUT',
+                        @Id=@DatabaseId,@Name=@DatabaseName,@Created=@DatabaseCreatedAt,
+                        @Rows=@DbObserved OUTPUT;
+                    SET @DbStatus='AVAILABLE_LIMITED';
+                    SET @DbVisibility='VISIBLE_ONLY';
+                END TRY
+                BEGIN CATCH
+                    DELETE FROM [#DatabaseDdlTriggerInventory_ddlTriggers] WHERE [DatabaseId]=@DatabaseId;
+                    SELECT @DbObserved=NULL,@DbError=ERROR_NUMBER(),
+                           @DbMessage=LEFT(ERROR_MESSAGE(),2048),
+                           @DbStatus=CASE WHEN ERROR_NUMBER() IN(229,297,300,371) THEN 'DENIED_PERMISSION'
+                                          WHEN ERROR_NUMBER()=1222 THEN 'TIMEOUT'
+                                          WHEN ERROR_NUMBER() IN(911,924,926,927,942,945,952,978,4060,51012)
+                                               THEN 'DATABASE_UNAVAILABLE'
+                                          ELSE 'SOURCE_UNAVAILABLE' END,
+                           @DbVisibility='UNPROVEN';
+                END CATCH;
+                INSERT [#DatabaseDdlTriggerInventory_sourceStatus]
+                VALUES(@DatabaseId,@DatabaseName,'DATABASE_DDL_TRIGGERS_CATALOG','NATIVE',
+                       @Started,SYSUTCDATETIME(),@DbStatus,@DbVisibility,
+                       @DbObserved,CASE WHEN @DbStatus='AVAILABLE_LIMITED' THEN @DbObserved ELSE NULL END,
+                       0,@DbError,@DbMessage);
+                IF @DbStatus<>'AVAILABLE_LIMITED'
+                    INSERT [#DatabaseDdlTriggerInventory_warnings]
+                    VALUES(@DatabaseId,@DatabaseName,@DbStatus,'DATABASE_DDL_TRIGGERS_CATALOG',
+                           N'Die Datenbank-DDL-Trigger-Quelle wurde nicht erfolgreich gelesen; leere Fachzeilen sind kein Nullergebnis.');
+                FETCH NEXT FROM [DdlTriggerTargets] INTO @DatabaseId,@DatabaseName;
+            END;
+            CLOSE [DdlTriggerTargets]; DEALLOCATE [DdlTriggerTargets];
+            IF NOT EXISTS(SELECT 1 FROM [#DatabaseDdlTriggerInventory_Candidates])
+            BEGIN
+                SET @Started=SYSUTCDATETIME();
+                INSERT [#DatabaseDdlTriggerInventory_sourceStatus]
+                VALUES(NULL,NULL,'DATABASE_DDL_TRIGGERS_CATALOG','NATIVE',
+                       @Started,SYSUTCDATETIME(),'SKIPPED','UNPROVEN',NULL,NULL,0,NULL,NULL);
+                INSERT [#DatabaseDdlTriggerInventory_warnings]
+                VALUES(NULL,NULL,'NO_TARGET_DATABASE','DATABASE_DDL_TRIGGERS_CATALOG',
+                       N'Keine ausgewählte sichtbare ONLINE-Datenbank; die Datenbank-DDL-Trigger-Quelle wurde nicht gelesen.');
+            END;
+        END;
+
+        ;WITH [Bounded] AS
+        (
+            SELECT *,ROW_NUMBER() OVER(ORDER BY [DatabaseId],[TriggerObjectId]) AS [OutputOrdinal]
+            FROM [#DatabaseDdlTriggerInventory_ddlTriggers]
+        )
+        DELETE FROM [Bounded] WHERE [OutputOrdinal]>@Limit;
+        UPDATE [s]
+           SET [ReturnedRows]=CASE WHEN [s].[StatusCode]='AVAILABLE_LIMITED'
+                                   THEN COALESCE([r].[ReturnedRows],0) ELSE NULL END,
+               [IsLimited]=CASE WHEN [s].[StatusCode]='AVAILABLE_LIMITED'
+                                    AND [s].[ObservedRows]>COALESCE([r].[ReturnedRows],0)
+                                THEN 1 ELSE 0 END
+        FROM [#DatabaseDdlTriggerInventory_sourceStatus] AS [s]
+        LEFT JOIN
+        (
+            SELECT [DatabaseId],COUNT_BIG(*) AS [ReturnedRows]
+            FROM [#DatabaseDdlTriggerInventory_ddlTriggers]
+            GROUP BY [DatabaseId]
+        ) AS [r] ON [r].[DatabaseId]=[s].[DatabaseId]
+        WHERE [s].[SourceKey]='DATABASE_DDL_TRIGGERS_CATALOG';
+        INSERT [#DatabaseDdlTriggerInventory_warnings]
+        VALUES(NULL,NULL,'TRIGGER_EFFECT_UNASSESSED','DATABASE_DDL_TRIGGERS_CATALOG',
+               N'Die Aufnahme prüft weder Triggerausführung noch Rollbackwirkung oder Ownership; IsDisabled beschreibt nur den Katalogschalter.');
+        INSERT [#DatabaseDdlTriggerInventory_warnings]
+        VALUES(NULL,NULL,'METADATA_COMPLETENESS_UNPROVEN','DATABASE_DDL_TRIGGERS_CATALOG',
+               N'Nur caller-sichtbare Katalogzeilen ausgewählter Online-Datenbanken; keine globale Vollständigkeit oder Abwesenheit belegt.');
+        INSERT [#DatabaseDdlTriggerInventory_warnings]
+            SELECT NULL,NULL,'OUTPUT_LIMIT','DATABASE_DDL_TRIGGERS_CATALOG',
+                   N'Das Zeilenlimit begrenzt nur die Ausgabe; Auswahl und Kataloglesearbeit bleiben unbegrenzt.'
+            WHERE EXISTS(SELECT 1 FROM [#DatabaseDdlTriggerInventory_sourceStatus]
+                         WHERE [SourceKey]='DATABASE_DDL_TRIGGERS_CATALOG' AND [IsLimited]=1);
+
+        IF @Error IS NULL
+        BEGIN
+            SELECT TOP (1) @Error=[ErrorNumber],@Message=[ErrorMessage],@Status=[StatusCode]
+            FROM [#DatabaseDdlTriggerInventory_sourceStatus]
+            WHERE [StatusCode] NOT IN('AVAILABLE_LIMITED','SKIPPED')
+            ORDER BY [SourceKey],[DatabaseId],[DatabaseName];
+            IF @Error IS NULL
+                SET @Status=CASE WHEN EXISTS
+                    (SELECT 1 FROM [#DatabaseDdlTriggerInventory_sourceStatus]
+                     WHERE [SourceKey]='DATABASE_DDL_TRIGGERS_CATALOG'
+                       AND [StatusCode]='AVAILABLE_LIMITED')
+                    THEN 'AVAILABLE_LIMITED' ELSE 'SKIPPED' END;
+        END;
+        DECLARE @BusinessRows bigint=(SELECT COUNT_BIG(*) FROM [#DatabaseDdlTriggerInventory_ddlTriggers]);
+        INSERT [#DatabaseDdlTriggerInventory_moduleStatus]
+        VALUES(N'USP_DatabaseDdlTriggerInventory',@CapturedAtUtc,@Status,1,@BusinessRows,
+               N'Caller-sichtbare datenbankweite DDL-Trigger; Ausführung, Wirkung und Vollständigkeit unbewiesen.');
+
+        IF @JsonErzeugen=1
+        BEGIN
+            DECLARE @Meta nvarchar(max)=
+                (SELECT N'DatabaseDdlTriggerInventory' AS [resultName],1 AS [schemaVersion],
+                        @CapturedAtUtc AS [generatedAtUtc],@Status AS [statusCode],
+                        CAST(1 AS bit) AS [isPartial],@Error AS [errorNumber],
+                        @Message AS [errorMessage]
+                 FOR JSON PATH,WITHOUT_ARRAY_WRAPPER,INCLUDE_NULL_VALUES);
+            DECLARE @Json_moduleStatus nvarchar(max)=
+                (SELECT * FROM [#DatabaseDdlTriggerInventory_moduleStatus] FOR JSON PATH,INCLUDE_NULL_VALUES);
+            DECLARE @Json_ddlTriggers nvarchar(max)=
+                (SELECT * FROM [#DatabaseDdlTriggerInventory_ddlTriggers] ORDER BY [DatabaseId],[TriggerObjectId] FOR JSON PATH,INCLUDE_NULL_VALUES);
+            DECLARE @Json_sourceStatus nvarchar(max)=
+                (SELECT * FROM [#DatabaseDdlTriggerInventory_sourceStatus] ORDER BY [DatabaseId],[DatabaseName],[SourceKey] FOR JSON PATH,INCLUDE_NULL_VALUES);
+            DECLARE @Json_warnings nvarchar(max)=
+                (SELECT * FROM [#DatabaseDdlTriggerInventory_warnings] ORDER BY [DatabaseId],[DatabaseName],[WarningCode],[SourceKey] FOR JSON PATH,INCLUDE_NULL_VALUES);
+            SET @Json=CONCAT(N'{"meta":',@Meta,
+                N',"moduleStatus":',COALESCE(@Json_moduleStatus,N'[]'),
+                N',"ddlTriggers":',COALESCE(@Json_ddlTriggers,N'[]'),
+                N',"sourceStatus":',COALESCE(@Json_sourceStatus,N'[]'),
+                N',"warnings":',COALESCE(@Json_warnings,N'[]'),N'}');
+        END;
+
+        IF @Mode='RAW'
+        BEGIN
+            SELECT * FROM [#DatabaseDdlTriggerInventory_moduleStatus];
+            SELECT * FROM [#DatabaseDdlTriggerInventory_ddlTriggers] ORDER BY [DatabaseId],[TriggerObjectId];
+            SELECT * FROM [#DatabaseDdlTriggerInventory_sourceStatus] ORDER BY [DatabaseId],[DatabaseName],[SourceKey];
+            SELECT * FROM [#DatabaseDdlTriggerInventory_warnings] ORDER BY [DatabaseId],[DatabaseName],[WarningCode],[SourceKey];
+        END
+        ELSE IF @Mode='TABLE'
+        BEGIN
+            DECLARE @ResultName sysname,@TargetTable sysname,@SourceTable sysname;
+            DECLARE [DatabaseDdlTriggerInventoryOutput] CURSOR LOCAL FAST_FORWARD FOR
+                SELECT [ResultName],[TargetTable]
+                FROM [#DatabaseDdlTriggerInventory_Map] ORDER BY [ResultName];
+            OPEN [DatabaseDdlTriggerInventoryOutput];
+            FETCH NEXT FROM [DatabaseDdlTriggerInventoryOutput] INTO @ResultName,@TargetTable;
+            WHILE @@FETCH_STATUS=0
+            BEGIN
+                SET @SourceTable=N'#DatabaseDdlTriggerInventory_'+@ResultName;
+                EXEC [monitor].[InternalWriteResultTable]
+                    @SourceTable=@SourceTable,@TargetTable=@TargetTable,
+                    @StatusCode=@TableStatus OUTPUT,@ErrorNumber=@TableError OUTPUT,
+                    @ErrorMessage=@TableMessage OUTPUT,@ThrowOnError=0;
+                IF COALESCE(@TableStatus,'')<>'AVAILABLE'
+                BEGIN
+                    SET @TableFailureError=COALESCE(@TableError,51010);
+                    RAISERROR(N'%s',16,1,@TableMessage);
+                END;
+                FETCH NEXT FROM [DatabaseDdlTriggerInventoryOutput] INTO @ResultName,@TargetTable;
+            END;
+            CLOSE [DatabaseDdlTriggerInventoryOutput]; DEALLOCATE [DatabaseDdlTriggerInventoryOutput];
+        END
+        ELSE IF @ConsoleResultRequested=1
+        BEGIN
+            INSERT [#DatabaseDdlTriggerInventory_Console]
+            SELECT N'Datenbank-DDL-Trigger',[TriggerName],
+                   CONCAT(N'Datenbank=',[DatabaseName],N'; ID=',[TriggerObjectId],
+                          N'; Parent=',[ParentClassDesc],N'; Typ=',[TriggerTypeDesc],
+                          N'; deaktiviert=',[IsDisabled],N'; Sicht=',[MetadataVisibility])
+            FROM [#DatabaseDdlTriggerInventory_ddlTriggers] ORDER BY [DatabaseId],[TriggerObjectId];
+            INSERT [#DatabaseDdlTriggerInventory_Console]
+            SELECT N'Quelle',[SourceKey],CONCAT([StatusCode],N'; beobachtet=',
+                   COALESCE(CONVERT(nvarchar(30),[ObservedRows]),N'NULL'),
+                   N'; ausgegeben=',COALESCE(CONVERT(nvarchar(30),[ReturnedRows]),N'NULL'))
+            FROM [#DatabaseDdlTriggerInventory_sourceStatus];
+            INSERT [#DatabaseDdlTriggerInventory_Console]
+            SELECT N'Aussagegrenze',[WarningCode],[Detail]
+            FROM [#DatabaseDdlTriggerInventory_warnings];
+            EXEC [monitor].[InternalEmitConsoleResult]
+                @SourceTable=N'#DatabaseDdlTriggerInventory_Console',
+                @ResultLabel=N'Sichtbare Datenbank-DDL-Trigger-Katalogmetadaten',
+                @EmptyMessage=N'Keine caller-sichtbare Datenbank-DDL-Trigger-Zeile; Quellenstatus und Auswahl prüfen.';
+        END;
+
+        SELECT @StatusCodeOut=@Status,@IsPartialOut=1,
+               @ErrorNumberOut=@Error,@ErrorMessageOut=@Message;
+        IF @PrintMeldungen=1 AND @Error IS NOT NULL
+            RAISERROR(N'USP_DatabaseDdlTriggerInventory: mindestens eine Quelle ist nicht verfügbar; siehe sourceStatus.',10,1) WITH NOWAIT;
+        EXEC [sys].[sp_executesql] @LockTimeoutSql;
+        IF @PreviousXactAbort=1 SET XACT_ABORT ON; ELSE SET XACT_ABORT OFF;
+    END TRY
+    BEGIN CATCH
+        SELECT @Error=COALESCE(@TableFailureError,ERROR_NUMBER()),
+               @Message=LEFT(ERROR_MESSAGE(),2048),@Json=NULL;
+        SELECT @Status='ERROR_HANDLED',@StatusCodeOut='ERROR_HANDLED',@IsPartialOut=1,
+               @ErrorNumberOut=@Error,@ErrorMessageOut=@Message;
+        EXEC [sys].[sp_executesql] @LockTimeoutSql;
+        IF @PreviousXactAbort=1 SET XACT_ABORT ON; ELSE SET XACT_ABORT OFF;
+        IF @PrintMeldungen=1 RAISERROR(N'%s',10,1,@Message) WITH NOWAIT;
+        RETURN @Error;
+    END CATCH;
+END;
+GO
+-- END SOURCE: Code/03_ObjectIndex/100_USP_DatabaseDdlTriggerInventory.sql
+
 -- BEGIN SOURCE: Code/04_PlanCache/010_USP_QueryStats.sql
 /*
 ===============================================================================
@@ -26825,14 +27704,33 @@ BEGIN
     IF @Hilfe = 1
     BEGIN
         PRINT N'monitor.USP_QueryStats';
-        PRINT N'@DatabaseNames: Pipe-Liste; N''''/NULL = keine Datenbankeinschränkung.';
-        PRINT N'@DatabaseNamePattern: ein like:/regex:/regexi:-Pattern; nicht mit einer exakten Liste kombinieren.';
-        PRINT N'@TextPattern: ein LIKE-/Regex-Pattern für SQL-Text; Pattern wird nicht als Pipe-Liste zerlegt.';
-        PRINT N'@Sortierung: CPU_TOTAL, CPU_AVG, ELAPSED_TOTAL, ELAPSED_AVG, READS_TOTAL, READS_AVG, WRITES_TOTAL, WRITES_AVG, EXECUTIONS, GRANT_MAX, SPILLS_TOTAL, ROWS_TOTAL, LAST_EXECUTION.';
-        PRINT N'@MaxZeilen positiv = begrenzt, NULL/0 = unbegrenzt; VOLL oder mehr als 1000 Zeilen benötigt PLAN_CACHE_DEEP.';
-        PRINT N'@MaxSqlTextZeichen positiv = gekürzt; NULL/0 = vollständiger Statement- und Batchtext.';
-        PRINT N'@ParentQueryStatsSnapshot ist nur für die laufinterne Wiederverwendung durch USP_PlanCacheAnalysis bestimmt; 0 liest frisch.';
-        PRINT N'@ResultSetArt = CONSOLE (Default)|RAW|TABLE|NONE; Steuerwerte sind case-insensitiv.';
+        PRINT N'Die Procedure rangiert aktuell gecachte Statements nach Verbrauch, Ausführungszahl und letzter Ausführung. Der Cache erfasst nur die derzeit sichtbaren Einträge.';
+        PRINT N'@DatabaseNames nvarchar(max). Default ist NULL. Pipe-Liste exakter Datenbanknamen; NULL, leer oder nur Leerzeichen = keine exakte Einschränkung. | trennt außerhalb von [...]; ]] maskiert ] innerhalb; äußere Segmentleerzeichen entfernt. Elemente einteilige Namen bis 128 Zeichen; ungültige Liste INVALID_PARAMETER.';
+        PRINT N'@SystemdatenbankenEinbeziehen bit. Default ist 0. 0 schließt master, tempdb, model und msdb aus; 1 lässt sie zu. NULL führt zur Parameterablehnung; ausgelassen = 0. SQL-bit-Konvertierung kann numerische Nichtnullwerte als 1 abbilden.';
+        PRINT N'@DatabaseNamePattern nvarchar(4000). Default ist NULL. Ein LIKE-Pattern oder Präfix like:, regex:, regexi:. Erkennung ohne Beachtung der Großschreibung; äußere Leerzeichen getrimmt, Musterrest nicht erneut. NULL = kein Pattern; leerer Inhalt ungültig. Nicht mit wirksamer @DatabaseNames-Liste kombinierbar. Regex Flag c/i und Ausführung nur SQL Server 2025 + Compatibility Level 170 der Installationsdatenbank; sonst UNAVAILABLE_FEATURE.';
+        PRINT N'@HighImpactConfirmed bit. Default ist 0. 0 lässt den hohen Aufwand unbestätigt. 1 bestätigt einen geschützten Pfad. Die Berechtigung wird zusätzlich geprüft. NULL ist für die Pfadprüfung ungültig.';
+        PRINT N'@QueryHash binary(8). Default ist NULL. Optionaler exakter 8-Byte Query Hash; NULL = kein Hashfilter. Andere Längen/Typkonvertierungen richten sich nach T-SQL-Bindung; keine zusätzliche Hexstring-Validierung im Procedurecode.';
+        PRINT N'@QueryPlanHash binary(8). Default ist NULL. Optionaler exakter 8-Byte Planhash; NULL = kein Planhashfilter.';
+        PRINT N'@SqlHandle varbinary(64). Default ist NULL. Optionaler SQL-Handle bis 64 Byte; NULL = kein Handlefilter.';
+        PRINT N'@PlanHandle varbinary(64). Default ist NULL. Optionaler Plan-Handle bis 64 Byte; NULL = kein Handlefilter.';
+        PRINT N'@TextPattern nvarchar(4000). Default ist NULL. SQL-Textpattern. NULL = kein Filter; Parser erkennt case-insensitive like:, regex:, regexi:, sonst LIKE. Außenleerzeichen getrimmt, Patternrest nicht. Leerer effektiver Inhalt INVALID_PARAMETER. Nicht als Pipe-Liste zerlegt. LIKE nutzt %/_/SQL LIKE-Syntax; Regex braucht SQL Server 2025 und Installations-DB-Kompatibilität 170, Syntaxfehler werden von Regex-Ausführung gemeldet.';
+        PRINT N'@Sortierung varchar(32). Default ist ''CPU_TOTAL''. Case-insensitive nach LTRIM/RTRIM; geschlossene Menge: CPU_TOTAL = kumulative CPU; CPU_AVG = CPU je Ausführung; ELAPSED_TOTAL = kumulative Laufzeit; ELAPSED_AVG = Laufzeit je Ausführung; READS_TOTAL = kumulative logische Reads; READS_AVG = logische Reads je Ausführung; WRITES_TOTAL = kumulative logische Writes; WRITES_AVG = logische Writes je Ausführung; EXECUTIONS = Ausführungszahl; GRANT_MAX = maximaler Grant; SPILLS_TOTAL = kumulative Spills; ROWS_TOTAL = kumulative Zeilen; LAST_EXECUTION = letzte Ausführungszeit. NULL normalisiert auf Default. Ungültiger Wert INVALID_PARAMETER.';
+        PRINT N'@AnalyseModus varchar(16). Default ist ''TOP''. TOP verwendet bei einem positiven Limit bis 1000 den aktuellen Plan-Cache-Pfad. VOLL prüft PLAN_CACHE_DEEP und behält das Zeilenlimit bei. NULL entspricht TOP. Rand-Leerzeichen und Groß- und Kleinschreibung werden normalisiert. Leere und andere Werte ergeben INVALID_PARAMETER.';
+        PRINT N'@MinExecutionCount bigint. Default ist 1. Ganzzahliges Minimum für execution_count. 0 lässt auch Einträge mit 0 Ausführungen zu. Negative Werte ergeben INVALID_PARAMETER. Bei NULL trifft der Vergleich auf keine Zeile.';
+        PRINT N'@VonUtc datetime2(7). Default ist NULL. Inklusiver Grenzwert für last_execution_time als datetime2-Wert, z. B. 2026-01-01T00:00:00. Die Procedure vergleicht direkt mit dem Cachewert und rechnet keine Zeitzone um. NULL lässt den Zeitfilter aus.';
+        PRINT N'@MaxZeilen int. Default ist 100. Positiv begrenzt Ausgabe; NULL oder 0 bedeutet unbegrenzt; negativ INVALID_PARAMETER. Ausgelassen = 100. Unbegrenzt oder >1000 sowie VOLL erfordern PLAN_CACHE_DEEP. Positive Auswahl sammelt bis Limit+1 zur HasMoreRows-Ermittlung.';
+        PRINT N'@MaxSqlTextZeichen int. Default ist 4000. Positiv kürzt Statement- und Batchtext auf Zeichenlimit; NULL oder 0 bedeutet ungekürzt; negativ INVALID_PARAMETER. Zeichenprojektion zählt unter SC-Collation, nicht Grapheme.';
+        PRINT N'@ParentQueryStatsSnapshot bit. Default ist 0. 0 = DMV frisch lesen; 1 = ausschließlich laufinterne Wiederverwendung durch USP_PlanCacheAnalysis. NULL INVALID_PARAMETER. Schalter ist kein öffentlicher externer Snapshotvertrag.';
+        PRINT N'@ResultSetArt varchar(16). Default ist ''CONSOLE''. CONSOLE zeigt die beschriftete Abfrageauswahl. RAW liefert Modulstatus, Abfragezeilen und Auswahlwarnungen. TABLE schreibt das benannte Resultset queries. NONE unterdrückt die fachlichen Resultsets. Rand-Leerzeichen werden entfernt und die Groß- und Kleinschreibung normalisiert. NULL, leere Eingaben und andere Werte ergeben INVALID_PARAMETER.';
+        PRINT N'@ResultTablesJson nvarchar(max). Default ist NULL. Bei TABLE ist ein JSON-Objekt mit genau dem Schlüssel queries und einem Tabellennamen als Zeichenfolgenwert erforderlich. Verwenden Sie eine vorhandene, leere lokale #Temp-Tabelle mit genau einer Seed-Spalte. Der Name darf höchstens 116 Zeichen lang sein. Globale Tabellen und das Präfix #Monitor sind ausgeschlossen. Bei den übrigen Ausgabearten sind nur NULL, die leere Zeichenfolge und Leerzeichen erlaubt. Die Prüfung läuft vor der Hilfe und kann Fehler 51011 auslösen.';
+        PRINT N'@JsonErzeugen bit. Default ist 0. 1 erzeugt JSON in @Json zusätzlich zur gewählten Ausgabeart. 0 deaktiviert JSON. NULL ergibt INVALID_PARAMETER.';
+        PRINT N'@Json nvarchar(max) OUTPUT. Default ist NULL. Binden Sie eine nvarchar(max)-Variable mit OUTPUT. Der Aufruf setzt sie zunächst auf NULL. Bei @JsonErzeugen=1 enthält sie das JSON-Dokument mit meta, queries und warnings.';
+        PRINT N'@PrintMeldungen bit. Default ist 1. 1 gibt informative Meldungen zu Status und gegebenenfalls Textkürzung aus. 0 und NULL unterdrücken diese Meldungen.';
+        PRINT N'@Hilfe bit. Default ist 0. 1 gibt die Hilfe aus und beendet den Aufruf vor der fachlichen Analyse. Die Initialisierung von @Json und die Prüfung der TABLE-Zuordnung laufen zuerst. 0 und NULL setzen den regulären Aufruf fort.';
+        PRINT N'Hilfe anzeigen. EXEC [monitor].[USP_QueryStats] @Hilfe=1;';
+        PRINT N'Technische Resultsets lesen. EXEC [monitor].[USP_QueryStats] @QueryHash=0x0000000000000001, @MaxZeilen=50, @ResultSetArt=''RAW'';';
+        PRINT N'Nur JSON ausgeben. DECLARE @ResultJson nvarchar(max); EXEC [monitor].[USP_QueryStats] @QueryHash=0x0000000000000001, @MaxZeilen=50, @ResultSetArt=''NONE'', @JsonErzeugen=1, @Json=@ResultJson OUTPUT; SELECT @ResultJson AS [Json];';
+        PRINT N'Benanntes Resultset in eine lokale Temp-Tabelle schreiben. CREATE TABLE #QueryStats_HelpExample ([Seed] int NULL); BEGIN TRY EXEC [monitor].[USP_QueryStats] @QueryHash=0x0000000000000001, @MaxZeilen=50, @ResultSetArt=''TABLE'', @ResultTablesJson=N''{"queries":"#QueryStats_HelpExample"}''; SELECT * FROM #QueryStats_HelpExample; DROP TABLE #QueryStats_HelpExample; END TRY BEGIN CATCH DROP TABLE #QueryStats_HelpExample; THROW; END CATCH;';
         RETURN;
     END;
 
@@ -27395,14 +28293,26 @@ BEGIN
     IF @Hilfe=1
     BEGIN
         PRINT N'monitor.USP_QueryHashAnalysis';
-        PRINT N'@QueryHash binary(8)=NULL: optional exakt auf einen Query Hash begrenzen.';
-        PRINT N'@Sortierung: CPU_TOTAL, ELAPSED_TOTAL, READS_TOTAL, WRITES_TOTAL, EXECUTIONS, PLAN_VARIANTS, SPILLS_TOTAL.';
-        PRINT N'@AnalyseModus TOP oder VOLL; VOLL sowie ein Lauf ohne konkreten @QueryHash prüfen PLAN_CACHE_DEEP.';
-        PRINT N'@MinExecutionCount bigint=1; @MinPlanVarianten int=1; @MaxZeilen int=100.';
-        PRINT N'@MaxSqlTextZeichen positiv = gekürzt; NULL/0 = vollständiger Beispielstatementtext.';
-        PRINT N'@ParentQueryStatsSnapshot ist nur für die laufinterne Wiederverwendung durch USP_PlanCacheAnalysis bestimmt; 0 liest frisch.';
-        PRINT N'@ResultSetArt RAW|CONSOLE|TABLE|NONE; @JsonErzeugen=1 setzt @Json OUTPUT; Steuerwerte sind case-insensitiv.';
-        PRINT N'@PrintMeldungen bit=1; @Hilfe bit=0. Die Auswertung ist cachegebunden und keine Historie.';
+        PRINT N'Die Procedure gruppiert aktuell sichtbare Cacheeinträge nach Query Hash und zeigt Verbrauch und Planvarianten.';
+        PRINT N'@QueryHash binary(8). Default ist NULL. Optionaler Filter auf genau diesen 8-Byte-query_hash. NULL aggregiert alle Hashes und aktiviert PLAN_CACHE_DEEP; für einen einzelnen Hash wird dieser breite Pfad vermieden. Ein angegebener Hash kann im aktuellen Cache fehlen.';
+        PRINT N'@Sortierung varchar(32). Default ist ''CPU_TOTAL''. CPU_TOTAL ordnet nach kumulierter CPU, ELAPSED_TOTAL nach kumulierter Laufzeit, READS_TOTAL nach logischen Reads, WRITES_TOTAL nach logischen Writes, EXECUTIONS nach Ausführungszahl, PLAN_VARIANTS nach Anzahl verschiedener Plan-Hashes und SPILLS_TOTAL nach kumulierten Spills. Auswahl absteigend und bei Gleichstand nach letzter Ausführung absteigend. NULL entspricht CPU_TOTAL. Rand-Leerzeichen und Groß- und Kleinschreibung werden normalisiert. Leere und andere Werte ergeben INVALID_PARAMETER.';
+        PRINT N'@AnalyseModus varchar(16). Default ist ''TOP''. TOP prüft bei angegebenem Query Hash und positivem Limit bis 1000 keinen tiefen Pfad. VOLL prüft PLAN_CACHE_DEEP. Das Zeilenlimit gilt in beiden Modi. NULL entspricht TOP. Rand-Leerzeichen und Groß- und Kleinschreibung werden normalisiert. Leere und andere Werte ergeben INVALID_PARAMETER.';
+        PRINT N'@MinExecutionCount bigint. Default ist 1. Ganzzahliges Minimum der Summe der Ausführungen je Hash. 0 lässt auch Gruppen mit Summe 0 zu. Bei NULL trifft der Vergleich auf keine Gruppe. Negative Werte ergeben INVALID_PARAMETER.';
+        PRINT N'@MinPlanVarianten int. Default ist 1. Mindestens 1 verschiedener query_plan_hash je Query Hash. Bei NULL trifft der Vergleich auf keine Gruppe. Werte unter 1 ergeben INVALID_PARAMETER.';
+        PRINT N'@MaxZeilen int. Default ist 100. Maximale Zahl der Hash-Gruppen. Positiv begrenzt; NULL oder 0 bedeutet unbegrenzt und aktiviert damit PLAN_CACHE_DEEP. Negative Werte sind ungültig; mehr als 1000 Zeilen aktiviert ebenfalls den geschützten Pfad.';
+        PRINT N'@MaxSqlTextZeichen int. Default ist 4000. Maximale Unicode-Zeichenlänge des Beispielstatements. Positiv kürzt und kennzeichnet den Text; NULL oder 0 lässt ihn vollständig. Negative Werte sind ungültig.';
+        PRINT N'@ParentQueryStatsSnapshot bit. Default ist 0. 0 liest die DMV frisch. 1 liest ausschließlich den lokalen Snapshot des laufenden Aufrufs von USP_PlanCacheAnalysis. Fehlt er, meldet die Analyse ERROR_HANDLED. NULL ergibt INVALID_PARAMETER.';
+        PRINT N'@HighImpactConfirmed bit. Default ist 0. Muss für einen aktivierten PLAN_CACHE_DEEP-Pfad 1 sein und bestätigt den Hochaufwandspfad; zusätzlich gelten dessen aktuelle Freigabe und Berechtigungen. 0 oder NULL lässt den geschützten Pfad nicht zu. Bei einem einzelnen Hash im TOP-Modus mit höchstens 1000 Zeilen wird dieser Gate nicht aktiviert.';
+        PRINT N'@ResultSetArt varchar(16). Default ist ''CONSOLE''. CONSOLE zeigt die beschrifteten Hashgruppen. RAW liefert Modulstatus und Hashgruppen. TABLE schreibt das benannte Resultset queryHashes. NONE unterdrückt die fachlichen Resultsets. Rand-Leerzeichen werden entfernt und die Groß- und Kleinschreibung normalisiert. NULL, leere Eingaben und andere Werte ergeben INVALID_PARAMETER.';
+        PRINT N'@ResultTablesJson nvarchar(max). Default ist NULL. Bei TABLE ist ein JSON-Objekt mit genau dem Schlüssel queryHashes und einem Tabellennamen als Zeichenfolgenwert erforderlich. Verwenden Sie eine vorhandene, leere lokale #Temp-Tabelle mit genau einer Seed-Spalte. Der Name darf höchstens 116 Zeichen lang sein. Globale Tabellen und das Präfix #Monitor sind ausgeschlossen. Bei den übrigen Ausgabearten sind nur NULL, die leere Zeichenfolge und Leerzeichen erlaubt. Die Prüfung läuft vor der Hilfe und kann Fehler 51011 auslösen.';
+        PRINT N'@JsonErzeugen bit. Default ist 0. 1 erzeugt JSON in @Json zusätzlich zur gewählten Ausgabeart. 0 oder NULL deaktiviert JSON.';
+        PRINT N'@Json nvarchar(max) OUTPUT. Default ist NULL. Binden Sie eine nvarchar(max)-Variable mit OUTPUT. Der Aufruf setzt sie zunächst auf NULL. Bei @JsonErzeugen=1 enthält sie das JSON-Dokument mit meta, queryHashes und warnings.';
+        PRINT N'@PrintMeldungen bit. Default ist 1. 1 gibt informative Meldungen zu Status und gegebenenfalls Textkürzung aus. 0 und NULL unterdrücken diese Meldungen.';
+        PRINT N'@Hilfe bit. Default ist 0. 1 gibt die Hilfe aus und beendet den Aufruf vor der fachlichen Analyse. Die Initialisierung von @Json und die Prüfung der TABLE-Zuordnung laufen zuerst. 0 und NULL setzen den regulären Aufruf fort.';
+        PRINT N'Hilfe anzeigen. EXEC [monitor].[USP_QueryHashAnalysis] @Hilfe=1;';
+        PRINT N'Technische Resultsets lesen. EXEC [monitor].[USP_QueryHashAnalysis] @QueryHash=0x0000000000000001, @MaxZeilen=50, @ResultSetArt=''RAW'';';
+        PRINT N'Nur JSON ausgeben. DECLARE @ResultJson nvarchar(max); EXEC [monitor].[USP_QueryHashAnalysis] @QueryHash=0x0000000000000001, @MaxZeilen=50, @ResultSetArt=''NONE'', @JsonErzeugen=1, @Json=@ResultJson OUTPUT; SELECT @ResultJson AS [Json];';
+        PRINT N'Benanntes Resultset in eine lokale Temp-Tabelle schreiben. CREATE TABLE #QueryHashAnalysis_HelpExample ([Seed] int NULL); BEGIN TRY EXEC [monitor].[USP_QueryHashAnalysis] @QueryHash=0x0000000000000001, @MaxZeilen=50, @ResultSetArt=''TABLE'', @ResultTablesJson=N''{"queryHashes":"#QueryHashAnalysis_HelpExample"}''; SELECT * FROM #QueryHashAnalysis_HelpExample; DROP TABLE #QueryHashAnalysis_HelpExample; END TRY BEGIN CATCH DROP TABLE #QueryHashAnalysis_HelpExample; THROW; END CATCH;';
         RETURN;
     END;
 
@@ -27671,12 +28581,23 @@ BEGIN
     IF @Hilfe=1
     BEGIN
         PRINT N'monitor.USP_PlanCacheHealth';
-        PRINT N'@AnalyseModus SUMMARY oder VOLL. VOLL prüft PLAN_CACHE_DEEP.';
-        PRINT N'@MitDatenbankVerteilung bit=0: wertet dbid-Planattribute aus; benötigt VOLL.';
-        PRINT N'@MitSingleUseDetails bit=0: liefert begrenzte Texte großer Single-use-Pläne; benötigt VOLL.';
-        PRINT N'@MaxZeilen int=100; @MaxSqlTextZeichen positiv = gekürzt, NULL/0 = vollständig; @ResultSetArt CONSOLE (Default)|RAW|TABLE|NONE; optional @Json OUTPUT.';
-        PRINT N'@PrintMeldungen bit=1; @Hilfe bit=0.';
-        PRINT N'usecounts kann durch Showplan-Nutzung beeinflusst werden; Resultate sind eine Momentaufnahme.';
+        PRINT N'Die Procedure zeigt Größe und Zusammensetzung des sichtbaren Plan Cache und kann Single-Use-Pläne und Datenbankverteilung aufschlüsseln. Showplan-Nutzung kann usecounts beeinflussen.';
+        PRINT N'@AnalyseModus varchar(16). Default ist ''SUMMARY''. SUMMARY liefert Gesamtübersicht und Kategorien. VOLL prüft PLAN_CACHE_DEEP und erlaubt optionale Details. NULL entspricht SUMMARY. Rand-Leerzeichen und Groß- und Kleinschreibung werden normalisiert. Leere und andere Werte ergeben INVALID_PARAMETER.';
+        PRINT N'@MitDatenbankVerteilung bit. Default ist 0. Bei 1 ergänzt die Zuordnung der gecachten Pläne nach dbid/Datenbank und aktiviert PLAN_CACHE_DEEP; nur zusammen mit @AnalyseModus=VOLL gültig. Bei 0 wird dieses Resultset ausgelassen. NULL verhält sich wie 0.';
+        PRINT N'@MitSingleUseDetails bit. Default ist 0. Bei 1 ergänzt bis zu @MaxZeilen Single-use-Pläne samt SQL-Text, absteigend nach Cachegröße, und aktiviert PLAN_CACHE_DEEP; nur mit VOLL gültig. Bei 0 werden keine Einzeltexte geladen. NULL verhält sich wie 0.';
+        PRINT N'@MaxZeilen int. Default ist 100. Begrenzt die Anzahl der Single-use-Detailpläne in der Detailausgabe. Positiv begrenzt; NULL oder 0 bedeutet unbegrenzt. Negative Werte sind ungültig. In SUMMARY ohne Detailausgabe hat der Wert keine fachliche Wirkung.';
+        PRINT N'@HighImpactConfirmed bit. Default ist 0. 1 bestätigt den geschützten Pfad für VOLL oder angeforderte Details. Die Berechtigung wird zusätzlich geprüft. 0 bestätigt ihn nicht und NULL ist für die Pfadprüfung ungültig. Bei SUMMARY ohne Details wird diese Prüfung nicht aufgerufen.';
+        PRINT N'@MaxSqlTextZeichen int. Default ist 4000. Maximale Unicode-Zeichenlänge der SQL-Texte in der optionalen Single-use-Detailausgabe. Positiv kürzt und kennzeichnet; NULL oder 0 lässt vollständig. Negative Werte sind ungültig. Ohne Details wird kein SQL-Text projiziert.';
+        PRINT N'@ResultSetArt varchar(16). Default ist ''CONSOLE''. CONSOLE zeigt beschriftete Cachekategorien. RAW liefert Modulstatus, Gesamtübersicht, Kategorien und angeforderte Details. TABLE schreibt die Kategorien unter dem Schlüssel overview. NONE unterdrückt die fachlichen Resultsets. Rand-Leerzeichen werden entfernt und die Groß- und Kleinschreibung normalisiert. NULL, leere Eingaben und andere Werte ergeben INVALID_PARAMETER.';
+        PRINT N'@ResultTablesJson nvarchar(max). Default ist NULL. Bei TABLE ist ein JSON-Objekt mit genau dem Schlüssel overview und einem Tabellennamen als Zeichenfolgenwert erforderlich. Verwenden Sie eine vorhandene, leere lokale #Temp-Tabelle mit genau einer Seed-Spalte. Der Name darf höchstens 116 Zeichen lang sein. Globale Tabellen und das Präfix #Monitor sind ausgeschlossen. Bei den übrigen Ausgabearten sind nur NULL, die leere Zeichenfolge und Leerzeichen erlaubt. Die Prüfung läuft vor der Hilfe und kann Fehler 51011 auslösen.';
+        PRINT N'@JsonErzeugen bit. Default ist 0. 1 erzeugt JSON in @Json zusätzlich zur gewählten Ausgabeart. 0 oder NULL deaktiviert JSON.';
+        PRINT N'@Json nvarchar(max) OUTPUT. Default ist NULL. Binden Sie eine nvarchar(max)-Variable mit OUTPUT. Der Aufruf setzt sie zunächst auf NULL. Bei @JsonErzeugen=1 enthält sie das JSON-Dokument mit Statusmetadaten, Gesamtübersicht, Kategorien und optionalen Details.';
+        PRINT N'@PrintMeldungen bit. Default ist 1. 1 gibt informative Meldungen zu Status und gegebenenfalls Textkürzung aus. 0 und NULL unterdrücken diese Meldungen.';
+        PRINT N'@Hilfe bit. Default ist 0. 1 gibt die Hilfe aus und beendet den Aufruf vor der fachlichen Analyse. Die Initialisierung von @Json und die Prüfung der TABLE-Zuordnung laufen zuerst. 0 und NULL setzen den regulären Aufruf fort.';
+        PRINT N'Hilfe anzeigen. EXEC [monitor].[USP_PlanCacheHealth] @Hilfe=1;';
+        PRINT N'Technische Resultsets lesen. EXEC [monitor].[USP_PlanCacheHealth] @AnalyseModus=''SUMMARY'', @ResultSetArt=''RAW'';';
+        PRINT N'Nur JSON ausgeben. DECLARE @ResultJson nvarchar(max); EXEC [monitor].[USP_PlanCacheHealth] @AnalyseModus=''SUMMARY'', @ResultSetArt=''NONE'', @JsonErzeugen=1, @Json=@ResultJson OUTPUT; SELECT @ResultJson AS [Json];';
+        PRINT N'Benanntes Resultset in eine lokale Temp-Tabelle schreiben. CREATE TABLE #PlanCacheHealth_HelpExample ([Seed] int NULL); BEGIN TRY EXEC [monitor].[USP_PlanCacheHealth] @AnalyseModus=''SUMMARY'', @ResultSetArt=''TABLE'', @ResultTablesJson=N''{"overview":"#PlanCacheHealth_HelpExample"}''; SELECT * FROM #PlanCacheHealth_HelpExample; DROP TABLE #PlanCacheHealth_HelpExample; END TRY BEGIN CATCH DROP TABLE #PlanCacheHealth_HelpExample; THROW; END CATCH;';
         RETURN;
     END;
 
@@ -27878,11 +28799,29 @@ BEGIN
     IF @Hilfe=1
     BEGIN
         PRINT N'monitor.USP_PlanDetails';
-        PRINT N'Mindestens einer der Selektoren @SessionIds, @PlanHandle, @SqlHandle oder @QueryHash ist erforderlich.';
-        PRINT N'@MitPlanAttributes bit=1; @MitCompilePlan bit=1; @MitTextPlan bit=0; @MitLastActualPlan bit=0; @MitLivePlan bit=0.';
-        PRINT N'@MaxAnalyseobjekte int=20: positive Werte begrenzen; NULL/0 = unbegrenzt. Mehr als 20 oder unbegrenzt prüft PLAN_CACHE_DEEP.';
-        PRINT N'@MaxSqlTextZeichen int=8000: positiv = gekürzt; NULL/0 = vollständiger Statement- und Batchtext; @PrintMeldungen bit=1; @Hilfe bit=0.';
-        PRINT N'LAST_QUERY_PLAN_STATS und Live-Profiling werden nur gelesen, niemals aktiviert. NULL kann bedeuten: deaktiviert, Plan evictet, nicht cachebar oder nicht verfügbar.';
+        PRINT N'Die Procedure löst ausgewählte Planhandles auf und zeigt auf Wunsch Planattribute, Compile-Pläne und verfügbare Laufzeitpläne. Sie aktiviert weder LAST_QUERY_PLAN_STATS noch Live-Profiling.';
+        PRINT N'@SessionIds nvarchar(max). Default ist NULL. Liste ganzer Session-IDs von 1 bis 32767, z. B. 57|61. Pipe, Beistrich und Strichpunkt sind Trennzeichen. NULL lässt diesen Selektor aus. Leere, nur aus Leerzeichen bestehende oder ungültige Elemente ergeben INVALID_PARAMETER. Doppelte IDs werden zusammengefasst. Live-XML erfordert genau eine eindeutige Session-ID.';
+        PRINT N'@PlanHandle varbinary(64). Default ist NULL. Exakter Planhandle. NULL lässt diesen Selektor aus. Nicht-null wird als Kandidat aufgenommen, auch wenn der Handle inzwischen nicht mehr im Cache auflösbar ist.';
+        PRINT N'@SqlHandle varbinary(64). Default ist NULL. Exakter SQL-Handle. NULL lässt Selektor aus. Nicht-null sucht sichtbare Query-Stats-Zeilen dieses Handles. Bis zum Kandidatenlimit, nach total_worker_time absteigend.';
+        PRINT N'@QueryHash binary(8). Default ist NULL. Exakter 8-Byte Queryhash. NULL lässt Selektor aus. Nicht-null sucht sichtbare Query-Stats-Kandidaten dieses Hashes. Bis zum Kandidatenlimit, nach total_worker_time absteigend.';
+        PRINT N'@MitPlanAttributes bit. Default ist 1. 0 unterdrückt Planattribute. 1 liest sie für jeden behaltenen Kandidaten. NULL wird von der Implementierung nicht als eigener Modus unterstützt (SQL-IF-Zweig wird nicht aktiviert).';
+        PRINT N'@MitCompilePlan bit. Default ist 1. 0 unterdrückt kompiliertes Showplan-XML. 1 fordert sys.dm_exec_query_plan an. NULL aktiviert den Zweig nicht. Fehlender Plan wird als nicht verfügbar je Candidate ausgegeben.';
+        PRINT N'@MitTextPlan bit. Default ist 0. 0 unterdrückt Text-Showplan. 1 fordert ihn an. NULL aktiviert den Zweig nicht.';
+        PRINT N'@MitLastActualPlan bit. Default ist 0. 0 unterdrückt Last-known-Actual-Plan. 1 liest vorhandene LAST_QUERY_PLAN_STATS-Evidenz. Die Procedure aktiviert die Datenbankoption nicht. NULL aktiviert den Zweig nicht. Fehlendes XML kann deaktiviert, ungeeignet, nicht cachebar oder evicted bedeuten.';
+        PRINT N'@MitLivePlan bit. Default ist 0. 0 unterdrückt Live-Abfrage. 1 erfordert genau eine eindeutige Session-ID in SessionIds. Sonst wird ein INVALID_PARAMETER-Planstatus ausgegeben. Liest laufenden Request, aktiviert kein Profiling. NULL aktiviert den Zweig nicht.';
+        PRINT N'@MaxAnalyseobjekte int. Default ist 20. Positive Zahl begrenzt die zusammengeführten Kandidaten. 0 oder NULL bedeutet unbegrenzt. Negativ ist INVALID_PARAMETER. Oberhalb 20 einschließlich unbegrenzt wird PLAN_CACHE_DEEP geprüft und je Policy kann HighImpactConfirmed erforderlich sein. Limit ist keine Ergebniszeilengrenze.';
+        PRINT N'@HighImpactConfirmed bit. Default ist 0. 0 keine Bestätigung, 1 bestätigt das Deep-Analyse-Gate gemäß zentraler Policy. Der Parameter übergeht das Gate nicht selbständig. NULL ist kein eigener bestätigender Wert.';
+        PRINT N'@MaxSqlTextZeichen int. Default ist 8000. Positive Zahl kürzt Statement- und Batchtext auf diese Zeichenanzahl. 0 oder NULL erhält beide vollständig. Negativ ist INVALID_PARAMETER.';
+        PRINT N'@ResultSetArt varchar(16). Default ist ''CONSOLE''. Nach Trim und Großschreibung: CONSOLE gibt lesbare benannte Resultsets. RAW gibt kanonische rohe Resultsets. NONE unterdrückt direkte Resultsets. TABLE schreibt in registrierte Zieltabellen. Geschlossene Menge: CONSOLE, RAW, NONE, TABLE. NULL/Leerwert normalisiert zu leer und ist ungültig.';
+        PRINT N'@ResultTablesJson nvarchar(max). Default ist NULL. Bei TABLE ist ein gültiges, nichtleeres JSON-Objekt erforderlich. Wählen Sie eine Teilmenge der exakt geschriebenen Schlüssel candidates, attributes und plans. Jeder Wert muss als Zeichenfolge eine andere vorhandene, leere lokale #Temp-Tabelle mit genau einer Seed-Spalte benennen. Erlaubt sind höchstens 116 Zeichen und weder ## noch #Monitor als Präfix. Außerhalb von TABLE sind nur NULL, die leere Zeichenfolge und reine Leerzeichen zulässig. Die Prüfung läuft vor der Hilfe. Ein ungültiges Mapping kann Fehler 51011 auslösen.';
+        PRINT N'@JsonErzeugen bit. Default ist 0. 0 erzeugt kein JSON. 1 erzeugt JSON im OUTPUT-Parameter. NULL kein aktiver Schalterwert/keine JSON-Erzeugung.';
+        PRINT N'@Json nvarchar(max) OUTPUT. Default ist NULL. Binden Sie eine nvarchar(max)-Variable mit OUTPUT. Der Aufruf setzt sie zunächst auf NULL. Bei @JsonErzeugen=1 enthält sie ein Objekt mit meta, candidates, attributes, plans und warnings.';
+        PRINT N'@PrintMeldungen bit. Default ist 1; bei Auslassung gilt 1. SQL Server bindet vor Prozedureintritt an bit: numerische 0 wird 0, numerische Werte ungleich 0 werden 1, NULL bleibt NULL; andere Literalformen unterliegen der SQL-Typkonvertierung, Bindungsfehler treten vor dem Prozedurcode auf. Der Parent normalisiert oder validiert den Wert nicht. 1 ermöglicht die eigene Statusmeldung nur am erreichten Ende bei einem nicht-NULL Status ungleich AVAILABLE; außerdem ermöglicht 1 die Truncation-Warnung nur bei positiver Zahl gekürzter Werte. Beide Meldungen sind RAISERROR Severity 10 WITH NOWAIT und keine SQL-Ausnahme. 0 und NULL unterdrücken diese optionalen Meldungen. Die Hilfeausgabe sowie Vorbereitungs- und SQL-Fehler sind unabhängig; vollständige Stille ist nicht garantiert.';
+        PRINT N'@Hilfe bit. Default ist 0. 1 zeigt die Hilfe nach der Prüfung von @ResultTablesJson und beendet den Aufruf vor der fachlichen Analyse. 0 und NULL führen die Analyse aus.';
+        PRINT N'Hilfe anzeigen. EXEC [monitor].[USP_PlanDetails] @Hilfe=1;';
+        PRINT N'Technische Resultsets lesen. EXEC [monitor].[USP_PlanDetails] @QueryHash=0x0102030405060708, @MitCompilePlan=1, @ResultSetArt=''RAW'';';
+        PRINT N'Nur JSON ausgeben. DECLARE @Json nvarchar(max); EXEC [monitor].[USP_PlanDetails] @PlanHandle=0x0102030405060708090A0B0C0D0E0F10, @ResultSetArt=''NONE'', @JsonErzeugen=1, @Json=@Json OUTPUT; SELECT @Json AS [Json];';
+        PRINT N'Ein Resultset in eine lokale Temp-Tabelle schreiben. CREATE TABLE #PlanDetails_HelpExample ([Seed] int NULL); BEGIN TRY EXEC [monitor].[USP_PlanDetails] @QueryHash=0x0102030405060708, @ResultSetArt=''TABLE'', @ResultTablesJson=N''{"plans":"#PlanDetails_HelpExample"}''; SELECT * FROM #PlanDetails_HelpExample; DROP TABLE #PlanDetails_HelpExample; END TRY BEGIN CATCH DROP TABLE #PlanDetails_HelpExample; THROW; END CATCH;';
         RETURN;
     END;
 
@@ -29563,14 +30502,179 @@ Objekt       : monitor.InternalCollectExecutionPlanMetadata
 Version      : 1.0.0
 Stand        : 2026-07-21
 Typ          : Interne Stored Procedure
-Zweck        : Ermittelt aus einem Plan zielgerichtet aktuelle Objekt-, Index-
-               und Statistikmetadaten der ausdrücklich bestätigten Quellumgebung.
-               Histogrammrohwerte verbleiben ausschließlich in lokalen Temp-
-               Tabellen des aufrufenden Evidenzgenerators.
-Voraussetzung: Der Aufrufer legt #CreateExecutionEvidenceJson_StatisticsCurrent, #CreateExecutionEvidenceJson_HistogramSteps,
-               #CreateExecutionEvidenceJson_HistogramSummary, #CreateExecutionEvidenceJson_PredicateHistogramMappings und
-               #CreateExecutionEvidenceJson_CollectionStatus mit dem dokumentierten Schema an.
-Locking      : Katalogabfragen mit LOCK_TIMEOUT; kein Zugriff auf Benutzerdaten.
+Zweck        : Die Procedure ermittelt zu einem Ausführungsplan Objekt-,
+               Index- und Statistikmetadaten der ausdrücklich bestätigten
+               Quellumgebung. Sie kann Histogrammschritte und Zusammenfassungen
+               sowie Zuordnungen zu Planprädikaten sammeln.
+Voraussetzung: Der Aufrufer legt die fünf Evidenz-Temp-Tabellen mit dem
+               erwarteten Schema an. Je ein TOP (0)-SELECT prüft Existenz und
+               Schemaauflösung, nicht das vollständige Schema oder die
+               Berechtigungen. Die fünf Prüfungen erzeugen fünf
+               leere Resultsets.
+Eingabe      :
+  @PlanXml xml, Default: keiner; obligatorisch. Eingabeform: einzelner
+               XML-Ausführungsplan als XML-Wert oder gebundene XML-Variable;
+               NULL ergibt INVALID_PARAMETER. Ein leeres, gültiges XML wird
+               nicht ausdrücklich abgewiesen.
+  @StatistikEvidenzModus varchar(16), Default: 'USED'. Eingabeform: ein
+               einzelner Modus-Textwert, keine Liste. NULL wird zur Laufzeit
+               zu USED;
+               äußere Leerzeichen werden entfernt, Großschreibung angewendet.
+               Endliche Werte: USED sammelt nur vom Plan als verwendet
+               gemeldete Statistiken; RELEVANT ergänzt Statistiken, deren
+               führende Spalte im Plan als SEEK, RESIDUAL, JOIN, ORDER_BY oder
+               GROUP_BY vorkommt; OBJECT_ALL ergänzt alle Statistiken
+               katalogauflösbarer Planobjekte. Leertext ist ungültig.
+  @HistogrammModus varchar(16), Default: 'NONE'. Eingabeform: einzelner
+               Modus-Textwert, keine Liste. NULL wird zur Laufzeit zu NONE;
+               äußere Leerzeichen werden entfernt, Großschreibung angewendet.
+               Endliche Werte: NONE sammelt im Hauptteil keine zusätzlichen Schritte;
+               SUMMARY und STEPS sammeln Schritte und bilden Zusammenfassungen,
+               wobei STEPS zusätzlich High-Impact-Bestätigung verlangt. Die
+               Sammlung ist in beiden Modi gleich. Vorhandene Zeilen werden
+               auch bei NONE zusammengefasst und können zugeordnet werden.
+               Leertext oder nur Leerzeichen ist ungültig.
+  @QuellumgebungBestaetigt bit, Default: 0. Eingabeform: einzelner SQL-bit-
+               Wert oder Variable; leere Zeichenfolge ist keine vorgesehene
+               Typform und wird vor Eintritt konvertiert. SQL-bit-Eingabe: 1 bestätigt die
+               Quellumgebung; 0 oder NULL ergeben INVALID_PARAMETER. Ausgelassen
+               bindet den Default 0 und ergibt ebenfalls INVALID_PARAMETER.
+               Leerer Zeichenfolgeneingang wird vor Eintritt zu bit 0 konvertiert und wie
+               fehlende Bestätigung abgelehnt.
+  @MitPredicateHistogramMap bit, Default: 1. Eingabeform: einzelner SQL-bit-
+               Wert oder Variable; leere Zeichenfolge ist keine vorgesehene
+               Typform und wird vor Eintritt konvertiert. SQL-bit-Eingabe: 1 ordnet
+               extrahierte Planparameterwerte Histogrammschritten zu; 0
+               überspringt die Zuordnung. NULL ergibt INVALID_PARAMETER.
+               Leerer Zeichenfolgeneingang wird vor Eintritt zu bit 0 konvertiert und
+               überspringt die Zuordnung.
+  @MaxStatistiken int, Default: 100. Eingabeform: einzelner SQL-int-Wert oder
+               Variable; leere Zeichenfolge ist keine vorgesehene Typform und
+               wird vor Eintritt konvertiert. Ganze Zahl 1 bis 1000 einschließlich;
+               NULL und Werte außerhalb ergeben INVALID_PARAMETER. Begrenzt
+               die insgesamt ausgewählten Kandidaten nach Priorität PLAN_USED,
+               RELEVANT_LEADING_COLUMN, danach übrige. RELEVANT/OBJECT_ALL-
+               Kandidaten werden vor dem Limit aus dem Katalog gelesen; ein
+               positives Limit verhindert diese anfängliche Abfrage nicht.
+               Leerer Zeichenfolgeneingang wird vor Eintritt zu int 0 konvertiert und liegt
+               außerhalb des gültigen Bereichs.
+  @MaxHistogrammSchritte int, Default: 20000. Eingabeform: einzelner SQL-int-
+               Wert oder Variable; leere Zeichenfolge ist keine vorgesehene
+               Typform und wird vor Eintritt konvertiert. Ganze Zahl 0 bis 200000
+               einschließlich; NULL und Werte außerhalb ergeben
+               INVALID_PARAMETER. Begrenzt zusätzliche Schritte global anhand
+               der bereits in der Aufrufer-Schritttabelle vorhandenen Zeilen;
+               der Wert 0 fügt keine neuen Schritte ein.
+               Bei erreichtem Limit werden keine weiteren eingefügt und
+               vorhandene Zeilen nicht entfernt.
+               Leerer Zeichenfolgeneingang wird vor Eintritt zu int 0 konvertiert und fügt
+               keine neuen Schritte ein.
+  @LockTimeoutMs int, Default: 0. Eingabeform: einzelner SQL-int-Wert oder
+               Variable; leere Zeichenfolge ist keine vorgesehene Typform und
+               wird vor Eintritt konvertiert. Ganze Zahl 0 bis 60000 Millisekunden;
+               NULL und Werte außerhalb ergeben INVALID_PARAMETER. Steuert
+               LOCK_TIMEOUT im Hauptteil nach frühen Prüfungen. Die Procedure
+               setzt zuerst LOCK_TIMEOUT 0 und speichert den Wert erst danach;
+               am Ende wird somit 0 statt des vorherigen Aufruferwerts
+               wiederhergestellt.
+               Leerer Zeichenfolgeneingang wird vor Eintritt zu int 0 konvertiert; 0
+               Millisekunden bedeutet kein Warten auf eine Sperre.
+  @HighImpactConfirmed bit, Default: 0. Eingabeform: einzelner SQL-bit-Wert
+               oder Variable; leere Zeichenfolge ist keine vorgesehene Typform
+               und wird vor Eintritt konvertiert. SQL-bit-Eingabe: 1 bestätigt den
+               High-Impact-Pfad, 0 nicht. Für RELEVANT, OBJECT_ALL und STEPS
+               führt 0 zu HIGH_IMPACT_CONFIRMATION_REQUIRED; SUMMARY allein
+               verlangt die Bestätigung nicht. NULL ergibt vor den Temp-Tabellen-
+               Prüfungen INVALID_PARAMETER. Die lokale Bestätigungsprüfung
+               erfolgt vor dem optionalen Gate-Aufruf; dessen Ergebnisse können
+               außerdem HIGH_IMPACT_CONFIRMATION_REQUIRED, INVALID_PARAMETER
+               oder DENIED_GROUP sein. Bei SQL-bit-Konvertierung kann ein
+               numerischer Nichtnullwert ungleich 0 zu 1 werden.
+               Leerer Zeichenfolgeneingang wird vor Eintritt zu bit 0 konvertiert; für
+               einen breiten Pfad fehlt damit die Bestätigung.
+  @StatusCodeOut varchar(40), Default: NULL OUTPUT. Eingabeform: einzelner
+               varchar-Wert/Skalar oder OUTPUT-Variable. Eingehendes NULL und
+               Leertext sind erlaubt, werden ignoriert. Eingehender Wert wird
+               ignoriert und zuerst auf AVAILABLE gesetzt. Lokal mögliche
+               Werte: AVAILABLE, INVALID_PARAMETER, INTERNAL_ERROR,
+               HIGH_IMPACT_CONFIRMATION_REQUIRED, PARTIAL, LOCK_TIMEOUT und
+               ERROR_HANDLED; Gate-Statuswerte werden weitergereicht.
+               AVAILABLE bedeutet regulär beendet ohne gesetztes Teilfehlerflag, nicht
+               vollständige Metadaten; INVALID_PARAMETER bedeutet lokal erkannter
+               ungültiger Parameter oder ein entsprechendes Gate-Ergebnis; INTERNAL_ERROR
+               bedeutet Fehler einer Temp-Tabellenprobe; HIGH_IMPACT_CONFIRMATION_REQUIRED
+               bedeutet fehlende Bestätigung des breiten Pfads; PARTIAL bedeutet
+               verzeichneten Teilfehler bei ansonsten regulärem Ende; LOCK_TIMEOUT bedeutet
+               Fehler 1222 im äußeren Hauptteil-CATCH; ERROR_HANDLED bedeutet einen anderen
+               Fehler in diesem CATCH; DENIED_GROUP bedeutet vom Gate nicht freigegebenen
+               CATALOG_DEEP-Pfad. Das Gate kann INVALID_PARAMETER insbesondere bei
+               NULL-Bestätigung oder ungültiger/unbekannter Analyseklasse liefern. Zum Empfangen passende Variable mit OUTPUT;
+               ohne OUTPUT kann typgerechter Skalar übergeben und Ausgabe
+               verworfen werden.
+  @IsPartialOut bit, Default: NULL OUTPUT. Eingabeform: einzelner SQL-bit-
+               Wert/Skalar oder OUTPUT-Variable; NULL ist erlaubt und wird
+               ignoriert, leere Zeichenfolge ist keine vorgesehene Typform und
+               wird vor Eintritt konvertiert. Eingehender Wert wird ignoriert,
+               zuerst 0, bei Teil- oder Fehlerausgabe 1. Zum Empfangen
+               passende Variable mit OUTPUT; ohne OUTPUT kann typgerechter
+               Skalar übergeben und Ausgabe verworfen werden.
+               Leerer Zeichenfolgeneingang wird vor Eintritt zu bit 0 konvertiert; der
+               Eingang wird wie NULL ignoriert.
+  @ErrorNumberOut int, Default: NULL OUTPUT. Eingabeform: einzelner SQL-int-
+               Wert/Skalar oder OUTPUT-Variable; NULL ist erlaubt und wird
+               ignoriert, leere Zeichenfolge ist keine vorgesehene Typform und
+               wird vor Eintritt konvertiert. Eingehender Wert wird ignoriert,
+               zunächst NULL. Bei abgefangenen Fehlern enthält er
+               ERROR_NUMBER() im Hauptteil-CATCH oder der Temp-Probe;
+               Einzelquellenfehler können PARTIAL bei weiter NULL liefern.
+               Gewöhnliche Parameter- oder Gate-Statuswerte setzen ihn nicht neu. Zum Empfangen passende Variable mit
+               OUTPUT; ohne OUTPUT kann typgerechter Skalar übergeben und
+               Ausgabe verworfen werden.
+               Leerer Zeichenfolgeneingang wird vor Eintritt zu int 0 konvertiert; der
+               Eingang wird wie NULL ignoriert.
+  @ErrorMessageOut nvarchar(2048), Default: NULL OUTPUT. Eingabeform: einzelner
+               nvarchar-Wert/Skalar oder OUTPUT-Variable; NULL und Leertext
+               sind erlaubt und werden ignoriert. Eingehender Wert wird
+               ignoriert, zunächst NULL. Lokale Parameterfehler, Temp-Tabellenprobe, Gate-Rückgabe und
+               Hauptteil-CATCH setzen die jeweilige Meldung. Bei AVAILABLE sowie
+               PARTIAL durch Einzelquellenfehler kann er NULL bleiben; Details
+               stehen dann im CollectionStatus. Zum Empfangen passende Variable mit OUTPUT;
+               ohne OUTPUT kann typgerechter Skalar übergeben und Ausgabe
+               verworfen werden.
+               Bei SQL-bit-Konvertierungen kann ein numerischer Nichtnullwert
+               ungleich 0 bereits zu 1 konvertiert sein.
+Wirkung       : Liest Planreferenzen sowie SQL-Server-Katalog- und
+               Statistikmetadaten und schreibt in
+               #CreateExecutionEvidenceJson_StatisticsCurrent,
+               #CreateExecutionEvidenceJson_HistogramSteps,
+               #CreateExecutionEvidenceJson_HistogramSummary,
+               #CreateExecutionEvidenceJson_PredicateHistogramMappings und
+               #CreateExecutionEvidenceJson_CollectionStatus. Diese Daten
+               werden nicht als Resultsets ausgegeben. Histogrammrohwerte
+               werden in lokalen Tabellen verarbeitet; Prädikatwerte liegen
+               in einer internen Temp-Tabelle. Keine Zusage vollständiger
+               Katalogerfassung, atomarer Änderungen oder einer über die
+               tatsächlichen SQL-Server-Prüfungen hinausgehenden
+               Berechtigungssicherheit.
+Grenzen      : SET LOCK_TIMEOUT 0 erfolgt vor allen Prüfungen und gilt innerhalb der
+               Procedure auch auf frühen Rückgabepfaden. Die eigene
+               Wiederherstellungsanweisung im Hauptteil verwendet den danach gespeicherten
+               Wert 0, keine vor Eintritt gesicherte Kopie. Der optionale Gate-Aufruf und
+               sein Katalogzugriff liegen vor dem Hauptteil-TRY; dort unerwartet
+               weitergeworfene Fehler können ohne Umsetzung in die globalen Fehlerausgaben
+               entweichen.
+Fehler        : Wenn eine referenzierte Datenbank bei der Kandidatenermittlung
+               unzugänglich ist, wird dafür ein CollectionStatus-Eintrag
+               geschrieben. Fehler in den Schleifen werden soweit abgefangen
+               ebenfalls erfasst und markieren die Ausgabe als partiell. Fehler in der initialen Temp-Tabellenprobe setzen
+               INTERNAL_ERROR und geben zurück. Gate-Ergebnisse INVALID_PARAMETER (ungültige Klasse oder Bestätigung),
+               HIGH_IMPACT_CONFIRMATION_REQUIRED (Bestätigung fehlt) und
+               DENIED_GROUP (Pfad nicht freigegeben) können durchgereicht
+               werden; ErrorNumberOut kann dabei NULL bleiben. Der äußere CATCH des Hauptteils setzt
+               LOCK_TIMEOUT bei Fehler 1222, sonst ERROR_HANDLED, samt
+               Fehlernummer und -text. Bei einer späteren Datenbankprüfung ohne ELSE können inzwischen nicht
+               erreichbare Datenbanken ohne eigenen Statusdatensatz bleiben.
+               Bereits geschriebene Zeilen werden nicht zurückgerollt.
 ===============================================================================
 */
 CREATE OR ALTER PROCEDURE [monitor].[InternalCollectExecutionPlanMetadata]
@@ -29603,12 +30707,12 @@ BEGIN
     IF @PlanXml IS NULL
        OR @StatistikEvidenzModus NOT IN ('USED','RELEVANT','OBJECT_ALL')
        OR @HistogrammModus NOT IN ('NONE','SUMMARY','STEPS')
-       OR @QuellumgebungBestaetigt<>1
-       OR @MitPredicateHistogramMap NOT IN (0,1)
+       OR @QuellumgebungBestaetigt IS NULL OR @QuellumgebungBestaetigt<>1
+       OR @MitPredicateHistogramMap IS NULL OR @MitPredicateHistogramMap NOT IN (0,1)
        OR @MaxStatistiken IS NULL OR @MaxStatistiken NOT BETWEEN 1 AND 1000
        OR @MaxHistogrammSchritte IS NULL OR @MaxHistogrammSchritte NOT BETWEEN 0 AND 200000
        OR @LockTimeoutMs IS NULL OR @LockTimeoutMs NOT BETWEEN 0 AND 60000
-       OR @HighImpactConfirmed NOT IN (0,1)
+       OR @HighImpactConfirmed IS NULL OR @HighImpactConfirmed NOT IN (0,1)
     BEGIN
         SELECT @StatusCodeOut='INVALID_PARAMETER',@IsPartialOut=1,
                @ErrorMessageOut=N'Ungültiger Plan-, Modus-, Bestätigungs-, Mengen- oder Lock-Timeout-Parameter.';
@@ -30173,17 +31277,161 @@ GO
 
 -- BEGIN SOURCE: Code/04_PlanCache/051_InternalAnalyzeExecutionPlan.sql
 /*
-===============================================================================
 Objekt       : monitor.InternalAnalyzeExecutionPlan
 Version      : 1.2.1
 Stand        : 2026-10-14
 Typ          : Interne Stored Procedure
-Zweck        : Zerlegt genau ein Showplan-XML einmalig in statementgenaue,
-               relationale Plan-, Operator-, Runtime-, Statistik-, Parameter-,
-               Warnungs-, Optimizer-, Feedback- und Findingtabellen des Aufrufers.
-Voraussetzung: Der Aufrufer legt die lokalen #ExecutionPlanAnalysis_*-Temp-Tabellen entsprechend
-               dem Resultsetinventar an. Keine Benutzertabellenzugriffe.
-===============================================================================
+Zweck        : Die Procedure zerlegt genau ein vom Aufrufer geliefertes Showplan-XML
+               mit unterstützten StmtSimple-Elementen in die vorbereiteten
+               lokalen #ExecutionPlanAnalysis_*-Tabellen.
+Voraussetzung: Der Aufrufer stellt 19 lokale Ergebnistabellen mit dem vereinbarten
+               Schema bereit. 19 SELECT TOP (0)-Probes erzeugen 19 leere
+               Resultsets und testen den Tabellenzugriff, nicht die vollständige
+               Schemakompatibilität. Die Procedure führt keine Plananweisung aus und
+               beschafft oder löst keine Planquelle über einen Katalog auf.
+               Spätere Fehler nehmen bereits geschriebene Teilergebnisse nicht
+               atomar zurück.
+
+Parametervertrag
+Die vier ersten Parameter sind erforderlich. Alle folgenden Parameter haben den in der
+Signatur angegebenen Default; sie können ausgelassen werden. Ein OUTPUT-Parameter
+kann auch als typisierter Skalar oder NULL ohne OUTPUT übergeben werden; der
+Eingabewert wird ignoriert und die Ausgabe verworfen. Zum Empfang ist eine Variable
+des angegebenen Typs mit OUTPUT zu binden. Typkonvertierung erfolgt vor dem
+Prozedureintritt; Konvertierungsfehler sind nicht allgemein durch den Prozedur-CATCH
+abgedeckt.
+
+- @AnalysisObjectId int, Eingabe, erforderlich, kein Default: positive Kennung für
+  Ergebniszeilen. NULL, '' (als int gebunden: 0) und jeder Wert < 1 ergeben
+  INVALID_PARAMETER. Zulässig sind 1 bis 2147483647.
+- @PlanXml xml, Eingabe, erforderlich, kein Default: Showplan-XML. NULL ergibt
+  INVALID_PARAMETER. '' wird als leeres XML gebunden und enthält kein StmtSimple;
+  das ergibt UNAVAILABLE_OBJECT und Partialität. Die Suche verwendet local-name(.)
+  für StmtSimple und validiert kein bestimmtes Root-Element oder Namespace.
+- @PlanSource varchar(24), Eingabe, erforderlich, kein Default: Codes IMPORTED
+  (importiertes XML), COMPILE (Kompilierungsplan), LAST_ACTUAL (letzter Actual Plan),
+  CURRENT_ACTUAL (aktueller Actual Plan), QUERY_STORE (Query-Store-Plan). '' und NULL
+  sind ungültig und ergeben INVALID_PARAMETER. Keine Normalisierung. Der Wert
+  klassifiziert die Quelle und beschafft keinen Plan.
+- @RuntimeCounterScope varchar(32), Eingabe, erforderlich, kein Default: Codes NONE
+  (keine Runtimecounter beansprucht), LAST_COMPLETED_EXECUTION (letzte abgeschlossene
+  Ausführung), CURRENT_PARTIAL_EXECUTION (aktuelle möglicherweise unvollständige
+  Ausführung), IMPORTED_ACTUAL (importiertes Actual-Plan-XML), QUERY_STORE_AGGREGATE
+  (aggregierte Query-Store-Zuordnung), UNKNOWN (Scope unbekannt). '' und NULL sind
+  ungültig und ergeben INVALID_PARAMETER. Keine Normalisierung. Klassifiziert die
+  gelieferten Daten, beschafft oder verifiziert aber keine Runtimecounter.
+- @WorkloadProfile varchar(32), Eingabe, Default 'BALANCED': offene, tabellengesteuerte
+  Allowlist monitor.PlanAnalysisProfile. NULL wird BALANCED; Rand-Leerraum wird
+  entfernt und Großschreibung hergestellt. Unbekannte, deaktivierte und leere Werte
+  fallen auf BALANCED zurück. Seedprofile: LATENCY_SENSITIVE gewichtet interaktive/
+  häufige Zugriffe je Ausführung und Wiederholungsrate stärker; BALANCED ist neutral
+  für gemischte Workloads ohne belastbare Zuordnung; THROUGHPUT gewichtet absolute
+  CPU-, I/O-, TempDB- und Datenmengen stärker; MAINTENANCE behandelt große Scans und
+  Sorts bei Wartung/Strukturänderungen als möglicherweise erwartet; UNKNOWN bleibt
+  konservativ und weist geringe Zuordnungssicherheit aus. Weitere aktive Codes sind
+  möglich.
+- @MinSeverity varchar(16), Eingabe, Default 'INFO': INFO (informativ), LOW (niedrig),
+  MEDIUM (mittel), HIGH (hoch), CRITICAL (kritisch/höchste Stufe). NULL wird INFO;
+  Rand-Leerraum wird entfernt und Großschreibung hergestellt. '' und andere Werte
+  sind ungültig. Filtert Findings und PlanWarnings unterhalb der Schwelle;
+  NO_EXPLICIT_WARNING bleibt zunächst ausgenommen. Ein Hinweis kann melden, dass
+  keine Warnung die Schwelle erreicht. Keine Aussage über Planoptimalität oder
+  fehlende Quelle.
+- @EvidenceJson nvarchar(max), Eingabe, Default NULL: optionale externe STATISTICS
+  IO/TIME-Evidenz. NULL lässt die Evidenz aus. '' ist ungültige JSON-Syntax und setzt
+  Partialität mit Capability EXECUTION_EVIDENCE_JSON/INVALID_JSON. Syntaktisch
+  gültiges JSON wird nicht schemaweit validiert; lax OPENJSON-Pfade mit fehlenden oder
+  falsch geformten Werten können leere/unerkannte Teilergebnisse liefern. Zusätzliche
+  Felder werden ignoriert; Pfadnamen sind case-sensitive. Ungültige Typkonvertierungen
+  können ERROR_HANDLED auslösen. Negative Dezimalwerte werden nicht gefiltert;
+  confidence, timeCategory und parseStatus haben keine geprüfte Werteliste.
+  Pfade und Typen: $.capture.sameExecutionConfidence (Text, Fallback UNCONFIRMED);
+  $.statisticsIo[*].statementOrdinal int, objectDisplayName nvarchar(512),
+  logicalReads/physicalReads/readAheadReads/scanCount decimal(38,4), parseStatus
+  varchar(40); $.statisticsTime[*].statementOrdinal int, timeCategory varchar(24),
+  cpuMs/elapsedMs decimal(38,4), parseStatus varchar(40). Nicht-NULL IO-Werte werden
+  als pages-Metriken, Zeitwerte als ms ausgegeben. Confidence belegt keine gleiche
+  Ausführung. Synthetisches Beispiel:
+  {"capture":{"sameExecutionConfidence":"UNCONFIRMED"},"statisticsIo":[{"statementOrdinal":1,"objectDisplayName":"[dbo].[Sample]","logicalReads":12,"physicalReads":0,"readAheadReads":0,"scanCount":1,"parseStatus":"PARSED"}],"statisticsTime":[{"statementOrdinal":1,"timeCategory":"SQL","cpuMs":2.5,"elapsedMs":3,"parseStatus":"PARSED"}]}
+- @MitThreadRuntime bit, Eingabe, Default 0: 0 löscht die Threadzeilen nach ihrer
+  Materialisierung und der Ableitung aggregierter Runtimewerte; 1 behält sie.
+  NULL ergibt INVALID_PARAMETER. Numerische Werte ungleich 0 werden bei Bindung
+  zu 1; '' kann zu 0 konvertieren.
+- @EvidenzDatenschutzModus varchar(24), Eingabe, Default 'DERIVED_ONLY': geschlossene
+  Codes DERIVED_ONLY (Werte weglassen, abgeleitete Evidenz führen), TOKENIZED (Werte
+  weglassen, vorhandene Werte mit frischem lokalem Zufallssalt tokenisieren), RAW
+  (Werte im Klartext) und STRUCTURE_ONLY (Werte weglassen, Strukturstatus setzen).
+  NULL wird DERIVED_ONLY; äußere U+0020-Leerzeichen entfernen und Großschreibung. '' ist ungültig.
+  DERIVED_ONLY und STRUCTURE_ONLY lassen dieselben Wertespalten leer, unterscheiden
+  sich aber im ValueHandlingStatus. SQL-NULL-Werte werden markiert und nicht
+  tokenisiert. Keine globale Redaktion anderer Planwerte oder Namen.
+- @IdentifierDatenschutzModus varchar(16), Eingabe, Default 'RAW': RAW (Objektanzeige
+  übernehmen), TOKENIZED (mit frischem lokalem Zufallssalt tokenisieren), OMIT
+  (weglassen). NULL wird RAW; äußere U+0020-Leerzeichen entfernen und Großschreibung. '' ist ungültig. Wirkt nur
+  auf statisticsIo.objectDisplayName als Scope-Bezeichnung, nicht global.
+- @SourceObservedAtUtc datetime2(3), Eingabe, Default NULL: Zeitpunkt nach
+  UTC-Konvention. Auslassen/NULL setzt SYSUTCDATETIME(). Ein expliziter Wert wird als
+  UTC-Konvention übernommen, aber nicht umgerechnet oder als tatsächliche Quellzeit
+  verifiziert. '' wird nach SQL-Typbindungsregeln behandelt; die Procedure prüft den
+  resultierenden Wert nicht auf Herkunft oder UTC-Abweichung.
+  Eingabe als datetime2-Variable oder ISO-Text, etwa 2000-01-01T00:00:00.000.
+- @ParameterEvidenceSessionId smallint, Eingabe, Default NULL: Session-Skalar im
+  ParameterEvidence-Kontext. Signed smallint-Bereich -32768 bis 32767, einschließlich
+  negativer und null Werte; keine Positivitätsprüfung. NULL bleibt NULL; '' als
+  smallint gebunden wird 0. Keine DMV-Abfrage oder Sessionauflösung.
+- @ParameterEvidenceRequestId int, Eingabe, Default NULL: Request-Skalar im
+  ParameterEvidence-Kontext. Signed int-Bereich -2147483648 bis 2147483647;
+  keine Positivitätsprüfung. NULL bleibt NULL; '' als int gebunden wird 0. Keine
+  Requestauflösung.
+- @PlanHandle varbinary(64), Eingabe, Default NULL: Binärwert, als varbinary-Variable
+  oder SQL-0x-Hexwert zu binden; 0x bezeichnet einen leeren Handle. Der Typ begrenzt
+  den gebundenen Wert auf 64 Bytes; die Procedure führt keine eigene Längenprüfung aus.
+  NULL bleibt NULL. Kein Textpfad, keine Suche oder Auflösung über den Handle.
+- @QueryStoreDatabaseName sysname, Eingabe, Default NULL: einzelner unquotierter
+  Unicode-Datenbankname im sysname-Typ (nvarchar(128)); keine Liste oder
+  Identifier-Syntax. '' wird unverändert akzeptiert; NULL bleibt NULL. Keine
+  Auflösung und keine Query-Store-Abfrage.
+- @QueryStorePlanId bigint, Eingabe, Default NULL: Plan-ID als Kontextskalar. Signed
+  bigint-Bereich -9223372036854775808 bis 9223372036854775807; keine
+  Positivitätsprüfung. NULL bleibt NULL; '' als bigint gebunden wird 0. Keine
+  Query-Store-Abfrage oder Planbeschaffung.
+- @StatusCodeOut varchar(40), OUTPUT, Signatur-Default NULL: Eingabewert (auch NULL
+  oder '') wird ignoriert; ausgelassen ist der Default NULL. Ohne OUTPUT wird die
+  Ausgabe verworfen; zum Empfang varchar(40)-Variable mit OUTPUT binden. Initialwert
+  AVAILABLE. Endwerte: AVAILABLE (ohne Partialitätskennzeichen beendet), PARTIAL
+  (Hauptanalyse abgeschlossen und Partialitätsflag gesetzt), INVALID_PARAMETER
+  (validierter Eingabefehler), UNAVAILABLE_OBJECT (kein unterstütztes StmtSimple),
+  INTERNAL_ERROR (lokale Ergebnistabelle fehlt oder ist nicht zugreifbar),
+  ERROR_HANDLED (abgefangener späterer Fehler). Profilabfrage und eigene Temp-Anlage
+  können außerhalb dieses Statuspfads fehlschlagen.
+- @IsPartialOut bit, OUTPUT, Signatur-Default NULL: Eingabewert (auch NULL oder '',
+  sofern als bit gebunden) wird ignoriert; ausgelassen ist der Default NULL. Ohne
+  OUTPUT wird die Ausgabe verworfen; zum Empfang bit-Variable mit OUTPUT binden.
+  Initialwert 0. 1 kennzeichnet unter anderem ungültige Eingabe, fehlende Statements,
+  ungültiges JSON oder abgefangene Fehler; bei regulärem Abschluss wird AVAILABLE zu
+  PARTIAL. NULL ist kein regulärer Ausgangswert.
+- @ErrorNumberOut int, OUTPUT, Signatur-Default NULL: Eingabewert (auch NULL oder '',
+  sofern als int gebunden) wird ignoriert; ausgelassen ist der Default NULL. Ohne
+  OUTPUT wird die Ausgabe verworfen; zum Empfang int-Variable mit OUTPUT binden.
+  Initialwert NULL; nur Fehlerpfade mit erfasster SQL-Fehlernummer setzen einen Wert.
+  Bei PARTIAL ohne abgefangenen SQL-Fehler kann die Ausgabe NULL bleiben.
+- @ErrorMessageOut nvarchar(2048), OUTPUT, Signatur-Default NULL: Eingabewert (auch
+  NULL oder '') wird ignoriert; ausgelassen ist der Default NULL. Ohne OUTPUT wird
+  die Ausgabe verworfen; zum Empfang nvarchar(2048)-Variable mit OUTPUT binden.
+  Initialwert NULL; nur belegte Meldungspfade setzen Text.
+  Bei PARTIAL ohne expliziten Meldungspfad kann die Ausgabe NULL bleiben.
+
+Kontext- und Fehlergrenzen
+Die sechs optionalen Kontextwerte SourceObservedAtUtc, ParameterEvidenceSessionId,
+ParameterEvidenceRequestId, PlanHandle, QueryStoreDatabaseName und QueryStorePlanId
+sind typisierte Skalare. Sie beweisen weder Planherkunft noch Ausführungsgleichheit.
+Lokale T-SQL-Variablenwerte werden nicht aus DMV-Kontext ergänzt. PlanHandle bleibt
+binär. Tokenisierung verwendet einen pro Aufruf frischen lokalen Zufallssalt und
+liefert keinen stabilen aufrufübergreifenden Schlüssel. Die Profilabfrage gegen
+monitor.PlanAnalysisProfile liegt vor dem Haupt-TRY; ein Fehler dort kann nach außen
+gelangen. Fehler der eigenen Temp-Tabellenanlage werden nach Wiederherstellung von
+LOCK_TIMEOUT 0 erneut ausgelöst. Der spätere Haupt-CATCH meldet ERROR_HANDLED mit
+Fehlernummer und -text; frühere Einfügungen werden nicht atomar zurückgenommen.
 */
 CREATE OR ALTER PROCEDURE [monitor].[InternalAnalyzeExecutionPlan]
       @AnalysisObjectId          int
@@ -30223,10 +31471,10 @@ BEGIN
         , @ErrorMessageOut=NULL;
 
     IF @AnalysisObjectId IS NULL OR @AnalysisObjectId<1 OR @PlanXml IS NULL
-       OR @PlanSource NOT IN ('IMPORTED','COMPILE','LAST_ACTUAL','CURRENT_ACTUAL','QUERY_STORE')
-       OR @RuntimeCounterScope NOT IN ('NONE','LAST_COMPLETED_EXECUTION','CURRENT_PARTIAL_EXECUTION','IMPORTED_ACTUAL','QUERY_STORE_AGGREGATE','UNKNOWN')
+       OR @PlanSource IS NULL OR @PlanSource NOT IN ('IMPORTED','COMPILE','LAST_ACTUAL','CURRENT_ACTUAL','QUERY_STORE')
+       OR @RuntimeCounterScope IS NULL OR @RuntimeCounterScope NOT IN ('NONE','LAST_COMPLETED_EXECUTION','CURRENT_PARTIAL_EXECUTION','IMPORTED_ACTUAL','QUERY_STORE_AGGREGATE','UNKNOWN')
        OR @MinSeverity NOT IN ('INFO','LOW','MEDIUM','HIGH','CRITICAL')
-       OR @MitThreadRuntime NOT IN (0,1)
+       OR @MitThreadRuntime IS NULL OR @MitThreadRuntime NOT IN (0,1)
        OR @EvidenzDatenschutzModus NOT IN ('DERIVED_ONLY','TOKENIZED','RAW','STRUCTURE_ONLY')
        OR @IdentifierDatenschutzModus NOT IN ('RAW','TOKENIZED','OMIT')
     BEGIN
@@ -31711,12 +32959,58 @@ BEGIN
     IF @Hilfe=1
     BEGIN
         PRINT N'monitor.USP_CreateExecutionEvidenceJson';
-        PRINT N'Erzeugt Evidence JSON aus optionalem PlanXml, STATISTICS IO/TIME und zielgerichteten Statistikmetadaten; führt kein SQL aus.';
-        PRINT N'@StatistikEvidenzModus NONE|PLAN_ONLY|USED|RELEVANT|OBJECT_ALL; aktuelle Metadaten benötigen CURRENT_SERVER und bestätigte Quellumgebung.';
-        PRINT N'@HistogrammModus NONE|SUMMARY|STEPS. @EvidenzDatenschutzModus DERIVED_ONLY (Default)|TOKENIZED|STRUCTURE_ONLY|RAW.';
-        PRINT N'RAW benötigt @SensitiveDataConfirmed=1. @IdentifierDatenschutzModus RAW|TOKENIZED|OMIT.';
-        PRINT N'@RawTextHandling NONE|HASH_ONLY|INCLUDE. INCLUDE benötigt @SensitiveDataConfirmed=1 und @IdentifierDatenschutzModus=RAW.';
-        PRINT N'Der Generator führt die analysierte Query niemals selbst aus.';
+        PRINT N'@PlanXml xml. Default ist NULL. Optionales bereits vorhandenes Plan-XML als SQL-Typ xml; Text kann durch SQL in diesen Typ konvertiert werden. NULL lässt die planbezogene Extraktion aus. Leeres XML oder XML ohne passende Showplan-Knoten kann keine passenden Bezüge liefern; die XML-Typprüfung ersetzt keine vollständige Showplan-Schemaprüfung. @StatementId begrenzt passende Extraktoren; die beschriebene Query wird niemals ausgeführt.';
+        PRINT N'@StatisticsIoText nvarchar(max). Default ist NULL. optionaler, bereits erfasster STATISTICS-IO-Meldungstext. NULL oder Auslassen erzeugt keine aus diesem Argument geparsten Zeilen. Nicht erkannte oder teilweise lesbare Zeilen bleiben mit ParseStatus sichtbar; der Text wird mit @StatisticsLanguage geparst und StatementOrdinal kann fehlende Zuordnungen ergänzen. Rohtext wird abhängig von @RawTextHandling behandelt. Leerer oder nur aus Leerzeichen bestehender Text liefert keine Parserzeilen.';
+        PRINT N'@StatisticsTimeText nvarchar(max). Default ist NULL. optionaler, bereits erfasster STATISTICS-TIME-Meldungstext. NULL oder Auslassen erzeugt keine daraus geparsten Zeilen. Der Parser kennzeichnet teilweise oder unbekannte Formate, statt fehlende Messwerte als Null zu erfinden; die Sprache richtet sich nach @StatisticsLanguage und @StatementOrdinal kann fehlende Zuordnung ergänzen. Rohtextbehandlung folgt @RawTextHandling. Leerer oder nur aus Leerzeichen bestehender Text liefert keine Parserzeilen.';
+        PRINT N'@StatisticsLanguage varchar(16). Default ist ''AUTO''. AUTO erkennt unterstützte Meldungsteile automatisch; EN bezeichnet Englisch und DE Deutsch. Der IO-Parser normalisiert Groß-/Kleinschreibung und fällt bei NULL, leerem oder unbekanntem Code auf AUTO zurück. Der TIME-Parser verwendet die Kennung nicht und erkennt seine englischen/deutschen Textteile selbst. Es entsteht kein INVALID_PARAMETER für einen unbekannten Sprachcode.';
+        PRINT N'@StatisticsEvidenceJson nvarchar(max). Default ist NULL. Optionaler Statistikabschnitt als JSON-Objekt mit statistics oder unmittelbar als Statistikobjekt. Unter statistics werden planUsage nur ohne @PlanXml und currentSnapshot, histogramSummaries sowie histogramSteps nur außerhalb CURRENT_SERVER als Arrays von Objekten projiziert; deren Feldnamen und SQL-Zieltypen stehen in den nachfolgenden JSON-Eingabeformen. Ein expliziter statistics-Abschnitt ersetzt den gleichnamigen Abschnitt aus @ExistingEvidenceJson. NULL importiert nichts; leerer Text ist ungültiges JSON. JSON_QUERY akzeptiert hier Objekt oder Array, eine strikte Objekt-/Feldprüfung findet nicht statt. Unbekannte Eigenschaften werden nicht übernommen. Bei ungültigem JSON oder fehlendem extrahierbarem Abschnitt führt @StrictValidation=1 intern zu 51021 und dem abgefangenen Status INVALID_EVIDENCE_JSON; andernfalls folgen Warnung und partielle Ausgabe. statisticsIo und statisticsTime an dieser Eingabewurzel werden nicht importiert.';
+        PRINT N'@ObjectMetadataJson nvarchar(max). Default ist NULL. Optionales JSON-Array von Objektbezügen oder Objekt mit objectReferences. Die 21 erkannten Eintragsfelder und SQL-Zieltypen stehen in den nachfolgenden JSON-Eingabeformen. Der Abschnitt ersetzt objectReferences aus @ExistingEvidenceJson und wird nur ohne @PlanXml importiert. NULL importiert nichts; leerer Text ist ungültig. JSON_QUERY akzeptiert Objekt oder Array unter objectReferences; die Implementierung erzwingt keine strikte Array-/Feldstruktur und ignoriert unbekannte Eigenschaften. Ungültiges JSON oder eine nicht extrahierbare Form führt bei @StrictValidation=1 intern zu 51022 und zum abgefangenen Status INVALID_EVIDENCE_JSON; andernfalls folgen Warnung und partielle Ausgabe.';
+        PRINT N'@StatistikEvidenzModus varchar(16). Default ist ''PLAN_ONLY''. Zulässig sind NONE, PLAN_ONLY, USED, RELEVANT und OBJECT_ALL. NONE überspringt die Extraktion von Statistiknutzung aus dem übergebenen Plan. PLAN_ONLY extrahiert diese Compile-Evidenz ohne aktuelle Katalogabfrage. USED ergänzt aktuelle Metadaten der im Plan verwendeten Statistiken. RELEVANT ergänzt diese um Statistiken, deren führende Spalte einer im Plan referenzierten Predicate-Spalte entspricht. OBJECT_ALL ergänzt alle Statistiken der referenzierten Planobjekte. Aktuelle Ergänzungen benötigen @PlanXml und CURRENT_SERVER; die beiden breiten Modi benötigen High-Impact-Bestätigung. Importierte Statistikarrays werden durch NONE nicht pauschal entfernt. NULL fällt auf PLAN_ONLY zurück; äußere Leerzeichen und Groß-/Kleinschreibung werden normalisiert. Leerer oder unbekannter Code ist INVALID_PARAMETER.';
+        PRINT N'@HistogrammModus varchar(16). Default ist ''NONE''. geschlossene Auswahl NONE, SUMMARY, STEPS. NULL wird wie NONE behandelt; Trim und Großschreibung normalisieren Werte, unbekannte Werte sind INVALID_PARAMETER. NONE erhebt keine Histogramme; SUMMARY liefert Zusammenfassungen; STEPS liefert Histogrammschritte. SUMMARY und STEPS benötigen @MetadatenQuellenmodus=CURRENT_SERVER sowie @StatistikEvidenzModus USED, RELEVANT oder OBJECT_ALL; sonst INVALID_PARAMETER.';
+        PRINT N'@MetadatenQuellenmodus varchar(16). Default ist ''EVIDENCE_ONLY''. Zulässig sind EVIDENCE_ONLY und CURRENT_SERVER. EVIDENCE_ONLY verarbeitet übergebene Plan-/JSON-/Meldungsevidenz ohne aktuelle Statistikabfragen. CURRENT_SERVER ruft die aktuelle Erhebung nur mit @PlanXml und Statistikmodus USED, RELEVANT oder OBJECT_ALL auf; importierte currentSnapshot-, Histogramm- und Predicate-Mapping-Arrays werden dann nicht geladen, auch wenn keine Erhebung stattfindet. CURRENT_SERVER verlangt unabhängig von einer tatsächlichen Erhebung @QuellumgebungBestaetigt=1; 0 und NULL führen zu SOURCE_ENVIRONMENT_CONFIRMATION_REQUIRED. Die Bestätigung des Aufrufers ist kein Herkunftsnachweis und keine Berechtigung. NULL als Quellenmodus bedeutet EVIDENCE_ONLY; Trim und Großschreibung werden normalisiert. Leerer oder unbekannter Code ist INVALID_PARAMETER.';
+        PRINT N'@QuellumgebungBestaetigt bit. Default ist 0. Eingabeform ist ein einzelner SQL-bit-Wert oder eine bit-Variable; leerer Text ist keine vorgesehene Eingabeform. SQL Server konvertiert Argumente vor Procedure-Eintritt zu bit; numerische Nichtnullwerte ergeben bit 1, daher ausdrücklich 0 oder 1 übergeben. Bei CURRENT_SERVER bestätigen 0 und NULL die Quelle nicht und führen unabhängig von einer tatsächlichen Erhebung zu SOURCE_ENVIRONMENT_CONFIRMATION_REQUIRED. 1 ist die Bestätigung des Aufrufers, dass CURRENT_SERVER der tatsächlichen Quelle entspricht; sie ist kein Herkunftsnachweis und erteilt keine Berechtigung. Ohne CURRENT_SERVER hat der Schalter keine Erhebungswirkung.';
+        PRINT N'@EvidenzDatenschutzModus varchar(24). Default ist ''DERIVED_ONLY''. geschlossene Auswahl DERIVED_ONLY, TOKENIZED, STRUCTURE_ONLY, RAW. NULL wird wie DERIVED_ONLY behandelt; Trim und Großschreibung normalisieren Werte, sonst INVALID_PARAMETER. DERIVED_ONLY entfernt konkrete Parameter-, Predicate- und Histogrammgrenzwerte aus dem exportierbaren Ergebnis; TOKENIZED ersetzt solche Werte durch capture-lokale Tokens; STRUCTURE_ONLY beschränkt die Ausgabe auf Struktur; RAW lässt Werte zu und erfordert @SensitiveDataConfirmed=1. Bei 0 oder NULL als Bestätigung folgt auf einem angeforderten RAW-Pfad SENSITIVE_DATA_CONFIRMATION_REQUIRED.';
+        PRINT N'@IdentifierDatenschutzModus varchar(16). Default ist ''RAW''. geschlossene Auswahl RAW, TOKENIZED, OMIT. NULL wird wie RAW behandelt; Trim und Großschreibung normalisieren, unbekannte Werte führen zu INVALID_PARAMETER. RAW erhält Identifikatoren, TOKENIZED ersetzt sie durch capture-lokale Tokens und OMIT lässt sie aus. Für @RawTextHandling=INCLUDE ist ausschließlich RAW zusammen mit @SensitiveDataConfirmed=1 zulässig.';
+        PRINT N'@SensitiveDataConfirmed bit. Default ist 0. 0 bestätigt sensible Ausgabe nicht; 1 bestätigt die Ausgabe konkreter Werte bei RAW-Evidenz beziehungsweise Meldungsrohtext bei INCLUDE. Auf angeforderten RAW- oder INCLUDE-Pfaden führen 0 oder NULL zu SENSITIVE_DATA_CONFIRMATION_REQUIRED; INCLUDE benötigt zusätzlich IdentifierDatenschutzModus=RAW. Außerhalb dieser sensiblen Pfade wird NULL nicht global als ungültiger Parameter abgewiesen. additionalEvidence wird ausschließlich bei RAW und exakt 1 eingebettet.';
+        PRINT N'@MitPredicateHistogramMap bit. Default ist 1. Eingabeform ist ein einzelner SQL-bit-Wert oder eine bit-Variable; leerer Text ist keine vorgesehene Eingabeform. SQL Server konvertiert Argumente vor Procedure-Eintritt zu bit; numerische Nichtnullwerte ergeben bit 1, daher ausdrücklich 0 oder 1 übergeben. 0 überspringt die Predicate-/Histogrammzuordnung im Collector; 1 aktiviert sie bei tatsächlich aufgerufenem Collector. Ohne Collector-Aufruf ist NULL unbenutzt und wird nicht global abgewiesen. Bei tatsächlicher aktueller Erhebung weist InternalCollectExecutionPlanMetadata NULL als INVALID_PARAMETER zurück; 052 meldet CURRENT_METADATA_COLLECTION_LIMITED mit Teilstatus. Der Schalter unterdrückt keine bereits importierten Mappingzeilen.';
+        PRINT N'@StatementId int. Default ist NULL. optionale Statement-ID zum Begrenzen der Planextraktion und Statistikverwendung. NULL/Auslassen verarbeitet den Plan ohne diese Eingrenzung. Der Wert wird an die Plan-Extraktoren übergeben; ein nicht vorhandenes oder nicht zuordenbares Statement liefert entsprechend keine passenden Planbezüge. Für diese Eingabe besteht keine zusätzliche Bereichsvalidierung.';
+        PRINT N'@StatementOrdinal int. Default ist NULL. Optionale ganze Ordnungsnummer ohne zusätzliche Bereichsprüfung. Nur mit @PlanXml füllt ein gesetzter Wert fehlende StatementOrdinal in geparsten IO-/TIME-Zeilen. Ohne Wert setzt ein Einzelstatementplan diese Zeilen auf 1; ein Mehrstatementplan lässt die Zuordnung offen und warnt bei vorhandenen Meldungszeilen mit partieller Ausgabe. Ohne @PlanXml hat der Parameter keine Zuordnungswirkung. NULL bedeutet keine explizite Zuordnung.';
+        PRINT N'@SameExecutionAsPlanConfirmed bit. Default ist NULL. optionale Bestätigung, dass Meldungsevidenz derselben Ausführung wie der Plan entstammt. NULL/Auslassen bedeutet unbestätigt; 0 bedeutet ausdrücklich UNCONFIRMED; 1 bedeutet CONFIRMED. Andere Bitwerte sind nicht als eigene Validierungsbedingung implementiert. Diese Angabe beweist die Ausführungsbeziehung nicht selbst.';
+        PRINT N'@CapturedAtUtc datetime2(3). Default ist NULL. optionaler UTC-Zeitpunkt der Erfassung. NULL/Auslassen setzt capturedAtUtc auf die aktuelle UTC-Systemzeit; ein gesetzter Wert wird als Erfassungszeit übernommen. SQL konvertiert die Eingabe auf Millisekundenpräzision gemäß datetime2(3).';
+        PRINT N'@SourceProductVersion nvarchar(128). Default ist NULL. optionale Produktversionsangabe der Quellumgebung für sourceEnvironment.productVersion. NULL/Auslassen bleibt im JSON null; keine Formatprüfung ist implementiert. Leerer Text wird unverändert als Text übergeben und nicht als NULL normalisiert.';
+        PRINT N'@SourceCompatibilityLevel smallint. Default ist NULL. optionales Quell-Compatibility-Level. NULL/Auslassen bleibt null; erlaubter Zahlenbereich ist 80 bis 200 einschließlich. Werte außerhalb des Bereichs ergeben INVALID_PARAMETER. Der Wert wird als sourceEnvironment.compatibilityLevel ausgegeben.';
+        PRINT N'@SourceEngineEdition int. Default ist NULL. optionale Engine-Edition-Kennung der Quelle für sourceEnvironment.engineEdition. NULL/Auslassen bleibt null; es ist keine abgeschlossene Wertemenge oder separate Wertebereichsprüfung implementiert.';
+        PRINT N'@MaxStatistiken int. Default ist 100. Begrenzung der Zahl aktueller Statistiken. NULL ist unzulässig; gültiger Bereich 1 bis 1000 einschließlich, andernfalls INVALID_PARAMETER. Der Grenzwert wirkt auf die zielgerichtete aktuelle Statistikerhebung.';
+        PRINT N'@MaxHistogrammSchritte int. Default ist 20000. Begrenzung der erhobenen Histogrammschritte. NULL ist unzulässig; gültiger Bereich 0 bis 200000 einschließlich, andernfalls INVALID_PARAMETER. Der Grenzwert beschränkt Histogrammvertiefung; 0 erlaubt keine Histogrammschritte.';
+        PRINT N'@LockTimeoutMs int. Default ist 0. Wartezeitgrenze in Millisekunden für die optionale Metadatenerhebung. NULL ist unzulässig; gültiger Bereich 0 bis 60000 einschließlich, sonst INVALID_PARAMETER. 0 bedeutet keine Wartezeit auf gesperrte Ressourcen; ein positiver Wert begrenzt das Warten auf die angegebene Zahl Millisekunden.';
+        PRINT N'@HighImpactConfirmed bit. Default ist 0. 0 bestätigt keinen High-Impact-Pfad; 1 bestätigt die tatsächlich angeforderte breite Statistik- oder Histogrammerhebung. Der Collector verlangt diese Bestätigung für RELEVANT, OBJECT_ALL oder STEPS nur, wenn er mit @PlanXml, CURRENT_SERVER und einem aktuellen Statistikmodus aufgerufen wird; Berechtigungen werden dadurch nicht erteilt. NULL passiert die äußere NOT-IN-Prüfung, wird bei jeder tatsächlich angeforderten aktuellen Erhebung jedoch vom internen Collector als INVALID_PARAMETER zurückgewiesen; der Capture meldet dann CURRENT_METADATA_COLLECTION_LIMITED und Partialität. Ohne Collector-Aufruf ist daraus keine zusätzliche Gate-Prüfung abzuleiten. NULL ist keine ausdrückliche Bestätigung.';
+        PRINT N'@AdditionalEvidenceJson nvarchar(max). Default ist NULL. optionales zusätzliches JSON, das unverändert als importierter Abschnitt nur bei @EvidenzDatenschutzModus=RAW und @SensitiveDataConfirmed=1 in additionalEvidence eingebettet wird; andernfalls ist dieser JSON-Schlüssel null. NULL/Auslassen markiert keine zusätzliche Evidenz. Ungültiges JSON führt bei @StrictValidation=1 zu Fehler 51023; sonst wird es verworfen, gewarnt und IsPartial gesetzt. Ein spezifisches geschlossenes Schlüsselschema wird hier nicht validiert; der Wert muss syntaktisch gültiges JSON sein. Ohne hinreichend strikte Datenschutzfreigabe werden zusätzliche Inhalte nicht in den Ausgabeabschnitt übernommen.';
+        PRINT N'@ExistingEvidenceJson nvarchar(max). Default ist NULL. Optionale Ausgangshülle als Execution-Evidence-JSON. Die ausgewerteten Wurzelabschnitte sind statisticsIo, statisticsTime, statistics, objectReferences und predicateHistogramMappings; statistics besitzt planUsage, currentSnapshot, histogramSummaries und histogramSteps. Die erkannten Objektfelder und SQL-Zieltypen stehen nachfolgend. Unbekannte Eigenschaften und bisherige meta-/capture-/Warnungsabschnitte werden nicht unverändert exportiert. Eigene Statistik-/Objektparameter ersetzen gleichnamige Abschnitte. Mit @PlanXml stammen planUsage und objectReferences aus dem Plan; ohne CURRENT_SERVER werden aktuelle Statistik-, Histogramm- und Mappingarrays importiert. Importierte IO-/TIME-Zeilen werden zusätzlich zu geparsten Textzeilen eingefügt, mit RawLine=NULL; Dubletten werden nicht automatisch entfernt. NULL startet eine leere Hülle; leerer Text ist ungültiges JSON. Ungültiges JSON führt bei StrictValidation=1 intern zu 51024 und dem abgefangenen Status INVALID_EVIDENCE_JSON, sonst zu Warnung und partieller Ausgabe.';
+        PRINT N'@RawTextHandling varchar(16). Default ist ''HASH_ONLY''. geschlossene Auswahl NONE, HASH_ONLY, INCLUDE. NULL wird wie HASH_ONLY behandelt; Trim und Großschreibung normalisieren Werte, andere Werte ergeben INVALID_PARAMETER. NONE entfernt Rohzeilen und gibt keine Eingabehashes aus; HASH_ONLY entfernt Rohzeilen und gibt Eingabelängen sowie SHA-256-Hashes der IO-/TIME-Texte aus; INCLUDE erhält geparste Rohzeilen im Ergebnis und gibt Eingabehashes aus. INCLUDE erfordert @SensitiveDataConfirmed=1 und @IdentifierDatenschutzModus=RAW; 0 oder NULL als Bestätigung führt zu SENSITIVE_DATA_CONFIRMATION_REQUIRED.';
+        PRINT N'@StrictValidation bit. Default ist 1. 1 behandelt ungültiges importiertes JSON oder nicht extrahierbare Teilpayloads als interne Fehler 51021 bis 51024; der CATCH liefert INVALID_EVIDENCE_JSON, Partialität und die Fehler-OUTPUTs. 0 verwirft diese Payloads mit Warnung und partieller Ausgabe. NULL passiert NOT IN (0,1) und folgt bei IF=1 dem nicht strikten Zweig. Typkonvertierungs- und Zieltabellenfehler können auch mit 0 in ERROR_HANDLED enden; TABLE-Vorbereitungsfehler liegen außerhalb dieses CATCH.';
+        PRINT N'@ResultSetArt varchar(16). Default ist ''CONSOLE''. geschlossene Auswahl CONSOLE, RAW, TABLE, NONE. NULL und Leertext normalisieren zu leer und führen INVALID_PARAMETER. Werte werden getrimmt und großgeschrieben. CONSOLE ruft InternalEmitConsoleResult mit captureStatus als Quelle auf; RAW gibt die elf benannten Tabellen als elf Resultsets aus; TABLE schreibt angeforderte Resultate in ausdrücklich zugeordnete Ziele; NONE emittiert keine Resultsets. Unbekannte Werte sind INVALID_PARAMETER. CONSOLE ist die getrennte Konsolenausgabe, nicht ein JSON-Resultset.';
+        PRINT N'@ResultTablesJson nvarchar(max). Default ist NULL. optionales JSON-Objekt, dessen Schlüssel die Resultatnamen und dessen Zeichenkettenwerte vorhandene lokale Zieltabellen bezeichnen, zum Beispiel {"captureStatus":"#Capture"}. Es darf mindestens eine Zuordnung enthalten; alle Namen müssen aus der geschlossenen Liste captureStatus, statisticsIo, statisticsTime, planStatisticsUsage, objectReferences, currentStatistics, histogramSummaries, histogramSteps, predicateHistogramMappings, collectionStatus und warnings stammen. Jede Zieltabelle muss eine vorhandene, leere lokale #Temp-Tabelle mit genau einer Seed-Spalte sein; globale Temp-Tabellen, Namen über 116 Zeichen, Ziele mit Präfix #Monitor, doppelte Namen oder Ziele und andere JSON-Werttypen werden abgelehnt. NULL/Auslassen wird im TABLE-Modus als ungültige Zuordnung abgelehnt; außerhalb TABLE führt ein gesetzter Wert zu INVALID_PARAMETER. Helper-Fehler werden als Fehler 51011 ausgelöst.';
+        PRINT N'@JsonErzeugen bit. Default ist 1. Schalter zur Erzeugung des kanonischen JSON in @Json. 1 erzeugt das JSON, 0 lässt @Json auf NULL. 0 und 1 steuern die Ausgabe; NULL passiert NOT IN (0,1), erzeugt bei IF=1 aber kein JSON. Das JSON ist ein eigener OUTPUT-Parameter und wird bei @ResultSetArt=CONSOLE nicht als Resultset ausgegeben.';
+        PRINT N'@Json nvarchar(max) OUTPUT. Default ist NULL. Optionaler OUTPUT-Empfang als nvarchar(max)-Variable mit OUTPUT; ein übergebener Anfangswert wird auf NULL zurückgesetzt. JsonErzeugen=1 erzeugt das versionierte Execution-Evidence-Objekt, 0 oder NULL lässt den Ausgang NULL. Wurzelkeys sind meta, capture, sourceEnvironment, planIdentity, statisticsIo, statisticsTime, statistics, objectReferences, predicateHistogramMappings, collectionStatus, warnings, rawInput, importedEvidence und additionalEvidence. statistics enthält planUsage, currentSnapshot, histogramSummaries und histogramSteps als Arrays. IO, TIME, Objektbezüge, Mappings, Collection-Status und Warnings sind Arrays; fehlende optionale Skalare bleiben JSON-null. ResultSetArt ist davon unabhängig. Ohne OUTPUT-Bindung wird kein Wert beim Aufrufer empfangen.';
+        PRINT N'@PrintMeldungen bit. Default ist 1. 1 gibt bei Status außerhalb AVAILABLE eine Severity-10-Meldung über RAISERROR WITH NOWAIT aus. 0 oder NULL unterdrückt diese Meldung. Die Hilfsausgabe wird dadurch nicht deaktiviert.';
+        PRINT N'@Hilfe bit. Default ist 0. 1 druckt die Parameterhilfe und kehrt vor Parameterprüfung, TABLE-Vorbereitung und Erhebung zurück. 0 oder NULL folgt dem normalen Pfad. Zuvor werden @Json auf NULL und die vier Status-OUTPUTs auf AVAILABLE, 0, NULL und NULL gesetzt; auch SET LOCK_TIMEOUT 0 liegt vor dem Hilfe-RETURN.';
+        PRINT N'@StatusCodeOut varchar(40) OUTPUT. Default ist NULL. als varchar(40)-Variable mit OUTPUT zu binden. Erhält den StatusCode der Ausführung, anfänglich AVAILABLE und bei Validierungs-, Datenschutz-, Quellumgebungs- oder Verarbeitungsfällen entsprechend ersetzt. Der Status ist maschinenlesbar und Teil von captureStatus; der Aufrufende soll den gelieferten Wert auswerten. Der Anfangswert wird beim Einstieg auch im Hilfepfad zurückgesetzt; ohne OUTPUT-Bindung wird kein Wert beim Aufrufer empfangen.';
+        PRINT N'@IsPartialOut bit OUTPUT. Default ist NULL. als bit-Variable mit OUTPUT zu binden. 0 bedeutet zunächst nicht partiell; ungültige/verworfene optionale Evidenz oder andere begrenzte Verarbeitung kann auf 1 setzen. Der Wert beschreibt die Vollständigkeit der erzeugten Evidenz, nicht den Erfolg eines ausgeführten Workloads. Der Anfangswert wird beim Einstieg auch im Hilfepfad zurückgesetzt; ohne OUTPUT-Bindung wird kein Wert beim Aufrufer empfangen.';
+        PRINT N'@ErrorNumberOut int OUTPUT. Default ist NULL. als int-Variable mit OUTPUT zu binden. Zu Beginn NULL; bei abgefangenen Fehlern wird die SQL-Fehlernummer ausgegeben. Ohne solchen Fehler bleibt der Wert NULL. Der Anfangswert wird beim Einstieg auch im Hilfepfad zurückgesetzt; ohne OUTPUT-Bindung wird kein Wert beim Aufrufer empfangen.';
+        PRINT N'@ErrorMessageOut nvarchar(2048) OUTPUT. Default ist NULL. als nvarchar(2048)-Variable mit OUTPUT zu binden. Zu Beginn NULL; bei Status- oder Verarbeitungsfehlern wird eine begrenzte Meldung ausgegeben. Ohne Fehler bleibt der Wert NULL. Der Anfangswert wird beim Einstieg auch im Hilfepfad zurückgesetzt; ohne OUTPUT-Bindung wird kein Wert beim Aufrufer empfangen.';
+        PRINT N'Die folgenden JSON-Pfade beschreiben die erkannten Objektfelder und SQL-Zieltypen, keine strikte JSON-Schema-Validierung. Zahlen werden in die angegebenen SQL-Zahltypen, bit in 0/1, Texte in die angegebenen Zeichenlängen und Zeitstempel in datetime2 konvertiert. sysname entspricht nvarchar(128). Namen und Pfade sind in der angegebenen Schreibweise zu übergeben. Fehlende Eigenschaften werden als NULL projiziert; Konvertierungs- oder NOT-NULL-Zielverletzungen können ERROR_HANDLED auslösen. Nicht erkannte Eigenschaften werden ignoriert. Arrays enthalten jeweils Objekte; importierte Status-/Kategorietexte besitzen hier keine geschlossene validierte Wertemenge.';
+        PRINT N'JSON-Eingabe $.statisticsIo: statementOrdinal int, messageOrdinal int, objectOrdinal int, objectDisplayName nvarchar(512), scanCount bigint, logicalReads bigint, physicalReads bigint, pageServerReads bigint, readAheadReads bigint, pageServerReadAheadReads bigint, lobLogicalReads bigint, lobPhysicalReads bigint, lobPageServerReads bigint, lobReadAheadReads bigint, lobPageServerReadAheadReads bigint, languageDetected varchar(16), parseStatus varchar(40).';
+        PRINT N'JSON-Eingabe $.statisticsTime: statementOrdinal int, messageOrdinal int, timeCategory varchar(24), cpuMs bigint, elapsedMs bigint, languageDetected varchar(16), parseStatus varchar(40).';
+        PRINT N'JSON-Eingabe $.statistics.planUsage: statisticsUsageOrdinal bigint, statementOrdinal int, statementId int, statementCompId int, databaseName sysname, schemaName sysname, objectName sysname, statisticsName sysname, lastUpdateAtCompile datetime2(7), modificationCountAtCompile bigint, samplingPercentAtCompile decimal(19,6), sourceElement nvarchar(128), parseStatus varchar(40).';
+        PRINT N'JSON-Eingabe $.objectReferences: referenceOrdinal bigint, statementOrdinal int, statementId int, statementCompId int, nodeId int, referenceType varchar(40), referenceSource varchar(40), databaseName sysname, schemaName sysname, objectName sysname, indexName sysname, aliasName sysname, storageType nvarchar(128), planObjectId int, planIndexId int, isTemporaryObject bit, isTableVariable bit, isRemoteObject bit, isDmlTarget bit, resolutionCapability varchar(40), sourceElement nvarchar(128).';
+        PRINT N'JSON-Eingabe $.statistics.currentSnapshot: databaseName sysname, schemaName sysname, objectName sysname, objectId int, statisticsName sysname, statisticsId int, isIndexStatistics bit, isAutoCreated bit, isUserCreated bit, isFiltered bit, filterDefinition nvarchar(max), noRecompute bit, isIncremental bit, hasPersistedSample bit, leadingColumnName sysname, lastUpdated datetime2(7), rows bigint, rowsSampled bigint, samplePercent decimal(19,6), steps int, unfilteredRows bigint, modificationCounter bigint, modificationPercent decimal(19,6), persistedSamplePercent float, collectionStatus varchar(40).';
+        PRINT N'JSON-Eingabe $.statistics.histogramSummaries: databaseName sysname, schemaName sysname, objectName sysname, statisticsName sysname, statisticsId int, leadingColumnName sysname, histogramSteps int, histogramEstimatedRows float, maxEqualRows float, maxRangeRows float, maxStepRows float, dominantStepPercent decimal(19,6), tailStepRows float, tailStepPercent decimal(19,6), collectionStatus varchar(40).';
+        PRINT N'JSON-Eingabe $.statistics.histogramSteps: databaseName sysname, schemaName sysname, objectName sysname, statisticsName sysname, statisticsId int, leadingColumnName sysname, stepOrdinal int, rangeHighKey nvarchar(4000), rangeRows float, equalRows float, distinctRangeRows bigint, averageRangeRows float, isPredicateTarget bit, predicateMatchCount int.';
+        PRINT N'JSON-Eingabe $.predicateHistogramMappings: predicateReferenceId bigint, statementOrdinal int, nodeId int, databaseName sysname, schemaName sysname, objectName sysname, columnName sysname, statisticsName sysname, predicateKind varchar(40), valueSource varchar(32), mappingStatus varchar(48), mappingConfidence varchar(16), matchedStepOrdinal int, matchesRangeHighKey bit, isBelowHistogram bit, isAboveHistogram bit, sensitiveValueStatus varchar(40).';
+        PRINT N'Beispiel 1. EXEC [monitor].[USP_CreateExecutionEvidenceJson] @Hilfe=1;';
+        PRINT N'Beispiel 2. DECLARE @EvidenceJson nvarchar(max); EXEC [monitor].[USP_CreateExecutionEvidenceJson] @StatisticsIoText=N''Table ''''[demo].[Orders]''''. Scan count 1, logical reads 2, physical reads 0, read-ahead reads 0, lob logical reads 0.'', @StatisticsLanguage=''AUTO'', @ResultSetArt=''NONE'', @Json=@EvidenceJson OUTPUT;';
+        PRINT N'Beispiel 3. DECLARE @EvidenceJson nvarchar(max); EXEC [monitor].[USP_CreateExecutionEvidenceJson] @ExistingEvidenceJson=N''{"statisticsIo":[],"statisticsTime":[]}'', @JsonErzeugen=1, @ResultSetArt=''NONE'', @Json=@EvidenceJson OUTPUT;';
+        PRINT N'Beispiel 4. CREATE TABLE #CreateExecutionEvidenceJson_HelpExample (Seed bit NULL); EXEC [monitor].[USP_CreateExecutionEvidenceJson] @ResultSetArt=''TABLE'', @ResultTablesJson=N''{"captureStatus":"#CreateExecutionEvidenceJson_HelpExample"}'', @JsonErzeugen=0; DROP TABLE #CreateExecutionEvidenceJson_HelpExample;';
         RETURN;
     END;
 
@@ -31842,7 +33136,8 @@ BEGIN
                @ErrorMessageOut=N'Ungültiger Modus-, Grenzwert-, Ausgabe-, Datenschutz- oder Versionsparameter.';
     END;
 
-    IF @StatusCodeOut='AVAILABLE' AND @PrivacyMode='RAW' AND @SensitiveDataConfirmed<>1
+    IF @StatusCodeOut='AVAILABLE' AND @PrivacyMode='RAW'
+       AND (@SensitiveDataConfirmed IS NULL OR @SensitiveDataConfirmed<>1)
     BEGIN
         SELECT @StatusCodeOut='SENSITIVE_DATA_CONFIRMATION_REQUIRED',@IsPartialOut=1,
                @ErrorMessageOut=N'RAW-Evidenz kann Parameter-, Predicate-, Filter- oder Histogrammwerte enthalten und benötigt @SensitiveDataConfirmed=1.';
@@ -31850,7 +33145,7 @@ BEGIN
 
     IF @StatusCodeOut='AVAILABLE'
        AND @RawMode='INCLUDE'
-       AND (@SensitiveDataConfirmed<>1 OR @IdentifierMode<>'RAW')
+       AND (@SensitiveDataConfirmed IS NULL OR @SensitiveDataConfirmed<>1 OR @IdentifierMode<>'RAW')
     BEGIN
         SELECT @StatusCodeOut='SENSITIVE_DATA_CONFIRMATION_REQUIRED',@IsPartialOut=1,
                @ErrorMessageOut=N'Rohtext kann sensible Werte und nicht zuverlässig einzeln anonymisierbare Identifikatoren enthalten. INCLUDE benötigt @SensitiveDataConfirmed=1 und @IdentifierDatenschutzModus=RAW.';
@@ -31858,7 +33153,7 @@ BEGIN
 
     IF @StatusCodeOut='AVAILABLE'
        AND @MetadataSourceMode='CURRENT_SERVER'
-       AND @QuellumgebungBestaetigt<>1
+       AND (@QuellumgebungBestaetigt IS NULL OR @QuellumgebungBestaetigt<>1)
     BEGIN
         SELECT @StatusCodeOut='SOURCE_ENVIRONMENT_CONFIRMATION_REQUIRED',@IsPartialOut=1,
                @ErrorMessageOut=N'CURRENT_SERVER-Anreicherung benötigt @QuellumgebungBestaetigt=1.';
@@ -32516,7 +33811,7 @@ Evidenz      : Optional bereits strukturiertes Evidence JSON oder bereits
                erfasste SET STATISTICS IO/TIME-Meldungen. Es wird kein fremdes
                SQL ausgeführt und keine Erfassungsoption aktiviert.
 Datenschutz  : Parameter-/Histogrammwerte standardmäßig DERIVED_ONLY. SQL-Text
-               wird nur mit @MitSqlText=1 ausgegeben. Query-Store-Hint- und
+               wird standardmäßig unterdrückt. Query-Store-Hint- und
                Feedbackpayloads folgen demselben expliziten Datenschutzmodus.
 SQL-Version  : SQL Server 2019 oder neuer.
 ===============================================================================
@@ -32602,15 +33897,64 @@ BEGIN
     IF @Hilfe=1
     BEGIN
         PRINT N'monitor.USP_ExecutionPlanAnalysis';
-        PRINT N'Genau eine Planquelle: @PlanXml, @PlanHandle, genau ein Wert in @SessionIds oder @QueryStoreDatabaseName+@QueryStorePlanId.';
-        PRINT N'Der direkte @PlanXml-Pfad benötigt weder Plan Cache noch Query Store. Es wird niemals übergebenes SQL ausgeführt.';
-        PRINT N'@PlanQuelle gilt für @PlanHandle: AUTO|COMPILE|LAST_ACTUAL. AUTO fällt kontrolliert auf COMPILE zurück.';
-        PRINT N'Optional: @EvidenzJson oder bereits erfasste @StatisticsIoText/@StatisticsTimeText.';
-        PRINT N'@StatistikEvidenzModus NONE|PLAN_ONLY|USED|RELEVANT|OBJECT_ALL; @HistogrammModus NONE|SUMMARY|STEPS.';
-        PRINT N'@EvidenzDatenschutzModus DERIVED_ONLY|TOKENIZED|STRUCTURE_ONLY|RAW; RAW benötigt @SensitiveDataConfirmed=1.';
-        PRINT N'@MitSqlText=1 benötigt @SensitiveDataConfirmed=1, weil StatementText Literale enthalten kann.';
-        PRINT N'DIAG-005 liefert planWarnings, optimizerContext, runtimeFeedback, queryStoreContext und feedbackAndVariants; Query-Store-Payloads sind standardmäßig ausgelassen.';
-        PRINT N'@ResultSetArt CONSOLE|RAW|TABLE|NONE; CONSOLE liefert Findings, TABLE verwendet benannte Ziele.';
+        PRINT N'@PlanXml xml. Default ist NULL. Optionales bereits vorhandenes Plan-XML als SQL-Typ xml oder in diesen Typ konvertierbarer Text. Ein gesetzter Wert wählt IMPORTED exklusiv gegenüber PlanHandle, SessionIds und Query-Store-Paar. NULL wählt diese Quelle nicht; dann muss genau eine andere Quelle gesetzt sein. Leeres XML zählt als gesetzte Quelle, garantiert aber keinen auswertbaren Showplan. Wohlgeformte XML-Typkonvertierung ersetzt keine Showplan-Schemaprüfung. Die enthaltene Query wird niemals ausgeführt.';
+        PRINT N'@PlanHandle varbinary(64). Default ist NULL. Binärwert als T-SQL-Hexliteral 0x… oder varbinary-Variable; der Typ fasst höchstens 64 Bytes. Kürzere Werte einschließlich 0x werden nicht separat abgewiesen und zählen als gesetzte Quelle. NULL lässt die Handlequelle ungesetzt. Ein unbekannter Handle liefert keinen Plan; die Beschaffung folgt @PlanQuelle. Es wird weder kompiliert noch SQL ausgeführt. Genau eine der Quellen PlanXml, PlanHandle, SessionIds oder vollständiges Query-Store-Paar darf gesetzt sein.';
+        PRINT N'@SessionIds nvarchar(max). Default ist NULL. Optionale Liste genau einer Session-ID im Bereich 1 bis 32767. Der Parser akzeptiert Pipe, Komma und Semikolon als Trennzeichen sowie Leerraum um Elemente; eine leere gesamte Eingabe wird wie nicht gesetzt behandelt. Ungültige Elemente, mehrere IDs oder Werte außerhalb des Bereichs ergeben INVALID_PARAMETER. NULL/Leerwert lässt die Quelle ungesetzt.';
+        PRINT N'@RequestId int. Default ist NULL. Optionale ganze Request-ID ohne zusätzliche Bereichsprüfung. Sie filtert die aktuelle Planbeschaffung der gewählten Session. NULL ist bei höchstens einem verfügbaren Request zulässig; mehrere aktive Requests ohne RequestId erzeugen den intern abgefangenen Fehler 51031 und ERROR_HANDLED. Ohne Session wählt dieser Wert keine eigene Quelle; er wird aber als Parameter-Evidenzkontext an die Engine weitergegeben.';
+        PRINT N'@QueryStoreDatabaseName sysname. Default ist NULL. Ein einzelner Datenbankname als sysname, keine Liste oder Qualifierkette. Der Name wird als Datenwert mit QUOTENAME in den Datenbankkontext eingesetzt; äußere Klammern werden nicht als Bezeichnermaskierung entfernt. NULL wählt diese Quellhälfte nicht, leerer Text wird nicht in NULL normalisiert und kann bei der Beschaffung scheitern. QueryStorePlanId muss gemeinsam gesetzt sein, andere Planquellen sind ausgeschlossen. Quellenfehler werden abgefangen; Verfügbarkeit und Berechtigungen bleiben erforderlich.';
+        PRINT N'@QueryStorePlanId bigint. Default ist NULL. Ganze bigint-Plan-ID im Query Store der angegebenen Datenbank. NULL lässt diese Quellhälfte ungesetzt; QueryStoreDatabaseName muss gemeinsam gesetzt sein. Es besteht keine zusätzliche positive Bereichsprüfung. Nicht vorhandene IDs liefern ohne verfügbares XML UNAVAILABLE_OBJECT; Berechtigungsfehler werden gesondert ausgewiesen.';
+        PRINT N'@PlanQuelle varchar(24). Default ist ''AUTO''. Geschlossene Auswahl AUTO, COMPILE, LAST_ACTUAL; NULL wird wie AUTO behandelt; Trim/Großschreibung werden normalisiert, leer/unbekannt ergibt INVALID_PARAMETER. Nur für @PlanHandle: AUTO versucht zuerst sys.dm_exec_query_plan_stats mit dem letzten tatsächlichen Plan und fällt auf COMPILE zurück; COMPILE liest den kompilierten Plan mit sys.dm_exec_query_plan und kompiliert oder führt keine Abfrage aus; LAST_ACTUAL fordert den letzten tatsächlichen Plan an. Die effektive Planquelle kann IMPORTED, COMPILE, LAST_ACTUAL, CURRENT_ACTUAL oder QUERY_STORE sein.';
+        PRINT N'@StatementId int. Default ist NULL. Optionale ganze Statement-ID ohne zusätzliche Bereichsvalidierung. NULL deaktiviert den Filter. Der Wert wird für die Statistik-Evidenz und AUTO-Profilzuordnung benutzt und filtert danach fertige Statements samt abhängigen Ergebniszeilen. Er begrenzt nicht die vorgelagerte vollständige XML-Analyse der Engine. Eine nicht vorhandene ID kann leere Statement-/Detailmengen ergeben.';
+        PRINT N'@StatementQueryHash binary(8). Default ist NULL. Optionaler 8-Byte-Queryhash als binary(8), vorzugsweise Hexliteral 0x mit genau 16 Hexziffern. NULL deaktiviert den Filter. SQL-Typkonvertierungen können kürzere oder längere Werte anpassen; es gibt keine zusätzliche Inhaltsprüfung. Der Hash beeinflusst AUTO-Profilzuordnungen und filtert nach der Analyse fertige Statements und abhängige Details, nicht die Beschaffung der Planquelle.';
+        PRINT N'@StatementQueryPlanHash binary(8). Default ist NULL. Optionaler 8-Byte-Planhash als binary(8), vorzugsweise Hexliteral 0x mit genau 16 Hexziffern. NULL deaktiviert den Filter. SQL-Typkonvertierungen können Werte auffüllen oder kürzen; eine eigene Inhaltsprüfung fehlt. Er filtert nach der Analyse fertige Statements und abhängige Details und beschafft keinen Plan.';
+        PRINT N'@EvidenzJson nvarchar(max). Default ist NULL. Optionales Execution-Evidence-JSON als Ausgangshülle; kein SQL-Befehl. NULL bedeutet keine importierte Evidenz, leerer Text ist ungültig. Erkannte Wurzelabschnitte sind statisticsIo, statisticsTime, statistics, objectReferences und predicateHistogramMappings; statistics enthält planUsage, currentSnapshot, histogramSummaries und histogramSteps. Die nachfolgenden JSON-Eingabeformen nennen alle projizierten Felder und SQL-Zieltypen. Die Hülle wird vor der Analyse immer durch USP_CreateExecutionEvidenceJson mit StrictValidation=1, RawTextHandling=HASH_ONLY und intern RAW-Identifikatoren normalisiert; die abschließende Analyseprojektion verwendet den angeforderten Identifikatormodus. Mit dem beschafften Plan stammen PlanUsage und Objektbezüge aus diesem XML; aktuelle importierte Arrays werden bei CURRENT_SERVER nicht geladen. Syntaxfehler werden im Helfer als INVALID_EVIDENCE_JSON abgefangen und markieren die Analyse partiell; die Analyse kann mit noch vorhandenen Daten fortfahren. Unbekannte Eigenschaften werden nicht als beliebige Zusatzdaten exportiert. Dies ist ein Eingabeformat des Evidence-Generators und kein erneut einzulesendes schemaVersion-3-Analyseergebnis.';
+        PRINT N'@StatisticsIoText nvarchar(max). Default ist NULL. Optionaler, bereits erfasster STATISTICS IO-Meldungstext. NULL/Auslassen oder Leertext liefert keine daraus geparsten Zeilen. Der Text wird mit @StatisticsLanguage geparst; Teil- und Nicht-Erkennung bleibt als ParseStatus sichtbar. 053 setzt keine StatementOrdinal-Zuordnung und hat keinen öffentlichen Rohtextmodus; exportierter Rohtext wird nicht durch diesen Parameter gesteuert.';
+        PRINT N'@StatisticsTimeText nvarchar(max). Default ist NULL. Optionaler, bereits erfasster STATISTICS TIME-Meldungstext. NULL/Auslassen oder Leertext liefert keine daraus geparsten Zeilen. Der Parser kennzeichnet teilweise oder unbekannte Formate statt fehlende Messwerte zu erfinden; er erkennt englische/deutsche Textteile. 053 setzt keine StatementOrdinal-Zuordnung und hat keinen öffentlichen Rohtextmodus.';
+        PRINT N'@StatisticsLanguage varchar(16). Default ist ''AUTO''. AUTO erkennt unterstützte Meldungsteile automatisch; EN bezeichnet Englisch und DE Deutsch. Der IO-Parser normalisiert Groß-/Kleinschreibung und fällt bei NULL, leerem oder unbekanntem Code auf AUTO zurück. Der TIME-Parser verwendet die Kennung nicht und erkennt seine englischen/deutschen Textteile selbst. Es entsteht kein INVALID_PARAMETER für einen unbekannten Sprachcode.';
+        PRINT N'@StatistikEvidenzModus varchar(16). Default ist ''PLAN_ONLY''. Zulässig sind NONE, PLAN_ONLY, USED, RELEVANT und OBJECT_ALL. NONE überspringt die Extraktion von Statistiknutzung aus dem übergebenen Plan. PLAN_ONLY extrahiert diese Compile-Evidenz ohne aktuelle Katalogabfrage. USED ergänzt aktuelle Metadaten der im Plan verwendeten Statistiken. RELEVANT ergänzt diese um Statistiken, deren führende Spalte einer im Plan referenzierten Predicate-Spalte entspricht. OBJECT_ALL ergänzt alle Statistiken der referenzierten Planobjekte. Aktuelle Ergänzungen benötigen aufgelöstes Plan-XML und CURRENT_SERVER; die beiden breiten Modi benötigen High-Impact-Bestätigung. Importierte Statistikarrays werden durch NONE nicht pauschal entfernt. NULL fällt auf PLAN_ONLY zurück; äußere Leerzeichen und Groß-/Kleinschreibung werden normalisiert. Leerer oder unbekannter Code ist INVALID_PARAMETER. RELEVANT und OBJECT_ALL lösen das äußere High-Impact-Gate schon bei Anforderung aus, auch mit EVIDENCE_ONLY.';
+        PRINT N'@HistogrammModus varchar(16). Default ist ''NONE''. geschlossene Auswahl NONE, SUMMARY, STEPS. NULL wird wie NONE behandelt; Trim und Großschreibung normalisieren Werte, unbekannte Werte sind INVALID_PARAMETER. NONE erhebt keine Histogramme; SUMMARY liefert Zusammenfassungen; STEPS liefert Histogrammschritte. SUMMARY und STEPS benötigen @MetadatenQuellenmodus=CURRENT_SERVER sowie @StatistikEvidenzModus USED, RELEVANT oder OBJECT_ALL; sonst INVALID_PARAMETER.';
+        PRINT N'@MetadatenQuellenmodus varchar(16). Default ist ''EVIDENCE_ONLY''. Zulässig sind EVIDENCE_ONLY und CURRENT_SERVER. EVIDENCE_ONLY verarbeitet übergebene Plan-/JSON-/Meldungsevidenz ohne aktuelle Statistikabfragen. CURRENT_SERVER ruft die aktuelle Erhebung nur mit aufgelöstem Plan-XML und Statistikmodus USED, RELEVANT oder OBJECT_ALL auf; importierte currentSnapshot-, Histogramm- und Predicate-Mapping-Arrays werden dann nicht geladen, auch wenn keine Erhebung stattfindet. CURRENT_SERVER verlangt unabhängig von einer tatsächlichen Erhebung @QuellumgebungBestaetigt=1; 0 und NULL führen zu SOURCE_ENVIRONMENT_CONFIRMATION_REQUIRED. Die Bestätigung des Aufrufers ist kein Herkunftsnachweis und keine Berechtigung. NULL als Quellenmodus bedeutet EVIDENCE_ONLY; Trim und Großschreibung werden normalisiert. Leerer oder unbekannter Code ist INVALID_PARAMETER.';
+        PRINT N'@QuellumgebungBestaetigt bit. Default ist 0. Eingabeform ist ein einzelner SQL-bit-Wert oder eine bit-Variable; leerer Text ist keine vorgesehene Eingabeform. SQL Server konvertiert Argumente vor Procedure-Eintritt zu bit; numerische Nichtnullwerte ergeben bit 1, daher ausdrücklich 0 oder 1 übergeben. Bei CURRENT_SERVER bestätigen 0 und NULL die Quelle nicht und führen unabhängig von einer tatsächlichen Erhebung zu SOURCE_ENVIRONMENT_CONFIRMATION_REQUIRED. 1 ist die Bestätigung des Aufrufers, dass CURRENT_SERVER der tatsächlichen Quelle entspricht; sie ist kein Herkunftsnachweis und erteilt keine Berechtigung. Ohne CURRENT_SERVER hat der Schalter keine Erhebungswirkung.';
+        PRINT N'@MitPredicateHistogramMap bit. Default ist 1. Eingabeform ist ein einzelner SQL-bit-Wert oder eine bit-Variable; leerer Text ist keine vorgesehene Eingabeform. SQL Server konvertiert Argumente vor Procedure-Eintritt zu bit; numerische Nichtnullwerte ergeben bit 1, daher ausdrücklich 0 oder 1 übergeben. 0 überspringt die Predicate-/Histogrammzuordnung im Collector; 1 aktiviert sie bei tatsächlich aufgerufenem Collector. Ohne Collector-Aufruf ist NULL unbenutzt und wird nicht global abgewiesen. Bei tatsächlicher aktueller Erhebung weist InternalCollectExecutionPlanMetadata NULL als INVALID_PARAMETER zurück; 052 meldet CURRENT_METADATA_COLLECTION_LIMITED mit Teilstatus. Der Schalter unterdrückt keine bereits importierten Mappingzeilen.';
+        PRINT N'@AnalyseTiefe varchar(16). Default ist ''STANDARD''. Geschlossene Auswahl SUMMARY, STANDARD, FULL. NULL wird wie STANDARD behandelt; Trim/Großschreibung normalisieren, leer/unbekannt ergibt INVALID_PARAMETER. 053 übergibt die normalisierte Tiefe nicht an 051; FULL fordert zusätzlich die High-Impact-Klasse SHOWPLAN_XML_DEEP an. Wenn der optionale Pfadprüfer installiert ist, wird HighImpactConfirmed=NULL dort abgewiesen; ohne diesen Prüfer ist keine zusätzliche NULL-Bestätigung garantiert.';
+        PRINT N'@WorkloadProfil varchar(32). Default ist ''AUTO''. AUTO oder Profilcode; NULL wird wie AUTO behandelt, Trim/Großschreibung normalisieren. AUTO löst lokale enabled Zuordnungen anhand Plan- und Kontextmerkmalen auf; ein QueryHash kann dabei zuordnen. Seed-Codes: LATENCY_SENSITIVE gewichtet interaktive/häufige Zugriffe stärker; BALANCED ist neutral; THROUGHPUT gewichtet absolute Ressourcen/Datenmengen; MAINTENANCE berücksichtigt erwartbare große Scans/Sorts; UNKNOWN kennzeichnet geringe Zuordnungssicherheit. Weitere lokal konfigurierte Profile bilden eine offene Menge. Unbekannte oder deaktivierte Codes lösen keinen INVALID_PARAMETER aus, sondern fallen auf BALANCED zurück.';
+        PRINT N'@Regelsatz varchar(32). Default ist ''DEFAULT''. Ausschließlich DEFAULT ist unterstützt. NULL wird wie DEFAULT behandelt; Trim/Großschreibung normalisieren. Andere Codes ergeben INVALID_PARAMETER; ein konfigurierbarer zusätzlicher Regelsatz ist nicht implementiert.';
+        PRINT N'@MinSchweregrad varchar(16). Default ist ''INFO''. Geschlossene Auswahl INFO, LOW, MEDIUM, HIGH, CRITICAL; NULL wird wie INFO behandelt. Trim/Großschreibung normalisieren; leer/unbekannt ist INVALID_PARAMETER. Legt die untere Findings-Schweregradgrenze fest, nicht die Analysequelle.';
+        PRINT N'@MitThreadRuntime bit. Default ist 0. Eingabeform ist ein einzelner SQL-bit-Wert oder eine bit-Variable; leerer Text ist keine vorgesehene Eingabeform. SQL Server konvertiert Argumente vor Procedure-Eintritt zu bit; numerische Nichtnullwerte ergeben bit 1, daher ausdrücklich 0 oder 1 übergeben. 0 unterdrückt die bereits materialisierten Thread-Laufzeitzeilen in der Ausgabe; 1 behält vorhandene Threadzähler bei. NULL führt in der öffentlichen Parameterprüfung vor Evidence-Verarbeitung, Quellenerhebung oder gemeinsamem Analyzer zu INVALID_PARAMETER; der Aufruf materialisiert keine Threadzeilen.';
+        PRINT N'@MitSqlText bit. Default ist 0. Geschlossene Auswahl 0 oder 1; NULL und Werte außerhalb dieser Auswahl ergeben INVALID_PARAMETER. 0 setzt StatementText vor der Ausgabe auf NULL. 1 behält Statementtext nur nach @SensitiveDataConfirmed=1 bei; 0 oder NULL als Bestätigung führt zu SENSITIVE_DATA_CONFIRMATION_REQUIRED und lässt StatementText in JSON- und TABLE-Ausgaben NULL. T-SQL konvertiert numerische Nichtnullwerte vor der Procedureprüfung zu bit 1.';
+        PRINT N'@EvidenzDatenschutzModus varchar(24). Default ist ''DERIVED_ONLY''. Geschlossene Auswahl DERIVED_ONLY, TOKENIZED, STRUCTURE_ONLY, RAW. NULL wird wie DERIVED_ONLY behandelt; Trim/Großschreibung normalisieren, unbekannter Code ergibt INVALID_PARAMETER. DERIVED_ONLY gibt abgeleitete Werte ohne konkrete Parameter-/Predicate-/Histogrammgrenzwerte aus; TOKENIZED ersetzt sensible Werte durch laufzeitlokale Tokens; STRUCTURE_ONLY beschränkt sensible Inhalte auf Struktur; RAW gibt konkrete Werte aus und benötigt @SensitiveDataConfirmed=1. Der Schalter beeinflusst die Analyseausgabe, nicht die Beschaffung der Planquelle.';
+        PRINT N'@IdentifierDatenschutzModus varchar(16). Default ist ''RAW''. Geschlossene Auswahl RAW, TOKENIZED, OMIT. NULL wird wie RAW behandelt; Trim/Großschreibung normalisieren, unbekannter Code ergibt INVALID_PARAMETER. RAW erhält Objekt-/Identifikatorwerte, TOKENIZED ersetzt sie durch laufzeitlokale Tokens, OMIT lässt sie aus. Ein zusätzlicher Rohtextmodus ist in 053 nicht vorhanden.';
+        PRINT N'@SensitiveDataConfirmed bit. Default ist 0. Bit-Bestätigung: 1 erlaubt die angeforderten sensiblen Ausgaben, insbesondere Evidenzmodus RAW und @MitSqlText=1. 0 oder NULL bestätigt diese Pfade nicht und führt bei angeforderter sensibler Ausgabe zu SENSITIVE_DATA_CONFIRMATION_REQUIRED; dann bleiben RangeHighKey und StatementText in JSON- und TABLE-Ausgaben NULL. NULL wird außerhalb solcher Pfade nicht global abgewiesen. Es gibt in 053 keinen INCLUDE-Rohzeilenmodus und keine additionalEvidence-Einbettung. T-SQL konvertiert numerische Nichtnullwerte vor der Procedureprüfung zu bit 1.';
+        PRINT N'@MaxOperatoren int. Default ist 50000. Positive ganze Zahl; NULL oder Wert <1 ergibt INVALID_PARAMETER, eine obere Grenze wird nicht validiert. Die Operatorbegrenzung wird nach der Analyse angewandt und bereinigt abhängige Detailzeilen; sie begrenzt nicht die vorgelagerte Analysearbeit.';
+        PRINT N'@MaxFindings int. Default ist 5000. Positive ganze Zahl als Höchstzahl der Findings; NULL oder Wert <1 ergibt INVALID_PARAMETER. Es gibt keine obere Bereichsvalidierung; weitere Findings können dadurch außerhalb der Ausgabe bleiben.';
+        PRINT N'@MaxStatistiken int. Default ist 100. Begrenzung der Zahl aktueller Statistiken. NULL ist unzulässig; gültiger Bereich 1 bis 1000 einschließlich, andernfalls INVALID_PARAMETER. Der Grenzwert wirkt auf die zielgerichtete aktuelle Statistikerhebung.';
+        PRINT N'@MaxHistogrammSchritte int. Default ist 20000. Begrenzung der erhobenen Histogrammschritte. NULL ist unzulässig; gültiger Bereich 0 bis 200000 einschließlich, andernfalls INVALID_PARAMETER. Der Grenzwert beschränkt Histogrammvertiefung; 0 erlaubt keine Histogrammschritte.';
+        PRINT N'@MaxDurationSeconds int. Default ist 30. Ganzzahlige Deadline in Sekunden, gültig 1 bis 3600 einschließlich; NULL/außerhalb ergibt INVALID_PARAMETER. Die Prozedur prüft kooperativ einmal nach Analyse und Capability-Ermittlung gegen diese Deadline; sie bricht die Analyse nicht hart ab und erzwingt keine frühe Unterbrechung.';
+        PRINT N'@LockTimeoutMs int. Default ist 0. Ganzzahlige Zeitgrenze in Millisekunden für optionale aktuelle Metadatenerhebung, gültig 0 bis 60000 einschließlich; NULL/außerhalb ergibt INVALID_PARAMETER. An den Collector weitergereicht. Die anfängliche eigene Temp-Tabellenanlage setzt im TRY LOCK_TIMEOUT 100 ms und setzt danach beziehungsweise im Fehlerpfad auf 0 zurück.';
+        PRINT N'@HighImpactConfirmed bit. Default ist 0. 0 bestätigt den angeforderten High-Impact-Pfad nicht; bei FULL, Statistikmodus RELEVANT oder OBJECT_ALL sowie Histogrammmodus STEPS folgt HIGH_IMPACT_CONFIRMATION_REQUIRED. 1 bestätigt den angeforderten Pfad, verleiht aber keine Berechtigung; ein installierter InternalCheckAnalysisPath kann zusätzlich SHOWPLAN_XML_DEEP prüfen. NULL gilt bei angeforderten High-Impact-Pfaden ebenfalls als unbestätigt und führt unabhängig vom optionalen Helfer zu HIGH_IMPACT_CONFIRMATION_REQUIRED. Außerhalb eines angeforderten High-Impact-Pfads wird der Schalter nicht global abgewiesen. Bei tatsächlich aufgerufener aktueller Metadatenerhebung weist der innere Collector NULL dennoch als INVALID_PARAMETER zurück; der Capture meldet CURRENT_METADATA_COLLECTION_LIMITED und Partialität. T-SQL konvertiert numerische Nichtnullwerte vor der Procedureprüfung zu bit 1; verwenden Sie ausdrücklich 0 oder 1.';
+        PRINT N'@ResultSetArt varchar(16). Default ist ''CONSOLE''. Geschlossene Auswahl CONSOLE, RAW, TABLE, NONE. NULL/Leertext/anderer Code ergibt INVALID_PARAMETER; Trim/Großschreibung normalisieren. CONSOLE ruft den Console-Helper mit findings als Eingabe auf; RAW gibt 22 benannte Tabellen als getrennte Resultsets aus; TABLE schreibt die angeforderten Resultate in benannte Ziele; NONE emittiert keine Resultsets. Die JSON-Ausgabe ist davon unabhängig.';
+        PRINT N'@ResultTablesJson nvarchar(max). Default ist NULL. Im TABLE-Modus erforderliches JSON-Objekt mit mindestens einer Zuordnung von erlaubtem Resultatnamen auf vorhandene, leere lokale #Temp-Zieltabelle mit genau einer Seed-Spalte. Geschlossene Schlüssel: moduleStatus, capabilities, planDocuments, statements, operatorTree, operatorRuntime, operatorThreadRuntime, accessPaths, statisticsUsage, parametersAndVariants, parameters, planWarnings, optimizerContext, runtimeFeedback, queryStoreContext, feedbackAndVariants, memoryAndSpills, executionEvidence, histogramSummaries, histogramSteps, predicateHistogramMappings, findings. Zeichenkettenwerte nennen Zieltabellen; Helperregeln zu vorhandenen Tabellen/Spalten, Namen und eindeutigen Zuordnungen gelten. NULL/Auslassen in TABLE ist ungültig; außerhalb TABLE führt ein gesetztes Argument zu INVALID_PARAMETER. Vorbereitungsfehler werden vor dem Analyse-CATCH ausgelöst. Zielnamen dürfen höchstens 116 Zeichen lang sein; keine globalen ##-, permanenten oder reservierten #Monitor*-Tabellen. Doppelte Schlüssel oder gleiche Ziele für mehrere Resultate werden abgelehnt. Die Vorbereitung liegt nach dem Hilfe-RETURN.';
+        PRINT N'@JsonErzeugen bit. Default ist 0. Bit-Schalter: 1 erzeugt das kanonische Analyse-JSON im OUTPUT-Parameter @Json; 0 lässt ihn NULL. NULL passiert die NOT IN Prüfung und erzeugt wegen IF=1 kein JSON. Das JSON wird unabhängig von ResultSetArt erzeugt. T-SQL konvertiert numerische Nichtnullwerte vor der Procedureprüfung zu bit 1; verwenden Sie ausdrücklich 0 oder 1.';
+        PRINT N'@Json nvarchar(max) OUTPUT. Default ist NULL. Als nvarchar(max)-Variable mit OUTPUT binden; der Anfangswert wird beim Eintritt auf NULL gesetzt. Bei @JsonErzeugen=1 enthält es schemaVersion 3 und meta sowie Arrays capabilities, planDocuments, statements, operatorTree, operatorRuntime, operatorThreadRuntime, accessPaths, statisticsUsage, parametersAndVariants, parameters, planWarnings, optimizerContext, runtimeFeedback, queryStoreContext, feedbackAndVariants, memoryAndSpills, executionEvidence, histogramSummaries, histogramSteps, predicateHistogramMappings und findings. Bei 0/NULL bleibt der Wert NULL. Ohne OUTPUT-Bindung empfängt der Aufrufer ihn nicht; ResultSetArt ist unabhängig.';
+        PRINT N'@PrintMeldungen bit. Default ist 1. 1 gibt bei Status außerhalb AVAILABLE eine Severity-10-Meldung mit RAISERROR WITH NOWAIT aus; 0 oder NULL unterdrückt diese zusätzliche Statusmeldung. Die Ausgabe von @Hilfe bleibt davon unabhängig. T-SQL konvertiert numerische Nichtnullwerte vor der Procedureprüfung zu bit 1; verwenden Sie ausdrücklich 0 oder 1.';
+        PRINT N'@Hilfe bit. Default ist 0. 1 druckt die eingebaute Kurzreferenz und kehrt vor Parameterprüfung, TABLE-Vorbereitung und Erhebung zurück; 0 oder NULL folgt dem normalen Pfad. Beim Eintritt wird @Json auf NULL sowie Status-OUTPUTs auf AVAILABLE, 0, NULL und NULL gesetzt. Der vorangestellte SET LOCK_TIMEOUT 0 bleibt wirksam. T-SQL konvertiert numerische Nichtnullwerte vor der Procedureprüfung zu bit 1; verwenden Sie ausdrücklich 0 oder 1.';
+        PRINT N'@StatusCodeOut varchar(40) OUTPUT. Default ist NULL. Als varchar(40)-Variable mit OUTPUT binden. Beginnt mit AVAILABLE und enthält den abschließenden Maschinenstatus der Prozedur, unter anderem Validierungs-, Bestätigungs- oder Analysefehler. Der Status steht in der Tabelle moduleStatus und im meta.statusCode des JSON; er ist nicht Teil von captureStatus. Der Anfangswert wird auch im Hilfepfad zurückgesetzt; ohne OUTPUT-Bindung wird kein Wert empfangen.';
+        PRINT N'@IsPartialOut bit OUTPUT. Default ist NULL. Als bit-Variable mit OUTPUT binden. Beginnt mit 0 und markiert bei 1 eine begrenzte/unvollständige Analyse, etwa nach Status- oder Fehlerfällen. Im JSON und moduleStatus wird der Partialstatus ebenfalls geführt. Anfangswert wird auch im Hilfepfad zurückgesetzt; ohne OUTPUT-Bindung wird kein Wert empfangen.';
+        PRINT N'@ErrorNumberOut int OUTPUT. Default ist NULL. Als int-Variable mit OUTPUT binden. Anfangs NULL; bei abgefangener Analyseausnahme wird die SQL-Fehlernummer ausgegeben. Ohne abgefangenen Fehler bleibt NULL. Der Anfangswert wird auch im Hilfepfad zurückgesetzt.';
+        PRINT N'@ErrorMessageOut nvarchar(2048) OUTPUT. Default ist NULL. Als nvarchar(2048)-Variable mit OUTPUT binden. Anfangs NULL; bei Verarbeitungsfehlern wird eine begrenzte Fehlermeldung ausgegeben. Ohne Fehler bleibt NULL. Der Anfangswert wird auch im Hilfepfad zurückgesetzt.';
+        PRINT N'Die folgenden JSON-Pfade beschreiben die erkannten Objektfelder und SQL-Zieltypen, keine strikte JSON-Schema-Validierung. Zahlen werden in die angegebenen SQL-Zahltypen, bit in 0/1, Texte in die angegebenen Zeichenlängen und Zeitstempel in datetime2 konvertiert. sysname entspricht nvarchar(128). Namen und Pfade sind in der angegebenen Schreibweise zu übergeben. Fehlende Eigenschaften werden als NULL projiziert; Konvertierungs- oder NOT-NULL-Zielverletzungen können im Evidence-Helfer ERROR_HANDLED auslösen; die Einplananalyse weist dessen Fehler als partielle Evidenz aus. Nicht erkannte Eigenschaften werden ignoriert. Arrays enthalten jeweils Objekte; importierte Status-/Kategorietexte besitzen hier keine geschlossene validierte Wertemenge.';
+        PRINT N'JSON-Eingabe $.statisticsIo: statementOrdinal int, messageOrdinal int, objectOrdinal int, objectDisplayName nvarchar(512), scanCount bigint, logicalReads bigint, physicalReads bigint, pageServerReads bigint, readAheadReads bigint, pageServerReadAheadReads bigint, lobLogicalReads bigint, lobPhysicalReads bigint, lobPageServerReads bigint, lobReadAheadReads bigint, lobPageServerReadAheadReads bigint, languageDetected varchar(16), parseStatus varchar(40).';
+        PRINT N'JSON-Eingabe $.statisticsTime: statementOrdinal int, messageOrdinal int, timeCategory varchar(24), cpuMs bigint, elapsedMs bigint, languageDetected varchar(16), parseStatus varchar(40).';
+        PRINT N'JSON-Eingabe $.statistics.planUsage: statisticsUsageOrdinal bigint, statementOrdinal int, statementId int, statementCompId int, databaseName sysname, schemaName sysname, objectName sysname, statisticsName sysname, lastUpdateAtCompile datetime2(7), modificationCountAtCompile bigint, samplingPercentAtCompile decimal(19,6), sourceElement nvarchar(128), parseStatus varchar(40).';
+        PRINT N'JSON-Eingabe $.objectReferences: referenceOrdinal bigint, statementOrdinal int, statementId int, statementCompId int, nodeId int, referenceType varchar(40), referenceSource varchar(40), databaseName sysname, schemaName sysname, objectName sysname, indexName sysname, aliasName sysname, storageType nvarchar(128), planObjectId int, planIndexId int, isTemporaryObject bit, isTableVariable bit, isRemoteObject bit, isDmlTarget bit, resolutionCapability varchar(40), sourceElement nvarchar(128).';
+        PRINT N'JSON-Eingabe $.statistics.currentSnapshot: databaseName sysname, schemaName sysname, objectName sysname, objectId int, statisticsName sysname, statisticsId int, isIndexStatistics bit, isAutoCreated bit, isUserCreated bit, isFiltered bit, filterDefinition nvarchar(max), noRecompute bit, isIncremental bit, hasPersistedSample bit, leadingColumnName sysname, lastUpdated datetime2(7), rows bigint, rowsSampled bigint, samplePercent decimal(19,6), steps int, unfilteredRows bigint, modificationCounter bigint, modificationPercent decimal(19,6), persistedSamplePercent float, collectionStatus varchar(40).';
+        PRINT N'JSON-Eingabe $.statistics.histogramSummaries: databaseName sysname, schemaName sysname, objectName sysname, statisticsName sysname, statisticsId int, leadingColumnName sysname, histogramSteps int, histogramEstimatedRows float, maxEqualRows float, maxRangeRows float, maxStepRows float, dominantStepPercent decimal(19,6), tailStepRows float, tailStepPercent decimal(19,6), collectionStatus varchar(40).';
+        PRINT N'JSON-Eingabe $.statistics.histogramSteps: databaseName sysname, schemaName sysname, objectName sysname, statisticsName sysname, statisticsId int, leadingColumnName sysname, stepOrdinal int, rangeHighKey nvarchar(4000), rangeRows float, equalRows float, distinctRangeRows bigint, averageRangeRows float, isPredicateTarget bit, predicateMatchCount int.';
+        PRINT N'JSON-Eingabe $.predicateHistogramMappings: predicateReferenceId bigint, statementOrdinal int, nodeId int, databaseName sysname, schemaName sysname, objectName sysname, columnName sysname, statisticsName sysname, predicateKind varchar(40), valueSource varchar(32), mappingStatus varchar(48), mappingConfidence varchar(16), matchedStepOrdinal int, matchesRangeHighKey bit, isBelowHistogram bit, isAboveHistogram bit, sensitiveValueStatus varchar(40).';
+        PRINT N'Beispiel 1. EXEC [monitor].[USP_ExecutionPlanAnalysis] @Hilfe=1;';
+        PRINT N'Beispiel 2. DECLARE @SyntheticPlan xml = N''<ShowPlanXML xmlns="http://schemas.microsoft.com/sqlserver/2004/07/showplan" Version="1.2" Build="16.0.1000.6"><BatchSequence><Batch><Statements><StmtSimple StatementId="1" StatementType="SELECT" StatementText="SELECT 1"><QueryPlan><RelOp NodeId="0" PhysicalOp="Constant Scan" LogicalOp="Constant Scan" EstimateRows="1" /></QueryPlan></StmtSimple></Statements></Batch></BatchSequence></ShowPlanXML>''; EXEC [monitor].[USP_ExecutionPlanAnalysis] @PlanXml=@SyntheticPlan, @ResultSetArt=''RAW'';';
+        PRINT N'Beispiel 3. DECLARE @SyntheticPlan xml = N''<ShowPlanXML xmlns="http://schemas.microsoft.com/sqlserver/2004/07/showplan" Version="1.2" Build="16.0.1000.6"><BatchSequence><Batch><Statements><StmtSimple StatementId="1" StatementType="SELECT" StatementText="SELECT 1"><QueryPlan><RelOp NodeId="0" PhysicalOp="Constant Scan" LogicalOp="Constant Scan" EstimateRows="1" /></QueryPlan></StmtSimple></Statements></Batch></BatchSequence></ShowPlanXML>''; DECLARE @JsonOutput nvarchar(max); EXEC [monitor].[USP_ExecutionPlanAnalysis] @PlanXml=@SyntheticPlan, @JsonErzeugen=1, @Json=@JsonOutput OUTPUT, @ResultSetArt=''NONE''; SELECT @JsonOutput AS [SyntheticAnalysisJson];';
+        PRINT N'Beispiel 4. CREATE TABLE #ExecutionPlanAnalysis_HelpExample ([Seed] int NULL); DECLARE @SyntheticPlan xml = N''<ShowPlanXML xmlns="http://schemas.microsoft.com/sqlserver/2004/07/showplan" Version="1.2" Build="16.0.1000.6"><BatchSequence><Batch><Statements><StmtSimple StatementId="1" StatementType="SELECT" StatementText="SELECT 1"><QueryPlan><RelOp NodeId="0" PhysicalOp="Constant Scan" LogicalOp="Constant Scan" EstimateRows="1" /></QueryPlan></StmtSimple></Statements></Batch></BatchSequence></ShowPlanXML>''; EXEC [monitor].[USP_ExecutionPlanAnalysis] @PlanXml=@SyntheticPlan, @ResultSetArt=''TABLE'', @ResultTablesJson=N''{"findings":"#ExecutionPlanAnalysis_HelpExample"}''; DROP TABLE #ExecutionPlanAnalysis_HelpExample;';
         RETURN;
     END;
 
@@ -33189,7 +34533,8 @@ BEGIN
        OR @Depth NOT IN ('SUMMARY','STANDARD','FULL')
        OR @RuleSet<>'DEFAULT'
        OR @MinSeverity NOT IN ('INFO','LOW','MEDIUM','HIGH','CRITICAL')
-       OR @MitThreadRuntime NOT IN (0,1) OR @MitSqlText NOT IN (0,1)
+       OR @MitThreadRuntime IS NULL OR @MitThreadRuntime NOT IN (0,1)
+       OR @MitSqlText IS NULL OR @MitSqlText NOT IN (0,1)
        OR @PrivacyMode NOT IN ('DERIVED_ONLY','TOKENIZED','RAW','STRUCTURE_ONLY')
        OR @IdentifierMode NOT IN ('RAW','TOKENIZED','OMIT')
        OR @StatisticsMode NOT IN ('NONE','PLAN_ONLY','USED','RELEVANT','OBJECT_ALL')
@@ -33249,17 +34594,19 @@ BEGIN
         SELECT @StatusCodeOut='INVALID_PARAMETER',@IsPartialOut=1,
                @ErrorMessageOut=N'Query Store benötigt @QueryStoreDatabaseName und @QueryStorePlanId gemeinsam.';
     END;
-    IF @StatusCodeOut='AVAILABLE' AND @PrivacyMode='RAW' AND @SensitiveDataConfirmed<>1
+    IF @StatusCodeOut='AVAILABLE' AND @PrivacyMode='RAW'
+       AND (@SensitiveDataConfirmed IS NULL OR @SensitiveDataConfirmed<>1)
     BEGIN
         SELECT @StatusCodeOut='SENSITIVE_DATA_CONFIRMATION_REQUIRED',@IsPartialOut=1,
                @ErrorMessageOut=N'RAW-Parameter- oder Histogrammwerte benötigen @SensitiveDataConfirmed=1.';
     END;
-    IF @StatusCodeOut='AVAILABLE' AND @MitSqlText=1 AND @SensitiveDataConfirmed<>1
+    IF @StatusCodeOut='AVAILABLE' AND @MitSqlText=1
+       AND (@SensitiveDataConfirmed IS NULL OR @SensitiveDataConfirmed<>1)
     BEGIN
         SELECT @StatusCodeOut='SENSITIVE_DATA_CONFIRMATION_REQUIRED',@IsPartialOut=1,
                @ErrorMessageOut=N'StatementText kann Literale und proprietären SQL-Text enthalten. @MitSqlText=1 benötigt @SensitiveDataConfirmed=1.';
     END;
-    IF @StatusCodeOut='AVAILABLE' AND @MetadataMode='CURRENT_SERVER' AND @QuellumgebungBestaetigt<>1
+    IF @StatusCodeOut='AVAILABLE' AND @MetadataMode='CURRENT_SERVER' AND (@QuellumgebungBestaetigt IS NULL OR @QuellumgebungBestaetigt<>1)
     BEGIN
         SELECT @StatusCodeOut='SOURCE_ENVIRONMENT_CONFIRMATION_REQUIRED',@IsPartialOut=1,
                @ErrorMessageOut=N'CURRENT_SERVER-Anreicherung benötigt @QuellumgebungBestaetigt=1.';
@@ -33579,7 +34926,7 @@ WHERE [p].[plan_id]=@PlanId;';
     IF @StatusCodeOut='AVAILABLE'
        AND (@Depth='FULL' OR @StatisticsMode IN ('RELEVANT','OBJECT_ALL') OR @HistogramMode='STEPS')
     BEGIN
-        IF @HighImpactConfirmed<>1
+        IF @HighImpactConfirmed IS NULL OR @HighImpactConfirmed<>1
         BEGIN
             SELECT @StatusCodeOut='HIGH_IMPACT_CONFIRMATION_REQUIRED',@IsPartialOut=1,
                    @ErrorMessageOut=N'Der angeforderte FULL-/breite Statistik-/Histogrammpfad benötigt @HighImpactConfirmed=1.';
@@ -34218,12 +35565,15 @@ OUTER APPLY
         DELETE FROM [#ExecutionPlanAnalysis_Statements] WHERE [StatementQueryPlanHash]<>@QueryPlanHashText OR [StatementQueryPlanHash] IS NULL;
     END;
 
-    IF @MitSqlText=0 UPDATE [#ExecutionPlanAnalysis_Statements] SET [StatementText]=NULL;
+    IF @MitSqlText IS NULL OR @MitSqlText<>1
+       OR @SensitiveDataConfirmed IS NULL OR @SensitiveDataConfirmed<>1
+        UPDATE [#ExecutionPlanAnalysis_Statements] SET [StatementText]=NULL;
 
-    /* Sensitive Histogrammwerte nochmals am öffentlichen Ausgaberand sichern.
-       Der Evidence-Generator hat sie bereits normalisiert; diese Projektion ist
-       bewusst Defense in Depth für spätere interne Integrationspfade. */
+    /* Konkrete RangeHighKey-Werte werden an der öffentlichen Ausgabe nur
+       nach ausdrücklicher Bestätigung ausgegeben. Diese Projektion schützt
+       importierte Evidenz vor JSON- und TABLE-Ausgaben. */
     IF @PrivacyMode<>'RAW'
+       OR @SensitiveDataConfirmed IS NULL OR @SensitiveDataConfirmed<>1
         UPDATE [#ExecutionPlanAnalysis_HistogramSteps] SET [RangeHighKey]=NULL;
     IF @PrivacyMode<>'TOKENIZED'
         UPDATE [#ExecutionPlanAnalysis_HistogramSteps] SET [RangeHighKeyToken]=NULL;
@@ -34596,12 +35946,46 @@ BEGIN
     IF @Hilfe=1
     BEGIN
         PRINT N'monitor.USP_ShowplanAnalysis';
-        PRINT N'Selektiert eindeutige Planhandles und verwendet monitor.USP_ExecutionPlanAnalysis als zentrale Analyse-Engine.';
-        PRINT N'@AnalyseModus GEZIELT|VOLL. GEZIELT benötigt mindestens einen Plan-, Hash-, Datenbank- oder Textselektor.';
-        PRINT N'@PlanQuelle AUTO|COMPILE|LAST_ACTUAL; @Sortierung CPU_TOTAL|ELAPSED_TOTAL|READS_TOTAL|EXECUTIONS|SPILLS_TOTAL|GRANT_MAX|LAST_EXECUTION.';
-        PRINT N'@MaxAnalyseobjekte und @MaxZeilen: positive Grenze; NULL/0 unbegrenzt. Breite Pfade benötigen High-Impact-Bestätigung.';
-        PRINT N'Die Datenschutz-, Statistik- und Histogrammparameter entsprechen USP_ExecutionPlanAnalysis.';
-        PRINT N'TABLE/RAW/JSON aggregieren parameters sowie planWarnings, optimizerContext, runtimeFeedback, queryStoreContext, feedbackAndVariants und findings kandidatengenau.';
+        PRINT N'Die Procedure wählt eindeutige Planhandles aus und analysiert die verfügbaren Showplan-Dokumente mit USP_ExecutionPlanAnalysis. Planquelle, Kandidatenauswahl und Analysegrenzen werden getrennt gesteuert.';
+        PRINT N'@PlanHandle varbinary(64). Default ist NULL. Exakter Planhandle. Nicht-NULL fügt den Handle direkt als Kandidat hinzu. NULL erlaubt Cacheauswahl per weiteren Selektoren oder VOLL.';
+        PRINT N'@QueryHash binary(8). Default ist NULL. Exakter binärer 8-Byte-Queryhash für die Cacheauswahl. NULL lässt diesen Filter aus.';
+        PRINT N'@QueryPlanHash binary(8). Default ist NULL. Exakter binärer 8-Byte-Plan-Hash für die Cacheauswahl. NULL lässt diesen Filter aus.';
+        PRINT N'@DatabaseNames nvarchar(max). Default ist NULL. Pipe-Liste exakter Datenbanknamen. NULL, leer oder nur Leerzeichen = keine exakte Einschränkung. | trennt außerhalb von [...]. ]] maskiert ] innerhalb. Äußere Segmentleerzeichen entfernt. Elemente einteilige Namen bis 128 Zeichen. Ungültige Liste INVALID_PARAMETER.';
+        PRINT N'@SystemdatenbankenEinbeziehen bit. Default ist 0; bei Auslassung gilt 0. SQL Server bindet den Wert vor Prozedureintritt an bit: numerische 0 wird 0, numerische Werte ungleich 0 werden 1, NULL bleibt NULL; andere Eingabeformen unterliegen der SQL-Typkonvertierung, eine eigene Textnormalisierung oder Leertextauswahl erfolgt nicht, und Bindungsfehler treten vor dem Prozeduraufruf auf. Bei Status AVAILABLE und @PlanHandle IS NULL ruft Showplan den Kandidatenhelfer auf: 0 schließt master, tempdb, model und msdb aus; 1 lässt sie zu, sofern sie sichtbar, online und zugänglich sind und die übrigen Listen-, Pattern- und Snapshotbedingungen erfüllen. NULL wird vom Kandidatenhelfer als INVALID_PARAMETER abgelehnt, wenn diese Prüfung erreicht wird. Bei einem direkt übergebenen, nicht-NULL @PlanHandle wird der gebundene Wert im Prozedurcode nicht ausgewertet und filtert oder verwirft diesen Handle nicht. Frühere Fehler können die Kandidatenprüfung verhindern. Die sonstigen Validierungen und die jeweils geltenden SQL-Rechte sowie Deep- und Showplan-Gates bleiben unverändert.';
+        PRINT N'@DatabaseNamePattern nvarchar(4000). Default ist NULL. Ein LIKE-Pattern oder Präfix like:, regex:, regexi:. Erkennung ohne Beachtung der Großschreibung. Äußere Leerzeichen getrimmt, Musterrest nicht erneut. NULL = kein Pattern. Leerer Inhalt ungültig. Nicht mit wirksamer @DatabaseNames-Liste kombinierbar. Regex Flag c/i und Ausführung nur SQL Server 2025 + Compatibility Level 170 der Installationsdatenbank. Sonst UNAVAILABLE_FEATURE.';
+        PRINT N'@HighImpactConfirmed bit. Default ist 0. 0 keine Bestätigung. 1 bestätigt angeforderte Policy-Gates für PLAN_CACHE_DEEP und/oder SHOWPLAN_XML_DEEP. Bestätigung hebt Filter und Limits nicht auf.';
+        PRINT N'@TextPattern nvarchar(4000). Default ist NULL; bei Auslassung gilt NULL und es wird kein Textfilter angefordert. Der Parser trimmt zuerst äußere U+0020-Leerzeichen, erkennt like:, regex: und regexi: ohne Beachtung der Groß- und Kleinschreibung und entfernt ein erkanntes Präfix ohne erneutes Trimmen. Ohne bekanntes Präfix gilt der gesamte Inhalt als LIKE-Muster, auch bei einem unbekannten Präfix. NULL ergibt NONE. Eine leere Eingabe, eine reine U+0020-Leerzeichenfolge oder ein leerer Präfixrest erzeugt intern EMPTY_PATTERN. Ist der Status bis dahin AVAILABLE, setzt Showplan dafür INVALID_PARAMETER. LIKE verwendet %, _ und [...] unter SQL_Latin1_General_CP1_CS_AS. REGEX verwendet Flag c (case-sensitive), REGEXI Flag i (case-insensitive). Der Parser prüft keine Regexsyntax; Syntaxfehler entstehen erst bei tatsächlicher REGEXP_LIKE-Ausführung. Regexausführung erfordert SQL Server 2025 und Compatibility Level mindestens 170 der Installationsdatenbank. @TextPattern ist keine Pipe-Liste. NULL ist in GEZIELT kein Selektor; ein anderer Selektor bleibt erforderlich. Bei Status AVAILABLE prüft Showplan Form, leeren Patternrest und gegebenenfalls Regexversion und Compatibility Level vor der Handleauswahl. Ohne direkten Planhandle wendet es das Pattern auf den SQL-Text an. Ein direkt übergebener, nicht-NULL @PlanHandle wird ohne Textvergleich übernommen; REGEXP_LIKE wird dann nicht ausgeführt, sodass Regexsyntax ungeprüft bleiben kann. Die sonstigen Validierungen und die jeweils geltenden SQL-Rechte sowie Deep- und Showplan-Gates bleiben unverändert.';
+        PRINT N'@AnalyseModus varchar(16). Default ist ''GEZIELT''. GEZIELT erfordert einen Planhandle, einen der beiden Hashes, eine nichtleere Datenbankliste oder ein Datenbank- oder Textmuster. Die Listen und Muster werden anschließend separat geprüft. Der Modus verwendet die Child-Tiefe STANDARD. VOLL prüft PLAN_CACHE_DEEP und verwendet FULL. NULL entspricht GEZIELT. Rand-Leerzeichen und Groß- und Kleinschreibung werden normalisiert. Leere und andere Werte sind ungültig.';
+        PRINT N'@PlanQuelle varchar(16). Default ist ''AUTO''. AUTO versucht den verfügbaren letzten Actual-Plan und fällt auf COMPILE zurück. COMPILE verwendet den kompilierten Cacheplan. LAST_ACTUAL fordert den letzten verfügbaren Actual-Plan ohne Aktivierung von Profiling an. NULL entspricht AUTO. Rand-Leerzeichen und Groß- und Kleinschreibung werden normalisiert. Leere und andere Werte sind ungültig.';
+        PRINT N'@Sortierung varchar(32). Default ist ''CPU_TOTAL''. Trim/Upper, bestimmt Top-Kandidaten-Ranking. CPU_TOTAL=gesamte Workerzeit. ELAPSED_TOTAL=gesamte Laufzeit. READS_TOTAL=gesamte Reads. EXECUTIONS=Ausführungszahl. SPILLS_TOTAL=Spillmaß. GRANT_MAX=größtes Grant. LAST_EXECUTION=letzte Ausführung. Alle sieben erlaubten Codes, NULL fällt auf CPU_TOTAL zurück. Leer ungültig.';
+        PRINT N'@MinExecutionCount bigint. Default ist 1. Ganzzahliges Minimum für die Ausführungszahl in der Cacheauswahl. 0 lässt auch Einträge mit 0 Ausführungen zu. Negative Werte ergeben INVALID_PARAMETER. Bei NULL trifft der Vergleich auf keine Cachezeile. Ein direkt angegebener Planhandle bleibt ein eigener Kandidatenpfad.';
+        PRINT N'@MaxAnalyseobjekte int. Default ist 20. Positive Grenze der Kandidaten vor Planladen. 0/NULL unbegrenzt. Negativ ungültig. >20 oder unbegrenzt prüft PLAN_CACHE_DEEP, danach kann VOLL zusätzlich SHOWPLAN_XML_DEEP prüfen.';
+        PRINT N'@MaxDurationSeconds int. Default ist 30. Ganzzahl von 1 bis 3600 Sekunden. Das Zeitbudget wird zwischen Kandidaten geprüft. Es unterbricht eine laufende XML-Analyse nicht. NULL ist ungültig und wird auf Wrapper-Ebene abgelehnt.';
+        PRINT N'@MaxZeilen int. Default ist 50000. Positiv begrenzt Ergebniszeilen/Findingbudget. 0/NULL unbegrenzt (Childbudget wird intern auf 50000 gedeckelt). Negativ ungültig. Resultset-TOP und Candidate-Limit sind getrennte Grenzen.';
+        PRINT N'@ParentQueryStatsSnapshot bit. Default ist 0. 0 liest Query Stats frisch. 1 verwendet den laufgebundenen Snapshot von USP_PlanCacheAnalysis. NULL aktiviert den Snapshot-Zweig nicht. Verwenden Sie 0 für eigenständige Aufrufe.';
+        PRINT N'@WorkloadProfil varchar(32). Default ist ''AUTO''. Auswahl des aktiven Workloadprofils für Regeln und Schwellwerte. AUTO wählt innerhalb der Analyse aus der aktivierten Profilkonfiguration (monitor.PlanAnalysisProfile). Der konkrete gültige Profilcode ist damit installations-/konfigurationsabhängig, keine im Wrapper geschlossene Liste. Profilcodes werden im Child auf Großschreibung normalisiert. Unbekannter/deaktivierter Code fällt intern kontrolliert auf BALANCED zurück. NULL wird vom Child auf AUTO normalisiert. Leerwert führt zum unbekannten Profil und Fallback BALANCED.';
+        PRINT N'@MinSchweregrad varchar(16). Default ist ''INFO''. Mindestschweregrad für Findings. Geschlossene Menge INFO, LOW, MEDIUM, HIGH, CRITICAL. Stufen sind aufsteigende Mindestschwellen, INFO lässt die niedrigste Stufe zu, CRITICAL nur höchste Schwere. NULL wird auf INFO normalisiert. Leertext ist ungültig.';
+        PRINT N'@MitThreadRuntime bit. Default ist 0. 0 unterdrückt Thread-Runtime-Evidenz. 1 fordert sie an. Verwenden Sie 0 oder 1 als eindeutigen Schalter. Für Threaddaten können Quellverfügbarkeit und Planumfang Grenzen setzen.';
+        PRINT N'@MitSqlText bit. Default ist 0. 0 unterdrückt SQL-Text. 1 fordert Statementtext an und benötigt zusätzlich SensitiveDataConfirmed=1, da Literale/proprietärer Text enthalten sein können. Verwenden Sie 0 oder 1 als eindeutigen Schalter.';
+        PRINT N'@StatistikEvidenzModus varchar(16). Default ist ''PLAN_ONLY''. Geschlossene Menge: NONE=keine Statistik-Evidenz. PLAN_ONLY=nur Statistikhinweise aus Plan-XML. USED=Statistiken, die der Plan als benutzt ausweist. RELEVANT=erweiterte relevante Statistiken samt tieferer Evidence. OBJECT_ALL=alle Statistiken der referenzierten Objekte. NULL normalisiert zu PLAN_ONLY. Leertext ungültig. RELEVANT und OBJECT_ALL lösen tiefere Statistik-/Katalogpfade aus.';
+        PRINT N'@HistogrammModus varchar(16). Default ist ''NONE''. Geschlossene Menge: NONE=kein Histogramm. SUMMARY=Zusammenfassung. STEPS=Schrittwerte des Histogramms. NULL wird zu NONE normalisiert. Leertext ungültig. STEPS gehört zum tiefen Pfad. MaxHistogrammSchritte begrenzt die gelieferten Schritte.';
+        PRINT N'@MetadatenQuellenmodus varchar(16). Default ist ''EVIDENCE_ONLY''. Geschlossene Menge: EVIDENCE_ONLY verwendet im Plan/Evidence vorhandene Metadaten. CURRENT_SERVER reichert aus dem aktuellen Serverkatalog an. NULL wird zu EVIDENCE_ONLY normalisiert. Leertext ungültig. CURRENT_SERVER erfordert QuellumgebungBestaetigt=1, damit die aktuelle Umgebung ausdrücklich als Datenquelle bestätigt ist.';
+        PRINT N'@QuellumgebungBestaetigt bit. Default ist 0. 0 keine Bestätigung. 1 bestätigt, dass CURRENT_SERVER-Katalogmetadaten der Quellumgebung zugeordnet werden dürfen. Nur 0/1. NULL ungültig. CURRENT_SERVER ohne 1 wird abgelehnt.';
+        PRINT N'@EvidenzDatenschutzModus varchar(24). Default ist ''DERIVED_ONLY''. Geschlossene Menge: DERIVED_ONLY gibt abgeleitete Evidenz ohne rohe Parameter-/Histogrammwerte aus. TOKENIZED ersetzt sensible Werte durch Token. STRUCTURE_ONLY gibt Struktur/Metadaten ohne Werte aus. RAW gibt rohe Parameter- und Histogrammwerte aus. NULL wird zu DERIVED_ONLY normalisiert. Leertext ungültig. RAW erfordert SensitiveDataConfirmed=1.';
+        PRINT N'@IdentifierDatenschutzModus varchar(16). Default ist ''RAW''. Geschlossene Menge: RAW gibt Objekt-/Statistikidentifikatoren im Original aus. TOKENIZED ersetzt sie durch Token. OMIT lässt Identifikatoren weg. NULL wird zu RAW normalisiert. Leertext ungültig.';
+        PRINT N'@SensitiveDataConfirmed bit. Default ist 0. 0 keine Freigabebestätigung. 1 bestätigt die bewusste Verarbeitung potentiell sensibler Rohwerte. Verwenden Sie 0 oder 1 als eindeutigen Schalter. Erforderlich bei EvidenzDatenschutzModus=RAW oder MitSqlText=1. Kein allgemeiner Gate-Bypass.';
+        PRINT N'@MaxStatistiken int. Default ist 100. Anzahlbegrenzung der gelesenen Statistikobjekte, Bereich 1..1000. 0 und NULL ungültig. Bei tiefer Statistik-Evidenz begrenzt diese Zahl die Katalogarbeit.';
+        PRINT N'@MaxHistogrammSchritte int. Default ist 20000. Maximal gelesene Histogrammschritte, Bereich 0..200000. 0 erlaubt keine Schritte (Zusammenfassung bleibt möglich), NULL ungültig.';
+        PRINT N'@ResultSetArt varchar(16). Default ist ''CONSOLE''. Trim/Upper. CONSOLE lesbare Resultsets, RAW kanonische Detailresultsets, TABLE schreibt die typisierten Resultsets in Zieltabellen, NONE unterdrückt direkte Resultsets. Erlaubt genau CONSOLE, RAW, TABLE, NONE. NULL wird leer und ungültig, Leerwert ungültig.';
+        PRINT N'@ResultTablesJson nvarchar(max). Default ist NULL. Bei TABLE ist ein gültiges, nichtleeres JSON-Objekt erforderlich. Wählen Sie eine Teilmenge der exakt geschriebenen Schlüssel parameters, planWarnings, optimizerContext, runtimeFeedback, queryStoreContext, feedbackAndVariants und findings. Jeder Wert muss als Zeichenfolge eine andere vorhandene, leere lokale #Temp-Tabelle mit genau einer Seed-Spalte benennen. Erlaubt sind höchstens 116 Zeichen und weder ## noch #Monitor als Präfix. Außerhalb von TABLE ist ausschließlich NULL erlaubt. Auch eine leere Zeichenfolge ist ungültig. Die Zuordnung wird nach dem Hilfe-Return und vor den Quellzugriffen geprüft. Ein ungültiges Mapping kann Fehler 51011 auslösen.';
+        PRINT N'@JsonErzeugen bit. Default ist 0. 1 erzeugt JSON in @Json unabhängig von der Ausgabeart. 0 oder NULL erzeugt kein Dokument.';
+        PRINT N'@Json nvarchar(max) OUTPUT. Default ist NULL. OUTPUT nvarchar(max), wird beim Eintritt auf NULL gesetzt und bei JsonErzeugen=1 mit Objekt meta, planStatus und den sieben Fachergebnisarrays sowie analyses befüllt. Caller muss gleich typisierten Variable OUTPUT binden.';
+        PRINT N'@PrintMeldungen bit. Default ist 1; bei Auslassung gilt 1. SQL Server bindet vor Prozedureintritt an bit: numerische 0 wird 0, numerische Werte ungleich 0 werden 1, NULL bleibt NULL; andere Literalformen unterliegen der SQL-Typkonvertierung, Bindungsfehler treten vor dem Prozedurcode auf. Der Parent validiert oder normalisiert den Wert nicht. 1 erzeugt nur am erreichten regulären Ende eine Severity-10-Warnung, wenn der Status nicht NULL und ungleich AVAILABLE ist; 0 und NULL erfüllen diese Bedingung nicht. Die Warnung verwendet FORMATMESSAGE und RAISERROR WITH NOWAIT, ist keine Ausnahme und kann durch Hilfe oder frühere Fehler ausbleiben. Der Interpreteraufruf erhält fest @PrintMeldungen=0; der Callerwert wird dafür nicht weitergereicht. Hilfe-PRINTs und Vorbereitungs-/SQL-Fehler sind unabhängig. Der Schalter steuert keine Resultsets, JSON, Analyseauswahl oder Fehlerbehandlung und garantiert keine vollständige Stille.';
+        PRINT N'@Hilfe bit. Default ist 0. 1 zeigt die Hilfe und beendet den Aufruf vor Validierung, TABLE-Zuordnungsprüfung und fachlicher Analyse. 0 und NULL führen die Analyse aus.';
+        PRINT N'Hilfe anzeigen. EXEC [monitor].[USP_ShowplanAnalysis] @Hilfe=1;';
+        PRINT N'Technische Resultsets lesen. EXEC [monitor].[USP_ShowplanAnalysis] @QueryHash=0x0102030405060708, @AnalyseModus=''GEZIELT'', @PlanQuelle=''COMPILE'', @MaxAnalyseobjekte=5, @MaxDurationSeconds=10, @MaxZeilen=1000, @ResultSetArt=''RAW'';';
+        PRINT N'Nur JSON ausgeben. DECLARE @Json nvarchar(max); EXEC [monitor].[USP_ShowplanAnalysis] @QueryHash=0x0102030405060708, @JsonErzeugen=1, @ResultSetArt=''NONE'', @Json=@Json OUTPUT; SELECT @Json AS [Json];';
+        PRINT N'Ein Resultset in eine lokale Temp-Tabelle schreiben. CREATE TABLE #ShowplanAnalysis_HelpExample ([Seed] int NULL); BEGIN TRY EXEC [monitor].[USP_ShowplanAnalysis] @QueryHash=0x0102030405060708, @ResultSetArt=''TABLE'', @ResultTablesJson=N''{"findings":"#ShowplanAnalysis_HelpExample"}''; SELECT * FROM #ShowplanAnalysis_HelpExample; DROP TABLE #ShowplanAnalysis_HelpExample; END TRY BEGIN CATCH DROP TABLE #ShowplanAnalysis_HelpExample; THROW; END CATCH;';
         RETURN;
     END;
 
@@ -34787,7 +36171,7 @@ BEGIN
        OR @Mode NOT IN ('GEZIELT','VOLL') OR @Source NOT IN ('AUTO','COMPILE','LAST_ACTUAL')
        OR @Order NOT IN ('CPU_TOTAL','ELAPSED_TOTAL','READS_TOTAL','EXECUTIONS','SPILLS_TOTAL','GRANT_MAX','LAST_EXECUTION')
        OR @MaxAnalyseobjekte<0 OR @MaxZeilen<0 OR @MinExecutionCount<0
-       OR @MaxDurationSeconds NOT BETWEEN 1 AND 3600 OR @ParentQueryStatsSnapshot NOT IN (0,1)
+       OR @MaxDurationSeconds IS NULL OR @MaxDurationSeconds NOT BETWEEN 1 AND 3600 OR @ParentQueryStatsSnapshot NOT IN (0,1)
        OR @JsonErzeugen NOT IN (0,1)
     BEGIN
         SELECT @StatusCode='INVALID_PARAMETER',@IsPartial=1,@ErrorMessage=N'Ungültiger Modus-, Grenzwert-, Quell- oder Ausgabeparameter.';
@@ -35545,19 +36929,47 @@ BEGIN
     IF @Hilfe = 1
     BEGIN
         PRINT N'monitor.USP_PlanCacheAnalysis';
-        PRINT N'Datenbank- und Textfilter folgen den zentralen Listen-/Patternverträgen.';
-        PRINT N'@ResultSetArt = RAW, CONSOLE, TABLE oder NONE; optional JSON über @Json OUTPUT.';
+        PRINT N'Die Procedure koordiniert Query Stats, Query Hash, Plan Cache Health und Showplan. Sie liefert den Modulstatus und kann die Ergebnisse der aufgerufenen Module als JSON zusammenführen.';
+        PRINT N'@MitQueryStats bit. Default ist 1. 1 aktiviert QueryStats, 0 deaktiviert. TOP/100 ohne Hash ist nicht per se PLAN_CACHE_DEEP geschützt. NULL aktiviert Child nicht.';
+        PRINT N'@MitQueryHashAnalysis bit. Default ist 0. Der bit-Parameter nimmt 0, 1 oder NULL an; bei Auslassung gilt 0. 1 aktiviert den Hash-Child, 0 deaktiviert ihn. NULL deaktiviert den Child. Bei aktiviertem Child verlangt ein fehlender QueryHash das Deep-Gate; ein einzelner Hash mit TOP <=1000 nicht.';
+        PRINT N'@MitPlanCacheHealth bit. Default ist 0. Der bit-Parameter nimmt 0, 1 oder NULL an; bei Auslassung gilt 0. 1 aktiviert Health, 0 deaktiviert den Child. NULL deaktiviert den Child. TOP wird SUMMARY; VOLL wird VOLL mit Datenbankverteilung und Deep-Gate.';
+        PRINT N'@MitShowplanAnalysis bit. Default ist 0. Der bit-Parameter nimmt 0, 1 oder NULL an; bei Auslassung gilt 0. 1 aktiviert Showplan, 0 deaktiviert den Child. NULL deaktiviert den Child. TOP wird GEZIELT, VOLL bleibt VOLL.';
+        PRINT N'Mindestens einer der vier Modulschalter muss exakt 1 sein. 0 und NULL gelten jeweils als deaktiviert.';
+        PRINT N'@DatabaseNames nvarchar(max). Default ist NULL. Pipe-Liste exakter einteiliger Datenbanknamen bis 128 Zeichen. | trennt außerhalb [...], ]] maskiert ]. Segmentränder getrimmt. NULL/leer/Whitespace = kein Filter. Ungültig INVALID_PARAMETER. Nicht mit wirksamem DatabaseNamePattern kombinierbar.';
+        PRINT N'@SystemdatenbankenEinbeziehen bit. Default ist 0; bei Auslassung gilt 0. SQL Server bindet den Wert vor Prozedureintritt an bit: numerische 0 wird 0, numerische Werte ungleich 0 werden 1, NULL bleibt NULL; andere Eingabeformen unterliegen der SQL-Typkonvertierung, eine eigene Textnormalisierung oder Leertextauswahl erfolgt nicht, und Bindungsfehler treten vor dem Prozeduraufruf auf. Der Parent prüft oder normalisiert den Wert nicht und reicht ihn unverändert nur an QueryStats und Showplan weiter, jeweils wenn das Child aktiviert ist. Bei erreichtem Kandidatenhelfer schließt 0 master, tempdb, model und msdb aus; 1 lässt sie zu, sofern sie sichtbar, online und zugänglich sind und die übrigen Listen-, Pattern- und Snapshotfilter erfüllen. QueryStats ruft den Kandidatenhelfer bei Status AVAILABLE auch mit gesetztem @PlanHandle auf. Showplan ruft ihn nur bei Status AVAILABLE und @PlanHandle IS NULL auf; ein direkt übergebener Planhandle umgeht dort diesen Datenbankscopefilter. NULL wird vom Kandidatenhelfer als INVALID_PARAMETER abgelehnt, wenn er erreicht wird; frühere Fehler können Vorrang haben. Der Parent reicht diesen Schalter nicht an QueryHash oder PlanCacheHealth weiter. Er gewährt keine zusätzlichen Datenbankrechte.';
+        PRINT N'@DatabaseNamePattern nvarchar(4000). Default ist NULL. LIKE oder Präfix like:/regex:/regexi:. Case-insensitive Präfix, außen getrimmt, Rest nicht. NULL kein Filter, leer ungültig. Nicht mit DatabaseNames kombinierbar. Regex nur SQL Server 2025 + Installations-DB Compat 170.';
+        PRINT N'@HighImpactConfirmed bit. Default ist 0. 1 bestätigt einen geschützten Pfad, wenn dessen Policy eine Bestätigung verlangt. Berechtigungen und Grenzwerte gelten weiterhin. 0 bestätigt den Pfad nicht und NULL ist für die Pfadprüfung ungültig. Der Parent prüft PLAN_CACHE_DEEP bei mindestens zwei Snapshot-Consumern, wenn ein Queryhash fehlt, VOLL gewählt ist oder das Zeilenlimit unbegrenzt beziehungsweise größer als 1000 ist. Die aufgerufenen Module prüfen ihre eigenen Gates. Als Snapshot-Consumer zählen Query Stats, Query Hash und Showplan ohne direkten Planhandle. Verweigert das Parent-Gate den gemeinsamen Zugriff, laufen die Module nicht. Schlägt die erlaubte Materialisierung fehl, können die Module frisch lesen.';
+        PRINT N'@QueryHash binary(8). Default ist NULL. Optionaler exakter Queryhashfilter für QueryStats/Hash/Showplan. Hash-Child ohne Hash braucht Deep-Gate. Einzelner Hash mit TOP/<=1000 nicht.';
+        PRINT N'@QueryPlanHash binary(8). Default ist NULL. Optionaler exakter Planhashfilter für QueryStats/Showplan.';
+        PRINT N'@PlanHandle varbinary(64). Default ist NULL. Optionaler Handlefilter. Showplan fügt Nicht-NULL direkt als Kandidat hinzu.';
+        PRINT N'@TextPattern nvarchar(4000). Default ist NULL; bei Auslassung gilt NULL und es wird kein Textfilter angefordert. Der Parser trimmt zuerst äußere U+0020-Leerzeichen, erkennt like:, regex: und regexi: ohne Beachtung der Groß- und Kleinschreibung und entfernt ein erkanntes Präfix ohne erneutes Trimmen. Ohne bekanntes Präfix gilt der gesamte Inhalt als LIKE-Muster, auch bei einem unbekannten Präfix. NULL ergibt NONE; leere Eingabe, nur U+0020-Leerzeichen und leerer Präfixrest ergeben intern EMPTY_PATTERN und beim tatsächlich erreichten Kindmodul INVALID_PARAMETER. LIKE verwendet %, _ und [...] unter SQL_Latin1_General_CP1_CS_AS. REGEX verwendet Flag c (case-sensitive), REGEXI Flag i (case-insensitive). Der Parser prüft keine Regexsyntax; Syntaxfehler entstehen erst bei tatsächlicher REGEXP_LIKE-Ausführung. Regexausführung erfordert SQL Server 2025 und Compatibility Level mindestens 170 der Installationsdatenbank. @TextPattern ist keine Pipe-Liste. Der PlanCache-Parent prüft das Pattern nicht und reicht es unverändert nur an QueryStats und Showplan weiter, nicht an QueryHash oder PlanCacheHealth. QueryStats wertet den Textfilter auch bei gesetztem @PlanHandle aus. Showplan prüft Form und Regexverfügbarkeit vor der Handleauswahl; ohne direkten Planhandle wendet es den Textfilter an. Mit nicht-NULL @PlanHandle wird der Handle direkt übernommen und nicht mit dem Pattern verglichen; Regexsyntax kann daher ungeprüft bleiben. Frühere Fehler oder deaktivierte Kindmodule können die Prüfung verhindern.';
+        PRINT N'@Sortierung varchar(32). Default ist ''CPU_TOTAL''. Die unterstützten Ränge hängen vom aktivierten Modul ab. QueryStats, QueryHashAnalysis und ShowplanAnalysis verstehen CPU_TOTAL für gesamte CPU, ELAPSED_TOTAL für gesamte Laufzeit, READS_TOTAL für logische Reads, EXECUTIONS für Ausführungen und SPILLS_TOTAL für Spills. QueryStats und QueryHashAnalysis unterstützen zusätzlich WRITES_TOTAL für logische Writes. QueryStats und ShowplanAnalysis unterstützen GRANT_MAX für maximalen Grant und LAST_EXECUTION für die letzte Ausführung. Nur QueryStats unterstützt CPU_AVG, ELAPSED_AVG, READS_AVG und WRITES_AVG für den jeweiligen Mittelwert je Ausführung sowie ROWS_TOTAL für die Gesamtzahl der Zeilen. Nur QueryHashAnalysis unterstützt PLAN_VARIANTS für die Zahl der Planvarianten. PlanCacheHealth verwendet den Wert nicht. NULL entspricht CPU_TOTAL. Die Empfänger trimmen Leerzeichen und normalisieren die Groß- und Kleinschreibung. Leertext und nicht unterstützte Werte sind im jeweiligen Modul ungültig.';
+        PRINT N'@AnalyseModus varchar(16). Default ist ''TOP''. TOP => QueryStats/Hash TOP, Health SUMMARY, Showplan GEZIELT. VOLL => QueryStats/Hash VOLL, Health VOLL+Datenbankverteilung, Showplan VOLL. Trim/Upper, NULL TOP, leer/sonst ungültig.';
+        PRINT N'@MaxZeilen int. Default ist 100. Je Child weitergereicht. Positiv begrenzt, NULL/0 unbegrenzt, negativ Parent INVALID_PARAMETER ohne Children. Unbegrenzt/>1000 oder VOLL kann Deep-Gate auslösen. SUMMARY Health nutzt den Wert nicht.';
+        PRINT N'@MaxAnalyseobjekte int. Default ist 20. Showplan-Kandidatenlimit. Positiv begrenzt, 0/NULL unbegrenzt, negativ Parent INVALID_PARAMETER. >20/unbegrenzt kann Deep-Gate auslösen. VOLL zusätzlich SHOWPLAN_XML_DEEP.';
+        PRINT N'@MaxDurationSeconds int. Default ist 30. Ganzzahl von 1 bis 3600 Sekunden. Der Parent lehnt NULL und Zahlen außerhalb des Bereichs ab. Das Zeitbudget gilt für Showplan und wird zwischen Kandidaten geprüft. Es unterbricht keine laufende XML-Analyse.';
+        PRINT N'@ResultSetArt varchar(16). Default ist ''CONSOLE''. RAW gibt zuerst die Resultsets der aufgerufenen Module aus, gefolgt vom Parentstatus und der Modulstatusliste. CONSOLE zeigt die beschriftete Modulstatusliste. TABLE schreibt nur moduleStatus. NONE unterdrückt die fachlichen Resultsets. Die Module erhalten bei CONSOLE, TABLE und NONE intern NONE. JSON ist separat wählbar. Leerzeichen am Rand und die Groß- und Kleinschreibung werden normalisiert. NULL, Leertext und andere Werte sind ungültig.';
+        PRINT N'@ResultTablesJson nvarchar(max). Default ist NULL. Nur TABLE: Objekt exakt mit moduleStatus und Stringziel. Ziel vorhandene leere lokale #Temp mit genau einer Seed-Spalte, <=116 Zeichen, kein ##/#Monitor. Andere Modi nur NULL/leer/Whitespace, sonst 51011. Preflight vor Hilfe-Return.';
+        PRINT N'@JsonErzeugen bit. Default ist 0. 1 erzeugt zusätzlich @Json. 0/NULL erzeugt kein Dokument.';
+        PRINT N'@Json nvarchar(max) OUTPUT. Default ist NULL. bei Eintritt NULL. Bei JsonErzeugen=1 Dokument mit meta, queryStats, queryHashes, planCacheHealth, showplan, modules, warnings. Nicht verfügbare Childobjekte null. OUTPUT nvarchar(max) binden.';
+        PRINT N'@PrintMeldungen bit. Default ist 1; bei Auslassung gilt 1. SQL Server bindet vor Prozedureintritt an bit: numerische 0 wird 0, numerische Werte ungleich 0 werden 1, NULL bleibt NULL; andere Literalformen unterliegen der SQL-Typkonvertierung, Bindungsfehler treten vor dem Prozedurcode auf. Der Parent validiert oder normalisiert den Wert nicht. Er reicht ihn unverändert an tatsächlich ausgeführte QueryStats-, QueryHashAnalysis-, PlanCacheHealth- und Showplan-Aufrufe weiter. 1 fordert dort jeweils die optionale Meldungseinstellung an; 0 und NULL werden ebenfalls weitergereicht. Die konkrete Wirkung folgt dem jeweiligen Childvertrag; eine einheitliche Meldungs- oder Stillezusage gibt es nicht. Der Parent erzeugt im normalen Ablauf keine eigene PRINT- oder RAISERROR-Statusmeldung; seine Hilfeausgabe ist unabhängig. Im Showplan-Child entsteht dessen optionale Severity-10-Warnung nur am erreichten Ende bei einem Status ungleich AVAILABLE; der interne Interpreter erhält fest @PrintMeldungen=0. Der Parent-Schalter steuert keine Resultsets, JSON, Modulauswahl oder Fehlerbehandlung. Vorbereitungs- und SQL-Fehler bleiben unabhängig davon möglich.';
+        PRINT N'@Hilfe bit. Default ist 0. 1 druckt Hilfe und RETURN vor Validierung/Analyse. Vorher @Json=NULL, Monitor-Temp-DDL, Locktimeout, TABLE-Mapping-Preflight. 0/NULL regulärer Ablauf.';
+        PRINT N'Hilfe anzeigen. EXEC [monitor].[USP_PlanCacheAnalysis] @Hilfe=1;';
+        PRINT N'Modulstatus als RAW lesen. EXEC [monitor].[USP_PlanCacheAnalysis] @MitQueryStats=1, @MitQueryHashAnalysis=0, @MitPlanCacheHealth=0, @MitShowplanAnalysis=0, @QueryHash=0x0102030405060708, @MaxZeilen=50, @ResultSetArt=''RAW'';';
+        PRINT N'Nur JSON ausgeben. DECLARE @ResultJson nvarchar(max); EXEC [monitor].[USP_PlanCacheAnalysis] @MitQueryStats=1, @MitQueryHashAnalysis=0, @MitPlanCacheHealth=0, @MitShowplanAnalysis=0, @QueryHash=0x0102030405060708, @MaxZeilen=50, @ResultSetArt=''NONE'', @JsonErzeugen=1, @Json=@ResultJson OUTPUT; SELECT @ResultJson AS [Json];';
+        PRINT N'Modulstatus in eine lokale Temp-Tabelle schreiben. CREATE TABLE #PlanCacheAnalysis_HelpExample ([Seed] int NULL); BEGIN TRY EXEC [monitor].[USP_PlanCacheAnalysis] @MitQueryStats=1, @MitQueryHashAnalysis=0, @MitPlanCacheHealth=0, @MitShowplanAnalysis=0, @QueryHash=0x0102030405060708, @MaxZeilen=50, @ResultSetArt=''TABLE'', @ResultTablesJson=N''{"moduleStatus":"#PlanCacheAnalysis_HelpExample"}''; SELECT * FROM #PlanCacheAnalysis_HelpExample; DROP TABLE #PlanCacheAnalysis_HelpExample; END TRY BEGIN CATCH DROP TABLE #PlanCacheAnalysis_HelpExample; THROW; END CATCH;';
         RETURN;
     END;
 
     IF @MaxZeilen < 0
        OR @MaxAnalyseobjekte < 0
 
+       OR @MaxDurationSeconds IS NULL
        OR @MaxDurationSeconds NOT BETWEEN 1 AND 3600
        OR @OutputMode NOT IN ('RAW', 'CONSOLE', 'NONE')
        OR @Mode NOT IN ('TOP', 'VOLL')
-       OR (@MitQueryStats = 0 AND @MitQueryHashAnalysis = 0
-           AND @MitPlanCacheHealth = 0 AND @MitShowplanAnalysis = 0)
+       OR (COALESCE(@MitQueryStats,0) = 0 AND COALESCE(@MitQueryHashAnalysis,0) = 0
+           AND COALESCE(@MitPlanCacheHealth,0) = 0 AND COALESCE(@MitShowplanAnalysis,0) = 0)
     BEGIN
         SET @StatusCode = 'INVALID_PARAMETER';
         SET @Detail = N'Ungültiger Parameter oder kein Teilmodul aktiviert.';
@@ -35816,6 +37228,501 @@ BEGIN
 END;
 GO
 -- END SOURCE: Code/04_PlanCache/060_USP_PlanCacheAnalysis.sql
+
+-- BEGIN SOURCE: Code/04_PlanCache/070_USP_PlanGuideInventory.sql
+/*
+===============================================================================
+Objekt       : monitor.USP_PlanGuideInventory
+Version      : 1.0.0
+Stand        : 2026-11-13
+Zweck        : Inventarisiert caller-sichtbare Plan-Guide-Katalogmetadaten je
+               ausgewählter Online-Datenbank.
+Quellen      : sys.plan_guides.
+Grenzen      : Keine Validierung, Wirksamkeits- oder Vollständigkeitsprüfung.
+Datenschutz  : Keine SQL-, Batch-, Parameter- oder Hint-Definitionen.
+Nebenwirkung : Read-only im Caller-Kontext; keine Plan-Guide-Aktion oder Compile.
+===============================================================================
+*/
+CREATE OR ALTER PROCEDURE [monitor].[USP_PlanGuideInventory]
+      @DatabaseNames nvarchar(max) = NULL
+    , @SystemdatenbankenEinbeziehen bit = 0
+    , @DatabaseNamePattern nvarchar(4000) = NULL
+    , @MaxZeilen int = 1000
+    , @LockTimeoutMs int = 0
+    , @ResultSetArt varchar(16) = 'CONSOLE'
+    , @ResultTablesJson nvarchar(max) = NULL
+    , @JsonErzeugen bit = 0
+    , @Json nvarchar(max) = NULL OUTPUT
+    , @PrintMeldungen bit = 1
+    , @Hilfe bit = 0
+    , @StatusCodeOut varchar(40) = NULL OUTPUT
+    , @IsPartialOut bit = NULL OUTPUT
+    , @ErrorNumberOut int = NULL OUTPUT
+    , @ErrorMessageOut nvarchar(2048) = NULL OUTPUT
+AS
+BEGIN
+    SET NOCOUNT ON;
+    SELECT @Json=NULL,@StatusCodeOut=NULL,@IsPartialOut=NULL,
+           @ErrorNumberOut=NULL,@ErrorMessageOut=NULL;
+
+    DECLARE @OriginalLockTimeout int=@@LOCK_TIMEOUT;
+    DECLARE @CapturedAtUtc datetime2(3)=SYSUTCDATETIME(),
+        @Mode varchar(16)=UPPER(LTRIM(RTRIM(COALESCE(@ResultSetArt,'')))),
+        @Limit bigint=CASE WHEN @MaxZeilen IS NULL OR @MaxZeilen=0
+                           THEN CONVERT(bigint,9223372036854775807) ELSE @MaxZeilen END,
+        @PreviousXactAbort bit=CASE WHEN (@@OPTIONS & 16384)=16384 THEN 1 ELSE 0 END,
+        @LockTimeoutSql nvarchar(100),
+        @Started datetime2(3),
+        @Observed bigint=NULL,
+        @SelectionStatus varchar(40),
+        @SelectionMessage nvarchar(2048),
+        @SelectionError int=NULL,
+        @CrossDatabaseRequested bit,
+        @Status varchar(40)='SKIPPED',
+        @Error int=NULL,
+        @Message nvarchar(2048)=NULL,
+        @TableStatus varchar(40),
+        @TableMessage nvarchar(2048),
+        @TableError int,
+        @TableFailureError int=NULL,
+        @Sql nvarchar(max);
+    DECLARE @ConsoleResultRequested bit=CASE WHEN @Mode='CONSOLE' THEN 1 ELSE 0 END;
+    SET @LockTimeoutSql=N'SET LOCK_TIMEOUT '+CONVERT(nvarchar(20),@OriginalLockTimeout)+N';';
+
+    IF @Hilfe=1
+    BEGIN
+        PRINT N'monitor.USP_PlanGuideInventory';
+        PRINT N'Die Procedure liest pro ausgewählter ONLINE-Datenbank nur caller-sichtbare Zeilen aus sys.plan_guides. ScopeType 1 bedeutet OBJECT, 2 SQL, 3 TEMPLATE; unbekannte native Werte bleiben unverändert. IsDisabled ist ein Konfigurationswert, kein Wirksamkeitsbeleg. ValidationStatus ist stets UNASSESSED; es wird keine Validierung oder Kompilierung ausgeführt. Leere Fachzeilen belegen nur eine leere sichtbare Menge.';
+        PRINT N'@DatabaseNames nvarchar(max); Default: NULL. NULL, leerer Text oder äußere U+0020-Leerzeichen bedeuten keine exakte Einschränkung. Eine aktive bracket-aware Pipe-Liste enthält einteilige Datenbanknamen; | innerhalb [...] ist Namensinhalt und ]] maskiert ]. Äußere Leerzeichen werden getrimmt; leere oder doppelte Segmente und Namen über 128 Zeichen sind ungültig. Jedes rohe Segment darf höchstens 4000 UTF-16-Codeeinheiten enthalten, die Gesamtliste ist offen. Eine aktive Liste und ein nicht-NULL-Pattern sind unzulässig. Standard sind caller-sichtbare zugreifbare ONLINE-Benutzerdatenbanken ohne Snapshots.';
+        PRINT N'@SystemdatenbankenEinbeziehen bit; Default: 0. 0 schließt Datenbank-IDs bis 4 aus; 1 lässt sie als Kandidaten zu. NULL ist INVALID_PARAMETER. Numerische 0 wird 0, andere numerische Werte werden 1; Sichtbarkeit und Zugriff bleiben erforderlich.';
+        PRINT N'@DatabaseNamePattern nvarchar(4000); Default: NULL. NULL bedeutet kein Pattern; nicht-NULL-Leertext ist ungültig. like:, regex: und regexi: sind zulässige Präfixe, ohne Präfix gilt LIKE. LIKE und regex sind case-sensitiv, regexi ist case-insensitiv. LIKE verwendet SQL-LIKE-Syntax mit %, _, Zeichenklassen und ohne eigene ESCAPE-Klausel. Regex verlangt SQL Server 2025 und Compatibility Level 170 der Installationsdatenbank. Eine aktive exakte Liste und Pattern sind unzulässig.';
+        PRINT N'@MaxZeilen int; Default: 1000. NULL oder 0 bedeuten unbegrenzt; negative Werte sind INVALID_PARAMETER. Positive Werte 1 bis 2147483647 begrenzen ausschließlich ausgegebene planGuides-Zeilen in der Reihenfolge DatabaseId, PlanGuideId. Auswahl und Kataloglesearbeit bleiben unbegrenzt; echte Kürzung erhält OUTPUT_LIMIT.';
+        PRINT N'@LockTimeoutMs int; Default: 0. Nur 0 bis 60000 Millisekunden sind zulässig; NULL ist INVALID_PARAMETER. 0 ist NOWAIT. Der Wert gilt je dynamischem Datenbank-Katalogbatch und ist keine Gesamtdauergrenze. Der vorherige Sessionwert wird wiederhergestellt.';
+        PRINT N'@ResultSetArt varchar(16); Default: ''CONSOLE''. Nach äußerem U+0020-Trimmen und Großschreibung sind CONSOLE, RAW, TABLE und NONE zulässig. NULL oder leer ist INVALID_PARAMETER. CONSOLE liefert eine formatierte Fachmenge, RAW moduleStatus, planGuides, sourceStatus und warnings in dieser Reihenfolge, TABLE schreibt benannte Mengen, NONE liefert keine Fachresultsets. JSON ist unabhängig.';
+        PRINT N'@ResultTablesJson nvarchar(max); Default: NULL. Nur TABLE akzeptiert ein JSON-Objekt mit wenigstens einer Zuordnung der exakt case-sensitiven Schlüssel moduleStatus, planGuides, sourceStatus, warnings zu verschiedenen lokalen #Temp-Zielen. Ziele müssen existieren, leer sein und genau eine Seed-Spalte haben; Namen höchstens 116 Zeichen, nicht ## oder #Monitor. Doppelte und unbekannte Schlüssel, doppelte oder ungültige Ziele werden vor Quellenzugriff abgewiesen. Ein späterer Writer-Fehler kann frühere Zielschreibungen belassen. Außerhalb TABLE sind nur NULL, leer oder U+0020-Leerzeichen zulässig.';
+        PRINT N'@JsonErzeugen bit; Default: 0. 1 erzeugt unabhängig von ResultSetArt JSON mit schemaVersion 1, meta und allen vier Arrays; NULL und 0 erzeugen keines. Numerische 0 wird 0, andere numerische Werte werden 1.';
+        PRINT N'@Json nvarchar(max) OUTPUT; Default: NULL. Optional an eine nvarchar(max)-Variable mit OUTPUT binden; Eingang wird auf NULL gesetzt. Bei JsonErzeugen=1 entsteht JSON im normalen Pfad. Hilfe, direkte Parameterfehler und äußerer CATCH lassen NULL.';
+        PRINT N'@PrintMeldungen bit; Default: 1. 1 gibt zusätzliche niedrige Severity-Meldungen zu Fehlern aus; 0 und NULL unterdrücken sie. Andere Ergebnisse bleiben gleich. Numerische 0 wird 0, andere numerische Werte werden 1.';
+        PRINT N'@Hilfe bit; Default: 0. 1 gibt diese Hilfe vor Auswahl und Katalogzugriff aus, setzt StatusCodeOut=AVAILABLE und IsPartialOut=0 und kehrt mit 0 zurück. NULL und 0 führen den normalen Pfad aus.';
+        PRINT N'@StatusCodeOut varchar(40) OUTPUT; Default: NULL. Optional an varchar(40) mit OUTPUT binden; Eingang wird zurückgesetzt. AVAILABLE bedeutet nur Hilfe; AVAILABLE_LIMITED erfolgreiche sichtbare Quelle, auch leer; SKIPPED keine Kandidatendatenbank; INVALID_PARAMETER ungültige Eingabe oder Auswahl; INTERNAL_ERROR Auswahlhelferfehler; SELECTION_UNAVAILABLE fehlender Auswahlstatus; UNAVAILABLE_FEATURE fehlende Regexvoraussetzung; DATABASE_UNAVAILABLE fehlende, nicht online befindliche oder nicht zugreifbare Datenbank; SYSTEM_DATABASE_EXCLUDED explizit ausgeschlossene Systemdatenbank; DENIED_PERMISSION native Berechtigungsfehler; SOURCE_UNAVAILABLE unbekanntes Prüfergebnis oder Quellenfehler; TIMEOUT SQL 1222; ERROR_HANDLED äußerer Fehler. Der erste relevante Quellenfehler bestimmt den globalen Status.';
+        PRINT N'@IsPartialOut bit OUTPUT; Default: NULL. Optional an bit mit OUTPUT binden; Eingang wird zurückgesetzt. Hilfe liefert 0; jeder normale Lauf und Fehlerpfad 1. Numerische 0/1-Ausgabe kennzeichnet begrenzte Metadatensicht, nicht eine Fehlerursache.';
+        PRINT N'@ErrorNumberOut int OUTPUT; Default: NULL. Optional an int mit OUTPUT binden; Eingang wird zurückgesetzt. Erfolg und Hilfe lassen NULL; direkte Parameterfehler liefern 51011; gefangene SQL-Fehler ihre native oder Writer-Fehlernummer.';
+        PRINT N'@ErrorMessageOut nvarchar(2048) OUTPUT; Default: NULL. Optional an nvarchar(2048) mit OUTPUT binden; Eingang wird zurückgesetzt. Erfolg und Hilfe lassen NULL; gefangene SQL-Fehler liefern die links auf 2048 Zeichen gekürzte Meldung.';
+        PRINT N'EXEC [monitor].[USP_PlanGuideInventory] @DatabaseNames=N''[ExampleDatabase]'', @ResultSetArt=''RAW'', @PrintMeldungen=0;';
+        PRINT N'DECLARE @Json nvarchar(max); EXEC [monitor].[USP_PlanGuideInventory] @ResultSetArt=''NONE'', @JsonErzeugen=1, @Json=@Json OUTPUT; SELECT @Json AS [Json];';
+        PRINT N'CREATE TABLE #PlanGuideInventoryExample ([Seed] int NULL); EXEC [monitor].[USP_PlanGuideInventory] @ResultSetArt=''TABLE'', @ResultTablesJson=N''{"planGuides":"#PlanGuideInventoryExample"}''; SELECT * FROM #PlanGuideInventoryExample; DROP TABLE #PlanGuideInventoryExample;';
+        SELECT @StatusCodeOut='AVAILABLE',@IsPartialOut=0;
+        RETURN;
+    END;
+
+    IF @Mode NOT IN ('CONSOLE','RAW','TABLE','NONE')
+       OR @MaxZeilen<0
+       OR @LockTimeoutMs IS NULL OR @LockTimeoutMs<0 OR @LockTimeoutMs>60000
+       OR @SystemdatenbankenEinbeziehen IS NULL
+       OR
+       (
+           @DatabaseNamePattern IS NOT NULL
+           AND NULLIF(LTRIM(RTRIM(COALESCE(@DatabaseNames,N''))),N'') IS NOT NULL
+       )
+       OR (@Mode<>'TABLE' AND NULLIF(LTRIM(RTRIM(COALESCE(@ResultTablesJson,N''))),N'') IS NOT NULL)
+    BEGIN
+        SELECT @StatusCodeOut='INVALID_PARAMETER',@IsPartialOut=1,
+               @ErrorNumberOut=51011,
+               @ErrorMessageOut=N'Ungueltiger Ausgabe-, Datenbankauswahl-, Limit- oder TABLE-Parameter.';
+        IF @PrintMeldungen=1 RAISERROR(N'%s',10,1,@ErrorMessageOut) WITH NOWAIT;
+        RETURN 51011;
+    END;
+
+    BEGIN TRY
+        SET XACT_ABORT OFF;
+        CREATE TABLE [#PlanGuideInventory_moduleStatus]
+        (
+            [ModuleName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,
+            [CapturedAtUtc] datetime2(3) NOT NULL,
+            [StatusCode] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,
+            [IsPartial] bit NOT NULL,
+            [RowCount] bigint NOT NULL,
+            [Detail] nvarchar(1000) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        );
+        CREATE TABLE [#PlanGuideInventory_planGuides]
+        (
+            [DatabaseId] int NOT NULL,
+            [DatabaseName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,
+            [PlanGuideId] int NOT NULL,
+            [PlanGuideName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,
+            [ScopeType] tinyint NOT NULL,
+            [ScopeTypeDesc] nvarchar(60) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,
+            [IsDisabled] bit NOT NULL,
+            [ScopeObjectId] int NULL,
+            [CreateDate] datetime NOT NULL,
+            [ModifyDate] datetime NOT NULL,
+            [ValidationStatus] varchar(16) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        );
+        CREATE TABLE [#PlanGuideInventory_sourceStatus]
+        (
+            [DatabaseId] int NULL,
+            [DatabaseName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL,
+            [SourceKey] varchar(64) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,
+            [SourceKind] varchar(16) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,
+            [StartedAtUtc] datetime2(3) NOT NULL,
+            [CompletedAtUtc] datetime2(3) NOT NULL,
+            [StatusCode] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,
+            [VisibilityScope] varchar(32) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,
+            [ObservedRows] bigint NULL,
+            [ReturnedRows] bigint NULL,
+            [IsLimited] bit NOT NULL,
+            [ErrorNumber] int NULL,
+            [ErrorMessage] nvarchar(2048) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        );
+        CREATE TABLE [#PlanGuideInventory_warnings]
+        (
+            [DatabaseId] int NULL,
+            [DatabaseName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL,
+            [WarningCode] varchar(64) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,
+            [SourceKey] varchar(64) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,
+            [Detail] nvarchar(1000) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        );
+        CREATE TABLE [#PlanGuideInventory_Map]
+        (
+            [ResultName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,
+            [TargetTable] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        );
+        CREATE TABLE [#PlanGuideInventory_Candidates]
+        (
+            [DatabaseId] int NOT NULL,
+            [DatabaseName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,
+            [StateDesc] nvarchar(60) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,
+            [UserAccessDesc] nvarchar(60) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,
+            [IsReadOnly] bit NULL,
+            [CompatibilityLevel] tinyint NULL,
+            [CollationName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL,
+            [RecoveryModelDesc] nvarchar(60) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,
+            [IsSystemDatabase] bit NULL,
+            [RequestedOrdinal] int NULL
+        );
+        CREATE TABLE [#PlanGuideInventory_SelectionWarnings]
+        (
+            [RequestedName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL,
+            [StatusCode] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,
+            [ErrorMessage] nvarchar(2048) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        );
+        CREATE TABLE [#PlanGuideInventory_Console]
+        (
+            [Bereich] nvarchar(64) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,
+            [Objekt] nvarchar(256) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,
+            [Detail] nvarchar(1000) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        );
+
+        IF @Mode='TABLE'
+        BEGIN
+            EXEC [monitor].[InternalPrepareResultTables]
+                @ResultTablesJson=@ResultTablesJson,
+                @AllowedResultNames=N'moduleStatus|planGuides|sourceStatus|warnings',
+                @MappingTable=N'#PlanGuideInventory_Map',
+                @StatusCode=@TableStatus OUTPUT,
+                @ErrorMessage=@TableMessage OUTPUT,
+                @ThrowOnError=0;
+            IF COALESCE(@TableStatus,'')<>'AVAILABLE'
+            BEGIN
+                SET @TableFailureError=51011;
+                RAISERROR(N'%s',16,1,@TableMessage);
+            END;
+        END;
+
+        SET @Started=SYSUTCDATETIME();
+        BEGIN TRY
+            EXEC [monitor].[USP_PrepareDatabaseCandidates]
+                @DatabaseNames=@DatabaseNames,
+                @SystemdatenbankenEinbeziehen=@SystemdatenbankenEinbeziehen,
+                @DatabaseNamePattern=@DatabaseNamePattern,
+                @StatusCode=@SelectionStatus OUTPUT,
+                @ErrorMessage=@SelectionMessage OUTPUT,
+                @CrossDatabaseRequested=@CrossDatabaseRequested OUTPUT,
+                @CandidateTable=N'#PlanGuideInventory_Candidates',
+                @WarningTable=N'#PlanGuideInventory_SelectionWarnings';
+            SELECT @SelectionError=MIN(CASE WHEN [StatusCode] IS NOT NULL THEN 51011 END)
+            FROM [#PlanGuideInventory_SelectionWarnings];
+            INSERT [#PlanGuideInventory_sourceStatus]
+            SELECT NULL,[RequestedName],'DATABASE_SELECTION','SELECTION',@Started,SYSUTCDATETIME(),
+                   COALESCE([StatusCode],'AVAILABLE_LIMITED'),
+                   CASE WHEN [StatusCode] IS NULL THEN 'VISIBLE_ONLY' ELSE 'UNPROVEN' END,
+                   NULL,NULL,0,
+                   CASE WHEN [StatusCode] IS NULL THEN NULL ELSE 51011 END,
+                   [ErrorMessage]
+            FROM [#PlanGuideInventory_SelectionWarnings];
+            INSERT [#PlanGuideInventory_warnings]
+            SELECT NULL,[RequestedName],'TARGET_SELECTION','DATABASE_SELECTION',
+                   LEFT(COALESCE([ErrorMessage],N'Die angeforderte Datenbank ist nicht verfügbar.'),1000)
+            FROM [#PlanGuideInventory_SelectionWarnings];
+            IF COALESCE(@SelectionStatus,'')<>'AVAILABLE'
+            BEGIN
+                SET @Error=COALESCE(@SelectionError,51011);
+                SET @Message=COALESCE(@SelectionMessage,N'Die Datenbankauswahl konnte nicht erstellt werden.');
+                SET @Status=COALESCE(@SelectionStatus,'SELECTION_UNAVAILABLE');
+                IF NOT EXISTS(SELECT 1 FROM [#PlanGuideInventory_sourceStatus]
+                              WHERE [SourceKey]='DATABASE_SELECTION')
+                    INSERT [#PlanGuideInventory_sourceStatus]
+                    VALUES(NULL,NULL,'DATABASE_SELECTION','SELECTION',@Started,SYSUTCDATETIME(),
+                           @Status,'UNPROVEN',NULL,NULL,0,@Error,@Message);
+            END
+            ELSE
+            BEGIN
+                SELECT @Observed=COUNT_BIG(*) FROM [#PlanGuideInventory_Candidates];
+                INSERT [#PlanGuideInventory_sourceStatus]
+                VALUES(NULL,NULL,'DATABASE_SELECTION','SELECTION',@Started,SYSUTCDATETIME(),
+                       'AVAILABLE_LIMITED','CALLER_VISIBLE',@Observed,@Observed,0,NULL,NULL);
+            END;
+        END TRY
+        BEGIN CATCH
+            SET @Error=ERROR_NUMBER();
+            SET @Message=LEFT(ERROR_MESSAGE(),2048);
+            SET @Status=CASE WHEN ERROR_NUMBER() IN (229,297,300,371) THEN 'DENIED_PERMISSION'
+                             WHEN ERROR_NUMBER()=1222 THEN 'TIMEOUT' ELSE 'ERROR_HANDLED' END;
+            INSERT [#PlanGuideInventory_sourceStatus]
+            VALUES(NULL,NULL,'DATABASE_SELECTION','SELECTION',@Started,SYSUTCDATETIME(),
+                   @Status,'UNPROVEN',NULL,NULL,0,@Error,@Message);
+            INSERT [#PlanGuideInventory_warnings]
+            VALUES(NULL,NULL,'SOURCE_UNAVAILABLE','DATABASE_SELECTION',
+                   N'Die Datenbankauswahl ist fehlgeschlagen; es wurde keine Plan-Guide-Quelle als erfolgreich leer ausgewertet.');
+        END CATCH;
+
+        IF @Error IS NULL
+        BEGIN
+            DECLARE @DatabaseId int,@DatabaseName sysname,@DatabaseCreatedAt datetime,
+                    @DbStatus varchar(40),@DbVisibility varchar(32),
+                    @DbError int,@DbMessage nvarchar(2048),@QuotedDatabase nvarchar(258),
+                    @DbObserved bigint;
+            DECLARE [PlanGuideTargets] CURSOR LOCAL FAST_FORWARD FOR
+                SELECT [DatabaseId],[DatabaseName]
+                FROM [#PlanGuideInventory_Candidates] ORDER BY [DatabaseId];
+            OPEN [PlanGuideTargets];
+            FETCH NEXT FROM [PlanGuideTargets] INTO @DatabaseId,@DatabaseName;
+            WHILE @@FETCH_STATUS=0
+            BEGIN
+                SELECT @Started=SYSUTCDATETIME(),@DbStatus='SOURCE_UNAVAILABLE',
+                       @DbVisibility='UNPROVEN',@DbError=NULL,@DbMessage=NULL,
+                       @DatabaseCreatedAt=NULL,@DbObserved=NULL,
+                       @QuotedDatabase=QUOTENAME(@DatabaseName);
+                BEGIN TRY
+                    SELECT @DatabaseCreatedAt=[create_date]
+                    FROM [master].[sys].[databases] WITH (NOLOCK)
+                    WHERE [database_id]=@DatabaseId
+                      AND [name] COLLATE SQL_Latin1_General_CP1_CS_AS
+                          =@DatabaseName COLLATE SQL_Latin1_General_CP1_CS_AS;
+                    IF @DatabaseCreatedAt IS NULL
+                        THROW 51012,N'Target database identity changed or is not available for this source.',1;
+                    SET @Sql=N'SET LOCK_TIMEOUT '+CONVERT(nvarchar(20),@LockTimeoutMs)+N'; USE '+@QuotedDatabase+N';
+                        IF DB_ID()<>@Id OR NOT EXISTS
+                          (SELECT 1 FROM [master].[sys].[databases] WITH (NOLOCK)
+                           WHERE [database_id]=@Id
+                             AND [name] COLLATE SQL_Latin1_General_CP1_CS_AS
+                                 =@Name COLLATE SQL_Latin1_General_CP1_CS_AS
+                             AND [create_date]=@Created)
+                            THROW 51012,N''Target database identity changed or is not available for this source.'',1;
+                        INSERT [#PlanGuideInventory_planGuides]
+                            ([DatabaseId],[DatabaseName],[PlanGuideId],[PlanGuideName],
+                             [ScopeType],[ScopeTypeDesc],[IsDisabled],[ScopeObjectId],
+                             [CreateDate],[ModifyDate],[ValidationStatus])
+                        SELECT @Id,@Name,[plan_guide_id],[name],[scope_type],
+                               [scope_type_desc],[is_disabled],[scope_object_id],
+                               [create_date],[modify_date],''UNASSESSED''
+                        FROM [sys].[plan_guides] WITH (NOLOCK);
+                        SET @Rows=@@ROWCOUNT;
+                        IF DB_ID()<>@Id OR NOT EXISTS
+                          (SELECT 1 FROM [master].[sys].[databases] WITH (NOLOCK)
+                           WHERE [database_id]=@Id
+                             AND [name] COLLATE SQL_Latin1_General_CP1_CS_AS
+                                 =@Name COLLATE SQL_Latin1_General_CP1_CS_AS
+                             AND [create_date]=@Created)
+                            THROW 51012,N''Target database identity changed or is not available for this source.'',1;';
+                    EXEC [sys].[sp_executesql] @Sql,
+                        N'@Id int,@Name sysname,@Created datetime,@Rows bigint OUTPUT',
+                        @Id=@DatabaseId,@Name=@DatabaseName,@Created=@DatabaseCreatedAt,
+                        @Rows=@DbObserved OUTPUT;
+                    SET @DbStatus='AVAILABLE_LIMITED';
+                    SET @DbVisibility='VISIBLE_ONLY';
+                END TRY
+                BEGIN CATCH
+                    DELETE FROM [#PlanGuideInventory_planGuides] WHERE [DatabaseId]=@DatabaseId;
+                    SELECT @DbObserved=NULL,@DbError=ERROR_NUMBER(),
+                           @DbMessage=LEFT(ERROR_MESSAGE(),2048),
+                           @DbStatus=CASE WHEN ERROR_NUMBER() IN(229,297,300,371) THEN 'DENIED_PERMISSION'
+                                          WHEN ERROR_NUMBER()=1222 THEN 'TIMEOUT'
+                                          WHEN ERROR_NUMBER() IN(911,924,926,927,942,945,952,978,4060,51012)
+                                               THEN 'DATABASE_UNAVAILABLE'
+                                          ELSE 'SOURCE_UNAVAILABLE' END,
+                           @DbVisibility='UNPROVEN';
+                END CATCH;
+                INSERT [#PlanGuideInventory_sourceStatus]
+                VALUES(@DatabaseId,@DatabaseName,'PLAN_GUIDES_CATALOG','NATIVE',
+                       @Started,SYSUTCDATETIME(),@DbStatus,@DbVisibility,
+                       @DbObserved,CASE WHEN @DbStatus='AVAILABLE_LIMITED' THEN @DbObserved ELSE NULL END,
+                       0,@DbError,@DbMessage);
+                IF @DbStatus<>'AVAILABLE_LIMITED'
+                    INSERT [#PlanGuideInventory_warnings]
+                    VALUES(@DatabaseId,@DatabaseName,@DbStatus,'PLAN_GUIDES_CATALOG',
+                           N'Die Plan-Guide-Quelle wurde nicht erfolgreich gelesen; leere Fachzeilen sind kein Nullergebnis.');
+                FETCH NEXT FROM [PlanGuideTargets] INTO @DatabaseId,@DatabaseName;
+            END;
+            CLOSE [PlanGuideTargets]; DEALLOCATE [PlanGuideTargets];
+            IF NOT EXISTS(SELECT 1 FROM [#PlanGuideInventory_Candidates])
+            BEGIN
+                SET @Started=SYSUTCDATETIME();
+                INSERT [#PlanGuideInventory_sourceStatus]
+                VALUES(NULL,NULL,'PLAN_GUIDES_CATALOG','NATIVE',
+                       @Started,SYSUTCDATETIME(),'SKIPPED','UNPROVEN',NULL,NULL,0,NULL,NULL);
+                INSERT [#PlanGuideInventory_warnings]
+                VALUES(NULL,NULL,'NO_TARGET_DATABASE','PLAN_GUIDES_CATALOG',
+                       N'Keine ausgewählte sichtbare ONLINE-Datenbank; die Plan-Guide-Quelle wurde nicht gelesen.');
+            END;
+        END;
+
+        ;WITH [Bounded] AS
+        (
+            SELECT *,ROW_NUMBER() OVER(ORDER BY [DatabaseId],[PlanGuideId]) AS [OutputOrdinal]
+            FROM [#PlanGuideInventory_planGuides]
+        )
+        DELETE FROM [Bounded] WHERE [OutputOrdinal]>@Limit;
+        UPDATE [s]
+           SET [ReturnedRows]=CASE WHEN [s].[StatusCode]='AVAILABLE_LIMITED'
+                                   THEN COALESCE([r].[ReturnedRows],0) ELSE NULL END,
+               [IsLimited]=CASE WHEN [s].[StatusCode]='AVAILABLE_LIMITED'
+                                    AND [s].[ObservedRows]>COALESCE([r].[ReturnedRows],0)
+                                THEN 1 ELSE 0 END
+        FROM [#PlanGuideInventory_sourceStatus] AS [s]
+        LEFT JOIN
+        (
+            SELECT [DatabaseId],COUNT_BIG(*) AS [ReturnedRows]
+            FROM [#PlanGuideInventory_planGuides]
+            GROUP BY [DatabaseId]
+        ) AS [r] ON [r].[DatabaseId]=[s].[DatabaseId]
+        WHERE [s].[SourceKey]='PLAN_GUIDES_CATALOG';
+        INSERT [#PlanGuideInventory_warnings]
+        VALUES(NULL,NULL,'VALIDATION_UNASSESSED','PLAN_GUIDES_CATALOG',
+               N'Es wurden keine Validierungsfunktionen, Compile- oder Wirksamkeitsprüfungen ausgeführt; IsDisabled beschreibt nur den Katalogschalter.');
+        INSERT [#PlanGuideInventory_warnings]
+        VALUES(NULL,NULL,'METADATA_COMPLETENESS_UNPROVEN','PLAN_GUIDES_CATALOG',
+               N'Nur caller-sichtbare Katalogzeilen ausgewählter Online-Datenbanken; keine globale Vollständigkeit oder Abwesenheit belegt.');
+        INSERT [#PlanGuideInventory_warnings]
+            SELECT NULL,NULL,'OUTPUT_LIMIT','PLAN_GUIDES_CATALOG',
+                   N'Das Zeilenlimit begrenzt nur die Ausgabe; Auswahl und Kataloglesearbeit bleiben unbegrenzt.'
+            WHERE EXISTS(SELECT 1 FROM [#PlanGuideInventory_sourceStatus]
+                         WHERE [SourceKey]='PLAN_GUIDES_CATALOG' AND [IsLimited]=1);
+
+        IF @Error IS NULL
+        BEGIN
+            SELECT TOP (1) @Error=[ErrorNumber],@Message=[ErrorMessage],@Status=[StatusCode]
+            FROM [#PlanGuideInventory_sourceStatus]
+            WHERE [StatusCode] NOT IN('AVAILABLE_LIMITED','SKIPPED')
+            ORDER BY [SourceKey],[DatabaseId],[DatabaseName];
+            IF @Error IS NULL
+                SET @Status=CASE WHEN EXISTS
+                    (SELECT 1 FROM [#PlanGuideInventory_sourceStatus]
+                     WHERE [SourceKey]='PLAN_GUIDES_CATALOG'
+                       AND [StatusCode]='AVAILABLE_LIMITED')
+                    THEN 'AVAILABLE_LIMITED' ELSE 'SKIPPED' END;
+        END;
+        DECLARE @BusinessRows bigint=(SELECT COUNT_BIG(*) FROM [#PlanGuideInventory_planGuides]);
+        INSERT [#PlanGuideInventory_moduleStatus]
+        VALUES(N'USP_PlanGuideInventory',@CapturedAtUtc,@Status,1,@BusinessRows,
+               N'Caller-sichtbare Plan-Guide-Katalogmetadaten; Validierung und Wirksamkeit UNASSESSED, Vollständigkeit unbewiesen.');
+
+        IF @JsonErzeugen=1
+        BEGIN
+            DECLARE @Meta nvarchar(max)=
+                (SELECT N'PlanGuideInventory' AS [resultName],1 AS [schemaVersion],
+                        @CapturedAtUtc AS [generatedAtUtc],@Status AS [statusCode],
+                        CAST(1 AS bit) AS [isPartial],@Error AS [errorNumber],
+                        @Message AS [errorMessage]
+                 FOR JSON PATH,WITHOUT_ARRAY_WRAPPER,INCLUDE_NULL_VALUES);
+            DECLARE @Json_moduleStatus nvarchar(max)=
+                (SELECT * FROM [#PlanGuideInventory_moduleStatus] FOR JSON PATH,INCLUDE_NULL_VALUES);
+            DECLARE @Json_planGuides nvarchar(max)=
+                (SELECT * FROM [#PlanGuideInventory_planGuides] ORDER BY [DatabaseId],[PlanGuideId] FOR JSON PATH,INCLUDE_NULL_VALUES);
+            DECLARE @Json_sourceStatus nvarchar(max)=
+                (SELECT * FROM [#PlanGuideInventory_sourceStatus] ORDER BY [DatabaseId],[DatabaseName],[SourceKey] FOR JSON PATH,INCLUDE_NULL_VALUES);
+            DECLARE @Json_warnings nvarchar(max)=
+                (SELECT * FROM [#PlanGuideInventory_warnings] ORDER BY [DatabaseId],[DatabaseName],[WarningCode],[SourceKey] FOR JSON PATH,INCLUDE_NULL_VALUES);
+            SET @Json=CONCAT(N'{"meta":',@Meta,
+                N',"moduleStatus":',COALESCE(@Json_moduleStatus,N'[]'),
+                N',"planGuides":',COALESCE(@Json_planGuides,N'[]'),
+                N',"sourceStatus":',COALESCE(@Json_sourceStatus,N'[]'),
+                N',"warnings":',COALESCE(@Json_warnings,N'[]'),N'}');
+        END;
+
+        IF @Mode='RAW'
+        BEGIN
+            SELECT * FROM [#PlanGuideInventory_moduleStatus];
+            SELECT * FROM [#PlanGuideInventory_planGuides] ORDER BY [DatabaseId],[PlanGuideId];
+            SELECT * FROM [#PlanGuideInventory_sourceStatus] ORDER BY [DatabaseId],[DatabaseName],[SourceKey];
+            SELECT * FROM [#PlanGuideInventory_warnings] ORDER BY [DatabaseId],[DatabaseName],[WarningCode],[SourceKey];
+        END
+        ELSE IF @Mode='TABLE'
+        BEGIN
+            DECLARE @ResultName sysname,@TargetTable sysname,@SourceTable sysname;
+            DECLARE [PlanGuideInventoryOutput] CURSOR LOCAL FAST_FORWARD FOR
+                SELECT [ResultName],[TargetTable]
+                FROM [#PlanGuideInventory_Map] ORDER BY [ResultName];
+            OPEN [PlanGuideInventoryOutput];
+            FETCH NEXT FROM [PlanGuideInventoryOutput] INTO @ResultName,@TargetTable;
+            WHILE @@FETCH_STATUS=0
+            BEGIN
+                SET @SourceTable=N'#PlanGuideInventory_'+@ResultName;
+                EXEC [monitor].[InternalWriteResultTable]
+                    @SourceTable=@SourceTable,@TargetTable=@TargetTable,
+                    @StatusCode=@TableStatus OUTPUT,@ErrorNumber=@TableError OUTPUT,
+                    @ErrorMessage=@TableMessage OUTPUT,@ThrowOnError=0;
+                IF COALESCE(@TableStatus,'')<>'AVAILABLE'
+                BEGIN
+                    SET @TableFailureError=COALESCE(@TableError,51010);
+                    RAISERROR(N'%s',16,1,@TableMessage);
+                END;
+                FETCH NEXT FROM [PlanGuideInventoryOutput] INTO @ResultName,@TargetTable;
+            END;
+            CLOSE [PlanGuideInventoryOutput]; DEALLOCATE [PlanGuideInventoryOutput];
+        END
+        ELSE IF @ConsoleResultRequested=1
+        BEGIN
+            INSERT [#PlanGuideInventory_Console]
+            SELECT N'Plan Guide',[PlanGuideName],
+                   CONCAT(N'Datenbank=',[DatabaseName],N'; ID=',[PlanGuideId],
+                          N'; Scope=',[ScopeTypeDesc],N'; deaktiviert=',[IsDisabled],
+                          N'; Validierung=',[ValidationStatus])
+            FROM [#PlanGuideInventory_planGuides] ORDER BY [DatabaseId],[PlanGuideId];
+            INSERT [#PlanGuideInventory_Console]
+            SELECT N'Quelle',[SourceKey],CONCAT([StatusCode],N'; beobachtet=',
+                   COALESCE(CONVERT(nvarchar(30),[ObservedRows]),N'NULL'),
+                   N'; ausgegeben=',COALESCE(CONVERT(nvarchar(30),[ReturnedRows]),N'NULL'))
+            FROM [#PlanGuideInventory_sourceStatus];
+            INSERT [#PlanGuideInventory_Console]
+            SELECT N'Aussagegrenze',[WarningCode],[Detail]
+            FROM [#PlanGuideInventory_warnings];
+            EXEC [monitor].[InternalEmitConsoleResult]
+                @SourceTable=N'#PlanGuideInventory_Console',
+                @ResultLabel=N'Sichtbare Plan-Guide-Katalogmetadaten',
+                @EmptyMessage=N'Keine caller-sichtbare Plan-Guide-Zeile; Quellenstatus und Auswahl prüfen.';
+        END;
+
+        SELECT @StatusCodeOut=@Status,@IsPartialOut=1,
+               @ErrorNumberOut=@Error,@ErrorMessageOut=@Message;
+        IF @PrintMeldungen=1 AND @Error IS NOT NULL
+            RAISERROR(N'USP_PlanGuideInventory: mindestens eine Quelle ist nicht verfügbar; siehe sourceStatus.',10,1) WITH NOWAIT;
+        EXEC [sys].[sp_executesql] @LockTimeoutSql;
+        IF @PreviousXactAbort=1 SET XACT_ABORT ON; ELSE SET XACT_ABORT OFF;
+    END TRY
+    BEGIN CATCH
+        SELECT @Error=COALESCE(@TableFailureError,ERROR_NUMBER()),
+               @Message=LEFT(ERROR_MESSAGE(),2048),@Json=NULL;
+        SELECT @Status='ERROR_HANDLED',@StatusCodeOut='ERROR_HANDLED',@IsPartialOut=1,
+               @ErrorNumberOut=@Error,@ErrorMessageOut=@Message;
+        EXEC [sys].[sp_executesql] @LockTimeoutSql;
+        IF @PreviousXactAbort=1 SET XACT_ABORT ON; ELSE SET XACT_ABORT OFF;
+        IF @PrintMeldungen=1 RAISERROR(N'%s',10,1,@Message) WITH NOWAIT;
+        RETURN @Error;
+    END CATCH;
+END;
+GO
+-- END SOURCE: Code/04_PlanCache/070_USP_PlanGuideInventory.sql
 
 -- BEGIN SOURCE: Code/05_QueryStore/005_TVF_QueryStoreReplicaRoleInfo.sql
 /*
@@ -39854,18 +41761,31 @@ BEGIN
     IF @Hilfe = 1
     BEGIN
         PRINT N'monitor.USP_ExtendedEventsSessions';
-        PRINT N'@ExtendedEventSessionNames: bracket-aware Pipe-Liste; @ExtendedEventSessionNamePattern: LIKE/Regex-Pattern.';
-        PRINT N'@NurLaufend bit=0: 1 zeigt nur aktuell laufende Sessions.';
-        PRINT N'@MitLaufzeitstatus bit=1: ergänzt Laufzeitinformationen aus sys.dm_xe_sessions; liest keine Targetdaten.';
-        PRINT N'@MitZeitgrenzen bit=0: 1 ergänzt timeBounds und JSON-Schema2; der Default behält Schema1. Restzeit ist eine begrenzte Schätzung, keine Stopgarantie.';
-        PRINT N'@MitEvents bit=1: gibt konfigurierte Events aus.';
-        PRINT N'@MitActions bit=1: gibt konfigurierte Actions aus.';
-        PRINT N'@MitTargets bit=1: gibt konfigurierte Targets aus.';
-        PRINT N'@MitFeldern bit=0: gibt explizit konfigurierte Event-/Targetfelder aus.';
-        PRINT N'@MaxZeilen int=5000: positive Werte begrenzen jedes Detailresultset; NULL/0 = unbegrenzt.';
-        PRINT N'@PrintMeldungen bit=1: Warnungen zusätzlich via RAISERROR Severity 10.';
-        PRINT N'@Hilfe bit=0: 1 zeigt diese Hilfe und beendet die Procedure.';
-        PRINT N'Die Procedure erstellt, startet, stoppt, ändert oder löscht keine Extended-Events-Session.';
+        PRINT N'Die Procedure inventarisiert serverweite Extended-Events-Sessions und ergänzt auf Wunsch Laufzeitwerte und Zeitgrenzen.';
+        PRINT N'@ExtendedEventSessionNames nvarchar(max). Default ist NULL. Pipe-Liste exakter einteiliger SQL-Namen. Einträge können in eckigen Klammern stehen. Pipe trennt nur außerhalb der Klammern. Eine schließende Klammer wird innen verdoppelt. NULL deaktiviert den Filter. Leere und ungültige Einträge werden abgelehnt. Verwenden Sie für dieselbe Eigenschaft entweder die Liste oder das Muster.';
+        PRINT N'@ExtendedEventSessionNamePattern nvarchar(4000). Default ist NULL. Ohne Präfix oder mit LIKE: gilt SQL LIKE mit % und _. REGEX: ist ein Regex mit Beachtung der Groß- und Kleinschreibung. REGEXI: ignoriert sie. Regex benötigt SQL Server 2025 und Compatibility Level 170. NULL deaktiviert den Filter. Ein leeres Muster ist ungültig. Verwenden Sie entweder Liste oder Muster.';
+        PRINT N'@EventNames nvarchar(max). Default ist NULL. Pipe-Liste exakter einteiliger SQL-Namen. Einträge können in eckigen Klammern stehen. Pipe trennt nur außerhalb der Klammern. Eine schließende Klammer wird innen verdoppelt. NULL deaktiviert den Filter. Leere und ungültige Einträge werden abgelehnt. Verwenden Sie für dieselbe Eigenschaft entweder die Liste oder das Muster.';
+        PRINT N'@EventNamePattern nvarchar(4000). Default ist NULL. Ohne Präfix oder mit LIKE: gilt SQL LIKE mit % und _. REGEX: ist ein Regex mit Beachtung der Groß- und Kleinschreibung. REGEXI: ignoriert sie. Regex benötigt SQL Server 2025 und Compatibility Level 170. NULL deaktiviert den Filter. Ein leeres Muster ist ungültig. Verwenden Sie entweder Liste oder Muster.';
+        PRINT N'@TargetNames nvarchar(max). Default ist NULL. Pipe-Liste exakter einteiliger SQL-Namen. Einträge können in eckigen Klammern stehen. Pipe trennt nur außerhalb der Klammern. Eine schließende Klammer wird innen verdoppelt. NULL deaktiviert den Filter. Leere und ungültige Einträge werden abgelehnt. Verwenden Sie für dieselbe Eigenschaft entweder die Liste oder das Muster.';
+        PRINT N'@TargetNamePattern nvarchar(4000). Default ist NULL. Ohne Präfix oder mit LIKE: gilt SQL LIKE mit % und _. REGEX: ist ein Regex mit Beachtung der Groß- und Kleinschreibung. REGEXI: ignoriert sie. Regex benötigt SQL Server 2025 und Compatibility Level 170. NULL deaktiviert den Filter. Ein leeres Muster ist ungültig. Verwenden Sie entweder Liste oder Muster.';
+        PRINT N'@NurLaufend bit. Default ist 0. 0 lässt laufende und gestoppte Sessions zu. 1 beschränkt die Auswahl auf laufende Sessions. NULL wird bei aktivierten Zeitgrenzen auf 1 gesetzt und erfüllt den Vergleich mit 0 auch sonst nicht.';
+        PRINT N'@MitLaufzeitstatus bit. Default ist 1. 1 ergänzt verfügbare Werte aus sys.dm_xe_sessions. 0 oder NULL lässt diese Erhebung aus.';
+        PRINT N'@MitEvents bit. Default ist 1. 1 liest konfigurierte Events. 0 oder NULL lässt diese Details aus.';
+        PRINT N'@MitActions bit. Default ist 1. 1 liest konfigurierte Actions. 0 oder NULL lässt diese Details aus.';
+        PRINT N'@MitTargets bit. Default ist 1. 1 liest Targetdefinitionen. 0 oder NULL lässt diese Details aus.';
+        PRINT N'@MitFeldern bit. Default ist 0. 1 liest explizit konfigurierte Felder. 0 oder NULL lässt diese Details aus.';
+        PRINT N'@MaxZeilen int. Default ist 5000. Eine positive Ganzzahl begrenzt die einzelnen Sammlungen. NULL oder 0 hebt das Limit auf. Negative Werte sind ungültig.';
+        PRINT N'@ResultSetArt varchar(16). Default ist ''CONSOLE''. CONSOLE zeigt beschriftete Ergebnisse. RAW liefert Status und die technischen Inventurresultsets. TABLE schreibt die zugeordneten Resultsets. NONE unterdrückt Datenresultsets. Rand-Leerzeichen werden entfernt und die Groß- und Kleinschreibung normalisiert. NULL, Leertext und andere Werte sind ungültig.';
+        PRINT N'@ResultTablesJson nvarchar(max). Default ist NULL. Bei TABLE ist ein gültiges, nichtleeres JSON-Objekt erforderlich. Ohne Zeitgrenzen ist sessions der einzige Schlüssel. Mit @MitZeitgrenzen=1 können Sie sessions, timeBounds oder beide zuordnen. Jeder Wert benennt als Zeichenfolge eine vorhandene, leere lokale #Temp-Tabelle mit genau einer Seed-Spalte. Ziele müssen verschieden sein. Erlaubt sind höchstens 116 Zeichen und weder ## noch #Monitor als Präfix. Außerhalb von TABLE sind nur NULL, Leertext und reine Leerzeichen zulässig. Die Prüfung läuft vor der Hilfe.';
+        PRINT N'@JsonErzeugen bit. Default ist 0. 1 erzeugt das JSON-Dokument unabhängig von der Ausgabeart. 0 oder NULL erzeugt kein JSON.';
+        PRINT N'@Json nvarchar(max) OUTPUT. Default ist NULL. Binden Sie eine nvarchar(max)-Variable mit OUTPUT. Der Aufruf setzt sie zunächst auf NULL und füllt sie bei @JsonErzeugen=1.';
+        PRINT N'@PrintMeldungen bit. Default ist 1. 1 gibt informative Warnmeldungen aus. 0 oder NULL unterdrückt sie.';
+        PRINT N'@Hilfe bit. Default ist 0. 1 gibt die Hilfe nach der Prüfung von @ResultTablesJson aus und beendet den Aufruf vor dem fachlichen Zugriff. 0 oder NULL setzt den normalen Aufruf fort.';
+        PRINT N'@MitZeitgrenzen bit. Default ist 0. 1 ergänzt timeBounds und verwendet JSON-Schema 2. Eine Restzeit ist eine Schätzung. 0 oder NULL verwendet JSON-Schema 1 ohne timeBounds.';
+        PRINT N'Hilfe anzeigen. EXEC [monitor].[USP_ExtendedEventsSessions] @Hilfe=1;';
+        PRINT N'Technische Resultsets lesen. EXEC [monitor].[USP_ExtendedEventsSessions] @ExtendedEventSessionNames=N''ExampleXeSession'', @MaxZeilen=100, @ResultSetArt=''RAW'';';
+        PRINT N'Nur JSON ausgeben. DECLARE @ResultJson nvarchar(max); EXEC [monitor].[USP_ExtendedEventsSessions] @ExtendedEventSessionNames=N''ExampleXeSession'', @MaxZeilen=100, @ResultSetArt=''NONE'', @JsonErzeugen=1, @Json=@ResultJson OUTPUT; SELECT @ResultJson AS [Json];';
+        PRINT N'Ein Resultset in eine lokale Temp-Tabelle schreiben. CREATE TABLE #ExtendedEventsSessions_HelpExample ([Seed] int NULL); BEGIN TRY EXEC [monitor].[USP_ExtendedEventsSessions] @ExtendedEventSessionNames=N''ExampleXeSession'', @MaxZeilen=100, @ResultSetArt=''TABLE'', @ResultTablesJson=N''{"sessions":"#ExtendedEventsSessions_HelpExample"}''; SELECT * FROM #ExtendedEventsSessions_HelpExample; DROP TABLE #ExtendedEventsSessions_HelpExample; END TRY BEGIN CATCH DROP TABLE #ExtendedEventsSessions_HelpExample; THROW; END CATCH;';
         RETURN;
     END;
 
@@ -40616,16 +42536,28 @@ BEGIN
     IF @Hilfe = 1
     BEGIN
         PRINT N'monitor.USP_ExtendedEventsReadEvents';
-        PRINT N'@ResolvedSourceExtendedEventSessionName sysname=N''system_health'': vorhandene serverweite Extended-Events-Session.';
-        PRINT N'@Quelle varchar(20)=''EVENT_FILE'': EVENT_FILE, RING_BUFFER oder AUTO. AUTO bevorzugt EVENT_FILE.';
-        PRINT N'@FilePath nvarchar(4000)=NULL: optionaler XEL-Pfad oder URL; NULL leitet den event_file-Pfad aus der Sessiondefinition ab.';
-        PRINT N'@EventNamePattern nvarchar(256)=NULL: LIKE-Filter auf den Eventnamen.';
-        PRINT N'@VonUtc datetime2(7)=NULL; @BisUtc datetime2(7)=NULL: UTC-Zeitfenster.';
-        PRINT N'@MaxZeilen int=1000: positive Werte begrenzen; NULL/0 = unbegrenzt.';
-        PRINT N'@MitEventXml bit=1: 1 gibt das vollständige Event-XML aus; 0 reduziert Ergebnistransfer.';
-        PRINT N'@BestaetigeTargetFlush bit=0: muss für RING_BUFFER 1 sein, da sys.dm_xe_session_targets einen Flush auslösen kann.';
-        PRINT N'@PrintMeldungen bit=1: Warnungen via RAISERROR Severity 10; @Hilfe bit=0: 1 zeigt diese Hilfe.';
-        PRINT N'Die Procedure verändert keine Extended-Events-Session und ist kein Bestandteil des Standardlaufs.';
+        PRINT N'Die Procedure liest Ereignisse aus XEL-Dateien oder dem Ringbuffer. Begrenzen Sie den Zugriff auf die benötigte Quelle und das benötigte UTC-Zeitfenster.';
+        PRINT N'@SourceExtendedEventSessionName nvarchar(258). Default ist N''system_health''. Genau ein einteiliger Name der serverweiten XE-Session, optional in eckigen Klammern. NULL, Leertext und mehrere Namen sind ungültig.';
+        PRINT N'@Quelle varchar(20). Default ist ''EVENT_FILE''. EVENT_FILE liest XEL-Dateien. RING_BUFFER liest den Ringbuffer. AUTO wählt EVENT_FILE, wenn ein expliziter oder konfigurierter Dateipfad vorliegt. Ohne Pfad kann AUTO mit bestätigtem Flush den Ringbuffer wählen. Ein Lesefehler löst keinen Fallback aus. Rand-Leerzeichen und Groß- und Kleinschreibung werden normalisiert. NULL, Leertext und andere Werte sind ungültig.';
+        PRINT N'@FilePath nvarchar(4000). Default ist NULL. XEL-Pfad, Muster oder URL für EVENT_FILE. NULL oder eine leere Zeichenfolge verwendet bei der Pfadauflösung den konfigurierten Pfad. Ein lokaler Dateiname kann zu einem Rollvermuster erweitert werden. Begrenzen Sie den Zugriff auf die benötigten Dateien.';
+        PRINT N'@EventNames nvarchar(max). Default ist NULL. Pipe-Liste exakter einteiliger SQL-Namen. Einträge können in eckigen Klammern stehen. Pipe trennt nur außerhalb der Klammern. Eine schließende Klammer wird innen verdoppelt. NULL deaktiviert den Filter. Leere und ungültige Einträge werden abgelehnt. Verwenden Sie für dieselbe Eigenschaft entweder die Liste oder das Muster.';
+        PRINT N'@EventNamePattern nvarchar(4000). Default ist NULL. Ohne Präfix oder mit LIKE: gilt SQL LIKE mit % und _. REGEX: ist ein Regex mit Beachtung der Groß- und Kleinschreibung. REGEXI: ignoriert sie. Regex benötigt SQL Server 2025 und Compatibility Level 170. NULL deaktiviert den Filter. Ein leeres Muster ist ungültig. Verwenden Sie entweder Liste oder Muster. Regex wird nach der Materialisierung angewandt.';
+        PRINT N'@VonUtc datetime2(7). Default ist NULL. Inklusive Untergrenze als UTC-Zeitwert, z. B. 2026-01-01T00:00:00. NULL lässt die Untergrenze aus.';
+        PRINT N'@BisUtc datetime2(7). Default ist NULL. Exklusive Obergrenze als UTC-Zeitwert. NULL lässt sie aus. Bei zwei Grenzen muss diese später als @VonUtc liegen.';
+        PRINT N'@MaxZeilen int. Default ist 1000. Eine positive Ganzzahl begrenzt die zurückgehaltenen Events. NULL oder 0 hebt das Limit auf. Negative Werte sind ungültig. Das Limit begrenzt den physischen XEL-Scan nicht zuverlässig.';
+        PRINT N'@MitEventXml bit. Default ist 1. 1 liefert vollständiges Event-XML in RAW und JSON. 0 oder NULL lässt es dort aus. CONSOLE und TABLE enthalten EventXml weiterhin. Die XML-Konvertierung und Feldextraktion bleiben aktiv.';
+        PRINT N'@BestaetigeTargetFlush bit. Default ist 0. Nur 1 bestätigt, dass der Zugriff auf sys.dm_xe_session_targets einen Flush auslösen kann. 0 oder NULL verweigert RING_BUFFER ohne DMV-Zugriff. Für einen AUTO-Fallback muss der Wert 1 sein. Verwenden Sie für bestätigten Ringbufferzugriff ausdrücklich 1.';
+        PRINT N'@HighImpactConfirmed bit. Default ist 0. 1 bestätigt den Pfad EXTENDED_EVENTS_FORENSICS_DEEP. 0 bestätigt ihn nicht und NULL ist für die Gate-Prüfung ungültig. Die aktuelle Berechtigung wird zusätzlich geprüft.';
+        PRINT N'@ResultSetArt varchar(16). Default ist ''CONSOLE''. CONSOLE zeigt beschriftete Ergebnisse. RAW liefert Modulstatus, Ereignisse und Quellenstatus. TABLE schreibt die zugeordneten Resultsets. NONE unterdrückt Datenresultsets. Rand-Leerzeichen werden entfernt und die Groß- und Kleinschreibung normalisiert. NULL, Leertext und andere Werte sind ungültig.';
+        PRINT N'@ResultTablesJson nvarchar(max). Default ist NULL. Bei TABLE ist ein gültiges, nichtleeres JSON-Objekt erforderlich. Der einzige zulässige Schlüssel ist events. Jeder Wert benennt als Zeichenfolge eine vorhandene, leere lokale #Temp-Tabelle mit genau einer Seed-Spalte. Ziele müssen verschieden sein. Erlaubt sind höchstens 116 Zeichen und weder ## noch #Monitor als Präfix. Außerhalb von TABLE sind nur NULL, Leertext und reine Leerzeichen zulässig. Die Prüfung läuft vor der Hilfe.';
+        PRINT N'@JsonErzeugen bit. Default ist 0. 1 erzeugt das JSON-Dokument unabhängig von der Ausgabeart. 0 oder NULL erzeugt kein JSON.';
+        PRINT N'@Json nvarchar(max) OUTPUT. Default ist NULL. Binden Sie eine nvarchar(max)-Variable mit OUTPUT. Der Aufruf setzt sie zunächst auf NULL und füllt sie bei @JsonErzeugen=1.';
+        PRINT N'@PrintMeldungen bit. Default ist 1. 1 gibt informative Warnmeldungen aus. 0 oder NULL unterdrückt sie.';
+        PRINT N'@Hilfe bit. Default ist 0. 1 gibt die Hilfe nach der Prüfung von @ResultTablesJson aus und beendet den Aufruf vor dem fachlichen Zugriff. 0 oder NULL setzt den normalen Aufruf fort.';
+        PRINT N'Hilfe anzeigen. EXEC [monitor].[USP_ExtendedEventsReadEvents] @Hilfe=1;';
+        PRINT N'Technische Resultsets lesen. EXEC [monitor].[USP_ExtendedEventsReadEvents] @SourceExtendedEventSessionName=N''ExampleXeSession'', @Quelle=''EVENT_FILE'', @VonUtc=''2026-01-01T00:00:00'', @BisUtc=''2026-01-02T00:00:00'', @MaxZeilen=100, @MitEventXml=0, @HighImpactConfirmed=1, @ResultSetArt=''RAW'';';
+        PRINT N'Nur JSON ausgeben. DECLARE @ResultJson nvarchar(max); EXEC [monitor].[USP_ExtendedEventsReadEvents] @SourceExtendedEventSessionName=N''ExampleXeSession'', @Quelle=''EVENT_FILE'', @VonUtc=''2026-01-01T00:00:00'', @BisUtc=''2026-01-02T00:00:00'', @MaxZeilen=100, @MitEventXml=0, @HighImpactConfirmed=1, @ResultSetArt=''NONE'', @JsonErzeugen=1, @Json=@ResultJson OUTPUT; SELECT @ResultJson AS [Json];';
+        PRINT N'Ein Resultset in eine lokale Temp-Tabelle schreiben. CREATE TABLE #ExtendedEventsReadEvents_HelpExample ([Seed] int NULL); BEGIN TRY EXEC [monitor].[USP_ExtendedEventsReadEvents] @SourceExtendedEventSessionName=N''ExampleXeSession'', @Quelle=''EVENT_FILE'', @VonUtc=''2026-01-01T00:00:00'', @BisUtc=''2026-01-02T00:00:00'', @MaxZeilen=100, @MitEventXml=0, @HighImpactConfirmed=1, @ResultSetArt=''TABLE'', @ResultTablesJson=N''{"events":"#ExtendedEventsReadEvents_HelpExample"}''; SELECT * FROM #ExtendedEventsReadEvents_HelpExample; DROP TABLE #ExtendedEventsReadEvents_HelpExample; END TRY BEGIN CATCH DROP TABLE #ExtendedEventsReadEvents_HelpExample; THROW; END CATCH;';
         RETURN;
     END;
 
@@ -40785,7 +42717,7 @@ BEGIN
 
     IF @StatusCode = 'AVAILABLE' AND @ResolvedSource = 'RING_BUFFER'
     BEGIN
-        IF @BestaetigeTargetFlush = 0
+        IF @BestaetigeTargetFlush IS NULL OR @BestaetigeTargetFlush = 0
         BEGIN
             SET @StatusCode = 'AVAILABLE_DISABLED';
             SET @ErrorMessage = N'RING_BUFFER erfordert @BestaetigeTargetFlush=1.';
@@ -40973,17 +42905,27 @@ BEGIN
     IF @Hilfe = 1
     BEGIN
         PRINT N'monitor.USP_ExtendedEventsDeadlocks';
-        PRINT N'@ResolvedSourceExtendedEventSessionName sysname=N''system_health'': vorhandene Session mit xml_deadlock_report.';
-        PRINT N'@Quelle varchar(20)=''AUTO'': AUTO, EVENT_FILE oder RING_BUFFER; AUTO bevorzugt EVENT_FILE.';
-        PRINT N'@FilePath nvarchar(4000)=NULL: expliziter XEL-Pfad/URL; NULL liest die Sessiondefinition.';
-        PRINT N'@VonUtc datetime2(7)=NULL: NULL verwendet die letzten 24 Stunden; expliziter Wert erweitert/begrenzt das Fenster.';
-        PRINT N'@BisUtc datetime2(7)=NULL: exklusive UTC-Obergrenze.';
-        PRINT N'@MaxZeilen int=100: positive Werte begrenzen; NULL/0 = unbegrenzt.';
-        PRINT N'@MitDeadlockXml bit=1: vollständiges Deadlock-XML im Summary-Resultset.';
-        PRINT N'@MitProcessDetails bit=1: Prozessdetails; @MitResourceDetails bit=1: Ressourcen und Owner-/Waiter-XML.';
-        PRINT N'@BestaetigeTargetFlush bit=0: für RING_BUFFER auf 1 setzen.';
-        PRINT N'@PrintMeldungen bit=1: Warnungen Severity 10; @Hilfe bit=0: 1 zeigt diese Hilfe.';
-        PRINT N'Es werden keine Extended-Events-Sessions oder Serveroptionen verändert.';
+        PRINT N'@SourceExtendedEventSessionName nvarchar(258). Default ist N''system_health''. Bezeichnet genau eine vorhandene Extended-Events-Session, die xml_deadlock_report erfasst. Der Name darf optional geklammert sein. NULL, eine ungültige Angabe oder mehrere Namen ergeben INVALID_PARAMETER. Leertext ist ungültig.';
+        PRINT N'@Quelle varchar(20). Default ist ''AUTO''. Geschlossene Auswahl: AUTO wählt EVENT_FILE, wenn ein expliziter oder konfigurierter Dateipfad vorliegt. andernfalls wird RING_BUFFER nur bei bestätigtem Target-Flush gewählt. EVENT_FILE erzwingt das Dateiziel, RING_BUFFER das laufende Ring-Buffer-Ziel. NULL, leer oder ein anderer Wert ist ungültig. Werte werden getrimmt und in Großbuchstaben umgewandelt.';
+        PRINT N'@FilePath nvarchar(4000). Default ist NULL. Expliziter XEL-Pfad oder URL. NULL oder leer verwendet den in der Sessiondefinition konfigurierten Eventfile-Pfad. Endet der Pfad auf .xel, wird diese Endung durch *.xel ersetzt. Enthält er kein * und endet nicht auf .xel, wird *.xel angehängt. Ein expliziter Pfad kann AUTO zur Wahl des Eventfiles führen.';
+        PRINT N'@VonUtc datetime2(7). Default ist NULL. Untere UTC-Zeitgrenze einschließlich. NULL wird zur Laufzeit auf UTC jetzt minus 24 Stunden gesetzt. Ein expliziter Wert ersetzt diesen Standard.';
+        PRINT N'@BisUtc datetime2(7). Default ist NULL. Obere UTC-Zeitgrenze ausschließlich. NULL lässt die Obergrenze offen. Sind beide Grenzen gesetzt, muss @VonUtc kleiner als @BisUtc sein.';
+        PRINT N'@MaxZeilen int. Default ist 100. Begrenzt die ausgewählten Deadlockereignisse vor der Graphzerlegung. NULL oder 0 bedeutet unbegrenzt. negative Werte sind ungültig. Eine Begrenzung kann den vollständigen physischen Scan von XEL-Rolloverdateien nicht verhindern.';
+        PRINT N'@MitDeadlockXml bit. Default ist 1. 1 aktiviert die beschriebene Funktion. 0 und NULL deaktivieren sie. Steuert die Ausgabe des vollständigen Deadlock-XML in der Summary. 0 unterdrückt diese XML-Spalte, verhindert aber nicht das Einlesen und die für die übrigen Resultate erforderliche Graphverarbeitung.';
+        PRINT N'@MitProcessDetails bit. Default ist 1. 1 aktiviert die beschriebene Funktion. 0 und NULL deaktivieren sie. Steuert die Prozessdetailausgabe und deren Detailzerlegung. Die für Victim- und Summary-Ausgaben erforderliche Verarbeitung bleibt davon unberührt.';
+        PRINT N'@MitResourceDetails bit. Default ist 1. 1 aktiviert die beschriebene Funktion. 0 und NULL deaktivieren sie. Steuert die Ressourcendetails einschließlich Owner-/Waiter-XML. 0 fordert diese Detailausgabe nicht an.';
+        PRINT N'@BestaetigeTargetFlush bit. Default ist 0. 1 bestätigt den möglichen Target-Flush beim Ringbuffer-Lesen. 0 sperrt den expliziten Ringbufferzugriff. Beim expliziten Aufruf kann NULL die bestehende Prüfung auf 0 passieren. Verwenden Sie ausdrücklich 0 oder 1. AUTO wechselt nur bei 1 zum Ringbuffer.';
+        PRINT N'@HighImpactConfirmed bit. Default ist 0. 1 bestätigt einen geschützten Pfad nach der aktiven Policy für EXTENDED_EVENTS_FORENSICS_DEEP. 0 bestätigt ihn nicht. NULL ist für die Gate-Prüfung ungültig. Die aktuelle Berechtigung wird zusätzlich geprüft.';
+        PRINT N'@ResultSetArt varchar(16). Default ist ''CONSOLE''. Geschlossene Auswahl nach Trimmen und Umwandlung in Großbuchstaben: RAW gibt technische Rohresultate aus, CONSOLE dient der interaktiven Ausgabe, NONE unterdrückt Resultsets zugunsten des OUTPUT-JSON, TABLE schreibt das registrierte Fachresultat in ein bereitgestelltes Ziel. CONSOLE und TABLE werden intern auf NONE gesetzt, bevor die Fachresultate ausgegeben/geschrieben werden. NULL, leer und andere Werte sind ungültig.';
+        PRINT N'@ResultTablesJson nvarchar(max). Default ist NULL. Bei TABLE ist ein nichtleeres JSON-Objekt mit genau dem Schlüssel deadlocks erforderlich. Der Wert benennt eine vorhandene, leere lokale #Temp-Tabelle mit genau einer Seed-Spalte. Der Name darf höchstens 116 Zeichen lang sein. Globale Tabellen und #Monitor als Präfix sind ausgeschlossen. Außerhalb von TABLE sind nur NULL, Leertext und Leerzeichen erlaubt. Die Prüfung läuft vor der Hilfe und kann Fehler 51011 auslösen.';
+        PRINT N'@JsonErzeugen bit. Default ist 0. 1 erzeugt JSON in @Json unabhängig von der Ausgabeart. 0 und NULL erzeugen kein Dokument.';
+        PRINT N'@Json nvarchar(max) OUTPUT. Default ist NULL. OUTPUT-Parameter für das erzeugte JSON. Der Wert wird am Prozedurbeginn auf NULL gesetzt. NULL bedeutet daher, dass kein JSON geliefert wurde oder die Erzeugung nicht bis zu einem Ergebnis gelangte.';
+        PRINT N'@PrintMeldungen bit. Default ist 1. 1 gibt bei Status außerhalb AVAILABLE und AVAILABLE_LIMITED eine Warnung mit Severity 10 aus. 0 unterdrückt diese Warnmeldung. NULL verhält sich über die IF-Bedingung wie aus, da nur exakt 1 wahr ist.';
+        PRINT N'@Hilfe bit. Default ist 0. 1 zeigt die Hilfe nach der TABLE-Zuordnungsprüfung und beendet den Aufruf vor dem Quellzugriff. 0 und NULL setzen den normalen Aufruf fort.';
+        PRINT N'Beispiel 1. EXEC [monitor].[USP_ExtendedEventsDeadlocks] @Hilfe=1;';
+        PRINT N'Beispiel 2. DECLARE @ExampleBisUtc datetime2(7)=SYSUTCDATETIME(); DECLARE @ExampleVonUtc datetime2(7)=DATEADD(HOUR,-1,@ExampleBisUtc); EXEC [monitor].[USP_ExtendedEventsDeadlocks] @SourceExtendedEventSessionName=N''system_health'',@VonUtc=@ExampleVonUtc,@BisUtc=@ExampleBisUtc,@MaxZeilen=25,@MitDeadlockXml=0,@MitProcessDetails=0,@MitResourceDetails=0,@HighImpactConfirmed=1,@ResultSetArt=''RAW'';';
+        PRINT N'Beispiel 3. DECLARE @ExampleJson nvarchar(max); DECLARE @ExampleBisUtc datetime2(7)=SYSUTCDATETIME(); DECLARE @ExampleVonUtc datetime2(7)=DATEADD(HOUR,-1,@ExampleBisUtc); EXEC [monitor].[USP_ExtendedEventsDeadlocks] @SourceExtendedEventSessionName=N''system_health'',@VonUtc=@ExampleVonUtc,@BisUtc=@ExampleBisUtc,@MaxZeilen=25,@MitDeadlockXml=0,@MitProcessDetails=0,@MitResourceDetails=0,@HighImpactConfirmed=1,@ResultSetArt=''NONE'',@JsonErzeugen=1,@Json=@ExampleJson OUTPUT; SELECT @ExampleJson AS ExampleJson;';
+        PRINT N'Beispiel 4. CREATE TABLE #ExtendedEventsDeadlocks_HelpExample ([Seed] int NULL); BEGIN TRY DECLARE @ExampleBisUtc datetime2(7)=SYSUTCDATETIME(); DECLARE @ExampleVonUtc datetime2(7)=DATEADD(HOUR,-1,@ExampleBisUtc); EXEC [monitor].[USP_ExtendedEventsDeadlocks] @SourceExtendedEventSessionName=N''system_health'',@VonUtc=@ExampleVonUtc,@BisUtc=@ExampleBisUtc,@MaxZeilen=25,@MitDeadlockXml=0,@MitProcessDetails=0,@MitResourceDetails=0,@HighImpactConfirmed=1,@ResultSetArt=''TABLE'',@ResultTablesJson=N''{"deadlocks":"#ExtendedEventsDeadlocks_HelpExample"}''; SELECT * FROM #ExtendedEventsDeadlocks_HelpExample; DROP TABLE #ExtendedEventsDeadlocks_HelpExample; END TRY BEGIN CATCH DROP TABLE #ExtendedEventsDeadlocks_HelpExample; THROW; END CATCH;';
         RETURN;
     END;
 
@@ -41295,16 +43237,26 @@ BEGIN
     IF @Hilfe=1
     BEGIN
         PRINT N'monitor.USP_ExtendedEventsBlockedProcesses';
-        PRINT N'@ResolvedSourceExtendedEventSessionName sysname=NULL: konkrete vorhandene Session; NULL sucht eine Session mit blocked_process_report.';
-        PRINT N'@Quelle varchar(20)=''AUTO'': AUTO, EVENT_FILE oder RING_BUFFER; AUTO bevorzugt EVENT_FILE.';
-        PRINT N'@FilePath nvarchar(4000)=NULL: optionaler XEL-Pfad/URL; NULL liest die Sessiondefinition.';
-        PRINT N'@VonUtc datetime2(7)=NULL: NULL verwendet letzte 24 Stunden; @BisUtc datetime2(7)=NULL: exklusive Obergrenze.';
-        PRINT N'@MaxZeilen int=200: positive Werte begrenzen; NULL/0 = unbegrenzt.';
-        PRINT N'@MitReportXml bit=1: vollständiges blocked-process-report XML im Summary.';
-        PRINT N'@MitProcessXml bit=0: Prozess-XML in den Detailresultsets.';
-        PRINT N'@BestaetigeTargetFlush bit=0: für RING_BUFFER auf 1 setzen.';
-        PRINT N'@PrintMeldungen bit=1: Warnungen Severity 10; @Hilfe bit=0: 1 zeigt diese Hilfe.';
-        PRINT N'Die Procedure ändert weder blocked process threshold noch Extended-Events-Sessions.';
+        PRINT N'@SourceExtendedEventSessionName nvarchar(258). Default ist NULL. Bezeichnet optional eine konkrete vorhandene Session mit blocked_process_report. NULL sucht automatisch nach einer passenden Session. Ein expliziter Wert muss genau einen gültigen, optional geklammerten sysname ergeben. ungültige oder mehrfache Namen führen zu INVALID_PARAMETER. Leertext ist ungültig.';
+        PRINT N'@Quelle varchar(20). Default ist ''AUTO''. Geschlossene Auswahl: AUTO wählt EVENT_FILE, wenn ein expliziter oder konfigurierter Dateipfad vorliegt. andernfalls wird RING_BUFFER nur bei bestätigtem Target-Flush gewählt. EVENT_FILE erzwingt das Dateiziel, RING_BUFFER das laufende Ring-Buffer-Ziel. NULL, leer oder ein anderer Wert ist ungültig. Werte werden getrimmt und in Großbuchstaben umgewandelt.';
+        PRINT N'@FilePath nvarchar(4000). Default ist NULL. Expliziter XEL-Pfad oder URL. NULL oder leer verwendet den Eventfile-Pfad aus der Sessiondefinition. Endet der Pfad auf .xel, wird die Endung durch *.xel ersetzt. andernfalls wird *.xel angehängt, sofern noch kein * enthalten ist.';
+        PRINT N'@VonUtc datetime2(7). Default ist NULL. Untere UTC-Zeitgrenze einschließlich. NULL wird zur Laufzeit auf UTC jetzt minus 24 Stunden gesetzt.';
+        PRINT N'@BisUtc datetime2(7). Default ist NULL. Obere UTC-Zeitgrenze ausschließlich. NULL lässt die Obergrenze offen. Sind beide Grenzen gesetzt, muss @VonUtc kleiner als @BisUtc sein.';
+        PRINT N'@MaxZeilen int. Default ist 200. Begrenzt die ausgewählten Reports vor der XML-Zerlegung. NULL oder 0 bedeutet unbegrenzt. negative Werte sind ungültig. Die Begrenzung garantiert keinen frühen oder vollständigen Ausschluss des XEL-Dateiscans.';
+        PRINT N'@MitReportXml bit. Default ist 1. 1 aktiviert die beschriebene Funktion. 0 und NULL deaktivieren sie. Steuert, ob das vollständige blocked_process_report-XML in der Summary ausgegeben wird. 0 unterdrückt die XML-Ausgabe, verhindert aber nicht das Parsing der strukturierten Prozessfelder.';
+        PRINT N'@MitProcessXml bit. Default ist 0. 1 aktiviert die beschriebene Funktion. 0 und NULL deaktivieren sie. Steuert die Ausgabe des vollständigen Prozess-XML in den Detailresultaten. 0 unterdrückt diese XML-Ausgabe. strukturierte Prozessfelder werden weiterhin extrahiert.';
+        PRINT N'@BestaetigeTargetFlush bit. Default ist 0. 1 bestätigt den möglichen Target-Flush beim Ringbuffer-Lesen. 0 sperrt den expliziten Ringbufferzugriff. Beim expliziten Aufruf kann NULL die bestehende Prüfung auf 0 passieren. Verwenden Sie ausdrücklich 0 oder 1. AUTO wechselt nur bei 1 zum Ringbuffer.';
+        PRINT N'@HighImpactConfirmed bit. Default ist 0. 1 bestätigt einen geschützten Pfad nach der aktiven Policy für EXTENDED_EVENTS_FORENSICS_DEEP. 0 bestätigt ihn nicht. NULL ist für die Gate-Prüfung ungültig. Die aktuelle Berechtigung wird zusätzlich geprüft.';
+        PRINT N'@ResultSetArt varchar(16). Default ist ''CONSOLE''. Geschlossene Auswahl nach Trimmen und Umwandlung in Großbuchstaben: RAW gibt technische Rohresultate aus, CONSOLE dient der interaktiven Ausgabe, NONE unterdrückt Resultsets zugunsten des OUTPUT-JSON, TABLE schreibt das registrierte Fachresultat in ein bereitgestelltes Ziel. CONSOLE und TABLE werden intern auf NONE gesetzt. NULL, leer und andere Werte sind ungültig.';
+        PRINT N'@ResultTablesJson nvarchar(max). Default ist NULL. Bei TABLE ist ein nichtleeres JSON-Objekt mit genau dem Schlüssel reports erforderlich. Der Wert benennt eine vorhandene, leere lokale #Temp-Tabelle mit genau einer Seed-Spalte. Der Name darf höchstens 116 Zeichen lang sein. Globale Tabellen und #Monitor als Präfix sind ausgeschlossen. Außerhalb von TABLE sind nur NULL, Leertext und Leerzeichen erlaubt. Die Prüfung läuft vor der Hilfe und kann Fehler 51011 auslösen.';
+        PRINT N'@JsonErzeugen bit. Default ist 0. 1 erzeugt JSON in @Json unabhängig von der Ausgabeart. 0 und NULL erzeugen kein Dokument.';
+        PRINT N'@Json nvarchar(max) OUTPUT. Default ist NULL. OUTPUT-Parameter für das JSON-Ergebnis. Der Wert wird am Prozedurbeginn auf NULL gesetzt. NULL bedeutet, dass kein JSON geliefert wurde oder die Erzeugung nicht bis zu einem Ergebnis gelangte.';
+        PRINT N'@PrintMeldungen bit. Default ist 1. 1 gibt bei Status außerhalb AVAILABLE und AVAILABLE_LIMITED eine Warnung mit Severity 10 aus. 0 unterdrückt sie. NULL verhält sich über die IF-Bedingung wie aus.';
+        PRINT N'@Hilfe bit. Default ist 0. 1 zeigt die Hilfe nach der TABLE-Zuordnungsprüfung und beendet den Aufruf vor dem Quellzugriff. 0 und NULL setzen den normalen Aufruf fort.';
+        PRINT N'Beispiel 1. EXEC [monitor].[USP_ExtendedEventsBlockedProcesses] @Hilfe=1;';
+        PRINT N'Beispiel 2. DECLARE @ExampleBisUtc datetime2(7)=SYSUTCDATETIME(); DECLARE @ExampleVonUtc datetime2(7)=DATEADD(HOUR,-1,@ExampleBisUtc); EXEC [monitor].[USP_ExtendedEventsBlockedProcesses] @SourceExtendedEventSessionName=N''system_health'',@VonUtc=@ExampleVonUtc,@BisUtc=@ExampleBisUtc,@MaxZeilen=25,@MitReportXml=0,@MitProcessXml=0,@HighImpactConfirmed=1,@ResultSetArt=''RAW'';';
+        PRINT N'Beispiel 3. DECLARE @ExampleJson nvarchar(max); DECLARE @ExampleBisUtc datetime2(7)=SYSUTCDATETIME(); DECLARE @ExampleVonUtc datetime2(7)=DATEADD(HOUR,-1,@ExampleBisUtc); EXEC [monitor].[USP_ExtendedEventsBlockedProcesses] @SourceExtendedEventSessionName=N''system_health'',@VonUtc=@ExampleVonUtc,@BisUtc=@ExampleBisUtc,@MaxZeilen=25,@MitReportXml=0,@MitProcessXml=0,@HighImpactConfirmed=1,@ResultSetArt=''NONE'',@JsonErzeugen=1,@Json=@ExampleJson OUTPUT; SELECT @ExampleJson AS ExampleJson;';
+        PRINT N'Beispiel 4. CREATE TABLE #ExtendedEventsBlockedProcesses_HelpExample ([Seed] int NULL); BEGIN TRY DECLARE @ExampleBisUtc datetime2(7)=SYSUTCDATETIME(); DECLARE @ExampleVonUtc datetime2(7)=DATEADD(HOUR,-1,@ExampleBisUtc); EXEC [monitor].[USP_ExtendedEventsBlockedProcesses] @SourceExtendedEventSessionName=N''system_health'',@VonUtc=@ExampleVonUtc,@BisUtc=@ExampleBisUtc,@MaxZeilen=25,@MitReportXml=0,@MitProcessXml=0,@HighImpactConfirmed=1,@ResultSetArt=''TABLE'',@ResultTablesJson=N''{"reports":"#ExtendedEventsBlockedProcesses_HelpExample"}''; SELECT * FROM #ExtendedEventsBlockedProcesses_HelpExample; DROP TABLE #ExtendedEventsBlockedProcesses_HelpExample; END TRY BEGIN CATCH DROP TABLE #ExtendedEventsBlockedProcesses_HelpExample; THROW; END CATCH;';
         RETURN;
     END;
 
@@ -41593,13 +43545,24 @@ BEGIN
     IF @Hilfe=1
     BEGIN
         PRINT N'monitor.USP_ExtendedEventsTargetRuntime';
-        PRINT N'@ExtendedEventSessionNamePattern nvarchar(256)=NULL: LIKE-Filter auf laufende Sessionnamen.';
-        PRINT N'@TargetNamePattern nvarchar(256)=NULL: LIKE-Filter auf Targetnamen.';
-        PRINT N'@MitTargetData bit=0: 1 gibt target_data begrenzt als nvarchar aus.';
-        PRINT N'@MaxTargetDataZeichen int=4000: positiver Wert begrenzt die Ausgabe; 0 liefert mit @MitTargetData=1 den vollständigen MAX-Wert.';
-        PRINT N'@BestaetigeTargetFlush bit=0: muss 1 sein; sys.dm_xe_session_targets kann einen Target-Flush auslösen.';
-        PRINT N'@PrintMeldungen bit=1: Warnungen Severity 10; @Hilfe bit=0: 1 zeigt diese Hilfe.';
-        PRINT N'Es werden keine Sessions oder Targets verändert.';
+        PRINT N'@ExtendedEventSessionNames nvarchar(max). Default ist NULL. NULL deaktiviert den Exaktnamenfilter. Andernfalls pipe-getrennte Liste exakter einteiliger SQL-Namen; geklammerte Namen und maskierte ]] sind zulässig. Leere Listen und ungültige Namen werden abgelehnt. Nicht mit ExtendedEventSessionNamePattern kombinierbar.';
+        PRINT N'@ExtendedEventSessionNamePattern nvarchar(4000). Default ist NULL. NULL deaktiviert den Musterfilter. Andernfalls nichtleeres LIKE-Muster, optional mit LIKE:, REGEX: oder REGEXI:; äußere Leerzeichen werden entfernt. Leeres Muster oder leerer Präfixwert ist ungültig. LIKE unterstützt % und _. Regex benötigt SQL Server 2025 mit Compatibility Level 170 und wird nach Materialisierung angewandt. Nicht mit ExtendedEventSessionNames kombinierbar.';
+        PRINT N'@TargetNames nvarchar(max). Default ist NULL. NULL deaktiviert den Exaktnamenfilter. Andernfalls pipe-getrennte Liste exakter einteiliger SQL-Namen; geklammerte Namen und maskierte ]] sind zulässig. Leere Listen und ungültige Namen werden abgelehnt. Nicht mit TargetNamePattern kombinierbar.';
+        PRINT N'@TargetNamePattern nvarchar(4000). Default ist NULL. NULL deaktiviert den Musterfilter. Andernfalls nichtleeres Muster mit optionalem LIKE:, REGEX: oder REGEXI:-Präfix; äußere Leerzeichen werden getrimmt. Leeres Muster oder leerer Präfixwert ungültig. LIKE verwendet % und _. Regex benötigt SQL Server 2025 / Compatibility Level 170 und wird nach Materialisierung angewandt. Nicht mit TargetNames kombinierbar.';
+        PRINT N'@MitTargetData bit. Default ist 0. 1 projiziert target_data und Zeichen-/Byteumfang; 0 setzt TargetData NULL und TargetDataStatus auf NOT_REQUESTED.';
+        PRINT N'@MaxTargetDataZeichen int. Default ist 4000. Negative Werte ungültig. 0 bedeutet unbegrenzte nvarchar(max)-Projektion; positiver Wert begrenzt Ausgabezeichen. Gilt nur bei MitTargetData=1; gekürzte Werte erhalten OUTPUT_VALUE_TRUNCATED und können Warnung auslösen.';
+        PRINT N'@BestaetigeTargetFlush bit. Default ist 0. 1 bestätigt den möglichen Flush beim Lesen von sys.dm_xe_session_targets. 0 sperrt den Zugriff. NULL kann die bestehende Prüfung auf 0 passieren und den DMV-Zugriff auslösen. Verwenden Sie ausdrücklich 0 oder 1.';
+        PRINT N'@HighImpactConfirmed bit. Default ist 0. Bestätigung für den Policycheck EXTENDED_EVENTS_FORENSICS_DEEP; Standard 0.';
+        PRINT N'@ResultSetArt varchar(16). Default ist ''CONSOLE''. Wird getrimmt und großgeschrieben. Zulässig: RAW, CONSOLE, NONE, TABLE. RAW gibt Status und rohe Targets aus; CONSOLE Status und lesbare Übersicht; NONE unterdrückt Resultsets; TABLE schreibt targets. Andere Werte sind ungültig.';
+        PRINT N'@ResultTablesJson nvarchar(max). Default ist NULL. Nur mit ResultSetArt=TABLE zulässig. Nichtleeres JSON-Objekt mit genau dem Schlüssel targets und dem Namen einer vorhandenen, leeren lokalen #temp-Tabelle mit genau einer NULL-zulässigen Seed-Spalte. NULL/Leerwert, fehlerhafte Zuordnung, Zusatzschlüssel, befülltes Ziel, globale/permanente Tabelle und #Monitor-Präfix werden abgelehnt. Der Writer passt das Ziel an das Resultatschema an.';
+        PRINT N'@JsonErzeugen bit. Default ist 0. 1 erstellt JSON unabhängig von ResultSetArt; 0 lässt @Json NULL.';
+        PRINT N'@Json nvarchar(max). Default ist NULL. OUTPUT, anfangs NULL; bei JsonErzeugen=1 JSON-Objekt mit meta, targets und warnings.';
+        PRINT N'@PrintMeldungen bit. Default ist 1. 1 gibt Warnungen als Severity-10-Meldungen aus; 0 unterdrückt sie.';
+        PRINT N'@Hilfe bit. Default ist 0. 1 druckt Hilfe und kehrt vor der Ausführung zurück.';
+        PRINT N'Beispiel 1: EXEC [monitor].[USP_ExtendedEventsTargetRuntime] @Hilfe=1;';
+        PRINT N'Beispiel 2: EXEC [monitor].[USP_ExtendedEventsTargetRuntime] @ExtendedEventSessionNames=N''ExampleXeSession'', @TargetNames=N''ring_buffer'', @BestaetigeTargetFlush=1, @HighImpactConfirmed=1, @ResultSetArt=''RAW'';';
+        PRINT N'Beispiel 3: DECLARE @xeJson nvarchar(max); EXEC [monitor].[USP_ExtendedEventsTargetRuntime] @ExtendedEventSessionNames=N''ExampleXeSession'', @TargetNames=N''ring_buffer'', @BestaetigeTargetFlush=1, @HighImpactConfirmed=1, @ResultSetArt=''NONE'', @JsonErzeugen=1, @Json=@xeJson OUTPUT; SELECT @xeJson AS JsonResult;';
+        PRINT N'Beispiel 4: CREATE TABLE #ExtendedEventsTargetRuntime_HelpExample (Seed int NULL); BEGIN TRY EXEC [monitor].[USP_ExtendedEventsTargetRuntime] @ExtendedEventSessionNames=N''ExampleXeSession'', @TargetNames=N''ring_buffer'', @BestaetigeTargetFlush=1, @HighImpactConfirmed=1, @ResultSetArt=''TABLE'', @ResultTablesJson=N''{"targets":"#ExtendedEventsTargetRuntime_HelpExample"}''; SELECT * FROM #ExtendedEventsTargetRuntime_HelpExample; END TRY BEGIN CATCH DROP TABLE #ExtendedEventsTargetRuntime_HelpExample; THROW; END CATCH; DROP TABLE #ExtendedEventsTargetRuntime_HelpExample;';
         RETURN;
     END;
 
@@ -41802,8 +43765,35 @@ BEGIN
     IF @Hilfe = 1
     BEGIN
         PRINT N'monitor.USP_ExtendedEventsAnalysis';
-        PRINT N'Inventarfilter sind listen-/patternfähig; die forensische Quellsession ist ein einzelner optional geklammerter Name.';
-        PRINT N'@ResultSetArt = RAW, CONSOLE, TABLE oder NONE; optional JSON über @Json OUTPUT.';
+        PRINT N'@SourceExtendedEventSessionName nvarchar(258). Default ist N''system_health''. Einzelner Forensik-Quell-Sessionsname, Standard system_health. Nur an aktivierte ReadEvents-, Deadlocks- und BlockedProcesses-Children; nicht an Inventar-Children. ReadEvents und Deadlocks lehnen NULL/leeren/ungültigen/mehrteiligen Namen ab. BlockedProcesses verwendet NULL zur automatischen Auswahl und lehnt leere/ungültige explizite Namen ab.';
+        PRINT N'@ExtendedEventSessionNames nvarchar(max). Default ist NULL. NULL deaktiviert den Exaktnamenfilter. Sonst pipe-getrennte Liste exakter einteiliger SQL-Namen; Klammerung und ]] Escape unterstützt. Leere Liste/ungültige Namen ungültig. Nicht kombinierbar mit ExtendedEventSessionNamePattern. Wird an Sessions- und TargetRuntime-Children geleitet.';
+        PRINT N'@ExtendedEventSessionNamePattern nvarchar(4000). Default ist NULL. NULL deaktiviert den Musterfilter. Andernfalls nichtleeres LIKE-Muster, optional mit LIKE:, REGEX: oder REGEXI:; äußere Leerzeichen werden entfernt. Leeres Muster oder leerer Präfixwert ist ungültig. LIKE unterstützt % und _. Regex benötigt SQL Server 2025 mit Compatibility Level 170 und wird nach Materialisierung angewandt. Nicht mit ExtendedEventSessionNames kombinierbar. Wird an Sessions-/TargetRuntime-Children geleitet.';
+        PRINT N'@EventNames nvarchar(max). Default ist NULL. NULL deaktiviert den exakten Eventnamenfilter. Andernfalls pipe-getrennte Liste exakter einteiliger SQL-Namen; leere Liste/ungültige Namen werden abgelehnt. Nicht mit EventNamePattern kombinierbar. Wird an Sessions- und ReadEvents-Children geleitet.';
+        PRINT N'@EventNamePattern nvarchar(4000). Default ist NULL. NULL deaktiviert den Musterfilter. Andernfalls nichtleeres Muster mit optionalem LIKE:, REGEX: oder REGEXI:-Präfix; äußere Leerzeichen werden getrimmt. Leeres Muster/Präfixwert ungültig. LIKE unterstützt % und _. Regex erfordert SQL Server 2025 / Compatibility Level 170 und wird nach Materialisierung angewandt. Nicht mit EventNames kombinierbar.';
+        PRINT N'@TargetNames nvarchar(max). Default ist NULL. NULL deaktiviert den Exaktnamenfilter. Sonst pipe-getrennte Liste exakter einteiliger SQL-Namen; Klammerung und ]] Escape unterstützt. Leere Liste/ungültige Namen ungültig. Nicht kombinierbar mit TargetNamePattern. Wird an Sessions-/TargetRuntime-Children geleitet.';
+        PRINT N'@TargetNamePattern nvarchar(4000). Default ist NULL. NULL deaktiviert den Musterfilter. Andernfalls nichtleeres Muster mit optionalem LIKE:, REGEX: oder REGEXI:-Präfix; äußere Leerzeichen werden getrimmt. Leeres Muster oder leerer Präfixwert ungültig. LIKE verwendet % und _. Regex benötigt SQL Server 2025 / Compatibility Level 170 und wird nach Materialisierung angewandt. Nicht mit TargetNames kombinierbar. Wird an Sessions-/TargetRuntime-Children geleitet.';
+        PRINT N'@Quelle varchar(20). Default ist ''AUTO''. Getrimmt/großgeschrieben; zulässig AUTO, EVENT_FILE, RING_BUFFER. Quellwahl für Forensik-Children.';
+        PRINT N'@FilePath nvarchar(4000). Default ist NULL. Optionaler XEL-Dateipfad, an aktivierte Forensik-Children geleitet; NULL überlässt Pfadauswahl dem Child. Leerverhalten childabhängig.';
+        PRINT N'@VonUtc datetime2(7). Default ist NULL. Unverändert an ReadEvents, Deadlocks und BlockedProcesses geleitet. ReadEvents: NULL lässt untere inklusive Grenze aus. Deadlocks/BlockedProcesses: NULL bedeutet UTC jetzt minus 24 Stunden.';
+        PRINT N'@BisUtc datetime2(7). Default ist NULL. Unverändert an die aktivierten Forensik-Children geleitet. NULL lässt die exklusive obere Grenze aus.';
+        PRINT N'@MitSessionInventar bit. Default ist 1. Eingabe als bit-Wert 0 oder 1. Andere SQL-Argumente unterliegen vor Prozedureintritt der bit-Typkonvertierung; die Procedure besitzt keine eigene Leertextnormalisierung. 0 deaktiviert das Teilmodul. NULL aktiviert es nicht und wird nicht normalisiert. Die Leerscope-Prüfung lehnt nur fünf exakte 0-Werte ab. Enthält eine sonst inaktive Auswahl NULL, kann der Parent AVAILABLE ohne Kindaufruf liefern. 1 ruft USP_ExtendedEventsSessions mit Session-, Event- und Targetfiltern sowie MaxZeilen auf; SourceExtendedEventSessionName wird nicht weitergeleitet.';
+        PRINT N'@MitTargetRuntime bit. Default ist 0. Eingabe als bit-Wert 0 oder 1. Andere SQL-Argumente unterliegen vor Prozedureintritt der bit-Typkonvertierung; die Procedure besitzt keine eigene Leertextnormalisierung. 0 deaktiviert das Teilmodul. NULL aktiviert es nicht und wird nicht normalisiert. Die Leerscope-Prüfung lehnt nur fünf exakte 0-Werte ab. Enthält eine sonst inaktive Auswahl NULL, kann der Parent AVAILABLE ohne Kindaufruf liefern. 1 ruft USP_ExtendedEventsTargetRuntime mit Session- und Targetfiltern auf. Das DMV-Lesen verlangt Flushbestätigung 1 und das Deep-Analysis-Gate.';
+        PRINT N'@MitEvents bit. Default ist 0. Eingabe als bit-Wert 0 oder 1. Andere SQL-Argumente unterliegen vor Prozedureintritt der bit-Typkonvertierung; die Procedure besitzt keine eigene Leertextnormalisierung. 0 deaktiviert das Teilmodul. NULL aktiviert es nicht und wird nicht normalisiert. Die Leerscope-Prüfung lehnt nur fünf exakte 0-Werte ab. Enthält eine sonst inaktive Auswahl NULL, kann der Parent AVAILABLE ohne Kindaufruf liefern. 1 ruft USP_ExtendedEventsReadEvents auf und leitet SourceExtendedEventSessionName, Quelle, FilePath, Eventfilter, UTC-Grenzen, MaxZeilen sowie BestaetigeTargetFlush und HighImpactConfirmed weiter.';
+        PRINT N'@MitDeadlocks bit. Default ist 0. Eingabe als bit-Wert 0 oder 1. Andere SQL-Argumente unterliegen vor Prozedureintritt der bit-Typkonvertierung; die Procedure besitzt keine eigene Leertextnormalisierung. 0 deaktiviert das Teilmodul. NULL aktiviert es nicht und wird nicht normalisiert. Die Leerscope-Prüfung lehnt nur fünf exakte 0-Werte ab. Enthält eine sonst inaktive Auswahl NULL, kann der Parent AVAILABLE ohne Kindaufruf liefern. 1 ruft USP_ExtendedEventsDeadlocks auf und leitet SourceExtendedEventSessionName, Quelle, FilePath, UTC-Grenzen, MaxZeilen sowie BestaetigeTargetFlush und HighImpactConfirmed weiter.';
+        PRINT N'@MitBlockedProcesses bit. Default ist 0. Eingabe als bit-Wert 0 oder 1. Andere SQL-Argumente unterliegen vor Prozedureintritt der bit-Typkonvertierung; die Procedure besitzt keine eigene Leertextnormalisierung. 0 deaktiviert das Teilmodul. NULL aktiviert es nicht und wird nicht normalisiert. Die Leerscope-Prüfung lehnt nur fünf exakte 0-Werte ab. Enthält eine sonst inaktive Auswahl NULL, kann der Parent AVAILABLE ohne Kindaufruf liefern. 1 ruft USP_ExtendedEventsBlockedProcesses auf und leitet SourceExtendedEventSessionName, Quelle, FilePath, UTC-Grenzen, MaxZeilen sowie BestaetigeTargetFlush und HighImpactConfirmed weiter.';
+        PRINT N'@MaxZeilen int. Default ist 100. Negative Werte ungültig. An Children weitergeleitet; NULL oder 0 bedeutet dort unbegrenzt. Ein Zeilenlimit garantiert kein vorzeitiges oder vollständiges Überspringen des physischen XEL-Lesens. Modulstatus wird nicht gekürzt.';
+        PRINT N'@BestaetigeTargetFlush bit. Default ist 0. Explizit 0 oder 1 übergeben; nicht NULL. An Children geleitet. 1 nur nach bewusster Bestätigung setzen, weil Targetzugriffe einen Flush auslösen können.';
+        PRINT N'@HighImpactConfirmed bit. Default ist 0. An aktivierte Forensikchildren und TargetRuntime geleitete Policybestätigung für Deep-Analysis.';
+        PRINT N'@ResultSetArt varchar(16). Default ist ''CONSOLE''. Getrimmt/großgeschrieben; zulässig RAW, CONSOLE, NONE, TABLE. TABLE schreibt moduleStatus; CONSOLE/TABLE unterdrücken Child-Resultsets intern.';
+        PRINT N'@ResultTablesJson nvarchar(max). Default ist NULL. Nur mit TABLE. Nichtleeres JSON-Objekt mit genau dem Schlüssel moduleStatus und dem Namen einer vorhandenen, leeren lokalen #temp-Tabelle mit genau einer NULL-zulässigen Seed-Spalte. NULL/Leerwert, fehlerhafte Zuordnung, Zusatzschlüssel, befülltes Ziel, globale/permanente Tabelle und #Monitor-Präfix werden abgelehnt.';
+        PRINT N'@JsonErzeugen bit. Default ist 0. 1 erzeugt Parent-JSON-Hülle mit meta, inventory, targetRuntime, events, deadlocks, blockedProcesses und warnings; 0 lässt @Json NULL.';
+        PRINT N'@Json nvarchar(max). Default ist NULL. OUTPUT, wird anfangs NULL gesetzt; enthält bei JsonErzeugen=1 die Parent-JSON-Hülle.';
+        PRINT N'@PrintMeldungen bit. Default ist 1. 1 aktiviert Child-/Parent-Warnmeldungen; 0 unterdrückt sie.';
+        PRINT N'@Hilfe bit. Default ist 0. 1 druckt Kurzhilfe und kehrt vor Ausführung zurück.';
+        PRINT N'Beispiel 1: EXEC [monitor].[USP_ExtendedEventsAnalysis] @Hilfe=1;';
+        PRINT N'Beispiel 2: EXEC [monitor].[USP_ExtendedEventsAnalysis] @ExtendedEventSessionNames=N''ExampleXeSession'', @MitSessionInventar=1, @MitTargetRuntime=0, @MitEvents=0, @MitDeadlocks=0, @MitBlockedProcesses=0, @ResultSetArt=''RAW'';';
+        PRINT N'Beispiel 3: DECLARE @xeFrom datetime2(7)=DATEADD(hour,-1,SYSUTCDATETIME()), @xeTo datetime2(7)=SYSUTCDATETIME(), @xeJson nvarchar(max); EXEC [monitor].[USP_ExtendedEventsAnalysis] @SourceExtendedEventSessionName=N''ExampleXeSession'', @Quelle=''AUTO'', @VonUtc=@xeFrom, @BisUtc=@xeTo, @MitSessionInventar=0, @MitEvents=1, @MaxZeilen=50, @BestaetigeTargetFlush=1, @HighImpactConfirmed=1, @ResultSetArt=''NONE'', @JsonErzeugen=1, @Json=@xeJson OUTPUT; SELECT @xeJson AS JsonResult;';
+        PRINT N'Beispiel 4: CREATE TABLE #ExtendedEventsAnalysis_HelpExample (Seed int NULL); BEGIN TRY EXEC [monitor].[USP_ExtendedEventsAnalysis] @MitSessionInventar=1, @MitTargetRuntime=0, @MitEvents=0, @MitDeadlocks=0, @MitBlockedProcesses=0, @ResultSetArt=''TABLE'', @ResultTablesJson=N''{"moduleStatus":"#ExtendedEventsAnalysis_HelpExample"}''; SELECT * FROM #ExtendedEventsAnalysis_HelpExample; END TRY BEGIN CATCH DROP TABLE #ExtendedEventsAnalysis_HelpExample; THROW; END CATCH; DROP TABLE #ExtendedEventsAnalysis_HelpExample;';
         RETURN;
     END;
 
@@ -42034,11 +44024,13 @@ Objekt       : monitor.USP_AgentStatus
 Version      : 2.0.0
 Stand        : 2026-07-15
 Typ          : Stored Procedure
-Zweck        : Ermittelt SQL-Server-Agent-Dienststatus, Agent-Startzeit und Basisinventar.
+Zweck        : Die Procedure ermittelt SQL-Server-Agent-Dienststatus, Agent-Startzeit und Basisinventar.
 SQL-Version  : SQL Server 2019 oder neuer.
 Datenquellen : sys.dm_server_services, msdb.dbo.syssessions, msdb.dbo.sysjobs
-Parameter    : @ResultSetArt, @JsonErzeugen, @Json OUTPUT, @PrintMeldungen, @Hilfe
-Resultsets   : RAW oder CONSOLE: Modulstatus und Agentstatus. NONE: keine Resultsets.
+Parameter    : @ResultSetArt, @ResultTablesJson, @JsonErzeugen, @Json OUTPUT,
+               @PrintMeldungen, @Hilfe
+Resultsets   : RAW: Modulstatus und Agentstatus. CONSOLE/TABLE: Agentstatus.
+               NONE: keine Resultsets.
 JSON         : meta, agentStatus.
 Berechtigung : Nur lesender Zugriff. Das Framework vergibt keine Rechte.
 Eigenlast    : Gering.
@@ -42072,10 +44064,18 @@ BEGIN
     IF @Hilfe = 1
     BEGIN
         PRINT N'monitor.USP_AgentStatus';
-        PRINT N'@ResultSetArt: CONSOLE (Default), RAW, TABLE oder NONE; der Steuerwert wird case-insensitiv verarbeitet.';
-        PRINT N'@JsonErzeugen=1 setzt @Json OUTPUT mit meta und agentStatus.';
-        PRINT N'@PrintMeldungen bit=1; @Hilfe bit=0.';
-        PRINT N'Nur lesend; der SQL Server Agent wird weder gestartet noch gestoppt.';
+        PRINT N'Ermittelt den sichtbaren Agentdienstsnapshot, den letzten in msdb sichtbaren Agentstart und aggregierte Jobzahlen.';
+        PRINT N'Die Hilfe wird mit PRINT ausgegeben. Prüfung der ResultTables-Kombination und TABLE-Zielpreflight liegen davor; der Hilferücksprung erfolgt vor dem Zugriff auf Agentdaten.';
+        PRINT N'@ResultSetArt varchar(16)=''CONSOLE''; Default: ''CONSOLE''. NULL wird zu leerem Text; äußere Leerzeichen werden entfernt und der Vergleich erfolgt ohne Beachtung der Groß-/Kleinschreibung. CONSOLE liefert eine beschriftete Console-Ausgabe, RAW den Modulstatus und die Rohzeile, TABLE exportiert agentStatus in das zugeordnete Ziel, NONE unterdrückt Resultsets. CONSOLE und TABLE unterdrücken zuerst direkte Resultsets und rufen anschließend ihren Ausgabeadapter auf. Andere Werte werden nach dem Hilferücksprung als INVALID_PARAMETER gemeldet. Bei ausgelassenem Argument gilt der angegebene Default.';
+        PRINT N'@ResultTablesJson nvarchar(max)=NULL; Default: NULL. NULL, leerer Text und nur aus Leerzeichen bestehender Text werden außerhalb von TABLE ignoriert. Ein nichtleerer Wert ist nur mit ResultSetArt=TABLE zulässig; andernfalls wird vor der Hilfe Fehler 51011 ausgelöst. TABLE erwartet die JSON-Objektform {"agentStatus":"#ExampleTarget"}: genau dieser case-sensitive Schlüssel, ein String mit dem lokalen Zielnamen als Wert und keine weiteren Eigenschaften. Das Ziel muss eine vorhandene, leere lokale #Temp-Tabelle mit genau einer Seed-Spalte sein; globale ##-Tabellen, #Monitor-Namen und Namen über 116 Zeichen sind unzulässig. Eine fehlende oder fehlerhafte Zuordnung sowie ein ungeeignetes Ziel lösen beim Preflight vor der Hilfe Fehler 51011 aus. Bei ausgelassenem Argument gilt der angegebene Default.';
+        PRINT N'@JsonErzeugen bit=0; Default: 0. 0 oder NULL deaktiviert JSON; bei 1 wird @Json OUTPUT mit meta und agentStatus einschließlich NULL-Werten und einem leeren Array befüllt. SQL Server konvertiert das Argument vor Eintritt in den Prozedurcode zu bit: 0 ergibt 0, ein konvertierbarer Wert ungleich 0 ergibt 1. Konvertierungsfehler treten vor der Prozedurausführung auf. Bei ausgelassenem Argument gilt der angegebene Default.';
+        PRINT N'@Json nvarchar(max)=NULL OUTPUT; Default: NULL. Binden Sie eine nvarchar(max)-Variable mit @Json=@Variable OUTPUT. Die Procedure setzt sie zu Beginn auf NULL und befüllt sie nur bei @JsonErzeugen=1. Ohne OUTPUT-Bindung wird kein Wert an eine aufrufende Variable zurückgegeben.';
+        PRINT N'@PrintMeldungen bit=1; Default: 1. Bei 1 wird nach einem abgefangenen Lesefehler eine Meldung mit Severity 10 und NOWAIT ausgegeben; 0 und NULL unterdrücken sie. SQL Server konvertiert das Argument vor Eintritt zu bit; Konvertierungsfehler treten vor der Prozedurausführung auf. Bei ausgelassenem Argument gilt der angegebene Default.';
+        PRINT N'@Hilfe bit=0; Default: 0. 0 führt die normale Analyse aus. Bei 1 gibt die Procedure ihre Hilfe mit PRINT aus und kehrt vor der Agentdatensammlung zurück; sie startet, stoppt oder konfiguriert den Dienst nicht. NULL wirkt wie 0. SQL Server konvertiert das Argument vor Eintritt zu bit. Die Prüfung der ResultTables-Kombination und der TABLE-Zieltabellen-Preflight liegen vor dem Hilfezweig und können auch dabei Fehler 51011 auslösen. Bei ausgelassenem Argument gilt der angegebene Default.';
+        PRINT N'Beispiel 1: EXEC [monitor].[USP_AgentStatus] @Hilfe=1;';
+        PRINT N'Beispiel 2: EXEC [monitor].[USP_AgentStatus] @ResultSetArt=''RAW'', @PrintMeldungen=0;';
+        PRINT N'Beispiel 3: DECLARE @AgentStatusJson nvarchar(max); EXEC [monitor].[USP_AgentStatus] @ResultSetArt=''NONE'', @JsonErzeugen=1, @Json=@AgentStatusJson OUTPUT, @PrintMeldungen=0; SELECT @AgentStatusJson AS [Json];';
+        PRINT N'Beispiel 4: CREATE TABLE #AgentStatus_HelpExample ([Seed] int NULL); BEGIN TRY EXEC [monitor].[USP_AgentStatus] @ResultSetArt=''TABLE'', @ResultTablesJson=N''{"agentStatus":"#AgentStatus_HelpExample"}'', @PrintMeldungen=0; SELECT * FROM #AgentStatus_HelpExample; DROP TABLE #AgentStatus_HelpExample; END TRY BEGIN CATCH DROP TABLE #AgentStatus_HelpExample; THROW; END CATCH;';
         RETURN;
     END;
 
@@ -42233,7 +44233,7 @@ Objekt       : monitor.USP_AgentJobs
 Version      : 2.0.0
 Stand        : 2026-07-15
 Typ          : Stored Procedure
-Zweck        : Analysiert Agent-Jobs, Laufzeitstatus, letzte Ausführung, Fehler,
+Zweck        : Die Procedure analysiert Agent-Jobs, Laufzeitstatus, letzte Ausführung, Fehler,
                Schedules und Owner.
 SQL-Version  : SQL Server 2019 oder neuer.
 Filter       : @JobNames als bracket-aware Pipe-Liste oder alternativ
@@ -42289,11 +44289,25 @@ BEGIN
     IF @Hilfe = 1
     BEGIN
         PRINT N'monitor.USP_AgentJobs';
-        PRINT N'@JobNames: exakter Jobname oder bracket-aware Pipe-Liste, zum Beispiel N''[DWH Load]|[Index Maintenance]''.';
-        PRINT N'@JobNamePattern: genau ein LIKE-/Regex-Pattern; exakte Liste und Pattern sind gegenseitig exklusiv.';
-        PRINT N'@NurProblematisch bit=0; @LongRunningMinutes int=60.';
-        PRINT N'@MaxZeilen: positive Werte begrenzen; NULL/0 = unbegrenzt.';
-        PRINT N'@ResultSetArt=CONSOLE (Default)|RAW|TABLE|NONE case-insensitiv; @JsonErzeugen=1 setzt @Json OUTPUT.';
+        PRINT N'Analysiert sichtbare Agentjobs, letzte Gesamt- und Stepausführungen, laufende Aktivität sowie Schedule- und Owner-Metadaten.';
+        PRINT N'Die Hilfe wird mit PRINT ausgegeben. Ausgabe-/TABLE-Preflight und Patternparsing liegen davor; Joblistenvalidierung, Regexfeatureprüfung und Sammlung folgen danach.';
+        PRINT N'@JobNames nvarchar(max)=NULL; Default: NULL. NULL deaktiviert den exakten Namensfilter. Andernfalls wird eine bracket-aware Pipe-Liste einteiliger SQL-Namen erwartet: | trennt außerhalb von eckigen Klammern; innerhalb gehört das Pipe-Zeichen zum Namen und ]] maskiert eine schließende Klammer. Äußere Segmentleerzeichen werden entfernt. Gültige Duplikate werden nach SQL_Latin1_General_CP1_CS_AS zusammengeführt; Namen mit abweichender Groß-/Kleinschreibung bleiben getrennt. Jedes Element muss als einteiliger SQL-Name mit höchstens 128 Zeichen auswertbar sein. Leere oder ungültige Elemente und rohe Segmente über 4000 UTF-16-Codeeinheiten sind ungültig; die Existenz im Katalog wird nicht geprüft. Eine leere Liste ist ungültig. @JobNames und ein nicht-NULL @JobNamePattern dürfen nicht zusammen verwendet werden. Ungültige Listen werden nach der Hilfe als INVALID_PARAMETER gemeldet, ohne Parser-THROW. Bei ausgelassenem Argument gilt der angegebene Default.';
+        PRINT N'@JobNamePattern nvarchar(4000)=NULL; Default: NULL. NULL deaktiviert den Patternfilter; leerer oder nur aus Leerzeichen bestehender Wert ist ungültig. Äußere Leerzeichen werden entfernt. Ohne Präfix gilt LIKE. Case-insensitive Präfixe: like: verwendet SQL-LIKE, regex: reguläre Ausdrücke mit Flag c, regexi: reguläre Ausdrücke mit Flag i. Der verbleibende Inhalt wird nicht erneut getrimmt; ein Präfix ohne Inhalt ist ungültig. Regex erfordert SQL Server 2025/ProductMajorVersion 17 oder neuer und Compatibility Level 170 der Installationsdatenbank; sonst wird UNAVAILABLE_FEATURE gemeldet. Die Regexsyntax wird nicht vorab geprüft; Fehler bei REGEXP_LIKE werden abgefangen. @JobNames und Pattern sind gegenseitig exklusiv. Das Parsing erfolgt vor der Hilfe, die übrige Validierung danach. Bei ausgelassenem Argument gilt der angegebene Default.';
+        PRINT N'@NurProblematisch bit=0; Default: 0. Bei 0 werden alle passenden Jobs ausgewählt; bei 1 werden deaktivierte, zuletzt fehlgeschlagene Jobs, Jobs ohne Schedule, ohne aktivierten Schedule sowie laufende Jobs ab dem LongRunningMinutes-Grenzwert berücksichtigt. Steps erscheinen bei 1 nur mit letztem Status FAILED, RETRY oder CANCELED. NULL ist nicht gleich 0: SQL UNKNOWN bewirkt, dass Jobs nur bei einem zutreffenden Problemprädikat erhalten bleiben; Steps nur bei einem der drei genannten Statuswerte. SQL Server konvertiert das Argument vor Eintritt zu bit; 0 ergibt 0, ein konvertierbarer Wert ungleich 0 ergibt 1. Bei ausgelassenem Argument gilt der angegebene Default.';
+        PRINT N'@LongRunningMinutes int=60; Default: 60. Die Laufzeitschwelle wird als ganze Zahl in Minuten übergeben; erlaubt sind 1 bis 2147483647. Werte kleiner als 1 setzen INVALID_PARAMETER. NULL passiert die Bereichsprüfung, ergibt beim Laufzeitvergleich aber UNKNOWN und erzeugt deshalb keinen LONG_RUNNING-Befund. Die aktuelle Laufzeit wird mit DATEDIFF(MINUTE, Startzeit, GETDATE()) verglichen. Bei @NurProblematisch=1 dient dieser Grenzwert auch als Filter. Bei ausgelassenem Argument gilt der angegebene Default.';
+        PRINT N'@MaxZeilen int=2000; Default: 2000. Eine positive Grenze ist eine ganze Zeilenzahl von 1 bis 2147483647. Negative Werte setzen INVALID_PARAMETER. Positive Werte begrenzen Job- und Stepzeilen; NULL oder 0 bedeutet unbegrenzt. Bei Nicht-Regexfiltern begrenzt bereits das erste TOP der Jobabfrage auf @EffectiveMaxZeilen und sortiert laufende Jobs zuerst, danach nach JobName. Zeilen außerhalb dieses ersten Ausschnitts können durch die spätere Problemsortierung nicht wieder aufgenommen werden; diese Sortierung bevorzugt ProblemCode-Zeilen nur unter den bereits materialisierten Jobs. Im Regexmodus wird zuerst ohne diese Grenze materialisiert, dann das Regex angewendet und anschließend die Problem-/Jobnamenpriorisierung begrenzt. Steps verwenden unabhängig davon TOP(@EffectiveMaxZeilen), geordnet nach JobName und StepId. Es gibt keine explizite Kürzungskennzeichnung oder zusätzliche Kürzungsanzahl. JSON requestedMaxRows enthält den übergebenen Wert. Bei ausgelassenem Argument gilt der angegebene Default.';
+        PRINT N'@ResultSetArt varchar(16)=''CONSOLE''; Default: ''CONSOLE''. NULL wird zu leerem Text; äußere Leerzeichen werden entfernt, der Vergleich erfolgt ohne Beachtung der Groß-/Kleinschreibung. CONSOLE liefert ausschließlich beschriftete Jobs, RAW den Modulstatus sowie Jobs und Steps, TABLE nur Jobs, NONE keine fachlichen Resultsets. CONSOLE und TABLE unterdrücken direkte Resultsets und verwenden anschließend ihre Ausgabeadapter. Andere Werte werden nach der Hilfe als INVALID_PARAMETER gemeldet. Bei ausgelassenem Argument gilt der angegebene Default.';
+        PRINT N'@ResultTablesJson nvarchar(max)=NULL; Default: NULL. NULL, leerer Text und nur aus Leerzeichen bestehender Text werden außerhalb von TABLE ignoriert. Ein nichtleerer Wert ist nur mit ResultSetArt=TABLE zulässig; andernfalls wird vor der Hilfe Fehler 51011 ausgelöst. TABLE erwartet die JSON-Objektform {"jobs":"#ExampleTarget"}: genau dieser case-sensitive Schlüssel, ein String mit dem lokalen Zielnamen als Wert und keine weiteren Eigenschaften. Das Ziel muss eine vorhandene, leere lokale #Temp-Tabelle mit genau einer Seed-Spalte sein; globale ##-Tabellen, #Monitor-Namen und Namen über 116 Zeichen sind unzulässig. Eine fehlende oder fehlerhafte Zuordnung sowie ein ungeeignetes Ziel lösen beim Preflight vor der Hilfe Fehler 51011 aus. Exportiert werden nur Jobs, keine Steps. Bei ausgelassenem Argument gilt der angegebene Default.';
+        PRINT N'@JsonErzeugen bit=0; Default: 0. 0 oder NULL deaktiviert JSON; bei 1 wird @Json OUTPUT mit meta, jobs und steps, Mengenangaben und Arrays befüllt. SQL Server konvertiert das Argument vor Eintritt zu bit; 0 ergibt 0, ein konvertierbarer Wert ungleich 0 ergibt 1. Konvertierungsfehler treten vor der Prozedurausführung auf. Bei ausgelassenem Argument gilt der angegebene Default.';
+        PRINT N'@Json nvarchar(max)=NULL OUTPUT; Default: NULL. Binden Sie eine nvarchar(max)-Variable mit @Json=@Variable OUTPUT. Die Procedure setzt sie zu Beginn auf NULL und befüllt sie nur bei @JsonErzeugen=1. Ohne OUTPUT-Bindung wird kein Wert an eine aufrufende Variable zurückgegeben.';
+        PRINT N'@PrintMeldungen bit=1; Default: 1. Bei 1 wird nach einem abgefangenen Sammlungsfehler eine Meldung mit Severity 10 und NOWAIT ausgegeben; 0 und NULL unterdrücken sie. SQL Server konvertiert das Argument vor Eintritt zu bit; Konvertierungsfehler treten vor der Prozedurausführung auf. Bei ausgelassenem Argument gilt der angegebene Default.';
+        PRINT N'@Hilfe bit=0; Default: 0. 0 führt die normale Analyse aus. Bei 1 gibt die Procedure ihre Hilfe mit PRINT aus und kehrt ohne Jobdatensammlung zurück. NULL wirkt wie 0. SQL Server konvertiert das Argument vor Eintritt zu bit. Ausgabe-/TABLE-Preflight und Patternparsing erfolgen vor der Hilfe; Joblistenvalidierung, Parameter- und Regexfeatureprüfung sowie Datensammlung danach. Ein Preflightfehler kann daher auch mit @Hilfe=1 auftreten. Bei ausgelassenem Argument gilt der angegebene Default.';
+        PRINT N'Beispiel 1: EXEC [monitor].[USP_AgentJobs] @Hilfe=1;';
+        PRINT N'Beispiel 2: EXEC [monitor].[USP_AgentJobs] @JobNames=N''[ExampleJobA]|[ExampleJobB]'', @MaxZeilen=100, @ResultSetArt=''RAW'', @PrintMeldungen=0;';
+        PRINT N'Beispiel 3: DECLARE @AgentJobsJson nvarchar(max); EXEC [monitor].[USP_AgentJobs] @ResultSetArt=''NONE'', @JsonErzeugen=1, @Json=@AgentJobsJson OUTPUT, @PrintMeldungen=0; SELECT @AgentJobsJson AS [Json];';
+        PRINT N'Beispiel 4: CREATE TABLE #AgentJobs_HelpExample ([Seed] int NULL); BEGIN TRY EXEC [monitor].[USP_AgentJobs] @ResultSetArt=''TABLE'', @ResultTablesJson=N''{"jobs":"#AgentJobs_HelpExample"}'', @PrintMeldungen=0; SELECT * FROM #AgentJobs_HelpExample; DROP TABLE #AgentJobs_HelpExample; END TRY BEGIN CATCH DROP TABLE #AgentJobs_HelpExample; THROW; END CATCH;';
+        PRINT N'Beispiel 5: EXEC [monitor].[USP_AgentJobs] @JobNamePattern=N''like:ExampleJob%'', @MaxZeilen=100, @ResultSetArt=''RAW'';';
+        PRINT N'Beispiel 6: EXEC [monitor].[USP_AgentJobs] @NurProblematisch=1, @LongRunningMinutes=60, @MaxZeilen=100, @ResultSetArt=''RAW'';';
         RETURN;
     END;
 
@@ -42649,6 +44663,278 @@ END;
 GO
 -- END SOURCE: Code/07_Infrastructure/020_USP_AgentJobs.sql
 
+-- BEGIN SOURCE: Code/07_Infrastructure/025_USP_AgentProxyInventory.sql
+/*
+===============================================================================
+Objekt       : monitor.USP_AgentProxyInventory
+Version      : 1.0.0
+Zweck        : Inventarisiert SQL-Agent-Proxies, ihre Credentialreferenzen und
+               ihre zugeordneten Subsysteme aus lesbaren Katalogquellen.
+Datenquellen : msdb.dbo.sysproxies, msdb.dbo.sysproxysubsystem,
+               msdb.dbo.syssubsystems und sys.credentials.
+Grenzen      : Erfordert sysadmin-Sicht auf die Agenttabellen. Eine sichtbare
+               Zuordnung belegt keine wirksame Ausführungsberechtigung.
+               Credentialidentitäten, Secrets, SIDs, Loginzuordnungen,
+               Befehle, Dateipfade und Jobausführung werden nicht gelesen.
+===============================================================================
+*/
+CREATE OR ALTER PROCEDURE [monitor].[USP_AgentProxyInventory]
+      @MaxZeilen       int            = 1000
+    , @ResultSetArt    varchar(16)    = 'CONSOLE'
+    , @ResultTablesJson nvarchar(max) = NULL
+    , @JsonErzeugen    bit            = 0
+    , @Json            nvarchar(max)  = NULL OUTPUT
+    , @Hilfe           bit            = 0
+    , @StatusCodeOut   varchar(40)    = NULL OUTPUT
+    , @IsPartialOut    bit            = NULL OUTPUT
+    , @ErrorNumberOut  int            = NULL OUTPUT
+    , @ErrorMessageOut nvarchar(2048) = NULL OUTPUT
+AS
+BEGIN
+    SET NOCOUNT ON;
+    SET @Json = NULL;
+
+    DECLARE @OutputMode varchar(16) = UPPER(LTRIM(RTRIM(COALESCE(@ResultSetArt, ''))));
+    DECLARE @TableResultRequested bit = CASE WHEN @OutputMode = 'TABLE' THEN 1 ELSE 0 END;
+    DECLARE @ConsoleResultRequested bit = CASE WHEN @OutputMode = 'CONSOLE' THEN 1 ELSE 0 END;
+    DECLARE @TableTarget sysname = NULL;
+
+    IF @TableResultRequested = 0
+       AND NULLIF(LTRIM(RTRIM(COALESCE(@ResultTablesJson, N''))), N'') IS NOT NULL
+        THROW 51011, N'@ResultTablesJson ist ausschließlich mit @ResultSetArt=TABLE zulässig.', 1;
+
+    IF @TableResultRequested = 1
+        EXEC [monitor].[InternalPrepareSingleResultTable]
+              @ResultTablesJson = @ResultTablesJson
+            , @ResultName = N'proxies'
+            , @TargetTable = @TableTarget OUTPUT
+            , @ThrowOnError = 1;
+
+    IF @TableResultRequested = 1 OR @ConsoleResultRequested = 1
+        SET @OutputMode = 'NONE';
+
+    IF @Hilfe = 1
+    BEGIN
+        PRINT N'monitor.USP_AgentProxyInventory';
+        PRINT N'Lesende Inventur von SQL-Agent-Proxies und ihren Subsystemzuordnungen. Die Agenttabellen erfordern sysadmin; die Procedure erteilt keine Rechte und startet keine Jobs. Leere Ergebnisse sind nur bei vollständiger Quellenlesung eine leere Inventur. Der Kataloglesepfad verwendet LOCK_TIMEOUT 0 und WITH (NOLOCK); er kann bei Sperren sofort eingeschränkt sein und liefert keinen atomaren Snapshot. Er belegt weder Credentialnutzbarkeit noch effektive Privilegien oder Proxy-Ausführung.';
+        PRINT N'@MaxZeilen int=1000; Default: 1000. Positive ganze Werte von 1 bis 2147483647 begrenzen nach Proxyname und ProxyId die zurückgegebenen Proxies. Nur deren Subsystemzuordnungen erscheinen. NULL oder 0 bedeutet unbegrenzt; negative Werte ergeben INVALID_PARAMETER vor Quellenzugriff. Bei nicht lesbarer Proxyquelle sind Gesamt- und Rückgabemenge NULL; Quellenstatus werden separat ausgewiesen. Die Quellen können für Zählung und Auswahl vollständig gelesen werden; die Begrenzung ist keine Lesekostenobergrenze. Bei ausgelassenem Argument gilt der Default.';
+        PRINT N'@ResultSetArt varchar(16)=''CONSOLE''; Default: ''CONSOLE''. Äußere Leerzeichen werden entfernt, Groß-/Kleinschreibung ignoriert. Erlaubt sind CONSOLE (beschriftete Proxyzeilen), RAW (Modulstatus, Proxies, Proxy-Subsysteme), TABLE (nur Proxies in lokales Ziel), NONE (keine fachlichen Resultsets). NULL oder leerer Text ist ungültig und ergibt INVALID_PARAMETER. JSON und Status-OUTPUTs sind unabhängig. Bei ausgelassenem Argument gilt der Default.';
+        PRINT N'@ResultTablesJson nvarchar(max)=NULL; Default: NULL. Nur TABLE akzeptiert das JSON-Objekt {"proxies":"#ExampleTarget"} mit genau diesem case-sensitiven Schlüssel und einem lokalen #Temp-Tabellennamen als String. Das Ziel muss vorhanden und leer sein und genau eine Seed-Spalte besitzen; der Framework-Preflight prüft weitere Namens- und Schemagrenzen vor @Hilfe. NULL, leerer Text oder Leerzeichen sind nur außerhalb TABLE zulässig; nichtleerer Text außerhalb TABLE und ungültige TABLE-Ziele lösen Fehler 51011 aus. Bei ausgelassenem Argument gilt der Default.';
+        PRINT N'@JsonErzeugen bit=0; Default: 0. Genau 1 erzeugt zusätzlich JSON mit meta, proxies und proxySubsystems. 0 und NULL deaktivieren JSON. SQL Server konvertiert andere Eingaben beim Binden an bit oder weist sie vor Procedure-Eintritt ab. Bei ausgelassenem Argument gilt der Default.';
+        PRINT N'@Json nvarchar(max)=NULL OUTPUT; Default: NULL. Eine nvarchar(max)-Variable mit OUTPUT binden. Die Procedure setzt den Wert zunächst auf NULL und füllt ihn nur bei @JsonErzeugen=1 nach dem Analysepfad; bei @Hilfe=1 bleibt er NULL. Ohne OUTPUT-Bindung erhält der Aufrufer keinen Rückgabewert. Bei ausgelassenem Argument gilt der Default.';
+        PRINT N'@Hilfe bit=0; Default: 0. Genau 1 gibt diese Hilfe mit PRINT aus und kehrt vor privilegiertem Quellenzugriff zurück. 0 und NULL führen die Analyse aus. SQL Server bindet andere Werte zuerst an bit. TABLE-Preflight und die ResultTables-Kombinationsprüfung liegen vor der Hilfe und können Fehler 51011 auslösen. Status-OUTPUTs bleiben im Hilfezweig unverändert. Bei ausgelassenem Argument gilt der Default.';
+        PRINT N'@StatusCodeOut varchar(40)=NULL OUTPUT; Default: NULL. Empfängt AVAILABLE, AVAILABLE_LIMITED, DENIED_PERMISSION oder INVALID_PARAMETER. AVAILABLE gilt nur nach erfolgreicher Lesung aller vier Quellen; AVAILABLE_LIMITED zeigt einen abgefangenen Quellenfehler; DENIED_PERMISSION zeigt fehlende sysadmin-Sicht oder einen SQL-Berechtigungsfehler; INVALID_PARAMETER zeigt einen ungültigen Zeilen- oder Ausgabewert. Mit OUTPUT binden; ohne Bindung kein Rückgabewert. Bei @Hilfe=1 oder frühem Fehler bleibt die Bindungsvariable unverändert.';
+        PRINT N'@IsPartialOut bit=NULL OUTPUT; Default: NULL. 0 bedeutet vollständige Quellenlesung, 1 fehlende Lesung oder ungültigen Parameter. Ein gewähltes positives Zeilenlimit setzt allein kein Partialflag; meta.isTruncated kennzeichnet dessen tatsächliche Kürzung. Mit OUTPUT binden; ohne Bindung kein Rückgabewert. Bei @Hilfe=1 oder frühem Fehler bleibt die Bindungsvariable unverändert.';
+        PRINT N'@ErrorNumberOut int=NULL OUTPUT; Default: NULL. Enthält bei abgefangenem Quellenfehler dessen erste SQL-Fehlernummer, sonst NULL. Die sysadmin-Vorprüfung und ungültige Parameter erzeugen keinen SQL-Fehlernummernwert. Mit OUTPUT binden; ohne Bindung kein Rückgabewert. Bei @Hilfe=1 oder frühem Fehler bleibt die Bindungsvariable unverändert.';
+        PRINT N'@ErrorMessageOut nvarchar(2048)=NULL OUTPUT; Default: NULL. Enthält einen generischen Fehler- oder Parameterhinweis ohne Original-SQL-Fehlertext, sonst NULL. Mit OUTPUT binden; ohne Bindung kein Rückgabewert. Bei @Hilfe=1 oder frühem Fehler bleibt die Bindungsvariable unverändert.';
+        PRINT N'CredentialReferencePresent bezeichnet nur eine gespeicherte CredentialId. CredentialCatalogStatus ist VISIBLE bei sichtbarem Namensmatch, NOT_VISIBLE_OR_MISSING ohne sichtbaren Match und NOT_CHECKED, wenn die Credentialquelle nicht gelesen werden konnte. Keine dieser Aussagen beweist die Nutzbarkeit oder Berechtigung des Credentials.';
+        PRINT N'Beispiel 1: EXEC [monitor].[USP_AgentProxyInventory] @Hilfe=1;';
+        PRINT N'Beispiel 2: EXEC [monitor].[USP_AgentProxyInventory] @MaxZeilen=100, @ResultSetArt=''RAW'';';
+        PRINT N'Beispiel 3: DECLARE @ProxyJson nvarchar(max); EXEC [monitor].[USP_AgentProxyInventory] @ResultSetArt=''NONE'', @JsonErzeugen=1, @Json=@ProxyJson OUTPUT; SELECT @ProxyJson AS [Json];';
+        PRINT N'Beispiel 4: CREATE TABLE #AgentProxyInventory_Example ([Seed] int NULL); BEGIN TRY EXEC [monitor].[USP_AgentProxyInventory] @ResultSetArt=''TABLE'', @ResultTablesJson=N''{"proxies":"#AgentProxyInventory_Example"}''; SELECT * FROM #AgentProxyInventory_Example; DROP TABLE #AgentProxyInventory_Example; END TRY BEGIN CATCH DROP TABLE #AgentProxyInventory_Example; THROW; END CATCH;';
+        RETURN;
+    END;
+
+    DECLARE @Now datetime2(3) = SYSUTCDATETIME();
+    DECLARE @StatusCode varchar(40) = 'AVAILABLE';
+    DECLARE @IsPartial bit = 0;
+    DECLARE @ErrorNumber int = NULL;
+    DECLARE @ErrorMessage nvarchar(2048) = NULL;
+    DECLARE @TotalProxyCount bigint = NULL;
+    DECLARE @ReturnedProxyCount bigint = NULL;
+    DECLARE @IsTruncated bit = 0;
+    DECLARE @ProxySourceStatus varchar(16) = 'NOT_READ';
+    DECLARE @CredentialSourceStatus varchar(16) = 'NOT_READ';
+    DECLARE @SubsystemSourceStatus varchar(16) = 'NOT_READ';
+    DECLARE @CollectionXactAbort int = @@OPTIONS & 16384;
+    DECLARE @Limit bigint = CASE WHEN @MaxZeilen IS NULL OR @MaxZeilen = 0
+                                THEN CONVERT(bigint, 9223372036854775807)
+                                ELSE CONVERT(bigint, @MaxZeilen) END;
+
+    CREATE TABLE [#AgentProxyInventory_Proxies]
+    (
+          [ProxyId] int NOT NULL PRIMARY KEY
+        , [ProxyName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [IsEnabled] bit NOT NULL
+        , [CredentialId] int NULL
+        , [CredentialReferencePresent] bit NOT NULL
+        , [CredentialName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [CredentialCatalogStatus] varchar(24) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+    );
+    CREATE TABLE [#AgentProxyInventory_ProxySubsystems]
+    (
+          [ProxyId] int NOT NULL
+        , [SubsystemId] int NOT NULL
+        , [SubsystemName] nvarchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , PRIMARY KEY ([ProxyId], [SubsystemId])
+    );
+
+    IF @MaxZeilen < 0 OR @OutputMode NOT IN ('RAW', 'NONE')
+    BEGIN
+        SELECT @StatusCode = 'INVALID_PARAMETER', @IsPartial = 1,
+               @ErrorMessage = N'Ungültiger Zeilen- oder Ausgabeparameter.';
+    END
+    ELSE IF IS_SRVROLEMEMBER(N'sysadmin') IS NULL
+         OR IS_SRVROLEMEMBER(N'sysadmin') <> 1
+    BEGIN
+        SELECT @StatusCode = 'DENIED_PERMISSION', @IsPartial = 1,
+               @ErrorMessage = N'Für die SQL-Agent-Proxy-Kataloge ist sysadmin-Sicht erforderlich.';
+    END
+    ELSE
+    BEGIN
+        SET LOCK_TIMEOUT 0;
+        SET XACT_ABORT OFF;
+        BEGIN TRY
+            EXEC [sys].[sp_executesql] N'
+                SELECT @Observed = COUNT_BIG(*)
+                FROM [msdb].[dbo].[sysproxies] WITH (NOLOCK);
+                ;WITH [SelectedProxies] AS
+                (
+                    SELECT TOP (@Bound) [p].[proxy_id], [p].[name], [p].[enabled],
+                           [p].[credential_id]
+                    FROM [msdb].[dbo].[sysproxies] AS [p] WITH (NOLOCK)
+                    ORDER BY [p].[name] COLLATE SQL_Latin1_General_CP1_CS_AS, [p].[proxy_id]
+                )
+                INSERT [#AgentProxyInventory_Proxies]
+                    ([ProxyId], [ProxyName], [IsEnabled], [CredentialId],
+                     [CredentialReferencePresent], [CredentialName], [CredentialCatalogStatus])
+                SELECT [p].[proxy_id], [p].[name], CONVERT(bit, [p].[enabled]),
+                       [p].[credential_id],
+                       CASE WHEN [p].[credential_id] IS NULL THEN CONVERT(bit, 0)
+                            ELSE CONVERT(bit, 1) END,
+                       NULL, ''NOT_CHECKED''
+                FROM [SelectedProxies] AS [p];',
+                N'@Bound bigint, @Observed bigint OUTPUT',
+                @Bound = @Limit, @Observed = @TotalProxyCount OUTPUT;
+
+            SELECT @ReturnedProxyCount = COUNT_BIG(*) FROM [#AgentProxyInventory_Proxies];
+            IF @TotalProxyCount > @ReturnedProxyCount SET @IsTruncated = 1;
+            SET @ProxySourceStatus = 'AVAILABLE';
+        END TRY
+        BEGIN CATCH
+            SELECT @StatusCode = CASE WHEN ERROR_NUMBER() IN (229, 230, 297, 371)
+                                      THEN 'DENIED_PERMISSION' ELSE 'AVAILABLE_LIMITED' END,
+                   @IsPartial = 1, @ErrorNumber = ERROR_NUMBER(),
+                   @ErrorMessage = N'SQL-Agent-Proxy-Katalog nicht vollständig lesbar.',
+                   @TotalProxyCount = NULL, @ReturnedProxyCount = NULL, @IsTruncated = 0,
+                   @ProxySourceStatus = 'ERROR';
+            DELETE FROM [#AgentProxyInventory_Proxies];
+        END CATCH;
+
+        IF @StatusCode = 'AVAILABLE'
+        BEGIN
+            BEGIN TRY
+                EXEC [sys].[sp_executesql] N'
+                    UPDATE [p]
+                       SET [CredentialName] = [c].[name] COLLATE SQL_Latin1_General_CP1_CS_AS,
+                           [CredentialCatalogStatus] =
+                               CASE WHEN [c].[credential_id] IS NULL
+                                    THEN ''NOT_VISIBLE_OR_MISSING'' ELSE ''VISIBLE'' END
+                    FROM [#AgentProxyInventory_Proxies] AS [p]
+                    LEFT JOIN [sys].[credentials] AS [c] WITH (NOLOCK)
+                      ON [c].[credential_id] = [p].[CredentialId];';
+                SET @CredentialSourceStatus = 'AVAILABLE';
+            END TRY
+            BEGIN CATCH
+                SELECT @StatusCode = 'AVAILABLE_LIMITED', @IsPartial = 1,
+                       @ErrorNumber = ERROR_NUMBER(),
+                       @ErrorMessage = N'Credential-Katalog nicht vollständig lesbar.';
+                UPDATE [#AgentProxyInventory_Proxies]
+                   SET [CredentialName] = NULL, [CredentialCatalogStatus] = 'NOT_CHECKED';
+                SET @CredentialSourceStatus = 'ERROR';
+            END CATCH;
+
+            BEGIN TRY
+                EXEC [sys].[sp_executesql] N'
+                    INSERT [#AgentProxyInventory_ProxySubsystems]
+                        ([ProxyId], [SubsystemId], [SubsystemName])
+                    SELECT [m].[proxy_id], [m].[subsystem_id],
+                           [s].[subsystem] COLLATE SQL_Latin1_General_CP1_CS_AS
+                    FROM [msdb].[dbo].[sysproxysubsystem] AS [m] WITH (NOLOCK)
+                    JOIN [#AgentProxyInventory_Proxies] AS [p] ON [p].[ProxyId] = [m].[proxy_id]
+                    LEFT JOIN [msdb].[dbo].[syssubsystems] AS [s] WITH (NOLOCK)
+                      ON [s].[subsystem_id] = [m].[subsystem_id];';
+                SET @SubsystemSourceStatus = 'AVAILABLE';
+            END TRY
+            BEGIN CATCH
+                IF @ErrorNumber IS NULL
+                    SELECT @ErrorNumber = ERROR_NUMBER(),
+                           @ErrorMessage = N'Proxy-Subsystem-Katalog nicht vollständig lesbar.';
+                SELECT @StatusCode = 'AVAILABLE_LIMITED', @IsPartial = 1;
+                DELETE FROM [#AgentProxyInventory_ProxySubsystems];
+                SET @SubsystemSourceStatus = 'ERROR';
+            END CATCH;
+        END;
+        IF @CollectionXactAbort = 0 SET XACT_ABORT OFF; ELSE SET XACT_ABORT ON;
+    END;
+
+    SELECT @StatusCodeOut = @StatusCode, @IsPartialOut = @IsPartial,
+           @ErrorNumberOut = @ErrorNumber, @ErrorMessageOut = @ErrorMessage;
+
+    IF @JsonErzeugen = 1
+    BEGIN
+        DECLARE @MetaJson nvarchar(max) =
+            (SELECT N'AgentProxyInventory' AS [resultName], 1 AS [schemaVersion],
+                    @Now AS [generatedAtUtc], @StatusCode AS [statusCode],
+                    @IsPartial AS [isPartial], @ErrorNumber AS [errorNumber],
+                    @ErrorMessage AS [errorMessage], @MaxZeilen AS [requestedMaxRows],
+                    @TotalProxyCount AS [totalProxyCount],
+                    @ReturnedProxyCount AS [returnedProxyCount],
+                    @IsTruncated AS [isTruncated],
+                    @ProxySourceStatus AS [proxySourceStatus],
+                    @CredentialSourceStatus AS [credentialSourceStatus],
+                    @SubsystemSourceStatus AS [subsystemSourceStatus]
+             FOR JSON PATH, WITHOUT_ARRAY_WRAPPER, INCLUDE_NULL_VALUES);
+        DECLARE @ProxiesJson nvarchar(max) =
+            (SELECT [ProxyId], [ProxyName], [IsEnabled], [CredentialId],
+                    [CredentialReferencePresent], [CredentialName], [CredentialCatalogStatus]
+             FROM [#AgentProxyInventory_Proxies]
+             ORDER BY [ProxyName] COLLATE SQL_Latin1_General_CP1_CS_AS, [ProxyId]
+             FOR JSON PATH, INCLUDE_NULL_VALUES);
+        DECLARE @SubsystemsJson nvarchar(max) =
+            (SELECT [ProxyId], [SubsystemId], [SubsystemName]
+             FROM [#AgentProxyInventory_ProxySubsystems]
+             ORDER BY [ProxyId], [SubsystemId]
+             FOR JSON PATH, INCLUDE_NULL_VALUES);
+        SET @Json = CONCAT(N'{"meta":', COALESCE(@MetaJson, N'{}'),
+                           N',"proxies":', COALESCE(@ProxiesJson, N'[]'),
+                           N',"proxySubsystems":', COALESCE(@SubsystemsJson, N'[]'), N'}');
+    END;
+
+    IF @OutputMode = 'RAW'
+    BEGIN
+        SELECT N'USP_AgentProxyInventory' AS [ModuleName], @Now AS [CollectionTimeUtc],
+               @StatusCode AS [StatusCode], @IsPartial AS [IsPartial],
+               @ErrorNumber AS [ErrorNumber], @ErrorMessage AS [ErrorMessage],
+               @MaxZeilen AS [RequestedMaxRows], @TotalProxyCount AS [TotalProxyCount],
+               @ReturnedProxyCount AS [ReturnedProxyCount], @IsTruncated AS [IsTruncated],
+               @ProxySourceStatus AS [ProxySourceStatus],
+               @CredentialSourceStatus AS [CredentialSourceStatus],
+               @SubsystemSourceStatus AS [SubsystemSourceStatus];
+        SELECT [ProxyId], [ProxyName], [IsEnabled], [CredentialId],
+               [CredentialReferencePresent], [CredentialName], [CredentialCatalogStatus]
+        FROM [#AgentProxyInventory_Proxies]
+        ORDER BY [ProxyName] COLLATE SQL_Latin1_General_CP1_CS_AS, [ProxyId];
+        SELECT [ProxyId], [SubsystemId], [SubsystemName]
+        FROM [#AgentProxyInventory_ProxySubsystems]
+        ORDER BY [ProxyId], [SubsystemId];
+    END;
+
+    IF @ConsoleResultRequested = 1
+        EXEC [monitor].[InternalEmitConsoleResult]
+              @SourceTable = N'#AgentProxyInventory_Proxies'
+            , @ResultLabel = N'AgentProxyInventory'
+            , @EmptyMessage = N'Keine sichtbaren Proxies oder Katalog nicht vollständig lesbar';
+
+    IF @TableResultRequested = 1
+        EXEC [monitor].[InternalWriteResultTable]
+              @SourceTable = N'#AgentProxyInventory_Proxies'
+            , @TargetTable = @TableTarget
+            , @ThrowOnError = 1;
+END;
+GO
+-- END SOURCE: Code/07_Infrastructure/025_USP_AgentProxyInventory.sql
+
 -- BEGIN SOURCE: Code/07_Infrastructure/030_USP_ResourceGovernorAnalysis.sql
 /*
 ===============================================================================
@@ -42707,12 +44993,19 @@ BEGIN
     IF @Hilfe=1
     BEGIN
         PRINT N'monitor.USP_ResourceGovernorAnalysis';
-        PRINT N'@MitSessions bit=1: aktuelle Benutzersessions je Workload Group.';
-        PRINT N'@MaxZeilen positiv = begrenzt; NULL/0 = unbegrenzt.';
-        PRINT N'@ResultSetArt=CONSOLE (Default)|RAW|TABLE|NONE; JSON über @JsonErzeugen=1.';
-        PRINT N'TABLE erlaubt configuration, resourcePools, workloadGroups, sessions und tempdbGovernance.';
-        PRINT N'TempDB-Limits, Wirksamkeit, Nutzung, Peak und Verletzungen sind getrennte Evidenz.';
-        PRINT N'Die Procedure führt weder ALTER RESOURCE GOVERNOR noch RECONFIGURE oder RESET STATISTICS aus.';
+        PRINT N'Die Procedure zeigt die Resource-Governor-Konfiguration, Pools, Workload Groups und optional zugeordnete Benutzersessions. Die TempDB-Ausgabe trennt konfigurierte Limits, Wirksamkeit, Nutzung, Peak und Verletzungen. Die Procedure führt weder ALTER RESOURCE GOVERNOR noch RECONFIGURE oder RESET STATISTICS aus.';
+        PRINT N'@MitSessions bit. Default ist 1. 1 erfasst sichtbare Benutzerprozesse aus sys.dm_exec_sessions und ordnet sie nach GroupId zu. 0 überspringt die Quelle und die Sessionausgabe in RAW und CONSOLE. JSON enthält dann ein leeres sessions-Array. NULL ergibt INVALID_PARAMETER.';
+        PRINT N'@MaxZeilen int. Default ist 5000. Eine positive ganze Zahl begrenzt Pools, Workload Groups, tempdbGovernance und Sessions jeweils separat. NULL oder 0 hebt die Grenze auf. Negative Werte ergeben INVALID_PARAMETER. Die Konfigurationszeile bleibt unberührt. Sessions werden vor der Gruppenzuordnung nach CPU-Zeit absteigend und SessionId begrenzt.';
+        PRINT N'@ResultSetArt varchar(16). Default ist ''CONSOLE''. CONSOLE zeigt beschriftete Fachergebnisse. RAW gibt zuerst Status und Metadaten, dann die Daten und Warnungen aus. TABLE schreibt nur zugeordnete Fachergebnisse in lokale Temp-Tabellen. NONE unterdrückt diese Ausgaben. Leerzeichen am Rand werden entfernt und Groß-/Kleinschreibung wird normalisiert. NULL, leere Eingaben und alle anderen Werte ergeben INVALID_PARAMETER. JSON und Statusmeldungen werden separat gesteuert.';
+        PRINT N'@ResultTablesJson nvarchar(max). Default ist NULL. Bei TABLE ist ein nichtleeres JSON-Objekt erforderlich. Die exakten Schlüssel sind configuration für Konfiguration, resourcePools für Pools, workloadGroups für Gruppen, sessions für Sessions und tempdbGovernance für TempDB-Limits und Laufzeitevidenz. Wählen Sie mindestens einen Schlüssel. Jeder Wert ist der Name einer vorhandenen leeren lokalen #Temp-Tabelle mit genau einer Seed-Spalte. Der Name darf höchstens 116 Zeichen lang sein. ## und #Monitor als Präfix sind unzulässig. Doppelte Schlüssel und Ziele sind unzulässig. Die Vorprüfung erfolgt vor dem Lesen der fachlichen Quellen. Außerhalb von TABLE sind nur NULL, die leere Zeichenfolge und reine Leerzeichen zulässig.';
+        PRINT N'@JsonErzeugen bit. Default ist 0. 1 erzeugt das JSON-Dokument unabhängig von @ResultSetArt. 0 lässt @Json auf NULL. NULL ergibt INVALID_PARAMETER.';
+        PRINT N'@Json nvarchar(max) OUTPUT. Default ist NULL. Binden Sie eine nvarchar(max)-Variable mit OUTPUT. Die Procedure setzt den Wert vor Hilfe und Validierung auf NULL. Bei @JsonErzeugen=1 erhält die Variable das Dokument der SchemaVersion 2 mit Metadaten, Konfiguration, Pools, Gruppen, TempDB-Governance, Sessions und Warnungen einschließlich NULL-Feldern.';
+        PRINT N'@PrintMeldungen bit. Default ist 1. 1 gibt bei einem Status ungleich AVAILABLE eine informative Meldung mit Schweregrad 10 aus. 0 oder NULL unterdrückt diese Meldung.';
+        PRINT N'@Hilfe bit. Default ist 0. 1 zeigt diese Hilfe und beendet den Aufruf vor Validierung, TABLE-Vorprüfung, fachlichen Quellzugriffen und JSON-Erzeugung. 0 oder NULL führt die Analyse aus.';
+        PRINT N'Hilfe anzeigen. EXEC [monitor].[USP_ResourceGovernorAnalysis] @Hilfe=1;';
+        PRINT N'RAW ohne Sessionabfrage. EXEC [monitor].[USP_ResourceGovernorAnalysis] @MitSessions=0, @MaxZeilen=100, @ResultSetArt=''RAW'';';
+        PRINT N'Nur JSON ausgeben. DECLARE @GovernorJson nvarchar(max); EXEC [monitor].[USP_ResourceGovernorAnalysis] @MitSessions=0, @MaxZeilen=100, @ResultSetArt=''NONE'', @JsonErzeugen=1, @Json=@GovernorJson OUTPUT; SELECT @GovernorJson AS [Json];';
+        PRINT N'Konfigurationszeile in eine lokale Temp-Tabelle schreiben. CREATE TABLE #ResourceGovernorAnalysis_HelpExample ([Seed] int NULL); BEGIN TRY EXEC [monitor].[USP_ResourceGovernorAnalysis] @MitSessions=0, @MaxZeilen=100, @ResultSetArt=''TABLE'', @ResultTablesJson=N''{"configuration":"#ResourceGovernorAnalysis_HelpExample"}''; SELECT * FROM #ResourceGovernorAnalysis_HelpExample; DROP TABLE #ResourceGovernorAnalysis_HelpExample; END TRY BEGIN CATCH DROP TABLE #ResourceGovernorAnalysis_HelpExample; THROW; END CATCH;';
         RETURN;
     END;
 
@@ -43604,7 +45897,7 @@ Objekt       : monitor.USP_AvailabilityGroups
 Version      : 1.0.0
 Stand        : 2026-07-14
 Typ          : Stored Procedure
-Zweck        : Analysiert Availability Groups, Replikate, Datenbanken, Listener, Routing sowie Send-/Redo-Queues und geschätzte Lags.
+Zweck        : Die Procedure analysiert Availability Groups, Replikate, Datenbanken, Listener, Routing sowie Send-/Redo-Queues und geschätzte Lags.
 SQL-Version  : SQL Server 2019 oder neuer.
 Datenquellen : sys.availability_groups, sys.availability_replicas, sys.dm_hadr_*, sys.availability_group_listeners
 Parameter    : @MitRouting, @MaxZeilen, @PrintMeldungen, @Hilfe
@@ -43613,8 +45906,9 @@ Berechtigung : Nur lesender Zugriff auf die genannten Systemobjekte. Das
                Framework vergibt keine Rechte und ändert keine Konfiguration.
 Eigenlast    : Mittel; reine HADR-Katalog- und DMV-Auswertung.
 Locking      : LOCK_TIMEOUT 0; keine fachlichen Schreibzugriffe.
-Partial      : Fehlende Features, Objekte oder Rechte werden strukturiert als
-               Partial Result behandelt; andere Module bleiben ausführbar.
+Status       : Ungültige Parameter ergeben INVALID_PARAMETER. Nicht aktiviertes
+               HADR ergibt UNAVAILABLE_FEATURE; abgefangene Erfassungsfehler ergeben
+               ERROR_HANDLED mit Partial Result.
 Änderungen   : 1.0.0 - Erstfassung Phase 6.
 ===============================================================================
 */
@@ -43639,7 +45933,23 @@ BEGIN
     IF @TableResultRequested=1 EXEC [monitor].[InternalPrepareSingleResultTable] @ResultTablesJson=@ResultTablesJson,@ResultName=N'replicas',@TargetTable=@TableTarget OUTPUT,@ThrowOnError=1;
     IF @TableResultRequested = 1 OR @ConsoleResultRequested = 1 SET @ResultSetArtNormalisiert = 'NONE';
     DECLARE @EffectiveMaxZeilen bigint = CASE WHEN @MaxZeilen IS NULL OR @MaxZeilen=0 THEN CONVERT(bigint,9223372036854775807) ELSE CONVERT(bigint,@MaxZeilen) END;
- IF @Hilfe=1 BEGIN PRINT N'monitor.USP_AvailabilityGroups'; PRINT N'@MitRouting bit=1; @MaxZeilen int=5000; @PrintMeldungen bit=1; @Hilfe bit=0.'; PRINT N'Die Procedure führt keine Failover-, Resume-, Suspend- oder Routingänderung aus.'; RETURN; END;
+    IF @Hilfe = 1
+    BEGIN
+        PRINT N'monitor.USP_AvailabilityGroups';
+        PRINT N'@MitRouting bit; Default: 1. SQL Server konvertiert das Argument vor Aufruf; NULL bleibt NULL. Nur ein Argument, das SQL Server zu bit 1 konvertiert, führt die zusätzliche Read-only-Abfrage der Read-Only-Routinglisten aus. Bei 0 oder NULL bleibt diese Ergebnismenge leer. Bei ausgelassenem Argument gilt der angegebene Default.';
+        PRINT N'@MaxZeilen int; Default: 5000. Der SQL-int-Bereich von -2.147.483.648 bis 2.147.483.647. Ein negativer Wert ergibt INVALID_PARAMETER. NULL oder 0 wird in bigint-Maximalwert umgerechnet und bedeutet damit praktisch unbegrenzt; ein positiver Wert begrenzt jede der vier Ergebnismengen getrennt. Er filtert weder AGs noch Datenbanken vor der Quellabfrage. Nicht konvertierbare Argumente scheitern bereits vor dem Procedure-Body. Einheit: Zeilen je Ergebnismenge. Ein negativer Wert allein lässt IsPartial=0. Bei ausgelassenem Argument gilt der angegebene Default.';
+        PRINT N'@ResultSetArt varchar(16); Default: ''CONSOLE''. SQL-Konvertierung findet vor dem Body statt; danach werden Leerzeichen an den Rändern entfernt und die Eingabe in Großbuchstaben normalisiert. Vorgesehen sind CONSOLE, RAW, TABLE und NONE. NULL, leerer oder unbekannter Wert ist ungültig. RAW liefert zuerst den Modulstatus und danach vier native Ergebnismengen; NONE unterdrückt Ergebnismengen. CONSOLE wird intern zunächst zu NONE und am Ende über den erreichbaren gemeinsamen Console-Adapter für die Replikamenge ausgegeben. TABLE unterdrückt die nativen Mengen und exportiert nur replicas. Außerhalb von TABLE muss ResultTablesJson NULL oder leer sein. Bei ausgelassenem Argument gilt der angegebene Default.';
+        PRINT N'@ResultTablesJson nvarchar(max); Default: NULL. Nur im TABLE-Modus wird ein JSON-Objekt mit dem exakt erlaubten Schlüssel replicas angenommen; sein Zeichenkettenwert muss auf eine bereits angelegte, leere lokale #Temp-Tabelle mit genau einer beliebigen Seed-Spalte zeigen. Globale ##Temp- und permanente Ziele sind unzulässig; der Tabellenname darf höchstens 116 Zeichen lang sein. NULL oder leer wird im TABLE-Modus vom Helper abgelehnt. Außerhalb davon löst nichtleeres JSON nach Trimmen Fehler 51011 aus; Whitespace gilt als leer. Der Helper prüft Schlüssel und Stringtyp, Eindeutigkeit sowie den Zielnamen. Diese Prüfung liegt vor HELP. Das Präfix #Monitor ist unabhängig von Groß- und Kleinschreibung reserviert. Der Preflight kann vor HELP vorübergehend eine Markerspalte hinzufügen und entfernen. Bei ausgelassenem Argument gilt der angegebene Default.';
+        PRINT N'@JsonErzeugen bit; Default: 0. Nur der nach SQL-Konvertierung vorliegende Wert 1 aktiviert die JSON-Erzeugung für den OUTPUT-Parameter Json; NULL wirkt wie deaktiviert. JSON-Erzeugung ist unabhängig von ResultSetArt. Der gebundene Wert 0 deaktiviert die JSON-Erzeugung. Bei ausgelassenem Argument gilt der angegebene Default.';
+        PRINT N'@Json nvarchar(max) OUTPUT; Default: NULL. Die Procedure setzt ihn am Eintritt auf NULL; nur bei JsonErzeugen=1 enthält er ein JSON-Objekt mit den Schlüsseln meta, replicas, databases, listeners und routing. Die Arrays enthalten auch NULL-Felder. Die OUTPUT-Bindung ändert die normalen Resultsets nicht. Binden Sie eine Variable des deklarierten Typs mit OUTPUT.';
+        PRINT N'@PrintMeldungen bit; Default: 1. Bei einem abgefangenen Fehler der Erfassung gibt nur der Wert 1 eine Meldung mit Severity 10 und WITH NOWAIT aus. 0 oder NULL unterdrücken nur diese Zusatzmeldung, nicht Status oder Daten. SQL-konvertierte bit-Eingaben werden vor dem Body gebunden. Bei ausgelassenem Argument gilt der angegebene Default.';
+        PRINT N'@Hilfe bit; Default: 0. Nur der gebundene bit-Wert 1 gibt die Hilfe mit PRINT aus und kehrt vor der Erfassung zurück. 0 und NULL aktivieren die Hilfe nicht. Json wird vorher auf NULL gesetzt; auch die TABLE-Vorprüfung findet bereits statt. Bei ausgelassenem Argument gilt der angegebene Default.';
+        PRINT N'Beispiel 1: EXEC [monitor].[USP_AvailabilityGroups] @Hilfe=1;';
+        PRINT N'Beispiel 2: EXEC [monitor].[USP_AvailabilityGroups] @MitRouting=0, @MaxZeilen=100, @ResultSetArt=''RAW'';';
+        PRINT N'Beispiel 3: DECLARE @AgJson nvarchar(max); EXEC [monitor].[USP_AvailabilityGroups] @MaxZeilen=100, @ResultSetArt=''NONE'', @JsonErzeugen=1, @Json=@AgJson OUTPUT; SELECT @AgJson AS [Json];';
+        PRINT N'Beispiel 4: CREATE TABLE #AvailabilityGroups_HelpExample ([Seed] int NULL); BEGIN TRY EXEC [monitor].[USP_AvailabilityGroups] @MaxZeilen=100, @ResultSetArt=''TABLE'', @ResultTablesJson=N''{"replicas":"#AvailabilityGroups_HelpExample"}''; SELECT * FROM #AvailabilityGroups_HelpExample; DROP TABLE #AvailabilityGroups_HelpExample; END TRY BEGIN CATCH DROP TABLE #AvailabilityGroups_HelpExample; THROW; END CATCH;';
+        RETURN;
+    END;
  DECLARE @CollectionTimeUtc datetime2(3)=SYSUTCDATETIME(),@StatusCode varchar(40)='AVAILABLE',@IsPartial bit=0,@ErrorNumber int=NULL,@ErrorMessage nvarchar(2048)=NULL;
  CREATE TABLE [#AvailabilityGroups_R]([AgName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS,[ReplicaServerName] nvarchar(256) COLLATE SQL_Latin1_General_CP1_CS_AS,[LocalReplica] bit,[RoleDesc] nvarchar(60) COLLATE SQL_Latin1_General_CP1_CS_AS,[OperationalStateDesc] nvarchar(60) COLLATE SQL_Latin1_General_CP1_CS_AS,[ConnectedStateDesc] nvarchar(60) COLLATE SQL_Latin1_General_CP1_CS_AS,[RecoveryHealthDesc] nvarchar(60) COLLATE SQL_Latin1_General_CP1_CS_AS,[SynchronizationHealthDesc] nvarchar(60) COLLATE SQL_Latin1_General_CP1_CS_AS,[AvailabilityModeDesc] nvarchar(60) COLLATE SQL_Latin1_General_CP1_CS_AS,[FailoverModeDesc] nvarchar(60) COLLATE SQL_Latin1_General_CP1_CS_AS,[SessionTimeout] int,[EndpointUrl] nvarchar(256) COLLATE SQL_Latin1_General_CP1_CS_AS,[PrimaryRoleAllowConnectionsDesc] nvarchar(60) COLLATE SQL_Latin1_General_CP1_CS_AS,[SecondaryRoleAllowConnectionsDesc] nvarchar(60) COLLATE SQL_Latin1_General_CP1_CS_AS,[ReadOnlyRoutingUrl] nvarchar(256) COLLATE SQL_Latin1_General_CP1_CS_AS);
  CREATE TABLE [#AvailabilityGroups_D]([AgName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS,[ReplicaServerName] nvarchar(256) COLLATE SQL_Latin1_General_CP1_CS_AS,[DatabaseName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS,[IsLocal] bit,[IsPrimaryReplica] bit,[SynchronizationStateDesc] nvarchar(60) COLLATE SQL_Latin1_General_CP1_CS_AS,[SynchronizationHealthDesc] nvarchar(60) COLLATE SQL_Latin1_General_CP1_CS_AS,[DatabaseStateDesc] nvarchar(60) COLLATE SQL_Latin1_General_CP1_CS_AS,[IsSuspended] bit,[SuspendReasonDesc] nvarchar(60) COLLATE SQL_Latin1_General_CP1_CS_AS,[LogSendQueueKb] bigint,[LogSendRateKbSec] bigint,[EstimatedSendSeconds] decimal(19,2),[RedoQueueKb] bigint,[RedoRateKbSec] bigint,[EstimatedRedoSeconds] decimal(19,2),[LastSentTime] datetime,[LastReceivedTime] datetime,[LastHardenedTime] datetime,[LastRedoneTime] datetime,[SecondaryLagSeconds] bigint);
@@ -43710,15 +46020,16 @@ Objekt       : monitor.USP_BackupRecovery
 Version      : 2.1.0
 Stand        : 2026-10-10
 Typ          : Stored Procedure
-Zweck        : Bewertet Backup-Aktualität und Restore-Historie je ausgewählter
+Zweck        : Die Procedure bewertet Backup-Aktualität und Restore-Historie je ausgewählter
                sichtbarer Datenbank.
 SQL-Version  : SQL Server 2019 oder neuer.
 Filter       : @DatabaseNames als bracket-aware Pipe-Liste oder alternativ
                @DatabaseNamePattern mit LIKE/regex/regexi.
 Resultsets   : RAW: Modulstatus, Datenbankstatus, Backup-Aktualität,
                Backup-Historie, Kompressionsevidenz und Restore-Historie.
-               CONSOLE: Modulstatus und Backup-Aktualität. NONE: keine Resultsets.
-JSON         : meta, databaseStatus, freshness, backups, compression, restores, warnings.
+               CONSOLE: Backup-Aktualität. TABLE: freshness und/oder compression.
+               NONE: keine Resultsets.
+JSON         : meta, freshness, backups, compression, restores, warnings.
 Änderungen   : 2.1.0 - Getrennte Server-, Capability- und Backupset-
                          Kompressionsevidenz.
                2.0.0 - Mehrfachfilter, Patternvertrag und Ausgabeadapter.
@@ -43779,12 +46090,31 @@ BEGIN
     IF @Hilfe = 1
     BEGIN
         PRINT N'monitor.USP_BackupRecovery';
-        PRINT N'@DatabaseNames: exakter Name oder bracket-aware Pipe-Liste; NULL = alle zulässigen Datenbanken.';
-        PRINT N'@DatabaseNamePattern: alternatives LIKE-/Regex-Pattern; Liste und Pattern sind gegenseitig exklusiv.';
-        PRINT N'Die Datenbankauswahl wird nicht vorab begrenzt.';
-        PRINT N'@FullWarnHours=48; @DiffWarnHours=24; @LogWarnMinutes=30; @MitRestoreHistory=1.';
-        PRINT N'@MaxZeilen: positive Werte begrenzen; NULL/0 = unbegrenzt.';
-        PRINT N'@ResultSetArt=CONSOLE (Default)|RAW|TABLE|NONE case-insensitiv; TABLE akzeptiert freshness und compression; @JsonErzeugen=1 setzt @Json OUTPUT.';
+        PRINT N'Die Hilfe beendet die fachliche Auswertung vor Kandidaten- und Backup-/Restoreabfragen; der TABLE-Preflight für lokale Zieltabellen läuft davor.';
+        PRINT N'Der normale Pfad liest sichtbare, online zugängliche Datenbankmetadaten sowie msdb-Backup-, Medien- und optional Restorehistorie. Er führt keine Sicherung, Wiederherstellung oder Agentaktion aus.';
+        PRINT N'Warnschwellen klassifizieren Freshness und schneiden die gelesene Historie nicht zeitlich ab. @MaxZeilen begrenzt die vorgesehenen Ergebnismengen separat; NULL oder 0 bedeutet unbegrenzt.';
+        PRINT N'@HighImpactConfirmed aktiviert für diese Procedure keinen Analysepfad. Ein Status oder eine msdb-Historyzeile belegt weder Dateiexistenz noch erfolgreiche Wiederherstellbarkeit.';
+        PRINT N'@DatabaseNames nvarchar(max)=NULL; Default: NULL. NULL sowie nach Trim leere Eingaben wählen alle für den Aufrufer sichtbaren, online befindlichen und zugänglichen Datenbanken, standardmäßig ohne Systemdatenbanken. Andernfalls wird eine Pipe-Liste einteiliger SQL-Datenbanknamen verarbeitet; äußere Leerzeichen je Element werden entfernt. Bracket-quotierte Elemente erlauben ein wörtliches Pipe-Zeichen und maskieren eine schließende Klammer als `]]`. Jedes Element muss ein gültiger höchstens 128 Zeichen langer SQL-Name sein; leere, doppelte, fehlerhaft geklammerte, mehrteilige oder ungültige Namen führen zu `INVALID_PARAMETER`. Eine explizite Liste kann nicht zusammen mit einem Pattern verwendet werden. Die Auswahl wird nicht vorab begrenzt; Namen, die nicht im zugänglichen Kandidatenscope liegen, liefern keine Kandidaten. Gültige explizite Namen außerhalb des zugänglichen Kandidatenscopes erzeugen Warnzeilen mit DATABASE_UNAVAILABLE beziehungsweise SYSTEM_DATABASE_EXCLUDED und führen zu AVAILABLE_LIMITED mit IsPartial=1; sie werden nicht stillschweigend ignoriert. Bei ausgelassenem Argument gilt der angegebene Default.';
+        PRINT N'@SystemdatenbankenEinbeziehen bit=0; Default: 0. 0 schließt die vier Systemdatenbanken anhand ihrer database_id aus; 1 nimmt zugängliche, online befindliche Systemdatenbanken in denselben Kandidatenpfad auf. NULL ist ungültig und führt über die Kandidatenvalidierung zu `INVALID_PARAMETER`. Diese Procedure übergibt `@AnalysisClass = NULL`; deshalb aktiviert dieser Schalter kein High-Impact-Analyse-Gate. SQL Server bindet das Argument vor Eintritt an bit: 0 wird 0, ein konvertierbarer numerischer Wert ungleich 0 wird 1. Andere Literalformen unterliegen der SQL-Typkonvertierung; Bindungsfehler treten vor dem Prozedurcode auf. Bei ausgelassenem Argument gilt der angegebene Default.';
+        PRINT N'@DatabaseNamePattern nvarchar(4000)=NULL; Default: NULL. NULL bedeutet kein Pattern; sonst werden äußere Leerzeichen entfernt und der Wert als Pattern ausgewertet. Zulässige Präfixe sind `LIKE:`, `REGEX:` und `REGEXI:` (Präfixerkennung ohne Beachtung der Groß-/Kleinschreibung); ohne Präfix gilt LIKE. `REGEX:` verlangt case-sensitive Regex, `REGEXI:` case-insensitive Regex; `LIKE:` entfernt nur das Präfix und verwendet SQL-LIKE-Musterzeichen. Der Inhalt nach dem Präfix darf nicht leer sein. Die maximale Eingabelänge beträgt 4000 UTF-16-Codeeinheiten. Ein Pattern ist mit einer exakten Namensliste unzulässig. Jedes nicht-NULL Pattern, das nach Trim beziehungsweise Präfixentfernung leer ist, sowie die Kombination mit einer exakten Liste setzen den Status `INVALID_PARAMETER`. Für `REGEX` und `REGEXI` benötigt die Installationsinstanz SQL Server 2025 und Compatibility Level 170; andernfalls meldet der Kandidatenhelfer `UNAVAILABLE_FEATURE`. Bei ausgelassenem Argument gilt der angegebene Default.';
+        PRINT N'@HighImpactConfirmed bit=0; Default: 0. 0 und 1 sind Bestätigungswerte, NULL ist ungültig und wird als `INVALID_PARAMETER` behandelt. Für diese Procedure bleibt die Bestätigung ohne Freischaltwirkung: Der Kandidatenhelfer wird mit `@AnalysisClass = NULL` aufgerufen, sodass kein Analysepfad geprüft oder aktiviert wird. Der Wert ist keine Genehmigung für Backup-, Restore- oder sonstige Änderungen. SQL Server bindet das Argument vor Eintritt an bit: 0 wird 0, ein konvertierbarer numerischer Wert ungleich 0 wird 1. Andere Literalformen unterliegen der SQL-Typkonvertierung; Bindungsfehler treten vor dem Prozedurcode auf. Bei ausgelassenem Argument gilt der angegebene Default.';
+        PRINT N'@FullWarnHours int=48; Default: 48. Zulässige nicht-NULL Werte sind ganze Zahlen von 1 bis 2147483647. Ganzzahlige Stundenschwelle für `FULL_TOO_OLD`; Werte kleiner als 1 sind ungültig. NULL ist `INVALID_PARAMETER` und liefert leere fachliche Ergebnismengen. Die Eingabe wird als `int` gebunden; Leertext hat keinen Sonderdefault und unterliegt vor Eintritt der SQL-Konvertierung, danach der Bereichsprüfung. Die Schwelle begrenzt keine gelesene msdb-Historie und ist kein RPO. Der Vergleich verwendet DATEDIFF(HOUR, ..., GETDATE()) > @FullWarnHours; DATEDIFF zählt Stundengrenzen. Bei ausgelassenem Argument gilt der angegebene Default.';
+        PRINT N'@DiffWarnHours int=24; Default: 24. Zulässige nicht-NULL Werte sind ganze Zahlen von 1 bis 2147483647. Ganzzahlige Stundenschwelle für den informativen Status `DIFF_OLD_INFORMATIONAL`; Werte kleiner als 1 sind ungültig. NULL ist `INVALID_PARAMETER` und liefert leere fachliche Ergebnismengen. Die Eingabe wird als `int` gebunden; Leertext hat keinen Sonderdefault und unterliegt vor Eintritt der SQL-Konvertierung, danach der Bereichsprüfung. Die Schwelle begrenzt keine gelesene Historie und ist kein RPO. Der Vergleich verwendet DATEDIFF(HOUR, ..., GETDATE()) > @DiffWarnHours; DATEDIFF zählt Stundengrenzen. Bei ausgelassenem Argument gilt der angegebene Default.';
+        PRINT N'@LogWarnMinutes int=30; Default: 30. Zulässige nicht-NULL Werte sind ganze Zahlen von 1 bis 2147483647. Ganzzahlige Minutenschwelle für `LOG_TOO_OLD`; Werte kleiner als 1 sind ungültig. NULL ist `INVALID_PARAMETER` und liefert leere fachliche Ergebnismengen. Die Eingabe wird als `int` gebunden; Leertext hat keinen Sonderdefault und unterliegt vor Eintritt der SQL-Konvertierung, danach der Bereichsprüfung. Der Vergleich verwendet `DATEDIFF(MINUTE, ..., GETDATE())`; die Schwelle begrenzt keine msdb-Historie und ist kein RPO. Bei ausgelassenem Argument gilt der angegebene Default.';
+        PRINT N'@MitRestoreHistory bit=1; Default: 1. 0 lässt die Abfrage der msdb-Restorehistorie aus; 1 liest die Restorehistorie für ausgewählte Datenbanken. NULL verhält sich in `IF @MitRestoreHistory = 1` wie nicht aktiviert. Dieser Schalter betrifft nur Restoreausgabe und entfernt weder Backup- noch Freshnessauswertung. SQL Server bindet das Argument vor Eintritt an bit: 0 wird 0, ein konvertierbarer numerischer Wert ungleich 0 wird 1. Andere Literalformen unterliegen der SQL-Typkonvertierung; Bindungsfehler treten vor dem Prozedurcode auf. Bei ausgelassenem Argument gilt der angegebene Default.';
+        PRINT N'@MaxZeilen int=5000; Default: 5000. Eine positive Grenze ist eine ganze Zeilenzahl von 1 bis 2147483647. Negative Werte führen zu `INVALID_PARAMETER`; NULL oder 0 werden in eine unbegrenzte Obergrenze umgewandelt. Positive Werte begrenzen Freshness, Backup-, Kompressions-Backupset- und Restoreausgabe jeweils separat; die kleinen serverweiten Konfigurations- und Capability-Einträge bleiben sichtbar. Die Freshnessgrenze wird nach der Bewertung angewandt. Das Limit beschränkt nicht die zuvor geprüfte Backupsetmenge für Aggregation und Freshness und ist kein gemeinsames Gesamtlimit. Bei ausgelassenem Argument gilt der angegebene Default.';
+        PRINT N'@ResultSetArt varchar(16)=''CONSOLE''; Default: ''CONSOLE''. Nach `LTRIM`/`RTRIM` und Umwandlung in Großbuchstaben sind ausschließlich `CONSOLE`, `RAW`, `TABLE` und `NONE` zulässig; NULL und andere Texte führen zu `INVALID_PARAMETER`. `CONSOLE` liefert ausschließlich eine formatierte Freshnessausgabe ohne zusätzliches Modulstatus-Resultset; bei leerer Menge wird eine verständliche Hinweiszeile ausgegeben, `RAW` liefert die technischen Resultsets, `TABLE` schreibt ausschließlich die benannten lokalen Ziele, und `NONE` unterdrückt Resultsets. Für `CONSOLE` und `TABLE` wird der interne Resultsetpfad auf NONE gestellt, bevor die jeweilige Ausgabeadapterlogik läuft. Die Auswahl ist unabhängig von JSON-OUTPUT. Bei ausgelassenem Argument gilt der angegebene Default.';
+        PRINT N'@ResultTablesJson nvarchar(max)=NULL; Default: NULL. Nur bei `TABLE` darf dieser Wert nicht leer sein: Er muss ein JSON-Objekt mit Stringwerten für die case-sensitiven Schlüssel `freshness` und/oder `compression` enthalten; jeder Wert bezeichnet eine vorhandene lokale `#`-Temp-Tabelle. Ziele müssen leer sein und genau eine Seed-Spalte besitzen; doppelte/unbekannte Schlüssel, doppelte Ziele, globale oder reservierte `#Monitor`-Ziele, falsche Namen/Schemas oder ein ungültiges Mapping lösen den TABLE-Preflightfehler 51011 aus. Der Preflight prüft und verändert Ziele vorübergehend durch Hinzufügen und Entfernen einer Marker-Spalte. Bei allen anderen Ausgabearten ist NULL oder ein Leer-/Whitespacewert zulässig; ein nichtleeres Mapping löst 51011 aus. Das Mapping ändert keine fachlichen Backupdaten. Die Zielnamen dürfen höchstens 116 Zeichen lang sein. Zielnamen-Duplikate werden ohne Beachtung der Groß-/Kleinschreibung geprüft; Resultset-Schlüssel müssen dagegen exakt einschließlich Groß-/Kleinschreibung stimmen. Bei ausgelassenem Argument gilt der angegebene Default.';
+        PRINT N'@JsonErzeugen bit=0; Default: 0. 1 erzeugt das JSON-Dokument und weist es `@Json` zu; 0 oder NULL lässt es bei der anfänglichen Rücksetzung auf NULL. Das Root-Objekt enthält `meta` (u. a. resultName, schemaVersion, generatedAtUtc, statusCode, isPartial, requestedMaxRows, errorNumber und errorMessage), `freshness`, `backups`, `compression`, `restores` und `warnings`. JSON-Erzeugung ist unabhängig von der gewählten Resultsetart. SQL Server bindet das Argument vor Eintritt an bit: 0 wird 0, ein konvertierbarer numerischer Wert ungleich 0 wird 1. Andere Literalformen unterliegen der SQL-Typkonvertierung; Bindungsfehler treten vor dem Prozedurcode auf. Bei ausgelassenem Argument gilt der angegebene Default.';
+        PRINT N'@Json nvarchar(max)=NULL OUTPUT; Default: NULL. OUTPUT-Empfangsparameter für das erzeugte JSON-Dokument. Die Procedure setzt ihn zu Beginn immer auf NULL; ein JSON-Text wird nur bei `@JsonErzeugen = 1` zugewiesen. Inhalt und Schlüssel stehen im Vertrag von `@JsonErzeugen`; bei HELP und bei deaktivierter JSON-Erzeugung bleibt der OUTPUT-Wert NULL. Binden Sie eine nvarchar(max)-Variable mit @Json=@Variable OUTPUT. Ohne OUTPUT-Bindung wird kein Wert an eine aufrufende Variable zurückgegeben.';
+        PRINT N'@PrintMeldungen bit=1; Default: 1. 1 erlaubt die vorgesehenen Informations-/Warnmeldungen über `RAISERROR` mit Severity 10; 0 unterdrückt diese Meldungen. NULL wird durch die Prüfung `IF @PrintMeldungen = 1` ebenfalls nicht aktiviert. Der Schalter unterdrückt weder Resultsets noch JSON und ändert keinen Status. SQL Server bindet das Argument vor Eintritt an bit: 0 wird 0, ein konvertierbarer numerischer Wert ungleich 0 wird 1. Andere Literalformen unterliegen der SQL-Typkonvertierung; Bindungsfehler treten vor dem Prozedurcode auf. Bei ausgelassenem Argument gilt der angegebene Default.';
+        PRINT N'@Hilfe bit=0; Default: 0. 1 gibt den Hilfetext mit `PRINT` aus und kehrt vor Kandidatensuche, Backup-/Restoreabfragen und Ausgabeverarbeitung zurück; 0 führt den normalen Ablauf aus. NULL wird nicht als aktiviert behandelt. Die TABLE-Zielvorprüfung liegt vor dieser Verzweigung: Bei `TABLE` kann deshalb bereits vorher Mapping validiert und eine Marker-Spalte temporär hinzugefügt/entfernt werden. HELP ist kein Backup-, Restore- oder Agent-Aufruf. SQL Server bindet das Argument vor Eintritt an bit: 0 wird 0, ein konvertierbarer numerischer Wert ungleich 0 wird 1. Andere Literalformen unterliegen der SQL-Typkonvertierung; Bindungsfehler treten vor dem Prozedurcode auf. Bei ausgelassenem Argument gilt der angegebene Default.';
+        PRINT N'Beispiel 1: EXEC [monitor].[USP_BackupRecovery] @Hilfe=1;';
+        PRINT N'Beispiel 2: EXEC [monitor].[USP_BackupRecovery] @DatabaseNames=N''[ExampleDatabase]'', @MitRestoreHistory=0, @MaxZeilen=100, @ResultSetArt=''RAW'';';
+        PRINT N'Beispiel 3: DECLARE @BackupRecoveryJson nvarchar(max); EXEC [monitor].[USP_BackupRecovery] @DatabaseNames=N''[ExampleDatabase]'', @MaxZeilen=100, @ResultSetArt=''NONE'', @JsonErzeugen=1, @Json=@BackupRecoveryJson OUTPUT; SELECT @BackupRecoveryJson AS [Json];';
+        PRINT N'Beispiel 4: CREATE TABLE #BackupRecovery_Freshness_HelpExample ([Seed] int NULL); CREATE TABLE #BackupRecovery_Compression_HelpExample ([Seed] int NULL); BEGIN TRY EXEC [monitor].[USP_BackupRecovery] @DatabaseNames=N''[ExampleDatabase]'', @MaxZeilen=100, @ResultSetArt=''TABLE'', @ResultTablesJson=N''{"freshness":"#BackupRecovery_Freshness_HelpExample","compression":"#BackupRecovery_Compression_HelpExample"}''; SELECT * FROM #BackupRecovery_Freshness_HelpExample; SELECT * FROM #BackupRecovery_Compression_HelpExample; DROP TABLE #BackupRecovery_Compression_HelpExample; DROP TABLE #BackupRecovery_Freshness_HelpExample; END TRY BEGIN CATCH DROP TABLE #BackupRecovery_Compression_HelpExample; DROP TABLE #BackupRecovery_Freshness_HelpExample; THROW; END CATCH;';
+        PRINT N'Beispiel 5: EXEC [monitor].[USP_BackupRecovery] @DatabaseNamePattern=N''like:ExampleDatabase%'', @MaxZeilen=100, @ResultSetArt=''RAW'';';
+        PRINT N'Beispiel 6: EXEC [monitor].[USP_BackupRecovery] @DatabaseNames=N''[ExampleDatabase]'', @FullWarnHours=48, @DiffWarnHours=24, @LogWarnMinutes=30, @MitRestoreHistory=1, @MaxZeilen=100, @ResultSetArt=''RAW'';';
         RETURN;
     END;
 
@@ -43878,9 +46208,9 @@ BEGIN
 
     IF @MaxZeilen < 0
 
-       OR @FullWarnHours < 1
-       OR @DiffWarnHours < 1
-       OR @LogWarnMinutes < 1
+       OR @FullWarnHours IS NULL OR @FullWarnHours < 1
+       OR @DiffWarnHours IS NULL OR @DiffWarnHours < 1
+       OR @LogWarnMinutes IS NULL OR @LogWarnMinutes < 1
        OR @ResultSetArtNormalisiert NOT IN ('RAW', 'CONSOLE', 'NONE')
     BEGIN
         SET @StatusCode = 'INVALID_PARAMETER';
@@ -44230,17 +46560,20 @@ Objekt       : monitor.USP_LogShippingStatus
 Version      : 1.0.1
 Stand        : 2026-07-14
 Typ          : Stored Procedure
-Zweck        : Liest vorhandene Log-Shipping-Konfiguration und Monitorzustände für Primary- und Secondary-Datenbanken.
+Zweck        : Die Procedure liest vorhandene Log-Shipping-Konfiguration und Monitorzustände für Primary- und Secondary-Datenbanken.
 SQL-Version  : SQL Server 2019 oder neuer.
 Datenquellen : msdb.dbo.log_shipping_primary_databases, log_shipping_monitor_primary, log_shipping_monitor_secondary, log_shipping_secondary_databases
-Parameter    : @MaxZeilen, @PrintMeldungen, @Hilfe
-Resultsets   : 1. Modulstatus. 2. Primary. 3. Secondary.
+Parameter    : @MaxZeilen, @ResultSetArt, @ResultTablesJson, @JsonErzeugen,
+               @Json OUTPUT, @PrintMeldungen, @Hilfe
+Resultsets   : RAW: Modulstatus, Primary und Secondary. CONSOLE/TABLE: Primary.
+               NONE: keine Resultsets.
 Berechtigung : Nur lesender Zugriff auf die genannten Systemobjekte. Das
                Framework vergibt keine Rechte und ändert keine Konfiguration.
 Eigenlast    : Gering.
 Locking      : LOCK_TIMEOUT 0; keine fachlichen Schreibzugriffe.
-Partial      : Fehlende Features, Objekte oder Rechte werden strukturiert als
-               Partial Result behandelt; andere Module bleiben ausführbar.
+Partial      : Fehlende erforderliche Tabellen ergeben UNAVAILABLE_FEATURE
+               ohne Partialflag. Abgefangene Lesefehler ergeben ERROR_HANDLED
+               mit IsPartial=1; andere Module bleiben ausführbar.
 Änderungen   : 1.0.1 - Alertschwellen und History-Retention aus den
                Log-Shipping-Monitor-Tabellen gelesen.
                1.0.0 - Erstfassung Phase 6.
@@ -44262,7 +46595,25 @@ BEGIN
     IF @TableResultRequested=1 EXEC [monitor].[InternalPrepareSingleResultTable] @ResultTablesJson=@ResultTablesJson,@ResultName=N'primary',@TargetTable=@TableTarget OUTPUT,@ThrowOnError=1;
     IF @TableResultRequested = 1 OR @ConsoleResultRequested = 1 SET @ResultSetArtNormalisiert = 'NONE';
     DECLARE @EffectiveMaxZeilen bigint = CASE WHEN @MaxZeilen IS NULL OR @MaxZeilen=0 THEN CONVERT(bigint,9223372036854775807) ELSE CONVERT(bigint,@MaxZeilen) END;
- IF @Hilfe=1 BEGIN PRINT N'monitor.USP_LogShippingStatus'; PRINT N'@MaxZeilen int=5000: positive Werte begrenzen; NULL/0 = unbegrenzt; negative Werte sind ungültig. @PrintMeldungen bit=1; @Hilfe bit=0.'; RETURN; END;
+    IF @Hilfe = 1
+    BEGIN
+        PRINT N'monitor.USP_LogShippingStatus';
+        PRINT N'Die Hilfe kehrt vor Verfügbarkeitsprüfung, Quellenabfrage und Ergebnisausgabe zurück. Die TABLE-Zielprüfung läuft davor, auch bei @Hilfe=1.';
+        PRINT N'Der normale Pfad liest ausschließlich lokale Log-Shipping-Konfigurations- und Monitorzeilen aus msdb. Er fragt keine Jobhistory, Backuphistory, Remoteinstanz oder Logdatei ab und löst keine Backup-, Copy- oder Restoreaktion aus.';
+        PRINT N'Primary- und Secondary-Zeilen werden getrennt begrenzt und ausgegeben. Die Ergebnisse sind ein nicht atomarer Snapshot lokaler Konfigurations-/Monitorwerte und belegen keine vollständige Datenbewegung.';
+        PRINT N'@MaxZeilen int=5000; Default: 5000. Eine positive Grenze ist eine ganze Zeilenzahl von 1 bis 2147483647. Negative Werte setzen `INVALID_PARAMETER`; NULL oder 0 werden als unbegrenzte Obergrenze interpretiert. Ein positiver Wert wird getrennt als TOP-Grenze auf Primary- und Secondary-Resultat angewandt, nicht als gemeinsames Gesamtlimit; nach der jeweiligen Sortierung können später eingeordnete Konfigurationen fehlen. Die Eingabe begrenzt nur die ausgegebenen lokalen Konfigurations-/Monitorzeilen, nicht Backup- oder Jobhistory, da solche Quellen nicht abgefragt werden. Bei ausgelassenem Argument gilt der angegebene Default.';
+        PRINT N'@ResultSetArt varchar(16)=''CONSOLE''; Default: ''CONSOLE''. Nach Trim und Umwandlung in Großbuchstaben sind ausschließlich `CONSOLE`, `RAW`, `TABLE` und `NONE` gültig; NULL und andere Werte erzeugen `INVALID_PARAMETER`. CONSOLE liefert ausschließlich eine formatierte Primary-Ausgabe ohne zusätzliches Modulstatus- oder Secondary-Resultset; bei leerer Primary-Menge erscheint eine verständliche Hinweiszeile, RAW liefert technische Resultsets, TABLE schreibt das registrierte `primary`-Resultset, NONE unterdrückt Resultsets. CONSOLE und TABLE setzen den internen Resultsetpfad zunächst auf NONE und laufen danach über ihren Ausgabeadapter. Diese Auswahl steuert JSON nicht. Bei ausgelassenem Argument gilt der angegebene Default.';
+        PRINT N'@ResultTablesJson nvarchar(max)=NULL; Default: NULL. Bei `TABLE` ist ein nichtleeres JSON-Objekt erforderlich, in der Form {"primary":"#ExampleTarget"}: genau dieser case-sensitive Schlüssel mit einem lokalen Zielnamen als JSON-Stringwert, keine weiteren Eigenschaften. Das Ziel muss leer sein und genau eine Seed-Spalte besitzen. Unbekannte oder doppelte Resultsetnamen, doppelte Ziele, globale/reservierte Ziele, ungültige Namen/Schemas oder fehlende Ziele lösen den TABLE-Preflightfehler 51011 aus. Der Preflight fügt dem Ziel vorübergehend eine Marker-Spalte hinzu und entfernt sie wieder. Außerhalb von TABLE sind NULL und Leer-/Whitespacewerte zulässig; ein nichtleeres Mapping löst 51011 aus. Die Zielnamen dürfen höchstens 116 Zeichen lang sein. Zielnamen-Duplikate werden ohne Beachtung der Groß-/Kleinschreibung geprüft; Resultset-Schlüssel müssen dagegen exakt einschließlich Groß-/Kleinschreibung stimmen. Bei ausgelassenem Argument gilt der angegebene Default.';
+        PRINT N'@JsonErzeugen bit=0; Default: 0. 1 erzeugt JSON; 0 oder NULL lässt `@Json` nach der initialen Rücksetzung NULL. Das Root-Objekt enthält `meta` (u. a. resultName, schemaVersion, generatedAtUtc, statusCode, isPartial, errorNumber und errorMessage), `primary` und `secondary`. Die JSON-Ausgabe ist unabhängig von der Resultsetart. SQL Server bindet das Argument vor Eintritt an bit: 0 wird 0, ein konvertierbarer numerischer Wert ungleich 0 wird 1. Andere Literalformen unterliegen der SQL-Typkonvertierung; Bindungsfehler treten vor dem Prozedurcode auf. Bei ausgelassenem Argument gilt der angegebene Default.';
+        PRINT N'@Json nvarchar(max)=NULL OUTPUT; Default: NULL. OUTPUT-Empfangsparameter für das erzeugte JSON. Zu Beginn wird er auf NULL gesetzt; nur bei `@JsonErzeugen = 1` weist die Procedure den JSON-Text zu. Die Struktur ist im Vertrag von `@JsonErzeugen` beschrieben. Bei HELP oder deaktivierter JSON-Erzeugung bleibt der Wert NULL. Binden Sie eine nvarchar(max)-Variable mit @Json=@Variable OUTPUT. Ohne OUTPUT-Bindung wird kein Wert an eine aufrufende Variable zurückgegeben.';
+        PRINT N'@PrintMeldungen bit=1; Default: 1. 1 lässt bei einem behandelten Lesefehler eine Severity-10-Informationsmeldung mit `RAISERROR ... WITH NOWAIT` ausgeben; 0 unterdrückt diese Meldung. NULL wird durch `IF @PrintMeldungen = 1` nicht aktiviert. Der Schalter ändert weder Status noch Resultset-/JSON-Ausgabe. SQL Server bindet das Argument vor Eintritt an bit: 0 wird 0, ein konvertierbarer numerischer Wert ungleich 0 wird 1. Andere Literalformen unterliegen der SQL-Typkonvertierung; Bindungsfehler treten vor dem Prozedurcode auf. Bei ausgelassenem Argument gilt der angegebene Default.';
+        PRINT N'@Hilfe bit=0; Default: 0. 1 gibt die Hilfe mit PRINT aus und kehrt vor Quellenverfügbarkeitsprüfung, Primary-/Secondary-Abfrage und Resultset-/JSON-Erzeugung zurück; 0 führt den normalen Ablauf aus. NULL aktiviert die Hilfe nicht. Die Prüfung von @ResultTablesJson sowie der TABLE-Zielpreflight liegen vor dem Hilfezweig. Ein ungültiges Mapping kann deshalb auch mit @Hilfe=1 Fehler 51011 auslösen; ein gültiges TABLE-Ziel wird bereits vor dem Hilferücksprung durch temporäres Hinzufügen und Entfernen einer Marker-Spalte geprüft. SQL Server bindet das Argument vor Eintritt an bit: 0 wird 0, ein konvertierbarer numerischer Wert ungleich 0 wird 1. Andere Literalformen unterliegen der SQL-Typkonvertierung; Bindungsfehler treten vor dem Prozedurcode auf. Bei ausgelassenem Argument gilt der angegebene Default.';
+        PRINT N'Beispiel 1: EXEC [monitor].[USP_LogShippingStatus] @Hilfe=1;';
+        PRINT N'Beispiel 2: EXEC [monitor].[USP_LogShippingStatus] @MaxZeilen=100, @ResultSetArt=''RAW'';';
+        PRINT N'Beispiel 3: DECLARE @LogShippingJson nvarchar(max); EXEC [monitor].[USP_LogShippingStatus] @MaxZeilen=100, @ResultSetArt=''NONE'', @JsonErzeugen=1, @Json=@LogShippingJson OUTPUT; SELECT @LogShippingJson AS [Json];';
+        PRINT N'Beispiel 4: CREATE TABLE #LogShippingStatus_HelpExample ([Seed] int NULL); BEGIN TRY EXEC [monitor].[USP_LogShippingStatus] @MaxZeilen=100, @ResultSetArt=''TABLE'', @ResultTablesJson=N''{"primary":"#LogShippingStatus_HelpExample"}''; SELECT * FROM #LogShippingStatus_HelpExample; DROP TABLE #LogShippingStatus_HelpExample; END TRY BEGIN CATCH DROP TABLE #LogShippingStatus_HelpExample; THROW; END CATCH;';
+        RETURN;
+    END;
  DECLARE @CollectionTimeUtc datetime2(3)=SYSUTCDATETIME(),@StatusCode varchar(40)='AVAILABLE',@IsPartial bit=0,@ErrorNumber int=NULL,@ErrorMessage nvarchar(2048)=NULL;
  IF @MaxZeilen<0 SELECT @StatusCode='INVALID_PARAMETER',@IsPartial=1,@ErrorMessage=N'@MaxZeilen darf nicht negativ sein; NULL/0 bedeutet unbegrenzt.';
  CREATE TABLE [#LogShippingStatus_P]([PrimaryServer] sysname COLLATE SQL_Latin1_General_CP1_CS_AS,[PrimaryDatabase] sysname COLLATE SQL_Latin1_General_CP1_CS_AS,[BackupDirectory] nvarchar(500) COLLATE SQL_Latin1_General_CP1_CS_AS,[BackupShare] nvarchar(500) COLLATE SQL_Latin1_General_CP1_CS_AS,[BackupRetentionPeriod] int,[BackupThreshold] int,[ThresholdAlertEnabled] bit,[LastBackupFile] nvarchar(500) COLLATE SQL_Latin1_General_CP1_CS_AS,[LastBackupDate] datetime,[BackupAgeMinutes] int,[LastBackupDateUtc] datetime,[HistoryRetentionPeriod] int);
@@ -44372,7 +46723,9 @@ Typ          : Stored Procedure
 Zweck        : Inventarisiert sichtbare Replication-Rollen, Publikationen, Subscriptions und Agentfehler.
 SQL-Version  : SQL Server 2019 oder neuer.
 Datenquellen : sys.databases, distribution.dbo.MSpublications/MSsubscriptions/MSdistribution_agents/MSrepl_errors, msdb Agent-Metadaten
-Parameter    : @MitDistributionDetails, @MaxZeilen, @PrintMeldungen, @Hilfe
+Parameter    : @MitDistributionDetails, @MaxZeilen, @HighImpactConfirmed,
+               @ResultSetArt, @ResultTablesJson, @JsonErzeugen, @Json OUTPUT,
+               @PrintMeldungen, @Hilfe
 Resultsets   : 1. Modulstatus. 2. Server-/Datenbankrollen. 3. Publikationen. 4. Subscriptions. 5. Agentfehler.
 Berechtigung : Nur lesender Zugriff auf die genannten Systemobjekte. Das
                Framework vergibt keine Rechte und ändert keine Konfiguration.
@@ -44401,7 +46754,24 @@ BEGIN
     IF @TableResultRequested=1 EXEC [monitor].[InternalPrepareSingleResultTable] @ResultTablesJson=@ResultTablesJson,@ResultName=N'databases',@TargetTable=@TableTarget OUTPUT,@ThrowOnError=1;
     IF @TableResultRequested = 1 OR @ConsoleResultRequested = 1 SET @ResultSetArtNormalisiert = 'NONE';
     DECLARE @EffectiveMaxZeilen bigint = CASE WHEN @MaxZeilen IS NULL OR @MaxZeilen=0 THEN CONVERT(bigint,9223372036854775807) ELSE CONVERT(bigint,@MaxZeilen) END;
- IF @Hilfe=1 BEGIN PRINT N'monitor.USP_ReplicationStatus'; PRINT N'@MitDistributionDetails bit=0: liest die konfigurierte Distribution-Datenbank.'; PRINT N'@MaxZeilen int=5000: positive Werte begrenzen; NULL/0 = unbegrenzt; negative Werte sind ungültig. @PrintMeldungen bit=1; @Hilfe bit=0.'; RETURN; END;
+    IF @Hilfe = 1
+    BEGIN
+        PRINT N'monitor.USP_ReplicationStatus';
+        PRINT N'@MitDistributionDetails bit; Default: 0. Default 0. 0 liest nur sichtbare Replikationsrollen; 1 aktiviert Details aus der online erkannten lokalen Distribution-Datenbank (Publikationen, Subscriptions samt letzter Agent-Historyzeile, Fehler). Fehlt sie, entsteht ein Partialstatus bzw. ohne Basiszeilen UNAVAILABLE_FEATURE. NULL wird nicht geprüft und aktiviert den Pfad nicht. Bei ausgelassenem Argument gilt der angegebene Default.';
+        PRINT N'@MaxZeilen int; Default: 5000. Default 5000 je Datenbank-, Publikations-, Subscription- und Fehlerresultset getrennt, ohne gemeinsames Gesamtbudget. Positive Werte begrenzen je Menge; 0 oder NULL bedeutet unbegrenzt. Negative Werte setzen INVALID_PARAMETER/Partial und verhindern die Facherhebung, sofern kein früherer Gate-Status den Status bereits geändert hat. Bei @Hilfe=1 wird der Wert nicht validiert, weil die Hilfe vorher zurückkehrt. Die Grenze verhindert nicht die Latest-History-Auflösung je Subscription. Bei ausgelassenem Argument gilt der angegebene Default.';
+        PRINT N'@HighImpactConfirmed bit; Default: 0. Nur bei MitDistributionDetails=1 prüft die Procedure die Klasse ENTERPRISE_TOPOLOGY_DEEP. Der gebundene Wert 0 ergibt HIGH_IMPACT_CONFIRMATION_REQUIRED. Nach Bestätigung mit 1 kann die aktuelle Zugriffspolicy DENIED_GROUP ergeben. Der Detailpfad setzt Bestätigung und aktuelle Berechtigung voraus. NULL ergibt bei aktiviertem Detailpfad INVALID_PARAMETER. Bei deaktiviertem Detailpfad wird der Wert nicht geprüft. Bei ausgelassenem Argument gilt der angegebene Default.';
+        PRINT N'@ResultSetArt varchar(16); Default: ''CONSOLE''. Default CONSOLE. Außen getrimmt und großgeschrieben; erlaubt sind CONSOLE (nur Datenbankrollenansicht über Console-Helper), RAW (Modulstatus plus vier Fachergebnissets), TABLE (nur databases in Zieltemp-Tabelle) und NONE (keine Resultsets). NULL/Leerwert/anderer Wert ergibt INVALID_PARAMETER. CONSOLE und TABLE unterdrücken den normalen Status-/RAW-Pfad. Bei ausgelassenem Argument gilt der angegebene Default.';
+        PRINT N'@ResultTablesJson nvarchar(max); Default: NULL. Default NULL. Nur mit TABLE zulässig; sonst wird nichtleeres JSON mit Fehler 51011 abgewiesen. Erwartet ein Objekt mit einzigem Resultnamen databases und Ziel als Wert: bestehende leere lokale #Temp-Tabelle, keine ##Temp, kein #Monitor-Präfix, maximal 116 Zeichen und genau eine Seed-Spalte. NULL/leeres JSON ist ungültig. Der Preflight läuft vor HELP und Fachdatenzugriff. Bei ausgelassenem Argument gilt der angegebene Default.';
+        PRINT N'@JsonErzeugen bit; Default: 0. Default 0. 1 erzeugt zusätzlich JSON in Json mit meta, databases, publications, subscriptions und errors; 0 nicht. JSON-Erzeugung ist unabhängig von ResultSetArt. NULL aktiviert den IF-Zweig nicht. Bei ausgelassenem Argument gilt der angegebene Default.';
+        PRINT N'@Json nvarchar(max) OUTPUT; Default: NULL. OUTPUT, Default NULL. Wird am Anfang auf NULL gesetzt und bei JsonErzeugen=1 mit dem JSON-Objekt aus meta und vier Ergebnisarrays gebunden. Andernfalls bleibt NULL. Der Aufrufer bindet eine nvarchar(max)-OUTPUT-Variable. Binden Sie eine Variable des deklarierten Typs mit OUTPUT.';
+        PRINT N'@PrintMeldungen bit; Default: 1. Default 1. Bei 1 wird eine behandelte Catch-Fehlermeldung mit Severity 10 ausgegeben; 0 unterdrückt sie. NULL wirkt nicht wie 1. Steuert keine Resultsets. Bei ausgelassenem Argument gilt der angegebene Default.';
+        PRINT N'@Hilfe bit; Default: 0. Default 0. 1 druckt kurze Hilfe und kehrt zurück, 0 fährt fort; NULL wirkt wie 0. TABLE-Kombinationsprüfung und Preflight laufen vor der Hilfeprüfung. Bei ausgelassenem Argument gilt der angegebene Default.';
+        PRINT N'Beispiel 1: EXEC [monitor].[USP_ReplicationStatus] @Hilfe=1;';
+        PRINT N'Beispiel 2: EXEC [monitor].[USP_ReplicationStatus] @MitDistributionDetails=0, @MaxZeilen=100, @ResultSetArt=''RAW'';';
+        PRINT N'Beispiel 3: DECLARE @ReplicationJson nvarchar(max); EXEC [monitor].[USP_ReplicationStatus] @MaxZeilen=100, @ResultSetArt=''NONE'', @JsonErzeugen=1, @Json=@ReplicationJson OUTPUT; SELECT @ReplicationJson AS [Json];';
+        PRINT N'Beispiel 4: CREATE TABLE #ReplicationStatus_HelpExample ([Seed] int NULL); BEGIN TRY EXEC [monitor].[USP_ReplicationStatus] @MaxZeilen=100, @ResultSetArt=''TABLE'', @ResultTablesJson=N''{"databases":"#ReplicationStatus_HelpExample"}''; SELECT * FROM #ReplicationStatus_HelpExample; DROP TABLE #ReplicationStatus_HelpExample; END TRY BEGIN CATCH DROP TABLE #ReplicationStatus_HelpExample; THROW; END CATCH;';
+        RETURN;
+    END;
  DECLARE @CollectionTimeUtc datetime2(3)=SYSUTCDATETIME(),@StatusCode varchar(40)='AVAILABLE',@IsPartial bit=0,@ErrorNumber int=NULL,@ErrorMessage nvarchar(2048)=NULL,@DistDb sysname=NULL,@sql nvarchar(max),@Allowed bit=1;
  IF @MaxZeilen<0 SELECT @StatusCode='INVALID_PARAMETER',@IsPartial=1,@ErrorMessage=N'@MaxZeilen darf nicht negativ sein; NULL/0 bedeutet unbegrenzt.';
  CREATE TABLE [#ReplicationStatus_Db]([DatabaseName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS,[IsPublished] bit,[IsSubscribed] bit,[IsMergePublished] bit,[IsDistributor] bit);
@@ -44474,12 +46844,12 @@ Datenquellen : master.sys.databases, sys.change_tracking_databases,
                database-lokale sys.tables/sys.schemas/
                sys.change_tracking_tables/cdc.change_tables, msdb CDC-Jobs.
 Parameter    : @DatabaseNames, @DatabaseNamePattern,
-               @SystemdatenbankenEinbeziehen, @MaxZeilen,
-               @ResultSetArt, @JsonErzeugen, @Json OUTPUT,
-               @PrintMeldungen, @Hilfe.
-Semantik     : @DatabaseNames=N'[Db1]|[Db2]'; NULL=alle zulässigen
-               Datenbanken; N''=INVALID_PARAMETER. Exakte Liste und Pattern
-               sind exklusiv. Die Datenbankauswahl wird nicht vorab begrenzt.
+               @SystemdatenbankenEinbeziehen, @HighImpactConfirmed,
+               @MaxZeilen, @ResultSetArt, @ResultTablesJson,
+               @JsonErzeugen, @Json OUTPUT, @PrintMeldungen, @Hilfe.
+Semantik     : @DatabaseNames=N'[Db1]|[Db2]'; NULL/leer/Whitespace=alle zulässigen
+               Datenbanken. Exakte Liste und Pattern sind exklusiv. Die
+               Datenbankauswahl wird nicht vorab begrenzt.
 Ausgabe      : RAW/CONSOLE/NONE; JSON mit meta, databases, cdcTables,
                changeTrackingTables, cdcJobs und warnings.
 Berechtigung : Cross-Database wird über CROSS_DATABASE_DEEP geprüft.
@@ -44523,10 +46893,21 @@ BEGIN
     IF @Hilfe = 1
     BEGIN
         PRINT N'monitor.USP_DataCaptureStatus';
-        PRINT N'@DatabaseNames=N''[Db1]|[Db2]''; NULL=alle; N'''' bedeutet keine Einschränkung.';
-        PRINT N'@DatabaseNamePattern=like:...|regex:...|regexi:...; ein Pattern, keine Pipe-Liste.';
-        PRINT N'Die Datenbankauswahl wird nicht vorab begrenzt; @MaxZeilen gilt global je fachlichem Resultset.';
-        PRINT N'@ResultSetArt=CONSOLE (Default)|RAW|TABLE|NONE (case-insensitiv); @JsonErzeugen=1 erzeugt @Json OUTPUT.';
+        PRINT N'@DatabaseNames nvarchar(max); Default: NULL. Default NULL. NULL oder Leer-/Whitespace-Eingabe bedeutet keine Einschränkung und alle zulässigen sichtbaren Online-Datenbanken. Nichtleere Pipe-Liste einteiliger SQL-Namen; | trennt außerhalb eckiger Klammern, ]] maskiert eine schließende Klammer; Elementränder werden getrimmt. Leere Segmente, ungültige Klammerung, Rohsegment über 4000 UTF-16-Codeeinheiten, Multipartname oder Name über 128 Zeichen sind INVALID_PARAMETER; Duplikate ebenfalls. Gültige, aber fehlende/offline/unzugängliche Namen werden Warnungen/Partial. Bei ausgelassenem Argument gilt der angegebene Default.';
+        PRINT N'@SystemdatenbankenEinbeziehen bit; Default: 0. Default 0. 0 schließt master, tempdb, model und msdb aus; explizite Anforderung erzeugt SYSTEM_DATABASE_EXCLUDED. 1 lässt System-IDs bis 4 zu. NULL oder Werte außer 0/1 sind INVALID_PARAMETER. Bei ausgelassenem Argument gilt der angegebene Default.';
+        PRINT N'@DatabaseNamePattern nvarchar(4000); Default: NULL. Default NULL. NULL heißt kein Pattern. Eingabe außen getrimmt; optionale Präfixe ohne Groß-/Kleinschreibung: like: (LIKE), regex: (case-sensitive Regex), regexi: (case-insensitive Regex); ohne Präfix gilt LIKE. Präfix wird entfernt, Rest nicht erneut getrimmt; leerer Inhalt ist ungültig. Exakte Liste und Pattern sind exklusiv. LIKE ist case-sensitive. Regex benötigt SQL Server 2025 und Compatibility Level 170 der Installationsdatenbank. Bei ausgelassenem Argument gilt der angegebene Default.';
+        PRINT N'@HighImpactConfirmed bit; Default: 0. Der Kandidatenhelfer prüft HA_DR_CURRENT. Diese Klasse verlangt keine High-Impact-Bestätigung. 0 genügt für das Bestätigungsbit. Die aktuelle Zugriffspolicy wird weiterhin geprüft und kann DENIED_GROUP ergeben. Auch bei mehreren Datenbanken erfolgt kein zusätzlicher CROSS_DATABASE_DEEP-Check. NULL ergibt INVALID_PARAMETER. Bei ausgelassenem Argument gilt der angegebene Default.';
+        PRINT N'@MaxZeilen int; Default: 10000. Default 10000. NULL/0 unbegrenzt; negativ INVALID_PARAMETER, bevor Datenbankauswahl und Facherhebung beginnen (ein TABLE-Preflight kann vorher bereits erfolgt sein). Positive Grenze gilt global getrennt für databases, CDC-Tabellen, Change-Tracking-Tabellen und Jobs, nicht als Gesamtbudget. Auswahl wird nicht vorab begrenzt; lokal höchstens N+1 je Pfad pro Datenbank, danach globale TOP-N. Warnings bleiben ungekürzt. Datenbankausgabe nach DatabaseName sortiert. Bei ausgelassenem Argument gilt der angegebene Default.';
+        PRINT N'@ResultSetArt varchar(16); Default: ''CONSOLE''. Default CONSOLE. Außen getrimmt und großgeschrieben; erlaubt sind CONSOLE, RAW, TABLE, NONE. NULL, Leerwert und andere Werte ungültig. RAW liefert Modulstatus, databases, CDC-Tabellen, CT-Tabellen, Jobs und Warnings. CONSOLE wird intern vor der Ausgabe auf NONE normalisiert; der erreichbare Console-Helper gibt anschließend ausschließlich die databases-Ansicht aus, ohne separaten Modulstatus oder Warnings. TABLE schreibt nur databases; NONE keine normalen Resultsets. Bei ausgelassenem Argument gilt der angegebene Default.';
+        PRINT N'@ResultTablesJson nvarchar(max); Default: NULL. Default NULL. Nur TABLE zulässig; sonst wird nichtleeres JSON mit 51011 abgewiesen. Einziges Resultat databases. Erwartet JSON-Objekt mit Resultnamen und Zielwert: bestehende leere lokale #Temp-Tabelle, keine ##Temp, kein #Monitor-Präfix, höchstens 116 Zeichen, genau eine Seed-Spalte und eindeutiger Name. Fehlende/ungültige Zuordnung wirft. Preflight vor HELP und Datenbankauswahl. Bei ausgelassenem Argument gilt der angegebene Default.';
+        PRINT N'@JsonErzeugen bit; Default: 0. Default 0. 1 erzeugt zusätzlich unabhängig von ResultSetArt JSON mit meta, databases, cdcTables, changeTrackingTables, cdcJobs und warnings; 0 nicht. Warnungen bleiben ungekürzt. Bei ausgelassenem Argument gilt der angegebene Default.';
+        PRINT N'@Json nvarchar(max) OUTPUT; Default: NULL. OUTPUT, Default NULL. Anfangs auf NULL gesetzt; bei JsonErzeugen=1 wird JSON mit Status/Partialität und fünf Arrays an gebundene nvarchar(max)-OUTPUT-Variable zurückgegeben. Binden Sie eine Variable des deklarierten Typs mit OUTPUT.';
+        PRINT N'@PrintMeldungen bit; Default: 1. Default 1. Bei Status ungleich AVAILABLE zusätzliche Severity-10-Warnung; 0 unterdrückt sie. NULL wirkt nicht wie 1. Status-/Warning-Resultsets bleiben bestehen. Bei ausgelassenem Argument gilt der angegebene Default.';
+        PRINT N'@Hilfe bit; Default: 0. Default 0. 1 druckt kurze Eingabe-, Auswahl- und Ausgabehilfe und kehrt zurück; NULL wirkt wie 0. ResultTablesJson-Kombinationsprüfung und TABLE-Preflight laufen vor HELP. Bei ausgelassenem Argument gilt der angegebene Default.';
+        PRINT N'Beispiel 1: EXEC [monitor].[USP_DataCaptureStatus] @Hilfe=1;';
+        PRINT N'Beispiel 2: EXEC [monitor].[USP_DataCaptureStatus] @DatabaseNames=N''[ExampleDatabase]'', @MaxZeilen=100, @ResultSetArt=''RAW'';';
+        PRINT N'Beispiel 3: DECLARE @CaptureJson nvarchar(max); EXEC [monitor].[USP_DataCaptureStatus] @DatabaseNames=N''[ExampleDatabase]'', @MaxZeilen=100, @ResultSetArt=''NONE'', @JsonErzeugen=1, @Json=@CaptureJson OUTPUT; SELECT @CaptureJson AS [Json];';
+        PRINT N'Beispiel 4: CREATE TABLE #DataCaptureStatus_HelpExample ([Seed] int NULL); BEGIN TRY EXEC [monitor].[USP_DataCaptureStatus] @DatabaseNames=N''[ExampleDatabase]'', @MaxZeilen=100, @ResultSetArt=''TABLE'', @ResultTablesJson=N''{"databases":"#DataCaptureStatus_HelpExample"}''; SELECT * FROM #DataCaptureStatus_HelpExample; DROP TABLE #DataCaptureStatus_HelpExample; END TRY BEGIN CATCH DROP TABLE #DataCaptureStatus_HelpExample; THROW; END CATCH;';
         RETURN;
     END;
 
@@ -44851,7 +47232,7 @@ GO
 Objekt       : monitor.USP_BackupChainAnalysis
 Version      : 1.0.0
 Stand        : 2026-07-17
-Zweck        : Bewertet Backupketten und Wiederherstellbarkeitsevidenz aus msdb.
+Zweck        : Die Procedure bewertet Backupketten und Wiederherstellbarkeitsevidenz aus msdb.
 Datenquellen : msdb.dbo.backupset und msdb.dbo.restorehistory.
 Methodik     : Prüft Full-/Differentialbasis, Log-LSN-Übergänge,
                Recovery-Fork-Wechsel, Prüfsummen, Schadensflags und Restorebeleg.
@@ -44897,10 +47278,32 @@ BEGIN
     IF @Hilfe = 1
     BEGIN
         PRINT N'monitor.USP_BackupChainAnalysis';
-        PRINT N'Prüft ausschließlich msdb-Metadaten; Medienpfade und Benutzernamen werden nicht gelesen.';
-        PRINT N'@DatabaseNames: bracket-aware Pipe-Liste; NULL = alle zulässigen Datenbanken.';
-        PRINT N'@HistoryDays begrenzt die Kettenevidenz; der letzte nicht-copy-only Full wird zusätzlich einbezogen.';
-        PRINT N'Nur ein erfolgreicher Test-Restore beweist Wiederherstellbarkeit.';
+        PRINT N'Analysiert Backup- und Restoremetadaten aus msdb für die ausgewählten Datenbanken.';
+        PRINT N'Das Historienfenster begrenzt die sichtbare Kettenevidenz; der jüngste nicht-copy-only Full wird zusätzlich berücksichtigt.';
+        PRINT N'Restorehistorie ist nur ein Metadatenbeleg; die Wiederherstellbarkeit ist durch einen erfolgreichen Test-Restore zu prüfen.';
+        PRINT N'@DatabaseNames nvarchar(max)=NULL; Default: NULL. Die optionale Liste ist eine durch Pipezeichen getrennte Folge einteiliger SQL-Namen. Der Parser behandelt | innerhalb von [...] als Namenstext, ]] als maskierte schließende Klammer und entfernt äußere Leerzeichen jedes Elements. Rohsegmente über 4000 UTF-16-Codeeinheiten und Namen über 128 Zeichen sind ungültig; mehrteilige SQL-Namen, ungültige Klammern, leere Elemente und nach SQL_Latin1_General_CP1_CS_AS doppelte Namen führen ebenfalls zu INVALID_PARAMETER. NULL, eine leere Zeichenfolge und ein nur aus Leerzeichen bestehender Wert werden vor dem Listenparser wie keine Liste behandelt und wählen alle für den Aufrufer sichtbaren, online befindlichen und zugänglichen Datenbanken; Systemdatenbanken bleiben ohne Opt-in ausgeschlossen. Nicht verfügbare explizite Namen erzeugen DATABASE_UNAVAILABLE, ohne Opt-in ausgeschlossene Systemnamen SYSTEM_DATABASE_EXCLUDED in der Warning-Tabelle; wenn solche Warnungen vorliegen, wird der Status AVAILABLE_LIMITED. Die Liste ist mit einem nicht-NULL Pattern unvereinbar. Bei ausgelassenem Argument gilt der angegebene Default.';
+        PRINT N'@SystemdatenbankenEinbeziehen bit=0; Default: 0. Der Parameter wird als SQL-bit gebunden; numerische Null wird 0, jeder numerische Nichtnullwert wird 1, NULL bleibt NULL. Nach der Bindung sind nur 0 und 1 gültig: NULL führt beim Kandidatenhelfer zu INVALID_PARAMETER. 0 lässt Systemdatenbanken aus, 1 schließt sie in die Kandidatenauswahl ein. Bei ausgelassenem Argument gilt der angegebene Default.';
+        PRINT N'@DatabaseNamePattern nvarchar(4000)=NULL; Default: NULL. Das Eingabefeld ist nvarchar(4000) und nimmt höchstens 4000 UTF-16-Codeeinheiten an. NULL bedeutet Modus NONE; eine leere oder nur aus Leerzeichen bestehende Eingabe ist ungültig, und ein Inhalt, der nach einem Präfix leer bleibt, ebenfalls. Der Parser trimmt äußere Leerzeichen, erkennt LIKE:, REGEX: und REGEXI: ohne Beachtung der Großschreibung und entfernt danach das Präfix; der verbleibende Inhalt wird nicht erneut getrimmt. Ohne Präfix gilt LIKE. LIKE wertet das Pattern mit SQL_Latin1_General_CP1_CS_AS case-sensitiv aus; exakte Datenbanknamen werden ebenfalls mit dieser Collation verglichen; REGEX nutzt Flag c und REGEXI Flag i. REGEX und REGEXI benötigen SQL Server 2025 sowie Compatibility Level 170 der Installationsdatenbank. Ein nicht-NULL Pattern kann nicht zusammen mit einer wirksamen exakten Datenbankliste verwendet werden. Bei ausgelassenem Argument gilt der angegebene Default.';
+        PRINT N'@HighImpactConfirmed bit=0; Default: 0. Der Parameter wird als SQL-bit gebunden: numerische Null wird 0, jeder numerische Nichtnullwert wird 1, NULL bleibt NULL. NULL ist beim Kandidatenhelfer ungültig. Der Aufrufer übergibt @AnalysisClass ausdrücklich als NULL; dadurch wird kein Analyseklassen- oder High-Impact-Gate ausgelöst. Eine gebundene 1 erteilt keine zusätzliche Berechtigung. Bei ausgelassenem Argument gilt der angegebene Default.';
+        PRINT N'@HistoryDays int=35; Default: 35. Zulässige nicht-NULL Werte sind ganze Zahlen von 1 bis 3650 Tagen. Die Backuphistorie wird mit dem Grenzwert DATEADD(DAY, -@HistoryDays, GETDATE()) auf backup_finish_date gefiltert; GETDATE verwendet die lokale Serverzeit. Die Prüfung auf Werte < 1 oder > 3650 steht vor der Backupabfrage, aber nach TABLE-Preflight und Hilfezweig. NULL besteht diese IF-Prüfung wegen SQL-UNKNOWN und ergibt keinen gültigen Cutoff; dann gelangen die normalen Backupsets nicht durch den Zeitvergleich, während der jüngste nicht-copy-only Full je Kandidat per separater OR-Bedingung unabhängig vom Fenster einbezogen wird. Ein zu kurzes Fenster kann weitere benötigte Full-/Diff-/Logevidenz ausschließen. Das Zeitfenster begrenzt Backupsets; die optionale Restorehistory-Abfrage wird nicht durch @HistoryDays begrenzt. msdb-Historie kann bereinigt oder unvollständig sein; ein scheinbares Gap kann deshalb auch aus nicht sichtbarer Historie resultieren. Sichtbare Metadatenkonsistenz beweist weder vorhandene/lesbare Medien noch eine erfolgreiche Wiederherstellung. Bei ausgelassenem Argument gilt der angegebene Default.';
+        PRINT N'@MitRestoreEvidence bit=1; Default: 1. Der SQL-bit-Parameter ist standardmäßig 1; nach Bindung aktiviert nur 1 die zusätzliche Auswertung von msdb.dbo.restorehistory und die Bewertung fehlender Restoreevidenz. Gebundene 0 und NULL deaktivieren beides; NULL wird nicht als ungültiger Parameter geprüft. Die Restorehistory-Abfrage ist für ausgewählte Datenbanken nicht nach @HistoryDays zeitlich eingeschränkt. Ein msdb-Restoreeintrag ist kein Nachweis eines erfolgreichen Test-Restores. Die Abfrage gruppiert nach destination_database_name und nimmt MAX(restore_date); sie belegt deshalb nur den letzten lokalen msdb-Eintrag für das Ziel, keine Zuordnung zu einem konkreten Backupset, Medienverfügbarkeit, Entschlüsselbarkeit oder erfolgreiche Wiederherstellung. SQL Server bindet das Argument vor Eintritt an bit: 0 ergibt 0, ein konvertierbarer numerischer Nichtnullwert ergibt 1, NULL bleibt NULL; Bindungsfehler treten vor dem Prozedurcode auf. Bei ausgelassenem Argument gilt der angegebene Default.';
+        PRINT N'@MaxZeilen int=1000; Default: 1000. Der int-Parameter akzeptiert 0 bis 2147483647; negative Werte sind ungültig. NULL und 0 werden vor der Ausgabe in das unbegrenzte bigint-Limit 9223372036854775807 überführt. Ein positives Limit entfernt nach vollständigem msdb-Scan und Kettenaggregation zusätzliche Summaryzeilen nach DatabaseId sowie Backupzeilen nach Abschlusszeit und Backupset-ID absteigend. Das Limit kürzt weder den Scan noch die vollständig berechneten Summaryzähler oder die Warning-Tabelle und setzt kein Truncation- oder Partial-Flag. Bei ausgelassenem Argument gilt der angegebene Default.';
+        PRINT N'@ResultSetArt varchar(16)=''CONSOLE''; Default: ''CONSOLE''. Nach COALESCE mit leerem Text, Trimmen und Großschreibung sind RAW, CONSOLE, TABLE und NONE zulässig. CONSOLE und TABLE werden für die Modusprüfung zunächst auf NONE normalisiert, danach aber über getrennte Adapter ausgeführt. RAW liefert vier Resultsets: Status-/Kontextzeile, Summary, Backups und Warnings. CONSOLE liefert nur Summary über InternalEmitConsoleResult; eine leere Summary ergibt dort eine erklärende Zeile, ohne separaten Status- oder Warning-Datensatz. TABLE schreibt nur das Resultset summary in die benannte lokale Zieltabelle und wirft bei einem Schreibfehler. NONE erzeugt keine fachlichen Resultsets. NULL, leer und andere Werte sind ungültig. Bei ausgelassenem Argument gilt der angegebene Default.';
+        PRINT N'@ResultTablesJson nvarchar(max)=NULL; Default: NULL. Ein nichtleerer Wert ist ausschließlich bei @ResultSetArt=TABLE zulässig; andernfalls wirft der Code vor Hilfe Fehler 51011. TABLE erwartet vor Hilfe ein gültiges JSON-Objekt mit genau dem case-sensitiven Schlüssel summary und einem JSON-String als Zieltabellennamen. Zulässig ist nur eine vorhandene lokale #Temp-Tabelle, nicht ##, nicht #Monitor*, mit höchstens 116 Zeichen. Das Ziel muss leer sein und genau eine Dummy-Seed-Spalte besitzen; der Schreibhelfer passt eine leere Zieltabelle an die native Struktur von summary an. Bei TABLE fehlt die Zuordnung, ist das JSON ungültig oder ist das Ziel nicht verfügbar, nicht leer oder anders strukturiert, schlägt der Preflight fehl. Bei Nicht-TABLE-Modi sind NULL, leerer oder nur aus Leerzeichen bestehender Wert zulässig. Resultset-Schlüssel und JSON-Stringwerte dürfen nicht doppelt vorkommen; zusätzliche Schlüssel, globale ##-Ziele und reservierte #Monitor-Präfixe sind unzulässig. Der Preflight prüft das Ziel unter anderem durch temporäres Hinzufügen und Entfernen einer Marker-Spalte. Ein ungültiges Mapping kann vor Hilfe Fehler 51011 auslösen; der spätere TABLE-Writer kann nach der Status-OUTPUT-Zuweisung Fehler 51010 werfen. Bei ausgelassenem Argument gilt der angegebene Default.';
+        PRINT N'@JsonErzeugen bit=0; Default: 0. Der SQL-bit-Parameter wird vor der Ausführung konvertiert; nur der gebundene Wert 1 erzeugt JSON, während 0 und NULL überspringen. Das Dokument hat ein meta-Objekt und die Arrays summary, backups und warnings. summary und backups spiegeln das nach @MaxZeilen begrenzte Material; warnings bleiben ungekürzt. meta enthält resultName, schemaVersion, generatedAtUtc, statusCode, isPartial und historyDays und lässt NULL-Eigenschaften weg. Die drei Arrays verwenden INCLUDE_NULL_VALUES; Fehlernummer und Fehlermeldung werden separat über die Fehler-OUTPUTs beziehungsweise RAW bereitgestellt. Bei ausgelassenem Argument gilt der angegebene Default.';
+        PRINT N'@Json nvarchar(max)=NULL OUTPUT; Default: NULL. nvarchar(max) OUTPUT wird beim Eintritt auf NULL gesetzt. Nur wenn @JsonErzeugen=1 und der Hilfezweig nicht vorher zurückkehrt, wird ein JSON-Dokument mit meta-Objekt sowie summary-, backups- und warnings-Arrays zugewiesen. Bei fehlender JSON-Anforderung bleibt der OUTPUT-Wert NULL. Binden Sie eine Variable des deklarierten Typs mit @Json=@Variable OUTPUT. Ohne OUTPUT-Bindung wird kein Wert an eine aufrufende Variable zurückgegeben.';
+        PRINT N'@PrintMeldungen bit=1; Default: 1. Der SQL-bit-Parameter wird in der Procedure weder gelesen noch zur Ausgabe verwendet. Die Signatur setzt ihn auf 1; auch ein gebundenes NULL oder 0 ändert den Ausgabepfad nicht. SQL Server bindet das Argument vor Eintritt an bit: 0 ergibt 0, ein konvertierbarer numerischer Nichtnullwert ergibt 1, NULL bleibt NULL; Bindungsfehler treten vor dem Prozedurcode auf. Bei ausgelassenem Argument gilt der angegebene Default.';
+        PRINT N'@Hilfe bit=0; Default: 0. Nur der gebundene bit-Wert 1 gibt die Hilfe mit PRINT aus und kehrt zurück. Numerische Nichtnullwerte werden vor Eintritt zu bit 1 konvertiert; 0 aktiviert die Hilfe nicht. NULL bleibt NULL und aktiviert IF @Hilfe=1 ebenfalls nicht. Modusnormalisierung sowie TABLE-/ResultTablesJson-Vorprüfung liegen vor diesem Rücksprung. Der TABLE-Preflight kann die lokale Zieltabelle bereits durch temporäres Hinzufügen und Entfernen einer Marker-Spalte prüfen. Die Status-, Partial- und Fehler-OUTPUTs bleiben im Hilfezweig auf ihren Eingangs-/Bindungswerten; @Json wurde zuvor bereits auf NULL gesetzt. Bei ausgelassenem Argument gilt der angegebene Default.';
+        PRINT N'@StatusCodeOut varchar(40)=NULL OUTPUT; Default: NULL. Empfängt am gemeinsamen Zuweisungspunkt vor JSON und Resultsets genau einen dieser acht Statuswerte: AVAILABLE, wenn ohne Kandidatenwarnungen kein abweichender Summarybefund vorliegt; CHAIN_METADATA_CONSISTENT und TEMPDB_NOT_APPLICABLE sind damit vereinbar. INVALID_PARAMETER bezeichnet eine ungültige Modus-, Historien-, Zeilen- oder Kandidatenauswahl. INTERNAL_ERROR bezeichnet einen Fehler bei der defensiven Kandidatentabellenprobe, ohne die Ursache ausschließlich auf ein falsches Schema festzulegen. UNAVAILABLE_FEATURE bezeichnet einen nicht unterstützten Regex-Engine-/Compatibility-Pfad. AVAILABLE_LIMITED hat bei vorhandenen Kandidatenwarnungen Vorrang. AVAILABLE_WITH_FINDING bezeichnet ohne Kandidatenwarnungen mindestens einen Summarycode außerhalb von CHAIN_METADATA_CONSISTENT und TEMPDB_NOT_APPLICABLE. DENIED_PERMISSION ist die Codeklassifikation des Analyse-CATCH für Fehler 229, 371 oder 916, keine unabhängige Ursachendiagnose. ERROR_HANDLED bezeichnet andere im Analyse-CATCH erfasste SQL-Fehler. @AnalysisClass=NULL überspringt die Analyseklassengates. Bei Hilfe oder frühem Preflight-THROW bleibt der gebundene Eingangswert unverändert. Vom TABLE-Writer behandelte Schreibfehler können nach der OUTPUT-Zuweisung Fehler 51010 auslösen und ändern den bereits zugewiesenen Status nicht. Binden Sie eine Variable des deklarierten Typs mit @StatusCodeOut=@Variable OUTPUT. Ohne OUTPUT-Bindung wird kein Wert an eine aufrufende Variable zurückgegeben.';
+        PRINT N'@IsPartialOut bit=NULL OUTPUT; Default: NULL. bit OUTPUT wird im regulären Ablauf gemeinsam mit Status vor JSON und Resultsets zugewiesen; in HELP und bei einem früheren Preflight-THROW bleibt der gebundene OUTPUT-Eingangswert bestehen. Der interne Analyseflag wird mit 0 initialisiert; der Signatur-Default des OUTPUT-Arguments ist NULL. Die Hauptparameterprüfung für @HistoryDays, @MaxZeilen und @ResultSetArt setzt bei Fehlern 1; Kandidatenwarnungen und behandelte Analysefehler setzen ebenfalls 1. Ein Fehlerstatus des Kandidatenhelfers (INVALID_PARAMETER, UNAVAILABLE_FEATURE oder INTERNAL_ERROR) kann dagegen mit Partial=0 ankommen. Ein positives @MaxZeilen-Limit oder Ausgabeabschneiden setzt es nicht auf 1. Binden Sie eine Variable des deklarierten Typs mit @IsPartialOut=@Variable OUTPUT. SQL Server bindet das Argument vor Eintritt an bit: 0 ergibt 0, ein konvertierbarer numerischer Nichtnullwert ergibt 1, NULL bleibt NULL; Bindungsfehler treten vor dem Prozedurcode auf. Ohne OUTPUT-Bindung wird kein Wert an eine aufrufende Variable zurückgegeben.';
+        PRINT N'@ErrorNumberOut int=NULL OUTPUT; Default: NULL. int OUTPUT wird am gemeinsamen regulären Zuweisungspunkt befüllt; in HELP und bei einem früheren Preflight-THROW bleibt der gebundene OUTPUT-Eingangswert bestehen. Der Analyse-CATCH setzt ihn auf die abgefangene SQL-Fehlernummer; ohne solchen CATCH bleibt er NULL. Binden Sie eine Variable des deklarierten Typs mit @ErrorNumberOut=@Variable OUTPUT. Ohne OUTPUT-Bindung wird kein Wert an eine aufrufende Variable zurückgegeben.';
+        PRINT N'@ErrorMessageOut nvarchar(2048)=NULL OUTPUT; Default: NULL. nvarchar(2048) OUTPUT wird am gemeinsamen regulären Zuweisungspunkt befüllt; in HELP und bei einem früheren Preflight-THROW bleibt der gebundene OUTPUT-Eingangswert bestehen. Er enthält eine Validierungs-, Kandidaten- oder Analysefehlermeldung und bleibt bei erfolgreicher Auswertung NULL. Binden Sie eine Variable des deklarierten Typs mit @ErrorMessageOut=@Variable OUTPUT. Ohne OUTPUT-Bindung wird kein Wert an eine aufrufende Variable zurückgegeben.';
+        PRINT N'Beispiel 1: EXEC [monitor].[USP_BackupChainAnalysis] @Hilfe=1;';
+        PRINT N'Beispiel 2: EXEC [monitor].[USP_BackupChainAnalysis] @DatabaseNames=N''[ExampleDatabase]'', @HistoryDays=35, @MitRestoreEvidence=0, @MaxZeilen=100, @ResultSetArt=''RAW'';';
+        PRINT N'Beispiel 3: DECLARE @BackupChainJson nvarchar(max), @BackupChainStatus varchar(40), @BackupChainPartial bit, @BackupChainError int, @BackupChainMessage nvarchar(2048); EXEC [monitor].[USP_BackupChainAnalysis] @DatabaseNames=N''[ExampleDatabase]'', @HistoryDays=35, @MaxZeilen=100, @ResultSetArt=''NONE'', @JsonErzeugen=1, @Json=@BackupChainJson OUTPUT, @StatusCodeOut=@BackupChainStatus OUTPUT, @IsPartialOut=@BackupChainPartial OUTPUT, @ErrorNumberOut=@BackupChainError OUTPUT, @ErrorMessageOut=@BackupChainMessage OUTPUT; SELECT @BackupChainStatus AS [StatusCode], @BackupChainPartial AS [IsPartial], @BackupChainError AS [ErrorNumber], @BackupChainMessage AS [ErrorMessage], @BackupChainJson AS [Json];';
+        PRINT N'Beispiel 4: CREATE TABLE #BackupChainAnalysis_HelpExample ([Seed] int NULL); BEGIN TRY EXEC [monitor].[USP_BackupChainAnalysis] @DatabaseNames=N''[ExampleDatabase]'', @HistoryDays=35, @MaxZeilen=100, @ResultSetArt=''TABLE'', @ResultTablesJson=N''{"summary":"#BackupChainAnalysis_HelpExample"}''; SELECT * FROM #BackupChainAnalysis_HelpExample; DROP TABLE #BackupChainAnalysis_HelpExample; END TRY BEGIN CATCH DROP TABLE #BackupChainAnalysis_HelpExample; THROW; END CATCH;';
+        PRINT N'Beispiel 5: EXEC [monitor].[USP_BackupChainAnalysis] @DatabaseNamePattern=N''like:ExampleDatabase%'', @HistoryDays=35, @MaxZeilen=100, @ResultSetArt=''RAW'';';
+        PRINT N'Beispiel 6: EXEC [monitor].[USP_BackupChainAnalysis] @DatabaseNames=N''[ExampleDatabase]'', @HistoryDays=7, @MitRestoreEvidence=1, @MaxZeilen=100, @ResultSetArt=''RAW'';';
         RETURN;
     END;
 
@@ -45258,7 +47661,7 @@ GO
 Objekt       : monitor.USP_AvailabilityDeepAnalysis
 Version      : 1.1.0
 Stand        : 2026-07-18
-Zweck        : Vertieft Always-On-Evidenz um Replikazustand, Warteschlangen,
+Zweck        : Die Procedure vertieft Always-On-Evidenz um Replikazustand, Warteschlangen,
                Clusterquorum, Seeding und automatische Seitenreparatur.
 Datenquellen : sys.availability_groups, sys.availability_replicas,
                sys.dm_hadr_availability_replica_states,
@@ -45324,8 +47727,26 @@ BEGIN
     BEGIN
         PRINT N'monitor.USP_AvailabilityDeepAnalysis';
         PRINT N'Die Procedure liefert eine rein lesende Always-On-Momentaufnahme und löst weder ein Failover noch eine Konfigurationsänderung aus.';
-        PRINT N'@QueueWarnMb und @SecondaryLagWarnSeconds sind Sichtungsgrenzen, keine universellen SLOs.';
-        PRINT N'@MitClusterNetzwerken=0; Netzwerkdetails sind opt-in.';
+        PRINT N'Queue- und Laggrenzen sind Sichtungswerte und keine universellen SLOs.';
+        PRINT N'Cluster-Netzwerkdetails sind ein optionaler Read-only-Katalogpfad.';
+        PRINT N'@QueueWarnMb bigint; Default: 1024. Der SQL-bigint-Bereich reicht von -9.223.372.036.854.775.808 bis 9.223.372.036.854.775.807. NULL und negative Werte ergeben INVALID_PARAMETER; 0 ist erlaubt. Der inklusive Sichtungsschwellwert vergleicht COALESCE(Queue-KB, 0) >= decimal(38,0)(MB) * 1024. Die Multiplikation in decimal vermeidet einen bigint-Überlauf. Der Wert ist kein universelles SLO. Die Schwelle gilt getrennt für Send- und Redo-Queue. Bei Schwelle 0 kann auch ein fehlender oder mit 0 gemessener Wert einen Befund auslösen. Suspendierung, ungesunder oder nicht synchronisierender Zustand haben Vorrang. Bei ausgelassenem Argument gilt der angegebene Default.';
+        PRINT N'@SecondaryLagWarnSeconds int; Default: 60. Der SQL-int-Bereich reicht von -2.147.483.648 bis 2.147.483.647. NULL und negative Werte ergeben INVALID_PARAMETER; 0 ist erlaubt. Der inklusive Vergleich lautet COALESCE(Lagsekunden, 0) >= Grenzwert. Einheit ist Sekunden. Bei Schwelle 0 kann auch ein fehlender oder mit 0 gemessener Wert einen Befund auslösen. Suspendierung, ungesunder oder nicht synchronisierender Zustand haben Vorrang. Bei ausgelassenem Argument gilt der angegebene Default.';
+        PRINT N'@MitClusterNetzwerken bit; Default: 0. SQL Server konvertiert das Argument vor Aufruf; nur ein Argument, das zu bit 1 wird, liest sys.dm_hadr_cluster_networks. 0 und NULL lassen diese optionale Detailabfrage aus. Dies ist ein Read-only-Katalog-Opt-in, keine Netzwerkerreichbarkeitsprüfung und keine Konfigurationsänderung. Bei ausgelassenem Argument gilt der angegebene Default.';
+        PRINT N'@MaxZeilen int; Default: 1000. Der SQL-int-Bereich reicht von -2.147.483.648 bis 2.147.483.647. Negative Werte sind ungültig; NULL oder 0 bedeuten durch BIGINT-Maximalwert unbegrenzt. Positive Werte begrenzen die Replikat-Auswahl sowie Mitglieder, Netzwerke, Datenbanken, Seeding und Page Repair bei der Ausgabe; die Cluster-Menge bleibt unbegrenzt. Quellenerfassung und Statusfindings erfolgen vor diesem Ausgabelimit. Einheit ist Zeilen. Bei ausgelassenem Argument gilt der angegebene Default.';
+        PRINT N'@ResultSetArt varchar(16); Default: ''CONSOLE''. Nach SQL-Konvertierung werden Leerzeichen an den Rändern entfernt und der Wert großgeschrieben. Vorgesehen sind CONSOLE, RAW, TABLE und NONE; NULL, leer oder unbekannt ist ungültig. RAW liefert Modulstatus, Cluster, Mitglieder, Netzwerke, Replikate, Datenbanken, Seeding und Seitenreparatur; NONE unterdrückt diese. CONSOLE wird intern zu NONE und anschließend vom erreichbaren gemeinsamen Console-Adapter für die begrenzte Replikamenge ausgegeben. TABLE unterdrückt normale Sets und schreibt nur replicas. Außerhalb TABLE muss ResultTablesJson NULL oder leer sein. Bei ausgelassenem Argument gilt der angegebene Default.';
+        PRINT N'@ResultTablesJson nvarchar(max); Default: NULL. Außerhalb TABLE löst ein nach Trimmen nichtleerer Wert sofort Fehler 51011 aus; NULL, leer und Whitespace sind erlaubt. Im TABLE-Modus ist genau ein JSON-Objekt mit dem erlaubten Zeichenketten-Schlüssel replicas auf eine bereits angelegte, leere lokale #Temp-Tabelle mit genau einer beliebigen Seed-Spalte erforderlich. Doppelte Schlüssel/Ziele, ##Temp und permanente Ziele sind unzulässig; der Name ist auf 116 Zeichen begrenzt. Der Helper prüft die Seed-Struktur durch temporäres Hinzufügen und Entfernen einer Markerspalte. Das Mapping wird vor HELP validiert. Das Präfix #Monitor ist unabhängig von Groß- und Kleinschreibung reserviert. Der Preflight kann vor HELP vorübergehend eine Markerspalte hinzufügen und entfernen. Bei ausgelassenem Argument gilt der angegebene Default.';
+        PRINT N'@JsonErzeugen bit; Default: 0. Nur der nach SQL-Konvertierung vorliegende Wert 1 erzeugt JSON im OUTPUT-Parameter Json; NULL wirkt wie deaktiviert. Der Schalter ist unabhängig vom ResultSetArt-Modus. Der gebundene Wert 0 deaktiviert die JSON-Erzeugung. Bei ausgelassenem Argument gilt der angegebene Default.';
+        PRINT N'@Json nvarchar(max) OUTPUT; Default: NULL. Er wird am Eintritt auf NULL gesetzt und nur bei JsonErzeugen=1 befüllt. Das JSON-Objekt hat genau die Schlüssel meta, cluster, members, networks, replicas, databases, seeding und pageRepair; separate Quellenstatus- oder Warning-Arrays werden nicht erzeugt. Ohne Netzwerke-Opt-in ist das networks-Array leer. Binden Sie eine Variable des deklarierten Typs mit OUTPUT.';
+        PRINT N'@PrintMeldungen bit; Default: 1. Die Procedure wertet diesen Parameter nicht aus. Die gebundenen Werte 0, 1 und NULL ändern die Ausgabe nicht. Bei ausgelassenem Argument gilt der angegebene Default.';
+        PRINT N'@Hilfe bit; Default: 0. Nur der gebundene bit-Wert 1 gibt die Hilfe mit PRINT aus und kehrt vor der Erfassung zurück. 0 und NULL aktivieren die Hilfe nicht. Json wird vorher auf NULL gesetzt; auch die TABLE-Vorprüfung findet bereits statt. Status- und Fehler-OUTPUTs bleiben beim Hilferücksprung unverändert. Vor HELP wird nur die lokale Replikat-Exporttabelle angelegt; die übrigen Ergebnistabellen folgen erst danach. Bei ausgelassenem Argument gilt der angegebene Default.';
+        PRINT N'@StatusCodeOut varchar(40) OUTPUT; Default: NULL. Die Procedure setzt den Status vor JSON und den Ausgabeadaptern. AVAILABLE steht für eine erfolgreiche Erfassung ohne Befund, AVAILABLE_WITH_FINDING für eine erfolgreiche Erfassung mit Befund vor der Ausgabegrenze. INVALID_PARAMETER meldet ungültige Schwellen-, Zeilen- oder Ausgabeparameter. NOT_APPLICABLE bedeutet, dass die Instanzprüfung HADR nicht als aktiviert bestätigt. DENIED_PERMISSION ist die CATCH-Klassifikation für SQL-Fehler 229, 297, 300 und 371; ERROR_HANDLED bezeichnet andere abgefangene Erfassungsfehler. HELP und ein früher TABLE-Preflight-Fehler lassen die gebundene Variable unverändert. INVALID_PARAMETER, DENIED_PERMISSION und ERROR_HANDLED setzen IsPartial=1; die übrigen drei Statuswerte lassen IsPartial=0. Im CATCH werden die erfasste Fehlernummer und Meldung weitergegeben; die Zuordnung belegt keine Fehlerursache. Binden Sie eine Variable des deklarierten Typs mit OUTPUT.';
+        PRINT N'@IsPartialOut bit OUTPUT; Default: NULL. Er wird zusammen mit den Statuswerten nach der Erfassung gesetzt; HELP kehrt vorher zurück. Ungültige Parameter und abgefangene Runtimefehler setzen 1; NOT_APPLICABLE lässt den Wert 0. Binden Sie eine Variable des deklarierten Typs mit OUTPUT.';
+        PRINT N'@ErrorNumberOut int OUTPUT; Default: NULL. Nur der Runtime-CATCH übernimmt ERROR_NUMBER(); sonst bleibt der Wert NULL. Die Zuweisung erfolgt vor Resultsets; HELP kehrt vorher zurück. Binden Sie eine Variable des deklarierten Typs mit OUTPUT.';
+        PRINT N'@ErrorMessageOut nvarchar(2048) OUTPUT; Default: NULL. Der Runtime-CATCH übernimmt ERROR_MESSAGE(); ungültige Parameter und NOT_APPLICABLE verwenden eine feste deutsche Meldung, regulär verfügbare Statuswerte lassen NULL stehen. Die Zuweisung erfolgt vor Resultsets; HELP kehrt vorher zurück. Binden Sie eine Variable des deklarierten Typs mit OUTPUT.';
+        PRINT N'Beispiel 1: EXEC [monitor].[USP_AvailabilityDeepAnalysis] @Hilfe=1;';
+        PRINT N'Beispiel 2: EXEC [monitor].[USP_AvailabilityDeepAnalysis] @MitClusterNetzwerken=0, @MaxZeilen=100, @ResultSetArt=''RAW'';';
+        PRINT N'Beispiel 3: DECLARE @AgDeepJson nvarchar(max); EXEC [monitor].[USP_AvailabilityDeepAnalysis] @MaxZeilen=100, @ResultSetArt=''NONE'', @JsonErzeugen=1, @Json=@AgDeepJson OUTPUT; SELECT @AgDeepJson AS [Json];';
+        PRINT N'Beispiel 4: CREATE TABLE #AvailabilityDeepAnalysis_HelpExample ([Seed] int NULL); BEGIN TRY EXEC [monitor].[USP_AvailabilityDeepAnalysis] @MaxZeilen=100, @ResultSetArt=''TABLE'', @ResultTablesJson=N''{"replicas":"#AvailabilityDeepAnalysis_HelpExample"}''; SELECT * FROM #AvailabilityDeepAnalysis_HelpExample; DROP TABLE #AvailabilityDeepAnalysis_HelpExample; END TRY BEGIN CATCH DROP TABLE #AvailabilityDeepAnalysis_HelpExample; THROW; END CATCH;';
         RETURN;
     END;
 
@@ -45655,7 +48076,7 @@ GO
 Objekt       : monitor.USP_AgentMonitoringAnalysis
 Version      : 1.1.0
 Stand        : 2026-07-18
-Zweck        : Prüft SQL-Agent-/Alert-/Operator-/Job- und Database-Mail-Evidenz.
+Zweck        : Die Procedure prüft SQL-Agent-/Alert-/Operator-/Job- und Database-Mail-Evidenz.
 Datenquellen : sys.dm_server_services, msdb.dbo.sysalerts,
                msdb.dbo.sysoperators, msdb.dbo.sysnotifications,
                msdb.dbo.sysjobs, msdb.dbo.sysjobschedules,
@@ -45705,9 +48126,28 @@ BEGIN
     IF @Hilfe = 1
     BEGIN
         PRINT N'monitor.USP_AgentMonitoringAnalysis';
-        PRINT N'Prüft Alarmierungs- und Jobmetadaten, liest aber keine Mailadressen, Empfänger oder Jobschrittbefehle.';
-        PRINT N'Fehlende SQL-Agent-Alarme können durch externes Monitoring kompensiert sein.';
-        PRINT N'@HistoryHours=24; @MaxZeilen positiv, NULL/0 = unbegrenzt.';
+        PRINT N'Die Procedure erstellt einen lesenden Snapshot des SQL-Agent-Dienstes, der erforderlichen Alertabdeckung, des Alert-Routings, der Operatoren, des letzten sichtbaren Gesamtoutcomes je Job und optional aggregierter Database-Mail-Status. Sie liest keine Mailadressen, Empfänger, Betreffzeilen, Jobschrittbefehle oder Meldungstexte und führt keine Agent- oder Mailaktion aus.';
+        PRINT N'Voraussetzung sind die Procedure und ihre Interpretations- und TABLE-Helper im Schema monitor sowie ausreichende Lesesicht auf sys.dm_server_services und die verwendeten msdb-Kataloge. Fehlende Sichtbarkeit wird soweit abgefangen als AVAILABLE_LIMITED mit erster Fehlernummer und Fehlermeldung ausgewiesen. Für die TABLE-Ausgabe muss zusätzlich ein gültiges lokales Ziel vorhanden sein.';
+        PRINT N'Alertaktivität und Mailzeilen verwenden einen lokalen Cutoff; der Jobpfad liest dagegen den letzten sichtbaren Gesamtoutcome ohne Zeitfilter. Die Erhebung ist kein atomarer Snapshot und belegt weder erfolgreiche Zustellung noch eine vollständige Jobausführungsreihe oder externe Alarmierung.';
+        PRINT N'@HistoryHours int=24; Default: 24. Ganze Stundenzahl für das lokale Historienfenster der Alertaktivität und Database-Mail-Zeilen; erlaubt sind 1 bis 8760. Nach dem Hilfezweig wird der Cutoff mit DATEADD(HOUR, -@HistoryHours, GETDATE()) vor der Bereichsprüfung berechnet. NULL sowie Werte außerhalb des erlaubten Bereichs setzen INVALID_PARAMETER und IsPartial=1 und überspringen die Fachquellen, sofern die Cutoff-Berechnung erfolgreich war. Extreme int-Werte können vorher ungefangen an Negation oder datetime-Überlauf scheitern; dabei werden die Status-/Fehler-OUTPUTs nicht zugewiesen. Jobhistory wird ohne Zeitfilter nach dem letzten Gesamtoutcome durchsucht; der Cutoff klassifiziert nur diesen letzten Lauf. Übergeben Sie eine ganze Zahl oder eine int-Variable. Andere Literalformen durchlaufen zunächst die SQL-Typkonvertierung; eine leere Zeichenfolge ist kein eigener Leerwert des Prozedurcodes. Bei ausgelassenem Argument gilt der angegebene Default.';
+        PRINT N'@MitJobStatus bit=1; Default: 1. Steuert, ob Jobzustand, letzter Gesamtoutcome und Schedule-Zahlen aus msdb erhoben werden. Genau 1 aktiviert den Pfad. 0 und NULL lassen ihn aus; andere ursprüngliche Werte werden bereits beim Binden an bit durch SQL Server konvertiert oder abgewiesen. Der Jobpfad liest die vollständige sichtbare Gesamtzeilen-History ohne @HistoryHours-Filter und klassifiziert danach den letzten Outcome relativ zum Cutoff. Er führt keine Jobs aus oder ändert deren Zustand. Bei ausgelassenem Argument gilt der angegebene Default.';
+        PRINT N'@MitDatabaseMail bit=1; Default: 1. Steuert die Aggregation der Database-Mail-Zeilen aus msdb innerhalb des mit @HistoryHours gebildeten Cutoffs. Genau 1 aktiviert den Pfad; 0 und NULL lassen ihn aus. Andere Eingaben durchlaufen vor Prozedurbeginn die SQL-Konvertierung zu bit oder schlagen bei der Bindung fehl. Der Pfad liest nur Status, Anzahl und älteste/neuste Anforderungszeit; Adressen, Empfänger, Betreff und Nachrichtentext werden nicht ausgewertet. Ein Lesefehler setzt Partialstatus. Bei ausgelassenem Argument gilt der angegebene Default.';
+        PRINT N'@MaxZeilen int=1000; Default: 1000. Begrenzt die ausgegebenen Findings und Jobzeilen. NULL oder 0 bedeutet unbegrenzt; positive ganze Werte von 1 bis 2147483647 sind die Zeilenobergrenze; negative Werte setzen INVALID_PARAMETER und IsPartial=1 und überspringen die Quellen. Findings werden vor einer positiven Begrenzung nach HIGH, MEDIUM, INFO, Kategorie und Scope-Name gereiht; Jobs werden nach Jobname gereiht. Das Limit reduziert keine vorherige Katalog- oder Historyaggregation. Services und Mailstatus werden nicht mit dieser Zeilengrenze gekürzt. Bei ausgelassenem Argument gilt der angegebene Default.';
+        PRINT N'@ResultSetArt varchar(16)=''CONSOLE''; Default: ''CONSOLE''. Nach Entfernen äußerer Leerzeichen und Umwandlung in Großbuchstaben sind ausschließlich RAW, CONSOLE, NONE und TABLE erlaubt. NULL wird wie leer behandelt und ist ungültig. RAW liefert fünf Resultsets: Modulstatus, Services, begrenzte Findings, begrenzte Jobs und Mailaggregation. CONSOLE liefert genau eine Findingsausgabe mit verständlicher Hinweiszeile bei leerer Menge; es gibt dabei keine zusätzlichen Service- oder Modulstatus-Resultsets. NONE unterdrückt fachliche Resultsets. TABLE schreibt ausschließlich findings in das vorgeprüfte Ziel. JSON über @JsonErzeugen und die Status-/Fehler-OUTPUTs sind davon unabhängig. Ungültige Werte führen nach dem Hilfezweig zu INVALID_PARAMETER mit IsPartial=1. Eingaben werden zunächst an varchar(16) gebunden. Bei ausgelassenem Argument gilt der angegebene Default.';
+        PRINT N'@ResultTablesJson nvarchar(max)=NULL; Default: NULL. Enthält ausschließlich für TABLE die JSON-Zuordnung des einen exportierbaren Resultsets findings, in der Form {"findings":"#ExampleTarget"}: genau dieser case-sensitive Schlüssel mit dem lokalen Zielnamen als JSON-Stringwert, keine weiteren Eigenschaften. Der Zielname darf höchstens 116 Zeichen lang sein. Das Ziel muss eine vorhandene, leere lokale #Temp-Tabelle mit genau einer Seed-Spalte sein; globale ##Temp-Tabellen, permanente Tabellen, das reservierte Präfix #Monitor, unbekannte oder doppelte Namen/Ziele, nichtstringige Werte, leere Ziele und zusätzliche Schlüssel sind unzulässig. Das JSON muss ein Objekt sein; NULL, leer oder nur Leerzeichen ist kein gültiges TABLE-Mapping. Außerhalb TABLE sind NULL/leer/Leerzeichen zulässig; jeder nichtleere Wert löst Fehler 51011 aus. TABLE-Mapping und Ziel werden vor der Hilfeausgabe vorgeprüft, sodass ein ungültiges Mapping auch mit @Hilfe=1 fehlschlägt. Der Helper erwartet OPENJSON-kompatibles JSON und installiertes Framework. Bei ausgelassenem Argument gilt der angegebene Default.';
+        PRINT N'@JsonErzeugen bit=0; Default: 0. Aktiviert die zusätzliche JSON-Erzeugung nur bei exakt 1; 0 und NULL überspringen sie. SQL Server bindet Eingaben zuerst an bit und konvertiert oder verwirft abweichende Formen. Bei Aktivierung enthält @Json das Objekt meta sowie die vier Arrays services, findings, jobs und mailStatus. Die Arrays verwenden INCLUDE_NULL_VALUES; meta wird ohne INCLUDE_NULL_VALUES serialisiert, sodass NULL-Eigenschaften dort entfallen. meta enthält UTC-Erstellungszeit, Status, Partialflag und @HistoryHours. Findings und Jobs folgen @MaxZeilen; Services und Mailstatus bleiben vollständige getrennte Arrays. Die Ausgabe enthält keine Mailadressen, Empfänger, Betreffzeilen, Jobbefehle oder Meldungstexte. @Json wird am Prozedureintritt auf NULL gesetzt und bleibt bei deaktiviertem Schalter oder vorzeitigem Hilfe-RETURN NULL. Bei ausgelassenem Argument gilt der angegebene Default.';
+        PRINT N'@Json nvarchar(max)=NULL OUTPUT; Default: NULL. Empfängt bei @JsonErzeugen=1 das erzeugte JSON nvarchar(max) mit meta-, services-, findings-, jobs- und mailStatus-Elementen. Der Wert wird zu Beginn immer auf NULL gesetzt und nur nach abgeschlossener Erhebung bei aktiviertem JSON-Schalter befüllt; bei Hilfe-RETURN und Fehlern vor der Erzeugung bleibt er NULL. NULL-Werte werden in den Kontextarrays erhalten. Findings und Jobs verwenden die Begrenzung aus @MaxZeilen. Status-/Fehler-OUTPUTs werden bei Hilfe-RETURN nicht aktualisiert. Ohne OUTPUT-Bindung wird kein Wert an eine aufrufende Variable zurückgegeben.';
+        PRINT N'@PrintMeldungen bit=1; Default: 1. Wird in der Implementierung nicht gelesen und steuert daher weder PRINT-Ausgaben noch Resultsets. Die fest codierten PRINT-Zeilen der Hilfeausgabe erscheinen bei @Hilfe=1 unabhängig von diesem Schalter. NULL sowie 0 oder 1 ändern das Verhalten nicht; eine Bit-Konvertierung oder ein Konvertierungsfehler geschieht vor dem Prozedurcode. Bei ausgelassenem Argument gilt der angegebene Default.';
+        PRINT N'@Hilfe bit=0; Default: 0. Bei exakt 1 gibt die Procedure ihre Hilfe mit PRINT aus und kehrt vor der Analyse mit RETURN zurück. 0 und NULL führen in den normalen Ablauf; abweichende Formen werden beim Binden an bit konvertiert oder abgewiesen. @Json wird zuvor auf NULL gesetzt. Die Status-, Partial- und Fehler-OUTPUTs werden im Hilfezweig nicht belegt und behalten ihre Eingangs-/Bindungswerte. Die Ausgabeoptionen werden vor diesem Zweig geprüft: ein ungültiger Nicht-TABLE-Wert von @ResultTablesJson oder ein fehlerhafter TABLE-Preflight kann daher trotz Hilfe einen Fehler auslösen. Bei ausgelassenem Argument gilt der angegebene Default.';
+        PRINT N'@StatusCodeOut varchar(40)=NULL OUTPUT; Default: NULL. Empfängt genau einen der vier Modulstatuswerte: INVALID_PARAMETER bei einem nach erfolgreicher Cutoff-Berechnung erkannten ungültigen Historien-, Zeilen- oder Ausgabewert; AVAILABLE_LIMITED bei mindestens einem abgefangenen Quellenfehler; AVAILABLE_WITH_FINDING bei mindestens einem HIGH-/MEDIUM-Finding oder einem nicht laufenden sichtbaren Agentdienst ohne Quellenfehler; AVAILABLE sonst, auch bei ausschließlich INFO-Findings. Der Status wird vor der Ausgabegrenze auf der vollständigen Erhebung bestimmt. Binden Sie eine varchar(40)-Variable mit OUTPUT. Bei @Hilfe=1 sowie bei einem Fehler des frühen TABLE-Preflights oder der Cutoff-Berechnung bleibt die Eingangs-/Bindungsvariable unverändert. Ohne OUTPUT-Bindung wird kein Wert an eine aufrufende Variable zurückgegeben.';
+        PRINT N'@IsPartialOut bit=NULL OUTPUT; Default: NULL. Empfängt das Partialflag: 0 bei vollständiger Erhebung, 1 bei ungültigem Historien-/Zeilen-/Ausgabewert oder einem abgefangenen Fehler eines Quellenpfads. Ein ausgelassener optionaler Job- oder Mailpfad allein setzt das Flag nicht. Bei @Hilfe=1 sowie bei Fehlern im frühen Ausgabepreflight wird der Wert vor Abbruch/RETURN nicht beschrieben. Ohne OUTPUT-Bindung wird kein Wert an eine aufrufende Variable zurückgegeben.';
+        PRINT N'@ErrorNumberOut int=NULL OUTPUT; Default: NULL. Empfängt die erste abgefangene SQL-Quellenfehlernummer oder NULL, wenn kein Quellenfehler erfasst wurde. Ein ungültiger Analyseparameter setzt keinen Fehlernummernwert. Bei @Hilfe=1 und bei einem Fehler des frühen Output-Mappings erfolgt keine Zuweisung. Ohne OUTPUT-Bindung wird kein Wert an eine aufrufende Variable zurückgegeben.';
+        PRINT N'@ErrorMessageOut nvarchar(2048)=NULL OUTPUT; Default: NULL. Empfängt NULL ohne abgefangenen Quellenfehler oder den ersten abgefangenen SQL-Fehler mit einem quellenspezifischen Präfix in nvarchar(2048). Bei ungültigen Analyseparametern steht hier eine generische Parameterfehlermeldung; spätere Quellenfehler überschreiben die erste gespeicherte Fehlermeldung nicht. Die Texte können SQL-Fehlerdetails enthalten, umfassen aber keine gelesenen Mail- oder Jobnachrichten. Bei Hilfe-RETURN und frühem Mappingfehler erfolgt keine Zuweisung. Ohne OUTPUT-Bindung wird kein Wert an eine aufrufende Variable zurückgegeben.';
+        PRINT N'Beispiel 1: EXEC [monitor].[USP_AgentMonitoringAnalysis] @Hilfe=1;';
+        PRINT N'Beispiel 2: EXEC [monitor].[USP_AgentMonitoringAnalysis] @HistoryHours=24, @MaxZeilen=100, @ResultSetArt=''RAW'';';
+        PRINT N'Beispiel 3: DECLARE @AgentMonitoringJson nvarchar(max), @AgentMonitoringStatus varchar(40), @AgentMonitoringPartial bit, @AgentMonitoringError int, @AgentMonitoringMessage nvarchar(2048); EXEC [monitor].[USP_AgentMonitoringAnalysis] @HistoryHours=24, @MaxZeilen=100, @ResultSetArt=''NONE'', @JsonErzeugen=1, @Json=@AgentMonitoringJson OUTPUT, @StatusCodeOut=@AgentMonitoringStatus OUTPUT, @IsPartialOut=@AgentMonitoringPartial OUTPUT, @ErrorNumberOut=@AgentMonitoringError OUTPUT, @ErrorMessageOut=@AgentMonitoringMessage OUTPUT; SELECT @AgentMonitoringStatus AS [StatusCode], @AgentMonitoringPartial AS [IsPartial], @AgentMonitoringError AS [ErrorNumber], @AgentMonitoringMessage AS [ErrorMessage], @AgentMonitoringJson AS [Json];';
+        PRINT N'Beispiel 4: CREATE TABLE #AgentMonitoring_HelpExample ([Seed] int NULL); BEGIN TRY EXEC [monitor].[USP_AgentMonitoringAnalysis] @MaxZeilen=100, @ResultSetArt=''TABLE'', @ResultTablesJson=N''{"findings":"#AgentMonitoring_HelpExample"}''; SELECT * FROM #AgentMonitoring_HelpExample; DROP TABLE #AgentMonitoring_HelpExample; END TRY BEGIN CATCH DROP TABLE #AgentMonitoring_HelpExample; THROW; END CATCH;';
+        PRINT N'Beispiel 5: EXEC [monitor].[USP_AgentMonitoringAnalysis] @HistoryHours=24, @MitJobStatus=0, @MitDatabaseMail=0, @MaxZeilen=100, @ResultSetArt=''RAW'';';
         RETURN;
     END;
 
@@ -46102,9 +48542,33 @@ BEGIN
     IF @Hilfe=1
     BEGIN
         PRINT N'monitor.USP_MaintenanceOperations';
-        PRINT N'Die Procedure liefert eine korrelierte, rein lesende Sicht auf Wartungsrequests, resumierbare Indexoperationen, ADR/PVS und explizit gefilterte Agent-Jobs.';
-        PRINT N'Ohne @JobNames oder @JobNamePattern werden weder Jobnamen noch Jobaktivitaet gelesen; JobNamePattern ist ein LIKE-Pattern.';
-        PRINT N'Keine SQL-Texte, Jobschritte, Befehlsinhalte, Meldungen, Konten, Clientdaten oder Wait-Ressourcen werden gelesen.';
+        PRINT N'@DatabaseNames nvarchar(max). Default ist NULL. Pipe-Liste exakter einteiliger SQL-Namen. Klammern schützen enthaltene Pipe-Zeichen. ]] maskiert eine schließende Klammer. Äußere Segmentleerzeichen werden entfernt. Ungültige Elemente werden abgelehnt. NULL, Leertext und reine Leerzeichen bedeuten keine exakte Einschränkung. Eine wirksame Liste darf nicht mit DatabaseNamePattern kombiniert werden.';
+        PRINT N'@SystemdatenbankenEinbeziehen bit. Default ist 0. 0 schließt Systemdatenbanken aus. 1 erlaubt ihre Einbeziehung in Kandidaten. Ändert nicht die separaten Ausschlüsse fest kodierter Datenbanken/Quellen. NULL wird als ungültiger Bit-Wert abgelehnt.';
+        PRINT N'@DatabaseNamePattern nvarchar(4000). Default ist NULL. NULL deaktiviert das Muster. Ohne Präfix oder mit LIKE: gilt SQL LIKE mit % und _. REGEX: berücksichtigt Groß- und Kleinschreibung, REGEXI: ignoriert sie. Regex benötigt SQL Server 2025 und Compatibility Level 170. Leertext ist ungültig. Nicht mit wirksamer exakter Liste kombinieren.';
+        PRINT N'@HighImpactConfirmed bit. Default ist 0. 0 bestätigt keinen geschützten Pfad. 1 bestätigt einen tatsächlich aktivierten Pfad. NULL wird vom Candidate-Helper abgelehnt. Dieser Aufruf übergibt AnalysisClass=NULL und aktiviert damit keine zusätzliche Klassenprüfung.';
+        PRINT N'@JobNames nvarchar(max). Default ist NULL. Pipe-Liste exakter einteiliger SQL-Namen. Klammern schützen enthaltene Pipe-Zeichen. ]] maskiert eine schließende Klammer. Äußere Segmentleerzeichen werden entfernt. Ungültige Elemente werden abgelehnt. Ohne wirksame Jobliste und ohne Jobmuster liest die Procedure keine Jobdaten. Eine nichtleere ungültige Liste ergibt INVALID_PARAMETER. Nicht mit JobNamePattern kombinieren.';
+        PRINT N'@JobNamePattern nvarchar(4000). Default ist NULL. NULL deaktiviert das Jobmuster. Ohne Präfix oder mit LIKE: gilt SQL LIKE. REGEX: und REGEXI: ergeben UNAVAILABLE_FEATURE. Leertext und reine Leerzeichen ergeben INVALID_PARAMETER. Nicht mit JobNames kombinieren.';
+        PRINT N'@NurProblematisch bit. Default ist 0. 0 zeigt alle bewerteten Befunde. 1 und NULL beschränken die vier fachlichen Mengen auf HIGH und MEDIUM. Die Filterung erfolgt nach dem Quellenlesen.';
+        PRINT N'@ResumablePausedWarnMinutes int. Default ist 60. Warnschwelle in Minuten von 1 bis 525600. Zahlen außerhalb des Bereichs sind ungültig. NULL ergibt INVALID_PARAMETER und leere fachliche Ergebnismengen. Die Eingabe wird als int gebunden; Leertext hat keinen Sonderdefault und unterliegt vor der Procedure der SQL-Konvertierung, danach der Bereichsprüfung.';
+        PRINT N'@BlockedWarnMs bigint. Default ist 5000. Nichtnegative Warnschwelle in Millisekunden bei positiver BlockingSessionId. Negative Werte sind ungültig. NULL ergibt INVALID_PARAMETER und leere fachliche Ergebnismengen. Die Eingabe wird als bigint gebunden; Leertext hat keinen Sonderdefault und unterliegt vor der Procedure der SQL-Konvertierung, danach der Bereichsprüfung.';
+        PRINT N'@PvsWarnMb decimal(19,2). Default ist 1024. Nichtnegative PVS-Warnschwelle in MB. Die Warnung setzt zusätzlich die Grenze für abgebrochene Transaktionen voraus. Negative Werte sind ungültig. NULL ergibt INVALID_PARAMETER und leere fachliche Ergebnismengen. Die Eingabe wird als decimal(19,2) gebunden; Leertext hat keinen Sonderdefault und unterliegt vor der Procedure der SQL-Konvertierung, danach der Bereichsprüfung.';
+        PRINT N'@AbortedTransactionsWarnCount bigint. Default ist 1. Nichtnegative Mindestzahl abgebrochener Transaktionen für die gemeinsame PVS-Warnung. Negative Werte sind ungültig. NULL ergibt INVALID_PARAMETER und leere fachliche Ergebnismengen. Die Eingabe wird als bigint gebunden; Leertext hat keinen Sonderdefault und unterliegt vor der Procedure der SQL-Konvertierung, danach der Bereichsprüfung.';
+        PRINT N'@MaxZeilen int. Default ist 1000. Je fachliche Menge: NULL oder 0 unbegrenzt, positiv Top-N nach jeweiliger Sortierung, negativ INVALID_PARAMETER. Wirkt nach vollständiger Quellenmaterialisierung und NurProblematisch-Auswahl.';
+        PRINT N'@LockTimeoutMs int. Default ist 0. Nichtnegative Millisekunden für datenbanklokale Abfragen. 0 bedeutet NOWAIT. Negative Werte sind ungültig. NULL ergibt INVALID_PARAMETER und leere fachliche Ergebnismengen; ein dynamischer Abfragebatch wird dafür nicht aufgebaut. Die Eingabe wird als int gebunden; Leertext hat keinen Sonderdefault und unterliegt vor der Procedure der SQL-Konvertierung, danach der Bereichsprüfung.';
+        PRINT N'@ResultSetArt varchar(16). Default ist ''CONSOLE''. CONSOLE zeigt resumableOperations mit Beschriftung. RAW liefert Modulstatus, fachliche Mengen und Quellenstatus. TABLE exportiert ausschließlich resumableOperations. NONE unterdrückt die Datenresultsets. Rand-Leerzeichen und Groß- und Kleinschreibung werden normalisiert. NULL, Leertext und andere Werte sind ungültig.';
+        PRINT N'@ResultTablesJson nvarchar(max). Default ist NULL. Nur mit ResultSetArt=TABLE erlaubt. JSON-Objekt mit genau dem Schlüssel resumableOperations und Zielnamen einer vorher angelegten, leeren lokalen #Temp-Tabelle mit genau einer Seed-Spalte. mapping wird vor fachlichen Quellen geprüft. NULL/leer bei TABLE führt zu Mapping-Fehler. Bei anderen Modi muss NULL/leer sein, sonst THROW 51011. Keine persistente Tabelle.';
+        PRINT N'@JsonErzeugen bit. Default ist 0. 1 erzeugt JSON in Json unabhängig von der Ausgabeart. 0 und NULL erzeugen kein Dokument.';
+        PRINT N'@Json nvarchar(max) OUTPUT. Default ist NULL. Ausgabeparameter. wird beim Eintritt auf NULL gesetzt und bei JSON-Erzeugung befüllt. Eingabewert wird ignoriert. Für den Empfang eine Variable des deklarierten Typs mit OUTPUT binden.';
+        PRINT N'@PrintMeldungen bit. Default ist 1. 1 aktiviert informative Statusmeldungen. 0 und NULL unterdrücken sie.';
+        PRINT N'@Hilfe bit. Default ist 0. 1 zeigt die Hilfe nach der TABLE-Vorprüfung und beendet vor dem Quellzugriff. 0 und NULL setzen die normale Verarbeitung fort.';
+        PRINT N'@StatusCodeOut varchar(40) OUTPUT. Default ist NULL. Ausgabeparameter. Statuscode des Laufs, z.B. AVAILABLE/AVAILABLE_LIMITED/INVALID_PARAMETER. Eingabe ignoriert. Für den Empfang eine Variable des deklarierten Typs mit OUTPUT binden.';
+        PRINT N'@IsPartialOut bit OUTPUT. Default ist NULL. Ausgabeparameter. 1 kennzeichnet unvollständige Evidenz, 0 vollständig im erreichbaren Scope. Eingabe ignoriert. Für den Empfang eine Variable des deklarierten Typs mit OUTPUT binden.';
+        PRINT N'@ErrorNumberOut int OUTPUT. Default ist NULL. Ausgabeparameter für erfasste SQL-Fehlernummer. NULL wenn keiner erfasst wurde. Eingabe ignoriert. Für den Empfang eine Variable des deklarierten Typs mit OUTPUT binden.';
+        PRINT N'@ErrorMessageOut nvarchar(2048) OUTPUT. Default ist NULL. Ausgabeparameter für erfasste Fehlermeldung. NULL ohne Fehler. Eingabe ignoriert. Für den Empfang eine Variable des deklarierten Typs mit OUTPUT binden.';
+        PRINT N'Beispiel 1. EXEC [monitor].[USP_MaintenanceOperations] @Hilfe=1;';
+        PRINT N'Beispiel 2. EXEC [monitor].[USP_MaintenanceOperations] @DatabaseNames=N''[ExampleDatabase]'', @MaxZeilen=50, @ResultSetArt=''RAW'';';
+        PRINT N'Beispiel 3. DECLARE @ResultJson nvarchar(max); EXEC [monitor].[USP_MaintenanceOperations] @DatabaseNames=N''[ExampleDatabase]'', @MaxZeilen=50, @ResultSetArt=''NONE'', @JsonErzeugen=1, @Json=@ResultJson OUTPUT; SELECT @ResultJson AS [Json];';
+        PRINT N'Beispiel 4. CREATE TABLE #MaintenanceOperations_HelpExample ([Seed] int NULL); BEGIN TRY EXEC [monitor].[USP_MaintenanceOperations] @DatabaseNames=N''[ExampleDatabase]'', @MaxZeilen=50, @ResultSetArt=''TABLE'', @ResultTablesJson=N''{"resumableOperations":"#MaintenanceOperations_HelpExample"}''; SELECT * FROM #MaintenanceOperations_HelpExample; DROP TABLE #MaintenanceOperations_HelpExample; END TRY BEGIN CATCH DROP TABLE #MaintenanceOperations_HelpExample; THROW; END CATCH;';
         RETURN;
     END;
 
@@ -46193,9 +48657,10 @@ BEGIN
         , [EvidenceLimit] nvarchar(1000) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
     );
 
-    IF @MaxZeilen<0 OR @LockTimeoutMs<0
-       OR @ResumablePausedWarnMinutes<1 OR @ResumablePausedWarnMinutes>525600
-       OR @BlockedWarnMs<0 OR @PvsWarnMb<0 OR @AbortedTransactionsWarnCount<0
+    IF @MaxZeilen<0 OR @LockTimeoutMs IS NULL OR @LockTimeoutMs<0
+       OR @ResumablePausedWarnMinutes IS NULL OR @ResumablePausedWarnMinutes<1 OR @ResumablePausedWarnMinutes>525600
+       OR @BlockedWarnMs IS NULL OR @BlockedWarnMs<0 OR @PvsWarnMb IS NULL OR @PvsWarnMb<0
+       OR @AbortedTransactionsWarnCount IS NULL OR @AbortedTransactionsWarnCount<0
        OR @JobPatternIsValid=0 OR (@JobNames IS NOT NULL AND @JobNamePattern IS NOT NULL)
        OR @OutputMode NOT IN ('RAW','CONSOLE','NONE')
     BEGIN
@@ -46580,12 +49045,29 @@ BEGIN
     IF @Hilfe=1
     BEGIN
         PRINT N'monitor.USP_ErrorLogAnalysis';
-        PRINT N'Standardmäßig liest die Procedure das aktuelle SQL-Server-Errorlog für die letzten 24 Stunden in der vom Errorlog gelieferten Serverlokalzeit und erstellt eine kategorisierte Zusammenfassung.';
-        PRINT N'@MaxArchivNummer=0 liest nur das aktuelle Log; höhere Werte lesen Archive 0..n. Kein Logwechsel wird ausgeführt.';
-        PRINT N'@Suchtext1/@Suchtext2 ersetzen die kuratierten Defaultfilter durch einen benutzerdefinierten dokumentierten sp_readerrorlog-Filter.';
-        PRINT N'@MeldungstextEinbeziehen=1 aktiviert Details. @MaxMeldungszeichen=0 ist unbegrenzt; Kürzung erzeugt genau eine Warning.';
-        PRINT N'@MaxQuellzeilen begrenzt materialisierte Treffer; 0 ist explizit unbegrenzt. Sehr große Logs können trotz Keywordfilter Last erzeugen.';
-        PRINT N'@ResultSetArt=CONSOLE|RAW|TABLE|NONE; TABLE-Namen: moduleStatus, summary, details, sourceStatus, warnings.';
+        PRINT N'@AgentEinbeziehen bit. Default ist 0. 0 liest nur SQL-Server-Logs. 1 nimmt zusätzlich Agent-Logs auf. NULL/andere Bitwerte ungültig.';
+        PRINT N'@MaxArchivNummer tinyint. Default ist 0. Höchste Archivnummer. 0 nur aktuelles Log, n liest Archive 0..n für gewählte Produkte. 0..20 inkl.. NULL oder >20 ungültig. Keine Rotation.';
+        PRINT N'@SeitServerlokalzeit datetime2(3). Default ist NULL. Untergrenze für LogDate in Serverlokalzeit. NULL berechnet 24 Stunden vor serverlokaler SYSDATETIME beim Prozedurstart. Der Grenzwert wird nach Keywordfilter angewandt, sp_readerrorlog wird dadurch zeitlich nicht eingeengt. Fester Zeitpunkt empfohlen für reproduzierbare Läufe. kein UTC-Offset wird angenommen.';
+        PRINT N'@Suchtext1 nvarchar(4000). Default ist NULL. NULL zusammen mit Suchtext2=NULL aktiviert kuratierte Suchregeln. Ein nichtleerer Suchtext ersetzt diese Regeln durch den dokumentierten Keywordfilter. Leertext und reine Leerzeichen sind ungültig. Suchtext2 darf nur zusammen mit Suchtext1 gesetzt sein.';
+        PRINT N'@Suchtext2 nvarchar(4000). Default ist NULL. Optionaler zweiter Keywordfilter zusammen mit Suchtext1. NULL deaktiviert ihn. Ohne ersten Suchtext oder bei leerer beziehungsweise nur aus Leerzeichen bestehender Eingabe ist der Aufruf ungültig.';
+        PRINT N'@MeldungstextEinbeziehen bit. Default ist 0. 0 lässt Details/Volltext aus. 1 aktiviert Detailausgabe mit ProcessInfo und projiziertem Meldungstext (Datenschutz-Opt-in). NULL ungültig. Ausgabe bleibt durch MaxZeilen und MaxMeldungszeichen begrenzbar.';
+        PRINT N'@MaxMeldungszeichen int. Default ist 4000. Maximale Zeichen pro projiziertem Meldungstext. 4000 default, 0 explizit unbegrenzt. nichtnegativ. Kürzung erzeugt genau eine Warning. NULL/negativ ungültig.';
+        PRINT N'@MaxQuellzeilen int. Default ist 10000. Eine positive ganze Zahl begrenzt die materialisierten Quelltreffer. NULL oder 0 hebt die Grenze auf. Negative Werte sind ungültig. Keywordfilter wirken beim Loglesen, die Zeitprüfung anschließend.';
+        PRINT N'@MaxZeilen int. Default ist 1000. Detailausgabe Top-N nach Sortierung. 1000 default, 0 oder NULL unbegrenzt, positiv begrenzt, negativ ungültig. Begrenzt keine Summary, Quellenstatus, Zähler oder Warnungen.';
+        PRINT N'@ResultSetArt varchar(16). Default ist ''CONSOLE''. CONSOLE zeigt die Zusammenfassung. RAW liefert alle fachlichen Mengen mit Status und Warnungen. TABLE schreibt benannte Ergebnismengen. NONE unterdrückt die Resultsets. Rand-Leerzeichen und Groß- und Kleinschreibung werden normalisiert. NULL, Leertext und andere Werte sind ungültig.';
+        PRINT N'@ResultTablesJson nvarchar(max). Default ist NULL. Bei TABLE ist ein gültiges nichtleeres JSON-Objekt erforderlich. Wählen Sie eine Teilmenge der exakten Schlüssel moduleStatus, summary, details, sourceStatus und warnings. Jeder Wert benennt eine andere vorhandene leere lokale #Temp-Tabelle mit einer Seed-Spalte. Globale Tabellen und #Monitor-Präfixe sind ausgeschlossen. Außerhalb von TABLE sind nur NULL, Leertext und reine Leerzeichen zulässig.';
+        PRINT N'@JsonErzeugen bit. Default ist 0. 1 erzeugt JSON, 0 aus. NULL ungültig. JSON enthält Metadaten, Summary und je nach Opt-in Details.';
+        PRINT N'@Json nvarchar(max) OUTPUT. Default ist NULL. Outputparameter, wird zu Beginn NULL gesetzt. bei JsonErzeugen=1 befüllt. Eingabe ignoriert. Für den Empfang eine Variable des deklarierten Typs mit OUTPUT binden.';
+        PRINT N'@PrintMeldungen bit. Default ist 1. Steuert PRINT-Meldungen. 1 an, 0 aus, NULL ungültig. Verändert nicht das Resultset.';
+        PRINT N'@Hilfe bit. Default ist 0. 1 zeigt die Hilfe vor dem Logzugriff und der Parameterprüfung. 0 und NULL führen die Analyse aus.';
+        PRINT N'@StatusCodeOut varchar(40) OUTPUT. Default ist NULL. Outputstatus des Laufs, z.B. AVAILABLE/AVAILABLE_LIMITED/DENIED_PERMISSION. Eingabe ignoriert. Für den Empfang eine Variable des deklarierten Typs mit OUTPUT binden.';
+        PRINT N'@IsPartialOut bit OUTPUT. Default ist NULL. Outputbit, kennzeichnet unvollständige Quellen/Evidenz. Eingabe ignoriert. Für den Empfang eine Variable des deklarierten Typs mit OUTPUT binden.';
+        PRINT N'@ErrorNumberOut int OUTPUT. Default ist NULL. Outputfehlernummer oder NULL, wenn keiner erfasst. Eingabe ignoriert. Für den Empfang eine Variable des deklarierten Typs mit OUTPUT binden.';
+        PRINT N'@ErrorMessageOut nvarchar(2048) OUTPUT. Default ist NULL. Outputfehlertext oder NULL, wenn keiner erfasst. Eingabe ignoriert. Für den Empfang eine Variable des deklarierten Typs mit OUTPUT binden.';
+        PRINT N'Beispiel 1. EXEC [monitor].[USP_ErrorLogAnalysis] @Hilfe=1;';
+        PRINT N'Beispiel 2. DECLARE @Since datetime2(3)=''2026-01-01T00:00:00''; EXEC [monitor].[USP_ErrorLogAnalysis] @SeitServerlokalzeit=@Since, @Suchtext1=N''ExampleNoMatch'', @MaxQuellzeilen=100, @MaxZeilen=25, @ResultSetArt=''RAW'';';
+        PRINT N'Beispiel 3. DECLARE @Since datetime2(3)=''2026-01-01T00:00:00''; DECLARE @ResultJson nvarchar(max); EXEC [monitor].[USP_ErrorLogAnalysis] @SeitServerlokalzeit=@Since, @Suchtext1=N''ExampleNoMatch'', @MaxQuellzeilen=100, @MaxZeilen=25, @ResultSetArt=''NONE'', @JsonErzeugen=1, @Json=@ResultJson OUTPUT; SELECT @ResultJson AS [Json];';
+        PRINT N'Beispiel 4. CREATE TABLE #ErrorLogAnalysis_HelpExample ([Seed] int NULL); DECLARE @Since datetime2(3)=''2026-01-01T00:00:00''; BEGIN TRY EXEC [monitor].[USP_ErrorLogAnalysis] @SeitServerlokalzeit=@Since, @Suchtext1=N''ExampleNoMatch'', @MaxQuellzeilen=100, @MaxZeilen=25, @ResultSetArt=''TABLE'', @ResultTablesJson=N''{"moduleStatus":"#ErrorLogAnalysis_HelpExample"}''; SELECT * FROM #ErrorLogAnalysis_HelpExample; DROP TABLE #ErrorLogAnalysis_HelpExample; END TRY BEGIN CATCH DROP TABLE #ErrorLogAnalysis_HelpExample; THROW; END CATCH;';
         RETURN;
     END;
 
@@ -47002,11 +49484,33 @@ BEGIN
     IF @Hilfe = 1
     BEGIN
         PRINT N'monitor.USP_InfrastructureAnalysis';
-        PRINT N'Die Modulschalter steuern die bestehenden Module sowie die optionalen Vertiefungen @MitBackupChain, @MitAvailabilityDeep und @MitAgentMonitoring.';
-        PRINT N'@DatabaseNames: exakter Name oder bracket-aware Pipe-Liste; NULL = alle zulässigen Datenbanken.';
-        PRINT N'@DatabaseNamePattern: alternatives LIKE-/Regex-Pattern; exakte Liste und Pattern sind gegenseitig exklusiv.';
-        PRINT N'@MaxZeilen: positive Werte begrenzen; NULL/0 = unbegrenzt; negative Werte sind ungültig.';
-        PRINT N'@ResultSetArt=CONSOLE (Default)|RAW|TABLE|NONE case-insensitiv; @JsonErzeugen=1 setzt @Json OUTPUT.';
+        PRINT N'@MitAgent bit. Default ist 1. Schaltet monitor.USP_AgentStatus ein (1) oder aus (0). NULL wirkt wegen der IF-Prüfung wie aus. sonstige bit-konvertierbare Werte werden vor Eintritt von SQL Server zu bit konvertiert (ungleich 0 wird 1), Konvertierungsfehler treten davor auf. Bei Auslassung gilt 1.';
+        PRINT N'@MitAgentJobs bit. Default ist 1. Schaltet monitor.USP_AgentJobs ein (1) oder aus (0). NULL wirkt wie aus. Bei Auslassung gilt 1.';
+        PRINT N'@MitResourceGovernor bit. Default ist 1. Schaltet monitor.USP_ResourceGovernorAnalysis ein (1) oder aus (0). NULL wirkt wie aus. Bei Auslassung gilt 1.';
+        PRINT N'@MitAvailabilityGroups bit. Default ist 1. Schaltet monitor.USP_AvailabilityGroups ein (1) oder aus (0). NULL wirkt wie aus. Bei Auslassung gilt 1.';
+        PRINT N'@MitBackupRecovery bit. Default ist 1. Schaltet monitor.USP_BackupRecovery ein (1) oder aus (0). NULL wirkt wie aus. Bei Auslassung gilt 1.';
+        PRINT N'@MitLogShipping bit. Default ist 1. Schaltet monitor.USP_LogShippingStatus ein (1) oder aus (0). NULL wirkt wie aus. Bei Auslassung gilt 1.';
+        PRINT N'@MitReplication bit. Default ist 1. Schaltet monitor.USP_ReplicationStatus ein (1) oder aus (0). NULL wirkt wie aus. Bei Auslassung gilt 1.';
+        PRINT N'@MitDataCapture bit. Default ist 1. Schaltet monitor.USP_DataCaptureStatus ein (1) oder aus (0). NULL wirkt wie aus. Bei Auslassung gilt 1.';
+        PRINT N'@MitReplicationDetails bit. Default ist 0. Der bit-Parameter nimmt 0, 1 oder NULL an; bei Auslassung gilt 0. 0 fordert nur sichtbare Replikationsrollen an. 1 fordert zusätzlich Publikations-, Subscription- und Fehlerdetails aus einer online sichtbaren lokalen Distribution-Datenbank an, einschließlich der letzten Agent-Historyzeile je Subscription. Der Child prüft den ENTERPRISE_TOPOLOGY_DEEP-Pfad mit Bestätigung, Gruppe und Berechtigung; die Bestätigung allein gibt den Pfad nicht frei. Eine fehlende online sichtbare Distribution-Datenbank ergibt Partialstatus oder, ohne Basiszeilen, UNAVAILABLE_FEATURE. NULL wird weitergereicht, aber nicht geprüft und fordert keine Details an. Der Parent reicht den Wert nur bei @MitReplication=1 als @MitDistributionDetails an USP_ReplicationStatus weiter; dieser Schalter aktiviert das Modul nicht.';
+        PRINT N'@MitBackupChain bit. Default ist 0. Schaltet das optionale Child USP_BackupChainAnalysis ein (1) oder aus (0). NULL wirkt wie aus. Bei Auslassung gilt 0.';
+        PRINT N'@MitAvailabilityDeep bit. Default ist 0. Schaltet das optionale Child USP_AvailabilityDeepAnalysis ein (1) oder aus (0). NULL wirkt wie aus. Bei Auslassung gilt 0.';
+        PRINT N'@MitAgentMonitoring bit. Default ist 0. Schaltet das optionale Child USP_AgentMonitoringAnalysis ein (1) oder aus (0). NULL wirkt wie aus. Bei Auslassung gilt 0.';
+        PRINT N'@DatabaseNames nvarchar(max). Default ist NULL. Pipe-Liste exakter einteiliger SQL-Namen für BackupRecovery, DataCaptureStatus und BackupChainAnalysis. Eckige Klammern schützen enthaltene Pipe-Zeichen und ]] maskiert eine schließende Klammer. Die Empfänger behandeln NULL, Leertext und reine Leerzeichen als keine exakte Einschränkung. Ungültige Einträge werden abgelehnt. Der Parent lehnt jede Kombination aus nicht-NULL-Liste und nicht-NULL-Muster ab.';
+        PRINT N'@SystemdatenbankenEinbeziehen bit. Default ist 0. Der Parent prüft den Wert nicht. SQL Server bindet ihn vor Prozedureintritt an bit: numerische 0 wird 0, numerische Werte ungleich 0 werden 1, NULL bleibt NULL; andere Literalformen unterliegen der SQL-Typkonvertierung und Bindungsfehler treten vor dem Prozeduraufruf auf. Eine eigene Textnormalisierung oder Leertextauswahl erfolgt nicht. Bei Auslassung gilt 0. 0 schließt master, tempdb, model und msdb aus der Kandidatenauswahl aus. 1 lässt diese vier Datenbanken zu, sofern sie sichtbar, online und zugänglich sind und die übrigen Listen- oder Patternfilter erfüllen. Der Parent reicht den gebundenen Wert unverändert nur an BackupRecovery (@MitBackupRecovery=1), DataCaptureStatus (@MitDataCapture=1) und BackupChainAnalysis (@MitBackupChain=1) weiter. NULL wird dort erst bei erreichter Kandidatenvalidierung als INVALID_PARAMETER abgelehnt; vorherige Fehler können Vorrang haben, und der Parent garantiert keine einheitliche Statusweitergabe. Der Schalter gewährt keine zusätzlichen Datenbankrechte und aktiviert kein Kindmodul. DataCaptureStatus verarbeitet tempdb auch bei 1 nicht.';
+        PRINT N'@DatabaseNamePattern nvarchar(4000). Default ist NULL; bei Auslassung gilt NULL und das Muster ist deaktiviert. Der Parser entfernt zuerst äußere U+0020-Leerzeichen. Er erkennt die Präfixe like:, regex: und regexi: ohne Beachtung der Groß- und Kleinschreibung; ohne bekanntes Präfix wird der gesamte Inhalt als LIKE-Muster verwendet, auch bei einem unbekannten Präfix. Nach Entfernen eines bekannten Präfixes wird nicht erneut getrimmt. NULL ergibt NONE. Leere Eingabe, nur U+0020-Leerzeichen und ein leerer Präfixrest ergeben intern EMPTY_PATTERN; bei erreichter Patternprüfung im Kindmodul wird INVALID_PARAMETER gemeldet. LIKE verwendet %, _ und [...] mit SQL_Latin1_General_CP1_CS_AS. REGEX verwendet Flag c und unterscheidet Groß- und Kleinschreibung; REGEXI verwendet Flag i und ignoriert sie. Die Präfixprüfung validiert keine Regexsyntax; Syntaxfehler entstehen erst, wenn REGEXP_LIKE tatsächlich ausgeführt wird. Regexausführung erfordert SQL Server 2025 und Compatibility Level mindestens 170 der Installationsdatenbank. Das Pattern ist keine Pipe-Liste. Im regulären Parentpfad ist jedes nicht-NULL @DatabaseNames zusammen mit einem nicht-NULL Pattern unzulässig, auch eine leere oder nur aus U+0020 bestehende Namensliste; der Hilfezweig kehrt vorher zurück. Sonst reicht der Parent das Pattern nur an aktive BackupRecovery, DataCaptureStatus und BackupChainAnalysis weiter. Der Kandidatenhelfer prüft das Pattern nur, wenn der tatsächliche Auswahl-/Parserpfad im Kindmodul erreicht wird.';
+        PRINT N'@HighImpactConfirmed bit. Default ist 0; bei Auslassung gilt 0. SQL Server bindet den Wert vor Prozedureintritt an bit: numerische 0 wird 0, numerische Werte ungleich 0 werden 1, NULL bleibt NULL; andere Eingabeformen unterliegen der SQL-Typkonvertierung, eine eigene Textnormalisierung oder Leertextauswahl erfolgt nicht, und Bindungsfehler treten vor dem Prozeduraufruf auf. Der Parent prüft oder normalisiert den Wert nicht und reicht ihn unverändert nur an BackupRecovery, DataCaptureStatus, BackupChainAnalysis und ReplicationStatus weiter, jeweils wenn deren eigener Schalter 1 ist. BackupRecovery und BackupChainAnalysis übergeben @AnalysisClass=NULL; 0 und 1 aktivieren dort keine Analyseklasse. DataCaptureStatus verwendet HA_DR_CURRENT ohne High-Impact-Bestätigungspflicht. Erreicht NULL bei diesen drei Children die Kandidatenprüfung, weist der gemeinsame Kandidatenhelfer den Wert als INVALID_PARAMETER ab, auch bei @AnalysisClass=NULL. Bei ReplicationStatus wird die Bestätigung nur geprüft, wenn @MitReplicationDetails=1 ist und der Pfad erreicht wird: 0 ergibt HIGH_IMPACT_CONFIRMATION_REQUIRED vor der Gruppenprüfung, NULL ist ungültig, und 1 bestätigt nur die Anforderung. Die aktuelle Zugriffspolicy und erforderlichen SQL-Rechte gelten weiterhin. Bei deaktiviertem Detailpfad wird der Wert dort nicht geprüft. Vorherige Fehler können die Prüfungen verhindern. Ein Kindstatus ist keine garantierte Parent-Statusausgabe. Der Schalter erteilt keine Berechtigung und aktiviert kein Kindmodul.';
+        PRINT N'@MaxZeilen int. Default ist 2000. Eine positive ganze Zahl begrenzt die Ergebnisse der jeweiligen Empfänger. NULL oder 0 bedeutet dort unbegrenzt. AgentStatus erhält den Parameter nicht. Negative Werte ergeben bereits im Parent INVALID_PARAMETER. Die Modulstatusliste wird nicht gekürzt.';
+        PRINT N'@ResultSetArt varchar(16). Default ist ''CONSOLE''. NULL wird zunächst zu leerem Text normalisiert. andernfalls werden äußere Leerzeichen getrimmt und der Vergleich erfolgt groß-/kleinschreibungsunabhängig. Zulässig sind RAW, CONSOLE, TABLE, NONE. RAW liefert Summary und Modultabelle mit technischen Spalten. CONSOLE lässt den internen Console-Adapter beschriftete Ergebnisse ausgeben. NONE unterdrückt fachliche Resultsets. TABLE exportiert ausschließlich moduleStatus in das Ziel aus @ResultTablesJson. Vor den Children werden TABLE und CONSOLE intern zu NONE normalisiert und dämpfen damit Childresultsets. Andere Werte ergeben INVALID_PARAMETER, außer der vorherige Hilfezweig kehrt zurück. Bei Auslassung gilt CONSOLE.';
+        PRINT N'@ResultTablesJson nvarchar(max). Default ist NULL. Nur bei @ResultSetArt=TABLE wird ein nichtleeres JSON-Objekt benötigt, mit genau dem case-sensitiven Schlüssel "moduleStatus" und Stringwert des Zielnamens, z.B. {"moduleStatus":"#InfraExample"}. Ziel muss eine bereits angelegte, leere lokale #Temp-Tabelle mit genau einer Seed-Spalte sein. globale ##-, #Monitor*- oder überlange Ziele sind unzulässig. Der Helper validiert das einzelne Ziel und wirft bei Fehlern 51011 vor Hilfezweig/Childzugriff. Außerhalb TABLE werden NULL, leerer oder nur aus Leerzeichen bestehender Text ignoriert. nichtleere Werte lösen 51011 aus, ebenfalls vor Hilfe. Bei Auslassung gilt NULL.';
+        PRINT N'@JsonErzeugen bit. Default ist 0. Bei 1 erzeugt der Parent @Json OUTPUT einschließlich meta, benannter Childfelder und warnings. deaktivierte/fehlende Childobjekte stehen als JSON null. Bei 0 oder NULL wird kein JSON erzeugt und @Json bleibt NULL. Child-JSON wird ebenfalls nur angefordert, wenn dieser Schalter 1 ist. SQL-Bitkonvertierung erfolgt vor Eintritt. bei Auslassung gilt 0.';
+        PRINT N'@Json nvarchar(max) OUTPUT. Default ist NULL. OUTPUT-Parameter: mit einer nvarchar(max)-Variablen als @Json=@Variable OUTPUT binden. Der Parent setzt ihn zu Beginn auf NULL und befüllt ihn nur bei @JsonErzeugen=1. Ohne OUTPUT-Bindung wird kein Wert in eine Aufrufervariable kopiert.';
+        PRINT N'@PrintMeldungen bit. Default ist 1; bei Auslassung gilt 1. SQL Server bindet den Parameter vor Prozedureintritt an bit: numerische 0 wird 0, numerische Werte ungleich 0 werden 1, NULL bleibt NULL; andere Eingabeformen unterliegen der SQL-Typkonvertierung, eine eigene Textnormalisierung oder Leertextauswahl erfolgt nicht, und Bindungsfehler treten vor dem Prozeduraufruf auf. Der Parent reicht den Wert unverändert an bis zu elf Children weiter, jeweils nur wenn deren eigener Schalter 1 ist, und leitet daraus keine eigene Meldung ab. Acht Children verwenden genau 1 als Freigabe optionaler Severity-10-RAISERROR-Meldungen: AgentStatus, AgentJobs, ResourceGovernorAnalysis, AvailabilityGroups, BackupRecovery, LogShippingStatus, ReplicationStatus und DataCaptureStatus. Meldungen erscheinen dort nur bei den jeweiligen Fehler-, Status- oder Hinweisbedingungen; auch bei 1 kann die Ausgabe leer bleiben. 0 und NULL unterdrücken diese optionalen Meldungen. BackupChainAnalysis, AvailabilityDeepAnalysis und AgentMonitoringAnalysis binden den Wert, lesen ihn aber nicht; 0, 1 und NULL ändern dort die Ausgabe nicht. Der Parameter unterdrückt keine beliebigen SQL-Fehler und ändert weder Modulstatus noch Aktivierung, Resultsets oder JSON. Die Hilfeausgabe wird separat durch @Hilfe gesteuert.';
+        PRINT N'@Hilfe bit. Default ist 0. Bei 1 gibt die Procedure ihre knappe Hilfe mit PRINT aus und kehrt vor Childaufrufen zurück. NULL wirkt wie 0. SQL konvertiert vor Eintritt zu bit. TABLE-Zuordnung wird vorher geprüft. bei TABLE ist der Preflight somit auch im Hilfemodus aktiv, und ein nichtleeres ResultTablesJson außerhalb TABLE löst ebenfalls vorher Fehler 51011 aus. Ungültige normale Parameter werden nach diesem Hilfe-Rücksprung erst als INVALID_PARAMETER gemeldet. Bei Auslassung gilt 0.';
+        PRINT N'Beispiel 1. EXEC [monitor].[USP_InfrastructureAnalysis] @Hilfe=1;';
+        PRINT N'Beispiel 2. EXEC [monitor].[USP_InfrastructureAnalysis] @MitAgent=0, @MitAgentJobs=0, @MitResourceGovernor=1, @MitAvailabilityGroups=0, @MitBackupRecovery=0, @MitLogShipping=0, @MitReplication=0, @MitDataCapture=0, @MaxZeilen=50, @ResultSetArt=''RAW'';';
+        PRINT N'Beispiel 3. DECLARE @ResultJson nvarchar(max); EXEC [monitor].[USP_InfrastructureAnalysis] @MitAgent=0, @MitAgentJobs=0, @MitResourceGovernor=1, @MitAvailabilityGroups=0, @MitBackupRecovery=0, @MitLogShipping=0, @MitReplication=0, @MitDataCapture=0, @MaxZeilen=50, @ResultSetArt=''NONE'', @JsonErzeugen=1, @Json=@ResultJson OUTPUT; SELECT @ResultJson AS [Json];';
+        PRINT N'Beispiel 4. CREATE TABLE #InfrastructureAnalysis_HelpExample ([Seed] int NULL); BEGIN TRY EXEC [monitor].[USP_InfrastructureAnalysis] @MitAgent=0, @MitAgentJobs=0, @MitResourceGovernor=1, @MitAvailabilityGroups=0, @MitBackupRecovery=0, @MitLogShipping=0, @MitReplication=0, @MitDataCapture=0, @MaxZeilen=50, @ResultSetArt=''TABLE'', @ResultTablesJson=N''{"moduleStatus":"#InfrastructureAnalysis_HelpExample"}''; SELECT * FROM #InfrastructureAnalysis_HelpExample; DROP TABLE #InfrastructureAnalysis_HelpExample; END TRY BEGIN CATCH DROP TABLE #InfrastructureAnalysis_HelpExample; THROW; END CATCH;';
         RETURN;
     END;
 
@@ -47336,7 +49840,10 @@ Stand        : 2026-07-15
 Zweck        : Die Procedure liefert CPU-, Scheduler- und NUMA-Topologie
                einschließlich der momentanen Schedulerlast.
 Datenquellen : sys.dm_os_sys_info, sys.dm_os_schedulers, sys.dm_os_nodes
-Vertrag      : Resultset 1 ist immer Modulstatus; @ResultSetArt=NONE unterdrückt Resultsets; RAW und CONSOLE liefern unterschiedliche Projektionen. Optional JSON.
+Vertrag      : Im regulären Pfad liefert RAW zuerst Modulstatus, danach drei technische Fachresultsets.
+               CONSOLE gibt nur die Console-Helferausgabe der CPU-Topologie aus; TABLE schreibt ausschließlich das gemappte cpuTopology-Resultset.
+               Beide liefern kein separates Modulstatusresultset; NONE unterdrückt Resultsets.
+               Optionales JSON wird im regulären Pfad unabhängig von @ResultSetArt durch @JsonErzeugen gesteuert; im Hilfezweig wird es nicht erzeugt.
 ===============================================================================
 */
 
@@ -47426,7 +49933,10 @@ Stand        : 2026-07-15
 Zweck        : Die Procedure liefert die NUMA- und Soft-NUMA-Verteilung,
                den Scheduler-Skew und die Memory Nodes.
 Datenquellen : sys.dm_os_nodes, sys.dm_os_schedulers, sys.dm_os_memory_nodes
-Vertrag      : Resultset 1 ist immer Modulstatus; @ResultSetArt=NONE unterdrückt Resultsets; RAW und CONSOLE liefern unterschiedliche Projektionen. Optional JSON.
+Vertrag      : Im regulären Pfad liefert RAW zuerst Modulstatus, danach zwei technische Fachresultsets.
+               CONSOLE gibt nur die Console-Helferausgabe der NUMA-Knoten aus; TABLE schreibt ausschließlich das gemappte numaNodes-Resultset.
+               Beide liefern kein separates Modulstatusresultset; NONE unterdrückt Resultsets.
+               Optionales JSON wird im regulären Pfad unabhängig von @ResultSetArt durch @JsonErzeugen gesteuert; im Hilfezweig wird es nicht erzeugt.
 ===============================================================================
 */
 
@@ -47515,7 +50025,10 @@ Stand        : 2026-07-15
 Zweck        : Die Procedure liefert Angaben zu Betriebssystem-, Prozess-
                und SQL-Speicher, Memory Model, Clerks und Grants.
 Datenquellen : sys.dm_os_sys_memory, sys.dm_os_process_memory, sys.dm_os_sys_info, sys.configurations, sys.dm_os_memory_clerks, sys.dm_exec_query_memory_grants
-Vertrag      : Resultset 1 ist immer Modulstatus; @ResultSetArt=NONE unterdrückt Resultsets; RAW und CONSOLE liefern unterschiedliche Projektionen. Optional JSON.
+Vertrag      : Im regulären Pfad liefert RAW zuerst Modulstatus, danach drei technische Fachresultsets.
+               CONSOLE gibt nur die Console-Helferausgabe der Summary aus; TABLE schreibt ausschließlich die gemappte Summary.
+               Beide liefern kein separates Modulstatusresultset; NONE unterdrückt Resultsets.
+               JSON ist im regulären Pfad unabhängig von @ResultSetArt; diese Zusage gilt nicht für den Hilfezweig.
 ===============================================================================
 */
 
@@ -47616,7 +50129,10 @@ Stand        : 2026-07-15
 Zweck        : Die Procedure inventarisiert TempDB-Dateien und ausgewählte
                TempDB-Konfigurationswerte als nicht atomaren Katalogsnapshot.
 Datenquellen : tempdb.sys.database_files, sys.configurations
-Vertrag      : Resultset 1 ist immer Modulstatus; @ResultSetArt=NONE unterdrückt Resultsets; RAW und CONSOLE liefern unterschiedliche Projektionen. Optional JSON.
+Vertrag      : Im regulären Pfad liefert RAW zuerst Modulstatus, danach zwei technische Fachresultsets.
+               CONSOLE gibt nur die Console-Helferausgabe für files aus; TABLE schreibt ausschließlich das gemappte files-Resultset.
+               CONSOLE und TABLE liefern kein separates Modulstatusresultset; NONE unterdrückt Resultsets.
+               Optionales JSON wird im regulären Pfad unabhängig von @ResultSetArt durch @JsonErzeugen gesteuert; im Hilfezweig wird es nicht erzeugt.
 ===============================================================================
 */
 
@@ -47702,7 +50218,10 @@ Stand        : 2026-07-15
 Zweck        : Die Procedure liest Serverkonfigurationswerte und ergänzt
                kontextabhängige Reviewhinweise als aktuellen Katalogsnapshot.
 Datenquellen : sys.configurations, sys.dm_os_sys_info
-Vertrag      : Resultset 1 ist immer Modulstatus; @ResultSetArt=NONE unterdrückt Resultsets; RAW und CONSOLE liefern unterschiedliche Projektionen. Optional JSON.
+Vertrag      : Im regulären Pfad liefert RAW zuerst Modulstatus, danach ein technisches Fachresultset.
+               CONSOLE gibt nur die Console-Helferausgabe für configuration aus; TABLE schreibt ausschließlich das gemappte configuration-Resultset.
+               CONSOLE und TABLE liefern kein separates Modulstatusresultset; NONE unterdrückt Resultsets.
+               Optionales JSON wird im regulären Pfad unabhängig von @ResultSetArt durch @JsonErzeugen gesteuert; im Hilfezweig wird es nicht erzeugt.
 ===============================================================================
 */
 
@@ -47792,7 +50311,10 @@ Stand        : 2026-07-15
 Zweck        : Die Procedure liest aktive globale und zur aufrufenden Session
                gehörende Trace Flags über DBCC TRACESTATUS(-1).
 Datenquellen : DBCC TRACESTATUS
-Vertrag      : Resultset 1 ist immer Modulstatus; @ResultSetArt=NONE unterdrückt Resultsets; RAW und CONSOLE liefern unterschiedliche Projektionen. Optional JSON.
+Vertrag      : Im regulären Pfad liefert RAW zuerst Modulstatus, danach ein technisches Fachresultset.
+               CONSOLE gibt nur die Console-Helferausgabe für traceFlags aus; TABLE schreibt ausschließlich das gemappte traceFlags-Resultset.
+               CONSOLE und TABLE liefern kein separates Modulstatusresultset; NONE unterdrückt Resultsets.
+               Optionales JSON wird im regulären Pfad unabhängig von @ResultSetArt durch @JsonErzeugen gesteuert; im Hilfezweig wird es nicht erzeugt.
 ===============================================================================
 */
 
@@ -47874,7 +50396,10 @@ Stand        : 2026-07-15
 Zweck        : Die Procedure liest SQL-Startparameter und Registry-basierte
                Dienstparameter und weist auf eine nicht verfügbare Plattformquelle hin.
 Datenquellen : sys.dm_server_registry
-Vertrag      : Resultset 1 ist immer Modulstatus; @ResultSetArt=NONE unterdrückt Resultsets; RAW und CONSOLE liefern unterschiedliche Projektionen. Optional JSON.
+Vertrag      : Im regulären Pfad liefert RAW zuerst Modulstatus, danach ein technisches Fachresultset.
+               CONSOLE gibt nur die Console-Helferausgabe für startupParameters aus; TABLE schreibt ausschließlich das gemappte startupParameters-Resultset.
+               CONSOLE und TABLE liefern kein separates Modulstatusresultset; NONE unterdrückt Resultsets.
+               Optionales JSON wird im regulären Pfad unabhängig von @ResultSetArt durch @JsonErzeugen gesteuert; im Hilfezweig wird es nicht erzeugt.
 ===============================================================================
 */
 
@@ -47958,7 +50483,10 @@ Stand        : 2026-07-15
 Zweck        : Die Procedure liest Host-, Betriebssystem-Speicher-, SQL-Prozess-
                und Dienstdaten; jede optionale Quelle hat eine eigene Fehlergrenze.
 Datenquellen : sys.dm_os_host_info, sys.dm_os_sys_memory, sys.dm_os_process_memory, sys.dm_server_services
-Vertrag      : Resultset 1 ist immer Modulstatus; @ResultSetArt=NONE unterdrückt Resultsets; RAW und CONSOLE liefern unterschiedliche Projektionen. Optional JSON.
+Vertrag      : Im regulären Pfad liefert RAW zuerst Modulstatus, danach fünf technische Fachresultsets.
+               CONSOLE gibt nur die Console-Helferausgabe für host aus; TABLE schreibt ausschließlich das gemappte host-Resultset.
+               CONSOLE und TABLE liefern kein separates Modulstatusresultset; NONE unterdrückt Resultsets.
+               Optionales JSON wird im regulären Pfad unabhängig von @ResultSetArt durch @JsonErzeugen gesteuert; im Hilfezweig wird es nicht erzeugt.
 ===============================================================================
 */
 
@@ -48054,8 +50582,10 @@ Stand        : 2026-07-15
 Zweck        : Die Procedure liest ausgewählte sicherheitsrelevante Serveroptionen,
                Dienstinformationen und Servereigenschaften, ohne sie zu verändern.
 Datenquellen : sys.configurations, sys.dm_server_services, SERVERPROPERTY
-Vertrag      : Resultset 1 ist immer Modulstatus; @ResultSetArt=NONE unterdrückt
-               Resultsets und liefert Status ausschließlich über OUTPUT-Parameter.
+Vertrag      : Im regulären Pfad liefert RAW zuerst Modulstatus, danach vier technische Fachresultsets.
+               CONSOLE gibt nur die Console-Helferausgabe für configuration aus; TABLE schreibt ausschließlich das gemappte configuration-Resultset.
+               CONSOLE und TABLE liefern kein separates Modulstatusresultset; NONE unterdrückt Resultsets.
+               Optionales JSON wird im regulären Pfad unabhängig von @ResultSetArt durch @JsonErzeugen gesteuert; im Hilfezweig wird es nicht erzeugt.
 ===============================================================================
 */
 
@@ -48086,6 +50616,7 @@ BEGIN
         PRINT N'monitor.USP_ServerSecurityConfiguration';
         PRINT N'Erfasst ausgewählte sicherheitsrelevante Serveroptionen, SQL-Dienste und Servereigenschaften lesend.';
         PRINT N'Die Hilfe läuft nach einem eventuellen TABLE-Preflight und vor der Erhebung. Befunde sind Prüfsignale, keine automatische Richtlinienentscheidung.';
+        PRINT N'Der kuratierte Konfigurationszweig liest auf SQL Server 2025 auch den caller-sichtbaren Wert external rest endpoint enabled mit konfiguriertem und aktivem Zustand. Der Wert belegt weder einen REST-Aufruf noch erreichbare Endpoints, Berechtigungen, Credentials, Nutzung oder Wirksamkeit; die Procedure ändert die Option nicht.';
         PRINT N'@PrintMeldungen bit; Default: 1. 1 gibt nach der Quellenprüfung bei einem Status ungleich AVAILABLE eine Statusmeldung aus; 0 unterdrückt sie. NULL wirkt wie 0; numerische 0 bleibt 0, von 0 verschiedene konvertierbare Zahlen werden bit 1, da nur der Vergleich mit 1 die Ausgabe auslöst.';
         PRINT N'@Hilfe bit; Default: 0. 1 gibt die Parameterhilfe aus und beendet vor den Fachquellen; 0 erhebt Daten. NULL wirkt wie 0; numerische 0 bleibt 0, von 0 verschiedene konvertierbare Zahlen werden bit 1. Bei ResultSetArt TABLE wird der Ziel-Preflight vor der Hilfe ausgeführt.';
         PRINT N'@ResultSetArt varchar(16); Default: ''CONSOLE''. Nach Bindung an varchar(16): CONSOLE gibt ausschließlich die Sicherheitskonfiguration unter dem Label ServerSecurityConfiguration aus; bei leerer Konfiguration liefert der Helfer eine Leerzeile; Quellenstatus, Dienste und Eigenschaften stehen in RAW beziehungsweise JSON; RAW liefert technische Resultsets; TABLE exportiert nur configuration; NONE unterdrückt Resultsets. Äußere U+0020-Leerzeichen werden entfernt, Großschreibung vereinheitlicht; NULL wird leer und ist ungültig. TABLE/CONSOLE werden für reguläre Resultsets zu NONE und separat ausgegeben. Ungültige Werte setzen INVALID_PARAMETER und IsPartial=1; Quellprüfung läuft dennoch.';
@@ -48194,6 +50725,7 @@ BEGIN
             N'clr enabled',
             N'clr strict security',
             N'external scripts enabled',
+            N'external rest endpoint enabled',
             N'remote admin connections',
             N'contained database authentication'
         );
@@ -48375,7 +50907,7 @@ Version      : 1.0.2
 Stand        : 2026-07-18
 Zweck        : Die Procedure liefert korrelierte, rein lesende Integritätsindikatoren je
                ausgewählter Datenbank, ohne DBCC CHECKDB auszuführen.
-Datenquellen : master.sys.databases, DATABASEPROPERTYEX,
+Datenquellen : master.sys.databases,
                msdb.dbo.suspect_pages, msdb.dbo.backupset,
                sys.dm_hadr_auto_page_repair und optional sys.dm_db_page_info.
 Grenzen      : Leere Indikatoren beweisen keine Integrität. Die Procedure führt
@@ -49275,14 +51807,14 @@ BEGIN
         PRINT N'SampleSeconds 0 liest zweimal unmittelbar nacheinander; 1..60 wartet zwischen Messpunkten.';
         PRINT N'Delta-, Reset- und Basisfehler erhalten eigene FindingCodes.';
         PRINT N'Unterstützte cntr_type-Werte liefern Snapshot, Rate, Prozent oder Quotient; übrige bleiben Rohwerte.';
-        PRINT N'MaxZeilen begrenzt Ausgabe erst nach Messung und Interpretation.';
+        PRINT N'MaxZeilen begrenzt nur RAW-Counterzeilen und JSON-Countereinträge nach Messung und Interpretation; CONSOLE und TABLE geben alle materialisierten Counter aus.';
         PRINT N'TABLE exportiert counters; JSON kann parallel zu jeder Ausgabeart erzeugt werden.';
         PRINT N'Hilfe kehrt vor Sampling und Status-OUTPUT-Zuweisung zurück.';
         PRINT N'@ObjectNames nvarchar(max); Default: NULL. Optionaler Filter auf Objektbezeichnungen aus sys.dm_os_performance_counters. Mehrere Werte werden als bracket-aware Pipe-Liste durch monitor.TVF_ParseStringList geparst. Äußere Leerzeichen werden entfernt; Pipe-Zeichen in eckig geklammerten Werten bleiben erhalten, ]] maskiert eine schließende Klammer. Der entquotierte StringValue wird case-sensitive verglichen. NULL lässt alle Objekte zu. Leerstring, leeres Element, ungültige Klammerstruktur, leerer entquotierter Wert oder ein Segment über 4000 UTF-16-Codeeinheiten ergibt INVALID_PARAMETER. Duplikate bleiben erhalten, ändern den EXISTS-Filter aber nicht. Wildcards sind Literale.';
         PRINT N'@CounterNames nvarchar(max); Default: NULL. Optionaler Filter auf Counterbezeichnungen mit derselben bracket-aware Pipe-Syntax und denselben Parsergrenzen. NULL lässt alle Counter zu. Der direkte Vergleich ist case-sensitive; zusätzlich wird Name plus N'' base'' case-insensitive einbezogen, damit die Basiscounter für Quotienten verfügbar sind. Ungültige Listenelemente ergeben INVALID_PARAMETER. Duplikate ändern den EXISTS-Filter nicht; Wildcards werden nicht als Muster ausgewertet.';
         PRINT N'@SampleSeconds tinyint; Default: 0. Angabe in Sekunden. 0 liest zwei unmittelbar aufeinanderfolgende DMV-Stände ohne WAITFOR und erzwingt für Delta-Typen SAMPLE_REQUIRED_FOR_DELTA_METRIC. 1 bis 60 wartet zwischen den Messungen; verwendet wird die tatsächlich gemessene Dauer. Werte über 60 sind INVALID_PARAMETER; tinyint erlaubt 0 bis 255. NULL passiert die >60-Prüfung und löst kein WAITFOR aus; weil der Caller nur bei exakt 0 die Sampledauer auf 0 setzt, wird bei NULL die gemessene UTC-Dauer an die Interpretationsfunktion übergeben. Typen: 65792 RAW_SNAPSHOT; 272696320 und 272696576 RATE_PER_SECOND (Delta geteilt durch Samplesekunden); 537003264 FRACTION_DELTA_PERCENT (100 mal Zählerdelta geteilt durch Basisdelta); 1073874176 AVERAGE_DELTA_RATIO (Zählerdelta geteilt durch Basisdelta); weitere Typen RAW_UNINTERPRETED. Deltas erfordern einen nicht fallenden Zähler; Quotienten zusätzlich eine vorhandene, steigende Basis. Basiscountertypen 1073939458 und 1073939712 werden nicht als Ergebniszeilen ausgegeben. Keine Persistenz. Die gemessene Dauer beginnt vor dem Temp-Tabellenaufbau und dem ersten DMV-Lesen und endet vor dem zweiten Lesen; sie ist keine reine WAITFOR-Dauer.';
-        PRINT N'@MaxZeilen int; Default: 1000. Nichtnegative int-Anzahl. Werte unter 0 ergeben INVALID_PARAMETER. Werte von 1 bis 2147483647 begrenzen RAW-/CONSOLE-Zeilen und JSON-Countereinträge; 0 und NULL werden auf die größte bigint-TOP-Grenze abgebildet. Die Begrenzung greift erst nach beiden Snapshots, Interpretation und Materialisierung und begrenzt keine Quellarbeit. TABLE exportiert die materialisierten Counter ohne dieses TOP-Limit. Sortierung nach ObjectName, CounterName und InstanceName; keine repräsentative Stichprobe.';
-        PRINT N'@ResultSetArt varchar(16); Default: ''CONSOLE''. Ausgabeart, normalisiert mit LTRIM/RTRIM und UPPER. RAW liefert Status und technische Counterzeilen; CONSOLE Status und eine beschriftete Helferansicht; TABLE schreibt das einzelne Resultset counters in ein lokales Ziel; NONE unterdrückt reguläre Resultsets. Gültig sind ausschließlich RAW, CONSOLE, TABLE und NONE; NULL oder Leertext ist ungültig. CONSOLE und TABLE werden intern als NONE verarbeitet und anschließend über separate Helfer ausgegeben. JSON ist davon unabhängig.';
+        PRINT N'@MaxZeilen int; Default: 1000. Nichtnegative int-Anzahl. Werte unter 0 ergeben INVALID_PARAMETER. Werte von 1 bis 2147483647 begrenzen RAW-Counterzeilen und JSON-Countereinträge; CONSOLE und TABLE geben alle materialisierten Counter aus. 0 und NULL werden für RAW/JSON auf die größte bigint-TOP-Grenze abgebildet. TOP greift erst nach beiden Snapshots, Interpretation und Materialisierung; Quellarbeit wird nicht begrenzt. RAW und JSON sind nach ObjectName, CounterName und InstanceName sortiert; keine repräsentative Stichprobe.';
+        PRINT N'@ResultSetArt varchar(16); Default: ''CONSOLE''. Ausgabeart, normalisiert mit LTRIM/RTRIM und UPPER. RAW liefert Status und technische Counterzeilen; CONSOLE gibt alle materialisierten Counter über den Helfer aus, ohne separates Statusresultset (bei leerer Quelle kann der Helfer eine Hinweiszeile liefern); TABLE gibt alle materialisierten Counter als Resultset counters in das zugeordnete lokale Ziel aus, ohne separates Statusresultset; NONE unterdrückt reguläre Resultsets. Gültig sind ausschließlich RAW, CONSOLE, TABLE und NONE; NULL oder Leertext ist ungültig. CONSOLE und TABLE werden intern als NONE verarbeitet und anschließend über Helfer beziehungsweise Ziel ausgegeben. JSON ist unabhängig von ResultSetArt. Das TOP-Limit und die genannte Sortierung gelten nur für RAW-/JSON-Counterausgaben.';
         PRINT N'@ResultTablesJson nvarchar(max); Default: NULL. Optionales JSON-Mapping auf das lokale #temp-Ziel des einzigen TABLE-Resultsets counters. Nur bei ResultSetArt=TABLE zulässig; ein nichtleerer, getrimmter Wert in einer anderen Ausgabeart löst Fehler 51011 vor Hilfe- und Statusverarbeitung aus. NULL, leer oder nur Leerzeichen bedeutet kein Mapping. Der TABLE-Preflight läuft vor dem Hilfezweig und kann daher auch bei Hilfe scheitern.';
         PRINT N'@JsonErzeugen bit; Default: 0. Bit-Schalter: 0 unterdrückt JSON, 1 erzeugt es; NULL aktiviert den Zweig nicht. Das Objekt enthält meta, counters und warnings; warnings ist ein leeres Array, counters unterliegt MaxZeilen. JSON kann mit jeder Ausgabeart erzeugt werden.';
         PRINT N'@Json nvarchar(max) OUTPUT; Default: NULL. OUTPUT-Empfänger vom Typ nvarchar(max). Der Eingabewert wird beim Eintritt auf NULL gesetzt, auch bei Hilfe. Mit JsonErzeugen=1 wird später JSON mit meta, counters und warnings zugewiesen; andernfalls bleibt der Wert NULL. Im EXEC mit einer nvarchar(max)-Variablen und OUTPUT binden.';
@@ -49595,12 +52127,15 @@ GO
 Objekt       : monitor.USP_CriticalEngineEvents
 Version      : 1.0.0
 Stand        : 2026-07-17
-Zweck        : Liest begrenzte kritische Ereignisse aus vorhandenen
+Zweck        : Liest ausgewählte kritische Ereignisse aus vorhandenen
                XEL-Dateien der benannten Extended-Events-Session und optional
                einen einmaligen sys.sp_server_diagnostics-Snapshot.
 Nebenwirkung : Keine XE- oder Serveränderung. Eventfiles werden nur gelesen.
                sp_server_diagnostics läuft ausschließlich als One-Shot.
-Eigenlast    : Eventfile-Lesen MEDIUM und begrenzt; XML-Transfer opt-in.
+Eigenlast    : Eventfile-Lesen MEDIUM. Positive @MaxZeilen-Werte begrenzen
+               das gefilterte XEL-Kandidatenset vor XML-Extraktion und
+               Severity-Auswertung, garantieren aber keine Begrenzung des
+               physischen Dateilesens. XML-Transfer ist opt-in.
 ===============================================================================
 */
 CREATE OR ALTER PROCEDURE [monitor].[USP_CriticalEngineEvents]
@@ -50816,10 +53351,41 @@ BEGIN
     IF @Hilfe = 1
     BEGIN
         PRINT N'monitor.USP_DiagnosticFindings';
-        PRINT N'Aggregiert Befunde aus den Spezialfallmodulen; verändert keine Konfiguration und maskiert keine Resultsets.';
-        PRINT N'Kostenintensive Schema-, Statistikverteilungs-, IQP- und Contention-Module sind standardmäßig deaktiviert.';
-        PRINT N'@NurAbPrioritaet=INFO|LOW|MEDIUM|HIGH; @MaxZeilen positiv, NULL/0 = unbegrenzt.';
-        PRINT N'@Parent...Json dient ausschließlich der Wiederverwendung bereits erhobener Ergebnisse innerhalb eines Orchestratoraufrufs; NULL liest frisch.';
+        PRINT N'@DatabaseNames nvarchar(max). Default ist NULL; bei Auslassung gilt NULL. Der Kandidatenhelfer behandelt den gesamten Listenwert NULL, leer oder nur aus U+0020-Leerzeichen bestehend als nicht angegeben; andere Whitespace-Zeichen wie Tabulatoren werden dabei nicht als Leerwert normalisiert. Das Pipe-Zeichen | trennt Elemente außerhalb von eckigen Klammern; innerhalb eines bracket-quotierten Elements maskiert ]] eine schließende Klammer. Äußere U+0020-Leerzeichen jedes Segments werden entfernt. Ein ungetrimmtes Rohsegment darf höchstens 4000 UTF-16-Codeeinheiten enthalten; leere Segmente und fehlerhafte Klammerung sind ungültig. Die Namensprüfung verlangt, dass PARSENAME(Element, 1) nicht NULL und höchstens 128 Zeichen lang ist und PARSENAME(Element, 2) NULL ist. Sie prüft keine vollständige SQL-Bezeichnergrammatik und kontrolliert die Teile 3 und 4 nicht zusätzlich. Gültige doppelte Namenswerte sind unter SQL_Latin1_General_CP1_CS_AS ungültig; Namen mit abweichender Groß- und Kleinschreibung bleiben verschieden. Erst wenn der gemeinsame Kandidatenhelfer erreicht wird, führen ungültige Elemente oder Duplikate zu INVALID_PARAMETER. Die Kandidatenauswahl bleibt durch Sichtbarkeit, Onlinezustand und HAS_DBACCESS begrenzt; die Liste garantiert weder die Existenz noch den Zugriff auf einen Namen und gewährt keine zusätzlichen Rechte. Der DiagnosticFindings-Parent reicht die unveränderte Liste an tatsächlich aufgerufene DatabaseIntegrityAnalysis-, DatabaseCapacityAnalysis-, BackupChainAnalysis-, SchemaDesignAnalysis-, StatisticsDistributionAnalysis- und IntelligentQueryProcessingAnalysis-Kindmodule weiter. Die Liste und ein nicht-NULL Pattern sind im erreichten Kandidatenhelfer nur dann unvereinbar, wenn nach der Normalisierung eine wirksame Namensliste vorliegt. ParentIntegrityJson- und ParentCapacityJson-Wiederverwendung überspringt den jeweiligen Kindmodulaufruf; übernommenes JSON wird durch die Liste nicht nachträglich gefiltert. Frühe Fehler oder nicht aufgerufene Kindmodule können die Kandidatenprüfung verhindern; der Parent garantiert keinen einheitlichen Status für Listenfehler.';
+        PRINT N'@SystemdatenbankenEinbeziehen bit. Default ist 0; bei Auslassung gilt 0. SQL Server bindet vor Prozedureintritt an bit: numerische 0 wird 0, numerische Werte ungleich 0 werden 1, NULL bleibt NULL; andere Literalformen unterliegen der SQL-Typkonvertierung, Bindungsfehler treten vor dem Prozedurcode auf. Der Parent prüft oder normalisiert den Wert nicht. Er wird unverändert nur an tatsächlich aufgerufene DatabaseIntegrityAnalysis, DatabaseCapacityAnalysis, BackupChainAnalysis, SchemaDesignAnalysis, StatisticsDistributionAnalysis und IntelligentQueryProcessingAnalysis weitergereicht, nicht an BufferPool, Availability, AgentMonitoring oder Contention. Bei erreichter Kandidatenprüfung weist der gemeinsame Helper NULL als INVALID_PARAMETER ab. 0 schließt Datenbanken mit database_id bis einschließlich 4 (master, tempdb, model und msdb) aus; 1 lässt sie unter den bestehenden Sichtbarkeits-, Online-, HAS_DBACCESS- und Empfängerfiltern zu. Der Schalter aktiviert kein Kindmodul und gewährt keine Rechte. Bei Wiederverwendung von ParentIntegrityJson oder ParentCapacityJson entfallen die jeweiligen Kindmodulaufrufe; dieser Schalter filtert übernommenes JSON nicht nachträglich. Frühere Fehler oder übersprungene Aufrufe können die Prüfung verhindern; der Parent garantiert keinen einheitlichen Status.';
+        PRINT N'@DatabaseNamePattern nvarchar(4000). Default ist NULL; bei Auslassung gilt NULL und das Muster ist deaktiviert. Der Parser entfernt zuerst äußere U+0020-Leerzeichen. Er erkennt die Präfixe like:, regex: und regexi: ohne Beachtung der Groß- und Kleinschreibung; ohne bekanntes Präfix wird der gesamte Inhalt als LIKE-Muster verwendet, auch bei einem unbekannten Präfix. Nach Entfernen eines bekannten Präfixes wird nicht erneut getrimmt. NULL ergibt NONE. Leere Eingabe, nur U+0020-Leerzeichen und ein leerer Präfixrest ergeben intern EMPTY_PATTERN; bei erreichter Patternprüfung im Kindmodul wird INVALID_PARAMETER gemeldet. LIKE verwendet %, _ und [...] mit SQL_Latin1_General_CP1_CS_AS. REGEX verwendet Flag c und unterscheidet Groß- und Kleinschreibung; REGEXI verwendet Flag i und ignoriert sie. Die Präfixprüfung validiert keine Regexsyntax; Syntaxfehler entstehen erst, wenn REGEXP_LIKE tatsächlich ausgeführt wird. Regexausführung erfordert SQL Server 2025 und Compatibility Level mindestens 170 der Installationsdatenbank. Das Pattern ist keine Pipe-Liste. Der DiagnosticFindings-Parent normalisiert oder validiert das Pattern nicht und reicht es bei tatsächlichem Aufruf des jeweiligen Kindmoduls an DatabaseIntegrityAnalysis, DatabaseCapacityAnalysis, BackupChainAnalysis, SchemaDesignAnalysis, StatisticsDistributionAnalysis und IntelligentQueryProcessingAnalysis weiter. Ein nicht-NULL Pattern ist im erreichten Kandidatenhelfer mit einer wirksamen expliziten Namensliste unzulässig; NULL, leerer oder nur aus U+0020 bestehender Listenwert ist keine wirksame Liste. ParentIntegrityJson- und ParentCapacityJson-Wiederverwendung überspringt den jeweiligen Kindmodulaufruf; das Pattern filtert übernommenes JSON nicht nachträglich. Frühe Fehler und übersprungene Aufrufe können die jeweilige Parserprüfung verhindern.';
+        PRINT N'@HighImpactConfirmed bit. Default ist 0; bei Auslassung gilt 0. SQL Server bindet vor Prozedureintritt an bit: numerische 0 wird 0, numerische Werte ungleich 0 werden 1, NULL bleibt NULL; andere Literalformen unterliegen der SQL-Typkonvertierung, Bindungsfehler treten vor dem Prozedurcode auf. Der Parent prüft oder normalisiert den Wert nicht. Er wird unverändert nur an tatsächlich aufgerufene DatabaseIntegrityAnalysis, DatabaseCapacityAnalysis, BackupChainAnalysis, SchemaDesignAnalysis, StatisticsDistributionAnalysis und IntelligentQueryProcessingAnalysis weitergereicht, nicht an BufferPool, Availability, AgentMonitoring oder Contention. Der gemeinsame Kandidatenhelper weist NULL als INVALID_PARAMETER ab, wenn er erreicht wird, auch bei @AnalysisClass=NULL. Integrity nutzt HA_DR_CURRENT und Capacity SERVER_HEALTH_CURRENT; laut Katalog verlangen beide keine RequiresGroupGate-Bestätigung. BackupChainAnalysis verwendet @AnalysisClass=NULL, sodass 0 oder 1 dort keine Klassenbestätigung auslösen. SchemaDesignAnalysis und IntelligentQueryProcessingAnalysis prüfen CATALOG_DEEP. StatisticsDistributionAnalysis prüft CATALOG_DEEP vor USP_Statistics; Findings ruft es im Modus VOLL auf, in dem USP_Statistics zunächst STATISTICS_TARGETED und danach ebenfalls CATALOG_DEEP prüft. Bei erreichtem CATALOG_DEEP-Gate führt 0 zu HIGH_IMPACT_CONFIRMATION_REQUIRED vor der Gruppenprüfung, NULL zu INVALID_PARAMETER und 1 bestätigt nur diese Anforderung. Aktuelle Policyfreigabe und SQL-Rechte gelten weiter. Der Wert aktiviert kein Kindmodul. Bei Wiederverwendung von ParentIntegrityJson oder ParentCapacityJson entfallen die jeweiligen Kindmodulaufrufe; dieser Schalter prüft oder verändert übernommenes JSON nicht nachträglich. Frühere Fehler oder übersprungene Aufrufe können Prüfungen verhindern; der Parent garantiert keinen einheitlichen Status.';
+        PRINT N'@MitIntegritaet bit. Default ist 1. 1 aktiviert DatabaseIntegrityAnalysis. 0 oder NULL lässt diesen Aufruf aus.';
+        PRINT N'@MitKapazitaet bit. Default ist 1. 1 aktiviert DatabaseCapacityAnalysis. 0 oder NULL lässt diesen Aufruf aus.';
+        PRINT N'@MitSpeicher bit. Default ist 1. 1 aktiviert BufferPoolAnalysis. 0 oder NULL lässt diesen Aufruf aus.';
+        PRINT N'@MitBackupketten bit. Default ist 1. 1 aktiviert BackupChainAnalysis. 0 oder NULL lässt diesen Aufruf aus.';
+        PRINT N'@MitAvailability bit. Default ist 1. 1 aktiviert AvailabilityDeepAnalysis. 0 oder NULL lässt diesen Aufruf aus.';
+        PRINT N'@MitAgentMonitoring bit. Default ist 1. 1 aktiviert AgentMonitoringAnalysis. 0 oder NULL lässt diesen Aufruf aus.';
+        PRINT N'@MitSchemaDesign bit. Default ist 0. 1 aktiviert SchemaDesignAnalysis. 0 oder NULL lässt diesen Aufruf aus.';
+        PRINT N'@MitStatistikverteilung bit. Default ist 0. 1 aktiviert StatisticsDistributionAnalysis. 0 oder NULL lässt diesen Aufruf aus.';
+        PRINT N'@MitIQP bit. Default ist 0. 1 aktiviert IntelligentQueryProcessingAnalysis. 0 oder NULL lässt diesen Aufruf aus.';
+        PRINT N'@MitContention bit. Default ist 0. 1 aktiviert InternalContentionAnalysis. 0 oder NULL lässt diesen Aufruf aus.';
+        PRINT N'@ContentionSampleSeconds tinyint. Default ist 5. Sekunden für das aktivierte Contention-Modul. 1 bis 60 fordert ein Intervalldelta an. 0 überspringt WAITFOR und liefert positive kumulative Zähler seit Serverstart. Werte über 60 sind ungültig. NULL überspringt die Wartezeit und liefert keine Latch- oder Spinlock-Deltazeilen. Raten bleiben unbekannt.';
+        PRINT N'@ContentionMinWaitMs bigint. Default ist 1000. Nichtnegative Mindestwartezeit in Millisekunden für Latch-Findings aus der Contention-Auswertung. Ein Wert ab der Grenze erfüllt den Vergleich. Bei NULL entstehen aus diesem Vergleich keine Latch-Findings. Negative Werte sind ungültig.';
+        PRINT N'@ParentIntegrityJson nvarchar(max). Default ist NULL. Laufinternes JSON zur Wiederverwendung von DatabaseIntegrityAnalysis. NULL erhebt bei aktiviertem Modul frisch. Ein nicht-NULL-Wert muss gültiges JSON mit meta.resultName=DatabaseIntegrityAnalysis und meta.schemaVersion=1 enthalten. Leertext und falsche Kennungen sind ungültig. Verwenden Sie nur kontextgleiche Ergebnisse desselben Parent-Laufs.';
+        PRINT N'@ParentCapacityJson nvarchar(max). Default ist NULL. Laufinternes JSON zur Wiederverwendung von DatabaseCapacityAnalysis. NULL erhebt bei aktiviertem Modul frisch. Ein nicht-NULL-Wert muss gültiges JSON mit meta.resultName=DatabaseCapacityAnalysis und meta.schemaVersion=1 enthalten. Leertext und falsche Kennungen sind ungültig. Verwenden Sie nur kontextgleiche Ergebnisse desselben Parent-Laufs.';
+        PRINT N'@ParentBufferPoolJson nvarchar(max). Default ist NULL. Laufinternes JSON zur Wiederverwendung von BufferPoolAnalysis. NULL erhebt bei aktiviertem Modul frisch. Ein nicht-NULL-Wert muss gültiges JSON mit meta.resultName=BufferPoolAnalysis und meta.schemaVersion=1 enthalten. Leertext und falsche Kennungen sind ungültig. Verwenden Sie nur kontextgleiche Ergebnisse desselben Parent-Laufs.';
+        PRINT N'@NurAbPrioritaet varchar(16). Default ist ''INFO''. INFO umfasst alle Prioritätsstufen. LOW lässt INFO aus. MEDIUM umfasst MEDIUM und HIGH. HIGH lässt nur HIGH zu. Die Filterung erfolgt nach der Erhebung. Rand-Leerzeichen und Groß- und Kleinschreibung werden normalisiert. NULL, Leertext und andere Werte sind ungültig.';
+        PRINT N'@MaxZeilen int. Default ist 1000. Eine positive ganze Zahl begrenzt die finale Findingmenge nach Prioritätsfilterung und wird an die Empfänger weitergereicht. NULL oder 0 hebt die Grenze auf. Negative Werte sind ungültig. Die Grenze begrenzt den gesamten Quellenaufwand nicht.';
+        PRINT N'@ResultSetArt varchar(16). Default ist ''CONSOLE''. CONSOLE zeigt beschriftete Findings. RAW liefert technische Ergebnis- und Statusmengen. TABLE schreibt ausschließlich findings. NONE unterdrückt die fachlichen Resultsets. Die Empfänger laufen mit NONE. JSON ist separat wählbar. Rand-Leerzeichen und Groß- und Kleinschreibung werden normalisiert. NULL, Leertext und andere Werte sind ungültig.';
+        PRINT N'@ResultTablesJson nvarchar(max). Default ist NULL. Bei TABLE ist ein nichtleeres JSON-Objekt mit genau dem Schlüssel findings erforderlich. Der Wert benennt eine vorhandene leere lokale #Temp-Tabelle mit einer Seed-Spalte. Erlaubt sind maximal 116 Zeichen und weder ## noch #Monitor als Präfix. Außerhalb von TABLE sind nur NULL, Leertext und Leerzeichen zulässig. Die Prüfung läuft vor der Hilfe.';
+        PRINT N'@JsonErzeugen bit. Default ist 0. 1 erzeugt JSON in Json unabhängig von der Ausgabeart. 0 und NULL erzeugen kein Dokument.';
+        PRINT N'@Json nvarchar(max) OUTPUT. Default ist NULL. Wird beim Eintritt auf NULL gesetzt und bei aktivierter JSON-Erzeugung gefüllt. Binden Sie eine nvarchar(max)-Variable mit OUTPUT.';
+        PRINT N'@PrintMeldungen bit. Default ist 1; bei Auslassung gilt 1. SQL Server bindet vor Prozedureintritt an bit: numerische 0 wird 0, numerische Werte ungleich 0 werden 1, NULL bleibt NULL; andere Literalformen unterliegen der SQL-Typkonvertierung, Bindungsfehler treten vor dem Prozedurcode auf. Der Parent validiert oder normalisiert den Wert nicht. Der Wert wird unverändert an tatsächlich ausgeführte Kindaufrufe weitergereicht (10 Aufrufstellen). 1 fordert die jeweilige optionale Meldungseinstellung des Kindes an; 0 und NULL werden ebenfalls unverändert weitergereicht. Die konkrete Wirkung folgt dem Vertrag des jeweiligen Kindes; eine einheitliche Meldungs- oder Stillezusage gibt es nicht. Im normalen Ablauf verwendet der Parent den Schalter nicht für eine eigene PRINT- oder RAISERROR-Statusmeldung. Die Parameterhilfe ist unabhängig. Bei Wiederverwendung von ParentIntegrityJson, ParentCapacityJson oder ParentBufferPoolJson wird der jeweilige Kindaufruf übersprungen; der Schalter wird auf diese übernommenen Inhalte nicht erneut angewandt. Er steuert im Parent keine Resultsets, JSON, Analyseflags oder Fehlerbehandlung; Vorbereitungs- und SQL-Fehler bleiben unabhängig davon möglich.';
+        PRINT N'@Hilfe bit. Default ist 0. 1 zeigt die Hilfe nach der TABLE-Vorprüfung und beendet vor der fachlichen Analyse. 0 und NULL führen die Analyse aus.';
+        PRINT N'@StatusCodeOut varchar(40) OUTPUT. Default ist NULL. Empfängt den Laufstatus. Binden Sie eine varchar(40)-Variable mit OUTPUT.';
+        PRINT N'@IsPartialOut bit OUTPUT. Default ist NULL. Empfängt das Partialitätsflag für die erreichbare Evidenz. Binden Sie eine bit-Variable mit OUTPUT.';
+        PRINT N'@ErrorNumberOut int OUTPUT. Default ist NULL. Empfängt eine erfasste Fehlernummer oder NULL. Binden Sie eine int-Variable mit OUTPUT.';
+        PRINT N'@ErrorMessageOut nvarchar(2048) OUTPUT. Default ist NULL. Empfängt eine erfasste Fehlermeldung oder NULL. Binden Sie eine nvarchar(2048)-Variable mit OUTPUT.';
+        PRINT N'Beispiel 1. EXEC [monitor].[USP_DiagnosticFindings] @Hilfe=1;';
+        PRINT N'Beispiel 2. EXEC [monitor].[USP_DiagnosticFindings] @MitIntegritaet=0, @MitKapazitaet=0, @MitSpeicher=1, @MitBackupketten=0, @MitAvailability=0, @MitAgentMonitoring=0, @MaxZeilen=50, @ResultSetArt=''RAW'';';
+        PRINT N'Beispiel 3. DECLARE @ResultJson nvarchar(max); EXEC [monitor].[USP_DiagnosticFindings] @MitIntegritaet=0, @MitKapazitaet=0, @MitSpeicher=1, @MitBackupketten=0, @MitAvailability=0, @MitAgentMonitoring=0, @MaxZeilen=50, @ResultSetArt=''NONE'', @JsonErzeugen=1, @Json=@ResultJson OUTPUT; SELECT @ResultJson AS [Json];';
+        PRINT N'Beispiel 4. CREATE TABLE #DiagnosticFindings_HelpExample ([Seed] int NULL); BEGIN TRY EXEC [monitor].[USP_DiagnosticFindings] @MitIntegritaet=0, @MitKapazitaet=0, @MitSpeicher=1, @MitBackupketten=0, @MitAvailability=0, @MitAgentMonitoring=0, @MaxZeilen=50, @ResultSetArt=''TABLE'', @ResultTablesJson=N''{"findings":"#DiagnosticFindings_HelpExample"}''; SELECT * FROM #DiagnosticFindings_HelpExample; DROP TABLE #DiagnosticFindings_HelpExample; END TRY BEGIN CATCH DROP TABLE #DiagnosticFindings_HelpExample; THROW; END CATCH;';
         RETURN;
     END;
 
@@ -52584,7 +55150,7 @@ BEGIN
         PRINT N'@JsonErzeugen bit; Default: 0. 0 lässt @Json NULL; 1 erzeugt nach DatabaseName, EvidenceType und FeatureName sortiertes Array mit derselben TOP-Grenze wie die Zeilenausgabe. NULL aktiviert IF nicht; leer wird []. Bei der SQL-Konvertierung nach bit ergibt numerische 0 den Wert 0; von 0 verschiedene numerische Werte ergeben 1.';
         PRINT N'@Json nvarchar(max) OUTPUT; Default: NULL. Optionaler OUTPUT-Empfänger für ein JSON-Array der Fachzeilen. Am Eintritt wird @Json auch vor @Hilfe=1 auf NULL gesetzt; nur @JsonErzeugen=1 erzeugt danach das Array, bei leerer Fachmenge []. Zum Empfangen eine nvarchar(max)-Variable mit OUTPUT binden; das Argument kann ausgelassen werden. Ein anfänglicher NULL- oder anderer Variablenwert wird überschrieben.';
         PRINT N'@PrintMeldungen bit; Default: 1. 0 unterdrückt die Status-PRINT-Meldung; Nicht-NULL-Bitwerte ungleich 0 aktivieren sie. NULL aktiviert sie nicht. Die Statusmeldung erscheint bei den vom Aufrufer gewählten Modi NONE, CONSOLE und TABLE; diese beiden Ansichtsmodi werden intern auf NONE normalisiert. RAW erzeugt diese Statusmeldung nicht. @Hilfe=1 kehrt vor dieser Meldung zurück. Bei der SQL-Konvertierung nach bit ergibt numerische 0 den Wert 0; von 0 verschiedene numerische Werte ergeben 1.';
-        PRINT N'@Hilfe bit; Default: 0. 0 führt die Analyse aus; jeder Nicht-NULL-Wert ungleich 0 druckt die Hilfe und beendet den Aufruf früh. NULL startet die Hilfe nicht. Der RETURN erfolgt vor Analyse und OUTPUT-Zuweisungen, daher bleiben gebundene OUTPUT-Empfänger unverändert. Bei der SQL-Konvertierung nach bit ergibt numerische 0 den Wert 0; von 0 verschiedene numerische Werte ergeben 1.';
+        PRINT N'@Hilfe bit; Default: 0. 0 führt die Analyse aus; jeder Nicht-NULL-Wert ungleich 0 druckt die Hilfe und beendet den Aufruf früh. NULL startet die Hilfe nicht. Der RETURN erfolgt vor Analyse und den abschließenden Status-/Fehler-OUTPUT-Zuweisungen; diese vier Empfänger bleiben unverändert. @Json wurde bereits am Eintritt auf NULL gesetzt. Bei der SQL-Konvertierung nach bit ergibt numerische 0 den Wert 0; von 0 verschiedene numerische Werte ergeben 1.';
         PRINT N'@StatusCodeOut varchar(40) OUTPUT; Default: NULL. OUTPUT-Empfänger für den in diesem Modul ermittelten Gesamtstatus. Im regulären Aufruf werden AVAILABLE (Quellen liefen), AVAILABLE_EMPTY (beide Evidenzquellen lieferten keine Zeile), AVAILABLE_LIMITED (mindestens eine Quelle/Datenbank eingeschränkt), NOT_FOUND (alle explizit genannten Benutzerdatenbanken offline oder unsichtbar) oder INVALID_PARAMETER (ungültige Zeilengrenze, Ausgabeart oder Namensliste) zurückgegeben. Die einzelnen Quellenzeilen haben zusätzlich AVAILABLE oder SOURCE_STATUS mit DENIED_PERMISSION, UNSUPPORTED_SOURCE, LOCK_TIMEOUT oder SOURCE_UNAVAILABLE. NULL-Default erlaubt das Auslassen des Arguments; um den Wert zu empfangen, muss eine kompatible Variable ausdrücklich mit OUTPUT gebunden werden. Im Hilfezweig bleibt ein gebundener Empfänger wegen des frühen RETURN unverändert.';
         PRINT N'@IsPartialOut bit OUTPUT; Default: NULL. Optionale OUTPUT-Variable: 0 bedeutet nicht partiell, 1 bedeutet eingeschränkte/partielle Evidenz. NULL-Default erlaubt Auslassen und ist kein Ergebniswert. Empfang erfordert eine passende OUTPUT-Bindung; Hilfe-RETURN lässt sie unverändert.';
         PRINT N'@ErrorNumberOut int OUTPUT; Default: NULL. Bei regulärem Abschluss bleibt die technische Fehlernummer in dieser Implementierung NULL. Fehler einzelner Quellen werden als Fach-/Quellenzeilen dokumentiert und nicht in diesen Empfänger kopiert. Optionale OUTPUT-Bindung an eine Variable des deklarierten Typs; ohne Empfang kann das Argument entfallen. @Hilfe=1 weist den Wert nicht zu und erhält einen anfänglichen NULL- oder anderen Empfängerwert.';
@@ -52765,7 +55331,7 @@ GO
 -- END SOURCE: Code/08_ServerHealth/200_USP_DatabasePortabilityAnalysis.sql
 
 -- BEGIN SOURCE: Code/08_ServerHealth/210_USP_MsdbHealthAnalysis.sql
-/* OPS-008: bounded msdb history and size inventory; never deletes history. */
+/* OPS-008: Die Procedure inventarisiert msdb-Historien, Dateigröße und PBM-Zählwerte, ohne Historien zu löschen. */
 CREATE OR ALTER PROCEDURE [monitor].[USP_MsdbHealthAnalysis]
       @MaxZeilen       int            = 2000
     , @ResultSetArt    varchar(16)    = 'CONSOLE'
@@ -52786,19 +55352,20 @@ BEGIN
     DECLARE @ErrorNumber int=NULL,@ErrorMessage nvarchar(2048)=NULL;
     IF @Hilfe=1 BEGIN
         PRINT N'monitor.USP_MsdbHealthAnalysis';
-        PRINT N'inventarisiert msdb-Dateigröße und sichtbare Aggregate ausgewählter Backup-, Restore-, Agent-, Database-Mail- und Maintenance-Plan-Quellen. Es ändert oder löscht keine Daten.';
-        PRINT N'Die Auswertung zählt Quellzeilen und ermittelt verfügbare Zeitgrenzen; Agent-Historienzeilen erhalten keine Zeitgrenzen. Sie belegt weder fachlich richtige Retention noch Restorefähigkeit, Jobausführung, Mailzustellung, freien Speicher oder nötige Dateiverkleinerung. Große Aggregate können I/O verursachen. @MaxZeilen begrenzt die Ausgabe, nicht die Quellaggregation. Quellenfehler können partielle Evidenz ergeben.';
+        PRINT N'Die Procedure inventarisiert msdb-Dateigröße, sichtbare Aggregate ausgewählter Backup-, Restore-, Agent-, Database-Mail- und Maintenance-Plan-Quellen sowie reine Zählwerte für PBM-Policies, -Conditions und -Categories. Es ändert oder löscht keine Daten.';
+        PRINT N'Die Auswertung zählt Quellzeilen und ermittelt Zeitgrenzen nur für datierte Historien; Agent-Historie und PBM-Katalogzählungen erhalten keine Zeitgrenzen. PBM-Zeilen liefern weder Identitäten noch Ausdrücke oder Policy-Evaluation. Sie belegt weder fachlich richtige Retention noch Restorefähigkeit, Jobausführung, Mailzustellung, freien Speicher, nötige Dateiverkleinerung oder PBM-Gesundheit. Große Aggregate können I/O verursachen. @MaxZeilen begrenzt die Ausgabe, nicht die Quellaggregation. Quellenfehler können partielle Evidenz ergeben.';
+        PRINT N'PBM_POLICIES, PBM_CONDITIONS und PBM_CATEGORIES lesen msdb.dbo.syspolicy_policies, syspolicy_conditions und syspolicy_policy_categories direkt. Sie liefern nur COUNT_BIG; OldestUtc, NewestUtc und SizeMb bleiben NULL. Die Views erfordern PolicyAdministratorRole in msdb; das Produkt vergibt keine Rolle. Ein Lesefehler liefert SOURCE_UNAVAILABLE mit unbekanntem RowCount statt UNSUPPORTED oder Nullbestand.';
         PRINT N'@MaxZeilen int; Default: 2000. NULL wird vor der Validierung zu 0; 0 bedeutet unbegrenzt. Positive Werte behalten nach Area sortiert die ersten Zeilen. EvidenceRows wird vor dem Kürzen gezählt. Negative Werte ergeben INVALID_PARAMETER und verhindern Quellenaggregation.';
         PRINT N'@ResultSetArt varchar(16); Default: ''CONSOLE''. Wählt CONSOLE (beschriftete Fachansicht mit Leeranzeige), RAW (Status/Zählkopf und rohe Zeilen), TABLE (benannte Tabellenausgabe) oder NONE (keine Zeilenresultsets). Äußere Leerzeichen werden entfernt und Groß-/Kleinschreibung ignoriert. TABLE und CONSOLE werden intern im NONE-Pfad gerendert. Ungültige Werte sowie NULL/leer ergeben INVALID_PARAMETER.';
         PRINT N'@ResultTablesJson nvarchar(max); Default: NULL. Nur bei ResultSetArt=TABLE ausgewertetes JSON-Objekt mit genau einem Schlüssel msdbHealth und dem Zielnamen. Das Ziel muss eine bereits vorhandene, leere lokale #Temp-Tabelle mit genau einer Seed-/Platzhalterspalte sein. NULL/leer reicht im TABLE-Pfad nicht. Außerhalb TABLE wird nur ein nichtleerer Wert mit Fehler 51011 abgewiesen; NULL oder U+0020-Leerzeichen wird ignoriert. Preflight validiert das Ziel vor dem Schreiben. Der Schlüssel ist case-sensitiv. Zielnamen dürfen höchstens 116 Zeichen haben; globale ##Tabellen und das ohne Beachtung der Groß-/Kleinschreibung reservierte Präfix #Monitor sind unzulässig. Der Preflight prüft Form und leere Seed-Tabelle; erst der Writer ersetzt die Seed-Spalte durch das Ergebnisschema.';
         PRINT N'@JsonErzeugen bit; Default: 0. 0 lässt @Json NULL; 1 serialisiert die bereits nach @MaxZeilen gekürzten Zeilen nach Area sortiert. NULL aktiviert IF nicht; leere Menge wird []. Bei der SQL-Konvertierung nach bit ergibt numerische 0 den Wert 0; von 0 verschiedene numerische Werte ergeben 1.';
         PRINT N'@Json nvarchar(max) OUTPUT; Default: NULL. Optionaler OUTPUT-Empfänger für ein JSON-Array der Fachzeilen. Am Eintritt wird @Json auch vor @Hilfe=1 auf NULL gesetzt; nur @JsonErzeugen=1 erzeugt danach das Array, bei leerer Fachmenge []. Zum Empfangen eine nvarchar(max)-Variable mit OUTPUT binden; das Argument kann ausgelassen werden. Ein anfänglicher NULL- oder anderer Variablenwert wird überschrieben.';
         PRINT N'@PrintMeldungen bit; Default: 1. 0 unterdrückt die Status-PRINT-Meldung; Nicht-NULL-Bitwerte ungleich 0 aktivieren sie. NULL aktiviert sie nicht. Die Statusmeldung erscheint bei den vom Aufrufer gewählten Modi NONE, CONSOLE und TABLE; diese beiden Ansichtsmodi werden intern auf NONE normalisiert. RAW erzeugt diese Statusmeldung nicht. @Hilfe=1 kehrt vor dieser Meldung zurück. Bei der SQL-Konvertierung nach bit ergibt numerische 0 den Wert 0; von 0 verschiedene numerische Werte ergeben 1.';
-        PRINT N'@Hilfe bit; Default: 0. 0 führt die Analyse aus; jeder Nicht-NULL-Wert ungleich 0 druckt die Hilfe und beendet den Aufruf früh. NULL startet die Hilfe nicht. Der RETURN erfolgt vor Analyse und OUTPUT-Zuweisungen, daher bleiben gebundene OUTPUT-Empfänger unverändert. Bei der SQL-Konvertierung nach bit ergibt numerische 0 den Wert 0; von 0 verschiedene numerische Werte ergeben 1.';
-        PRINT N'@StatusCodeOut varchar(40) OUTPUT; Default: NULL. OUTPUT-Empfänger für den in diesem Modul ermittelten Gesamtstatus. Mögliche Gesamtwerte sind AVAILABLE (Auswertung ohne gemeldete Quellfehler), AVAILABLE_LIMITED (mindestens eine Quelle nicht lesbar), UNSUPPORTED (msdb fehlt) und INVALID_PARAMETER (negative Zeilengrenze oder ungültige Ausgabeart). Evidenzzeilen haben AVAILABLE, UNSUPPORTED (Objekt fehlt) oder SOURCE_UNAVAILABLE. NULL-Default erlaubt das Auslassen des Arguments; um den Wert zu empfangen, muss eine kompatible Variable ausdrücklich mit OUTPUT gebunden werden. Im Hilfezweig bleibt ein gebundener Empfänger wegen des frühen RETURN unverändert.';
+        PRINT N'@Hilfe bit; Default: 0. 0 führt die Analyse aus; jeder Nicht-NULL-Wert ungleich 0 druckt die Hilfe und beendet den Aufruf früh. NULL startet die Hilfe nicht. Der RETURN erfolgt vor Analyse und den abschließenden Status-/Fehler-OUTPUT-Zuweisungen; diese vier Empfänger bleiben unverändert. @Json wurde bereits am Eintritt auf NULL gesetzt. Bei der SQL-Konvertierung nach bit ergibt numerische 0 den Wert 0; von 0 verschiedene numerische Werte ergeben 1.';
+        PRINT N'@StatusCodeOut varchar(40) OUTPUT; Default: NULL. OUTPUT-Empfänger für den in diesem Modul ermittelten Gesamtstatus. Mögliche Gesamtwerte sind AVAILABLE (Auswertung ohne gemeldete Quellfehler), AVAILABLE_LIMITED (mindestens eine Quelle nicht lesbar), UNSUPPORTED (msdb fehlt) und INVALID_PARAMETER (negative Zeilengrenze oder ungültige Ausgabeart). Evidenzzeilen haben AVAILABLE, UNSUPPORTED (fehlendes bisheriges Historienobjekt) oder SOURCE_UNAVAILABLE (Quellenfehler; PBM-Views werden ohne Sichtbarkeitsvorprüfung direkt gelesen). NULL-Default erlaubt das Auslassen des Arguments; um den Wert zu empfangen, muss eine kompatible Variable ausdrücklich mit OUTPUT gebunden werden. Im Hilfezweig bleibt ein gebundener Empfänger wegen des frühen RETURN unverändert.';
         PRINT N'@IsPartialOut bit OUTPUT; Default: NULL. Optionale OUTPUT-Variable: 0 bedeutet nicht partiell, 1 bedeutet eingeschränkte/partielle Evidenz. NULL-Default erlaubt Auslassen und ist kein Ergebniswert. Empfang erfordert eine passende OUTPUT-Bindung; Hilfe-RETURN lässt sie unverändert.';
         PRINT N'@ErrorNumberOut int OUTPUT; Default: NULL. Bei regulärem Abschluss bleibt die technische Fehlernummer in dieser Implementierung NULL. Fehler einzelner Quellen werden als Fach-/Quellenzeilen dokumentiert und nicht in diesen Empfänger kopiert. Optionale OUTPUT-Bindung an eine Variable des deklarierten Typs; ohne Empfang kann das Argument entfallen. @Hilfe=1 weist den Wert nicht zu und erhält einen anfänglichen NULL- oder anderen Empfängerwert.';
-        PRINT N'@ErrorMessageOut nvarchar(2048) OUTPUT; Default: NULL. Bei regulärem Abschluss eine Meldung zu ungültigen Parametern oder fehlender msdb; sonst NULL. Fehler einzelner Historienquellen stehen in den Fachzeilen. Optionale OUTPUT-Bindung an eine Variable des deklarierten Typs; ohne Empfang kann das Argument entfallen. @Hilfe=1 weist den Wert nicht zu und erhält einen anfänglichen NULL- oder anderen Empfängerwert.';
+        PRINT N'@ErrorMessageOut nvarchar(2048) OUTPUT; Default: NULL. Bei regulärem Abschluss eine Meldung zu ungültigen Parametern oder fehlender msdb; sonst NULL. Fehler einzelner Historien- und PBM-Quellen stehen in den Fachzeilen. Optionale OUTPUT-Bindung an eine Variable des deklarierten Typs; ohne Empfang kann das Argument entfallen. @Hilfe=1 weist den Wert nicht zu und erhält einen anfänglichen NULL- oder anderen Empfängerwert.';
         PRINT N'EXEC [monitor].[USP_MsdbHealthAnalysis] @ResultSetArt=''RAW'', @MaxZeilen=100;';
         PRINT N'DECLARE @Json nvarchar(max); EXEC [monitor].[USP_MsdbHealthAnalysis] @ResultSetArt=''NONE'', @JsonErzeugen=1, @Json=@Json OUTPUT; SELECT @Json AS [Json];';
         PRINT N'CREATE TABLE [#MsdbHealthAnalysis_HelpExample] ([Seed] int NULL);
@@ -52855,13 +55422,32 @@ END CATCH;';
         INSERT @Defs VALUES
           ('BACKUP_HISTORY','backupset','backup_finish_date'),('RESTORE_HISTORY','restorehistory','restore_date'),
           ('AGENT_HISTORY','sysjobhistory',NULL),('DATABASE_MAIL','sysmail_allitems','send_request_date'),
-          ('MAINTENANCE_PLAN','sysmaintplan_log','start_time');
+          ('MAINTENANCE_PLAN','sysmaintplan_log','start_time'),
+          ('PBM_POLICIES','syspolicy_policies',NULL),
+          ('PBM_CONDITIONS','syspolicy_conditions',NULL),
+          ('PBM_CATEGORIES','syspolicy_policy_categories',NULL);
         DECLARE @Area varchar(40),@Obj sysname,@Date sysname,@Sql nvarchar(max),@Source nvarchar(256);
         DECLARE [d] CURSOR LOCAL FAST_FORWARD FOR SELECT [Area],[ObjectName],[DateColumn] FROM @Defs;
         OPEN [d]; FETCH NEXT FROM [d] INTO @Area,@Obj,@Date;
         WHILE @@FETCH_STATUS=0
         BEGIN
-            IF NOT EXISTS
+            IF @Area IN('PBM_POLICIES','PBM_CONDITIONS','PBM_CATEGORIES')
+            BEGIN
+                BEGIN TRY
+                    SET @Source=N'msdb.dbo.'+@Obj;
+                    SET @Sql=N'INSERT [#MsdbHealthAnalysis_Health] SELECT @Area,@Source,COUNT_BIG(*),NULL,NULL,NULL,''AVAILABLE'',@EvidenceLimit FROM [msdb].[dbo].'+QUOTENAME(@Obj)+N' WITH (NOLOCK);';
+                    EXEC [sys].[sp_executesql] @Sql,
+                        N'@Area varchar(40),@Source nvarchar(256),@EvidenceLimit nvarchar(1000)',
+                        @Area,@Source,
+                        @EvidenceLimit=N'Caller-sichtbare PBM-Kataloganzahl; keine Policy-Auswertung, Retentions- oder Gesundheitsbewertung.';
+                END TRY BEGIN CATCH
+                    INSERT [#MsdbHealthAnalysis_Health]
+                    VALUES(@Area,N'msdb.dbo.'+@Obj,NULL,NULL,NULL,NULL,'SOURCE_UNAVAILABLE',
+                           CONCAT(N'Fehler ',ERROR_NUMBER(),N': ',LEFT(ERROR_MESSAGE(),800)));
+                    SET @Partial=1;
+                END CATCH;
+            END
+            ELSE IF NOT EXISTS
             (
                 SELECT 1
                 FROM [msdb].[sys].[objects] AS [o] WITH (NOLOCK)
@@ -52940,7 +55526,7 @@ BEGIN
         PRINT N'@JsonErzeugen bit; Default: 0. 0 lässt @Json NULL; 1 serialisiert LimitedRows nach ServerName sortiert, also dieselbe begrenzte Auswahl wie die Inventar-Zeilenausgaben. NULL aktiviert IF nicht; leer wird []. Waitwerte sind nicht Teil des JSON-Arrays. Bei der SQL-Konvertierung nach bit ergibt numerische 0 den Wert 0; von 0 verschiedene numerische Werte ergeben 1.';
         PRINT N'@Json nvarchar(max) OUTPUT; Default: NULL. Optionaler OUTPUT-Empfänger für ein JSON-Array der Fachzeilen. Am Eintritt wird @Json auch vor @Hilfe=1 auf NULL gesetzt; nur @JsonErzeugen=1 erzeugt danach das Array, bei leerer Fachmenge []. Zum Empfangen eine nvarchar(max)-Variable mit OUTPUT binden; das Argument kann ausgelassen werden. Ein anfänglicher NULL- oder anderer Variablenwert wird überschrieben.';
         PRINT N'@PrintMeldungen bit; Default: 1. 0 unterdrückt die Status-PRINT-Meldung; Nicht-NULL-Bitwerte ungleich 0 aktivieren sie. NULL aktiviert sie nicht. Die Statusmeldung erscheint bei den vom Aufrufer gewählten Modi NONE, CONSOLE und TABLE; diese beiden Ansichtsmodi werden intern auf NONE normalisiert. RAW erzeugt diese Statusmeldung nicht. @Hilfe=1 kehrt vor dieser Meldung zurück. Bei der SQL-Konvertierung nach bit ergibt numerische 0 den Wert 0; von 0 verschiedene numerische Werte ergeben 1.';
-        PRINT N'@Hilfe bit; Default: 0. 0 führt die Analyse aus; jeder Nicht-NULL-Wert ungleich 0 druckt die Hilfe und beendet den Aufruf früh. NULL startet die Hilfe nicht. Der RETURN erfolgt vor Analyse und OUTPUT-Zuweisungen, daher bleiben gebundene OUTPUT-Empfänger unverändert. Bei der SQL-Konvertierung nach bit ergibt numerische 0 den Wert 0; von 0 verschiedene numerische Werte ergeben 1.';
+        PRINT N'@Hilfe bit; Default: 0. 0 führt die Analyse aus; jeder Nicht-NULL-Wert ungleich 0 druckt die Hilfe und beendet den Aufruf früh. NULL startet die Hilfe nicht. Der RETURN erfolgt vor Analyse und den abschließenden Status-/Fehler-OUTPUT-Zuweisungen; diese vier Empfänger bleiben unverändert. @Json wurde bereits am Eintritt auf NULL gesetzt. Bei der SQL-Konvertierung nach bit ergibt numerische 0 den Wert 0; von 0 verschiedene numerische Werte ergeben 1.';
         PRINT N'@StatusCodeOut varchar(40) OUTPUT; Default: NULL. OUTPUT-Empfänger für den in diesem Modul ermittelten Gesamtstatus. Gesamtwerte: AVAILABLE, AVAILABLE_EMPTY (kein Linked Server), AVAILABLE_LIMITED (Remoteprüfung teilweise fehlgeschlagen), AUTHORIZATION_REQUIRED (Test angefordert, zweites Opt-in fehlt), INVALID_PARAMETER (ungültige Ausgabeart, Zeilengrenze oder NULL-Opt-in). Zeilenstatus: AVAILABLE oder bei Remotefehler DENIED_PERMISSION, SOURCE_TIMEOUT, SOURCE_UNAVAILABLE; ConnectivityStatus ist NOT_EXECUTED, AUTHORIZATION_REQUIRED, SUCCEEDED oder FAILED. NULL-Default erlaubt das Auslassen des Arguments; um den Wert zu empfangen, muss eine kompatible Variable ausdrücklich mit OUTPUT gebunden werden. Im Hilfezweig bleibt ein gebundener Empfänger wegen des frühen RETURN unverändert.';
         PRINT N'@IsPartialOut bit OUTPUT; Default: NULL. Optionale OUTPUT-Variable: 0 bedeutet nicht partiell, 1 bedeutet eingeschränkte/partielle Evidenz. NULL-Default erlaubt Auslassen und ist kein Ergebniswert. Empfang erfordert eine passende OUTPUT-Bindung; Hilfe-RETURN lässt sie unverändert.';
         PRINT N'@ErrorNumberOut int OUTPUT; Default: NULL. Bei regulärem Abschluss NULL ohne abgefangenen Remote-Testfehler. Andernfalls enthält der Wert ERROR_NUMBER() des zuletzt abgefangenen Remote-Testfehlers; mehrere Fehler überschreiben den Wert jeweils. Die Einzelzeilen behalten ihre jeweiligen Fehlerhinweise. Optionale OUTPUT-Bindung an eine Variable des deklarierten Typs; ohne Empfang kann das Argument entfallen. @Hilfe=1 weist den Wert nicht zu und erhält einen anfänglichen NULL- oder anderen Empfängerwert.';
@@ -53059,7 +55645,7 @@ BEGIN
         PRINT N'@JsonErzeugen bit; Default: 0. 0 lässt @Json NULL; 1 serialisiert die nach @MaxZeilen begrenzten LimitedRows sortiert nach den drei Namen. NULL aktiviert IF nicht; leere Auswahl wird []. Bei der SQL-Konvertierung nach bit ergibt numerische 0 den Wert 0; von 0 verschiedene numerische Werte ergeben 1.';
         PRINT N'@Json nvarchar(max) OUTPUT; Default: NULL. Optionaler OUTPUT-Empfänger für ein JSON-Array der Fachzeilen. Am Eintritt wird @Json auch vor @Hilfe=1 auf NULL gesetzt; nur @JsonErzeugen=1 erzeugt danach das Array, bei leerer Fachmenge []. Zum Empfangen eine nvarchar(max)-Variable mit OUTPUT binden; das Argument kann ausgelassen werden. Ein anfänglicher NULL- oder anderer Variablenwert wird überschrieben.';
         PRINT N'@PrintMeldungen bit; Default: 1. 0 unterdrückt die Status-PRINT-Meldung; Nicht-NULL-Bitwerte ungleich 0 aktivieren sie. NULL aktiviert sie nicht. Die Statusmeldung erscheint bei den vom Aufrufer gewählten Modi NONE, CONSOLE und TABLE; diese beiden Ansichtsmodi werden intern auf NONE normalisiert. RAW erzeugt diese Statusmeldung nicht. @Hilfe=1 kehrt vor dieser Meldung zurück. Bei der SQL-Konvertierung nach bit ergibt numerische 0 den Wert 0; von 0 verschiedene numerische Werte ergeben 1.';
-        PRINT N'@Hilfe bit; Default: 0. 0 führt die Analyse aus; jeder Nicht-NULL-Wert ungleich 0 druckt die Hilfe und beendet den Aufruf früh. NULL startet die Hilfe nicht. Der RETURN erfolgt vor Analyse und OUTPUT-Zuweisungen, daher bleiben gebundene OUTPUT-Empfänger unverändert. Bei der SQL-Konvertierung nach bit ergibt numerische 0 den Wert 0; von 0 verschiedene numerische Werte ergeben 1.';
+        PRINT N'@Hilfe bit; Default: 0. 0 führt die Analyse aus; jeder Nicht-NULL-Wert ungleich 0 druckt die Hilfe und beendet den Aufruf früh. NULL startet die Hilfe nicht. Der RETURN erfolgt vor Analyse und den abschließenden Status-/Fehler-OUTPUT-Zuweisungen; diese vier Empfänger bleiben unverändert. @Json wurde bereits am Eintritt auf NULL gesetzt. Bei der SQL-Konvertierung nach bit ergibt numerische 0 den Wert 0; von 0 verschiedene numerische Werte ergeben 1.';
         PRINT N'@StatusCodeOut varchar(40) OUTPUT; Default: NULL. OUTPUT-Empfänger für den in diesem Modul ermittelten Gesamtstatus. Gesamtwerte: AVAILABLE, AVAILABLE_EMPTY (keine sichtbaren Inventarzeilen), AVAILABLE_LIMITED (fehlender Zugriff/Quellenfehler) und INVALID_PARAMETER (negative Grenze oder ungültige Ausgabeart). Zeilenstatus ist AVAILABLE, DENIED_PERMISSION oder SOURCE_UNAVAILABLE. NULL-Default erlaubt das Auslassen des Arguments; um den Wert zu empfangen, muss eine kompatible Variable ausdrücklich mit OUTPUT gebunden werden. Im Hilfezweig bleibt ein gebundener Empfänger wegen des frühen RETURN unverändert.';
         PRINT N'@IsPartialOut bit OUTPUT; Default: NULL. Optionale OUTPUT-Variable: 0 bedeutet nicht partiell, 1 bedeutet eingeschränkte/partielle Evidenz. NULL-Default erlaubt Auslassen und ist kein Ergebniswert. Empfang erfordert eine passende OUTPUT-Bindung; Hilfe-RETURN lässt sie unverändert.';
         PRINT N'@ErrorNumberOut int OUTPUT; Default: NULL. Bei regulärem Abschluss bleibt die technische Fehlernummer in dieser Implementierung NULL. Fehler einzelner Quellen werden als Fach-/Quellenzeilen dokumentiert und nicht in diesen Empfänger kopiert. Optionale OUTPUT-Bindung an eine Variable des deklarierten Typs; ohne Empfang kann das Argument entfallen. @Hilfe=1 weist den Wert nicht zu und erhält einen anfänglichen NULL- oder anderen Empfängerwert.';
@@ -53497,7 +56083,7 @@ BEGIN
         PRINT N'@SystemdatenbankenEinbeziehen bit; Default: 0. 0 schließt Datenbanken mit database_id 1 bis 4 aus; 1 lässt master, tempdb, model und msdb in die Auswahl zu. NULL wird als ungültiger Parameter behandelt. Der Schalter gewährt selbst keine Berechtigung und macht nicht zugreifbare Datenbanken nicht sichtbar. SQL-Konvertierung nach bit: numerische 0 ergibt 0, von 0 verschiedene numerische Werte ergeben 1.';
         PRINT N'@DatabaseNamePattern nvarchar(4000); Default: NULL. NULL bedeutet kein Pattern. Ein gesetztes Pattern wird nach dem gemeinsamen Parservertrag außen getrimmt; die Präfixe like:, regex: und regexi: wählen LIKE, case-sensitive Regex beziehungsweise case-insensitive Regex, ohne Beachtung der Präfixgroßschreibung. Ohne Präfix gilt LIKE. Nach dem Präfix darf der Inhalt nicht leer sein; ein ungültiges/leeres Pattern und die gleichzeitige Verwendung mit einer nichtleeren exakten Namensliste führen zu INVALID_PARAMETER. LIKE wird case-sensitive ausgewertet. Regex erfordert SQL Server 2025 und Compatibility Level 170 in der Installationsdatenbank; andernfalls meldet der Auswahlhelfer UNAVAILABLE_FEATURE. Der Regextext wird nicht vorab syntaktisch geprüft. NULL ist damit von leerem Text und einem leeren Präfix zu unterscheiden. Eine fehlerhafte Regex kann im Auswahlhelfer beim Ausführen scheitern; der umgebende CATCH dokumentiert eine partielle DATABASE_SELECTION-Quelle, während unabhängige Serverquellen weiterlaufen können.';
         PRINT N'@SampleSeconds tinyint; Default: 0. 0 liest Counter und Waits jeweils einmal als Momentaufnahme; Before-, Delta-, Rate- und Intervallwerte sind dabei NULL. 1 bis 60 führt zwei Aufnahmen aus und genau ein gemeinsames WAITFOR mit der angegebenen Anzahl Sekunden dazwischen aus. Counter und Waits erhalten getrennte, unmittelbar nach ihrer jeweiligen Aufnahme gebundene UTC-Intervalle; die tatsächliche Dauer kann von der angeforderten Wartezeit abweichen. NULL oder ein Wert über 60 ist INVALID_PARAMETER; ein negativer Wert kann im tinyint-Eingabetyp nicht dargestellt werden. Sampling bleibt serverweit und wird nicht den ausgewählten Datenbanken zugeordnet.';
-        PRINT N'@MaxZeilen int; Default: 2000. 0 und NULL bedeuten keine Zeilenbegrenzung. Jeder positive int-Wert von 1 bis 2.147.483.647 begrenzt jeweils configurations, counters, waits, cache, sourceStatus und warnings nach deren Erhebung; moduleStatus bleibt eine einzelne Zeile. Die jeweiligen Gruppen werden nach ihren festen Schlüsseln sortiert und unabhängig gekürzt. Die Begrenzung reduziert weder die gelesenen Datenquellen noch die Zahl ausgewählter Datenbanken; die gemeldete RowCount zählt die materialisierten Zeilen aus configurations, counters, waits und cache vor der nachfolgenden Kürzung und nicht die ausgegebenen Zeilen. Negative Werte führen zu INVALID_PARAMETER.';
+        PRINT N'@MaxZeilen int; Default: 2000. 0 und NULL bedeuten keine Zeilenbegrenzung. Jeder positive int-Wert von 1 bis 2.147.483.647 begrenzt jeweils configurations, counters, waits, cache, sourceStatus und warnings nach deren Erhebung; moduleStatus bleibt eine einzelne Zeile. Die jeweiligen Gruppen werden nach ihren festen Schlüsseln sortiert und unabhängig gekürzt. Die Begrenzung reduziert weder die gelesenen Datenquellen noch die Zahl ausgewählter Datenbanken; die gemeldete RowCount summiert die nach der jeweiligen Kürzung verbleibenden Zeilen aus configurations, counters, waits und cache; sourceStatus und warnings zählen nicht mit. Sie ist keine Zählung der vom gewählten Ausgabepfad tatsächlich gelieferten Zeilen. Negative Werte führen zu INVALID_PARAMETER.';
         PRINT N'@ResultSetArt varchar(16); Default: ''CONSOLE''. Der Wert wird außen getrimmt und ohne Beachtung der Großschreibung normalisiert. Zulässig sind genau RAW (sieben fachliche Resultsets in der Reihenfolge moduleStatus, configurations, counters, waits, cache, sourceStatus, warnings), TABLE (nur die per JSON-Mapping ausgewählten Resultgruppen in lokale Temp-Tabellen schreiben), CONSOLE (eine formatierte Übersicht aus Konfigurationen, Counter-Rohwerten, Waitzeit und Cacheeinträgen sowie einer Modulstatuszeile mit Status und RowCount) und NONE (keine fachlichen Resultsets). NULL oder ein anderer Wert wird zu einem leeren beziehungsweise nicht erlaubten Modus und führt zu INVALID_PARAMETER. JSON-Erzeugung und Meldungsausgabe werden unabhängig davon gesteuert.';
         PRINT N'@ResultTablesJson nvarchar(max); Default: NULL. Nur mit TABLE wird die JSON-Zuordnung verarbeitet; bei einem anderen Modus führt ein nichtleerer, außen getrimmter Wert zu einer ausgelösten Ausnahme. Für TABLE ist ein gültiges, nichtleeres JSON-Objekt mit mindestens einer Zuordnung erforderlich. Erlaubte, exakt groß-/kleinschreibungsabhängige Schlüssel sind moduleStatus, configurations, counters, waits, cache, sourceStatus und warnings; jeder Wert benennt eine vorhandene, leere lokale #Temp-Tabelle. Die Zielnamen müssen höchstens 116 Zeichen lang sein, dürfen nicht mit ## beginnen und nicht dem reservierten Präfix #Monitor entsprechen. Doppelte Schlüssel oder Ziele, unbekannte Schlüssel, NULL-/Nicht-String-Werte, fehlende oder gefüllte Ziele sowie Ziele mit mehr als einer Seed-Spalte werden vor den fachlichen Quellenzugriffen abgelehnt. Der spätere Writer ersetzt die Seed-Spalte durch das fachliche Ergebnisschema. NULL, leerer oder nur aus U+0020-Leerzeichen bestehender Wert genügt bei TABLE nicht und löst INVALID_RESULT_TABLE_MAPPING aus. moduleStatus bedeutet Modulstatus, configurations Konfigurationen, counters Counterwerte, waits Waitwerte, cache Cacheaggregate, sourceStatus Quellenstatus und warnings Warnungen.';
         PRINT N'@JsonErzeugen bit; Default: 0. 1 erzeugt unabhängig von der ResultSetArt ein JSON-Dokument im OUTPUT-Parameter, einschließlich Metadaten und der sieben Gruppen moduleStatus, configurations, counters, waits, cache, sourceStatus und warnings. 0 erzeugt es nicht; dann bleibt @Json NULL. NULL ist INVALID_PARAMETER. Schema 1 enthält eine einzelne meta-Struktur mit resultName, schemaVersion, generatedAtUtc, statusCode, isPartial, errorNumber und errorMessage; Gruppen sind Arrays, leere Gruppen werden als [] ausgegeben und NULL-Spalten bleiben enthalten. SQL-Konvertierung nach bit: numerische 0 ergibt 0, von 0 verschiedene numerische Werte ergeben 1.';
@@ -56358,8 +58944,10 @@ GO
 Objekt       : monitor.USP_ServerHealthAnalysis
 Version      : 3.2.0
 Stand        : 2026-07-19
-Zweck        : Orchestriert alle Server-Health-Module. RAW/CONSOLE werden an
-               Child-Module weitergereicht; JSON enthält benannte Modulobjekte.
+Zweck        : Orchestriert alle Server-Health-Module. RAW reicht Child-Resultsets
+               durch; CONSOLE zeigt die beschriftete Modulstatusliste.
+               TABLE schreibt ausschließlich moduleStatus; NONE unterdrückt Resultsets.
+               Optionales JSON enthält benannte Modulobjekte.
 Änderungen   : 3.2.0 - Bereits erhobene Integritäts-, Kapazitäts- und
                          Buffer-Pool-Ergebnisse im Findings-Child wiederverwendet.
                3.1.0 - Spezialfallmodule und normalisierte Befunde als opt-in.
@@ -56444,21 +59032,38 @@ BEGIN
 
     IF @Hilfe = 1
     BEGIN
-        PRINT N'monitor.USP_ServerHealthAnalysis: Führt aktivierte, nur lesende Serverzustandsmodule nacheinander aus; der Standardpfad besteht aus nicht atomaren Momentaufnahmen. Bei der Erhebung muss mindestens ein Modul aktiviert sein.';
-        PRINT N'@MitCpu bit=1, @MitNuma bit=1, @MitMemory bit=1, @MitTempDB bit=1, @MitConfiguration bit=1, @MitTraceFlags bit=1, @MitStartup bit=1, @MitOS bit=1, @MitSecurity bit=1: Schaltet diese neun kleinen Server-Momentaufnahmen ein (1) oder aus (0).';
-        PRINT N'@MitIntegritaet bit=0, @MitKapazitaet bit=0, @MitPerformanceCounters bit=0, @MitCriticalEvents bit=0, @MitContention bit=0, @MitBufferPool bit=0, @MitFindings bit=0: Aktiviert optional Integritätsevidenz (nur lesend, ohne DBCC CHECKDB), Kapazität, Performance-Counter, system_health-Ereignisse, 5-Sekunden-Contention, Buffer-Pool und abgeleitete Triage-Befunde (1); standardmäßig deaktiviert (0).';
-        PRINT N'@DatabaseNames nvarchar(max)=NULL: Optionale, klammerbewusste Pipe-Liste exakter Datenbanknamen, zum Beispiel N''[ExampleDb]|[ExampleArchive]''. NULL oder leer bedeutet keine Einschränkung auf exakte Namen; Duplikate sind ungültig. Wird nur von aktivierten Datenbankmodulen verwendet.';
-        PRINT N'@SystemdatenbankenEinbeziehen bit=0: Schließt Systemdatenbanken aus (0) oder lässt sie in Datenbankmodulen zu (1). @DatabaseNamePattern nvarchar(4000)=NULL: Alternativer Datenbanknamenfilter, nicht mit @DatabaseNames kombinierbar.';
-        PRINT N'Musterformen: like:<pattern> verwendet SQL-LIKE-Platzhalter und unterscheidet Groß-/Kleinschreibung; regex:<pattern> unterscheidet Groß-/Kleinschreibung, regexi:<pattern> nicht. Regex erfordert SQL Server 2025 und Kompatibilitätsgrad 170 der Installationsdatenbank. Leere Muster sind ungültig.';
-        PRINT N'@HighImpactConfirmed bit=0: Bestätigt nachgelagerte Prüfungen mit hoher Auswirkung nicht (0); übergibt eine Bestätigung (1) nur, wenn der Aufrufer die betreffenden aktivierten Unterprozeduraufrufe ausdrücklich freigibt. Das Flag aktiviert keine Module.';
-        PRINT N'@MaxZeilen int=100: Negative Werte sind ungültig; NULL wird akzeptiert. Der Wert wird unverändert nur an Unterprozeduren mit Zeilenlimit übergeben. Ob NULL/0 unbegrenzt bedeutet und welche Zeilen begrenzt werden, hängt von der jeweiligen Unterprozedur ab.';
-        PRINT N'@ResultSetArt varchar(16)=CONSOLE: CONSOLE, RAW, TABLE oder NONE. TABLE erfordert in @ResultTablesJson die Zuordnung des einzelnen Resultatnamens moduleStatus zu einer vom Aufrufer bereitgestellten Zieltabelle; RAW liefert technische Resultsets; NONE unterdrückt Resultsets.';
-        PRINT N'@ResultTablesJson nvarchar(max)=NULL: Für TABLE erforderlich; ordnet den einzelnen Resultatnamen moduleStatus einer bereits vorhandenen, leeren lokalen #temp-Tabelle mit genau einer Seed-Spalte zu. Permanente oder globale ##-Tabellen, nichtleere Tabellen und Ziele mit bereits festgelegtem Ausgabeschema werden abgewiesen.';
-        PRINT N'@JsonErzeugen bit=0 fordert JSON zusätzlich an (1) oder nicht (0); @Json nvarchar(max)=NULL OUTPUT nimmt benannte Modulobjekte entgegen. @MitFindings=1 fordert intern ebenfalls JSON der Unterprozeduren an.';
-        PRINT N'@PrintMeldungen bit=1: Gibt Statusmeldungen der Unterprozeduren aus (1) oder unterdrückt sie (0). @Hilfe bit=0: Gibt diese Hilfe aus (1) oder führt die Erhebung aus (0). Die Hilfe wird vor Erhebung und Modulprüfung, aber nach Prüfung des TABLE-Ziels ausgegeben; zuvor wird LOCK_TIMEOUT auf 0 gesetzt. Für die Hilfe den Standardaufruf verwenden.';
-        PRINT N'Berechtigungen und Aufwand: Der Standardpfad führt neun kurze Server-Momentaufnahmen aus. Optionale Module können Datenbank-/Katalogarbeit, Eventdateiverarbeitung oder eine feste Contention-Messung von fünf Sekunden ergänzen. Berechtigungs- und Plattformlücken werden je Modul gemeldet; Änderungen werden nicht vorgenommen.';
-        PRINT N'Beispiele (synthetisch): EXEC [monitor].[USP_ServerHealthAnalysis] @Hilfe=1;  EXEC [monitor].[USP_ServerHealthAnalysis] @ResultSetArt=''CONSOLE'';';
-        PRINT N'TABLE-Beispiel (synthetisch): CREATE TABLE #ServerHealthAnalysis_HelpExample(Seed bit NULL); EXEC [monitor].[USP_ServerHealthAnalysis] @MitCpu=1, @MitNuma=0, @MitMemory=0, @MitTempDB=0, @MitConfiguration=0, @MitTraceFlags=0, @MitStartup=0, @MitOS=0, @MitSecurity=0, @ResultSetArt=''TABLE'', @ResultTablesJson=N''{"moduleStatus":"#ServerHealthAnalysis_HelpExample"}''; DROP TABLE #ServerHealthAnalysis_HelpExample;';
+        PRINT N'monitor.USP_ServerHealthAnalysis';
+        PRINT N'@MitCpu bit. Default ist 1. NULL/0 deaktiviert, 1 ruft USP_ServerCpuTopology auf. Bestandteil des mindestens-ein-Modul-Gates.';
+        PRINT N'@MitNuma bit. Default ist 1. NULL/0 deaktiviert, 1 ruft USP_ServerNuma auf. Standardpfad.';
+        PRINT N'@MitMemory bit. Default ist 1. NULL/0 deaktiviert, 1 ruft USP_ServerMemory auf. Standardpfad.';
+        PRINT N'@MitTempDB bit. Default ist 1. NULL/0 deaktiviert, 1 ruft USP_TempDBConfiguration auf. Standardpfad.';
+        PRINT N'@MitConfiguration bit. Default ist 1. NULL/0 deaktiviert, 1 ruft USP_ServerConfiguration auf. Standardpfad.';
+        PRINT N'@MitTraceFlags bit. Default ist 1. NULL/0 deaktiviert, 1 ruft USP_TraceFlags auf. Standardpfad.';
+        PRINT N'@MitStartup bit. Default ist 1. NULL/0 deaktiviert, 1 ruft USP_StartupParameters auf. Standardpfad.';
+        PRINT N'@MitOS bit. Default ist 1. NULL/0 deaktiviert, 1 ruft USP_OSInformation auf. Standardpfad.';
+        PRINT N'@MitSecurity bit. Default ist 1. NULL/0 deaktiviert, 1 ruft USP_ServerSecurityConfiguration auf. Standardpfad.';
+        PRINT N'@MitIntegritaet bit. Default ist 0. NULL/0 deaktiviert, 1 ruft USP_DatabaseIntegrityAnalysis für ausgewählte Datenbanken auf. page details bleiben aus. High-Impact-Pfad.';
+        PRINT N'@MitKapazitaet bit. Default ist 0. NULL/0 deaktiviert, 1 ruft USP_DatabaseCapacityAnalysis im Datenbankscope auf. High-Impact-Pfad.';
+        PRINT N'@MitPerformanceCounters bit. Default ist 0. NULL/0 deaktiviert, 1 ruft USP_PerformanceCounters mit SampleSeconds=0 auf. keine Warte-Samplingrunde.';
+        PRINT N'@MitCriticalEvents bit. Default ist 0. NULL/0 deaktiviert, 1 ruft USP_CriticalEngineEvents mit system_health an, ServerDiagnostics und EventXML aus.';
+        PRINT N'@MitContention bit. Default ist 0. NULL/0 deaktiviert, 1 ruft USP_InternalContentionAnalysis mit SampleSeconds=5 und PageDetails=0 auf. Sampling wartet bis zu fünf Sekunden.';
+        PRINT N'@MitBufferPool bit. Default ist 0. NULL/0 deaktiviert, 1 ruft USP_BufferPoolAnalysis ohne Verteilungsdetail auf. High-Impact-Pfad.';
+        PRINT N'@MitFindings bit. Default ist 0. NULL/0 deaktiviert, 1 ruft USP_DiagnosticFindings. Parent JSON-Ergebnisse von Integrity/Capacity/BufferPool werden zur Wiederverwendung übergeben, sofern diese erzeugt wurden.';
+        PRINT N'@DatabaseNames nvarchar(max). Default ist NULL; bei Auslassung gilt NULL. Der Kandidatenhelfer behandelt den gesamten Listenwert NULL, leer oder nur aus U+0020-Leerzeichen bestehend als nicht angegeben; andere Whitespace-Zeichen wie Tabulatoren werden dabei nicht als Leerwert normalisiert. Das Pipe-Zeichen | trennt Elemente außerhalb von eckigen Klammern; innerhalb eines bracket-quotierten Elements maskiert ]] eine schließende Klammer. Äußere U+0020-Leerzeichen jedes Segments werden entfernt. Ein ungetrimmtes Rohsegment darf höchstens 4000 UTF-16-Codeeinheiten enthalten; leere Segmente und fehlerhafte Klammerung sind ungültig. Die Namensprüfung verlangt, dass PARSENAME(Element, 1) nicht NULL und höchstens 128 Zeichen lang ist und PARSENAME(Element, 2) NULL ist. Sie prüft keine vollständige SQL-Bezeichnergrammatik und kontrolliert die Teile 3 und 4 nicht zusätzlich. Gültige doppelte Namenswerte sind unter SQL_Latin1_General_CP1_CS_AS ungültig; Namen mit abweichender Groß- und Kleinschreibung bleiben verschieden. Erst wenn der gemeinsame Kandidatenhelfer erreicht wird, führen ungültige Elemente oder Duplikate zu INVALID_PARAMETER. Die Kandidatenauswahl bleibt durch Sichtbarkeit, Onlinezustand und HAS_DBACCESS begrenzt; die Liste garantiert weder die Existenz noch den Zugriff auf einen Namen und gewährt keine zusätzlichen Rechte. Der ServerHealth-Parent reicht die unveränderte Liste an die aufgerufenen DatabaseIntegrityAnalysis-, DatabaseCapacityAnalysis- und DiagnosticFindings-Kindmodule weiter. Die Liste und ein nicht-NULL Pattern sind im erreichten Kandidatenhelfer nur dann unvereinbar, wenn nach der Normalisierung eine wirksame Namensliste vorliegt. Frühe Fehler oder nicht aufgerufene Kindmodule können die Kandidatenprüfung verhindern; der Parent garantiert keinen einheitlichen Status für Listenfehler.';
+        PRINT N'@SystemdatenbankenEinbeziehen bit. Default ist 0; bei Auslassung gilt 0. SQL Server bindet vor Prozedureintritt an bit: numerische 0 wird 0, numerische Werte ungleich 0 werden 1, NULL bleibt NULL; andere Literalformen unterliegen der SQL-Typkonvertierung, Bindungsfehler treten vor dem Prozedurcode auf. Der Parent prüft oder normalisiert den Wert nicht. Er wird unverändert nur an tatsächlich aufgerufene DatabaseIntegrityAnalysis, DatabaseCapacityAnalysis und DiagnosticFindings weitergereicht. Bei erreichter Kandidatenprüfung weist der gemeinsame Helper NULL als INVALID_PARAMETER ab. 0 schließt Datenbanken mit database_id bis einschließlich 4 (master, tempdb, model und msdb) aus; 1 lässt sie unter den bestehenden Sichtbarkeits-, Online-, HAS_DBACCESS- und Empfängerfiltern zu. Der Schalter aktiviert kein Kindmodul und gewährt keine Rechte. Frühere Fehler oder übersprungene Kindmodule können die Prüfung verhindern; der Parent garantiert keinen einheitlichen Status.';
+        PRINT N'@DatabaseNamePattern nvarchar(4000). Default ist NULL; bei Auslassung gilt NULL und das Muster ist deaktiviert. Der Parser entfernt zuerst äußere U+0020-Leerzeichen. Er erkennt die Präfixe like:, regex: und regexi: ohne Beachtung der Groß- und Kleinschreibung; ohne bekanntes Präfix wird der gesamte Inhalt als LIKE-Muster verwendet, auch bei einem unbekannten Präfix. Nach Entfernen eines bekannten Präfixes wird nicht erneut getrimmt. NULL ergibt NONE. Leere Eingabe, nur U+0020-Leerzeichen und ein leerer Präfixrest ergeben intern EMPTY_PATTERN; bei erreichter Patternprüfung im Kindmodul wird INVALID_PARAMETER gemeldet. LIKE verwendet %, _ und [...] mit SQL_Latin1_General_CP1_CS_AS. REGEX verwendet Flag c und unterscheidet Groß- und Kleinschreibung; REGEXI verwendet Flag i und ignoriert sie. Die Präfixprüfung validiert keine Regexsyntax; Syntaxfehler entstehen erst, wenn REGEXP_LIKE tatsächlich ausgeführt wird. Regexausführung erfordert SQL Server 2025 und Compatibility Level mindestens 170 der Installationsdatenbank. Das Pattern ist keine Pipe-Liste. Der ServerHealth-Parent normalisiert oder validiert das Pattern nicht und reicht es an DatabaseIntegrityAnalysis, DatabaseCapacityAnalysis und DiagnosticFindings weiter, wenn die jeweiligen Kindmodule aufgerufen werden. Der erreichte Kandidatenhelfer schließt ein nicht-NULL Pattern mit einer wirksamen expliziten Namensliste aus; NULL, leerer oder nur aus U+0020 bestehender Listenwert ist keine wirksame Liste. Der Kandidatenhelfer prüft Pattern und Liste nur, wenn sein Auswahl-/Parserpfad tatsächlich erreicht wird.';
+        PRINT N'@HighImpactConfirmed bit. Default ist 0; bei Auslassung gilt 0. SQL Server bindet vor Prozedureintritt an bit: numerische 0 wird 0, numerische Werte ungleich 0 werden 1, NULL bleibt NULL; andere Literalformen unterliegen der SQL-Typkonvertierung, Bindungsfehler treten vor dem Prozedurcode auf. Der Parent prüft oder normalisiert den Wert nicht. Er wird unverändert nur an tatsächlich aufgerufene DatabaseIntegrityAnalysis, DatabaseCapacityAnalysis und DiagnosticFindings weitergereicht. Der gemeinsame Kandidatenhelper weist NULL als INVALID_PARAMETER ab, wenn er erreicht wird, auch bei @AnalysisClass=NULL. Integrity nutzt HA_DR_CURRENT und Capacity SERVER_HEALTH_CURRENT; beide verlangen laut Katalog keine RequiresGroupGate-Bestätigung. Findings reicht diesen Wert unter den hier festgelegten Defaults nur an seine tatsächlich aufgerufenen Integrity-, Capacity- und BackupChain-Kindmodule weiter; BackupChain verwendet @AnalysisClass=NULL. Für diese tatsächlich erreichten Klassen lösen 0 und 1 keine High-Impact-Bestätigungspflicht aus. Andere Policyfreigaben und SQL-Rechte bleiben unverändert. Der Wert aktiviert kein Kindmodul oder tiefes Modul. Frühere Fehler, übersprungene Aufrufe und wiederverwendete JSON-Ergebnisse können Prüfungen verhindern; der Parent garantiert keinen einheitlichen Status.';
+        PRINT N'@MaxZeilen int. Default ist 100; bei Auslassung gilt 100. SQL Server bindet den ganzzahligen int-Wert vor Prozedureintritt; andere Literalformen unterliegen der SQL-Typkonvertierung, Bindungsfehler treten vor dem Prozedurcode auf. Der Parent normalisiert keinen Text. @Hilfe=1 druckt die Hilfe und kehrt vor der Prüfung zurück; sonst führt ein negativer Wert zu INVALID_PARAMETER/partial und verhindert alle Kindaufrufe. 0 und NULL passieren diesen Guard. Der unveränderte Wert wird nur an aktive direkte Aufrufe von USP_ServerMemory, USP_DatabaseIntegrityAnalysis, USP_DatabaseCapacityAnalysis, USP_PerformanceCounters, USP_CriticalEngineEvents, USP_InternalContentionAnalysis, USP_BufferPoolAnalysis und USP_DiagnosticFindings übergeben, nicht an die übrigen acht Standardmodule. Die Parent-Modulstatusliste wird nicht gekürzt. In den genannten Kindern bedeuten 0 und NULL jeweils unbegrenzt; positive Werte wirken nur auf die jeweilige lokale Auswahl oder Ausgabe. Das ist keine Gesamtgrenze für Resultsets, JSON, Scan-, Sammel- oder Zeitaufwand; Metadaten, Warnungen und andere Ergebnisse können mehr Zeilen enthalten, und Quellenarbeit kann vor einer Ausgabebegrenzung stattfinden.';
+        PRINT N'@ResultSetArt varchar(16). Default ist ''CONSOLE''. CONSOLE zeigt die beschriftete Modulstatusliste. RAW liefert die Ergebnisse der aufgerufenen Module, danach den Parentstatus und die Modulstatusliste. TABLE schreibt ausschließlich moduleStatus. NONE unterdrückt die fachlichen Resultsets. CONSOLE und TABLE reichen intern NONE an die Module weiter. JSON wird separat gesteuert. Rand-Leerzeichen und Groß- und Kleinschreibung werden normalisiert. NULL, Leertext und andere Werte sind ungültig.';
+        PRINT N'@ResultTablesJson nvarchar(max). Default ist NULL. Bei TABLE ist ein nichtleeres JSON-Objekt mit genau dem Schlüssel moduleStatus erforderlich. Der Wert benennt eine vorhandene leere lokale #Temp-Tabelle mit genau einer Seed-Spalte. Erlaubt sind maximal 116 Zeichen und weder ## noch #Monitor als Präfix. Außerhalb von TABLE sind nur NULL, Leertext und reine Leerzeichen zulässig. Die Vorprüfung läuft vor der Hilfe und kann Fehler 51011 auslösen.';
+        PRINT N'@JsonErzeugen bit. Default ist 0. 1 erzeugt das Parent-JSON in Json. 0 und NULL lassen Json auf NULL. Bei MitFindings=1 fordert der Parent zusätzlich die JSON-Ergebnisse von Integrität, Kapazität und BufferPool zur Wiederverwendung an, auch wenn kein Parent-JSON angefordert wurde.';
+        PRINT N'@Json nvarchar(max) OUTPUT. Default ist NULL. wird beim Eintritt auf NULL gesetzt. Bei @JsonErzeugen=1 erhält der Empfänger JSON mit meta, cpuTopology, numa, memory, tempdb, configuration, traceFlags, startupParameters, operatingSystem, security, databaseIntegrity, databaseCapacity, performanceCounters, criticalEngineEvents, internalContention, bufferPool, diagnosticFindings und warnings. Deaktivierte/nicht angeforderte Module erscheinen als JSON null. Mit lokaler nvarchar(max)-Variablen und OUTPUT binden.';
+        PRINT N'@PrintMeldungen bit. Default ist 1; bei Auslassung gilt 1. SQL Server bindet vor Prozedureintritt an bit: numerische 0 wird 0, numerische Werte ungleich 0 werden 1, NULL bleibt NULL; andere Literalformen unterliegen der SQL-Typkonvertierung, Bindungsfehler treten vor dem Prozedurcode auf. Der Parent validiert oder normalisiert den Wert nicht. Der Wert wird unverändert an tatsächlich ausgeführte Kindaufrufe weitergereicht (16 Aufrufstellen). 1 fordert die jeweilige optionale Meldungseinstellung des Kindes an; 0 und NULL werden ebenfalls unverändert weitergereicht. Die konkrete Wirkung folgt dem Vertrag des jeweiligen Kindes; eine einheitliche Meldungs- oder Stillezusage gibt es nicht. Im normalen Ablauf verwendet der Parent den Schalter nicht für eine eigene PRINT- oder RAISERROR-Statusmeldung. Die Hilfeausgabe ist unabhängig. Der Schalter steuert im Parent keine Resultsets, JSON, Analyseflags oder Fehlerbehandlung; Vorbereitungs- und SQL-Fehler bleiben unabhängig davon möglich.';
+        PRINT N'@Hilfe bit. Default ist 0. 1 druckt Parameterbeschreibung und Beispiele, danach RETURN vor Erhebung und Output-Statuszuweisung. 0 oder NULL führt normalen Aufruf aus. Eintrittsreset setzt @Json dennoch auf NULL. TABLE-Preflight/Mappingprüfung erfolgt vor Hilfezweig.';
+        PRINT N'Beispiel 1. EXEC [monitor].[USP_ServerHealthAnalysis] @Hilfe=1;';
+        PRINT N'Beispiel 2. EXEC [monitor].[USP_ServerHealthAnalysis] @MitCpu=1,@MitNuma=0,@MitMemory=0,@MitTempDB=0,@MitConfiguration=0,@MitTraceFlags=0,@MitStartup=0,@MitOS=0,@MitSecurity=0,@MitIntegritaet=0,@MitKapazitaet=0,@MitPerformanceCounters=0,@MitCriticalEvents=0,@MitContention=0,@MitBufferPool=0,@MitFindings=0,@MaxZeilen=100,@ResultSetArt=''RAW'';';
+        PRINT N'Beispiel 3. DECLARE @HealthJson nvarchar(max)=NULL; EXEC [monitor].[USP_ServerHealthAnalysis] @MitCpu=1,@MitNuma=0,@MitMemory=0,@MitTempDB=0,@MitConfiguration=0,@MitTraceFlags=0,@MitStartup=0,@MitOS=0,@MitSecurity=0,@MitIntegritaet=0,@MitKapazitaet=0,@MitPerformanceCounters=0,@MitCriticalEvents=0,@MitContention=0,@MitBufferPool=0,@MitFindings=0,@MaxZeilen=100,@ResultSetArt=''NONE'',@JsonErzeugen=1,@Json=@HealthJson OUTPUT; SELECT @HealthJson AS [HealthJson];';
+        PRINT N'Beispiel 4. DECLARE @HealthTablesJson nvarchar(max)=N''{"moduleStatus":"#ServerHealthAnalysis_HelpExample"}''; CREATE TABLE #ServerHealthAnalysis_HelpExample([Seed] bit NULL); EXEC [monitor].[USP_ServerHealthAnalysis] @MitCpu=1,@MitNuma=0,@MitMemory=0,@MitTempDB=0,@MitConfiguration=0,@MitTraceFlags=0,@MitStartup=0,@MitOS=0,@MitSecurity=0,@MitIntegritaet=0,@MitKapazitaet=0,@MitPerformanceCounters=0,@MitCriticalEvents=0,@MitContention=0,@MitBufferPool=0,@MitFindings=0,@MaxZeilen=100,@ResultSetArt=''TABLE'',@ResultTablesJson=@HealthTablesJson; SELECT * FROM #ServerHealthAnalysis_HelpExample; DROP TABLE #ServerHealthAnalysis_HelpExample;';
         RETURN;
     END;
 
@@ -64496,12 +67101,12 @@ BEGIN
         PRINT N'@DatabaseNamePattern nvarchar(4000); Default: NULL. NULL/ausgelassen deaktiviert Pattern. Sonst äußere U+0020-Leerzeichen werden getrimmt; LIKE mit %, _, [...] oder Präfix like:, regex:, regexi: (Präfix case-insensitive). Nach Präfix kein erneutes Trim; leer/Präfix ohne Inhalt ungültig. LIKE verwendet SQL_Latin1_General_CP1_CS_AS; regex: Flag c, regexi: Flag i. Regex benötigt SQL Server 2025 und Compatibility Level >=170 der Installationsdatenbank, sonst UNAVAILABLE_FEATURE; Syntax wird nicht vorgeprüft. Mit wirksamer Namensliste ist jeder nicht-NULL Patternwert unzulässig; Filter nach Kandidatenermittlung. Bei ausgelassenem Argument gilt der angegebene Default.';
         PRINT N'@HighImpactConfirmed bit; Default: 0. 0 keine Bestätigung; 1 bestätigt nur ein tatsächlich angefordertes Klassen-Gruppengate. Numerisch 0→0, jeder Wert ungleich 0→1; NULL ergibt beim Helper INVALID_PARAMETER, ausgelassen = 0. Hier wird @AnalysisClass=NULL übergeben, daher kein Gate und kein teurerer Pfad. Bei ausgelassenem Argument gilt der angegebene Default.';
         PRINT N'@NurProblematisch bit; Default: 0. 0 exportiert INFO/MEDIUM/HIGH; 1 nur MEDIUM/HIGH. Filter nach Befundbildung und unabhängig von Status, Quellenstatus und Warnings. Numerisch 0→0, jeder numerische Wert ungleich 0→1; NULL ist nicht validiert und SQL-Filter lässt dann nur MEDIUM/HIGH durch. Ausgelassen = 0. Bei ausgelassenem Argument gilt der angegebene Default.';
-        PRINT N'@TdeTransitionWarnMinutes int; Default: 60. Minuten, gültig 1–525600; Zustände 2,4,5,6 werden TDE_TRANSITION_LONG_RUNNING, wenn Scanänderung älter als UTC-Zeit minus Fenster ist. NULL wird nicht abgefangen und unterdrückt den Befund über NULL-Vergleich. Ausgelassen = 60. Bei ausgelassenem Argument gilt der angegebene Default.';
-        PRINT N'@CertificateExpiryWarnDays int; Default: 90. Tage, gültig 1–36500; Ablauf vor GETDATE()+Fenster ergibt TDE_CERTIFICATE_EXPIRY_WINDOW. NULL wird nicht abgefangen und unterdrückt den Befund über NULL-Vergleich. Ausgelassen = 90. Bei ausgelassenem Argument gilt der angegebene Default.';
+        PRINT N'@TdeTransitionWarnMinutes int; Default: 60. Minuten, gültig 1–525600; Zustände 2,4,5,6 werden TDE_TRANSITION_LONG_RUNNING, wenn Scanänderung älter als UTC-Zeit minus Fenster ist. NULL ergibt INVALID_PARAMETER und eine leere Exportmenge. Die Bindung erfolgt als SQL-int; Leertext hat keinen Sonderdefault und unterliegt vor der Procedure der SQL-Konvertierung, danach gilt der Bereich. Ausgelassen = 60. Bei ausgelassenem Argument gilt der angegebene Default.';
+        PRINT N'@CertificateExpiryWarnDays int; Default: 90. Tage, gültig 1–36500; Ablauf vor GETDATE()+Fenster ergibt TDE_CERTIFICATE_EXPIRY_WINDOW. NULL ergibt INVALID_PARAMETER und eine leere Exportmenge. Die Bindung erfolgt als SQL-int; Leertext hat keinen Sonderdefault und unterliegt vor der Procedure der SQL-Konvertierung, danach gilt der Bereich. Ausgelassen = 90. Bei ausgelassenem Argument gilt der angegebene Default.';
         PRINT N'@ExpliziteBackupverschluesselungErwartet bit; Default: 0. 0 keine Erwartungswarnung; 1 MEDIUM, wenn kein jüngstes nicht-copy-only Full-Backup im Lookback sichtbar ist oder key_algorithm NULL ist. Getrennt von TDE. Numerisch 0→0/jeder numerische Wert ungleich 0→1; NULL unterdrückt mangels Validierung den Vergleich. Ausgelassen = 0. Bei ausgelassenem Argument gilt der angegebene Default.';
-        PRINT N'@BackupLookbackDays int; Default: 35. Tage vor GETDATE(), gültig 1–3650. Nur backupset type D, is_copy_only=0 und finish_date im Fenster; jüngstes je Datenbank. NULL ergibt NULL-Datumsgrenze/keinen Treffer ohne Parameterfehler. Ausgelassen = 35. Bei ausgelassenem Argument gilt der angegebene Default.';
+        PRINT N'@BackupLookbackDays int; Default: 35. Tage vor GETDATE(), gültig 1–3650. Nur backupset type D, is_copy_only=0 und finish_date im Fenster; jüngstes je Datenbank. NULL ergibt INVALID_PARAMETER und eine leere Exportmenge. Die Bindung erfolgt als SQL-int; Leertext hat keinen Sonderdefault und unterliegt vor der Procedure der SQL-Konvertierung, danach gilt der Bereich. Ausgelassen = 35. Bei ausgelassenem Argument gilt der angegebene Default.';
         PRINT N'@MaxZeilen int; Default: 1000. NULL oder 0 unbegrenzt; positive int-Zahl ist Maximalzeilen nach Severity HIGH, MEDIUM, INFO und DatabaseId; negativ INVALID_PARAMETER und leere Exportmenge. Limit nach Analyse und Filter, nicht für Status/Sources/Warnings. Ausgelassen = 1000. Bei ausgelassenem Argument gilt der angegebene Default.';
-        PRINT N'@LockTimeoutMs int; Default: 0. Nichtnegative ganze Zahl in Millisekunden von 0 bis 2147483647; 0 verlangt im jeweiligen datenbanklokalen Aggregatbatch sofortige Rückgabe bei einer Sperre. Negativ ist INVALID_PARAMETER. Der Wert ist kein Gesamtzeitbudget und wird nur in diese dynamischen Aggregatbatches eingefügt; übrige direkte Quellen verwenden LOCK_TIMEOUT 0. SET-Werte im dynamischen Batch enden mit dessen Rückkehr. NULL wird nicht abgefangen und macht den verketteten Batchtext @Sql zu NULL. Daraus wird hier kein garantierter SQL-Fehler und kein bestimmter Laufzeiteffekt behauptet; die Procedure definiert für NULL keinen regulären Timeoutwert. Bei ausgelassenem Argument gilt der angegebene Default.';
+        PRINT N'@LockTimeoutMs int; Default: 0. Nichtnegative ganze Zahl in Millisekunden von 0 bis 2147483647; 0 verlangt im jeweiligen datenbanklokalen Aggregatbatch sofortige Rückgabe bei einer Sperre. Negativ ist INVALID_PARAMETER. Der Wert ist kein Gesamtzeitbudget und wird nur in diese dynamischen Aggregatbatches eingefügt; übrige direkte Quellen verwenden LOCK_TIMEOUT 0. SET-Werte im dynamischen Batch enden mit dessen Rückkehr. NULL ergibt INVALID_PARAMETER und eine leere Exportmenge; für NULL wird kein dynamischer Aggregatbatch erzeugt. Die Bindung erfolgt als SQL-int; Leertext hat keinen Sonderdefault und unterliegt vor der Procedure der SQL-Konvertierung, danach gilt der Bereich. Bei ausgelassenem Argument gilt der angegebene Default.';
         PRINT N'@ResultSetArt varchar(16); Default: ''CONSOLE''. Normalisiert mit UPPER/TRIM/COALESCE; gültig RAW, CONSOLE, TABLE, NONE. RAW vier technische Resultsets; CONSOLE ein beschriftetes Ergebnis über InternalEmitConsoleResult aus der Exportmenge; TABLE schreibt einzig databases; NONE keine Hauptsets. JSON separat über @JsonErzeugen. NULL/leer→INVALID_PARAMETER; äußere Leerzeichen und Case normalisiert. TABLE/CONSOLE intern auf NONE umgeschaltet. Bei ausgelassenem Argument gilt der angegebene Default.';
         PRINT N'@ResultTablesJson nvarchar(max); Default: NULL. Nur bei TABLE zulässig; sonst nichtleerer Wert THROW 51011. Helper preflight verlangt Mapping für exakt ein benanntes Ergebnis databases, mindestens ein Paar, string key/value, passende exakte/case-sensitive Schlüssel, keine doppelten Schlüssel oder case-insensitive doppelten Ziele/Extra-Schlüssel; Quelle muss vorhandene leere lokale #Temp-Tabelle sein, kein ##/#Monitor, Länge <=116. NULL/leerer Text scheitert am TABLE-Preflight. Vor Analyse geprüft; späterer Writer prüft Zielspalten per Namen und kann Teilwrites hinterlassen. Preflight/Writer THROW bei ThrowOnError=1. Bei ausgelassenem Argument gilt der angegebene Default.';
         PRINT N'@JsonErzeugen bit; Default: 0. 0 lässt @Json NULL; 1 erzeugt JSON mit meta, databases, sources, warnings; Datenarrays INCLUDE_NULL_VALUES. Numerisch 0→0/jeder numerische Wert ungleich 0→1; NULL wird nicht validiert und überspringt IF. Ausgelassen = 0; unabhängig von ResultSetArt. Bei ausgelassenem Argument gilt der angegebene Default.';
@@ -64604,10 +67209,10 @@ BEGIN
         , [EvidenceLimit] nvarchar(1000) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
     );
 
-    IF @MaxZeilen<0 OR @LockTimeoutMs<0
-       OR @TdeTransitionWarnMinutes<1 OR @TdeTransitionWarnMinutes>525600
-       OR @CertificateExpiryWarnDays<1 OR @CertificateExpiryWarnDays>36500
-       OR @BackupLookbackDays<1 OR @BackupLookbackDays>3650
+    IF @MaxZeilen<0 OR @LockTimeoutMs IS NULL OR @LockTimeoutMs<0
+       OR @TdeTransitionWarnMinutes IS NULL OR @TdeTransitionWarnMinutes<1 OR @TdeTransitionWarnMinutes>525600
+       OR @CertificateExpiryWarnDays IS NULL OR @CertificateExpiryWarnDays<1 OR @CertificateExpiryWarnDays>36500
+       OR @BackupLookbackDays IS NULL OR @BackupLookbackDays<1 OR @BackupLookbackDays>3650
        OR @OutputMode NOT IN ('RAW','CONSOLE','NONE')
     BEGIN
         SELECT @StatusCode='INVALID_PARAMETER',@IsPartial=1,
@@ -65963,7 +68568,7 @@ Objekt       : monitor.USP_ClrAnalysis
 Version      : 1.0.0
 Stand        : 2026-07-22
 Typ          : Stored Procedure
-Zweck        : Analysiert SQL-CLR-Konfiguration, benutzerdefinierte Assemblies,
+Zweck        : Die Procedure analysiert SQL-CLR-Konfiguration, benutzerdefinierte Assemblies,
                Module, Abhängigkeiten, Host Properties, AppDomains, geladene
                Assemblies, CLR Tasks, aktive Requests, Speicher und Counter.
 SQL-Version  : SQL Server 2019 oder neuer.
@@ -66058,12 +68663,42 @@ BEGIN
     IF @Hilfe=1
     BEGIN
         PRINT N'monitor.USP_ClrAnalysis';
-        PRINT N'Die Procedure analysiert ausschließlich SQL CLR; die out-of-process C# Language Extension gehört zu USP_ExternalRuntimeAnalysis.';
-        PRINT N'@MitModulzuordnung=1 liest sichtbare CLR-Module, Assemblyreferenzen und CLR-Typen ohne Moduldefinitionen oder Binärinhalte.';
-        PRINT N'@MitBerechtigungsanalyse=1 ergänzt sichtbare Owner- und EXECUTE-AS-Principals sowie die Anzahl trusted assemblies; ein Hashabgleich bleibt ausgeschlossen.';
-        PRINT N'@MitSitzungskontext=1 ergänzt Login, Host und Clientprogramm für aktive Managed-Code-Requests.';
-        PRINT N'@SampleSeconds=0 liefert Counter-Momentaufnahmen; Werte von 1 bis 60 erzeugen ein Counter-Deltafenster.';
-        PRINT N'@ResultSetArt=CONSOLE|RAW|TABLE|NONE; TABLE schreibt das primäre Resultset findings über @ResultTablesJson.';
+        PRINT N'Die Analyseinventur erstellt keine CLR-Assembly, aktiviert CLR nicht und führt keine CLR-Funktion aus; Installation und Betrieb von Analyze setzen weder CLR noch eine LLM-Runtime, Netzwerkverbindung oder LLM-Berechtigungen voraus.';
+        PRINT N'Die Procedure erfasst ausschließlich sichtbare SQL-CLR-Konfiguration, Katalogmetadaten und aktuelle Host-/Counterevidenz; sie lädt oder führt keine Assembly aus und aktiviert CLR nicht.';
+        PRINT N'@MitModulzuordnung=1 ergänzt sichtbare Module, direkte Assemblyreferenzen und CLR-Typen; Moduldefinitionen und Binärinhalte bleiben ausgeschlossen.';
+        PRINT N'@MitBerechtigungsanalyse=1 fordert den getrennten CATALOG_DEEP-Pfad für Owner, EXECUTE-AS-Principal und Trust-Zeilenanzahl an; @MitSitzungskontext=1 ergänzt Login, Host und Programm aktiver Managed-Code-Requests.';
+        PRINT N'@SampleSeconds=0 liest Counter-Snapshots; Werte 1 bis 60 warten auf den zweiten Countermesspunkt und interpretieren Deltas nur bei passendem Typ und gültiger Basis.';
+        PRINT N'@ResultSetArt akzeptiert CONSOLE, RAW, TABLE oder NONE; JSON-Erzeugung ist unabhängig davon und TABLE exportiert ausschließlich findings.';
+        PRINT N'@DatabaseNames nvarchar(max)=NULL; Default: NULL. NULL, N'''' und nur äußere Leerzeichen bedeuten keine explizite Datenbankliste. Eine nichtleere Eingabe ist eine Pipe-Liste einteiliger SQL-Datenbanknamen: | trennt außerhalb eckiger Klammern, | darin bleibt Inhalt, ]] maskiert ] und Elementränder werden getrimmt. Leere Elemente, ungültige Klammerung, Rohsegmente über 4000 UTF-16-Codeeinheiten, mehrteilige oder ungültige SQL-Namen und Namen über 128 Zeichen werden abgelehnt. Duplikate bleiben parserseitig erhalten; Kandidaten werden nach CS_AS-Namen zusammengeführt. Pattern und wirksame explizite Liste sind gegenseitig ausschließend. Bei ausgelassenem Argument gilt der angegebene Default.';
+        PRINT N'@SystemdatenbankenEinbeziehen bit=0; Default: 0. 0 schließt Systemdatenbanken aus; 1 erlaubt ihre Aufnahme, sofern die übrige Auswahl sie erfasst. NULL ist ungültig. Das Flag vergibt weder Zugriff noch ersetzt es CLR_CURRENT-Gruppenpolicy oder High-Impact-Bestätigung. Bei ausgelassenem Argument gilt der angegebene Default.';
+        PRINT N'@DatabaseNamePattern nvarchar(4000)=NULL; Default: NULL. NULL bedeutet kein Pattern. Äußerer Leerraum wird entfernt; regexi:, regex: und like: werden ohne Beachtung der Präfix-Großschreibung entfernt, der Inhalt danach nicht erneut getrimmt. Ohne Präfix oder mit like: gilt SQL-LIKE-Syntax, auf Datenbanknamen CS_AS angewendet. regex: nutzt Flag c, regexi: Flag i; beide erfordern SQL Server 2025 und Compatibility Level 170 in Framework- und jeder Zieldatenbank. Leer- oder nur Leerraumwerte sowie leeres Präfixergebnis wie like: sind ungültig. Nichtleere wirksame DatabaseNames schließen das Pattern aus. Bei ausgelassenem Argument gilt der angegebene Default.';
+        PRINT N'@HighImpactConfirmed bit=0; Default: 0. 0 bestätigt keinen High-Impact-Pfad; 1 ist die ausdrückliche Bestätigung, falls die wirksame Policy sie für die Analyseklasse verlangt. NULL ist ungültig. Das Bit ist keine Berechtigung und hebt Gruppenpolicy nicht auf. Basiskandidaten laufen über CLR_CURRENT; Owner-/Principal-/Trustanalyse verlangt zusätzlich CATALOG_DEEP und dessen Policy. Bei ausgelassenem Argument gilt der angegebene Default.';
+        PRINT N'@AssemblyNames nvarchar(max)=NULL; Default: NULL. NULL bedeutet kein Assemblyfilter. Jede nicht-NULL-Eingabe muss eine bracket-aware Pipe-Liste gültiger einzelner SQL-Namen enthalten: | trennt außerhalb [...], ]] maskiert ], Segmentränder werden getrimmt. Exakter Leerstring, Leerraum, leere Elemente, ungültige Klammerung, Rohsegmente über 4000 UTF-16-Codeeinheiten, ungültige oder mehrteilige SQL-Namen und Namen über 128 Zeichen führen zu INVALID_PARAMETER. Namen landen unverändert in einer CS_AS-Primärschlüsselspalte; ein exakt doppeltes Element kann daher beim Einfügen einen Fehler auslösen, der vom äußeren CATCH als ERROR_HANDLED gemeldet wird. Mit AssemblyNamePattern ist die Eingabe ungültig. Bei ausgelassenem Argument gilt der angegebene Default.';
+        PRINT N'@AssemblyNamePattern nvarchar(4000)=NULL; Default: NULL. NULL bedeutet kein Filter. Äußerer Leerraum wird entfernt; regexi:, regex: und like: werden ohne Beachtung der Präfixschreibung erkannt, der Rest nicht erneut getrimmt. Ohne Präfix oder mit like: gilt SQL-LIKE-Matching, CS_AS. regex: nutzt Flag c, regexi: Flag i und beide brauchen SQL Server 2025 sowie Compatibility Level 170 in Framework- und Zieldatenbank. Leerer Wert oder leeres Präfixergebnis wie like: ist ungültig; Regex-Syntax wird nicht vorgeprüft. Zusammen mit AssemblyNames unzulässig; sonst wirkt es auf benutzerdefinierte Assemblies im ausgewählten Datenbankscope. Bei ausgelassenem Argument gilt der angegebene Default.';
+        PRINT N'@SampleSeconds tinyint=0; Default: 0. 0 liest Counterpunkt T1; Delta-Counter liefern SAMPLE_REQUIRED_FOR_DELTA_METRIC. Ganzzahlwerte 1 bis 60 warten mit WAITFOR DELAY auf T2. Die effektive Dauer basiert auf den tatsächlichen UTC-Lesezeiten und DATEDIFF_BIG in Mikrosekunden, nicht auf der angeforderten Sollzeit. Typen 272696320 und 272696576 liefern Zählerdelta je tatsächlicher Sekunde. Typ 537003264 liefert 100 mal Zählerdelta/Basisdelta; 1073874176 liefert Zählerdelta/Basisdelta. Beide Basistypen brauchen positives Sampling sowie vorhandene, steigende Basiswerte; diese Formeln teilen nicht durch Zeit. Sinkender Counter ergibt COUNTER_RESET_DURING_SAMPLE; Basistypen zusätzlich BASE_COUNTER_MISSING, BASE_COUNTER_RESET_DURING_SAMPLE oder BASE_COUNTER_DELTA_ZERO. Bei fehlendem T2 infolge isoliertem Quellenfehler wird T1 als Gegenwert verwendet, also entsteht kein echtes Delta. Unbekannte Typen sind RAW_UNINTERPRETED. NULL und Werte über 60 sind ungültig. Bei ausgelassenem Argument gilt der angegebene Default.';
+        PRINT N'@MitModulzuordnung bit=1; Default: 1. 0 überspringt sichtbare CLR-Module, direkte Assemblyreferenzen und CLR-Typen; 1 erfasst diese Katalogzeilen für Assemblies im Filter. NULL ist ungültig. Default 1 ist Umfangssteuerung, kein Security-/Berechtigungsgate. Moduldefinitionen und Assembly-Binärinhalte werden nie gelesen. Bei ausgelassenem Argument gilt der angegebene Default.';
+        PRINT N'@MitBerechtigungsanalyse bit=0; Default: 0. 0 lässt Assembly-Owner, EXECUTE-AS-Principals und Trust-Zeilenanzahl aus; 1 fordert diese Zusatzdaten an. NULL ist ungültig. Der Pfad verlangt separat CATALOG_DEEP und dessen Gruppen-/High-Impact-Policy. Trust wird nur als serverweite Zeilenanzahl gelesen; Hash, Beschreibung und Assembly-zu-Trust-Zuordnung bleiben ausgeschlossen. Das Flag aktiviert kein CLR. Bei ausgelassenem Argument gilt der angegebene Default.';
+        PRINT N'@MitSitzungskontext bit=0; Default: 0. 0 lässt Login, Host und Clientprogramm aktiver Managed-Code-Requests NULL; 1 ergänzt genau diese drei Kontextspalten. NULL ist ungültig. Unabhängig vom CATALOG_DEEP-Owner-/Trustpfad. Bei ausgelassenem Argument gilt der angegebene Default.';
+        PRINT N'@NurProblematisch bit=0; Default: 0. 0 behält alle Findings; 1 filtert ausschließlich auf Severity=WARN. NULL ist ungültig. Der Filter wirkt auf findings in CONSOLE/RAW/TABLE und JSON-findings, nicht auf übrige Ergebnisarrays, Warnings oder Bewertung. Bei ausgelassenem Argument gilt der angegebene Default.';
+        PRINT N'@MaxZeilen int=100; Default: 100. NULL oder 0 bedeutet unbegrenzt; positive Werte begrenzen je Resultset nach Sortierung. Negative Werte sind INVALID_PARAMETER. Begrenzte Mengen: findings nach NurProblematisch, assemblies, assemblyModules, assemblyDependencies, appDomains, loadedAssemblies, clrTasks, activeRequests, memory und performanceCounters. Unbegrenzt bleiben configuration, databaseStatus, sourceStatus, clrProperties und warnings. Die Begrenzung erfolgt nach Materialisierung und reduziert Quellkosten nicht. Der RESULTSET_TRUNCATED-Prüfblock zählt nur findings, assemblies, assemblyModules, assemblyDependencies, appDomains, loadedAssemblies und clrTasks; er deckt eine alleinige Begrenzung von activeRequests, memory oder performanceCounters nicht ab. Bei PrintMeldungen=1 wird die Warnmeldung ausgegeben, wenn diese geprüften Mengen das Limit überschreiten. Bei ausgelassenem Argument gilt der angegebene Default.';
+        PRINT N'@LockTimeoutMs int=0; Default: 0. 0 setzt LOCK_TIMEOUT 0; 1 bis 60000 setzt Sitzungszeitlimit in Millisekunden. NULL und Werte außerhalb des Bereichs sind ungültig. Das eingehende Sitzungssetting wird am Ende wiederhergestellt. Sampling-Wartezeit wird hierdurch nicht begrenzt; TABLE-Helfer haben eigene lokale DDL-/Metadatenbudgets. Bei ausgelassenem Argument gilt der angegebene Default.';
+        PRINT N'@ResultSetArt varchar(16)=''CONSOLE''; Default: ''CONSOLE''. Nach äußerem Trimmen und Umwandlung in Großbuchstaben sind exakt CONSOLE, RAW, TABLE und NONE erlaubt; NULL, leer oder sonstige Werte ergeben INVALID_PARAMETER. CONSOLE rendert findings. RAW liefert zuerst Meta und dann geordnete Konfigurations-, Status-, Findings-, Katalog-, Host-, Request-, Memory-, Counter- und Warning-Resultsets. TABLE exportiert nur findings ins vorbereitete lokale Ziel. NONE unterdrückt Resultsets. TABLE und CONSOLE schalten interne Ausgabe auf NONE. Bei ausgelassenem Argument gilt der angegebene Default.';
+        PRINT N'@ResultTablesJson nvarchar(max)=NULL; Default: NULL. NULL oder Leerraum bedeutet keine Zuordnung; TABLE benötigt ein gültiges JSON-Objekt mit dem einzigen erlaubten case-sensitiven Schlüssel findings und einem nichtleeren JSON-String als lokalem #Temp-Zielnamen. Doppelte JSON-Schlüssel, unbekannte Schlüssel, Nicht-Stringwerte, doppelte Ziele, ##-/permanente Tabellen, über 116 Zeichen oder das case-insensitive reservierte Präfix #Monitor sind ungültig; das vorhandene Ziel muss lokal und leer sein. Der Writer akzeptiert eine leere Zieltabelle mit genau einer beliebigen Seed-Spalte oder eine passende Findingsstruktur. Bei nicht-TABLE und nichtleerem Wert erfolgt THROW 51011 vor Hilfe. TABLE-Preflight kann ebenfalls vor HELP werfen; der spätere Writer läuft nach OUT-Zuweisung und RAW-/JSON-Ausgabe mit ThrowOnError=1, sodass 51010 danach auftreten kann. Bei ausgelassenem Argument gilt der angegebene Default.';
+        PRINT N'@JsonErzeugen bit=0; Default: 0. 0 unterdrückt Erstellung; 1 erzeugt ein JSON-Objekt mit meta als Einzelobjekt und benannten Arrays configuration, databaseStatus, sourceStatus, findings, assemblies, assemblyModules, assemblyDependencies, clrProperties, appDomains, loadedAssemblies, clrTasks, activeRequests, memory, performanceCounters und warnings. NULL ist ungültig. JSON ist unabhängig von ResultSetArt. Bei ausgelassenem Argument gilt der angegebene Default.';
+        PRINT N'@Json nvarchar(max)=NULL OUTPUT; Default: NULL. OUTPUT wird beim Einstieg auf NULL gesetzt. Bei JsonErzeugen=0 bleibt es NULL; bei 1 enthält es meta und die benannten Arrays. SQL FOR JSON lässt NULL-Eigenschaften standardmäßig aus; leere Collections werden als [] ausgegeben. Die OUTPUT-Bindung muss zum SQL-Typvertrag passen. Ohne OUTPUT-Bindung wird kein Wert an eine aufrufende Variable zurückgegeben.';
+        PRINT N'@PrintMeldungen bit=1; Default: 1. 1 gibt Status- und Truncation-Hinweise als Severity-10-Meldungen aus; 0 unterdrückt sie. NULL ist ungültig. Beeinflusst weder Status-OUTPUT noch strukturierte Warnings. Bei ausgelassenem Argument gilt der angegebene Default.';
+        PRINT N'@Hilfe bit=0; Default: 0. 1 druckt Kurzbeschreibung und kehrt vor Analyse/Resultsets zurück; 0 fährt normal fort. NULL wird nicht als 1 behandelt und wird nicht von der Bit-NULL-Validierung erfasst. Ein unzulässiges nichtleeres ResultTablesJson kann bereits vor diesem Zweig THROW 51011 auslösen. Beim frühen Help-Return werden die abschließenden Status-OUTPUTs nicht zugewiesen. Bei ausgelassenem Argument gilt der angegebene Default.';
+        PRINT N'@StatusCodeOut varchar(40)=NULL OUTPUT; Default: NULL. OUTPUT für den globalen Status, getrennt von Quell- und Datenbankstatus. Mögliche globale Werte: AVAILABLE, AVAILABLE_LIMITED, AVAILABLE_WITH_FINDING, NOT_APPLICABLE, FEATURE_DISABLED, INVALID_PARAMETER, UNAVAILABLE_FEATURE, HIGH_IMPACT_CONFIRMATION_REQUIRED, DENIED_GROUP, INTERNAL_ERROR, LOCK_TIMEOUT, ERROR_HANDLED. INTERNAL_ERROR kann defensiv aus der TOP(0)-Tabellenformprobe im Kandidatenhelfer stammen; keine Ursache oder Laufzeitbeobachtung daraus ableiten. Bei Help-Return keine Zuweisung. Ohne OUTPUT-Bindung wird kein Wert an eine aufrufende Variable zurückgegeben.';
+        PRINT N'@IsPartialOut bit=NULL OUTPUT; Default: NULL. OUTPUT-Bit der globalen Partialität (1 bei eingeschränkter/fehlgeschlagener Auswertung, sonst 0), getrennt von Quellen-/Datenbankpartialität. Bei Help-Return nicht zugewiesen. Ohne OUTPUT-Bindung wird kein Wert an eine aufrufende Variable zurückgegeben.';
+        PRINT N'@ErrorNumberOut int=NULL OUTPUT; Default: NULL. OUTPUT für ausgewählte SQL-Fehlernummer aus globaler CATCH- oder partieller Quellenmeldung; NULL, wenn keine gesetzt wurde. Getrennt vom Statuscode. Bei Help-Return nicht zugewiesen. Ohne OUTPUT-Bindung wird kein Wert an eine aufrufende Variable zurückgegeben.';
+        PRINT N'@ErrorMessageOut nvarchar(2048)=NULL OUTPUT; Default: NULL. OUTPUT für den global ausgewählten Fehler-/Statusbeschreibungstext: kann Validierungs-, Gate- oder Quellenfehlerdetails enthalten, aus globaler CATCH oder partieller Quellenmeldung stammen, oder NULL sein. Nicht für jeden Status ist eine Fehlerursache gesetzt. Getrennt von Statuscode und strukturierten Warnungen. Bei Help-Return nicht zugewiesen. Ohne OUTPUT-Bindung wird kein Wert an eine aufrufende Variable zurückgegeben.';
+        PRINT N'Beispiel 1: EXEC [monitor].[USP_ClrAnalysis] @Hilfe=1;';
+        PRINT N'Beispiel 2: EXEC [monitor].[USP_ClrAnalysis] @DatabaseNames=N''[ExampleDatabase]'', @AssemblyNames=N''[ExampleAssembly]'', @MitModulzuordnung=0, @MaxZeilen=100, @ResultSetArt=''RAW'', @PrintMeldungen=0;';
+        PRINT N'Beispiel 3: DECLARE @Json nvarchar(max), @Status varchar(40), @Partial bit, @Error int, @Message nvarchar(2048), @ReturnCode int; EXEC @ReturnCode=[monitor].[USP_ClrAnalysis] @DatabaseNames=N''[ExampleDatabase]'', @ResultSetArt=''NONE'', @JsonErzeugen=1, @Json=@Json OUTPUT, @StatusCodeOut=@Status OUTPUT, @IsPartialOut=@Partial OUTPUT, @ErrorNumberOut=@Error OUTPUT, @ErrorMessageOut=@Message OUTPUT, @PrintMeldungen=0; SELECT @ReturnCode AS [ReturnCode], @Status AS [StatusCode], @Partial AS [IsPartial], @Error AS [ErrorNumber], @Message AS [ErrorMessage], @Json AS [DiagnosticJson];';
+        PRINT N'Beispiel 4: CREATE TABLE [#ClrAnalysis_HelpExample] ([Seed] int NULL); BEGIN TRY EXEC [monitor].[USP_ClrAnalysis] @DatabaseNames=N''[ExampleDatabase]'', @ResultSetArt=''TABLE'', @ResultTablesJson=N''{"findings":"#ClrAnalysis_HelpExample"}'', @PrintMeldungen=0; SELECT * FROM [#ClrAnalysis_HelpExample]; DROP TABLE IF EXISTS [#ClrAnalysis_HelpExample]; END TRY BEGIN CATCH DROP TABLE IF EXISTS [#ClrAnalysis_HelpExample]; THROW; END CATCH;';
+        PRINT N'Beispiel 5: EXEC [monitor].[USP_ClrAnalysis] @DatabaseNamePattern=N''like:ExampleDatabase%'', @AssemblyNamePattern=N''like:ExampleAssembly%'', @MaxZeilen=100, @ResultSetArt=''RAW'', @PrintMeldungen=0;';
+        PRINT N'Beispiel 6: EXEC [monitor].[USP_ClrAnalysis] @DatabaseNames=N''[ExampleDatabase]'', @SampleSeconds=1, @MaxZeilen=100, @ResultSetArt=''RAW'', @PrintMeldungen=0;';
+        PRINT N'Beispiel 7: EXEC [monitor].[USP_ClrAnalysis] @DatabaseNames=N''[ExampleDatabase]'', @MitBerechtigungsanalyse=1, @HighImpactConfirmed=1, @MaxZeilen=100, @ResultSetArt=''RAW'', @PrintMeldungen=0;';
         RETURN;
     END;
 
@@ -68182,8 +70817,8 @@ Datenschutz  : Keine Connection Strings, Secret-, Binary-, Host-, Login- oder
                vollständigen Pfadwerte werden gelesen oder ausgegeben.
 Abgrenzung   : Dieser erste Slice stabilisiert Paket-, Executable- und direkte
                Parent-Container-Inventare.
-               Lineage und Regeln bleiben als leere, ausdrücklich begrenzte
-               Resultsets sichtbar. Direkte
+               Direkte Pipeline-Komponentenlinien werden inventarisiert; weitergehende
+               Lineage und Regeln bleiben ausdrücklich begrenzt. Direkte
                Precedence Constraints, Connection Manager und
                Property-Expressions werden ohne Ausdrucks- oder
                Connection-String-Werte inventarisiert.
@@ -68233,10 +70868,32 @@ BEGIN
 
     IF @Hilfe = 1
     BEGIN
-        PRINT N'monitor.USP_SsisPackageAnalysis';
-        PRINT N'Analysiert ausschließlich direkt übergebenes DTSX-v2-XML. Der Aufruf öffnet weder Dateien noch SSISDB, führt keine Pakete und kein Paket-SQL aus.';
-        PRINT N'Der erste Parser-Slice inventarisiert Paket, Executables, direkte Parent-Container, Precedence Constraints, Connection Manager, Paketparameter, Variablendefinitionen, Pipeline-Komponenten und Property-Expressions ohne Wertausgabe. Lineage und Regelengine werden als begrenzte Resultsets ausgegeben.';
-        PRINT N'@ResultSetArt=CONSOLE|RAW|TABLE|NONE; TABLE verwendet eine benannte Zuordnung für jedes Resultset.';
+        PRINT N'monitor.USP_SsisPackageAnalysis inventarisiert direkt übergebenes XML ohne Paket-, SQL-, Datei- oder SSISDB-Ausführung.';
+        PRINT N'@PackageXml: Datentyp xml. Direkt übergebenes SQL-xml-Instanz; Default: NULL. Erforderlich für eine Analyse; NULL wird als ungültiger Parameter bewertet. Geprüft werden ein Executable-Wurzelelement im Namespace www.microsoft.com/SqlServer/Dts sowie ein nichtleerer ExecutableType passend zu %Package%; andere Formen ergeben UNSUPPORTED_PACKAGE_FORMAT. Eine vollständige DTSX-Schemavalidierung wird damit nicht behauptet. Es wird ausschließlich dieser Wert untersucht; die Procedure öffnet keine Datei, ISPAC-, SSISDB-, Datenbank- oder externe Verbindungsquelle. Für @Hilfe = 1 wird das Argument vor der Quellenprüfung nicht verwendet.';
+        PRINT N'@PackageParametersJson: Datentyp nvarchar(max). Unverwendetes Eingabeargument; Default: NULL. Die Procedure liest diesen Wert nicht, validiert weder JSON-Syntax noch Inhalt und wendet keine Paketparameter auf das XML an. NULL, Leertext, syntaktisch ungültiges JSON und sonstige Inhalte haben für den Parserpfad keine Wirkung. Paketparameter im XML werden nur als Metadaten inventarisiert; Werte werden nicht ausgegeben.';
+        PRINT N'@AnalysisDepth: Datentyp varchar(16). Analyseumfang; Default: STANDARD. Zulässige Form ist nach Trim und Umwandlung in Großbuchstaben ausschließlich STANDARD. Damit wird der implementierte statische Parser-Slice angefordert. NULL und jeder andere Wert sind ungültig; ein Leerwert ist ebenfalls ungültig.';
+        PRINT N'@ResolveSqlMetadata: Datentyp bit. Reservierter Schalter für SQL-Metadatenauflösung; Default: 0. Nur 0 ist zulässig. NULL und 1 werden als ungültige Parameter bewertet. Eine Metadatenauflösung ist in diesem Parser-Slice nicht implementiert; der Schalter aktiviert keine solche Funktion. SQL-bit-Konvertierung bildet numerische Werte ungleich 0 auf 1 ab.';
+        PRINT N'@CheckLookupData: Datentyp bit. Reservierter Schalter für Lookup-Datenprüfungen; Default: 0. Nur 0 ist zulässig. NULL und 1 werden als ungültige Parameter bewertet. Lookup-Daten werden in diesem Parser-Slice nicht gelesen; der Schalter aktiviert keine Prüfung. SQL-bit-Konvertierung bildet numerische Werte ungleich 0 auf 1 ab.';
+        PRINT N'@HighImpactConfirmed: Datentyp bit. Bestätigungsschalter; Default: 0. Beide Bitwerte 0 und 1 werden angenommen; NULL wird als ungültiger Parameter bewertet. Der Wert wird nicht zur Freigabe oder Erweiterung einer Analyse verwendet und ändert den Parserumfang nicht. SQL-bit-Konvertierung bildet numerische Werte ungleich 0 auf 1 ab.';
+        PRINT N'@MaxZeilen: Datentyp int. Zeilengrenze; Default: 1000. Zulässig sind NULL, 0 oder positive Ganzzahlen von 1 bis 2147483647; negative Werte sind ungültig. NULL und 0 bedeuten unbegrenzt. Bei RAW begrenzt der Wert acht Detailgruppen (Executables, Constraints, Data-Flow-Komponenten, Connections, Parameter, Expressions, Lineage und Variablen); Modulstatus, Paket, Findings, Quellenstatus und Warnungen werden davon nicht begrenzt. Das interne Inventar wird nicht vorab auf diese Grenze beschränkt. Für TABLE und JSON begrenzt @MaxZeilen nur das Variableninventar; die übrigen Arrays/Zieltabellen werden nicht durch diesen Parameter gekürzt.';
+        PRINT N'@MaxDurationSeconds: Datentyp int; SQL-int-Skalarwert in Sekunden; Default: 30. Zulässig sind Ganzzahlen von 1 bis 60. NULL sowie Werte außerhalb dieses Bereichs werden als INVALID_PARAMETER mit Teilstatus und Diagnose zurückgegeben. Ein als Leertext übergebenes Argument kann bei SQL Server implizit zu 0 konvertiert werden und ist deshalb ungültig. Der Parameter wird nicht für eine Frist, einen Abbruch oder ein Laufzeitlimit verwendet; eine tatsächliche Zeitbegrenzung besteht nicht.';
+        PRINT N'@LockTimeoutMs: Datentyp int. SQL-int-Skalarwert in Millisekunden; bei ausgelassenem Argument gilt der Default 0. Leertext kann bei SQL Server implizit zu 0 konvertiert werden und wird nicht als eigenständige Leerwerteingabe geprüft. Zulässig sind 0 bis 60000; NULL und Zahlen außerhalb dieses Bereichs werden als INVALID_PARAMETER zurückgegeben. Der Parameter ist derzeit reserviert: Zulässige Werte werden validiert, ändern aber die Sperrwartezeit der nachfolgenden Analyse nicht. Die direkte Prozedurarbeit verwendet die beim Aufruf geltende LOCK_TIMEOUT-Einstellung. Der dynamische SET-Batch endet vor der Analyse; SQL Server stellt seine Einstellung bei der Rückkehr aus dem Batch wieder her. TABLE-Hilfsprocedures behalten ihre eigene Sperrwartezeitregel für die geerbte Sitzungseinstellung: Bei initialer Temp-Tabellen-DDL erhöhen sie einen eingehenden Wert 0 auf 1000 ms, behalten andere eingehende Werte für diese Anlage bei und setzen für Zieloperationen 0 (NOWAIT). Die Sitzungseinstellung des Aufrufers bleibt erhalten.';
+        PRINT N'@ResultSetArt: Datentyp varchar(16). Ausgabeform; Default: CONSOLE. Der Wert wird getrimmt und in Großbuchstaben umgewandelt. Zulässige Werte: CONSOLE gibt die Zusammenfassung über InternalEmitConsoleResult aus; RAW gibt die dreizehn Resultsets in dokumentierter Reihenfolge aus; TABLE schreibt angeforderte Gruppen in benannte lokale #Temp-Ziele; NONE gibt keine fachlichen Resultsets dieser drei Formen aus. NULL, Leerwert und andere Werte sind ungültig. TABLE erfordert eine gültige, nichtleere Zuordnung in @ResultTablesJson. Außerhalb von TABLE muss @ResultTablesJson NULL oder leer oder nur aus U+0020-Leerzeichen bestehend sein. JSON ist keine zulässige Ausgabeart; JSON wird separat mit @JsonErzeugen angefordert.';
+        PRINT N'@ResultTablesJson: Datentyp nvarchar(max). JSON-Zuordnung für TABLE-Ausgabe; Default: NULL. Nur bei @ResultSetArt = TABLE wird die Eingabe als nichtleeres JSON-Objekt ausgewertet. Zulässige Schlüssel sind exakt (groß-/kleinschreibungssensitiv): moduleStatus = Zusammenfassungsstatus; package = Paketmetadaten; executables = Executable-Inventar; controlFlowConstraints = direkte Kontrollflusskanten; dataFlowComponents = Pipeline-Komponenten; connections = Connection-Manager-Metadaten; parameters = Paketparameter-Metadaten; expressions = direkte Property-Expressions; lineage = direkte Pipeline-Verbindungen; findings = Befunde; sourceStatus = Quellenstatus; warnings = Hinweise; variables = Variablendefinitionen. Jeder Wert muss ein nichtleerer Tabellenname als JSON-String sein. Jede Zuordnung muss auf eine bereits angelegte, leere lokale #Temp-Tabelle mit genau einer Seed-Spalte zeigen; ##-Tabellen, Namen über 116 Zeichen und #Monitor*-Ziele sind unzulässig. Eine nichtleere Teilmenge der 13 Gruppen ist zulässig; nicht zugeordnete Gruppen werden nicht geschrieben. Beispiel: N''{"moduleStatus":"#SsisModuleStatus"}''. Resultsetnamen dürfen nicht doppelt vorkommen; doppelte Zielnamen und das reservierte Präfix #Monitor werden ohne Beachtung der Großschreibung geprüft; unbekannte Schlüssel werden abgelehnt. Die Zuordnung wird vor dem fachlichen XML-Parsing vollständig geprüft. Bei TABLE führen NULL, ungültiges JSON, ein leeres Objekt oder fehlende/unzulässige Ziele zum Fehler. Bei anderen Ausgabeformen wird ein nichtleerer Wert als ungültige Kombination abgewiesen; NULL und Leer-/U+0020-Leerzeichen-Text werden ignoriert.';
+        PRINT N'@JsonErzeugen: Datentyp bit. Steuert die Ausgabe über @Json; Default: 0. 0 erzeugt kein JSON; 1 weist das erzeugte JSON @Json zu. NULL ist ungültig. Das JSON-Wurzelobjekt enthält 13 Arrays mit den Schlüsseln moduleStatus, package, executables, controlFlowConstraints, dataFlowComponents, connections, parameters, expressions, lineage, findings, sourceStatus, warnings und variables; ein zusätzliches meta-Objekt ist nicht implementiert. Das package-Array wird bei leerem Paketinventar ausdrücklich als [] ausgegeben. Nur variables wird mit INCLUDE_NULL_VALUES serialisiert. Das JSON wird unabhängig von @ResultSetArt erzeugt, sofern der reguläre Analysepfad erreicht wird. SQL-bit-Konvertierung bildet numerische Werte ungleich 0 auf 1 ab.';
+        PRINT N'@Json: Datentyp nvarchar(max) OUTPUT. OUTPUT-Parameter für das JSON-Dokument; Default: NULL OUTPUT. Beim Eintritt wird @Json stets auf NULL initialisiert. Bei @JsonErzeugen = 1 wird es im regulären Pfad an das JSON-Wurzelobjekt gebunden; andernfalls bleibt es NULL. Im Hilfezweig bleibt es NULL. Der Aufrufer muss die Ausgabe wie im Beispiel mit @Json = @Variable OUTPUT binden.';
+        PRINT N'@PrintMeldungen: Datentyp bit. Historischer Meldungsschalter; Default: 1. Die implementierte Validierung akzeptiert 0 und 1; NULL wird als ungültig bewertet. Der Wert wird nach der NULL-Prüfung nicht weiter ausgewertet und steuert die CONSOLE-Ausgabe oder PRINT-Meldungen nicht. Die CONSOLE-Ausgabe richtet sich nach @ResultSetArt. SQL-bit-Konvertierung bildet numerische Werte ungleich 0 auf 1 ab.';
+        PRINT N'@Hilfe: Datentyp bit. Gibt die eingebaute Hilfe aus; Default: 0. Nur der Wert 1 löst die Hilfe aus: die Procedure druckt feste Hilfetexte und kehrt vor Mappingprüfung, XML-Validierung und Analyse zurück; eine Paketquelle ist dafür nicht erforderlich. Der Hilfezweig prüft diesen Parameter nicht auf NULL; NULL verhält sich daher wie kein Hilfeaufruf und führt in den regulären Pfad. SQL-bit-Konvertierung bildet numerische Werte ungleich 0 auf 1 ab. 0 führt regulär fort. Die Hilfe setzt nur @Json=NULL; die vier Status-/Fehler-OUTPUTs bleiben unverändert, unabhängig von @PrintMeldungen.';
+        PRINT N'@StatusCodeOut: Datentyp varchar(40) OUTPUT. varchar(40)-Variable mit OUTPUT am Aufruf binden; Default: NULL OUTPUT. Bei regulärer Zuweisung sind die im Code gesetzten Statuswerte AVAILABLE_LIMITED (implementiertes begrenztes Inventar), INVALID_PARAMETER (erkannte ungültige Argumente) und UNSUPPORTED_PACKAGE_FORMAT (nicht unterstützte XML-/Paketwurzel) möglich. Dies ist kein Eingabeauswahlcode; der Eingangswert wird erst bei regulärem Abschluss überschrieben. Bei Hilfe oder einem vorher entkommenden Fehler bleibt er unverändert.';
+        PRINT N'@IsPartialOut: Datentyp bit OUTPUT. bit-Variable mit OUTPUT am Aufruf binden; Default: NULL OUTPUT. Bei regulärem Abschluss wird im aktuellen begrenzten Parser-Slice stets 1 zugewiesen; 0 wird von diesem Implementierungsstand nicht erzeugt. Ein vorgebundener 0-, 1- oder NULL-Wert hat keine Steuerwirkung. Bei Hilfe oder einem Fehler vor der Zuweisung bleibt er unverändert.';
+        PRINT N'@ErrorNumberOut: Datentyp int OUTPUT. int-Variable mit OUTPUT am Aufruf binden; Default: NULL OUTPUT. Der aktuelle reguläre Pfad weist NULL zu; erkannte Parameter-/Formatfehler liefern einen Status und Meldungstext, aber keine interne Fehlernummer. Ein entkommender SQL-Fehler wird hier nicht allgemein abgefangen. Eingangswerte sind keine Steuerung und bleiben bei Hilfe beziehungsweise vorzeitiger Ausnahme unverändert.';
+        PRINT N'@ErrorMessageOut: Datentyp nvarchar(2048) OUTPUT. nvarchar(2048)-Variable mit OUTPUT am Aufruf binden; Default: NULL OUTPUT. Kapazität: 2048 UTF-16-Codeeinheiten. Bei regulärem Abschluss enthält sie den Parameter-/Formatfehlertext oder NULL; sie ist kein Eingabefilter. Bei Hilfe oder einem Fehler vor der abschließenden Zuweisung bleibt ein vorgebundener Wert unverändert.';
+        PRINT N'Ausgelassene Argumente verwenden den Signaturdefault. Strings als T-SQL-Literale übergeben, Unicode mit N-Präfix; XML als xml-Variable oder konvertierbaren XML-Text, Zahlen als skalare Werte. Typkonvertierung findet vor dem Aufruf statt. Die normale Analyse bleibt read-only gegenüber externen Quellen; TABLE verändert ausdrücklich übergebene lokale Temp-Ziele.';
+        PRINT N'Vier Hilfeaufrufe ohne XML-Analyse:';
+        PRINT N'EXEC [monitor].[USP_SsisPackageAnalysis] @Hilfe = 1;';
+        PRINT N'EXEC [monitor].[USP_SsisPackageAnalysis] @Hilfe = 1, @PrintMeldungen = 0;';
+        PRINT N'EXEC [monitor].[USP_SsisPackageAnalysis] @Hilfe = 1, @ResultSetArt = ''RAW'';';
+        PRINT N'DECLARE @Json nvarchar(max); EXEC [monitor].[USP_SsisPackageAnalysis] @Hilfe = 1, @JsonErzeugen = 1, @Json = @Json OUTPUT; SELECT @Json AS [Json];';
         RETURN;
     END;
 
@@ -68409,7 +71066,9 @@ BEGIN
        OR @HighImpactConfirmed IS NULL
        OR @JsonErzeugen IS NULL OR @PrintMeldungen IS NULL
        OR @MaxZeilen IS NOT NULL AND @MaxZeilen < 0
+       OR @MaxDurationSeconds IS NULL
        OR @MaxDurationSeconds NOT BETWEEN 1 AND 60
+       OR @LockTimeoutMs IS NULL
        OR @LockTimeoutMs NOT BETWEEN 0 AND 60000
        OR @OutputMode NOT IN ('CONSOLE','RAW','TABLE','NONE')
        OR (@TableRequested = 0 AND NULLIF(LTRIM(RTRIM(COALESCE(@ResultTablesJson,N''))),N'') IS NOT NULL)
@@ -68418,8 +71077,12 @@ BEGIN
                @ErrorMessage = N'Ungültiger Paket-, Analyse-, Limit-, Lock-Timeout- oder Ausgabeparameter. SQL-Metadaten- und Lookupprüfungen gehören nicht zu diesem Parser-Slice.';
     END;
 
-    SET @LockTimeoutSql=N'SET LOCK_TIMEOUT '+CONVERT(nvarchar(20),@LockTimeoutMs)+N';';
-    EXEC [sys].[sp_executesql] @LockTimeoutSql;
+    IF @StatusCode = 'AVAILABLE_LIMITED'
+    BEGIN
+        -- SQL Server stellt die SET-Einstellung bei der Rückkehr aus diesem dynamischen Batch wieder her.
+        SET @LockTimeoutSql=N'SET LOCK_TIMEOUT '+CONVERT(nvarchar(20),@LockTimeoutMs)+N';';
+        EXEC [sys].[sp_executesql] @LockTimeoutSql;
+    END;
 
     IF @StatusCode = 'AVAILABLE_LIMITED'
        AND @PackageXml.exist('/*[local-name(.)="Executable" and namespace-uri(.)="www.microsoft.com/SqlServer/Dts"]') = 0
@@ -68638,7 +71301,7 @@ BEGIN
     IF @JsonErzeugen = 1
         SELECT @Json = (SELECT
               JSON_QUERY((SELECT * FROM [#SsisPackageAnalysis_ModuleStatus] FOR JSON PATH)) AS [moduleStatus]
-            , JSON_QUERY((SELECT * FROM [#SsisPackageAnalysis_Package] FOR JSON PATH)) AS [package]
+            , JSON_QUERY(COALESCE((SELECT * FROM [#SsisPackageAnalysis_Package] FOR JSON PATH),N'[]')) AS [package]
             , JSON_QUERY((SELECT * FROM [#SsisPackageAnalysis_Executables] FOR JSON PATH)) AS [executables]
             , JSON_QUERY((SELECT * FROM [#SsisPackageAnalysis_ControlFlowConstraints] FOR JSON PATH)) AS [controlFlowConstraints]
             , JSON_QUERY((SELECT * FROM [#SsisPackageAnalysis_DataFlowComponents] FOR JSON PATH)) AS [dataFlowComponents]
@@ -71936,12 +74599,26 @@ GO
 -- BEGIN SOURCE: Code/10_SSIS/036_InternalSsisPipelineCorrelation.sql
 USE [DeineDatenbank];
 GO
-/* Interner Consumer für optionale Pipelinebelege. Der aufrufende Scopeconsumer
-   hat Einzelmodelle, JSON-Schlüssel und lokale Capturebindung bereits geprüft.
-   Dieser Baustein verwendet ausschließlich diese materialisierten Modelle und
-   Toolbelt-Referenzen; kein DTSX-Zugriff, keine Typklassifikation oder Lineage.
-   Phasennamen bezeichnen Quellenwerte, Zeitintervalle keine CPU-Zeit.
-   Die vier Ergebnisziele gehören dem aufrufenden Scopeconsumer. */
+/*
+Objekt: [monitor].[InternalSsisPipelineCorrelation].
+Typ: Interne Stored Procedure.
+Zweck: Die Procedure korreliert optionale, vom Aufrufer bereits gebundene SSIS-Pipelinebelege mit materialisierten Pipelineidentitäten und den gelieferten Execution-Scope-Knoten. Sie ordnet Phasenbelege Komponenten und Transferbelege Modellkanten zu und schreibt Pipelineinstanzen, Belege und Coverage in Temp-Tabellen des aufrufenden Scopeconsumers. Sie liest weder DTSX-Dateien noch klassifiziert sie Transformationstypen oder rekonstruiert Lineage. Eine Phasendauer ist ein beobachtetes Zeitintervall und keine CPU-Zeit.
+
+Parameter:
+@Models: nvarchar(max); Default: keiner, Pflichtargument. Erwartet wird das Unicode-JSON-Dokument des bereits geprüften Paketsatzes mit packages-Array und je Paket den Werten packageKey, model und pipelineIdentities. pipelineIdentities verwendet contract ssis-pipeline-identities, version 1.0.0, identityProfile document-order-v1, packageSha256 passend zu model.source.packageSha256 und ein pipelines-Array. Jedes Pipelineobjekt enthält nodeId, profileStatus SUPPORTED (qualifiziert) oder UNQUALIFIED (unqualifiziert), components und paths. Komponenten enthalten nodeId, name, nativeRefId und profileStatus; Pfade enthalten edgeId, fromPortId, toPortId, sourceComponentId, destinationComponentId, nativeRefId, name, identificationString und profileStatus. Der Helper bindet diese Identitäten an die in den aufrufenden Temp-Tabellen materialisierten ausführbaren und Komponenten-Knoten sowie PIPELINE_PATH-Kanten. Die öffentliche Procedure begrenzt das Dokument auf 16 MiB und prüft unter anderem JSON-Tiefe und doppelte Schlüssel; dies sind Aufruferprüfungen, keine unabhängige Vertrauens- oder Vollvalidierung dieser internen Procedure. Auslassen ist wegen der Pflichtsignatur nicht möglich. Bei NULL liefert OPENJSON für packages keine Paketzeilen; der Helper hat dafür keine eigene Vorabvalidierung und kann anschließend trotzdem weitere Phasen-/Transferbelege verarbeiten. Leertext oder ungültiges JSON ergibt keine valide JSON-Identitätsstruktur und kann im TRY als Pipelinefehler erfasst werden.
+
+@Capture: nvarchar(max); Default: keiner, Pflichtargument. Erwartet wird das bereits gebundene Unicode-JSON-Capture der Version 1.1.0 mit Methode SSISDB_CURRENT_PROJECT_PIPELINES_V1. Es enthält componentPhases und pathTransfers als Arrays sowie pipelineSources mit genau einem Eintrag je source componentPhases und pathTransfers. Ein Quellenobjekt enthält source, status und errorNumber. Zulässige Statuswerte sind AVAILABLE (Quelle vorhanden) und AVAILABLE_EMPTY (Quelle vorhanden, leer) ohne Fehlernummer sowie UNAVAILABLE (Quelle nicht verfügbar) und DENIED_PERMISSION (Berechtigung fehlt) mit positiver Fehlernummer. Für componentPhases verwendet der Helper die Felder phaseStatsId, packageName, taskName, componentName, phaseName, executionPath, startTime und endTime. Für pathTransfers verwendet er dataStatsId, packageName, taskName, pathIdentificationString, pathName, sourceComponentName, destinationComponentName, executionPath, rowsSent und createdTime. Die Quellzeilen werden über Package-/Flow-Namen und exakte Pfad-/Identitätswerte nur bei eindeutiger Kandidatenzuordnung verbunden; fehlende oder mehrdeutige Kandidaten bleiben nicht zugeordnet. Die öffentliche Scope-Procedure prüft die Capturebindung, Schemaformen, 16-MiB-Dokumentgrenze, JSON-Tiefe, doppelte Schlüssel und das gemeinsame Maximum von 50000 Basis- und Pipelinezeilen. Der Helper prüft zusätzlich Arrayformen, genau zwei gültige Quellen, Quellenstatus und die konvertierbaren Feldwerte, aber ersetzt diese Aufruferprüfungen nicht. Auslassen scheitert an der Pflichtsignatur. NULL lässt die Arrayformprüfung fehlschlagen und wird im TRY als PIPELINE_BINDING_UNPROVEN mit erfasster Fehlernummer abgebildet; Leertext und ungültiges JSON werden als Pipelineeingabefehler erfasst. Jeder Quellenstatus außer AVAILABLE verlangt ein leeres zugehöriges Array. Beleg-IDs sind positive bigint-Werte, rowsSent ist NULL oder nichtnegatives bigint; nicht-NULL-Zeitfelder müssen nach datetimeoffset(7) konvertierbar sein.
+
+@Bound: bit; Default: keiner, Pflichtargument. Skalarer interner Übergabeflag, der vom Scopeconsumer aus dessen lokaler Handover- und Captureprüfung stammt. Nur der Wert 1 lässt die Pipelineverarbeitung beginnen; 0 oder NULL werden im TRY mit Fehlertext SCOPE_BINDING_UNPROVEN erfasst. Der Flag allein ist kein Vertrauensbeleg und die Procedure führt keine Handoverprüfung aus. Auslassen scheitert an der Pflichtsignatur. Ein numerischer Wert wird nach den SQL-Server-Konvertierungsregeln auf bit abgebildet. Die vollständige bit-Wertemenge ist 0 (nicht gebunden) und 1 (vom Aufrufer als gebunden markiert). SQL Server konvertiert numerische Werte ungleich 0 zu 1 und leeren Text zu 0 vor dem Procedure-Eintritt.
+
+@Deadline: datetime2(3); Default: keiner, Pflichtargument. Enthält die absolute gemeinsame UTC-Deadline des Scopeconsumers, nicht eine Dauer. Die Procedure vergleicht SYSUTCDATETIME() an mehreren Verarbeitungspunkten mit diesem Zeitpunkt und erfasst eine überschrittene Deadline als PIPELINE_TIME_LIMIT. NULL lässt die Vergleiche wegen SQL-NULL-Semantik unbekannt werden und unterdrückt damit diese Deadlinevergleiche; die Procedure prüft NULL nicht gesondert. Auslassen scheitert an der Pflichtsignatur. Als datetime2(3)-Variable oder konvertierbaren ISO-Zeitpunkt übergeben, beispielsweise 2026-11-06T13:00:00.000; der Wert selbst trägt keine Zeitzone und muss UTC repräsentieren. Leerer Text kann zum Zeitpunkt 1900-01-01 konvertiert werden und ist dann abgelaufen; nicht konvertierbarer Text scheitert vor dem Eintritt.
+
+@Limit: int; Default: keiner, Pflichtargument. Enthält das vom Scopeconsumer abgeleitete Zeilenlimit. Die Procedure schneidet ihre Arbeits- oder Temp-Tabellen nicht anhand dieses Werts ab; sie setzt in pipelineCoverage ein OutputTruncated-Flag, wenn beobachtete Zeilen oder Pipelineinstanzen den Wert überschreiten. Die öffentliche Procedure validiert das wirksame Limit und führt anschließend die tatsächliche Ausgabekürzung durch. Diese interne Procedure validiert den Wert nicht: Bei NULL wird der Vergleich unbekannt und das Flag in der CASE-Auswertung nicht wegen dieses Vergleichs gesetzt; bei 0 oder einem negativen Wert kann ein positiver Zeilenzähler das Flag setzen. Diese Werte sind kein gültiger öffentlicher Aufrufvertrag. Auslassen scheitert an der Pflichtsignatur. Als skalaren ganzzahligen int-Wert von -2147483648 bis 2147483647 übergeben; der Scopeconsumer liefert ein positives wirksames Limit. Leerer Text kann vor dem Eintritt nach 0 konvertiert werden.
+
+Ergebnis- und Temp-Vertrag: Die Procedure erzeugt kein Resultset und hat keine OUTPUT-Parameter. Sie verlangt vom Aufrufer die folgenden lokalen Temp-Tabellen: #InternalSsisExecutionScopes_PipelineNodes mit PackageKey, NodeId, NodeKind, ParentNodeId und NodeName; #InternalSsisExecutionScopes_Observations mit SourceKind, SourceId, InvocationId, PackageKey, ModelNodeId, ExecutionPath und CorrelationStatus; #InternalSsisExecutionScopes_Packages mit PackageKey, EntryName und PackageSha256; #InternalSsisExecutionScopes_PipelineInstances mit FlowStatisticsId, InvocationId, PackageKey, FlowNodeId, FlowName, ExecutionPath und IsPathUnique; #InternalSsisExecutionScopes_ComponentPhases mit PhaseStatsId, FlowStatisticsId, InvocationId, PackageKey, FlowNodeId, ComponentNodeId, PackageName, TaskName, ComponentName, PhaseName, ExecutionPath, StartTime, EndTime, ObservedDurationMs und CorrelationStatus; #InternalSsisExecutionScopes_PathTransfers mit DataStatsId, FlowStatisticsId, InvocationId, PackageKey, FlowNodeId, ModelEdgeId, PackageName, TaskName, PathIdentificationString, PathName, SourceComponentName, DestinationComponentName, ExecutionPath, RowsSent, CreatedTime und CorrelationStatus; sowie #InternalSsisExecutionScopes_PipelineCoverage mit SourceName, StatusCode, SourceErrorNumber, ObservedRowCount, MappedRowCount, UnassignedRowCount, LoggingLevel, IsPartial, OutputTruncated und ReasonCode. Die Procedure fügt erkannte Pipelineinstanzen, beobachtete Phasen und Transfers hinzu und schreibt für beide Quellen eine Coveragezeile. Komponentenphasen werden nur bei eindeutiger Übereinstimmung zwischen Paket, Dataflow, Ausführungspfad und Komponentennamen als SCOPED_EXACT_COMPONENT_NAME zugeordnet. Transfers erfordern zusätzlich eindeutige Übereinstimmung der Pfadidentität und beider Komponentennamen und erhalten dann SCOPED_EXACT_PATH_REFERENCE. Die Pipelinequellenwerte AVAILABLE, AVAILABLE_EMPTY, UNAVAILABLE und DENIED_PERMISSION bleiben in der Coverage erkennbar. Bei internem Fehler werden die zuvor eingefügten Pipelineinstanzen, Phasen und Transfers gelöscht und die Coverage als PIPELINE_BINDING_UNPROVEN mit Fehlernummer und Reason-Code geschrieben. Die vier Ergebnisgruppen heißen pipelineInstances, componentPhases, pathTransfers und pipelineCoverage; der Aufrufer kürzt deren ausgegebene Zeilen später je Gruppe und kann dort tatsächliche Ausgabekürzung kennzeichnen.
+
+Fehlergrenzen: Die interne TRY/CATCH-Strecke bildet Bound ungleich 1 oder NULL als Fehlernummer 57910 und Reason SCOPE_BINDING_UNPROVEN ab. Weitere eigene Fehlertexte sind PIPELINE_TIME_LIMIT bei abgelaufener gemeinsamer Deadline, PIPELINE_SOURCE_LIMIT bei überschrittener Zeilenmenge, PIPELINE_SOURCE_STATUS_INVALID bei ungültigen oder widersprüchlichen Quellenstatusangaben, PIPELINE_IDENTITIES_INVALID bei ungültigen Pipelineidentitäten, PIPELINE_FLOW_REFERENCE_INVALID bei fehlender Flow-Referenz, PIPELINE_OCCURRENCE_SET_INVALID bei abweichenden Knoten- oder Kantenmengen, PIPELINE_COMPONENT_REFERENCE_INVALID oder PIPELINE_PATH_REFERENCE_INVALID bei nicht gebundener Identität sowie PIPELINE_OBSERVATIONS_INVALID bei ungültigen Pipelinebelegen. Andere innerhalb der TRY-Strecke erfasste Fehler erhalten PIPELINE_INPUT_REJECTED. Die Fehler werden in Pipeline-Coverage abgebildet und löschen die Pipelineinstanzen, Phasen und Transfers. Die Temp-Tabellen-DDL liegt vor der TRY-Strecke; auch das Schreiben der Coverage nach dem CATCH und die Wiederherstellung des ursprünglichen LOCK_TIMEOUT liegen außerhalb des CATCH und können daher selbst fehlschlagen. Es besteht keine allgemeine Fehler-, Wiederherstellungs- oder atomare Rücknahmezusage.
+*/
 CREATE OR ALTER PROCEDURE [monitor].[InternalSsisPipelineCorrelation]
  @Models nvarchar(max),@Capture nvarchar(max),@Bound bit,@Deadline datetime2(3),@Limit int
 AS
@@ -72083,10 +74760,26 @@ GO
 -- END SOURCE: Code/10_SSIS/036_InternalSsisPipelineCorrelation.sql
 
 -- BEGIN SOURCE: Code/10_SSIS/037_InternalSsisPipelineDiagnostics.sql
-/* Auswertung bereits gebundener Pipelinebelege. Portrollen stammen aus dem
-   validierten Toolbelt-Modell. Summen gelten ausschließlich im beobachteten
-   Instanzscope; überlappende Intervalle sind weder CPU- noch Paketlaufzeit.
-   Eigene Temp-Tabellen werden vom Scopeconsumer angelegt und ausgegeben. */
+/*
+Objekt: [monitor].[InternalSsisPipelineDiagnostics].
+Typ: Interne Stored Procedure.
+Zweck: Die Procedure bildet aus bereits vom Scopeconsumer gebundenen Phasen- und Transferbelegen partielle Kennzahlen und versionierte Hinweise für den jeweiligen beobachteten Pipelineinstanzscope. Phasengruppen verwenden die gemessenen Intervalle; Transfergruppen verwenden gemeldete Zeilenzahlen und eine Portrolle aus dem gelieferten Toolbelt-Modell. Überlappende Intervalle sind weder CPU-Zeit noch kritischer Pfad oder Paketlaufzeit. Die Procedure lädt keine Paketdateien und führt keine erneute Modell- oder Lineageanalyse aus.
+
+Parameter:
+@Models: nvarchar(max); Default: keiner, Pflichtargument. Erwartet wird das Unicode-JSON-Dokument des bereits geprüften Paketsatzes. Der Helper liest je Paket model.nodes mit id, kind und attributes.portRole für Knoten des Typs PORT sowie model.edges mit id, kind und fromId für Kanten des Typs PIPELINE_PATH. Er ordnet dadurch die Quellportrolle einer bereits korrelierten Modellkante zu. Die Portrollen kommen aus dem Toolbelt-Modell und bilden hier keine geschlossene Eingabewerteliste; ERROR und NO_MATCH lösen jeweils einen Hinweis aus, während fehlende Rollen als UNKNOWN und andere Rollen unverändert in der Zusammenfassung erscheinen. Die öffentliche Procedure prüft Paketmodell und Transportgrenzen einschließlich Dokumentgröße, JSON-Tiefe und doppelter Schlüssel; dies sind keine unabhängigen Vertrauensprüfungen dieser internen Procedure. Auslassen scheitert an der Pflichtsignatur. Bei NULL liefern die JSON-OPENJSON-Joins keine Modellkanten und Ports, während eine Zusammenfassung aus bereits zugeordneten Phasenbelegen weiterhin entstehen kann. Leertext oder ungültiges JSON kann im TRY als Diagnoseeingabefehler erfasst werden.
+
+@Bound: bit; Default: keiner, Pflichtargument. Skalarer interner Übergabeflag aus der lokalen Bindungsprüfung des Scopeconsumers. Diagnoseanalyse beginnt nur bei @Bound=1 und ohne PIPELINE_BINDING_UNPROVEN in der bereits vorhandenen Pipeline-Coverage. Bei 0 oder NULL wird die Analyse übersprungen; die Procedure schreibt dennoch Diagnose-Coverage aus den vorhandenen Coverage- und Belegtabellen und kann einen Coveragehinweis erzeugen. Der Flag allein ist kein Beleg und die Procedure prüft weder Handover noch Capturebindung. Auslassen scheitert an der Pflichtsignatur. Die vollständige bit-Wertemenge ist 0 (nicht gebunden) und 1 (vom Aufrufer als gebunden markiert). SQL Server konvertiert numerische Werte ungleich 0 zu 1 und leeren Text zu 0 vor dem Procedure-Eintritt.
+
+@Deadline: datetime2(3); Default: keiner, Pflichtargument. Enthält dieselbe absolute UTC-Deadline, die der Scopeconsumer an die Korrelation übergeben hat. Die Procedure prüft sie vor und nach wesentlichen Diagnosephasen; ein erkanntes Überschreiten wird als DIAGNOSTIC_TIME_LIMIT in Diagnose-Coverage dargestellt. NULL unterdrückt die Vergleiche wegen SQL-NULL-Semantik und wird hier nicht als ungültiger Wert abgefangen. Auslassen scheitert an der Pflichtsignatur. Als datetime2(3)-Variable oder konvertierbaren ISO-Zeitpunkt übergeben, beispielsweise 2026-11-06T13:00:00.000; der Wert selbst trägt keine Zeitzone und muss UTC repräsentieren. Leerer Text kann zum Zeitpunkt 1900-01-01 konvertiert werden und ist dann abgelaufen; nicht konvertierbarer Text scheitert vor dem Eintritt.
+
+@Limit: int; Default: keiner, Pflichtargument. Enthält das vom Scopeconsumer abgeleitete Zeilenlimit. Der Helper kürzt keine Ergebnis- oder Diagnosezeilen; er setzt OutputTruncated in Diagnose-Coverage, wenn die Anzahl der Phasen-Zusammenfassungen, Transfer-Zusammenfassungen, Hinweise oder Coveragezeilen das Limit überschreitet. Die eigentliche Ausgabe kürzt der Scopeconsumer. Der Helper validiert den Wert nicht: Bei NULL ergibt der Vergleich keinen Treffer und das Flag wird wegen dieses Vergleichs nicht gesetzt; 0 oder negative Werte können bei vorhandenen Zeilen das Flag setzen. Negative Werte sind bei Umgehung der öffentlichen Guard-Prüfung kein gültiger Aufrufvertrag. Auslassen scheitert an der Pflichtsignatur. Als skalaren ganzzahligen int-Wert von -2147483648 bis 2147483647 übergeben; der Scopeconsumer liefert ein positives wirksames Limit. Leerer Text kann vor dem Eintritt nach 0 konvertiert werden.
+
+@PipelinePhaseThresholdMs: bigint; Default: NULL. Skalarer Millisekunden-Grenzwert für den Hinweis SSIS_PIPELINE_PHASE_THRESHOLD_EXCEEDED. NULL deaktiviert diesen Hinweis; ein nicht-NULL-Wert erzeugt ihn, wenn das längste bekannte einzelne Phasenintervall einer Komponentengruppe strikt größer ist als der Grenzwert. Gleichheit genügt nicht. Die interne Procedure selbst akzeptiert auch negative Werte, wenn der öffentliche Scopeconsumer umgangen wird; dann können bekannte nichtnegative Intervalle den Grenzwert überschreiten. Die öffentliche Procedure verwirft negative Werte und gesetzte Werte ohne Diagnoseopt-in. Auslassen verwendet NULL. Leerer Text wird bei erfolgreicher SQL-Typkonvertierung zu bigint regelmäßig als 0 übergeben und aktiviert dann den Vergleich; nicht konvertierbarer Text scheitert bereits bei der Parameterbindung. Der SQL-Typ erlaubt ganze Werte von -9223372036854775808 bis 9223372036854775807; der öffentliche Vertrag beschränkt gesetzte Werte auf den nichtnegativen Bereich.
+
+Ergebnis- und Temp-Vertrag: Die Procedure erzeugt kein Resultset und hat keine OUTPUT-Parameter. Sie liest die vom Scopeconsumer bereitgestellten Temp-Tabellen #InternalSsisExecutionScopes_PipelineCoverage, #InternalSsisExecutionScopes_ComponentPhases, #InternalSsisExecutionScopes_PathTransfers, #InternalSsisExecutionScopes_Packages und #InternalSsisExecutionScopes_Binding und schreibt in #InternalSsisExecutionScopes_PhaseSummary, #InternalSsisExecutionScopes_TransferSummary, #InternalSsisExecutionScopes_PipelineFindings und #InternalSsisExecutionScopes_DiagnosticCoverage. Die Gruppen componentPhaseSummary enthalten je Pipelineinstanz, Komponente und Phasenname ObservedIntervalCount, ValidIntervalCount, UnknownIntervalCount, ObservedIntervalSumMs, LongestIntervalMs, SpanMs, FirstStartTime, LastEndTime, OverlapObserved, RankWithinFlowPhase, EvidencePhaseStatsId und IsPartial. Summen und Rangfolge berücksichtigen gültige zugeordnete Beobachtungen; SpanMs reicht vom frühesten bekannten Start bis zum spätesten bekannten Ende und kann Überlappungen enthalten. pathTransferSummary enthält je Pipelineinstanz und Kante PortRole, ObservedTransferCount, KnownRowCount, UnknownRowCount, ObservedRowsSent, FirstCreatedTime, LastCreatedTime, FirstDataStatsId, PositiveDataStatsId und IsPartial. pipelineFindings enthält RuleId, RuleVersion, Severity, EvidenceLevel, Paket-/Aufruf-/Flow-/Knoten-/Kantenbezug, SourceName, SourceId, ObservedValue, ThresholdMs, PackageSha256, SourceBindingSha256 und IsPartial. pipelineDiagnosticCoverage enthält SourceName, StatusCode, SourceErrorNumber, ObservedRowCount, MappedRowCount, UnassignedRowCount, SummaryRowCount, UnknownValueCount, UnknownRoleCount, LoggingLevel, IsPartial, OutputTruncated und ReasonCode. Die fünf möglichen RuleId-Werte lauten SSIS_PIPELINE_ERROR_OUTPUT_OBSERVED für positive beobachtete Zeilen auf einer ERROR-Ausgabe, SSIS_PIPELINE_NO_MATCH_OBSERVED für positive beobachtete Zeilen auf einer NO_MATCH-Ausgabe, SSIS_PIPELINE_ZERO_OBSERVED_TRANSFER für einen Transfer mit vollständig bekannten Zeilenwerten und Summe null, SSIS_PIPELINE_PHASE_THRESHOLD_EXCEEDED für ein bekanntes einzelnes Phasenintervall oberhalb des gesetzten Grenzwerts sowie SSIS_PIPELINE_DIAGNOSTIC_EVIDENCE_LIMITED für Diagnosequellen mit eingeschränkter Abdeckung oder unbekannten Werten beziehungsweise Rollen. Hinweise tragen Version 1.0.0 und Severity INFO. Fehlerhinweise sind Evidenzhinweise und keine Aussagen über Ursache oder Auswirkung außerhalb der beobachteten Daten. Der Aufrufer kürzt alle Ergebnisgruppen später und kennzeichnet tatsächliche Ausgabekürzung.
+
+Fehlergrenzen: Während der Diagnoseanalyse erfasste Fehler werden durch Löschen der Phasen-Zusammenfassungen, Transfer-Zusammenfassungen und bis dahin erzeugten Hinweise zurückgenommen. Fehlernummer 57920 wird als DIAGNOSTIC_TIME_LIMIT mit gleicher Fehlernummer abgebildet; sonstige abgefangene Fehler erhalten DIAGNOSTIC_INPUT_REJECTED mit ihrer ursprünglichen Fehlernummer. Diagnose-Coverage wird danach aus den Pipeline-Coveragewerten geschrieben und erhält bei Fehlern den jeweiligen Diagnose-Reason-Code. Nach dem CATCH liegen Coverage-Schreiben, Erzeugung des Hinweises SSIS_PIPELINE_DIAGNOSTIC_EVIDENCE_LIMITED, OutputTruncated-Aktualisierung und Wiederherstellung des vorherigen LOCK_TIMEOUT außerhalb der Abfangstrecke und können selbst fehlschlagen. Daher besteht keine universelle Fehler- oder Wiederherstellungszusage und keine atomare Gesamttransaktion.
+*/
 CREATE OR ALTER PROCEDURE [monitor].[InternalSsisPipelineDiagnostics]
     @Models nvarchar(max), @Bound bit, @Deadline datetime2(3), @Limit int,
     @PipelinePhaseThresholdMs bigint = NULL
@@ -72226,11 +74919,67 @@ GO
 -- END SOURCE: Code/10_SSIS/037_InternalSsisPipelineDiagnostics.sql
 
 -- BEGIN SOURCE: Code/10_SSIS/035_InternalSsisExecutionScopes.sql
-/* Gemeinsamer Laufzeitconsumer für einen lokal gebundenen Paketsatz.
-   Einzelmodellvalidierung bleibt in USP_SsisPackageModelAnalysis; statische
-   Rollen und Pfadschritte stammen ausschließlich aus dem Toolbelt-Export.
-   Grenzen: 16 Pakete, 8 Aufrufebenen, 1024 beobachtete Paketinstanzen,
-   50000 Statistik-/Ereigniszeilen und ein gemeinsames kooperatives Zeitbudget. */
+/*
+Objekt: monitor.InternalSsisExecutionScopes.
+Typ: Interne Stored Procedure.
+Zweck: Der Consumer validiert lokal attestierte SSIS-Paketsätze und ordnet gebundene Statistik- und Ereignisbeobachtungen Paketaufrufen und Handlerkörpern zu. Pipelinekorrelation und Diagnose sind optionale Erweiterungen.
+
+Parameter:
+@IncludePipelineCorrelation: bit; Default: 0. Skalarer Schalter: 0 verwendet Scope-Capture 1.0.0 und SSISDB_CURRENT_PROJECT_SCOPES_V1; 1 verlangt 1.1.0 und SSISDB_CURRENT_PROJECT_PIPELINES_V1 samt Pipelineidentitäten und -quellen. 1 ergänzt die unten beschriebenen vier Pipelinegruppen. Auslassen verwendet 0; NULL ist ungültig. SQL Server konvertiert numerische Werte ungleich 0 zu 1 und leeren Text vor dem Procedure-Eintritt zu 0.
+
+@Models: nvarchar(max); Default: keiner, Pflichtargument. Erwartet wird ein JSON-Objekt als Unicode-Text, kein Dateipfad: contract="ssis-project-model-set", version="1.0.0", rootPackageKey und ein packages-Array mit 1–16 Einträgen. Jeder Eintrag enthält packageKey (eindeutige alphanumerische Kennung, höchstens 16 Zeichen), entryName (exakter eindeutiger Archivdateiname ohne /, \ oder :, 6–260 Zeichen), model als eingebettetes ssis-package-model 1.0.0 und identities als ssis-object-identities 1.2.0 mit passendem packageSha256 und objects-Array. rootPackageKey bezeichnet ein vorhandenes Paket. Die Identitäten binden nodeId, parentId, nodeKind (PACKAGE: Paket; EXECUTABLE: ausführbarer Knoten), nullable dtsId/packagePath, scopeKind (PACKAGE: Paketwurzel; CALL: Kindpaketaufruf; LOOP: Schleife; HANDLER: Ereignishandler; EXECUTABLE: sonstiger ausführbarer Scope), steps, profileStatus (SUPPORTED: qualifiziertes Profil; UNQUALIFIED: unqualifiziert), nullable eventName/callTarget an die Modellknoten. steps enthält höchstens 32 Objekte mit genau text (nichtleerer String, 2–8000 SQL-Bytes) und counter (JSON-Boolean true oder false). Qualifizierte Handler erlauben OnPreExecute (vor Ausführung), OnPostExecute (nach Ausführung) und OnError (Fehlerereignis); das beweist keinen konkreten Auslöser. Bei Pipelinekorrelation ist zusätzlich pipelineIdentities je Paket erforderlich. Höchstens 16 MiB nach DATALENGTH. Auslassen scheitert an der Pflichtsignatur; NULL, Leertext und ungültiges JSON ergeben keine belegte Bindung. Weitere eingebettete Felder beschreibt das Austauschschema.
+
+@Capture: nvarchar(max); Default: keiner, Pflichtargument. Erwartet wird ein JSON-Objekt als Unicode-Text mit contract="ssis-execution-scopes"; ohne Pipelinekorrelation gelten version="1.0.0" und method="SSISDB_CURRENT_PROJECT_SCOPES_V1", mit Pipelinekorrelation 1.1.0 und SSISDB_CURRENT_PROJECT_PIPELINES_V1. execution enthält die passende positive executionId, den exakten Root-packageFileName, positive projectId/projectLsn, catalogDatabaseGuid, sourceBindingSha256 sowie optionale loggingLevel/executionStatus; die Wurzel enthält archiveSha256, den SHA-256 der exakten @Models-Bytes als modelSetSha256 und die Arrays observations und events. Beobachtungen enthalten passende executionId, positive statisticsId/executableId, packageName, packagePath, executionPath und nullable executableGuid, startTime, endTime, durationMs, executionResult. Ereignisse enthalten positive eventMessageId, Paket/Pfade sowie nullable executableGuid, eventName, messageCode, messageTime. Bei Pipelinekorrelation kommen componentPhases, pathTransfers und ein pipelineSources-Array mit genau je einem Eintrag für componentPhases und pathTransfers hinzu; die öffentliche Scope-Referenz beschreibt deren Feldform. Für Pipelinequellen gelten source=componentPhases oder pathTransfers und status=AVAILABLE (vorhanden), AVAILABLE_EMPTY (vorhanden, leer), UNAVAILABLE (nicht verfügbar) oder DENIED_PERMISSION (Berechtigung fehlt); errorNumber ist bei den letzten beiden positiv, sonst NULL. Höchstens 16 MiB je Dokument; zusammen höchstens 50000 Statistik-/Ereigniszeilen und bei Pipelinekorrelation einschließlich Phasen-/Transferzeilen. Doppelte Objektschlüssel und Verschachtelung jenseits der Tiefe 32 werden verworfen; unbekannte Schlüssel sind nicht pauschal verboten. Optionale, mit TRY_CONVERT projizierte Werte können bei Konvertierungsfehler NULL werden. Auslassen scheitert an der Pflichtsignatur; NULL, Leertext und ungültiges JSON ergeben keine belegte Bindung. Fehler innerhalb der optionalen Pipelinekorrelation oder -diagnose werden in deren Coverage-Gruppen dargestellt und ändern nicht zwangsläufig den Basisstatus oder die bereits erzeugten Grundgruppen.
+
+@Handover: uniqueidentifier; Default: keiner, Pflichtargument. Skalarer UUID-Wert, etwa eine entsprechend typisierte Variable oder konvertierbare UUID-Zeichenfolge. Er wählt SSIS_SCOPE_<UUID in Kleinschreibung> als Extended Property auf [monitor].[USP_SsisPackageModelAnalysis]. Der lokale Beleg enthält genau contract="ssis-local-scope-handover", version="1.0.0", issuedUtc, expiresUtc, modelSetSha256, captureSha256; er muss aktuell gültig sein, höchstens 24 Stunden gelten und die exakten UTF-16-Dokumentbytes binden. Die Prüfung liest mit READCOMMITTEDLOCK. Auslassen scheitert an der Pflichtsignatur; NULL oder fehlender/ungültiger Beleg lässt die Bindung unbelegt. Leertext ist keine UUID und kann bereits bei der SQL-Parameterkonvertierung scheitern. Eine beliebige UUID oder ein JSON-Vertrauensfeld ersetzt den lokalen Beleg nicht.
+
+@ExecutionId: bigint; Default: keiner, Pflichtargument. Skalarer ganzzahliger Wert von 1 bis 9223372036854775807, gleich der Execution-ID im Capture. Auslassen scheitert an der Pflichtsignatur; NULL und Werte unter 1 sind ungültig. Leerer Text kann vor dem Eintritt nach 0 konvertiert werden und ist dann ungültig.
+
+@MaxZeilen: int; Default: 1000. Skalarer ganzzahliger Wert. Positive Werte bis 2147483647 begrenzen jede Ausgabegruppe nach der Analyse. NULL und 0 setzen intern 2147483647 und damit keine zusätzliche kleinere Ausgabegrenze; negative Werte sind ungültig. Auslassen verwendet 1000. Leerer Text kann vor Eintritt nach 0 konvertiert werden und wirkt dann wie 0. Die Coverage-Zahlen entstehen vor der Kürzung.
+
+@MaxDurationSeconds: int; Default: 30. Skalarer ganzzahliger Sekundenwert von 1 bis 60; Auslassen verwendet 30. NULL und Werte außerhalb dieses Bereichs sind ungültig. Leerer Text kann nach 0 konvertiert werden und ist dann ungültig. Das gemeinsame Zeitbudget ist kooperativ; die Deadline wird vor der ersten TRY-Strecke berechnet, weshalb ein Fehler dabei nicht als regulärer Parameterstatus zugesagt wird.
+
+@LockTimeoutMs: int; Default: 0. Skalarer ganzzahliger Millisekundenwert von 0 bis 60000. 0 setzt LOCK_TIMEOUT 0 und bedeutet für eine Sperre NOWAIT; positive Werte setzen den entsprechenden Millisekundenwert. Auslassen verwendet 0; NULL und Werte außerhalb sind ungültig. Leerer Text kann nach 0 konvertiert werden. Der Consumer führt SET LOCK_TIMEOUT in einem separaten dynamischen Batch aus; dessen Einstellung endet bei Rückkehr aus sp_executesql und bestimmt keine nachfolgenden direkten Anweisungen. Die Wiederherstellungsbatches führen SET LOCK_TIMEOUT auf den erreichten normalen und abschließenden CATCH-Wegen erneut mit dem vorherigen Sitzungswert aus.
+
+@ResultSetArt: varchar(16); Default: 'CONSOLE'. Skalarer Moduscode. Vollständige Wertemenge: CONSOLE gibt die Bindungsübersicht über den Console-Helper aus; RAW gibt jede freigeschaltete typisierte Gruppe als Resultset aus; TABLE schreibt ausdrücklich zugeordnete Gruppen in lokale Temp-Tabellen; NONE unterdrückt diese Ausgaben. Auslassen verwendet CONSOLE. Der Wert wird mit UPPER normalisiert, ohne ausdrückliches Trimmen; der anschließende SQL-Stringvergleich folgt seiner Padding-Semantik. NULL, Leertext und Werte, die keinem Code entsprechen, sind ungültig. JSON-Erzeugung ist davon unabhängig.
+
+@ResultTablesJson: nvarchar(max); Default: NULL. Bei CONSOLE/RAW/NONE muss NULL vorliegen. TABLE verlangt ein nichtleeres JSON-Objekt, zum Beispiel {"scopeBinding":"#ScopeBinding"}; Schlüssel sind exakt die unten taxativ beschriebenen freigeschalteten Gruppennamen, Stringwerte unqualifizierte rohe lokale #Temp-Namen. Eine Teilmenge genügt; nicht zugeordnete Gruppen werden nicht geschrieben. Kein ##, kein #Monitor-Präfix (CI), höchstens 116 Zeichen nach sysname-Konvertierung; keine Klammer-/Schemaform und kein Trimmen. Schlüssel werden nach sysname-Konvertierung binär verglichen; doppelte Schlüssel und CI-gleiche Ziele sind ungültig. Ziele müssen vorhanden, leer und mit genau einer Seed-Spalte angelegt sein. Die Prüfung verändert vorübergehend das Zielschema durch eine Markerspalte; es gibt keine atomare Rücknahmezusage. Auslassen verwendet NULL; NULL, Leertext, {} und Arrays sind im TABLE-Modus ungültig.
+
+@JsonErzeugen: bit; Default: 0. Skalarer Schalter: 0 erzeugt kein JSON und lässt den eingehenden @Json-Wert unverändert; 1 erzeugt Metadaten und die begrenzten Gruppenarrays unabhängig vom Ausgabemodus. Auslassen verwendet 0; NULL ist ungültig. Numerische Werte ungleich 0 konvertiert SQL Server nach 1, leeren Text nach 0.
+
+@Json: nvarchar(max) OUTPUT; Default: NULL. Skalarer Unicode-Ausgabespeicher; zum Empfang eine passende Variable mit OUTPUT binden, ohne OUTPUT kann ein typisierter Wert übergeben und die Ausgabe verworfen werden. Auslassen verwendet NULL. Bei @JsonErzeugen=1 wird der Eingangswert einschließlich NULL, Leertext oder sonstigem Inhalt durch ein Objekt mit meta.schemaVersion=1, meta.executionScopesSchemaVersion=1, meta.isPartial=true und den freigeschalteten Arrays ersetzt; Pipelineopt-ins ergänzen ihre Schemaversion jeweils 1. Bei @JsonErzeugen=0 bleibt der Eingangswert einschließlich NULL/Leertext unverändert.
+
+@StatusCodeOut: varchar(40) OUTPUT; Default: NULL. Skalarer Statusausgang; passende Variable mit OUTPUT bindet die Ausgabe, ein typisierter Wert ohne OUTPUT verwirft sie. Auslassen verwendet NULL. Bei regulärer Ausgabe werden eingehende NULL-, Leertext- oder sonstige Werte überschrieben: SCOPE_CAPTURE_BOUND bedeutet Capturebindung hergestellt, SCOPE_BINDING_UNPROVEN Bindung unbelegt beziehungsweise verworfene Bindungseingabe, INVALID_PARAMETER ungültiger Parameterwert oder Kombination. Außerhalb regulärer Rückgaben ist kein aktualisierter Status garantiert.
+
+@IsPartialOut: bit OUTPUT; Default: NULL. Skalarer Flag-Ausgang; zum Empfang eine passende Variable mit OUTPUT binden, sonst wird die Ausgabe verworfen. Auslassen verwendet NULL. Bei regulärer Ausgabe wird jeder konvertierbare Eingangswert einschließlich NULL oder nach 0 konvertiertem Leertext durch 1 ersetzt: Das Ergebnis ist partiell. 0 wird regulär nicht ausgegeben. Fehler vor der Ausgabe garantieren keine Aktualisierung.
+
+@ErrorNumberOut: int OUTPUT; Default: NULL. Skalarer Fehlernummernausgang; zum Empfang eine passende Variable mit OUTPUT binden, sonst wird die Ausgabe verworfen. Auslassen verwendet NULL. Bei regulärer Ausgabe werden Eingangswerte einschließlich NULL oder nach 0 konvertiertem Leertext überschrieben: NULL bedeutet kein erfasster Bindungsfehler; sonst steht hier die SQL-Fehlernummer, bei eigenen Bindungsprüfungen 57900. Native Fehlernummern sind keine geschlossene Menge. Neu geworfene Ausgabefehler werden nicht als regulärer Ausgang zugesagt.
+
+@ErrorMessageOut: nvarchar(2048) OUTPUT; Default: NULL. Skalarer Unicode-Textausgang; passende Variable mit OUTPUT bindet die Ausgabe, sonst wird sie verworfen. Auslassen verwendet NULL. Bei regulärer Ausgabe werden eingehende NULL-, Leertext- oder andere Werte überschrieben: NULL bedeutet kein erfasster Grund; bei Fehler 57900 folgt dessen Reason-Text, bei anderen im ersten TRY abgefangenen Fehlern SCOPE_INPUT_REJECTED. Fehler vor der regulären Ausgabe garantieren keine Aktualisierung.
+
+@IncludePipelineDiagnostics: bit; Default: 0. Skalarer Schalter: 0 lässt die vier Diagnosegruppen weg; 1 verlangt @IncludePipelineCorrelation=1 und ergänzt die unten beschriebenen vier Diagnosegruppen. Auslassen verwendet 0; NULL und 1 ohne Pipelinekorrelation sind ungültig. Numerische Werte ungleich 0 konvertiert SQL Server nach 1, leeren Text nach 0.
+
+@PipelinePhaseThresholdMs: bigint; Default: NULL. Skalarer Millisekundenwert von 0 bis 9223372036854775807. Auslassen beziehungsweise NULL deaktiviert den Befund SSIS_PIPELINE_PHASE_THRESHOLD_EXCEEDED. Ein gesetzter Wert verlangt @IncludePipelineDiagnostics=1 und erzeugt den Befund nur, wenn ein bekanntes einzelnes Phasenintervall den Wert strikt überschreitet; Gleichheit genügt nicht. Negative Werte und gesetzte Werte ohne Diagnoseopt-in sind ungültig. Leerer Text kann nach 0 konvertiert werden und aktiviert dann den Grenzwert, sofern das Diagnoseopt-in gesetzt ist.
+
+Ergebnisgruppen:
+scopeBinding: Bindungs- und Herkunftsstatus (Grundumfang).
+packageScopes: Paketmodelle und Hashes (Grundumfang).
+packageInvocations: Belegte Paketaufrufe mit Eltern- und Aufruferstatistik (Grundumfang).
+scopeObservations: Statistik- und Ereignisbelege mit möglicher Modellzuordnung (Grundumfang).
+handlerActivity: Handlerkörperbelege ohne bewiesenen Auslöser (Grundumfang).
+scopeObjectSummary: Statistikanzahlen und inklusive Dauer je Modellknoten (Grundumfang).
+scopeCoverage: Quell- und Zuordnungszahlen vor Ausgabekürzung (Grundumfang).
+pipelineInstances: Gebundene Dataflow-Statistikinstanzen (Pipelinekorrelation).
+componentPhases: Phasenbelege mit möglicher Komponentenzuordnung (Pipelinekorrelation).
+pathTransfers: Transferbelege mit möglicher Modellkantenzuordnung (Pipelinekorrelation).
+pipelineCoverage: Status und Zählungen je Pipelinequelle (Pipelinekorrelation).
+componentPhaseSummary: Phasenkennzahlen je Dataflowinstanz und Komponente (Diagnose).
+pathTransferSummary: Transferkennzahlen je Kante und Instanz (Diagnose).
+pipelineFindings: Versionierte Hinweise mit Quellenbezug (Diagnose).
+pipelineDiagnosticCoverage: Diagnoseabdeckung und unbekannte Werte (Diagnose).
+
+Grenzen: Maximal 16 Pakete, acht Aufrufebenen, 1024 beobachtete Paketinstanzen, JSON-Tiefe 32 und das gemeinsame kooperative Zeitbudget. Die normale Ausgabe bleibt partiell. Deadlineberechnung und eigene Temp-DDL liegen vor dem ersten TRY. Der abschließende Ausgabe-CATCH führt SET LOCK_TIMEOUT in einem separaten dynamischen Batch mit dem vorherigen Wert aus und stellt XACT_ABORT wieder her; das SET LOCK_TIMEOUT dieses Batches endet mit dessen Rückkehr. Er wirft erneut; keine allgemeine Status-, Wiederherstellungs- oder atomare Rücknahmezusage. Mehrdeutige Pfade bleiben unzugeordnet; Handlerbelege beweisen keine Auslöserkausalität. Parser und Lineage bleiben im Toolbelt, Analyze bleibt ohne SQL CLR oder LLM-Installationspflicht.
+*/
 CREATE OR ALTER PROCEDURE [monitor].[InternalSsisExecutionScopes]
  @IncludePipelineCorrelation bit=0,@Models nvarchar(max),@Capture nvarchar(max),@Handover uniqueidentifier,@ExecutionId bigint,
  @MaxZeilen int=1000,@MaxDurationSeconds int=30,@LockTimeoutMs int=0,@ResultSetArt varchar(16)='CONSOLE',@ResultTablesJson nvarchar(max)=NULL,
@@ -72517,18 +75266,50 @@ BEGIN
     SET @Json=NULL;
     IF @Hilfe=1
     BEGIN
-        PRINT N'monitor.USP_SsisPackageModelAnalysis: natives SSIS-Modell 1.0.0; kein CLR, Toolbelt- oder Dateizugriff.';
-        PRINT N'@PackageModelJson erforderlich; @PackageBytes optional zum unabhängigen Bytevergleich. ProducerTrust ist ohne @LocalHandoverId UNVERIFIED.';
-        PRINT N'CONSOLE|RAW|TABLE|NONE; JSON über OUTPUT. TABLE-Namen: moduleStatus|sourceBinding|nodes|edges|coverage|findings|sourceStatus|warnings.';
-        PRINT N'@IncludePackageViews=1 ergänzt packageOverview|executables|dataFlows|components|columnRelations. Die fünf Sichten zeigen ausschließlich gelieferte Beziehungen.';
-        PRINT N'@IncludeObjectRules=1 ergänzt objectFindings mit konkreten Knoten-/Kantenbelegen; statische Hinweise, keine Laufzeiturteile.';
-        PRINT N'@LocalHandoverId prüft eine separat berechtigt registrierte lokale Übergabe; benötigt dieselben @PackageBytes. Kein Trust-Flag im Caller-JSON.';
-        PRINT N'@IncludeSqlMetadata=1 ergänzt sqlMetadata aus expliziten paketgebundenen lokalen SQL-Spaltenzuordnungen; keine Paket-SQL-Ausführung oder Typkonvertierungsfreigabe.';
-        PRINT N'@IncludeExecutionCorrelation=1 ergänzt runtimeBinding|executionCorrelation für @ExecutionId. Nur qualifizierte lokale Katalogcaptures werden zugeordnet; kein SSISDB-Zugriff im Importer.';
-        PRINT N'@IncludeIterationCorrelation=1 verlangt Ausführungskorrelation und den Iterationscapture 1.1; ergänzt executionObjectSummary|executionCoverage. Beobachtungen sind kein Vollständigkeitsnachweis.';
-        PRINT N'@IncludeExecutionScopes=1 verwendet exklusiv @ProjectModelsJson, @ScopeSnapshotJson und @ScopeHandoverId für Kindpaket-/Handlerbelege; sieben eigene Resultsets, stets partiell.';
-        PRINT N'@IncludePipelineCorrelation=1 ergänzt im Scopemodus pipelineInstances|componentPhases|pathTransfers|pipelineCoverage aus gebundenen Belegen; keine Laufzeit-Lineage.';
-        PRINT N'@IncludePipelineDiagnostics=1 verlangt Scope- und Pipelinekorrelation; ergänzt componentPhaseSummary|pathTransferSummary|pipelineFindings|pipelineDiagnosticCoverage. @PipelinePhaseThresholdMs ist ein optionaler nichtnegativer Einzelintervall-Grenzwert.';
+        PRINT N'monitor.USP_SsisPackageModelAnalysis importiert ein neutrales Modell ohne CLR-, Datei-, SSISDB- oder Paket-SQL-Ausführung. Im Scope-Modus wird exklusiv der gebundene Paketsatz verwendet.';
+        PRINT N'@PackageModelJson: Datentyp nvarchar(max). Default NULL. Im flachen Standardmodus erforderlich: genau ein JSON-Objekt mit den durch die SQL-Feldregelmatrix vollständig festgelegten Schlüsseln und Typen: contract="ssis-package-model", version="1.0.0", identityProfile="document-order-v1"; producer={id="toolbelt.ssis-model", version (String <=32), sourceCommit (40 Hexzeichen), buildSha256 (64 Hexzeichen)}; source={kind="DTSX_BYTES", packageSha256 (64 Hexzeichen), byteLength (1–16.777.216), packageFormatVersion (NULL oder nichtnegative Zahl), xmlProfile=2012/01|2014/01|UNKNOWN}; profiles={format,components,lineage} (Strings bis 32 Zeichen); coverage (genau 8 Objekte); nodes (1–20.000 Objekte); edges (höchstens 50.000 Objekte); diagnostics (höchstens 1.000 Objekte). Node-Objekte tragen id (bis 128), kind, nullable parentId/name (bis 128/256) und kindgebundenes attributes-Objekt; Edge-Objekte tragen id/kind/scopeId, nullable fromId/toId, resolution/evidence, nullable mappingRole/ruleId. Der Schemaabschnitt definiert außerdem alle Pflichtfelder je Rolle und verbietet fremde Schlüssel, doppelte Objektschlüssel und falsche JSON-Typen. Höchstgröße DATALENGTH 16.777.216 SQL-Bytes (nvarchar, UTF-16); Tiefe maximal 32, Parser-Token maximal 1.000.000 und gemeinsames kooperatives Zeitbudget. Diese SQL-Bytegrenze ist keine UTF-8-Dateigrößengrenze. Im Scope-Modus muss der Parameter NULL bleiben; dort liegen Modelle in @ProjectModelsJson. Kein Paketcode wird ausgeführt. Die acht coverage.feature-Werte sind inventory (Objektinventar), controlFlow (Kontrollfluss), pipelineGraph (Datenflussgraph), columnMetadata (Spaltenmetadaten), directColumnMapping (direkte Spaltenzuordnung), valueLineage (Wertabhängigkeit), rowLineage (Zeilenabhängigkeit), expressionReferences (Ausdrucksreferenzen). coverage.status: COMPLETE (vollständig geliefert), PARTIAL (teilweise), UNSUPPORTED (nicht unterstützt), NOT_REQUESTED (nicht angefordert). coverage.reasonCode: NULL (kein Grund) oder PROFILE_LIMIT (Profilgrenze), UNKNOWN_COMPONENT (unbekannte Komponente), ENCRYPTED_CONTENT (verschlüsselter Inhalt), EXPRESSION_UNRESOLVED (unaufgelöster Ausdruck), MISSING_CONTEXT (fehlender Kontext), UNSUPPORTED_PACKAGE_FORMAT (nicht unterstütztes Paketformat), SCOPE_NOT_REQUESTED (Scope nicht angefordert). diagnostics.code: UNKNOWN_COMPONENT (unbekannte Komponente), ENCRYPTED_CONTENT (verschlüsselt), EXPRESSION_UNRESOLVED (Ausdruck unaufgelöst), MISSING_CONTEXT (Kontext fehlt), PARTIAL_LINEAGE (unvollständige Beziehung), PROFILE_LIMIT (Profilgrenze), UNSUPPORTED_PACKAGE_FORMAT (nicht unterstütztes Format). node.kind: PACKAGE (Paket), EXECUTABLE (Task/Container), COMPONENT (Pipeline-Komponente), PORT (Port), COLUMN (Spalte), VARIABLE (Variable), PARAMETER (Parameter), CONNECTION (Verbindungsmanager), EXPRESSION (Ausdruck). edge.kind: CONTROL_FLOW (Kontrollflusskante), PIPELINE_PATH (direkter Pipelinepfad), COLUMN_MAP (Spaltenzuordnung), VALUE_DEPENDENCY (Wertabhängigkeit), ROW_DEPENDENCY (Zeilenabhängigkeit), EXPRESSION_REFERENCE (Ausdrucksreferenz). resolution: RESOLVED (aufgelöst), UNRESOLVED (unaufgelöst), UNSUPPORTED (nicht unterstützt); evidence: DECLARED (deklariert), DERIVED (vom Producer';
+        PRINT N'Fortsetzung @PackageModelJson: abgeleitet); mappingRole: NULL (keine Rolle), DATA_TRANSFER (Datentransfer), METADATA_REFERENCE (Metadatenreferenz). PORT.direction: NULL (unbelegt), INPUT (Eingang), OUTPUT (Ausgang); PORT.portRole: NULL (unbelegt), REGULAR (regulär), ERROR (Fehler), NO_MATCH (kein Treffer), DEFAULT (Standard-/Fallbackpfad), UNKNOWN (unbekannt). COLUMN.columnRole: DATA (Datenspalte), EXTERNAL_METADATA (externe Metadatenspalte). source.xmlProfile: 2012/01 und 2014/01 (gelieferte XML-Profilkennungen), UNKNOWN (unbekannt); keine Engineversionsqualifikation. Die exakten kindabhängigen Attribute, ID-/Versionssyntax und strukturellen Regeln stehen im mitgelieferten Austauschschema Metadata/Quality/SSIS_Exchange_V1.schema.json; ein vollständiges synthetisches Modell steht in Metadata/Quality/SSIS_Exchange_V1.example.json. Es wird ein vollständiger Producerexport als JSON-Text übergeben, keine Dateipfadangabe. Pflichtfelder mit zulässigem NULL müssen als explizite JSON-null-Eigenschaften vorhanden sein; ausgelassene Pflichtfelder sind ungültig.';
+        PRINT N'@PackageBytes: Datentyp varbinary(max). Default NULL. Optionale exakte Originalpaketbytes zum unabhängigen SHA-256- und Längenvergleich mit source.packageSha256/byteLength; neu serialisiertes SQL-xml ist ungeeignet. Höchstens 16.777.216 Bytes, gemessen unmittelbar am varbinary-Inhalt. Zusammen mit @LocalHandoverId erforderlich, wenn lokales Producervertrauen angefordert wird. Im Scope-Modus muss NULL bleiben. Bytes werden nicht interpretiert oder ausgeführt. Als varbinary(max)-Variable oder 0x-Hexliteral übergeben; NULL deaktiviert den unabhängigen Bytevergleich, leere 0x-Bytes passen nicht zur geforderten positiven Quelllänge.';
+        PRINT N'@MaxZeilen: Datentyp int. Default 1000. Nichtnegative Obergrenze pro ausgegebener Detailgruppe, angewendet nach vollständiger Validierung und Korrelation; kürzt nicht die Eingabeprüfung. NULL oder 0 bedeutet unbegrenzt (im Scope-Helper bis int-Maximum); negative Werte sind im flachen Modus ungültig, Scope-Helper verwirft Werte mit resultierender Grenze <1. Positiver Bereich: 1 bis 2147483647; keine Gesamtgrenze aller Gruppen.';
+        PRINT N'@MaxDurationSeconds: Datentyp int. Default 30 Sekunden. Erlaubt 1–60 einschließlich; NULL und Werte außerhalb ungültig. Kooperatives gemeinsames Zeitbudget der SQL-Validierung, optionalen Quellen-/Scope-Auswertung und Diagnose. Es ist keine Clienttimeout- oder harte Unterbrechungsgarantie.';
+        PRINT N'@LockTimeoutMs: Datentyp int; einzelner skalarer SQL-int-Wert in Millisekunden. Default 0; ausgelassen ergibt 0. NULL oder Werte außerhalb 0–60.000 sind ungültig; Leertext kann vor Eintritt durch implizite SQL-Konvertierung zu 0 werden. Der SQL-Wert 0 bedeutet NOWAIT, positive Werte erlauben begrenztes Warten und -1 wäre unbegrenzt, ist hier aber unzulässig. Im flachen Einzelmodellpfad wird der Wert validiert und SET LOCK_TIMEOUT in einem dynamischen sp_executesql-Batch ausgeführt; nach dessen Rückkehr begrenzt die Einstellung die anschließenden direkten Prozeduranweisungen nicht. Im Scope-Modus wird der Wert an InternalSsisExecutionScopes weitergegeben. Der Helper validiert den Bereich und führt SET LOCK_TIMEOUT ebenfalls dynamisch aus; diese Einstellung begrenzt seine anschließenden direkten Anweisungen nicht.';
+        PRINT N'@ResultSetArt: Datentyp varchar(16). Default ''CONSOLE''. CONSOLE rendert im flachen Modus die Modulübersicht, im Scope-Modus die Bindungsübersicht; RAW liefert die aktivierten benannten Resultsets; TABLE schreibt ausgewählte aktivierte Gruppen in lokale Caller-Temp-Tabellen; NONE unterdrückt fachliche Resultsets. JSON ist keine Ausgabeart; verwenden Sie dafür @JsonErzeugen. Flat normalisiert mit UPPER und entfernt äußere U+0020-Leerzeichen; Scope verwendet nur UPPER, ohne explizites Trim. Führende Leerzeichen werden im Scope nicht entfernt; nachgestellte U+0020-Leerzeichen können aufgrund des SQL-Auffüllvergleichs gleichwertig sein. Verwenden Sie die vier Codes ohne Rand-Leerzeichen. NULL, Leerwert und unbekannte Codes sind ungültig.';
+        PRINT N'@ResultTablesJson: Datentyp nvarchar(max). Default NULL. Nur bei ResultSetArt=TABLE zulässig und erforderlich: nichtleeres JSON-Objekt aus aktivierten Resultsetnamen auf lokale Temp-Tabellennamen, etwa {"moduleStatus":"#Seed"}. Jede Zuordnung hat einen eindeutigen Resultsetnamen und ein eindeutiges Ziel; beliebige Teilmengen der in diesem Modus aktivierten Namen sind zulässig, aber kein leeres Objekt. Ziele müssen vorhandene leere lokale #Temp-Tabellen (keine ##, keine #Monitor*-Namen, höchstens 116 Zeichen) mit genau einer Seed-Spalte sein. Unbekannte/nicht aktivierte Namen, doppelte Ziele, JSON-Null/Leerwerte und ungültige Ziele werden vor fachlichen Zugriffen abgewiesen. Für CONSOLE/RAW/NONE muss der Parameter NULL sein. Keine eigene Eingabegrößengrenze im Empfänger gefunden; nicht mit den 16-MiB-Grenzen anderer JSON-Parameter gleichsetzen. Flacher Grundbestand: moduleStatus (Modulstatus/Zähler), sourceBinding (Paketbindung/Vertrauen), nodes (Modellobjekte), edges (gerichtete Beziehungen), coverage (Featureabdeckung), findings (Profilbefunde), sourceStatus (Quellenstatus), warnings (Warnungen). Mit IncludePackageViews=1: packageOverview (Paketübersicht), executables (Tasks/Container), dataFlows (Datenflussscopes), components (Pipeline-Komponenten), columnRelations (direkte Spaltenbeziehungen). Mit IncludeObjectRules=1: objectFindings (objektbezogene statische Befunde). Mit IncludeSqlMetadata=1: sqlMetadata (explizit gebundene lokale Katalogmetadaten). Mit IncludeExecutionCorrelation=1: runtimeBinding (Capturebindung), executionCorrelation (zugeordnete Laufzeitbeobachtungen); zusätzlich bei IncludeIterationCorrelation=1: executionObjectSummary (beobachtete Objektsummen), executionCoverage (Iterations-/Loggingabdeckung). Im Scope-Modus ersetzt dieser Bestand alle flachen Gruppen: scopeBinding (Scope-/Capturebindung), packageScopes (Paketmodelle), packageInvocations (Aufrufinstanzen), scopeObservations (Statistik-/Ereignisbelege), handlerActivity (Handlerbelege), scopeObjectSummary (Objektsummen), scopeCoverage (Scope-/Quellenabdeckung). Mit IncludePipelineCorrelation=1 zusätzlich: pipelineInstances (Datenflussinstanzen), componentPhases (Komponentenphasen), pathTransfers (Pfadtransfers), pipelineCoverage (Pipelineabdeckung). Mit IncludePipelineDiagnostics=1 zusätzlich: componentPhaseSummary (Phasensummen), pathTransferSummary (Transfersummen), pipelineFindings (versionierte Beobachtungshinweise), pipelineDiagnosticCoverage (Diagnoseabdeckung). Alle Schlüssel sind exakt und case-sensitive. Zielnamenduplikate und das reservierte Präfix #Monitor werden ohne Beachtung der Großschreibung geprüft. Das JSON enthält Stringwerte, etwa N''{"nodes":"#ModelNodes"}'' im flachen Modus oder N''{"scopeBinding":"#ScopeBinding"}'' im Scope-Modus.';
+        PRINT N'@JsonErzeugen: Datentyp bit. Default 0. 0 erzeugt kein JSON-Dokument; @Json ist zuvor auf NULL initialisiert. 1 erzeugt das JSON-Ausgabeobjekt, das über gebundenes @Json OUTPUT zurückkommt. NULL ist im regulären flachen und Scope-Modus ungültig; andere Bitwerte sind nicht darstellbar. Die SQL-bit-Konvertierung bildet numerische Werte ungleich 0 auf 1 ab.';
+        PRINT N'@Json: Datentyp nvarchar(max) OUTPUT. Default NULL OUTPUT. Als OUTPUT-Parameter mit lokaler nvarchar(max)-Variablen zu binden. Beim Eintritt wird er stets auf NULL gesetzt; bei @JsonErzeugen=1 enthält er die tatsächlichen Arrays und Metadaten, sonst bleibt er NULL. Flat-JSON: meta.schemaVersion=1, meta.statusCode, meta.isPartial; stets moduleStatus, sourceBinding, nodes, edges, coverage, findings, sourceStatus, warnings; per Opt-in meta.packageViewsSchemaVersion/objectRulesSchemaVersion/sqlMetadataSchemaVersion/executionCorrelationSchemaVersion/iterationCorrelationSchemaVersion jeweils mit packageOverview/executables/dataFlows/components/columnRelations, objectFindings, sqlMetadata, runtimeBinding+executionCorrelation beziehungsweise executionObjectSummary+executionCoverage. Scope-JSON: meta.schemaVersion=1, meta.executionScopesSchemaVersion=1, meta.isPartial=true; stets scopeBinding, packageScopes, packageInvocations, scopeObservations, handlerActivity, scopeObjectSummary, scopeCoverage; Pipelineopt-in ergänzt meta.pipelineCorrelationSchemaVersion=1 und pipelineInstances/componentPhases/pathTransfers/pipelineCoverage; Diagnose ergänzt meta.pipelineDiagnosticsSchemaVersion=1 und componentPhaseSummary/pathTransferSummary/pipelineFindings/pipelineDiagnosticCoverage. Alle Arrayelemente enthalten die tatsächlichen Tabellenspalten einschließlich NULL-Werten; Nur die im jeweiligen Modus begrenzten Detailgruppen werden gemäß @MaxZeilen gekürzt; die flachen Status-, Bindungs- und Coveragegruppen behalten ihren eigenen unverkleinerten Umfang. Bei @Hilfe bleibt Json NULL. Nicht als Eingabe-JSON verwenden. meta.statusCode entspricht im flachen JSON genau @StatusCodeOut und verwendet dessen hier vollständig aufgeführte zehn flache Codes mit denselben Bedeutungen. Scope-JSON besitzt kein meta.statusCode; lesen Sie dort scopeBinding und den Status-OUTPUT.';
+        PRINT N'@PrintMeldungen: Datentyp bit. Default 1. Flat-Modus prüft NULL als ungültig, verwendet den Wert danach aber nicht; 0 und 1 haben daher dieselbe Wirkung und steuern die PRINT-Ausgabe nicht. Im Scope-Modus wird der Parameter nicht an den Helper übergeben und ist wirkungslos, auch bei NULL. @Hilfe=1 druckt seine Hilfetexte unabhängig von diesem Schalter. Die SQL-bit-Konvertierung bildet numerische Werte ungleich 0 auf 1 ab.';
+        PRINT N'@Hilfe: Datentyp bit. Default 0. 1 druckt den statischen Hilfetext und kehrt vor Datenvalidierung, Katalog-/Extended-Property-Zugriff und Scope-Delegation zurück; keine Runtime oder Eingabedaten erforderlich. @Json wird vorher auf NULL gesetzt. Andere OUTPUT-Parameter werden im Hilfezweig nicht beschrieben. 0 führt den normalen Pfad aus; NULL verhält sich wegen IF @Hilfe=1 als nicht gesetzt und läuft in die normale Verarbeitung statt als Parameterfehler abgewiesen zu werden. Die SQL-bit-Konvertierung bildet numerische Werte ungleich 0 auf 1 ab.';
+        PRINT N'@StatusCodeOut: Datentyp varchar(40) OUTPUT. Default NULL OUTPUT. Mit einer varchar(40)-Variable und OUTPUT am Aufruf binden; der Eingangswert steuert keine Analyse. Im flachen Modus sind die zehn Ergebniswerte: AVAILABLE_LIMITED (Modell im implementierten begrenzten Umfang verarbeitet), INVALID_PARAMETER (ungültige Steuerwerte oder Kombination), EXCHANGE_INVALID (ungültige Modellstruktur/-typen oder nicht gesondert klassifizierter nativer Validierungsfehler), EXCHANGE_VERSION_UNSUPPORTED (Vertrags-, Versions- oder Identitätsprofilkennung nicht unterstützt), EXCHANGE_LIMIT_EXCEEDED (Größen-, Mengen-, Tiefen- oder Besitzertiefengrenze überschritten), EXCHANGE_REFERENCE_INVALID (ungültige Objekt-/Kanten-/Besitzerreferenz), EXCHANGE_PROFILE_UNSUPPORTED (nicht unterstütztes Formatprofil), EXCHANGE_SOURCE_MISMATCH (Originalbytes passen nicht zu deklariertem Paketdigest oder Länge), EXCHANGE_HANDOVER_INVALID (lokaler Producerbeleg fehlt, ist abgelaufen oder passt nicht), EXCHANGE_TIME_BUDGET_EXHAUSTED (kooperatives Zeitbudget an einer Prüfstelle erschöpft). Der Scope-Modus verwendet stattdessen SCOPE_CAPTURE_BOUND (Scope-Capture und Paketsatz sind gebunden; Ergebnis bleibt partiell), SCOPE_BINDING_UNPROVEN (Bindung/Scopeverarbeitung nicht belegt; Ursachen stehen in Fehler- und Bindungsfeldern) oder INVALID_PARAMETER (ungültige Scope-Steuerwerte/Kombination). Bei Hilfe bleibt der vorgebundene Wert unverändert. Eine vorzeitige ungefangene Ausnahme kann die Ergebniszuweisung umgehen.';
+        PRINT N'@IsPartialOut: Datentyp bit OUTPUT. Default NULL OUTPUT. Mit einer bit-Variable und OUTPUT binden; signalisiert Partialität des Ergebnisses. Der Scope-Helper setzt immer 1. Im Hilfezweig unverändert; bei normalem Lauf nach Modus befüllt. Die SQL-bit-Konvertierung bildet numerische Werte ungleich 0 auf 1 ab.';
+        PRINT N'@ErrorNumberOut: Datentyp int OUTPUT. Default NULL OUTPUT. Mit einer int-Variable und OUTPUT binden; Fehlernummer der kontrolliert erfassten Analyse-/Bindungsantwort, falls vorhanden. Scope-Modus befüllt denselben Wert aus seinem Helper. Im Hilfezweig unverändert. SQL-THROW-Abbrüche können den normalen Abschluss und damit diese Ergebniszuweisung umgehen.';
+        PRINT N'@ErrorMessageOut: Datentyp nvarchar(2048) OUTPUT. Default NULL OUTPUT. Mit einer nvarchar(2048)-Variable und OUTPUT binden; kontrollierte Fehlermeldung/-ursache, falls vorhanden. Im Scope-Modus Helper-Ausgabe; bei Hilfe unverändert. Ein SQL-THROW-Abbruch kann vor der normalen Zuweisung enden. nvarchar(2048) umfasst höchstens 2048 UTF-16-Codeeinheiten; OUTPUT ist auch am Aufruf nötig.';
+        PRINT N'@IncludePackageViews: Datentyp bit. Default 0. 0 behält die acht Grundgruppen; 1 ergänzt packageOverview, executables, dataFlows, components und columnRelations in RAW/JSON sowie deren zulässige TABLE-Ziele. Alle fünf zeigen gelieferte Modellbeziehungen; kein Laufzeiturteil. NULL ist im flachen Modus ungültig; im Scope-Modus muss der Schalter effektiv 0 sein (NULL wird durch COALESCE wie 1 behandelt und damit als unzulässige Kombination abgewiesen). Die SQL-bit-Konvertierung bildet numerische Werte ungleich 0 auf 1 ab.';
+        PRINT N'@IncludeObjectRules: Datentyp bit. Default 0. 0 liefert keine objektbezogenen Hinweise; 1 ergänzt objectFindings aus festen Regeln und konkreten Knoten-/Kantenbelegen. Ausschließlich statische Hinweise, keine Laufzeiturteile. NULL ist im flachen Modus ungültig; im Scope-Modus muss der Schalter effektiv 0 sein (NULL wird als 1 behandelt und ist dort unzulässig). Die SQL-bit-Konvertierung bildet numerische Werte ungleich 0 auf 1 ab.';
+        PRINT N'@LocalHandoverId: Datentyp uniqueidentifier. Default NULL. Optionale UUID für den lokal gespeicherten qualifizierten Producerbeleg SSIS_HANDOVER_<UUID in Kleinschreibung> auf genau dieser Procedure. Erfordert zugleich @PackageBytes; Beleg bindet exakte UTF-16-JSON-Bytes, Paketdigest/-länge, Buildhash und Source-Commit, issuedUtc darf nicht nach Analysebeginn liegen, expiresUtc muss nach Analysebeginn liegen und höchstens 24 Stunden nach issuedUtc liegen; es gibt keine Mindestgültigkeitsdauer. Ohne ID bleibt ProducerTrust UNVERIFIED; ID ist kein Caller-JSON-Trustflag. Im Scope-Modus muss NULL sein; dort gilt ausschließlich @ScopeHandoverId.';
+        PRINT N'@IncludeSqlMetadata: Datentyp bit. Default 0. 0 lässt sqlMetadata aus; dann muss @SqlMetadataBindingsJson NULL sein. 1 validiert explizite paketgebundene lokale SQL-Spaltenzuordnungen und ergänzt sqlMetadata. Benötigt zugehöriges JSON; optional nur im flachen Modus, nicht mit Scope-Modus kombinierbar. NULL im flachen Modus ungültig; im Scope-Modus muss 0 sein (NULL wird als 1 behandelt und abgewiesen). Keine Paket-SQL-Ausführung oder Typkonvertierungsfreigabe. Die SQL-bit-Konvertierung bildet numerische Werte ungleich 0 auf 1 ab.';
+        PRINT N'@SqlMetadataBindingsJson: Datentyp nvarchar(max). Default NULL. Nur mit @IncludeSqlMetadata=1: JSON-Objekt contract="ssis-sql-metadata-bindings", version="1.0.0", packageSha256 passend zum Modell und bindings-Array mit 1–1.000 Einträgen. Jedes flache Element besitzt genau bindingId, nodeId, databaseName, schemaName, objectName, columnName, keySetId: bindingId eindeutige ASCII-Kennung bis 64 Zeichen [A-Za-z0-9_.:-]; nodeId vorhandener COLUMN; databaseName ausdrücklich lokale Datenbank; Schema/Objekt/Spalte nichtleere SQL-Bezeichner bis 128 UTF-16-Codeeinheiten; keySetId null oder ASCII-Kennung, wobei ein Satz ein Objekt und jede SQL-Spalte höchstens einmal bezeichnet. Maximal DATALENGTH 16.777.216 SQL-Bytes (nvarchar UTF-16; keine UTF-8-Dateigröße). Ohne Opt-in muss NULL sein; im Scope-Modus NULL.';
+        PRINT N'@IncludeExecutionCorrelation: Datentyp bit. Default 0. 0 verlangt im flachen Modus @ExecutionId, @ExecutionSnapshotJson und @RuntimeHandoverId alle NULL; 1 aktiviert Laufzeitkorrelation und verlangt positive @ExecutionId, Snapshot und Runtime-Handover-ID sowie verifiziertes Modellvertrauen und Paketbytes/LocalHandover. Ergänzt runtimeBinding und executionCorrelation. NULL ungültig. Im Scope-Modus muss 0 sein; dessen Korrelationspfad nutzt @IncludeExecutionScopes. Die SQL-bit-Konvertierung bildet numerische Werte ungleich 0 auf 1 ab.';
+        PRINT N'@ExecutionId: Datentyp bigint. Default NULL. Positive SSISDB Execution-ID (>0), byte-/wertgleich im gebundenen Capture. Erforderlich bei @IncludeExecutionCorrelation=1 oder @IncludeExecutionScopes=1; bei flacher Laufzeitkorrelation sonst NULL. NULL und Werte <1 werden im aktivierten Korrelationsmodus abgewiesen. Bereich durch bigint begrenzt. Als einzelne Ganzzahl von 1 bis 9223372036854775807 übergeben, keine Liste und kein Datenbankpfad.';
+        PRINT N'@ExecutionSnapshotJson: Datentyp nvarchar(max). Default NULL. Nur bei @IncludeExecutionCorrelation=1: JSON-Objekt ssis-execution-snapshot mit version 1.0.0/method SSISDB_CURRENT_PROJECT_ROOT_SCOPE_V1 oder bei Iterationskorrelation 1.1.0/SSISDB_CURRENT_PROJECT_ITERATION_SCOPE_V1, identityProfile document-order-v1, Modellhash und Paketdigest, identities-Vertrag ssis-object-identities mit passender Version/PackageSha256 sowie execution-Bindungen (executionId, catalogDatabaseGuid, sourceBindingSha256, projectId, projectLsn, packageFileName, Zeit-/Statusfelder) und observations-Array. Bei 1.1.0 muss die Iterationsklassifikation im identities-Array gebunden sein. Alle Objektschlüssel müssen eindeutig sein; unbekannte Annotationen sind im Capturetransport zulässig, bekannte Bindungen werden streng geprüft. Maximal 16 MiB DATALENGTH in SQL-Bytes, Tiefe 16 und 1.048.576 JSON-Tokens. Hash bindet exakten UTF-16-Inhalt; nicht neu serialisieren. Ohne Opt-in NULL.';
+        PRINT N'@RuntimeHandoverId: Datentyp uniqueidentifier. Default NULL. Bei @IncludeExecutionCorrelation=1 erforderlich: UUID des separat berechtigten und zeitlich gültigen Extended-Property-Belegs SSIS_RUNTIME_<UUID in Kleinschreibung>. Beleg contract ssis-local-runtime-handover 1.0.0 bindet SHA-256 des exakten ExecutionSnapshotJson und issued/expires (höchstens 24 Stunden); ersetzt weder @LocalHandoverId noch verifiziertes Modellvertrauen. Bei ausgeschalteter Korrelation und im Scope-Modus NULL.';
+        PRINT N'@IncludeIterationCorrelation: Datentyp bit. Default 0. 0 lässt executionObjectSummary/executionCoverage weg; 1 erfordert zugleich @IncludeExecutionCorrelation=1 sowie den daran gebundenen Capture 1.1.0 mit SSISDB_CURRENT_PROJECT_ITERATION_SCOPE_V1 und ergänzt diese zwei Gruppen. Nur bereits vom Toolbelt gelieferte iterationContainer-Rollen werden verwendet; Analyze leitet sie nicht neu ab. NULL ungültig; im Scope-Modus muss 0 sein. Die SQL-bit-Konvertierung bildet numerische Werte ungleich 0 auf 1 ab.';
+        PRINT N'@IncludeExecutionScopes: Datentyp bit. Default 0. 0 verwendet den flachen Einzelmodellpfad. 1 delegiert exklusiv an InternalSsisExecutionScopes und verlangt @ProjectModelsJson, @ScopeSnapshotJson, @ScopeHandoverId und positive @ExecutionId. Dann müssen PackageModelJson/PackageBytes, LocalHandoverId, ExecutionSnapshotJson, RuntimeHandoverId, SqlMetadataBindingsJson sowie PackageViews/ObjectRules/SqlMetadata/ExecutionCorrelation/IterationCorrelation NULL/0 sein; IncludePipelineCorrelation muss nicht-NULL sein. Scope-Ergebnisse sind stets partiell. NULL im flachen Modus ungültig. Die SQL-bit-Konvertierung bildet numerische Werte ungleich 0 auf 1 ab.';
+        PRINT N'@ProjectModelsJson: Datentyp nvarchar(max). Default NULL. Nur bei @IncludeExecutionScopes=1 erforderlich: JSON-Objekt contract ssis-project-model-set, version 1.0.0, rootPackageKey und packages-Array mit 1–16 Einträgen. Jedes Paketobjekt liefert packageKey (eindeutige alphanumerische Kennung bis 16 Zeichen), entryName (exakter, eindeutiger Archivdateiname ohne /, \ oder :, 6–260 Zeichen), model (vollständiges ssis-package-model 1.0.0) und identities (ssis-object-identities 1.2.0 mit packageSha256 passend zum Modell sowie objects-Array). Jedes identities.objects-Element enthält nodeId, nullable parentId, nodeKind PACKAGE/EXECUTABLE, nullable dtsId/packagePath, scopeKind PACKAGE/CALL/LOOP/HANDLER/EXECUTABLE, steps (Array mit höchstens 32 Objekten; jedes Objekt genau text als nichtleerer String mit DATALENGTH 2–8.000 SQL-Bytes und counter als JSON-Zahl), profileStatus SUPPORTED/UNQUALIFIED, eventName und callTarget als nullable Werte; Handler-Events sind OnPreExecute/OnPostExecute/OnError. Identitätsanzahl muss der Zahl der PACKAGE/EXECUTABLE-Knoten entsprechen und jede ID/Parentbeziehung passt exakt zum eingebetteten Modell. Bei Pipelineopt-in zusätzlich pipelineIdentities je Paket (ssis-pipeline-identities 1.0.0, identityProfile=document-order-v1, identischer packageSha256, pipelines-Array). Jedes Pipelineobjekt enthält nodeId/profileStatus und components/paths-Arrays; Komponenten binden nodeId/name/nativeRefId/profileStatus an vorhandene Component-Knoten, Pfade binden edgeId/fromPortId/toPortId/sourceComponentId/destinationComponentId/nativeRefId/name/identificationString/profileStatus an exakte Pipelinekanten/Ports. Anzahl und Scopes müssen dem Modell entsprechen. RootPackageKey muss eines der eindeutigen packageKey bezeichnen. Maximal 16 MiB DATALENGTH SQL-Bytes; gemeinsam mit Capture Tiefe <=32 und 50.000 Beobachtungen/Ereignisse.';
+        PRINT N'@ScopeSnapshotJson: Datentyp nvarchar(max). Default NULL. Nur bei @IncludeExecutionScopes=1 erforderlich: Captureobjekt contract ssis-execution-scopes, version 1.0.0 und method SSISDB_CURRENT_PROJECT_SCOPES_V1; bei Pipelinekorrelation stattdessen 1.1.0 und SSISDB_CURRENT_PROJECT_PIPELINES_V1. Bindet positive execution.executionId, packageFileName exakt an root entryName, projectId/projectLsn >0, catalogDatabaseGuid, sourceBindingSha256, archiveSha256 sowie modelSetSha256=SHA-256 der exakten @ProjectModelsJson-Bytes. observations ist ein Array mit executionId/statisticsId/executableId, packageName/packagePath/executionPath und nullable executableGuid/startTime/endTime/durationMs/executionResult; events enthält eventMessageId, packageName/packagePath/executionPath, nullable executableGuid/eventName/eventCode/time. IDs müssen positiv sein, Execution-ID stimmt für alle Beobachtungen überein, und Namen/Pfade/GUIDs sowie Zeit-/Ergebnisfelder müssen konvertierbar und innerhalb der Helpergrenzen liegen; gemeinsam höchstens 50.000 Einträge. Bei Pipelineopt-in sind zusätzlich arrays componentPhases (phaseStatsId, packageName, taskName, componentName, phaseName, executionPath, nullable startTime/endTime), pathTransfers (dataStatsId, packageName, taskName, pathIdentificationString, pathName, sourceComponentName, destinationComponentName, executionPath, nullable rowsSent/createdTime) und genau zwei pipelineSources erforderlich. Die Quellenobjekte enthalten source/status/errorNumber; source ist componentPhases oder pathTransfers, status AVAILABLE/AVAILABLE_EMPTY/UNAVAILABLE/DENIED_PERMISSION, errorNumber bei den letzten zwei positiv und sonst NULL. IDs sind positiv; Zähler nichtnegativ; Zeitfelder ISO-konvertierbar. Doppelte Schlüssel werden abgewiesen. Maximal 16 MiB DATALENGTH SQL-Bytes je Dokument, Tiefe 32, gemeinsames Zeitbudget. Übergabe-ID bindet exakte Dokumentbytes.';
+        PRINT N'@ScopeHandoverId: Datentyp uniqueidentifier. Default NULL. Bei @IncludeExecutionScopes=1 erforderliche UUID des lokal auf dieser Procedure registrierten Extended-Property-Belegs SSIS_SCOPE_<UUID in Kleinschreibung>. Beleg contract ssis-local-scope-handover 1.0.0 enthält genau sechs eindeutige Schlüssel einschließlich issuedUtc/expiresUtc, modelSetSha256 und captureSha256; Gültigkeit maximal 24 Stunden und Hashes binden exakt die übergebenen UTF-16-JSON-Dokumente. READCOMMITTEDLOCK verhindert Trust aus uncommittetem Beleg. Bei flachem Modus muss NULL sein.';
+        PRINT N'@IncludePipelineCorrelation: Datentyp bit. Default 0. Nur im Scope-Modus zulässig; 0 behält die sieben Scopegruppen, 1 verlangt Scope-Modus plus Captureversion 1.1.0/Methode SSISDB_CURRENT_PROJECT_PIPELINES_V1 und gebundene pipelineIdentities sowie Komponentenphasen-/Pfadtransferquellen; ergänzt pipelineInstances, componentPhases, pathTransfers und pipelineCoverage. Im flachen Modus muss 0 sein. Scope-Helper akzeptiert keinen NULL-Wert. Schalter ist keine Lineage. Die SQL-bit-Konvertierung bildet numerische Werte ungleich 0 auf 1 ab.';
+        PRINT N'@IncludePipelineDiagnostics: Datentyp bit. Default 0. 0 lässt Diagnosegruppen weg. 1 verlangt @IncludeExecutionScopes=1 und @IncludePipelineCorrelation=1; ergänzt componentPhaseSummary, pathTransferSummary, pipelineFindings und pipelineDiagnosticCoverage. NULL ungültig. Im flachen Modus muss exakt 0 sein. Nur Beobachtungsaggregation und versionierte Hinweise, ändert keinen Ausführungsstatus; die Eingaben bleiben auf höchstens 50.000 gebundene Quellzeilen und das gemeinsame Zeitbudget begrenzt. Die SQL-bit-Konvertierung bildet numerische Werte ungleich 0 auf 1 ab.';
+        PRINT N'@PipelinePhaseThresholdMs: Datentyp bigint. Default NULL deaktiviert SSIS_PIPELINE_PHASE_THRESHOLD_EXCEEDED. Ein expliziter nichtnegativer Millisekundenwert aktiviert bei @IncludePipelineDiagnostics=1 die Regel, wenn ein bekanntes einzelnes Komponentenphasenintervall den Wert strikt überschreitet (nicht bei Gleichheit). Negative Werte, NULL-Schalter, fehlendes Diagnoseopt-in oder jeder nicht-NULL-Wert im flachen Modus sind ungültig. Kein CPU- oder kritischer-Pfad-Grenzwert. Der explizite Zahlenbereich ist 0 bis 9223372036854775807 Millisekunden.';
+        PRINT N'Ausgelassene Argumente verwenden den jeweiligen Default. Unicode-JSON als nvarchar(max)-Variable oder N-präfigiertes T-SQL-Literal übergeben, nicht als Dateipfad; die JSON-Bytegrenzen beziehen sich auf SQL-UTF-16. GUIDs als uniqueidentifier-Variable oder konvertierbares GUID-Literal der Form 00000000-0000-0000-0000-000000000000, nicht als Trustflag; die Null-GUID ersetzt keine registrierte Übergabe. OUTPUT ist zum Empfang auch am Aufruf zu schreiben. Die Typkonvertierung erfolgt vor Eintritt, auch bei Hilfe.';
+        PRINT N'Vier reine Hilfeaufrufe ohne Modell-/Captureprüfung:';
+        PRINT N'EXEC [monitor].[USP_SsisPackageModelAnalysis] @Hilfe = 1;';
+        PRINT N'DECLARE @helpJson nvarchar(max)=N''vorheriger Wert'';';
+        PRINT N'EXEC [monitor].[USP_SsisPackageModelAnalysis] @Hilfe=1, @Json=@helpJson OUTPUT;';
+        PRINT N'SELECT @helpJson AS JsonOutput;';
+        PRINT N'DECLARE @status varchar(40)=''caller-value'', @partial bit=0, @err int=7, @message nvarchar(2048)=N''caller-value'';';
+        PRINT N'EXEC [monitor].[USP_SsisPackageModelAnalysis] @Hilfe=1, @StatusCodeOut=@status OUTPUT, @IsPartialOut=@partial OUTPUT, @ErrorNumberOut=@err OUTPUT, @ErrorMessageOut=@message OUTPUT;';
+        PRINT N'SELECT @status AS StatusCodeOut, @partial AS IsPartialOut, @err AS ErrorNumberOut, @message AS ErrorMessageOut;';
+        PRINT N'EXEC [monitor].[USP_SsisPackageModelAnalysis] @Hilfe=1, @PrintMeldungen=0;';
         RETURN;
     END;
     IF XACT_STATE()=-1 THROW 50000,N'EXCHANGE_INVALID: Callertransaktion ist nicht schreibfähig.',1;
@@ -73465,12 +76246,70 @@ GO
 -- BEGIN SOURCE: Code/10_SSIS/045_InternalSsisExecutionMetrics.sql
 USE [DeineDatenbank];
 GO
-/* Gemeinsamer nativer Consumer für Paarvergleich und Mehrlauf-Baselines.
-   Jeder Capture wird genau einmal unabhängig durch den bestehenden Modell-/
-   Scopeconsumer geprüft. Der Baustein besitzt sein Kennzahlziel und liefert das gemeinsame
-   native Kennzahlenschema über einen internen JSON-OUTPUT-Vertrag. Schlüssel bezeichnen Modell und beobachtete
-   Aufrufposition, niemals laufübergreifend native Statistik-IDs. Parser,
-   Komponentenprofile und Lineage bleiben ausschließlich beim Toolbelt. */
+/*
+Objekt: monitor.InternalSsisExecutionMetrics.
+Typ: Interne Stored Procedure.
+Zweck: Die interne Prozedur nimmt ein Modell und einen Lauf-Capture entgegen, übergibt jeden Capture genau einmal an die bestehende Scope- und Pipelineanalyse und bildet deren gebundene Beobachtungen auf ein gemeinsames Kennzahlenschema für Paarvergleiche und Mehrlauf-Baselines ab. Das Schema enthält Ausführungs-, Dataflow-, Phasen- und Pfadtransferkennzahlen sowie Positionsschlüssel und gegebenenfalls eine Signatur bekannter beobachteter Pfadzeilenmengen. Die Prozedur wertet weder SSIS-Pakete selbst aus noch führt sie den SSIS-Lauf aus. Die Herkunfts-, Versions- und Scopeprüfung verbleibt beim aufgerufenen Analyseconsumer. Die beiden öffentlichen Vergleichsprozeduren rufen diesen Consumer einmal je Eingabecapture auf und empfangen die Kennzahlen über den internen JSON-OUTPUT-Vertrag in ihren jeweils eigenen temporären Zielen.
+
+Parameter:
+@RunOrdinal: Der Datentyp ist int. Die Eingabeform ist ein einzelner ganzzahliger Laufpositionswert, den der aufrufende Vergleichsconsumer zur Kennzeichnung dieses Captures im aktuellen Vergleich verwendet; der Wert ist keine SSIS-Ausführungs-ID und begründet keine Identität zwischen getrennten Aufrufen. Es gibt keinen ausdrücklich deklarierten Defaultwert; das Argument ist erforderlich. Wird es ausgelassen, kann SQL Server die Prozedur nicht binden und der Prozedurcode läuft nicht. Ein übergebenes NULL scheitert beim Einfügen in die interne Tabelle mit der NOT-NULL-Spalte RunOrdinal und wird im TRY als Fehler abgefangen. Die Prozedur setzt keine eigene Positivitätsprüfung für den Wert um, sodass 0 und negative int-Werte nicht durch eine solche Prüfung zurückgewiesen werden. Ein leerer Textwert ist keine dokumentierte Eingabeform; eine etwaige SQL-Typkonvertierung findet vor dem Prozedureintritt statt und kann dort scheitern oder einen int-Wert ergeben. Der SQL-int-Bereich ist -2147483648 bis 2147483647; leerer Text kann vor dem Eintritt nach 0 konvertiert werden und wird dann als Laufordinal 0 verarbeitet.
+
+@Models: Der Datentyp ist nvarchar(max). Die Eingabeform ist ein einzelner Unicode-Text mit JSON-Inhalt, nicht ein Dateipfad. Der Wert muss einzeln höchstens 16 MiB nach DATALENGTH umfassen und die lokale ISJSON-Prüfung bestehen. Es gibt keinen ausdrücklich deklarierten Defaultwert; das Argument ist erforderlich. Auslassen führt zu einem Bindungsfehler vor Eintritt in die Prozedur. NULL, Leertext oder sonstiger nicht als JSON akzeptierter Inhalt löst innerhalb des TRY den Fehler 57930 mit dem Reason-Code COMPARISON_TRANSPORT_INVALID aus; ein gültiges JSON, das fachlich kein akzeptiertes Modellset darstellt, wird an den bestehenden Analyseconsumer weitergereicht, der die Modellset-, Versions-, Herkunfts- und Bindungsverträge prüft. Die übergebene Modellmenge wird als Unicodeinhalt direkt weitergereicht. Die Prozedur erfindet keine eigene alternative Modellsyntax. Der delegierte Scopevertrag erwartet ein Objekt mit contract=ssis-project-model-set, version=1.0.0, rootPackageKey und packages als Array mit 1 bis 16 Objekten; je Paket packageKey, entryName, model, identities und für diesen Pipelineweg pipelineIdentities. Modelle und Sidecars müssen nach den Einzelverträgen des Scopeconsumers zusammenpassen.
+
+@Capture: Der Datentyp ist nvarchar(max). Die Eingabeform ist ein einzelner Unicode-Text mit JSON-Capture, nicht ein Dateipfad. Der Wert muss einzeln höchstens 16 MiB nach DATALENGTH umfassen und die lokale ISJSON-Prüfung bestehen. Es gibt keinen ausdrücklich deklarierten Defaultwert; das Argument ist erforderlich. Auslassen führt zu einem Bindungsfehler vor Eintritt in die Prozedur. NULL, Leertext oder ungültiges JSON löst innerhalb des TRY den Fehler 57930 mit dem Reason-Code COMPARISON_TRANSPORT_INVALID aus. Die lokale Prüfung belegt nur Größen- und JSON-Syntaxbedingungen. Der bestehende Analyseconsumer prüft anschließend den Capturevertrag, die Herkunft, die Version, die Ausführungszuordnung und den Aufrufscope; ein gültiges JSON allein attestiert keinen Lauf. Der exakt passende optionale Vergleichskontext wird zusätzlich nach der Einzelanalyse aus dem Capture gelesen. Dieser Aufruf aktiviert Pipelinekorrelation und Diagnose: Erforderlich ist ssis-execution-scopes Version 1.1.0, Methode SSISDB_CURRENT_PROJECT_PIPELINES_V1, mit execution, archiveSha256, modelSetSha256, observations, events, componentPhases, pathTransfers und pipelineSources; Beleg und Hashes binden die exakten Dokumentbytes. comparisonContext ist optional und enthält für einen qualifizierten Bitnesswert genau contract=ssis-comparison-context, version=1.0.0 und use32BitRuntime als JSON-Boolean true oder false.
+
+@HandoverId: Der Datentyp ist uniqueidentifier. Die Eingabeform ist eine einzelne GUID für die lokale Scopeübergabe, die unverändert an den bestehenden Analyseconsumer delegiert wird. Es gibt keinen ausdrücklich deklarierten Defaultwert; das Argument ist erforderlich. Auslassen verhindert die Parameterbindung vor Eintritt in den Prozedurcode. NULL wird in diesem Consumer nicht mit einer eigenen Vorprüfung abgewiesen; seine Gültigkeit wird durch den aufgerufenen Analyseconsumer im Rahmen der Capture- und Scopeprüfung beurteilt. Für einen GUID-Parameter gibt es keinen fachlichen Leertextwert; übergebener Zeichentext muss vor oder bei der Parameterbindung in uniqueidentifier konvertierbar sein. Diese GUID ist kein Kennzahlenschlüssel und wird nicht als laufübergreifende Statistikidentität verwendet.
+
+@ExecutionId: Der Datentyp ist bigint. Die Eingabeform ist eine einzelne ganzzahlige SQL-Ausführungs-ID, die an den Analyseconsumer weitergereicht und bei der Ausführungskennzahl als Quellenbeleg übernommen wird. Es gibt keinen ausdrücklich deklarierten Defaultwert; das Argument ist erforderlich. Auslassen führt zu einem Parameterbindungsfehler vor Eintritt. NULL wird lokal nicht positiv oder anderweitig validiert; die Gültigkeit und Zuordnung zur Captureausführung prüft der bestehende Analyseconsumer. Ein leerer Zeichentext ist keine dokumentierte Eingabeform; SQL-Typkonvertierung kann vor dem Eintritt fehlschlagen oder einen numerischen Wert liefern. Die ID ist ein Quellenbeleg innerhalb der gelieferten Beobachtung und wird nicht als stabile, über Läufe hinweg vergleichbare Objektidentität ausgegeben. Der delegierte Vertrag verlangt einen positiven bigint-Wert von 1 bis 9223372036854775807 passend zum Capture. Leerer Text kann nach 0 konvertiert werden; der Kindconsumer weist diesen Wert ab.
+
+@Deadline: Der Datentyp ist datetime2(3). Die Eingabeform ist ein einzelner absoluter UTC-Zeitpunkt mit Millisekundenauflösung; datetime2 speichert selbst keinen Zeitzonenoffset, daher muss der Aufrufer den UTC-Bezug einhalten. Es gibt keinen ausdrücklich deklarierten Defaultwert; das Argument ist erforderlich. Auslassen scheitert bei der Parameterbindung vor Eintritt in die Prozedur. Der Consumer berechnet vor dem Aufruf des Analyseconsumers die noch verfügbaren ganzen Sekunden als DATEDIFF_BIG in Millisekunden geteilt durch 1000 und nachfolgende int-Konvertierung. Bei weniger als einer verbleibenden Sekunde wird innerhalb des TRY 57930 mit COMPARISON_TIME_LIMIT ausgelöst. Bei NULL ergibt die Berechnung NULL; der lokale Vergleich @remaining < 1 ist dann SQL-UNKNOWN und löst selbst nicht den genannten Zeitfehler aus. Der nachfolgende Analyseconsumer erhält dadurch ein NULL-Zeitbudget und kann es als ungültigen Parameter zurückweisen. Eine int-Überlaufkonvertierung wird vom TRY abgefangen und als COMPARISON_INPUT_REJECTED ausgegeben. Der delegierte MaxDurationSeconds-Vertrag erlaubt 1 bis 60 Sekunden; ein Restbudget über 60 wird deshalb dort als ungültig abgewiesen. Die Frist wird nach der Analyse nochmals geprüft, aber die Koordination ist kooperativ und stellt keine harte Laufzeitgarantie dar. Eine passende datetime2(3)-Variable oder ein ISO-Zeittext wie 2026-11-06T13:00:00.000 ist übergebbar. Leerer Text kann als 1900-01-01 konvertiert werden und ist dann abgelaufen; nicht konvertierbarer Text scheitert vor dem Eintritt.
+
+@LockTimeoutMs: Der Datentyp ist int. Die Eingabeform ist ein einzelner ganzzahliger Millisekundenwert für SET LOCK_TIMEOUT und die Weitergabe an den Analyseconsumer. Es gibt keinen ausdrücklich deklarierten Defaultwert; das Argument ist erforderlich. Auslassen scheitert vor Eintritt bei der Parameterbindung. Das TRY bildet den Wert in einem separaten dynamischen SET LOCK_TIMEOUT-Batch ab; dessen Einstellung endet bei Rückkehr aus sp_executesql und bestimmt keine nachfolgenden direkten Anweisungen. Der Wert wird an den öffentlichen Analyseconsumer weitergegeben; dessen Vertrag prüft 0 bis 60000 Millisekunden, NULL und Werte außerhalb sind dort ungültig, sofern die Kindanalyse erreicht wird. Nach SET LOCK_TIMEOUT bedeutet 0 NOWAIT, ein positiver Wert begrenzt die Sperrwartezeit auf den angegebenen Millisekundenwert, und -1 bedeutet unbegrenzte Sperrwartezeit. Diese SET-Semantik beschreibt den Wert, nicht die Sperrwartezeiten späterer direkter Anweisungen. Hier gibt es keine eigene NULL- oder Wertebereichsvorprüfung. Eine durch NULL entstehende dynamische SET-Anweisung erhält hier keine festgelegte native Fehlerfolge; erreicht die Verarbeitung die Kindanalyse, gilt deren eigener NULL-Vertrag. Beim dynamischen SET auftretende native SQL-Fehler werden im eigenen CATCH nach den unten beschriebenen ErrorNumberOut- und ReasonCodeOut-Regeln ausgegeben. Ein leerer Text ist keine dokumentierte Eingabeform; eine Konvertierung findet gegebenenfalls vor dem Eintritt statt. Leerer Text kann vor Eintritt nach 0 konvertiert werden und bedeutet dann nach SET LOCK_TIMEOUT NOWAIT.
+
+@AnalysisJson: Der Datentyp ist nvarchar(max) OUTPUT. Die Eingabeform ist eine OUTPUT-Variable für Unicode-JSON-Text; der aufgerufene Analyseconsumer liefert hier die Einzelanalyse einschließlich Bindungs- und Abdeckungsinformationen. Es gibt keinen ausdrücklich deklarierten Defaultwert; auch dieses OUTPUT-Argument ist an der Signatur erforderlich. Auslassen verhindert die Parameterbindung. Zum Empfang bindet der Aufrufer eine passende Variable mit OUTPUT; ein typisierter übergebener Wert ohne OUTPUT wird nicht als Ergebnis empfangen und kann verworfen werden. Sobald der Prozedurcode betreten wurde, initialisiert er den Ausgang vor der eigenen Temp-Tabellen-DDL mit NULL. Nach dem delegierten Aufruf wird die Analyse in diesen Ausgang kopiert. Ein späterer Fehler im eigenen TRY setzt AnalysisJson nicht zurück, sodass bereits kopierte Analyse bei gesetztem Fehlerausgang erhalten bleiben kann. Die Initialisierung liegt vor der Temp-Tabellen-DDL; Fehler bei der Parameterbindung führen dagegen gar nicht zum Prozedureintritt. Ungefangene Fehler garantieren keine OUTPUT-Rückübertragung. Der anfängliche Eingabewert der OUTPUT-Variable, einschließlich NULL oder Leertext, ist kein Default und wird nach Eintritt durch die dokumentierte Initialisierung überschrieben; bei Fehlern vor dieser Initialisierung ist eine Ausgabe nicht zugesagt.
+
+@StatusCodeOut: Der Datentyp ist varchar(40) OUTPUT. Die Eingabeform ist eine OUTPUT-Variable für den vom bestehenden Analyseconsumer gelieferten Statuscode. Es gibt keinen ausdrücklich deklarierten Defaultwert; das OUTPUT-Argument ist erforderlich. Auslassen verhindert die Parameterbindung. Zum Empfang muss der Aufrufer eine passende Variable mit OUTPUT binden; ein typisierter Wert ohne OUTPUT verwirft die Ausgabe. Nach Eintritt initialisiert der Consumer den Ausgang auf NULL und überschreibt ihn nach der delegierten Analyse mit deren Status. Die kontrollierten regulären Statuswerte des aufgerufenen Vergleichswegs sind SCOPE_CAPTURE_BOUND (Scope-Capture gebunden, weiterhin partiell), SCOPE_BINDING_UNPROVEN (Bindung oder Scopeverarbeitung nicht belegt) und INVALID_PARAMETER (ungültige Scopeparameter oder Kombination); ein konkreter Status wird vom delegierten Ergebnis bestimmt. Bei einem frühen Rückweg aufgrund eines nicht gebundenen Captures bleibt die Einzelanalyse und der vom Kind gelieferte Status erhalten. Ein später eigener Fehler setzt den Status nicht zurück; außerhalb des Prozedureintritts oder bei Fehlern vor der Zuweisung ist kein aktualisierter Status garantiert. Der anfängliche Eingabewert der OUTPUT-Variable, einschließlich NULL oder Leertext, ist kein Default und wird nach Eintritt durch die dokumentierte Initialisierung überschrieben; bei Fehlern vor dieser Initialisierung ist eine Ausgabe nicht zugesagt.
+
+@Use32BitRuntimeOut: Der Datentyp ist bit OUTPUT. Die Eingabeform ist eine OUTPUT-Variable für einen aus dem attestierten Vergleichskontext abgeleiteten JSON-Boolean. Es gibt keinen ausdrücklich deklarierten Defaultwert; das OUTPUT-Argument ist erforderlich. Auslassen verhindert die Parameterbindung. Zum Empfang ist eine passende Variable mit OUTPUT zu binden; ein typisierter Eingangswert ohne OUTPUT verwirft die Ausgabe. Nach Eintritt wird der Ausgang auf NULL initialisiert. Ein Wert wird nur ausgelesen, wenn comparisonContext genau drei Eigenschaften enthält, contract exakt ssis-comparison-context, version exakt 1.0.0 und use32BitRuntime als JSON-Boolean vorliegt. In diesem Fall bildet JSON true auf 1 und false auf 0 ab; bei fehlendem oder nicht exakt passendem Kontext bleibt der Wert NULL. Der Schalter beschreibt ausschließlich den im Vergleichskontext attestierten Bitnesswert. Er aktiviert oder startet keine 32-Bit-Laufzeit. Der anfängliche Eingabewert der OUTPUT-Variable, einschließlich NULL oder Leertext, ist kein Default und wird nach Eintritt durch die dokumentierte Initialisierung überschrieben; bei Fehlern vor dieser Initialisierung ist eine Ausgabe nicht zugesagt.
+
+@BoundOut: Der Datentyp ist bit OUTPUT. Die Eingabeform ist eine OUTPUT-Variable für das Ergebnis der Capture- und Pipelinebindungsprüfung. Es gibt keinen ausdrücklich deklarierten Defaultwert; das OUTPUT-Argument ist erforderlich. Auslassen verhindert die Parameterbindung. Zum Empfang ist eine passende Variable mit OUTPUT zu binden; ein Wert ohne OUTPUT wird nicht zurückgeschrieben. Nach Eintritt initialisiert die Prozedur den Ausgang auf 0. Ein SQL-NULL-Status, ein von SCOPE_CAPTURE_BOUND abweichender Status oder eine Pipelineabdeckung mit PIPELINE_BINDING_UNPROVEN führt zum frühen Rückweg; BoundOut bleibt 0 und MetricsJson bleibt []. Der Analyseinhalt und der Statusausgang bleiben dabei erhalten; ein eigener Fehler wird nicht gesetzt. Nur bei SCOPE_CAPTURE_BOUND ohne PIPELINE_BINDING_UNPROVEN wird BoundOut auf 1 gesetzt. Ein Fehler im späteren TRY-CATCH setzt BoundOut wieder auf 0 und MetricsJson auf []. Der anfängliche Eingabewert der OUTPUT-Variable, einschließlich NULL oder Leertext, ist kein Default und wird nach Eintritt durch die dokumentierte Initialisierung überschrieben; bei Fehlern vor dieser Initialisierung ist eine Ausgabe nicht zugesagt.
+
+@MetricsJson: Der Datentyp ist nvarchar(max) OUTPUT. Die Eingabeform ist eine OUTPUT-Variable, die ein JSON-Array des internen Kennzahlenschemas empfängt. Es gibt keinen ausdrücklich deklarierten Defaultwert; das OUTPUT-Argument ist erforderlich. Auslassen verhindert die Parameterbindung. Der Aufrufer muss eine passende Variable mit OUTPUT binden, um das Ergebnis zu erhalten; ein übergebener Wert ohne OUTPUT verwirft die Rückgabe. Nach Eintritt initialisiert die Prozedur den Ausgang auf das JSON-Array [] und ersetzt es nur am regulären Ende durch das begrenzte Kennzahlenarray. Bei der frühen Rückkehr wegen nicht nachgewiesener Bindung bleibt es bei []. Ein Fehler im eigenen CATCH setzt es ebenfalls auf [] zurück. Das Array enthält für jede Kennzahl Laufordinal, Objektart, Modell- und Positionsfelder, Metrikname und Einheit, nullable Wert, Qualitätscode, Quellenname und Quellen-ID, Positionsschlüssel als JSON sowie hexkodierte SHA-256-Schlüssel- und optionale Volume-Signatur. Es werden höchstens 200000 Kennzahlzeilen für den Lauf ausgegeben. Der anfängliche Eingabewert der OUTPUT-Variable, einschließlich NULL oder Leertext, ist kein Default und wird nach Eintritt durch die dokumentierte Initialisierung überschrieben; bei Fehlern vor dieser Initialisierung ist eine Ausgabe nicht zugesagt.
+
+@ErrorNumberOut: Der Datentyp ist int OUTPUT. Die Eingabeform ist eine OUTPUT-Variable für die im eigenen TRY abgefangene SQL-Fehlernummer. Es gibt keinen ausdrücklich deklarierten Defaultwert; das OUTPUT-Argument ist erforderlich. Auslassen verhindert die Parameterbindung. Eine passende Variable muss mit OUTPUT gebunden werden; andernfalls wird die Ausgabe verworfen. Nach Eintritt wird der Ausgang auf NULL initialisiert. NULL bedeutet, dass dieser Consumer keinen eigenen Fehler abgefangen hat. Im CATCH wird die aktuelle SQL-Fehlernummer ausgegeben; Fehler mit Nummer 57930 kennzeichnen die eigenen Vergleichsgrenzen, während auch delegierte oder SQL-Server-Fehler andere Nummern liefern können. Die Fehlernummern bilden daher keine geschlossene Wertemenge. Fehler vor der eigenen TRY-Strecke, insbesondere beim Binden der Argumente oder bei der davor ausgeführten Temp-Tabellen-DDL, werden nicht als regulärer Ausgang zugesagt. Der anfängliche Eingabewert der OUTPUT-Variable, einschließlich NULL oder Leertext, ist kein Default und wird nach Eintritt durch die dokumentierte Initialisierung überschrieben; bei Fehlern vor dieser Initialisierung ist eine Ausgabe nicht zugesagt.
+
+@ReasonCodeOut: Der Datentyp ist varchar(64) OUTPUT. Die Eingabeform ist eine OUTPUT-Variable für einen knappen Fehlergrund. Es gibt keinen ausdrücklich deklarierten Defaultwert; das OUTPUT-Argument ist erforderlich. Auslassen verhindert die Parameterbindung. Zum Empfang muss eine passende Variable mit OUTPUT gebunden werden; ein Wert ohne OUTPUT verwirft die Ausgabe. Nach Eintritt wird der Ausgang auf NULL initialisiert. Für eigene Fehler 57930 übernimmt der Ausgang den SQL-Fehlertext, COMPARISON_TRANSPORT_INVALID (JSON-Syntax oder Dokumentgröße unzulässig), COMPARISON_TIME_LIMIT (kooperative Frist unterschritten oder erreicht), COMPARISON_METRIC_LIMIT (mehr als 200000 Kennzahlzeilen) und COMPARISON_KEY_COLLISION (unterschiedliche Schlüsseltexte oder Längen mit gleichem Hash). Für alle anderen im eigenen TRY abgefangenen Fehler setzt der Consumer COMPARISON_INPUT_REJECTED. NULL bedeutet, dass kein Fehler abgefangen wurde. Der Reason-Code beschreibt den eigenen Abfangweg und ist kein vollständiger Status des delegierten Analyseconsumers. Fehler außerhalb des eigenen TRY erhalten keine zugesicherte Reason-Ausgabe. Der anfängliche Eingabewert der OUTPUT-Variable, einschließlich NULL oder Leertext, ist kein Default und wird nach Eintritt durch die dokumentierte Initialisierung überschrieben; bei Fehlern vor dieser Initialisierung ist eine Ausgabe nicht zugesagt.
+
+Ergebnisvertrag:
+Der zentrale Rückgabewert ist MetricsJson als JSON-Array mit einem Objekt je erzeugter Kennzahl. Die SQL-Tabelle hinter dem Array enthält RunOrdinal, ObjectKind, PackageKey, ModelNodeId, FlowNodeId, ExecutionPath, PhaseName, PortRole, MetricName, Unit, Value, Quality, SourceName, SourceId, KeyJson, KeyHash und VolumeSignature. Die JSON-Projektion enthält dieselben fachlichen Werte, gibt KeyHash und VolumeSignature als hexkodierte Zeichenfolgen unter KeyHashHex und VolumeSignatureHex aus und schließt NULL-Werte ein.
+
+ObjectKind hat genau die vier vom Consumer erzeugten Werte EXECUTION, FLOW, PHASE und PATH. EXECUTION bezeichnet die Ausführungsebene, FLOW eine gebundene Dataflow-Statistikinstanz, PHASE eine zusammengefasste Komponentenphase und PATH eine zusammengefasste Modellkante für Transferbeobachtungen. PackageKey und ModelNodeId benennen die zugeordnete Modellposition. FlowNodeId bezeichnet die Dataflowinstanz im Modell. ExecutionPath ist der beobachtete Ausführungspfad; die Ausführungskennzahl verwendet einen einzelnen Backslash als Wurzelpfad. PhaseName wird bei Phasenkennzahlen belegt und PortRole bei Pfadkennzahlen. Für nicht anwendbare Felder wird NULL serialisiert.
+
+Die neun MetricName-Werte sind EXECUTION_STATUS, FLOW_DURATION_MS, FLOW_RESULT, PHASE_INTERVAL_SUM_MS, PHASE_LONGEST_MS, PHASE_SPAN_MS, PHASE_INTERVAL_COUNT, PATH_ROWS_SENT und PATH_TRANSFER_COUNT. EXECUTION_STATUS übernimmt den in execution.executionStatus numerisch konvertierbaren Capturewert. FLOW_DURATION_MS und FLOW_RESULT stammen aus den gebundenen Statistikbeobachtungen der Dataflowinstanz. PHASE_INTERVAL_SUM_MS ist die Summe beobachteter Phasenintervalle, PHASE_LONGEST_MS das längste bekannte Intervall, PHASE_SPAN_MS die beobachtete Spanne und PHASE_INTERVAL_COUNT die Zahl beobachteter Intervalle. PATH_ROWS_SENT ist die beobachtete Zahl gesendeter Zeilen und PATH_TRANSFER_COUNT die Zahl beobachteter Transfers für die Modellkante und Instanz.
+
+Die vier Unit-Werte sind STATUS, MS, COUNT und ROWS. STATUS kennzeichnet Statuszahlen wie Ausführungsstatus und Flow-Ergebnis. MS bezeichnet Millisekunden für Dauer-, Summen-, Längen- und Spannenwerte. COUNT bezeichnet Zählungen von Phasenintervallen oder Transfers. ROWS bezeichnet gesendete Pfadzeilen. Value ist decimal(38,0) oder NULL; eine fehlende oder nicht konvertierbare Quellenzahl bleibt unbekannt und wird nicht durch die Zahl 0 ersetzt.
+
+Die vier Quality-Werte sind KNOWN, UNKNOWN, AMBIGUOUS und LIMITED. KNOWN kennzeichnet die im jeweiligen Erzeugungszweig erfüllten Quellen- und Wertprüfungen; der Code garantiert nicht für jede Kennzahl einen nicht-NULL-Wert. UNKNOWN wird bei fehlendem oder negativem Flow-Messwert sowie bei unbekannten Phasen- oder Pfadintervallen beziehungsweise NULL-Werten vergeben. AMBIGUOUS wird für Flow-Messwerte bei nicht eindeutiger beobachteter Pfadzuordnung vergeben. LIMITED bezeichnet Phasen- oder Pfadkennzahlen, deren Werte vorliegen, deren Diagnosequelle aber nicht als vollständig qualifiziert erkannt wurde. Die Ausführungsstatuszeile wird im aktuellen SQL unabhängig davon mit KNOWN markiert, ob TRY_CONVERT einen Zahlenwert liefert; Value kann dort also NULL und Quality dennoch KNOWN sein.
+
+SourceName benennt die Quellgruppe mit execution für die Ausführungsstatuszeile, scopeObservations für Flowstatistikwerte, componentPhases für Phasenkennzahlen und pathTransfers für Pfadkennzahlen. SourceId enthält die lokale ExecutionId oder die zugehörige Statistik- beziehungsweise Diagnosebeleg-ID. Diese IDs sind Quellenbelege innerhalb des erfassten Laufs und keine laufübergreifend stabilen Metrikschlüssel.
+
+KeyJson bildet den Positionsschlüssel mit genau den sieben Feldern ObjectKind, PackageKey, ModelNodeId, FlowNodeId, ExecutionPath, PhaseName und MetricName; NULL-Felder bleiben darin enthalten. KeyHash ist SHA-256 über die UTF-16-Bytes dieses JSON-Texts und wird als 64-stellige Hexdarstellung in KeyHashHex ausgegeben. Der Consumer prüft, dass identische Hashes nicht verschiedene Schlüsseltexte beziehungsweise Textlängen verdecken. Der Schlüssel bezeichnet Modellobjekt und beobachtete Aufrufposition, nicht eine native SSISDB-Statistik-ID und nicht eine Laufidentität.
+
+VolumeSignature ist eine optionale SHA-256-Signatur des beobachteten Pfadzeilenmengensatzes für die jeweilige Paket-, Flow- und Pfadposition. Sie wird auf Millisekundenkennzahlen bezogen und nur erzeugt, wenn mindestens ein PATH_ROWS_SENT-Eintrag vorhanden ist und alle zugehörigen Pfadschlüssel eindeutig sowie mit Quality KNOWN ausgewiesen sind. Die signierte kanonische Menge enthält Pfad-KeyJson und Value in KeyHash-Reihenfolge. Fehlt eine Pfadmenge oder ist sie mehrdeutig, unbekannt oder begrenzt, bleibt die Signatur NULL. Sie attestiert allein diesen beobachteten Pfadzeilensatz und ist kein Beweis für vollständige Laufvolumina oder für die Gleichwertigkeit zweier Ausführungen.
+
+Die Analyse und der Status werden auch dann ausgegeben, wenn die Bindungsprüfung einen frühen Rückweg auslöst; in diesem Fall bleibt MetricsJson []. Ein eigener abgefangener Fehler setzt BoundOut auf 0 und MetricsJson auf [], kann aber eine schon gesetzte Einzelanalyse, einen bereits übernommenen Analyse-Status und den attestierten Bitnesswert beibehalten. Deshalb ist ein alleiniger Statuscode oder ein vorhandenes AnalysisJson kein Nachweis, dass Kennzahlen erfolgreich erzeugt wurden; der Consumer muss die Bindungs- und Fehlerausgänge sowie das Kennzahlenarray gemeinsam auswerten.
+
+Fehler und Grenzen:
+Die eigene Größen- und JSON-Syntaxprüfung für Models und Capture wirft 57930 mit COMPARISON_TRANSPORT_INVALID. Eine verbleibende ganzzahlige Frist unter einer Sekunde führt zu 57930 mit COMPARISON_TIME_LIMIT. Mehr als 200000 Kennzahlzeilen je Lauf führt zu 57930 mit COMPARISON_METRIC_LIMIT. Unterschiedliche JSON-Schlüsseltexte mit demselben SHA-256 oder ungleiche Textlängen bei demselben Hash führen zu 57930 mit COMPARISON_KEY_COLLISION.
+
+Jeder andere Fehler, der innerhalb des eigenen TRY auftritt, wird abgefangen und als ReasonCode COMPARISON_INPUT_REJECTED ausgegeben; ErrorNumberOut enthält die tatsächliche SQL-Fehlernummer. Der CATCH setzt BoundOut auf 0 und MetricsJson auf [], führt SET LOCK_TIMEOUT in einem separaten dynamischen Batch mit dem vorherigen Wert aus und behält sonstige bereits gesetzte Analyseausgänge bei. Die Einstellung dieses Wiederherstellungsbatches endet bei dessen Rückkehr.
+
+Die eigene Temp-Tabellen-DDL für die Kennzahlentabelle wird vor dem TRY ausgeführt. Ein Fehler dabei wird von diesem Consumer nicht in die beschriebenen ErrorNumberOut- und ReasonCodeOut-Ausgänge übersetzt. Ebenso scheitern fehlende erforderliche Argumente bereits an der SQL-Parameterbindung. Die Initialisierung der OUTPUT-Ausgänge erfolgt nach SET NOCOUNT ON und vor dieser eigenen DDL; daher kann sie bei einem DDL-Fehler im Prozedurkontext erfolgt sein, ist aber für Aufruferfehler vor Eintritt nicht zugesagt.
+
+Modelle und Captures werden jeweils auf 16 MiB beschränkt; der aufgerufene Scopeconsumer verwaltet darüber hinaus seine bestehenden Grenzen von 50000 Quellbelegen, höchstens 16 Paketmodellen, höchstens acht Aufrufebenen und höchstens 1024 beobachteten Paketinstanzen. Die Kennzahlprojektion begrenzt jeden Capture auf 200000 Kennzahlzeilen. Die Deadline wird kooperativ weitergereicht und an mehreren Stellen geprüft. Diese Schranken belegen weder einen bestimmten CPU- oder Wandzeitbedarf noch eine vollständige Gleichwertigkeitsprüfung zwischen SSIS-Läufen.
+
+Der Consumer legt nur eigene temporäre Tabellen an und führt keine zusätzlichen SSISDB-Abfragen aus. Parser, Komponentenprofile und Lineage werden nicht in Analyze gepflegt, sondern verbleiben im Toolbelt. Die Ergebnisse beruhen auf der delegierten Herkunfts- und Scopeprüfung und den jeweils vorhandenen SSISDB-Beobachtungen; nicht beobachtete oder nicht eindeutig zuordenbare Werte dürfen nicht als gemessene Null interpretiert werden.
+*/
 CREATE OR ALTER PROCEDURE [monitor].[InternalSsisExecutionMetrics]
  @RunOrdinal int,@Models nvarchar(max),@Capture nvarchar(max),@HandoverId uniqueidentifier,
  @ExecutionId bigint,@Deadline datetime2(3),@LockTimeoutMs int,
@@ -73497,7 +76336,7 @@ BEGIN
    SET @remaining=CONVERT(int,DATEDIFF_BIG(millisecond,SYSUTCDATETIME(),@Deadline)/1000);IF @remaining<1 THROW 57930,N'COMPARISON_TIME_LIMIT',1;
    EXEC monitor.USP_SsisPackageModelAnalysis @IncludeExecutionScopes=1,@IncludePipelineCorrelation=1,@IncludePipelineDiagnostics=1,@ProjectModelsJson=@Models,@ScopeSnapshotJson=@Capture,@ScopeHandoverId=@handover,@ExecutionId=@execution,@MaxZeilen=0,@MaxDurationSeconds=@remaining,@LockTimeoutMs=@LockTimeoutMs,@ResultSetArt='NONE',@JsonErzeugen=1,@Json=@analysis OUTPUT,@StatusCodeOut=@childStatus OUTPUT;
    SET @AnalysisJson=@analysis;SET @StatusCodeOut=@childStatus;
-   IF @childStatus<>'SCOPE_CAPTURE_BOUND' OR EXISTS(SELECT 1 FROM OPENJSON(@analysis,'$.pipelineCoverage') WHERE JSON_VALUE([value],'$.StatusCode')='PIPELINE_BINDING_UNPROVEN') BEGIN SET @LockTimeoutSql=N'SET LOCK_TIMEOUT '+CONVERT(nvarchar(20),@OriginalLockTimeout)+N';';EXEC sys.sp_executesql @LockTimeoutSql;RETURN;END;
+   IF @childStatus IS NULL OR @childStatus<>'SCOPE_CAPTURE_BOUND' OR EXISTS(SELECT 1 FROM OPENJSON(@analysis,'$.pipelineCoverage') WHERE JSON_VALUE([value],'$.StatusCode')='PIPELINE_BINDING_UNPROVEN') BEGIN SET @LockTimeoutSql=N'SET LOCK_TIMEOUT '+CONVERT(nvarchar(20),@OriginalLockTimeout)+N';';EXEC sys.sp_executesql @LockTimeoutSql;RETURN;END;
    SET @BoundOut=1;
    UPDATE #InternalSsisExecutionMetrics_Input SET
     [PhaseSourceQualified]=CASE WHEN EXISTS(SELECT 1 FROM OPENJSON(@analysis,'$.pipelineDiagnosticCoverage') WHERE JSON_VALUE([value],'$.SourceName')='componentPhases' AND JSON_VALUE([value],'$.StatusCode') IN('AVAILABLE','AVAILABLE_EMPTY') AND JSON_VALUE([value],'$.UnassignedRowCount')='0' AND JSON_VALUE([value],'$.UnknownValueCount')='0') THEN 1 ELSE 0 END,
@@ -73581,11 +76420,40 @@ BEGIN
  SET NOCOUNT ON;SET @Json=NULL;
  IF @Hilfe=1
  BEGIN
-  PRINT N'monitor.USP_SsisExecutionComparison: zwei lokal gebundene Scope-/Pipelinecaptures desselben exakten Modellexports; kein CLR oder SSISDB-Zugriff.';
-  PRINT N'Pro Seite: @*ProjectModelsJson, @*ScopeSnapshotJson, @*ScopeHandoverId und @*ExecutionId. Vergleichskontext aus -IncludeComparisonContext.';
-  PRINT N'CONSOLE|RAW|TABLE|NONE; JSON über OUTPUT. Gruppen: comparisonBinding|objectComparison|comparisonFindings|comparisonCoverage.';
-  PRINT N'Grenzwerte sind optional und nichtnegativ; beide gesetzten Dauergrenzen müssen überschritten sein. Prozentänderung bei Basis null bleibt unbekannt.';
-  PRINT N'Gleiche Pfade belegen Positionsbezug, keine gleiche Datei oder Zeile. Alle Ausgaben bleiben partiell; Hinweise beweisen keine Regressionsursache.';
+  PRINT N'monitor.USP_SsisExecutionComparison vergleicht unabhängig gebundene Beobachtungen; kein Paket-, Datei-, SSISDB- oder Paket-SQL-Aufruf.';
+  PRINT N'@BaselineProjectModelsJson: Datentyp nvarchar(max), Default NULL. Als einzelne nvarchar(max)-Variable oder N''…''-Literal übergeben, nicht als Dateipfad. Erforderlich für die Basis-Seite. JSON-Objekt mit contract="ssis-project-model-set", version="1.0.0", rootPackageKey als String und packages als Array mit 1 bis 16 eindeutigen Paketen. Jedes Paket enthält packageKey und entryName als Strings, model als vollständiges Objekt mit contract="ssis-package-model" und version="1.0.0" sowie identities als Objekt mit contract="ssis-object-identities" und version="1.2.0". Für diesen Consumer müssen zusätzlich pipelineIdentities als Objekt mit contract="ssis-pipeline-identities" und version="1.0.0" vorhanden und an dieselben Paket-/Modellidentitäten gebunden sein. Der gemeinsame Consumer aktiviert Scope-, Pipelinekorrelations- und Pipeline-Diagnosepfade; dieses Argument ergänzt keine eigene Parser- oder Lineageauswertung. Das unveränderte Modellobjekt muss auf allen verglichenen Seiten bytegenau gleich sein: SHA-256 wird über die exakten nvarchar-UTF-16-Bytes gebildet; Neu-Serialisierung, geänderte Whitespace-/Property-Reihenfolge oder andere Bytes ändern den Exporthash. Höchstens 16.777.216 Bytes je Modell, gemessen mit SQL Server DATALENGTH(nvarchar), also UTF-16-Bytes und nicht UTF-8-Dateigröße. JSON-Objektschlüssel und Identitäten werden streng geprüft. NULL, Leerstring und ungültiges JSON sind unzulässig. Siehe den bestehenden SsisPackageModelAnalysis-Vertrag für vollständige Parser-/Modellregeln.';
+  PRINT N'@BaselineScopeSnapshotJson: Datentyp nvarchar(max), Default NULL. Als einzelne nvarchar(max)-Variable oder N''…''-Literal übergeben. Erforderlich ist ein JSON-Objekt mit contract="ssis-execution-scopes", version="1.1.0", method="SSISDB_CURRENT_PROJECT_PIPELINES_V1", gebunden an project-model-set und passende pipelineIdentities; gültige Wurzel-/Ausführungsbindung umfasst execution als Objekt mit executionId, projectId, projectLsn, catalogDatabaseGuid, sourceBindingSha256 und packageFileName; archiveSha256 und modelSetSha256 liegen auf Wurzelebene (SHA-256 der exakten Basis-Model-JSON-Bytes). Enthält observations- und events-Arrays sowie componentPhases- und pathTransfers-Arrays und genau die zwei pipelineSources-Einträge für componentPhases und pathTransfers; deren Statuswerte und Fehlernummern müssen dem Capturevertrag entsprechen. Alle Schlüssel, Namen, Pfade, IDs, Zeit-/Ergebniswerte und Quellgrenzen müssen die von 035–037 geprüften Formen erfüllen; höchstens 50.000 Einträge im Scope-/Pipeline-Capture. Der Transport muss bytegenau dem lokal registrierten Scope-Handover entsprechen; nicht neu serialisieren. Höchstens 16.777.216 Bytes je Capture, gemessen durch DATALENGTH(nvarchar) in SQL-UTF-16-Bytes. NULL, Leerstring und ungültiges JSON sind unzulässig. Vergleichsseiten werden unabhängig attestiert. Optional kann comparisonContext genau ein Objekt mit genau contract="ssis-comparison-context", version="1.0.0" und use32BitRuntime als JSON-Boolean enthalten; fehlt diese Zusatzinformation oder ist sie ungültig, bleibt der Capture nicht automatisch ungebunden, aber der Laufzeitkontext ist unbewiesen. Beide Seiten müssen dieselben exakten Export- und Quell-/Projektversionsfelder einschließlich archiveSha256 aufweisen.';
+  PRINT N'@BaselineScopeHandoverId: Datentyp uniqueidentifier, Default NULL. Als uniqueidentifier-Parameter im üblichen GUID-Format übergeben. Erforderliche UUID eines lokal auf monitor.USP_SsisPackageModelAnalysis registrierten SSIS_SCOPE_<UUID> Extended-Property-Handover; die Registrierung bindet die exakten UTF-16-Bytes des zugehörigen ProjectModelsJson und ScopeSnapshotJson und ist zeitlich gültig. Die UUID ist nur der lokale Belegschlüssel, kein JSON-Trustflag und keine selbst behauptete Attestation; eine frei erfundene oder auf einem anderen Objekt registrierte ID genügt nicht. Jede Seite wird unabhängig gegen den zu ihren Dokumentbytes passenden registrierten Beleg geprüft. Die Procedure verlangt keine gesonderte Ungleichheit der GUIDs; die Execution-IDs müssen verschieden sein. NULL ist ungültig. Der Belegname verwendet die GUID in Kleinschreibung. issuedUtc muss höchstens beim Analysebeginn liegen; expiresUtc danach und höchstens 24 Stunden nach issuedUtc. Es gibt keine Mindestgültigkeitsdauer. Als uniqueidentifier-Variable oder konvertierbares GUID-Literal der Form 00000000-0000-0000-0000-000000000000 übergeben; die Null-GUID ersetzt keinen registrierten Beleg.';
+  PRINT N'@BaselineExecutionId: Datentyp bigint, Default NULL. Einzelne positive SSISDB Execution-ID im Wertebereich 1 bis 9.223.372.036.854.775.807. Muss mit der Basis-Capture-Bindung übereinstimmen und von @CandidateExecutionId verschieden sein. NULL, 0, negative Werte und Duplikat zum Kandidaten sind ungültig. Als bigint-Zahl binden, keine Liste oder Text-Identität.';
+  PRINT N'@CandidateProjectModelsJson: Datentyp nvarchar(max), Default NULL. Als einzelne nvarchar(max)-Variable oder N''…''-Literal übergeben, nicht als Dateipfad. Erforderlich für die Kandidaten-Seite. JSON-Objekt mit contract="ssis-project-model-set", version="1.0.0", rootPackageKey als String und packages als Array mit 1 bis 16 eindeutigen Paketen. Jedes Paket enthält packageKey und entryName als Strings, model als vollständiges Objekt mit contract="ssis-package-model" und version="1.0.0" sowie identities als Objekt mit contract="ssis-object-identities" und version="1.2.0". Für diesen Consumer müssen zusätzlich pipelineIdentities als Objekt mit contract="ssis-pipeline-identities" und version="1.0.0" vorhanden und an dieselben Paket-/Modellidentitäten gebunden sein. Der gemeinsame Consumer aktiviert Scope-, Pipelinekorrelations- und Pipeline-Diagnosepfade; dieses Argument ergänzt keine eigene Parser- oder Lineageauswertung. Das unveränderte Modellobjekt muss auf allen verglichenen Seiten bytegenau gleich sein: SHA-256 wird über die exakten nvarchar-UTF-16-Bytes gebildet; Neu-Serialisierung, geänderte Whitespace-/Property-Reihenfolge oder andere Bytes ändern den Exporthash. Höchstens 16.777.216 Bytes je Modell, gemessen mit SQL Server DATALENGTH(nvarchar), also UTF-16-Bytes und nicht UTF-8-Dateigröße. JSON-Objektschlüssel und Identitäten werden streng geprüft. NULL, Leerstring und ungültiges JSON sind unzulässig. Siehe den bestehenden SsisPackageModelAnalysis-Vertrag für vollständige Parser-/Modellregeln.';
+  PRINT N'@CandidateScopeSnapshotJson: Datentyp nvarchar(max), Default NULL. Als einzelne nvarchar(max)-Variable oder N''…''-Literal übergeben. Erforderlich ist ein JSON-Objekt mit contract="ssis-execution-scopes", version="1.1.0", method="SSISDB_CURRENT_PROJECT_PIPELINES_V1", gebunden an project-model-set und passende pipelineIdentities; gültige Wurzel-/Ausführungsbindung umfasst execution als Objekt mit executionId, projectId, projectLsn, catalogDatabaseGuid, sourceBindingSha256 und packageFileName; archiveSha256 und modelSetSha256 liegen auf Wurzelebene (SHA-256 der exakten Kandidaten-Model-JSON-Bytes). Enthält observations- und events-Arrays sowie componentPhases- und pathTransfers-Arrays und genau die zwei pipelineSources-Einträge für componentPhases und pathTransfers; deren Statuswerte und Fehlernummern müssen dem Capturevertrag entsprechen. Alle Schlüssel, Namen, Pfade, IDs, Zeit-/Ergebniswerte und Quellgrenzen müssen die von 035–037 geprüften Formen erfüllen; höchstens 50.000 Einträge im Scope-/Pipeline-Capture. Der Transport muss bytegenau dem lokal registrierten Scope-Handover entsprechen; nicht neu serialisieren. Höchstens 16.777.216 Bytes je Capture, gemessen durch DATALENGTH(nvarchar) in SQL-UTF-16-Bytes. NULL, Leerstring und ungültiges JSON sind unzulässig. Vergleichsseiten werden unabhängig attestiert. Optional kann comparisonContext genau ein Objekt mit genau contract="ssis-comparison-context", version="1.0.0" und use32BitRuntime als JSON-Boolean enthalten; fehlt diese Zusatzinformation oder ist sie ungültig, bleibt der Capture nicht automatisch ungebunden, aber der Laufzeitkontext ist unbewiesen. Beide Seiten müssen dieselben exakten Export- und Quell-/Projektversionsfelder einschließlich archiveSha256 aufweisen.';
+  PRINT N'@CandidateScopeHandoverId: Datentyp uniqueidentifier, Default NULL. Als uniqueidentifier-Parameter im üblichen GUID-Format übergeben. Erforderliche UUID eines lokal auf monitor.USP_SsisPackageModelAnalysis registrierten SSIS_SCOPE_<UUID> Extended-Property-Handover; die Registrierung bindet die exakten UTF-16-Bytes des zugehörigen ProjectModelsJson und ScopeSnapshotJson und ist zeitlich gültig. Die UUID ist nur der lokale Belegschlüssel, kein JSON-Trustflag und keine selbst behauptete Attestation; eine frei erfundene oder auf einem anderen Objekt registrierte ID genügt nicht. Jede Seite wird unabhängig gegen den zu ihren Dokumentbytes passenden registrierten Beleg geprüft. Die Procedure verlangt keine gesonderte Ungleichheit der GUIDs; die Execution-IDs müssen verschieden sein. NULL ist ungültig. Der Belegname verwendet die GUID in Kleinschreibung. issuedUtc muss höchstens beim Analysebeginn liegen; expiresUtc danach und höchstens 24 Stunden nach issuedUtc. Es gibt keine Mindestgültigkeitsdauer. Als uniqueidentifier-Variable oder konvertierbares GUID-Literal der Form 00000000-0000-0000-0000-000000000000 übergeben; die Null-GUID ersetzt keinen registrierten Beleg.';
+  PRINT N'@CandidateExecutionId: Datentyp bigint, Default NULL. Einzelne positive SSISDB Execution-ID im bigint-Bereich 1 bis 9.223.372.036.854.775.807. Muss zum Kandidaten-Capture passen und von @BaselineExecutionId verschieden sein. NULL, 0, negative Werte oder gleiche ID wie die Basis sind ungültig.';
+  PRINT N'@MinDurationDeltaMs: Datentyp bigint, Default NULL. Optionale nichtnegative Dauergrenze in Millisekunden (ganzzahlig, 0 bis 9.223.372.036.854.775.807). NULL deaktiviert diese Grenze; 0 lässt nur positive Daueränderungen über 0 passieren. Ein Dauerhinweis entsteht nur bei vergleichbarer bekannter Dauer und wenn die Kandidatenänderung strikt größer als jede gesetzte Grenze ist. Sind beide Grenzen gesetzt, müssen beide überschritten sein. Zeilen- und Statusänderungshinweise sind von dieser Dauerschwelle unabhängig. Negative Werte sind ungültig. Sind beide Dauergrenzen NULL, werden keine Dauergrenzhinweise erzeugt; andere Hinweisarten bleiben davon unabhängig.';
+  PRINT N'@MinDurationDeltaPercent: Datentyp decimal(9,4), Default NULL. Optionale nichtnegative Prozentgrenze als Zahl in Prozent relativer Zunahme ohne %-Zeichen, mit höchstens vier Dezimalstellen und Präzision 9: 0.0000 bis 99999.9999 (z. B. 10.0000 bedeutet zehn Prozent; SQL-Typkonvertierung/Rundung erfolgt vor Eintritt in die Procedure). NULL deaktiviert die Prozentgrenze. Maßgeblich ist eine strikt größere relative Zunahme; bei Basisdauer 0 bleibt die Prozentänderung unbekannt und erfüllt die Grenze nicht. Bei zwei gesetzten Dauerschwellen müssen beide strikt überschritten sein. Negative Werte sind ungültig. Sind beide Dauergrenzen NULL, werden keine Dauergrenzhinweise erzeugt; andere Hinweisarten bleiben davon unabhängig.';
+  PRINT N'@MaxZeilen: Datentyp int, Default 1000. Maximale ausgegebene Zeilen je Resultgruppe, als int-Zahl. Positive Werte 1 bis 2.147.483.647 begrenzen JSON-, RAW-, TABLE- und Console-Ausgabe; darüber hinaus vorhandene Zeilen werden abgeschnitten und die Ausgabe bleibt partiell. NULL und 0 werden intern als unbegrenzte int-Obergrenze behandelt. Negative Werte sind ungültig.';
+  PRINT N'@MaxDurationSeconds: Datentyp int, Default 30. Gemeinsames kooperatives Gesamtzeitbudget für beide Seiten und nachfolgende Vergleichsschritte, in Sekunden. Zulässig sind 1 bis 60. Ausgelassen ergibt 30; explizites NULL ist trotz internem COALESCE ungültig. Bei Fristüberschreitung wird die Bindung als nicht belegt ausgegeben und ein Zeitlimitgrund gemeldet.';
+  PRINT N'@LockTimeoutMs: Datentyp int; einzelner skalarer SQL-int-Wert in Millisekunden. Default 0; ausgelassen ergibt 0. NULL oder Werte außerhalb 0 bis 60000 sind ungültig; Leertext kann vor Eintritt durch implizite SQL-Konvertierung zu 0 werden. Der SQL-Wert 0 bedeutet NOWAIT, positive Werte erlauben begrenztes Warten und -1 für unbegrenztes Warten ist unzulässig. Die Procedure prüft den Bereich und übergibt den Wert für jede Captureanalyse an InternalSsisExecutionMetrics. Ihr eigenes SET LOCK_TIMEOUT läuft in einem separaten dynamischen sp_executesql-Batch; es begrenzt daher nicht die anschließenden direkten Vergleichs- und Ausgabeanweisungen. InternalSsisExecutionMetrics führt ebenfalls ein dynamisches SET aus und übergibt den Wert an USP_SsisPackageModelAnalysis im Scope-Modus. Dieser delegiert an InternalSsisExecutionScopes, das den Wert validiert und SET LOCK_TIMEOUT ebenfalls dynamisch ausführt; diese Einstellung begrenzt die anschließenden direkten Anweisungen des Scopes-Helpers nicht.';
+  PRINT N'@ResultSetArt: Datentyp varchar(16), Default CONSOLE. Ein Auswahlcode als Text; Rand-Leerzeichen werden entfernt und die Prüfung normalisiert auf Großbuchstaben. Geschlossene Wertemenge: CONSOLE (kompakte Console-Ausgabe des Binding-Resultsets), RAW (separates Resultset je aktivierter Gruppe mit Rohspalten), TABLE (schreibt ausgewählte Gruppen in lokale Seed-Temp-Tabellen), NONE (keine Resultsets/Consoleausgabe). NULL oder jeder andere Wert ist ungültig. Leerwert ist ungültig; das Trim entfernt U+0020-Leerzeichen, keine beliebigen Whitespacezeichen. JSON ist kein Ausgabeartcode; verwenden Sie @JsonErzeugen.';
+  PRINT N'@ResultTablesJson: Datentyp nvarchar(max), Default NULL. Nur bei ResultSetArt=TABLE zulässig und dann erforderlich: nichtleeres JSON-Objekt aus case-sensitiven Gruppennamen auf Stringwerte lokaler Temp-Tabellennamen, z. B. {"comparisonBinding":"#SeedBinding"}. Erlaubte Gruppenschlüssel samt Bedeutung: comparisonBinding (ein Bindungs-/Statusdatensatz), objectComparison (Objekt-/Kennzahlzuordnung und beobachtete Werte/Deltas), comparisonFindings (versionierte INFO-Beobachtungshinweise), comparisonCoverage (Quell-, Vergleichs- und Ausgabedeckung). Jede beliebige nichtleere Teilmenge dieser vier Gruppen ist zulässig. Ziele müssen unterschiedliche, bereits vorhandene, leere lokale #Temp-Tabellen (keine ##, kein reserviertes #Monitor-Präfix, maximal 116 Zeichen) mit genau einer Seed-Spalte sein; unbekannte oder doppelte Schlüssel/Ziele, JSON-Null, Leerwerte, ungültige Ziele und leeres Objekt werden abgewiesen. Für CONSOLE/RAW/NONE muss der Parameter NULL sein. Keine zusätzliche Eingabegrößengrenze im Consumer belegt. Doppelte Zielnamen und das reservierte Präfix #Monitor werden ohne Beachtung der Großschreibung geprüft.';
+  PRINT N'@JsonErzeugen: Datentyp bit, Default 0. Schalter: 0 erzeugt keinen JSON-OUTPUT-Vertrag; 1 erzeugt @Json als JSON-Objekt. NULL ist im normalen Aufruf ungültig. SQL-bit-Konvertierungen sind vor der Procedure wirksam. Das JSON enthält meta mit schemaVersion=1, comparisonSchemaVersion=1, isPartial=true sowie die aktivierten/ausgegebenen Arraygruppen comparisonBinding, objectComparison, comparisonFindings und comparisonCoverage. Meta enthält im aktuellen SQL kein statusCode; der Status steht in @StatusCodeOut und in Binding-/Coverage-Daten. Die SQL-bit-Konvertierung bildet numerische Werte ungleich 0 auf 1 ab.';
+  PRINT N'@Json: Datentyp nvarchar(max) OUTPUT, Default NULL OUTPUT. OUTPUT-Textvariable vom Typ nvarchar(max), am Aufruf mit OUTPUT zu binden, wenn das JSON empfangen werden soll. Beim Eintritt wird der Parameter auf NULL gesetzt; mit @JsonErzeugen=1 wird ein JSON-Objekt mit meta und Gruppenarrays (inklusive JSON-null-Werten, nicht als JSON-Zeichenketten eingebettete Arrays) ausgegeben. Jede Gruppenproperty ist ein Array, auch bei null Zeilen: []. Ohne JSON-Erzeugung bleibt NULL. Im Hilfezweig bleibt der beim Einstieg gesetzte NULL-Wert.';
+  PRINT N'@PrintMeldungen: Datentyp bit, Default 1. Im Quelltext nicht gelesen oder geprüft; 0, 1 und NULL haben keine unterschiedliche Wirkung. NULL wird nicht als ungültig abgewiesen. Keine Ausgabeunterdrückung darüber dokumentieren; Consoleausgabe wird durch @ResultSetArt gesteuert. Die SQL-bit-Konvertierung bildet numerische Werte ungleich 0 auf 1 ab.';
+  PRINT N'@Hilfe: Datentyp bit, Default 0. Schalter für den reinen Hilfezweig: 1 druckt die eingebauten PRINT-Hinweise und kehrt vor Parametervalidierung, Capture-/Handoverprüfung und fachlicher Analyse zurück. 0 führt den normalen Pfad aus. NULL erfüllt IF @Hilfe=1 nicht und verhält sich wie kein Hilfeaufruf. SQL-bit-Konvertierungen gelten vor dem Eintritt. @Json wird zuvor auf NULL gesetzt; die übrigen OUTPUT-Parameter werden im Hilfezweig nicht neu initialisiert/zugewiesen. Die SQL-bit-Konvertierung bildet numerische Werte ungleich 0 auf 1 ab.';
+  PRINT N'@StatusCodeOut: Datentyp varchar(40) OUTPUT, Default NULL OUTPUT. Als varchar(40)-Variable mit OUTPUT binden; der Eingabewert steuert die Analyse nicht. Geschlossene globale Rückgabemenge: COMPARISON_CAPTURE_BOUND (beide Seiten unabhängig gebunden, exakt gleicher Export sowie gleiche geprüfte Quell-/Projektversion; Aussage bleibt beobachtungs- und kontextbegrenzt), COMPARISON_BINDING_UNPROVEN (Bindung oder Eingabeverarbeitung nicht belegt) und INVALID_PARAMETER (ungültige Steuerwerte/-kombination). Im aktuellen JSON meta gibt es kein statusCode-Feld; der Laufstatus ist hier sowie in den Bindungs-/Coverage-Daten. Im Hilfezweig unverändert. Eine ungefangene Ausnahme kann Zuweisung umgehen.';
+  PRINT N'@IsPartialOut: Datentyp bit OUTPUT, Default NULL OUTPUT. Mit bit-Variable und OUTPUT binden. Bei normalem Abschluss wird stets 1 ausgegeben, auch bei gebundener Eingabe, weil Auswertung und Datenabdeckung partiell sind; Vorabschneidung/Limit wird zusätzlich in Coverage kenntlich. Im Hilfezweig bleibt der übergebene Eingangswert unverändert; ungefangene Fehler können die Zuweisung umgehen.';
+  PRINT N'@ErrorNumberOut: Datentyp int OUTPUT, Default NULL OUTPUT. Mit int-Variable und OUTPUT binden. NULL bedeutet, dass kein abgefangener fachlicher Eingabefehler protokolliert wurde; bei abgefangener Validierungs-/Bindungs-/Zeitgrenze wird die SQL-Fehlernummer ausgegeben. Vorzeitige/ungefangene Fehler, insbesondere geworfene TABLE-Mappingfehler, können die OUTPUT-Zuweisung umgehen. Im Hilfezweig unverändert.';
+  PRINT N'@ErrorMessageOut: Datentyp nvarchar(2048) OUTPUT, Default NULL OUTPUT. Mit nvarchar(2048)-Variable und OUTPUT binden. Enthält bei abgefangenem Fehler den knappen Reason-/Fehlercode (kein frei formulierter Eingabetext), sonst NULL. Im Hilfezweig unverändert; ungefangene Ausnahmen können die Zuweisung umgehen. nvarchar(2048) umfasst höchstens 2048 UTF-16-Codeeinheiten.';
+  PRINT N'Ausgelassene Argumente verwenden den bezeichneten Default. SQL-JSON-Text als nvarchar(max)-Variable oder N-präfigiertes T-SQL-Literal übergeben. Pflichtdaten werden erst im normalen Pfad geprüft; Typkonvertierungen erfolgen bereits vor Eintritt. OUTPUT muss zum Empfang auch am Aufruf angegeben sein. Alle Ergebnisse bleiben beobachtungsbezogen und partiell.';
+  PRINT N'Vier reine Hilfeaufrufe ohne Captureprüfung:';
+  PRINT N'EXEC [monitor].[USP_SsisExecutionComparison] @Hilfe=1;';
+  PRINT N'EXEC [monitor].[USP_SsisExecutionComparison] @ResultSetArt=''NONE'', @Hilfe=1;';
+  PRINT N'DECLARE @HelpJson nvarchar(max)=N''vorbelegt'';';
+  PRINT N'EXEC [monitor].[USP_SsisExecutionComparison] @Hilfe=1, @JsonErzeugen=1, @Json=@HelpJson OUTPUT;';
+  PRINT N'SELECT @HelpJson AS HelpJson;';
+  PRINT N'DECLARE @Code varchar(40)=''CALLER'', @Partial bit=0, @Error int=0;';
+  PRINT N'EXEC [monitor].[USP_SsisExecutionComparison] @Hilfe=1, @StatusCodeOut=@Code OUTPUT, @IsPartialOut=@Partial OUTPUT, @ErrorNumberOut=@Error OUTPUT;';
+  PRINT N'SELECT @Code AS StatusCodeOut, @Partial AS IsPartialOut, @Error AS ErrorNumberOut;';
   RETURN;
  END;
  IF XACT_STATE()=-1 THROW 50000,N'COMPARISON_INVALID: Callertransaktion ist nicht schreibfähig.',1;
@@ -73771,13 +76639,37 @@ BEGIN
  SET NOCOUNT ON;SET @Json=NULL;
  IF @Hilfe=1
  BEGIN
-  PRINT N'monitor.USP_SsisExecutionBaseline: 1 bis 20 explizite Basisläufe plus anderer Kandidat, gleicher exakter Export und dieselbe Quell-/Projektversion.';
-  PRINT N'@BaselineExecutionsJson ist ein Array mit genau vier Strings je Eintrag: projectModelsJson, scopeSnapshotJson, scopeHandoverId, executionId. IDs sind positive kanonische Dezimalstrings.';
-  PRINT N'Captures benötigen unabhängige lokale Scopeattestierung; -IncludeComparisonContext liefert den optionalen Laufzeitkontext. Kein CLR und keine direkten SSISDB-Reads.';
-  PRINT N'Je Kennzahl zählen nur bekannte, eindeutige Werte bei gleichem Logging, gleicher Bitness und erfolgreichem Abschluss. Dauer benötigt außerdem das gleiche bekannte beobachtete Pfadzeilenset.';
-  PRINT N'Mindestens fünf verwendbare Basiswerte sind für fachliche INFO-Hinweise nötig. Prozent bei Median null bleibt unbekannt. Optionale Dauergrenzen sind strikt; zwei gesetzte Grenzen gelten gemeinsam.';
-  PRINT N'CONSOLE|RAW|TABLE|NONE; JSON über OUTPUT. Gruppen: baselineBinding|executionCohort|metricBaseline|baselineFindings|baselineCoverage.';
-  PRINT N'64 MiB gesamte Eingaben; 16 MiB je Modell/Capture; 100000 Quellzeilen; 400000 Kennzahlen und höchstens 400000 Kennzahl-/Laufzellen; gemeinsames kooperatives Zeitbudget bis 60 Sekunden.';
+  PRINT N'monitor.USP_SsisExecutionBaseline vergleicht unabhängig gebundene Beobachtungen; kein Paket-, Datei-, SSISDB- oder Paket-SQL-Aufruf.';
+  PRINT N'@BaselineExecutionsJson: Datentyp nvarchar(max), Default NULL. Äußeres JSON muss ein Array mit 1 bis 20 Einträgen sein. Jeder Eintrag ist ein JSON-Objekt mit genau vier case-sensitiven Schlüsseln; jeder der vier Werte ist ein JSON-String, nicht ein eingebettetes Objekt/Array: projectModelsJson (als String serialisierte vollständige Model-Set-JSON), scopeSnapshotJson (als String serialisiertes Scope-/Pipeline-Capture-JSON), scopeHandoverId (GUID-String zur lokal registrierten Handover-ID), executionId (positive kanonische Dezimalzeichenfolge). Die vier Namen sind vollständig, ohne Zusatzschlüssel; ihre Reihenfolge ist beliebig. Die beiden inneren JSON-Dokumente bleiben in ihren Stringwerten byte-/textgetreu erhalten. Jede Basisausführung wird anhand ihres Captures und des auf monitor.USP_SsisPackageModelAnalysis registrierten, dazu passenden lokalen Handover-Belegs unabhängig geprüft. executionId muss kanonisch dezimal sein: keine führenden Nullen, kein Pluszeichen, keine Leerzeichen, positive Ziffernfolge bis 9223372036854775807. Jeder Execution-ID-Wert muss von Kandidaten-ID und allen anderen Basis-IDs verschieden sein. Modelle/Captures sind gültiges JSON, pro Modell und Capture höchstens 16.777.216 DATALENGTH-Bytes (SQL-UTF-16). Gesamte Eingabegrenze: Summe DATALENGTH von BaselineExecutionsJson, CandidateProjectModelsJson und CandidateScopeSnapshotJson höchstens 67.108.864 Bytes (64 MiB, nvarchar UTF-16 Bytes, keine UTF-8-Dateigröße). Zusammengenommen höchstens 100.000 observations/events/componentPhases/pathTransfers-Quellzeilen, 400.000 materialisierte Kennzahlen und höchstens 400.000 Kennzahl-/Laufzellen; gemeinsames kooperatives Zeitbudget höchstens 60 Sekunden. NULL, Leerstring, Objekt statt äußerem Array, 0 oder mehr als 20 Einträge sowie falsche Transporttypen sind ungültig. projectModelsJson enthält ssis-project-model-set 1.0.0 mit rootPackageKey und packages (1 bis 16), einschließlich ssis-object-identities 1.2.0 und ssis-pipeline-identities 1.0.0; scopeSnapshotJson enthält ssis-execution-scopes 1.1.0 mit method SSISDB_CURRENT_PROJECT_PIPELINES_V1. Diese inneren Dokumente werden im äußeren JSON als korrekt maskierte JSON-Strings erhalten, nicht neu erzeugt oder als JSON-Objekte eingebettet. Der GUID-Beleg liegt auf dem Modellconsumer, nicht auf der Baselineprocedure. Einzelheiten entsprechen den separat erläuterten Kandidatenparametern und dem Modellvertrag.';
+  PRINT N'@CandidateProjectModelsJson: Datentyp nvarchar(max), Default NULL. Als einzelne nvarchar(max)-Variable oder N''…''-Literal übergeben, nicht als Dateipfad. Erforderlich für die Kandidat-Seite. JSON-Objekt mit contract="ssis-project-model-set", version="1.0.0", rootPackageKey als String und packages als Array mit 1 bis 16 eindeutigen Paketen. Jedes Paket enthält packageKey und entryName als Strings, model als vollständiges Objekt mit contract="ssis-package-model" und version="1.0.0" sowie identities als Objekt mit contract="ssis-object-identities" und version="1.2.0". Für diesen Consumer müssen zusätzlich pipelineIdentities als Objekt mit contract="ssis-pipeline-identities" und version="1.0.0" vorhanden und an dieselben Paket-/Modellidentitäten gebunden sein. Der gemeinsame Consumer aktiviert Scope-, Pipelinekorrelations- und Pipeline-Diagnosepfade; dieses Argument ergänzt keine eigene Parser- oder Lineageauswertung. Das unveränderte Modellobjekt muss auf allen verglichenen Seiten bytegenau gleich sein: SHA-256 wird über die exakten nvarchar-UTF-16-Bytes gebildet; Neu-Serialisierung, geänderte Whitespace-/Property-Reihenfolge oder andere Bytes ändern den Exporthash. Höchstens 16.777.216 Bytes je Modell, gemessen mit SQL Server DATALENGTH(nvarchar), also UTF-16-Bytes und nicht UTF-8-Dateigröße. JSON-Objektschlüssel und Identitäten werden streng geprüft. NULL, Leerstring und ungültiges JSON sind unzulässig. Siehe den bestehenden SsisPackageModelAnalysis-Vertrag für vollständige Parser-/Modellregeln.';
+  PRINT N'@CandidateScopeSnapshotJson: Datentyp nvarchar(max), Default NULL. Als einzelne nvarchar(max)-Variable oder N''…''-Literal übergeben. Erforderlich ist ein JSON-Objekt mit contract="ssis-execution-scopes", version="1.1.0", method="SSISDB_CURRENT_PROJECT_PIPELINES_V1", gebunden an project-model-set und passende pipelineIdentities; gültige Wurzel-/Ausführungsbindung umfasst execution als Objekt mit executionId, projectId, projectLsn, catalogDatabaseGuid, sourceBindingSha256 und packageFileName; archiveSha256 und modelSetSha256 liegen auf Wurzelebene (SHA-256 der exakten Kandidaten-Model-JSON-Bytes). Enthält observations- und events-Arrays sowie componentPhases- und pathTransfers-Arrays und genau die zwei pipelineSources-Einträge für componentPhases und pathTransfers; deren Statuswerte und Fehlernummern müssen dem Capturevertrag entsprechen. Alle Schlüssel, Namen, Pfade, IDs, Zeit-/Ergebniswerte und Quellgrenzen müssen die von 035–037 geprüften Formen erfüllen; höchstens 50.000 Einträge im Scope-/Pipeline-Capture. Der Transport muss bytegenau dem lokal registrierten Scope-Handover entsprechen; nicht neu serialisieren. Höchstens 16.777.216 Bytes je Capture, gemessen durch DATALENGTH(nvarchar) in SQL-UTF-16-Bytes. NULL, Leerstring und ungültiges JSON sind unzulässig. Vergleichsseiten werden unabhängig attestiert. Optional kann comparisonContext genau ein Objekt mit genau contract="ssis-comparison-context", version="1.0.0" und use32BitRuntime als JSON-Boolean enthalten; fehlt diese Zusatzinformation oder ist sie ungültig, bleibt der Capture nicht automatisch ungebunden, aber der Laufzeitkontext ist unbewiesen. Beide Seiten müssen dieselben exakten Export- und Quell-/Projektversionsfelder einschließlich archiveSha256 aufweisen.';
+  PRINT N'@CandidateScopeHandoverId: Datentyp uniqueidentifier, Default NULL. Als uniqueidentifier-Parameter im üblichen GUID-Format übergeben. Erforderliche UUID eines lokal auf monitor.USP_SsisPackageModelAnalysis registrierten SSIS_SCOPE_<UUID> Extended-Property-Handover; die Registrierung bindet die exakten UTF-16-Bytes des zugehörigen ProjectModelsJson und ScopeSnapshotJson und ist zeitlich gültig. Die UUID ist nur der lokale Belegschlüssel, kein JSON-Trustflag und keine selbst behauptete Attestation; eine frei erfundene oder auf einem anderen Objekt registrierte ID genügt nicht. Jede Seite wird unabhängig gegen den zu ihren Dokumentbytes passenden registrierten Beleg geprüft. Die Procedure verlangt keine gesonderte Ungleichheit der GUIDs; die Execution-IDs müssen verschieden sein. NULL ist ungültig. Der Belegname verwendet die GUID in Kleinschreibung. issuedUtc muss höchstens beim Analysebeginn liegen; expiresUtc danach und höchstens 24 Stunden nach issuedUtc. Es gibt keine Mindestgültigkeitsdauer. Als uniqueidentifier-Variable oder konvertierbares GUID-Literal der Form 00000000-0000-0000-0000-000000000000 übergeben; die Null-GUID ersetzt keinen registrierten Beleg.';
+  PRINT N'@CandidateExecutionId: Datentyp bigint, Default NULL. Einzelne positive SSISDB Execution-ID im bigint-Bereich 1 bis 9.223.372.036.854.775.807. Muss zum Kandidaten-Capture passen und von sämtlichen Basis-Execution-IDs verschieden sein. NULL, 0, negative Werte oder jede Wiederholung einer Basis-ID sind ungültig.';
+  PRINT N'@MinDurationDeltaMs: Datentyp bigint, Default NULL. Optionale nichtnegative Dauergrenze in Millisekunden (ganzzahlig, 0 bis 9.223.372.036.854.775.807). NULL deaktiviert die Dauergrenze. Für einen Dauerhinweis muss die Kandidatendauer strikt größer als Median der verwendbaren Basiswerte plus dieser Grenzwert sein; bei gesetzter Prozentgrenze muss zugleich auch diese strikt überschritten sein. Zeilenänderungshinweise sind unabhängig von beiden Dauergrenzen. Negative Werte sind ungültig. Sind beide Dauergrenzen NULL, werden keine Dauergrenzhinweise erzeugt; andere Hinweisarten bleiben davon unabhängig.';
+  PRINT N'@MinDurationDeltaPercent: Datentyp decimal(9,4), Default NULL. Optionale nichtnegative Prozentgrenze als Zahl in Prozent relativer Zunahme ohne %-Zeichen, bis vier Dezimalstellen: 0.0000 bis 99999.9999 (10.0000 entspricht zehn Prozent; SQL-Typkonvertierung/Rundung geschieht vor Procedure). NULL deaktiviert die Prozentgrenze. Die relative Dauerabweichung wird strikt geprüft; Median 0 bedeutet unbekannte Prozentabweichung und erfüllt sie nicht. Wenn zusätzlich Millisekunden gesetzt sind, müssen beide Dauergrenzen überschritten sein. Zeilenänderungshinweise bleiben unabhängig. Sind beide Dauergrenzen NULL, werden keine Dauergrenzhinweise erzeugt; andere Hinweisarten bleiben davon unabhängig.';
+  PRINT N'@MaxZeilen: Datentyp int, Default 1000. Maximale ausgegebene Zeilen je Resultgruppe, int. Zulässig sind positive Werte; NULL und 0 werden als unbegrenzte int-Obergrenze behandelt. Negative Werte sind ungültig. Die Grenze begrenzt Ausgabe, nicht die Kohorten-/Materialisierungslimits; abgeschnittene Ausgabe bleibt als partiell markiert. Der positive Wertebereich beträgt 1 bis 2147483647.';
+  PRINT N'@MaxDurationSeconds: Datentyp int, Default 30. Gemeinsames kooperatives Zeitbudget für alle Basisläufe, Kandidat und Zusammenfassung, Sekunden; 1 bis 60. Ausgelassen bedeutet 30; explizites NULL ist ungültig. Bei überschrittener Frist wird keine Bindung behauptet und ein Zeitlimitgrund ausgegeben.';
+  PRINT N'@LockTimeoutMs: Datentyp int; einzelner skalarer SQL-int-Wert in Millisekunden. Default 0; ausgelassen ergibt 0. NULL oder Werte außerhalb 0 bis 60000 sind ungültig; Leertext kann vor Eintritt durch implizite SQL-Konvertierung zu 0 werden. Der SQL-Wert 0 bedeutet NOWAIT, positive Werte erlauben begrenztes Warten und -1 für unbegrenztes Warten ist unzulässig. Die Procedure prüft den Bereich und übergibt den Wert für jede Captureanalyse an InternalSsisExecutionMetrics. Ihr eigenes SET LOCK_TIMEOUT läuft in einem separaten dynamischen sp_executesql-Batch; es begrenzt daher nicht die anschließenden direkten Kohorten- und Ausgabeanweisungen. InternalSsisExecutionMetrics führt ebenfalls ein dynamisches SET aus und übergibt den Wert an USP_SsisPackageModelAnalysis im Scope-Modus. Dieser delegiert an InternalSsisExecutionScopes, das den Wert validiert und SET LOCK_TIMEOUT ebenfalls dynamisch ausführt; diese Einstellung begrenzt die anschließenden direkten Anweisungen des Scopes-Helpers nicht.';
+  PRINT N'@ResultSetArt: Datentyp varchar(16), Default CONSOLE. Textauswahl nach Entfernen äußerer Leerzeichen und Großschreibung. Geschlossene Menge: CONSOLE (kompakte Bindingausgabe), RAW (separate rohe Resultsets), TABLE (in lokale Zieltabellen schreiben), NONE (keine Resultsets). NULL/andere Werte sind ungültig. Leerwert ist ungültig; das Trim entfernt U+0020-Leerzeichen, keine beliebigen Whitespacezeichen. JSON ist kein Ausgabeartcode; verwenden Sie @JsonErzeugen.';
+  PRINT N'@ResultTablesJson: Datentyp nvarchar(max), Default NULL. Nur bei TABLE zulässig und erforderlich: nichtleeres JSON-Objekt aus case-sensitiven Gruppennamen auf lokale Temp-Tabellennamen als Stringwerte, z. B. {"baselineBinding":"#SeedBinding"}. Zulässige Gruppen: baselineBinding (Kandidaten-/Kohortenbindung und Status), executionCohort (eine Zeile pro Basis-/Kandidatenlauf mit Rolle und Laufabdeckung), metricBaseline (Kennzahl je Vergleichsschlüssel mit Median/Min/Max, gültiger Basiszahl und Kandidatendelta), baselineFindings (versionierte INFO-Beobachtungshinweise), baselineCoverage (Quell-, Lauf-, Einschluss-/Ausschluss- und Ausgabedeckung). Jede beliebige nichtleere Teilmenge der fünf Gruppen ist zulässig. Jedes Ziel muss eine eindeutige bereits vorhandene, leere lokale #Temp-Tabelle sein (keine globale ##, kein reserviertes #Monitor-Präfix, höchstens 116 Zeichen) mit genau einer Seed-Spalte. Unbekannte Schlüssel, doppelte Namen/Ziele, Null-/Leerwerte oder ungültige Ziele werden vor fachlicher Verarbeitung abgewiesen. Außerhalb TABLE muss NULL übergeben werden. Keine gesonderte JSON-Größengrenze im Consumer belegt. Doppelte Zielnamen und das reservierte Präfix #Monitor werden ohne Beachtung der Großschreibung geprüft.';
+  PRINT N'@JsonErzeugen: Datentyp bit, Default 0. 0 deaktiviert JSON-OUTPUT, 1 erzeugt ein JSON-Objekt in @Json; NULL ist im normalen Pfad ungültig. JSON hat meta.schemaVersion=1, meta.baselineSchemaVersion=1 und meta.isPartial=true sowie top-level Arrays baselineBinding, executionCohort, metricBaseline, baselineFindings, baselineCoverage. Der aktuelle SQL-Meta-Block enthält kein statusCode; Status wird über @StatusCodeOut und Binding-/Coverage-Daten geliefert. Die SQL-bit-Konvertierung bildet numerische Werte ungleich 0 auf 1 ab.';
+  PRINT N'@Json: Datentyp nvarchar(max) OUTPUT, Default NULL OUTPUT. OUTPUT-Textparameter vom Typ nvarchar(max), mit OUTPUT an eine entsprechende Variable binden. Beim Eintritt wird @Json auf NULL gesetzt. Bei @JsonErzeugen=1 enthält es meta und echte JSON-Arrays für die fünf Gruppen, mit JSON-null-Werten statt Stringrepräsentation und [] bei leeren Gruppen. Ohne Erzeugung beziehungsweise im Hilfezweig bleibt es NULL.';
+  PRINT N'@PrintMeldungen: Datentyp bit, Default 1. Wird im Procedure-Quelltext weder gelesen noch validiert; 0, 1 oder NULL ändern das Verhalten nicht. Keine andere Wirkung behaupten. Consoleausgabe richtet sich nach @ResultSetArt. Die SQL-bit-Konvertierung bildet numerische Werte ungleich 0 auf 1 ab.';
+  PRINT N'@Hilfe: Datentyp bit, Default 0. 1 druckt die eingebaute Hilfe und kehrt vor Parameter-/Transportvalidierung, lokaler Handoverprüfung und Auswertung zurück; 0 folgt dem normalen Pfad. NULL erfüllt die IF-Bedingung nicht und verhält sich wie ausgeschaltet. Der JSON-OUTPUT wird vorher auf NULL gesetzt, die anderen OUTPUT-Werte bleiben im Hilfezweig unverändert. Die SQL-bit-Konvertierung bildet numerische Werte ungleich 0 auf 1 ab.';
+  PRINT N'@StatusCodeOut: Datentyp varchar(40) OUTPUT, Default NULL OUTPUT. Als varchar(40)-Variable mit OUTPUT binden; Eingangswert hat keine Steuerwirkung. Geschlossene globale Ergebniswerte: BASELINE_CAPTURE_BOUND (alle expliziten Basis-Captures und Kandidat sind unabhängig gebunden, gleicher exakter Modell-Export und gleiche geprüfte Quell-/Projektversion; keine Vollständigkeits-/Kausalitätsaussage), BASELINE_BINDING_UNPROVEN (mindestens eine Bindung oder Eingabeverarbeitung blieb unbelegt) und INVALID_PARAMETER (ungültige Steuerwerte oder Kombination). Im aktuellen JSON meta ist kein statusCode vorhanden; maßgeblicher Gesamtstatus steht in diesem OUTPUT und in Bindungs-/Coverage-Arrays. Hilfezweig lässt den Wert unverändert; ungefangene Fehler können Zuweisung umgehen.';
+  PRINT N'@IsPartialOut: Datentyp bit OUTPUT, Default NULL OUTPUT. Mit bit-Variable und OUTPUT binden. Nach normaler Verarbeitung immer 1, da Scopeauswertung und Beobachtungsabdeckung partiell sind; Kohorten-/Kennzahl-/Quellenabdeckung erläutert Einschränkungen. Hilfezweig belässt den Eingangswert; ungefangene Fehler können Zuweisung umgehen.';
+  PRINT N'@ErrorNumberOut: Datentyp int OUTPUT, Default NULL OUTPUT. Mit int-Variable und OUTPUT binden. NULL bei keinem abgefangenen fachlichen Fehler; sonst SQL-Fehlernummer der zurückgehaltenen Eingabe-/Bindungs-/Grenzverletzung. Ungefangene Ausnahmen und geworfene TABLE-Mappingfehler können die Zuweisung umgehen; im Hilfezweig keine Zuweisung.';
+  PRINT N'@ErrorMessageOut: Datentyp nvarchar(2048) OUTPUT, Default NULL OUTPUT. Mit nvarchar(2048)-Variable und OUTPUT binden. Bei abgefangenem Fehler ein kurzer Reason-Code, sonst NULL; enthält nicht notwendigerweise ausführliche SQL-Fehlermeldung. Hilfezweig unverändert; ungefangene Ausnahmen können Zuweisung umgehen. nvarchar(2048) umfasst höchstens 2048 UTF-16-Codeeinheiten.';
+  PRINT N'Ausgelassene Argumente verwenden den bezeichneten Default. SQL-JSON-Text als nvarchar(max)-Variable oder N-präfigiertes T-SQL-Literal übergeben. Pflichtdaten werden erst im normalen Pfad geprüft; Typkonvertierungen erfolgen bereits vor Eintritt. OUTPUT muss zum Empfang auch am Aufruf angegeben sein. Alle Ergebnisse bleiben beobachtungsbezogen und partiell.';
+  PRINT N'Vier reine Hilfeaufrufe ohne Captureprüfung:';
+  PRINT N'EXEC [monitor].[USP_SsisExecutionBaseline] @Hilfe=1;';
+  PRINT N'EXEC [monitor].[USP_SsisExecutionBaseline] @ResultSetArt=''NONE'', @Hilfe=1;';
+  PRINT N'DECLARE @HelpJson nvarchar(max)=N''vorbelegt'';';
+  PRINT N'EXEC [monitor].[USP_SsisExecutionBaseline] @Hilfe=1, @JsonErzeugen=1, @Json=@HelpJson OUTPUT;';
+  PRINT N'SELECT @HelpJson AS HelpJson;';
+  PRINT N'DECLARE @Code varchar(40)=''CALLER'', @Partial bit=0, @Error int=0;';
+  PRINT N'EXEC [monitor].[USP_SsisExecutionBaseline] @Hilfe=1, @StatusCodeOut=@Code OUTPUT, @IsPartialOut=@Partial OUTPUT, @ErrorNumberOut=@Error OUTPUT;';
+  PRINT N'SELECT @Code AS StatusCodeOut, @Partial AS IsPartialOut, @Error AS ErrorNumberOut;';
   RETURN;
  END;
  IF XACT_STATE()=-1 THROW 50000,N'BASELINE_INVALID: Callertransaktion ist nicht schreibfähig.',1;
@@ -74412,3 +77304,1338 @@ BEGIN
 END;
 GO
 -- END SOURCE: Code/08_ServerHealth/310_USP_DatabaseMirroringInventory.sql
+
+-- BEGIN SOURCE: Code/08_ServerHealth/320_USP_SensitivityClassificationSummary.sql
+/*
+===============================================================================
+Objekt       : monitor.USP_SensitivityClassificationSummary
+Version      : 1.0.0
+Stand        : 2026-11-13
+Zweck        : Die Procedure zählt Klassifikationsmetadaten je caller-sichtbarer Datenbank.
+Quellen      : sys.tables, sys.columns, sys.sensitivity_classifications.
+Grenzen      : Nur sichtbare Tabellen und Spalten; kein Vollständigkeits-,
+               Schutzwirkungs- oder Datenqualitätsurteil.
+Datenschutz  : Keine Tabellenwerte, Klassifikationstexte oder Objekt-/Spaltennamen.
+Nebenwirkung : Produktpfad read-only im Caller-Kontext.
+===============================================================================
+*/
+CREATE OR ALTER PROCEDURE [monitor].[USP_SensitivityClassificationSummary]
+      @DatabaseNames nvarchar(max) = NULL
+    , @SystemdatenbankenEinbeziehen bit = 0
+    , @DatabaseNamePattern nvarchar(4000) = NULL
+    , @MaxZeilen int = 1000
+    , @LockTimeoutMs int = 0
+    , @ResultSetArt varchar(16) = 'CONSOLE'
+    , @ResultTablesJson nvarchar(max) = NULL
+    , @JsonErzeugen bit = 0
+    , @Json nvarchar(max) = NULL OUTPUT
+    , @PrintMeldungen bit = 1
+    , @Hilfe bit = 0
+    , @StatusCodeOut varchar(40) = NULL OUTPUT
+    , @IsPartialOut bit = NULL OUTPUT
+    , @ErrorNumberOut int = NULL OUTPUT
+    , @ErrorMessageOut nvarchar(2048) = NULL OUTPUT
+AS
+BEGIN
+    SET NOCOUNT ON;
+    SELECT @Json=NULL,@StatusCodeOut=NULL,@IsPartialOut=NULL,
+           @ErrorNumberOut=NULL,@ErrorMessageOut=NULL;
+
+    DECLARE @OriginalLockTimeout int=@@LOCK_TIMEOUT;
+    DECLARE @CapturedAtUtc datetime2(3)=SYSUTCDATETIME(),
+        @Mode varchar(16)=UPPER(LTRIM(RTRIM(COALESCE(@ResultSetArt,'')))),
+        @Limit bigint=CASE WHEN @MaxZeilen IS NULL OR @MaxZeilen=0
+                           THEN CONVERT(bigint,9223372036854775807) ELSE @MaxZeilen END,
+        @PreviousXactAbort bit=CASE WHEN (@@OPTIONS & 16384)=16384 THEN 1 ELSE 0 END,
+        @LockTimeoutSql nvarchar(100),
+        @Started datetime2(3),
+        @Observed bigint=NULL,
+        @SelectionStatus varchar(40),
+        @SelectionMessage nvarchar(2048),
+        @SelectionError int=NULL,
+        @CrossDatabaseRequested bit,
+        @Status varchar(40)='SKIPPED',
+        @Error int=NULL,
+        @Message nvarchar(2048)=NULL,
+        @TableStatus varchar(40),
+        @TableMessage nvarchar(2048),
+        @TableError int,
+        @TableFailureError int=NULL,
+        @Sql nvarchar(max);
+    DECLARE @ConsoleResultRequested bit=CASE WHEN @Mode='CONSOLE' THEN 1 ELSE 0 END;
+    SET @LockTimeoutSql=N'SET LOCK_TIMEOUT '+CONVERT(nvarchar(20),@OriginalLockTimeout)+N';';
+
+    IF @Hilfe=1
+    BEGIN
+        PRINT N'monitor.USP_SensitivityClassificationSummary';
+        PRINT N'Die Procedure zählt sichtbare Tabellen, deren Spalten und klassifizierte sichtbare Tabellenspalten je ausgewählter ONLINE-Datenbank. Es werden keine Tabellenwerte oder Klassifikationstexte gelesen. Eine Nullzählung ist nur nach erfolgreicher Quelle ein sichtbares Nullergebnis und kein Abwesenheits- oder Vollständigkeitsbeweis. Die drei Zählabfragen laufen nacheinander und sind keine atomare Aufnahme.';
+        PRINT N'@DatabaseNames nvarchar(max); Default: NULL. NULL, leerer Text oder äußere U+0020-Leerzeichen bedeuten keine exakte Einschränkung. Eine aktive bracket-aware Pipe-Liste enthält einteilige Datenbanknamen; | innerhalb [...] ist Namensinhalt und ]] maskiert ]. Äußere Leerzeichen werden getrimmt; leere oder doppelte Segmente und Namen über 128 Zeichen sind ungültig. Jedes rohe Segment darf höchstens 4000 UTF-16-Codeeinheiten enthalten; diese Grenze gilt nicht für die Gesamtliste. Eine aktive Liste und ein nicht-NULL-Pattern sind unzulässig. Standardauswahl: caller-sichtbare, zugreifbare ONLINE-Benutzerdatenbanken ohne Snapshots.';
+        PRINT N'@SystemdatenbankenEinbeziehen bit; Default: 0. 0 schließt Datenbank-IDs bis 4 aus, 1 lässt sie als Kandidaten zu. NULL ist INVALID_PARAMETER. Numerische 0 wird 0, andere numerische Werte werden 1. Sichtbarkeit und Zugriff bleiben erforderlich.';
+        PRINT N'@DatabaseNamePattern nvarchar(4000); Default: NULL. NULL bedeutet kein Pattern; nicht-NULL-Leertext ist ungültig. Optionales like:, regex: oder regexi: vor einem nichtleeren Pattern; ohne Präfix gilt LIKE. LIKE und regex sind case-sensitiv, regexi ist case-insensitiv. LIKE verwendet SQL-LIKE-Syntax mit %, _, Zeichenklassen und ohne eigene ESCAPE-Klausel. Regex-Syntax wird vom Parser nicht vorvalidiert. Regex verlangt SQL Server 2025 und Compatibility Level 170 der Installationsdatenbank. Eine aktive exakte Liste und Pattern sind unzulässig.';
+        PRINT N'@MaxZeilen int; Default: 1000. NULL und 0 bedeuten unbegrenzt, negative Werte INVALID_PARAMETER, positive Werte 1 bis 2147483647 begrenzen ausschließlich ausgegebene classificationSummary-Datenbankzeilen nach DatabaseId. Die Kandidatenermittlung und Kataloglesearbeit werden nicht begrenzt. Ein abgeschnittenes Ergebnis erhält OUTPUT_LIMIT.';
+        PRINT N'@LockTimeoutMs int; Default: 0. Nur 0 bis 60000 Millisekunden sind zulässig; NULL ist INVALID_PARAMETER. 0 ist NOWAIT. Der Wert gilt je dynamischem Datenbank-Katalogbatch und ist keine Gesamtdauergrenze. Der vorherige Sessionwert wird wiederhergestellt.';
+        PRINT N'@ResultSetArt varchar(16); Default: ''CONSOLE''. Nach äußerem U+0020-Trimmen und Großschreibung sind ausschließlich CONSOLE, RAW, TABLE und NONE zulässig; NULL/leer ist ungültig. CONSOLE zeigt genau eine formatierte Fachmenge. RAW liefert moduleStatus, classificationSummary, sourceStatus, warnings. TABLE schreibt gemappte Mengen; NONE liefert keine Resultsets. JSON bleibt unabhängig.';
+        PRINT N'@ResultTablesJson nvarchar(max); Default: NULL. Nur TABLE nimmt ein JSON-Objekt mit wenigstens einer Zuordnung an. Schlüssel sind exakt moduleStatus, classificationSummary, sourceStatus, warnings; Werte sind unterschiedliche lokale #Temp-Namen. Zielnamen sind maximal 116 Zeichen lang, beginnen mit #, nicht mit ## oder dem reservierten #Monitor-Präfix. Die Ziele müssen vorhanden, leer und mit genau einer Seed-Spalte ausgestattet sein. Doppelte Schlüssel werden binär, doppelte Zielnamen case-insensitiv geprüft; ungültige, doppelte oder unbekannte Schlüssel/Ziele werden vor der fachlichen Quellenlesung abgewiesen. Ein späterer Writer-Fehler kann bereits geschriebene Ziele hinterlassen. Außerhalb TABLE sind nur NULL, leer oder U+0020-Leerzeichen zulässig.';
+        PRINT N'@JsonErzeugen bit; Default: 0. 1 erzeugt unabhängig von ResultSetArt JSON mit schemaVersion 1, meta und allen vier Arrays; NULL und 0 erzeugen kein JSON. Numerische 0 wird 0, andere numerische Werte werden 1.';
+        PRINT N'@Json nvarchar(max) OUTPUT; Default: NULL. Optional an eine nvarchar(max)-Variable mit OUTPUT binden. Eingang wird auf NULL gesetzt; JSON entsteht nur bei JsonErzeugen=1 im normalen Pfad. Hilfe, frühe Parameterfehler und äußerer CATCH lassen NULL.';
+        PRINT N'@PrintMeldungen bit; Default: 1. 1 gibt zusätzliche niedrige Severity-Meldungen zu Fehlern aus; 0 und NULL unterdrücken sie. Status, Resultsets und OUTPUT-Werte bleiben davon unabhängig. Numerische 0 wird 0, andere numerische Werte werden 1.';
+        PRINT N'@Hilfe bit; Default: 0. 1 gibt diese Hilfe vor Auswahl und Katalogzugriff aus, setzt StatusCodeOut=AVAILABLE und IsPartialOut=0 und kehrt mit 0 zurück. NULL und 0 führen den normalen Pfad aus.';
+        PRINT N'@StatusCodeOut varchar(40) OUTPUT; Default: NULL. Optional mit OUTPUT binden; Eingang wird zurückgesetzt. AVAILABLE bedeutet nur Hilfe; AVAILABLE_LIMITED erfolgreiche sichtbare Quelle; SKIPPED keine Kandidatendatenbank und keine Katalogaufnahme; INVALID_PARAMETER direkte Eingabe oder Auswahlvertrag; INTERNAL_ERROR interner Kandidaten-Vorbereitungsfehler; SELECTION_UNAVAILABLE fehlender Helferstatus als Fallback; UNAVAILABLE_FEATURE fehlende Regexvoraussetzung; DATABASE_UNAVAILABLE nicht erreichbare Datenbank; SYSTEM_DATABASE_EXCLUDED ausgeschlossene explizite Systemdatenbank; DENIED_PERMISSION negative effektive Rechteprüfung oder native Berechtigungsfehler; SOURCE_UNAVAILABLE unbekanntes Prüfergebnis oder Quellenfehler; TIMEOUT SQL 1222; ERROR_HANDLED äußerer Fehler. Der erste relevante Quellenfehler bestimmt den globalen Status.';
+        PRINT N'@IsPartialOut bit OUTPUT; Default: NULL. Optional mit OUTPUT binden; Eingang wird zurückgesetzt. Hilfe liefert 0, jeder normale Lauf und Fehlerpfad 1, weil Metadatensicht begrenzt sein kann.';
+        PRINT N'@ErrorNumberOut int OUTPUT; Default: NULL. Optional mit OUTPUT binden; Eingang wird zurückgesetzt. Erfolgreicher Lauf/Hilfe lassen NULL. Direkte Eingabefehler liefern 51011; Preflight-Rechteprüfung ohne nativen Fehler lässt NULL. Gefangene SQL-Fehler liefern die echte Fehlernummer.';
+        PRINT N'@ErrorMessageOut nvarchar(2048) OUTPUT; Default: NULL. Optional mit OUTPUT binden; Eingang wird zurückgesetzt. Bei negativer/unklarer Rechteprüfung gibt es einen festen Text; gefangene SQL-Fehler bewahren ERROR_MESSAGE links auf 2048 Zeichen. Hilfe/erfolgreicher Lauf lassen NULL.';
+        PRINT N'EXEC [monitor].[USP_SensitivityClassificationSummary] @DatabaseNames=N''[ExampleDatabase]'', @ResultSetArt=''RAW'', @PrintMeldungen=0;';
+        PRINT N'DECLARE @Json nvarchar(max); EXEC [monitor].[USP_SensitivityClassificationSummary] @ResultSetArt=''NONE'', @JsonErzeugen=1, @Json=@Json OUTPUT; SELECT @Json AS [Json];';
+        PRINT N'CREATE TABLE #SensitivityClassificationSummaryExample ([Seed] int NULL); EXEC [monitor].[USP_SensitivityClassificationSummary] @ResultSetArt=''TABLE'', @ResultTablesJson=N''{"classificationSummary":"#SensitivityClassificationSummaryExample"}''; SELECT * FROM #SensitivityClassificationSummaryExample; DROP TABLE #SensitivityClassificationSummaryExample;';
+        SELECT @StatusCodeOut='AVAILABLE',@IsPartialOut=0;
+        RETURN;
+    END;
+
+    IF @Mode NOT IN ('CONSOLE','RAW','TABLE','NONE')
+       OR @MaxZeilen<0
+       OR @LockTimeoutMs IS NULL OR @LockTimeoutMs<0 OR @LockTimeoutMs>60000
+       OR @SystemdatenbankenEinbeziehen IS NULL
+       OR
+       (
+           @DatabaseNamePattern IS NOT NULL
+           AND NULLIF(LTRIM(RTRIM(COALESCE(@DatabaseNames,N''))),N'') IS NOT NULL
+       )
+       OR (@Mode<>'TABLE' AND NULLIF(LTRIM(RTRIM(COALESCE(@ResultTablesJson,N''))),N'') IS NOT NULL)
+    BEGIN
+        SELECT @StatusCodeOut='INVALID_PARAMETER',@IsPartialOut=1,
+               @ErrorNumberOut=51011,
+               @ErrorMessageOut=N'Ungueltiger Ausgabe-, Datenbankauswahl-, Limit- oder TABLE-Parameter.';
+        IF @PrintMeldungen=1 RAISERROR(N'%s',10,1,@ErrorMessageOut) WITH NOWAIT;
+        RETURN 51011;
+    END;
+
+    BEGIN TRY
+        SET XACT_ABORT OFF;
+        CREATE TABLE [#SensitivityClassificationSummary_moduleStatus]
+        (
+            [ModuleName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,
+            [CapturedAtUtc] datetime2(3) NOT NULL,
+            [StatusCode] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,
+            [IsPartial] bit NOT NULL,
+            [RowCount] bigint NOT NULL,
+            [Detail] nvarchar(1000) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        );
+        CREATE TABLE [#SensitivityClassificationSummary_classificationSummary]
+        (
+            [DatabaseId] int NOT NULL,
+            [DatabaseName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,
+            [VisibleTableCount] bigint NULL,
+            [VisibleTableColumnCount] bigint NULL,
+            [ClassifiedVisibleTableColumnCount] bigint NULL,
+            [StatusCode] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,
+            [VisibilityScope] varchar(32) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,
+            [ErrorNumber] int NULL,
+            [ErrorMessage] nvarchar(2048) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        );
+        CREATE TABLE [#SensitivityClassificationSummary_sourceStatus]
+        (
+            [DatabaseId] int NULL,
+            [DatabaseName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL,
+            [SourceKey] varchar(64) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,
+            [SourceKind] varchar(16) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,
+            [StartedAtUtc] datetime2(3) NOT NULL,
+            [CompletedAtUtc] datetime2(3) NOT NULL,
+            [StatusCode] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,
+            [VisibilityScope] varchar(32) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,
+            [ObservedRows] bigint NULL,
+            [ReturnedRows] bigint NULL,
+            [IsLimited] bit NOT NULL,
+            [ErrorNumber] int NULL,
+            [ErrorMessage] nvarchar(2048) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        );
+        CREATE TABLE [#SensitivityClassificationSummary_warnings]
+        (
+            [DatabaseId] int NULL,
+            [DatabaseName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL,
+            [WarningCode] varchar(64) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,
+            [SourceKey] varchar(64) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,
+            [Detail] nvarchar(1000) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        );
+        CREATE TABLE [#SensitivityClassificationSummary_Map]
+        (
+            [ResultName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,
+            [TargetTable] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        );
+        CREATE TABLE [#SensitivityClassificationSummary_Candidates]
+        (
+            [DatabaseId] int NOT NULL,
+            [DatabaseName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,
+            [StateDesc] nvarchar(60) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,
+            [UserAccessDesc] nvarchar(60) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,
+            [IsReadOnly] bit NULL,
+            [CompatibilityLevel] tinyint NULL,
+            [CollationName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL,
+            [RecoveryModelDesc] nvarchar(60) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,
+            [IsSystemDatabase] bit NULL,
+            [RequestedOrdinal] int NULL
+        );
+        CREATE TABLE [#SensitivityClassificationSummary_SelectionWarnings]
+        (
+            [RequestedName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL,
+            [StatusCode] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,
+            [ErrorMessage] nvarchar(2048) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        );
+        CREATE TABLE [#SensitivityClassificationSummary_Console]
+        (
+            [Bereich] nvarchar(64) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,
+            [Objekt] nvarchar(256) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,
+            [Detail] nvarchar(1000) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        );
+
+        IF @Mode='TABLE'
+        BEGIN
+            EXEC [monitor].[InternalPrepareResultTables]
+                @ResultTablesJson=@ResultTablesJson,
+                @AllowedResultNames=N'moduleStatus|classificationSummary|sourceStatus|warnings',
+                @MappingTable=N'#SensitivityClassificationSummary_Map',
+                @StatusCode=@TableStatus OUTPUT,
+                @ErrorMessage=@TableMessage OUTPUT,
+                @ThrowOnError=0;
+            IF COALESCE(@TableStatus,'')<>'AVAILABLE'
+            BEGIN
+                SET @TableFailureError=51011;
+                RAISERROR(N'%s',16,1,@TableMessage);
+            END;
+        END;
+
+        SET @Started=SYSUTCDATETIME();
+        BEGIN TRY
+            EXEC [monitor].[USP_PrepareDatabaseCandidates]
+                @DatabaseNames=@DatabaseNames,
+                @SystemdatenbankenEinbeziehen=@SystemdatenbankenEinbeziehen,
+                @DatabaseNamePattern=@DatabaseNamePattern,
+                @StatusCode=@SelectionStatus OUTPUT,
+                @ErrorMessage=@SelectionMessage OUTPUT,
+                @CrossDatabaseRequested=@CrossDatabaseRequested OUTPUT,
+                @CandidateTable=N'#SensitivityClassificationSummary_Candidates',
+                @WarningTable=N'#SensitivityClassificationSummary_SelectionWarnings';
+            SELECT @SelectionError=MIN(CASE WHEN [StatusCode] IS NOT NULL THEN 51011 END)
+            FROM [#SensitivityClassificationSummary_SelectionWarnings];
+            INSERT [#SensitivityClassificationSummary_sourceStatus]
+            SELECT NULL,[RequestedName],'DATABASE_SELECTION','SELECTION',@Started,SYSUTCDATETIME(),
+                   COALESCE([StatusCode],'AVAILABLE_LIMITED'),
+                   CASE WHEN [StatusCode] IS NULL THEN 'VISIBLE_ONLY' ELSE 'UNPROVEN' END,
+                   NULL,NULL,0,
+                   CASE WHEN [StatusCode] IS NULL THEN NULL ELSE 51011 END,
+                   [ErrorMessage]
+            FROM [#SensitivityClassificationSummary_SelectionWarnings];
+            INSERT [#SensitivityClassificationSummary_warnings]
+            SELECT NULL,[RequestedName],'TARGET_SELECTION','DATABASE_SELECTION',
+                   LEFT(COALESCE([ErrorMessage],N'Die angeforderte Datenbank ist nicht verfügbar.'),1000)
+            FROM [#SensitivityClassificationSummary_SelectionWarnings];
+            IF COALESCE(@SelectionStatus,'')<>'AVAILABLE'
+            BEGIN
+                SET @Error=COALESCE(@SelectionError,51011);
+                SET @Message=COALESCE(@SelectionMessage,N'Die Datenbankauswahl konnte nicht erstellt werden.');
+                SET @Status=COALESCE(@SelectionStatus,'SELECTION_UNAVAILABLE');
+                IF NOT EXISTS(SELECT 1 FROM [#SensitivityClassificationSummary_sourceStatus]
+                              WHERE [SourceKey]='DATABASE_SELECTION')
+                    INSERT [#SensitivityClassificationSummary_sourceStatus]
+                    VALUES(NULL,NULL,'DATABASE_SELECTION','SELECTION',@Started,SYSUTCDATETIME(),
+                           @Status,'UNPROVEN',NULL,NULL,0,@Error,@Message);
+            END
+            ELSE
+            BEGIN
+                SELECT @Observed=COUNT_BIG(*) FROM [#SensitivityClassificationSummary_Candidates];
+                INSERT [#SensitivityClassificationSummary_sourceStatus]
+                VALUES(NULL,NULL,'DATABASE_SELECTION','SELECTION',@Started,SYSUTCDATETIME(),
+                       'AVAILABLE_LIMITED','CALLER_VISIBLE',@Observed,@Observed,0,NULL,NULL);
+            END;
+        END TRY
+        BEGIN CATCH
+            SET @Error=ERROR_NUMBER();
+            SET @Message=LEFT(ERROR_MESSAGE(),2048);
+            SET @Status=CASE WHEN ERROR_NUMBER() IN (229,297,300,371) THEN 'DENIED_PERMISSION'
+                             WHEN ERROR_NUMBER()=1222 THEN 'TIMEOUT' ELSE 'ERROR_HANDLED' END;
+            INSERT [#SensitivityClassificationSummary_sourceStatus]
+            VALUES(NULL,NULL,'DATABASE_SELECTION','SELECTION',@Started,SYSUTCDATETIME(),
+                   @Status,'UNPROVEN',NULL,NULL,0,@Error,@Message);
+            INSERT [#SensitivityClassificationSummary_warnings]
+            VALUES(NULL,NULL,'SOURCE_UNAVAILABLE','DATABASE_SELECTION',
+                   N'Die Datenbankauswahl ist fehlgeschlagen; es wurde keine SensitivityClassification-Quelle als erfolgreich leer ausgewertet.');
+        END CATCH;
+
+        IF @Error IS NULL
+        BEGIN
+            DECLARE @DatabaseId int,@DatabaseName sysname,@DatabaseCreatedAt datetime,
+                    @Permission int,@VisibleTableCount bigint,@VisibleColumnCount bigint,
+                    @ClassifiedColumnCount bigint,@DbStatus varchar(40),@DbVisibility varchar(32),
+                    @DbError int,@DbMessage nvarchar(2048),@QuotedDatabase nvarchar(258);
+            DECLARE [SensitivitySummaryTargets] CURSOR LOCAL FAST_FORWARD FOR
+                SELECT [DatabaseId],[DatabaseName]
+                FROM [#SensitivityClassificationSummary_Candidates] ORDER BY [DatabaseId];
+            OPEN [SensitivitySummaryTargets];
+            FETCH NEXT FROM [SensitivitySummaryTargets] INTO @DatabaseId,@DatabaseName;
+            WHILE @@FETCH_STATUS=0
+            BEGIN
+                SELECT @Started=SYSUTCDATETIME(),@Permission=NULL,
+                       @VisibleTableCount=NULL,@VisibleColumnCount=NULL,@ClassifiedColumnCount=NULL,
+                       @DbStatus='SOURCE_UNAVAILABLE',@DbVisibility='UNPROVEN',
+                       @DbError=NULL,@DbMessage=NULL,@DatabaseCreatedAt=NULL,
+                       @QuotedDatabase=QUOTENAME(@DatabaseName);
+                BEGIN TRY
+                    SELECT @DatabaseCreatedAt=[create_date]
+                    FROM [master].[sys].[databases] WITH (NOLOCK)
+                    WHERE [database_id]=@DatabaseId
+                      AND [name] COLLATE SQL_Latin1_General_CP1_CS_AS
+                          =@DatabaseName COLLATE SQL_Latin1_General_CP1_CS_AS;
+                    IF @DatabaseCreatedAt IS NULL
+                        THROW 51012,N'Target database identity changed or is not available for this source.',1;
+                    SET @Sql=N'SET LOCK_TIMEOUT '+CONVERT(nvarchar(20),@LockTimeoutMs)+N'; USE '+@QuotedDatabase+N';
+                        IF DB_ID()<>@Id OR NOT EXISTS
+                          (SELECT 1 FROM [master].[sys].[databases] WITH (NOLOCK)
+                           WHERE [database_id]=@Id
+                             AND [name] COLLATE SQL_Latin1_General_CP1_CS_AS
+                                 =@Name COLLATE SQL_Latin1_General_CP1_CS_AS
+                             AND [create_date]=@Created)
+                            THROW 51012,N''Target database identity changed or is not available for this source.'',1;
+                        SELECT @PermissionOut=HAS_PERMS_BY_NAME(NULL,N''DATABASE'',N''VIEW ANY SENSITIVITY CLASSIFICATION'');';
+                    EXEC [sys].[sp_executesql] @Sql,
+                        N'@Id int,@Name sysname,@Created datetime,@PermissionOut int OUTPUT',
+                        @Id=@DatabaseId,@Name=@DatabaseName,@Created=@DatabaseCreatedAt,
+                        @PermissionOut=@Permission OUTPUT;
+                    IF @Permission=0
+                    BEGIN
+                        SET @DbStatus='DENIED_PERMISSION';
+                        SET @DbMessage=N'Der Caller hat kein wirksames VIEW ANY SENSITIVITY CLASSIFICATION in dieser Datenbank.';
+                    END
+                    ELSE IF @Permission IS NULL
+                    BEGIN
+                        SET @DbStatus='SOURCE_UNAVAILABLE';
+                        SET @DbMessage=N'Die wirksame Klassifikationsberechtigung konnte nicht bestimmt werden.';
+                    END
+                    ELSE
+                    BEGIN
+                        SET @Sql=N'SET LOCK_TIMEOUT '+CONVERT(nvarchar(20),@LockTimeoutMs)+N'; USE '+@QuotedDatabase+N';
+                            IF DB_ID()<>@Id OR NOT EXISTS
+                              (SELECT 1 FROM [master].[sys].[databases] WITH (NOLOCK)
+                               WHERE [database_id]=@Id
+                                 AND [name] COLLATE SQL_Latin1_General_CP1_CS_AS
+                                     =@Name COLLATE SQL_Latin1_General_CP1_CS_AS
+                                 AND [create_date]=@Created)
+                                THROW 51012,N''Target database identity changed or is not available for this source.'',1;
+                            SELECT @Tables=COUNT_BIG(*) FROM [sys].[tables] WITH (NOLOCK);
+                            SELECT @Columns=COUNT_BIG(*)
+                            FROM [sys].[tables] AS [t] WITH (NOLOCK)
+                            INNER JOIN [sys].[columns] AS [c] WITH (NOLOCK) ON [c].[object_id]=[t].[object_id];
+                            SELECT @Classified=COUNT_BIG(*)
+                            FROM [sys].[tables] AS [t] WITH (NOLOCK)
+                            INNER JOIN [sys].[columns] AS [c] WITH (NOLOCK) ON [c].[object_id]=[t].[object_id]
+                            WHERE EXISTS
+                              (SELECT 1 FROM [sys].[sensitivity_classifications] AS [sc] WITH (NOLOCK)
+                               WHERE [sc].[class]=1 AND [sc].[major_id]=[t].[object_id]
+                                 AND [sc].[minor_id]=[c].[column_id]);
+                            IF DB_ID()<>@Id OR NOT EXISTS
+                              (SELECT 1 FROM [master].[sys].[databases] WITH (NOLOCK)
+                               WHERE [database_id]=@Id
+                                 AND [name] COLLATE SQL_Latin1_General_CP1_CS_AS
+                                     =@Name COLLATE SQL_Latin1_General_CP1_CS_AS
+                                 AND [create_date]=@Created)
+                                THROW 51012,N''Target database identity changed or is not available for this source.'',1;';
+                        EXEC [sys].[sp_executesql] @Sql,
+                            N'@Id int,@Name sysname,@Created datetime,@Tables bigint OUTPUT,@Columns bigint OUTPUT,@Classified bigint OUTPUT',
+                            @Id=@DatabaseId,@Name=@DatabaseName,@Created=@DatabaseCreatedAt,
+                            @Tables=@VisibleTableCount OUTPUT,@Columns=@VisibleColumnCount OUTPUT,
+                            @Classified=@ClassifiedColumnCount OUTPUT;
+                        SET @DbStatus='AVAILABLE_LIMITED';
+                        SET @DbVisibility='VISIBLE_ONLY';
+                    END;
+                END TRY
+                BEGIN CATCH
+                    SELECT @VisibleTableCount=NULL,@VisibleColumnCount=NULL,@ClassifiedColumnCount=NULL,
+                           @DbError=ERROR_NUMBER(),@DbMessage=LEFT(ERROR_MESSAGE(),2048),
+                           @DbStatus=CASE WHEN ERROR_NUMBER() IN(229,297,300,371) THEN 'DENIED_PERMISSION'
+                                          WHEN ERROR_NUMBER()=1222 THEN 'TIMEOUT'
+                                          WHEN ERROR_NUMBER() IN(911,924,926,927,942,945,952,978,4060,51012)
+                                               THEN 'DATABASE_UNAVAILABLE'
+                                          ELSE 'SOURCE_UNAVAILABLE' END,
+                           @DbVisibility='UNPROVEN';
+                END CATCH;
+                INSERT [#SensitivityClassificationSummary_classificationSummary]
+                    ([DatabaseId],[DatabaseName],[VisibleTableCount],[VisibleTableColumnCount],
+                     [ClassifiedVisibleTableColumnCount],[StatusCode],[VisibilityScope],
+                     [ErrorNumber],[ErrorMessage])
+                VALUES(@DatabaseId,@DatabaseName,@VisibleTableCount,@VisibleColumnCount,
+                       @ClassifiedColumnCount,@DbStatus,@DbVisibility,@DbError,@DbMessage);
+                INSERT [#SensitivityClassificationSummary_sourceStatus]
+                VALUES(@DatabaseId,@DatabaseName,'SENSITIVITY_CLASSIFICATION_CATALOG','NATIVE',
+                       @Started,SYSUTCDATETIME(),@DbStatus,@DbVisibility,
+                       CASE WHEN @DbStatus='AVAILABLE_LIMITED' THEN 1 ELSE NULL END,
+                       CASE WHEN @DbStatus='AVAILABLE_LIMITED' THEN 1 ELSE NULL END,
+                       0,@DbError,@DbMessage);
+                IF @DbStatus<>'AVAILABLE_LIMITED'
+                    INSERT [#SensitivityClassificationSummary_warnings]
+                    VALUES(@DatabaseId,@DatabaseName,@DbStatus,'SENSITIVITY_CLASSIFICATION_CATALOG',
+                           N'Die Klassifikationsquelle wurde nicht erfolgreich gezählt; NULL-Zähler sind kein Nullergebnis.');
+                FETCH NEXT FROM [SensitivitySummaryTargets] INTO @DatabaseId,@DatabaseName;
+            END;
+            CLOSE [SensitivitySummaryTargets]; DEALLOCATE [SensitivitySummaryTargets];
+            IF NOT EXISTS(SELECT 1 FROM [#SensitivityClassificationSummary_Candidates])
+            BEGIN
+                SET @Started=SYSUTCDATETIME();
+                INSERT [#SensitivityClassificationSummary_sourceStatus]
+                VALUES(NULL,NULL,'SENSITIVITY_CLASSIFICATION_CATALOG','NATIVE',
+                       @Started,SYSUTCDATETIME(),'SKIPPED','UNPROVEN',NULL,NULL,0,NULL,NULL);
+                INSERT [#SensitivityClassificationSummary_warnings]
+                VALUES(NULL,NULL,'NO_TARGET_DATABASE','SENSITIVITY_CLASSIFICATION_CATALOG',
+                       N'Keine ausgewählte sichtbare ONLINE-Datenbank; die Klassifikationsquelle wurde nicht gelesen.');
+            END;
+        END;
+
+        ;WITH [Bounded] AS
+        (
+            SELECT *,ROW_NUMBER() OVER(ORDER BY [DatabaseId]) AS [OutputOrdinal]
+            FROM [#SensitivityClassificationSummary_classificationSummary]
+        )
+        DELETE FROM [Bounded] WHERE [OutputOrdinal]>@Limit;
+        UPDATE [s]
+           SET [ReturnedRows]=CASE WHEN [s].[StatusCode]='AVAILABLE_LIMITED'
+                                   THEN CASE WHEN [r].[DatabaseId] IS NULL THEN 0 ELSE 1 END
+                                   ELSE NULL END,
+               [IsLimited]=CASE WHEN [s].[DatabaseId] IS NOT NULL AND [r].[DatabaseId] IS NULL THEN 1 ELSE 0 END
+        FROM [#SensitivityClassificationSummary_sourceStatus] AS [s]
+        LEFT JOIN [#SensitivityClassificationSummary_classificationSummary] AS [r]
+          ON [r].[DatabaseId]=[s].[DatabaseId]
+        WHERE [s].[SourceKey]='SENSITIVITY_CLASSIFICATION_CATALOG';
+        INSERT [#SensitivityClassificationSummary_warnings]
+        VALUES(NULL,NULL,'CAPTURE_TIME_SKEW','SENSITIVITY_CLASSIFICATION_CATALOG',
+               N'Drei Katalogzählungen laufen nacheinander; gleichzeitige Metadatenänderungen können die Zähler gegeneinander verschieben.');
+        INSERT [#SensitivityClassificationSummary_warnings]
+        VALUES(NULL,NULL,'METADATA_COMPLETENESS_UNPROVEN','SENSITIVITY_CLASSIFICATION_CATALOG',
+               N'Nur caller-sichtbare Tabellen und Spalten in ausgewählten Online-Datenbanken; keine globale Vollständigkeit oder Klassifikationsqualität belegt.');
+        INSERT [#SensitivityClassificationSummary_warnings]
+            SELECT NULL,NULL,'OUTPUT_LIMIT','SENSITIVITY_CLASSIFICATION_CATALOG',
+                   N'Das Zeilenlimit begrenzt nur die Ausgabe; vorgelagerte Kataloglesearbeit bleibt unbegrenzt.'
+            WHERE EXISTS(SELECT 1 FROM [#SensitivityClassificationSummary_sourceStatus]
+                         WHERE [SourceKey]='SENSITIVITY_CLASSIFICATION_CATALOG' AND [IsLimited]=1);
+
+        IF @Error IS NULL
+        BEGIN
+            SELECT TOP (1) @Error=[ErrorNumber],@Message=[ErrorMessage],@Status=[StatusCode]
+            FROM [#SensitivityClassificationSummary_sourceStatus]
+            WHERE [StatusCode] NOT IN('AVAILABLE_LIMITED','SKIPPED')
+            ORDER BY [SourceKey],[DatabaseId],[DatabaseName];
+            IF @Status='SKIPPED' AND EXISTS
+               (SELECT 1 FROM [#SensitivityClassificationSummary_sourceStatus]
+                WHERE [SourceKey]='SENSITIVITY_CLASSIFICATION_CATALOG'
+                  AND [StatusCode]='AVAILABLE_LIMITED')
+                SET @Status='AVAILABLE_LIMITED';
+        END;
+        DECLARE @BusinessRows bigint=(SELECT COUNT_BIG(*) FROM [#SensitivityClassificationSummary_classificationSummary]);
+        INSERT [#SensitivityClassificationSummary_moduleStatus]
+        VALUES(N'USP_SensitivityClassificationSummary',@CapturedAtUtc,@Status,1,@BusinessRows,
+               N'Caller-sichtbare Katalogzählung ausgewählter Online-Datenbanken; keine Klassifikationsqualität, Schutzwirkung oder globale Vollständigkeit.');
+
+        IF @JsonErzeugen=1
+        BEGIN
+            DECLARE @Meta nvarchar(max)=
+                (SELECT N'SensitivityClassificationSummary' AS [resultName],1 AS [schemaVersion],
+                        @CapturedAtUtc AS [generatedAtUtc],@Status AS [statusCode],
+                        CAST(1 AS bit) AS [isPartial],@Error AS [errorNumber],
+                        @Message AS [errorMessage]
+                 FOR JSON PATH,WITHOUT_ARRAY_WRAPPER,INCLUDE_NULL_VALUES);
+            DECLARE @Json_moduleStatus nvarchar(max)=
+                (SELECT * FROM [#SensitivityClassificationSummary_moduleStatus] FOR JSON PATH,INCLUDE_NULL_VALUES);
+            DECLARE @Json_classificationSummary nvarchar(max)=
+                (SELECT * FROM [#SensitivityClassificationSummary_classificationSummary] ORDER BY [DatabaseId] FOR JSON PATH,INCLUDE_NULL_VALUES);
+            DECLARE @Json_sourceStatus nvarchar(max)=
+                (SELECT * FROM [#SensitivityClassificationSummary_sourceStatus] ORDER BY [DatabaseId],[DatabaseName],[SourceKey] FOR JSON PATH,INCLUDE_NULL_VALUES);
+            DECLARE @Json_warnings nvarchar(max)=
+                (SELECT * FROM [#SensitivityClassificationSummary_warnings] ORDER BY [DatabaseId],[DatabaseName],[WarningCode],[SourceKey] FOR JSON PATH,INCLUDE_NULL_VALUES);
+            SET @Json=CONCAT(N'{"meta":',@Meta,
+                N',"moduleStatus":',COALESCE(@Json_moduleStatus,N'[]'),
+                N',"classificationSummary":',COALESCE(@Json_classificationSummary,N'[]'),
+                N',"sourceStatus":',COALESCE(@Json_sourceStatus,N'[]'),
+                N',"warnings":',COALESCE(@Json_warnings,N'[]'),N'}');
+        END;
+
+        IF @Mode='RAW'
+        BEGIN
+            SELECT * FROM [#SensitivityClassificationSummary_moduleStatus];
+            SELECT * FROM [#SensitivityClassificationSummary_classificationSummary] ORDER BY [DatabaseId];
+            SELECT * FROM [#SensitivityClassificationSummary_sourceStatus] ORDER BY [DatabaseId],[DatabaseName],[SourceKey];
+            SELECT * FROM [#SensitivityClassificationSummary_warnings] ORDER BY [DatabaseId],[DatabaseName],[WarningCode],[SourceKey];
+        END
+        ELSE IF @Mode='TABLE'
+        BEGIN
+            DECLARE @ResultName sysname,@TargetTable sysname,@SourceTable sysname;
+            DECLARE [DatabaseSensitivityClassificationOutput] CURSOR LOCAL FAST_FORWARD FOR
+                SELECT [ResultName],[TargetTable]
+                FROM [#SensitivityClassificationSummary_Map] ORDER BY [ResultName];
+            OPEN [DatabaseSensitivityClassificationOutput];
+            FETCH NEXT FROM [DatabaseSensitivityClassificationOutput] INTO @ResultName,@TargetTable;
+            WHILE @@FETCH_STATUS=0
+            BEGIN
+                SET @SourceTable=N'#SensitivityClassificationSummary_'+@ResultName;
+                EXEC [monitor].[InternalWriteResultTable]
+                    @SourceTable=@SourceTable,@TargetTable=@TargetTable,
+                    @StatusCode=@TableStatus OUTPUT,@ErrorNumber=@TableError OUTPUT,
+                    @ErrorMessage=@TableMessage OUTPUT,@ThrowOnError=0;
+                IF COALESCE(@TableStatus,'')<>'AVAILABLE'
+                BEGIN
+                    SET @TableFailureError=COALESCE(@TableError,51010);
+                    RAISERROR(N'%s',16,1,@TableMessage);
+                END;
+                FETCH NEXT FROM [DatabaseSensitivityClassificationOutput] INTO @ResultName,@TargetTable;
+            END;
+            CLOSE [DatabaseSensitivityClassificationOutput]; DEALLOCATE [DatabaseSensitivityClassificationOutput];
+        END
+        ELSE IF @ConsoleResultRequested=1
+        BEGIN
+            INSERT [#SensitivityClassificationSummary_Console]
+            SELECT N'Klassifikation',[DatabaseName],
+                   CONCAT(N'Tabellen=',COALESCE(CONVERT(nvarchar(30),[VisibleTableCount]),N'NULL'),
+                          N'; Spalten=',COALESCE(CONVERT(nvarchar(30),[VisibleTableColumnCount]),N'NULL'),
+                          N'; klassifiziert=',COALESCE(CONVERT(nvarchar(30),[ClassifiedVisibleTableColumnCount]),N'NULL'),
+                          N'; Status=',[StatusCode])
+            FROM [#SensitivityClassificationSummary_classificationSummary];
+            INSERT [#SensitivityClassificationSummary_Console]
+            SELECT N'Quelle',[SourceKey],CONCAT([StatusCode],N'; beobachtet=',
+                   COALESCE(CONVERT(nvarchar(30),[ObservedRows]),N'NULL'),
+                   N'; ausgegeben=',COALESCE(CONVERT(nvarchar(30),[ReturnedRows]),N'NULL'))
+            FROM [#SensitivityClassificationSummary_sourceStatus];
+            INSERT [#SensitivityClassificationSummary_Console]
+            SELECT N'Aussagegrenze',[WarningCode],[Detail]
+            FROM [#SensitivityClassificationSummary_warnings];
+            EXEC [monitor].[InternalEmitConsoleResult]
+                @SourceTable=N'#SensitivityClassificationSummary_Console',
+                @ResultLabel=N'Sichtbare Klassifikationszählung',
+                @EmptyMessage=N'Keine ausgewählte sichtbare Datenbankzeile; Quellenstatus und Auswahl prüfen.';
+        END;
+
+        SELECT @StatusCodeOut=@Status,@IsPartialOut=1,
+               @ErrorNumberOut=@Error,@ErrorMessageOut=@Message;
+        IF @PrintMeldungen=1 AND @Error IS NOT NULL
+            RAISERROR(N'USP_SensitivityClassificationSummary: mindestens eine Quelle ist nicht verfügbar; siehe sourceStatus.',10,1) WITH NOWAIT;
+        EXEC [sys].[sp_executesql] @LockTimeoutSql;
+        IF @PreviousXactAbort=1 SET XACT_ABORT ON; ELSE SET XACT_ABORT OFF;
+    END TRY
+    BEGIN CATCH
+        SELECT @Error=COALESCE(@TableFailureError,ERROR_NUMBER()),
+               @Message=LEFT(ERROR_MESSAGE(),2048),@Json=NULL;
+        SELECT @Status='ERROR_HANDLED',@StatusCodeOut='ERROR_HANDLED',@IsPartialOut=1,
+               @ErrorNumberOut=@Error,@ErrorMessageOut=@Message;
+        EXEC [sys].[sp_executesql] @LockTimeoutSql;
+        IF @PreviousXactAbort=1 SET XACT_ABORT ON; ELSE SET XACT_ABORT OFF;
+        IF @PrintMeldungen=1 RAISERROR(N'%s',10,1,@Message) WITH NOWAIT;
+        RETURN @Error;
+    END CATCH;
+END;
+GO
+-- END SOURCE: Code/08_ServerHealth/320_USP_SensitivityClassificationSummary.sql
+
+-- BEGIN SOURCE: Code/08_ServerHealth/330_USP_LoadedModuleInventory.sql
+/*
+===============================================================================
+Objekt       : monitor.USP_LoadedModuleInventory
+Version      : 1.0.0
+Stand        : 2026-11-14
+Zweck        : Inventarisiert native Metadaten der in den SQL-Server-Prozess
+               geladenen Module zum Aufnahmezeitpunkt.
+Quelle       : sys.dm_os_loaded_modules.
+Datenschutz  : ModuleName enthaelt den unveraenderten nativen DMV-Namen
+               einschliesslich moeglichem Pfad; Laufzeitwerte werden nicht als
+               Repository-Artefakte gespeichert. BaseAddress, Company und
+               Description werden fachlich nicht gelesen.
+Grenze       : Kein Host-, Filtertreiber-, Signatur-, Malware- oder Gesundheitsurteil.
+Nebenwirkung : Nur lesender DMV-Zugriff im Caller-Kontext; keine Modulaktion.
+===============================================================================
+*/
+CREATE OR ALTER PROCEDURE [monitor].[USP_LoadedModuleInventory]
+      @NurBuildFlags bit = 0
+    , @MaxZeilen int = 1000
+    , @ResultSetArt varchar(16) = 'CONSOLE'
+    , @ResultTablesJson nvarchar(max) = NULL
+    , @JsonErzeugen bit = 0
+    , @Json nvarchar(max) = NULL OUTPUT
+    , @PrintMeldungen bit = 1
+    , @Hilfe bit = 0
+    , @StatusCodeOut varchar(40) = NULL OUTPUT
+    , @IsPartialOut bit = NULL OUTPUT
+    , @ErrorNumberOut int = NULL OUTPUT
+    , @ErrorMessageOut nvarchar(2048) = NULL OUTPUT
+AS
+BEGIN
+    SET NOCOUNT ON;
+    SELECT @Json=NULL,@StatusCodeOut=NULL,@IsPartialOut=NULL,
+           @ErrorNumberOut=NULL,@ErrorMessageOut=NULL;
+
+    DECLARE @OriginalLockTimeout int=@@LOCK_TIMEOUT;
+    DECLARE @OriginalXactAbort bit=CASE WHEN (@@OPTIONS & 16384)=16384 THEN 1 ELSE 0 END;
+    DECLARE @LockTimeoutSql nvarchar(100);
+    SET @LockTimeoutSql=N'SET LOCK_TIMEOUT '+CONVERT(nvarchar(20),@OriginalLockTimeout)+N';';
+    DECLARE @CapturedAtUtc datetime2(3)=SYSUTCDATETIME(),
+            @Mode varchar(16)=UPPER(LTRIM(RTRIM(COALESCE(@ResultSetArt,'')))),
+            @Limit bigint=CASE WHEN @MaxZeilen IS NULL OR @MaxZeilen=0
+                               THEN CONVERT(bigint,9223372036854775807) ELSE @MaxZeilen END,
+            @Observed bigint=NULL,@Matched bigint=NULL,@Returned bigint=NULL,
+            @SourceStatus varchar(40)='SOURCE_UNAVAILABLE',
+            @SourceState varchar(16)='NOT_STARTED',
+            @SourceError int=NULL,
+            @Status varchar(40)='ERROR_HANDLED',
+            @Error int=NULL,@Message nvarchar(2048)=NULL,
+            @TableStatus varchar(40),@TableMessage nvarchar(2048),@TableError int,
+            @TechnicalError int=NULL,@ResultName sysname,@TargetTable sysname,
+            @SourceTable sysname,@GroupOrdinal int=1;
+    DECLARE @ConsoleResultRequested bit=CASE WHEN @Mode='CONSOLE' THEN 1 ELSE 0 END;
+
+    IF @Hilfe=1
+    BEGIN
+        PRINT N'monitor.USP_LoadedModuleInventory';
+        PRINT N'Ein SQL-Prozess-Snapshot aus sys.dm_os_loaded_modules. ModuleName ist der unveraenderte native DMV-Name einschliesslich moeglichem Pfad; ModuleBasename ist eine zusaetzliche Komfortprojektion. Keine Host- oder Filtertreiberinventur und keine Signatur-, Vertrauens-, Malware- oder Gesundheitsbewertung.';
+        PRINT N'SQL Server 2019 benötigt für die DMV VIEW SERVER STATE; SQL Server 2022 und neuer VIEW SERVER PERFORMANCE STATE. Die Procedure erteilt keine Rechte und führt als Caller aus.';
+        PRINT N'@NurBuildFlags bit; Default: 0. 0 gibt alle projizierbaren DMV-Zeilen aus, 1 nur Zeilen mit mindestens einem nativen Flag debug, patched, prerelease, private_build oder special_build = 1. NULL ist im normalen Pfad INVALID_PARAMETER. Numerische 0 wird 0, andere bitkonvertierbare Nichtnullwerte werden 1. Die Flag-Auswahl folgt erst auf den vollständigen DMV-Read und bezeichnet kein Risiko.';
+        PRINT N'@MaxZeilen int; Default: 1000. NULL oder 0 bedeuten unbegrenzte Ausgabe; negative Werte sind INVALID_PARAMETER. Positive Werte 1 bis 2147483647 begrenzen nur die nach allen öffentlich ausgegebenen Fachfeldern sortierte loadedModules-Ausgabe nach vollständigem Quellenread und Flag-Auswahl. Leertext ist keine eigene int-Eingabeform; SQL Server konvertiert ihn vor dem Aufruf.';
+        PRINT N'@ResultSetArt varchar(16); Default: ''CONSOLE''. SQL Server bindet oder kuerzt auf varchar(16) vor der Validierung. Nach aeusserem U+0020-Trimmen und UPPER sind CONSOLE, RAW, TABLE und NONE zulaessig; NULL und leer sind INVALID_PARAMETER. RAW gibt moduleStatus, loadedModules, sourceStatus und warnings in dieser Reihenfolge aus; TABLE schreibt benannte Gruppen in Caller-Temp-Tabellen; CONSOLE liefert eine formatierte Fachmenge; NONE liefert keine Fachresultsets. Optionales JSON ist unabhaengig davon.';
+        PRINT N'@ResultTablesJson nvarchar(max); Default: NULL. Nur TABLE: nichtleeres JSON-Objekt mit mindestens einem exakt geschriebenen Schluessel moduleStatus, loadedModules, sourceStatus oder warnings. Werte sind unqualifizierte lokale #Temp-Namen, weder ## noch #Monitor; Konvertierung zu sysname erfolgt vor der Pruefung, Laenge danach hoechstens 116 Zeichen. Gruppen sind binaer verschieden, Ziele case-insensitiv verschieden. Jedes Ziel existiert leer mit genau einer beliebigen Seed-Spalte. Teilmapping ist erlaubt. NULL, leer oder nur U+0020 sind ausserhalb TABLE ohne Wirkung; andere Werte INVALID_PARAMETER. Preflightfehler vor DMV-Read sind INVALID_PARAMETER; spaetere Writerfehler sind technisch und koennen fruehere Zielschreibungen belassen.';
+        PRINT N'@JsonErzeugen bit; Default: 0. 1 erzeugt unabhängig von ResultSetArt JSON mit meta und vier benannten Arrays, 0 keines; NULL ist INVALID_PARAMETER. Numerische 0 wird 0, andere bitkonvertierbare Nichtnullwerte werden 1.';
+        PRINT N'@Json nvarchar(max) OUTPUT; Default: NULL. Optional an eine nvarchar(max)-Variable mit OUTPUT binden; der Eingangswert wird auf NULL zurückgesetzt. Normale Läufe mit JsonErzeugen=1 liefern JSON; Hilfe, direkte Parameterfehler und technische Ausgabefehler liefern NULL. Eine behandelte DMV-Störung kann ein JSON mit Quellenstatus und leeren Fachzeilen liefern.';
+        PRINT N'@PrintMeldungen bit; Default: 1. 1 gibt zusaetzliche Severity-10-Meldungen mit dem nativen beziehungsweise Framework-Fehlertext aus, 0 keine; NULL ist im normalen Pfad INVALID_PARAMETER. Numerische 0 wird 0, andere bitkonvertierbare Nichtnullwerte werden 1. Hilfe-PRINT bleibt unabhaengig.';
+        PRINT N'@Hilfe bit; Default: 0. 1 gibt Hilfe vor Parametervalidierung, TABLE-Preflight und DMV-Read aus und kehrt mit 0, Status AVAILABLE und IsPartial 0 zurueck; auch in einer Callertransaktion. 0 fuehrt die Analyse aus, NULL ist INVALID_PARAMETER. Normale Aufnahme verlangt @@TRANCOUNT=0 und IMPLICIT_TRANSACTIONS OFF; bei Verletzung INVALID_PARAMETER 51011 ohne Quellenread. Andere bitkonvertierbare Nichtnullwerte werden 1.';
+        PRINT N'@StatusCodeOut varchar(40) OUTPUT; Default: NULL. Optional an varchar(40) mit OUTPUT binden; Eingang wird zurückgesetzt. AVAILABLE nur Hilfe; AVAILABLE_LIMITED erfolgreiche nichtleere Momentaufnahme; EMPTY_UNPROVEN erfolgreicher leerer DMV-Read; DENIED_PERMISSION tatsächlicher Rechtefehler; UNAVAILABLE_OBJECT fehlende DMV; ERROR_HANDLED sonstiger Quellen-/Technikfehler; INVALID_PARAMETER ungültige Eingabe.';
+        PRINT N'@IsPartialOut bit OUTPUT; Default: NULL. Optional an bit mit OUTPUT binden; Eingang wird zurückgesetzt. Hilfe 0; jeder normale Lauf und Fehlerpfad 1. Partialität bezeichnet die Momentaufnahme und die Aussagegrenze zum Host.';
+        PRINT N'@ErrorNumberOut int OUTPUT; Default: NULL. Optional an int mit OUTPUT binden; Eingang wird zurückgesetzt. Hilfe und erfolgreicher Read NULL; ungültige Eingabe 51011; behandelte Quellenfehler ihre native SQL-Fehlernummer; technische Fehler deren tatsächliche oder Writer-Fehlernummer.';
+        PRINT N'@ErrorMessageOut nvarchar(2048) OUTPUT; Default: NULL. Optional an nvarchar(2048) mit OUTPUT binden; Eingang wird zurueckgesetzt. Erfolg NULL; native Quellen- und Technikfehler liefern den auf 2048 Zeichen begrenzten ERROR_MESSAGE-Text, TABLE-Helfer ihren begrenzten Fehlertext. Laufzeittexte koennen Pfade enthalten und gehoeren nicht ungeprueft in Repository-Artefakte.';
+        PRINT N'EXEC [monitor].[USP_LoadedModuleInventory] @NurBuildFlags=0,@MaxZeilen=100,@ResultSetArt=''RAW'';';
+        PRINT N'DECLARE @j nvarchar(max); EXEC [monitor].[USP_LoadedModuleInventory] @ResultSetArt=''NONE'',@JsonErzeugen=1,@Json=@j OUTPUT; SELECT @j AS [Json];';
+        PRINT N'CREATE TABLE #LoadedModuleExample([Seed] int NULL); EXEC [monitor].[USP_LoadedModuleInventory] @ResultSetArt=''TABLE'',@ResultTablesJson=N''{"loadedModules":"#LoadedModuleExample"}''; SELECT * FROM #LoadedModuleExample;';
+        SELECT @StatusCodeOut='AVAILABLE',@IsPartialOut=0;
+        RETURN 0;
+    END;
+
+    IF @Hilfe IS NULL OR @NurBuildFlags IS NULL OR @JsonErzeugen IS NULL OR @PrintMeldungen IS NULL
+       OR @Mode NOT IN('CONSOLE','RAW','TABLE','NONE') OR @MaxZeilen<0
+       OR (@Mode<>'TABLE' AND NULLIF(LTRIM(RTRIM(COALESCE(@ResultTablesJson,N''))),N'') IS NOT NULL)
+       OR @@TRANCOUNT<>0 OR (@@OPTIONS & 2)<>0
+    BEGIN
+        SELECT @StatusCodeOut='INVALID_PARAMETER',@IsPartialOut=1,
+               @ErrorNumberOut=51011,
+               @ErrorMessageOut=N'Ungueltiger Filter-, Ausgabe-, Limit- oder Callertransaktionszustand.';
+        IF @PrintMeldungen=1 RAISERROR(N'%s',10,1,@ErrorMessageOut) WITH NOWAIT;
+        RETURN 51011;
+    END;
+
+    BEGIN TRY
+        SET XACT_ABORT OFF;
+        CREATE TABLE [#LoadedModuleInventory_moduleStatus]
+        (
+            [ModuleName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,
+            [CapturedAtUtc] datetime2(3) NOT NULL,
+            [StatusCode] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,
+            [IsPartial] bit NOT NULL,
+            [RowCount] bigint NOT NULL,
+            [Detail] nvarchar(1000) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        );
+        CREATE TABLE [#LoadedModuleInventory_loadedModules]
+        (
+            [ModuleName] nvarchar(512) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,
+            [ModuleBasename] nvarchar(512) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,
+            [FileVersion] varchar(23) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,
+            [ProductVersion] varchar(23) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,
+            [Debug] bit NULL,[Patched] bit NULL,[Prerelease] bit NULL,
+            [PrivateBuild] bit NULL,[SpecialBuild] bit NULL,
+            [Language] int NULL
+        );
+        CREATE TABLE [#LoadedModuleInventory_Raw]
+        (
+            [ModuleName] nvarchar(512) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,
+            [ModuleBasename] nvarchar(512) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,
+            [FileVersion] varchar(23) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,
+            [ProductVersion] varchar(23) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,
+            [Debug] bit NULL,[Patched] bit NULL,[Prerelease] bit NULL,
+            [PrivateBuild] bit NULL,[SpecialBuild] bit NULL,
+            [Language] int NULL
+        );
+        CREATE TABLE [#LoadedModuleInventory_Matched]
+        (
+            [ModuleName] nvarchar(512) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,
+            [ModuleBasename] nvarchar(512) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,
+            [FileVersion] varchar(23) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,
+            [ProductVersion] varchar(23) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,
+            [Debug] bit NULL,[Patched] bit NULL,[Prerelease] bit NULL,
+            [PrivateBuild] bit NULL,[SpecialBuild] bit NULL,
+            [Language] int NULL
+        );
+        CREATE TABLE [#LoadedModuleInventory_sourceStatus]
+        (
+            [SourceKey] varchar(64) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,
+            [SourceKind] varchar(16) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,
+            [CapturedAtUtc] datetime2(3) NOT NULL,
+            [NativeReadState] varchar(16) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,
+            [StatusCode] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,
+            [ObservedRows] bigint NULL,[MatchedRows] bigint NULL,[ReturnedRows] bigint NULL,
+            [IsLimited] bit NOT NULL,[ErrorNumber] int NULL,
+            [ErrorMessage] nvarchar(2048) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        );
+        CREATE TABLE [#LoadedModuleInventory_warnings]
+        (
+            [WarningCode] varchar(64) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,
+            [SourceKey] varchar(64) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,
+            [Detail] nvarchar(1000) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        );
+        CREATE TABLE [#LoadedModuleInventory_Map]
+        (
+            [ResultName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,
+            [TargetTable] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        );
+        CREATE TABLE [#LoadedModuleInventory_Console]
+        (
+            [Bereich] nvarchar(64) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,
+            [Objekt] nvarchar(512) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,
+            [Detail] nvarchar(1000) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        );
+
+        IF @Mode='TABLE'
+        BEGIN
+            EXEC [monitor].[InternalPrepareResultTables]
+                @ResultTablesJson=@ResultTablesJson,
+                @AllowedResultNames=N'moduleStatus|loadedModules|sourceStatus|warnings',
+                @MappingTable=N'#LoadedModuleInventory_Map',
+                @StatusCode=@TableStatus OUTPUT,
+                @ErrorMessage=@TableMessage OUTPUT,
+                @ThrowOnError=0;
+            IF COALESCE(@TableStatus,'')<>'AVAILABLE'
+            BEGIN
+                SET @TechnicalError=51011;
+                RAISERROR(N'Ungueltiges TABLE-Ziel fuer LoadedModuleInventory.',16,1);
+            END;
+        END;
+
+        BEGIN TRY
+            INSERT [#LoadedModuleInventory_Raw]
+                ([ModuleName],[ModuleBasename],[FileVersion],[ProductVersion],[Debug],[Patched],
+                 [Prerelease],[PrivateBuild],[SpecialBuild],[Language])
+            SELECT [m].[name],CASE WHEN [b].[BaseName] IS NULL
+                          OR NULLIF(LTRIM(RTRIM([b].[BaseName])),N'') IS NULL
+                          OR CHARINDEX(N':',[b].[BaseName])>0
+                        THEN NULL ELSE [b].[BaseName] END,
+                   [m].[file_version],[m].[product_version],[m].[debug],[m].[patched],
+                   [m].[prerelease],[m].[private_build],[m].[special_build],
+                   [m].[language]
+            FROM [sys].[dm_os_loaded_modules] AS [m] WITH (NOLOCK)
+            CROSS APPLY
+            (
+                SELECT RIGHT([m].[name],
+                    CHARINDEX(N'\',REVERSE(REPLACE([m].[name],N'/',N'\'))+N'\')-1)
+                    AS [BaseName]
+            ) AS [b];
+            SET @Observed=@@ROWCOUNT;
+            SET @SourceState='SUCCEEDED';
+            SET @SourceStatus=CASE WHEN @Observed=0 THEN 'EMPTY_UNPROVEN' ELSE 'AVAILABLE_LIMITED' END;
+        END TRY
+        BEGIN CATCH
+            SET @SourceError=ERROR_NUMBER();
+            SET @Message=LEFT(ERROR_MESSAGE(),2048);
+            SET @SourceState='FAILED';
+            SET @SourceStatus=CASE WHEN @SourceError IN(229,262,297,300,371,916) THEN 'DENIED_PERMISSION'
+                                   WHEN @SourceError IN(207,208) THEN 'UNAVAILABLE_OBJECT'
+                                   ELSE 'ERROR_HANDLED' END;
+            SET @Observed=NULL;
+        END CATCH;
+
+        IF @SourceState='SUCCEEDED'
+        BEGIN
+            INSERT [#LoadedModuleInventory_Matched]
+                ([ModuleName],[ModuleBasename],[FileVersion],[ProductVersion],[Debug],[Patched],
+                 [Prerelease],[PrivateBuild],[SpecialBuild],[Language])
+            SELECT [ModuleName],[ModuleBasename],[FileVersion],[ProductVersion],[Debug],[Patched],
+                   [Prerelease],[PrivateBuild],[SpecialBuild],[Language]
+            FROM [#LoadedModuleInventory_Raw]
+            WHERE @NurBuildFlags=0 OR [Debug]=1 OR [Patched]=1 OR [Prerelease]=1
+                  OR [PrivateBuild]=1 OR [SpecialBuild]=1;
+            SET @Matched=@@ROWCOUNT;
+            INSERT [#LoadedModuleInventory_loadedModules]
+                ([ModuleName],[ModuleBasename],[FileVersion],[ProductVersion],[Debug],[Patched],
+                 [Prerelease],[PrivateBuild],[SpecialBuild],[Language])
+            SELECT TOP(@Limit) [ModuleName],[ModuleBasename],[FileVersion],[ProductVersion],[Debug],
+                   [Patched],[Prerelease],[PrivateBuild],[SpecialBuild],[Language]
+            FROM [#LoadedModuleInventory_Matched]
+            ORDER BY [ModuleName] COLLATE Latin1_General_100_BIN2,
+                     [ModuleBasename] COLLATE Latin1_General_100_BIN2,
+                     [FileVersion] COLLATE Latin1_General_100_BIN2,
+                     [ProductVersion] COLLATE Latin1_General_100_BIN2,
+                     [Debug],[Patched],[Prerelease],[PrivateBuild],[SpecialBuild],[Language];
+            SET @Returned=@@ROWCOUNT;
+            SET @Status=@SourceStatus;
+        END
+        ELSE
+        BEGIN
+            SET @Status=@SourceStatus;
+            SET @Error=@SourceError;
+        END;
+
+        INSERT [#LoadedModuleInventory_sourceStatus]
+            ([SourceKey],[SourceKind],[CapturedAtUtc],[NativeReadState],[StatusCode],
+             [ObservedRows],[MatchedRows],[ReturnedRows],[IsLimited],[ErrorNumber],[ErrorMessage])
+        VALUES('SYS_DM_OS_LOADED_MODULES','DMV',@CapturedAtUtc,@SourceState,@SourceStatus,
+               @Observed,@Matched,@Returned,
+               CASE WHEN @Matched IS NOT NULL AND @Returned<@Matched THEN 1 ELSE 0 END,
+               @SourceError,@Message);
+        INSERT [#LoadedModuleInventory_warnings]
+        VALUES('SQL_PROCESS_ONLY','SYS_DM_OS_LOADED_MODULES',
+               N'Nur Module im SQL-Server-Adressraum zum Aufnahmezeitpunkt; keine Host- oder Filtertreiberinventur.');
+        INSERT [#LoadedModuleInventory_warnings]
+        VALUES('NATIVE_NAME_IN_RUNTIME','SYS_DM_OS_LOADED_MODULES',
+               N'ModuleName ist der native DMV-Name und kann einen vollstaendigen Pfad enthalten; Export vor Speicherung pruefen.');
+        IF @SourceState='SUCCEEDED' AND EXISTS
+            (SELECT 1 FROM [#LoadedModuleInventory_Raw] WHERE [ModuleBasename] IS NULL)
+            INSERT [#LoadedModuleInventory_warnings]
+            VALUES('BASENAME_UNAVAILABLE','SYS_DM_OS_LOADED_MODULES',
+                   N'Mindestens ein nativer Name lieferte keinen eindeutigen pfadfreien Basenamen.');
+        IF @SourceState='SUCCEEDED' AND EXISTS
+            (SELECT 1 FROM [#LoadedModuleInventory_Raw]
+             WHERE [Debug] IS NULL OR [Patched] IS NULL OR [Prerelease] IS NULL
+                OR [PrivateBuild] IS NULL OR [SpecialBuild] IS NULL)
+            INSERT [#LoadedModuleInventory_warnings]
+            VALUES('BUILD_FLAG_UNKNOWN','SYS_DM_OS_LOADED_MODULES',
+                   N'Mindestens ein natives Build-Flag ist NULL; die Flag-Auswahl wertet nur explizite Einsen.');
+
+        INSERT [#LoadedModuleInventory_moduleStatus]
+        VALUES(N'USP_LoadedModuleInventory',@CapturedAtUtc,@Status,1,COALESCE(@Returned,0),
+               N'Begrenzte SQL-Prozess-Momentaufnahme; kein Host-, Filtertreiber-, Signatur- oder Gesundheitsurteil.');
+
+        IF @JsonErzeugen=1
+        BEGIN
+            DECLARE @Meta nvarchar(max)=
+                (SELECT N'LoadedModuleInventory' AS [resultName],1 AS [schemaVersion],
+                        @CapturedAtUtc AS [generatedAtUtc],@Status AS [statusCode],
+                        CAST(1 AS bit) AS [isPartial],@Error AS [errorNumber],
+                        @Message AS [errorMessage]
+                 FOR JSON PATH,WITHOUT_ARRAY_WRAPPER,INCLUDE_NULL_VALUES);
+            DECLARE @Json_moduleStatus nvarchar(max)=
+                (SELECT * FROM [#LoadedModuleInventory_moduleStatus] FOR JSON PATH,INCLUDE_NULL_VALUES);
+            DECLARE @Json_loadedModules nvarchar(max)=
+                (SELECT * FROM [#LoadedModuleInventory_loadedModules]
+                 ORDER BY [ModuleName] COLLATE Latin1_General_100_BIN2,
+                     [ModuleBasename] COLLATE Latin1_General_100_BIN2,
+                          [FileVersion] COLLATE Latin1_General_100_BIN2,
+                          [ProductVersion] COLLATE Latin1_General_100_BIN2,
+                          [Debug],[Patched],[Prerelease],[PrivateBuild],[SpecialBuild],[Language]
+                 FOR JSON PATH,INCLUDE_NULL_VALUES);
+            DECLARE @Json_sourceStatus nvarchar(max)=
+                (SELECT * FROM [#LoadedModuleInventory_sourceStatus] FOR JSON PATH,INCLUDE_NULL_VALUES);
+            DECLARE @Json_warnings nvarchar(max)=
+                (SELECT * FROM [#LoadedModuleInventory_warnings] ORDER BY [WarningCode]
+                 FOR JSON PATH,INCLUDE_NULL_VALUES);
+            SET @Json=CONCAT(N'{"meta":',@Meta,
+                N',"moduleStatus":',COALESCE(@Json_moduleStatus,N'[]'),
+                N',"loadedModules":',COALESCE(@Json_loadedModules,N'[]'),
+                N',"sourceStatus":',COALESCE(@Json_sourceStatus,N'[]'),
+                N',"warnings":',COALESCE(@Json_warnings,N'[]'),N'}');
+        END;
+
+        IF @Mode='RAW'
+        BEGIN
+            SELECT * FROM [#LoadedModuleInventory_moduleStatus];
+            SELECT * FROM [#LoadedModuleInventory_loadedModules]
+            ORDER BY [ModuleName] COLLATE Latin1_General_100_BIN2,
+                     [ModuleBasename] COLLATE Latin1_General_100_BIN2,
+                     [FileVersion] COLLATE Latin1_General_100_BIN2,
+                     [ProductVersion] COLLATE Latin1_General_100_BIN2,
+                     [Debug],[Patched],[Prerelease],[PrivateBuild],[SpecialBuild],[Language];
+            SELECT * FROM [#LoadedModuleInventory_sourceStatus];
+            SELECT * FROM [#LoadedModuleInventory_warnings] ORDER BY [WarningCode];
+        END
+        ELSE IF @Mode='TABLE'
+        BEGIN
+            WHILE @GroupOrdinal<=4
+            BEGIN
+                SET @ResultName=CASE @GroupOrdinal WHEN 1 THEN N'moduleStatus'
+                                    WHEN 2 THEN N'loadedModules'
+                                    WHEN 3 THEN N'sourceStatus' ELSE N'warnings' END;
+                SELECT @TargetTable=[TargetTable] FROM [#LoadedModuleInventory_Map]
+                WHERE [ResultName]=@ResultName;
+                IF @TargetTable IS NOT NULL
+                BEGIN
+                    SET @SourceTable=N'#LoadedModuleInventory_'+@ResultName;
+                    EXEC [monitor].[InternalWriteResultTable]
+                        @SourceTable=@SourceTable,@TargetTable=@TargetTable,
+                        @StatusCode=@TableStatus OUTPUT,@ErrorNumber=@TableError OUTPUT,
+                        @ErrorMessage=@TableMessage OUTPUT,@ThrowOnError=0;
+                    IF COALESCE(@TableStatus,'')<>'AVAILABLE'
+                    BEGIN
+                        SET @TechnicalError=COALESCE(@TableError,51010);
+                        RAISERROR(N'LoadedModuleInventory TABLE-Ausgabe fehlgeschlagen.',16,1);
+                    END;
+                END;
+                SET @TargetTable=NULL;
+                SET @GroupOrdinal+=1;
+            END;
+        END
+        ELSE IF @ConsoleResultRequested=1
+        BEGIN
+            INSERT [#LoadedModuleInventory_Console]
+            SELECT N'Geladenes Modul',[ModuleName],
+                   CONCAT(N'Basename=',COALESCE([ModuleBasename],N'NULL'),
+                          N'; Dateiversion=',COALESCE(CONVERT(nvarchar(23),[FileVersion]),N'NULL'),
+                          N'; Produktversion=',COALESCE(CONVERT(nvarchar(23),[ProductVersion]),N'NULL'),
+                          N'; Buildflags=',COALESCE(CONVERT(nvarchar(1),[Debug]),N'NULL'),N'/',
+                          COALESCE(CONVERT(nvarchar(1),[Patched]),N'NULL'),N'/',
+                          COALESCE(CONVERT(nvarchar(1),[Prerelease]),N'NULL'),N'/',
+                          COALESCE(CONVERT(nvarchar(1),[PrivateBuild]),N'NULL'),N'/',
+                          COALESCE(CONVERT(nvarchar(1),[SpecialBuild]),N'NULL'),
+                          N'; Sprache=',COALESCE(CONVERT(nvarchar(20),[Language]),N'NULL'))
+            FROM [#LoadedModuleInventory_loadedModules]
+            ORDER BY [ModuleName] COLLATE Latin1_General_100_BIN2,
+                     [ModuleBasename] COLLATE Latin1_General_100_BIN2,
+                     [FileVersion] COLLATE Latin1_General_100_BIN2,
+                     [ProductVersion] COLLATE Latin1_General_100_BIN2,
+                     [Debug],[Patched],[Prerelease],[PrivateBuild],[SpecialBuild],[Language];
+            INSERT [#LoadedModuleInventory_Console]
+            SELECT N'Quelle',N'sys.dm_os_loaded_modules',
+                   CONCAT([StatusCode],N'; beobachtet=',
+                          COALESCE(CONVERT(nvarchar(30),[ObservedRows]),N'NULL'),
+                          N'; nach Flag-Auswahl=',COALESCE(CONVERT(nvarchar(30),[MatchedRows]),N'NULL'),
+                          N'; ausgegeben=',COALESCE(CONVERT(nvarchar(30),[ReturnedRows]),N'NULL'))
+            FROM [#LoadedModuleInventory_sourceStatus];
+            INSERT [#LoadedModuleInventory_Console]
+            SELECT N'Aussagegrenze',[WarningCode],[Detail]
+            FROM [#LoadedModuleInventory_warnings];
+            EXEC [monitor].[InternalEmitConsoleResult]
+                @SourceTable=N'#LoadedModuleInventory_Console',
+                @ResultLabel=N'Geladene SQL-Prozessmodule',
+                @EmptyMessage=N'Keine projizierte Modulzeile; Quellenstatus und Filter pruefen.';
+        END;
+
+        SELECT @StatusCodeOut=@Status,@IsPartialOut=1,
+               @ErrorNumberOut=@Error,@ErrorMessageOut=@Message;
+        IF @PrintMeldungen=1 AND @Error IS NOT NULL
+            RAISERROR(N'%s',10,1,@Message) WITH NOWAIT;
+        EXEC [sys].[sp_executesql] @LockTimeoutSql;
+        IF @OriginalXactAbort=1 SET XACT_ABORT ON; ELSE SET XACT_ABORT OFF;
+        RETURN 0;
+    END TRY
+    BEGIN CATCH
+        SELECT @Error=COALESCE(@TechnicalError,ERROR_NUMBER()),
+               @Message=LEFT(CASE WHEN @TechnicalError IS NOT NULL THEN COALESCE(@TableMessage,ERROR_MESSAGE())
+                                   ELSE ERROR_MESSAGE() END,2048),
+               @Json=NULL;
+        SELECT @StatusCodeOut=CASE WHEN @TechnicalError=51011 THEN 'INVALID_PARAMETER' ELSE 'ERROR_HANDLED' END,
+               @IsPartialOut=1,
+               @ErrorNumberOut=@Error,@ErrorMessageOut=@Message;
+        EXEC [sys].[sp_executesql] @LockTimeoutSql;
+        IF @OriginalXactAbort=1 SET XACT_ABORT ON; ELSE SET XACT_ABORT OFF;
+        IF @PrintMeldungen=1 RAISERROR(N'%s',10,1,@Message) WITH NOWAIT;
+        RETURN @Error;
+    END CATCH;
+END;
+GO
+-- END SOURCE: Code/08_ServerHealth/330_USP_LoadedModuleInventory.sql
+
+-- BEGIN SOURCE: Code/08_ServerHealth/340_USP_DatabaseSnapshotInventory.sql
+/*
+===============================================================================
+Objekt       : monitor.USP_DatabaseSnapshotInventory
+Version      : 1.0.0
+Stand        : 2026-11-15
+Zweck        : Inventarisiert caller-sichtbare Datenbank-Snapshots und
+               ihre caller-sichtbaren Dateikatalogzeilen.
+Quellen      : master.sys.databases, master.sys.master_files.
+Grenzen      : Keine physische Belegung, Gesundheit, Restore-Eignung oder
+               globale Vollständigkeit. Keine persistente Datenbank- oder Snapshot-
+               Änderung; lokale Temp-DDL dient Aufbereitung und TABLE-Ausgabe.
+===============================================================================
+*/
+CREATE OR ALTER PROCEDURE [monitor].[USP_DatabaseSnapshotInventory]
+      @SnapshotNames nvarchar(max) = NULL
+    , @NurOnline bit = 1
+    , @SystemdatenbankenEinbeziehen bit = 0
+    , @MaxZeilen int = 1000
+    , @LockTimeoutMs int = 0
+    , @ResultSetArt varchar(16) = 'CONSOLE'
+    , @ResultTablesJson nvarchar(max) = NULL
+    , @JsonErzeugen bit = 0
+    , @Json nvarchar(max) = NULL OUTPUT
+    , @PrintMeldungen bit = 1
+    , @Hilfe bit = 0
+    , @StatusCodeOut varchar(40) = NULL OUTPUT
+    , @IsPartialOut bit = NULL OUTPUT
+    , @ErrorNumberOut int = NULL OUTPUT
+    , @ErrorMessageOut nvarchar(2048) = NULL OUTPUT
+AS
+BEGIN
+    SET NOCOUNT ON;
+    DECLARE @OriginalLockTimeout int=@@LOCK_TIMEOUT,
+            @PreviousXactAbort bit=CASE WHEN (@@OPTIONS & 16384)=16384 THEN 1 ELSE 0 END,
+            @Mode varchar(16)=UPPER(LTRIM(RTRIM(COALESCE(@ResultSetArt,'')))),
+            @CapturedAtUtc datetime2(3)=SYSUTCDATETIME(),
+            @Limit bigint=CASE WHEN @MaxZeilen IS NULL OR @MaxZeilen=0 THEN 9223372036854775807 ELSE CONVERT(bigint,@MaxZeilen) END,
+            @Status varchar(40)='SKIPPED',@Error int=NULL,@Message nvarchar(2048)=NULL,
+            @TableStatus varchar(40),@TableMessage nvarchar(2048),@TableError int,
+            @TableFailureError int=NULL,@TableFailureMessage nvarchar(2048)=NULL,
+            @Sql nvarchar(max),@Started datetime2(3),@Observed bigint,
+            @ResultName sysname,@TargetTable sysname,@SourceTable sysname,
+            @LockTimeoutSql nvarchar(80),
+            @ConsoleResultRequested bit=CASE WHEN UPPER(LTRIM(RTRIM(COALESCE(@ResultSetArt,''))))='CONSOLE' THEN 1 ELSE 0 END,
+            @NamesActive bit=CASE WHEN NULLIF(LTRIM(RTRIM(COALESCE(@SnapshotNames,N''))),N'') IS NULL THEN 0 ELSE 1 END;
+    SET @LockTimeoutSql=N'SET LOCK_TIMEOUT '+CONVERT(nvarchar(20),@OriginalLockTimeout)+N';';
+    SELECT @Json=NULL,@StatusCodeOut=NULL,@IsPartialOut=NULL,@ErrorNumberOut=NULL,@ErrorMessageOut=NULL;
+
+    IF @Hilfe=1
+    BEGIN
+        PRINT N'monitor.USP_DatabaseSnapshotInventory: caller-sichtbare Snapshot- und Dateikatalogmetadaten ohne persistente Datenbank- oder Snapshot-Aenderung; lokale Temp-DDL dient Aufbereitung und TABLE-Ausgabe.';
+        PRINT N'@SnapshotNames nvarchar(max)=NULL: NULL, leer oder nur äußere U+0020-Leerzeichen wählen alle sichtbaren Snapshots. Sonst bracket-aware Pipe-Liste einteiliger exakter Snapshotnamen; | in [...] ist Namensinhalt, ]] maskiert ]. Rohsegment höchstens 4000 UTF-16-Einheiten, Name höchstens 128 Zeichen; ungültige, leere oder case-sensitive doppelte Elemente sind INVALID_PARAMETER. Kein Patternparameter.';
+        PRINT N'@NurOnline bit=1: 1 wählt nur ONLINE-Snapshots, 0 alle caller-sichtbaren Katalogzustände; NULL ist INVALID_PARAMETER. Numerisch ungleich 0 wird als bit 1 konvertiert.';
+        PRINT N'@SystemdatenbankenEinbeziehen bit=0: 0 schließt Snapshots mit SourceDatabaseId bis 4 aus, 1 lässt zulässige Systemquellen zu. NULL ist INVALID_PARAMETER; numerisch ungleich 0 wird als bit 1 konvertiert.';
+        PRINT N'@MaxZeilen int=1000: positiv begrenzt Snapshot-Zeilen nach SnapshotDatabaseId; alle sichtbaren Dateizeilen jedes ausgegebenen Snapshots bleiben erhalten. NULL/0 unbegrenzt, negativ INVALID_PARAMETER. Die vorgelagerte Katalogarbeit wird nicht begrenzt.';
+        PRINT N'@LockTimeoutMs int=0: 0 bis 60000 Millisekunden je Katalogbatch, 0 bedeutet NOWAIT; NULL, negativ oder größer 60000 INVALID_PARAMETER. Kein Gesamtlaufzeitbudget; der vorherige Sessionwert wird wiederhergestellt.';
+        PRINT N'@ResultSetArt varchar(16)=CONSOLE: SQL Server bindet einen längeren Eingabewert vor Validierung auf höchstens 16 Zeichen. Nach Trim/Großschreibung nur CONSOLE, RAW, TABLE, NONE; NULL/leer INVALID_PARAMETER. RAW liefert moduleStatus, snapshots, snapshotFiles, sourceStatus, warnings; TABLE schreibt benannte Ziele; CONSOLE eine formatierte Menge; NONE keine Resultsets.';
+        PRINT N'@ResultTablesJson nvarchar(max)=NULL: nur TABLE nimmt ein JSON-Objekt mit mindestens einer Zuordnung an. Exakte Schlüssel: moduleStatus, snapshots, snapshotFiles, sourceStatus, warnings. Werte: unterschiedliche rohe lokale #Temp-Namen, höchstens 116 Zeichen, weder ## noch reserviertes #Monitor-Praefix. Ziele müssen vorhanden, leer und mit genau einer Seed-Spalte ausgestattet sein. Doppelte Schlüssel werden binär, doppelte Ziele case-insensitiv geprüft. Ungültige, doppelte oder unbekannte Zuordnungen werden vor der Quellenlesung abgewiesen; ein späterer Writerfehler kann schon geschriebene Ziele hinterlassen. Außerhalb TABLE nur NULL/leer/U+0020-Leerzeichen.';
+        PRINT N'@JsonErzeugen bit=0: 1 erzeugt unabhängig vom Ausgabemodus JSON mit meta und fünf Arrays; NULL/0 kein JSON. Numerisch ungleich 0 wird 1.';
+        PRINT N'@Json nvarchar(max)=NULL OUTPUT: optional mit OUTPUT binden; Eingang wird auf NULL gesetzt, ohne @JsonErzeugen=1 entsteht kein Wert.';
+        PRINT N'@PrintMeldungen bit=1: 1 meldet nur einen äußeren CATCH-Fehler zusätzlich als konstante Severity-10-Meldung WITH NOWAIT; NULL/0 unterdrückt diese Meldung, numerisch ungleich 0 wird 1. Hilfe, direkte Eingabefehler und behandelte Quellenfehler erzeugen dadurch keine zusätzliche Meldung.';
+        PRINT N'@Hilfe bit=0: 1 druckt Hilfe vor Temp-DDL/Katalogzugriff, auch in einer Caller-Transaktion; NULL/0 normaler Pfad.';
+        PRINT N'@StatusCodeOut varchar(40)=NULL OUTPUT: optional; AVAILABLE nur Hilfe, AVAILABLE_LIMITED sichtbare Aufnahme, SKIPPED keine sichtbare Auswahl, INVALID_PARAMETER Eingabe, SOURCE_UNAVAILABLE fehlende Dateisicht/Quellenfehler, DENIED_PERMISSION nativer Rechtefehler, TIMEOUT SQL 1222, ERROR_HANDLED äußerer Fehler.';
+        PRINT N'@IsPartialOut bit=NULL OUTPUT: optional; normaler Pfad 1 wegen Caller-Sicht, Hilfe 0.';
+        PRINT N'@ErrorNumberOut int=NULL OUTPUT: optional; nativer Fehler oder 51011 bei direktem Eingabefehler; sonst NULL.';
+        PRINT N'@ErrorMessageOut nvarchar(2048)=NULL OUTPUT: optional; Fehlertext höchstens 2048 Zeichen, bei Erfolg NULL.';
+        PRINT N'Es werden weder physische Sparse-Dateibelegung noch Snapshot-Gesundheit oder Restore-Eignung gemessen. create_date ist ein nativer lokaler Katalogwert und kann sich bei Umbenennung ändern; size ist nur maximale Snapshot-Dateikapazität in 8-KiB-Seiten. Die zwei Kataloglesungen sind nicht atomar.';
+        PRINT N'EXEC [monitor].[USP_DatabaseSnapshotInventory] @SnapshotNames=N''[ExampleSnapshot]'',@ResultSetArt=''RAW'';';
+        SELECT @StatusCodeOut='AVAILABLE',@IsPartialOut=0;
+        RETURN;
+    END;
+
+    IF @@TRANCOUNT<>0 OR (@@OPTIONS & 2)<>0
+    BEGIN
+        SELECT @StatusCodeOut='INVALID_PARAMETER',@IsPartialOut=1,@ErrorNumberOut=51011,
+               @ErrorMessageOut=N'Normale Ausführung verlangt keine aktive Caller-Transaktion und IMPLICIT_TRANSACTIONS OFF.';
+        RETURN 51011;
+    END;
+    IF @Mode NOT IN ('RAW','TABLE','CONSOLE','NONE')
+       OR @NurOnline IS NULL OR @SystemdatenbankenEinbeziehen IS NULL
+       OR @MaxZeilen<0 OR @LockTimeoutMs IS NULL OR @LockTimeoutMs<0 OR @LockTimeoutMs>60000
+       OR (@Mode<>'TABLE' AND NULLIF(LTRIM(RTRIM(COALESCE(@ResultTablesJson,N''))),N'') IS NOT NULL)
+    BEGIN
+        SELECT @StatusCodeOut='INVALID_PARAMETER',@IsPartialOut=1,@ErrorNumberOut=51011,
+               @ErrorMessageOut=N'Ungueltiger Snapshotfilter, Ausgabemodus, Limit, Lock-Timeout oder TABLE-Parameter.';
+        RETURN 51011;
+    END;
+
+    BEGIN TRY
+        SET XACT_ABORT OFF;
+        CREATE TABLE #DatabaseSnapshotInventory_Requested (NameValue sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL PRIMARY KEY);
+        CREATE TABLE #DatabaseSnapshotInventory_Candidates
+        (
+            SnapshotDatabaseId int NOT NULL PRIMARY KEY,
+            SnapshotName sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,
+            SourceDatabaseId int NOT NULL,
+            SourceDatabaseName sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL,
+            CatalogCreateDate datetime NOT NULL,
+            SnapshotStateDesc nvarchar(60) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,
+            IsReadOnly bit NULL
+        );
+        CREATE TABLE #DatabaseSnapshotInventory_moduleStatus
+        (
+            ModuleName sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,
+            CapturedAtUtc datetime2(3) NOT NULL,
+            StatusCode varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,
+            IsPartial bit NOT NULL, [RowCount] bigint NOT NULL,
+            Detail nvarchar(1000) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        );
+        CREATE TABLE #DatabaseSnapshotInventory_snapshots
+        (
+            SnapshotDatabaseId int NOT NULL, SnapshotName sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,
+            SourceDatabaseId int NOT NULL, SourceDatabaseName sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL,
+            CatalogCreateDate datetime NOT NULL, SnapshotStateDesc nvarchar(60) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,
+            IsReadOnly bit NULL, VisibleSparseFileCount bigint NULL,
+            FileMetadataStatus varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,
+            MetadataVisibility varchar(32) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        );
+        CREATE TABLE #DatabaseSnapshotInventory_snapshotFiles
+        (
+            SnapshotDatabaseId int NOT NULL, SnapshotName sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,
+            FileId int NOT NULL, LogicalFileName sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,
+            PhysicalName nvarchar(260) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,
+            IsSparse bit NOT NULL, FileStateDesc nvarchar(60) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,
+            MaximumSnapshotSizePages int NOT NULL, MaximumSnapshotSizeBytes bigint NOT NULL,
+            MetadataVisibility varchar(32) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        );
+        CREATE TABLE #DatabaseSnapshotInventory_sourceStatus
+        (
+            DatabaseId int NULL, DatabaseName sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL,
+            SourceKey varchar(64) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,
+            SourceKind varchar(16) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,
+            StartedAtUtc datetime2(3) NOT NULL, CompletedAtUtc datetime2(3) NOT NULL,
+            StatusCode varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,
+            VisibilityScope varchar(32) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,
+            ObservedRows bigint NULL, ReturnedRows bigint NULL, IsLimited bit NOT NULL,
+            ErrorNumber int NULL, ErrorMessage nvarchar(2048) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        );
+        CREATE TABLE #DatabaseSnapshotInventory_warnings
+        (
+            DatabaseId int NULL, DatabaseName sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL,
+            WarningCode varchar(64) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,
+            SourceKey varchar(64) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,
+            Detail nvarchar(1000) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        );
+        CREATE TABLE #DatabaseSnapshotInventory_Map
+        (ResultName sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,
+         TargetTable sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL);
+        CREATE TABLE #DatabaseSnapshotInventory_Console
+        (Bereich nvarchar(64) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,
+         Objekt nvarchar(260) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,
+         Detail nvarchar(1000) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL);
+
+        IF @NamesActive=1
+        BEGIN
+            IF EXISTS
+            (
+                SELECT 1 FROM [monitor].[TVF_ParseSqlNameList](@SnapshotNames)
+                WHERE IsValid<>1 OR NameValue IS NULL
+            )
+               OR EXISTS
+            (
+                SELECT NameValue COLLATE SQL_Latin1_General_CP1_CS_AS
+                FROM [monitor].[TVF_ParseSqlNameList](@SnapshotNames)
+                WHERE IsValid=1
+                GROUP BY NameValue COLLATE SQL_Latin1_General_CP1_CS_AS HAVING COUNT_BIG(*)>1
+            )
+            BEGIN
+                SELECT @StatusCodeOut='INVALID_PARAMETER',@IsPartialOut=1,@ErrorNumberOut=51011,
+                       @ErrorMessageOut=N'@SnapshotNames enthaelt ungueltige oder doppelte Namen.';
+                EXEC [sys].[sp_executesql] @LockTimeoutSql;
+                IF @PreviousXactAbort=1 SET XACT_ABORT ON; ELSE SET XACT_ABORT OFF;
+                RETURN 51011;
+            END;
+            INSERT #DatabaseSnapshotInventory_Requested(NameValue)
+            SELECT NameValue FROM [monitor].[TVF_ParseSqlNameList](@SnapshotNames) WHERE IsValid=1;
+        END;
+        IF @Mode='TABLE'
+        BEGIN
+            EXEC [monitor].[InternalPrepareResultTables]
+                @ResultTablesJson=@ResultTablesJson,
+                @AllowedResultNames=N'moduleStatus|snapshots|snapshotFiles|sourceStatus|warnings',
+                @MappingTable=N'#DatabaseSnapshotInventory_Map',
+                @StatusCode=@TableStatus OUTPUT,@ErrorMessage=@TableMessage OUTPUT,@ThrowOnError=0;
+            IF COALESCE(@TableStatus,'')<>'AVAILABLE'
+            BEGIN
+                SELECT @StatusCodeOut='INVALID_PARAMETER',@IsPartialOut=1,
+                       @ErrorNumberOut=51011,
+                       @ErrorMessageOut=COALESCE(@TableMessage,N'Ungueltige TABLE-Zuordnung oder Zieltabelle.');
+                EXEC [sys].[sp_executesql] @LockTimeoutSql;
+                IF @PreviousXactAbort=1 SET XACT_ABORT ON; ELSE SET XACT_ABORT OFF;
+                RETURN 51011;
+            END;
+        END;
+
+        SET @Started=SYSUTCDATETIME();
+        SET @Sql=N'SET LOCK_TIMEOUT '+CONVERT(nvarchar(20),@LockTimeoutMs)+N';
+            INSERT #DatabaseSnapshotInventory_Candidates
+            SELECT d.database_id,d.name,d.source_database_id,src.name,d.create_date,d.state_desc,d.is_read_only
+            FROM master.sys.databases AS d WITH (NOLOCK)
+            LEFT JOIN master.sys.databases AS src WITH (NOLOCK) ON src.database_id=d.source_database_id
+            WHERE d.source_database_id IS NOT NULL
+              AND (@Online=0 OR d.state=0)
+              AND (@System=1 OR d.source_database_id>4)
+              AND (@Filter=0 OR EXISTS
+                  (SELECT 1 FROM #DatabaseSnapshotInventory_Requested AS r WHERE r.NameValue=d.name COLLATE SQL_Latin1_General_CP1_CS_AS));';
+        BEGIN TRY
+            EXEC [sys].[sp_executesql] @Sql,N'@Online bit,@System bit,@Filter bit',
+                 @Online=@NurOnline,@System=@SystemdatenbankenEinbeziehen,@Filter=@NamesActive;
+        END TRY
+        BEGIN CATCH
+            SELECT @Error=ERROR_NUMBER(),@Message=LEFT(ERROR_MESSAGE(),2048),
+                   @Status=CASE WHEN ERROR_NUMBER()=1222 THEN 'TIMEOUT'
+                                WHEN ERROR_NUMBER() IN(229,297,300,371) THEN 'DENIED_PERMISSION'
+                                ELSE 'SOURCE_UNAVAILABLE' END;
+            INSERT #DatabaseSnapshotInventory_sourceStatus
+            VALUES(NULL,NULL,'SNAPSHOT_CATALOG','CATALOG',@Started,SYSUTCDATETIME(),
+                   @Status,'UNPROVEN',NULL,NULL,0,@Error,@Message);
+        END CATCH;
+        IF @Error IS NULL
+        BEGIN
+        SET @Observed=(SELECT COUNT_BIG(*) FROM #DatabaseSnapshotInventory_Candidates);
+        INSERT #DatabaseSnapshotInventory_sourceStatus
+        VALUES(NULL,NULL,'SNAPSHOT_CATALOG','CATALOG',@Started,SYSUTCDATETIME(),
+               CASE WHEN @Observed=0 THEN 'SKIPPED' ELSE 'AVAILABLE_LIMITED' END,
+               'CALLER_VISIBLE',@Observed,@Observed,0,NULL,NULL);
+        INSERT #DatabaseSnapshotInventory_snapshots
+        SELECT SnapshotDatabaseId,SnapshotName,SourceDatabaseId,SourceDatabaseName,CatalogCreateDate,
+               SnapshotStateDesc,IsReadOnly,NULL,'SOURCE_UNAVAILABLE','VISIBLE_ONLY'
+        FROM #DatabaseSnapshotInventory_Candidates;
+
+        SET @Started=SYSUTCDATETIME();
+        SET @Sql=N'SET LOCK_TIMEOUT '+CONVERT(nvarchar(20),@LockTimeoutMs)+N';
+            INSERT #DatabaseSnapshotInventory_snapshotFiles
+            SELECT c.SnapshotDatabaseId,c.SnapshotName,f.file_id,f.name,f.physical_name,
+                   f.is_sparse,f.state_desc,f.size,CONVERT(bigint,f.size)*CONVERT(bigint,8192),
+                   ''VISIBLE_ONLY''
+            FROM #DatabaseSnapshotInventory_Candidates AS c
+            INNER JOIN master.sys.master_files AS f WITH (NOLOCK)
+              ON f.database_id=c.SnapshotDatabaseId
+            WHERE f.is_sparse=1;';
+        BEGIN TRY
+            EXEC [sys].[sp_executesql] @Sql;
+        END TRY
+        BEGIN CATCH
+            SELECT @Error=ERROR_NUMBER(),@Message=LEFT(ERROR_MESSAGE(),2048),
+                   @Status=CASE WHEN ERROR_NUMBER()=1222 THEN 'TIMEOUT'
+                                WHEN ERROR_NUMBER() IN(229,297,300,371) THEN 'DENIED_PERMISSION'
+                                ELSE 'SOURCE_UNAVAILABLE' END;
+            DELETE FROM #DatabaseSnapshotInventory_snapshotFiles;
+        END CATCH;
+        UPDATE s SET VisibleSparseFileCount=f.FileCount,
+                     FileMetadataStatus=CASE WHEN f.FileCount>0 THEN 'AVAILABLE_LIMITED' ELSE 'SOURCE_UNAVAILABLE' END
+        FROM #DatabaseSnapshotInventory_snapshots AS s
+        CROSS APPLY
+        (SELECT COUNT_BIG(*) AS FileCount FROM #DatabaseSnapshotInventory_snapshotFiles AS f
+         WHERE f.SnapshotDatabaseId=s.SnapshotDatabaseId) AS f;
+        UPDATE #DatabaseSnapshotInventory_snapshots SET VisibleSparseFileCount=NULL
+        WHERE FileMetadataStatus='SOURCE_UNAVAILABLE';
+        INSERT #DatabaseSnapshotInventory_sourceStatus
+        SELECT s.SnapshotDatabaseId,s.SnapshotName,'SNAPSHOT_FILES','CATALOG',@Started,SYSUTCDATETIME(),
+               CASE WHEN @Error IS NOT NULL THEN @Status ELSE s.FileMetadataStatus END,
+               CASE WHEN @Error IS NOT NULL THEN 'UNPROVEN' ELSE 'VISIBLE_ONLY' END,
+               s.VisibleSparseFileCount,s.VisibleSparseFileCount,0,
+               @Error,
+               CASE WHEN @Error IS NOT NULL THEN @Message
+                    WHEN s.FileMetadataStatus='SOURCE_UNAVAILABLE'
+                    THEN N'Keine sichtbare Sparse-Dateizeile; fehlende Berechtigung, Katalogwechsel oder leere Quelle nicht unterscheidbar.'
+                    ELSE NULL END
+        FROM #DatabaseSnapshotInventory_snapshots AS s;
+        INSERT #DatabaseSnapshotInventory_warnings
+        SELECT SnapshotDatabaseId,SnapshotName,'FILE_METADATA_UNPROVEN','SNAPSHOT_FILES',
+               N'Keine sichtbare Sparse-Dateizeile; die Dateimenge ist unbekannt und kein Nullbestand.'
+        FROM #DatabaseSnapshotInventory_snapshots WHERE FileMetadataStatus='SOURCE_UNAVAILABLE';
+
+        IF @NamesActive=1
+            INSERT #DatabaseSnapshotInventory_warnings
+            SELECT NULL,r.NameValue,'SNAPSHOT_UNAVAILABLE','SNAPSHOT_CATALOG',
+                   N'Der angeforderte Snapshot ist im ausgewählten Caller-Scope nicht sichtbar.'
+            FROM #DatabaseSnapshotInventory_Requested AS r
+            WHERE NOT EXISTS
+            (SELECT 1 FROM #DatabaseSnapshotInventory_Candidates AS c WHERE c.SnapshotName=r.NameValue);
+        ;WITH Bounded AS
+        (SELECT SnapshotDatabaseId,ROW_NUMBER() OVER(ORDER BY SnapshotDatabaseId) AS rn
+         FROM #DatabaseSnapshotInventory_snapshots)
+        DELETE s FROM #DatabaseSnapshotInventory_snapshots AS s
+        INNER JOIN Bounded AS b ON b.SnapshotDatabaseId=s.SnapshotDatabaseId
+        WHERE b.rn>@Limit;
+        DELETE f FROM #DatabaseSnapshotInventory_snapshotFiles AS f
+        WHERE NOT EXISTS
+        (SELECT 1 FROM #DatabaseSnapshotInventory_snapshots AS s
+         WHERE s.SnapshotDatabaseId=f.SnapshotDatabaseId);
+        UPDATE st SET ReturnedRows=CASE WHEN st.SourceKey='SNAPSHOT_CATALOG'
+             THEN (SELECT COUNT_BIG(*) FROM #DatabaseSnapshotInventory_snapshots)
+             ELSE CASE WHEN st.ObservedRows IS NULL THEN NULL
+                       WHEN s.SnapshotDatabaseId IS NULL THEN 0
+                       ELSE (SELECT COUNT_BIG(*) FROM #DatabaseSnapshotInventory_snapshotFiles AS f
+                             WHERE f.SnapshotDatabaseId=st.DatabaseId) END END,
+               IsLimited=CASE WHEN st.SourceKey='SNAPSHOT_CATALOG'
+                    AND @Observed>(SELECT COUNT_BIG(*) FROM #DatabaseSnapshotInventory_snapshots)
+                    THEN 1 WHEN st.SourceKey='SNAPSHOT_FILES' AND s.SnapshotDatabaseId IS NULL THEN 1 ELSE 0 END
+        FROM #DatabaseSnapshotInventory_sourceStatus AS st
+        LEFT JOIN #DatabaseSnapshotInventory_snapshots AS s ON s.SnapshotDatabaseId=st.DatabaseId;
+        IF EXISTS(SELECT 1 FROM #DatabaseSnapshotInventory_sourceStatus WHERE IsLimited=1)
+            INSERT #DatabaseSnapshotInventory_warnings
+            VALUES(NULL,NULL,'OUTPUT_LIMIT','SNAPSHOT_CATALOG',
+                   N'@MaxZeilen begrenzt nur ausgegebene Snapshots; die Katalogarbeit lief zuvor vollständig.');
+        INSERT #DatabaseSnapshotInventory_warnings
+        VALUES(NULL,NULL,'CATALOG_CAPTURE_NOT_ATOMIC','SNAPSHOT_CATALOG',
+               N'Snapshot- und Dateikatalog wurden nacheinander gelesen; Metadaten koennen sich dazwischen aendern.');
+        INSERT #DatabaseSnapshotInventory_warnings
+        VALUES(NULL,NULL,'METADATA_COMPLETENESS_UNPROVEN','SNAPSHOT_CATALOG',
+               N'Nur caller-sichtbare Katalogzeilen; Dateisicht, Quellname und globale Vollstaendigkeit sind nicht zugesichert.');
+        IF @Error IS NULL
+            SET @Status=CASE WHEN @Observed=0 THEN 'SKIPPED' ELSE 'AVAILABLE_LIMITED' END;
+        IF @Error IS NULL AND EXISTS
+           (SELECT 1 FROM #DatabaseSnapshotInventory_snapshots WHERE FileMetadataStatus='SOURCE_UNAVAILABLE')
+            SET @Status='SOURCE_UNAVAILABLE';
+        END;
+        INSERT #DatabaseSnapshotInventory_moduleStatus
+        VALUES(N'USP_DatabaseSnapshotInventory',@CapturedAtUtc,@Status,1,
+               (SELECT COUNT_BIG(*) FROM #DatabaseSnapshotInventory_snapshots),
+               N'Caller-sichtbare Snapshot- und Sparse-Dateikatalogmetadaten; keine physische Belegung oder globale Vollstaendigkeit.');
+
+        IF @JsonErzeugen=1
+        BEGIN
+            DECLARE @Meta nvarchar(max)=(SELECT N'DatabaseSnapshotInventory' AS resultName,1 AS schemaVersion,
+                @CapturedAtUtc AS generatedAtUtc,@Status AS statusCode,CONVERT(bit,1) AS isPartial,
+                @Error AS errorNumber,@Message AS errorMessage
+                FOR JSON PATH,WITHOUT_ARRAY_WRAPPER,INCLUDE_NULL_VALUES);
+            DECLARE @J1 nvarchar(max)=(SELECT * FROM #DatabaseSnapshotInventory_moduleStatus FOR JSON PATH,INCLUDE_NULL_VALUES),
+                    @J2 nvarchar(max)=(SELECT * FROM #DatabaseSnapshotInventory_snapshots ORDER BY SnapshotDatabaseId FOR JSON PATH,INCLUDE_NULL_VALUES),
+                    @J3 nvarchar(max)=(SELECT * FROM #DatabaseSnapshotInventory_snapshotFiles ORDER BY SnapshotDatabaseId,FileId FOR JSON PATH,INCLUDE_NULL_VALUES),
+                    @J4 nvarchar(max)=(SELECT * FROM #DatabaseSnapshotInventory_sourceStatus ORDER BY SourceKey,DatabaseId FOR JSON PATH,INCLUDE_NULL_VALUES),
+                    @J5 nvarchar(max)=(SELECT * FROM #DatabaseSnapshotInventory_warnings ORDER BY WarningCode,DatabaseId FOR JSON PATH,INCLUDE_NULL_VALUES);
+            SET @Json=CONCAT(N'{"meta":',@Meta,N',"moduleStatus":',COALESCE(@J1,N'[]'),
+                N',"snapshots":',COALESCE(@J2,N'[]'),N',"snapshotFiles":',COALESCE(@J3,N'[]'),
+                N',"sourceStatus":',COALESCE(@J4,N'[]'),N',"warnings":',COALESCE(@J5,N'[]'),N'}');
+        END;
+        IF @Mode='RAW'
+        BEGIN
+            SELECT * FROM #DatabaseSnapshotInventory_moduleStatus;
+            SELECT * FROM #DatabaseSnapshotInventory_snapshots ORDER BY SnapshotDatabaseId;
+            SELECT * FROM #DatabaseSnapshotInventory_snapshotFiles ORDER BY SnapshotDatabaseId,FileId;
+            SELECT * FROM #DatabaseSnapshotInventory_sourceStatus ORDER BY SourceKey,DatabaseId;
+            SELECT * FROM #DatabaseSnapshotInventory_warnings ORDER BY WarningCode,DatabaseId;
+        END
+        ELSE IF @Mode='TABLE'
+        BEGIN
+            DECLARE ResultTargets CURSOR LOCAL FAST_FORWARD FOR
+                SELECT ResultName,TargetTable FROM #DatabaseSnapshotInventory_Map ORDER BY ResultName;
+            OPEN ResultTargets;
+            FETCH NEXT FROM ResultTargets INTO @ResultName,@TargetTable;
+            WHILE @@FETCH_STATUS=0
+            BEGIN
+                SET @SourceTable=N'#DatabaseSnapshotInventory_'+@ResultName;
+                EXEC [monitor].[InternalWriteResultTable]
+                    @SourceTable=@SourceTable,@TargetTable=@TargetTable,
+                    @StatusCode=@TableStatus OUTPUT,@ErrorNumber=@TableError OUTPUT,
+                    @ErrorMessage=@TableMessage OUTPUT,@ThrowOnError=0;
+                IF COALESCE(@TableStatus,'')<>'AVAILABLE'
+                BEGIN
+                    SELECT @TableFailureError=COALESCE(@TableError,51010),
+                           @TableFailureMessage=COALESCE(@TableMessage,N'TABLE result writing failed.');
+                    RAISERROR(N'%s',16,1,@TableFailureMessage);
+                END;
+                FETCH NEXT FROM ResultTargets INTO @ResultName,@TargetTable;
+            END;
+            CLOSE ResultTargets; DEALLOCATE ResultTargets;
+        END
+        ELSE IF @ConsoleResultRequested=1
+        BEGIN
+            INSERT #DatabaseSnapshotInventory_Console
+            SELECT N'Snapshot',SnapshotName,
+                   CONCAT(N'SourceId=',SourceDatabaseId,N'; SourceName=',COALESCE(SourceDatabaseName,N'NULL'),
+                          N'; Zustand=',SnapshotStateDesc,N'; Sparse-Dateien=',
+                          COALESCE(CONVERT(nvarchar(30),VisibleSparseFileCount),N'NULL'))
+            FROM #DatabaseSnapshotInventory_snapshots;
+            INSERT #DatabaseSnapshotInventory_Console
+            SELECT N'Datei',PhysicalName,
+                   CONCAT(N'SnapshotId=',SnapshotDatabaseId,N'; FileId=',FileId,
+                          N'; max. Seiten=',MaximumSnapshotSizePages)
+            FROM #DatabaseSnapshotInventory_snapshotFiles;
+            INSERT #DatabaseSnapshotInventory_Console
+            SELECT N'Quelle',SourceKey,
+                   CONCAT(StatusCode,N'; beobachtet=',COALESCE(CONVERT(nvarchar(30),ObservedRows),N'NULL'))
+            FROM #DatabaseSnapshotInventory_sourceStatus;
+            INSERT #DatabaseSnapshotInventory_Console
+            SELECT N'Aussagegrenze',WarningCode,Detail FROM #DatabaseSnapshotInventory_warnings;
+            EXEC [monitor].[InternalEmitConsoleResult]
+                @SourceTable=N'#DatabaseSnapshotInventory_Console',
+                @ResultLabel=N'Sichtbare Datenbank-Snapshots',
+                @EmptyMessage=N'Keine sichtbaren Snapshot-Zeilen; Quellenstatus und Auswahl pruefen.';
+        END;
+        SELECT @StatusCodeOut=@Status,@IsPartialOut=1,@ErrorNumberOut=@Error,@ErrorMessageOut=@Message;
+        EXEC [sys].[sp_executesql] @LockTimeoutSql;
+        IF @PreviousXactAbort=1 SET XACT_ABORT ON; ELSE SET XACT_ABORT OFF;
+    END TRY
+    BEGIN CATCH
+        SELECT @Error=COALESCE(@TableFailureError,ERROR_NUMBER()),
+               @Message=COALESCE(@TableFailureMessage,LEFT(ERROR_MESSAGE(),2048)),@Json=NULL,
+               @StatusCodeOut='ERROR_HANDLED',@IsPartialOut=1;
+        SELECT @ErrorNumberOut=@Error,@ErrorMessageOut=@Message;
+        EXEC [sys].[sp_executesql] @LockTimeoutSql;
+        IF @PreviousXactAbort=1 SET XACT_ABORT ON; ELSE SET XACT_ABORT OFF;
+        IF @PrintMeldungen=1 RAISERROR(N'USP_DatabaseSnapshotInventory: Fehler; siehe OUTPUT-Status.',10,1) WITH NOWAIT;
+        RETURN @Error;
+    END CATCH;
+END;
+GO
+-- END SOURCE: Code/08_ServerHealth/340_USP_DatabaseSnapshotInventory.sql

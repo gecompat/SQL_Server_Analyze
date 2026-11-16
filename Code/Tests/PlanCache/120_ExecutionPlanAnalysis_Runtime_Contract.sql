@@ -59,6 +59,8 @@ EXEC [monitor].[USP_ExecutionPlanAnalysis]
 
 IF @Status NOT IN ('AVAILABLE','PARTIAL') OR ISJSON(@AnalysisJson)<>1
     THROW 53600,N'Die eigenständige Plananalyse lieferte keinen gültigen Vertrag.',1;
+IF (SELECT COUNT(*) FROM OPENJSON(@AnalysisJson,N'$.operatorThreadRuntime'))=0
+    THROW 53646,N'@MitThreadRuntime=1 hat keine synthetischen Threadzeilen ausgegeben.',1;
 IF TRY_CONVERT(int,JSON_VALUE(@AnalysisJson,N'$.meta.schemaVersion'))<>3
    OR JSON_VALUE(@AnalysisJson,N'$.meta.resultName')<>N'ExecutionPlanAnalysis'
    OR JSON_VALUE(@AnalysisJson,N'$.meta.evidencePrivacyMode')<>N'DERIVED_ONLY'
@@ -582,4 +584,985 @@ IF @Diag003Status<>'UNAVAILABLE_OBJECT'
    OR JSON_VALUE(@Diag003Json,N'$.parameters[0].ValueStatus')<>N'REQUEST_FINISHED'
    OR TRY_CONVERT(int,JSON_VALUE(@Diag003Json,N'$.parameters[0].SessionId'))<>@MissingSessionId
     THROW 53645,N'Ein beendeter Request wurde nicht als REQUEST_FINISHED ausgewiesen.',1;
+GO
+
+/* NULL-Eingaben an internen Grenzen werden vor Resultat-Temp-Tabellen abgelehnt. */
+DECLARE @GuardPlan xml=N'
+<ShowPlanXML xmlns="http://schemas.microsoft.com/sqlserver/2004/07/showplan" Version="1.600" Build="17.0.1000.1">
+  <BatchSequence><Batch><Statements>
+    <StmtSimple StatementId="1" StatementCompId="1" StatementType="SELECT" StatementText="SELECT ExampleColumn FROM ExampleSchema.ExampleObject" StatementSubTreeCost="1.0" StatementEstRows="10" StatementOptmLevel="FULL" QueryHash="0x0101010101010101" QueryPlanHash="0x1111111111111111">
+      <QueryPlan CardinalityEstimationModelVersion="170" CompileTime="2" CompileCPU="2" CompileMemory="128">
+        <MemoryGrantInfo RequestedMemory="20480" GrantedMemory="20480" MaxUsedMemory="1024" GrantWaitTime="0" />
+        <OptimizerStatsUsage><StatisticsInfo Database="[ExampleDatabase]" Schema="[ExampleSchema]" Table="[ExampleObject]" Statistics="[ExampleStatistics]" LastUpdate="2026-01-01T00:00:00" ModificationCount="0" SamplingPercent="100" /></OptimizerStatsUsage>
+        <RelOp NodeId="0" PhysicalOp="Select" LogicalOp="Select" EstimateRows="10" EstimatedTotalSubtreeCost="1.0">
+          <OutputList><ColumnReference Database="[ExampleDatabase]" Schema="[ExampleSchema]" Table="[ExampleObject]" Column="[ExampleColumn]" /></OutputList>
+          <Select>
+            <RelOp NodeId="1" PhysicalOp="Index Seek" LogicalOp="Index Seek" EstimateRows="10" EstimatedRowsRead="100" EstimateExecutions="1" EstimatedTotalSubtreeCost="0.9">
+              <RunTimeInformation><RunTimeCountersPerThread Thread="0" ActualRows="10" ActualRowsRead="100" ActualExecutions="1" ActualLogicalReads="8" ActualCPUms="1" ActualElapsedms="2" /></RunTimeInformation>
+              <IndexScan Ordered="1" ScanDirection="FORWARD"><Object Database="[ExampleDatabase]" Schema="[ExampleSchema]" Table="[ExampleObject]" Index="[ExampleIndex]" Storage="RowStore" /></IndexScan>
+            </RelOp>
+          </Select>
+        </RelOp>
+        <ParameterList><ColumnReference Column="@ExampleParameter" ParameterDataType="int" ParameterCompiledValue="(7)" ParameterRuntimeValue="(9)" /></ParameterList>
+      </QueryPlan>
+    </StmtSimple>
+    <StmtSimple StatementId="2" StatementCompId="2" StatementType="SELECT" StatementText="SELECT ExampleOtherColumn FROM ExampleSchema.ExampleOtherObject" StatementSubTreeCost="0.1" StatementEstRows="1" StatementOptmLevel="TRIVIAL" QueryHash="0x0202020202020202" QueryPlanHash="0x2222222222222222">
+      <QueryPlan CardinalityEstimationModelVersion="170" CompileTime="1" CompileCPU="1" CompileMemory="64">
+        <RelOp NodeId="0" PhysicalOp="Select" LogicalOp="Select" EstimateRows="1" EstimatedTotalSubtreeCost="0.1">
+          <Select><RelOp NodeId="1" PhysicalOp="Constant Scan" LogicalOp="Constant Scan" EstimateRows="1" EstimatedTotalSubtreeCost="0.0"><RunTimeInformation><RunTimeCountersPerThread Thread="0" ActualRows="1" ActualExecutions="1" /></RunTimeInformation><ConstantScan /></RelOp></Select>
+        </RelOp>
+      </QueryPlan>
+    </StmtSimple>
+  </Statements></Batch></BatchSequence>
+</ShowPlanXML>';
+DECLARE @AnalysisJson nvarchar(max),@Status varchar(40),@Partial bit,@Error int,@Message nvarchar(2048);
+DECLARE @NullGuardStatus varchar(40),@NullGuardPartial bit,@NullGuardError int,@NullGuardMessage nvarchar(2048);
+
+SET @NullGuardStatus='SENTINEL';SET @NullGuardPartial=0;SET @NullGuardError=53699;SET @NullGuardMessage=N'SENTINEL';
+EXEC [monitor].[InternalCollectExecutionPlanMetadata]
+      @PlanXml=@GuardPlan
+    , @QuellumgebungBestaetigt=NULL
+    , @StatusCodeOut=@NullGuardStatus OUTPUT
+    , @IsPartialOut=@NullGuardPartial OUTPUT
+    , @ErrorNumberOut=@NullGuardError OUTPUT
+    , @ErrorMessageOut=@NullGuardMessage OUTPUT;
+IF COALESCE(@NullGuardStatus,'')<>'INVALID_PARAMETER' OR COALESCE(@NullGuardPartial,0)<>1 OR @NullGuardError IS NOT NULL OR NULLIF(LTRIM(RTRIM(@NullGuardMessage)),N'') IS NULL
+    THROW 53647,N'NULL in @QuellumgebungBestaetigt wurde nicht vor den Temp-Tabellen-Prüfungen abgelehnt.',1;
+
+SET @NullGuardStatus='SENTINEL';SET @NullGuardPartial=0;SET @NullGuardError=53699;SET @NullGuardMessage=N'SENTINEL';
+EXEC [monitor].[InternalCollectExecutionPlanMetadata]
+      @PlanXml=@GuardPlan
+    , @QuellumgebungBestaetigt=1
+    , @MitPredicateHistogramMap=NULL
+    , @StatusCodeOut=@NullGuardStatus OUTPUT
+    , @IsPartialOut=@NullGuardPartial OUTPUT
+    , @ErrorNumberOut=@NullGuardError OUTPUT
+    , @ErrorMessageOut=@NullGuardMessage OUTPUT;
+IF COALESCE(@NullGuardStatus,'')<>'INVALID_PARAMETER' OR COALESCE(@NullGuardPartial,0)<>1 OR @NullGuardError IS NOT NULL OR NULLIF(LTRIM(RTRIM(@NullGuardMessage)),N'') IS NULL
+    THROW 53648,N'NULL in @MitPredicateHistogramMap wurde nicht vor den Temp-Tabellen-Prüfungen abgelehnt.',1;
+
+SET @NullGuardStatus='SENTINEL';SET @NullGuardPartial=0;SET @NullGuardError=53699;SET @NullGuardMessage=N'SENTINEL';
+EXEC [monitor].[InternalCollectExecutionPlanMetadata]
+      @PlanXml=@GuardPlan
+    , @StatistikEvidenzModus='RELEVANT'
+    , @QuellumgebungBestaetigt=1
+    , @HighImpactConfirmed=NULL
+    , @StatusCodeOut=@NullGuardStatus OUTPUT
+    , @IsPartialOut=@NullGuardPartial OUTPUT
+    , @ErrorNumberOut=@NullGuardError OUTPUT
+    , @ErrorMessageOut=@NullGuardMessage OUTPUT;
+IF COALESCE(@NullGuardStatus,'')<>'INVALID_PARAMETER' OR COALESCE(@NullGuardPartial,0)<>1 OR @NullGuardError IS NOT NULL OR NULLIF(LTRIM(RTRIM(@NullGuardMessage)),N'') IS NULL
+    THROW 53649,N'NULL in @HighImpactConfirmed wurde nicht vor den Temp-Tabellen-Prüfungen abgelehnt.',1;
+
+SET @NullGuardStatus='SENTINEL';SET @NullGuardPartial=0;SET @NullGuardError=53699;SET @NullGuardMessage=N'SENTINEL';
+EXEC [monitor].[InternalAnalyzeExecutionPlan]
+      @AnalysisObjectId=120
+    , @PlanXml=@GuardPlan
+    , @PlanSource=NULL
+    , @RuntimeCounterScope='NONE'
+    , @StatusCodeOut=@NullGuardStatus OUTPUT
+    , @IsPartialOut=@NullGuardPartial OUTPUT
+    , @ErrorNumberOut=@NullGuardError OUTPUT
+    , @ErrorMessageOut=@NullGuardMessage OUTPUT;
+IF COALESCE(@NullGuardStatus,'')<>'INVALID_PARAMETER' OR COALESCE(@NullGuardPartial,0)<>1 OR @NullGuardError IS NOT NULL OR NULLIF(LTRIM(RTRIM(@NullGuardMessage)),N'') IS NULL
+    THROW 53650,N'NULL in @PlanSource wurde nicht vor den Temp-Tabellen-Prüfungen abgelehnt.',1;
+
+SET @NullGuardStatus='SENTINEL';SET @NullGuardPartial=0;SET @NullGuardError=53699;SET @NullGuardMessage=N'SENTINEL';
+EXEC [monitor].[InternalAnalyzeExecutionPlan]
+      @AnalysisObjectId=120
+    , @PlanXml=@GuardPlan
+    , @PlanSource='IMPORTED'
+    , @RuntimeCounterScope=NULL
+    , @StatusCodeOut=@NullGuardStatus OUTPUT
+    , @IsPartialOut=@NullGuardPartial OUTPUT
+    , @ErrorNumberOut=@NullGuardError OUTPUT
+    , @ErrorMessageOut=@NullGuardMessage OUTPUT;
+IF COALESCE(@NullGuardStatus,'')<>'INVALID_PARAMETER' OR COALESCE(@NullGuardPartial,0)<>1 OR @NullGuardError IS NOT NULL OR NULLIF(LTRIM(RTRIM(@NullGuardMessage)),N'') IS NULL
+    THROW 53651,N'NULL in @RuntimeCounterScope wurde nicht vor den Temp-Tabellen-Prüfungen abgelehnt.',1;
+
+SET @NullGuardStatus='SENTINEL';SET @NullGuardPartial=0;SET @NullGuardError=53699;SET @NullGuardMessage=N'SENTINEL';
+EXEC [monitor].[InternalAnalyzeExecutionPlan]
+      @AnalysisObjectId=120
+    , @PlanXml=@GuardPlan
+    , @PlanSource='IMPORTED'
+    , @RuntimeCounterScope='NONE'
+    , @MitThreadRuntime=NULL
+    , @StatusCodeOut=@NullGuardStatus OUTPUT
+    , @IsPartialOut=@NullGuardPartial OUTPUT
+    , @ErrorNumberOut=@NullGuardError OUTPUT
+    , @ErrorMessageOut=@NullGuardMessage OUTPUT;
+IF COALESCE(@NullGuardStatus,'')<>'INVALID_PARAMETER' OR COALESCE(@NullGuardPartial,0)<>1 OR @NullGuardError IS NOT NULL OR NULLIF(LTRIM(RTRIM(@NullGuardMessage)),N'') IS NULL
+    THROW 53652,N'NULL in @MitThreadRuntime wurde nicht vor den Temp-Tabellen-Prüfungen abgelehnt.',1;
+
+/* Gültige Eingaben erreichen die erste fehlende Ergebnistabelle; der Aufrufer fängt den 208 ab. */
+DECLARE @BoundaryError int,@BoundaryMessage nvarchar(2048);
+SET @BoundaryError=NULL;SET @BoundaryMessage=NULL;
+BEGIN TRY
+    EXEC [monitor].[InternalCollectExecutionPlanMetadata]
+          @PlanXml=@GuardPlan
+        , @StatistikEvidenzModus=NULL
+        , @HistogrammModus=NULL
+        , @QuellumgebungBestaetigt=1
+        , @MitPredicateHistogramMap=0
+        , @HighImpactConfirmed=0;
+END TRY
+BEGIN CATCH
+    SELECT @BoundaryError=ERROR_NUMBER(),@BoundaryMessage=ERROR_MESSAGE();
+END CATCH;
+IF COALESCE(@BoundaryError,0)<>208 OR CHARINDEX(N'#CreateExecutionEvidenceJson_StatisticsCurrent',COALESCE(@BoundaryMessage,N''))=0
+    THROW 53653,N'Gültige NULL-Modusfallbacks und explizite Nullen passierten die Validierung nicht bis zur ersten fehlenden Ergebnistabelle.',1;
+
+SET @BoundaryError=NULL;SET @BoundaryMessage=NULL;
+BEGIN TRY
+    EXEC [monitor].[InternalCollectExecutionPlanMetadata]
+          @PlanXml=@GuardPlan
+        , @StatistikEvidenzModus=NULL
+        , @HistogrammModus=NULL
+        , @QuellumgebungBestaetigt=1
+        , @MitPredicateHistogramMap=1
+        , @HighImpactConfirmed=1;
+END TRY
+BEGIN CATCH
+    SELECT @BoundaryError=ERROR_NUMBER(),@BoundaryMessage=ERROR_MESSAGE();
+END CATCH;
+IF COALESCE(@BoundaryError,0)<>208 OR CHARINDEX(N'#CreateExecutionEvidenceJson_StatisticsCurrent',COALESCE(@BoundaryMessage,N''))=0
+    THROW 53654,N'Gültige NULL-Modusfallbacks und explizite Einsen passierten die Validierung nicht bis zur ersten fehlenden Ergebnistabelle.',1;
+
+SET @BoundaryError=NULL;SET @BoundaryMessage=NULL;
+BEGIN TRY
+    EXEC [monitor].[InternalAnalyzeExecutionPlan]
+          @AnalysisObjectId=120
+        , @PlanXml=@GuardPlan
+        , @PlanSource='IMPORTED'
+        , @RuntimeCounterScope='UNKNOWN'
+        , @MitThreadRuntime=0;
+END TRY
+BEGIN CATCH
+    SELECT @BoundaryError=ERROR_NUMBER(),@BoundaryMessage=ERROR_MESSAGE();
+END CATCH;
+IF COALESCE(@BoundaryError,0)<>208 OR CHARINDEX(N'#ExecutionPlanAnalysis_Capabilities',COALESCE(@BoundaryMessage,N''))=0
+    THROW 53655,N'Der gültige UNKNOWN-Scope und @MitThreadRuntime=0 passierten die Validierung nicht bis zur ersten fehlenden Ergebnistabelle.',1;
+
+SET @BoundaryError=NULL;SET @BoundaryMessage=NULL;
+BEGIN TRY
+    EXEC [monitor].[InternalAnalyzeExecutionPlan]
+          @AnalysisObjectId=120
+        , @PlanXml=@GuardPlan
+        , @PlanSource='IMPORTED'
+        , @RuntimeCounterScope='NONE'
+        , @MitThreadRuntime=1;
+END TRY
+BEGIN CATCH
+    SELECT @BoundaryError=ERROR_NUMBER(),@BoundaryMessage=ERROR_MESSAGE();
+END CATCH;
+IF COALESCE(@BoundaryError,0)<>208 OR CHARINDEX(N'#ExecutionPlanAnalysis_Capabilities',COALESCE(@BoundaryMessage,N''))=0
+    THROW 53656,N'@MitThreadRuntime=1 passierte die Validierung nicht bis zur ersten fehlenden Ergebnistabelle.',1;
+
+/* Die öffentliche Analyse muss die explizite Eins behalten und 0/Default unterdrücken. */
+SET @AnalysisJson=NULL;SET @Status=NULL;SET @Partial=NULL;SET @Error=NULL;SET @Message=NULL;
+EXEC [monitor].[USP_ExecutionPlanAnalysis]
+      @PlanXml=@GuardPlan
+    , @MitThreadRuntime=0
+    , @ResultSetArt='NONE'
+    , @JsonErzeugen=1
+    , @Json=@AnalysisJson OUTPUT
+    , @PrintMeldungen=0
+    , @StatusCodeOut=@Status OUTPUT
+    , @IsPartialOut=@Partial OUTPUT
+    , @ErrorNumberOut=@Error OUTPUT
+    , @ErrorMessageOut=@Message OUTPUT;
+IF COALESCE(@Status,'') NOT IN ('AVAILABLE','PARTIAL')
+   OR COALESCE(ISJSON(@AnalysisJson),0)<>1
+   OR @Partial IS NULL
+   OR (SELECT COUNT(*) FROM OPENJSON(@AnalysisJson,N'$.operatorThreadRuntime'))<>0
+   OR NOT EXISTS
+      (SELECT 1 FROM OPENJSON(@AnalysisJson,N'$.operatorRuntime')
+       WITH ([StatementOrdinal] int N'$.StatementOrdinal',[NodeId] int N'$.NodeId',[PairedActualRows] decimal(38,4) N'$.PairedActualRows')
+       WHERE [StatementOrdinal]=1 AND [NodeId]=1 AND [PairedActualRows]=10)
+    THROW 53657,N'@MitThreadRuntime=0 hat Threadzeilen behalten oder aggregierte Runtimewerte verloren.',1;
+
+SET @AnalysisJson=NULL;SET @Status=NULL;SET @Partial=NULL;SET @Error=NULL;SET @Message=NULL;
+EXEC [monitor].[USP_ExecutionPlanAnalysis]
+      @PlanXml=@GuardPlan
+    , @ResultSetArt='NONE'
+    , @JsonErzeugen=1
+    , @Json=@AnalysisJson OUTPUT
+    , @PrintMeldungen=0
+    , @StatusCodeOut=@Status OUTPUT
+    , @IsPartialOut=@Partial OUTPUT
+    , @ErrorNumberOut=@Error OUTPUT
+    , @ErrorMessageOut=@Message OUTPUT;
+IF COALESCE(@Status,'') NOT IN ('AVAILABLE','PARTIAL')
+   OR COALESCE(ISJSON(@AnalysisJson),0)<>1
+   OR @Partial IS NULL
+   OR (SELECT COUNT(*) FROM OPENJSON(@AnalysisJson,N'$.operatorThreadRuntime'))<>0
+   OR NOT EXISTS
+      (SELECT 1 FROM OPENJSON(@AnalysisJson,N'$.operatorRuntime')
+       WITH ([StatementOrdinal] int N'$.StatementOrdinal',[NodeId] int N'$.NodeId',[PairedActualRows] decimal(38,4) N'$.PairedActualRows')
+       WHERE [StatementOrdinal]=1 AND [NodeId]=1 AND [PairedActualRows]=10)
+    THROW 53658,N'Der Default von @MitThreadRuntime hat Threadzeilen behalten oder aggregierte Runtimewerte verloren.',1;
+
+/* Der öffentliche High-Impact-Pfad verlangt auch mit installiertem Helfer eine 1. */
+SET @AnalysisJson=NULL;SET @Status=NULL;SET @Partial=NULL;SET @Error=NULL;SET @Message=NULL;
+EXEC [monitor].[USP_ExecutionPlanAnalysis]
+      @PlanXml=@GuardPlan
+    , @AnalyseTiefe='FULL'
+    , @HighImpactConfirmed=0
+    , @ResultSetArt='NONE'
+    , @JsonErzeugen=1
+    , @Json=@AnalysisJson OUTPUT
+    , @PrintMeldungen=0
+    , @StatusCodeOut=@Status OUTPUT
+    , @IsPartialOut=@Partial OUTPUT
+    , @ErrorNumberOut=@Error OUTPUT
+    , @ErrorMessageOut=@Message OUTPUT;
+IF COALESCE(@Status,'')<>'HIGH_IMPACT_CONFIRMATION_REQUIRED'
+   OR COALESCE(@Partial,0)<>1 OR @Error IS NOT NULL
+   OR NULLIF(LTRIM(RTRIM(@Message)),N'') IS NULL
+   OR COALESCE(ISJSON(@AnalysisJson),0)<>1
+    THROW 53671,N'@HighImpactConfirmed=0 wurde im angeforderten FULL-Pfad nicht abgewiesen.',1;
+
+SET @AnalysisJson=NULL;SET @Status=NULL;SET @Partial=NULL;SET @Error=NULL;SET @Message=NULL;
+EXEC [monitor].[USP_ExecutionPlanAnalysis]
+      @PlanXml=@GuardPlan
+    , @AnalyseTiefe='FULL'
+    , @HighImpactConfirmed=NULL
+    , @ResultSetArt='NONE'
+    , @JsonErzeugen=1
+    , @Json=@AnalysisJson OUTPUT
+    , @PrintMeldungen=0
+    , @StatusCodeOut=@Status OUTPUT
+    , @IsPartialOut=@Partial OUTPUT
+    , @ErrorNumberOut=@Error OUTPUT
+    , @ErrorMessageOut=@Message OUTPUT;
+IF COALESCE(@Status,'')<>'HIGH_IMPACT_CONFIRMATION_REQUIRED'
+   OR COALESCE(@Partial,0)<>1 OR @Error IS NOT NULL
+   OR NULLIF(LTRIM(RTRIM(@Message)),N'') IS NULL
+   OR COALESCE(ISJSON(@AnalysisJson),0)<>1
+    THROW 53672,N'NULL wurde im angeforderten FULL-Pfad als HIGH_IMPACT-Bestätigung behandelt.',1;
+
+/* Unbenutztes NULL bleibt mit den dokumentierten Modusfallbacks zulässig. */
+SET @AnalysisJson=NULL;SET @Status=NULL;SET @Partial=NULL;SET @Error=NULL;SET @Message=NULL;
+EXEC [monitor].[USP_ExecutionPlanAnalysis]
+      @PlanXml=@GuardPlan
+    , @AnalyseTiefe='STANDARD'
+    , @StatistikEvidenzModus=NULL
+    , @HistogrammModus=NULL
+    , @HighImpactConfirmed=NULL
+    , @ResultSetArt='NONE'
+    , @JsonErzeugen=1
+    , @Json=@AnalysisJson OUTPUT
+    , @PrintMeldungen=0
+    , @StatusCodeOut=@Status OUTPUT
+    , @IsPartialOut=@Partial OUTPUT
+    , @ErrorNumberOut=@Error OUTPUT
+    , @ErrorMessageOut=@Message OUTPUT;
+IF COALESCE(@Status,'') NOT IN ('AVAILABLE','PARTIAL')
+   OR @Partial IS NULL OR @Error IS NOT NULL
+   OR COALESCE(ISJSON(@AnalysisJson),0)<>1
+   OR NOT EXISTS
+      (
+          SELECT 1
+          FROM OPENJSON(@AnalysisJson,N'$.statements')
+          WITH ([StatementOrdinal] int N'$.StatementOrdinal')
+          WHERE [StatementOrdinal]=1
+      )
+   OR NOT EXISTS
+      (
+          SELECT 1
+          FROM OPENJSON(@AnalysisJson,N'$.operatorTree')
+          WITH ([StatementOrdinal] int N'$.StatementOrdinal',[NodeId] int N'$.NodeId')
+          WHERE [StatementOrdinal]=1 AND [NodeId]=0
+      )
+    THROW 53673,N'Unbenutztes NULL oder NULL-Modusfallbacks wurden global abgewiesen oder die synthetische Statement-/Operatorzeile fehlt.',1;
+
+DECLARE
+      @SourceJson nvarchar(max)
+    , @SourceStatus varchar(40)
+    , @SourcePartial bit
+    , @SourceError int
+    , @SourceMessage nvarchar(2048);
+
+/* 052 verlangt die Quellbestätigung auch ohne angeforderte Erhebung. */
+SET @SourceJson=NULL;SET @SourceStatus='STALE';SET @SourcePartial=NULL;SET @SourceError=999;SET @SourceMessage=N'SENTINEL';
+EXEC [monitor].[USP_CreateExecutionEvidenceJson]
+      @PlanXml=@GuardPlan
+    , @StatistikEvidenzModus='NONE'
+    , @HistogrammModus='NONE'
+    , @MetadatenQuellenmodus='CURRENT_SERVER'
+    , @QuellumgebungBestaetigt=0
+    , @ResultSetArt='NONE'
+    , @JsonErzeugen=1
+    , @Json=@SourceJson OUTPUT
+    , @PrintMeldungen=0
+    , @StatusCodeOut=@SourceStatus OUTPUT
+    , @IsPartialOut=@SourcePartial OUTPUT
+    , @ErrorNumberOut=@SourceError OUTPUT
+    , @ErrorMessageOut=@SourceMessage OUTPUT;
+IF COALESCE(@SourceStatus,'')<>'SOURCE_ENVIRONMENT_CONFIRMATION_REQUIRED'
+   OR COALESCE(@SourcePartial,0)<>1 OR @SourceError IS NOT NULL
+   OR NULLIF(LTRIM(RTRIM(@SourceMessage)),N'') IS NULL
+   OR COALESCE(ISJSON(@SourceJson),0)<>1
+    THROW 53674,N'052 hat @QuellumgebungBestaetigt=0 bei CURRENT_SERVER ohne Erhebung nicht abgewiesen.',1;
+
+SET @SourceJson=NULL;SET @SourceStatus='STALE';SET @SourcePartial=NULL;SET @SourceError=999;SET @SourceMessage=N'SENTINEL';
+EXEC [monitor].[USP_CreateExecutionEvidenceJson]
+      @PlanXml=@GuardPlan
+    , @StatistikEvidenzModus='NONE'
+    , @HistogrammModus='NONE'
+    , @MetadatenQuellenmodus='CURRENT_SERVER'
+    , @QuellumgebungBestaetigt=NULL
+    , @ResultSetArt='NONE'
+    , @JsonErzeugen=1
+    , @Json=@SourceJson OUTPUT
+    , @PrintMeldungen=0
+    , @StatusCodeOut=@SourceStatus OUTPUT
+    , @IsPartialOut=@SourcePartial OUTPUT
+    , @ErrorNumberOut=@SourceError OUTPUT
+    , @ErrorMessageOut=@SourceMessage OUTPUT;
+IF COALESCE(@SourceStatus,'')<>'SOURCE_ENVIRONMENT_CONFIRMATION_REQUIRED'
+   OR COALESCE(@SourcePartial,0)<>1 OR @SourceError IS NOT NULL
+   OR NULLIF(LTRIM(RTRIM(@SourceMessage)),N'') IS NULL
+   OR COALESCE(ISJSON(@SourceJson),0)<>1
+    THROW 53675,N'052 hat @QuellumgebungBestaetigt=NULL bei CURRENT_SERVER ohne Erhebung nicht abgewiesen.',1;
+
+SET @SourceJson=NULL;SET @SourceStatus='STALE';SET @SourcePartial=NULL;SET @SourceError=999;SET @SourceMessage=N'SENTINEL';
+EXEC [monitor].[USP_CreateExecutionEvidenceJson]
+      @PlanXml=@GuardPlan
+    , @StatistikEvidenzModus='NONE'
+    , @HistogrammModus='NONE'
+    , @MetadatenQuellenmodus='CURRENT_SERVER'
+    , @QuellumgebungBestaetigt=1
+    , @ResultSetArt='NONE'
+    , @JsonErzeugen=1
+    , @Json=@SourceJson OUTPUT
+    , @PrintMeldungen=0
+    , @StatusCodeOut=@SourceStatus OUTPUT
+    , @IsPartialOut=@SourcePartial OUTPUT
+    , @ErrorNumberOut=@SourceError OUTPUT
+    , @ErrorMessageOut=@SourceMessage OUTPUT;
+IF COALESCE(@SourceStatus,'') NOT IN ('AVAILABLE','PARTIAL')
+   OR @SourcePartial IS NULL OR @SourceError IS NOT NULL
+   OR COALESCE(ISJSON(@SourceJson),0)<>1
+   OR NULLIF(JSON_VALUE(@SourceJson,N'$.planIdentity.planDocumentHash'),N'') IS NULL
+    THROW 53676,N'052 hat die explizite CURRENT_SERVER-Bestätigung nicht bis zur synthetischen Planidentität verarbeitet.',1;
+
+SET @SourceJson=NULL;SET @SourceStatus='STALE';SET @SourcePartial=NULL;SET @SourceError=999;SET @SourceMessage=N'SENTINEL';
+EXEC [monitor].[USP_CreateExecutionEvidenceJson]
+      @PlanXml=@GuardPlan
+    , @StatistikEvidenzModus='NONE'
+    , @HistogrammModus='NONE'
+    , @MetadatenQuellenmodus='EVIDENCE_ONLY'
+    , @QuellumgebungBestaetigt=NULL
+    , @ResultSetArt='NONE'
+    , @JsonErzeugen=1
+    , @Json=@SourceJson OUTPUT
+    , @PrintMeldungen=0
+    , @StatusCodeOut=@SourceStatus OUTPUT
+    , @IsPartialOut=@SourcePartial OUTPUT
+    , @ErrorNumberOut=@SourceError OUTPUT
+    , @ErrorMessageOut=@SourceMessage OUTPUT;
+IF COALESCE(@SourceStatus,'') NOT IN ('AVAILABLE','PARTIAL')
+   OR @SourcePartial IS NULL OR @SourceError IS NOT NULL
+   OR COALESCE(ISJSON(@SourceJson),0)<>1
+   OR NULLIF(JSON_VALUE(@SourceJson,N'$.planIdentity.planDocumentHash'),N'') IS NULL
+    THROW 53677,N'052 hat das unbenutzte EVIDENCE_ONLY-NULL global abgewiesen oder die synthetische Planidentität fehlt.',1;
+
+/* 053 hat denselben Quellvertrag und muss die Planzeilen auch ohne Erhebung abbilden. */
+SET @SourceJson=NULL;SET @SourceStatus='STALE';SET @SourcePartial=NULL;SET @SourceError=999;SET @SourceMessage=N'SENTINEL';
+EXEC [monitor].[USP_ExecutionPlanAnalysis]
+      @PlanXml=@GuardPlan
+    , @StatistikEvidenzModus='NONE'
+    , @HistogrammModus='NONE'
+    , @MetadatenQuellenmodus='CURRENT_SERVER'
+    , @QuellumgebungBestaetigt=0
+    , @ResultSetArt='NONE'
+    , @JsonErzeugen=1
+    , @Json=@SourceJson OUTPUT
+    , @PrintMeldungen=0
+    , @StatusCodeOut=@SourceStatus OUTPUT
+    , @IsPartialOut=@SourcePartial OUTPUT
+    , @ErrorNumberOut=@SourceError OUTPUT
+    , @ErrorMessageOut=@SourceMessage OUTPUT;
+IF COALESCE(@SourceStatus,'')<>'SOURCE_ENVIRONMENT_CONFIRMATION_REQUIRED'
+   OR COALESCE(@SourcePartial,0)<>1 OR @SourceError IS NOT NULL
+   OR NULLIF(LTRIM(RTRIM(@SourceMessage)),N'') IS NULL
+   OR COALESCE(ISJSON(@SourceJson),0)<>1
+    THROW 53678,N'053 hat @QuellumgebungBestaetigt=0 bei CURRENT_SERVER ohne Erhebung nicht abgewiesen.',1;
+
+SET @SourceJson=NULL;SET @SourceStatus='STALE';SET @SourcePartial=NULL;SET @SourceError=999;SET @SourceMessage=N'SENTINEL';
+EXEC [monitor].[USP_ExecutionPlanAnalysis]
+      @PlanXml=@GuardPlan
+    , @StatistikEvidenzModus='NONE'
+    , @HistogrammModus='NONE'
+    , @MetadatenQuellenmodus='CURRENT_SERVER'
+    , @QuellumgebungBestaetigt=NULL
+    , @ResultSetArt='NONE'
+    , @JsonErzeugen=1
+    , @Json=@SourceJson OUTPUT
+    , @PrintMeldungen=0
+    , @StatusCodeOut=@SourceStatus OUTPUT
+    , @IsPartialOut=@SourcePartial OUTPUT
+    , @ErrorNumberOut=@SourceError OUTPUT
+    , @ErrorMessageOut=@SourceMessage OUTPUT;
+IF COALESCE(@SourceStatus,'')<>'SOURCE_ENVIRONMENT_CONFIRMATION_REQUIRED'
+   OR COALESCE(@SourcePartial,0)<>1 OR @SourceError IS NOT NULL
+   OR NULLIF(LTRIM(RTRIM(@SourceMessage)),N'') IS NULL
+   OR COALESCE(ISJSON(@SourceJson),0)<>1
+    THROW 53679,N'053 hat @QuellumgebungBestaetigt=NULL bei CURRENT_SERVER ohne Erhebung nicht abgewiesen.',1;
+
+SET @SourceJson=NULL;SET @SourceStatus='STALE';SET @SourcePartial=NULL;SET @SourceError=999;SET @SourceMessage=N'SENTINEL';
+EXEC [monitor].[USP_ExecutionPlanAnalysis]
+      @PlanXml=@GuardPlan
+    , @StatistikEvidenzModus='NONE'
+    , @HistogrammModus='NONE'
+    , @MetadatenQuellenmodus='CURRENT_SERVER'
+    , @QuellumgebungBestaetigt=1
+    , @ResultSetArt='NONE'
+    , @JsonErzeugen=1
+    , @Json=@SourceJson OUTPUT
+    , @PrintMeldungen=0
+    , @StatusCodeOut=@SourceStatus OUTPUT
+    , @IsPartialOut=@SourcePartial OUTPUT
+    , @ErrorNumberOut=@SourceError OUTPUT
+    , @ErrorMessageOut=@SourceMessage OUTPUT;
+IF COALESCE(@SourceStatus,'') NOT IN ('AVAILABLE','PARTIAL')
+   OR @SourcePartial IS NULL OR @SourceError IS NOT NULL
+   OR COALESCE(ISJSON(@SourceJson),0)<>1
+   OR (SELECT COUNT(*) FROM OPENJSON(@SourceJson,N'$.statements'))<>2
+   OR (SELECT COUNT(*) FROM OPENJSON(@SourceJson,N'$.operatorTree'))<>4
+   OR NOT EXISTS
+      (
+          SELECT 1
+          FROM OPENJSON(@SourceJson,N'$.operatorTree')
+          WITH ([StatementOrdinal] int N'$.StatementOrdinal',[NodeId] int N'$.NodeId')
+          WHERE [StatementOrdinal]=1 AND [NodeId]=0
+      )
+   OR NOT EXISTS
+      (
+          SELECT 1
+          FROM OPENJSON(@SourceJson,N'$.operatorTree')
+          WITH ([StatementOrdinal] int N'$.StatementOrdinal',[NodeId] int N'$.NodeId')
+          WHERE [StatementOrdinal]=1 AND [NodeId]=1
+      )
+   OR NOT EXISTS
+      (
+          SELECT 1
+          FROM OPENJSON(@SourceJson,N'$.operatorTree')
+          WITH ([StatementOrdinal] int N'$.StatementOrdinal',[NodeId] int N'$.NodeId')
+          WHERE [StatementOrdinal]=2 AND [NodeId]=0
+      )
+   OR NOT EXISTS
+      (
+          SELECT 1
+          FROM OPENJSON(@SourceJson,N'$.operatorTree')
+          WITH ([StatementOrdinal] int N'$.StatementOrdinal',[NodeId] int N'$.NodeId')
+          WHERE [StatementOrdinal]=2 AND [NodeId]=1
+      )
+    THROW 53680,N'053 hat die explizite CURRENT_SERVER-Bestätigung nicht bis zu den zwei synthetischen Statements und ihren vier Operatorzeilen verarbeitet.',1;
+
+SET @SourceJson=NULL;SET @SourceStatus='STALE';SET @SourcePartial=NULL;SET @SourceError=999;SET @SourceMessage=N'SENTINEL';
+EXEC [monitor].[USP_ExecutionPlanAnalysis]
+      @PlanXml=@GuardPlan
+    , @StatistikEvidenzModus='NONE'
+    , @HistogrammModus='NONE'
+    , @MetadatenQuellenmodus='EVIDENCE_ONLY'
+    , @QuellumgebungBestaetigt=NULL
+    , @ResultSetArt='NONE'
+    , @JsonErzeugen=1
+    , @Json=@SourceJson OUTPUT
+    , @PrintMeldungen=0
+    , @StatusCodeOut=@SourceStatus OUTPUT
+    , @IsPartialOut=@SourcePartial OUTPUT
+    , @ErrorNumberOut=@SourceError OUTPUT
+    , @ErrorMessageOut=@SourceMessage OUTPUT;
+IF COALESCE(@SourceStatus,'') NOT IN ('AVAILABLE','PARTIAL')
+   OR @SourcePartial IS NULL OR @SourceError IS NOT NULL
+   OR COALESCE(ISJSON(@SourceJson),0)<>1
+   OR (SELECT COUNT(*) FROM OPENJSON(@SourceJson,N'$.statements'))<>2
+   OR (SELECT COUNT(*) FROM OPENJSON(@SourceJson,N'$.operatorTree'))<>4
+   OR NOT EXISTS
+      (
+          SELECT 1
+          FROM OPENJSON(@SourceJson,N'$.operatorTree')
+          WITH ([StatementOrdinal] int N'$.StatementOrdinal',[NodeId] int N'$.NodeId')
+          WHERE [StatementOrdinal]=1 AND [NodeId]=0
+      )
+   OR NOT EXISTS
+      (
+          SELECT 1
+          FROM OPENJSON(@SourceJson,N'$.operatorTree')
+          WITH ([StatementOrdinal] int N'$.StatementOrdinal',[NodeId] int N'$.NodeId')
+          WHERE [StatementOrdinal]=1 AND [NodeId]=1
+      )
+   OR NOT EXISTS
+      (
+          SELECT 1
+          FROM OPENJSON(@SourceJson,N'$.operatorTree')
+          WITH ([StatementOrdinal] int N'$.StatementOrdinal',[NodeId] int N'$.NodeId')
+          WHERE [StatementOrdinal]=2 AND [NodeId]=0
+      )
+   OR NOT EXISTS
+      (
+          SELECT 1
+          FROM OPENJSON(@SourceJson,N'$.operatorTree')
+          WITH ([StatementOrdinal] int N'$.StatementOrdinal',[NodeId] int N'$.NodeId')
+          WHERE [StatementOrdinal]=2 AND [NodeId]=1
+      )
+    THROW 53681,N'053 hat das unbenutzte EVIDENCE_ONLY-NULL global abgewiesen oder die zwei synthetischen Statements mit vier Operatorzeilen fehlen.',1;
+
+/* Unbenutztes NULL für Predicate-Mapping bleibt in EVIDENCE_ONLY zulässig. */
+SET @SourceJson=NULL;SET @SourceStatus='STALE';SET @SourcePartial=NULL;SET @SourceError=999;SET @SourceMessage=N'SENTINEL';
+EXEC [monitor].[USP_CreateExecutionEvidenceJson]
+      @PlanXml=@GuardPlan
+    , @StatistikEvidenzModus='NONE'
+    , @HistogrammModus='NONE'
+    , @MetadatenQuellenmodus='EVIDENCE_ONLY'
+    , @MitPredicateHistogramMap=NULL
+    , @ResultSetArt='NONE'
+    , @JsonErzeugen=1
+    , @Json=@SourceJson OUTPUT
+    , @PrintMeldungen=0
+    , @StatusCodeOut=@SourceStatus OUTPUT
+    , @IsPartialOut=@SourcePartial OUTPUT
+    , @ErrorNumberOut=@SourceError OUTPUT
+    , @ErrorMessageOut=@SourceMessage OUTPUT;
+IF COALESCE(@SourceStatus,'') NOT IN ('AVAILABLE','PARTIAL')
+   OR @SourcePartial IS NULL OR @SourceError IS NOT NULL
+   OR COALESCE(ISJSON(@SourceJson),0)<>1
+   OR NULLIF(JSON_VALUE(@SourceJson,N'$.planIdentity.planDocumentHash'),N'') IS NULL
+    THROW 53682,N'052 hat unbenutztes @MitPredicateHistogramMap=NULL global abgewiesen oder die synthetische Planidentität fehlt.',1;
+
+SET @SourceJson=NULL;SET @SourceStatus='STALE';SET @SourcePartial=NULL;SET @SourceError=999;SET @SourceMessage=N'SENTINEL';
+EXEC [monitor].[USP_ExecutionPlanAnalysis]
+      @PlanXml=@GuardPlan
+    , @StatistikEvidenzModus='NONE'
+    , @HistogrammModus='NONE'
+    , @MetadatenQuellenmodus='EVIDENCE_ONLY'
+    , @MitPredicateHistogramMap=NULL
+    , @ResultSetArt='NONE'
+    , @JsonErzeugen=1
+    , @Json=@SourceJson OUTPUT
+    , @PrintMeldungen=0
+    , @StatusCodeOut=@SourceStatus OUTPUT
+    , @IsPartialOut=@SourcePartial OUTPUT
+    , @ErrorNumberOut=@SourceError OUTPUT
+    , @ErrorMessageOut=@SourceMessage OUTPUT;
+IF COALESCE(@SourceStatus,'') NOT IN ('AVAILABLE','PARTIAL')
+   OR @SourcePartial IS NULL OR @SourceError IS NOT NULL
+   OR COALESCE(ISJSON(@SourceJson),0)<>1
+   OR (SELECT COUNT(*) FROM OPENJSON(@SourceJson,N'$.statements'))<>2
+   OR (SELECT COUNT(*) FROM OPENJSON(@SourceJson,N'$.operatorTree'))<>4
+   OR NOT EXISTS
+      (
+          SELECT 1
+          FROM OPENJSON(@SourceJson,N'$.operatorTree')
+          WITH ([StatementOrdinal] int N'$.StatementOrdinal',[NodeId] int N'$.NodeId')
+          WHERE [StatementOrdinal]=1 AND [NodeId]=0
+      )
+   OR NOT EXISTS
+      (
+          SELECT 1
+          FROM OPENJSON(@SourceJson,N'$.operatorTree')
+          WITH ([StatementOrdinal] int N'$.StatementOrdinal',[NodeId] int N'$.NodeId')
+          WHERE [StatementOrdinal]=1 AND [NodeId]=1
+      )
+   OR NOT EXISTS
+      (
+          SELECT 1
+          FROM OPENJSON(@SourceJson,N'$.operatorTree')
+          WITH ([StatementOrdinal] int N'$.StatementOrdinal',[NodeId] int N'$.NodeId')
+          WHERE [StatementOrdinal]=2 AND [NodeId]=0
+      )
+   OR NOT EXISTS
+      (
+          SELECT 1
+          FROM OPENJSON(@SourceJson,N'$.operatorTree')
+          WITH ([StatementOrdinal] int N'$.StatementOrdinal',[NodeId] int N'$.NodeId')
+          WHERE [StatementOrdinal]=2 AND [NodeId]=1
+      )
+    THROW 53683,N'053 hat unbenutztes @MitPredicateHistogramMap=NULL global abgewiesen oder die synthetischen Planzeilen fehlen.',1;
+
+/* Der gepaarte Null-Schaltertest unterscheidet öffentliche Validierung vom selben nicht verfügbaren Handle. */
+DECLARE @MissingThreadPlanHandle varbinary(64)=CONVERT(varbinary(64),REPLICATE('01',64),2);
+SET @SourceJson=NULL;SET @SourceStatus='STALE';SET @SourcePartial=NULL;SET @SourceError=999;SET @SourceMessage=N'SENTINEL';
+EXEC [monitor].[USP_ExecutionPlanAnalysis]
+      @PlanHandle=@MissingThreadPlanHandle
+    , @PlanQuelle='COMPILE'
+    , @StatistikEvidenzModus='NONE'
+    , @HistogrammModus='NONE'
+    , @MetadatenQuellenmodus='EVIDENCE_ONLY'
+    , @MitThreadRuntime=0
+    , @ResultSetArt='NONE'
+    , @JsonErzeugen=1
+    , @Json=@SourceJson OUTPUT
+    , @PrintMeldungen=0
+    , @StatusCodeOut=@SourceStatus OUTPUT
+    , @IsPartialOut=@SourcePartial OUTPUT
+    , @ErrorNumberOut=@SourceError OUTPUT
+    , @ErrorMessageOut=@SourceMessage OUTPUT;
+IF COALESCE(@SourceStatus,'')<>'UNAVAILABLE_OBJECT'
+   OR (@SourceError IS NOT NULL AND @SourceError<>569)
+    THROW 53684,N'Der synthetische Planhandle muss mit @MitThreadRuntime=0 bis zur UNAVAILABLE_OBJECT-Quellenantwort gelangen.',1;
+
+SET @SourceJson=NULL;SET @SourceStatus='STALE';SET @SourcePartial=NULL;SET @SourceError=999;SET @SourceMessage=N'SENTINEL';
+EXEC [monitor].[USP_ExecutionPlanAnalysis]
+      @PlanHandle=@MissingThreadPlanHandle
+    , @PlanQuelle='COMPILE'
+    , @StatistikEvidenzModus='NONE'
+    , @HistogrammModus='NONE'
+    , @MetadatenQuellenmodus='EVIDENCE_ONLY'
+    , @MitThreadRuntime=NULL
+    , @ResultSetArt='NONE'
+    , @JsonErzeugen=1
+    , @Json=@SourceJson OUTPUT
+    , @PrintMeldungen=0
+    , @StatusCodeOut=@SourceStatus OUTPUT
+    , @IsPartialOut=@SourcePartial OUTPUT
+    , @ErrorNumberOut=@SourceError OUTPUT
+    , @ErrorMessageOut=@SourceMessage OUTPUT;
+IF COALESCE(@SourceStatus,'')<>'INVALID_PARAMETER'
+   OR COALESCE(@SourcePartial,0)<>1 OR @SourceError IS NOT NULL
+   OR NULLIF(LTRIM(RTRIM(@SourceMessage)),N'') IS NULL
+    THROW 53685,N'@MitThreadRuntime=NULL muss vor der synthetisch nicht verfügbaren Planquelle als INVALID_PARAMETER enden.',1;
+
+GO
+/* Öffentliche NULL-Datenschutzgrenzen: synthetische Rohwerte und SQL-Texte. */
+DECLARE @PrivacyPlan xml=N'
+<ShowPlanXML xmlns="http://schemas.microsoft.com/sqlserver/2004/07/showplan" Version="1.600" Build="17.0.1000.1">
+  <BatchSequence><Batch><Statements>
+    <StmtSimple StatementId="1" StatementCompId="1" StatementType="SELECT" StatementText="SELECT SqlTextSentinelPublicNull FROM ExampleSchema.ExampleObject WHERE ExampleColumn = 7" StatementSubTreeCost="0.1" StatementEstRows="1" StatementOptmLevel="TRIVIAL">
+      <QueryPlan CardinalityEstimationModelVersion="170">
+        <RelOp NodeId="0" PhysicalOp="Constant Scan" LogicalOp="Constant Scan" EstimateRows="1" EstimatedTotalSubtreeCost="0.1"><ConstantScan /></RelOp>
+      </QueryPlan>
+    </StmtSimple>
+  </Statements></Batch></BatchSequence>
+</ShowPlanXML>';
+DECLARE @PrivacyEvidence nvarchar(max)=N'{
+  "statistics": {
+    "currentSnapshot": [{
+      "databaseName":"ExampleDatabase","schemaName":"ExampleSchema","objectName":"ExampleObject","objectId":1,
+      "statisticsName":"ExampleStatistics","statisticsId":1,"isIndexStatistics":true,"isFiltered":true,
+      "filterDefinition":"SensitiveEvidenceSentinelPublicNull","leadingColumnName":"ExampleColumn","collectionStatus":"AVAILABLE"
+    }],
+    "histogramSteps": [{
+      "databaseName":"ExampleDatabase","schemaName":"ExampleSchema","objectName":"ExampleObject",
+      "statisticsName":"ExampleStatistics","statisticsId":1,"leadingColumnName":"ExampleColumn",
+      "stepOrdinal":1,"rangeHighKey":"SensitiveEvidenceSentinelPublicNull","rangeRows":5,"equalRows":5,
+      "distinctRangeRows":1,"averageRangeRows":5,"isPredicateTarget":true,"predicateMatchCount":1
+    }]
+  }
+}';
+DECLARE @PrivacyIo nvarchar(max)=N'Table ''SensitiveIoSentinelPublicNull''. Scan count 1, logical reads 2, physical reads 0, read-ahead reads 0, lob logical reads 0, lob physical reads 0, lob read-ahead reads 0.';
+DECLARE
+      @PrivacyJson nvarchar(max)
+    , @PrivacyStatus varchar(40)
+    , @PrivacyPartial bit
+    , @PrivacyError int
+    , @PrivacyMessage nvarchar(2048);
+
+/* 052 RAW: NULL must not let imported filter definitions through. */
+SELECT @PrivacyJson=N'caller sentinel',@PrivacyStatus='STALE',@PrivacyPartial=NULL,@PrivacyError=999,@PrivacyMessage=N'caller sentinel';
+EXEC [monitor].[USP_CreateExecutionEvidenceJson]
+      @StatisticsEvidenceJson=@PrivacyEvidence
+    , @EvidenzDatenschutzModus='RAW'
+    , @SensitiveDataConfirmed=NULL
+    , @ResultSetArt='NONE'
+    , @JsonErzeugen=1
+    , @Json=@PrivacyJson OUTPUT
+    , @PrintMeldungen=0
+    , @StatusCodeOut=@PrivacyStatus OUTPUT
+    , @IsPartialOut=@PrivacyPartial OUTPUT
+    , @ErrorNumberOut=@PrivacyError OUTPUT
+    , @ErrorMessageOut=@PrivacyMessage OUTPUT;
+IF @PrivacyJson=N'caller sentinel' OR @PrivacyMessage=N'caller sentinel'
+   OR COALESCE(@PrivacyStatus,'')<>'SENSITIVE_DATA_CONFIRMATION_REQUIRED'
+   OR @PrivacyPartial IS NULL OR @PrivacyPartial<>1
+   OR @PrivacyError IS NOT NULL
+   OR NULLIF(LTRIM(RTRIM(@PrivacyMessage)),N'') IS NULL
+   OR CHARINDEX(N'SensitiveEvidenceSentinelPublicNull',COALESCE(@PrivacyJson,N''))>0
+    THROW 53659,N'052 RAW hat NULL als sensitive-data-Bestätigung akzeptiert oder den synthetischen Rohwert ausgegeben.',1;
+
+/* 052 INCLUDE: NULL muss geparste Meldungsrohzeilen unterdrücken. */
+SELECT @PrivacyJson=N'caller sentinel',@PrivacyStatus='STALE',@PrivacyPartial=NULL,@PrivacyError=999,@PrivacyMessage=N'caller sentinel';
+EXEC [monitor].[USP_CreateExecutionEvidenceJson]
+      @StatisticsIoText=@PrivacyIo
+    , @RawTextHandling='INCLUDE'
+    , @IdentifierDatenschutzModus='RAW'
+    , @SensitiveDataConfirmed=NULL
+    , @ResultSetArt='NONE'
+    , @JsonErzeugen=1
+    , @Json=@PrivacyJson OUTPUT
+    , @PrintMeldungen=0
+    , @StatusCodeOut=@PrivacyStatus OUTPUT
+    , @IsPartialOut=@PrivacyPartial OUTPUT
+    , @ErrorNumberOut=@PrivacyError OUTPUT
+    , @ErrorMessageOut=@PrivacyMessage OUTPUT;
+IF @PrivacyJson=N'caller sentinel' OR @PrivacyMessage=N'caller sentinel'
+   OR COALESCE(@PrivacyStatus,'')<>'SENSITIVE_DATA_CONFIRMATION_REQUIRED'
+   OR @PrivacyPartial IS NULL OR @PrivacyPartial<>1
+   OR @PrivacyError IS NOT NULL
+   OR NULLIF(LTRIM(RTRIM(@PrivacyMessage)),N'') IS NULL
+   OR CHARINDEX(N'SensitiveIoSentinelPublicNull',COALESCE(@PrivacyJson,N''))>0
+    THROW 53660,N'052 INCLUDE hat NULL als sensitive-data-Bestätigung akzeptiert oder die synthetische Rohzeile ausgegeben.',1;
+
+/* Harmloser 052-Aufruf: NULL bleibt auf DERIVED_ONLY zulässig und redigiert Rohwerte. */
+SELECT @PrivacyJson=N'caller sentinel',@PrivacyStatus='STALE',@PrivacyPartial=NULL,@PrivacyError=999,@PrivacyMessage=N'caller sentinel';
+EXEC [monitor].[USP_CreateExecutionEvidenceJson]
+      @StatisticsEvidenceJson=@PrivacyEvidence
+    , @SensitiveDataConfirmed=NULL
+    , @ResultSetArt='NONE'
+    , @JsonErzeugen=1
+    , @Json=@PrivacyJson OUTPUT
+    , @PrintMeldungen=0
+    , @StatusCodeOut=@PrivacyStatus OUTPUT
+    , @IsPartialOut=@PrivacyPartial OUTPUT
+    , @ErrorNumberOut=@PrivacyError OUTPUT
+    , @ErrorMessageOut=@PrivacyMessage OUTPUT;
+IF @PrivacyJson=N'caller sentinel' OR @PrivacyMessage=N'caller sentinel'
+   OR COALESCE(@PrivacyStatus,'') NOT IN ('AVAILABLE','PARTIAL')
+   OR @PrivacyPartial IS NULL
+   OR COALESCE(ISJSON(@PrivacyJson),0)<>1
+   OR @PrivacyError IS NOT NULL
+   OR CHARINDEX(N'SensitiveEvidenceSentinelPublicNull',COALESCE(@PrivacyJson,N''))>0
+    THROW 53661,N'052 hat NULL außerhalb sensibler Ausgabe global abgewiesen oder DERIVED_ONLY nicht redigiert.',1;
+
+/* Bestätigte 052-RAW/INCLUDE-Kontrolle: beide synthetischen Werte bleiben erreichbar. */
+SELECT @PrivacyJson=N'caller sentinel',@PrivacyStatus='STALE',@PrivacyPartial=NULL,@PrivacyError=999,@PrivacyMessage=N'caller sentinel';
+EXEC [monitor].[USP_CreateExecutionEvidenceJson]
+      @StatisticsEvidenceJson=@PrivacyEvidence
+    , @StatisticsIoText=@PrivacyIo
+    , @EvidenzDatenschutzModus='RAW'
+    , @RawTextHandling='INCLUDE'
+    , @IdentifierDatenschutzModus='RAW'
+    , @SensitiveDataConfirmed=1
+    , @ResultSetArt='NONE'
+    , @JsonErzeugen=1
+    , @Json=@PrivacyJson OUTPUT
+    , @PrintMeldungen=0
+    , @StatusCodeOut=@PrivacyStatus OUTPUT
+    , @IsPartialOut=@PrivacyPartial OUTPUT
+    , @ErrorNumberOut=@PrivacyError OUTPUT
+    , @ErrorMessageOut=@PrivacyMessage OUTPUT;
+IF @PrivacyJson=N'caller sentinel' OR @PrivacyMessage=N'caller sentinel'
+   OR COALESCE(@PrivacyStatus,'') NOT IN ('AVAILABLE','PARTIAL')
+   OR @PrivacyPartial IS NULL
+   OR COALESCE(ISJSON(@PrivacyJson),0)<>1
+   OR @PrivacyError IS NOT NULL
+   OR CHARINDEX(N'SensitiveEvidenceSentinelPublicNull',COALESCE(@PrivacyJson,N''))=0
+   OR CHARINDEX(N'SensitiveIoSentinelPublicNull',COALESCE(@PrivacyJson,N''))=0
+    THROW 53662,N'Explizit bestätigte 052-RAW/INCLUDE-Kontrolle hat die erwartete synthetische Evidenz nicht erhalten.',1;
+
+/* 053 RAW-Plan-Evidenz: NULL muss den öffentlichen Bestätigungsstatus liefern. */
+SELECT @PrivacyJson=N'caller sentinel',@PrivacyStatus='STALE',@PrivacyPartial=NULL,@PrivacyError=999,@PrivacyMessage=N'caller sentinel';
+EXEC [monitor].[USP_ExecutionPlanAnalysis]
+      @PlanXml=@PrivacyPlan
+    , @EvidenzJson=@PrivacyEvidence
+    , @EvidenzDatenschutzModus='RAW'
+    , @IdentifierDatenschutzModus='RAW'
+    , @MitSqlText=0
+    , @SensitiveDataConfirmed=NULL
+    , @ResultSetArt='NONE'
+    , @JsonErzeugen=1
+    , @Json=@PrivacyJson OUTPUT
+    , @PrintMeldungen=0
+    , @StatusCodeOut=@PrivacyStatus OUTPUT
+    , @IsPartialOut=@PrivacyPartial OUTPUT
+    , @ErrorNumberOut=@PrivacyError OUTPUT
+    , @ErrorMessageOut=@PrivacyMessage OUTPUT;
+IF @PrivacyJson=N'caller sentinel' OR @PrivacyMessage=N'caller sentinel'
+   OR COALESCE(@PrivacyStatus,'')<>'SENSITIVE_DATA_CONFIRMATION_REQUIRED'
+   OR @PrivacyPartial IS NULL OR @PrivacyPartial<>1
+   OR @PrivacyError IS NOT NULL
+   OR NULLIF(LTRIM(RTRIM(@PrivacyMessage)),N'') IS NULL
+   OR CHARINDEX(N'SensitiveEvidenceSentinelPublicNull',COALESCE(@PrivacyJson,N''))>0
+    THROW 53663,N'053 RAW hat NULL als sensitive-data-Bestätigung akzeptiert oder den synthetischen Rohwert ausgegeben.',1;
+
+/* 053 RAW: 0 als Bestätigung muss Rohwerte ebenfalls unterdrücken. */
+SELECT @PrivacyJson=N'caller sentinel',@PrivacyStatus='STALE',@PrivacyPartial=NULL,@PrivacyError=999,@PrivacyMessage=N'caller sentinel';
+EXEC [monitor].[USP_ExecutionPlanAnalysis]
+      @PlanXml=@PrivacyPlan
+    , @EvidenzJson=@PrivacyEvidence
+    , @EvidenzDatenschutzModus='RAW'
+    , @IdentifierDatenschutzModus='RAW'
+    , @MitSqlText=0
+    , @SensitiveDataConfirmed=0
+    , @ResultSetArt='NONE'
+    , @JsonErzeugen=1
+    , @Json=@PrivacyJson OUTPUT
+    , @PrintMeldungen=0
+    , @StatusCodeOut=@PrivacyStatus OUTPUT
+    , @IsPartialOut=@PrivacyPartial OUTPUT
+    , @ErrorNumberOut=@PrivacyError OUTPUT
+    , @ErrorMessageOut=@PrivacyMessage OUTPUT;
+IF @PrivacyJson=N'caller sentinel' OR @PrivacyMessage=N'caller sentinel'
+   OR COALESCE(@PrivacyStatus,'')<>'SENSITIVE_DATA_CONFIRMATION_REQUIRED'
+   OR @PrivacyPartial IS NULL OR @PrivacyPartial<>1
+   OR @PrivacyError IS NOT NULL
+   OR NULLIF(LTRIM(RTRIM(@PrivacyMessage)),N'') IS NULL
+   OR CHARINDEX(N'SensitiveEvidenceSentinelPublicNull',COALESCE(@PrivacyJson,N''))>0
+    THROW 53669,N'053 RAW hat Bestätigung 0 akzeptiert oder den synthetischen Rohwert ausgegeben.',1;
+
+/* 053 SQL-Text: NULL als Bestätigung darf Text nicht freigeben. */
+SELECT @PrivacyJson=N'caller sentinel',@PrivacyStatus='STALE',@PrivacyPartial=NULL,@PrivacyError=999,@PrivacyMessage=N'caller sentinel';
+EXEC [monitor].[USP_ExecutionPlanAnalysis]
+      @PlanXml=@PrivacyPlan
+    , @MitSqlText=1
+    , @SensitiveDataConfirmed=NULL
+    , @ResultSetArt='NONE'
+    , @JsonErzeugen=1
+    , @Json=@PrivacyJson OUTPUT
+    , @PrintMeldungen=0
+    , @StatusCodeOut=@PrivacyStatus OUTPUT
+    , @IsPartialOut=@PrivacyPartial OUTPUT
+    , @ErrorNumberOut=@PrivacyError OUTPUT
+    , @ErrorMessageOut=@PrivacyMessage OUTPUT;
+IF @PrivacyJson=N'caller sentinel' OR @PrivacyMessage=N'caller sentinel'
+   OR COALESCE(@PrivacyStatus,'')<>'SENSITIVE_DATA_CONFIRMATION_REQUIRED'
+   OR @PrivacyPartial IS NULL OR @PrivacyPartial<>1
+   OR @PrivacyError IS NOT NULL
+   OR NULLIF(LTRIM(RTRIM(@PrivacyMessage)),N'') IS NULL
+   OR CHARINDEX(N'SqlTextSentinelPublicNull',COALESCE(@PrivacyJson,N''))>0
+    THROW 53664,N'053 hat SQL-Text trotz NULL-Bestätigung ausgegeben.',1;
+
+/* 053 SQL-Text: 0 als Bestätigung muss Text ebenfalls unterdrücken. */
+SELECT @PrivacyJson=N'caller sentinel',@PrivacyStatus='STALE',@PrivacyPartial=NULL,@PrivacyError=999,@PrivacyMessage=N'caller sentinel';
+EXEC [monitor].[USP_ExecutionPlanAnalysis]
+      @PlanXml=@PrivacyPlan
+    , @MitSqlText=1
+    , @SensitiveDataConfirmed=0
+    , @ResultSetArt='NONE'
+    , @JsonErzeugen=1
+    , @Json=@PrivacyJson OUTPUT
+    , @PrintMeldungen=0
+    , @StatusCodeOut=@PrivacyStatus OUTPUT
+    , @IsPartialOut=@PrivacyPartial OUTPUT
+    , @ErrorNumberOut=@PrivacyError OUTPUT
+    , @ErrorMessageOut=@PrivacyMessage OUTPUT;
+IF @PrivacyJson=N'caller sentinel' OR @PrivacyMessage=N'caller sentinel'
+   OR COALESCE(@PrivacyStatus,'')<>'SENSITIVE_DATA_CONFIRMATION_REQUIRED'
+   OR @PrivacyPartial IS NULL OR @PrivacyPartial<>1
+   OR @PrivacyError IS NOT NULL
+   OR NULLIF(LTRIM(RTRIM(@PrivacyMessage)),N'') IS NULL
+   OR CHARINDEX(N'SqlTextSentinelPublicNull',COALESCE(@PrivacyJson,N''))>0
+    THROW 53670,N'053 hat SQL-Text trotz Bestätigung 0 ausgegeben.',1;
+
+/* 053 MitSqlText ist geschlossen: NULL ist ungültig, unabhängig von Bestätigung. */
+SELECT @PrivacyJson=N'caller sentinel',@PrivacyStatus='STALE',@PrivacyPartial=NULL,@PrivacyError=999,@PrivacyMessage=N'caller sentinel';
+EXEC [monitor].[USP_ExecutionPlanAnalysis]
+      @PlanXml=@PrivacyPlan
+    , @EvidenzJson=@PrivacyEvidence
+    , @EvidenzDatenschutzModus='RAW'
+    , @IdentifierDatenschutzModus='RAW'
+    , @MitSqlText=NULL
+    , @SensitiveDataConfirmed=0
+    , @ResultSetArt='NONE'
+    , @JsonErzeugen=1
+    , @Json=@PrivacyJson OUTPUT
+    , @PrintMeldungen=0
+    , @StatusCodeOut=@PrivacyStatus OUTPUT
+    , @IsPartialOut=@PrivacyPartial OUTPUT
+    , @ErrorNumberOut=@PrivacyError OUTPUT
+    , @ErrorMessageOut=@PrivacyMessage OUTPUT;
+IF @PrivacyJson=N'caller sentinel' OR @PrivacyMessage=N'caller sentinel'
+   OR COALESCE(@PrivacyStatus,'')<>'INVALID_PARAMETER'
+   OR @PrivacyPartial IS NULL OR @PrivacyPartial<>1
+   OR @PrivacyError IS NOT NULL
+   OR NULLIF(LTRIM(RTRIM(@PrivacyMessage)),N'') IS NULL
+   OR CHARINDEX(N'SqlTextSentinelPublicNull',COALESCE(@PrivacyJson,N''))>0
+   OR CHARINDEX(N'SensitiveEvidenceSentinelPublicNull',COALESCE(@PrivacyJson,N''))>0
+    THROW 53665,N'053 hat MitSqlText=NULL mit RAW-Evidenz nicht sicher als ungültig abgewiesen.',1;
+
+SELECT @PrivacyJson=N'caller sentinel',@PrivacyStatus='STALE',@PrivacyPartial=NULL,@PrivacyError=999,@PrivacyMessage=N'caller sentinel';
+EXEC [monitor].[USP_ExecutionPlanAnalysis]
+      @PlanXml=@PrivacyPlan
+    , @MitSqlText=NULL
+    , @SensitiveDataConfirmed=1
+    , @ResultSetArt='NONE'
+    , @JsonErzeugen=1
+    , @Json=@PrivacyJson OUTPUT
+    , @PrintMeldungen=0
+    , @StatusCodeOut=@PrivacyStatus OUTPUT
+    , @IsPartialOut=@PrivacyPartial OUTPUT
+    , @ErrorNumberOut=@PrivacyError OUTPUT
+    , @ErrorMessageOut=@PrivacyMessage OUTPUT;
+IF @PrivacyJson=N'caller sentinel' OR @PrivacyMessage=N'caller sentinel'
+   OR COALESCE(@PrivacyStatus,'')<>'INVALID_PARAMETER'
+   OR @PrivacyPartial IS NULL OR @PrivacyPartial<>1
+   OR @PrivacyError IS NOT NULL
+   OR NULLIF(LTRIM(RTRIM(@PrivacyMessage)),N'') IS NULL
+   OR CHARINDEX(N'SqlTextSentinelPublicNull',COALESCE(@PrivacyJson,N''))>0
+    THROW 53666,N'Explizite Sensitivity-Bestätigung hat MitSqlText=NULL nicht ungültig gelassen.',1;
+
+/* Harmloser 053-Aufruf: SensitiveDataConfirmed=NULL mit MitSqlText=0 bleibt erlaubt. */
+SELECT @PrivacyJson=N'caller sentinel',@PrivacyStatus='STALE',@PrivacyPartial=NULL,@PrivacyError=999,@PrivacyMessage=N'caller sentinel';
+EXEC [monitor].[USP_ExecutionPlanAnalysis]
+      @PlanXml=@PrivacyPlan
+    , @MitSqlText=0
+    , @SensitiveDataConfirmed=NULL
+    , @ResultSetArt='NONE'
+    , @JsonErzeugen=1
+    , @Json=@PrivacyJson OUTPUT
+    , @PrintMeldungen=0
+    , @StatusCodeOut=@PrivacyStatus OUTPUT
+    , @IsPartialOut=@PrivacyPartial OUTPUT
+    , @ErrorNumberOut=@PrivacyError OUTPUT
+    , @ErrorMessageOut=@PrivacyMessage OUTPUT;
+IF @PrivacyJson=N'caller sentinel' OR @PrivacyMessage=N'caller sentinel'
+   OR COALESCE(@PrivacyStatus,'') NOT IN ('AVAILABLE','PARTIAL')
+   OR @PrivacyPartial IS NULL
+   OR COALESCE(ISJSON(@PrivacyJson),0)<>1
+   OR @PrivacyError IS NOT NULL
+   OR CHARINDEX(N'SqlTextSentinelPublicNull',COALESCE(@PrivacyJson,N''))>0
+    THROW 53667,N'053 hat SensitiveDataConfirmed=NULL außerhalb sensibler Ausgabe global abgewiesen oder StatementText ausgegeben.',1;
+
+/* Explizite Bestätigung erhält RAW-Evidenz und SQL-Text im 053-Aufruf. */
+SELECT @PrivacyJson=N'caller sentinel',@PrivacyStatus='STALE',@PrivacyPartial=NULL,@PrivacyError=999,@PrivacyMessage=N'caller sentinel';
+EXEC [monitor].[USP_ExecutionPlanAnalysis]
+      @PlanXml=@PrivacyPlan
+    , @EvidenzJson=@PrivacyEvidence
+    , @MitSqlText=1
+    , @EvidenzDatenschutzModus='RAW'
+    , @IdentifierDatenschutzModus='RAW'
+    , @SensitiveDataConfirmed=1
+    , @ResultSetArt='NONE'
+    , @JsonErzeugen=1
+    , @Json=@PrivacyJson OUTPUT
+    , @PrintMeldungen=0
+    , @StatusCodeOut=@PrivacyStatus OUTPUT
+    , @IsPartialOut=@PrivacyPartial OUTPUT
+    , @ErrorNumberOut=@PrivacyError OUTPUT
+    , @ErrorMessageOut=@PrivacyMessage OUTPUT;
+DECLARE @PrivacyHasRangeHighKey bit,@PrivacyHasStatementText bit;
+SELECT
+      @PrivacyHasRangeHighKey=CASE WHEN EXISTS
+          (SELECT 1 FROM OPENJSON(CASE WHEN ISJSON(@PrivacyJson)=1 THEN @PrivacyJson ELSE N'{}' END,N'$.histogramSteps')
+           WITH ([RangeHighKey] nvarchar(max) N'$.RangeHighKey')
+           WHERE [RangeHighKey]=N'SensitiveEvidenceSentinelPublicNull') THEN 1 ELSE 0 END
+    , @PrivacyHasStatementText=CASE WHEN EXISTS
+          (SELECT 1 FROM OPENJSON(CASE WHEN ISJSON(@PrivacyJson)=1 THEN @PrivacyJson ELSE N'{}' END,N'$.statements')
+           WITH ([StatementText] nvarchar(max) N'$.StatementText')
+           WHERE [StatementText]=N'SELECT SqlTextSentinelPublicNull FROM ExampleSchema.ExampleObject WHERE ExampleColumn = 7') THEN 1 ELSE 0 END;
+IF @PrivacyJson=N'caller sentinel' OR @PrivacyMessage=N'caller sentinel'
+   OR COALESCE(@PrivacyStatus,'') NOT IN ('AVAILABLE','PARTIAL')
+   OR @PrivacyPartial IS NULL
+   OR COALESCE(ISJSON(@PrivacyJson),0)<>1
+   OR @PrivacyError IS NOT NULL
+   OR CHARINDEX(N'SensitiveEvidenceSentinelPublicNull',COALESCE(@PrivacyJson,N''))=0
+   OR CHARINDEX(N'SqlTextSentinelPublicNull',COALESCE(@PrivacyJson,N''))=0
+   OR COALESCE(@PrivacyHasRangeHighKey,0)<>1
+   OR COALESCE(@PrivacyHasStatementText,0)<>1
+BEGIN
+    DECLARE @PrivacyDiagnostic nvarchar(2048)=CONCAT(
+        N'053 confirmation control failed: status=',COALESCE(@PrivacyStatus,'<NULL>'),
+        N'; partial=',COALESCE(CONVERT(varchar(1),@PrivacyPartial),'<NULL>'),
+        N'; error=',COALESCE(CONVERT(varchar(12),@PrivacyError),'<NULL>'),
+        N'; json=',COALESCE(CONVERT(varchar(1),ISJSON(@PrivacyJson)),'<NULL>'),
+        N'; raw=',CONVERT(varchar(1),CASE WHEN CHARINDEX(N'SensitiveEvidenceSentinelPublicNull',COALESCE(@PrivacyJson,N''))>0 THEN 1 ELSE 0 END),
+        N'; sql=',CONVERT(varchar(1),CASE WHEN CHARINDEX(N'SqlTextSentinelPublicNull',COALESCE(@PrivacyJson,N''))>0 THEN 1 ELSE 0 END),
+        N'; rangeHighKey=',COALESCE(CONVERT(varchar(1),@PrivacyHasRangeHighKey),'<NULL>'),
+        N'; statementText=',COALESCE(CONVERT(varchar(1),@PrivacyHasStatementText),'<NULL>')
+    );
+    THROW 53668,@PrivacyDiagnostic,1;
+END;
 GO

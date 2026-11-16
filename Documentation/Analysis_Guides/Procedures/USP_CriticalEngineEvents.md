@@ -129,7 +129,7 @@ Keine Zeile bedeutet, dass im sichtbaren, gefilterten Kandidatensatz kein ausgab
 
 ## Eigenlast und Grenzen
 
-**Quellcode-Hinweis zur Eigenlast:** Das begrenzte Lesen von Eventfiles besitzt die Kostenklasse MEDIUM; der XML-Transfer ist ein Opt-in.
+**Quellcode-Hinweis zur Eigenlast:** Das Lesen passender Eventfiles bleibt MEDIUM. Positive `@MaxZeilen`-Werte begrenzen das gefilterte XEL-Kandidatenset vor XML-Extraktion und Severity-Auswertung, garantieren aber keine Begrenzung der physischen Dateilesearbeit. Der XML-Transfer ist ein Opt-in.
 
 | Dimension | Aussage für diese Procedure |
 |---|---|

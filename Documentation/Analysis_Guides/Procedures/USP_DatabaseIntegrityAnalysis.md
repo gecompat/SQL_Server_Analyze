@@ -146,7 +146,7 @@ Welche sichtbaren Metadaten weisen auf suspect pages, beschädigte Backups oder 
 
 ### Technischer Hintergrund
 
-Page Verify CHECKSUM erkennt bestimmte Pageänderungen bei Read; `suspect_pages` speichert erkannte Pageereignisse; DBINFO/Property kann Last Good CHECKDB liefern; Backupsets enthalten checksum/damage flags; HADR Auto Page Repair dokumentiert Reparaturversuche.
+Page Verify CHECKSUM erkennt bestimmte Pageänderungen bei Read; `suspect_pages` speichert erkannte Pageereignisse; Backupsets enthalten checksum/damage flags; HADR Auto Page Repair dokumentiert Reparaturversuche. Die Procedure erhebt weder den Zeitpunkt der letzten erfolgreichen CHECKDB-Prüfung noch ein CHECKDB-Alter; `LastGoodCheckDbTime` und `CheckdbAgeHours` bleiben NULL. Sie führt weder DBCC CHECKDB noch Repair aus.
 
 ### Datenkette
 
@@ -184,7 +184,7 @@ Die Auswertung verbindet historische und aktuelle Metadaten mit unterschiedliche
 
 ### Bewertung und Gegenprobe
 
-Priorisieren Sie jede Suspect Page, jedes beschädigte Backup und jede Pending Page Repair hoch. Prüfen Sie Last Good CHECKDB gegen die Policy, die Datenbankgröße und die Backup- und Restorestrategie. Berücksichtigen Sie dabei immer EvidenceLimit.
+Priorisieren Sie jede Suspect Page, jedes beschädigte Backup und jede Pending Page Repair hoch. Vergleichen Sie einen separat erhobenen Nachweis einer erfolgreichen CHECKDB-Prüfung mit der Policy, der Datenbankgröße und der Backup- und Restorestrategie. Aus NULL in `LastGoodCheckDbTime` oder `CheckdbAgeHours` lässt sich weder Prüfzeitpunkt noch Prüfalter ableiten. Berücksichtigen Sie dabei immer EvidenceLimit.
 
 ### Typische Fehlinterpretation
 

@@ -114,14 +114,14 @@ Für USP_ServerSecurityConfiguration weist SourceStatus die Verfügbarkeit von s
 | Dimension | Aussage für diese Procedure |
 |---|---|
 | Kostenklasse | LOW |
-| Standardpfad | Liest sieben fest benannte sicherheitsrelevante Serveroptionen, SQL-Dienste sowie vier `SERVERPROPERTY`-/Rollenwerte. Jede Teilquelle schreibt eigenen Status. |
+| Standardpfad | Liest acht fest benannte sicherheitsrelevante Serveroptionen, SQL-Dienste sowie vier `SERVERPROPERTY`-/Rollenwerte. Jede Teilquelle schreibt eigenen Status. |
 | Teuerster Pfad | Es gibt keinen erweiterten Modus; RAW/JSON zeigen nur mehr Projektionen derselben kleinen Quellen. Die Procedure enumeriert keine Logins, Berechtigungen, Credentials, Endpoints oder Datenbankbenutzer. |
 | Haupttreiber | Feste Konfigurationsliste und Zahl der SQL-Dienste. Resultgröße ist unabhängig von Datenbanken und Loginanzahl. |
 | Skalierung | Praktisch konstant. Finding-CASE-Auswertung und Sortierung sind gering; Sourcefehler werden isoliert statt durch teure Fallbacks kompensiert. |
 | Ressourcen | Ein kleiner `sys.configurations`-Filter, `sys.dm_server_services`, `SERVERPROPERTY`/`IS_SRVROLEMEMBER` und Temp-Tabellen. Kein Registry-, Netzwerk- oder Dateisystemscan. |
 | Begrenzungswirkung | Kein `@MaxZeilen`, weil jede Konfigurations-/Dienstzeile Teil des Security-Snapshots ist. `NONE` spart Ausgabe, nicht die Quellprüfung. |
 | Locking und Nebenwirkungen | Read-only. Es werden keine Features, Logins oder Dienste geändert; konfigurierte und aktive Werte beziehungsweise Dienststatus können sich zwischen den drei Teilabfragen ändern. |
-| Schutzmechanismus | Kein Gate und kein Teil-Scope. Der Sicherheitsvertrag ist fest auf sieben benannte Konfigurationen, SQL-Dienste und vier Server-/Rollenwerte begrenzt; Login-, Benutzer- und Berechtigungsinventare werden nicht geöffnet. |
+| Schutzmechanismus | Kein Gate und kein Teil-Scope. Der Sicherheitsvertrag ist fest auf acht benannte Konfigurationen, SQL-Dienste und vier Server-/Rollenwerte begrenzt; Login-, Benutzer- und Berechtigungsinventare werden nicht geöffnet. |
 | Sicherer Einsatz | CONSOLE direkt nutzen; Server-/Maschinenname und Dienstkonten aus RAW/JSON/TABLE als sensible Betriebsmetadaten behandeln. |
 | Aussagegrenze | Die Auswertung ist ein enger Konfigurationscheck, kein Berechtigungs- oder Angriffsflächen-Audit. `OK_OR_CONTEXT_DEPENDENT` bestätigt weder Least Privilege noch sichere Proxy-/Credential-/Endpointkonfiguration. |
 
@@ -158,9 +158,12 @@ WHERE [c].[name] IN
        N'clr enabled',
        N'clr strict security',
        N'external scripts enabled',
+       N'external rest endpoint enabled',
        N'remote admin connections',
        N'contained database authentication');
 ```
+
+`external rest endpoint enabled` ist auf SQL Server 2025 ein Katalogwert für konfigurierte und aktive Einstellung. Die lesende Zeile enthält keinen REST-Aufruf, keine Endpoint-URL, keine Credentials und keine Nutzungshistorie. Auch ein Wert 1 belegt weder einen erreichbaren Endpoint noch die nötige Aufrufberechtigung; `OK_OR_CONTEXT_DEPENDENT` ist kein Gesundheitsurteil. Auf älteren Engines kann die Option fehlen.
 
 **Wichtig für die Eigenlast:** Die Quellen sind klein. Dienststatus und Instant File Initialization kommen separat aus `sys.dm_server_services`; die Procedure ändert keine Konfiguration und keine Dienstkonten.
 
@@ -182,6 +185,8 @@ Für die weitere Analyse gelten folgende Schritte und Quellen: Formales Security
 
 ## Primärquellen
 
+- [Server Configuration Options](https://learn.microsoft.com/en-us/sql/database-engine/configure-windows/server-configuration-options-sql-server?view=sql-server-ver17)
+- [Externer REST-Aufruf und Freischaltung](https://learn.microsoft.com/en-us/sql/relational-databases/system-stored-procedures/sp-invoke-external-rest-endpoint-transact-sql?view=sql-server-ver17)
 - [SQL Server security best practices](https://learn.microsoft.com/en-us/sql/relational-databases/security/sql-server-security-best-practices?view=sql-server-ver17)
 
 [Technische Detailbeschreibung](../08_Server_Health.md#9-monitorusp_serversecurityconfiguration)

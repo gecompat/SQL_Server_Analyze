@@ -1,13 +1,20 @@
 # Datei-I/O-Snapshots: Feld- und Migrationsvertrag
 
-**Stand:** 26. Oktober 2026.
-**Status:** internes Schema-3-Target und Waitkompatibilität im Quellstand implementiert; die öffentliche native FILE_IO-Aufnahme bleibt geplant. Die regulären Integrationsgates bleiben erforderlich.
+**Stand:** 5. November 2026.
+**Status:** Target 1.3.1 / Schema 3 mit Retentionsvertrag 3 und der öffentliche native FILE_IO-Aufnahmepfad sind integriert. PR #458 samt eng begrenzter historischer SQL2019-Snapshotqualifikation und SQL2025-Main-Gate ist in der [regulären Integration](#reguläre-integration-der-öffentlichen-quelle) dokumentiert. Das belegt keine allgemeine Plattformfreigabe.
 **Artefakt-UID:** `urn:uuid:01a17587-45e0-7332-a8bd-2015f82e2bad`.
 **Registrierung:** `DEFERRED`; keine finale lesbare Kennung vergeben.
 **Zuordnung:** SC-023-EXPANSION; dieser Vertrag konkretisiert den
 [Quell-/Identitätsvorvertrag](File_IO_Snapshot_Dossier.md).
 
 ## Geltung und geplante Lieferfolge
+
+Dieser Abschnitt beschreibt den ursprünglichen Vorvertrag für Target 1.3.0 /
+Schema 3 und seine damalige, gestufte Lieferplanung. Die Aussagen über die
+noch geplante öffentliche Quelle gehören zu dieser historischen Phase. Der
+aktuelle Lieferstand folgt später in diesem Dokument unter
+[Öffentliche Quelle und Targetpatch 1.3.1](#öffentliche-quelle-und-targetpatch-131)
+und [Reguläre Integration](#reguläre-integration-der-öffentlichen-quelle).
 
 Der Vertrag erweitert ausschließlich das optionale Snapshotpaket. Die
 vorhandenen Performance-Counter- und Waitpfade bleiben erhalten. Zuerst folgen

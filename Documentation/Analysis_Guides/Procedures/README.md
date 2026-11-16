@@ -1,7 +1,7 @@
 # Eigenständige Analysebeschreibungen je Procedure
 
-**Stand:** 22. Juli 2026<br>
-**Strukturelle Abdeckung:** 106 Procedures<br>
+**Stand:** 15. November 2026<br>
+**Strukturelle Abdeckung:** 127 Procedures<br>
 **Tief geprüfte Seiten:** 92 Procedures
 
 Jede Seite verbindet den sicheren Einstieg mit der fachlichen Leserichtung. Sie beantwortet insbesondere:
@@ -17,7 +17,7 @@ Die vollständigen technischen Spaltentabellen bleiben in den verlinkten Bereich
 
 ## Reifegrad richtig lesen
 
-92 Procedures besitzen eine am aktuellen T-SQL geprüfte `DEEP_REVIEWED`-Seite. Die zwei PLAN-001-, drei SC-023- und die SQL25-001-Seite stehen als vollständig strukturierte `BASELINE` bereit. Beide Stufen enthalten Zweck, sichere Aufrufe, Resultset-Leserichtung, Grenzen, Kostenprofil und technische Quellen; `DEEP_REVIEWED` kennzeichnet zusätzlich den vollständig abgeglichenen technischen Vertiefungsvertrag.
+92 Procedures besitzen eine am aktuellen T-SQL geprüfte `DEEP_REVIEWED`-Seite. Die zwei PLAN-001-, drei SC-023-, die SQL25-001- und die Agent-Proxy-Seite stehen als vollständig strukturierte `BASELINE` bereit. Beide Stufen enthalten Zweck, sichere Aufrufe, Resultset-Leserichtung, Grenzen, Kostenprofil und technische Quellen; `DEEP_REVIEWED` kennzeichnet zusätzlich den vollständig abgeglichenen technischen Vertiefungsvertrag.
 
 Als fachliche Kalibrierungsfälle für unterschiedliche Beobachtungs- und Kostenmodelle dienen:
 
@@ -63,6 +63,7 @@ Jede Seite weist jetzt Entscheidungseinsatz, Nichtziele, Resultset-Leserichtung,
 - [USP_IndexPhysicalStats](USP_IndexPhysicalStats.md)
 - [USP_VectorIndexAnalysis](USP_VectorIndexAnalysis.md)
 - [USP_SchemaDesignAnalysis](USP_SchemaDesignAnalysis.md)
+- [USP_DatabaseDdlTriggerInventory](USP_DatabaseDdlTriggerInventory.md)
 - [USP_ObjectAnalysis](USP_ObjectAnalysis.md)
 
 ## Plan Cache und Showplan
@@ -75,6 +76,7 @@ Jede Seite weist jetzt Entscheidungseinsatz, Nichtziele, Resultset-Leserichtung,
 - [USP_ExecutionPlanAnalysis](USP_ExecutionPlanAnalysis.md)
 - [USP_ShowplanAnalysis](USP_ShowplanAnalysis.md)
 - [USP_PlanCacheAnalysis](USP_PlanCacheAnalysis.md)
+- [USP_PlanGuideInventory](USP_PlanGuideInventory.md)
 
 ## Query Store
 
@@ -103,6 +105,7 @@ Jede Seite weist jetzt Entscheidungseinsatz, Nichtziele, Resultset-Leserichtung,
 
 - [USP_AgentStatus](USP_AgentStatus.md)
 - [USP_AgentJobs](USP_AgentJobs.md)
+- [USP_AgentProxyInventory](USP_AgentProxyInventory.md)
 - [USP_ResourceGovernorAnalysis](USP_ResourceGovernorAnalysis.md)
 - [USP_AvailabilityGroups](USP_AvailabilityGroups.md)
 - [USP_BackupRecovery](USP_BackupRecovery.md)
@@ -125,6 +128,8 @@ Jede Seite weist jetzt Entscheidungseinsatz, Nichtziele, Resultset-Leserichtung,
 - [USP_TraceFlags](USP_TraceFlags.md)
 - [USP_StartupParameters](USP_StartupParameters.md)
 - [USP_OSInformation](USP_OSInformation.md)
+- [USP_LoadedModuleInventory](USP_LoadedModuleInventory.md) inventarisiert native Modulnamen einschließlich möglicher Pfade und ergänzende Basenamen im SQL-Prozess ohne Host- oder Filtertreiberurteil.
+- [USP_DatabaseSnapshotInventory](USP_DatabaseSnapshotInventory.md) inventarisiert caller-sichtbare Datenbank-Snapshots und Sparse-Dateikatalogzeilen ohne Aussage zur physischen Belegung.
 - [USP_ServerSecurityConfiguration](USP_ServerSecurityConfiguration.md)
 - [USP_AuditConfigurationAnalysis](USP_AuditConfigurationAnalysis.md)
 - [USP_ServerHealthAnalysis](USP_ServerHealthAnalysis.md)
@@ -189,4 +194,5 @@ Jede Seite weist jetzt Entscheidungseinsatz, Nichtziele, Resultset-Leserichtung,
 - [USP_UpgradeFeatureUsageAnalysis](USP_UpgradeFeatureUsageAnalysis.md) zeigt instanzweite Deprecated-Begegnungen und eine begrenzte Zielversionsregel.
 
 - [USP_DistributedTransactionInventory](USP_DistributedTransactionInventory.md) zeigt lokale Promotionkonfiguration und sichtbare aktive Transaktionsmetadaten mit expliziten Grenzen.
+- [USP_SensitivityClassificationSummary](USP_SensitivityClassificationSummary.md) zählt caller-sichtbare Tabellen, Spalten und klassifizierte Tabellenspalten je ausgewählter Datenbank ohne Werte oder Klassifikationstexte.
 - [USP_DatabaseMirroringInventory](USP_DatabaseMirroringInventory.md) zeigt caller-sichtbare Mirroring-Katalogwerte ausgewählter ONLINE-Datenbanken; eine RESTORING-Mirror-Rolle bleibt unqualifiziert.

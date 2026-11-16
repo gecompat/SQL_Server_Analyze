@@ -7,7 +7,7 @@
 
 ## Entscheidungsfrage und Einsatz
 
-Die Procedure beantwortet die Betriebsfrage: **Wie verteilt sich der Buffer Pool auf Datenbanken, Objekte und Pagearten, und gibt es Hinweise auf Cache-/Memorydruck?** Sie unterstützt die Entscheidung, ob eine Instanzressource oder Konfiguration als belastbare Spur zum Symptom passt und welche unabhängige OS-, Verlaufs- oder Workloadevidenz fehlt.
+Die Procedure beantwortet die Betriebsfrage: **Welche Memory- und Resource-Semaphore-Snapshotwerte sowie Clerktypgruppen sind sichtbar, und wie verteilen sich gecachte Seiten optional nach Datenbank?** Die optionale Verteilung enthält keine Objekt-, Datei- oder Pageartenaufschlüsselung und keine PLE- oder Read-Messung. Sie unterstützt die Entscheidung, welche unabhängige OS-, Verlaufs- oder Workloadevidenz zur Einordnung eines Symptoms fehlt.
 
 ## Nicht beantwortete Fragen
 
@@ -96,11 +96,11 @@ Name bleibt `NULL`.
 
 ## Eine Zeile bedeutet
 
-Je Resultset beschreibt eine Zeile eine Memoryzusammenfassung, einen Clerk oder eine Datenbank-/Page-Verteilung.
+Die Zeilengranularität hängt vom Resultset ab: MemorySnapshot enthält Snapshotwerte, Resource Semaphores Zeilen je Pool und Semaphore, MemoryClerks Zeilen je Clerktyp und die optionale Buffer-Pool-Verteilung Zeilen je Datenbank-ID und zugeordnetem Namen. Nicht aufgelöste Datenbanknamen bleiben NULL. Die Verteilung schlüsselt weder Objekte noch Dateien oder Pagearten auf.
 
 ## So lesen
 
-Berücksichtigen Sie Gesamtbuffer, Clerks, Datenbankanteile, Dirty/Clean Pages und Memory Pressure gemeinsam.
+Ordnen Sie MemorySnapshot- und Semaphorewerte, Clerktypgruppen und die optionale Datenbankverteilung gemeinsam ein. Die Verteilung weist je Datenbank-ID gecachte Seiten, Cachegröße, dirty Seiten, dirty Größe, freien Platz innerhalb der gecachten Seiten und die Anzahl der NUMA-Knoten aus. Objekt-, Datei- oder Pageartenanteile sowie PLE und Reads sind keine Felder dieser Procedure; prüfen Sie diese bei Bedarf mit separaten Quellen.
 
 ## Warum kann das problematisch sein?
 
@@ -144,11 +144,11 @@ Für `USP_BufferPoolAnalysis` gilt zusätzlich: **keine Zeile** bedeutet, dass i
 
 ### Leitfrage
 
-Wie verteilt sich der Buffer Pool auf Datenbanken, Objekte und Pagearten, und gibt es Hinweise auf Cache-/Memorydruck?
+Welche Memory- und Resource-Semaphore-Snapshotwerte sowie Clerktypgruppen sind sichtbar, und wie verteilen sich gecachte Seiten optional nach Datenbank?
 
 ### Technischer Hintergrund
 
-Buffer Descriptors repräsentieren gecachte 8-KB-Datenseiten. Verteilung nach Database/File/Page/Object kann Working Set zeigen; Memory Clerks und PLE/Lazy Writes ergänzen Drucksignale. Clean Pages sind verwerfbar, Dirty Pages benötigen Flush.
+Die optional ausgewerteten Buffer Descriptors werden nach Datenbank-ID und zugeordnetem Datenbanknamen gruppiert. Die Ausgabe enthält gecachte Seiten und Größe, dirty Seiten und Größe, freien Platz innerhalb der gecachten Seiten sowie die Anzahl der NUMA-Knoten; sie liefert keine Objekt-, Datei- oder Pageartenaufschlüsselung. PLE, Lazy Writes und Reads werden nicht von dieser Procedure erhoben und erfordern separate Quellen.
 
 ### Datenkette
 
@@ -178,7 +178,7 @@ Die Auswertung beschreibt den aktuellen Cachebestand; dieser verändert sich for
 
 ### Bewertung und Gegenprobe
 
-Berücksichtigen Sie Cached MB und Pages, Dirtyanteil, Datenbank- und Objektanteil, Page Life und Reads, OS- und Prozessdruck sowie Workloadgröße gemeinsam. Ein dominanter Cacheanteil kann ein legitimes Working Set darstellen.
+Berücksichtigen Sie Cached MB und Pages, Dirtyanteil und Datenbankanteile zusammen mit den erfassten OS- und Prozessspeicherwerten. Page Life Expectancy, Reads und Workloadverlauf sind bei Bedarf aus separaten Quellen zu ergänzen. Die Procedure erhebt keine Objektanteile. Ein dominanter Cacheanteil kann ein legitimes Working Set darstellen.
 
 ### Typische Fehlinterpretation
 
@@ -186,7 +186,7 @@ Bufferanteil ist keine Hit Ratio und häufig gecacht bedeutet nicht automatisch 
 
 ### Folgeanalyse
 
-Verwenden Sie für die weitere Analyse Server Memory, Performance Counters sowie Query Reads und Plans. Aktivieren Sie den Deep-Pfad nur kontrolliert.
+Verwenden Sie für die weitere Analyse Server Memory, Performance Counters sowie separat erhobene Query Reads und Plans. Eine Analyse nach Objekt, Datei oder Pageart erfordert eine andere Datenquelle oder ein separates Analyseverfahren. Aktivieren Sie den Descriptorpfad nur kontrolliert.
 
 ## Primärquellen
 

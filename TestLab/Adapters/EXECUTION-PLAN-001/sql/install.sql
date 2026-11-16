@@ -801,15 +801,101 @@ Objekt       : monitor.InternalCheckAnalysisPath
 Version      : 1.1.0
 Stand        : 2026-07-21
 Typ          : Interne Stored Procedure
-Zweck        : Prüft einen tatsächlich aktivierten Analysepfad auf bekannte
-               Klasse, High-Impact-Bestätigung und aktuelle Freigabe, bevor
-               fachliche DMV-, Cache-, Query-Store- oder Katalogzugriffe
-               beginnen.
-Fallback     : Kann der serverseitige Login-Token unter EXECUTE AS USER oder
-               einem vergleichbaren datenbankgebundenen Kontext nicht gelesen
-               werden, bleiben ungeschützte Klassen, sysadmin und offene Policy
-               erlaubt. Eine aktive gruppengeschützte Policy wird konservativ
-               als DENIED_GROUP behandelt; sie wird niemals still umgangen.
+Zweck        : Prüft vor fachlichen DMV-, Cache-, Query-Store- oder
+               Katalogzugriffen die einzelne Analyseklasse, erforderliche
+               High-Impact-Bestätigung und den aktuell ausgewerteten
+               Freigabepfad. Die Prüfung liest zuerst die Framework-Views
+               VW_AnalyseClassCatalog und VW_AnalyseAccessCurrent.
+Eingabe      :
+  @AnalysisClass varchar(64), Default: kein Default; obligatorisch.
+               Ein einzelner Katalogcode, keine Liste und kein Pattern.
+               NULL und '' sind ungültig. Es erfolgt keine ausdrückliche
+               Leerzeichenentfernung oder Groß-/Kleinschreibungsnormalisierung;
+               Vergleiche folgen der Datenbankkollation, die nicht zwingend
+               binär oder case-insensitive ist. Die gültigen Codes dieser
+               ausgelieferten Katalogfassung 1.9.0 sind abschließend:
+               STANDARD_CURRENT (STANDARD, RequiresGroupGate=0): Leichtgewichtige Current-State-Abfragen für Sessions, Requests, Blocking, Waits, Memory, TempDB und I/O.
+               EXTENDED_CURRENT (ERWEITERT, RequiresGroupGate=0): Gezielte Current-State-Vertiefung mit begrenzter SQL-Text-, Plan- und Objektauflösung.
+               PLAN_CACHE_CURRENT (ERWEITERT, RequiresGroupGate=0): Begrenzte Query-Stats- und Plan-Cache-Auswertungen ohne vollständiges XML-Shredding.
+               SHOWPLAN_TARGETED (ERWEITERT, RequiresGroupGate=0): Gezielte Showplan-Extraktion und XML-Analyse für konkret gefilterte Planhandles oder Query Hashes.
+               OBJECT_ANALYSIS_CURRENT (ERWEITERT, RequiresGroupGate=0): Gezielte Objekt-, Index-, Partitions- und Columnstore-Kataloganalyse einer Datenbank.
+               EXTERNAL_RUNTIME_CURRENT (ERWEITERT, RequiresGroupGate=0): Lesende Konfigurations-, Katalog-, Request-, Pool- und Counteranalyse externer SQL-Server-Runtimes ohne Testausführung.
+               CLR_CURRENT (ERWEITERT, RequiresGroupGate=0): Lesende SQL-CLR-Katalog-, Host-, AppDomain-, Task-, Request-, Speicher- und Counteranalyse ohne Assemblyausführung.
+               MISSING_INDEX_CURRENT (ERWEITERT, RequiresGroupGate=0): Flüchtige Missing-Index-Hinweise mit begrenzter Ergebnismenge; keine automatische DDL-Ausführung.
+               STATISTICS_TARGETED (ERWEITERT, RequiresGroupGate=0): Gezielte Statistik-Eigenschaftsanalyse für gefilterte Objekte.
+               COLUMNSTORE_CURRENT (ERWEITERT, RequiresGroupGate=0): Gezielte Columnstore-Rowgroup-Analyse über Katalogsicht ohne Segment-/Dictionary-Vollscan.
+               LOCKS_DEEP (DEEP, RequiresGroupGate=1): Detaillierte Materialisierung von sys.dm_tran_locks für die aktuell relevante Sessionmenge.
+               LOG_VLF_DEEP (DEEP, RequiresGroupGate=1): Datenbankübergreifende VLF-Auswertung über sys.dm_db_log_info.
+               PLAN_CACHE_DEEP (DEEP, RequiresGroupGate=1): Breite oder vollständige Analyse von Query Stats und Plan Cache.
+               SHOWPLAN_XML_DEEP (DEEP, RequiresGroupGate=1): XML-Analyse gecachter oder aktueller Showplans einschließlich Warnings, Spills, Objekten und Statistiken.
+               CATALOG_DEEP (DEEP, RequiresGroupGate=1): Breite Systemkatalog-, Objekt-, Index-, Statistik- und Partitionsanalyse.
+               PHYSICAL_STATS_DEEP (DEEP, RequiresGroupGate=1): Explizite Auswertung von sys.dm_db_index_physical_stats in einem bewusst gewählten Modus.
+               INDEX_OPERATIONAL_DEEP (DEEP, RequiresGroupGate=1): Breite kumulative Index-Operational-Stats mit Lock-, Latch-, I/O-Latch- und Page-Split-Zählern.
+               QUERY_STORE_CURRENT (ERWEITERT, RequiresGroupGate=0): Gezielte lesende Query-Store-Status-, Runtime-, Wait-, Plan- und Force-Auswertung mit engem Zeit- und Zeilenlimit.
+               EXTENDED_EVENTS_CURRENT (ERWEITERT, RequiresGroupGate=0): Leichte Inventarisierung vorhandener Extended-Events-Definitionen und laufender Sessions ohne Targetdaten oder Eventhistorie.
+               QUERY_STORE_DEEP (DEEP, RequiresGroupGate=1): Breite Query-Store-Historie, Regressionen, Planwechsel und Wait-Auswertungen.
+               CROSS_DATABASE_DEEP (DEEP, RequiresGroupGate=1): Datenbankübergreifende Inventarisierung und Diagnose.
+               COLUMNSTORE_DEEP (DEEP, RequiresGroupGate=1): Breite Columnstore-Analyse einschließlich Rowgroups, Deleted Rows, Dictionaries und Segmenten.
+               EXTENDED_EVENTS_FORENSICS_DEEP (FORENSIK, RequiresGroupGate=1): Optionale Auswertung vorhandener Extended-Events-Sessions und Event-Dateien; niemals Primärquelle des Standardlaufs.
+               SERVER_HEALTH_CURRENT (ERWEITERT, RequiresGroupGate=0): CPU-, NUMA-, Memory-, TempDB-, OS- und Dienstzustand der aktuellen Instanz.
+               SERVER_CONFIGURATION_CURRENT (ERWEITERT, RequiresGroupGate=0): Lesende Serverkonfiguration, Trace Flags und Startup-Parameter.
+               SECURITY_CONFIGURATION_CURRENT (ERWEITERT, RequiresGroupGate=0): Lesende sicherheits- und dienstbezogene Betriebsparameter.
+               SQL_AGENT_CURRENT (ERWEITERT, RequiresGroupGate=0): Lesende SQL-Server-Agent-Status-, Job-, Schedule- und Historienanalyse aus msdb.
+               RESOURCE_GOVERNOR_CURRENT (ERWEITERT, RequiresGroupGate=0): Lesende Resource-Governor-Konfigurations- und Laufzeitanalyse.
+               HA_DR_CURRENT (ERWEITERT, RequiresGroupGate=0): Begrenzte lesende Analyse von Availability Groups, Backup, Log Shipping, Replication, CDC und Change Tracking.
+               ENTERPRISE_TOPOLOGY_DEEP (DEEP, RequiresGroupGate=1): Vertiefte enterpriseweite Topologie- und Distribution-Analyse für HA/DR und Replication.
+               DATA_PLATFORM_ADAPTER_CURRENT (ERWEITERT, RequiresGroupGate=0): Optionale Current-State-Anreicherung aus kundenspezifischen Data-Platform-/ETL-Loggingobjekten mit isolierter Existenz- und Rechteprüfung.
+               Die Katalog-DefaultMaxRows- und DefaultTimeoutSeconds-Werte
+               sind Hinweise der Katalogzeilen und werden von dieser Prüfung
+               nicht erzwungen.
+  @HighImpactConfirmed bit, Default: kein Default; obligatorisch.
+               1 bestätigt die angeforderte High-Impact-Ausführung; 0
+               bestätigt sie nicht und ist bei RequiresGroupGate=1 unzulässig.
+               NULL ist ungültig; ein Leerwert ist für bit nicht unterstützt.
+               Die Bestätigung ist auch bei sysadmin oder offener Policy
+               erforderlich. Ihr Fehlen wird vor DENIED_GROUP gemeldet.
+  @StatusCode varchar(40) OUTPUT, Default: kein Default; obligatorisches
+               Argument. Eingehendes NULL, Leertext und andere Werte werden auf AVAILABLE
+               zurückgesetzt und bei behandeltem Ergebnis auf genau einen
+               Status gesetzt: AVAILABLE (Klasse und Gateprüfung bestanden),
+               INVALID_PARAMETER (@AnalysisClass ist NULL, leer oder unbekannt
+               oder @HighImpactConfirmed ist ungültig), HIGH_IMPACT_CONFIRMATION_REQUIRED
+               (erforderliche Bestätigung fehlt), DENIED_GROUP (Gruppenpfad
+               nicht freigegeben). Eine aufrufende Variable mit passendem
+               Typ ist zum Empfangen erforderlich; ohne OUTPUT beim Aufruf
+               kann der Wert verworfen werden.
+  @ErrorMessage nvarchar(2048) OUTPUT, Default: kein Default; obligatorisches
+               Argument. Der Eingabewert wird sofort auf NULL zurückgesetzt;
+               bei behandeltem Fehler enthält er den zugehörigen Text, bei
+               AVAILABLE bleibt er NULL. Der anfängliche NULL- oder Leerwert
+               wird ignoriert. Eine aufrufende Variable mit passendem Typ ist
+               zum Empfangen erforderlich; ohne OUTPUT beim Aufruf kann der
+               Wert verworfen werden.
+Aufruf        : Alle vier Argumente müssen beim EXEC angegeben werden.
+               Ausgelassene Pflichtargumente verursachen einen Aufruffehler,
+               bevor diese Procedure einen Status setzen kann.
+               OUTPUT-Argumente dürfen ohne das Schlüsselwort OUTPUT
+               übergeben werden, wenn ihr Ergebnis verworfen wird.
+Fehler        : Nur Fehlernummern 229, 371 und 916 beim initialen Zugriff auf
+               die Framework-Views lösen den Datenbank-only-Fallback aus.
+               Andere Fehler werden erneut ausgelöst. Auch Unterabfragen des
+               Fallbacks können fehlschlagen. Es wird keine Zusage gemacht,
+               native Fehler in Statuswerte umzuwandeln.
+Fallback      : Ohne lesbaren serverseitigen Login-Token erlaubt der
+               Datenbank-only-Fallback ungeschützte Klassen, sysadmin oder
+               den Fall ohne global aktive Policyzeilen. Eine aktive Policy
+               an anderer Stelle kann eine geschützte Klasse verweigern,
+               wenn der serverseitige Token nicht lesbar ist. Der Fallback
+               prüft keine einzelne Gruppenmitgliedschaft und übergeht nie
+               die High-Impact-Bestätigung. Global aktiv sind Policyzeilen
+               mit IsEnabled=1, ValidFromUtc NULL oder nicht später als jetzt,
+               ValidToUtc NULL oder später als jetzt sowie nichtleeren, mit
+               LTRIM/RTRIM geprüften Klassen- und Gruppennamen; die Zeitbasis
+               ist SYSUTCDATETIME().
+Wirkung       : Keine SQL-Berechtigung wird erteilt und keine AD-
+               Gruppenmitgliedschaft live verifiziert. Es erfolgt keine
+               fachliche Persistenz. Der Code setzt LOCK_TIMEOUT 0; eine
+               Wiederherstellung eines vorherigen Werts wird nicht zugesagt.
 ===============================================================================
 */
 CREATE OR ALTER PROCEDURE [monitor].[InternalCheckAnalysisPath]
@@ -911,17 +997,131 @@ Objekt       : monitor.InternalWriteResultTable
 Version      : 1.1.0
 Stand        : 2026-07-19
 Typ          : Interne Stored Procedure
-Zweck        : Kopiert genau ein bereits materialisiertes Analyseergebnis in
-               eine lokale Temp-Tabelle des Aufrufers. Eine leere Tabelle mit
-               genau einer beliebigen Dummy-Spalte wird sicher an die native
-               Quellstruktur angepasst; eine bereits passende Struktur wird
-               zum Anhängen verwendet.
-Sicherheit   : Ausschließlich lokale #Temp-Tabellen. Globale ##Temp-Tabellen
-               und permanente Tabellen sind bewusst nicht zugelassen.
-Locking      : Katalogauflösung ausschließlich über tempdb.sys.* WITH (NOLOCK)
-               und LOCK_TIMEOUT 0 für fremde Tabellen. Eigene lokale Temp-DDL
-               erhält bei eingehendem Timeout 0 je Anlage bis zu 1000 ms.
+Zweck        : Kopiert die Spaltenwerte eines bereits materialisierten
+               Analyseergebnisses in eine lokale Temp-Tabelle des Aufrufers.
+               Eine leere Tabelle mit genau einer beliebigen Dummy-Spalte kann
+               an die Quellstruktur angepasst werden; eine passende Tabelle
+               erhält die Zeilen als Anhang.
+Sicherheit   : Quelle und Ziel müssen vorhandene lokale #Temp-Tabellen sein.
+               Globale ##Temp-Tabellen, permanente Tabellen und das reservierte
+               Zielpräfix #Monitor sind nicht zugelassen.
+Locking      : Fremde Tabellenoperationen verwenden LOCK_TIMEOUT 0 und die
+               tempdb-Katalogauflösung verwendet WITH (NOLOCK). Eigene lokale
+               Temp-DDL erhält bei eingehendem Timeout 0 je Anlage bis zu
+               1000 ms.
 ===============================================================================
+
+PARAMETER
+
+@SourceTable sysname
+  Default: kein Default (Pflichtparameter). Erwartet den unqualifizierten Namen einer
+  vorhandenen lokalen #Temp-Quelltabelle, etwa in Form eines einzelnen
+  Tabellennamens. NULL, der Leerwert, Namen ohne führendes #, globale ##Namen
+  und Namen mit LEN größer als 116 nach der SQL-Server-Bindung sind ungültig.
+  Der Wert wird nicht getrimmt. Die Eingabe ist kein Schema- oder
+  Klammerausdruck; die Procedure quotiert den Namen nativ. Die Quell- und
+  Zielnamen werden ohne Beachtung der Groß-/Kleinschreibung verglichen, um
+  identische Namen zurückzuweisen. Für die Quelle ist das Präfix #Monitor
+  nicht reserviert.
+
+@TargetTable sysname
+  Default: kein Default (Pflichtparameter). Erwartet den unqualifizierten Namen einer
+  vorhandenen lokalen #Temp-Zieltabelle. NULL, der Leerwert, Namen ohne
+  führendes #, globale ##Namen und Namen mit LEN größer als 116 nach der
+  SQL-Server-Bindung sind ungültig. Der Wert wird nicht getrimmt. Die Eingabe
+  ist kein Schema- oder Klammerausdruck; die Procedure quotiert den Namen
+  nativ. Namen mit dem Präfix #Monitor sind ohne Beachtung der
+  Groß-/Kleinschreibung reserviert und ungültig. Quelle und Ziel dürfen nach
+  einem Vergleich ohne Beachtung der Groß-/Kleinschreibung nicht identisch
+  sein.
+
+@InsertedRows bigint = NULL OUTPUT
+  Optionaler OUTPUT-Parameter mit Default NULL. Der eingehende Wert wird
+  ignoriert. Nach erfolgreicher Anlage der internen Temp-Tabellen wird der
+  Parameter auf 0 initialisiert. Nach dem finalen INSERT SELECT enthält er
+  @@ROWCOUNT dieses INSERTs. Der Wert zählt nicht unabhängig davon die gesamte
+  Historie der Zieltabelle und garantiert keine Rücknahme bei einem späteren
+  Fehler. Zum Empfang muss ein gebundener Aufruf eine bigint-Variable mit
+  OUTPUT übergeben; das Argument kann ausgelassen werden.
+
+@StatusCode varchar(40) = NULL OUTPUT
+  Optionaler OUTPUT-Parameter mit Default NULL. Der eingehende Wert wird
+  ignoriert und nach erfolgreicher Anlage der internen Temp-Tabellen auf
+  AVAILABLE initialisiert. Der Parameter liefert genau einen dieser Status:
+  AVAILABLE bezeichnet einen erfolgreichen Schreibvorgang;
+  INVALID_PARAMETER bezeichnet ungültige Parameter;
+  LOCK_TIMEOUT bezeichnet den abgefangenen Sperrtimeout in den dafür
+  vorgesehenen Markierungs-, Leerheitsprüfungs- oder Schemaanpassungsschritten;
+  SOURCE_NOT_FOUND und TARGET_NOT_FOUND bezeichnen eine nicht auflösbare
+  Quell- beziehungsweise Zieltabelle;
+  METADATA_NOT_VISIBLE bezeichnet eine vorhandene Tabelle, deren Katalogzeile
+  nicht sichtbar war;
+  UNSUPPORTED_SOURCE_SCHEMA bezeichnet eine Quelle ohne exportierbare Spalten
+  oder mit nicht unterstützter Spaltenstruktur;
+  TARGET_SCHEMA_MISMATCH bezeichnet ein Ziel, das weder exakt passt noch
+  angepasst werden kann;
+  TABLE_WRITE_ERROR bezeichnet einen sonstigen abgefangenen Fehler bei
+  Tabellenänderungen oder beim finalen INSERT SELECT. Der finale INSERT SELECT
+  wird auch bei Fehler 1222 als TABLE_WRITE_ERROR gemeldet. Zum Empfang muss
+  ein gebundener Aufruf eine varchar(40)-Variable mit OUTPUT übergeben; das
+  Argument kann ausgelassen werden.
+
+@ErrorNumber int = NULL OUTPUT
+  Optionaler OUTPUT-Parameter mit Default NULL. Der eingehende Wert wird
+  ignoriert und nach erfolgreicher Anlage der internen Temp-Tabellen auf NULL
+  initialisiert. Bei einem abgefangenen nativen Fehler enthält er dessen
+  Fehlernummer; bei Validierungsfehlern ohne abgefangenen nativen Fehler bleibt
+  er NULL. Fehler, die nicht abgefangen werden, etwa ein Fehler bei der
+  anfänglichen Anlage der internen Temp-Tabellen, werden nicht durch diesen
+  Parameter zugesichert. Zum Empfang muss ein gebundener Aufruf eine
+  int-Variable mit OUTPUT übergeben; das Argument kann ausgelassen werden.
+
+@ErrorMessage nvarchar(2048) = NULL OUTPUT
+  Optionaler OUTPUT-Parameter mit Default NULL. Der eingehende Wert wird
+  ignoriert und nach erfolgreicher Anlage der internen Temp-Tabellen auf NULL
+  initialisiert. Bei einem behandelten Fehler enthält er Validierungs- oder
+  Fehlerdiagnostik; bei Erfolg bleibt er NULL. Zum Empfang muss ein gebundener
+  Aufruf eine nvarchar(2048)-Variable mit OUTPUT übergeben; das Argument kann
+  ausgelassen werden.
+
+@ThrowOnError bit = 0
+  Optionaler Eingabeparameter mit Default 0; beim Auslassen gilt 0. Leerer
+  Text ist keine unterstützte Schalterform. Der Wert 0 gibt behandelte
+  Fehler über die OUTPUT-Parameter zurück. Der Wert 1 löst für einen
+  behandelten Fehler Fehlernummer 51010 aus. NULL ist ungültig, wird als
+  INVALID_PARAMETER zurückgegeben und löst selbst keinen Fehler 51010 aus.
+  Auch bei 1 werden nicht alle nativen Fehler abgefangen und in Fehler 51010
+  umgewandelt.
+
+VERARBEITUNG UND GRENZEN
+
+Die vier OUTPUT-Parameter werden erst nach der eigenen Temp-DDL initialisiert.
+Schlägt diese DDL fehl, werden ihre neuen Werte nicht zugesichert. Bei dieser
+Anlage bleiben positive oder unbegrenzte eingehende LOCK_TIMEOUT-Werte erhalten;
+nach erfolgreicher Anlage setzt der Baustein LOCK_TIMEOUT 0.
+
+Die Quelle darf keine berechneten Spalten, benutzerdefinierten oder
+Assembly-Datentypen, typisiertes XML sowie timestamp-/rowversion-Spalten
+enthalten. Bei einer Identitätsspalte der Quelle werden die Werte in eine
+gewöhnliche Zielspalte kopiert; das Ziel erhält dadurch keine
+Identitätseigenschaft.
+
+Eine bereits passende Zielstruktur muss in Spaltenanzahl und -reihenfolge,
+Spaltennamen, vergleichbarem Datentyp, Länge, Genauigkeit, Skala, Sortierung
+und NULL-Zulässigkeit übereinstimmen. Sie darf keine Identitäts- oder
+berechneten Spalten, benutzerdefinierten oder Assembly-Datentypen oder
+typisiertes XML enthalten. Eine abweichende Zieltabelle kann nur angepasst
+werden, wenn sie leer ist und genau eine beliebige Dummy-Spalte besitzt.
+Passende vorhandene Ziele dürfen bereits Zeilen enthalten; die neuen Zeilen
+werden angehängt.
+
+Die interne Auflösung fügt Quell- und Zieltabellen vorübergehend
+Markierungsspalten hinzu und entfernt sie wieder. Die Schemaanpassung verwendet
+einen Brücken- und ALTER-TABLE-Batch. Diese DDL kann sichtbare Tabellenänderungen
+hinterlassen, wenn ein späterer Schritt fehlschlägt. Die Procedure garantiert
+weder eine Transaktion noch atomaren Rollback oder Bereinigung nach Fehlern.
+Die interne Schnittstelle ist an den versiongleichen Framework-Aufrufer
+gebunden.
 */
 SET ANSI_NULLS ON;
 GO
@@ -1476,12 +1676,18 @@ Objekt       : monitor.InternalPrepareResultTables
 Version      : 1.0.0
 Stand        : 2026-07-20
 Typ          : Interne Stored Procedure
-Zweck        : Validiert eine benannte TABLE-Mehrfachzuordnung vollständig vor
-               dem ersten fachlichen Systemzugriff und befüllt eine lokale
-               Mapping-Temp-Tabelle des Aufrufers.
-Sicherheit   : Nur vorhandene, leere lokale #Temp-Tabellen mit genau einer
-               Seed-Spalte. Doppelte Ziele und unbekannte Resultsetnamen werden
-               atomar abgelehnt. Keine fachlichen Datenquellen werden gelesen.
+Zweck        : Prüft ein JSON-Objekt mit TABLE-Zuordnungen gegen die vom
+               Aufrufer übergebene Namensliste, validiert vorhandene lokale
+               Ergebnistabellen und hängt Zuordnungen an die Mapping-Tabelle
+               des Aufrufers an.
+Parameter:
+@ResultTablesJson nvarchar(max), Default: kein Default (Pflichtparameter). Erwartet ein JSON-Objekt, keine Liste; NULL, leerer Text, {} und Objekte ohne Zuordnung sind ungültig. Jedes Schlüssel-Wert-Paar muss Zeichenketten enthalten. Schlüssel und Zielwerte werden vor den Guards nach sysname konvertiert. Schlüssel werden nach der Konvertierung binär exakt mit @AllowedResultNames verglichen; es gibt keine Vorab-Trim-Regel. Doppelte Schlüssel werden binär erkannt. Werte müssen unqualifizierte, rohe lokale #Temp-Namen sein: kein ## und kein #Monitor-Präfix (CI), LEN höchstens 116 nach sysname-Konvertierung. Werte werden nicht getrimmt; doppelte Ziele werden CI erkannt. Klammer- oder Schemanamen sind nicht zulässig.
+@AllowedResultNames nvarchar(max), Default: kein Default (Pflichtparameter). Vom Aufrufer gelieferte Pipe-Liste; NULL, leer oder nur leere Einträge ergibt keine zulässigen Namen. | hat keine Escape-Syntax. Nur U+0020 an den Rändern jedes Tokens wird entfernt; leere Tokens werden ignoriert. Tokens werden nach sysname konvertiert und binär verglichen. Doppelte Tokens nach Konvertierung können im nicht abgefangenen INSERT einen nativen Fehler auslösen. Die Wertemenge bleibt der offene Aufrufervertrag.
+@MappingTable sysname, Default: kein Default (Pflichtparameter). NULL oder leer ist ungültig; kein Trimmen. Name einer vom Aufrufer erstellten lokalen #Temp-Tabelle, kein ##, höchstens 116 Zeichen nach sysname-Konvertierung. Erwartet werden ResultName und TargetTable als sysname. TOP (0) mit Variablen beweist die Auflösung/Konvertierung dieser Spalten, nicht das exakte physische Tabellenschema. Zuordnungen werden angehängt; bestehende Zeilen werden nicht gelöscht.
+@StatusCode varchar(40), Default: NULL OUTPUT. OUTPUT-Bindung vom Typ varchar(40); nach eigener Temp-DDL auf AVAILABLE initialisiert; eingehende NULL-, Leertext- oder andere Werte werden dabei überschrieben. AVAILABLE bedeutet Preflight erfolgreich; INVALID_PARAMETER bedeutet ungültiger @ThrowOnError oder @MappingTable; INVALID_RESULT_TABLE_MAPPING bedeutet ungültige JSON-Form oder unzulässige, doppelte bzw. nicht erlaubte Zuordnung; INVALID_RESULT_TABLE_TARGET bedeutet Ziel fehlt, ist nicht leer, besteht nicht aus genau einer Seed-Spalte oder kann nicht sicher geprüft werden; INTERNAL_ERROR bedeutet, dass Mapping-Spalten nicht wie erwartet auflösbar/konvertierbar sind. Bei Auslassen gilt Default NULL; Aufrufer bindet eine Variable mit OUTPUT. NULL/leer als Eingabeform ist für einen Status-OUTPUT nicht anwendbar.
+@ErrorMessage nvarchar(2048), Default: NULL OUTPUT. OUTPUT-Bindung vom Typ nvarchar(2048); nach eigener Temp-DDL auf NULL initialisiert, bei erkanntem Fehler mit Meldung befüllt; eingehende NULL-, Leertext- oder andere Werte werden dabei überschrieben. Bei Auslassen gilt Default NULL; zum Empfang ist eine Aufrufervariable mit OUTPUT nötig. NULL/leer als Eingabeform ist für einen Status-OUTPUT nicht anwendbar.
+@ThrowOnError bit, Default: 0. Kann ausgelassen werden. 0 unterdrückt nur behandelte Preflightfehler und gibt Status/Meldung zurück; 1 wirft für behandelte Fehler 51011. NULL ist ungültig, ergibt INVALID_PARAMETER und löst wegen der NULL-Prüfung auf 1 keinen Fehler 51011 aus. Leerer Text ist keine unterstützte Bit-Eingabe.
+Fehler- und Seiteneffektgrenzen: Eigene Prüftabellen-DDL liegt vor der Initialisierung von @StatusCode und @ErrorMessage; DDL-Fehler werden nach Wiederherstellung des vorherigen Lock-Timeouts erneut ausgelöst. Die Allowed-Liste wird außerhalb TRY/CATCH eingefügt, ebenso das finale Mapping-INSERT; native Fehler dort können entweichen. Ziele werden mit temporärer Marker-Spalte geprüft; ADD/DROP sind reale temporäre Schemaänderungen, Bereinigung im Fehlerpfad ist best effort. Es gibt keine atomare Rücknahmezusage. Es erfolgt keine Erstellung oder dauerhafte Anpassung der Ergebnisspaltenstruktur. Eingehender LOCK_TIMEOUT 0 erhält pro eigener Temp-DDL-Anlage 1000 ms; andere Werte bleiben während dieser Anlage bestehen. Nach erfolgreicher Anlage wird LOCK_TIMEOUT 0 gesetzt; Zieloperationen verwenden NOWAIT.
 ===============================================================================
 */
 CREATE OR ALTER PROCEDURE [monitor].[InternalPrepareResultTables]
@@ -1753,6 +1959,13 @@ Vertrag      : Keine fachlichen Systemzugriffe. Nicht leere Quellen liefern
                eine beschriftete Fachansicht. Leere Quellen liefern genau eine
                verständliche Console-Zeile; RAW und TABLE verwenden den Helper
                nicht und erhalten deshalb keine künstlichen Datenzeilen.
+Parameterverträge:
+@SourceTable sysname. Default: keiner; Pflichtargument. Einzelner roher, unqualifizierter lokaler #Tabellenname; NULL, Name ohne #, ##Name oder LEN(Name)>116 lösen Guard-Fehler 51012 aus. Keine Liste oder SQL-Ausdruck. Es erfolgt kein Existenz- oder Schematest.
+@ResultLabel nvarchar(200). Default: keiner; Pflichtargument. Unicode-Text. LTRIM/RTRIM entfernt U+0020 am Anfang und Ende; NULL oder danach leer wird Ergebnis. Bei nichtleerer Quelle erscheint der Wert als Spalte [Ergebnis].
+@EmptyMessage nvarchar(200). Default: keiner; Pflichtargument. Unicode-Text. LTRIM/RTRIM entfernt U+0020 am Anfang und Ende; NULL oder danach leer wird Keine Ergebnisse. Bei leerer Quelle erscheint der Wert als [Ergebnis].
+@StatusCode varchar(40). Default: NULL; INPUT-Argument. Im Leerfall unverändert als [Status] ausgegeben; NULL und Leerwerte bleiben erhalten. Der Helper führt keine eigene Prüfung einer Statuscode-Wertemenge durch.
+@StatusMessage nvarchar(2048). Default: NULL; INPUT-Argument. Im Leerfall unverändert als [Hinweis] ausgegeben; NULL und Leerwerte bleiben erhalten.
+Die Procedure erzeugt keine Temp-Tabelle und hat keine OUTPUT-Parameter. Bei nichtleerer Quelle entsteht genau ein Resultset mit [Ergebnis] und src.*. Bei leerer Quelle entsteht genau eine Zeile mit [Ergebnis], [Status] und [Hinweis]. Es werden keine Sortierung oder Kappung hinzugefügt.
 ===============================================================================
 */
 CREATE OR ALTER PROCEDURE [monitor].[InternalEmitConsoleResult]
@@ -3244,14 +3457,179 @@ Objekt       : monitor.InternalCollectExecutionPlanMetadata
 Version      : 1.0.0
 Stand        : 2026-07-21
 Typ          : Interne Stored Procedure
-Zweck        : Ermittelt aus einem Plan zielgerichtet aktuelle Objekt-, Index-
-               und Statistikmetadaten der ausdrücklich bestätigten Quellumgebung.
-               Histogrammrohwerte verbleiben ausschließlich in lokalen Temp-
-               Tabellen des aufrufenden Evidenzgenerators.
-Voraussetzung: Der Aufrufer legt #CreateExecutionEvidenceJson_StatisticsCurrent, #CreateExecutionEvidenceJson_HistogramSteps,
-               #CreateExecutionEvidenceJson_HistogramSummary, #CreateExecutionEvidenceJson_PredicateHistogramMappings und
-               #CreateExecutionEvidenceJson_CollectionStatus mit dem dokumentierten Schema an.
-Locking      : Katalogabfragen mit LOCK_TIMEOUT; kein Zugriff auf Benutzerdaten.
+Zweck        : Die Procedure ermittelt zu einem Ausführungsplan Objekt-,
+               Index- und Statistikmetadaten der ausdrücklich bestätigten
+               Quellumgebung. Sie kann Histogrammschritte und Zusammenfassungen
+               sowie Zuordnungen zu Planprädikaten sammeln.
+Voraussetzung: Der Aufrufer legt die fünf Evidenz-Temp-Tabellen mit dem
+               erwarteten Schema an. Je ein TOP (0)-SELECT prüft Existenz und
+               Schemaauflösung, nicht das vollständige Schema oder die
+               Berechtigungen. Die fünf Prüfungen erzeugen fünf
+               leere Resultsets.
+Eingabe      :
+  @PlanXml xml, Default: keiner; obligatorisch. Eingabeform: einzelner
+               XML-Ausführungsplan als XML-Wert oder gebundene XML-Variable;
+               NULL ergibt INVALID_PARAMETER. Ein leeres, gültiges XML wird
+               nicht ausdrücklich abgewiesen.
+  @StatistikEvidenzModus varchar(16), Default: 'USED'. Eingabeform: ein
+               einzelner Modus-Textwert, keine Liste. NULL wird zur Laufzeit
+               zu USED;
+               äußere Leerzeichen werden entfernt, Großschreibung angewendet.
+               Endliche Werte: USED sammelt nur vom Plan als verwendet
+               gemeldete Statistiken; RELEVANT ergänzt Statistiken, deren
+               führende Spalte im Plan als SEEK, RESIDUAL, JOIN, ORDER_BY oder
+               GROUP_BY vorkommt; OBJECT_ALL ergänzt alle Statistiken
+               katalogauflösbarer Planobjekte. Leertext ist ungültig.
+  @HistogrammModus varchar(16), Default: 'NONE'. Eingabeform: einzelner
+               Modus-Textwert, keine Liste. NULL wird zur Laufzeit zu NONE;
+               äußere Leerzeichen werden entfernt, Großschreibung angewendet.
+               Endliche Werte: NONE sammelt im Hauptteil keine zusätzlichen Schritte;
+               SUMMARY und STEPS sammeln Schritte und bilden Zusammenfassungen,
+               wobei STEPS zusätzlich High-Impact-Bestätigung verlangt. Die
+               Sammlung ist in beiden Modi gleich. Vorhandene Zeilen werden
+               auch bei NONE zusammengefasst und können zugeordnet werden.
+               Leertext oder nur Leerzeichen ist ungültig.
+  @QuellumgebungBestaetigt bit, Default: 0. Eingabeform: einzelner SQL-bit-
+               Wert oder Variable; leere Zeichenfolge ist keine vorgesehene
+               Typform und wird vor Eintritt konvertiert. SQL-bit-Eingabe: 1 bestätigt die
+               Quellumgebung; 0 oder NULL ergeben INVALID_PARAMETER. Ausgelassen
+               bindet den Default 0 und ergibt ebenfalls INVALID_PARAMETER.
+               Leerer Zeichenfolgeneingang wird vor Eintritt zu bit 0 konvertiert und wie
+               fehlende Bestätigung abgelehnt.
+  @MitPredicateHistogramMap bit, Default: 1. Eingabeform: einzelner SQL-bit-
+               Wert oder Variable; leere Zeichenfolge ist keine vorgesehene
+               Typform und wird vor Eintritt konvertiert. SQL-bit-Eingabe: 1 ordnet
+               extrahierte Planparameterwerte Histogrammschritten zu; 0
+               überspringt die Zuordnung. NULL ergibt INVALID_PARAMETER.
+               Leerer Zeichenfolgeneingang wird vor Eintritt zu bit 0 konvertiert und
+               überspringt die Zuordnung.
+  @MaxStatistiken int, Default: 100. Eingabeform: einzelner SQL-int-Wert oder
+               Variable; leere Zeichenfolge ist keine vorgesehene Typform und
+               wird vor Eintritt konvertiert. Ganze Zahl 1 bis 1000 einschließlich;
+               NULL und Werte außerhalb ergeben INVALID_PARAMETER. Begrenzt
+               die insgesamt ausgewählten Kandidaten nach Priorität PLAN_USED,
+               RELEVANT_LEADING_COLUMN, danach übrige. RELEVANT/OBJECT_ALL-
+               Kandidaten werden vor dem Limit aus dem Katalog gelesen; ein
+               positives Limit verhindert diese anfängliche Abfrage nicht.
+               Leerer Zeichenfolgeneingang wird vor Eintritt zu int 0 konvertiert und liegt
+               außerhalb des gültigen Bereichs.
+  @MaxHistogrammSchritte int, Default: 20000. Eingabeform: einzelner SQL-int-
+               Wert oder Variable; leere Zeichenfolge ist keine vorgesehene
+               Typform und wird vor Eintritt konvertiert. Ganze Zahl 0 bis 200000
+               einschließlich; NULL und Werte außerhalb ergeben
+               INVALID_PARAMETER. Begrenzt zusätzliche Schritte global anhand
+               der bereits in der Aufrufer-Schritttabelle vorhandenen Zeilen;
+               der Wert 0 fügt keine neuen Schritte ein.
+               Bei erreichtem Limit werden keine weiteren eingefügt und
+               vorhandene Zeilen nicht entfernt.
+               Leerer Zeichenfolgeneingang wird vor Eintritt zu int 0 konvertiert und fügt
+               keine neuen Schritte ein.
+  @LockTimeoutMs int, Default: 0. Eingabeform: einzelner SQL-int-Wert oder
+               Variable; leere Zeichenfolge ist keine vorgesehene Typform und
+               wird vor Eintritt konvertiert. Ganze Zahl 0 bis 60000 Millisekunden;
+               NULL und Werte außerhalb ergeben INVALID_PARAMETER. Steuert
+               LOCK_TIMEOUT im Hauptteil nach frühen Prüfungen. Die Procedure
+               setzt zuerst LOCK_TIMEOUT 0 und speichert den Wert erst danach;
+               am Ende wird somit 0 statt des vorherigen Aufruferwerts
+               wiederhergestellt.
+               Leerer Zeichenfolgeneingang wird vor Eintritt zu int 0 konvertiert; 0
+               Millisekunden bedeutet kein Warten auf eine Sperre.
+  @HighImpactConfirmed bit, Default: 0. Eingabeform: einzelner SQL-bit-Wert
+               oder Variable; leere Zeichenfolge ist keine vorgesehene Typform
+               und wird vor Eintritt konvertiert. SQL-bit-Eingabe: 1 bestätigt den
+               High-Impact-Pfad, 0 nicht. Für RELEVANT, OBJECT_ALL und STEPS
+               führt 0 zu HIGH_IMPACT_CONFIRMATION_REQUIRED; SUMMARY allein
+               verlangt die Bestätigung nicht. NULL ergibt vor den Temp-Tabellen-
+               Prüfungen INVALID_PARAMETER. Die lokale Bestätigungsprüfung
+               erfolgt vor dem optionalen Gate-Aufruf; dessen Ergebnisse können
+               außerdem HIGH_IMPACT_CONFIRMATION_REQUIRED, INVALID_PARAMETER
+               oder DENIED_GROUP sein. Bei SQL-bit-Konvertierung kann ein
+               numerischer Nichtnullwert ungleich 0 zu 1 werden.
+               Leerer Zeichenfolgeneingang wird vor Eintritt zu bit 0 konvertiert; für
+               einen breiten Pfad fehlt damit die Bestätigung.
+  @StatusCodeOut varchar(40), Default: NULL OUTPUT. Eingabeform: einzelner
+               varchar-Wert/Skalar oder OUTPUT-Variable. Eingehendes NULL und
+               Leertext sind erlaubt, werden ignoriert. Eingehender Wert wird
+               ignoriert und zuerst auf AVAILABLE gesetzt. Lokal mögliche
+               Werte: AVAILABLE, INVALID_PARAMETER, INTERNAL_ERROR,
+               HIGH_IMPACT_CONFIRMATION_REQUIRED, PARTIAL, LOCK_TIMEOUT und
+               ERROR_HANDLED; Gate-Statuswerte werden weitergereicht.
+               AVAILABLE bedeutet regulär beendet ohne gesetztes Teilfehlerflag, nicht
+               vollständige Metadaten; INVALID_PARAMETER bedeutet lokal erkannter
+               ungültiger Parameter oder ein entsprechendes Gate-Ergebnis; INTERNAL_ERROR
+               bedeutet Fehler einer Temp-Tabellenprobe; HIGH_IMPACT_CONFIRMATION_REQUIRED
+               bedeutet fehlende Bestätigung des breiten Pfads; PARTIAL bedeutet
+               verzeichneten Teilfehler bei ansonsten regulärem Ende; LOCK_TIMEOUT bedeutet
+               Fehler 1222 im äußeren Hauptteil-CATCH; ERROR_HANDLED bedeutet einen anderen
+               Fehler in diesem CATCH; DENIED_GROUP bedeutet vom Gate nicht freigegebenen
+               CATALOG_DEEP-Pfad. Das Gate kann INVALID_PARAMETER insbesondere bei
+               NULL-Bestätigung oder ungültiger/unbekannter Analyseklasse liefern. Zum Empfangen passende Variable mit OUTPUT;
+               ohne OUTPUT kann typgerechter Skalar übergeben und Ausgabe
+               verworfen werden.
+  @IsPartialOut bit, Default: NULL OUTPUT. Eingabeform: einzelner SQL-bit-
+               Wert/Skalar oder OUTPUT-Variable; NULL ist erlaubt und wird
+               ignoriert, leere Zeichenfolge ist keine vorgesehene Typform und
+               wird vor Eintritt konvertiert. Eingehender Wert wird ignoriert,
+               zuerst 0, bei Teil- oder Fehlerausgabe 1. Zum Empfangen
+               passende Variable mit OUTPUT; ohne OUTPUT kann typgerechter
+               Skalar übergeben und Ausgabe verworfen werden.
+               Leerer Zeichenfolgeneingang wird vor Eintritt zu bit 0 konvertiert; der
+               Eingang wird wie NULL ignoriert.
+  @ErrorNumberOut int, Default: NULL OUTPUT. Eingabeform: einzelner SQL-int-
+               Wert/Skalar oder OUTPUT-Variable; NULL ist erlaubt und wird
+               ignoriert, leere Zeichenfolge ist keine vorgesehene Typform und
+               wird vor Eintritt konvertiert. Eingehender Wert wird ignoriert,
+               zunächst NULL. Bei abgefangenen Fehlern enthält er
+               ERROR_NUMBER() im Hauptteil-CATCH oder der Temp-Probe;
+               Einzelquellenfehler können PARTIAL bei weiter NULL liefern.
+               Gewöhnliche Parameter- oder Gate-Statuswerte setzen ihn nicht neu. Zum Empfangen passende Variable mit
+               OUTPUT; ohne OUTPUT kann typgerechter Skalar übergeben und
+               Ausgabe verworfen werden.
+               Leerer Zeichenfolgeneingang wird vor Eintritt zu int 0 konvertiert; der
+               Eingang wird wie NULL ignoriert.
+  @ErrorMessageOut nvarchar(2048), Default: NULL OUTPUT. Eingabeform: einzelner
+               nvarchar-Wert/Skalar oder OUTPUT-Variable; NULL und Leertext
+               sind erlaubt und werden ignoriert. Eingehender Wert wird
+               ignoriert, zunächst NULL. Lokale Parameterfehler, Temp-Tabellenprobe, Gate-Rückgabe und
+               Hauptteil-CATCH setzen die jeweilige Meldung. Bei AVAILABLE sowie
+               PARTIAL durch Einzelquellenfehler kann er NULL bleiben; Details
+               stehen dann im CollectionStatus. Zum Empfangen passende Variable mit OUTPUT;
+               ohne OUTPUT kann typgerechter Skalar übergeben und Ausgabe
+               verworfen werden.
+               Bei SQL-bit-Konvertierungen kann ein numerischer Nichtnullwert
+               ungleich 0 bereits zu 1 konvertiert sein.
+Wirkung       : Liest Planreferenzen sowie SQL-Server-Katalog- und
+               Statistikmetadaten und schreibt in
+               #CreateExecutionEvidenceJson_StatisticsCurrent,
+               #CreateExecutionEvidenceJson_HistogramSteps,
+               #CreateExecutionEvidenceJson_HistogramSummary,
+               #CreateExecutionEvidenceJson_PredicateHistogramMappings und
+               #CreateExecutionEvidenceJson_CollectionStatus. Diese Daten
+               werden nicht als Resultsets ausgegeben. Histogrammrohwerte
+               werden in lokalen Tabellen verarbeitet; Prädikatwerte liegen
+               in einer internen Temp-Tabelle. Keine Zusage vollständiger
+               Katalogerfassung, atomarer Änderungen oder einer über die
+               tatsächlichen SQL-Server-Prüfungen hinausgehenden
+               Berechtigungssicherheit.
+Grenzen      : SET LOCK_TIMEOUT 0 erfolgt vor allen Prüfungen und gilt innerhalb der
+               Procedure auch auf frühen Rückgabepfaden. Die eigene
+               Wiederherstellungsanweisung im Hauptteil verwendet den danach gespeicherten
+               Wert 0, keine vor Eintritt gesicherte Kopie. Der optionale Gate-Aufruf und
+               sein Katalogzugriff liegen vor dem Hauptteil-TRY; dort unerwartet
+               weitergeworfene Fehler können ohne Umsetzung in die globalen Fehlerausgaben
+               entweichen.
+Fehler        : Wenn eine referenzierte Datenbank bei der Kandidatenermittlung
+               unzugänglich ist, wird dafür ein CollectionStatus-Eintrag
+               geschrieben. Fehler in den Schleifen werden soweit abgefangen
+               ebenfalls erfasst und markieren die Ausgabe als partiell. Fehler in der initialen Temp-Tabellenprobe setzen
+               INTERNAL_ERROR und geben zurück. Gate-Ergebnisse INVALID_PARAMETER (ungültige Klasse oder Bestätigung),
+               HIGH_IMPACT_CONFIRMATION_REQUIRED (Bestätigung fehlt) und
+               DENIED_GROUP (Pfad nicht freigegeben) können durchgereicht
+               werden; ErrorNumberOut kann dabei NULL bleiben. Der äußere CATCH des Hauptteils setzt
+               LOCK_TIMEOUT bei Fehler 1222, sonst ERROR_HANDLED, samt
+               Fehlernummer und -text. Bei einer späteren Datenbankprüfung ohne ELSE können inzwischen nicht
+               erreichbare Datenbanken ohne eigenen Statusdatensatz bleiben.
+               Bereits geschriebene Zeilen werden nicht zurückgerollt.
 ===============================================================================
 */
 CREATE OR ALTER PROCEDURE [monitor].[InternalCollectExecutionPlanMetadata]
@@ -3284,12 +3662,12 @@ BEGIN
     IF @PlanXml IS NULL
        OR @StatistikEvidenzModus NOT IN ('USED','RELEVANT','OBJECT_ALL')
        OR @HistogrammModus NOT IN ('NONE','SUMMARY','STEPS')
-       OR @QuellumgebungBestaetigt<>1
-       OR @MitPredicateHistogramMap NOT IN (0,1)
+       OR @QuellumgebungBestaetigt IS NULL OR @QuellumgebungBestaetigt<>1
+       OR @MitPredicateHistogramMap IS NULL OR @MitPredicateHistogramMap NOT IN (0,1)
        OR @MaxStatistiken IS NULL OR @MaxStatistiken NOT BETWEEN 1 AND 1000
        OR @MaxHistogrammSchritte IS NULL OR @MaxHistogrammSchritte NOT BETWEEN 0 AND 200000
        OR @LockTimeoutMs IS NULL OR @LockTimeoutMs NOT BETWEEN 0 AND 60000
-       OR @HighImpactConfirmed NOT IN (0,1)
+       OR @HighImpactConfirmed IS NULL OR @HighImpactConfirmed NOT IN (0,1)
     BEGIN
         SELECT @StatusCodeOut='INVALID_PARAMETER',@IsPartialOut=1,
                @ErrorMessageOut=N'Ungültiger Plan-, Modus-, Bestätigungs-, Mengen- oder Lock-Timeout-Parameter.';
@@ -3854,17 +4232,161 @@ GO
 
 -- BEGIN SOURCE: Code/04_PlanCache/051_InternalAnalyzeExecutionPlan.sql
 /*
-===============================================================================
 Objekt       : monitor.InternalAnalyzeExecutionPlan
 Version      : 1.2.1
 Stand        : 2026-10-14
 Typ          : Interne Stored Procedure
-Zweck        : Zerlegt genau ein Showplan-XML einmalig in statementgenaue,
-               relationale Plan-, Operator-, Runtime-, Statistik-, Parameter-,
-               Warnungs-, Optimizer-, Feedback- und Findingtabellen des Aufrufers.
-Voraussetzung: Der Aufrufer legt die lokalen #ExecutionPlanAnalysis_*-Temp-Tabellen entsprechend
-               dem Resultsetinventar an. Keine Benutzertabellenzugriffe.
-===============================================================================
+Zweck        : Die Procedure zerlegt genau ein vom Aufrufer geliefertes Showplan-XML
+               mit unterstützten StmtSimple-Elementen in die vorbereiteten
+               lokalen #ExecutionPlanAnalysis_*-Tabellen.
+Voraussetzung: Der Aufrufer stellt 19 lokale Ergebnistabellen mit dem vereinbarten
+               Schema bereit. 19 SELECT TOP (0)-Probes erzeugen 19 leere
+               Resultsets und testen den Tabellenzugriff, nicht die vollständige
+               Schemakompatibilität. Die Procedure führt keine Plananweisung aus und
+               beschafft oder löst keine Planquelle über einen Katalog auf.
+               Spätere Fehler nehmen bereits geschriebene Teilergebnisse nicht
+               atomar zurück.
+
+Parametervertrag
+Die vier ersten Parameter sind erforderlich. Alle folgenden Parameter haben den in der
+Signatur angegebenen Default; sie können ausgelassen werden. Ein OUTPUT-Parameter
+kann auch als typisierter Skalar oder NULL ohne OUTPUT übergeben werden; der
+Eingabewert wird ignoriert und die Ausgabe verworfen. Zum Empfang ist eine Variable
+des angegebenen Typs mit OUTPUT zu binden. Typkonvertierung erfolgt vor dem
+Prozedureintritt; Konvertierungsfehler sind nicht allgemein durch den Prozedur-CATCH
+abgedeckt.
+
+- @AnalysisObjectId int, Eingabe, erforderlich, kein Default: positive Kennung für
+  Ergebniszeilen. NULL, '' (als int gebunden: 0) und jeder Wert < 1 ergeben
+  INVALID_PARAMETER. Zulässig sind 1 bis 2147483647.
+- @PlanXml xml, Eingabe, erforderlich, kein Default: Showplan-XML. NULL ergibt
+  INVALID_PARAMETER. '' wird als leeres XML gebunden und enthält kein StmtSimple;
+  das ergibt UNAVAILABLE_OBJECT und Partialität. Die Suche verwendet local-name(.)
+  für StmtSimple und validiert kein bestimmtes Root-Element oder Namespace.
+- @PlanSource varchar(24), Eingabe, erforderlich, kein Default: Codes IMPORTED
+  (importiertes XML), COMPILE (Kompilierungsplan), LAST_ACTUAL (letzter Actual Plan),
+  CURRENT_ACTUAL (aktueller Actual Plan), QUERY_STORE (Query-Store-Plan). '' und NULL
+  sind ungültig und ergeben INVALID_PARAMETER. Keine Normalisierung. Der Wert
+  klassifiziert die Quelle und beschafft keinen Plan.
+- @RuntimeCounterScope varchar(32), Eingabe, erforderlich, kein Default: Codes NONE
+  (keine Runtimecounter beansprucht), LAST_COMPLETED_EXECUTION (letzte abgeschlossene
+  Ausführung), CURRENT_PARTIAL_EXECUTION (aktuelle möglicherweise unvollständige
+  Ausführung), IMPORTED_ACTUAL (importiertes Actual-Plan-XML), QUERY_STORE_AGGREGATE
+  (aggregierte Query-Store-Zuordnung), UNKNOWN (Scope unbekannt). '' und NULL sind
+  ungültig und ergeben INVALID_PARAMETER. Keine Normalisierung. Klassifiziert die
+  gelieferten Daten, beschafft oder verifiziert aber keine Runtimecounter.
+- @WorkloadProfile varchar(32), Eingabe, Default 'BALANCED': offene, tabellengesteuerte
+  Allowlist monitor.PlanAnalysisProfile. NULL wird BALANCED; Rand-Leerraum wird
+  entfernt und Großschreibung hergestellt. Unbekannte, deaktivierte und leere Werte
+  fallen auf BALANCED zurück. Seedprofile: LATENCY_SENSITIVE gewichtet interaktive/
+  häufige Zugriffe je Ausführung und Wiederholungsrate stärker; BALANCED ist neutral
+  für gemischte Workloads ohne belastbare Zuordnung; THROUGHPUT gewichtet absolute
+  CPU-, I/O-, TempDB- und Datenmengen stärker; MAINTENANCE behandelt große Scans und
+  Sorts bei Wartung/Strukturänderungen als möglicherweise erwartet; UNKNOWN bleibt
+  konservativ und weist geringe Zuordnungssicherheit aus. Weitere aktive Codes sind
+  möglich.
+- @MinSeverity varchar(16), Eingabe, Default 'INFO': INFO (informativ), LOW (niedrig),
+  MEDIUM (mittel), HIGH (hoch), CRITICAL (kritisch/höchste Stufe). NULL wird INFO;
+  Rand-Leerraum wird entfernt und Großschreibung hergestellt. '' und andere Werte
+  sind ungültig. Filtert Findings und PlanWarnings unterhalb der Schwelle;
+  NO_EXPLICIT_WARNING bleibt zunächst ausgenommen. Ein Hinweis kann melden, dass
+  keine Warnung die Schwelle erreicht. Keine Aussage über Planoptimalität oder
+  fehlende Quelle.
+- @EvidenceJson nvarchar(max), Eingabe, Default NULL: optionale externe STATISTICS
+  IO/TIME-Evidenz. NULL lässt die Evidenz aus. '' ist ungültige JSON-Syntax und setzt
+  Partialität mit Capability EXECUTION_EVIDENCE_JSON/INVALID_JSON. Syntaktisch
+  gültiges JSON wird nicht schemaweit validiert; lax OPENJSON-Pfade mit fehlenden oder
+  falsch geformten Werten können leere/unerkannte Teilergebnisse liefern. Zusätzliche
+  Felder werden ignoriert; Pfadnamen sind case-sensitive. Ungültige Typkonvertierungen
+  können ERROR_HANDLED auslösen. Negative Dezimalwerte werden nicht gefiltert;
+  confidence, timeCategory und parseStatus haben keine geprüfte Werteliste.
+  Pfade und Typen: $.capture.sameExecutionConfidence (Text, Fallback UNCONFIRMED);
+  $.statisticsIo[*].statementOrdinal int, objectDisplayName nvarchar(512),
+  logicalReads/physicalReads/readAheadReads/scanCount decimal(38,4), parseStatus
+  varchar(40); $.statisticsTime[*].statementOrdinal int, timeCategory varchar(24),
+  cpuMs/elapsedMs decimal(38,4), parseStatus varchar(40). Nicht-NULL IO-Werte werden
+  als pages-Metriken, Zeitwerte als ms ausgegeben. Confidence belegt keine gleiche
+  Ausführung. Synthetisches Beispiel:
+  {"capture":{"sameExecutionConfidence":"UNCONFIRMED"},"statisticsIo":[{"statementOrdinal":1,"objectDisplayName":"[dbo].[Sample]","logicalReads":12,"physicalReads":0,"readAheadReads":0,"scanCount":1,"parseStatus":"PARSED"}],"statisticsTime":[{"statementOrdinal":1,"timeCategory":"SQL","cpuMs":2.5,"elapsedMs":3,"parseStatus":"PARSED"}]}
+- @MitThreadRuntime bit, Eingabe, Default 0: 0 löscht die Threadzeilen nach ihrer
+  Materialisierung und der Ableitung aggregierter Runtimewerte; 1 behält sie.
+  NULL ergibt INVALID_PARAMETER. Numerische Werte ungleich 0 werden bei Bindung
+  zu 1; '' kann zu 0 konvertieren.
+- @EvidenzDatenschutzModus varchar(24), Eingabe, Default 'DERIVED_ONLY': geschlossene
+  Codes DERIVED_ONLY (Werte weglassen, abgeleitete Evidenz führen), TOKENIZED (Werte
+  weglassen, vorhandene Werte mit frischem lokalem Zufallssalt tokenisieren), RAW
+  (Werte im Klartext) und STRUCTURE_ONLY (Werte weglassen, Strukturstatus setzen).
+  NULL wird DERIVED_ONLY; äußere U+0020-Leerzeichen entfernen und Großschreibung. '' ist ungültig.
+  DERIVED_ONLY und STRUCTURE_ONLY lassen dieselben Wertespalten leer, unterscheiden
+  sich aber im ValueHandlingStatus. SQL-NULL-Werte werden markiert und nicht
+  tokenisiert. Keine globale Redaktion anderer Planwerte oder Namen.
+- @IdentifierDatenschutzModus varchar(16), Eingabe, Default 'RAW': RAW (Objektanzeige
+  übernehmen), TOKENIZED (mit frischem lokalem Zufallssalt tokenisieren), OMIT
+  (weglassen). NULL wird RAW; äußere U+0020-Leerzeichen entfernen und Großschreibung. '' ist ungültig. Wirkt nur
+  auf statisticsIo.objectDisplayName als Scope-Bezeichnung, nicht global.
+- @SourceObservedAtUtc datetime2(3), Eingabe, Default NULL: Zeitpunkt nach
+  UTC-Konvention. Auslassen/NULL setzt SYSUTCDATETIME(). Ein expliziter Wert wird als
+  UTC-Konvention übernommen, aber nicht umgerechnet oder als tatsächliche Quellzeit
+  verifiziert. '' wird nach SQL-Typbindungsregeln behandelt; die Procedure prüft den
+  resultierenden Wert nicht auf Herkunft oder UTC-Abweichung.
+  Eingabe als datetime2-Variable oder ISO-Text, etwa 2000-01-01T00:00:00.000.
+- @ParameterEvidenceSessionId smallint, Eingabe, Default NULL: Session-Skalar im
+  ParameterEvidence-Kontext. Signed smallint-Bereich -32768 bis 32767, einschließlich
+  negativer und null Werte; keine Positivitätsprüfung. NULL bleibt NULL; '' als
+  smallint gebunden wird 0. Keine DMV-Abfrage oder Sessionauflösung.
+- @ParameterEvidenceRequestId int, Eingabe, Default NULL: Request-Skalar im
+  ParameterEvidence-Kontext. Signed int-Bereich -2147483648 bis 2147483647;
+  keine Positivitätsprüfung. NULL bleibt NULL; '' als int gebunden wird 0. Keine
+  Requestauflösung.
+- @PlanHandle varbinary(64), Eingabe, Default NULL: Binärwert, als varbinary-Variable
+  oder SQL-0x-Hexwert zu binden; 0x bezeichnet einen leeren Handle. Der Typ begrenzt
+  den gebundenen Wert auf 64 Bytes; die Procedure führt keine eigene Längenprüfung aus.
+  NULL bleibt NULL. Kein Textpfad, keine Suche oder Auflösung über den Handle.
+- @QueryStoreDatabaseName sysname, Eingabe, Default NULL: einzelner unquotierter
+  Unicode-Datenbankname im sysname-Typ (nvarchar(128)); keine Liste oder
+  Identifier-Syntax. '' wird unverändert akzeptiert; NULL bleibt NULL. Keine
+  Auflösung und keine Query-Store-Abfrage.
+- @QueryStorePlanId bigint, Eingabe, Default NULL: Plan-ID als Kontextskalar. Signed
+  bigint-Bereich -9223372036854775808 bis 9223372036854775807; keine
+  Positivitätsprüfung. NULL bleibt NULL; '' als bigint gebunden wird 0. Keine
+  Query-Store-Abfrage oder Planbeschaffung.
+- @StatusCodeOut varchar(40), OUTPUT, Signatur-Default NULL: Eingabewert (auch NULL
+  oder '') wird ignoriert; ausgelassen ist der Default NULL. Ohne OUTPUT wird die
+  Ausgabe verworfen; zum Empfang varchar(40)-Variable mit OUTPUT binden. Initialwert
+  AVAILABLE. Endwerte: AVAILABLE (ohne Partialitätskennzeichen beendet), PARTIAL
+  (Hauptanalyse abgeschlossen und Partialitätsflag gesetzt), INVALID_PARAMETER
+  (validierter Eingabefehler), UNAVAILABLE_OBJECT (kein unterstütztes StmtSimple),
+  INTERNAL_ERROR (lokale Ergebnistabelle fehlt oder ist nicht zugreifbar),
+  ERROR_HANDLED (abgefangener späterer Fehler). Profilabfrage und eigene Temp-Anlage
+  können außerhalb dieses Statuspfads fehlschlagen.
+- @IsPartialOut bit, OUTPUT, Signatur-Default NULL: Eingabewert (auch NULL oder '',
+  sofern als bit gebunden) wird ignoriert; ausgelassen ist der Default NULL. Ohne
+  OUTPUT wird die Ausgabe verworfen; zum Empfang bit-Variable mit OUTPUT binden.
+  Initialwert 0. 1 kennzeichnet unter anderem ungültige Eingabe, fehlende Statements,
+  ungültiges JSON oder abgefangene Fehler; bei regulärem Abschluss wird AVAILABLE zu
+  PARTIAL. NULL ist kein regulärer Ausgangswert.
+- @ErrorNumberOut int, OUTPUT, Signatur-Default NULL: Eingabewert (auch NULL oder '',
+  sofern als int gebunden) wird ignoriert; ausgelassen ist der Default NULL. Ohne
+  OUTPUT wird die Ausgabe verworfen; zum Empfang int-Variable mit OUTPUT binden.
+  Initialwert NULL; nur Fehlerpfade mit erfasster SQL-Fehlernummer setzen einen Wert.
+  Bei PARTIAL ohne abgefangenen SQL-Fehler kann die Ausgabe NULL bleiben.
+- @ErrorMessageOut nvarchar(2048), OUTPUT, Signatur-Default NULL: Eingabewert (auch
+  NULL oder '') wird ignoriert; ausgelassen ist der Default NULL. Ohne OUTPUT wird
+  die Ausgabe verworfen; zum Empfang nvarchar(2048)-Variable mit OUTPUT binden.
+  Initialwert NULL; nur belegte Meldungspfade setzen Text.
+  Bei PARTIAL ohne expliziten Meldungspfad kann die Ausgabe NULL bleiben.
+
+Kontext- und Fehlergrenzen
+Die sechs optionalen Kontextwerte SourceObservedAtUtc, ParameterEvidenceSessionId,
+ParameterEvidenceRequestId, PlanHandle, QueryStoreDatabaseName und QueryStorePlanId
+sind typisierte Skalare. Sie beweisen weder Planherkunft noch Ausführungsgleichheit.
+Lokale T-SQL-Variablenwerte werden nicht aus DMV-Kontext ergänzt. PlanHandle bleibt
+binär. Tokenisierung verwendet einen pro Aufruf frischen lokalen Zufallssalt und
+liefert keinen stabilen aufrufübergreifenden Schlüssel. Die Profilabfrage gegen
+monitor.PlanAnalysisProfile liegt vor dem Haupt-TRY; ein Fehler dort kann nach außen
+gelangen. Fehler der eigenen Temp-Tabellenanlage werden nach Wiederherstellung von
+LOCK_TIMEOUT 0 erneut ausgelöst. Der spätere Haupt-CATCH meldet ERROR_HANDLED mit
+Fehlernummer und -text; frühere Einfügungen werden nicht atomar zurückgenommen.
 */
 CREATE OR ALTER PROCEDURE [monitor].[InternalAnalyzeExecutionPlan]
       @AnalysisObjectId          int
@@ -3904,10 +4426,10 @@ BEGIN
         , @ErrorMessageOut=NULL;
 
     IF @AnalysisObjectId IS NULL OR @AnalysisObjectId<1 OR @PlanXml IS NULL
-       OR @PlanSource NOT IN ('IMPORTED','COMPILE','LAST_ACTUAL','CURRENT_ACTUAL','QUERY_STORE')
-       OR @RuntimeCounterScope NOT IN ('NONE','LAST_COMPLETED_EXECUTION','CURRENT_PARTIAL_EXECUTION','IMPORTED_ACTUAL','QUERY_STORE_AGGREGATE','UNKNOWN')
+       OR @PlanSource IS NULL OR @PlanSource NOT IN ('IMPORTED','COMPILE','LAST_ACTUAL','CURRENT_ACTUAL','QUERY_STORE')
+       OR @RuntimeCounterScope IS NULL OR @RuntimeCounterScope NOT IN ('NONE','LAST_COMPLETED_EXECUTION','CURRENT_PARTIAL_EXECUTION','IMPORTED_ACTUAL','QUERY_STORE_AGGREGATE','UNKNOWN')
        OR @MinSeverity NOT IN ('INFO','LOW','MEDIUM','HIGH','CRITICAL')
-       OR @MitThreadRuntime NOT IN (0,1)
+       OR @MitThreadRuntime IS NULL OR @MitThreadRuntime NOT IN (0,1)
        OR @EvidenzDatenschutzModus NOT IN ('DERIVED_ONLY','TOKENIZED','RAW','STRUCTURE_ONLY')
        OR @IdentifierDatenschutzModus NOT IN ('RAW','TOKENIZED','OMIT')
     BEGIN
@@ -5392,12 +5914,58 @@ BEGIN
     IF @Hilfe=1
     BEGIN
         PRINT N'monitor.USP_CreateExecutionEvidenceJson';
-        PRINT N'Erzeugt Evidence JSON aus optionalem PlanXml, STATISTICS IO/TIME und zielgerichteten Statistikmetadaten; führt kein SQL aus.';
-        PRINT N'@StatistikEvidenzModus NONE|PLAN_ONLY|USED|RELEVANT|OBJECT_ALL; aktuelle Metadaten benötigen CURRENT_SERVER und bestätigte Quellumgebung.';
-        PRINT N'@HistogrammModus NONE|SUMMARY|STEPS. @EvidenzDatenschutzModus DERIVED_ONLY (Default)|TOKENIZED|STRUCTURE_ONLY|RAW.';
-        PRINT N'RAW benötigt @SensitiveDataConfirmed=1. @IdentifierDatenschutzModus RAW|TOKENIZED|OMIT.';
-        PRINT N'@RawTextHandling NONE|HASH_ONLY|INCLUDE. INCLUDE benötigt @SensitiveDataConfirmed=1 und @IdentifierDatenschutzModus=RAW.';
-        PRINT N'Der Generator führt die analysierte Query niemals selbst aus.';
+        PRINT N'@PlanXml xml. Default ist NULL. Optionales bereits vorhandenes Plan-XML als SQL-Typ xml; Text kann durch SQL in diesen Typ konvertiert werden. NULL lässt die planbezogene Extraktion aus. Leeres XML oder XML ohne passende Showplan-Knoten kann keine passenden Bezüge liefern; die XML-Typprüfung ersetzt keine vollständige Showplan-Schemaprüfung. @StatementId begrenzt passende Extraktoren; die beschriebene Query wird niemals ausgeführt.';
+        PRINT N'@StatisticsIoText nvarchar(max). Default ist NULL. optionaler, bereits erfasster STATISTICS-IO-Meldungstext. NULL oder Auslassen erzeugt keine aus diesem Argument geparsten Zeilen. Nicht erkannte oder teilweise lesbare Zeilen bleiben mit ParseStatus sichtbar; der Text wird mit @StatisticsLanguage geparst und StatementOrdinal kann fehlende Zuordnungen ergänzen. Rohtext wird abhängig von @RawTextHandling behandelt. Leerer oder nur aus Leerzeichen bestehender Text liefert keine Parserzeilen.';
+        PRINT N'@StatisticsTimeText nvarchar(max). Default ist NULL. optionaler, bereits erfasster STATISTICS-TIME-Meldungstext. NULL oder Auslassen erzeugt keine daraus geparsten Zeilen. Der Parser kennzeichnet teilweise oder unbekannte Formate, statt fehlende Messwerte als Null zu erfinden; die Sprache richtet sich nach @StatisticsLanguage und @StatementOrdinal kann fehlende Zuordnung ergänzen. Rohtextbehandlung folgt @RawTextHandling. Leerer oder nur aus Leerzeichen bestehender Text liefert keine Parserzeilen.';
+        PRINT N'@StatisticsLanguage varchar(16). Default ist ''AUTO''. AUTO erkennt unterstützte Meldungsteile automatisch; EN bezeichnet Englisch und DE Deutsch. Der IO-Parser normalisiert Groß-/Kleinschreibung und fällt bei NULL, leerem oder unbekanntem Code auf AUTO zurück. Der TIME-Parser verwendet die Kennung nicht und erkennt seine englischen/deutschen Textteile selbst. Es entsteht kein INVALID_PARAMETER für einen unbekannten Sprachcode.';
+        PRINT N'@StatisticsEvidenceJson nvarchar(max). Default ist NULL. Optionaler Statistikabschnitt als JSON-Objekt mit statistics oder unmittelbar als Statistikobjekt. Unter statistics werden planUsage nur ohne @PlanXml und currentSnapshot, histogramSummaries sowie histogramSteps nur außerhalb CURRENT_SERVER als Arrays von Objekten projiziert; deren Feldnamen und SQL-Zieltypen stehen in den nachfolgenden JSON-Eingabeformen. Ein expliziter statistics-Abschnitt ersetzt den gleichnamigen Abschnitt aus @ExistingEvidenceJson. NULL importiert nichts; leerer Text ist ungültiges JSON. JSON_QUERY akzeptiert hier Objekt oder Array, eine strikte Objekt-/Feldprüfung findet nicht statt. Unbekannte Eigenschaften werden nicht übernommen. Bei ungültigem JSON oder fehlendem extrahierbarem Abschnitt führt @StrictValidation=1 intern zu 51021 und dem abgefangenen Status INVALID_EVIDENCE_JSON; andernfalls folgen Warnung und partielle Ausgabe. statisticsIo und statisticsTime an dieser Eingabewurzel werden nicht importiert.';
+        PRINT N'@ObjectMetadataJson nvarchar(max). Default ist NULL. Optionales JSON-Array von Objektbezügen oder Objekt mit objectReferences. Die 21 erkannten Eintragsfelder und SQL-Zieltypen stehen in den nachfolgenden JSON-Eingabeformen. Der Abschnitt ersetzt objectReferences aus @ExistingEvidenceJson und wird nur ohne @PlanXml importiert. NULL importiert nichts; leerer Text ist ungültig. JSON_QUERY akzeptiert Objekt oder Array unter objectReferences; die Implementierung erzwingt keine strikte Array-/Feldstruktur und ignoriert unbekannte Eigenschaften. Ungültiges JSON oder eine nicht extrahierbare Form führt bei @StrictValidation=1 intern zu 51022 und zum abgefangenen Status INVALID_EVIDENCE_JSON; andernfalls folgen Warnung und partielle Ausgabe.';
+        PRINT N'@StatistikEvidenzModus varchar(16). Default ist ''PLAN_ONLY''. Zulässig sind NONE, PLAN_ONLY, USED, RELEVANT und OBJECT_ALL. NONE überspringt die Extraktion von Statistiknutzung aus dem übergebenen Plan. PLAN_ONLY extrahiert diese Compile-Evidenz ohne aktuelle Katalogabfrage. USED ergänzt aktuelle Metadaten der im Plan verwendeten Statistiken. RELEVANT ergänzt diese um Statistiken, deren führende Spalte einer im Plan referenzierten Predicate-Spalte entspricht. OBJECT_ALL ergänzt alle Statistiken der referenzierten Planobjekte. Aktuelle Ergänzungen benötigen @PlanXml und CURRENT_SERVER; die beiden breiten Modi benötigen High-Impact-Bestätigung. Importierte Statistikarrays werden durch NONE nicht pauschal entfernt. NULL fällt auf PLAN_ONLY zurück; äußere Leerzeichen und Groß-/Kleinschreibung werden normalisiert. Leerer oder unbekannter Code ist INVALID_PARAMETER.';
+        PRINT N'@HistogrammModus varchar(16). Default ist ''NONE''. geschlossene Auswahl NONE, SUMMARY, STEPS. NULL wird wie NONE behandelt; Trim und Großschreibung normalisieren Werte, unbekannte Werte sind INVALID_PARAMETER. NONE erhebt keine Histogramme; SUMMARY liefert Zusammenfassungen; STEPS liefert Histogrammschritte. SUMMARY und STEPS benötigen @MetadatenQuellenmodus=CURRENT_SERVER sowie @StatistikEvidenzModus USED, RELEVANT oder OBJECT_ALL; sonst INVALID_PARAMETER.';
+        PRINT N'@MetadatenQuellenmodus varchar(16). Default ist ''EVIDENCE_ONLY''. Zulässig sind EVIDENCE_ONLY und CURRENT_SERVER. EVIDENCE_ONLY verarbeitet übergebene Plan-/JSON-/Meldungsevidenz ohne aktuelle Statistikabfragen. CURRENT_SERVER ruft die aktuelle Erhebung nur mit @PlanXml und Statistikmodus USED, RELEVANT oder OBJECT_ALL auf; importierte currentSnapshot-, Histogramm- und Predicate-Mapping-Arrays werden dann nicht geladen, auch wenn keine Erhebung stattfindet. CURRENT_SERVER verlangt unabhängig von einer tatsächlichen Erhebung @QuellumgebungBestaetigt=1; 0 und NULL führen zu SOURCE_ENVIRONMENT_CONFIRMATION_REQUIRED. Die Bestätigung des Aufrufers ist kein Herkunftsnachweis und keine Berechtigung. NULL als Quellenmodus bedeutet EVIDENCE_ONLY; Trim und Großschreibung werden normalisiert. Leerer oder unbekannter Code ist INVALID_PARAMETER.';
+        PRINT N'@QuellumgebungBestaetigt bit. Default ist 0. Eingabeform ist ein einzelner SQL-bit-Wert oder eine bit-Variable; leerer Text ist keine vorgesehene Eingabeform. SQL Server konvertiert Argumente vor Procedure-Eintritt zu bit; numerische Nichtnullwerte ergeben bit 1, daher ausdrücklich 0 oder 1 übergeben. Bei CURRENT_SERVER bestätigen 0 und NULL die Quelle nicht und führen unabhängig von einer tatsächlichen Erhebung zu SOURCE_ENVIRONMENT_CONFIRMATION_REQUIRED. 1 ist die Bestätigung des Aufrufers, dass CURRENT_SERVER der tatsächlichen Quelle entspricht; sie ist kein Herkunftsnachweis und erteilt keine Berechtigung. Ohne CURRENT_SERVER hat der Schalter keine Erhebungswirkung.';
+        PRINT N'@EvidenzDatenschutzModus varchar(24). Default ist ''DERIVED_ONLY''. geschlossene Auswahl DERIVED_ONLY, TOKENIZED, STRUCTURE_ONLY, RAW. NULL wird wie DERIVED_ONLY behandelt; Trim und Großschreibung normalisieren Werte, sonst INVALID_PARAMETER. DERIVED_ONLY entfernt konkrete Parameter-, Predicate- und Histogrammgrenzwerte aus dem exportierbaren Ergebnis; TOKENIZED ersetzt solche Werte durch capture-lokale Tokens; STRUCTURE_ONLY beschränkt die Ausgabe auf Struktur; RAW lässt Werte zu und erfordert @SensitiveDataConfirmed=1. Bei 0 oder NULL als Bestätigung folgt auf einem angeforderten RAW-Pfad SENSITIVE_DATA_CONFIRMATION_REQUIRED.';
+        PRINT N'@IdentifierDatenschutzModus varchar(16). Default ist ''RAW''. geschlossene Auswahl RAW, TOKENIZED, OMIT. NULL wird wie RAW behandelt; Trim und Großschreibung normalisieren, unbekannte Werte führen zu INVALID_PARAMETER. RAW erhält Identifikatoren, TOKENIZED ersetzt sie durch capture-lokale Tokens und OMIT lässt sie aus. Für @RawTextHandling=INCLUDE ist ausschließlich RAW zusammen mit @SensitiveDataConfirmed=1 zulässig.';
+        PRINT N'@SensitiveDataConfirmed bit. Default ist 0. 0 bestätigt sensible Ausgabe nicht; 1 bestätigt die Ausgabe konkreter Werte bei RAW-Evidenz beziehungsweise Meldungsrohtext bei INCLUDE. Auf angeforderten RAW- oder INCLUDE-Pfaden führen 0 oder NULL zu SENSITIVE_DATA_CONFIRMATION_REQUIRED; INCLUDE benötigt zusätzlich IdentifierDatenschutzModus=RAW. Außerhalb dieser sensiblen Pfade wird NULL nicht global als ungültiger Parameter abgewiesen. additionalEvidence wird ausschließlich bei RAW und exakt 1 eingebettet.';
+        PRINT N'@MitPredicateHistogramMap bit. Default ist 1. Eingabeform ist ein einzelner SQL-bit-Wert oder eine bit-Variable; leerer Text ist keine vorgesehene Eingabeform. SQL Server konvertiert Argumente vor Procedure-Eintritt zu bit; numerische Nichtnullwerte ergeben bit 1, daher ausdrücklich 0 oder 1 übergeben. 0 überspringt die Predicate-/Histogrammzuordnung im Collector; 1 aktiviert sie bei tatsächlich aufgerufenem Collector. Ohne Collector-Aufruf ist NULL unbenutzt und wird nicht global abgewiesen. Bei tatsächlicher aktueller Erhebung weist InternalCollectExecutionPlanMetadata NULL als INVALID_PARAMETER zurück; 052 meldet CURRENT_METADATA_COLLECTION_LIMITED mit Teilstatus. Der Schalter unterdrückt keine bereits importierten Mappingzeilen.';
+        PRINT N'@StatementId int. Default ist NULL. optionale Statement-ID zum Begrenzen der Planextraktion und Statistikverwendung. NULL/Auslassen verarbeitet den Plan ohne diese Eingrenzung. Der Wert wird an die Plan-Extraktoren übergeben; ein nicht vorhandenes oder nicht zuordenbares Statement liefert entsprechend keine passenden Planbezüge. Für diese Eingabe besteht keine zusätzliche Bereichsvalidierung.';
+        PRINT N'@StatementOrdinal int. Default ist NULL. Optionale ganze Ordnungsnummer ohne zusätzliche Bereichsprüfung. Nur mit @PlanXml füllt ein gesetzter Wert fehlende StatementOrdinal in geparsten IO-/TIME-Zeilen. Ohne Wert setzt ein Einzelstatementplan diese Zeilen auf 1; ein Mehrstatementplan lässt die Zuordnung offen und warnt bei vorhandenen Meldungszeilen mit partieller Ausgabe. Ohne @PlanXml hat der Parameter keine Zuordnungswirkung. NULL bedeutet keine explizite Zuordnung.';
+        PRINT N'@SameExecutionAsPlanConfirmed bit. Default ist NULL. optionale Bestätigung, dass Meldungsevidenz derselben Ausführung wie der Plan entstammt. NULL/Auslassen bedeutet unbestätigt; 0 bedeutet ausdrücklich UNCONFIRMED; 1 bedeutet CONFIRMED. Andere Bitwerte sind nicht als eigene Validierungsbedingung implementiert. Diese Angabe beweist die Ausführungsbeziehung nicht selbst.';
+        PRINT N'@CapturedAtUtc datetime2(3). Default ist NULL. optionaler UTC-Zeitpunkt der Erfassung. NULL/Auslassen setzt capturedAtUtc auf die aktuelle UTC-Systemzeit; ein gesetzter Wert wird als Erfassungszeit übernommen. SQL konvertiert die Eingabe auf Millisekundenpräzision gemäß datetime2(3).';
+        PRINT N'@SourceProductVersion nvarchar(128). Default ist NULL. optionale Produktversionsangabe der Quellumgebung für sourceEnvironment.productVersion. NULL/Auslassen bleibt im JSON null; keine Formatprüfung ist implementiert. Leerer Text wird unverändert als Text übergeben und nicht als NULL normalisiert.';
+        PRINT N'@SourceCompatibilityLevel smallint. Default ist NULL. optionales Quell-Compatibility-Level. NULL/Auslassen bleibt null; erlaubter Zahlenbereich ist 80 bis 200 einschließlich. Werte außerhalb des Bereichs ergeben INVALID_PARAMETER. Der Wert wird als sourceEnvironment.compatibilityLevel ausgegeben.';
+        PRINT N'@SourceEngineEdition int. Default ist NULL. optionale Engine-Edition-Kennung der Quelle für sourceEnvironment.engineEdition. NULL/Auslassen bleibt null; es ist keine abgeschlossene Wertemenge oder separate Wertebereichsprüfung implementiert.';
+        PRINT N'@MaxStatistiken int. Default ist 100. Begrenzung der Zahl aktueller Statistiken. NULL ist unzulässig; gültiger Bereich 1 bis 1000 einschließlich, andernfalls INVALID_PARAMETER. Der Grenzwert wirkt auf die zielgerichtete aktuelle Statistikerhebung.';
+        PRINT N'@MaxHistogrammSchritte int. Default ist 20000. Begrenzung der erhobenen Histogrammschritte. NULL ist unzulässig; gültiger Bereich 0 bis 200000 einschließlich, andernfalls INVALID_PARAMETER. Der Grenzwert beschränkt Histogrammvertiefung; 0 erlaubt keine Histogrammschritte.';
+        PRINT N'@LockTimeoutMs int. Default ist 0. Wartezeitgrenze in Millisekunden für die optionale Metadatenerhebung. NULL ist unzulässig; gültiger Bereich 0 bis 60000 einschließlich, sonst INVALID_PARAMETER. 0 bedeutet keine Wartezeit auf gesperrte Ressourcen; ein positiver Wert begrenzt das Warten auf die angegebene Zahl Millisekunden.';
+        PRINT N'@HighImpactConfirmed bit. Default ist 0. 0 bestätigt keinen High-Impact-Pfad; 1 bestätigt die tatsächlich angeforderte breite Statistik- oder Histogrammerhebung. Der Collector verlangt diese Bestätigung für RELEVANT, OBJECT_ALL oder STEPS nur, wenn er mit @PlanXml, CURRENT_SERVER und einem aktuellen Statistikmodus aufgerufen wird; Berechtigungen werden dadurch nicht erteilt. NULL passiert die äußere NOT-IN-Prüfung, wird bei jeder tatsächlich angeforderten aktuellen Erhebung jedoch vom internen Collector als INVALID_PARAMETER zurückgewiesen; der Capture meldet dann CURRENT_METADATA_COLLECTION_LIMITED und Partialität. Ohne Collector-Aufruf ist daraus keine zusätzliche Gate-Prüfung abzuleiten. NULL ist keine ausdrückliche Bestätigung.';
+        PRINT N'@AdditionalEvidenceJson nvarchar(max). Default ist NULL. optionales zusätzliches JSON, das unverändert als importierter Abschnitt nur bei @EvidenzDatenschutzModus=RAW und @SensitiveDataConfirmed=1 in additionalEvidence eingebettet wird; andernfalls ist dieser JSON-Schlüssel null. NULL/Auslassen markiert keine zusätzliche Evidenz. Ungültiges JSON führt bei @StrictValidation=1 zu Fehler 51023; sonst wird es verworfen, gewarnt und IsPartial gesetzt. Ein spezifisches geschlossenes Schlüsselschema wird hier nicht validiert; der Wert muss syntaktisch gültiges JSON sein. Ohne hinreichend strikte Datenschutzfreigabe werden zusätzliche Inhalte nicht in den Ausgabeabschnitt übernommen.';
+        PRINT N'@ExistingEvidenceJson nvarchar(max). Default ist NULL. Optionale Ausgangshülle als Execution-Evidence-JSON. Die ausgewerteten Wurzelabschnitte sind statisticsIo, statisticsTime, statistics, objectReferences und predicateHistogramMappings; statistics besitzt planUsage, currentSnapshot, histogramSummaries und histogramSteps. Die erkannten Objektfelder und SQL-Zieltypen stehen nachfolgend. Unbekannte Eigenschaften und bisherige meta-/capture-/Warnungsabschnitte werden nicht unverändert exportiert. Eigene Statistik-/Objektparameter ersetzen gleichnamige Abschnitte. Mit @PlanXml stammen planUsage und objectReferences aus dem Plan; ohne CURRENT_SERVER werden aktuelle Statistik-, Histogramm- und Mappingarrays importiert. Importierte IO-/TIME-Zeilen werden zusätzlich zu geparsten Textzeilen eingefügt, mit RawLine=NULL; Dubletten werden nicht automatisch entfernt. NULL startet eine leere Hülle; leerer Text ist ungültiges JSON. Ungültiges JSON führt bei StrictValidation=1 intern zu 51024 und dem abgefangenen Status INVALID_EVIDENCE_JSON, sonst zu Warnung und partieller Ausgabe.';
+        PRINT N'@RawTextHandling varchar(16). Default ist ''HASH_ONLY''. geschlossene Auswahl NONE, HASH_ONLY, INCLUDE. NULL wird wie HASH_ONLY behandelt; Trim und Großschreibung normalisieren Werte, andere Werte ergeben INVALID_PARAMETER. NONE entfernt Rohzeilen und gibt keine Eingabehashes aus; HASH_ONLY entfernt Rohzeilen und gibt Eingabelängen sowie SHA-256-Hashes der IO-/TIME-Texte aus; INCLUDE erhält geparste Rohzeilen im Ergebnis und gibt Eingabehashes aus. INCLUDE erfordert @SensitiveDataConfirmed=1 und @IdentifierDatenschutzModus=RAW; 0 oder NULL als Bestätigung führt zu SENSITIVE_DATA_CONFIRMATION_REQUIRED.';
+        PRINT N'@StrictValidation bit. Default ist 1. 1 behandelt ungültiges importiertes JSON oder nicht extrahierbare Teilpayloads als interne Fehler 51021 bis 51024; der CATCH liefert INVALID_EVIDENCE_JSON, Partialität und die Fehler-OUTPUTs. 0 verwirft diese Payloads mit Warnung und partieller Ausgabe. NULL passiert NOT IN (0,1) und folgt bei IF=1 dem nicht strikten Zweig. Typkonvertierungs- und Zieltabellenfehler können auch mit 0 in ERROR_HANDLED enden; TABLE-Vorbereitungsfehler liegen außerhalb dieses CATCH.';
+        PRINT N'@ResultSetArt varchar(16). Default ist ''CONSOLE''. geschlossene Auswahl CONSOLE, RAW, TABLE, NONE. NULL und Leertext normalisieren zu leer und führen INVALID_PARAMETER. Werte werden getrimmt und großgeschrieben. CONSOLE ruft InternalEmitConsoleResult mit captureStatus als Quelle auf; RAW gibt die elf benannten Tabellen als elf Resultsets aus; TABLE schreibt angeforderte Resultate in ausdrücklich zugeordnete Ziele; NONE emittiert keine Resultsets. Unbekannte Werte sind INVALID_PARAMETER. CONSOLE ist die getrennte Konsolenausgabe, nicht ein JSON-Resultset.';
+        PRINT N'@ResultTablesJson nvarchar(max). Default ist NULL. optionales JSON-Objekt, dessen Schlüssel die Resultatnamen und dessen Zeichenkettenwerte vorhandene lokale Zieltabellen bezeichnen, zum Beispiel {"captureStatus":"#Capture"}. Es darf mindestens eine Zuordnung enthalten; alle Namen müssen aus der geschlossenen Liste captureStatus, statisticsIo, statisticsTime, planStatisticsUsage, objectReferences, currentStatistics, histogramSummaries, histogramSteps, predicateHistogramMappings, collectionStatus und warnings stammen. Jede Zieltabelle muss eine vorhandene, leere lokale #Temp-Tabelle mit genau einer Seed-Spalte sein; globale Temp-Tabellen, Namen über 116 Zeichen, Ziele mit Präfix #Monitor, doppelte Namen oder Ziele und andere JSON-Werttypen werden abgelehnt. NULL/Auslassen wird im TABLE-Modus als ungültige Zuordnung abgelehnt; außerhalb TABLE führt ein gesetzter Wert zu INVALID_PARAMETER. Helper-Fehler werden als Fehler 51011 ausgelöst.';
+        PRINT N'@JsonErzeugen bit. Default ist 1. Schalter zur Erzeugung des kanonischen JSON in @Json. 1 erzeugt das JSON, 0 lässt @Json auf NULL. 0 und 1 steuern die Ausgabe; NULL passiert NOT IN (0,1), erzeugt bei IF=1 aber kein JSON. Das JSON ist ein eigener OUTPUT-Parameter und wird bei @ResultSetArt=CONSOLE nicht als Resultset ausgegeben.';
+        PRINT N'@Json nvarchar(max) OUTPUT. Default ist NULL. Optionaler OUTPUT-Empfang als nvarchar(max)-Variable mit OUTPUT; ein übergebener Anfangswert wird auf NULL zurückgesetzt. JsonErzeugen=1 erzeugt das versionierte Execution-Evidence-Objekt, 0 oder NULL lässt den Ausgang NULL. Wurzelkeys sind meta, capture, sourceEnvironment, planIdentity, statisticsIo, statisticsTime, statistics, objectReferences, predicateHistogramMappings, collectionStatus, warnings, rawInput, importedEvidence und additionalEvidence. statistics enthält planUsage, currentSnapshot, histogramSummaries und histogramSteps als Arrays. IO, TIME, Objektbezüge, Mappings, Collection-Status und Warnings sind Arrays; fehlende optionale Skalare bleiben JSON-null. ResultSetArt ist davon unabhängig. Ohne OUTPUT-Bindung wird kein Wert beim Aufrufer empfangen.';
+        PRINT N'@PrintMeldungen bit. Default ist 1. 1 gibt bei Status außerhalb AVAILABLE eine Severity-10-Meldung über RAISERROR WITH NOWAIT aus. 0 oder NULL unterdrückt diese Meldung. Die Hilfsausgabe wird dadurch nicht deaktiviert.';
+        PRINT N'@Hilfe bit. Default ist 0. 1 druckt die Parameterhilfe und kehrt vor Parameterprüfung, TABLE-Vorbereitung und Erhebung zurück. 0 oder NULL folgt dem normalen Pfad. Zuvor werden @Json auf NULL und die vier Status-OUTPUTs auf AVAILABLE, 0, NULL und NULL gesetzt; auch SET LOCK_TIMEOUT 0 liegt vor dem Hilfe-RETURN.';
+        PRINT N'@StatusCodeOut varchar(40) OUTPUT. Default ist NULL. als varchar(40)-Variable mit OUTPUT zu binden. Erhält den StatusCode der Ausführung, anfänglich AVAILABLE und bei Validierungs-, Datenschutz-, Quellumgebungs- oder Verarbeitungsfällen entsprechend ersetzt. Der Status ist maschinenlesbar und Teil von captureStatus; der Aufrufende soll den gelieferten Wert auswerten. Der Anfangswert wird beim Einstieg auch im Hilfepfad zurückgesetzt; ohne OUTPUT-Bindung wird kein Wert beim Aufrufer empfangen.';
+        PRINT N'@IsPartialOut bit OUTPUT. Default ist NULL. als bit-Variable mit OUTPUT zu binden. 0 bedeutet zunächst nicht partiell; ungültige/verworfene optionale Evidenz oder andere begrenzte Verarbeitung kann auf 1 setzen. Der Wert beschreibt die Vollständigkeit der erzeugten Evidenz, nicht den Erfolg eines ausgeführten Workloads. Der Anfangswert wird beim Einstieg auch im Hilfepfad zurückgesetzt; ohne OUTPUT-Bindung wird kein Wert beim Aufrufer empfangen.';
+        PRINT N'@ErrorNumberOut int OUTPUT. Default ist NULL. als int-Variable mit OUTPUT zu binden. Zu Beginn NULL; bei abgefangenen Fehlern wird die SQL-Fehlernummer ausgegeben. Ohne solchen Fehler bleibt der Wert NULL. Der Anfangswert wird beim Einstieg auch im Hilfepfad zurückgesetzt; ohne OUTPUT-Bindung wird kein Wert beim Aufrufer empfangen.';
+        PRINT N'@ErrorMessageOut nvarchar(2048) OUTPUT. Default ist NULL. als nvarchar(2048)-Variable mit OUTPUT zu binden. Zu Beginn NULL; bei Status- oder Verarbeitungsfehlern wird eine begrenzte Meldung ausgegeben. Ohne Fehler bleibt der Wert NULL. Der Anfangswert wird beim Einstieg auch im Hilfepfad zurückgesetzt; ohne OUTPUT-Bindung wird kein Wert beim Aufrufer empfangen.';
+        PRINT N'Die folgenden JSON-Pfade beschreiben die erkannten Objektfelder und SQL-Zieltypen, keine strikte JSON-Schema-Validierung. Zahlen werden in die angegebenen SQL-Zahltypen, bit in 0/1, Texte in die angegebenen Zeichenlängen und Zeitstempel in datetime2 konvertiert. sysname entspricht nvarchar(128). Namen und Pfade sind in der angegebenen Schreibweise zu übergeben. Fehlende Eigenschaften werden als NULL projiziert; Konvertierungs- oder NOT-NULL-Zielverletzungen können ERROR_HANDLED auslösen. Nicht erkannte Eigenschaften werden ignoriert. Arrays enthalten jeweils Objekte; importierte Status-/Kategorietexte besitzen hier keine geschlossene validierte Wertemenge.';
+        PRINT N'JSON-Eingabe $.statisticsIo: statementOrdinal int, messageOrdinal int, objectOrdinal int, objectDisplayName nvarchar(512), scanCount bigint, logicalReads bigint, physicalReads bigint, pageServerReads bigint, readAheadReads bigint, pageServerReadAheadReads bigint, lobLogicalReads bigint, lobPhysicalReads bigint, lobPageServerReads bigint, lobReadAheadReads bigint, lobPageServerReadAheadReads bigint, languageDetected varchar(16), parseStatus varchar(40).';
+        PRINT N'JSON-Eingabe $.statisticsTime: statementOrdinal int, messageOrdinal int, timeCategory varchar(24), cpuMs bigint, elapsedMs bigint, languageDetected varchar(16), parseStatus varchar(40).';
+        PRINT N'JSON-Eingabe $.statistics.planUsage: statisticsUsageOrdinal bigint, statementOrdinal int, statementId int, statementCompId int, databaseName sysname, schemaName sysname, objectName sysname, statisticsName sysname, lastUpdateAtCompile datetime2(7), modificationCountAtCompile bigint, samplingPercentAtCompile decimal(19,6), sourceElement nvarchar(128), parseStatus varchar(40).';
+        PRINT N'JSON-Eingabe $.objectReferences: referenceOrdinal bigint, statementOrdinal int, statementId int, statementCompId int, nodeId int, referenceType varchar(40), referenceSource varchar(40), databaseName sysname, schemaName sysname, objectName sysname, indexName sysname, aliasName sysname, storageType nvarchar(128), planObjectId int, planIndexId int, isTemporaryObject bit, isTableVariable bit, isRemoteObject bit, isDmlTarget bit, resolutionCapability varchar(40), sourceElement nvarchar(128).';
+        PRINT N'JSON-Eingabe $.statistics.currentSnapshot: databaseName sysname, schemaName sysname, objectName sysname, objectId int, statisticsName sysname, statisticsId int, isIndexStatistics bit, isAutoCreated bit, isUserCreated bit, isFiltered bit, filterDefinition nvarchar(max), noRecompute bit, isIncremental bit, hasPersistedSample bit, leadingColumnName sysname, lastUpdated datetime2(7), rows bigint, rowsSampled bigint, samplePercent decimal(19,6), steps int, unfilteredRows bigint, modificationCounter bigint, modificationPercent decimal(19,6), persistedSamplePercent float, collectionStatus varchar(40).';
+        PRINT N'JSON-Eingabe $.statistics.histogramSummaries: databaseName sysname, schemaName sysname, objectName sysname, statisticsName sysname, statisticsId int, leadingColumnName sysname, histogramSteps int, histogramEstimatedRows float, maxEqualRows float, maxRangeRows float, maxStepRows float, dominantStepPercent decimal(19,6), tailStepRows float, tailStepPercent decimal(19,6), collectionStatus varchar(40).';
+        PRINT N'JSON-Eingabe $.statistics.histogramSteps: databaseName sysname, schemaName sysname, objectName sysname, statisticsName sysname, statisticsId int, leadingColumnName sysname, stepOrdinal int, rangeHighKey nvarchar(4000), rangeRows float, equalRows float, distinctRangeRows bigint, averageRangeRows float, isPredicateTarget bit, predicateMatchCount int.';
+        PRINT N'JSON-Eingabe $.predicateHistogramMappings: predicateReferenceId bigint, statementOrdinal int, nodeId int, databaseName sysname, schemaName sysname, objectName sysname, columnName sysname, statisticsName sysname, predicateKind varchar(40), valueSource varchar(32), mappingStatus varchar(48), mappingConfidence varchar(16), matchedStepOrdinal int, matchesRangeHighKey bit, isBelowHistogram bit, isAboveHistogram bit, sensitiveValueStatus varchar(40).';
+        PRINT N'Beispiel 1. EXEC [monitor].[USP_CreateExecutionEvidenceJson] @Hilfe=1;';
+        PRINT N'Beispiel 2. DECLARE @EvidenceJson nvarchar(max); EXEC [monitor].[USP_CreateExecutionEvidenceJson] @StatisticsIoText=N''Table ''''[demo].[Orders]''''. Scan count 1, logical reads 2, physical reads 0, read-ahead reads 0, lob logical reads 0.'', @StatisticsLanguage=''AUTO'', @ResultSetArt=''NONE'', @Json=@EvidenceJson OUTPUT;';
+        PRINT N'Beispiel 3. DECLARE @EvidenceJson nvarchar(max); EXEC [monitor].[USP_CreateExecutionEvidenceJson] @ExistingEvidenceJson=N''{"statisticsIo":[],"statisticsTime":[]}'', @JsonErzeugen=1, @ResultSetArt=''NONE'', @Json=@EvidenceJson OUTPUT;';
+        PRINT N'Beispiel 4. CREATE TABLE #CreateExecutionEvidenceJson_HelpExample (Seed bit NULL); EXEC [monitor].[USP_CreateExecutionEvidenceJson] @ResultSetArt=''TABLE'', @ResultTablesJson=N''{"captureStatus":"#CreateExecutionEvidenceJson_HelpExample"}'', @JsonErzeugen=0; DROP TABLE #CreateExecutionEvidenceJson_HelpExample;';
         RETURN;
     END;
 
@@ -5523,7 +6091,8 @@ BEGIN
                @ErrorMessageOut=N'Ungültiger Modus-, Grenzwert-, Ausgabe-, Datenschutz- oder Versionsparameter.';
     END;
 
-    IF @StatusCodeOut='AVAILABLE' AND @PrivacyMode='RAW' AND @SensitiveDataConfirmed<>1
+    IF @StatusCodeOut='AVAILABLE' AND @PrivacyMode='RAW'
+       AND (@SensitiveDataConfirmed IS NULL OR @SensitiveDataConfirmed<>1)
     BEGIN
         SELECT @StatusCodeOut='SENSITIVE_DATA_CONFIRMATION_REQUIRED',@IsPartialOut=1,
                @ErrorMessageOut=N'RAW-Evidenz kann Parameter-, Predicate-, Filter- oder Histogrammwerte enthalten und benötigt @SensitiveDataConfirmed=1.';
@@ -5531,7 +6100,7 @@ BEGIN
 
     IF @StatusCodeOut='AVAILABLE'
        AND @RawMode='INCLUDE'
-       AND (@SensitiveDataConfirmed<>1 OR @IdentifierMode<>'RAW')
+       AND (@SensitiveDataConfirmed IS NULL OR @SensitiveDataConfirmed<>1 OR @IdentifierMode<>'RAW')
     BEGIN
         SELECT @StatusCodeOut='SENSITIVE_DATA_CONFIRMATION_REQUIRED',@IsPartialOut=1,
                @ErrorMessageOut=N'Rohtext kann sensible Werte und nicht zuverlässig einzeln anonymisierbare Identifikatoren enthalten. INCLUDE benötigt @SensitiveDataConfirmed=1 und @IdentifierDatenschutzModus=RAW.';
@@ -5539,7 +6108,7 @@ BEGIN
 
     IF @StatusCodeOut='AVAILABLE'
        AND @MetadataSourceMode='CURRENT_SERVER'
-       AND @QuellumgebungBestaetigt<>1
+       AND (@QuellumgebungBestaetigt IS NULL OR @QuellumgebungBestaetigt<>1)
     BEGIN
         SELECT @StatusCodeOut='SOURCE_ENVIRONMENT_CONFIRMATION_REQUIRED',@IsPartialOut=1,
                @ErrorMessageOut=N'CURRENT_SERVER-Anreicherung benötigt @QuellumgebungBestaetigt=1.';
@@ -6197,7 +6766,7 @@ Evidenz      : Optional bereits strukturiertes Evidence JSON oder bereits
                erfasste SET STATISTICS IO/TIME-Meldungen. Es wird kein fremdes
                SQL ausgeführt und keine Erfassungsoption aktiviert.
 Datenschutz  : Parameter-/Histogrammwerte standardmäßig DERIVED_ONLY. SQL-Text
-               wird nur mit @MitSqlText=1 ausgegeben. Query-Store-Hint- und
+               wird standardmäßig unterdrückt. Query-Store-Hint- und
                Feedbackpayloads folgen demselben expliziten Datenschutzmodus.
 SQL-Version  : SQL Server 2019 oder neuer.
 ===============================================================================
@@ -6283,15 +6852,64 @@ BEGIN
     IF @Hilfe=1
     BEGIN
         PRINT N'monitor.USP_ExecutionPlanAnalysis';
-        PRINT N'Genau eine Planquelle: @PlanXml, @PlanHandle, genau ein Wert in @SessionIds oder @QueryStoreDatabaseName+@QueryStorePlanId.';
-        PRINT N'Der direkte @PlanXml-Pfad benötigt weder Plan Cache noch Query Store. Es wird niemals übergebenes SQL ausgeführt.';
-        PRINT N'@PlanQuelle gilt für @PlanHandle: AUTO|COMPILE|LAST_ACTUAL. AUTO fällt kontrolliert auf COMPILE zurück.';
-        PRINT N'Optional: @EvidenzJson oder bereits erfasste @StatisticsIoText/@StatisticsTimeText.';
-        PRINT N'@StatistikEvidenzModus NONE|PLAN_ONLY|USED|RELEVANT|OBJECT_ALL; @HistogrammModus NONE|SUMMARY|STEPS.';
-        PRINT N'@EvidenzDatenschutzModus DERIVED_ONLY|TOKENIZED|STRUCTURE_ONLY|RAW; RAW benötigt @SensitiveDataConfirmed=1.';
-        PRINT N'@MitSqlText=1 benötigt @SensitiveDataConfirmed=1, weil StatementText Literale enthalten kann.';
-        PRINT N'DIAG-005 liefert planWarnings, optimizerContext, runtimeFeedback, queryStoreContext und feedbackAndVariants; Query-Store-Payloads sind standardmäßig ausgelassen.';
-        PRINT N'@ResultSetArt CONSOLE|RAW|TABLE|NONE; CONSOLE liefert Findings, TABLE verwendet benannte Ziele.';
+        PRINT N'@PlanXml xml. Default ist NULL. Optionales bereits vorhandenes Plan-XML als SQL-Typ xml oder in diesen Typ konvertierbarer Text. Ein gesetzter Wert wählt IMPORTED exklusiv gegenüber PlanHandle, SessionIds und Query-Store-Paar. NULL wählt diese Quelle nicht; dann muss genau eine andere Quelle gesetzt sein. Leeres XML zählt als gesetzte Quelle, garantiert aber keinen auswertbaren Showplan. Wohlgeformte XML-Typkonvertierung ersetzt keine Showplan-Schemaprüfung. Die enthaltene Query wird niemals ausgeführt.';
+        PRINT N'@PlanHandle varbinary(64). Default ist NULL. Binärwert als T-SQL-Hexliteral 0x… oder varbinary-Variable; der Typ fasst höchstens 64 Bytes. Kürzere Werte einschließlich 0x werden nicht separat abgewiesen und zählen als gesetzte Quelle. NULL lässt die Handlequelle ungesetzt. Ein unbekannter Handle liefert keinen Plan; die Beschaffung folgt @PlanQuelle. Es wird weder kompiliert noch SQL ausgeführt. Genau eine der Quellen PlanXml, PlanHandle, SessionIds oder vollständiges Query-Store-Paar darf gesetzt sein.';
+        PRINT N'@SessionIds nvarchar(max). Default ist NULL. Optionale Liste genau einer Session-ID im Bereich 1 bis 32767. Der Parser akzeptiert Pipe, Komma und Semikolon als Trennzeichen sowie Leerraum um Elemente; eine leere gesamte Eingabe wird wie nicht gesetzt behandelt. Ungültige Elemente, mehrere IDs oder Werte außerhalb des Bereichs ergeben INVALID_PARAMETER. NULL/Leerwert lässt die Quelle ungesetzt.';
+        PRINT N'@RequestId int. Default ist NULL. Optionale ganze Request-ID ohne zusätzliche Bereichsprüfung. Sie filtert die aktuelle Planbeschaffung der gewählten Session. NULL ist bei höchstens einem verfügbaren Request zulässig; mehrere aktive Requests ohne RequestId erzeugen den intern abgefangenen Fehler 51031 und ERROR_HANDLED. Ohne Session wählt dieser Wert keine eigene Quelle; er wird aber als Parameter-Evidenzkontext an die Engine weitergegeben.';
+        PRINT N'@QueryStoreDatabaseName sysname. Default ist NULL. Ein einzelner Datenbankname als sysname, keine Liste oder Qualifierkette. Der Name wird als Datenwert mit QUOTENAME in den Datenbankkontext eingesetzt; äußere Klammern werden nicht als Bezeichnermaskierung entfernt. NULL wählt diese Quellhälfte nicht, leerer Text wird nicht in NULL normalisiert und kann bei der Beschaffung scheitern. QueryStorePlanId muss gemeinsam gesetzt sein, andere Planquellen sind ausgeschlossen. Quellenfehler werden abgefangen; Verfügbarkeit und Berechtigungen bleiben erforderlich.';
+        PRINT N'@QueryStorePlanId bigint. Default ist NULL. Ganze bigint-Plan-ID im Query Store der angegebenen Datenbank. NULL lässt diese Quellhälfte ungesetzt; QueryStoreDatabaseName muss gemeinsam gesetzt sein. Es besteht keine zusätzliche positive Bereichsprüfung. Nicht vorhandene IDs liefern ohne verfügbares XML UNAVAILABLE_OBJECT; Berechtigungsfehler werden gesondert ausgewiesen.';
+        PRINT N'@PlanQuelle varchar(24). Default ist ''AUTO''. Geschlossene Auswahl AUTO, COMPILE, LAST_ACTUAL; NULL wird wie AUTO behandelt; Trim/Großschreibung werden normalisiert, leer/unbekannt ergibt INVALID_PARAMETER. Nur für @PlanHandle: AUTO versucht zuerst sys.dm_exec_query_plan_stats mit dem letzten tatsächlichen Plan und fällt auf COMPILE zurück; COMPILE liest den kompilierten Plan mit sys.dm_exec_query_plan und kompiliert oder führt keine Abfrage aus; LAST_ACTUAL fordert den letzten tatsächlichen Plan an. Die effektive Planquelle kann IMPORTED, COMPILE, LAST_ACTUAL, CURRENT_ACTUAL oder QUERY_STORE sein.';
+        PRINT N'@StatementId int. Default ist NULL. Optionale ganze Statement-ID ohne zusätzliche Bereichsvalidierung. NULL deaktiviert den Filter. Der Wert wird für die Statistik-Evidenz und AUTO-Profilzuordnung benutzt und filtert danach fertige Statements samt abhängigen Ergebniszeilen. Er begrenzt nicht die vorgelagerte vollständige XML-Analyse der Engine. Eine nicht vorhandene ID kann leere Statement-/Detailmengen ergeben.';
+        PRINT N'@StatementQueryHash binary(8). Default ist NULL. Optionaler 8-Byte-Queryhash als binary(8), vorzugsweise Hexliteral 0x mit genau 16 Hexziffern. NULL deaktiviert den Filter. SQL-Typkonvertierungen können kürzere oder längere Werte anpassen; es gibt keine zusätzliche Inhaltsprüfung. Der Hash beeinflusst AUTO-Profilzuordnungen und filtert nach der Analyse fertige Statements und abhängige Details, nicht die Beschaffung der Planquelle.';
+        PRINT N'@StatementQueryPlanHash binary(8). Default ist NULL. Optionaler 8-Byte-Planhash als binary(8), vorzugsweise Hexliteral 0x mit genau 16 Hexziffern. NULL deaktiviert den Filter. SQL-Typkonvertierungen können Werte auffüllen oder kürzen; eine eigene Inhaltsprüfung fehlt. Er filtert nach der Analyse fertige Statements und abhängige Details und beschafft keinen Plan.';
+        PRINT N'@EvidenzJson nvarchar(max). Default ist NULL. Optionales Execution-Evidence-JSON als Ausgangshülle; kein SQL-Befehl. NULL bedeutet keine importierte Evidenz, leerer Text ist ungültig. Erkannte Wurzelabschnitte sind statisticsIo, statisticsTime, statistics, objectReferences und predicateHistogramMappings; statistics enthält planUsage, currentSnapshot, histogramSummaries und histogramSteps. Die nachfolgenden JSON-Eingabeformen nennen alle projizierten Felder und SQL-Zieltypen. Die Hülle wird vor der Analyse immer durch USP_CreateExecutionEvidenceJson mit StrictValidation=1, RawTextHandling=HASH_ONLY und intern RAW-Identifikatoren normalisiert; die abschließende Analyseprojektion verwendet den angeforderten Identifikatormodus. Mit dem beschafften Plan stammen PlanUsage und Objektbezüge aus diesem XML; aktuelle importierte Arrays werden bei CURRENT_SERVER nicht geladen. Syntaxfehler werden im Helfer als INVALID_EVIDENCE_JSON abgefangen und markieren die Analyse partiell; die Analyse kann mit noch vorhandenen Daten fortfahren. Unbekannte Eigenschaften werden nicht als beliebige Zusatzdaten exportiert. Dies ist ein Eingabeformat des Evidence-Generators und kein erneut einzulesendes schemaVersion-3-Analyseergebnis.';
+        PRINT N'@StatisticsIoText nvarchar(max). Default ist NULL. Optionaler, bereits erfasster STATISTICS IO-Meldungstext. NULL/Auslassen oder Leertext liefert keine daraus geparsten Zeilen. Der Text wird mit @StatisticsLanguage geparst; Teil- und Nicht-Erkennung bleibt als ParseStatus sichtbar. 053 setzt keine StatementOrdinal-Zuordnung und hat keinen öffentlichen Rohtextmodus; exportierter Rohtext wird nicht durch diesen Parameter gesteuert.';
+        PRINT N'@StatisticsTimeText nvarchar(max). Default ist NULL. Optionaler, bereits erfasster STATISTICS TIME-Meldungstext. NULL/Auslassen oder Leertext liefert keine daraus geparsten Zeilen. Der Parser kennzeichnet teilweise oder unbekannte Formate statt fehlende Messwerte zu erfinden; er erkennt englische/deutsche Textteile. 053 setzt keine StatementOrdinal-Zuordnung und hat keinen öffentlichen Rohtextmodus.';
+        PRINT N'@StatisticsLanguage varchar(16). Default ist ''AUTO''. AUTO erkennt unterstützte Meldungsteile automatisch; EN bezeichnet Englisch und DE Deutsch. Der IO-Parser normalisiert Groß-/Kleinschreibung und fällt bei NULL, leerem oder unbekanntem Code auf AUTO zurück. Der TIME-Parser verwendet die Kennung nicht und erkennt seine englischen/deutschen Textteile selbst. Es entsteht kein INVALID_PARAMETER für einen unbekannten Sprachcode.';
+        PRINT N'@StatistikEvidenzModus varchar(16). Default ist ''PLAN_ONLY''. Zulässig sind NONE, PLAN_ONLY, USED, RELEVANT und OBJECT_ALL. NONE überspringt die Extraktion von Statistiknutzung aus dem übergebenen Plan. PLAN_ONLY extrahiert diese Compile-Evidenz ohne aktuelle Katalogabfrage. USED ergänzt aktuelle Metadaten der im Plan verwendeten Statistiken. RELEVANT ergänzt diese um Statistiken, deren führende Spalte einer im Plan referenzierten Predicate-Spalte entspricht. OBJECT_ALL ergänzt alle Statistiken der referenzierten Planobjekte. Aktuelle Ergänzungen benötigen aufgelöstes Plan-XML und CURRENT_SERVER; die beiden breiten Modi benötigen High-Impact-Bestätigung. Importierte Statistikarrays werden durch NONE nicht pauschal entfernt. NULL fällt auf PLAN_ONLY zurück; äußere Leerzeichen und Groß-/Kleinschreibung werden normalisiert. Leerer oder unbekannter Code ist INVALID_PARAMETER. RELEVANT und OBJECT_ALL lösen das äußere High-Impact-Gate schon bei Anforderung aus, auch mit EVIDENCE_ONLY.';
+        PRINT N'@HistogrammModus varchar(16). Default ist ''NONE''. geschlossene Auswahl NONE, SUMMARY, STEPS. NULL wird wie NONE behandelt; Trim und Großschreibung normalisieren Werte, unbekannte Werte sind INVALID_PARAMETER. NONE erhebt keine Histogramme; SUMMARY liefert Zusammenfassungen; STEPS liefert Histogrammschritte. SUMMARY und STEPS benötigen @MetadatenQuellenmodus=CURRENT_SERVER sowie @StatistikEvidenzModus USED, RELEVANT oder OBJECT_ALL; sonst INVALID_PARAMETER.';
+        PRINT N'@MetadatenQuellenmodus varchar(16). Default ist ''EVIDENCE_ONLY''. Zulässig sind EVIDENCE_ONLY und CURRENT_SERVER. EVIDENCE_ONLY verarbeitet übergebene Plan-/JSON-/Meldungsevidenz ohne aktuelle Statistikabfragen. CURRENT_SERVER ruft die aktuelle Erhebung nur mit aufgelöstem Plan-XML und Statistikmodus USED, RELEVANT oder OBJECT_ALL auf; importierte currentSnapshot-, Histogramm- und Predicate-Mapping-Arrays werden dann nicht geladen, auch wenn keine Erhebung stattfindet. CURRENT_SERVER verlangt unabhängig von einer tatsächlichen Erhebung @QuellumgebungBestaetigt=1; 0 und NULL führen zu SOURCE_ENVIRONMENT_CONFIRMATION_REQUIRED. Die Bestätigung des Aufrufers ist kein Herkunftsnachweis und keine Berechtigung. NULL als Quellenmodus bedeutet EVIDENCE_ONLY; Trim und Großschreibung werden normalisiert. Leerer oder unbekannter Code ist INVALID_PARAMETER.';
+        PRINT N'@QuellumgebungBestaetigt bit. Default ist 0. Eingabeform ist ein einzelner SQL-bit-Wert oder eine bit-Variable; leerer Text ist keine vorgesehene Eingabeform. SQL Server konvertiert Argumente vor Procedure-Eintritt zu bit; numerische Nichtnullwerte ergeben bit 1, daher ausdrücklich 0 oder 1 übergeben. Bei CURRENT_SERVER bestätigen 0 und NULL die Quelle nicht und führen unabhängig von einer tatsächlichen Erhebung zu SOURCE_ENVIRONMENT_CONFIRMATION_REQUIRED. 1 ist die Bestätigung des Aufrufers, dass CURRENT_SERVER der tatsächlichen Quelle entspricht; sie ist kein Herkunftsnachweis und erteilt keine Berechtigung. Ohne CURRENT_SERVER hat der Schalter keine Erhebungswirkung.';
+        PRINT N'@MitPredicateHistogramMap bit. Default ist 1. Eingabeform ist ein einzelner SQL-bit-Wert oder eine bit-Variable; leerer Text ist keine vorgesehene Eingabeform. SQL Server konvertiert Argumente vor Procedure-Eintritt zu bit; numerische Nichtnullwerte ergeben bit 1, daher ausdrücklich 0 oder 1 übergeben. 0 überspringt die Predicate-/Histogrammzuordnung im Collector; 1 aktiviert sie bei tatsächlich aufgerufenem Collector. Ohne Collector-Aufruf ist NULL unbenutzt und wird nicht global abgewiesen. Bei tatsächlicher aktueller Erhebung weist InternalCollectExecutionPlanMetadata NULL als INVALID_PARAMETER zurück; 052 meldet CURRENT_METADATA_COLLECTION_LIMITED mit Teilstatus. Der Schalter unterdrückt keine bereits importierten Mappingzeilen.';
+        PRINT N'@AnalyseTiefe varchar(16). Default ist ''STANDARD''. Geschlossene Auswahl SUMMARY, STANDARD, FULL. NULL wird wie STANDARD behandelt; Trim/Großschreibung normalisieren, leer/unbekannt ergibt INVALID_PARAMETER. 053 übergibt die normalisierte Tiefe nicht an 051; FULL fordert zusätzlich die High-Impact-Klasse SHOWPLAN_XML_DEEP an. Wenn der optionale Pfadprüfer installiert ist, wird HighImpactConfirmed=NULL dort abgewiesen; ohne diesen Prüfer ist keine zusätzliche NULL-Bestätigung garantiert.';
+        PRINT N'@WorkloadProfil varchar(32). Default ist ''AUTO''. AUTO oder Profilcode; NULL wird wie AUTO behandelt, Trim/Großschreibung normalisieren. AUTO löst lokale enabled Zuordnungen anhand Plan- und Kontextmerkmalen auf; ein QueryHash kann dabei zuordnen. Seed-Codes: LATENCY_SENSITIVE gewichtet interaktive/häufige Zugriffe stärker; BALANCED ist neutral; THROUGHPUT gewichtet absolute Ressourcen/Datenmengen; MAINTENANCE berücksichtigt erwartbare große Scans/Sorts; UNKNOWN kennzeichnet geringe Zuordnungssicherheit. Weitere lokal konfigurierte Profile bilden eine offene Menge. Unbekannte oder deaktivierte Codes lösen keinen INVALID_PARAMETER aus, sondern fallen auf BALANCED zurück.';
+        PRINT N'@Regelsatz varchar(32). Default ist ''DEFAULT''. Ausschließlich DEFAULT ist unterstützt. NULL wird wie DEFAULT behandelt; Trim/Großschreibung normalisieren. Andere Codes ergeben INVALID_PARAMETER; ein konfigurierbarer zusätzlicher Regelsatz ist nicht implementiert.';
+        PRINT N'@MinSchweregrad varchar(16). Default ist ''INFO''. Geschlossene Auswahl INFO, LOW, MEDIUM, HIGH, CRITICAL; NULL wird wie INFO behandelt. Trim/Großschreibung normalisieren; leer/unbekannt ist INVALID_PARAMETER. Legt die untere Findings-Schweregradgrenze fest, nicht die Analysequelle.';
+        PRINT N'@MitThreadRuntime bit. Default ist 0. Eingabeform ist ein einzelner SQL-bit-Wert oder eine bit-Variable; leerer Text ist keine vorgesehene Eingabeform. SQL Server konvertiert Argumente vor Procedure-Eintritt zu bit; numerische Nichtnullwerte ergeben bit 1, daher ausdrücklich 0 oder 1 übergeben. 0 unterdrückt die bereits materialisierten Thread-Laufzeitzeilen in der Ausgabe; 1 behält vorhandene Threadzähler bei. NULL führt in der öffentlichen Parameterprüfung vor Evidence-Verarbeitung, Quellenerhebung oder gemeinsamem Analyzer zu INVALID_PARAMETER; der Aufruf materialisiert keine Threadzeilen.';
+        PRINT N'@MitSqlText bit. Default ist 0. Geschlossene Auswahl 0 oder 1; NULL und Werte außerhalb dieser Auswahl ergeben INVALID_PARAMETER. 0 setzt StatementText vor der Ausgabe auf NULL. 1 behält Statementtext nur nach @SensitiveDataConfirmed=1 bei; 0 oder NULL als Bestätigung führt zu SENSITIVE_DATA_CONFIRMATION_REQUIRED und lässt StatementText in JSON- und TABLE-Ausgaben NULL. T-SQL konvertiert numerische Nichtnullwerte vor der Procedureprüfung zu bit 1.';
+        PRINT N'@EvidenzDatenschutzModus varchar(24). Default ist ''DERIVED_ONLY''. Geschlossene Auswahl DERIVED_ONLY, TOKENIZED, STRUCTURE_ONLY, RAW. NULL wird wie DERIVED_ONLY behandelt; Trim/Großschreibung normalisieren, unbekannter Code ergibt INVALID_PARAMETER. DERIVED_ONLY gibt abgeleitete Werte ohne konkrete Parameter-/Predicate-/Histogrammgrenzwerte aus; TOKENIZED ersetzt sensible Werte durch laufzeitlokale Tokens; STRUCTURE_ONLY beschränkt sensible Inhalte auf Struktur; RAW gibt konkrete Werte aus und benötigt @SensitiveDataConfirmed=1. Der Schalter beeinflusst die Analyseausgabe, nicht die Beschaffung der Planquelle.';
+        PRINT N'@IdentifierDatenschutzModus varchar(16). Default ist ''RAW''. Geschlossene Auswahl RAW, TOKENIZED, OMIT. NULL wird wie RAW behandelt; Trim/Großschreibung normalisieren, unbekannter Code ergibt INVALID_PARAMETER. RAW erhält Objekt-/Identifikatorwerte, TOKENIZED ersetzt sie durch laufzeitlokale Tokens, OMIT lässt sie aus. Ein zusätzlicher Rohtextmodus ist in 053 nicht vorhanden.';
+        PRINT N'@SensitiveDataConfirmed bit. Default ist 0. Bit-Bestätigung: 1 erlaubt die angeforderten sensiblen Ausgaben, insbesondere Evidenzmodus RAW und @MitSqlText=1. 0 oder NULL bestätigt diese Pfade nicht und führt bei angeforderter sensibler Ausgabe zu SENSITIVE_DATA_CONFIRMATION_REQUIRED; dann bleiben RangeHighKey und StatementText in JSON- und TABLE-Ausgaben NULL. NULL wird außerhalb solcher Pfade nicht global abgewiesen. Es gibt in 053 keinen INCLUDE-Rohzeilenmodus und keine additionalEvidence-Einbettung. T-SQL konvertiert numerische Nichtnullwerte vor der Procedureprüfung zu bit 1.';
+        PRINT N'@MaxOperatoren int. Default ist 50000. Positive ganze Zahl; NULL oder Wert <1 ergibt INVALID_PARAMETER, eine obere Grenze wird nicht validiert. Die Operatorbegrenzung wird nach der Analyse angewandt und bereinigt abhängige Detailzeilen; sie begrenzt nicht die vorgelagerte Analysearbeit.';
+        PRINT N'@MaxFindings int. Default ist 5000. Positive ganze Zahl als Höchstzahl der Findings; NULL oder Wert <1 ergibt INVALID_PARAMETER. Es gibt keine obere Bereichsvalidierung; weitere Findings können dadurch außerhalb der Ausgabe bleiben.';
+        PRINT N'@MaxStatistiken int. Default ist 100. Begrenzung der Zahl aktueller Statistiken. NULL ist unzulässig; gültiger Bereich 1 bis 1000 einschließlich, andernfalls INVALID_PARAMETER. Der Grenzwert wirkt auf die zielgerichtete aktuelle Statistikerhebung.';
+        PRINT N'@MaxHistogrammSchritte int. Default ist 20000. Begrenzung der erhobenen Histogrammschritte. NULL ist unzulässig; gültiger Bereich 0 bis 200000 einschließlich, andernfalls INVALID_PARAMETER. Der Grenzwert beschränkt Histogrammvertiefung; 0 erlaubt keine Histogrammschritte.';
+        PRINT N'@MaxDurationSeconds int. Default ist 30. Ganzzahlige Deadline in Sekunden, gültig 1 bis 3600 einschließlich; NULL/außerhalb ergibt INVALID_PARAMETER. Die Prozedur prüft kooperativ einmal nach Analyse und Capability-Ermittlung gegen diese Deadline; sie bricht die Analyse nicht hart ab und erzwingt keine frühe Unterbrechung.';
+        PRINT N'@LockTimeoutMs int. Default ist 0. Ganzzahlige Zeitgrenze in Millisekunden für optionale aktuelle Metadatenerhebung, gültig 0 bis 60000 einschließlich; NULL/außerhalb ergibt INVALID_PARAMETER. An den Collector weitergereicht. Die anfängliche eigene Temp-Tabellenanlage setzt im TRY LOCK_TIMEOUT 100 ms und setzt danach beziehungsweise im Fehlerpfad auf 0 zurück.';
+        PRINT N'@HighImpactConfirmed bit. Default ist 0. 0 bestätigt den angeforderten High-Impact-Pfad nicht; bei FULL, Statistikmodus RELEVANT oder OBJECT_ALL sowie Histogrammmodus STEPS folgt HIGH_IMPACT_CONFIRMATION_REQUIRED. 1 bestätigt den angeforderten Pfad, verleiht aber keine Berechtigung; ein installierter InternalCheckAnalysisPath kann zusätzlich SHOWPLAN_XML_DEEP prüfen. NULL gilt bei angeforderten High-Impact-Pfaden ebenfalls als unbestätigt und führt unabhängig vom optionalen Helfer zu HIGH_IMPACT_CONFIRMATION_REQUIRED. Außerhalb eines angeforderten High-Impact-Pfads wird der Schalter nicht global abgewiesen. Bei tatsächlich aufgerufener aktueller Metadatenerhebung weist der innere Collector NULL dennoch als INVALID_PARAMETER zurück; der Capture meldet CURRENT_METADATA_COLLECTION_LIMITED und Partialität. T-SQL konvertiert numerische Nichtnullwerte vor der Procedureprüfung zu bit 1; verwenden Sie ausdrücklich 0 oder 1.';
+        PRINT N'@ResultSetArt varchar(16). Default ist ''CONSOLE''. Geschlossene Auswahl CONSOLE, RAW, TABLE, NONE. NULL/Leertext/anderer Code ergibt INVALID_PARAMETER; Trim/Großschreibung normalisieren. CONSOLE ruft den Console-Helper mit findings als Eingabe auf; RAW gibt 22 benannte Tabellen als getrennte Resultsets aus; TABLE schreibt die angeforderten Resultate in benannte Ziele; NONE emittiert keine Resultsets. Die JSON-Ausgabe ist davon unabhängig.';
+        PRINT N'@ResultTablesJson nvarchar(max). Default ist NULL. Im TABLE-Modus erforderliches JSON-Objekt mit mindestens einer Zuordnung von erlaubtem Resultatnamen auf vorhandene, leere lokale #Temp-Zieltabelle mit genau einer Seed-Spalte. Geschlossene Schlüssel: moduleStatus, capabilities, planDocuments, statements, operatorTree, operatorRuntime, operatorThreadRuntime, accessPaths, statisticsUsage, parametersAndVariants, parameters, planWarnings, optimizerContext, runtimeFeedback, queryStoreContext, feedbackAndVariants, memoryAndSpills, executionEvidence, histogramSummaries, histogramSteps, predicateHistogramMappings, findings. Zeichenkettenwerte nennen Zieltabellen; Helperregeln zu vorhandenen Tabellen/Spalten, Namen und eindeutigen Zuordnungen gelten. NULL/Auslassen in TABLE ist ungültig; außerhalb TABLE führt ein gesetztes Argument zu INVALID_PARAMETER. Vorbereitungsfehler werden vor dem Analyse-CATCH ausgelöst. Zielnamen dürfen höchstens 116 Zeichen lang sein; keine globalen ##-, permanenten oder reservierten #Monitor*-Tabellen. Doppelte Schlüssel oder gleiche Ziele für mehrere Resultate werden abgelehnt. Die Vorbereitung liegt nach dem Hilfe-RETURN.';
+        PRINT N'@JsonErzeugen bit. Default ist 0. Bit-Schalter: 1 erzeugt das kanonische Analyse-JSON im OUTPUT-Parameter @Json; 0 lässt ihn NULL. NULL passiert die NOT IN Prüfung und erzeugt wegen IF=1 kein JSON. Das JSON wird unabhängig von ResultSetArt erzeugt. T-SQL konvertiert numerische Nichtnullwerte vor der Procedureprüfung zu bit 1; verwenden Sie ausdrücklich 0 oder 1.';
+        PRINT N'@Json nvarchar(max) OUTPUT. Default ist NULL. Als nvarchar(max)-Variable mit OUTPUT binden; der Anfangswert wird beim Eintritt auf NULL gesetzt. Bei @JsonErzeugen=1 enthält es schemaVersion 3 und meta sowie Arrays capabilities, planDocuments, statements, operatorTree, operatorRuntime, operatorThreadRuntime, accessPaths, statisticsUsage, parametersAndVariants, parameters, planWarnings, optimizerContext, runtimeFeedback, queryStoreContext, feedbackAndVariants, memoryAndSpills, executionEvidence, histogramSummaries, histogramSteps, predicateHistogramMappings und findings. Bei 0/NULL bleibt der Wert NULL. Ohne OUTPUT-Bindung empfängt der Aufrufer ihn nicht; ResultSetArt ist unabhängig.';
+        PRINT N'@PrintMeldungen bit. Default ist 1. 1 gibt bei Status außerhalb AVAILABLE eine Severity-10-Meldung mit RAISERROR WITH NOWAIT aus; 0 oder NULL unterdrückt diese zusätzliche Statusmeldung. Die Ausgabe von @Hilfe bleibt davon unabhängig. T-SQL konvertiert numerische Nichtnullwerte vor der Procedureprüfung zu bit 1; verwenden Sie ausdrücklich 0 oder 1.';
+        PRINT N'@Hilfe bit. Default ist 0. 1 druckt die eingebaute Kurzreferenz und kehrt vor Parameterprüfung, TABLE-Vorbereitung und Erhebung zurück; 0 oder NULL folgt dem normalen Pfad. Beim Eintritt wird @Json auf NULL sowie Status-OUTPUTs auf AVAILABLE, 0, NULL und NULL gesetzt. Der vorangestellte SET LOCK_TIMEOUT 0 bleibt wirksam. T-SQL konvertiert numerische Nichtnullwerte vor der Procedureprüfung zu bit 1; verwenden Sie ausdrücklich 0 oder 1.';
+        PRINT N'@StatusCodeOut varchar(40) OUTPUT. Default ist NULL. Als varchar(40)-Variable mit OUTPUT binden. Beginnt mit AVAILABLE und enthält den abschließenden Maschinenstatus der Prozedur, unter anderem Validierungs-, Bestätigungs- oder Analysefehler. Der Status steht in der Tabelle moduleStatus und im meta.statusCode des JSON; er ist nicht Teil von captureStatus. Der Anfangswert wird auch im Hilfepfad zurückgesetzt; ohne OUTPUT-Bindung wird kein Wert empfangen.';
+        PRINT N'@IsPartialOut bit OUTPUT. Default ist NULL. Als bit-Variable mit OUTPUT binden. Beginnt mit 0 und markiert bei 1 eine begrenzte/unvollständige Analyse, etwa nach Status- oder Fehlerfällen. Im JSON und moduleStatus wird der Partialstatus ebenfalls geführt. Anfangswert wird auch im Hilfepfad zurückgesetzt; ohne OUTPUT-Bindung wird kein Wert empfangen.';
+        PRINT N'@ErrorNumberOut int OUTPUT. Default ist NULL. Als int-Variable mit OUTPUT binden. Anfangs NULL; bei abgefangener Analyseausnahme wird die SQL-Fehlernummer ausgegeben. Ohne abgefangenen Fehler bleibt NULL. Der Anfangswert wird auch im Hilfepfad zurückgesetzt.';
+        PRINT N'@ErrorMessageOut nvarchar(2048) OUTPUT. Default ist NULL. Als nvarchar(2048)-Variable mit OUTPUT binden. Anfangs NULL; bei Verarbeitungsfehlern wird eine begrenzte Fehlermeldung ausgegeben. Ohne Fehler bleibt NULL. Der Anfangswert wird auch im Hilfepfad zurückgesetzt.';
+        PRINT N'Die folgenden JSON-Pfade beschreiben die erkannten Objektfelder und SQL-Zieltypen, keine strikte JSON-Schema-Validierung. Zahlen werden in die angegebenen SQL-Zahltypen, bit in 0/1, Texte in die angegebenen Zeichenlängen und Zeitstempel in datetime2 konvertiert. sysname entspricht nvarchar(128). Namen und Pfade sind in der angegebenen Schreibweise zu übergeben. Fehlende Eigenschaften werden als NULL projiziert; Konvertierungs- oder NOT-NULL-Zielverletzungen können im Evidence-Helfer ERROR_HANDLED auslösen; die Einplananalyse weist dessen Fehler als partielle Evidenz aus. Nicht erkannte Eigenschaften werden ignoriert. Arrays enthalten jeweils Objekte; importierte Status-/Kategorietexte besitzen hier keine geschlossene validierte Wertemenge.';
+        PRINT N'JSON-Eingabe $.statisticsIo: statementOrdinal int, messageOrdinal int, objectOrdinal int, objectDisplayName nvarchar(512), scanCount bigint, logicalReads bigint, physicalReads bigint, pageServerReads bigint, readAheadReads bigint, pageServerReadAheadReads bigint, lobLogicalReads bigint, lobPhysicalReads bigint, lobPageServerReads bigint, lobReadAheadReads bigint, lobPageServerReadAheadReads bigint, languageDetected varchar(16), parseStatus varchar(40).';
+        PRINT N'JSON-Eingabe $.statisticsTime: statementOrdinal int, messageOrdinal int, timeCategory varchar(24), cpuMs bigint, elapsedMs bigint, languageDetected varchar(16), parseStatus varchar(40).';
+        PRINT N'JSON-Eingabe $.statistics.planUsage: statisticsUsageOrdinal bigint, statementOrdinal int, statementId int, statementCompId int, databaseName sysname, schemaName sysname, objectName sysname, statisticsName sysname, lastUpdateAtCompile datetime2(7), modificationCountAtCompile bigint, samplingPercentAtCompile decimal(19,6), sourceElement nvarchar(128), parseStatus varchar(40).';
+        PRINT N'JSON-Eingabe $.objectReferences: referenceOrdinal bigint, statementOrdinal int, statementId int, statementCompId int, nodeId int, referenceType varchar(40), referenceSource varchar(40), databaseName sysname, schemaName sysname, objectName sysname, indexName sysname, aliasName sysname, storageType nvarchar(128), planObjectId int, planIndexId int, isTemporaryObject bit, isTableVariable bit, isRemoteObject bit, isDmlTarget bit, resolutionCapability varchar(40), sourceElement nvarchar(128).';
+        PRINT N'JSON-Eingabe $.statistics.currentSnapshot: databaseName sysname, schemaName sysname, objectName sysname, objectId int, statisticsName sysname, statisticsId int, isIndexStatistics bit, isAutoCreated bit, isUserCreated bit, isFiltered bit, filterDefinition nvarchar(max), noRecompute bit, isIncremental bit, hasPersistedSample bit, leadingColumnName sysname, lastUpdated datetime2(7), rows bigint, rowsSampled bigint, samplePercent decimal(19,6), steps int, unfilteredRows bigint, modificationCounter bigint, modificationPercent decimal(19,6), persistedSamplePercent float, collectionStatus varchar(40).';
+        PRINT N'JSON-Eingabe $.statistics.histogramSummaries: databaseName sysname, schemaName sysname, objectName sysname, statisticsName sysname, statisticsId int, leadingColumnName sysname, histogramSteps int, histogramEstimatedRows float, maxEqualRows float, maxRangeRows float, maxStepRows float, dominantStepPercent decimal(19,6), tailStepRows float, tailStepPercent decimal(19,6), collectionStatus varchar(40).';
+        PRINT N'JSON-Eingabe $.statistics.histogramSteps: databaseName sysname, schemaName sysname, objectName sysname, statisticsName sysname, statisticsId int, leadingColumnName sysname, stepOrdinal int, rangeHighKey nvarchar(4000), rangeRows float, equalRows float, distinctRangeRows bigint, averageRangeRows float, isPredicateTarget bit, predicateMatchCount int.';
+        PRINT N'JSON-Eingabe $.predicateHistogramMappings: predicateReferenceId bigint, statementOrdinal int, nodeId int, databaseName sysname, schemaName sysname, objectName sysname, columnName sysname, statisticsName sysname, predicateKind varchar(40), valueSource varchar(32), mappingStatus varchar(48), mappingConfidence varchar(16), matchedStepOrdinal int, matchesRangeHighKey bit, isBelowHistogram bit, isAboveHistogram bit, sensitiveValueStatus varchar(40).';
+        PRINT N'Beispiel 1. EXEC [monitor].[USP_ExecutionPlanAnalysis] @Hilfe=1;';
+        PRINT N'Beispiel 2. DECLARE @SyntheticPlan xml = N''<ShowPlanXML xmlns="http://schemas.microsoft.com/sqlserver/2004/07/showplan" Version="1.2" Build="16.0.1000.6"><BatchSequence><Batch><Statements><StmtSimple StatementId="1" StatementType="SELECT" StatementText="SELECT 1"><QueryPlan><RelOp NodeId="0" PhysicalOp="Constant Scan" LogicalOp="Constant Scan" EstimateRows="1" /></QueryPlan></StmtSimple></Statements></Batch></BatchSequence></ShowPlanXML>''; EXEC [monitor].[USP_ExecutionPlanAnalysis] @PlanXml=@SyntheticPlan, @ResultSetArt=''RAW'';';
+        PRINT N'Beispiel 3. DECLARE @SyntheticPlan xml = N''<ShowPlanXML xmlns="http://schemas.microsoft.com/sqlserver/2004/07/showplan" Version="1.2" Build="16.0.1000.6"><BatchSequence><Batch><Statements><StmtSimple StatementId="1" StatementType="SELECT" StatementText="SELECT 1"><QueryPlan><RelOp NodeId="0" PhysicalOp="Constant Scan" LogicalOp="Constant Scan" EstimateRows="1" /></QueryPlan></StmtSimple></Statements></Batch></BatchSequence></ShowPlanXML>''; DECLARE @JsonOutput nvarchar(max); EXEC [monitor].[USP_ExecutionPlanAnalysis] @PlanXml=@SyntheticPlan, @JsonErzeugen=1, @Json=@JsonOutput OUTPUT, @ResultSetArt=''NONE''; SELECT @JsonOutput AS [SyntheticAnalysisJson];';
+        PRINT N'Beispiel 4. CREATE TABLE #ExecutionPlanAnalysis_HelpExample ([Seed] int NULL); DECLARE @SyntheticPlan xml = N''<ShowPlanXML xmlns="http://schemas.microsoft.com/sqlserver/2004/07/showplan" Version="1.2" Build="16.0.1000.6"><BatchSequence><Batch><Statements><StmtSimple StatementId="1" StatementType="SELECT" StatementText="SELECT 1"><QueryPlan><RelOp NodeId="0" PhysicalOp="Constant Scan" LogicalOp="Constant Scan" EstimateRows="1" /></QueryPlan></StmtSimple></Statements></Batch></BatchSequence></ShowPlanXML>''; EXEC [monitor].[USP_ExecutionPlanAnalysis] @PlanXml=@SyntheticPlan, @ResultSetArt=''TABLE'', @ResultTablesJson=N''{"findings":"#ExecutionPlanAnalysis_HelpExample"}''; DROP TABLE #ExecutionPlanAnalysis_HelpExample;';
         RETURN;
     END;
 
@@ -6870,7 +7488,8 @@ BEGIN
        OR @Depth NOT IN ('SUMMARY','STANDARD','FULL')
        OR @RuleSet<>'DEFAULT'
        OR @MinSeverity NOT IN ('INFO','LOW','MEDIUM','HIGH','CRITICAL')
-       OR @MitThreadRuntime NOT IN (0,1) OR @MitSqlText NOT IN (0,1)
+       OR @MitThreadRuntime IS NULL OR @MitThreadRuntime NOT IN (0,1)
+       OR @MitSqlText IS NULL OR @MitSqlText NOT IN (0,1)
        OR @PrivacyMode NOT IN ('DERIVED_ONLY','TOKENIZED','RAW','STRUCTURE_ONLY')
        OR @IdentifierMode NOT IN ('RAW','TOKENIZED','OMIT')
        OR @StatisticsMode NOT IN ('NONE','PLAN_ONLY','USED','RELEVANT','OBJECT_ALL')
@@ -6930,17 +7549,19 @@ BEGIN
         SELECT @StatusCodeOut='INVALID_PARAMETER',@IsPartialOut=1,
                @ErrorMessageOut=N'Query Store benötigt @QueryStoreDatabaseName und @QueryStorePlanId gemeinsam.';
     END;
-    IF @StatusCodeOut='AVAILABLE' AND @PrivacyMode='RAW' AND @SensitiveDataConfirmed<>1
+    IF @StatusCodeOut='AVAILABLE' AND @PrivacyMode='RAW'
+       AND (@SensitiveDataConfirmed IS NULL OR @SensitiveDataConfirmed<>1)
     BEGIN
         SELECT @StatusCodeOut='SENSITIVE_DATA_CONFIRMATION_REQUIRED',@IsPartialOut=1,
                @ErrorMessageOut=N'RAW-Parameter- oder Histogrammwerte benötigen @SensitiveDataConfirmed=1.';
     END;
-    IF @StatusCodeOut='AVAILABLE' AND @MitSqlText=1 AND @SensitiveDataConfirmed<>1
+    IF @StatusCodeOut='AVAILABLE' AND @MitSqlText=1
+       AND (@SensitiveDataConfirmed IS NULL OR @SensitiveDataConfirmed<>1)
     BEGIN
         SELECT @StatusCodeOut='SENSITIVE_DATA_CONFIRMATION_REQUIRED',@IsPartialOut=1,
                @ErrorMessageOut=N'StatementText kann Literale und proprietären SQL-Text enthalten. @MitSqlText=1 benötigt @SensitiveDataConfirmed=1.';
     END;
-    IF @StatusCodeOut='AVAILABLE' AND @MetadataMode='CURRENT_SERVER' AND @QuellumgebungBestaetigt<>1
+    IF @StatusCodeOut='AVAILABLE' AND @MetadataMode='CURRENT_SERVER' AND (@QuellumgebungBestaetigt IS NULL OR @QuellumgebungBestaetigt<>1)
     BEGIN
         SELECT @StatusCodeOut='SOURCE_ENVIRONMENT_CONFIRMATION_REQUIRED',@IsPartialOut=1,
                @ErrorMessageOut=N'CURRENT_SERVER-Anreicherung benötigt @QuellumgebungBestaetigt=1.';
@@ -7260,7 +7881,7 @@ WHERE [p].[plan_id]=@PlanId;';
     IF @StatusCodeOut='AVAILABLE'
        AND (@Depth='FULL' OR @StatisticsMode IN ('RELEVANT','OBJECT_ALL') OR @HistogramMode='STEPS')
     BEGIN
-        IF @HighImpactConfirmed<>1
+        IF @HighImpactConfirmed IS NULL OR @HighImpactConfirmed<>1
         BEGIN
             SELECT @StatusCodeOut='HIGH_IMPACT_CONFIRMATION_REQUIRED',@IsPartialOut=1,
                    @ErrorMessageOut=N'Der angeforderte FULL-/breite Statistik-/Histogrammpfad benötigt @HighImpactConfirmed=1.';
@@ -7899,12 +8520,15 @@ OUTER APPLY
         DELETE FROM [#ExecutionPlanAnalysis_Statements] WHERE [StatementQueryPlanHash]<>@QueryPlanHashText OR [StatementQueryPlanHash] IS NULL;
     END;
 
-    IF @MitSqlText=0 UPDATE [#ExecutionPlanAnalysis_Statements] SET [StatementText]=NULL;
+    IF @MitSqlText IS NULL OR @MitSqlText<>1
+       OR @SensitiveDataConfirmed IS NULL OR @SensitiveDataConfirmed<>1
+        UPDATE [#ExecutionPlanAnalysis_Statements] SET [StatementText]=NULL;
 
-    /* Sensitive Histogrammwerte nochmals am öffentlichen Ausgaberand sichern.
-       Der Evidence-Generator hat sie bereits normalisiert; diese Projektion ist
-       bewusst Defense in Depth für spätere interne Integrationspfade. */
+    /* Konkrete RangeHighKey-Werte werden an der öffentlichen Ausgabe nur
+       nach ausdrücklicher Bestätigung ausgegeben. Diese Projektion schützt
+       importierte Evidenz vor JSON- und TABLE-Ausgaben. */
     IF @PrivacyMode<>'RAW'
+       OR @SensitiveDataConfirmed IS NULL OR @SensitiveDataConfirmed<>1
         UPDATE [#ExecutionPlanAnalysis_HistogramSteps] SET [RangeHighKey]=NULL;
     IF @PrivacyMode<>'TOKENIZED'
         UPDATE [#ExecutionPlanAnalysis_HistogramSteps] SET [RangeHighKeyToken]=NULL;

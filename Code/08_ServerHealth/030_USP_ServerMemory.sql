@@ -9,7 +9,10 @@ Stand        : 2026-07-15
 Zweck        : Die Procedure liefert Angaben zu Betriebssystem-, Prozess-
                und SQL-Speicher, Memory Model, Clerks und Grants.
 Datenquellen : sys.dm_os_sys_memory, sys.dm_os_process_memory, sys.dm_os_sys_info, sys.configurations, sys.dm_os_memory_clerks, sys.dm_exec_query_memory_grants
-Vertrag      : Resultset 1 ist immer Modulstatus; @ResultSetArt=NONE unterdrückt Resultsets; RAW und CONSOLE liefern unterschiedliche Projektionen. Optional JSON.
+Vertrag      : Im regulären Pfad liefert RAW zuerst Modulstatus, danach drei technische Fachresultsets.
+               CONSOLE gibt nur die Console-Helferausgabe der Summary aus; TABLE schreibt ausschließlich die gemappte Summary.
+               Beide liefern kein separates Modulstatusresultset; NONE unterdrückt Resultsets.
+               JSON ist im regulären Pfad unabhängig von @ResultSetArt; diese Zusage gilt nicht für den Hilfezweig.
 ===============================================================================
 */
 

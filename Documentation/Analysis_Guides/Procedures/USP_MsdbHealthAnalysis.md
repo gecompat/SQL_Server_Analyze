@@ -1,19 +1,19 @@
 # [monitor].[USP_MsdbHealthAnalysis]
 
-Inventarisiert msdb-Dateigröße und sichtbare Zeitbereiche ausgewählter Betriebsquellen, ohne Daten zu löschen.
+Inventarisiert msdb-Dateigröße, sichtbare Zeitbereiche ausgewählter Betriebsquellen und drei begrenzte PBM-Katalogzählungen, ohne Produktdaten zu ändern.
 
 **Bereich:** Server Health und Betriebsmetadaten
-**Zweck:** Trennt physische `msdb`-Größe von Zeilenanzahl und sichtbarem Zeitfenster ausgewählter Historienquellen.
+**Zweck:** Trennt physische `msdb`-Größe, Historienzeilen und deren sichtbare Zeitfenster von reinen PBM-Katalogzählungen.
 **Beobachtungsart:** sequenzieller aktueller Aggregationssnapshot
 **Kostenklasse:** LOW bis MEDIUM
 
 ## Entscheidungsfrage und Einsatz
 
-Die Procedure zeigt, welche `msdb`-Quelle gegen eine festgelegte Aufbewahrungs-, Kapazitäts- oder Betriebsregel geprüft werden sollte. Sie aggregiert Datenbankdateien sowie vorhandene Backup-, Restore-, SQL-Agent- und Maintenance-Plan-Tabellen und die Database-Mail-View `msdb.dbo.sysmail_allitems`. Tabellen und Views werden als lesbare Quellen erkannt. Das Ergebnis ist eine Bestands- und Zeitfensterevidenz. Die Procedure führt keine Bereinigung, keinen Shrink und keine Agentaktion aus.
+Die Procedure zeigt, welche `msdb`-Historienquelle gegen eine festgelegte Aufbewahrungs-, Kapazitäts- oder Betriebsregel geprüft werden sollte. Sie aggregiert Datenbankdateien sowie vorhandene Backup-, Restore-, SQL-Agent- und Maintenance-Plan-Tabellen und die Database-Mail-View `msdb.dbo.sysmail_allitems`. Zusätzlich zählt sie caller-sichtbare PBM-Policies, Conditions und Categories aus drei dokumentierten `msdb`-Views. Das Ergebnis trennt Historienfenster von PBM-Bestandszahlen. Die Procedure führt keine Bereinigung, keinen Shrink, keine Agentaktion und keine Policy-Auswertung aus.
 
 ## Nicht beantwortete Fragen
 
-Eine hohe Zeilenanzahl oder alte Zeile bestimmt keine fachlich richtige Retention. Die Procedure kennt weder Recovery Point Objective noch Audit-, Compliance-, Incident- oder Betriebsanforderungen. Sie prüft nicht, ob ein Backup restaurierbar ist, ob ein Job erfolgreich konfiguriert wurde oder ob eine Mail den Empfänger erreicht hat. Dateigröße ist außerdem nicht identisch mit belegtem Platz, künftigem Wachstum oder notwendiger Verkleinerung.
+Eine hohe Zeilenanzahl oder alte Zeile bestimmt keine fachlich richtige Retention. Die Procedure kennt weder Recovery Point Objective noch Audit-, Compliance-, Incident- oder Betriebsanforderungen. Sie prüft nicht, ob ein Backup restaurierbar ist, ob ein Job erfolgreich konfiguriert wurde oder ob eine Mail den Empfänger erreicht hat. Dateigröße ist außerdem nicht identisch mit belegtem Platz, künftigem Wachstum oder notwendiger Verkleinerung. PBM-Zählwerte belegen weder Policy-Wirksamkeit noch Regelbefolgung, Evaluationshistorie oder Gesundheit.
 
 ## Sicherer Einstieg
 
@@ -23,7 +23,7 @@ Eine hohe Zeilenanzahl oder alte Zeile bestimmt keine fachlich richtige Retentio
 EXEC [monitor].[USP_MsdbHealthAnalysis] @MaxZeilen = 200, @ResultSetArt = 'CONSOLE';
 ```
 
-Führen Sie die erste Inventur in einem geeigneten Betriebsfenster aus. Die einzelnen Quellen werden mit `COUNT_BIG`, `MIN` und `MAX` gelesen. Auf großen Historientabellen kann dies I/O erzeugen, obwohl keine Nutzdaten oder Meldungstexte ausgegeben werden. `@MaxZeilen` begrenzt die Ausgabe, nicht die Aggregationsarbeit innerhalb einer vorhandenen Quelle.
+Führen Sie die erste Inventur in einem geeigneten Betriebsfenster aus. Die einzelnen Quellen werden mit `COUNT_BIG` gelesen; `MIN` und `MAX` gelten nur für datierte Historien. Auf großen Historien- und PBM-Katalogquellen kann dies I/O erzeugen, obwohl keine Namen, Ausdrücke, Beschreibungen, Links oder Meldungstexte ausgegeben werden. `@MaxZeilen` begrenzt die Ausgabe, nicht die Aggregationsarbeit innerhalb einer vorhandenen Quelle.
 
 ## Parameter und weitere Aufrufbeispiele
 
@@ -35,11 +35,11 @@ Führen Sie die erste Inventur in einem geeigneten Betriebsfenster aus. Die einz
 | `@JsonErzeugen` | `bit` | `0` | 0 lässt @Json NULL; 1 serialisiert die bereits nach @MaxZeilen gekürzten Zeilen nach Area sortiert. NULL aktiviert IF nicht; leere Menge wird []. Bei der SQL-Konvertierung nach bit ergibt numerische 0 den Wert 0; von 0 verschiedene numerische Werte ergeben 1. |
 | `@Json` | `nvarchar(max) OUTPUT` | `NULL` | Optionaler OUTPUT-Empfänger für ein JSON-Array der Fachzeilen. Am Eintritt wird @Json auch vor @Hilfe=1 auf NULL gesetzt; nur @JsonErzeugen=1 erzeugt danach das Array, bei leerer Fachmenge []. Zum Empfangen eine nvarchar(max)-Variable mit OUTPUT binden; das Argument kann ausgelassen werden. Ein anfänglicher NULL- oder anderer Variablenwert wird überschrieben. |
 | `@PrintMeldungen` | `bit` | `1` | 0 unterdrückt die Status-PRINT-Meldung; Nicht-NULL-Bitwerte ungleich 0 aktivieren sie. NULL aktiviert sie nicht. Die Statusmeldung erscheint bei den vom Aufrufer gewählten Modi NONE, CONSOLE und TABLE; diese beiden Ansichtsmodi werden intern auf NONE normalisiert. RAW erzeugt diese Statusmeldung nicht. @Hilfe=1 kehrt vor dieser Meldung zurück. Bei der SQL-Konvertierung nach bit ergibt numerische 0 den Wert 0; von 0 verschiedene numerische Werte ergeben 1. |
-| `@Hilfe` | `bit` | `0` | 0 führt die Analyse aus; jeder Nicht-NULL-Wert ungleich 0 druckt die Hilfe und beendet den Aufruf früh. NULL startet die Hilfe nicht. Der RETURN erfolgt vor Analyse und OUTPUT-Zuweisungen, daher bleiben gebundene OUTPUT-Empfänger unverändert. Bei der SQL-Konvertierung nach bit ergibt numerische 0 den Wert 0; von 0 verschiedene numerische Werte ergeben 1. |
-| `@StatusCodeOut` | `varchar(40) OUTPUT` | `NULL` | OUTPUT-Empfänger für den in diesem Modul ermittelten Gesamtstatus. Mögliche Gesamtwerte sind AVAILABLE (Auswertung ohne gemeldete Quellfehler), AVAILABLE_LIMITED (mindestens eine Quelle nicht lesbar), UNSUPPORTED (msdb fehlt) und INVALID_PARAMETER (negative Zeilengrenze oder ungültige Ausgabeart). Evidenzzeilen haben AVAILABLE, UNSUPPORTED (Objekt fehlt) oder SOURCE_UNAVAILABLE. NULL-Default erlaubt das Auslassen des Arguments; um den Wert zu empfangen, muss eine kompatible Variable ausdrücklich mit OUTPUT gebunden werden. Im Hilfezweig bleibt ein gebundener Empfänger wegen des frühen RETURN unverändert. |
+| `@Hilfe` | `bit` | `0` | 0 führt die Analyse aus; jeder Nicht-NULL-Wert ungleich 0 druckt die Hilfe und beendet den Aufruf früh. NULL startet die Hilfe nicht. Der RETURN erfolgt vor Analyse und den abschließenden Status-/Fehler-OUTPUT-Zuweisungen; diese vier Empfänger bleiben unverändert. @Json wurde bereits am Eintritt auf NULL gesetzt. Bei der SQL-Konvertierung nach bit ergibt numerische 0 den Wert 0; von 0 verschiedene numerische Werte ergeben 1. |
+| `@StatusCodeOut` | `varchar(40) OUTPUT` | `NULL` | OUTPUT-Empfänger für den in diesem Modul ermittelten Gesamtstatus. Mögliche Gesamtwerte sind AVAILABLE (Auswertung ohne gemeldete Quellfehler), AVAILABLE_LIMITED (mindestens eine Quelle nicht lesbar), UNSUPPORTED (msdb fehlt) und INVALID_PARAMETER (negative Zeilengrenze oder ungültige Ausgabeart). Evidenzzeilen haben AVAILABLE, UNSUPPORTED (fehlendes bisheriges Historienobjekt) oder SOURCE_UNAVAILABLE (Quellenfehler; PBM-Views werden ohne Sichtbarkeitsvorprüfung gelesen). NULL-Default erlaubt das Auslassen des Arguments; um den Wert zu empfangen, muss eine kompatible Variable ausdrücklich mit OUTPUT gebunden werden. Im Hilfezweig bleibt ein gebundener Empfänger wegen des frühen RETURN unverändert. |
 | `@IsPartialOut` | `bit OUTPUT` | `NULL` | Optionale OUTPUT-Variable: 0 bedeutet nicht partiell, 1 bedeutet eingeschränkte/partielle Evidenz. NULL-Default erlaubt Auslassen und ist kein Ergebniswert. Empfang erfordert eine passende OUTPUT-Bindung; Hilfe-RETURN lässt sie unverändert. |
 | `@ErrorNumberOut` | `int OUTPUT` | `NULL` | Bei regulärem Abschluss bleibt die technische Fehlernummer in dieser Implementierung NULL. Fehler einzelner Quellen werden als Fach-/Quellenzeilen dokumentiert und nicht in diesen Empfänger kopiert. Optionale OUTPUT-Bindung an eine Variable des deklarierten Typs; ohne Empfang kann das Argument entfallen. @Hilfe=1 weist den Wert nicht zu und erhält einen anfänglichen NULL- oder anderen Empfängerwert. |
-| `@ErrorMessageOut` | `nvarchar(2048) OUTPUT` | `NULL` | Bei regulärem Abschluss eine Meldung zu ungültigen Parametern oder fehlender msdb; sonst NULL. Fehler einzelner Historienquellen stehen in den Fachzeilen. Optionale OUTPUT-Bindung an eine Variable des deklarierten Typs; ohne Empfang kann das Argument entfallen. @Hilfe=1 weist den Wert nicht zu und erhält einen anfänglichen NULL- oder anderen Empfängerwert. |
+| `@ErrorMessageOut` | `nvarchar(2048) OUTPUT` | `NULL` | Bei regulärem Abschluss eine Meldung zu ungültigen Parametern oder fehlender msdb; sonst NULL. Fehler einzelner Historien- und PBM-Quellen stehen in den Fachzeilen. Optionale OUTPUT-Bindung an eine Variable des deklarierten Typs; ohne Empfang kann das Argument entfallen. @Hilfe=1 weist den Wert nicht zu und erhält einen anfänglichen NULL- oder anderen Empfängerwert. |
 
 ### RAW-Ausgabe
 
@@ -77,7 +77,7 @@ EXEC [monitor].[USP_MsdbHealthAnalysis] @Hilfe=1;
 
 ## Resultsets und Leserichtung
 
-CONSOLE zeigt `msdbHealth`. RAW liefert zuerst den Modulstatus und danach die Quellenzeilen. TABLE exportiert ausschließlich das benannte Resultset; JSON verwendet dieselbe lokale Materialisierung. Lesen Sie zuerst `Area`, `SourceObject` und `StatusCode`. Ordnen Sie `RowCount`, `OldestUtc`, `NewestUtc` und `SizeMb` danach gegen die dokumentierte Aufbewahrungsregel ein. Nicht vorhandene optionale Tabellen erscheinen als `UNSUPPORTED`, Quellfehler als `SOURCE_UNAVAILABLE`.
+CONSOLE zeigt `msdbHealth`. RAW liefert zuerst den Modulstatus und danach die Quellenzeilen. TABLE exportiert ausschließlich das benannte Resultset; JSON verwendet dieselbe lokale Materialisierung. Lesen Sie zuerst `Area`, `SourceObject` und `StatusCode`. Ordnen Sie Historienwerte und Dateigröße nur gegen die jeweils passende Betriebsregel ein. Die PBM-Areas `PBM_POLICIES`, `PBM_CONDITIONS` und `PBM_CATEGORIES` liefern ausschließlich `RowCount`; `OldestUtc`, `NewestUtc` und `SizeMb` bleiben NULL. Nicht vorhandene bisherige optionale Historienobjekte erscheinen als `UNSUPPORTED`, PBM-Lesefehler als `SOURCE_UNAVAILABLE` mit unbekanntem Count.
 
 `@MaxZeilen = NULL` und `0` liefern alle Quellenzeilen. Positive Werte begrenzen
 CONSOLE, RAW, TABLE und JSON auf denselben nach `Area` ausgewählten Bestand.
@@ -90,13 +90,24 @@ aus `msdb.dbo.sysjobhistory`. Beide Zeitgrenzen bleiben NULL; das Modul
 interpretiert weder `run_date`, `run_time` noch `run_duration`. Die Anzahl
 belegt keine Zahl ausgeführter Jobs und keine bestimmte Aufbewahrungsdauer.
 
+`PBM_POLICIES`, `PBM_CONDITIONS` und `PBM_CATEGORIES` zählen ausschließlich
+caller-sichtbare Zeilen aus `msdb.dbo.syspolicy_policies`,
+`msdb.dbo.syspolicy_conditions` und `msdb.dbo.syspolicy_policy_categories`.
+Alle drei Zeit- und Größenfelder bleiben NULL. Die Zählungen verwenden wie
+die Historienquellen `WITH (NOLOCK)` und sind keine atomare oder bestätigte
+Katalogaufnahme. Ein erfolgreicher Count ist keine Aussage über Policy-Ausführung,
+Enforcement, Wirksamkeit oder Retention.
+Die dokumentierten Views erfordern `PolicyAdministratorRole` in `msdb`;
+das Produkt vergibt diese Rolle nicht. Bei einem Lesefehler bleibt der Count
+unbekannt und die Quellenzeile lautet `SOURCE_UNAVAILABLE`.
+
 ## Beispiele und Gegenbeispiele
 
 Eine frische synthetische Example-Lab-Instanz kann für mehrere Historien `RowCount = 0` liefern; dies ist ein zulässiger Leerfall. Ein kontrolliert erzeugtes synthetisches Backup kann ein kurzes sichtbares Zeitfenster belegen, ohne damit Restorefähigkeit nachzuweisen. Ein Gegenbeispiel ist die Empfehlung, alle alten Backupzeilen allein aufgrund von `OldestUtc` zu löschen. Auch eine große `msdb` rechtfertigt keinen automatischen Shrink.
 
 ## Leere oder partielle Ausgabe
 
-Eine vorhandene, aber leere Historientabelle erzeugt eine Quellenzeile mit `RowCount = 0` und leeren Zeitgrenzen. Fehlt eine optionale Tabelle auf der konkreten Plattform oder Installation, bleibt diese Abwesenheit als `UNSUPPORTED` sichtbar. Scheitert eine einzelne Aggregation, setzt die Procedure `AVAILABLE_LIMITED`, erhält andere Quellen und dokumentiert die Quellgrenze. Ein vollständiger Berechtigungsnachweis erfordert einen gezielten eingeschränkten Lauf.
+Eine vorhandene, aber leere Historientabelle erzeugt eine Quellenzeile mit `RowCount = 0` und leeren Zeitgrenzen. Eine lesbare, leere PBM-View erzeugt ebenfalls den Count 0. Fehlt eine bisherige optionale Historientabelle, bleibt diese Abwesenheit als `UNSUPPORTED` sichtbar; eine nicht lesbare oder unsichtbare PBM-View erhält `SOURCE_UNAVAILABLE` und `RowCount = NULL`. Scheitert eine einzelne Aggregation, setzt die Procedure `AVAILABLE_LIMITED`, erhält andere Quellen und dokumentiert die Quellgrenze. Ein vollständiger Berechtigungsnachweis erfordert einen gezielten eingeschränkten Lauf.
 
 Kurze und lange Retentionsfenster werden nur mit kontrolliert erzeugten Historien oder einer ausdrücklich autorisierten Testinstanz bewertet. Bestehende fremde Historien werden weder als Fixture verwendet noch für einen Test verändert. Ein nicht reproduzierbarer Altbestand bleibt externe Evidenz.
 
@@ -105,7 +116,7 @@ Kurze und lange Retentionsfenster werden nur mit kontrolliert erzeugten Historie
 | Dimension | Einordnung |
 |---|---|
 | Kostenklasse | `LOW` bis `MEDIUM` |
-| Standardpfad | Dateigröße plus Aggregate je vorhandener Historientabelle |
+| Standardpfad | Dateigröße, Aggregate je vorhandener Historienquelle und drei PBM-View-Counts |
 | Teuerster Pfad | `COUNT_BIG`, `MIN` und `MAX` auf großen, unzureichend indizierten Historien |
 | Haupttreiber | Zeilenumfang, Datumsindexierung und paralleles Historienwachstum |
 | Skalierung | Sequenziell je vordefinierter Quelle |
@@ -118,11 +129,11 @@ Kurze und lange Retentionsfenster werden nur mit kontrolliert erzeugten Historie
 
 ## Eine Zeile bedeutet
 
-Eine Zeile beschreibt die Dateigröße oder eine Historienquelle wie Backup, Restore, Agent, Mail oder Maintenance Plans.
+Eine Zeile beschreibt die Dateigröße, eine Historienquelle wie Backup, Restore, Agent, Mail oder Maintenance Plans oder genau eine der drei PBM-Katalogzählungen.
 
 ## So lesen
 
-Zeilenanzahl und Zeitstempel zeigen Umfang und Fenster, aber keine fachlich richtige Retention.
+Historienzeilen und Zeitstempel zeigen Umfang und Fenster, aber keine fachlich richtige Retention. PBM-Counts zeigen nur sichtbare Katalogzeilen und keine Regelwirkung.
 
 ## Warum kann das problematisch sein?
 
@@ -142,11 +153,11 @@ Welche msdb-Quelle sollte gegen ihre Aufbewahrungsregel geprüft werden?
 
 ### Technischer Hintergrund
 
-Pro vorhandener Tabelle wird eine Aggregation ausgeführt; Quellfehler bleiben als partielle Evidenz erhalten.
+Pro bisheriger Historienquelle und dokumentierter PBM-View wird eine Aggregation ausgeführt; Quellfehler bleiben als partielle Evidenz erhalten.
 
 ### Datenkette
 
-`sys.master_files` und ausgewählte `msdb.dbo`-Tabellen → Größen- und Zeitfensterinventar.
+`sys.master_files`, ausgewählte `msdb.dbo`-Historienquellen und drei PBM-Views → getrennte Größen-, Zeitfenster- und Katalogzählevidenz.
 
 ### Source Select
 
@@ -267,5 +278,8 @@ Prüfen Sie Agentjobs, Backupkette und Dateiwachstum vor einer separat freigegeb
 - [Backup- und Restore-Systemtabellen](https://learn.microsoft.com/en-us/sql/relational-databases/system-tables/backup-and-restore-tables-transact-sql?view=sql-server-ver17)
 - [dbo.sysjobhistory](https://learn.microsoft.com/en-us/sql/relational-databases/system-tables/dbo-sysjobhistory-transact-sql?view=sql-server-ver17)
 - [Database-Mail-Objekte](https://learn.microsoft.com/en-us/sql/relational-databases/database-mail/database-mail-messaging-objects?view=sql-server-ver17)
+- [PBM-Policies](https://learn.microsoft.com/en-us/sql/relational-databases/system-catalog-views/syspolicy-policies-transact-sql?view=sql-server-ver17)
+- [PBM-Conditions](https://learn.microsoft.com/en-us/sql/relational-databases/system-catalog-views/syspolicy-conditions-transact-sql?view=sql-server-ver17)
+- [PBM-Categories](https://learn.microsoft.com/en-us/sql/relational-databases/system-catalog-views/syspolicy-policy-categories-transact-sql?view=sql-server-ver17)
 
 [Technische Detailbeschreibung](../../../Code/08_ServerHealth/210_USP_MsdbHealthAnalysis.sql)

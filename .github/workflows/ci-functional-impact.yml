@@ -228,22 +228,6 @@ jobs:
           fi
           echo "SQLCMD_PATH=$sqlcmd_path" >> "$GITHUB_ENV"
 
-      - name: Run native deployment regression
-        shell: bash
-        run: |
-          set -euo pipefail
-          if ! docker exec \
-            --env SQLCMDPASSWORD="$MSSQL_EPHEMERAL_CREDENTIAL" \
-            --workdir /work/Code/Install/generated \
-            sqlserver-analyze-impact-2025 \
-            "$SQLCMD_PATH" -S localhost -U sa -C -b \
-            -i Deployment_Runtime.generated.sql \
-            >"$RUNNER_TEMP/sqlserver-analyze-deployment-runtime.log" 2>&1; then
-            echo 'Native deployment regression failed.'
-            grep -B 2 -A 4 -E 'Msg [0-9]+|Sqlcmd: Error|Error:' "$RUNNER_TEMP/sqlserver-analyze-deployment-runtime.log" | tail -n 160 || true
-            exit 1
-          fi
-
       - name: Qualify changed CI lock diagnostics
         if: github.event_name == 'pull_request'
         shell: bash
@@ -259,6 +243,21 @@ jobs:
             python3 ./Code/Tests/Integration/CI_LockTimeout_Diagnostics_Tests.py
             timeout 60s python3 ./Code/Tests/Integration/CI_LockTimeout_Diagnostics_Tests.py \
               --sql-probe "$SQLCMD_PATH" --artifacts "$RUNNER_TEMP/ci-lock-probe"
+          fi
+
+      - name: Run native deployment regression
+        shell: bash
+        run: |
+          set -euo pipefail
+          deployment_result=0
+          python3 ./Code/Tests/Integration/CI_LockTimeout_Diagnostics.py \
+            --sqlcmd "$SQLCMD_PATH" --deployment \
+            --log "$RUNNER_TEMP/sqlserver-analyze-deployment-runtime.log" \
+            --artifacts "$RUNNER_TEMP/ci-lock-diagnostics/deployment" || deployment_result=$?
+          if [ "$deployment_result" != '0' ]; then
+            echo 'Native deployment regression failed.'
+            grep -B 2 -A 4 -E 'Msg [0-9]+|Sqlcmd: Error|Error:' "$RUNNER_TEMP/ci-lock-diagnostics/deployment/impact.log" | tail -n 160 || true
+            exit "$deployment_result"
           fi
 
       - name: Run impacted contracts

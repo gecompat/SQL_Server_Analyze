@@ -30,6 +30,59 @@ EXEC [monitor].[USP_ErrorLogAnalysis]
 
 Für einen synthetischen Filter kann beispielsweise `@Suchtext1 = N'ExampleWave2NoMatch'` verwendet werden. Erst wenn die Kategorie und der Zeitraum relevant sind, sollte Meldungstext mit einer kleinen Grenze opt-in gelesen werden. Der Aufruf wechselt oder löscht kein Log.
 
+## Parameter
+
+| Parameter | Typ | Default | Eingabe und Wirkung |
+|---|---|---|---|
+| `@AgentEinbeziehen` | `bit` | `0` | 0 liest nur SQL-Server-Logs. 1 nimmt zusätzlich Agent-Logs auf. NULL/andere Bitwerte ungültig. |
+| `@MaxArchivNummer` | `tinyint` | `0` | Höchste Archivnummer. 0 nur aktuelles Log, n liest Archive 0..n für gewählte Produkte. 0..20 inkl.. NULL oder >20 ungültig. Keine Rotation. |
+| `@SeitServerlokalzeit` | `datetime2(3)` | `NULL` | Untergrenze für LogDate in Serverlokalzeit. NULL berechnet 24 Stunden vor serverlokaler SYSDATETIME beim Prozedurstart. Der Grenzwert wird nach Keywordfilter angewandt, sp_readerrorlog wird dadurch zeitlich nicht eingeengt. Fester Zeitpunkt empfohlen für reproduzierbare Läufe. kein UTC-Offset wird angenommen. |
+| `@Suchtext1` | `nvarchar(4000)` | `NULL` | NULL zusammen mit Suchtext2=NULL aktiviert kuratierte Suchregeln. Ein nichtleerer Suchtext ersetzt diese Regeln durch den dokumentierten Keywordfilter. Leertext und reine Leerzeichen sind ungültig. Suchtext2 darf nur zusammen mit Suchtext1 gesetzt sein. |
+| `@Suchtext2` | `nvarchar(4000)` | `NULL` | Optionaler zweiter Keywordfilter zusammen mit Suchtext1. NULL deaktiviert ihn. Ohne ersten Suchtext oder bei leerer beziehungsweise nur aus Leerzeichen bestehender Eingabe ist der Aufruf ungültig. |
+| `@MeldungstextEinbeziehen` | `bit` | `0` | 0 lässt Details/Volltext aus. 1 aktiviert Detailausgabe mit ProcessInfo und projiziertem Meldungstext (Datenschutz-Opt-in). NULL ungültig. Ausgabe bleibt durch MaxZeilen und MaxMeldungszeichen begrenzbar. |
+| `@MaxMeldungszeichen` | `int` | `4000` | Maximale Zeichen pro projiziertem Meldungstext. 4000 default, 0 explizit unbegrenzt. nichtnegativ. Kürzung erzeugt genau eine Warning. NULL/negativ ungültig. |
+| `@MaxQuellzeilen` | `int` | `10000` | Eine positive ganze Zahl begrenzt die materialisierten Quelltreffer. NULL oder 0 hebt die Grenze auf. Negative Werte sind ungültig. Keywordfilter wirken beim Loglesen, die Zeitprüfung anschließend. |
+| `@MaxZeilen` | `int` | `1000` | Detailausgabe Top-N nach Sortierung. 1000 default, 0 oder NULL unbegrenzt, positiv begrenzt, negativ ungültig. Begrenzt keine Summary, Quellenstatus, Zähler oder Warnungen. |
+| `@ResultSetArt` | `varchar(16)` | `'CONSOLE'` | CONSOLE zeigt die Zusammenfassung. RAW liefert alle fachlichen Mengen mit Status und Warnungen. TABLE schreibt benannte Ergebnismengen. NONE unterdrückt die Resultsets. Rand-Leerzeichen und Groß- und Kleinschreibung werden normalisiert. NULL, Leertext und andere Werte sind ungültig. |
+| `@ResultTablesJson` | `nvarchar(max)` | `NULL` | Bei TABLE ist ein gültiges nichtleeres JSON-Objekt erforderlich. Wählen Sie eine Teilmenge der exakten Schlüssel moduleStatus, summary, details, sourceStatus und warnings. Jeder Wert benennt eine andere vorhandene leere lokale #Temp-Tabelle mit einer Seed-Spalte. Globale Tabellen und #Monitor-Präfixe sind ausgeschlossen. Außerhalb von TABLE sind nur NULL, Leertext und reine Leerzeichen zulässig. |
+| `@JsonErzeugen` | `bit` | `0` | 1 erzeugt JSON, 0 aus. NULL ungültig. JSON enthält Metadaten, Summary und je nach Opt-in Details. |
+| `@Json` | `nvarchar(max) OUTPUT` | `NULL` | Outputparameter, wird zu Beginn NULL gesetzt. bei JsonErzeugen=1 befüllt. Eingabe ignoriert. Für den Empfang eine Variable des deklarierten Typs mit OUTPUT binden. |
+| `@PrintMeldungen` | `bit` | `1` | Steuert PRINT-Meldungen. 1 an, 0 aus, NULL ungültig. Verändert nicht das Resultset. |
+| `@Hilfe` | `bit` | `0` | 1 zeigt die Hilfe vor dem Logzugriff und der Parameterprüfung. 0 und NULL führen die Analyse aus. |
+| `@StatusCodeOut` | `varchar(40) OUTPUT` | `NULL` | Outputstatus des Laufs, z.B. AVAILABLE/AVAILABLE_LIMITED/DENIED_PERMISSION. Eingabe ignoriert. Für den Empfang eine Variable des deklarierten Typs mit OUTPUT binden. |
+| `@IsPartialOut` | `bit OUTPUT` | `NULL` | Outputbit, kennzeichnet unvollständige Quellen/Evidenz. Eingabe ignoriert. Für den Empfang eine Variable des deklarierten Typs mit OUTPUT binden. |
+| `@ErrorNumberOut` | `int OUTPUT` | `NULL` | Outputfehlernummer oder NULL, wenn keiner erfasst. Eingabe ignoriert. Für den Empfang eine Variable des deklarierten Typs mit OUTPUT binden. |
+| `@ErrorMessageOut` | `nvarchar(2048) OUTPUT` | `NULL` | Outputfehlertext oder NULL, wenn keiner erfasst. Eingabe ignoriert. Für den Empfang eine Variable des deklarierten Typs mit OUTPUT binden. |
+
+## Aufrufbeispiele
+
+```sql
+EXEC [monitor].[USP_ErrorLogAnalysis] @Hilfe=1;
+```
+
+```sql
+DECLARE @Since datetime2(3)='2026-01-01T00:00:00';
+EXEC [monitor].[USP_ErrorLogAnalysis] @SeitServerlokalzeit=@Since, @Suchtext1=N'ExampleNoMatch', @MaxQuellzeilen=100, @MaxZeilen=25, @ResultSetArt='RAW';
+```
+
+```sql
+DECLARE @Since datetime2(3)='2026-01-01T00:00:00';
+DECLARE @ResultJson nvarchar(max);
+EXEC [monitor].[USP_ErrorLogAnalysis] @SeitServerlokalzeit=@Since, @Suchtext1=N'ExampleNoMatch', @MaxQuellzeilen=100, @MaxZeilen=25, @ResultSetArt='NONE', @JsonErzeugen=1, @Json=@ResultJson OUTPUT;
+SELECT @ResultJson AS [Json];
+```
+
+```sql
+CREATE TABLE #ErrorLogAnalysis_HelpExample ([Seed] int NULL);
+DECLARE @Since datetime2(3)='2026-01-01T00:00:00';
+BEGIN TRY EXEC [monitor].[USP_ErrorLogAnalysis] @SeitServerlokalzeit=@Since, @Suchtext1=N'ExampleNoMatch', @MaxQuellzeilen=100, @MaxZeilen=25, @ResultSetArt='TABLE', @ResultTablesJson=N'{"moduleStatus":"#ErrorLogAnalysis_HelpExample"}';
+SELECT * FROM #ErrorLogAnalysis_HelpExample;
+DROP TABLE #ErrorLogAnalysis_HelpExample;
+END TRY BEGIN CATCH DROP TABLE #ErrorLogAnalysis_HelpExample;
+THROW;
+END CATCH;
+```
+
 ## Resultsets und Leserichtung
 
 Der typisierte Vertrag registriert `moduleStatus`, `summary`, `details`, `sourceStatus` und `warnings`. Lesen Sie zuerst `moduleStatus` und `sourceStatus`: `HasMoreSourceRows`, `AVAILABLE_LIMITED`, verweigerte Archive und die Serverlokalzeit bestimmen die Aussagegrenze. Werten Sie danach `summary` nach Produkt und Kategorie aus. `details` bleibt im Standard leer und enthält nur bei einem ausdrücklichen Opt-in den Unicode-sicher projizierten Meldungstext. `warnings` fasst Quelllücken und das globale Quelllimit zusammen.

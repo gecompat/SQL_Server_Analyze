@@ -129,6 +129,17 @@ BEGIN TRY
             THROW 55994,N'Die nativen XE-Reader-TABLE- oder JSON-Kernprojektionen stimmen nicht überein.',1;
         DROP TABLE [#ExampleXeReaderExport]; SET @Case+=1;
     END;
+
+    SET @Json=NULL;
+    EXEC [monitor].[USP_ExtendedEventsReadEvents] @SourceExtendedEventSessionName=@Session,@Quelle='RING_BUFFER',
+      @BestaetigeTargetFlush=NULL,@HighImpactConfirmed=1,@ResultSetArt='NONE',
+      @JsonErzeugen=1,@Json=@Json OUTPUT,@PrintMeldungen=0;
+    IF COALESCE(JSON_VALUE(@Json,N'$.meta.statusCode'),N'')<>N'AVAILABLE_DISABLED'
+       OR COALESCE(TRY_CONVERT(bigint,JSON_VALUE(@Json,N'$.meta.returnedRows')),-1)<>0
+       OR (SELECT COUNT_BIG(*) FROM OPENJSON(@Json,N'$.events'))<>0
+       OR COALESCE(JSON_VALUE(@Json,N'$.sources[0].StatusCode'),N'')<>N'AVAILABLE_DISABLED'
+       OR COALESCE(JSON_VALUE(@Json,N'$.sources[0].Detail'),N'')<>N'sys.dm_xe_session_targets wurde nicht gelesen.'
+        THROW 55996,N'Ein expliziter RING_BUFFER-Aufruf mit NULL muss ohne DMV-Zugriff geschlossen bleiben.',1;
 END TRY
 BEGIN CATCH
     IF @Created=1 BEGIN SET @Sql=N'DROP EVENT SESSION '+QUOTENAME(@Session)+N' ON SERVER;'; EXEC [master].[sys].[sp_executesql] @Sql; END;

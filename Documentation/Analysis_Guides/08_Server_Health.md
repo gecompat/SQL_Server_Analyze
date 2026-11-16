@@ -1,6 +1,6 @@
 # Server Health: CPU, NUMA, Memory, Integrität und Engine-Evidenz
 
-**Procedures:** 28 (20 nummerierte Abschnitte und 8 ergänzende Module)
+**Procedures:** 30 (20 nummerierte Abschnitte und 10 ergänzende Module)
 **Evidenz:** Momentaufnahme, Konfiguration, kumulative SQLOS-DMVs, kurze Stichprobe, msdb-Historie und vorhandene XE-Dateien  
 **Kosten:** LOW bis HIGH_OPT_IN
 
@@ -898,7 +898,7 @@ EXEC [monitor].[USP_ServerHealthAnalysis]
 
 ### Zweck
 
-Die Procedure korreliert ausschließlich lesende Integritätsevidenz aus Datenbankstatus, PAGE_VERIFY, dem letzten dokumentierten guten CHECKDB, `suspect_pages`, Backupflags, HADR Auto Page Repair und optionaler Seitenauflösung.
+Die Procedure korreliert ausschließlich lesende Integritätsevidenz aus Datenbankstatus, PAGE_VERIFY, `suspect_pages`, Backupflags, HADR Auto Page Repair und optionaler Seitenauflösung. Letzte erfolgreiche CHECKDB-Zeit und CHECKDB-Alter werden nicht erhoben und bleiben NULL.
 
 Die Procedure führt **kein** DBCC CHECKDB, Restore oder Repair aus.
 
@@ -916,7 +916,7 @@ Fehlt `VIEW SERVER STATE` auf SQL Server 2019 beziehungsweise `VIEW SERVER PERFO
 |---|---|
 | `DatabaseId`, `DatabaseName`, `StateDesc` | Datenbankscope |
 | `PageVerifyOptionDesc` | PAGE_VERIFY-Konfiguration |
-| `LastGoodCheckDbTime`, `CheckdbAgeHours` | Metadatenevidenz des letzten guten CHECKDB |
+| `LastGoodCheckDbTime`, `CheckdbAgeHours` | bleiben mangels CHECKDB-Zeitstempel immer NULL; das Modul bewertet kein Prüfalter |
 | `SuspectPageCount`, `LatestSuspectPageUtc` | suspect-pages-Evidenz |
 | `DamagedBackupCount` | Backups mit Damageflag im Historienfenster |
 | `BackupWithoutChecksumCount` | Backups ohne Backupchecksum |
@@ -935,7 +935,7 @@ Fehlt `VIEW SERVER STATE` auf SQL Server 2019 beziehungsweise `VIEW SERVER PERFO
 | Befund | Bewertung |
 |---|---|
 | alle Zähler 0 | keine negative Evidenz, aber kein Integritätsbeweis |
-| `CheckdbAgeHours > 168` | Framework-Policyhinweis |
+| `CheckdbAgeHours > 168` | tritt im aktuellen Modul nicht ein; NULL bedeutet, dass keine CHECKDB-Evidenz oder Altersbewertung vorliegt. Ein separat erhobener erfolgreicher CHECKDB-Nachweis ist für den Policyvergleich erforderlich. |
 | `SuspectPageCount > 0` | sofortige Nachverfolgung |
 | `DamagedBackupCount > 0` | hohe Priorität |
 | Page Repair succeeded | weiterhin Korruptions-/I/O-Evidenz; CHECKDB und Infrastruktur prüfen |
@@ -1853,7 +1853,7 @@ identifiziert automatisch eine Query, Datenbank oder Compileursache.
 | `@SystemdatenbankenEinbeziehen` | `bit` | `0` | 0 schließt Datenbanken mit database_id 1 bis 4 aus; 1 lässt master, tempdb, model und msdb in die Auswahl zu. NULL wird als ungültiger Parameter behandelt. Der Schalter gewährt selbst keine Berechtigung und macht nicht zugreifbare Datenbanken nicht sichtbar. SQL-Konvertierung nach bit: numerische 0 ergibt 0, von 0 verschiedene numerische Werte ergeben 1. |
 | `@DatabaseNamePattern` | `nvarchar(4000)` | `NULL` | NULL bedeutet kein Pattern. Ein gesetztes Pattern wird nach dem gemeinsamen Parservertrag außen getrimmt; die Präfixe like:, regex: und regexi: wählen LIKE, case-sensitive Regex beziehungsweise case-insensitive Regex, ohne Beachtung der Präfixgroßschreibung. Ohne Präfix gilt LIKE. Nach dem Präfix darf der Inhalt nicht leer sein; ein ungültiges/leeres Pattern und die gleichzeitige Verwendung mit einer nichtleeren exakten Namensliste führen zu INVALID_PARAMETER. LIKE wird case-sensitive ausgewertet. Regex erfordert SQL Server 2025 und Compatibility Level 170 in der Installationsdatenbank; andernfalls meldet der Auswahlhelfer UNAVAILABLE_FEATURE. Der Regextext wird nicht vorab syntaktisch geprüft. NULL ist damit von leerem Text und einem leeren Präfix zu unterscheiden. Eine fehlerhafte Regex kann im Auswahlhelfer beim Ausführen scheitern; der umgebende CATCH dokumentiert eine partielle DATABASE_SELECTION-Quelle, während unabhängige Serverquellen weiterlaufen können. |
 | `@SampleSeconds` | `tinyint` | `0` | 0 liest Counter und Waits jeweils einmal als Momentaufnahme; Before-, Delta-, Rate- und Intervallwerte sind dabei NULL. 1 bis 60 führt zwei Aufnahmen aus und genau ein gemeinsames WAITFOR mit der angegebenen Anzahl Sekunden dazwischen aus. Counter und Waits erhalten getrennte, unmittelbar nach ihrer jeweiligen Aufnahme gebundene UTC-Intervalle; die tatsächliche Dauer kann von der angeforderten Wartezeit abweichen. NULL oder ein Wert über 60 ist INVALID_PARAMETER; ein negativer Wert kann im tinyint-Eingabetyp nicht dargestellt werden. Sampling bleibt serverweit und wird nicht den ausgewählten Datenbanken zugeordnet. |
-| `@MaxZeilen` | `int` | `2000` | 0 und NULL bedeuten keine Zeilenbegrenzung. Jeder positive int-Wert von 1 bis 2.147.483.647 begrenzt jeweils configurations, counters, waits, cache, sourceStatus und warnings nach deren Erhebung; moduleStatus bleibt eine einzelne Zeile. Die jeweiligen Gruppen werden nach ihren festen Schlüsseln sortiert und unabhängig gekürzt. Die Begrenzung reduziert weder die gelesenen Datenquellen noch die Zahl ausgewählter Datenbanken; die gemeldete RowCount zählt die materialisierten Zeilen aus configurations, counters, waits und cache vor der nachfolgenden Kürzung und nicht die ausgegebenen Zeilen. Negative Werte führen zu INVALID_PARAMETER. |
+| `@MaxZeilen` | `int` | `2000` | 0 und NULL bedeuten keine Zeilenbegrenzung. Jeder positive int-Wert von 1 bis 2.147.483.647 begrenzt jeweils configurations, counters, waits, cache, sourceStatus und warnings nach deren Erhebung; moduleStatus bleibt eine einzelne Zeile. Die jeweiligen Gruppen werden nach ihren festen Schlüsseln sortiert und unabhängig gekürzt. Die Begrenzung reduziert weder die gelesenen Datenquellen noch die Zahl ausgewählter Datenbanken; die gemeldete RowCount summiert die nach der jeweiligen Kürzung verbleibenden Zeilen aus configurations, counters, waits und cache; sourceStatus und warnings zählen nicht mit. Sie ist keine Zählung der vom gewählten Ausgabepfad tatsächlich gelieferten Zeilen. Negative Werte führen zu INVALID_PARAMETER. |
 | `@ResultSetArt` | `varchar(16)` | `'CONSOLE'` | Der Wert wird außen getrimmt und ohne Beachtung der Großschreibung normalisiert. Zulässig sind genau RAW (sieben fachliche Resultsets in der Reihenfolge moduleStatus, configurations, counters, waits, cache, sourceStatus, warnings), TABLE (nur die per JSON-Mapping ausgewählten Resultgruppen in lokale Temp-Tabellen schreiben), CONSOLE (eine formatierte Übersicht aus Konfigurationen, Counter-Rohwerten, Waitzeit und Cacheeinträgen sowie einer Modulstatuszeile mit Status und RowCount) und NONE (keine fachlichen Resultsets). NULL oder ein anderer Wert wird zu einem leeren beziehungsweise nicht erlaubten Modus und führt zu INVALID_PARAMETER. JSON-Erzeugung und Meldungsausgabe werden unabhängig davon gesteuert. |
 | `@ResultTablesJson` | `nvarchar(max)` | `NULL` | Nur mit TABLE wird die JSON-Zuordnung verarbeitet; bei einem anderen Modus führt ein nichtleerer, außen getrimmter Wert zu einer ausgelösten Ausnahme. Für TABLE ist ein gültiges, nichtleeres JSON-Objekt mit mindestens einer Zuordnung erforderlich. Erlaubte, exakt groß-/kleinschreibungsabhängige Schlüssel sind moduleStatus, configurations, counters, waits, cache, sourceStatus und warnings; jeder Wert benennt eine vorhandene, leere lokale #Temp-Tabelle. Die Zielnamen müssen höchstens 116 Zeichen lang sein, dürfen nicht mit ## beginnen und nicht dem reservierten Präfix #Monitor entsprechen. Doppelte Schlüssel oder Ziele, unbekannte Schlüssel, NULL-/Nicht-String-Werte, fehlende oder gefüllte Ziele sowie Ziele mit mehr als einer Seed-Spalte werden vor den fachlichen Quellenzugriffen abgelehnt. Der spätere Writer ersetzt die Seed-Spalte durch das fachliche Ergebnisschema. NULL, leerer oder nur aus U+0020-Leerzeichen bestehender Wert genügt bei TABLE nicht und löst INVALID_RESULT_TABLE_MAPPING aus. moduleStatus bedeutet Modulstatus, configurations Konfigurationen, counters Counterwerte, waits Waitwerte, cache Cacheaggregate, sourceStatus Quellenstatus und warnings Warnungen. |
 | `@JsonErzeugen` | `bit` | `0` | 1 erzeugt unabhängig von der ResultSetArt ein JSON-Dokument im OUTPUT-Parameter, einschließlich Metadaten und der sieben Gruppen moduleStatus, configurations, counters, waits, cache, sourceStatus und warnings. 0 erzeugt es nicht; dann bleibt @Json NULL. NULL ist INVALID_PARAMETER. Schema 1 enthält eine einzelne meta-Struktur mit resultName, schemaVersion, generatedAtUtc, statusCode, isPartial, errorNumber und errorMessage; Gruppen sind Arrays, leere Gruppen werden als [] ausgegeben und NULL-Spalten bleiben enthalten. SQL-Konvertierung nach bit: numerische 0 ergibt 0, von 0 verschiedene numerische Werte ergeben 1. |
@@ -2193,6 +2193,14 @@ CREATE TABLE [#DistributedTransactionInventory_HelpExample] ([Seed] int NULL); B
 EXEC [monitor].[USP_DistributedTransactionInventory] @Hilfe=1;
 ```
 
+## Sensitivity Classification
+
+Die [Sensitivity-Classification-Zählung](Procedures/USP_SensitivityClassificationSummary.md) gibt je ausgewählter, caller-sichtbarer ONLINE-Datenbank drei Katalogzahlen aus: sichtbare Tabellen, deren Spalten und die klassifizierte Teilmenge. Ohne wirksames `VIEW ANY SENSITIVITY CLASSIFICATION` oder bei fehlgeschlagener Katalogaufnahme bleiben die Zähler NULL und der Quellenstatus nennt die Grenze. Die drei Zählabfragen laufen nacheinander; gleichzeitige Metadatenänderungen können die Werte gegeneinander verschieben. Ein erfolgreiches Nullergebnis beweist weder fehlende sensible Daten noch vollständige Klassifikation.
+
+`classificationSummary` enthält `DatabaseId`, `DatabaseName`, die drei nullable `bigint`-Zähler `VisibleTableCount`, `VisibleTableColumnCount` und `ClassifiedVisibleTableColumnCount` sowie `StatusCode`, `VisibilityScope`, `ErrorNumber` und `ErrorMessage`. `sourceStatus` trennt die Datenbankauswahl von jeder Katalogaufnahme und hält den Quellenstatus auch bei abgeschnittenen Fachzeilen fest. `moduleStatus` fasst den Lauf zusammen; `warnings` benennt Aussagegrenzen. `RAW` gibt diese vier Mengen aus, `CONSOLE` eine formatierte Menge. `TABLE` schreibt nur zugeordnete lokale Temp-Tabellen; `NONE` gibt keine Resultsets zurück. JSON mit denselben vier Arrays kann unabhängig davon angefordert werden.
+
+Die Baseline zählt alle caller-sichtbaren `sys.tables` und deren `sys.columns`, ohne hidden oder Microsoft-shipped Tabellen oder Spalten gesondert auszuschließen. Die klassifizierte Teilmenge verbindet nur `class=1`, `major_id` und `minor_id` aus `sys.sensitivity_classifications`; Labels, Informationstypen, IDs und Tabellenwerte werden nicht gelesen. Ein abgelehntes oder unbewiesenes Recht und ein Katalogfehler liefern NULL-Zähler. Ein erfolgreicher leerer Katalog liefert drei Nullen und `AVAILABLE_LIMITED`. Die Katalogabfragen verwenden `WITH (NOLOCK)` und sind weder atomar noch ein Vollständigkeitsbeweis.
+
 ## Database Mirroring
 
 Die [Database-Mirroring-Inventarisierung](Procedures/USP_DatabaseMirroringInventory.md) liest lokale Mirroring-Katalogwerte für ausgewählte ONLINE-Datenbanken. Native NULL-Werte, eingeschränkte Metadatensicht und die fehlende Auswahl nicht ONLINE befindlicher Mirror-Datenbanken bleiben sichtbar; das Verfahren bewertet weder Gesundheit noch Failoverfähigkeit.
@@ -2237,3 +2245,32 @@ CREATE TABLE [#DatabaseMirroringInventory_HelpExample] ([Seed] int NULL); BEGIN 
 EXEC [monitor].[USP_DatabaseMirroringInventory] @Hilfe=1;
 ```
 
+## Ergänzendes Modul: [monitor].[USP_LoadedModuleInventory]
+
+Die Procedure liest unter Caller-Rechten eine Momentaufnahme aus `sys.dm_os_loaded_modules`. Sie gibt den nativen Modulnamen einschließlich eines möglichen Pfads unverändert aus und ergänzt den abgeleiteten Basenamen, Versionen, fünf Build-Flags und den Sprachwert. Die fachlich nicht benötigte Prozessadresse sowie Company- und Description-Texte werden nicht gelesen. Eine Quellenstörung bleibt in `sourceStatus` von einer erfolgreichen leeren Menge getrennt. `@NurBuildFlags` wählt nach dem vollständigen DMV-Read, `@MaxZeilen` begrenzt nur die sortierte Ausgabe.
+
+```sql
+EXEC [monitor].[USP_LoadedModuleInventory]
+    @NurBuildFlags=0,
+    @MaxZeilen=100,
+    @ResultSetArt='CONSOLE',
+    @PrintMeldungen=0;
+```
+
+Die [eigenständige Procedure-Seite](Procedures/USP_LoadedModuleInventory.md) erläutert alle zwölf Parameter, vier Ausgabengruppen, Berechtigungen, Caller-Zustand und die Grenze zwischen Runtimewerten und Repository-Artefakten. Die Aufnahme enthält keine Host- oder Filtertreiber-, Signatur-, Malware- oder Gesundheitsbewertung.
+
+## Ergänzendes Modul: [monitor].[USP_DatabaseSnapshotInventory]
+
+Die Procedure liest caller-sichtbare Snapshots und deren Sparse-Dateikatalogzeilen aus `master.sys.databases` und `master.sys.master_files`. `source_database_id` grenzt Snapshots ab; ein verborgener Quellname bleibt NULL, die numerische SourceDatabaseId erhalten. `size` beschreibt die maximale Snapshot-Dateikapazität in 8-KiB-Seiten, keine physische Belegung. Die Kataloglesungen sind nicht atomar. Eine fehlende sichtbare Dateizeile liefert einen unbekannten Dateistatus, keinen belegten Nullbestand. Der Produktpfad ändert keine persistenten Datenbank- oder Snapshot-Objekte; lokale Temp-DDL dient der Aufbereitung und TABLE-Ausgabe.
+
+```sql
+EXEC [monitor].[USP_DatabaseSnapshotInventory] @Hilfe=1;
+EXEC [monitor].[USP_DatabaseSnapshotInventory]
+    @SnapshotNames=N'[ExampleSnapshot]',
+    @NurOnline=1,
+    @MaxZeilen=100,
+    @ResultSetArt='CONSOLE',
+    @PrintMeldungen=0;
+```
+
+Die [eigenständige Procedure-Seite](Procedures/USP_DatabaseSnapshotInventory.md) erläutert alle 15 Parameter, fünf Ergebnisgruppen, Berechtigungen und Caller-Zustand. Die Aufnahme begründet weder physische Dateinutzung noch Snapshot-Gesundheit oder Restore-Eignung.

@@ -56,8 +56,9 @@ Der Funktionsumfang umfasst insbesondere folgende Analysebereiche:
 - TempDB-, I/O- und Transaktionslog-Diagnose einschließlich
   SQL-Server-2025-Workload-Group-Limits, aktueller/Peak-Nutzung,
   Verletzungszählern und Resetfenster
-- Objekt-, Index-, Statistik-, Partitionierungs- und Columnstore-Analyse einschließlich capability-adaptiver SQL-Server-2025-JSON-Index-/Pfadmetadaten sowie Statistikherkunft auf lesbaren Secondaries
-- Plan Cache, Query Hash, Showplan und Plan-Detailanalyse
+- Objekt-, Index-, Statistik-, Partitionierungs- und Columnstore-Analyse mit caller-sichtbarer Datenbank-DDL-Triggerinventur einschließlich capability-adaptiver SQL-Server-2025-JSON-Index-/Pfadmetadaten sowie Statistikherkunft auf lesbaren Secondaries
+- Native Modulnamen einschließlich möglicher Pfade und ergänzende Basenamen des SQL-Server-Prozesses ohne Host- oder Filtertreiberurteil
+- Plan Cache, Query Hash, Showplan und Plan-Detailanalyse sowie caller-sichtbare Plan-Guide-Katalogmetadaten
 - Query Store: Laufzeitwerte, Waits, Planwechsel, Regressionen, Forced Plans und Hints
 - Extended Events: Sessions, Targets, Deadlocks und Blocked-Process-Ereignisse
 - SQL Agent, Resource Governor, Hochverfügbarkeit, Backup, Log Shipping und Replikation
@@ -289,11 +290,11 @@ Das Framework folgt den folgenden Betriebs- und Schutzregeln:
 
 ## Dokumentation
 
-Der aktuelle Inventarvertrag umfasst 203 Objekte: 121 öffentliche Procedures, 8 Views, 29 Table-Valued Functions, 25 interne Procedures und 20 Tabellen.
+Der aktuelle Inventarvertrag umfasst 209 Objekte: 127 öffentliche Procedures, 8 Views, 29 Table-Valued Functions, 25 interne Procedures und 20 Tabellen.
 
-Der Frameworkkern umfasst 179 Objekte mit 118 öffentlichen Procedures und 9 Tabellen. Das optionale Snapshotpaket umfasst 24 Objekte mit 3 öffentlichen Procedures und 11 Tabellen.
+Der Frameworkkern umfasst 185 Objekte mit 124 öffentlichen Procedures und 9 Tabellen. Das optionale Snapshotpaket umfasst 24 Objekte mit 3 öffentlichen Procedures und 11 Tabellen.
 
-Der Coreinstaller installiert die 116 öffentlichen Core-Procedures;
+Der Coreinstaller installiert die 117 öffentlichen Core-Procedures;
 die drei Snapshot-Procedures und deren
 Unterstützungsobjekte benötigen die separate Paketinstallation oder das
 entsprechende Opt-in im Gesamtdeployment. Jedes inventarisierte Objekt besitzt

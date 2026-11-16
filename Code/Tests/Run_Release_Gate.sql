@@ -151,12 +151,14 @@ RAISERROR(N'RELEASE_GATE 29/34: Object und Index',10,1) WITH NOWAIT;
 :r ObjectIndex/120_SQL25_Vector_Index_Runtime_Contract.sql
 :r ObjectIndex/121_SQL25_JSON_Index_Inventory_Runtime_Contract.sql
 :r ObjectIndex/123_SQL25_Readable_Secondary_Statistics_Runtime_Contract.sql
+:r ObjectIndex/124_DatabaseDdlTriggerInventory_Runtime_Contract.sql
 
 RAISERROR(N'RELEASE_GATE 30/34: Plan Cache',10,1) WITH NOWAIT;
 :r PlanCache/110_Test_und_Abnahme_Phase3.sql
 :r PlanCache/120_ExecutionPlanAnalysis_Runtime_Contract.sql
 :r PlanCache/121_DIAG003_Parameter_Evidence_Runtime_Contract.sql
 :r PlanCache/123_DIAG005_Plan_Optimizer_Runtime_Contract.sql
+:r PlanCache/135_PlanGuideInventory_Runtime_Contract.sql
 
 RAISERROR(N'RELEASE_GATE 31/34: Query Store',10,1) WITH NOWAIT;
 :r QueryStore/110_Test_und_Abnahme_Phase4.sql
@@ -170,6 +172,7 @@ RAISERROR(N'RELEASE_GATE 32/34: Extended Events',10,1) WITH NOWAIT;
 RAISERROR(N'RELEASE_GATE 33/34: Infrastructure',10,1) WITH NOWAIT;
 :r Infrastructure/110_Test_und_Abnahme_Phase6.sql
 :r Infrastructure/122_SQL25_TempDB_Resource_Governance_Runtime_Contract.sql
+:r Infrastructure/126_AgentProxyInventory_Runtime_Contract.sql
 
 RAISERROR(N'RELEASE_GATE 34/34: Server Health',10,1) WITH NOWAIT;
 :r ServerHealth/110_Test_und_Abnahme_Phase7.sql
@@ -186,6 +189,9 @@ RAISERROR(N'RELEASE_GATE 34/34: Server Health',10,1) WITH NOWAIT;
 :r ServerHealth/139_RowLevelSecurityAndMasking_Runtime_Contract.sql
 :r ServerHealth/140_DistributedTransactionInventory_Runtime_Contract.sql
 :r ServerHealth/141_DatabaseMirroringInventory_Runtime_Contract.sql
+:r ServerHealth/142_SensitivityClassificationSummary_Runtime_Contract.sql
+:r ServerHealth/143_LoadedModuleInventory_Runtime_Contract.sql
+:r ServerHealth/144_DatabaseSnapshotInventory_Runtime_Contract.sql
 :r VersionAdaptive/127_WI0007_External_Model_Inventory_Runtime_Contract.sql
 :r VersionAdaptive/129_WI0004_Segment_Overlap_Runtime_Contract.sql
 

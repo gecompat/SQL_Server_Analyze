@@ -117,6 +117,8 @@ AS
         , (N'USP_ObjectAnalysis',N'object index deep analysis','en',95,N'Bündelt mehrere Objekt- und Indexpfade.')
         , (N'USP_SchemaDesignAnalysis',N'Schema Design Foreign Key Constraint','de',100,N'Erzeugt Reviewfindings zu Schema- und Constraintdesign.')
         , (N'USP_SchemaDesignAnalysis',N'schema design foreign key constraint identity','en',95,N'Vertiefter Katalogreview.')
+        , (N'USP_DatabaseDdlTriggerInventory',N'Datenbank DDL Trigger aktiv deaktiviert Katalog','de',100,N'Listet sichtbare Datenbank-DDL-Trigger ohne Definitionen oder Ausführungsurteil.')
+        , (N'USP_DatabaseDdlTriggerInventory',N'database DDL trigger inventory enabled disabled','en',95,N'Lists caller-visible database DDL trigger metadata only.')
 
         , (N'USP_QueryStats',N'langsame Query Plan Cache','de',100,N'Rangiert gecachte Statements nach Ressourcenverbrauch.')
         , (N'USP_QueryStats',N'top CPU query logical reads','en',95,N'Plan-Cache-Einstieg nach Ressourcenmetrik.')
@@ -130,6 +132,8 @@ AS
         , (N'USP_ShowplanAnalysis',N'showplan operator warning cardinality','en',95,N'Gezielte Showplan-XML-Analyse.')
         , (N'USP_PlanCacheAnalysis',N'Plan Cache vollständig analysieren','de',100,N'Orchestriert die Plan-Cache-Analysen.')
         , (N'USP_PlanCacheAnalysis',N'plan cache analysis orchestrator','en',95,N'Gebündelte Plan-Cache-Tiefenanalyse.')
+        , (N'USP_PlanGuideInventory',N'Plan Guide Katalog aktiv deaktiviert OBJECT SQL TEMPLATE','de',100,N'Inventarisiert sichtbare Plan Guides ohne Definitionen oder Validierung.')
+        , (N'USP_PlanGuideInventory',N'plan guide inventory enabled disabled object sql template','en',95,N'Lists caller-visible plan guide metadata without validity or effectiveness claim.')
         , (N'USP_CreateExecutionEvidenceJson',N'STATISTICS IO TIME normalisieren','de',100,N'Erzeugt ein normalisiertes Evidence-JSON aus bereits erfasster Evidenz.')
         , (N'USP_CreateExecutionEvidenceJson',N'execution evidence json statistics io time','en',95,N'Normalisiert Ausführungsevidenz für die Plananalyse.')
         , (N'USP_ExecutionPlanAnalysis',N'Plan XML analysieren','de',100,N'Eigenständiger Einstieg für ein vorhandenes Showplan-XML.')
@@ -176,6 +180,8 @@ AS
         , (N'USP_AgentStatus',N'sql server agent service status','en',95,N'Leichter Agentstatus.')
         , (N'USP_AgentJobs',N'Job fehlgeschlagen lange Laufzeit','de',100,N'Zeigt problematische Jobs und Historie.')
         , (N'USP_AgentJobs',N'failed long running agent job','en',95,N'Jobstatus-, Dauer- und Fehleranalyse.')
+        , (N'USP_AgentProxyInventory',N'SQL Agent Proxy Credential Subsystem','de',95,N'Zeigt Proxy- und Subsystemkatalog mit Credentialreferenz.')
+        , (N'USP_AgentProxyInventory',N'sql server agent proxy credential subsystem','en',95,N'Reads proxy, credential reference and subsystem catalog metadata.')
         , (N'USP_ResourceGovernorAnalysis',N'Resource Governor Pool Gruppe','de',100,N'Zeigt Pools, Gruppen, Limits und Sessions.')
         , (N'USP_ResourceGovernorAnalysis',N'resource governor pool workload group','en',95,N'Resource-Governor-Kontext.')
         , (N'USP_ResourceGovernorAnalysis',N'TempDB Resource Governance Wirksamkeit','de',100,N'Zeigt gespeichertes und wirksames Workload-Group-Limit getrennt.')
@@ -321,5 +327,11 @@ AS
         , (N'USP_DistributedTransactionInventory',N'MSDTC distributed transaction remote procedure promotion linked server DTC','en',95,N'Lists local SQL configuration and visible transaction metadata with explicit limits.')
         , (N'USP_DatabaseMirroringInventory',N'Datenbankspiegelung Mirroring Status Redo Queue SQL Server','de',100,N'Zeigt begrenzte caller-sichtbare Database-Mirroring-Katalogwerte ohne Gesundheitsurteil.')
         , (N'USP_DatabaseMirroringInventory',N'database mirroring state safety witness redo queue','en',95,N'Lists caller-visible database mirroring catalog values with explicit scope and native NULL limits.')
+        , (N'USP_SensitivityClassificationSummary',N'Sensitivitätsklassifikation klassifizierte Spalten sichtbare Tabellen','de',100,N'Zählt sichtbare Tabellen, Spalten und klassifizierte Teilmengen ohne Klassifikationstexte.')
+        , (N'USP_SensitivityClassificationSummary',N'sensitivity classification classified columns visible tables','en',95,N'Counts caller-visible table columns with classification metadata without reading values or labels.')
+        , (N'USP_LoadedModuleInventory',N'geladene SQL-Prozessmodule DLL nativer Pfad Basename Buildflags','de',100,N'Inventarisiert native DMV-Metadaten des SQL-Prozesses ohne Host- oder Signatururteil.')
+        , (N'USP_LoadedModuleInventory',N'loaded SQL process modules native name path basename build flags','en',95,N'Lists native SQL-process DMV metadata without host-driver or trust claims.')
+        , (N'USP_DatabaseSnapshotInventory',N'Datenbank-Snapshot Quelle Sparse-Datei maximale Kapazitaet','de',100,N'Zeigt caller-sichtbare Snapshot- und Dateikatalogwerte ohne physische Belegungsbehauptung.')
+        , (N'USP_DatabaseSnapshotInventory',N'database snapshot source sparse file maximum capacity','en',95,N'Lists caller-visible snapshot and sparse-file catalog metadata without physical-usage claims.')
     ) AS [v]([ProcedureName],[SearchTerm],[LanguageCode],[SearchWeight],[MatchReason]);
 GO

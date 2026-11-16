@@ -19,12 +19,13 @@ import time
 INTERVAL = 0.250
 WINDOW = 10.0
 MAX_SECONDS = 600
+MAX_DEPLOYMENT_SECONDS = 1200
 MAX_ROWS = 200
 MAX_BYTES = 50 * 1024 * 1024
 REPORT_BYTES = 5 * 1024 * 1024
 LOG_BYTES = 44 * 1024 * 1024
 MARKER = re.compile(
-    r"CI_(BEGIN|CASE|AFTER|END)\|(20[2-7])\|([A-Za-z0-9_]+)\|(\d+)\|"
+    r"CI_(BEGIN|CASE|AFTER|END)\|((?:20[2-7]|DEPLOYMENT))\|([A-Za-z0-9_]+)\|(\d+)\|"
     r"([\dT:.Z-]+)\|(\d+)\|(-?\d+)\|([^|\r\n]{0,180})$"
 )
 RESOURCE_FIELDS = (
@@ -78,6 +79,61 @@ def observed_blocker(samples, case):
     return False
 
 
+def _blocker_rows(sample, case):
+    """Return one observed request anchor and bounded optional corroboration rows."""
+    if not case or sample.get("case") != case:
+        return [], [], set()
+    rows = sample.get("rows", [])
+    target = next((row for row in reversed(rows)
+                   if row.get("kind") == "request"
+                   and row.get("session_id") == case["spid"]
+                   and row.get("blocking_session_id", 0) > 0
+                   and str(row.get("wait_type", "")).startswith("LCK_")), None)
+    if target is None:
+        return [], [], set()
+    blocker_id = target["blocking_session_id"]
+    blocker_requests = [row for row in rows
+                        if row is not target and row.get("kind") == "request"
+                        and row.get("session_id") == blocker_id]
+    blocker_request = blocker_requests[0] if blocker_requests else None
+    waits = [row for row in rows if row.get("kind") == "lock"
+             and row.get("request_session_id") == case["spid"]
+             and row.get("request_status") == "WAIT"]
+    grants_by_key = {}
+    grants = []
+    for grant in rows:
+        if grant.get("kind") == "lock" and grant.get("request_session_id") == blocker_id \
+           and grant.get("request_status") == "GRANT":
+            grants.append(grant)
+            grants_by_key.setdefault(resource_key(grant), grant)
+    pair = next(((wait, grants_by_key[resource_key(wait)]) for wait in waits
+                 if resource_key(wait) in grants_by_key), None)
+    optional = [blocker_request] if blocker_request is not None else []
+    if pair:
+        optional.extend(pair)
+    mandatory = [target]
+    retained_ids = {id(target)}
+    selected_optional = []
+    for row in optional:
+        if id(row) not in retained_ids:
+            selected_optional.append(row)
+            retained_ids.add(id(row))
+    target_requests = [row for row in rows if row.get("kind") == "request"
+                       and row.get("session_id") == case["spid"]
+                       and row.get("blocking_session_id", 0) > 0
+                       and str(row.get("wait_type", "")).startswith("LCK_")]
+    candidate_rows = [*target_requests, *blocker_requests, *waits, *grants]
+    discarded_ids = {id(row) for row in candidate_rows if id(row) not in retained_ids}
+    return mandatory, selected_optional, discarded_ids
+
+
+
+def _summary_bytes(summary, secret, compact=False):
+    text = json.dumps(summary, ensure_ascii=True, separators=(",", ":") if compact else None,
+                      indent=None if compact else 2)
+    return redact(text, secret).encode("utf-8")
+
+
 def sample_sql(spid):
     spid = int(spid)
     if not 1 <= spid <= 32767:
@@ -112,6 +168,7 @@ GO
 
 TEST_FILES = {p.name[:3]: "Code/Tests/Integration/"+p.name
               for p in Path(__file__).parent.glob("20[2-7]*.sql")}
+TEST_FILES["DEPLOYMENT"] = "Code/Install/generated/Deployment_Runtime.generated.sql"
 
 
 class Sqlcmd:
@@ -176,8 +233,10 @@ class Sqlcmd:
 
 
 class Observation:
-    def __init__(self, factory):
+    def __init__(self, factory, deployment_expected=False):
         self.factory = factory
+        self.deployment_expected = deployment_expected
+        self.max_seconds = MAX_DEPLOYMENT_SECONDS if deployment_expected else MAX_SECONDS
         self.case = None
         self.samples = deque(maxlen=40)
         self.frozen = None
@@ -188,13 +247,23 @@ class Observation:
         self.thread = threading.Thread(target=self._observe, daemon=True)
         self.lock = threading.Lock()
         self.started = None
+        self.deployment_session = None
+        self.deployment_phase_seen = False
 
     def feed(self, line):
         item = marker(line)
         with self.lock:
             if item:
                 self.case = None if item["kind"] == "END" else item
-                if self.started is None and item["kind"] != "END":
+                if item["suite"] == "DEPLOYMENT" and item["kind"] == "BEGIN":
+                    self.deployment_session = item["spid"]
+                deployment_phase = (item["suite"] == "DEPLOYMENT" and item["kind"] == "CASE"
+                    and item["site"] == "SnapshotSchema"
+                    and item["spid"] == self.deployment_session)
+                if deployment_phase:
+                    self.deployment_phase_seen = True
+                if self.started is None and item["kind"] != "END" and (
+                        item["suite"] != "DEPLOYMENT" or deployment_phase):
                     self.started = time.monotonic()
                     self.thread.start()
             error = re.match(r"^Msg (\d+), Level \d+, State \d+", line)
@@ -223,7 +292,7 @@ class Observation:
             connection = self.factory()
             while not self.stop.is_set():
                 tick = time.monotonic()
-                if tick - self.started >= MAX_SECONDS:
+                if tick - self.started >= self.max_seconds:
                     self.errors.append("OBSERVATION_TIME_LIMIT")
                     break
                 with self.lock:
@@ -255,6 +324,10 @@ class Observation:
             self.thread.join(timeout=8)
             if self.thread.is_alive():
                 self.errors.append("OBSERVER_CLEANUP_DEADLINE")
+        if self.deployment_expected and self.deployment_session is None:
+            self.errors.append("DEPLOYMENT_BEGIN_NOT_OBSERVED")
+        if (self.deployment_expected or self.deployment_session is not None) and not self.deployment_phase_seen:
+            self.errors.append("DEPLOYMENT_PHASE_NOT_OBSERVED")
         with self.lock:
             if self.frozen is None:
                 return {"status": "NO_1222", "errors": list(self.errors), "details": list(self.details)}
@@ -309,10 +382,73 @@ def encode_report(report, secret, limit=REPORT_BYTES):
     return payload
 
 
+def diagnostic_summary(report, secret):
+    """Expose a bounded sanitized summary without mutating the artifact report."""
+    samples = report.get("samples", [])
+    case = report.get("case")
+    selected = next((sample for sample in reversed(samples)
+                     if case and _blocker_rows(sample, case)[0]),
+                    samples[-1] if samples else None)
+    mandatory_rows, optional_rows, discarded_ids = _blocker_rows(selected, case) if selected else ([], [], set())
+    preferred_rows = [*mandatory_rows, *optional_rows]
+    retained_ids = {id(row) for row in preferred_rows}
+    retained_ids.update(discarded_ids)
+    rows = list(preferred_rows)
+    if selected:
+        for row in selected.get("rows", []):
+            if id(row) not in retained_ids:
+                rows.append(row)
+                retained_ids.add(id(row))
+    summary_sample = dict(selected, rows=rows) if selected else None
+    summary = dict(status=report["status"], trigger=report.get("trigger"), case=case,
+                   samples=[summary_sample] if summary_sample else [], errors=list(report.get("errors", [])),
+                   sqlcmd_exit_code=report["sqlcmd_exit_code"], truncated=report.get("truncated", False),
+                   observation_limit_seconds=report.get("observation_limit_seconds", MAX_SECONDS))
+    if summary["status"] == "BLOCKER_OBSERVED" and not mandatory_rows:
+        summary["status"] = "BLOCKER_NOT_CAPTURED"
+        summary["truncated"] = True
+    summary = json.loads(json.dumps(summary))
+    payload = _summary_bytes(summary, secret)
+    while len(payload) > 16 * 1024 and summary["samples"] and len(summary["samples"][0]["rows"]) > len(preferred_rows):
+        summary["samples"][0]["rows"].pop()
+        summary["truncated"] = True
+        payload = _summary_bytes(summary, secret)
+    if len(payload) > 16 * 1024 and optional_rows and summary["samples"]:
+        summary["samples"][0]["rows"] = summary["samples"][0]["rows"][:len(mandatory_rows)]
+        summary["truncated"] = True
+        payload = _summary_bytes(summary, secret)
+    if len(payload) > 16 * 1024:
+        if summary["status"] == "BLOCKER_OBSERVED":
+            summary["status"] = "BLOCKER_NOT_CAPTURED"
+        summary["truncated"] = True
+        if summary["samples"]:
+            summary["samples"][0]["rows"] = []
+        payload = _summary_bytes(summary, secret)
+    if len(payload) > 16 * 1024:
+        summary.pop("errors", None)
+        payload = _summary_bytes(summary, secret, compact=True)
+    return payload.decode("utf-8")
+
+def deployment_query():
+    """Bracket generated deployment in the same SQLCMD session with DEPLOYMENT markers."""
+    return """SET NOCOUNT ON;
+DECLARE @CiDeploymentMarker nvarchar(400)=CONCAT(N'CI_BEGIN|DEPLOYMENT|Deployment|0|',
+    CONVERT(varchar(27),SYSUTCDATETIME(),126),N'Z|',@@SPID,N'|',@@LOCK_TIMEOUT,N'|generated');
+RAISERROR(N'%s',10,1,@CiDeploymentMarker) WITH NOWAIT;
+GO
+:r /work/Code/Install/generated/Deployment_Runtime.generated.sql
+GO
+DECLARE @CiDeploymentMarker nvarchar(400)=CONCAT(N'CI_END|DEPLOYMENT|Deployment|0|',
+    CONVERT(varchar(27),SYSUTCDATETIME(),126),N'Z|',@@SPID,N'|',@@LOCK_TIMEOUT,N'|generated');
+RAISERROR(N'%s',10,1,@CiDeploymentMarker) WITH NOWAIT;
+GO"""
+
+
 def run(args):
     """Keep the original test return code even if collection or publication fails."""
     ephemeral_value = os.environ["MSSQL_EPHEMERAL_CREDENTIAL"]
-    observer = Observation(lambda: Sqlcmd(args.container, args.sqlcmd))
+    observer = Observation(lambda: Sqlcmd(args.container, args.sqlcmd),
+                           deployment_expected=getattr(args, "deployment", False))
     log = Path(args.log)
     log.parent.mkdir(parents=True, exist_ok=True)
     env = dict(os.environ, SQLCMDPASSWORD=ephemeral_value)
@@ -322,7 +458,7 @@ def run(args):
     # A completed BEGIN batch makes SQLCMD deliver the session marker before
     # executing the test batch. CASE messages may still arrive after the wait;
     # the observer's server timestamps retain their phase association.
-    query = getattr(args, "query", None)
+    query = deployment_query() if getattr(args, "deployment", False) else getattr(args, "query", None)
     if query:
         command.insert(2, "-i")
         command += ["-q", "SET NOCOUNT ON;"]
@@ -387,7 +523,8 @@ def run(args):
     report["errors"].extend(read_errors)
     report.update(sqlcmd_exit_code=code, log_incomplete=writer.incomplete,
                   commit=os.environ.get("GITHUB_SHA"), run_id=os.environ.get("GITHUB_RUN_ID"),
-                  attempt=os.environ.get("GITHUB_RUN_ATTEMPT"))
+                  attempt=os.environ.get("GITHUB_RUN_ATTEMPT"),
+                  observation_limit_seconds=observer.max_seconds)
     if code or report["errors"] or writer.incomplete:
         try:
             destination = Path(args.artifacts)
@@ -399,6 +536,7 @@ def run(args):
         except OSError:
             print(f"CI lock diagnostics publication failed; sqlcmd exit={code}")
             return code or 1
+        print("CI lock diagnostic summary: " + diagnostic_summary(report, ephemeral_value))
         print(f"CI lock diagnostics: {report['status']}; sqlcmd exit={code}; "
               f"observer errors={len(report['errors'])}; incomplete={writer.incomplete}")
     return code if code else (1 if report["errors"] or writer.incomplete else 0)
@@ -409,6 +547,8 @@ def main():
     parser.add_argument("--container", default="sqlserver-analyze-impact-2025")
     parser.add_argument("--sqlcmd", required=True)
     parser.add_argument("--input", default="Run_Impact_Gate.sql")
+    parser.add_argument("--deployment", action="store_true",
+                        help="observe generated deployment in the current SQLCMD session")
     parser.add_argument("--log", required=True)
     parser.add_argument("--artifacts", required=True)
     return run(parser.parse_args())

@@ -2166,3 +2166,85 @@ USP_DatabaseMirroringInventory,StatusCodeOut,varchar(40),NULL OUTPUT
 USP_DatabaseMirroringInventory,IsPartialOut,bit,NULL OUTPUT
 USP_DatabaseMirroringInventory,ErrorNumberOut,int,NULL OUTPUT
 USP_DatabaseMirroringInventory,ErrorMessageOut,nvarchar(2048),NULL OUTPUT
+USP_AgentProxyInventory,MaxZeilen,int,1000
+USP_AgentProxyInventory,ResultSetArt,varchar(16),'CONSOLE'
+USP_AgentProxyInventory,ResultTablesJson,nvarchar(max),NULL
+USP_AgentProxyInventory,JsonErzeugen,bit,0
+USP_AgentProxyInventory,Json,nvarchar(max),NULL OUTPUT
+USP_AgentProxyInventory,Hilfe,bit,0
+USP_AgentProxyInventory,StatusCodeOut,varchar(40),NULL OUTPUT
+USP_AgentProxyInventory,IsPartialOut,bit,NULL OUTPUT
+USP_AgentProxyInventory,ErrorNumberOut,int,NULL OUTPUT
+USP_AgentProxyInventory,ErrorMessageOut,nvarchar(2048),NULL OUTPUT
+USP_SensitivityClassificationSummary,DatabaseNames,nvarchar(max),NULL
+USP_SensitivityClassificationSummary,SystemdatenbankenEinbeziehen,bit,0
+USP_SensitivityClassificationSummary,DatabaseNamePattern,nvarchar(4000),NULL
+USP_SensitivityClassificationSummary,MaxZeilen,int,1000
+USP_SensitivityClassificationSummary,LockTimeoutMs,int,0
+USP_SensitivityClassificationSummary,ResultSetArt,varchar(16),'CONSOLE'
+USP_SensitivityClassificationSummary,ResultTablesJson,nvarchar(max),NULL
+USP_SensitivityClassificationSummary,JsonErzeugen,bit,0
+USP_SensitivityClassificationSummary,Json,nvarchar(max),NULL OUTPUT
+USP_SensitivityClassificationSummary,PrintMeldungen,bit,1
+USP_SensitivityClassificationSummary,Hilfe,bit,0
+USP_SensitivityClassificationSummary,StatusCodeOut,varchar(40),NULL OUTPUT
+USP_SensitivityClassificationSummary,IsPartialOut,bit,NULL OUTPUT
+USP_SensitivityClassificationSummary,ErrorNumberOut,int,NULL OUTPUT
+USP_SensitivityClassificationSummary,ErrorMessageOut,nvarchar(2048),NULL OUTPUT
+USP_PlanGuideInventory,DatabaseNames,nvarchar(max),NULL
+USP_PlanGuideInventory,SystemdatenbankenEinbeziehen,bit,0
+USP_PlanGuideInventory,DatabaseNamePattern,nvarchar(4000),NULL
+USP_PlanGuideInventory,MaxZeilen,int,1000
+USP_PlanGuideInventory,LockTimeoutMs,int,0
+USP_PlanGuideInventory,ResultSetArt,varchar(16),'CONSOLE'
+USP_PlanGuideInventory,ResultTablesJson,nvarchar(max),NULL
+USP_PlanGuideInventory,JsonErzeugen,bit,0
+USP_PlanGuideInventory,Json,nvarchar(max),NULL OUTPUT
+USP_PlanGuideInventory,PrintMeldungen,bit,1
+USP_PlanGuideInventory,Hilfe,bit,0
+USP_PlanGuideInventory,StatusCodeOut,varchar(40),NULL OUTPUT
+USP_PlanGuideInventory,IsPartialOut,bit,NULL OUTPUT
+USP_PlanGuideInventory,ErrorNumberOut,int,NULL OUTPUT
+USP_PlanGuideInventory,ErrorMessageOut,nvarchar(2048),NULL OUTPUT
+USP_DatabaseDdlTriggerInventory,DatabaseNames,nvarchar(max),NULL
+USP_DatabaseDdlTriggerInventory,SystemdatenbankenEinbeziehen,bit,0
+USP_DatabaseDdlTriggerInventory,DatabaseNamePattern,nvarchar(4000),NULL
+USP_DatabaseDdlTriggerInventory,MaxZeilen,int,1000
+USP_DatabaseDdlTriggerInventory,LockTimeoutMs,int,0
+USP_DatabaseDdlTriggerInventory,ResultSetArt,varchar(16),'CONSOLE'
+USP_DatabaseDdlTriggerInventory,ResultTablesJson,nvarchar(max),NULL
+USP_DatabaseDdlTriggerInventory,JsonErzeugen,bit,0
+USP_DatabaseDdlTriggerInventory,Json,nvarchar(max),NULL OUTPUT
+USP_DatabaseDdlTriggerInventory,PrintMeldungen,bit,1
+USP_DatabaseDdlTriggerInventory,Hilfe,bit,0
+USP_DatabaseDdlTriggerInventory,StatusCodeOut,varchar(40),NULL OUTPUT
+USP_DatabaseDdlTriggerInventory,IsPartialOut,bit,NULL OUTPUT
+USP_DatabaseDdlTriggerInventory,ErrorNumberOut,int,NULL OUTPUT
+USP_DatabaseDdlTriggerInventory,ErrorMessageOut,nvarchar(2048),NULL OUTPUT
+USP_LoadedModuleInventory,NurBuildFlags,bit,0
+USP_LoadedModuleInventory,MaxZeilen,int,1000
+USP_LoadedModuleInventory,ResultSetArt,varchar(16),'CONSOLE'
+USP_LoadedModuleInventory,ResultTablesJson,nvarchar(max),NULL
+USP_LoadedModuleInventory,JsonErzeugen,bit,0
+USP_LoadedModuleInventory,Json,nvarchar(max),NULL OUTPUT
+USP_LoadedModuleInventory,PrintMeldungen,bit,1
+USP_LoadedModuleInventory,Hilfe,bit,0
+USP_LoadedModuleInventory,StatusCodeOut,varchar(40),NULL OUTPUT
+USP_LoadedModuleInventory,IsPartialOut,bit,NULL OUTPUT
+USP_LoadedModuleInventory,ErrorNumberOut,int,NULL OUTPUT
+USP_LoadedModuleInventory,ErrorMessageOut,nvarchar(2048),NULL OUTPUT
+USP_DatabaseSnapshotInventory,SnapshotNames,nvarchar(max),NULL
+USP_DatabaseSnapshotInventory,NurOnline,bit,1
+USP_DatabaseSnapshotInventory,SystemdatenbankenEinbeziehen,bit,0
+USP_DatabaseSnapshotInventory,MaxZeilen,int,1000
+USP_DatabaseSnapshotInventory,LockTimeoutMs,int,0
+USP_DatabaseSnapshotInventory,ResultSetArt,varchar(16),'CONSOLE'
+USP_DatabaseSnapshotInventory,ResultTablesJson,nvarchar(max),NULL
+USP_DatabaseSnapshotInventory,JsonErzeugen,bit,0
+USP_DatabaseSnapshotInventory,Json,nvarchar(max),NULL OUTPUT
+USP_DatabaseSnapshotInventory,PrintMeldungen,bit,1
+USP_DatabaseSnapshotInventory,Hilfe,bit,0
+USP_DatabaseSnapshotInventory,StatusCodeOut,varchar(40),NULL OUTPUT
+USP_DatabaseSnapshotInventory,IsPartialOut,bit,NULL OUTPUT
+USP_DatabaseSnapshotInventory,ErrorNumberOut,int,NULL OUTPUT
+USP_DatabaseSnapshotInventory,ErrorMessageOut,nvarchar(2048),NULL OUTPUT

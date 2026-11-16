@@ -1,0 +1,612 @@
+<!-- artifact_uid: urn:uuid:01a1bd3e-ae00-73e6-abed-6f319d7b690d; registration_state: DEFERRED -->
+
+# Historienarchiv der Fortsetzungsroute vom 8. November 2026
+
+**Status:** Historischer, nicht maßgeblicher Kontext. Die damaligen Aufträge, Statusangaben, Grenzen und Evidenzstände sind auf ihren Quellenstand bezogen und keine aktuelle Arbeitsanweisung.
+**Unveränderter Next-Steps-Quellstand:** Commit `75d3b885e31814793f681839f82ff66be6974556`, Blob `4608b1396ab3253826ace19e402390b2e29f3623`.
+**Unveränderter Waves-Abschnitt:** Blob `5e7cedcfcb44380f2fe5f24e3394b6c37f32ca66`, Abschnitt `Ausführung, Review und endliche Grenzen`.
+**Aktuelle Fortsetzung:** [Nächste Arbeitsschritte](Next_Steps.md) und [maßgebliche Entwicklungsplanung](Development_Waves_2026-10.md).
+
+Die folgende Next-Steps-Datei ist vollständig und unverändert als Markdown-Snapshot übernommen. Ihre Links bleiben auf die damaligen Quellen bezogen. Danach folgt der damalige Ausführungs- und Kontrollabschnitt aus der Entwicklungsplanung, ebenfalls unverändert. Historische Freigaben, Checkpoints und offene Statuswerte setzen keine aktuelle Grenze und erteilen keine aktuelle Autorisierung.
+
+# Nächste Arbeitsschritte
+
+**Stand:** 8. November 2026  
+**Zweck:** aktueller Auftragsstatus und Einstieg in die erhaltene Entwicklungshistorie für `gecompat/SQL_Server_Analyze`.
+
+## Aktuelle Orchestrierung
+
+Die [Entwicklungsplanung](Development_Waves_2026-10.md) ist die einzige maßgebliche Quelle für Reihenfolge, Zuständigkeit und nächste ausführbare Welle. Dieser kurze Einstieg hält den aktuellen Stand, seine Evidenzgrenzen und die wichtigsten Fortsetzungsregeln fest. Abgeschlossene Planungs- und Ausführungsnachweise bleiben im [Historienarchiv](Next_Steps_History_2026-11-05.md).
+
+## Nächste ausführbare Welle: fünf XE-Modulschalter vollständig beschreiben
+
+Die begrenzte Kohorte ergänzt ausschließlich die individuellen Hilfeeinträge und Guidezeilen von `MitSessionInventar`, `MitTargetRuntime`, `MitEvents`, `MitDeadlocks` und `MitBlockedProcesses` in `USP_ExtendedEventsAnalysis`. Der neue Quellabgleich zeigt, dass diese Einträge zwar Default und Aktivierung bei 1 beschreiben, aber die eigene Bedeutung von 0 und NULL auslassen. Andere abgeschlossene Parameterkohorten werden dadurch nicht erneut pauschal geöffnet.
+
+Jeder Eintrag erhält die Eingabeform als bit, seinen unveränderten ausdrücklich bezeichneten Default, die Bedeutung von 0 und 1 sowie die tatsächliche NULL-Behandlung. Andere SQL-Argumente unterliegen vor Prozedureintritt der Typkonvertierung; die Procedure besitzt keine eigene Leertextnormalisierung. Childzweck, Argumentweitergabe und die bisherigen Schutzbedingungen bleiben beschrieben. Eine Bestätigungsvariable wird dabei nicht mit der gesamten Deep-Analysis-Freigabe gleichgesetzt.
+
+Das XE-Ausführungsverhalten bleibt erhalten. NULL aktiviert das jeweilige Teilmodul nicht und wird nicht auf 0 normalisiert. Die bestehende Leerscope-Prüfung lehnt nur fünf exakte 0-Werte ab. Enthält eine sonst inaktive Auswahl NULL, kann der Parent deshalb `AVAILABLE` ohne Kindaufruf liefern. Die Hilfe beschreibt diese Grenze; eine Änderung wie beim zuletzt korrigierten PlanCache-Guard gehört nicht zu diesem Umfang. Es werden keine Rechte, Analysepfade, Defaults, Tests oder Reihenfolgen geändert. Der Quellbefund ist kein beobachteter Produktionsvorfall.
+
+Der unabhängige Quellen- und Guidereview ist PASS. Die Quelle ist an `6c9e923fb3a3678153cb549b686b55d22c38c56e` und der Guide an `9e1be6da3179ee3441b8f1df28b0f588f6e238ce` gebunden. Die Rückersetzung genau der fünf Hilfe-PRINTs und der fünf Guidezeilen reproduziert die vollständigen Basisdateien. Beispiele, übrige Hilfeeinträge und Analyseanweisungen bleiben unverändert.
+
+Der kanonische Lauf [42525448242](https://github.com/gecompat/SQL_Server_Analyze/actions/runs/42525448242), Job `128867960460`, erzeugte den OPS-Installer `015cc793868f4d764d4022e23e27c417e8b3e017` mit 6.520.447 Bytes. Das vollständige Modul einschließlich Header wurde unabhängig abgeleitet; die Rückersetzung rekonstruiert die vollständige Basis. Kanonische Bytegleichheit, unveränderter Rest und unveränderte Update-Datei wurden vor den beiden Blob-Uploads geprüft. Das vollständige Installer-Readback entspricht der Ableitung. Das Envelope ist an `b77c56e6cc768ef4ba4b5c835971c6c3349b531d` gebunden. Der Hilfsbranch ist regulär mit `dfa1f35dafc0b59122290c6cbe10e673565c2715` auf den ursprünglichen Baum `4df10207a1a5d94703a49257d1e24670b0211664` zurückgestellt. Dabei wurde keine SQL-Instanz gestartet; der Produktstand enthält keine Workflowänderung.
+
+Die erforderlichen Head-Gates und Cleanup am exakten Produkthead sowie nach regulärer Integration die erste Main-Nachprüfung stehen noch aus. Für diese reine Hilfeänderung werden keine neuen Tests geschrieben; die kanonische CI bestimmt den erforderlichen Auswahlumfang. Eine neue native Laufzeit- oder Plattformqualifikation wird nicht vorweggenommen.
+
+<a id="nächste-ausführbare-welle-inaktive-null-modulschalter-im-plancache-wrapper"></a>
+
+## Abgeschlossen: inaktive NULL-Modulschalter im PlanCache-Wrapper
+
+PR #652 ist einschließlich erster Main-Nachprüfung abgeschlossen. Merge/Main `9520ff4f651c2a9df8e3aaec0fc9eeba1c2c8264` enthält den geprüften Baum `3f19b80efe10c2092873b6659b94ede7e432f703`; die geordneten Eltern sind `f5b8bc929a8584aa76f07f08958400c426341d0b` und `446d880b6bef5917325b25375544f8b5019a158d`.
+
+Head [42521348554](https://github.com/gecompat/SQL_Server_Analyze/actions/runs/42521348554) und Main [42522778462](https://github.com/gecompat/SQL_Server_Analyze/actions/runs/42522778462) bestanden Deployment sowie acht ausgewählte SQL-Server-2025-Verträge bei Compatibility Level 170: Common 124 und 165, Integration 110, 196 und 198 sowie PlanCache 110, 126 und 134. Sechs Head-Workflows mit acht Checks und fünf Main-Workflows mit sieben Checks bestanden. Beide Stände bestanden 80 statische Validatoren, beide kanonischen Installervergleiche, 18 Cleanup-Szenarien und den tatsächlichen StopSynthetic-Schritt. Die 16 neuen inaktiven Kombinationen und der positive Kindaufruf sind durch den erfolgreichen Fail-fast-Vertrag 165 gebunden; separate Erfolgsmarker dieser Fälle wurden nicht erfasst. Permission-/Regex-Matrizen und ExecutionPlanStandalone waren nicht ausgewählt; eine unabhängige Container-Abwesenheitsprobe wurde nicht ausgeführt.
+
+Die begrenzte Korrektur betrifft ausschließlich die Prüfung einer leeren Modulauswahl in `USP_PlanCacheAnalysis`. Bei allen vier Schaltern ist NULL als inaktiv dokumentiert; ein Kindaufruf benötigt genau 1. Die bisherige All-aus-Bedingung vergleicht die Schalter jedoch exakt mit 0. Bei einer Mischung aus 0 und NULL kann sie UNKNOWN bleiben, obwohl kein Kind aktiviert ist, und den Ausgangsstatus `AVAILABLE` stehenlassen. Das ist ein Quellbefund, kein beobachteter Produktionsvorfall.
+
+Die kleinste Änderung behandelt NULL ausschließlich innerhalb dieser All-aus-Bedingung wie 0. Die eigentlichen Argumente werden nicht normalisiert. Ein einzelnes aktiviertes Modul mit anderen NULL-Schaltern bleibt zulässig; seine Argumentweitergabe und vorhandenen Statusprüfungen bleiben erhalten. Ein Hilfesatz und der zugehörige Guideabsatz erklären, dass mindestens ein Schalter genau 1 sein muss. Dauerparameter, Grenzen, Ausgabearten, TABLE-Vorbereitung und Rechte bleiben unverändert. Die abweichenden Verträge von Query Store und Extended Events gehören nicht zu diesem Umfang.
+
+Der bestehende Vertrag 165 bleibt vollständig erhalten. Ein zusätzlicher direkter JSON-Test prüft alle 16 Kombinationen aus 0 und NULL ohne aktiviertes Kind auf `INVALID_PARAMETER`, leere Modul-/Warnungsarrays und vier ausdrücklich vorhandene Kindschlüssel mit JSON-null. Ein positiver QueryStats-Aufruf mit drei NULL-Schaltern kontrolliert die erhaltene Aktivierung eines einzelnen Kindes. Der synthetische Hash wird zuvor unabhängig als leer geprüft; Zeilenlimit und ruhige Ausgabe begrenzen die zurückgegebenen Daten. Frische OUTPUT-Sentinels, NULL-sichere Pflichtfeldprüfungen und die Typen und Anzahlen der JSON-Schlüssel verhindern einen Erfolg bei fehlenden Ausgängen. Neue Fixtures, Rechte, lokale Tests oder Plan-XML-Nutzdaten sind nicht erforderlich. Die zusätzlichen Kontrollen sind durch die abgeschlossenen Head- und Main-Ausführungen von Vertrag 165 qualifiziert.
+
+Der unabhängige Quellen-, Test- und Guidereview ist nach der Korrektur der Tabellenposition PASS. Die Quelle ist an `108aa8aabbedf7c7e87ca6edb6f5ef18e4ed562d`, der Guide an `cf63bd8e23e4a56a3d69ce6cfb5a4921b03ef8fe` und der erweiterte Vertrag 165 an `18677c75bb33298107b9868be69a6ef365bab54c` gebunden. Die ursprünglichen 26.018 UTF-8-Bytes des Vertrags bleiben als exaktes Präfix erhalten. Die Rückersetzung der vier Guardterme und des neuen Hilfesatzes reproduziert die bisherige Quelldatei vollständig.
+
+Der kanonische Lauf [42520942901](https://github.com/gecompat/SQL_Server_Analyze/actions/runs/42520942901), Job `128854045306`, erzeugte den OPS-Installer `4e112a07bdb17180dbdf652110125e2cdae650db` mit 6.518.269 Bytes. Das vollständige Modul einschließlich Header wurde unabhängig abgeleitet; die Rückersetzung rekonstruiert die vollständige Basis. Kanonische Bytegleichheit, unveränderter Rest und unveränderte Update-Datei wurden vor den beiden Blob-Uploads geprüft. Das vollständige Installer-Readback entspricht der Ableitung. Das Envelope ist an `1aa358d951c9b7cf000601e4e1af9c33b38a54da` gebunden. Der Hilfsbranch ist regulär mit `4234ec4173ec946a375a81f1bbb1586210792ef4` auf den ursprünglichen Baum `4df10207a1a5d94703a49257d1e24670b0211664` zurückgestellt. Dabei wurde keine SQL-Instanz gestartet; der Produktstand enthält keine Workflowänderung.
+
+Alle erforderlichen Head-Gates, Cleanup und die erste Main-Nachprüfung sind abgeschlossen. Der Laufzeitnachweis bleibt auf die ausgewählten Verträge begrenzt.
+
+<a id="nächste-ausführbare-welle-null-dauergrenze-der-plancache-wrapper"></a>
+
+## Abgeschlossen: NULL-Dauergrenze der PlanCache-Wrapper
+
+PR #651 ist einschließlich erster Main-Nachprüfung abgeschlossen. Merge/Main `f5b8bc929a8584aa76f07f08958400c426341d0b` enthält den geprüften Baum `799bcad9e7622fd459f1c77de6bc6d4afd7141ae`; die geordneten Eltern sind `b4a0b25bf94ec957daf0507c6e9e0bb8ac6f53fa` und `2ef7ba1a43bb559df0f9839e98e14475e05ee66b`.
+
+Head [42516638311](https://github.com/gecompat/SQL_Server_Analyze/actions/runs/42516638311) und Main [42518051036](https://github.com/gecompat/SQL_Server_Analyze/actions/runs/42518051036) bestanden Deployment sowie zehn ausgewählte SQL-Server-2025-Verträge bei Compatibility Level 170: Common 124 und 165, Integration 110, 196 und 198 sowie PlanCache 110, 121, 123, 126 und 134. Sechs Head-Workflows mit acht Checks und fünf Main-Workflows mit sieben Checks bestanden. Beide Stände bestanden 80 statische Validatoren, beide kanonischen Installervergleiche, 18 Cleanup-Szenarien und den tatsächlichen StopSynthetic-Schritt. Die neuen Dauerfälle sind durch den erfolgreichen Fail-fast-Vertrag 126 gebunden; separate Erfolgsmarker dieser Fälle wurden nicht erfasst. Permission-/Regex-Matrizen und ExecutionPlanStandalone waren nicht ausgewählt; eine unabhängige Container-Abwesenheitsprobe wurde nicht ausgeführt.
+
+Die begrenzte Korrektur ergänzt in `USP_ShowplanAnalysis` und `USP_PlanCacheAnalysis` die ausdrückliche Ablehnung von `MaxDurationSeconds=NULL` an der bestehenden Parameterprüfung. Beide Wrapper prüfen bereits den geschlossenen Bereich 1 bis 3600, normalisieren NULL aber nicht. Beim Showplan-Wrapper ergibt NULL zunächst eine fehlende Wrapper-Deadline; die zentrale XML-Analyse lehnt es erst ab, wenn sie erreicht wird. Das ist ein Quellbefund, kein beobachteter Produktionsvorfall.
+
+Die beiden neuen NULL-Prädikate bewahren Default 30, gültige Werte, die kooperative Prüfung zwischen Kandidaten und alle übrigen Parameterverträge. Eine laufende XML-Analyse wird dadurch nicht hart unterbrochen. Hilfeaufrufe und die bestehende Reihenfolge von TABLE-Vorbereitung und Eingabeprüfung bleiben erhalten; eine Ablehnung vor jeder vorbereitenden Arbeit wird nicht zugesichert. Die individuellen Hilfezeilen und Guideeinträge werden entsprechend berichtigt.
+
+Der bestehende Vertrag 126 bleibt vollständig erhalten und erhält direkte Regressionsaufrufe der beiden Wrapper. Sechs ungültige Werte einschließlich NULL und der Bereichsgrenzen außerhalb des Vertrags müssen `INVALID_PARAMETER` ohne Kinddaten liefern. Die Werte 1, 30 und 3600 sowie der ausgelassene Default bilden positive Kontrollen. Frische JSON-OUTPUT-Sentinels, NULL-sichere Statusprüfungen und leere Ausgabemengen sichern die Fehlerfälle. Beim PlanCache-Wrapper ist QueryStats tatsächlich eingeschaltet; die positiven Kontrollen verlangen genau dessen ausgeführten Modulstatus. Showplan verwendet den bestehenden Datenbankselektor und die hohe Mindestanzahl mit höchstens einem Kandidaten. Es werden keine Plan-XML-Nutzdaten protokolliert. Die zusätzlichen Dauerfälle sind durch die abgeschlossenen Head- und Main-Ausführungen von Vertrag 126 qualifiziert.
+
+Der unabhängige Quellen- und Testreview ist PASS. Die Quellen sind an `9637b1c4906ec735e776f80959bde20db73575a3` und `232efbc797e8ffec0978bf2b4f3b36eae8c56b75` gebunden, der erweiterte Vertrag 126 an `a93569dd016289de6469db790794cac8101451b1`. Die Rückersetzung der beiden neuen Prädikate und Hilfezeilen reproduziert die bisherigen Quelldateien vollständig.
+
+Der kanonische Lauf [42516191958](https://github.com/gecompat/SQL_Server_Analyze/actions/runs/42516191958), Job `128839619195`, erzeugte den OPS-Installer `44fc004ef9cd5a1ca5fa2b3b06aab5f7902b4411` mit 6.518.101 Bytes. Beide vollständigen Module einschließlich Headern wurden unabhängig abgeleitet; die Rückersetzung rekonstruiert die vollständige Basis. Kanonische Bytegleichheit, unveränderter Rest und unveränderte Update-Datei wurden vor den beiden Blob-Uploads geprüft. Das vollständige Installer-Readback entspricht der Ableitung. Das Envelope ist an `e5fe8973e758886d61d38a60c058ec83e45e112c` gebunden. Der Hilfsbranch ist regulär mit `eef5ea401521d51a2f178c284117f63515d6a2a4` auf den ursprünglichen Baum `4df10207a1a5d94703a49257d1e24670b0211664` zurückgestellt. Dabei wurde keine SQL-Instanz gestartet; der Produktstand enthält keine Workflowänderung.
+
+Alle erforderlichen Head-Gates, Cleanup und die erste Main-Nachprüfung sind abgeschlossen. Der Laufzeitnachweis bleibt auf die tatsächlich ausgewählten Verträge begrenzt.
+
+## Abgeschlossen: Timeoutbeschreibungen interner SSIS-Helfer
+
+PR #650 ist einschließlich erster Main-Nachprüfung abgeschlossen. Merge/Main `b4a0b25bf94ec957daf0507c6e9e0bb8ac6f53fa` enthält den geprüften Baum `8c526ad2c0b4be5d12bccc434e6b1c24aa0e80f1`; die geordneten Eltern sind `e8417ac685a8dd3d4df5f807a6b59d82102502fc` und `c30bc7340db377d1106712161884289598176a43`. Die Quellen ändern ausschließlich die beiden individuellen Timeoutbeschreibungen und zugehörige Wiederherstellungsprosa; die ausführbaren Prozedurdefinitionen bleiben bytegleich.
+
+Head [42513295311](https://github.com/gecompat/SQL_Server_Analyze/actions/runs/42513295311) und Main [42513852739](https://github.com/gecompat/SQL_Server_Analyze/actions/runs/42513852739) wurden von der kanonischen Auswahl als reine SQL-Kommentaränderungen eingeordnet. Alle sechs Head- und fünf Main-Workflows bestanden. Sie umfassen sieben erfolgreiche Head-Checks und sechs erfolgreiche Main-Checks; der jeweils nicht ausgewählte SQL-Laufzeitjob wurde übersprungen. Beide Stände bestanden 80 statische Validatoren, beide kanonischen Installervergleiche und 18 Cleanup-Szenarien. Eine neue SQL-Instanz, ein Deployment, StopSynthetic oder eine native Laufzeitqualifikation wurde damit nicht ausgeführt. Eine unabhängige Container-Abwesenheitsprobe wurde nicht ausgeführt.
+
+Die begrenzte Kohorte berichtigt die individuellen `LockTimeoutMs`-Absätze in `InternalSsisExecutionScopes` und `InternalSsisExecutionMetrics` sowie unmittelbar zugehörige Erklärungen der Wiederherstellungsbatches. Die neue SET-Scope-Evidenz betrifft genau diese Beschreibungen; sie eröffnet keine erneute Prüfung der übrigen abgeschlossenen Parameterkohorten. Die ausführbaren Prozedurdefinitionen einschließlich des zuletzt qualifizierten NULL-Kindstatus-Guards bleiben bytegleich.
+
+Ein eigener dynamischer SET-Batch setzt den Wert nur innerhalb dieses Batches; nach der Rückkehr aus `sp_executesql` steuert er keine nachfolgenden direkten Anweisungen. Der Scopeconsumer besitzt Default 0 und seine eigene NULL-/Bereichsprüfung von 0 bis 60000. Der Kennzahlenconsumer verlangt dagegen ein Argument ohne Default und hat keine eigene NULL-/Bereichsvorprüfung; weitergereichte Werte unterliegen dem öffentlichen Model-/Scope-Vertrag. Die Beschreibungen erhalten diese Unterschiede, die Eingabeformen und die qualifizierten Fehler- und Wiederherstellungsgrenzen. Eine neue Timeoutfunktion oder zusätzliche Rechte werden nicht geliefert. Diese Scopeaussage ist in den [Microsoft-SET-Anweisungen](https://learn.microsoft.com/en-us/sql/t-sql/statements/set-statements-transact-sql?view=sql-server-ver17) beschrieben.
+
+Die Quellen `a56f7e57f0ed342b6b2dda42439716c6dcc62a4b` und `395affa2678fa7a7502b22049f4708abab253172` ändern jeweils nur den individuellen Parameterabsatz und unmittelbar zugehörige Wiederherstellungsprosa. Die vollständigen Prozedurdefinitionen ab CREATE OR ALTER sind bytegleich zur qualifizierten Basis. Der zuletzt integrierte NULL-Kindstatus-Guard und sein `BoundOut`-Vertrag bleiben unverändert; eigene Fehler 57930 behalten ihre bestehenden Reason-Codes. Der unabhängige Quellenreview ist PASS.
+
+Der kanonische Lauf [42512700442](https://github.com/gecompat/SQL_Server_Analyze/actions/runs/42512700442), Job `128829017902`, erzeugte den OPS-Installer `78e4d0067f93d56e91d52fbbcb189dd7c6462f23` mit 6.518.213 Bytes. Beide vollständigen Quellblöcke einschließlich Headern wurden unabhängig abgeleitet und rückwärts zur vollständigen Basis rekonstruiert. Vor den beiden Blob-Uploads wurden kanonische Bytegleichheit, unveränderter Rest und unveränderte Update-Datei geprüft. Das tatsächliche vollständige Installer-Readback entspricht der Ableitung. Das Envelope ist an `f8fdc191c6b05470448f1a3cbafa18e5a9fadb47` gebunden. Der Hilfsbranch ist regulär mit `c68a569c1294c4bfc1364e28000654b19f749b9c` auf den ursprünglichen Baum `4df10207a1a5d94703a49257d1e24670b0211664` zurückgestellt. Dabei wurde keine SQL-Instanz gestartet; der Produktstand enthält keine Workflowänderung.
+
+Die unabhängigen Quellen- und Artefaktreviews sowie die erforderlichen Head- und Main-Gates und Cleanup sind abgeschlossen. Der Nachweis enthält keine neue native Laufzeitqualifikation.
+
+## Abgeschlossen: NULL-Kindstatus im SSIS-Kennzahlenconsumer
+
+PR #649 ist einschließlich erster Main-Nachprüfung abgeschlossen. Merge/Main `e8417ac685a8dd3d4df5f807a6b59d82102502fc` enthält den geprüften Baum `52459122fbc9433ded952b7b2da91c9274b26edb`; die geordneten Eltern sind `6af52251c99ef51aaa72e7623c6aa441f7268a7a` und `d828a5ba4ba16134a3494cdd6b5b93f81cc8b454`. Head [42507322848](https://github.com/gecompat/SQL_Server_Analyze/actions/runs/42507322848) und Main [42508790206](https://github.com/gecompat/SQL_Server_Analyze/actions/runs/42508790206) bestanden Deployment sowie die ausgewählten SQL-Server-2025-Verträge 110 und 225 bei Compatibility Level 170. Vertrag 225 umfasst die fünf isolierten Proben und 38 bestehende öffentliche Vergleichsfälle. Der Nachweis stammt aus dem abgeschlossenen Fail-fast-Vertrag; ein separater Erfolgsstdout der Probe wurde nicht erfasst. Sechs Head-Workflows mit acht Checks und fünf Main-Workflows mit sieben Checks bestanden. Beide Stände bestanden 80 statische Validatoren, beide kanonischen Installervergleiche, 18 Cleanup-Szenarien und StopSynthetic. Baseline-Vertrag 227, Permission-/Regex-Matrizen und ExecutionPlanStandalone waren nicht neu ausgewählt; die PR-Diagnoseprüfungen wurden auf Main nicht erneut ausgeführt. Eine unabhängige Container-Abwesenheitsprobe wurde nicht ausgeführt.
+
+Die begrenzte Korrektur betrifft die Bindungsgrenze von `InternalSsisExecutionMetrics`. Der Ausgangsstand vergleicht den vom Kind gelieferten Status mit `SCOPE_CAPTURE_BOUND`; bei SQL-NULL kann das bisherige Vergleichsprädikat UNKNOWN bleiben und die nachfolgende Zuweisung von `BoundOut=1` erreichen. Das ist ein Quellbefund. Ein tatsächlich von der produktiven Kindanalyse gelieferter NULL-Status ist nicht beobachtet; seine aktuelle Erreichbarkeit wird nicht behauptet.
+
+Die kleinste Änderung weist diesen NULL-Fall ausdrücklich ab, bevor eine Bindung behauptet wird. Nicht-NULL-Statusfälle, die vorhandene Pipelinegrenze, Analyse- und Statusausgänge, leere Kennzahlen bei Ablehnung sowie Caller-Einstellungen bleiben erhalten. Eine isolierte, an das tatsächliche Modul gebundene native Fault-Injection kontrolliert den Kindstatus, ohne die Produktionsprozedur zu ersetzen oder Rechte zu ändern. Bestehende Vergleichs- und Baselineprüfungen bleiben verbindlich. Unabhängiger Quell-/Testreview, vollständige Installerparität und die erforderlichen Remote-Head-/Main-Gates wurden für PR #649 abgeschlossen.
+
+Die Quelle `12e24d893c29501e77503013f49680d9bd832655` ergänzt ausschließlich die ausdrückliche NULL-Bedingung im vorhandenen Statusprädikat und berichtigt den individuellen `BoundOut`-Header. Alle übrigen Analyseanweisungen und Nicht-NULL-Bedingungen bleiben identisch. Der vorbereitete Laufzeitvertrag 225, Blob `ab5c6dbeb8b9d7f1017acdd6c0acffe38b615e6b`, bildet aus der tatsächlichen Moduldefinition eine isolierte eigene Prozedurkopie. Er bindet Signatur und Kindaufruf eindeutig und prüft vor der Erzeugung, dass die vollständige Rückkonstruktion nach Länge und SHA-256 der ursprünglichen Rohdefinition entspricht. Die Kopie verwendet ausschließlich CREATE nach Kollisionsprüfung und wird auf Normal- und Fehlerpfad nur bei eigener Anlage gelöscht. Die Produktionsdefinition wird nach den erfolgreichen Kontrollaufrufen erneut nach Länge und Hash geprüft.
+
+Die fünf vorbereiteten Kontrollen prüfen NULL-Kindstatus mit leerem JSON und mit SQL-NULL, einen anderen Status, gebundenen Status mit unbelegter Pipeline sowie einen gültigen gebundenen Pfad. Frische OUTPUT-Werte, NULL-sichere Vergleiche und die tatsächliche äußere LOCK_TIMEOUT-Einstellung sichern die erwarteten Ausgänge. Die bisherigen öffentlichen Vergleichsprüfungen und ihr Marker mit 38 Fällen bleiben erhalten; die neue Probe hat einen eigenen Marker mit fünf Fällen. Die zusätzlichen Fälle sind innerhalb der abgeschlossenen Head- und Main-Ausführungen von Vertrag 225 qualifiziert. Ein vom echten Produktionskind gelieferter NULL-Status wurde damit nicht beobachtet.
+
+Der kanonische Lauf [42506451715](https://github.com/gecompat/SQL_Server_Analyze/actions/runs/42506451715), Job `128810023581`, erzeugte den OPS-Installer `5518bb7890bfeb5764e4aa692afbf66db3f9636e` mit 6.517.623 Bytes. Die unabhängige Ableitung ersetzt genau den vollständigen Quellblock einschließlich Kommentarkopf; Rückersetzung rekonstruiert den bisherigen Installer vollständig. Vor den beiden Blob-Uploads wurden die kanonische Bytegleichheit, der unveränderte Rest und die unveränderte Update-Datei geprüft. Das tatsächliche vollständige Installer-Readback entspricht auch der unabhängigen Ableitung. Das Envelope ist an `e70e7f7e28d3a4a80fba21a2a91ef49f35c7f459` gebunden. Der Hilfsbranch ist regulär mit `ad53a543205788edc0129af816a75b72ad09ab60` auf seinen ursprünglichen Baum `4df10207a1a5d94703a49257d1e24670b0211664` zurückgestellt; der Generator startete keine SQL-Instanz. Der Produktstand enthält keine Workflowänderung.
+
+Quellen-, Test- und Artefaktreview sowie die erforderlichen Head- und Main-Gates und Cleanup sind PASS. Der Laufzeitnachweis bleibt auf die ausgewählten Verträge begrenzt; er ist keine neue Baseline-, Berechtigungs- oder Plattformqualifikation.
+
+## Abgeschlossen: benachbarte SSIS-Timeout-Hilfeverträge
+
+PR #648 ist einschließlich erster Main-Nachprüfung abgeschlossen. Merge/Main `6af52251c99ef51aaa72e7623c6aa441f7268a7a` enthält den geprüften Baum `005150d7996d79da96c4b52b9920977941cbf9a8`; die geordneten Eltern sind `ea3e86fc904e5c2994a1d93fb222c4e95de87c57` und `2ea872e120151bcbcd2c5e184c090536f509c5db`. Head [42500743988](https://github.com/gecompat/SQL_Server_Analyze/actions/runs/42500743988) und Main [42502189339](https://github.com/gecompat/SQL_Server_Analyze/actions/runs/42502189339) bestanden Deployment und die 16 ausgewählten SQL-Server-2025-Verträge 124, 110, 196, 198, 212–218, 220, 222, 223, 225 und 227 bei Compatibility Level 170. Sechs Head-Workflows mit acht Checks und fünf Main-Workflows mit sieben Checks sind grün; beide Stände bestanden 80 statische Validatoren, beide kanonischen Installervergleiche, 18 Cleanup-Szenarien und StopSynthetic. Permission-/Regex-Matrizen und ExecutionPlanStandalone waren nicht ausgewählt. Die unveränderten PR-Diagnoseprüfungen wurden auf Main nicht erneut ausgeführt; eine unabhängige Container-Abwesenheitsprobe wurde nicht ausgeführt.
+
+Die begrenzte Kohorte berichtigt die Beschreibung von `LockTimeoutMs` in `USP_SsisPackageModelAnalysis`, `USP_SsisExecutionComparison` und `USP_SsisExecutionBaseline`. Die Quellprüfung unterscheidet den Geltungsbereich der eigenen dynamischen SET-Batches von weitergereichten Argumenten und den eigenen Regeln aufgerufener Helfer. Nur belegte Hilfe- und Referenzabweichungen werden berichtigt; ausführbare SQL-Anweisungen, Signaturen, Eingabeprüfungen und bestehende Laufzeittests bleiben erhalten. Eine neue Timeout-Steuerung oder zusätzliche Berechtigungen gehören nicht zu diesem Umfang. Die vollständige Installerparität, unabhängiger Review und die erforderlichen Remote-Head-/Main-Gates bleiben vor einem Abschluss verbindlich.
+
+Die drei Quelldeltas ersetzen jeweils ausschließlich die individuelle Hilfezeile. Die Rückersetzung reproduziert jede Main-Quelldatei bytegenau; Analyseanweisungen, Signaturen und vorhandene Tests bleiben unverändert. Die Beschreibungen unterscheiden die eigene dynamische SET-Anweisung von der Weitergabe über `InternalSsisExecutionMetrics` und `USP_SsisPackageModelAnalysis` an `InternalSsisExecutionScopes`. Auch die beiden unveränderten internen Consumer setzen den Wert in separaten dynamischen Batches. Eine wirksame Begrenzung der nachfolgenden direkten Vergleichs-, Kohorten- oder Scope-Anweisungen wird daraus nicht abgeleitet.
+
+Der kanonische Remote-Lauf [42500093951](https://github.com/gecompat/SQL_Server_Analyze/actions/runs/42500093951), Job `128790771956`, hat den OPS-Installer `a7e7fd4f948ac6881033f8485b3ff50439936a6a` mit 6.517.835 Bytes erzeugt und übertragen. Vor den beiden Blob-Uploads wurden die vollständige unabhängige Ableitung aller drei Module, der unveränderte Rest, die kanonische Bytegleichheit und die unveränderte Update-Datei geprüft. Das tatsächliche vollständige Installer-Readback ist gleich der unabhängigen Ableitung; das Envelope ist an `1e097b5ffd524fc882f70f4f50bea0db04cbe846` gebunden. Der Hilfsbranch wurde nach Abschluss regulär mit `e00f7bb2ce783dd42813c2f718bd40dee5399943` auf den ursprünglichen Baum `4df10207a1a5d94703a49257d1e24670b0211664` zurückgestellt. Dabei wurde keine SQL-Instanz gestartet. Der Produktnachtrag enthält keine Workflowänderung.
+
+Quellen-/Guidereview, unabhängige vollständige Installerableitung, tatsächliche Artefaktbindung sowie Head- und Main-Abnahme sind PASS. Die ausführbaren Analyseanweisungen blieben unverändert. Die nachgewiesenen Laufzeitverträge belegen den ausgewählten CI-Umfang; weitere Plattformen oder eine tatsächlich vom Parameter gesteuerte Wartezeit werden daraus nicht abgeleitet.
+
+<a id="nächste-ausführbare-welle-wirksamer-ssis-locktimeout"></a>
+## Abgeschlossen: SSIS-Locktimeoutvertrag und Wrapperkompatibilität
+
+PR #647 ist einschließlich erster Main-Nachprüfung abgeschlossen. Merge/Main `ea3e86fc904e5c2994a1d93fb222c4e95de87c57` enthält exakt den geprüften Headbaum `d660ab51e2818223fa5105ff4a0c536832c03b35`; die geordneten Eltern sind `67d317897b01db91ec994343e8ae1bbfc332398f` und `9313b935e05a9046f1c4a42f6f3b666704214357`. Head [42495939501](https://github.com/gecompat/SQL_Server_Analyze/actions/runs/42495939501) und Main [42496886893](https://github.com/gecompat/SQL_Server_Analyze/actions/runs/42496886893) bestanden Deployment und die ausgewählten SQL-Server-2025-Verträge 124, 110, 196, 198 und 200 bei Compatibility Level 170, einschließlich des eingeschränkten Wrapper-Pfads in Vertrag 200. Alle sechs Head-Workflows mit acht Checks und fünf Main-Workflows mit sieben Checks bestanden. Beide Stände bestanden außerdem 80 statische Validatoren, die kanonischen Vergleiche beider Installer, 18 Cleanup-Szenarien und StopSynthetic. Permission-/Regex-Matrizen und ExecutionPlanStandalone waren nicht ausgewählt; eine unabhängige Container-Abwesenheitsprobe wurde nicht ausgeführt.
+
+PR #646 ist einschließlich Main-Nachprüfung abgeschlossen. Der nach PR #646 qualifizierte Main-Stand war `67d317897b01db91ec994343e8ae1bbfc332398f`, Baum `a23d9f285c45afc3a7574dfb4b42d82674fe0ce7`; der integrierte Head lautet `d412d021c6c2c279910414f1f60933ac882a0435`. Head [42410463597](https://github.com/gecompat/SQL_Server_Analyze/actions/runs/42410463597) und Main [42413132789](https://github.com/gecompat/SQL_Server_Analyze/actions/runs/42413132789) bestanden den gewählten SQL-Server-2025-Umfang 124, 110, 196, 198 und 200 bei Compatibility Level 170. Main bestand außerdem 80 statische Prüfungen mit kanonischer Neuerzeugung und Vergleich beider OPS-Installer, 18 Cleanup-Szenarien und StopSynthetic. Permission-, Regex- und Execution-Plan-Standalone-Prüfungen waren nicht ausgewählt. Der konfigurierte Übergang `ready_for_review` löste zusätzlich Registry [42411858545](https://github.com/gecompat/SQL_Server_Analyze/actions/runs/42411858545) und den gleichen SQL-Umfang [42411858570](https://github.com/gecompat/SQL_Server_Analyze/actions/runs/42411858570) aus; beide bestanden. Dieser zusätzliche Ausführungseffekt wird nicht als neuer Quellstand oder manueller Wiederlauf dargestellt. Ein vorheriger Mergeversuch wurde mit 405 und `registry-integrity expected` abgelehnt; nach den erfolgreichen Ready-Gates erfolgte der reguläre Merge. Eine unabhängige Container-Abwesenheitsprobe wurde nicht ausgeführt.
+
+Der Abschluss von PR #647 berichtigt den Hilfevertrag. `@LockTimeoutMs` bleibt ein `int` mit Default 0 und zulässigem Bereich 0 bis 60000; NULL und Werte außerhalb des Bereichs bleiben ungültig. Der Parameter wird derzeit nur validiert und steuert die Sperrwartezeit der nachfolgenden Analyse nicht. Deren direkte Arbeit erbt die Einstellung des Aufrufers. Die gemeinsamen TABLE-Helfer behalten ihre eigenen Regeln: Für ihre anfängliche eigene Temp-DDL wird ein eingehender Wert 0 auf 1000 ms angehoben, andere Werte bleiben dort erhalten; Zieloperationen verwenden danach NOWAIT. Eine neue wirksame Timeout-Steuerung wird mit diesem Nachtrag ausdrücklich nicht geliefert.
+
+Der unintegrierte Selbstaufrufentwurf wurde zurückgenommen. Im nativen Lauf [42480571828](https://github.com/gecompat/SQL_Server_Analyze/actions/runs/42480571828) scheiterte das eingeschränkte Wrapper-Szenario mit Fehler 229 auf `monitor.USP_SsisPackageAnalysis`. Die genaue erste statische oder innere dynamische Aufrufstelle wurde nicht erfasst. Daher werden weder eine bestimmte Fehlerstelle noch zusätzliche notwendige Aufruferrechte behauptet. Die bereits bestandenen Timeout-Beobachtungen des verworfenen Entwurfs sind keine Eigenschaft des integrierten unveränderten Analyseverhaltens.
+
+Quelle `266f6e0e707c07ad143d26cd86258faa58aed1f4` entspricht nach Rücknahme des einen Hilfesatzblocks und des erläuternden Kommentars exakt der vor PR #647 qualifizierten Main-Quelle `8829f0f21626396b8eac46f0c199c8eec3895ae8`. Alle übrigen Anweisungen, Parameter, Status-/Fehler- und JSON-Verträge bleiben identisch. Referenz `7a838b6663dbd87c842077f96c23c37707fd659a` beschreibt die Einschränkung. Test `8fa5d859aca96fa0feaadb6c839faa26b431d86e` bewahrt die bisherigen öffentlichen Eingabe-, Ausgabe-, Dauer- und Caller-Prüfungen. Die nur zum zurückgenommenen Feature gehörende instrumentierte Prozedurkopie entfällt; sie wird nicht als Timingnachweis umgedeutet. Der strenge Wrapper-Test mit ausdrücklicher DENY-Regel, effektiver Berechtigungsprüfung, Identitäts-, OUTPUT-, RETURN-, Caller- und Bereinigungsprüfung bleibt als Kompatibilitätsbedingung erhalten. Sein Erfolg ist durch die abgeschlossenen Head- und Main-Ausführungen von Vertrag 200 belegt.
+
+Der kanonische Remote-Lauf [42495116562](https://github.com/gecompat/SQL_Server_Analyze/actions/runs/42495116562), Job `128775703528`, hat den OPS-Installer erfolgreich erzeugt und übertragen: Git-Blob-SHA `77e4dfe1ab2e03fcd926bd822ee1b166ad052747`, 6.516.316 Bytes. Vor den beiden Blob-Uploads wurden die vollständige unabhängige Modulableitung, der unveränderte Installerrest, die kanonische Bytegleichheit und die unveränderte Update-Datei geprüft. Das tatsächliche Installer-Readback entspricht der unabhängig abgeleiteten vollständigen Datei. Das Reviewenvelope ist an Blob `23d2a08228f3381fc882ffa6ea25f22105367e98` gebunden. Die zuvor gescheiterten direkten API-Übertragungen mit HTTP 500 bleiben getrennte Transporthistorie.
+
+Der Übertragungscommit `7c4c11ad7f59f3728c7c224aebce5c45fb1a0262` bindet Main `67d317897b01db91ec994343e8ae1bbfc332398f`, die Quelle und beide unveränderten Builder. Der Lauf startete keine SQL-Instanz. Nach seinem Abschluss wurde der Hilfsbranch regulär mit `2c9f2df0effbe04aca1978cb3a4c7bcae86395cd` auf den ursprünglichen Baum `4df10207a1a5d94703a49257d1e24670b0211664` zurückgestellt. Der Produktstand enthält keine Workflowänderung.
+
+Der integrierte Produktstand enthält den bestätigten Installer. Der unabhängige Reviewer hat außerdem das Gzip-Artefakt aus dem Envelope im V8 entpackt, CRC und ISIZE geprüft und die vollständigen Bytes mit dem gelesenen Installer sowie seiner unabhängigen Modulableitung verglichen. Die bereits bereite PR benötigte keinen weiteren Ready-Übergang. Datenschutzregel und Allowlist blieben unverändert. Frühere Locktimeout-Ursachen bleiben unbekannt.
+
+Die erhaltenen Zwischenstände und ausführlichen Evidenzgrenzen stehen in der [Entwicklungsplanung](Development_Waves_2026-10.md#ausführungsnachweise-des-zurückgenommenen-entwurfs).
+
+## NULL-Guards der internen Plananalyse
+
+PR #640 ist einschließlich der erforderlichen Head- und Main-Gates, der nativen SQL-Server-2025- und Standalone-Verträge sowie Cleanup integriert. PR #641 ist ebenfalls integriert; der Functional-Impact-Lauf auf dem Head [42292955050](https://github.com/gecompat/SQL_Server_Analyze/actions/runs/42292955050) und der Main-Lauf [42295380748](https://github.com/gecompat/SQL_Server_Analyze/actions/runs/42295380748) sind erfolgreich. PR #642 ist integriert; der Head-Lauf [42302810282](https://github.com/gecompat/SQL_Server_Analyze/actions/runs/42302810282) und der Main-Lauf [42304333989](https://github.com/gecompat/SQL_Server_Analyze/actions/runs/42304333989) sind ebenfalls erfolgreich. PR #643 hat auch die öffentliche Quellbestätigung integriert; der Head-Lauf [42312237331](https://github.com/gecompat/SQL_Server_Analyze/actions/runs/42312237331) und der Main-Lauf [42313478992](https://github.com/gecompat/SQL_Server_Analyze/actions/runs/42313478992) sind erfolgreich.
+
+Die fachliche Prüfung belegt sechs fehlende NULL-Ablehnungen. InternalCollectExecutionPlanMetadata weist NULL für QuellumgebungBestaetigt, MitPredicateHistogramMap und HighImpactConfirmed jetzt vor seinen Temp-Tabellenprüfungen als INVALID_PARAMETER zurück. InternalAnalyzeExecutionPlan lehnt NULL für PlanSource, RuntimeCounterScope und MitThreadRuntime vor Profilzugriff und Temp-Tabellenprüfungen ab. Insbesondere darf ein fehlender Thread-Schalter nicht entgegen dem Default 0 Threadzeilen erhalten. Die absichtlichen NULL-Fallbacks für Modi und die optionalen Kontextwerte bleiben erhalten; der ausdrückliche Scope UNKNOWN bleibt gültig.
+
+Die [Entwicklungsplanung](Development_Waves_2026-10.md#null-guards-der-internen-plananalyse) bindet die Quellen, die Verhaltenstests und die Grenzen der öffentlichen Aufrufer. Die öffentliche Datenschutzkorrektur ist mit PR #641 integriert; der Head- und Main-Lauf sind oben verlinkt. Nicht-sensitive NULL-Aufrufe und absichtliche Modus-/Kontextfallbacks bleiben erhalten.
+
+PR #643 schloss die Quellbestätigung für `CURRENT_SERVER` in 052 und 053: unabhängig von einer tatsächlichen Erhebung erfordern die öffentlichen Aufrufer 1; 0 und NULL führen zu `SOURCE_ENVIRONMENT_CONFIRMATION_REQUIRED`. 1 ist die Bestätigung des Aufrufers, kein Herkunftsnachweis und keine Berechtigung. Die integrierten Quellen sind an 052 Blob `755f786adcffd42e3b79ee34ff8f77d3acb6eeb5` und 053 Blob `3e0cbf8ad99d9b9d4c2235aee575c0383c433f4e` gebunden. `MitPredicateHistogramMap` bleibt kontextabhängig: ohne Collector-Aufruf, etwa bei `EVIDENCE_ONLY`, ist NULL unbenutzt; bei tatsächlicher Erhebung weist 049 NULL zurück und die öffentliche Evidenzverarbeitung meldet `CURRENT_METADATA_COLLECTION_LIMITED` mit Teilstatus.
+
+PR #644 hat die öffentliche `@MitThreadRuntime`-NULL-Prüfung integriert. Head [42319073840](https://github.com/gecompat/SQL_Server_Analyze/actions/runs/42319073840) und Main [42320804141](https://github.com/gecompat/SQL_Server_Analyze/actions/runs/42320804141) bestanden; nativer Vertrag 120, Standalone-Vertrag 193, 80 statische Prüfungen, 18 Cleanup-Prüfungen und der synthetische SQL-Server-Stop-Vertrag bestanden ebenfalls. Der unabhängige Container-Abwesenheitsnachweis wurde nicht ausgeführt. Die frühe Prüfung verhindert den zuvor beobachteten `MitThreadRuntime`-NULL-Fehler; `MitPredicateHistogramMap=NULL` bleibt im unbenutzten `EVIDENCE_ONLY`-Pfad absichtlich gültig.
+
+## SSIS-LockTimeoutMs-Prüfung integriert
+
+PR #645 ist nach Review und den erforderlichen Remote-Prüfungen in Main integriert. Der integrierte Stand ist an Main-Commit `5c3cc4ef7c22d19d219f08d0565cb6dacecb1ce2` und Tree `7e873ad4ca929eb7bd7fe634dd3d418033f407bc` gebunden; der integrierte PR-Head ist `d0942dca4ee5a3669b9b7a8c605db36c85d3ffba`. Die Procedure behält Blob `0c90dc38570240449e299e9b4d2a82e3ee89493f`; der abschließende Laufzeitvertrag 200 ist Blob `972f6ecd282b55676a9ed3cb94089c8f2c31f018`, und der Diagnose-Test ist Blob `436c3049fdcfa998f062e9ef927255a60b765fcc`. Main-Lauf `42357569666`, Versuch 2, bestand Deployment, Full Core, Permission-, Regex- und Standalone-Prüfungen. Die unveränderten statischen 80 Prüfungen und 18 Cleanup-Prüfungen blieben erfolgreich. Der PR-only-Python-Lauf und die Probe wurden nicht erneut auf Main ausgeführt; ein unabhängiger Container-Abwesenheitsnachweis liegt nicht vor.
+
+Der frühere PR-645-Kandidatenlauf scheiterte vor Laufzeitvertrag 200 in der Deploymentphase: `SnapshotSchema` meldete 53908 bei Stage 0; anschließend trat SQL-Fehler 1222 in Zeile 982 auf. Die Ursache bleibt unbekannt. Der vollständige Diagnosebericht meldete `BNC` und `errors=[]`; die separate 16-KiB-Konsolenzusammenfassung endete mit `ARTIFACT_SIZE_LIMIT`, `truncated=true` und `samples=[]`. Diese Ausgabe belegt weder einen beobachteten Blocker noch einen fehlenden Blocker. Auch der frühere Main-Fehler `202C009` mit TABLE 51010 und `LOCK_TIMEOUT` bleibt ungeklärt. Versuch 2 reproduzierte ihn nicht und klärte seine Ursache nicht. Ein früherer Snapshotlauf meldete ebenfalls 53908 und 1222; seine Ursache bleibt unbekannt. Es liegt kein unabhängiger Container-Abwesenheitsnachweis vor.
+
+<a id="nächste-ausführbare-welle-ssis-maxdurationseconds-null-abweisung-schritt-212"></a>
+
+## Abgeschlossener Verlauf: SSIS-MaxDurationSeconds und JSON-Paketarray
+
+Die folgenden Zwischenstände sind historische Entwicklungsnachweise vor dem oben bezeichneten vollständigen PR-646-Abschluss; sie sind keine aktuelle Fortsetzungsfreigabe.
+
+Der Ausgangsstand vor PR #646 ließ `@MaxDurationSeconds = NULL` durch die Bereichsprüfung passieren, weil `NOT BETWEEN 1 AND 60` bei NULL den Wert UNKNOWN liefert. Die Procedure verwendet den Parameter danach nicht für eine Frist, einen Abbruch oder eine Laufzeitbegrenzung. Schritt 212 ergänzt deshalb nur die explizite NULL-Abweisung, präzisiert den individuellen Hilfe- und Referenzvertrag und erweitert Laufzeitvertrag 200. Die Abnahme prüft NULL, 0, -1, 61, beide `int`-Grenzwerte sowie Leertext (SQL-int-Konvertierung zu 0) als `INVALID_PARAMETER` ohne Paketinventar, 1, 30 und 60 sowie den ausgelassenen Default mit nichtleerem synthetischem Paketinventar, OUTPUT-Statuswerte und Erhalt des Caller-`@@LOCK_TIMEOUT`. Der Schritt führt keine tatsächliche Zeitbegrenzung ein.
+
+PR 646, Head `6fcfe209f36c07d2c960d306c017cca9b18fff14`, führte den ersten Step-212-Kandidaten aus. Deployment, statische 80 Prüfungen und 18 Cleanup-Prüfungen bestanden; der Laufzeitvertrag meldete SQL-Fehler 56120 in Test 200 bei der Prüfung des Caller-`@@LOCK_TIMEOUT`. Die Diagnose meldete `NO_1222`, `SQLCMD=1`, null Observerfehler und `truncated=false`.
+
+Die erste Harness-Korrektur wurde auf Head `955629b7aa9b22a0dc96a9671bd62396d4297bbf` mit Lauf 42392415649 geprüft. Deployment, statische 80 Prüfungen, 18 Cleanup-Prüfungen und Stop-Prüfung bestanden; Laufzeitvertrag 200 scheiterte mit 56121 in Zeile 76, `invalid MaxDurationSeconds raised an unexpected SQL exception`. Die Testfassung wandelte den unerwarteten Fehler in ein Flag um, daher enthält der Lauf keinen ursprünglichen SQL-Fehlercode und belegt nicht, dass die übrigen Dauerfälle bestanden. Als source-basierte Setup-Ursache kommt die Wiederverwendung des durch den ersten TABLE-Aufruf schemaerweiterten `#ssisPackage`-Ziels infrage: `TRUNCATE` setzt die Seed-Spalte nicht zurück, während `InternalPrepareResultTables` für jeden TABLE-Aufruf ein leeres Ziel mit genau einer Seed-Spalte verlangt (Helper-Blob `ce2fec7f2291fadb294e6aab6ed8125a91715ab2`). Ein Fehler 51011 wurde im Lauf nicht gemeldet.
+
+Der damalige Diagnose-Nachtrag wurde mit Commit `5fd090fde7b62b3602f73913c6c95b6b8603daee` in PR #646 veröffentlicht und ist an Test-Blob `6f8591f0855775e2bbb1d0707c89dde17cb61ea6` gebunden. Er teilt die zuvor kombinierte Fehlermeldung in vier feste Fehlercodes für OUTPUT-Status, Caller-`@@LOCK_TIMEOUT`, TABLE-Inventar und JSON-Paketarray auf. Die Meldungen enthalten ausschließlich den synthetischen Schleifendurchlauf, die feste Prüfkategorie und das zugehörige synthetische Ziel. Alle bisherigen Bedingungen, ihre Reihenfolge, elf Seed-Ziele, Fehler-CATCHes, gültigen Dauerfälle und äußeren Timeout-Prüfungen bleiben erhalten. Der dynamische Batch hat ein geschlossenes Zeichenfolgenliteral; diese Quellenprüfung belegt keine native Laufzeitqualifikation.
+
+Der weitere Lauf 42397206149 am Head `9ef3e0bc39ce92ee03d5194665af750466f0ed3a` bestand Deployment, die 80 statischen Prüfungen, 18 Cleanup-Prüfungen und StopSynthetic, scheiterte aber im dynamischen Testbatch mit SQL-Fehler 105 in Zeile 158 wegen einer nicht geschlossenen Zeichenfolge. Der damalige Test-Blob `e544adc4ddf7bf371156b502fc14e401f32d17c0` enthielt am Ende des äußeren Literals ein zusätzlich maskiertes Apostroph; dadurch endete der ausgeführte Batch mit einem offenen Zeichenfolgenliteral. Dieser Lauf qualifiziert keine der darin enthaltenen LockTimeout- oder Dauerprüfungen. Der neue Testkandidat `4dbca1b744c31a681bedbbfa0198a811744007bc` korrigiert ausschließlich diese Abschlusszeile; nach dem Entpacken bleibt der fachliche Batch bis auf das entfernte Schlussapostroph identisch. Eine deterministische Zeichenfolgenprüfung ersetzt keine native SQL-Abnahme. Produktquelle, Installer, Laufzeitgrenzen und sämtliche fachlichen Testoracles bleiben unverändert; Review und erneute Remote-CI stehen aus.
+
+Der fünfte Lauf `42399231612` auf Head `f2833f06508f03bfbba1320bccfa228490c84785` bestand Deployment, 80 statische Prüfungen, 18 Cleanup-Prüfungen und StopSynthetic. Laufzeitvertrag 200 scheiterte mit SQL-Fehler 56121 in Zeile 95 an der kombinierten MaxDurationSeconds-Assertion. Der Lauf weist weder die einzelne fehlschlagende Bedingung noch den Durchlauf aus und qualifiziert daher keine übrigen Dauerfälle. Die aktuelle Produktquelle `68fd38a3c55903e0d1de226a1febba8fcff2d7b3` enthält eine ausdrückliche NULL-Abweisung; die Quellenprüfung identifiziert keinen deterministischen Produkt- oder Erwartungsfehler. Der Diagnoseentwurf grenzt diese Mehrdeutigkeit ein, ohne einen Fehler in PASS umzuwandeln. Der veröffentlichte Diagnose-Nachtrag grenzt diese Mehrdeutigkeit ein; eine erfolgreiche neue Runtimequalifikation steht weiterhin aus.
+
+Der Functional-Impact-Lauf [42401870972](https://github.com/gecompat/SQL_Server_Analyze/actions/runs/42401870972) am Diagnose-Head `5fd090fde7b62b3602f73913c6c95b6b8603daee` wurde abgebrochen. Der Runtimejob endete als `cancelled`; der Schritt `Stop synthetic SQL Server` war erfolgreich. Die statischen Gates desselben Heads sind erfolgreich. Daraus entstehen weder eine bestandene Runtimequalifikation noch ein unabhängiger Nachweis der Containerabwesenheit. Der damalige Planungsabgleich änderte nur diese beiden Statusseiten; Test-Blob `6f8591f0855775e2bbb1d0707c89dde17cb61ea6`, Produktquelle `68fd38a3c55903e0d1de226a1febba8fcff2d7b3` und OPS-Installer `bd557bf96c89a74052f9c35fa060f273c91e0b3d` bleiben unverändert. Unabhängiger Review sowie erfolgreiche erforderliche Head- und Main-Gates bleiben Voraussetzung der Integration.
+
+Der Lauf [42404276949](https://github.com/gecompat/SQL_Server_Analyze/actions/runs/42404276949) am Head `354f36c0f395d2856e27d8712979e3d7c5d21b28` bestand Deployment, 80 statische Prüfungen, 18 Cleanup-Szenarien und StopSynthetic. Im ersten Dauerfall (`MaxDurationSeconds=NULL`) bestanden OUTPUT-Status, Caller-`@@LOCK_TIMEOUT` und leere TABLE-Ziele. Die JSON-Paketprüfung scheiterte mit 56214 in dynamischer Zeile 111. Der tatsächliche JSON-Wert wurde nicht erfasst; die genaue Ausgabeabweichung und ihre Ursache sind deshalb weiterhin unbekannt. Spätere Dauerfälle sind durch diesen Lauf nicht qualifiziert.
+
+Der begrenzte Nachtrag prüft den fachlichen JSON-Vertrag statt einer exakten Zeichenfolge: Das Wurzel-JSON muss gültig sein und genau einen Schlüssel `package` mit Arraytyp und ohne Elemente enthalten. Zwölf synthetische Gegen- und Kontrollfälle prüfen leere Arrays mit und ohne Zwischenraum sowie NULL, fehlende oder doppelte Schlüssel, abweichende Großschreibung, JSON-null, String, Objekt, nichtleere Arrays und ungültigen JSON-Text. Die Umsetzung verwendet den vorhandenen `OPENJSON`-Typvertrag und benötigt keine neue native Engine oder die erst später eingeführte zweite `ISJSON`-Parameterform. Bei erneutem Fehler meldet der Test nur Gültigkeit, Schlüsselanzahl, Typ und Arraylänge in Bytes; Paketdaten werden nicht protokolliert. Nach erfolgreicher semantischer Prüfung gibt der erste NULL-Fall dieselben Formmerkmale sowie Länge und NULL-Kennzeichen der bisherigen JSON_QUERY-Extraktion und deren Vergleichsflag aus; diese begrenzte Formevidenz soll eine Format- oder Extraktionsabweichung unterscheiden. Test-Blob `c799fd32da3f06df91b696918901f2bd75b35fe6` bewahrt die übrigen Status-, TABLE-, Caller-, Fehler- und positiven Dauerprüfungen. Produktquelle, Guide und beide Installer bleiben unverändert. Eine Formatierungsursache wird nicht als beobachtet behauptet. Unabhängiger Review sowie die erforderlichen Head- und Main-Gates stehen für diesen Nachtrag aus.
+
+Der anschließende Lauf [42406326297](https://github.com/gecompat/SQL_Server_Analyze/actions/runs/42406326297) am Head `eb39163b312f11a0cc2d17df186d2cf4b9fb7142` bestand Deployment, 80 statische Prüfungen, 18 Cleanup-Szenarien und StopSynthetic. Die zwölf synthetischen Formkontrollen erzeugten keinen Fehler. Im ersten NULL-Dauerfall meldete die semantische Prüfung erneut 56214, nun in dynamischer Zeile 139: `JsonValid=1; PackageKeys=0; PackageType=-1`. Das Dokument ist damit gültiges JSON, enthält aber keinen case-sensitiven Wurzelschlüssel `package`. Dies ist keine bloße Leerzeichenabweichung. Die vorhergehenden Status-, Caller- und leeren TABLE-Prüfungen bestanden für diesen Fall; spätere Dauerfälle bleiben unqualifiziert.
+
+Die begrenzte Produktkorrektur ergänzt in der bestehenden Paketserialisierung `COALESCE(...,N'[]')` vor `JSON_QUERY`. Ein SQL-NULL der inneren Paketserialisierung erhält damit ein explizites leeres Array, während vorhandene Paketdaten unverändert serialisiert werden. Der bereits verwendete Fallback des Variablenarrays bleibt unverändert. Der fehlende Schlüssel ist beobachtet; eine darüber hinausgehende Engineursache wird nicht behauptet. Die Quellenkorrektur ist an Blob `8829f0f21626396b8eac46f0c199c8eec3895ae8` gebunden. Eingebaute Hilfe und Referenz nennen das leere Paketarray ausdrücklich. Der abgeleitete OPS-Installer `26a0be1f7fa34daecfaf452fcbe5629312dd07f7` enthält genau den ersetzten vollständigen Paketmodultext; sein übriger Inhalt und update.sql bleiben unverändert. Die bestehende statische OPS-Prüfung erzeugt den kanonischen Installer remote erneut und vergleicht ihn. Produktkorrektur und Installer sind noch nicht durch einen neuen Lauf qualifiziert. Der semantische Test samt negativen Gegenfällen bleibt unverändert; unabhängiger Review und erforderliche Head- und Main-Gates stehen für diesen Produktnachtrag aus.
+
+## Phasenbezogene File-IO-Fehlerausgänge
+
+Die beiden File-IO-Fehlerausgänge sind in ihren Einzelparameterverträgen nach Prüfphase und Finalisierungspfad beschrieben. Sourcefehler können nach validierter Source auch bei einem Backendfehler einschließlich NULL oder Leertext erhalten bleiben; ein Fehler der inneren Finalisierung kann stattdessen seine eigene Diagnose ausgeben. Die SQL-Logik des Helpers bleibt unverändert; seine kommentarabhängige Fingerprintbindung im abgeleiteten Snapshot-Preflight ist nachgeführt. Die [Entwicklungsplanung](Development_Waves_2026-10.md#phasenbezogene-file-io-fehlerausgänge) bindet den Quellstand und hält die verbleibenden Evidenzgrenzen fest. Die erforderlichen Review- und Remote-Gates bleiben Voraussetzung für die Integration.
+
+Die damals folgende fachliche NULL-Guard-Prüfung ist im aktuellen Abschnitt abgegrenzt; die öffentlichen Bestätigungs- und Datenschutzgrenzen bleiben ein eigener Folgeschritt. Fehlende Plattform- und Transaktionsevidenz bleibt ausdrücklich unbelegt.
+
+## Snapshot-Target-Diagnose 53781
+
+Fehler 53781 nennt nun das vom FILE_IO-Guard tatsächlich verlangte Target 1.3.1 mit Schema 3. Fehlernummer, Status und Guard bleiben unverändert; DDL-Kommentar und Objektreferenz sind abgeglichen. Die [Entwicklungsplanung](Development_Waves_2026-10.md#snapshot-target-diagnose-53781) bindet den neuen Quellstand und trennt ihn vom historischen Blobnachweis. Die erforderlichen Remote-Gates bleiben Voraussetzung für die Integration.
+
+Die damals folgenden File-IO-Einzelverträge sind im aktuellen Abschnitt präzisiert. Die nachfolgende NULL-Guard-Prüfung steht im aktuellen Abschnitt; nicht vorhandene Plattform- und Transaktionsevidenz wird nicht als erbracht behandelt.
+
+## SSIS-Referenzabgleich vom 6. November 2026
+
+Der ergänzende Abgleich beschreibt alle vier zuvor offenen SSIS-Helfer mit zusammen 42 Einzelparameterverträgen. Die bezeichnete interne Kohorte umfasst damit 25 Prozeduren mit 238 Parametern; beim SSIS-Abgleich waren die bisherigen 21 Quell-Blobs und das gebundene Inventar unverändert. PR #635 und PR #636 sind einschließlich Main-Nachprüfung integriert. Die vorliegende Änderung ergänzt InternalSsisExecutionMetrics; Review und erforderliche CI-Gates bleiben die Integrationsbedingung. Es handelt sich um einen begrenzten Kommentar- und Referenzabgleich, keine allgemeine Laufzeitqualifikation. Die öffentliche Kohorte und die Nichtprozedurkohorte behalten ihre separat bezeichneten Evidenzgrenzen.
+
+Die [Entwicklungsplanung](Development_Waves_2026-10.md#ssis-referenzabgleich-vom-6-november-2026) bindet die vier Quellen und hielt die damals belegten Lücken fest: Snapshot-Diagnosetext 53781, phasenbezogene Fehlerausgänge bei File-IO sowie die getrennte fachliche Prüfung dokumentierter NULL-Guard-Verhaltensweisen. Fehlende Windows-/Mirroring- und MSDTC-Topologieevidenz bleibt offen. Die modulare Kerninstallation ohne obligatorische LLM-Komponenten bleibt unverändert.
+
+## Quellenstand nach PR #633
+
+Dieser Abschnitt ist der historische Ausgangsstand; der aktuelle Folgeabgleich steht unter [SSIS-Referenzabgleich vom 6. November 2026](#ssis-referenzabgleich-vom-6-november-2026).
+
+**Stand:** 6. November 2026.
+
+Die interne Prozedurprüfung umfasst 21 von 25 Inventareinträgen mit 196 Parameterzeilen; die vier SSIS-Referenzeinträge sind noch nicht einzeln gegen Parameterverträge geprüft. Die bisherige öffentliche Kohorte umfasst 121 Procedures mit 2.167 Parameterzeilen. Die getrennte Nichtprozedurkohorte umfasst 57 TABLE-, VIEW- und FUNCTION-Objekte aus 47 Quelldateien. Diese Zählungen gelten jeweils nur für die gebundenen Kohorten und belegen keine globale Fehlerfreiheit oder allgemeine Laufzeitqualifikation.
+
+Die PRs #631 bis #633 wurden mit den erforderlichen Head- und Main-Prüfungen, der vollständigen statischen Vertragssuite mit 80 Validatoren und Selbsttestauswahl `Changed`, Adapterparität und erfolgreichem TestLab-Cleanup-Vertrag integriert. Native SQL-Läufe wurden wegen reiner Kommentaränderungen übersprungen; daraus entsteht keine neue Laufzeitqualifikation. Die ausführbare Reihenfolge und der Objektstatus stehen in der [Entwicklungsplanung](Development_Waves_2026-10.md#quellenstand-nach-pr-633).
+
+## Aktueller Stand nach Schritt 178
+
+Der folgende Abschnitt dokumentiert den Quellenstand vom 5. November 2026 nach Schritt 178. Er bleibt als Historie erhalten; maßgeblich für den aktuellen Stand ist [NULL-Guards der internen Plananalyse](#null-guards-der-internen-plananalyse).
+
+Die Hilfeprüfung der bisherigen Inventarkohorte erfasst 121 Procedures mit 2.167 Parameterzeilen; PR #610 bis PR #612 sind integriert. Die Nichtprozedurkohorte umfasst 57 TABLE-, VIEW- und FUNCTION-Objekte aus 47 Quelldateien. Die gebundenen DDL-Revisionen und Inventarzuordnung sind für diese Kohorte unabhängig geprüft. Diese Abschlüsse gelten ausschließlich für die bezeichneten Inventare und belegen weder globale Fehlerfreiheit noch allgemeine Laufzeit- oder Plattformqualifikation. Positive Windows-/Mirroring-Topologie, MSDTC-Dienst, externe Teilnehmer sowie Commit-/Recovery-Evidenz sind nicht belegt.
+
+Die aktuelle Obergrenze beträgt 200 eigene PR-Schritte; bei Schritt 190 wird der Restumfang neu bewertet. Frühere Grenzen und Checkpoints setzen den aktuellen Verbrauch nicht zurück. Bestehende Einzelgrenzen und Sperren gelten fort; ein historischer Eintrag erteilt keine neue Ausführungsfreigabe. Der aktuelle Auftrag und die ausführbare Reihenfolge stehen in der [Entwicklungsplanung](Development_Waves_2026-10.md#aktueller-stand-nach-schritt-178).
+
+## Vorheriger Checkpoint nach Schritt 43
+
+Der vorherige integrierte Checkpoint und seine damaligen Prüfbelege sind im [Historienarchiv](Next_Steps_History_2026-11-05.md#vorheriger-checkpoint-nach-schritt-43) erhalten.
+
+## Aktueller Checkpoint nach PR #485
+
+Der gebundene Checkpoint nach PR #485 und seine zugehörigen Head- und Main-Prüfungen sind im [Historienarchiv](Next_Steps_History_2026-11-05.md#aktueller-checkpoint-nach-pr-485) erhalten. Neue Änderungen werden gegen den aktuellen Main-Stand und die maßgebliche Planung abgeglichen.
+
+## Lesepfad und technische Evidenzgrenzen
+
+Öffentliche Anwenderdokumentation bleibt der maßgebliche Ort für Produktverhalten und Bedienung; interne Pläne und Nachweisarchive ersetzen sie nicht. Inventarvollständigkeit gilt nur für die jeweils gebundene Kohorte. Produkt-, Plattform-, Berechtigungs-, Transaktions- und Laufzeitaussagen benötigen jeweils die passende unabhängige Evidenz. Fehlende Infrastruktur oder nicht ausgeführte Prüfungen bleiben ausdrücklich offen.
+
+Installation und Ausführung folgen den modularen, dokumentierten Installationspfaden und ihren Voraussetzungen.
+
+Die Kerninstallation muss ohne LLM-Komponenten und deren Berechtigungen oder Netzwerkzugriff funktionieren. Künftige LLM-Funktionen sind separat wählbare Zusatzmodule; fehlende oder unzulässige Voraussetzungen dürfen eine gültige Kerninstallation nicht abbrechen oder zurückrollen. Der Zusatzmodulstatus ist getrennt und ehrlich auszuweisen. Bei Einführung solcher Funktionen sind Kerninstallation ohne LLM und nicht verfügbare beziehungsweise nicht erlaubte Zusatzkomponenten gezielt remote abzunehmen. Die Inventuren installieren oder aktivieren keine externen Laufzeiten oder CLR-Komponenten; Analyze bleibt CLR-frei.
+
+Für jeden einzelnen Parameter sind Datentyp und Eingabeform, ein ausdrücklich als Default bezeichneter Vorgabewert sowie die Bedeutung von NULL, Leerwerten und relevanten Grenzen zu erklären. Geschlossene Wertemengen werden taxativ mit sämtlichen erlaubten Werten und der Bedeutung jedes Werts beschrieben; Beispiele ersetzen diese Aufzählung nicht. Diese Abnahme gilt auch für die Nachprüfung bereits überarbeiteter Hilfen.
+
+Für jede Regel gilt die aktuell ausgewählte maßgebliche Quelle samt ihren semantischen Abhängigkeiten; Discoverylinks allein aktivieren keine weiteren Verträge oder Prüfungen.
+
+
+## Erhaltene Rückblicke auf frühere Abnahmen
+
+Die folgenden Verweise bewahren die konkreten historischen Nachweisscopes. Sie beschreiben damalige Abnahmen und sind keine globale oder aktuelle Vollständigkeitsbehauptung.
+
+- Der damalige Release-Nachweis umfasst alle 17 P0-, 40 P1- und 124 P2-Fälle; die abgeschlossene P0-, P1- und P2-Special-Case-Matrix gehörte zu diesem bestätigten Produktstand. Dies ist datierte, scopegebundene Release-Evidenz und keine Aussage über den heutigen Gesamtumfang. [Historischer Nachweis](Next_Steps_History_2026-11-05.md#aktueller-produktstand).
+- Der archivierte Abschnitt [Abgeschlossen – SQL25-005](Next_Steps_History_2026-11-05.md#abgeschlossen--sql25-005) enthält den damaligen Befund. Die dokumentierten Bereiche `ANALYZE-LAB-001`, `OPS-005`, `OPS-006`, `OPS-008` und `COLL-001` bleiben an ihre jeweiligen damaligen Scopes gebunden.
+- Das Intake WI-0010 und sein dokumentierter Themenumfang sind in der [Diagnoseabdeckungs- und Gap-Matrix](../../../Metadata/Quality/Diagnostic_Coverage_Landscape.csv) nachgewiesen; der historische Planungsstand bleibt im [Archiv](Next_Steps_History_2026-11-05.md#aktueller-produktstand) erhalten.
+
+## Historische Abschnitte und erhaltene Anker
+
+Die folgenden Überschriften bewahren bislang veröffentlichte Abschnittsanker und führen zum unveränderten Originaltext im Archiv.
+
+## Historischer SSIS-Auftrag: elfte Paketwelle
+
+Historischer Abschnitt: [Archiv öffnen](Next_Steps_History_2026-11-05.md#historischer-ssis-auftrag-elfte-paketwelle).
+
+## Historischer SSIS-Auftrag: zehnte Paketwelle
+
+Historischer Abschnitt: [Archiv öffnen](Next_Steps_History_2026-11-05.md#historischer-ssis-auftrag-zehnte-paketwelle).
+
+## Historischer SSIS-Auftrag: siebte Paketwelle
+
+Historischer Abschnitt: [Archiv öffnen](Next_Steps_History_2026-11-05.md#historischer-ssis-auftrag-siebte-paketwelle).
+
+## Aktueller Gesamtauftrag: priorisierte Entwicklungswellen
+
+Seit dem 26. Oktober 2026 bündelt dieser Auftrag die Weiterentwicklung einschließlich verbleibender SSIS-Themen als einziger Orchestrator. Die [Entwicklungsplanung](Development_Waves_2026-10.md) ist die maßgebliche Quelle für Zuständigkeit, Reihenfolge, Abschlussbedingungen und den nächsten ausführbaren Schritt. Bereits integrierte Wellen werden nicht wiederholt; neue SSIS-Schritte zählen im gemeinsamen Umfang mit. Die Obergrenze beträgt 200 eigene PR-Schritte, die Neubewertung erfolgt bei 190. Sicherheits-, Datenschutz-, Lizenz-, Identitäts-, Laufzeit- und Liefergrenzen bleiben verbindlich. Frühere Einzelaufträge und ihre damaligen Freigaben sind im [Historienarchiv](Next_Steps_History_2026-11-05.md#aktueller-gesamtauftrag-priorisierte-entwicklungswellen) dokumentiert.
+
+## Abgeschlossen: fünf SSIS-Paketwellen vom 25. Oktober 2026
+
+Historischer Abschnitt: [Archiv öffnen](Next_Steps_History_2026-11-05.md#abgeschlossen-f%C3%BCnf-ssis-paketwellen-vom-25-oktober-2026).
+
+## SSIS-Welle 6: iterationsgebundene Ausführungskorrelation
+
+Historischer Abschnitt: [Archiv öffnen](Next_Steps_History_2026-11-05.md#ssis-welle-6-iterationsgebundene-ausf%C3%BChrungskorrelation).
+
+## Separater Auftrag: STAT-DOMINANT-Fehlerdiagnose (54901)
+
+Historischer Abschnitt: [Archiv öffnen](Next_Steps_History_2026-11-05.md#separater-auftrag-stat-dominant-fehlerdiagnose-54901).
+
+### Abgeschlossen: Diagnose aus PR #424
+
+Historischer Abschnitt: [Archiv öffnen](Next_Steps_History_2026-11-05.md#abgeschlossen-diagnose-aus-pr-424).
+
+### Historische Freigabe und Abnahmegrenzen
+
+Historischer Abschnitt: [Archiv öffnen](Next_Steps_History_2026-11-05.md#historische-freigabe-und-abnahmegrenzen).
+
+#### Freigegeben: STAT-DOMINANT-Fehlerdiagnose (54901)
+
+Historischer Abschnitt: [Archiv öffnen](Next_Steps_History_2026-11-05.md#freigegeben-stat-dominant-fehlerdiagnose-54901).
+
+## Integriert: SSIS-001-Pipeline-Phasenbeginnmeldungen (PR #421); Main-Abnahme offen
+
+Historischer Abschnitt: [Archiv öffnen](Next_Steps_History_2026-11-05.md#integriert-ssis-001-pipeline-phasenbeginnmeldungen-pr-421-main-abnahme-offen).
+
+### Historische Freigabe und lokale Abnahme
+
+Historischer Abschnitt: [Archiv öffnen](Next_Steps_History_2026-11-05.md#historische-freigabe-und-lokale-abnahme).
+
+#### Freigegebener begrenzter SSIS-001-Schritt: Pipeline-Phasenbeginnmeldungen
+
+Historischer Abschnitt: [Archiv öffnen](Next_Steps_History_2026-11-05.md#freigegebener-begrenzter-ssis-001-schritt-pipeline-phasenbeginnmeldungen).
+
+## Abgeschlossen: SSIS-001-Final-Commit-Meldungen (PR #419)
+
+Historischer Abschnitt: [Archiv öffnen](Next_Steps_History_2026-11-05.md#abgeschlossen-ssis-001-final-commit-meldungen-pr-419).
+
+### Historische Freigabe und lokale Abnahme
+
+Historischer Abschnitt: [Archiv öffnen](Next_Steps_History_2026-11-05.md#historische-freigabe-und-lokale-abnahme-1).
+
+## Abgeschlossen: SSIS-001-Zeilenfluss-Durchsatz (PR #417)
+
+Historischer Abschnitt: [Archiv öffnen](Next_Steps_History_2026-11-05.md#abgeschlossen-ssis-001-zeilenfluss-durchsatz-pr-417).
+
+### Historische Freigabe und lokale Abnahme
+
+Historischer Abschnitt: [Archiv öffnen](Next_Steps_History_2026-11-05.md#historische-freigabe-und-lokale-abnahme-2).
+
+## Abgeschlossen: SSIS-001-Schreibmengen (PR #415)
+
+Historischer Abschnitt: [Archiv öffnen](Next_Steps_History_2026-11-05.md#abgeschlossen-ssis-001-schreibmengen-pr-415).
+
+### Historische Freigabe und lokale Abnahme
+
+Historischer Abschnitt: [Archiv öffnen](Next_Steps_History_2026-11-05.md#historische-freigabe-und-lokale-abnahme-3).
+
+## Abgeschlossen: Release v1.1.2
+
+Historischer Abschnitt: [Archiv öffnen](Next_Steps_History_2026-11-05.md#abgeschlossen-release-v112).
+
+## Historische Freigaben und Sperrstände
+
+Historischer Abschnitt: [Archiv öffnen](Next_Steps_History_2026-11-05.md#historische-freigaben-und-sperrst%C3%A4nde).
+
+### Freigegebener Folge-PR: FIND-CORE-Diagnose
+
+Historischer Abschnitt: [Archiv öffnen](Next_Steps_History_2026-11-05.md#freigegebener-folge-pr-find-core-diagnose).
+
+### Gestoppte Lieferung: Release 1.1.2
+
+Historischer Abschnitt: [Archiv öffnen](Next_Steps_History_2026-11-05.md#gestoppte-lieferung-release-112).
+
+## Historische Welle: Release 1.1.0
+
+Historischer Abschnitt: [Archiv öffnen](Next_Steps_History_2026-11-05.md#historische-welle-release-110).
+
+## OPS-005-Quellenabgleich vom 23. Oktober 2026
+
+Historischer Abschnitt: [Archiv öffnen](Next_Steps_History_2026-11-05.md#ops-005-quellenabgleich-vom-23-oktober-2026).
+
+## Erhaltener Stand: OPS-005-Lesepfad und Nachweishistorie
+
+Historischer Abschnitt: [Archiv öffnen](Next_Steps_History_2026-11-05.md#erhaltener-stand-ops-005-lesepfad-und-nachweishistorie).
+
+### Dokumentationsaltlasten und Wiederaufnahme
+
+Die drei damals bezeichneten Einstiege sind nachgeführt: Der Metadaten-Einstieg wurde mit PR #405 qualifiziert abgeschlossen. Das öffentliche TestLab-README trennt die OPS-005-Anleitung von der datierten Nachweischronologie. Der aktuelle Fortsetzungsstand ist mit dieser Migration von der erhaltenen Historie getrennt; die bisherigen Anker bleiben erreichbar. Diese Disposition betrifft ausschließlich die genannten Lesepfade und bestätigt keine vollständige Dokumentationskonformität. Die zuständigen Maintainer prüfen diese Einstiege erneut, wenn sich deren Verträge oder Pfadkonsumenten ändern. Der [damalige Altlastenstand](Next_Steps_History_2026-11-05.md#dokumentationsaltlasten-und-wiederaufnahme) bleibt historisch erhalten.
+
+## Erhaltene Diagnosehistorie: OPS-005-Provider-Negativfall
+
+Historischer Abschnitt: [Archiv öffnen](Next_Steps_History_2026-11-05.md#erhaltene-diagnosehistorie-ops-005-provider-negativfall).
+
+### Geplanter Windows-Fixturepfad für OPS-005
+
+Historischer Abschnitt: [Archiv öffnen](Next_Steps_History_2026-11-05.md#geplanter-windows-fixturepfad-f%C3%BCr-ops-005).
+
+#### Plattform und Zuständigkeit
+
+Historischer Abschnitt: [Archiv öffnen](Next_Steps_History_2026-11-05.md#plattform-und-zust%C3%A4ndigkeit).
+
+#### Voraussetzungen vor der Providerprobe
+
+Historischer Abschnitt: [Archiv öffnen](Next_Steps_History_2026-11-05.md#voraussetzungen-vor-der-providerprobe).
+
+#### Fachlicher Abnahmeblock
+
+Historischer Abschnitt: [Archiv öffnen](Next_Steps_History_2026-11-05.md#fachlicher-abnahmeblock).
+
+#### Cleanup, Nachweise und vorgeschlagene Freigabegrenze
+
+Historischer Abschnitt: [Archiv öffnen](Next_Steps_History_2026-11-05.md#cleanup-nachweise-und-vorgeschlagene-freigabegrenze).
+
+#### Zulassung vor der Runanlage
+
+Historischer Abschnitt: [Archiv öffnen](Next_Steps_History_2026-11-05.md#zulassung-vor-der-runanlage).
+
+#### Wiederaufnahme nach Integration der Lab-Korrektur
+
+Historischer Abschnitt: [Archiv öffnen](Next_Steps_History_2026-11-05.md#wiederaufnahme-nach-integration-der-lab-korrektur).
+
+#### Windows-Abbruch am Aktivierungsintent
+
+Historischer Abschnitt: [Archiv öffnen](Next_Steps_History_2026-11-05.md#windows-abbruch-am-aktivierungsintent).
+
+#### Zusatzrun endet an der Lab-Collation-Gastprobe
+
+Historischer Abschnitt: [Archiv öffnen](Next_Steps_History_2026-11-05.md#zusatzrun-endet-an-der-lab-collation-gastprobe).
+
+#### Nachabnahme mit qualifizierter Lab-Korrektur
+
+Historischer Abschnitt: [Archiv öffnen](Next_Steps_History_2026-11-05.md#nachabnahme-mit-qualifizierter-lab-korrektur).
+
+#### Markerkorrektur bestätigt; Installation am Kommentar-GO blockiert
+
+Historischer Abschnitt: [Archiv öffnen](Next_Steps_History_2026-11-05.md#markerkorrektur-best%C3%A4tigt-installation-am-kommentar-go-blockiert).
+
+#### Installation bestätigt; Guardzustand 54890 unbekannt
+
+Historischer Abschnitt: [Archiv öffnen](Next_Steps_History_2026-11-05.md#installation-best%C3%A4tigt-guardzustand-54890-unbekannt).
+
+#### Windows-Providerabnahme vom 22. Oktober 2026 bestanden
+
+Historischer Abschnitt: [Archiv öffnen](Next_Steps_History_2026-11-05.md#windows-providerabnahme-vom-22-oktober-2026-bestanden).
+
+### Autorisierter Foundation-Folgeauftrag
+
+Historischer Abschnitt: [Archiv öffnen](Next_Steps_History_2026-11-05.md#autorisierter-foundation-folgeauftrag).
+
+## Abgeschlossene Findings-Stabilisierung vom 20. Oktober 2026
+
+Historischer Abschnitt: [Archiv öffnen](Next_Steps_History_2026-11-05.md#abgeschlossene-findings-stabilisierung-vom-20-oktober-2026).
+
+## Frühere Nichtqualifikation und integrierter OPS-005-Prüfschritt vom 20. Oktober 2026
+
+Historischer Abschnitt: [Archiv öffnen](Next_Steps_History_2026-11-05.md#fr%C3%BChere-nichtqualifikation-und-integrierter-ops-005-pr%C3%BCfschritt-vom-20-oktober-2026).
+
+## Regelübernahme für Testbewertung vom 19. Oktober 2026
+
+Historischer Abschnitt: [Archiv öffnen](Next_Steps_History_2026-11-05.md#regel%C3%BCbernahme-f%C3%BCr-testbewertung-vom-19-oktober-2026).
+
+## Freigegebene Lookup-/Cacheanalyse vom 19. Oktober 2026
+
+Historischer Abschnitt: [Archiv öffnen](Next_Steps_History_2026-11-05.md#freigegebene-lookup-cacheanalyse-vom-19-oktober-2026).
+
+## Freigegebene Legacy-Lifecycle-Analyse vom 19. Oktober 2026
+
+Historischer Abschnitt: [Archiv öffnen](Next_Steps_History_2026-11-05.md#freigegebene-legacy-lifecycle-analyse-vom-19-oktober-2026).
+
+## Lieferung der begrenzten Komponentenphasen-Erweiterung
+
+Historischer Abschnitt: [Archiv öffnen](Next_Steps_History_2026-11-05.md#lieferung-der-begrenzten-komponentenphasen-erweiterung).
+
+## Freigegebene PCT_EN_2-Fortsetzung
+
+Historischer Abschnitt: [Archiv öffnen](Next_Steps_History_2026-11-05.md#freigegebene-pct_en_2-fortsetzung).
+
+## Freigegebene Legacy-Komponentenphasenzeiten vom 18. Oktober 2026
+
+Historischer Abschnitt: [Archiv öffnen](Next_Steps_History_2026-11-05.md#freigegebene-legacy-komponentenphasenzeiten-vom-18-oktober-2026).
+
+## Freigegebene ORPS_EN_2-Fortsetzung vom 18. Oktober 2026
+
+Historischer Abschnitt: [Archiv öffnen](Next_Steps_History_2026-11-05.md#freigegebene-orps_en_2-fortsetzung-vom-18-oktober-2026).
+
+## Freigegebene Legacy-Zeilenflusserweiterung vom 18. Oktober 2026
+
+Historischer Abschnitt: [Archiv öffnen](Next_Steps_History_2026-11-05.md#freigegebene-legacy-zeilenflusserweiterung-vom-18-oktober-2026).
+
+## Freigegebene Legacy-Taskerweiterung vom 18. Oktober 2026
+
+Historischer Abschnitt: [Archiv öffnen](Next_Steps_History_2026-11-05.md#freigegebene-legacy-taskerweiterung-vom-18-oktober-2026).
+
+## Abgeschlossene begrenzte Legacy-Providerabnahme vom 18. Oktober 2026
+
+Historischer Abschnitt: [Archiv öffnen](Next_Steps_History_2026-11-05.md#abgeschlossene-begrenzte-legacy-providerabnahme-vom-18-oktober-2026).
+
+## Ergänzender abgeschlossener Mail-Retentionsnachweis
+
+Historischer Abschnitt: [Archiv öffnen](Next_Steps_History_2026-11-05.md#erg%C3%A4nzender-abgeschlossener-mail-retentionsnachweis).
+
+## Zurückgestellter SSIS-Backlog vom 16. Oktober 2026
+
+Historischer Abschnitt: [Archiv öffnen](Next_Steps_History_2026-11-05.md#zur%C3%BCckgestellter-ssis-backlog-vom-16-oktober-2026).
+
+## Aktuelle SSIS-Kataloglieferung vom 16. Oktober 2026
+
+Historischer Abschnitt: [Archiv öffnen](Next_Steps_History_2026-11-05.md#aktuelle-ssis-kataloglieferung-vom-16-oktober-2026).
+
+## WI-0009: qualifizierter portabler Kern und offenes Feature-Gate
+
+Historischer Abschnitt: [Archiv öffnen](Next_Steps_History_2026-11-05.md#wi-0009-qualifizierter-portabler-kern-und-offenes-feature-gate).
+
+## Aktueller WI-0005-Abschluss vom 14. Oktober 2026
+
+Historischer Abschnitt: [Archiv öffnen](Next_Steps_History_2026-11-05.md#aktueller-wi-0005-abschluss-vom-14-oktober-2026).
+
+## Aktueller Fertigstellungsauftrag vom 13. Oktober 2026
+
+Historischer Abschnitt: [Archiv öffnen](Next_Steps_History_2026-11-05.md#aktueller-fertigstellungsauftrag-vom-13-oktober-2026).
+
+## Wiederaufnahme nach der Entwicklungspause
+
+Historischer Abschnitt: [Archiv öffnen](Next_Steps_History_2026-11-05.md#wiederaufnahme-nach-der-entwicklungspause).
+
+## Maßgeblichkeit
+
+Historischer Abschnitt: [Archiv öffnen](Next_Steps_History_2026-11-05.md#ma%C3%9Fgeblichkeit).
+
+## Auftrag zur autonomen Fortsetzung
+
+Historischer Abschnitt: [Archiv öffnen](Next_Steps_History_2026-11-05.md#auftrag-zur-autonomen-fortsetzung).
+
+### Voraussetzungen und Abnahmen der Fortsetzung
+
+Historischer Abschnitt: [Archiv öffnen](Next_Steps_History_2026-11-05.md#voraussetzungen-und-abnahmen-der-fortsetzung).
+
+## Sessionwechsel bei langer autonomer Entwicklung
+
+Historischer Abschnitt: [Archiv öffnen](Next_Steps_History_2026-11-05.md#sessionwechsel-bei-langer-autonomer-entwicklung).
+
+## Aktueller Produktstand
+
+Historischer Abschnitt: [Archiv öffnen](Next_Steps_History_2026-11-05.md#aktueller-produktstand).
+
+### Abgeschlossen – SQL25-005
+
+Historischer Abschnitt: [Archiv öffnen](Next_Steps_History_2026-11-05.md#abgeschlossen--sql25-005).
+
+## Nächste ausführbare Welle: Reifeabschluss
+
+Historischer Abschnitt: [Archiv öffnen](Next_Steps_History_2026-11-05.md#n%C3%A4chste-ausf%C3%BChrbare-welle-reifeabschluss).
+
+## Exit-Kriterien
+
+Historischer Abschnitt: [Archiv öffnen](Next_Steps_History_2026-11-05.md#exit-kriterien).
+
+## Freigegebene SSIS-Legacy-Umsetzung vom 16. Oktober 2026
+
+Historischer Abschnitt: [Archiv öffnen](Next_Steps_History_2026-11-05.md#freigegebene-ssis-legacy-umsetzung-vom-16-oktober-2026).
+
+## Begrenzte Taskerweiterung: lokaler Abnahmeabschluss
+
+Historischer Abschnitt: [Archiv öffnen](Next_Steps_History_2026-11-05.md#begrenzte-taskerweiterung-lokaler-abnahmeabschluss).
+
+### Verarbeitungsaufwand der SSIS-Vertrauensausnahme
+
+Historischer Abschnitt: [Archiv öffnen](Next_Steps_History_2026-11-05.md#verarbeitungsaufwand-der-ssis-vertrauensausnahme).
+
+## Gesondert freigegebene SSIS-Dataflowkorrelation
+
+Historischer Abschnitt: [Archiv öffnen](Next_Steps_History_2026-11-05.md#gesondert-freigegebene-ssis-dataflowkorrelation).
+
+## Freigegebene neunte SSIS-Welle
+
+Historischer Abschnitt: [Archiv öffnen](Next_Steps_History_2026-11-05.md#freigegebene-neunte-ssis-welle).
+
+
+---
+
+## Historische Kontrollregel aus der damaligen Entwicklungsplanung
+
+## Ausführung, Review und endliche Grenzen
+
+Je kohärentem Schritt arbeitet ein Implementierer mit höchstens einem
+unabhängigen Reviewer. Ein begrenzter Folgecheck betrifft ausschließlich
+konkrete Befunde an geänderten Inputs. Hashes, Mengen, Registrykollisionen,
+Commitbindungen und CI-Ergebnisse werden lokal deterministisch geprüft.
+Weitere fachliche Teilfragen erfordern einen neuen begründeten Schritt.
+
+Der endliche Gesamtscope umfasst die 13 Ränge 6 bis 18, diese Planintegration
+und die betroffene Dokumentationskonsolidierung. Die ursprüngliche gemeinsame
+Obergrenze von 40 eigenen fachlichen PR-Schritten einschließlich
+Korrekturlieferungen und Koordination sowie der Checkpoint bei 30 sind
+historische Autorisierung. Der Benutzer hat den gemeinsamen Umfang inzwischen
+am 3. November 2026 auf 200 eigene PR-Schritte mit Checkpoint bei 190
+erweitert. Die früheren Grenzen von 40, 80, 120 und 160 bleiben historische
+Freigaben ohne Verbrauchsreset. Die ersten 160 Schritte sind abgeschlossen. Bereits
+abgeschlossene Schritte des früheren separaten SSIS-Auftrags werden nicht
+nachträglich neu gezählt. Neue SSIS-Schritte dieses Orchestrators zählen
+innerhalb der aktuellen Obergrenze mit.
+Pro Schritt sind ein Erstentwurf, ein gebündelter Korrekturpass und die
+erforderlichen Gates vorgesehen. Neue fehlgeschlagene Tests werden zunächst
+lokal eingegrenzt. Ein weiterer Versuch benötigt geänderte Inputs, neue
+Evidenz oder ein bisher unerfülltes Gate. Tatsächlicher Verbrauch einschließlich
+Reviewer und Wiederholungen wird privat je Checkpoint fortgeschrieben.
+Token-, Kosten- und Kontingentmessung sind nicht verlässlich verfügbar.
+
+Ein Checkpoint folgt nach jeder integrierten Lieferung. Bei 190 verbrauchten
+PR-Schritten wird der verbleibende Umfang vor weiterer Arbeit neu bewertet;
+bei 200 beginnen keine neuen Schritte. Offene Arbeit wird dann mit ihrer
+tatsächlichen Grenze gesichert und nicht als abgeschlossen ausgegeben. Ein
+Heartbeat oder Sessionwechsel setzt diese Grenzen nicht zurück. Die frühere
+Neubewertung bei 30 und Grenze bei 40 bleiben Teil der Historie und setzen die
+aktuelle Erweiterung nicht zurück.
+
+Der Abschluss eines einzelnen Pull Requests beendet den Gesamtauftrag nicht.
+Der Orchestrator setzt anschließend den nächsten ausführbaren freigegebenen
+Schritt ohne erneute Fortsetzungsaufforderung um. Der stündliche Heartbeat
+bleibt eine zusätzliche Leerlauferkennung und ersetzt diese laufende
+Fortsetzung nicht. Der Restumfang wird an den jeweils geltenden autorisierten Checkpoints anhand des verbleibenden Auftrags neu bewertet. Frühere Checkpoints setzen den aktuellen Verbrauch nicht zurück; bestehende Einzelgrenzen und Sperren gelten fort.
+
+Die Testauswahl folgt ausschließlich der
+[CI-Teststrategie](../../../Documentation/Quality/CI_Test_Strategy.md).
+Dokumentation erhält die betroffenen statischen Gates ohne SQL-Instanz;
+Produktänderungen erhalten die direkt und transitiv betroffene SQL2025-Prüfung.
+Native ältere Engines, zusätzliche Compatibility Levels, Windows und externe
+Features werden nur am konkreten Vertragsrisiko ergänzt. Keine bestandene
+Prüfung wird allein wegen Zeitablaufs wiederholt. Offene Required Checks,
+Reviews oder Cleanupnachweise verhindern die Abschlussbehauptung.
+
+Eine Lieferung wird auf einem eigenen Branch gegen aktuelles `origin/main`
+vorbereitet, unabhängig geprüft und nach erfolgreichen erforderlichen
+Head-Checks regulär per PR integriert. Main-Nachläufe sind getrennte Evidenz.
+Es gibt keinen direkten Main-Push, Force-Push, pauschalen Release oder
+automatischen Eingriff in bestehende beziehungsweise fremde Systeme.
+Ein blockierter Rang wird mit Ursache und Wiederaufnahmebedingung erhalten;
+der nächste unabhängige autorisierte Rang kann währenddessen fortgesetzt werden.
+

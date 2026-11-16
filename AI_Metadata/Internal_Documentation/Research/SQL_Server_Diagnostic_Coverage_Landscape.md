@@ -3,7 +3,7 @@
 **Referenz:** `WI-0010`
 
 **Forschungsbaseline:** 29. August 2026
-**Lieferstatusabgleich:** 27. Oktober 2026
+**Lieferstatusabgleich:** 27. Oktober 2026; Loaded-Module- und Linux-cgroup-Teilabgleich 14. November 2026; Snapshot- und WI-0005/0006/0007/0009-Teilabgleich 15. November 2026; REST-Konfigurations-Nachweisabgleich 16. November 2026
 
 **Status:** `RESEARCHED_NOT_IMPLEMENTED`
 **Maschinenlesbare Matrix:** `Metadata/Quality/Diagnostic_Coverage_Landscape.csv`
@@ -34,22 +34,29 @@ Die Matrix betrachtet 106 fachliche Bereiche. Der Frameworkkern deckt die zentra
 - Server- und Datenbankprincipals, Rollen, Ownership, explizite Berechtigungen und verwaiste Zuordnungen;
 - Authentisierungs- und Login-Lifecycle einschließlich Entra-fähiger Principals, ohne Identitäten oder Secrets ungeschützt auszugeben;
 - TDS-/TLS-, Zertifikats-, Extended-Protection- und Endpoint-Posture mit klarer Grenze zwischen SQL- und Hostevidenz;
-- deprecated, discontinued und breaking Features als versionsbezogene Upgrade- und Migrationsfläche;
+- Deprecated-Usage besitzt mit [USP_UpgradeFeatureUsageAnalysis](../../../Documentation/Analysis_Guides/Procedures/USP_UpgradeFeatureUsageAnalysis.md) einen instanzweiten Rohcounter-Slice seit dem SQL-Serverstart und genau eine begrenzte lightweight-pooling-Zielversionsregel. SQL Server 2019 und 2025 wurden nativ qualifiziert; Discontinued, Breaking Changes, Hostfolgen, vollständige Featurezuordnung und Upgradefreigabe bleiben offen;
 - Legacy-Datenbankspiegelung als weiterhin vorhandene, aber abgekündigte Betriebsrealität;
 - verteilte Transaktionen und MSDTC einschließlich Recovery- und HADR-Kontext;
-- Linux-, Container- und cgroup-Ressourcengrenzen, soweit SQL-eigene und externe Plattformwerte sicher korreliert werden können;
+- Linux-, Container- und cgroup-Ressourcengrenzen bleiben als Korrelationsfrage offen. Der mit PR #466 integrierte externe cgroup-v2-Reader liefert einen begrenzten, lesenden Prozess- und Sicht-Hierarchie-Slice; 223 portable Reader-, 113 Parser- und 19 native Fälle bestanden auf Linux x86_64/Python 3.11 am Head und auf Main. Konfigurierte Grenzwirkung, SQL-Instanzbindung, SQL-Import und globale Hierarchievollständigkeit sind nicht belegt;
 - Row-Level Security und Dynamic Data Masking als aktive Security-Policy-Fläche statt bloßer Objektinventur. Das caller-sichtbare Kataloginventar V1 ist mit Status `PARTIAL_PRODUCT_FUNCTION` integriert; Enforcement, Wirksamkeit und Vollständigkeit bleiben außerhalb des Vertrags.
 
 ### Priorität P2
 
-- Database Snapshots mit Source-Abhängigkeit, Sparse-File-Wachstum, Alter und Suspect-Grenzen;
-- Policy-Based Management einschließlich Policies, Bedingungen, Evaluationsmodi und letzter Auswertung, ohne Regeln auszuführen oder zu erzwingen;
+- Geladene SQL-Prozessmodule besitzen mit [USP_LoadedModuleInventory](../../../Documentation/Analysis_Guides/Procedures/USP_LoadedModuleInventory.md) einen begrenzten DMV-Inventarslice mit unverändertem nativem Namen einschließlich möglichem Pfad und ergänzendem Basenamen. PR #702 bestand SQL-Server-2025-/CL170-Head- und Main-Gates sowie ein natives SQL-Server-2019-/CL150-FULL_RELEASE-Gate für diesen V1-Vertrag. SQL Server 2022 wurde nicht separat nativ qualifiziert; Host- und Filtertreiber, Signaturen, Malware, Vertrauens- und Gesundheitsbewertungen bleiben außerhalb des Vertrags;
+- Datenbank-Snapshots besitzen mit [USP_DatabaseSnapshotInventory](../../../Documentation/Analysis_Guides/Procedures/USP_DatabaseSnapshotInventory.md) einen begrenzten caller-sichtbaren Katalog-Slice für Source-Beziehungen und Sparse-Dateizeilen. PR #706 bestand die SQL-Server-2025-/CL170-Head- und Main-Gates einschließlich nativen Vertrags 144. Die maximale Dateikapazität ist keine physische Belegung; Alter nach Umbenennung, zeitliches Wachstum, Gesundheit, Suspect- und Restore-Eignung bleiben offen. Die CONSOLE-Zellen sind durch exakte Quellprojektionsbindung, gleichaufrufbezogenes JSON und ein typisiertes Resultset indirekt belegt; SQL Server 2019/2022 wurden dafür nicht nativ ausgeführt;
+- zeitbegrenzte Extended-Events-Sessions besitzen in `USP_ExtendedEventsSessions` einen opt-in-Katalog- und Runtime-Slice für `MAX_DURATION` und begrenzte Restzeitschätzungen. Der [historische WI-0005-Nachweis](../Quality/WI0005_TimeBounds_Runtime_Evidence_2026-10-14.md) bindet positive SQL-Server-2025-Fälle und den SQL-Server-2019-Fallback. Capturezweck, Lastwirkung und ein genauer Beendigungszeitpunkt folgen daraus nicht;
+- Compile-Druck erhält mit `USP_CompileContextAnalysis` eine begrenzte Sicht auf `OPTIMIZED_SP_EXECUTESQL`, serverweite Counter, Waits und Cacheklassen. Der [historische WI-0006-Nachweis](../Quality/WI0006_WI0007_Runtime_Evidence_2026-10-14.md) bindet SQL Server 2025 und den gezielten SQL-Server-2019-Fallback; Query-Zuordnung, Storm-Ursache und Resetkontinuität bleiben unbelegt;
+- externe Modelle werden in `USP_SpecialFeatureInventory` je ausgewählter Datenbank sichtbar gezählt. Der [historische WI-0007-Nachweis](../Quality/WI0006_WI0007_Runtime_Evidence_2026-10-14.md) umfasst ein eigenes positives Modellobjekt unter SQL Server 2025 und den SQL-Server-2019-Versionsfallback; Endpoint, Ausführung, Qualität und Credentials bleiben außerhalb der leichten Inventur;
+- externe Daten besitzen mit `USP_ExternalDataAnalysis` einen begrenzten lokalen Metadatenkern. Der [historische WI-0009-Nachweis](../Quality/WI0009_Local_Metadata_Runtime_Evidence_2026-10-14.md) bindet native leere Kataloge unter SQL Server 2025 und 2019 sowie synthetische Referenzprojektionen. Positive echte External-Table-Referenzen, Remote-Endpunkte und Konnektivität bleiben als eigenes Feature-Gate offen;
+- Policy-Based Management besitzt mit `USP_MsdbHealthAnalysis` einen begrenzten, in PR #708 auf SQL Server 2025/CL170 nativ geprüften Zählpfad für caller-sichtbare Policies, Conditions und Categories; das [Dossier](../Architecture/Policy_Based_Management_Count_Dossier.md) und der öffentliche Guide trennen ihn von Evaluationsmodi, Ergebnishistorie und Regelwirkung. Die eigene nicht mandatierte Kategorie wurde mit Countzuwachs und TABLE-/JSON-Parität geprüft; positive Policy-/Condition-Objekte, Enforcement und SQL Server 2019/2022 blieben unqualifiziert.
 - Sensitivity Classification, Ledger-Digest-/Verifikationsstatus, EKM und Credentialabhängigkeiten;
 - Failover Cluster Instances und WSFC-/Pacemaker-Hostevidenz als getrennter externer Adapter;
 - unveränderbare URL-Backups und SQL-Server-2025-Backups auf Secondary Replicas;
 - FILESTREAM/FileTable-Betrieb über die bestehende leichte Erkennung hinaus;
-- Change Event Streaming, Fabric Mirroring und External REST Endpoint Invocation mit strikter Trennung lokaler Kataloge von externen Endpoints, Credentials und Payloads;
-- Plan Guides sowie SQL-Agent-Proxies und deren Berechtigungsabhängigkeiten.
+- Change Event Streaming und Fabric Mirroring bleiben offene Integrationsfragen. Für External REST Endpoint Invocation ist seit PR #710 ein begrenzter Konfigurationsslice in `USP_ServerSecurityConfiguration` integriert: Er liest allein den caller-sichtbaren Wert `external rest endpoint enabled` aus `sys.configurations`. SQL-Server-2025-/CL170-Head und Main bestanden den nativen Katalog-, TABLE- und JSON-Paritätsvertrag für die vorhandene Option; ein aktivierter Option-1-Zustand wurde nicht erzeugt. Das [REST-Konfigurationsdossier](../Architecture/External_REST_Endpoint_Configuration_Dossier.md) trennt die lokale Option von Aufrufberechtigung, Endpoint-Erreichbarkeit, Credentials, Ziel-URLs, Nutzung und Sicherheitswirkung;
+- Plan Guides besitzen einen begrenzten caller-sichtbaren Katalog-Slice in [USP_PlanGuideInventory](../../../Documentation/Analysis_Guides/Procedures/USP_PlanGuideInventory.md). Die SQL-Server-2025-/CL170-Head- und Main-Gates für PR #699 sind bestanden; Validität, Anwendung, Wirksamkeit, Vollständigkeit und ein kontrollierter nativer DENIED_PERMISSION-Fall bleiben unqualifiziert.
+- Datenbank-DDL-Trigger besitzen mit [USP_DatabaseDdlTriggerInventory](../../../Documentation/Analysis_Guides/Procedures/USP_DatabaseDdlTriggerInventory.md) einen caller-sichtbaren Metadaten-Slice. Die vollständigen SQL-Server-2025-/CL170-Head- und Main-Gates für PR #700 bestanden einschließlich Vertrag 124. Server-DDL- und LOGON-Trigger, Definitionen, Ereignisse, Ausführung, Rollback-Wirkung, globale Vollständigkeit und ein kontrolliert erzwungener nativer Rechtefehler bleiben unqualifiziert.
+- [SQL-Agent-Proxies](../Architecture/Agent_Proxy_Dependency_Inventory_Dossier.md) besitzen einen getrennten V1-Slice. Er bestand nach PR #696 die SQL-Server-2025-/CL170-Head- und Main-Gates; ein positiver Proxy- oder Ausführungsfall bleibt unqualifiziert.
 
 ### Priorität P3 und bedingte Vertiefung
 
@@ -57,7 +64,6 @@ Die Matrix betrachtet 106 fachliche Bereiche. Der Frameworkkern deckt die zentra
 - Graph-, Spatial-, XML- und native JSON-Deep-Analysen nur bei nachgewiesener Nutzung und konkreter Betriebsfrage;
 - Legacy SQL Trace beziehungsweise Default Trace als Migrations- und Observability-Abhängigkeit;
 - DQS- und MDS-Restbestände als Upgradehinweis für Quellsysteme vor SQL Server 2025;
-- DDL-, Datenbank- und Logon-Trigger als Security- und Betriebsoberfläche.
 
 ## Bewusste Grenzen
 
@@ -69,7 +75,7 @@ Eine vollständige Namensliste beweist weder vollständige Semantik noch Produkt
 
 `WI-0010` bleibt als kontinuierliches Intake-Arbeitselement aktiv. Bei der späteren Planung gilt:
 
-1. zuerst offene Reife- und Collationverträge der aktuellen Welle abschließen;
+1. zuerst den aktuellen begrenzten Evidenz- und Reifeabgleich abschließen;
 2. bereits registrierte `WI-0002` bis `WI-0009` nicht durch neue Kandidaten überspringen;
 3. pro ausgewähltem `CoverageKey` die Überschneidung mit bestehenden Modulen erneut prüfen;
 4. erst danach eine eigene Registryreferenz vergeben und Analyse, Spezifikation, Implementierung sowie Evidenz als getrennte Schritte planen;
@@ -85,7 +91,7 @@ Die Übergabe vom 11. September 2026 ergänzte den damaligen Intake `WI-0010`. S
 
 | Toolbelt-Quell-ID | Diagnoseanteil und vorhandene Abdeckung | Zuständigkeit und nächster Planungsschritt |
 |---|---|---|
-| [AC-2026-001](https://github.com/gecompat/SQL_Server_Toolbelt/blob/main/Backlog/SQL_SERVER_ANALYZE_CANDIDATES.md#ac-2026-001-read-only-security-feature-katalog) | Der Vorschlag betrifft `PRINCIPALS_ROLE_PERMISSIONS`, `RLS_DYNAMIC_MASKING` und `SENSITIVITY_CLASSIFICATION`; die bestehende `WI-0010`-Matrix führt sie getrennt. Das [Dossier](../Architecture/RLS_and_Masking_Inventory_Dossier.md) konkretisiert das caller-sichtbare RLS-/Masking-Kataloginventar ohne Expressionstexte oder Schutz-/Wirksamkeitsurteil; PR #473 integriert diesen begrenzten Slice. Der RLS-Eintrag der Matrix steht deshalb auf `PARTIAL_PRODUCT_FUNCTION`; die anderen Coverage-Einträge bleiben eigenständig. | Principal-, Klassifikations-, Berechtigungs- und Metadatensichtbarkeitsgrenzen bleiben getrennt. Kein zusätzliches Arbeitselement für dieselbe Planung eröffnen. |
+| [AC-2026-001](https://github.com/gecompat/SQL_Server_Toolbelt/blob/main/Backlog/SQL_SERVER_ANALYZE_CANDIDATES.md#ac-2026-001-read-only-security-feature-katalog) | Der Vorschlag betrifft `PRINCIPALS_ROLE_PERMISSIONS`, `RLS_DYNAMIC_MASKING` und `SENSITIVITY_CLASSIFICATION`; die bestehende `WI-0010`-Matrix führt sie getrennt. Das [Dossier](../Architecture/RLS_and_Masking_Inventory_Dossier.md) konkretisiert das caller-sichtbare RLS-/Masking-Kataloginventar ohne Expressionstexte oder Schutz-/Wirksamkeitsurteil; PR #473 integriert diesen begrenzten Slice. Der RLS-Eintrag und der separate, aggregierte [Klassifikations-Summary-Slice](../Architecture/Sensitivity_Classification_Summary_Dossier.md) stehen jeweils begrenzt auf `PARTIAL_PRODUCT_FUNCTION`; für die neue Klassifikationsquelle steht die native Qualifikation noch aus. Die anderen Coverage-Einträge bleiben eigenständig. | Principal-, Klassifikations-, Berechtigungs- und Metadatensichtbarkeitsgrenzen bleiben getrennt. Kein zusätzliches Arbeitselement für dieselbe Planung eröffnen. |
 | [RI-2026-140](https://github.com/gecompat/SQL_Server_Toolbelt/blob/main/Backlog/TOOLBELT_RESEARCH_INBOX.md) | Toolbelt stellt Parser, Referenzextraktion und definierte Transformation bereit. Daraus folgt keine Abdeckung bewertender Lint-Regeln. Vorhandene Analyze-Query-, Plan- und Schemaanalysen sind keine pauschale Zusage für einen Linter über beliebigen SQL-Text. | Analyze `WI-0010` hält Linting und Bad-Practice-Bewertung als offene Intake-Frage. Zuerst konkrete Regeln und Überschneidungen mit vorhandenen Findings bestimmen; Datenquellen, False Positives und die optionale Nutzung öffentlicher Toolbelt-Verträge bleiben zu klären. |
 | [RI-2026-002](https://github.com/gecompat/SQL_Server_Toolbelt/blob/main/Backlog/TOOLBELT_RESEARCH_INBOX.md) | Der Vergleich zweier vorgegebener Schemazustände und ein überprüfbarer Änderungsplan bleiben Toolbelt. `SCHEMA_CONSTRAINTS` deckt mit `USP_ObjectInventory`, `USP_ObjectAnalysis` und `USP_SchemaDesignAnalysis` bereits Objekt- und Schemaanalysen ab; das beweist keine laufende Schemaüberwachung. | Analyze `WI-0010` klärt nur den zusätzlichen betrieblichen Überwachungs- und Bewertungsbedarf. Vor einer Formalisierung Capture, Zeitbezug, erwartete Änderungen und vorhandene Findings abgleichen. |
 | [RI-2026-009](https://github.com/gecompat/SQL_Server_Toolbelt/blob/main/Backlog/TOOLBELT_RESEARCH_INBOX.md) | Neutrale Fingerprints bleiben Toolbelt. `TIME_SERIES_BASELINES` verweist auf den partiellen Performance-Counter-Slice von `SC-023`; daraus folgt kein Schema- oder Datenfingerprint-Monitor. | Analyze `WI-0010` klärt die konkrete betriebliche Baseline-Frage gegen `SC-023` und dessen bestehende Erweiterungsplanung. Reset-, Vergleichs- und Evidenzgrenzen sind vor einer Erweiterung festzulegen. |

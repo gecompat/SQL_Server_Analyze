@@ -92,6 +92,7 @@ AS
         , (N'USP_ObjectAnalysis','REFINE_WITH',N'USP_VectorIndexAnalysis',3,N'Bei SQL-Server-2025-Vector-Indizes den aktuellen Katalog- und Wartungszustand gezielt ergänzen.')
         , (N'USP_ObjectAnalysis','CONFIRM_WITH',N'USP_QueryStats',1,N'Objektbefunde gegen Query- und Plannutzung validieren.')
         , (N'USP_SchemaDesignAnalysis','CONFIRM_WITH',N'USP_ObjectAnalysis',1,N'Schemadesignhinweise mit Objektgröße, Nutzung, Indizes und Statistiken abgleichen.')
+        , (N'USP_DatabaseDdlTriggerInventory','CONFIRM_WITH',N'USP_SchemaDesignAnalysis',1,N'Die sichtbare Triggerkonfiguration im separaten Schema- und Constraintkontext einordnen; dies belegt keine Triggerausführung oder Rollback-Wirkung.')
 
         , (N'USP_QueryStats','REFINE_WITH',N'USP_PlanDetails',1,N'Auffällige Query- oder Planhandles auf Details und begrenztes Plan-XML eingrenzen.')
         , (N'USP_QueryStats','CONFIRM_WITH',N'USP_QueryStoreRuntimeStats',1,N'Cache-Evidenz bei aktivem Query Store gegen ein explizites Zeitfenster prüfen.')
@@ -103,6 +104,7 @@ AS
         , (N'USP_ShowplanAnalysis','CONFIRM_WITH',N'USP_QueryStoreRuntimeStats',1,N'Planbefunde bei aktivem Query Store gegen reale Laufzeitintervalle abgleichen.')
         , (N'USP_PlanCacheAnalysis','REFINE_WITH',N'USP_ShowplanAnalysis',1,N'Auffällige Cachepläne als begrenztes Plan-XML fachlich vertiefen.')
         , (N'USP_PlanCacheAnalysis','CONFIRM_WITH',N'USP_QueryStoreAnalysis',1,N'Flüchtige Cache-Evidenz gegen persistierte Query-Store-Evidenz prüfen.')
+        , (N'USP_PlanGuideInventory','ALTERNATIVE_TO',N'USP_PlanCacheAnalysis',1,N'Der Katalog zeigt Konfiguration, der flüchtige Plan Cache getrennte Laufzeitbefunde; beide belegen keine Guide-Anwendung.')
         , (N'USP_CreateExecutionEvidenceJson','REFINE_WITH',N'USP_ExecutionPlanAnalysis',1,N'Das erzeugte Evidenzartefakt zusammen mit der vollständigen Plananalyse interpretieren.')
         , (N'USP_ExecutionPlanAnalysis','CONFIRM_WITH',N'USP_QueryStoreRuntimeStats',1,N'Planstruktur bei verfügbarem Query Store gegen gemessene Laufzeitintervalle prüfen.')
         , (N'USP_ExecutionPlanAnalysis','ALTERNATIVE_TO',N'USP_ShowplanAnalysis',1,N'Für einen bereits in SQL Server verfügbaren Planhandle kann der integrierte Showplanpfad geeigneter sein.')
@@ -148,6 +150,7 @@ AS
         , (N'USP_BackupChainAnalysis','CONFIRM_WITH',N'USP_DatabaseIntegrityAnalysis',1,N'Eine formal lückenlose Kette durch Integritäts- und Restoretests ergänzen.')
         , (N'USP_AvailabilityDeepAnalysis','CONFIRM_WITH',N'USP_CurrentLog',1,N'Queue- und Sendesignale mit Logzustand und Reuse-Wait abgleichen.')
         , (N'USP_AgentMonitoringAnalysis','CONFIRM_WITH',N'USP_ErrorLogAnalysis',1,N'Agentfehler und Laufzeitabweichungen mit Engine- und Agent-Logsignalen abgleichen.')
+        , (N'USP_AgentProxyInventory','CONFIRM_WITH',N'USP_AgentStatus',1,N'Nach der lesenden Proxy- und Subsysteminventur den Agent-Dienstzustand getrennt prüfen; daraus keine Proxy-Ausführung ableiten.')
         , (N'USP_MaintenanceOperations','CONFIRM_WITH',N'USP_AgentMonitoringAnalysis',1,N'Wartungsaktivität und Jobausführung gemeinsam bewerten.')
         , (N'USP_ErrorLogAnalysis','CONFIRM_WITH',N'USP_CriticalEngineEvents',1,N'Logmuster mit strukturierten kritischen Engine-Ereignissen gegenprüfen.')
 
@@ -235,6 +238,9 @@ AS
         , (N'USP_DistributedTransactionInventory','CONFIRM_WITH',N'USP_LinkedServerAnalysis',1,N'Flagwerte beschreiben nur lokale SQL-Metadaten; Erreichbarkeit und MSDTC-Dienstzustand benötigen getrennte Evidenz.')
         , (N'USP_DistributedTransactionInventory','CONFIRM_WITH',N'USP_CurrentTransactions',2,N'Aktive Transaktionsmetadaten sind kein Nachweis eines verteilten Commits oder einer Teilnehmergesundheit.')
         , (N'USP_DatabaseMirroringInventory','CONFIRM_WITH',N'USP_InfrastructureAnalysis',1,N'Sichtbare lokale Mirroring-Katalogwerte in den übrigen HA/DR-Kontext einordnen; sie belegen keine Partnergesundheit oder Failoverfähigkeit.')
+        , (N'USP_SensitivityClassificationSummary','CONFIRM_WITH',N'USP_DatabasePrincipalAnalysis',1,N'Direkte Datenbankrechte bei fehlendem Klassifikationszugriff getrennt einordnen; die Zählung bewertet keine effektiven Schutzregeln.')
+        , (N'USP_LoadedModuleInventory','CONFIRM_WITH',N'USP_OSInformation',1,N'SQL-Prozess-DMV getrennt von sichtbaren Plattform- und Hostgrenzen lesen; keine Filtertreiber- oder Signaturbewertung.')
+        , (N'USP_DatabaseSnapshotInventory','CONFIRM_WITH',N'USP_DatabaseCapacityAnalysis',1,N'Snapshot-Katalogkapazitaet getrennt von Datei- und Volumenfreiraum normaler Datenbanken interpretieren; keine physische Snapshot-Belegung ableiten.')
     ) AS [v]
     (
           [FromProcedureName], [RelationType], [ToProcedureName]

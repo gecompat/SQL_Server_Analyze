@@ -1,7 +1,7 @@
 # Optionales Snapshot-/Baseline-Paket – Architekturvertrag
 
 **Produktstatus des ausgelieferten Performance-Counter-Slice:** `IMPLEMENTED_ACTIONS_GATE`  
-**Waitausbau und weitere Collector, Rollups, Scheduler-/Exportpakete:** `PARTIAL_PRODUCT_FUNCTION`; der Waitpfad ist implementiert, weitere Ausbaupakete bleiben offen.
+**Wait-/FILE_IO-Ausbau und weitere Collector, Rollups sowie Scheduler-/Exportpakete:** `PARTIAL_PRODUCT_FUNCTION`; die öffentlichen Performance-Counter-, WAIT_STATS- und FILE_IO-Aufnahmepfade sind geliefert, weitere Ausbaupakete bleiben offen.
 
 ## Zweck und Abgrenzung
 

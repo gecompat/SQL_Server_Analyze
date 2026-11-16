@@ -1,7 +1,7 @@
 # Objektindex der eigenständigen Analysebeschreibungen
 
-**Stand:** 23. Juli 2026
-**Abdeckung:** alle 106 inventarisierten `USP_*`-Procedures des Frameworks einschließlich der optionalen Pakete
+**Stand:** 15. November 2026
+**Abdeckung:** alle 127 inventarisierten `USP_*`-Procedures des Frameworks einschließlich der optionalen Pakete
 
 Jeder Link führt zu einer in sich geschlossenen Procedure-Seite. Dort stehen sicherer Einstieg, Zeilengranularität, Leserichtung, technische Problembegründung, unkritischer Gegenkontext, synthetisches Beispiel, Folgeanalyse und der Link zur vollständigen technischen Spaltenreferenz.
 
@@ -60,6 +60,7 @@ Für einen Einstieg nach beobachtetem Problem verwenden Sie [Hier beginnen](Star
 | `[monitor].[USP_IndexPhysicalStats]` | [Fragmentierung, Seitendichte und Page Count](Procedures/USP_IndexPhysicalStats.md) |
 | `[monitor].[USP_VectorIndexAnalysis]` | [Vector-Index-Katalog und Hintergrundwartung](Procedures/USP_VectorIndexAnalysis.md) |
 | `[monitor].[USP_SchemaDesignAnalysis]` | [Constraints, FKs, Indizes und Identity-Risiken](Procedures/USP_SchemaDesignAnalysis.md) |
+| `[monitor].[USP_DatabaseDdlTriggerInventory]` | [Caller-sichtbare Datenbank-DDL-Trigger-Metadaten](Procedures/USP_DatabaseDdlTriggerInventory.md) |
 | `[monitor].[USP_ObjectAnalysis]` | [Orchestrierte Objekt- und Indextiefenanalyse](Procedures/USP_ObjectAnalysis.md) |
 
 ## Plan Cache und Showplan
@@ -75,6 +76,7 @@ Für einen Einstieg nach beobachtetem Problem verwenden Sie [Hier beginnen](Star
 
 | `[monitor].[USP_ShowplanAnalysis]` | [Operatoren, Schätzfehler, Grants und Parameter](Procedures/USP_ShowplanAnalysis.md) |
 | `[monitor].[USP_PlanCacheAnalysis]` | [Orchestrierte Plan-Cache-Analyse](Procedures/USP_PlanCacheAnalysis.md) |
+| `[monitor].[USP_PlanGuideInventory]` | [Caller-sichtbare Plan-Guide-Katalogmetadaten](Procedures/USP_PlanGuideInventory.md) |
 
 ## Query Store
 
@@ -109,6 +111,7 @@ Für einen Einstieg nach beobachtetem Problem verwenden Sie [Hier beginnen](Star
 |---|---|
 | `[monitor].[USP_AgentStatus]` | [Agentdienst und Plattformstatus](Procedures/USP_AgentStatus.md) |
 | `[monitor].[USP_AgentJobs]` | [Jobs, Schritte, Historie und Laufzeit](Procedures/USP_AgentJobs.md) |
+| `[monitor].[USP_AgentProxyInventory]` | [Proxy-, Credentialreferenz- und Subsystemkatalog](Procedures/USP_AgentProxyInventory.md) |
 | `[monitor].[USP_ResourceGovernorAnalysis]` | [Pools, Gruppen, Limits und Sessions](Procedures/USP_ResourceGovernorAnalysis.md) |
 | `[monitor].[USP_AvailabilityGroups]` | [AG-, Replica-, Datenbank- und Routingstatus](Procedures/USP_AvailabilityGroups.md) |
 | `[monitor].[USP_BackupRecovery]` | [Backupalter, Recovery Model und Restoreevidenz](Procedures/USP_BackupRecovery.md) |
@@ -135,6 +138,8 @@ Für einen Einstieg nach beobachtetem Problem verwenden Sie [Hier beginnen](Star
 | `[monitor].[USP_TraceFlags]` | [Aktive Trace Flags und Scope](Procedures/USP_TraceFlags.md) |
 | `[monitor].[USP_StartupParameters]` | [Startparameter, Pfade und persistente Flags](Procedures/USP_StartupParameters.md) |
 | `[monitor].[USP_OSInformation]` | [OS, Virtualisierung, Speicher und Uptime](Procedures/USP_OSInformation.md) |
+| `[monitor].[USP_LoadedModuleInventory]` | [Native Modulnamen und Basenamen im SQL-Prozess](Procedures/USP_LoadedModuleInventory.md) |
+| `[monitor].[USP_DatabaseSnapshotInventory]` | [Sichtbare Datenbank-Snapshots und Sparse-Dateikatalogzeilen](Procedures/USP_DatabaseSnapshotInventory.md) |
 | `[monitor].[USP_ServerSecurityConfiguration]` | [Sicherheitsrelevante Konfiguration](Procedures/USP_ServerSecurityConfiguration.md) |
 | `[monitor].[USP_AuditConfigurationAnalysis]` | [SQL-Auditkonfiguration und Runtimezustand](Procedures/USP_AuditConfigurationAnalysis.md) |
 | `[monitor].[USP_ServerHealthAnalysis]` | [Orchestrierter Server-Health-Überblick](Procedures/USP_ServerHealthAnalysis.md) |
@@ -178,17 +183,19 @@ Für einen Einstieg nach beobachtetem Problem verwenden Sie [Hier beginnen](Star
 
 | Bereich | Anzahl |
 |---|---:|
+| SSIS | 6 |
 | Common | 5 |
 | Current State | 12 |
-| Object und Index | 12 |
-| Plan Cache und Showplan | 8 |
+| Object und Index | 13 |
+| Plan Cache und Showplan | 9 |
 | Query Store | 11 |
 | Extended Events | 6 |
-| Infrastruktur | 15 |
-| Server Health | 21 |
+| Infrastruktur | 16 |
+| Server Health | 24 |
 | Versionsadaptive Spezialanalysen | 11 |
 | Snapshot und Baseline | 3 |
-| **Gesamt** | **104** |
+| Weitere einzeln verlinkte Analysen | 11 |
+| **Gesamt** | **127** |
 
 ## Weitere Einstiege
 
@@ -231,4 +238,5 @@ Für einen Einstieg nach beobachtetem Problem verwenden Sie [Hier beginnen](Star
 - [USP_UpgradeFeatureUsageAnalysis](Procedures/USP_UpgradeFeatureUsageAnalysis.md) trennt native Deprecated-Begegnungen von einer begrenzten Zielversionsregel.
 
 - [USP_DistributedTransactionInventory](Procedures/USP_DistributedTransactionInventory.md) zeigt begrenzte lokale SQL-Konfiguration und sichtbare verteilte Transaktionsmetadaten ohne externen Gesundheitsnachweis.
+- [USP_SensitivityClassificationSummary](Procedures/USP_SensitivityClassificationSummary.md) zählt sichtbare Tabellen und Tabellenspalten sowie die klassifizierte Teilmenge ohne Klassifikationstexte oder Datenwerte.
 - [USP_DatabaseMirroringInventory](Procedures/USP_DatabaseMirroringInventory.md) zeigt native Mirroring-Felder für sichtbare ONLINE-Datenbanken, ohne positive Mirror-Rollenqualifikation für RESTORING-Datenbanken.

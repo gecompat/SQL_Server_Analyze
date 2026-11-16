@@ -5,9 +5,41 @@ GO
 Objekt       : monitor.InternalValidateSnapshotWaitTarget
 Version      : 1.1.0
 Stand        : 2026-10-26
-Zweck        : Prüft die tatsächlich benötigte Wait-Targetclosure ohne Produktwrite.
+Zweck        : Prüft die gebundene Snapshot-Zielidentität und die tatsächlich benötigten Wait- oder Datei-I/O-Verträge ohne Produktwrite.
 Verwendung   : Interner gemeinsamer Eintritt für Konfiguration und Waitlauf.
 ===============================================================================
+
+Parameter
+
+@TargetDatabaseName (sysname, Eingabe, erforderlich; kein Default): Erwartet einen einzelnen sysname-Eingabewert (nvarchar mit bis zu 128 Zeichen), der als ein Datenbankname behandelt wird. Punkte und andere Zeichen werden nicht als Qualifizierung interpretiert; ein Literal mit Punkten bezeichnet daher nicht mehrere Namensbestandteile. NULL, leerer Text und nur aus Rand-Leerzeichen bestehender Text sind ungültig. Der Wert wird nicht getrimmt oder hinsichtlich Groß-/Kleinschreibung normalisiert; der Namensvergleich erfolgt binär.
+
+@ExpectedTargetDatabaseId (int, Eingabe, optional; Default: NULL): Erwartet einen einzelnen int-Wert oder NULL; eine leere Texteingabe ist keine zulässige Eingabeform. NULL bedeutet, dass keine erwartete Identität vorgegeben wird. Ein Zahlenwert wird mit der ermittelten ID verglichen. Zusammen mit @ExpectedTargetCreateDate muss der Wert entweder NULL oder angegeben sein; eine teilweise Bindung ergibt INVALID_PARAMETER.
+
+@ExpectedTargetCreateDate (datetime, Eingabe, optional; Default: NULL): Erwartet einen einzelnen datetime-Wert oder NULL; eine leere Texteingabe ist keine zulässige Eingabeform. NULL bedeutet, dass kein erwartetes Erstellungsdatum vorgegeben wird. Ein datetime-Wert wird mit dem Katalogwert verglichen. Zusammen mit @ExpectedTargetDatabaseId muss der Wert entweder NULL oder angegeben sein; eine teilweise Bindung ergibt INVALID_PARAMETER.
+
+@TargetDatabaseIdOut (int, OUTPUT, erforderlich; kein Default): Das Argument ist zwingend. Der Eingabewert wird ignoriert; die Prozedur initialisiert den Ausgang auf NULL und setzt die tatsächliche Datenbank-ID, sobald das Ziel vor der Probe als verfügbar ermittelt wurde. Dieser Wert kann vor einem späteren Fehler befüllt sein. Für die Rückgabe muss der Aufrufer eine passende Empfangsvariable binden und das Schlüsselwort OUTPUT beziehungsweise OUT angeben; ohne Rückgabewunsch kann als Argument ein typisierter Wert oder NULL übergeben werden.
+
+@TargetCreateDateOut (datetime, OUTPUT, erforderlich; kein Default): Das Argument ist zwingend. Der Eingabewert wird ignoriert; die Prozedur initialisiert den Ausgang auf NULL und setzt das tatsächliche Erstellungsdatum, sobald das Ziel vor der Probe als verfügbar ermittelt wurde. Dieser Wert kann vor einem späteren Fehler befüllt sein. Für die Rückgabe muss der Aufrufer eine passende Empfangsvariable binden und das Schlüsselwort OUTPUT beziehungsweise OUT angeben; ohne Rückgabewunsch kann als Argument ein typisierter Wert oder NULL übergeben werden.
+
+@StatusCodeOut (varchar(40), OUTPUT, erforderlich; kein Default): Das Argument ist zwingend. Der Eingabewert wird ignoriert; die Prozedur initialisiert den Ausgang auf AVAILABLE und setzt den endgültigen Aufnahmestatus. Für die Rückgabe muss der Aufrufer eine passende Empfangsvariable binden und das Schlüsselwort OUTPUT beziehungsweise OUT angeben; ohne Rückgabewunsch kann als Argument ein typisierter Wert oder NULL übergeben werden.
+
+@ErrorNumberOut (int, OUTPUT, erforderlich; kein Default): Das Argument ist zwingend. Der Eingabewert wird ignoriert; die Prozedur initialisiert den Ausgang auf NULL und setzt bei einer abgewiesenen Aufnahme die Fehlernummer. Für die Rückgabe muss der Aufrufer eine passende Empfangsvariable binden und das Schlüsselwort OUTPUT beziehungsweise OUT angeben; ohne Rückgabewunsch kann als Argument ein typisierter Wert oder NULL übergeben werden.
+
+@ErrorMessageOut (nvarchar(2048), OUTPUT, erforderlich; kein Default): Das Argument ist zwingend. Der Eingabewert wird ignoriert; die Prozedur initialisiert den Ausgang auf NULL und setzt bei einer abgewiesenen Aufnahme die Meldung. Für die Rückgabe muss der Aufrufer eine passende Empfangsvariable binden und das Schlüsselwort OUTPUT beziehungsweise OUT angeben; ohne Rückgabewunsch kann als Argument ein typisierter Wert oder NULL übergeben werden.
+
+@CollectorCode (varchar(64), Eingabe, optional; Default: WAIT_STATS): Erwartet einen einzelnen Auswahlcode. Zulässig sind ausschließlich WAIT_STATS (Waitstatistik-Vertrag) und FILE_IO (Datei-I/O-Vertrag). Der Vergleich ist binär und exakt; Groß-/Kleinschreibung, Rand-Leerzeichen oder andere Schreibweisen werden nicht normalisiert und sind ungültig. NULL ist ungültig. Der ausgelassene Parameter verwendet WAIT_STATS.
+
+Es sind sechs Argumente zwingend anzugeben: @TargetDatabaseName und die fünf OUTPUT-Parameter. Ohne Rückgabewunsch dürfen OUTPUT-Argumente als typisierter Wert oder NULL übergeben werden. Um einen Ausgangswert zu empfangen, muss eine passende Variable gebunden und das Aufrufschlüsselwort OUTPUT/OUT angegeben werden. Die drei Eingabeparameter mit Default können ausgelassen oder benannt übergeben werden.
+
+Aufnahmevertrag
+
+Eine Callertransaktion (explizit oder implizit) wird früh mit INVALID_PARAMETER und Fehler 51011 abgewiesen. Das Ziel muss eine separate, online befindliche, beschreibbare Benutzerdatenbank mit database_id > 4 sein und darf nicht die aktuelle Datenbank sein. Bei gesetzter erwarteter Identität müssen ID und Erstellungsdatum gemeinsam passen.
+
+WAIT_STATS akzeptiert Paket SC-023 in Version 1.2.1 / Schema 2, 1.3.0 / Schema 3 oder 1.3.1 / Schema 3. FILE_IO akzeptiert ausschließlich 1.3.1 / Schema 3. Für die benötigten Helper werden Existenz, ANSI_NULLS- und QUOTED_IDENTIFIER-Flags sowie Parameternamen, Parametertypen, Maximallängen, OUTPUT-Flags und Parameteranzahl geprüft. Parameterdefaults, Parameterreihenfolge, Modultext oder Codehash werden dabei nicht geprüft. Die erforderlichen Metriken bilden eine Teilmenge: neun Definitionen für WAIT_STATS beziehungsweise 16 für FILE_IO. Für jede erforderliche Definition werden Typ, Einheit und ContractVersion 1 verglichen; zusätzliche Metrikdefinitionen sind zulässig. Eine CollectorPolicy muss vorhanden sein; ihr Aktivierungszustand wird nicht geprüft. Für FILE_IO werden zunächst auch Existenz, Sichtbarkeit und ANSI-Einstellungen der Wait-Abschlussprozedur geprüft. Danach wird der Signaturabgleich auf InternalCompleteFileIOCycle umgestellt; die Wait-Abschlusssignatur wird in diesem Pfad nicht geprüft.
+
+Die Retentionsprobe ruft den installierten kanonischen InternalPurgeExpiredData-Helper mit @MaxBatches=1, @Force=0 und @ContractOnly=1 auf. Sie muss AVAILABLE, NULL für Fehlernummer und Run-ID, ein gesetztes Budgetsignal 0 und die zur Paketversion passende Retentionvertragsversion bestätigen: Version 1 bei Paket 1.2.1, Version 2 bei 1.3.0 und Version 3 bei 1.3.1. Die Prüfungen vor dem Probeaufruf setzen zusätzlich die Paket-/Schemaversion und die passenden Methodensignaturen voraus. Die Probe-Meldung muss nicht NULL sein; ein Rückgabecode wird nicht ausgewertet. Die Zusage ohne Produktwrite gilt für diesen vertrauenswürdigen kanonischen ContractOnly-Helper, nicht für beliebige Inhalte eines installierten Namensraums.
+
+Die Statuswerte sind AVAILABLE (Aufnahme bestätigt), INVALID_PARAMETER (Parameter oder Transaktionskontext ungültig), TARGET_UNAVAILABLE (Ziel oder Vertrag nicht bestätigt) und DENIED_PERMISSION (abgewiesene Berechtigung). Berechtigungsfehler 229, 262, 297, 300 und 371 werden innerhalb des TRY/CATCH als DENIED_PERMISSION gemeldet. Die erste Zielsuche in master.sys.databases erfolgt außerhalb des TRY/CATCH und kann daher als SQL-Fehler an den Aufrufer gelangen. Ein Probesignal, das die Aufnahme nicht bestätigt, ergibt TARGET_UNAVAILABLE, außer die Probe meldet DENIED_PERMISSION. Dem installierten Paketnamensraum wird vertraut; Signatur-, Flag- und Probeprüfungen belegen weder Codeintegrität noch ein vollständiges Schemaaudit.
 */
 CREATE OR ALTER PROCEDURE [monitor].[InternalValidateSnapshotWaitTarget]
       @TargetDatabaseName sysname

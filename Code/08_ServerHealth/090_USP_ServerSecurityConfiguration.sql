@@ -9,8 +9,10 @@ Stand        : 2026-07-15
 Zweck        : Die Procedure liest ausgewählte sicherheitsrelevante Serveroptionen,
                Dienstinformationen und Servereigenschaften, ohne sie zu verändern.
 Datenquellen : sys.configurations, sys.dm_server_services, SERVERPROPERTY
-Vertrag      : Resultset 1 ist immer Modulstatus; @ResultSetArt=NONE unterdrückt
-               Resultsets und liefert Status ausschließlich über OUTPUT-Parameter.
+Vertrag      : Im regulären Pfad liefert RAW zuerst Modulstatus, danach vier technische Fachresultsets.
+               CONSOLE gibt nur die Console-Helferausgabe für configuration aus; TABLE schreibt ausschließlich das gemappte configuration-Resultset.
+               CONSOLE und TABLE liefern kein separates Modulstatusresultset; NONE unterdrückt Resultsets.
+               Optionales JSON wird im regulären Pfad unabhängig von @ResultSetArt durch @JsonErzeugen gesteuert; im Hilfezweig wird es nicht erzeugt.
 ===============================================================================
 */
 
@@ -41,6 +43,7 @@ BEGIN
         PRINT N'monitor.USP_ServerSecurityConfiguration';
         PRINT N'Erfasst ausgewählte sicherheitsrelevante Serveroptionen, SQL-Dienste und Servereigenschaften lesend.';
         PRINT N'Die Hilfe läuft nach einem eventuellen TABLE-Preflight und vor der Erhebung. Befunde sind Prüfsignale, keine automatische Richtlinienentscheidung.';
+        PRINT N'Der kuratierte Konfigurationszweig liest auf SQL Server 2025 auch den caller-sichtbaren Wert external rest endpoint enabled mit konfiguriertem und aktivem Zustand. Der Wert belegt weder einen REST-Aufruf noch erreichbare Endpoints, Berechtigungen, Credentials, Nutzung oder Wirksamkeit; die Procedure ändert die Option nicht.';
         PRINT N'@PrintMeldungen bit; Default: 1. 1 gibt nach der Quellenprüfung bei einem Status ungleich AVAILABLE eine Statusmeldung aus; 0 unterdrückt sie. NULL wirkt wie 0; numerische 0 bleibt 0, von 0 verschiedene konvertierbare Zahlen werden bit 1, da nur der Vergleich mit 1 die Ausgabe auslöst.';
         PRINT N'@Hilfe bit; Default: 0. 1 gibt die Parameterhilfe aus und beendet vor den Fachquellen; 0 erhebt Daten. NULL wirkt wie 0; numerische 0 bleibt 0, von 0 verschiedene konvertierbare Zahlen werden bit 1. Bei ResultSetArt TABLE wird der Ziel-Preflight vor der Hilfe ausgeführt.';
         PRINT N'@ResultSetArt varchar(16); Default: ''CONSOLE''. Nach Bindung an varchar(16): CONSOLE gibt ausschließlich die Sicherheitskonfiguration unter dem Label ServerSecurityConfiguration aus; bei leerer Konfiguration liefert der Helfer eine Leerzeile; Quellenstatus, Dienste und Eigenschaften stehen in RAW beziehungsweise JSON; RAW liefert technische Resultsets; TABLE exportiert nur configuration; NONE unterdrückt Resultsets. Äußere U+0020-Leerzeichen werden entfernt, Großschreibung vereinheitlicht; NULL wird leer und ist ungültig. TABLE/CONSOLE werden für reguläre Resultsets zu NONE und separat ausgegeben. Ungültige Werte setzen INVALID_PARAMETER und IsPartial=1; Quellprüfung läuft dennoch.';
@@ -149,6 +152,7 @@ BEGIN
             N'clr enabled',
             N'clr strict security',
             N'external scripts enabled',
+            N'external rest endpoint enabled',
             N'remote admin connections',
             N'contained database authentication'
         );

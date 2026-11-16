@@ -9,7 +9,10 @@ Stand        : 2026-07-15
 Zweck        : Die Procedure liest Host-, Betriebssystem-Speicher-, SQL-Prozess-
                und Dienstdaten; jede optionale Quelle hat eine eigene Fehlergrenze.
 Datenquellen : sys.dm_os_host_info, sys.dm_os_sys_memory, sys.dm_os_process_memory, sys.dm_server_services
-Vertrag      : Resultset 1 ist immer Modulstatus; @ResultSetArt=NONE unterdrückt Resultsets; RAW und CONSOLE liefern unterschiedliche Projektionen. Optional JSON.
+Vertrag      : Im regulären Pfad liefert RAW zuerst Modulstatus, danach fünf technische Fachresultsets.
+               CONSOLE gibt nur die Console-Helferausgabe für host aus; TABLE schreibt ausschließlich das gemappte host-Resultset.
+               CONSOLE und TABLE liefern kein separates Modulstatusresultset; NONE unterdrückt Resultsets.
+               Optionales JSON wird im regulären Pfad unabhängig von @ResultSetArt durch @JsonErzeugen gesteuert; im Hilfezweig wird es nicht erzeugt.
 ===============================================================================
 */
 

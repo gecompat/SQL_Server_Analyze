@@ -72,9 +72,33 @@ BEGIN
     IF @Hilfe=1
     BEGIN
         PRINT N'monitor.USP_MaintenanceOperations';
-        PRINT N'Die Procedure liefert eine korrelierte, rein lesende Sicht auf Wartungsrequests, resumierbare Indexoperationen, ADR/PVS und explizit gefilterte Agent-Jobs.';
-        PRINT N'Ohne @JobNames oder @JobNamePattern werden weder Jobnamen noch Jobaktivitaet gelesen; JobNamePattern ist ein LIKE-Pattern.';
-        PRINT N'Keine SQL-Texte, Jobschritte, Befehlsinhalte, Meldungen, Konten, Clientdaten oder Wait-Ressourcen werden gelesen.';
+        PRINT N'@DatabaseNames nvarchar(max). Default ist NULL. Pipe-Liste exakter einteiliger SQL-Namen. Klammern schützen enthaltene Pipe-Zeichen. ]] maskiert eine schließende Klammer. Äußere Segmentleerzeichen werden entfernt. Ungültige Elemente werden abgelehnt. NULL, Leertext und reine Leerzeichen bedeuten keine exakte Einschränkung. Eine wirksame Liste darf nicht mit DatabaseNamePattern kombiniert werden.';
+        PRINT N'@SystemdatenbankenEinbeziehen bit. Default ist 0. 0 schließt Systemdatenbanken aus. 1 erlaubt ihre Einbeziehung in Kandidaten. Ändert nicht die separaten Ausschlüsse fest kodierter Datenbanken/Quellen. NULL wird als ungültiger Bit-Wert abgelehnt.';
+        PRINT N'@DatabaseNamePattern nvarchar(4000). Default ist NULL. NULL deaktiviert das Muster. Ohne Präfix oder mit LIKE: gilt SQL LIKE mit % und _. REGEX: berücksichtigt Groß- und Kleinschreibung, REGEXI: ignoriert sie. Regex benötigt SQL Server 2025 und Compatibility Level 170. Leertext ist ungültig. Nicht mit wirksamer exakter Liste kombinieren.';
+        PRINT N'@HighImpactConfirmed bit. Default ist 0. 0 bestätigt keinen geschützten Pfad. 1 bestätigt einen tatsächlich aktivierten Pfad. NULL wird vom Candidate-Helper abgelehnt. Dieser Aufruf übergibt AnalysisClass=NULL und aktiviert damit keine zusätzliche Klassenprüfung.';
+        PRINT N'@JobNames nvarchar(max). Default ist NULL. Pipe-Liste exakter einteiliger SQL-Namen. Klammern schützen enthaltene Pipe-Zeichen. ]] maskiert eine schließende Klammer. Äußere Segmentleerzeichen werden entfernt. Ungültige Elemente werden abgelehnt. Ohne wirksame Jobliste und ohne Jobmuster liest die Procedure keine Jobdaten. Eine nichtleere ungültige Liste ergibt INVALID_PARAMETER. Nicht mit JobNamePattern kombinieren.';
+        PRINT N'@JobNamePattern nvarchar(4000). Default ist NULL. NULL deaktiviert das Jobmuster. Ohne Präfix oder mit LIKE: gilt SQL LIKE. REGEX: und REGEXI: ergeben UNAVAILABLE_FEATURE. Leertext und reine Leerzeichen ergeben INVALID_PARAMETER. Nicht mit JobNames kombinieren.';
+        PRINT N'@NurProblematisch bit. Default ist 0. 0 zeigt alle bewerteten Befunde. 1 und NULL beschränken die vier fachlichen Mengen auf HIGH und MEDIUM. Die Filterung erfolgt nach dem Quellenlesen.';
+        PRINT N'@ResumablePausedWarnMinutes int. Default ist 60. Warnschwelle in Minuten von 1 bis 525600. Zahlen außerhalb des Bereichs sind ungültig. NULL ergibt INVALID_PARAMETER und leere fachliche Ergebnismengen. Die Eingabe wird als int gebunden; Leertext hat keinen Sonderdefault und unterliegt vor der Procedure der SQL-Konvertierung, danach der Bereichsprüfung.';
+        PRINT N'@BlockedWarnMs bigint. Default ist 5000. Nichtnegative Warnschwelle in Millisekunden bei positiver BlockingSessionId. Negative Werte sind ungültig. NULL ergibt INVALID_PARAMETER und leere fachliche Ergebnismengen. Die Eingabe wird als bigint gebunden; Leertext hat keinen Sonderdefault und unterliegt vor der Procedure der SQL-Konvertierung, danach der Bereichsprüfung.';
+        PRINT N'@PvsWarnMb decimal(19,2). Default ist 1024. Nichtnegative PVS-Warnschwelle in MB. Die Warnung setzt zusätzlich die Grenze für abgebrochene Transaktionen voraus. Negative Werte sind ungültig. NULL ergibt INVALID_PARAMETER und leere fachliche Ergebnismengen. Die Eingabe wird als decimal(19,2) gebunden; Leertext hat keinen Sonderdefault und unterliegt vor der Procedure der SQL-Konvertierung, danach der Bereichsprüfung.';
+        PRINT N'@AbortedTransactionsWarnCount bigint. Default ist 1. Nichtnegative Mindestzahl abgebrochener Transaktionen für die gemeinsame PVS-Warnung. Negative Werte sind ungültig. NULL ergibt INVALID_PARAMETER und leere fachliche Ergebnismengen. Die Eingabe wird als bigint gebunden; Leertext hat keinen Sonderdefault und unterliegt vor der Procedure der SQL-Konvertierung, danach der Bereichsprüfung.';
+        PRINT N'@MaxZeilen int. Default ist 1000. Je fachliche Menge: NULL oder 0 unbegrenzt, positiv Top-N nach jeweiliger Sortierung, negativ INVALID_PARAMETER. Wirkt nach vollständiger Quellenmaterialisierung und NurProblematisch-Auswahl.';
+        PRINT N'@LockTimeoutMs int. Default ist 0. Nichtnegative Millisekunden für datenbanklokale Abfragen. 0 bedeutet NOWAIT. Negative Werte sind ungültig. NULL ergibt INVALID_PARAMETER und leere fachliche Ergebnismengen; ein dynamischer Abfragebatch wird dafür nicht aufgebaut. Die Eingabe wird als int gebunden; Leertext hat keinen Sonderdefault und unterliegt vor der Procedure der SQL-Konvertierung, danach der Bereichsprüfung.';
+        PRINT N'@ResultSetArt varchar(16). Default ist ''CONSOLE''. CONSOLE zeigt resumableOperations mit Beschriftung. RAW liefert Modulstatus, fachliche Mengen und Quellenstatus. TABLE exportiert ausschließlich resumableOperations. NONE unterdrückt die Datenresultsets. Rand-Leerzeichen und Groß- und Kleinschreibung werden normalisiert. NULL, Leertext und andere Werte sind ungültig.';
+        PRINT N'@ResultTablesJson nvarchar(max). Default ist NULL. Nur mit ResultSetArt=TABLE erlaubt. JSON-Objekt mit genau dem Schlüssel resumableOperations und Zielnamen einer vorher angelegten, leeren lokalen #Temp-Tabelle mit genau einer Seed-Spalte. mapping wird vor fachlichen Quellen geprüft. NULL/leer bei TABLE führt zu Mapping-Fehler. Bei anderen Modi muss NULL/leer sein, sonst THROW 51011. Keine persistente Tabelle.';
+        PRINT N'@JsonErzeugen bit. Default ist 0. 1 erzeugt JSON in Json unabhängig von der Ausgabeart. 0 und NULL erzeugen kein Dokument.';
+        PRINT N'@Json nvarchar(max) OUTPUT. Default ist NULL. Ausgabeparameter. wird beim Eintritt auf NULL gesetzt und bei JSON-Erzeugung befüllt. Eingabewert wird ignoriert. Für den Empfang eine Variable des deklarierten Typs mit OUTPUT binden.';
+        PRINT N'@PrintMeldungen bit. Default ist 1. 1 aktiviert informative Statusmeldungen. 0 und NULL unterdrücken sie.';
+        PRINT N'@Hilfe bit. Default ist 0. 1 zeigt die Hilfe nach der TABLE-Vorprüfung und beendet vor dem Quellzugriff. 0 und NULL setzen die normale Verarbeitung fort.';
+        PRINT N'@StatusCodeOut varchar(40) OUTPUT. Default ist NULL. Ausgabeparameter. Statuscode des Laufs, z.B. AVAILABLE/AVAILABLE_LIMITED/INVALID_PARAMETER. Eingabe ignoriert. Für den Empfang eine Variable des deklarierten Typs mit OUTPUT binden.';
+        PRINT N'@IsPartialOut bit OUTPUT. Default ist NULL. Ausgabeparameter. 1 kennzeichnet unvollständige Evidenz, 0 vollständig im erreichbaren Scope. Eingabe ignoriert. Für den Empfang eine Variable des deklarierten Typs mit OUTPUT binden.';
+        PRINT N'@ErrorNumberOut int OUTPUT. Default ist NULL. Ausgabeparameter für erfasste SQL-Fehlernummer. NULL wenn keiner erfasst wurde. Eingabe ignoriert. Für den Empfang eine Variable des deklarierten Typs mit OUTPUT binden.';
+        PRINT N'@ErrorMessageOut nvarchar(2048) OUTPUT. Default ist NULL. Ausgabeparameter für erfasste Fehlermeldung. NULL ohne Fehler. Eingabe ignoriert. Für den Empfang eine Variable des deklarierten Typs mit OUTPUT binden.';
+        PRINT N'Beispiel 1. EXEC [monitor].[USP_MaintenanceOperations] @Hilfe=1;';
+        PRINT N'Beispiel 2. EXEC [monitor].[USP_MaintenanceOperations] @DatabaseNames=N''[ExampleDatabase]'', @MaxZeilen=50, @ResultSetArt=''RAW'';';
+        PRINT N'Beispiel 3. DECLARE @ResultJson nvarchar(max); EXEC [monitor].[USP_MaintenanceOperations] @DatabaseNames=N''[ExampleDatabase]'', @MaxZeilen=50, @ResultSetArt=''NONE'', @JsonErzeugen=1, @Json=@ResultJson OUTPUT; SELECT @ResultJson AS [Json];';
+        PRINT N'Beispiel 4. CREATE TABLE #MaintenanceOperations_HelpExample ([Seed] int NULL); BEGIN TRY EXEC [monitor].[USP_MaintenanceOperations] @DatabaseNames=N''[ExampleDatabase]'', @MaxZeilen=50, @ResultSetArt=''TABLE'', @ResultTablesJson=N''{"resumableOperations":"#MaintenanceOperations_HelpExample"}''; SELECT * FROM #MaintenanceOperations_HelpExample; DROP TABLE #MaintenanceOperations_HelpExample; END TRY BEGIN CATCH DROP TABLE #MaintenanceOperations_HelpExample; THROW; END CATCH;';
         RETURN;
     END;
 
@@ -163,9 +187,10 @@ BEGIN
         , [EvidenceLimit] nvarchar(1000) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
     );
 
-    IF @MaxZeilen<0 OR @LockTimeoutMs<0
-       OR @ResumablePausedWarnMinutes<1 OR @ResumablePausedWarnMinutes>525600
-       OR @BlockedWarnMs<0 OR @PvsWarnMb<0 OR @AbortedTransactionsWarnCount<0
+    IF @MaxZeilen<0 OR @LockTimeoutMs IS NULL OR @LockTimeoutMs<0
+       OR @ResumablePausedWarnMinutes IS NULL OR @ResumablePausedWarnMinutes<1 OR @ResumablePausedWarnMinutes>525600
+       OR @BlockedWarnMs IS NULL OR @BlockedWarnMs<0 OR @PvsWarnMb IS NULL OR @PvsWarnMb<0
+       OR @AbortedTransactionsWarnCount IS NULL OR @AbortedTransactionsWarnCount<0
        OR @JobPatternIsValid=0 OR (@JobNames IS NOT NULL AND @JobNamePattern IS NOT NULL)
        OR @OutputMode NOT IN ('RAW','CONSOLE','NONE')
     BEGIN

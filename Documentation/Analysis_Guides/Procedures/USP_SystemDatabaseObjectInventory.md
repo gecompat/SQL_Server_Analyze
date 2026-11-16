@@ -1,9 +1,9 @@
 # [monitor].[USP_SystemDatabaseObjectInventory]
 
-Inventarisiert sichtbare, nicht von Microsoft gelieferte Objekte in `master`, `model` und `msdb`, ohne DDL auszuführen.
+Inventarisiert sichtbare, schema-zugeordnete Katalogobjekte in `master`, `model` und `msdb`, deren `is_ms_shipped`-Wert 0 ist, ohne DDL auszuführen.
 
 **Bereich:** Server Health, Wartbarkeit und Upgradevorbereitung
-**Zweck:** Liefert ein sichtbares Kataloginventar benutzerdefinierter schema-gebundener Objekte in drei Systemdatenbanken.
+**Zweck:** Liefert ein sichtbares Kataloginventar schema-zugeordneter Objekte mit `is_ms_shipped = 0` und einem Typ außerhalb `S` und `IT` in drei Systemdatenbanken.
 **Beobachtungsart:** sequenzieller datenbanklokaler Katalogsnapshot
 **Kostenklasse:** LOW
 
@@ -35,7 +35,7 @@ Der Aufruf verwendet nur Systemkataloge. Führen Sie ihn zunächst unter dem vor
 | `@JsonErzeugen` | `bit` | `0` | 0 lässt @Json NULL; 1 serialisiert die nach @MaxZeilen begrenzten LimitedRows sortiert nach den drei Namen. NULL aktiviert IF nicht; leere Auswahl wird []. Bei der SQL-Konvertierung nach bit ergibt numerische 0 den Wert 0; von 0 verschiedene numerische Werte ergeben 1. |
 | `@Json` | `nvarchar(max) OUTPUT` | `NULL` | Optionaler OUTPUT-Empfänger für ein JSON-Array der Fachzeilen. Am Eintritt wird @Json auch vor @Hilfe=1 auf NULL gesetzt; nur @JsonErzeugen=1 erzeugt danach das Array, bei leerer Fachmenge []. Zum Empfangen eine nvarchar(max)-Variable mit OUTPUT binden; das Argument kann ausgelassen werden. Ein anfänglicher NULL- oder anderer Variablenwert wird überschrieben. |
 | `@PrintMeldungen` | `bit` | `1` | 0 unterdrückt die Status-PRINT-Meldung; Nicht-NULL-Bitwerte ungleich 0 aktivieren sie. NULL aktiviert sie nicht. Die Statusmeldung erscheint bei den vom Aufrufer gewählten Modi NONE, CONSOLE und TABLE; diese beiden Ansichtsmodi werden intern auf NONE normalisiert. RAW erzeugt diese Statusmeldung nicht. @Hilfe=1 kehrt vor dieser Meldung zurück. Bei der SQL-Konvertierung nach bit ergibt numerische 0 den Wert 0; von 0 verschiedene numerische Werte ergeben 1. |
-| `@Hilfe` | `bit` | `0` | 0 führt die Analyse aus; jeder Nicht-NULL-Wert ungleich 0 druckt die Hilfe und beendet den Aufruf früh. NULL startet die Hilfe nicht. Der RETURN erfolgt vor Analyse und OUTPUT-Zuweisungen, daher bleiben gebundene OUTPUT-Empfänger unverändert. Bei der SQL-Konvertierung nach bit ergibt numerische 0 den Wert 0; von 0 verschiedene numerische Werte ergeben 1. |
+| `@Hilfe` | `bit` | `0` | 0 führt die Analyse aus; jeder Nicht-NULL-Wert ungleich 0 druckt die Hilfe und beendet den Aufruf früh. NULL startet die Hilfe nicht. Der RETURN erfolgt vor Analyse und den abschließenden Status-/Fehler-OUTPUT-Zuweisungen; diese vier Empfänger bleiben unverändert. @Json wurde bereits am Eintritt auf NULL gesetzt. Bei der SQL-Konvertierung nach bit ergibt numerische 0 den Wert 0; von 0 verschiedene numerische Werte ergeben 1. |
 | `@StatusCodeOut` | `varchar(40) OUTPUT` | `NULL` | OUTPUT-Empfänger für den in diesem Modul ermittelten Gesamtstatus. Gesamtwerte: AVAILABLE, AVAILABLE_EMPTY (keine sichtbaren Inventarzeilen), AVAILABLE_LIMITED (fehlender Zugriff/Quellenfehler) und INVALID_PARAMETER (negative Grenze oder ungültige Ausgabeart). Zeilenstatus ist AVAILABLE, DENIED_PERMISSION oder SOURCE_UNAVAILABLE. NULL-Default erlaubt das Auslassen des Arguments; um den Wert zu empfangen, muss eine kompatible Variable ausdrücklich mit OUTPUT gebunden werden. Im Hilfezweig bleibt ein gebundener Empfänger wegen des frühen RETURN unverändert. |
 | `@IsPartialOut` | `bit OUTPUT` | `NULL` | Optionale OUTPUT-Variable: 0 bedeutet nicht partiell, 1 bedeutet eingeschränkte/partielle Evidenz. NULL-Default erlaubt Auslassen und ist kein Ergebniswert. Empfang erfordert eine passende OUTPUT-Bindung; Hilfe-RETURN lässt sie unverändert. |
 | `@ErrorNumberOut` | `int OUTPUT` | `NULL` | Bei regulärem Abschluss bleibt die technische Fehlernummer in dieser Implementierung NULL. Fehler einzelner Quellen werden als Fach-/Quellenzeilen dokumentiert und nicht in diesen Empfänger kopiert. Optionale OUTPUT-Bindung an eine Variable des deklarierten Typs; ohne Empfang kann das Argument entfallen. @Hilfe=1 weist den Wert nicht zu und erhält einen anfänglichen NULL- oder anderen Empfängerwert. |
@@ -98,8 +98,8 @@ Für einen kontrollierten Positivtest werden feste Example-Namen vor der Erstell
 |---|---|
 | Kostenklasse | `LOW` |
 | Standardpfad | Drei begrenzte Katalogzugriffe auf `sys.objects` und `sys.schemas` |
-| Teuerster Pfad | Viele sichtbare benutzerdefinierte Objekte in allen drei Datenbanken |
-| Haupttreiber | Anzahl sichtbarer schema-gebundener Objekte |
+| Teuerster Pfad | Viele sichtbare Objekteinträge in allen drei Datenbanken |
+| Haupttreiber | Anzahl sichtbarer, einem Schema zugeordneter Objekteinträge |
 | Skalierung | Sequenziell für `master`, `model` und `msdb` |
 | Ressourcen | Geringe Katalog-CPU und lokale Sortierung |
 | Begrenzungswirkung | `@MaxZeilen` begrenzt die Inventarzeilen in CONSOLE, RAW, TABLE und JSON, nicht den Katalogselect |
@@ -110,7 +110,7 @@ Für einen kontrollierten Positivtest werden feste Example-Namen vor der Erstell
 
 ## Eine Zeile bedeutet
 
-Eine Zeile beschreibt ein Benutzerobjekt mit Datenbank, Schema, Typ sowie Erstellungs- und Änderungszeit.
+Eine Zeile beschreibt einen sichtbaren Objekteintrag im dokumentierten Katalogscope mit Datenbank, Schema, Typ sowie Erstellungs- und Änderungszeit.
 
 ## So lesen
 
@@ -130,7 +130,7 @@ Freigegebene administrative oder Monitoringobjekte können betrieblich gewollt s
 
 ### Leitfrage
 
-Welche Benutzerobjekte benötigen Eigentümer-, Zweck- und Upgradeevidenz?
+Welche sichtbaren Objekteinträge benötigen Eigentümer-, Zweck- und Upgradeevidenz?
 
 ### Technischer Hintergrund
 
@@ -161,7 +161,7 @@ Vergleichen Sie Objekt, Eigentümer, Quellcode, Deploymentpfad, Backup und Upgra
 
 ### Typische Fehlinterpretation
 
-`is_ms_shipped = 0` bedeutet benutzererstellt, nicht automatisch unerlaubt.
+`is_ms_shipped = 0` bedeutet, dass das Objekt nicht als von einer internen SQL-Server-Komponente erstellt markiert ist. Der Wert belegt weder die tatsächliche Herkunft noch die Angemessenheit oder Sicherheit des Objekts; die Procedure prüft auch keine SCHEMABINDING-Eigenschaft.
 
 ### Folgeanalyse
 

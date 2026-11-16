@@ -58,12 +58,29 @@ BEGIN
     IF @Hilfe=1
     BEGIN
         PRINT N'monitor.USP_ErrorLogAnalysis';
-        PRINT N'Standardmäßig liest die Procedure das aktuelle SQL-Server-Errorlog für die letzten 24 Stunden in der vom Errorlog gelieferten Serverlokalzeit und erstellt eine kategorisierte Zusammenfassung.';
-        PRINT N'@MaxArchivNummer=0 liest nur das aktuelle Log; höhere Werte lesen Archive 0..n. Kein Logwechsel wird ausgeführt.';
-        PRINT N'@Suchtext1/@Suchtext2 ersetzen die kuratierten Defaultfilter durch einen benutzerdefinierten dokumentierten sp_readerrorlog-Filter.';
-        PRINT N'@MeldungstextEinbeziehen=1 aktiviert Details. @MaxMeldungszeichen=0 ist unbegrenzt; Kürzung erzeugt genau eine Warning.';
-        PRINT N'@MaxQuellzeilen begrenzt materialisierte Treffer; 0 ist explizit unbegrenzt. Sehr große Logs können trotz Keywordfilter Last erzeugen.';
-        PRINT N'@ResultSetArt=CONSOLE|RAW|TABLE|NONE; TABLE-Namen: moduleStatus, summary, details, sourceStatus, warnings.';
+        PRINT N'@AgentEinbeziehen bit. Default ist 0. 0 liest nur SQL-Server-Logs. 1 nimmt zusätzlich Agent-Logs auf. NULL/andere Bitwerte ungültig.';
+        PRINT N'@MaxArchivNummer tinyint. Default ist 0. Höchste Archivnummer. 0 nur aktuelles Log, n liest Archive 0..n für gewählte Produkte. 0..20 inkl.. NULL oder >20 ungültig. Keine Rotation.';
+        PRINT N'@SeitServerlokalzeit datetime2(3). Default ist NULL. Untergrenze für LogDate in Serverlokalzeit. NULL berechnet 24 Stunden vor serverlokaler SYSDATETIME beim Prozedurstart. Der Grenzwert wird nach Keywordfilter angewandt, sp_readerrorlog wird dadurch zeitlich nicht eingeengt. Fester Zeitpunkt empfohlen für reproduzierbare Läufe. kein UTC-Offset wird angenommen.';
+        PRINT N'@Suchtext1 nvarchar(4000). Default ist NULL. NULL zusammen mit Suchtext2=NULL aktiviert kuratierte Suchregeln. Ein nichtleerer Suchtext ersetzt diese Regeln durch den dokumentierten Keywordfilter. Leertext und reine Leerzeichen sind ungültig. Suchtext2 darf nur zusammen mit Suchtext1 gesetzt sein.';
+        PRINT N'@Suchtext2 nvarchar(4000). Default ist NULL. Optionaler zweiter Keywordfilter zusammen mit Suchtext1. NULL deaktiviert ihn. Ohne ersten Suchtext oder bei leerer beziehungsweise nur aus Leerzeichen bestehender Eingabe ist der Aufruf ungültig.';
+        PRINT N'@MeldungstextEinbeziehen bit. Default ist 0. 0 lässt Details/Volltext aus. 1 aktiviert Detailausgabe mit ProcessInfo und projiziertem Meldungstext (Datenschutz-Opt-in). NULL ungültig. Ausgabe bleibt durch MaxZeilen und MaxMeldungszeichen begrenzbar.';
+        PRINT N'@MaxMeldungszeichen int. Default ist 4000. Maximale Zeichen pro projiziertem Meldungstext. 4000 default, 0 explizit unbegrenzt. nichtnegativ. Kürzung erzeugt genau eine Warning. NULL/negativ ungültig.';
+        PRINT N'@MaxQuellzeilen int. Default ist 10000. Eine positive ganze Zahl begrenzt die materialisierten Quelltreffer. NULL oder 0 hebt die Grenze auf. Negative Werte sind ungültig. Keywordfilter wirken beim Loglesen, die Zeitprüfung anschließend.';
+        PRINT N'@MaxZeilen int. Default ist 1000. Detailausgabe Top-N nach Sortierung. 1000 default, 0 oder NULL unbegrenzt, positiv begrenzt, negativ ungültig. Begrenzt keine Summary, Quellenstatus, Zähler oder Warnungen.';
+        PRINT N'@ResultSetArt varchar(16). Default ist ''CONSOLE''. CONSOLE zeigt die Zusammenfassung. RAW liefert alle fachlichen Mengen mit Status und Warnungen. TABLE schreibt benannte Ergebnismengen. NONE unterdrückt die Resultsets. Rand-Leerzeichen und Groß- und Kleinschreibung werden normalisiert. NULL, Leertext und andere Werte sind ungültig.';
+        PRINT N'@ResultTablesJson nvarchar(max). Default ist NULL. Bei TABLE ist ein gültiges nichtleeres JSON-Objekt erforderlich. Wählen Sie eine Teilmenge der exakten Schlüssel moduleStatus, summary, details, sourceStatus und warnings. Jeder Wert benennt eine andere vorhandene leere lokale #Temp-Tabelle mit einer Seed-Spalte. Globale Tabellen und #Monitor-Präfixe sind ausgeschlossen. Außerhalb von TABLE sind nur NULL, Leertext und reine Leerzeichen zulässig.';
+        PRINT N'@JsonErzeugen bit. Default ist 0. 1 erzeugt JSON, 0 aus. NULL ungültig. JSON enthält Metadaten, Summary und je nach Opt-in Details.';
+        PRINT N'@Json nvarchar(max) OUTPUT. Default ist NULL. Outputparameter, wird zu Beginn NULL gesetzt. bei JsonErzeugen=1 befüllt. Eingabe ignoriert. Für den Empfang eine Variable des deklarierten Typs mit OUTPUT binden.';
+        PRINT N'@PrintMeldungen bit. Default ist 1. Steuert PRINT-Meldungen. 1 an, 0 aus, NULL ungültig. Verändert nicht das Resultset.';
+        PRINT N'@Hilfe bit. Default ist 0. 1 zeigt die Hilfe vor dem Logzugriff und der Parameterprüfung. 0 und NULL führen die Analyse aus.';
+        PRINT N'@StatusCodeOut varchar(40) OUTPUT. Default ist NULL. Outputstatus des Laufs, z.B. AVAILABLE/AVAILABLE_LIMITED/DENIED_PERMISSION. Eingabe ignoriert. Für den Empfang eine Variable des deklarierten Typs mit OUTPUT binden.';
+        PRINT N'@IsPartialOut bit OUTPUT. Default ist NULL. Outputbit, kennzeichnet unvollständige Quellen/Evidenz. Eingabe ignoriert. Für den Empfang eine Variable des deklarierten Typs mit OUTPUT binden.';
+        PRINT N'@ErrorNumberOut int OUTPUT. Default ist NULL. Outputfehlernummer oder NULL, wenn keiner erfasst. Eingabe ignoriert. Für den Empfang eine Variable des deklarierten Typs mit OUTPUT binden.';
+        PRINT N'@ErrorMessageOut nvarchar(2048) OUTPUT. Default ist NULL. Outputfehlertext oder NULL, wenn keiner erfasst. Eingabe ignoriert. Für den Empfang eine Variable des deklarierten Typs mit OUTPUT binden.';
+        PRINT N'Beispiel 1. EXEC [monitor].[USP_ErrorLogAnalysis] @Hilfe=1;';
+        PRINT N'Beispiel 2. DECLARE @Since datetime2(3)=''2026-01-01T00:00:00''; EXEC [monitor].[USP_ErrorLogAnalysis] @SeitServerlokalzeit=@Since, @Suchtext1=N''ExampleNoMatch'', @MaxQuellzeilen=100, @MaxZeilen=25, @ResultSetArt=''RAW'';';
+        PRINT N'Beispiel 3. DECLARE @Since datetime2(3)=''2026-01-01T00:00:00''; DECLARE @ResultJson nvarchar(max); EXEC [monitor].[USP_ErrorLogAnalysis] @SeitServerlokalzeit=@Since, @Suchtext1=N''ExampleNoMatch'', @MaxQuellzeilen=100, @MaxZeilen=25, @ResultSetArt=''NONE'', @JsonErzeugen=1, @Json=@ResultJson OUTPUT; SELECT @ResultJson AS [Json];';
+        PRINT N'Beispiel 4. CREATE TABLE #ErrorLogAnalysis_HelpExample ([Seed] int NULL); DECLARE @Since datetime2(3)=''2026-01-01T00:00:00''; BEGIN TRY EXEC [monitor].[USP_ErrorLogAnalysis] @SeitServerlokalzeit=@Since, @Suchtext1=N''ExampleNoMatch'', @MaxQuellzeilen=100, @MaxZeilen=25, @ResultSetArt=''TABLE'', @ResultTablesJson=N''{"moduleStatus":"#ErrorLogAnalysis_HelpExample"}''; SELECT * FROM #ErrorLogAnalysis_HelpExample; DROP TABLE #ErrorLogAnalysis_HelpExample; END TRY BEGIN CATCH DROP TABLE #ErrorLogAnalysis_HelpExample; THROW; END CATCH;';
         RETURN;
     END;
 

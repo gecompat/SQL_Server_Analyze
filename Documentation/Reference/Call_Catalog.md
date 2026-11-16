@@ -1,6 +1,6 @@
 # Aufrufkatalog aller dokumentierten Procedures
 
-Stand: 2026-10-27 — 121 eindeutige Procedure-Einträge; alle 121 öffentlichen Inventar-Procedures sind enthalten.
+Stand: 2026-11-15 — 127 eindeutige Procedure-Einträge; alle 127 öffentlichen Inventar-Procedures sind enthalten.
 
 Die Hilfeaufrufe führen keine fachliche Analyse aus. Weitere typische Querschnittsbeispiele stehen am Dokumentanfang.
 
@@ -47,6 +47,12 @@ EXEC [monitor].[USP_ObjectInventory] @DatabaseNames=N'[DeineDatenbank]|[Beispiel
 
 ```sql
 EXEC [monitor].[USP_AgentJobs] @Hilfe = 1;
+```
+
+## `[monitor].[USP_AgentProxyInventory]`
+
+```sql
+EXEC [monitor].[USP_AgentProxyInventory] @Hilfe = 1;
 ```
 
 ## `[monitor].[USP_AgentMonitoringAnalysis]`
@@ -365,6 +371,28 @@ EXEC [monitor].[USP_PerformanceCounters] @Hilfe = 1;
 
 ```sql
 EXEC [monitor].[USP_PlanCacheAnalysis] @Hilfe = 1;
+```
+
+## `[monitor].[USP_DatabaseDdlTriggerInventory]`
+
+Der Hilfeaufruf liest keinen Triggerkatalog. Der Fachaufruf liest nur caller-sichtbare Datenbank-DDL-Trigger-Metadaten der ausgewählten Online-Datenbank. Die [Procedure-Seite](../Analysis_Guides/Procedures/USP_DatabaseDdlTriggerInventory.md) erklärt die zwölf Fachfelder, vier Ausgabegruppen und Sichtbarkeitsgrenzen.
+
+```sql
+EXEC [monitor].[USP_DatabaseDdlTriggerInventory] @Hilfe = 1;
+EXEC [monitor].[USP_DatabaseDdlTriggerInventory]
+    @DatabaseNames=N'[ExampleDatabase]',
+    @ResultSetArt='CONSOLE';
+```
+
+## `[monitor].[USP_PlanGuideInventory]`
+
+Der Hilfeaufruf liest keine Plan-Guide-Quelle. Der begrenzte Fachaufruf liest nur caller-sichtbare Katalogmetadaten der synthetisch benannten Beispieldatenbank. Die [Procedure-Seite](../Analysis_Guides/Procedures/USP_PlanGuideInventory.md) erläutert die vier Resultsets und `ValidationStatus=UNASSESSED`.
+
+```sql
+EXEC [monitor].[USP_PlanGuideInventory] @Hilfe = 1;
+EXEC [monitor].[USP_PlanGuideInventory]
+    @DatabaseNames=N'[ExampleDatabase]',
+    @ResultSetArt='CONSOLE';
 ```
 
 ## `[monitor].[USP_PlanCacheHealth]`
@@ -889,3 +917,30 @@ EXEC [monitor].[USP_DatabaseMirroringInventory] @ResultSetArt='CONSOLE';
 EXEC [monitor].[USP_DatabaseMirroringInventory] @DatabaseNames=N'[ExampleDatabase]', @ResultSetArt='RAW', @JsonErzeugen=1;
 
 Ausgabegrenzen und die vier Resultsets stehen in der [Procedure-Seite](../Analysis_Guides/Procedures/USP_DatabaseMirroringInventory.md).
+
+## `[monitor].[USP_SensitivityClassificationSummary]`
+
+```sql
+EXEC [monitor].[USP_SensitivityClassificationSummary] @Hilfe=1;
+EXEC [monitor].[USP_SensitivityClassificationSummary] @DatabaseNames=N'[ExampleDatabase]', @ResultSetArt='CONSOLE';
+```
+
+Die drei sichtbaren Zähler, Rechte- und NULL-Grenzen stehen auf der [Procedure-Seite](../Analysis_Guides/Procedures/USP_SensitivityClassificationSummary.md).
+
+## `[monitor].[USP_LoadedModuleInventory]`
+
+```sql
+EXEC [monitor].[USP_LoadedModuleInventory] @Hilfe=1;
+EXEC [monitor].[USP_LoadedModuleInventory] @NurBuildFlags=0, @MaxZeilen=100, @ResultSetArt='CONSOLE', @PrintMeldungen=0;
+```
+
+Die [Procedure-Seite](../Analysis_Guides/Procedures/USP_LoadedModuleInventory.md) beschreibt die SQL-Prozess-DMV-Aufnahme mit nativem Namen einschließlich möglichem Pfad, den Caller-Rechtebedarf und die Ausgabegrenzen.
+
+## `[monitor].[USP_DatabaseSnapshotInventory]`
+
+```sql
+EXEC [monitor].[USP_DatabaseSnapshotInventory] @Hilfe=1;
+EXEC [monitor].[USP_DatabaseSnapshotInventory] @SnapshotNames=N'[ExampleSnapshot]', @NurOnline=1, @MaxZeilen=100, @ResultSetArt='CONSOLE', @PrintMeldungen=0;
+```
+
+Die [Procedure-Seite](../Analysis_Guides/Procedures/USP_DatabaseSnapshotInventory.md) beschreibt die caller-sichtbaren Kataloggrenzen, fünf Ergebnisgruppen und den Unterschied zwischen maximaler Sparse-Dateikapazität und tatsächlich belegtem Speicher.

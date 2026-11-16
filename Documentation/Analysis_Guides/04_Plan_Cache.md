@@ -1,8 +1,8 @@
 # Plan Cache und Showplan
 
-**Procedures:** 6  
-**Evidenz:** flüchtiger Cache, Compile-Plan, optional Last Actual oder Live Plan  
-**Kosten:** MEDIUM bis HIGH_OPT_IN
+**Procedures:** 7  
+**Evidenz:** flüchtiger Cache, Compile-Plan, optional Last Actual oder Live Plan sowie getrennte Plan-Guide-Katalogmetadaten  
+**Kosten:** LOW bis HIGH_OPT_IN
 
 ## Grundregeln
 
@@ -15,6 +15,8 @@
 ---
 
 ## 1. [monitor].[USP_QueryStats]
+
+Die [Parameterreferenz](Procedures/USP_QueryStats.md#parameter) beschreibt Eingabeform, Default und Wirkung jedes Parameters. Der Abschnitt [Aufrufbeispiele](Procedures/USP_QueryStats.md#aufrufbeispiele) zeigt Hilfe, RAW, JSON und TABLE.
 
 ### Zweck
 
@@ -85,6 +87,8 @@ Eine Query mit einer Million Ausführungen zu jeweils 2 ms verbraucht insgesamt 
 
 ## 2. [monitor].[USP_QueryHashAnalysis]
 
+Die [Parameterreferenz](Procedures/USP_QueryHashAnalysis.md#parameter) beschreibt Eingabeform, Default und Wirkung jedes Parameters. Der Abschnitt [Aufrufbeispiele](Procedures/USP_QueryHashAnalysis.md#aufrufbeispiele) zeigt Hilfe, RAW, JSON und TABLE.
+
 ### Zweck
 
 Die Procedure aggregiert alle aktuellen Cachezeilen eines Query Hash und zeigt Planvarianz, Compile-/Handlezahl und Gesamtressourcen.
@@ -134,6 +138,8 @@ Der Defaultscope besitzt keinen Hashfilter und prüft `PLAN_CACHE_DEEP`; diese P
 ---
 
 ## 3. [monitor].[USP_PlanCacheHealth]
+
+Die [Parameterreferenz](Procedures/USP_PlanCacheHealth.md#parameter) beschreibt Eingabeform, Default und Wirkung jedes Parameters. Der Abschnitt [Aufrufbeispiele](Procedures/USP_PlanCacheHealth.md#aufrufbeispiele) zeigt Hilfe, RAW, JSON und TABLE.
 
 ### Zweck
 
@@ -194,6 +200,8 @@ TABLE `overview` entspricht diesen acht Kategorienfeldern und `JSON.categories`,
 
 ## 4. [monitor].[USP_PlanDetails]
 
+Die [Parameterreferenz](Procedures/USP_PlanDetails.md#parameter) beschreibt Eingabeform, Default und Wirkung jedes Parameters. Der Abschnitt [Aufrufbeispiele](Procedures/USP_PlanDetails.md#aufrufbeispiele) zeigt Hilfe, RAW, JSON und TABLE.
+
 ### Zweck
 
 Die Procedure löst gezielt Plan-Kandidaten über Session, Plan Handle, SQL Handle oder Query Hash auf und liefert Planattribute sowie Compile-, Text-, Last-Actual- oder Live-Plan.
@@ -247,6 +255,8 @@ Wichtige Attribute sind etwa `dbid`, `set_options`, `user_id`, `language_id`, `d
 ---
 
 ## 5. [monitor].[USP_ShowplanAnalysis]
+
+Die [Parameterreferenz](Procedures/USP_ShowplanAnalysis.md#parameter) beschreibt Eingabeform, Default und Wirkung jedes Parameters. Der Abschnitt [Aufrufbeispiele](Procedures/USP_ShowplanAnalysis.md#aufrufbeispiele) zeigt Hilfe, RAW, JSON und TABLE.
 
 ### Zweck
 
@@ -347,6 +357,8 @@ Die Kostenklasse ist bei mehreren oder großen Plänen HIGH_OPT_IN. XML-XQuery b
 
 ## 6. [monitor].[USP_PlanCacheAnalysis]
 
+Die [Parameterreferenz](Procedures/USP_PlanCacheAnalysis.md#parameter) beschreibt die Modulschalter, Filter, Grenzen und Ausgabearten. Die [Aufrufbeispiele](Procedures/USP_PlanCacheAnalysis.md#aufrufbeispiele) zeigen Hilfe, RAW, JSON und TABLE.
+
 ### Zweck
 
 Die Procedure orchestriert folgende Teilanalysen:
@@ -424,7 +436,20 @@ flowchart TD
 - [sys.dm_exec_query_statistics_xml](https://learn.microsoft.com/en-us/sql/relational-databases/system-dynamic-management-objects/sys-dm-exec-query-statistics-xml-transact-sql?view=sql-server-ver17)
 - [Showplan XML schema](https://learn.microsoft.com/sql/relational-databases/showplan-logical-and-physical-operators-reference)
 
+## 7. [monitor].[USP_PlanGuideInventory]
+
+Die [Procedure-Referenz](Procedures/USP_PlanGuideInventory.md) beschreibt alle Parameter, vier benannten Resultsets und die Aussagegrenzen. Die Procedure liest caller-sichtbare Plan-Guide-Katalogmetadaten in ausgewählten ONLINE-Datenbanken. Sie ergänzt die flüchtigen Plan-Cache- und Showplan-Pfade um einen getrennten Konfigurationsblick. `IsDisabled` ist ein Katalogschalter; `ValidationStatus=UNASSESSED` und eine erfolgreiche leere Sicht belegen weder Guide-Wirksamkeit noch globale Abwesenheit. SQL-, Batch-, Parameter- und Hint-Definitionen werden nicht gelesen.
+
+```sql
+EXEC [monitor].[USP_PlanGuideInventory]
+    @DatabaseNames=N'[ExampleDatabase]',
+    @ResultSetArt='RAW';
+```
+
+
 ## Standalone Execution Plan Analysis
+
+Die [Parameterreferenz](Procedures/USP_ExecutionPlanAnalysis.md#parameter) erklärt Eingabeformen, Defaults, feste Optionen und NULL-Verhalten. Die [Aufrufbeispiele](Procedures/USP_ExecutionPlanAnalysis.md#aufrufbeispiele) verwenden ausschließlich synthetisches XML. Statementfilter und Ausgabekappen begrenzen nicht die vorgelagerte vollständige XML-Analyse; die Zeitprüfung ist ein abschließender Hinweis auf Partialität.
 
 `monitor.USP_ExecutionPlanAnalysis` analysiert genau ein Plan-XML ohne zwingenden Plan-Cache- oder Query-Store-Zugriff. Die technische Identität lautet `AnalysisObjectId + StatementOrdinal + NodeId`; gleiche NodeIds verschiedener Statements bleiben getrennt. Compile- und Runtimewerte werden nicht vermischt, fehlende Capabilities bleiben `NULL` mit Status.
 

@@ -1,7 +1,7 @@
 # Datei-I/O-Snapshots: Quellen, Identität und Vergleichsgrenzen
 
-**Stand:** 26. Oktober 2026.
-**Status:** Quell- und Identitätsvertrag mit implementiertem internem Target; die öffentliche native FILE_IO-Aufnahme bleibt offen.
+**Stand:** 5. November 2026.
+**Status:** Der öffentliche native FILE_IO-Aufnahmepfad ist über [PR #458](https://github.com/gecompat/SQL_Server_Analyze/pull/458) integriert. Die historische Qualifikation umfasst SQL2025 und den eng begrenzten SQL2019-Snapshot-Risikoslice; sie ist keine allgemeine Plattformfreigabe. Noch offen sind Kapazitäts- und Ressourcendruckerfassung, Rollups, Scheduler und Exporte. Maßgeblich sind der [Paketvertrag](../../../Documentation/Architecture/Snapshot_Baseline_Package_Contract.md) und der [Betriebsleitfaden](../../../Documentation/Operations/Snapshot_Baseline_Operations.md).
 **Artefakt-UID:** `urn:uuid:01a17554-a6d5-74c8-bf71-2eb993e63559`.
 **Registrierung:** `DEFERRED`; keine finale lesbare Kennung vergeben.
 **Zuordnung:** SC-023-EXPANSION, Rang 10 der
@@ -9,19 +9,19 @@
 
 ## Zweck und Abgrenzung
 
-Nach dem öffentlichen Waitpfad soll das optionale Snapshotpaket gemessene
-Datei-I/O-Rohwerte über getrennte lokale Aufrufe erhalten. Der Vergleich muss
-beobachtete Identitätswechsel und fehlende Belege berücksichtigen.
-Eine gleichbleibende beobachtete Identität beweist keine ununterbrochene
-Zählerkontinuität. Numerische Differenzen bleiben deshalb ausdrücklich
-unbewiesene Kandidaten.
+Der öffentliche FILE_IO-Pfad des optionalen Snapshotpakets erfasst gemessene
+Datei-I/O-Rohwerte über getrennte lokale Aufrufe. Der Vergleich berücksichtigt
+beobachtete Identitätswechsel und fehlende Belege. Eine gleichbleibende
+beobachtete Identität beweist keine ununterbrochene Zählerkontinuität;
+numerische Differenzen bleiben ausdrücklich unbewiesene Kandidaten.
 
-Dieser Vorvertrag legt Quellenumfang, Identitätsbedingungen, Rohwerte und
-fachliche Gegenfälle fest. Die öffentliche native Aufnahme und neue öffentliche Auswahlparameter bleiben
-eine gesonderte Welle. Das interne Target implementiert den nachfolgenden Feldvertrag. Der [Feld- und Migrationsvertrag](File_IO_Snapshot_Field_Contract.md)
-konkretisiert Source, Kontexte, Epochen und Versionsstufen und ist vor der Implementierung unabhängig geprüft.
-Der [Snapshotvertrag](../../../Documentation/Architecture/Snapshot_Baseline_Package_Contract.md)
-bleibt für den gelieferten Performance-Counter-/Waitstand und die interne Targetgrenze maßgeblich.
+Dieser Dossiertext hält den Vorvertrag zu Quellenumfang, Identitätsbedingungen,
+Rohwerten und fachlichen Gegenfällen fest. Der öffentliche Pfad ist inzwischen
+geliefert; der [Feld- und Migrationsvertrag](File_IO_Snapshot_Field_Contract.md)
+dokumentiert Source, Kontexte, Epochen und Versionsstufen. Der aktuelle
+[Paketvertrag](../../../Documentation/Architecture/Snapshot_Baseline_Package_Contract.md)
+ist für den gelieferten Performance-Counter-, WAIT_STATS- und FILE_IO-Stand
+maßgeblich.
 
 ## Auswahl und native Aufnahme
 
@@ -147,10 +147,11 @@ geprüften Entscheidungen:
   gemeinsame Konfigurationsweg müssen bestehende positionale Aufrufe,
   den Performance-Counter-Default und die Waitverträge erhalten.
 
-Der Quellstand implementiert das interne Target und die erforderliche
-Waitkompatibilität. Nach deren regulärer Abnahme folgt die öffentliche native
-Aufnahme als nächster getrennter Produktschritt. Der bestehende autonome
-Benutzerauftrag bleibt die Arbeitsautorität.
+Diese Passage beschreibt den damaligen Quell- und Planungsstand vor PR #458.
+Der öffentliche FILE_IO-Aufnahmepfad ist inzwischen integriert. Verbleibende
+Ausbauschritte sind Kapazitäts- und Ressourcendruckerfassung, Rollups,
+Scheduler und Exporte; der heutige Gesamtauftrag wird durch einen einzigen
+Orchestrator gesteuert.
 
 ## Abnahme und Betriebsgrenzen
 
@@ -171,7 +172,7 @@ zum späteren Produktvertrag.
 
 Die Installer erteilen keine Rechte und erzeugen keine Datenbank oder Jobs.
 Neue Entwicklungstests verwenden ausschließlich eigene gebundene Labobjekte;
-die im SSIS-Chat erhaltene SSISDB bleibt außerhalb dieses Auftrags.
+Die SSISDB bleibt erhalten; Parser und Lineage gehören zum Toolbelt des heutigen Gesamtauftrags, der Analyze CLR-frei hält.
 Dokumentation erhält statische Prüfungen ohne neue SQL-Instanz. Spätere
 Installer-/Produktänderungen erhalten das vollständige SQL2025-Gate und nur
 bei konkretem Versionsrisiko den betroffenen zusätzlichen nativen Scope gemäß

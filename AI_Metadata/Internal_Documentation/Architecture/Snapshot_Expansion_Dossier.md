@@ -1,7 +1,7 @@
 # Ausbau der lokalen Snapshot- und Baseline-Erfassung
 
-**Stand:** 26. Oktober 2026.
-**Status:** Der öffentliche Waitpfad ist über PR #453 mit allen sieben Head-Checks und gezielter nativer SQL2019-Abnahme integriert. Alle vier Main-Prüfungen einschließlich des vollständigen SQL2025-Gates bestehen. Der nächste Ausbau betrifft den [Datei-I/O-Vorvertrag](File_IO_Snapshot_Dossier.md).
+**Stand:** 5. November 2026.
+**Status:** Performance Counter, WAIT_STATS und der öffentliche native FILE_IO-Aufnahmepfad sind im optionalen Snapshotpaket geliefert; [PR #458](https://github.com/gecompat/SQL_Server_Analyze/pull/458) ist integriert. Die historische Qualifikation dieses Lieferstands umfasst SQL2025 und den eng begrenzten SQL2019-Snapshot-Risikoslice, keine allgemeine Plattformfreigabe. Offen bleiben Kapazitäts- und Ressourcendruckerfassung, Rollups, Scheduler und Exporte. Maßgeblich sind der [Paketvertrag](../../../Documentation/Architecture/Snapshot_Baseline_Package_Contract.md) und der [Betriebsleitfaden](../../../Documentation/Operations/Snapshot_Baseline_Operations.md).
 **Artefakt-UID:** `urn:uuid:01a17312-4ac5-78b9-b77d-536e996e2817`.
 **Registrierung:** `DEFERRED`; keine neue finale lesbare Kennung vergeben.
 **Bestehende Zuordnung:** SC-023-EXPANSION, Rang 10 der
@@ -10,25 +10,25 @@
 ## Ausgangslage und nächster Nutzen
 
 Das [optionale Snapshotpaket](../../../Documentation/Architecture/Snapshot_Baseline_Package_Contract.md)
-persistiert Performance Counter und ausdrücklich aktivierte Waitcaptures.
-Configure, Collection Cycle, Retention, Budgetreaktion, Scopeidentitäten,
-typisierte Metriken und Modulstatus gehören zum gelieferten Stand.
-Waitdifferenzen bleiben unbewiesene monotone Kandidaten; Datei-I/O ist noch
-nicht implementiert.
+persistiert Performance Counter sowie ausdrücklich aktivierte WAIT_STATS- und
+FILE_IO-Aufnahmen. Der aktuelle Paketvertrag führt Targetversion 1.3.1,
+Schema 3 und Retentionsvertrag 3; Configure, Collection Cycle, Retention,
+Budgetreaktion, Scopeidentitäten, typisierte Metriken und Modulstatus gehören zum gelieferten Stand. Wait- und Datei-I/O-Differenzen bleiben unbewiesene
+Kandidaten.
 
-Der gelieferte Waitpfad vergleicht instanzweite Rohcounter über getrennte lokale
-Collection Cycles mit ausdrücklich begrenzter Kontinuität. Danach folgt Datei-I/O mit eigener
-Datenbank-/Dateiidentität. Kapazität, Ressourcendruck, Rollups, Scheduler und
-Exporte sind nachfolgende getrennte Schritte. Der Frameworkkern bleibt
+Die gelieferten Collectorpfade erfassen ihre jeweiligen Rohwerte über getrennte
+lokale Collection Cycles; die Vergleichsgrenzen und Identitäten sind im
+Paketvertrag festgelegt. Wait- und Datei-I/O-Differenzen sind keine belegte
+Kontinuitätsgarantie. Kapazitäts- und Ressourcendruckerfassung, Rollups,
+Scheduler und Exporte bleiben nachgelagerte offene Schritte. Der Frameworkkern bleibt
 zustandslos; neue persistente Daten liegen ausschließlich im ausdrücklich
 installierten eigenen Snapshotziel.
 
-Die separate SSIS-Arbeit umfasst aktuell Datenflusskorrelation. Diese Welle
-übernimmt weder deren Parser-/Lineagearbeit noch deren erhaltene SSISDB.
-Der nächste unabhängige Gesamtauftrag kann Rang 10 bearbeiten, während die
-SSIS-Zuständigkeit und ein freier Vergleichsscope weiter abgeglichen werden.
-Die gelieferten Sicherheitsbausteine und der erste Endpoint-Slice werden
-dabei nicht erneut implementiert.
+Frühere Wellenbeschreibungen ordneten Parser-/Lineagearbeit und die erhaltene
+SSISDB einer getrennten SSIS-Zuständigkeit zu. Diese Trennung beschreibt die
+historische Ausgangslage. Der heutige Gesamtauftrag hat einen einzigen
+Orchestrator; SSISDB bleibt erhalten, Parser und Lineage sind Teil des
+Toolbelts, und Analyze bleibt CLR-frei.
 
 ## Quellen und vorhandene Wiederverwendung
 
@@ -48,10 +48,11 @@ Quellen- und Identitätslogik, übernimmt aber keine gefilterte oder gekappte
 Darstellung als vollständigen Basiswert. Eine zusätzliche öffentliche
 Liveanalyse wird durch diesen Scope nicht begründet.
 
-Die bestehenden Snapshothelper sind derzeit fest an PERFORMANCE_COUNTERS
-gebunden. Vor einer Implementierung werden Prepare, Complete, Finalize,
-Policy, Installer, Versionsprüfung und Purge gemeinsam angepasst. Ein
-zusätzlicher Seed allein aktiviert keinen nutzbaren Collector.
+Vor der Collector-Erweiterung waren die Snapshothelper an
+PERFORMANCE_COUNTERS gebunden. Die damalige Implementierungsplanung sah vor,
+Prepare, Complete, Finalize, Policy, Installer, Versionsprüfung und Purge
+gemeinsam anzupassen; ein zusätzlicher Seed allein hätte keinen nutzbaren
+Collector aktiviert.
 
 ## Reset- und Zeitgrenzen
 
@@ -125,9 +126,10 @@ eines qualifizierten Deltas.
 
 ## Getrennte Datei-I/O-Fortsetzung
 
-Der [Datei-I/O-Vorvertrag](File_IO_Snapshot_Dossier.md) konkretisiert die
-Quellen-, Identitäts-, Counter- und Abnahmegrenzen dieses nächsten Schritts.
-Exakte persistierte Felder und Migration folgen vor Produktcode.
+Der [Datei-I/O-Vorvertrag](File_IO_Snapshot_Dossier.md) dokumentiert die
+Quellen-, Identitäts-, Counter- und Abnahmegrenzen, die dem gelieferten
+öffentlichen FILE_IO-Pfad vorausgingen. Exakte Felder und Migration sind im
+aktuellen Paket- und Feldvertrag festgelegt.
 
 Datei-I/O folgt nach dem Wait-Slice mit dem festen Datenbankauswahlvertrag:
 alle sichtbaren zugänglichen ONLINE-Benutzerdatenbanken, optionale
@@ -169,11 +171,13 @@ Anonymisierung oder externe Übertragung ein.
 
 ## Abnahme und noch festzulegender Feldvertrag
 
-Vor Implementierung werden öffentliche Parameter, Resultsets und JSON-Version,
-Paket-/Schemaversion, Collectorcodes, Metrikcodes, ValueType, Unit, QualityCode,
-Epochenbildung, Vorwertauswahl und atomare Schreibgrenzen vollständig festgelegt.
-Dies ist der nächste konkrete Vertragsabschluss; diese Konzeptseite ist noch
-kein eingefrorener öffentlicher API- oder Migrationsvertrag.
+Die folgende Abnahmeplanung dokumentiert den damaligen offenen Stand vor der
+späteren Lieferung. In dieser historischen Planungsphase sollten öffentliche Parameter, Resultsets
+und JSON-Version, Paket-/Schemaversion, Collectorcodes, Metrikcodes, ValueType,
+Unit, QualityCode, Epochenbildung, Vorwertauswahl und atomare Schreibgrenzen
+vor der Implementierung festgelegt werden. Der aktuelle Paket- und Feldvertrag
+dokumentiert die später gelieferten Schnittstellen und Migrationen; diese
+Planungsaussage ist kein aktueller offener Vertragsabschluss.
 
 Unabhängige typisierte Sollwerte prüfen mindestens frische Installation und
 Upgrade mit erhaltenen Performance-Counter-Samples, Default-Opt-out,
@@ -194,6 +198,11 @@ werden nicht wegen eines Timers erneut ausgeführt. Ein neuer Collector mit
 fehlender nativer Qualifikation bleibt als Teillieferung sichtbar.
 
 ## Historischer Waitentwurf und vorgeschalteter Schema-Vorvertrag
+
+Die folgenden Abschnitte halten Vorverträge, Implementierungsphasen und deren
+damalige Abnahmegrenzen fest. Sie beschreiben keine aktuell offenen WAIT_STATS-
+oder FILE_IO-Implementierungen und stufen historische Teilprüfungen nicht zu
+einer allgemeinen Semantik- oder Plattformfreigabe hoch.
 
 Konzeptreview und Review des vorgeschalteten Migrationsvertrags bestehen.
 Die nachfolgende Collectorauswahl bleibt ein Entwurf und ist noch kein
@@ -1243,8 +1252,11 @@ Coreinstallation beobachteter Session-Kill-State bleiben fehlgeschlagen
 erhalten; für Letzteren ist die Ursache UNKNOWN. Der unabhängige Review und
 seine konkreten Befundnachprüfungen besitzen keine offenen P1/P2.
 
-Der getrennte Main-Nachlauf besteht mit vollständigem SQL2025-Gate
+Der folgende Integrationsnachweis dokumentiert den historischen Abschluss der
+öffentlichen Waitwelle vor der späteren FILE_IO-Lieferung. Der getrennte Main-Nachlauf besteht mit vollständigem SQL2025-Gate
 [40243041916](https://github.com/gecompat/SQL_Server_Analyze/actions/runs/40243041916),
 Dokumentation 40243041923, Datenschutz 40243041919 und Commitprüfung 40243041918.
-Der nächste Datei-I/O-Schritt beginnt mit seinem Quell-/Identitätsvorvertrag;
-eine vorhandene FILE_IO-Implementierung wird nicht behauptet.
+Diese Aussage dokumentiert den damaligen Übergang nach der Waitwelle. PR #458
+integrierte anschließend den öffentlichen nativen FILE_IO-Aufnahmepfad; die
+spätere Integrationsqualifikation ist im öffentlichen Paketvertrag und in der
+PR-Evidenz festgehalten.

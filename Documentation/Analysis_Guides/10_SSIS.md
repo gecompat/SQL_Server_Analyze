@@ -17,6 +17,8 @@ Der erste SSIS-001-Slice liest ausschließlich direkt übergebenes DTSX-v2-XML. 
 
 Schema v3 ergänzt `variables` als dreizehntes RAW-Resultset. TABLE und JSON verwenden denselben begrenzten Variablenexport mit Scopezuordnung, Namespace, Name, Datentypcode und Booleanmetadaten. Event-Handler-Scope bleibt ausdrücklich begrenzt; Variablenwerte werden nicht gelesen oder ausgegeben. Der [öffentliche Vertrag](../Architecture/SSIS_001_Phase0_Public_Contract.md) beschreibt Schema, Defaults, NULL-Werte und Partialität.
 
+Die [individuelle Parameterreferenz](Procedures/USP_SsisPackageAnalysis.md#parameter-und-eingabeformen) erklärt alle 19 Argumente und ihre tatsächlichen Grenzen. PackageParametersJson wird hier nicht ausgewertet; MaxDurationSeconds prüft nur den Zahlenbereich und erzwingt keine Laufzeitfrist. RAW-Zeilenlimits und die ausschließlich auf variables wirkende Begrenzung für TABLE/JSON sind getrennt beschrieben.
+
 ## [monitor].[USP_SsisCatalogExecutionAnalysis]
 
 Der Kataloganalyzer liest genau eine explizite lokale SSISDB-Ausführung. Er trennt Ausführungsstatus, Executable-Statistik, strukturierte Ereignisse, Parameterdefinitionen, Phasen und Row-Flow von Quellenfehlern. Meldungstexte, Parameterwerte, Pfade und Identitäten bleiben ausgeschlossen. Der [freigegebene Katalogvertrag](../Architecture/SSIS_001_Phase0_Public_Contract.md#konkreter-katalogvertrag-vom-16-oktober-2026) und die [Procedure-Anleitung](Procedures/USP_SsisCatalogExecutionAnalysis.md) beschreiben Limits, Sichtbarkeit und Aussagegrenzen. Der separate Legacy-Analyzer besitzt den nachfolgend beschriebenen freigegebenen Umfang.
@@ -174,10 +176,12 @@ DROP TABLE #ModuleStatus;
 
 ## [monitor].[USP_SsisPackageModelAnalysis]
 
+Die [Parameterreferenz](Procedures/USP_SsisPackageModelAnalysis.md#parameter-und-eingabeformen) beschreibt alle 32 Argumente mit Default, Eingabeform und NULL-Regeln. Einzelmodell und Ausführungsscope haben exklusive JSON-/Übergabeformen; Pipelinekorrelation und Diagnose setzen den Scopemodus voraus. TABLE-Ziele und JSON-Gruppen werden für den jeweils aktivierten Umfang ausdrücklich benannt. Die bestehenden Installations- und Berechtigungsgrenzen bleiben erhalten.
+
 Der [native Modellimport](Procedures/USP_SsisPackageModelAnalysis.md) validiert
 optional übergebenes JSON ohne CLR oder Toolbelt-Installation. Er prüft Felder,
 Kennungen, Scopes und Referenzen; Originalbytes erlauben einen unabhängigen
-Paketbytevergleich. Die Producerherkunft bleibt UNVERIFIED. Der Importer
+Paketbytevergleich. Ohne qualifizierte lokale Übergabe bleibt die Producerherkunft UNVERIFIED. Der Importer
 berechnet keine neue Lineage und führt weder Pakete noch enthaltenes SQL aus.
 Mit `@IncludePackageViews=1` kommen Paketübersicht, Executables, beobachtete
 Datenflussscopes, Komponenten und direkte Spaltenbeziehungen hinzu. Die
@@ -213,8 +217,8 @@ fasst diese gebundenen Einzelbelege je Aufrufinstanz zusammen. Sie zeigt
 Phasenkennzahlen, Pfadtransfers und versionierte Regelhinweise mit Quellenbezug.
 Fehlende Beobachtungen und unbekannte Rollen bleiben als Evidenzgrenzen sichtbar.
 
-Der [gebundene Ausführungsvergleich](Procedures/USP_SsisExecutionComparison.md) vergleicht zwei Captures desselben exakten Modellexports. Herkunft, Version, Laufzeitkontext und Coverage begrenzen die Aussage; Parser und Lineage bleiben in Toolbelt.
+Der [gebundene Ausführungsvergleich](Procedures/USP_SsisExecutionComparison.md) vergleicht zwei Captures desselben exakten Modellexports. Die [Parameterreferenz](Procedures/USP_SsisExecutionComparison.md#parameter-und-eingabeformen) erläutert alle 23 Argumente mit Default, JSON-/GUID-Formen, NULL-Regeln und Ausgabeoptionen. Herkunft, Version, Laufzeitkontext und Coverage begrenzen die Aussage; Parser und Lineage bleiben in Toolbelt.
 
-Die [Mehrlauf-Baseline](Procedures/USP_SsisExecutionBaseline.md) ergänzt den Paarvergleich für eine explizite Kohorte von bis zu 20 Basisläufen. Verwendbare Laufzahl, Median und Spannweite gelten je Kennzahl; Ausschlüsse bleiben einzeln nachvollziehbar.
+Die [Mehrlauf-Baseline](Procedures/USP_SsisExecutionBaseline.md) ergänzt den Paarvergleich für eine explizite Kohorte von bis zu 20 Basisläufen. Die [Parameterreferenz](Procedures/USP_SsisExecutionBaseline.md#parameter-und-eingabeformen) beschreibt alle 20 Argumente einschließlich des äußeren JSON-Arrays mit vier Stringwerten je Basislauf, Dauergrenzen und Status-OUTPUTs. Verwendbare Laufzahl, Median und Spannweite gelten je Kennzahl; Ausschlüsse bleiben einzeln nachvollziehbar.
 
 Der [Vertrag für eigene Kennzahlenproduzenten](../Architecture/SSIS_Custom_Metrics_Producer_Contract.md) beschreibt optionale `DELTA`-, `CUMULATIVE`-, `GAUGE`- und `FINAL`-Beobachtungen sowie ihre Bindungs- und Vergleichsgrenzen. Ein begrenzter Offline-Validator prüft `ssis-reported-metrics/v1`-Berichte syntaktisch und auf deklarierte Konsistenz. Er verifiziert weder Capture- oder Producerherkunft noch Wahrheitsgehalt und bildet keine Laufwerte, Vergleiche oder Baselines.

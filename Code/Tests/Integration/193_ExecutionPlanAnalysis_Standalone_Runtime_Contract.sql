@@ -24,6 +24,22 @@ IF EXISTS
 )
     THROW 53621,N'Query Store muss für den unabhängigen Standalone-Test deaktiviert sein.',1;
 
+CREATE TABLE [#193_ExecutionPlanAnalysis_Standalone_Runtime_Contract_Baseline_EventSessions]
+(
+      [event_session_id] int NOT NULL PRIMARY KEY
+    , [name] sysname NOT NULL
+    , [startup_state] bit NULL
+);
+
+INSERT [#193_ExecutionPlanAnalysis_Standalone_Runtime_Contract_Baseline_EventSessions]
+(
+      [event_session_id]
+    , [name]
+    , [startup_state]
+)
+SELECT [event_session_id],[name],[startup_state]
+FROM [sys].[server_event_sessions] WITH (NOLOCK);
+
 CREATE TABLE [#193_ExecutionPlanAnalysis_Standalone_Runtime_Contract_Baseline]
 (
       [MetricName] varchar(64) NOT NULL PRIMARY KEY
@@ -41,7 +57,7 @@ SELECT
       'SERVER_EVENT_SESSIONS'
     , COUNT_BIG(*)
     , CHECKSUM_AGG(BINARY_CHECKSUM([event_session_id],[name],[startup_state]))
-FROM [sys].[server_event_sessions] WITH (NOLOCK);
+FROM [#193_ExecutionPlanAnalysis_Standalone_Runtime_Contract_Baseline_EventSessions];
 GO
 
 /* 1. Erstinstallation des eigenständigen Teilprojekts. */
@@ -283,7 +299,120 @@ VALUES
 );
 GO
 
-/* 3. Zweite Installation zur realen Idempotenzprüfung. */
+/* 3. Die öffentliche Bestätigung darf ohne optionalen Pfadprüfer nicht ausfallen. */
+IF OBJECT_ID(N'monitor.InternalCheckAnalysisPath',N'P') IS NULL
+    THROW 53638,N'Der interne Pfadprüfer fehlt vor der isolierten Abwesenheitsprobe.',1;
+DROP PROCEDURE [monitor].[InternalCheckAnalysisPath];
+GO
+IF OBJECT_ID(N'monitor.InternalCheckAnalysisPath',N'P') IS NOT NULL
+    THROW 53639,N'Der optionale Pfadprüfer ist für die Abwesenheitsprobe noch vorhanden.',1;
+
+DECLARE @StandaloneGatePlan xml=N'
+<ShowPlanXML xmlns="http://schemas.microsoft.com/sqlserver/2004/07/showplan" Version="1.600" Build="17.0.1000.1">
+  <BatchSequence><Batch><Statements>
+    <StmtSimple StatementId="1" StatementCompId="1" StatementType="SELECT" StatementText="SELECT ExampleValue" StatementSubTreeCost="0.1" StatementEstRows="1" StatementOptmLevel="TRIVIAL">
+      <QueryPlan CardinalityEstimationModelVersion="170">
+        <RelOp NodeId="0" PhysicalOp="Constant Scan" LogicalOp="Constant Scan" EstimateRows="1" EstimatedTotalSubtreeCost="0.1"><ConstantScan /></RelOp>
+      </QueryPlan>
+    </StmtSimple>
+  </Statements></Batch></BatchSequence>
+</ShowPlanXML>';
+DECLARE
+      @StandaloneGateJson nvarchar(max)
+    , @StandaloneGateStatus varchar(40)
+    , @StandaloneGatePartial bit
+    , @StandaloneGateError int
+    , @StandaloneGateMessage nvarchar(2048);
+
+/* 0 und NULL müssen denselben öffentlichen Status liefern, ohne den Helfer. */
+SELECT @StandaloneGateJson=NULL,@StandaloneGateStatus='STALE',@StandaloneGatePartial=NULL,
+       @StandaloneGateError=999,@StandaloneGateMessage=N'SENTINEL';
+EXEC [monitor].[USP_ExecutionPlanAnalysis]
+      @PlanXml=@StandaloneGatePlan
+    , @AnalyseTiefe='FULL'
+    , @HighImpactConfirmed=0
+    , @ResultSetArt='NONE'
+    , @JsonErzeugen=1
+    , @Json=@StandaloneGateJson OUTPUT
+    , @PrintMeldungen=0
+    , @StatusCodeOut=@StandaloneGateStatus OUTPUT
+    , @IsPartialOut=@StandaloneGatePartial OUTPUT
+    , @ErrorNumberOut=@StandaloneGateError OUTPUT
+    , @ErrorMessageOut=@StandaloneGateMessage OUTPUT;
+IF COALESCE(@StandaloneGateStatus,'')<>'HIGH_IMPACT_CONFIRMATION_REQUIRED'
+   OR COALESCE(@StandaloneGatePartial,0)<>1 OR @StandaloneGateError IS NOT NULL
+   OR NULLIF(LTRIM(RTRIM(@StandaloneGateMessage)),N'') IS NULL
+   OR COALESCE(ISJSON(@StandaloneGateJson),0)<>1
+    THROW 53640,N'Der öffentliche FULL-Pfad hat @HighImpactConfirmed=0 ohne Helfer nicht abgewiesen.',1;
+
+SELECT @StandaloneGateJson=NULL,@StandaloneGateStatus='STALE',@StandaloneGatePartial=NULL,
+       @StandaloneGateError=999,@StandaloneGateMessage=N'SENTINEL';
+EXEC [monitor].[USP_ExecutionPlanAnalysis]
+      @PlanXml=@StandaloneGatePlan
+    , @AnalyseTiefe='FULL'
+    , @HighImpactConfirmed=NULL
+    , @ResultSetArt='NONE'
+    , @JsonErzeugen=1
+    , @Json=@StandaloneGateJson OUTPUT
+    , @PrintMeldungen=0
+    , @StatusCodeOut=@StandaloneGateStatus OUTPUT
+    , @IsPartialOut=@StandaloneGatePartial OUTPUT
+    , @ErrorNumberOut=@StandaloneGateError OUTPUT
+    , @ErrorMessageOut=@StandaloneGateMessage OUTPUT;
+IF COALESCE(@StandaloneGateStatus,'')<>'HIGH_IMPACT_CONFIRMATION_REQUIRED'
+   OR COALESCE(@StandaloneGatePartial,0)<>1 OR @StandaloneGateError IS NOT NULL
+   OR NULLIF(LTRIM(RTRIM(@StandaloneGateMessage)),N'') IS NULL
+   OR COALESCE(ISJSON(@StandaloneGateJson),0)<>1
+    THROW 53641,N'Der öffentliche FULL-Pfad hat @HighImpactConfirmed=NULL ohne Helfer nicht abgewiesen.',1;
+
+/* Explizite 1 erreicht die Analyse, wenn der optionale Helfer nicht installiert ist. */
+SELECT @StandaloneGateJson=NULL,@StandaloneGateStatus='STALE',@StandaloneGatePartial=NULL,
+       @StandaloneGateError=999,@StandaloneGateMessage=N'SENTINEL';
+EXEC [monitor].[USP_ExecutionPlanAnalysis]
+      @PlanXml=@StandaloneGatePlan
+    , @AnalyseTiefe='FULL'
+    , @HighImpactConfirmed=1
+    , @ResultSetArt='NONE'
+    , @JsonErzeugen=1
+    , @Json=@StandaloneGateJson OUTPUT
+    , @PrintMeldungen=0
+    , @StatusCodeOut=@StandaloneGateStatus OUTPUT
+    , @IsPartialOut=@StandaloneGatePartial OUTPUT
+    , @ErrorNumberOut=@StandaloneGateError OUTPUT
+    , @ErrorMessageOut=@StandaloneGateMessage OUTPUT;
+IF COALESCE(@StandaloneGateStatus,'') NOT IN ('AVAILABLE','PARTIAL')
+   OR @StandaloneGatePartial IS NULL OR @StandaloneGateError IS NOT NULL
+   OR COALESCE(ISJSON(@StandaloneGateJson),0)<>1
+   OR (SELECT COUNT(*) FROM OPENJSON(@StandaloneGateJson,N'$.statements'))<>1
+   OR (SELECT COUNT(*) FROM OPENJSON(@StandaloneGateJson,N'$.operatorTree'))<>1
+    THROW 53642,N'Der öffentliche FULL-Pfad hat @HighImpactConfirmed=1 ohne Helfer nicht erreicht oder lieferte nicht genau eine synthetische Statement- und Operatorzeile.',1;
+
+/* Nicht angeforderter High-Impact-Pfad und NULL-Modusfallbacks bleiben zulässig. */
+SELECT @StandaloneGateJson=NULL,@StandaloneGateStatus='STALE',@StandaloneGatePartial=NULL,
+       @StandaloneGateError=999,@StandaloneGateMessage=N'SENTINEL';
+EXEC [monitor].[USP_ExecutionPlanAnalysis]
+      @PlanXml=@StandaloneGatePlan
+    , @AnalyseTiefe='STANDARD'
+    , @StatistikEvidenzModus=NULL
+    , @HistogrammModus=NULL
+    , @HighImpactConfirmed=NULL
+    , @ResultSetArt='NONE'
+    , @JsonErzeugen=1
+    , @Json=@StandaloneGateJson OUTPUT
+    , @PrintMeldungen=0
+    , @StatusCodeOut=@StandaloneGateStatus OUTPUT
+    , @IsPartialOut=@StandaloneGatePartial OUTPUT
+    , @ErrorNumberOut=@StandaloneGateError OUTPUT
+    , @ErrorMessageOut=@StandaloneGateMessage OUTPUT;
+IF COALESCE(@StandaloneGateStatus,'') NOT IN ('AVAILABLE','PARTIAL')
+   OR @StandaloneGatePartial IS NULL OR @StandaloneGateError IS NOT NULL
+   OR COALESCE(ISJSON(@StandaloneGateJson),0)<>1
+   OR (SELECT COUNT(*) FROM OPENJSON(@StandaloneGateJson,N'$.statements'))<>1
+   OR (SELECT COUNT(*) FROM OPENJSON(@StandaloneGateJson,N'$.operatorTree'))<>1
+    THROW 53643,N'Unbenutztes NULL oder NULL-Modusfallbacks wurden ohne Helfer global abgewiesen oder lieferten nicht genau eine synthetische Statement- und Operatorzeile.',1;
+GO
+
+/* 4. Zweite Installation stellt den Helfer wieder her und prüft Idempotenz. */
 :r Install_ExecutionPlanAnalysis.sql
 
 USE [DeineDatenbank];
@@ -328,7 +457,7 @@ IF NOT EXISTS
 )
     THROW 53627,N'Die erneute Installation hat die synthetische lokale Profilzuordnung verändert oder entfernt.',1;
 
-/* 4. Nur die transitive PLAN-001-Abhängigkeitsschließung darf vorhanden sein. */
+/* 5. Nur die transitive PLAN-001-Abhängigkeitsschließung darf vorhanden sein. */
 DECLARE @ExpectedObjects TABLE
 (
       [ObjectName] sysname NOT NULL PRIMARY KEY
@@ -389,7 +518,7 @@ IF EXISTS
 )
     THROW 53629,N'Die Standalone-Installation enthält ein unnötiges Frameworkmodul.',1;
 
-/* 5. Keine unresolved Abhängigkeit zu einem nicht installierten monitor-Modul. */
+/* 6. Keine unresolved Abhängigkeit zu einem nicht installierten monitor-Modul. */
 IF EXISTS
 (
     SELECT 1
@@ -427,6 +556,22 @@ IF EXISTS
 )
     THROW 53632,N'Der Standalone-Test hat Query Store aktiviert oder benötigt.',1;
 
+CREATE TABLE [#193_ExecutionPlanAnalysis_Standalone_Runtime_Contract_Current_EventSessions]
+(
+      [event_session_id] int NOT NULL PRIMARY KEY
+    , [name] sysname NOT NULL
+    , [startup_state] bit NULL
+);
+
+INSERT [#193_ExecutionPlanAnalysis_Standalone_Runtime_Contract_Current_EventSessions]
+(
+      [event_session_id]
+    , [name]
+    , [startup_state]
+)
+SELECT [event_session_id],[name],[startup_state]
+FROM [sys].[server_event_sessions] WITH (NOLOCK);
+
 IF EXISTS
 (
     SELECT 1
@@ -436,7 +581,7 @@ IF EXISTS
         SELECT
               COUNT_BIG(*) AS [MetricCount]
             , CHECKSUM_AGG(BINARY_CHECKSUM([event_session_id],[name],[startup_state])) AS [MetricChecksum]
-        FROM [sys].[server_event_sessions] WITH (NOLOCK)
+        FROM [#193_ExecutionPlanAnalysis_Standalone_Runtime_Contract_Current_EventSessions]
     ) AS [currentState]
     WHERE [b].[MetricName]='SERVER_EVENT_SESSIONS'
       AND
@@ -445,7 +590,155 @@ IF EXISTS
         OR ISNULL([b].[MetricChecksum],0)<>ISNULL([currentState].[MetricChecksum],0)
       )
 )
+BEGIN
+    SELECT
+          SYSUTCDATETIME() AS [DiagnosticCapturedUtc]
+        , CONVERT(nvarchar(128),SERVERPROPERTY(N'ProductVersion')) AS [ProductVersion]
+        , CONVERT(nvarchar(128),SERVERPROPERTY(N'ProductLevel')) AS [ProductLevel]
+        , CONVERT(nvarchar(128),SERVERPROPERTY(N'Edition')) AS [Edition];
+
+    SELECT
+          SUM(CONVERT(bigint,CASE WHEN [b].[event_session_id] IS NULL THEN 1 ELSE 0 END)) AS [AddedRows]
+        , SUM(CONVERT(bigint,CASE WHEN [c].[event_session_id] IS NULL THEN 1 ELSE 0 END)) AS [RemovedRows]
+        , SUM(CONVERT(bigint,CASE WHEN [b].[event_session_id] IS NOT NULL AND [c].[event_session_id] IS NOT NULL THEN 1 ELSE 0 END)) AS [ChangedRows]
+    FROM [#193_ExecutionPlanAnalysis_Standalone_Runtime_Contract_Baseline_EventSessions] AS [b]
+    FULL OUTER JOIN [#193_ExecutionPlanAnalysis_Standalone_Runtime_Contract_Current_EventSessions] AS [c]
+      ON [c].[event_session_id]=[b].[event_session_id]
+    WHERE [b].[event_session_id] IS NULL
+       OR [c].[event_session_id] IS NULL
+       OR CONVERT(varbinary(256),[b].[name])<>CONVERT(varbinary(256),[c].[name])
+       OR ([b].[startup_state]<>[c].[startup_state]
+           OR [b].[startup_state] IS NULL AND [c].[startup_state] IS NOT NULL
+           OR [b].[startup_state] IS NOT NULL AND [c].[startup_state] IS NULL);
+
+    SELECT TOP (100)
+          CASE
+              WHEN [b].[event_session_id] IS NULL THEN 'ADDED'
+              WHEN [c].[event_session_id] IS NULL THEN 'REMOVED'
+              ELSE 'CHANGED'
+          END AS [ChangeType]
+        , COALESCE([b].[event_session_id],[c].[event_session_id]) AS [event_session_id]
+        , [b].[name] AS [BeforeName]
+        , [c].[name] AS [AfterName]
+        , [b].[startup_state] AS [BeforeStartupState]
+        , [c].[startup_state] AS [AfterStartupState]
+    FROM [#193_ExecutionPlanAnalysis_Standalone_Runtime_Contract_Baseline_EventSessions] AS [b]
+    FULL OUTER JOIN [#193_ExecutionPlanAnalysis_Standalone_Runtime_Contract_Current_EventSessions] AS [c]
+      ON [c].[event_session_id]=[b].[event_session_id]
+    WHERE [b].[event_session_id] IS NULL
+       OR [c].[event_session_id] IS NULL
+       OR CONVERT(varbinary(256),[b].[name])<>CONVERT(varbinary(256),[c].[name])
+       OR ([b].[startup_state]<>[c].[startup_state]
+           OR [b].[startup_state] IS NULL AND [c].[startup_state] IS NOT NULL
+           OR [b].[startup_state] IS NOT NULL AND [c].[startup_state] IS NULL)
+    ORDER BY COALESCE([b].[event_session_id],[c].[event_session_id]);
+
+    DECLARE
+          @StandaloneXeDiagnosticBaselineRows bigint
+        , @StandaloneXeDiagnosticCurrentRows bigint
+        , @StandaloneXeDiagnosticAdded bigint
+        , @StandaloneXeDiagnosticRemoved bigint
+        , @StandaloneXeDiagnosticChanged bigint
+        , @StandaloneXeDiagnosticFirstId int=-1
+        , @StandaloneXeDiagnosticFirstType varchar(7)='NONE'
+        , @StandaloneXeDiagnosticFirstBeforeName nvarchar(128)=N'<none>'
+        , @StandaloneXeDiagnosticFirstAfterName nvarchar(128)=N'<none>'
+        , @StandaloneXeDiagnosticFirstBeforeStartup nvarchar(8)=N'<none>'
+        , @StandaloneXeDiagnosticFirstAfterStartup nvarchar(8)=N'<none>'
+        , @StandaloneXeDiagnosticUtc nvarchar(33)=CONVERT(nvarchar(33),SYSUTCDATETIME(),126)
+        , @StandaloneXeDiagnosticVersion nvarchar(128)=CONVERT(nvarchar(128),SERVERPROPERTY(N'ProductVersion'))
+        , @StandaloneXeDiagnosticBaselineText nvarchar(20)
+        , @StandaloneXeDiagnosticCurrentText nvarchar(20)
+        , @StandaloneXeDiagnosticAddedText nvarchar(20)
+        , @StandaloneXeDiagnosticRemovedText nvarchar(20)
+        , @StandaloneXeDiagnosticChangedText nvarchar(20)
+        , @StandaloneXeDiagnosticFirstIdText nvarchar(11)
+        , @StandaloneXeDiagnosticAdditionalText nvarchar(20)
+        , @StandaloneXeDiagnosticTruncatedText nvarchar(1);
+
+    SELECT @StandaloneXeDiagnosticBaselineRows=[MetricCount]
+    FROM [#193_ExecutionPlanAnalysis_Standalone_Runtime_Contract_Baseline]
+    WHERE [MetricName]='SERVER_EVENT_SESSIONS';
+
+    SELECT @StandaloneXeDiagnosticCurrentRows=COUNT_BIG(*)
+    FROM [#193_ExecutionPlanAnalysis_Standalone_Runtime_Contract_Current_EventSessions];
+
+    SELECT
+          @StandaloneXeDiagnosticAdded=COUNT_BIG(CASE WHEN [b].[event_session_id] IS NULL THEN 1 END)
+        , @StandaloneXeDiagnosticRemoved=COUNT_BIG(CASE WHEN [c].[event_session_id] IS NULL THEN 1 END)
+        , @StandaloneXeDiagnosticChanged=COUNT_BIG(CASE WHEN [b].[event_session_id] IS NOT NULL AND [c].[event_session_id] IS NOT NULL THEN 1 END)
+    FROM [#193_ExecutionPlanAnalysis_Standalone_Runtime_Contract_Baseline_EventSessions] AS [b]
+    FULL OUTER JOIN [#193_ExecutionPlanAnalysis_Standalone_Runtime_Contract_Current_EventSessions] AS [c]
+      ON [c].[event_session_id]=[b].[event_session_id]
+    WHERE [b].[event_session_id] IS NULL
+       OR [c].[event_session_id] IS NULL
+       OR CONVERT(varbinary(256),[b].[name])<>CONVERT(varbinary(256),[c].[name])
+       OR ([b].[startup_state]<>[c].[startup_state]
+           OR [b].[startup_state] IS NULL AND [c].[startup_state] IS NOT NULL
+           OR [b].[startup_state] IS NOT NULL AND [c].[startup_state] IS NULL);
+
+    SELECT TOP (1)
+          @StandaloneXeDiagnosticFirstType=CASE
+              WHEN [b].[event_session_id] IS NULL THEN 'ADDED'
+              WHEN [c].[event_session_id] IS NULL THEN 'REMOVED'
+              ELSE 'CHANGED'
+          END
+        , @StandaloneXeDiagnosticFirstId=COALESCE([b].[event_session_id],[c].[event_session_id])
+        , @StandaloneXeDiagnosticFirstBeforeName=COALESCE([b].[name],N'<absent>')
+        , @StandaloneXeDiagnosticFirstAfterName=COALESCE([c].[name],N'<absent>')
+        , @StandaloneXeDiagnosticFirstBeforeStartup=CASE WHEN [b].[event_session_id] IS NULL THEN N'<absent>' WHEN [b].[startup_state] IS NULL THEN N'<NULL>' ELSE CONVERT(nvarchar(8),[b].[startup_state]) END
+        , @StandaloneXeDiagnosticFirstAfterStartup=CASE WHEN [c].[event_session_id] IS NULL THEN N'<absent>' WHEN [c].[startup_state] IS NULL THEN N'<NULL>' ELSE CONVERT(nvarchar(8),[c].[startup_state]) END
+    FROM [#193_ExecutionPlanAnalysis_Standalone_Runtime_Contract_Baseline_EventSessions] AS [b]
+    FULL OUTER JOIN [#193_ExecutionPlanAnalysis_Standalone_Runtime_Contract_Current_EventSessions] AS [c]
+      ON [c].[event_session_id]=[b].[event_session_id]
+    WHERE [b].[event_session_id] IS NULL
+       OR [c].[event_session_id] IS NULL
+       OR CONVERT(varbinary(256),[b].[name])<>CONVERT(varbinary(256),[c].[name])
+       OR ([b].[startup_state]<>[c].[startup_state]
+           OR [b].[startup_state] IS NULL AND [c].[startup_state] IS NOT NULL
+           OR [b].[startup_state] IS NOT NULL AND [c].[startup_state] IS NULL)
+    ORDER BY COALESCE([b].[event_session_id],[c].[event_session_id]);
+
+    SELECT
+          @StandaloneXeDiagnosticBaselineText=CONVERT(nvarchar(20),@StandaloneXeDiagnosticBaselineRows)
+        , @StandaloneXeDiagnosticCurrentText=CONVERT(nvarchar(20),@StandaloneXeDiagnosticCurrentRows)
+        , @StandaloneXeDiagnosticAddedText=CONVERT(nvarchar(20),@StandaloneXeDiagnosticAdded)
+        , @StandaloneXeDiagnosticRemovedText=CONVERT(nvarchar(20),@StandaloneXeDiagnosticRemoved)
+        , @StandaloneXeDiagnosticChangedText=CONVERT(nvarchar(20),@StandaloneXeDiagnosticChanged)
+        , @StandaloneXeDiagnosticFirstIdText=CONVERT(nvarchar(11),@StandaloneXeDiagnosticFirstId)
+        , @StandaloneXeDiagnosticAdditionalText=CONVERT(nvarchar(20),CASE
+              WHEN @StandaloneXeDiagnosticAdded+@StandaloneXeDiagnosticRemoved+@StandaloneXeDiagnosticChanged>0
+              THEN @StandaloneXeDiagnosticAdded+@StandaloneXeDiagnosticRemoved+@StandaloneXeDiagnosticChanged-1
+              ELSE 0
+          END)
+        , @StandaloneXeDiagnosticTruncatedText=CASE
+              WHEN @StandaloneXeDiagnosticAdded+@StandaloneXeDiagnosticRemoved+@StandaloneXeDiagnosticChanged>100 THEN N'Y' ELSE N'N'
+          END;
+
+    RAISERROR
+    (
+        N'Error: STANDALONE_XE_DIAGNOSTIC utc=%s version=%s baselineRows=%s currentRows=%s added=%s removed=%s changed=%s firstChange=%s id=%s before=%s/startup=%s after=%s/startup=%s additionalDiffRows=%s detailTruncated=%s'
+        , 10
+        , 1
+        , @StandaloneXeDiagnosticUtc
+        , @StandaloneXeDiagnosticVersion
+        , @StandaloneXeDiagnosticBaselineText
+        , @StandaloneXeDiagnosticCurrentText
+        , @StandaloneXeDiagnosticAddedText
+        , @StandaloneXeDiagnosticRemovedText
+        , @StandaloneXeDiagnosticChangedText
+        , @StandaloneXeDiagnosticFirstType
+        , @StandaloneXeDiagnosticFirstIdText
+        , @StandaloneXeDiagnosticFirstBeforeName
+        , @StandaloneXeDiagnosticFirstBeforeStartup
+        , @StandaloneXeDiagnosticFirstAfterName
+        , @StandaloneXeDiagnosticFirstAfterStartup
+        , @StandaloneXeDiagnosticAdditionalText
+        , @StandaloneXeDiagnosticTruncatedText
+    ) WITH NOWAIT;
+
     THROW 53633,N'Der Standalone-Test hat die Extended-Events-Sessionkonfiguration verändert.',1;
+END;
 
 DELETE [monitor].[PlanAnalysisProfileAssignment]
 WHERE [ProfileCode]='EXAMPLE_LOCAL';

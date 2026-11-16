@@ -314,3 +314,99 @@ BEGIN CATCH
     THROW;
 END CATCH;
 GO
+
+/* Prüft den NULL-inaktiven Vertrag aller vier Plan-Cache-Modulschalter.
+   Die 16 Kombinationen aus 0/NULL müssen den Leerscope vor jedem Child
+   als INVALID_PARAMETER ablehnen. Ein begrenzter positiver Aufruf bestätigt
+   anschließend einen einzelnen QueryStats-Child mit den übrigen Schaltern NULL. */
+DECLARE @NullMask int=0,@QueryStatsToggle bit,@QueryHashToggle bit,@HealthToggle bit,@ShowplanToggle bit,
+        @NullScopeJson nvarchar(max),@PositiveScopeJson nvarchar(max),
+        @NullScopeCases int=0;
+DECLARE @NullScopeSyntheticHash binary(8)=0x8172635445362718;
+IF EXISTS(SELECT 1 FROM [sys].[dm_exec_query_stats] WHERE [query_hash]=@NullScopeSyntheticHash)
+    THROW 56920,N'The synthetic NULL-scope plan-cache hash is not empty.',1;
+WHILE @NullMask<16
+BEGIN
+    SET @QueryStatsToggle=CASE WHEN (@NullMask & 1)=1 THEN NULL ELSE 0 END;
+    SET @QueryHashToggle=CASE WHEN (@NullMask & 2)=2 THEN NULL ELSE 0 END;
+    SET @HealthToggle=CASE WHEN (@NullMask & 4)=4 THEN NULL ELSE 0 END;
+    SET @ShowplanToggle=CASE WHEN (@NullMask & 8)=8 THEN NULL ELSE 0 END;
+    SET @NullScopeJson=N'{"stale":"sentinel"}';
+    EXEC [monitor].[USP_PlanCacheAnalysis]
+          @MitQueryStats=@QueryStatsToggle
+        , @MitQueryHashAnalysis=@QueryHashToggle
+        , @MitPlanCacheHealth=@HealthToggle
+        , @MitShowplanAnalysis=@ShowplanToggle
+        , @QueryHash=@NullScopeSyntheticHash
+        , @MaxZeilen=1
+        , @MaxDurationSeconds=30
+        , @ResultSetArt='NONE'
+        , @JsonErzeugen=1
+        , @Json=@NullScopeJson OUTPUT
+        , @PrintMeldungen=0;
+    IF ISNULL(ISJSON(@NullScopeJson),0)<>1
+       OR ISNULL(JSON_VALUE(@NullScopeJson,N'$.meta.statusCode'),N'') COLLATE SQL_Latin1_General_CP1_CS_AS<>'INVALID_PARAMETER'
+        THROW 56921,N'An all-off NULL scope did not return valid INVALID_PARAMETER JSON.',1;
+    IF EXISTS
+       (SELECT Required.[KeyName]
+        FROM (VALUES(N'modules'),(N'warnings')) AS Required([KeyName])
+        LEFT JOIN OPENJSON(@NullScopeJson) AS Actual
+          ON Actual.[key] COLLATE SQL_Latin1_General_CP1_CS_AS=Required.[KeyName] COLLATE SQL_Latin1_General_CP1_CS_AS
+        GROUP BY Required.[KeyName]
+        HAVING COUNT(Actual.[key])<>1 OR MIN(Actual.[type])<>4 OR MAX(Actual.[type])<>4)
+       OR EXISTS(SELECT 1 FROM OPENJSON(@NullScopeJson,N'$.modules'))
+       OR EXISTS(SELECT 1 FROM OPENJSON(@NullScopeJson,N'$.warnings'))
+        THROW 56922,N'All-off JSON modules and warnings must be present once as empty arrays.',1;
+    IF EXISTS
+       (SELECT Required.[KeyName]
+        FROM (VALUES(N'queryStats'),(N'queryHashes'),(N'planCacheHealth'),(N'showplan')) AS Required([KeyName])
+        LEFT JOIN OPENJSON(@NullScopeJson) AS Actual
+          ON Actual.[key] COLLATE SQL_Latin1_General_CP1_CS_AS=Required.[KeyName] COLLATE SQL_Latin1_General_CP1_CS_AS
+        GROUP BY Required.[KeyName]
+        HAVING COUNT(Actual.[key])<>1 OR MIN(Actual.[type])<>0 OR MAX(Actual.[type])<>0)
+        THROW 56923,N'All-off JSON must contain each child key exactly once with a null value.',1;
+    SET @NullScopeCases+=1;
+    SET @NullMask+=1;
+END;
+IF @NullScopeCases<>16
+    THROW 56924,N'The complete 16-case NULL-inactive matrix did not execute.',1;
+SET @PositiveScopeJson=N'{"stale":"sentinel"}';
+EXEC [monitor].[USP_PlanCacheAnalysis]
+      @MitQueryStats=1
+    , @MitQueryHashAnalysis=NULL
+    , @MitPlanCacheHealth=NULL
+    , @MitShowplanAnalysis=NULL
+    , @QueryHash=@NullScopeSyntheticHash
+    , @MaxZeilen=1
+    , @MaxDurationSeconds=30
+    , @ResultSetArt='NONE'
+    , @JsonErzeugen=1
+    , @Json=@PositiveScopeJson OUTPUT
+    , @PrintMeldungen=0;
+IF ISNULL(ISJSON(@PositiveScopeJson),0)<>1
+   OR ISNULL(JSON_VALUE(@PositiveScopeJson,N'$.meta.statusCode'),N'') COLLATE SQL_Latin1_General_CP1_CS_AS<>'AVAILABLE'
+   OR ISNULL(ISJSON(JSON_QUERY(@PositiveScopeJson,N'$.queryStats')),0)<>1
+   OR ISNULL(JSON_VALUE(@PositiveScopeJson,N'$.queryStats.meta.resultName'),N'') COLLATE SQL_Latin1_General_CP1_CS_AS<>'QueryStats'
+    THROW 56925,N'A single enabled QueryStats child did not return AVAILABLE JSON.',1;
+IF EXISTS
+   (SELECT Required.[KeyName]
+    FROM (VALUES(N'queryStats'),(N'modules'),(N'warnings')) AS Required([KeyName])
+    LEFT JOIN OPENJSON(@PositiveScopeJson) AS Actual
+      ON Actual.[key] COLLATE SQL_Latin1_General_CP1_CS_AS=Required.[KeyName] COLLATE SQL_Latin1_General_CP1_CS_AS
+    GROUP BY Required.[KeyName]
+    HAVING COUNT(Actual.[key])<>1
+       OR MIN(Actual.[type])<>CASE WHEN Required.[KeyName]=N'queryStats' THEN 5 ELSE 4 END
+       OR MAX(Actual.[type])<>CASE WHEN Required.[KeyName]=N'queryStats' THEN 5 ELSE 4 END)
+   OR (SELECT COUNT(*) FROM OPENJSON(@PositiveScopeJson,N'$.modules'))<>1
+   OR EXISTS(SELECT 1 FROM OPENJSON(@PositiveScopeJson,N'$.warnings'))
+   OR NOT EXISTS
+      (SELECT 1 FROM OPENJSON(@PositiveScopeJson,N'$.modules')
+       WITH([ExecutionOrdinal] int N'$.ExecutionOrdinal',
+            [ModuleName] nvarchar(128) N'$.ModuleName',
+            [InvocationStatus] varchar(40) N'$.InvocationStatus')
+       WHERE ISNULL([ExecutionOrdinal],-1)=1
+         AND ISNULL([ModuleName],N'') COLLATE SQL_Latin1_General_CP1_CS_AS=N'USP_QueryStats'
+         AND ISNULL([InvocationStatus],N'') COLLATE SQL_Latin1_General_CP1_CS_AS='EXECUTED')
+    THROW 56926,N'A single enabled QueryStats child did not preserve the one-module JSON contract.',1;
+SELECT N'PASS' AS [StatusCode],@NullScopeCases AS [NullInactiveCombinationCases],1 AS [SingleEnabledChildCases];
+GO

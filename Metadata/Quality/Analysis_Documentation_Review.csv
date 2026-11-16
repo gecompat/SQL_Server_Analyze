@@ -120,3 +120,9 @@ USP_UpgradeFeatureUsageAnalysis,BASELINE,,1
 USP_RowLevelSecurityAndMaskingInventory,BASELINE,,1
 USP_DistributedTransactionInventory,BASELINE,,1
 USP_DatabaseMirroringInventory,BASELINE,,1
+USP_AgentProxyInventory,BASELINE,,1
+USP_SensitivityClassificationSummary,BASELINE,,1
+USP_PlanGuideInventory,BASELINE,,1
+USP_DatabaseDdlTriggerInventory,BASELINE,,1
+USP_LoadedModuleInventory,BASELINE,,1
+USP_DatabaseSnapshotInventory,BASELINE,,1

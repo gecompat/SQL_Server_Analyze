@@ -1,11 +1,11 @@
 # Betrieb des optionalen Snapshot-/Baseline-Pakets SC-023
 
-Stand: 2026-10-25
+Stand: 2026-11-05
 Status: `IMPLEMENTED_ACTIONS_GATE`
 
 ## Paketgrenze
 
-SC-023 ist absichtlich kein Bestandteil von `Install_All.sql`. Ohne die beiden separaten Installer bleibt der Frameworkkern zustandslos. Der Defaultcollector bleibt `monitor.USP_PerformanceCounters` mit `@SampleSeconds=0`. `@CollectorCode='WAIT_STATS'` aktiviert ausdrücklich den öffentlichen Waitpfad; seine neue Targetpolicy bleibt zunächst deaktiviert. Ein internes Datei-I/O-Target ist vorbereitet; ein öffentlicher nativer Datei-I/O-Collector sowie Datenbank-, Query-, Plan-, Rollup-, Export- und Agentjob-Pakete gehören nicht zu diesem Stand.
+SC-023 ist absichtlich kein Bestandteil von `Install_All.sql`. Ohne die beiden separaten Installer bleibt der Frameworkkern zustandslos. Der Defaultcollector bleibt `monitor.USP_PerformanceCounters` mit `@SampleSeconds=0`; pro Aufruf wird genau ein ausdrücklich ausgewählter Collector verarbeitet. `@CollectorCode='WAIT_STATS'` und `@CollectorCode='FILE_IO'` aktivieren die jeweiligen öffentlichen Aufnahmewege; ihre Targetpolicies bleiben nach Installation deaktiviert, bis sie ausdrücklich aktiviert werden. Der aktuelle Quellstand unterstützt FILE_IO mit Target 1.3.1 / Schema 3 und Retentionsvertrag 3. Die öffentliche native FILE_IO-Aufnahme gehört damit zum gelieferten Paketstand. Zusätzliche Snapshot-Collector für Datenbank-, Query- und Planinhalte sowie Rollup-, Export- und Agentjob-Pakete gehören nicht zum gelieferten Snapshotumfang. Kapazitäts- und Ressourcendruckerfassung, Rollups, Scheduler und Exporte bleiben offene Ausbauarbeiten.
 
 Die Snapshot-Datenbank darf im autorisierten Betrieb reale Laufzeitwerte speichern. Exporte, Berichte und weitergegebene Auszüge benötigen einen eigenen Datenschutz-, Empfänger- und Aufbewahrungsvertrag.
 
@@ -53,6 +53,8 @@ GO
    Ziel explizit konfigurieren. Der folgende Beispielaufruf setzt die
    genannten Policywerte; bei einem Upgrade mit unverändertem Ziel wird er
    nicht erneut ausgeführt:
+
+Die [Parameterreferenz](../Analysis_Guides/Procedures/USP_ConfigureSnapshotTarget.md#parameter) nennt alle 22 Eingabeformen und Defaults. Der Zielname ist auch bei einem [Hilfeaufruf](../Analysis_Guides/Procedures/USP_ConfigureSnapshotTarget.md#aufrufbeispiele) ein Pflichtargument; die Hilfe prüft keine Zielgültigkeit und führt keine Konfigurationswrites aus.
 
 ```sql
 DECLARE @Status varchar(40), @Partial bit, @Error int, @Message nvarchar(2048);

@@ -1,6 +1,6 @@
 # Referenzhandbuch der öffentlichen Procedures
 
-Stand: 2026-07-27
+Stand: 2026-11-15
 
 `@ResultSetArt` verwendet frameworkweit `CONSOLE` als Default. Technische Verbraucher setzen `RAW` oder die benannte Mehrfachzuordnung `TABLE` mit `@ResultTablesJson`; JSON-only verwendet `NONE` mit `@JsonErzeugen = 1`. Die Signaturen werden aus dem kanonischen Codebestand abgeleitet.
 
@@ -20,6 +20,23 @@ Quelle: `Code/07_Infrastructure/020_USP_AgentJobs.sql`
     , @Json              nvarchar(max)  = NULL OUTPUT
     , @PrintMeldungen    bit            = 1
     , @Hilfe             bit            = 0
+```
+
+## `[monitor].[USP_AgentProxyInventory]`
+
+Quelle: `Code/07_Infrastructure/025_USP_AgentProxyInventory.sql`
+
+```sql
+      @MaxZeilen       int            = 1000
+    , @ResultSetArt    varchar(16)    = 'CONSOLE'
+    , @ResultTablesJson nvarchar(max) = NULL
+    , @JsonErzeugen    bit            = 0
+    , @Json            nvarchar(max)  = NULL OUTPUT
+    , @Hilfe           bit            = 0
+    , @StatusCodeOut   varchar(40)    = NULL OUTPUT
+    , @IsPartialOut    bit            = NULL OUTPUT
+    , @ErrorNumberOut  int            = NULL OUTPUT
+    , @ErrorMessageOut nvarchar(2048) = NULL OUTPUT
 ```
 
 ## `[monitor].[USP_AgentMonitoringAnalysis]`
@@ -1285,6 +1302,54 @@ Quelle: `Code/04_PlanCache/060_USP_PlanCacheAnalysis.sql`
     , @PrintMeldungen                   bit            = 1
     , @Hilfe                            bit            = 0
 ```
+
+## `[monitor].[USP_DatabaseDdlTriggerInventory]`
+
+Quelle: `Code/03_ObjectIndex/100_USP_DatabaseDdlTriggerInventory.sql`
+
+```sql
+@DatabaseNames nvarchar(max) = NULL
+    , @SystemdatenbankenEinbeziehen bit = 0
+    , @DatabaseNamePattern nvarchar(4000) = NULL
+    , @MaxZeilen int = 1000
+    , @LockTimeoutMs int = 0
+    , @ResultSetArt varchar(16) = 'CONSOLE'
+    , @ResultTablesJson nvarchar(max) = NULL
+    , @JsonErzeugen bit = 0
+    , @Json nvarchar(max) = NULL OUTPUT
+    , @PrintMeldungen bit = 1
+    , @Hilfe bit = 0
+    , @StatusCodeOut varchar(40) = NULL OUTPUT
+    , @IsPartialOut bit = NULL OUTPUT
+    , @ErrorNumberOut int = NULL OUTPUT
+    , @ErrorMessageOut nvarchar(2048) = NULL OUTPUT
+```
+
+Die [Procedure-Seite](../Analysis_Guides/Procedures/USP_DatabaseDdlTriggerInventory.md) erläutert zwölf caller-sichtbare Katalogfelder und vier Ausgabegruppen. `MetadataVisibility=VISIBLE_ONLY` begrenzt die Aussage; `IsDisabled` ist nur der Katalogschalter, keine Ausführungs- oder Wirksamkeitsevidenz.
+
+## `[monitor].[USP_PlanGuideInventory]`
+
+Quelle: `Code/04_PlanCache/070_USP_PlanGuideInventory.sql`
+
+```sql
+@DatabaseNames nvarchar(max) = NULL
+    , @SystemdatenbankenEinbeziehen bit = 0
+    , @DatabaseNamePattern nvarchar(4000) = NULL
+    , @MaxZeilen int = 1000
+    , @LockTimeoutMs int = 0
+    , @ResultSetArt varchar(16) = 'CONSOLE'
+    , @ResultTablesJson nvarchar(max) = NULL
+    , @JsonErzeugen bit = 0
+    , @Json nvarchar(max) = NULL OUTPUT
+    , @PrintMeldungen bit = 1
+    , @Hilfe bit = 0
+    , @StatusCodeOut varchar(40) = NULL OUTPUT
+    , @IsPartialOut bit = NULL OUTPUT
+    , @ErrorNumberOut int = NULL OUTPUT
+    , @ErrorMessageOut nvarchar(2048) = NULL OUTPUT
+```
+
+Die [Procedure-Seite](../Analysis_Guides/Procedures/USP_PlanGuideInventory.md) erklärt die elf Katalogfelder, vier Resultsets, Parameter und Metadatengrenzen. `ValidationStatus` bleibt `UNASSESSED`; der Deaktivierungsschalter belegt keine Anwendung eines Plan Guides.
 
 ## `[monitor].[USP_PlanCacheHealth]`
 
@@ -2945,3 +3010,72 @@ Quelle: `Code/08_ServerHealth/310_USP_DatabaseMirroringInventory.sql`
 ```
 
 Die vier Resultsets und die zwölf nativen Fachfelder stehen auf der [Procedure-Seite](../Analysis_Guides/Procedures/USP_DatabaseMirroringInventory.md). Caller-Sicht, ONLINE-Auswahl, NULL-Grenzen und die Versionsberechtigungen werden dort erläutert.
+
+## `[monitor].[USP_SensitivityClassificationSummary]`
+
+Quelle: `Code/08_ServerHealth/320_USP_SensitivityClassificationSummary.sql`
+
+```sql
+      @DatabaseNames nvarchar(max) = NULL
+    , @SystemdatenbankenEinbeziehen bit = 0
+    , @DatabaseNamePattern nvarchar(4000) = NULL
+    , @MaxZeilen int = 1000
+    , @LockTimeoutMs int = 0
+    , @ResultSetArt varchar(16) = 'CONSOLE'
+    , @ResultTablesJson nvarchar(max) = NULL
+    , @JsonErzeugen bit = 0
+    , @Json nvarchar(max) = NULL OUTPUT
+    , @PrintMeldungen bit = 1
+    , @Hilfe bit = 0
+    , @StatusCodeOut varchar(40) = NULL OUTPUT
+    , @IsPartialOut bit = NULL OUTPUT
+    , @ErrorNumberOut int = NULL OUTPUT
+    , @ErrorMessageOut nvarchar(2048) = NULL OUTPUT
+```
+
+Die vier Resultsets und die sichtbaren Zähl- und Rechteverträge stehen auf der [Procedure-Seite](../Analysis_Guides/Procedures/USP_SensitivityClassificationSummary.md).
+
+## `[monitor].[USP_LoadedModuleInventory]`
+
+Quelle: `Code/08_ServerHealth/330_USP_LoadedModuleInventory.sql`
+
+```sql
+      @NurBuildFlags bit = 0
+    , @MaxZeilen int = 1000
+    , @ResultSetArt varchar(16) = 'CONSOLE'
+    , @ResultTablesJson nvarchar(max) = NULL
+    , @JsonErzeugen bit = 0
+    , @Json nvarchar(max) = NULL OUTPUT
+    , @PrintMeldungen bit = 1
+    , @Hilfe bit = 0
+    , @StatusCodeOut varchar(40) = NULL OUTPUT
+    , @IsPartialOut bit = NULL OUTPUT
+    , @ErrorNumberOut int = NULL OUTPUT
+    , @ErrorMessageOut nvarchar(2048) = NULL OUTPUT
+```
+
+Die [Procedure-Seite](../Analysis_Guides/Procedures/USP_LoadedModuleInventory.md) beschreibt die vier Resultsets, die benötigten Rechte, den unveränderten nativen Modulnamen, den ergänzenden Basenamen und die Caller-Zustandsgrenzen.
+
+## `[monitor].[USP_DatabaseSnapshotInventory]`
+
+Quelle: `Code/08_ServerHealth/340_USP_DatabaseSnapshotInventory.sql`
+
+```sql
+      @SnapshotNames nvarchar(max) = NULL
+    , @NurOnline bit = 1
+    , @SystemdatenbankenEinbeziehen bit = 0
+    , @MaxZeilen int = 1000
+    , @LockTimeoutMs int = 0
+    , @ResultSetArt varchar(16) = 'CONSOLE'
+    , @ResultTablesJson nvarchar(max) = NULL
+    , @JsonErzeugen bit = 0
+    , @Json nvarchar(max) = NULL OUTPUT
+    , @PrintMeldungen bit = 1
+    , @Hilfe bit = 0
+    , @StatusCodeOut varchar(40) = NULL OUTPUT
+    , @IsPartialOut bit = NULL OUTPUT
+    , @ErrorNumberOut int = NULL OUTPUT
+    , @ErrorMessageOut nvarchar(2048) = NULL OUTPUT
+```
+
+Die [Procedure-Seite](../Analysis_Guides/Procedures/USP_DatabaseSnapshotInventory.md) beschreibt die fünf Ergebnisgruppen, Katalogsichtbarkeit, Sessionoptionen und die Grenze zwischen maximaler Sparse-Dateikapazität und tatsächlicher Belegung.

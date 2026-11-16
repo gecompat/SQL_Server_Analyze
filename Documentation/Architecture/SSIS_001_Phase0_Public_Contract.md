@@ -16,6 +16,8 @@ Alle drei Procedures erhalten den vorhandenen Frameworkvertrag für
 benannte Ziele aus `@ResultTablesJson`; Schemaänderungen erhöhen die jeweilige
 Schemaversion.
 
+Für den aktuellen direkten XML-Einstieg beschreibt die [Procedure-Referenz](../Analysis_Guides/Procedures/USP_SsisPackageAnalysis.md#parameter-und-eingabeformen) jeden der 19 Parameter. ResolveSqlMetadata und CheckLookupData akzeptieren dort ausschließlich 0; HighImpactConfirmed erweitert diesen implementierten Umfang nicht. PackageParametersJson wird nicht ausgewertet. MaxDurationSeconds validiert den Zahlenbereich, erzwingt aber keine Frist; die NULL-Lücken der Zeitparameter bleiben ausdrücklich dokumentiert. Die folgenden Planungsentscheidungen begründen keine darüber hinaus installierte Funktion.
+
 ## Festgelegte Entscheidungen
 
 1. Der erste Parser unterstützt ausschließlich DTSX Version 2. Andere gültige

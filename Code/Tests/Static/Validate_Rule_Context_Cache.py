@@ -295,6 +295,101 @@ class SessionContracts(unittest.TestCase):
         with self.assertRaises(ValueError):
             self.snapshot()
 
+    def test_planning_archive_references_are_excluded_and_classified(self):
+        self.session_setup()
+        next_steps = "AI_Metadata/Internal_Documentation/Quality/Next_Steps.md"
+        development = "AI_Metadata/Internal_Documentation/Quality/Development_Waves_2026-10.md"
+        archive = "AI_Metadata/Internal_Documentation/Quality/Next_Steps_History_2026-11-05.md"
+        matrix = "Metadata/Quality/Diagnostic_Coverage_Landscape.csv"
+        sources = ["AGENTS.md", next_steps, development]
+        scope = {
+            "schema_version": 2,
+            "profile": "development",
+            "discovery_sources": sources,
+            "scopes": {"planning": ["AGENTS.md", next_steps, development]},
+            "semantic_dependencies": {path: [] for path in sources},
+            "excluded_references": [
+                {"source": next_steps, "target": archive, "classification": "historical-context"},
+                {"source": development, "target": archive, "classification": "historical-context"},
+                {"source": next_steps, "target": matrix, "classification": "product-reference"},
+            ],
+        }
+        self.index.write_text(json.dumps(scope), encoding="utf-8")
+        for path in [*sources, archive, matrix]:
+            target = self.root / path
+            target.parent.mkdir(parents=True, exist_ok=True)
+            target.write_text("Synthetic selected source.\n", encoding="utf-8")
+        (self.root / next_steps).write_text(
+            "[History](Next_Steps_History_2026-11-05.md)\n"
+            "[Coverage](../../../Metadata/Quality/Diagnostic_Coverage_Landscape.csv)\n",
+            encoding="utf-8")
+        (self.root / development).write_text(
+            "[History](Next_Steps_History_2026-11-05.md)\n", encoding="utf-8")
+
+        selected, _ = adapter.selected_scope(scope, "planning")
+        self.assertNotIn(archive, selected)
+        adapter.validate_session_links(self.root, selected, scope)
+
+        scope["excluded_references"] = [
+            row for row in scope["excluded_references"]
+            if not (row["source"] == next_steps and row["target"] == archive)
+        ]
+        with self.assertRaisesRegex(ValueError, "unclassified selected rule reference"):
+            adapter.validate_session_links(self.root, selected, scope)
+
+    def test_planning_product_references_require_exact_declarations(self):
+        self.session_setup()
+        (self.root / "AGENTS.md").write_text("# Synthetic instructions\n", encoding="utf-8")
+        planning = "AI_Metadata/Internal_Documentation/Quality/Development_Waves_2026-10.md"
+        sql_target = "Code/01_Common/099a_USP_InternalParseXmlText.sql"
+        reference_target = "Documentation/Reference/Object_Reference.md"
+        sources = ["AGENTS.md", planning]
+        self.scope = {
+            "schema_version": 2,
+            "profile": "development",
+            "discovery_sources": sources,
+            "scopes": {"planning": sources},
+            "semantic_dependencies": {path: [] for path in sources},
+            "excluded_references": [
+                {"source": planning, "target": sql_target, "classification": "product-reference"},
+                {"source": planning, "target": reference_target, "classification": "product-reference"},
+            ],
+        }
+        self.index.write_text(json.dumps(self.scope), encoding="utf-8")
+        for path in [planning, sql_target, reference_target]:
+            target = self.root / path
+            target.parent.mkdir(parents=True, exist_ok=True)
+            target.write_text("Synthetic product evidence.\n", encoding="utf-8")
+        (self.root / planning).write_text(
+            "[Procedure source](../../../Code/01_Common/099a_USP_InternalParseXmlText.sql)\n"
+            "Reference: " + chr(96) + "../../../Documentation/Reference/Object_Reference.md" + chr(96) + "\n",
+            encoding="utf-8")
+
+        selected, _ = adapter.selected_scope(self.scope, "planning")
+        self.assertNotIn(sql_target, selected)
+        self.assertNotIn(reference_target, selected)
+        adapter.validate_session_links(self.root, selected, self.scope)
+
+        self.scope["excluded_references"] = [
+            row for row in self.scope["excluded_references"]
+            if not (row["source"] == planning and row["target"] == sql_target)
+        ]
+        self.index.write_text(json.dumps(self.scope), encoding="utf-8")
+        with self.assertRaisesRegex(ValueError, "unclassified selected rule reference"):
+            adapter.validate_session_links(self.root, selected, self.scope)
+
+        self.scope["excluded_references"].append(
+            {"source": planning, "target": sql_target, "classification": "product-reference"})
+        self.index.write_text(json.dumps(self.scope), encoding="utf-8")
+        extra_sql = "Code/01_Common/NewSyntheticProduct.sql"
+        extra_target = self.root / extra_sql
+        extra_target.parent.mkdir(parents=True, exist_ok=True)
+        extra_target.write_text("Synthetic product evidence.\n", encoding="utf-8")
+        with (self.root / planning).open("a", encoding="utf-8") as source:
+            source.write("Additional source: " + chr(96) + "../../../Code/01_Common/NewSyntheticProduct.sql" + chr(96) + "\n")
+        with self.assertRaisesRegex(ValueError, "unclassified selected rule reference"):
+            adapter.validate_session_links(self.root, selected, self.scope)
+
     def test_project_normative_dependencies_invalidate_consumers(self):
         self.session_setup()
         index = json.loads((ROOT / adapter.INDEX).read_bytes())

@@ -61,16 +61,36 @@ REQUIRED_DOMAINS = {
 # Only named bounded deliveries may convert a researched gap into partial coverage.
 KNOWN_RESEARCH_TO_PARTIAL_KEYS = {
     "DEPRECATION_BREAKING_CHANGE",
+    "DEPRECATED_RUNTIME_USE",
     "RLS_DYNAMIC_MASKING",
     "DISTRIBUTED_TRANSACTIONS",
     "DATABASE_MIRRORING",
+    "AGENT_PROXIES_CREDENTIALS",
+    "SENSITIVITY_CLASSIFICATION",
+    "PLAN_GUIDES",
+    "DDL_LOGON_TRIGGERS",
+    "LOADED_MODULES_FILTER_DRIVERS",
+    "LINUX_CONTAINER_LIMITS",
+    "DATABASE_SNAPSHOTS",
+    "TIME_BOUND_XE",
+    "COMPILE_STORMS",
+    "EXTERNAL_MODELS",
+    "EXTERNAL_DATA_POLYBASE",
+    "POLICY_BASED_MANAGEMENT",
+    "EXTERNAL_REST_ENDPOINT",
 }
 RESEARCH_GAP_COHORT_FLOOR = 25  # Preserve the explicit research-gap cohort across named promotions.
 
 REQUIRED_KEYS = {
     "LINUX_CONTAINER_LIMITS",
     "DEPRECATION_BREAKING_CHANGE",
+    "DEPRECATED_RUNTIME_USE",
     "DATABASE_SNAPSHOTS",
+    "TIME_BOUND_XE",
+    "COMPILE_STORMS",
+    "EXTERNAL_MODELS",
+    "EXTERNAL_DATA_POLYBASE",
+    "POLICY_BASED_MANAGEMENT",
     "PLAN_GUIDES",
     "BACKUP_IMMUTABILITY_SECONDARY",
     "DATABASE_MIRRORING",
@@ -80,8 +100,8 @@ REQUIRED_KEYS = {
     "TLS_NETWORK_ENDPOINTS",
     "RLS_DYNAMIC_MASKING",
     "SENSITIVITY_CLASSIFICATION",
+    "LOADED_MODULES_FILTER_DRIVERS",
     "LEDGER_INTEGRITY",
-    "POLICY_BASED_MANAGEMENT",
     "CHANGE_EVENT_STREAMING",
     "FABRIC_MIRRORING",
     "EXTERNAL_REST_ENDPOINT",
@@ -242,10 +262,19 @@ def coverage_fixture() -> list[dict[str, str]]:
 
     researched = {
         'DEPRECATION_BREAKING_CHANGE',
+        'DEPRECATED_RUNTIME_USE',
         'RLS_DYNAMIC_MASKING',
         'DISTRIBUTED_TRANSACTIONS',
         'DATABASE_MIRRORING',
-        *(f'SAMPLE_AREA_{index:03d}' for index in range(21)),
+        'PLAN_GUIDES',
+        'LOADED_MODULES_FILTER_DRIVERS',
+        'TIME_BOUND_XE',
+        'COMPILE_STORMS',
+        'EXTERNAL_MODELS',
+        'EXTERNAL_DATA_POLYBASE',
+        'POLICY_BASED_MANAGEMENT',
+        'EXTERNAL_REST_ENDPOINT',
+        *(f'SAMPLE_AREA_{index:03d}' for index in range(12)),
     }
     out_of_scope = {f'SAMPLE_AREA_{index:03d}' for index in range(23, 27)}
     domains = sorted(REQUIRED_DOMAINS)
@@ -306,6 +335,157 @@ def self_test() -> None:
             row['CoverageStatus'] = 'PARTIAL_PRODUCT_FUNCTION'
     if validate_rows(list(EXPECTED_FIELDS), distributed_promotion):
         raise AssertionError('named MSDTC promotion was rejected')
+
+    classification_promotion = [dict(row) for row in prior_promotion_state]
+    for row in classification_promotion:
+        if row['CoverageKey'] == 'SENSITIVITY_CLASSIFICATION':
+            row['CoverageStatus'] = 'PARTIAL_PRODUCT_FUNCTION'
+    if validate_rows(list(EXPECTED_FIELDS), classification_promotion):
+        raise AssertionError('named Sensitivity Classification promotion was rejected')
+
+    plan_guide_promotion = [dict(row) for row in prior_promotion_state]
+    for row in plan_guide_promotion:
+        if row['CoverageKey'] == 'PLAN_GUIDES':
+            row['CoverageStatus'] = 'PARTIAL_PRODUCT_FUNCTION'
+    if validate_rows(list(EXPECTED_FIELDS), plan_guide_promotion):
+        raise AssertionError('named Plan Guide promotion was rejected')
+
+    runtime_use_promotion = [dict(row) for row in prior_promotion_state]
+    for row in runtime_use_promotion:
+        if row['CoverageKey'] == 'DEPRECATED_RUNTIME_USE':
+            row['CoverageStatus'] = 'PARTIAL_PRODUCT_FUNCTION'
+    if validate_rows(list(EXPECTED_FIELDS), runtime_use_promotion):
+        raise AssertionError('named Deprecated Runtime Use promotion was rejected')
+
+    loaded_module_promotion = [dict(row) for row in prior_promotion_state]
+    for row in loaded_module_promotion:
+        if row['CoverageKey'] == 'LOADED_MODULES_FILTER_DRIVERS':
+            row['CoverageStatus'] = 'PARTIAL_PRODUCT_FUNCTION'
+    if validate_rows(list(EXPECTED_FIELDS), loaded_module_promotion):
+        raise AssertionError('named Loaded Module promotion was rejected')
+    linux_promotion_base = [dict(row) for row in loaded_module_promotion]
+    for row in linux_promotion_base:
+        if row['CoverageKey'] == 'LINUX_CONTAINER_LIMITS':
+            row['CoverageStatus'] = 'RESEARCHED_NOT_IMPLEMENTED'
+        elif row['CoverageKey'] == 'SAMPLE_AREA_000':
+            row['CoverageStatus'] = 'IMPLEMENTED_BASELINE'
+    if validate_rows(list(EXPECTED_FIELDS), linux_promotion_base):
+        raise AssertionError('isolated Linux research fixture was rejected')
+    linux_promotion = [dict(row) for row in linux_promotion_base]
+    for row in linux_promotion:
+        if row['CoverageKey'] == 'LINUX_CONTAINER_LIMITS':
+            row['CoverageStatus'] = 'PARTIAL_PRODUCT_FUNCTION'
+    if validate_rows(list(EXPECTED_FIELDS), linux_promotion):
+        raise AssertionError('named Linux reader promotion was rejected')
+    snapshot_promotion_base = [dict(row) for row in all_researched_fixture]
+    for row in snapshot_promotion_base:
+        if row['CoverageKey'] == 'DATABASE_SNAPSHOTS':
+            row['CoverageStatus'] = 'RESEARCHED_NOT_IMPLEMENTED'
+        elif row['CoverageKey'] == 'SAMPLE_AREA_000':
+            row['CoverageStatus'] = 'IMPLEMENTED_BASELINE'
+    if validate_rows(list(EXPECTED_FIELDS), snapshot_promotion_base):
+        raise AssertionError('isolated Database Snapshot research fixture was rejected')
+    snapshot_promotion = [dict(row) for row in snapshot_promotion_base]
+    for row in snapshot_promotion:
+        if row['CoverageKey'] == 'DATABASE_SNAPSHOTS':
+            row['CoverageStatus'] = 'PARTIAL_PRODUCT_FUNCTION'
+    if validate_rows(list(EXPECTED_FIELDS), snapshot_promotion):
+        raise AssertionError('named Database Snapshot promotion was rejected')
+    historical_delivery_keys = (
+        'TIME_BOUND_XE',
+        'COMPILE_STORMS',
+        'EXTERNAL_MODELS',
+        'EXTERNAL_DATA_POLYBASE',
+    )
+    for delivered_key in historical_delivery_keys:
+        individual = [dict(row) for row in all_researched_fixture]
+        for row in individual:
+            if row['CoverageKey'] == delivered_key:
+                row['CoverageStatus'] = 'PARTIAL_PRODUCT_FUNCTION'
+        if validate_rows(list(EXPECTED_FIELDS), individual):
+            raise AssertionError(f'named {delivered_key} promotion was rejected')
+
+    combined_delivery = [dict(row) for row in all_researched_fixture]
+    for row in combined_delivery:
+        if row['CoverageKey'] in historical_delivery_keys:
+            row['CoverageStatus'] = 'PARTIAL_PRODUCT_FUNCTION'
+    if validate_rows(list(EXPECTED_FIELDS), combined_delivery):
+        raise AssertionError('combined named WI-0005/6/7/9 promotions were rejected')
+    unrelated_after_delivery = [dict(row) for row in combined_delivery]
+    for row in unrelated_after_delivery:
+        if row['CoverageKey'] == 'SAMPLE_AREA_001':
+            row['CoverageStatus'] = 'PARTIAL_PRODUCT_FUNCTION'
+    if not any('too few explicit researched gaps' in error
+               for error in validate_rows(list(EXPECTED_FIELDS), unrelated_after_delivery)):
+        raise AssertionError('unrelated promotion after WI-0005/6/7/9 escaped the cohort floor')
+
+    pbm_candidate = [dict(row) for row in all_researched_fixture]
+    for row in pbm_candidate:
+        if row['CoverageKey'] == 'POLICY_BASED_MANAGEMENT':
+            row['CoverageStatus'] = 'PARTIAL_PRODUCT_FUNCTION'
+    if validate_rows(list(EXPECTED_FIELDS), pbm_candidate):
+        raise AssertionError('named bounded PBM candidate promotion was rejected')
+    unrelated_after_pbm = [dict(row) for row in pbm_candidate]
+    for row in unrelated_after_pbm:
+        if row['CoverageKey'] == 'SAMPLE_AREA_001':
+            row['CoverageStatus'] = 'PARTIAL_PRODUCT_FUNCTION'
+    if not any('too few explicit researched gaps' in error
+               for error in validate_rows(list(EXPECTED_FIELDS), unrelated_after_pbm)):
+        raise AssertionError('unrelated promotion after PBM candidate escaped the cohort floor')
+
+    rest_candidate = [dict(row) for row in all_researched_fixture]
+    for row in rest_candidate:
+        if row['CoverageKey'] == 'EXTERNAL_REST_ENDPOINT':
+            row['CoverageStatus'] = 'PARTIAL_PRODUCT_FUNCTION'
+    if validate_rows(list(EXPECTED_FIELDS), rest_candidate):
+        raise AssertionError('named bounded external REST configuration candidate was rejected')
+    unrelated_after_rest = [dict(row) for row in rest_candidate]
+    for row in unrelated_after_rest:
+        if row['CoverageKey'] == 'SAMPLE_AREA_001':
+            row['CoverageStatus'] = 'PARTIAL_PRODUCT_FUNCTION'
+    if not any('too few explicit researched gaps' in error
+               for error in validate_rows(list(EXPECTED_FIELDS), unrelated_after_rest)):
+        raise AssertionError('unrelated promotion after external REST candidate escaped the cohort floor')
+    missing_rest_key = [dict(row) for row in rest_candidate if row['CoverageKey'] != 'EXTERNAL_REST_ENDPOINT']
+    errors = validate_rows(list(EXPECTED_FIELDS), missing_rest_key)
+    if not any('required coverage area missing: EXTERNAL_REST_ENDPOINT' in error for error in errors):
+        raise AssertionError('dropped external REST coverage key was accepted')
+    if not any('too few explicit researched gaps' in error for error in errors):
+        raise AssertionError('dropped external REST promotion reduced the cohort unnoticed')
+
+    unrelated_after_snapshot = [dict(row) for row in snapshot_promotion]
+    for row in unrelated_after_snapshot:
+        if row['CoverageKey'] == 'SAMPLE_AREA_001':
+            row['CoverageStatus'] = 'PARTIAL_PRODUCT_FUNCTION'
+    if not any('too few explicit researched gaps' in error
+               for error in validate_rows(list(EXPECTED_FIELDS), unrelated_after_snapshot)):
+        raise AssertionError('unrelated promotion after Database Snapshot reduced the research cohort')
+
+    unrelated_after_linux = [dict(row) for row in linux_promotion]
+    for row in unrelated_after_linux:
+        if row['CoverageKey'] == 'SAMPLE_AREA_001':
+            row['CoverageStatus'] = 'PARTIAL_PRODUCT_FUNCTION'
+    if not any('too few explicit researched gaps' in error
+               for error in validate_rows(list(EXPECTED_FIELDS), unrelated_after_linux)):
+        raise AssertionError('unrelated promotion after Linux reader reduced the research cohort')
+
+    unrelated_after_loaded = [dict(row) for row in loaded_module_promotion]
+    for row in unrelated_after_loaded:
+        if row['CoverageKey'] == 'SAMPLE_AREA_000':
+            row['CoverageStatus'] = 'PARTIAL_PRODUCT_FUNCTION'
+    if not any('too few explicit researched gaps' in error
+               for error in validate_rows(list(EXPECTED_FIELDS), unrelated_after_loaded)):
+        raise AssertionError('unrelated promotion after Loaded Module reduced the research cohort')
+
+    unrelated_after_runtime = [dict(row) for row in runtime_use_promotion]
+    for row in unrelated_after_runtime:
+        if row['CoverageKey'] == 'SAMPLE_AREA_000':
+            row['CoverageStatus'] = 'PARTIAL_PRODUCT_FUNCTION'
+    if not any(
+        'too few explicit researched gaps' in error
+        for error in validate_rows(list(EXPECTED_FIELDS), unrelated_after_runtime)
+    ):
+        raise AssertionError('unrelated promotion after Deprecated Runtime Use reduced the research cohort')
 
     unrelated_promotion = [dict(row) for row in prior_promotion_state]
     for row in unrelated_promotion:
