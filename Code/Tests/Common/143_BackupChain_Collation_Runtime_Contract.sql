@@ -137,10 +137,10 @@ BEGIN TRY
         , [FindingSeverity] varchar(16) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
         , [EvidenceLimit] nvarchar(1000) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
     );
-    CREATE TABLE [#ExampleBackupChainSummary]([Dummy] int NULL);
+    CREATE TABLE [#ExampleBackupChainNullSummary]([Dummy] int NULL);
     SELECT @Json=NULL,@Status=NULL,@Partial=NULL,@Error=NULL,@Message=NULL;
     EXEC [monitor].[USP_BackupChainAnalysis] @DatabaseNames=@Names,@HistoryDays=NULL,@MitRestoreEvidence=1,
-      @MaxZeilen=100,@ResultSetArt='TABLE',@ResultTablesJson=N'{"summary":"#ExampleBackupChainSummary"}',
+      @MaxZeilen=100,@ResultSetArt='TABLE',@ResultTablesJson=N'{"summary":"#ExampleBackupChainNullSummary"}',
       @JsonErzeugen=1,@Json=@Json OUTPUT,@PrintMeldungen=0,@StatusCodeOut=@Status OUTPUT,
       @IsPartialOut=@Partial OUTPUT,@ErrorNumberOut=@Error OUTPUT,@ErrorMessageOut=@Message OUTPUT;
     IF COALESCE(ISJSON(@Json),0)<>1 OR COALESCE(@Status,'')<>'INVALID_PARAMETER' OR COALESCE(@Partial,0)<>1
@@ -152,7 +152,7 @@ BEGIN TRY
        OR COALESCE(JSON_QUERY(@Json,N'$.summary'),N'')<>N'[]'
        OR COALESCE(JSON_QUERY(@Json,N'$.backups'),N'')<>N'[]'
        OR COALESCE(JSON_QUERY(@Json,N'$.warnings'),N'')<>N'[]'
-       OR (SELECT COUNT_BIG(*) FROM [#ExampleBackupChainSummary])<>0
+       OR (SELECT COUNT_BIG(*) FROM [#ExampleBackupChainNullSummary])<>0
          THROW 55925,N'Der NULL-HistoryDays-Status oder die leeren Fachmengen fehlen.',1;
     DECLARE @SchemaMismatch bit=0;
     ;WITH [ActualColumns] AS
@@ -162,7 +162,7 @@ BEGIN TRY
                [system_type_id],[max_length],[precision],[scale],
                [collation_name] COLLATE SQL_Latin1_General_CP1_CS_AS AS [CollationName],[is_nullable]
         FROM [tempdb].[sys].[columns]
-        WHERE [object_id]=OBJECT_ID(N'tempdb..#ExampleBackupChainSummary')
+        WHERE [object_id]=OBJECT_ID(N'tempdb..#ExampleBackupChainNullSummary')
     ),
     [ExpectedColumns] AS
     (
@@ -180,7 +180,7 @@ BEGIN TRY
       THEN 1 ELSE 0 END;
     IF @SchemaMismatch<>0
         THROW 55926,N'Das leere TABLE-Ergebnisschema für NULL-HistoryDays weicht ab.',1;
-    DROP TABLE [#ExampleBackupChainSummary];
+    DROP TABLE [#ExampleBackupChainNullSummary];
     DROP TABLE [#ExampleBackupChainSummaryExpected];
     DROP TABLE [#ExampleBackupChainNative];
 END TRY
