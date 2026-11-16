@@ -387,7 +387,7 @@ def validate_contract(
         errors.append("Parameters.csv does not match the public 14-parameter API in order")
     if "sys.database_mirroring" not in sources or PROCEDURE not in sources:
         errors.append("SystemSources.csv omits the catalog or canonical module binding")
-    if "Database Mirroring,USP_DatabaseMirroringInventory,PLANNED,YES,NO,NO,,PARTIAL" not in maturity:
+    if "Database Mirroring,USP_DatabaseMirroringInventory,PLANNED,YES,NO,YES,,PARTIAL" not in maturity:
         errors.append("module maturity must remain PLANNED with no unearned native evidence")
     if "DATABASE_MIRRORING" not in coverage or "PARTIAL_PRODUCT_FUNCTION" not in coverage or "RESTORING" not in coverage:
         errors.append("WI-0010 intake must record only the implemented partial scope")

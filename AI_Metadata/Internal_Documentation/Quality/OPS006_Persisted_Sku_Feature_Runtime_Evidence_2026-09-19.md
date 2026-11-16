@@ -1,7 +1,7 @@
 # OPS-006: Persisted-SKU-Feature-Runtimeevidenz
 
 **Stand:** 16. November 2026  
-**Status:** historischer `LOCAL_WORKTREE_EVIDENCE`-Teil; separater gebundener Remote-Nachtrag unten  
+**Status:** historischer `LOCAL_WORKTREE_EVIDENCE`-Teil; getrennte gebundene Remote-Nachträge unten  
 **Datenbasis:** ausschließlich synthetische Fixtures
 
 ## Ausgeführter Nachweis
@@ -21,3 +21,9 @@ Dieser Nachweis belegt den kontrollierten positiven Featurepfad auf SQL Server 2
 Der [SQL-Server-2019-Nativlauf 43643920546](https://github.com/gecompat/SQL_Server_Analyze/actions/runs/43643920546), Job 132597678295, checkte den exakten Head `cecde05f9b592881cdee7e820ffb7b39434ed0fe` aus und bestand im Modus `FULL_RELEASE` auf Linux mit Compatibility Level 150. Der vollständige Release-Gate-Schritt bestand; `Run_Release_Gate.sql` band Fixture 121 genau einmal ein. Quelle 200 (`c8d53d2ae93cc03cdbed5074d83a66350e4c4e5f`) und Fixture 121 (`57a046384c96b9b9f8329d0a4b1796e869b4d546`) sind am Head und im aktuellen Stand bytegleich. Die Fixture erzeugt ohne Skip-Zweig eine eigene Datenbank mit PAGE-komprimiertem Clustered Index und fordert in ihrer positiven JSON-Prüfung `PERSISTED_SKU_FEATURE` an; andernfalls wirft sie Fehler 54865. Der erfolgreiche Gate-Schritt belegt diesen begrenzten positiven Fall. Ein eigener Fixture-121-SQL-stdout-Marker wurde nicht ausgewertet.
 
 Die obigen lokalen Angaben zu SQL Server 2022 und 2025 bleiben historische lokale Evidenz und werden durch diesen Nativlauf nicht zu Remote-Qualifikationen. Eine tatsächlich nicht unterstützte Quelle, die Akzeptanz einer Zieledition und die Restorefähigkeit bleiben unbewiesen.
+
+## Gebundener Remote-Nachtrag zu SQL Server 2025 vom 16. November 2026
+
+Der [Headlauf 43641963899](https://github.com/gecompat/SQL_Server_Analyze/actions/runs/43641963899) auf `cecde05f9b592881cdee7e820ffb7b39434ed0fe` und der [erste Mainlauf 43644539535](https://github.com/gecompat/SQL_Server_Analyze/actions/runs/43644539535) auf `33467b48ba8467b22e538f85aab24826ea2caa2b` bestanden Deployment und den vollständigen Release-Gate auf SQL Server 2025/CL170. Beide Impactpläne setzten `full_suite=true` und `run_release_tests=true`; der kanonische Runner band `Run_Release_Gate.sql` ein. Dieser Gate enthält Fixture 121 genau einmal. Head und Main besitzen denselben Produktbaum; Quelle 200 und Fixture 121 sind zu beiden Ständen und aktuell bytegleich. Der verpflichtende PAGE-komprimierte positive Fall mit Fehler 54865 bei fehlendem `PERSISTED_SKU_FEATURE` bestand damit auch im 2025-Gate. Ein separater Fixture-121-SQL-stdout-Marker wurde nicht ausgewertet.
+
+Die historische lokale SQL-Server-2022-Angabe bleibt lokal. Der neue 2025-Nachweis belegt weder eine tatsächlich nicht unterstützte Quelle noch Zieledition oder Restorefähigkeit.
