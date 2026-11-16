@@ -1,17 +1,17 @@
 # SQL-sichtbares Inventar für Database Mirroring
 
-**Stand:** 27. Oktober 2026.
-**Status:** begrenztes V1-Dossier; keine Produktimplementierung oder positive Mirroring-Qualifikation.
+**Stand:** 16. November 2026.
+**Status:** begrenzter V1-Katalogpfad als Produkt implementiert; dieses Dossier bindet noch keine native SQL-Server-2025-Abnahme oder positive Windows-Mirroring-Qualifikation.
 **Artefakt-UID:** urn:uuid:01a17ef8-7d19-7e63-9c8a-7d33cb449857.
 **Registrierung:** DEFERRED; keine lesbare Kennung vergeben.
 **Arbeitselement:** kontinuierlicher WI-0010-Intake; kein neues Arbeitselement.
-**Planung:** Schritt 42 der [Entwicklungswellen](../Quality/Development_Waves_2026-10.md); Intake bleibt RESEARCHED_NOT_IMPLEMENTED.
+**Planung:** Schritt 42 der [Entwicklungswellen](../Quality/Development_Waves_2026-10.md) entwarf den V1-Vertrag; Schritt 43 implementierte den begrenzten Katalogpfad. WI-0010 bleibt kontinuierlicher Intake für offene Nachweise.
 
 ## Diagnosefrage und Grenzen
 
-Ein späterer read-only-Slice soll die für den Aufrufer sichtbaren Datenbank-Mirroring-Zustände,
+Der implementierte read-only-Slice gibt die für den Aufrufer sichtbaren Datenbank-Mirroring-Zustände,
 lokale Rolle, Transaktionssicherheit, Witness-Zustand und die konfigurierte Redo-Queue-Obergrenze je
-Datenbank zeigen. Er stellt native Metadaten unverändert bereit; er bildet weder eine
+Datenbank aus. Er stellt native Metadaten unverändert bereit; er bildet weder eine
 Gesundheitsbewertung noch ein Urteil über Failover oder Migration.
 
 Microsoft kennzeichnet Database Mirroring als veraltet und zur Entfernung in einer künftigen
@@ -63,9 +63,11 @@ Instanz-Wartezähler seit Neustart oder Reset, keine aktuellen oder datenbankbez
 Queue-Messungen. DBMIRROR-Waits bleiben deshalb außerhalb des Vertrags. Insbesondere sind
 Leerlauf-Waits kein Gesundheitsurteil.
 
-## Vorgeschlagener Produktvertrag
+<a id="vorgeschlagener-produktvertrag"></a>
 
-Vorgeschlagene Procedure: monitor.USP_DatabaseMirroringInventory. V1 liest nur die beiden oben genannten Kataloge im durch monitor.USP_PrepareDatabaseCandidates
+## Implementierter Produktvertrag
+
+Implementierte Procedure: monitor.USP_DatabaseMirroringInventory. V1 liest nur die beiden oben genannten Kataloge im durch monitor.USP_PrepareDatabaseCandidates
 bestimmten Datenbankumfang. Ohne Filter umfasst er alle sichtbaren ONLINE-Benutzerdatenbanken;
 Systemdatenbanken sind standardmäßig ausgeschlossen und werden nur mit
 @SystemdatenbankenEinbeziehen=1 einbezogen. Der gemeinsame Selektor nimmt nur ONLINE-Datenbanken auf. Eine Mirror-Datenbank im Zustand RESTORING ist daher nicht Teil der V1-Auswahl; V1 belegt keine positive Mirror-Rollenbeobachtung auf dieser Partnerseite. Die vorhandenen Selektionsparameter @DatabaseNames
@@ -154,10 +156,10 @@ Windows-SQL-Server-Topologie muss unabhängig Principal-/Mirror-Rollen, Safety-/
 Witness vorhanden/fehlend und die konfigurierte Redo-Obergrenze prüfen. SQL Server unter Linux kann
 keine positive Mirroring-Session qualifizieren.
 
-WI-0010 bleibt RESEARCHED_NOT_IMPLEMENTED, bis eine Implementierung durch genaue Quellenprüfung,
-unabhängigen statischen Review, ausgewählte Funktions- und Nativgates sowie die Bindung im
-Produktionsinventar belegt ist. Reife, Vollständigkeit, Gesundheit, automatisches Failover, aktuelle
-Queue-Größe, externe Konnektivität, Migrationssicherheit und positives Mirroring werden nicht
+Der begrenzte Produktpfad ist durch die aktuelle Quelle und die kanonische OPS-Kopie belegt. WI-0010
+bleibt als kontinuierlicher Intake für die in diesem Dossier nicht gebundene native Abnahme und den
+positiven Windows-Mirroring-Nachweis offen. Reife, Vollständigkeit, Gesundheit, automatisches Failover,
+aktuelle Queue-Größe, externe Konnektivität, Migrationssicherheit und positives Mirroring werden nicht
 behauptet.
 
 ## Primärquellen
