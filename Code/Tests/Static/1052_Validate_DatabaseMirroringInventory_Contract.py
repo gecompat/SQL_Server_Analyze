@@ -747,7 +747,7 @@ def main() -> int:
             ("PARAM_SIGNATURE", "procedure", text["procedure"].replace("@MaxZeilen int = 1000", "@MaxZeilen int = 500", 1), "public parameter names"),
             ("HELP_PARAMETER", "procedure", text["procedure"].replace("@ErrorMessageOut nvarchar(2048)=NULL OUTPUT", "RemovedHelpParam", 1), "help parameter default or OUTPUT mode"),
             ("HELP_DEFAULT", "procedure", text["procedure"].replace("@MaxZeilen int=1000", "@MaxZeilen int=500", 1), "help parameter default or OUTPUT mode"),
-            ("HELP_OPTION", "procedure", text["procedure"].replace("regexi:", "regexx:", 1), "help omits required option"),
+            ("HELP_OPTION", "procedure", text["procedure"].replace("regexi:", "regexx:"), "help omits required option"),
             ("HELP_SELECTOR", "procedure", text["procedure"].replace("exakt und Pattern schließen einander aus", "Filter sind verfügbar", 1), "mutually exclusive exact-name and pattern rule"),
             ("HELP_EXAMPLE", "procedure", text["procedure"].replace("@DatabaseNames=N''[ExampleDatabase]'', @JsonErzeugen=1, @Json=@Json OUTPUT;", "@DatabaseNames=N''[ExampleDatabase]'', @JsonErzeugen=1, @Json=@Json;", 1), "help JSON example"),
             ("SHARED_SELECTOR", "candidate_helper", text["candidate_helper"].replace("@EffectiveDatabaseNames IS NOT NULL AND @DatabaseNamePattern IS NOT NULL", "@EffectiveDatabaseNames IS NOT NULL AND 1=0", 1), "shared candidate helper"),
