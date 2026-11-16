@@ -262,7 +262,8 @@ DECLARE @OwnSuffix nvarchar(32)=REPLACE(CONVERT(nvarchar(36),NEWID()),N'-',N''),
         @OwnBeforeXact int,@OwnAfterXact int,@OwnIdentityMatch int,@OwnOptionsMatch int,
         @OwnTransactionsMatch int,@OwnLockMatch int,@OwnXactMatch int,
         @OwnStatusDenied int,@OwnPartialMatch int,@OwnJsonEmpty int,
-        @OwnDirectDiagnostic int,@OwnProductDiagnostic int;
+        @OwnDirectDiagnostic int,@OwnProductDiagnostic int,
+        @OwnReturnDiagnostic int,@OwnMessagePresent int;
 SELECT @OwnOriginalXact=XACT_STATE();
 SELECT @OwnLogin=N'ExampleOps007Denied_'+@OwnSuffix,
        @OwnUser=N'ExampleOps007Denied_'+@OwnSuffix,
@@ -375,18 +376,19 @@ BEGIN TRY
       @OwnJsonEmpty=CASE WHEN COALESCE(ISJSON(@OwnJson),0)=1
         AND DATALENGTH(@OwnJson)=4
         AND @OwnJson COLLATE SQL_Latin1_General_CP1_CS_AS=N'[]' THEN 1 ELSE 0 END;
-    SET @OwnProductDiagnostic=COALESCE(@OwnError,-1);
-    IF COALESCE(@OwnReturn,-1)<>0 OR @OwnDirectError<>229 OR @OwnProductDiagnostic<>229
-       OR NULLIF(@OwnMessage,N'') IS NULL OR @OwnStatusDenied<>1
+    SELECT @OwnProductDiagnostic=COALESCE(@OwnError,-1),
+           @OwnReturnDiagnostic=COALESCE(@OwnReturn,-1),
+           @OwnMessagePresent=CASE WHEN NULLIF(@OwnMessage,N'') IS NOT NULL THEN 1 ELSE 0 END;
+    IF @OwnDirectError<>229 OR @OwnProductDiagnostic<>229
+       OR @OwnMessagePresent<>1 OR @OwnStatusDenied<>1
        OR @OwnPartialMatch<>1 OR @OwnJsonEmpty<>1 OR @OwnIdentityMatch<>1
        OR @OwnOptionsMatch<>1 OR @OwnTransactionsMatch<>1
        OR @OwnLockMatch<>1 OR @OwnXactMatch<>1
     BEGIN
-        RAISERROR(N'OPS007_DENY direct=%d product=%d status=%d partial=%d json=%d identity=%d options=%d tran=%d lock=%d xact=%d',
-          10,1,@OwnDirectDiagnostic,@OwnProductDiagnostic,@OwnStatusDenied,
-          @OwnPartialMatch,@OwnJsonEmpty,@OwnIdentityMatch,
-          @OwnOptionsMatch,@OwnTransactionsMatch,
-          @OwnLockMatch,@OwnXactMatch) WITH NOWAIT;
+        RAISERROR(N'OPS007_DENY direct=%d product=%d return=%d message=%d status=%d partial=%d json=%d identity=%d options=%d tran=%d lock=%d xact=%d',
+          10,1,@OwnDirectDiagnostic,@OwnProductDiagnostic,@OwnReturnDiagnostic,@OwnMessagePresent,
+          @OwnStatusDenied,@OwnPartialMatch,@OwnJsonEmpty,@OwnIdentityMatch,
+          @OwnOptionsMatch,@OwnTransactionsMatch,@OwnLockMatch,@OwnXactMatch) WITH NOWAIT;
         THROW 58067,N'OPS007 product DMV DENY or caller-state contract failed.',1;
     END;
     REVERT; SET @OwnImpersonating=0;
