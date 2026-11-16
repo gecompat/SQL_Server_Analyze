@@ -119,6 +119,69 @@ BEGIN TRY
         DROP TABLE [#ExampleBackupChainSummary];
         SET @Case+=1;
     END;
+    CREATE TABLE [#ExampleBackupChainSummaryExpected]
+    (
+          [DatabaseId] int NOT NULL
+        , [DatabaseName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [RecoveryModelDesc] nvarchar(60) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [LatestFullFinish] datetime NULL
+        , [LatestMatchingDifferentialFinish] datetime NULL
+        , [LatestLogFinish] datetime NULL
+        , [LogBackupCountInWindow] bigint NOT NULL
+        , [LogGapCountInWindow] bigint NOT NULL
+        , [RecoveryForkTransitionCount] bigint NOT NULL
+        , [DamagedBackupCount] bigint NOT NULL
+        , [BackupWithoutChecksumCount] bigint NOT NULL
+        , [LatestRestoreDate] datetime NULL
+        , [FindingCode] varchar(100) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [FindingSeverity] varchar(16) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [EvidenceLimit] nvarchar(1000) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+    );
+    CREATE TABLE [#ExampleBackupChainSummary]([Dummy] int NULL);
+    SELECT @Json=NULL,@Status=NULL,@Partial=NULL,@Error=NULL,@Message=NULL;
+    EXEC [monitor].[USP_BackupChainAnalysis] @DatabaseNames=@Names,@HistoryDays=NULL,@MitRestoreEvidence=1,
+      @MaxZeilen=100,@ResultSetArt='TABLE',@ResultTablesJson=N'{"summary":"#ExampleBackupChainSummary"}',
+      @JsonErzeugen=1,@Json=@Json OUTPUT,@PrintMeldungen=0,@StatusCodeOut=@Status OUTPUT,
+      @IsPartialOut=@Partial OUTPUT,@ErrorNumberOut=@Error OUTPUT,@ErrorMessageOut=@Message OUTPUT;
+    IF COALESCE(ISJSON(@Json),0)<>1 OR COALESCE(@Status,'')<>'INVALID_PARAMETER' OR COALESCE(@Partial,0)<>1
+       OR @Error IS NOT NULL OR NULLIF(LTRIM(RTRIM(COALESCE(@Message,N''))),N'') IS NULL
+       OR NOT EXISTS(SELECT 1 FROM OPENJSON(@Json,N'$.meta')
+         WITH ([statusCode] varchar(40) '$.statusCode',[isPartial] bit '$.isPartial') AS [m]
+         WHERE [m].[statusCode] COLLATE SQL_Latin1_General_CP1_CS_AS='INVALID_PARAMETER'
+           AND [m].[isPartial]=1)
+       OR COALESCE(JSON_QUERY(@Json,N'$.summary'),N'')<>N'[]'
+       OR COALESCE(JSON_QUERY(@Json,N'$.backups'),N'')<>N'[]'
+       OR COALESCE(JSON_QUERY(@Json,N'$.warnings'),N'')<>N'[]'
+       OR (SELECT COUNT_BIG(*) FROM [#ExampleBackupChainSummary])<>0
+         THROW 55925,N'Der NULL-HistoryDays-Status oder die leeren Fachmengen fehlen.',1;
+    DECLARE @SchemaMismatch bit=0;
+    ;WITH [ActualColumns] AS
+    (
+        SELECT ROW_NUMBER() OVER(ORDER BY [column_id]) AS [Ordinal],
+               [name] COLLATE SQL_Latin1_General_CP1_CS_AS AS [ColumnName],
+               [system_type_id],[max_length],[precision],[scale],
+               [collation_name] COLLATE SQL_Latin1_General_CP1_CS_AS AS [CollationName],[is_nullable]
+        FROM [tempdb].[sys].[columns]
+        WHERE [object_id]=OBJECT_ID(N'tempdb..#ExampleBackupChainSummary')
+    ),
+    [ExpectedColumns] AS
+    (
+        SELECT ROW_NUMBER() OVER(ORDER BY [column_id]) AS [Ordinal],
+               [name] COLLATE SQL_Latin1_General_CP1_CS_AS AS [ColumnName],
+               [system_type_id],[max_length],[precision],[scale],
+               [collation_name] COLLATE SQL_Latin1_General_CP1_CS_AS AS [CollationName],[is_nullable]
+        FROM [tempdb].[sys].[columns]
+        WHERE [object_id]=OBJECT_ID(N'tempdb..#ExampleBackupChainSummaryExpected')
+    )
+    SELECT @SchemaMismatch=CASE
+      WHEN (SELECT COUNT_BIG(*) FROM [ActualColumns])<>15
+        OR EXISTS(SELECT * FROM [ActualColumns] EXCEPT SELECT * FROM [ExpectedColumns])
+        OR EXISTS(SELECT * FROM [ExpectedColumns] EXCEPT SELECT * FROM [ActualColumns])
+      THEN 1 ELSE 0 END;
+    IF @SchemaMismatch<>0
+        THROW 55926,N'Das leere TABLE-Ergebnisschema für NULL-HistoryDays weicht ab.',1;
+    DROP TABLE [#ExampleBackupChainSummary];
+    DROP TABLE [#ExampleBackupChainSummaryExpected];
     DROP TABLE [#ExampleBackupChainNative];
 END TRY
 BEGIN CATCH
