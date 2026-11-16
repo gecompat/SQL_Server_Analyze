@@ -231,9 +231,6 @@ BEGIN
   SET @CleanupError=COALESCE(@CleanupError,ERROR_NUMBER());
  END CATCH;
  IF @OriginalAbort=1 SET XACT_ABORT ON;ELSE SET XACT_ABORT OFF;
- DECLARE @RestoreLock nvarchar(80)=N'SET LOCK_TIMEOUT '+CONVERT(nvarchar(20),@OriginalLock)+N';';
- EXEC [sys].[sp_executesql] @RestoreLock;
- IF @@TRANCOUNT<>@OriginalTx OR DB_ID()<>@OriginalDb OR CASE WHEN (@@OPTIONS&16384)=16384 THEN 1 ELSE 0 END<>@OriginalAbort OR @@LOCK_TIMEOUT<>@OriginalLock THROW 63071,N'OBJECT_FIXTURE_CALLER_RESTORE',1;
  IF @CleanupError IS NOT NULL OR @Failure IS NOT NULL
  BEGIN
   DECLARE @DiagnosticFailure int=COALESCE(@Failure,-1),@DiagnosticCleanup int=COALESCE(@CleanupError,-1);
@@ -243,7 +240,21 @@ BEGIN
 END;
 GO
 DECLARE @Return int;
+DECLARE @ParentTx int=@@TRANCOUNT;
+DECLARE @ParentDb int=DB_ID();
+DECLARE @ParentAbort int=CASE WHEN (@@OPTIONS&16384)=16384 THEN 1 ELSE 0 END;
+DECLARE @ParentLock int=@@LOCK_TIMEOUT;
 EXEC @Return=[#ExampleCurrentObjectPermissionContract];
+DECLARE @AfterTx int=@@TRANCOUNT;
+DECLARE @AfterDb int=DB_ID();
+DECLARE @AfterAbort int=CASE WHEN (@@OPTIONS&16384)=16384 THEN 1 ELSE 0 END;
+DECLARE @AfterLock int=@@LOCK_TIMEOUT;
+IF @AfterTx<>@ParentTx OR @AfterDb<>@ParentDb OR @AfterAbort<>@ParentAbort OR @AfterLock<>@ParentLock
+BEGIN
+ DECLARE @NoOriginalFailure int=-1,@NoCleanupFailure int=-1;
+ RAISERROR(N'OBJECT_FIXTURE_CALLER_FRAME tx=%d/%d db=%d/%d abort=%d/%d lock=%d/%d original=%d cleanup=%d',10,1,@ParentTx,@AfterTx,@ParentDb,@AfterDb,@ParentAbort,@AfterAbort,@ParentLock,@AfterLock,@NoOriginalFailure,@NoCleanupFailure) WITH NOWAIT;
+ THROW 63071,N'OBJECT_FIXTURE_CALLER_RESTORE',1;
+END;
 IF COALESCE(@Return,-1)<>0 THROW 63073,N'OBJECT_FIXTURE_RETURN',1;
 DROP PROCEDURE [#ExampleCurrentObjectPermissionContract];
 GO
