@@ -66,4 +66,25 @@ IF COALESCE(ISJSON(@Json),0)<>1
    OR COALESCE(JSON_VALUE(@Json,N'$.meta.isPartial'),N'')<>N'true'
    OR COALESCE(JSON_QUERY(@Json,N'$.counters'),N'')<>N'[]'
     THROW 55794,N'Der exakte Counterfilter ignoriert Groß- und Kleinschreibung.',1;
+
+DECLARE @ErrorNumber int=NULL,@ErrorMessage nvarchar(2048)=NULL;
+SELECT @Json=NULL,@Status=NULL,@Partial=NULL;
+EXEC [monitor].[USP_PerformanceCounters]
+    @ObjectNames=@ObjectName,@CounterNames=@CounterName,@SampleSeconds=NULL,
+    @MaxZeilen=1,@ResultSetArt='NONE',@JsonErzeugen=1,@Json=@Json OUTPUT,
+    @PrintMeldungen=0,@StatusCodeOut=@Status OUTPUT,@IsPartialOut=@Partial OUTPUT,
+    @ErrorNumberOut=@ErrorNumber OUTPUT,@ErrorMessageOut=@ErrorMessage OUTPUT;
+IF COALESCE(ISJSON(@Json),0)<>1
+   OR COALESCE(@Status,'')<>'INVALID_PARAMETER' OR COALESCE(@Partial,0)<>1
+   OR @ErrorNumber IS NOT NULL OR NULLIF(LTRIM(RTRIM(COALESCE(@ErrorMessage,N''))),N'') IS NULL
+   OR COALESCE(JSON_VALUE(@Json,N'$.meta.statusCode'),N'')<>N'INVALID_PARAMETER'
+   OR COALESCE(JSON_VALUE(@Json,N'$.meta.isPartial'),N'')<>N'true'
+   OR (SELECT COUNT_BIG(*) FROM OPENJSON(@Json,N'$.meta')
+       WHERE [key] COLLATE SQL_Latin1_General_CP1_CS_AS=N'errorNumber' AND [type]=0)<>1
+   OR (SELECT COUNT_BIG(*) FROM OPENJSON(@Json,N'$.meta')
+       WHERE [key] COLLATE SQL_Latin1_General_CP1_CS_AS=N'errorMessage' AND [type]=1
+         AND [value] COLLATE SQL_Latin1_General_CP1_CS_AS=@ErrorMessage COLLATE SQL_Latin1_General_CP1_CS_AS)<>1
+   OR COALESCE(JSON_QUERY(@Json,N'$.counters'),N'')<>N'[]'
+   OR COALESCE(JSON_QUERY(@Json,N'$.warnings'),N'')<>N'[]'
+    THROW 55795,N'Der NULL-Sample-Invalidstatus oder die leeren Counter fehlen.',1;
 GO
