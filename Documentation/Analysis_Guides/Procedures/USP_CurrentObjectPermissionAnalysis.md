@@ -130,6 +130,8 @@ FROM sys.fn_my_permissions(N'[dbo].[ExampleObject]', N'OBJECT');
 
 Der Source Select ist eine synthetische Form des nativen Aufrufs. Er benötigt den gewünschten Datenbankkontext und dessen tatsächlichen Caller; er ist keine eigenständige Produktabnahme.
 
+**Wichtig für die Eigenlast:** Die Procedure liest die native OBJECT-Quelle in jeder ausgewählten Datenbank vollständig vor dem globalen `@MaxZeilen`-Ausgabelimit. Die Zahl der ausgewählten Datenbanken bestimmt die Zahl der Caller-Quellenaufrufe; ein kleines Limit setzt keine Gesamtdauergrenze.
+
 ### Zeit- und Scope-Modell
 
 `CapturedAtUtc` und Quellzeiten sind UTC-Aufnahmezeiten. Quellen werden nacheinander gelesen; ein Rechtewechsel während des Aufrufs kann unterschiedliche Zustände ergeben. Datenbankauswahl und Objektsicht bleiben caller-sichtbar.
@@ -150,3 +152,6 @@ Die [aktuellen SERVER-/DATABASE-Rechte](USP_CurrentCallerPermissionAnalysis.md) 
 
 - [Microsoft Learn: sys.fn_my_permissions](https://learn.microsoft.com/en-us/sql/relational-databases/system-functions/sys-fn-my-permissions-transact-sql?view=sql-server-ver17)
 - [Microsoft Learn: Metadata Visibility Configuration](https://learn.microsoft.com/en-us/sql/relational-databases/security/metadata-visibility-configuration?view=sql-server-ver17)
+
+[Technische Detailbeschreibung](../../Reference/Procedure_Reference.md#monitorusp_currentobjectpermissionanalysis)
+[Gemeinsames Execution-, Zeit- und Evidenzmodell](../Technical_Foundations.md)

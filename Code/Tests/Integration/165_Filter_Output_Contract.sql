@@ -375,6 +375,7 @@ FETCH NEXT FROM [ProcedureCursor] INTO @ProcedureName,@ObjectId;
 WHILE @@FETCH_STATUS=0
 BEGIN
     SET @Arguments=N'@ResultSetArt=N''NONE'',@JsonErzeugen=1,@Json=@Json OUTPUT';
+    IF @ProcedureName COLLATE SQL_Latin1_General_CP1_CS_AS=N'USP_CurrentObjectPermissionAnalysis' SET @Arguments+=N',@SchemaName=N''sys'',@ObjectName=N''objects''';
     IF EXISTS(SELECT 1 FROM [sys].[parameters] WITH (NOLOCK) WHERE [object_id]=@ObjectId AND [name]=N'@DatabaseNames') SET @Arguments+=N',@DatabaseNames=N''''';
     IF EXISTS(SELECT 1 FROM [sys].[parameters] WITH (NOLOCK) WHERE [object_id]=@ObjectId AND [name]=N'@QueryStoreDatabaseNames') SET @Arguments+=N',@QueryStoreDatabaseNames=N''''';
     IF EXISTS(SELECT 1 FROM [sys].[parameters] WITH (NOLOCK) WHERE [object_id]=@ObjectId AND [name]=N'@MaxZeilen') SET @Arguments+=N',@MaxZeilen=1';
