@@ -1,7 +1,7 @@
 # OBJECT-Rechte im aktuellen Ausführungskontext
 
 **Stand:** 16. November 2026.  
-**Status:** begrenzter read-only Produktkandidat; native Head- und Main-Abnahme stehen aus.  
+**Status:** begrenzter read-only OBJECT-Bericht mit bestandener SQL-Server-2025-Head- und Main-Abnahme; der ergänzende Spalten-Grant-Fall ist noch nicht nativ abgenommen.  
 **Artefakt-UID:** `urn:uuid:01a1e5ad-9c65-7006-b329-3589245b1ed0`.  
 **Registrierung:** `DEFERRED`; keine zusätzliche lesbare Kennung vergeben.  
 **Arbeitselement:** Teil des vorhandenen `WI-0012`; keine neue Arbeitselementnummer.
@@ -26,9 +26,9 @@ Jede ausgewählte Datenbank wird isoliert gelesen. Ein nativer Fehler bleibt mit
 
 ## Native Fixture und Nachweisgrenze
 
-Die geplante [Native145-Fixture](../../../Code/Tests/ServerHealth/145_CurrentObjectPermission_Runtime_Contract.sql) nutzt zwei synthetische eigene Datenbanken und einen eigenen SID-gebundenen Caller. Eine Datenbank erhält eine eigene SELECT-Freigabe, die andere einen eigenen SELECT-DENY am gleichnamigen Probeobjekt. Ein direkter nativer 229-Gegencheck und die unabhängige `sys.fn_my_permissions`-Zeilenparität begrenzen die positive Aussage. JSON, TABLE, RAW, CONSOLE, NONE, Auswahl, Namenslängen, Callerzustand und normaler/einzelner Fehler-Rückbau werden geprüft. Die Fixture erzeugt keine reale Berechtigungs- oder Kundendatenlage. Beide Datenbanken und der Principal sind auch auf Fehlerpfaden nur bei gebundener Eigenidentität zu entfernen; andernfalls bleibt ein Recoveryfehler für den isolierten Container-Stop.
+Die [Native145-Fixture](../../../Code/Tests/ServerHealth/145_CurrentObjectPermission_Runtime_Contract.sql) nutzt zwei synthetische eigene Datenbanken und einen eigenen SID-gebundenen Caller. Eine Datenbank erhält eine eigene SELECT-Freigabe auf das ganze Probeobjekt, die andere einen eigenen SELECT-DENY am gleichnamigen Objekt. Ein direkter nativer 229-Gegencheck und die unabhängige `sys.fn_my_permissions`-Zeilenparität begrenzen die positive Aussage. JSON, TABLE, RAW, CONSOLE, NONE, Auswahl, Namenslängen, Callerzustand und normaler/einzelner Fehler-Rückbau werden geprüft. Die Fixture erzeugt keine reale Berechtigungs- oder Kundendatenlage. Beide Datenbanken und der Principal sind auch auf Fehlerpfaden nur bei gebundener Eigenidentität zu entfernen; andernfalls bleibt ein Recoveryfehler für den isolierten Container-Stop.
 
-Die Fixture ist bislang nicht in einem qualifizierten Head oder Main ausgeführt. Die statische [1053-Prüfung](../../../Code/Tests/Static/1053_Validate_CurrentObjectPermission_Contract.py) bindet Quellvertrag, ABI, Inventare und Release-Gate; sie ersetzt keine native Abnahme. Ein SQL Server 2025-Lauf mit selektierten Compatibility Levels folgt der verbindlichen CI-Teststrategie. Daraus entsteht kein native SQL-Server-2019-/2022-Nachweis und keine allgemeine Objektzugriffsgarantie.
+Die ursprüngliche Fixture bestand im [Head-Lauf 43961724262](https://github.com/gecompat/SQL_Server_Analyze/actions/runs/43961724262) und im [ersten Mainlauf 43964989798](https://github.com/gecompat/SQL_Server_Analyze/actions/runs/43964989798) das vollständige SQL-Server-2025-/CL170-Release-Gate einschließlich Native145, Berechtigungs-, Regex- und Standalone-Verträgen sowie StopSynthetic. Die statische [1053-Prüfung](../../../Code/Tests/Static/1053_Validate_CurrentObjectPermission_Contract.py) bindet Quellvertrag, ABI, Inventare und Release-Gate; sie ersetzt keine native Abnahme. Der zusätzliche Fixture-Kandidat legt in der eigenen Datenbank eine zweite Tabelle an und erteilt dem eigenen Testlogin ausschließlich SELECT auf deren Spalte `Value`. Unter diesem Caller fordert er eine native `fn_my_permissions`-Zeile mit nichtleerem `subentity_name=Value`; fünf im impersonierten Batch erzeugte TABLE-Ziele werden vor `REVERT` als JSON gesichert und bidirektional mit den nativen Zeilen und dem Produkt-JSON verglichen. Dieser neue Fall ist bis zum ausgewählten nativen Head- und Main-Gate unqualifiziert. Die bestandenen Gates belegen weder SQL Server 2019/2022 noch eine vollständige COLUMN- oder Statement-Rechteanalyse.
 
 ## Primärquellen
 
