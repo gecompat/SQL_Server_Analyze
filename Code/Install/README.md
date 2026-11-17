@@ -1,6 +1,7 @@
 # Installation
 
-Das Produkt-ZIP v1.1.2 enthält bereits sechs Installer unter `generated`.
+Der unveröffentlichte v1.2.0-Kandidat enthält nach Paketbau sechs Installer
+unter `generated`. Ihre Verwendung setzt die gesonderte Releaseabnahme voraus.
 Sie werden vollständig in SSMS ohne SQLCMD-Modus ausgeführt. Ein lokaler
 Neubau ist für die folgenden ZIP-Wege nicht erforderlich.
 

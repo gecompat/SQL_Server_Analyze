@@ -111,9 +111,9 @@ IF NOT EXISTS
     SELECT 1
     FROM [monitor].[FrameworkVersion] WITH (NOLOCK)
     WHERE [FrameworkName]=N'SQLServerMonitoringFramework'
-      AND [FrameworkVersion]='1.1.2'
+      AND [FrameworkVersion]='1.2.0'
 )
-    THROW 54001,N'FrameworkVersion fehlt oder entspricht nicht Release 1.1.2.',1;
+    THROW 54001,N'FrameworkVersion fehlt oder entspricht nicht Release 1.2.0.',1;
 
 IF (SELECT COUNT_BIG(*) FROM [monitor].[VW_AnalysisCatalog]) <> 128
     THROW 54025,N'Der Analysis Catalog enthält nicht genau alle 128 öffentlichen Procedures.',1;

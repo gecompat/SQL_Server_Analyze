@@ -91,7 +91,11 @@ bestandener Teiltest ist keine Freigabe aller Procedures dieser Kombination.
 
 Im Bereich [Releases](https://github.com/gecompat/SQL_Server_Analyze/releases)
 werden versionierte Produktpakete veröffentlicht. Wählen Sie die Datei
-`SQL_Server_Analyze-1.1.2.zip`; die automatisch angebotenen Quellarchive
+für den veröffentlichten Stand `SQL_Server_Analyze-1.1.2.zip` und dessen
+[versionierte Installationsanleitung](https://github.com/gecompat/SQL_Server_Analyze/blob/v1.1.2/Documentation/Reference/Installation.md).
+Die aktuelle [Installationsanleitung](Documentation/Reference/Installation.md)
+beschreibt den unveröffentlichten v1.2.0-Kandidaten, der vor Verwendung einen
+eigenen Paket- und Release-Nachweis benötigt. Die automatisch angebotenen Quellarchive
 enthalten keine fertig erzeugten Installer. Das Produktpaket enthält Quellen,
 Dokumentation, Metadaten und sechs vorbereitete Installer unter
 `Code/Install/generated`. Für die folgenden Wege ist kein lokaler Build
