@@ -3,6 +3,7 @@ GO
 /*
 Prüft das gemeinsame gefilterte Featureexport mit synthetischen Katalogobjekten.
 Nach sechs unveränderten Fällen prüft ein eigener leerer NODE-/EDGE-Katalogfall die Graph-Erkennung.
+Auf SQL Server 2025 folgt ein eigener leerer JSON-/VECTOR-Typinventurfall.
 Die beiden eigenen Unicode-Datenbanken werden auch im Fehlerfall entfernt.
 */
 SET NOCOUNT ON;
@@ -308,6 +309,196 @@ CREATE TABLE [dbo].[ExampleFeatureGraphEdgeÄ]([ExampleId] int NULL) AS EDGE;');
                   @GraphTranBefore,@GraphTranAfter,@GraphLockBefore,@GraphLockAfter,
                   @GraphAbortBefore,@GraphAbortAfter,@GraphXactBeforeDiag,@GraphXactAfterDiag) WITH NOWAIT;
         THROW 56886,N'Special feature graph caller state changed.',1;
+    END;
+    /* SQL Server 2025: zwei native Typen, nur eigene leere Katalogobjekte. */
+    DECLARE @TypesMajor int=TRY_CONVERT(int,SERVERPROPERTY(N'ProductMajorVersion'));
+    IF COALESCE(@TypesMajor,-1) NOT IN(15,16,17)
+        THROW 56888,N'Special feature native type major version unsupported.',1;
+    IF @TypesMajor=17
+    BEGIN
+        DECLARE @TypesDbBefore int=DB_ID(),@TypesLoginBefore int=SUSER_ID(),
+                @TypesTranBefore int=@@TRANCOUNT,@TypesLockBefore int=@@LOCK_TIMEOUT,
+                @TypesAbortBefore int=CASE WHEN (@@OPTIONS & 16384)<>0 THEN 1 ELSE 0 END,
+                @TypesXactBefore int=NULL,@TypesDbAfter int=NULL,@TypesLoginAfter int=NULL,
+                @TypesTranAfter int=NULL,@TypesLockAfter int=NULL,@TypesAbortAfter int=NULL,
+                @TypesXactAfter int=NULL,@TypesJsonObjectId int=NULL,@TypesVectorObjectId int=NULL,
+                @TypesNativeJsonCount bigint=NULL,@TypesNativeVectorCount bigint=NULL,
+                @TypesBaselineDetected bigint=NULL,@TypesJson nvarchar(max)=NULL,
+                @TypesTableJson nvarchar(max)=NULL,@TypesTableCount bigint=NULL,
+                @TypesStatus varchar(40)=NULL,@TypesPartial bit=NULL,
+                @TypesOwnCollectedCreated bit=0;
+        SELECT @TypesXactBefore=XACT_STATE();
+        BEGIN TRY
+            SELECT @TypesBaselineDetected=[DetectedRows]
+            FROM [#SpecialFeatureCollationRuntimeContract_DetectedCounts]
+            WHERE [DatabaseName]=N'ExampleSpecialSourceÄ' COLLATE SQL_Latin1_General_CP1_CS_AS;
+            SELECT @TypesNativeJsonCount=COUNT_BIG(*)
+            FROM [ExampleSpecialSourceÄ].[sys].[columns] [c]
+            JOIN [ExampleSpecialSourceÄ].[sys].[objects] [o] ON [o].[object_id]=[c].[object_id]
+            JOIN [ExampleSpecialSourceÄ].[sys].[types] [t] ON [t].[user_type_id]=[c].[user_type_id]
+            WHERE [o].[is_ms_shipped]=0 AND [o].[type] IN('U','V')
+              AND [t].[name]=N'json' AND [t].[is_user_defined]=0;
+            SELECT @TypesNativeVectorCount=COUNT_BIG(*)
+            FROM [ExampleSpecialSourceÄ].[sys].[columns] [c]
+            JOIN [ExampleSpecialSourceÄ].[sys].[objects] [o] ON [o].[object_id]=[c].[object_id]
+            JOIN [ExampleSpecialSourceÄ].[sys].[types] [t] ON [t].[user_type_id]=[c].[user_type_id]
+            WHERE [o].[is_ms_shipped]=0 AND [o].[type] IN('U','V')
+              AND [t].[name]=N'vector' AND [t].[is_user_defined]=0;
+            IF @OwnedUpperId IS NULL OR DB_ID(N'ExampleSpecialSourceÄ')<>@OwnedUpperId
+               OR @TypesBaselineDetected IS NULL
+               OR @TypesNativeJsonCount<>0 OR @TypesNativeVectorCount<>0
+                THROW 56889,N'Special feature native type own precondition failed.',1;
+            EXEC(N'USE [ExampleSpecialSourceÄ];
+CREATE TABLE [dbo].[ExampleFeatureNativeJsonÄ]([ExampleId] int NULL,[ExampleDocument] json NULL);
+CREATE TABLE [dbo].[ExampleFeatureNativeVectorÄ]([ExampleId] int NULL,[ExampleEmbedding] vector(5) NULL);');
+            SELECT @TypesJsonObjectId=[t].[object_id]
+            FROM [ExampleSpecialSourceÄ].[sys].[tables] [t]
+            JOIN [ExampleSpecialSourceÄ].[sys].[schemas] [s] ON [s].[schema_id]=[t].[schema_id]
+            WHERE [s].[name] COLLATE SQL_Latin1_General_CP1_CS_AS=N'dbo'
+              AND [t].[name] COLLATE SQL_Latin1_General_CP1_CS_AS=N'ExampleFeatureNativeJsonÄ';
+            SELECT @TypesVectorObjectId=[t].[object_id]
+            FROM [ExampleSpecialSourceÄ].[sys].[tables] [t]
+            JOIN [ExampleSpecialSourceÄ].[sys].[schemas] [s] ON [s].[schema_id]=[t].[schema_id]
+            WHERE [s].[name] COLLATE SQL_Latin1_General_CP1_CS_AS=N'dbo'
+              AND [t].[name] COLLATE SQL_Latin1_General_CP1_CS_AS=N'ExampleFeatureNativeVectorÄ';
+            SELECT @TypesNativeJsonCount=COUNT_BIG(*)
+            FROM [ExampleSpecialSourceÄ].[sys].[columns] [c]
+            JOIN [ExampleSpecialSourceÄ].[sys].[objects] [o] ON [o].[object_id]=[c].[object_id]
+            JOIN [ExampleSpecialSourceÄ].[sys].[types] [t] ON [t].[user_type_id]=[c].[user_type_id]
+            WHERE [o].[is_ms_shipped]=0 AND [o].[type] IN('U','V')
+              AND [t].[name]=N'json' AND [t].[is_user_defined]=0;
+            SELECT @TypesNativeVectorCount=COUNT_BIG(*)
+            FROM [ExampleSpecialSourceÄ].[sys].[columns] [c]
+            JOIN [ExampleSpecialSourceÄ].[sys].[objects] [o] ON [o].[object_id]=[c].[object_id]
+            JOIN [ExampleSpecialSourceÄ].[sys].[types] [t] ON [t].[user_type_id]=[c].[user_type_id]
+            WHERE [o].[is_ms_shipped]=0 AND [o].[type] IN('U','V')
+              AND [t].[name]=N'vector' AND [t].[is_user_defined]=0;
+            IF DB_ID(N'ExampleSpecialSourceÄ')<>@OwnedUpperId
+               OR @TypesJsonObjectId IS NULL OR @TypesVectorObjectId IS NULL
+               OR @TypesJsonObjectId=@TypesVectorObjectId
+               OR @TypesNativeJsonCount<>1 OR @TypesNativeVectorCount<>1
+               OR NOT EXISTS
+                  (SELECT 1 FROM [ExampleSpecialSourceÄ].[sys].[columns] [c]
+                   JOIN [ExampleSpecialSourceÄ].[sys].[types] [t] ON [t].[user_type_id]=[c].[user_type_id]
+                   WHERE [c].[object_id]=@TypesJsonObjectId AND [c].[name]=N'ExampleDocument'
+                     AND [t].[name]=N'json' AND [t].[is_user_defined]=0)
+               OR NOT EXISTS
+                  (SELECT 1 FROM [ExampleSpecialSourceÄ].[sys].[columns] [c]
+                   JOIN [ExampleSpecialSourceÄ].[sys].[types] [t] ON [t].[user_type_id]=[c].[user_type_id]
+                   WHERE [c].[object_id]=@TypesVectorObjectId AND [c].[name]=N'ExampleEmbedding'
+                     AND [t].[name]=N'vector' AND [t].[is_user_defined]=0)
+                THROW 56890,N'Special feature native JSON VECTOR binding failed.',1;
+            IF OBJECT_ID(N'tempdb..#SpecialFeatureCollationRuntimeContract_TypesCollected') IS NOT NULL
+                THROW 56891,N'Special feature native type TABLE target collision.',1;
+            CREATE TABLE [#SpecialFeatureCollationRuntimeContract_TypesCollected]([Seed] bit NULL);
+            SET @TypesOwnCollectedCreated=1;
+            EXEC [monitor].[USP_SpecialFeatureInventory]
+                 @DatabaseNames=N'[ExampleSpecialSourceÄ]',@NurErkannteFeatures=1,@MaxZeilen=0,
+                 @ResultSetArt='TABLE',
+                 @ResultTablesJson=N'{"features":"#SpecialFeatureCollationRuntimeContract_TypesCollected"}',
+                 @JsonErzeugen=1,@Json=@TypesJson OUTPUT,@PrintMeldungen=0,
+                 @StatusCodeOut=@TypesStatus OUTPUT,@IsPartialOut=@TypesPartial OUTPUT;
+            SELECT @TypesTableCount=COUNT_BIG(*) FROM [#SpecialFeatureCollationRuntimeContract_TypesCollected];
+            SELECT @TypesTableJson=
+              (SELECT * FROM [#SpecialFeatureCollationRuntimeContract_TypesCollected]
+               ORDER BY [DatabaseName],[FeatureCode] FOR JSON PATH,INCLUDE_NULL_VALUES);
+            IF COALESCE(ISJSON(@TypesJson),0)<>1 OR COALESCE(@TypesStatus,'')<>'AVAILABLE'
+               OR COALESCE(CONVERT(int,@TypesPartial),-1)<>0
+               OR COALESCE(JSON_VALUE(@TypesJson,N'$.meta.statusCode'),'')<>'AVAILABLE'
+               OR COALESCE(JSON_VALUE(@TypesJson,N'$.meta.isPartial'),'')<>'false'
+               OR COALESCE(TRY_CONVERT(bigint,JSON_VALUE(@TypesJson,N'$.meta.featureRowCount')),-1)<>19
+               OR COALESCE(TRY_CONVERT(bigint,JSON_VALUE(@TypesJson,N'$.meta.detectedFeatureRowCount')),-1)<>@TypesBaselineDetected+3
+               OR COALESCE(@TypesTableCount,-1)<>@TypesBaselineDetected+3
+               OR (SELECT COUNT_BIG(*) FROM OPENJSON(@TypesJson,N'$.features'))<>@TypesBaselineDetected+3
+               OR (SELECT COUNT_BIG(*) FROM OPENJSON(@TypesJson,N'$.databaseStatus'))<>1
+               OR NOT EXISTS
+                  (SELECT 1 FROM OPENJSON(@TypesJson,N'$.databaseStatus') WITH
+                     ([DatabaseName] sysname '$.DatabaseName',[StatusCode] varchar(40) '$.StatusCode',
+                      [IsPartial] bit '$.IsPartial',[FeatureRows] bigint '$.FeatureRows',
+                      [DetectedFeatureRows] bigint '$.DetectedFeatureRows')
+                   WHERE [DatabaseName] COLLATE SQL_Latin1_General_CP1_CS_AS=N'ExampleSpecialSourceÄ'
+                     AND [StatusCode]='AVAILABLE' AND [IsPartial]=0
+                     AND [FeatureRows]=19 AND [DetectedFeatureRows]=@TypesBaselineDetected+3)
+                THROW 56892,N'Special feature native type status or feature counts failed.',1;
+            IF EXISTS
+               (SELECT CONVERT(int,ROW_NUMBER() OVER(ORDER BY [column_id])),
+                       [name] COLLATE SQL_Latin1_General_CP1_CS_AS,
+                       [system_type_id],[max_length],[is_nullable],
+                       [collation_name] COLLATE SQL_Latin1_General_CP1_CS_AS
+                FROM [tempdb].[sys].[columns]
+                WHERE [object_id]=OBJECT_ID(N'tempdb..#SpecialFeatureCollationRuntimeContract_TypesCollected')
+                EXCEPT
+                SELECT [Ordinal],[ColumnName],[SystemTypeId],[MaxLength],[IsNullable],[CollationName]
+                FROM @GraphExpectedSchema)
+               OR EXISTS
+               (SELECT [Ordinal],[ColumnName],[SystemTypeId],[MaxLength],[IsNullable],[CollationName]
+                FROM @GraphExpectedSchema
+                EXCEPT
+                SELECT CONVERT(int,ROW_NUMBER() OVER(ORDER BY [column_id])),
+                       [name] COLLATE SQL_Latin1_General_CP1_CS_AS,
+                       [system_type_id],[max_length],[is_nullable],
+                       [collation_name] COLLATE SQL_Latin1_General_CP1_CS_AS
+                FROM [tempdb].[sys].[columns]
+                WHERE [object_id]=OBJECT_ID(N'tempdb..#SpecialFeatureCollationRuntimeContract_TypesCollected'))
+               OR EXISTS
+                  (SELECT 1 FROM OPENJSON(@TypesJson,N'$.features') [j]
+                   WHERE (SELECT COUNT_BIG(*) FROM OPENJSON([j].[value]))<>10)
+               OR DATALENGTH(COALESCE(@TypesTableJson,N''))<>DATALENGTH(COALESCE(JSON_QUERY(@TypesJson,N'$.features'),N''))
+               OR COALESCE(@TypesTableJson,N'') COLLATE SQL_Latin1_General_CP1_CS_AS
+                  <>COALESCE(JSON_QUERY(@TypesJson,N'$.features'),N'') COLLATE SQL_Latin1_General_CP1_CS_AS
+                THROW 56893,N'Special feature native type TABLE JSON schema or parity failed.',1;
+            IF (SELECT COUNT_BIG(*) FROM [#SpecialFeatureCollationRuntimeContract_TypesCollected]
+                WHERE [DatabaseName] COLLATE SQL_Latin1_General_CP1_CS_AS=N'ExampleSpecialSourceÄ'
+                  AND [FeatureCode]='JSON_NATIVE' AND [DetectionStatus]='DETECTED'
+                  AND [DetectedItemCount]=@TypesNativeJsonCount)<>1
+               OR (SELECT COUNT_BIG(*) FROM [#SpecialFeatureCollationRuntimeContract_TypesCollected]
+                   WHERE [DatabaseName] COLLATE SQL_Latin1_General_CP1_CS_AS=N'ExampleSpecialSourceÄ'
+                     AND [FeatureCode]='VECTOR' AND [DetectionStatus]='DETECTED'
+                     AND [DetectedItemCount]=@TypesNativeVectorCount)<>1
+               OR (SELECT COUNT_BIG(*) FROM OPENJSON(@TypesJson,N'$.features') WITH
+                   ([DatabaseName] sysname '$.DatabaseName',[FeatureCode] varchar(64) '$.FeatureCode',
+                    [DetectionStatus] varchar(40) '$.DetectionStatus',[DetectedItemCount] bigint '$.DetectedItemCount')
+                   WHERE [DatabaseName] COLLATE SQL_Latin1_General_CP1_CS_AS=N'ExampleSpecialSourceÄ'
+                     AND [FeatureCode]='JSON_NATIVE' AND [DetectionStatus]='DETECTED'
+                     AND [DetectedItemCount]=@TypesNativeJsonCount)<>1
+               OR (SELECT COUNT_BIG(*) FROM OPENJSON(@TypesJson,N'$.features') WITH
+                   ([DatabaseName] sysname '$.DatabaseName',[FeatureCode] varchar(64) '$.FeatureCode',
+                    [DetectionStatus] varchar(40) '$.DetectionStatus',[DetectedItemCount] bigint '$.DetectedItemCount')
+                   WHERE [DatabaseName] COLLATE SQL_Latin1_General_CP1_CS_AS=N'ExampleSpecialSourceÄ'
+                     AND [FeatureCode]='VECTOR' AND [DetectionStatus]='DETECTED'
+                     AND [DetectedItemCount]=@TypesNativeVectorCount)<>1
+                THROW 56894,N'Special feature native JSON VECTOR count or identity failed.',1;
+            DROP TABLE [#SpecialFeatureCollationRuntimeContract_TypesCollected];
+            SET @TypesOwnCollectedCreated=0;
+        END TRY
+        BEGIN CATCH
+            BEGIN TRY
+                IF @TypesOwnCollectedCreated=1
+                   AND OBJECT_ID(N'tempdb..#SpecialFeatureCollationRuntimeContract_TypesCollected') IS NOT NULL
+                    DROP TABLE [#SpecialFeatureCollationRuntimeContract_TypesCollected];
+            END TRY
+            BEGIN CATCH
+            END CATCH;
+            THROW;
+        END CATCH;
+        SELECT @TypesDbAfter=DB_ID(),@TypesLoginAfter=SUSER_ID(),
+               @TypesTranAfter=@@TRANCOUNT,@TypesLockAfter=@@LOCK_TIMEOUT,
+               @TypesAbortAfter=CASE WHEN (@@OPTIONS & 16384)<>0 THEN 1 ELSE 0 END;
+        SELECT @TypesXactAfter=XACT_STATE();
+        IF COALESCE(@TypesDbBefore,-1)<>COALESCE(@TypesDbAfter,-1)
+           OR COALESCE(@TypesLoginBefore,-1)<>COALESCE(@TypesLoginAfter,-1)
+           OR @TypesTranBefore<>@TypesTranAfter OR @TypesLockBefore<>@TypesLockAfter
+           OR @TypesAbortBefore<>@TypesAbortAfter OR @TypesXactBefore<>@TypesXactAfter
+        BEGIN
+            DECLARE @TypesDbBeforeDiag int=COALESCE(@TypesDbBefore,-1),@TypesDbAfterDiag int=COALESCE(@TypesDbAfter,-1),
+                    @TypesLoginBeforeDiag int=COALESCE(@TypesLoginBefore,-1),@TypesLoginAfterDiag int=COALESCE(@TypesLoginAfter,-1),
+                    @TypesXactBeforeDiag int=COALESCE(@TypesXactBefore,-1),@TypesXactAfterDiag int=COALESCE(@TypesXactAfter,-1);
+            RAISERROR(N'SPECIAL_TYPES_CALLER db=%d/%d login=%d/%d tran=%d/%d lock=%d/%d abort=%d/%d xact=%d/%d',
+                      10,1,@TypesDbBeforeDiag,@TypesDbAfterDiag,@TypesLoginBeforeDiag,@TypesLoginAfterDiag,
+                      @TypesTranBefore,@TypesTranAfter,@TypesLockBefore,@TypesLockAfter,
+                      @TypesAbortBefore,@TypesAbortAfter,@TypesXactBeforeDiag,@TypesXactAfterDiag) WITH NOWAIT;
+            THROW 56895,N'Special feature native type caller state changed.',1;
+        END;
     END;
     DROP TABLE [#SpecialFeatureCollationRuntimeContract_DetectedCounts];SET @OwnCountsCreated=0;
     DROP TABLE [#SpecialFeatureCollationRuntimeContract_Codes];SET @OwnCodesCreated=0;
