@@ -1,7 +1,7 @@
 USE [DeineDatenbank];
 GO
 /* Prüft eigene Temporal-Paare, native Metadaten und gemeinsame Exportverträge.
-Die synthetischen Current- und Historytabellen bleiben leer. */
+Nach acht leeren Fällen erzeugt ein eigener synthetischer Datensatz eine History-Version; die DMV-Kapazitätswerte bleiben approximativ. */
 SET NOCOUNT ON;
 IF DB_ID(N'ExampleTemporalSourceÄ') IS NOT NULL THROW 56080,N'Temporal fixture already exists.',1;
 DECLARE @OwnedDatabaseId int=NULL,@OriginalLockTimeout int=@@LOCK_TIMEOUT,
@@ -273,6 +273,198 @@ BEGIN TRY
             THROW 56087,N'Temporal TABLE and JSON field multisets differ.',1;
         DROP TABLE [#ExampleTemporalExport];
         SET @Case+=1;
+    END;
+    /* Eigener nichtleerer History-Fall nach allen acht unveränderten Leerfällen. */
+    DECLARE @PositiveDbId int=DB_ID(),@PositiveLoginId int=SUSER_ID(),
+            @PositiveTran int=@@TRANCOUNT,@PositiveLock int=@@LOCK_TIMEOUT,
+            @PositiveAbort int=CASE WHEN (@@OPTIONS & 16384)<>0 THEN 1 ELSE 0 END,
+            @PositiveXact int=NULL,@PositiveCurrentId int=NULL,@PositiveHistoryId int=NULL,
+            @Inserted int=0,@Updated int=0,@PhysicalCurrent bigint=NULL,@PhysicalHistory bigint=NULL,
+            @NativeCurrentRows bigint=NULL,@NativeHistoryRows bigint=NULL,
+            @NativeCurrentReservedMb decimal(19,2)=NULL,@NativeCurrentUsedMb decimal(19,2)=NULL,
+            @NativeHistoryReservedMb decimal(19,2)=NULL,@NativeHistoryUsedMb decimal(19,2)=NULL,
+            @NativeRatio decimal(19,4)=NULL,@PositiveJson nvarchar(max)=NULL,
+            @PositiveStatus varchar(40)=NULL,@PositivePartial bit=NULL;
+    SELECT @PositiveXact=XACT_STATE();
+    SELECT @PositiveCurrentId=[ObjectId],@PositiveHistoryId=[HistoryId]
+    FROM [#ExampleTemporalNative]
+    WHERE [TableName]=N'ExampleTemporalTableÄ' COLLATE SQL_Latin1_General_CP1_CS_AS
+      AND [HistoryName]=N'ExampleTemporalHistoryÄ' COLLATE SQL_Latin1_General_CP1_CS_AS;
+    IF @OwnedDatabaseId IS NULL OR DB_ID(N'ExampleTemporalSourceÄ')<>@OwnedDatabaseId
+       OR @PositiveCurrentId IS NULL OR @PositiveHistoryId IS NULL
+       OR NOT EXISTS
+          (SELECT 1 FROM [ExampleTemporalSourceÄ].[sys].[tables]
+           WHERE [object_id]=@PositiveCurrentId AND [history_table_id]=@PositiveHistoryId
+             AND [temporal_type]=2)
+        THROW 56460,N'Temporal positive own pair binding failed.',1;
+    SET @Sql=N'USE [ExampleTemporalSourceÄ];
+INSERT [dbo].[ExampleTemporalTableÄ]([Id],[ExampleValue]) VALUES(1,10);
+SET @pRows=@@ROWCOUNT;';
+    EXEC [sys].[sp_executesql] @Sql,N'@pRows int OUTPUT',@pRows=@Inserted OUTPUT;
+    SET @Sql=N'USE [ExampleTemporalSourceÄ];
+UPDATE [dbo].[ExampleTemporalTableÄ] SET [ExampleValue]=11 WHERE [Id]=1;
+SET @pRows=@@ROWCOUNT;';
+    EXEC [sys].[sp_executesql] @Sql,N'@pRows int OUTPUT',@pRows=@Updated OUTPUT;
+    SELECT @PhysicalCurrent=COUNT_BIG(*) FROM [ExampleTemporalSourceÄ].[dbo].[ExampleTemporalTableÄ];
+    SELECT @PhysicalHistory=COUNT_BIG(*) FROM [ExampleTemporalSourceÄ].[dbo].[ExampleTemporalHistoryÄ];
+    IF @Inserted<>1 OR @Updated<>1 OR @PhysicalCurrent<>1 OR @PhysicalHistory<>1
+        THROW 56461,N'Temporal own one-row versioning precondition failed.',1;
+    SET @Sql=N'USE [ExampleTemporalSourceÄ];
+SELECT @pCurrentRows=SUM(CASE WHEN [index_id] IN(0,1) THEN CONVERT(bigint,[row_count]) END),
+       @pCurrentReservedMb=CONVERT(decimal(19,2),SUM(CONVERT(decimal(38,2),[reserved_page_count]))*8.0/1024.0),
+       @pCurrentUsedMb=CONVERT(decimal(19,2),SUM(CONVERT(decimal(38,2),[used_page_count]))*8.0/1024.0)
+FROM [sys].[dm_db_partition_stats] WHERE [object_id]=@pCurrentId;
+SELECT @pHistoryRows=SUM(CASE WHEN [index_id] IN(0,1) THEN CONVERT(bigint,[row_count]) END),
+       @pHistoryReservedMb=CONVERT(decimal(19,2),SUM(CONVERT(decimal(38,2),[reserved_page_count]))*8.0/1024.0),
+       @pHistoryUsedMb=CONVERT(decimal(19,2),SUM(CONVERT(decimal(38,2),[used_page_count]))*8.0/1024.0)
+FROM [sys].[dm_db_partition_stats] WHERE [object_id]=@pHistoryId;';
+    EXEC [sys].[sp_executesql] @Sql,
+         N'@pCurrentId int,@pHistoryId int,@pCurrentRows bigint OUTPUT,@pHistoryRows bigint OUTPUT,
+           @pCurrentReservedMb decimal(19,2) OUTPUT,@pCurrentUsedMb decimal(19,2) OUTPUT,
+           @pHistoryReservedMb decimal(19,2) OUTPUT,@pHistoryUsedMb decimal(19,2) OUTPUT',
+         @pCurrentId=@PositiveCurrentId,@pHistoryId=@PositiveHistoryId,
+         @pCurrentRows=@NativeCurrentRows OUTPUT,@pHistoryRows=@NativeHistoryRows OUTPUT,
+         @pCurrentReservedMb=@NativeCurrentReservedMb OUTPUT,@pCurrentUsedMb=@NativeCurrentUsedMb OUTPUT,
+         @pHistoryReservedMb=@NativeHistoryReservedMb OUTPUT,@pHistoryUsedMb=@NativeHistoryUsedMb OUTPUT;
+    IF @NativeCurrentRows IS NULL OR @NativeCurrentRows<1
+       OR @NativeHistoryRows IS NULL OR @NativeHistoryRows<1
+       OR @NativeCurrentReservedMb IS NULL OR @NativeCurrentUsedMb IS NULL
+       OR @NativeHistoryReservedMb IS NULL OR @NativeHistoryUsedMb IS NULL
+        THROW 56462,N'Temporal native positive capacity precondition failed.',1;
+    SET @NativeRatio=CONVERT(decimal(19,4),CONVERT(decimal(38,4),@NativeHistoryRows)/@NativeCurrentRows);
+    IF @NativeRatio<1 OR DB_ID(N'ExampleTemporalSourceÄ')<>@OwnedDatabaseId
+       OR NOT EXISTS
+          (SELECT 1 FROM [ExampleTemporalSourceÄ].[sys].[tables]
+           WHERE [object_id]=@PositiveCurrentId AND [history_table_id]=@PositiveHistoryId
+             AND [temporal_type]=2)
+        THROW 56463,N'Temporal positive ratio or own object binding failed.',1;
+    CREATE TABLE [#ExampleTemporalPositiveFindings]([Dummy] int NULL);
+    EXEC [monitor].[USP_TemporalAnalysis]
+         @DatabaseNames=N'[ExampleTemporalSourceÄ]',@ObjectNames=N'[ExampleTemporalTableÄ]',
+         @HistoryRowsWarn=1,@HistoryToCurrentRatioWarn=1,@MinHistoryMbForRatioWarn=0,
+         @NurProblematisch=0,@MaxZeilen=0,@ResultSetArt='TABLE',
+         @ResultTablesJson=N'{"findings":"#ExampleTemporalPositiveFindings"}',
+         @JsonErzeugen=1,@Json=@PositiveJson OUTPUT,@PrintMeldungen=0,
+         @StatusCodeOut=@PositiveStatus OUTPUT,@IsPartialOut=@PositivePartial OUTPUT,
+         @HighImpactConfirmed=1;
+    IF COALESCE(ISJSON(@PositiveJson),0)<>1 OR COALESCE(@PositiveStatus,'')<>'AVAILABLE'
+       OR COALESCE(CONVERT(int,@PositivePartial),-1)<>0
+       OR (SELECT COUNT_BIG(*) FROM OPENJSON(@PositiveJson,N'$.temporalTables'))<>1
+       OR (SELECT COUNT_BIG(*) FROM OPENJSON(@PositiveJson,N'$.findings'))<>2
+       OR (SELECT COUNT_BIG(*) FROM [#ExampleTemporalPositiveFindings])<>2
+       OR NOT EXISTS
+          (SELECT 1 FROM OPENJSON(@PositiveJson,N'$.sourceStatus') WITH
+             ([DatabaseName] sysname '$.DatabaseName',[SourceCode] varchar(64) '$.SourceCode',
+              [StatusCode] varchar(40) '$.StatusCode',[IsPartial] bit '$.IsPartial',[RowCount] bigint '$.RowCount')
+           WHERE [DatabaseName] COLLATE SQL_Latin1_General_CP1_CS_AS=N'ExampleTemporalSourceÄ'
+             AND [SourceCode]='TEMPORAL_CAPACITY' AND [StatusCode]='AVAILABLE'
+             AND [IsPartial]=0 AND [RowCount]=1)
+       OR NOT EXISTS
+          (SELECT 1 FROM OPENJSON(@PositiveJson,N'$.databaseStatus') WITH
+             ([DatabaseName] sysname '$.DatabaseName',[TemporalTableCount] bigint '$.TemporalTableCount',
+              [HistoryTableCount] bigint '$.HistoryTableCount',[SourceFailureCount] int '$.SourceFailureCount',
+              [IsPartial] bit '$.IsPartial')
+           WHERE [DatabaseName] COLLATE SQL_Latin1_General_CP1_CS_AS=N'ExampleTemporalSourceÄ'
+             AND [TemporalTableCount]=2 AND [HistoryTableCount]=2
+             AND [SourceFailureCount]=0 AND [IsPartial]=0)
+        THROW 56464,N'Temporal positive status, source or output counts failed.',1;
+    IF NOT EXISTS
+       (SELECT 1 FROM OPENJSON(@PositiveJson,N'$.temporalTables') WITH
+          ([DatabaseName] sysname '$.DatabaseName',[CurrentTableName] sysname '$.CurrentTableName',
+           [CurrentObjectId] int '$.CurrentObjectId',[HistoryObjectId] int '$.HistoryObjectId',
+           [CurrentRowsApprox] bigint '$.CurrentRowsApprox',[HistoryRowsApprox] bigint '$.HistoryRowsApprox',
+           [CurrentReservedMb] decimal(19,2) '$.CurrentReservedMb',
+           [CurrentUsedMb] decimal(19,2) '$.CurrentUsedMb',
+           [HistoryReservedMb] decimal(19,2) '$.HistoryReservedMb',
+           [HistoryUsedMb] decimal(19,2) '$.HistoryUsedMb',
+           [HistoryToCurrentRowRatio] decimal(19,4) '$.HistoryToCurrentRowRatio')
+        WHERE [DatabaseName] COLLATE SQL_Latin1_General_CP1_CS_AS=N'ExampleTemporalSourceÄ'
+          AND [CurrentTableName] COLLATE SQL_Latin1_General_CP1_CS_AS=N'ExampleTemporalTableÄ'
+          AND [CurrentObjectId]=@PositiveCurrentId AND [HistoryObjectId]=@PositiveHistoryId
+          AND [CurrentRowsApprox]=@NativeCurrentRows AND [HistoryRowsApprox]=@NativeHistoryRows
+          AND [CurrentReservedMb]=@NativeCurrentReservedMb AND [CurrentUsedMb]=@NativeCurrentUsedMb
+          AND [HistoryReservedMb]=@NativeHistoryReservedMb AND [HistoryUsedMb]=@NativeHistoryUsedMb
+          AND [HistoryToCurrentRowRatio]=@NativeRatio)
+        THROW 56465,N'Temporal positive native capacity or ratio parity failed.',1;
+    IF (SELECT COUNT_BIG(*) FROM [tempdb].[sys].[columns]
+        WHERE [object_id]=OBJECT_ID(N'tempdb..#ExampleTemporalPositiveFindings'))<>15
+       OR EXISTS
+          (SELECT 1 FROM OPENJSON(@PositiveJson,N'$.findings') WITH
+             ([DatabaseName] sysname '$.DatabaseName',[ObjectName] sysname '$.ObjectName',
+              [Severity] varchar(16) '$.Severity',[FindingCode] varchar(120) '$.FindingCode',
+              [MetricName] varchar(80) '$.MetricName',[MetricValue] decimal(38,4) '$.MetricValue',
+              [ThresholdValue] decimal(38,4) '$.ThresholdValue') [f]
+           WHERE [f].[DatabaseName] COLLATE SQL_Latin1_General_CP1_CS_AS<>N'ExampleTemporalSourceÄ'
+              OR [f].[ObjectName] COLLATE SQL_Latin1_General_CP1_CS_AS<>N'ExampleTemporalTableÄ'
+              OR [f].[Severity]<>'INFO'
+              OR [f].[DatabaseName] IS NULL OR [f].[ObjectName] IS NULL
+              OR [f].[Severity] IS NULL OR [f].[FindingCode] IS NULL
+              OR [f].[MetricName] IS NULL OR [f].[MetricValue] IS NULL
+              OR [f].[ThresholdValue] IS NULL
+              OR NOT
+                 (([f].[FindingCode]='LARGE_HISTORY_ROW_CONTEXT'
+                   AND [f].[MetricName]='HISTORY_ROWS_APPROX'
+                   AND [f].[MetricValue]=@NativeHistoryRows AND [f].[ThresholdValue]=1)
+                  OR
+                  ([f].[FindingCode]='HISTORY_TO_CURRENT_RATIO_CONTEXT'
+                   AND [f].[MetricName]='HISTORY_TO_CURRENT_ROW_RATIO'
+                   AND [f].[MetricValue]=@NativeRatio AND [f].[ThresholdValue]=1)))
+       OR (SELECT COUNT_BIG(DISTINCT [FindingCode]) FROM OPENJSON(@PositiveJson,N'$.findings')
+           WITH([FindingCode] varchar(120) '$.FindingCode'))<>2
+        THROW 56466,N'Temporal positive threshold findings failed.',1;
+    DELETE @Parity;
+    INSERT @Parity VALUES
+      ((SELECT * FROM [#ExampleTemporalPositiveFindings] FOR JSON PATH,INCLUDE_NULL_VALUES),
+       (SELECT * FROM OPENJSON(@PositiveJson,N'$.findings') WITH
+         ([FindingOrdinal] bigint '$.FindingOrdinal',[DatabaseName] sysname '$.DatabaseName',
+          [SchemaName] sysname '$.SchemaName',[ObjectName] sysname '$.ObjectName',
+          [HistorySchemaName] sysname '$.HistorySchemaName',[HistoryTableName] sysname '$.HistoryTableName',
+          [Severity] varchar(16) '$.Severity',[Confidence] varchar(16) '$.Confidence',
+          [FindingCode] varchar(120) '$.FindingCode',[MetricName] varchar(80) '$.MetricName',
+          [MetricValue] decimal(38,4) '$.MetricValue',[ThresholdValue] decimal(38,4) '$.ThresholdValue',
+          [Evidence] nvarchar(1000) '$.Evidence',[EvidenceLimit] nvarchar(1000) '$.EvidenceLimit',
+          [RecommendedNextCheck] nvarchar(1000) '$.RecommendedNextCheck')
+        FOR JSON PATH,INCLUDE_NULL_VALUES));
+    IF EXISTS
+       (SELECT [n].[RowJson] COLLATE SQL_Latin1_General_CP1_CS_AS,COUNT_BIG(*) FROM @Parity [p]
+        CROSS APPLY OPENJSON([p].[TableJson]) [r] CROSS APPLY
+        (SELECT [key],[type],[value] FROM OPENJSON([r].[value])
+         ORDER BY [key] COLLATE SQL_Latin1_General_CP1_CS_AS FOR JSON PATH,INCLUDE_NULL_VALUES) [n]([RowJson])
+        GROUP BY [n].[RowJson] COLLATE SQL_Latin1_General_CP1_CS_AS
+        EXCEPT
+        SELECT [n].[RowJson] COLLATE SQL_Latin1_General_CP1_CS_AS,COUNT_BIG(*) FROM @Parity [p]
+        CROSS APPLY OPENJSON([p].[ModuleJson]) [r] CROSS APPLY
+        (SELECT [key],[type],[value] FROM OPENJSON([r].[value])
+         ORDER BY [key] COLLATE SQL_Latin1_General_CP1_CS_AS FOR JSON PATH,INCLUDE_NULL_VALUES) [n]([RowJson])
+        GROUP BY [n].[RowJson] COLLATE SQL_Latin1_General_CP1_CS_AS)
+       OR EXISTS
+       (SELECT [n].[RowJson] COLLATE SQL_Latin1_General_CP1_CS_AS,COUNT_BIG(*) FROM @Parity [p]
+        CROSS APPLY OPENJSON([p].[ModuleJson]) [r] CROSS APPLY
+        (SELECT [key],[type],[value] FROM OPENJSON([r].[value])
+         ORDER BY [key] COLLATE SQL_Latin1_General_CP1_CS_AS FOR JSON PATH,INCLUDE_NULL_VALUES) [n]([RowJson])
+        GROUP BY [n].[RowJson] COLLATE SQL_Latin1_General_CP1_CS_AS
+        EXCEPT
+        SELECT [n].[RowJson] COLLATE SQL_Latin1_General_CP1_CS_AS,COUNT_BIG(*) FROM @Parity [p]
+        CROSS APPLY OPENJSON([p].[TableJson]) [r] CROSS APPLY
+        (SELECT [key],[type],[value] FROM OPENJSON([r].[value])
+         ORDER BY [key] COLLATE SQL_Latin1_General_CP1_CS_AS FOR JSON PATH,INCLUDE_NULL_VALUES) [n]([RowJson])
+        GROUP BY [n].[RowJson] COLLATE SQL_Latin1_General_CP1_CS_AS)
+        THROW 56467,N'Temporal positive findings TABLE JSON parity failed.',1;
+    DECLARE @ActualDb int=DB_ID(),@ActualLogin int=SUSER_ID(),
+            @ActualTran int=@@TRANCOUNT,@ActualLock int=@@LOCK_TIMEOUT,
+            @ActualAbort int=CASE WHEN (@@OPTIONS & 16384)<>0 THEN 1 ELSE 0 END,
+            @ActualXact int=NULL;
+    SELECT @ActualXact=XACT_STATE();
+    IF COALESCE(@ActualDb,-1)<>COALESCE(@PositiveDbId,-1)
+       OR COALESCE(@ActualLogin,-1)<>COALESCE(@PositiveLoginId,-1)
+       OR @ActualTran<>@PositiveTran OR @ActualLock<>@PositiveLock
+       OR @ActualAbort<>@PositiveAbort OR @ActualXact<>@PositiveXact
+    BEGIN
+        RAISERROR(N'TEMPORAL_POSITIVE_CALLER originalDb=%d actualDb=%d originalLogin=%d actualLogin=%d originalTran=%d actualTran=%d originalLock=%d actualLock=%d originalAbort=%d actualAbort=%d originalXact=%d actualXact=%d',
+                  10,1,@PositiveDbId,@ActualDb,@PositiveLoginId,@ActualLogin,
+                  @PositiveTran,@ActualTran,@PositiveLock,@ActualLock,
+                  @PositiveAbort,@ActualAbort,@PositiveXact,@ActualXact) WITH NOWAIT;
+        THROW 56468,N'Temporal positive caller state changed.',1;
     END;
     SET @Sql=N'SET LOCK_TIMEOUT '+CONVERT(nvarchar(20),@OriginalLockTimeout)+N';'; EXEC(@Sql);
     IF DB_ID(N'ExampleTemporalSourceÄ')=@OwnedDatabaseId
