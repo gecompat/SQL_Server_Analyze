@@ -1,7 +1,7 @@
 USE [DeineDatenbank];
 GO
-/* Prüft eigene leere Broker-Queues, native Metadaten und gemeinsame Findingsexports.
-Nachrichten, Dialoge und Aktivierungsausführung sind nicht Bestandteil der Fixture. */
+/* Prüft eigene Broker-Queues, native Metadaten, Findingsexports und einen lokalen Initiator-Endpoint.
+Nachrichtenversand, Empfang und Aktivierungsausführung sind nicht Bestandteil der Fixture. */
 SET NOCOUNT ON;
 IF DB_ID(N'ExampleBrokerSourceÄ') IS NOT NULL THROW 56100,N'Broker fixture already exists.',1;
 DECLARE @OwnedDatabaseId int=NULL,@OriginalLockTimeout int=@@LOCK_TIMEOUT,
@@ -211,6 +211,178 @@ BEGIN TRY
         DROP TABLE [#ExampleBrokerExport];
         SET @Case+=1;
     END;
+    /* Positiver, ausschließlich lokaler Initiator-Endpoint nach den neun Leerfällen. */
+    DECLARE @DialogOriginalDb int=DB_ID(),@DialogOriginalLogin int=SUSER_ID(),
+            @DialogOriginalTran int=@@TRANCOUNT,@DialogOriginalLock int=@@LOCK_TIMEOUT,
+            @DialogOriginalAbort int=CASE WHEN (@@OPTIONS & 16384)<>0 THEN 1 ELSE 0 END,
+            @DialogOriginalXact int=NULL;
+    SELECT @DialogOriginalXact=XACT_STATE();
+    DECLARE @DialogHandle uniqueidentifier=NULL,@DialogBound bit=0,
+            @InitiatorServiceId int=NULL,@PositiveJson nvarchar(max)=NULL,
+            @PositiveStatus varchar(40)=NULL,@PositivePartial bit=NULL,
+            @NativeState char(2)=NULL,@NativeDescription nvarchar(60)=NULL,
+            @NativeInitiator bit=NULL,@NativeSystem bit=NULL,
+            @NativeLifetime datetime=NULL,@NativeSecurity datetime=NULL;
+    SELECT @InitiatorServiceId=[service_id]
+    FROM [ExampleBrokerSourceÄ].[sys].[services]
+    WHERE [name] COLLATE SQL_Latin1_General_CP1_CS_AS=N'ExampleBrokerServiceÜ';
+    IF DB_ID(N'ExampleBrokerSourceÄ')<>@OwnedDatabaseId OR @OwnedDatabaseId IS NULL
+       OR @InitiatorServiceId IS NULL
+       OR NOT EXISTS
+          (SELECT 1 FROM [ExampleBrokerSourceÄ].[sys].[services] [s]
+           WHERE [s].[service_id]=@InitiatorServiceId
+             AND [s].[service_queue_id]=OBJECT_ID(N'ExampleBrokerSourceÄ.dbo.ExampleBrokerQueueÜ'))
+        THROW 56130,N'Broker own initiator binding failed.',1;
+    BEGIN TRY
+        EXEC [sys].[sp_executesql]
+            N'USE [ExampleBrokerSourceÄ];
+              BEGIN DIALOG CONVERSATION @pHandle
+                FROM SERVICE [ExampleBrokerServiceÜ]
+                TO SERVICE N''ExampleBrokerServiceÄ'', ''CURRENT DATABASE''
+                ON CONTRACT [DEFAULT] WITH ENCRYPTION=OFF;',
+            N'@pHandle uniqueidentifier OUTPUT',@pHandle=@DialogHandle OUTPUT;
+        IF @DialogHandle IS NULL OR DB_ID(N'ExampleBrokerSourceÄ')<>@OwnedDatabaseId
+           OR (SELECT COUNT_BIG(*) FROM [ExampleBrokerSourceÄ].[sys].[conversation_endpoints])<>1
+           OR (SELECT COUNT_BIG(*) FROM [ExampleBrokerSourceÄ].[sys].[conversation_endpoints]
+               WHERE [conversation_handle]=@DialogHandle AND [service_id]=@InitiatorServiceId
+                 AND [is_initiator]=1)<>1
+            THROW 56131,N'Broker own dialog endpoint binding failed.',1;
+        SET @DialogBound=1;
+        SELECT @NativeState=[state],@NativeDescription=[state_desc],
+               @NativeInitiator=CONVERT(bit,[is_initiator]),@NativeSystem=[is_system],
+               @NativeLifetime=[lifetime],@NativeSecurity=[security_timestamp]
+        FROM [ExampleBrokerSourceÄ].[sys].[conversation_endpoints]
+        WHERE [conversation_handle]=@DialogHandle AND [service_id]=@InitiatorServiceId;
+        CREATE TABLE [#ExampleBrokerPositiveFindings]([Dummy] int NULL);
+        EXEC [monitor].[USP_ServiceBrokerAnalysis]
+            @DatabaseNames=N'[ExampleBrokerSourceÄ]',@HighImpactConfirmed=1,
+            @NurProblematisch=0,@ConversationRowsWarn=1000,@MaxZeilen=0,
+            @ResultSetArt='TABLE',@ResultTablesJson=N'{"findings":"#ExampleBrokerPositiveFindings"}',
+            @JsonErzeugen=1,@Json=@PositiveJson OUTPUT,@PrintMeldungen=0,
+            @StatusCodeOut=@PositiveStatus OUTPUT,@IsPartialOut=@PositivePartial OUTPUT;
+        IF COALESCE(ISJSON(@PositiveJson),0)<>1
+           OR COALESCE(@PositiveStatus,'')<>'AVAILABLE_WITH_FINDING'
+           OR COALESCE(CONVERT(int,@PositivePartial),-1)<>0
+           OR (SELECT COUNT_BIG(*) FROM OPENJSON(@PositiveJson,N'$.conversationStates'))<>1
+           OR (SELECT COUNT_BIG(*) FROM OPENJSON(@PositiveJson,N'$.sourceStatus'))<>7
+           OR NOT EXISTS
+              (SELECT 1 FROM OPENJSON(@PositiveJson,N'$.sourceStatus') WITH
+                 ([DatabaseName] sysname '$.DatabaseName',[SourceCode] varchar(64) '$.SourceCode',
+                  [StatusCode] varchar(40) '$.StatusCode',[IsPartial] bit '$.IsPartial',
+                  [RowCount] bigint '$.RowCount')
+               WHERE [DatabaseName] COLLATE SQL_Latin1_General_CP1_CS_AS=N'ExampleBrokerSourceÄ'
+                 AND [SourceCode]='BROKER_CONVERSATION' AND [StatusCode]='AVAILABLE'
+                 AND [IsPartial]=0 AND [RowCount]=1)
+           OR NOT EXISTS
+              (SELECT 1 FROM OPENJSON(@PositiveJson,N'$.databaseStatus') WITH
+                 ([DatabaseName] sysname '$.DatabaseName',[ConversationEndpointCount] bigint '$.ConversationEndpointCount',
+                  [SourceFailureCount] int '$.SourceFailureCount',[IsPartial] bit '$.IsPartial')
+               WHERE [DatabaseName] COLLATE SQL_Latin1_General_CP1_CS_AS=N'ExampleBrokerSourceÄ'
+                 AND [ConversationEndpointCount]=1 AND [SourceFailureCount]=0 AND [IsPartial]=0)
+            THROW 56132,N'Broker positive dialog status or counts failed.',1;
+        IF (SELECT COUNT_BIG(*) FROM OPENJSON(@PositiveJson,N'$.conversationStates[0]')) NOT IN(9,10)
+           OR EXISTS
+              (SELECT 1 FROM OPENJSON(@PositiveJson,N'$.conversationStates[0]')
+               WHERE [key] NOT IN(N'DatabaseName',N'StateCode',N'StateDescription',N'IsInitiator',N'IsSystem',
+                                  N'EndpointCount',N'ExpiredLifetimeCount',N'EarliestLifetimeUtc',
+                                  N'EarliestSecurityTimestampUtc',N'EvidenceLimit'))
+           OR NOT EXISTS
+              (SELECT 1 FROM OPENJSON(@PositiveJson,N'$.conversationStates') WITH
+                 ([DatabaseName] sysname '$.DatabaseName',[StateCode] char(2) '$.StateCode',
+                  [StateDescription] nvarchar(60) '$.StateDescription',[IsInitiator] bit '$.IsInitiator',
+                  [IsSystem] bit '$.IsSystem',[EndpointCount] bigint '$.EndpointCount',
+                  [ExpiredLifetimeCount] bigint '$.ExpiredLifetimeCount',
+                  [EarliestLifetimeUtc] datetime '$.EarliestLifetimeUtc',
+                  [EarliestSecurityTimestampUtc] datetime '$.EarliestSecurityTimestampUtc',
+                  [EvidenceLimit] nvarchar(1000) '$.EvidenceLimit')
+               WHERE [DatabaseName] COLLATE SQL_Latin1_General_CP1_CS_AS=N'ExampleBrokerSourceÄ'
+                 AND [StateCode] COLLATE SQL_Latin1_General_CP1_CS_AS=@NativeState COLLATE SQL_Latin1_General_CP1_CS_AS
+                 AND [StateDescription] COLLATE SQL_Latin1_General_CP1_CS_AS=@NativeDescription COLLATE SQL_Latin1_General_CP1_CS_AS
+                 AND [IsInitiator]=@NativeInitiator AND [IsSystem]=@NativeSystem
+                 AND [EndpointCount]=1 AND [ExpiredLifetimeCount]=0
+                 AND [EarliestLifetimeUtc]=@NativeLifetime
+                 AND ([EarliestSecurityTimestampUtc]=@NativeSecurity
+                      OR ([EarliestSecurityTimestampUtc] IS NULL AND @NativeSecurity IS NULL))
+                 AND NULLIF(LTRIM(RTRIM([EvidenceLimit])),N'') IS NOT NULL)
+            THROW 56133,N'Broker positive native conversation parity failed.',1;
+        DELETE @Parity;
+        INSERT @Parity VALUES
+          ((SELECT * FROM [#ExampleBrokerPositiveFindings] FOR JSON PATH,INCLUDE_NULL_VALUES),
+           (SELECT * FROM OPENJSON(@PositiveJson,N'$.findings') WITH
+             ([FindingOrdinal] bigint '$.FindingOrdinal',[DatabaseName] sysname '$.DatabaseName',
+              [SchemaName] sysname '$.SchemaName',[ObjectName] sysname '$.ObjectName',
+              [Severity] varchar(16) '$.Severity',[Confidence] varchar(16) '$.Confidence',
+              [FindingCode] varchar(120) '$.FindingCode',[MetricName] varchar(80) '$.MetricName',
+              [MetricValue] decimal(38,4) '$.MetricValue',[ThresholdValue] decimal(38,4) '$.ThresholdValue',
+              [Evidence] nvarchar(1000) '$.Evidence',[EvidenceLimit] nvarchar(1000) '$.EvidenceLimit',
+              [RecommendedNextCheck] nvarchar(1000) '$.RecommendedNextCheck')
+            FOR JSON PATH,INCLUDE_NULL_VALUES));
+        IF (SELECT COUNT_BIG(*) FROM [#ExampleBrokerPositiveFindings])<>(SELECT COUNT_BIG(*) FROM OPENJSON(@PositiveJson,N'$.findings'))
+           OR EXISTS
+              (SELECT [n].[RowJson] COLLATE SQL_Latin1_General_CP1_CS_AS,COUNT_BIG(*) FROM @Parity [p]
+               CROSS APPLY OPENJSON([p].[TableJson]) [r] CROSS APPLY
+               (SELECT [key],[type],[value] FROM OPENJSON([r].[value])
+                ORDER BY [key] COLLATE SQL_Latin1_General_CP1_CS_AS FOR JSON PATH,INCLUDE_NULL_VALUES) [n]([RowJson])
+               GROUP BY [n].[RowJson] COLLATE SQL_Latin1_General_CP1_CS_AS
+               EXCEPT
+               SELECT [n].[RowJson] COLLATE SQL_Latin1_General_CP1_CS_AS,COUNT_BIG(*) FROM @Parity [p]
+               CROSS APPLY OPENJSON([p].[ModuleJson]) [r] CROSS APPLY
+               (SELECT [key],[type],[value] FROM OPENJSON([r].[value])
+                ORDER BY [key] COLLATE SQL_Latin1_General_CP1_CS_AS FOR JSON PATH,INCLUDE_NULL_VALUES) [n]([RowJson])
+               GROUP BY [n].[RowJson] COLLATE SQL_Latin1_General_CP1_CS_AS)
+           OR EXISTS
+              (SELECT [n].[RowJson] COLLATE SQL_Latin1_General_CP1_CS_AS,COUNT_BIG(*) FROM @Parity [p]
+               CROSS APPLY OPENJSON([p].[ModuleJson]) [r] CROSS APPLY
+               (SELECT [key],[type],[value] FROM OPENJSON([r].[value])
+                ORDER BY [key] COLLATE SQL_Latin1_General_CP1_CS_AS FOR JSON PATH,INCLUDE_NULL_VALUES) [n]([RowJson])
+               GROUP BY [n].[RowJson] COLLATE SQL_Latin1_General_CP1_CS_AS
+               EXCEPT
+               SELECT [n].[RowJson] COLLATE SQL_Latin1_General_CP1_CS_AS,COUNT_BIG(*) FROM @Parity [p]
+               CROSS APPLY OPENJSON([p].[TableJson]) [r] CROSS APPLY
+               (SELECT [key],[type],[value] FROM OPENJSON([r].[value])
+                ORDER BY [key] COLLATE SQL_Latin1_General_CP1_CS_AS FOR JSON PATH,INCLUDE_NULL_VALUES) [n]([RowJson])
+               GROUP BY [n].[RowJson] COLLATE SQL_Latin1_General_CP1_CS_AS)
+            THROW 56134,N'Broker positive findings TABLE JSON parity failed.',1;
+        IF DB_ID(N'ExampleBrokerSourceÄ')<>@OwnedDatabaseId
+           OR (SELECT COUNT_BIG(*) FROM [ExampleBrokerSourceÄ].[sys].[conversation_endpoints]
+               WHERE [conversation_handle]=@DialogHandle AND [service_id]=@InitiatorServiceId
+                 AND [is_initiator]=1)<>1
+            THROW 56135,N'Broker own dialog cleanup binding lost.',1;
+        EXEC [sys].[sp_executesql] N'USE [ExampleBrokerSourceÄ]; END CONVERSATION @pHandle WITH CLEANUP;',
+             N'@pHandle uniqueidentifier',@pHandle=@DialogHandle;
+        SET @DialogHandle=NULL;
+        DECLARE @DialogActualDb int=DB_ID(),@DialogActualLogin int=SUSER_ID(),
+                @DialogActualTran int=@@TRANCOUNT,@DialogActualLock int=@@LOCK_TIMEOUT,
+                @DialogActualAbort int=CASE WHEN (@@OPTIONS & 16384)<>0 THEN 1 ELSE 0 END,
+                @DialogActualXact int=NULL;
+        SELECT @DialogActualXact=XACT_STATE();
+        IF COALESCE(@DialogActualDb,-1)<>COALESCE(@DialogOriginalDb,-1)
+           OR COALESCE(@DialogActualLogin,-1)<>COALESCE(@DialogOriginalLogin,-1)
+           OR @DialogActualTran<>@DialogOriginalTran OR @DialogActualLock<>@DialogOriginalLock
+           OR @DialogActualAbort<>@DialogOriginalAbort OR @DialogActualXact<>@DialogOriginalXact
+        BEGIN
+            RAISERROR(N'BROKER_DIALOG_CALLER originalDb=%d actualDb=%d originalLogin=%d actualLogin=%d originalTran=%d actualTran=%d originalLock=%d actualLock=%d originalAbort=%d actualAbort=%d originalXact=%d actualXact=%d',
+                      10,1,@DialogOriginalDb,@DialogActualDb,@DialogOriginalLogin,@DialogActualLogin,
+                      @DialogOriginalTran,@DialogActualTran,@DialogOriginalLock,@DialogActualLock,
+                      @DialogOriginalAbort,@DialogActualAbort,@DialogOriginalXact,@DialogActualXact) WITH NOWAIT;
+            THROW 56136,N'Broker positive dialog caller state changed.',1;
+        END;
+    END TRY
+    BEGIN CATCH
+        BEGIN TRY
+            IF @DialogBound=1 AND @DialogHandle IS NOT NULL
+               AND DB_ID(N'ExampleBrokerSourceÄ')=@OwnedDatabaseId
+               AND (SELECT COUNT_BIG(*) FROM [ExampleBrokerSourceÄ].[sys].[conversation_endpoints]
+                    WHERE [conversation_handle]=@DialogHandle AND [service_id]=@InitiatorServiceId
+                      AND [is_initiator]=1)=1
+                EXEC [sys].[sp_executesql] N'USE [ExampleBrokerSourceÄ]; END CONVERSATION @pHandle WITH CLEANUP;',
+                     N'@pHandle uniqueidentifier',@pHandle=@DialogHandle;
+        END TRY
+        BEGIN CATCH
+            /* Der ursprüngliche Fixturefehler bleibt maßgeblich. */
+        END CATCH;
+        THROW;
+    END CATCH;
     SET @Sql=N'SET LOCK_TIMEOUT '+CONVERT(nvarchar(20),@OriginalLockTimeout)+N';'; EXEC(@Sql);
     IF DB_ID(N'ExampleBrokerSourceÄ')=@OwnedDatabaseId
     BEGIN
