@@ -74975,8 +74975,6 @@ GO
 -- END SOURCE: Code/10_SSIS/034_InternalSsisScopePathMatch.sql
 
 -- BEGIN SOURCE: Code/10_SSIS/036_InternalSsisPipelineCorrelation.sql
-USE [DeineDatenbank];
-GO
 /*
 Objekt: [monitor].[InternalSsisPipelineCorrelation].
 Typ: Interne Stored Procedure.
@@ -76622,8 +76620,6 @@ GO
 -- END SOURCE: Code/10_SSIS/040_USP_SsisPackageModelAnalysis.sql
 
 -- BEGIN SOURCE: Code/10_SSIS/045_InternalSsisExecutionMetrics.sql
-USE [DeineDatenbank];
-GO
 /*
 Objekt: monitor.InternalSsisExecutionMetrics.
 Typ: Interne Stored Procedure.
@@ -76993,8 +76989,6 @@ GO
 -- END SOURCE: Code/10_SSIS/050_USP_SsisExecutionComparison.sql
 
 -- BEGIN SOURCE: Code/10_SSIS/060_USP_SsisExecutionBaseline.sql
-USE [DeineDatenbank];
-GO
 /* monitor.USP_SsisExecutionBaseline; Version 1.0.0; Stand 2026-10-26.
    Explizite, unabhängig gebundene Kohorte mit höchstens 20 Basisläufen und
    einem anderen Kandidaten desselben exakten Exports. Jede Captureanalyse
