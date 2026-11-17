@@ -49,7 +49,7 @@ commitbezogenen Laufzeitnachweis.
 
 | Merkmal | Stand |
 |---|---|
-| Frameworkversion im vorbereiteten Installationskatalog | `1.2.0` |
+| Frameworkversion im Installationskatalog | `1.2.0` |
 | ContractVersion im Installationskatalog | `1.24` |
 | Deklariertes ReleaseDate im vorbereiteten Installationskatalog | 17. November 2026 |
 | Mindestversion | SQL Server 2019 |
