@@ -303,7 +303,7 @@ BEGIN TRY
                  AND [EarliestLifetimeUtc]=@NativeLifetime
                  AND ([EarliestSecurityTimestampUtc]=@NativeSecurity
                       OR ([EarliestSecurityTimestampUtc] IS NULL AND @NativeSecurity IS NULL))
-                 AND NULLIF(LTRIM(RTRIM([EvidenceLimit])),N'') IS NOT NULL))
+                 AND NULLIF(LTRIM(RTRIM([EvidenceLimit])),N'') IS NOT NULL)
             THROW 56133,N'Broker positive native conversation parity failed.',1;
         DELETE @Parity;
         INSERT @Parity VALUES
