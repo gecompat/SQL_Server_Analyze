@@ -24,7 +24,7 @@ $repositoryPrefix = $RepositoryRoot.TrimEnd([char[]]@(
 )) + [IO.Path]::DirectorySeparatorChar
 $includePattern = '(?m)^\s*:r\s+(.+?)\s*$'
 $sqlCmdPattern = '(?im)^\s*:(?:ON\s+ERROR|r\s+).*$'
-$leadingFrameworkContextPattern = '^\uFEFF?USE \[DeineDatenbank\];\r?\nGO\r?\n\r?\n'
+$leadingFrameworkContextPattern = '^\uFEFF?USE \[DeineDatenbank\];\r?\nGO\r?\n(?:\r?\n)?'
 
 function Get-InstallerDefinition {
     param(
