@@ -1,7 +1,7 @@
 USE [DeineDatenbank];
 GO
 /* Prüft eigene Broker-Queues, native Metadaten, Findingsexports und einen lokalen Initiator-Endpoint.
-Nachrichtenversand, Empfang und Aktivierungsausführung sind nicht Bestandteil der Fixture. */
+Ein zusätzlicher leerer SEND prüft ausschließlich uncommittete eigene Transmission-Metadaten; ROLLBACK entfernt den Dialog. Empfang und Aktivierungsausführung sind nicht Bestandteil der Fixture. */
 SET NOCOUNT ON;
 IF DB_ID(N'ExampleBrokerSourceÄ') IS NOT NULL THROW 56100,N'Broker fixture already exists.',1;
 DECLARE @OwnedDatabaseId int=NULL,@OriginalLockTimeout int=@@LOCK_TIMEOUT,
@@ -381,6 +381,289 @@ BEGIN TRY
         BEGIN CATCH
             /* Der ursprüngliche Fixturefehler bleibt maßgeblich. */
         END CATCH;
+        THROW;
+    END CATCH;
+    /* Ein eigener, nicht persistierter SEND belegt nur die Metadatenaufnahme innerhalb derselben Transaktion. */
+    DECLARE @SentEntryXact int=NULL;
+    SET @SentEntryXact=XACT_STATE();
+    IF @@TRANCOUNT<>0 OR (@@OPTIONS & 2)<>0 OR @SentEntryXact<>0
+        THROW 56139,N'Broker sent fixture requires explicit transaction mode and no ambient transaction.',1;
+    IF OBJECT_ID(N'tempdb..#ExampleBrokerSentFindings') IS NOT NULL
+        THROW 56140,N'Broker sent findings target already exists.',1;
+    DECLARE @SentTempMade bit=0,@SentTempId int=NULL;
+    BEGIN TRY
+        CREATE TABLE [#ExampleBrokerSentFindings]([Dummy] int NULL);
+        SET @SentTempMade=1;
+        SET @SentTempId=OBJECT_ID(N'tempdb..#ExampleBrokerSentFindings');
+        IF @SentTempId IS NULL
+            THROW 56154,N'Broker sent findings target ownership binding failed.',1;
+    DECLARE @SentOriginalDb int=DB_ID(),@SentOriginalLogin int=SUSER_ID(),
+            @SentOriginalTran int=@@TRANCOUNT,@SentOriginalLock int=@@LOCK_TIMEOUT,
+            @SentOriginalAbort int=CASE WHEN (@@OPTIONS & 16384)<>0 THEN 1 ELSE 0 END,
+            @SentOriginalXact int=NULL,@SentOwnTran bit=0,
+            @SentHandle uniqueidentifier=NULL,@SentConversationId uniqueidentifier=NULL,
+            @SentInitiatorId int=NULL,@SentTargetId int=NULL,@SentTargetQueueId int=NULL,
+            @SentBrokerGuid uniqueidentifier=NULL,@SentTxHandle uniqueidentifier=NULL,
+            @SentFrom nvarchar(256)=NULL,@SentTo nvarchar(256)=NULL,
+            @SentBroker nvarchar(128)=NULL,@SentContract nvarchar(256)=NULL,
+            @SentType nvarchar(256)=NULL,@SentStatus nvarchar(4000)=NULL,
+            @SentEnqueue datetime=NULL,@SentError bit=NULL,@SentEnd bit=NULL,
+            @SentJson nvarchar(max)=NULL,@SentModuleStatus varchar(40)=NULL,
+            @SentPartial bit=NULL,@SentCallStart datetime2(7)=NULL,@SentCallEnd datetime2(7)=NULL,
+            @SentAfterStatus nvarchar(4000)=NULL,@SentAfterEnqueue datetime=NULL;
+    SELECT @SentOriginalXact=XACT_STATE();
+    IF @SentOriginalTran<>0 OR @SentOriginalXact<>0 OR @@TRANCOUNT<>0
+        THROW 56141,N'Broker sent fixture requires no ambient transaction.',1;
+    SELECT @SentBrokerGuid=[service_broker_guid]
+    FROM [sys].[databases] WHERE [database_id]=@OwnedDatabaseId;
+    SELECT @SentInitiatorId=[service_id]
+    FROM [ExampleBrokerSourceÄ].[sys].[services]
+    WHERE [name] COLLATE SQL_Latin1_General_CP1_CS_AS=N'ExampleBrokerServiceÜ';
+    SELECT @SentTargetId=[service_id],@SentTargetQueueId=[service_queue_id]
+    FROM [ExampleBrokerSourceÄ].[sys].[services]
+    WHERE [name] COLLATE SQL_Latin1_General_CP1_CS_AS=N'ExampleBrokerServiceÄ';
+    IF @OwnedDatabaseId IS NULL OR DB_ID(N'ExampleBrokerSourceÄ')<>@OwnedDatabaseId
+       OR @SentBrokerGuid IS NULL OR @SentInitiatorId IS NULL
+       OR @SentTargetId IS NULL OR @SentTargetQueueId IS NULL
+       OR @SentInitiatorId=@SentTargetId
+       OR NOT EXISTS
+          (SELECT 1 FROM [ExampleBrokerSourceÄ].[sys].[service_queues]
+           WHERE [object_id]=@SentTargetQueueId
+             AND [name] COLLATE SQL_Latin1_General_CP1_CS_AS=N'ExampleBrokerQueueÄ'
+             AND [is_receive_enabled]=0)
+       OR (SELECT COUNT_BIG(*) FROM [ExampleBrokerSourceÄ].[sys].[transmission_queue])<>0
+       OR (SELECT COUNT_BIG(*) FROM [ExampleBrokerSourceÄ].[sys].[conversation_endpoints])<>0
+        THROW 56142,N'Broker sent fixture ownership precondition failed.',1;
+    BEGIN TRY
+        BEGIN TRANSACTION;
+        SET @SentOwnTran=1;
+        EXEC [sys].[sp_executesql]
+             N'USE [ExampleBrokerSourceÄ];
+               BEGIN DIALOG CONVERSATION @pHandle
+                 FROM SERVICE [ExampleBrokerServiceÜ]
+                 TO SERVICE N''ExampleBrokerServiceÄ'', ''CURRENT DATABASE''
+                 ON CONTRACT [DEFAULT] WITH ENCRYPTION=OFF;
+               SEND ON CONVERSATION @pHandle;',
+             N'@pHandle uniqueidentifier OUTPUT',@pHandle=@SentHandle OUTPUT;
+        SELECT @SentConversationId=[conversation_id]
+        FROM [ExampleBrokerSourceÄ].[sys].[conversation_endpoints]
+        WHERE [conversation_handle]=@SentHandle AND [service_id]=@SentInitiatorId
+          AND [is_initiator]=1;
+        DECLARE @SentAfterSendXact int=NULL;
+        SELECT @SentAfterSendXact=XACT_STATE();
+        IF @SentHandle IS NULL OR @SentConversationId IS NULL
+           OR @@TRANCOUNT<>1 OR @SentAfterSendXact<>1
+           OR DB_ID(N'ExampleBrokerSourceÄ')<>@OwnedDatabaseId
+           OR (SELECT COUNT_BIG(*) FROM [ExampleBrokerSourceÄ].[sys].[conversation_endpoints]
+               WHERE [conversation_id]=@SentConversationId
+                 AND [service_id] IN(@SentInitiatorId,@SentTargetId))<1
+           OR (SELECT COUNT_BIG(*) FROM [ExampleBrokerSourceÄ].[sys].[transmission_queue])<>1
+            THROW 56143,N'Broker own uncommitted transmission row is not observable.',1;
+        SELECT @SentTxHandle=[conversation_handle],@SentFrom=[from_service_name],
+               @SentTo=[to_service_name],@SentBroker=[to_broker_instance],
+               @SentContract=[service_contract_name],@SentType=[message_type_name],
+               @SentStatus=NULLIF([transmission_status],N''),
+               @SentEnqueue=[enqueue_time],@SentError=[is_conversation_error],
+               @SentEnd=[is_end_of_dialog]
+        FROM [ExampleBrokerSourceÄ].[sys].[transmission_queue];
+        IF @SentTxHandle IS NULL OR @SentEnqueue IS NULL
+           OR @SentFrom IS NULL OR @SentTo IS NULL OR @SentError IS NULL OR @SentEnd IS NULL
+           OR @SentFrom COLLATE SQL_Latin1_General_CP1_CS_AS<>N'ExampleBrokerServiceÜ'
+           OR @SentTo COLLATE SQL_Latin1_General_CP1_CS_AS<>N'ExampleBrokerServiceÄ'
+           OR @SentContract IS NULL OR @SentType IS NULL
+           OR @SentError<>0 OR @SentEnd<>0
+           OR (@SentBroker IS NOT NULL
+               AND @SentBroker COLLATE SQL_Latin1_General_CP1_CS_AS
+                   <>CONVERT(nvarchar(128),@SentBrokerGuid) COLLATE SQL_Latin1_General_CP1_CS_AS)
+           OR NOT EXISTS
+              (SELECT 1 FROM [ExampleBrokerSourceÄ].[sys].[conversation_endpoints]
+               WHERE [conversation_handle]=@SentTxHandle
+                 AND [conversation_id]=@SentConversationId
+                 AND [service_id] IN(@SentInitiatorId,@SentTargetId))
+            THROW 56144,N'Broker uncommitted transmission row lacks own dialog binding.',1;
+        SET @SentCallStart=SYSUTCDATETIME();
+        EXEC [monitor].[USP_ServiceBrokerAnalysis]
+             @DatabaseNames=N'[ExampleBrokerSourceÄ]',@HighImpactConfirmed=1,
+             @NurProblematisch=0,@TransmissionRowsWarn=1,@MaxZeilen=0,
+             @ResultSetArt='TABLE',@ResultTablesJson=N'{"findings":"#ExampleBrokerSentFindings"}',
+             @JsonErzeugen=1,@Json=@SentJson OUTPUT,@PrintMeldungen=0,
+             @StatusCodeOut=@SentModuleStatus OUTPUT,@IsPartialOut=@SentPartial OUTPUT;
+        SET @SentCallEnd=SYSUTCDATETIME();
+        DECLARE @SentInsideXact int=NULL;
+        SELECT @SentInsideXact=XACT_STATE();
+        IF @@TRANCOUNT<>1 OR @SentInsideXact<>1
+           OR DB_ID()<>@SentOriginalDb OR SUSER_ID()<>@SentOriginalLogin
+           OR @@LOCK_TIMEOUT<>@SentOriginalLock
+           OR CASE WHEN (@@OPTIONS & 16384)<>0 THEN 1 ELSE 0 END<>@SentOriginalAbort
+           OR COALESCE(ISJSON(@SentJson),0)<>1
+           OR COALESCE(@SentModuleStatus,'')<>'AVAILABLE_WITH_FINDING'
+           OR COALESCE(CONVERT(int,@SentPartial),-1)<>0
+            THROW 56145,N'Broker uncommitted source or caller state failed.',1;
+        IF DB_ID(N'ExampleBrokerSourceÄ')<>@OwnedDatabaseId
+           OR (SELECT COUNT_BIG(*) FROM [ExampleBrokerSourceÄ].[sys].[transmission_queue])<>1
+           OR (SELECT COUNT_BIG(*) FROM [ExampleBrokerSourceÄ].[sys].[conversation_endpoints]
+               WHERE [conversation_handle]=@SentHandle
+                 AND [conversation_id]=@SentConversationId
+                 AND [service_id]=@SentInitiatorId AND [is_initiator]=1)<>1
+            THROW 56146,N'Broker uncommitted own dialog changed during source call.',1;
+        SELECT @SentAfterStatus=NULLIF([transmission_status],N''),
+               @SentAfterEnqueue=[enqueue_time]
+        FROM [ExampleBrokerSourceÄ].[sys].[transmission_queue]
+        WHERE [conversation_handle]=@SentTxHandle;
+        IF @SentAfterEnqueue IS NULL OR @SentAfterEnqueue<>@SentEnqueue
+           OR (@SentAfterStatus IS NULL AND @SentStatus IS NOT NULL)
+           OR (@SentAfterStatus IS NOT NULL AND @SentStatus IS NULL)
+           OR (@SentAfterStatus IS NOT NULL AND @SentStatus IS NOT NULL
+               AND (@SentAfterStatus COLLATE SQL_Latin1_General_CP1_CS_AS<>@SentStatus COLLATE SQL_Latin1_General_CP1_CS_AS
+                    OR DATALENGTH(@SentAfterStatus)<>DATALENGTH(@SentStatus)))
+            THROW 56147,N'Broker uncommitted transmission metadata changed during source call.',1;
+        IF (SELECT COUNT_BIG(*) FROM OPENJSON(@SentJson,N'$.transmissionGroups'))<>1
+           OR NOT EXISTS
+              (SELECT 1 FROM OPENJSON(@SentJson,N'$.sourceStatus') WITH
+                 ([DatabaseName] sysname '$.DatabaseName',[SourceCode] varchar(64) '$.SourceCode',
+                  [StatusCode] varchar(40) '$.StatusCode',[IsPartial] bit '$.IsPartial',
+                  [RowCount] bigint '$.RowCount')
+               WHERE [DatabaseName] COLLATE SQL_Latin1_General_CP1_CS_AS=N'ExampleBrokerSourceÄ'
+                 AND [SourceCode]='BROKER_TRANSMISSION' AND [StatusCode]='AVAILABLE'
+                 AND [IsPartial]=0 AND [RowCount]=1)
+           OR NOT EXISTS
+              (SELECT 1 FROM OPENJSON(@SentJson,N'$.databaseStatus') WITH
+                 ([DatabaseName] sysname '$.DatabaseName',
+                  [TransmissionMessageCount] bigint '$.TransmissionMessageCount',
+                  [SourceFailureCount] int '$.SourceFailureCount',[IsPartial] bit '$.IsPartial')
+               WHERE [DatabaseName] COLLATE SQL_Latin1_General_CP1_CS_AS=N'ExampleBrokerSourceÄ'
+                 AND [TransmissionMessageCount]=1 AND [SourceFailureCount]=0 AND [IsPartial]=0)
+            THROW 56148,N'Broker uncommitted transmission status or counts failed.',1;
+        IF NOT EXISTS
+           (SELECT 1 FROM OPENJSON(@SentJson,N'$.transmissionGroups') WITH
+              ([DatabaseName] sysname '$.DatabaseName',
+               [FromServiceName] nvarchar(256) '$.FromServiceName',
+               [ToServiceName] nvarchar(256) '$.ToServiceName',
+               [ToBrokerInstance] nvarchar(128) '$.ToBrokerInstance',
+               [ServiceContractName] nvarchar(256) '$.ServiceContractName',
+               [MessageTypeName] nvarchar(256) '$.MessageTypeName',
+               [TransmissionStatus] nvarchar(4000) '$.TransmissionStatus',
+               [MessageCount] bigint '$.MessageCount',
+               [ConversationErrorMessageCount] bigint '$.ConversationErrorMessageCount',
+               [EndDialogMessageCount] bigint '$.EndDialogMessageCount',
+               [OldestEnqueueTimeUtc] datetime '$.OldestEnqueueTimeUtc',
+               [NewestEnqueueTimeUtc] datetime '$.NewestEnqueueTimeUtc',
+               [OldestAgeMinutes] bigint '$.OldestAgeMinutes',
+               [EvidenceLimit] nvarchar(1000) '$.EvidenceLimit')
+            WHERE [DatabaseName] COLLATE SQL_Latin1_General_CP1_CS_AS=N'ExampleBrokerSourceÄ'
+              AND [FromServiceName] COLLATE SQL_Latin1_General_CP1_CS_AS=@SentFrom COLLATE SQL_Latin1_General_CP1_CS_AS
+              AND [ToServiceName] COLLATE SQL_Latin1_General_CP1_CS_AS=@SentTo COLLATE SQL_Latin1_General_CP1_CS_AS
+              AND ([ToBrokerInstance] COLLATE SQL_Latin1_General_CP1_CS_AS=@SentBroker COLLATE SQL_Latin1_General_CP1_CS_AS
+                   OR ([ToBrokerInstance] IS NULL AND @SentBroker IS NULL))
+              AND [ServiceContractName] COLLATE SQL_Latin1_General_CP1_CS_AS=@SentContract COLLATE SQL_Latin1_General_CP1_CS_AS
+              AND [MessageTypeName] COLLATE SQL_Latin1_General_CP1_CS_AS=@SentType COLLATE SQL_Latin1_General_CP1_CS_AS
+              AND ([TransmissionStatus] COLLATE SQL_Latin1_General_CP1_CS_AS=@SentStatus COLLATE SQL_Latin1_General_CP1_CS_AS
+                   OR ([TransmissionStatus] IS NULL AND @SentStatus IS NULL))
+              AND [MessageCount]=1 AND [ConversationErrorMessageCount]=0 AND [EndDialogMessageCount]=0
+              AND [OldestEnqueueTimeUtc]=@SentEnqueue AND [NewestEnqueueTimeUtc]=@SentEnqueue
+              AND [OldestAgeMinutes] BETWEEN DATEDIFF_BIG(MINUTE,@SentEnqueue,@SentCallStart)
+                                        AND DATEDIFF_BIG(MINUTE,@SentEnqueue,@SentCallEnd)
+              AND NULLIF(LTRIM(RTRIM([EvidenceLimit])),N'') IS NOT NULL)
+            THROW 56149,N'Broker uncommitted native transmission group parity failed.',1;
+        IF (SELECT COUNT_BIG(*) FROM OPENJSON(@SentJson,N'$.findings') WITH
+             ([FindingCode] varchar(120) '$.FindingCode',
+              [Severity] varchar(16) '$.Severity',[Confidence] varchar(16) '$.Confidence',
+              [MetricName] varchar(80) '$.MetricName',
+              [MetricValue] decimal(38,4) '$.MetricValue',
+              [ThresholdValue] decimal(38,4) '$.ThresholdValue')
+             WHERE [FindingCode]='TRANSMISSION_BACKLOG_CONTEXT'
+               AND [Severity]='WARN' AND [Confidence]='MEDIUM'
+               AND [MetricName]='TRANSMISSION_MESSAGE_COUNT'
+               AND [MetricValue]=1 AND [ThresholdValue]=1)<>1
+            THROW 56150,N'Broker uncommitted transmission finding failed.',1;
+        DELETE @Parity;
+        INSERT @Parity VALUES
+          ((SELECT * FROM [#ExampleBrokerSentFindings] FOR JSON PATH,INCLUDE_NULL_VALUES),
+           (SELECT * FROM OPENJSON(@SentJson,N'$.findings') WITH
+             ([FindingOrdinal] bigint '$.FindingOrdinal',[DatabaseName] sysname '$.DatabaseName',
+              [SchemaName] sysname '$.SchemaName',[ObjectName] sysname '$.ObjectName',
+              [Severity] varchar(16) '$.Severity',[Confidence] varchar(16) '$.Confidence',
+              [FindingCode] varchar(120) '$.FindingCode',[MetricName] varchar(80) '$.MetricName',
+              [MetricValue] decimal(38,4) '$.MetricValue',[ThresholdValue] decimal(38,4) '$.ThresholdValue',
+              [Evidence] nvarchar(1000) '$.Evidence',[EvidenceLimit] nvarchar(1000) '$.EvidenceLimit',
+              [RecommendedNextCheck] nvarchar(1000) '$.RecommendedNextCheck')
+            FOR JSON PATH,INCLUDE_NULL_VALUES));
+        IF (SELECT COUNT_BIG(*) FROM [#ExampleBrokerSentFindings])<>(SELECT COUNT_BIG(*) FROM OPENJSON(@SentJson,N'$.findings'))
+           OR EXISTS
+              (SELECT [n].[RowJson] COLLATE SQL_Latin1_General_CP1_CS_AS,COUNT_BIG(*) FROM @Parity [p]
+               CROSS APPLY OPENJSON([p].[TableJson]) [r] CROSS APPLY
+               (SELECT [key],[type],[value] FROM OPENJSON([r].[value])
+                ORDER BY [key] COLLATE SQL_Latin1_General_CP1_CS_AS FOR JSON PATH,INCLUDE_NULL_VALUES) [n]([RowJson])
+               GROUP BY [n].[RowJson] COLLATE SQL_Latin1_General_CP1_CS_AS
+               EXCEPT
+               SELECT [n].[RowJson] COLLATE SQL_Latin1_General_CP1_CS_AS,COUNT_BIG(*) FROM @Parity [p]
+               CROSS APPLY OPENJSON([p].[ModuleJson]) [r] CROSS APPLY
+               (SELECT [key],[type],[value] FROM OPENJSON([r].[value])
+                ORDER BY [key] COLLATE SQL_Latin1_General_CP1_CS_AS FOR JSON PATH,INCLUDE_NULL_VALUES) [n]([RowJson])
+               GROUP BY [n].[RowJson] COLLATE SQL_Latin1_General_CP1_CS_AS)
+           OR EXISTS
+              (SELECT [n].[RowJson] COLLATE SQL_Latin1_General_CP1_CS_AS,COUNT_BIG(*) FROM @Parity [p]
+               CROSS APPLY OPENJSON([p].[ModuleJson]) [r] CROSS APPLY
+               (SELECT [key],[type],[value] FROM OPENJSON([r].[value])
+                ORDER BY [key] COLLATE SQL_Latin1_General_CP1_CS_AS FOR JSON PATH,INCLUDE_NULL_VALUES) [n]([RowJson])
+               GROUP BY [n].[RowJson] COLLATE SQL_Latin1_General_CP1_CS_AS
+               EXCEPT
+               SELECT [n].[RowJson] COLLATE SQL_Latin1_General_CP1_CS_AS,COUNT_BIG(*) FROM @Parity [p]
+               CROSS APPLY OPENJSON([p].[TableJson]) [r] CROSS APPLY
+               (SELECT [key],[type],[value] FROM OPENJSON([r].[value])
+                ORDER BY [key] COLLATE SQL_Latin1_General_CP1_CS_AS FOR JSON PATH,INCLUDE_NULL_VALUES) [n]([RowJson])
+               GROUP BY [n].[RowJson] COLLATE SQL_Latin1_General_CP1_CS_AS)
+            THROW 56151,N'Broker uncommitted findings TABLE JSON parity failed.',1;
+        ROLLBACK TRANSACTION;
+        SET @SentOwnTran=0;
+    END TRY
+    BEGIN CATCH
+        IF @SentOwnTran=1 AND @@TRANCOUNT>0
+        BEGIN
+            BEGIN TRY
+                ROLLBACK TRANSACTION;
+                SET @SentOwnTran=0;
+            END TRY
+            BEGIN CATCH
+                /* Der ursprüngliche Fixturefehler bleibt maßgeblich. */
+            END CATCH;
+        END;
+        THROW;
+    END CATCH;
+    DECLARE @SentActualDb int=DB_ID(),@SentActualLogin int=SUSER_ID(),
+            @SentActualTran int=@@TRANCOUNT,@SentActualLock int=@@LOCK_TIMEOUT,
+            @SentActualAbort int=CASE WHEN (@@OPTIONS & 16384)<>0 THEN 1 ELSE 0 END,
+            @SentActualXact int=NULL;
+    SELECT @SentActualXact=XACT_STATE();
+    IF @SentActualDb<>@SentOriginalDb OR @SentActualLogin<>@SentOriginalLogin
+       OR @SentActualTran<>0 OR @SentActualXact<>0
+       OR @SentActualLock<>@SentOriginalLock OR @SentActualAbort<>@SentOriginalAbort
+       OR DB_ID(N'ExampleBrokerSourceÄ')<>@OwnedDatabaseId
+       OR (SELECT COUNT_BIG(*) FROM [ExampleBrokerSourceÄ].[sys].[conversation_endpoints])<>0
+       OR (SELECT COUNT_BIG(*) FROM [ExampleBrokerSourceÄ].[sys].[transmission_queue])<>0
+        THROW 56152,N'Broker uncommitted rollback or caller restoration failed.',1;
+    IF OBJECT_ID(N'tempdb..#ExampleBrokerSentFindings') IS NULL
+       OR (SELECT COUNT_BIG(*) FROM [tempdb].[sys].[columns]
+           WHERE [object_id]=OBJECT_ID(N'tempdb..#ExampleBrokerSentFindings'))<>1
+       OR NOT EXISTS
+          (SELECT 1 FROM [tempdb].[sys].[columns]
+           WHERE [object_id]=OBJECT_ID(N'tempdb..#ExampleBrokerSentFindings')
+             AND [name]=N'Dummy' AND [system_type_id]=56)
+        THROW 56153,N'Broker sent findings seed was not restored by rollback.',1;
+    DROP TABLE [#ExampleBrokerSentFindings];
+    SET @SentTempMade=0;
+    END TRY
+    BEGIN CATCH
+        IF @SentTempMade=1 AND @SentTempId IS NOT NULL
+           AND OBJECT_ID(N'tempdb..#ExampleBrokerSentFindings')=@SentTempId
+        BEGIN
+            BEGIN TRY
+                DROP TABLE [#ExampleBrokerSentFindings];
+            END TRY
+            BEGIN CATCH
+                /* Der ursprüngliche Fixturefehler bleibt maßgeblich. */
+            END CATCH;
+        END;
         THROW;
     END CATCH;
     SET @Sql=N'SET LOCK_TIMEOUT '+CONVERT(nvarchar(20),@OriginalLockTimeout)+N';'; EXEC(@Sql);
