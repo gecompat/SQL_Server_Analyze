@@ -3569,8 +3569,8 @@ GO
 /*
 ===============================================================================
 Objekt       : monitor.FrameworkVersion
-Version      : 1.1.2
-Stand        : 2026-10-23
+Version      : 1.2.0
+Stand        : 2026-11-17
 Zweck        : Das Skript speichert kompakte Versionsdeklarationen des Analysepakets in
                [monitor].[FrameworkVersion]. Voraussetzung ist das zuvor durch
                000_Preflight_und_Schema.sql bereitgestellte Schema monitor.
@@ -3626,12 +3626,12 @@ END;
 GO
 
 UPDATE [monitor].[FrameworkVersion]
-SET [FrameworkVersion]='1.1.2',
-    [ReleaseDate]='20261023',
+SET [FrameworkVersion]='1.2.0',
+    [ReleaseDate]='20261117',
     [MinimumProductMajorVersion]=15,
     [ContractVersion]='1.24',
     [LastInstalledUtc]=SYSUTCDATETIME(),
-    [ReleaseNotes]=N'Release 1.1.2 ergänzt bei abgefangenen TABLE-Export-Lock-Timeouts die Zieltabelle und den SQL-Teilschritt. API 1.24 einschließlich SQL25-005 bleibt erhalten.'
+    [ReleaseNotes]=N'Release 1.2.0 bündelt die integrierten lesenden Diagnoseverträge. ContractVersion 1.24 einschließlich SQL25-005 bleibt erhalten.'
 WHERE [FrameworkName]=N'SQLServerMonitoringFramework';
 
 IF @@ROWCOUNT=0
@@ -3643,9 +3643,9 @@ BEGIN
     )
     VALUES
     (
-        N'SQLServerMonitoringFramework','1.1.2','20261023',15,
+        N'SQLServerMonitoringFramework','1.2.0','20261117',15,
         '1.24',SYSUTCDATETIME(),
-        N'Release 1.1.2 ergänzt bei abgefangenen TABLE-Export-Lock-Timeouts die Zieltabelle und den SQL-Teilschritt. API 1.24 einschließlich SQL25-005 bleibt erhalten.'
+        N'Release 1.2.0 bündelt die integrierten lesenden Diagnoseverträge. ContractVersion 1.24 einschließlich SQL25-005 bleibt erhalten.'
     );
 END;
 GO
@@ -74975,8 +74975,6 @@ GO
 -- END SOURCE: Code/10_SSIS/034_InternalSsisScopePathMatch.sql
 
 -- BEGIN SOURCE: Code/10_SSIS/036_InternalSsisPipelineCorrelation.sql
-USE [DeineDatenbank];
-GO
 /*
 Objekt: [monitor].[InternalSsisPipelineCorrelation].
 Typ: Interne Stored Procedure.
@@ -76622,8 +76620,6 @@ GO
 -- END SOURCE: Code/10_SSIS/040_USP_SsisPackageModelAnalysis.sql
 
 -- BEGIN SOURCE: Code/10_SSIS/045_InternalSsisExecutionMetrics.sql
-USE [DeineDatenbank];
-GO
 /*
 Objekt: monitor.InternalSsisExecutionMetrics.
 Typ: Interne Stored Procedure.
@@ -76993,8 +76989,6 @@ GO
 -- END SOURCE: Code/10_SSIS/050_USP_SsisExecutionComparison.sql
 
 -- BEGIN SOURCE: Code/10_SSIS/060_USP_SsisExecutionBaseline.sql
-USE [DeineDatenbank];
-GO
 /* monitor.USP_SsisExecutionBaseline; Version 1.0.0; Stand 2026-10-26.
    Explizite, unabhängig gebundene Kohorte mit höchstens 20 Basisläufen und
    einem anderen Kandidaten desselben exakten Exports. Jede Captureanalyse

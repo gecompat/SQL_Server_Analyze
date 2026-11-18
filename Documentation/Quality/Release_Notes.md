@@ -1,10 +1,10 @@
 # Releaseübersicht
 
-`USP_CurrentObjectPermissionAnalysis` ergänzt als noch nicht nativ qualifizierter Produktkandidat eine lesende OBJECT-Rechteaufnahme für genau ein benanntes Schema-/Objektpaar je ausgewählter Datenbank. Die native Quelle bewertet den tatsächlichen Caller-Kontext; leere und fehlerhafte Quellen beweisen weder Objektabwesenheit noch einen konkreten DENY. Die [Procedure-Seite](../Analysis_Guides/Procedures/USP_CurrentObjectPermissionAnalysis.md) beschreibt die 17 Parameter und fünf Ausgabegruppen.
+`USP_CurrentObjectPermissionAnalysis` ergänzt eine lesende OBJECT-Rechteaufnahme für genau ein benanntes Schema-/Objektpaar je ausgewählter Datenbank. Die SQL-Server-2025-/CL170-Head- und Main-Gates von [PR #729](https://github.com/gecompat/SQL_Server_Analyze/pull/729) bestanden einschließlich des nativen Vertrags 145; [PR #730](https://github.com/gecompat/SQL_Server_Analyze/pull/730) qualifizierte zusätzlich einen eigenen spaltengebundenen SELECT-Fall mit erhaltenem `subentity_name`. Leere und fehlerhafte Quellen beweisen weder Objektabwesenheit noch einen konkreten DENY. Eine vollständige COLUMN-/Statement- oder Fremdprincipalprüfung ist daraus nicht abgeleitet. Die [Procedure-Seite](../Analysis_Guides/Procedures/USP_CurrentObjectPermissionAnalysis.md) beschreibt die 17 Parameter und fünf Ausgabegruppen.
 
-`USP_DatabaseSnapshotInventory` ergänzt ein lesendes Inventar caller-sichtbarer Datenbank-Snapshots und Sparse-Dateikatalogzeilen. `sys.master_files.size` wird als maximale Snapshot-Dateikapazität ausgewiesen, nicht als tatsächlich belegter Speicher. Verborgene Quellnamen bleiben NULL, ihre numerische SourceDatabaseId erhalten; fehlende sichtbare Dateizeilen werden nicht als Nullbestand gewertet. Die Source- und native Fixture stehen als Kandidat bereit; eine SQL-Laufzeitabnahme für diesen neuen Vertrag ist noch offen. Die [Procedure-Seite](../Analysis_Guides/Procedures/USP_DatabaseSnapshotInventory.md) dokumentiert Eingaben, Rechte und Aussagegrenzen.
+`USP_DatabaseSnapshotInventory` ergänzt ein lesendes Inventar caller-sichtbarer Datenbank-Snapshots und Sparse-Dateikatalogzeilen. `sys.master_files.size` wird als maximale Snapshot-Dateikapazität ausgewiesen, nicht als tatsächlich belegter Speicher. Verborgene Quellnamen bleiben NULL, ihre numerische SourceDatabaseId erhalten; fehlende sichtbare Dateizeilen werden nicht als Nullbestand gewertet. Die SQL-Server-2025-/CL170-Head- und Main-Gates von [PR #706](https://github.com/gecompat/SQL_Server_Analyze/pull/706) bestanden einschließlich des nativen Vertrags 144. Weitere native Engines und belegter Speicher sind damit nicht qualifiziert. Die [Procedure-Seite](../Analysis_Guides/Procedures/USP_DatabaseSnapshotInventory.md) dokumentiert Eingaben, Rechte und Aussagegrenzen.
 
-`USP_LoadedModuleInventory` ergänzt eine lesende Aufnahme nativer Modulmetadaten des SQL-Server-Prozesses aus `sys.dm_os_loaded_modules`. Die zehn Fachfelder enthalten den unveränderten nativen Modulnamen einschließlich möglichem vollständigem Pfad und den zusätzlich abgeleiteten Basenamen; Prozessadresse, Company- und Description-Texte werden nicht gelesen. Eine Build-Flag-Auswahl und `@MaxZeilen` begrenzen nur die Ausgabe nach vollständigem Quellenread. Host- und Filtertreiber, Signaturen, Malware und Gesundheitszustand bleiben unbewertet. Die Laufzeitabnahme auf SQL Server 2025 mit Compatibility Level 170 und für die SQL-Server-2019-Rechte steht noch aus. `Module_Maturity` bleibt `PLANNED`. Die [Procedure-Seite](../Analysis_Guides/Procedures/USP_LoadedModuleInventory.md) erklärt Rechte und Statusgrenzen.
+`USP_LoadedModuleInventory` ergänzt eine lesende Aufnahme nativer Modulmetadaten des SQL-Server-Prozesses aus `sys.dm_os_loaded_modules`. Die zehn Fachfelder enthalten den unveränderten nativen Modulnamen einschließlich möglichem vollständigem Pfad und den zusätzlich abgeleiteten Basenamen; Prozessadresse, Company- und Description-Texte werden nicht gelesen. Eine Build-Flag-Auswahl und `@MaxZeilen` begrenzen nur die Ausgabe nach vollständigem Quellenread. Die vollständige SQL-Server-2025-/CL170-Head- und Main-Abnahme sowie die native SQL-Server-2019-/CL150-Freigabe von [PR #702](https://github.com/gecompat/SQL_Server_Analyze/pull/702) sind gebunden; SQL Server 2022, Host- und Filtertreiber, Signaturen, Malware und Gesundheitszustand bleiben unbewertet. Der bestehende `Module_Maturity`-Eintrag ist `COMPLETE`. Die [Procedure-Seite](../Analysis_Guides/Procedures/USP_LoadedModuleInventory.md) erklärt Rechte und Statusgrenzen.
 
 `USP_DatabaseDdlTriggerInventory` ergänzt eine lesende Inventur caller-sichtbarer Datenbank-DDL-Trigger in ausgewählten ONLINE-Datenbanken. Die zwölf Fachfelder stammen ausschließlich aus Metadaten von `sys.triggers` mit `parent_class=0`; Definitionen, Ereignisse, Payloads und Ausführung werden nicht gelesen. `MetadataVisibility=VISIBLE_ONLY` und `IsDisabled` belegen weder globale Vollständigkeit noch Wirksamkeit oder Rollback-Wirkung. Die vollständigen SQL-Server-2025-/CL170-Head- und Main-Gates für PR #700 bestanden einschließlich Vertrag 124; `Module_Maturity` bleibt bis zur gesonderten Reifeabnahme `PLANNED`. Die [Procedure-Seite](../Analysis_Guides/Procedures/USP_DatabaseDdlTriggerInventory.md) dokumentiert den Aufrufvertrag.
 
@@ -49,9 +49,9 @@ commitbezogenen Laufzeitnachweis.
 
 | Merkmal | Stand |
 |---|---|
-| Frameworkversion im Installationskatalog | `1.1.2` |
+| Frameworkversion im Installationskatalog | `1.2.0` |
 | ContractVersion im Installationskatalog | `1.24` |
-| ReleaseDate im Installationskatalog | 23. Oktober 2026 |
+| Deklariertes ReleaseDate im vorbereiteten Installationskatalog | 17. November 2026 |
 | Mindestversion | SQL Server 2019 |
 
 Der aktuelle Inventarvertrag umfasst 210 Objekte: 128 öffentliche Procedures, 8 Views, 29 Table-Valued Functions, 25 interne Procedures und 20 Tabellen.
@@ -101,10 +101,18 @@ Mit `@IncludePackageViews=1` ergänzt der Modellimport fünf fachliche
 Paketsichten. Die acht bisherigen Standardgruppen bleiben erhalten; Zähler
 werden vor der Ausgabekürzung aus dem vollständigen validierten Graphen ermittelt.
 
-Das vorhandene Produkt-ZIP 1.1.2 enthält diese neue API noch nicht. Die
-Quellinstaller übernehmen sie beim Neubau. Weiterführende Ausdrucks- und
-Zeilenselektionsregeln, SDK-Parität und eine neue Produktveröffentlichung
+Das zuletzt veröffentlichte Produkt-ZIP 1.1.2 enthält diese API noch nicht. Der
+unveröffentlichte v1.2.0-Kandidat nimmt die aktuellen Quellinstaller auf;
+Verwendung und Veröffentlichung setzen den separat gebundenen Paket- und nativen Release-Nachweis voraus.
+Weiterführende Ausdrucks- und Zeilenselektionsregeln sowie SDK-Parität
 bleiben eigene Abnahmeschritte.
+
+## Release 1.2.0 (unveröffentlichter Kandidat)
+
+Der vorbereitete Quellstand deklariert Frameworkversion `1.2.0` und `ReleaseDate`
+17. November 2026 bei unveränderter `ContractVersion=1.24`. Produkt-ZIP, SHA-256-Prüfsumme und native FULL_RELEASE-Matrix für SQL Server
+2019, 2022 und 2025 werden im gesonderten Release-Nachweis an den Commit gebunden. Der
+veröffentlichte Stand v1.1.2 bleibt unverändert.
 
 ## Release 1.1.2
 

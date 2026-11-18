@@ -114,7 +114,10 @@ $installAllText = Get-Content -LiteralPath $installAll -Raw -Encoding UTF8
 $expectedFrameworkIncludes = @(
     'Code/00_Setup/000_Preflight_und_Schema.sql',
     'Code/10_SnapshotBaseline/010_SnapshotTargetConfiguration.sql',
+    'Code/10_SnapshotBaseline/076_InternalValidateSnapshotWaitTarget.sql',
     'Code/10_SnapshotBaseline/080_USP_ConfigureSnapshotTarget.sql',
+    'Code/10_SnapshotBaseline/085_InternalRunSnapshotWaitStatsCycle.sql',
+    'Code/10_SnapshotBaseline/087_InternalRunSnapshotFileIOCycle.sql',
     'Code/10_SnapshotBaseline/090_USP_RunSnapshotCollectionCycle.sql',
     'Code/10_SnapshotBaseline/100_USP_PurgeSnapshotData.sql'
 )
@@ -123,8 +126,12 @@ $expectedTargetIncludes = @(
     'Code/10_SnapshotBaseline/020_InternalConfigureSnapshotPolicy.sql',
     'Code/10_SnapshotBaseline/040_InternalPrepareCollectionCycle.sql',
     'Code/10_SnapshotBaseline/050_InternalCompletePerformanceCounterCycle.sql',
+    'Code/10_SnapshotBaseline/055_InternalCompleteWaitStatsCycle.sql',
+    'Code/10_SnapshotBaseline/057_InternalCompleteFileIOCycle.sql',
     'Code/10_SnapshotBaseline/060_InternalFinalizeCollectionCycle.sql',
-    'Code/10_SnapshotBaseline/070_InternalPurgeExpiredData.sql'
+    'Code/10_SnapshotBaseline/070_InternalPurgeExpiredData.sql',
+    'Code/10_SnapshotBaseline/075_CompleteWaitStatsInstallation.sql',
+    'Code/10_SnapshotBaseline/078_CompleteFileIOInstallation.sql'
 )
 $observedFrameworkIncludes = @(
     $frameworkIncludes | ForEach-Object {
@@ -235,6 +242,8 @@ $expectedTargetProcedures = @(
     'InternalConfigureSnapshotPolicy',
     'InternalPrepareCollectionCycle',
     'InternalCompletePerformanceCounterCycle',
+    'InternalCompleteWaitStatsCycle',
+    'InternalCompleteFileIOCycle',
     'InternalFinalizeCollectionCycle',
     'InternalPurgeExpiredData'
 )

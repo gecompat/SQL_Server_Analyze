@@ -1,7 +1,9 @@
 # Installation in SQL Server Management Studio (SSMS)
 
-Diese Anleitung beschreibt die Erstinstallation und das Upgrade aus der
-Produkt-ZIP v1.1.2 einschließlich des optionalen Snapshot-/Baseline-Pakets. Die ZIP
+Diese Anleitung beschreibt die Erstinstallation und das Upgrade aus dem noch
+unveröffentlichten Produkt-ZIP-Kandidaten v1.2.0 einschließlich des optionalen
+Snapshot-/Baseline-Pakets. Die ZIP-Wege gelten erst nach paket- und commitgebundener
+Releaseabnahme und gesonderter Veröffentlichung. Die ZIP
 enthält sechs vorbereitete Installer unter `Code/Install/generated`. Für diese
 Wege werden weder ein lokaler Build noch PowerShell, Python oder der
 SQLCMD-Modus benötigt. Bei einer Repositorykopie gelten die gesonderten
@@ -19,7 +21,7 @@ von `@SnapshotDatabase` erweitert diesen Installer nicht; der Wert muss dort
 enthält beide Kontexte bereits. Der [Deploymentleitfaden](Deployment.md)
 erläutert den Receipt- und Vorzustandsvertrag. Die Snapshot-Einzelinstaller
 besitzen diesen gemeinsamen Vertrag nicht. In der älteren v1.1.0-ZIP fehlt
-der kombinierte Installer; für den hier beschriebenen Weg v1.1.2 verwenden.
+der kombinierte Installer; für diesen Weg den abgenommenen v1.2.0-Kandidaten nach Veröffentlichung verwenden.
 
 ## 1. Voraussetzungen prüfen
 
@@ -41,12 +43,12 @@ Das Framework vergibt keine Benutzer-, Datenbank- oder Serverberechtigungen und 
 ## 2. Repository herunterladen
 
 1. Im Bereich [Releases](https://github.com/gecompat/SQL_Server_Analyze/releases)
-   die Produktdatei `SQL_Server_Analyze-1.1.2.zip` und deren `.sha256`-Datei
-   herunterladen. Die zusätzlichen automatisch erzeugten Quellarchive
+   nach der Veröffentlichung die Produktdatei `SQL_Server_Analyze-1.2.0.zip`
+   und deren `.sha256`-Datei herunterladen. Die zusätzlichen automatisch erzeugten Quellarchive
    enthalten keine vorbereiteten Installer.
 2. Vor dem Entpacken die SHA-256-Prüfsumme des ZIP mit dem Wert aus der
    `.sha256`-Datei vergleichen. Beispielsweise liefert
-   `Get-FileHash -Algorithm SHA256 -LiteralPath ./SQL_Server_Analyze-1.1.2.zip`
+   `Get-FileHash -Algorithm SHA256 -LiteralPath ./SQL_Server_Analyze-1.2.0.zip`
    den lokalen Wert. Bei einer Abweichung das Paket nicht ausführen und erneut
    von der Release-Seite beziehen.
 3. Die ZIP-Datei vollständig entpacken, beispielsweise nach `C:\Tools\SQL_Server_Analyze`.
@@ -208,7 +210,7 @@ JOIN [sys].[schemas] AS [s] WITH (NOLOCK)
 WHERE [s].[name] = N'monitor';
 ```
 
-Die Versionsabfrage muss genau eine Frameworkzeile mit `FrameworkVersion=1.1.2`
+Die Versionsabfrage muss genau eine Frameworkzeile mit `FrameworkVersion=1.2.0`
 liefern. Die Prozedurzahl muss größer als `0` sein. Der anschließende Smoke-Test
 prüft den katalogisierten Kernbestand genauer.
 
@@ -252,10 +254,11 @@ Die tatsächlich erforderlichen Rechte hängen vom aufgerufenen Modul ab. Das Fr
 
 ### Optional: persistentes Snapshot-/Baseline-Paket SC-023
 
-Der aktuelle Repositorystand enthält eine zusätzliche Schema-2-Migration.
-Für einen lokalen Neubau gelten dessen
-[Targetversion, Installationsrechte und Transaktionsvoraussetzungen](../Architecture/Snapshot_Baseline_Package_Contract.md#installation).
-Die bereits veröffentlichte Produkt-ZIP bleibt an ihren ursprünglichen
+Der aktuelle Quellstand führt bekannte frühere Targetfassungen auf das
+vollständige Target `1.3.1` / Schema 3. Für Erstinstallation und Upgrade
+gelten dessen [Targetversion, Installationsrechte und
+Transaktionsvoraussetzungen](../Architecture/Snapshot_Baseline_Package_Contract.md#installation).
+Die bisher veröffentlichte Produkt-ZIP bleibt an ihren ursprünglichen
 Commit und Paketstand gebunden.
 
 Der Kerninstaller installiert keine Snapshot-/Baseline-Persistenz. Nach erfolgreicher
@@ -281,10 +284,10 @@ Kerninstallation ergänzen Sie das optionale Paket aus derselben ZIP:
    mit `monitor.USP_ConfigureSnapshotTarget` ausdrücklich konfigurieren.
    Bei einer Erstinstallation bleibt die Zielbindung bis dahin deaktiviert.
 5. In der Snapshotdatenbank muss `snapshot.PackageVersion` für `SC-023` die
-   Paketversion `1.0.0` mit `SchemaVersion=1` enthalten. In der Frameworkdatenbank
+   Paketversion `1.3.1` mit `SchemaVersion=3` enthalten. In der Frameworkdatenbank
    muss `monitor.SnapshotTargetConfiguration` den gewählten Zielnamen und die
    ausdrücklich gesetzte Aktivierung und Schedulerart zeigen. Diese
-   Paketversion ist von der Frameworkversion `1.1.2` getrennt.
+   Paketversion ist von der Frameworkversion `1.2.0` getrennt.
 
 Beide Dateien liegen im Produkt-ZIP fertig vor und benötigen keinen
 SQLCMD-Modus. Sie erstellen keine Datenbank, Rechte oder Schedulerobjekte.
@@ -539,7 +542,7 @@ konsistent vorbereitete Arbeitskopie der Einzeldateien.
 6. Meldungen und das persistente Receipt `monitor_deployment.Run_<RunId>` in
    der Frameworkdatenbank gemäß [Deploymentvertrag](Deployment.md#receipt-und-unklarer-abschluss)
    kontrollieren. Die Versionsabfrage aus Schritt 8 muss genau eine
-   Frameworkzeile mit `FrameworkVersion=1.1.2` ergeben.
+   Frameworkzeile mit `FrameworkVersion=1.2.0` ergeben.
 7. Die Smoke-, Capability- und Berechtigungsprüfungen aus den Schritten 9
    und 10 durchführen und danach die unterbrochenen Frameworkaufrufe wieder
    zulassen. Der hier beschriebene Core-Lauf bestätigt kein Snapshot-Upgrade.
@@ -565,7 +568,7 @@ mit einer Transaktion für beide Datenbanken, typgetreuen Vorzustandskopien
 und je einem Receipt mit derselben Run-ID. Die unterstützten Strukturgrenzen
 und Customkonflikte werden vor Produktänderungen geprüft.
 
-1. Die Produkt-ZIP v1.1.2 und ihre Prüfsumme gemäß Schritt 2 herunterladen,
+1. Die Produkt-ZIP v1.2.0 und ihre Prüfsumme gemäß Schritt 2 herunterladen,
    vergleichen und vollständig entpacken. Der kombinierte Installer ist in
    v1.1.0 noch nicht enthalten. Keine Dateien unterschiedlicher Releases mischen.
 2. Bestehende Framework- und Snapshotdatenbank sichern und den betrieblichen
@@ -609,9 +612,9 @@ und Customkonflikte werden vor Produktänderungen geprüft.
    Eine Frameworkversionszeile allein belegt keinen vollständigen Abschluss.
 7. In der Frameworkdatenbank Versionsprüfung, Smoke-Test sowie Capability-
    und Berechtigungsprüfung aus den Schritten 8 bis 10 durchführen. Erwartet
-   wird Frameworkversion `1.1.2` und der dort beschriebene erfolgreiche
+   wird Frameworkversion `1.2.0` und der dort beschriebene erfolgreiche
    Smoke-Test. In der Snapshotdatenbank muss `snapshot.PackageVersion` für
-   `PackageCode='SC-023'` weiterhin `PackageVersion='1.0.0'` und `SchemaVersion=1`
+   `PackageCode='SC-023'` weiterhin `PackageVersion='1.3.1'` und `SchemaVersion=3`
    zeigen; die Versionen bezeichnen unterschiedliche Verträge.
 8. Zielname, Aktivierung und Schedulerart in
    `monitor.SnapshotTargetConfiguration` sowie lokale Policies und Historie

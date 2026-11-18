@@ -57,7 +57,7 @@ def validate_native_qualification(rows, target, scope, extra_snapshot, commit, p
     for row in rows:
         plan=plans[row['target']]; major={'2019':15,'2022':16,'2025':17}[row['target']]
         expected='PASS' if plan['full_release'] else 'NOT_EXECUTED'
-        checks=(row.get('schema_version')==2,row.get('framework_version')=='1.1.2',
+        checks=(row.get('schema_version')==2,row.get('framework_version')=='1.2.0',
                 row.get('qualification_scope')==scope,row.get('source_commit')==commit,
                 row.get('package_sha256')==package_sha256,row.get('cleanup')=='PASS',
                 row.get('release_gate')==expected,row.get('core_release_gate')==expected,
@@ -216,10 +216,10 @@ class PackageContracts(unittest.TestCase):
         for args in (('all','SNAPSHOT_SCHEMA_RISK',False),('all','FULL_RELEASE',True),('2019','UNKNOWN',False)):
             with self.assertRaises(ValueError): native_qualification_plan(*args)
         plan=native_qualification_plan('2019','SNAPSHOT_SCHEMA_RISK')['2019']
-        row=dict(schema_version=2,framework_version='1.1.2',qualification_scope='SNAPSHOT_SCHEMA_RISK',target='2019',source_commit='a'*40,package_sha256='b'*64,cleanup='PASS',release_gate='NOT_EXECUTED',core_release_gate='NOT_EXECUTED',permission_matrix='NOT_EXECUTED',executed_suites=0,executed_core_suites=0,executed_contracts=plan['contracts'],snapshot_and_migration_contracts='PASS',extra_2025_contracts='NOT_APPLICABLE',product_version_components=[15,0,1,0],compatibility_level=150,platform='Linux',collation='SQL_Latin1_General_CP1_CS_AS')
+        row=dict(schema_version=2,framework_version='1.2.0',qualification_scope='SNAPSHOT_SCHEMA_RISK',target='2019',source_commit='a'*40,package_sha256='b'*64,cleanup='PASS',release_gate='NOT_EXECUTED',core_release_gate='NOT_EXECUTED',permission_matrix='NOT_EXECUTED',executed_suites=0,executed_core_suites=0,executed_contracts=plan['contracts'],snapshot_and_migration_contracts='PASS',extra_2025_contracts='NOT_APPLICABLE',product_version_components=[15,0,1,0],compatibility_level=150,platform='Linux',collation='SQL_Latin1_General_CP1_CS_AS')
         result=validate_native_qualification([row],'2019','SNAPSHOT_SCHEMA_RISK',False,'a'*40,'b'*64)
         self.assertFalse(result['complete_release_matrix'])
-        for key,value in [('release_gate','PASS'),('core_release_gate','PASS'),('executed_suites',34),('executed_contracts',[]),('qualification_scope','FULL_RELEASE'),('source_commit','c'*40),('package_sha256','c'*64),('cleanup','FAILED')]:
+        for key,value in [('release_gate','PASS'),('core_release_gate','PASS'),('executed_suites',34),('executed_contracts',[]),('qualification_scope','FULL_RELEASE'),('source_commit','c'*40),('package_sha256','c'*64),('cleanup','FAILED'),('framework_version','1.1.2')]:
             with self.subTest(key=key):
                 candidate=dict(row);candidate[key]=value
                 with self.assertRaises(ValueError): validate_native_qualification([candidate],'2019','SNAPSHOT_SCHEMA_RISK',False,'a'*40,'b'*64)

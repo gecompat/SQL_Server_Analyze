@@ -36,7 +36,7 @@ foreach ($file in $files) {
     [void]$builder.AppendLine()
     [void]$builder.AppendLine("-- BEGIN SOURCE: $relative")
     $content = [IO.File]::ReadAllText($file.FullName, [Text.Encoding]::UTF8)
-    $content = [Text.RegularExpressions.Regex]::Replace($content, '^\uFEFF?USE \[DeineDatenbank\];\r?\nGO\r?\n\r?\n', '')
+    $content = [Text.RegularExpressions.Regex]::Replace($content, '^\uFEFF?USE \[DeineDatenbank\];\r?\nGO\r?\n(?:\r?\n)?', '')
     [void]$builder.AppendLine($content.TrimEnd())
     [void]$builder.AppendLine("-- END SOURCE: $relative")
 }

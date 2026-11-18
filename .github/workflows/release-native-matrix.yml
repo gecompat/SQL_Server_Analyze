@@ -98,19 +98,19 @@ jobs:
         shell: pwsh
         run: |
           ./Code/Install/Build-ReleasePackage.ps1 -RepositoryRoot . `
-            -Revision $env:GITHUB_SHA -Version 1.1.2 `
+            -Revision $env:GITHUB_SHA -Version 1.2.0 `
             -OutputDirectory "$env:RUNNER_TEMP/product" -PythonExecutable python3
       - name: Validate canonical contents and repository privacy
         run: |
           python3 Code/Tests/Static/Validate_Release_Package.py --self-test
           python3 Code/Tests/Static/Validate_Release_Package.py \
             --repository-root . --expected-commit "$GITHUB_SHA" \
-            --archive "$RUNNER_TEMP/product/SQL_Server_Analyze-1.1.2.zip"
+            --archive "$RUNNER_TEMP/product/SQL_Server_Analyze-1.2.0.zip"
       - id: digest
         name: Bind the native jobs to the ZIP bytes
         run: |
           set -euo pipefail
-          digest=$(sha256sum "$RUNNER_TEMP/product/SQL_Server_Analyze-1.1.2.zip" | cut -d ' ' -f 1)
+          digest=$(sha256sum "$RUNNER_TEMP/product/SQL_Server_Analyze-1.2.0.zip" | cut -d ' ' -f 1)
           echo "sha256=$digest" >> "$GITHUB_OUTPUT"
       - uses: actions/upload-artifact@v7
         with:
@@ -147,17 +147,17 @@ jobs:
           EXPECTED_PACKAGE_SHA256: ${{ needs.package.outputs.sha256 }}
         run: |
           set -euo pipefail
-          actual=$(sha256sum "$RUNNER_TEMP/product/SQL_Server_Analyze-1.1.2.zip" | cut -d ' ' -f 1)
+          actual=$(sha256sum "$RUNNER_TEMP/product/SQL_Server_Analyze-1.2.0.zip" | cut -d ' ' -f 1)
           test "$actual" = "$EXPECTED_PACKAGE_SHA256"
           python3 - <<'PY'
           import json, os, pathlib, zipfile
           source = pathlib.Path(os.environ['RUNNER_TEMP'])
-          with zipfile.ZipFile(source/'product/SQL_Server_Analyze-1.1.2.zip') as package:
-              metadata = json.loads(package.read('SQL_Server_Analyze-1.1.2/RELEASE.json'))
+          with zipfile.ZipFile(source/'product/SQL_Server_Analyze-1.2.0.zip') as package:
+              metadata = json.loads(package.read('SQL_Server_Analyze-1.2.0/RELEASE.json'))
               assert metadata['source_commit'] == os.environ['GITHUB_SHA'], 'PACKAGE_COMMIT_MISMATCH'
               package.extractall(source/'release')
           PY
-          release_root="$RUNNER_TEMP/release/SQL_Server_Analyze-1.1.2"
+          release_root="$RUNNER_TEMP/release/SQL_Server_Analyze-1.2.0"
           cp -R "$release_root/Code" "$RUNNER_TEMP/Code"
           find "$RUNNER_TEMP/Code" -type f -name '*.sql' -print0 \
             | xargs -0 perl -pi -e 's/\[DeineDatenbank\]/[SQLServerAnalyzeTest]/g'
@@ -186,7 +186,7 @@ jobs:
           # Reuse the synthetic fixtures and comparison helpers against the
           # actual shipped Core deployment, with all nine Core tables filled.
           import re, sys
-          canonical = pathlib.Path(os.environ['RUNNER_TEMP'])/'release/SQL_Server_Analyze-1.1.2'
+          canonical = pathlib.Path(os.environ['RUNNER_TEMP'])/'release/SQL_Server_Analyze-1.2.0'
           sys.path.insert(0, str(canonical/'Code/Tests/Integration'))
           import Deployment_Prepare_Runtime as regression
           g = regression.g
@@ -437,7 +437,7 @@ jobs:
             execute -i generated/Release_Deploy_Before.sql >"$RUNNER_TEMP/deployment-fill.log" 2>&1
             execute -i generated/Release_Deploy_Configured.sql >"$RUNNER_TEMP/deployment-2.log" 2>&1
             execute -i generated/Release_Deploy_After.sql >"$RUNNER_TEMP/deployment-preservation.log" 2>&1
-            execute -Q "IF NOT EXISTS(SELECT 1 FROM SQLServerAnalyzePackageDeployment.monitor.FrameworkVersion WHERE FrameworkVersion='1.1.2') THROW 50002,N'PACKAGE_DEPLOYMENT_VERSION',1;" >/dev/null
+            execute -Q "IF NOT EXISTS(SELECT 1 FROM SQLServerAnalyzePackageDeployment.monitor.FrameworkVersion WHERE FrameworkVersion='1.2.0') THROW 50002,N'PACKAGE_DEPLOYMENT_VERSION',1;" >/dev/null
           fi
           execute -i generated/Deployment_Runtime.generated.sql >"$RUNNER_TEMP/deployment-regression.log" 2>&1
 
@@ -519,11 +519,11 @@ jobs:
           python3 - <<'PY'
           import json, os, pathlib, sys
           root = pathlib.Path(os.environ['RUNNER_TEMP'])
-          sys.path.insert(0,str(root/'release/SQL_Server_Analyze-1.1.2/Code/Tests/Static'))
+          sys.path.insert(0,str(root/'release/SQL_Server_Analyze-1.2.0/Code/Tests/Static'))
           from Validate_Release_Package import native_qualification_plan
           plan=native_qualification_plan(os.environ['TARGET_VERSION'],os.environ['QUALIFICATION_SCOPE'],os.environ['SNAPSHOT_RISK_GATE']=='true')[os.environ['TARGET_VERSION']]
           metadata = json.loads((root/'engine.json').read_text())
-          metadata.update(schema_version=2, framework_version='1.1.2',
+          metadata.update(schema_version=2, framework_version='1.2.0',
               qualification_scope=plan['qualification_scope'],executed_contracts=plan['contracts'],core_release_gate='PASS' if plan['full_release'] else 'NOT_EXECUTED',
               source_commit=os.environ['GITHUB_SHA'], package_sha256=os.environ['PACKAGE_SHA256'],
               container_image_digest=os.environ['SQLSERVER_IMAGE_DIGEST'],

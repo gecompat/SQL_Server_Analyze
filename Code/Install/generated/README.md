@@ -1,6 +1,8 @@
 # Generated installers
 
-Das Produkt-ZIP v1.1.2 enthält hier sechs vorbereitete SQL-Installer. Ihre Auswahl,
+Der unveröffentlichte v1.2.0-Kandidat enthält nach Paketbau hier sechs
+vorbereitete SQL-Installer. Ihre Verwendung setzt die gesonderte Releaseabnahme
+voraus. Ihre Auswahl,
 Datenbankkontexte und Ausführungsreihenfolge stehen in der
 [Installations- und Upgradeanleitung](../../../Documentation/Reference/Installation.md).
 Für die ZIP-Wege ist kein Neubau erforderlich.

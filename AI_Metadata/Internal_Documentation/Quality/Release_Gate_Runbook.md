@@ -2,10 +2,43 @@
 
 Die verbindliche Auswahl von Tests steht ausschließlich in der
 [CI-Teststrategie](../../../Documentation/Quality/CI_Test_Strategy.md).
-Dieser Ablauf dokumentiert die Umsetzung für Version 1.1.2 und die Bindung
-zwischen Quellcommit, Produkt-ZIP, Laufzeitprüfung und Veröffentlichung.
-Der Release ist abgeschlossen; die beschriebenen Schritte erteilen keine
-erneute Ausführungsfreigabe. Historische CSV-Nachweise werden nicht umgedeutet.
+Der folgende v1.2.0-Abschnitt beschreibt den unveröffentlichten Kandidaten und
+seine erforderliche Bindung von Quellcommit, Produkt-ZIP und nativer Abnahme.
+Der anschließende v1.1.2-Abschluss und dessen ältere Ablauftexte sind historische
+Nachweise; sie erteilen keine erneute Ausführungsfreigabe. Historische
+CSV-Nachweise werden nicht umgedeutet.
+
+## Unveröffentlichter Kandidat v1.2.0
+
+Der vorbereitete Quellstand deklariert Frameworkversion `1.2.0` mit Datum
+17. November 2026 und unveränderter ContractVersion `1.24`. Das bestehende
+v1.1.2-ZIP, sein Tag und seine Nachweise bleiben unverändert. Die Verwendung
+des neuen ZIP setzt den exakten Quellcommit, die vollständige Paketprüfung,
+seine SHA-256-Datei und die gebundene native FULL_RELEASE-Matrix für SQL Server
+2019/CL150, 2022/CL160 und 2025/CL170 voraus. Der Releaseentwurf ist keine
+Veröffentlichung.
+
+Für den ZIP-Root `SQL_Server_Analyze-1.2.0` gilt die gezielte
+Paketprüfausnahme zu [Abschnitt 8 des Datenschutzvertrags](../Architecture/Runtime_Data_and_Repository_Privacy.md#8-prüfvertrag-vor-commit-und-zip):
+Nur die sechs unten genannten kanonisch generierten Installer unter
+`Code/Install/generated` dürfen zusätzlich zu den exakten Commit-Dateien im
+ZIP liegen. Der Paketverifier bindet vollständige Quellbytes, Lizenzpräfix,
+sechs unabhängig rekonstruierte Installer, RELEASE.json und ZIP-Prüfsumme.
+Die normalen Repository- und ZIP-Datenschutzprüfungen und die native
+Releaseabnahme bleiben erforderlich. Die Ausnahme erweitert keine Daten-,
+Laufzeit- oder Berechtigungsfreigabe.
+
+Der vorbereitende Helper ersetzt nur den kanonischen Installer aus der
+gebundenen Source und wird nach dem einmaligen Generatorlauf auf den
+ursprünglichen Baum zurückgestellt. Der Helper führt kein SQL aus. Der
+Produkt-Head und der erste Main-Nachlauf erhalten die durch die
+[CI-Teststrategie](../../../Documentation/Quality/CI_Test_Strategy.md)
+ausgewählten Gates. Die gesonderte Release-Matrix baut ein ZIP und prüft
+dessen identische SHA-256-Bytes seriell auf drei nativen Engines.
+Dies erhält die notwendigen Paket-, Sicherheits-, Datenschutz- und
+Laufzeitgates, ohne Ready-Übergänge oder unveränderte Suites zusätzlich
+auszulösen. Tatsächliche Läufe und Ergebnisse gehören in den
+commitgebundenen Release-Nachweis.
 
 ## Releaseabschluss v1.1.2
 
