@@ -1,8 +1,7 @@
 # Generated installers
 
-Der unveröffentlichte v1.2.0-Kandidat enthält nach Paketbau hier sechs
-vorbereitete SQL-Installer. Ihre Verwendung setzt die gesonderte Releaseabnahme
-voraus. Ihre Auswahl,
+Das [veröffentlichte Produkt-ZIP v1.2.0](https://github.com/gecompat/SQL_Server_Analyze/releases/tag/v1.2.0)
+enthält hier sechs vorbereitete SQL-Installer. Ihre Auswahl,
 Datenbankkontexte und Ausführungsreihenfolge stehen in der
 [Installations- und Upgradeanleitung](../../../Documentation/Reference/Installation.md).
 Für die ZIP-Wege ist kein Neubau erforderlich.

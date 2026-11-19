@@ -1,9 +1,8 @@
 # Installation in SQL Server Management Studio (SSMS)
 
-Diese Anleitung beschreibt die Erstinstallation und das Upgrade aus dem noch
-unveröffentlichten Produkt-ZIP-Kandidaten v1.2.0 einschließlich des optionalen
-Snapshot-/Baseline-Pakets. Die ZIP-Wege gelten erst nach paket- und commitgebundener
-Releaseabnahme und gesonderter Veröffentlichung. Die ZIP
+Diese Anleitung beschreibt die Erstinstallation und das Upgrade aus dem
+[veröffentlichten Produkt-ZIP v1.2.0](https://github.com/gecompat/SQL_Server_Analyze/releases/tag/v1.2.0)
+einschließlich des optionalen Snapshot-/Baseline-Pakets. Die ZIP
 enthält sechs vorbereitete Installer unter `Code/Install/generated`. Für diese
 Wege werden weder ein lokaler Build noch PowerShell, Python oder der
 SQLCMD-Modus benötigt. Bei einer Repositorykopie gelten die gesonderten
@@ -21,7 +20,7 @@ von `@SnapshotDatabase` erweitert diesen Installer nicht; der Wert muss dort
 enthält beide Kontexte bereits. Der [Deploymentleitfaden](Deployment.md)
 erläutert den Receipt- und Vorzustandsvertrag. Die Snapshot-Einzelinstaller
 besitzen diesen gemeinsamen Vertrag nicht. In der älteren v1.1.0-ZIP fehlt
-der kombinierte Installer; für diesen Weg den abgenommenen v1.2.0-Kandidaten nach Veröffentlichung verwenden.
+der kombinierte Installer; für diesen Weg das veröffentlichte v1.2.0-Paket verwenden.
 
 ## 1. Voraussetzungen prüfen
 
@@ -42,9 +41,9 @@ Das Framework vergibt keine Benutzer-, Datenbank- oder Serverberechtigungen und 
 
 ## 2. Repository herunterladen
 
-1. Im Bereich [Releases](https://github.com/gecompat/SQL_Server_Analyze/releases)
-   nach der Veröffentlichung die Produktdatei `SQL_Server_Analyze-1.2.0.zip`
-   und deren `.sha256`-Datei herunterladen. Die zusätzlichen automatisch erzeugten Quellarchive
+1. Beim [Release v1.2.0](https://github.com/gecompat/SQL_Server_Analyze/releases/tag/v1.2.0)
+   die Produktdatei `SQL_Server_Analyze-1.2.0.zip` und deren `.sha256`-Datei
+   herunterladen. Die zusätzlichen automatisch erzeugten Quellarchive
    enthalten keine vorbereiteten Installer.
 2. Vor dem Entpacken die SHA-256-Prüfsumme des ZIP mit dem Wert aus der
    `.sha256`-Datei vergleichen. Beispielsweise liefert
