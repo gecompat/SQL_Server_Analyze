@@ -89,13 +89,10 @@ bestandener Teiltest ist keine Freigabe aller Procedures dieser Kombination.
 
 ### Versioniertes Releasepaket
 
-Im Bereich [Releases](https://github.com/gecompat/SQL_Server_Analyze/releases)
-werden versionierte Produktpakete veröffentlicht. Wählen Sie die Datei
-für den veröffentlichten Stand `SQL_Server_Analyze-1.1.2.zip` und dessen
-[versionierte Installationsanleitung](https://github.com/gecompat/SQL_Server_Analyze/blob/v1.1.2/Documentation/Reference/Installation.md).
-Die aktuelle [Installationsanleitung](Documentation/Reference/Installation.md)
-beschreibt den unveröffentlichten v1.2.0-Kandidaten, der vor Verwendung einen
-eigenen Paket- und Release-Nachweis benötigt. Die automatisch angebotenen Quellarchive
+Das veröffentlichte [Release v1.2.0](https://github.com/gecompat/SQL_Server_Analyze/releases/tag/v1.2.0)
+enthält `SQL_Server_Analyze-1.2.0.zip`, die zugehörige `.sha256`-Datei und
+den nativen Release-Nachweis. Die aktuelle [Installationsanleitung](Documentation/Reference/Installation.md)
+beschreibt dieses Paket. Die automatisch angebotenen Quellarchive
 enthalten keine fertig erzeugten Installer. Das Produktpaket enthält Quellen,
 Dokumentation, Metadaten und sechs vorbereitete Installer unter
 `Code/Install/generated`. Für die folgenden Wege ist kein lokaler Build
@@ -111,7 +108,7 @@ erforderlich:
 Die Installationsanleitung beschreibt Prüfsumme, Datenbankkontexte,
 Voraussetzungen, Erfolgskontrolle und Fehlerbehandlung. Der vorbereitete
 `Deploy_All.generated.sql` enthält nur den Kern. Für Kern und Snapshot/Baseline
-enthält v1.1.2 zusätzlich `Deploy_All_WithSnapshotBaseline.generated.sql` mit
+enthält v1.2.0 zusätzlich `Deploy_All_WithSnapshotBaseline.generated.sql` mit
 gemeinsamer Transaktion, Receipts und Vorzustandserhaltung in beiden
 Datenbanken. Der Vorgänger v1.1.0 enthält diesen sechsten Installer nicht.
 
@@ -123,7 +120,7 @@ Release-Nachweis dokumentiert; das ist keine Build-Allowlist.
 ### Quellcheckout oder eigener kombinierter Deploymentumfang
 
 Die folgenden Buildschritte gelten für einen Quellcheckout oder einen bewusst
-gewählten Neubau. Die v1.1.2-ZIP enthält sowohl den Core- als auch den
+gewählten Neubau. Die v1.2.0-ZIP enthält sowohl den Core- als auch den
 kombinierten Deploymentinstaller bereits.
 
 ```powershell

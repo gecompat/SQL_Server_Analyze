@@ -1,7 +1,7 @@
 # Installation
 
-Der unveröffentlichte v1.2.0-Kandidat enthält nach Paketbau sechs Installer
-unter `generated`. Ihre Verwendung setzt die gesonderte Releaseabnahme voraus.
+Das [veröffentlichte Produkt-ZIP v1.2.0](https://github.com/gecompat/SQL_Server_Analyze/releases/tag/v1.2.0)
+enthält sechs geprüfte Installer unter `generated`.
 Sie werden vollständig in SSMS ohne SQLCMD-Modus ausgeführt. Ein lokaler
 Neubau ist für die folgenden ZIP-Wege nicht erforderlich.
 

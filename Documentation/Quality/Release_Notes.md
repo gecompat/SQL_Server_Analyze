@@ -101,18 +101,24 @@ Mit `@IncludePackageViews=1` ergänzt der Modellimport fünf fachliche
 Paketsichten. Die acht bisherigen Standardgruppen bleiben erhalten; Zähler
 werden vor der Ausgabekürzung aus dem vollständigen validierten Graphen ermittelt.
 
-Das zuletzt veröffentlichte Produkt-ZIP 1.1.2 enthält diese API noch nicht. Der
-unveröffentlichte v1.2.0-Kandidat nimmt die aktuellen Quellinstaller auf;
-Verwendung und Veröffentlichung setzen den separat gebundenen Paket- und nativen Release-Nachweis voraus.
+Das veröffentlichte Produkt-ZIP 1.2.0 enthält diese API mit den aktuellen
+Quellinstallern. Paket und native Abnahme sind an den Releasecommit gebunden.
 Weiterführende Ausdrucks- und Zeilenselektionsregeln sowie SDK-Parität
 bleiben eigene Abnahmeschritte.
 
-## Release 1.2.0 (unveröffentlichter Kandidat)
+## Release 1.2.0
 
-Der vorbereitete Quellstand deklariert Frameworkversion `1.2.0` und `ReleaseDate`
-17. November 2026 bei unveränderter `ContractVersion=1.24`. Produkt-ZIP, SHA-256-Prüfsumme und native FULL_RELEASE-Matrix für SQL Server
-2019, 2022 und 2025 werden im gesonderten Release-Nachweis an den Commit gebunden. Der
-veröffentlichte Stand v1.1.2 bleibt unverändert.
+[v1.2.0](https://github.com/gecompat/SQL_Server_Analyze/releases/tag/v1.2.0) wurde
+am 19. November 2026 auf dem im Release-Nachweis gebundenen Quellstand
+veröffentlicht. Der Quellstand deklariert `ReleaseDate` 17. November 2026 und
+`ContractVersion=1.24`; das Publikationsdatum ist davon getrennt. Das
+[Produkt-ZIP](https://github.com/gecompat/SQL_Server_Analyze/releases/download/v1.2.0/SQL_Server_Analyze-1.2.0.zip)
+hat SHA-256 `b64220798d7e2d16925f068e7bf814b45f6a460414be370b0df96ee887b3cee7`.
+Die [Prüfsummendatei](https://github.com/gecompat/SQL_Server_Analyze/releases/download/v1.2.0/SQL_Server_Analyze-1.2.0.zip.sha256)
+und [release-evidence.json](https://github.com/gecompat/SQL_Server_Analyze/releases/download/v1.2.0/release-evidence.json)
+binden Paket und native FULL_RELEASE-Matrix auf SQL Server 2019, 2022 und 2025
+an [Lauf 44237754039](https://github.com/gecompat/SQL_Server_Analyze/actions/runs/44237754039).
+Der veröffentlichte Stand v1.1.2 bleibt unverändert.
 
 ## Release 1.1.2
 
