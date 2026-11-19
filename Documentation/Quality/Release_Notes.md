@@ -109,7 +109,7 @@ bleiben eigene Abnahmeschritte.
 ## Release 1.2.0
 
 [v1.2.0](https://github.com/gecompat/SQL_Server_Analyze/releases/tag/v1.2.0) wurde
-am 19. November 2026 auf Commit `cb378a0cbeaf27fecf3667bc1fd431cbc5402c74`
+am 19. November 2026 auf dem im Release-Nachweis gebundenen Quellstand
 veröffentlicht. Der Quellstand deklariert `ReleaseDate` 17. November 2026 und
 `ContractVersion=1.24`; das Publikationsdatum ist davon getrennt. Das
 [Produkt-ZIP](https://github.com/gecompat/SQL_Server_Analyze/releases/download/v1.2.0/SQL_Server_Analyze-1.2.0.zip)
