@@ -14,6 +14,128 @@ Grenzen      : Keine physische Belegung, Gesundheit, Restore-Eignung oder
                Änderung; lokale Temp-DDL dient Aufbereitung und TABLE-Ausgabe.
 ===============================================================================
 */
+-- USAGE_SKILL_BEGIN monitor.USP_DatabaseSnapshotInventory 1.0.0
+-- ---
+-- skill_format_version: "1.0.0"
+-- name: "monitor.USP_DatabaseSnapshotInventory"
+-- schema_name: "monitor"
+-- object_name: "USP_DatabaseSnapshotInventory"
+-- object_type: "PROCEDURE"
+-- database_role: "framework"
+-- is_internal: false
+-- description: "Inventarisiert caller-sichtbare Datenbank-Snapshots und ihre caller-sichtbaren Dateikatalogzeilen."
+-- source_path: "Code/08_ServerHealth/340_USP_DatabaseSnapshotInventory.sql"
+-- ---
+-- 
+-- # monitor.USP_DatabaseSnapshotInventory
+-- 
+-- ## Zweck und Einsatz
+-- 
+-- Inventarisiert caller-sichtbare Datenbank-Snapshots und ihre caller-sichtbaren Dateikatalogzeilen.
+-- 
+-- ## Voraussetzungen und Rechte
+-- 
+-- Ein direkter Aufruf erfordert EXECUTE auf [monitor].[USP_DatabaseSnapshotInventory]. Die Quelle nennt insbesondere `master.sys.databases`, `master.sys.master_files`, `[monitor].[TVF_ParseSqlNameList]`, `[sys].[sp_executesql]`, `[monitor].[InternalPrepareResultTables]`, `[monitor].[InternalWriteResultTable]`, `[monitor].[InternalEmitConsoleResult]`. Für deren Metadaten- oder Fachzugriff gelten die Rechte des jeweiligen SQL-Ausführungskontexts; der Skill erteilt sie nicht.
+-- 
+-- ## Parameter und Eingabe
+-- 
+-- „SQL-Bindungspflicht“ bezeichnet ein bei der SQL-Aufrufbindung erforderliches Argument ohne Default. Fachliche Wertpflichten und zulässige NULL-Werte stehen im jeweiligen Einzelvertrag.
+-- 
+-- | Parameter | SQL-Typ | SQL-Bindungspflicht | Default |
+-- | --- | --- | --- | --- |
+-- | @SnapshotNames | nvarchar(max) | nein | NULL |
+-- | @NurOnline | bit | nein | 1 |
+-- | @SystemdatenbankenEinbeziehen | bit | nein | 0 |
+-- | @MaxZeilen | int | nein | 1000 |
+-- | @LockTimeoutMs | int | nein | 0 |
+-- | @ResultSetArt | varchar(16) | nein | 'CONSOLE' |
+-- | @ResultTablesJson | nvarchar(max) | nein | NULL |
+-- | @JsonErzeugen | bit | nein | 0 |
+-- | @Json | nvarchar(max) | nein | NULL OUTPUT |
+-- | @PrintMeldungen | bit | nein | 1 |
+-- | @Hilfe | bit | nein | 0 |
+-- | @StatusCodeOut | varchar(40) | nein | NULL OUTPUT |
+-- | @IsPartialOut | bit | nein | NULL OUTPUT |
+-- | @ErrorNumberOut | int | nein | NULL OUTPUT |
+-- | @ErrorMessageOut | nvarchar(2048) | nein | NULL OUTPUT |
+-- 
+-- **@SnapshotNames:** @SnapshotNames nvarchar(max)=NULL: NULL, leer oder nur äußere U+0020-Leerzeichen wählen alle sichtbaren Snapshots. Sonst bracket-aware Pipe-Liste einteiliger exakter Snapshotnamen; | in [...] ist Namensinhalt, ]] maskiert ]. Rohsegment höchstens 4000 UTF-16-Einheiten, Name höchstens 128 Zeichen; ungültige, leere oder case-sensitive doppelte Elemente sind INVALID_PARAMETER. Kein Patternparameter.
+-- 
+-- **@NurOnline:** @NurOnline bit=1: 1 wählt nur ONLINE-Snapshots, 0 alle caller-sichtbaren Katalogzustände; NULL ist INVALID_PARAMETER. Numerisch ungleich 0 wird als bit 1 konvertiert.
+-- 
+-- **@SystemdatenbankenEinbeziehen:** @SystemdatenbankenEinbeziehen bit=0: 0 schließt Snapshots mit SourceDatabaseId bis 4 aus, 1 lässt zulässige Systemquellen zu. NULL ist INVALID_PARAMETER; numerisch ungleich 0 wird als bit 1 konvertiert.
+-- 
+-- **@MaxZeilen:** @MaxZeilen int=1000: positiv begrenzt Snapshot-Zeilen nach SnapshotDatabaseId; alle sichtbaren Dateizeilen jedes ausgegebenen Snapshots bleiben erhalten. NULL/0 unbegrenzt, negativ INVALID_PARAMETER. Die vorgelagerte Katalogarbeit wird nicht begrenzt.
+-- 
+-- **@LockTimeoutMs:** @LockTimeoutMs int=0: 0 bis 60000 Millisekunden je Katalogbatch, 0 bedeutet NOWAIT; NULL, negativ oder größer 60000 INVALID_PARAMETER. Kein Gesamtlaufzeitbudget; der vorherige Sessionwert wird wiederhergestellt.
+-- 
+-- **@ResultSetArt:** @ResultSetArt varchar(16)=CONSOLE: SQL Server bindet einen längeren Eingabewert vor Validierung auf höchstens 16 Zeichen. Nach Trim/Großschreibung nur CONSOLE, RAW, TABLE, NONE; NULL/leer INVALID_PARAMETER. RAW liefert moduleStatus, snapshots, snapshotFiles, sourceStatus, warnings; TABLE schreibt benannte Ziele; CONSOLE eine formatierte Menge; NONE keine Resultsets.
+-- 
+-- **@ResultTablesJson:** @ResultTablesJson nvarchar(max)=NULL: nur TABLE nimmt ein JSON-Objekt mit mindestens einer Zuordnung an. Exakte Schlüssel: moduleStatus, snapshots, snapshotFiles, sourceStatus, warnings. Werte: unterschiedliche rohe lokale #Temp-Namen, höchstens 116 Zeichen, weder ## noch reserviertes #Monitor-Praefix. Ziele müssen vorhanden, leer und mit genau einer Seed-Spalte ausgestattet sein. Doppelte Schlüssel werden binär, doppelte Ziele case-insensitiv geprüft. Ungültige, doppelte oder unbekannte Zuordnungen werden vor der Quellenlesung abgewiesen; ein späterer Writerfehler kann schon geschriebene Ziele hinterlassen. Außerhalb TABLE nur NULL/leer/U+0020-Leerzeichen.
+-- 
+-- **@JsonErzeugen:** @JsonErzeugen bit=0: 1 erzeugt unabhängig vom Ausgabemodus JSON mit meta und fünf Arrays; NULL/0 kein JSON. Numerisch ungleich 0 wird 1.
+-- 
+-- **@Json:** @Json nvarchar(max)=NULL OUTPUT: optional mit OUTPUT binden; Eingang wird auf NULL gesetzt, ohne @JsonErzeugen=1 entsteht kein Wert.
+-- 
+-- **@PrintMeldungen:** @PrintMeldungen bit=1: 1 meldet nur einen äußeren CATCH-Fehler zusätzlich als konstante Severity-10-Meldung WITH NOWAIT; NULL/0 unterdrückt diese Meldung, numerisch ungleich 0 wird 1. Hilfe, direkte Eingabefehler und behandelte Quellenfehler erzeugen dadurch keine zusätzliche Meldung.
+-- 
+-- **@Hilfe:** @Hilfe bit=0: 1 druckt Hilfe vor Temp-DDL/Katalogzugriff, auch in einer Caller-Transaktion; NULL/0 normaler Pfad.
+-- 
+-- **@StatusCodeOut:** @StatusCodeOut varchar(40)=NULL OUTPUT: optional; AVAILABLE nur Hilfe, AVAILABLE_LIMITED sichtbare Aufnahme, SKIPPED keine sichtbare Auswahl, INVALID_PARAMETER Eingabe, SOURCE_UNAVAILABLE fehlende Dateisicht/Quellenfehler, DENIED_PERMISSION nativer Rechtefehler, TIMEOUT SQL 1222, ERROR_HANDLED äußerer Fehler.
+-- 
+-- **@IsPartialOut:** @IsPartialOut bit=NULL OUTPUT: optional; normaler Pfad 1 wegen Caller-Sicht, Hilfe 0.
+-- 
+-- **@ErrorNumberOut:** @ErrorNumberOut int=NULL OUTPUT: optional; nativer Fehler oder 51011 bei direktem Eingabefehler; sonst NULL.
+-- 
+-- **@ErrorMessageOut:** @ErrorMessageOut nvarchar(2048)=NULL OUTPUT: optional; Fehlertext höchstens 2048 Zeichen, bei Erfolg NULL.
+-- 
+-- ## Resultate und Ausgabe
+-- 
+-- | Resultmenge | RAW | TABLE | Felder laut Inventar |
+-- | --- | --- | --- | --- |
+-- | moduleStatus | 1 | 1 | [ModuleName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL, [CapturedAtUtc] datetime2(3) NOT NULL, [StatusCode] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL, [IsPartial] bit NOT NULL, [RowCount] bigint NOT NULL, [Detail] nvarchar(1000) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL |
+-- | snapshots | 1 | 1 | [SnapshotDatabaseId] int NOT NULL, [SnapshotName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL, [SourceDatabaseId] int NOT NULL, [SourceDatabaseName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL, [CatalogCreateDate] datetime NOT NULL, [SnapshotStateDesc] nvarchar(60) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL, [IsReadOnly] bit NULL, [VisibleSparseFileCount] bigint NULL, [FileMetadataStatus] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL, [MetadataVisibility] varchar(32) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL |
+-- | snapshotFiles | 1 | 1 | [SnapshotDatabaseId] int NOT NULL, [SnapshotName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL, [FileId] int NOT NULL, [LogicalFileName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL, [PhysicalName] nvarchar(260) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL, [IsSparse] bit NOT NULL, [FileStateDesc] nvarchar(60) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL, [MaximumSnapshotSizePages] int NOT NULL, [MaximumSnapshotSizeBytes] bigint NOT NULL, [MetadataVisibility] varchar(32) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL |
+-- | sourceStatus | 1 | 1 | [DatabaseId] int NULL, [DatabaseName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL, [SourceKey] varchar(64) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL, [SourceKind] varchar(16) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL, [StartedAtUtc] datetime2(3) NOT NULL, [CompletedAtUtc] datetime2(3) NOT NULL, [StatusCode] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL, [VisibilityScope] varchar(32) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL, [ObservedRows] bigint NULL, [ReturnedRows] bigint NULL, [IsLimited] bit NOT NULL, [ErrorNumber] int NULL, [ErrorMessage] nvarchar(2048) COLLATE SQL_Latin1_General_CP1_CS_AS NULL |
+-- | warnings | 1 | 1 | [DatabaseId] int NULL, [DatabaseName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL, [WarningCode] varchar(64) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL, [SourceKey] varchar(64) COLLATE SQL_Latin1_General_CP1_CS_AS NULL, [Detail] nvarchar(1000) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL |
+-- 
+-- Bei @Hilfe=1 kommt genau ein Resultset mit SkillFormatVersion, SchemaName, ObjectName und SkillMarkdown hinzu; bestehende PRINT-Hinweise bleiben erhalten.
+-- 
+-- ## Beispiel
+-- 
+-- ```sql
+-- EXEC [monitor].[USP_DatabaseSnapshotInventory] @SnapshotNames=N'[ExampleSnapshot]',@ResultSetArt='RAW';
+-- ```
+-- 
+-- ## Aufwand, Nebenwirkungen, Fehler und Grenzen
+-- 
+-- Keine physische Belegung, Gesundheit, Restore-Eignung oder globale Vollständigkeit. Keine persistente Datenbank- oder Snapshot- Änderung; lokale Temp-DDL dient Aufbereitung und TABLE-Ausgabe.
+-- 
+-- 
+-- ### Quellgebundene Detailbeschreibung
+-- 
+-- Der folgende Quellkopf bewahrt die zusätzlichen Implementierungsgrenzen für diesen Skill.
+-- 
+-- ```text
+-- Objekt       : monitor.USP_DatabaseSnapshotInventory
+-- Version      : 1.0.0
+-- Stand        : 2026-11-15
+-- Zweck        : Inventarisiert caller-sichtbare Datenbank-Snapshots und
+--                ihre caller-sichtbaren Dateikatalogzeilen.
+-- Quellen      : master.sys.databases, master.sys.master_files.
+-- Grenzen      : Keine physische Belegung, Gesundheit, Restore-Eignung oder
+--                globale Vollständigkeit. Keine persistente Datenbank- oder Snapshot-
+--                Änderung; lokale Temp-DDL dient Aufbereitung und TABLE-Ausgabe.
+-- ```
+-- 
+-- ### Weitere bestehende Hilfehinweise
+-- 
+-- ```text
+-- monitor.USP_DatabaseSnapshotInventory: caller-sichtbare Snapshot- und Dateikatalogmetadaten ohne persistente Datenbank- oder Snapshot-Aenderung; lokale Temp-DDL dient Aufbereitung und TABLE-Ausgabe.
+-- Es werden weder physische Sparse-Dateibelegung noch Snapshot-Gesundheit oder Restore-Eignung gemessen. create_date ist ein nativer lokaler Katalogwert und kann sich bei Umbenennung ändern; size ist nur maximale Snapshot-Dateikapazität in 8-KiB-Seiten. Die zwei Kataloglesungen sind nicht atomar.
+-- ```
+-- 
+-- USAGE_SKILL_END monitor.USP_DatabaseSnapshotInventory
 CREATE OR ALTER PROCEDURE [monitor].[USP_DatabaseSnapshotInventory]
       @SnapshotNames nvarchar(max) = NULL
     , @NurOnline bit = 1
@@ -33,24 +155,14 @@ CREATE OR ALTER PROCEDURE [monitor].[USP_DatabaseSnapshotInventory]
 AS
 BEGIN
     SET NOCOUNT ON;
-    DECLARE @OriginalLockTimeout int=@@LOCK_TIMEOUT,
-            @PreviousXactAbort bit=CASE WHEN (@@OPTIONS & 16384)=16384 THEN 1 ELSE 0 END,
-            @Mode varchar(16)=UPPER(LTRIM(RTRIM(COALESCE(@ResultSetArt,'')))),
-            @CapturedAtUtc datetime2(3)=SYSUTCDATETIME(),
-            @Limit bigint=CASE WHEN @MaxZeilen IS NULL OR @MaxZeilen=0 THEN 9223372036854775807 ELSE CONVERT(bigint,@MaxZeilen) END,
-            @Status varchar(40)='SKIPPED',@Error int=NULL,@Message nvarchar(2048)=NULL,
-            @TableStatus varchar(40),@TableMessage nvarchar(2048),@TableError int,
-            @TableFailureError int=NULL,@TableFailureMessage nvarchar(2048)=NULL,
-            @Sql nvarchar(max),@Started datetime2(3),@Observed bigint,
-            @ResultName sysname,@TargetTable sysname,@SourceTable sysname,
-            @LockTimeoutSql nvarchar(80),
-            @ConsoleResultRequested bit=CASE WHEN UPPER(LTRIM(RTRIM(COALESCE(@ResultSetArt,''))))='CONSOLE' THEN 1 ELSE 0 END,
-            @NamesActive bit=CASE WHEN NULLIF(LTRIM(RTRIM(COALESCE(@SnapshotNames,N''))),N'') IS NULL THEN 0 ELSE 1 END;
-    SET @LockTimeoutSql=N'SET LOCK_TIMEOUT '+CONVERT(nvarchar(20),@OriginalLockTimeout)+N';';
-    SELECT @Json=NULL,@StatusCodeOut=NULL,@IsPartialOut=NULL,@ErrorNumberOut=NULL,@ErrorMessageOut=NULL;
 
     IF @Hilfe=1
     BEGIN
+        SET @Json=NULL;
+        SET @StatusCodeOut=NULL;
+        SET @IsPartialOut=NULL;
+        SET @ErrorNumberOut=NULL;
+        SET @ErrorMessageOut=NULL;
         PRINT N'monitor.USP_DatabaseSnapshotInventory: caller-sichtbare Snapshot- und Dateikatalogmetadaten ohne persistente Datenbank- oder Snapshot-Aenderung; lokale Temp-DDL dient Aufbereitung und TABLE-Ausgabe.';
         PRINT N'@SnapshotNames nvarchar(max)=NULL: NULL, leer oder nur äußere U+0020-Leerzeichen wählen alle sichtbaren Snapshots. Sonst bracket-aware Pipe-Liste einteiliger exakter Snapshotnamen; | in [...] ist Namensinhalt, ]] maskiert ]. Rohsegment höchstens 4000 UTF-16-Einheiten, Name höchstens 128 Zeichen; ungültige, leere oder case-sensitive doppelte Elemente sind INVALID_PARAMETER. Kein Patternparameter.';
         PRINT N'@NurOnline bit=1: 1 wählt nur ONLINE-Snapshots, 0 alle caller-sichtbaren Katalogzustände; NULL ist INVALID_PARAMETER. Numerisch ungleich 0 wird als bit 1 konvertiert.';
@@ -70,8 +182,231 @@ BEGIN
         PRINT N'Es werden weder physische Sparse-Dateibelegung noch Snapshot-Gesundheit oder Restore-Eignung gemessen. create_date ist ein nativer lokaler Katalogwert und kann sich bei Umbenennung ändern; size ist nur maximale Snapshot-Dateikapazität in 8-KiB-Seiten. Die zwei Kataloglesungen sind nicht atomar.';
         PRINT N'EXEC [monitor].[USP_DatabaseSnapshotInventory] @SnapshotNames=N''[ExampleSnapshot]'',@ResultSetArt=''RAW'';';
         SELECT @StatusCodeOut='AVAILABLE',@IsPartialOut=0;
+        -- USAGE_SKILL_HELP_BEGIN monitor.USP_DatabaseSnapshotInventory
+        SELECT CONVERT(varchar(16),'1.0.0') AS [SkillFormatVersion],CONVERT(sysname,N'monitor') AS [SchemaName],CONVERT(sysname,N'USP_DatabaseSnapshotInventory') AS [ObjectName],CONVERT(nvarchar(max),N'---')
+            + NCHAR(10)
+            + N'skill_format_version: "1.0.0"'
+            + NCHAR(10)
+            + N'name: "monitor.USP_DatabaseSnapshotInventory"'
+            + NCHAR(10)
+            + N'schema_name: "monitor"'
+            + NCHAR(10)
+            + N'object_name: "USP_DatabaseSnapshotInventory"'
+            + NCHAR(10)
+            + N'object_type: "PROCEDURE"'
+            + NCHAR(10)
+            + N'database_role: "framework"'
+            + NCHAR(10)
+            + N'is_internal: false'
+            + NCHAR(10)
+            + N'description: "Inventarisiert caller-sichtbare Datenbank-Snapshots und ihre caller-sichtbaren Dateikatalogzeilen."'
+            + NCHAR(10)
+            + N'source_path: "Code/08_ServerHealth/340_USP_DatabaseSnapshotInventory.sql"'
+            + NCHAR(10)
+            + N'---'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'# monitor.USP_DatabaseSnapshotInventory'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'## Zweck und Einsatz'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'Inventarisiert caller-sichtbare Datenbank-Snapshots und ihre caller-sichtbaren Dateikatalogzeilen.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'## Voraussetzungen und Rechte'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'Ein direkter Aufruf erfordert EXECUTE auf [monitor].[USP_DatabaseSnapshotInventory]. Die Quelle nennt insbesondere `master.sys.databases`, `master.sys.master_files`, `[monitor].[TVF_ParseSqlNameList]`, `[sys].[sp_executesql]`, `[monitor].[InternalPrepareResultTables]`, `[monitor].[InternalWriteResultTable]`, `[monitor].[InternalEmitConsoleResult]`. Für deren Metadaten- oder Fachzugriff gelten die Rechte des jeweiligen SQL-Ausführungskontexts; der Skill erteilt sie nicht.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'## Parameter und Eingabe'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'„SQL-Bindungspflicht“ bezeichnet ein bei der SQL-Aufrufbindung erforderliches Argument ohne Default. Fachliche Wertpflichten und zulässige NULL-Werte stehen im jeweiligen Einzelvertrag.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'| Parameter | SQL-Typ | SQL-Bindungspflicht | Default |'
+            + NCHAR(10)
+            + N'| --- | --- | --- | --- |'
+            + NCHAR(10)
+            + N'| @SnapshotNames | nvarchar(max) | nein | NULL |'
+            + NCHAR(10)
+            + N'| @NurOnline | bit | nein | 1 |'
+            + NCHAR(10)
+            + N'| @SystemdatenbankenEinbeziehen | bit | nein | 0 |'
+            + NCHAR(10)
+            + N'| @MaxZeilen | int | nein | 1000 |'
+            + NCHAR(10)
+            + N'| @LockTimeoutMs | int | nein | 0 |'
+            + NCHAR(10)
+            + N'| @ResultSetArt | varchar(16) | nein | ''CONSOLE'' |'
+            + NCHAR(10)
+            + N'| @ResultTablesJson | nvarchar(max) | nein | NULL |'
+            + NCHAR(10)
+            + N'| @JsonErzeugen | bit | nein | 0 |'
+            + NCHAR(10)
+            + N'| @Json | nvarchar(max) | nein | NULL OUTPUT |'
+            + NCHAR(10)
+            + N'| @PrintMeldungen | bit | nein | 1 |'
+            + NCHAR(10)
+            + N'| @Hilfe | bit | nein | 0 |'
+            + NCHAR(10)
+            + N'| @StatusCodeOut | varchar(40) | nein | NULL OUTPUT |'
+            + NCHAR(10)
+            + N'| @IsPartialOut | bit | nein | NULL OUTPUT |'
+            + NCHAR(10)
+            + N'| @ErrorNumberOut | int | nein | NULL OUTPUT |'
+            + NCHAR(10)
+            + N'| @ErrorMessageOut | nvarchar(2048) | nein | NULL OUTPUT |'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'**@SnapshotNames:** @SnapshotNames nvarchar(max)=NULL: NULL, leer oder nur äußere U+0020-Leerzeichen wählen alle sichtbaren Snapshots. Sonst bracket-aware Pipe-Liste einteiliger exakter Snapshotnamen; | in [...] ist Namensinhalt, ]] maskiert ]. Rohsegment höchstens 4000 UTF-16-Einheiten, Name höchstens 128 Zeichen; ungültige, leere oder case-sensitive doppelte Elemente sind INVALID_PARAMETER. Kein Patternparameter.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'**@NurOnline:** @NurOnline bit=1: 1 wählt nur ONLINE-Snapshots, 0 alle caller-sichtbaren Katalogzustände; NULL ist INVALID_PARAMETER. Numerisch ungleich 0 wird als bit 1 konvertiert.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'**@SystemdatenbankenEinbeziehen:** @SystemdatenbankenEinbeziehen bit=0: 0 schließt Snapshots mit SourceDatabaseId bis 4 aus, 1 lässt zulässige Systemquellen zu. NULL ist INVALID_PARAMETER; numerisch ungleich 0 wird als bit 1 konvertiert.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'**@MaxZeilen:** @MaxZeilen int=1000: positiv begrenzt Snapshot-Zeilen nach SnapshotDatabaseId; alle sichtbaren Dateizeilen jedes ausgegebenen Snapshots bleiben erhalten. NULL/0 unbegrenzt, negativ INVALID_PARAMETER. Die vorgelagerte Katalogarbeit wird nicht begrenzt.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'**@LockTimeoutMs:** @LockTimeoutMs int=0: 0 bis 60000 Millisekunden je Katalogbatch, 0 bedeutet NOWAIT; NULL, negativ oder größer 60000 INVALID_PARAMETER. Kein Gesamtlaufzeitbudget; der vorherige Sessionwert wird wiederhergestellt.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'**@ResultSetArt:** @ResultSetArt varchar(16)=CONSOLE: SQL Server bindet einen längeren Eingabewert vor Validierung auf höchstens 16 Zeichen. Nach Trim/Großschreibung nur CONSOLE, RAW, TABLE, NONE; NULL/leer INVALID_PARAMETER. RAW liefert moduleStatus, snapshots, snapshotFiles, sourceStatus, warnings; TABLE schreibt benannte Ziele; CONSOLE eine formatierte Menge; NONE keine Resultsets.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'**@ResultTablesJson:** @ResultTablesJson nvarchar(max)=NULL: nur TABLE nimmt ein JSON-Objekt mit mindestens einer Zuordnung an. Exakte Schlüssel: moduleStatus, snapshots, snapshotFiles, sourceStatus, warnings. Werte: unterschiedliche rohe lokale #Temp-Namen, höchstens 116 Zeichen, weder ## noch reserviertes #Monitor-Praefix. Ziele müssen vorhanden, leer und mit genau einer Seed-Spalte ausgestattet sein. Doppelte Schlüssel werden binär, doppelte Ziele case-insensitiv geprüft. Ungültige, doppelte oder unbekannte Zuordnungen werden vor der Quellenlesung abgewiesen; ein späterer Writerfehler kann schon geschriebene Ziele hinterlassen. Außerhalb TABLE nur NULL/leer/U+0020-Leerzeichen.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'**@JsonErzeugen:** @JsonErzeugen bit=0: 1 erzeugt unabhängig vom Ausgabemodus JSON mit meta und fünf Arrays; NULL/0 kein JSON. Numerisch ungleich 0 wird 1.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'**@Json:** @Json nvarchar(max)=NULL OUTPUT: optional mit OUTPUT binden; Eingang wird auf NULL gesetzt, ohne @JsonErzeugen=1 entsteht kein Wert.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'**@PrintMeldungen:** @PrintMeldungen bit=1: 1 meldet nur einen äußeren CATCH-Fehler zusätzlich als konstante Severity-10-Meldung WITH NOWAIT; NULL/0 unterdrückt diese Meldung, numerisch ungleich 0 wird 1. Hilfe, direkte Eingabefehler und behandelte Quellenfehler erzeugen dadurch keine zusätzliche Meldung.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'**@Hilfe:** @Hilfe bit=0: 1 druckt Hilfe vor Temp-DDL/Katalogzugriff, auch in einer Caller-Transaktion; NULL/0 normaler Pfad.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'**@StatusCodeOut:** @StatusCodeOut varchar(40)=NULL OUTPUT: optional; AVAILABLE nur Hilfe, AVAILABLE_LIMITED sichtbare Aufnahme, SKIPPED keine sichtbare Auswahl, INVALID_PARAMETER Eingabe, SOURCE_UNAVAILABLE fehlende Dateisicht/Quellenfehler, DENIED_PERMISSION nativer Rechtefehler, TIMEOUT SQL 1222, ERROR_HANDLED äußerer Fehler.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'**@IsPartialOut:** @IsPartialOut bit=NULL OUTPUT: optional; normaler Pfad 1 wegen Caller-Sicht, Hilfe 0.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'**@ErrorNumberOut:** @ErrorNumberOut int=NULL OUTPUT: optional; nativer Fehler oder 51011 bei direktem Eingabefehler; sonst NULL.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'**@ErrorMessageOut:** @ErrorMessageOut nvarchar(2048)=NULL OUTPUT: optional; Fehlertext höchstens 2048 Zeichen, bei Erfolg NULL.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'## Resultate und Ausgabe'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'| Resultmenge | RAW | TABLE | Felder laut Inventar |'
+            + NCHAR(10)
+            + N'| --- | --- | --- | --- |'
+            + NCHAR(10)
+            + N'| moduleStatus | 1 | 1 | [ModuleName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL, [CapturedAtUtc] datetime2(3) NOT NULL, [StatusCode] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL, [IsPartial] bit NOT NULL, [RowCount] bigint NOT NULL, [Detail] nvarchar(1000) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL |'
+            + NCHAR(10)
+            + N'| snapshots | 1 | 1 | [SnapshotDatabaseId] int NOT NULL, [SnapshotName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL, [SourceDatabaseId] int NOT NULL, [SourceDatabaseName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL, [CatalogCreateDate] datetime NOT NULL, [SnapshotStateDesc] nvarchar(60) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL, [IsReadOnly] bit NULL, [VisibleSparseFileCount] bigint NULL, [FileMetadataStatus] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL, [MetadataVisibility] varchar(32) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL |'
+            + NCHAR(10)
+            + N'| snapshotFiles | 1 | 1 | [SnapshotDatabaseId] int NOT NULL, [SnapshotName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL, [FileId] int NOT NULL, [LogicalFileName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL, [PhysicalName] nvarchar(260) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL, [IsSparse] bit NOT NULL, [FileStateDesc] nvarchar(60) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL, [MaximumSnapshotSizePages] int NOT NULL, [MaximumSnapshotSizeBytes] bigint NOT NULL, [MetadataVisibility] varchar(32) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL |'
+            + NCHAR(10)
+            + N'| sourceStatus | 1 | 1 | [DatabaseId] int NULL, [DatabaseName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL, [SourceKey] varchar(64) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL, [SourceKind] varchar(16) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL, [StartedAtUtc] datetime2(3) NOT NULL, [CompletedAtUtc] datetime2(3) NOT NULL, [StatusCode] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL, [VisibilityScope] varchar(32) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL, [ObservedRows] bigint NULL, [ReturnedRows] bigint NULL, [IsLimited] bit NOT NULL, [ErrorNumber] int NULL, [ErrorMessage] nvarchar(2048) COLLATE SQL_Latin1_General_CP1_CS_AS NULL |'
+            + NCHAR(10)
+            + N'| warnings | 1 | 1 | [DatabaseId] int NULL, [DatabaseName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL, [WarningCode] varchar(64) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL, [SourceKey] varchar(64) COLLATE SQL_Latin1_General_CP1_CS_AS NULL, [Detail] nvarchar(1000) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL |'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'Bei @Hilfe=1 kommt genau ein Resultset mit SkillFormatVersion, SchemaName, ObjectName und SkillMarkdown hinzu; bestehende PRINT-Hinweise bleiben erhalten.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'## Beispiel'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'```sql'
+            + NCHAR(10)
+            + N'EXEC [monitor].[USP_DatabaseSnapshotInventory] @SnapshotNames=N''[ExampleSnapshot]'',@ResultSetArt=''RAW'';'
+            + NCHAR(10)
+            + N'```'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'## Aufwand, Nebenwirkungen, Fehler und Grenzen'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'Keine physische Belegung, Gesundheit, Restore-Eignung oder globale Vollständigkeit. Keine persistente Datenbank- oder Snapshot- Änderung; lokale Temp-DDL dient Aufbereitung und TABLE-Ausgabe.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'### Quellgebundene Detailbeschreibung'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'Der folgende Quellkopf bewahrt die zusätzlichen Implementierungsgrenzen für diesen Skill.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'```text'
+            + NCHAR(10)
+            + N'Objekt       : monitor.USP_DatabaseSnapshotInventory'
+            + NCHAR(10)
+            + N'Version      : 1.0.0'
+            + NCHAR(10)
+            + N'Stand        : 2026-11-15'
+            + NCHAR(10)
+            + N'Zweck        : Inventarisiert caller-sichtbare Datenbank-Snapshots und'
+            + NCHAR(10)
+            + N'               ihre caller-sichtbaren Dateikatalogzeilen.'
+            + NCHAR(10)
+            + N'Quellen      : master.sys.databases, master.sys.master_files.'
+            + NCHAR(10)
+            + N'Grenzen      : Keine physische Belegung, Gesundheit, Restore-Eignung oder'
+            + NCHAR(10)
+            + N'               globale Vollständigkeit. Keine persistente Datenbank- oder Snapshot-'
+            + NCHAR(10)
+            + N'               Änderung; lokale Temp-DDL dient Aufbereitung und TABLE-Ausgabe.'
+            + NCHAR(10)
+            + N'```'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'### Weitere bestehende Hilfehinweise'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'```text'
+            + NCHAR(10)
+            + N'monitor.USP_DatabaseSnapshotInventory: caller-sichtbare Snapshot- und Dateikatalogmetadaten ohne persistente Datenbank- oder Snapshot-Aenderung; lokale Temp-DDL dient Aufbereitung und TABLE-Ausgabe.'
+            + NCHAR(10)
+            + N'Es werden weder physische Sparse-Dateibelegung noch Snapshot-Gesundheit oder Restore-Eignung gemessen. create_date ist ein nativer lokaler Katalogwert und kann sich bei Umbenennung ändern; size ist nur maximale Snapshot-Dateikapazität in 8-KiB-Seiten. Die zwei Kataloglesungen sind nicht atomar.'
+            + NCHAR(10)
+            + N'```'
+            + NCHAR(10)
+            + NCHAR(10) AS [SkillMarkdown];
+        -- USAGE_SKILL_HELP_END monitor.USP_DatabaseSnapshotInventory
         RETURN;
-    END;
+    END
+
+    DECLARE @OriginalLockTimeout int=@@LOCK_TIMEOUT,
+            @PreviousXactAbort bit=CASE WHEN (@@OPTIONS & 16384)=16384 THEN 1 ELSE 0 END,
+            @Mode varchar(16)=UPPER(LTRIM(RTRIM(COALESCE(@ResultSetArt,'')))),
+            @CapturedAtUtc datetime2(3)=SYSUTCDATETIME(),
+            @Limit bigint=CASE WHEN @MaxZeilen IS NULL OR @MaxZeilen=0 THEN 9223372036854775807 ELSE CONVERT(bigint,@MaxZeilen) END,
+            @Status varchar(40)='SKIPPED',@Error int=NULL,@Message nvarchar(2048)=NULL,
+            @TableStatus varchar(40),@TableMessage nvarchar(2048),@TableError int,
+            @TableFailureError int=NULL,@TableFailureMessage nvarchar(2048)=NULL,
+            @Sql nvarchar(max),@Started datetime2(3),@Observed bigint,
+            @ResultName sysname,@TargetTable sysname,@SourceTable sysname,
+            @LockTimeoutSql nvarchar(80),
+            @ConsoleResultRequested bit=CASE WHEN UPPER(LTRIM(RTRIM(COALESCE(@ResultSetArt,''))))='CONSOLE' THEN 1 ELSE 0 END,
+            @NamesActive bit=CASE WHEN NULLIF(LTRIM(RTRIM(COALESCE(@SnapshotNames,N''))),N'') IS NULL THEN 0 ELSE 1 END;
+    SET @LockTimeoutSql=N'SET LOCK_TIMEOUT '+CONVERT(nvarchar(20),@OriginalLockTimeout)+N';';
+    SELECT @Json=NULL,@StatusCodeOut=NULL,@IsPartialOut=NULL,@ErrorNumberOut=NULL,@ErrorMessageOut=NULL;
+
+    ;
 
     IF @@TRANCOUNT<>0 OR (@@OPTIONS & 2)<>0
     BEGIN

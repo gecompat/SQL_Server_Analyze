@@ -112,6 +112,7 @@ RAISERROR(N'RELEASE_GATE 25/34: Ausgabe-Pilotvertrag',10,1) WITH NOWAIT;
 
 RAISERROR(N'RELEASE_GATE 26/34: Frameworkweiter Ausgabevertrag',10,1) WITH NOWAIT;
 :r Integration/189_Framework_Output_Runtime_Contract.sql
+:r Integration/229_Usage_Skills_Framework_Runtime_Contract.sql
 :r Integration/190_Wave1_Output_Xml_Version_Runtime_Contract.sql
 :r Integration/191_Wave2_Operational_Diagnostics_Runtime_Contract.sql
 :r Integration/196_Analysis_Navigator_Runtime_Contract.sql

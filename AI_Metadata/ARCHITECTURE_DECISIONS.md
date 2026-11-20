@@ -1,7 +1,7 @@
 # Architekturentscheidungen
 
 1. Installationsdatenbank wird über den Platzhalter `[DeineDatenbank]` in jedem SQL-Skript explizit gewählt. Ausschließlich `Code/Install/generated/Deploy_All.generated.sql` verwendet geprüfte Datenwerte `@FrameworkDatabase` und optional `@SnapshotDatabase` ohne einen getrennten `USE`-Batch; der Kontext wird innerhalb des dynamischen Ausführungsrahmens gewählt. Einzelquellen und Frameworkinstaller behalten ihren `USE`-Vertrag. Eine weitere enge Ausnahme sind der kanonische Snapshot-Targetinstaller und seine ausdrücklich eingebundenen Targetquellen. Sie erben ausschließlich die bewusst ausgewählte Snapshotdatenbank; das erste Targetskript prüft vor DDL die tatsächliche Datenbankidentität, ONLINE-/Schreibstatus und den Ausschluss von Systemdatenbanken. Die Ausnahme erweitert weder die Standarddatenbankauswahl von Analysen noch die Berechtigung zur automatischen Zielwahl.
-2. Das Schema lautet `[monitor]`.
+2. Fachobjekte des Frameworks verwenden `[monitor]`; das optionale Snapshot-Ziel verwendet `[snapshot]`. Der rein dokumentierende Usage-Skill-Katalog liegt in beiden ausdrücklich gewählten Datenbankrollen unter `[monitor_metadata]`. Dieses Schema enthält nur die konstante View `VW_ObjectUsageSkills`; deren Einträge belegen weder Installation noch Rechte an Fachobjekten.
 3. Öffentliche API-Namen und Resultsetspalten sind exakt case-sensitiv.
 4. Steuerwerte werden getrimmt und in eine kanonische Großschreibung überführt.
 5. Gleiche Funktionalität verwendet überall denselben Parameternamen, Datentyp und dieselbe Semantik.

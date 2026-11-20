@@ -13,6 +13,161 @@ Ausgabe      : RAW, CONSOLE, NONE und optionales JSON mit currentTasks,
                instanceWaits und warnings.
 ===============================================================================
 */
+-- USAGE_SKILL_BEGIN monitor.USP_CurrentWaits 1.0.0
+-- ---
+-- skill_format_version: "1.0.0"
+-- name: "monitor.USP_CurrentWaits"
+-- schema_name: "monitor"
+-- object_name: "USP_CurrentWaits"
+-- object_type: "PROCEDURE"
+-- database_role: "framework"
+-- is_internal: false
+-- description: "Liefert aktuelle Waiting Tasks sowie kumulativen oder gesampelten instanzweiten Wait-Kontext mit Listen- und Patternfiltern."
+-- source_path: "Code/02_CurrentState/040_USP_CurrentWaits.sql"
+-- ---
+-- 
+-- # monitor.USP_CurrentWaits
+-- 
+-- ## Zweck und Einsatz
+-- 
+-- Liefert aktuelle Waiting Tasks sowie kumulativen oder gesampelten instanzweiten Wait-Kontext mit Listen- und Patternfiltern.
+-- 
+-- ## Voraussetzungen und Rechte
+-- 
+-- Ein direkter Aufruf erfordert EXECUTE auf [monitor].[USP_CurrentWaits]. Die Quelle nennt insbesondere `[monitor].[InternalPrepareSingleResultTable]`, `sys.dm_os_waiting_tasks`, `sys.dm_os_wait_stats`, `[monitor].[TVF_ParsePattern]`, `[monitor].[TVF_ParseBigintList]`, `[monitor].[TVF_ParseStringList]`, `[master].[sys].[databases]`, `[sys].[sp_executesql]` und weitere im SQL-Text. Für deren Metadaten- oder Fachzugriff gelten die Rechte des jeweiligen SQL-Ausführungskontexts; der Skill erteilt sie nicht.
+-- 
+-- ## Parameter und Eingabe
+-- 
+-- „SQL-Bindungspflicht“ bezeichnet ein bei der SQL-Aufrufbindung erforderliches Argument ohne Default. Fachliche Wertpflichten und zulässige NULL-Werte stehen im jeweiligen Einzelvertrag.
+-- 
+-- | Parameter | SQL-Typ | SQL-Bindungspflicht | Default |
+-- | --- | --- | --- | --- |
+-- | @SessionIds | nvarchar(max) | nein | NULL |
+-- | @MinWaitMs | bigint | nein | 0 |
+-- | @WaitTypes | nvarchar(max) | nein | NULL |
+-- | @WaitTypePattern | nvarchar(4000) | nein | NULL |
+-- | @WaitGroups | nvarchar(max) | nein | NULL |
+-- | @WaitGroupPattern | nvarchar(4000) | nein | NULL |
+-- | @SystemSessionsEinbeziehen | bit | nein | 0 |
+-- | @ToolHintergrundabfragenEinbeziehen | bit | nein | 0 |
+-- | @MitSqlText | bit | nein | 1 |
+-- | @MaxSqlTextZeichen | int | nein | 2000 |
+-- | @SampleSeconds | tinyint | nein | 0 |
+-- | @UnkritischeWaitsEinbeziehen | bit | nein | 0 |
+-- | @TopWaitPercentage | decimal(5,2) | nein | 95.00 |
+-- | @MaxZeilen | int | nein | 1000 |
+-- | @ResultSetArt | varchar(16) | nein | 'CONSOLE' |
+-- | @ResultTablesJson | nvarchar(max) | nein | NULL |
+-- | @JsonErzeugen | bit | nein | 0 |
+-- | @Json | nvarchar(max) | nein | NULL OUTPUT |
+-- | @PrintMeldungen | bit | nein | 1 |
+-- | @Hilfe | bit | nein | 0 |
+-- | @ParentCurrentStateSnapshotId | uniqueidentifier | nein | NULL |
+-- 
+-- **@SessionIds:** @SessionIds: nvarchar(max); Default=NULL. Ausgelassen entspricht NULL und deaktiviert den Filter. TVF_ParseBigintList ersetzt jedes Komma und Semikolon durch Pipe (auch innerhalb von Klammern), danach trennt | außerhalb von [...]; ]] maskiert dort ]. Äußere Segmentleerzeichen werden getrimmt, Klammern werden für Zahlen nicht entquotet. Leere Liste/Elemente, fehlerhafte Klammern, Rohsegmente über 4000 UTF-16-Codeeinheiten, nicht bigint-konvertierbare Werte sowie IDs außerhalb 1..32767 ergeben INVALID_PARAMETER; Duplikate werden gruppiert. IDs beschränken nur Tasks; NULL lässt alle sichtbaren Session-IDs passieren.
+-- 
+-- **@MinWaitMs:** @MinWaitMs: bigint; Default=0 ms. Ausgelassen nutzt 0. Ganze Zahlen ab 0 sind zulässig; negativ ist INVALID_PARAMETER. Wird die numerische Steuerprüfung beim Status AVAILABLE erreicht, ist NULL ungültig und führt vor der fachlichen Quellaufnahme zu INVALID_PARAMETER bei unverändertem IsPartial=0; frühere Statuswerte wie UNAVAILABLE_FEATURE bleiben vorrangig. Die Eingabe wird vor Prozedureintritt als SQL-bigint gebunden; Textwerte durchlaufen die SQL-Typkonvertierung, Leertext hat keinen eigenen Sonderdefault. Begrenzt die Mindestdauer aktueller Waiting Tasks, nicht Instanz-Wait-Stats.
+-- 
+-- **@WaitTypes:** @WaitTypes: nvarchar(max); Default=NULL. Ausgelassen/NULL deaktiviert die exakte WaitType-Auswahl. Sonst bracket-aware Pipe-Liste nach TVF_ParseStringList: Pipe trennt außerhalb [...], innerhalb ist es Inhalt, ]] maskiert ]; getrimmte Einträge werden bei bracket-quotierten Einträgen entklammert/entmaskiert. Leere Liste/Elemente, ungültige Klammern, Rohsegment über 4000 UTF-16-Codeeinheiten oder Wertlänge über 120 ergeben INVALID_PARAMETER. Gültige Duplikate werden gruppiert. Vergleich ist exakt und case-sensitive unter SQL_Latin1_General_CP1_CS_AS; Typen müssen nicht im Katalog stehen. Exklusiv mit @WaitTypePattern, sobald beide nicht NULL sind. Filtert Task- und Instanzmengen.
+-- 
+-- **@WaitTypePattern:** @WaitTypePattern: nvarchar(4000); Default=NULL. Ausgelassen/NULL deaktiviert das Pattern. TVF_ParsePattern trimmt äußere Eingabezeichen, erkennt case-insensitiv regexi:, regex: und like:, entfernt genau das Präfix ohne erneutes Trimmen des Rests; ohne Präfix gilt LIKE. LIKE ist case-sensitive SQL-LIKE mit %, _ und []-Klassen; like: wählt denselben Modus. regex: ist case-sensitive (Flag c), regexi: case-insensitive (Flag i). Leere Eingabe oder leerer Präfixrest ist INVALID_PARAMETER; Leerzeichen nach Präfix bleiben Musterinhalt. Exklusiv mit @WaitTypes. Regex erfordert SQL Server 2025/Majorversion 17 und Compatibility Level >=170 der aktuellen Datenbank, sonst UNAVAILABLE_FEATURE. Wird spät auf Task-/Instanzkandidaten angewandt; Regex hebt das frühe Taskkandidatenlimit auf und normalisiert den Instanz-Prozentnenner danach nicht neu.
+-- 
+-- **@WaitGroups:** @WaitGroups: nvarchar(max); Default=NULL. Ausgelassen/NULL deaktiviert die exakte WaitGroup-Auswahl. Sonst gilt die bracket-aware Pipe-Liste von TVF_ParseStringList: | trennt außerhalb von [...], innerhalb ist es Literalinhalt und ]] maskiert eine schließende Klammer; äußere Leerzeichen der Segmente werden getrimmt. Bei bracket-quotierten Elementen werden die äußeren Klammern entfernt und ]] zu ] entmaskiert. Leere Gesamtliste, leere Elemente, fehlerhafte Klammern, Rohsegmente über 4000 UTF-16-Codeeinheiten und nach Entquotung leere Werte sind ungültig; Wertlänge über 64 ergibt INVALID_PARAMETER. Gültige Duplikate werden gruppiert. Beliebige syntaktisch gültige Namen sind als Filterwert zulässig; Treffer entstehen nur bei exakter case-sensitiver Übereinstimmung mit einer WaitGroup, die TVF_WaitTypeInfo für die jeweilige Waittypzeile liefert. Ein endlicher erlaubter Namenskatalog ist nicht im Parameterparser festgelegt. Exklusiv mit @WaitGroupPattern, wenn beide nicht NULL sind. Begrenzt Tasks und Instanz-Waits.
+-- 
+-- **@WaitGroupPattern:** @WaitGroupPattern: nvarchar(4000); Default=NULL. Ausgelassen/NULL deaktiviert. Präfix-, Trim-, LIKE-/Regex-, Leerwert- und Regexvoraussetzungen entsprechen @WaitTypePattern; LIKE und Regex vergleichen case-sensitive/case-insensitive gemäß Modus mit der Katalog-WaitGroup. Exklusiv mit @WaitGroups. Regex wird spät angewandt, hebt das frühe Tasklimit auf und entfernt Instanzzeilen nach der Prozentberechnung, ohne den Nenner neu zu normalisieren.
+-- 
+-- **@SystemSessionsEinbeziehen:** @SystemSessionsEinbeziehen: bit; Default=0. Ausgelassen ergibt 0. 0 schließt Tasks von System-Sessions aus (is_user_process=0); 1 bezieht sie ein. NULL ist nicht als ungültig validiert und wird wie nicht gleich 1 behandelt: User-Sessions passieren, System-Sessions nicht. Numerische Eingaben werden vor Procedure-Eintritt zu bit konvertiert (0→0, Nichtnull→1). Nur Taskpfad.
+-- 
+-- **@ToolHintergrundabfragenEinbeziehen:** @ToolHintergrundabfragenEinbeziehen: bit; Default=0. Ausgelassen ergibt 0. 0 blendet als Tool-Hintergrundabfrage erkannte Tasks aus; 1 bezieht sie mit Klassifikationsfeldern ein. NULL und jeder nach Konvertierung nicht als 0/1 zulässige Wert führen zu INVALID_PARAMETER. Numerische Eingaben konvertieren vor Eintritt zu bit (0→0, Nichtnull→1). Filter betrifft Tasks, nicht Instanz-Wait-Stats; Erkennung beruht auf dem Toolklassifikationshelper und ist keine Sicherheitsgrenze.
+-- 
+-- **@MitSqlText:** @MitSqlText: bit; Default=1. Ausgelassen ergibt 1. 1 versucht den aktuellen Statementtext für Taskzeilen aus dem jeweiligen Requestkontext zu ergänzen; 0 unterdrückt Textzugriff/-projektion. NULL ist nicht eigens ungültig und folgt den IF/CASE-Gleich-1-Pfaden, damit wird Text nicht ergänzt. Numerische Werte werden vor Eintritt zu bit konvertiert. Bei Parent-Snapshot wird vorhandener gemeinsamer Text nur bei Aktivierung konsumiert; die Taskquellen können unabhängig vom Filter bereits materialisiert sein.
+-- 
+-- **@MaxSqlTextZeichen:** @MaxSqlTextZeichen: int; Default=2000 Zeichen. Ausgelassen nutzt 2000. Nichtnegative Ganzzahl zulässig; negativ ist INVALID_PARAMETER. NULL und 0 heben die durch diesen Grenzwert bewirkte Zeichenbegrenzung auf. Positive Werte begrenzen/kürzen CurrentStatement nach dieser Zahl und können Trunkierungswarnungen erzeugen. Steuert Textbreite, nicht Kandidatenzahl.
+-- 
+-- **@SampleSeconds:** @SampleSeconds: tinyint; Default=0 Sekunden. Ausgelassen ergibt 0; zulässiger Bereich 0..60, Werte über 60 ergeben INVALID_PARAMETER (tinyint-Konvertierung erfolgt vor Eintritt). 0 liefert kumulative sys.dm_os_wait_stats; 1..60 liest Wait-Stats vor und nach WAITFOR DELAY der entsprechenden Sekundenzahl und bildet daraus das Delta; aktuelle Tasks werden zuvor einmal als Snapshot erfasst und nicht erneut gesampelt. Wird die numerische Steuerprüfung beim Status AVAILABLE erreicht, ist NULL ungültig und führt vor der fachlichen Quellaufnahme zu INVALID_PARAMETER bei unverändertem IsPartial=0; frühere Statuswerte wie UNAVAILABLE_FEATURE bleiben vorrangig. Die Eingabe wird vor Prozedureintritt als SQL-tinyint gebunden; Textwerte durchlaufen die SQL-Typkonvertierung, Leertext hat keinen eigenen Sonderdefault. Bei ParentCurrentStateSnapshotId werden Tasks/Sessions/Requests/Text aus dem Elternsnapshot bezogen, Wait-Stats-Sampling bleibt ein eigener Messpunkt.
+-- 
+-- **@UnkritischeWaitsEinbeziehen:** @UnkritischeWaitsEinbeziehen: bit; Default=0. Ausgelassen ergibt 0. 0 schließt Instanz-Waitzeilen aus, deren Katalogfeld IsGenerallyBenign=1 ist; 1 lässt sie in die Instanzstatistik ein. Das ist keine globale Aussage, dass ein Wait bei konkreter Workloadauswirkung unkritisch wäre. NULL wird nicht abgelehnt und der Vergleich =1 ist nicht TRUE, daher werden nur Katalogzeilen mit IsGenerallyBenign=0 aufgenommen; NULL-Katalogklassifikation passiert ebenfalls nicht. Numerische Eingaben werden vor Eintritt zu bit konvertiert. Taskfilter werden davon nicht verändert.
+-- 
+-- **@TopWaitPercentage:** @TopWaitPercentage: decimal(5,2); Default=95.00 Prozent. Ausgelassen nutzt 95.00. Zulässig ist >0 und <=100; 0, negative oder >100 ergeben INVALID_PARAMETER. Wird die numerische Steuerprüfung beim Status AVAILABLE erreicht, ist NULL ungültig und führt vor der fachlichen Quellaufnahme zu INVALID_PARAMETER bei unverändertem IsPartial=0; frühere Statuswerte wie UNAVAILABLE_FEATURE bleiben vorrangig. Die Eingabe wird vor Prozedureintritt als SQL-decimal(5,2) gebunden; Textwerte durchlaufen die SQL-Typkonvertierung, Leertext hat keinen eigenen Sonderdefault. Die Prozentwerte und ihr Nenner entstehen nach Benign-, exakten Listen- und LIKE-Filtern. Danach entfernt Regex weitere Zeilen ohne Neuberechnung dieser Prozentwerte; erst anschließend folgen Kumulierung und der Cutoff CumulativePercentage - WaitPercentage >= Wert.
+-- 
+-- **@MaxZeilen:** @MaxZeilen: int; Default=1000 Zeilen je Fachmenge. Ausgelassen nutzt 1000; negativ ist INVALID_PARAMETER; NULL oder 0 bedeutet unbegrenzt. Positiver Wert begrenzt Tasks und Instanz-Waits jeweils separat nach ihrer Auswahlordnung. Beim einfachen Taskpfad werden höchstens N+1 Kandidaten gelesen, um Abschneidung zu erkennen; bei N=int-Max wird Kandidatengrenze als bigint N+1 berechnet und ist daher 2147483648, kein int-Überlauf. Regex oder unbegrenzte Ausgabe hebt dieses frühe Kandidatenlimit auf; spätere Zeilenbegrenzung bleibt. Instanzwerte werden vollständig aggregiert und danach begrenzt.
+-- 
+-- **@ResultSetArt:** @ResultSetArt: varchar(16); Default='CONSOLE'. Ausgelassen nutzt CONSOLE. Nach LTRIM/RTRIM und UPPER sind genau RAW (Status, Task-/Instanzdaten, Warnings), CONSOLE (Taskgrid mit Beschriftung; bei leerer Menge Hinweiszeile), TABLE (Export nur currentTasks in geprüftes Ziel) und NONE (keine fachlichen Resultsets) zulässig; sonst INVALID_PARAMETER. NULL wird zu leerem Text normalisiert und ist ungültig. Werte sind case-insensitive. Nichtleeres @ResultTablesJson außerhalb TABLE wirft im normalen Pfad 51011; Hilfe kehrt vorher zurück.
+-- 
+-- **@ResultTablesJson:** @ResultTablesJson: nvarchar(max); Default=NULL. Bei @ResultSetArt=TABLE erforderlich: gültiges, nichtleeres JSON-Objekt mit exakt case-sensitivem Schlüssel currentTasks und einem nichtleeren JSON-String als Wert. Der String benennt exakt (ohne Trim-Normalisierung) eine vorhandene lokale #Temp-Tabelle; LTRIM/RTRIM mit SQL-Standard-Leerzeichen U+0020 prüft nur, ob der Zielname leer ist. Zulässig sind Namen mit führendem #, nicht ##, höchstens 116 Zeichen gemäß SQL-LEN-Prüfung und nicht mit #Monitor beginnend (Präfixprüfung case-insensitiv); Ziel muss leer sein und genau eine Seed-Spalte beliebigen Typs haben. Unbekannter/duplizierter Schlüssel oder Ziel, falscher JSON-Werttyp, ungültige JSON-Form, fehlendes oder unzulässiges Ziel sowie befülltes oder abweichend spaltiges Ziel werfen beim Preflight 51011. Außerhalb TABLE müssen NULL, leer oder nach LTRIM/RTRIM nur gewöhnliche U+0020-Leerzeichen stehen; eine danach nichtleere Map wirft im normalen Pfad 51011; Hilfe kehrt vorher zurück.
+-- 
+-- **@JsonErzeugen:** @JsonErzeugen: bit; Default=0. Ausgelassen ergibt 0. 0 deaktiviert JSON; 1 erzeugt unabhängig von ResultSetArt ein JSON-Objekt mit meta, currentTasks, instanceWaits und warnings. NULL wird nicht eigens abgelehnt und der IF-Gleich-1-Zweig wird nicht ausgeführt, sodass kein JSON erzeugt wird. Numerische Eingaben werden vor Eintritt zu bit konvertiert (0→0, Nichtnull→1).
+-- 
+-- **@Json:** @Json: nvarchar(max) OUTPUT; Default=NULL. Zum Empfang muss eine nvarchar(max)-Variable gebunden und im EXEC mit OUTPUT markiert werden. Procedure setzt den Parameter beim Eintritt auf NULL; mit @JsonErzeugen=1 enthält er das Envelope, sonst bleibt er NULL. Ohne Bindung kann der Wert nicht empfangen werden.
+-- 
+-- **@PrintMeldungen:** @PrintMeldungen: bit; Default=1. Ausgelassen ergibt 1. 1 erlaubt optionale Zusatz-/Warnmeldungen, 0 unterdrückt sie; Ergebnissets und JSON bleiben davon unabhängig. NULL wird nicht validiert und die Gleich-1-Ausgabezweige bleiben aus. Numerische Werte werden vor Eintritt zu bit konvertiert (0→0, Nichtnull→1).
+-- 
+-- **@Hilfe:** @Hilfe: bit; Default=0. Ausgelassen ergibt 0. Genau 1 druckt Hilfe und beendet vor fachlicher Analyse; 0 führt regulär aus. NULL wird nicht als Hilfe erkannt und ist nicht ungültig; numerische Werte werden vor Eintritt zu bit konvertiert. Vor diesem Zweig gilt: Im normalen Pfad wirft eine bei nicht-TABLE unzulässige nichtleere @ResultTablesJson-Map 51011; bei TABLE kann der Einzelziel-Preflight ebenfalls 51011 werfen. @Hilfe=1 kehrt vor beiden Prüfungen zurück.
+-- 
+-- **@ParentCurrentStateSnapshotId:** @ParentCurrentStateSnapshotId: uniqueidentifier; Default=NULL. Ausgelassen/NULL erzeugt eine eigene Snapshot-ID und liest Quellen selbst. Ein GUID bindet Tasks, Sessions, Requests und gegebenenfalls SQL-Text an die gleichnamige, im aufrufenden Sessionkontext vorhandene Parent-Snapshot-ID mit OwnerSessionId=@@SPID und ContractVersion=2; fehlender/fremder/unpassender Kontext führt zu behandelten Fehler-/Partialstatus. Instanzweite Wait-Stats werden weiterhin separat kumulativ oder im Sample gelesen. Ungültig formatierte Eingaben scheitern bereits bei SQL-Konvertierung zu uniqueidentifier.
+-- 
+-- ## Resultate und Ausgabe
+-- 
+-- RAW, CONSOLE, NONE und optionales JSON mit currentTasks, instanceWaits und warnings.
+-- 
+-- | Resultmenge | RAW | TABLE | Felder laut Inventar |
+-- | --- | --- | --- | --- |
+-- | currentTasks | 1 | 1 | [SessionId] smallint NULL,[ExecContextId] int NULL,[WaitDurationMs] bigint NULL,[WaitType] nvarchar(120) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,[BlockingSessionId] smallint NULL,[ResourceDescription] nvarchar(3072) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,[SessionStatus] nvarchar(30) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,[RequestStatus] nvarchar(30) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,[LoginName] nvarchar(128) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,[HostName] nvarchar(128) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,[ProgramName] nvarchar(128) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,[IsToolBackgroundQuery] bit NOT NULL,[ToolBackgroundRuleCode] varchar(64) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,[ToolBackgroundCategory] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,[ToolBackgroundDetection] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,[ToolBackgroundConfidence] varchar(16) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,[DatabaseId] smallint NULL,[Command] nvarchar(32) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,[CurrentStatementCharacters] bigint NULL,[CurrentStatementBytes] bigint NULL,[CurrentStatementIsTruncated] bit NOT NULL DEFAULT(0),[CurrentStatement] nvarchar(max) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,[WaitGroup] nvarchar(64) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,[WaitSeverity] tinyint NULL,[IsGenerallyBenign] bit NULL,[WaitMeaning] nvarchar(1000) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,[WaitTypicalOccurrence] nvarchar(1200) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,[HighWaitImpact] nvarchar(1200) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,[RecommendedChecks] nvarchar(1500) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,[WaitHelpUrl] nvarchar(500) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,[DescriptionSource] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,[DescriptionQuality] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,[CatalogMatchType] varchar(20) COLLATE SQL_Latin1_General_CP1_CS_AS NULL |
+-- 
+-- Bei @Hilfe=1 kommt genau ein Resultset mit SkillFormatVersion, SchemaName, ObjectName und SkillMarkdown hinzu; bestehende PRINT-Hinweise bleiben erhalten.
+-- 
+-- ## Beispiel
+-- 
+-- ```sql
+-- EXEC [monitor].[USP_CurrentWaits] @ResultSetArt='CONSOLE';
+-- ```
+-- 
+-- ## Aufwand, Nebenwirkungen, Fehler und Grenzen
+-- 
+-- monitor.USP_CurrentWaits; Snapshotdiagnostik, keine Historie.
+-- 
+-- Daten: sys.dm_os_waiting_tasks plus sys.dm_os_wait_stats kumulativ oder gesampelt.
+-- 
+-- Berechtigung: VIEW SERVER STATE bis 2019, VIEW SERVER PERFORMANCE STATE ab 2022.
+-- 
+-- Regex benötigt SQL Server 2025 und Compatibility Level 170.
+-- 
+-- RAW/JSON enthalten Status und Warnungen; ungültige Kombinationen ergeben INVALID_PARAMETER, Regex ohne Voraussetzung UNAVAILABLE_FEATURE. JSON enthält meta, currentTasks, instanceWaits und warnings. TABLE-Preflight läuft nur im normalen Pfad nach dem Hilfezweig und kann bei ungültigem Mapping werfen.
+-- 
+-- 
+-- ### Quellgebundene Detailbeschreibung
+-- 
+-- Der folgende Quellkopf bewahrt die zusätzlichen Implementierungsgrenzen für diesen Skill.
+-- 
+-- ```text
+-- Objekt       : monitor.USP_CurrentWaits
+-- Version      : 4.0.0
+-- Stand        : 2026-07-23
+-- Zweck        : Liefert aktuelle Waiting Tasks sowie kumulativen oder
+--                gesampelten instanzweiten Wait-Kontext mit Listen- und
+--                Patternfiltern.
+-- Ausgabe      : RAW, CONSOLE, NONE und optionales JSON mit currentTasks,
+--                instanceWaits und warnings.
+-- ```
+-- 
+-- ### Weitere bestehende Hilfehinweise
+-- 
+-- ```text
+-- monitor.USP_CurrentWaits; Snapshotdiagnostik, keine Historie.
+-- Daten: sys.dm_os_waiting_tasks plus sys.dm_os_wait_stats kumulativ oder gesampelt.
+-- Berechtigung: VIEW SERVER STATE bis 2019, VIEW SERVER PERFORMANCE STATE ab 2022.
+-- Regex benötigt SQL Server 2025 und Compatibility Level 170.
+-- RAW/JSON enthalten Status und Warnungen; ungültige Kombinationen ergeben INVALID_PARAMETER, Regex ohne Voraussetzung UNAVAILABLE_FEATURE. JSON enthält meta, currentTasks, instanceWaits und warnings. TABLE-Preflight läuft nur im normalen Pfad nach dem Hilfezweig und kann bei ungültigem Mapping werfen.
+-- CONSOLE:
+-- TABLE-Mapping separat deklarieren; lokale Ziele müssen leere Einspalten-#Temp-Tabellen sein:
+-- DECLARE @Tables nvarchar(max);
+-- CREATE TABLE #CurrentWaits_HelpExample (Seed int NULL);
+-- DROP TABLE #CurrentWaits_HelpExample;
+-- JSON:
+-- DECLARE @Json nvarchar(max);
+-- ```
+-- 
+-- USAGE_SKILL_END monitor.USP_CurrentWaits
 CREATE OR ALTER PROCEDURE [monitor].[USP_CurrentWaits]
       @SessionIds                    nvarchar(max)  = NULL
     , @MinWaitMs                    bigint         = 0
@@ -38,25 +193,10 @@ CREATE OR ALTER PROCEDURE [monitor].[USP_CurrentWaits]
 AS
 BEGIN
     SET NOCOUNT ON;
-    SET LOCK_TIMEOUT 0;
-    SET @Json=NULL;
-    DECLARE @ModuleName sysname=N'USP_CurrentWaits',@CollectionTimeUtc datetime2(3)=SYSUTCDATETIME(),@MeasurementStartUtc datetime2(3)=NULL,@MeasurementEndUtc datetime2(3)=NULL;
-    DECLARE @StatusCode varchar(40)='AVAILABLE',@IsPartial bit=0,@TaskRowCount bigint=0,@InstanceRowCount bigint=0,@ErrorNumber int=NULL,@ErrorMessage nvarchar(2048)=NULL,@Detail nvarchar(2000)=NULL,@DeltaStatus varchar(40)=CASE WHEN @SampleSeconds=0 THEN 'CUMULATIVE_CONTEXT' ELSE 'SKIPPED' END,@DeltaDetail nvarchar(2000)=NULL;
-    DECLARE @RequiredPermission nvarchar(256)=CASE WHEN TRY_CONVERT(int,SERVERPROPERTY(N'ProductMajorVersion'))>=16 THEN N'VIEW SERVER PERFORMANCE STATE' ELSE N'VIEW SERVER STATE' END;
-    DECLARE @ResultSetArtNormalisiert varchar(16)=UPPER(LTRIM(RTRIM(COALESCE(@ResultSetArt,''))));
-    DECLARE @TableResultRequested bit = CASE WHEN @ResultSetArtNormalisiert = 'TABLE' THEN 1 ELSE 0 END;
-    DECLARE @ConsoleResultRequested bit = CASE WHEN @ResultSetArtNormalisiert = 'CONSOLE' THEN 1 ELSE 0 END;
-    DECLARE @TableTarget sysname=NULL;
-    IF @TableResultRequested=0 AND NULLIF(LTRIM(RTRIM(COALESCE(@ResultTablesJson,N''))),N'') IS NOT NULL THROW 51011,N'@ResultTablesJson ist ausschließlich mit @ResultSetArt=TABLE zulässig.',1;
-    IF @TableResultRequested=1 EXEC [monitor].[InternalPrepareSingleResultTable] @ResultTablesJson=@ResultTablesJson,@ResultName=N'currentTasks',@TargetTable=@TableTarget OUTPUT,@ThrowOnError=1;
-    IF @TableResultRequested = 1 OR @ConsoleResultRequested = 1 SET @ResultSetArtNormalisiert = 'NONE';
-    DECLARE @EffectiveMaxZeilen bigint=CASE WHEN @MaxZeilen IS NULL OR @MaxZeilen=0 THEN CONVERT(bigint,9223372036854775807) WHEN @MaxZeilen>0 THEN CONVERT(bigint,@MaxZeilen) ELSE CONVERT(bigint,0) END;
-    DECLARE @CandidateMaxZeilen bigint,@MonitorPrintMessage nvarchar(2048),@StartBefore datetime,@StartAfter datetime;
-    DECLARE @EvidenceSnapshotId uniqueidentifier=COALESCE(@ParentCurrentStateSnapshotId,NEWID());
-    DECLARE @EvidenceSnapshotStartedAtUtc datetime2(3)=@CollectionTimeUtc;
 
     IF @Hilfe=1
     BEGIN
+        SET @Json=NULL;
         PRINT N'monitor.USP_CurrentWaits; Snapshotdiagnostik, keine Historie.';
         PRINT N'Daten: sys.dm_os_waiting_tasks plus sys.dm_os_wait_stats kumulativ oder gesampelt.';
         PRINT N'Berechtigung: VIEW SERVER STATE bis 2019, VIEW SERVER PERFORMANCE STATE ab 2022.';
@@ -74,15 +214,15 @@ BEGIN
         PRINT N'@UnkritischeWaitsEinbeziehen: bit; Default=0. Ausgelassen ergibt 0. 0 schließt Instanz-Waitzeilen aus, deren Katalogfeld IsGenerallyBenign=1 ist; 1 lässt sie in die Instanzstatistik ein. Das ist keine globale Aussage, dass ein Wait bei konkreter Workloadauswirkung unkritisch wäre. NULL wird nicht abgelehnt und der Vergleich =1 ist nicht TRUE, daher werden nur Katalogzeilen mit IsGenerallyBenign=0 aufgenommen; NULL-Katalogklassifikation passiert ebenfalls nicht. Numerische Eingaben werden vor Eintritt zu bit konvertiert. Taskfilter werden davon nicht verändert.';
         PRINT N'@TopWaitPercentage: decimal(5,2); Default=95.00 Prozent. Ausgelassen nutzt 95.00. Zulässig ist >0 und <=100; 0, negative oder >100 ergeben INVALID_PARAMETER. Wird die numerische Steuerprüfung beim Status AVAILABLE erreicht, ist NULL ungültig und führt vor der fachlichen Quellaufnahme zu INVALID_PARAMETER bei unverändertem IsPartial=0; frühere Statuswerte wie UNAVAILABLE_FEATURE bleiben vorrangig. Die Eingabe wird vor Prozedureintritt als SQL-decimal(5,2) gebunden; Textwerte durchlaufen die SQL-Typkonvertierung, Leertext hat keinen eigenen Sonderdefault. Die Prozentwerte und ihr Nenner entstehen nach Benign-, exakten Listen- und LIKE-Filtern. Danach entfernt Regex weitere Zeilen ohne Neuberechnung dieser Prozentwerte; erst anschließend folgen Kumulierung und der Cutoff CumulativePercentage - WaitPercentage >= Wert.';
         PRINT N'@MaxZeilen: int; Default=1000 Zeilen je Fachmenge. Ausgelassen nutzt 1000; negativ ist INVALID_PARAMETER; NULL oder 0 bedeutet unbegrenzt. Positiver Wert begrenzt Tasks und Instanz-Waits jeweils separat nach ihrer Auswahlordnung. Beim einfachen Taskpfad werden höchstens N+1 Kandidaten gelesen, um Abschneidung zu erkennen; bei N=int-Max wird Kandidatengrenze als bigint N+1 berechnet und ist daher 2147483648, kein int-Überlauf. Regex oder unbegrenzte Ausgabe hebt dieses frühe Kandidatenlimit auf; spätere Zeilenbegrenzung bleibt. Instanzwerte werden vollständig aggregiert und danach begrenzt.';
-        PRINT N'@ResultSetArt: varchar(16); Default=''CONSOLE''. Ausgelassen nutzt CONSOLE. Nach LTRIM/RTRIM und UPPER sind genau RAW (Status, Task-/Instanzdaten, Warnings), CONSOLE (Taskgrid mit Beschriftung; bei leerer Menge Hinweiszeile), TABLE (Export nur currentTasks in geprüftes Ziel) und NONE (keine fachlichen Resultsets) zulässig; sonst INVALID_PARAMETER. NULL wird zu leerem Text normalisiert und ist ungültig. Werte sind case-insensitive. Nichtleeres @ResultTablesJson außerhalb TABLE wirft vor Hilfe 51011.';
-        PRINT N'@ResultTablesJson: nvarchar(max); Default=NULL. Bei @ResultSetArt=TABLE erforderlich: gültiges, nichtleeres JSON-Objekt mit exakt case-sensitivem Schlüssel currentTasks und einem nichtleeren JSON-String als Wert. Der String benennt exakt (ohne Trim-Normalisierung) eine vorhandene lokale #Temp-Tabelle; LTRIM/RTRIM mit SQL-Standard-Leerzeichen U+0020 prüft nur, ob der Zielname leer ist. Zulässig sind Namen mit führendem #, nicht ##, höchstens 116 Zeichen gemäß SQL-LEN-Prüfung und nicht mit #Monitor beginnend (Präfixprüfung case-insensitiv); Ziel muss leer sein und genau eine Seed-Spalte beliebigen Typs haben. Unbekannter/duplizierter Schlüssel oder Ziel, falscher JSON-Werttyp, ungültige JSON-Form, fehlendes oder unzulässiges Ziel sowie befülltes oder abweichend spaltiges Ziel werfen beim Preflight 51011. Außerhalb TABLE müssen NULL, leer oder nach LTRIM/RTRIM nur gewöhnliche U+0020-Leerzeichen stehen; eine danach nichtleere Map wirft vor Hilfe 51011.';
+        PRINT N'@ResultSetArt: varchar(16); Default=''CONSOLE''. Ausgelassen nutzt CONSOLE. Nach LTRIM/RTRIM und UPPER sind genau RAW (Status, Task-/Instanzdaten, Warnings), CONSOLE (Taskgrid mit Beschriftung; bei leerer Menge Hinweiszeile), TABLE (Export nur currentTasks in geprüftes Ziel) und NONE (keine fachlichen Resultsets) zulässig; sonst INVALID_PARAMETER. NULL wird zu leerem Text normalisiert und ist ungültig. Werte sind case-insensitive. Nichtleeres @ResultTablesJson außerhalb TABLE wirft im normalen Pfad 51011; Hilfe kehrt vorher zurück.';
+        PRINT N'@ResultTablesJson: nvarchar(max); Default=NULL. Bei @ResultSetArt=TABLE erforderlich: gültiges, nichtleeres JSON-Objekt mit exakt case-sensitivem Schlüssel currentTasks und einem nichtleeren JSON-String als Wert. Der String benennt exakt (ohne Trim-Normalisierung) eine vorhandene lokale #Temp-Tabelle; LTRIM/RTRIM mit SQL-Standard-Leerzeichen U+0020 prüft nur, ob der Zielname leer ist. Zulässig sind Namen mit führendem #, nicht ##, höchstens 116 Zeichen gemäß SQL-LEN-Prüfung und nicht mit #Monitor beginnend (Präfixprüfung case-insensitiv); Ziel muss leer sein und genau eine Seed-Spalte beliebigen Typs haben. Unbekannter/duplizierter Schlüssel oder Ziel, falscher JSON-Werttyp, ungültige JSON-Form, fehlendes oder unzulässiges Ziel sowie befülltes oder abweichend spaltiges Ziel werfen beim Preflight 51011. Außerhalb TABLE müssen NULL, leer oder nach LTRIM/RTRIM nur gewöhnliche U+0020-Leerzeichen stehen; eine danach nichtleere Map wirft im normalen Pfad 51011; Hilfe kehrt vorher zurück.';
         PRINT N'@JsonErzeugen: bit; Default=0. Ausgelassen ergibt 0. 0 deaktiviert JSON; 1 erzeugt unabhängig von ResultSetArt ein JSON-Objekt mit meta, currentTasks, instanceWaits und warnings. NULL wird nicht eigens abgelehnt und der IF-Gleich-1-Zweig wird nicht ausgeführt, sodass kein JSON erzeugt wird. Numerische Eingaben werden vor Eintritt zu bit konvertiert (0→0, Nichtnull→1).';
         PRINT N'@Json: nvarchar(max) OUTPUT; Default=NULL. Zum Empfang muss eine nvarchar(max)-Variable gebunden und im EXEC mit OUTPUT markiert werden. Procedure setzt den Parameter beim Eintritt auf NULL; mit @JsonErzeugen=1 enthält er das Envelope, sonst bleibt er NULL. Ohne Bindung kann der Wert nicht empfangen werden.';
         PRINT N'@PrintMeldungen: bit; Default=1. Ausgelassen ergibt 1. 1 erlaubt optionale Zusatz-/Warnmeldungen, 0 unterdrückt sie; Ergebnissets und JSON bleiben davon unabhängig. NULL wird nicht validiert und die Gleich-1-Ausgabezweige bleiben aus. Numerische Werte werden vor Eintritt zu bit konvertiert (0→0, Nichtnull→1).';
-        PRINT N'@Hilfe: bit; Default=0. Ausgelassen ergibt 0. Genau 1 druckt Hilfe und beendet vor fachlicher Analyse; 0 führt regulär aus. NULL wird nicht als Hilfe erkannt und ist nicht ungültig; numerische Werte werden vor Eintritt zu bit konvertiert. Vor diesem Zweig gilt: Bei nicht-TABLE ist eine nach LTRIM/RTRIM (gewöhnliche U+0020-Leerzeichen) nichtleere @ResultTablesJson-Map unzulässig und wirft 51011; bei TABLE läuft der Einzelziel-Preflight und kann ebenfalls 51011 werfen. Daher kann eine unzulässige Map auch mit Hilfe den Aufruf abbrechen.';
+        PRINT N'@Hilfe: bit; Default=0. Ausgelassen ergibt 0. Genau 1 druckt Hilfe und beendet vor fachlicher Analyse; 0 führt regulär aus. NULL wird nicht als Hilfe erkannt und ist nicht ungültig; numerische Werte werden vor Eintritt zu bit konvertiert. Vor diesem Zweig gilt: Im normalen Pfad wirft eine bei nicht-TABLE unzulässige nichtleere @ResultTablesJson-Map 51011; bei TABLE kann der Einzelziel-Preflight ebenfalls 51011 werfen. @Hilfe=1 kehrt vor beiden Prüfungen zurück.';
         PRINT N'@ParentCurrentStateSnapshotId: uniqueidentifier; Default=NULL. Ausgelassen/NULL erzeugt eine eigene Snapshot-ID und liest Quellen selbst. Ein GUID bindet Tasks, Sessions, Requests und gegebenenfalls SQL-Text an die gleichnamige, im aufrufenden Sessionkontext vorhandene Parent-Snapshot-ID mit OwnerSessionId=@@SPID und ContractVersion=2; fehlender/fremder/unpassender Kontext führt zu behandelten Fehler-/Partialstatus. Instanzweite Wait-Stats werden weiterhin separat kumulativ oder im Sample gelesen. Ungültig formatierte Eingaben scheitern bereits bei SQL-Konvertierung zu uniqueidentifier.';
         PRINT N'Regex benötigt SQL Server 2025 und Compatibility Level 170.';
-        PRINT N'RAW/JSON enthalten Status und Warnungen; ungültige Kombinationen ergeben INVALID_PARAMETER, Regex ohne Voraussetzung UNAVAILABLE_FEATURE. JSON enthält meta, currentTasks, instanceWaits und warnings. TABLE-Preflight läuft vor der Hilfe und kann bei ungültigem Mapping werfen.';
+        PRINT N'RAW/JSON enthalten Status und Warnungen; ungültige Kombinationen ergeben INVALID_PARAMETER, Regex ohne Voraussetzung UNAVAILABLE_FEATURE. JSON enthält meta, currentTasks, instanceWaits und warnings. TABLE-Preflight läuft nur im normalen Pfad nach dem Hilfezweig und kann bei ungültigem Mapping werfen.';
         PRINT N'CONSOLE:';
         PRINT N'EXEC [monitor].[USP_CurrentWaits] @ResultSetArt=''CONSOLE'';';
         PRINT N'TABLE-Mapping separat deklarieren; lokale Ziele müssen leere Einspalten-#Temp-Tabellen sein:';
@@ -96,8 +236,292 @@ BEGIN
         PRINT N'DECLARE @Json nvarchar(max);';
         PRINT N'EXEC [monitor].[USP_CurrentWaits] @JsonErzeugen=1, @Json=@Json OUTPUT;';
         PRINT N'SELECT @Json AS [Json];';
+        -- USAGE_SKILL_HELP_BEGIN monitor.USP_CurrentWaits
+        SELECT CONVERT(varchar(16),'1.0.0') AS [SkillFormatVersion],CONVERT(sysname,N'monitor') AS [SchemaName],CONVERT(sysname,N'USP_CurrentWaits') AS [ObjectName],CONVERT(nvarchar(max),N'---')
+            + NCHAR(10)
+            + N'skill_format_version: "1.0.0"'
+            + NCHAR(10)
+            + N'name: "monitor.USP_CurrentWaits"'
+            + NCHAR(10)
+            + N'schema_name: "monitor"'
+            + NCHAR(10)
+            + N'object_name: "USP_CurrentWaits"'
+            + NCHAR(10)
+            + N'object_type: "PROCEDURE"'
+            + NCHAR(10)
+            + N'database_role: "framework"'
+            + NCHAR(10)
+            + N'is_internal: false'
+            + NCHAR(10)
+            + N'description: "Liefert aktuelle Waiting Tasks sowie kumulativen oder gesampelten instanzweiten Wait-Kontext mit Listen- und Patternfiltern."'
+            + NCHAR(10)
+            + N'source_path: "Code/02_CurrentState/040_USP_CurrentWaits.sql"'
+            + NCHAR(10)
+            + N'---'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'# monitor.USP_CurrentWaits'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'## Zweck und Einsatz'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'Liefert aktuelle Waiting Tasks sowie kumulativen oder gesampelten instanzweiten Wait-Kontext mit Listen- und Patternfiltern.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'## Voraussetzungen und Rechte'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'Ein direkter Aufruf erfordert EXECUTE auf [monitor].[USP_CurrentWaits]. Die Quelle nennt insbesondere `[monitor].[InternalPrepareSingleResultTable]`, `sys.dm_os_waiting_tasks`, `sys.dm_os_wait_stats`, `[monitor].[TVF_ParsePattern]`, `[monitor].[TVF_ParseBigintList]`, `[monitor].[TVF_ParseStringList]`, `[master].[sys].[databases]`, `[sys].[sp_executesql]` und weitere im SQL-Text. Für deren Metadaten- oder Fachzugriff gelten die Rechte des jeweiligen SQL-Ausführungskontexts; der Skill erteilt sie nicht.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'## Parameter und Eingabe'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'„SQL-Bindungspflicht“ bezeichnet ein bei der SQL-Aufrufbindung erforderliches Argument ohne Default. Fachliche Wertpflichten und zulässige NULL-Werte stehen im jeweiligen Einzelvertrag.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'| Parameter | SQL-Typ | SQL-Bindungspflicht | Default |'
+            + NCHAR(10)
+            + N'| --- | --- | --- | --- |'
+            + NCHAR(10)
+            + N'| @SessionIds | nvarchar(max) | nein | NULL |'
+            + NCHAR(10)
+            + N'| @MinWaitMs | bigint | nein | 0 |'
+            + NCHAR(10)
+            + N'| @WaitTypes | nvarchar(max) | nein | NULL |'
+            + NCHAR(10)
+            + N'| @WaitTypePattern | nvarchar(4000) | nein | NULL |'
+            + NCHAR(10)
+            + N'| @WaitGroups | nvarchar(max) | nein | NULL |'
+            + NCHAR(10)
+            + N'| @WaitGroupPattern | nvarchar(4000) | nein | NULL |'
+            + NCHAR(10)
+            + N'| @SystemSessionsEinbeziehen | bit | nein | 0 |'
+            + NCHAR(10)
+            + N'| @ToolHintergrundabfragenEinbeziehen | bit | nein | 0 |'
+            + NCHAR(10)
+            + N'| @MitSqlText | bit | nein | 1 |'
+            + NCHAR(10)
+            + N'| @MaxSqlTextZeichen | int | nein | 2000 |'
+            + NCHAR(10)
+            + N'| @SampleSeconds | tinyint | nein | 0 |'
+            + NCHAR(10)
+            + N'| @UnkritischeWaitsEinbeziehen | bit | nein | 0 |'
+            + NCHAR(10)
+            + N'| @TopWaitPercentage | decimal(5,2) | nein | 95.00 |'
+            + NCHAR(10)
+            + N'| @MaxZeilen | int | nein | 1000 |'
+            + NCHAR(10)
+            + N'| @ResultSetArt | varchar(16) | nein | ''CONSOLE'' |'
+            + NCHAR(10)
+            + N'| @ResultTablesJson | nvarchar(max) | nein | NULL |'
+            + NCHAR(10)
+            + N'| @JsonErzeugen | bit | nein | 0 |'
+            + NCHAR(10)
+            + N'| @Json | nvarchar(max) | nein | NULL OUTPUT |'
+            + NCHAR(10)
+            + N'| @PrintMeldungen | bit | nein | 1 |'
+            + NCHAR(10)
+            + N'| @Hilfe | bit | nein | 0 |'
+            + NCHAR(10)
+            + N'| @ParentCurrentStateSnapshotId | uniqueidentifier | nein | NULL |'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'**@SessionIds:** @SessionIds: nvarchar(max); Default=NULL. Ausgelassen entspricht NULL und deaktiviert den Filter. TVF_ParseBigintList ersetzt jedes Komma und Semikolon durch Pipe (auch innerhalb von Klammern), danach trennt | außerhalb von [...]; ]] maskiert dort ]. Äußere Segmentleerzeichen werden getrimmt, Klammern werden für Zahlen nicht entquotet. Leere Liste/Elemente, fehlerhafte Klammern, Rohsegmente über 4000 UTF-16-Codeeinheiten, nicht bigint-konvertierbare Werte sowie IDs außerhalb 1..32767 ergeben INVALID_PARAMETER; Duplikate werden gruppiert. IDs beschränken nur Tasks; NULL lässt alle sichtbaren Session-IDs passieren.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'**@MinWaitMs:** @MinWaitMs: bigint; Default=0 ms. Ausgelassen nutzt 0. Ganze Zahlen ab 0 sind zulässig; negativ ist INVALID_PARAMETER. Wird die numerische Steuerprüfung beim Status AVAILABLE erreicht, ist NULL ungültig und führt vor der fachlichen Quellaufnahme zu INVALID_PARAMETER bei unverändertem IsPartial=0; frühere Statuswerte wie UNAVAILABLE_FEATURE bleiben vorrangig. Die Eingabe wird vor Prozedureintritt als SQL-bigint gebunden; Textwerte durchlaufen die SQL-Typkonvertierung, Leertext hat keinen eigenen Sonderdefault. Begrenzt die Mindestdauer aktueller Waiting Tasks, nicht Instanz-Wait-Stats.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'**@WaitTypes:** @WaitTypes: nvarchar(max); Default=NULL. Ausgelassen/NULL deaktiviert die exakte WaitType-Auswahl. Sonst bracket-aware Pipe-Liste nach TVF_ParseStringList: Pipe trennt außerhalb [...], innerhalb ist es Inhalt, ]] maskiert ]; getrimmte Einträge werden bei bracket-quotierten Einträgen entklammert/entmaskiert. Leere Liste/Elemente, ungültige Klammern, Rohsegment über 4000 UTF-16-Codeeinheiten oder Wertlänge über 120 ergeben INVALID_PARAMETER. Gültige Duplikate werden gruppiert. Vergleich ist exakt und case-sensitive unter SQL_Latin1_General_CP1_CS_AS; Typen müssen nicht im Katalog stehen. Exklusiv mit @WaitTypePattern, sobald beide nicht NULL sind. Filtert Task- und Instanzmengen.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'**@WaitTypePattern:** @WaitTypePattern: nvarchar(4000); Default=NULL. Ausgelassen/NULL deaktiviert das Pattern. TVF_ParsePattern trimmt äußere Eingabezeichen, erkennt case-insensitiv regexi:, regex: und like:, entfernt genau das Präfix ohne erneutes Trimmen des Rests; ohne Präfix gilt LIKE. LIKE ist case-sensitive SQL-LIKE mit %, _ und []-Klassen; like: wählt denselben Modus. regex: ist case-sensitive (Flag c), regexi: case-insensitive (Flag i). Leere Eingabe oder leerer Präfixrest ist INVALID_PARAMETER; Leerzeichen nach Präfix bleiben Musterinhalt. Exklusiv mit @WaitTypes. Regex erfordert SQL Server 2025/Majorversion 17 und Compatibility Level >=170 der aktuellen Datenbank, sonst UNAVAILABLE_FEATURE. Wird spät auf Task-/Instanzkandidaten angewandt; Regex hebt das frühe Taskkandidatenlimit auf und normalisiert den Instanz-Prozentnenner danach nicht neu.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'**@WaitGroups:** @WaitGroups: nvarchar(max); Default=NULL. Ausgelassen/NULL deaktiviert die exakte WaitGroup-Auswahl. Sonst gilt die bracket-aware Pipe-Liste von TVF_ParseStringList: | trennt außerhalb von [...], innerhalb ist es Literalinhalt und ]] maskiert eine schließende Klammer; äußere Leerzeichen der Segmente werden getrimmt. Bei bracket-quotierten Elementen werden die äußeren Klammern entfernt und ]] zu ] entmaskiert. Leere Gesamtliste, leere Elemente, fehlerhafte Klammern, Rohsegmente über 4000 UTF-16-Codeeinheiten und nach Entquotung leere Werte sind ungültig; Wertlänge über 64 ergibt INVALID_PARAMETER. Gültige Duplikate werden gruppiert. Beliebige syntaktisch gültige Namen sind als Filterwert zulässig; Treffer entstehen nur bei exakter case-sensitiver Übereinstimmung mit einer WaitGroup, die TVF_WaitTypeInfo für die jeweilige Waittypzeile liefert. Ein endlicher erlaubter Namenskatalog ist nicht im Parameterparser festgelegt. Exklusiv mit @WaitGroupPattern, wenn beide nicht N'
+            + N'ULL sind. Begrenzt Tasks und Instanz-Waits.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'**@WaitGroupPattern:** @WaitGroupPattern: nvarchar(4000); Default=NULL. Ausgelassen/NULL deaktiviert. Präfix-, Trim-, LIKE-/Regex-, Leerwert- und Regexvoraussetzungen entsprechen @WaitTypePattern; LIKE und Regex vergleichen case-sensitive/case-insensitive gemäß Modus mit der Katalog-WaitGroup. Exklusiv mit @WaitGroups. Regex wird spät angewandt, hebt das frühe Tasklimit auf und entfernt Instanzzeilen nach der Prozentberechnung, ohne den Nenner neu zu normalisieren.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'**@SystemSessionsEinbeziehen:** @SystemSessionsEinbeziehen: bit; Default=0. Ausgelassen ergibt 0. 0 schließt Tasks von System-Sessions aus (is_user_process=0); 1 bezieht sie ein. NULL ist nicht als ungültig validiert und wird wie nicht gleich 1 behandelt: User-Sessions passieren, System-Sessions nicht. Numerische Eingaben werden vor Procedure-Eintritt zu bit konvertiert (0→0, Nichtnull→1). Nur Taskpfad.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'**@ToolHintergrundabfragenEinbeziehen:** @ToolHintergrundabfragenEinbeziehen: bit; Default=0. Ausgelassen ergibt 0. 0 blendet als Tool-Hintergrundabfrage erkannte Tasks aus; 1 bezieht sie mit Klassifikationsfeldern ein. NULL und jeder nach Konvertierung nicht als 0/1 zulässige Wert führen zu INVALID_PARAMETER. Numerische Eingaben konvertieren vor Eintritt zu bit (0→0, Nichtnull→1). Filter betrifft Tasks, nicht Instanz-Wait-Stats; Erkennung beruht auf dem Toolklassifikationshelper und ist keine Sicherheitsgrenze.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'**@MitSqlText:** @MitSqlText: bit; Default=1. Ausgelassen ergibt 1. 1 versucht den aktuellen Statementtext für Taskzeilen aus dem jeweiligen Requestkontext zu ergänzen; 0 unterdrückt Textzugriff/-projektion. NULL ist nicht eigens ungültig und folgt den IF/CASE-Gleich-1-Pfaden, damit wird Text nicht ergänzt. Numerische Werte werden vor Eintritt zu bit konvertiert. Bei Parent-Snapshot wird vorhandener gemeinsamer Text nur bei Aktivierung konsumiert; die Taskquellen können unabhängig vom Filter bereits materialisiert sein.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'**@MaxSqlTextZeichen:** @MaxSqlTextZeichen: int; Default=2000 Zeichen. Ausgelassen nutzt 2000. Nichtnegative Ganzzahl zulässig; negativ ist INVALID_PARAMETER. NULL und 0 heben die durch diesen Grenzwert bewirkte Zeichenbegrenzung auf. Positive Werte begrenzen/kürzen CurrentStatement nach dieser Zahl und können Trunkierungswarnungen erzeugen. Steuert Textbreite, nicht Kandidatenzahl.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'**@SampleSeconds:** @SampleSeconds: tinyint; Default=0 Sekunden. Ausgelassen ergibt 0; zulässiger Bereich 0..60, Werte über 60 ergeben INVALID_PARAMETER (tinyint-Konvertierung erfolgt vor Eintritt). 0 liefert kumulative sys.dm_os_wait_stats; 1..60 liest Wait-Stats vor und nach WAITFOR DELAY der entsprechenden Sekundenzahl und bildet daraus das Delta; aktuelle Tasks werden zuvor einmal als Snapshot erfasst und nicht erneut gesampelt. Wird die numerische Steuerprüfung beim Status AVAILABLE erreicht, ist NULL ungültig und führt vor der fachlichen Quellaufnahme zu INVALID_PARAMETER bei unverändertem IsPartial=0; frühere Statuswerte wie UNAVAILABLE_FEATURE bleiben vorrangig. Die Eingabe wird vor Prozedureintritt als SQL-tinyint gebunden; Textwerte durchlaufen die SQL-Typkonvertierung, Leertext hat keinen eigenen Sonderdefault. Bei ParentCurrentStateSnapshotId werden Tasks/Sessions/Requests/Text aus dem Elternsnapshot bezogen, Wait-Stats-Sampling bleibt ein eigener Messpunkt.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'**@UnkritischeWaitsEinbeziehen:** @UnkritischeWaitsEinbeziehen: bit; Default=0. Ausgelassen ergibt 0. 0 schließt Instanz-Waitzeilen aus, deren Katalogfeld IsGenerallyBenign=1 ist; 1 lässt sie in die Instanzstatistik ein. Das ist keine globale Aussage, dass ein Wait bei konkreter Workloadauswirkung unkritisch wäre. NULL wird nicht abgelehnt und der Vergleich =1 ist nicht TRUE, daher werden nur Katalogzeilen mit IsGenerallyBenign=0 aufgenommen; NULL-Katalogklassifikation passiert ebenfalls nicht. Numerische Eingaben werden vor Eintritt zu bit konvertiert. Taskfilter werden davon nicht verändert.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'**@TopWaitPercentage:** @TopWaitPercentage: decimal(5,2); Default=95.00 Prozent. Ausgelassen nutzt 95.00. Zulässig ist >0 und <=100; 0, negative oder >100 ergeben INVALID_PARAMETER. Wird die numerische Steuerprüfung beim Status AVAILABLE erreicht, ist NULL ungültig und führt vor der fachlichen Quellaufnahme zu INVALID_PARAMETER bei unverändertem IsPartial=0; frühere Statuswerte wie UNAVAILABLE_FEATURE bleiben vorrangig. Die Eingabe wird vor Prozedureintritt als SQL-decimal(5,2) gebunden; Textwerte durchlaufen die SQL-Typkonvertierung, Leertext hat keinen eigenen Sonderdefault. Die Prozentwerte und ihr Nenner entstehen nach Benign-, exakten Listen- und LIKE-Filtern. Danach entfernt Regex weitere Zeilen ohne Neuberechnung dieser Prozentwerte; erst anschließend folgen Kumulierung und der Cutoff CumulativePercentage - WaitPercentage >= Wert.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'**@MaxZeilen:** @MaxZeilen: int; Default=1000 Zeilen je Fachmenge. Ausgelassen nutzt 1000; negativ ist INVALID_PARAMETER; NULL oder 0 bedeutet unbegrenzt. Positiver Wert begrenzt Tasks und Instanz-Waits jeweils separat nach ihrer Auswahlordnung. Beim einfachen Taskpfad werden höchstens N+1 Kandidaten gelesen, um Abschneidung zu erkennen; bei N=int-Max wird Kandidatengrenze als bigint N+1 berechnet und ist daher 2147483648, kein int-Überlauf. Regex oder unbegrenzte Ausgabe hebt dieses frühe Kandidatenlimit auf; spätere Zeilenbegrenzung bleibt. Instanzwerte werden vollständig aggregiert und danach begrenzt.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'**@ResultSetArt:** @ResultSetArt: varchar(16); Default=''CONSOLE''. Ausgelassen nutzt CONSOLE. Nach LTRIM/RTRIM und UPPER sind genau RAW (Status, Task-/Instanzdaten, Warnings), CONSOLE (Taskgrid mit Beschriftung; bei leerer Menge Hinweiszeile), TABLE (Export nur currentTasks in geprüftes Ziel) und NONE (keine fachlichen Resultsets) zulässig; sonst INVALID_PARAMETER. NULL wird zu leerem Text normalisiert und ist ungültig. Werte sind case-insensitive. Nichtleeres @ResultTablesJson außerhalb TABLE wirft im normalen Pfad 51011; Hilfe kehrt vorher zurück.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'**@ResultTablesJson:** @ResultTablesJson: nvarchar(max); Default=NULL. Bei @ResultSetArt=TABLE erforderlich: gültiges, nichtleeres JSON-Objekt mit exakt case-sensitivem Schlüssel currentTasks und einem nichtleeren JSON-String als Wert. Der String benennt exakt (ohne Trim-Normalisierung) eine vorhandene lokale #Temp-Tabelle; LTRIM/RTRIM mit SQL-Standard-Leerzeichen U+0020 prüft nur, ob der Zielname leer ist. Zulässig sind Namen mit führendem #, nicht ##, höchstens 116 Zeichen gemäß SQL-LEN-Prüfung und nicht mit #Monitor beginnend (Präfixprüfung case-insensitiv); Ziel muss leer sein und genau eine Seed-Spalte beliebigen Typs haben. Unbekannter/duplizierter Schlüssel oder Ziel, falscher JSON-Werttyp, ungültige JSON-Form, fehlendes oder unzulässiges Ziel sowie befülltes oder abweichend spaltiges Ziel werfen beim Preflight 51011. Außerhalb TABLE müssen NULL, leer oder nach LTRIM/RTRIM nur gewöhnliche U+0020-Leerzeichen stehen; eine danach nichtleere Map wirft im normalen Pfad 51011; Hilfe k'
+            + N'ehrt vorher zurück.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'**@JsonErzeugen:** @JsonErzeugen: bit; Default=0. Ausgelassen ergibt 0. 0 deaktiviert JSON; 1 erzeugt unabhängig von ResultSetArt ein JSON-Objekt mit meta, currentTasks, instanceWaits und warnings. NULL wird nicht eigens abgelehnt und der IF-Gleich-1-Zweig wird nicht ausgeführt, sodass kein JSON erzeugt wird. Numerische Eingaben werden vor Eintritt zu bit konvertiert (0→0, Nichtnull→1).'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'**@Json:** @Json: nvarchar(max) OUTPUT; Default=NULL. Zum Empfang muss eine nvarchar(max)-Variable gebunden und im EXEC mit OUTPUT markiert werden. Procedure setzt den Parameter beim Eintritt auf NULL; mit @JsonErzeugen=1 enthält er das Envelope, sonst bleibt er NULL. Ohne Bindung kann der Wert nicht empfangen werden.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'**@PrintMeldungen:** @PrintMeldungen: bit; Default=1. Ausgelassen ergibt 1. 1 erlaubt optionale Zusatz-/Warnmeldungen, 0 unterdrückt sie; Ergebnissets und JSON bleiben davon unabhängig. NULL wird nicht validiert und die Gleich-1-Ausgabezweige bleiben aus. Numerische Werte werden vor Eintritt zu bit konvertiert (0→0, Nichtnull→1).'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'**@Hilfe:** @Hilfe: bit; Default=0. Ausgelassen ergibt 0. Genau 1 druckt Hilfe und beendet vor fachlicher Analyse; 0 führt regulär aus. NULL wird nicht als Hilfe erkannt und ist nicht ungültig; numerische Werte werden vor Eintritt zu bit konvertiert. Vor diesem Zweig gilt: Im normalen Pfad wirft eine bei nicht-TABLE unzulässige nichtleere @ResultTablesJson-Map 51011; bei TABLE kann der Einzelziel-Preflight ebenfalls 51011 werfen. @Hilfe=1 kehrt vor beiden Prüfungen zurück.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'**@ParentCurrentStateSnapshotId:** @ParentCurrentStateSnapshotId: uniqueidentifier; Default=NULL. Ausgelassen/NULL erzeugt eine eigene Snapshot-ID und liest Quellen selbst. Ein GUID bindet Tasks, Sessions, Requests und gegebenenfalls SQL-Text an die gleichnamige, im aufrufenden Sessionkontext vorhandene Parent-Snapshot-ID mit OwnerSessionId=@@SPID und ContractVersion=2; fehlender/fremder/unpassender Kontext führt zu behandelten Fehler-/Partialstatus. Instanzweite Wait-Stats werden weiterhin separat kumulativ oder im Sample gelesen. Ungültig formatierte Eingaben scheitern bereits bei SQL-Konvertierung zu uniqueidentifier.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'## Resultate und Ausgabe'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'RAW, CONSOLE, NONE und optionales JSON mit currentTasks, instanceWaits und warnings.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'| Resultmenge | RAW | TABLE | Felder laut Inventar |'
+            + NCHAR(10)
+            + N'| --- | --- | --- | --- |'
+            + NCHAR(10)
+            + N'| currentTasks | 1 | 1 | [SessionId] smallint NULL,[ExecContextId] int NULL,[WaitDurationMs] bigint NULL,[WaitType] nvarchar(120) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,[BlockingSessionId] smallint NULL,[ResourceDescription] nvarchar(3072) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,[SessionStatus] nvarchar(30) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,[RequestStatus] nvarchar(30) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,[LoginName] nvarchar(128) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,[HostName] nvarchar(128) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,[ProgramName] nvarchar(128) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,[IsToolBackgroundQuery] bit NOT NULL,[ToolBackgroundRuleCode] varchar(64) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,[ToolBackgroundCategory] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,[ToolBackgroundDetection] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,[ToolBackgroundConfidence] varchar(16) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,[DatabaseId]'
+            + N' smallint NULL,[Command] nvarchar(32) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,[CurrentStatementCharacters] bigint NULL,[CurrentStatementBytes] bigint NULL,[CurrentStatementIsTruncated] bit NOT NULL DEFAULT(0),[CurrentStatement] nvarchar(max) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,[WaitGroup] nvarchar(64) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,[WaitSeverity] tinyint NULL,[IsGenerallyBenign] bit NULL,[WaitMeaning] nvarchar(1000) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,[WaitTypicalOccurrence] nvarchar(1200) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,[HighWaitImpact] nvarchar(1200) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,[RecommendedChecks] nvarchar(1500) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,[WaitHelpUrl] nvarchar(500) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,[DescriptionSource] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,[DescriptionQuality] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,[CatalogMatchType] varchar(20) COLLATE SQL_Latin1_General_CP1_CS_AS '
+            + N'NULL |'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'Bei @Hilfe=1 kommt genau ein Resultset mit SkillFormatVersion, SchemaName, ObjectName und SkillMarkdown hinzu; bestehende PRINT-Hinweise bleiben erhalten.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'## Beispiel'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'```sql'
+            + NCHAR(10)
+            + N'EXEC [monitor].[USP_CurrentWaits] @ResultSetArt=''CONSOLE'';'
+            + NCHAR(10)
+            + N'```'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'## Aufwand, Nebenwirkungen, Fehler und Grenzen'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'monitor.USP_CurrentWaits; Snapshotdiagnostik, keine Historie.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'Daten: sys.dm_os_waiting_tasks plus sys.dm_os_wait_stats kumulativ oder gesampelt.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'Berechtigung: VIEW SERVER STATE bis 2019, VIEW SERVER PERFORMANCE STATE ab 2022.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'Regex benötigt SQL Server 2025 und Compatibility Level 170.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'RAW/JSON enthalten Status und Warnungen; ungültige Kombinationen ergeben INVALID_PARAMETER, Regex ohne Voraussetzung UNAVAILABLE_FEATURE. JSON enthält meta, currentTasks, instanceWaits und warnings. TABLE-Preflight läuft nur im normalen Pfad nach dem Hilfezweig und kann bei ungültigem Mapping werfen.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'### Quellgebundene Detailbeschreibung'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'Der folgende Quellkopf bewahrt die zusätzlichen Implementierungsgrenzen für diesen Skill.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'```text'
+            + NCHAR(10)
+            + N'Objekt       : monitor.USP_CurrentWaits'
+            + NCHAR(10)
+            + N'Version      : 4.0.0'
+            + NCHAR(10)
+            + N'Stand        : 2026-07-23'
+            + NCHAR(10)
+            + N'Zweck        : Liefert aktuelle Waiting Tasks sowie kumulativen oder'
+            + NCHAR(10)
+            + N'               gesampelten instanzweiten Wait-Kontext mit Listen- und'
+            + NCHAR(10)
+            + N'               Patternfiltern.'
+            + NCHAR(10)
+            + N'Ausgabe      : RAW, CONSOLE, NONE und optionales JSON mit currentTasks,'
+            + NCHAR(10)
+            + N'               instanceWaits und warnings.'
+            + NCHAR(10)
+            + N'```'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'### Weitere bestehende Hilfehinweise'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'```text'
+            + NCHAR(10)
+            + N'monitor.USP_CurrentWaits; Snapshotdiagnostik, keine Historie.'
+            + NCHAR(10)
+            + N'Daten: sys.dm_os_waiting_tasks plus sys.dm_os_wait_stats kumulativ oder gesampelt.'
+            + NCHAR(10)
+            + N'Berechtigung: VIEW SERVER STATE bis 2019, VIEW SERVER PERFORMANCE STATE ab 2022.'
+            + NCHAR(10)
+            + N'Regex benötigt SQL Server 2025 und Compatibility Level 170.'
+            + NCHAR(10)
+            + N'RAW/JSON enthalten Status und Warnungen; ungültige Kombinationen ergeben INVALID_PARAMETER, Regex ohne Voraussetzung UNAVAILABLE_FEATURE. JSON enthält meta, currentTasks, instanceWaits und warnings. TABLE-Preflight läuft nur im normalen Pfad nach dem Hilfezweig und kann bei ungültigem Mapping werfen.'
+            + NCHAR(10)
+            + N'CONSOLE:'
+            + NCHAR(10)
+            + N'TABLE-Mapping separat deklarieren; lokale Ziele müssen leere Einspalten-#Temp-Tabellen sein:'
+            + NCHAR(10)
+            + N'DECLARE @Tables nvarchar(max);'
+            + NCHAR(10)
+            + N'C'
+            + N'REATE TABLE #CurrentWaits_HelpExample (Seed int NULL);'
+            + NCHAR(10)
+            + N'DROP TABLE #CurrentWaits_HelpExample;'
+            + NCHAR(10)
+            + N'JSON:'
+            + NCHAR(10)
+            + N'DECLARE @Json nvarchar(max);'
+            + NCHAR(10)
+            + N'```'
+            + NCHAR(10)
+            + NCHAR(10) AS [SkillMarkdown];
+        -- USAGE_SKILL_HELP_END monitor.USP_CurrentWaits
         RETURN;
-    END;
+    END
+
+    SET LOCK_TIMEOUT 0;
+    SET @Json=NULL;
+    DECLARE @ModuleName sysname=N'USP_CurrentWaits',@CollectionTimeUtc datetime2(3)=SYSUTCDATETIME(),@MeasurementStartUtc datetime2(3)=NULL,@MeasurementEndUtc datetime2(3)=NULL;
+    DECLARE @StatusCode varchar(40)='AVAILABLE',@IsPartial bit=0,@TaskRowCount bigint=0,@InstanceRowCount bigint=0,@ErrorNumber int=NULL,@ErrorMessage nvarchar(2048)=NULL,@Detail nvarchar(2000)=NULL,@DeltaStatus varchar(40)=CASE WHEN @SampleSeconds=0 THEN 'CUMULATIVE_CONTEXT' ELSE 'SKIPPED' END,@DeltaDetail nvarchar(2000)=NULL;
+    DECLARE @RequiredPermission nvarchar(256)=CASE WHEN TRY_CONVERT(int,SERVERPROPERTY(N'ProductMajorVersion'))>=16 THEN N'VIEW SERVER PERFORMANCE STATE' ELSE N'VIEW SERVER STATE' END;
+    DECLARE @ResultSetArtNormalisiert varchar(16)=UPPER(LTRIM(RTRIM(COALESCE(@ResultSetArt,''))));
+    DECLARE @TableResultRequested bit = CASE WHEN @ResultSetArtNormalisiert = 'TABLE' THEN 1 ELSE 0 END;
+    DECLARE @ConsoleResultRequested bit = CASE WHEN @ResultSetArtNormalisiert = 'CONSOLE' THEN 1 ELSE 0 END;
+    DECLARE @TableTarget sysname=NULL;
+    IF @TableResultRequested=0 AND NULLIF(LTRIM(RTRIM(COALESCE(@ResultTablesJson,N''))),N'') IS NOT NULL THROW 51011,N'@ResultTablesJson ist ausschließlich mit @ResultSetArt=TABLE zulässig.',1;
+    IF @TableResultRequested=1 EXEC [monitor].[InternalPrepareSingleResultTable] @ResultTablesJson=@ResultTablesJson,@ResultName=N'currentTasks',@TargetTable=@TableTarget OUTPUT,@ThrowOnError=1;
+    IF @TableResultRequested = 1 OR @ConsoleResultRequested = 1 SET @ResultSetArtNormalisiert = 'NONE';
+    DECLARE @EffectiveMaxZeilen bigint=CASE WHEN @MaxZeilen IS NULL OR @MaxZeilen=0 THEN CONVERT(bigint,9223372036854775807) WHEN @MaxZeilen>0 THEN CONVERT(bigint,@MaxZeilen) ELSE CONVERT(bigint,0) END;
+    DECLARE @CandidateMaxZeilen bigint,@MonitorPrintMessage nvarchar(2048),@StartBefore datetime,@StartAfter datetime;
+    DECLARE @EvidenceSnapshotId uniqueidentifier=COALESCE(@ParentCurrentStateSnapshotId,NEWID());
+    DECLARE @EvidenceSnapshotStartedAtUtc datetime2(3)=@CollectionTimeUtc;
+
+    ;
 
     CREATE TABLE [#CurrentWaits_SessionIdFilter]([SessionId] smallint NOT NULL PRIMARY KEY);
     CREATE TABLE [#CurrentWaits_WaitTypeFilter]([WaitType] nvarchar(120) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL PRIMARY KEY);

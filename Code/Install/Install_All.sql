@@ -11,6 +11,7 @@ Der Installer beendet die Verarbeitung beim ersten SQL-Fehler.
 */
 
 :r ../00_Setup/000_Preflight_und_Schema.sql
+:r ../00_Setup/004_MetadataSchema.sql
 :r ../01_Common/010_VW_ModuleStatusCatalog.sql
 :r ../01_Common/020_VW_AnalyseClassCatalog.sql
 :r ../01_Common/021_VW_AnalysisCatalog.sql
@@ -204,3 +205,4 @@ Der Installer beendet die Verarbeitung beim ersten SQL-Fehler.
 :r ../08_ServerHealth/320_USP_SensitivityClassificationSummary.sql
 :r ../08_ServerHealth/330_USP_LoadedModuleInventory.sql
 :r ../08_ServerHealth/340_USP_DatabaseSnapshotInventory.sql
+:r ../00_Setup/005_VW_ObjectUsageSkills.sql

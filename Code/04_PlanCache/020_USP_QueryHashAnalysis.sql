@@ -32,6 +32,160 @@ Beispiele    : EXEC monitor.USP_QueryHashAnalysis @MinPlanVarianten=2;
                1.0.0 - Erstfassung Phase 3.
 ===============================================================================
 */
+-- USAGE_SKILL_BEGIN monitor.USP_QueryHashAnalysis 1.0.0
+-- ---
+-- skill_format_version: "1.0.0"
+-- name: "monitor.USP_QueryHashAnalysis"
+-- schema_name: "monitor"
+-- object_name: "USP_QueryHashAnalysis"
+-- object_type: "PROCEDURE"
+-- database_role: "framework"
+-- is_internal: false
+-- description: "Aggregiert gecachte Statement-Statistiken je query_hash und zeigt Planvielfalt, Recompiles und kumulative Ressourcenanteile."
+-- source_path: "Code/04_PlanCache/020_USP_QueryHashAnalysis.sql"
+-- ---
+-- 
+-- # monitor.USP_QueryHashAnalysis
+-- 
+-- ## Zweck und Einsatz
+-- 
+-- Aggregiert gecachte Statement-Statistiken je query_hash und zeigt Planvielfalt, Recompiles und kumulative Ressourcenanteile.
+-- 
+-- ## Voraussetzungen und Rechte
+-- 
+-- SQL Server 2019 oder neuer.
+-- 
+-- sys.dm_exec_query_stats, sys.dm_exec_sql_text.
+-- 
+-- VIEW SERVER STATE beziehungsweise SQL Server 2022+ VIEW SERVER PERFORMANCE STATE. Keine Rechtevergabe.
+-- 
+-- ## Parameter und Eingabe
+-- 
+-- „SQL-Bindungspflicht“ bezeichnet ein bei der SQL-Aufrufbindung erforderliches Argument ohne Default. Fachliche Wertpflichten und zulässige NULL-Werte stehen im jeweiligen Einzelvertrag.
+-- 
+-- | Parameter | SQL-Typ | SQL-Bindungspflicht | Default |
+-- | --- | --- | --- | --- |
+-- | @QueryHash | binary(8) | nein | NULL |
+-- | @Sortierung | varchar(32) | nein | 'CPU_TOTAL' |
+-- | @AnalyseModus | varchar(16) | nein | 'TOP' |
+-- | @MinExecutionCount | bigint | nein | 1 |
+-- | @MinPlanVarianten | int | nein | 1 |
+-- | @MaxZeilen | int | nein | 100 |
+-- | @MaxSqlTextZeichen | int | nein | 4000 |
+-- | @ParentQueryStatsSnapshot | bit | nein | 0 |
+-- | @HighImpactConfirmed | bit | nein | 0 |
+-- | @ResultSetArt | varchar(16) | nein | 'CONSOLE' |
+-- | @ResultTablesJson | nvarchar(max) | nein | NULL |
+-- | @JsonErzeugen | bit | nein | 0 |
+-- | @Json | nvarchar(max) | nein | NULL OUTPUT |
+-- | @PrintMeldungen | bit | nein | 1 |
+-- | @Hilfe | bit | nein | 0 |
+-- 
+-- **@QueryHash:** @QueryHash binary(8). Default ist NULL. Optionaler Filter auf genau diesen 8-Byte-query_hash. NULL aggregiert alle Hashes und aktiviert PLAN_CACHE_DEEP; für einen einzelnen Hash wird dieser breite Pfad vermieden. Ein angegebener Hash kann im aktuellen Cache fehlen.
+-- 
+-- **@Sortierung:** @Sortierung varchar(32). Default ist 'CPU_TOTAL'. CPU_TOTAL ordnet nach kumulierter CPU, ELAPSED_TOTAL nach kumulierter Laufzeit, READS_TOTAL nach logischen Reads, WRITES_TOTAL nach logischen Writes, EXECUTIONS nach Ausführungszahl, PLAN_VARIANTS nach Anzahl verschiedener Plan-Hashes und SPILLS_TOTAL nach kumulierten Spills. Auswahl absteigend und bei Gleichstand nach letzter Ausführung absteigend. NULL entspricht CPU_TOTAL. Rand-Leerzeichen und Groß- und Kleinschreibung werden normalisiert. Leere und andere Werte ergeben INVALID_PARAMETER.
+-- 
+-- **@AnalyseModus:** @AnalyseModus varchar(16). Default ist 'TOP'. TOP prüft bei angegebenem Query Hash und positivem Limit bis 1000 keinen tiefen Pfad. VOLL prüft PLAN_CACHE_DEEP. Das Zeilenlimit gilt in beiden Modi. NULL entspricht TOP. Rand-Leerzeichen und Groß- und Kleinschreibung werden normalisiert. Leere und andere Werte ergeben INVALID_PARAMETER.
+-- 
+-- **@MinExecutionCount:** @MinExecutionCount bigint. Default ist 1. Ganzzahliges Minimum der Summe der Ausführungen je Hash. 0 lässt auch Gruppen mit Summe 0 zu. Bei NULL trifft der Vergleich auf keine Gruppe. Negative Werte ergeben INVALID_PARAMETER.
+-- 
+-- **@MinPlanVarianten:** @MinPlanVarianten int. Default ist 1. Mindestens 1 verschiedener query_plan_hash je Query Hash. Bei NULL trifft der Vergleich auf keine Gruppe. Werte unter 1 ergeben INVALID_PARAMETER.
+-- 
+-- **@MaxZeilen:** @MaxZeilen int. Default ist 100. Maximale Zahl der Hash-Gruppen. Positiv begrenzt; NULL oder 0 bedeutet unbegrenzt und aktiviert damit PLAN_CACHE_DEEP. Negative Werte sind ungültig; mehr als 1000 Zeilen aktiviert ebenfalls den geschützten Pfad.
+-- 
+-- **@MaxSqlTextZeichen:** @MaxSqlTextZeichen int. Default ist 4000. Maximale Unicode-Zeichenlänge des Beispielstatements. Positiv kürzt und kennzeichnet den Text; NULL oder 0 lässt ihn vollständig. Negative Werte sind ungültig.
+-- 
+-- **@ParentQueryStatsSnapshot:** @ParentQueryStatsSnapshot bit. Default ist 0. 0 liest die DMV frisch. 1 liest ausschließlich den lokalen Snapshot des laufenden Aufrufs von USP_PlanCacheAnalysis. Fehlt er, meldet die Analyse ERROR_HANDLED. NULL ergibt INVALID_PARAMETER.
+-- 
+-- **@HighImpactConfirmed:** @HighImpactConfirmed bit. Default ist 0. Muss für einen aktivierten PLAN_CACHE_DEEP-Pfad 1 sein und bestätigt den Hochaufwandspfad; zusätzlich gelten dessen aktuelle Freigabe und Berechtigungen. 0 oder NULL lässt den geschützten Pfad nicht zu. Bei einem einzelnen Hash im TOP-Modus mit höchstens 1000 Zeilen wird dieser Gate nicht aktiviert.
+-- 
+-- **@ResultSetArt:** @ResultSetArt varchar(16). Default ist 'CONSOLE'. CONSOLE zeigt die beschrifteten Hashgruppen. RAW liefert Modulstatus und Hashgruppen. TABLE schreibt das benannte Resultset queryHashes. NONE unterdrückt die fachlichen Resultsets. Rand-Leerzeichen werden entfernt und die Groß- und Kleinschreibung normalisiert. NULL, leere Eingaben und andere Werte ergeben INVALID_PARAMETER.
+-- 
+-- **@ResultTablesJson:** @ResultTablesJson nvarchar(max). Default ist NULL. Bei TABLE ist ein JSON-Objekt mit genau dem Schlüssel queryHashes und einem Tabellennamen als Zeichenfolgenwert erforderlich. Verwenden Sie eine vorhandene, leere lokale #Temp-Tabelle mit genau einer Seed-Spalte. Der Name darf höchstens 116 Zeichen lang sein. Globale Tabellen und das Präfix #Monitor sind ausgeschlossen. Bei den übrigen Ausgabearten sind nur NULL, die leere Zeichenfolge und Leerzeichen erlaubt. Die Prüfung läuft vor der Hilfe und kann Fehler 51011 auslösen.
+-- 
+-- **@JsonErzeugen:** @JsonErzeugen bit. Default ist 0. 1 erzeugt JSON in @Json zusätzlich zur gewählten Ausgabeart. 0 oder NULL deaktiviert JSON.
+-- 
+-- **@Json:** @Json nvarchar(max) OUTPUT. Default ist NULL. Binden Sie eine nvarchar(max)-Variable mit OUTPUT. Der Aufruf setzt sie zunächst auf NULL. Bei @JsonErzeugen=1 enthält sie das JSON-Dokument mit meta, queryHashes und warnings.
+-- 
+-- **@PrintMeldungen:** @PrintMeldungen bit. Default ist 1. 1 gibt informative Meldungen zu Status und gegebenenfalls Textkürzung aus. 0 und NULL unterdrücken diese Meldungen.
+-- 
+-- **@Hilfe:** @Hilfe bit. Default ist 0. 1 gibt die Hilfe aus und beendet den Aufruf vor der fachlichen Analyse. Die Initialisierung von @Json und die Prüfung der TABLE-Zuordnung laufen zuerst. 0 und NULL setzen den regulären Aufruf fort.
+-- 
+-- ## Resultate und Ausgabe
+-- 
+-- 1. Modulstatus. 2. Query-Hash-Aggregate mit Beispielstatement.
+-- 
+-- | Resultmenge | RAW | TABLE | Felder laut Inventar |
+-- | --- | --- | --- | --- |
+-- | queryHashes | 1 | 1 | [QueryHash] binary(8) NOT NULL , [PlanVariantCount] int NOT NULL , [PlanHandleCount] int NOT NULL , [CompilationCount] bigint NOT NULL , [ExecutionCount] bigint NOT NULL , [TotalCpuMs] decimal(38,3) NULL , [AvgCpuMs] decimal(38,3) NULL , [TotalElapsedMs] decimal(38,3) NULL , [AvgElapsedMs] decimal(38,3) NULL , [TotalReads] bigint NOT NULL , [AvgReads] decimal(38,3) NULL , [TotalWrites] bigint NOT NULL , [TotalSpills] bigint NOT NULL , [MaxGrantKb] bigint NOT NULL , [FirstCreationTime] datetime NULL , [LastExecutionTime] datetime NULL , [SampleStatementTextCharacters] bigint NULL , [SampleStatementTextBytes] bigint NULL , [SampleStatementTextIsTruncated] bit NOT NULL DEFAULT(0) , [SampleStatementText] nvarchar(max) COLLATE SQL_Latin1_General_CP1_CS_AS NULL |
+-- 
+-- Bei @Hilfe=1 kommt genau ein Resultset mit SkillFormatVersion, SchemaName, ObjectName und SkillMarkdown hinzu; bestehende PRINT-Hinweise bleiben erhalten.
+-- 
+-- ## Beispiel
+-- 
+-- ```sql
+-- EXEC monitor.USP_QueryHashAnalysis @MinPlanVarianten=2; EXEC monitor.USP_QueryHashAnalysis @Sortierung='READS_TOTAL'; EXEC monitor.USP_QueryHashAnalysis @Hilfe=1;
+-- ```
+-- 
+-- ## Aufwand, Nebenwirkungen, Fehler und Grenzen
+-- 
+-- monitor.USP_QueryHashAnalysis
+-- 
+-- Die Procedure gruppiert aktuell sichtbare Cacheeinträge nach Query Hash und zeigt Verbrauch und Planvarianten.
+-- 
+-- Hilfe anzeigen. EXEC [monitor].[USP_QueryHashAnalysis] @Hilfe=1;
+-- 
+-- Technische Resultsets lesen. EXEC [monitor].[USP_QueryHashAnalysis] @QueryHash=0x0000000000000001, @MaxZeilen=50, @ResultSetArt='RAW';
+-- 
+-- Nur JSON ausgeben. DECLARE @ResultJson nvarchar(max); EXEC [monitor].[USP_QueryHashAnalysis] @QueryHash=0x0000000000000001, @MaxZeilen=50, @ResultSetArt='NONE', @JsonErzeugen=1, @Json=@ResultJson OUTPUT; SELECT @ResultJson AS [Json];
+-- 
+-- 
+-- ### Quellgebundene Detailbeschreibung
+-- 
+-- Der folgende Quellkopf bewahrt die zusätzlichen Implementierungsgrenzen für diesen Skill.
+-- 
+-- ```text
+-- Objekt       : monitor.USP_QueryHashAnalysis
+-- Version      : 2.1.0
+-- Stand        : 2026-07-19
+-- Typ          : Stored Procedure
+-- Zweck        : Aggregiert gecachte Statement-Statistiken je query_hash und zeigt
+--                Planvielfalt, Recompiles und kumulative Ressourcenanteile.
+-- SQL-Version  : SQL Server 2019 oder neuer.
+-- Datenquellen : sys.dm_exec_query_stats, sys.dm_exec_sql_text.
+-- Parameter    : @QueryHash, @Sortierung, @AnalyseModus, @MinExecutionCount,
+--                @MinPlanVarianten, @MaxZeilen, @MaxSqlTextZeichen,
+--                @ParentQueryStatsSnapshot,
+--                @PrintMeldungen, @Hilfe.
+-- Resultsets   : 1. Modulstatus. 2. Query-Hash-Aggregate mit Beispielstatement.
+-- Berechtigung : VIEW SERVER STATE beziehungsweise SQL Server 2022+
+--                VIEW SERVER PERFORMANCE STATE. Keine Rechtevergabe.
+-- Eigenlast    : Gruppiert sys.dm_exec_query_stats. Ohne konkreten @QueryHash sowie
+--                im Modus VOLL wird PLAN_CACHE_DEEP geprüft. Text wird nur für
+--                gewählte Hashes geladen.
+-- Locking      : Keine Benutzerobjekte.
+-- Partial      : Cache-Eviction kann Beispieltexte zwischen Auswahl und Ausgabe entfernen.
+-- Beispiele    : EXEC monitor.USP_QueryHashAnalysis @MinPlanVarianten=2;
+--                EXEC monitor.USP_QueryHashAnalysis @Sortierung='READS_TOTAL';
+--                EXEC monitor.USP_QueryHashAnalysis @Hilfe=1;
+-- Änderungen   : 2.1.0 - Query-Stats je Aufruf einmal gelesen oder vom laufgebundenen
+--                          Parent-Snapshot übernommen.
+--                1.1.0 - Breite Aggregation ohne @QueryHash gruppengeschützt.
+--                1.0.0 - Erstfassung Phase 3.
+-- ```
+-- 
+-- ### Weitere bestehende Hilfehinweise
+-- 
+-- ```text
+-- monitor.USP_QueryHashAnalysis
+-- Die Procedure gruppiert aktuell sichtbare Cacheeinträge nach Query Hash und zeigt Verbrauch und Planvarianten.
+-- Hilfe anzeigen. EXEC [monitor].[USP_QueryHashAnalysis] @Hilfe=1;
+-- Technische Resultsets lesen. EXEC [monitor].[USP_QueryHashAnalysis] @QueryHash=0x0000000000000001, @MaxZeilen=50, @ResultSetArt='RAW';
+-- Nur JSON ausgeben. DECLARE @ResultJson nvarchar(max); EXEC [monitor].[USP_QueryHashAnalysis] @QueryHash=0x0000000000000001, @MaxZeilen=50, @ResultSetArt='NONE', @JsonErzeugen=1, @Json=@ResultJson OUTPUT; SELECT @ResultJson AS [Json];
+-- Benanntes Resultset in eine lokale Temp-Tabelle schreiben. CREATE TABLE #QueryHashAnalysis_HelpExample ([Seed] int NULL); BEGIN TRY EXEC [monitor].[USP_QueryHashAnalysis] @QueryHash=0x0000000000000001, @MaxZeilen=50, @ResultSetArt='TABLE', @ResultTablesJson=N'{"queryHashes":"#QueryHashAnalysis_HelpExample"}'; SELECT * FROM #QueryHashAnalysis_HelpExample; DROP TABLE #QueryHashAnalysis_HelpExample; END TRY BEGIN CATCH DROP TABLE #QueryHashAnalysis_HelpExample; THROW; END CATCH;
+-- ```
+-- 
+-- USAGE_SKILL_END monitor.USP_QueryHashAnalysis
 CREATE OR ALTER PROCEDURE [monitor].[USP_QueryHashAnalysis]
       @QueryHash           binary(8)   = NULL
     , @Sortierung              varchar(32) = 'CPU_TOTAL'
@@ -51,21 +205,10 @@ CREATE OR ALTER PROCEDURE [monitor].[USP_QueryHashAnalysis]
 AS
 BEGIN
     SET NOCOUNT ON;
-    SET LOCK_TIMEOUT 0;
-    SET @Json = NULL;
-    DECLARE @ResultSetArtNormalisiert varchar(16)=UPPER(LTRIM(RTRIM(COALESCE(@ResultSetArt,''))));
-    DECLARE @TableResultRequested bit = CASE WHEN @ResultSetArtNormalisiert = 'TABLE' THEN 1 ELSE 0 END;
-    DECLARE @ConsoleResultRequested bit = CASE WHEN @ResultSetArtNormalisiert = 'CONSOLE' THEN 1 ELSE 0 END;
-    DECLARE @TableTarget sysname=NULL;
-    IF @TableResultRequested=0 AND NULLIF(LTRIM(RTRIM(COALESCE(@ResultTablesJson,N''))),N'') IS NOT NULL THROW 51011,N'@ResultTablesJson ist ausschließlich mit @ResultSetArt=TABLE zulässig.',1;
-    IF @TableResultRequested=1 EXEC [monitor].[InternalPrepareSingleResultTable] @ResultTablesJson=@ResultTablesJson,@ResultName=N'queryHashes',@TargetTable=@TableTarget OUTPUT,@ThrowOnError=1;
-    IF @TableResultRequested = 1 OR @ConsoleResultRequested = 1 SET @ResultSetArtNormalisiert = 'NONE';
-    DECLARE @EffectiveMaxZeilen bigint = CASE WHEN @MaxZeilen IS NULL OR @MaxZeilen=0 THEN CONVERT(bigint,9223372036854775807) ELSE CONVERT(bigint,@MaxZeilen) END;
-    DECLARE @MonitorPrintMessage nvarchar(2048);
-    SET @Sortierung=UPPER(LTRIM(RTRIM(COALESCE(@Sortierung,'CPU_TOTAL'))));
-    SET @AnalyseModus=UPPER(LTRIM(RTRIM(COALESCE(@AnalyseModus,'TOP'))));
+
     IF @Hilfe=1
     BEGIN
+        SET @Json=NULL;
         PRINT N'monitor.USP_QueryHashAnalysis';
         PRINT N'Die Procedure gruppiert aktuell sichtbare Cacheeinträge nach Query Hash und zeigt Verbrauch und Planvarianten.';
         PRINT N'@QueryHash binary(8). Default ist NULL. Optionaler Filter auf genau diesen 8-Byte-query_hash. NULL aggregiert alle Hashes und aktiviert PLAN_CACHE_DEEP; für einen einzelnen Hash wird dieser breite Pfad vermieden. Ein angegebener Hash kann im aktuellen Cache fehlen.';
@@ -87,8 +230,285 @@ BEGIN
         PRINT N'Technische Resultsets lesen. EXEC [monitor].[USP_QueryHashAnalysis] @QueryHash=0x0000000000000001, @MaxZeilen=50, @ResultSetArt=''RAW'';';
         PRINT N'Nur JSON ausgeben. DECLARE @ResultJson nvarchar(max); EXEC [monitor].[USP_QueryHashAnalysis] @QueryHash=0x0000000000000001, @MaxZeilen=50, @ResultSetArt=''NONE'', @JsonErzeugen=1, @Json=@ResultJson OUTPUT; SELECT @ResultJson AS [Json];';
         PRINT N'Benanntes Resultset in eine lokale Temp-Tabelle schreiben. CREATE TABLE #QueryHashAnalysis_HelpExample ([Seed] int NULL); BEGIN TRY EXEC [monitor].[USP_QueryHashAnalysis] @QueryHash=0x0000000000000001, @MaxZeilen=50, @ResultSetArt=''TABLE'', @ResultTablesJson=N''{"queryHashes":"#QueryHashAnalysis_HelpExample"}''; SELECT * FROM #QueryHashAnalysis_HelpExample; DROP TABLE #QueryHashAnalysis_HelpExample; END TRY BEGIN CATCH DROP TABLE #QueryHashAnalysis_HelpExample; THROW; END CATCH;';
+        -- USAGE_SKILL_HELP_BEGIN monitor.USP_QueryHashAnalysis
+        SELECT CONVERT(varchar(16),'1.0.0') AS [SkillFormatVersion],CONVERT(sysname,N'monitor') AS [SchemaName],CONVERT(sysname,N'USP_QueryHashAnalysis') AS [ObjectName],CONVERT(nvarchar(max),N'---')
+            + NCHAR(10)
+            + N'skill_format_version: "1.0.0"'
+            + NCHAR(10)
+            + N'name: "monitor.USP_QueryHashAnalysis"'
+            + NCHAR(10)
+            + N'schema_name: "monitor"'
+            + NCHAR(10)
+            + N'object_name: "USP_QueryHashAnalysis"'
+            + NCHAR(10)
+            + N'object_type: "PROCEDURE"'
+            + NCHAR(10)
+            + N'database_role: "framework"'
+            + NCHAR(10)
+            + N'is_internal: false'
+            + NCHAR(10)
+            + N'description: "Aggregiert gecachte Statement-Statistiken je query_hash und zeigt Planvielfalt, Recompiles und kumulative Ressourcenanteile."'
+            + NCHAR(10)
+            + N'source_path: "Code/04_PlanCache/020_USP_QueryHashAnalysis.sql"'
+            + NCHAR(10)
+            + N'---'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'# monitor.USP_QueryHashAnalysis'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'## Zweck und Einsatz'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'Aggregiert gecachte Statement-Statistiken je query_hash und zeigt Planvielfalt, Recompiles und kumulative Ressourcenanteile.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'## Voraussetzungen und Rechte'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'SQL Server 2019 oder neuer.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'sys.dm_exec_query_stats, sys.dm_exec_sql_text.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'VIEW SERVER STATE beziehungsweise SQL Server 2022+ VIEW SERVER PERFORMANCE STATE. Keine Rechtevergabe.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'## Parameter und Eingabe'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'„SQL-Bindungspflicht“ bezeichnet ein bei der SQL-Aufrufbindung erforderliches Argument ohne Default. Fachliche Wertpflichten und zulässige NULL-Werte stehen im jeweiligen Einzelvertrag.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'| Parameter | SQL-Typ | SQL-Bindungspflicht | Default |'
+            + NCHAR(10)
+            + N'| --- | --- | --- | --- |'
+            + NCHAR(10)
+            + N'| @QueryHash | binary(8) | nein | NULL |'
+            + NCHAR(10)
+            + N'| @Sortierung | varchar(32) | nein | ''CPU_TOTAL'' |'
+            + NCHAR(10)
+            + N'| @AnalyseModus | varchar(16) | nein | ''TOP'' |'
+            + NCHAR(10)
+            + N'| @MinExecutionCount | bigint | nein | 1 |'
+            + NCHAR(10)
+            + N'| @MinPlanVarianten | int | nein | 1 |'
+            + NCHAR(10)
+            + N'| @MaxZeilen | int | nein | 100 |'
+            + NCHAR(10)
+            + N'| @MaxSqlTextZeichen | int | nein | 4000 |'
+            + NCHAR(10)
+            + N'| @ParentQueryStatsSnapshot | bit | nein | 0 |'
+            + NCHAR(10)
+            + N'| @HighImpactConfirmed | bit | nein | 0 |'
+            + NCHAR(10)
+            + N'| @ResultSetArt | varchar(16) | nein | ''CONSOLE'' |'
+            + NCHAR(10)
+            + N'| @ResultTablesJson | nvarchar(max) | nein | NULL |'
+            + NCHAR(10)
+            + N'| @JsonErzeugen | bit | nein | 0 |'
+            + NCHAR(10)
+            + N'| @Json | nvarchar(max) | nein | NULL OUTPUT |'
+            + NCHAR(10)
+            + N'| @PrintMeldungen | bit | nein | 1 |'
+            + NCHAR(10)
+            + N'| @Hilfe | bit | nein | 0 |'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'**@QueryHash:** @QueryHash binary(8). Default ist NULL. Optionaler Filter auf genau diesen 8-Byte-query_hash. NULL aggregiert alle Hashes und aktiviert PLAN_CACHE_DEEP; für einen einzelnen Hash wird dieser breite Pfad vermieden. Ein angegebener Hash kann im aktuellen Cache fehlen.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'**@Sortierung:** @Sortierung varchar(32). Default ist ''CPU_TOTAL''. CPU_TOTAL ordnet nach kumulierter CPU, ELAPSED_TOTAL nach kumulierter Laufzeit, READS_TOTAL nach logischen Reads, WRITES_TOTAL nach logischen Writes, EXECUTIONS nach Ausführungszahl, PLAN_VARIANTS nach Anzahl verschiedener Plan-Hashes und SPILLS_TOTAL nach kumulierten Spills. Auswahl absteigend und bei Gleichstand nach letzter Ausführung absteigend. NULL entspricht CPU_TOTAL. Rand-Leerzeichen und Groß- und Kleinschreibung werden normalisiert. Leere und andere Werte ergeben INVALID_PARAMETER.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'**@AnalyseModus:** @AnalyseModus varchar(16). Default ist ''TOP''. TOP prüft bei angegebenem Query Hash und positivem Limit bis 1000 keinen tiefen Pfad. VOLL prüft PLAN_CACHE_DEEP. Das Zeilenlimit gilt in beiden Modi. NULL entspricht TOP. Rand-Leerzeichen und Groß- und Kleinschreibung werden normalisiert. Leere und andere Werte ergeben INVALID_PARAMETER.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'**@MinExecutionCount:** @MinExecutionCount bigint. Default ist 1. Ganzzahliges Minimum der Summe der Ausführungen je Hash. 0 lässt auch Gruppen mit Summe 0 zu. Bei NULL trifft der Vergleich auf keine Gruppe. Negative Werte ergeben INVALID_PARAMETER.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'**@MinPlanVarianten:** @MinPlanVarianten int. Default ist 1. Mindestens 1 verschiedener query_plan_hash je Query Hash. Bei NULL trifft der Vergleich auf keine Gruppe. Werte unter 1 ergeben INVALID_PARAMETER.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'**@MaxZeilen:** @MaxZeilen int. Default ist 100. Maximale Zahl der Hash-Gruppen. Positiv begrenzt; NULL oder 0 bedeutet unbegrenzt und aktiviert damit PLAN_CACHE_DEEP. Negative Werte sind ungültig; mehr als 1000 Zeilen aktiviert ebenfalls den geschützten Pfad.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'**@MaxSqlTextZeichen:** @MaxSqlTextZeichen int. Default ist 4000. Maximale Unicode-Zeichenlänge des Beispielstatements. Positiv kürzt und kennzeichnet den Text; NULL oder 0 lässt ihn vollständig. Negative Werte sind ungültig.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'**@ParentQueryStatsSnapshot:** @ParentQueryStatsSnapshot bit. Default ist 0. 0 liest die DMV frisch. 1 liest ausschließlich den lokalen Snapshot des laufenden Aufrufs von USP_PlanCacheAnalysis. Fehlt er, meldet die Analyse ERROR_HANDLED. NULL ergibt INVALID_PARAMETER.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'**@HighImpactConfirmed:** @HighImpactConfirmed bit. Default ist 0. Muss für einen aktivierten PLAN_CACHE_DEEP-Pfad 1 sein und bestätigt den Hochaufwandspfad; zusätzlich gelten dessen aktuelle Freigabe und Berechtigungen. 0 oder NULL lässt den geschützten Pfad nicht zu. Bei einem einzelnen Hash im TOP-Modus mit höchstens 1000 Zeilen wird dieser Gate nicht aktiviert.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'**@ResultSetArt:** @ResultSetArt varchar(16). Default ist ''CONSOLE''. CONSOLE zeigt die beschrifteten Hashgruppen. RAW liefert Modulstatus und Hashgruppen. TABLE schreibt das benannte Resultset queryHashes. NONE unterdrückt die fachlichen Resultsets. Rand-Leerzeichen werden entfernt und die Groß- und Kleinschreibung normalisiert. NULL, leere Eingaben und andere Werte ergeben INVALID_PARAMETER.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'**@ResultTablesJson:** @ResultTablesJson nvarchar(max). Default ist NULL. Bei TABLE ist ein JSON-Objekt mit genau dem Schlüssel queryHashes und einem Tabellennamen als Zeichenfolgenwert erforderlich. Verwenden Sie eine vorhandene, leere lokale #Temp-Tabelle mit genau einer Seed-Spalte. Der Name darf höchstens 116 Zeichen lang sein. Globale Tabellen und das Präfix #Monitor sind ausgeschlossen. Bei den übrigen Ausgabearten sind nur NULL, die leere Zeichenfolge und Leerzeichen erlaubt. Die Prüfung läuft vor der Hilfe und kann Fehler 51011 auslösen.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'**@JsonErzeugen:** @JsonErzeugen bit. Default ist 0. 1 erzeugt JSON in @Json zusätzlich zur gewählten Ausgabeart. 0 oder NULL deaktiviert JSON.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'**@Json:** @Json nvarchar(max) OUTPUT. Default ist NULL. Binden Sie eine nvarchar(max)-Variable mit OUTPUT. Der Aufruf setzt sie zunächst auf NULL. Bei @JsonErzeugen=1 enthält sie das JSON-Dokument mit meta, queryHashes und warnings.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'**@PrintMeldungen:** @PrintMeldungen bit. Default ist 1. 1 gibt informative Meldungen zu Status und gegebenenfalls Textkürzung aus. 0 und NULL unterdrücken diese Meldungen.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'**@Hilfe:** @Hilfe bit. Default ist 0. 1 gibt die Hilfe aus und beendet den Aufruf vor der fachlichen Analyse. Die Initialisierung von @Json und die Prüfung der TABLE-Zuordnung laufen zuerst. 0 und NULL setzen den regulären Aufruf fort.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'## Resultate und Ausgabe'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'1. Modulstatus. 2. Query-Hash-Aggregate mit Beispielstatement.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'| Resultmenge | RAW | TABLE | Felder laut Inventar |'
+            + NCHAR(10)
+            + N'| --- | --- | --- | --- |'
+            + NCHAR(10)
+            + N'| queryHashes | 1 | 1 | [QueryHash] binary(8) NOT NULL , [PlanVariantCount] int NOT NULL , [PlanHandleCount] int NOT NULL , [CompilationCount] bigint NOT NULL , [ExecutionCount] bigint NOT NULL , [TotalCpuMs] decimal(38,3) NULL , [AvgCpuMs] decimal(38,3) NULL , [TotalElapsedMs] decimal(38,3) NULL , [AvgElapsedMs] decimal(38,3) NULL , [TotalReads] bigint NOT NULL , [AvgReads] decimal(38,3) NULL , [TotalWrites] bigint NOT NULL , [TotalSpills] bigint NOT NULL , [MaxGrantKb] bigint NOT NULL , [FirstCreationTime] datetime NULL , [LastExecutionTime] datetime NULL , [SampleStatementTextCharacters] bigint NULL , [SampleStatementTextBytes] bigint NULL , [SampleStatementTextIsTruncated] bit NOT NULL DEFAULT(0) , [SampleStatementText] nvarchar(max) COLLATE SQL_Latin1_General_CP1_CS_AS NULL |'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'Bei @Hilfe=1 kommt genau ein Resultset mit SkillFormatVersion, SchemaName, ObjectName und SkillMarkdown hinzu; bestehende PRINT-Hinweise bleiben erhalten.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'## Beispiel'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'```sql'
+            + NCHAR(10)
+            + N'EXEC monitor.USP_QueryHashAnalysis @MinPlanVarianten=2; EXEC monitor.USP_QueryHashAnalysis @Sortierung=''READS_TOTAL''; EXEC monitor.USP_QueryHashAnalysis @Hilfe=1;'
+            + NCHAR(10)
+            + N'```'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'## Aufwand, Nebenwirkungen, Fehler und Grenzen'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'monitor.USP_QueryHashAnalysis'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'Die Procedure gruppiert aktuell sichtbare Cacheeinträge nach Query Hash und zeigt Verbrauch und Planvarianten.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'Hilfe anzeigen. EXEC [monitor].[USP_QueryHashAnalysis] @Hilfe=1;'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'Technische Resultsets lesen. EXEC [monitor].[USP_QueryHashAnalysis] @QueryHash=0x0000000000000001, @MaxZeilen=50, @ResultSetArt=''RAW'';'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'Nur JSON ausgeben. DECLARE @ResultJson nvarchar(max); EXEC [monitor].[USP_QueryHashAnalysis] @QueryHash=0x0000000000000001, @MaxZeilen=50, @ResultSetArt=''NONE'', @JsonErzeugen=1, @Json=@ResultJson OUTPUT; SELECT @ResultJson AS [Json];'
+            + NCHAR(10)
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'### Quellgebundene Detailbeschreibung'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'Der folgende Quellkopf bewahrt die zusätzlichen Implementierungsgrenzen für diesen Skill.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'```text'
+            + NCHAR(10)
+            + N'Objekt       : monitor.USP_QueryHashAnalysis'
+            + NCHAR(10)
+            + N'Version      : 2.1.0'
+            + NCHAR(10)
+            + N'Stand        : 2026-07-19'
+            + NCHAR(10)
+            + N'Typ          : Stored Procedure'
+            + NCHAR(10)
+            + N'Zweck        : Aggregiert gecachte Statement-Statistiken je query_hash und zeigt'
+            + NCHAR(10)
+            + N'               Planvielfalt, Recompiles und kumulative Ressourcenanteile.'
+            + NCHAR(10)
+            + N'SQL-Version  : SQL Server 2019 oder neuer.'
+            + NCHAR(10)
+            + N'Datenquellen : sys.dm_exec_query_stats, sys.dm_exec_sql_text.'
+            + NCHAR(10)
+            + N'Parameter    : @QueryHash, @Sortierung, @AnalyseModus, @MinExecutionCount,'
+            + NCHAR(10)
+            + N'               @MinPlanVarianten, @MaxZeilen, @MaxSqlTextZeichen,'
+            + NCHAR(10)
+            + N'               @ParentQueryStatsSnapshot,'
+            + NCHAR(10)
+            + N'               @PrintMeldungen, @Hilfe.'
+            + NCHAR(10)
+            + N'Resultsets   : 1. Modulstatus. 2. Query-Hash-Aggregate mit Beispielstatement.'
+            + NCHAR(10)
+            + N'Berechtigung : VIEW SERVER STATE beziehungsweise SQL Server 2022+'
+            + NCHAR(10)
+            + N'               VIEW SERVER PERFORMANCE STATE. Keine Rechtevergabe.'
+            + NCHAR(10)
+            + N'Eigenlast    : Gruppiert sys.dm_exec_query_stats. Ohne konkreten @QueryHash sowie'
+            + NCHAR(10)
+            + N'               im Modus VOLL wird PLAN_CACHE_DEEP geprüft. Text wird nur für'
+            + NCHAR(10)
+            + N'               gewählte Hashes geladen.'
+            + NCHAR(10)
+            + N'Locking      : Keine Benutzerobjekte.'
+            + NCHAR(10)
+            + N'Partial      : Cache-Eviction kann Beispieltexte zwischen Auswahl und Ausgabe entfernen.'
+            + NCHAR(10)
+            + N'Beispiele    : EXEC monitor.USP_QueryHashAnalysis @MinPlanVarianten=2;'
+            + NCHAR(10)
+            + N'               EXEC monitor.USP_QueryHashAnalysis @Sortierung=''READS_TOTAL'';'
+            + NCHAR(10)
+            + N'               EXEC monitor.USP_QueryHashAnalysis @Hilfe=1;'
+            + NCHAR(10)
+            + N'Änderungen   : 2.1.0 - Query-Stats je Aufruf einmal gelesen oder vom laufgebundenen'
+            + NCHAR(10)
+            + N'                         Parent-Snapshot übernommen.'
+            + NCHAR(10)
+            + N'               1.1.0 - Breite Aggregation ohne @QueryHash gruppengeschützt.'
+            + NCHAR(10)
+            + N'               1.0.0 - Erstfassung Phase 3.'
+            + NCHAR(10)
+            + N'```'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'### Weitere bestehende Hilfehinweise'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'```text'
+            + NCHAR(10)
+            + N'monitor.USP_QueryHashAnalysis'
+            + NCHAR(10)
+            + N'Die Procedure gruppiert aktuell sichtbare Cacheeinträge nach Query Hash und zeigt Verbrauch und Planvarianten.'
+            + NCHAR(10)
+            + N'Hilfe anzeigen. EXEC [monitor].[USP_QueryHashAnalysis] @Hilfe=1;'
+            + NCHAR(10)
+            + N'Technische Resultsets lesen. EXEC [monitor].[USP_QueryHashAnalysis] @QueryHash=0x0000000000000001, @MaxZeilen=50, @ResultSetArt=''RAW'';'
+            + NCHAR(10)
+            + N'Nur JSON ausgeben. DECLARE @ResultJson nvarchar(max); EXEC [monitor].[USP_QueryHashAnalysis] @QueryHash=0x0000000000000001, @MaxZeilen=50, @ResultSetArt=''NONE'', @JsonErzeugen=1, @Json=@ResultJson OUTPUT; SELECT @ResultJson AS [Json];'
+            + NCHAR(10)
+            + N'Benanntes Resultset in eine lokale Temp-Tabelle schreiben. CREATE TABLE #QueryHashAnalysis_HelpExample ([Seed] int NULL); BEGIN TRY EXEC [monitor].[USP_QueryHashAnalysis] @QueryHash=0x0000000000000001, @MaxZeilen=50, @ResultSetArt=''TABLE'', @ResultTablesJson=N''{"queryHashes":"#QueryHashAnalysis_HelpExample"}''; SELECT * FROM #QueryHashAnalysis_HelpExample; DROP TABLE #QueryHashAnalysis_HelpExample; END TRY BEGIN CATCH DROP TABLE #QueryHashAnalysis_HelpExample; THROW; END CATCH;'
+            + NCHAR(10)
+            + N'```'
+            + NCHAR(10)
+            + NCHAR(10) AS [SkillMarkdown];
+        -- USAGE_SKILL_HELP_END monitor.USP_QueryHashAnalysis
         RETURN;
-    END;
+    END
+
+    SET LOCK_TIMEOUT 0;
+    SET @Json = NULL;
+    DECLARE @ResultSetArtNormalisiert varchar(16)=UPPER(LTRIM(RTRIM(COALESCE(@ResultSetArt,''))));
+    DECLARE @TableResultRequested bit = CASE WHEN @ResultSetArtNormalisiert = 'TABLE' THEN 1 ELSE 0 END;
+    DECLARE @ConsoleResultRequested bit = CASE WHEN @ResultSetArtNormalisiert = 'CONSOLE' THEN 1 ELSE 0 END;
+    DECLARE @TableTarget sysname=NULL;
+    IF @TableResultRequested=0 AND NULLIF(LTRIM(RTRIM(COALESCE(@ResultTablesJson,N''))),N'') IS NOT NULL THROW 51011,N'@ResultTablesJson ist ausschließlich mit @ResultSetArt=TABLE zulässig.',1;
+    IF @TableResultRequested=1 EXEC [monitor].[InternalPrepareSingleResultTable] @ResultTablesJson=@ResultTablesJson,@ResultName=N'queryHashes',@TargetTable=@TableTarget OUTPUT,@ThrowOnError=1;
+    IF @TableResultRequested = 1 OR @ConsoleResultRequested = 1 SET @ResultSetArtNormalisiert = 'NONE';
+    DECLARE @EffectiveMaxZeilen bigint = CASE WHEN @MaxZeilen IS NULL OR @MaxZeilen=0 THEN CONVERT(bigint,9223372036854775807) ELSE CONVERT(bigint,@MaxZeilen) END;
+    DECLARE @MonitorPrintMessage nvarchar(2048);
+    SET @Sortierung=UPPER(LTRIM(RTRIM(COALESCE(@Sortierung,'CPU_TOTAL'))));
+    SET @AnalyseModus=UPPER(LTRIM(RTRIM(COALESCE(@AnalyseModus,'TOP'))));
+    ;
 
     DECLARE @CollectionTimeUtc datetime2(3)=SYSUTCDATETIME(),@StatusCode varchar(40)='AVAILABLE',@IsPartial bit=0,@RowCount bigint=0,
             @ErrorNumber int=NULL,@ErrorMessage nvarchar(2048)=NULL,@Detail nvarchar(2000)=NULL,@Allowed bit=1,

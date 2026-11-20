@@ -39,6 +39,161 @@ Beispiele    : EXEC monitor.USP_ExtendedEventsDeadlocks;
 Änderungen   : 1.0.0 - Erstfassung Phase 5.
 ===============================================================================
 */
+-- USAGE_SKILL_BEGIN monitor.USP_ExtendedEventsDeadlocks 1.0.0
+-- ---
+-- skill_format_version: "1.0.0"
+-- name: "monitor.USP_ExtendedEventsDeadlocks"
+-- schema_name: "monitor"
+-- object_name: "USP_ExtendedEventsDeadlocks"
+-- object_type: "PROCEDURE"
+-- database_role: "framework"
+-- is_internal: false
+-- description: "Liest bereits erfasste xml_deadlock_report-Ereignisse aus einer vorhandenen Extended-Events-Session und zerlegt Deadlockgraphen in Summary-, Victim-, Process- und Resource-Resultsets."
+-- source_path: "Code/06_ExtendedEvents/030_USP_ExtendedEventsDeadlocks.sql"
+-- ---
+-- 
+-- # monitor.USP_ExtendedEventsDeadlocks
+-- 
+-- ## Zweck und Einsatz
+-- 
+-- Liest bereits erfasste xml_deadlock_report-Ereignisse aus einer vorhandenen Extended-Events-Session und zerlegt Deadlockgraphen in Summary-, Victim-, Process- und Resource-Resultsets.
+-- 
+-- ## Voraussetzungen und Rechte
+-- 
+-- SQL Server 2019 oder neuer.
+-- 
+-- system_health oder andere bestehende Session; event_file über sys.fn_xe_file_target_read_file, optional ring_buffer über sys.dm_xe_session_targets.
+-- 
+-- SQL 2019 VIEW SERVER STATE; SQL 2022+ VIEW SERVER PERFORMANCE STATE oder höher. Das Framework vergibt keine Rechte.
+-- 
+-- ## Parameter und Eingabe
+-- 
+-- „SQL-Bindungspflicht“ bezeichnet ein bei der SQL-Aufrufbindung erforderliches Argument ohne Default. Fachliche Wertpflichten und zulässige NULL-Werte stehen im jeweiligen Einzelvertrag.
+-- 
+-- | Parameter | SQL-Typ | SQL-Bindungspflicht | Default |
+-- | --- | --- | --- | --- |
+-- | @SourceExtendedEventSessionName | nvarchar(258) | nein | N'system_health' |
+-- | @Quelle | varchar(20) | nein | 'AUTO' |
+-- | @FilePath | nvarchar(4000) | nein | NULL |
+-- | @VonUtc | datetime2(7) | nein | NULL |
+-- | @BisUtc | datetime2(7) | nein | NULL |
+-- | @MaxZeilen | int | nein | 100 |
+-- | @MitDeadlockXml | bit | nein | 1 |
+-- | @MitProcessDetails | bit | nein | 1 |
+-- | @MitResourceDetails | bit | nein | 1 |
+-- | @BestaetigeTargetFlush | bit | nein | 0 |
+-- | @HighImpactConfirmed | bit | nein | 0 |
+-- | @ResultSetArt | varchar(16) | nein | 'CONSOLE' |
+-- | @ResultTablesJson | nvarchar(max) | nein | NULL |
+-- | @JsonErzeugen | bit | nein | 0 |
+-- | @Json | nvarchar(max) | nein | NULL OUTPUT |
+-- | @PrintMeldungen | bit | nein | 1 |
+-- | @Hilfe | bit | nein | 0 |
+-- 
+-- **@SourceExtendedEventSessionName:** @SourceExtendedEventSessionName nvarchar(258). Default ist N'system_health'. Bezeichnet genau eine vorhandene Extended-Events-Session, die xml_deadlock_report erfasst. Der Name darf optional geklammert sein. NULL, eine ungültige Angabe oder mehrere Namen ergeben INVALID_PARAMETER. Leertext ist ungültig.
+-- 
+-- **@Quelle:** @Quelle varchar(20). Default ist 'AUTO'. Geschlossene Auswahl: AUTO wählt EVENT_FILE, wenn ein expliziter oder konfigurierter Dateipfad vorliegt. andernfalls wird RING_BUFFER nur bei bestätigtem Target-Flush gewählt. EVENT_FILE erzwingt das Dateiziel, RING_BUFFER das laufende Ring-Buffer-Ziel. NULL, leer oder ein anderer Wert ist ungültig. Werte werden getrimmt und in Großbuchstaben umgewandelt.
+-- 
+-- **@FilePath:** @FilePath nvarchar(4000). Default ist NULL. Expliziter XEL-Pfad oder URL. NULL oder leer verwendet den in der Sessiondefinition konfigurierten Eventfile-Pfad. Endet der Pfad auf .xel, wird diese Endung durch *.xel ersetzt. Enthält er kein * und endet nicht auf .xel, wird *.xel angehängt. Ein expliziter Pfad kann AUTO zur Wahl des Eventfiles führen.
+-- 
+-- **@VonUtc:** @VonUtc datetime2(7). Default ist NULL. Untere UTC-Zeitgrenze einschließlich. NULL wird zur Laufzeit auf UTC jetzt minus 24 Stunden gesetzt. Ein expliziter Wert ersetzt diesen Standard.
+-- 
+-- **@BisUtc:** @BisUtc datetime2(7). Default ist NULL. Obere UTC-Zeitgrenze ausschließlich. NULL lässt die Obergrenze offen. Sind beide Grenzen gesetzt, muss @VonUtc kleiner als @BisUtc sein.
+-- 
+-- **@MaxZeilen:** @MaxZeilen int. Default ist 100. Begrenzt die ausgewählten Deadlockereignisse vor der Graphzerlegung. NULL oder 0 bedeutet unbegrenzt. negative Werte sind ungültig. Eine Begrenzung kann den vollständigen physischen Scan von XEL-Rolloverdateien nicht verhindern.
+-- 
+-- **@MitDeadlockXml:** @MitDeadlockXml bit. Default ist 1. 1 aktiviert die beschriebene Funktion. 0 und NULL deaktivieren sie. Steuert die Ausgabe des vollständigen Deadlock-XML in der Summary. 0 unterdrückt diese XML-Spalte, verhindert aber nicht das Einlesen und die für die übrigen Resultate erforderliche Graphverarbeitung.
+-- 
+-- **@MitProcessDetails:** @MitProcessDetails bit. Default ist 1. 1 aktiviert die beschriebene Funktion. 0 und NULL deaktivieren sie. Steuert die Prozessdetailausgabe und deren Detailzerlegung. Die für Victim- und Summary-Ausgaben erforderliche Verarbeitung bleibt davon unberührt.
+-- 
+-- **@MitResourceDetails:** @MitResourceDetails bit. Default ist 1. 1 aktiviert die beschriebene Funktion. 0 und NULL deaktivieren sie. Steuert die Ressourcendetails einschließlich Owner-/Waiter-XML. 0 fordert diese Detailausgabe nicht an.
+-- 
+-- **@BestaetigeTargetFlush:** @BestaetigeTargetFlush bit. Default ist 0. 1 bestätigt den möglichen Target-Flush beim Ringbuffer-Lesen. 0 sperrt den expliziten Ringbufferzugriff. Beim expliziten Aufruf kann NULL die bestehende Prüfung auf 0 passieren. Verwenden Sie ausdrücklich 0 oder 1. AUTO wechselt nur bei 1 zum Ringbuffer.
+-- 
+-- **@HighImpactConfirmed:** @HighImpactConfirmed bit. Default ist 0. 1 bestätigt einen geschützten Pfad nach der aktiven Policy für EXTENDED_EVENTS_FORENSICS_DEEP. 0 bestätigt ihn nicht. NULL ist für die Gate-Prüfung ungültig. Die aktuelle Berechtigung wird zusätzlich geprüft.
+-- 
+-- **@ResultSetArt:** @ResultSetArt varchar(16). Default ist 'CONSOLE'. Geschlossene Auswahl nach Trimmen und Umwandlung in Großbuchstaben: RAW gibt technische Rohresultate aus, CONSOLE dient der interaktiven Ausgabe, NONE unterdrückt Resultsets zugunsten des OUTPUT-JSON, TABLE schreibt das registrierte Fachresultat in ein bereitgestelltes Ziel. CONSOLE und TABLE werden intern auf NONE gesetzt, bevor die Fachresultate ausgegeben/geschrieben werden. NULL, leer und andere Werte sind ungültig.
+-- 
+-- **@ResultTablesJson:** @ResultTablesJson nvarchar(max). Default ist NULL. Bei TABLE ist ein nichtleeres JSON-Objekt mit genau dem Schlüssel deadlocks erforderlich. Der Wert benennt eine vorhandene, leere lokale #Temp-Tabelle mit genau einer Seed-Spalte. Der Name darf höchstens 116 Zeichen lang sein. Globale Tabellen und #Monitor als Präfix sind ausgeschlossen. Außerhalb von TABLE sind nur NULL, Leertext und Leerzeichen erlaubt. Die Prüfung läuft vor der Hilfe und kann Fehler 51011 auslösen.
+-- 
+-- **@JsonErzeugen:** @JsonErzeugen bit. Default ist 0. 1 erzeugt JSON in @Json unabhängig von der Ausgabeart. 0 und NULL erzeugen kein Dokument.
+-- 
+-- **@Json:** @Json nvarchar(max) OUTPUT. Default ist NULL. OUTPUT-Parameter für das erzeugte JSON. Der Wert wird am Prozedurbeginn auf NULL gesetzt. NULL bedeutet daher, dass kein JSON geliefert wurde oder die Erzeugung nicht bis zu einem Ergebnis gelangte.
+-- 
+-- **@PrintMeldungen:** @PrintMeldungen bit. Default ist 1. 1 gibt bei Status außerhalb AVAILABLE und AVAILABLE_LIMITED eine Warnung mit Severity 10 aus. 0 unterdrückt diese Warnmeldung. NULL verhält sich über die IF-Bedingung wie aus, da nur exakt 1 wahr ist.
+-- 
+-- **@Hilfe:** @Hilfe bit. Default ist 0. 1 zeigt die Hilfe nach der TABLE-Zuordnungsprüfung und beendet den Aufruf vor dem Quellzugriff. 0 und NULL setzen den normalen Aufruf fort.
+-- 
+-- ## Resultate und Ausgabe
+-- 
+-- 1. Modulstatus. 2. Deadlock-Summary. 3. Victims. 4. Processes. 5. Resources. 6. Quellen-/Fehlerstatus.
+-- 
+-- | Resultmenge | RAW | TABLE | Felder laut Inventar |
+-- | --- | --- | --- | --- |
+-- | deadlocks | 1 | 1 | [DeadlockId] int,[SourceType] varchar(20),[DeadlockTimeUtc] datetime2(7),[FileName] nvarchar(260),[FileOffset] bigint,[VictimCount] int,[ProcessCount] int,[ResourceCount] int,[FirstDatabaseId] int NULL,[DeadlockXml] xml NULL |
+-- 
+-- Bei @Hilfe=1 kommt genau ein Resultset mit SkillFormatVersion, SchemaName, ObjectName und SkillMarkdown hinzu; bestehende PRINT-Hinweise bleiben erhalten.
+-- 
+-- ## Beispiel
+-- 
+-- ```sql
+-- EXEC monitor.USP_ExtendedEventsDeadlocks; EXEC monitor.USP_ExtendedEventsDeadlocks @Quelle='RING_BUFFER', @BestaetigeTargetFlush=1; EXEC monitor.USP_ExtendedEventsDeadlocks @Hilfe=1;
+-- ```
+-- 
+-- ## Aufwand, Nebenwirkungen, Fehler und Grenzen
+-- 
+-- Ringbuffer-Lesen erfordert @BestaetigeTargetFlush=1, weil die Abfrage von sys.dm_xe_session_targets einen Flush auslösen kann.
+-- 
+-- 
+-- ### Quellgebundene Detailbeschreibung
+-- 
+-- Der folgende Quellkopf bewahrt die zusätzlichen Implementierungsgrenzen für diesen Skill.
+-- 
+-- ```text
+-- Objekt       : monitor.USP_ExtendedEventsDeadlocks
+-- Version      : 2.0.0
+-- Stand        : 2026-07-15
+-- Typ          : Stored Procedure
+-- Zweck        : Liest bereits erfasste xml_deadlock_report-Ereignisse aus einer
+--                vorhandenen Extended-Events-Session und zerlegt Deadlockgraphen
+--                in Summary-, Victim-, Process- und Resource-Resultsets.
+-- SQL-Version  : SQL Server 2019 oder neuer.
+-- Datenquellen : system_health oder andere bestehende Session; event_file über
+--                sys.fn_xe_file_target_read_file, optional ring_buffer über
+--                sys.dm_xe_session_targets.
+-- Parameter    : @ResolvedSourceExtendedEventSessionName, @Quelle, @FilePath, @VonUtc, @BisUtc, @MaxZeilen,
+--                @MitDeadlockXml, @MitProcessDetails, @MitResourceDetails,
+--                @BestaetigeTargetFlush, @PrintMeldungen, @Hilfe.
+-- Resultsets   : 1. Modulstatus. 2. Deadlock-Summary. 3. Victims. 4. Processes.
+--                5. Resources. 6. Quellen-/Fehlerstatus.
+-- Berechtigung : SQL 2019 VIEW SERVER STATE; SQL 2022+ VIEW SERVER PERFORMANCE
+--                STATE oder höher. Das Framework vergibt keine Rechte.
+-- Eigenlast    : Event-Datei- und XML-abhängig; Maximalzahl und UTC-Filter werden
+--                vor der XML-Zerlegung angewandt. Trotzdem können XEL-Dateien
+--                vollständig gelesen werden müssen.
+-- Locking      : LOCK_TIMEOUT 0; keine Benutzerobjekte und keine Änderungen.
+-- Nebenwirkung : Ringbuffer-Lesen erfordert @BestaetigeTargetFlush=1, weil die
+--                Abfrage von sys.dm_xe_session_targets einen Flush auslösen kann.
+-- Partial      : Fehlende Session, Target, Datei oder Rechte liefern Status statt
+--                Abbruch. Deadlockhistorie ist für den Framework-Core optional.
+-- Beispiele    : EXEC monitor.USP_ExtendedEventsDeadlocks;
+--                EXEC monitor.USP_ExtendedEventsDeadlocks
+--                    @Quelle='RING_BUFFER', @BestaetigeTargetFlush=1;
+--                EXEC monitor.USP_ExtendedEventsDeadlocks @Hilfe=1;
+-- Änderungen   : 1.0.0 - Erstfassung Phase 5.
+-- ```
+-- 
+-- ### Weitere bestehende Hilfehinweise
+-- 
+-- ```text
+-- monitor.USP_ExtendedEventsDeadlocks
+-- Beispiel 1. EXEC [monitor].[USP_ExtendedEventsDeadlocks] @Hilfe=1;
+-- Beispiel 2. DECLARE @ExampleBisUtc datetime2(7)=SYSUTCDATETIME(); DECLARE @ExampleVonUtc datetime2(7)=DATEADD(HOUR,-1,@ExampleBisUtc); EXEC [monitor].[USP_ExtendedEventsDeadlocks] @SourceExtendedEventSessionName=N'system_health',@VonUtc=@ExampleVonUtc,@BisUtc=@ExampleBisUtc,@MaxZeilen=25,@MitDeadlockXml=0,@MitProcessDetails=0,@MitResourceDetails=0,@HighImpactConfirmed=1,@ResultSetArt='RAW';
+-- Beispiel 3. DECLARE @ExampleJson nvarchar(max); DECLARE @ExampleBisUtc datetime2(7)=SYSUTCDATETIME(); DECLARE @ExampleVonUtc datetime2(7)=DATEADD(HOUR,-1,@ExampleBisUtc); EXEC [monitor].[USP_ExtendedEventsDeadlocks] @SourceExtendedEventSessionName=N'system_health',@VonUtc=@ExampleVonUtc,@BisUtc=@ExampleBisUtc,@MaxZeilen=25,@MitDeadlockXml=0,@MitProcessDetails=0,@MitResourceDetails=0,@HighImpactConfirmed=1,@ResultSetArt='NONE',@JsonErzeugen=1,@Json=@ExampleJson OUTPUT; SELECT @ExampleJson AS ExampleJson;
+-- Beispiel 4. CREATE TABLE #ExtendedEventsDeadlocks_HelpExample ([Seed] int NULL); BEGIN TRY DECLARE @ExampleBisUtc datetime2(7)=SYSUTCDATETIME(); DECLARE @ExampleVonUtc datetime2(7)=DATEADD(HOUR,-1,@ExampleBisUtc); EXEC [monitor].[USP_ExtendedEventsDeadlocks] @SourceExtendedEventSessionName=N'system_health',@VonUtc=@ExampleVonUtc,@BisUtc=@ExampleBisUtc,@MaxZeilen=25,@MitDeadlockXml=0,@MitProcessDetails=0,@MitResourceDetails=0,@HighImpactConfirmed=1,@ResultSetArt='TABLE',@ResultTablesJson=N'{"deadlocks":"#ExtendedEventsDeadlocks_HelpExample"}'; SELECT * FROM #ExtendedEventsDeadlocks_HelpExample; DROP TABLE #ExtendedEventsDeadlocks_HelpExample; END TRY BEGIN CATCH DROP TABLE #ExtendedEventsDeadlocks_HelpExample; THROW; END CATCH;
+-- ```
+-- 
+-- USAGE_SKILL_END monitor.USP_ExtendedEventsDeadlocks
 CREATE OR ALTER PROCEDURE [monitor].[USP_ExtendedEventsDeadlocks]
       @SourceExtendedEventSessionName nvarchar(258)         = N'system_health'
     , @Quelle                  varchar(20)     = 'AUTO'
@@ -60,20 +215,10 @@ CREATE OR ALTER PROCEDURE [monitor].[USP_ExtendedEventsDeadlocks]
 AS
 BEGIN
     SET NOCOUNT ON;
-    SET @Json=NULL;
-    DECLARE @ResultSetArtNormalisiert varchar(16)=UPPER(LTRIM(RTRIM(COALESCE(@ResultSetArt,''))));
-    DECLARE @TableResultRequested bit = CASE WHEN @ResultSetArtNormalisiert = 'TABLE' THEN 1 ELSE 0 END;
-    DECLARE @ConsoleResultRequested bit = CASE WHEN @ResultSetArtNormalisiert = 'CONSOLE' THEN 1 ELSE 0 END;
-    DECLARE @TableTarget sysname=NULL;
-    IF @TableResultRequested=0 AND NULLIF(LTRIM(RTRIM(COALESCE(@ResultTablesJson,N''))),N'') IS NOT NULL THROW 51011,N'@ResultTablesJson ist ausschließlich mit @ResultSetArt=TABLE zulässig.',1;
-    IF @TableResultRequested=1 EXEC [monitor].[InternalPrepareSingleResultTable] @ResultTablesJson=@ResultTablesJson,@ResultName=N'deadlocks',@TargetTable=@TableTarget OUTPUT,@ThrowOnError=1;
-    IF @TableResultRequested = 1 OR @ConsoleResultRequested = 1 SET @ResultSetArtNormalisiert = 'NONE';
-    DECLARE @ResolvedSourceExtendedEventSessionName sysname=NULL;
-    DECLARE @EffectiveMaxZeilen bigint = CASE WHEN @MaxZeilen IS NULL OR @MaxZeilen=0 THEN CONVERT(bigint,9223372036854775807) ELSE CONVERT(bigint,@MaxZeilen) END;
-    DECLARE @MonitorPrintMessage nvarchar(2048);
 
     IF @Hilfe = 1
     BEGIN
+        SET @Json=NULL;
         PRINT N'monitor.USP_ExtendedEventsDeadlocks';
         PRINT N'@SourceExtendedEventSessionName nvarchar(258). Default ist N''system_health''. Bezeichnet genau eine vorhandene Extended-Events-Session, die xml_deadlock_report erfasst. Der Name darf optional geklammert sein. NULL, eine ungültige Angabe oder mehrere Namen ergeben INVALID_PARAMETER. Leertext ist ungültig.';
         PRINT N'@Quelle varchar(20). Default ist ''AUTO''. Geschlossene Auswahl: AUTO wählt EVENT_FILE, wenn ein expliziter oder konfigurierter Dateipfad vorliegt. andernfalls wird RING_BUFFER nur bei bestätigtem Target-Flush gewählt. EVENT_FILE erzwingt das Dateiziel, RING_BUFFER das laufende Ring-Buffer-Ziel. NULL, leer oder ein anderer Wert ist ungültig. Werte werden getrimmt und in Großbuchstaben umgewandelt.';
@@ -96,8 +241,288 @@ BEGIN
         PRINT N'Beispiel 2. DECLARE @ExampleBisUtc datetime2(7)=SYSUTCDATETIME(); DECLARE @ExampleVonUtc datetime2(7)=DATEADD(HOUR,-1,@ExampleBisUtc); EXEC [monitor].[USP_ExtendedEventsDeadlocks] @SourceExtendedEventSessionName=N''system_health'',@VonUtc=@ExampleVonUtc,@BisUtc=@ExampleBisUtc,@MaxZeilen=25,@MitDeadlockXml=0,@MitProcessDetails=0,@MitResourceDetails=0,@HighImpactConfirmed=1,@ResultSetArt=''RAW'';';
         PRINT N'Beispiel 3. DECLARE @ExampleJson nvarchar(max); DECLARE @ExampleBisUtc datetime2(7)=SYSUTCDATETIME(); DECLARE @ExampleVonUtc datetime2(7)=DATEADD(HOUR,-1,@ExampleBisUtc); EXEC [monitor].[USP_ExtendedEventsDeadlocks] @SourceExtendedEventSessionName=N''system_health'',@VonUtc=@ExampleVonUtc,@BisUtc=@ExampleBisUtc,@MaxZeilen=25,@MitDeadlockXml=0,@MitProcessDetails=0,@MitResourceDetails=0,@HighImpactConfirmed=1,@ResultSetArt=''NONE'',@JsonErzeugen=1,@Json=@ExampleJson OUTPUT; SELECT @ExampleJson AS ExampleJson;';
         PRINT N'Beispiel 4. CREATE TABLE #ExtendedEventsDeadlocks_HelpExample ([Seed] int NULL); BEGIN TRY DECLARE @ExampleBisUtc datetime2(7)=SYSUTCDATETIME(); DECLARE @ExampleVonUtc datetime2(7)=DATEADD(HOUR,-1,@ExampleBisUtc); EXEC [monitor].[USP_ExtendedEventsDeadlocks] @SourceExtendedEventSessionName=N''system_health'',@VonUtc=@ExampleVonUtc,@BisUtc=@ExampleBisUtc,@MaxZeilen=25,@MitDeadlockXml=0,@MitProcessDetails=0,@MitResourceDetails=0,@HighImpactConfirmed=1,@ResultSetArt=''TABLE'',@ResultTablesJson=N''{"deadlocks":"#ExtendedEventsDeadlocks_HelpExample"}''; SELECT * FROM #ExtendedEventsDeadlocks_HelpExample; DROP TABLE #ExtendedEventsDeadlocks_HelpExample; END TRY BEGIN CATCH DROP TABLE #ExtendedEventsDeadlocks_HelpExample; THROW; END CATCH;';
+        -- USAGE_SKILL_HELP_BEGIN monitor.USP_ExtendedEventsDeadlocks
+        SELECT CONVERT(varchar(16),'1.0.0') AS [SkillFormatVersion],CONVERT(sysname,N'monitor') AS [SchemaName],CONVERT(sysname,N'USP_ExtendedEventsDeadlocks') AS [ObjectName],CONVERT(nvarchar(max),N'---')
+            + NCHAR(10)
+            + N'skill_format_version: "1.0.0"'
+            + NCHAR(10)
+            + N'name: "monitor.USP_ExtendedEventsDeadlocks"'
+            + NCHAR(10)
+            + N'schema_name: "monitor"'
+            + NCHAR(10)
+            + N'object_name: "USP_ExtendedEventsDeadlocks"'
+            + NCHAR(10)
+            + N'object_type: "PROCEDURE"'
+            + NCHAR(10)
+            + N'database_role: "framework"'
+            + NCHAR(10)
+            + N'is_internal: false'
+            + NCHAR(10)
+            + N'description: "Liest bereits erfasste xml_deadlock_report-Ereignisse aus einer vorhandenen Extended-Events-Session und zerlegt Deadlockgraphen in Summary-, Victim-, Process- und Resource-Resultsets."'
+            + NCHAR(10)
+            + N'source_path: "Code/06_ExtendedEvents/030_USP_ExtendedEventsDeadlocks.sql"'
+            + NCHAR(10)
+            + N'---'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'# monitor.USP_ExtendedEventsDeadlocks'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'## Zweck und Einsatz'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'Liest bereits erfasste xml_deadlock_report-Ereignisse aus einer vorhandenen Extended-Events-Session und zerlegt Deadlockgraphen in Summary-, Victim-, Process- und Resource-Resultsets.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'## Voraussetzungen und Rechte'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'SQL Server 2019 oder neuer.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'system_health oder andere bestehende Session; event_file über sys.fn_xe_file_target_read_file, optional ring_buffer über sys.dm_xe_session_targets.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'SQL 2019 VIEW SERVER STATE; SQL 2022+ VIEW SERVER PERFORMANCE STATE oder höher. Das Framework vergibt keine Rechte.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'## Parameter und Eingabe'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'„SQL-Bindungspflicht“ bezeichnet ein bei der SQL-Aufrufbindung erforderliches Argument ohne Default. Fachliche Wertpflichten und zulässige NULL-Werte stehen im jeweiligen Einzelvertrag.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'| Parameter | SQL-Typ | SQL-Bindungspflicht | Default |'
+            + NCHAR(10)
+            + N'| --- | --- | --- | --- |'
+            + NCHAR(10)
+            + N'| @SourceExtendedEventSessionName | nvarchar(258) | nein | N''system_health'' |'
+            + NCHAR(10)
+            + N'| @Quelle | varchar(20) | nein | ''AUTO'' |'
+            + NCHAR(10)
+            + N'| @FilePath | nvarchar(4000) | nein | NULL |'
+            + NCHAR(10)
+            + N'| @VonUtc | datetime2(7) | nein | NULL |'
+            + NCHAR(10)
+            + N'| @BisUtc | datetime2(7) | nein | NULL |'
+            + NCHAR(10)
+            + N'| @MaxZeilen | int | nein | 100 |'
+            + NCHAR(10)
+            + N'| @MitDeadlockXml | bit | nein | 1 |'
+            + NCHAR(10)
+            + N'| @MitProcessDetails | bit | nein | 1 |'
+            + NCHAR(10)
+            + N'| @MitResourceDetails | bit | nein | 1 |'
+            + NCHAR(10)
+            + N'| @BestaetigeTargetFlush | bit | nein | 0 |'
+            + NCHAR(10)
+            + N'| @HighImpactConfirmed | bit | nein | 0 |'
+            + NCHAR(10)
+            + N'| @ResultSetArt | varchar(16) | nein | ''CONSOLE'' |'
+            + NCHAR(10)
+            + N'| @ResultTablesJson | nvarchar(max) | nein | NULL |'
+            + NCHAR(10)
+            + N'| @JsonErzeugen | bit | nein | 0 |'
+            + NCHAR(10)
+            + N'| @Json | nvarchar(max) | nein | NULL OUTPUT |'
+            + NCHAR(10)
+            + N'| @PrintMeldungen | bit | nein | 1 |'
+            + NCHAR(10)
+            + N'| @Hilfe | bit | nein | 0 |'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'**@SourceExtendedEventSessionName:** @SourceExtendedEventSessionName nvarchar(258). Default ist N''system_health''. Bezeichnet genau eine vorhandene Extended-Events-Session, die xml_deadlock_report erfasst. Der Name darf optional geklammert sein. NULL, eine ungültige Angabe oder mehrere Namen ergeben INVALID_PARAMETER. Leertext ist ungültig.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'**@Quelle:** @Quelle varchar(20). Default ist ''AUTO''. Geschlossene Auswahl: AUTO wählt EVENT_FILE, wenn ein expliziter oder konfigurierter Dateipfad vorliegt. andernfalls wird RING_BUFFER nur bei bestätigtem Target-Flush gewählt. EVENT_FILE erzwingt das Dateiziel, RING_BUFFER das laufende Ring-Buffer-Ziel. NULL, leer oder ein anderer Wert ist ungültig. Werte werden getrimmt und in Großbuchstaben umgewandelt.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'**@FilePath:** @FilePath nvarchar(4000). Default ist NULL. Expliziter XEL-Pfad oder URL. NULL oder leer verwendet den in der Sessiondefinition konfigurierten Eventfile-Pfad. Endet der Pfad auf .xel, wird diese Endung durch *.xel ersetzt. Enthält er kein * und endet nicht auf .xel, wird *.xel angehängt. Ein expliziter Pfad kann AUTO zur Wahl des Eventfiles führen.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'**@VonUtc:** @VonUtc datetime2(7). Default ist NULL. Untere UTC-Zeitgrenze einschließlich. NULL wird zur Laufzeit auf UTC jetzt minus 24 Stunden gesetzt. Ein expliziter Wert ersetzt diesen Standard.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'**@BisUtc:** @BisUtc datetime2(7). Default ist NULL. Obere UTC-Zeitgrenze ausschließlich. NULL lässt die Obergrenze offen. Sind beide Grenzen gesetzt, muss @VonUtc kleiner als @BisUtc sein.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'**@MaxZeilen:** @MaxZeilen int. Default ist 100. Begrenzt die ausgewählten Deadlockereignisse vor der Graphzerlegung. NULL oder 0 bedeutet unbegrenzt. negative Werte sind ungültig. Eine Begrenzung kann den vollständigen physischen Scan von XEL-Rolloverdateien nicht verhindern.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'**@MitDeadlockXml:** @MitDeadlockXml bit. Default ist 1. 1 aktiviert die beschriebene Funktion. 0 und NULL deaktivieren sie. Steuert die Ausgabe des vollständigen Deadlock-XML in der Summary. 0 unterdrückt diese XML-Spalte, verhindert aber nicht das Einlesen und die für die übrigen Resultate erforderliche Graphverarbeitung.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'**@MitProcessDetails:** @MitProcessDetails bit. Default ist 1. 1 aktiviert die beschriebene Funktion. 0 und NULL deaktivieren sie. Steuert die Prozessdetailausgabe und deren Detailzerlegung. Die für Victim- und Summary-Ausgaben erforderliche Verarbeitung bleibt davon unberührt.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'**@MitResourceDetails:** @MitResourceDetails bit. Default ist 1. 1 aktiviert die beschriebene Funktion. 0 und NULL deaktivieren sie. Steuert die Ressourcendetails einschließlich Owner-/Waiter-XML. 0 fordert diese Detailausgabe nicht an.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'**@BestaetigeTargetFlush:** @BestaetigeTargetFlush bit. Default ist 0. 1 bestätigt den möglichen Target-Flush beim Ringbuffer-Lesen. 0 sperrt den expliziten Ringbufferzugriff. Beim expliziten Aufruf kann NULL die bestehende Prüfung auf 0 passieren. Verwenden Sie ausdrücklich 0 oder 1. AUTO wechselt nur bei 1 zum Ringbuffer.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'**@HighImpactConfirmed:** @HighImpactConfirmed bit. Default ist 0. 1 bestätigt einen geschützten Pfad nach der aktiven Policy für EXTENDED_EVENTS_FORENSICS_DEEP. 0 bestätigt ihn nicht. NULL ist für die Gate-Prüfung ungültig. Die aktuelle Berechtigung wird zusätzlich geprüft.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'**@ResultSetArt:** @ResultSetArt varchar(16). Default ist ''CONSOLE''. Geschlossene Auswahl nach Trimmen und Umwandlung in Großbuchstaben: RAW gibt technische Rohresultate aus, CONSOLE dient der interaktiven Ausgabe, NONE unterdrückt Resultsets zugunsten des OUTPUT-JSON, TABLE schreibt das registrierte Fachresultat in ein bereitgestelltes Ziel. CONSOLE und TABLE werden intern auf NONE gesetzt, bevor die Fachresultate ausgegeben/geschrieben werden. NULL, leer und andere Werte sind ungültig.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'**@ResultTablesJson:** @ResultTablesJson nvarchar(max). Default ist NULL. Bei TABLE ist ein nichtleeres JSON-Objekt mit genau dem Schlüssel deadlocks erforderlich. Der Wert benennt eine vorhandene, leere lokale #Temp-Tabelle mit genau einer Seed-Spalte. Der Name darf höchstens 116 Zeichen lang sein. Globale Tabellen und #Monitor als Präfix sind ausgeschlossen. Außerhalb von TABLE sind nur NULL, Leertext und Leerzeichen erlaubt. Die Prüfung läuft vor der Hilfe und kann Fehler 51011 auslösen.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'**@JsonErzeugen:** @JsonErzeugen bit. Default ist 0. 1 erzeugt JSON in @Json unabhängig von der Ausgabeart. 0 und NULL erzeugen kein Dokument.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'**@Json:** @Json nvarchar(max) OUTPUT. Default ist NULL. OUTPUT-Parameter für das erzeugte JSON. Der Wert wird am Prozedurbeginn auf NULL gesetzt. NULL bedeutet daher, dass kein JSON geliefert wurde oder die Erzeugung nicht bis zu einem Ergebnis gelangte.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'**@PrintMeldungen:** @PrintMeldungen bit. Default ist 1. 1 gibt bei Status außerhalb AVAILABLE und AVAILABLE_LIMITED eine Warnung mit Severity 10 aus. 0 unterdrückt diese Warnmeldung. NULL verhält sich über die IF-Bedingung wie aus, da nur exakt 1 wahr ist.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'**@Hilfe:** @Hilfe bit. Default ist 0. 1 zeigt die Hilfe nach der TABLE-Zuordnungsprüfung und beendet den Aufruf vor dem Quellzugriff. 0 und NULL setzen den normalen Aufruf fort.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'## Resultate und Ausgabe'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'1. Modulstatus. 2. Deadlock-Summary. 3. Victims. 4. Processes. 5. Resources. 6. Quellen-/Fehlerstatus.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'| Resultmenge | RAW | TABLE | Felder laut Inventar |'
+            + NCHAR(10)
+            + N'| --- | --- | --- | --- |'
+            + NCHAR(10)
+            + N'| deadlocks | 1 | 1 | [DeadlockId] int,[SourceType] varchar(20),[DeadlockTimeUtc] datetime2(7),[FileName] nvarchar(260),[FileOffset] bigint,[VictimCount] int,[ProcessCount] int,[ResourceCount] int,[FirstDatabaseId] int NULL,[DeadlockXml] xml NULL |'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'Bei @Hilfe=1 kommt genau ein Resultset mit SkillFormatVersion, SchemaName, ObjectName und SkillMarkdown hinzu; bestehende PRINT-Hinweise bleiben erhalten.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'## Beispiel'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'```sql'
+            + NCHAR(10)
+            + N'EXEC monitor.USP_ExtendedEventsDeadlocks; EXEC monitor.USP_ExtendedEventsDeadlocks @Quelle=''RING_BUFFER'', @BestaetigeTargetFlush=1; EXEC monitor.USP_ExtendedEventsDeadlocks @Hilfe=1;'
+            + NCHAR(10)
+            + N'```'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'## Aufwand, Nebenwirkungen, Fehler und Grenzen'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'Ringbuffer-Lesen erfordert @BestaetigeTargetFlush=1, weil die Abfrage von sys.dm_xe_session_targets einen Flush auslösen kann.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'### Quellgebundene Detailbeschreibung'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'Der folgende Quellkopf bewahrt die zusätzlichen Implementierungsgrenzen für diesen Skill.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'```text'
+            + NCHAR(10)
+            + N'Objekt       : monitor.USP_ExtendedEventsDeadlocks'
+            + NCHAR(10)
+            + N'Version      : 2.0.0'
+            + NCHAR(10)
+            + N'Stand        : 2026-07-15'
+            + NCHAR(10)
+            + N'Typ          : Stored Procedure'
+            + NCHAR(10)
+            + N'Zweck        : Liest bereits erfasste xml_deadlock_report-Ereignisse aus einer'
+            + NCHAR(10)
+            + N'               vorhandenen Extended-Events-Session und zerlegt Deadlockgraphen'
+            + NCHAR(10)
+            + N'               in Summary-, Victim-, Process- und Resource-Resultsets.'
+            + NCHAR(10)
+            + N'SQL-Version  : SQL Server 2019 oder neuer.'
+            + NCHAR(10)
+            + N'Datenquellen : system_health oder andere bestehende Session; event_file über'
+            + NCHAR(10)
+            + N'               sys.fn_xe_file_target_read_file, optional ring_buffer über'
+            + NCHAR(10)
+            + N'               sys.dm_xe_session_targets.'
+            + NCHAR(10)
+            + N'Parameter    : @ResolvedSourceExtendedEventSessionName, @Quelle, @FilePath, @VonUtc, @BisUtc, @MaxZeilen,'
+            + NCHAR(10)
+            + N'               @MitDeadlockXml, @MitProcessDetails, @MitResourceDetails,'
+            + NCHAR(10)
+            + N'               @BestaetigeTargetFlush, @PrintMeldungen, @Hilfe.'
+            + NCHAR(10)
+            + N'Resultsets   : 1. Modulstatus. 2. Deadlock-Summary. 3. Victims. 4. Processes.'
+            + NCHAR(10)
+            + N'               5. Resources. 6. Quellen-/Fehlerstatus.'
+            + NCHAR(10)
+            + N'Berechtigung : SQL 2019 VIEW SERVER STATE; SQL 2022+ VIEW SERVER PERFORMANCE'
+            + NCHAR(10)
+            + N'               STATE oder höher. Das Framework vergibt keine Rechte.'
+            + NCHAR(10)
+            + N'Eigenlast    : Event-Datei- und XML-abhängig; Maximalzahl und UTC-Filter werden'
+            + NCHAR(10)
+            + N'               vor der XML-Zerlegung angewandt. Trotzdem können XEL-Dateien'
+            + NCHAR(10)
+            + N'               vollständig gelesen werden müssen.'
+            + NCHAR(10)
+            + N'Locking      : LOCK_TIMEOUT 0; keine Benutzerobjekte und keine Änderungen.'
+            + NCHAR(10)
+            + N'Nebenwirkung : Ringbuffer-Lesen erfordert @BestaetigeTargetFlush=1, weil die'
+            + NCHAR(10)
+            + N'               Abfrage von sys.dm_xe_session_targets einen Flush auslösen kann.'
+            + NCHAR(10)
+            + N'Partial      : Fehlende Session, Target, Datei oder Rechte liefern Status statt'
+            + NCHAR(10)
+            + N'               Abbruch. Deadlockhistorie ist für den Framework-Core optional.'
+            + NCHAR(10)
+            + N'Beispiele    : EXEC monitor.USP_ExtendedEventsDeadlocks;'
+            + NCHAR(10)
+            + N'               EXEC monitor.USP_ExtendedEventsDeadlocks'
+            + NCHAR(10)
+            + N'                   @Quelle=''RING_BUFFER'', @BestaetigeTargetFlush=1;'
+            + NCHAR(10)
+            + N'               EXEC monitor.USP_ExtendedEventsDeadlocks @Hilfe=1;'
+            + NCHAR(10)
+            + N'Änderungen   : 1.0.0 - Erstfassung Phase 5.'
+            + NCHAR(10)
+            + N'```'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'### Weitere bestehende Hilfehinweise'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'```text'
+            + NCHAR(10)
+            + N'monitor.USP_ExtendedEventsDeadlocks'
+            + NCHAR(10)
+            + N'Beispiel 1. EXEC [monitor].[USP_ExtendedEventsDeadlocks] @Hilfe=1;'
+            + NCHAR(10)
+            + N'Beispiel 2. DECLARE @ExampleBisUtc datetime2(7)=SYSUTCDATETIME(); DECLARE @ExampleVonUtc datetime2(7)=DATEADD(HOUR,-1,@ExampleBisUtc); EXEC [monitor].[USP_ExtendedEventsDeadlocks] @SourceExtendedEventSessionName=N''system_health'',@VonUtc=@ExampleVonUtc,@BisUtc=@ExampleBisUtc,@MaxZeilen=25,@MitDeadlockXml=0,@MitProcessDetails=0,@MitResourceDetails=0,@HighImpactConfirmed=1,@ResultSetArt=''RAW'';'
+            + NCHAR(10)
+            + N'Beispiel 3. DECLARE @ExampleJson nvarchar(max); DECLARE @ExampleBisUtc datetime2(7)=SYSUTCDATETIME(); DECLARE @ExampleVonUtc datetime2(7)=DATEADD(HOUR,-1,@ExampleBisUtc); EXEC [monitor].[USP_ExtendedEventsDeadlocks] @SourceExtendedEventSessionName=N''system_health'',@VonUtc=@ExampleVonUtc,@BisUtc=@ExampleBisUtc,@MaxZeilen=25,@MitDeadlockXml=0,@MitProcessDetails=0,@MitResourceDetails=0,@HighImpactConfirmed=1,@ResultSetArt=''NONE'',@JsonErzeugen=1,@Json=@ExampleJson OUTPUT; SELECT @ExampleJson AS ExampleJson;'
+            + NCHAR(10)
+            + N'Beispiel 4. CREATE TABLE #ExtendedEventsDeadlocks_HelpExample ([Seed] int NULL); BEGIN TRY DECLARE @ExampleBisUtc datetime2(7)=SYSUTCDATETIME(); DECLARE @ExampleVonUtc datetime2(7)=DATEADD(HOUR,-1,@ExampleBisUtc); EXEC [monitor].[USP_ExtendedEventsDeadlocks] @SourceExtendedEventSessionName=N''system_health'',@VonUtc=@ExampleVonUtc,@BisUtc=@ExampleBisUtc,@MaxZeilen=25,@MitDeadlockXml=0,@MitProcessDetails=0,@MitResourceDetails=0,@HighImpactConfirmed=1,@ResultSetArt=''TABLE'',@ResultTablesJson=N''{"deadlocks":"#ExtendedEventsDeadlocks_HelpExample"}''; SELECT * FROM #ExtendedEventsDeadlocks_HelpExample; DROP TABLE #ExtendedEventsDeadlocks_HelpExample; END TRY BEGIN CATCH DROP TABLE #ExtendedEventsDeadlocks_HelpExample; THROW; END CATCH;'
+            + NCHAR(10)
+            + N'```'
+            + NCHAR(10)
+            + NCHAR(10) AS [SkillMarkdown];
+        -- USAGE_SKILL_HELP_END monitor.USP_ExtendedEventsDeadlocks
         RETURN;
-    END;
+    END
+
+    SET @Json=NULL;
+    DECLARE @ResultSetArtNormalisiert varchar(16)=UPPER(LTRIM(RTRIM(COALESCE(@ResultSetArt,''))));
+    DECLARE @TableResultRequested bit = CASE WHEN @ResultSetArtNormalisiert = 'TABLE' THEN 1 ELSE 0 END;
+    DECLARE @ConsoleResultRequested bit = CASE WHEN @ResultSetArtNormalisiert = 'CONSOLE' THEN 1 ELSE 0 END;
+    DECLARE @TableTarget sysname=NULL;
+    IF @TableResultRequested=0 AND NULLIF(LTRIM(RTRIM(COALESCE(@ResultTablesJson,N''))),N'') IS NOT NULL THROW 51011,N'@ResultTablesJson ist ausschließlich mit @ResultSetArt=TABLE zulässig.',1;
+    IF @TableResultRequested=1 EXEC [monitor].[InternalPrepareSingleResultTable] @ResultTablesJson=@ResultTablesJson,@ResultName=N'deadlocks',@TargetTable=@TableTarget OUTPUT,@ThrowOnError=1;
+    IF @TableResultRequested = 1 OR @ConsoleResultRequested = 1 SET @ResultSetArtNormalisiert = 'NONE';
+    DECLARE @ResolvedSourceExtendedEventSessionName sysname=NULL;
+    DECLARE @EffectiveMaxZeilen bigint = CASE WHEN @MaxZeilen IS NULL OR @MaxZeilen=0 THEN CONVERT(bigint,9223372036854775807) ELSE CONVERT(bigint,@MaxZeilen) END;
+    DECLARE @MonitorPrintMessage nvarchar(2048);
+
+    ;
 
     IF @SourceExtendedEventSessionName IS NULL OR (SELECT COUNT_BIG(*) FROM [monitor].[TVF_ParseSqlNameList](@SourceExtendedEventSessionName) WHERE [IsValid]=1)<>1 OR EXISTS(SELECT 1 FROM [monitor].[TVF_ParseSqlNameList](@SourceExtendedEventSessionName) WHERE [IsValid]=0)
     BEGIN SET @ResolvedSourceExtendedEventSessionName=NULL;END

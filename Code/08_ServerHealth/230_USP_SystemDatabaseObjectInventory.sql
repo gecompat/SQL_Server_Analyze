@@ -2,16 +2,145 @@ USE [DeineDatenbank];
 GO
 
 /* OPS-009: visible user-object inventory in master, model and msdb; no DDL. */
+-- USAGE_SKILL_BEGIN monitor.USP_SystemDatabaseObjectInventory 1.0.0
+-- ---
+-- skill_format_version: "1.0.0"
+-- name: "monitor.USP_SystemDatabaseObjectInventory"
+-- schema_name: "monitor"
+-- object_name: "USP_SystemDatabaseObjectInventory"
+-- object_type: "PROCEDURE"
+-- database_role: "framework"
+-- is_internal: false
+-- description: "OPS-009: visible user-object inventory in master, model and msdb; no DDL."
+-- source_path: "Code/08_ServerHealth/230_USP_SystemDatabaseObjectInventory.sql"
+-- ---
+-- 
+-- # monitor.USP_SystemDatabaseObjectInventory
+-- 
+-- ## Zweck und Einsatz
+-- 
+-- OPS-009: visible user-object inventory in master, model and msdb; no DDL.
+-- 
+-- ## Voraussetzungen und Rechte
+-- 
+-- Ein direkter Aufruf erfordert EXECUTE auf [monitor].[USP_SystemDatabaseObjectInventory]. Die Quelle nennt insbesondere `[monitor].[InternalPrepareSingleResultTable]`, `[sys].[databases]`, `[sys].[objects]`, `[sys].[schemas]`, `[sys].[sp_executesql]`, `[monitor].[InternalEmitConsoleResult]`, `[monitor].[InternalWriteResultTable]`. Für deren Metadaten- oder Fachzugriff gelten die Rechte des jeweiligen SQL-Ausführungskontexts; der Skill erteilt sie nicht.
+-- 
+-- ## Parameter und Eingabe
+-- 
+-- „SQL-Bindungspflicht“ bezeichnet ein bei der SQL-Aufrufbindung erforderliches Argument ohne Default. Fachliche Wertpflichten und zulässige NULL-Werte stehen im jeweiligen Einzelvertrag.
+-- 
+-- | Parameter | SQL-Typ | SQL-Bindungspflicht | Default |
+-- | --- | --- | --- | --- |
+-- | @MaxZeilen | int | nein | 2000 |
+-- | @ResultSetArt | varchar(16) | nein | 'CONSOLE' |
+-- | @ResultTablesJson | nvarchar(max) | nein | NULL |
+-- | @JsonErzeugen | bit | nein | 0 |
+-- | @Json | nvarchar(max) | nein | NULL OUTPUT |
+-- | @PrintMeldungen | bit | nein | 1 |
+-- | @Hilfe | bit | nein | 0 |
+-- | @StatusCodeOut | varchar(40) | nein | NULL OUTPUT |
+-- | @IsPartialOut | bit | nein | NULL OUTPUT |
+-- | @ErrorNumberOut | int | nein | NULL OUTPUT |
+-- | @ErrorMessageOut | nvarchar(2048) | nein | NULL OUTPUT |
+-- 
+-- **@MaxZeilen:** @MaxZeilen int; Default: 2000. NULL wird zu 0; 0 bedeutet unbegrenzt. Positive Werte behalten nach DatabaseName, SchemaName und ObjectName sortiert die ersten Zeilen. Begrenzung erfolgt nach vollständiger Katalogabfrage und reduziert deren Aufwand nicht; Status/ObjectCount beziehen sich auf den vollen Scope. Negative Werte ergeben INVALID_PARAMETER und keine Inventarzeilen.
+-- 
+-- **@ResultSetArt:** @ResultSetArt varchar(16); Default: 'CONSOLE'. Wählt CONSOLE (beschriftete Fachansicht mit Leeranzeige), RAW (Status/Zählkopf und rohe Zeilen), TABLE (benannte Tabellenausgabe) oder NONE (keine Zeilenresultsets). Äußere Leerzeichen werden entfernt und Groß-/Kleinschreibung ignoriert. TABLE und CONSOLE werden intern im NONE-Pfad gerendert. Ungültige Werte sowie NULL/leer ergeben INVALID_PARAMETER.
+-- 
+-- **@ResultTablesJson:** @ResultTablesJson nvarchar(max); Default: NULL. Nur bei ResultSetArt=TABLE ausgewertetes JSON-Objekt mit genau einem Schlüssel systemDatabaseObjects und dem Zielnamen. Das Ziel muss eine bereits vorhandene, leere lokale #Temp-Tabelle mit genau einer Seed-/Platzhalterspalte sein. NULL/leer reicht im TABLE-Pfad nicht. Außerhalb TABLE wird nur ein nichtleerer Wert mit Fehler 51011 abgewiesen; NULL oder U+0020-Leerzeichen wird ignoriert. Preflight validiert das Ziel vor dem Schreiben. Der Schlüssel ist case-sensitiv. Zielnamen dürfen höchstens 116 Zeichen haben; globale ##Tabellen und das ohne Beachtung der Groß-/Kleinschreibung reservierte Präfix #Monitor sind unzulässig. Der Preflight prüft Form und leere Seed-Tabelle; erst der Writer ersetzt die Seed-Spalte durch das Ergebnisschema.
+-- 
+-- **@JsonErzeugen:** @JsonErzeugen bit; Default: 0. 0 lässt @Json NULL; 1 serialisiert die nach @MaxZeilen begrenzten LimitedRows sortiert nach den drei Namen. NULL aktiviert IF nicht; leere Auswahl wird []. Bei der SQL-Konvertierung nach bit ergibt numerische 0 den Wert 0; von 0 verschiedene numerische Werte ergeben 1.
+-- 
+-- **@Json:** @Json nvarchar(max) OUTPUT; Default: NULL. Optionaler OUTPUT-Empfänger für ein JSON-Array der Fachzeilen. Am Eintritt wird @Json auch vor @Hilfe=1 auf NULL gesetzt; nur @JsonErzeugen=1 erzeugt danach das Array, bei leerer Fachmenge []. Zum Empfangen eine nvarchar(max)-Variable mit OUTPUT binden; das Argument kann ausgelassen werden. Ein anfänglicher NULL- oder anderer Variablenwert wird überschrieben.
+-- 
+-- **@PrintMeldungen:** @PrintMeldungen bit; Default: 1. 0 unterdrückt die Status-PRINT-Meldung; Nicht-NULL-Bitwerte ungleich 0 aktivieren sie. NULL aktiviert sie nicht. Die Statusmeldung erscheint bei den vom Aufrufer gewählten Modi NONE, CONSOLE und TABLE; diese beiden Ansichtsmodi werden intern auf NONE normalisiert. RAW erzeugt diese Statusmeldung nicht. @Hilfe=1 kehrt vor dieser Meldung zurück. Bei der SQL-Konvertierung nach bit ergibt numerische 0 den Wert 0; von 0 verschiedene numerische Werte ergeben 1.
+-- 
+-- **@Hilfe:** @Hilfe bit; Default: 0. 0 führt die Analyse aus; jeder Nicht-NULL-Wert ungleich 0 druckt die Hilfe und beendet den Aufruf früh. NULL startet die Hilfe nicht. Der RETURN erfolgt vor Analyse und den abschließenden Status-/Fehler-OUTPUT-Zuweisungen; diese vier Empfänger bleiben unverändert. @Json wurde bereits am Eintritt auf NULL gesetzt. Bei der SQL-Konvertierung nach bit ergibt numerische 0 den Wert 0; von 0 verschiedene numerische Werte ergeben 1.
+-- 
+-- **@StatusCodeOut:** @StatusCodeOut varchar(40) OUTPUT; Default: NULL. OUTPUT-Empfänger für den in diesem Modul ermittelten Gesamtstatus. Gesamtwerte: AVAILABLE, AVAILABLE_EMPTY (keine sichtbaren Inventarzeilen), AVAILABLE_LIMITED (fehlender Zugriff/Quellenfehler) und INVALID_PARAMETER (negative Grenze oder ungültige Ausgabeart). Zeilenstatus ist AVAILABLE, DENIED_PERMISSION oder SOURCE_UNAVAILABLE. NULL-Default erlaubt das Auslassen des Arguments; um den Wert zu empfangen, muss eine kompatible Variable ausdrücklich mit OUTPUT gebunden werden. Im Hilfezweig bleibt ein gebundener Empfänger wegen des frühen RETURN unverändert.
+-- 
+-- **@IsPartialOut:** @IsPartialOut bit OUTPUT; Default: NULL. Optionale OUTPUT-Variable: 0 bedeutet nicht partiell, 1 bedeutet eingeschränkte/partielle Evidenz. NULL-Default erlaubt Auslassen und ist kein Ergebniswert. Empfang erfordert eine passende OUTPUT-Bindung; Hilfe-RETURN lässt sie unverändert.
+-- 
+-- **@ErrorNumberOut:** @ErrorNumberOut int OUTPUT; Default: NULL. Bei regulärem Abschluss bleibt die technische Fehlernummer in dieser Implementierung NULL. Fehler einzelner Quellen werden als Fach-/Quellenzeilen dokumentiert und nicht in diesen Empfänger kopiert. Optionale OUTPUT-Bindung an eine Variable des deklarierten Typs; ohne Empfang kann das Argument entfallen. @Hilfe=1 weist den Wert nicht zu und erhält einen anfänglichen NULL- oder anderen Empfängerwert.
+-- 
+-- **@ErrorMessageOut:** @ErrorMessageOut nvarchar(2048) OUTPUT; Default: NULL. Bei regulärem Abschluss eine Meldung bei ungültigen Parametern; sonst NULL. Fehler einzelner Datenbankquellen stehen in den Inventarzeilen, ohne automatische Übernahme. Optionale OUTPUT-Bindung an eine Variable des deklarierten Typs; ohne Empfang kann das Argument entfallen. @Hilfe=1 weist den Wert nicht zu und erhält einen anfänglichen NULL- oder anderen Empfängerwert.
+-- 
+-- ## Resultate und Ausgabe
+-- 
+-- | Resultmenge | RAW | TABLE | Felder laut Inventar |
+-- | --- | --- | --- | --- |
+-- | systemDatabaseObjects | 1 | 1 | [DatabaseName] sysname NULL , [SchemaName] sysname NULL , [ObjectName] sysname NULL , [ObjectType] nvarchar(60) NULL , [CreateDate] datetime NULL , [ModifyDate] datetime NULL , [StatusCode] varchar(40) NULL , [EvidenceLimit] nvarchar(1000) NULL |
+-- 
+-- Bei @Hilfe=1 kommt genau ein Resultset mit SkillFormatVersion, SchemaName, ObjectName und SkillMarkdown hinzu; bestehende PRINT-Hinweise bleiben erhalten.
+-- 
+-- ## Beispiel
+-- 
+-- ```sql
+-- EXEC [monitor].[USP_SystemDatabaseObjectInventory] @ResultSetArt='RAW', @MaxZeilen=100;
+-- ```
+-- 
+-- ## Aufwand, Nebenwirkungen, Fehler und Grenzen
+-- 
+-- monitor.USP_SystemDatabaseObjectInventory
+-- 
+-- inventarisiert sichtbare, nicht als Microsoft-Objekte markierte Benutzerobjekte in online befindlichen Datenbanken master, model und msdb. Interne Tabellen und Objekte der Typen S und IT sind ausgeschlossen. Es liest Katalogmetadaten, keine Objektinhalte oder Definitionen, und führt keine DDL aus.
+-- 
+-- Das Inventar hängt vom aktuellen Sicherheitskontext ab; eine leere Ausgabe beweist keine Objektfreiheit. Fehlende Sicht oder Datenbankzugriff kann die Evidenz einschränken. @MaxZeilen begrenzt CONSOLE, RAW, TABLE und JSON auf dieselbe Mitgliedschaft. Die positive Grenze wählt deterministisch nach DatabaseName, SchemaName und ObjectName; RAW und JSON geben diese Zeilen sortiert aus, CONSOLE und TABLE garantieren keine physische Zeilenreihenfolge. Status und Teilsichtbarkeit beziehen sich auf das vollständige Inventar. Die Grenze reduziert den Katalogzugriff nicht.
+-- 
+-- DECLARE @Json nvarchar(max); EXEC [monitor].[USP_SystemDatabaseObjectInventory] @ResultSetArt='NONE', @JsonErzeugen=1, @Json=@Json OUTPUT; SELECT @Json AS [Json];
+-- 
+-- CREATE TABLE [#SystemDatabaseObjectInventory_HelpExample] ([Seed] int NULL);
+-- DECLARE @ResultTablesJson nvarchar(max)=N'{"systemDatabaseObjects":"#SystemDatabaseObjectInventory_HelpExample"}';
+-- BEGIN TRY
+--     EXEC [monitor].[USP_SystemDatabaseObjectInventory] @ResultSetArt='TABLE', @ResultTablesJson=@ResultTablesJson;
+--     SELECT * FROM [#SystemDatabaseObjectInventory_HelpExample];
+--     DROP TABLE IF EXISTS [#SystemDatabaseObjectInventory_HelpExample];
+-- END TRY
+-- BEGIN CATCH
+--     DROP TABLE IF EXISTS [#SystemDatabaseObjectInventory_HelpExample];
+--     THROW;
+-- END CATCH;
+-- 
+-- 
+-- ### Quellgebundene Detailbeschreibung
+-- 
+-- Der folgende Quellkopf bewahrt die zusätzlichen Implementierungsgrenzen für diesen Skill.
+-- 
+-- ```text
+-- OPS-009: visible user-object inventory in master, model and msdb; no DDL.
+-- ```
+-- 
+-- ### Weitere bestehende Hilfehinweise
+-- 
+-- ```text
+-- monitor.USP_SystemDatabaseObjectInventory
+-- inventarisiert sichtbare, nicht als Microsoft-Objekte markierte Benutzerobjekte in online befindlichen Datenbanken master, model und msdb. Interne Tabellen und Objekte der Typen S und IT sind ausgeschlossen. Es liest Katalogmetadaten, keine Objektinhalte oder Definitionen, und führt keine DDL aus.
+-- Das Inventar hängt vom aktuellen Sicherheitskontext ab; eine leere Ausgabe beweist keine Objektfreiheit. Fehlende Sicht oder Datenbankzugriff kann die Evidenz einschränken. @MaxZeilen begrenzt CONSOLE, RAW, TABLE und JSON auf dieselbe Mitgliedschaft. Die positive Grenze wählt deterministisch nach DatabaseName, SchemaName und ObjectName; RAW und JSON geben diese Zeilen sortiert aus, CONSOLE und TABLE garantieren keine physische Zeilenreihenfolge. Status und Teilsichtbarkeit beziehen sich auf das vollständige Inventar. Die Grenze reduziert den Katalogzugriff nicht.
+-- DECLARE @Json nvarchar(max); EXEC [monitor].[USP_SystemDatabaseObjectInventory] @ResultSetArt='NONE', @JsonErzeugen=1, @Json=@Json OUTPUT; SELECT @Json AS [Json];
+-- CREATE TABLE [#SystemDatabaseObjectInventory_HelpExample] ([Seed] int NULL);
+-- DECLARE @ResultTablesJson nvarchar(max)=N'{"systemDatabaseObjects":"#SystemDatabaseObjectInventory_HelpExample"}';
+-- BEGIN TRY
+--     EXEC [monitor].[USP_SystemDatabaseObjectInventory] @ResultSetArt='TABLE', @ResultTablesJson=@ResultTablesJson;
+--     SELECT * FROM [#SystemDatabaseObjectInventory_HelpExample];
+--     DROP TABLE IF EXISTS [#SystemDatabaseObjectInventory_HelpExample];
+-- END TRY
+-- BEGIN CATCH
+--     DROP TABLE IF EXISTS [#SystemDatabaseObjectInventory_HelpExample];
+--     THROW;
+-- END CATCH;
+-- ```
+-- 
+-- USAGE_SKILL_END monitor.USP_SystemDatabaseObjectInventory
 CREATE OR ALTER PROCEDURE [monitor].[USP_SystemDatabaseObjectInventory]
       @MaxZeilen int=2000,@ResultSetArt varchar(16)='CONSOLE',@ResultTablesJson nvarchar(max)=NULL,@JsonErzeugen bit=0,@Json nvarchar(max)=NULL OUTPUT,
       @PrintMeldungen bit=1,@Hilfe bit=0,@StatusCodeOut varchar(40)=NULL OUTPUT,@IsPartialOut bit=NULL OUTPUT,
       @ErrorNumberOut int=NULL OUTPUT,@ErrorMessageOut nvarchar(2048)=NULL OUTPUT
 AS
 BEGIN
- SET NOCOUNT ON; SET @Json=NULL;
- DECLARE @Status varchar(40)='AVAILABLE',@Partial bit=0,@Mode varchar(16)=UPPER(LTRIM(RTRIM(COALESCE(@ResultSetArt,''))));
- DECLARE @ErrorNumber int=NULL,@ErrorMessage nvarchar(2048)=NULL;
- IF @Hilfe=1 BEGIN
+ SET NOCOUNT ON;
+
+    IF @Hilfe=1 BEGIN
+        SET @Json=NULL;
         PRINT N'monitor.USP_SystemDatabaseObjectInventory';
         PRINT N'inventarisiert sichtbare, nicht als Microsoft-Objekte markierte Benutzerobjekte in online befindlichen Datenbanken master, model und msdb. Interne Tabellen und Objekte der Typen S und IT sind ausgeschlossen. Es liest Katalogmetadaten, keine Objektinhalte oder Definitionen, und führt keine DDL aus.';
         PRINT N'Das Inventar hängt vom aktuellen Sicherheitskontext ab; eine leere Ausgabe beweist keine Objektfreiheit. Fehlende Sicht oder Datenbankzugriff kann die Evidenz einschränken. @MaxZeilen begrenzt CONSOLE, RAW, TABLE und JSON auf dieselbe Mitgliedschaft. Die positive Grenze wählt deterministisch nach DatabaseName, SchemaName und ObjectName; RAW und JSON geben diese Zeilen sortiert aus, CONSOLE und TABLE garantieren keine physische Zeilenreihenfolge. Status und Teilsichtbarkeit beziehen sich auf das vollständige Inventar. Die Grenze reduziert den Katalogzugriff nicht.';
@@ -48,8 +177,233 @@ END CATCH;';
 
 
 
+        -- USAGE_SKILL_HELP_BEGIN monitor.USP_SystemDatabaseObjectInventory
+        SELECT CONVERT(varchar(16),'1.0.0') AS [SkillFormatVersion],CONVERT(sysname,N'monitor') AS [SchemaName],CONVERT(sysname,N'USP_SystemDatabaseObjectInventory') AS [ObjectName],CONVERT(nvarchar(max),N'---')
+            + NCHAR(10)
+            + N'skill_format_version: "1.0.0"'
+            + NCHAR(10)
+            + N'name: "monitor.USP_SystemDatabaseObjectInventory"'
+            + NCHAR(10)
+            + N'schema_name: "monitor"'
+            + NCHAR(10)
+            + N'object_name: "USP_SystemDatabaseObjectInventory"'
+            + NCHAR(10)
+            + N'object_type: "PROCEDURE"'
+            + NCHAR(10)
+            + N'database_role: "framework"'
+            + NCHAR(10)
+            + N'is_internal: false'
+            + NCHAR(10)
+            + N'description: "OPS-009: visible user-object inventory in master, model and msdb; no DDL."'
+            + NCHAR(10)
+            + N'source_path: "Code/08_ServerHealth/230_USP_SystemDatabaseObjectInventory.sql"'
+            + NCHAR(10)
+            + N'---'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'# monitor.USP_SystemDatabaseObjectInventory'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'## Zweck und Einsatz'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'OPS-009: visible user-object inventory in master, model and msdb; no DDL.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'## Voraussetzungen und Rechte'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'Ein direkter Aufruf erfordert EXECUTE auf [monitor].[USP_SystemDatabaseObjectInventory]. Die Quelle nennt insbesondere `[monitor].[InternalPrepareSingleResultTable]`, `[sys].[databases]`, `[sys].[objects]`, `[sys].[schemas]`, `[sys].[sp_executesql]`, `[monitor].[InternalEmitConsoleResult]`, `[monitor].[InternalWriteResultTable]`. Für deren Metadaten- oder Fachzugriff gelten die Rechte des jeweiligen SQL-Ausführungskontexts; der Skill erteilt sie nicht.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'## Parameter und Eingabe'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'„SQL-Bindungspflicht“ bezeichnet ein bei der SQL-Aufrufbindung erforderliches Argument ohne Default. Fachliche Wertpflichten und zulässige NULL-Werte stehen im jeweiligen Einzelvertrag.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'| Parameter | SQL-Typ | SQL-Bindungspflicht | Default |'
+            + NCHAR(10)
+            + N'| --- | --- | --- | --- |'
+            + NCHAR(10)
+            + N'| @MaxZeilen | int | nein | 2000 |'
+            + NCHAR(10)
+            + N'| @ResultSetArt | varchar(16) | nein | ''CONSOLE'' |'
+            + NCHAR(10)
+            + N'| @ResultTablesJson | nvarchar(max) | nein | NULL |'
+            + NCHAR(10)
+            + N'| @JsonErzeugen | bit | nein | 0 |'
+            + NCHAR(10)
+            + N'| @Json | nvarchar(max) | nein | NULL OUTPUT |'
+            + NCHAR(10)
+            + N'| @PrintMeldungen | bit | nein | 1 |'
+            + NCHAR(10)
+            + N'| @Hilfe | bit | nein | 0 |'
+            + NCHAR(10)
+            + N'| @StatusCodeOut | varchar(40) | nein | NULL OUTPUT |'
+            + NCHAR(10)
+            + N'| @IsPartialOut | bit | nein | NULL OUTPUT |'
+            + NCHAR(10)
+            + N'| @ErrorNumberOut | int | nein | NULL OUTPUT |'
+            + NCHAR(10)
+            + N'| @ErrorMessageOut | nvarchar(2048) | nein | NULL OUTPUT |'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'**@MaxZeilen:** @MaxZeilen int; Default: 2000. NULL wird zu 0; 0 bedeutet unbegrenzt. Positive Werte behalten nach DatabaseName, SchemaName und ObjectName sortiert die ersten Zeilen. Begrenzung erfolgt nach vollständiger Katalogabfrage und reduziert deren Aufwand nicht; Status/ObjectCount beziehen sich auf den vollen Scope. Negative Werte ergeben INVALID_PARAMETER und keine Inventarzeilen.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'**@ResultSetArt:** @ResultSetArt varchar(16); Default: ''CONSOLE''. Wählt CONSOLE (beschriftete Fachansicht mit Leeranzeige), RAW (Status/Zählkopf und rohe Zeilen), TABLE (benannte Tabellenausgabe) oder NONE (keine Zeilenresultsets). Äußere Leerzeichen werden entfernt und Groß-/Kleinschreibung ignoriert. TABLE und CONSOLE werden intern im NONE-Pfad gerendert. Ungültige Werte sowie NULL/leer ergeben INVALID_PARAMETER.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'**@ResultTablesJson:** @ResultTablesJson nvarchar(max); Default: NULL. Nur bei ResultSetArt=TABLE ausgewertetes JSON-Objekt mit genau einem Schlüssel systemDatabaseObjects und dem Zielnamen. Das Ziel muss eine bereits vorhandene, leere lokale #Temp-Tabelle mit genau einer Seed-/Platzhalterspalte sein. NULL/leer reicht im TABLE-Pfad nicht. Außerhalb TABLE wird nur ein nichtleerer Wert mit Fehler 51011 abgewiesen; NULL oder U+0020-Leerzeichen wird ignoriert. Preflight validiert das Ziel vor dem Schreiben. Der Schlüssel ist case-sensitiv. Zielnamen dürfen höchstens 116 Zeichen haben; globale ##Tabellen und das ohne Beachtung der Groß-/Kleinschreibung reservierte Präfix #Monitor sind unzulässig. Der Preflight prüft Form und leere Seed-Tabelle; erst der Writer ersetzt die Seed-Spalte durch das Ergebnisschema.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'**@JsonErzeugen:** @JsonErzeugen bit; Default: 0. 0 lässt @Json NULL; 1 serialisiert die nach @MaxZeilen begrenzten LimitedRows sortiert nach den drei Namen. NULL aktiviert IF nicht; leere Auswahl wird []. Bei der SQL-Konvertierung nach bit ergibt numerische 0 den Wert 0; von 0 verschiedene numerische Werte ergeben 1.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'**@Json:** @Json nvarchar(max) OUTPUT; Default: NULL. Optionaler OUTPUT-Empfänger für ein JSON-Array der Fachzeilen. Am Eintritt wird @Json auch vor @Hilfe=1 auf NULL gesetzt; nur @JsonErzeugen=1 erzeugt danach das Array, bei leerer Fachmenge []. Zum Empfangen eine nvarchar(max)-Variable mit OUTPUT binden; das Argument kann ausgelassen werden. Ein anfänglicher NULL- oder anderer Variablenwert wird überschrieben.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'**@PrintMeldungen:** @PrintMeldungen bit; Default: 1. 0 unterdrückt die Status-PRINT-Meldung; Nicht-NULL-Bitwerte ungleich 0 aktivieren sie. NULL aktiviert sie nicht. Die Statusmeldung erscheint bei den vom Aufrufer gewählten Modi NONE, CONSOLE und TABLE; diese beiden Ansichtsmodi werden intern auf NONE normalisiert. RAW erzeugt diese Statusmeldung nicht. @Hilfe=1 kehrt vor dieser Meldung zurück. Bei der SQL-Konvertierung nach bit ergibt numerische 0 den Wert 0; von 0 verschiedene numerische Werte ergeben 1.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'**@Hilfe:** @Hilfe bit; Default: 0. 0 führt die Analyse aus; jeder Nicht-NULL-Wert ungleich 0 druckt die Hilfe und beendet den Aufruf früh. NULL startet die Hilfe nicht. Der RETURN erfolgt vor Analyse und den abschließenden Status-/Fehler-OUTPUT-Zuweisungen; diese vier Empfänger bleiben unverändert. @Json wurde bereits am Eintritt auf NULL gesetzt. Bei der SQL-Konvertierung nach bit ergibt numerische 0 den Wert 0; von 0 verschiedene numerische Werte ergeben 1.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'**@StatusCodeOut:** @StatusCodeOut varchar(40) OUTPUT; Default: NULL. OUTPUT-Empfänger für den in diesem Modul ermittelten Gesamtstatus. Gesamtwerte: AVAILABLE, AVAILABLE_EMPTY (keine sichtbaren Inventarzeilen), AVAILABLE_LIMITED (fehlender Zugriff/Quellenfehler) und INVALID_PARAMETER (negative Grenze oder ungültige Ausgabeart). Zeilenstatus ist AVAILABLE, DENIED_PERMISSION oder SOURCE_UNAVAILABLE. NULL-Default erlaubt das Auslassen des Arguments; um den Wert zu empfangen, muss eine kompatible Variable ausdrücklich mit OUTPUT gebunden werden. Im Hilfezweig bleibt ein gebundener Empfänger wegen des frühen RETURN unverändert.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'**@IsPartialOut:** @IsPartialOut bit OUTPUT; Default: NULL. Optionale OUTPUT-Variable: 0 bedeutet nicht partiell, 1 bedeutet eingeschränkte/partielle Evidenz. NULL-Default erlaubt Auslassen und ist kein Ergebniswert. Empfang erfordert eine passende OUTPUT-Bindung; Hilfe-RETURN lässt sie unverändert.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'**@ErrorNumberOut:** @ErrorNumberOut int OUTPUT; Default: NULL. Bei regulärem Abschluss bleibt die technische Fehlernummer in dieser Implementierung NULL. Fehler einzelner Quellen werden als Fach-/Quellenzeilen dokumentiert und nicht in diesen Empfänger kopiert. Optionale OUTPUT-Bindung an eine Variable des deklarierten Typs; ohne Empfang kann das Argument entfallen. @Hilfe=1 weist den Wert nicht zu und erhält einen anfänglichen NULL- oder anderen Empfängerwert.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'**@ErrorMessageOut:** @ErrorMessageOut nvarchar(2048) OUTPUT; Default: NULL. Bei regulärem Abschluss eine Meldung bei ungültigen Parametern; sonst NULL. Fehler einzelner Datenbankquellen stehen in den Inventarzeilen, ohne automatische Übernahme. Optionale OUTPUT-Bindung an eine Variable des deklarierten Typs; ohne Empfang kann das Argument entfallen. @Hilfe=1 weist den Wert nicht zu und erhält einen anfänglichen NULL- oder anderen Empfängerwert.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'## Resultate und Ausgabe'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'| Resultmenge | RAW | TABLE | Felder laut Inventar |'
+            + NCHAR(10)
+            + N'| --- | --- | --- | --- |'
+            + NCHAR(10)
+            + N'| systemDatabaseObjects | 1 | 1 | [DatabaseName] sysname NULL , [SchemaName] sysname NULL , [ObjectName] sysname NULL , [ObjectType] nvarchar(60) NULL , [CreateDate] datetime NULL , [ModifyDate] datetime NULL , [StatusCode] varchar(40) NULL , [EvidenceLimit] nvarchar(1000) NULL |'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'Bei @Hilfe=1 kommt genau ein Resultset mit SkillFormatVersion, SchemaName, ObjectName und SkillMarkdown hinzu; bestehende PRINT-Hinweise bleiben erhalten.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'## Beispiel'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'```sql'
+            + NCHAR(10)
+            + N'EXEC [monitor].[USP_SystemDatabaseObjectInventory] @ResultSetArt=''RAW'', @MaxZeilen=100;'
+            + NCHAR(10)
+            + N'```'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'## Aufwand, Nebenwirkungen, Fehler und Grenzen'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'monitor.USP_SystemDatabaseObjectInventory'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'inventarisiert sichtbare, nicht als Microsoft-Objekte markierte Benutzerobjekte in online befindlichen Datenbanken master, model und msdb. Interne Tabellen und Objekte der Typen S und IT sind ausgeschlossen. Es liest Katalogmetadaten, keine Objektinhalte oder Definitionen, und führt keine DDL aus.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'Das Inventar hängt vom aktuellen Sicherheitskontext ab; eine leere Ausgabe beweist keine Objektfreiheit. Fehlende Sicht oder Datenbankzugriff kann die Evidenz einschränken. @MaxZeilen begrenzt CONSOLE, RAW, TABLE und JSON auf dieselbe Mitgliedschaft. Die positive Grenze wählt deterministisch nach DatabaseName, SchemaName und ObjectName; RAW und JSON geben diese Zeilen sortiert aus, CONSOLE und TABLE garantieren keine physische Zeilenreihenfolge. Status und Teilsichtbarkeit beziehen sich auf das vollständige Inventar. Die Grenze reduziert den Katalogzugriff nicht.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'DECLARE @Json nvarchar(max); EXEC [monitor].[USP_SystemDatabaseObjectInventory] @ResultSetArt=''NONE'', @JsonErzeugen=1, @Json=@Json OUTPUT; SELECT @Json AS [Json];'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'C'
+            + N'REATE TABLE [#SystemDatabaseObjectInventory_HelpExample] ([Seed] int NULL);'
+            + NCHAR(10)
+            + N'DECLARE @ResultTablesJson nvarchar(max)=N''{"systemDatabaseObjects":"#SystemDatabaseObjectInventory_HelpExample"}'';'
+            + NCHAR(10)
+            + N'BEGIN TRY'
+            + NCHAR(10)
+            + N'    EXEC [monitor].[USP_SystemDatabaseObjectInventory] @ResultSetArt=''TABLE'', @ResultTablesJson=@ResultTablesJson;'
+            + NCHAR(10)
+            + N'    SELECT * FROM [#SystemDatabaseObjectInventory_HelpExample];'
+            + NCHAR(10)
+            + N'    DROP TABLE IF EXISTS [#SystemDatabaseObjectInventory_HelpExample];'
+            + NCHAR(10)
+            + N'END TRY'
+            + NCHAR(10)
+            + N'BEGIN CATCH'
+            + NCHAR(10)
+            + N'    DROP TABLE IF EXISTS [#SystemDatabaseObjectInventory_HelpExample];'
+            + NCHAR(10)
+            + N'    THROW;'
+            + NCHAR(10)
+            + N'END CATCH;'
+            + NCHAR(10)
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'### Quellgebundene Detailbeschreibung'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'Der folgende Quellkopf bewahrt die zusätzlichen Implementierungsgrenzen für diesen Skill.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'```text'
+            + NCHAR(10)
+            + N'OPS-009: visible user-object inventory in master, model and msdb; no DDL.'
+            + NCHAR(10)
+            + N'```'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'### Weitere bestehende Hilfehinweise'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'```text'
+            + NCHAR(10)
+            + N'monitor.USP_SystemDatabaseObjectInventory'
+            + NCHAR(10)
+            + N'inventarisiert sichtbare, nicht als Microsoft-Objekte markierte Benutzerobjekte in online befindlichen Datenbanken master, model und msdb. Interne Tabellen und Objekte der Typen S und IT sind ausgeschlossen. Es liest Katalogmetadaten, keine Objektinhalte oder Definitionen, und führt keine DDL aus.'
+            + NCHAR(10)
+            + N'Das Inventar hängt vom aktuellen Sicherheitskontext ab; eine leere Ausgabe beweist keine Objektfreiheit. Fehlende Sicht oder Datenbankzugriff kann die Evidenz einschränken. @MaxZeilen begrenzt CONSOLE, RAW, TABLE und JSON auf dieselbe Mitgliedschaft. Die positive Grenze wählt deterministisch nach DatabaseName, SchemaName und ObjectName; RAW und JSON geben diese Zeilen sortiert aus, CONSOLE und TABLE garantieren keine physische Zeilenreihenfolge. Status und Teilsichtbarkeit beziehen sich auf das vollständige Inventar. Die Grenze reduziert den Katalogzugriff nicht.'
+            + NCHAR(10)
+            + N'DECLARE @Json nvarchar(max); EXEC [monitor].[USP_SystemDatabaseObjectInventory] @ResultSetArt=''NONE'', @JsonErzeugen=1, @Json=@Json OUTPUT; SELECT @Json AS [Json];'
+            + NCHAR(10)
+            + N'C'
+            + N'REATE TABLE [#SystemDatabaseObjectInventory_HelpExample] ([Seed] int NULL);'
+            + NCHAR(10)
+            + N'DECLARE @ResultTablesJson nvarchar(max)=N''{"systemDatabaseObjects":"#SystemDatabaseObjectInventory_HelpExample"}'';'
+            + NCHAR(10)
+            + N'BEGIN TRY'
+            + NCHAR(10)
+            + N'    EXEC [monitor].[USP_SystemDatabaseObjectInventory] @ResultSetArt=''TABLE'', @ResultTablesJson=@ResultTablesJson;'
+            + NCHAR(10)
+            + N'    SELECT * FROM [#SystemDatabaseObjectInventory_HelpExample];'
+            + NCHAR(10)
+            + N'    DROP TABLE IF EXISTS [#SystemDatabaseObjectInventory_HelpExample];'
+            + NCHAR(10)
+            + N'END TRY'
+            + NCHAR(10)
+            + N'BEGIN CATCH'
+            + NCHAR(10)
+            + N'    DROP TABLE IF EXISTS [#SystemDatabaseObjectInventory_HelpExample];'
+            + NCHAR(10)
+            + N'    THROW;'
+            + NCHAR(10)
+            + N'END CATCH;'
+            + NCHAR(10)
+            + N'```'
+            + NCHAR(10)
+            + NCHAR(10) AS [SkillMarkdown];
+        -- USAGE_SKILL_HELP_END monitor.USP_SystemDatabaseObjectInventory
         RETURN;
-    END;
+    END
+ SET @Json=NULL;
+ DECLARE @Status varchar(40)='AVAILABLE',@Partial bit=0,@Mode varchar(16)=UPPER(LTRIM(RTRIM(COALESCE(@ResultSetArt,''))));
+ DECLARE @ErrorNumber int=NULL,@ErrorMessage nvarchar(2048)=NULL;
+ ;
  DECLARE @PreviousLockTimeout int = @@LOCK_TIMEOUT, @RestoreLockTimeoutSql nvarchar(100);
  SET LOCK_TIMEOUT 0;
  DECLARE @TableResultRequested bit=CASE WHEN @Mode='TABLE' THEN 1 ELSE 0 END,@ConsoleResultRequested bit=CASE WHEN @Mode='CONSOLE' THEN 1 ELSE 0 END,@TableTarget sysname=NULL;

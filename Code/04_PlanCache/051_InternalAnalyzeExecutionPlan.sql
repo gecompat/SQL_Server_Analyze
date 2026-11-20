@@ -158,6 +158,302 @@ gelangen. Fehler der eigenen Temp-Tabellenanlage werden nach Wiederherstellung v
 LOCK_TIMEOUT 0 erneut ausgelöst. Der spätere Haupt-CATCH meldet ERROR_HANDLED mit
 Fehlernummer und -text; frühere Einfügungen werden nicht atomar zurückgenommen.
 */
+-- USAGE_SKILL_BEGIN monitor.InternalAnalyzeExecutionPlan 1.0.0
+-- ---
+-- skill_format_version: "1.0.0"
+-- name: "monitor.InternalAnalyzeExecutionPlan"
+-- schema_name: "monitor"
+-- object_name: "InternalAnalyzeExecutionPlan"
+-- object_type: "INTERNAL_PROCEDURE"
+-- database_role: "framework"
+-- is_internal: true
+-- description: "Die Procedure zerlegt genau ein vom Aufrufer geliefertes Showplan-XML mit unterstützten StmtSimple-Elementen in die vorbereiteten lokalen #ExecutionPlanAnalysis_*-Tabellen."
+-- source_path: "Code/04_PlanCache/051_InternalAnalyzeExecutionPlan.sql"
+-- ---
+-- 
+-- # monitor.InternalAnalyzeExecutionPlan
+-- 
+-- ## Zweck und Einsatz
+-- 
+-- Die Procedure zerlegt genau ein vom Aufrufer geliefertes Showplan-XML mit unterstützten StmtSimple-Elementen in die vorbereiteten lokalen #ExecutionPlanAnalysis_*-Tabellen.
+-- 
+-- ## Voraussetzungen und Rechte
+-- 
+-- Der Aufrufer stellt 19 lokale Ergebnistabellen mit dem vereinbarten Schema bereit. 19 SELECT TOP (0)-Probes erzeugen 19 leere Resultsets und testen den Tabellenzugriff, nicht die vollständige Schemakompatibilität. Die Procedure führt keine Plananweisung aus und beschafft oder löst keine Planquelle über einen Katalog auf. Spätere Fehler nehmen bereits geschriebene Teilergebnisse nicht atomar zurück.
+-- 
+-- ## Parameter und Eingabe
+-- 
+-- „SQL-Bindungspflicht“ bezeichnet ein bei der SQL-Aufrufbindung erforderliches Argument ohne Default. Fachliche Wertpflichten und zulässige NULL-Werte stehen im jeweiligen Einzelvertrag.
+-- 
+-- | Parameter | SQL-Typ | SQL-Bindungspflicht | Default |
+-- | --- | --- | --- | --- |
+-- | @AnalysisObjectId | int | ja | kein Default |
+-- | @PlanXml | xml | ja | kein Default |
+-- | @PlanSource | varchar(24) | ja | kein Default |
+-- | @RuntimeCounterScope | varchar(32) | ja | kein Default |
+-- | @WorkloadProfile | varchar(32) | nein | 'BALANCED' |
+-- | @MinSeverity | varchar(16) | nein | 'INFO' |
+-- | @EvidenceJson | nvarchar(max) | nein | NULL |
+-- | @MitThreadRuntime | bit | nein | 0 |
+-- | @EvidenzDatenschutzModus | varchar(24) | nein | 'DERIVED_ONLY' |
+-- | @IdentifierDatenschutzModus | varchar(16) | nein | 'RAW' |
+-- | @SourceObservedAtUtc | datetime2(3) | nein | NULL |
+-- | @ParameterEvidenceSessionId | smallint | nein | NULL |
+-- | @ParameterEvidenceRequestId | int | nein | NULL |
+-- | @PlanHandle | varbinary(64) | nein | NULL |
+-- | @QueryStoreDatabaseName | sysname | nein | NULL |
+-- | @QueryStorePlanId | bigint | nein | NULL |
+-- | @StatusCodeOut | varchar(40) OUTPUT | nein | NULL |
+-- | @IsPartialOut | bit OUTPUT | nein | NULL |
+-- | @ErrorNumberOut | int OUTPUT | nein | NULL |
+-- | @ErrorMessageOut | nvarchar(2048) OUTPUT | nein | NULL |
+-- | @Hilfe | bit | nein | 0 |
+-- 
+-- **@AnalysisObjectId:** - @AnalysisObjectId int, Eingabe, erforderlich, kein Default: positive Kennung für Ergebniszeilen. NULL, '' (als int gebunden: 0) und jeder Wert < 1 ergeben INVALID_PARAMETER. Zulässig sind 1 bis 2147483647.
+-- 
+-- **@PlanXml:** - @PlanXml xml, Eingabe, erforderlich, kein Default: Showplan-XML. NULL ergibt INVALID_PARAMETER. '' wird als leeres XML gebunden und enthält kein StmtSimple; das ergibt UNAVAILABLE_OBJECT und Partialität. Die Suche verwendet local-name(.) für StmtSimple und validiert kein bestimmtes Root-Element oder Namespace.
+-- 
+-- **@PlanSource:** - @PlanSource varchar(24), Eingabe, erforderlich, kein Default: Codes IMPORTED (importiertes XML), COMPILE (Kompilierungsplan), LAST_ACTUAL (letzter Actual Plan), CURRENT_ACTUAL (aktueller Actual Plan), QUERY_STORE (Query-Store-Plan). '' und NULL sind ungültig und ergeben INVALID_PARAMETER. Keine Normalisierung. Der Wert klassifiziert die Quelle und beschafft keinen Plan.
+-- 
+-- **@RuntimeCounterScope:** - @RuntimeCounterScope varchar(32), Eingabe, erforderlich, kein Default: Codes NONE (keine Runtimecounter beansprucht), LAST_COMPLETED_EXECUTION (letzte abgeschlossene Ausführung), CURRENT_PARTIAL_EXECUTION (aktuelle möglicherweise unvollständige Ausführung), IMPORTED_ACTUAL (importiertes Actual-Plan-XML), QUERY_STORE_AGGREGATE (aggregierte Query-Store-Zuordnung), UNKNOWN (Scope unbekannt). '' und NULL sind ungültig und ergeben INVALID_PARAMETER. Keine Normalisierung. Klassifiziert die gelieferten Daten, beschafft oder verifiziert aber keine Runtimecounter.
+-- 
+-- **@WorkloadProfile:** - @WorkloadProfile varchar(32), Eingabe, Default 'BALANCED': offene, tabellengesteuerte Allowlist monitor.PlanAnalysisProfile. NULL wird BALANCED; Rand-Leerraum wird entfernt und Großschreibung hergestellt. Unbekannte, deaktivierte und leere Werte fallen auf BALANCED zurück. Seedprofile: LATENCY_SENSITIVE gewichtet interaktive/ häufige Zugriffe je Ausführung und Wiederholungsrate stärker; BALANCED ist neutral für gemischte Workloads ohne belastbare Zuordnung; THROUGHPUT gewichtet absolute CPU-, I/O-, TempDB- und Datenmengen stärker; MAINTENANCE behandelt große Scans und Sorts bei Wartung/Strukturänderungen als möglicherweise erwartet; UNKNOWN bleibt konservativ und weist geringe Zuordnungssicherheit aus. Weitere aktive Codes sind möglich.
+-- 
+-- **@MinSeverity:** - @MinSeverity varchar(16), Eingabe, Default 'INFO': INFO (informativ), LOW (niedrig), MEDIUM (mittel), HIGH (hoch), CRITICAL (kritisch/höchste Stufe). NULL wird INFO; Rand-Leerraum wird entfernt und Großschreibung hergestellt. '' und andere Werte sind ungültig. Filtert Findings und PlanWarnings unterhalb der Schwelle; NO_EXPLICIT_WARNING bleibt zunächst ausgenommen. Ein Hinweis kann melden, dass keine Warnung die Schwelle erreicht. Keine Aussage über Planoptimalität oder fehlende Quelle.
+-- 
+-- **@EvidenceJson:** - @EvidenceJson nvarchar(max), Eingabe, Default NULL: optionale externe STATISTICS IO/TIME-Evidenz. NULL lässt die Evidenz aus. '' ist ungültige JSON-Syntax und setzt Partialität mit Capability EXECUTION_EVIDENCE_JSON/INVALID_JSON. Syntaktisch gültiges JSON wird nicht schemaweit validiert; lax OPENJSON-Pfade mit fehlenden oder falsch geformten Werten können leere/unerkannte Teilergebnisse liefern. Zusätzliche Felder werden ignoriert; Pfadnamen sind case-sensitive. Ungültige Typkonvertierungen können ERROR_HANDLED auslösen. Negative Dezimalwerte werden nicht gefiltert; confidence, timeCategory und parseStatus haben keine geprüfte Werteliste. Pfade und Typen: $.capture.sameExecutionConfidence (Text, Fallback UNCONFIRMED); $.statisticsIo[*].statementOrdinal int, objectDisplayName nvarchar(512), logicalReads/physicalReads/readAheadReads/scanCount decimal(38,4), parseStatus varchar(40); $.statisticsTime[*].statementOrdinal int, timeCategory varchar(24), cpuMs/elapsedMs decimal(38,4), parseStatus varchar(40). Nicht-NULL IO-Werte werden als pages-Metriken, Zeitwerte als ms ausgegeben. Confidence belegt keine gleiche Ausführung. Synthetisches Beispiel: {"capture":{"sameExecutionConfidence":"UNCONFIRMED"},"statisticsIo":[{"statementOrdinal":1,"objectDisplayName":"[dbo].[Sample]","logicalReads":12,"physicalReads":0,"readAheadReads":0,"scanCount":1,"parseStatus":"PARSED"}],"statisticsTime":[{"statementOrdinal":1,"timeCategory":"SQL","cpuMs":2.5,"elapsedMs":3,"parseStatus":"PARSED"}]}
+-- 
+-- **@MitThreadRuntime:** - @MitThreadRuntime bit, Eingabe, Default 0: 0 löscht die Threadzeilen nach ihrer Materialisierung und der Ableitung aggregierter Runtimewerte; 1 behält sie. NULL ergibt INVALID_PARAMETER. Numerische Werte ungleich 0 werden bei Bindung zu 1; '' kann zu 0 konvertieren.
+-- 
+-- **@EvidenzDatenschutzModus:** - @EvidenzDatenschutzModus varchar(24), Eingabe, Default 'DERIVED_ONLY': geschlossene Codes DERIVED_ONLY (Werte weglassen, abgeleitete Evidenz führen), TOKENIZED (Werte weglassen, vorhandene Werte mit frischem lokalem Zufallssalt tokenisieren), RAW (Werte im Klartext) und STRUCTURE_ONLY (Werte weglassen, Strukturstatus setzen). NULL wird DERIVED_ONLY; äußere U+0020-Leerzeichen entfernen und Großschreibung. '' ist ungültig. DERIVED_ONLY und STRUCTURE_ONLY lassen dieselben Wertespalten leer, unterscheiden sich aber im ValueHandlingStatus. SQL-NULL-Werte werden markiert und nicht tokenisiert. Keine globale Redaktion anderer Planwerte oder Namen.
+-- 
+-- **@IdentifierDatenschutzModus:** - @IdentifierDatenschutzModus varchar(16), Eingabe, Default 'RAW': RAW (Objektanzeige übernehmen), TOKENIZED (mit frischem lokalem Zufallssalt tokenisieren), OMIT (weglassen). NULL wird RAW; äußere U+0020-Leerzeichen entfernen und Großschreibung. '' ist ungültig. Wirkt nur auf statisticsIo.objectDisplayName als Scope-Bezeichnung, nicht global.
+-- 
+-- **@SourceObservedAtUtc:** - @SourceObservedAtUtc datetime2(3), Eingabe, Default NULL: Zeitpunkt nach UTC-Konvention. Auslassen/NULL setzt SYSUTCDATETIME(). Ein expliziter Wert wird als UTC-Konvention übernommen, aber nicht umgerechnet oder als tatsächliche Quellzeit verifiziert. '' wird nach SQL-Typbindungsregeln behandelt; die Procedure prüft den resultierenden Wert nicht auf Herkunft oder UTC-Abweichung. Eingabe als datetime2-Variable oder ISO-Text, etwa 2000-01-01T00:00:00.000.
+-- 
+-- **@ParameterEvidenceSessionId:** - @ParameterEvidenceSessionId smallint, Eingabe, Default NULL: Session-Skalar im ParameterEvidence-Kontext. Signed smallint-Bereich -32768 bis 32767, einschließlich negativer und null Werte; keine Positivitätsprüfung. NULL bleibt NULL; '' als smallint gebunden wird 0. Keine DMV-Abfrage oder Sessionauflösung.
+-- 
+-- **@ParameterEvidenceRequestId:** - @ParameterEvidenceRequestId int, Eingabe, Default NULL: Request-Skalar im ParameterEvidence-Kontext. Signed int-Bereich -2147483648 bis 2147483647; keine Positivitätsprüfung. NULL bleibt NULL; '' als int gebunden wird 0. Keine Requestauflösung.
+-- 
+-- **@PlanHandle:** - @PlanHandle varbinary(64), Eingabe, Default NULL: Binärwert, als varbinary-Variable oder SQL-0x-Hexwert zu binden; 0x bezeichnet einen leeren Handle. Der Typ begrenzt den gebundenen Wert auf 64 Bytes; die Procedure führt keine eigene Längenprüfung aus. NULL bleibt NULL. Kein Textpfad, keine Suche oder Auflösung über den Handle.
+-- 
+-- **@QueryStoreDatabaseName:** - @QueryStoreDatabaseName sysname, Eingabe, Default NULL: einzelner unquotierter Unicode-Datenbankname im sysname-Typ (nvarchar(128)); keine Liste oder Identifier-Syntax. '' wird unverändert akzeptiert; NULL bleibt NULL. Keine Auflösung und keine Query-Store-Abfrage.
+-- 
+-- **@QueryStorePlanId:** - @QueryStorePlanId bigint, Eingabe, Default NULL: Plan-ID als Kontextskalar. Signed bigint-Bereich -9223372036854775808 bis 9223372036854775807; keine Positivitätsprüfung. NULL bleibt NULL; '' als bigint gebunden wird 0. Keine Query-Store-Abfrage oder Planbeschaffung.
+-- 
+-- **@StatusCodeOut:** - @StatusCodeOut varchar(40), OUTPUT, Signatur-Default NULL: Eingabewert (auch NULL oder '') wird ignoriert; ausgelassen ist der Default NULL. Ohne OUTPUT wird die Ausgabe verworfen; zum Empfang varchar(40)-Variable mit OUTPUT binden. Initialwert AVAILABLE. Endwerte: AVAILABLE (ohne Partialitätskennzeichen beendet), PARTIAL (Hauptanalyse abgeschlossen und Partialitätsflag gesetzt), INVALID_PARAMETER (validierter Eingabefehler), UNAVAILABLE_OBJECT (kein unterstütztes StmtSimple), INTERNAL_ERROR (lokale Ergebnistabelle fehlt oder ist nicht zugreifbar), ERROR_HANDLED (abgefangener späterer Fehler). Profilabfrage und eigene Temp-Anlage können außerhalb dieses Statuspfads fehlschlagen. Bei @Hilfe=1 bleibt ein mit OUTPUT gebundener Aufrufwert unverändert; die normale Initialisierung erfolgt nur im Fachpfad.
+-- 
+-- **@IsPartialOut:** - @IsPartialOut bit, OUTPUT, Signatur-Default NULL: Eingabewert (auch NULL oder '', sofern als bit gebunden) wird ignoriert; ausgelassen ist der Default NULL. Ohne OUTPUT wird die Ausgabe verworfen; zum Empfang bit-Variable mit OUTPUT binden. Initialwert 0. 1 kennzeichnet unter anderem ungültige Eingabe, fehlende Statements, ungültiges JSON oder abgefangene Fehler; bei regulärem Abschluss wird AVAILABLE zu PARTIAL. NULL ist kein regulärer Ausgangswert. Bei @Hilfe=1 bleibt ein mit OUTPUT gebundener Aufrufwert unverändert; die normale Initialisierung erfolgt nur im Fachpfad.
+-- 
+-- **@ErrorNumberOut:** - @ErrorNumberOut int, OUTPUT, Signatur-Default NULL: Eingabewert (auch NULL oder '', sofern als int gebunden) wird ignoriert; ausgelassen ist der Default NULL. Ohne OUTPUT wird die Ausgabe verworfen; zum Empfang int-Variable mit OUTPUT binden. Initialwert NULL; nur Fehlerpfade mit erfasster SQL-Fehlernummer setzen einen Wert. Bei PARTIAL ohne abgefangenen SQL-Fehler kann die Ausgabe NULL bleiben. Bei @Hilfe=1 bleibt ein mit OUTPUT gebundener Aufrufwert unverändert; die normale Initialisierung erfolgt nur im Fachpfad.
+-- 
+-- **@ErrorMessageOut:** - @ErrorMessageOut nvarchar(2048), OUTPUT, Signatur-Default NULL: Eingabewert (auch NULL oder '') wird ignoriert; ausgelassen ist der Default NULL. Ohne OUTPUT wird die Ausgabe verworfen; zum Empfang nvarchar(2048)-Variable mit OUTPUT binden. Initialwert NULL; nur belegte Meldungspfade setzen Text. Bei PARTIAL ohne expliziten Meldungspfad kann die Ausgabe NULL bleiben. Bei @Hilfe=1 bleibt ein mit OUTPUT gebundener Aufrufwert unverändert; die normale Initialisierung erfolgt nur im Fachpfad.
+-- 
+-- **@Hilfe:** bit, Default 0; 1 liefert vor Fachzugriff genau ein Usage-Skill-Resultset. Vorhandene reguläre PRINT-Meldungen bleiben dem normalen Fachpfad vorbehalten. Der Hilfezweig initialisiert OUTPUT-Parameter nicht; übergebene Werte bleiben unverändert. 0 und NULL folgen dem bisherigen normalen Prozedurpfad.
+-- 
+-- ## Resultate und Ausgabe
+-- 
+-- Die 19 TOP (0)-Probes der vom Aufrufer bereitgestellten #ExecutionPlanAnalysis_*-Tabellen erzeugen 19 leere Schema-Resultsets. Die Analyse schreibt normalisierte Plan-, Warnungs- und Evidenzzeilen in diese lokalen Tabellen; sie beschafft und führt keinen Plan aus. `@StatusCodeOut` (varchar(40) OUTPUT) beginnt AVAILABLE und kann AVAILABLE, PARTIAL, INVALID_PARAMETER, UNAVAILABLE_OBJECT, INTERNAL_ERROR oder ERROR_HANDLED liefern. `@IsPartialOut` (bit OUTPUT) kennzeichnet Teilbefunde, `@ErrorNumberOut` (int OUTPUT) und `@ErrorMessageOut` (nvarchar(2048) OUTPUT) beschreiben behandelte Fehler und können bei PARTIAL ohne solchen Fehler NULL bleiben. Die TOP (0)-Probes beweisen Tabellenauflösung, nicht volle Schemakompatibilität; spätere Fehler rollen bereits geschriebene lokale Zeilen nicht atomar zurück.
+-- 
+-- Bei @Hilfe=1 kommt genau ein Resultset mit SkillFormatVersion, SchemaName, ObjectName und SkillMarkdown hinzu; bestehende PRINT-Hinweise bleiben erhalten.
+-- 
+-- 
+-- ## Beispiel
+-- 
+-- Der interne Helper ist kein selbstständiger Fachbericht. Der lesende Katalogaufruf zeigt den Vertrag, ohne den Helper auszuführen:
+-- 
+-- ```sql
+-- SELECT [SkillMarkdown]
+-- FROM [monitor_metadata].[VW_ObjectUsageSkills]
+-- WHERE [SchemaName]=N'monitor' AND [ObjectName]=N'InternalAnalyzeExecutionPlan';
+-- ```
+-- 
+-- Der folgende Aufruf demonstriert ausschließlich den frühen Hilfezweig; die NULL-Pflichtwerte sind nicht für den normalen Fachpfad zulässig:
+-- 
+-- ```sql
+-- EXEC [monitor].[InternalAnalyzeExecutionPlan] @AnalysisObjectId=NULL, @PlanXml=NULL, @PlanSource=NULL, @RuntimeCounterScope=NULL, @Hilfe=1;
+-- ```
+-- 
+-- ## Aufwand, Nebenwirkungen, Fehler und Grenzen
+-- 
+-- Objekt       : monitor.InternalAnalyzeExecutionPlan
+-- Version      : 1.2.1
+-- Stand        : 2026-10-14
+-- Typ          : Interne Stored Procedure
+-- Zweck        : Die Procedure zerlegt genau ein vom Aufrufer geliefertes Showplan-XML
+--                mit unterstützten StmtSimple-Elementen in die vorbereiteten
+--                lokalen #ExecutionPlanAnalysis_*-Tabellen.
+-- Voraussetzung: Der Aufrufer stellt 19 lokale Ergebnistabellen mit dem vereinbarten
+--                Schema bereit. 19 SELECT TOP (0)-Probes erzeugen 19 leere
+--                Resultsets und testen den Tabellenzugriff, nicht die vollständige
+--                Schemakompatibilität. Die Procedure führt keine Plananweisung aus und
+--                beschafft oder löst keine Planquelle über einen Katalog auf.
+--                Spätere Fehler nehmen bereits geschriebene Teilergebnisse nicht
+--                atomar zurück.
+-- 
+-- ### Quellgebundene Detailbeschreibung
+-- 
+-- Der folgende Quellkopf bewahrt die zusätzlichen Implementierungsgrenzen für diesen Skill.
+-- 
+-- ```text
+-- Objekt       : monitor.InternalAnalyzeExecutionPlan
+-- Version      : 1.2.1
+-- Stand        : 2026-10-14
+-- Typ          : Interne Stored Procedure
+-- Zweck        : Die Procedure zerlegt genau ein vom Aufrufer geliefertes Showplan-XML
+--                mit unterstützten StmtSimple-Elementen in die vorbereiteten
+--                lokalen #ExecutionPlanAnalysis_*-Tabellen.
+-- Voraussetzung: Der Aufrufer stellt 19 lokale Ergebnistabellen mit dem vereinbarten
+--                Schema bereit. 19 SELECT TOP (0)-Probes erzeugen 19 leere
+--                Resultsets und testen den Tabellenzugriff, nicht die vollständige
+--                Schemakompatibilität. Die Procedure führt keine Plananweisung aus und
+--                beschafft oder löst keine Planquelle über einen Katalog auf.
+--                Spätere Fehler nehmen bereits geschriebene Teilergebnisse nicht
+--                atomar zurück.
+-- 
+-- Parametervertrag
+-- Die vier ersten Parameter sind erforderlich. Alle folgenden Parameter haben den in der
+-- Signatur angegebenen Default; sie können ausgelassen werden. Ein OUTPUT-Parameter
+-- kann auch als typisierter Skalar oder NULL ohne OUTPUT übergeben werden; der
+-- Eingabewert wird ignoriert und die Ausgabe verworfen. Zum Empfang ist eine Variable
+-- des angegebenen Typs mit OUTPUT zu binden. Typkonvertierung erfolgt vor dem
+-- Prozedureintritt; Konvertierungsfehler sind nicht allgemein durch den Prozedur-CATCH
+-- abgedeckt.
+-- 
+-- - @AnalysisObjectId int, Eingabe, erforderlich, kein Default: positive Kennung für
+--   Ergebniszeilen. NULL, '' (als int gebunden: 0) und jeder Wert < 1 ergeben
+--   INVALID_PARAMETER. Zulässig sind 1 bis 2147483647.
+-- - @PlanXml xml, Eingabe, erforderlich, kein Default: Showplan-XML. NULL ergibt
+--   INVALID_PARAMETER. '' wird als leeres XML gebunden und enthält kein StmtSimple;
+--   das ergibt UNAVAILABLE_OBJECT und Partialität. Die Suche verwendet local-name(.)
+--   für StmtSimple und validiert kein bestimmtes Root-Element oder Namespace.
+-- - @PlanSource varchar(24), Eingabe, erforderlich, kein Default: Codes IMPORTED
+--   (importiertes XML), COMPILE (Kompilierungsplan), LAST_ACTUAL (letzter Actual Plan),
+--   CURRENT_ACTUAL (aktueller Actual Plan), QUERY_STORE (Query-Store-Plan). '' und NULL
+--   sind ungültig und ergeben INVALID_PARAMETER. Keine Normalisierung. Der Wert
+--   klassifiziert die Quelle und beschafft keinen Plan.
+-- - @RuntimeCounterScope varchar(32), Eingabe, erforderlich, kein Default: Codes NONE
+--   (keine Runtimecounter beansprucht), LAST_COMPLETED_EXECUTION (letzte abgeschlossene
+--   Ausführung), CURRENT_PARTIAL_EXECUTION (aktuelle möglicherweise unvollständige
+--   Ausführung), IMPORTED_ACTUAL (importiertes Actual-Plan-XML), QUERY_STORE_AGGREGATE
+--   (aggregierte Query-Store-Zuordnung), UNKNOWN (Scope unbekannt). '' und NULL sind
+--   ungültig und ergeben INVALID_PARAMETER. Keine Normalisierung. Klassifiziert die
+--   gelieferten Daten, beschafft oder verifiziert aber keine Runtimecounter.
+-- - @WorkloadProfile varchar(32), Eingabe, Default 'BALANCED': offene, tabellengesteuerte
+--   Allowlist monitor.PlanAnalysisProfile. NULL wird BALANCED; Rand-Leerraum wird
+--   entfernt und Großschreibung hergestellt. Unbekannte, deaktivierte und leere Werte
+--   fallen auf BALANCED zurück. Seedprofile: LATENCY_SENSITIVE gewichtet interaktive/
+--   häufige Zugriffe je Ausführung und Wiederholungsrate stärker; BALANCED ist neutral
+--   für gemischte Workloads ohne belastbare Zuordnung; THROUGHPUT gewichtet absolute
+--   CPU-, I/O-, TempDB- und Datenmengen stärker; MAINTENANCE behandelt große Scans und
+--   Sorts bei Wartung/Strukturänderungen als möglicherweise erwartet; UNKNOWN bleibt
+--   konservativ und weist geringe Zuordnungssicherheit aus. Weitere aktive Codes sind
+--   möglich.
+-- - @MinSeverity varchar(16), Eingabe, Default 'INFO': INFO (informativ), LOW (niedrig),
+--   MEDIUM (mittel), HIGH (hoch), CRITICAL (kritisch/höchste Stufe). NULL wird INFO;
+--   Rand-Leerraum wird entfernt und Großschreibung hergestellt. '' und andere Werte
+--   sind ungültig. Filtert Findings und PlanWarnings unterhalb der Schwelle;
+--   NO_EXPLICIT_WARNING bleibt zunächst ausgenommen. Ein Hinweis kann melden, dass
+--   keine Warnung die Schwelle erreicht. Keine Aussage über Planoptimalität oder
+--   fehlende Quelle.
+-- - @EvidenceJson nvarchar(max), Eingabe, Default NULL: optionale externe STATISTICS
+--   IO/TIME-Evidenz. NULL lässt die Evidenz aus. '' ist ungültige JSON-Syntax und setzt
+--   Partialität mit Capability EXECUTION_EVIDENCE_JSON/INVALID_JSON. Syntaktisch
+--   gültiges JSON wird nicht schemaweit validiert; lax OPENJSON-Pfade mit fehlenden oder
+--   falsch geformten Werten können leere/unerkannte Teilergebnisse liefern. Zusätzliche
+--   Felder werden ignoriert; Pfadnamen sind case-sensitive. Ungültige Typkonvertierungen
+--   können ERROR_HANDLED auslösen. Negative Dezimalwerte werden nicht gefiltert;
+--   confidence, timeCategory und parseStatus haben keine geprüfte Werteliste.
+--   Pfade und Typen: $.capture.sameExecutionConfidence (Text, Fallback UNCONFIRMED);
+--   $.statisticsIo[*].statementOrdinal int, objectDisplayName nvarchar(512),
+--   logicalReads/physicalReads/readAheadReads/scanCount decimal(38,4), parseStatus
+--   varchar(40); $.statisticsTime[*].statementOrdinal int, timeCategory varchar(24),
+--   cpuMs/elapsedMs decimal(38,4), parseStatus varchar(40). Nicht-NULL IO-Werte werden
+--   als pages-Metriken, Zeitwerte als ms ausgegeben. Confidence belegt keine gleiche
+--   Ausführung. Synthetisches Beispiel:
+--   {"capture":{"sameExecutionConfidence":"UNCONFIRMED"},"statisticsIo":[{"statementOrdinal":1,"objectDisplayName":"[dbo].[Sample]","logicalReads":12,"physicalReads":0,"readAheadReads":0,"scanCount":1,"parseStatus":"PARSED"}],"statisticsTime":[{"statementOrdinal":1,"timeCategory":"SQL","cpuMs":2.5,"elapsedMs":3,"parseStatus":"PARSED"}]}
+-- - @MitThreadRuntime bit, Eingabe, Default 0: 0 löscht die Threadzeilen nach ihrer
+--   Materialisierung und der Ableitung aggregierter Runtimewerte; 1 behält sie.
+--   NULL ergibt INVALID_PARAMETER. Numerische Werte ungleich 0 werden bei Bindung
+--   zu 1; '' kann zu 0 konvertieren.
+-- - @EvidenzDatenschutzModus varchar(24), Eingabe, Default 'DERIVED_ONLY': geschlossene
+--   Codes DERIVED_ONLY (Werte weglassen, abgeleitete Evidenz führen), TOKENIZED (Werte
+--   weglassen, vorhandene Werte mit frischem lokalem Zufallssalt tokenisieren), RAW
+--   (Werte im Klartext) und STRUCTURE_ONLY (Werte weglassen, Strukturstatus setzen).
+--   NULL wird DERIVED_ONLY; äußere U+0020-Leerzeichen entfernen und Großschreibung. '' ist ungültig.
+--   DERIVED_ONLY und STRUCTURE_ONLY lassen dieselben Wertespalten leer, unterscheiden
+--   sich aber im ValueHandlingStatus. SQL-NULL-Werte werden markiert und nicht
+--   tokenisiert. Keine globale Redaktion anderer Planwerte oder Namen.
+-- - @IdentifierDatenschutzModus varchar(16), Eingabe, Default 'RAW': RAW (Objektanzeige
+--   übernehmen), TOKENIZED (mit frischem lokalem Zufallssalt tokenisieren), OMIT
+--   (weglassen). NULL wird RAW; äußere U+0020-Leerzeichen entfernen und Großschreibung. '' ist ungültig. Wirkt nur
+--   auf statisticsIo.objectDisplayName als Scope-Bezeichnung, nicht global.
+-- - @SourceObservedAtUtc datetime2(3), Eingabe, Default NULL: Zeitpunkt nach
+--   UTC-Konvention. Auslassen/NULL setzt SYSUTCDATETIME(). Ein expliziter Wert wird als
+--   UTC-Konvention übernommen, aber nicht umgerechnet oder als tatsächliche Quellzeit
+--   verifiziert. '' wird nach SQL-Typbindungsregeln behandelt; die Procedure prüft den
+--   resultierenden Wert nicht auf Herkunft oder UTC-Abweichung.
+--   Eingabe als datetime2-Variable oder ISO-Text, etwa 2000-01-01T00:00:00.000.
+-- - @ParameterEvidenceSessionId smallint, Eingabe, Default NULL: Session-Skalar im
+--   ParameterEvidence-Kontext. Signed smallint-Bereich -32768 bis 32767, einschließlich
+--   negativer und null Werte; keine Positivitätsprüfung. NULL bleibt NULL; '' als
+--   smallint gebunden wird 0. Keine DMV-Abfrage oder Sessionauflösung.
+-- - @ParameterEvidenceRequestId int, Eingabe, Default NULL: Request-Skalar im
+--   ParameterEvidence-Kontext. Signed int-Bereich -2147483648 bis 2147483647;
+--   keine Positivitätsprüfung. NULL bleibt NULL; '' als int gebunden wird 0. Keine
+--   Requestauflösung.
+-- - @PlanHandle varbinary(64), Eingabe, Default NULL: Binärwert, als varbinary-Variable
+--   oder SQL-0x-Hexwert zu binden; 0x bezeichnet einen leeren Handle. Der Typ begrenzt
+--   den gebundenen Wert auf 64 Bytes; die Procedure führt keine eigene Längenprüfung aus.
+--   NULL bleibt NULL. Kein Textpfad, keine Suche oder Auflösung über den Handle.
+-- - @QueryStoreDatabaseName sysname, Eingabe, Default NULL: einzelner unquotierter
+--   Unicode-Datenbankname im sysname-Typ (nvarchar(128)); keine Liste oder
+--   Identifier-Syntax. '' wird unverändert akzeptiert; NULL bleibt NULL. Keine
+--   Auflösung und keine Query-Store-Abfrage.
+-- - @QueryStorePlanId bigint, Eingabe, Default NULL: Plan-ID als Kontextskalar. Signed
+--   bigint-Bereich -9223372036854775808 bis 9223372036854775807; keine
+--   Positivitätsprüfung. NULL bleibt NULL; '' als bigint gebunden wird 0. Keine
+--   Query-Store-Abfrage oder Planbeschaffung.
+-- - @StatusCodeOut varchar(40), OUTPUT, Signatur-Default NULL: Eingabewert (auch NULL
+--   oder '') wird ignoriert; ausgelassen ist der Default NULL. Ohne OUTPUT wird die
+--   Ausgabe verworfen; zum Empfang varchar(40)-Variable mit OUTPUT binden. Initialwert
+--   AVAILABLE. Endwerte: AVAILABLE (ohne Partialitätskennzeichen beendet), PARTIAL
+--   (Hauptanalyse abgeschlossen und Partialitätsflag gesetzt), INVALID_PARAMETER
+--   (validierter Eingabefehler), UNAVAILABLE_OBJECT (kein unterstütztes StmtSimple),
+--   INTERNAL_ERROR (lokale Ergebnistabelle fehlt oder ist nicht zugreifbar),
+--   ERROR_HANDLED (abgefangener späterer Fehler). Profilabfrage und eigene Temp-Anlage
+--   können außerhalb dieses Statuspfads fehlschlagen.
+-- - @IsPartialOut bit, OUTPUT, Signatur-Default NULL: Eingabewert (auch NULL oder '',
+--   sofern als bit gebunden) wird ignoriert; ausgelassen ist der Default NULL. Ohne
+--   OUTPUT wird die Ausgabe verworfen; zum Empfang bit-Variable mit OUTPUT binden.
+--   Initialwert 0. 1 kennzeichnet unter anderem ungültige Eingabe, fehlende Statements,
+--   ungültiges JSON oder abgefangene Fehler; bei regulärem Abschluss wird AVAILABLE zu
+--   PARTIAL. NULL ist kein regulärer Ausgangswert.
+-- - @ErrorNumberOut int, OUTPUT, Signatur-Default NULL: Eingabewert (auch NULL oder '',
+--   sofern als int gebunden) wird ignoriert; ausgelassen ist der Default NULL. Ohne
+--   OUTPUT wird die Ausgabe verworfen; zum Empfang int-Variable mit OUTPUT binden.
+--   Initialwert NULL; nur Fehlerpfade mit erfasster SQL-Fehlernummer setzen einen Wert.
+--   Bei PARTIAL ohne abgefangenen SQL-Fehler kann die Ausgabe NULL bleiben.
+-- - @ErrorMessageOut nvarchar(2048), OUTPUT, Signatur-Default NULL: Eingabewert (auch
+--   NULL oder '') wird ignoriert; ausgelassen ist der Default NULL. Ohne OUTPUT wird
+--   die Ausgabe verworfen; zum Empfang nvarchar(2048)-Variable mit OUTPUT binden.
+--   Initialwert NULL; nur belegte Meldungspfade setzen Text.
+--   Bei PARTIAL ohne expliziten Meldungspfad kann die Ausgabe NULL bleiben.
+-- 
+-- Kontext- und Fehlergrenzen
+-- Die sechs optionalen Kontextwerte SourceObservedAtUtc, ParameterEvidenceSessionId,
+-- ParameterEvidenceRequestId, PlanHandle, QueryStoreDatabaseName und QueryStorePlanId
+-- sind typisierte Skalare. Sie beweisen weder Planherkunft noch Ausführungsgleichheit.
+-- Lokale T-SQL-Variablenwerte werden nicht aus DMV-Kontext ergänzt. PlanHandle bleibt
+-- binär. Tokenisierung verwendet einen pro Aufruf frischen lokalen Zufallssalt und
+-- liefert keinen stabilen aufrufübergreifenden Schlüssel. Die Profilabfrage gegen
+-- monitor.PlanAnalysisProfile liegt vor dem Haupt-TRY; ein Fehler dort kann nach außen
+-- gelangen. Fehler der eigenen Temp-Tabellenanlage werden nach Wiederherstellung von
+-- LOCK_TIMEOUT 0 erneut ausgelöst. Der spätere Haupt-CATCH meldet ERROR_HANDLED mit
+-- Fehlernummer und -text; frühere Einfügungen werden nicht atomar zurückgenommen.
+-- ```
+-- 
+-- USAGE_SKILL_END monitor.InternalAnalyzeExecutionPlan
 CREATE OR ALTER PROCEDURE [monitor].[InternalAnalyzeExecutionPlan]
       @AnalysisObjectId          int
     , @PlanXml                   xml
@@ -179,9 +475,559 @@ CREATE OR ALTER PROCEDURE [monitor].[InternalAnalyzeExecutionPlan]
     , @IsPartialOut              bit = NULL OUTPUT
     , @ErrorNumberOut            int = NULL OUTPUT
     , @ErrorMessageOut           nvarchar(2048) = NULL OUTPUT
+    , @Hilfe bit = 0
 AS
 BEGIN
     SET NOCOUNT ON;
+    IF @Hilfe=1
+    BEGIN
+        -- USAGE_SKILL_HELP_BEGIN monitor.InternalAnalyzeExecutionPlan
+        SELECT CONVERT(varchar(16),'1.0.0') AS [SkillFormatVersion],CONVERT(sysname,N'monitor') AS [SchemaName],CONVERT(sysname,N'InternalAnalyzeExecutionPlan') AS [ObjectName],CONVERT(nvarchar(max),N'---')
+            + NCHAR(10)
+            + N'skill_format_version: "1.0.0"'
+            + NCHAR(10)
+            + N'name: "monitor.InternalAnalyzeExecutionPlan"'
+            + NCHAR(10)
+            + N'schema_name: "monitor"'
+            + NCHAR(10)
+            + N'object_name: "InternalAnalyzeExecutionPlan"'
+            + NCHAR(10)
+            + N'object_type: "INTERNAL_PROCEDURE"'
+            + NCHAR(10)
+            + N'database_role: "framework"'
+            + NCHAR(10)
+            + N'is_internal: true'
+            + NCHAR(10)
+            + N'description: "Die Procedure zerlegt genau ein vom Aufrufer geliefertes Showplan-XML mit unterstützten StmtSimple-Elementen in die vorbereiteten lokalen #ExecutionPlanAnalysis_*-Tabellen."'
+            + NCHAR(10)
+            + N'source_path: "Code/04_PlanCache/051_InternalAnalyzeExecutionPlan.sql"'
+            + NCHAR(10)
+            + N'---'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'# monitor.InternalAnalyzeExecutionPlan'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'## Zweck und Einsatz'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'Die Procedure zerlegt genau ein vom Aufrufer geliefertes Showplan-XML mit unterstützten StmtSimple-Elementen in die vorbereiteten lokalen #ExecutionPlanAnalysis_*-Tabellen.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'## Voraussetzungen und Rechte'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'Der Aufrufer stellt 19 lokale Ergebnistabellen mit dem vereinbarten Schema bereit. 19 SELECT TOP (0)-Probes erzeugen 19 leere Resultsets und testen den Tabellenzugriff, nicht die vollständige Schemakompatibilität. Die Procedure führt keine Plananweisung aus und beschafft oder löst keine Planquelle über einen Katalog auf. Spätere Fehler nehmen bereits geschriebene Teilergebnisse nicht atomar zurück.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'## Parameter und Eingabe'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'„SQL-Bindungspflicht“ bezeichnet ein bei der SQL-Aufrufbindung erforderliches Argument ohne Default. Fachliche Wertpflichten und zulässige NULL-Werte stehen im jeweiligen Einzelvertrag.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'| Parameter | SQL-Typ | SQL-Bindungspflicht | Default |'
+            + NCHAR(10)
+            + N'| --- | --- | --- | --- |'
+            + NCHAR(10)
+            + N'| @AnalysisObjectId | int | ja | kein Default |'
+            + NCHAR(10)
+            + N'| @PlanXml | xml | ja | kein Default |'
+            + NCHAR(10)
+            + N'| @PlanSource | varchar(24) | ja | kein Default |'
+            + NCHAR(10)
+            + N'| @RuntimeCounterScope | varchar(32) | ja | kein Default |'
+            + NCHAR(10)
+            + N'| @WorkloadProfile | varchar(32) | nein | ''BALANCED'' |'
+            + NCHAR(10)
+            + N'| @MinSeverity | varchar(16) | nein | ''INFO'' |'
+            + NCHAR(10)
+            + N'| @EvidenceJson | nvarchar(max) | nein | NULL |'
+            + NCHAR(10)
+            + N'| @MitThreadRuntime | bit | nein | 0 |'
+            + NCHAR(10)
+            + N'| @EvidenzDatenschutzModus | varchar(24) | nein | ''DERIVED_ONLY'' |'
+            + NCHAR(10)
+            + N'| @IdentifierDatenschutzModus | varchar(16) | nein | ''RAW'' |'
+            + NCHAR(10)
+            + N'| @SourceObservedAtUtc | datetime2(3) | nein | NULL |'
+            + NCHAR(10)
+            + N'| @ParameterEvidenceSessionId | smallint | nein | NULL |'
+            + NCHAR(10)
+            + N'| @ParameterEvidenceRequestId | int | nein | NULL |'
+            + NCHAR(10)
+            + N'| @PlanHandle | varbinary(64) | nein | NULL |'
+            + NCHAR(10)
+            + N'| @QueryStoreDatabaseName | sysname | nein | NULL |'
+            + NCHAR(10)
+            + N'| @QueryStorePlanId | bigint | nein | NULL |'
+            + NCHAR(10)
+            + N'| @StatusCodeOut | varchar(40) OUTPUT | nein | NULL |'
+            + NCHAR(10)
+            + N'| @IsPartialOut | bit OUTPUT | nein | NULL |'
+            + NCHAR(10)
+            + N'| @ErrorNumberOut | int OUTPUT | nein | NULL |'
+            + NCHAR(10)
+            + N'| @ErrorMessageOut | nvarchar(2048) OUTPUT | nein | NULL |'
+            + NCHAR(10)
+            + N'| @Hilfe | bit | nein | 0 |'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'**@AnalysisObjectId:** - @AnalysisObjectId int, Eingabe, erforderlich, kein Default: positive Kennung für Ergebniszeilen. NULL, '''' (als int gebunden: 0) und jeder Wert < 1 ergeben INVALID_PARAMETER. Zulässig sind 1 bis 2147483647.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'**@PlanXml:** - @PlanXml xml, Eingabe, erforderlich, kein Default: Showplan-XML. NULL ergibt INVALID_PARAMETER. '''' wird als leeres XML gebunden und enthält kein StmtSimple; das ergibt UNAVAILABLE_OBJECT und Partialität. Die Suche verwendet local-name(.) für StmtSimple und validiert kein bestimmtes Root-Element oder Namespace.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'**@PlanSource:** - @PlanSource varchar(24), Eingabe, erforderlich, kein Default: Codes IMPORTED (importiertes XML), COMPILE (Kompilierungsplan), LAST_ACTUAL (letzter Actual Plan), CURRENT_ACTUAL (aktueller Actual Plan), QUERY_STORE (Query-Store-Plan). '''' und NULL sind ungültig und ergeben INVALID_PARAMETER. Keine Normalisierung. Der Wert klassifiziert die Quelle und beschafft keinen Plan.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'**@RuntimeCounterScope:** - @RuntimeCounterScope varchar(32), Eingabe, erforderlich, kein Default: Codes NONE (keine Runtimecounter beansprucht), LAST_COMPLETED_EXECUTION (letzte abgeschlossene Ausführung), CURRENT_PARTIAL_EXECUTION (aktuelle möglicherweise unvollständige Ausführung), IMPORTED_ACTUAL (importiertes Actual-Plan-XML), QUERY_STORE_AGGREGATE (aggregierte Query-Store-Zuordnung), UNKNOWN (Scope unbekannt). '''' und NULL sind ungültig und ergeben INVALID_PARAMETER. Keine Normalisierung. Klassifiziert die gelieferten Daten, beschafft oder verifiziert aber keine Runtimecounter.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'**@WorkloadProfile:** - @WorkloadProfile varchar(32), Eingabe, Default ''BALANCED'': offene, tabellengesteuerte Allowlist monitor.PlanAnalysisProfile. NULL wird BALANCED; Rand-Leerraum wird entfernt und Großschreibung hergestellt. Unbekannte, deaktivierte und leere Werte fallen auf BALANCED zurück. Seedprofile: LATENCY_SENSITIVE gewichtet interaktive/ häufige Zugriffe je Ausführung und Wiederholungsrate stärker; BALANCED ist neutral für gemischte Workloads ohne belastbare Zuordnung; THROUGHPUT gewichtet absolute CPU-, I/O-, TempDB- und Datenmengen stärker; MAINTENANCE behandelt große Scans und Sorts bei Wartung/Strukturänderungen als möglicherweise erwartet; UNKNOWN bleibt konservativ und weist geringe Zuordnungssicherheit aus. Weitere aktive Codes sind möglich.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'**@MinSeverity:** - @MinSeverity varchar(16), Eingabe, Default ''INFO'': INFO (informativ), LOW (niedrig), MEDIUM (mittel), HIGH (hoch), CRITICAL (kritisch/höchste Stufe). NULL wird INFO; Rand-Leerraum wird entfernt und Großschreibung hergestellt. '''' und andere Werte sind ungültig. Filtert Findings und PlanWarnings unterhalb der Schwelle; NO_EXPLICIT_WARNING bleibt zunächst ausgenommen. Ein Hinweis kann melden, dass keine Warnung die Schwelle erreicht. Keine Aussage über Planoptimalität oder fehlende Quelle.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'**@EvidenceJson:** - @EvidenceJson nvarchar(max), Eingabe, Default NULL: optionale externe STATISTICS IO/TIME-Evidenz. NULL lässt die Evidenz aus. '''' ist ungültige JSON-Syntax und setzt Partialität mit Capability EXECUTION_EVIDENCE_JSON/INVALID_JSON. Syntaktisch gültiges JSON wird nicht schemaweit validiert; lax OPENJSON-Pfade mit fehlenden oder falsch geformten Werten können leere/unerkannte Teilergebnisse liefern. Zusätzliche Felder werden ignoriert; Pfadnamen sind case-sensitive. Ungültige Typkonvertierungen können ERROR_HANDLED auslösen. Negative Dezimalwerte werden nicht gefiltert; confidence, timeCategory und parseStatus haben keine geprüfte Werteliste. Pfade und Typen: $.capture.sameExecutionConfidence (Text, Fallback UNCONFIRMED); $.statisticsIo[*].statementOrdinal int, objectDisplayName nvarchar(512), logicalReads/physicalReads/readAheadReads/scanCount decimal(38,4), parseStatus varchar(40); $.statisticsTime[*].statementOrdinal int, timeCategory varchar(24), cpuMs/elapsedMs de'
+            + N'cimal(38,4), parseStatus varchar(40). Nicht-NULL IO-Werte werden als pages-Metriken, Zeitwerte als ms ausgegeben. Confidence belegt keine gleiche Ausführung. Synthetisches Beispiel: {"capture":{"sameExecutionConfidence":"UNCONFIRMED"},"statisticsIo":[{"statementOrdinal":1,"objectDisplayName":"[dbo].[Sample]","logicalReads":12,"physicalReads":0,"readAheadReads":0,"scanCount":1,"parseStatus":"PARSED"}],"statisticsTime":[{"statementOrdinal":1,"timeCategory":"SQL","cpuMs":2.5,"elapsedMs":3,"parseStatus":"PARSED"}]}'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'**@MitThreadRuntime:** - @MitThreadRuntime bit, Eingabe, Default 0: 0 löscht die Threadzeilen nach ihrer Materialisierung und der Ableitung aggregierter Runtimewerte; 1 behält sie. NULL ergibt INVALID_PARAMETER. Numerische Werte ungleich 0 werden bei Bindung zu 1; '''' kann zu 0 konvertieren.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'**@EvidenzDatenschutzModus:** - @EvidenzDatenschutzModus varchar(24), Eingabe, Default ''DERIVED_ONLY'': geschlossene Codes DERIVED_ONLY (Werte weglassen, abgeleitete Evidenz führen), TOKENIZED (Werte weglassen, vorhandene Werte mit frischem lokalem Zufallssalt tokenisieren), RAW (Werte im Klartext) und STRUCTURE_ONLY (Werte weglassen, Strukturstatus setzen). NULL wird DERIVED_ONLY; äußere U+0020-Leerzeichen entfernen und Großschreibung. '''' ist ungültig. DERIVED_ONLY und STRUCTURE_ONLY lassen dieselben Wertespalten leer, unterscheiden sich aber im ValueHandlingStatus. SQL-NULL-Werte werden markiert und nicht tokenisiert. Keine globale Redaktion anderer Planwerte oder Namen.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'**@IdentifierDatenschutzModus:** - @IdentifierDatenschutzModus varchar(16), Eingabe, Default ''RAW'': RAW (Objektanzeige übernehmen), TOKENIZED (mit frischem lokalem Zufallssalt tokenisieren), OMIT (weglassen). NULL wird RAW; äußere U+0020-Leerzeichen entfernen und Großschreibung. '''' ist ungültig. Wirkt nur auf statisticsIo.objectDisplayName als Scope-Bezeichnung, nicht global.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'**@SourceObservedAtUtc:** - @SourceObservedAtUtc datetime2(3), Eingabe, Default NULL: Zeitpunkt nach UTC-Konvention. Auslassen/NULL setzt SYSUTCDATETIME(). Ein expliziter Wert wird als UTC-Konvention übernommen, aber nicht umgerechnet oder als tatsächliche Quellzeit verifiziert. '''' wird nach SQL-Typbindungsregeln behandelt; die Procedure prüft den resultierenden Wert nicht auf Herkunft oder UTC-Abweichung. Eingabe als datetime2-Variable oder ISO-Text, etwa 2000-01-01T00:00:00.000.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'**@ParameterEvidenceSessionId:** - @ParameterEvidenceSessionId smallint, Eingabe, Default NULL: Session-Skalar im ParameterEvidence-Kontext. Signed smallint-Bereich -32768 bis 32767, einschließlich negativer und null Werte; keine Positivitätsprüfung. NULL bleibt NULL; '''' als smallint gebunden wird 0. Keine DMV-Abfrage oder Sessionauflösung.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'**@ParameterEvidenceRequestId:** - @ParameterEvidenceRequestId int, Eingabe, Default NULL: Request-Skalar im ParameterEvidence-Kontext. Signed int-Bereich -2147483648 bis 2147483647; keine Positivitätsprüfung. NULL bleibt NULL; '''' als int gebunden wird 0. Keine Requestauflösung.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'**@PlanHandle:** - @PlanHandle varbinary(64), Eingabe, Default NULL: Binärwert, als varbinary-Variable oder SQL-0x-Hexwert zu binden; 0x bezeichnet einen leeren Handle. Der Typ begrenzt den gebundenen Wert auf 64 Bytes; die Procedure führt keine eigene Längenprüfung aus. NULL bleibt NULL. Kein Textpfad, keine Suche oder Auflösung über den Handle.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'**@QueryStoreDatabaseName:** - @QueryStoreDatabaseName sysname, Eingabe, Default NULL: einzelner unquotierter Unicode-Datenbankname im sysname-Typ (nvarchar(128)); keine Liste oder Identifier-Syntax. '''' wird unverändert akzeptiert; NULL bleibt NULL. Keine Auflösung und keine Query-Store-Abfrage.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'**@QueryStorePlanId:** - @QueryStorePlanId bigint, Eingabe, Default NULL: Plan-ID als Kontextskalar. Signed bigint-Bereich -9223372036854775808 bis 9223372036854775807; keine Positivitätsprüfung. NULL bleibt NULL; '''' als bigint gebunden wird 0. Keine Query-Store-Abfrage oder Planbeschaffung.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'**@StatusCodeOut:** - @StatusCodeOut varchar(40), OUTPUT, Signatur-Default NULL: Eingabewert (auch NULL oder '''') wird ignoriert; ausgelassen ist der Default NULL. Ohne OUTPUT wird die Ausgabe verworfen; zum Empfang varchar(40)-Variable mit OUTPUT binden. Initialwert AVAILABLE. Endwerte: AVAILABLE (ohne Partialitätskennzeichen beendet), PARTIAL (Hauptanalyse abgeschlossen und Partialitätsflag gesetzt), INVALID_PARAMETER (validierter Eingabefehler), UNAVAILABLE_OBJECT (kein unterstütztes StmtSimple), INTERNAL_ERROR (lokale Ergebnistabelle fehlt oder ist nicht zugreifbar), ERROR_HANDLED (abgefangener späterer Fehler). Profilabfrage und eigene Temp-Anlage können außerhalb dieses Statuspfads fehlschlagen. Bei @Hilfe=1 bleibt ein mit OUTPUT gebundener Aufrufwert unverändert; die normale Initialisierung erfolgt nur im Fachpfad.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'**@IsPartialOut:** - @IsPartialOut bit, OUTPUT, Signatur-Default NULL: Eingabewert (auch NULL oder '''', sofern als bit gebunden) wird ignoriert; ausgelassen ist der Default NULL. Ohne OUTPUT wird die Ausgabe verworfen; zum Empfang bit-Variable mit OUTPUT binden. Initialwert 0. 1 kennzeichnet unter anderem ungültige Eingabe, fehlende Statements, ungültiges JSON oder abgefangene Fehler; bei regulärem Abschluss wird AVAILABLE zu PARTIAL. NULL ist kein regulärer Ausgangswert. Bei @Hilfe=1 bleibt ein mit OUTPUT gebundener Aufrufwert unverändert; die normale Initialisierung erfolgt nur im Fachpfad.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'**@ErrorNumberOut:** - @ErrorNumberOut int, OUTPUT, Signatur-Default NULL: Eingabewert (auch NULL oder '''', sofern als int gebunden) wird ignoriert; ausgelassen ist der Default NULL. Ohne OUTPUT wird die Ausgabe verworfen; zum Empfang int-Variable mit OUTPUT binden. Initialwert NULL; nur Fehlerpfade mit erfasster SQL-Fehlernummer setzen einen Wert. Bei PARTIAL ohne abgefangenen SQL-Fehler kann die Ausgabe NULL bleiben. Bei @Hilfe=1 bleibt ein mit OUTPUT gebundener Aufrufwert unverändert; die normale Initialisierung erfolgt nur im Fachpfad.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'**@ErrorMessageOut:** - @ErrorMessageOut nvarchar(2048), OUTPUT, Signatur-Default NULL: Eingabewert (auch NULL oder '''') wird ignoriert; ausgelassen ist der Default NULL. Ohne OUTPUT wird die Ausgabe verworfen; zum Empfang nvarchar(2048)-Variable mit OUTPUT binden. Initialwert NULL; nur belegte Meldungspfade setzen Text. Bei PARTIAL ohne expliziten Meldungspfad kann die Ausgabe NULL bleiben. Bei @Hilfe=1 bleibt ein mit OUTPUT gebundener Aufrufwert unverändert; die normale Initialisierung erfolgt nur im Fachpfad.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'**@Hilfe:** bit, Default 0; 1 liefert vor Fachzugriff genau ein Usage-Skill-Resultset. Vorhandene reguläre PRINT-Meldungen bleiben dem normalen Fachpfad vorbehalten. Der Hilfezweig initialisiert OUTPUT-Parameter nicht; übergebene Werte bleiben unverändert. 0 und NULL folgen dem bisherigen normalen Prozedurpfad.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'## Resultate und Ausgabe'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'Die 19 TOP (0)-Probes der vom Aufrufer bereitgestellten #ExecutionPlanAnalysis_*-Tabellen erzeugen 19 leere Schema-Resultsets. Die Analyse schreibt normalisierte Plan-, Warnungs- und Evidenzzeilen in diese lokalen Tabellen; sie beschafft und führt keinen Plan aus. `@StatusCodeOut` (varchar(40) OUTPUT) beginnt AVAILABLE und kann AVAILABLE, PARTIAL, INVALID_PARAMETER, UNAVAILABLE_OBJECT, INTERNAL_ERROR oder ERROR_HANDLED liefern. `@IsPartialOut` (bit OUTPUT) kennzeichnet Teilbefunde, `@ErrorNumberOut` (int OUTPUT) und `@ErrorMessageOut` (nvarchar(2048) OUTPUT) beschreiben behandelte Fehler und können bei PARTIAL ohne solchen Fehler NULL bleiben. Die TOP (0)-Probes beweisen Tabellenauflösung, nicht volle Schemakompatibilität; spätere Fehler rollen bereits geschriebene lokale Zeilen nicht atomar zurück.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'Bei @Hilfe=1 kommt genau ein Resultset mit SkillFormatVersion, SchemaName, ObjectName und SkillMarkdown hinzu; bestehende PRINT-Hinweise bleiben erhalten.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'## Beispiel'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'Der interne Helper ist kein selbstständiger Fachbericht. Der lesende Katalogaufruf zeigt den Vertrag, ohne den Helper auszuführen:'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'```sql'
+            + NCHAR(10)
+            + N'SELECT [SkillMarkdown]'
+            + NCHAR(10)
+            + N'FROM [monitor_metadata].[VW_ObjectUsageSkills]'
+            + NCHAR(10)
+            + N'WHERE [SchemaName]=N''monitor'' AND [ObjectName]=N''InternalAnalyzeExecutionPlan'';'
+            + NCHAR(10)
+            + N'```'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'Der folgende Aufruf demonstriert ausschließlich den frühen Hilfezweig; die NULL-Pflichtwerte sind nicht für den normalen Fachpfad zulässig:'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'```sql'
+            + NCHAR(10)
+            + N'EXEC [monitor].[InternalAnalyzeExecutionPlan] @AnalysisObjectId=NULL, @PlanXml=NULL, @PlanSource=NULL, @RuntimeCounterScope=NULL, @Hilfe=1;'
+            + NCHAR(10)
+            + N'```'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'## Aufwand, Nebenwirkungen, Fehler und Grenzen'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'Objekt       : monitor.InternalAnalyzeExecutionPlan'
+            + NCHAR(10)
+            + N'Version      : 1.2.1'
+            + NCHAR(10)
+            + N'Stand        : 2026-10-14'
+            + NCHAR(10)
+            + N'Typ          : Interne Stored Procedure'
+            + NCHAR(10)
+            + N'Zweck        : Die Procedure zerlegt genau ein vom Aufrufer geliefertes Showplan-XML'
+            + NCHAR(10)
+            + N'               mit unterstützten StmtSimple-Elementen in die vorbereiteten'
+            + NCHAR(10)
+            + N'               lokalen #ExecutionPlanAnalysis_*-Tabellen.'
+            + NCHAR(10)
+            + N'Voraussetzung: Der Aufrufer stellt 19 lokale Ergebnistabellen mit dem vereinbarten'
+            + NCHAR(10)
+            + N'               Schema bereit. 19 SELECT TOP (0)-Probes erzeugen 19 leere'
+            + NCHAR(10)
+            + N'               Resultsets und testen den Tabellenzugriff, nicht die vollständige'
+            + NCHAR(10)
+            + N'               Schemakompatibilität. Die Procedure führt keine Plananweisung aus und'
+            + NCHAR(10)
+            + N'               beschafft oder löst keine Planquelle über einen Katalog auf.'
+            + NCHAR(10)
+            + N'               Spätere Fehler nehmen bereits geschriebene Teilergebnisse nicht'
+            + NCHAR(10)
+            + N'               atomar zurück.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'### Quellgebundene Detailbeschreibung'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'Der folgende Quellkopf bewahrt die zusätzlichen Implementierungsgrenzen für diesen Skill.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'```text'
+            + NCHAR(10)
+            + N'Objekt       : monitor.InternalAnalyzeExecutionPlan'
+            + NCHAR(10)
+            + N'Version      : 1.2.1'
+            + NCHAR(10)
+            + N'Stand        : 2026-10-14'
+            + NCHAR(10)
+            + N'Typ          : Interne Stored Procedure'
+            + NCHAR(10)
+            + N'Zweck        : Die Procedure zerlegt genau ein vom Aufrufer geliefertes Showplan-XML'
+            + NCHAR(10)
+            + N'               mit unterstützten StmtSimple-Elementen in die vorbereiteten'
+            + NCHAR(10)
+            + N'               lokalen #ExecutionPlanAnalysis_*-Tabellen.'
+            + NCHAR(10)
+            + N'Voraussetzung: Der Aufrufer stellt 19 lokale Ergebnistabellen mit dem vereinbarten'
+            + NCHAR(10)
+            + N'               Schema bereit. 19 SELECT TOP (0)-Probes erzeugen 19 leere'
+            + NCHAR(10)
+            + N'               Resultsets und testen den Tabellenzugriff, nicht die vollständige'
+            + NCHAR(10)
+            + N'               Schemakompatibilität. Die Procedure führt keine Plananweisung aus und'
+            + NCHAR(10)
+            + N'               beschafft oder löst keine Planquelle über einen Katalog auf.'
+            + NCHAR(10)
+            + N'               Spätere Fehler nehmen bereits geschriebene Teilergebnisse nicht'
+            + NCHAR(10)
+            + N'               atomar zurück.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'Parametervertrag'
+            + NCHAR(10)
+            + N'Die vier ersten Parameter sind erforderlich. Alle folgenden Parameter haben den in der'
+            + NCHAR(10)
+            + N'Signatur angegebenen Default; sie können ausgelassen werden. Ein OUTPUT-Parameter'
+            + NCHAR(10)
+            + N'kann auch als typisierter Skalar oder NULL ohne OUTPUT übergeben werden; der'
+            + NCHAR(10)
+            + N'Eingabewert wird ignoriert und die Ausgabe verworfen. Zum Empfang ist eine Variable'
+            + NCHAR(10)
+            + N'des angegebenen Typs mit OUTPUT zu binden. Typkonvertierung erfolgt vor dem'
+            + NCHAR(10)
+            + N'Prozedureintritt; Konvertierungsfehler sind nicht allgemein durch den Prozedur-CATCH'
+            + NCHAR(10)
+            + N'abgedeckt.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'- @AnalysisObjectId int, Eingabe, erforderlich, kein Default: positive Kennung für'
+            + NCHAR(10)
+            + N'  Ergebniszeilen. NULL, '''' (als int gebunden: 0) und jeder Wert < 1 ergeben'
+            + NCHAR(10)
+            + N'  INVALID_PARAMETER. Zulässig sind 1 bis 2147483647.'
+            + NCHAR(10)
+            + N'- @PlanXml xml, Eingabe, erforderlich, kein Default: Showplan-XML. NULL ergibt'
+            + NCHAR(10)
+            + N'  INVALID_PARAMETER. '''' wird als leeres XML gebunden und enthält kein StmtSimple;'
+            + NCHAR(10)
+            + N'  das ergibt UNAVAILABLE_OBJECT und Partialität. Die Suche verwendet local-name(.)'
+            + NCHAR(10)
+            + N'  für StmtSimple und validiert kein bestimmtes Root-Element oder Namespace.'
+            + NCHAR(10)
+            + N'- @PlanSource varchar(24), Eingabe, erforderlich, kein Default: Codes IMPORTED'
+            + NCHAR(10)
+            + N'  (importiertes XML), COMPILE (Kompilierungsplan), LAST_ACTUAL (letzter Actual Plan),'
+            + NCHAR(10)
+            + N'  CURRENT_ACTUAL (aktueller Actual Plan), QUERY_STORE (Query-Store-Plan). '''' und NULL'
+            + NCHAR(10)
+            + N'  sind ungültig und ergeben INVALID_PARAMETER. Keine Normalisierung. Der Wert'
+            + NCHAR(10)
+            + N'  klassifiziert die Quelle und beschafft keinen Plan.'
+            + NCHAR(10)
+            + N'- @RuntimeCounterScope varchar(32), Eingabe, erforderlich, kein Default: Codes NONE'
+            + NCHAR(10)
+            + N'  (keine Runtimecounter beansprucht), LAST_COMPLETED_EXECUTION (letzte abgeschlossene'
+            + NCHAR(10)
+            + N'  Ausführung), CURRENT_PARTIAL_EXECUTION (aktuelle möglicherweise unvollständige'
+            + NCHAR(10)
+            + N'  Ausführung), IMPORTED_ACTUAL (importiertes Actual-Plan-XML), QUERY_STORE_AGGREGATE'
+            + NCHAR(10)
+            + N'  (aggregierte Query-Store-Zuordnung), UNKNOWN (Scope unbekannt). '''' und NULL sind'
+            + NCHAR(10)
+            + N'  ungültig und ergeben INVALID_PARAMETER. Keine Normalisierung. Klassifiziert die'
+            + NCHAR(10)
+            + N'  gelieferten Daten, beschafft oder verifiziert aber keine Runtimecounter.'
+            + NCHAR(10)
+            + N'- @WorkloadProfile varchar(32), Eingabe, Default ''BALANCED'': offene, tabellengesteuerte'
+            + NCHAR(10)
+            + N'  Allowlist monitor.PlanAnalysisProfile. NULL wird BALANCED; Rand-Leerraum wird'
+            + NCHAR(10)
+            + N'  entfernt und Großschreibung hergestellt. Unbekannte, deaktivierte und leere Werte'
+            + NCHAR(10)
+            + N'  fallen auf BALANCED zurück. Seedprofile: LATENCY_SENSITIVE gewichtet interaktive/'
+            + NCHAR(10)
+            + N'  häufige Zugriffe je Ausführung und Wiederholungsrate stärker; BALANCED ist neutral'
+            + NCHAR(10)
+            + N'  für gemischte Workloads ohne belastbare Zuordnung; THROUGHPUT gewichtet absolute'
+            + NCHAR(10)
+            + N'  CPU-, I/O-, TempDB- und Datenmengen stärker; MAINTENANCE behandelt große Scans und'
+            + NCHAR(10)
+            + N'  Sorts bei Wartung/Strukturänderungen als möglicherweise erwartet; UNKNOWN bleibt'
+            + NCHAR(10)
+            + N'  konservativ und weist geringe Zuordnungssicherheit aus. Weitere aktive Codes sind'
+            + NCHAR(10)
+            + N'  möglich.'
+            + NCHAR(10)
+            + N'- @MinSeverity varchar(16), Eingabe, Default ''INFO'': INFO (informativ), LOW (niedrig),'
+            + NCHAR(10)
+            + N'  MEDIUM (mittel), HIGH (hoch), CRITICAL (kritisch/höchste Stufe). NULL wird INFO;'
+            + NCHAR(10)
+            + N'  Rand-Leerraum wird entfernt und Großschreibung hergestellt. '''' und andere Werte'
+            + NCHAR(10)
+            + N'  sind ungültig. Filtert Findings und PlanWarnings unterhalb der Schwelle;'
+            + NCHAR(10)
+            + N'  NO_EXPLICIT_WARNING bleibt zunächst ausgenommen. Ein Hinweis kann melden, dass'
+            + NCHAR(10)
+            + N'  keine Warnung die Schwelle erreicht. Keine Aussage über Planoptimalität oder'
+            + NCHAR(10)
+            + N'  fehlende Quelle.'
+            + NCHAR(10)
+            + N'- @EvidenceJson nvarchar(max), Eingabe, Default NULL: optionale externe STATISTICS'
+            + NCHAR(10)
+            + N'  IO/TIME-Evidenz. NULL lässt die Evidenz aus. '''' ist ungültige JSON-Syntax und setzt'
+            + NCHAR(10)
+            + N'  Partialität mit Capability EXECUTION_EVIDENCE_JSON/INVALID_JSON. Syntaktisch'
+            + NCHAR(10)
+            + N'  gültiges JSON wird nicht schemaweit validiert; lax OPENJSON-Pfade mit fehlenden oder'
+            + NCHAR(10)
+            + N'  falsch geformten Werten können leere/unerkannte Teilergebnisse liefern. Zusätzliche'
+            + NCHAR(10)
+            + N'  Felder werden ignoriert; Pfadnamen sind case-sensitive. Ungültige Typkonvertierungen'
+            + NCHAR(10)
+            + N'  können ERROR_HANDLED auslösen. Negative Dezimalwerte werden nicht gefiltert;'
+            + NCHAR(10)
+            + N'  confidence, timeCategory und parseStatus haben keine geprüfte Werteliste.'
+            + NCHAR(10)
+            + N'  Pfade und Typen: $.capture.sameExecutionConfidence (Text, Fallback UNCONFIRMED);'
+            + NCHAR(10)
+            + N'  $.statisticsIo[*].statementOrdinal int, objectDisplayName nvarchar(512),'
+            + NCHAR(10)
+            + N'  logicalReads/physicalReads/readAheadReads/scanCount decimal(38,4), parseStatus'
+            + NCHAR(10)
+            + N'  varchar(40); $.statisticsTime[*].statementOrdinal int, timeCategory varchar(24),'
+            + NCHAR(10)
+            + N'  cpuMs/elapsedMs decimal(38,4), parseStatus varchar(40). Nicht-NULL IO-Werte werden'
+            + NCHAR(10)
+            + N'  als pages-Metriken, Zeitwerte als ms ausgegeben. Confidence belegt keine gleiche'
+            + NCHAR(10)
+            + N'  Ausführung. Synthetisches Beispiel:'
+            + NCHAR(10)
+            + N'  {"capture":{"sameExecutionConfidence":"UNCONFIRMED"},"statisticsIo":[{"statementOrdinal":1,"objectDisplayName":"[dbo].[Sample]","logicalReads":12,"physicalReads":0,"readAheadReads":0,"scanCount":1,"parseStatus":"PARSED"}],"statisticsTime":[{"statementOrdinal":1,"timeCategory":"SQL","cpuMs":2.5,"elapsedMs":3,"parseStatus":"PARSED"}]}'
+            + NCHAR(10)
+            + N'- @MitThreadRuntime bit, Eingabe, Default 0: 0 löscht die Threadzeilen nach ihrer'
+            + NCHAR(10)
+            + N'  Materialisierung und der Ableitung aggregierter Runtimewerte; 1 behält sie.'
+            + NCHAR(10)
+            + N'  NULL ergibt INVALID_PARAMETER. Numerische Werte ungleich 0 werden bei Bindung'
+            + NCHAR(10)
+            + N'  zu 1; '''' kann zu 0 konvertieren.'
+            + NCHAR(10)
+            + N'- @EvidenzDatenschutzModus varchar(24), Eingabe, Default ''DERIVED_ONLY'': geschlossene'
+            + NCHAR(10)
+            + N'  Codes DERIVED_ONLY (Werte weglassen, abgeleitete Evidenz führen), TOKENIZED (Werte'
+            + NCHAR(10)
+            + N'  weglassen, vorhandene Werte mit frischem lokalem Zufallssalt tokenisieren), RAW'
+            + NCHAR(10)
+            + N'  (Werte im Klartext) und STRUCTURE_ONLY (Werte weglassen, Strukturstatus setzen).'
+            + NCHAR(10)
+            + N'  NULL wird DERIVED_ONLY; äußere U+0020-Leerzeichen entfernen und Großschreibung. '''' ist ungültig.'
+            + NCHAR(10)
+            + N'  DERIVED_ONLY und STRUCTURE_ONLY lassen dieselben Wertespalten leer, unterscheiden'
+            + NCHAR(10)
+            + N'  sich aber im ValueHandlingStatus. SQL-NULL-Werte werden markiert und nicht'
+            + NCHAR(10)
+            + N'  tokenisiert. Keine globale Redaktion anderer Planwerte oder Namen.'
+            + NCHAR(10)
+            + N'- @IdentifierDatenschutzModus varchar(16), Eingabe, Default ''RAW'': RAW (Objektanzeige'
+            + NCHAR(10)
+            + N'  übernehmen), TOKENIZED (mit frischem lokalem Zufallssalt tokenisieren), OMIT'
+            + NCHAR(10)
+            + N'  (weglassen). NULL wird RAW; äußere U+0020-Leerzeichen entfernen und Großschreibung. '''' ist ungültig. Wirkt nur'
+            + NCHAR(10)
+            + N'  auf statisticsIo.objectDisplayName als Scope-Bezeichnung, nicht global.'
+            + NCHAR(10)
+            + N'- @SourceObservedAtUtc datetime2(3), Eingabe, Default NULL: Zeitpunkt nach'
+            + NCHAR(10)
+            + N'  UTC-Konvention. Auslassen/NULL setzt SYSUTCDATETIME(). Ein expliziter Wert wird als'
+            + NCHAR(10)
+            + N'  UTC-Konvention übernommen, aber nicht umgerechnet oder als tatsächliche Quellzeit'
+            + NCHAR(10)
+            + N'  verifiziert. '''' wird nach SQL-Typbindungsregeln behandelt; die Procedure prüft den'
+            + NCHAR(10)
+            + N'  resultierenden Wert nicht auf Herkunft oder UTC-Abweichung.'
+            + NCHAR(10)
+            + N'  Eingabe als datetime2-Variable oder ISO-Text, etwa 2000-01-01T00:00:00.000.'
+            + NCHAR(10)
+            + N'- @ParameterEvidenceSessionId smallint, Eingabe, Default NULL: Session-Skalar im'
+            + NCHAR(10)
+            + N'  ParameterEvidence-Kontext. Signed smallint-Bereich -32768 bis 32767, einschließlich'
+            + NCHAR(10)
+            + N'  negativer und null Werte; keine Positivitätsprüfung. NULL bleibt NULL; '''' als'
+            + NCHAR(10)
+            + N'  smallint gebunden wird 0. Keine DMV-Abfrage oder Sessionauflösung.'
+            + NCHAR(10)
+            + N'- @ParameterEvidenceRequestId int, Eingabe, Default NULL: Request-Skalar im'
+            + NCHAR(10)
+            + N'  ParameterEvidence-Kontext. Signed int-Bereich -2147483648 bis 2147483647;'
+            + NCHAR(10)
+            + N'  keine Positivitätsprüfung. NULL bleibt NULL; '''' als int gebunden wird 0. Keine'
+            + NCHAR(10)
+            + N'  Requestauflösung.'
+            + NCHAR(10)
+            + N'- @PlanHandle varbinary(64), Eingabe, Default NULL: Binärwert, als varbinary-Variable'
+            + NCHAR(10)
+            + N'  oder SQL-0x-Hexwert zu binden; 0x bezeichnet einen leeren Handle. Der Typ begrenzt'
+            + NCHAR(10)
+            + N'  den gebundenen Wert auf 64 Bytes; die Procedure führt keine eigene Längenprüfung aus.'
+            + NCHAR(10)
+            + N'  NULL bleibt NULL. Kein Textpfad, keine Suche oder Auflösung über den Handle.'
+            + NCHAR(10)
+            + N'- @QueryStoreDatabaseName sysname, Eingabe, Default NULL: einzelner unquotierter'
+            + NCHAR(10)
+            + N'  Unicode-Datenbankname im sysname-Typ (nvarchar(128)); keine Liste oder'
+            + NCHAR(10)
+            + N'  Identifier-Syntax. '''' wird unverändert akzeptiert; NULL bleibt NULL. Keine'
+            + NCHAR(10)
+            + N'  Auflösung und keine Query-Store-Abfrage.'
+            + NCHAR(10)
+            + N'- @QueryStorePlanId bigint, Eingabe, Default NULL: Plan-ID als Kontextskalar. Signed'
+            + NCHAR(10)
+            + N'  bigint-Bereich -9223372036854775808 bis 9223372036854775807; keine'
+            + NCHAR(10)
+            + N'  Positivitätsprüfung. NULL bleibt NULL; '''' als bigint gebunden wird 0. Keine'
+            + NCHAR(10)
+            + N'  Query-Store-Abfrage oder Planbeschaffung.'
+            + NCHAR(10)
+            + N'- @StatusCodeOut varchar(40), OUTPUT, Signatur-Default NULL: Eingabewert (auch NULL'
+            + NCHAR(10)
+            + N'  oder '''') wird ignoriert; ausgelassen ist der Default NULL. Ohne OUTPUT wird die'
+            + NCHAR(10)
+            + N'  Ausgabe verworfen; zum Empfang varchar(40)-Variable mit OUTPUT binden. Initialwert'
+            + NCHAR(10)
+            + N'  AVAILABLE. Endwerte: AVAILABLE (ohne Partialitätskennzeichen beendet), PARTIAL'
+            + NCHAR(10)
+            + N'  (Hauptanalyse abgeschlossen und Partialitätsflag gesetzt), INVALID_PARAMETER'
+            + NCHAR(10)
+            + N'  (validierter Eingabefehler), UNAVAILABLE_OBJECT (kein unterstütztes StmtSimple),'
+            + NCHAR(10)
+            + N'  INTERNAL_ERROR (lokale Ergebnistabelle fehlt oder ist nicht zugreifbar),'
+            + NCHAR(10)
+            + N'  ERROR_HANDLED (abgefangener späterer Fehler). Profilabfrage und eigene Temp-Anlage'
+            + NCHAR(10)
+            + N'  können außerhalb dieses Statuspfads fehlschlagen.'
+            + NCHAR(10)
+            + N'- @IsPartialOut bit, OUTPUT, Signatur-Default NULL: Eingabewert (auch NULL oder '''','
+            + NCHAR(10)
+            + N'  sofern als bit gebunden) wird ignoriert; ausgelassen ist der Default NULL. Ohne'
+            + NCHAR(10)
+            + N'  OUTPUT wird die Ausgabe verworfen; zum Empfang bit-Variable mit OUTPUT binden.'
+            + NCHAR(10)
+            + N'  Initialwert 0. 1 kennzeichnet unter anderem ungültige Eingabe, fehlende Statements,'
+            + NCHAR(10)
+            + N'  ungültiges JSON oder abgefangene Fehler; bei regulärem Abschluss wird AVAILABLE zu'
+            + NCHAR(10)
+            + N'  PARTIAL. NULL ist kein regulärer Ausgangswert.'
+            + NCHAR(10)
+            + N'- @ErrorNumberOut int, OUTPUT, Signatur-Default NULL: Eingabewert (auch NULL oder '''','
+            + NCHAR(10)
+            + N'  sofern als int gebunden) wird ignoriert; ausgelassen ist der Default NULL. Ohne'
+            + NCHAR(10)
+            + N'  OUTPUT wird die Ausgabe verworfen; zum Empfang int-Variable mit OUTPUT binden.'
+            + NCHAR(10)
+            + N'  Initialwert NULL; nur Fehlerpfade mit erfasster SQL-Fehlernummer setzen einen Wert.'
+            + NCHAR(10)
+            + N'  Bei PARTIAL ohne abgefangenen SQL-Fehler kann die Ausgabe NULL bleiben.'
+            + NCHAR(10)
+            + N'- @ErrorMessageOut nvarchar(2048), OUTPUT, Signatur-Default NULL: Eingabewert (auch'
+            + NCHAR(10)
+            + N'  NULL oder '''') wird ignoriert; ausgelassen ist der Default NULL. Ohne OUTPUT wird'
+            + NCHAR(10)
+            + N'  die Ausgabe verworfen; zum Empfang nvarchar(2048)-Variable mit OUTPUT binden.'
+            + NCHAR(10)
+            + N'  Initialwert NULL; nur belegte Meldungspfade setzen Text.'
+            + NCHAR(10)
+            + N'  Bei PARTIAL ohne expliziten Meldungspfad kann die Ausgabe NULL bleiben.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'Kontext- und Fehlergrenzen'
+            + NCHAR(10)
+            + N'Die sechs optionalen Kontextwerte SourceObservedAtUtc, ParameterEvidenceSessionId,'
+            + NCHAR(10)
+            + N'ParameterEvidenceRequestId, PlanHandle, QueryStoreDatabaseName und QueryStorePlanId'
+            + NCHAR(10)
+            + N'sind typisierte Skalare. Sie beweisen weder Planherkunft noch Ausführungsgleichheit.'
+            + NCHAR(10)
+            + N'Lokale T-SQL-Variablenwerte werden nicht aus DMV-Kontext ergänzt. PlanHandle bleibt'
+            + NCHAR(10)
+            + N'binär. Tokenisierung verwendet einen pro Aufruf frischen lokalen Zufallssalt und'
+            + NCHAR(10)
+            + N'liefert keinen stabilen aufrufübergreifenden Schlüssel. Die Profilabfrage gegen'
+            + NCHAR(10)
+            + N'monitor.PlanAnalysisProfile liegt vor dem Haupt-TRY; ein Fehler dort kann nach außen'
+            + NCHAR(10)
+            + N'gelangen. Fehler der eigenen Temp-Tabellenanlage werden nach Wiederherstellung von'
+            + NCHAR(10)
+            + N'LOCK_TIMEOUT 0 erneut ausgelöst. Der spätere Haupt-CATCH meldet ERROR_HANDLED mit'
+            + NCHAR(10)
+            + N'Fehlernummer und -text; frühere Einfügungen werden nicht atomar zurückgenommen.'
+            + NCHAR(10)
+            + N'```'
+            + NCHAR(10)
+            + NCHAR(10) AS [SkillMarkdown];
+        -- USAGE_SKILL_HELP_END monitor.InternalAnalyzeExecutionPlan
+        RETURN;
+    END;
+
     SET LOCK_TIMEOUT 0;
 
     SELECT

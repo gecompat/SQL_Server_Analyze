@@ -30,6 +30,141 @@ Locking      : LOCK_TIMEOUT 0 für Quellen; vorheriger Sessionwert wird
                          aktuelle/Peak-Nutzung, Verletzungen und Resetgrenze.
 ===============================================================================
 */
+-- USAGE_SKILL_BEGIN monitor.USP_ResourceGovernorAnalysis 1.0.0
+-- ---
+-- skill_format_version: "1.0.0"
+-- name: "monitor.USP_ResourceGovernorAnalysis"
+-- schema_name: "monitor"
+-- object_name: "USP_ResourceGovernorAnalysis"
+-- object_type: "PROCEDURE"
+-- database_role: "framework"
+-- is_internal: false
+-- description: "Trennt Resource-Governor-Konfiguration, Laufzeitkennzahlen und die SQL-Server-2025-TempDB-Governance je Workload Group."
+-- source_path: "Code/07_Infrastructure/030_USP_ResourceGovernorAnalysis.sql"
+-- ---
+-- 
+-- # monitor.USP_ResourceGovernorAnalysis
+-- 
+-- ## Zweck und Einsatz
+-- 
+-- Trennt Resource-Governor-Konfiguration, Laufzeitkennzahlen und die SQL-Server-2025-TempDB-Governance je Workload Group.
+-- 
+-- ## Voraussetzungen und Rechte
+-- 
+-- SQL Server 2019 oder neuer; TempDB-Governance ab 2025 (17.x).
+-- 
+-- sys.resource_governor_configuration, sys.dm_resource_governor_configuration, sys.resource_governor_resource_pools, sys.dm_resource_governor_resource_pools, sys.resource_governor_workload_groups, sys.dm_resource_governor_workload_groups, sys.dm_exec_sessions, master.sys.master_files.
+-- 
+-- Nur lesender Zugriff. Das Framework vergibt keine Rechte und ändert weder Resource Governor noch TempDB.
+-- 
+-- ## Parameter und Eingabe
+-- 
+-- „SQL-Bindungspflicht“ bezeichnet ein bei der SQL-Aufrufbindung erforderliches Argument ohne Default. Fachliche Wertpflichten und zulässige NULL-Werte stehen im jeweiligen Einzelvertrag.
+-- 
+-- | Parameter | SQL-Typ | SQL-Bindungspflicht | Default |
+-- | --- | --- | --- | --- |
+-- | @MitSessions | bit | nein | 1 |
+-- | @MaxZeilen | int | nein | 5000 |
+-- | @ResultSetArt | varchar(16) | nein | 'CONSOLE' |
+-- | @ResultTablesJson | nvarchar(max) | nein | NULL |
+-- | @JsonErzeugen | bit | nein | 0 |
+-- | @Json | nvarchar(max) | nein | NULL OUTPUT |
+-- | @PrintMeldungen | bit | nein | 1 |
+-- | @Hilfe | bit | nein | 0 |
+-- 
+-- **@MitSessions:** @MitSessions bit. Default ist 1. 1 erfasst sichtbare Benutzerprozesse aus sys.dm_exec_sessions und ordnet sie nach GroupId zu. 0 überspringt die Quelle und die Sessionausgabe in RAW und CONSOLE. JSON enthält dann ein leeres sessions-Array. NULL ergibt INVALID_PARAMETER.
+-- 
+-- **@MaxZeilen:** @MaxZeilen int. Default ist 5000. Eine positive ganze Zahl begrenzt Pools, Workload Groups, tempdbGovernance und Sessions jeweils separat. NULL oder 0 hebt die Grenze auf. Negative Werte ergeben INVALID_PARAMETER. Die Konfigurationszeile bleibt unberührt. Sessions werden vor der Gruppenzuordnung nach CPU-Zeit absteigend und SessionId begrenzt.
+-- 
+-- **@ResultSetArt:** @ResultSetArt varchar(16). Default ist 'CONSOLE'. CONSOLE zeigt beschriftete Fachergebnisse. RAW gibt zuerst Status und Metadaten, dann die Daten und Warnungen aus. TABLE schreibt nur zugeordnete Fachergebnisse in lokale Temp-Tabellen. NONE unterdrückt diese Ausgaben. Leerzeichen am Rand werden entfernt und Groß-/Kleinschreibung wird normalisiert. NULL, leere Eingaben und alle anderen Werte ergeben INVALID_PARAMETER. JSON und Statusmeldungen werden separat gesteuert.
+-- 
+-- **@ResultTablesJson:** @ResultTablesJson nvarchar(max). Default ist NULL. Bei TABLE ist ein nichtleeres JSON-Objekt erforderlich. Die exakten Schlüssel sind configuration für Konfiguration, resourcePools für Pools, workloadGroups für Gruppen, sessions für Sessions und tempdbGovernance für TempDB-Limits und Laufzeitevidenz. Wählen Sie mindestens einen Schlüssel. Jeder Wert ist der Name einer vorhandenen leeren lokalen #Temp-Tabelle mit genau einer Seed-Spalte. Der Name darf höchstens 116 Zeichen lang sein. ## und #Monitor als Präfix sind unzulässig. Doppelte Schlüssel und Ziele sind unzulässig. Die Vorprüfung erfolgt vor dem Lesen der fachlichen Quellen. Außerhalb von TABLE sind nur NULL, die leere Zeichenfolge und reine Leerzeichen zulässig.
+-- 
+-- **@JsonErzeugen:** @JsonErzeugen bit. Default ist 0. 1 erzeugt das JSON-Dokument unabhängig von @ResultSetArt. 0 lässt @Json auf NULL. NULL ergibt INVALID_PARAMETER.
+-- 
+-- **@Json:** @Json nvarchar(max) OUTPUT. Default ist NULL. Binden Sie eine nvarchar(max)-Variable mit OUTPUT. Die Procedure setzt den Wert vor Hilfe und Validierung auf NULL. Bei @JsonErzeugen=1 erhält die Variable das Dokument der SchemaVersion 2 mit Metadaten, Konfiguration, Pools, Gruppen, TempDB-Governance, Sessions und Warnungen einschließlich NULL-Feldern.
+-- 
+-- **@PrintMeldungen:** @PrintMeldungen bit. Default ist 1. 1 gibt bei einem Status ungleich AVAILABLE eine informative Meldung mit Schweregrad 10 aus. 0 oder NULL unterdrückt diese Meldung.
+-- 
+-- **@Hilfe:** @Hilfe bit. Default ist 0. 1 zeigt diese Hilfe und beendet den Aufruf vor Validierung, TABLE-Vorprüfung, fachlichen Quellzugriffen und JSON-Erzeugung. 0 oder NULL führt die Analyse aus.
+-- 
+-- ## Resultate und Ausgabe
+-- 
+-- configuration, resourcePools, workloadGroups, sessions, tempdbGovernance und warnings.
+-- 
+-- | Resultmenge | RAW | TABLE | Felder laut Inventar |
+-- | --- | --- | --- | --- |
+-- | configuration | 1 | 1 | [ClassifierFunctionId] int NULL , [IsEnabled] bit NULL , [ReconfigurationPending] bit NULL , [ClassifierFunctionName] nvarchar(517) NULL |
+-- | resourcePools | 1 | 1 | [PoolId] int NOT NULL , [PoolName] sysname NOT NULL , [MinCpuPercent] int NULL , [MaxCpuPercent] int NULL , [MinMemoryPercent] int NULL , [MaxMemoryPercent] int NULL , [CapCpuPercent] int NULL , [MinIopsPerVolume] int NULL , [MaxIopsPerVolume] int NULL , [StatisticsStartTime] datetime NULL , [TotalCpuUsageMs] bigint NULL , [CacheMemoryMb] decimal(19,2) NULL , [UsedWorkspaceMemoryMb] decimal(19,2) NULL , [TargetWorkspaceMemoryMb] decimal(19,2) NULL , [MaxWorkspaceMemoryMb] decimal(19,2) NULL , [OutOfMemoryCount] bigint NULL , [ActiveMemgrantCount] int NULL , [PendingMemgrantCount] int NULL , [UsedOfTargetMemoryPercent] decimal(9,2) NULL , [UsedOfMaxMemoryPercent] decimal(9,2) NULL |
+-- | workloadGroups | 1 | 1 | [GroupId] int NOT NULL , [GroupName] sysname NOT NULL , [PoolId] int NULL , [PoolName] sysname NULL , [Importance] nvarchar(60) NULL , [RequestMaxMemoryGrantPercent] decimal(9,4) NULL , [ConfiguredRequestMaxGrantMemoryMb] decimal(19,2) NULL , [TargetRequestMaxGrantMemoryMb] decimal(19,2) NULL , [HistoricalMaxRequestGrantMemoryMb] decimal(19,2) NULL , [RequestMaxCpuTimeSec] int NULL , [RequestMemoryGrantTimeoutSec] int NULL , [MaxDop] int NULL , [EffectiveMaxDop] int NULL , [GroupMaxRequests] int NULL , [TotalRequestCount] bigint NULL , [TotalQueuedRequestCount] bigint NULL , [ActiveRequestCount] int NULL , [QueuedRequestCount] int NULL , [TotalReducedMemgrantCount] bigint NULL , [TotalCpuUsageMs] bigint NULL , [TotalLockWaitCount] bigint NULL , [TotalLockWaitTimeMs] bigint NULL |
+-- | sessions | 1 | 1 | [SessionId] int NOT NULL , [LoginName] sysname NULL , [HostName] nvarchar(128) NULL , [ProgramName] nvarchar(128) NULL , [GroupId] int NULL , [GroupName] sysname NULL , [PoolName] sysname NULL , [Status] nvarchar(60) NULL , [CpuTimeMs] int NULL , [MemoryUsagePages] int NULL , [MemoryUsageMb] decimal(19,2) NULL , [Reads] bigint NULL , [Writes] bigint NULL , [LogicalReads] bigint NULL |
+-- | tempdbGovernance | 1 | 1 | [GroupId] int NULL , [GroupName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL , [PoolId] int NULL , [PoolName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL , [ConfiguredGroupMaxTempdbDataMb] decimal(19,2) NULL , [ConfiguredGroupMaxTempdbDataPercent] decimal(9,4) NULL , [TempdbMaximumSizeMb] decimal(19,2) NULL , [EffectiveGroupMaxTempdbDataMb] decimal(19,2) NULL , [EffectiveLimitSource] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL , [IsPercentLimitEffective] bit NULL , [TempdbDataSpaceMb] decimal(19,2) NULL , [PeakTempdbDataSpaceMb] decimal(19,2) NULL , [EffectiveLimitUtilizationPercent] decimal(9,2) NULL , [TotalTempdbDataLimitViolationCount] bigint NULL , [HasRecordedLimitViolation] bit NULL , [StatisticsStartTime] datetime NULL , [IsResourceGovernorEnabled] bit NULL , [ReconfigurationPending] bit NULL , [SourceStatusCode] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL , [IsPartial] bit NOT NULL , [EvidenceLimit] nvarchar(1000) COLLATE SQL_Latin1_General_CP1_CS_AS NULL |
+-- 
+-- Bei @Hilfe=1 kommt genau ein Resultset mit SkillFormatVersion, SchemaName, ObjectName und SkillMarkdown hinzu; bestehende PRINT-Hinweise bleiben erhalten.
+-- 
+-- ## Beispiel
+-- 
+-- ```sql
+-- EXEC [monitor].[USP_ResourceGovernorAnalysis] @Hilfe=1;
+-- ```
+-- 
+-- ## Aufwand, Nebenwirkungen, Fehler und Grenzen
+-- 
+-- monitor.USP_ResourceGovernorAnalysis
+-- 
+-- Die Procedure zeigt die Resource-Governor-Konfiguration, Pools, Workload Groups und optional zugeordnete Benutzersessions. Die TempDB-Ausgabe trennt konfigurierte Limits, Wirksamkeit, Nutzung, Peak und Verletzungen. Die Procedure führt weder ALTER RESOURCE GOVERNOR noch RECONFIGURE oder RESET STATISTICS aus.
+-- 
+-- Hilfe anzeigen. EXEC [monitor].[USP_ResourceGovernorAnalysis] @Hilfe=1;
+-- 
+-- RAW ohne Sessionabfrage. EXEC [monitor].[USP_ResourceGovernorAnalysis] @MitSessions=0, @MaxZeilen=100, @ResultSetArt='RAW';
+-- 
+-- Nur JSON ausgeben. DECLARE @GovernorJson nvarchar(max); EXEC [monitor].[USP_ResourceGovernorAnalysis] @MitSessions=0, @MaxZeilen=100, @ResultSetArt='NONE', @JsonErzeugen=1, @Json=@GovernorJson OUTPUT; SELECT @GovernorJson AS [Json];
+-- 
+-- 
+-- ### Quellgebundene Detailbeschreibung
+-- 
+-- Der folgende Quellkopf bewahrt die zusätzlichen Implementierungsgrenzen für diesen Skill.
+-- 
+-- ```text
+-- Objekt       : monitor.USP_ResourceGovernorAnalysis
+-- Version      : 3.0.0
+-- Stand        : 2026-07-23
+-- Typ          : Stored Procedure
+-- Zweck        : Trennt Resource-Governor-Konfiguration, Laufzeitkennzahlen und
+--                die SQL-Server-2025-TempDB-Governance je Workload Group.
+-- SQL-Version  : SQL Server 2019 oder neuer; TempDB-Governance ab 2025 (17.x).
+-- Datenquellen : sys.resource_governor_configuration,
+--                sys.dm_resource_governor_configuration,
+--                sys.resource_governor_resource_pools,
+--                sys.dm_resource_governor_resource_pools,
+--                sys.resource_governor_workload_groups,
+--                sys.dm_resource_governor_workload_groups,
+--                sys.dm_exec_sessions, master.sys.master_files.
+-- Parameter    : @MitSessions, @MaxZeilen, @ResultSetArt, @ResultTablesJson,
+--                @JsonErzeugen, @Json OUTPUT, @PrintMeldungen, @Hilfe.
+-- Resultsets   : configuration, resourcePools, workloadGroups, sessions,
+--                tempdbGovernance und warnings.
+-- Berechtigung : Nur lesender Zugriff. Das Framework vergibt keine Rechte und
+--                ändert weder Resource Governor noch TempDB.
+-- Eigenlast    : Gering bis mittel; jede fachliche Quelle höchstens einmal.
+-- Locking      : LOCK_TIMEOUT 0 für Quellen; vorheriger Sessionwert wird
+--                auch nach TABLE- und CONSOLE-Ausgabe wiederhergestellt.
+-- Änderungen   : 3.0.0 - SQL25-003: gespeicherte Limits, wirksames Limit,
+--                          aktuelle/Peak-Nutzung, Verletzungen und Resetgrenze.
+-- ```
+-- 
+-- ### Weitere bestehende Hilfehinweise
+-- 
+-- ```text
+-- monitor.USP_ResourceGovernorAnalysis
+-- Die Procedure zeigt die Resource-Governor-Konfiguration, Pools, Workload Groups und optional zugeordnete Benutzersessions. Die TempDB-Ausgabe trennt konfigurierte Limits, Wirksamkeit, Nutzung, Peak und Verletzungen. Die Procedure führt weder ALTER RESOURCE GOVERNOR noch RECONFIGURE oder RESET STATISTICS aus.
+-- Hilfe anzeigen. EXEC [monitor].[USP_ResourceGovernorAnalysis] @Hilfe=1;
+-- RAW ohne Sessionabfrage. EXEC [monitor].[USP_ResourceGovernorAnalysis] @MitSessions=0, @MaxZeilen=100, @ResultSetArt='RAW';
+-- Nur JSON ausgeben. DECLARE @GovernorJson nvarchar(max); EXEC [monitor].[USP_ResourceGovernorAnalysis] @MitSessions=0, @MaxZeilen=100, @ResultSetArt='NONE', @JsonErzeugen=1, @Json=@GovernorJson OUTPUT; SELECT @GovernorJson AS [Json];
+-- Konfigurationszeile in eine lokale Temp-Tabelle schreiben. CREATE TABLE #ResourceGovernorAnalysis_HelpExample ([Seed] int NULL); BEGIN TRY EXEC [monitor].[USP_ResourceGovernorAnalysis] @MitSessions=0, @MaxZeilen=100, @ResultSetArt='TABLE', @ResultTablesJson=N'{"configuration":"#ResourceGovernorAnalysis_HelpExample"}'; SELECT * FROM #ResourceGovernorAnalysis_HelpExample; DROP TABLE #ResourceGovernorAnalysis_HelpExample; END TRY BEGIN CATCH DROP TABLE #ResourceGovernorAnalysis_HelpExample; THROW; END CATCH;
+-- ```
+-- 
+-- USAGE_SKILL_END monitor.USP_ResourceGovernorAnalysis
 CREATE OR ALTER PROCEDURE [monitor].[USP_ResourceGovernorAnalysis]
       @MitSessions       bit            = 1
     , @MaxZeilen         int            = 5000
@@ -43,20 +178,9 @@ AS
 BEGIN
     SET NOCOUNT ON;
 
-    DECLARE @OriginalLockTimeout int=@@LOCK_TIMEOUT;
-    DECLARE @RestoreLockTimeoutSql nvarchar(100);
-    SET @Json=NULL;
-
-    DECLARE @OutputMode varchar(16)=UPPER(LTRIM(RTRIM(COALESCE(@ResultSetArt,''))));
-    DECLARE @TableResultRequested bit=CASE WHEN @OutputMode='TABLE' THEN 1 ELSE 0 END;
-    DECLARE @ConsoleResultRequested bit=CASE WHEN @OutputMode='CONSOLE' THEN 1 ELSE 0 END;
-    DECLARE @EffectiveMaxZeilen bigint=
-        CASE WHEN @MaxZeilen IS NULL OR @MaxZeilen=0 THEN CONVERT(bigint,9223372036854775807)
-             WHEN @MaxZeilen>0 THEN CONVERT(bigint,@MaxZeilen)
-             ELSE CONVERT(bigint,0) END;
-
     IF @Hilfe=1
     BEGIN
+        SET @Json=NULL;
         PRINT N'monitor.USP_ResourceGovernorAnalysis';
         PRINT N'Die Procedure zeigt die Resource-Governor-Konfiguration, Pools, Workload Groups und optional zugeordnete Benutzersessions. Die TempDB-Ausgabe trennt konfigurierte Limits, Wirksamkeit, Nutzung, Peak und Verletzungen. Die Procedure führt weder ALTER RESOURCE GOVERNOR noch RECONFIGURE oder RESET STATISTICS aus.';
         PRINT N'@MitSessions bit. Default ist 1. 1 erfasst sichtbare Benutzerprozesse aus sys.dm_exec_sessions und ordnet sie nach GroupId zu. 0 überspringt die Quelle und die Sessionausgabe in RAW und CONSOLE. JSON enthält dann ein leeres sessions-Array. NULL ergibt INVALID_PARAMETER.';
@@ -71,8 +195,255 @@ BEGIN
         PRINT N'RAW ohne Sessionabfrage. EXEC [monitor].[USP_ResourceGovernorAnalysis] @MitSessions=0, @MaxZeilen=100, @ResultSetArt=''RAW'';';
         PRINT N'Nur JSON ausgeben. DECLARE @GovernorJson nvarchar(max); EXEC [monitor].[USP_ResourceGovernorAnalysis] @MitSessions=0, @MaxZeilen=100, @ResultSetArt=''NONE'', @JsonErzeugen=1, @Json=@GovernorJson OUTPUT; SELECT @GovernorJson AS [Json];';
         PRINT N'Konfigurationszeile in eine lokale Temp-Tabelle schreiben. CREATE TABLE #ResourceGovernorAnalysis_HelpExample ([Seed] int NULL); BEGIN TRY EXEC [monitor].[USP_ResourceGovernorAnalysis] @MitSessions=0, @MaxZeilen=100, @ResultSetArt=''TABLE'', @ResultTablesJson=N''{"configuration":"#ResourceGovernorAnalysis_HelpExample"}''; SELECT * FROM #ResourceGovernorAnalysis_HelpExample; DROP TABLE #ResourceGovernorAnalysis_HelpExample; END TRY BEGIN CATCH DROP TABLE #ResourceGovernorAnalysis_HelpExample; THROW; END CATCH;';
+        -- USAGE_SKILL_HELP_BEGIN monitor.USP_ResourceGovernorAnalysis
+        SELECT CONVERT(varchar(16),'1.0.0') AS [SkillFormatVersion],CONVERT(sysname,N'monitor') AS [SchemaName],CONVERT(sysname,N'USP_ResourceGovernorAnalysis') AS [ObjectName],CONVERT(nvarchar(max),N'---')
+            + NCHAR(10)
+            + N'skill_format_version: "1.0.0"'
+            + NCHAR(10)
+            + N'name: "monitor.USP_ResourceGovernorAnalysis"'
+            + NCHAR(10)
+            + N'schema_name: "monitor"'
+            + NCHAR(10)
+            + N'object_name: "USP_ResourceGovernorAnalysis"'
+            + NCHAR(10)
+            + N'object_type: "PROCEDURE"'
+            + NCHAR(10)
+            + N'database_role: "framework"'
+            + NCHAR(10)
+            + N'is_internal: false'
+            + NCHAR(10)
+            + N'description: "Trennt Resource-Governor-Konfiguration, Laufzeitkennzahlen und die SQL-Server-2025-TempDB-Governance je Workload Group."'
+            + NCHAR(10)
+            + N'source_path: "Code/07_Infrastructure/030_USP_ResourceGovernorAnalysis.sql"'
+            + NCHAR(10)
+            + N'---'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'# monitor.USP_ResourceGovernorAnalysis'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'## Zweck und Einsatz'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'Trennt Resource-Governor-Konfiguration, Laufzeitkennzahlen und die SQL-Server-2025-TempDB-Governance je Workload Group.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'## Voraussetzungen und Rechte'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'SQL Server 2019 oder neuer; TempDB-Governance ab 2025 (17.x).'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'sys.resource_governor_configuration, sys.dm_resource_governor_configuration, sys.resource_governor_resource_pools, sys.dm_resource_governor_resource_pools, sys.resource_governor_workload_groups, sys.dm_resource_governor_workload_groups, sys.dm_exec_sessions, master.sys.master_files.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'Nur lesender Zugriff. Das Framework vergibt keine Rechte und ändert weder Resource Governor noch TempDB.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'## Parameter und Eingabe'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'„SQL-Bindungspflicht“ bezeichnet ein bei der SQL-Aufrufbindung erforderliches Argument ohne Default. Fachliche Wertpflichten und zulässige NULL-Werte stehen im jeweiligen Einzelvertrag.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'| Parameter | SQL-Typ | SQL-Bindungspflicht | Default |'
+            + NCHAR(10)
+            + N'| --- | --- | --- | --- |'
+            + NCHAR(10)
+            + N'| @MitSessions | bit | nein | 1 |'
+            + NCHAR(10)
+            + N'| @MaxZeilen | int | nein | 5000 |'
+            + NCHAR(10)
+            + N'| @ResultSetArt | varchar(16) | nein | ''CONSOLE'' |'
+            + NCHAR(10)
+            + N'| @ResultTablesJson | nvarchar(max) | nein | NULL |'
+            + NCHAR(10)
+            + N'| @JsonErzeugen | bit | nein | 0 |'
+            + NCHAR(10)
+            + N'| @Json | nvarchar(max) | nein | NULL OUTPUT |'
+            + NCHAR(10)
+            + N'| @PrintMeldungen | bit | nein | 1 |'
+            + NCHAR(10)
+            + N'| @Hilfe | bit | nein | 0 |'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'**@MitSessions:** @MitSessions bit. Default ist 1. 1 erfasst sichtbare Benutzerprozesse aus sys.dm_exec_sessions und ordnet sie nach GroupId zu. 0 überspringt die Quelle und die Sessionausgabe in RAW und CONSOLE. JSON enthält dann ein leeres sessions-Array. NULL ergibt INVALID_PARAMETER.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'**@MaxZeilen:** @MaxZeilen int. Default ist 5000. Eine positive ganze Zahl begrenzt Pools, Workload Groups, tempdbGovernance und Sessions jeweils separat. NULL oder 0 hebt die Grenze auf. Negative Werte ergeben INVALID_PARAMETER. Die Konfigurationszeile bleibt unberührt. Sessions werden vor der Gruppenzuordnung nach CPU-Zeit absteigend und SessionId begrenzt.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'**@ResultSetArt:** @ResultSetArt varchar(16). Default ist ''CONSOLE''. CONSOLE zeigt beschriftete Fachergebnisse. RAW gibt zuerst Status und Metadaten, dann die Daten und Warnungen aus. TABLE schreibt nur zugeordnete Fachergebnisse in lokale Temp-Tabellen. NONE unterdrückt diese Ausgaben. Leerzeichen am Rand werden entfernt und Groß-/Kleinschreibung wird normalisiert. NULL, leere Eingaben und alle anderen Werte ergeben INVALID_PARAMETER. JSON und Statusmeldungen werden separat gesteuert.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'**@ResultTablesJson:** @ResultTablesJson nvarchar(max). Default ist NULL. Bei TABLE ist ein nichtleeres JSON-Objekt erforderlich. Die exakten Schlüssel sind configuration für Konfiguration, resourcePools für Pools, workloadGroups für Gruppen, sessions für Sessions und tempdbGovernance für TempDB-Limits und Laufzeitevidenz. Wählen Sie mindestens einen Schlüssel. Jeder Wert ist der Name einer vorhandenen leeren lokalen #Temp-Tabelle mit genau einer Seed-Spalte. Der Name darf höchstens 116 Zeichen lang sein. ## und #Monitor als Präfix sind unzulässig. Doppelte Schlüssel und Ziele sind unzulässig. Die Vorprüfung erfolgt vor dem Lesen der fachlichen Quellen. Außerhalb von TABLE sind nur NULL, die leere Zeichenfolge und reine Leerzeichen zulässig.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'**@JsonErzeugen:** @JsonErzeugen bit. Default ist 0. 1 erzeugt das JSON-Dokument unabhängig von @ResultSetArt. 0 lässt @Json auf NULL. NULL ergibt INVALID_PARAMETER.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'**@Json:** @Json nvarchar(max) OUTPUT. Default ist NULL. Binden Sie eine nvarchar(max)-Variable mit OUTPUT. Die Procedure setzt den Wert vor Hilfe und Validierung auf NULL. Bei @JsonErzeugen=1 erhält die Variable das Dokument der SchemaVersion 2 mit Metadaten, Konfiguration, Pools, Gruppen, TempDB-Governance, Sessions und Warnungen einschließlich NULL-Feldern.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'**@PrintMeldungen:** @PrintMeldungen bit. Default ist 1. 1 gibt bei einem Status ungleich AVAILABLE eine informative Meldung mit Schweregrad 10 aus. 0 oder NULL unterdrückt diese Meldung.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'**@Hilfe:** @Hilfe bit. Default ist 0. 1 zeigt diese Hilfe und beendet den Aufruf vor Validierung, TABLE-Vorprüfung, fachlichen Quellzugriffen und JSON-Erzeugung. 0 oder NULL führt die Analyse aus.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'## Resultate und Ausgabe'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'configuration, resourcePools, workloadGroups, sessions, tempdbGovernance und warnings.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'| Resultmenge | RAW | TABLE | Felder laut Inventar |'
+            + NCHAR(10)
+            + N'| --- | --- | --- | --- |'
+            + NCHAR(10)
+            + N'| configuration | 1 | 1 | [ClassifierFunctionId] int NULL , [IsEnabled] bit NULL , [ReconfigurationPending] bit NULL , [ClassifierFunctionName] nvarchar(517) NULL |'
+            + NCHAR(10)
+            + N'| resourcePools | 1 | 1 | [PoolId] int NOT NULL , [PoolName] sysname NOT NULL , [MinCpuPercent] int NULL , [MaxCpuPercent] int NULL , [MinMemoryPercent] int NULL , [MaxMemoryPercent] int NULL , [CapCpuPercent] int NULL , [MinIopsPerVolume] int NULL , [MaxIopsPerVolume] int NULL , [StatisticsStartTime] datetime NULL , [TotalCpuUsageMs] bigint NULL , [CacheMemoryMb] decimal(19,2) NULL , [UsedWorkspaceMemoryMb] decimal(19,2) NULL , [TargetWorkspaceMemoryMb] decimal(19,2) NULL , [MaxWorkspaceMemoryMb] decimal(19,2) NULL , [OutOfMemoryCount] bigint NULL , [ActiveMemgrantCount] int NULL , [PendingMemgrantCount] int NULL , [UsedOfTargetMemoryPercent] decimal(9,2) NULL , [UsedOfMaxMemoryPercent] decimal(9,2) NULL |'
+            + NCHAR(10)
+            + N'| workloadGroups | 1 | 1 | [GroupId] int NOT NULL , [GroupName] sysname NOT NULL , [PoolId] int NULL , [PoolName] sysname NULL , [Importance] nvarchar(60) NULL , [RequestMaxMemoryGrantPercent] decimal(9,4) NULL , [ConfiguredRequestMaxGrantMemoryMb] decimal(19,2) NULL , [TargetRequestMaxGrantMemoryMb] decimal(19,2) NULL , [HistoricalMaxRequestGrantMemoryMb] decimal(19,2) NULL , [RequestMaxCpuTimeSec] int NULL , [RequestMemoryGrantTimeoutSec] int NULL , [MaxDop] int NULL , [EffectiveMaxDop] int NULL , [GroupMaxRequests] int NULL , [TotalRequestCount] bigint NULL , [TotalQueuedRequestCount] bigint NULL , [ActiveRequestCount] int NULL , [QueuedRequestCount] int NULL , [TotalReducedMemgrantCount] bigint NULL , [TotalCpuUsageMs] bigint NULL , [TotalLockWaitCount] bigint NULL , [TotalLockWaitTimeMs] bigint NULL |'
+            + NCHAR(10)
+            + N'| sessions | 1 | 1 | [SessionId] int NOT NULL , [LoginName] sysname NULL , [HostName] nvarchar(128) NULL , [ProgramName] nvarchar(128) NULL , [GroupId] int NULL , [GroupName] sysname NULL , [PoolName] sysname NULL , [Status] nvarchar(60) NULL , [CpuTimeMs] int NULL , [MemoryUsagePages] int NULL , [MemoryUsageMb] decimal(19,2) NULL , [Reads] bigint NULL , [Writes] bigint NULL , [LogicalReads] bigint NULL |'
+            + NCHAR(10)
+            + N'| tempdbGovernance | 1 | 1 | [GroupId] int NULL , [GroupName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL , [PoolId] int NULL , [PoolName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL , [ConfiguredGroupMaxTempdbDataMb] decimal(19,2) NULL , [ConfiguredGroupMaxTempdbDataPercent] decimal(9,4) NULL , [TempdbMaximumSizeMb] decimal(19,2) NULL , [EffectiveGroupMaxTempdbDataMb] decimal(19,2) NULL , [EffectiveLimitSource] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL , [IsPercentLimitEffective] bit NULL , [TempdbDataSpaceMb] decimal(19,2) NULL , [PeakTempdbDataSpaceMb] decimal(19,2) NULL , [EffectiveLimitUtilizationPercent] decimal(9,2) NULL , [TotalTempdbDataLimitViolationCount] bigint NULL , [HasRecordedLimitViolation] bit NULL , [StatisticsStartTime] datetime NULL , [IsResourceGovernorEnabled] bit NULL , [ReconfigurationPending] bit NULL , [SourceStatusCode] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL , [IsPartial] bit NOT NULL , [EvidenceLimit] nvarchar('
+            + N'1000) COLLATE SQL_Latin1_General_CP1_CS_AS NULL |'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'Bei @Hilfe=1 kommt genau ein Resultset mit SkillFormatVersion, SchemaName, ObjectName und SkillMarkdown hinzu; bestehende PRINT-Hinweise bleiben erhalten.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'## Beispiel'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'```sql'
+            + NCHAR(10)
+            + N'EXEC [monitor].[USP_ResourceGovernorAnalysis] @Hilfe=1;'
+            + NCHAR(10)
+            + N'```'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'## Aufwand, Nebenwirkungen, Fehler und Grenzen'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'monitor.USP_ResourceGovernorAnalysis'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'Die Procedure zeigt die Resource-Governor-Konfiguration, Pools, Workload Groups und optional zugeordnete Benutzersessions. Die TempDB-Ausgabe trennt konfigurierte Limits, Wirksamkeit, Nutzung, Peak und Verletzungen. Die Procedure führt weder ALTER RESOURCE GOVERNOR noch RECONFIGURE oder RESET STATISTICS aus.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'Hilfe anzeigen. EXEC [monitor].[USP_ResourceGovernorAnalysis] @Hilfe=1;'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'RAW ohne Sessionabfrage. EXEC [monitor].[USP_ResourceGovernorAnalysis] @MitSessions=0, @MaxZeilen=100, @ResultSetArt=''RAW'';'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'Nur JSON ausgeben. DECLARE @GovernorJson nvarchar(max); EXEC [monitor].[USP_ResourceGovernorAnalysis] @MitSessions=0, @MaxZeilen=100, @ResultSetArt=''NONE'', @JsonErzeugen=1, @Json=@GovernorJson OUTPUT; SELECT @GovernorJson AS [Json];'
+            + NCHAR(10)
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'### Quellgebundene Detailbeschreibung'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'Der folgende Quellkopf bewahrt die zusätzlichen Implementierungsgrenzen für diesen Skill.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'```text'
+            + NCHAR(10)
+            + N'Objekt       : monitor.USP_ResourceGovernorAnalysis'
+            + NCHAR(10)
+            + N'Version      : 3.0.0'
+            + NCHAR(10)
+            + N'Stand        : 2026-07-23'
+            + NCHAR(10)
+            + N'Typ          : Stored Procedure'
+            + NCHAR(10)
+            + N'Zweck        : Trennt Resource-Governor-Konfiguration, Laufzeitkennzahlen und'
+            + NCHAR(10)
+            + N'               die SQL-Server-2025-TempDB-Governance je Workload Group.'
+            + NCHAR(10)
+            + N'SQL-Version  : SQL Server 2019 oder neuer; TempDB-Governance ab 2025 (17.x).'
+            + NCHAR(10)
+            + N'Datenquellen : sys.resource_governor_configuration,'
+            + NCHAR(10)
+            + N'               sys.dm_resource_governor_configuration,'
+            + NCHAR(10)
+            + N'               sys.resource_governor_resource_pools,'
+            + NCHAR(10)
+            + N'               sys.dm_resource_governor_resource_pools,'
+            + NCHAR(10)
+            + N'               sys.resource_governor_workload_groups,'
+            + NCHAR(10)
+            + N'               sys.dm_resource_governor_workload_groups,'
+            + NCHAR(10)
+            + N'               sys.dm_exec_sessions, master.sys.master_files.'
+            + NCHAR(10)
+            + N'Parameter    : @MitSessions, @MaxZeilen, @ResultSetArt, @ResultTablesJson,'
+            + NCHAR(10)
+            + N'               @JsonErzeugen, @Json OUTPUT, @PrintMeldungen, @Hilfe.'
+            + NCHAR(10)
+            + N'Resultsets   : configuration, resourcePools, workloadGroups, sessions,'
+            + NCHAR(10)
+            + N'               tempdbGovernance und warnings.'
+            + NCHAR(10)
+            + N'Berechtigung : Nur lesender Zugriff. Das Framework vergibt keine Rechte und'
+            + NCHAR(10)
+            + N'               ändert weder Resource Governor noch TempDB.'
+            + NCHAR(10)
+            + N'Eigenlast    : Gering bis mittel; jede fachliche Quelle höchstens einmal.'
+            + NCHAR(10)
+            + N'Locking      : LOCK_TIMEOUT 0 für Quellen; vorheriger Sessionwert wird'
+            + NCHAR(10)
+            + N'               auch nach TABLE- und CONSOLE-Ausgabe wiederhergestellt.'
+            + NCHAR(10)
+            + N'Änderungen   : 3.0.0 - SQL25-003: gespeicherte Limits, wirksames Limit,'
+            + NCHAR(10)
+            + N'                         aktuelle/Peak-Nutzung, Verletzungen und Resetgrenze.'
+            + NCHAR(10)
+            + N'```'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'### Weitere bestehende Hilfehinweise'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'```text'
+            + NCHAR(10)
+            + N'monitor.USP_ResourceGovernorAnalysis'
+            + NCHAR(10)
+            + N'Die Procedure zeigt die Resource-Governor-Konfiguration, Pools, Workload Groups und optional zugeordnete Benutzersessions. Die TempDB-Ausgabe trennt konfigurierte Limits, Wirksamkeit, Nutzung, Peak und Verletzungen. Die Procedure führt weder ALTER RESOURCE GOVERNOR noch RECONFIGURE oder RESET STATISTICS aus.'
+            + NCHAR(10)
+            + N'Hilfe anzeigen. EXEC [monitor].[USP_ResourceGovernorAnalysis] @Hilfe=1;'
+            + NCHAR(10)
+            + N'RAW ohne Sessionabfrage. EXEC [monitor].[USP_ResourceGovernorAnalysis] @MitSessions=0, @MaxZeilen=100, @ResultSetArt=''RAW'';'
+            + NCHAR(10)
+            + N'Nur JSON ausgeben. DECLARE @GovernorJson nvarchar(max); EXEC [monitor].[USP_ResourceGovernorAnalysis] @MitSessions=0, @MaxZeilen=100, @ResultSetArt=''NONE'', @JsonErzeugen=1, @Json=@GovernorJson OUTPUT; SELECT @GovernorJson AS [Json];'
+            + NCHAR(10)
+            + N'Konfigurationszeile in eine lokale Temp-Tabelle schreiben. CREATE TABLE #ResourceGovernorAnalysis_HelpExample ([Seed] int NULL); BEGIN TRY EXEC [monitor].[USP_ResourceGovernorAnalysis] @MitSessions=0, @MaxZeilen=100, @ResultSetArt=''TABLE'', @ResultTablesJson=N''{"configuration":"#ResourceGovernorAnalysis_HelpExample"}''; SELECT * FROM #ResourceGovernorAnalysis_HelpExample; DROP TABLE #ResourceGovernorAnalysis_HelpExample; END TRY BEGIN CATCH DROP TABLE #ResourceGovernorAnalysis_HelpExample; THROW; END CATCH;'
+            + NCHAR(10)
+            + N'```'
+            + NCHAR(10)
+            + NCHAR(10) AS [SkillMarkdown];
+        -- USAGE_SKILL_HELP_END monitor.USP_ResourceGovernorAnalysis
         RETURN;
-    END;
+    END
+
+
+    DECLARE @OriginalLockTimeout int=@@LOCK_TIMEOUT;
+    DECLARE @RestoreLockTimeoutSql nvarchar(100);
+    SET @Json=NULL;
+
+    DECLARE @OutputMode varchar(16)=UPPER(LTRIM(RTRIM(COALESCE(@ResultSetArt,''))));
+    DECLARE @TableResultRequested bit=CASE WHEN @OutputMode='TABLE' THEN 1 ELSE 0 END;
+    DECLARE @ConsoleResultRequested bit=CASE WHEN @OutputMode='CONSOLE' THEN 1 ELSE 0 END;
+    DECLARE @EffectiveMaxZeilen bigint=
+        CASE WHEN @MaxZeilen IS NULL OR @MaxZeilen=0 THEN CONVERT(bigint,9223372036854775807)
+             WHEN @MaxZeilen>0 THEN CONVERT(bigint,@MaxZeilen)
+             ELSE CONVERT(bigint,0) END;
+
+    ;
 
     DECLARE @CollectionTimeUtc datetime2(3)=SYSUTCDATETIME();
     DECLARE @ProductMajorVersion int=TRY_CONVERT(int,SERVERPROPERTY(N'ProductMajorVersion'));

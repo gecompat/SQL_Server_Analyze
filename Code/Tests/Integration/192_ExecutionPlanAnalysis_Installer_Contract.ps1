@@ -14,13 +14,13 @@ foreach($path in @($installer,$builder,$manifest)) {
 }
 $text=Get-Content -LiteralPath $installer -Raw -Encoding UTF8
 $required=@(
-'000_Preflight_und_Schema.sql','020_VW_AnalyseClassCatalog.sql','030_VW_AnalyseAccessPolicy.sql',
+'000_Preflight_und_Schema.sql','004_MetadataSchema.sql','020_VW_AnalyseClassCatalog.sql','030_VW_AnalyseAccessPolicy.sql',
 '040_VW_AnalyseAccessCurrent.sql','078_TVF_ParsePipeList.sql','085_TVF_ParseBigintList.sql','083a_USP_InternalCheckAnalysisPath.sql','095_USP_InternalWriteResultTable.sql','096_USP_InternalPrepareResultTables.sql',
 '098_USP_InternalEmitConsoleResult.sql','041_PlanAnalysisProfile.sql','042_PlanAnalysisRuleThreshold.sql',
 '043_PlanAnalysisProfileAssignment.sql','044_TVF_ParseStatisticsIoText.sql','045_TVF_ParseStatisticsTimeText.sql',
 '046_TVF_ExecutionPlanObjectReferences.sql','047_TVF_ExecutionPlanStatisticsUsage.sql',
 '048_TVF_ExecutionPlanColumnReferences.sql','049_InternalCollectExecutionPlanMetadata.sql',
-'051_InternalAnalyzeExecutionPlan.sql','052_USP_CreateExecutionEvidenceJson.sql','053_USP_ExecutionPlanAnalysis.sql'
+'051_InternalAnalyzeExecutionPlan.sql','052_USP_CreateExecutionEvidenceJson.sql','053_USP_ExecutionPlanAnalysis.sql','005_VW_ObjectUsageSkills.sql'
 )
 foreach($item in $required) { if($text -notmatch [regex]::Escape($item)) { throw "Teilinstaller enthält $item nicht." } }
 $forbidden=@('USP_QueryStats.sql','USP_QueryHashAnalysis.sql','USP_PlanCacheHealth.sql','USP_PlanDetails.sql','USP_ShowplanAnalysis.sql','USP_PlanCacheAnalysis.sql','QueryStore','ExtendedEvents','ServerHealth')

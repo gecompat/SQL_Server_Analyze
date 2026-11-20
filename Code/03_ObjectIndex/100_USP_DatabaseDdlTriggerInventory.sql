@@ -14,6 +14,131 @@ Datenschutz  : Keine Triggerdefinitionen, Ereignisinhalte oder Nutzdaten.
 Nebenwirkung : Read-only im Caller-Kontext; keine Trigger- oder DDL-Aktion.
 ===============================================================================
 */
+-- USAGE_SKILL_BEGIN monitor.USP_DatabaseDdlTriggerInventory 1.0.0
+-- ---
+-- skill_format_version: "1.0.0"
+-- name: "monitor.USP_DatabaseDdlTriggerInventory"
+-- schema_name: "monitor"
+-- object_name: "USP_DatabaseDdlTriggerInventory"
+-- object_type: "PROCEDURE"
+-- database_role: "framework"
+-- is_internal: false
+-- description: "Inventarisiert caller-sichtbare datenbankweite DDL-Trigger in ausgewählten ONLINE-Datenbanken."
+-- source_path: "Code/03_ObjectIndex/100_USP_DatabaseDdlTriggerInventory.sql"
+-- ---
+-- 
+-- # monitor.USP_DatabaseDdlTriggerInventory
+-- 
+-- ## Zweck und Einsatz
+-- 
+-- Inventarisiert caller-sichtbare datenbankweite DDL-Trigger in ausgewählten ONLINE-Datenbanken.
+-- 
+-- ## Voraussetzungen und Rechte
+-- 
+-- Ein direkter Aufruf erfordert EXECUTE auf [monitor].[USP_DatabaseDdlTriggerInventory]. Die Quelle nennt insbesondere `sys.triggers`, `[monitor].[InternalPrepareResultTables]`, `[monitor].[USP_PrepareDatabaseCandidates]`, `[master].[sys].[databases]`, `[sys].[triggers]`, `[sys].[sp_executesql]`, `[monitor].[InternalWriteResultTable]` sowie weitere tatsächlich aufgerufene Quellen. Für deren Metadaten- oder Fachzugriff gelten die Rechte des jeweiligen SQL-Ausführungskontexts; der Skill erteilt sie nicht.
+-- 
+-- ## Parameter und Eingabe
+-- 
+-- „SQL-Bindungspflicht“ bezeichnet ein bei der SQL-Aufrufbindung erforderliches Argument ohne Default. Fachliche Wertpflichten und zulässige NULL-Werte stehen im jeweiligen Einzelvertrag.
+-- 
+-- | Parameter | SQL-Typ | SQL-Bindungspflicht | Default |
+-- | --- | --- | --- | --- |
+-- | @DatabaseNames | nvarchar(max) | nein | NULL |
+-- | @SystemdatenbankenEinbeziehen | bit | nein | 0 |
+-- | @DatabaseNamePattern | nvarchar(4000) | nein | NULL |
+-- | @MaxZeilen | int | nein | 1000 |
+-- | @LockTimeoutMs | int | nein | 0 |
+-- | @ResultSetArt | varchar(16) | nein | 'CONSOLE' |
+-- | @ResultTablesJson | nvarchar(max) | nein | NULL |
+-- | @JsonErzeugen | bit | nein | 0 |
+-- | @Json | nvarchar(max) | nein | NULL OUTPUT |
+-- | @PrintMeldungen | bit | nein | 1 |
+-- | @Hilfe | bit | nein | 0 |
+-- | @StatusCodeOut | varchar(40) | nein | NULL OUTPUT |
+-- | @IsPartialOut | bit | nein | NULL OUTPUT |
+-- | @ErrorNumberOut | int | nein | NULL OUTPUT |
+-- | @ErrorMessageOut | nvarchar(2048) | nein | NULL OUTPUT |
+-- 
+-- **@DatabaseNames:** @DatabaseNames nvarchar(max); Default: NULL. NULL, leerer Text oder äußere U+0020-Leerzeichen bedeuten keine exakte Einschränkung. Eine aktive bracket-aware Pipe-Liste enthält einteilige Datenbanknamen; | innerhalb [...] ist Namensinhalt und ]] maskiert ]. Äußere Leerzeichen werden getrimmt; leere oder doppelte Segmente und Namen über 128 Zeichen sind ungültig. Jedes rohe Segment darf höchstens 4000 UTF-16-Codeeinheiten enthalten, die Gesamtliste ist offen. Eine aktive Liste und ein nicht-NULL-Pattern sind unzulässig. Standard sind caller-sichtbare zugreifbare ONLINE-Benutzerdatenbanken ohne Snapshots.
+-- 
+-- **@SystemdatenbankenEinbeziehen:** @SystemdatenbankenEinbeziehen bit; Default: 0. 0 schließt Datenbank-IDs bis 4 aus; 1 lässt sie als Kandidaten zu. NULL ist INVALID_PARAMETER. Numerische 0 wird 0, andere numerische Werte werden 1; Sichtbarkeit und Zugriff bleiben erforderlich.
+-- 
+-- **@DatabaseNamePattern:** @DatabaseNamePattern nvarchar(4000); Default: NULL. NULL bedeutet kein Pattern; nicht-NULL-Leertext ist ungültig. like:, regex: und regexi: sind zulässige Präfixe, ohne Präfix gilt LIKE. LIKE und regex sind case-sensitiv, regexi ist case-insensitiv. LIKE verwendet SQL-LIKE-Syntax mit %, _, Zeichenklassen und ohne eigene ESCAPE-Klausel. Regex verlangt SQL Server 2025 und Compatibility Level 170 der Installationsdatenbank. Eine aktive exakte Liste und Pattern sind unzulässig.
+-- 
+-- **@MaxZeilen:** @MaxZeilen int; Default: 1000. NULL oder 0 bedeuten unbegrenzt; negative Werte sind INVALID_PARAMETER. Positive Werte 1 bis 2147483647 begrenzen ausschließlich ausgegebene ddlTriggers-Zeilen in der Reihenfolge DatabaseId, TriggerObjectId. Auswahl und Kataloglesearbeit bleiben unbegrenzt; echte Kürzung erhält OUTPUT_LIMIT.
+-- 
+-- **@LockTimeoutMs:** @LockTimeoutMs int; Default: 0. Nur 0 bis 60000 Millisekunden sind zulässig; NULL ist INVALID_PARAMETER. 0 ist NOWAIT. Der Wert gilt je dynamischem Datenbank-Katalogbatch und ist keine Gesamtdauergrenze. Der vorherige Sessionwert wird wiederhergestellt.
+-- 
+-- **@ResultSetArt:** @ResultSetArt varchar(16); Default: 'CONSOLE'. Nach äußerem U+0020-Trimmen und Großschreibung sind CONSOLE, RAW, TABLE und NONE zulässig. NULL oder leer ist INVALID_PARAMETER. CONSOLE liefert eine formatierte Fachmenge, RAW moduleStatus, ddlTriggers, sourceStatus und warnings in dieser Reihenfolge, TABLE schreibt benannte Mengen, NONE liefert keine Fachresultsets. JSON ist unabhängig.
+-- 
+-- **@ResultTablesJson:** @ResultTablesJson nvarchar(max); Default: NULL. Nur TABLE akzeptiert ein JSON-Objekt mit wenigstens einer Zuordnung der exakt case-sensitiven Schlüssel moduleStatus, ddlTriggers, sourceStatus, warnings zu verschiedenen lokalen #Temp-Zielen. Ziele müssen existieren, leer sein und genau eine Seed-Spalte haben; Namen höchstens 116 Zeichen, nicht ## oder #Monitor. Doppelte und unbekannte Schlüssel, doppelte oder ungültige Ziele werden vor Quellenzugriff abgewiesen. Ein späterer Writer-Fehler kann frühere Zielschreibungen belassen. Außerhalb TABLE sind nur NULL, leer oder U+0020-Leerzeichen zulässig.
+-- 
+-- **@JsonErzeugen:** @JsonErzeugen bit; Default: 0. 1 erzeugt unabhängig von ResultSetArt JSON mit schemaVersion 1, meta und allen vier Arrays; NULL und 0 erzeugen keines. Numerische 0 wird 0, andere numerische Werte werden 1.
+-- 
+-- **@Json:** @Json nvarchar(max) OUTPUT; Default: NULL. Optional an eine nvarchar(max)-Variable mit OUTPUT binden; Eingang wird auf NULL gesetzt. Bei JsonErzeugen=1 entsteht JSON im normalen Pfad. Hilfe, direkte Parameterfehler und äußerer CATCH lassen NULL.
+-- 
+-- **@PrintMeldungen:** @PrintMeldungen bit; Default: 1. 1 gibt zusätzliche niedrige Severity-Meldungen zu Fehlern aus; 0 und NULL unterdrücken sie. Andere Ergebnisse bleiben gleich. Numerische 0 wird 0, andere numerische Werte werden 1.
+-- 
+-- **@Hilfe:** @Hilfe bit; Default: 0. 1 gibt diese Hilfe vor Auswahl und Katalogzugriff aus, setzt StatusCodeOut=AVAILABLE und IsPartialOut=0 und kehrt mit 0 zurück. NULL und 0 führen den normalen Pfad aus.
+-- 
+-- **@StatusCodeOut:** @StatusCodeOut varchar(40) OUTPUT; Default: NULL. Optional an varchar(40) mit OUTPUT binden; Eingang wird zurückgesetzt. AVAILABLE bedeutet nur Hilfe; AVAILABLE_LIMITED erfolgreiche sichtbare Quelle, auch leer; SKIPPED keine Kandidatendatenbank; INVALID_PARAMETER ungültige Eingabe oder Auswahl; INTERNAL_ERROR Auswahlhelferfehler; SELECTION_UNAVAILABLE fehlender Auswahlstatus; UNAVAILABLE_FEATURE fehlende Regexvoraussetzung; DATABASE_UNAVAILABLE fehlende, nicht online befindliche oder nicht zugreifbare Datenbank; SYSTEM_DATABASE_EXCLUDED explizit ausgeschlossene Systemdatenbank; DENIED_PERMISSION native Berechtigungsfehler; SOURCE_UNAVAILABLE unbekanntes Prüfergebnis oder Quellenfehler; TIMEOUT SQL 1222; ERROR_HANDLED äußerer Fehler. Der erste relevante Quellenfehler bestimmt den globalen Status.
+-- 
+-- **@IsPartialOut:** @IsPartialOut bit OUTPUT; Default: NULL. Optional an bit mit OUTPUT binden; Eingang wird zurückgesetzt. Hilfe liefert 0; jeder normale Lauf und Fehlerpfad 1. Numerische 0/1-Ausgabe kennzeichnet begrenzte Metadatensicht, nicht eine Fehlerursache.
+-- 
+-- **@ErrorNumberOut:** @ErrorNumberOut int OUTPUT; Default: NULL. Optional an int mit OUTPUT binden; Eingang wird zurückgesetzt. Erfolg und Hilfe lassen NULL; direkte Parameterfehler liefern 51011; gefangene SQL-Fehler ihre native oder Writer-Fehlernummer.
+-- 
+-- **@ErrorMessageOut:** @ErrorMessageOut nvarchar(2048) OUTPUT; Default: NULL. Optional an nvarchar(2048) mit OUTPUT binden; Eingang wird zurückgesetzt. Erfolg und Hilfe lassen NULL; gefangene SQL-Fehler liefern die links auf 2048 Zeichen gekürzte Meldung.
+-- 
+-- ## Resultate und Ausgabe
+-- 
+-- | Resultmenge | RAW | TABLE | Felder laut Inventar |
+-- | --- | --- | --- | --- |
+-- | moduleStatus | 1 | 1 | [ModuleName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL, [CapturedAtUtc] datetime2(3) NOT NULL, [StatusCode] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL, [IsPartial] bit NOT NULL, [RowCount] bigint NOT NULL, [Detail] nvarchar(1000) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL |
+-- | ddlTriggers | 1 | 1 | [DatabaseId] int NOT NULL, [DatabaseName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL, [TriggerObjectId] int NOT NULL, [TriggerName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL, [ParentClass] tinyint NOT NULL, [ParentClassDesc] nvarchar(60) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL, [TriggerType] char(2) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL, [TriggerTypeDesc] nvarchar(60) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL, [IsDisabled] bit NOT NULL, [CreateDate] datetime NOT NULL, [ModifyDate] datetime NOT NULL, [MetadataVisibility] varchar(16) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL |
+-- | sourceStatus | 1 | 1 | [DatabaseId] int NULL, [DatabaseName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL, [SourceKey] varchar(64) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL, [SourceKind] varchar(16) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL, [StartedAtUtc] datetime2(3) NOT NULL, [CompletedAtUtc] datetime2(3) NOT NULL, [StatusCode] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL, [VisibilityScope] varchar(32) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL, [ObservedRows] bigint NULL, [ReturnedRows] bigint NULL, [IsLimited] bit NOT NULL, [ErrorNumber] int NULL, [ErrorMessage] nvarchar(2048) COLLATE SQL_Latin1_General_CP1_CS_AS NULL |
+-- | warnings | 1 | 1 | [DatabaseId] int NULL, [DatabaseName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL, [WarningCode] varchar(64) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL, [SourceKey] varchar(64) COLLATE SQL_Latin1_General_CP1_CS_AS NULL, [Detail] nvarchar(1000) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL |
+-- 
+-- Bei @Hilfe=1 kommt genau ein Resultset mit SkillFormatVersion, SchemaName, ObjectName und SkillMarkdown hinzu; bestehende PRINT-Hinweise bleiben erhalten.
+-- 
+-- ## Beispiel
+-- 
+-- ```sql
+-- EXEC [monitor].[USP_DatabaseDdlTriggerInventory] @DatabaseNames=N'[ExampleDatabase]', @ResultSetArt='RAW', @PrintMeldungen=0;
+-- ```
+-- 
+-- ## Aufwand, Nebenwirkungen, Fehler und Grenzen
+-- 
+-- Kein Nachweis für Ausführung, Wirkung, Ownership oder Vollständigkeit.
+-- 
+-- Read-only im Caller-Kontext; keine Trigger- oder DDL-Aktion.
+-- 
+-- 
+-- ### Quellgebundene Detailbeschreibung
+-- 
+-- Der folgende Quellkopf bewahrt die zusätzlichen Implementierungsgrenzen für diesen Skill.
+-- 
+-- ```text
+-- Objekt       : monitor.USP_DatabaseDdlTriggerInventory
+-- Version      : 1.0.0
+-- Stand        : 2026-11-14
+-- Zweck        : Inventarisiert caller-sichtbare datenbankweite DDL-Trigger
+--                in ausgewählten ONLINE-Datenbanken.
+-- Quellen      : sys.triggers mit parent_class=0.
+-- Grenzen      : Kein Nachweis für Ausführung, Wirkung, Ownership oder Vollständigkeit.
+-- Datenschutz  : Keine Triggerdefinitionen, Ereignisinhalte oder Nutzdaten.
+-- Nebenwirkung : Read-only im Caller-Kontext; keine Trigger- oder DDL-Aktion.
+-- ```
+-- 
+-- ### Weitere bestehende Hilfehinweise
+-- 
+-- ```text
+-- monitor.USP_DatabaseDdlTriggerInventory
+-- Die Procedure liest pro ausgewählter ONLINE-Datenbank caller-sichtbare sys.triggers-Zeilen mit parent_class=0: datenbankweite DDL-Trigger. ParentClassDesc stammt aus dem nativen Katalog; TriggerType TR bezeichnet SQL-, TA CLR-Trigger, weitere native Werte bleiben erhalten. IsDisabled ist ein Konfigurationswert, kein Beleg für Ausführung oder Wirkung. MetadataVisibility ist stets VISIBLE_ONLY. Es werden weder Definitionen oder Ereignisinhalte gelesen noch Trigger ausgeführt. Leere Fachzeilen belegen nur eine leere sichtbare Menge.
+-- DECLARE @Json nvarchar(max); EXEC [monitor].[USP_DatabaseDdlTriggerInventory] @ResultSetArt='NONE', @JsonErzeugen=1, @Json=@Json OUTPUT; SELECT @Json AS [Json];
+-- CREATE TABLE #DatabaseDdlTriggerInventoryExample ([Seed] int NULL); EXEC [monitor].[USP_DatabaseDdlTriggerInventory] @ResultSetArt='TABLE', @ResultTablesJson=N'{"ddlTriggers":"#DatabaseDdlTriggerInventoryExample"}'; SELECT * FROM #DatabaseDdlTriggerInventoryExample; DROP TABLE #DatabaseDdlTriggerInventoryExample;
+-- ```
+-- 
+-- USAGE_SKILL_END monitor.USP_DatabaseDdlTriggerInventory
 CREATE OR ALTER PROCEDURE [monitor].[USP_DatabaseDdlTriggerInventory]
       @DatabaseNames nvarchar(max) = NULL
     , @SystemdatenbankenEinbeziehen bit = 0
@@ -33,6 +158,249 @@ CREATE OR ALTER PROCEDURE [monitor].[USP_DatabaseDdlTriggerInventory]
 AS
 BEGIN
     SET NOCOUNT ON;
+
+    IF @Hilfe=1
+    BEGIN
+        SET @Json=NULL;
+        SET @StatusCodeOut=NULL;
+        SET @IsPartialOut=NULL;
+        SET @ErrorNumberOut=NULL;
+        SET @ErrorMessageOut=NULL;
+        PRINT N'monitor.USP_DatabaseDdlTriggerInventory';
+        PRINT N'Die Procedure liest pro ausgewählter ONLINE-Datenbank caller-sichtbare sys.triggers-Zeilen mit parent_class=0: datenbankweite DDL-Trigger. ParentClassDesc stammt aus dem nativen Katalog; TriggerType TR bezeichnet SQL-, TA CLR-Trigger, weitere native Werte bleiben erhalten. IsDisabled ist ein Konfigurationswert, kein Beleg für Ausführung oder Wirkung. MetadataVisibility ist stets VISIBLE_ONLY. Es werden weder Definitionen oder Ereignisinhalte gelesen noch Trigger ausgeführt. Leere Fachzeilen belegen nur eine leere sichtbare Menge.';
+        PRINT N'@DatabaseNames nvarchar(max); Default: NULL. NULL, leerer Text oder äußere U+0020-Leerzeichen bedeuten keine exakte Einschränkung. Eine aktive bracket-aware Pipe-Liste enthält einteilige Datenbanknamen; | innerhalb [...] ist Namensinhalt und ]] maskiert ]. Äußere Leerzeichen werden getrimmt; leere oder doppelte Segmente und Namen über 128 Zeichen sind ungültig. Jedes rohe Segment darf höchstens 4000 UTF-16-Codeeinheiten enthalten, die Gesamtliste ist offen. Eine aktive Liste und ein nicht-NULL-Pattern sind unzulässig. Standard sind caller-sichtbare zugreifbare ONLINE-Benutzerdatenbanken ohne Snapshots.';
+        PRINT N'@SystemdatenbankenEinbeziehen bit; Default: 0. 0 schließt Datenbank-IDs bis 4 aus; 1 lässt sie als Kandidaten zu. NULL ist INVALID_PARAMETER. Numerische 0 wird 0, andere numerische Werte werden 1; Sichtbarkeit und Zugriff bleiben erforderlich.';
+        PRINT N'@DatabaseNamePattern nvarchar(4000); Default: NULL. NULL bedeutet kein Pattern; nicht-NULL-Leertext ist ungültig. like:, regex: und regexi: sind zulässige Präfixe, ohne Präfix gilt LIKE. LIKE und regex sind case-sensitiv, regexi ist case-insensitiv. LIKE verwendet SQL-LIKE-Syntax mit %, _, Zeichenklassen und ohne eigene ESCAPE-Klausel. Regex verlangt SQL Server 2025 und Compatibility Level 170 der Installationsdatenbank. Eine aktive exakte Liste und Pattern sind unzulässig.';
+        PRINT N'@MaxZeilen int; Default: 1000. NULL oder 0 bedeuten unbegrenzt; negative Werte sind INVALID_PARAMETER. Positive Werte 1 bis 2147483647 begrenzen ausschließlich ausgegebene ddlTriggers-Zeilen in der Reihenfolge DatabaseId, TriggerObjectId. Auswahl und Kataloglesearbeit bleiben unbegrenzt; echte Kürzung erhält OUTPUT_LIMIT.';
+        PRINT N'@LockTimeoutMs int; Default: 0. Nur 0 bis 60000 Millisekunden sind zulässig; NULL ist INVALID_PARAMETER. 0 ist NOWAIT. Der Wert gilt je dynamischem Datenbank-Katalogbatch und ist keine Gesamtdauergrenze. Der vorherige Sessionwert wird wiederhergestellt.';
+        PRINT N'@ResultSetArt varchar(16); Default: ''CONSOLE''. Nach äußerem U+0020-Trimmen und Großschreibung sind CONSOLE, RAW, TABLE und NONE zulässig. NULL oder leer ist INVALID_PARAMETER. CONSOLE liefert eine formatierte Fachmenge, RAW moduleStatus, ddlTriggers, sourceStatus und warnings in dieser Reihenfolge, TABLE schreibt benannte Mengen, NONE liefert keine Fachresultsets. JSON ist unabhängig.';
+        PRINT N'@ResultTablesJson nvarchar(max); Default: NULL. Nur TABLE akzeptiert ein JSON-Objekt mit wenigstens einer Zuordnung der exakt case-sensitiven Schlüssel moduleStatus, ddlTriggers, sourceStatus, warnings zu verschiedenen lokalen #Temp-Zielen. Ziele müssen existieren, leer sein und genau eine Seed-Spalte haben; Namen höchstens 116 Zeichen, nicht ## oder #Monitor. Doppelte und unbekannte Schlüssel, doppelte oder ungültige Ziele werden vor Quellenzugriff abgewiesen. Ein späterer Writer-Fehler kann frühere Zielschreibungen belassen. Außerhalb TABLE sind nur NULL, leer oder U+0020-Leerzeichen zulässig.';
+        PRINT N'@JsonErzeugen bit; Default: 0. 1 erzeugt unabhängig von ResultSetArt JSON mit schemaVersion 1, meta und allen vier Arrays; NULL und 0 erzeugen keines. Numerische 0 wird 0, andere numerische Werte werden 1.';
+        PRINT N'@Json nvarchar(max) OUTPUT; Default: NULL. Optional an eine nvarchar(max)-Variable mit OUTPUT binden; Eingang wird auf NULL gesetzt. Bei JsonErzeugen=1 entsteht JSON im normalen Pfad. Hilfe, direkte Parameterfehler und äußerer CATCH lassen NULL.';
+        PRINT N'@PrintMeldungen bit; Default: 1. 1 gibt zusätzliche niedrige Severity-Meldungen zu Fehlern aus; 0 und NULL unterdrücken sie. Andere Ergebnisse bleiben gleich. Numerische 0 wird 0, andere numerische Werte werden 1.';
+        PRINT N'@Hilfe bit; Default: 0. 1 gibt diese Hilfe vor Auswahl und Katalogzugriff aus, setzt StatusCodeOut=AVAILABLE und IsPartialOut=0 und kehrt mit 0 zurück. NULL und 0 führen den normalen Pfad aus.';
+        PRINT N'@StatusCodeOut varchar(40) OUTPUT; Default: NULL. Optional an varchar(40) mit OUTPUT binden; Eingang wird zurückgesetzt. AVAILABLE bedeutet nur Hilfe; AVAILABLE_LIMITED erfolgreiche sichtbare Quelle, auch leer; SKIPPED keine Kandidatendatenbank; INVALID_PARAMETER ungültige Eingabe oder Auswahl; INTERNAL_ERROR Auswahlhelferfehler; SELECTION_UNAVAILABLE fehlender Auswahlstatus; UNAVAILABLE_FEATURE fehlende Regexvoraussetzung; DATABASE_UNAVAILABLE fehlende, nicht online befindliche oder nicht zugreifbare Datenbank; SYSTEM_DATABASE_EXCLUDED explizit ausgeschlossene Systemdatenbank; DENIED_PERMISSION native Berechtigungsfehler; SOURCE_UNAVAILABLE unbekanntes Prüfergebnis oder Quellenfehler; TIMEOUT SQL 1222; ERROR_HANDLED äußerer Fehler. Der erste relevante Quellenfehler bestimmt den globalen Status.';
+        PRINT N'@IsPartialOut bit OUTPUT; Default: NULL. Optional an bit mit OUTPUT binden; Eingang wird zurückgesetzt. Hilfe liefert 0; jeder normale Lauf und Fehlerpfad 1. Numerische 0/1-Ausgabe kennzeichnet begrenzte Metadatensicht, nicht eine Fehlerursache.';
+        PRINT N'@ErrorNumberOut int OUTPUT; Default: NULL. Optional an int mit OUTPUT binden; Eingang wird zurückgesetzt. Erfolg und Hilfe lassen NULL; direkte Parameterfehler liefern 51011; gefangene SQL-Fehler ihre native oder Writer-Fehlernummer.';
+        PRINT N'@ErrorMessageOut nvarchar(2048) OUTPUT; Default: NULL. Optional an nvarchar(2048) mit OUTPUT binden; Eingang wird zurückgesetzt. Erfolg und Hilfe lassen NULL; gefangene SQL-Fehler liefern die links auf 2048 Zeichen gekürzte Meldung.';
+        PRINT N'EXEC [monitor].[USP_DatabaseDdlTriggerInventory] @DatabaseNames=N''[ExampleDatabase]'', @ResultSetArt=''RAW'', @PrintMeldungen=0;';
+        PRINT N'DECLARE @Json nvarchar(max); EXEC [monitor].[USP_DatabaseDdlTriggerInventory] @ResultSetArt=''NONE'', @JsonErzeugen=1, @Json=@Json OUTPUT; SELECT @Json AS [Json];';
+        PRINT N'CREATE TABLE #DatabaseDdlTriggerInventoryExample ([Seed] int NULL); EXEC [monitor].[USP_DatabaseDdlTriggerInventory] @ResultSetArt=''TABLE'', @ResultTablesJson=N''{"ddlTriggers":"#DatabaseDdlTriggerInventoryExample"}''; SELECT * FROM #DatabaseDdlTriggerInventoryExample; DROP TABLE #DatabaseDdlTriggerInventoryExample;';
+        SELECT @StatusCodeOut='AVAILABLE',@IsPartialOut=0;
+        -- USAGE_SKILL_HELP_BEGIN monitor.USP_DatabaseDdlTriggerInventory
+        SELECT CONVERT(varchar(16),'1.0.0') AS [SkillFormatVersion],CONVERT(sysname,N'monitor') AS [SchemaName],CONVERT(sysname,N'USP_DatabaseDdlTriggerInventory') AS [ObjectName],CONVERT(nvarchar(max),N'---')
+            + NCHAR(10)
+            + N'skill_format_version: "1.0.0"'
+            + NCHAR(10)
+            + N'name: "monitor.USP_DatabaseDdlTriggerInventory"'
+            + NCHAR(10)
+            + N'schema_name: "monitor"'
+            + NCHAR(10)
+            + N'object_name: "USP_DatabaseDdlTriggerInventory"'
+            + NCHAR(10)
+            + N'object_type: "PROCEDURE"'
+            + NCHAR(10)
+            + N'database_role: "framework"'
+            + NCHAR(10)
+            + N'is_internal: false'
+            + NCHAR(10)
+            + N'description: "Inventarisiert caller-sichtbare datenbankweite DDL-Trigger in ausgewählten ONLINE-Datenbanken."'
+            + NCHAR(10)
+            + N'source_path: "Code/03_ObjectIndex/100_USP_DatabaseDdlTriggerInventory.sql"'
+            + NCHAR(10)
+            + N'---'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'# monitor.USP_DatabaseDdlTriggerInventory'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'## Zweck und Einsatz'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'Inventarisiert caller-sichtbare datenbankweite DDL-Trigger in ausgewählten ONLINE-Datenbanken.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'## Voraussetzungen und Rechte'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'Ein direkter Aufruf erfordert EXECUTE auf [monitor].[USP_DatabaseDdlTriggerInventory]. Die Quelle nennt insbesondere `sys.triggers`, `[monitor].[InternalPrepareResultTables]`, `[monitor].[USP_PrepareDatabaseCandidates]`, `[master].[sys].[databases]`, `[sys].[triggers]`, `[sys].[sp_executesql]`, `[monitor].[InternalWriteResultTable]` sowie weitere tatsächlich aufgerufene Quellen. Für deren Metadaten- oder Fachzugriff gelten die Rechte des jeweiligen SQL-Ausführungskontexts; der Skill erteilt sie nicht.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'## Parameter und Eingabe'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'„SQL-Bindungspflicht“ bezeichnet ein bei der SQL-Aufrufbindung erforderliches Argument ohne Default. Fachliche Wertpflichten und zulässige NULL-Werte stehen im jeweiligen Einzelvertrag.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'| Parameter | SQL-Typ | SQL-Bindungspflicht | Default |'
+            + NCHAR(10)
+            + N'| --- | --- | --- | --- |'
+            + NCHAR(10)
+            + N'| @DatabaseNames | nvarchar(max) | nein | NULL |'
+            + NCHAR(10)
+            + N'| @SystemdatenbankenEinbeziehen | bit | nein | 0 |'
+            + NCHAR(10)
+            + N'| @DatabaseNamePattern | nvarchar(4000) | nein | NULL |'
+            + NCHAR(10)
+            + N'| @MaxZeilen | int | nein | 1000 |'
+            + NCHAR(10)
+            + N'| @LockTimeoutMs | int | nein | 0 |'
+            + NCHAR(10)
+            + N'| @ResultSetArt | varchar(16) | nein | ''CONSOLE'' |'
+            + NCHAR(10)
+            + N'| @ResultTablesJson | nvarchar(max) | nein | NULL |'
+            + NCHAR(10)
+            + N'| @JsonErzeugen | bit | nein | 0 |'
+            + NCHAR(10)
+            + N'| @Json | nvarchar(max) | nein | NULL OUTPUT |'
+            + NCHAR(10)
+            + N'| @PrintMeldungen | bit | nein | 1 |'
+            + NCHAR(10)
+            + N'| @Hilfe | bit | nein | 0 |'
+            + NCHAR(10)
+            + N'| @StatusCodeOut | varchar(40) | nein | NULL OUTPUT |'
+            + NCHAR(10)
+            + N'| @IsPartialOut | bit | nein | NULL OUTPUT |'
+            + NCHAR(10)
+            + N'| @ErrorNumberOut | int | nein | NULL OUTPUT |'
+            + NCHAR(10)
+            + N'| @ErrorMessageOut | nvarchar(2048) | nein | NULL OUTPUT |'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'**@DatabaseNames:** @DatabaseNames nvarchar(max); Default: NULL. NULL, leerer Text oder äußere U+0020-Leerzeichen bedeuten keine exakte Einschränkung. Eine aktive bracket-aware Pipe-Liste enthält einteilige Datenbanknamen; | innerhalb [...] ist Namensinhalt und ]] maskiert ]. Äußere Leerzeichen werden getrimmt; leere oder doppelte Segmente und Namen über 128 Zeichen sind ungültig. Jedes rohe Segment darf höchstens 4000 UTF-16-Codeeinheiten enthalten, die Gesamtliste ist offen. Eine aktive Liste und ein nicht-NULL-Pattern sind unzulässig. Standard sind caller-sichtbare zugreifbare ONLINE-Benutzerdatenbanken ohne Snapshots.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'**@SystemdatenbankenEinbeziehen:** @SystemdatenbankenEinbeziehen bit; Default: 0. 0 schließt Datenbank-IDs bis 4 aus; 1 lässt sie als Kandidaten zu. NULL ist INVALID_PARAMETER. Numerische 0 wird 0, andere numerische Werte werden 1; Sichtbarkeit und Zugriff bleiben erforderlich.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'**@DatabaseNamePattern:** @DatabaseNamePattern nvarchar(4000); Default: NULL. NULL bedeutet kein Pattern; nicht-NULL-Leertext ist ungültig. like:, regex: und regexi: sind zulässige Präfixe, ohne Präfix gilt LIKE. LIKE und regex sind case-sensitiv, regexi ist case-insensitiv. LIKE verwendet SQL-LIKE-Syntax mit %, _, Zeichenklassen und ohne eigene ESCAPE-Klausel. Regex verlangt SQL Server 2025 und Compatibility Level 170 der Installationsdatenbank. Eine aktive exakte Liste und Pattern sind unzulässig.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'**@MaxZeilen:** @MaxZeilen int; Default: 1000. NULL oder 0 bedeuten unbegrenzt; negative Werte sind INVALID_PARAMETER. Positive Werte 1 bis 2147483647 begrenzen ausschließlich ausgegebene ddlTriggers-Zeilen in der Reihenfolge DatabaseId, TriggerObjectId. Auswahl und Kataloglesearbeit bleiben unbegrenzt; echte Kürzung erhält OUTPUT_LIMIT.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'**@LockTimeoutMs:** @LockTimeoutMs int; Default: 0. Nur 0 bis 60000 Millisekunden sind zulässig; NULL ist INVALID_PARAMETER. 0 ist NOWAIT. Der Wert gilt je dynamischem Datenbank-Katalogbatch und ist keine Gesamtdauergrenze. Der vorherige Sessionwert wird wiederhergestellt.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'**@ResultSetArt:** @ResultSetArt varchar(16); Default: ''CONSOLE''. Nach äußerem U+0020-Trimmen und Großschreibung sind CONSOLE, RAW, TABLE und NONE zulässig. NULL oder leer ist INVALID_PARAMETER. CONSOLE liefert eine formatierte Fachmenge, RAW moduleStatus, ddlTriggers, sourceStatus und warnings in dieser Reihenfolge, TABLE schreibt benannte Mengen, NONE liefert keine Fachresultsets. JSON ist unabhängig.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'**@ResultTablesJson:** @ResultTablesJson nvarchar(max); Default: NULL. Nur TABLE akzeptiert ein JSON-Objekt mit wenigstens einer Zuordnung der exakt case-sensitiven Schlüssel moduleStatus, ddlTriggers, sourceStatus, warnings zu verschiedenen lokalen #Temp-Zielen. Ziele müssen existieren, leer sein und genau eine Seed-Spalte haben; Namen höchstens 116 Zeichen, nicht ## oder #Monitor. Doppelte und unbekannte Schlüssel, doppelte oder ungültige Ziele werden vor Quellenzugriff abgewiesen. Ein späterer Writer-Fehler kann frühere Zielschreibungen belassen. Außerhalb TABLE sind nur NULL, leer oder U+0020-Leerzeichen zulässig.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'**@JsonErzeugen:** @JsonErzeugen bit; Default: 0. 1 erzeugt unabhängig von ResultSetArt JSON mit schemaVersion 1, meta und allen vier Arrays; NULL und 0 erzeugen keines. Numerische 0 wird 0, andere numerische Werte werden 1.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'**@Json:** @Json nvarchar(max) OUTPUT; Default: NULL. Optional an eine nvarchar(max)-Variable mit OUTPUT binden; Eingang wird auf NULL gesetzt. Bei JsonErzeugen=1 entsteht JSON im normalen Pfad. Hilfe, direkte Parameterfehler und äußerer CATCH lassen NULL.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'**@PrintMeldungen:** @PrintMeldungen bit; Default: 1. 1 gibt zusätzliche niedrige Severity-Meldungen zu Fehlern aus; 0 und NULL unterdrücken sie. Andere Ergebnisse bleiben gleich. Numerische 0 wird 0, andere numerische Werte werden 1.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'**@Hilfe:** @Hilfe bit; Default: 0. 1 gibt diese Hilfe vor Auswahl und Katalogzugriff aus, setzt StatusCodeOut=AVAILABLE und IsPartialOut=0 und kehrt mit 0 zurück. NULL und 0 führen den normalen Pfad aus.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'**@StatusCodeOut:** @StatusCodeOut varchar(40) OUTPUT; Default: NULL. Optional an varchar(40) mit OUTPUT binden; Eingang wird zurückgesetzt. AVAILABLE bedeutet nur Hilfe; AVAILABLE_LIMITED erfolgreiche sichtbare Quelle, auch leer; SKIPPED keine Kandidatendatenbank; INVALID_PARAMETER ungültige Eingabe oder Auswahl; INTERNAL_ERROR Auswahlhelferfehler; SELECTION_UNAVAILABLE fehlender Auswahlstatus; UNAVAILABLE_FEATURE fehlende Regexvoraussetzung; DATABASE_UNAVAILABLE fehlende, nicht online befindliche oder nicht zugreifbare Datenbank; SYSTEM_DATABASE_EXCLUDED explizit ausgeschlossene Systemdatenbank; DENIED_PERMISSION native Berechtigungsfehler; SOURCE_UNAVAILABLE unbekanntes Prüfergebnis oder Quellenfehler; TIMEOUT SQL 1222; ERROR_HANDLED äußerer Fehler. Der erste relevante Quellenfehler bestimmt den globalen Status.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'**@IsPartialOut:** @IsPartialOut bit OUTPUT; Default: NULL. Optional an bit mit OUTPUT binden; Eingang wird zurückgesetzt. Hilfe liefert 0; jeder normale Lauf und Fehlerpfad 1. Numerische 0/1-Ausgabe kennzeichnet begrenzte Metadatensicht, nicht eine Fehlerursache.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'**@ErrorNumberOut:** @ErrorNumberOut int OUTPUT; Default: NULL. Optional an int mit OUTPUT binden; Eingang wird zurückgesetzt. Erfolg und Hilfe lassen NULL; direkte Parameterfehler liefern 51011; gefangene SQL-Fehler ihre native oder Writer-Fehlernummer.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'**@ErrorMessageOut:** @ErrorMessageOut nvarchar(2048) OUTPUT; Default: NULL. Optional an nvarchar(2048) mit OUTPUT binden; Eingang wird zurückgesetzt. Erfolg und Hilfe lassen NULL; gefangene SQL-Fehler liefern die links auf 2048 Zeichen gekürzte Meldung.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'## Resultate und Ausgabe'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'| Resultmenge | RAW | TABLE | Felder laut Inventar |'
+            + NCHAR(10)
+            + N'| --- | --- | --- | --- |'
+            + NCHAR(10)
+            + N'| moduleStatus | 1 | 1 | [ModuleName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL, [CapturedAtUtc] datetime2(3) NOT NULL, [StatusCode] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL, [IsPartial] bit NOT NULL, [RowCount] bigint NOT NULL, [Detail] nvarchar(1000) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL |'
+            + NCHAR(10)
+            + N'| ddlTriggers | 1 | 1 | [DatabaseId] int NOT NULL, [DatabaseName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL, [TriggerObjectId] int NOT NULL, [TriggerName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL, [ParentClass] tinyint NOT NULL, [ParentClassDesc] nvarchar(60) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL, [TriggerType] char(2) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL, [TriggerTypeDesc] nvarchar(60) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL, [IsDisabled] bit NOT NULL, [CreateDate] datetime NOT NULL, [ModifyDate] datetime NOT NULL, [MetadataVisibility] varchar(16) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL |'
+            + NCHAR(10)
+            + N'| sourceStatus | 1 | 1 | [DatabaseId] int NULL, [DatabaseName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL, [SourceKey] varchar(64) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL, [SourceKind] varchar(16) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL, [StartedAtUtc] datetime2(3) NOT NULL, [CompletedAtUtc] datetime2(3) NOT NULL, [StatusCode] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL, [VisibilityScope] varchar(32) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL, [ObservedRows] bigint NULL, [ReturnedRows] bigint NULL, [IsLimited] bit NOT NULL, [ErrorNumber] int NULL, [ErrorMessage] nvarchar(2048) COLLATE SQL_Latin1_General_CP1_CS_AS NULL |'
+            + NCHAR(10)
+            + N'| warnings | 1 | 1 | [DatabaseId] int NULL, [DatabaseName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL, [WarningCode] varchar(64) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL, [SourceKey] varchar(64) COLLATE SQL_Latin1_General_CP1_CS_AS NULL, [Detail] nvarchar(1000) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL |'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'Bei @Hilfe=1 kommt genau ein Resultset mit SkillFormatVersion, SchemaName, ObjectName und SkillMarkdown hinzu; bestehende PRINT-Hinweise bleiben erhalten.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'## Beispiel'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'```sql'
+            + NCHAR(10)
+            + N'EXEC [monitor].[USP_DatabaseDdlTriggerInventory] @DatabaseNames=N''[ExampleDatabase]'', @ResultSetArt=''RAW'', @PrintMeldungen=0;'
+            + NCHAR(10)
+            + N'```'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'## Aufwand, Nebenwirkungen, Fehler und Grenzen'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'Kein Nachweis für Ausführung, Wirkung, Ownership oder Vollständigkeit.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'Read-only im Caller-Kontext; keine Trigger- oder DDL-Aktion.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'### Quellgebundene Detailbeschreibung'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'Der folgende Quellkopf bewahrt die zusätzlichen Implementierungsgrenzen für diesen Skill.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'```text'
+            + NCHAR(10)
+            + N'Objekt       : monitor.USP_DatabaseDdlTriggerInventory'
+            + NCHAR(10)
+            + N'Version      : 1.0.0'
+            + NCHAR(10)
+            + N'Stand        : 2026-11-14'
+            + NCHAR(10)
+            + N'Zweck        : Inventarisiert caller-sichtbare datenbankweite DDL-Trigger'
+            + NCHAR(10)
+            + N'               in ausgewählten ONLINE-Datenbanken.'
+            + NCHAR(10)
+            + N'Quellen      : sys.triggers mit parent_class=0.'
+            + NCHAR(10)
+            + N'Grenzen      : Kein Nachweis für Ausführung, Wirkung, Ownership oder Vollständigkeit.'
+            + NCHAR(10)
+            + N'Datenschutz  : Keine Triggerdefinitionen, Ereignisinhalte oder Nutzdaten.'
+            + NCHAR(10)
+            + N'Nebenwirkung : Read-only im Caller-Kontext; keine Trigger- oder DDL-Aktion.'
+            + NCHAR(10)
+            + N'```'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'### Weitere bestehende Hilfehinweise'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'```text'
+            + NCHAR(10)
+            + N'monitor.USP_DatabaseDdlTriggerInventory'
+            + NCHAR(10)
+            + N'Die Procedure liest pro ausgewählter ONLINE-Datenbank caller-sichtbare sys.triggers-Zeilen mit parent_class=0: datenbankweite DDL-Trigger. ParentClassDesc stammt aus dem nativen Katalog; TriggerType TR bezeichnet SQL-, TA CLR-Trigger, weitere native Werte bleiben erhalten. IsDisabled ist ein Konfigurationswert, kein Beleg für Ausführung oder Wirkung. MetadataVisibility ist stets VISIBLE_ONLY. Es werden weder Definitionen oder Ereignisinhalte gelesen noch Trigger ausgeführt. Leere Fachzeilen belegen nur eine leere sichtbare Menge.'
+            + NCHAR(10)
+            + N'DECLARE @Json nvarchar(max); EXEC [monitor].[USP_DatabaseDdlTriggerInventory] @ResultSetArt=''NONE'', @JsonErzeugen=1, @Json=@Json OUTPUT; SELECT @Json AS [Json];'
+            + NCHAR(10)
+            + N'C'
+            + N'REATE TABLE #DatabaseDdlTriggerInventoryExample ([Seed] int NULL); EXEC [monitor].[USP_DatabaseDdlTriggerInventory] @ResultSetArt=''TABLE'', @ResultTablesJson=N''{"ddlTriggers":"#DatabaseDdlTriggerInventoryExample"}''; SELECT * FROM #DatabaseDdlTriggerInventoryExample; DROP TABLE #DatabaseDdlTriggerInventoryExample;'
+            + NCHAR(10)
+            + N'```'
+            + NCHAR(10)
+            + NCHAR(10) AS [SkillMarkdown];
+        -- USAGE_SKILL_HELP_END monitor.USP_DatabaseDdlTriggerInventory
+        RETURN;
+    END
+
     SELECT @Json=NULL,@StatusCodeOut=NULL,@IsPartialOut=NULL,
            @ErrorNumberOut=NULL,@ErrorMessageOut=NULL;
 
@@ -60,31 +428,7 @@ BEGIN
     DECLARE @ConsoleResultRequested bit=CASE WHEN @Mode='CONSOLE' THEN 1 ELSE 0 END;
     SET @LockTimeoutSql=N'SET LOCK_TIMEOUT '+CONVERT(nvarchar(20),@OriginalLockTimeout)+N';';
 
-    IF @Hilfe=1
-    BEGIN
-        PRINT N'monitor.USP_DatabaseDdlTriggerInventory';
-        PRINT N'Die Procedure liest pro ausgewählter ONLINE-Datenbank caller-sichtbare sys.triggers-Zeilen mit parent_class=0: datenbankweite DDL-Trigger. ParentClassDesc stammt aus dem nativen Katalog; TriggerType TR bezeichnet SQL-, TA CLR-Trigger, weitere native Werte bleiben erhalten. IsDisabled ist ein Konfigurationswert, kein Beleg für Ausführung oder Wirkung. MetadataVisibility ist stets VISIBLE_ONLY. Es werden weder Definitionen oder Ereignisinhalte gelesen noch Trigger ausgeführt. Leere Fachzeilen belegen nur eine leere sichtbare Menge.';
-        PRINT N'@DatabaseNames nvarchar(max); Default: NULL. NULL, leerer Text oder äußere U+0020-Leerzeichen bedeuten keine exakte Einschränkung. Eine aktive bracket-aware Pipe-Liste enthält einteilige Datenbanknamen; | innerhalb [...] ist Namensinhalt und ]] maskiert ]. Äußere Leerzeichen werden getrimmt; leere oder doppelte Segmente und Namen über 128 Zeichen sind ungültig. Jedes rohe Segment darf höchstens 4000 UTF-16-Codeeinheiten enthalten, die Gesamtliste ist offen. Eine aktive Liste und ein nicht-NULL-Pattern sind unzulässig. Standard sind caller-sichtbare zugreifbare ONLINE-Benutzerdatenbanken ohne Snapshots.';
-        PRINT N'@SystemdatenbankenEinbeziehen bit; Default: 0. 0 schließt Datenbank-IDs bis 4 aus; 1 lässt sie als Kandidaten zu. NULL ist INVALID_PARAMETER. Numerische 0 wird 0, andere numerische Werte werden 1; Sichtbarkeit und Zugriff bleiben erforderlich.';
-        PRINT N'@DatabaseNamePattern nvarchar(4000); Default: NULL. NULL bedeutet kein Pattern; nicht-NULL-Leertext ist ungültig. like:, regex: und regexi: sind zulässige Präfixe, ohne Präfix gilt LIKE. LIKE und regex sind case-sensitiv, regexi ist case-insensitiv. LIKE verwendet SQL-LIKE-Syntax mit %, _, Zeichenklassen und ohne eigene ESCAPE-Klausel. Regex verlangt SQL Server 2025 und Compatibility Level 170 der Installationsdatenbank. Eine aktive exakte Liste und Pattern sind unzulässig.';
-        PRINT N'@MaxZeilen int; Default: 1000. NULL oder 0 bedeuten unbegrenzt; negative Werte sind INVALID_PARAMETER. Positive Werte 1 bis 2147483647 begrenzen ausschließlich ausgegebene ddlTriggers-Zeilen in der Reihenfolge DatabaseId, TriggerObjectId. Auswahl und Kataloglesearbeit bleiben unbegrenzt; echte Kürzung erhält OUTPUT_LIMIT.';
-        PRINT N'@LockTimeoutMs int; Default: 0. Nur 0 bis 60000 Millisekunden sind zulässig; NULL ist INVALID_PARAMETER. 0 ist NOWAIT. Der Wert gilt je dynamischem Datenbank-Katalogbatch und ist keine Gesamtdauergrenze. Der vorherige Sessionwert wird wiederhergestellt.';
-        PRINT N'@ResultSetArt varchar(16); Default: ''CONSOLE''. Nach äußerem U+0020-Trimmen und Großschreibung sind CONSOLE, RAW, TABLE und NONE zulässig. NULL oder leer ist INVALID_PARAMETER. CONSOLE liefert eine formatierte Fachmenge, RAW moduleStatus, ddlTriggers, sourceStatus und warnings in dieser Reihenfolge, TABLE schreibt benannte Mengen, NONE liefert keine Fachresultsets. JSON ist unabhängig.';
-        PRINT N'@ResultTablesJson nvarchar(max); Default: NULL. Nur TABLE akzeptiert ein JSON-Objekt mit wenigstens einer Zuordnung der exakt case-sensitiven Schlüssel moduleStatus, ddlTriggers, sourceStatus, warnings zu verschiedenen lokalen #Temp-Zielen. Ziele müssen existieren, leer sein und genau eine Seed-Spalte haben; Namen höchstens 116 Zeichen, nicht ## oder #Monitor. Doppelte und unbekannte Schlüssel, doppelte oder ungültige Ziele werden vor Quellenzugriff abgewiesen. Ein späterer Writer-Fehler kann frühere Zielschreibungen belassen. Außerhalb TABLE sind nur NULL, leer oder U+0020-Leerzeichen zulässig.';
-        PRINT N'@JsonErzeugen bit; Default: 0. 1 erzeugt unabhängig von ResultSetArt JSON mit schemaVersion 1, meta und allen vier Arrays; NULL und 0 erzeugen keines. Numerische 0 wird 0, andere numerische Werte werden 1.';
-        PRINT N'@Json nvarchar(max) OUTPUT; Default: NULL. Optional an eine nvarchar(max)-Variable mit OUTPUT binden; Eingang wird auf NULL gesetzt. Bei JsonErzeugen=1 entsteht JSON im normalen Pfad. Hilfe, direkte Parameterfehler und äußerer CATCH lassen NULL.';
-        PRINT N'@PrintMeldungen bit; Default: 1. 1 gibt zusätzliche niedrige Severity-Meldungen zu Fehlern aus; 0 und NULL unterdrücken sie. Andere Ergebnisse bleiben gleich. Numerische 0 wird 0, andere numerische Werte werden 1.';
-        PRINT N'@Hilfe bit; Default: 0. 1 gibt diese Hilfe vor Auswahl und Katalogzugriff aus, setzt StatusCodeOut=AVAILABLE und IsPartialOut=0 und kehrt mit 0 zurück. NULL und 0 führen den normalen Pfad aus.';
-        PRINT N'@StatusCodeOut varchar(40) OUTPUT; Default: NULL. Optional an varchar(40) mit OUTPUT binden; Eingang wird zurückgesetzt. AVAILABLE bedeutet nur Hilfe; AVAILABLE_LIMITED erfolgreiche sichtbare Quelle, auch leer; SKIPPED keine Kandidatendatenbank; INVALID_PARAMETER ungültige Eingabe oder Auswahl; INTERNAL_ERROR Auswahlhelferfehler; SELECTION_UNAVAILABLE fehlender Auswahlstatus; UNAVAILABLE_FEATURE fehlende Regexvoraussetzung; DATABASE_UNAVAILABLE fehlende, nicht online befindliche oder nicht zugreifbare Datenbank; SYSTEM_DATABASE_EXCLUDED explizit ausgeschlossene Systemdatenbank; DENIED_PERMISSION native Berechtigungsfehler; SOURCE_UNAVAILABLE unbekanntes Prüfergebnis oder Quellenfehler; TIMEOUT SQL 1222; ERROR_HANDLED äußerer Fehler. Der erste relevante Quellenfehler bestimmt den globalen Status.';
-        PRINT N'@IsPartialOut bit OUTPUT; Default: NULL. Optional an bit mit OUTPUT binden; Eingang wird zurückgesetzt. Hilfe liefert 0; jeder normale Lauf und Fehlerpfad 1. Numerische 0/1-Ausgabe kennzeichnet begrenzte Metadatensicht, nicht eine Fehlerursache.';
-        PRINT N'@ErrorNumberOut int OUTPUT; Default: NULL. Optional an int mit OUTPUT binden; Eingang wird zurückgesetzt. Erfolg und Hilfe lassen NULL; direkte Parameterfehler liefern 51011; gefangene SQL-Fehler ihre native oder Writer-Fehlernummer.';
-        PRINT N'@ErrorMessageOut nvarchar(2048) OUTPUT; Default: NULL. Optional an nvarchar(2048) mit OUTPUT binden; Eingang wird zurückgesetzt. Erfolg und Hilfe lassen NULL; gefangene SQL-Fehler liefern die links auf 2048 Zeichen gekürzte Meldung.';
-        PRINT N'EXEC [monitor].[USP_DatabaseDdlTriggerInventory] @DatabaseNames=N''[ExampleDatabase]'', @ResultSetArt=''RAW'', @PrintMeldungen=0;';
-        PRINT N'DECLARE @Json nvarchar(max); EXEC [monitor].[USP_DatabaseDdlTriggerInventory] @ResultSetArt=''NONE'', @JsonErzeugen=1, @Json=@Json OUTPUT; SELECT @Json AS [Json];';
-        PRINT N'CREATE TABLE #DatabaseDdlTriggerInventoryExample ([Seed] int NULL); EXEC [monitor].[USP_DatabaseDdlTriggerInventory] @ResultSetArt=''TABLE'', @ResultTablesJson=N''{"ddlTriggers":"#DatabaseDdlTriggerInventoryExample"}''; SELECT * FROM #DatabaseDdlTriggerInventoryExample; DROP TABLE #DatabaseDdlTriggerInventoryExample;';
-        SELECT @StatusCodeOut='AVAILABLE',@IsPartialOut=0;
-        RETURN;
-    END;
+    ;
 
     IF @Mode NOT IN ('CONSOLE','RAW','TABLE','NONE')
        OR @MaxZeilen<0

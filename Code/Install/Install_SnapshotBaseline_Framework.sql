@@ -10,6 +10,7 @@ Install_SnapshotBaseline_Target.sql in einer eigenen Datenbank installiert sein.
 */
 
 :r ../00_Setup/000_Preflight_und_Schema.sql
+:r ../00_Setup/004_MetadataSchema.sql
 :r ../10_SnapshotBaseline/010_SnapshotTargetConfiguration.sql
 :r ../10_SnapshotBaseline/076_InternalValidateSnapshotWaitTarget.sql
 :r ../10_SnapshotBaseline/080_USP_ConfigureSnapshotTarget.sql
@@ -17,3 +18,4 @@ Install_SnapshotBaseline_Target.sql in einer eigenen Datenbank installiert sein.
 :r ../10_SnapshotBaseline/087_InternalRunSnapshotFileIOCycle.sql
 :r ../10_SnapshotBaseline/090_USP_RunSnapshotCollectionCycle.sql
 :r ../10_SnapshotBaseline/100_USP_PurgeSnapshotData.sql
+:r ../00_Setup/005_VW_ObjectUsageSkills.sql

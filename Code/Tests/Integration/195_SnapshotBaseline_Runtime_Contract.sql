@@ -37,6 +37,7 @@ GO
 USE [SQLServerAnalyzeTest];
 GO
 :r Install_SnapshotBaseline_Framework.sql
+:r ../Tests/Integration/230_Usage_Skills_Target_Runtime_Contract.sql
 
 DECLARE @Status varchar(40),@Partial bit,@Error int,@Message nvarchar(2048);
 EXEC [monitor].[USP_ConfigureSnapshotTarget]

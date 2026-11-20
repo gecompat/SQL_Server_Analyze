@@ -40,6 +40,163 @@ Beispiele    : EXEC monitor.USP_ExtendedEventsReadEvents
 Änderungen   : 1.0.0 - Erstfassung Phase 5.
 ===============================================================================
 */
+-- USAGE_SKILL_BEGIN monitor.USP_ExtendedEventsReadEvents 1.0.0
+-- ---
+-- skill_format_version: "1.0.0"
+-- name: "monitor.USP_ExtendedEventsReadEvents"
+-- schema_name: "monitor"
+-- object_name: "USP_ExtendedEventsReadEvents"
+-- object_type: "PROCEDURE"
+-- database_role: "framework"
+-- is_internal: false
+-- description: "Liest Ereignisse aus einem bereits vorhandenen event_file- oder ring_buffer-Target."
+-- source_path: "Code/06_ExtendedEvents/020_USP_ExtendedEventsReadEvents.sql"
+-- ---
+-- 
+-- # monitor.USP_ExtendedEventsReadEvents
+-- 
+-- ## Zweck und Einsatz
+-- 
+-- Liest Ereignisse aus einem bereits vorhandenen event_file- oder ring_buffer-Target. Die Procedure ist eine optionale Forensik- quelle und wird von keinem Standard-Current-State-Modul benötigt.
+-- 
+-- ## Voraussetzungen und Rechte
+-- 
+-- SQL Server 2019 oder neuer.
+-- 
+-- sys.server_event_sessions/-targets/-fields, sys.fn_xe_file_target_read_file, optional sys.dm_xe_session_targets.
+-- 
+-- SQL 2019 VIEW SERVER STATE; SQL 2022+ VIEW SERVER PERFORMANCE STATE beziehungsweise für Filezugriff ggf. VIEW DATABASE PERFORMANCE STATE. Zusätzlich muss SQL Server die Datei lesen können.
+-- 
+-- ## Parameter und Eingabe
+-- 
+-- „SQL-Bindungspflicht“ bezeichnet ein bei der SQL-Aufrufbindung erforderliches Argument ohne Default. Fachliche Wertpflichten und zulässige NULL-Werte stehen im jeweiligen Einzelvertrag.
+-- 
+-- | Parameter | SQL-Typ | SQL-Bindungspflicht | Default |
+-- | --- | --- | --- | --- |
+-- | @SourceExtendedEventSessionName | nvarchar(258) | nein | N'system_health' |
+-- | @Quelle | varchar(20) | nein | 'EVENT_FILE' |
+-- | @FilePath | nvarchar(4000) | nein | NULL |
+-- | @EventNames | nvarchar(max) | nein | NULL |
+-- | @EventNamePattern | nvarchar(4000) | nein | NULL |
+-- | @VonUtc | datetime2(7) | nein | NULL |
+-- | @BisUtc | datetime2(7) | nein | NULL |
+-- | @MaxZeilen | int | nein | 1000 |
+-- | @MitEventXml | bit | nein | 1 |
+-- | @BestaetigeTargetFlush | bit | nein | 0 |
+-- | @HighImpactConfirmed | bit | nein | 0 |
+-- | @ResultSetArt | varchar(16) | nein | 'CONSOLE' |
+-- | @ResultTablesJson | nvarchar(max) | nein | NULL |
+-- | @JsonErzeugen | bit | nein | 0 |
+-- | @Json | nvarchar(max) | nein | NULL OUTPUT |
+-- | @PrintMeldungen | bit | nein | 1 |
+-- | @Hilfe | bit | nein | 0 |
+-- 
+-- **@SourceExtendedEventSessionName:** @SourceExtendedEventSessionName nvarchar(258). Default ist N'system_health'. Genau ein einteiliger Name der serverweiten XE-Session, optional in eckigen Klammern. NULL, Leertext und mehrere Namen sind ungültig.
+-- 
+-- **@Quelle:** @Quelle varchar(20). Default ist 'EVENT_FILE'. EVENT_FILE liest XEL-Dateien. RING_BUFFER liest den Ringbuffer. AUTO wählt EVENT_FILE, wenn ein expliziter oder konfigurierter Dateipfad vorliegt. Ohne Pfad kann AUTO mit bestätigtem Flush den Ringbuffer wählen. Ein Lesefehler löst keinen Fallback aus. Rand-Leerzeichen und Groß- und Kleinschreibung werden normalisiert. NULL, Leertext und andere Werte sind ungültig.
+-- 
+-- **@FilePath:** @FilePath nvarchar(4000). Default ist NULL. XEL-Pfad, Muster oder URL für EVENT_FILE. NULL oder eine leere Zeichenfolge verwendet bei der Pfadauflösung den konfigurierten Pfad. Ein lokaler Dateiname kann zu einem Rollvermuster erweitert werden. Begrenzen Sie den Zugriff auf die benötigten Dateien.
+-- 
+-- **@EventNames:** @EventNames nvarchar(max). Default ist NULL. Pipe-Liste exakter einteiliger SQL-Namen. Einträge können in eckigen Klammern stehen. Pipe trennt nur außerhalb der Klammern. Eine schließende Klammer wird innen verdoppelt. NULL deaktiviert den Filter. Leere und ungültige Einträge werden abgelehnt. Verwenden Sie für dieselbe Eigenschaft entweder die Liste oder das Muster.
+-- 
+-- **@EventNamePattern:** @EventNamePattern nvarchar(4000). Default ist NULL. Ohne Präfix oder mit LIKE: gilt SQL LIKE mit % und _. REGEX: ist ein Regex mit Beachtung der Groß- und Kleinschreibung. REGEXI: ignoriert sie. Regex benötigt SQL Server 2025 und Compatibility Level 170. NULL deaktiviert den Filter. Ein leeres Muster ist ungültig. Verwenden Sie entweder Liste oder Muster. Regex wird nach der Materialisierung angewandt.
+-- 
+-- **@VonUtc:** @VonUtc datetime2(7). Default ist NULL. Inklusive Untergrenze als UTC-Zeitwert, z. B. 2026-01-01T00:00:00. NULL lässt die Untergrenze aus.
+-- 
+-- **@BisUtc:** @BisUtc datetime2(7). Default ist NULL. Exklusive Obergrenze als UTC-Zeitwert. NULL lässt sie aus. Bei zwei Grenzen muss diese später als @VonUtc liegen.
+-- 
+-- **@MaxZeilen:** @MaxZeilen int. Default ist 1000. Eine positive Ganzzahl begrenzt die zurückgehaltenen Events. NULL oder 0 hebt das Limit auf. Negative Werte sind ungültig. Das Limit begrenzt den physischen XEL-Scan nicht zuverlässig.
+-- 
+-- **@MitEventXml:** @MitEventXml bit. Default ist 1. 1 liefert vollständiges Event-XML in RAW und JSON. 0 oder NULL lässt es dort aus. CONSOLE und TABLE enthalten EventXml weiterhin. Die XML-Konvertierung und Feldextraktion bleiben aktiv.
+-- 
+-- **@BestaetigeTargetFlush:** @BestaetigeTargetFlush bit. Default ist 0. Nur 1 bestätigt, dass der Zugriff auf sys.dm_xe_session_targets einen Flush auslösen kann. 0 oder NULL verweigert RING_BUFFER ohne DMV-Zugriff. Für einen AUTO-Fallback muss der Wert 1 sein. Verwenden Sie für bestätigten Ringbufferzugriff ausdrücklich 1.
+-- 
+-- **@HighImpactConfirmed:** @HighImpactConfirmed bit. Default ist 0. 1 bestätigt den Pfad EXTENDED_EVENTS_FORENSICS_DEEP. 0 bestätigt ihn nicht und NULL ist für die Gate-Prüfung ungültig. Die aktuelle Berechtigung wird zusätzlich geprüft.
+-- 
+-- **@ResultSetArt:** @ResultSetArt varchar(16). Default ist 'CONSOLE'. CONSOLE zeigt beschriftete Ergebnisse. RAW liefert Modulstatus, Ereignisse und Quellenstatus. TABLE schreibt die zugeordneten Resultsets. NONE unterdrückt Datenresultsets. Rand-Leerzeichen werden entfernt und die Groß- und Kleinschreibung normalisiert. NULL, Leertext und andere Werte sind ungültig.
+-- 
+-- **@ResultTablesJson:** @ResultTablesJson nvarchar(max). Default ist NULL. Bei TABLE ist ein gültiges, nichtleeres JSON-Objekt erforderlich. Der einzige zulässige Schlüssel ist events. Jeder Wert benennt als Zeichenfolge eine vorhandene, leere lokale #Temp-Tabelle mit genau einer Seed-Spalte. Ziele müssen verschieden sein. Erlaubt sind höchstens 116 Zeichen und weder ## noch #Monitor als Präfix. Außerhalb von TABLE sind nur NULL, Leertext und reine Leerzeichen zulässig. Die Prüfung läuft vor der Hilfe.
+-- 
+-- **@JsonErzeugen:** @JsonErzeugen bit. Default ist 0. 1 erzeugt das JSON-Dokument unabhängig von der Ausgabeart. 0 oder NULL erzeugt kein JSON.
+-- 
+-- **@Json:** @Json nvarchar(max) OUTPUT. Default ist NULL. Binden Sie eine nvarchar(max)-Variable mit OUTPUT. Der Aufruf setzt sie zunächst auf NULL und füllt sie bei @JsonErzeugen=1.
+-- 
+-- **@PrintMeldungen:** @PrintMeldungen bit. Default ist 1. 1 gibt informative Warnmeldungen aus. 0 oder NULL unterdrückt sie.
+-- 
+-- **@Hilfe:** @Hilfe bit. Default ist 0. 1 gibt die Hilfe nach der Prüfung von @ResultTablesJson aus und beendet den Aufruf vor dem fachlichen Zugriff. 0 oder NULL setzt den normalen Aufruf fort.
+-- 
+-- ## Resultate und Ausgabe
+-- 
+-- 1. Modulstatus. 2. normalisierte Events. 3. Quell-/Fehlerstatus.
+-- 
+-- | Resultmenge | RAW | TABLE | Felder laut Inventar |
+-- | --- | --- | --- | --- |
+-- | events | 1 | 1 | [SourceType] varchar(20) NOT NULL, [EventName] sysname NULL, [TimestampUtc] datetime2(7) NULL, [FileName] nvarchar(260) NULL, [FileOffset] bigint NULL, [EventXml] xml NULL |
+-- 
+-- Bei @Hilfe=1 kommt genau ein Resultset mit SkillFormatVersion, SchemaName, ObjectName und SkillMarkdown hinzu; bestehende PRINT-Hinweise bleiben erhalten.
+-- 
+-- ## Beispiel
+-- 
+-- ```sql
+-- EXEC monitor.USP_ExtendedEventsReadEvents @ResolvedSourceExtendedEventSessionName=N'system_health', @Quelle='EVENT_FILE', @EventNamePattern=N'xml_deadlock_report', @MaxZeilen=100; EXEC monitor.USP_ExtendedEventsReadEvents @ResolvedSourceExtendedEventSessionName=N'system_health', @Quelle='RING_BUFFER', @BestaetigeTargetFlush=1; EXEC monitor.USP_ExtendedEventsReadEvents @Hilfe=1;
+-- ```
+-- 
+-- ## Aufwand, Nebenwirkungen, Fehler und Grenzen
+-- 
+-- Das Lesen von sys.dm_xe_session_targets kann einen Target-Flush auslösen und erfordert daher @BestaetigeTargetFlush=1.
+-- 
+-- 
+-- ### Quellgebundene Detailbeschreibung
+-- 
+-- Der folgende Quellkopf bewahrt die zusätzlichen Implementierungsgrenzen für diesen Skill.
+-- 
+-- ```text
+-- Objekt       : monitor.USP_ExtendedEventsReadEvents
+-- Version      : 2.0.0
+-- Stand        : 2026-07-15
+-- Typ          : Stored Procedure
+-- Zweck        : Liest Ereignisse aus einem bereits vorhandenen event_file- oder
+--                ring_buffer-Target. Die Procedure ist eine optionale Forensik-
+--                quelle und wird von keinem Standard-Current-State-Modul benötigt.
+-- SQL-Version  : SQL Server 2019 oder neuer.
+-- Datenquellen : sys.server_event_sessions/-targets/-fields,
+--                sys.fn_xe_file_target_read_file, optional sys.dm_xe_session_targets.
+-- Parameter    : @ResolvedSourceExtendedEventSessionName, @Quelle, @FilePath, @EventNamePattern, @VonUtc,
+--                @BisUtc, @MaxZeilen, @MitEventXml, @BestaetigeTargetFlush,
+--                @PrintMeldungen, @Hilfe.
+-- Resultsets   : 1. Modulstatus. 2. normalisierte Events. 3. Quell-/Fehlerstatus.
+-- Berechtigung : SQL 2019 VIEW SERVER STATE; SQL 2022+ VIEW SERVER PERFORMANCE
+--                STATE beziehungsweise für Filezugriff ggf. VIEW DATABASE
+--                PERFORMANCE STATE. Zusätzlich muss SQL Server die Datei lesen können.
+-- Eigenlast    : Abhängig von Anzahl und Größe der XEL-Dateien bzw. Ringbufferdaten.
+--                File-Lesen und XML-Konvertierung sind explizit Deep/opt-in.
+-- Locking      : LOCK_TIMEOUT 0; keine Benutzerobjekte und keine Änderungen.
+-- Nebenwirkung : Das Lesen von sys.dm_xe_session_targets kann einen Target-Flush
+--                auslösen und erfordert daher @BestaetigeTargetFlush=1.
+-- Partial      : Fehlende Sessions, Targets, Dateien oder Rechte werden strukturiert
+--                gemeldet; andere Framework-Module bleiben funktionsfähig.
+-- Beispiele    : EXEC monitor.USP_ExtendedEventsReadEvents
+--                    @ResolvedSourceExtendedEventSessionName=N'system_health', @Quelle='EVENT_FILE',
+--                    @EventNamePattern=N'xml_deadlock_report', @MaxZeilen=100;
+--                EXEC monitor.USP_ExtendedEventsReadEvents
+--                    @ResolvedSourceExtendedEventSessionName=N'system_health', @Quelle='RING_BUFFER',
+--                    @BestaetigeTargetFlush=1;
+--                EXEC monitor.USP_ExtendedEventsReadEvents @Hilfe=1;
+-- Änderungen   : 1.0.0 - Erstfassung Phase 5.
+-- ```
+-- 
+-- ### Weitere bestehende Hilfehinweise
+-- 
+-- ```text
+-- monitor.USP_ExtendedEventsReadEvents
+-- Die Procedure liest Ereignisse aus XEL-Dateien oder dem Ringbuffer. Begrenzen Sie den Zugriff auf die benötigte Quelle und das benötigte UTC-Zeitfenster.
+-- Hilfe anzeigen. EXEC [monitor].[USP_ExtendedEventsReadEvents] @Hilfe=1;
+-- Technische Resultsets lesen. EXEC [monitor].[USP_ExtendedEventsReadEvents] @SourceExtendedEventSessionName=N'ExampleXeSession', @Quelle='EVENT_FILE', @VonUtc='2026-01-01T00:00:00', @BisUtc='2026-01-02T00:00:00', @MaxZeilen=100, @MitEventXml=0, @HighImpactConfirmed=1, @ResultSetArt='RAW';
+-- Nur JSON ausgeben. DECLARE @ResultJson nvarchar(max); EXEC [monitor].[USP_ExtendedEventsReadEvents] @SourceExtendedEventSessionName=N'ExampleXeSession', @Quelle='EVENT_FILE', @VonUtc='2026-01-01T00:00:00', @BisUtc='2026-01-02T00:00:00', @MaxZeilen=100, @MitEventXml=0, @HighImpactConfirmed=1, @ResultSetArt='NONE', @JsonErzeugen=1, @Json=@ResultJson OUTPUT; SELECT @ResultJson AS [Json];
+-- Ein Resultset in eine lokale Temp-Tabelle schreiben. CREATE TABLE #ExtendedEventsReadEvents_HelpExample ([Seed] int NULL); BEGIN TRY EXEC [monitor].[USP_ExtendedEventsReadEvents] @SourceExtendedEventSessionName=N'ExampleXeSession', @Quelle='EVENT_FILE', @VonUtc='2026-01-01T00:00:00', @BisUtc='2026-01-02T00:00:00', @MaxZeilen=100, @MitEventXml=0, @HighImpactConfirmed=1, @ResultSetArt='TABLE', @ResultTablesJson=N'{"events":"#ExtendedEventsReadEvents_HelpExample"}'; SELECT * FROM #ExtendedEventsReadEvents_HelpExample; DROP TABLE #ExtendedEventsReadEvents_HelpExample; END TRY BEGIN CATCH DROP TABLE #ExtendedEventsReadEvents_HelpExample; THROW; END CATCH;
+-- ```
+-- 
+-- USAGE_SKILL_END monitor.USP_ExtendedEventsReadEvents
 CREATE OR ALTER PROCEDURE [monitor].[USP_ExtendedEventsReadEvents]
       @SourceExtendedEventSessionName nvarchar(258)         = N'system_health'
     , @Quelle                  varchar(20)     = 'EVENT_FILE'
@@ -61,21 +218,10 @@ CREATE OR ALTER PROCEDURE [monitor].[USP_ExtendedEventsReadEvents]
 AS
 BEGIN
     SET NOCOUNT ON;
-    SET @Json=NULL;
-    DECLARE @ResultSetArtNormalisiert varchar(16)=UPPER(LTRIM(RTRIM(COALESCE(@ResultSetArt,''))));
-    DECLARE @TableResultRequested bit = CASE WHEN @ResultSetArtNormalisiert = 'TABLE' THEN 1 ELSE 0 END;
-    DECLARE @ConsoleResultRequested bit = CASE WHEN @ResultSetArtNormalisiert = 'CONSOLE' THEN 1 ELSE 0 END;
-    DECLARE @TableTarget sysname=NULL;
-    IF @TableResultRequested=0 AND NULLIF(LTRIM(RTRIM(COALESCE(@ResultTablesJson,N''))),N'') IS NOT NULL THROW 51011,N'@ResultTablesJson ist ausschließlich mit @ResultSetArt=TABLE zulässig.',1;
-    IF @TableResultRequested=1 EXEC [monitor].[InternalPrepareSingleResultTable] @ResultTablesJson=@ResultTablesJson,@ResultName=N'events',@TargetTable=@TableTarget OUTPUT,@ThrowOnError=1;
-    IF @TableResultRequested = 1 OR @ConsoleResultRequested = 1 SET @ResultSetArtNormalisiert = 'NONE';
-    DECLARE @ResolvedSourceExtendedEventSessionName sysname=NULL;
-    DECLARE @EventPatternMode varchar(8),@EventPatternValue nvarchar(4000),@EventPatternFlags varchar(8),@EventPatternValid bit;
-    DECLARE @EffectiveMaxZeilen bigint = CASE WHEN @MaxZeilen IS NULL OR @MaxZeilen=0 THEN CONVERT(bigint,9223372036854775807) ELSE CONVERT(bigint,@MaxZeilen) END;
-    DECLARE @MonitorPrintMessage nvarchar(2048);
 
     IF @Hilfe = 1
     BEGIN
+        SET @Json=NULL;
         PRINT N'monitor.USP_ExtendedEventsReadEvents';
         PRINT N'Die Procedure liest Ereignisse aus XEL-Dateien oder dem Ringbuffer. Begrenzen Sie den Zugriff auf die benötigte Quelle und das benötigte UTC-Zeitfenster.';
         PRINT N'@SourceExtendedEventSessionName nvarchar(258). Default ist N''system_health''. Genau ein einteiliger Name der serverweiten XE-Session, optional in eckigen Klammern. NULL, Leertext und mehrere Namen sind ungültig.';
@@ -99,8 +245,293 @@ BEGIN
         PRINT N'Technische Resultsets lesen. EXEC [monitor].[USP_ExtendedEventsReadEvents] @SourceExtendedEventSessionName=N''ExampleXeSession'', @Quelle=''EVENT_FILE'', @VonUtc=''2026-01-01T00:00:00'', @BisUtc=''2026-01-02T00:00:00'', @MaxZeilen=100, @MitEventXml=0, @HighImpactConfirmed=1, @ResultSetArt=''RAW'';';
         PRINT N'Nur JSON ausgeben. DECLARE @ResultJson nvarchar(max); EXEC [monitor].[USP_ExtendedEventsReadEvents] @SourceExtendedEventSessionName=N''ExampleXeSession'', @Quelle=''EVENT_FILE'', @VonUtc=''2026-01-01T00:00:00'', @BisUtc=''2026-01-02T00:00:00'', @MaxZeilen=100, @MitEventXml=0, @HighImpactConfirmed=1, @ResultSetArt=''NONE'', @JsonErzeugen=1, @Json=@ResultJson OUTPUT; SELECT @ResultJson AS [Json];';
         PRINT N'Ein Resultset in eine lokale Temp-Tabelle schreiben. CREATE TABLE #ExtendedEventsReadEvents_HelpExample ([Seed] int NULL); BEGIN TRY EXEC [monitor].[USP_ExtendedEventsReadEvents] @SourceExtendedEventSessionName=N''ExampleXeSession'', @Quelle=''EVENT_FILE'', @VonUtc=''2026-01-01T00:00:00'', @BisUtc=''2026-01-02T00:00:00'', @MaxZeilen=100, @MitEventXml=0, @HighImpactConfirmed=1, @ResultSetArt=''TABLE'', @ResultTablesJson=N''{"events":"#ExtendedEventsReadEvents_HelpExample"}''; SELECT * FROM #ExtendedEventsReadEvents_HelpExample; DROP TABLE #ExtendedEventsReadEvents_HelpExample; END TRY BEGIN CATCH DROP TABLE #ExtendedEventsReadEvents_HelpExample; THROW; END CATCH;';
+        -- USAGE_SKILL_HELP_BEGIN monitor.USP_ExtendedEventsReadEvents
+        SELECT CONVERT(varchar(16),'1.0.0') AS [SkillFormatVersion],CONVERT(sysname,N'monitor') AS [SchemaName],CONVERT(sysname,N'USP_ExtendedEventsReadEvents') AS [ObjectName],CONVERT(nvarchar(max),N'---')
+            + NCHAR(10)
+            + N'skill_format_version: "1.0.0"'
+            + NCHAR(10)
+            + N'name: "monitor.USP_ExtendedEventsReadEvents"'
+            + NCHAR(10)
+            + N'schema_name: "monitor"'
+            + NCHAR(10)
+            + N'object_name: "USP_ExtendedEventsReadEvents"'
+            + NCHAR(10)
+            + N'object_type: "PROCEDURE"'
+            + NCHAR(10)
+            + N'database_role: "framework"'
+            + NCHAR(10)
+            + N'is_internal: false'
+            + NCHAR(10)
+            + N'description: "Liest Ereignisse aus einem bereits vorhandenen event_file- oder ring_buffer-Target."'
+            + NCHAR(10)
+            + N'source_path: "Code/06_ExtendedEvents/020_USP_ExtendedEventsReadEvents.sql"'
+            + NCHAR(10)
+            + N'---'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'# monitor.USP_ExtendedEventsReadEvents'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'## Zweck und Einsatz'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'Liest Ereignisse aus einem bereits vorhandenen event_file- oder ring_buffer-Target. Die Procedure ist eine optionale Forensik- quelle und wird von keinem Standard-Current-State-Modul benötigt.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'## Voraussetzungen und Rechte'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'SQL Server 2019 oder neuer.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'sys.server_event_sessions/-targets/-fields, sys.fn_xe_file_target_read_file, optional sys.dm_xe_session_targets.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'SQL 2019 VIEW SERVER STATE; SQL 2022+ VIEW SERVER PERFORMANCE STATE beziehungsweise für Filezugriff ggf. VIEW DATABASE PERFORMANCE STATE. Zusätzlich muss SQL Server die Datei lesen können.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'## Parameter und Eingabe'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'„SQL-Bindungspflicht“ bezeichnet ein bei der SQL-Aufrufbindung erforderliches Argument ohne Default. Fachliche Wertpflichten und zulässige NULL-Werte stehen im jeweiligen Einzelvertrag.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'| Parameter | SQL-Typ | SQL-Bindungspflicht | Default |'
+            + NCHAR(10)
+            + N'| --- | --- | --- | --- |'
+            + NCHAR(10)
+            + N'| @SourceExtendedEventSessionName | nvarchar(258) | nein | N''system_health'' |'
+            + NCHAR(10)
+            + N'| @Quelle | varchar(20) | nein | ''EVENT_FILE'' |'
+            + NCHAR(10)
+            + N'| @FilePath | nvarchar(4000) | nein | NULL |'
+            + NCHAR(10)
+            + N'| @EventNames | nvarchar(max) | nein | NULL |'
+            + NCHAR(10)
+            + N'| @EventNamePattern | nvarchar(4000) | nein | NULL |'
+            + NCHAR(10)
+            + N'| @VonUtc | datetime2(7) | nein | NULL |'
+            + NCHAR(10)
+            + N'| @BisUtc | datetime2(7) | nein | NULL |'
+            + NCHAR(10)
+            + N'| @MaxZeilen | int | nein | 1000 |'
+            + NCHAR(10)
+            + N'| @MitEventXml | bit | nein | 1 |'
+            + NCHAR(10)
+            + N'| @BestaetigeTargetFlush | bit | nein | 0 |'
+            + NCHAR(10)
+            + N'| @HighImpactConfirmed | bit | nein | 0 |'
+            + NCHAR(10)
+            + N'| @ResultSetArt | varchar(16) | nein | ''CONSOLE'' |'
+            + NCHAR(10)
+            + N'| @ResultTablesJson | nvarchar(max) | nein | NULL |'
+            + NCHAR(10)
+            + N'| @JsonErzeugen | bit | nein | 0 |'
+            + NCHAR(10)
+            + N'| @Json | nvarchar(max) | nein | NULL OUTPUT |'
+            + NCHAR(10)
+            + N'| @PrintMeldungen | bit | nein | 1 |'
+            + NCHAR(10)
+            + N'| @Hilfe | bit | nein | 0 |'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'**@SourceExtendedEventSessionName:** @SourceExtendedEventSessionName nvarchar(258). Default ist N''system_health''. Genau ein einteiliger Name der serverweiten XE-Session, optional in eckigen Klammern. NULL, Leertext und mehrere Namen sind ungültig.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'**@Quelle:** @Quelle varchar(20). Default ist ''EVENT_FILE''. EVENT_FILE liest XEL-Dateien. RING_BUFFER liest den Ringbuffer. AUTO wählt EVENT_FILE, wenn ein expliziter oder konfigurierter Dateipfad vorliegt. Ohne Pfad kann AUTO mit bestätigtem Flush den Ringbuffer wählen. Ein Lesefehler löst keinen Fallback aus. Rand-Leerzeichen und Groß- und Kleinschreibung werden normalisiert. NULL, Leertext und andere Werte sind ungültig.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'**@FilePath:** @FilePath nvarchar(4000). Default ist NULL. XEL-Pfad, Muster oder URL für EVENT_FILE. NULL oder eine leere Zeichenfolge verwendet bei der Pfadauflösung den konfigurierten Pfad. Ein lokaler Dateiname kann zu einem Rollvermuster erweitert werden. Begrenzen Sie den Zugriff auf die benötigten Dateien.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'**@EventNames:** @EventNames nvarchar(max). Default ist NULL. Pipe-Liste exakter einteiliger SQL-Namen. Einträge können in eckigen Klammern stehen. Pipe trennt nur außerhalb der Klammern. Eine schließende Klammer wird innen verdoppelt. NULL deaktiviert den Filter. Leere und ungültige Einträge werden abgelehnt. Verwenden Sie für dieselbe Eigenschaft entweder die Liste oder das Muster.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'**@EventNamePattern:** @EventNamePattern nvarchar(4000). Default ist NULL. Ohne Präfix oder mit LIKE: gilt SQL LIKE mit % und _. REGEX: ist ein Regex mit Beachtung der Groß- und Kleinschreibung. REGEXI: ignoriert sie. Regex benötigt SQL Server 2025 und Compatibility Level 170. NULL deaktiviert den Filter. Ein leeres Muster ist ungültig. Verwenden Sie entweder Liste oder Muster. Regex wird nach der Materialisierung angewandt.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'**@VonUtc:** @VonUtc datetime2(7). Default ist NULL. Inklusive Untergrenze als UTC-Zeitwert, z. B. 2026-01-01T00:00:00. NULL lässt die Untergrenze aus.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'**@BisUtc:** @BisUtc datetime2(7). Default ist NULL. Exklusive Obergrenze als UTC-Zeitwert. NULL lässt sie aus. Bei zwei Grenzen muss diese später als @VonUtc liegen.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'**@MaxZeilen:** @MaxZeilen int. Default ist 1000. Eine positive Ganzzahl begrenzt die zurückgehaltenen Events. NULL oder 0 hebt das Limit auf. Negative Werte sind ungültig. Das Limit begrenzt den physischen XEL-Scan nicht zuverlässig.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'**@MitEventXml:** @MitEventXml bit. Default ist 1. 1 liefert vollständiges Event-XML in RAW und JSON. 0 oder NULL lässt es dort aus. CONSOLE und TABLE enthalten EventXml weiterhin. Die XML-Konvertierung und Feldextraktion bleiben aktiv.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'**@BestaetigeTargetFlush:** @BestaetigeTargetFlush bit. Default ist 0. Nur 1 bestätigt, dass der Zugriff auf sys.dm_xe_session_targets einen Flush auslösen kann. 0 oder NULL verweigert RING_BUFFER ohne DMV-Zugriff. Für einen AUTO-Fallback muss der Wert 1 sein. Verwenden Sie für bestätigten Ringbufferzugriff ausdrücklich 1.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'**@HighImpactConfirmed:** @HighImpactConfirmed bit. Default ist 0. 1 bestätigt den Pfad EXTENDED_EVENTS_FORENSICS_DEEP. 0 bestätigt ihn nicht und NULL ist für die Gate-Prüfung ungültig. Die aktuelle Berechtigung wird zusätzlich geprüft.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'**@ResultSetArt:** @ResultSetArt varchar(16). Default ist ''CONSOLE''. CONSOLE zeigt beschriftete Ergebnisse. RAW liefert Modulstatus, Ereignisse und Quellenstatus. TABLE schreibt die zugeordneten Resultsets. NONE unterdrückt Datenresultsets. Rand-Leerzeichen werden entfernt und die Groß- und Kleinschreibung normalisiert. NULL, Leertext und andere Werte sind ungültig.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'**@ResultTablesJson:** @ResultTablesJson nvarchar(max). Default ist NULL. Bei TABLE ist ein gültiges, nichtleeres JSON-Objekt erforderlich. Der einzige zulässige Schlüssel ist events. Jeder Wert benennt als Zeichenfolge eine vorhandene, leere lokale #Temp-Tabelle mit genau einer Seed-Spalte. Ziele müssen verschieden sein. Erlaubt sind höchstens 116 Zeichen und weder ## noch #Monitor als Präfix. Außerhalb von TABLE sind nur NULL, Leertext und reine Leerzeichen zulässig. Die Prüfung läuft vor der Hilfe.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'**@JsonErzeugen:** @JsonErzeugen bit. Default ist 0. 1 erzeugt das JSON-Dokument unabhängig von der Ausgabeart. 0 oder NULL erzeugt kein JSON.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'**@Json:** @Json nvarchar(max) OUTPUT. Default ist NULL. Binden Sie eine nvarchar(max)-Variable mit OUTPUT. Der Aufruf setzt sie zunächst auf NULL und füllt sie bei @JsonErzeugen=1.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'**@PrintMeldungen:** @PrintMeldungen bit. Default ist 1. 1 gibt informative Warnmeldungen aus. 0 oder NULL unterdrückt sie.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'**@Hilfe:** @Hilfe bit. Default ist 0. 1 gibt die Hilfe nach der Prüfung von @ResultTablesJson aus und beendet den Aufruf vor dem fachlichen Zugriff. 0 oder NULL setzt den normalen Aufruf fort.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'## Resultate und Ausgabe'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'1. Modulstatus. 2. normalisierte Events. 3. Quell-/Fehlerstatus.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'| Resultmenge | RAW | TABLE | Felder laut Inventar |'
+            + NCHAR(10)
+            + N'| --- | --- | --- | --- |'
+            + NCHAR(10)
+            + N'| events | 1 | 1 | [SourceType] varchar(20) NOT NULL, [EventName] sysname NULL, [TimestampUtc] datetime2(7) NULL, [FileName] nvarchar(260) NULL, [FileOffset] bigint NULL, [EventXml] xml NULL |'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'Bei @Hilfe=1 kommt genau ein Resultset mit SkillFormatVersion, SchemaName, ObjectName und SkillMarkdown hinzu; bestehende PRINT-Hinweise bleiben erhalten.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'## Beispiel'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'```sql'
+            + NCHAR(10)
+            + N'EXEC monitor.USP_ExtendedEventsReadEvents @ResolvedSourceExtendedEventSessionName=N''system_health'', @Quelle=''EVENT_FILE'', @EventNamePattern=N''xml_deadlock_report'', @MaxZeilen=100; EXEC monitor.USP_ExtendedEventsReadEvents @ResolvedSourceExtendedEventSessionName=N''system_health'', @Quelle=''RING_BUFFER'', @BestaetigeTargetFlush=1; EXEC monitor.USP_ExtendedEventsReadEvents @Hilfe=1;'
+            + NCHAR(10)
+            + N'```'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'## Aufwand, Nebenwirkungen, Fehler und Grenzen'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'Das Lesen von sys.dm_xe_session_targets kann einen Target-Flush auslösen und erfordert daher @BestaetigeTargetFlush=1.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'### Quellgebundene Detailbeschreibung'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'Der folgende Quellkopf bewahrt die zusätzlichen Implementierungsgrenzen für diesen Skill.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'```text'
+            + NCHAR(10)
+            + N'Objekt       : monitor.USP_ExtendedEventsReadEvents'
+            + NCHAR(10)
+            + N'Version      : 2.0.0'
+            + NCHAR(10)
+            + N'Stand        : 2026-07-15'
+            + NCHAR(10)
+            + N'Typ          : Stored Procedure'
+            + NCHAR(10)
+            + N'Zweck        : Liest Ereignisse aus einem bereits vorhandenen event_file- oder'
+            + NCHAR(10)
+            + N'               ring_buffer-Target. Die Procedure ist eine optionale Forensik-'
+            + NCHAR(10)
+            + N'               quelle und wird von keinem Standard-Current-State-Modul benötigt.'
+            + NCHAR(10)
+            + N'SQL-Version  : SQL Server 2019 oder neuer.'
+            + NCHAR(10)
+            + N'Datenquellen : sys.server_event_sessions/-targets/-fields,'
+            + NCHAR(10)
+            + N'               sys.fn_xe_file_target_read_file, optional sys.dm_xe_session_targets.'
+            + NCHAR(10)
+            + N'Parameter    : @ResolvedSourceExtendedEventSessionName, @Quelle, @FilePath, @EventNamePattern, @VonUtc,'
+            + NCHAR(10)
+            + N'               @BisUtc, @MaxZeilen, @MitEventXml, @BestaetigeTargetFlush,'
+            + NCHAR(10)
+            + N'               @PrintMeldungen, @Hilfe.'
+            + NCHAR(10)
+            + N'Resultsets   : 1. Modulstatus. 2. normalisierte Events. 3. Quell-/Fehlerstatus.'
+            + NCHAR(10)
+            + N'Berechtigung : SQL 2019 VIEW SERVER STATE; SQL 2022+ VIEW SERVER PERFORMANCE'
+            + NCHAR(10)
+            + N'               STATE beziehungsweise für Filezugriff ggf. VIEW DATABASE'
+            + NCHAR(10)
+            + N'               PERFORMANCE STATE. Zusätzlich muss SQL Server die Datei lesen können.'
+            + NCHAR(10)
+            + N'Eigenlast    : Abhängig von Anzahl und Größe der XEL-Dateien bzw. Ringbufferdaten.'
+            + NCHAR(10)
+            + N'               File-Lesen und XML-Konvertierung sind explizit Deep/opt-in.'
+            + NCHAR(10)
+            + N'Locking      : LOCK_TIMEOUT 0; keine Benutzerobjekte und keine Änderungen.'
+            + NCHAR(10)
+            + N'Nebenwirkung : Das Lesen von sys.dm_xe_session_targets kann einen Target-Flush'
+            + NCHAR(10)
+            + N'               auslösen und erfordert daher @BestaetigeTargetFlush=1.'
+            + NCHAR(10)
+            + N'Partial      : Fehlende Sessions, Targets, Dateien oder Rechte werden strukturiert'
+            + NCHAR(10)
+            + N'               gemeldet; andere Framework-Module bleiben funktionsfähig.'
+            + NCHAR(10)
+            + N'Beispiele    : EXEC monitor.USP_ExtendedEventsReadEvents'
+            + NCHAR(10)
+            + N'                   @ResolvedSourceExtendedEventSessionName=N''system_health'', @Quelle=''EVENT_FILE'','
+            + NCHAR(10)
+            + N'                   @EventNamePattern=N''xml_deadlock_report'', @MaxZeilen=100;'
+            + NCHAR(10)
+            + N'               EXEC monitor.USP_ExtendedEventsReadEvents'
+            + NCHAR(10)
+            + N'                   @ResolvedSourceExtendedEventSessionName=N''system_health'', @Quelle=''RING_BUFFER'','
+            + NCHAR(10)
+            + N'                   @BestaetigeTargetFlush=1;'
+            + NCHAR(10)
+            + N'               EXEC monitor.USP_ExtendedEventsReadEvents @Hilfe=1;'
+            + NCHAR(10)
+            + N'Änderungen   : 1.0.0 - Erstfassung Phase 5.'
+            + NCHAR(10)
+            + N'```'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'### Weitere bestehende Hilfehinweise'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'```text'
+            + NCHAR(10)
+            + N'monitor.USP_ExtendedEventsReadEvents'
+            + NCHAR(10)
+            + N'Die Procedure liest Ereignisse aus XEL-Dateien oder dem Ringbuffer. Begrenzen Sie den Zugriff auf die benötigte Quelle und das benötigte UTC-Zeitfenster.'
+            + NCHAR(10)
+            + N'Hilfe anzeigen. EXEC [monitor].[USP_ExtendedEventsReadEvents] @Hilfe=1;'
+            + NCHAR(10)
+            + N'Technische Resultsets lesen. EXEC [monitor].[USP_ExtendedEventsReadEvents] @SourceExtendedEventSessionName=N''ExampleXeSession'', @Quelle=''EVENT_FILE'', @VonUtc=''2026-01-01T00:00:00'', @BisUtc=''2026-01-02T00:00:00'', @MaxZeilen=100, @MitEventXml=0, @HighImpactConfirmed=1, @ResultSetArt=''RAW'';'
+            + NCHAR(10)
+            + N'Nur JSON ausgeben. DECLARE @ResultJson nvarchar(max); EXEC [monitor].[USP_ExtendedEventsReadEvents] @SourceExtendedEventSessionName=N''ExampleXeSession'', @Quelle=''EVENT_FILE'', @VonUtc=''2026-01-01T00:00:00'', @BisUtc=''2026-01-02T00:00:00'', @MaxZeilen=100, @MitEventXml=0, @HighImpactConfirmed=1, @ResultSetArt=''NONE'', @JsonErzeugen=1, @Json=@ResultJson OUTPUT; SELECT @ResultJson AS [Json];'
+            + NCHAR(10)
+            + N'Ein Resultset in eine lokale Temp-Tabelle schreiben. CREATE TABLE #ExtendedEventsReadEvents_HelpExample ([Seed] int NULL); BEGIN TRY EXEC [monitor].[USP_ExtendedEventsReadEvents] @SourceExtendedEventSessionName=N''ExampleXeSession'', @Quelle=''EVENT_FILE'', @VonUtc=''2026-01-01T00:00:00'', @BisUtc=''2026-01-02T00:00:00'', @MaxZeilen=100, @MitEventXml=0, @HighImpactConfirmed=1, @ResultSetArt=''TABLE'', @ResultTablesJson=N''{"events":"#ExtendedEventsReadEvents_HelpExample"}''; SELECT * FROM #ExtendedEventsReadEvents_HelpExample; DROP TABLE #ExtendedEventsReadEvents_HelpExample; END TRY BEGIN CATCH DROP TABLE #ExtendedEventsReadEvents_HelpExample; THROW; END CATCH;'
+            + NCHAR(10)
+            + N'```'
+            + NCHAR(10)
+            + NCHAR(10) AS [SkillMarkdown];
+        -- USAGE_SKILL_HELP_END monitor.USP_ExtendedEventsReadEvents
         RETURN;
-    END;
+    END
+
+    SET @Json=NULL;
+    DECLARE @ResultSetArtNormalisiert varchar(16)=UPPER(LTRIM(RTRIM(COALESCE(@ResultSetArt,''))));
+    DECLARE @TableResultRequested bit = CASE WHEN @ResultSetArtNormalisiert = 'TABLE' THEN 1 ELSE 0 END;
+    DECLARE @ConsoleResultRequested bit = CASE WHEN @ResultSetArtNormalisiert = 'CONSOLE' THEN 1 ELSE 0 END;
+    DECLARE @TableTarget sysname=NULL;
+    IF @TableResultRequested=0 AND NULLIF(LTRIM(RTRIM(COALESCE(@ResultTablesJson,N''))),N'') IS NOT NULL THROW 51011,N'@ResultTablesJson ist ausschließlich mit @ResultSetArt=TABLE zulässig.',1;
+    IF @TableResultRequested=1 EXEC [monitor].[InternalPrepareSingleResultTable] @ResultTablesJson=@ResultTablesJson,@ResultName=N'events',@TargetTable=@TableTarget OUTPUT,@ThrowOnError=1;
+    IF @TableResultRequested = 1 OR @ConsoleResultRequested = 1 SET @ResultSetArtNormalisiert = 'NONE';
+    DECLARE @ResolvedSourceExtendedEventSessionName sysname=NULL;
+    DECLARE @EventPatternMode varchar(8),@EventPatternValue nvarchar(4000),@EventPatternFlags varchar(8),@EventPatternValid bit;
+    DECLARE @EffectiveMaxZeilen bigint = CASE WHEN @MaxZeilen IS NULL OR @MaxZeilen=0 THEN CONVERT(bigint,9223372036854775807) ELSE CONVERT(bigint,@MaxZeilen) END;
+    DECLARE @MonitorPrintMessage nvarchar(2048);
+
+    ;
 
     IF @SourceExtendedEventSessionName IS NULL OR (SELECT COUNT_BIG(*) FROM [monitor].[TVF_ParseSqlNameList](@SourceExtendedEventSessionName) WHERE [IsValid]=1)<>1 OR EXISTS(SELECT 1 FROM [monitor].[TVF_ParseSqlNameList](@SourceExtendedEventSessionName) WHERE [IsValid]=0)
     BEGIN SET @ResolvedSourceExtendedEventSessionName=NULL;END
