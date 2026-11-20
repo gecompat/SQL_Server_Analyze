@@ -1,118 +1,233 @@
-name: Usage Skill canonical review transport
+name: Documentation validation
 
 on:
+  pull_request:
+    paths:
+      - '.github/workflows/documentation-validation.yml'
+      - 'AGENTS.md'
+      - '.ai/**'
+      - 'README.md'
+      - 'AI_Metadata/**/*.md'
+      - 'Code/**/*.sql'
+      - 'Code/Install/*.ps1'
+      - 'Code/Install/*.py'
+      - 'Code/Tests/Integration/Deployment_*.py'
+      - 'Code/Tests/Static/**'
+      - 'Code/Tools/Rule_Context_Cache.py'
+      - 'Code/Tools/Linux_Cgroup_Values.py'
+      - 'Code/Tools/Linux_Cgroup_Metadata.py'
+      - 'Code/Tools/Linux_Cgroup_Native.py'
+      - 'Code/Tools/Linux_Cgroup_Reader.py'
+      - 'AI_Metadata/Rule_Context_Cache_Scope.json'
+      - 'Code/Tests/Integration/191_Standalone_Installer_Contract.ps1'
+      - 'Code/Tests/Integration/192_ExecutionPlanAnalysis_Installer_Contract.ps1'
+      - 'Code/Tests/Integration/194_SnapshotBaseline_Installer_Contract.ps1'
+      - 'Documentation/**/*.md'
+      - 'Metadata/**'
   push:
-    branches: ['codex/ops-installer-upload']
-    paths: ['.github/workflows/documentation-validation.yml']
+    branches:
+      - main
+    paths:
+      - '.github/workflows/documentation-validation.yml'
+      - 'AGENTS.md'
+      - '.ai/**'
+      - 'README.md'
+      - 'AI_Metadata/**/*.md'
+      - 'Code/**/*.sql'
+      - 'Code/Install/*.ps1'
+      - 'Code/Install/*.py'
+      - 'Code/Tests/Integration/Deployment_*.py'
+      - 'Code/Tests/Static/**'
+      - 'Code/Tools/Rule_Context_Cache.py'
+      - 'Code/Tools/Linux_Cgroup_Values.py'
+      - 'Code/Tools/Linux_Cgroup_Metadata.py'
+      - 'Code/Tools/Linux_Cgroup_Native.py'
+      - 'Code/Tools/Linux_Cgroup_Reader.py'
+      - 'AI_Metadata/Rule_Context_Cache_Scope.json'
+      - 'Code/Tests/Integration/191_Standalone_Installer_Contract.ps1'
+      - 'Code/Tests/Integration/192_ExecutionPlanAnalysis_Installer_Contract.ps1'
+      - 'Code/Tests/Integration/194_SnapshotBaseline_Installer_Contract.ps1'
+      - 'Documentation/**/*.md'
+      - 'Metadata/**'
+  workflow_dispatch:
 
-permissions: {}
+permissions:
+  contents: read
+  statuses: write
 
 concurrency:
-  group: usage-skill-canonical-review
-  cancel-in-progress: false
+  group: documentation-validation-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
-  transport:
-    if: github.repository == 'gecompat/SQL_Server_Analyze' && github.ref == 'refs/heads/codex/ops-installer-upload' && github.event_name == 'push' && github.event.before == '3dcf95708f0d18c232e5889bc131399116c230b2' && github.run_attempt == '1'
+  validate:
+    name: Validate impacted documentation contracts
     runs-on: ubuntu-24.04
-    timeout-minutes: 30
-    permissions:
-      contents: write
+    timeout-minutes: 15
+
     steps:
-      - name: Check out the bound unpublished source preview
-        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+      - name: Check out repository history
+        uses: actions/checkout@v6
         with:
-          ref: fcd0c0554f0a8ddc207886f1ce3eebfa145cd4a2
-          fetch-depth: 1
+          fetch-depth: 0
           persist-credentials: false
           show-progress: false
-      - name: Replay, validate and upload canonical review blobs
-        shell: python
+
+      - id: impact
+        name: Select impacted documentation checks
+        shell: bash
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before || '' }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: |
+          set -euo pipefail
+
+          changed_file="$RUNNER_TEMP/documentation-changed-files.txt"
+          if [ "${{ github.event_name }}" = 'workflow_dispatch' ] || \
+             [[ ! "$BASE_SHA" =~ ^[0-9a-f]{40}$ ]] || \
+             [[ "$BASE_SHA" =~ ^0{40}$ ]]; then
+            git ls-files > "$changed_file"
+            manual_full=true
+          else
+            git diff --name-only "$BASE_SHA" "$HEAD_SHA" > "$changed_file"
+            manual_full=false
+          fi
+
+          set_flag() {
+            local name="$1"
+            local pattern="$2"
+            local value=false
+            if grep -Eq "$pattern" "$changed_file"; then
+              value=true
+            fi
+            echo "$name=$value" >> "$GITHUB_OUTPUT"
+          }
+
+          set_flag docs '^(AGENTS\.md|README\.md|Documentation/.*\.md|AI_Metadata/(CONTINUATION_GUIDE|PROJECT_CONTEXT)\.md|AI_Metadata/Internal_Documentation/.*\.md|Metadata/Quality/CI_Test_Policy\.csv|Code/Tests/Static/915_Validate_Documentation_Style\.py|\.github/workflows/documentation-validation\.yml)$'
+          set_flag navigator '^(Code/01_Common/(020_VW_AnalyseClassCatalog|021_VW_AnalysisCatalog|022_VW_AnalysisSearchTerm|023_VW_AnalysisRelation|100_USP_AnalysisNavigator)\.sql|Code/Install/Install_(All|ExecutionPlanAnalysis)\.sql|Code/Tests/Static/905_Validate_Analysis_Navigator\.py|Metadata/Inventory/(Objects|Parameters|ResultSets)\.csv|Documentation/Analysis_Guides/Start_Here\.md|Documentation/Reference/Analysis_Navigator\.md|Documentation/Analysis_Guides/Procedures/USP_AnalysisNavigator\.md)$'
+          set_flag waits '^(Code/01_Common/07[45].*WaitType.*\.sql|Code/Tests/Static/940_Validate_Wait_Type_Catalog\.py|Documentation/Operations/Wait_Type_Catalog\.md|AI_Metadata/Internal_Documentation/Quality/Wait_Type_Curation\.md|Metadata/Quality/Wait_Type_Curation_Evidence\.json)$'
+          set_flag procedures '^(Code/.*\.sql|Documentation/Analysis_Guides/Procedures/.*\.md|Code/Tests/Static/900_Validate_Analysis_Documentation\.ps1)$'
+          set_flag installers '^(Code/Install/.*\.ps1|Code/Tests/Integration/(191_Standalone|192_ExecutionPlanAnalysis|194_SnapshotBaseline)_Installer_Contract\.ps1)$'
+          set_flag linux_reader '^(\.github/workflows/documentation-validation\.yml|Code/Tools/Linux_Cgroup_(Native|Reader|Values|Metadata)\.py|Code/Tests/Static/(Validate_Linux_Cgroup_(Reader|Values)|Invoke-StaticContractSuite)\.(py|ps1)|AI_Metadata/Internal_Documentation/Architecture/Linux_Cgroup_Resource_Boundary_Dossier\.md|Documentation/Analysis_Guides/Linux_Cgroup_Reader(_Contract)?\.md)$'
+
+          check_network=false
+          if grep -Fxq 'Code/Tests/Static/980_Validate_External_Documentation_Links.py' "$changed_file"; then
+            check_network=true
+          elif [ "$manual_full" = false ] && \
+               git diff --unified=0 "$BASE_SHA" "$HEAD_SHA" -- \
+                 | grep -E '^\+[^+].*https?://' >/dev/null; then
+            check_network=true
+          elif [ "$manual_full" = true ]; then
+            check_network=true
+          fi
+
+          echo "check_network=$check_network" >> "$GITHUB_OUTPUT"
+          echo "manual_full=$manual_full" >> "$GITHUB_OUTPUT"
+          echo "changed_files_path=$changed_file" >> "$GITHUB_OUTPUT"
+          suite_scope=Full
+          if [ "$manual_full" = false ] && [ -s "$changed_file" ] && \
+             ! grep -Ev '^(AGENTS\.md|\.ai/.*|AI_Metadata/CONTINUATION_GUIDE\.md|AI_Metadata/Rule_Context_Cache(_Scope\.json|\.md)|AI_Metadata/Internal_Documentation/Architecture/Foundation_[^/]+\.(md|json)|Code/Tools/Rule_Context_Cache\.py|Code/Tests/Static/Validate_Rule_Context_Cache\.py)$' "$changed_file"; then
+            suite_scope=FoundationGovernance
+          fi
+          echo "suite_scope=$suite_scope" >> "$GITHUB_OUTPUT"
+
+          {
+            echo '## Documentation validation impact'
+            echo ''
+            echo "- Documentation/style: $(grep -Eq '^(AGENTS\.md|README\.md|Documentation/.*\.md|AI_Metadata/(CONTINUATION_GUIDE|PROJECT_CONTEXT)\.md|AI_Metadata/Internal_Documentation/.*\.md|Metadata/Quality/CI_Test_Policy\.csv|Code/Tests/Static/915_Validate_Documentation_Style\.py|\.github/workflows/documentation-validation\.yml)$' "$changed_file" && echo true || echo false)"
+            echo "- Static contract scope: $suite_scope"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Run repository static contract suite
+        shell: pwsh
+        run: |
+          $logPath = Join-Path $env:RUNNER_TEMP 'analysis-documentation-validation.log'
+          & pwsh -NoLogo -NoProfile -File ./Code/Tests/Static/Invoke-StaticContractSuite.ps1 `
+              -Scope '${{ steps.impact.outputs.suite_scope }}' `
+              -SelfTestMode Changed `
+              -ChangedFilesPath '${{ steps.impact.outputs.changed_files_path }}' `
+              -ExcludePrivacy -ExcludeImpactSelector *>&1 |
+              Tee-Object -FilePath $logPath
+          exit $LASTEXITCODE
+
+      - name: Set up Python 3.11 for Linux cgroup reader contracts
+        if: steps.impact.outputs.linux_reader == 'true'
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
+        with:
+          python-version: '3.11'
+          architecture: x64
+          check-latest: false
+
+      - name: Run Linux cgroup parser and portable reader contracts
+        if: steps.impact.outputs.linux_reader == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import platform
+          import sys
+          if sys.version_info[:2] != (3, 11) or platform.machine().lower() not in {'x86_64', 'amd64'}:
+              raise SystemExit('LINUX_CGROUP_RUNTIME_MISMATCH')
+          print('LINUX_CGROUP_RUNTIME_311_X64')
+          PY
+          python Code/Tests/Static/Validate_Linux_Cgroup_Values.py --repository-root . --self-test
+          python Code/Tests/Static/Validate_Linux_Cgroup_Reader.py --repository-root . --self-test
+
+      - name: Run required native Linux cgroup reader contracts
+        if: steps.impact.outputs.linux_reader == 'true'
+        shell: bash
+        run: python Code/Tests/Static/Validate_Linux_Cgroup_Reader.py --repository-root . --native
+
+      - name: Validate installer contracts
+        if: steps.impact.outputs.installers == 'true'
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          foreach ($contract in @(
+              './Code/Tests/Integration/191_Standalone_Installer_Contract.ps1',
+              './Code/Tests/Integration/192_ExecutionPlanAnalysis_Installer_Contract.ps1',
+              './Code/Tests/Integration/194_SnapshotBaseline_Installer_Contract.ps1'
+          )) {
+              & pwsh -NoLogo -NoProfile -File $contract
+              if ($LASTEXITCODE -ne 0) {
+                  throw "Installer contract failed: $contract"
+              }
+          }
+
+      - name: Validate external documentation links
+        if: steps.impact.outputs.check_network == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 ./Code/Tests/Static/980_Validate_External_Documentation_Links.py \
+            --repository-root . \
+            --self-test \
+            --check-network
+
+      - name: Upload failed documentation log
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: analysis-documentation-validation-log
+          path: ${{ runner.temp }}/analysis-documentation-validation.log
+          if-no-files-found: ignore
+          retention-days: 1
+
+      - name: Publish documentation validation status
+        if: always()
+        shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
+          JOB_STATUS: ${{ job.status }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         run: |
-          import base64, hashlib, json, os, re, subprocess, sys, urllib.request, urllib.error
-          from pathlib import Path
-          C=json.loads(r'''{"repo":"gecompat/SQL_Server_Analyze","branch":"codex/ops-installer-upload","before":"3dcf95708f0d18c232e5889bc131399116c230b2","preview":"fcd0c0554f0a8ddc207886f1ce3eebfa145cd4a2","previewTree":"a39ce4c994adefb6905b7fc9393b554b93217ac1","renderer":"814b452f3972a543c55f6e9583dd4298e0158022","deployment":"445db0b7c14a85fbb913edce4913cfbc8a6bf758","validator":"82c2928482e0ba3a8165bff275f053392ed81e46","guardPath":"Code/10_SnapshotBaseline/030_Snapshot_Target_Schema.sql","guardBefore":"433ed248b15cfa29123fd1f84e43c4779432021f","views":{"Code/00_Setup/005_VW_ObjectUsageSkills.sql":"2ee705f5346e64a3978c943df7730f8fee6732ed","Code/10_SnapshotBaseline/012_VW_ObjectUsageSkills_Target.sql":"1e200982143681ee5760705ab0776bf000845a19"},"sources":{"Code/01_Common/077_FrameworkVersion.sql":"14f68e12d1b67771fa0667e56062437f21bf45e5","Code/01_Common/074_WaitTypeCatalog.sql":"f49203a6ea22e446456701149d052567e4df1118","Code/01_Common/010_VW_ModuleStatusCatalog.sql":"1ce73f938cd1ded6594e69eba31284eec7edc3cc","Code/01_Common/020_VW_AnalyseClassCatalog.sql":"a777694668c2cc7856f74085d8f884d93e2676e0","Code/01_Common/021_VW_AnalysisCatalog.sql":"c48ab5e421c440e426104f6e9317095201defeba","Code/01_Common/022_VW_AnalysisSearchTerm.sql":"269f33912ef25d544fdf798d79c03cf34b135a48","Code/01_Common/023_VW_AnalysisRelation.sql":"acbad6f50550d9b728f8d8330a10ecd67e60388b","Code/01_Common/030_VW_AnalyseAccessPolicy.sql":"4fdf9d3f89095e5e68f2268673b9ece6f0a75f28","Code/01_Common/040_VW_AnalyseAccessCurrent.sql":"689d207bc94732af4ffa194fec41f454aa0a6525","Code/01_Common/050_USP_CheckAnalyseAccess.sql":"504d584538003bb3b67f21deba4e2117a1b1bf46","Code/01_Common/060_VW_FrameworkFeatureCatalog.sql":"253accdb43fbad18692bcdf57e2c8e9b22c49213","Code/01_Common/070_USP_CheckFrameworkCapabilities.sql":"dcc404a0f30e1f902343ba92dead8b052c052ab0","Code/01_Common/075_TVF_WaitTypeInfo.sql":"3c81f5c9e1c0eb1a3dca4c61bc8d50acd56cdc54","Code/01_Common/075a_TVF_WaitTypeSources.sql":"39d36ba86008df76f02b8e5dcd7267b677a83d09","Code/01_Common/076_TVF_QueryStoreWaitCategoryInfo.sql":"b0930e53d3d499539bf76776b1af9dccd940a76b","Code/01_Common/078_TVF_ParsePipeList.sql":"9663eb1264d06932ce7dcdaadc51e2d806c027af","Code/01_Common/079_TVF_ParsePattern.sql":"996a357131ff32a7e08a50cd170835f7daee4ddc","Code/01_Common/080_TVF_ParseSqlNameList.sql":"31594f9b1c3cccf859beb356716532a5b8233db8","Code/01_Common/081_TVF_ParseFullObjectNameList.sql":"fc6dcd5812aff41038407d02ceaffa4e112679fc","Code/01_Common/082_TVF_DatabaseCandidates.sql":"9764ac02819197723f6953f1c1f95d8421126dee","Code/01_Common/083_USP_PrepareDatabaseCandidates.sql":"87d580a577fb8a09e6488f673cad5aa2b314c954","Code/01_Common/083a_USP_InternalCheckAnalysisPath.sql":"a35757d963e156b6fb524cfe01e36ef08d4543ef","Code/01_Common/084_USP_PrepareNameFilters.sql":"abf20008332b6ce26e8196549f5e33030885466e","Code/01_Common/085_TVF_ParseBigintList.sql":"3df886775b64259580bd60e708df53e6e8293d5a","Code/01_Common/086_TVF_ParseStringList.sql":"86f7c13513a0053d4062e948f6e5ff0df1207898","Code/01_Common/086a_TVF_ParseBlockingResource.sql":"0e7848f22981fdbde18fb88ad7481d00e06c18ef","Code/01_Common/087_TVF_StatementText.sql":"dfaeee7288f8c85cbd577c879af61b13a44335b9","Code/01_Common/087a_ToolBackgroundQueryPattern.sql":"94107840890138d2f6513bf2b81196f51cd8ad8d","Code/01_Common/087c_TVF_ToolBackgroundQueryInfo.sql":"3d79844a6ba0444b7895b4736bce78ad471e4916","Code/01_Common/087d_TVF_ProjectUnicodeText.sql":"69846cedecdc7346be9005e0942ba044c5195674","Code/01_Common/087e_TVF_ClassifyErrorLogEvent.sql":"5a5892c3271f220ddface5b4b7ca757f53a51e91","Code/01_Common/088_TVF_InterpretPerformanceCounter.sql":"08e2fc2fa7b8da7f53a2a73004d3cdd5438d0c2a","Code/01_Common/089_TVF_InterpretContentionCounter.sql":"857cf4181723ce001fb379a4d921a5415a1fe8d9","Code/01_Common/090_TVF_InterpretAvailabilityDatabaseState.sql":"0281492105db14b880cd3229db63b9317ca62391","Code/01_Common/091_TVF_InterpretAvailabilitySeedingState.sql":"e6a3d7d98080bf907266ad767b41411304190c06","Code/01_Common/092_TVF_InterpretAgentAlertRoute.sql":"eb377e9b4a6fdc82ace1a7378165c852e14c4b0c","Code/01_Common/093_TVF_InterpretAgentJobState.sql":"5d42ca6726b81ae8eca0fda2d468cf7f6c4347c4","Code/01_Common/094_TVF_InterpretDatabaseMailStatus.sql":"305cf10e751a5b7e1913bf770958af2172dfbf2f","Code/01_Common/100_USP_AnalysisNavigator.sql":"651e65a74c177513586e2292e18afc13e66fb4ed","Code/01_Common/095_USP_InternalWriteResultTable.sql":"1aeec6886ff05edc0964fa26251b82a52ae18a08","Code/01_Common/096_USP_InternalPrepareResultTables.sql":"f6b46a64f703591875a1f773f6a5833b815088f4","Code/01_Common/097_USP_InternalPrepareSingleResultTable.sql":"03c2e7a1e9ac9bf65f950bad572679c503355985","Code/01_Common/098_USP_InternalEmitConsoleResult.sql":"b1889f4f8a831b73a8b0722b80c3e9070272d7f0","Code/01_Common/098_USP_InternalProjectUnicodeTextColumn.sql":"3cb65f72e3cbfb03db097a0ca6f6fcc35f606da2","Code/01_Common/099_USP_InternalEmitTruncationWarning.sql":"1db89a8f62fba38ca41c20b1ced98d31783b922b","Code/01_Common/099a_USP_InternalParseXmlText.sql":"a9679c5a6e4f50d5341ba607464d9955bcb3d5c2","Code/02_CurrentState/005_InternalCaptureCurrentStateSnapshot.sql":"8b763584df1418e7817087f00c53238024e5202d","Code/02_CurrentState/010_USP_CurrentSessions.sql":"7d96413834fa1534e44ff0b3f40595c0b905903d","Code/02_CurrentState/020_USP_CurrentRequests.sql":"892f4bf376f44bed1ecdd85e176c8bb5dd779707","Code/02_CurrentState/030_USP_CurrentBlocking.sql":"f2201c4e53ff9dfaaddb8594aee0e89ab7e2e659","Code/02_CurrentState/040_USP_CurrentWaits.sql":"158546cd45189e99d2852c0072f1da7c84351aa0","Code/02_CurrentState/050_USP_CurrentTransactions.sql":"328e4820d6ce170205537e5fc0a8e74b17a38013","Code/02_CurrentState/060_USP_CurrentMemoryGrants.sql":"2ea14f479e448f17c0f3ea8c55297e7eaea9d4f5","Code/02_CurrentState/070_USP_CurrentTempDB.sql":"036d256ee6ee27b3ce499eadc8084e5fc7ca6ad0","Code/02_CurrentState/080_USP_CurrentIO.sql":"4afaab81c371431e30894168d1900f04970ef0c5","Code/02_CurrentState/090_USP_CurrentLog.sql":"196c71d2c079b19ecddf9c44e3f1e238ef7d3cc6","Code/02_CurrentState/100_USP_CurrentOverview.sql":"f22fd0941c52d352c95c7729ebbf4a5e9c5b59e6","Code/03_ObjectIndex/010_USP_ObjectInventory.sql":"9a93cc5a755000db48dc07ccf4eb8e6e91d21901","Code/03_ObjectIndex/020_USP_IndexUsage.sql":"e35a992088e9303140a82096eab6859ba64ca2b6","Code/03_ObjectIndex/025_USP_IndexOperationalStats.sql":"6852338d0d11525bfe18a79d3ae1213e71cff702","Code/03_ObjectIndex/030_USP_MissingIndexes.sql":"42213635a404dfde592a3165735d196ba37ed894","Code/03_ObjectIndex/040_USP_Statistics.sql":"41fceaec75a496f48b86072abc5f9badeeffb03c","Code/03_ObjectIndex/045_USP_StatisticsDistributionAnalysis.sql":"20fa7177a7baf55a26ac144f510f1e319248f82c","Code/03_ObjectIndex/050_USP_Partitions.sql":"a3ddd22c7ac60212f3d3ab9e555bedaee5e08d65","Code/03_ObjectIndex/060_USP_Columnstore.sql":"89567cd5768038b6a5e2aeb1867e00f820149da6","Code/03_ObjectIndex/070_USP_IndexPhysicalStats.sql":"afdb7c4104d5b87a90aaefdfc87080b2a9b99205","Code/03_ObjectIndex/075_USP_VectorIndexAnalysis.sql":"504e2ae3293c1a9f2d6a5e1d31f81505ff9364ea","Code/03_ObjectIndex/080_USP_ObjectAnalysis.sql":"6ad7ad3d49a81ef96d5a2fe958df9575effe6e6a","Code/03_ObjectIndex/090_USP_SchemaDesignAnalysis.sql":"d462ab84a262bb6c9df8bfbc994e7481600c556c","Code/04_PlanCache/010_USP_QueryStats.sql":"5965cd778ad70e817e72958fb1af3f71cf79e7f3","Code/04_PlanCache/020_USP_QueryHashAnalysis.sql":"ac9111a5a55197c37c45ec2a40abc7d411fe062a","Code/04_PlanCache/030_USP_PlanCacheHealth.sql":"4acf7b8eeb7a0c18f93cc4305a0fcafeb31def33","Code/04_PlanCache/040_USP_PlanDetails.sql":"feb2d30f813cf0be71e952806502ec0b087d6a17","Code/04_PlanCache/050_USP_ShowplanAnalysis.sql":"d4bd22925ee06322a9ec8bb34ce21b7291b95ccc","Code/04_PlanCache/060_USP_PlanCacheAnalysis.sql":"35e195d79a3dc4379ee4e8c0a0d54bb1ebaa3d33","Code/04_PlanCache/070_USP_PlanGuideInventory.sql":"fb193b431271f4ed637b9bdecc383344d4646e65","Code/05_QueryStore/010_USP_QueryStoreStatus.sql":"21e062027c04d60f90e4b2f0ddfa532f144904ac","Code/05_QueryStore/020_USP_QueryStoreRuntimeStats.sql":"141e79d0bd0a8a3a67865b0876c5bdeb41dba615","Code/05_QueryStore/030_USP_QueryStoreWaitStats.sql":"97417b44d6723ad9b9f1755041a9d4d42aa504b1","Code/05_QueryStore/040_USP_QueryStorePlanChanges.sql":"b03746d2a7ce610ac8aa9411964ddd3b66d87adb","Code/05_QueryStore/050_USP_QueryStoreRegressions.sql":"89ee28ad3b74532988e29c4a05a21c06cd380114","Code/05_QueryStore/060_USP_QueryStoreForcedPlans.sql":"297cfcbbd740f2d283657d7ebc1e8befeb2b5572","Code/05_QueryStore/070_USP_QueryStoreHints.sql":"087482cd34af39fc7f178be6d871632d4118a6a4","Code/05_QueryStore/080_USP_QueryStoreAnalysis.sql":"841e19df0ccf9ffcfe8c9d217ff8c108f836ed45","Code/05_QueryStore/090_USP_IntelligentQueryProcessingAnalysis.sql":"ae6816580be70cdda1a2f94ab44fea7834cc68c9","Code/06_ExtendedEvents/010_USP_ExtendedEventsSessions.sql":"2f60a186a3126a940c804bf04a616bd7a3efdbac","Code/06_ExtendedEvents/020_USP_ExtendedEventsReadEvents.sql":"4f6357b6b9fc0e19f903e7eb6faed02b3fd4deb7","Code/06_ExtendedEvents/030_USP_ExtendedEventsDeadlocks.sql":"8d58ab880fe6f70e84dc58a67373d40ae399e8e0","Code/06_ExtendedEvents/040_USP_ExtendedEventsBlockedProcesses.sql":"77ea7443f691a02669bb29f425636578297d75e8","Code/06_ExtendedEvents/050_USP_ExtendedEventsTargetRuntime.sql":"9a25cd7788134847fd1635802438e18c2d62b332","Code/06_ExtendedEvents/060_USP_ExtendedEventsAnalysis.sql":"980779a64812beabdf336a34f2879bc39f9960c0","Code/07_Infrastructure/010_USP_AgentStatus.sql":"8f28c79e571e89313f83880465c2a7a4e7e2ff32","Code/07_Infrastructure/020_USP_AgentJobs.sql":"195a83a1f32e003ce5eebe6e7f10203286fa06be","Code/07_Infrastructure/030_USP_ResourceGovernorAnalysis.sql":"9fe784750f4e5585f8d93a216edeb67e60214b9e","Code/07_Infrastructure/040_USP_AvailabilityGroups.sql":"8fc2a1b95a33f7b702665f2463154bbf891af2d0","Code/07_Infrastructure/050_USP_BackupRecovery.sql":"79e600ad9cfd0d1ecaaf7c00a994e76c677645e9","Code/07_Infrastructure/060_USP_LogShippingStatus.sql":"1ec80f07f50c450b2506772eabfb7d811aeef0f4","Code/07_Infrastructure/070_USP_ReplicationStatus.sql":"e8db6fae578902ec64fcdcc647585fa65e65fb19","Code/07_Infrastructure/080_USP_DataCaptureStatus.sql":"1dc57fbc3fde066c0757e4d574daf99315178352","Code/07_Infrastructure/090_USP_InfrastructureAnalysis.sql":"611b85f7aa6c7d3813ee1272c04f51fa9c4c34c7","Code/07_Infrastructure/100_USP_BackupChainAnalysis.sql":"a639a27267c272dc1313afe5a038f335c2b24506","Code/07_Infrastructure/110_USP_AvailabilityDeepAnalysis.sql":"1874647b91788e5cc5c84124e1361c26008ae900","Code/07_Infrastructure/120_USP_AgentMonitoringAnalysis.sql":"b35cc9028de76de402f6d725d9a4153bc558ca18","Code/07_Infrastructure/130_USP_MaintenanceOperations.sql":"b1b5c573c9568da28d395ec4992b459323089244","Code/07_Infrastructure/140_USP_ErrorLogAnalysis.sql":"dbc4c450de177e5cfb877482e471e004e0b0f1e4","Code/08_ServerHealth/010_USP_ServerCpuTopology.sql":"3f431f34fb07e8f39fd135cf341a5e30aae8b7f5","Code/08_ServerHealth/020_USP_ServerNuma.sql":"7456f9959f109cfb3e29dd13e0627547d433b009","Code/08_ServerHealth/030_USP_ServerMemory.sql":"10370ca983efb6a9f046c322efb325f8ef6eaa74","Code/08_ServerHealth/040_USP_TempDBConfiguration.sql":"1e9aa2a09b353aaba23231416a3051b7118a534a","Code/08_ServerHealth/050_USP_ServerConfiguration.sql":"f7a6effcb546ceab36539ecfd017bdfad3ae5386","Code/08_ServerHealth/060_USP_TraceFlags.sql":"e1eaa57972b726d43b5d36165c727c38cb9f29a3","Code/08_ServerHealth/070_USP_StartupParameters.sql":"c764263f62c3b9f798c1fe1477afdcdaeaf3c484","Code/08_ServerHealth/080_USP_OSInformation.sql":"ec838e8cd8d6ce832d0b48a1c24ce278b8e077ba","Code/08_ServerHealth/090_USP_ServerSecurityConfiguration.sql":"aedaf70bfd9ae6a728b6ddd747e39e90f3370baa","Code/08_ServerHealth/240_USP_AuditConfigurationAnalysis.sql":"9a866b891c7adbe5daf17e194dc03c9e40ff5b2d","Code/08_ServerHealth/100_USP_ServerHealthAnalysis.sql":"818c9c2a4c10e77e5bb5e493f3bf90b155381c2f","Code/08_ServerHealth/110_USP_DatabaseIntegrityAnalysis.sql":"f197294ebfcae835c26b0e1bba4aea913cd4c579","Code/08_ServerHealth/120_USP_DatabaseCapacityAnalysis.sql":"5fef73f48e516330f9bea1d2e763795209db9a5b","Code/08_ServerHealth/130_USP_PerformanceCounters.sql":"4601152101a800eb62c1538739ac81f07354f20e","Code/08_ServerHealth/140_USP_CriticalEngineEvents.sql":"c425a9a3c770b783188496576d4f6a90a32df17d","Code/08_ServerHealth/150_USP_InternalContentionAnalysis.sql":"e14f4c7bea20107c4cd99ab22ac9f8eda681069d","Code/08_ServerHealth/160_USP_BufferPoolAnalysis.sql":"e193f185dd77695d6a14262de7d4827fc47707db","Code/08_ServerHealth/170_USP_DiagnosticFindings.sql":"e606712fdaee4b347aa0001dbb36f6f9de2a2a97","Code/08_ServerHealth/180_USP_WorkerPressureAnalysis.sql":"b031985f752999c12193239152ff6a8b812870ac","Code/08_ServerHealth/190_USP_DatabaseConfigurationAnalysis.sql":"8ef58c1dd4b118214c2b02d18a2e52a6175f5f46","Code/08_ServerHealth/200_USP_DatabasePortabilityAnalysis.sql":"a6abbb4319e850dd5f2b6dc25eafbc22c8180fb5","Code/08_ServerHealth/210_USP_MsdbHealthAnalysis.sql":"38736f2de9929ab0c1f1f36d5f11071593c77b4d","Code/08_ServerHealth/220_USP_LinkedServerAnalysis.sql":"3cb67191c8a703fd4baf9c066c6f74e3784d3a66","Code/08_ServerHealth/230_USP_SystemDatabaseObjectInventory.sql":"a0f68d975b125dbbf3379d2074ada9986d4d0994","Code/02_CurrentState/110_USP_CurrentCursorAnalysis.sql":"4ae504ef9c9c123d4745660336a53e82e8d6a58d","Code/09_VersionAdaptive/010_USP_ServerFeatureCapabilities.sql":"d6e85c9c958523048a05ac350c32a94cf8147d1e","Code/09_VersionAdaptive/011_SqlServerBuildCatalog.sql":"dfcf159275e56537ca5399210cacc56b1d1a99a5","Code/09_VersionAdaptive/012_SqlServerLifecycleCatalog.sql":"665f99cb7f804cc6d7cf5505b3a18b84867a9b73","Code/09_VersionAdaptive/015_USP_ServerVersionInformation.sql":"fffbd70bb55eb95347fb0aa616b2206b27b8a453","Code/09_VersionAdaptive/020_USP_SpecialFeatureInventory.sql":"ed12218b3d1e5207eebe22ddd13553f51b0aac2a","Code/10_SSIS/010_USP_SsisPackageAnalysis.sql":"198c8d713dcd9ecdf0272d9b85bdb49a17cda7b8","Code/09_VersionAdaptive/030_USP_InMemoryOltpAnalysis.sql":"f8eaafa7c686f34daf5f77c7680d58583a8495cd","Code/09_VersionAdaptive/040_USP_TemporalAnalysis.sql":"abdc53499700d02346284230b6b33bd0d862731b","Code/09_VersionAdaptive/050_USP_ServiceBrokerAnalysis.sql":"c975da0cf64a97c71674aad39de1b7d5536f7cc2","Code/09_VersionAdaptive/060_USP_FullTextAnalysis.sql":"9f5fe182b5b074aeb9015357c434d9fa3f08e495","Code/09_VersionAdaptive/070_USP_DataCaptureDeepAnalysis.sql":"f2447d335d724b002fa0a75907261689c9b7fc93","Code/09_VersionAdaptive/080_USP_EncryptionAnalysis.sql":"e2268c1b8ea8f4e872a563871440615dcecc154d","Code/09_VersionAdaptive/090_USP_ExternalRuntimeAnalysis.sql":"cf2a9d0f1e5594cda00eda4ddd431f3cb2139cf7","Code/09_VersionAdaptive/100_USP_ClrAnalysis.sql":"786f83652fbb434300e3d27c7414b3938588b0c6","Code/04_PlanCache/041_PlanAnalysisProfile.sql":"b943aae344e0f5220e6d57576d31a0cb650ff66f","Code/04_PlanCache/042_PlanAnalysisRuleThreshold.sql":"17511865a85a8137924d5251ff06cd09775fc605","Code/04_PlanCache/043_PlanAnalysisProfileAssignment.sql":"50699c5234aec0f446efc17a6a0bc2cb097ff829","Code/04_PlanCache/044_TVF_ParseStatisticsIoText.sql":"7fb85acc7c432fc2277b45dbfd3b742dd1022531","Code/04_PlanCache/045_TVF_ParseStatisticsTimeText.sql":"38ce27784d681351bc831ff15ee7d3768d7cff89","Code/04_PlanCache/046_TVF_ExecutionPlanObjectReferences.sql":"5562283e708c3696983898e43386411b6926981d","Code/04_PlanCache/047_TVF_ExecutionPlanStatisticsUsage.sql":"2fc7a3504f631a514b24077b469fa5fbc897c387","Code/04_PlanCache/048_TVF_ExecutionPlanColumnReferences.sql":"ba23a8459c218e1b2b2ce3199a06bef91a21fb27","Code/04_PlanCache/049_InternalCollectExecutionPlanMetadata.sql":"fad04ec3f7e32865b936095c0b8e15c36dd24bcf","Code/04_PlanCache/051_InternalAnalyzeExecutionPlan.sql":"17c9df83e1b19810be041f7c3e87941dd508882b","Code/04_PlanCache/052_USP_CreateExecutionEvidenceJson.sql":"b6c571731651ab45f9a0d8c3ed273251d38274d1","Code/04_PlanCache/053_USP_ExecutionPlanAnalysis.sql":"b010312b2fd3d36fb899fd600fa51865d706cdf7","Code/10_SnapshotBaseline/010_SnapshotTargetConfiguration.sql":"f0d9f535d0fa07460ae2586a05909b34c0255ba4","Code/10_SnapshotBaseline/030_Snapshot_Target_Schema.sql":"433ed248b15cfa29123fd1f84e43c4779432021f","Code/10_SnapshotBaseline/020_InternalConfigureSnapshotPolicy.sql":"3102d4c3b1db502e700f03b339884b0179729539","Code/10_SnapshotBaseline/040_InternalPrepareCollectionCycle.sql":"d651fb24437dd575aea03d02e044821607209630","Code/10_SnapshotBaseline/050_InternalCompletePerformanceCounterCycle.sql":"ae2c7b91ddcb8c3c72dbccecef2b75fe8c215ca9","Code/10_SnapshotBaseline/055_InternalCompleteWaitStatsCycle.sql":"d46aa31a19ab98e692a1a19566a3b659a1d45789","Code/10_SnapshotBaseline/060_InternalFinalizeCollectionCycle.sql":"78ca438d9d4523d15d7b5fa4d7da69e567251759","Code/10_SnapshotBaseline/070_InternalPurgeExpiredData.sql":"159b93cdcb474d2c6d55de20a13e85c9e206eb7e","Code/10_SnapshotBaseline/080_USP_ConfigureSnapshotTarget.sql":"07a427272be16db554c0866e064434df569343cd","Code/10_SnapshotBaseline/090_USP_RunSnapshotCollectionCycle.sql":"c0e3a9ad3cc0c786e18cfb3e5a6b8f588c7ad8dc","Code/10_SnapshotBaseline/100_USP_PurgeSnapshotData.sql":"b2d9c766492d367c3c39b3243aa70e6c6654f0c2","Code/09_VersionAdaptive/500_USP_FrameworkUsageFromQueryStore.sql":"703d01dd250df4fea6a95ac2cfe3d5e5c4d0e74a","Code/05_QueryStore/005_TVF_QueryStoreReplicaRoleInfo.sql":"1f06e3620ece2ada615fd92f4e74e24300920524","Code/05_QueryStore/100_USP_QueryStoreReplicaAnalysis.sql":"5c7ec10ca246a1b50a785e4d7ff1ae92eb0ca666","Code/08_ServerHealth/250_USP_CompileContextAnalysis.sql":"f037388feab82c1ba8560b4884dd3aade638d0ff","Code/09_VersionAdaptive/110_USP_ExternalDataAnalysis.sql":"add39f58878c192c854155e5e5d30d052978cf53","Code/10_SSIS/030_USP_SsisCatalogExecutionAnalysis.sql":"f294945b755d26735f6558dcc6925bb3333bc37d","Code/10_SSIS/020_USP_SsisLegacyLogAnalysis.sql":"2b83604043f49a323dd1fd439a44e2243432b1c5","Code/10_SSIS/040_USP_SsisPackageModelAnalysis.sql":"afc78d6ae6877d2700ce5718eaa44bed74310271","Code/08_ServerHealth/260_USP_ServerPrincipalAnalysis.sql":"e89cd5b2d647a387143009737b282db772fc5ac8","Code/10_SSIS/034_InternalSsisScopePathMatch.sql":"cfb9696a2d75ce3d28d397a6833d8b78f5652436","Code/10_SSIS/035_InternalSsisExecutionScopes.sql":"4cb123520ee2588e87a1ee51001edf0e0221a406","Code/08_ServerHealth/270_USP_DatabasePrincipalAnalysis.sql":"1acfe8db7571737e8c1fce09af78bd1ad2ea4535","Code/08_ServerHealth/285_USP_RowLevelSecurityAndMaskingInventory.sql":"e8277b609e70071be89f75cc3ff1ea853d87ee1a","Code/08_ServerHealth/280_USP_CurrentCallerPermissionAnalysis.sql":"3821a86f3a2e31696530b25acb183e68d26eb81d","Code/08_ServerHealth/290_USP_EndpointTransportAnalysis.sql":"014605eb0d7e79f1a7b23bcf8bf92743d088f1d3","Code/10_SSIS/036_InternalSsisPipelineCorrelation.sql":"081c8a72fc8033df563f1f0f52e2001a8179a919","Code/10_SSIS/037_InternalSsisPipelineDiagnostics.sql":"7710ff961c6b37638fde9ed234b1801484c1e1c7","Code/10_SnapshotBaseline/076_InternalValidateSnapshotWaitTarget.sql":"c5218f835982bf96c47059ee1542ba3e18d655bd","Code/10_SnapshotBaseline/085_InternalRunSnapshotWaitStatsCycle.sql":"c649357bc2cd5875fd20519f838c1eab57b1a6a2","Code/10_SSIS/050_USP_SsisExecutionComparison.sql":"a412f078ff1716380cfb8b9481b51abb1d3faac5","Code/10_SnapshotBaseline/057_InternalCompleteFileIOCycle.sql":"d79e4a7aa53090608457800c2ff388be62d1a155","Code/10_SnapshotBaseline/087_InternalRunSnapshotFileIOCycle.sql":"eba2afb474293f9f13c18ebb765c63bd5a1398ce","Code/10_SSIS/045_InternalSsisExecutionMetrics.sql":"0cf5c8be0bef8ad3eaeef60f2479c5fb015ff105","Code/10_SSIS/060_USP_SsisExecutionBaseline.sql":"4f44e9ac6fd4f27ca2bd5efc752070b2dfa78f69","Code/09_VersionAdaptive/120_USP_UpgradeFeatureUsageAnalysis.sql":"01cacbe003bcb030a9a28d6a2b631a6e2add3e5b","Code/08_ServerHealth/300_USP_DistributedTransactionInventory.sql":"e211cf94e922b6f8d6b6c2a3342c13d6c710cc41","Code/08_ServerHealth/310_USP_DatabaseMirroringInventory.sql":"95d88f7055861c91159109f5d22691a21b81509e","Code/07_Infrastructure/025_USP_AgentProxyInventory.sql":"b75a420953f07714d87ce81d590ae28428487180","Code/08_ServerHealth/320_USP_SensitivityClassificationSummary.sql":"7cdcf07991f260b77a40addfaf5a2130e61116d3","Code/03_ObjectIndex/100_USP_DatabaseDdlTriggerInventory.sql":"f283b6e7a70deb4cb320cf215c83aea76a1bdd17","Code/08_ServerHealth/330_USP_LoadedModuleInventory.sql":"604c0b93e58c915c34620e04f7c0810eec58bff7","Code/08_ServerHealth/340_USP_DatabaseSnapshotInventory.sql":"109db59480a65dc80747241de2978371a28ba756","Code/08_ServerHealth/281_USP_CurrentObjectPermissionAnalysis.sql":"3757399a2d91a35c0a7661d822f19049fb414286"},"builders":{"Code/Install/Build-StandaloneInstaller.ps1":"4db9dbfae972d68d7c27d832857e0f084955c668","Code/Install/Build-SnapshotBaselineInstallers.ps1":"738f369b72435d94b21249267a3996d872379771","Code/Install/Build-ExecutionPlanAnalysisInstaller.ps1":"d2fdc1cae65ed521162d5936c2015db11d3215f2","TestLab/Adapters/OPS-005/Build-AdapterInstall.ps1":"4160bdd1e1df6c557ba2c25dffd502eee1383b15","TestLab/Adapters/EXECUTION-PLAN-001/Build-AdapterInstall.ps1":"47a4cd3dde1ae85a6ad549fcb6ed2dc683b83979"},"baselineOps":"59fc4dfab0f44238c010886529caff8c735255e4","baselineUpdate":"1f7ff87dda9ab630ea9ab720945d77f8c1bb6358"}''')
-          ROOT=Path.cwd().resolve()
-          TEMP=Path(os.environ["RUNNER_TEMP"]).resolve()/"usage-skill-review"
-          TEMP.mkdir(parents=True,exist_ok=True)
-          def sha(data):
-              return hashlib.sha1(b"blob "+str(len(data)).encode("ascii")+b"\0"+data).hexdigest()
-          def require(path,expected):
-              p=(ROOT/path).resolve()
-              if not p.is_relative_to(ROOT) or not p.is_file() or sha(p.read_bytes())!=expected:
-                  raise SystemExit("PIN_MISMATCH: "+path)
-          def run(*args):
-              subprocess.run(args,check=True,timeout=900,cwd=ROOT)
-          for path,pin in C["sources"].items(): require(path,pin)
-          for path,pin in C["views"].items(): require(path,pin)
-          for path,pin in C["builders"].items(): require(path,pin)
-          for path,key in [("Code/Install/usage_skill_generator.py","renderer"),("Code/Install/deployment_generator.py","deployment"),("Code/Tests/Static/1054_Validate_Usage_Skill_Contract.py","validator")]: require(path,C[key])
-          require(C["guardPath"],C["guardBefore"])
-          require("TestLab/Adapters/OPS-005/sql/install.sql",C["baselineOps"])
-          require("TestLab/Adapters/OPS-005/sql/update.sql",C["baselineUpdate"])
-          old_guard=(ROOT/C["guardPath"]).read_text(encoding="utf-8")
-          begin="-- SNAPSHOT_SCHEMA_PREFLIGHT_BEGIN\n"
-          end="-- SNAPSHOT_SCHEMA_PREFLIGHT_END"
-          if old_guard.count(begin)!=1 or old_guard.count(end)!=1: raise SystemExit("GUARD_MARKER_BOUND")
-          run(sys.executable,"Code/Install/usage_skill_generator.py","--repository-root",".","--write-sources")
-          run(sys.executable,"Code/Install/usage_skill_generator.py","--repository-root",".","--write-views")
-          for path,pin in C["sources"].items(): require(path,pin)
-          for path,pin in C["views"].items(): require(path,pin)
-          run(sys.executable,"Code/Install/deployment_generator.py","--repository-root",".","--refresh-snapshot-guard")
-          new_guard=(ROOT/C["guardPath"]).read_text(encoding="utf-8")
-          if new_guard.count(begin)!=1 or new_guard.count(end)!=1: raise SystemExit("GUARD_REPLAY_MARKER_BOUND")
-          def outside(s): return s.split(begin,1)[0]+begin+end+s.split(end,1)[1]
-          if outside(new_guard)!=outside(old_guard) or new_guard==old_guard: raise SystemExit("GUARD_OUTSIDE_BOUND")
-          guard_bytes=new_guard.encode("utf-8")
-          if sha(guard_bytes)==C["guardBefore"]: raise SystemExit("GUARD_NOT_UPDATED")
-          run(sys.executable,"Code/Install/usage_skill_generator.py","--repository-root",".","--check")
-          run(sys.executable,"Code/Install/deployment_generator.py","--repository-root",".","--check-snapshot-guard")
-          run(sys.executable,"Code/Tests/Static/1054_Validate_Usage_Skill_Contract.py","--repository-root",".","--self-test")
-          run("pwsh","-NoLogo","-NoProfile","-File","TestLab/Adapters/OPS-005/Build-AdapterInstall.ps1","-RepositoryRoot",str(ROOT),"-InstallOutputPath",str(TEMP/"ops-install.sql"),"-UpdateOutputPath",str(TEMP/"ops-update.sql"))
-          run("pwsh","-NoLogo","-NoProfile","-File","Code/Install/Build-StandaloneInstaller.ps1","-RepositoryRoot",str(ROOT),"-OutputPath",str(TEMP/"standalone.sql"))
-          run("pwsh","-NoLogo","-NoProfile","-File","Code/Install/Build-SnapshotBaselineInstallers.ps1","-RepositoryRoot",str(ROOT),"-FrameworkOutputPath",str(TEMP/"snapshot-framework.sql"),"-TargetOutputPath",str(TEMP/"snapshot-target.sql"))
-          run("pwsh","-NoLogo","-NoProfile","-File","TestLab/Adapters/EXECUTION-PLAN-001/Build-AdapterInstall.ps1","-RepositoryRoot",str(ROOT),"-OutputPath",str(TEMP/"plan-install.sql"))
-          ops=(TEMP/"ops-install.sql").read_bytes()
-          update=(TEMP/"ops-update.sql").read_bytes()
-          if sha(ops)==C["baselineOps"] or sha(update)!=C["baselineUpdate"]: raise SystemExit("CANONICAL_ARTIFACT_BOUND")
-          masters=(ROOT/"Code/Install/Install_All.sql").read_text(encoding="utf-8")
-          includes=re.findall(r"^\s*:r\s+(.+?)\s*$",masters,re.M)
-          if len(includes)<190 or ops.count(b"-- BEGIN SOURCE: ")!=len(includes) or ops.count(b"-- END SOURCE: ")!=len(includes): raise SystemExit("OPS_CLOSURE_MARKERS")
-          other={name:(TEMP/name).read_bytes() for name in ["standalone.sql","snapshot-framework.sql","snapshot-target.sql","plan-install.sql"]}
-          if any(not data for data in other.values()): raise SystemExit("EMPTY_CANONICAL_ARTIFACT")
-          # Split only between complete UTF-8 code points; retain byte offsets and exact whole-blob identity.
-          limit=786432
-          chunks=[]
-          offset=0
-          while offset<len(ops):
-              stop=min(offset+limit,len(ops))
-              while stop<len(ops) and (ops[stop]&0xc0)==0x80: stop-=1
-              if stop<=offset: raise SystemExit("CHUNK_BOUNDARY")
-              part=ops[offset:stop]
-              part.decode("utf-8")
-              chunks.append((offset,part))
-              offset=stop
-          if len(chunks)>40 or b"".join(part for _,part in chunks)!=ops: raise SystemExit("CHUNK_REPLAY_BOUND")
-          def upload(data):
-              payload=json.dumps({"encoding":"base64","content":base64.b64encode(data).decode("ascii")}).encode("ascii")
-              req=urllib.request.Request("https://api.github.com/repos/"+C["repo"]+"/git/blobs",data=payload,headers={"Authorization":"Bearer "+os.environ["GH_TOKEN"],"Accept":"application/vnd.github+json","Content-Type":"application/json","X-GitHub-Api-Version":"2022-11-28"},method="POST")
-              try:
-                  with urllib.request.urlopen(req,timeout=120) as resp: raw=resp.read(4097)
-              except urllib.error.HTTPError as exc: raise SystemExit("UPLOAD_HTTP_"+str(exc.code)) from None
-              if len(raw)>4096 or json.loads(raw).get("sha")!=sha(data): raise SystemExit("UPLOAD_RESPONSE_BOUND")
-              return sha(data)
-          # No Git refs, SQL server, release, issue, PR or status write occurs here.
-          guard_sha=upload(guard_bytes)
-          ops_sha=upload(ops)
-          chunk_manifest=[]
-          for off,part in chunks:
-              chunk_manifest.append({"offset":off,"bytes":len(part),"blob":upload(part)})
-          manifest={"kind":"USAGE_SKILL_CANONICAL_REVIEW","basePreviewCommit":C["preview"],"basePreviewTree":C["previewTree"],"helperBefore":C["before"],"rendererBlob":C["renderer"],"deploymentGeneratorBlob":C["deployment"],"validatorBlob":C["validator"],"builderBlobs":C["builders"],"sourceBlobs":C["sources"],"viewBlobs":C["views"],"guard":{"path":C["guardPath"],"before":C["guardBefore"],"after":guard_sha,"bytes":len(guard_bytes),"outsideRegionEqual":True},"ops":{"before":C["baselineOps"],"after":ops_sha,"bytes":len(ops),"chunks":chunk_manifest},"otherCanonical":{name:{"blob":sha(data),"bytes":len(data)} for name,data in other.items()},"unchangedUpdate":C["baselineUpdate"],"checks":["source-and-view-replay-exact","snapshot-guard-refresh-and-strict-check","usage-skill-strict-check","usage-skill-self-test","canonical-builders","ops-source-markers","utf8-chunk-reassembly"]}
-          encoded=json.dumps(manifest,sort_keys=True,separators=(",",":"),ensure_ascii=True).encode("ascii")
-          if len(encoded)>1000000: raise SystemExit("MANIFEST_SIZE_BOUND")
-          manifest_sha=upload(encoded)
-          print("USAGE_SKILL_GUARD="+guard_sha+" BYTES="+str(len(guard_bytes)))
-          print("USAGE_SKILL_OPS="+ops_sha+" BYTES="+str(len(ops))+" CHUNKS="+str(len(chunks)))
-          print("USAGE_SKILL_REVIEW_MANIFEST="+manifest_sha+" BYTES="+str(len(encoded)))
+          set -euo pipefail
+          state='success'
+          if [ "$JOB_STATUS" != 'success' ]; then
+            state='failure'
+          fi
+          gh api --method POST "repos/${GITHUB_REPOSITORY}/statuses/${GITHUB_SHA}" \
+            -f state="$state" \
+            -f target_url="$RUN_URL" \
+            -f description='Impact-selected documentation validation' \
+            -f context='documentation-validation' >/dev/null
