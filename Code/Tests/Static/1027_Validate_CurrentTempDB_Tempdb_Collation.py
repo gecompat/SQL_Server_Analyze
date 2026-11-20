@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Validate literal CurrentTempDB ABI, fields, parent isolation and late caps."""
 from __future__ import annotations
+from UsageSkillSourceMask import strip_usage_skill_projections
 import argparse,re
 from pathlib import Path
 PROCEDURE_PATH=Path("Code/02_CurrentState/070_USP_CurrentTempDB.sql")
@@ -163,7 +164,7 @@ def self_test(source:str)->int:
  return len(mutations)
 def main()->int:
  p=argparse.ArgumentParser();p.add_argument('--repository-root',type=Path,default=Path('.'));p.add_argument('--self-test',action='store_true');a=p.parse_args()
- source=(a.repository_root/PROCEDURE_PATH).read_text(encoding='utf-8-sig')
+ source=strip_usage_skill_projections((a.repository_root/PROCEDURE_PATH).read_text(encoding='utf-8-sig'))
  if a.self_test:print(f'CurrentTempDB self-test passed: mutations={self_test(source)}');return 0
  errors=findings(source)
  if errors:print('CurrentTempDB contract failed: '+', '.join(errors));return 1

@@ -127,7 +127,7 @@ def decode_sql_markdown(expression: str) -> str:
         raise ValueError("Markdown expression has no max-length Unicode anchor")
     pos = len(prefix)
     result: list[str] = []
-    token = re.compile(r"N'(?P<string>(?:''|[^'])*)'|NCHAR\(10\)")
+    piece_pattern = re.compile(r"N'(?P<string>(?:''|[^'])*)'|NCHAR\(10\)")
     first = True
     while pos < len(expression):
         if not first:
@@ -135,7 +135,7 @@ def decode_sql_markdown(expression: str) -> str:
             if glue is None:
                 raise ValueError("Unexpected Markdown expression glue")
             pos += glue.end()
-        match = token.match(expression, pos)
+        match = piece_pattern.match(expression, pos)
         if match is None:
             raise ValueError("Unexpected Markdown expression token")
         result.append("\n" if match.group(0) == "NCHAR(10)"

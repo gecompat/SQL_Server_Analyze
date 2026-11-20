@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Validate literal CurrentWaits work-table ABI and existing shared consumer contracts."""
 from __future__ import annotations
+from UsageSkillSourceMask import strip_usage_skill_projections
 import argparse,re
 from pathlib import Path
 PROCEDURE=Path("Code/02_CurrentState/040_USP_CurrentWaits.sql")
@@ -178,7 +179,7 @@ def self_test(source):
 
 def main():
  p=argparse.ArgumentParser();p.add_argument('--repository-root',type=Path,required=True);p.add_argument('--self-test',action='store_true');a=p.parse_args()
- source=(a.repository_root/PROCEDURE).read_text(encoding='utf-8-sig')
+ source=strip_usage_skill_projections((a.repository_root/PROCEDURE).read_text(encoding='utf-8-sig'))
  if a.self_test:print(f'Current Waits self-test passed: mutations={self_test(source)} findings=0');return 0
  errors=validate(source)
  if errors:print('Current Waits failed: '+', '.join(errors));return 1

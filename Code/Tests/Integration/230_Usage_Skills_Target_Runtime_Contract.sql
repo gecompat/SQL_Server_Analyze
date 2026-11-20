@@ -1,6 +1,3 @@
-USE [SQLServerAnalyzeSnapshotTest];
-GO
-
 /*
 Usage Skill native runtime contract. The metadata view documents source text; its rows
 are not installation or permission attestations. This fixture uses only local #Temp
@@ -8,9 +5,9 @@ objects and Help calls. No diagnosis, source query or persistent write is reques
 */
 SET NOCOUNT ON;
 
-IF OBJECT_ID(N'tempdb..#UsageSkillActual') IS NOT NULL
+IF OBJECT_ID(N'tempdb..#UsageSkillTargetActual') IS NOT NULL
     THROW 59001,N'USAGE_SKILL_TEMP_COLLISION',1;
-CREATE TABLE [#UsageSkillActual]
+CREATE TABLE [#UsageSkillTargetActual]
 (
     [SkillFormatVersion] varchar(16) NULL,
     [SchemaName] sysname NULL,
@@ -94,11 +91,11 @@ BEGIN
         WHERE [p].[object_id]=@ObjectId AND [p].[name]<>N'@Hilfe';
         SET @CallSql=N'EXEC '+QUOTENAME(@Schema)+N'.'+QUOTENAME(@Object)+N' '
                    +COALESCE(@ArgList+N',',N'')+N'@Hilfe=1;';
-        DELETE FROM [#UsageSkillActual];
+        DELETE FROM [#UsageSkillTargetActual];
         SELECT @BeforeDb=DB_ID(),@BeforeLogin=SUSER_ID(),@BeforeTran=@@TRANCOUNT,
                @BeforeLock=@@LOCK_TIMEOUT,@BeforeOptions=(@@OPTIONS&16384);
         SELECT @BeforeXact=XACT_STATE();
-        INSERT [#UsageSkillActual] ([SkillFormatVersion],[SchemaName],[ObjectName],[SkillMarkdown])
+        INSERT [#UsageSkillTargetActual] ([SkillFormatVersion],[SchemaName],[ObjectName],[SkillMarkdown])
         EXEC [sys].[sp_executesql] @CallSql;
         SELECT @AfterDb=DB_ID(),@AfterLogin=SUSER_ID(),@AfterTran=@@TRANCOUNT,
                @AfterLock=@@LOCK_TIMEOUT,@AfterOptions=(@@OPTIONS&16384);
@@ -107,10 +104,10 @@ BEGIN
            OR @AfterLock<>@BeforeLock OR @AfterOptions<>@BeforeOptions OR @AfterXact<>@BeforeXact
            OR @AfterDb IS NULL OR @AfterLogin IS NULL
             THROW 59007,N'USAGE_SKILL_HELP_CALLER_STATE',1;
-        IF (SELECT COUNT_BIG(*) FROM [#UsageSkillActual])<>1
+        IF (SELECT COUNT_BIG(*) FROM [#UsageSkillTargetActual])<>1
            OR EXISTS
            (
-             SELECT 1 FROM [#UsageSkillActual] AS [a]
+             SELECT 1 FROM [#UsageSkillTargetActual] AS [a]
              WHERE [a].[SkillFormatVersion]<>'1.0.0' OR [a].[SkillFormatVersion] IS NULL
                 OR [a].[SchemaName] COLLATE Latin1_General_100_BIN2<>@Schema COLLATE Latin1_General_100_BIN2
                 OR [a].[ObjectName] COLLATE Latin1_General_100_BIN2<>@Object COLLATE Latin1_General_100_BIN2
@@ -149,11 +146,11 @@ BEGIN
     SELECT @ExpectedMarkdown=[SkillMarkdown]
     FROM [monitor_metadata].[VW_ObjectUsageSkills]
     WHERE [SchemaName]=@Schema AND [ObjectName]=@Object AND [ObjectType]='INTERNAL_PROCEDURE';
-    DELETE FROM [#UsageSkillActual];
+    DELETE FROM [#UsageSkillTargetActual];
     SELECT @BeforeDb=DB_ID(),@BeforeLogin=SUSER_ID(),@BeforeTran=@@TRANCOUNT,
            @BeforeLock=@@LOCK_TIMEOUT,@BeforeOptions=(@@OPTIONS&16384);
     SELECT @BeforeXact=XACT_STATE();
-    INSERT [#UsageSkillActual] ([SkillFormatVersion],[SchemaName],[ObjectName],[SkillMarkdown])
+    INSERT [#UsageSkillTargetActual] ([SkillFormatVersion],[SchemaName],[ObjectName],[SkillMarkdown])
     EXEC [sys].[sp_executesql] @CallSql;
     SELECT @AfterDb=DB_ID(),@AfterLogin=SUSER_ID(),@AfterTran=@@TRANCOUNT,
            @AfterLock=@@LOCK_TIMEOUT,@AfterOptions=(@@OPTIONS&16384);
@@ -162,8 +159,8 @@ BEGIN
        OR @AfterLock<>@BeforeLock OR @AfterOptions<>@BeforeOptions OR @AfterXact<>@BeforeXact
        OR @AfterDb IS NULL OR @AfterLogin IS NULL
         THROW 59011,N'USAGE_SKILL_OUTPUT_CALLER_STATE',1;
-    IF @ExpectedMarkdown IS NULL OR (SELECT COUNT_BIG(*) FROM [#UsageSkillActual])<>1
-       OR EXISTS (SELECT 1 FROM [#UsageSkillActual] AS [a]
+    IF @ExpectedMarkdown IS NULL OR (SELECT COUNT_BIG(*) FROM [#UsageSkillTargetActual])<>1
+       OR EXISTS (SELECT 1 FROM [#UsageSkillTargetActual] AS [a]
           WHERE [a].[SkillFormatVersion]<>'1.0.0' OR [a].[SkillFormatVersion] IS NULL
              OR [a].[SchemaName] COLLATE Latin1_General_100_BIN2<>@Schema COLLATE Latin1_General_100_BIN2
              OR [a].[ObjectName] COLLATE Latin1_General_100_BIN2<>@Object COLLATE Latin1_General_100_BIN2
@@ -176,8 +173,6 @@ BEGIN
 END;
 CLOSE [UsageSkillSentinelCursor];DEALLOCATE [UsageSkillSentinelCursor];
 IF @SentinelCount<>7 THROW 59013,N'USAGE_SKILL_OUTPUT_COVERAGE',1;
-DROP TABLE [#UsageSkillActual];
+DROP TABLE [#UsageSkillTargetActual];
 PRINT N'USAGE_SKILL_TARGET_RUNTIME_CONTRACT PASS';
-GO
-USE [SQLServerAnalyzeTest];
 GO

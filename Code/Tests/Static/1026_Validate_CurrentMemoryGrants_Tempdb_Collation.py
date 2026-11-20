@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Validate the literal Memory Grants ABI, late shared cap, and snapshot boundaries."""
 from __future__ import annotations
+from UsageSkillSourceMask import strip_usage_skill_projections
 import argparse
 import re
 from pathlib import Path
@@ -50,7 +51,7 @@ def self_test(source:str)->int:
  return len(mutations)
 def main()->int:
  parser=argparse.ArgumentParser();parser.add_argument('--repository-root',type=Path,default=Path('.'));parser.add_argument('--self-test',action='store_true');args=parser.parse_args()
- source=(args.repository_root/PROCEDURE_PATH).read_text(encoding='utf-8-sig')
+ source=strip_usage_skill_projections((args.repository_root/PROCEDURE_PATH).read_text(encoding='utf-8-sig'))
  if args.self_test:
   n=self_test(source);print(f'Current Memory Grants self-test passed: mutations={n} findings=0');return 0
  errors=validate(source)

@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Validate CurrentRequests literal ABI, shared selection and source isolation."""
 from __future__ import annotations
+from UsageSkillSourceMask import strip_usage_skill_projections
 import argparse
 from pathlib import Path
 import re
@@ -498,7 +499,7 @@ def self_test(source:str)->int:
 
 def main()->int:
  p=argparse.ArgumentParser();p.add_argument('--repository-root',type=Path,default=Path('.'));p.add_argument('--self-test',action='store_true');args=p.parse_args()
- source=(args.repository_root/PROCEDURE_PATH).read_text(encoding='utf-8-sig')
+ source=strip_usage_skill_projections((args.repository_root/PROCEDURE_PATH).read_text(encoding='utf-8-sig'))
  if args.self_test:
   count=self_test(source);print(f'Current Requests self-test passed: mutations={count} findings=0');return 0
  errors=validate(source)

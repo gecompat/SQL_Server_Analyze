@@ -339,6 +339,7 @@
     "InternalCollectExecutionPlanMetadata",
     "InternalAnalyzeExecutionPlan",
     "USP_CreateExecutionEvidenceJson",
-    "USP_ExecutionPlanAnalysis"
+    "USP_ExecutionPlanAnalysis",
+    "VW_ObjectUsageSkills"
   ]
 }

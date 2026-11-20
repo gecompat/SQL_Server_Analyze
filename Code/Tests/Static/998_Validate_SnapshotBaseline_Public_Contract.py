@@ -35,6 +35,7 @@ PUBLIC_CONTRACT = pathlib.PurePosixPath(
 
 EXPECTED_FRAMEWORK_INCLUDES = (
     "Code/00_Setup/000_Preflight_und_Schema.sql",
+    "Code/00_Setup/004_MetadataSchema.sql",
     "Code/10_SnapshotBaseline/010_SnapshotTargetConfiguration.sql",
     "Code/10_SnapshotBaseline/076_InternalValidateSnapshotWaitTarget.sql",
     "Code/10_SnapshotBaseline/080_USP_ConfigureSnapshotTarget.sql",
@@ -42,6 +43,7 @@ EXPECTED_FRAMEWORK_INCLUDES = (
     "Code/10_SnapshotBaseline/087_InternalRunSnapshotFileIOCycle.sql",
     "Code/10_SnapshotBaseline/090_USP_RunSnapshotCollectionCycle.sql",
     "Code/10_SnapshotBaseline/100_USP_PurgeSnapshotData.sql",
+    "Code/00_Setup/005_VW_ObjectUsageSkills.sql",
 )
 
 EXPECTED_TARGET_INCLUDES = (
@@ -55,6 +57,8 @@ EXPECTED_TARGET_INCLUDES = (
     "Code/10_SnapshotBaseline/070_InternalPurgeExpiredData.sql",
     "Code/10_SnapshotBaseline/075_CompleteWaitStatsInstallation.sql",
     "Code/10_SnapshotBaseline/078_CompleteFileIOInstallation.sql",
+    "Code/10_SnapshotBaseline/011_MetadataSchema_Target.sql",
+    "Code/10_SnapshotBaseline/012_VW_ObjectUsageSkills_Target.sql",
 )
 
 EXPECTED_WAIT_TARGET_BACKEND = {'releaseState': 'IMPLEMENTED_TARGET_BACKEND',
@@ -583,6 +587,8 @@ def validate_repository(repository_root: pathlib.Path) -> list[str]:
         name=method.group("name")
         if name not in WAIT_ADMISSION_METHODS: continue
         for parameter in parse_parameters(method.group("parameters")).values():
+            if parameter.name == "Hilfe":
+                continue  # Early documentation return is not a wait-admission input.
             typ=parameter.data_type
             if typ in scalar: sid,size=scalar[typ]
             else:
@@ -717,11 +723,11 @@ GO
     if bad:
         target_source += "\nGRANT SELECT TO [ExampleRole];\n"
 
-    framework_source_path = root / EXPECTED_FRAMEWORK_INCLUDES[1]
+    framework_source_path = root / EXPECTED_FRAMEWORK_INCLUDES[2]
     target_source_path = root / EXPECTED_TARGET_INCLUDES[0]
     framework_source_path.write_text(framework_source, encoding="utf-8")
     target_source_path.write_text(target_source, encoding="utf-8")
-    for relative_path in EXPECTED_FRAMEWORK_INCLUDES[2:]:
+    for relative_path in EXPECTED_FRAMEWORK_INCLUDES[1:2] + EXPECTED_FRAMEWORK_INCLUDES[3:]:
         path = root / relative_path
         path.write_text("-- self-test source included in framework contract\n", encoding="utf-8")
     for relative_path in EXPECTED_TARGET_INCLUDES[1:]:

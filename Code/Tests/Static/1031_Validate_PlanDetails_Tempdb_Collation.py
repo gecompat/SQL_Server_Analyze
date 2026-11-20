@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Validate PlanDetails literal work-table, ABI and shared consumer boundaries."""
 from __future__ import annotations
+from UsageSkillSourceMask import strip_usage_skill_projections
 import argparse
 from pathlib import Path
 import re
@@ -52,7 +53,7 @@ def findings(s: str) -> list[str]:
     for m,col in zip(project,("StatementText","BatchText")):
         if f"@TextColumn=N'{col}'" not in m.group(1) or "@MaxCharacters=@ProjectionMaxCharacters" not in m.group(1): errors.append("PROJECT:"+col)
     prepare=s.find("EXEC [monitor].[InternalPrepareResultTables]")
-    if not (0<prepare<s.find("IF @Hilfe=1")<s.find("IF @MaxAnalyseobjekte<0")): errors.append("EARLY_MAP")
+    if not (0<s.find("IF @Hilfe=1")<prepare<s.find("IF @MaxAnalyseobjekte<0")): errors.append("EARLY_MAP")
     if len(re.findall(r"SELECT \* FROM \[#PlanDetails_CandidatesOutput\]",s))!=2: errors.append("CANDIDATES_SHARED")
     if len(re.findall(r"SELECT \* FROM \[#PlanDetails_Attributes\]",s))!=2: errors.append("ATTRIBUTES_SHARED")
     if "CONVERT(nvarchar(max),[QueryPlanXml]) [QueryPlanXml]" not in s: errors.append("XML_JSON")
@@ -157,7 +158,7 @@ def self_test(s: str) -> int:
 
 def main() -> int:
     p=argparse.ArgumentParser(description=__doc__);p.add_argument("--repository-root",type=Path,required=True);p.add_argument("--self-test",action="store_true");a=p.parse_args()
-    s=(a.repository_root/PROCEDURE_PATH).read_text(encoding="utf-8-sig")
+    s=strip_usage_skill_projections((a.repository_root/PROCEDURE_PATH).read_text(encoding="utf-8-sig"))
     errors=findings(s)
     if errors: print("PlanDetails contract failed: "+", ".join(errors),file=sys.stderr);return 1
     n=self_test(s) if a.self_test else 0

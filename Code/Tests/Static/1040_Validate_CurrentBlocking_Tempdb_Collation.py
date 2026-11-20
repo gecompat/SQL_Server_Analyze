@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Validate the literal CurrentBlocking ABI and late shared chain selection."""
 from __future__ import annotations
+from UsageSkillSourceMask import strip_usage_skill_projections
 import argparse
 from pathlib import Path
 import re
@@ -344,7 +345,7 @@ def self_test(source:str)->tuple[int,bool]:
 
 def main()->int:
  p=argparse.ArgumentParser();p.add_argument('--repository-root',type=Path,default=Path('.'));p.add_argument('--self-test',action='store_true');a=p.parse_args()
- source=(a.repository_root/PROCEDURE_PATH).read_text(encoding='utf-8-sig')
+ source=strip_usage_skill_projections((a.repository_root/PROCEDURE_PATH).read_text(encoding='utf-8-sig'))
  if a.self_test:
   count,original=self_test(source)
   print(f'CurrentBlocking self-test passed: mutations={count} reference_cap_fixture={original} original_missing_cap={original}')
