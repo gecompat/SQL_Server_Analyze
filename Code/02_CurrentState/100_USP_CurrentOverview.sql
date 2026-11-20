@@ -308,8 +308,6 @@ BEGIN
         PRINT N'TABLE-Beispiel: CREATE TABLE #CurrentOverview_HelpExample (Seed bit NULL); EXEC [monitor].[USP_CurrentOverview] @MitSqlText=0, @SampleSeconds=0, @ResultSetArt=''TABLE'', @ResultTablesJson=N''{"moduleStatus":"#CurrentOverview_HelpExample"}''; SELECT * FROM #CurrentOverview_HelpExample; DROP TABLE #CurrentOverview_HelpExample;';
         PRINT N'JSON-Beispiel: DECLARE @OverviewJson nvarchar(max); EXEC [monitor].[USP_CurrentOverview] @MitSqlText=0, @SampleSeconds=0, @ResultSetArt=''NONE'', @JsonErzeugen=1, @Json=@OverviewJson OUTPUT; SELECT @OverviewJson;';
         PRINT N'Alle Beispielwerte sind synthetisch; SUMMARY reduziert die Ausgabe, nicht die Childarbeit, und die sequenziellen Messungen belegen keinen atomaren Gesamtzustand.';
-        SET @RestoreLockTimeoutSql=N'SET LOCK_TIMEOUT '+CONVERT(nvarchar(20),@OriginalLockTimeout)+N';';
-        EXEC [sys].[sp_executesql] @RestoreLockTimeoutSql;
         -- USAGE_SKILL_HELP_BEGIN monitor.USP_CurrentOverview
         SELECT CONVERT(varchar(16),'1.0.0') AS [SkillFormatVersion],CONVERT(sysname,N'monitor') AS [SchemaName],CONVERT(sysname,N'USP_CurrentOverview') AS [ObjectName],CONVERT(nvarchar(max),N'---')
             + NCHAR(10)

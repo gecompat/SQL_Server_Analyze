@@ -20,6 +20,90 @@ def load_renderer(root: Path):
     return module
 
 
+def load_sql_tokens(root: Path):
+    path = root / "Code/Install/deployment_generator.py"
+    spec = importlib.util.spec_from_file_location("usage_skill_sql_tokens", path)
+    if spec is None or spec.loader is None:
+        raise ValueError("Deployment SQL tokenizer cannot be loaded")
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[spec.name] = module
+    spec.loader.exec_module(module)
+    return module.tokens
+
+
+def help_variable_findings(source: str, name: str, sql_tokens) -> list[str]:
+    """Check executable early Help references against parameters and preceding DECLAREs."""
+    declaration = re.search(r"(?m)^CREATE OR ALTER PROCEDURE\s+\[[^]]+\]\.\["
+                            + re.escape(name) + r"\]", source)
+    if declaration is None:
+        return ["Missing executable procedure declaration: " + name]
+    ts = sql_tokens(source)
+    start = declaration.start()
+    signature_end = next((token.start for token in ts
+                          if token.start > start and token.kind == "plain"
+                          and token.value.upper() == "AS"), None)
+    if signature_end is None:
+        return ["Missing procedure AS: " + name]
+    parameters = {token.value.casefold() for token in ts
+                  if start < token.start < signature_end
+                  and token.kind == "plain" and token.value.startswith("@")
+                  and not token.value.startswith("@@")}
+    declared: dict[str, int] = {}
+    stops = {"DECLARE", "IF", "SET", "EXEC", "SELECT", "BEGIN", "END",
+             "RETURN", "INSERT", "UPDATE", "DELETE", "CREATE"}
+    for index, token in enumerate(ts):
+        if token.start < signature_end or token.kind != "plain" or token.value.upper() != "DECLARE":
+            continue
+        depth = 0
+        wants_name = True
+        for item in ts[index + 1:]:
+            value = item.value.upper() if item.kind == "plain" else item.value
+            if depth == 0 and (value == ";" or (value in stops and item.start > token.end)):
+                break
+            if wants_name and item.kind == "plain" and item.value.startswith("@") and not item.value.startswith("@@"):
+                declared.setdefault(item.value.casefold(), item.start)
+                wants_name = False
+            elif value == "(":
+                depth += 1
+            elif value == ")":
+                depth -= 1
+            elif value == "," and depth == 0:
+                wants_name = True
+    markers = list(re.finditer(r"(?m)^[ \t]*-- USAGE_SKILL_HELP_BEGIN (?:[A-Za-z_]+\.)?"
+                               + re.escape(name) + r"[ \t]*$", source))
+    if not markers:
+        return ["Missing Help projection: " + name]
+    findings = []
+    help_conditions = list(re.finditer(r"(?im)^[ \t]*IF[^\r\n]*@Hilfe[^\r\n]*?=\s*1\b[^\r\n]*", source))
+    for marker in markers:
+        candidates = [match for match in help_conditions
+                      if signature_end < match.start() < marker.start()]
+        if not candidates:
+            findings.append("Missing early Help condition: " + name)
+            continue
+        help_start = candidates[-1].start()
+        for token in ts:
+            if (help_start <= token.start < marker.start()
+                    and token.kind == "plain" and token.value.startswith("@")
+                    and not token.value.startswith("@@")
+                    and token.value.casefold() not in parameters
+                    and declared.get(token.value.casefold(), len(source)) > token.start):
+                findings.append("Undeclared early Help variable: " + name + " " + token.value)
+    return sorted(set(findings))
+
+
+def validate_help_variables(root: Path, skills: list[tuple[dict, str]]) -> None:
+    sql_tokens = load_sql_tokens(root)
+    findings = []
+    for fields, _ in skills:
+        if fields["object_type"] not in {"PROCEDURE", "INTERNAL_PROCEDURE"}:
+            continue
+        source = (root / fields["source_path"]).read_text(encoding="utf-8-sig")
+        findings.extend(help_variable_findings(source, fields["object_name"], sql_tokens))
+    if findings:
+        raise ValueError("; ".join(findings))
+
+
 def validate(root: Path) -> None:
     renderer = load_renderer(root)
     skills = renderer.load_skills(root)
@@ -31,6 +115,7 @@ def validate(root: Path) -> None:
             failures.append(f"Role View projection mismatch: {path}")
     validate_usage_links(root)
     validate_parameter_contracts(root, skills)
+    validate_help_variables(root, skills)
     if failures:
         raise ValueError("; ".join(failures))
 
@@ -151,6 +236,20 @@ def decode_sql_markdown(expression: str) -> str:
 
 def self_test(root: Path) -> None:
     import tempfile
+    early = ("CREATE OR ALTER PROCEDURE [monitor].[ExampleHelp] @Hilfe bit=0 AS\n"
+             "BEGIN\nDECLARE @Before int=1;\nIF @Hilfe=1\nBEGIN\n"
+             "PRINT @Before; PRINT N'@StringLiteral';\n"
+             "-- USAGE_SKILL_HELP_BEGIN ExampleHelp\n"
+             "SELECT N'documentation' AS [SkillMarkdown];\n"
+             "-- USAGE_SKILL_HELP_END ExampleHelp\nRETURN;\nEND\n"
+             "DECLARE @After int=2;\nEND;\n")
+    sql_tokens = load_sql_tokens(root)
+    if help_variable_findings(early, "ExampleHelp", sql_tokens):
+        raise ValueError("Valid early Help variable binding was rejected")
+    for mutation in (early.replace("PRINT @Before;", "PRINT @After;", 1),
+                     early.replace("PRINT @Before;", "PRINT @Missing;", 1)):
+        if not help_variable_findings(mutation, "ExampleHelp", sql_tokens):
+            raise ValueError("Undeclared early Help mutation was accepted")
     renderer = load_renderer(root)
     sample = ("x" * 999 + "😀" + "Apostroph ' und GO\n"
               + "    CREATE TABLE [nur Dokumentation]\n"
