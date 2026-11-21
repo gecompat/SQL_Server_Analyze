@@ -13,7 +13,7 @@ _MARKER = re.compile(
 )
 
 
-def strip_usage_skill_projections(source: str) -> str:
+def strip_usage_skill_projections(source: str, compact: bool = False) -> str:
     opened = None
     spans = []
     for marker in _MARKER.finditer(source):
@@ -31,5 +31,8 @@ def strip_usage_skill_projections(source: str) -> str:
         raise ValueError("Incomplete Usage Skill projection")
     text = source
     for start, end in reversed(spans):
-        text = text[:start] + ("".join(re.findall(r"\r?\n", text[start:end])) or "\n") + text[end:]
+        span = text[start:end]
+        replacement = (("".join(re.findall(r"\r?\n", span)) or "\n")
+                       if compact else re.sub(r"[^\r\n]", " ", span))
+        text = text[:start] + replacement + text[end:]
     return text

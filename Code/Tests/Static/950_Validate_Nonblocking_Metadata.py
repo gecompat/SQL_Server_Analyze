@@ -235,6 +235,23 @@ def self_test() -> None:
     valid = "-- USAGE_SKILL_BEGIN monitor.Example 1.0.0\nCREATE TABLE [#Example_Doc]([Id] int);\n-- USAGE_SKILL_END monitor.Example\n"
     assert "CREATE TABLE [#Example_Doc]" not in without_skill_examples(valid)
     assert "CREATE TABLE [#Example_Real]" in without_skill_examples("CREATE TABLE [#Example_Real]([Id] int);")
+    offset_fixture = (
+        "-- USAGE_SKILL_BEGIN monitor.Example 1.0.0\n"
+        "FROM [sys].[objects] AS [documentation];\n"
+        "-- USAGE_SKILL_END monitor.Example\n"
+        "SELECT 1 FROM [sys].[objects] WITH (NOLOCK);\n"
+    )
+    offset_mask = without_skill_examples(offset_fixture)
+    offset_source = list(SYS_SOURCE.finditer(offset_mask))
+    assert len(offset_mask) == len(offset_fixture) and len(offset_source) == 1
+    offset_tail = offset_fixture[offset_source[0].end():offset_source[0].end()+180]
+    assert metadata_source_allowed("Code/Other.sql", offset_source[0].group("source"), offset_tail)
+    missing_hint = offset_fixture.replace(" WITH (NOLOCK)", "")
+    missing_mask = without_skill_examples(missing_hint)
+    missing_source = list(SYS_SOURCE.finditer(missing_mask))
+    assert len(missing_source) == 1
+    missing_tail = missing_hint[missing_source[0].end():missing_source[0].end()+180]
+    assert not metadata_source_allowed("Code/Other.sql", missing_source[0].group("source"), missing_tail)
     for malformed in (
         valid.replace("END monitor.Example", "END monitor.Other"),
         valid.replace("CREATE TABLE [#Example_Doc]", "-- USAGE_SKILL_HELP_BEGIN monitor.Other\n-- USAGE_SKILL_HELP_END monitor.Other"),
