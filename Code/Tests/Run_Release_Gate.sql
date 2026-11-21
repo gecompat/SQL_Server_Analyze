@@ -155,11 +155,21 @@ RAISERROR(N'RELEASE_GATE 29/34: Object und Index',10,1) WITH NOWAIT;
 :r ObjectIndex/124_DatabaseDdlTriggerInventory_Runtime_Contract.sql
 
 RAISERROR(N'RELEASE_GATE 30/34: Plan Cache',10,1) WITH NOWAIT;
+DECLARE @CiPlanCacheMarker nvarchar(400)=CONCAT(
+    N'CI_BEGIN|PLAN_CACHE|ReleaseGate|0|',CONVERT(varchar(27),SYSUTCDATETIME(),126),
+    N'Z|',@@SPID,N'|',@@LOCK_TIMEOUT,N'|-');
+RAISERROR(N'%s',10,1,@CiPlanCacheMarker) WITH NOWAIT;
+GO
 :r PlanCache/110_Test_und_Abnahme_Phase3.sql
 :r PlanCache/120_ExecutionPlanAnalysis_Runtime_Contract.sql
 :r PlanCache/121_DIAG003_Parameter_Evidence_Runtime_Contract.sql
 :r PlanCache/123_DIAG005_Plan_Optimizer_Runtime_Contract.sql
 :r PlanCache/135_PlanGuideInventory_Runtime_Contract.sql
+DECLARE @CiPlanCacheMarker nvarchar(400)=CONCAT(
+    N'CI_END|PLAN_CACHE|ReleaseGate|0|',CONVERT(varchar(27),SYSUTCDATETIME(),126),
+    N'Z|',@@SPID,N'|',@@LOCK_TIMEOUT,N'|-');
+RAISERROR(N'%s',10,1,@CiPlanCacheMarker) WITH NOWAIT;
+GO
 
 RAISERROR(N'RELEASE_GATE 31/34: Query Store',10,1) WITH NOWAIT;
 :r QueryStore/110_Test_und_Abnahme_Phase4.sql

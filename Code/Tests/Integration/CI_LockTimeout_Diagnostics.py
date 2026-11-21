@@ -25,7 +25,7 @@ MAX_BYTES = 50 * 1024 * 1024
 REPORT_BYTES = 5 * 1024 * 1024
 LOG_BYTES = 44 * 1024 * 1024
 MARKER = re.compile(
-    r"CI_(BEGIN|CASE|AFTER|END)\|((?:20[2-7]|DEPLOYMENT))\|([A-Za-z0-9_]+)\|(\d+)\|"
+    r"CI_(BEGIN|CASE|AFTER|END)\|((?:20[2-7]|PLAN_CACHE|DEPLOYMENT))\|([A-Za-z0-9_]+)\|(\d+)\|"
     r"([\dT:.Z-]+)\|(\d+)\|(-?\d+)\|([^|\r\n]{0,180})$"
 )
 RESOURCE_FIELDS = (
@@ -168,6 +168,7 @@ GO
 
 TEST_FILES = {p.name[:3]: "Code/Tests/Integration/"+p.name
               for p in Path(__file__).parent.glob("20[2-7]*.sql")}
+TEST_FILES["PLAN_CACHE"] = "Code/Tests/Run_Release_Gate.sql"
 TEST_FILES["DEPLOYMENT"] = "Code/Install/generated/Deployment_Runtime.generated.sql"
 
 
