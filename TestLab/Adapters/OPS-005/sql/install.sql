@@ -132774,26 +132774,47 @@ BEGIN
         ) <> 2
         THROW 57400, N'SSIS_HANDOVER_RECEIPT_KEY_MISMATCH', 1;
 
-    IF (SELECT COUNT(*) FROM sys.check_constraints AS [cc] WITH (NOLOCK) WHERE [cc].[parent_object_id] = @ReceiptObjectId) <> 2
-        OR
-        (
-            SELECT COUNT(*)
-            FROM sys.check_constraints AS [cc] WITH (NOLOCK)
-            CROSS APPLY (VALUES (LOWER(TRANSLATE([cc].[definition], N'[]()' + NCHAR(9) + NCHAR(10) + NCHAR(13), N'       ') COLLATE Latin1_General_100_BIN2))) AS [d]([Definition])
-            WHERE [cc].[parent_object_id] = @ReceiptObjectId AND [cc].[parent_column_id] = 0
-                AND [cc].[is_disabled] = 0 AND [cc].[is_not_trusted] = 0 AND [cc].[is_not_for_replication] = 0
-                AND
-                (
-                    ([cc].[name] COLLATE Latin1_General_100_BIN2 = N'CK_SsisHandoverReceipt_Kind'
-                        AND REPLACE([d].[Definition], N' ', N'') COLLATE Latin1_General_100_BIN2 = N'receiptkind=1orreceiptkind=2orreceiptkind=3')
-                    OR ([cc].[name] COLLATE Latin1_General_100_BIN2 = N'CK_SsisHandoverReceipt_Json'
-                        AND REPLACE([d].[Definition], N' ', N'') COLLATE Latin1_General_100_BIN2 = N'isjsonreceiptjson=1')
-                )
-        ) <> 2
-        OR EXISTS (SELECT 1 FROM sys.triggers AS [t] WITH (NOLOCK) WHERE [t].[parent_id] = @ReceiptObjectId)
-        OR EXISTS (SELECT 1 FROM sys.foreign_keys AS [fk] WITH (NOLOCK) WHERE [fk].[parent_object_id] = @ReceiptObjectId OR [fk].[referenced_object_id] = @ReceiptObjectId)
-        OR EXISTS (SELECT 1 FROM sys.security_predicates AS [sp] WITH (NOLOCK) WHERE [sp].[target_object_id] = @ReceiptObjectId)
-        THROW 57400, N'SSIS_HANDOVER_RECEIPT_CONSTRAINT_MISMATCH', 1;
+    DECLARE @ReceiptCheckCount int, @ReceiptKindCheck int, @ReceiptJsonCheck int;
+    SELECT @ReceiptCheckCount = COUNT(*),
+           @ReceiptKindCheck = COALESCE(MAX(CASE WHEN [v].[Canonical] = 1
+               AND [cc].[name] COLLATE Latin1_General_100_BIN2 = N'CK_SsisHandoverReceipt_Kind'
+               AND [d].[Definition] IN
+               (
+                        N'receiptkind=1orreceiptkind=2orreceiptkind=3',
+                        N'receiptkind=1orreceiptkind=3orreceiptkind=2',
+                        N'receiptkind=2orreceiptkind=1orreceiptkind=3',
+                        N'receiptkind=2orreceiptkind=3orreceiptkind=1',
+                        N'receiptkind=3orreceiptkind=1orreceiptkind=2',
+                        N'receiptkind=3orreceiptkind=2orreceiptkind=1',
+                        N'receiptkindin1,2,3',
+                        N'receiptkindin1,3,2',
+                        N'receiptkindin2,1,3',
+                        N'receiptkindin2,3,1',
+                        N'receiptkindin3,1,2',
+                        N'receiptkindin3,2,1'
+               ) THEN 1 ELSE 0 END), 0),
+           @ReceiptJsonCheck = COALESCE(MAX(CASE WHEN [v].[Canonical] = 1
+               AND [cc].[name] COLLATE Latin1_General_100_BIN2 = N'CK_SsisHandoverReceipt_Json'
+               AND [d].[Definition] IN (N'isjsonreceiptjson=1', N'1=isjsonreceiptjson')
+               THEN 1 ELSE 0 END), 0)
+    FROM sys.check_constraints AS [cc] WITH (NOLOCK)
+    CROSS APPLY (VALUES (CASE WHEN [cc].[parent_column_id] = 0 AND [cc].[is_disabled] = 0
+        AND [cc].[is_not_trusted] = 0 AND [cc].[is_not_for_replication] = 0 THEN 1 ELSE 0 END)) AS [v]([Canonical])
+    CROSS APPLY (VALUES (REPLACE(LOWER(TRANSLATE([cc].[definition],
+        N'[]()' + NCHAR(9) + NCHAR(10) + NCHAR(13), N'       ') COLLATE Latin1_General_100_BIN2), N' ', N''))) AS [d]([Definition])
+    WHERE [cc].[parent_object_id] = @ReceiptObjectId;
+
+    -- The THROW state is a bitmask: check count (1), kind (2), JSON (4), trigger (8), foreign key (16), security predicate (32).
+    DECLARE @ReceiptConstraintFlags tinyint = CASE WHEN @ReceiptCheckCount = 2 THEN 0 ELSE 1 END
+        + CASE WHEN @ReceiptKindCheck = 1 THEN 0 ELSE 2 END + CASE WHEN @ReceiptJsonCheck = 1 THEN 0 ELSE 4 END;
+    IF EXISTS (SELECT 1 FROM sys.triggers AS [t] WITH (NOLOCK) WHERE [t].[parent_id] = @ReceiptObjectId)
+        SET @ReceiptConstraintFlags += 8;
+    IF EXISTS (SELECT 1 FROM sys.foreign_keys AS [fk] WITH (NOLOCK) WHERE [fk].[parent_object_id] = @ReceiptObjectId OR [fk].[referenced_object_id] = @ReceiptObjectId)
+        SET @ReceiptConstraintFlags += 16;
+    IF EXISTS (SELECT 1 FROM sys.security_predicates AS [sp] WITH (NOLOCK) WHERE [sp].[target_object_id] = @ReceiptObjectId)
+        SET @ReceiptConstraintFlags += 32;
+    IF @ReceiptConstraintFlags <> 0
+        THROW 57400, N'SSIS_HANDOVER_RECEIPT_CONSTRAINT_MISMATCH', @ReceiptConstraintFlags;
     IF
     (
         SELECT COUNT(DISTINCT CONCAT([dp].[permission_name], N':', [dp].[minor_id]))
@@ -136233,15 +136254,23 @@ GO
 -- | @ValidHours | int | nein | 1 |
 -- | @Hilfe | bit | nein | 0 |
 --
--- - `@Action` wählt `REGISTER_MODEL` für einen Modellbeleg mit optionalem Laufzeitbeleg, `REGISTER_SCOPE` für einen Scopebeleg oder `REVOKE` für den Widerruf. Der Vergleich folgt der lokalen Datenbankkollation. NULL, der Leerwert und andere Werte sind im Fachpfad ungültig.
--- - `@HandoverId` ist für jede Aktion die UUID des Modell- oder Scopebelegs beziehungsweise des zu widerrufenden Belegs. NULL ist ungültig.
--- - `@RuntimeHandoverId` ist nur bei `REGISTER_MODEL` mit Laufzeitaufnahme erforderlich. Andernfalls muss der Wert NULL sein.
--- - `@ReceiptKind` muss beim Widerruf 1 für Modell, 2 für Laufzeit oder 3 für Scope sein. Die Registrierungsaktionen erfordern NULL.
--- - `@ModelJson` enthält bei `REGISTER_MODEL` das qualifizierte neutrale SSIS-Paketmodell und bei `REGISTER_SCOPE` den JSON-Paketsatz. NULL und Leertext sind bei Registrierung ungültig. Widerruf erfordert NULL.
--- - `@PackageBytes` enthält nur bei `REGISTER_MODEL` die Originalbytes. NULL und abweichende Paketbytes werden abgelehnt. Die übrigen Aktionen erfordern NULL.
--- - `@CaptureJson` enthält bei `REGISTER_SCOPE` die qualifizierte Scopeaufnahme und bei Registrierung eines Laufzeitbelegs die Laufzeitaufnahme. Zulässig ist valides JSON bis 16 MiB. Bei reinem Modellbeleg und Widerruf muss der Wert NULL sein.
--- - `@ValidHours` ist bei Registrierung eine ganze Zahl zwischen 1 und 24. NULL ist bei Registrierung ungültig. Beim Widerruf wird der Parameter nicht ausgewertet.
--- - `@Hilfe` gibt mit 1 vor Fachzugriff den Usage Skill aus. 0 oder NULL aktiviert den normalen Pfad.
+-- **@Action:** `varchar(64)`, Default NULL. `REGISTER_MODEL` registriert einen Modellbeleg mit optionalem Laufzeitbeleg. `REGISTER_SCOPE` registriert einen Scopebeleg. `REVOKE` widerruft einen Beleg der ausdrücklich gewählten Belegart. Der Vergleich folgt der Datenbankkollation. NULL und Leertext sind im Fachpfad ungültig.
+--
+-- **@HandoverId:** `uniqueidentifier`, Default NULL. Jede Aktion benötigt eine UUID. Bei `REGISTER_MODEL` bezeichnet sie den Modellbeleg, bei `REGISTER_SCOPE` den Scopebeleg und bei `REVOKE` zusammen mit `@ReceiptKind` den zu widerrufenden Beleg. Zulässig ist ein typisierter Wert oder ein konvertierbares GUID-Literal. NULL ist ungültig.
+--
+-- **@RuntimeHandoverId:** `uniqueidentifier`, Default NULL. `REGISTER_MODEL` benötigt eine typisierte UUID oder ein konvertierbares GUID-Literal, wenn `@CaptureJson` eine Laufzeitaufnahme enthält. Ohne Laufzeitaufnahme und bei den übrigen Aktionen ist NULL erforderlich.
+--
+-- **@ReceiptKind:** `tinyint`, Default NULL. `REVOKE` akzeptiert 1 für Modell, 2 für Laufzeit und 3 für Scope. NULL und andere Werte sind beim Widerruf ungültig. Beide Registrierungsaktionen verlangen NULL.
+--
+-- **@ModelJson:** `nvarchar(max)`, Default NULL. Bei `REGISTER_MODEL` muss der Unicode-Text ein qualifiziertes neutrales SSIS-Paketmodell enthalten. Die öffentliche Analyseprozedur validiert das Modell und die Originalbytes vor der Registrierung. Bei `REGISTER_SCOPE` muss der Wert ein gültiger JSON-Paketsatz mit höchstens 16 MiB nach `DATALENGTH` sein. Ein fehlender oder leerer Text ist bei Registrierung ungültig. `REVOKE` verlangt NULL.
+--
+-- **@PackageBytes:** `varbinary(max)`, Default NULL. `REGISTER_MODEL` benötigt die unveränderten Originalbytes des Pakets. Die Analyse prüft Länge und Paketdigest gegen das Modell. Fehlende oder abweichende Bytes führen zur Ablehnung. `REGISTER_SCOPE` und `REVOKE` verlangen NULL.
+--
+-- **@CaptureJson:** `nvarchar(max)`, Default NULL. Bei `REGISTER_SCOPE` ist die qualifizierte Scopeaufnahme als Unicode-JSON erforderlich. Bei `REGISTER_MODEL` ist mit `@RuntimeHandoverId` die zugehörige Laufzeitaufnahme erforderlich. Gültiger JSON-Text darf höchstens 16 MiB nach `DATALENGTH` umfassen. Leerer Text ist ungültig. Ohne Laufzeitbeleg und beim Widerruf ist NULL erforderlich.
+--
+-- **@ValidHours:** `int`, Default 1. Registrierungen akzeptieren ganze Stunden von 1 bis 24 einschließlich. Die Laufzeit beginnt am UTC-Zeitstempel der Ausstellung. NULL und Werte außerhalb des Bereichs sind bei Registrierung ungültig. Beim Widerruf wird der Wert nicht ausgewertet.
+--
+-- **@Hilfe:** `bit`, Default 0. 1 liefert den Usage Skill vor Fachzugriff, Autorisierungsprüfung und Eingabekontrolle. 0 oder NULL aktiviert den Fachpfad. SQL konvertiert numerische Werte ungleich 0 zu 1.
 --
 -- ## Resultate und Ausgabe
 --
@@ -136331,23 +136360,31 @@ BEGIN
             + N'| @Hilfe | bit | nein | 0 |'
             + NCHAR(10)
             + NCHAR(10)
-            + N'- `@Action` wählt `REGISTER_MODEL` für einen Modellbeleg mit optionalem Laufzeitbeleg, `REGISTER_SCOPE` für einen Scopebeleg oder `REVOKE` für den Widerruf. Der Vergleich folgt der lokalen Datenbankkollation. NULL, der Leerwert und andere Werte sind im Fachpfad ungültig.'
+            + N'**@Action:** `varchar(64)`, Default NULL. `REGISTER_MODEL` registriert einen Modellbeleg mit optionalem Laufzeitbeleg. `REGISTER_SCOPE` registriert einen Scopebeleg. `REVOKE` widerruft einen Beleg der ausdrücklich gewählten Belegart. Der Vergleich folgt der Datenbankkollation. NULL und Leertext sind im Fachpfad ungültig.'
             + NCHAR(10)
-            + N'- `@HandoverId` ist für jede Aktion die UUID des Modell- oder Scopebelegs beziehungsweise des zu widerrufenden Belegs. NULL ist ungültig.'
             + NCHAR(10)
-            + N'- `@RuntimeHandoverId` ist nur bei `REGISTER_MODEL` mit Laufzeitaufnahme erforderlich. Andernfalls muss der Wert NULL sein.'
+            + N'**@HandoverId:** `uniqueidentifier`, Default NULL. Jede Aktion benötigt eine UUID. Bei `REGISTER_MODEL` bezeichnet sie den Modellbeleg, bei `REGISTER_SCOPE` den Scopebeleg und bei `REVOKE` zusammen mit `@ReceiptKind` den zu widerrufenden Beleg. Zulässig ist ein typisierter Wert oder ein konvertierbares GUID-Literal. NULL ist ungültig.'
             + NCHAR(10)
-            + N'- `@ReceiptKind` muss beim Widerruf 1 für Modell, 2 für Laufzeit oder 3 für Scope sein. Die Registrierungsaktionen erfordern NULL.'
             + NCHAR(10)
-            + N'- `@ModelJson` enthält bei `REGISTER_MODEL` das qualifizierte neutrale SSIS-Paketmodell und bei `REGISTER_SCOPE` den JSON-Paketsatz. NULL und Leertext sind bei Registrierung ungültig. Widerruf erfordert NULL.'
+            + N'**@RuntimeHandoverId:** `uniqueidentifier`, Default NULL. `REGISTER_MODEL` benötigt eine typisierte UUID oder ein konvertierbares GUID-Literal, wenn `@CaptureJson` eine Laufzeitaufnahme enthält. Ohne Laufzeitaufnahme und bei den übrigen Aktionen ist NULL erforderlich.'
             + NCHAR(10)
-            + N'- `@PackageBytes` enthält nur bei `REGISTER_MODEL` die Originalbytes. NULL und abweichende Paketbytes werden abgelehnt. Die übrigen Aktionen erfordern NULL.'
             + NCHAR(10)
-            + N'- `@CaptureJson` enthält bei `REGISTER_SCOPE` die qualifizierte Scopeaufnahme und bei Registrierung eines Laufzeitbelegs die Laufzeitaufnahme. Zulässig ist valides JSON bis 16 MiB. Bei reinem Modellbeleg und Widerruf muss der Wert NULL sein.'
+            + N'**@ReceiptKind:** `tinyint`, Default NULL. `REVOKE` akzeptiert 1 für Modell, 2 für Laufzeit und 3 für Scope. NULL und andere Werte sind beim Widerruf ungültig. Beide Registrierungsaktionen verlangen NULL.'
             + NCHAR(10)
-            + N'- `@ValidHours` ist bei Registrierung eine ganze Zahl zwischen 1 und 24. NULL ist bei Registrierung ungültig. Beim Widerruf wird der Parameter nicht ausgewertet.'
             + NCHAR(10)
-            + N'- `@Hilfe` gibt mit 1 vor Fachzugriff den Usage Skill aus. 0 oder NULL aktiviert den normalen Pfad.'
+            + N'**@ModelJson:** `nvarchar(max)`, Default NULL. Bei `REGISTER_MODEL` muss der Unicode-Text ein qualifiziertes neutrales SSIS-Paketmodell enthalten. Die öffentliche Analyseprozedur validiert das Modell und die Originalbytes vor der Registrierung. Bei `REGISTER_SCOPE` muss der Wert ein gültiger JSON-Paketsatz mit höchstens 16 MiB nach `DATALENGTH` sein. Ein fehlender oder leerer Text ist bei Registrierung ungültig. `REVOKE` verlangt NULL.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'**@PackageBytes:** `varbinary(max)`, Default NULL. `REGISTER_MODEL` benötigt die unveränderten Originalbytes des Pakets. Die Analyse prüft Länge und Paketdigest gegen das Modell. Fehlende oder abweichende Bytes führen zur Ablehnung. `REGISTER_SCOPE` und `REVOKE` verlangen NULL.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'**@CaptureJson:** `nvarchar(max)`, Default NULL. Bei `REGISTER_SCOPE` ist die qualifizierte Scopeaufnahme als Unicode-JSON erforderlich. Bei `REGISTER_MODEL` ist mit `@RuntimeHandoverId` die zugehörige Laufzeitaufnahme erforderlich. Gültiger JSON-Text darf höchstens 16 MiB nach `DATALENGTH` umfassen. Leerer Text ist ungültig. Ohne Laufzeitbeleg und beim Widerruf ist NULL erforderlich.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'**@ValidHours:** `int`, Default 1. Registrierungen akzeptieren ganze Stunden von 1 bis 24 einschließlich. Die Laufzeit beginnt am UTC-Zeitstempel der Ausstellung. NULL und Werte außerhalb des Bereichs sind bei Registrierung ungültig. Beim Widerruf wird der Wert nicht ausgewertet.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'**@Hilfe:** `bit`, Default 0. 1 liefert den Usage Skill vor Fachzugriff, Autorisierungsprüfung und Eingabekontrolle. 0 oder NULL aktiviert den Fachpfad. SQL konvertiert numerische Werte ungleich 0 zu 1.'
             + NCHAR(10)
             + NCHAR(10)
             + N'## Resultate und Ausgabe'
@@ -143968,23 +144005,31 @@ SELECT CONVERT(sysname,N'monitor') AS [SchemaName],CONVERT(sysname,N'InternalMan
             + N'| @Hilfe | bit | nein | 0 |'
             + NCHAR(10)
             + NCHAR(10)
-            + N'- `@Action` wählt `REGISTER_MODEL` für einen Modellbeleg mit optionalem Laufzeitbeleg, `REGISTER_SCOPE` für einen Scopebeleg oder `REVOKE` für den Widerruf. Der Vergleich folgt der lokalen Datenbankkollation. NULL, der Leerwert und andere Werte sind im Fachpfad ungültig.'
+            + N'**@Action:** `varchar(64)`, Default NULL. `REGISTER_MODEL` registriert einen Modellbeleg mit optionalem Laufzeitbeleg. `REGISTER_SCOPE` registriert einen Scopebeleg. `REVOKE` widerruft einen Beleg der ausdrücklich gewählten Belegart. Der Vergleich folgt der Datenbankkollation. NULL und Leertext sind im Fachpfad ungültig.'
             + NCHAR(10)
-            + N'- `@HandoverId` ist für jede Aktion die UUID des Modell- oder Scopebelegs beziehungsweise des zu widerrufenden Belegs. NULL ist ungültig.'
             + NCHAR(10)
-            + N'- `@RuntimeHandoverId` ist nur bei `REGISTER_MODEL` mit Laufzeitaufnahme erforderlich. Andernfalls muss der Wert NULL sein.'
+            + N'**@HandoverId:** `uniqueidentifier`, Default NULL. Jede Aktion benötigt eine UUID. Bei `REGISTER_MODEL` bezeichnet sie den Modellbeleg, bei `REGISTER_SCOPE` den Scopebeleg und bei `REVOKE` zusammen mit `@ReceiptKind` den zu widerrufenden Beleg. Zulässig ist ein typisierter Wert oder ein konvertierbares GUID-Literal. NULL ist ungültig.'
             + NCHAR(10)
-            + N'- `@ReceiptKind` muss beim Widerruf 1 für Modell, 2 für Laufzeit oder 3 für Scope sein. Die Registrierungsaktionen erfordern NULL.'
             + NCHAR(10)
-            + N'- `@ModelJson` enthält bei `REGISTER_MODEL` das qualifizierte neutrale SSIS-Paketmodell und bei `REGISTER_SCOPE` den JSON-Paketsatz. NULL und Leertext sind bei Registrierung ungültig. Widerruf erfordert NULL.'
+            + N'**@RuntimeHandoverId:** `uniqueidentifier`, Default NULL. `REGISTER_MODEL` benötigt eine typisierte UUID oder ein konvertierbares GUID-Literal, wenn `@CaptureJson` eine Laufzeitaufnahme enthält. Ohne Laufzeitaufnahme und bei den übrigen Aktionen ist NULL erforderlich.'
             + NCHAR(10)
-            + N'- `@PackageBytes` enthält nur bei `REGISTER_MODEL` die Originalbytes. NULL und abweichende Paketbytes werden abgelehnt. Die übrigen Aktionen erfordern NULL.'
             + NCHAR(10)
-            + N'- `@CaptureJson` enthält bei `REGISTER_SCOPE` die qualifizierte Scopeaufnahme und bei Registrierung eines Laufzeitbelegs die Laufzeitaufnahme. Zulässig ist valides JSON bis 16 MiB. Bei reinem Modellbeleg und Widerruf muss der Wert NULL sein.'
+            + N'**@ReceiptKind:** `tinyint`, Default NULL. `REVOKE` akzeptiert 1 für Modell, 2 für Laufzeit und 3 für Scope. NULL und andere Werte sind beim Widerruf ungültig. Beide Registrierungsaktionen verlangen NULL.'
             + NCHAR(10)
-            + N'- `@ValidHours` ist bei Registrierung eine ganze Zahl zwischen 1 und 24. NULL ist bei Registrierung ungültig. Beim Widerruf wird der Parameter nicht ausgewertet.'
             + NCHAR(10)
-            + N'- `@Hilfe` gibt mit 1 vor Fachzugriff den Usage Skill aus. 0 oder NULL aktiviert den normalen Pfad.'
+            + N'**@ModelJson:** `nvarchar(max)`, Default NULL. Bei `REGISTER_MODEL` muss der Unicode-Text ein qualifiziertes neutrales SSIS-Paketmodell enthalten. Die öffentliche Analyseprozedur validiert das Modell und die Originalbytes vor der Registrierung. Bei `REGISTER_SCOPE` muss der Wert ein gültiger JSON-Paketsatz mit höchstens 16 MiB nach `DATALENGTH` sein. Ein fehlender oder leerer Text ist bei Registrierung ungültig. `REVOKE` verlangt NULL.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'**@PackageBytes:** `varbinary(max)`, Default NULL. `REGISTER_MODEL` benötigt die unveränderten Originalbytes des Pakets. Die Analyse prüft Länge und Paketdigest gegen das Modell. Fehlende oder abweichende Bytes führen zur Ablehnung. `REGISTER_SCOPE` und `REVOKE` verlangen NULL.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'**@CaptureJson:** `nvarchar(max)`, Default NULL. Bei `REGISTER_SCOPE` ist die qualifizierte Scopeaufnahme als Unicode-JSON erforderlich. Bei `REGISTER_MODEL` ist mit `@RuntimeHandoverId` die zugehörige Laufzeitaufnahme erforderlich. Gültiger JSON-Text darf höchstens 16 MiB nach `DATALENGTH` umfassen. Leerer Text ist ungültig. Ohne Laufzeitbeleg und beim Widerruf ist NULL erforderlich.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'**@ValidHours:** `int`, Default 1. Registrierungen akzeptieren ganze Stunden von 1 bis 24 einschließlich. Die Laufzeit beginnt am UTC-Zeitstempel der Ausstellung. NULL und Werte außerhalb des Bereichs sind bei Registrierung ungültig. Beim Widerruf wird der Wert nicht ausgewertet.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'**@Hilfe:** `bit`, Default 0. 1 liefert den Usage Skill vor Fachzugriff, Autorisierungsprüfung und Eingabekontrolle. 0 oder NULL aktiviert den Fachpfad. SQL konvertiert numerische Werte ungleich 0 zu 1.'
             + NCHAR(10)
             + NCHAR(10)
             + N'## Resultate und Ausgabe'
