@@ -18,34 +18,103 @@ CREATE TABLE [#UsageSkillActual]
     [SkillMarkdown] nvarchar(max) NULL
 );
 
-IF (SELECT COUNT_BIG(*) FROM [monitor_metadata].[VW_ObjectUsageSkills])<>194
- OR (SELECT COUNT_BIG(*) FROM [monitor_metadata].[VW_ObjectUsageSkills] WHERE [DatabaseRole] IN ('framework','both'))<>194
- OR EXISTS
- (
-   SELECT 1 FROM [monitor_metadata].[VW_ObjectUsageSkills] AS [v]
-   WHERE [v].[SkillFormatVersion]<>'1.0.0' OR [v].[SkillFormatVersion] IS NULL
-      OR [v].[Description] IS NULL OR NULLIF(LTRIM(RTRIM([v].[Description])),N'') IS NULL
-      OR [v].[SkillMarkdown] IS NULL OR DATALENGTH([v].[SkillMarkdown])=0
-      OR NOT EXISTS
-      (
-        SELECT 1 FROM [sys].[objects] AS [o]
-        JOIN [sys].[schemas] AS [s] ON [s].[schema_id]=[o].[schema_id]
-        WHERE [s].[name]=[v].[SchemaName] COLLATE DATABASE_DEFAULT
-          AND [o].[name]=[v].[ObjectName] COLLATE DATABASE_DEFAULT
-          AND (([v].[ObjectType]='TABLE' AND [o].[type]='U')
-            OR ([v].[ObjectType]='VIEW' AND [o].[type]='V')
-            OR ([v].[ObjectType] IN ('PROCEDURE','INTERNAL_PROCEDURE') AND [o].[type]='P')
-            OR ([v].[ObjectType]='FUNCTION' AND [o].[type] IN ('FN','IF','TF')))
-      )
- )
- OR EXISTS
- (
+-- The catalog documents all framework sources. The Core installer leaves the
+-- seven optional Snapshot Framework objects uninstalled; the canonical
+-- Snapshot Target -> Framework fixture later exercises this file again with
+-- all seven present. Mixed profiles are invalid.
+DECLARE @SnapshotOptional TABLE
+(
+    [SchemaName] sysname NOT NULL,
+    [ObjectName] sysname NOT NULL PRIMARY KEY,
+    [ObjectType] varchar(24) NOT NULL
+);
+INSERT @SnapshotOptional([SchemaName],[ObjectName],[ObjectType]) VALUES
+(N'monitor',N'SnapshotTargetConfiguration','TABLE'),
+(N'monitor',N'InternalValidateSnapshotWaitTarget','INTERNAL_PROCEDURE'),
+(N'monitor',N'USP_ConfigureSnapshotTarget','PROCEDURE'),
+(N'monitor',N'InternalRunSnapshotWaitStatsCycle','INTERNAL_PROCEDURE'),
+(N'monitor',N'InternalRunSnapshotFileIOCycle','INTERNAL_PROCEDURE'),
+(N'monitor',N'USP_RunSnapshotCollectionCycle','PROCEDURE'),
+(N'monitor',N'USP_PurgeSnapshotData','PROCEDURE');
+
+DECLARE @SnapshotPresentCount int,@FullProfile bit,
+        @RowBad int,@RoleBad int,@MetadataBad int,@OptionalCatalogBad int,
+        @PresenceBad int,@RequiredMissing int,@TypeBad int,@DuplicateBad int;
+SELECT @SnapshotPresentCount=COUNT(*)
+FROM @SnapshotOptional AS [x]
+JOIN [sys].[schemas] AS [s] ON [s].[name] COLLATE Latin1_General_100_BIN2
+                              =[x].[SchemaName] COLLATE Latin1_General_100_BIN2
+JOIN [sys].[objects] AS [o] ON [o].[schema_id]=[s].[schema_id]
+                            AND [o].[name] COLLATE Latin1_General_100_BIN2
+                               =[x].[ObjectName] COLLATE Latin1_General_100_BIN2;
+SET @FullProfile=CASE WHEN @SnapshotPresentCount=7 THEN 1 ELSE 0 END;
+SET @RowBad=CASE WHEN (SELECT COUNT_BIG(*) FROM [monitor_metadata].[VW_ObjectUsageSkills])=194 THEN 0 ELSE 1 END;
+SET @RoleBad=CASE WHEN (SELECT COUNT_BIG(*) FROM [monitor_metadata].[VW_ObjectUsageSkills]
+                       WHERE [DatabaseRole] IN ('framework','both'))=194 THEN 0 ELSE 1 END;
+SELECT @MetadataBad=COUNT(*)
+FROM [monitor_metadata].[VW_ObjectUsageSkills] AS [v]
+WHERE [v].[SkillFormatVersion]<>'1.0.0' OR [v].[SkillFormatVersion] IS NULL
+   OR [v].[Description] IS NULL OR NULLIF(LTRIM(RTRIM([v].[Description])),N'') IS NULL
+   OR [v].[SkillMarkdown] IS NULL OR DATALENGTH([v].[SkillMarkdown])=0;
+SELECT @OptionalCatalogBad=COUNT(*)
+FROM @SnapshotOptional AS [x]
+WHERE NOT EXISTS
+(
+    SELECT 1 FROM [monitor_metadata].[VW_ObjectUsageSkills] AS [v]
+    WHERE [v].[SchemaName] COLLATE Latin1_General_100_BIN2=[x].[SchemaName] COLLATE Latin1_General_100_BIN2
+      AND [v].[ObjectName] COLLATE Latin1_General_100_BIN2=[x].[ObjectName] COLLATE Latin1_General_100_BIN2
+      AND [v].[ObjectType]=[x].[ObjectType] AND [v].[DatabaseRole]='framework'
+);
+SET @PresenceBad=CASE WHEN @SnapshotPresentCount IN (0,7) THEN 0 ELSE 1 END;
+SELECT @RequiredMissing=COUNT(*)
+FROM [monitor_metadata].[VW_ObjectUsageSkills] AS [v]
+WHERE (@FullProfile=1 OR NOT EXISTS
+       (SELECT 1 FROM @SnapshotOptional AS [x]
+        WHERE [x].[SchemaName] COLLATE Latin1_General_100_BIN2=[v].[SchemaName] COLLATE Latin1_General_100_BIN2
+          AND [x].[ObjectName] COLLATE Latin1_General_100_BIN2=[v].[ObjectName] COLLATE Latin1_General_100_BIN2))
+  AND NOT EXISTS
+  (
+      SELECT 1 FROM [sys].[objects] AS [o]
+      JOIN [sys].[schemas] AS [s] ON [s].[schema_id]=[o].[schema_id]
+      WHERE [s].[name]=[v].[SchemaName] COLLATE DATABASE_DEFAULT
+        AND [o].[name]=[v].[ObjectName] COLLATE DATABASE_DEFAULT
+  );
+SELECT @TypeBad=COUNT(*)
+FROM [monitor_metadata].[VW_ObjectUsageSkills] AS [v]
+WHERE EXISTS
+(
+    SELECT 1 FROM [sys].[objects] AS [o]
+    JOIN [sys].[schemas] AS [s] ON [s].[schema_id]=[o].[schema_id]
+    WHERE [s].[name]=[v].[SchemaName] COLLATE DATABASE_DEFAULT
+      AND [o].[name]=[v].[ObjectName] COLLATE DATABASE_DEFAULT
+)
+AND NOT EXISTS
+(
+    SELECT 1 FROM [sys].[objects] AS [o]
+    JOIN [sys].[schemas] AS [s] ON [s].[schema_id]=[o].[schema_id]
+    WHERE [s].[name]=[v].[SchemaName] COLLATE DATABASE_DEFAULT
+      AND [o].[name]=[v].[ObjectName] COLLATE DATABASE_DEFAULT
+      AND (([v].[ObjectType]='TABLE' AND [o].[type]='U')
+        OR ([v].[ObjectType]='VIEW' AND [o].[type]='V')
+        OR ([v].[ObjectType] IN ('PROCEDURE','INTERNAL_PROCEDURE') AND [o].[type]='P')
+        OR ([v].[ObjectType]='FUNCTION' AND [o].[type] IN ('FN','IF','TF')))
+);
+SELECT @DuplicateBad=COUNT(*)
+FROM
+(
     SELECT [SchemaName],[ObjectName]
     FROM [monitor_metadata].[VW_ObjectUsageSkills]
     GROUP BY [SchemaName],[ObjectName]
     HAVING COUNT_BIG(*)<>1
- )
+) AS [duplicates];
+IF @RowBad<>0 OR @RoleBad<>0 OR @MetadataBad<>0 OR @OptionalCatalogBad<>0
+   OR @PresenceBad<>0 OR @RequiredMissing<>0 OR @TypeBad<>0 OR @DuplicateBad<>0
+BEGIN
+    RAISERROR(N'USAGE_SKILL_ROLE_CATALOG row=%d role=%d metadata=%d optional=%d present=%d required_missing=%d type=%d duplicate=%d',
+              10,1,@RowBad,@RoleBad,@MetadataBad,@OptionalCatalogBad,
+              @SnapshotPresentCount,@RequiredMissing,@TypeBad,@DuplicateBad) WITH NOWAIT;
     THROW 59002,N'USAGE_SKILL_ROLE_CATALOG',1;
+END;
 
 DECLARE @PilotCount int=0;
 IF NOT EXISTS (SELECT 1 FROM [monitor_metadata].[VW_ObjectUsageSkills] WHERE [SchemaName]=N'monitor' AND [ObjectName]=N'USP_CurrentObjectPermissionAnalysis' AND [ObjectType]='PROCEDURE')
@@ -91,10 +160,10 @@ IF (SELECT COUNT_BIG(*) FROM @CanonicalPilot)<>6
  )
     THROW 59017,N'USAGE_SKILL_CANONICAL_TEXT_ORACLE',1;
 
-DECLARE @ExpectedProcedureCount int=146,@PilotProcedureCount int=2,
+DECLARE @ExpectedProcedureCount int=CASE WHEN @FullProfile=1 THEN 146 ELSE 140 END,@PilotProcedureCount int=2,
         @PilotPublic sysname=N'USP_CurrentObjectPermissionAnalysis',
         @PilotInternal sysname=N'InternalWriteResultTable';
-IF (SELECT COUNT_BIG(*) FROM [monitor_metadata].[VW_ObjectUsageSkills] WHERE [ObjectType] IN ('PROCEDURE','INTERNAL_PROCEDURE'))<>@ExpectedProcedureCount
+IF (SELECT COUNT_BIG(*) FROM [monitor_metadata].[VW_ObjectUsageSkills] WHERE [ObjectType] IN ('PROCEDURE','INTERNAL_PROCEDURE'))<>146
     THROW 59004,N'USAGE_SKILL_PROCEDURE_POPULATION',1;
 
 DECLARE @Stage int=0,@HelpCalls int=0,@Schema sysname,@Object sysname,@ObjectId int,
@@ -109,6 +178,10 @@ BEGIN
        FROM [monitor_metadata].[VW_ObjectUsageSkills]
        WHERE [ObjectType] IN ('PROCEDURE','INTERNAL_PROCEDURE')
          AND (@Stage=1 OR [ObjectName] IN (@PilotPublic,@PilotInternal))
+          AND (@FullProfile=1 OR NOT EXISTS
+               (SELECT 1 FROM @SnapshotOptional AS [x]
+                WHERE [x].[SchemaName]=[VW_ObjectUsageSkills].[SchemaName]
+                  AND [x].[ObjectName]=[VW_ObjectUsageSkills].[ObjectName]))
        ORDER BY [SchemaName],[ObjectName];
     OPEN [UsageSkillHelpCursor];
     FETCH NEXT FROM [UsageSkillHelpCursor] INTO @Schema,@Object,@ExpectedMarkdown;
@@ -190,7 +263,11 @@ IF (SELECT COUNT_BIG(*) FROM @SentinelCalls)<>18
     THROW 59010,N'USAGE_SKILL_OUTPUT_CONTRACT_COUNT',1;
 DECLARE @SentinelCount int=0;
 DECLARE [UsageSkillSentinelCursor] CURSOR LOCAL FAST_FORWARD FOR
- SELECT [SchemaName],[ObjectName],[CallSql] FROM @SentinelCalls ORDER BY [SchemaName],[ObjectName];
+ SELECT [SchemaName],[ObjectName],[CallSql] FROM @SentinelCalls AS [c]
+ WHERE @FullProfile=1 OR NOT EXISTS
+       (SELECT 1 FROM @SnapshotOptional AS [x]
+        WHERE [x].[SchemaName]=[c].[SchemaName] AND [x].[ObjectName]=[c].[ObjectName])
+ ORDER BY [SchemaName],[ObjectName];
 OPEN [UsageSkillSentinelCursor];
 FETCH NEXT FROM [UsageSkillSentinelCursor] INTO @Schema,@Object,@CallSql;
 WHILE @@FETCH_STATUS=0
@@ -224,7 +301,7 @@ BEGIN
     FETCH NEXT FROM [UsageSkillSentinelCursor] INTO @Schema,@Object,@CallSql;
 END;
 CLOSE [UsageSkillSentinelCursor];DEALLOCATE [UsageSkillSentinelCursor];
-IF @SentinelCount<>18 THROW 59013,N'USAGE_SKILL_OUTPUT_COVERAGE',1;
+IF @SentinelCount<>CASE WHEN @FullProfile=1 THEN 18 ELSE 15 END THROW 59013,N'USAGE_SKILL_OUTPUT_COVERAGE',1;
 -- SQL still binds required arguments even when the early Help branch would return.
 BEGIN TRY
     EXEC [monitor].[InternalWriteResultTable] @Hilfe=1;

@@ -38,10 +38,14 @@ USE [SQLServerAnalyzeTest];
 GO
 :r Install_SnapshotBaseline_Framework.sql
 
+-- The Core-only pass in Run_Release_Gate covers the partial profile. Here the
+-- canonical Target -> Framework installation makes every documented framework
+-- procedure callable; rerun the same strict Help and sentinel contract.
+:r ../Tests/Integration/229_Usage_Skills_Framework_Runtime_Contract.sql
+
 USE [SQLServerAnalyzeSnapshotTest];
 GO
 :r ../Tests/Integration/230_Usage_Skills_Target_Runtime_Contract.sql
-
 
 USE [SQLServerAnalyzeTest];
 GO
