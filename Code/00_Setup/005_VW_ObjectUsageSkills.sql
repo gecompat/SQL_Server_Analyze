@@ -2481,6 +2481,19 @@ SELECT CONVERT(sysname,N'monitor') AS [SchemaName],CONVERT(sysname,N'InternalMan
             + N'Der Fachpfad erzeugt kein Resultset. Ein Modell- und ein optionaler Laufzeitbeleg werden atomar registriert. Ein Widerruf löscht die angegebene UUID der angegebenen Belegart, sofern sie vorhanden ist.'
             + NCHAR(10)
             + NCHAR(10)
+            + N'## Beispiel'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'Mit `@Hilfe = 1` liest ein Aufrufer mit EXECUTE-Recht den Skill der internen Prozedur. Der Aufruf gibt genau eine Skillzeile zurück und schreibt oder widerruft keinen Beleg. Die Registrierung erfolgt über die qualifizierten SSIS-Übergabewerkzeuge.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'```sql'
+            + NCHAR(10)
+            + N'EXEC [monitor].[InternalManageSsisHandoverReceipt] @Hilfe = 1;'
+            + NCHAR(10)
+            + N'```'
+            + NCHAR(10)
+            + NCHAR(10)
             + N'## Aufwand, Nebenwirkungen, Fehler und Grenzen'
             + NCHAR(10)
             + NCHAR(10)
@@ -6878,6 +6891,26 @@ SELECT CONVERT(sysname,N'monitor') AS [SchemaName],CONVERT(sysname,N'SsisHandove
             + NCHAR(10)
             + NCHAR(10)
             + N'`ReceiptKind` ist ein `tinyint`. 1 bezeichnet einen Modellbeleg, 2 einen Laufzeitbeleg und 3 einen Scopebeleg. Gemeinsam mit der UUID `HandoverId` bildet die Belegart den Primärschlüssel. `ReceiptJson` ist ein JSON-Text in `nvarchar(3000)` mit Vertragsversion, Hashwerten, Ausstellungszeit und Ablaufzeit. Der Modellbeleg enthält auch Paketlänge, Erzeugungsmethode, Buildhash und Source-Commit.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'## Beispiel'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'Ein Administrator mit SELECT-Recht auf der Tabelle kann prüfen, ob ein Modellbeleg zur angegebenen UUID gespeichert ist. Die Abfrage gibt höchstens eine Zeile zurück. Ersetze die synthetische UUID durch die zu prüfende UUID. Eine gefundene Zeile belegt die Speicherung. Die fachliche Gültigkeit prüft die jeweilige Analyseprozedur anhand des Beleginhalts.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'```sql'
+            + NCHAR(10)
+            + N'DECLARE @HandoverId uniqueidentifier = ''00000000-0000-4000-8000-000000000001'';'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'SELECT [ReceiptKind], [HandoverId]'
+            + NCHAR(10)
+            + N'FROM [monitor].[SsisHandoverReceipt] WITH (READCOMMITTEDLOCK)'
+            + NCHAR(10)
+            + N'WHERE [ReceiptKind] = 1 AND [HandoverId] = @HandoverId;'
+            + NCHAR(10)
+            + N'```'
             + NCHAR(10)
             + NCHAR(10)
             + N'## Aufwand, Nebenwirkungen, Fehler und Grenzen'
