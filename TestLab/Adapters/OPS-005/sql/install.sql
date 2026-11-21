@@ -132685,10 +132685,10 @@ GO
 --
 -- ## Beispiel
 --
--- Ein Administrator mit SELECT-Recht auf der Tabelle kann prüfen, ob ein Modellbeleg zur angegebenen UUID gespeichert ist. Die Abfrage gibt höchstens eine Zeile zurück. Ersetze die synthetische UUID durch die zu prüfende UUID. Eine gefundene Zeile belegt die Speicherung. Die fachliche Gültigkeit prüft die jeweilige Analyseprozedur anhand des Beleginhalts.
+-- Ein Administrator mit SELECT-Recht auf der Tabelle kann prüfen, ob ein Modellbeleg zur angegebenen UUID gespeichert ist. Die Abfrage gibt höchstens eine Zeile zurück. Setze `@HandoverId` auf die bekannte Beleg-ID. Mit `NULL` liefert das Beispiel keine Zeile. Eine gefundene Zeile belegt die Speicherung. Die fachliche Gültigkeit prüft die jeweilige Analyseprozedur anhand des Beleginhalts.
 --
 -- ```sql
--- DECLARE @HandoverId uniqueidentifier = '00000000-0000-4000-8000-000000000001';
+-- DECLARE @HandoverId uniqueidentifier = NULL;
 --
 -- SELECT [ReceiptKind], [HandoverId]
 -- FROM [monitor].[SsisHandoverReceipt] WITH (READCOMMITTEDLOCK)
@@ -148516,12 +148516,12 @@ SELECT CONVERT(sysname,N'monitor') AS [SchemaName],CONVERT(sysname,N'SsisHandove
             + N'## Beispiel'
             + NCHAR(10)
             + NCHAR(10)
-            + N'Ein Administrator mit SELECT-Recht auf der Tabelle kann prüfen, ob ein Modellbeleg zur angegebenen UUID gespeichert ist. Die Abfrage gibt höchstens eine Zeile zurück. Ersetze die synthetische UUID durch die zu prüfende UUID. Eine gefundene Zeile belegt die Speicherung. Die fachliche Gültigkeit prüft die jeweilige Analyseprozedur anhand des Beleginhalts.'
+            + N'Ein Administrator mit SELECT-Recht auf der Tabelle kann prüfen, ob ein Modellbeleg zur angegebenen UUID gespeichert ist. Die Abfrage gibt höchstens eine Zeile zurück. Setze `@HandoverId` auf die bekannte Beleg-ID. Mit `NULL` liefert das Beispiel keine Zeile. Eine gefundene Zeile belegt die Speicherung. Die fachliche Gültigkeit prüft die jeweilige Analyseprozedur anhand des Beleginhalts.'
             + NCHAR(10)
             + NCHAR(10)
             + N'```sql'
             + NCHAR(10)
-            + N'DECLARE @HandoverId uniqueidentifier = ''00000000-0000-4000-8000-000000000001'';'
+            + N'DECLARE @HandoverId uniqueidentifier = NULL;'
             + NCHAR(10)
             + NCHAR(10)
             + N'SELECT [ReceiptKind], [HandoverId]'
