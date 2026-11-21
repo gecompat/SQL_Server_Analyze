@@ -1,6 +1,7 @@
 """Prüft die lokale unveränderte Schema-/Sollfallübernahme und generierte native Regeln."""
 from pathlib import Path
 import json
+import re
 import subprocess
 import sys
 
@@ -19,4 +20,13 @@ assert "EXCHANGE_TIME_BUDGET_EXCEEDED" not in source
 assert "PACKAGE_BYTES_MATCH" in source and "'UNVERIFIED'" in source
 for forbidden in ("AS EXTERNAL NAME","OPENROWSET","xp_cmdshell","sp_add_trusted_assembly","EXECUTE AS"):
     assert forbidden not in source,forbidden
+scope=(ROOT/"Code/10_SSIS/035_InternalSsisExecutionScopes.sql").read_text(encoding="utf-8")
+manager=(ROOT/"Code/10_SSIS/041_InternalManageSsisHandoverReceipt.sql").read_text(encoding="utf-8")
+trusted_read=r"FROM\s+\[monitor\]\.\[SsisHandoverReceipt\]\s+WITH\s*\(READCOMMITTEDLOCK\)\s+WHERE\s+\[ReceiptKind\]=([123])\s+AND\s+\[HandoverId\]=(@\w+)"
+assert re.findall(trusted_read,source)==[("1","@LocalHandoverId"),("2","@RuntimeHandoverId")]
+assert re.findall(trusted_read,scope)==[("3","@Handover")]
+assert "[sys].[extended_properties]" not in source and "[sys].[extended_properties]" not in scope
+assert "HAS_PERMS_BY_NAME(N'monitor.USP_SsisPackageModelAnalysis', N'OBJECT', N'ALTER')" in manager
+for forbidden in ("EXECUTE AS", "extendedproperty", "sp_executesql"):
+    assert forbidden.casefold() not in manager.casefold(),forbidden
 print("SSIS_EXCHANGE_STATIC_PASS: local contract, shared oracle, generated validation and native-only boundary")

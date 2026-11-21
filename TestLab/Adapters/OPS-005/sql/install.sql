@@ -132651,6 +132651,218 @@ END;
 GO
 -- END SOURCE: Code/10_SSIS/030_USP_SsisCatalogExecutionAnalysis.sql
 
+-- BEGIN SOURCE: Code/10_SSIS/033_SsisHandoverReceipt.sql
+-- USAGE_SKILL_BEGIN monitor.SsisHandoverReceipt 1.0.0
+-- ---
+-- skill_format_version: "1.0.0"
+-- name: "monitor.SsisHandoverReceipt"
+-- schema_name: "monitor"
+-- object_name: "SsisHandoverReceipt"
+-- object_type: "TABLE"
+-- database_role: "framework"
+-- is_internal: false
+-- description: "Speichert die zeitlich begrenzten lokalen Belege für SSIS-Modelle und Laufzeitaufnahmen."
+-- source_path: "Code/10_SSIS/033_SsisHandoverReceipt.sql"
+-- ---
+--
+-- # monitor.SsisHandoverReceipt
+--
+-- ## Zweck und Einsatz
+--
+-- Speichert die zeitlich begrenzten lokalen Belege für SSIS-Modelle und Laufzeitaufnahmen.
+--
+-- ## Voraussetzungen und Rechte
+--
+-- Die Tabelle gehört über das Schema `monitor` zu `dbo`. Registrierung und Widerruf erfolgen über `monitor.InternalManageSsisHandoverReceipt`. Die Analyseprozeduren lesen die Belege mit statischem SQL. Der Installer verweigert `public` INSERT und DELETE auf der Tabelle und UPDATE auf jeder der drei Spalten. Die Sperren gelten auch für geerbte Schreibrechte und spaltenbezogene UPDATE-Grants. Erstellung und Schreibschutz erfolgen in derselben Transaktion. Bei erneuter Installation muss eine vorhandene Tabelle den Struktur- und Berechtigungsvertrag bereits erfüllen. Der Eigentümer und entsprechend privilegierte Administratoren verwalten die Schutzgrenze.
+--
+-- ## Parameter und Eingabe
+--
+-- Keine Aufrufparameter.
+--
+-- ## Resultate und Ausgabe
+--
+-- `ReceiptKind` ist ein `tinyint`. 1 bezeichnet einen Modellbeleg, 2 einen Laufzeitbeleg und 3 einen Scopebeleg. Gemeinsam mit der UUID `HandoverId` bildet die Belegart den Primärschlüssel. `ReceiptJson` ist ein JSON-Text in `nvarchar(3000)` mit Vertragsversion, Hashwerten, Ausstellungszeit und Ablaufzeit. Der Modellbeleg enthält auch Paketlänge, Erzeugungsmethode, Buildhash und Source-Commit.
+--
+-- ## Aufwand, Nebenwirkungen, Fehler und Grenzen
+--
+-- Leser suchen einen Beleg je Art und UUID mit `READCOMMITTEDLOCK`. Die Tabelle enthält keine Paketbytes, Modelle oder Laufzeitaufnahmen. Die Belegprüfung lehnt abgelaufene, widerrufene und unpassende IDs ab. Belegzeilen laufen fachlich ab. Es gibt keine automatische Löschung.
+-- USAGE_SKILL_END monitor.SsisHandoverReceipt
+
+IF (@@OPTIONS & 2) <> 0 THROW 57400, N'SSIS_HANDOVER_RECEIPT_IMPLICIT_TRANSACTION', 1;
+
+DECLARE @ReceiptSchemaOwner int, @ReceiptObjectId int, @ReceiptObjectType char(2), @ReceiptObjectOwner int;
+SELECT @ReceiptSchemaOwner = [s].[principal_id], @ReceiptObjectId = [o].[object_id], @ReceiptObjectType = [o].[type],
+       @ReceiptObjectOwner = COALESCE([o].[principal_id], [s].[principal_id])
+FROM sys.schemas AS [s] WITH (NOLOCK)
+LEFT JOIN sys.objects AS [o] WITH (NOLOCK)
+    ON [o].[schema_id] = [s].[schema_id] AND [o].[name] = N'SsisHandoverReceipt'
+WHERE [s].[name] = N'monitor';
+
+IF ISNULL(@ReceiptSchemaOwner, -1) <> DATABASE_PRINCIPAL_ID(N'dbo')
+    OR (@ReceiptObjectType IS NOT NULL AND (@ReceiptObjectType <> 'U' OR @ReceiptObjectOwner <> DATABASE_PRINCIPAL_ID(N'dbo')))
+    THROW 57400, N'SSIS_HANDOVER_RECEIPT_OBJECT_MISMATCH', 1;
+
+IF @ReceiptObjectType IS NULL
+BEGIN
+    DECLARE @ReceiptOwnTransaction bit = CASE WHEN @@TRANCOUNT = 0 THEN 1 ELSE 0 END;
+    DECLARE @ReceiptRestoreXactAbort bit = CASE WHEN @ReceiptOwnTransaction = 1 AND (@@OPTIONS & 16384) = 0 THEN 1 ELSE 0 END;
+    IF @ReceiptOwnTransaction = 0 SAVE TRANSACTION SQLSA_SsisReceiptDdl;
+    BEGIN TRY
+        IF @ReceiptRestoreXactAbort = 1 SET XACT_ABORT ON;
+        IF @ReceiptOwnTransaction = 1 BEGIN TRANSACTION;
+        CREATE TABLE [monitor].[SsisHandoverReceipt]
+        (
+              [ReceiptKind] tinyint NOT NULL
+            , [HandoverId] uniqueidentifier NOT NULL
+            , [ReceiptJson] nvarchar(3000) NOT NULL
+            , CONSTRAINT [PK_SsisHandoverReceipt] PRIMARY KEY CLUSTERED ([ReceiptKind], [HandoverId])
+            , CONSTRAINT [CK_SsisHandoverReceipt_Kind] CHECK ([ReceiptKind] = 1 OR [ReceiptKind] = 2 OR [ReceiptKind] = 3)
+            , CONSTRAINT [CK_SsisHandoverReceipt_Json] CHECK (ISJSON([ReceiptJson]) = 1)
+        );
+        EXEC(N'DENY INSERT, DELETE ON OBJECT::[monitor].[SsisHandoverReceipt] TO [public]; DENY UPDATE ([ReceiptKind], [HandoverId], [ReceiptJson]) ON OBJECT::[monitor].[SsisHandoverReceipt] TO [public];');
+        IF @ReceiptOwnTransaction = 1 COMMIT TRANSACTION;
+        IF @ReceiptRestoreXactAbort = 1 SET XACT_ABORT OFF;
+    END TRY
+    BEGIN CATCH
+        IF @ReceiptOwnTransaction = 1 AND XACT_STATE() <> 0 ROLLBACK TRANSACTION;
+        ELSE IF @ReceiptOwnTransaction = 0 AND XACT_STATE() = 1 ROLLBACK TRANSACTION SQLSA_SsisReceiptDdl;
+        IF @ReceiptRestoreXactAbort = 1 SET XACT_ABORT OFF;
+        THROW;
+    END CATCH;
+
+END
+ELSE
+BEGIN
+    IF (SELECT COUNT(*) FROM sys.columns AS [c] WITH (NOLOCK) WHERE [c].[object_id] = @ReceiptObjectId) <> 3
+        OR
+        (
+            SELECT COUNT(*)
+            FROM sys.columns AS [c] WITH (NOLOCK)
+            WHERE [c].[object_id] = @ReceiptObjectId
+                AND [c].[system_type_id] = [c].[user_type_id]
+                AND [c].[is_nullable] = 0 AND [c].[is_identity] = 0 AND [c].[is_computed] = 0
+                AND [c].[is_hidden] = 0 AND [c].[is_sparse] = 0 AND [c].[is_column_set] = 0
+                AND [c].[generated_always_type] = 0 AND [c].[encryption_type] IS NULL
+                AND [c].[default_object_id] = 0 AND [c].[rule_object_id] = 0
+                AND
+                (
+                    ([c].[column_id] = 1 AND [c].[name] COLLATE Latin1_General_100_BIN2 = N'ReceiptKind' AND [c].[system_type_id] = 48 AND [c].[max_length] = 1)
+                    OR ([c].[column_id] = 2 AND [c].[name] COLLATE Latin1_General_100_BIN2 = N'HandoverId' AND [c].[system_type_id] = 36 AND [c].[max_length] = 16)
+                    OR ([c].[column_id] = 3 AND [c].[name] COLLATE Latin1_General_100_BIN2 = N'ReceiptJson' AND [c].[system_type_id] = 231 AND [c].[max_length] = 6000
+                        AND [c].[collation_name] = CONVERT(sysname, SQL_VARIANT_PROPERTY(CONVERT(sql_variant, N''), 'Collation')))
+                )
+        ) <> 3
+        THROW 57400, N'SSIS_HANDOVER_RECEIPT_COLUMN_MISMATCH', 1;
+
+    IF (SELECT COUNT(*) FROM sys.indexes AS [i] WITH (NOLOCK) WHERE [i].[object_id] = @ReceiptObjectId) <> 1
+        OR NOT EXISTS
+        (
+            SELECT 1
+            FROM sys.indexes AS [i] WITH (NOLOCK)
+            WHERE [i].[object_id] = @ReceiptObjectId AND [i].[index_id] = 1
+                AND [i].[name] COLLATE Latin1_General_100_BIN2 = N'PK_SsisHandoverReceipt'
+                AND [i].[type] = 1 AND [i].[is_primary_key] = 1 AND [i].[is_unique] = 1 AND [i].[ignore_dup_key] = 0
+                AND [i].[is_disabled] = 0 AND [i].[is_hypothetical] = 0 AND [i].[has_filter] = 0
+        )
+        OR (SELECT COUNT(*) FROM sys.index_columns AS [ic] WITH (NOLOCK) WHERE [ic].[object_id] = @ReceiptObjectId AND [ic].[index_id] = 1) <> 2
+        OR
+        (
+            SELECT COUNT(*) FROM sys.index_columns AS [ic] WITH (NOLOCK)
+            WHERE [ic].[object_id] = @ReceiptObjectId AND [ic].[index_id] = 1 AND [ic].[is_descending_key] = 0
+                AND [ic].[is_included_column] = 0 AND [ic].[partition_ordinal] = 0
+                AND [ic].[key_ordinal] IN (1, 2) AND [ic].[column_id] = [ic].[key_ordinal]
+        ) <> 2
+        THROW 57400, N'SSIS_HANDOVER_RECEIPT_KEY_MISMATCH', 1;
+
+    DECLARE @ReceiptReferenceId int, @ReceiptReferenceCount int;
+    DECLARE @ReceiptKindDefinition nvarchar(max), @ReceiptJsonDefinition nvarchar(max);
+    DECLARE @ReceiptKindColumnId int, @ReceiptJsonColumnId int;
+    IF OBJECT_ID(N'tempdb..#SsisHandoverReceipt_CheckReference') IS NOT NULL
+        THROW 57400, N'SSIS_HANDOVER_RECEIPT_REFERENCE_IN_USE', 1;
+
+    BEGIN TRY
+        CREATE TABLE #SsisHandoverReceipt_CheckReference
+        (
+              [ReceiptKind] tinyint NOT NULL
+            , [HandoverId] uniqueidentifier NOT NULL
+            , [ReceiptJson] nvarchar(3000) COLLATE DATABASE_DEFAULT NOT NULL
+            , CHECK ([ReceiptKind] = 1 OR [ReceiptKind] = 2 OR [ReceiptKind] = 3)
+            , CHECK (ISJSON([ReceiptJson]) = 1)
+        );
+        SET @ReceiptReferenceId = OBJECT_ID(N'tempdb..#SsisHandoverReceipt_CheckReference');
+        SELECT @ReceiptReferenceCount = COUNT(*),
+               @ReceiptKindDefinition = MAX(CASE WHEN [cc].[definition] COLLATE Latin1_General_100_BIN2
+                   LIKE N'%ReceiptKind%' THEN [cc].[definition] END),
+               @ReceiptJsonDefinition = MAX(CASE WHEN [cc].[definition] COLLATE Latin1_General_100_BIN2
+                   LIKE N'%ReceiptJson%' THEN [cc].[definition] END),
+               @ReceiptKindColumnId = MAX(CASE WHEN [cc].[definition] COLLATE Latin1_General_100_BIN2
+                   LIKE N'%ReceiptKind%' THEN [cc].[parent_column_id] END),
+               @ReceiptJsonColumnId = MAX(CASE WHEN [cc].[definition] COLLATE Latin1_General_100_BIN2
+                   LIKE N'%ReceiptJson%' THEN [cc].[parent_column_id] END)
+        FROM tempdb.sys.check_constraints AS [cc] WITH (NOLOCK)
+        WHERE [cc].[parent_object_id] = @ReceiptReferenceId;
+        DROP TABLE #SsisHandoverReceipt_CheckReference;
+    END TRY
+    BEGIN CATCH
+        -- The caller's rollback removes the reference if its transaction is doomed.
+        IF XACT_STATE() <> -1 AND OBJECT_ID(N'tempdb..#SsisHandoverReceipt_CheckReference') IS NOT NULL
+            DROP TABLE #SsisHandoverReceipt_CheckReference;
+        THROW;
+    END CATCH;
+
+    IF @ReceiptReferenceCount <> 2 OR @ReceiptKindDefinition IS NULL OR @ReceiptJsonDefinition IS NULL
+        OR CONVERT(varbinary(max), @ReceiptKindDefinition) = CONVERT(varbinary(max), @ReceiptJsonDefinition)
+        THROW 57400, N'SSIS_HANDOVER_RECEIPT_REFERENCE_UNAVAILABLE', 1;
+
+    DECLARE @ReceiptCheckCount int, @ReceiptKindCheck int, @ReceiptJsonCheck int;
+    DECLARE @ReceiptBindingMismatch int, @ReceiptStateMismatch int;
+    SELECT @ReceiptCheckCount = COUNT(*),
+           @ReceiptKindCheck = COALESCE(MAX(CASE WHEN [n].[Name] = N'CK_SsisHandoverReceipt_Kind'
+               AND CONVERT(varbinary(max), [cc].[definition]) = CONVERT(varbinary(max), @ReceiptKindDefinition)
+               THEN 1 ELSE 0 END), 0),
+           @ReceiptJsonCheck = COALESCE(MAX(CASE WHEN [n].[Name] = N'CK_SsisHandoverReceipt_Json'
+               AND CONVERT(varbinary(max), [cc].[definition]) = CONVERT(varbinary(max), @ReceiptJsonDefinition)
+               THEN 1 ELSE 0 END), 0),
+           @ReceiptBindingMismatch = COALESCE(MAX(CASE
+               WHEN [n].[Name] = N'CK_SsisHandoverReceipt_Kind' AND [cc].[parent_column_id] <> @ReceiptKindColumnId THEN 1
+               WHEN [n].[Name] = N'CK_SsisHandoverReceipt_Json' AND [cc].[parent_column_id] <> @ReceiptJsonColumnId THEN 1
+               ELSE 0 END), 0),
+           @ReceiptStateMismatch = COALESCE(MAX(CASE WHEN [cc].[is_disabled] <> 0 OR [cc].[is_not_trusted] <> 0
+               OR [cc].[is_not_for_replication] <> 0 THEN 1 ELSE 0 END), 0)
+    FROM sys.check_constraints AS [cc] WITH (NOLOCK)
+    CROSS APPLY (VALUES ([cc].[name] COLLATE Latin1_General_100_BIN2)) AS [n]([Name])
+    WHERE [cc].[parent_object_id] = @ReceiptObjectId;
+
+    -- State bits: count (1), kind (2), JSON (4), trigger (8), foreign key (16), security predicate (32), binding (64), state (128).
+    DECLARE @ReceiptConstraintFlags tinyint = CASE WHEN @ReceiptCheckCount = 2 THEN 0 ELSE 1 END
+        + CASE WHEN @ReceiptKindCheck = 1 THEN 0 ELSE 2 END + CASE WHEN @ReceiptJsonCheck = 1 THEN 0 ELSE 4 END
+        + 64 * @ReceiptBindingMismatch + 128 * @ReceiptStateMismatch;
+    IF EXISTS (SELECT 1 FROM sys.triggers AS [t] WITH (NOLOCK) WHERE [t].[parent_id] = @ReceiptObjectId)
+        SET @ReceiptConstraintFlags += 8;
+    IF EXISTS (SELECT 1 FROM sys.foreign_keys AS [fk] WITH (NOLOCK) WHERE [fk].[parent_object_id] = @ReceiptObjectId OR [fk].[referenced_object_id] = @ReceiptObjectId)
+        SET @ReceiptConstraintFlags += 16;
+    IF EXISTS (SELECT 1 FROM sys.security_predicates AS [sp] WITH (NOLOCK) WHERE [sp].[target_object_id] = @ReceiptObjectId)
+        SET @ReceiptConstraintFlags += 32;
+    IF @ReceiptConstraintFlags <> 0
+        THROW 57400, N'SSIS_HANDOVER_RECEIPT_CONSTRAINT_MISMATCH', @ReceiptConstraintFlags;
+    IF
+    (
+        SELECT COUNT(DISTINCT CONCAT([dp].[permission_name], N':', [dp].[minor_id]))
+        FROM sys.database_permissions AS [dp] WITH (READCOMMITTEDLOCK)
+        WHERE [dp].[class] = 1 AND [dp].[major_id] = @ReceiptObjectId
+            AND [dp].[grantee_principal_id] = DATABASE_PRINCIPAL_ID(N'public')
+            AND [dp].[state] = 'D'
+            AND
+            (
+                ([dp].[minor_id] = 0 AND [dp].[permission_name] IN (N'INSERT', N'DELETE'))
+                OR ([dp].[minor_id] IN (1, 2, 3) AND [dp].[permission_name] = N'UPDATE')
+            )
+    ) <> 5
+        THROW 57400, N'SSIS_HANDOVER_RECEIPT_PERMISSIONS_MISMATCH', 1;
+END;
+GO
+-- END SOURCE: Code/10_SSIS/033_SsisHandoverReceipt.sql
+
 -- BEGIN SOURCE: Code/10_SSIS/034_InternalSsisScopePathMatch.sql
 /*
     Zweck: Die Funktion vergleicht einen Pfad ordinal mit einem Root-Präfix und einer geordneten Folge bereits klassifizierter Toolbelt-Schritte.
@@ -133641,7 +133853,7 @@ Parameter:
 
 @Capture: nvarchar(max); Default: keiner, Pflichtargument. Erwartet wird ein JSON-Objekt als Unicode-Text mit contract="ssis-execution-scopes"; ohne Pipelinekorrelation gelten version="1.0.0" und method="SSISDB_CURRENT_PROJECT_SCOPES_V1", mit Pipelinekorrelation 1.1.0 und SSISDB_CURRENT_PROJECT_PIPELINES_V1. execution enthält die passende positive executionId, den exakten Root-packageFileName, positive projectId/projectLsn, catalogDatabaseGuid, sourceBindingSha256 sowie optionale loggingLevel/executionStatus; die Wurzel enthält archiveSha256, den SHA-256 der exakten @Models-Bytes als modelSetSha256 und die Arrays observations und events. Beobachtungen enthalten passende executionId, positive statisticsId/executableId, packageName, packagePath, executionPath und nullable executableGuid, startTime, endTime, durationMs, executionResult. Ereignisse enthalten positive eventMessageId, Paket/Pfade sowie nullable executableGuid, eventName, messageCode, messageTime. Bei Pipelinekorrelation kommen componentPhases, pathTransfers und ein pipelineSources-Array mit genau je einem Eintrag für componentPhases und pathTransfers hinzu; die öffentliche Scope-Referenz beschreibt deren Feldform. Für Pipelinequellen gelten source=componentPhases oder pathTransfers und status=AVAILABLE (vorhanden), AVAILABLE_EMPTY (vorhanden, leer), UNAVAILABLE (nicht verfügbar) oder DENIED_PERMISSION (Berechtigung fehlt); errorNumber ist bei den letzten beiden positiv, sonst NULL. Höchstens 16 MiB je Dokument; zusammen höchstens 50000 Statistik-/Ereigniszeilen und bei Pipelinekorrelation einschließlich Phasen-/Transferzeilen. Doppelte Objektschlüssel und Verschachtelung jenseits der Tiefe 32 werden verworfen; unbekannte Schlüssel sind nicht pauschal verboten. Optionale, mit TRY_CONVERT projizierte Werte können bei Konvertierungsfehler NULL werden. Auslassen scheitert an der Pflichtsignatur; NULL, Leertext und ungültiges JSON ergeben keine belegte Bindung. Fehler innerhalb der optionalen Pipelinekorrelation oder -diagnose werden in deren Coverage-Gruppen dargestellt und ändern nicht zwangsläufig den Basisstatus oder die bereits erzeugten Grundgruppen.
 
-@Handover: uniqueidentifier; Default: keiner, Pflichtargument. Skalarer UUID-Wert, etwa eine entsprechend typisierte Variable oder konvertierbare UUID-Zeichenfolge. Er wählt SSIS_SCOPE_<UUID in Kleinschreibung> als Extended Property auf [monitor].[USP_SsisPackageModelAnalysis]. Der lokale Beleg enthält genau contract="ssis-local-scope-handover", version="1.0.0", issuedUtc, expiresUtc, modelSetSha256, captureSha256; er muss aktuell gültig sein, höchstens 24 Stunden gelten und die exakten UTF-16-Dokumentbytes binden. Die Prüfung liest mit READCOMMITTEDLOCK. Auslassen scheitert an der Pflichtsignatur; NULL oder fehlender/ungültiger Beleg lässt die Bindung unbelegt. Leertext ist keine UUID und kann bereits bei der SQL-Parameterkonvertierung scheitern. Eine beliebige UUID oder ein JSON-Vertrauensfeld ersetzt den lokalen Beleg nicht.
+@Handover: uniqueidentifier; Default: keiner, Pflichtargument. Skalarer UUID-Wert, etwa eine entsprechend typisierte Variable oder konvertierbare UUID-Zeichenfolge. Er wählt einen Beleg der Art 3 in [monitor].[SsisHandoverReceipt]. Der lokale Beleg enthält genau contract="ssis-local-scope-handover", version="1.0.0", issuedUtc, expiresUtc, modelSetSha256, captureSha256; er muss aktuell gültig sein, höchstens 24 Stunden gelten und die exakten UTF-16-Dokumentbytes binden. Die Prüfung liest mit READCOMMITTEDLOCK. Auslassen scheitert an der Pflichtsignatur; NULL oder fehlender/ungültiger Beleg lässt die Bindung unbelegt. Leertext ist keine UUID und kann bereits bei der SQL-Parameterkonvertierung scheitern. Eine beliebige UUID oder ein JSON-Vertrauensfeld ersetzt den lokalen Beleg nicht.
 
 @ExecutionId: bigint; Default: keiner, Pflichtargument. Skalarer ganzzahliger Wert von 1 bis 9223372036854775807, gleich der Execution-ID im Capture. Auslassen scheitert an der Pflichtsignatur; NULL und Werte unter 1 sind ungültig. Leerer Text kann vor dem Eintritt nach 0 konvertiert werden und ist dann ungültig.
 
@@ -133711,7 +133923,7 @@ Grenzen: Maximal 16 Pakete, acht Aufrufebenen, 1024 beobachtete Paketinstanzen, 
 --
 -- ## Voraussetzungen und Rechte
 --
--- Ein direkter Aufruf erfordert EXECUTE auf [monitor].[InternalSsisExecutionScopes]. Der normale Einsatz erfolgt über die öffentliche aufrufende Prozedur; direkter Fachbetrieb dieses Helpers ist nicht vorgesehen. Die Quelle nennt insbesondere `sys.sp_executesql`, `monitor.InternalPrepareResultTables`, `monitor.USP_SsisPackageModelAnalysis`, `[sys].[extended_properties]`, `[sys].[procedures].[object_id]`, `[sys].[procedures]`, `[sys].[schemas]` sowie weitere tatsächlich aufgerufene Quellen. Für deren Metadaten- oder Fachzugriff gelten die Rechte des jeweiligen SQL-Ausführungskontexts; der Skill erteilt sie nicht.
+-- Ein direkter Aufruf erfordert EXECUTE auf [monitor].[InternalSsisExecutionScopes]. Der normale Einsatz erfolgt über die öffentliche aufrufende Prozedur; direkter Fachbetrieb dieses Helpers ist nicht vorgesehen. Die Quelle nennt insbesondere `sys.sp_executesql`, `monitor.InternalPrepareResultTables`, `monitor.USP_SsisPackageModelAnalysis`, `[monitor].[SsisHandoverReceipt]` sowie weitere tatsächlich aufgerufene Quellen. Für deren Metadaten- oder Fachzugriff gelten die Rechte des jeweiligen SQL-Ausführungskontexts; der Skill erteilt sie nicht.
 --
 -- ## Parameter und Eingabe
 --
@@ -133745,7 +133957,7 @@ Grenzen: Maximal 16 Pakete, acht Aufrufebenen, 1024 beobachtete Paketinstanzen, 
 --
 -- **@Capture:** @Capture: nvarchar(max); Default: keiner, Pflichtargument. Erwartet wird ein JSON-Objekt als Unicode-Text mit contract="ssis-execution-scopes"; ohne Pipelinekorrelation gelten version="1.0.0" und method="SSISDB_CURRENT_PROJECT_SCOPES_V1", mit Pipelinekorrelation 1.1.0 und SSISDB_CURRENT_PROJECT_PIPELINES_V1. execution enthält die passende positive executionId, den exakten Root-packageFileName, positive projectId/projectLsn, catalogDatabaseGuid, sourceBindingSha256 sowie optionale loggingLevel/executionStatus; die Wurzel enthält archiveSha256, den SHA-256 der exakten @Models-Bytes als modelSetSha256 und die Arrays observations und events. Beobachtungen enthalten passende executionId, positive statisticsId/executableId, packageName, packagePath, executionPath und nullable executableGuid, startTime, endTime, durationMs, executionResult. Ereignisse enthalten positive eventMessageId, Paket/Pfade sowie nullable executableGuid, eventName, messageCode, messageTime. Bei Pipelinekorrelation kommen componentPhases, pathTransfers und ein pipelineSources-Array mit genau je einem Eintrag für componentPhases und pathTransfers hinzu; die öffentliche Scope-Referenz beschreibt deren Feldform. Für Pipelinequellen gelten source=componentPhases oder pathTransfers und status=AVAILABLE (vorhanden), AVAILABLE_EMPTY (vorhanden, leer), UNAVAILABLE (nicht verfügbar) oder DENIED_PERMISSION (Berechtigung fehlt); errorNumber ist bei den letzten beiden positiv, sonst NULL. Höchstens 16 MiB je Dokument; zusammen höchstens 50000 Statistik-/Ereigniszeilen und bei Pipelinekorrelation einschließlich Phasen-/Transferzeilen. Doppelte Objektschlüssel und Verschachtelung jenseits der Tiefe 32 werden verworfen; unbekannte Schlüssel sind nicht pauschal verboten. Optionale, mit TRY_CONVERT projizierte Werte können bei Konvertierungsfehler NULL werden. Auslassen scheitert an der Pflichtsignatur; NULL, Leertext und ungültiges JSON ergeben keine belegte Bindung. Fehler innerhalb der optionalen Pipelinekorrelation oder -diagnose werden in deren Coverage-Gruppen dargestellt und ändern nicht zwangsläufig den Basisstatus oder die bereits erzeugten Grundgruppen.
 --
--- **@Handover:** @Handover: uniqueidentifier; Default: keiner, Pflichtargument. Skalarer UUID-Wert, etwa eine entsprechend typisierte Variable oder konvertierbare UUID-Zeichenfolge. Er wählt SSIS_SCOPE_<UUID in Kleinschreibung> als Extended Property auf [monitor].[USP_SsisPackageModelAnalysis]. Der lokale Beleg enthält genau contract="ssis-local-scope-handover", version="1.0.0", issuedUtc, expiresUtc, modelSetSha256, captureSha256; er muss aktuell gültig sein, höchstens 24 Stunden gelten und die exakten UTF-16-Dokumentbytes binden. Die Prüfung liest mit READCOMMITTEDLOCK. Auslassen scheitert an der Pflichtsignatur; NULL oder fehlender/ungültiger Beleg lässt die Bindung unbelegt. Leertext ist keine UUID und kann bereits bei der SQL-Parameterkonvertierung scheitern. Eine beliebige UUID oder ein JSON-Vertrauensfeld ersetzt den lokalen Beleg nicht.
+-- **@Handover:** @Handover: uniqueidentifier; Default: keiner, Pflichtargument. Skalarer UUID-Wert, etwa eine entsprechend typisierte Variable oder konvertierbare UUID-Zeichenfolge. Er wählt einen Beleg der Art 3 in [monitor].[SsisHandoverReceipt]. Der lokale Beleg enthält genau contract="ssis-local-scope-handover", version="1.0.0", issuedUtc, expiresUtc, modelSetSha256, captureSha256; er muss aktuell gültig sein, höchstens 24 Stunden gelten und die exakten UTF-16-Dokumentbytes binden. Die Prüfung liest mit READCOMMITTEDLOCK. Auslassen scheitert an der Pflichtsignatur; NULL oder fehlender/ungültiger Beleg lässt die Bindung unbelegt. Leertext ist keine UUID und kann bereits bei der SQL-Parameterkonvertierung scheitern. Eine beliebige UUID oder ein JSON-Vertrauensfeld ersetzt den lokalen Beleg nicht.
 --
 -- **@ExecutionId:** @ExecutionId: bigint; Default: keiner, Pflichtargument. Skalarer ganzzahliger Wert von 1 bis 9223372036854775807, gleich der Execution-ID im Capture. Auslassen scheitert an der Pflichtsignatur; NULL und Werte unter 1 sind ungültig. Leerer Text kann vor dem Eintritt nach 0 konvertiert werden und ist dann ungültig.
 --
@@ -133821,7 +134033,7 @@ Grenzen: Maximal 16 Pakete, acht Aufrufebenen, 1024 beobachtete Paketinstanzen, 
 --
 -- @Capture: nvarchar(max); Default: keiner, Pflichtargument. Erwartet wird ein JSON-Objekt als Unicode-Text mit contract="ssis-execution-scopes"; ohne Pipelinekorrelation gelten version="1.0.0" und method="SSISDB_CURRENT_PROJECT_SCOPES_V1", mit Pipelinekorrelation 1.1.0 und SSISDB_CURRENT_PROJECT_PIPELINES_V1. execution enthält die passende positive executionId, den exakten Root-packageFileName, positive projectId/projectLsn, catalogDatabaseGuid, sourceBindingSha256 sowie optionale loggingLevel/executionStatus; die Wurzel enthält archiveSha256, den SHA-256 der exakten @Models-Bytes als modelSetSha256 und die Arrays observations und events. Beobachtungen enthalten passende executionId, positive statisticsId/executableId, packageName, packagePath, executionPath und nullable executableGuid, startTime, endTime, durationMs, executionResult. Ereignisse enthalten positive eventMessageId, Paket/Pfade sowie nullable executableGuid, eventName, messageCode, messageTime. Bei Pipelinekorrelation kommen componentPhases, pathTransfers und ein pipelineSources-Array mit genau je einem Eintrag für componentPhases und pathTransfers hinzu; die öffentliche Scope-Referenz beschreibt deren Feldform. Für Pipelinequellen gelten source=componentPhases oder pathTransfers und status=AVAILABLE (vorhanden), AVAILABLE_EMPTY (vorhanden, leer), UNAVAILABLE (nicht verfügbar) oder DENIED_PERMISSION (Berechtigung fehlt); errorNumber ist bei den letzten beiden positiv, sonst NULL. Höchstens 16 MiB je Dokument; zusammen höchstens 50000 Statistik-/Ereigniszeilen und bei Pipelinekorrelation einschließlich Phasen-/Transferzeilen. Doppelte Objektschlüssel und Verschachtelung jenseits der Tiefe 32 werden verworfen; unbekannte Schlüssel sind nicht pauschal verboten. Optionale, mit TRY_CONVERT projizierte Werte können bei Konvertierungsfehler NULL werden. Auslassen scheitert an der Pflichtsignatur; NULL, Leertext und ungültiges JSON ergeben keine belegte Bindung. Fehler innerhalb der optionalen Pipelinekorrelation oder -diagnose werden in deren Coverage-Gruppen dargestellt und ändern nicht zwangsläufig den Basisstatus oder die bereits erzeugten Grundgruppen.
 --
--- @Handover: uniqueidentifier; Default: keiner, Pflichtargument. Skalarer UUID-Wert, etwa eine entsprechend typisierte Variable oder konvertierbare UUID-Zeichenfolge. Er wählt SSIS_SCOPE_<UUID in Kleinschreibung> als Extended Property auf [monitor].[USP_SsisPackageModelAnalysis]. Der lokale Beleg enthält genau contract="ssis-local-scope-handover", version="1.0.0", issuedUtc, expiresUtc, modelSetSha256, captureSha256; er muss aktuell gültig sein, höchstens 24 Stunden gelten und die exakten UTF-16-Dokumentbytes binden. Die Prüfung liest mit READCOMMITTEDLOCK. Auslassen scheitert an der Pflichtsignatur; NULL oder fehlender/ungültiger Beleg lässt die Bindung unbelegt. Leertext ist keine UUID und kann bereits bei der SQL-Parameterkonvertierung scheitern. Eine beliebige UUID oder ein JSON-Vertrauensfeld ersetzt den lokalen Beleg nicht.
+-- @Handover: uniqueidentifier; Default: keiner, Pflichtargument. Skalarer UUID-Wert, etwa eine entsprechend typisierte Variable oder konvertierbare UUID-Zeichenfolge. Er wählt einen Beleg der Art 3 in [monitor].[SsisHandoverReceipt]. Der lokale Beleg enthält genau contract="ssis-local-scope-handover", version="1.0.0", issuedUtc, expiresUtc, modelSetSha256, captureSha256; er muss aktuell gültig sein, höchstens 24 Stunden gelten und die exakten UTF-16-Dokumentbytes binden. Die Prüfung liest mit READCOMMITTEDLOCK. Auslassen scheitert an der Pflichtsignatur; NULL oder fehlender/ungültiger Beleg lässt die Bindung unbelegt. Leertext ist keine UUID und kann bereits bei der SQL-Parameterkonvertierung scheitern. Eine beliebige UUID oder ein JSON-Vertrauensfeld ersetzt den lokalen Beleg nicht.
 --
 -- @ExecutionId: bigint; Default: keiner, Pflichtargument. Skalarer ganzzahliger Wert von 1 bis 9223372036854775807, gleich der Execution-ID im Capture. Auslassen scheitert an der Pflichtsignatur; NULL und Werte unter 1 sind ungültig. Leerer Text kann vor dem Eintritt nach 0 konvertiert werden und ist dann ungültig.
 --
@@ -133920,7 +134132,7 @@ BEGIN
             + N'## Voraussetzungen und Rechte'
             + NCHAR(10)
             + NCHAR(10)
-            + N'Ein direkter Aufruf erfordert EXECUTE auf [monitor].[InternalSsisExecutionScopes]. Der normale Einsatz erfolgt über die öffentliche aufrufende Prozedur; direkter Fachbetrieb dieses Helpers ist nicht vorgesehen. Die Quelle nennt insbesondere `sys.sp_executesql`, `monitor.InternalPrepareResultTables`, `monitor.USP_SsisPackageModelAnalysis`, `[sys].[extended_properties]`, `[sys].[procedures].[object_id]`, `[sys].[procedures]`, `[sys].[schemas]` sowie weitere tatsächlich aufgerufene Quellen. Für deren Metadaten- oder Fachzugriff gelten die Rechte des jeweiligen SQL-Ausführungskontexts; der Skill erteilt sie nicht.'
+            + N'Ein direkter Aufruf erfordert EXECUTE auf [monitor].[InternalSsisExecutionScopes]. Der normale Einsatz erfolgt über die öffentliche aufrufende Prozedur; direkter Fachbetrieb dieses Helpers ist nicht vorgesehen. Die Quelle nennt insbesondere `sys.sp_executesql`, `monitor.InternalPrepareResultTables`, `monitor.USP_SsisPackageModelAnalysis`, `[monitor].[SsisHandoverReceipt]` sowie weitere tatsächlich aufgerufene Quellen. Für deren Metadaten- oder Fachzugriff gelten die Rechte des jeweiligen SQL-Ausführungskontexts; der Skill erteilt sie nicht.'
             + NCHAR(10)
             + NCHAR(10)
             + N'## Parameter und Eingabe'
@@ -133984,7 +134196,7 @@ BEGIN
             + N'elinekorrelation oder -diagnose werden in deren Coverage-Gruppen dargestellt und ändern nicht zwangsläufig den Basisstatus oder die bereits erzeugten Grundgruppen.'
             + NCHAR(10)
             + NCHAR(10)
-            + N'**@Handover:** @Handover: uniqueidentifier; Default: keiner, Pflichtargument. Skalarer UUID-Wert, etwa eine entsprechend typisierte Variable oder konvertierbare UUID-Zeichenfolge. Er wählt SSIS_SCOPE_<UUID in Kleinschreibung> als Extended Property auf [monitor].[USP_SsisPackageModelAnalysis]. Der lokale Beleg enthält genau contract="ssis-local-scope-handover", version="1.0.0", issuedUtc, expiresUtc, modelSetSha256, captureSha256; er muss aktuell gültig sein, höchstens 24 Stunden gelten und die exakten UTF-16-Dokumentbytes binden. Die Prüfung liest mit READCOMMITTEDLOCK. Auslassen scheitert an der Pflichtsignatur; NULL oder fehlender/ungültiger Beleg lässt die Bindung unbelegt. Leertext ist keine UUID und kann bereits bei der SQL-Parameterkonvertierung scheitern. Eine beliebige UUID oder ein JSON-Vertrauensfeld ersetzt den lokalen Beleg nicht.'
+            + N'**@Handover:** @Handover: uniqueidentifier; Default: keiner, Pflichtargument. Skalarer UUID-Wert, etwa eine entsprechend typisierte Variable oder konvertierbare UUID-Zeichenfolge. Er wählt einen Beleg der Art 3 in [monitor].[SsisHandoverReceipt]. Der lokale Beleg enthält genau contract="ssis-local-scope-handover", version="1.0.0", issuedUtc, expiresUtc, modelSetSha256, captureSha256; er muss aktuell gültig sein, höchstens 24 Stunden gelten und die exakten UTF-16-Dokumentbytes binden. Die Prüfung liest mit READCOMMITTEDLOCK. Auslassen scheitert an der Pflichtsignatur; NULL oder fehlender/ungültiger Beleg lässt die Bindung unbelegt. Leertext ist keine UUID und kann bereits bei der SQL-Parameterkonvertierung scheitern. Eine beliebige UUID oder ein JSON-Vertrauensfeld ersetzt den lokalen Beleg nicht.'
             + NCHAR(10)
             + NCHAR(10)
             + N'**@ExecutionId:** @ExecutionId: bigint; Default: keiner, Pflichtargument. Skalarer ganzzahliger Wert von 1 bis 9223372036854775807, gleich der Execution-ID im Capture. Auslassen scheitert an der Pflichtsignatur; NULL und Werte unter 1 sind ungültig. Leerer Text kann vor dem Eintritt nach 0 konvertiert werden und ist dann ungültig.'
@@ -134106,7 +134318,7 @@ BEGIN
             + N'on oder -diagnose werden in deren Coverage-Gruppen dargestellt und ändern nicht zwangsläufig den Basisstatus oder die bereits erzeugten Grundgruppen.'
             + NCHAR(10)
             + NCHAR(10)
-            + N'@Handover: uniqueidentifier; Default: keiner, Pflichtargument. Skalarer UUID-Wert, etwa eine entsprechend typisierte Variable oder konvertierbare UUID-Zeichenfolge. Er wählt SSIS_SCOPE_<UUID in Kleinschreibung> als Extended Property auf [monitor].[USP_SsisPackageModelAnalysis]. Der lokale Beleg enthält genau contract="ssis-local-scope-handover", version="1.0.0", issuedUtc, expiresUtc, modelSetSha256, captureSha256; er muss aktuell gültig sein, höchstens 24 Stunden gelten und die exakten UTF-16-Dokumentbytes binden. Die Prüfung liest mit READCOMMITTEDLOCK. Auslassen scheitert an der Pflichtsignatur; NULL oder fehlender/ungültiger Beleg lässt die Bindung unbelegt. Leertext ist keine UUID und kann bereits bei der SQL-Parameterkonvertierung scheitern. Eine beliebige UUID oder ein JSON-Vertrauensfeld ersetzt den lokalen Beleg nicht.'
+            + N'@Handover: uniqueidentifier; Default: keiner, Pflichtargument. Skalarer UUID-Wert, etwa eine entsprechend typisierte Variable oder konvertierbare UUID-Zeichenfolge. Er wählt einen Beleg der Art 3 in [monitor].[SsisHandoverReceipt]. Der lokale Beleg enthält genau contract="ssis-local-scope-handover", version="1.0.0", issuedUtc, expiresUtc, modelSetSha256, captureSha256; er muss aktuell gültig sein, höchstens 24 Stunden gelten und die exakten UTF-16-Dokumentbytes binden. Die Prüfung liest mit READCOMMITTEDLOCK. Auslassen scheitert an der Pflichtsignatur; NULL oder fehlender/ungültiger Beleg lässt die Bindung unbelegt. Leertext ist keine UUID und kann bereits bei der SQL-Parameterkonvertierung scheitern. Eine beliebige UUID oder ein JSON-Vertrauensfeld ersetzt den lokalen Beleg nicht.'
             + NCHAR(10)
             + NCHAR(10)
             + N'@ExecutionId: bigint; Default: keiner, Pflichtargument. Skalarer ganzzahliger Wert von 1 bis 9223372036854775807, gleich der Execution-ID im Capture. Auslassen scheitert an der Pflichtsignatur; NULL und Werte unter 1 sind ungültig. Leerer Text kann vor dem Eintritt nach 0 konvertiert werden und ist dann ungültig.'
@@ -134292,8 +134504,9 @@ BEGIN
   END;
   SELECT @rootEntry=[EntryName] FROM #InternalSsisExecutionScopes_Packages WHERE [PackageKey]=@rootKey;
   IF @rootEntry IS NULL OR EXISTS(SELECT [EntryName] COLLATE Latin1_General_100_BIN2,DATALENGTH([EntryName]) FROM #InternalSsisExecutionScopes_Packages GROUP BY [EntryName] COLLATE Latin1_General_100_BIN2,DATALENGTH([EntryName]) HAVING COUNT(*)>1) THROW 57900,N'SCOPE_ROOT_INVALID',1;
-  DECLARE @receipt nvarchar(3750),@receiptName sysname=N'SSIS_SCOPE_'+LOWER(CONVERT(nvarchar(36),@Handover));
-  SELECT @receipt=TRY_CONVERT(nvarchar(3750),[value]) FROM [sys].[extended_properties] WITH (READCOMMITTEDLOCK) WHERE [class]=1 AND [major_id]=(SELECT [sys].[procedures].[object_id] FROM [sys].[procedures] WITH (READCOMMITTEDLOCK) JOIN [sys].[schemas] WITH (READCOMMITTEDLOCK) ON [sys].[schemas].[schema_id]=[sys].[procedures].[schema_id] WHERE [sys].[schemas].[name]=N'monitor' AND DATALENGTH([sys].[schemas].[name])=14 AND [sys].[procedures].[name]=N'USP_SsisPackageModelAnalysis' AND DATALENGTH([sys].[procedures].[name])=56) AND [minor_id]=0 AND [name] COLLATE Latin1_General_100_BIN2=@receiptName COLLATE Latin1_General_100_BIN2 AND DATALENGTH([name])=DATALENGTH(@receiptName);
+  DECLARE @receipt nvarchar(3000);
+  SELECT @receipt=[ReceiptJson] FROM [monitor].[SsisHandoverReceipt] WITH (READCOMMITTEDLOCK)
+  WHERE [ReceiptKind]=3 AND [HandoverId]=@Handover;
   IF COALESCE(ISJSON(@receipt),0)<>1 OR (SELECT COUNT(*) FROM OPENJSON(@receipt))<>6
    OR EXISTS(SELECT [key] COLLATE Latin1_General_100_BIN2,DATALENGTH([key]) FROM OPENJSON(@receipt) GROUP BY [key] COLLATE Latin1_General_100_BIN2,DATALENGTH([key]) HAVING COUNT(*)>1)
    OR TRY_CONVERT(datetime2(3),JSON_VALUE(@receipt,'$.issuedUtc'),127) IS NULL OR TRY_CONVERT(datetime2(3),JSON_VALUE(@receipt,'$.expiresUtc'),127) IS NULL
@@ -134452,7 +134665,7 @@ Resultsets behalten die explizite Frameworkcollation.
 --
 -- ## Voraussetzungen und Rechte
 --
--- Ein direkter Aufruf erfordert EXECUTE auf [monitor].[USP_SsisPackageModelAnalysis]. Die Quelle nennt insbesondere `monitor.InternalSsisExecutionScopes`, `[monitor].[InternalPrepareResultTables]`, `[sys].[sp_executesql]`, `[sys].[extended_properties]`, `[sys].[databases]`, `sys.databases`, `[sys].[schemas]`, `[sys].[objects]` und weitere im SQL-Text. Für deren Metadaten- oder Fachzugriff gelten die Rechte des jeweiligen SQL-Ausführungskontexts; der Skill erteilt sie nicht.
+-- Ein direkter Aufruf erfordert EXECUTE auf [monitor].[USP_SsisPackageModelAnalysis]. Die Quelle nennt insbesondere `monitor.InternalSsisExecutionScopes`, `[monitor].[InternalPrepareResultTables]`, `[sys].[sp_executesql]`, `[monitor].[SsisHandoverReceipt]`, `[sys].[databases]`, `sys.databases`, `[sys].[schemas]`, `[sys].[objects]` und weitere im SQL-Text. Für deren Metadaten- oder Fachzugriff gelten die Rechte des jeweiligen SQL-Ausführungskontexts; der Skill erteilt sie nicht.
 --
 -- ## Parameter und Eingabe
 --
@@ -134513,7 +134726,7 @@ Resultsets behalten die explizite Frameworkcollation.
 --
 -- **@PrintMeldungen:** @PrintMeldungen: Datentyp bit. Default 1. Flat-Modus prüft NULL als ungültig, verwendet den Wert danach aber nicht; 0 und 1 haben daher dieselbe Wirkung und steuern die PRINT-Ausgabe nicht. Im Scope-Modus wird der Parameter nicht an den Helper übergeben und ist wirkungslos, auch bei NULL. @Hilfe=1 druckt seine Hilfetexte unabhängig von diesem Schalter. Die SQL-bit-Konvertierung bildet numerische Werte ungleich 0 auf 1 ab.
 --
--- **@Hilfe:** @Hilfe: Datentyp bit. Default 0. 1 druckt den statischen Hilfetext und kehrt vor Datenvalidierung, Katalog-/Extended-Property-Zugriff und Scope-Delegation zurück; keine Runtime oder Eingabedaten erforderlich. @Json wird vorher auf NULL gesetzt. Andere OUTPUT-Parameter werden im Hilfezweig nicht beschrieben. 0 führt den normalen Pfad aus; NULL verhält sich wegen IF @Hilfe=1 als nicht gesetzt und läuft in die normale Verarbeitung statt als Parameterfehler abgewiesen zu werden. Die SQL-bit-Konvertierung bildet numerische Werte ungleich 0 auf 1 ab.
+-- **@Hilfe:** @Hilfe: Datentyp bit. Default 0. 1 druckt den statischen Hilfetext und kehrt vor Datenvalidierung, Katalog- und Belegzugriff und Scope-Delegation zurück; keine Runtime oder Eingabedaten erforderlich. @Json wird vorher auf NULL gesetzt. Andere OUTPUT-Parameter werden im Hilfezweig nicht beschrieben. 0 führt den normalen Pfad aus; NULL verhält sich wegen IF @Hilfe=1 als nicht gesetzt und läuft in die normale Verarbeitung statt als Parameterfehler abgewiesen zu werden. Die SQL-bit-Konvertierung bildet numerische Werte ungleich 0 auf 1 ab.
 --
 -- **@StatusCodeOut:** @StatusCodeOut: Datentyp varchar(40) OUTPUT. Default NULL OUTPUT. Mit einer varchar(40)-Variable und OUTPUT am Aufruf binden; der Eingangswert steuert keine Analyse. Im flachen Modus sind die zehn Ergebniswerte: AVAILABLE_LIMITED (Modell im implementierten begrenzten Umfang verarbeitet), INVALID_PARAMETER (ungültige Steuerwerte oder Kombination), EXCHANGE_INVALID (ungültige Modellstruktur/-typen oder nicht gesondert klassifizierter nativer Validierungsfehler), EXCHANGE_VERSION_UNSUPPORTED (Vertrags-, Versions- oder Identitätsprofilkennung nicht unterstützt), EXCHANGE_LIMIT_EXCEEDED (Größen-, Mengen-, Tiefen- oder Besitzertiefengrenze überschritten), EXCHANGE_REFERENCE_INVALID (ungültige Objekt-/Kanten-/Besitzerreferenz), EXCHANGE_PROFILE_UNSUPPORTED (nicht unterstütztes Formatprofil), EXCHANGE_SOURCE_MISMATCH (Originalbytes passen nicht zu deklariertem Paketdigest oder Länge), EXCHANGE_HANDOVER_INVALID (lokaler Producerbeleg fehlt, ist abgelaufen oder passt nicht), EXCHANGE_TIME_BUDGET_EXHAUSTED (kooperatives Zeitbudget an einer Prüfstelle erschöpft). Der Scope-Modus verwendet stattdessen SCOPE_CAPTURE_BOUND (Scope-Capture und Paketsatz sind gebunden; Ergebnis bleibt partiell), SCOPE_BINDING_UNPROVEN (Bindung/Scopeverarbeitung nicht belegt; Ursachen stehen in Fehler- und Bindungsfeldern) oder INVALID_PARAMETER (ungültige Scope-Steuerwerte/Kombination). Bei Hilfe bleibt der vorgebundene Wert unverändert. Eine vorzeitige ungefangene Ausnahme kann die Ergebniszuweisung umgehen.
 --
@@ -134527,7 +134740,7 @@ Resultsets behalten die explizite Frameworkcollation.
 --
 -- **@IncludeObjectRules:** @IncludeObjectRules: Datentyp bit. Default 0. 0 liefert keine objektbezogenen Hinweise; 1 ergänzt objectFindings aus festen Regeln und konkreten Knoten-/Kantenbelegen. Ausschließlich statische Hinweise, keine Laufzeiturteile. NULL ist im flachen Modus ungültig; im Scope-Modus muss der Schalter effektiv 0 sein (NULL wird als 1 behandelt und ist dort unzulässig). Die SQL-bit-Konvertierung bildet numerische Werte ungleich 0 auf 1 ab.
 --
--- **@LocalHandoverId:** @LocalHandoverId: Datentyp uniqueidentifier. Default NULL. Optionale UUID für den lokal gespeicherten qualifizierten Producerbeleg SSIS_HANDOVER_<UUID in Kleinschreibung> auf genau dieser Procedure. Erfordert zugleich @PackageBytes; Beleg bindet exakte UTF-16-JSON-Bytes, Paketdigest/-länge, Buildhash und Source-Commit, issuedUtc darf nicht nach Analysebeginn liegen, expiresUtc muss nach Analysebeginn liegen und höchstens 24 Stunden nach issuedUtc liegen; es gibt keine Mindestgültigkeitsdauer. Ohne ID bleibt ProducerTrust UNVERIFIED; ID ist kein Caller-JSON-Trustflag. Im Scope-Modus muss NULL sein; dort gilt ausschließlich @ScopeHandoverId.
+-- **@LocalHandoverId:** @LocalHandoverId: Datentyp uniqueidentifier. Default NULL. Optionale UUID für den lokal gespeicherten qualifizierten Producerbeleg der Art 1 in [monitor].[SsisHandoverReceipt]. Erfordert zugleich @PackageBytes; Beleg bindet exakte UTF-16-JSON-Bytes, Paketdigest/-länge, Buildhash und Source-Commit, issuedUtc darf nicht nach Analysebeginn liegen, expiresUtc muss nach Analysebeginn liegen und höchstens 24 Stunden nach issuedUtc liegen; es gibt keine Mindestgültigkeitsdauer. Ohne ID bleibt ProducerTrust UNVERIFIED; ID ist kein Caller-JSON-Trustflag. Im Scope-Modus muss NULL sein; dort gilt ausschließlich @ScopeHandoverId.
 --
 -- **@IncludeSqlMetadata:** @IncludeSqlMetadata: Datentyp bit. Default 0. 0 lässt sqlMetadata aus; dann muss @SqlMetadataBindingsJson NULL sein. 1 validiert explizite paketgebundene lokale SQL-Spaltenzuordnungen und ergänzt sqlMetadata. Benötigt zugehöriges JSON; optional nur im flachen Modus, nicht mit Scope-Modus kombinierbar. NULL im flachen Modus ungültig; im Scope-Modus muss 0 sein (NULL wird als 1 behandelt und abgewiesen). Keine Paket-SQL-Ausführung oder Typkonvertierungsfreigabe. Die SQL-bit-Konvertierung bildet numerische Werte ungleich 0 auf 1 ab.
 --
@@ -134539,7 +134752,7 @@ Resultsets behalten die explizite Frameworkcollation.
 --
 -- **@ExecutionSnapshotJson:** @ExecutionSnapshotJson: Datentyp nvarchar(max). Default NULL. Nur bei @IncludeExecutionCorrelation=1: JSON-Objekt ssis-execution-snapshot mit version 1.0.0/method SSISDB_CURRENT_PROJECT_ROOT_SCOPE_V1 oder bei Iterationskorrelation 1.1.0/SSISDB_CURRENT_PROJECT_ITERATION_SCOPE_V1, identityProfile document-order-v1, Modellhash und Paketdigest, identities-Vertrag ssis-object-identities mit passender Version/PackageSha256 sowie execution-Bindungen (executionId, catalogDatabaseGuid, sourceBindingSha256, projectId, projectLsn, packageFileName, Zeit-/Statusfelder) und observations-Array. Bei 1.1.0 muss die Iterationsklassifikation im identities-Array gebunden sein. Alle Objektschlüssel müssen eindeutig sein; unbekannte Annotationen sind im Capturetransport zulässig, bekannte Bindungen werden streng geprüft. Maximal 16 MiB DATALENGTH in SQL-Bytes, Tiefe 16 und 1.048.576 JSON-Tokens. Hash bindet exakten UTF-16-Inhalt; nicht neu serialisieren. Ohne Opt-in NULL.
 --
--- **@RuntimeHandoverId:** @RuntimeHandoverId: Datentyp uniqueidentifier. Default NULL. Bei @IncludeExecutionCorrelation=1 erforderlich: UUID des separat berechtigten und zeitlich gültigen Extended-Property-Belegs SSIS_RUNTIME_<UUID in Kleinschreibung>. Beleg contract ssis-local-runtime-handover 1.0.0 bindet SHA-256 des exakten ExecutionSnapshotJson und issued/expires (höchstens 24 Stunden); ersetzt weder @LocalHandoverId noch verifiziertes Modellvertrauen. Bei ausgeschalteter Korrelation und im Scope-Modus NULL.
+-- **@RuntimeHandoverId:** @RuntimeHandoverId: Datentyp uniqueidentifier. Default NULL. Bei @IncludeExecutionCorrelation=1 erforderlich: UUID des separat berechtigten und zeitlich gültigen Belegs der Art 2 in [monitor].[SsisHandoverReceipt]. Beleg contract ssis-local-runtime-handover 1.0.0 bindet SHA-256 des exakten ExecutionSnapshotJson und issued/expires (höchstens 24 Stunden); ersetzt weder @LocalHandoverId noch verifiziertes Modellvertrauen. Bei ausgeschalteter Korrelation und im Scope-Modus NULL.
 --
 -- **@IncludeIterationCorrelation:** @IncludeIterationCorrelation: Datentyp bit. Default 0. 0 lässt executionObjectSummary/executionCoverage weg; 1 erfordert zugleich @IncludeExecutionCorrelation=1 sowie den daran gebundenen Capture 1.1.0 mit SSISDB_CURRENT_PROJECT_ITERATION_SCOPE_V1 und ergänzt diese zwei Gruppen. Nur bereits vom Toolbelt gelieferte iterationContainer-Rollen werden verwendet; Analyze leitet sie nicht neu ab. NULL ungültig; im Scope-Modus muss 0 sein. Die SQL-bit-Konvertierung bildet numerische Werte ungleich 0 auf 1 ab.
 --
@@ -134549,7 +134762,7 @@ Resultsets behalten die explizite Frameworkcollation.
 --
 -- **@ScopeSnapshotJson:** @ScopeSnapshotJson: Datentyp nvarchar(max). Default NULL. Nur bei @IncludeExecutionScopes=1 erforderlich: Captureobjekt contract ssis-execution-scopes, version 1.0.0 und method SSISDB_CURRENT_PROJECT_SCOPES_V1; bei Pipelinekorrelation stattdessen 1.1.0 und SSISDB_CURRENT_PROJECT_PIPELINES_V1. Bindet positive execution.executionId, packageFileName exakt an root entryName, projectId/projectLsn >0, catalogDatabaseGuid, sourceBindingSha256, archiveSha256 sowie modelSetSha256=SHA-256 der exakten @ProjectModelsJson-Bytes. observations ist ein Array mit executionId/statisticsId/executableId, packageName/packagePath/executionPath und nullable executableGuid/startTime/endTime/durationMs/executionResult; events enthält eventMessageId, packageName/packagePath/executionPath, nullable executableGuid/eventName/eventCode/time. IDs müssen positiv sein, Execution-ID stimmt für alle Beobachtungen überein, und Namen/Pfade/GUIDs sowie Zeit-/Ergebnisfelder müssen konvertierbar und innerhalb der Helpergrenzen liegen; gemeinsam höchstens 50.000 Einträge. Bei Pipelineopt-in sind zusätzlich arrays componentPhases (phaseStatsId, packageName, taskName, componentName, phaseName, executionPath, nullable startTime/endTime), pathTransfers (dataStatsId, packageName, taskName, pathIdentificationString, pathName, sourceComponentName, destinationComponentName, executionPath, nullable rowsSent/createdTime) und genau zwei pipelineSources erforderlich. Die Quellenobjekte enthalten source/status/errorNumber; source ist componentPhases oder pathTransfers, status AVAILABLE/AVAILABLE_EMPTY/UNAVAILABLE/DENIED_PERMISSION, errorNumber bei den letzten zwei positiv und sonst NULL. IDs sind positiv; Zähler nichtnegativ; Zeitfelder ISO-konvertierbar. Doppelte Schlüssel werden abgewiesen. Maximal 16 MiB DATALENGTH SQL-Bytes je Dokument, Tiefe 32, gemeinsames Zeitbudget. Übergabe-ID bindet exakte Dokumentbytes.
 --
--- **@ScopeHandoverId:** @ScopeHandoverId: Datentyp uniqueidentifier. Default NULL. Bei @IncludeExecutionScopes=1 erforderliche UUID des lokal auf dieser Procedure registrierten Extended-Property-Belegs SSIS_SCOPE_<UUID in Kleinschreibung>. Beleg contract ssis-local-scope-handover 1.0.0 enthält genau sechs eindeutige Schlüssel einschließlich issuedUtc/expiresUtc, modelSetSha256 und captureSha256; Gültigkeit maximal 24 Stunden und Hashes binden exakt die übergebenen UTF-16-JSON-Dokumente. READCOMMITTEDLOCK verhindert Trust aus uncommittetem Beleg. Bei flachem Modus muss NULL sein.
+-- **@ScopeHandoverId:** @ScopeHandoverId: Datentyp uniqueidentifier. Default NULL. Bei @IncludeExecutionScopes=1 erforderliche UUID des lokal registrierten Belegs der Art 3 in [monitor].[SsisHandoverReceipt]. Beleg contract ssis-local-scope-handover 1.0.0 enthält genau sechs eindeutige Schlüssel einschließlich issuedUtc/expiresUtc, modelSetSha256 und captureSha256; Gültigkeit maximal 24 Stunden und Hashes binden exakt die übergebenen UTF-16-JSON-Dokumente. READCOMMITTEDLOCK verhindert Trust aus uncommittetem Beleg. Bei flachem Modus muss NULL sein.
 --
 -- **@IncludePipelineCorrelation:** @IncludePipelineCorrelation: Datentyp bit. Default 0. Nur im Scope-Modus zulässig; 0 behält die sieben Scopegruppen, 1 verlangt Scope-Modus plus Captureversion 1.1.0/Methode SSISDB_CURRENT_PROJECT_PIPELINES_V1 und gebundene pipelineIdentities sowie Komponentenphasen-/Pfadtransferquellen; ergänzt pipelineInstances, componentPhases, pathTransfers und pipelineCoverage. Im flachen Modus muss 0 sein. Scope-Helper akzeptiert keinen NULL-Wert. Schalter ist keine Lineage. Die SQL-bit-Konvertierung bildet numerische Werte ungleich 0 auf 1 ab.
 --
@@ -134692,25 +134905,25 @@ BEGIN
         PRINT N'@JsonErzeugen: Datentyp bit. Default 0. 0 erzeugt kein JSON-Dokument; @Json ist zuvor auf NULL initialisiert. 1 erzeugt das JSON-Ausgabeobjekt, das über gebundenes @Json OUTPUT zurückkommt. NULL ist im regulären flachen und Scope-Modus ungültig; andere Bitwerte sind nicht darstellbar. Die SQL-bit-Konvertierung bildet numerische Werte ungleich 0 auf 1 ab.';
         PRINT N'@Json: Datentyp nvarchar(max) OUTPUT. Default NULL OUTPUT. Als OUTPUT-Parameter mit lokaler nvarchar(max)-Variablen zu binden. Beim Eintritt wird er stets auf NULL gesetzt; bei @JsonErzeugen=1 enthält er die tatsächlichen Arrays und Metadaten, sonst bleibt er NULL. Flat-JSON: meta.schemaVersion=1, meta.statusCode, meta.isPartial; stets moduleStatus, sourceBinding, nodes, edges, coverage, findings, sourceStatus, warnings; per Opt-in meta.packageViewsSchemaVersion/objectRulesSchemaVersion/sqlMetadataSchemaVersion/executionCorrelationSchemaVersion/iterationCorrelationSchemaVersion jeweils mit packageOverview/executables/dataFlows/components/columnRelations, objectFindings, sqlMetadata, runtimeBinding+executionCorrelation beziehungsweise executionObjectSummary+executionCoverage. Scope-JSON: meta.schemaVersion=1, meta.executionScopesSchemaVersion=1, meta.isPartial=true; stets scopeBinding, packageScopes, packageInvocations, scopeObservations, handlerActivity, scopeObjectSummary, scopeCoverage; Pipelineopt-in ergänzt meta.pipelineCorrelationSchemaVersion=1 und pipelineInstances/componentPhases/pathTransfers/pipelineCoverage; Diagnose ergänzt meta.pipelineDiagnosticsSchemaVersion=1 und componentPhaseSummary/pathTransferSummary/pipelineFindings/pipelineDiagnosticCoverage. Alle Arrayelemente enthalten die tatsächlichen Tabellenspalten einschließlich NULL-Werten; Nur die im jeweiligen Modus begrenzten Detailgruppen werden gemäß @MaxZeilen gekürzt; die flachen Status-, Bindungs- und Coveragegruppen behalten ihren eigenen unverkleinerten Umfang. Bei @Hilfe bleibt Json NULL. Nicht als Eingabe-JSON verwenden. meta.statusCode entspricht im flachen JSON genau @StatusCodeOut und verwendet dessen hier vollständig aufgeführte zehn flache Codes mit denselben Bedeutungen. Scope-JSON besitzt kein meta.statusCode; lesen Sie dort scopeBinding und den Status-OUTPUT.';
         PRINT N'@PrintMeldungen: Datentyp bit. Default 1. Flat-Modus prüft NULL als ungültig, verwendet den Wert danach aber nicht; 0 und 1 haben daher dieselbe Wirkung und steuern die PRINT-Ausgabe nicht. Im Scope-Modus wird der Parameter nicht an den Helper übergeben und ist wirkungslos, auch bei NULL. @Hilfe=1 druckt seine Hilfetexte unabhängig von diesem Schalter. Die SQL-bit-Konvertierung bildet numerische Werte ungleich 0 auf 1 ab.';
-        PRINT N'@Hilfe: Datentyp bit. Default 0. 1 druckt den statischen Hilfetext und kehrt vor Datenvalidierung, Katalog-/Extended-Property-Zugriff und Scope-Delegation zurück; keine Runtime oder Eingabedaten erforderlich. @Json wird vorher auf NULL gesetzt. Andere OUTPUT-Parameter werden im Hilfezweig nicht beschrieben. 0 führt den normalen Pfad aus; NULL verhält sich wegen IF @Hilfe=1 als nicht gesetzt und läuft in die normale Verarbeitung statt als Parameterfehler abgewiesen zu werden. Die SQL-bit-Konvertierung bildet numerische Werte ungleich 0 auf 1 ab.';
+        PRINT N'@Hilfe: Datentyp bit. Default 0. 1 druckt den statischen Hilfetext und kehrt vor Datenvalidierung, Katalog- und Belegzugriff und Scope-Delegation zurück; keine Runtime oder Eingabedaten erforderlich. @Json wird vorher auf NULL gesetzt. Andere OUTPUT-Parameter werden im Hilfezweig nicht beschrieben. 0 führt den normalen Pfad aus; NULL verhält sich wegen IF @Hilfe=1 als nicht gesetzt und läuft in die normale Verarbeitung statt als Parameterfehler abgewiesen zu werden. Die SQL-bit-Konvertierung bildet numerische Werte ungleich 0 auf 1 ab.';
         PRINT N'@StatusCodeOut: Datentyp varchar(40) OUTPUT. Default NULL OUTPUT. Mit einer varchar(40)-Variable und OUTPUT am Aufruf binden; der Eingangswert steuert keine Analyse. Im flachen Modus sind die zehn Ergebniswerte: AVAILABLE_LIMITED (Modell im implementierten begrenzten Umfang verarbeitet), INVALID_PARAMETER (ungültige Steuerwerte oder Kombination), EXCHANGE_INVALID (ungültige Modellstruktur/-typen oder nicht gesondert klassifizierter nativer Validierungsfehler), EXCHANGE_VERSION_UNSUPPORTED (Vertrags-, Versions- oder Identitätsprofilkennung nicht unterstützt), EXCHANGE_LIMIT_EXCEEDED (Größen-, Mengen-, Tiefen- oder Besitzertiefengrenze überschritten), EXCHANGE_REFERENCE_INVALID (ungültige Objekt-/Kanten-/Besitzerreferenz), EXCHANGE_PROFILE_UNSUPPORTED (nicht unterstütztes Formatprofil), EXCHANGE_SOURCE_MISMATCH (Originalbytes passen nicht zu deklariertem Paketdigest oder Länge), EXCHANGE_HANDOVER_INVALID (lokaler Producerbeleg fehlt, ist abgelaufen oder passt nicht), EXCHANGE_TIME_BUDGET_EXHAUSTED (kooperatives Zeitbudget an einer Prüfstelle erschöpft). Der Scope-Modus verwendet stattdessen SCOPE_CAPTURE_BOUND (Scope-Capture und Paketsatz sind gebunden; Ergebnis bleibt partiell), SCOPE_BINDING_UNPROVEN (Bindung/Scopeverarbeitung nicht belegt; Ursachen stehen in Fehler- und Bindungsfeldern) oder INVALID_PARAMETER (ungültige Scope-Steuerwerte/Kombination). Bei Hilfe bleibt der vorgebundene Wert unverändert. Eine vorzeitige ungefangene Ausnahme kann die Ergebniszuweisung umgehen.';
         PRINT N'@IsPartialOut: Datentyp bit OUTPUT. Default NULL OUTPUT. Mit einer bit-Variable und OUTPUT binden; signalisiert Partialität des Ergebnisses. Der Scope-Helper setzt immer 1. Im Hilfezweig unverändert; bei normalem Lauf nach Modus befüllt. Die SQL-bit-Konvertierung bildet numerische Werte ungleich 0 auf 1 ab.';
         PRINT N'@ErrorNumberOut: Datentyp int OUTPUT. Default NULL OUTPUT. Mit einer int-Variable und OUTPUT binden; Fehlernummer der kontrolliert erfassten Analyse-/Bindungsantwort, falls vorhanden. Scope-Modus befüllt denselben Wert aus seinem Helper. Im Hilfezweig unverändert. SQL-THROW-Abbrüche können den normalen Abschluss und damit diese Ergebniszuweisung umgehen.';
         PRINT N'@ErrorMessageOut: Datentyp nvarchar(2048) OUTPUT. Default NULL OUTPUT. Mit einer nvarchar(2048)-Variable und OUTPUT binden; kontrollierte Fehlermeldung/-ursache, falls vorhanden. Im Scope-Modus Helper-Ausgabe; bei Hilfe unverändert. Ein SQL-THROW-Abbruch kann vor der normalen Zuweisung enden. nvarchar(2048) umfasst höchstens 2048 UTF-16-Codeeinheiten; OUTPUT ist auch am Aufruf nötig.';
         PRINT N'@IncludePackageViews: Datentyp bit. Default 0. 0 behält die acht Grundgruppen; 1 ergänzt packageOverview, executables, dataFlows, components und columnRelations in RAW/JSON sowie deren zulässige TABLE-Ziele. Alle fünf zeigen gelieferte Modellbeziehungen; kein Laufzeiturteil. NULL ist im flachen Modus ungültig; im Scope-Modus muss der Schalter effektiv 0 sein (NULL wird durch COALESCE wie 1 behandelt und damit als unzulässige Kombination abgewiesen). Die SQL-bit-Konvertierung bildet numerische Werte ungleich 0 auf 1 ab.';
         PRINT N'@IncludeObjectRules: Datentyp bit. Default 0. 0 liefert keine objektbezogenen Hinweise; 1 ergänzt objectFindings aus festen Regeln und konkreten Knoten-/Kantenbelegen. Ausschließlich statische Hinweise, keine Laufzeiturteile. NULL ist im flachen Modus ungültig; im Scope-Modus muss der Schalter effektiv 0 sein (NULL wird als 1 behandelt und ist dort unzulässig). Die SQL-bit-Konvertierung bildet numerische Werte ungleich 0 auf 1 ab.';
-        PRINT N'@LocalHandoverId: Datentyp uniqueidentifier. Default NULL. Optionale UUID für den lokal gespeicherten qualifizierten Producerbeleg SSIS_HANDOVER_<UUID in Kleinschreibung> auf genau dieser Procedure. Erfordert zugleich @PackageBytes; Beleg bindet exakte UTF-16-JSON-Bytes, Paketdigest/-länge, Buildhash und Source-Commit, issuedUtc darf nicht nach Analysebeginn liegen, expiresUtc muss nach Analysebeginn liegen und höchstens 24 Stunden nach issuedUtc liegen; es gibt keine Mindestgültigkeitsdauer. Ohne ID bleibt ProducerTrust UNVERIFIED; ID ist kein Caller-JSON-Trustflag. Im Scope-Modus muss NULL sein; dort gilt ausschließlich @ScopeHandoverId.';
+        PRINT N'@LocalHandoverId: Datentyp uniqueidentifier. Default NULL. Optionale UUID für den lokal gespeicherten qualifizierten Producerbeleg der Art 1 in [monitor].[SsisHandoverReceipt]. Erfordert zugleich @PackageBytes; Beleg bindet exakte UTF-16-JSON-Bytes, Paketdigest/-länge, Buildhash und Source-Commit, issuedUtc darf nicht nach Analysebeginn liegen, expiresUtc muss nach Analysebeginn liegen und höchstens 24 Stunden nach issuedUtc liegen; es gibt keine Mindestgültigkeitsdauer. Ohne ID bleibt ProducerTrust UNVERIFIED; ID ist kein Caller-JSON-Trustflag. Im Scope-Modus muss NULL sein; dort gilt ausschließlich @ScopeHandoverId.';
         PRINT N'@IncludeSqlMetadata: Datentyp bit. Default 0. 0 lässt sqlMetadata aus; dann muss @SqlMetadataBindingsJson NULL sein. 1 validiert explizite paketgebundene lokale SQL-Spaltenzuordnungen und ergänzt sqlMetadata. Benötigt zugehöriges JSON; optional nur im flachen Modus, nicht mit Scope-Modus kombinierbar. NULL im flachen Modus ungültig; im Scope-Modus muss 0 sein (NULL wird als 1 behandelt und abgewiesen). Keine Paket-SQL-Ausführung oder Typkonvertierungsfreigabe. Die SQL-bit-Konvertierung bildet numerische Werte ungleich 0 auf 1 ab.';
         PRINT N'@SqlMetadataBindingsJson: Datentyp nvarchar(max). Default NULL. Nur mit @IncludeSqlMetadata=1: JSON-Objekt contract="ssis-sql-metadata-bindings", version="1.0.0", packageSha256 passend zum Modell und bindings-Array mit 1–1.000 Einträgen. Jedes flache Element besitzt genau bindingId, nodeId, databaseName, schemaName, objectName, columnName, keySetId: bindingId eindeutige ASCII-Kennung bis 64 Zeichen [A-Za-z0-9_.:-]; nodeId vorhandener COLUMN; databaseName ausdrücklich lokale Datenbank; Schema/Objekt/Spalte nichtleere SQL-Bezeichner bis 128 UTF-16-Codeeinheiten; keySetId null oder ASCII-Kennung, wobei ein Satz ein Objekt und jede SQL-Spalte höchstens einmal bezeichnet. Maximal DATALENGTH 16.777.216 SQL-Bytes (nvarchar UTF-16; keine UTF-8-Dateigröße). Ohne Opt-in muss NULL sein; im Scope-Modus NULL.';
         PRINT N'@IncludeExecutionCorrelation: Datentyp bit. Default 0. 0 verlangt im flachen Modus @ExecutionId, @ExecutionSnapshotJson und @RuntimeHandoverId alle NULL; 1 aktiviert Laufzeitkorrelation und verlangt positive @ExecutionId, Snapshot und Runtime-Handover-ID sowie verifiziertes Modellvertrauen und Paketbytes/LocalHandover. Ergänzt runtimeBinding und executionCorrelation. NULL ungültig. Im Scope-Modus muss 0 sein; dessen Korrelationspfad nutzt @IncludeExecutionScopes. Die SQL-bit-Konvertierung bildet numerische Werte ungleich 0 auf 1 ab.';
         PRINT N'@ExecutionId: Datentyp bigint. Default NULL. Positive SSISDB Execution-ID (>0), byte-/wertgleich im gebundenen Capture. Erforderlich bei @IncludeExecutionCorrelation=1 oder @IncludeExecutionScopes=1; bei flacher Laufzeitkorrelation sonst NULL. NULL und Werte <1 werden im aktivierten Korrelationsmodus abgewiesen. Bereich durch bigint begrenzt. Als einzelne Ganzzahl von 1 bis 9223372036854775807 übergeben, keine Liste und kein Datenbankpfad.';
         PRINT N'@ExecutionSnapshotJson: Datentyp nvarchar(max). Default NULL. Nur bei @IncludeExecutionCorrelation=1: JSON-Objekt ssis-execution-snapshot mit version 1.0.0/method SSISDB_CURRENT_PROJECT_ROOT_SCOPE_V1 oder bei Iterationskorrelation 1.1.0/SSISDB_CURRENT_PROJECT_ITERATION_SCOPE_V1, identityProfile document-order-v1, Modellhash und Paketdigest, identities-Vertrag ssis-object-identities mit passender Version/PackageSha256 sowie execution-Bindungen (executionId, catalogDatabaseGuid, sourceBindingSha256, projectId, projectLsn, packageFileName, Zeit-/Statusfelder) und observations-Array. Bei 1.1.0 muss die Iterationsklassifikation im identities-Array gebunden sein. Alle Objektschlüssel müssen eindeutig sein; unbekannte Annotationen sind im Capturetransport zulässig, bekannte Bindungen werden streng geprüft. Maximal 16 MiB DATALENGTH in SQL-Bytes, Tiefe 16 und 1.048.576 JSON-Tokens. Hash bindet exakten UTF-16-Inhalt; nicht neu serialisieren. Ohne Opt-in NULL.';
-        PRINT N'@RuntimeHandoverId: Datentyp uniqueidentifier. Default NULL. Bei @IncludeExecutionCorrelation=1 erforderlich: UUID des separat berechtigten und zeitlich gültigen Extended-Property-Belegs SSIS_RUNTIME_<UUID in Kleinschreibung>. Beleg contract ssis-local-runtime-handover 1.0.0 bindet SHA-256 des exakten ExecutionSnapshotJson und issued/expires (höchstens 24 Stunden); ersetzt weder @LocalHandoverId noch verifiziertes Modellvertrauen. Bei ausgeschalteter Korrelation und im Scope-Modus NULL.';
+        PRINT N'@RuntimeHandoverId: Datentyp uniqueidentifier. Default NULL. Bei @IncludeExecutionCorrelation=1 erforderlich: UUID des separat berechtigten und zeitlich gültigen Belegs der Art 2 in [monitor].[SsisHandoverReceipt]. Beleg contract ssis-local-runtime-handover 1.0.0 bindet SHA-256 des exakten ExecutionSnapshotJson und issued/expires (höchstens 24 Stunden); ersetzt weder @LocalHandoverId noch verifiziertes Modellvertrauen. Bei ausgeschalteter Korrelation und im Scope-Modus NULL.';
         PRINT N'@IncludeIterationCorrelation: Datentyp bit. Default 0. 0 lässt executionObjectSummary/executionCoverage weg; 1 erfordert zugleich @IncludeExecutionCorrelation=1 sowie den daran gebundenen Capture 1.1.0 mit SSISDB_CURRENT_PROJECT_ITERATION_SCOPE_V1 und ergänzt diese zwei Gruppen. Nur bereits vom Toolbelt gelieferte iterationContainer-Rollen werden verwendet; Analyze leitet sie nicht neu ab. NULL ungültig; im Scope-Modus muss 0 sein. Die SQL-bit-Konvertierung bildet numerische Werte ungleich 0 auf 1 ab.';
         PRINT N'@IncludeExecutionScopes: Datentyp bit. Default 0. 0 verwendet den flachen Einzelmodellpfad. 1 delegiert exklusiv an InternalSsisExecutionScopes und verlangt @ProjectModelsJson, @ScopeSnapshotJson, @ScopeHandoverId und positive @ExecutionId. Dann müssen PackageModelJson/PackageBytes, LocalHandoverId, ExecutionSnapshotJson, RuntimeHandoverId, SqlMetadataBindingsJson sowie PackageViews/ObjectRules/SqlMetadata/ExecutionCorrelation/IterationCorrelation NULL/0 sein; IncludePipelineCorrelation muss nicht-NULL sein. Scope-Ergebnisse sind stets partiell. NULL im flachen Modus ungültig. Die SQL-bit-Konvertierung bildet numerische Werte ungleich 0 auf 1 ab.';
         PRINT N'@ProjectModelsJson: Datentyp nvarchar(max). Default NULL. Nur bei @IncludeExecutionScopes=1 erforderlich: JSON-Objekt contract ssis-project-model-set, version 1.0.0, rootPackageKey und packages-Array mit 1–16 Einträgen. Jedes Paketobjekt liefert packageKey (eindeutige alphanumerische Kennung bis 16 Zeichen), entryName (exakter, eindeutiger Archivdateiname ohne /, \ oder :, 6–260 Zeichen), model (vollständiges ssis-package-model 1.0.0) und identities (ssis-object-identities 1.2.0 mit packageSha256 passend zum Modell sowie objects-Array). Jedes identities.objects-Element enthält nodeId, nullable parentId, nodeKind PACKAGE/EXECUTABLE, nullable dtsId/packagePath, scopeKind PACKAGE/CALL/LOOP/HANDLER/EXECUTABLE, steps (Array mit höchstens 32 Objekten; jedes Objekt genau text als nichtleerer String mit DATALENGTH 2–8.000 SQL-Bytes und counter als JSON-Zahl), profileStatus SUPPORTED/UNQUALIFIED, eventName und callTarget als nullable Werte; Handler-Events sind OnPreExecute/OnPostExecute/OnError. Identitätsanzahl muss der Zahl der PACKAGE/EXECUTABLE-Knoten entsprechen und jede ID/Parentbeziehung passt exakt zum eingebetteten Modell. Bei Pipelineopt-in zusätzlich pipelineIdentities je Paket (ssis-pipeline-identities 1.0.0, identityProfile=document-order-v1, identischer packageSha256, pipelines-Array). Jedes Pipelineobjekt enthält nodeId/profileStatus und components/paths-Arrays; Komponenten binden nodeId/name/nativeRefId/profileStatus an vorhandene Component-Knoten, Pfade binden edgeId/fromPortId/toPortId/sourceComponentId/destinationComponentId/nativeRefId/name/identificationString/profileStatus an exakte Pipelinekanten/Ports. Anzahl und Scopes müssen dem Modell entsprechen. RootPackageKey muss eines der eindeutigen packageKey bezeichnen. Maximal 16 MiB DATALENGTH SQL-Bytes; gemeinsam mit Capture Tiefe <=32 und 50.000 Beobachtungen/Ereignisse.';
         PRINT N'@ScopeSnapshotJson: Datentyp nvarchar(max). Default NULL. Nur bei @IncludeExecutionScopes=1 erforderlich: Captureobjekt contract ssis-execution-scopes, version 1.0.0 und method SSISDB_CURRENT_PROJECT_SCOPES_V1; bei Pipelinekorrelation stattdessen 1.1.0 und SSISDB_CURRENT_PROJECT_PIPELINES_V1. Bindet positive execution.executionId, packageFileName exakt an root entryName, projectId/projectLsn >0, catalogDatabaseGuid, sourceBindingSha256, archiveSha256 sowie modelSetSha256=SHA-256 der exakten @ProjectModelsJson-Bytes. observations ist ein Array mit executionId/statisticsId/executableId, packageName/packagePath/executionPath und nullable executableGuid/startTime/endTime/durationMs/executionResult; events enthält eventMessageId, packageName/packagePath/executionPath, nullable executableGuid/eventName/eventCode/time. IDs müssen positiv sein, Execution-ID stimmt für alle Beobachtungen überein, und Namen/Pfade/GUIDs sowie Zeit-/Ergebnisfelder müssen konvertierbar und innerhalb der Helpergrenzen liegen; gemeinsam höchstens 50.000 Einträge. Bei Pipelineopt-in sind zusätzlich arrays componentPhases (phaseStatsId, packageName, taskName, componentName, phaseName, executionPath, nullable startTime/endTime), pathTransfers (dataStatsId, packageName, taskName, pathIdentificationString, pathName, sourceComponentName, destinationComponentName, executionPath, nullable rowsSent/createdTime) und genau zwei pipelineSources erforderlich. Die Quellenobjekte enthalten source/status/errorNumber; source ist componentPhases oder pathTransfers, status AVAILABLE/AVAILABLE_EMPTY/UNAVAILABLE/DENIED_PERMISSION, errorNumber bei den letzten zwei positiv und sonst NULL. IDs sind positiv; Zähler nichtnegativ; Zeitfelder ISO-konvertierbar. Doppelte Schlüssel werden abgewiesen. Maximal 16 MiB DATALENGTH SQL-Bytes je Dokument, Tiefe 32, gemeinsames Zeitbudget. Übergabe-ID bindet exakte Dokumentbytes.';
-        PRINT N'@ScopeHandoverId: Datentyp uniqueidentifier. Default NULL. Bei @IncludeExecutionScopes=1 erforderliche UUID des lokal auf dieser Procedure registrierten Extended-Property-Belegs SSIS_SCOPE_<UUID in Kleinschreibung>. Beleg contract ssis-local-scope-handover 1.0.0 enthält genau sechs eindeutige Schlüssel einschließlich issuedUtc/expiresUtc, modelSetSha256 und captureSha256; Gültigkeit maximal 24 Stunden und Hashes binden exakt die übergebenen UTF-16-JSON-Dokumente. READCOMMITTEDLOCK verhindert Trust aus uncommittetem Beleg. Bei flachem Modus muss NULL sein.';
+        PRINT N'@ScopeHandoverId: Datentyp uniqueidentifier. Default NULL. Bei @IncludeExecutionScopes=1 erforderliche UUID des lokal registrierten Belegs der Art 3 in [monitor].[SsisHandoverReceipt]. Beleg contract ssis-local-scope-handover 1.0.0 enthält genau sechs eindeutige Schlüssel einschließlich issuedUtc/expiresUtc, modelSetSha256 und captureSha256; Gültigkeit maximal 24 Stunden und Hashes binden exakt die übergebenen UTF-16-JSON-Dokumente. READCOMMITTEDLOCK verhindert Trust aus uncommittetem Beleg. Bei flachem Modus muss NULL sein.';
         PRINT N'@IncludePipelineCorrelation: Datentyp bit. Default 0. Nur im Scope-Modus zulässig; 0 behält die sieben Scopegruppen, 1 verlangt Scope-Modus plus Captureversion 1.1.0/Methode SSISDB_CURRENT_PROJECT_PIPELINES_V1 und gebundene pipelineIdentities sowie Komponentenphasen-/Pfadtransferquellen; ergänzt pipelineInstances, componentPhases, pathTransfers und pipelineCoverage. Im flachen Modus muss 0 sein. Scope-Helper akzeptiert keinen NULL-Wert. Schalter ist keine Lineage. Die SQL-bit-Konvertierung bildet numerische Werte ungleich 0 auf 1 ab.';
         PRINT N'@IncludePipelineDiagnostics: Datentyp bit. Default 0. 0 lässt Diagnosegruppen weg. 1 verlangt @IncludeExecutionScopes=1 und @IncludePipelineCorrelation=1; ergänzt componentPhaseSummary, pathTransferSummary, pipelineFindings und pipelineDiagnosticCoverage. NULL ungültig. Im flachen Modus muss exakt 0 sein. Nur Beobachtungsaggregation und versionierte Hinweise, ändert keinen Ausführungsstatus; die Eingaben bleiben auf höchstens 50.000 gebundene Quellzeilen und das gemeinsame Zeitbudget begrenzt. Die SQL-bit-Konvertierung bildet numerische Werte ungleich 0 auf 1 ab.';
         PRINT N'@PipelinePhaseThresholdMs: Datentyp bigint. Default NULL deaktiviert SSIS_PIPELINE_PHASE_THRESHOLD_EXCEEDED. Ein expliziter nichtnegativer Millisekundenwert aktiviert bei @IncludePipelineDiagnostics=1 die Regel, wenn ein bekanntes einzelnes Komponentenphasenintervall den Wert strikt überschreitet (nicht bei Gleichheit). Negative Werte, NULL-Schalter, fehlendes Diagnoseopt-in oder jeder nicht-NULL-Wert im flachen Modus sind ungültig. Kein CPU- oder kritischer-Pfad-Grenzwert. Der explizite Zahlenbereich ist 0 bis 9223372036854775807 Millisekunden.';
@@ -134760,7 +134973,7 @@ BEGIN
             + N'## Voraussetzungen und Rechte'
             + NCHAR(10)
             + NCHAR(10)
-            + N'Ein direkter Aufruf erfordert EXECUTE auf [monitor].[USP_SsisPackageModelAnalysis]. Die Quelle nennt insbesondere `monitor.InternalSsisExecutionScopes`, `[monitor].[InternalPrepareResultTables]`, `[sys].[sp_executesql]`, `[sys].[extended_properties]`, `[sys].[databases]`, `sys.databases`, `[sys].[schemas]`, `[sys].[objects]` und weitere im SQL-Text. Für deren Metadaten- oder Fachzugriff gelten die Rechte des jeweiligen SQL-Ausführungskontexts; der Skill erteilt sie nicht.'
+            + N'Ein direkter Aufruf erfordert EXECUTE auf [monitor].[USP_SsisPackageModelAnalysis]. Die Quelle nennt insbesondere `monitor.InternalSsisExecutionScopes`, `[monitor].[InternalPrepareResultTables]`, `[sys].[sp_executesql]`, `[monitor].[SsisHandoverReceipt]`, `[sys].[databases]`, `sys.databases`, `[sys].[schemas]`, `[sys].[objects]` und weitere im SQL-Text. Für deren Metadaten- oder Fachzugriff gelten die Rechte des jeweiligen SQL-Ausführungskontexts; der Skill erteilt sie nicht.'
             + NCHAR(10)
             + NCHAR(10)
             + N'## Parameter und Eingabe'
@@ -134874,7 +135087,7 @@ BEGIN
             + N'**@PrintMeldungen:** @PrintMeldungen: Datentyp bit. Default 1. Flat-Modus prüft NULL als ungültig, verwendet den Wert danach aber nicht; 0 und 1 haben daher dieselbe Wirkung und steuern die PRINT-Ausgabe nicht. Im Scope-Modus wird der Parameter nicht an den Helper übergeben und ist wirkungslos, auch bei NULL. @Hilfe=1 druckt seine Hilfetexte unabhängig von diesem Schalter. Die SQL-bit-Konvertierung bildet numerische Werte ungleich 0 auf 1 ab.'
             + NCHAR(10)
             + NCHAR(10)
-            + N'**@Hilfe:** @Hilfe: Datentyp bit. Default 0. 1 druckt den statischen Hilfetext und kehrt vor Datenvalidierung, Katalog-/Extended-Property-Zugriff und Scope-Delegation zurück; keine Runtime oder Eingabedaten erforderlich. @Json wird vorher auf NULL gesetzt. Andere OUTPUT-Parameter werden im Hilfezweig nicht beschrieben. 0 führt den normalen Pfad aus; NULL verhält sich wegen IF @Hilfe=1 als nicht gesetzt und läuft in die normale Verarbeitung statt als Parameterfehler abgewiesen zu werden. Die SQL-bit-Konvertierung bildet numerische Werte ungleich 0 auf 1 ab.'
+            + N'**@Hilfe:** @Hilfe: Datentyp bit. Default 0. 1 druckt den statischen Hilfetext und kehrt vor Datenvalidierung, Katalog- und Belegzugriff und Scope-Delegation zurück; keine Runtime oder Eingabedaten erforderlich. @Json wird vorher auf NULL gesetzt. Andere OUTPUT-Parameter werden im Hilfezweig nicht beschrieben. 0 führt den normalen Pfad aus; NULL verhält sich wegen IF @Hilfe=1 als nicht gesetzt und läuft in die normale Verarbeitung statt als Parameterfehler abgewiesen zu werden. Die SQL-bit-Konvertierung bildet numerische Werte ungleich 0 auf 1 ab.'
             + NCHAR(10)
             + NCHAR(10)
             + N'**@StatusCodeOut:** @StatusCodeOut: Datentyp varchar(40) OUTPUT. Default NULL OUTPUT. Mit einer varchar(40)-Variable und OUTPUT am Aufruf binden; der Eingangswert steuert keine Analyse. Im flachen Modus sind die zehn Ergebniswerte: AVAILABLE_LIMITED (Modell im implementierten begrenzten Umfang verarbeitet), INVALID_PARAMETER (ungültige Steuerwerte oder Kombination), EXCHANGE_INVALID (ungültige Modellstruktur/-typen oder nicht gesondert klassifizierter nativer Validierungsfehler), EXCHANGE_VERSION_UNSUPPORTED (Vertrags-, Versions- oder Identitätsprofilkennung nicht unterstützt), EXCHANGE_LIMIT_EXCEEDED (Größen-, Mengen-, Tiefen- oder Besitzertiefengrenze überschritten), EXCHANGE_REFERENCE_INVALID (ungültige Objekt-/Kanten-/Besitzerreferenz), EXCHANGE_PROFILE_UNSUPPORTED (nicht unterstütztes Formatprofil), EXCHANGE_SOURCE_MISMATCH (Originalbytes passen nicht zu deklariertem Paketdigest oder Länge), EXCHANGE_HANDOVER_INVALID (lokaler Producerbeleg fehlt, ist abgelaufen oder passt nicht), '
@@ -134896,7 +135109,7 @@ BEGIN
             + N'**@IncludeObjectRules:** @IncludeObjectRules: Datentyp bit. Default 0. 0 liefert keine objektbezogenen Hinweise; 1 ergänzt objectFindings aus festen Regeln und konkreten Knoten-/Kantenbelegen. Ausschließlich statische Hinweise, keine Laufzeiturteile. NULL ist im flachen Modus ungültig; im Scope-Modus muss der Schalter effektiv 0 sein (NULL wird als 1 behandelt und ist dort unzulässig). Die SQL-bit-Konvertierung bildet numerische Werte ungleich 0 auf 1 ab.'
             + NCHAR(10)
             + NCHAR(10)
-            + N'**@LocalHandoverId:** @LocalHandoverId: Datentyp uniqueidentifier. Default NULL. Optionale UUID für den lokal gespeicherten qualifizierten Producerbeleg SSIS_HANDOVER_<UUID in Kleinschreibung> auf genau dieser Procedure. Erfordert zugleich @PackageBytes; Beleg bindet exakte UTF-16-JSON-Bytes, Paketdigest/-länge, Buildhash und Source-Commit, issuedUtc darf nicht nach Analysebeginn liegen, expiresUtc muss nach Analysebeginn liegen und höchstens 24 Stunden nach issuedUtc liegen; es gibt keine Mindestgültigkeitsdauer. Ohne ID bleibt ProducerTrust UNVERIFIED; ID ist kein Caller-JSON-Trustflag. Im Scope-Modus muss NULL sein; dort gilt ausschließlich @ScopeHandoverId.'
+            + N'**@LocalHandoverId:** @LocalHandoverId: Datentyp uniqueidentifier. Default NULL. Optionale UUID für den lokal gespeicherten qualifizierten Producerbeleg der Art 1 in [monitor].[SsisHandoverReceipt]. Erfordert zugleich @PackageBytes; Beleg bindet exakte UTF-16-JSON-Bytes, Paketdigest/-länge, Buildhash und Source-Commit, issuedUtc darf nicht nach Analysebeginn liegen, expiresUtc muss nach Analysebeginn liegen und höchstens 24 Stunden nach issuedUtc liegen; es gibt keine Mindestgültigkeitsdauer. Ohne ID bleibt ProducerTrust UNVERIFIED; ID ist kein Caller-JSON-Trustflag. Im Scope-Modus muss NULL sein; dort gilt ausschließlich @ScopeHandoverId.'
             + NCHAR(10)
             + NCHAR(10)
             + N'**@IncludeSqlMetadata:** @IncludeSqlMetadata: Datentyp bit. Default 0. 0 lässt sqlMetadata aus; dann muss @SqlMetadataBindingsJson NULL sein. 1 validiert explizite paketgebundene lokale SQL-Spaltenzuordnungen und ergänzt sqlMetadata. Benötigt zugehöriges JSON; optional nur im flachen Modus, nicht mit Scope-Modus kombinierbar. NULL im flachen Modus ungültig; im Scope-Modus muss 0 sein (NULL wird als 1 behandelt und abgewiesen). Keine Paket-SQL-Ausführung oder Typkonvertierungsfreigabe. Die SQL-bit-Konvertierung bildet numerische Werte ungleich 0 auf 1 ab.'
@@ -134914,7 +135127,7 @@ BEGIN
             + N'**@ExecutionSnapshotJson:** @ExecutionSnapshotJson: Datentyp nvarchar(max). Default NULL. Nur bei @IncludeExecutionCorrelation=1: JSON-Objekt ssis-execution-snapshot mit version 1.0.0/method SSISDB_CURRENT_PROJECT_ROOT_SCOPE_V1 oder bei Iterationskorrelation 1.1.0/SSISDB_CURRENT_PROJECT_ITERATION_SCOPE_V1, identityProfile document-order-v1, Modellhash und Paketdigest, identities-Vertrag ssis-object-identities mit passender Version/PackageSha256 sowie execution-Bindungen (executionId, catalogDatabaseGuid, sourceBindingSha256, projectId, projectLsn, packageFileName, Zeit-/Statusfelder) und observations-Array. Bei 1.1.0 muss die Iterationsklassifikation im identities-Array gebunden sein. Alle Objektschlüssel müssen eindeutig sein; unbekannte Annotationen sind im Capturetransport zulässig, bekannte Bindungen werden streng geprüft. Maximal 16 MiB DATALENGTH in SQL-Bytes, Tiefe 16 und 1.048.576 JSON-Tokens. Hash bindet exakten UTF-16-Inhalt; nicht neu serialisieren. Ohne Opt-in NULL.'
             + NCHAR(10)
             + NCHAR(10)
-            + N'**@RuntimeHandoverId:** @RuntimeHandoverId: Datentyp uniqueidentifier. Default NULL. Bei @IncludeExecutionCorrelation=1 erforderlich: UUID des separat berechtigten und zeitlich gültigen Extended-Property-Belegs SSIS_RUNTIME_<UUID in Kleinschreibung>. Beleg contract ssis-local-runtime-handover 1.0.0 bindet SHA-256 des exakten ExecutionSnapshotJson und issued/expires (höchstens 24 Stunden); ersetzt weder @LocalHandoverId noch verifiziertes Modellvertrauen. Bei ausgeschalteter Korrelation und im Scope-Modus NULL.'
+            + N'**@RuntimeHandoverId:** @RuntimeHandoverId: Datentyp uniqueidentifier. Default NULL. Bei @IncludeExecutionCorrelation=1 erforderlich: UUID des separat berechtigten und zeitlich gültigen Belegs der Art 2 in [monitor].[SsisHandoverReceipt]. Beleg contract ssis-local-runtime-handover 1.0.0 bindet SHA-256 des exakten ExecutionSnapshotJson und issued/expires (höchstens 24 Stunden); ersetzt weder @LocalHandoverId noch verifiziertes Modellvertrauen. Bei ausgeschalteter Korrelation und im Scope-Modus NULL.'
             + NCHAR(10)
             + NCHAR(10)
             + N'**@IncludeIterationCorrelation:** @IncludeIterationCorrelation: Datentyp bit. Default 0. 0 lässt executionObjectSummary/executionCoverage weg; 1 erfordert zugleich @IncludeExecutionCorrelation=1 sowie den daran gebundenen Capture 1.1.0 mit SSISDB_CURRENT_PROJECT_ITERATION_SCOPE_V1 und ergänzt diese zwei Gruppen. Nur bereits vom Toolbelt gelieferte iterationContainer-Rollen werden verwendet; Analyze leitet sie nicht neu ab. NULL ungültig; im Scope-Modus muss 0 sein. Die SQL-bit-Konvertierung bildet numerische Werte ungleich 0 auf 1 ab.'
@@ -134931,7 +135144,7 @@ BEGIN
             + N'nnerhalb der Helpergrenzen liegen; gemeinsam höchstens 50.000 Einträge. Bei Pipelineopt-in sind zusätzlich arrays componentPhases (phaseStatsId, packageName, taskName, componentName, phaseName, executionPath, nullable startTime/endTime), pathTransfers (dataStatsId, packageName, taskName, pathIdentificationString, pathName, sourceComponentName, destinationComponentName, executionPath, nullable rowsSent/createdTime) und genau zwei pipelineSources erforderlich. Die Quellenobjekte enthalten source/status/errorNumber; source ist componentPhases oder pathTransfers, status AVAILABLE/AVAILABLE_EMPTY/UNAVAILABLE/DENIED_PERMISSION, errorNumber bei den letzten zwei positiv und sonst NULL. IDs sind positiv; Zähler nichtnegativ; Zeitfelder ISO-konvertierbar. Doppelte Schlüssel werden abgewiesen. Maximal 16 MiB DATALENGTH SQL-Bytes je Dokument, Tiefe 32, gemeinsames Zeitbudget. Übergabe-ID bindet exakte Dokumentbytes.'
             + NCHAR(10)
             + NCHAR(10)
-            + N'**@ScopeHandoverId:** @ScopeHandoverId: Datentyp uniqueidentifier. Default NULL. Bei @IncludeExecutionScopes=1 erforderliche UUID des lokal auf dieser Procedure registrierten Extended-Property-Belegs SSIS_SCOPE_<UUID in Kleinschreibung>. Beleg contract ssis-local-scope-handover 1.0.0 enthält genau sechs eindeutige Schlüssel einschließlich issuedUtc/expiresUtc, modelSetSha256 und captureSha256; Gültigkeit maximal 24 Stunden und Hashes binden exakt die übergebenen UTF-16-JSON-Dokumente. READCOMMITTEDLOCK verhindert Trust aus uncommittetem Beleg. Bei flachem Modus muss NULL sein.'
+            + N'**@ScopeHandoverId:** @ScopeHandoverId: Datentyp uniqueidentifier. Default NULL. Bei @IncludeExecutionScopes=1 erforderliche UUID des lokal registrierten Belegs der Art 3 in [monitor].[SsisHandoverReceipt]. Beleg contract ssis-local-scope-handover 1.0.0 enthält genau sechs eindeutige Schlüssel einschließlich issuedUtc/expiresUtc, modelSetSha256 und captureSha256; Gültigkeit maximal 24 Stunden und Hashes binden exakt die übergebenen UTF-16-JSON-Dokumente. READCOMMITTEDLOCK verhindert Trust aus uncommittetem Beleg. Bei flachem Modus muss NULL sein.'
             + NCHAR(10)
             + NCHAR(10)
             + N'**@IncludePipelineCorrelation:** @IncludePipelineCorrelation: Datentyp bit. Default 0. Nur im Scope-Modus zulässig; 0 behält die sieben Scopegruppen, 1 verlangt Scope-Modus plus Captureversion 1.1.0/Methode SSISDB_CURRENT_PROJECT_PIPELINES_V1 und gebundene pipelineIdentities sowie Komponentenphasen-/Pfadtransferquellen; ergänzt pipelineInstances, componentPhases, pathTransfers und pipelineCoverage. Im flachen Modus muss 0 sein. Scope-Helper akzeptiert keinen NULL-Wert. Schalter ist keine Lineage. Die SQL-bit-Konvertierung bildet numerische Werte ungleich 0 auf 1 ab.'
@@ -135441,9 +135654,9 @@ BEGIN
         IF @LocalHandoverId IS NOT NULL
         BEGIN
             SET @ValidationStage='LOCAL_HANDOVER';
-            DECLARE @Receipt nvarchar(3750),@ReceiptName sysname=N'SSIS_HANDOVER_'+LOWER(CONVERT(nvarchar(36),@LocalHandoverId));
-            SELECT @Receipt=TRY_CONVERT(nvarchar(3750),[value]) FROM [sys].[extended_properties] WITH (READCOMMITTEDLOCK)
-            WHERE [class]=1 AND [major_id]=@@PROCID AND [minor_id]=0 AND [name] COLLATE Latin1_General_100_BIN2=@ReceiptName COLLATE Latin1_General_100_BIN2;
+            DECLARE @Receipt nvarchar(3000);
+            SELECT @Receipt=[ReceiptJson] FROM [monitor].[SsisHandoverReceipt] WITH (READCOMMITTEDLOCK)
+            WHERE [ReceiptKind]=1 AND [HandoverId]=@LocalHandoverId;
             IF @PackageBytes IS NULL OR @Receipt IS NULL OR ISJSON(@Receipt)<>1 THROW 50000,N'EXCHANGE_HANDOVER_INVALID',1;
             CREATE TABLE #SsisPackageModelAnalysis_HandoverFields([FieldName] nvarchar(4000) COLLATE Latin1_General_100_BIN2 NOT NULL,[FieldValue] nvarchar(max) COLLATE Latin1_General_100_BIN2 NULL,[JsonType] int NOT NULL);
             INSERT #SsisPackageModelAnalysis_HandoverFields SELECT [key],[value],[type] FROM OPENJSON(@Receipt);
@@ -135686,9 +135899,9 @@ FROM #SsisPackageModelAnalysis_SqlMetadata AS [b] WHERE [b].[KeySetId] IS NOT NU
                 IF @ProducerTrust<>'VERIFIED_LOCAL' THROW 50000,N'MODEL_HANDOVER_UNVERIFIED',1;
                 IF @ExecutionSnapshotJson IS NULL OR @RuntimeHandoverId IS NULL THROW 50000,N'QUALIFIED_CAPTURE_MISSING',1;
                 IF DATALENGTH(@ExecutionSnapshotJson)>16777216 OR ISJSON(@ExecutionSnapshotJson)<>1 THROW 50000,N'RUNTIME_CAPTURE_INVALID',1;
-                DECLARE @RuntimeReceipt nvarchar(3750),@RuntimeName sysname=N'SSIS_RUNTIME_'+LOWER(CONVERT(nvarchar(36),@RuntimeHandoverId));
-                SELECT @RuntimeReceipt=TRY_CONVERT(nvarchar(3750),[value]) FROM [sys].[extended_properties] WITH (READCOMMITTEDLOCK)
-                WHERE [class]=1 AND [major_id]=@@PROCID AND [minor_id]=0 AND [name] COLLATE Latin1_General_100_BIN2=@RuntimeName COLLATE Latin1_General_100_BIN2;
+                DECLARE @RuntimeReceipt nvarchar(3000);
+                SELECT @RuntimeReceipt=[ReceiptJson] FROM [monitor].[SsisHandoverReceipt] WITH (READCOMMITTEDLOCK)
+                WHERE [ReceiptKind]=2 AND [HandoverId]=@RuntimeHandoverId;
                 IF @RuntimeReceipt IS NULL OR ISJSON(@RuntimeReceipt)<>1 THROW 50000,N'RUNTIME_HANDOVER_INVALID',1;
                 IF (SELECT COUNT(*) FROM OPENJSON(@RuntimeReceipt))<>5 OR EXISTS(SELECT [key] COLLATE Latin1_General_100_BIN2 FROM OPENJSON(@RuntimeReceipt) GROUP BY [key] COLLATE Latin1_General_100_BIN2,DATALENGTH([key]) HAVING COUNT(*)<>1)
                     OR EXISTS(SELECT 1 FROM OPENJSON(@RuntimeReceipt) WHERE [type]<>1 OR [key] COLLATE Latin1_General_100_BIN2 NOT IN ('contract','version','snapshotSha256','issuedUtc','expiresUtc'))
@@ -136032,6 +136245,276 @@ FROM #SsisPackageModelAnalysis_SqlMetadata AS [b] WHERE [b].[KeySetId] IS NOT NU
 END;
 GO
 -- END SOURCE: Code/10_SSIS/040_USP_SsisPackageModelAnalysis.sql
+
+-- BEGIN SOURCE: Code/10_SSIS/041_InternalManageSsisHandoverReceipt.sql
+-- USAGE_SKILL_BEGIN monitor.InternalManageSsisHandoverReceipt 1.0.0
+-- ---
+-- skill_format_version: "1.0.0"
+-- name: "monitor.InternalManageSsisHandoverReceipt"
+-- schema_name: "monitor"
+-- object_name: "InternalManageSsisHandoverReceipt"
+-- object_type: "INTERNAL_PROCEDURE"
+-- database_role: "framework"
+-- is_internal: true
+-- description: "Registriert oder widerruft einen qualifizierten lokalen SSIS-Übergabebeleg."
+-- source_path: "Code/10_SSIS/041_InternalManageSsisHandoverReceipt.sql"
+-- ---
+--
+-- # monitor.InternalManageSsisHandoverReceipt
+--
+-- ## Zweck und Einsatz
+--
+-- Registriert oder widerruft einen qualifizierten lokalen SSIS-Übergabebeleg.
+--
+-- ## Voraussetzungen und Rechte
+--
+-- Autorisierte Aussteller benötigen `EXECUTE` auf dieser Prozedur und `ALTER` auf `monitor.USP_SsisPackageModelAnalysis`. Die Prüfung verwendet die Rechte des Aufrufers. Der gemeinsame Eigentümer erlaubt den statischen Tabellenzugriff der Prozedur. Eine aktive Aufrufertransaktion oder `IMPLICIT_TRANSACTIONS ON` verhindert die Ausführung.
+--
+-- ## Parameter und Eingabe
+--
+-- | Parameter | SQL-Typ | SQL-Bindungspflicht | Default |
+-- | --- | --- | --- | --- |
+-- | @Action | varchar(64) | nein | NULL |
+-- | @HandoverId | uniqueidentifier | nein | NULL |
+-- | @RuntimeHandoverId | uniqueidentifier | nein | NULL |
+-- | @ReceiptKind | tinyint | nein | NULL |
+-- | @ModelJson | nvarchar(max) | nein | NULL |
+-- | @PackageBytes | varbinary(max) | nein | NULL |
+-- | @CaptureJson | nvarchar(max) | nein | NULL |
+-- | @ValidHours | int | nein | 1 |
+-- | @Hilfe | bit | nein | 0 |
+--
+-- **@Action:** `varchar(64)`, Default NULL. `REGISTER_MODEL` registriert einen Modellbeleg mit optionalem Laufzeitbeleg. `REGISTER_SCOPE` registriert einen Scopebeleg. `REVOKE` widerruft einen Beleg der ausdrücklich gewählten Belegart. Der Vergleich folgt der Datenbankkollation. NULL und Leertext sind im Fachpfad ungültig.
+--
+-- **@HandoverId:** `uniqueidentifier`, Default NULL. Jede Aktion benötigt eine UUID. Bei `REGISTER_MODEL` bezeichnet sie den Modellbeleg, bei `REGISTER_SCOPE` den Scopebeleg und bei `REVOKE` zusammen mit `@ReceiptKind` den zu widerrufenden Beleg. Zulässig ist ein typisierter Wert oder ein konvertierbares GUID-Literal. NULL ist ungültig.
+--
+-- **@RuntimeHandoverId:** `uniqueidentifier`, Default NULL. `REGISTER_MODEL` benötigt eine typisierte UUID oder ein konvertierbares GUID-Literal, wenn `@CaptureJson` eine Laufzeitaufnahme enthält. Ohne Laufzeitaufnahme und bei den übrigen Aktionen ist NULL erforderlich.
+--
+-- **@ReceiptKind:** `tinyint`, Default NULL. `REVOKE` akzeptiert 1 für Modell, 2 für Laufzeit und 3 für Scope. NULL und andere Werte sind beim Widerruf ungültig. Beide Registrierungsaktionen verlangen NULL.
+--
+-- **@ModelJson:** `nvarchar(max)`, Default NULL. Bei `REGISTER_MODEL` muss der Unicode-Text ein qualifiziertes neutrales SSIS-Paketmodell enthalten. Die öffentliche Analyseprozedur validiert das Modell und die Originalbytes vor der Registrierung. Bei `REGISTER_SCOPE` muss der Wert ein gültiger JSON-Paketsatz mit höchstens 16 MiB nach `DATALENGTH` sein. Ein fehlender oder leerer Text ist bei Registrierung ungültig. `REVOKE` verlangt NULL.
+--
+-- **@PackageBytes:** `varbinary(max)`, Default NULL. `REGISTER_MODEL` benötigt die unveränderten Originalbytes des Pakets. Die Analyse prüft Länge und Paketdigest gegen das Modell. Fehlende oder abweichende Bytes führen zur Ablehnung. `REGISTER_SCOPE` und `REVOKE` verlangen NULL.
+--
+-- **@CaptureJson:** `nvarchar(max)`, Default NULL. Bei `REGISTER_SCOPE` ist die qualifizierte Scopeaufnahme als Unicode-JSON erforderlich. Bei `REGISTER_MODEL` ist mit `@RuntimeHandoverId` die zugehörige Laufzeitaufnahme erforderlich. Gültiger JSON-Text darf höchstens 16 MiB nach `DATALENGTH` umfassen. Leerer Text ist ungültig. Ohne Laufzeitbeleg und beim Widerruf ist NULL erforderlich.
+--
+-- **@ValidHours:** `int`, Default 1. Registrierungen akzeptieren ganze Stunden von 1 bis 24 einschließlich. Die Laufzeit beginnt am UTC-Zeitstempel der Ausstellung. NULL und Werte außerhalb des Bereichs sind bei Registrierung ungültig. Beim Widerruf wird der Wert nicht ausgewertet.
+--
+-- **@Hilfe:** `bit`, Default 0. 1 liefert den Usage Skill vor Fachzugriff, Autorisierungsprüfung und Eingabekontrolle. 0 oder NULL aktiviert den Fachpfad. SQL konvertiert numerische Werte ungleich 0 zu 1.
+--
+-- ## Resultate und Ausgabe
+--
+-- Der Fachpfad erzeugt kein Resultset. Ein Modell- und ein optionaler Laufzeitbeleg werden atomar registriert. Ein Widerruf löscht die angegebene UUID der angegebenen Belegart, sofern sie vorhanden ist.
+--
+-- ## Aufwand, Nebenwirkungen, Fehler und Grenzen
+--
+-- Die Prozedur setzt im Fachpfad `ROWCOUNT 0` und `LOCK_TIMEOUT 0` im lokalen Prozedurkontext. Die Registrierung eines Modells prüft Struktur und Originalbytes. Bei einer Scopeaufnahme prüft der qualifizierte Erfassungsworkflow die Einzelmodelle vor dem Aufruf. Er speichert die Aufnahme und den Paketsatz nicht in der Belegtabelle. Eine Belegkollision bricht die Registrierung ab.
+-- USAGE_SKILL_END monitor.InternalManageSsisHandoverReceipt
+
+CREATE OR ALTER PROCEDURE [monitor].[InternalManageSsisHandoverReceipt]
+      @Action varchar(64) = NULL
+    , @HandoverId uniqueidentifier = NULL
+    , @RuntimeHandoverId uniqueidentifier = NULL
+    , @ReceiptKind tinyint = NULL
+    , @ModelJson nvarchar(max) = NULL
+    , @PackageBytes varbinary(max) = NULL
+    , @CaptureJson nvarchar(max) = NULL
+    , @ValidHours int = 1
+    , @Hilfe bit = 0
+AS
+BEGIN
+    IF @Hilfe = 1
+    BEGIN
+        -- USAGE_SKILL_HELP_BEGIN monitor.InternalManageSsisHandoverReceipt
+        SELECT CONVERT(varchar(16),'1.0.0') AS [SkillFormatVersion],CONVERT(sysname,N'monitor') AS [SchemaName],CONVERT(sysname,N'InternalManageSsisHandoverReceipt') AS [ObjectName],CONVERT(nvarchar(max),N'---')
+            + NCHAR(10)
+            + N'skill_format_version: "1.0.0"'
+            + NCHAR(10)
+            + N'name: "monitor.InternalManageSsisHandoverReceipt"'
+            + NCHAR(10)
+            + N'schema_name: "monitor"'
+            + NCHAR(10)
+            + N'object_name: "InternalManageSsisHandoverReceipt"'
+            + NCHAR(10)
+            + N'object_type: "INTERNAL_PROCEDURE"'
+            + NCHAR(10)
+            + N'database_role: "framework"'
+            + NCHAR(10)
+            + N'is_internal: true'
+            + NCHAR(10)
+            + N'description: "Registriert oder widerruft einen qualifizierten lokalen SSIS-Übergabebeleg."'
+            + NCHAR(10)
+            + N'source_path: "Code/10_SSIS/041_InternalManageSsisHandoverReceipt.sql"'
+            + NCHAR(10)
+            + N'---'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'# monitor.InternalManageSsisHandoverReceipt'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'## Zweck und Einsatz'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'Registriert oder widerruft einen qualifizierten lokalen SSIS-Übergabebeleg.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'## Voraussetzungen und Rechte'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'Autorisierte Aussteller benötigen `EXECUTE` auf dieser Prozedur und `ALTER` auf `monitor.USP_SsisPackageModelAnalysis`. Die Prüfung verwendet die Rechte des Aufrufers. Der gemeinsame Eigentümer erlaubt den statischen Tabellenzugriff der Prozedur. Eine aktive Aufrufertransaktion oder `IMPLICIT_TRANSACTIONS ON` verhindert die Ausführung.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'## Parameter und Eingabe'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'| Parameter | SQL-Typ | SQL-Bindungspflicht | Default |'
+            + NCHAR(10)
+            + N'| --- | --- | --- | --- |'
+            + NCHAR(10)
+            + N'| @Action | varchar(64) | nein | NULL |'
+            + NCHAR(10)
+            + N'| @HandoverId | uniqueidentifier | nein | NULL |'
+            + NCHAR(10)
+            + N'| @RuntimeHandoverId | uniqueidentifier | nein | NULL |'
+            + NCHAR(10)
+            + N'| @ReceiptKind | tinyint | nein | NULL |'
+            + NCHAR(10)
+            + N'| @ModelJson | nvarchar(max) | nein | NULL |'
+            + NCHAR(10)
+            + N'| @PackageBytes | varbinary(max) | nein | NULL |'
+            + NCHAR(10)
+            + N'| @CaptureJson | nvarchar(max) | nein | NULL |'
+            + NCHAR(10)
+            + N'| @ValidHours | int | nein | 1 |'
+            + NCHAR(10)
+            + N'| @Hilfe | bit | nein | 0 |'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'**@Action:** `varchar(64)`, Default NULL. `REGISTER_MODEL` registriert einen Modellbeleg mit optionalem Laufzeitbeleg. `REGISTER_SCOPE` registriert einen Scopebeleg. `REVOKE` widerruft einen Beleg der ausdrücklich gewählten Belegart. Der Vergleich folgt der Datenbankkollation. NULL und Leertext sind im Fachpfad ungültig.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'**@HandoverId:** `uniqueidentifier`, Default NULL. Jede Aktion benötigt eine UUID. Bei `REGISTER_MODEL` bezeichnet sie den Modellbeleg, bei `REGISTER_SCOPE` den Scopebeleg und bei `REVOKE` zusammen mit `@ReceiptKind` den zu widerrufenden Beleg. Zulässig ist ein typisierter Wert oder ein konvertierbares GUID-Literal. NULL ist ungültig.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'**@RuntimeHandoverId:** `uniqueidentifier`, Default NULL. `REGISTER_MODEL` benötigt eine typisierte UUID oder ein konvertierbares GUID-Literal, wenn `@CaptureJson` eine Laufzeitaufnahme enthält. Ohne Laufzeitaufnahme und bei den übrigen Aktionen ist NULL erforderlich.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'**@ReceiptKind:** `tinyint`, Default NULL. `REVOKE` akzeptiert 1 für Modell, 2 für Laufzeit und 3 für Scope. NULL und andere Werte sind beim Widerruf ungültig. Beide Registrierungsaktionen verlangen NULL.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'**@ModelJson:** `nvarchar(max)`, Default NULL. Bei `REGISTER_MODEL` muss der Unicode-Text ein qualifiziertes neutrales SSIS-Paketmodell enthalten. Die öffentliche Analyseprozedur validiert das Modell und die Originalbytes vor der Registrierung. Bei `REGISTER_SCOPE` muss der Wert ein gültiger JSON-Paketsatz mit höchstens 16 MiB nach `DATALENGTH` sein. Ein fehlender oder leerer Text ist bei Registrierung ungültig. `REVOKE` verlangt NULL.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'**@PackageBytes:** `varbinary(max)`, Default NULL. `REGISTER_MODEL` benötigt die unveränderten Originalbytes des Pakets. Die Analyse prüft Länge und Paketdigest gegen das Modell. Fehlende oder abweichende Bytes führen zur Ablehnung. `REGISTER_SCOPE` und `REVOKE` verlangen NULL.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'**@CaptureJson:** `nvarchar(max)`, Default NULL. Bei `REGISTER_SCOPE` ist die qualifizierte Scopeaufnahme als Unicode-JSON erforderlich. Bei `REGISTER_MODEL` ist mit `@RuntimeHandoverId` die zugehörige Laufzeitaufnahme erforderlich. Gültiger JSON-Text darf höchstens 16 MiB nach `DATALENGTH` umfassen. Leerer Text ist ungültig. Ohne Laufzeitbeleg und beim Widerruf ist NULL erforderlich.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'**@ValidHours:** `int`, Default 1. Registrierungen akzeptieren ganze Stunden von 1 bis 24 einschließlich. Die Laufzeit beginnt am UTC-Zeitstempel der Ausstellung. NULL und Werte außerhalb des Bereichs sind bei Registrierung ungültig. Beim Widerruf wird der Wert nicht ausgewertet.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'**@Hilfe:** `bit`, Default 0. 1 liefert den Usage Skill vor Fachzugriff, Autorisierungsprüfung und Eingabekontrolle. 0 oder NULL aktiviert den Fachpfad. SQL konvertiert numerische Werte ungleich 0 zu 1.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'## Resultate und Ausgabe'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'Der Fachpfad erzeugt kein Resultset. Ein Modell- und ein optionaler Laufzeitbeleg werden atomar registriert. Ein Widerruf löscht die angegebene UUID der angegebenen Belegart, sofern sie vorhanden ist.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'## Aufwand, Nebenwirkungen, Fehler und Grenzen'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'Die Prozedur setzt im Fachpfad `ROWCOUNT 0` und `LOCK_TIMEOUT 0` im lokalen Prozedurkontext. Die Registrierung eines Modells prüft Struktur und Originalbytes. Bei einer Scopeaufnahme prüft der qualifizierte Erfassungsworkflow die Einzelmodelle vor dem Aufruf. Er speichert die Aufnahme und den Paketsatz nicht in der Belegtabelle. Eine Belegkollision bricht die Registrierung ab.'
+            + NCHAR(10) AS [SkillMarkdown];
+        -- USAGE_SKILL_HELP_END monitor.InternalManageSsisHandoverReceipt
+        RETURN;
+    END;
+
+    SET NOCOUNT ON;
+    SET LOCK_TIMEOUT 0;
+    SET ROWCOUNT 0;
+    IF @@TRANCOUNT <> 0 OR (@@OPTIONS & 2) <> 0
+    BEGIN
+        SET XACT_ABORT OFF;
+        RAISERROR(N'SSIS_HANDOVER_CALLER_TRANSACTION_NOT_ALLOWED',16,1);
+        RETURN;
+    END;
+    IF ISNULL(HAS_PERMS_BY_NAME(N'monitor.USP_SsisPackageModelAnalysis', N'OBJECT', N'ALTER'), 0) <> 1
+    BEGIN
+        IF @Action = 'REGISTER_SCOPE' THROW 57410, N'SSIS_SCOPE_REGISTRATION_AUTHORITY_REQUIRED', 1;
+        THROW 57400, N'SSIS_HANDOVER_ALTER_AUTHORITY_REQUIRED', 1;
+    END;
+    IF @HandoverId IS NULL THROW 57400, N'SSIS_HANDOVER_ID_REQUIRED', 1;
+    IF @Action = 'REVOKE'
+    BEGIN
+        IF @ReceiptKind IS NULL OR @ReceiptKind NOT IN (1, 2, 3)
+            OR @RuntimeHandoverId IS NOT NULL OR @ModelJson IS NOT NULL OR @PackageBytes IS NOT NULL OR @CaptureJson IS NOT NULL
+            THROW 57400, N'SSIS_HANDOVER_REVOKE_INVALID', 1;
+        DELETE FROM [monitor].[SsisHandoverReceipt]
+        WHERE [ReceiptKind] = @ReceiptKind AND [HandoverId] = @HandoverId;
+        RETURN;
+    END;
+
+    IF @ValidHours IS NULL OR @ValidHours NOT BETWEEN 1 AND 24 OR @ReceiptKind IS NOT NULL
+        THROW 57400, N'SSIS_HANDOVER_REGISTRATION_INVALID', 1;
+
+    DECLARE @Issued datetime2(3), @Receipt nvarchar(3000), @RuntimeReceipt nvarchar(3000);
+    IF @Action = 'REGISTER_MODEL'
+    BEGIN
+        IF @ModelJson IS NULL OR @PackageBytes IS NULL THROW 57400, N'SSIS_HANDOVER_MODEL_REJECTED', 1;
+        IF (@CaptureJson IS NULL AND @RuntimeHandoverId IS NOT NULL)
+            OR (@CaptureJson IS NOT NULL AND (@RuntimeHandoverId IS NULL OR ISJSON(@CaptureJson) <> 1 OR DATALENGTH(@CaptureJson) > 16777216))
+            THROW 57400, N'SSIS_HANDOVER_SNAPSHOT_REJECTED', 1;
+
+        DECLARE @Status varchar(40);
+        EXEC [monitor].[USP_SsisPackageModelAnalysis]
+             @PackageModelJson = @ModelJson, @PackageBytes = @PackageBytes, @ResultSetArt = 'NONE', @StatusCodeOut = @Status OUTPUT;
+        IF ISNULL(@Status, '') <> 'AVAILABLE_LIMITED' THROW 57400, N'SSIS_HANDOVER_MODEL_REJECTED', 1;
+
+        SET @Issued = SYSUTCDATETIME();
+        SET @Receipt = (SELECT 'ssis-local-handover' AS [contract], '1.0.0' AS [version], 'QUALIFIED_HOST_SNAPSHOT' AS [method],
+            CONVERT(varchar(64), HASHBYTES('SHA2_256', CONVERT(varbinary(max), @ModelJson)), 2) AS [modelSha256],
+            JSON_VALUE(@ModelJson, '$.source.packageSha256') AS [packageSha256], DATALENGTH(@PackageBytes) AS [byteLength],
+            JSON_VALUE(@ModelJson, '$.producer.buildSha256') AS [buildSha256], JSON_VALUE(@ModelJson, '$.producer.sourceCommit') AS [sourceCommit],
+            CONVERT(varchar(24), @Issued, 127) + 'Z' AS [issuedUtc], CONVERT(varchar(24), DATEADD(hour, @ValidHours, @Issued), 127) + 'Z' AS [expiresUtc]
+            FOR JSON PATH, WITHOUT_ARRAY_WRAPPER);
+        IF @RuntimeHandoverId IS NOT NULL
+            SET @RuntimeReceipt = (SELECT 'ssis-local-runtime-handover' AS [contract], '1.0.0' AS [version],
+                CONVERT(varchar(64), HASHBYTES('SHA2_256', CONVERT(varbinary(max), @CaptureJson)), 2) AS [snapshotSha256],
+                CONVERT(varchar(24), @Issued, 127) + 'Z' AS [issuedUtc], CONVERT(varchar(24), DATEADD(hour, @ValidHours, @Issued), 127) + 'Z' AS [expiresUtc]
+                FOR JSON PATH, WITHOUT_ARRAY_WRAPPER);
+
+        INSERT [monitor].[SsisHandoverReceipt] ([ReceiptKind], [HandoverId], [ReceiptJson])
+        SELECT [ReceiptKind], [HandoverId], [ReceiptJson]
+        FROM (VALUES (1, @HandoverId, @Receipt), (2, @RuntimeHandoverId, @RuntimeReceipt))
+            AS [issued] ([ReceiptKind], [HandoverId], [ReceiptJson])
+        WHERE [HandoverId] IS NOT NULL;
+        RETURN;
+    END;
+
+    IF @Action = 'REGISTER_SCOPE'
+    BEGIN
+        IF @PackageBytes IS NOT NULL OR @RuntimeHandoverId IS NOT NULL
+            OR ISNULL(ISJSON(@ModelJson), 0) <> 1 OR DATALENGTH(@ModelJson) > 16777216
+            OR ISNULL(ISJSON(@CaptureJson), 0) <> 1 OR DATALENGTH(@CaptureJson) > 16777216
+            THROW 57410, N'SSIS_SCOPE_REGISTRATION_INVALID', 1;
+        SET @Issued = SYSUTCDATETIME();
+        SET @Receipt = (SELECT 'ssis-local-scope-handover' AS [contract], '1.0.0' AS [version],
+            CONVERT(varchar(64), HASHBYTES('SHA2_256', CONVERT(varbinary(max), @ModelJson)), 2) AS [modelSetSha256],
+            CONVERT(varchar(64), HASHBYTES('SHA2_256', CONVERT(varbinary(max), @CaptureJson)), 2) AS [captureSha256],
+            CONVERT(varchar(24), @Issued, 127) + 'Z' AS [issuedUtc], CONVERT(varchar(24), DATEADD(hour, @ValidHours, @Issued), 127) + 'Z' AS [expiresUtc]
+            FOR JSON PATH, WITHOUT_ARRAY_WRAPPER);
+
+        INSERT [monitor].[SsisHandoverReceipt] ([ReceiptKind], [HandoverId], [ReceiptJson])
+        VALUES (3, @HandoverId, @Receipt);
+        RETURN;
+    END;
+    THROW 57400, N'SSIS_HANDOVER_ACTION_INVALID', 1;
+END;
+GO
+-- END SOURCE: Code/10_SSIS/041_InternalManageSsisHandoverReceipt.sql
 
 -- BEGIN SOURCE: Code/10_SSIS/045_InternalSsisExecutionMetrics.sql
 /*
@@ -136728,7 +137211,7 @@ GO
 --
 -- **@BaselineScopeSnapshotJson:** @BaselineScopeSnapshotJson: Datentyp nvarchar(max), Default NULL. Als einzelne nvarchar(max)-Variable oder N'…'-Literal übergeben. Erforderlich ist ein JSON-Objekt mit contract="ssis-execution-scopes", version="1.1.0", method="SSISDB_CURRENT_PROJECT_PIPELINES_V1", gebunden an project-model-set und passende pipelineIdentities; gültige Wurzel-/Ausführungsbindung umfasst execution als Objekt mit executionId, projectId, projectLsn, catalogDatabaseGuid, sourceBindingSha256 und packageFileName; archiveSha256 und modelSetSha256 liegen auf Wurzelebene (SHA-256 der exakten Basis-Model-JSON-Bytes). Enthält observations- und events-Arrays sowie componentPhases- und pathTransfers-Arrays und genau die zwei pipelineSources-Einträge für componentPhases und pathTransfers; deren Statuswerte und Fehlernummern müssen dem Capturevertrag entsprechen. Alle Schlüssel, Namen, Pfade, IDs, Zeit-/Ergebniswerte und Quellgrenzen müssen die von 035–037 geprüften Formen erfüllen; höchstens 50.000 Einträge im Scope-/Pipeline-Capture. Der Transport muss bytegenau dem lokal registrierten Scope-Handover entsprechen; nicht neu serialisieren. Höchstens 16.777.216 Bytes je Capture, gemessen durch DATALENGTH(nvarchar) in SQL-UTF-16-Bytes. NULL, Leerstring und ungültiges JSON sind unzulässig. Vergleichsseiten werden unabhängig attestiert. Optional kann comparisonContext genau ein Objekt mit genau contract="ssis-comparison-context", version="1.0.0" und use32BitRuntime als JSON-Boolean enthalten; fehlt diese Zusatzinformation oder ist sie ungültig, bleibt der Capture nicht automatisch ungebunden, aber der Laufzeitkontext ist unbewiesen. Beide Seiten müssen dieselben exakten Export- und Quell-/Projektversionsfelder einschließlich archiveSha256 aufweisen.
 --
--- **@BaselineScopeHandoverId:** @BaselineScopeHandoverId: Datentyp uniqueidentifier, Default NULL. Als uniqueidentifier-Parameter im üblichen GUID-Format übergeben. Erforderliche UUID eines lokal auf monitor.USP_SsisPackageModelAnalysis registrierten SSIS_SCOPE_<UUID> Extended-Property-Handover; die Registrierung bindet die exakten UTF-16-Bytes des zugehörigen ProjectModelsJson und ScopeSnapshotJson und ist zeitlich gültig. Die UUID ist nur der lokale Belegschlüssel, kein JSON-Trustflag und keine selbst behauptete Attestation; eine frei erfundene oder auf einem anderen Objekt registrierte ID genügt nicht. Jede Seite wird unabhängig gegen den zu ihren Dokumentbytes passenden registrierten Beleg geprüft. Die Procedure verlangt keine gesonderte Ungleichheit der GUIDs; die Execution-IDs müssen verschieden sein. NULL ist ungültig. Der Belegname verwendet die GUID in Kleinschreibung. issuedUtc muss höchstens beim Analysebeginn liegen; expiresUtc danach und höchstens 24 Stunden nach issuedUtc. Es gibt keine Mindestgültigkeitsdauer. Als uniqueidentifier-Variable oder konvertierbares GUID-Literal der Form 00000000-0000-0000-0000-000000000000 übergeben; die Null-GUID ersetzt keinen registrierten Beleg.
+-- **@BaselineScopeHandoverId:** @BaselineScopeHandoverId: Datentyp uniqueidentifier, Default NULL. Als uniqueidentifier-Parameter im üblichen GUID-Format übergeben. Erforderliche UUID eines lokal in monitor.SsisHandoverReceipt registrierten Scopebelegs der Art 3; die Registrierung bindet die exakten UTF-16-Bytes des zugehörigen ProjectModelsJson und ScopeSnapshotJson und ist zeitlich gültig. Die UUID ist nur der lokale Belegschlüssel, kein JSON-Trustflag und keine selbst behauptete Attestation; eine frei erfundene UUID oder eine UUID einer anderen Belegart genügt nicht. Jede Seite wird unabhängig gegen den zu ihren Dokumentbytes passenden registrierten Beleg geprüft. Die Procedure verlangt keine gesonderte Ungleichheit der GUIDs; die Execution-IDs müssen verschieden sein. NULL ist ungültig. issuedUtc muss höchstens beim Analysebeginn liegen; expiresUtc danach und höchstens 24 Stunden nach issuedUtc. Es gibt keine Mindestgültigkeitsdauer. Als uniqueidentifier-Variable oder konvertierbares GUID-Literal der Form 00000000-0000-0000-0000-000000000000 übergeben; die Null-GUID ersetzt keinen registrierten Beleg.
 --
 -- **@BaselineExecutionId:** @BaselineExecutionId: Datentyp bigint, Default NULL. Einzelne positive SSISDB Execution-ID im Wertebereich 1 bis 9.223.372.036.854.775.807. Muss mit der Basis-Capture-Bindung übereinstimmen und von @CandidateExecutionId verschieden sein. NULL, 0, negative Werte und Duplikat zum Kandidaten sind ungültig. Als bigint-Zahl binden, keine Liste oder Text-Identität.
 --
@@ -136736,7 +137219,7 @@ GO
 --
 -- **@CandidateScopeSnapshotJson:** @CandidateScopeSnapshotJson: Datentyp nvarchar(max), Default NULL. Als einzelne nvarchar(max)-Variable oder N'…'-Literal übergeben. Erforderlich ist ein JSON-Objekt mit contract="ssis-execution-scopes", version="1.1.0", method="SSISDB_CURRENT_PROJECT_PIPELINES_V1", gebunden an project-model-set und passende pipelineIdentities; gültige Wurzel-/Ausführungsbindung umfasst execution als Objekt mit executionId, projectId, projectLsn, catalogDatabaseGuid, sourceBindingSha256 und packageFileName; archiveSha256 und modelSetSha256 liegen auf Wurzelebene (SHA-256 der exakten Kandidaten-Model-JSON-Bytes). Enthält observations- und events-Arrays sowie componentPhases- und pathTransfers-Arrays und genau die zwei pipelineSources-Einträge für componentPhases und pathTransfers; deren Statuswerte und Fehlernummern müssen dem Capturevertrag entsprechen. Alle Schlüssel, Namen, Pfade, IDs, Zeit-/Ergebniswerte und Quellgrenzen müssen die von 035–037 geprüften Formen erfüllen; höchstens 50.000 Einträge im Scope-/Pipeline-Capture. Der Transport muss bytegenau dem lokal registrierten Scope-Handover entsprechen; nicht neu serialisieren. Höchstens 16.777.216 Bytes je Capture, gemessen durch DATALENGTH(nvarchar) in SQL-UTF-16-Bytes. NULL, Leerstring und ungültiges JSON sind unzulässig. Vergleichsseiten werden unabhängig attestiert. Optional kann comparisonContext genau ein Objekt mit genau contract="ssis-comparison-context", version="1.0.0" und use32BitRuntime als JSON-Boolean enthalten; fehlt diese Zusatzinformation oder ist sie ungültig, bleibt der Capture nicht automatisch ungebunden, aber der Laufzeitkontext ist unbewiesen. Beide Seiten müssen dieselben exakten Export- und Quell-/Projektversionsfelder einschließlich archiveSha256 aufweisen.
 --
--- **@CandidateScopeHandoverId:** @CandidateScopeHandoverId: Datentyp uniqueidentifier, Default NULL. Als uniqueidentifier-Parameter im üblichen GUID-Format übergeben. Erforderliche UUID eines lokal auf monitor.USP_SsisPackageModelAnalysis registrierten SSIS_SCOPE_<UUID> Extended-Property-Handover; die Registrierung bindet die exakten UTF-16-Bytes des zugehörigen ProjectModelsJson und ScopeSnapshotJson und ist zeitlich gültig. Die UUID ist nur der lokale Belegschlüssel, kein JSON-Trustflag und keine selbst behauptete Attestation; eine frei erfundene oder auf einem anderen Objekt registrierte ID genügt nicht. Jede Seite wird unabhängig gegen den zu ihren Dokumentbytes passenden registrierten Beleg geprüft. Die Procedure verlangt keine gesonderte Ungleichheit der GUIDs; die Execution-IDs müssen verschieden sein. NULL ist ungültig. Der Belegname verwendet die GUID in Kleinschreibung. issuedUtc muss höchstens beim Analysebeginn liegen; expiresUtc danach und höchstens 24 Stunden nach issuedUtc. Es gibt keine Mindestgültigkeitsdauer. Als uniqueidentifier-Variable oder konvertierbares GUID-Literal der Form 00000000-0000-0000-0000-000000000000 übergeben; die Null-GUID ersetzt keinen registrierten Beleg.
+-- **@CandidateScopeHandoverId:** @CandidateScopeHandoverId: Datentyp uniqueidentifier, Default NULL. Als uniqueidentifier-Parameter im üblichen GUID-Format übergeben. Erforderliche UUID eines lokal in monitor.SsisHandoverReceipt registrierten Scopebelegs der Art 3; die Registrierung bindet die exakten UTF-16-Bytes des zugehörigen ProjectModelsJson und ScopeSnapshotJson und ist zeitlich gültig. Die UUID ist nur der lokale Belegschlüssel, kein JSON-Trustflag und keine selbst behauptete Attestation; eine frei erfundene UUID oder eine UUID einer anderen Belegart genügt nicht. Jede Seite wird unabhängig gegen den zu ihren Dokumentbytes passenden registrierten Beleg geprüft. Die Procedure verlangt keine gesonderte Ungleichheit der GUIDs; die Execution-IDs müssen verschieden sein. NULL ist ungültig. issuedUtc muss höchstens beim Analysebeginn liegen; expiresUtc danach und höchstens 24 Stunden nach issuedUtc. Es gibt keine Mindestgültigkeitsdauer. Als uniqueidentifier-Variable oder konvertierbares GUID-Literal der Form 00000000-0000-0000-0000-000000000000 übergeben; die Null-GUID ersetzt keinen registrierten Beleg.
 --
 -- **@CandidateExecutionId:** @CandidateExecutionId: Datentyp bigint, Default NULL. Einzelne positive SSISDB Execution-ID im bigint-Bereich 1 bis 9.223.372.036.854.775.807. Muss zum Kandidaten-Capture passen und von @BaselineExecutionId verschieden sein. NULL, 0, negative Werte oder gleiche ID wie die Basis sind ungültig.
 --
@@ -136846,11 +137329,11 @@ BEGIN
   PRINT N'monitor.USP_SsisExecutionComparison vergleicht unabhängig gebundene Beobachtungen; kein Paket-, Datei-, SSISDB- oder Paket-SQL-Aufruf.';
   PRINT N'@BaselineProjectModelsJson: Datentyp nvarchar(max), Default NULL. Als einzelne nvarchar(max)-Variable oder N''…''-Literal übergeben, nicht als Dateipfad. Erforderlich für die Basis-Seite. JSON-Objekt mit contract="ssis-project-model-set", version="1.0.0", rootPackageKey als String und packages als Array mit 1 bis 16 eindeutigen Paketen. Jedes Paket enthält packageKey und entryName als Strings, model als vollständiges Objekt mit contract="ssis-package-model" und version="1.0.0" sowie identities als Objekt mit contract="ssis-object-identities" und version="1.2.0". Für diesen Consumer müssen zusätzlich pipelineIdentities als Objekt mit contract="ssis-pipeline-identities" und version="1.0.0" vorhanden und an dieselben Paket-/Modellidentitäten gebunden sein. Der gemeinsame Consumer aktiviert Scope-, Pipelinekorrelations- und Pipeline-Diagnosepfade; dieses Argument ergänzt keine eigene Parser- oder Lineageauswertung. Das unveränderte Modellobjekt muss auf allen verglichenen Seiten bytegenau gleich sein: SHA-256 wird über die exakten nvarchar-UTF-16-Bytes gebildet; Neu-Serialisierung, geänderte Whitespace-/Property-Reihenfolge oder andere Bytes ändern den Exporthash. Höchstens 16.777.216 Bytes je Modell, gemessen mit SQL Server DATALENGTH(nvarchar), also UTF-16-Bytes und nicht UTF-8-Dateigröße. JSON-Objektschlüssel und Identitäten werden streng geprüft. NULL, Leerstring und ungültiges JSON sind unzulässig. Siehe den bestehenden SsisPackageModelAnalysis-Vertrag für vollständige Parser-/Modellregeln.';
   PRINT N'@BaselineScopeSnapshotJson: Datentyp nvarchar(max), Default NULL. Als einzelne nvarchar(max)-Variable oder N''…''-Literal übergeben. Erforderlich ist ein JSON-Objekt mit contract="ssis-execution-scopes", version="1.1.0", method="SSISDB_CURRENT_PROJECT_PIPELINES_V1", gebunden an project-model-set und passende pipelineIdentities; gültige Wurzel-/Ausführungsbindung umfasst execution als Objekt mit executionId, projectId, projectLsn, catalogDatabaseGuid, sourceBindingSha256 und packageFileName; archiveSha256 und modelSetSha256 liegen auf Wurzelebene (SHA-256 der exakten Basis-Model-JSON-Bytes). Enthält observations- und events-Arrays sowie componentPhases- und pathTransfers-Arrays und genau die zwei pipelineSources-Einträge für componentPhases und pathTransfers; deren Statuswerte und Fehlernummern müssen dem Capturevertrag entsprechen. Alle Schlüssel, Namen, Pfade, IDs, Zeit-/Ergebniswerte und Quellgrenzen müssen die von 035–037 geprüften Formen erfüllen; höchstens 50.000 Einträge im Scope-/Pipeline-Capture. Der Transport muss bytegenau dem lokal registrierten Scope-Handover entsprechen; nicht neu serialisieren. Höchstens 16.777.216 Bytes je Capture, gemessen durch DATALENGTH(nvarchar) in SQL-UTF-16-Bytes. NULL, Leerstring und ungültiges JSON sind unzulässig. Vergleichsseiten werden unabhängig attestiert. Optional kann comparisonContext genau ein Objekt mit genau contract="ssis-comparison-context", version="1.0.0" und use32BitRuntime als JSON-Boolean enthalten; fehlt diese Zusatzinformation oder ist sie ungültig, bleibt der Capture nicht automatisch ungebunden, aber der Laufzeitkontext ist unbewiesen. Beide Seiten müssen dieselben exakten Export- und Quell-/Projektversionsfelder einschließlich archiveSha256 aufweisen.';
-  PRINT N'@BaselineScopeHandoverId: Datentyp uniqueidentifier, Default NULL. Als uniqueidentifier-Parameter im üblichen GUID-Format übergeben. Erforderliche UUID eines lokal auf monitor.USP_SsisPackageModelAnalysis registrierten SSIS_SCOPE_<UUID> Extended-Property-Handover; die Registrierung bindet die exakten UTF-16-Bytes des zugehörigen ProjectModelsJson und ScopeSnapshotJson und ist zeitlich gültig. Die UUID ist nur der lokale Belegschlüssel, kein JSON-Trustflag und keine selbst behauptete Attestation; eine frei erfundene oder auf einem anderen Objekt registrierte ID genügt nicht. Jede Seite wird unabhängig gegen den zu ihren Dokumentbytes passenden registrierten Beleg geprüft. Die Procedure verlangt keine gesonderte Ungleichheit der GUIDs; die Execution-IDs müssen verschieden sein. NULL ist ungültig. Der Belegname verwendet die GUID in Kleinschreibung. issuedUtc muss höchstens beim Analysebeginn liegen; expiresUtc danach und höchstens 24 Stunden nach issuedUtc. Es gibt keine Mindestgültigkeitsdauer. Als uniqueidentifier-Variable oder konvertierbares GUID-Literal der Form 00000000-0000-0000-0000-000000000000 übergeben; die Null-GUID ersetzt keinen registrierten Beleg.';
+  PRINT N'@BaselineScopeHandoverId: Datentyp uniqueidentifier, Default NULL. Als uniqueidentifier-Parameter im üblichen GUID-Format übergeben. Erforderliche UUID eines lokal in monitor.SsisHandoverReceipt registrierten Scopebelegs der Art 3; die Registrierung bindet die exakten UTF-16-Bytes des zugehörigen ProjectModelsJson und ScopeSnapshotJson und ist zeitlich gültig. Die UUID ist nur der lokale Belegschlüssel, kein JSON-Trustflag und keine selbst behauptete Attestation; eine frei erfundene UUID oder eine UUID einer anderen Belegart genügt nicht. Jede Seite wird unabhängig gegen den zu ihren Dokumentbytes passenden registrierten Beleg geprüft. Die Procedure verlangt keine gesonderte Ungleichheit der GUIDs; die Execution-IDs müssen verschieden sein. NULL ist ungültig. issuedUtc muss höchstens beim Analysebeginn liegen; expiresUtc danach und höchstens 24 Stunden nach issuedUtc. Es gibt keine Mindestgültigkeitsdauer. Als uniqueidentifier-Variable oder konvertierbares GUID-Literal der Form 00000000-0000-0000-0000-000000000000 übergeben; die Null-GUID ersetzt keinen registrierten Beleg.';
   PRINT N'@BaselineExecutionId: Datentyp bigint, Default NULL. Einzelne positive SSISDB Execution-ID im Wertebereich 1 bis 9.223.372.036.854.775.807. Muss mit der Basis-Capture-Bindung übereinstimmen und von @CandidateExecutionId verschieden sein. NULL, 0, negative Werte und Duplikat zum Kandidaten sind ungültig. Als bigint-Zahl binden, keine Liste oder Text-Identität.';
   PRINT N'@CandidateProjectModelsJson: Datentyp nvarchar(max), Default NULL. Als einzelne nvarchar(max)-Variable oder N''…''-Literal übergeben, nicht als Dateipfad. Erforderlich für die Kandidaten-Seite. JSON-Objekt mit contract="ssis-project-model-set", version="1.0.0", rootPackageKey als String und packages als Array mit 1 bis 16 eindeutigen Paketen. Jedes Paket enthält packageKey und entryName als Strings, model als vollständiges Objekt mit contract="ssis-package-model" und version="1.0.0" sowie identities als Objekt mit contract="ssis-object-identities" und version="1.2.0". Für diesen Consumer müssen zusätzlich pipelineIdentities als Objekt mit contract="ssis-pipeline-identities" und version="1.0.0" vorhanden und an dieselben Paket-/Modellidentitäten gebunden sein. Der gemeinsame Consumer aktiviert Scope-, Pipelinekorrelations- und Pipeline-Diagnosepfade; dieses Argument ergänzt keine eigene Parser- oder Lineageauswertung. Das unveränderte Modellobjekt muss auf allen verglichenen Seiten bytegenau gleich sein: SHA-256 wird über die exakten nvarchar-UTF-16-Bytes gebildet; Neu-Serialisierung, geänderte Whitespace-/Property-Reihenfolge oder andere Bytes ändern den Exporthash. Höchstens 16.777.216 Bytes je Modell, gemessen mit SQL Server DATALENGTH(nvarchar), also UTF-16-Bytes und nicht UTF-8-Dateigröße. JSON-Objektschlüssel und Identitäten werden streng geprüft. NULL, Leerstring und ungültiges JSON sind unzulässig. Siehe den bestehenden SsisPackageModelAnalysis-Vertrag für vollständige Parser-/Modellregeln.';
   PRINT N'@CandidateScopeSnapshotJson: Datentyp nvarchar(max), Default NULL. Als einzelne nvarchar(max)-Variable oder N''…''-Literal übergeben. Erforderlich ist ein JSON-Objekt mit contract="ssis-execution-scopes", version="1.1.0", method="SSISDB_CURRENT_PROJECT_PIPELINES_V1", gebunden an project-model-set und passende pipelineIdentities; gültige Wurzel-/Ausführungsbindung umfasst execution als Objekt mit executionId, projectId, projectLsn, catalogDatabaseGuid, sourceBindingSha256 und packageFileName; archiveSha256 und modelSetSha256 liegen auf Wurzelebene (SHA-256 der exakten Kandidaten-Model-JSON-Bytes). Enthält observations- und events-Arrays sowie componentPhases- und pathTransfers-Arrays und genau die zwei pipelineSources-Einträge für componentPhases und pathTransfers; deren Statuswerte und Fehlernummern müssen dem Capturevertrag entsprechen. Alle Schlüssel, Namen, Pfade, IDs, Zeit-/Ergebniswerte und Quellgrenzen müssen die von 035–037 geprüften Formen erfüllen; höchstens 50.000 Einträge im Scope-/Pipeline-Capture. Der Transport muss bytegenau dem lokal registrierten Scope-Handover entsprechen; nicht neu serialisieren. Höchstens 16.777.216 Bytes je Capture, gemessen durch DATALENGTH(nvarchar) in SQL-UTF-16-Bytes. NULL, Leerstring und ungültiges JSON sind unzulässig. Vergleichsseiten werden unabhängig attestiert. Optional kann comparisonContext genau ein Objekt mit genau contract="ssis-comparison-context", version="1.0.0" und use32BitRuntime als JSON-Boolean enthalten; fehlt diese Zusatzinformation oder ist sie ungültig, bleibt der Capture nicht automatisch ungebunden, aber der Laufzeitkontext ist unbewiesen. Beide Seiten müssen dieselben exakten Export- und Quell-/Projektversionsfelder einschließlich archiveSha256 aufweisen.';
-  PRINT N'@CandidateScopeHandoverId: Datentyp uniqueidentifier, Default NULL. Als uniqueidentifier-Parameter im üblichen GUID-Format übergeben. Erforderliche UUID eines lokal auf monitor.USP_SsisPackageModelAnalysis registrierten SSIS_SCOPE_<UUID> Extended-Property-Handover; die Registrierung bindet die exakten UTF-16-Bytes des zugehörigen ProjectModelsJson und ScopeSnapshotJson und ist zeitlich gültig. Die UUID ist nur der lokale Belegschlüssel, kein JSON-Trustflag und keine selbst behauptete Attestation; eine frei erfundene oder auf einem anderen Objekt registrierte ID genügt nicht. Jede Seite wird unabhängig gegen den zu ihren Dokumentbytes passenden registrierten Beleg geprüft. Die Procedure verlangt keine gesonderte Ungleichheit der GUIDs; die Execution-IDs müssen verschieden sein. NULL ist ungültig. Der Belegname verwendet die GUID in Kleinschreibung. issuedUtc muss höchstens beim Analysebeginn liegen; expiresUtc danach und höchstens 24 Stunden nach issuedUtc. Es gibt keine Mindestgültigkeitsdauer. Als uniqueidentifier-Variable oder konvertierbares GUID-Literal der Form 00000000-0000-0000-0000-000000000000 übergeben; die Null-GUID ersetzt keinen registrierten Beleg.';
+  PRINT N'@CandidateScopeHandoverId: Datentyp uniqueidentifier, Default NULL. Als uniqueidentifier-Parameter im üblichen GUID-Format übergeben. Erforderliche UUID eines lokal in monitor.SsisHandoverReceipt registrierten Scopebelegs der Art 3; die Registrierung bindet die exakten UTF-16-Bytes des zugehörigen ProjectModelsJson und ScopeSnapshotJson und ist zeitlich gültig. Die UUID ist nur der lokale Belegschlüssel, kein JSON-Trustflag und keine selbst behauptete Attestation; eine frei erfundene UUID oder eine UUID einer anderen Belegart genügt nicht. Jede Seite wird unabhängig gegen den zu ihren Dokumentbytes passenden registrierten Beleg geprüft. Die Procedure verlangt keine gesonderte Ungleichheit der GUIDs; die Execution-IDs müssen verschieden sein. NULL ist ungültig. issuedUtc muss höchstens beim Analysebeginn liegen; expiresUtc danach und höchstens 24 Stunden nach issuedUtc. Es gibt keine Mindestgültigkeitsdauer. Als uniqueidentifier-Variable oder konvertierbares GUID-Literal der Form 00000000-0000-0000-0000-000000000000 übergeben; die Null-GUID ersetzt keinen registrierten Beleg.';
   PRINT N'@CandidateExecutionId: Datentyp bigint, Default NULL. Einzelne positive SSISDB Execution-ID im bigint-Bereich 1 bis 9.223.372.036.854.775.807. Muss zum Kandidaten-Capture passen und von @BaselineExecutionId verschieden sein. NULL, 0, negative Werte oder gleiche ID wie die Basis sind ungültig.';
   PRINT N'@MinDurationDeltaMs: Datentyp bigint, Default NULL. Optionale nichtnegative Dauergrenze in Millisekunden (ganzzahlig, 0 bis 9.223.372.036.854.775.807). NULL deaktiviert diese Grenze; 0 lässt nur positive Daueränderungen über 0 passieren. Ein Dauerhinweis entsteht nur bei vergleichbarer bekannter Dauer und wenn die Kandidatenänderung strikt größer als jede gesetzte Grenze ist. Sind beide Grenzen gesetzt, müssen beide überschritten sein. Zeilen- und Statusänderungshinweise sind von dieser Dauerschwelle unabhängig. Negative Werte sind ungültig. Sind beide Dauergrenzen NULL, werden keine Dauergrenzhinweise erzeugt; andere Hinweisarten bleiben davon unabhängig.';
   PRINT N'@MinDurationDeltaPercent: Datentyp decimal(9,4), Default NULL. Optionale nichtnegative Prozentgrenze als Zahl in Prozent relativer Zunahme ohne %-Zeichen, mit höchstens vier Dezimalstellen und Präzision 9: 0.0000 bis 99999.9999 (z. B. 10.0000 bedeutet zehn Prozent; SQL-Typkonvertierung/Rundung erfolgt vor Eintritt in die Procedure). NULL deaktiviert die Prozentgrenze. Maßgeblich ist eine strikt größere relative Zunahme; bei Basisdauer 0 bleibt die Prozentänderung unbekannt und erfüllt die Grenze nicht. Bei zwei gesetzten Dauerschwellen müssen beide strikt überschritten sein. Negative Werte sind ungültig. Sind beide Dauergrenzen NULL, werden keine Dauergrenzhinweise erzeugt; andere Hinweisarten bleiben davon unabhängig.';
@@ -136981,8 +137464,8 @@ BEGIN
             + N'stens 50.000 Einträge im Scope-/Pipeline-Capture. Der Transport muss bytegenau dem lokal registrierten Scope-Handover entsprechen; nicht neu serialisieren. Höchstens 16.777.216 Bytes je Capture, gemessen durch DATALENGTH(nvarchar) in SQL-UTF-16-Bytes. NULL, Leerstring und ungültiges JSON sind unzulässig. Vergleichsseiten werden unabhängig attestiert. Optional kann comparisonContext genau ein Objekt mit genau contract="ssis-comparison-context", version="1.0.0" und use32BitRuntime als JSON-Boolean enthalten; fehlt diese Zusatzinformation oder ist sie ungültig, bleibt der Capture nicht automatisch ungebunden, aber der Laufzeitkontext ist unbewiesen. Beide Seiten müssen dieselben exakten Export- und Quell-/Projektversionsfelder einschließlich archiveSha256 aufweisen.'
             + NCHAR(10)
             + NCHAR(10)
-            + N'**@BaselineScopeHandoverId:** @BaselineScopeHandoverId: Datentyp uniqueidentifier, Default NULL. Als uniqueidentifier-Parameter im üblichen GUID-Format übergeben. Erforderliche UUID eines lokal auf monitor.USP_SsisPackageModelAnalysis registrierten SSIS_SCOPE_<UUID> Extended-Property-Handover; die Registrierung bindet die exakten UTF-16-Bytes des zugehörigen ProjectModelsJson und ScopeSnapshotJson und ist zeitlich gültig. Die UUID ist nur der lokale Belegschlüssel, kein JSON-Trustflag und keine selbst behauptete Attestation; eine frei erfundene oder auf einem anderen Objekt registrierte ID genügt nicht. Jede Seite wird unabhängig gegen den zu ihren Dokumentbytes passenden registrierten Beleg geprüft. Die Procedure verlangt keine gesonderte Ungleichheit der GUIDs; die Execution-IDs müssen verschieden sein. NULL ist ungültig. Der Belegname verwendet die GUID in Kleinschreibung. issuedUtc muss höchstens beim Analysebeginn liegen; expiresUtc danach und höchstens 24 Stunden nach issuedUtc. '
-            + N'Es gibt keine Mindestgültigkeitsdauer. Als uniqueidentifier-Variable oder konvertierbares GUID-Literal der Form 00000000-0000-0000-0000-000000000000 übergeben; die Null-GUID ersetzt keinen registrierten Beleg.'
+            + N'**@BaselineScopeHandoverId:** @BaselineScopeHandoverId: Datentyp uniqueidentifier, Default NULL. Als uniqueidentifier-Parameter im üblichen GUID-Format übergeben. Erforderliche UUID eines lokal in monitor.SsisHandoverReceipt registrierten Scopebelegs der Art 3; die Registrierung bindet die exakten UTF-16-Bytes des zugehörigen ProjectModelsJson und ScopeSnapshotJson und ist zeitlich gültig. Die UUID ist nur der lokale Belegschlüssel, kein JSON-Trustflag und keine selbst behauptete Attestation; eine frei erfundene UUID oder eine UUID einer anderen Belegart genügt nicht. Jede Seite wird unabhängig gegen den zu ihren Dokumentbytes passenden registrierten Beleg geprüft. Die Procedure verlangt keine gesonderte Ungleichheit der GUIDs; die Execution-IDs müssen verschieden sein. NULL ist ungültig. issuedUtc muss höchstens beim Analysebeginn liegen; expiresUtc danach und höchstens 24 Stunden nach issuedUtc. Es gibt keine Mindestgültigkeitsdauer. Als uniqueidentifier-Variable oder konvertierbares'
+            + N' GUID-Literal der Form 00000000-0000-0000-0000-000000000000 übergeben; die Null-GUID ersetzt keinen registrierten Beleg.'
             + NCHAR(10)
             + NCHAR(10)
             + N'**@BaselineExecutionId:** @BaselineExecutionId: Datentyp bigint, Default NULL. Einzelne positive SSISDB Execution-ID im Wertebereich 1 bis 9.223.372.036.854.775.807. Muss mit der Basis-Capture-Bindung übereinstimmen und von @CandidateExecutionId verschieden sein. NULL, 0, negative Werte und Duplikat zum Kandidaten sind ungültig. Als bigint-Zahl binden, keine Liste oder Text-Identität.'
@@ -136996,8 +137479,8 @@ BEGIN
             + N'n; höchstens 50.000 Einträge im Scope-/Pipeline-Capture. Der Transport muss bytegenau dem lokal registrierten Scope-Handover entsprechen; nicht neu serialisieren. Höchstens 16.777.216 Bytes je Capture, gemessen durch DATALENGTH(nvarchar) in SQL-UTF-16-Bytes. NULL, Leerstring und ungültiges JSON sind unzulässig. Vergleichsseiten werden unabhängig attestiert. Optional kann comparisonContext genau ein Objekt mit genau contract="ssis-comparison-context", version="1.0.0" und use32BitRuntime als JSON-Boolean enthalten; fehlt diese Zusatzinformation oder ist sie ungültig, bleibt der Capture nicht automatisch ungebunden, aber der Laufzeitkontext ist unbewiesen. Beide Seiten müssen dieselben exakten Export- und Quell-/Projektversionsfelder einschließlich archiveSha256 aufweisen.'
             + NCHAR(10)
             + NCHAR(10)
-            + N'**@CandidateScopeHandoverId:** @CandidateScopeHandoverId: Datentyp uniqueidentifier, Default NULL. Als uniqueidentifier-Parameter im üblichen GUID-Format übergeben. Erforderliche UUID eines lokal auf monitor.USP_SsisPackageModelAnalysis registrierten SSIS_SCOPE_<UUID> Extended-Property-Handover; die Registrierung bindet die exakten UTF-16-Bytes des zugehörigen ProjectModelsJson und ScopeSnapshotJson und ist zeitlich gültig. Die UUID ist nur der lokale Belegschlüssel, kein JSON-Trustflag und keine selbst behauptete Attestation; eine frei erfundene oder auf einem anderen Objekt registrierte ID genügt nicht. Jede Seite wird unabhängig gegen den zu ihren Dokumentbytes passenden registrierten Beleg geprüft. Die Procedure verlangt keine gesonderte Ungleichheit der GUIDs; die Execution-IDs müssen verschieden sein. NULL ist ungültig. Der Belegname verwendet die GUID in Kleinschreibung. issuedUtc muss höchstens beim Analysebeginn liegen; expiresUtc danach und höchstens 24 Stunden nach issuedUtc'
-            + N'. Es gibt keine Mindestgültigkeitsdauer. Als uniqueidentifier-Variable oder konvertierbares GUID-Literal der Form 00000000-0000-0000-0000-000000000000 übergeben; die Null-GUID ersetzt keinen registrierten Beleg.'
+            + N'**@CandidateScopeHandoverId:** @CandidateScopeHandoverId: Datentyp uniqueidentifier, Default NULL. Als uniqueidentifier-Parameter im üblichen GUID-Format übergeben. Erforderliche UUID eines lokal in monitor.SsisHandoverReceipt registrierten Scopebelegs der Art 3; die Registrierung bindet die exakten UTF-16-Bytes des zugehörigen ProjectModelsJson und ScopeSnapshotJson und ist zeitlich gültig. Die UUID ist nur der lokale Belegschlüssel, kein JSON-Trustflag und keine selbst behauptete Attestation; eine frei erfundene UUID oder eine UUID einer anderen Belegart genügt nicht. Jede Seite wird unabhängig gegen den zu ihren Dokumentbytes passenden registrierten Beleg geprüft. Die Procedure verlangt keine gesonderte Ungleichheit der GUIDs; die Execution-IDs müssen verschieden sein. NULL ist ungültig. issuedUtc muss höchstens beim Analysebeginn liegen; expiresUtc danach und höchstens 24 Stunden nach issuedUtc. Es gibt keine Mindestgültigkeitsdauer. Als uniqueidentifier-Variable oder konvertierbar'
+            + N'es GUID-Literal der Form 00000000-0000-0000-0000-000000000000 übergeben; die Null-GUID ersetzt keinen registrierten Beleg.'
             + NCHAR(10)
             + NCHAR(10)
             + N'**@CandidateExecutionId:** @CandidateExecutionId: Datentyp bigint, Default NULL. Einzelne positive SSISDB Execution-ID im bigint-Bereich 1 bis 9.223.372.036.854.775.807. Muss zum Kandidaten-Capture passen und von @BaselineExecutionId verschieden sein. NULL, 0, negative Werte oder gleiche ID wie die Basis sind ungültig.'
@@ -137369,7 +137852,7 @@ GO
 --
 -- **@CandidateScopeSnapshotJson:** @CandidateScopeSnapshotJson: Datentyp nvarchar(max), Default NULL. Als einzelne nvarchar(max)-Variable oder N'…'-Literal übergeben. Erforderlich ist ein JSON-Objekt mit contract="ssis-execution-scopes", version="1.1.0", method="SSISDB_CURRENT_PROJECT_PIPELINES_V1", gebunden an project-model-set und passende pipelineIdentities; gültige Wurzel-/Ausführungsbindung umfasst execution als Objekt mit executionId, projectId, projectLsn, catalogDatabaseGuid, sourceBindingSha256 und packageFileName; archiveSha256 und modelSetSha256 liegen auf Wurzelebene (SHA-256 der exakten Kandidaten-Model-JSON-Bytes). Enthält observations- und events-Arrays sowie componentPhases- und pathTransfers-Arrays und genau die zwei pipelineSources-Einträge für componentPhases und pathTransfers; deren Statuswerte und Fehlernummern müssen dem Capturevertrag entsprechen. Alle Schlüssel, Namen, Pfade, IDs, Zeit-/Ergebniswerte und Quellgrenzen müssen die von 035–037 geprüften Formen erfüllen; höchstens 50.000 Einträge im Scope-/Pipeline-Capture. Der Transport muss bytegenau dem lokal registrierten Scope-Handover entsprechen; nicht neu serialisieren. Höchstens 16.777.216 Bytes je Capture, gemessen durch DATALENGTH(nvarchar) in SQL-UTF-16-Bytes. NULL, Leerstring und ungültiges JSON sind unzulässig. Vergleichsseiten werden unabhängig attestiert. Optional kann comparisonContext genau ein Objekt mit genau contract="ssis-comparison-context", version="1.0.0" und use32BitRuntime als JSON-Boolean enthalten; fehlt diese Zusatzinformation oder ist sie ungültig, bleibt der Capture nicht automatisch ungebunden, aber der Laufzeitkontext ist unbewiesen. Beide Seiten müssen dieselben exakten Export- und Quell-/Projektversionsfelder einschließlich archiveSha256 aufweisen.
 --
--- **@CandidateScopeHandoverId:** @CandidateScopeHandoverId: Datentyp uniqueidentifier, Default NULL. Als uniqueidentifier-Parameter im üblichen GUID-Format übergeben. Erforderliche UUID eines lokal auf monitor.USP_SsisPackageModelAnalysis registrierten SSIS_SCOPE_<UUID> Extended-Property-Handover; die Registrierung bindet die exakten UTF-16-Bytes des zugehörigen ProjectModelsJson und ScopeSnapshotJson und ist zeitlich gültig. Die UUID ist nur der lokale Belegschlüssel, kein JSON-Trustflag und keine selbst behauptete Attestation; eine frei erfundene oder auf einem anderen Objekt registrierte ID genügt nicht. Jede Seite wird unabhängig gegen den zu ihren Dokumentbytes passenden registrierten Beleg geprüft. Die Procedure verlangt keine gesonderte Ungleichheit der GUIDs; die Execution-IDs müssen verschieden sein. NULL ist ungültig. Der Belegname verwendet die GUID in Kleinschreibung. issuedUtc muss höchstens beim Analysebeginn liegen; expiresUtc danach und höchstens 24 Stunden nach issuedUtc. Es gibt keine Mindestgültigkeitsdauer. Als uniqueidentifier-Variable oder konvertierbares GUID-Literal der Form 00000000-0000-0000-0000-000000000000 übergeben; die Null-GUID ersetzt keinen registrierten Beleg.
+-- **@CandidateScopeHandoverId:** @CandidateScopeHandoverId: Datentyp uniqueidentifier, Default NULL. Als uniqueidentifier-Parameter im üblichen GUID-Format übergeben. Erforderliche UUID eines lokal in monitor.SsisHandoverReceipt registrierten Scopebelegs der Art 3; die Registrierung bindet die exakten UTF-16-Bytes des zugehörigen ProjectModelsJson und ScopeSnapshotJson und ist zeitlich gültig. Die UUID ist nur der lokale Belegschlüssel, kein JSON-Trustflag und keine selbst behauptete Attestation; eine frei erfundene UUID oder eine UUID einer anderen Belegart genügt nicht. Jede Seite wird unabhängig gegen den zu ihren Dokumentbytes passenden registrierten Beleg geprüft. Die Procedure verlangt keine gesonderte Ungleichheit der GUIDs; die Execution-IDs müssen verschieden sein. NULL ist ungültig. issuedUtc muss höchstens beim Analysebeginn liegen; expiresUtc danach und höchstens 24 Stunden nach issuedUtc. Es gibt keine Mindestgültigkeitsdauer. Als uniqueidentifier-Variable oder konvertierbares GUID-Literal der Form 00000000-0000-0000-0000-000000000000 übergeben; die Null-GUID ersetzt keinen registrierten Beleg.
 --
 -- **@CandidateExecutionId:** @CandidateExecutionId: Datentyp bigint, Default NULL. Einzelne positive SSISDB Execution-ID im bigint-Bereich 1 bis 9.223.372.036.854.775.807. Muss zum Kandidaten-Capture passen und von sämtlichen Basis-Execution-IDs verschieden sein. NULL, 0, negative Werte oder jede Wiederholung einer Basis-ID sind ungültig.
 --
@@ -137480,7 +137963,7 @@ BEGIN
   PRINT N'@BaselineExecutionsJson: Datentyp nvarchar(max), Default NULL. Äußeres JSON muss ein Array mit 1 bis 20 Einträgen sein. Jeder Eintrag ist ein JSON-Objekt mit genau vier case-sensitiven Schlüsseln; jeder der vier Werte ist ein JSON-String, nicht ein eingebettetes Objekt/Array: projectModelsJson (als String serialisierte vollständige Model-Set-JSON), scopeSnapshotJson (als String serialisiertes Scope-/Pipeline-Capture-JSON), scopeHandoverId (GUID-String zur lokal registrierten Handover-ID), executionId (positive kanonische Dezimalzeichenfolge). Die vier Namen sind vollständig, ohne Zusatzschlüssel; ihre Reihenfolge ist beliebig. Die beiden inneren JSON-Dokumente bleiben in ihren Stringwerten byte-/textgetreu erhalten. Jede Basisausführung wird anhand ihres Captures und des auf monitor.USP_SsisPackageModelAnalysis registrierten, dazu passenden lokalen Handover-Belegs unabhängig geprüft. executionId muss kanonisch dezimal sein: keine führenden Nullen, kein Pluszeichen, keine Leerzeichen, positive Ziffernfolge bis 9223372036854775807. Jeder Execution-ID-Wert muss von Kandidaten-ID und allen anderen Basis-IDs verschieden sein. Modelle/Captures sind gültiges JSON, pro Modell und Capture höchstens 16.777.216 DATALENGTH-Bytes (SQL-UTF-16). Gesamte Eingabegrenze: Summe DATALENGTH von BaselineExecutionsJson, CandidateProjectModelsJson und CandidateScopeSnapshotJson höchstens 67.108.864 Bytes (64 MiB, nvarchar UTF-16 Bytes, keine UTF-8-Dateigröße). Zusammengenommen höchstens 100.000 observations/events/componentPhases/pathTransfers-Quellzeilen, 400.000 materialisierte Kennzahlen und höchstens 400.000 Kennzahl-/Laufzellen; gemeinsames kooperatives Zeitbudget höchstens 60 Sekunden. NULL, Leerstring, Objekt statt äußerem Array, 0 oder mehr als 20 Einträge sowie falsche Transporttypen sind ungültig. projectModelsJson enthält ssis-project-model-set 1.0.0 mit rootPackageKey und packages (1 bis 16), einschließlich ssis-object-identities 1.2.0 und ssis-pipeline-identities 1.0.0; scopeSnapshotJson enthält ssis-execution-scopes 1.1.0 mit method SSISDB_CURRENT_PROJECT_PIPELINES_V1. Diese inneren Dokumente werden im äußeren JSON als korrekt maskierte JSON-Strings erhalten, nicht neu erzeugt oder als JSON-Objekte eingebettet. Der GUID-Beleg liegt auf dem Modellconsumer, nicht auf der Baselineprocedure. Einzelheiten entsprechen den separat erläuterten Kandidatenparametern und dem Modellvertrag.';
   PRINT N'@CandidateProjectModelsJson: Datentyp nvarchar(max), Default NULL. Als einzelne nvarchar(max)-Variable oder N''…''-Literal übergeben, nicht als Dateipfad. Erforderlich für die Kandidat-Seite. JSON-Objekt mit contract="ssis-project-model-set", version="1.0.0", rootPackageKey als String und packages als Array mit 1 bis 16 eindeutigen Paketen. Jedes Paket enthält packageKey und entryName als Strings, model als vollständiges Objekt mit contract="ssis-package-model" und version="1.0.0" sowie identities als Objekt mit contract="ssis-object-identities" und version="1.2.0". Für diesen Consumer müssen zusätzlich pipelineIdentities als Objekt mit contract="ssis-pipeline-identities" und version="1.0.0" vorhanden und an dieselben Paket-/Modellidentitäten gebunden sein. Der gemeinsame Consumer aktiviert Scope-, Pipelinekorrelations- und Pipeline-Diagnosepfade; dieses Argument ergänzt keine eigene Parser- oder Lineageauswertung. Das unveränderte Modellobjekt muss auf allen verglichenen Seiten bytegenau gleich sein: SHA-256 wird über die exakten nvarchar-UTF-16-Bytes gebildet; Neu-Serialisierung, geänderte Whitespace-/Property-Reihenfolge oder andere Bytes ändern den Exporthash. Höchstens 16.777.216 Bytes je Modell, gemessen mit SQL Server DATALENGTH(nvarchar), also UTF-16-Bytes und nicht UTF-8-Dateigröße. JSON-Objektschlüssel und Identitäten werden streng geprüft. NULL, Leerstring und ungültiges JSON sind unzulässig. Siehe den bestehenden SsisPackageModelAnalysis-Vertrag für vollständige Parser-/Modellregeln.';
   PRINT N'@CandidateScopeSnapshotJson: Datentyp nvarchar(max), Default NULL. Als einzelne nvarchar(max)-Variable oder N''…''-Literal übergeben. Erforderlich ist ein JSON-Objekt mit contract="ssis-execution-scopes", version="1.1.0", method="SSISDB_CURRENT_PROJECT_PIPELINES_V1", gebunden an project-model-set und passende pipelineIdentities; gültige Wurzel-/Ausführungsbindung umfasst execution als Objekt mit executionId, projectId, projectLsn, catalogDatabaseGuid, sourceBindingSha256 und packageFileName; archiveSha256 und modelSetSha256 liegen auf Wurzelebene (SHA-256 der exakten Kandidaten-Model-JSON-Bytes). Enthält observations- und events-Arrays sowie componentPhases- und pathTransfers-Arrays und genau die zwei pipelineSources-Einträge für componentPhases und pathTransfers; deren Statuswerte und Fehlernummern müssen dem Capturevertrag entsprechen. Alle Schlüssel, Namen, Pfade, IDs, Zeit-/Ergebniswerte und Quellgrenzen müssen die von 035–037 geprüften Formen erfüllen; höchstens 50.000 Einträge im Scope-/Pipeline-Capture. Der Transport muss bytegenau dem lokal registrierten Scope-Handover entsprechen; nicht neu serialisieren. Höchstens 16.777.216 Bytes je Capture, gemessen durch DATALENGTH(nvarchar) in SQL-UTF-16-Bytes. NULL, Leerstring und ungültiges JSON sind unzulässig. Vergleichsseiten werden unabhängig attestiert. Optional kann comparisonContext genau ein Objekt mit genau contract="ssis-comparison-context", version="1.0.0" und use32BitRuntime als JSON-Boolean enthalten; fehlt diese Zusatzinformation oder ist sie ungültig, bleibt der Capture nicht automatisch ungebunden, aber der Laufzeitkontext ist unbewiesen. Beide Seiten müssen dieselben exakten Export- und Quell-/Projektversionsfelder einschließlich archiveSha256 aufweisen.';
-  PRINT N'@CandidateScopeHandoverId: Datentyp uniqueidentifier, Default NULL. Als uniqueidentifier-Parameter im üblichen GUID-Format übergeben. Erforderliche UUID eines lokal auf monitor.USP_SsisPackageModelAnalysis registrierten SSIS_SCOPE_<UUID> Extended-Property-Handover; die Registrierung bindet die exakten UTF-16-Bytes des zugehörigen ProjectModelsJson und ScopeSnapshotJson und ist zeitlich gültig. Die UUID ist nur der lokale Belegschlüssel, kein JSON-Trustflag und keine selbst behauptete Attestation; eine frei erfundene oder auf einem anderen Objekt registrierte ID genügt nicht. Jede Seite wird unabhängig gegen den zu ihren Dokumentbytes passenden registrierten Beleg geprüft. Die Procedure verlangt keine gesonderte Ungleichheit der GUIDs; die Execution-IDs müssen verschieden sein. NULL ist ungültig. Der Belegname verwendet die GUID in Kleinschreibung. issuedUtc muss höchstens beim Analysebeginn liegen; expiresUtc danach und höchstens 24 Stunden nach issuedUtc. Es gibt keine Mindestgültigkeitsdauer. Als uniqueidentifier-Variable oder konvertierbares GUID-Literal der Form 00000000-0000-0000-0000-000000000000 übergeben; die Null-GUID ersetzt keinen registrierten Beleg.';
+  PRINT N'@CandidateScopeHandoverId: Datentyp uniqueidentifier, Default NULL. Als uniqueidentifier-Parameter im üblichen GUID-Format übergeben. Erforderliche UUID eines lokal in monitor.SsisHandoverReceipt registrierten Scopebelegs der Art 3; die Registrierung bindet die exakten UTF-16-Bytes des zugehörigen ProjectModelsJson und ScopeSnapshotJson und ist zeitlich gültig. Die UUID ist nur der lokale Belegschlüssel, kein JSON-Trustflag und keine selbst behauptete Attestation; eine frei erfundene UUID oder eine UUID einer anderen Belegart genügt nicht. Jede Seite wird unabhängig gegen den zu ihren Dokumentbytes passenden registrierten Beleg geprüft. Die Procedure verlangt keine gesonderte Ungleichheit der GUIDs; die Execution-IDs müssen verschieden sein. NULL ist ungültig. issuedUtc muss höchstens beim Analysebeginn liegen; expiresUtc danach und höchstens 24 Stunden nach issuedUtc. Es gibt keine Mindestgültigkeitsdauer. Als uniqueidentifier-Variable oder konvertierbares GUID-Literal der Form 00000000-0000-0000-0000-000000000000 übergeben; die Null-GUID ersetzt keinen registrierten Beleg.';
   PRINT N'@CandidateExecutionId: Datentyp bigint, Default NULL. Einzelne positive SSISDB Execution-ID im bigint-Bereich 1 bis 9.223.372.036.854.775.807. Muss zum Kandidaten-Capture passen und von sämtlichen Basis-Execution-IDs verschieden sein. NULL, 0, negative Werte oder jede Wiederholung einer Basis-ID sind ungültig.';
   PRINT N'@MinDurationDeltaMs: Datentyp bigint, Default NULL. Optionale nichtnegative Dauergrenze in Millisekunden (ganzzahlig, 0 bis 9.223.372.036.854.775.807). NULL deaktiviert die Dauergrenze. Für einen Dauerhinweis muss die Kandidatendauer strikt größer als Median der verwendbaren Basiswerte plus dieser Grenzwert sein; bei gesetzter Prozentgrenze muss zugleich auch diese strikt überschritten sein. Zeilenänderungshinweise sind unabhängig von beiden Dauergrenzen. Negative Werte sind ungültig. Sind beide Dauergrenzen NULL, werden keine Dauergrenzhinweise erzeugt; andere Hinweisarten bleiben davon unabhängig.';
   PRINT N'@MinDurationDeltaPercent: Datentyp decimal(9,4), Default NULL. Optionale nichtnegative Prozentgrenze als Zahl in Prozent relativer Zunahme ohne %-Zeichen, bis vier Dezimalstellen: 0.0000 bis 99999.9999 (10.0000 entspricht zehn Prozent; SQL-Typkonvertierung/Rundung geschieht vor Procedure). NULL deaktiviert die Prozentgrenze. Die relative Dauerabweichung wird strikt geprüft; Median 0 bedeutet unbekannte Prozentabweichung und erfüllt sie nicht. Wenn zusätzlich Millisekunden gesetzt sind, müssen beide Dauergrenzen überschritten sein. Zeilenänderungshinweise bleiben unabhängig. Sind beide Dauergrenzen NULL, werden keine Dauergrenzhinweise erzeugt; andere Hinweisarten bleiben davon unabhängig.';
@@ -137610,8 +138093,8 @@ BEGIN
             + N'n; höchstens 50.000 Einträge im Scope-/Pipeline-Capture. Der Transport muss bytegenau dem lokal registrierten Scope-Handover entsprechen; nicht neu serialisieren. Höchstens 16.777.216 Bytes je Capture, gemessen durch DATALENGTH(nvarchar) in SQL-UTF-16-Bytes. NULL, Leerstring und ungültiges JSON sind unzulässig. Vergleichsseiten werden unabhängig attestiert. Optional kann comparisonContext genau ein Objekt mit genau contract="ssis-comparison-context", version="1.0.0" und use32BitRuntime als JSON-Boolean enthalten; fehlt diese Zusatzinformation oder ist sie ungültig, bleibt der Capture nicht automatisch ungebunden, aber der Laufzeitkontext ist unbewiesen. Beide Seiten müssen dieselben exakten Export- und Quell-/Projektversionsfelder einschließlich archiveSha256 aufweisen.'
             + NCHAR(10)
             + NCHAR(10)
-            + N'**@CandidateScopeHandoverId:** @CandidateScopeHandoverId: Datentyp uniqueidentifier, Default NULL. Als uniqueidentifier-Parameter im üblichen GUID-Format übergeben. Erforderliche UUID eines lokal auf monitor.USP_SsisPackageModelAnalysis registrierten SSIS_SCOPE_<UUID> Extended-Property-Handover; die Registrierung bindet die exakten UTF-16-Bytes des zugehörigen ProjectModelsJson und ScopeSnapshotJson und ist zeitlich gültig. Die UUID ist nur der lokale Belegschlüssel, kein JSON-Trustflag und keine selbst behauptete Attestation; eine frei erfundene oder auf einem anderen Objekt registrierte ID genügt nicht. Jede Seite wird unabhängig gegen den zu ihren Dokumentbytes passenden registrierten Beleg geprüft. Die Procedure verlangt keine gesonderte Ungleichheit der GUIDs; die Execution-IDs müssen verschieden sein. NULL ist ungültig. Der Belegname verwendet die GUID in Kleinschreibung. issuedUtc muss höchstens beim Analysebeginn liegen; expiresUtc danach und höchstens 24 Stunden nach issuedUtc'
-            + N'. Es gibt keine Mindestgültigkeitsdauer. Als uniqueidentifier-Variable oder konvertierbares GUID-Literal der Form 00000000-0000-0000-0000-000000000000 übergeben; die Null-GUID ersetzt keinen registrierten Beleg.'
+            + N'**@CandidateScopeHandoverId:** @CandidateScopeHandoverId: Datentyp uniqueidentifier, Default NULL. Als uniqueidentifier-Parameter im üblichen GUID-Format übergeben. Erforderliche UUID eines lokal in monitor.SsisHandoverReceipt registrierten Scopebelegs der Art 3; die Registrierung bindet die exakten UTF-16-Bytes des zugehörigen ProjectModelsJson und ScopeSnapshotJson und ist zeitlich gültig. Die UUID ist nur der lokale Belegschlüssel, kein JSON-Trustflag und keine selbst behauptete Attestation; eine frei erfundene UUID oder eine UUID einer anderen Belegart genügt nicht. Jede Seite wird unabhängig gegen den zu ihren Dokumentbytes passenden registrierten Beleg geprüft. Die Procedure verlangt keine gesonderte Ungleichheit der GUIDs; die Execution-IDs müssen verschieden sein. NULL ist ungültig. issuedUtc muss höchstens beim Analysebeginn liegen; expiresUtc danach und höchstens 24 Stunden nach issuedUtc. Es gibt keine Mindestgültigkeitsdauer. Als uniqueidentifier-Variable oder konvertierbar'
+            + N'es GUID-Literal der Form 00000000-0000-0000-0000-000000000000 übergeben; die Null-GUID ersetzt keinen registrierten Beleg.'
             + NCHAR(10)
             + NCHAR(10)
             + N'**@CandidateExecutionId:** @CandidateExecutionId: Datentyp bigint, Default NULL. Einzelne positive SSISDB Execution-ID im bigint-Bereich 1 bis 9.223.372.036.854.775.807. Muss zum Kandidaten-Capture passen und von sämtlichen Basis-Execution-IDs verschieden sein. NULL, 0, negative Werte oder jede Wiederholung einer Basis-ID sind ungültig.'
@@ -141122,7 +141605,7 @@ GO
 --
 -- ## Zweck und Einsatz
 --
--- Die View stellt für die bekannte Frameworkrolle 193 Objekt-Skills plus diesen Self-Skill und für die Snapshot-Zielrolle 17 Objekt-Skills plus diesen Self-Skill bereit. Der Text stammt aus den versionierten Markdown-Dateien unter `Metadata/UsageSkills`; die View führt keine Objektinventur und keine Laufzeitprüfung aus. Die Self-Zeile trägt `DatabaseRole=both`, weil dieselbe kanonische Markdown-Datei in beiden Rollenprojektionen enthalten ist; alle anderen Zeilen nennen ihre jeweilige Datenbankrolle. Ein Eintrag sagt weder, dass das Objekt im aktuellen Datenbankzustand noch vorhanden ist, noch dass der Aufrufer seine Fachquellen lesen oder ausführen darf.
+-- Die View stellt für die bekannte Frameworkrolle 195 Objekt-Skills plus diesen Self-Skill und für die Snapshot-Zielrolle 17 Objekt-Skills plus diesen Self-Skill bereit. Der Text stammt aus den versionierten Markdown-Dateien unter `Metadata/UsageSkills`; die View führt keine Objektinventur und keine Laufzeitprüfung aus. Die Self-Zeile trägt `DatabaseRole=both`, weil dieselbe kanonische Markdown-Datei in beiden Rollenprojektionen enthalten ist; alle anderen Zeilen nennen ihre jeweilige Datenbankrolle. Ein Eintrag sagt weder, dass das Objekt im aktuellen Datenbankzustand noch vorhanden ist, noch dass der Aufrufer seine Fachquellen lesen oder ausführen darf.
 --
 -- ## Voraussetzungen und Rechte
 --
@@ -143488,6 +143971,109 @@ SELECT CONVERT(sysname,N'monitor') AS [SchemaName],CONVERT(sysname,N'InternalEmi
             + NCHAR(10)
             + NCHAR(10) AS [SkillMarkdown]
 UNION ALL
+SELECT CONVERT(sysname,N'monitor') AS [SchemaName],CONVERT(sysname,N'InternalManageSsisHandoverReceipt') AS [ObjectName],CONVERT(varchar(24),'INTERNAL_PROCEDURE') AS [ObjectType],CONVERT(varchar(24),'framework') AS [DatabaseRole],CONVERT(bit,1) AS [IsInternal],CONVERT(nvarchar(max),N'Registriert oder widerruft einen qualifizierten lokalen SSIS-Übergabebeleg.') AS [Description],CONVERT(varchar(16),'1.0.0') AS [SkillFormatVersion],CONVERT(nvarchar(max),N'---')
+            + NCHAR(10)
+            + N'skill_format_version: "1.0.0"'
+            + NCHAR(10)
+            + N'name: "monitor.InternalManageSsisHandoverReceipt"'
+            + NCHAR(10)
+            + N'schema_name: "monitor"'
+            + NCHAR(10)
+            + N'object_name: "InternalManageSsisHandoverReceipt"'
+            + NCHAR(10)
+            + N'object_type: "INTERNAL_PROCEDURE"'
+            + NCHAR(10)
+            + N'database_role: "framework"'
+            + NCHAR(10)
+            + N'is_internal: true'
+            + NCHAR(10)
+            + N'description: "Registriert oder widerruft einen qualifizierten lokalen SSIS-Übergabebeleg."'
+            + NCHAR(10)
+            + N'source_path: "Code/10_SSIS/041_InternalManageSsisHandoverReceipt.sql"'
+            + NCHAR(10)
+            + N'---'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'# monitor.InternalManageSsisHandoverReceipt'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'## Zweck und Einsatz'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'Registriert oder widerruft einen qualifizierten lokalen SSIS-Übergabebeleg.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'## Voraussetzungen und Rechte'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'Autorisierte Aussteller benötigen `EXECUTE` auf dieser Prozedur und `ALTER` auf `monitor.USP_SsisPackageModelAnalysis`. Die Prüfung verwendet die Rechte des Aufrufers. Der gemeinsame Eigentümer erlaubt den statischen Tabellenzugriff der Prozedur. Eine aktive Aufrufertransaktion oder `IMPLICIT_TRANSACTIONS ON` verhindert die Ausführung.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'## Parameter und Eingabe'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'| Parameter | SQL-Typ | SQL-Bindungspflicht | Default |'
+            + NCHAR(10)
+            + N'| --- | --- | --- | --- |'
+            + NCHAR(10)
+            + N'| @Action | varchar(64) | nein | NULL |'
+            + NCHAR(10)
+            + N'| @HandoverId | uniqueidentifier | nein | NULL |'
+            + NCHAR(10)
+            + N'| @RuntimeHandoverId | uniqueidentifier | nein | NULL |'
+            + NCHAR(10)
+            + N'| @ReceiptKind | tinyint | nein | NULL |'
+            + NCHAR(10)
+            + N'| @ModelJson | nvarchar(max) | nein | NULL |'
+            + NCHAR(10)
+            + N'| @PackageBytes | varbinary(max) | nein | NULL |'
+            + NCHAR(10)
+            + N'| @CaptureJson | nvarchar(max) | nein | NULL |'
+            + NCHAR(10)
+            + N'| @ValidHours | int | nein | 1 |'
+            + NCHAR(10)
+            + N'| @Hilfe | bit | nein | 0 |'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'**@Action:** `varchar(64)`, Default NULL. `REGISTER_MODEL` registriert einen Modellbeleg mit optionalem Laufzeitbeleg. `REGISTER_SCOPE` registriert einen Scopebeleg. `REVOKE` widerruft einen Beleg der ausdrücklich gewählten Belegart. Der Vergleich folgt der Datenbankkollation. NULL und Leertext sind im Fachpfad ungültig.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'**@HandoverId:** `uniqueidentifier`, Default NULL. Jede Aktion benötigt eine UUID. Bei `REGISTER_MODEL` bezeichnet sie den Modellbeleg, bei `REGISTER_SCOPE` den Scopebeleg und bei `REVOKE` zusammen mit `@ReceiptKind` den zu widerrufenden Beleg. Zulässig ist ein typisierter Wert oder ein konvertierbares GUID-Literal. NULL ist ungültig.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'**@RuntimeHandoverId:** `uniqueidentifier`, Default NULL. `REGISTER_MODEL` benötigt eine typisierte UUID oder ein konvertierbares GUID-Literal, wenn `@CaptureJson` eine Laufzeitaufnahme enthält. Ohne Laufzeitaufnahme und bei den übrigen Aktionen ist NULL erforderlich.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'**@ReceiptKind:** `tinyint`, Default NULL. `REVOKE` akzeptiert 1 für Modell, 2 für Laufzeit und 3 für Scope. NULL und andere Werte sind beim Widerruf ungültig. Beide Registrierungsaktionen verlangen NULL.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'**@ModelJson:** `nvarchar(max)`, Default NULL. Bei `REGISTER_MODEL` muss der Unicode-Text ein qualifiziertes neutrales SSIS-Paketmodell enthalten. Die öffentliche Analyseprozedur validiert das Modell und die Originalbytes vor der Registrierung. Bei `REGISTER_SCOPE` muss der Wert ein gültiger JSON-Paketsatz mit höchstens 16 MiB nach `DATALENGTH` sein. Ein fehlender oder leerer Text ist bei Registrierung ungültig. `REVOKE` verlangt NULL.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'**@PackageBytes:** `varbinary(max)`, Default NULL. `REGISTER_MODEL` benötigt die unveränderten Originalbytes des Pakets. Die Analyse prüft Länge und Paketdigest gegen das Modell. Fehlende oder abweichende Bytes führen zur Ablehnung. `REGISTER_SCOPE` und `REVOKE` verlangen NULL.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'**@CaptureJson:** `nvarchar(max)`, Default NULL. Bei `REGISTER_SCOPE` ist die qualifizierte Scopeaufnahme als Unicode-JSON erforderlich. Bei `REGISTER_MODEL` ist mit `@RuntimeHandoverId` die zugehörige Laufzeitaufnahme erforderlich. Gültiger JSON-Text darf höchstens 16 MiB nach `DATALENGTH` umfassen. Leerer Text ist ungültig. Ohne Laufzeitbeleg und beim Widerruf ist NULL erforderlich.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'**@ValidHours:** `int`, Default 1. Registrierungen akzeptieren ganze Stunden von 1 bis 24 einschließlich. Die Laufzeit beginnt am UTC-Zeitstempel der Ausstellung. NULL und Werte außerhalb des Bereichs sind bei Registrierung ungültig. Beim Widerruf wird der Wert nicht ausgewertet.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'**@Hilfe:** `bit`, Default 0. 1 liefert den Usage Skill vor Fachzugriff, Autorisierungsprüfung und Eingabekontrolle. 0 oder NULL aktiviert den Fachpfad. SQL konvertiert numerische Werte ungleich 0 zu 1.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'## Resultate und Ausgabe'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'Der Fachpfad erzeugt kein Resultset. Ein Modell- und ein optionaler Laufzeitbeleg werden atomar registriert. Ein Widerruf löscht die angegebene UUID der angegebenen Belegart, sofern sie vorhanden ist.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'## Aufwand, Nebenwirkungen, Fehler und Grenzen'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'Die Prozedur setzt im Fachpfad `ROWCOUNT 0` und `LOCK_TIMEOUT 0` im lokalen Prozedurkontext. Die Registrierung eines Modells prüft Struktur und Originalbytes. Bei einer Scopeaufnahme prüft der qualifizierte Erfassungsworkflow die Einzelmodelle vor dem Aufruf. Er speichert die Aufnahme und den Paketsatz nicht in der Belegtabelle. Eine Belegkollision bricht die Registrierung ab.'
+            + NCHAR(10) AS [SkillMarkdown]
+UNION ALL
 SELECT CONVERT(sysname,N'monitor') AS [SchemaName],CONVERT(sysname,N'InternalParseXmlText') AS [ObjectName],CONVERT(varchar(24),'INTERNAL_PROCEDURE') AS [ObjectType],CONVERT(varchar(24),'framework') AS [DatabaseRole],CONVERT(bit,1) AS [IsInternal],CONVERT(nvarchar(max),N'Konvertiert einen vollständigen nvarchar(max)-Quellwert ohne vorherige Kürzung in natives xml und klassifiziert Ausfälle.') AS [Description],CONVERT(varchar(16),'1.0.0') AS [SkillFormatVersion],CONVERT(nvarchar(max),N'---')
             + NCHAR(10)
             + N'skill_format_version: "1.0.0"'
@@ -145102,7 +145688,7 @@ SELECT CONVERT(sysname,N'monitor') AS [SchemaName],CONVERT(sysname,N'InternalSsi
             + N'## Voraussetzungen und Rechte'
             + NCHAR(10)
             + NCHAR(10)
-            + N'Ein direkter Aufruf erfordert EXECUTE auf [monitor].[InternalSsisExecutionScopes]. Der normale Einsatz erfolgt über die öffentliche aufrufende Prozedur; direkter Fachbetrieb dieses Helpers ist nicht vorgesehen. Die Quelle nennt insbesondere `sys.sp_executesql`, `monitor.InternalPrepareResultTables`, `monitor.USP_SsisPackageModelAnalysis`, `[sys].[extended_properties]`, `[sys].[procedures].[object_id]`, `[sys].[procedures]`, `[sys].[schemas]` sowie weitere tatsächlich aufgerufene Quellen. Für deren Metadaten- oder Fachzugriff gelten die Rechte des jeweiligen SQL-Ausführungskontexts; der Skill erteilt sie nicht.'
+            + N'Ein direkter Aufruf erfordert EXECUTE auf [monitor].[InternalSsisExecutionScopes]. Der normale Einsatz erfolgt über die öffentliche aufrufende Prozedur; direkter Fachbetrieb dieses Helpers ist nicht vorgesehen. Die Quelle nennt insbesondere `sys.sp_executesql`, `monitor.InternalPrepareResultTables`, `monitor.USP_SsisPackageModelAnalysis`, `[monitor].[SsisHandoverReceipt]` sowie weitere tatsächlich aufgerufene Quellen. Für deren Metadaten- oder Fachzugriff gelten die Rechte des jeweiligen SQL-Ausführungskontexts; der Skill erteilt sie nicht.'
             + NCHAR(10)
             + NCHAR(10)
             + N'## Parameter und Eingabe'
@@ -145166,7 +145752,7 @@ SELECT CONVERT(sysname,N'monitor') AS [SchemaName],CONVERT(sysname,N'InternalSsi
             + N'elinekorrelation oder -diagnose werden in deren Coverage-Gruppen dargestellt und ändern nicht zwangsläufig den Basisstatus oder die bereits erzeugten Grundgruppen.'
             + NCHAR(10)
             + NCHAR(10)
-            + N'**@Handover:** @Handover: uniqueidentifier; Default: keiner, Pflichtargument. Skalarer UUID-Wert, etwa eine entsprechend typisierte Variable oder konvertierbare UUID-Zeichenfolge. Er wählt SSIS_SCOPE_<UUID in Kleinschreibung> als Extended Property auf [monitor].[USP_SsisPackageModelAnalysis]. Der lokale Beleg enthält genau contract="ssis-local-scope-handover", version="1.0.0", issuedUtc, expiresUtc, modelSetSha256, captureSha256; er muss aktuell gültig sein, höchstens 24 Stunden gelten und die exakten UTF-16-Dokumentbytes binden. Die Prüfung liest mit READCOMMITTEDLOCK. Auslassen scheitert an der Pflichtsignatur; NULL oder fehlender/ungültiger Beleg lässt die Bindung unbelegt. Leertext ist keine UUID und kann bereits bei der SQL-Parameterkonvertierung scheitern. Eine beliebige UUID oder ein JSON-Vertrauensfeld ersetzt den lokalen Beleg nicht.'
+            + N'**@Handover:** @Handover: uniqueidentifier; Default: keiner, Pflichtargument. Skalarer UUID-Wert, etwa eine entsprechend typisierte Variable oder konvertierbare UUID-Zeichenfolge. Er wählt einen Beleg der Art 3 in [monitor].[SsisHandoverReceipt]. Der lokale Beleg enthält genau contract="ssis-local-scope-handover", version="1.0.0", issuedUtc, expiresUtc, modelSetSha256, captureSha256; er muss aktuell gültig sein, höchstens 24 Stunden gelten und die exakten UTF-16-Dokumentbytes binden. Die Prüfung liest mit READCOMMITTEDLOCK. Auslassen scheitert an der Pflichtsignatur; NULL oder fehlender/ungültiger Beleg lässt die Bindung unbelegt. Leertext ist keine UUID und kann bereits bei der SQL-Parameterkonvertierung scheitern. Eine beliebige UUID oder ein JSON-Vertrauensfeld ersetzt den lokalen Beleg nicht.'
             + NCHAR(10)
             + NCHAR(10)
             + N'**@ExecutionId:** @ExecutionId: bigint; Default: keiner, Pflichtargument. Skalarer ganzzahliger Wert von 1 bis 9223372036854775807, gleich der Execution-ID im Capture. Auslassen scheitert an der Pflichtsignatur; NULL und Werte unter 1 sind ungültig. Leerer Text kann vor dem Eintritt nach 0 konvertiert werden und ist dann ungültig.'
@@ -145288,7 +145874,7 @@ SELECT CONVERT(sysname,N'monitor') AS [SchemaName],CONVERT(sysname,N'InternalSsi
             + N'on oder -diagnose werden in deren Coverage-Gruppen dargestellt und ändern nicht zwangsläufig den Basisstatus oder die bereits erzeugten Grundgruppen.'
             + NCHAR(10)
             + NCHAR(10)
-            + N'@Handover: uniqueidentifier; Default: keiner, Pflichtargument. Skalarer UUID-Wert, etwa eine entsprechend typisierte Variable oder konvertierbare UUID-Zeichenfolge. Er wählt SSIS_SCOPE_<UUID in Kleinschreibung> als Extended Property auf [monitor].[USP_SsisPackageModelAnalysis]. Der lokale Beleg enthält genau contract="ssis-local-scope-handover", version="1.0.0", issuedUtc, expiresUtc, modelSetSha256, captureSha256; er muss aktuell gültig sein, höchstens 24 Stunden gelten und die exakten UTF-16-Dokumentbytes binden. Die Prüfung liest mit READCOMMITTEDLOCK. Auslassen scheitert an der Pflichtsignatur; NULL oder fehlender/ungültiger Beleg lässt die Bindung unbelegt. Leertext ist keine UUID und kann bereits bei der SQL-Parameterkonvertierung scheitern. Eine beliebige UUID oder ein JSON-Vertrauensfeld ersetzt den lokalen Beleg nicht.'
+            + N'@Handover: uniqueidentifier; Default: keiner, Pflichtargument. Skalarer UUID-Wert, etwa eine entsprechend typisierte Variable oder konvertierbare UUID-Zeichenfolge. Er wählt einen Beleg der Art 3 in [monitor].[SsisHandoverReceipt]. Der lokale Beleg enthält genau contract="ssis-local-scope-handover", version="1.0.0", issuedUtc, expiresUtc, modelSetSha256, captureSha256; er muss aktuell gültig sein, höchstens 24 Stunden gelten und die exakten UTF-16-Dokumentbytes binden. Die Prüfung liest mit READCOMMITTEDLOCK. Auslassen scheitert an der Pflichtsignatur; NULL oder fehlender/ungültiger Beleg lässt die Bindung unbelegt. Leertext ist keine UUID und kann bereits bei der SQL-Parameterkonvertierung scheitern. Eine beliebige UUID oder ein JSON-Vertrauensfeld ersetzt den lokalen Beleg nicht.'
             + NCHAR(10)
             + NCHAR(10)
             + N'@ExecutionId: bigint; Default: keiner, Pflichtargument. Skalarer ganzzahliger Wert von 1 bis 9223372036854775807, gleich der Execution-ID im Capture. Auslassen scheitert an der Pflichtsignatur; NULL und Werte unter 1 sind ungültig. Leerer Text kann vor dem Eintritt nach 0 konvertiert werden und ist dann ungültig.'
@@ -147829,6 +148415,62 @@ SELECT CONVERT(sysname,N'monitor') AS [SchemaName],CONVERT(sysname,N'SqlServerLi
             + NCHAR(10)
             + N'```'
             + NCHAR(10)
+            + NCHAR(10) AS [SkillMarkdown]
+UNION ALL
+SELECT CONVERT(sysname,N'monitor') AS [SchemaName],CONVERT(sysname,N'SsisHandoverReceipt') AS [ObjectName],CONVERT(varchar(24),'TABLE') AS [ObjectType],CONVERT(varchar(24),'framework') AS [DatabaseRole],CONVERT(bit,0) AS [IsInternal],CONVERT(nvarchar(max),N'Speichert die zeitlich begrenzten lokalen Belege für SSIS-Modelle und Laufzeitaufnahmen.') AS [Description],CONVERT(varchar(16),'1.0.0') AS [SkillFormatVersion],CONVERT(nvarchar(max),N'---')
+            + NCHAR(10)
+            + N'skill_format_version: "1.0.0"'
+            + NCHAR(10)
+            + N'name: "monitor.SsisHandoverReceipt"'
+            + NCHAR(10)
+            + N'schema_name: "monitor"'
+            + NCHAR(10)
+            + N'object_name: "SsisHandoverReceipt"'
+            + NCHAR(10)
+            + N'object_type: "TABLE"'
+            + NCHAR(10)
+            + N'database_role: "framework"'
+            + NCHAR(10)
+            + N'is_internal: false'
+            + NCHAR(10)
+            + N'description: "Speichert die zeitlich begrenzten lokalen Belege für SSIS-Modelle und Laufzeitaufnahmen."'
+            + NCHAR(10)
+            + N'source_path: "Code/10_SSIS/033_SsisHandoverReceipt.sql"'
+            + NCHAR(10)
+            + N'---'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'# monitor.SsisHandoverReceipt'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'## Zweck und Einsatz'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'Speichert die zeitlich begrenzten lokalen Belege für SSIS-Modelle und Laufzeitaufnahmen.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'## Voraussetzungen und Rechte'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'Die Tabelle gehört über das Schema `monitor` zu `dbo`. Registrierung und Widerruf erfolgen über `monitor.InternalManageSsisHandoverReceipt`. Die Analyseprozeduren lesen die Belege mit statischem SQL. Der Installer verweigert `public` INSERT und DELETE auf der Tabelle und UPDATE auf jeder der drei Spalten. Die Sperren gelten auch für geerbte Schreibrechte und spaltenbezogene UPDATE-Grants. Erstellung und Schreibschutz erfolgen in derselben Transaktion. Bei erneuter Installation muss eine vorhandene Tabelle den Struktur- und Berechtigungsvertrag bereits erfüllen. Der Eigentümer und entsprechend privilegierte Administratoren verwalten die Schutzgrenze.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'## Parameter und Eingabe'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'Keine Aufrufparameter.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'## Resultate und Ausgabe'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'`ReceiptKind` ist ein `tinyint`. 1 bezeichnet einen Modellbeleg, 2 einen Laufzeitbeleg und 3 einen Scopebeleg. Gemeinsam mit der UUID `HandoverId` bildet die Belegart den Primärschlüssel. `ReceiptJson` ist ein JSON-Text in `nvarchar(3000)` mit Vertragsversion, Hashwerten, Ausstellungszeit und Ablaufzeit. Der Modellbeleg enthält auch Paketlänge, Erzeugungsmethode, Buildhash und Source-Commit.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'## Aufwand, Nebenwirkungen, Fehler und Grenzen'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'Leser suchen einen Beleg je Art und UUID mit `READCOMMITTEDLOCK`. Die Tabelle enthält keine Paketbytes, Modelle oder Laufzeitaufnahmen. Die Belegprüfung lehnt abgelaufene, widerrufene und unpassende IDs ab. Belegzeilen laufen fachlich ab. Es gibt keine automatische Löschung.'
             + NCHAR(10) AS [SkillMarkdown]
 UNION ALL
 SELECT CONVERT(sysname,N'monitor') AS [SchemaName],CONVERT(sysname,N'TVF_ClassifyErrorLogEvent') AS [ObjectName],CONVERT(varchar(24),'FUNCTION') AS [ObjectType],CONVERT(varchar(24),'framework') AS [DatabaseRole],CONVERT(bit,0) AS [IsInternal],CONVERT(nvarchar(max),N'Die Inline-TVF ordnet eine übergebene Errorlogmeldung genau einer Kategorie zu und liefert stets eine Zeile mit [Category].') AS [Description],CONVERT(varchar(16),'1.0.0') AS [SkillFormatVersion],CONVERT(nvarchar(max),N'---')
@@ -179471,8 +180113,8 @@ SELECT CONVERT(sysname,N'monitor') AS [SchemaName],CONVERT(sysname,N'USP_SsisExe
             + N'n; höchstens 50.000 Einträge im Scope-/Pipeline-Capture. Der Transport muss bytegenau dem lokal registrierten Scope-Handover entsprechen; nicht neu serialisieren. Höchstens 16.777.216 Bytes je Capture, gemessen durch DATALENGTH(nvarchar) in SQL-UTF-16-Bytes. NULL, Leerstring und ungültiges JSON sind unzulässig. Vergleichsseiten werden unabhängig attestiert. Optional kann comparisonContext genau ein Objekt mit genau contract="ssis-comparison-context", version="1.0.0" und use32BitRuntime als JSON-Boolean enthalten; fehlt diese Zusatzinformation oder ist sie ungültig, bleibt der Capture nicht automatisch ungebunden, aber der Laufzeitkontext ist unbewiesen. Beide Seiten müssen dieselben exakten Export- und Quell-/Projektversionsfelder einschließlich archiveSha256 aufweisen.'
             + NCHAR(10)
             + NCHAR(10)
-            + N'**@CandidateScopeHandoverId:** @CandidateScopeHandoverId: Datentyp uniqueidentifier, Default NULL. Als uniqueidentifier-Parameter im üblichen GUID-Format übergeben. Erforderliche UUID eines lokal auf monitor.USP_SsisPackageModelAnalysis registrierten SSIS_SCOPE_<UUID> Extended-Property-Handover; die Registrierung bindet die exakten UTF-16-Bytes des zugehörigen ProjectModelsJson und ScopeSnapshotJson und ist zeitlich gültig. Die UUID ist nur der lokale Belegschlüssel, kein JSON-Trustflag und keine selbst behauptete Attestation; eine frei erfundene oder auf einem anderen Objekt registrierte ID genügt nicht. Jede Seite wird unabhängig gegen den zu ihren Dokumentbytes passenden registrierten Beleg geprüft. Die Procedure verlangt keine gesonderte Ungleichheit der GUIDs; die Execution-IDs müssen verschieden sein. NULL ist ungültig. Der Belegname verwendet die GUID in Kleinschreibung. issuedUtc muss höchstens beim Analysebeginn liegen; expiresUtc danach und höchstens 24 Stunden nach issuedUtc'
-            + N'. Es gibt keine Mindestgültigkeitsdauer. Als uniqueidentifier-Variable oder konvertierbares GUID-Literal der Form 00000000-0000-0000-0000-000000000000 übergeben; die Null-GUID ersetzt keinen registrierten Beleg.'
+            + N'**@CandidateScopeHandoverId:** @CandidateScopeHandoverId: Datentyp uniqueidentifier, Default NULL. Als uniqueidentifier-Parameter im üblichen GUID-Format übergeben. Erforderliche UUID eines lokal in monitor.SsisHandoverReceipt registrierten Scopebelegs der Art 3; die Registrierung bindet die exakten UTF-16-Bytes des zugehörigen ProjectModelsJson und ScopeSnapshotJson und ist zeitlich gültig. Die UUID ist nur der lokale Belegschlüssel, kein JSON-Trustflag und keine selbst behauptete Attestation; eine frei erfundene UUID oder eine UUID einer anderen Belegart genügt nicht. Jede Seite wird unabhängig gegen den zu ihren Dokumentbytes passenden registrierten Beleg geprüft. Die Procedure verlangt keine gesonderte Ungleichheit der GUIDs; die Execution-IDs müssen verschieden sein. NULL ist ungültig. issuedUtc muss höchstens beim Analysebeginn liegen; expiresUtc danach und höchstens 24 Stunden nach issuedUtc. Es gibt keine Mindestgültigkeitsdauer. Als uniqueidentifier-Variable oder konvertierbar'
+            + N'es GUID-Literal der Form 00000000-0000-0000-0000-000000000000 übergeben; die Null-GUID ersetzt keinen registrierten Beleg.'
             + NCHAR(10)
             + NCHAR(10)
             + N'**@CandidateExecutionId:** @CandidateExecutionId: Datentyp bigint, Default NULL. Einzelne positive SSISDB Execution-ID im bigint-Bereich 1 bis 9.223.372.036.854.775.807. Muss zum Kandidaten-Capture passen und von sämtlichen Basis-Execution-IDs verschieden sein. NULL, 0, negative Werte oder jede Wiederholung einer Basis-ID sind ungültig.'
@@ -179723,8 +180365,8 @@ SELECT CONVERT(sysname,N'monitor') AS [SchemaName],CONVERT(sysname,N'USP_SsisExe
             + N'stens 50.000 Einträge im Scope-/Pipeline-Capture. Der Transport muss bytegenau dem lokal registrierten Scope-Handover entsprechen; nicht neu serialisieren. Höchstens 16.777.216 Bytes je Capture, gemessen durch DATALENGTH(nvarchar) in SQL-UTF-16-Bytes. NULL, Leerstring und ungültiges JSON sind unzulässig. Vergleichsseiten werden unabhängig attestiert. Optional kann comparisonContext genau ein Objekt mit genau contract="ssis-comparison-context", version="1.0.0" und use32BitRuntime als JSON-Boolean enthalten; fehlt diese Zusatzinformation oder ist sie ungültig, bleibt der Capture nicht automatisch ungebunden, aber der Laufzeitkontext ist unbewiesen. Beide Seiten müssen dieselben exakten Export- und Quell-/Projektversionsfelder einschließlich archiveSha256 aufweisen.'
             + NCHAR(10)
             + NCHAR(10)
-            + N'**@BaselineScopeHandoverId:** @BaselineScopeHandoverId: Datentyp uniqueidentifier, Default NULL. Als uniqueidentifier-Parameter im üblichen GUID-Format übergeben. Erforderliche UUID eines lokal auf monitor.USP_SsisPackageModelAnalysis registrierten SSIS_SCOPE_<UUID> Extended-Property-Handover; die Registrierung bindet die exakten UTF-16-Bytes des zugehörigen ProjectModelsJson und ScopeSnapshotJson und ist zeitlich gültig. Die UUID ist nur der lokale Belegschlüssel, kein JSON-Trustflag und keine selbst behauptete Attestation; eine frei erfundene oder auf einem anderen Objekt registrierte ID genügt nicht. Jede Seite wird unabhängig gegen den zu ihren Dokumentbytes passenden registrierten Beleg geprüft. Die Procedure verlangt keine gesonderte Ungleichheit der GUIDs; die Execution-IDs müssen verschieden sein. NULL ist ungültig. Der Belegname verwendet die GUID in Kleinschreibung. issuedUtc muss höchstens beim Analysebeginn liegen; expiresUtc danach und höchstens 24 Stunden nach issuedUtc. '
-            + N'Es gibt keine Mindestgültigkeitsdauer. Als uniqueidentifier-Variable oder konvertierbares GUID-Literal der Form 00000000-0000-0000-0000-000000000000 übergeben; die Null-GUID ersetzt keinen registrierten Beleg.'
+            + N'**@BaselineScopeHandoverId:** @BaselineScopeHandoverId: Datentyp uniqueidentifier, Default NULL. Als uniqueidentifier-Parameter im üblichen GUID-Format übergeben. Erforderliche UUID eines lokal in monitor.SsisHandoverReceipt registrierten Scopebelegs der Art 3; die Registrierung bindet die exakten UTF-16-Bytes des zugehörigen ProjectModelsJson und ScopeSnapshotJson und ist zeitlich gültig. Die UUID ist nur der lokale Belegschlüssel, kein JSON-Trustflag und keine selbst behauptete Attestation; eine frei erfundene UUID oder eine UUID einer anderen Belegart genügt nicht. Jede Seite wird unabhängig gegen den zu ihren Dokumentbytes passenden registrierten Beleg geprüft. Die Procedure verlangt keine gesonderte Ungleichheit der GUIDs; die Execution-IDs müssen verschieden sein. NULL ist ungültig. issuedUtc muss höchstens beim Analysebeginn liegen; expiresUtc danach und höchstens 24 Stunden nach issuedUtc. Es gibt keine Mindestgültigkeitsdauer. Als uniqueidentifier-Variable oder konvertierbares'
+            + N' GUID-Literal der Form 00000000-0000-0000-0000-000000000000 übergeben; die Null-GUID ersetzt keinen registrierten Beleg.'
             + NCHAR(10)
             + NCHAR(10)
             + N'**@BaselineExecutionId:** @BaselineExecutionId: Datentyp bigint, Default NULL. Einzelne positive SSISDB Execution-ID im Wertebereich 1 bis 9.223.372.036.854.775.807. Muss mit der Basis-Capture-Bindung übereinstimmen und von @CandidateExecutionId verschieden sein. NULL, 0, negative Werte und Duplikat zum Kandidaten sind ungültig. Als bigint-Zahl binden, keine Liste oder Text-Identität.'
@@ -179738,8 +180380,8 @@ SELECT CONVERT(sysname,N'monitor') AS [SchemaName],CONVERT(sysname,N'USP_SsisExe
             + N'n; höchstens 50.000 Einträge im Scope-/Pipeline-Capture. Der Transport muss bytegenau dem lokal registrierten Scope-Handover entsprechen; nicht neu serialisieren. Höchstens 16.777.216 Bytes je Capture, gemessen durch DATALENGTH(nvarchar) in SQL-UTF-16-Bytes. NULL, Leerstring und ungültiges JSON sind unzulässig. Vergleichsseiten werden unabhängig attestiert. Optional kann comparisonContext genau ein Objekt mit genau contract="ssis-comparison-context", version="1.0.0" und use32BitRuntime als JSON-Boolean enthalten; fehlt diese Zusatzinformation oder ist sie ungültig, bleibt der Capture nicht automatisch ungebunden, aber der Laufzeitkontext ist unbewiesen. Beide Seiten müssen dieselben exakten Export- und Quell-/Projektversionsfelder einschließlich archiveSha256 aufweisen.'
             + NCHAR(10)
             + NCHAR(10)
-            + N'**@CandidateScopeHandoverId:** @CandidateScopeHandoverId: Datentyp uniqueidentifier, Default NULL. Als uniqueidentifier-Parameter im üblichen GUID-Format übergeben. Erforderliche UUID eines lokal auf monitor.USP_SsisPackageModelAnalysis registrierten SSIS_SCOPE_<UUID> Extended-Property-Handover; die Registrierung bindet die exakten UTF-16-Bytes des zugehörigen ProjectModelsJson und ScopeSnapshotJson und ist zeitlich gültig. Die UUID ist nur der lokale Belegschlüssel, kein JSON-Trustflag und keine selbst behauptete Attestation; eine frei erfundene oder auf einem anderen Objekt registrierte ID genügt nicht. Jede Seite wird unabhängig gegen den zu ihren Dokumentbytes passenden registrierten Beleg geprüft. Die Procedure verlangt keine gesonderte Ungleichheit der GUIDs; die Execution-IDs müssen verschieden sein. NULL ist ungültig. Der Belegname verwendet die GUID in Kleinschreibung. issuedUtc muss höchstens beim Analysebeginn liegen; expiresUtc danach und höchstens 24 Stunden nach issuedUtc'
-            + N'. Es gibt keine Mindestgültigkeitsdauer. Als uniqueidentifier-Variable oder konvertierbares GUID-Literal der Form 00000000-0000-0000-0000-000000000000 übergeben; die Null-GUID ersetzt keinen registrierten Beleg.'
+            + N'**@CandidateScopeHandoverId:** @CandidateScopeHandoverId: Datentyp uniqueidentifier, Default NULL. Als uniqueidentifier-Parameter im üblichen GUID-Format übergeben. Erforderliche UUID eines lokal in monitor.SsisHandoverReceipt registrierten Scopebelegs der Art 3; die Registrierung bindet die exakten UTF-16-Bytes des zugehörigen ProjectModelsJson und ScopeSnapshotJson und ist zeitlich gültig. Die UUID ist nur der lokale Belegschlüssel, kein JSON-Trustflag und keine selbst behauptete Attestation; eine frei erfundene UUID oder eine UUID einer anderen Belegart genügt nicht. Jede Seite wird unabhängig gegen den zu ihren Dokumentbytes passenden registrierten Beleg geprüft. Die Procedure verlangt keine gesonderte Ungleichheit der GUIDs; die Execution-IDs müssen verschieden sein. NULL ist ungültig. issuedUtc muss höchstens beim Analysebeginn liegen; expiresUtc danach und höchstens 24 Stunden nach issuedUtc. Es gibt keine Mindestgültigkeitsdauer. Als uniqueidentifier-Variable oder konvertierbar'
+            + N'es GUID-Literal der Form 00000000-0000-0000-0000-000000000000 übergeben; die Null-GUID ersetzt keinen registrierten Beleg.'
             + NCHAR(10)
             + NCHAR(10)
             + N'**@CandidateExecutionId:** @CandidateExecutionId: Datentyp bigint, Default NULL. Einzelne positive SSISDB Execution-ID im bigint-Bereich 1 bis 9.223.372.036.854.775.807. Muss zum Kandidaten-Capture passen und von @BaselineExecutionId verschieden sein. NULL, 0, negative Werte oder gleiche ID wie die Basis sind ungültig.'
@@ -180517,7 +181159,7 @@ SELECT CONVERT(sysname,N'monitor') AS [SchemaName],CONVERT(sysname,N'USP_SsisPac
             + N'## Voraussetzungen und Rechte'
             + NCHAR(10)
             + NCHAR(10)
-            + N'Ein direkter Aufruf erfordert EXECUTE auf [monitor].[USP_SsisPackageModelAnalysis]. Die Quelle nennt insbesondere `monitor.InternalSsisExecutionScopes`, `[monitor].[InternalPrepareResultTables]`, `[sys].[sp_executesql]`, `[sys].[extended_properties]`, `[sys].[databases]`, `sys.databases`, `[sys].[schemas]`, `[sys].[objects]` und weitere im SQL-Text. Für deren Metadaten- oder Fachzugriff gelten die Rechte des jeweiligen SQL-Ausführungskontexts; der Skill erteilt sie nicht.'
+            + N'Ein direkter Aufruf erfordert EXECUTE auf [monitor].[USP_SsisPackageModelAnalysis]. Die Quelle nennt insbesondere `monitor.InternalSsisExecutionScopes`, `[monitor].[InternalPrepareResultTables]`, `[sys].[sp_executesql]`, `[monitor].[SsisHandoverReceipt]`, `[sys].[databases]`, `sys.databases`, `[sys].[schemas]`, `[sys].[objects]` und weitere im SQL-Text. Für deren Metadaten- oder Fachzugriff gelten die Rechte des jeweiligen SQL-Ausführungskontexts; der Skill erteilt sie nicht.'
             + NCHAR(10)
             + NCHAR(10)
             + N'## Parameter und Eingabe'
@@ -180631,7 +181273,7 @@ SELECT CONVERT(sysname,N'monitor') AS [SchemaName],CONVERT(sysname,N'USP_SsisPac
             + N'**@PrintMeldungen:** @PrintMeldungen: Datentyp bit. Default 1. Flat-Modus prüft NULL als ungültig, verwendet den Wert danach aber nicht; 0 und 1 haben daher dieselbe Wirkung und steuern die PRINT-Ausgabe nicht. Im Scope-Modus wird der Parameter nicht an den Helper übergeben und ist wirkungslos, auch bei NULL. @Hilfe=1 druckt seine Hilfetexte unabhängig von diesem Schalter. Die SQL-bit-Konvertierung bildet numerische Werte ungleich 0 auf 1 ab.'
             + NCHAR(10)
             + NCHAR(10)
-            + N'**@Hilfe:** @Hilfe: Datentyp bit. Default 0. 1 druckt den statischen Hilfetext und kehrt vor Datenvalidierung, Katalog-/Extended-Property-Zugriff und Scope-Delegation zurück; keine Runtime oder Eingabedaten erforderlich. @Json wird vorher auf NULL gesetzt. Andere OUTPUT-Parameter werden im Hilfezweig nicht beschrieben. 0 führt den normalen Pfad aus; NULL verhält sich wegen IF @Hilfe=1 als nicht gesetzt und läuft in die normale Verarbeitung statt als Parameterfehler abgewiesen zu werden. Die SQL-bit-Konvertierung bildet numerische Werte ungleich 0 auf 1 ab.'
+            + N'**@Hilfe:** @Hilfe: Datentyp bit. Default 0. 1 druckt den statischen Hilfetext und kehrt vor Datenvalidierung, Katalog- und Belegzugriff und Scope-Delegation zurück; keine Runtime oder Eingabedaten erforderlich. @Json wird vorher auf NULL gesetzt. Andere OUTPUT-Parameter werden im Hilfezweig nicht beschrieben. 0 führt den normalen Pfad aus; NULL verhält sich wegen IF @Hilfe=1 als nicht gesetzt und läuft in die normale Verarbeitung statt als Parameterfehler abgewiesen zu werden. Die SQL-bit-Konvertierung bildet numerische Werte ungleich 0 auf 1 ab.'
             + NCHAR(10)
             + NCHAR(10)
             + N'**@StatusCodeOut:** @StatusCodeOut: Datentyp varchar(40) OUTPUT. Default NULL OUTPUT. Mit einer varchar(40)-Variable und OUTPUT am Aufruf binden; der Eingangswert steuert keine Analyse. Im flachen Modus sind die zehn Ergebniswerte: AVAILABLE_LIMITED (Modell im implementierten begrenzten Umfang verarbeitet), INVALID_PARAMETER (ungültige Steuerwerte oder Kombination), EXCHANGE_INVALID (ungültige Modellstruktur/-typen oder nicht gesondert klassifizierter nativer Validierungsfehler), EXCHANGE_VERSION_UNSUPPORTED (Vertrags-, Versions- oder Identitätsprofilkennung nicht unterstützt), EXCHANGE_LIMIT_EXCEEDED (Größen-, Mengen-, Tiefen- oder Besitzertiefengrenze überschritten), EXCHANGE_REFERENCE_INVALID (ungültige Objekt-/Kanten-/Besitzerreferenz), EXCHANGE_PROFILE_UNSUPPORTED (nicht unterstütztes Formatprofil), EXCHANGE_SOURCE_MISMATCH (Originalbytes passen nicht zu deklariertem Paketdigest oder Länge), EXCHANGE_HANDOVER_INVALID (lokaler Producerbeleg fehlt, ist abgelaufen oder passt nicht), '
@@ -180653,7 +181295,7 @@ SELECT CONVERT(sysname,N'monitor') AS [SchemaName],CONVERT(sysname,N'USP_SsisPac
             + N'**@IncludeObjectRules:** @IncludeObjectRules: Datentyp bit. Default 0. 0 liefert keine objektbezogenen Hinweise; 1 ergänzt objectFindings aus festen Regeln und konkreten Knoten-/Kantenbelegen. Ausschließlich statische Hinweise, keine Laufzeiturteile. NULL ist im flachen Modus ungültig; im Scope-Modus muss der Schalter effektiv 0 sein (NULL wird als 1 behandelt und ist dort unzulässig). Die SQL-bit-Konvertierung bildet numerische Werte ungleich 0 auf 1 ab.'
             + NCHAR(10)
             + NCHAR(10)
-            + N'**@LocalHandoverId:** @LocalHandoverId: Datentyp uniqueidentifier. Default NULL. Optionale UUID für den lokal gespeicherten qualifizierten Producerbeleg SSIS_HANDOVER_<UUID in Kleinschreibung> auf genau dieser Procedure. Erfordert zugleich @PackageBytes; Beleg bindet exakte UTF-16-JSON-Bytes, Paketdigest/-länge, Buildhash und Source-Commit, issuedUtc darf nicht nach Analysebeginn liegen, expiresUtc muss nach Analysebeginn liegen und höchstens 24 Stunden nach issuedUtc liegen; es gibt keine Mindestgültigkeitsdauer. Ohne ID bleibt ProducerTrust UNVERIFIED; ID ist kein Caller-JSON-Trustflag. Im Scope-Modus muss NULL sein; dort gilt ausschließlich @ScopeHandoverId.'
+            + N'**@LocalHandoverId:** @LocalHandoverId: Datentyp uniqueidentifier. Default NULL. Optionale UUID für den lokal gespeicherten qualifizierten Producerbeleg der Art 1 in [monitor].[SsisHandoverReceipt]. Erfordert zugleich @PackageBytes; Beleg bindet exakte UTF-16-JSON-Bytes, Paketdigest/-länge, Buildhash und Source-Commit, issuedUtc darf nicht nach Analysebeginn liegen, expiresUtc muss nach Analysebeginn liegen und höchstens 24 Stunden nach issuedUtc liegen; es gibt keine Mindestgültigkeitsdauer. Ohne ID bleibt ProducerTrust UNVERIFIED; ID ist kein Caller-JSON-Trustflag. Im Scope-Modus muss NULL sein; dort gilt ausschließlich @ScopeHandoverId.'
             + NCHAR(10)
             + NCHAR(10)
             + N'**@IncludeSqlMetadata:** @IncludeSqlMetadata: Datentyp bit. Default 0. 0 lässt sqlMetadata aus; dann muss @SqlMetadataBindingsJson NULL sein. 1 validiert explizite paketgebundene lokale SQL-Spaltenzuordnungen und ergänzt sqlMetadata. Benötigt zugehöriges JSON; optional nur im flachen Modus, nicht mit Scope-Modus kombinierbar. NULL im flachen Modus ungültig; im Scope-Modus muss 0 sein (NULL wird als 1 behandelt und abgewiesen). Keine Paket-SQL-Ausführung oder Typkonvertierungsfreigabe. Die SQL-bit-Konvertierung bildet numerische Werte ungleich 0 auf 1 ab.'
@@ -180671,7 +181313,7 @@ SELECT CONVERT(sysname,N'monitor') AS [SchemaName],CONVERT(sysname,N'USP_SsisPac
             + N'**@ExecutionSnapshotJson:** @ExecutionSnapshotJson: Datentyp nvarchar(max). Default NULL. Nur bei @IncludeExecutionCorrelation=1: JSON-Objekt ssis-execution-snapshot mit version 1.0.0/method SSISDB_CURRENT_PROJECT_ROOT_SCOPE_V1 oder bei Iterationskorrelation 1.1.0/SSISDB_CURRENT_PROJECT_ITERATION_SCOPE_V1, identityProfile document-order-v1, Modellhash und Paketdigest, identities-Vertrag ssis-object-identities mit passender Version/PackageSha256 sowie execution-Bindungen (executionId, catalogDatabaseGuid, sourceBindingSha256, projectId, projectLsn, packageFileName, Zeit-/Statusfelder) und observations-Array. Bei 1.1.0 muss die Iterationsklassifikation im identities-Array gebunden sein. Alle Objektschlüssel müssen eindeutig sein; unbekannte Annotationen sind im Capturetransport zulässig, bekannte Bindungen werden streng geprüft. Maximal 16 MiB DATALENGTH in SQL-Bytes, Tiefe 16 und 1.048.576 JSON-Tokens. Hash bindet exakten UTF-16-Inhalt; nicht neu serialisieren. Ohne Opt-in NULL.'
             + NCHAR(10)
             + NCHAR(10)
-            + N'**@RuntimeHandoverId:** @RuntimeHandoverId: Datentyp uniqueidentifier. Default NULL. Bei @IncludeExecutionCorrelation=1 erforderlich: UUID des separat berechtigten und zeitlich gültigen Extended-Property-Belegs SSIS_RUNTIME_<UUID in Kleinschreibung>. Beleg contract ssis-local-runtime-handover 1.0.0 bindet SHA-256 des exakten ExecutionSnapshotJson und issued/expires (höchstens 24 Stunden); ersetzt weder @LocalHandoverId noch verifiziertes Modellvertrauen. Bei ausgeschalteter Korrelation und im Scope-Modus NULL.'
+            + N'**@RuntimeHandoverId:** @RuntimeHandoverId: Datentyp uniqueidentifier. Default NULL. Bei @IncludeExecutionCorrelation=1 erforderlich: UUID des separat berechtigten und zeitlich gültigen Belegs der Art 2 in [monitor].[SsisHandoverReceipt]. Beleg contract ssis-local-runtime-handover 1.0.0 bindet SHA-256 des exakten ExecutionSnapshotJson und issued/expires (höchstens 24 Stunden); ersetzt weder @LocalHandoverId noch verifiziertes Modellvertrauen. Bei ausgeschalteter Korrelation und im Scope-Modus NULL.'
             + NCHAR(10)
             + NCHAR(10)
             + N'**@IncludeIterationCorrelation:** @IncludeIterationCorrelation: Datentyp bit. Default 0. 0 lässt executionObjectSummary/executionCoverage weg; 1 erfordert zugleich @IncludeExecutionCorrelation=1 sowie den daran gebundenen Capture 1.1.0 mit SSISDB_CURRENT_PROJECT_ITERATION_SCOPE_V1 und ergänzt diese zwei Gruppen. Nur bereits vom Toolbelt gelieferte iterationContainer-Rollen werden verwendet; Analyze leitet sie nicht neu ab. NULL ungültig; im Scope-Modus muss 0 sein. Die SQL-bit-Konvertierung bildet numerische Werte ungleich 0 auf 1 ab.'
@@ -180688,7 +181330,7 @@ SELECT CONVERT(sysname,N'monitor') AS [SchemaName],CONVERT(sysname,N'USP_SsisPac
             + N'nnerhalb der Helpergrenzen liegen; gemeinsam höchstens 50.000 Einträge. Bei Pipelineopt-in sind zusätzlich arrays componentPhases (phaseStatsId, packageName, taskName, componentName, phaseName, executionPath, nullable startTime/endTime), pathTransfers (dataStatsId, packageName, taskName, pathIdentificationString, pathName, sourceComponentName, destinationComponentName, executionPath, nullable rowsSent/createdTime) und genau zwei pipelineSources erforderlich. Die Quellenobjekte enthalten source/status/errorNumber; source ist componentPhases oder pathTransfers, status AVAILABLE/AVAILABLE_EMPTY/UNAVAILABLE/DENIED_PERMISSION, errorNumber bei den letzten zwei positiv und sonst NULL. IDs sind positiv; Zähler nichtnegativ; Zeitfelder ISO-konvertierbar. Doppelte Schlüssel werden abgewiesen. Maximal 16 MiB DATALENGTH SQL-Bytes je Dokument, Tiefe 32, gemeinsames Zeitbudget. Übergabe-ID bindet exakte Dokumentbytes.'
             + NCHAR(10)
             + NCHAR(10)
-            + N'**@ScopeHandoverId:** @ScopeHandoverId: Datentyp uniqueidentifier. Default NULL. Bei @IncludeExecutionScopes=1 erforderliche UUID des lokal auf dieser Procedure registrierten Extended-Property-Belegs SSIS_SCOPE_<UUID in Kleinschreibung>. Beleg contract ssis-local-scope-handover 1.0.0 enthält genau sechs eindeutige Schlüssel einschließlich issuedUtc/expiresUtc, modelSetSha256 und captureSha256; Gültigkeit maximal 24 Stunden und Hashes binden exakt die übergebenen UTF-16-JSON-Dokumente. READCOMMITTEDLOCK verhindert Trust aus uncommittetem Beleg. Bei flachem Modus muss NULL sein.'
+            + N'**@ScopeHandoverId:** @ScopeHandoverId: Datentyp uniqueidentifier. Default NULL. Bei @IncludeExecutionScopes=1 erforderliche UUID des lokal registrierten Belegs der Art 3 in [monitor].[SsisHandoverReceipt]. Beleg contract ssis-local-scope-handover 1.0.0 enthält genau sechs eindeutige Schlüssel einschließlich issuedUtc/expiresUtc, modelSetSha256 und captureSha256; Gültigkeit maximal 24 Stunden und Hashes binden exakt die übergebenen UTF-16-JSON-Dokumente. READCOMMITTEDLOCK verhindert Trust aus uncommittetem Beleg. Bei flachem Modus muss NULL sein.'
             + NCHAR(10)
             + NCHAR(10)
             + N'**@IncludePipelineCorrelation:** @IncludePipelineCorrelation: Datentyp bit. Default 0. Nur im Scope-Modus zulässig; 0 behält die sieben Scopegruppen, 1 verlangt Scope-Modus plus Captureversion 1.1.0/Methode SSISDB_CURRENT_PROJECT_PIPELINES_V1 und gebundene pipelineIdentities sowie Komponentenphasen-/Pfadtransferquellen; ergänzt pipelineInstances, componentPhases, pathTransfers und pipelineCoverage. Im flachen Modus muss 0 sein. Scope-Helper akzeptiert keinen NULL-Wert. Schalter ist keine Lineage. Die SQL-bit-Konvertierung bildet numerische Werte ungleich 0 auf 1 ab.'
@@ -185454,7 +186096,7 @@ SELECT CONVERT(sysname,N'monitor_metadata') AS [SchemaName],CONVERT(sysname,N'VW
             + N'## Zweck und Einsatz'
             + NCHAR(10)
             + NCHAR(10)
-            + N'Die View stellt für die bekannte Frameworkrolle 193 Objekt-Skills plus diesen Self-Skill und für die Snapshot-Zielrolle 17 Objekt-Skills plus diesen Self-Skill bereit. Der Text stammt aus den versionierten Markdown-Dateien unter `Metadata/UsageSkills`; die View führt keine Objektinventur und keine Laufzeitprüfung aus. Die Self-Zeile trägt `DatabaseRole=both`, weil dieselbe kanonische Markdown-Datei in beiden Rollenprojektionen enthalten ist; alle anderen Zeilen nennen ihre jeweilige Datenbankrolle. Ein Eintrag sagt weder, dass das Objekt im aktuellen Datenbankzustand noch vorhanden ist, noch dass der Aufrufer seine Fachquellen lesen oder ausführen darf.'
+            + N'Die View stellt für die bekannte Frameworkrolle 195 Objekt-Skills plus diesen Self-Skill und für die Snapshot-Zielrolle 17 Objekt-Skills plus diesen Self-Skill bereit. Der Text stammt aus den versionierten Markdown-Dateien unter `Metadata/UsageSkills`; die View führt keine Objektinventur und keine Laufzeitprüfung aus. Die Self-Zeile trägt `DatabaseRole=both`, weil dieselbe kanonische Markdown-Datei in beiden Rollenprojektionen enthalten ist; alle anderen Zeilen nennen ihre jeweilige Datenbankrolle. Ein Eintrag sagt weder, dass das Objekt im aktuellen Datenbankzustand noch vorhanden ist, noch dass der Aufrufer seine Fachquellen lesen oder ausführen darf.'
             + NCHAR(10)
             + NCHAR(10)
             + N'## Voraussetzungen und Rechte'

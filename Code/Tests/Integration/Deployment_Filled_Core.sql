@@ -36,3 +36,7 @@ CREATE OR ALTER VIEW monitor.VW_AnalyseAccessPolicy AS
 SELECT CAST('PLAN_CACHE_DEEP' AS varchar(64)) AnalysisClass,CAST(N'SYNTHETIC\GROUP' AS nvarchar(256)) ADGroupName,CAST(1 AS bit) IsEnabled,
 CAST(NULL AS datetime2(0)) ValidFromUtc,CAST(NULL AS datetime2(0)) ValidToUtc,CAST(100 AS smallint) Priority,CAST(N'Ä漢字  ' AS nvarchar(1000)) Comment;
 GO
+
+INSERT [monitor].[SsisHandoverReceipt] ([ReceiptKind],[HandoverId],[ReceiptJson])
+VALUES (1,NEWID(),N'{"fixture":"synthetic deployment preservation"}');
+GO

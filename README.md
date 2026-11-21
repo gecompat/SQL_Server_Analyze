@@ -293,9 +293,9 @@ Das Framework folgt den folgenden Betriebs- und Schutzregeln:
 
 Die folgenden aktuellen Inventarzahlen betreffen den Repositoryquellstand mit Usage Skills. Das veröffentlichte ZIP v1.2.0 enthält diese Erweiterung noch nicht.
 
-Der aktuelle Inventarvertrag umfasst 211 Objekte: 128 öffentliche Procedures, 9 Views, 29 Table-Valued Functions, 25 interne Procedures und 20 Tabellen.
+Der aktuelle Inventarvertrag umfasst 213 Objekte: 128 öffentliche Procedures, 9 Views, 29 Table-Valued Functions, 26 interne Procedures und 21 Tabellen.
 
-Der Frameworkkern umfasst 187 Objekte mit 125 öffentlichen Procedures und 9 Tabellen. Das optionale Snapshotpaket umfasst 24 Objekte mit 3 öffentlichen Procedures und 11 Tabellen.
+Der Frameworkkern umfasst 189 Objekte mit 125 öffentlichen Procedures und 10 Tabellen. Das optionale Snapshotpaket umfasst 24 Objekte mit 3 öffentlichen Procedures und 11 Tabellen.
 
 Der Coreinstaller installiert die 125 öffentlichen Core-Procedures;
 die drei Snapshot-Procedures und deren

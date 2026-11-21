@@ -12,14 +12,14 @@ SET @Models=(SELECT 'ssis-project-model-set' contract,'1.0.0' version,'p1' rootP
 
 -- Zwei unabhängig attestierte synthetische Captures mit verschiedenen nativen
 -- IDs. Der gemeinsame Modellfixtureblock stammt weiterhin aus Toolbelt.
-DECLARE @BId uniqueidentifier=NEWID(),@CId uniqueidentifier=NEWID(),@BName sysname,@CName sysname,
+DECLARE @BId uniqueidentifier=NEWID(),@CId uniqueidentifier=NEWID(),
  @B nvarchar(max),@C nvarchar(max),@CM nvarchar(max),@Now datetime2(3)=SYSUTCDATETIME(),@Receipt nvarchar(3000),
  @CreatedB bit=0,@CreatedC bit=0,@Case int=0,@Json nvarchar(max),@Status varchar(40),@Reason nvarchar(2048),
  @Abs bigint,@Pct decimal(9,4),@Limit int,@Duration int,@RequestedCandidate bigint,@RequestedHandover uniqueidentifier,
  @Failure nvarchar(2048),@i int,@Path nvarchar(128),@Extra nvarchar(max),@OriginalLock int=@@LOCK_TIMEOUT,
  @MetricsCloneCreated bit=0,
  @OriginalX bit=CASE WHEN @@OPTIONS&16384=16384 THEN 1 ELSE 0 END;
-SET @BName=N'SSIS_SCOPE_'+LOWER(CONVERT(nvarchar(36),@BId));SET @CName=N'SSIS_SCOPE_'+LOWER(CONVERT(nvarchar(36),@CId));
+
 BEGIN TRY
 
  -- Der Regressionstest bindet die Kopie an das Rohmodul und ersetzt nur die bekannte Call-Stelle.
@@ -262,11 +262,11 @@ BEGIN TRY
   SET @B=JSON_MODIFY(@B,'$.modelSetSha256',CONVERT(varchar(64),HASHBYTES('SHA2_256',CONVERT(varbinary(max),@Models)),2));
   SET @C=JSON_MODIFY(@C,'$.modelSetSha256',CONVERT(varchar(64),HASHBYTES('SHA2_256',CONVERT(varbinary(max),@CM)),2));
   SET @Receipt=(SELECT 'ssis-local-scope-handover' contract,'1.0.0' version,CONVERT(varchar(64),HASHBYTES('SHA2_256',CONVERT(varbinary(max),@Models)),2) modelSetSha256,CONVERT(varchar(64),HASHBYTES('SHA2_256',CONVERT(varbinary(max),@B)),2) captureSha256,CONVERT(varchar(24),@Now,127)+'Z' issuedUtc,CONVERT(varchar(24),DATEADD(hour,1,@Now),127)+'Z' expiresUtc FOR JSON PATH,WITHOUT_ARRAY_WRAPPER);
-  IF @CreatedB=0 BEGIN EXEC sys.sp_addextendedproperty @name=@BName,@value=@Receipt,@level0type=N'SCHEMA',@level0name=N'monitor',@level1type=N'PROCEDURE',@level1name=N'USP_SsisPackageModelAnalysis';SET @CreatedB=1;END;
-  ELSE EXEC sys.sp_updateextendedproperty @name=@BName,@value=@Receipt,@level0type=N'SCHEMA',@level0name=N'monitor',@level1type=N'PROCEDURE',@level1name=N'USP_SsisPackageModelAnalysis';
+  IF @CreatedB=0 BEGIN INSERT [monitor].[SsisHandoverReceipt] ([ReceiptKind],[HandoverId],[ReceiptJson]) VALUES(3,@BId,@Receipt);SET @CreatedB=1;END;
+  ELSE UPDATE [monitor].[SsisHandoverReceipt] SET [ReceiptJson]=@Receipt WHERE [ReceiptKind]=3 AND [HandoverId]=@BId;
   SET @Receipt=(SELECT 'ssis-local-scope-handover' contract,'1.0.0' version,CONVERT(varchar(64),HASHBYTES('SHA2_256',CONVERT(varbinary(max),@CM)),2) modelSetSha256,CONVERT(varchar(64),HASHBYTES('SHA2_256',CONVERT(varbinary(max),@C)),2) captureSha256,CONVERT(varchar(24),@Now,127)+'Z' issuedUtc,CONVERT(varchar(24),DATEADD(hour,1,@Now),127)+'Z' expiresUtc FOR JSON PATH,WITHOUT_ARRAY_WRAPPER);
-  IF @CreatedC=0 BEGIN EXEC sys.sp_addextendedproperty @name=@CName,@value=@Receipt,@level0type=N'SCHEMA',@level0name=N'monitor',@level1type=N'PROCEDURE',@level1name=N'USP_SsisPackageModelAnalysis';SET @CreatedC=1;END;
-  ELSE EXEC sys.sp_updateextendedproperty @name=@CName,@value=@Receipt,@level0type=N'SCHEMA',@level0name=N'monitor',@level1type=N'PROCEDURE',@level1name=N'USP_SsisPackageModelAnalysis';
+  IF @CreatedC=0 BEGIN INSERT [monitor].[SsisHandoverReceipt] ([ReceiptKind],[HandoverId],[ReceiptJson]) VALUES(3,@CId,@Receipt);SET @CreatedC=1;END;
+  ELSE UPDATE [monitor].[SsisHandoverReceipt] SET [ReceiptJson]=@Receipt WHERE [ReceiptKind]=3 AND [HandoverId]=@CId;
   IF @Case=15 SET @C=JSON_MODIFY(@C,'$.pathTransfers[0].rowsSent',99);
   IF @Case=19 SET @C=N'kein JSON';
   SET LOCK_TIMEOUT 1234;SET XACT_ABORT ON;
@@ -309,15 +309,15 @@ BEGIN TRY
  BEGIN TRY EXEC monitor.USP_SsisExecutionComparison @ResultSetArt='NONE',@ResultTablesJson=N'{}';END TRY BEGIN CATCH IF ERROR_NUMBER()=51011 SET @MappingError=1;ELSE THROW;END CATCH;
  IF @MappingError=0 THROW 57931,N'COMPARISON_NON_TABLE_MAPPING',1;
  DROP TABLE #SyntheticComparisonError;
- EXEC sys.sp_dropextendedproperty @name=@BName,@level0type=N'SCHEMA',@level0name=N'monitor',@level1type=N'PROCEDURE',@level1name=N'USP_SsisPackageModelAnalysis';SET @CreatedB=0;
- EXEC sys.sp_dropextendedproperty @name=@CName,@level0type=N'SCHEMA',@level0name=N'monitor',@level1type=N'PROCEDURE',@level1name=N'USP_SsisPackageModelAnalysis';SET @CreatedC=0;
+ DELETE [monitor].[SsisHandoverReceipt] WHERE [ReceiptKind]=3 AND [HandoverId]=@BId;SET @CreatedB=0;
+ DELETE [monitor].[SsisHandoverReceipt] WHERE [ReceiptKind]=3 AND [HandoverId]=@CId;SET @CreatedC=0;
  SET @Failure=N'SET LOCK_TIMEOUT '+CONVERT(nvarchar(20),@OriginalLock)+N';';EXEC sys.sp_executesql @Failure;
  PRINT N'SSIS_EXECUTION_COMPARISON_PASS cases=38';
 END TRY
 BEGIN CATCH
  IF @MetricsCloneCreated=1 DROP PROCEDURE monitor.InternalSsisExecutionMetrics_NullStatusRegression;
- IF @CreatedB=1 EXEC sys.sp_dropextendedproperty @name=@BName,@level0type=N'SCHEMA',@level0name=N'monitor',@level1type=N'PROCEDURE',@level1name=N'USP_SsisPackageModelAnalysis';
- IF @CreatedC=1 EXEC sys.sp_dropextendedproperty @name=@CName,@level0type=N'SCHEMA',@level0name=N'monitor',@level1type=N'PROCEDURE',@level1name=N'USP_SsisPackageModelAnalysis';
+ IF @CreatedB=1 DELETE [monitor].[SsisHandoverReceipt] WHERE [ReceiptKind]=3 AND [HandoverId]=@BId;
+ IF @CreatedC=1 DELETE [monitor].[SsisHandoverReceipt] WHERE [ReceiptKind]=3 AND [HandoverId]=@CId;
  THROW;
 END CATCH;
 GO

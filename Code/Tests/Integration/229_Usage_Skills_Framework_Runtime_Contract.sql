@@ -48,9 +48,9 @@ JOIN [sys].[objects] AS [o] ON [o].[schema_id]=[s].[schema_id]
                             AND [o].[name] COLLATE Latin1_General_100_BIN2
                                =[x].[ObjectName] COLLATE Latin1_General_100_BIN2;
 SET @FullProfile=CASE WHEN @SnapshotPresentCount=7 THEN 1 ELSE 0 END;
-SET @RowBad=CASE WHEN (SELECT COUNT_BIG(*) FROM [monitor_metadata].[VW_ObjectUsageSkills])=194 THEN 0 ELSE 1 END;
+SET @RowBad=CASE WHEN (SELECT COUNT_BIG(*) FROM [monitor_metadata].[VW_ObjectUsageSkills])=196 THEN 0 ELSE 1 END;
 SET @RoleBad=CASE WHEN (SELECT COUNT_BIG(*) FROM [monitor_metadata].[VW_ObjectUsageSkills]
-                       WHERE [DatabaseRole] IN ('framework','both'))=194 THEN 0 ELSE 1 END;
+                       WHERE [DatabaseRole] IN ('framework','both'))=196 THEN 0 ELSE 1 END;
 SELECT @MetadataBad=COUNT(*)
 FROM [monitor_metadata].[VW_ObjectUsageSkills] AS [v]
 WHERE [v].[SkillFormatVersion]<>'1.0.0' OR [v].[SkillFormatVersion] IS NULL
@@ -136,7 +136,7 @@ IF DATALENGTH(@SyntheticUnicode)<>8222
  OR HASHBYTES('SHA2_256',CONVERT(varbinary(max),@SyntheticUnicode))<>0x95518a6a562daf2bd920daabbf829094f21fca296329e2eda12dbc26bc8164c5
     THROW 59021,N'USAGE_SKILL_UNICODE_TRANSPORT_CONTROL',1;
 
--- Independently pinned UTF-16LE length and SHA-256 of six canonical Markdown files.
+-- Independently pinned UTF-16LE length and SHA-256 of seven canonical Markdown files.
 -- The five type pilots and the longest Skill catch shared View/Help truncation.
 DECLARE @CanonicalPilot TABLE([ObjectName] sysname PRIMARY KEY,[ExpectedBytes] bigint NOT NULL,[ExpectedSha] varbinary(32) NOT NULL);
 INSERT @CanonicalPilot VALUES
@@ -145,8 +145,9 @@ INSERT @CanonicalPilot VALUES
 (N'TVF_ParsePipeList',CONVERT(bigint,5888),0x10eec0e891ef92f04c1ed218b2d279eaf1ff5e98e9c79ca9fa2d2224dec7b4a6),
 (N'VW_ModuleStatusCatalog',CONVERT(bigint,7718),0x3cdf57076b7ec923c9424a743aca6238f45026bf112b0729d768240c9c22a8ae),
 (N'FrameworkVersion',CONVERT(bigint,10402),0xb914a32160354a59f3f08208bf2e157bc33810b583d2e00900678fa328511bd0),
-(N'USP_SsisPackageModelAnalysis',CONVERT(bigint,111532),0x99fe8faf3f7ee6c8cbed7a9600bc6d4c97c57deb80b72e9d7f21198337ea0040);
-IF (SELECT COUNT_BIG(*) FROM @CanonicalPilot)<>6
+(N'USP_SsisPackageModelAnalysis',CONVERT(bigint,111392),0xa50ad055937b568f6c057bdae8d7be6a2bb8389fb41a752a4925ef5c40203468),
+(N'InternalManageSsisHandoverReceipt',CONVERT(bigint,9604),0xf8ead827a4552956e0a117999bc1d3ae408116808cec6b2c2a99912484a52d89);
+IF (SELECT COUNT_BIG(*) FROM @CanonicalPilot)<>7
  OR EXISTS
  (
    SELECT 1 FROM @CanonicalPilot AS [p]
@@ -160,10 +161,10 @@ IF (SELECT COUNT_BIG(*) FROM @CanonicalPilot)<>6
  )
     THROW 59017,N'USAGE_SKILL_CANONICAL_TEXT_ORACLE',1;
 
-DECLARE @ExpectedProcedureCount int=CASE WHEN @FullProfile=1 THEN 146 ELSE 140 END,@PilotProcedureCount int=2,
+DECLARE @ExpectedProcedureCount int=CASE WHEN @FullProfile=1 THEN 147 ELSE 141 END,@PilotProcedureCount int=2,
         @PilotPublic sysname=N'USP_CurrentObjectPermissionAnalysis',
         @PilotInternal sysname=N'InternalWriteResultTable';
-IF (SELECT COUNT_BIG(*) FROM [monitor_metadata].[VW_ObjectUsageSkills] WHERE [ObjectType] IN ('PROCEDURE','INTERNAL_PROCEDURE'))<>146
+IF (SELECT COUNT_BIG(*) FROM [monitor_metadata].[VW_ObjectUsageSkills] WHERE [ObjectType] IN ('PROCEDURE','INTERNAL_PROCEDURE'))<>147
     THROW 59004,N'USAGE_SKILL_PROCEDURE_POPULATION',1;
 
 DECLARE @Stage int=0,@HelpCalls int=0,@Schema sysname,@Object sysname,@ObjectId int,
@@ -253,13 +254,14 @@ INSERT @SentinelCalls([SchemaName],[ObjectName],[CallSql]) VALUES
 (N'monitor',N'InternalCollectExecutionPlanMetadata',N'DECLARE @u1 varchar(40)=''USAGE_SENTINEL'';DECLARE @u2 bit=CONVERT(bit,1);DECLARE @u3 int=CONVERT(int,1737);DECLARE @u4 nvarchar(2048)=N''UsageSentinel'';EXEC [monitor].[InternalCollectExecutionPlanMetadata] @PlanXml=NULL,@StatistikEvidenzModus=NULL,@HistogrammModus=NULL,@QuellumgebungBestaetigt=NULL,@MitPredicateHistogramMap=NULL,@MaxStatistiken=NULL,@MaxHistogrammSchritte=NULL,@LockTimeoutMs=NULL,@HighImpactConfirmed=NULL,@StatusCodeOut=@u1 OUTPUT,@IsPartialOut=@u2 OUTPUT,@ErrorNumberOut=@u3 OUTPUT,@ErrorMessageOut=@u4 OUTPUT,@Hilfe=1;IF @u1 IS NULL OR @u1<>''USAGE_SENTINEL'' THROW 59005,N''USAGE_HELP_OUTPUT_SENTINEL'',1;IF @u2 IS NULL OR @u2<>CONVERT(bit,1) THROW 59005,N''USAGE_HELP_OUTPUT_SENTINEL'',1;IF @u3 IS NULL OR @u3<>CONVERT(int,1737) THROW 59005,N''USAGE_HELP_OUTPUT_SENTINEL'',1;IF @u4 IS NULL OR @u4<>N''UsageSentinel'' THROW 59005,N''USAGE_HELP_OUTPUT_SENTINEL'',1;'),
 (N'monitor',N'InternalAnalyzeExecutionPlan',N'DECLARE @u1 varchar(40)=''USAGE_SENTINEL'';DECLARE @u2 bit=CONVERT(bit,1);DECLARE @u3 int=CONVERT(int,1737);DECLARE @u4 nvarchar(2048)=N''UsageSentinel'';EXEC [monitor].[InternalAnalyzeExecutionPlan] @AnalysisObjectId=NULL,@PlanXml=NULL,@PlanSource=NULL,@RuntimeCounterScope=NULL,@WorkloadProfile=NULL,@MinSeverity=NULL,@EvidenceJson=NULL,@MitThreadRuntime=NULL,@EvidenzDatenschutzModus=NULL,@IdentifierDatenschutzModus=NULL,@SourceObservedAtUtc=NULL,@ParameterEvidenceSessionId=NULL,@ParameterEvidenceRequestId=NULL,@PlanHandle=NULL,@QueryStoreDatabaseName=NULL,@QueryStorePlanId=NULL,@StatusCodeOut=@u1 OUTPUT,@IsPartialOut=@u2 OUTPUT,@ErrorNumberOut=@u3 OUTPUT,@ErrorMessageOut=@u4 OUTPUT,@Hilfe=1;IF @u1 IS NULL OR @u1<>''USAGE_SENTINEL'' THROW 59005,N''USAGE_HELP_OUTPUT_SENTINEL'',1;IF @u2 IS NULL OR @u2<>CONVERT(bit,1) THROW 59005,N''USAGE_HELP_OUTPUT_SENTINEL'',1;IF @u3 IS NULL OR @u3<>CONVERT(int,1737) THROW 59005,N''USAGE_HELP_OUTPUT_SENTINEL'',1;IF @u4 IS NULL OR @u4<>N''UsageSentinel'' THROW 59005,N''USAGE_HELP_OUTPUT_SENTINEL'',1;'),
 (N'monitor',N'InternalSsisExecutionScopes',N'DECLARE @u1 nvarchar(max)=N''UsageSentinel'';DECLARE @u2 varchar(40)=''USAGE_SENTINEL'';DECLARE @u3 bit=CONVERT(bit,1);DECLARE @u4 int=CONVERT(int,1737);DECLARE @u5 nvarchar(2048)=N''UsageSentinel'';EXEC [monitor].[InternalSsisExecutionScopes] @IncludePipelineCorrelation=NULL,@Models=NULL,@Capture=NULL,@Handover=NULL,@ExecutionId=NULL,@MaxZeilen=NULL,@MaxDurationSeconds=NULL,@LockTimeoutMs=NULL,@ResultSetArt=NULL,@ResultTablesJson=NULL,@JsonErzeugen=NULL,@Json=@u1 OUTPUT,@StatusCodeOut=@u2 OUTPUT,@IsPartialOut=@u3 OUTPUT,@ErrorNumberOut=@u4 OUTPUT,@ErrorMessageOut=@u5 OUTPUT,@IncludePipelineDiagnostics=NULL,@PipelinePhaseThresholdMs=NULL,@Hilfe=1;IF @u1 IS NULL OR @u1<>N''UsageSentinel'' THROW 59005,N''USAGE_HELP_OUTPUT_SENTINEL'',1;IF @u2 IS NULL OR @u2<>''USAGE_SENTINEL'' THROW 59005,N''USAGE_HELP_OUTPUT_SENTINEL'',1;IF @u3 IS NULL OR @u3<>CONVERT(bit,1) THROW 59005,N''USAGE_HELP_OUTPUT_SENTINEL'',1;IF @u4 IS NULL OR @u4<>CONVERT(int,1737) THROW 59005,N''USAGE_HELP_OUTPUT_SENTINEL'',1;IF @u5 IS NULL OR @u5<>N''UsageSentinel'' THROW 59005,N''USAGE_HELP_OUTPUT_SENTINEL'',1;'),
+(N'monitor',N'InternalManageSsisHandoverReceipt',N'EXEC [monitor].[InternalManageSsisHandoverReceipt] @Action=NULL,@Hilfe=1;'),
 (N'monitor',N'InternalSsisPipelineCorrelation',N'EXEC [monitor].[InternalSsisPipelineCorrelation] @Models=NULL,@Capture=NULL,@Bound=NULL,@Deadline=NULL,@Limit=NULL,@Hilfe=1;'),
 (N'monitor',N'InternalSsisPipelineDiagnostics',N'EXEC [monitor].[InternalSsisPipelineDiagnostics] @Models=NULL,@Bound=NULL,@Deadline=NULL,@Limit=NULL,@PipelinePhaseThresholdMs=NULL,@Hilfe=1;'),
 (N'monitor',N'InternalValidateSnapshotWaitTarget',N'DECLARE @u1 int=CONVERT(int,1737);DECLARE @u2 datetime=CONVERT(datetime,''20010101'',112);DECLARE @u3 varchar(40)=''USAGE_SENTINEL'';DECLARE @u4 int=CONVERT(int,1737);DECLARE @u5 nvarchar(2048)=N''UsageSentinel'';EXEC [monitor].[InternalValidateSnapshotWaitTarget] @TargetDatabaseName=NULL,@ExpectedTargetDatabaseId=NULL,@ExpectedTargetCreateDate=NULL,@TargetDatabaseIdOut=@u1 OUTPUT,@TargetCreateDateOut=@u2 OUTPUT,@StatusCodeOut=@u3 OUTPUT,@ErrorNumberOut=@u4 OUTPUT,@ErrorMessageOut=@u5 OUTPUT,@CollectorCode=NULL,@Hilfe=1;IF @u1 IS NULL OR @u1<>CONVERT(int,1737) THROW 59005,N''USAGE_HELP_OUTPUT_SENTINEL'',1;IF @u2 IS NULL OR @u2<>CONVERT(datetime,''20010101'',112) THROW 59005,N''USAGE_HELP_OUTPUT_SENTINEL'',1;IF @u3 IS NULL OR @u3<>''USAGE_SENTINEL'' THROW 59005,N''USAGE_HELP_OUTPUT_SENTINEL'',1;IF @u4 IS NULL OR @u4<>CONVERT(int,1737) THROW 59005,N''USAGE_HELP_OUTPUT_SENTINEL'',1;IF @u5 IS NULL OR @u5<>N''UsageSentinel'' THROW 59005,N''USAGE_HELP_OUTPUT_SENTINEL'',1;'),
 (N'monitor',N'InternalRunSnapshotWaitStatsCycle',N'DECLARE @u1 bigint=CONVERT(bigint,17377);DECLARE @u2 sysname=N''UsageSentinel'';DECLARE @u3 varchar(40)=''USAGE_SENTINEL'';DECLARE @u4 bit=CONVERT(bit,1);DECLARE @u5 int=CONVERT(int,1737);DECLARE @u6 nvarchar(2048)=N''UsageSentinel'';EXEC [monitor].[InternalRunSnapshotWaitStatsCycle] @SchedulerType=NULL,@RunEvenIfNotDue=NULL,@CaptureRunIdOut=@u1 OUTPUT,@TargetDatabaseNameOut=@u2 OUTPUT,@StatusCodeOut=@u3 OUTPUT,@IsPartialOut=@u4 OUTPUT,@ErrorNumberOut=@u5 OUTPUT,@ErrorMessageOut=@u6 OUTPUT,@Hilfe=1;IF @u1 IS NULL OR @u1<>CONVERT(bigint,17377) THROW 59005,N''USAGE_HELP_OUTPUT_SENTINEL'',1;IF @u2 IS NULL OR @u2<>N''UsageSentinel'' THROW 59005,N''USAGE_HELP_OUTPUT_SENTINEL'',1;IF @u3 IS NULL OR @u3<>''USAGE_SENTINEL'' THROW 59005,N''USAGE_HELP_OUTPUT_SENTINEL'',1;IF @u4 IS NULL OR @u4<>CONVERT(bit,1) THROW 59005,N''USAGE_HELP_OUTPUT_SENTINEL'',1;IF @u5 IS NULL OR @u5<>CONVERT(int,1737) THROW 59005,N''USAGE_HELP_OUTPUT_SENTINEL'',1;IF @u6 IS NULL OR @u6<>N''UsageSentinel'' THROW 59005,N''USAGE_HELP_OUTPUT_SENTINEL'',1;'),
 (N'monitor',N'InternalRunSnapshotFileIOCycle',N'DECLARE @u1 bigint=CONVERT(bigint,17377);DECLARE @u2 sysname=N''UsageSentinel'';DECLARE @u3 varchar(40)=''USAGE_SENTINEL'';DECLARE @u4 bit=CONVERT(bit,1);DECLARE @u5 int=CONVERT(int,1737);DECLARE @u6 nvarchar(2048)=N''UsageSentinel'';EXEC [monitor].[InternalRunSnapshotFileIOCycle] @SchedulerType=NULL,@RunEvenIfNotDue=NULL,@CaptureRunIdOut=@u1 OUTPUT,@TargetDatabaseNameOut=@u2 OUTPUT,@StatusCodeOut=@u3 OUTPUT,@IsPartialOut=@u4 OUTPUT,@ErrorNumberOut=@u5 OUTPUT,@ErrorMessageOut=@u6 OUTPUT,@DatabaseNames=NULL,@SystemdatenbankenEinbeziehen=NULL,@DatabaseNamePattern=NULL,@Hilfe=1;IF @u1 IS NULL OR @u1<>CONVERT(bigint,17377) THROW 59005,N''USAGE_HELP_OUTPUT_SENTINEL'',1;IF @u2 IS NULL OR @u2<>N''UsageSentinel'' THROW 59005,N''USAGE_HELP_OUTPUT_SENTINEL'',1;IF @u3 IS NULL OR @u3<>''USAGE_SENTINEL'' THROW 59005,N''USAGE_HELP_OUTPUT_SENTINEL'',1;IF @u4 IS NULL OR @u4<>CONVERT(bit,1) THROW 59005,N''USAGE_HELP_OUTPUT_SENTINEL'',1;IF @u5 IS NULL OR @u5<>CONVERT(int,1737) THROW 59005,N''USAGE_HELP_OUTPUT_SENTINEL'',1;IF @u6 IS NULL OR @u6<>N''UsageSentinel'' THROW 59005,N''USAGE_HELP_OUTPUT_SENTINEL'',1;'),
 (N'monitor',N'InternalSsisExecutionMetrics',N'DECLARE @u1 nvarchar(max)=N''UsageSentinel'';DECLARE @u2 varchar(40)=''USAGE_SENTINEL'';DECLARE @u3 bit=CONVERT(bit,1);DECLARE @u4 bit=CONVERT(bit,1);DECLARE @u5 nvarchar(max)=N''UsageSentinel'';DECLARE @u6 int=CONVERT(int,1737);DECLARE @u7 varchar(64)=''USAGE_SENTINEL'';EXEC [monitor].[InternalSsisExecutionMetrics] @RunOrdinal=NULL,@Models=NULL,@Capture=NULL,@HandoverId=NULL,@ExecutionId=NULL,@Deadline=NULL,@LockTimeoutMs=NULL,@AnalysisJson=@u1 OUTPUT,@StatusCodeOut=@u2 OUTPUT,@Use32BitRuntimeOut=@u3 OUTPUT,@BoundOut=@u4 OUTPUT,@MetricsJson=@u5 OUTPUT,@ErrorNumberOut=@u6 OUTPUT,@ReasonCodeOut=@u7 OUTPUT,@Hilfe=1;IF @u1 IS NULL OR @u1<>N''UsageSentinel'' THROW 59005,N''USAGE_HELP_OUTPUT_SENTINEL'',1;IF @u2 IS NULL OR @u2<>''USAGE_SENTINEL'' THROW 59005,N''USAGE_HELP_OUTPUT_SENTINEL'',1;IF @u3 IS NULL OR @u3<>CONVERT(bit,1) THROW 59005,N''USAGE_HELP_OUTPUT_SENTINEL'',1;IF @u4 IS NULL OR @u4<>CONVERT(bit,1) THROW 59005,N''USAGE_HELP_OUTPUT_SENTINEL'',1;IF @u5 IS NULL OR @u5<>N''UsageSentinel'' THROW 59005,N''USAGE_HELP_OUTPUT_SENTINEL'',1;IF @u6 IS NULL OR @u6<>CONVERT(int,1737) THROW 59005,N''USAGE_HELP_OUTPUT_SENTINEL'',1;IF @u7 IS NULL OR @u7<>''USAGE_SENTINEL'' THROW 59005,N''USAGE_HELP_OUTPUT_SENTINEL'',1;');
-IF (SELECT COUNT_BIG(*) FROM @SentinelCalls)<>18
+IF (SELECT COUNT_BIG(*) FROM @SentinelCalls)<>19
     THROW 59010,N'USAGE_SKILL_OUTPUT_CONTRACT_COUNT',1;
 DECLARE @SentinelCount int=0;
 DECLARE [UsageSkillSentinelCursor] CURSOR LOCAL FAST_FORWARD FOR
@@ -302,7 +304,7 @@ BEGIN
     FETCH NEXT FROM [UsageSkillSentinelCursor] INTO @Schema,@Object,@CallSql;
 END;
 CLOSE [UsageSkillSentinelCursor];DEALLOCATE [UsageSkillSentinelCursor];
-IF @SentinelCount<>CASE WHEN @FullProfile=1 THEN 18 ELSE 15 END THROW 59013,N'USAGE_SKILL_OUTPUT_COVERAGE',1;
+IF @SentinelCount<>CASE WHEN @FullProfile=1 THEN 19 ELSE 16 END THROW 59013,N'USAGE_SKILL_OUTPUT_COVERAGE',1;
 -- SQL still binds required arguments even when the early Help branch would return.
 BEGIN TRY
     EXEC [monitor].[InternalWriteResultTable] @Hilfe=1;

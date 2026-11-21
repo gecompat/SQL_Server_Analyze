@@ -438,7 +438,8 @@ Der native Importer unterstützt `@LocalHandoverId` nach dem
 Der optionale externe Analyze-Zulieferadapter führt ausschließlich einen
 unabhängig freigegebenen Snapshot des bestehenden Toolbelt-Exporthosts aus.
 Er verwendet dessen kanonischen Parser unverändert und registriert das konkrete
-validierte Ergebnis über getrennte ALTER-Autorität an der Analyze-Procedure.
+validierte Ergebnis über den lokalen Registrierungshelper. Der Aussteller
+benötigt ALTER auf der Analyze-Prozedur sowie EXECUTE auf dem Helper.
 Ein normaler EXECUTE-Caller kann daraus keinen eigenen Beleg erzeugen.
 
 Der lokale Vertrag bindet den exakten JSON-String, die Originalpaketbytes,
@@ -448,8 +449,10 @@ weder die semantische Richtigkeit des Modells noch eine Ausführungsrevision.
 Administratoren mit Änderungsrechten an der Procedure sind die explizite
 Vertrauenswurzel. Der Pfad führt keine Fernsignatur, Schlüsselregistrierung,
 CLR-Abhängigkeit oder automatische Berechtigungsänderung ein.
-Die [SQL-Server-Dokumentation](https://learn.microsoft.com/en-us/sql/relational-databases/system-stored-procedures/sp-addextendedproperty-transact-sql)
-beschreibt die Metadatenrechte der verwendeten Extended Properties.
+Die Belegtabelle `monitor.SsisHandoverReceipt` unterscheidet Modell-, Laufzeit-
+und Scopebelege anhand von Belegart und UUID. Analyse und Registrierung greifen
+über statisches SQL mit gemeinsamem Eigentümer auf die Tabelle zu. Der Helper
+prüft die ALTER-Autorität im Aufruferkontext.
 
 ## Vierte Welle: gebundener Ausführungscapture
 

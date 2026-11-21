@@ -89,7 +89,7 @@ Die folgenden 32 Verträge unterscheiden den flachen Einzelmodellimport und den 
 
 ### @Hilfe
 
-**Datentyp:** `bit`. Default 0. 1 druckt den statischen Hilfetext und kehrt vor Datenvalidierung, Katalog-/Extended-Property-Zugriff und Scope-Delegation zurück; keine Runtime oder Eingabedaten erforderlich. @Json wird vorher auf NULL gesetzt. Andere OUTPUT-Parameter werden im Hilfezweig nicht beschrieben. 0 führt den normalen Pfad aus; NULL verhält sich wegen IF @Hilfe=1 als nicht gesetzt und läuft in die normale Verarbeitung statt als Parameterfehler abgewiesen zu werden. Die SQL-bit-Konvertierung bildet numerische Werte ungleich 0 auf 1 ab.
+**Datentyp:** `bit`. Default 0. 1 druckt den statischen Hilfetext und kehrt vor Datenvalidierung, Katalog- und Belegzugriff und Scope-Delegation zurück; keine Runtime oder Eingabedaten erforderlich. @Json wird vorher auf NULL gesetzt. Andere OUTPUT-Parameter werden im Hilfezweig nicht beschrieben. 0 führt den normalen Pfad aus; NULL verhält sich wegen IF @Hilfe=1 als nicht gesetzt und läuft in die normale Verarbeitung statt als Parameterfehler abgewiesen zu werden. Die SQL-bit-Konvertierung bildet numerische Werte ungleich 0 auf 1 ab.
 
 ### @StatusCodeOut
 
@@ -117,7 +117,7 @@ Die folgenden 32 Verträge unterscheiden den flachen Einzelmodellimport und den 
 
 ### @LocalHandoverId
 
-**Datentyp:** `uniqueidentifier`. Default NULL. Optionale UUID für den lokal gespeicherten qualifizierten Producerbeleg SSIS_HANDOVER_<UUID in Kleinschreibung> auf genau dieser Procedure. Erfordert zugleich @PackageBytes; Beleg bindet exakte UTF-16-JSON-Bytes, Paketdigest/-länge, Buildhash und Source-Commit, issuedUtc darf nicht nach Analysebeginn liegen, expiresUtc muss nach Analysebeginn liegen und höchstens 24 Stunden nach issuedUtc liegen; es gibt keine Mindestgültigkeitsdauer. Ohne ID bleibt ProducerTrust UNVERIFIED; ID ist kein Caller-JSON-Trustflag. Im Scope-Modus muss NULL sein; dort gilt ausschließlich @ScopeHandoverId.
+**Datentyp:** `uniqueidentifier`. Default NULL. Optionale UUID für den lokal gespeicherten qualifizierten Producerbeleg der Art 1 in [monitor].[SsisHandoverReceipt]. Erfordert zugleich @PackageBytes; Beleg bindet exakte UTF-16-JSON-Bytes, Paketdigest/-länge, Buildhash und Source-Commit, issuedUtc darf nicht nach Analysebeginn liegen, expiresUtc muss nach Analysebeginn liegen und höchstens 24 Stunden nach issuedUtc liegen; es gibt keine Mindestgültigkeitsdauer. Ohne ID bleibt ProducerTrust UNVERIFIED; ID ist kein Caller-JSON-Trustflag. Im Scope-Modus muss NULL sein; dort gilt ausschließlich @ScopeHandoverId.
 
 ### @IncludeSqlMetadata
 
@@ -141,7 +141,7 @@ Die folgenden 32 Verträge unterscheiden den flachen Einzelmodellimport und den 
 
 ### @RuntimeHandoverId
 
-**Datentyp:** `uniqueidentifier`. Default NULL. Bei @IncludeExecutionCorrelation=1 erforderlich: UUID des separat berechtigten und zeitlich gültigen Extended-Property-Belegs SSIS_RUNTIME_<UUID in Kleinschreibung>. Beleg contract ssis-local-runtime-handover 1.0.0 bindet SHA-256 des exakten ExecutionSnapshotJson und issued/expires (höchstens 24 Stunden); ersetzt weder @LocalHandoverId noch verifiziertes Modellvertrauen. Bei ausgeschalteter Korrelation und im Scope-Modus NULL.
+**Datentyp:** `uniqueidentifier`. Default NULL. Bei @IncludeExecutionCorrelation=1 erforderlich: UUID des separat berechtigten und zeitlich gültigen Belegs der Art 2 in [monitor].[SsisHandoverReceipt]. Beleg contract ssis-local-runtime-handover 1.0.0 bindet SHA-256 des exakten ExecutionSnapshotJson und issued/expires (höchstens 24 Stunden); ersetzt weder @LocalHandoverId noch verifiziertes Modellvertrauen. Bei ausgeschalteter Korrelation und im Scope-Modus NULL.
 
 ### @IncludeIterationCorrelation
 
@@ -161,7 +161,7 @@ Die folgenden 32 Verträge unterscheiden den flachen Einzelmodellimport und den 
 
 ### @ScopeHandoverId
 
-**Datentyp:** `uniqueidentifier`. Default NULL. Bei @IncludeExecutionScopes=1 erforderliche UUID des lokal auf dieser Procedure registrierten Extended-Property-Belegs SSIS_SCOPE_<UUID in Kleinschreibung>. Beleg contract ssis-local-scope-handover 1.0.0 enthält genau sechs eindeutige Schlüssel einschließlich issuedUtc/expiresUtc, modelSetSha256 und captureSha256; Gültigkeit maximal 24 Stunden und Hashes binden exakt die übergebenen UTF-16-JSON-Dokumente. READCOMMITTEDLOCK verhindert Trust aus uncommittetem Beleg. Bei flachem Modus muss NULL sein.
+**Datentyp:** `uniqueidentifier`. Default NULL. Bei @IncludeExecutionScopes=1 erforderliche UUID des lokal registrierten Belegs der Art 3 in [monitor].[SsisHandoverReceipt]. Beleg contract ssis-local-scope-handover 1.0.0 enthält genau sechs eindeutige Schlüssel einschließlich issuedUtc/expiresUtc, modelSetSha256 und captureSha256; Gültigkeit maximal 24 Stunden und Hashes binden exakt die übergebenen UTF-16-JSON-Dokumente. READCOMMITTEDLOCK verhindert Trust aus uncommittetem Beleg. Bei flachem Modus muss NULL sein.
 
 ### @IncludePipelineCorrelation
 
@@ -376,12 +376,18 @@ Parser- und Lineagelogik bleibt im kanonischen Toolbelt-Kern.
 ## Kontrollierte lokale Übergabe
 
 `@LocalHandoverId` ist optional und benötigt zugleich `@PackageBytes`.
-Ohne ID wird kein Übergabebeleg gelesen. Mit ID prüft Analyze die an dieser
-Procedure gespeicherte Extended Property `SSIS_HANDOVER_<uuid-in-kleinschreibung>`.
-Nur Besitzer, berechtigte DDL-Administratoren oder Principals mit ALTER/CONTROL
-auf der Procedure dürfen diese Metadaten schreiben. Diese Principals bilden
-zusammen mit dem lokalen Account, Adapter und der qualifizierten .NET-Runtime
-die Vertrauenswurzel. Analyze erteilt keine zusätzlichen Berechtigungen.
+Ohne ID bleibt die Herkunft `UNVERIFIED`. Mit ID prüft Analyze den Modellbeleg
+der Art 1 in `monitor.SsisHandoverReceipt`. Aussteller benötigen `ALTER` auf
+`monitor.USP_SsisPackageModelAnalysis` und einen gezielten `EXECUTE`-Grant auf
+`monitor.InternalManageSsisHandoverReceipt`. Der Administrator erteilt diesen
+Grant ausschließlich den autorisierten Ausstellern. Die Analyse benötigt
+`EXECUTE` auf der öffentlichen Prozedur. Sie liest die Belege intern über
+den gemeinsamen Eigentümer. Aussteller und Leser benötigen keine direkten
+Tabellenrechte. Der Installer verweigert `public` INSERT und DELETE auf der
+Belegtabelle sowie UPDATE auf jeder ihrer drei Spalten. Erstellung und
+Schreibschutz erfolgen atomar. Ein vorhandener Speicher ohne diese Rechtegrenze
+wird bei der Installation abgewiesen. Der lokale Account, der Adapter und die qualifizierte
+.NET-Runtime bleiben Teil der Vertrauenswurzel.
 
 Der [lokale Zulieferadapter](../../../Code/Tools/Invoke-SsisQualifiedHandover.ps1)
 benötigt eine bereits offene Verbindung zur ausdrücklich gewählten Analyze-
@@ -430,13 +436,14 @@ Für den Vertrauenszugriff gilt ein fest begrenzter Metadatenzugriff mit
 `READCOMMITTEDLOCK` und dem bestehenden Lock-Timeout; ein uncommittierter Beleg
 wird nicht über NOLOCK als vertrauenswürdig übernommen.
 
-Der verantwortliche Administrator kann einen Beleg durch Entfernen seiner
-Extended Property widerrufen. Abgelaufene Eigenschaften werden ignoriert,
-aber nicht automatisch gelöscht. CREATE OR ALTER erhält die Eigenschaften;
-ein Drop/Recreate oder ein Datenbankwechsel überträgt ihre Vertrauenswirkung
-nicht automatisch. Ein anderes Datenbank- oder Laufzeitziel benötigt seine
-separat kontrollierte Übergabe. Der eigenständige Pfad ohne ID und ohne SQL CLR
-bleibt verfügbar.
+Ein autorisierter Aussteller widerruft einen Modellbeleg mit `@Action='REVOKE'`,
+`@ReceiptKind=1` und `@HandoverId` am Registrierungshelper. Für Laufzeitbelege
+gilt Belegart 2 und für Scopebelege Belegart 3. Abgelaufene Belegzeilen werden
+bei der Analyse abgewiesen. Eine automatische Löschung ist nicht eingerichtet.
+Beim Wechsel auf die Tabellenspeicherung sind frühere Extended-Property-IDs
+für die Analyse ungültig. Laufende Übergaben, die weiter benötigt werden,
+müssen mit dem aktuellen Adapter neu registriert werden. Der Adapter stellt
+die Belege für die ausdrücklich gewählte Analyze-Datenbank aus.
 
 ## Objektbezogene Regeln
 
@@ -495,8 +502,8 @@ Er ist kein Importpfad für fertige fremde Captures.
 
 Modell und Identitätssidecar stammen aus einem einzigen Toolbelt-Export.
 Nur Toolbelt liest native IDs und vorhandene namespacequalifizierte `refId`-
-Pfade. Zwei eigene lokale Extended Properties registrieren Modell und Capture
-atomar. Der Adapter liefert `PackageModelJson`, `PackageBytes`, `LocalHandoverId`,
+Pfade. Der Adapter registriert die lokalen Belege für Modell und Capture
+in einem atomaren Schreibvorgang. Der Adapter liefert `PackageModelJson`, `PackageBytes`, `LocalHandoverId`,
 `ExecutionSnapshotJson` und `RuntimeHandoverId`; diese Werte werden gemeinsam
 an die Procedure übergeben. Ein Laufzeitbeleg ersetzt den Modellbeleg nicht.
 

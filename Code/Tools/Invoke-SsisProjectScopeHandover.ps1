@@ -95,11 +95,9 @@ foreach($package in $packages) {
 }
 $id=[guid]::NewGuid();$remaining=Remaining-Seconds;$command=$Connection.CreateCommand();$command.CommandTimeout=$remaining
 $command.CommandText=@'
-IF @@TRANCOUNT<>0 OR HAS_PERMS_BY_NAME(N'monitor.USP_SsisPackageModelAnalysis',N'OBJECT',N'ALTER')<>1 THROW 57410,N'SSIS_SCOPE_REGISTRATION_AUTHORITY_REQUIRED',1;
-DECLARE @now datetime2(3)=SYSUTCDATETIME(),@receipt nvarchar(3000);
-SET @receipt=(SELECT 'ssis-local-scope-handover' AS contract,'1.0.0' AS version,CONVERT(varchar(64),HASHBYTES('SHA2_256',CONVERT(varbinary(max),@models)),2) AS modelSetSha256,CONVERT(varchar(64),HASHBYTES('SHA2_256',CONVERT(varbinary(max),@capture)),2) AS captureSha256,CONVERT(varchar(24),@now,127)+'Z' AS issuedUtc,CONVERT(varchar(24),DATEADD(hour,@hours,@now),127)+'Z' AS expiresUtc FOR JSON PATH,WITHOUT_ARRAY_WRAPPER);
-EXEC sys.sp_addextendedproperty @name=@name,@value=@receipt,@level0type=N'SCHEMA',@level0name=N'monitor',@level1type=N'PROCEDURE',@level1name=N'USP_SsisPackageModelAnalysis';
+EXEC [monitor].[InternalManageSsisHandoverReceipt]
+     @Action='REGISTER_SCOPE',@HandoverId=@id,@ModelJson=@models,@CaptureJson=@capture,@ValidHours=@hours;
 '@
-foreach($pair in @(@{Name='@models';Value=$modelJson},@{Name='@capture';Value=$captureJson},@{Name='@name';Value=('SSIS_SCOPE_'+$id.ToString('D').ToLowerInvariant())},@{Name='@hours';Value=$ValidHours})){[void]$command.Parameters.AddWithValue($pair.Name,$pair.Value)}
+foreach($pair in @(@{Name='@models';Value=$modelJson},@{Name='@capture';Value=$captureJson},@{Name='@id';Value=$id},@{Name='@hours';Value=$ValidHours})){[void]$command.Parameters.AddWithValue($pair.Name,$pair.Value)}
 try{[void]$command.ExecuteNonQuery()}finally{$command.Dispose()}
 [pscustomobject]@{Status='CAPTURED';ExecutionId=[long]$source.ExecutionId;ProjectModelsJson=$modelJson;ScopeSnapshotJson=$captureJson;ScopeHandoverId=$id}
