@@ -16,7 +16,7 @@ DECLARE @Suffix nvarchar(48)=CONVERT(nvarchar(12),@@SPID)+N'_'+LEFT(REPLACE(CONV
         @OriginalTx int=@@TRANCOUNT,@Impersonating bit=0,@LoginCreated bit=0,
         @InstallUserCreated bit=0,@PositiveDbCreated bit=0,@EmptyDbCreated bit=0,
         @CleanupFailure nvarchar(2048)=NULL;
-SELECT @PositiveDb=N'ExampleClassificationPos_'+@Suffix,
+SELECT @PositiveDb=N'ExampleClassificationPos_'+NCHAR(233)+N'_'+@Suffix,
        @EmptyDb=N'ExampleClassificationEmpty_'+@Suffix,
        @Reader=N'ExampleClassificationReader_'+@Suffix,
        @FixtureCredential=N'Example!'+CONVERT(nvarchar(36),NEWID());
@@ -80,12 +80,16 @@ INSERT #SensitivityPhysicalPairs VALUES
 (N'#SensitivityOut_warnings',N'#SensitivityExpected_warnings');
 DECLARE @Map nvarchar(max)=N'{"moduleStatus":"#SensitivityOut_moduleStatus","classificationSummary":"#SensitivityOut_classificationSummary","sourceStatus":"#SensitivityOut_sourceStatus","warnings":"#SensitivityOut_warnings"}';
 BEGIN TRY
-    SET @Sql=N'CREATE DATABASE '+QUOTENAME(@PositiveDb)+N' COLLATE SQL_Latin1_General_CP1_CS_AS;';
+    -- COLL-001: Die positive Quelle nutzt eine andere Collation als die Kontrollquelle und das TABLE-Ausgabeschema.
+    SET @Sql=N'CREATE DATABASE '+QUOTENAME(@PositiveDb)+N' COLLATE Latin1_General_100_CI_AS_SC;';
     EXEC [master].[sys].[sp_executesql] @Sql;
     SET @PositiveDbCreated=1;
     SET @Sql=N'CREATE DATABASE '+QUOTENAME(@EmptyDb)+N' COLLATE SQL_Latin1_General_CP1_CS_AS;';
     EXEC [master].[sys].[sp_executesql] @Sql;
     SET @EmptyDbCreated=1;
+    IF ISNULL(CONVERT(sysname,DATABASEPROPERTYEX(@PositiveDb,N'Collation')),N'')<>N'Latin1_General_100_CI_AS_SC'
+       OR ISNULL(CONVERT(sysname,DATABASEPROPERTYEX(@EmptyDb,N'Collation')),N'')<>N'SQL_Latin1_General_CP1_CS_AS'
+        THROW 57522,N'Mixed-collation source fixture was not established.',1;
     SET @Sql=N'USE '+QUOTENAME(@PositiveDb)+N';
         EXEC(N''CREATE SCHEMA [ExampleClassification263]'');
         CREATE TABLE [ExampleClassification263].[SyntheticColumns]
@@ -177,6 +181,29 @@ BEGIN TRY
        OR COALESCE((SELECT * FROM #SensitivityOut_classificationSummary ORDER BY DatabaseId FOR JSON PATH,INCLUDE_NULL_VALUES),N'')
            <>COALESCE(JSON_QUERY(@TableJson,N'$.classificationSummary'),N'')
         THROW 57506,N'Four-set TABLE/JSON contract mismatch.',1;
+    -- Der Binärvergleich deckt Unicode-Verlust und Verwechslungen auf,
+    -- die eine zeichenbasierte Gleichheit unter einer anderen Collation verdecken könnte.
+    IF NOT EXISTS
+    (
+        SELECT 1 FROM [#SensitivityOut_classificationSummary]
+        WHERE [DatabaseId]=DB_ID(@PositiveDb)
+          AND CONVERT(varbinary(256),[DatabaseName])=CONVERT(varbinary(256),@PositiveDb)
+          AND [VisibleTableCount]=@ExpectedTables AND [VisibleTableColumnCount]=@ExpectedColumns
+          AND [ClassifiedVisibleTableColumnCount]=@ExpectedClassified
+    )
+    OR NOT EXISTS
+    (
+        SELECT 1 FROM OPENJSON(@TableJson,N'$.classificationSummary')
+        WITH ([DatabaseId] int N'$.DatabaseId',[DatabaseName] sysname N'$.DatabaseName',
+              [VisibleTableCount] bigint N'$.VisibleTableCount',
+              [VisibleTableColumnCount] bigint N'$.VisibleTableColumnCount',
+              [ClassifiedVisibleTableColumnCount] bigint N'$.ClassifiedVisibleTableColumnCount')
+        WHERE [DatabaseId]=DB_ID(@PositiveDb)
+          AND CONVERT(varbinary(256),[DatabaseName])=CONVERT(varbinary(256),@PositiveDb)
+          AND [VisibleTableCount]=@ExpectedTables AND [VisibleTableColumnCount]=@ExpectedColumns
+          AND [ClassifiedVisibleTableColumnCount]=@ExpectedClassified
+    )
+        THROW 57523,N'Mixed-collation TABLE or JSON source binding differs from the native oracle.',1;
     EXEC @Return=[monitor].[USP_SensitivityClassificationSummary]
       @DatabaseNames=@Names,@ResultSetArt='RAW',@PrintMeldungen=0,
       @StatusCodeOut=@Status OUTPUT;
