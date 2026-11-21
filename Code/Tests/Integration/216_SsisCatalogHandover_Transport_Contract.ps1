@@ -45,14 +45,14 @@ try {
     function Invoke-ReceiptInstaller {
         foreach($batch in [regex]::Split($receiptDdl,'(?im)^\s*GO\s*$')){if($batch.Trim()){[void](Query $batch)}}
     }
-    function Assert-ReceiptInstallerRejects([string]$Message) {
+    function Assert-ReceiptInstallerRejects([string]$Message,[int]$State=0) {
         $rejected=$false
         try {Invoke-ReceiptInstaller}
         catch {
             $failure=$_.Exception
             while($failure -isnot [Data.SqlClient.SqlException] -and $failure.InnerException){$failure=$failure.InnerException}
             if($failure -is [Data.SqlClient.SqlException]) {
-                $rejected=@($failure.Errors|Where-Object {$_.Number -eq 57400 -and $_.Message -ceq $Message}).Count -eq 1
+                $rejected=@($failure.Errors|Where-Object {$_.Number -eq 57400 -and $_.Message -ceq $Message -and ($State -eq 0 -or $_.State -eq $State)}).Count -eq 1
             }
         }
         Assert $rejected $Message
@@ -68,6 +68,12 @@ try {
     [void](Query "ALTER TABLE monitor.SsisHandoverReceipt DROP CONSTRAINT PK_SsisHandoverReceipt; ALTER TABLE monitor.SsisHandoverReceipt ADD CONSTRAINT PK_SsisHandoverReceipt PRIMARY KEY CLUSTERED (ReceiptKind,HandoverId);")
     Invoke-ReceiptInstaller
 
+    [void](Query "ALTER TABLE monitor.SsisHandoverReceipt DROP CONSTRAINT CK_SsisHandoverReceipt_Kind; ALTER TABLE monitor.SsisHandoverReceipt WITH CHECK ADD CONSTRAINT CK_SsisHandoverReceipt_Kind CHECK (ReceiptKind=3 OR ReceiptKind=2 OR ReceiptKind=1);")
+    Invoke-ReceiptInstaller
+    [void](Query "ALTER TABLE monitor.SsisHandoverReceipt DROP CONSTRAINT CK_SsisHandoverReceipt_Kind; ALTER TABLE monitor.SsisHandoverReceipt WITH CHECK ADD CONSTRAINT CK_SsisHandoverReceipt_Kind CHECK (ReceiptKind=4 OR ReceiptKind=2 OR ReceiptKind=1);")
+    Assert-ReceiptInstallerRejects 'SSIS_HANDOVER_RECEIPT_CONSTRAINT_MISMATCH' 2
+    [void](Query "ALTER TABLE monitor.SsisHandoverReceipt DROP CONSTRAINT CK_SsisHandoverReceipt_Kind; ALTER TABLE monitor.SsisHandoverReceipt WITH CHECK ADD CONSTRAINT CK_SsisHandoverReceipt_Kind CHECK (ReceiptKind=1 OR ReceiptKind=2 OR ReceiptKind=3);")
+    Invoke-ReceiptInstaller
     $receiptId=[guid]::NewGuid().ToString('D')
     $protectedReceipt="INSERT monitor.SsisHandoverReceipt VALUES(1,'$receiptId',N'{}');"
     [void](Query $protectedReceipt)
