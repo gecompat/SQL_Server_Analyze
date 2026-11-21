@@ -123,39 +123,68 @@ BEGIN
         ) <> 2
         THROW 57400, N'SSIS_HANDOVER_RECEIPT_KEY_MISMATCH', 1;
 
+    DECLARE @ReceiptReferenceId int, @ReceiptReferenceCount int;
+    DECLARE @ReceiptKindDefinition nvarchar(max), @ReceiptJsonDefinition nvarchar(max);
+    DECLARE @ReceiptKindColumnId int, @ReceiptJsonColumnId int;
+    IF OBJECT_ID(N'tempdb..#SsisHandoverReceipt_CheckReference') IS NOT NULL
+        THROW 57400, N'SSIS_HANDOVER_RECEIPT_REFERENCE_IN_USE', 1;
+
+    BEGIN TRY
+        CREATE TABLE #SsisHandoverReceipt_CheckReference
+        (
+              [ReceiptKind] tinyint NOT NULL
+            , [HandoverId] uniqueidentifier NOT NULL
+            , [ReceiptJson] nvarchar(3000) COLLATE DATABASE_DEFAULT NOT NULL
+            , CHECK ([ReceiptKind] = 1 OR [ReceiptKind] = 2 OR [ReceiptKind] = 3)
+            , CHECK (ISJSON([ReceiptJson]) = 1)
+        );
+        SET @ReceiptReferenceId = OBJECT_ID(N'tempdb..#SsisHandoverReceipt_CheckReference');
+        SELECT @ReceiptReferenceCount = COUNT(*),
+               @ReceiptKindDefinition = MAX(CASE WHEN [cc].[definition] COLLATE Latin1_General_100_BIN2
+                   LIKE N'%ReceiptKind%' THEN [cc].[definition] END),
+               @ReceiptJsonDefinition = MAX(CASE WHEN [cc].[definition] COLLATE Latin1_General_100_BIN2
+                   LIKE N'%ReceiptJson%' THEN [cc].[definition] END),
+               @ReceiptKindColumnId = MAX(CASE WHEN [cc].[definition] COLLATE Latin1_General_100_BIN2
+                   LIKE N'%ReceiptKind%' THEN [cc].[parent_column_id] END),
+               @ReceiptJsonColumnId = MAX(CASE WHEN [cc].[definition] COLLATE Latin1_General_100_BIN2
+                   LIKE N'%ReceiptJson%' THEN [cc].[parent_column_id] END)
+        FROM tempdb.sys.check_constraints AS [cc] WITH (NOLOCK)
+        WHERE [cc].[parent_object_id] = @ReceiptReferenceId;
+        DROP TABLE #SsisHandoverReceipt_CheckReference;
+    END TRY
+    BEGIN CATCH
+        IF OBJECT_ID(N'tempdb..#SsisHandoverReceipt_CheckReference') IS NOT NULL
+            DROP TABLE #SsisHandoverReceipt_CheckReference;
+        THROW;
+    END CATCH;
+
+    IF @ReceiptReferenceCount <> 2 OR @ReceiptKindDefinition IS NULL OR @ReceiptJsonDefinition IS NULL
+        OR CONVERT(varbinary(max), @ReceiptKindDefinition) = CONVERT(varbinary(max), @ReceiptJsonDefinition)
+        THROW 57400, N'SSIS_HANDOVER_RECEIPT_REFERENCE_UNAVAILABLE', 1;
+
     DECLARE @ReceiptCheckCount int, @ReceiptKindCheck int, @ReceiptJsonCheck int;
+    DECLARE @ReceiptBindingMismatch int, @ReceiptStateMismatch int;
     SELECT @ReceiptCheckCount = COUNT(*),
-           @ReceiptKindCheck = COALESCE(MAX(CASE WHEN [v].[Canonical] = 1
-               AND [cc].[name] COLLATE Latin1_General_100_BIN2 = N'CK_SsisHandoverReceipt_Kind'
-               AND [d].[Definition] IN
-               (
-                        N'receiptkind=1orreceiptkind=2orreceiptkind=3',
-                        N'receiptkind=1orreceiptkind=3orreceiptkind=2',
-                        N'receiptkind=2orreceiptkind=1orreceiptkind=3',
-                        N'receiptkind=2orreceiptkind=3orreceiptkind=1',
-                        N'receiptkind=3orreceiptkind=1orreceiptkind=2',
-                        N'receiptkind=3orreceiptkind=2orreceiptkind=1',
-                        N'receiptkindin1,2,3',
-                        N'receiptkindin1,3,2',
-                        N'receiptkindin2,1,3',
-                        N'receiptkindin2,3,1',
-                        N'receiptkindin3,1,2',
-                        N'receiptkindin3,2,1'
-               ) THEN 1 ELSE 0 END), 0),
-           @ReceiptJsonCheck = COALESCE(MAX(CASE WHEN [v].[Canonical] = 1
-               AND [cc].[name] COLLATE Latin1_General_100_BIN2 = N'CK_SsisHandoverReceipt_Json'
-               AND [d].[Definition] IN (N'isjsonreceiptjson=1', N'1=isjsonreceiptjson')
-               THEN 1 ELSE 0 END), 0)
+           @ReceiptKindCheck = COALESCE(MAX(CASE WHEN [n].[Name] = N'CK_SsisHandoverReceipt_Kind'
+               AND CONVERT(varbinary(max), [cc].[definition]) = CONVERT(varbinary(max), @ReceiptKindDefinition)
+               THEN 1 ELSE 0 END), 0),
+           @ReceiptJsonCheck = COALESCE(MAX(CASE WHEN [n].[Name] = N'CK_SsisHandoverReceipt_Json'
+               AND CONVERT(varbinary(max), [cc].[definition]) = CONVERT(varbinary(max), @ReceiptJsonDefinition)
+               THEN 1 ELSE 0 END), 0),
+           @ReceiptBindingMismatch = COALESCE(MAX(CASE
+               WHEN [n].[Name] = N'CK_SsisHandoverReceipt_Kind' AND [cc].[parent_column_id] <> @ReceiptKindColumnId THEN 1
+               WHEN [n].[Name] = N'CK_SsisHandoverReceipt_Json' AND [cc].[parent_column_id] <> @ReceiptJsonColumnId THEN 1
+               ELSE 0 END), 0),
+           @ReceiptStateMismatch = COALESCE(MAX(CASE WHEN [cc].[is_disabled] <> 0 OR [cc].[is_not_trusted] <> 0
+               OR [cc].[is_not_for_replication] <> 0 THEN 1 ELSE 0 END), 0)
     FROM sys.check_constraints AS [cc] WITH (NOLOCK)
-    CROSS APPLY (VALUES (CASE WHEN [cc].[parent_column_id] = 0 AND [cc].[is_disabled] = 0
-        AND [cc].[is_not_trusted] = 0 AND [cc].[is_not_for_replication] = 0 THEN 1 ELSE 0 END)) AS [v]([Canonical])
-    CROSS APPLY (VALUES (REPLACE(LOWER(TRANSLATE([cc].[definition],
-        N'[]()' + NCHAR(9) + NCHAR(10) + NCHAR(13), N'       ') COLLATE Latin1_General_100_BIN2), N' ', N''))) AS [d]([Definition])
+    CROSS APPLY (VALUES ([cc].[name] COLLATE Latin1_General_100_BIN2)) AS [n]([Name])
     WHERE [cc].[parent_object_id] = @ReceiptObjectId;
 
-    -- The THROW state is a bitmask: check count (1), kind (2), JSON (4), trigger (8), foreign key (16), security predicate (32).
+    -- State bits: count (1), kind (2), JSON (4), trigger (8), foreign key (16), security predicate (32), binding (64), state (128).
     DECLARE @ReceiptConstraintFlags tinyint = CASE WHEN @ReceiptCheckCount = 2 THEN 0 ELSE 1 END
-        + CASE WHEN @ReceiptKindCheck = 1 THEN 0 ELSE 2 END + CASE WHEN @ReceiptJsonCheck = 1 THEN 0 ELSE 4 END;
+        + CASE WHEN @ReceiptKindCheck = 1 THEN 0 ELSE 2 END + CASE WHEN @ReceiptJsonCheck = 1 THEN 0 ELSE 4 END
+        + 64 * @ReceiptBindingMismatch + 128 * @ReceiptStateMismatch;
     IF EXISTS (SELECT 1 FROM sys.triggers AS [t] WITH (NOLOCK) WHERE [t].[parent_id] = @ReceiptObjectId)
         SET @ReceiptConstraintFlags += 8;
     IF EXISTS (SELECT 1 FROM sys.foreign_keys AS [fk] WITH (NOLOCK) WHERE [fk].[parent_object_id] = @ReceiptObjectId OR [fk].[referenced_object_id] = @ReceiptObjectId)

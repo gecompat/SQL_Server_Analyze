@@ -414,6 +414,11 @@ for path in sorted(CODE.rglob("*.sql")):
                         and scan_text[match.start():].startswith("SCHEMA_ID(N'monitor_metadata')")
                         and scan_text.count("SCHEMA_ID(") == 1):
                     continue
+                if (function_name == "OBJECT_ID"
+                        and relative.as_posix() == SSIS_RECEIPT_PERMISSION_SOURCE
+                        and scan_text[match.start():].startswith("OBJECT_ID(N'tempdb..#SsisHandoverReceipt_CheckReference')")
+                        and scan_text.count("OBJECT_ID(N'tempdb..#SsisHandoverReceipt_CheckReference')") == 3):
+                    continue
                 errors.append(
                     f"{relative}:{line_number(text, match.start())}: "
                     f"blockierende Metadatenfunktion {function_name} ist nicht zulässig"

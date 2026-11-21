@@ -68,11 +68,18 @@ try {
     [void](Query "ALTER TABLE monitor.SsisHandoverReceipt DROP CONSTRAINT PK_SsisHandoverReceipt; ALTER TABLE monitor.SsisHandoverReceipt ADD CONSTRAINT PK_SsisHandoverReceipt PRIMARY KEY CLUSTERED (ReceiptKind,HandoverId);")
     Invoke-ReceiptInstaller
 
-    [void](Query "ALTER TABLE monitor.SsisHandoverReceipt DROP CONSTRAINT CK_SsisHandoverReceipt_Kind; ALTER TABLE monitor.SsisHandoverReceipt WITH CHECK ADD CONSTRAINT CK_SsisHandoverReceipt_Kind CHECK (ReceiptKind=3 OR ReceiptKind=2 OR ReceiptKind=1);")
-    Invoke-ReceiptInstaller
-    [void](Query "ALTER TABLE monitor.SsisHandoverReceipt DROP CONSTRAINT CK_SsisHandoverReceipt_Kind; ALTER TABLE monitor.SsisHandoverReceipt WITH CHECK ADD CONSTRAINT CK_SsisHandoverReceipt_Kind CHECK (ReceiptKind=4 OR ReceiptKind=2 OR ReceiptKind=1);")
+    [void](Query "CREATE TABLE #SsisHandoverReceipt_CheckReference([SyntheticMarker] int NOT NULL); INSERT #SsisHandoverReceipt_CheckReference VALUES (1);")
+    try {
+        Assert-ReceiptInstallerRejects 'SSIS_HANDOVER_RECEIPT_REFERENCE_IN_USE'
+        Assert ((Query "SELECT COUNT(*) FROM #SsisHandoverReceipt_CheckReference WHERE SyntheticMarker=1;").Tables[0].Rows[0][0] -eq 1) 'RECEIPT_FOREIGN_REFERENCE_UNCHANGED'
+    } finally {[void](Query 'DROP TABLE #SsisHandoverReceipt_CheckReference;')}
+    [void](Query "ALTER TABLE monitor.SsisHandoverReceipt DROP CONSTRAINT CK_SsisHandoverReceipt_Kind; ALTER TABLE monitor.SsisHandoverReceipt WITH CHECK ADD CONSTRAINT CK_SsisHandoverReceipt_Kind CHECK ([ReceiptKind] = 1 OR [ReceiptKind] = 2 OR [ReceiptKind] = 4);")
     Assert-ReceiptInstallerRejects 'SSIS_HANDOVER_RECEIPT_CONSTRAINT_MISMATCH' 2
-    [void](Query "ALTER TABLE monitor.SsisHandoverReceipt DROP CONSTRAINT CK_SsisHandoverReceipt_Kind; ALTER TABLE monitor.SsisHandoverReceipt WITH CHECK ADD CONSTRAINT CK_SsisHandoverReceipt_Kind CHECK (ReceiptKind=1 OR ReceiptKind=2 OR ReceiptKind=3);")
+    [void](Query "ALTER TABLE monitor.SsisHandoverReceipt DROP CONSTRAINT CK_SsisHandoverReceipt_Kind; ALTER TABLE monitor.SsisHandoverReceipt WITH CHECK ADD CONSTRAINT CK_SsisHandoverReceipt_Kind CHECK ([ReceiptKind] = 1 OR [ReceiptKind] = 2 OR [ReceiptKind] = 3);")
+    Invoke-ReceiptInstaller
+    [void](Query "ALTER TABLE monitor.SsisHandoverReceipt DROP CONSTRAINT CK_SsisHandoverReceipt_Json; ALTER TABLE monitor.SsisHandoverReceipt WITH CHECK ADD CONSTRAINT CK_SsisHandoverReceipt_Json CHECK (ISJSON([ReceiptJson]) = 0);")
+    Assert-ReceiptInstallerRejects 'SSIS_HANDOVER_RECEIPT_CONSTRAINT_MISMATCH' 4
+    [void](Query "ALTER TABLE monitor.SsisHandoverReceipt DROP CONSTRAINT CK_SsisHandoverReceipt_Json; ALTER TABLE monitor.SsisHandoverReceipt WITH CHECK ADD CONSTRAINT CK_SsisHandoverReceipt_Json CHECK (ISJSON([ReceiptJson]) = 1);")
     Invoke-ReceiptInstaller
     $receiptId=[guid]::NewGuid().ToString('D')
     $protectedReceipt="INSERT monitor.SsisHandoverReceipt VALUES(1,'$receiptId',N'{}');"
