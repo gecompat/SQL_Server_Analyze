@@ -1583,19 +1583,25 @@ Quelle: `Code/10_SSIS/034_InternalSsisScopePathMatch.sql`
 
 Quelle: `Code/10_SSIS/033_SsisHandoverReceipt.sql`
 
-Die Tabelle speichert lokale SSIS-Belege nach Art und UUID. `ReceiptKind`
-unterscheidet Modell (1), Laufzeit (2) und Scope (3). `ReceiptJson` enthält nur
-die Bindungs- und Gültigkeitsmerkmale des Belegs. Der Installer verweigert
-`public` direkte Schreibrechte auf der Tabelle.
+| Dimension | Beschreibung |
+|---|---|
+| Aufgabe | Speichert die lokalen Belege, mit denen Analyze ein SSIS-Modell, einen Laufzeit-Capture oder eine Scopeaufnahme an die vom Aufrufer übergebenen Dokumentbytes bindet. |
+| Schnittstelle | Der zusammengesetzte Primärschlüssel besteht aus `ReceiptKind` und `HandoverId`. Die Belegart ist 1 für Modell, 2 für Laufzeit und 3 für Scope. `ReceiptJson` enthält die vertraglich geforderten Hashwerte, Zeitstempel und weiteren Bindungsmerkmale. |
+| Verwendung | Der Registrierungshelper schreibt und widerruft die Belege. Analyze liest die passende Zeile bei einer ausdrücklich angegebenen UUID. Paketbytes und Capture-Dokumente verbleiben beim Aufrufer. |
+| Last und Sperren | Die Analyse sucht über den Primärschlüssel und liest mit `READCOMMITTEDLOCK`. Belegzeilen bleiben nach Ablauf gespeichert, bis sie widerrufen werden. |
+| Vertrag | Die Erstanlage schützt die Tabelle in derselben Transaktion. `public` erhält Tabellen-DENYs für INSERT und DELETE sowie Spalten-DENYs für UPDATE auf allen drei Spalten. Der Installer weist Abweichungen an einer vorhandenen Tabelle zurück und erhält bestehende Belege. |
 
 ### `[monitor].[InternalManageSsisHandoverReceipt]`
 
 Quelle: `Code/10_SSIS/041_InternalManageSsisHandoverReceipt.sql`
 
-Die Prozedur registriert oder widerruft lokale SSIS-Belege. Betreiber
-vergeben `EXECUTE` auf dem Helper gezielt an Aussteller mit `ALTER` auf
-`monitor.USP_SsisPackageModelAnalysis`. `@Hilfe=1` gibt den Usage Skill
-mit Parameter-, Rechte- und Fehlervertrag aus.
+| Dimension | Beschreibung |
+|---|---|
+| Aufgabe | Registriert lokale SSIS-Belege aus den qualifizierten Übergabeworkflows und widerruft einen Beleg anhand seiner Art und UUID. |
+| Schnittstelle | Die Aktionen `REGISTER_MODEL`, `REGISTER_SCOPE` und `REVOKE` bestimmen die benötigten Übergabedokumente und Kennungen. Der Fachpfad erzeugt kein Resultset. `@Hilfe=1` liefert den Usage Skill mit dem gesamten Parametervertrag. |
+| Verwendung | Aussteller benötigen einen gezielten `EXECUTE`-Grant auf diesem Helper und `ALTER` auf `monitor.USP_SsisPackageModelAnalysis`. Der Helper prüft die ALTER-Autorität im Aufruferkontext und greift über den gemeinsamen Eigentümer auf die Belegtabelle zu. |
+| Last und Sperren | Der Helper prüft Modellstruktur und Originalbytes über die öffentliche Analyseprozedur. Er speichert die Hashwerte und schreibt beim kombinierten Modell- und Laufzeitbeleg beide Zeilen mit einer Anweisung. Der lokale `LOCK_TIMEOUT` beträgt null. |
+| Vertrag | Eine aktive Aufrufertransaktion oder `IMPLICIT_TRANSACTIONS ON` führt zur Ablehnung. Gültige Registrierungen laufen nach einer bis 24 Stunden ab. Doppelte Schlüssel brechen die Registrierung ab. Der Widerruf löscht ausschließlich die ausgewählte Belegart mit der angegebenen UUID. |
 
 ### `[monitor].[InternalSsisExecutionScopes]`
 

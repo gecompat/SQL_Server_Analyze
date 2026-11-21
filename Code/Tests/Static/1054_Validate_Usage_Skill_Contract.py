@@ -202,7 +202,7 @@ def validate_parameter_contracts(root: Path, skills: list[tuple[dict, str]]) -> 
             if rows[-1] != ("@Hilfe", "bit", "nein", "0"):
                 raise ValueError(f"Internal Help parameter is not last/default 0: {fields['name']}")
             internal_help += 1
-    if internal_help != 25:
+    if internal_help != 26:
         raise ValueError(f"Internal Help population mismatch: {internal_help}")
 
 

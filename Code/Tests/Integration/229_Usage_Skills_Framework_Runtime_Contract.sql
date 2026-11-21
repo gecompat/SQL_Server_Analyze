@@ -146,7 +146,7 @@ INSERT @CanonicalPilot VALUES
 (N'VW_ModuleStatusCatalog',CONVERT(bigint,7718),0x3cdf57076b7ec923c9424a743aca6238f45026bf112b0729d768240c9c22a8ae),
 (N'FrameworkVersion',CONVERT(bigint,10402),0xb914a32160354a59f3f08208bf2e157bc33810b583d2e00900678fa328511bd0),
 (N'USP_SsisPackageModelAnalysis',CONVERT(bigint,111392),0xa50ad055937b568f6c057bdae8d7be6a2bb8389fb41a752a4925ef5c40203468),
-(N'InternalManageSsisHandoverReceipt',CONVERT(bigint,7208),0x783e0986cdb9164561708a45036aed68a1102368beb8d8834ea4cfb95372faac);
+(N'InternalManageSsisHandoverReceipt',CONVERT(bigint,9604),0xf8ead827a4552956e0a117999bc1d3ae408116808cec6b2c2a99912484a52d89);
 IF (SELECT COUNT_BIG(*) FROM @CanonicalPilot)<>7
  OR EXISTS
  (

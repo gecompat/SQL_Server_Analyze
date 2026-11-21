@@ -34,15 +34,23 @@ Autorisierte Aussteller benötigen `EXECUTE` auf dieser Prozedur und `ALTER` auf
 | @ValidHours | int | nein | 1 |
 | @Hilfe | bit | nein | 0 |
 
-- `@Action` wählt `REGISTER_MODEL` für einen Modellbeleg mit optionalem Laufzeitbeleg, `REGISTER_SCOPE` für einen Scopebeleg oder `REVOKE` für den Widerruf. Der Vergleich folgt der lokalen Datenbankkollation. NULL, der Leerwert und andere Werte sind im Fachpfad ungültig.
-- `@HandoverId` ist für jede Aktion die UUID des Modell- oder Scopebelegs beziehungsweise des zu widerrufenden Belegs. NULL ist ungültig.
-- `@RuntimeHandoverId` ist nur bei `REGISTER_MODEL` mit Laufzeitaufnahme erforderlich. Andernfalls muss der Wert NULL sein.
-- `@ReceiptKind` muss beim Widerruf 1 für Modell, 2 für Laufzeit oder 3 für Scope sein. Die Registrierungsaktionen erfordern NULL.
-- `@ModelJson` enthält bei `REGISTER_MODEL` das qualifizierte neutrale SSIS-Paketmodell und bei `REGISTER_SCOPE` den JSON-Paketsatz. NULL und Leertext sind bei Registrierung ungültig. Widerruf erfordert NULL.
-- `@PackageBytes` enthält nur bei `REGISTER_MODEL` die Originalbytes. NULL und abweichende Paketbytes werden abgelehnt. Die übrigen Aktionen erfordern NULL.
-- `@CaptureJson` enthält bei `REGISTER_SCOPE` die qualifizierte Scopeaufnahme und bei Registrierung eines Laufzeitbelegs die Laufzeitaufnahme. Zulässig ist valides JSON bis 16 MiB. Bei reinem Modellbeleg und Widerruf muss der Wert NULL sein.
-- `@ValidHours` ist bei Registrierung eine ganze Zahl zwischen 1 und 24. NULL ist bei Registrierung ungültig. Beim Widerruf wird der Parameter nicht ausgewertet.
-- `@Hilfe` gibt mit 1 vor Fachzugriff den Usage Skill aus. 0 oder NULL aktiviert den normalen Pfad.
+**@Action:** `varchar(64)`, Default NULL. `REGISTER_MODEL` registriert einen Modellbeleg mit optionalem Laufzeitbeleg. `REGISTER_SCOPE` registriert einen Scopebeleg. `REVOKE` widerruft einen Beleg der ausdrücklich gewählten Belegart. Der Vergleich folgt der Datenbankkollation. NULL und Leertext sind im Fachpfad ungültig.
+
+**@HandoverId:** `uniqueidentifier`, Default NULL. Jede Aktion benötigt eine UUID. Bei `REGISTER_MODEL` bezeichnet sie den Modellbeleg, bei `REGISTER_SCOPE` den Scopebeleg und bei `REVOKE` zusammen mit `@ReceiptKind` den zu widerrufenden Beleg. Zulässig ist ein typisierter Wert oder ein konvertierbares GUID-Literal. NULL ist ungültig.
+
+**@RuntimeHandoverId:** `uniqueidentifier`, Default NULL. `REGISTER_MODEL` benötigt eine typisierte UUID oder ein konvertierbares GUID-Literal, wenn `@CaptureJson` eine Laufzeitaufnahme enthält. Ohne Laufzeitaufnahme und bei den übrigen Aktionen ist NULL erforderlich.
+
+**@ReceiptKind:** `tinyint`, Default NULL. `REVOKE` akzeptiert 1 für Modell, 2 für Laufzeit und 3 für Scope. NULL und andere Werte sind beim Widerruf ungültig. Beide Registrierungsaktionen verlangen NULL.
+
+**@ModelJson:** `nvarchar(max)`, Default NULL. Bei `REGISTER_MODEL` muss der Unicode-Text ein qualifiziertes neutrales SSIS-Paketmodell enthalten. Die öffentliche Analyseprozedur validiert das Modell und die Originalbytes vor der Registrierung. Bei `REGISTER_SCOPE` muss der Wert ein gültiger JSON-Paketsatz mit höchstens 16 MiB nach `DATALENGTH` sein. Ein fehlender oder leerer Text ist bei Registrierung ungültig. `REVOKE` verlangt NULL.
+
+**@PackageBytes:** `varbinary(max)`, Default NULL. `REGISTER_MODEL` benötigt die unveränderten Originalbytes des Pakets. Die Analyse prüft Länge und Paketdigest gegen das Modell. Fehlende oder abweichende Bytes führen zur Ablehnung. `REGISTER_SCOPE` und `REVOKE` verlangen NULL.
+
+**@CaptureJson:** `nvarchar(max)`, Default NULL. Bei `REGISTER_SCOPE` ist die qualifizierte Scopeaufnahme als Unicode-JSON erforderlich. Bei `REGISTER_MODEL` ist mit `@RuntimeHandoverId` die zugehörige Laufzeitaufnahme erforderlich. Gültiger JSON-Text darf höchstens 16 MiB nach `DATALENGTH` umfassen. Leerer Text ist ungültig. Ohne Laufzeitbeleg und beim Widerruf ist NULL erforderlich.
+
+**@ValidHours:** `int`, Default 1. Registrierungen akzeptieren ganze Stunden von 1 bis 24 einschließlich. Die Laufzeit beginnt am UTC-Zeitstempel der Ausstellung. NULL und Werte außerhalb des Bereichs sind bei Registrierung ungültig. Beim Widerruf wird der Wert nicht ausgewertet.
+
+**@Hilfe:** `bit`, Default 0. 1 liefert den Usage Skill vor Fachzugriff, Autorisierungsprüfung und Eingabekontrolle. 0 oder NULL aktiviert den Fachpfad. SQL konvertiert numerische Werte ungleich 0 zu 1.
 
 ## Resultate und Ausgabe
 
