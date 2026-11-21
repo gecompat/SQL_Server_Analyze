@@ -11,6 +11,11 @@ Ausführung   : sqlcmd-Arbeitsverzeichnis muss Code/Install sein.
 Datenschutz  : Ausschließlich generische synthetische Testwerte.
 ===============================================================================
 */
+DECLARE @CiPlanMarker nvarchar(400)=CONCAT(N'CI_BEGIN|PLAN_CACHE|Standalone193|0|',
+    CONVERT(varchar(27),SYSUTCDATETIME(),126),N'Z|',@@SPID,N'|',@@LOCK_TIMEOUT,N'|-');
+RAISERROR(N'%s',10,1,@CiPlanMarker) WITH NOWAIT;
+GO
+
 SET NOCOUNT ON;
 
 IF TRY_CONVERT(int,SERVERPROPERTY(N'ProductMajorVersion'))<>17
@@ -753,4 +758,9 @@ SELECT
       N'ExecutionPlanAnalysisStandalone' AS [ContractName]
     , N'PASSED' AS [StatusCode]
     , N'First install, public APIs, reinstall, scope and independence passed with synthetic values only.' AS [Detail];
+GO
+
+DECLARE @CiPlanMarker nvarchar(400)=CONCAT(N'CI_END|PLAN_CACHE|Standalone193|0|',
+    CONVERT(varchar(27),SYSUTCDATETIME(),126),N'Z|',@@SPID,N'|',@@LOCK_TIMEOUT,N'|-');
+RAISERROR(N'%s',10,1,@CiPlanMarker) WITH NOWAIT;
 GO

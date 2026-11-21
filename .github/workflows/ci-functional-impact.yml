@@ -446,16 +446,16 @@ jobs:
             "$SQLCMD_PATH" -S localhost -U sa -C -b -Q \
             "ALTER DATABASE [SQLServerAnalyzeTest] SET SINGLE_USER WITH ROLLBACK IMMEDIATE; DROP DATABASE [SQLServerAnalyzeTest]; CREATE DATABASE [SQLServerAnalyzeTest] COLLATE SQL_Latin1_General_CP1_CS_AS; ALTER DATABASE [SQLServerAnalyzeTest] SET COMPATIBILITY_LEVEL = 170; ALTER DATABASE [SQLServerAnalyzeTest] SET QUERY_STORE = OFF;" \
             >"${log_prefix}-standalone-database.log" 2>&1
-          if ! docker exec \
-            --env SQLCMDPASSWORD="$MSSQL_EPHEMERAL_CREDENTIAL" \
-            --workdir /work/Code/Install \
-            sqlserver-analyze-impact-2025 \
-            "$SQLCMD_PATH" -S localhost -U sa -C -b \
-            -i ../Tests/Integration/193_ExecutionPlanAnalysis_Standalone_Runtime_Contract.sql \
-            >"${log_prefix}-standalone.log" 2>&1; then
+          standalone_result=0
+          python3 ./Code/Tests/Integration/CI_LockTimeout_Diagnostics.py \
+            --sqlcmd "$SQLCMD_PATH" --workdir /work/Code/Install \
+            --input ../Tests/Integration/193_ExecutionPlanAnalysis_Standalone_Runtime_Contract.sql \
+            --log "${log_prefix}-standalone.log" \
+            --artifacts "$RUNNER_TEMP/ci-lock-diagnostics/standalone" || standalone_result=$?
+          if [ "$standalone_result" != '0' ]; then
             echo 'Execution Plan standalone contract failed for SQL Server 2025.'
-            grep -B 2 -A 4 -E 'Msg [0-9]+|Sqlcmd: Error|Error:' "${log_prefix}-standalone.log" | tail -n 160 || true
-            exit 1
+            grep -B 2 -A 4 -E 'Msg [0-9]+|Sqlcmd: Error|Error:' "$RUNNER_TEMP/ci-lock-diagnostics/standalone/impact.log" | tail -n 160 || true
+            exit "$standalone_result"
           fi
 
       - name: Run selected Snapshot contracts

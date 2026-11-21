@@ -543,6 +543,22 @@ def write_github_output(path: pathlib.Path, plan: Plan) -> None:
             output.write(f"{key}={value}\n")
 
 
+OBSERVED_PLAN_TESTS = {
+    "PlanCache/120_ExecutionPlanAnalysis_Runtime_Contract.sql": "Target120",
+    "PlanCache/123_DIAG005_Plan_Optimizer_Runtime_Contract.sql": "Target123",
+    "PlanCache/127_ExecutionPlanAnalysis_Collation_Runtime_Contract.sql": "Target127",
+}
+
+
+def plan_lock_marker(phase: str, site: str) -> list[str]:
+    return [
+        f"DECLARE @CiPlanMarker nvarchar(400)=CONCAT(N'CI_{phase}|PLAN_CACHE|{site}|0|',",
+        "    CONVERT(varchar(27),SYSUTCDATETIME(),126),N'Z|',@@SPID,N'|',@@LOCK_TIMEOUT,N'|-');",
+        "RAISERROR(N'%s',10,1,@CiPlanMarker) WITH NOWAIT;",
+        "GO",
+    ]
+
+
 def write_runner(path: pathlib.Path, plan: Plan) -> None:
     if plan.full_suite:
         path.write_text(":ON ERROR EXIT\n:r Run_Release_Gate.sql\n", encoding="utf-8")
@@ -554,7 +570,12 @@ def write_runner(path: pathlib.Path, plan: Plan) -> None:
         lines.append(
             f"RAISERROR(N'IMPACT_GATE {index}/{total}: {label}',10,1) WITH NOWAIT;"
         )
+        site = OBSERVED_PLAN_TESTS.get(test_name)
+        if site:
+            lines.extend(plan_lock_marker("BEGIN", site))
         lines.append(f":r {test_name}")
+        if site:
+            lines.extend(plan_lock_marker("END", site))
         lines.append("")
     lines.extend(
         [
@@ -735,7 +756,19 @@ def run_self_test() -> None:
         assert not fixture_plan.compatibility_matrix
         runner_path = root / "ops008-runner.sql"
         write_runner(runner_path, fixture_plan)
-        assert f":r {OPS008_AGENT_HISTORY_TEST}" in runner_path.read_text(encoding="utf-8")
+        fixture_runner = runner_path.read_text(encoding="utf-8")
+        assert f":r {OPS008_AGENT_HISTORY_TEST}" in fixture_runner
+        assert "|PLAN_CACHE|" not in fixture_runner
+
+        write_runner(runner_path, Plan(scope="core", selected_tests=list(OBSERVED_PLAN_TESTS)))
+        plan_runner = runner_path.read_text(encoding="utf-8")
+        for selected_test, site in OBSERVED_PLAN_TESTS.items():
+            frame = "\n".join([
+                *plan_lock_marker("BEGIN", site), f":r {selected_test}", *plan_lock_marker("END", site),
+            ])
+            assert frame in plan_runner
+        assert plan_runner.count("CI_BEGIN|PLAN_CACHE|") == 3
+        assert plan_runner.count("CI_END|PLAN_CACHE|") == 3
         output_path = root / "ops008-output.txt"
         write_github_output(output_path, fixture_plan)
         assert "ops008_agent_history=true\n" in output_path.read_text(encoding="utf-8")
@@ -769,7 +802,9 @@ def run_self_test() -> None:
         standalone_end = workflow_source.find("\n      - name:", standalone_step + 1)
         standalone_source = workflow_source[standalone_step:standalone_end]
         assert "if: needs.impact.outputs.plan_standalone == 'true'" in standalone_source
-        assert "193_ExecutionPlanAnalysis_Standalone_Runtime_Contract.sql" in standalone_source
+        assert "CI_LockTimeout_Diagnostics.py" in standalone_source
+    assert "--workdir /work/Code/Install" in standalone_source
+    assert "--input ../Tests/Integration/193_ExecutionPlanAnalysis_Standalone_Runtime_Contract.sql" in standalone_source
 
 
 def main() -> int:
