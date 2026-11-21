@@ -3936,13 +3936,17 @@ def prepare(packaged_installer=None):
            f"CREATE DATABASE {g.q(FRAMEWORK)} COLLATE SQL_Latin1_General_CP1_CS_AS;\nGO\n",
            f"CREATE DATABASE {g.q(TARGET)} COLLATE Latin1_General_100_CS_AS;\nGO\n",
            deployed+'\nGO\n']
+    assert_no_deployment_property = (
+        "IF EXISTS(SELECT 1 FROM sys.extended_properties WHERE class=3 AND major_id=SCHEMA_ID(N'monitor_deployment') "
+        "AND name=N'SQL_Server_Analyze.DeploymentFormat') "
+        "THROW 53803,N'Deployment created a schema format property.',1;\n")
     # Fresh receipts exist in both contexts with no pre-existing table manifest.
     for role, db in [('FRAMEWORK',FRAMEWORK), ('SNAPSHOT',TARGET)]:
         check = ("DECLARE @Run sysname=(SELECT name FROM sys.tables WHERE schema_id=SCHEMA_ID(N'monitor_deployment') AND name LIKE N'Run[_]%');\n"
                  "IF @Run IS NULL THROW 53803,N'Missing fresh receipt.',1;\n"
                  "DECLARE @Check nvarchar(max)=N'IF EXISTS(SELECT 1 FROM monitor_deployment.'+QUOTENAME(@Run)+N' WHERE Manifest<>N''[]'' OR FormatVersion<>1 OR DatabaseRole<>@Role OR SourceSha256<>@Digest) THROW 53803,N''Invalid fresh receipt.'',1;';\n"
                  f"EXEC sys.sp_executesql @Check,N'@Role varchar(16),@Digest binary(32)',@Role='{role}',@Digest=0x{info['digest']};\n")
-        out.append('USE '+g.q(db)+';\nGO\n'+check+'GO\nCREATE SCHEMA qa AUTHORIZATION dbo;\nGO\n')
+        out.append('USE '+g.q(db)+';\nGO\n'+assert_no_deployment_property+check+'GO\nCREATE SCHEMA qa AUTHORIZATION dbo;\nGO\n')
     for role, db, file in [('FRAMEWORK',FRAMEWORK,'Deployment_Filled_Core.sql'), ('SNAPSHOT',TARGET,'Deployment_Filled_Target.sql')]:
         fixture = (ROOT/'Code/Tests/Integration'/file).read_text(encoding='utf-8-sig')
         out.append(fixture.replace('USE [DeineDatenbank];','USE '+g.q(db)+';',1))
@@ -3967,6 +3971,11 @@ def prepare(packaged_installer=None):
     out.append(negative(configured(sql,FRAMEWORK,'master'),53922,'system target'))
     out.append(negative(configured(sql,'x'*129),53920,'overlength database'))
     out.append('USE '+g.q(FRAMEWORK)+';\nGO\n')
+    out.append("CREATE USER [DeploymentSchemaOtherOwner] WITHOUT LOGIN;\n"
+               "ALTER AUTHORIZATION ON SCHEMA::[monitor_deployment] TO [DeploymentSchemaOtherOwner];\nGO\n")
+    out.append(negative(deployed,53903,'deployment schema with non-dbo owner'))
+    out.append("ALTER AUTHORIZATION ON SCHEMA::[monitor_deployment] TO [dbo];\n"
+               "DROP USER [DeploymentSchemaOtherOwner];\nGO\n")
     out.append("ALTER TABLE monitor.WaitTypeCatalog ADD UnexpectedLocalColumn int NULL;\nGO\n")
     out.append(negative(deployed,53906,'extra column'))
     out.append("ALTER TABLE monitor.WaitTypeCatalog DROP COLUMN UnexpectedLocalColumn;\nGO\n")
@@ -4008,6 +4017,7 @@ def prepare(packaged_installer=None):
     out.append(deployed+'\nGO\n')
     for role, db in [('FRAMEWORK',FRAMEWORK),('SNAPSHOT',TARGET)]:
         out.append('USE '+g.q(db)+';\nGO\n')
+        out.append(assert_no_deployment_property)
         out.append("IF (SELECT COUNT(*) FROM sys.tables WHERE schema_id=SCHEMA_ID(N'monitor_deployment') AND name LIKE N'Run[_]%')<>2 THROW 53806,N'Reapply receipt count mismatch.',1;\n")
         out.append("DECLARE @Run sysname=(SELECT TOP(1) name FROM sys.tables WHERE schema_id=SCHEMA_ID(N'monitor_deployment') AND name LIKE N'Run[_]%' ORDER BY create_date DESC,object_id DESC),@Manifest nvarchar(max),@Read nvarchar(max),@State sysname,@Compare nvarchar(max);\nSET @Read=N'SELECT @Result=Manifest FROM monitor_deployment.'+QUOTENAME(@Run); EXEC sys.sp_executesql @Read,N'@Result nvarchar(max) OUTPUT',@Manifest OUTPUT;\n")
         for i, table in enumerate(tables,1):
@@ -4043,7 +4053,12 @@ def prepare(packaged_installer=None):
         out.append(f"SET @Default=NULL; SELECT @Default=d.name FROM sys.default_constraints d JOIN sys.columns c ON c.object_id=d.parent_object_id AND c.column_id=d.parent_column_id WHERE d.parent_object_id=OBJECT_ID(N'monitor.WaitTypeCatalog') AND c.name={g.lit(column)}; IF @Default IS NOT NULL BEGIN SET @Drop=N'ALTER TABLE monitor.WaitTypeCatalog DROP CONSTRAINT '+QUOTENAME(@Default); EXEC sys.sp_executesql @Drop; END; ALTER TABLE monitor.WaitTypeCatalog DROP COLUMN {g.q(column)};\n")
     remaining=[c for c in wait.columns if c not in wait.additions]
     out.append('SELECT '+','.join(g.q(c) for c in remaining)+' INTO qa.BeforeOldWait FROM monitor.WaitTypeCatalog;\nGO\n')
+    out.append("EXEC sys.sp_addextendedproperty @name=N'SQL_Server_Analyze.DeploymentFormat',"
+               "@value=1,@level0type=N'SCHEMA',@level0name=N'monitor_deployment';\nGO\n")
     out.append(deployed+'\nGO\nUSE '+g.q(FRAMEWORK)+';\nGO\n')
+    out.append("IF NOT EXISTS(SELECT 1 FROM sys.extended_properties WHERE class=3 AND major_id=SCHEMA_ID(N'monitor_deployment') "
+               "AND name=N'SQL_Server_Analyze.DeploymentFormat' AND TRY_CONVERT(int,value)=1) "
+               "THROW 53803,N'Deployment changed the existing schema format property.',1;\n")
     for column in wait.additions:
         out.append(f"IF NOT EXISTS(SELECT 1 FROM sys.columns WHERE object_id=OBJECT_ID(N'monitor.WaitTypeCatalog') AND name={g.lit(column)}) THROW 53811,N'Known additive migration omitted a column.',1;\n")
     out.append("DECLARE @Run sysname=(SELECT TOP(1) name FROM sys.tables WHERE schema_id=SCHEMA_ID(N'monitor_deployment') AND name LIKE N'Run[_]%' ORDER BY create_date DESC,object_id DESC),@Manifest nvarchar(max),@Read nvarchar(max),@State sysname,@Compare nvarchar(max); SET @Read=N'SELECT @Result=Manifest FROM monitor_deployment.'+QUOTENAME(@Run); EXEC sys.sp_executesql @Read,N'@Result nvarchar(max) OUTPUT',@Manifest OUTPUT; SELECT @State=archiveName FROM OPENJSON(@Manifest) WITH(originalObject sysname,archiveName sysname) WHERE originalObject=N'WaitTypeCatalog'; IF @State IS NULL THROW 53812,N'Missing old-shape archive.',1;\n")
