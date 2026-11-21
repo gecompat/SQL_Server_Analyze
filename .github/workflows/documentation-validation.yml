@@ -1,233 +1,142 @@
-name: Documentation validation
+name: Canonical SSIS receipt artifact verification
 
 on:
-  pull_request:
-    paths:
-      - '.github/workflows/documentation-validation.yml'
-      - 'AGENTS.md'
-      - '.ai/**'
-      - 'README.md'
-      - 'AI_Metadata/**/*.md'
-      - 'Code/**/*.sql'
-      - 'Code/Install/*.ps1'
-      - 'Code/Install/*.py'
-      - 'Code/Tests/Integration/Deployment_*.py'
-      - 'Code/Tests/Static/**'
-      - 'Code/Tools/Rule_Context_Cache.py'
-      - 'Code/Tools/Linux_Cgroup_Values.py'
-      - 'Code/Tools/Linux_Cgroup_Metadata.py'
-      - 'Code/Tools/Linux_Cgroup_Native.py'
-      - 'Code/Tools/Linux_Cgroup_Reader.py'
-      - 'AI_Metadata/Rule_Context_Cache_Scope.json'
-      - 'Code/Tests/Integration/191_Standalone_Installer_Contract.ps1'
-      - 'Code/Tests/Integration/192_ExecutionPlanAnalysis_Installer_Contract.ps1'
-      - 'Code/Tests/Integration/194_SnapshotBaseline_Installer_Contract.ps1'
-      - 'Documentation/**/*.md'
-      - 'Metadata/**'
   push:
-    branches:
-      - main
-    paths:
-      - '.github/workflows/documentation-validation.yml'
-      - 'AGENTS.md'
-      - '.ai/**'
-      - 'README.md'
-      - 'AI_Metadata/**/*.md'
-      - 'Code/**/*.sql'
-      - 'Code/Install/*.ps1'
-      - 'Code/Install/*.py'
-      - 'Code/Tests/Integration/Deployment_*.py'
-      - 'Code/Tests/Static/**'
-      - 'Code/Tools/Rule_Context_Cache.py'
-      - 'Code/Tools/Linux_Cgroup_Values.py'
-      - 'Code/Tools/Linux_Cgroup_Metadata.py'
-      - 'Code/Tools/Linux_Cgroup_Native.py'
-      - 'Code/Tools/Linux_Cgroup_Reader.py'
-      - 'AI_Metadata/Rule_Context_Cache_Scope.json'
-      - 'Code/Tests/Integration/191_Standalone_Installer_Contract.ps1'
-      - 'Code/Tests/Integration/192_ExecutionPlanAnalysis_Installer_Contract.ps1'
-      - 'Code/Tests/Integration/194_SnapshotBaseline_Installer_Contract.ps1'
-      - 'Documentation/**/*.md'
-      - 'Metadata/**'
-  workflow_dispatch:
+    branches: ['codex/ops-installer-upload']
+    paths: ['.github/workflows/documentation-validation.yml']
 
-permissions:
-  contents: read
-  statuses: write
-
+permissions: {}
 concurrency:
-  group: documentation-validation-${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  group: usage-skill-canonical-review
+  cancel-in-progress: false
 
 jobs:
-  validate:
-    name: Validate impacted documentation contracts
+  transport:
+    if: github.repository == 'gecompat/SQL_Server_Analyze' && github.ref == 'refs/heads/codex/ops-installer-upload' && github.event_name == 'push' && github.event.before == 'a9437343408ca04f70b54fea3d4d7d724d93fa7c' && github.run_attempt == '1'
     runs-on: ubuntu-24.04
-    timeout-minutes: 15
-
+    timeout-minutes: 30
+    permissions:
+      contents: write
     steps:
-      - name: Check out repository history
-        uses: actions/checkout@v6
+      - name: Check out the reviewed SSIS source preview
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
         with:
-          fetch-depth: 0
+          ref: 3ddc511e9d5c4728212413e90950ba3220f6bbd7
+          fetch-depth: 1
           persist-credentials: false
           show-progress: false
-
-      - id: impact
-        name: Select impacted documentation checks
-        shell: bash
-        env:
-          BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before || '' }}
-          HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
-        run: |
-          set -euo pipefail
-
-          changed_file="$RUNNER_TEMP/documentation-changed-files.txt"
-          if [ "${{ github.event_name }}" = 'workflow_dispatch' ] || \
-             [[ ! "$BASE_SHA" =~ ^[0-9a-f]{40}$ ]] || \
-             [[ "$BASE_SHA" =~ ^0{40}$ ]]; then
-            git ls-files > "$changed_file"
-            manual_full=true
-          else
-            git diff --name-only "$BASE_SHA" "$HEAD_SHA" > "$changed_file"
-            manual_full=false
-          fi
-
-          set_flag() {
-            local name="$1"
-            local pattern="$2"
-            local value=false
-            if grep -Eq "$pattern" "$changed_file"; then
-              value=true
-            fi
-            echo "$name=$value" >> "$GITHUB_OUTPUT"
-          }
-
-          set_flag docs '^(AGENTS\.md|README\.md|Documentation/.*\.md|AI_Metadata/(CONTINUATION_GUIDE|PROJECT_CONTEXT)\.md|AI_Metadata/Internal_Documentation/.*\.md|Metadata/Quality/CI_Test_Policy\.csv|Code/Tests/Static/915_Validate_Documentation_Style\.py|\.github/workflows/documentation-validation\.yml)$'
-          set_flag navigator '^(Code/01_Common/(020_VW_AnalyseClassCatalog|021_VW_AnalysisCatalog|022_VW_AnalysisSearchTerm|023_VW_AnalysisRelation|100_USP_AnalysisNavigator)\.sql|Code/Install/Install_(All|ExecutionPlanAnalysis)\.sql|Code/Tests/Static/905_Validate_Analysis_Navigator\.py|Metadata/Inventory/(Objects|Parameters|ResultSets)\.csv|Documentation/Analysis_Guides/Start_Here\.md|Documentation/Reference/Analysis_Navigator\.md|Documentation/Analysis_Guides/Procedures/USP_AnalysisNavigator\.md)$'
-          set_flag waits '^(Code/01_Common/07[45].*WaitType.*\.sql|Code/Tests/Static/940_Validate_Wait_Type_Catalog\.py|Documentation/Operations/Wait_Type_Catalog\.md|AI_Metadata/Internal_Documentation/Quality/Wait_Type_Curation\.md|Metadata/Quality/Wait_Type_Curation_Evidence\.json)$'
-          set_flag procedures '^(Code/.*\.sql|Documentation/Analysis_Guides/Procedures/.*\.md|Code/Tests/Static/900_Validate_Analysis_Documentation\.ps1)$'
-          set_flag installers '^(Code/Install/.*\.ps1|Code/Tests/Integration/(191_Standalone|192_ExecutionPlanAnalysis|194_SnapshotBaseline)_Installer_Contract\.ps1)$'
-          set_flag linux_reader '^(\.github/workflows/documentation-validation\.yml|Code/Tools/Linux_Cgroup_(Native|Reader|Values|Metadata)\.py|Code/Tests/Static/(Validate_Linux_Cgroup_(Reader|Values)|Invoke-StaticContractSuite)\.(py|ps1)|AI_Metadata/Internal_Documentation/Architecture/Linux_Cgroup_Resource_Boundary_Dossier\.md|Documentation/Analysis_Guides/Linux_Cgroup_Reader(_Contract)?\.md)$'
-
-          check_network=false
-          if grep -Fxq 'Code/Tests/Static/980_Validate_External_Documentation_Links.py' "$changed_file"; then
-            check_network=true
-          elif [ "$manual_full" = false ] && \
-               git diff --unified=0 "$BASE_SHA" "$HEAD_SHA" -- \
-                 | grep -E '^\+[^+].*https?://' >/dev/null; then
-            check_network=true
-          elif [ "$manual_full" = true ]; then
-            check_network=true
-          fi
-
-          echo "check_network=$check_network" >> "$GITHUB_OUTPUT"
-          echo "manual_full=$manual_full" >> "$GITHUB_OUTPUT"
-          echo "changed_files_path=$changed_file" >> "$GITHUB_OUTPUT"
-          suite_scope=Full
-          if [ "$manual_full" = false ] && [ -s "$changed_file" ] && \
-             ! grep -Ev '^(AGENTS\.md|\.ai/.*|AI_Metadata/CONTINUATION_GUIDE\.md|AI_Metadata/Rule_Context_Cache(_Scope\.json|\.md)|AI_Metadata/Internal_Documentation/Architecture/Foundation_[^/]+\.(md|json)|Code/Tools/Rule_Context_Cache\.py|Code/Tests/Static/Validate_Rule_Context_Cache\.py)$' "$changed_file"; then
-            suite_scope=FoundationGovernance
-          fi
-          echo "suite_scope=$suite_scope" >> "$GITHUB_OUTPUT"
-
-          {
-            echo '## Documentation validation impact'
-            echo ''
-            echo "- Documentation/style: $(grep -Eq '^(AGENTS\.md|README\.md|Documentation/.*\.md|AI_Metadata/(CONTINUATION_GUIDE|PROJECT_CONTEXT)\.md|AI_Metadata/Internal_Documentation/.*\.md|Metadata/Quality/CI_Test_Policy\.csv|Code/Tests/Static/915_Validate_Documentation_Style\.py|\.github/workflows/documentation-validation\.yml)$' "$changed_file" && echo true || echo false)"
-            echo "- Static contract scope: $suite_scope"
-          } >> "$GITHUB_STEP_SUMMARY"
-
-      - name: Run repository static contract suite
-        shell: pwsh
-        run: |
-          $logPath = Join-Path $env:RUNNER_TEMP 'analysis-documentation-validation.log'
-          & pwsh -NoLogo -NoProfile -File ./Code/Tests/Static/Invoke-StaticContractSuite.ps1 `
-              -Scope '${{ steps.impact.outputs.suite_scope }}' `
-              -SelfTestMode Changed `
-              -ChangedFilesPath '${{ steps.impact.outputs.changed_files_path }}' `
-              -ExcludePrivacy -ExcludeImpactSelector *>&1 |
-              Tee-Object -FilePath $logPath
-          exit $LASTEXITCODE
-
-      - name: Set up Python 3.11 for Linux cgroup reader contracts
-        if: steps.impact.outputs.linux_reader == 'true'
-        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
-        with:
-          python-version: '3.11'
-          architecture: x64
-          check-latest: false
-
-      - name: Run Linux cgroup parser and portable reader contracts
-        if: steps.impact.outputs.linux_reader == 'true'
-        shell: bash
-        run: |
-          set -euo pipefail
-          python - <<'PY'
-          import platform
-          import sys
-          if sys.version_info[:2] != (3, 11) or platform.machine().lower() not in {'x86_64', 'amd64'}:
-              raise SystemExit('LINUX_CGROUP_RUNTIME_MISMATCH')
-          print('LINUX_CGROUP_RUNTIME_311_X64')
-          PY
-          python Code/Tests/Static/Validate_Linux_Cgroup_Values.py --repository-root . --self-test
-          python Code/Tests/Static/Validate_Linux_Cgroup_Reader.py --repository-root . --self-test
-
-      - name: Run required native Linux cgroup reader contracts
-        if: steps.impact.outputs.linux_reader == 'true'
-        shell: bash
-        run: python Code/Tests/Static/Validate_Linux_Cgroup_Reader.py --repository-root . --native
-
-      - name: Validate installer contracts
-        if: steps.impact.outputs.installers == 'true'
-        shell: pwsh
-        run: |
-          $ErrorActionPreference = 'Stop'
-          foreach ($contract in @(
-              './Code/Tests/Integration/191_Standalone_Installer_Contract.ps1',
-              './Code/Tests/Integration/192_ExecutionPlanAnalysis_Installer_Contract.ps1',
-              './Code/Tests/Integration/194_SnapshotBaseline_Installer_Contract.ps1'
-          )) {
-              & pwsh -NoLogo -NoProfile -File $contract
-              if ($LASTEXITCODE -ne 0) {
-                  throw "Installer contract failed: $contract"
-              }
-          }
-
-      - name: Validate external documentation links
-        if: steps.impact.outputs.check_network == 'true'
-        shell: bash
-        run: |
-          set -euo pipefail
-          python3 ./Code/Tests/Static/980_Validate_External_Documentation_Links.py \
-            --repository-root . \
-            --self-test \
-            --check-network
-
-      - name: Upload failed documentation log
-        if: failure()
-        uses: actions/upload-artifact@v7
-        with:
-          name: analysis-documentation-validation-log
-          path: ${{ runner.temp }}/analysis-documentation-validation.log
-          if-no-files-found: ignore
-          retention-days: 1
-
-      - name: Publish documentation validation status
-        if: always()
-        shell: bash
+      - name: Generate and verify canonical installer bytes
+        shell: python
         env:
           GH_TOKEN: ${{ github.token }}
-          JOB_STATUS: ${{ job.status }}
-          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         run: |
-          set -euo pipefail
-          state='success'
-          if [ "$JOB_STATUS" != 'success' ]; then
-            state='failure'
-          fi
-          gh api --method POST "repos/${GITHUB_REPOSITORY}/statuses/${GITHUB_SHA}" \
-            -f state="$state" \
-            -f target_url="$RUN_URL" \
-            -f description='Impact-selected documentation validation' \
-            -f context='documentation-validation' >/dev/null
+          import base64
+          import hashlib
+          import json
+          import os
+          import subprocess
+          import sys
+          import urllib.request
+          from pathlib import Path
+          
+          config = json.loads(r'''{"preview":"3ddc511e9d5c4728212413e90950ba3220f6bbd7","tree":"a782348fc20517bfb75af3a5b22275804a989c68","before":"a9437343408ca04f70b54fea3d4d7d724d93fa7c","beforePins":{"Code/00_Setup/005_VW_ObjectUsageSkills.sql":"c84818fe20b88ad9331d24a90cf0bd4268635a83","Code/10_SSIS/033_SsisHandoverReceipt.sql":"c5e9b1a8d48e716d59f2d72b9bf368d20bb9e7fe","Code/10_SSIS/035_InternalSsisExecutionScopes.sql":"aac14db968eb26dd79fedf42ff49c80ff41b0faf","Code/10_SSIS/040_USP_SsisPackageModelAnalysis.sql":"2cdd1f5efb5ee46f8dfc0f5b7802c716ff0a4673","Code/10_SSIS/041_InternalManageSsisHandoverReceipt.sql":"1d810f27e6f321e3aa49bd585c68a03776d1a224","Code/10_SSIS/050_USP_SsisExecutionComparison.sql":"e400750de81c1039240a6d56ecdc9502c500c6b1","Code/10_SSIS/060_USP_SsisExecutionBaseline.sql":"4d4227c9b5bd4a61118b59d8e0cc23b1ae014839","Code/10_SnapshotBaseline/012_VW_ObjectUsageSkills_Target.sql":"825c4f1f23d557bd69e6e9edf0082af85a6490a9","Code/10_SnapshotBaseline/030_Snapshot_Target_Schema.sql":"62967240befa91207f2084b1c78180e2af6d5cc8","Code/Install/Build-ExecutionPlanAnalysisInstaller.ps1":"d2fdc1cae65ed521162d5936c2015db11d3215f2","Code/Install/Build-SnapshotBaselineInstallers.ps1":"738f369b72435d94b21249267a3996d872379771","Code/Install/Build-StandaloneInstaller.ps1":"4db9dbfae972d68d7c27d832857e0f084955c668","Code/Install/Install_All.sql":"aa43d87f582cd9670d285bf04976807601c2ddfe","Code/Install/Install_SSIS_Analysis.sql":"f300919e9c54a0e08b359f602545f3be3dd00f83","Code/Install/deployment_generator.py":"99a8e762bc9ffc905dc1fe1d6141bdf98f4d0ca1","Code/Install/usage_skill_generator.py":"5bd8eda4b48dce8a79a12a52a0e40c23c192f063","Code/Tests/Integration/212_SsisPackageModelAnalysis_Runtime_Contract.ps1":"56645aabc387f62e1520d9de7bb9526455104e2e","Code/Tests/Integration/215_SsisLocalHandover_Runtime_Contract.sql":"30406aa2784c678ea2e8d4d734f8e86bca78184e","Code/Tests/Integration/216_SsisCatalogHandover_Native_Contract.ps1":"d2577642bb8e35d19263dda70fa00ec74461137b","Code/Tests/Integration/216_SsisCatalogHandover_Transport_Contract.ps1":"87060322e3fe6e5005aae0f290df8515d81c08ca","Code/Tests/Integration/216_SsisExecutionCorrelation_Runtime_Contract.sql":"b1cd2e906915694e3b15e3bcb475a8f11e572c5c","Code/Tests/Integration/218_SsisIterationCorrelation_Runtime_Contract.sql":"358cdd8f0e6c807d4694504b8f38081f71f57c8d","Code/Tests/Integration/219_SsisExecutionScopes_Native_Contract.ps1":"3d929cd92aa78b8d43b84ca31f113657e9b14db4","Code/Tests/Integration/220_SsisExecutionScopes_Runtime_Contract.sql":"f4033712711967228137d286b095c1ac81ce9ac7","Code/Tests/Integration/221_SsisPipelineCorrelation_Native_Contract.ps1":"b52936489d5ff6b4ea042d5ec3df37e4fe2e728e","Code/Tests/Integration/222_SsisPipelineCorrelation_Runtime_Contract.sql":"cf925d2846286e9346de0188569a1df602fe31a2","Code/Tests/Integration/223_SsisPipelineDiagnostics_Runtime_Contract.sql":"66c1e78201bb39ef23b34036f5454a5b6ea4af98","Code/Tests/Integration/225_SsisExecutionComparison_Runtime_Contract.sql":"a4fae1ddfd03bf79ae521ecd968d6369ea02d960","Code/Tests/Integration/226_SsisExecutionComparison_Native_Contract.ps1":"f24d7321737a1cfb83e5af73d7fd41ec14acf6d3","Code/Tests/Integration/227_SsisExecutionBaseline_Runtime_Contract.sql":"bae8d50e7bf749cd8f8e161c54c412461198e571","Code/Tests/Integration/229_Usage_Skills_Framework_Runtime_Contract.sql":"db09c9a8d3a5e6335600ab5145f65a736125e2ea","Code/Tests/Integration/Deployment_Filled_Core.sql":"ad2d627a5311118c675c8e35572d5724fdcfe550","Code/Tests/Integration/Deployment_Prepare_Runtime.py":"a5e51ad5c54575da8281976b33824c03878c7207","Code/Tests/Static/1054_Validate_Usage_Skill_Contract.py":"9e6e17e0d876fae63a2a23da7cf8ec7015ae75ad","Code/Tests/Static/900_Validate_Analysis_Documentation.ps1":"9a965af3470f9c6dc731a400fd6db6e8a3daf21a","Code/Tests/Static/950_Validate_Nonblocking_Metadata.py":"a46234d19b839f12d08b150024e20b258f665a4d","Code/Tests/Static/Validate_Deployment_Contract.py":"c445fa8e1ae72378db7a13f6280017e15e290f6c","Code/Tests/Static/Validate_Ssis_Exchange_Contract.py":"06fcad115fd5ca316f7e381478c685963fc872ad","Code/Tools/Invoke-SsisProjectScopeHandover.ps1":"f98e05a9a433e0bb98a203195558db17f8c4460c","Code/Tools/SsisHandoverSupport.psm1":"e3ab06036897a6ddbc94c9a0cbde643f9a59bb18","Documentation/Analysis_Guides/Procedures/USP_SsisExecutionBaseline.md":"85de5ff5771f55cdd456400f55897489143e6d40","Documentation/Analysis_Guides/Procedures/USP_SsisExecutionComparison.md":"a097671c379743add7864f72b4ceda47061f02ad","Documentation/Analysis_Guides/Procedures/USP_SsisPackageModelAnalysis.md":"a37fec24e2ac7fb29c102ceaeed954e2ad8253d8","Documentation/Architecture/SSIS_Analyze_Toolbelt_Exchange_Contract.md":"e9d054e9bf803c46f7352db30365f7562f2e092b","Documentation/Quality/Release_Notes.md":"7e98922d696e801e5bdc7f4761f83387896b76b6","Documentation/README.md":"a28de5d8946e9784e51bd90e39202af7c3a06d59","Documentation/Reference/Object_Reference.md":"1f0454a59aa54725da75bddd5cf8435ad0537daf","Metadata/Inventory/Objects.csv":"05d3e6e9ca2abcf2c79b49d39f7e6b8638f36867","Metadata/Packages/SSIS_001_Dependencies.csv":"1ef50398f02cb0b55e970dc1b0bbe20f0a595d48","Metadata/UsageSkills/README.md":"5174c8e01c42dc7546a946c995c47d30ec22f93d","Metadata/UsageSkills/monitor/InternalManageSsisHandoverReceipt.md":"bd07f07b9613852ed0aa8801d48b5abde8ed04f8","Metadata/UsageSkills/monitor/InternalSsisExecutionScopes.md":"565daf261099460f245dcb3abf5ae04c0314cd66","Metadata/UsageSkills/monitor/SsisHandoverReceipt.md":"c671e033c8137629c980f17e6f89d6c2794de222","Metadata/UsageSkills/monitor/USP_SsisExecutionBaseline.md":"1f70cb3740a2646d9378918da81b5eb6490a7d78","Metadata/UsageSkills/monitor/USP_SsisExecutionComparison.md":"f4cb1e2fa70b92f0e8912c1bb42d7b1b88ff8224","Metadata/UsageSkills/monitor/USP_SsisPackageModelAnalysis.md":"68f3136a240fd879ce9730a2c186f536151f00b2","Metadata/UsageSkills/monitor_metadata/VW_ObjectUsageSkills.md":"d9b0da3b9d13649116ed922bb1fb735916efd823","README.md":"64f75558f1ef55a37e5d1442d30207c52779522d","TestLab/Adapters/EXECUTION-PLAN-001/Build-AdapterInstall.ps1":"47a4cd3dde1ae85a6ad549fcb6ed2dc683b83979","TestLab/Adapters/EXECUTION-PLAN-001/sql/install.sql":"c3c49347ba1ad1abbc529ade35d2f261c506f638","TestLab/Adapters/OPS-005/Build-AdapterInstall.ps1":"4160bdd1e1df6c557ba2c25dffd502eee1383b15","TestLab/Adapters/OPS-005/sql/install.sql":"ab1fab8252b47dae61092cdaf551dfa9d67eb477","TestLab/Adapters/OPS-005/sql/update.sql":"1f7ff87dda9ab630ea9ab720945d77f8c1bb6358"},"expected":{"view":{"bytes":3840072,"sha":"3d07acbac99e59798a906ec1bd9da629f63a55db"},"ops":{"bytes":16741004,"sha":"6242d7216668a93428903fc2e5fb9c9c0d76b9fc"},"plan":{"bytes":4976512,"sha":"32f059c7a75c546c8e4793247c8c18d6fcc24c4a"},"update":{"bytes":17380,"sha":"1f7ff87dda9ab630ea9ab720945d77f8c1bb6358"}}}''')
+          root = Path.cwd().resolve()
+          temp = Path(os.environ["RUNNER_TEMP"]) / "ssis-receipt-canonical"
+          temp.mkdir(exist_ok=False)
+          
+          def git_hash(data):
+              return hashlib.sha1(b"blob " + str(len(data)).encode("ascii") + b"\0" + data).hexdigest()
+          
+          def run(*args):
+              child_env = {key: value for key, value in os.environ.items() if key != "GH_TOKEN"}
+              return subprocess.run(args, cwd=root, env=child_env, check=True, timeout=900,
+                                    capture_output=args[0] == "git").stdout
+          
+          def repository_bytes(path):
+              resolved = (root / path).resolve(strict=True)
+              if not resolved.is_file() or not resolved.is_relative_to(root):
+                  raise SystemExit("PATH_BOUND")
+              return resolved.read_bytes()
+          
+          def check_pins(pins):
+              for path, expected in pins.items():
+                  if git_hash(repository_bytes(path)) != expected:
+                      raise SystemExit("BLOB_PIN_MISMATCH: " + path)
+          
+          renderer = "Code/Install/usage_skill_generator.py"
+          deployment = "Code/Install/deployment_generator.py"
+          validator = "Code/Tests/Static/1054_Validate_Usage_Skill_Contract.py"
+          view = "Code/00_Setup/005_VW_ObjectUsageSkills.sql"
+          if run("git", "rev-parse", "HEAD", "HEAD^{tree}").decode().splitlines() != [config["preview"], config["tree"]]:
+              raise SystemExit("CHECKOUT_BOUND")
+          check_pins(config["beforePins"])
+          run(sys.executable, renderer, "--repository-root", ".", "--write-sources")
+          run(sys.executable, renderer, "--repository-root", ".", "--write-views")
+          diff = run("git", "diff", "--name-only", "-z").decode().strip("\0").split("\0")
+          if diff != [view]:
+              raise SystemExit("PROJECTION_REPLAY_BOUND: " + repr(diff))
+          check_pins({**config["beforePins"], view: config["expected"]["view"]["sha"]})
+          run(sys.executable, renderer, "--repository-root", ".", "--check")
+          run(sys.executable, deployment, "--repository-root", ".", "--check-snapshot-guard")
+          run(sys.executable, validator, "--repository-root", ".", "--self-test")
+          run(sys.executable, validator, "--repository-root", ".")
+          run("pwsh", "-NoLogo", "-NoProfile", "-File", "Code/Tests/Static/900_Validate_Analysis_Documentation.ps1",
+              "-RepositoryRoot", str(root))
+          run("pwsh", "-NoLogo", "-NoProfile", "-File", "TestLab/Adapters/OPS-005/Build-AdapterInstall.ps1",
+              "-RepositoryRoot", str(root), "-InstallOutputPath", str(temp / "ops.sql"), "-UpdateOutputPath", str(temp / "update.sql"))
+          run("pwsh", "-NoLogo", "-NoProfile", "-File", "TestLab/Adapters/EXECUTION-PLAN-001/Build-AdapterInstall.ps1",
+              "-RepositoryRoot", str(root), "-OutputPath", str(temp / "plan.sql"))
+          run("pwsh", "-NoLogo", "-NoProfile", "-File", "Code/Install/Build-SnapshotBaselineInstallers.ps1",
+              "-RepositoryRoot", str(root), "-FrameworkOutputPath", str(temp / "snapshot-framework.sql"),
+              "-TargetOutputPath", str(temp / "snapshot-target.sql"))
+          data = {"view": repository_bytes(view), "ops": (temp / "ops.sql").read_bytes(),
+                  "plan": (temp / "plan.sql").read_bytes(), "update": (temp / "update.sql").read_bytes()}
+          for name, payload in data.items():
+              if {"bytes": len(payload), "sha": git_hash(payload)} != config["expected"][name]:
+                  raise SystemExit("CANONICAL_BYTES_BOUND: " + name)
+              payload.decode("utf-8")
+          snapshot = {}
+          for side in ("framework", "target"):
+              payload = (temp / ("snapshot-" + side + ".sql")).read_bytes()
+              if not payload:
+                  raise SystemExit("EMPTY_SNAPSHOT_INSTALLER")
+              snapshot[side] = {"bytes": len(payload), "sha": git_hash(payload)}
+          
+          def upload(payload):
+              expected = git_hash(payload)
+              body = json.dumps({"encoding": "base64", "content": base64.b64encode(payload).decode("ascii")}).encode("ascii")
+              request = urllib.request.Request("https://api.github.com/repos/gecompat/SQL_Server_Analyze/git/blobs",
+                                               data=body, method="POST", headers={
+                                                   "Authorization": "Bearer " + os.environ["GH_TOKEN"],
+                                                   "Content-Type": "application/json",
+                                                   "Accept": "application/vnd.github+json",
+                                                   "X-GitHub-Api-Version": "2022-11-28"})
+              with urllib.request.urlopen(request, timeout=120) as response:
+                  content = response.read(4097)
+              if len(content) > 4096 or json.loads(content).get("sha") != expected:
+                  raise SystemExit("UPLOAD_RESPONSE_BOUND")
+              return expected
+          
+          chunks = []
+          offset = 0
+          while offset < len(data["ops"]):
+              end = min(offset + 786432, len(data["ops"]))
+              while end < len(data["ops"]) and (data["ops"][end] & 192) == 128:
+                  end -= 1
+              if end <= offset:
+                  raise SystemExit("CHUNK_BOUND")
+              piece = data["ops"][offset:end]
+              piece.decode("utf-8")
+              chunks.append((offset, piece))
+              offset = end
+          if len(chunks) > 40 or b"".join(piece for _, piece in chunks) != data["ops"]:
+              raise SystemExit("CHUNK_REPLAY_BOUND")
+          for name in ("view", "ops", "plan"):
+              upload(data[name])
+          review_chunks = [{"offset": pos, "bytes": len(part), "sha": upload(part)} for pos, part in chunks]
+          manifest = json.dumps({"preview": config["preview"], "tree": config["tree"], "pins": config["beforePins"],
+                                 "canonical": config["expected"], "snapshot": snapshot, "opsChunks": review_chunks},
+                                sort_keys=True, separators=(",", ":")).encode("ascii")
+          if len(manifest) > 100000:
+              raise SystemExit("MANIFEST_SIZE_BOUND")
+          print("SSIS_RECEIPT_CANONICAL_MANIFEST=" + upload(manifest))
