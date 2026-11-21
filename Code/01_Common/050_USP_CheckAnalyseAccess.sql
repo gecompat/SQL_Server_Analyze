@@ -11,6 +11,155 @@ Zweck        : Prüft die effektive Analyseklassen- und AD-Gruppenpolicy.
 Ausgabe      : RAW, CONSOLE, TABLE oder NONE; optional JSON mit access und policies.
 ===============================================================================
 */
+-- USAGE_SKILL_BEGIN monitor.USP_CheckAnalyseAccess 1.0.0
+-- ---
+-- skill_format_version: "1.0.0"
+-- name: "monitor.USP_CheckAnalyseAccess"
+-- schema_name: "monitor"
+-- object_name: "USP_CheckAnalyseAccess"
+-- object_type: "PROCEDURE"
+-- database_role: "framework"
+-- is_internal: false
+-- description: "Prüft die effektive Analyseklassen- und AD-Gruppenpolicy."
+-- source_path: "Code/01_Common/050_USP_CheckAnalyseAccess.sql"
+-- ---
+-- 
+-- # monitor.USP_CheckAnalyseAccess
+-- 
+-- ## Zweck und Einsatz
+-- 
+-- Prüft die effektive Analyseklassen- und AD-Gruppenpolicy.
+-- 
+-- ## Voraussetzungen und Rechte
+-- 
+-- Ein direkter Aufruf erfordert EXECUTE auf [monitor].[USP_CheckAnalyseAccess]. Die Quelle nennt insbesondere `[monitor].[InternalPrepareSingleResultTable]`, `sys.login_token`, `[monitor].[VW_AnalyseClassCatalog]`, `[monitor].[VW_AnalyseAccessCurrent]` sowie weitere tatsächlich aufgerufene Quellen. Für deren Metadaten- oder Fachzugriff gelten die Rechte des jeweiligen SQL-Ausführungskontexts; der Skill erteilt sie nicht.
+-- 
+-- ## Parameter und Eingabe
+-- 
+-- „SQL-Bindungspflicht“ bezeichnet ein bei der SQL-Aufrufbindung erforderliches Argument ohne Default. Fachliche Wertpflichten und zulässige NULL-Werte stehen im jeweiligen Einzelvertrag.
+-- 
+-- | Parameter | SQL-Typ | SQL-Bindungspflicht | Default |
+-- | --- | --- | --- | --- |
+-- | @AnalyseKlasse | varchar(64) | nein | NULL |
+-- | @NurGesperrte | bit | nein | 0 |
+-- | @ResultSetArt | varchar(16) | nein | 'CONSOLE' |
+-- | @ResultTablesJson | nvarchar(max) | nein | NULL |
+-- | @JsonErzeugen | bit | nein | 0 |
+-- | @Json | nvarchar(max) | nein | NULL OUTPUT |
+-- | @PrintMeldungen | bit | nein | 1 |
+-- | @Hilfe | bit | nein | 0 |
+-- 
+-- **@AnalyseKlasse:** @AnalyseKlasse: varchar(64), Default NULL. Ausgelassen oder NULL wählt alle 31 Klassen. Sonst wird der Wert mit der Katalogspalte unter SQL_Latin1_General_CP1_CS_AS verglichen; es gibt kein LTRIM/RTRIM. Groß-/Kleinschreibung zählt; SQL-Gleichheit kann nachgestellte U+0020 auffüllen. Leer oder nicht passend ergibt INVALID_PARAMETER. Wirkung: auf eine Klasse begrenzen. Zulässige Klassen mit Bedeutung:
+-- 
+-- **@NurGesperrte:** @NurGesperrte: bit, Default 0. 0 liefert alle Accesszeilen; 1 nur Zeilen mit IsAllowed=0. NULL wirkt im SQL-Filter ebenfalls wie 1. Filtert nur Access, nicht Policies. Ausgelassen verwendet 0.
+-- 
+-- **@ResultSetArt:** @ResultSetArt: varchar(16), Default 'CONSOLE'. Werte: CONSOLE rendert Access und liefert Policies/Warnings zusätzlich; RAW liefert Meta, Access, Policies, Warnings als vier Resultsets; TABLE exportiert nur Access; NONE unterdrückt fachliche Resultsets. Eingabe wird mit LTRIM/RTRIM an äußeren U+0020 entfernt und mit UPPER normalisiert. NULL/sonst ungültig ergibt INVALID_PARAMETER. Ausgelassen = CONSOLE.
+-- 
+-- **@ResultTablesJson:** @ResultTablesJson: nvarchar(max), Default NULL. NULL/ausgelassen bedeutet keine Zuordnung. Für TABLE ist ein nichtleeres gültiges JSON-Objekt mit genau dem nach U+0020-Trimmen case-sensitiven Schlüssel "access" und einem nach U+0020-Trimmen nichtleeren JSON-String als Ziel erforderlich; Schlüssel und Ziele müssen eindeutig sein. Zielname: vorhandene lokale #temp-Tabelle, nie ##, höchstens LEN 116, nicht #Monitor* (case-insensitiv); muss leer sein und genau eine beliebig typisierte Seed-Spalte enthalten. Der Preflight fügt vorübergehend eine bit-NULL-Prüfspalte hinzu/entfernt sie wieder; das ist keine Seed-Typvorgabe. U+0020 außen am JSON wird für Objektklammern getrimmt; leere/ungültige JSON-Objekte, falsche Schlüssel/Werttypen, leere Namen, Duplikate, unzulässige Namen, fehlendes/gefülltes/mehrspaltiges Ziel scheitern im Preflight (bei Procedure-Aufruf THROW 51011). Außerhalb TABLE führt jede nichtleere Zuordnung zu THROW 51011.
+-- 
+-- **@JsonErzeugen:** @JsonErzeugen: bit, Default 0. 0/NULL erzeugt kein JSON; 1 erzeugt @Json mit meta sowie access-, policies- und warnings-Arrays. Ausgelassen verwendet 0.
+-- 
+-- **@Json:** @Json: nvarchar(max), Default NULL OUTPUT. Als OUTPUT-Variable binden, um das erzeugte Dokument zu erhalten; bei deaktiviertem JSON bleibt es NULL. Der Eingangswert wird zu Beginn vor TABLE-Preflight und Hilfe verworfen und auf NULL gesetzt. Ausgelassen ist möglich, dann wird kein Wert empfangen.
+-- 
+-- **@PrintMeldungen:** @PrintMeldungen: bit, Default 1. 1 gibt eine zusätzliche Severity-10-Meldung für behandelte Fehler aus; 0 oder NULL unterdrückt nur diese Meldung, nicht Hilfe, Resultsets, Warnings oder JSON. Ausgelassen = 1.
+-- 
+-- **@Hilfe:** @Hilfe: bit, Default 0. 1 druckt die Hilfe und beendet vor der fachlichen Accessauswertung; NULL/0 führt normal aus. Hilfe ist unabhängig von @PrintMeldungen. Bei TABLE läuft der Mapping-Preflight nur im normalen Pfad und kann TempDB-Metadaten ändern oder mit 51011 abbrechen. @Json ist vorher bereits NULL.
+-- 
+-- ## Resultate und Ausgabe
+-- 
+-- RAW, CONSOLE, TABLE oder NONE; optional JSON mit access und policies.
+-- 
+-- | Resultmenge | RAW | TABLE | Felder laut Inventar |
+-- | --- | --- | --- | --- |
+-- | access | 1 | 1 | [AnalysisClass] varchar(64) NOT NULL , [AnalysisLevel] varchar(16) NOT NULL , [RequiresGroupGate] bit NOT NULL , [OriginalLoginName] sysname NULL , [EffectiveLoginName] sysname NULL , [IsSysadmin] bit NULL , [ActivePolicyCount] bigint NULL , [RelevantPolicyCount] bigint NULL , [IsAllowed] bit NOT NULL , [AccessReason] varchar(20) NULL , [MatchedGroupCount] bigint NULL , [StatusCode] varchar(40) NOT NULL |
+-- 
+-- Bei @Hilfe=1 kommt genau ein Resultset mit SkillFormatVersion, SchemaName, ObjectName und SkillMarkdown hinzu; bestehende PRINT-Hinweise bleiben erhalten.
+-- 
+-- ## Beispiel
+-- 
+-- ```sql
+-- EXEC [monitor].[USP_CheckAnalyseAccess] @Hilfe=1;
+-- ```
+-- 
+-- ## Aufwand, Nebenwirkungen, Fehler und Grenzen
+-- 
+-- monitor.USP_CheckAnalyseAccess prüft den Framework-Gruppengate für Analyseklassen im aktuellen Login- und Execution-Kontext. Die Procedure führt keine Fachanalyse aus und vergibt keine SQL-Rechte.
+-- 
+-- Quellen: Klassenkatalog, VW_AnalyseAccessCurrent, VW_AnalyseAccessPolicy, sys.login_token und IS_MEMBER. Momentaufnahme gegen SYSUTCDATETIME(); kein Live-AD- oder Objektberechtigungsnachweis.
+-- 
+-- Ohne aktive Policy ist der Gate offen. Sobald global mindestens eine aktive Policy existiert, kann eine geschützte Klasse ohne spezifische oder *-Regel gesperrt sein. Token-Match hat Vorrang vor IS_MEMBER; sonst NO_MATCH.
+-- 
+--   STANDARD_CURRENT = leichte aktuelle Sessions, Requests, Blocking, Waits, Memory, TempDB und I/O
+-- 
+--   EXTENDED_CURRENT = gezielte aktuelle Vertiefung mit begrenzter SQL-Text-, Plan- und Objektauflösung
+-- 
+-- 
+-- ### Quellgebundene Detailbeschreibung
+-- 
+-- Der folgende Quellkopf bewahrt die zusätzlichen Implementierungsgrenzen für diesen Skill.
+-- 
+-- ```text
+-- Objekt       : monitor.USP_CheckAnalyseAccess
+-- Version      : 2.0.0
+-- Stand        : 2026-07-15
+-- Typ          : Stored Procedure
+-- Zweck        : Prüft die effektive Analyseklassen- und AD-Gruppenpolicy.
+-- Ausgabe      : RAW, CONSOLE, TABLE oder NONE; optional JSON mit access und policies.
+-- ```
+-- 
+-- ### Weitere bestehende Hilfehinweise
+-- 
+-- ```text
+-- monitor.USP_CheckAnalyseAccess prüft den Framework-Gruppengate für Analyseklassen im aktuellen Login- und Execution-Kontext. Die Procedure führt keine Fachanalyse aus und vergibt keine SQL-Rechte.
+-- Quellen: Klassenkatalog, VW_AnalyseAccessCurrent, VW_AnalyseAccessPolicy, sys.login_token und IS_MEMBER. Momentaufnahme gegen SYSUTCDATETIME(); kein Live-AD- oder Objektberechtigungsnachweis.
+-- Ohne aktive Policy ist der Gate offen. Sobald global mindestens eine aktive Policy existiert, kann eine geschützte Klasse ohne spezifische oder *-Regel gesperrt sein. Token-Match hat Vorrang vor IS_MEMBER; sonst NO_MATCH.
+--   STANDARD_CURRENT = leichte aktuelle Sessions, Requests, Blocking, Waits, Memory, TempDB und I/O
+--   EXTENDED_CURRENT = gezielte aktuelle Vertiefung mit begrenzter SQL-Text-, Plan- und Objektauflösung
+--   PLAN_CACHE_CURRENT = begrenzte Query-Stats- und Plan-Cache-Auswertung ohne vollständiges XML-Shredding
+--   SHOWPLAN_TARGETED = gezielte Showplan-Extraktion/XML-Analyse für gefilterte Planhandles oder Query Hashes
+--   OBJECT_ANALYSIS_CURRENT = gezielte Objekt-, Index-, Partitions- und Columnstore-Kataloganalyse einer Datenbank
+--   EXTERNAL_RUNTIME_CURRENT = lesende Konfigurations-, Katalog-, Request-, Pool- und Counteranalyse externer Runtimes, ohne Testausführung
+--   CLR_CURRENT = lesende SQL-CLR-, Host-, AppDomain-, Task-, Request- und Speicheranalyse, ohne Assemblyausführung
+--   MISSING_INDEX_CURRENT = flüchtige begrenzte Missing-Index-Hinweise, keine automatische DDL
+--   STATISTICS_TARGETED = gezielte Statistik-Eigenschaften gefilterter Objekte
+--   COLUMNSTORE_CURRENT = gezielte Columnstore-Rowgroups aus Katalogen, kein Segment-/Dictionary-Vollscan
+--   LOCKS_DEEP = detaillierte sys.dm_tran_locks-Materialisierung für relevante Sessions
+--   LOG_VLF_DEEP = datenbankübergreifende VLF-Auswertung via sys.dm_db_log_info
+--   PLAN_CACHE_DEEP = breite oder vollständige Query-Stats- und Plan-Cache-Analyse
+--   SHOWPLAN_XML_DEEP = XML-Analyse gecachter/aktueller Showplans mit Warnings, Spills, Objekten, Statistiken
+--   CATALOG_DEEP = breite Systemkatalog-, Objekt-, Index-, Statistik- und Partitionsanalyse
+--   PHYSICAL_STATS_DEEP = explizite sys.dm_db_index_physical_stats-Auswertung in gewähltem Modus
+--   INDEX_OPERATIONAL_DEEP = breite kumulative Index-Operational-Stats mit Lock/Latch/I/O/Page-Splits
+--   QUERY_STORE_CURRENT = gezielte lesende Query-Store-Status-, Runtime-, Wait-, Plan-/Force-Auswertung, enges Zeit-/Zeilenlimit
+--   EXTENDED_EVENTS_CURRENT = leichte Inventarisierung von Extended-Events-Definitionen und laufenden Sessions, ohne Targetdaten/Historie
+--   QUERY_STORE_DEEP = breite Query-Store-Historie, Regressionen, Planwechsel und Waits
+--   CROSS_DATABASE_DEEP = datenbankübergreifende Inventarisierung und Diagnose
+--   COLUMNSTORE_DEEP = breite Columnstore-Analyse mit Rowgroups, Deleted Rows, Dictionaries und Segmenten
+--   EXTENDED_EVENTS_FORENSICS_DEEP = optionale Analyse vorhandener XE-Sessions/Dateien, nie Primärquelle des Standardlaufs
+--   SERVER_HEALTH_CURRENT = CPU-, NUMA-, Memory-, TempDB-, OS- und Dienstzustand der Instanz
+--   SERVER_CONFIGURATION_CURRENT = lesende Serverkonfiguration, Trace Flags und Startup-Parameter
+--   SECURITY_CONFIGURATION_CURRENT = lesende sicherheits- und dienstbezogene Betriebsparameter
+--   SQL_AGENT_CURRENT = lesender SQL-Agent-Status, Jobs, Schedules und Historie aus msdb
+--   RESOURCE_GOVERNOR_CURRENT = lesende Resource-Governor-Konfiguration und Laufzeit
+--   HA_DR_CURRENT = begrenzte lesende AG-, Backup-, Log-Shipping-, Replication-, CDC- und Change-Tracking-Analyse
+--   ENTERPRISE_TOPOLOGY_DEEP = vertiefte enterpriseweite HA/DR- und Replication-Topologie/Distribution
+--   DATA_PLATFORM_ADAPTER_CURRENT = optionale Current-State-Anreicherung aus kundenspezifischen Data-Platform-/ETL-Logs mit isolierter Existenz-/Rechteprüfung
+-- CONSOLE rendert Access als Ergebnis und zeigt zusätzlich Policy- und Warning-Resultsets. RAW liefert Meta, Access, Policies und Warnings als vier technische Resultsets.
+-- TABLE schreibt ausschließlich das benannte access-Resultset mit 12 Accessfeldern in eine vorhandene, leere lokale #temp-Tabelle mit genau einer Seed-Spalte beliebigen Datentyps. Der Preflight prüft das Ziel durch vorübergehendes Hinzufügen und Entfernen einer bit-NULL-Prüfspalte.
+-- access-Felder: AnalysisClass varchar(64), AnalysisLevel varchar(16), RequiresGroupGate bit, OriginalLoginName sysname NULL, EffectiveLoginName sysname NULL, IsSysadmin bit NULL, ActivePolicyCount bigint NULL, RelevantPolicyCount bigint NULL, IsAllowed bit, AccessReason varchar(20) NULL, MatchedGroupCount bigint NULL, StatusCode varchar(40).
+-- TABLE-Preflight im normalen Pfad kann lokale TempDB-Metadaten per DDL ändern und bei ungültiger Zuordnung mit Fehler 51011/Preflightfehler abbrechen. Kein Max-Zeilen-Parameter.
+-- NONE liefert keine fachlichen Resultsets. Statusmeldungen und JSON sind davon unabhängig; @PrintMeldungen=0 unterdrückt weder Hilfe noch JSON.
+-- Beispiel – Hilfe: EXEC [monitor].[USP_CheckAnalyseAccess] @Hilfe=1;
+-- Beispiel – Standard: EXEC [monitor].[USP_CheckAnalyseAccess];
+-- Beispiel – Klasse und RAW: EXEC [monitor].[USP_CheckAnalyseAccess] @AnalyseKlasse='PLAN_CACHE_DEEP', @ResultSetArt='RAW';
+-- Beispiel – nur gesperrte Klassen: EXEC [monitor].[USP_CheckAnalyseAccess] @NurGesperrte=1, @ResultSetArt='RAW';
+-- Beispiel – JSON: DECLARE @j nvarchar(max); EXEC [monitor].[USP_CheckAnalyseAccess] @JsonErzeugen=1, @Json=@j OUTPUT; SELECT @j;
+-- Beispiel – NONE: EXEC [monitor].[USP_CheckAnalyseAccess] @ResultSetArt='NONE', @JsonErzeugen=1;
+-- Beispiel – TABLE: CREATE TABLE #CheckAnalyseAccess_HelpExample (Seed bit NULL);
+-- DECLARE @map nvarchar(max)=N'{"access":"#CheckAnalyseAccess_HelpExample"}'; EXEC [monitor].[USP_CheckAnalyseAccess] @ResultSetArt='TABLE', @ResultTablesJson=@map; DROP TABLE #CheckAnalyseAccess_HelpExample;
+-- ```
+-- 
+-- USAGE_SKILL_END monitor.USP_CheckAnalyseAccess
 CREATE OR ALTER PROCEDURE [monitor].[USP_CheckAnalyseAccess]
       @AnalyseKlasse   varchar(64)    = NULL
     , @NurGesperrte    bit            = 0
@@ -23,23 +172,10 @@ CREATE OR ALTER PROCEDURE [monitor].[USP_CheckAnalyseAccess]
 AS
 BEGIN
     SET NOCOUNT ON;
-    SET LOCK_TIMEOUT 0;
-    SET @Json = NULL;
-
-    DECLARE @ResultSetArtNormalisiert varchar(16) = UPPER(LTRIM(RTRIM(COALESCE(@ResultSetArt, ''))));
-    DECLARE @TableResultRequested bit = CASE WHEN @ResultSetArtNormalisiert = 'TABLE' THEN 1 ELSE 0 END;
-    DECLARE @ConsoleResultRequested bit = CASE WHEN @ResultSetArtNormalisiert = 'CONSOLE' THEN 1 ELSE 0 END;
-    DECLARE @TableTarget sysname=NULL;
-    IF @TableResultRequested=0 AND NULLIF(LTRIM(RTRIM(COALESCE(@ResultTablesJson,N''))),N'') IS NOT NULL THROW 51011,N'@ResultTablesJson ist ausschließlich mit @ResultSetArt=TABLE zulässig.',1;
-    IF @TableResultRequested=1 EXEC [monitor].[InternalPrepareSingleResultTable] @ResultTablesJson=@ResultTablesJson,@ResultName=N'access',@TargetTable=@TableTarget OUTPUT,@ThrowOnError=1;
-    IF @TableResultRequested = 1 OR @ConsoleResultRequested = 1 SET @ResultSetArtNormalisiert = 'NONE';
-    DECLARE @StatusCode varchar(40) = 'AVAILABLE';
-    DECLARE @ErrorNumber int = NULL;
-    DECLARE @ErrorMessage nvarchar(2048) = NULL;
-    DECLARE @CollectionTimeUtc datetime2(3) = SYSUTCDATETIME();
 
     IF @Hilfe = 1
     BEGIN
+        SET @Json=NULL;
         PRINT N'monitor.USP_CheckAnalyseAccess prüft den Framework-Gruppengate für Analyseklassen im aktuellen Login- und Execution-Kontext. Die Procedure führt keine Fachanalyse aus und vergibt keine SQL-Rechte.';
         PRINT N'Quellen: Klassenkatalog, VW_AnalyseAccessCurrent, VW_AnalyseAccessPolicy, sys.login_token und IS_MEMBER. Momentaufnahme gegen SYSUTCDATETIME(); kein Live-AD- oder Objektberechtigungsnachweis.';
         PRINT N'Ohne aktive Policy ist der Gate offen. Sobald global mindestens eine aktive Policy existiert, kann eine geschützte Klasse ohne spezifische oder *-Regel gesperrt sein. Token-Match hat Vorrang vor IS_MEMBER; sonst NO_MATCH.';
@@ -80,13 +216,13 @@ BEGIN
         PRINT N'CONSOLE rendert Access als Ergebnis und zeigt zusätzlich Policy- und Warning-Resultsets. RAW liefert Meta, Access, Policies und Warnings als vier technische Resultsets.';
         PRINT N'TABLE schreibt ausschließlich das benannte access-Resultset mit 12 Accessfeldern in eine vorhandene, leere lokale #temp-Tabelle mit genau einer Seed-Spalte beliebigen Datentyps. Der Preflight prüft das Ziel durch vorübergehendes Hinzufügen und Entfernen einer bit-NULL-Prüfspalte.';
         PRINT N'access-Felder: AnalysisClass varchar(64), AnalysisLevel varchar(16), RequiresGroupGate bit, OriginalLoginName sysname NULL, EffectiveLoginName sysname NULL, IsSysadmin bit NULL, ActivePolicyCount bigint NULL, RelevantPolicyCount bigint NULL, IsAllowed bit, AccessReason varchar(20) NULL, MatchedGroupCount bigint NULL, StatusCode varchar(40).';
-        PRINT N'TABLE-Preflight kann vor der Hilfe lokale TempDB-Metadaten per DDL ändern und bei ungültiger Zuordnung mit Fehler 51011/Preflightfehler abbrechen. Kein Max-Zeilen-Parameter.';
+        PRINT N'TABLE-Preflight im normalen Pfad kann lokale TempDB-Metadaten per DDL ändern und bei ungültiger Zuordnung mit Fehler 51011/Preflightfehler abbrechen. Kein Max-Zeilen-Parameter.';
         PRINT N'NONE liefert keine fachlichen Resultsets. Statusmeldungen und JSON sind davon unabhängig; @PrintMeldungen=0 unterdrückt weder Hilfe noch JSON.';
         PRINT N'@ResultTablesJson: nvarchar(max), Default NULL. NULL/ausgelassen bedeutet keine Zuordnung. Für TABLE ist ein nichtleeres gültiges JSON-Objekt mit genau dem nach U+0020-Trimmen case-sensitiven Schlüssel "access" und einem nach U+0020-Trimmen nichtleeren JSON-String als Ziel erforderlich; Schlüssel und Ziele müssen eindeutig sein. Zielname: vorhandene lokale #temp-Tabelle, nie ##, höchstens LEN 116, nicht #Monitor* (case-insensitiv); muss leer sein und genau eine beliebig typisierte Seed-Spalte enthalten. Der Preflight fügt vorübergehend eine bit-NULL-Prüfspalte hinzu/entfernt sie wieder; das ist keine Seed-Typvorgabe. U+0020 außen am JSON wird für Objektklammern getrimmt; leere/ungültige JSON-Objekte, falsche Schlüssel/Werttypen, leere Namen, Duplikate, unzulässige Namen, fehlendes/gefülltes/mehrspaltiges Ziel scheitern im Preflight (bei Procedure-Aufruf THROW 51011). Außerhalb TABLE führt jede nichtleere Zuordnung zu THROW 51011.';
         PRINT N'@JsonErzeugen: bit, Default 0. 0/NULL erzeugt kein JSON; 1 erzeugt @Json mit meta sowie access-, policies- und warnings-Arrays. Ausgelassen verwendet 0.';
         PRINT N'@Json: nvarchar(max), Default NULL OUTPUT. Als OUTPUT-Variable binden, um das erzeugte Dokument zu erhalten; bei deaktiviertem JSON bleibt es NULL. Der Eingangswert wird zu Beginn vor TABLE-Preflight und Hilfe verworfen und auf NULL gesetzt. Ausgelassen ist möglich, dann wird kein Wert empfangen.';
         PRINT N'@PrintMeldungen: bit, Default 1. 1 gibt eine zusätzliche Severity-10-Meldung für behandelte Fehler aus; 0 oder NULL unterdrückt nur diese Meldung, nicht Hilfe, Resultsets, Warnings oder JSON. Ausgelassen = 1.';
-        PRINT N'@Hilfe: bit, Default 0. 1 druckt die Hilfe und beendet vor der fachlichen Accessauswertung; NULL/0 führt normal aus. Hilfe ist unabhängig von @PrintMeldungen. Bei TABLE liegt der Mapping-Preflight davor und kann TempDB-Metadaten ändern oder mit 51011 abbrechen. @Json ist vorher bereits NULL.';
+        PRINT N'@Hilfe: bit, Default 0. 1 druckt die Hilfe und beendet vor der fachlichen Accessauswertung; NULL/0 führt normal aus. Hilfe ist unabhängig von @PrintMeldungen. Bei TABLE läuft der Mapping-Preflight nur im normalen Pfad und kann TempDB-Metadaten ändern oder mit 51011 abbrechen. @Json ist vorher bereits NULL.';
         PRINT N'Beispiel – Hilfe: EXEC [monitor].[USP_CheckAnalyseAccess] @Hilfe=1;';
         PRINT N'Beispiel – Standard: EXEC [monitor].[USP_CheckAnalyseAccess];';
         PRINT N'Beispiel – Klasse und RAW: EXEC [monitor].[USP_CheckAnalyseAccess] @AnalyseKlasse=''PLAN_CACHE_DEEP'', @ResultSetArt=''RAW'';';
@@ -95,8 +231,286 @@ BEGIN
         PRINT N'Beispiel – NONE: EXEC [monitor].[USP_CheckAnalyseAccess] @ResultSetArt=''NONE'', @JsonErzeugen=1;';
         PRINT N'Beispiel – TABLE: CREATE TABLE #CheckAnalyseAccess_HelpExample (Seed bit NULL);';
         PRINT N'DECLARE @map nvarchar(max)=N''{"access":"#CheckAnalyseAccess_HelpExample"}''; EXEC [monitor].[USP_CheckAnalyseAccess] @ResultSetArt=''TABLE'', @ResultTablesJson=@map; DROP TABLE #CheckAnalyseAccess_HelpExample;';
+        -- USAGE_SKILL_HELP_BEGIN monitor.USP_CheckAnalyseAccess
+        SELECT CONVERT(varchar(16),'1.0.0') AS [SkillFormatVersion],CONVERT(sysname,N'monitor') AS [SchemaName],CONVERT(sysname,N'USP_CheckAnalyseAccess') AS [ObjectName],CONVERT(nvarchar(max),N'---')
+            + NCHAR(10)
+            + N'skill_format_version: "1.0.0"'
+            + NCHAR(10)
+            + N'name: "monitor.USP_CheckAnalyseAccess"'
+            + NCHAR(10)
+            + N'schema_name: "monitor"'
+            + NCHAR(10)
+            + N'object_name: "USP_CheckAnalyseAccess"'
+            + NCHAR(10)
+            + N'object_type: "PROCEDURE"'
+            + NCHAR(10)
+            + N'database_role: "framework"'
+            + NCHAR(10)
+            + N'is_internal: false'
+            + NCHAR(10)
+            + N'description: "Prüft die effektive Analyseklassen- und AD-Gruppenpolicy."'
+            + NCHAR(10)
+            + N'source_path: "Code/01_Common/050_USP_CheckAnalyseAccess.sql"'
+            + NCHAR(10)
+            + N'---'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'# monitor.USP_CheckAnalyseAccess'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'## Zweck und Einsatz'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'Prüft die effektive Analyseklassen- und AD-Gruppenpolicy.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'## Voraussetzungen und Rechte'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'Ein direkter Aufruf erfordert EXECUTE auf [monitor].[USP_CheckAnalyseAccess]. Die Quelle nennt insbesondere `[monitor].[InternalPrepareSingleResultTable]`, `sys.login_token`, `[monitor].[VW_AnalyseClassCatalog]`, `[monitor].[VW_AnalyseAccessCurrent]` sowie weitere tatsächlich aufgerufene Quellen. Für deren Metadaten- oder Fachzugriff gelten die Rechte des jeweiligen SQL-Ausführungskontexts; der Skill erteilt sie nicht.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'## Parameter und Eingabe'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'„SQL-Bindungspflicht“ bezeichnet ein bei der SQL-Aufrufbindung erforderliches Argument ohne Default. Fachliche Wertpflichten und zulässige NULL-Werte stehen im jeweiligen Einzelvertrag.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'| Parameter | SQL-Typ | SQL-Bindungspflicht | Default |'
+            + NCHAR(10)
+            + N'| --- | --- | --- | --- |'
+            + NCHAR(10)
+            + N'| @AnalyseKlasse | varchar(64) | nein | NULL |'
+            + NCHAR(10)
+            + N'| @NurGesperrte | bit | nein | 0 |'
+            + NCHAR(10)
+            + N'| @ResultSetArt | varchar(16) | nein | ''CONSOLE'' |'
+            + NCHAR(10)
+            + N'| @ResultTablesJson | nvarchar(max) | nein | NULL |'
+            + NCHAR(10)
+            + N'| @JsonErzeugen | bit | nein | 0 |'
+            + NCHAR(10)
+            + N'| @Json | nvarchar(max) | nein | NULL OUTPUT |'
+            + NCHAR(10)
+            + N'| @PrintMeldungen | bit | nein | 1 |'
+            + NCHAR(10)
+            + N'| @Hilfe | bit | nein | 0 |'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'**@AnalyseKlasse:** @AnalyseKlasse: varchar(64), Default NULL. Ausgelassen oder NULL wählt alle 31 Klassen. Sonst wird der Wert mit der Katalogspalte unter SQL_Latin1_General_CP1_CS_AS verglichen; es gibt kein LTRIM/RTRIM. Groß-/Kleinschreibung zählt; SQL-Gleichheit kann nachgestellte U+0020 auffüllen. Leer oder nicht passend ergibt INVALID_PARAMETER. Wirkung: auf eine Klasse begrenzen. Zulässige Klassen mit Bedeutung:'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'**@NurGesperrte:** @NurGesperrte: bit, Default 0. 0 liefert alle Accesszeilen; 1 nur Zeilen mit IsAllowed=0. NULL wirkt im SQL-Filter ebenfalls wie 1. Filtert nur Access, nicht Policies. Ausgelassen verwendet 0.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'**@ResultSetArt:** @ResultSetArt: varchar(16), Default ''CONSOLE''. Werte: CONSOLE rendert Access und liefert Policies/Warnings zusätzlich; RAW liefert Meta, Access, Policies, Warnings als vier Resultsets; TABLE exportiert nur Access; NONE unterdrückt fachliche Resultsets. Eingabe wird mit LTRIM/RTRIM an äußeren U+0020 entfernt und mit UPPER normalisiert. NULL/sonst ungültig ergibt INVALID_PARAMETER. Ausgelassen = CONSOLE.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'**@ResultTablesJson:** @ResultTablesJson: nvarchar(max), Default NULL. NULL/ausgelassen bedeutet keine Zuordnung. Für TABLE ist ein nichtleeres gültiges JSON-Objekt mit genau dem nach U+0020-Trimmen case-sensitiven Schlüssel "access" und einem nach U+0020-Trimmen nichtleeren JSON-String als Ziel erforderlich; Schlüssel und Ziele müssen eindeutig sein. Zielname: vorhandene lokale #temp-Tabelle, nie ##, höchstens LEN 116, nicht #Monitor* (case-insensitiv); muss leer sein und genau eine beliebig typisierte Seed-Spalte enthalten. Der Preflight fügt vorübergehend eine bit-NULL-Prüfspalte hinzu/entfernt sie wieder; das ist keine Seed-Typvorgabe. U+0020 außen am JSON wird für Objektklammern getrimmt; leere/ungültige JSON-Objekte, falsche Schlüssel/Werttypen, leere Namen, Duplikate, unzulässige Namen, fehlendes/gefülltes/mehrspaltiges Ziel scheitern im Preflight (bei Procedure-Aufruf THROW 51011). Außerhalb TABLE führt jede nichtleere Zuordnung zu THROW 51011.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'**@JsonErzeugen:** @JsonErzeugen: bit, Default 0. 0/NULL erzeugt kein JSON; 1 erzeugt @Json mit meta sowie access-, policies- und warnings-Arrays. Ausgelassen verwendet 0.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'**@Json:** @Json: nvarchar(max), Default NULL OUTPUT. Als OUTPUT-Variable binden, um das erzeugte Dokument zu erhalten; bei deaktiviertem JSON bleibt es NULL. Der Eingangswert wird zu Beginn vor TABLE-Preflight und Hilfe verworfen und auf NULL gesetzt. Ausgelassen ist möglich, dann wird kein Wert empfangen.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'**@PrintMeldungen:** @PrintMeldungen: bit, Default 1. 1 gibt eine zusätzliche Severity-10-Meldung für behandelte Fehler aus; 0 oder NULL unterdrückt nur diese Meldung, nicht Hilfe, Resultsets, Warnings oder JSON. Ausgelassen = 1.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'**@Hilfe:** @Hilfe: bit, Default 0. 1 druckt die Hilfe und beendet vor der fachlichen Accessauswertung; NULL/0 führt normal aus. Hilfe ist unabhängig von @PrintMeldungen. Bei TABLE läuft der Mapping-Preflight nur im normalen Pfad und kann TempDB-Metadaten ändern oder mit 51011 abbrechen. @Json ist vorher bereits NULL.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'## Resultate und Ausgabe'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'RAW, CONSOLE, TABLE oder NONE; optional JSON mit access und policies.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'| Resultmenge | RAW | TABLE | Felder laut Inventar |'
+            + NCHAR(10)
+            + N'| --- | --- | --- | --- |'
+            + NCHAR(10)
+            + N'| access | 1 | 1 | [AnalysisClass] varchar(64) NOT NULL , [AnalysisLevel] varchar(16) NOT NULL , [RequiresGroupGate] bit NOT NULL , [OriginalLoginName] sysname NULL , [EffectiveLoginName] sysname NULL , [IsSysadmin] bit NULL , [ActivePolicyCount] bigint NULL , [RelevantPolicyCount] bigint NULL , [IsAllowed] bit NOT NULL , [AccessReason] varchar(20) NULL , [MatchedGroupCount] bigint NULL , [StatusCode] varchar(40) NOT NULL |'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'Bei @Hilfe=1 kommt genau ein Resultset mit SkillFormatVersion, SchemaName, ObjectName und SkillMarkdown hinzu; bestehende PRINT-Hinweise bleiben erhalten.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'## Beispiel'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'```sql'
+            + NCHAR(10)
+            + N'EXEC [monitor].[USP_CheckAnalyseAccess] @Hilfe=1;'
+            + NCHAR(10)
+            + N'```'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'## Aufwand, Nebenwirkungen, Fehler und Grenzen'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'monitor.USP_CheckAnalyseAccess prüft den Framework-Gruppengate für Analyseklassen im aktuellen Login- und Execution-Kontext. Die Procedure führt keine Fachanalyse aus und vergibt keine SQL-Rechte.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'Quellen: Klassenkatalog, VW_AnalyseAccessCurrent, VW_AnalyseAccessPolicy, sys.login_token und IS_MEMBER. Momentaufnahme gegen SYSUTCDATETIME(); kein Live-AD- oder Objektberechtigungsnachweis.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'Ohne aktive Policy ist der Gate offen. Sobald global mindestens eine aktive Policy existiert, kann eine geschützte Klasse ohne spezifische oder *-Regel gesperrt sein. Token-Match hat Vorrang vor IS_MEMBER; sonst NO_MATCH.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'  STANDARD_CURRENT = leichte aktuelle Sessions, Requests, Blocking, Waits, Memory, TempDB und I/O'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'  EXTENDED_CURRENT = gezielte aktuelle Vertiefung mit begrenzter SQL-Text-, Plan- und Objektauflösung'
+            + NCHAR(10)
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'### Quellgebundene Detailbeschreibung'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'Der folgende Quellkopf bewahrt die zusätzlichen Implementierungsgrenzen für diesen Skill.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'```text'
+            + NCHAR(10)
+            + N'Objekt       : monitor.USP_CheckAnalyseAccess'
+            + NCHAR(10)
+            + N'Version      : 2.0.0'
+            + NCHAR(10)
+            + N'Stand        : 2026-07-15'
+            + NCHAR(10)
+            + N'Typ          : Stored Procedure'
+            + NCHAR(10)
+            + N'Zweck        : Prüft die effektive Analyseklassen- und AD-Gruppenpolicy.'
+            + NCHAR(10)
+            + N'Ausgabe      : RAW, CONSOLE, TABLE oder NONE; optional JSON mit access und policies.'
+            + NCHAR(10)
+            + N'```'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'### Weitere bestehende Hilfehinweise'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'```text'
+            + NCHAR(10)
+            + N'monitor.USP_CheckAnalyseAccess prüft den Framework-Gruppengate für Analyseklassen im aktuellen Login- und Execution-Kontext. Die Procedure führt keine Fachanalyse aus und vergibt keine SQL-Rechte.'
+            + NCHAR(10)
+            + N'Quellen: Klassenkatalog, VW_AnalyseAccessCurrent, VW_AnalyseAccessPolicy, sys.login_token und IS_MEMBER. Momentaufnahme gegen SYSUTCDATETIME(); kein Live-AD- oder Objektberechtigungsnachweis.'
+            + NCHAR(10)
+            + N'Ohne aktive Policy ist der Gate offen. Sobald global mindestens eine aktive Policy existiert, kann eine geschützte Klasse ohne spezifische oder *-Regel gesperrt sein. Token-Match hat Vorrang vor IS_MEMBER; sonst NO_MATCH.'
+            + NCHAR(10)
+            + N'  STANDARD_CURRENT = leichte aktuelle Sessions, Requests, Blocking, Waits, Memory, TempDB und I/O'
+            + NCHAR(10)
+            + N'  EXTENDED_CURRENT = gezielte aktuelle Vertiefung mit begrenzter SQL-Text-, Plan- und Objektauflösung'
+            + NCHAR(10)
+            + N'  PLAN_CACHE_CURRENT = begrenzte Query-Stats- und Plan-Cache-Auswertung ohne vollständiges XML-Shredding'
+            + NCHAR(10)
+            + N'  SHOWPLAN_TARGETED = gezielte Showplan-Extraktion/XML-Analyse für gefilterte Planhandles oder Query Hashes'
+            + NCHAR(10)
+            + N'  OBJECT_ANALYSIS_CURRENT = gezielte Objekt-, Index-, Partitions- und Columnstore-Kataloganalyse einer Datenbank'
+            + NCHAR(10)
+            + N'  EXTERNAL_RUNTIME_CURRENT = lesende Konfigurations-, Katalog-, Request-, Pool- und Counteranalyse externer Runtimes, ohne Testausführung'
+            + NCHAR(10)
+            + N'  CLR_CURRENT = lesende SQL-CLR-, Host-, AppDomain-, Task-, Request- und Speicheranalyse, ohne Assemblyausführung'
+            + NCHAR(10)
+            + N'  MISSING_INDEX_CURRENT = flüchtige begrenzte Missing-Index-Hinweise, keine automatische DDL'
+            + NCHAR(10)
+            + N'  STATISTICS_TARGETED = gezielte Statistik-Eigenschaften gefilterter Objekte'
+            + NCHAR(10)
+            + N'  COLUMNSTORE_CURRENT = gezielte Columnstore-Rowgroups aus Katalogen, kein Segment-/Dictionary-Vollscan'
+            + NCHAR(10)
+            + N'  LOCKS_DEEP = detaillierte sys.dm_tran_locks-Materialisierung für relevante Sessions'
+            + NCHAR(10)
+            + N'  LOG_VLF_DEEP = datenbankübergreifende VLF-Auswertung via sys.dm_db_log_info'
+            + NCHAR(10)
+            + N'  PLAN_CACHE_DEEP = breite oder vollständige Query-Stats- und Plan-Cache-Analyse'
+            + NCHAR(10)
+            + N'  SHOWPLAN_XML_DEEP = XML-Analyse gecachter/aktueller Showplans mit Warnings, Spills, Objekten, Statistiken'
+            + NCHAR(10)
+            + N'  CATALOG_DEEP = breite Systemkatalog-, Objekt-, Index-, Statistik- und Partitionsanalyse'
+            + NCHAR(10)
+            + N'  PHYSICAL_STATS_DEEP = explizite sys.dm_db_index_physical_stats-Auswertung in gewähltem Modus'
+            + NCHAR(10)
+            + N'  INDEX_OPERATIONAL_DEEP = breite kumulative Index-Operational-Stats mit Lock/Latch/I/O/Page-Splits'
+            + NCHAR(10)
+            + N'  QUERY_STORE_CURRENT = gezielte lesende Query-Store-Status-, Runtime-, Wait-, Plan-/Force-Auswertung, enges Zeit-/Zeilenlimit'
+            + NCHAR(10)
+            + N'  EXTENDED_EVENTS_CURRENT = leichte Inventarisierung von Extended-Events-Definitionen und laufenden Sessions, ohne Targetdaten/Historie'
+            + NCHAR(10)
+            + N'  QUERY_STORE_DEEP = breite Query-Store-Historie, Regressionen, Planwechsel und Waits'
+            + NCHAR(10)
+            + N'  CROSS_DATABASE_DEEP = datenbankübergreifende Inventarisierung und Diagnose'
+            + NCHAR(10)
+            + N'  COLUMNSTORE_DEEP = breite Columnstore-Analyse mit Rowgroups, Deleted Rows, Dictionaries und Segmenten'
+            + NCHAR(10)
+            + N'  EXTENDED_EVENTS_FORENSICS_DEEP = optionale Analyse vorhandener XE-Sessions/Dateien, nie Primärquelle des Standardlaufs'
+            + NCHAR(10)
+            + N'  SERVER_HEALTH_CURRENT = CPU-, NUMA-, Memory-, TempDB-, OS- und Dienstzustand der Instanz'
+            + NCHAR(10)
+            + N'  SERVER_CONFIGURATION_CURRENT = lesende Serverkonfiguration, Trace Flags und Startup-Parameter'
+            + NCHAR(10)
+            + N'  SECURITY_CONFIGURATION_CURRENT = lesende sicherheits- und dienstbezogene Betriebsparameter'
+            + NCHAR(10)
+            + N'  SQL_AGENT_CURRENT = lesender SQL-Agent-Status, Jobs, Schedules und Historie aus msdb'
+            + NCHAR(10)
+            + N'  RESOURCE_GOVERNOR_CURRENT = lesende Resource-Governor-Konfiguration und Laufzeit'
+            + NCHAR(10)
+            + N'  HA_DR_CURRENT = begrenzte lesende AG-, Backup-, Log-Shipping-, Replication-, CDC- und Change-Tracking-Analyse'
+            + NCHAR(10)
+            + N'  ENTERPRISE_TOPOLOGY_DEEP = vertiefte enterpriseweite HA/DR- und Replication-Topologie/Distribution'
+            + NCHAR(10)
+            + N'  DATA_PLATFORM_ADAPTER_CURRENT = optionale Current-State-Anreicherung aus kundenspezifischen Data-Platform-/ETL-Logs mit isolierter Existenz-/Rechteprüfung'
+            + NCHAR(10)
+            + N'CONSOLE rendert Access als Ergebnis und zeigt zusätzlich Policy- und Warning-Resultsets. RAW liefert Meta, Access, Policies und Warnings als vier technische Resultsets.'
+            + NCHAR(10)
+            + N'TABLE schreibt ausschließlich das benannte access-Resultset mit 12 Accessfeldern in eine vorhandene, leere lokale #temp-Tabelle mit genau einer Seed-Spalte beliebigen Datentyps. Der Preflight prüft das Ziel durch vorübergehendes Hinzufügen und Entfernen einer bit-NULL-Prüfspalte.'
+            + NCHAR(10)
+            + N'access-Felder: AnalysisClass varchar(64), AnalysisLevel varchar(16), RequiresGroupGate bit, OriginalLoginName sysname NULL, EffectiveLoginName sysname NULL, IsSysadmin bit NULL, ActivePolicyCount bigint NULL, RelevantPolicyCount bigint NULL, IsAllowed bit, AccessReason varchar(20) NULL, MatchedGroupCount bigint NULL, StatusCode varchar(40).'
+            + NCHAR(10)
+            + N'TABLE-Preflight im normalen Pfad kann lokale TempDB-Metadaten per DDL ändern und bei ungültiger Zuordnung mit Fehler 51011/Preflightfehler abbrechen. Kein Max-Zeilen-Parameter.'
+            + NCHAR(10)
+            + N'NONE liefert keine fachlichen Resultsets. Statusmeldungen und JSON sind davon unabhängig; @PrintMeldungen=0 unterdrückt weder Hilfe noch JSON.'
+            + NCHAR(10)
+            + N'Beispiel – Hilfe: EXEC [monitor].[USP_CheckAnalyseAccess] @Hilfe=1;'
+            + NCHAR(10)
+            + N'Beispiel – Standard: EXEC [monitor].[USP_CheckAnalyseAccess];'
+            + NCHAR(10)
+            + N'Beispiel – Klasse und RAW: EXEC [monitor].[USP_CheckAnalyseAccess] @AnalyseKlasse=''PLAN_CACHE_DEEP'', @ResultSetArt=''RAW'';'
+            + NCHAR(10)
+            + N'Beispiel – nur gesperrte Klassen: EXEC [monitor].[USP_CheckAnalyseAccess] @NurGesperrte=1, @ResultSetArt=''RAW'';'
+            + NCHAR(10)
+            + N'Beispiel – JSON: DECLARE @j nvarchar(max); EXEC [monitor].[USP_CheckAnalyseAccess] @JsonErzeugen=1, @Json=@j OUTPUT; SELECT @j;'
+            + NCHAR(10)
+            + N'Beispiel – NONE: EXEC [monitor].[USP_CheckAnalyseAccess] @ResultSetArt=''NONE'', @JsonErzeugen=1;'
+            + NCHAR(10)
+            + N'Beispiel – TABLE: CREATE TABLE #CheckAnalyseAccess_HelpExample (Seed bit NULL);'
+            + NCHAR(10)
+            + N'DECLARE @map nvarchar(max)=N''{"access":"#CheckAnalyseAccess_HelpExample"}''; EXEC [monitor].[USP_CheckAnalyseAccess] @ResultSetArt=''TABLE'', @ResultTablesJson=@map; DROP TABLE #CheckAnalyseAccess_HelpExample;'
+            + NCHAR(10)
+            + N'```'
+            + NCHAR(10)
+            + NCHAR(10) AS [SkillMarkdown];
+        -- USAGE_SKILL_HELP_END monitor.USP_CheckAnalyseAccess
         RETURN;
-    END;
+    END
+
+    SET LOCK_TIMEOUT 0;
+    SET @Json = NULL;
+
+    DECLARE @ResultSetArtNormalisiert varchar(16) = UPPER(LTRIM(RTRIM(COALESCE(@ResultSetArt, ''))));
+    DECLARE @TableResultRequested bit = CASE WHEN @ResultSetArtNormalisiert = 'TABLE' THEN 1 ELSE 0 END;
+    DECLARE @ConsoleResultRequested bit = CASE WHEN @ResultSetArtNormalisiert = 'CONSOLE' THEN 1 ELSE 0 END;
+    DECLARE @TableTarget sysname=NULL;
+    IF @TableResultRequested=0 AND NULLIF(LTRIM(RTRIM(COALESCE(@ResultTablesJson,N''))),N'') IS NOT NULL THROW 51011,N'@ResultTablesJson ist ausschließlich mit @ResultSetArt=TABLE zulässig.',1;
+    IF @TableResultRequested=1 EXEC [monitor].[InternalPrepareSingleResultTable] @ResultTablesJson=@ResultTablesJson,@ResultName=N'access',@TargetTable=@TableTarget OUTPUT,@ThrowOnError=1;
+    IF @TableResultRequested = 1 OR @ConsoleResultRequested = 1 SET @ResultSetArtNormalisiert = 'NONE';
+    DECLARE @StatusCode varchar(40) = 'AVAILABLE';
+    DECLARE @ErrorNumber int = NULL;
+    DECLARE @ErrorMessage nvarchar(2048) = NULL;
+    DECLARE @CollectionTimeUtc datetime2(3) = SYSUTCDATETIME();
+
+    ;
 
     CREATE TABLE [#CheckAnalyseAccess_Access]
     (

@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Validate the existing PlanCacheHealth schemas, ABI and consumer contracts."""
 from __future__ import annotations
+from UsageSkillSourceMask import strip_usage_skill_projections
 import argparse
 import re
 from pathlib import Path
@@ -72,7 +73,7 @@ def findings(raw: str) -> list[str]:
     for i,r in enumerate(ROUTES):
         expected = 2 if r == 'FOR JSON PATH,WITHOUT_ARRAY_WRAPPER,INCLUDE_NULL_VALUES' else 1
         if s.count(compact(r)) != expected: errors.append(f'ROUTE_{i}')
-    positions=[s.find(x) for x in ['EXEC [monitor].[InternalPrepareSingleResultTable]','IF @Hilfe=1','IF @AnalyseModus NOT IN','INSERT [#PlanCacheHealth_Summary]']]
+    positions=[s.find(x) for x in ['IF @Hilfe=1','EXEC [monitor].[InternalPrepareSingleResultTable]','IF @AnalyseModus NOT IN','INSERT [#PlanCacheHealth_Summary]']]
     if min(positions)<0 or positions!=sorted(positions): errors.append('PREFLIGHT_PRIORITY')
     positions=[s.find(x) for x in ['SELECT TOP (@EffectiveMaxZeilen)','EXEC [monitor].[InternalProjectUnicodeTextColumn]','EXEC [monitor].[InternalEmitTruncationWarning]',"IF @ResultSetArtNormalisiert<>'NONE'"]]
     if min(positions)<0 or positions!=sorted(positions): errors.append('DETAIL_TOP_BEFORE_TEXT')
@@ -119,7 +120,7 @@ def self_test(raw: str) -> int:
 
 def main() -> int:
     p=argparse.ArgumentParser();p.add_argument('--repository-root',type=Path,required=True);p.add_argument('--self-test',action='store_true');a=p.parse_args()
-    raw=(a.repository_root/PROCEDURE).read_text(encoding='utf-8-sig');errors=findings(raw)
+    raw=strip_usage_skill_projections((a.repository_root/PROCEDURE).read_text(encoding='utf-8-sig'));errors=findings(raw)
     if errors: print('PlanCacheHealth failed: '+'; '.join(errors));return 1
     if a.self_test: print(f'PlanCacheHealth self-test passed ({self_test(raw)} real mutations).')
     else: print('PlanCacheHealth passed (24 fields,7 text collations,12 parameters).')

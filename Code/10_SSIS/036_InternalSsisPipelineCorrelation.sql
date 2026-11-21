@@ -20,11 +20,286 @@ Ergebnis- und Temp-Vertrag: Die Procedure erzeugt kein Resultset und hat keine O
 
 Fehlergrenzen: Die interne TRY/CATCH-Strecke bildet Bound ungleich 1 oder NULL als Fehlernummer 57910 und Reason SCOPE_BINDING_UNPROVEN ab. Weitere eigene Fehlertexte sind PIPELINE_TIME_LIMIT bei abgelaufener gemeinsamer Deadline, PIPELINE_SOURCE_LIMIT bei überschrittener Zeilenmenge, PIPELINE_SOURCE_STATUS_INVALID bei ungültigen oder widersprüchlichen Quellenstatusangaben, PIPELINE_IDENTITIES_INVALID bei ungültigen Pipelineidentitäten, PIPELINE_FLOW_REFERENCE_INVALID bei fehlender Flow-Referenz, PIPELINE_OCCURRENCE_SET_INVALID bei abweichenden Knoten- oder Kantenmengen, PIPELINE_COMPONENT_REFERENCE_INVALID oder PIPELINE_PATH_REFERENCE_INVALID bei nicht gebundener Identität sowie PIPELINE_OBSERVATIONS_INVALID bei ungültigen Pipelinebelegen. Andere innerhalb der TRY-Strecke erfasste Fehler erhalten PIPELINE_INPUT_REJECTED. Die Fehler werden in Pipeline-Coverage abgebildet und löschen die Pipelineinstanzen, Phasen und Transfers. Die Temp-Tabellen-DDL liegt vor der TRY-Strecke; auch das Schreiben der Coverage nach dem CATCH und die Wiederherstellung des ursprünglichen LOCK_TIMEOUT liegen außerhalb des CATCH und können daher selbst fehlschlagen. Es besteht keine allgemeine Fehler-, Wiederherstellungs- oder atomare Rücknahmezusage.
 */
+-- USAGE_SKILL_BEGIN monitor.InternalSsisPipelineCorrelation 1.0.0
+-- ---
+-- skill_format_version: "1.0.0"
+-- name: "monitor.InternalSsisPipelineCorrelation"
+-- schema_name: "monitor"
+-- object_name: "InternalSsisPipelineCorrelation"
+-- object_type: "INTERNAL_PROCEDURE"
+-- database_role: "framework"
+-- is_internal: true
+-- description: "Die Procedure korreliert optionale, vom Aufrufer bereits gebundene SSIS-Pipelinebelege mit materialisierten Pipelineidentitäten und den gelieferten Execution-Scope-Knoten."
+-- source_path: "Code/10_SSIS/036_InternalSsisPipelineCorrelation.sql"
+-- ---
+-- 
+-- # monitor.InternalSsisPipelineCorrelation
+-- 
+-- ## Zweck und Einsatz
+-- 
+-- Die Procedure korreliert optionale, vom Aufrufer bereits gebundene SSIS-Pipelinebelege mit materialisierten Pipelineidentitäten und den gelieferten Execution-Scope-Knoten. Sie ordnet Phasenbelege Komponenten und Transferbelege Modellkanten zu und schreibt Pipelineinstanzen, Belege und Coverage in Temp-Tabellen des aufrufenden Scopeconsumers. Sie liest weder DTSX-Dateien noch klassifiziert sie Transformationstypen oder rekonstruiert Lineage. Eine Phasendauer ist ein beobachtetes Zeitintervall und keine CPU-Zeit.
+-- 
+-- ## Voraussetzungen und Rechte
+-- 
+-- Ein direkter Aufruf erfordert EXECUTE auf [monitor].[InternalSsisPipelineCorrelation]. Der normale Einsatz erfolgt über die öffentliche aufrufende Prozedur; direkter Fachbetrieb dieses Helpers ist nicht vorgesehen. Die Quelle nennt insbesondere `sys.sp_executesql`. Für deren Metadaten- oder Fachzugriff gelten die Rechte des jeweiligen SQL-Ausführungskontexts; der Skill erteilt sie nicht.
+-- 
+-- ## Parameter und Eingabe
+-- 
+-- „SQL-Bindungspflicht“ bezeichnet ein bei der SQL-Aufrufbindung erforderliches Argument ohne Default. Fachliche Wertpflichten und zulässige NULL-Werte stehen im jeweiligen Einzelvertrag.
+-- 
+-- | Parameter | SQL-Typ | SQL-Bindungspflicht | Default |
+-- | --- | --- | --- | --- |
+-- | @Models | nvarchar(max) | ja | kein Default |
+-- | @Capture | nvarchar(max) | ja | kein Default |
+-- | @Bound | bit | ja | kein Default |
+-- | @Deadline | datetime2(3) | ja | kein Default |
+-- | @Limit | int | ja | kein Default |
+-- | @Hilfe | bit | nein | 0 |
+-- 
+-- **@Models:** @Models: nvarchar(max); Default: keiner, Pflichtargument. Erwartet wird das Unicode-JSON-Dokument des bereits geprüften Paketsatzes mit packages-Array und je Paket den Werten packageKey, model und pipelineIdentities. pipelineIdentities verwendet contract ssis-pipeline-identities, version 1.0.0, identityProfile document-order-v1, packageSha256 passend zu model.source.packageSha256 und ein pipelines-Array. Jedes Pipelineobjekt enthält nodeId, profileStatus SUPPORTED (qualifiziert) oder UNQUALIFIED (unqualifiziert), components und paths. Komponenten enthalten nodeId, name, nativeRefId und profileStatus; Pfade enthalten edgeId, fromPortId, toPortId, sourceComponentId, destinationComponentId, nativeRefId, name, identificationString und profileStatus. Der Helper bindet diese Identitäten an die in den aufrufenden Temp-Tabellen materialisierten ausführbaren und Komponenten-Knoten sowie PIPELINE_PATH-Kanten. Die öffentliche Procedure begrenzt das Dokument auf 16 MiB und prüft unter anderem JSON-Tiefe und doppelte Schlüssel; dies sind Aufruferprüfungen, keine unabhängige Vertrauens- oder Vollvalidierung dieser internen Procedure. Auslassen ist wegen der Pflichtsignatur nicht möglich. Bei NULL liefert OPENJSON für packages keine Paketzeilen; der Helper hat dafür keine eigene Vorabvalidierung und kann anschließend trotzdem weitere Phasen-/Transferbelege verarbeiten. Leertext oder ungültiges JSON ergibt keine valide JSON-Identitätsstruktur und kann im TRY als Pipelinefehler erfasst werden.
+-- 
+-- **@Capture:** @Capture: nvarchar(max); Default: keiner, Pflichtargument. Erwartet wird das bereits gebundene Unicode-JSON-Capture der Version 1.1.0 mit Methode SSISDB_CURRENT_PROJECT_PIPELINES_V1. Es enthält componentPhases und pathTransfers als Arrays sowie pipelineSources mit genau einem Eintrag je source componentPhases und pathTransfers. Ein Quellenobjekt enthält source, status und errorNumber. Zulässige Statuswerte sind AVAILABLE (Quelle vorhanden) und AVAILABLE_EMPTY (Quelle vorhanden, leer) ohne Fehlernummer sowie UNAVAILABLE (Quelle nicht verfügbar) und DENIED_PERMISSION (Berechtigung fehlt) mit positiver Fehlernummer. Für componentPhases verwendet der Helper die Felder phaseStatsId, packageName, taskName, componentName, phaseName, executionPath, startTime und endTime. Für pathTransfers verwendet er dataStatsId, packageName, taskName, pathIdentificationString, pathName, sourceComponentName, destinationComponentName, executionPath, rowsSent und createdTime. Die Quellzeilen werden über Package-/Flow-Namen und exakte Pfad-/Identitätswerte nur bei eindeutiger Kandidatenzuordnung verbunden; fehlende oder mehrdeutige Kandidaten bleiben nicht zugeordnet. Die öffentliche Scope-Procedure prüft die Capturebindung, Schemaformen, 16-MiB-Dokumentgrenze, JSON-Tiefe, doppelte Schlüssel und das gemeinsame Maximum von 50000 Basis- und Pipelinezeilen. Der Helper prüft zusätzlich Arrayformen, genau zwei gültige Quellen, Quellenstatus und die konvertierbaren Feldwerte, aber ersetzt diese Aufruferprüfungen nicht. Auslassen scheitert an der Pflichtsignatur. NULL lässt die Arrayformprüfung fehlschlagen und wird im TRY als PIPELINE_BINDING_UNPROVEN mit erfasster Fehlernummer abgebildet; Leertext und ungültiges JSON werden als Pipelineeingabefehler erfasst. Jeder Quellenstatus außer AVAILABLE verlangt ein leeres zugehöriges Array. Beleg-IDs sind positive bigint-Werte, rowsSent ist NULL oder nichtnegatives bigint; nicht-NULL-Zeitfelder müssen nach datetimeoffset(7) konvertierbar sein.
+-- 
+-- **@Bound:** @Bound: bit; Default: keiner, Pflichtargument. Skalarer interner Übergabeflag, der vom Scopeconsumer aus dessen lokaler Handover- und Captureprüfung stammt. Nur der Wert 1 lässt die Pipelineverarbeitung beginnen; 0 oder NULL werden im TRY mit Fehlertext SCOPE_BINDING_UNPROVEN erfasst. Der Flag allein ist kein Vertrauensbeleg und die Procedure führt keine Handoverprüfung aus. Auslassen scheitert an der Pflichtsignatur. Ein numerischer Wert wird nach den SQL-Server-Konvertierungsregeln auf bit abgebildet. Die vollständige bit-Wertemenge ist 0 (nicht gebunden) und 1 (vom Aufrufer als gebunden markiert). SQL Server konvertiert numerische Werte ungleich 0 zu 1 und leeren Text zu 0 vor dem Procedure-Eintritt.
+-- 
+-- **@Deadline:** @Deadline: datetime2(3); Default: keiner, Pflichtargument. Enthält die absolute gemeinsame UTC-Deadline des Scopeconsumers, nicht eine Dauer. Die Procedure vergleicht SYSUTCDATETIME() an mehreren Verarbeitungspunkten mit diesem Zeitpunkt und erfasst eine überschrittene Deadline als PIPELINE_TIME_LIMIT. NULL lässt die Vergleiche wegen SQL-NULL-Semantik unbekannt werden und unterdrückt damit diese Deadlinevergleiche; die Procedure prüft NULL nicht gesondert. Auslassen scheitert an der Pflichtsignatur. Als datetime2(3)-Variable oder konvertierbaren ISO-Zeitpunkt übergeben, beispielsweise 2026-11-06T13:00:00.000; der Wert selbst trägt keine Zeitzone und muss UTC repräsentieren. Leerer Text kann zum Zeitpunkt 1900-01-01 konvertiert werden und ist dann abgelaufen; nicht konvertierbarer Text scheitert vor dem Eintritt.
+-- 
+-- **@Limit:** @Limit: int; Default: keiner, Pflichtargument. Enthält das vom Scopeconsumer abgeleitete Zeilenlimit. Die Procedure schneidet ihre Arbeits- oder Temp-Tabellen nicht anhand dieses Werts ab; sie setzt in pipelineCoverage ein OutputTruncated-Flag, wenn beobachtete Zeilen oder Pipelineinstanzen den Wert überschreiten. Die öffentliche Procedure validiert das wirksame Limit und führt anschließend die tatsächliche Ausgabekürzung durch. Diese interne Procedure validiert den Wert nicht: Bei NULL wird der Vergleich unbekannt und das Flag in der CASE-Auswertung nicht wegen dieses Vergleichs gesetzt; bei 0 oder einem negativen Wert kann ein positiver Zeilenzähler das Flag setzen. Diese Werte sind kein gültiger öffentlicher Aufrufvertrag. Auslassen scheitert an der Pflichtsignatur. Als skalaren ganzzahligen int-Wert von -2147483648 bis 2147483647 übergeben; der Scopeconsumer liefert ein positives wirksames Limit. Leerer Text kann vor dem Eintritt nach 0 konvertiert werden.
+-- 
+-- **@Hilfe:** bit, Default 0; 1 liefert vor Fachzugriff genau ein Usage-Skill-Resultset. Vorhandene reguläre PRINT-Meldungen bleiben dem normalen Fachpfad vorbehalten. Der Hilfezweig initialisiert OUTPUT-Parameter nicht; übergebene Werte bleiben unverändert. 0 und NULL folgen dem bisherigen normalen Prozedurpfad.
+-- 
+-- ## Resultate und Ausgabe
+-- 
+-- Kein direktes Resultset und keine OUTPUT-Parameter. Der Helper füllt die vorgegebenen lokalen `#InternalSsisExecutionScopes_`-Ziele für korrelierte Pipelineinstanzen, Komponentenphasen, Pfadtransfers und Coverage. Mapping beruht auf den übergebenen Modell-/Capture-JSON-Daten und deren Bindung; fehlende oder ungültige Bindung bleibt als Coverage-Status sichtbar, nicht als erfundener Flow-Bezug. Die öffentliche Scope-Procedure übernimmt die Ausgabe.
+-- 
+-- ## Beispiel
+-- 
+-- Der interne Helper ist kein selbstständiger Fachbericht. Der lesende Katalogaufruf zeigt den Vertrag, ohne den Helper auszuführen:
+-- 
+-- ```sql
+-- SELECT [SkillMarkdown]
+-- FROM [monitor_metadata].[VW_ObjectUsageSkills]
+-- WHERE [SchemaName]=N'monitor' AND [ObjectName]=N'InternalSsisPipelineCorrelation';
+-- ```
+-- 
+-- Der folgende Aufruf demonstriert ausschließlich den frühen Hilfezweig; die NULL-Pflichtwerte sind nicht für den normalen Fachpfad zulässig:
+-- 
+-- ```sql
+-- EXEC [monitor].[InternalSsisPipelineCorrelation] @Models=NULL, @Capture=NULL, @Bound=NULL, @Deadline=NULL, @Limit=NULL, @Hilfe=1;
+-- ```
+-- 
+-- ## Aufwand, Nebenwirkungen, Fehler und Grenzen
+-- 
+-- Die interne TRY/CATCH-Strecke bildet Bound ungleich 1 oder NULL als Fehlernummer 57910 und Reason SCOPE_BINDING_UNPROVEN ab. Weitere eigene Fehlertexte sind PIPELINE_TIME_LIMIT bei abgelaufener gemeinsamer Deadline, PIPELINE_SOURCE_LIMIT bei überschrittener Zeilenmenge, PIPELINE_SOURCE_STATUS_INVALID bei ungültigen oder widersprüchlichen Quellenstatusangaben, PIPELINE_IDENTITIES_INVALID bei ungültigen Pipelineidentitäten, PIPELINE_FLOW_REFERENCE_INVALID bei fehlender Flow-Referenz, PIPELINE_OCCURRENCE_SET_INVALID bei abweichenden Knoten- oder Kantenmengen, PIPELINE_COMPONENT_REFERENCE_INVALID oder PIPELINE_PATH_REFERENCE_INVALID bei nicht gebundener Identität sowie PIPELINE_OBSERVATIONS_INVALID bei ungültigen Pipelinebelegen. Andere innerhalb der TRY-Strecke erfasste Fehler erhalten PIPELINE_INPUT_REJECTED. Die Fehler werden in Pipeline-Coverage abgebildet und löschen die Pipelineinstanzen, Phasen und Transfers. Die Temp-Tabellen-DDL liegt vor der TRY-Strecke; auch das Schreiben der Coverage nach dem CATCH und die Wiederherstellung des ursprünglichen LOCK_TIMEOUT liegen außerhalb des CATCH und können daher selbst fehlschlagen. Es besteht keine allgemeine Fehler-, Wiederherstellungs- oder atomare Rücknahmezusage.
+-- 
+-- 
+-- ### Quellgebundene Detailbeschreibung
+-- 
+-- Der folgende Quellkopf bewahrt die zusätzlichen Implementierungsgrenzen für diesen Skill.
+-- 
+-- ```text
+-- Objekt: [monitor].[InternalSsisPipelineCorrelation].
+-- Typ: Interne Stored Procedure.
+-- Zweck: Die Procedure korreliert optionale, vom Aufrufer bereits gebundene SSIS-Pipelinebelege mit materialisierten Pipelineidentitäten und den gelieferten Execution-Scope-Knoten. Sie ordnet Phasenbelege Komponenten und Transferbelege Modellkanten zu und schreibt Pipelineinstanzen, Belege und Coverage in Temp-Tabellen des aufrufenden Scopeconsumers. Sie liest weder DTSX-Dateien noch klassifiziert sie Transformationstypen oder rekonstruiert Lineage. Eine Phasendauer ist ein beobachtetes Zeitintervall und keine CPU-Zeit.
+-- 
+-- Parameter:
+-- @Models: nvarchar(max); Default: keiner, Pflichtargument. Erwartet wird das Unicode-JSON-Dokument des bereits geprüften Paketsatzes mit packages-Array und je Paket den Werten packageKey, model und pipelineIdentities. pipelineIdentities verwendet contract ssis-pipeline-identities, version 1.0.0, identityProfile document-order-v1, packageSha256 passend zu model.source.packageSha256 und ein pipelines-Array. Jedes Pipelineobjekt enthält nodeId, profileStatus SUPPORTED (qualifiziert) oder UNQUALIFIED (unqualifiziert), components und paths. Komponenten enthalten nodeId, name, nativeRefId und profileStatus; Pfade enthalten edgeId, fromPortId, toPortId, sourceComponentId, destinationComponentId, nativeRefId, name, identificationString und profileStatus. Der Helper bindet diese Identitäten an die in den aufrufenden Temp-Tabellen materialisierten ausführbaren und Komponenten-Knoten sowie PIPELINE_PATH-Kanten. Die öffentliche Procedure begrenzt das Dokument auf 16 MiB und prüft unter anderem JSON-Tiefe und doppelte Schlüssel; dies sind Aufruferprüfungen, keine unabhängige Vertrauens- oder Vollvalidierung dieser internen Procedure. Auslassen ist wegen der Pflichtsignatur nicht möglich. Bei NULL liefert OPENJSON für packages keine Paketzeilen; der Helper hat dafür keine eigene Vorabvalidierung und kann anschließend trotzdem weitere Phasen-/Transferbelege verarbeiten. Leertext oder ungültiges JSON ergibt keine valide JSON-Identitätsstruktur und kann im TRY als Pipelinefehler erfasst werden.
+-- 
+-- @Capture: nvarchar(max); Default: keiner, Pflichtargument. Erwartet wird das bereits gebundene Unicode-JSON-Capture der Version 1.1.0 mit Methode SSISDB_CURRENT_PROJECT_PIPELINES_V1. Es enthält componentPhases und pathTransfers als Arrays sowie pipelineSources mit genau einem Eintrag je source componentPhases und pathTransfers. Ein Quellenobjekt enthält source, status und errorNumber. Zulässige Statuswerte sind AVAILABLE (Quelle vorhanden) und AVAILABLE_EMPTY (Quelle vorhanden, leer) ohne Fehlernummer sowie UNAVAILABLE (Quelle nicht verfügbar) und DENIED_PERMISSION (Berechtigung fehlt) mit positiver Fehlernummer. Für componentPhases verwendet der Helper die Felder phaseStatsId, packageName, taskName, componentName, phaseName, executionPath, startTime und endTime. Für pathTransfers verwendet er dataStatsId, packageName, taskName, pathIdentificationString, pathName, sourceComponentName, destinationComponentName, executionPath, rowsSent und createdTime. Die Quellzeilen werden über Package-/Flow-Namen und exakte Pfad-/Identitätswerte nur bei eindeutiger Kandidatenzuordnung verbunden; fehlende oder mehrdeutige Kandidaten bleiben nicht zugeordnet. Die öffentliche Scope-Procedure prüft die Capturebindung, Schemaformen, 16-MiB-Dokumentgrenze, JSON-Tiefe, doppelte Schlüssel und das gemeinsame Maximum von 50000 Basis- und Pipelinezeilen. Der Helper prüft zusätzlich Arrayformen, genau zwei gültige Quellen, Quellenstatus und die konvertierbaren Feldwerte, aber ersetzt diese Aufruferprüfungen nicht. Auslassen scheitert an der Pflichtsignatur. NULL lässt die Arrayformprüfung fehlschlagen und wird im TRY als PIPELINE_BINDING_UNPROVEN mit erfasster Fehlernummer abgebildet; Leertext und ungültiges JSON werden als Pipelineeingabefehler erfasst. Jeder Quellenstatus außer AVAILABLE verlangt ein leeres zugehöriges Array. Beleg-IDs sind positive bigint-Werte, rowsSent ist NULL oder nichtnegatives bigint; nicht-NULL-Zeitfelder müssen nach datetimeoffset(7) konvertierbar sein.
+-- 
+-- @Bound: bit; Default: keiner, Pflichtargument. Skalarer interner Übergabeflag, der vom Scopeconsumer aus dessen lokaler Handover- und Captureprüfung stammt. Nur der Wert 1 lässt die Pipelineverarbeitung beginnen; 0 oder NULL werden im TRY mit Fehlertext SCOPE_BINDING_UNPROVEN erfasst. Der Flag allein ist kein Vertrauensbeleg und die Procedure führt keine Handoverprüfung aus. Auslassen scheitert an der Pflichtsignatur. Ein numerischer Wert wird nach den SQL-Server-Konvertierungsregeln auf bit abgebildet. Die vollständige bit-Wertemenge ist 0 (nicht gebunden) und 1 (vom Aufrufer als gebunden markiert). SQL Server konvertiert numerische Werte ungleich 0 zu 1 und leeren Text zu 0 vor dem Procedure-Eintritt.
+-- 
+-- @Deadline: datetime2(3); Default: keiner, Pflichtargument. Enthält die absolute gemeinsame UTC-Deadline des Scopeconsumers, nicht eine Dauer. Die Procedure vergleicht SYSUTCDATETIME() an mehreren Verarbeitungspunkten mit diesem Zeitpunkt und erfasst eine überschrittene Deadline als PIPELINE_TIME_LIMIT. NULL lässt die Vergleiche wegen SQL-NULL-Semantik unbekannt werden und unterdrückt damit diese Deadlinevergleiche; die Procedure prüft NULL nicht gesondert. Auslassen scheitert an der Pflichtsignatur. Als datetime2(3)-Variable oder konvertierbaren ISO-Zeitpunkt übergeben, beispielsweise 2026-11-06T13:00:00.000; der Wert selbst trägt keine Zeitzone und muss UTC repräsentieren. Leerer Text kann zum Zeitpunkt 1900-01-01 konvertiert werden und ist dann abgelaufen; nicht konvertierbarer Text scheitert vor dem Eintritt.
+-- 
+-- @Limit: int; Default: keiner, Pflichtargument. Enthält das vom Scopeconsumer abgeleitete Zeilenlimit. Die Procedure schneidet ihre Arbeits- oder Temp-Tabellen nicht anhand dieses Werts ab; sie setzt in pipelineCoverage ein OutputTruncated-Flag, wenn beobachtete Zeilen oder Pipelineinstanzen den Wert überschreiten. Die öffentliche Procedure validiert das wirksame Limit und führt anschließend die tatsächliche Ausgabekürzung durch. Diese interne Procedure validiert den Wert nicht: Bei NULL wird der Vergleich unbekannt und das Flag in der CASE-Auswertung nicht wegen dieses Vergleichs gesetzt; bei 0 oder einem negativen Wert kann ein positiver Zeilenzähler das Flag setzen. Diese Werte sind kein gültiger öffentlicher Aufrufvertrag. Auslassen scheitert an der Pflichtsignatur. Als skalaren ganzzahligen int-Wert von -2147483648 bis 2147483647 übergeben; der Scopeconsumer liefert ein positives wirksames Limit. Leerer Text kann vor dem Eintritt nach 0 konvertiert werden.
+-- 
+-- Ergebnis- und Temp-Vertrag: Die Procedure erzeugt kein Resultset und hat keine OUTPUT-Parameter. Sie verlangt vom Aufrufer die folgenden lokalen Temp-Tabellen: #InternalSsisExecutionScopes_PipelineNodes mit PackageKey, NodeId, NodeKind, ParentNodeId und NodeName; #InternalSsisExecutionScopes_Observations mit SourceKind, SourceId, InvocationId, PackageKey, ModelNodeId, ExecutionPath und CorrelationStatus; #InternalSsisExecutionScopes_Packages mit PackageKey, EntryName und PackageSha256; #InternalSsisExecutionScopes_PipelineInstances mit FlowStatisticsId, InvocationId, PackageKey, FlowNodeId, FlowName, ExecutionPath und IsPathUnique; #InternalSsisExecutionScopes_ComponentPhases mit PhaseStatsId, FlowStatisticsId, InvocationId, PackageKey, FlowNodeId, ComponentNodeId, PackageName, TaskName, ComponentName, PhaseName, ExecutionPath, StartTime, EndTime, ObservedDurationMs und CorrelationStatus; #InternalSsisExecutionScopes_PathTransfers mit DataStatsId, FlowStatisticsId, InvocationId, PackageKey, FlowNodeId, ModelEdgeId, PackageName, TaskName, PathIdentificationString, PathName, SourceComponentName, DestinationComponentName, ExecutionPath, RowsSent, CreatedTime und CorrelationStatus; sowie #InternalSsisExecutionScopes_PipelineCoverage mit SourceName, StatusCode, SourceErrorNumber, ObservedRowCount, MappedRowCount, UnassignedRowCount, LoggingLevel, IsPartial, OutputTruncated und ReasonCode. Die Procedure fügt erkannte Pipelineinstanzen, beobachtete Phasen und Transfers hinzu und schreibt für beide Quellen eine Coveragezeile. Komponentenphasen werden nur bei eindeutiger Übereinstimmung zwischen Paket, Dataflow, Ausführungspfad und Komponentennamen als SCOPED_EXACT_COMPONENT_NAME zugeordnet. Transfers erfordern zusätzlich eindeutige Übereinstimmung der Pfadidentität und beider Komponentennamen und erhalten dann SCOPED_EXACT_PATH_REFERENCE. Die Pipelinequellenwerte AVAILABLE, AVAILABLE_EMPTY, UNAVAILABLE und DENIED_PERMISSION bleiben in der Coverage erkennbar. Bei internem Fehler werden die zuvor eingefügten Pipelineinstanzen, Phasen und Transfers gelöscht und die Coverage als PIPELINE_BINDING_UNPROVEN mit Fehlernummer und Reason-Code geschrieben. Die vier Ergebnisgruppen heißen pipelineInstances, componentPhases, pathTransfers und pipelineCoverage; der Aufrufer kürzt deren ausgegebene Zeilen später je Gruppe und kann dort tatsächliche Ausgabekürzung kennzeichnen.
+-- 
+-- Fehlergrenzen: Die interne TRY/CATCH-Strecke bildet Bound ungleich 1 oder NULL als Fehlernummer 57910 und Reason SCOPE_BINDING_UNPROVEN ab. Weitere eigene Fehlertexte sind PIPELINE_TIME_LIMIT bei abgelaufener gemeinsamer Deadline, PIPELINE_SOURCE_LIMIT bei überschrittener Zeilenmenge, PIPELINE_SOURCE_STATUS_INVALID bei ungültigen oder widersprüchlichen Quellenstatusangaben, PIPELINE_IDENTITIES_INVALID bei ungültigen Pipelineidentitäten, PIPELINE_FLOW_REFERENCE_INVALID bei fehlender Flow-Referenz, PIPELINE_OCCURRENCE_SET_INVALID bei abweichenden Knoten- oder Kantenmengen, PIPELINE_COMPONENT_REFERENCE_INVALID oder PIPELINE_PATH_REFERENCE_INVALID bei nicht gebundener Identität sowie PIPELINE_OBSERVATIONS_INVALID bei ungültigen Pipelinebelegen. Andere innerhalb der TRY-Strecke erfasste Fehler erhalten PIPELINE_INPUT_REJECTED. Die Fehler werden in Pipeline-Coverage abgebildet und löschen die Pipelineinstanzen, Phasen und Transfers. Die Temp-Tabellen-DDL liegt vor der TRY-Strecke; auch das Schreiben der Coverage nach dem CATCH und die Wiederherstellung des ursprünglichen LOCK_TIMEOUT liegen außerhalb des CATCH und können daher selbst fehlschlagen. Es besteht keine allgemeine Fehler-, Wiederherstellungs- oder atomare Rücknahmezusage.
+-- ```
+-- 
+-- USAGE_SKILL_END monitor.InternalSsisPipelineCorrelation
 CREATE OR ALTER PROCEDURE [monitor].[InternalSsisPipelineCorrelation]
  @Models nvarchar(max),@Capture nvarchar(max),@Bound bit,@Deadline datetime2(3),@Limit int
+    , @Hilfe bit = 0
 AS
 BEGIN
  SET NOCOUNT ON;
+    IF @Hilfe=1
+    BEGIN
+        -- USAGE_SKILL_HELP_BEGIN monitor.InternalSsisPipelineCorrelation
+        SELECT CONVERT(varchar(16),'1.0.0') AS [SkillFormatVersion],CONVERT(sysname,N'monitor') AS [SchemaName],CONVERT(sysname,N'InternalSsisPipelineCorrelation') AS [ObjectName],CONVERT(nvarchar(max),N'---')
+            + NCHAR(10)
+            + N'skill_format_version: "1.0.0"'
+            + NCHAR(10)
+            + N'name: "monitor.InternalSsisPipelineCorrelation"'
+            + NCHAR(10)
+            + N'schema_name: "monitor"'
+            + NCHAR(10)
+            + N'object_name: "InternalSsisPipelineCorrelation"'
+            + NCHAR(10)
+            + N'object_type: "INTERNAL_PROCEDURE"'
+            + NCHAR(10)
+            + N'database_role: "framework"'
+            + NCHAR(10)
+            + N'is_internal: true'
+            + NCHAR(10)
+            + N'description: "Die Procedure korreliert optionale, vom Aufrufer bereits gebundene SSIS-Pipelinebelege mit materialisierten Pipelineidentitäten und den gelieferten Execution-Scope-Knoten."'
+            + NCHAR(10)
+            + N'source_path: "Code/10_SSIS/036_InternalSsisPipelineCorrelation.sql"'
+            + NCHAR(10)
+            + N'---'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'# monitor.InternalSsisPipelineCorrelation'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'## Zweck und Einsatz'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'Die Procedure korreliert optionale, vom Aufrufer bereits gebundene SSIS-Pipelinebelege mit materialisierten Pipelineidentitäten und den gelieferten Execution-Scope-Knoten. Sie ordnet Phasenbelege Komponenten und Transferbelege Modellkanten zu und schreibt Pipelineinstanzen, Belege und Coverage in Temp-Tabellen des aufrufenden Scopeconsumers. Sie liest weder DTSX-Dateien noch klassifiziert sie Transformationstypen oder rekonstruiert Lineage. Eine Phasendauer ist ein beobachtetes Zeitintervall und keine CPU-Zeit.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'## Voraussetzungen und Rechte'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'Ein direkter Aufruf erfordert EXECUTE auf [monitor].[InternalSsisPipelineCorrelation]. Der normale Einsatz erfolgt über die öffentliche aufrufende Prozedur; direkter Fachbetrieb dieses Helpers ist nicht vorgesehen. Die Quelle nennt insbesondere `sys.sp_executesql`. Für deren Metadaten- oder Fachzugriff gelten die Rechte des jeweiligen SQL-Ausführungskontexts; der Skill erteilt sie nicht.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'## Parameter und Eingabe'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'„SQL-Bindungspflicht“ bezeichnet ein bei der SQL-Aufrufbindung erforderliches Argument ohne Default. Fachliche Wertpflichten und zulässige NULL-Werte stehen im jeweiligen Einzelvertrag.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'| Parameter | SQL-Typ | SQL-Bindungspflicht | Default |'
+            + NCHAR(10)
+            + N'| --- | --- | --- | --- |'
+            + NCHAR(10)
+            + N'| @Models | nvarchar(max) | ja | kein Default |'
+            + NCHAR(10)
+            + N'| @Capture | nvarchar(max) | ja | kein Default |'
+            + NCHAR(10)
+            + N'| @Bound | bit | ja | kein Default |'
+            + NCHAR(10)
+            + N'| @Deadline | datetime2(3) | ja | kein Default |'
+            + NCHAR(10)
+            + N'| @Limit | int | ja | kein Default |'
+            + NCHAR(10)
+            + N'| @Hilfe | bit | nein | 0 |'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'**@Models:** @Models: nvarchar(max); Default: keiner, Pflichtargument. Erwartet wird das Unicode-JSON-Dokument des bereits geprüften Paketsatzes mit packages-Array und je Paket den Werten packageKey, model und pipelineIdentities. pipelineIdentities verwendet contract ssis-pipeline-identities, version 1.0.0, identityProfile document-order-v1, packageSha256 passend zu model.source.packageSha256 und ein pipelines-Array. Jedes Pipelineobjekt enthält nodeId, profileStatus SUPPORTED (qualifiziert) oder UNQUALIFIED (unqualifiziert), components und paths. Komponenten enthalten nodeId, name, nativeRefId und profileStatus; Pfade enthalten edgeId, fromPortId, toPortId, sourceComponentId, destinationComponentId, nativeRefId, name, identificationString und profileStatus. Der Helper bindet diese Identitäten an die in den aufrufenden Temp-Tabellen materialisierten ausführbaren und Komponenten-Knoten sowie PIPELINE_PATH-Kanten. Die öffentliche Procedure begrenzt das Dokument auf 16 MiB und prüft unter'
+            + N' anderem JSON-Tiefe und doppelte Schlüssel; dies sind Aufruferprüfungen, keine unabhängige Vertrauens- oder Vollvalidierung dieser internen Procedure. Auslassen ist wegen der Pflichtsignatur nicht möglich. Bei NULL liefert OPENJSON für packages keine Paketzeilen; der Helper hat dafür keine eigene Vorabvalidierung und kann anschließend trotzdem weitere Phasen-/Transferbelege verarbeiten. Leertext oder ungültiges JSON ergibt keine valide JSON-Identitätsstruktur und kann im TRY als Pipelinefehler erfasst werden.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'**@Capture:** @Capture: nvarchar(max); Default: keiner, Pflichtargument. Erwartet wird das bereits gebundene Unicode-JSON-Capture der Version 1.1.0 mit Methode SSISDB_CURRENT_PROJECT_PIPELINES_V1. Es enthält componentPhases und pathTransfers als Arrays sowie pipelineSources mit genau einem Eintrag je source componentPhases und pathTransfers. Ein Quellenobjekt enthält source, status und errorNumber. Zulässige Statuswerte sind AVAILABLE (Quelle vorhanden) und AVAILABLE_EMPTY (Quelle vorhanden, leer) ohne Fehlernummer sowie UNAVAILABLE (Quelle nicht verfügbar) und DENIED_PERMISSION (Berechtigung fehlt) mit positiver Fehlernummer. Für componentPhases verwendet der Helper die Felder phaseStatsId, packageName, taskName, componentName, phaseName, executionPath, startTime und endTime. Für pathTransfers verwendet er dataStatsId, packageName, taskName, pathIdentificationString, pathName, sourceComponentName, destinationComponentName, executionPath, rowsSent und createdTime. Die Quellzeilen werde'
+            + N'n über Package-/Flow-Namen und exakte Pfad-/Identitätswerte nur bei eindeutiger Kandidatenzuordnung verbunden; fehlende oder mehrdeutige Kandidaten bleiben nicht zugeordnet. Die öffentliche Scope-Procedure prüft die Capturebindung, Schemaformen, 16-MiB-Dokumentgrenze, JSON-Tiefe, doppelte Schlüssel und das gemeinsame Maximum von 50000 Basis- und Pipelinezeilen. Der Helper prüft zusätzlich Arrayformen, genau zwei gültige Quellen, Quellenstatus und die konvertierbaren Feldwerte, aber ersetzt diese Aufruferprüfungen nicht. Auslassen scheitert an der Pflichtsignatur. NULL lässt die Arrayformprüfung fehlschlagen und wird im TRY als PIPELINE_BINDING_UNPROVEN mit erfasster Fehlernummer abgebildet; Leertext und ungültiges JSON werden als Pipelineeingabefehler erfasst. Jeder Quellenstatus außer AVAILABLE verlangt ein leeres zugehöriges Array. Beleg-IDs sind positive bigint-Werte, rowsSent ist NULL oder nichtnegatives bigint; nicht-NULL-Zeitfelder müssen nach datetimeoffset(7) konvertierbar sein'
+            + N'.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'**@Bound:** @Bound: bit; Default: keiner, Pflichtargument. Skalarer interner Übergabeflag, der vom Scopeconsumer aus dessen lokaler Handover- und Captureprüfung stammt. Nur der Wert 1 lässt die Pipelineverarbeitung beginnen; 0 oder NULL werden im TRY mit Fehlertext SCOPE_BINDING_UNPROVEN erfasst. Der Flag allein ist kein Vertrauensbeleg und die Procedure führt keine Handoverprüfung aus. Auslassen scheitert an der Pflichtsignatur. Ein numerischer Wert wird nach den SQL-Server-Konvertierungsregeln auf bit abgebildet. Die vollständige bit-Wertemenge ist 0 (nicht gebunden) und 1 (vom Aufrufer als gebunden markiert). SQL Server konvertiert numerische Werte ungleich 0 zu 1 und leeren Text zu 0 vor dem Procedure-Eintritt.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'**@Deadline:** @Deadline: datetime2(3); Default: keiner, Pflichtargument. Enthält die absolute gemeinsame UTC-Deadline des Scopeconsumers, nicht eine Dauer. Die Procedure vergleicht SYSUTCDATETIME() an mehreren Verarbeitungspunkten mit diesem Zeitpunkt und erfasst eine überschrittene Deadline als PIPELINE_TIME_LIMIT. NULL lässt die Vergleiche wegen SQL-NULL-Semantik unbekannt werden und unterdrückt damit diese Deadlinevergleiche; die Procedure prüft NULL nicht gesondert. Auslassen scheitert an der Pflichtsignatur. Als datetime2(3)-Variable oder konvertierbaren ISO-Zeitpunkt übergeben, beispielsweise 2026-11-06T13:00:00.000; der Wert selbst trägt keine Zeitzone und muss UTC repräsentieren. Leerer Text kann zum Zeitpunkt 1900-01-01 konvertiert werden und ist dann abgelaufen; nicht konvertierbarer Text scheitert vor dem Eintritt.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'**@Limit:** @Limit: int; Default: keiner, Pflichtargument. Enthält das vom Scopeconsumer abgeleitete Zeilenlimit. Die Procedure schneidet ihre Arbeits- oder Temp-Tabellen nicht anhand dieses Werts ab; sie setzt in pipelineCoverage ein OutputTruncated-Flag, wenn beobachtete Zeilen oder Pipelineinstanzen den Wert überschreiten. Die öffentliche Procedure validiert das wirksame Limit und führt anschließend die tatsächliche Ausgabekürzung durch. Diese interne Procedure validiert den Wert nicht: Bei NULL wird der Vergleich unbekannt und das Flag in der CASE-Auswertung nicht wegen dieses Vergleichs gesetzt; bei 0 oder einem negativen Wert kann ein positiver Zeilenzähler das Flag setzen. Diese Werte sind kein gültiger öffentlicher Aufrufvertrag. Auslassen scheitert an der Pflichtsignatur. Als skalaren ganzzahligen int-Wert von -2147483648 bis 2147483647 übergeben; der Scopeconsumer liefert ein positives wirksames Limit. Leerer Text kann vor dem Eintritt nach 0 konvertiert werden.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'**@Hilfe:** bit, Default 0; 1 liefert vor Fachzugriff genau ein Usage-Skill-Resultset. Vorhandene reguläre PRINT-Meldungen bleiben dem normalen Fachpfad vorbehalten. Der Hilfezweig initialisiert OUTPUT-Parameter nicht; übergebene Werte bleiben unverändert. 0 und NULL folgen dem bisherigen normalen Prozedurpfad.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'## Resultate und Ausgabe'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'Kein direktes Resultset und keine OUTPUT-Parameter. Der Helper füllt die vorgegebenen lokalen `#InternalSsisExecutionScopes_`-Ziele für korrelierte Pipelineinstanzen, Komponentenphasen, Pfadtransfers und Coverage. Mapping beruht auf den übergebenen Modell-/Capture-JSON-Daten und deren Bindung; fehlende oder ungültige Bindung bleibt als Coverage-Status sichtbar, nicht als erfundener Flow-Bezug. Die öffentliche Scope-Procedure übernimmt die Ausgabe.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'## Beispiel'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'Der interne Helper ist kein selbstständiger Fachbericht. Der lesende Katalogaufruf zeigt den Vertrag, ohne den Helper auszuführen:'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'```sql'
+            + NCHAR(10)
+            + N'SELECT [SkillMarkdown]'
+            + NCHAR(10)
+            + N'FROM [monitor_metadata].[VW_ObjectUsageSkills]'
+            + NCHAR(10)
+            + N'WHERE [SchemaName]=N''monitor'' AND [ObjectName]=N''InternalSsisPipelineCorrelation'';'
+            + NCHAR(10)
+            + N'```'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'Der folgende Aufruf demonstriert ausschließlich den frühen Hilfezweig; die NULL-Pflichtwerte sind nicht für den normalen Fachpfad zulässig:'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'```sql'
+            + NCHAR(10)
+            + N'EXEC [monitor].[InternalSsisPipelineCorrelation] @Models=NULL, @Capture=NULL, @Bound=NULL, @Deadline=NULL, @Limit=NULL, @Hilfe=1;'
+            + NCHAR(10)
+            + N'```'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'## Aufwand, Nebenwirkungen, Fehler und Grenzen'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'Die interne TRY/CATCH-Strecke bildet Bound ungleich 1 oder NULL als Fehlernummer 57910 und Reason SCOPE_BINDING_UNPROVEN ab. Weitere eigene Fehlertexte sind PIPELINE_TIME_LIMIT bei abgelaufener gemeinsamer Deadline, PIPELINE_SOURCE_LIMIT bei überschrittener Zeilenmenge, PIPELINE_SOURCE_STATUS_INVALID bei ungültigen oder widersprüchlichen Quellenstatusangaben, PIPELINE_IDENTITIES_INVALID bei ungültigen Pipelineidentitäten, PIPELINE_FLOW_REFERENCE_INVALID bei fehlender Flow-Referenz, PIPELINE_OCCURRENCE_SET_INVALID bei abweichenden Knoten- oder Kantenmengen, PIPELINE_COMPONENT_REFERENCE_INVALID oder PIPELINE_PATH_REFERENCE_INVALID bei nicht gebundener Identität sowie PIPELINE_OBSERVATIONS_INVALID bei ungültigen Pipelinebelegen. Andere innerhalb der TRY-Strecke erfasste Fehler erhalten PIPELINE_INPUT_REJECTED. Die Fehler werden in Pipeline-Coverage abgebildet und löschen die Pipelineinstanzen, Phasen und Transfers. Die Temp-Tabellen-DDL liegt vor der TRY-Strecke; auch das Schreiben der Co'
+            + N'verage nach dem CATCH und die Wiederherstellung des ursprünglichen LOCK_TIMEOUT liegen außerhalb des CATCH und können daher selbst fehlschlagen. Es besteht keine allgemeine Fehler-, Wiederherstellungs- oder atomare Rücknahmezusage.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'### Quellgebundene Detailbeschreibung'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'Der folgende Quellkopf bewahrt die zusätzlichen Implementierungsgrenzen für diesen Skill.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'```text'
+            + NCHAR(10)
+            + N'Objekt: [monitor].[InternalSsisPipelineCorrelation].'
+            + NCHAR(10)
+            + N'Typ: Interne Stored Procedure.'
+            + NCHAR(10)
+            + N'Zweck: Die Procedure korreliert optionale, vom Aufrufer bereits gebundene SSIS-Pipelinebelege mit materialisierten Pipelineidentitäten und den gelieferten Execution-Scope-Knoten. Sie ordnet Phasenbelege Komponenten und Transferbelege Modellkanten zu und schreibt Pipelineinstanzen, Belege und Coverage in Temp-Tabellen des aufrufenden Scopeconsumers. Sie liest weder DTSX-Dateien noch klassifiziert sie Transformationstypen oder rekonstruiert Lineage. Eine Phasendauer ist ein beobachtetes Zeitintervall und keine CPU-Zeit.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'Parameter:'
+            + NCHAR(10)
+            + N'@Models: nvarchar(max); Default: keiner, Pflichtargument. Erwartet wird das Unicode-JSON-Dokument des bereits geprüften Paketsatzes mit packages-Array und je Paket den Werten packageKey, model und pipelineIdentities. pipelineIdentities verwendet contract ssis-pipeline-identities, version 1.0.0, identityProfile document-order-v1, packageSha256 passend zu model.source.packageSha256 und ein pipelines-Array. Jedes Pipelineobjekt enthält nodeId, profileStatus SUPPORTED (qualifiziert) oder UNQUALIFIED (unqualifiziert), components und paths. Komponenten enthalten nodeId, name, nativeRefId und profileStatus; Pfade enthalten edgeId, fromPortId, toPortId, sourceComponentId, destinationComponentId, nativeRefId, name, identificationString und profileStatus. Der Helper bindet diese Identitäten an die in den aufrufenden Temp-Tabellen materialisierten ausführbaren und Komponenten-Knoten sowie PIPELINE_PATH-Kanten. Die öffentliche Procedure begrenzt das Dokument auf 16 MiB und prüft unter anderem JSON'
+            + N'-Tiefe und doppelte Schlüssel; dies sind Aufruferprüfungen, keine unabhängige Vertrauens- oder Vollvalidierung dieser internen Procedure. Auslassen ist wegen der Pflichtsignatur nicht möglich. Bei NULL liefert OPENJSON für packages keine Paketzeilen; der Helper hat dafür keine eigene Vorabvalidierung und kann anschließend trotzdem weitere Phasen-/Transferbelege verarbeiten. Leertext oder ungültiges JSON ergibt keine valide JSON-Identitätsstruktur und kann im TRY als Pipelinefehler erfasst werden.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'@Capture: nvarchar(max); Default: keiner, Pflichtargument. Erwartet wird das bereits gebundene Unicode-JSON-Capture der Version 1.1.0 mit Methode SSISDB_CURRENT_PROJECT_PIPELINES_V1. Es enthält componentPhases und pathTransfers als Arrays sowie pipelineSources mit genau einem Eintrag je source componentPhases und pathTransfers. Ein Quellenobjekt enthält source, status und errorNumber. Zulässige Statuswerte sind AVAILABLE (Quelle vorhanden) und AVAILABLE_EMPTY (Quelle vorhanden, leer) ohne Fehlernummer sowie UNAVAILABLE (Quelle nicht verfügbar) und DENIED_PERMISSION (Berechtigung fehlt) mit positiver Fehlernummer. Für componentPhases verwendet der Helper die Felder phaseStatsId, packageName, taskName, componentName, phaseName, executionPath, startTime und endTime. Für pathTransfers verwendet er dataStatsId, packageName, taskName, pathIdentificationString, pathName, sourceComponentName, destinationComponentName, executionPath, rowsSent und createdTime. Die Quellzeilen werden über Package'
+            + N'-/Flow-Namen und exakte Pfad-/Identitätswerte nur bei eindeutiger Kandidatenzuordnung verbunden; fehlende oder mehrdeutige Kandidaten bleiben nicht zugeordnet. Die öffentliche Scope-Procedure prüft die Capturebindung, Schemaformen, 16-MiB-Dokumentgrenze, JSON-Tiefe, doppelte Schlüssel und das gemeinsame Maximum von 50000 Basis- und Pipelinezeilen. Der Helper prüft zusätzlich Arrayformen, genau zwei gültige Quellen, Quellenstatus und die konvertierbaren Feldwerte, aber ersetzt diese Aufruferprüfungen nicht. Auslassen scheitert an der Pflichtsignatur. NULL lässt die Arrayformprüfung fehlschlagen und wird im TRY als PIPELINE_BINDING_UNPROVEN mit erfasster Fehlernummer abgebildet; Leertext und ungültiges JSON werden als Pipelineeingabefehler erfasst. Jeder Quellenstatus außer AVAILABLE verlangt ein leeres zugehöriges Array. Beleg-IDs sind positive bigint-Werte, rowsSent ist NULL oder nichtnegatives bigint; nicht-NULL-Zeitfelder müssen nach datetimeoffset(7) konvertierbar sein.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'@Bound: bit; Default: keiner, Pflichtargument. Skalarer interner Übergabeflag, der vom Scopeconsumer aus dessen lokaler Handover- und Captureprüfung stammt. Nur der Wert 1 lässt die Pipelineverarbeitung beginnen; 0 oder NULL werden im TRY mit Fehlertext SCOPE_BINDING_UNPROVEN erfasst. Der Flag allein ist kein Vertrauensbeleg und die Procedure führt keine Handoverprüfung aus. Auslassen scheitert an der Pflichtsignatur. Ein numerischer Wert wird nach den SQL-Server-Konvertierungsregeln auf bit abgebildet. Die vollständige bit-Wertemenge ist 0 (nicht gebunden) und 1 (vom Aufrufer als gebunden markiert). SQL Server konvertiert numerische Werte ungleich 0 zu 1 und leeren Text zu 0 vor dem Procedure-Eintritt.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'@Deadline: datetime2(3); Default: keiner, Pflichtargument. Enthält die absolute gemeinsame UTC-Deadline des Scopeconsumers, nicht eine Dauer. Die Procedure vergleicht SYSUTCDATETIME() an mehreren Verarbeitungspunkten mit diesem Zeitpunkt und erfasst eine überschrittene Deadline als PIPELINE_TIME_LIMIT. NULL lässt die Vergleiche wegen SQL-NULL-Semantik unbekannt werden und unterdrückt damit diese Deadlinevergleiche; die Procedure prüft NULL nicht gesondert. Auslassen scheitert an der Pflichtsignatur. Als datetime2(3)-Variable oder konvertierbaren ISO-Zeitpunkt übergeben, beispielsweise 2026-11-06T13:00:00.000; der Wert selbst trägt keine Zeitzone und muss UTC repräsentieren. Leerer Text kann zum Zeitpunkt 1900-01-01 konvertiert werden und ist dann abgelaufen; nicht konvertierbarer Text scheitert vor dem Eintritt.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'@Limit: int; Default: keiner, Pflichtargument. Enthält das vom Scopeconsumer abgeleitete Zeilenlimit. Die Procedure schneidet ihre Arbeits- oder Temp-Tabellen nicht anhand dieses Werts ab; sie setzt in pipelineCoverage ein OutputTruncated-Flag, wenn beobachtete Zeilen oder Pipelineinstanzen den Wert überschreiten. Die öffentliche Procedure validiert das wirksame Limit und führt anschließend die tatsächliche Ausgabekürzung durch. Diese interne Procedure validiert den Wert nicht: Bei NULL wird der Vergleich unbekannt und das Flag in der CASE-Auswertung nicht wegen dieses Vergleichs gesetzt; bei 0 oder einem negativen Wert kann ein positiver Zeilenzähler das Flag setzen. Diese Werte sind kein gültiger öffentlicher Aufrufvertrag. Auslassen scheitert an der Pflichtsignatur. Als skalaren ganzzahligen int-Wert von -2147483648 bis 2147483647 übergeben; der Scopeconsumer liefert ein positives wirksames Limit. Leerer Text kann vor dem Eintritt nach 0 konvertiert werden.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'Ergebnis- und Temp-Vertrag: Die Procedure erzeugt kein Resultset und hat keine OUTPUT-Parameter. Sie verlangt vom Aufrufer die folgenden lokalen Temp-Tabellen: #InternalSsisExecutionScopes_PipelineNodes mit PackageKey, NodeId, NodeKind, ParentNodeId und NodeName; #InternalSsisExecutionScopes_Observations mit SourceKind, SourceId, InvocationId, PackageKey, ModelNodeId, ExecutionPath und CorrelationStatus; #InternalSsisExecutionScopes_Packages mit PackageKey, EntryName und PackageSha256; #InternalSsisExecutionScopes_PipelineInstances mit FlowStatisticsId, InvocationId, PackageKey, FlowNodeId, FlowName, ExecutionPath und IsPathUnique; #InternalSsisExecutionScopes_ComponentPhases mit PhaseStatsId, FlowStatisticsId, InvocationId, PackageKey, FlowNodeId, ComponentNodeId, PackageName, TaskName, ComponentName, PhaseName, ExecutionPath, StartTime, EndTime, ObservedDurationMs und CorrelationStatus; #InternalSsisExecutionScopes_PathTransfers mit DataStatsId, FlowStatisticsId, InvocationId, Packag'
+            + N'eKey, FlowNodeId, ModelEdgeId, PackageName, TaskName, PathIdentificationString, PathName, SourceComponentName, DestinationComponentName, ExecutionPath, RowsSent, CreatedTime und CorrelationStatus; sowie #InternalSsisExecutionScopes_PipelineCoverage mit SourceName, StatusCode, SourceErrorNumber, ObservedRowCount, MappedRowCount, UnassignedRowCount, LoggingLevel, IsPartial, OutputTruncated und ReasonCode. Die Procedure fügt erkannte Pipelineinstanzen, beobachtete Phasen und Transfers hinzu und schreibt für beide Quellen eine Coveragezeile. Komponentenphasen werden nur bei eindeutiger Übereinstimmung zwischen Paket, Dataflow, Ausführungspfad und Komponentennamen als SCOPED_EXACT_COMPONENT_NAME zugeordnet. Transfers erfordern zusätzlich eindeutige Übereinstimmung der Pfadidentität und beider Komponentennamen und erhalten dann SCOPED_EXACT_PATH_REFERENCE. Die Pipelinequellenwerte AVAILABLE, AVAILABLE_EMPTY, UNAVAILABLE und DENIED_PERMISSION bleiben in der Coverage erkennbar. Bei internem Fe'
+            + N'hler werden die zuvor eingefügten Pipelineinstanzen, Phasen und Transfers gelöscht und die Coverage als PIPELINE_BINDING_UNPROVEN mit Fehlernummer und Reason-Code geschrieben. Die vier Ergebnisgruppen heißen pipelineInstances, componentPhases, pathTransfers und pipelineCoverage; der Aufrufer kürzt deren ausgegebene Zeilen später je Gruppe und kann dort tatsächliche Ausgabekürzung kennzeichnen.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'Fehlergrenzen: Die interne TRY/CATCH-Strecke bildet Bound ungleich 1 oder NULL als Fehlernummer 57910 und Reason SCOPE_BINDING_UNPROVEN ab. Weitere eigene Fehlertexte sind PIPELINE_TIME_LIMIT bei abgelaufener gemeinsamer Deadline, PIPELINE_SOURCE_LIMIT bei überschrittener Zeilenmenge, PIPELINE_SOURCE_STATUS_INVALID bei ungültigen oder widersprüchlichen Quellenstatusangaben, PIPELINE_IDENTITIES_INVALID bei ungültigen Pipelineidentitäten, PIPELINE_FLOW_REFERENCE_INVALID bei fehlender Flow-Referenz, PIPELINE_OCCURRENCE_SET_INVALID bei abweichenden Knoten- oder Kantenmengen, PIPELINE_COMPONENT_REFERENCE_INVALID oder PIPELINE_PATH_REFERENCE_INVALID bei nicht gebundener Identität sowie PIPELINE_OBSERVATIONS_INVALID bei ungültigen Pipelinebelegen. Andere innerhalb der TRY-Strecke erfasste Fehler erhalten PIPELINE_INPUT_REJECTED. Die Fehler werden in Pipeline-Coverage abgebildet und löschen die Pipelineinstanzen, Phasen und Transfers. Die Temp-Tabellen-DDL liegt vor der TRY-Strecke; auch das S'
+            + N'chreiben der Coverage nach dem CATCH und die Wiederherstellung des ursprünglichen LOCK_TIMEOUT liegen außerhalb des CATCH und können daher selbst fehlschlagen. Es besteht keine allgemeine Fehler-, Wiederherstellungs- oder atomare Rücknahmezusage.'
+            + NCHAR(10)
+            + N'```'
+            + NCHAR(10)
+            + NCHAR(10) AS [SkillMarkdown];
+        -- USAGE_SKILL_HELP_END monitor.InternalSsisPipelineCorrelation
+        RETURN;
+    END;
+
  DECLARE @OriginalLockTimeout int=@@LOCK_TIMEOUT,@LockTimeoutSql nvarchar(80),@reason nvarchar(256)=NULL,@error int=NULL,@valid bit=0;
  CREATE TABLE #InternalSsisPipelineCorrelation_Flows([PackageKey] varchar(16) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,[NodeId] varchar(128) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,[Supported] bit NOT NULL,PRIMARY KEY([PackageKey],[NodeId]));
  CREATE TABLE #InternalSsisPipelineCorrelation_Components([PackageKey] varchar(16) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,[FlowNodeId] varchar(128) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,[NodeId] varchar(128) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,[Name] nvarchar(256) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,[Supported] bit NOT NULL,PRIMARY KEY([PackageKey],[NodeId]));

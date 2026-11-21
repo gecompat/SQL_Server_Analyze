@@ -113,13 +113,15 @@ $installAllText = Get-Content -LiteralPath $installAll -Raw -Encoding UTF8
 
 $expectedFrameworkIncludes = @(
     'Code/00_Setup/000_Preflight_und_Schema.sql',
+    'Code/00_Setup/004_MetadataSchema.sql',
     'Code/10_SnapshotBaseline/010_SnapshotTargetConfiguration.sql',
     'Code/10_SnapshotBaseline/076_InternalValidateSnapshotWaitTarget.sql',
     'Code/10_SnapshotBaseline/080_USP_ConfigureSnapshotTarget.sql',
     'Code/10_SnapshotBaseline/085_InternalRunSnapshotWaitStatsCycle.sql',
     'Code/10_SnapshotBaseline/087_InternalRunSnapshotFileIOCycle.sql',
     'Code/10_SnapshotBaseline/090_USP_RunSnapshotCollectionCycle.sql',
-    'Code/10_SnapshotBaseline/100_USP_PurgeSnapshotData.sql'
+    'Code/10_SnapshotBaseline/100_USP_PurgeSnapshotData.sql',
+    'Code/00_Setup/005_VW_ObjectUsageSkills.sql'
 )
 $expectedTargetIncludes = @(
     'Code/10_SnapshotBaseline/030_Snapshot_Target_Schema.sql',
@@ -131,7 +133,9 @@ $expectedTargetIncludes = @(
     'Code/10_SnapshotBaseline/060_InternalFinalizeCollectionCycle.sql',
     'Code/10_SnapshotBaseline/070_InternalPurgeExpiredData.sql',
     'Code/10_SnapshotBaseline/075_CompleteWaitStatsInstallation.sql',
-    'Code/10_SnapshotBaseline/078_CompleteFileIOInstallation.sql'
+    'Code/10_SnapshotBaseline/078_CompleteFileIOInstallation.sql',
+    'Code/10_SnapshotBaseline/011_MetadataSchema_Target.sql',
+    'Code/10_SnapshotBaseline/012_VW_ObjectUsageSkills_Target.sql'
 )
 $observedFrameworkIncludes = @(
     $frameworkIncludes | ForEach-Object {
@@ -190,11 +194,11 @@ $publicApis = @(
 )
 
 foreach ($api in $publicApis) {
-    $frameworkDefinition = "(?is)CREATE\s+OR\s+ALTER\s+PROCEDURE\s+\[monitor\]\.\[$([regex]::Escape($api))\]"
+    $frameworkDefinition = "(?im)^[ \t]*CREATE\s+OR\s+ALTER\s+PROCEDURE\s+\[monitor\]\.\[$([regex]::Escape($api))\]"
     if (-not [Text.RegularExpressions.Regex]::IsMatch($frameworkText, $frameworkDefinition)) {
         throw "SC023_PUBLIC_API_MISSING_FROM_FRAMEWORK_INSTALLER: $api"
     }
-    if ([Text.RegularExpressions.Regex]::IsMatch($targetText, "(?i)\[$([regex]::Escape($api))\]")) {
+    if ([Text.RegularExpressions.Regex]::IsMatch($targetText, "(?im)^[ \t]*CREATE\s+OR\s+ALTER\s+PROCEDURE\s+\[monitor\]\.\[$([regex]::Escape($api))\]")) {
         throw "SC023_PUBLIC_API_PRESENT_IN_TARGET_INSTALLER: $api"
     }
     if ([Text.RegularExpressions.Regex]::IsMatch($installAllText, "(?i)$([regex]::Escape($api))")) {
@@ -202,10 +206,10 @@ foreach ($api in $publicApis) {
     }
 }
 
-if (-not [Text.RegularExpressions.Regex]::IsMatch($frameworkText, '(?i)\[monitor\]\.\[SnapshotTargetConfiguration\]')) {
+if (-not [Text.RegularExpressions.Regex]::IsMatch($frameworkText, '(?im)^[ \t]*CREATE\s+TABLE\s+\[monitor\]\.\[SnapshotTargetConfiguration\]')) {
     throw 'SC023_FRAMEWORK_CONFIGURATION_OBJECT_MISSING'
 }
-if ([Text.RegularExpressions.Regex]::IsMatch($targetText, '(?i)\[monitor\]\.\[SnapshotTargetConfiguration\]')) {
+if ([Text.RegularExpressions.Regex]::IsMatch($targetText, '(?im)^[ \t]*CREATE\s+TABLE\s+\[monitor\]\.\[SnapshotTargetConfiguration\]')) {
     throw 'SC023_FRAMEWORK_CONFIGURATION_OBJECT_IN_TARGET_INSTALLER'
 }
 

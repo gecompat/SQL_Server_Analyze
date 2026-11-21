@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Validate CurrentRequests literal ABI, shared selection and source isolation."""
 from __future__ import annotations
+from UsageSkillSourceMask import strip_usage_skill_projections
 import argparse
 from pathlib import Path
 import re
@@ -463,6 +464,22 @@ def validate(source:str)->list[str]:
  return errors
 
 def self_test(source:str)->int:
+ sample=("SELECT 1;\n-- USAGE_SKILL_BEGIN monitor.Example\n"
+         "CREATE TABLE [documentation only]([Value] int);\n"
+         "-- USAGE_SKILL_END monitor.Example\nSELECT 2;\n")
+ if strip_usage_skill_projections(sample, compact=True)!="SELECT 1;\n\n\n\nSELECT 2;\n":
+  raise AssertionError('Skill projection masking changed executable SQL or line boundaries')
+ second=("-- USAGE_SKILL_HELP_BEGIN monitor.Other\n"
+         "PRINT N'documentation';\n"
+         "-- USAGE_SKILL_HELP_END monitor.Other\nSELECT 3;\n")
+ if strip_usage_skill_projections(sample+second, compact=True)!="SELECT 1;\n\n\n\nSELECT 2;\n\n\n\nSELECT 3;\n":
+  raise AssertionError('Multiple Skill projections changed following executable SQL')
+ for malformed in (sample.replace('USAGE_SKILL_END monitor.Example','USAGE_SKILL_END monitor.Other'),
+                   sample.replace('CREATE TABLE [documentation only]([Value] int);',
+                                  '-- USAGE_SKILL_BEGIN monitor.Nested')):
+  try:strip_usage_skill_projections(malformed, compact=True)
+  except ValueError:pass
+  else:raise AssertionError('Malformed Skill projection marker was accepted')
  assert not validate(source),validate(source)
  mutations=[]
  for table,fields in TABLES.items():
@@ -498,7 +515,7 @@ def self_test(source:str)->int:
 
 def main()->int:
  p=argparse.ArgumentParser();p.add_argument('--repository-root',type=Path,default=Path('.'));p.add_argument('--self-test',action='store_true');args=p.parse_args()
- source=(args.repository_root/PROCEDURE_PATH).read_text(encoding='utf-8-sig')
+ source=strip_usage_skill_projections((args.repository_root/PROCEDURE_PATH).read_text(encoding='utf-8-sig'), compact=True)
  if args.self_test:
   count=self_test(source);print(f'Current Requests self-test passed: mutations={count} findings=0');return 0
  errors=validate(source)

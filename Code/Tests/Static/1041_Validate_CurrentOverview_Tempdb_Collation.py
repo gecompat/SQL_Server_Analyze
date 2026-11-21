@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Validate CurrentOverview literal ABI, all local shapes and output orchestration."""
+from UsageSkillSourceMask import strip_usage_skill_projections
 from pathlib import Path
 import argparse,re
 SOURCE=Path('Code/02_CurrentState/100_USP_CurrentOverview.sql')
@@ -402,14 +403,14 @@ def findings(s):
     if params!=ABI: result.append('ABI_31_ORDER_TYPE_DEFAULT_OUTPUT')
     calls={m[1]:norm(m[2]) for m in re.finditer(r'EXEC \[monitor\]\.\[(USP_Current(?:Sessions|Requests|Blocking|Waits|Transactions|MemoryGrants|TempDB|IO|Log))\](.*?);',s,re.S)}
     if len(re.findall(r'EXEC \[monitor\]\.\[(USP_Current(?:Sessions|Requests|Blocking|Waits|Transactions|MemoryGrants|TempDB|IO|Log))\](.*?);',s,re.S))!=9 or calls!=CHILD_CALLS: result.append('NINE_CHILD_CALL_ARGUMENTS')
-    positions=[s.find('InternalPrepareResultTables'),s.find('IF @Hilfe = 1'),s.find("IF @OutputMode NOT IN"),s.find('SET @CaptureSessions=')]
+    positions=[s.find('IF @Hilfe = 1'),s.find('InternalPrepareResultTables'),s.find("IF @OutputMode NOT IN"),s.find('SET @CaptureSessions=')]
     if -1 in positions or positions!=sorted(positions): result.append('EARLY_MAPPING_PRIORITY')
-    early=s[:positions[1]] if positions[1]>=0 else ''
+    early=s[positions[0]:positions[2]] if positions[0]>=0 and positions[2]>=0 else ''
     predicate="IF @OutputMode='TABLE' OR NULLIF(LTRIM(RTRIM(COALESCE(@ResultTablesJson,N''))),N'') IS NOT NULL"
     if predicate not in early or "@StatusCode='AVAILABLE' AND @OutputMode='TABLE'" in s: result.append('MAPPING_ALL_CONTEXTS')
     if "@AllowedResultNames=N'moduleStatus|snapshotStatus|sessions|requests|requestContext|statements|batches|inputBuffers|blocking|waits|transactions|memoryGrants|tempdbSessions|tempdbGovernance|versionStore|io|logs|warnings'" not in s: result.append('TABLE_RESULT_NAME_CONTRACT')
     if "WHEN @ExportResultName=N'tempdbGovernance' THEN 1" in s: result.append('TEMPDB_GOVERNANCE_EXPORT_GATE')
-    if s.find('SET @Json = NULL;')<0 or s.find('SET @Json = NULL;')>positions[0]: result.append('JSON_CLEARING')
+    if s.find('SET @Json = NULL;')<0 or s.find('SET @Json = NULL;')>positions[1]: result.append('JSON_CLEARING')
     try:
         body=norm(s[s.index('BuildOutputs:'):s.index('    SET @RestoreLockTimeoutSql',s.index('BuildOutputs:'))])
         output_tokens=(
@@ -477,7 +478,7 @@ def self_test(s):
 
 def main():
     p=argparse.ArgumentParser();p.add_argument('--repository-root',type=Path,required=True);p.add_argument('--self-test',action='store_true');args=p.parse_args()
-    s=(args.repository_root/SOURCE).read_text(encoding='utf-8')
+    s=strip_usage_skill_projections((args.repository_root/SOURCE).read_text(encoding='utf-8'), compact=True)
     if args.self_test: print(f'CurrentOverview self-test PASS: {self_test(s)} real mutations');return
     errors=findings(s)
     if errors: raise SystemExit('\n'.join(errors))

@@ -140,7 +140,14 @@ INSERT @FileIOParameters VALUES
  (N'InternalPurgeExpiredData',9,N'@RetentionContractVersionOut',56,4,1),
  (N'InternalPurgeExpiredData',10,N'@ExpectedTargetDatabaseId',56,4,0),
  (N'InternalPurgeExpiredData',11,N'@ExpectedTargetDatabaseName',231,256,0),
- (N'InternalPurgeExpiredData',12,N'@ExpectedTargetCreateDate',61,8,0);
+ (N'InternalPurgeExpiredData',12,N'@ExpectedTargetCreateDate',61,8,0),
+ (N'InternalConfigureSnapshotPolicy',21,N'@Hilfe',104,1,0),
+ (N'InternalPrepareCollectionCycle',13,N'@Hilfe',104,1,0),
+ (N'InternalCompletePerformanceCounterCycle',11,N'@Hilfe',104,1,0),
+ (N'InternalCompleteWaitStatsCycle',10,N'@Hilfe',104,1,0),
+ (N'InternalCompleteFileIOCycle',10,N'@Hilfe',104,1,0),
+ (N'InternalFinalizeCollectionCycle',6,N'@Hilfe',104,1,0),
+ (N'InternalPurgeExpiredData',13,N'@Hilfe',104,1,0);
 IF EXISTS(SELECT 1 FROM @FileIOHelpers [h] WHERE
  (SELECT COUNT_BIG(*) FROM [sys].[parameters] [p] WITH (NOLOCK) WHERE [p].[object_id]=[h].[Id])<>
  (SELECT COUNT_BIG(*) FROM @FileIOParameters [e] WHERE [e].[Procedure]=[h].[Name]))

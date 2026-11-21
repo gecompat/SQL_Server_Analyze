@@ -1913,3 +1913,15 @@ Der Consumer legt nur eigene temporäre Tabellen an und führt keine zusätzlich
 
 Der [öffentliche Scope-Aufrufweg](../Analysis_Guides/Procedures/USP_SsisPackageModelAnalysis.md#kindpaket-und-ereignishandlerkorrelation) beschreibt die übernommenen Modell- und Capturefelder.
 
+
+### `[monitor_metadata].[VW_ObjectUsageSkills]`
+
+Quelle: `Code/00_Setup/005_VW_ObjectUsageSkills.sql`
+
+| Dimension | Vertrag |
+| --- | --- |
+| Aufgabe | Stellt den versionierten Usage-Skill-Text der aktuellen Repositoryquellen als konstanten Dokumentationskatalog bereit. Die View misst weder installierte Fachobjekte noch effektive Berechtigungen. |
+| Schnittstelle | Die acht Spalten SchemaName, ObjectName, ObjectType, DatabaseRole, IsInternal, Description, SkillFormatVersion und SkillMarkdown identifizieren und beschreiben jeden logischen Skill. Frameworkseitig enthält die View 193 Fachobjekte und ihren eigenen Eintrag; im separaten Snapshot-Ziel enthält sie 17 Fachobjekte und denselben Self-Skill. |
+| Verwendung | Ein Aufrufer kann den Skill über SELECT auf [monitor_metadata].[VW_ObjectUsageSkills] mit SchemaName und ObjectName auswählen. DatabaseRole unterscheidet die Objektrolle; der Self-Skill beschreibt beide Installationsrollen, ohne seinen Markdowntext umzuschreiben. |
+| Last und Sperren | Die View projiziert vorgegebene Unicode-Konstanten. Eine Abfrage liest weder Fach- noch Systemtabellen und startet keine Diagnose. Lange Texte werden als nvarchar(max) ausgegeben; Verbraucher müssen den vollständigen LOB-Wert übernehmen. |
+| Vertrag | SkillFormatVersion 1.0.0 kennzeichnet das Dokumentformat unabhängig von FrameworkVersion. Ein Katalogeintrag belegt allein die Dokumentation aus dem Quellstand; die tatsächlich installierten Objekte, Ausführungsrechte und Laufzeitergebnisse sind gesondert zu prüfen. Der Katalog ist Bestandteil eines neuen Builds und nicht des veröffentlichten ZIP v1.2.0. |

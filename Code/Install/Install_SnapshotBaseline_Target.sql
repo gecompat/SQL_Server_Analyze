@@ -17,3 +17,5 @@ Datenbank ausdrücklich; Systemdatenbanken sind unzulässig.
 :r ../10_SnapshotBaseline/075_CompleteWaitStatsInstallation.sql
 
 :r ../10_SnapshotBaseline/078_CompleteFileIOInstallation.sql
+:r ../10_SnapshotBaseline/011_MetadataSchema_Target.sql
+:r ../10_SnapshotBaseline/012_VW_ObjectUsageSkills_Target.sql

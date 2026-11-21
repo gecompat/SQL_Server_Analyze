@@ -9,6 +9,7 @@ Katalog- und Legacy-Ausführungsanalyse. Dynamische Quellen benötigen keine
 vorhandenen Loggingtabellen zur Installation. Datei- und ISPAC-Adapter bleiben ausgenommen.
 */
 :r ../00_Setup/000_Preflight_und_Schema.sql
+:r ../00_Setup/004_MetadataSchema.sql
 :r ../01_Common/095_USP_InternalWriteResultTable.sql
 :r ../01_Common/096_USP_InternalPrepareResultTables.sql
 :r ../01_Common/098_USP_InternalEmitConsoleResult.sql
@@ -23,3 +24,4 @@ vorhandenen Loggingtabellen zur Installation. Datei- und ISPAC-Adapter bleiben a
 :r ../10_SSIS/045_InternalSsisExecutionMetrics.sql
 :r ../10_SSIS/050_USP_SsisExecutionComparison.sql
 :r ../10_SSIS/060_USP_SsisExecutionBaseline.sql
+:r ../00_Setup/005_VW_ObjectUsageSkills.sql

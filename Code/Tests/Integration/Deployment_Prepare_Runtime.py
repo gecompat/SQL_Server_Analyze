@@ -3666,9 +3666,27 @@ def snapshot_schema_cases(deployed, tables):
     old_wait=g.stored_module_definition(g.split_batches(historical_new['055_InternalCompleteWaitStatsCycle.sql'])[0])
     if hashlib.sha256(old_wait.encode('utf-16le')).hexdigest()!='e392b9581c55955b81674e468aa88eac444339585dfd787a682abf66b3a48c49':
         raise RuntimeError('Released Wait recovery hash does not bind the actual 1.2.0 fixture')
+    # Historical release fixtures use the immutable pre-Usage target sources.
+    # The current sources above remain authoritative for current direct routes.
+    historical_source_blobs={
+        '020_InternalConfigureSnapshotPolicy.sql':'745bbcefa810294d6a960d5f0d68294140111f7f',
+        '040_InternalPrepareCollectionCycle.sql':'8cf94d1a02c8b26a82f0a664b2df3290aabf10c1',
+        '055_InternalCompleteWaitStatsCycle.sql':'6901ff63110d0d52ef48ca00238d04ad3a37fd8c',
+        '057_InternalCompleteFileIOCycle.sql':'61895dfb83acc1effadd6aa5a6a88d055dd3d89f',
+        '070_InternalPurgeExpiredData.sql':'768c33ffa6e5fed6ac86d855d803dde6613c62c1',
+    }
+    if set(historical_source_blobs)!=set(LEGACY_TARGET_V1_2_1_PATCHES)|set(LEGACY_TARGET_V1_3_0_PATCHES):
+        raise RuntimeError('Frozen historical Snapshot source closure changed')
+    historical_current={}
+    for name,expected_blob in historical_source_blobs.items():
+        data=(ROOT/'Code/Tests/Integration/Fixtures/PreUsageSnapshotTarget'/(name+'.txt')).read_bytes()
+        actual_blob=hashlib.sha1(b'blob '+str(len(data)).encode()+b'\0'+data).hexdigest()
+        if actual_blob!=expected_blob:
+            raise RuntimeError('Frozen historical Snapshot source binding changed: '+name)
+        historical_current[name]=data.decode('utf-8-sig').replace('\r\n','\n')
     historical_ready={}
     for name,(digest,patches) in LEGACY_TARGET_V1_2_1_PATCHES.items():
-        text=restore_historical_snapshot_header(name,current[name])
+        text=restore_historical_snapshot_header(name,historical_current[name])
         for fragment,released in patches:
             if text.count(fragment)!=1: raise RuntimeError('Released1.2.1 fixture fragment changed: '+name)
             text=text.replace(fragment,released,1)
@@ -3679,7 +3697,7 @@ def snapshot_schema_cases(deployed, tables):
         raise RuntimeError('Released1.2.1 stored helper binding changed')
     historical_file_io={}
     for name,(digest,patches) in LEGACY_TARGET_V1_3_0_PATCHES.items():
-        text=restore_historical_snapshot_header(name,current[name])
+        text=restore_historical_snapshot_header(name,historical_current[name])
         for fragment,released in patches:
             if text.count(fragment)!=1: raise RuntimeError('Released1.3.0 fixture fragment changed: '+name)
             text=text.replace(fragment,released,1)

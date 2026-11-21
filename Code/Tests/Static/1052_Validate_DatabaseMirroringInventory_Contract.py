@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Validate the bounded Database Mirroring inventory contract and bindings."""
 from __future__ import annotations
+from UsageSkillSourceMask import strip_usage_skill_projections
 
 import argparse
 import csv
@@ -337,6 +338,7 @@ def validate_contract(
             errors.append("native source is not directly bound with NOLOCK: " + source)
     if "ON [m].[database_id]=[d].[database_id]" not in body or "[c].[DatabaseId]" not in body:
         errors.append("database selection and native catalog rows must join by database_id")
+    body = strip_usage_skill_projections(body, compact=True)
     for forbidden in ("mirroring_guid", "mirroring_partner_name", "mirroring_partner_instance",
                       "mirroring_witness_name", "mirroring_failover_lsn",
                       "mirroring_end_of_log_lsn", "mirroring_replication_lsn",
@@ -717,9 +719,20 @@ def main() -> int:
             "EXEC [sys].[sp_executesql] @Sql;\n    SET @Sql=N'CREATE USER",
             "EXEC [sys].[sp_executesql] @Sql;\n    SET @MasterUserCreated=1;\n    SET @Sql=N'CREATE USER", 1
         )
+        def mutate_executable(before: str, after: str, last: bool = False) -> str:
+            source = text["procedure"]
+            start = re.search(r"(?m)^CREATE OR ALTER PROCEDURE\b", source).start()
+            prefix, executable = source[:start], source[start:]
+            if before not in executable:
+                raise AssertionError("missing executable mutation marker: " + before)
+            if last:
+                position = executable.rfind(before)
+                return prefix + executable[:position] + after + executable[position + len(before):]
+            return prefix + executable.replace(before, after, 1)
+
         mutations = (
             ("NOLOCK", "procedure", text["procedure"].replace("[master].[sys].[database_mirroring] AS [m] WITH (NOLOCK)", "[master].[sys].[database_mirroring] AS [m]", 1), "native source"),
-            ("ABI", "procedure", text["procedure"].replace("[ConfiguredRedoQueueLimitMb] int NULL", "[ConfiguredRedoQueueLimitMb] bigint NULL", 1), "business ABI"),
+            ("ABI", "procedure", mutate_executable("[ConfiguredRedoQueueLimitMb] int NULL", "[ConfiguredRedoQueueLimitMb] bigint NULL", last=True), "business ABI"),
             ("ABI_RAW_COLUMN_ID", "runtime", text["runtime"].replace("ROW_NUMBER() OVER(ORDER BY [c].[column_id]) AS [Ordinal]", "[c].[column_id] AS [Ordinal]", 1), "dense one-based ordinals"),
             ("ABI_ONE_WAY", "runtime", text["runtime"].replace("        OR EXISTS\n        (\n            SELECT [Ordinal]", "        OR FALSE\n        (\n            SELECT [Ordinal]", 1), "compare actual and expected metadata in both directions"),
             ("ABI_MISSING_FACET", "runtime", text["runtime"].replace("[c].[is_computed] AS [IsComputed]", "CAST(0 AS bit) AS [IsComputed]", 1), "compare every column facet in both directions"),
@@ -745,8 +758,8 @@ def main() -> int:
             ("SELECTOR_BLANK_NORMALIZATION", "procedure", text["procedure"].replace("NULLIF(LTRIM(RTRIM(COALESCE(@DatabaseNames,N''))),N'') IS NOT NULL", "COALESCE(@DatabaseNames,N'') IS NOT NULL", 1), "blank exact names normalize to no selector"),
             ("SELECTOR_GUARD_TOO_LATE", "procedure", late_selector_mutation, "before source/temp work"),
             ("PARAM_SIGNATURE", "procedure", text["procedure"].replace("@MaxZeilen int = 1000", "@MaxZeilen int = 500", 1), "public parameter names"),
-            ("HELP_PARAMETER", "procedure", text["procedure"].replace("@ErrorMessageOut nvarchar(2048)=NULL OUTPUT", "RemovedHelpParam", 1), "help parameter default or OUTPUT mode"),
-            ("HELP_DEFAULT", "procedure", text["procedure"].replace("@MaxZeilen int=1000", "@MaxZeilen int=500", 1), "help parameter default or OUTPUT mode"),
+            ("HELP_PARAMETER", "procedure", mutate_executable("@ErrorMessageOut nvarchar(2048)=NULL OUTPUT", "RemovedHelpParam"), "help parameter default or OUTPUT mode"),
+            ("HELP_DEFAULT", "procedure", mutate_executable("@MaxZeilen int=1000", "@MaxZeilen int=500"), "help parameter default or OUTPUT mode"),
             ("HELP_OPTION", "procedure", text["procedure"].replace("regexi:", "regexx:"), "help omits required option"),
             ("HELP_SELECTOR", "procedure", text["procedure"].replace("exakt und Pattern schließen einander aus", "Filter sind verfügbar", 1), "mutually exclusive exact-name and pattern rule"),
             ("HELP_EXAMPLE", "procedure", text["procedure"].replace("@DatabaseNames=N''[ExampleDatabase]'', @JsonErzeugen=1, @Json=@Json OUTPUT;", "@DatabaseNames=N''[ExampleDatabase]'', @JsonErzeugen=1, @Json=@Json;", 1), "help JSON example"),

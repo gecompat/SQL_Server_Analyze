@@ -28,6 +28,151 @@ Eigenlast    : Gering; ausschließlich konstanter Katalog und lokale
 Locking      : LOCK_TIMEOUT 0; Systemkatalogzugriffe WITH (NOLOCK).
 ===============================================================================
 */
+-- USAGE_SKILL_BEGIN monitor.USP_AnalysisNavigator 1.0.0
+-- ---
+-- skill_format_version: "1.0.0"
+-- name: "monitor.USP_AnalysisNavigator"
+-- schema_name: "monitor"
+-- object_name: "USP_AnalysisNavigator"
+-- object_type: "PROCEDURE"
+-- database_role: "framework"
+-- is_internal: false
+-- description: "Findet priorisierte Analyse-Procedures nach Symptom, Ziel, Fachbegriff, Themenbereich, Scope oder Navigationsrolle."
+-- source_path: "Code/01_Common/100_USP_AnalysisNavigator.sql"
+-- ---
+-- 
+-- # monitor.USP_AnalysisNavigator
+-- 
+-- ## Zweck und Einsatz
+-- 
+-- Findet priorisierte Analyse-Procedures nach Symptom, Ziel, Fachbegriff, Themenbereich, Scope oder Navigationsrolle.
+-- 
+-- ## Voraussetzungen und Rechte
+-- 
+-- SQL Server 2019 oder neuer.
+-- 
+-- monitor.VW_AnalysisCatalog, monitor.VW_AnalysisSearchTerm, monitor.VW_AnalysisRelation, monitor.VW_AnalyseClassCatalog, sys.schemas, sys.procedures.
+-- 
+-- Nur lesender Zugriff auf Framework- und lokale Systemmetadaten.
+-- 
+-- ## Parameter und Eingabe
+-- 
+-- „SQL-Bindungspflicht“ bezeichnet ein bei der SQL-Aufrufbindung erforderliches Argument ohne Default. Fachliche Wertpflichten und zulässige NULL-Werte stehen im jeweiligen Einzelvertrag.
+-- 
+-- | Parameter | SQL-Typ | SQL-Bindungspflicht | Default |
+-- | --- | --- | --- | --- |
+-- | @Suchbegriff | nvarchar(4000) | nein | NULL |
+-- | @Bereich | varchar(40) | nein | NULL |
+-- | @Scope | varchar(40) | nein | NULL |
+-- | @Navigationsrolle | varchar(24) | nein | NULL |
+-- | @NurInstallierte | bit | nein | 0 |
+-- | @MaxZeilen | int | nein | 12 |
+-- | @ResultSetArt | varchar(16) | nein | 'CONSOLE' |
+-- | @ResultTablesJson | nvarchar(max) | nein | NULL |
+-- | @JsonErzeugen | bit | nein | 0 |
+-- | @Json | nvarchar(max) | nein | NULL OUTPUT |
+-- | @PrintMeldungen | bit | nein | 1 |
+-- | @Hilfe | bit | nein | 0 |
+-- 
+-- **@Suchbegriff:** @Suchbegriff nvarchar(4000), Default=NULL: freier Unicode-Suchtext; NULL, leer oder nur Rand-Leerzeichen deaktiviert die Textsuche; ohne Bereichs-, Scope- und Rollenfilter erscheint die kuratierte Startliste, mit solchen Filtern die passende Katalogmenge. Getrimmt höchstens 400 Zeichen, sonst INVALID_PARAMETER. Suche case- und accent-insensitiv; technische Namenssuche entfernt [ ] und führendes monitor.; Tokens an Leerzeichen, unter 3 Zeichen/Stoppwörter entfallen, je Token max. 200 Zeichen.
+-- 
+-- **@Bereich:** @Bereich varchar(40), Default=NULL: NULL/leer deaktiviert den Filter; sonst getrimmt, uppercase und case-/accent-insensitiv gegen PrimaryAreaCode. Nur diese Katalogcodes: NAVIGATION=Einstieg/Orientierung; FRAMEWORK=Framework/Zugriff; LIVE=akute Störung/laufende Requests sowie aktuelle Aktivität, Blocking und Ressourcen; OBJECT=Objekte/Indizes/Statistiken; PLAN=langsame Query/Ausführungsplan; QUERY_STORE=Query Store/Laufzeithistorie und Regressionen; EXTENDED_EVENTS=Extended Events/Forensik; OPERATIONS=Backup/Agent/HA-DR/Betrieb; SERVER=CPU/Memory/Worker, Serverzustand/Ressourcen, Server Health, Konfiguration und Sicherheit; SPECIAL_FEATURE=Konfiguration/Sicherheit/Spezialfeatures; SNAPSHOT=optionales Snapshot-/Baseline-Paket. Andere Werte ergeben INVALID_PARAMETER.
+-- 
+-- **@Scope:** @Scope varchar(40), Default=NULL: NULL/leer deaktiviert den Filter; sonst getrimmt, uppercase und case-/accent-insensitiv gegen ScopeCode. Katalogcodes samt Einheit: DATABASE=eine Datenbank; EVENT_HISTORY=persistierte Ereignishistorie; EVENT_SESSION=Ereignissitzung; FRAMEWORK=Frameworkmetadaten; INFRASTRUCTURE=lokale Infrastruktur; MULTI_DATABASE=mehrere Datenbanken; OBJECT=bekanntes Objekt; PLAN_XML=Ausführungsplan-XML; QUERY=Query; SERVER=Instanz; SESSION_REQUEST=Session/Request; SNAPSHOT_TARGET=Snapshotziel. Andere Werte ergeben INVALID_PARAMETER.
+-- 
+-- **@Navigationsrolle:** @Navigationsrolle varchar(24), Default=NULL: NULL/leer deaktiviert den Filter; sonst getrimmt, uppercase und case-/accent-insensitiv. ENTRY=sicherer allgemeiner Einstieg; FOLLOW_UP=Folgepfad zu einem bereits beobachteten Signal; TARGETED=gezielter Pfad mit bekanntem Ziel; SETUP=Setup-/Betriebspfad; SUPPORT=interner Unterstützungs-/Aufrufvertrag. Nur diese fünf Werte; andere ergeben INVALID_PARAMETER.
+-- 
+-- **@NurInstallierte:** @NurInstallierte bit, Default=0: NULL ist INVALID_PARAMETER; 0 zeigt alle passenden Katalogzeilen einschließlich optional nicht installierter Procedures, 1 beschränkt auf lokal im Schema monitor in sys.procedures vorhandene Procedures. Keine Prüfung von Rechten oder Featurefähigkeit.
+-- 
+-- **@MaxZeilen:** @MaxZeilen int, Default=12: NULL oder 0 bedeutet kein Ergebnislimit; 1 bis 100 begrenzt Treffer auf diese Zeilenzahl. Negative Werte und Werte über 100 ergeben INVALID_PARAMETER.
+-- 
+-- **@ResultSetArt:** @ResultSetArt varchar(16), Default=CONSOLE: nach Trim und Uppercase genau CONSOLE, RAW, TABLE oder NONE. CONSOLE rendert navigation; RAW liefert Status dann navigation; TABLE schreibt navigation ins Ziel; NONE unterdrückt Resultsets. NULL, leer und andere Werte ergeben INVALID_PARAMETER, ohne Rückfall auf CONSOLE. Ein ungültiger Ausgabewert liefert Status und navigation.
+-- 
+-- **@ResultTablesJson:** @ResultTablesJson nvarchar(max), Default=NULL: Bei TABLE ist ein JSON-Objekt mit genau einem Schlüssel navigation und einem JSON-String als Wert erforderlich. Der String benennt eine vorhandene, leere lokale #Temp-Tabelle mit genau einer beliebigen Seed-Spalte. NULL, leer oder nur Leerzeichen ist bei TABLE ungültig; außerhalb TABLE darf nur NULL, leerer Text oder ein Text nur aus Leerzeichen stehen. Eine nichtleere Zuordnung außerhalb TABLE löst THROW 51011 aus. Zielprüfung mit Marker-DDL läuft vor Hilfe.
+-- 
+-- **@JsonErzeugen:** @JsonErzeugen bit, Default=0: 1 erzeugt @Json mit meta und navigation aus derselben Materialisierung; 0 oder NULL deaktiviert JSON. Unabhängig von @ResultSetArt.
+-- 
+-- **@Json:** @Json nvarchar(max), Default=NULL OUTPUT: optionale Bindung einer nvarchar(max)-Variablen mit OUTPUT, wenn JSON empfangen werden soll; Default NULL bedeutet keinen Eingabewert. Wird beim Eintritt auf NULL gesetzt. Bei @JsonErzeugen=1 enthält die Variable meta und navigation; bei @Hilfe=1 bleibt sie NULL.
+-- 
+-- **@PrintMeldungen:** @PrintMeldungen bit, Default=1: nur 1 aktiviert die zusätzliche Severity-10-Fehlermeldung im CATCH; 0 oder NULL unterdrückt sie. Keine Wirkung auf Hilfe, Resultsets oder JSON.
+-- 
+-- **@Hilfe:** @Hilfe bit, Default=0: nur 1 druckt diese Hilfe und beendet vor Suche/Rendering; 0 oder NULL deaktiviert sie. TABLE-Preflight läuft vorher und kann bei ungültigem Ziel abbrechen.
+-- 
+-- ## Resultate und Ausgabe
+-- 
+-- RAW: Modulstatus und navigation. CONSOLE: navigation oder eine verständliche Leerzeile. TABLE: navigation. NONE: keine.
+-- 
+-- | Resultmenge | RAW | TABLE | Felder laut Inventar |
+-- | --- | --- | --- | --- |
+-- | navigation | 1 | 1 | [Rank] int NOT NULL , [RelevanceScore] int NOT NULL , [ProcedureName] sysname NOT NULL , [DisplayName] nvarchar(160) NOT NULL , [NavigationRole] varchar(24) NOT NULL , [PrimaryAreaCode] varchar(40) NOT NULL , [PrimaryAreaName] nvarchar(160) NOT NULL , [ScopeCode] varchar(40) NOT NULL , [EvidenceType] varchar(40) NOT NULL , [CostRangeCode] varchar(32) NOT NULL , [RepresentativeAnalysisClass] varchar(64) NULL , [AnalysisLevel] varchar(16) NULL , [RequiresGroupGate] bit NULL , [WhyMatched] nvarchar(500) NOT NULL , [Purpose] nvarchar(1000) NOT NULL , [PrerequisiteSummary] nvarchar(1000) NOT NULL , [RequiresKnownTarget] bit NOT NULL , [RequiresHighImpactForSafeStart] bit NOT NULL , [HighImpactPathAvailable] bit NOT NULL , [PackageCode] varchar(32) NOT NULL , [IsInstalled] bit NOT NULL , [SafeCall] nvarchar(2000) NOT NULL , [NextProcedureName] sysname NULL , [RelationType] varchar(24) NULL , [NextStep] nvarchar(700) NULL , [RunbookPath] nvarchar(400) NULL , [DocumentationPath] nvarchar(400) NOT NULL |
+-- 
+-- Bei @Hilfe=1 kommt genau ein Resultset mit SkillFormatVersion, SchemaName, ObjectName und SkillMarkdown hinzu; bestehende PRINT-Hinweise bleiben erhalten.
+-- 
+-- ## Beispiel
+-- 
+-- ```sql
+-- EXEC [monitor].[USP_AnalysisNavigator] @Hilfe=1;
+-- ```
+-- 
+-- ## Aufwand, Nebenwirkungen, Fehler und Grenzen
+-- 
+-- monitor.USP_AnalysisNavigator
+-- 
+-- Der Navigator zeigt passende Katalogeinträge. Er führt keinen Treffer und keine Analyse aus.
+-- 
+-- Für bit-Parameter gelten 0 und 1 logisch; andere in bit konvertierbare Nicht-NULL-Werte werden durch T-SQL zu 1 konvertiert.
+-- 
+-- Exakte Procedure-/Anzeigenamen und Phrasen wiegen stärker als Tokenüberschneidungen; Treffer werden nach Score, Rolle und Namen geordnet. Rollen geben nur einen kleinen Bonus. Ohne Filter gilt die kuratierte DefaultRank-Liste.
+-- 
+-- CONSOLE liefert navigation, bei leerer Menge mit verständlicher Leerzeile. RAW liefert zuerst Status und dann navigation; TABLE schreibt navigation; NONE unterdrückt Resultsets.
+-- 
+-- 
+-- ### Quellgebundene Detailbeschreibung
+-- 
+-- Der folgende Quellkopf bewahrt die zusätzlichen Implementierungsgrenzen für diesen Skill.
+-- 
+-- ```text
+-- Objekt       : monitor.USP_AnalysisNavigator
+-- Version      : 1.0.0
+-- Stand        : 2026-07-21
+-- Typ          : Stored Procedure
+-- Zweck        : Findet priorisierte Analyse-Procedures nach Symptom, Ziel,
+--                Fachbegriff, Themenbereich, Scope oder Navigationsrolle.
+-- SQL-Version  : SQL Server 2019 oder neuer.
+-- Datenquellen : monitor.VW_AnalysisCatalog,
+--                monitor.VW_AnalysisSearchTerm,
+--                monitor.VW_AnalysisRelation,
+--                monitor.VW_AnalyseClassCatalog,
+--                sys.schemas, sys.procedures.
+-- Sicherheit   : Führt keine gefundene Procedure aus. Liest keine produktiven
+--                DMVs, Benutzerkataloge, Querytexte, Pläne oder Ereignisdaten.
+-- Suche        : Explizit case- und accent-insensitiv; unabhängig von der
+--                Datenbankcollation. Deutsch- und englischsprachige Begriffe.
+-- Resultsets   : RAW: Modulstatus und navigation. CONSOLE: navigation oder eine
+--                verständliche Leerzeile. TABLE: navigation. NONE: keine.
+-- JSON         : meta, navigation.
+-- Berechtigung : Nur lesender Zugriff auf Framework- und lokale Systemmetadaten.
+-- Eigenlast    : Gering; ausschließlich konstanter Katalog und lokale
+--                Installationsprüfung.
+-- Locking      : LOCK_TIMEOUT 0; Systemkatalogzugriffe WITH (NOLOCK).
+-- ```
+-- 
+-- ### Weitere bestehende Hilfehinweise
+-- 
+-- ```text
+-- monitor.USP_AnalysisNavigator
+-- Der Navigator zeigt passende Katalogeinträge. Er führt keinen Treffer und keine Analyse aus.
+-- Für bit-Parameter gelten 0 und 1 logisch; andere in bit konvertierbare Nicht-NULL-Werte werden durch T-SQL zu 1 konvertiert.
+-- Exakte Procedure-/Anzeigenamen und Phrasen wiegen stärker als Tokenüberschneidungen; Treffer werden nach Score, Rolle und Namen geordnet. Rollen geben nur einen kleinen Bonus. Ohne Filter gilt die kuratierte DefaultRank-Liste.
+-- CONSOLE liefert navigation, bei leerer Menge mit verständlicher Leerzeile. RAW liefert zuerst Status und dann navigation; TABLE schreibt navigation; NONE unterdrückt Resultsets.
+-- Bei leerem RAW/TABLE-Ergebnis gibt es keine künstliche navigation-Zeile. JSON enthält meta und ein leeres navigation-Array; NONE beeinflusst JSON und Meldungen nicht.
+-- Beispiel Suche: EXEC [monitor].[USP_AnalysisNavigator] @Suchbegriff=N'Benutzer warten', @ResultSetArt='RAW';
+-- Beispiel JSON: DECLARE @Json nvarchar(max); EXEC [monitor].[USP_AnalysisNavigator] @JsonErzeugen=1, @Json=@Json OUTPUT; SELECT @Json;
+-- Beispiel TABLE: CREATE TABLE #AnalysisNavigator_HelpExample (Seed bit NULL);
+-- DECLARE @Map nvarchar(max)=N'{"navigation":"#AnalysisNavigator_HelpExample"}'; EXEC [monitor].[USP_AnalysisNavigator] @ResultSetArt='TABLE', @ResultTablesJson=@Map; DROP TABLE #AnalysisNavigator_HelpExample;
+-- ```
+-- 
+-- USAGE_SKILL_END monitor.USP_AnalysisNavigator
 CREATE OR ALTER PROCEDURE [monitor].[USP_AnalysisNavigator]
       @Suchbegriff       nvarchar(4000) = NULL
     , @Bereich           varchar(40)    = NULL
@@ -44,6 +189,283 @@ CREATE OR ALTER PROCEDURE [monitor].[USP_AnalysisNavigator]
 AS
 BEGIN
     SET NOCOUNT ON;
+
+    IF @Hilfe = 1
+    BEGIN
+        SET @Json=NULL;
+        PRINT N'monitor.USP_AnalysisNavigator';
+        PRINT N'Der Navigator zeigt passende Katalogeinträge. Er führt keinen Treffer und keine Analyse aus.';
+        PRINT N'Für bit-Parameter gelten 0 und 1 logisch; andere in bit konvertierbare Nicht-NULL-Werte werden durch T-SQL zu 1 konvertiert.';
+        PRINT N'@Suchbegriff nvarchar(4000), Default=NULL: freier Unicode-Suchtext; NULL, leer oder nur Rand-Leerzeichen deaktiviert die Textsuche; ohne Bereichs-, Scope- und Rollenfilter erscheint die kuratierte Startliste, mit solchen Filtern die passende Katalogmenge. Getrimmt höchstens 400 Zeichen, sonst INVALID_PARAMETER. Suche case- und accent-insensitiv; technische Namenssuche entfernt [ ] und führendes monitor.; Tokens an Leerzeichen, unter 3 Zeichen/Stoppwörter entfallen, je Token max. 200 Zeichen.';
+        PRINT N'Exakte Procedure-/Anzeigenamen und Phrasen wiegen stärker als Tokenüberschneidungen; Treffer werden nach Score, Rolle und Namen geordnet. Rollen geben nur einen kleinen Bonus. Ohne Filter gilt die kuratierte DefaultRank-Liste.';
+        PRINT N'@Bereich varchar(40), Default=NULL: NULL/leer deaktiviert den Filter; sonst getrimmt, uppercase und case-/accent-insensitiv gegen PrimaryAreaCode. Nur diese Katalogcodes: NAVIGATION=Einstieg/Orientierung; FRAMEWORK=Framework/Zugriff; LIVE=akute Störung/laufende Requests sowie aktuelle Aktivität, Blocking und Ressourcen; OBJECT=Objekte/Indizes/Statistiken; PLAN=langsame Query/Ausführungsplan; QUERY_STORE=Query Store/Laufzeithistorie und Regressionen; EXTENDED_EVENTS=Extended Events/Forensik; OPERATIONS=Backup/Agent/HA-DR/Betrieb; SERVER=CPU/Memory/Worker, Serverzustand/Ressourcen, Server Health, Konfiguration und Sicherheit; SPECIAL_FEATURE=Konfiguration/Sicherheit/Spezialfeatures; SNAPSHOT=optionales Snapshot-/Baseline-Paket. Andere Werte ergeben INVALID_PARAMETER.';
+        PRINT N'@Scope varchar(40), Default=NULL: NULL/leer deaktiviert den Filter; sonst getrimmt, uppercase und case-/accent-insensitiv gegen ScopeCode. Katalogcodes samt Einheit: DATABASE=eine Datenbank; EVENT_HISTORY=persistierte Ereignishistorie; EVENT_SESSION=Ereignissitzung; FRAMEWORK=Frameworkmetadaten; INFRASTRUCTURE=lokale Infrastruktur; MULTI_DATABASE=mehrere Datenbanken; OBJECT=bekanntes Objekt; PLAN_XML=Ausführungsplan-XML; QUERY=Query; SERVER=Instanz; SESSION_REQUEST=Session/Request; SNAPSHOT_TARGET=Snapshotziel. Andere Werte ergeben INVALID_PARAMETER.';
+        PRINT N'@Navigationsrolle varchar(24), Default=NULL: NULL/leer deaktiviert den Filter; sonst getrimmt, uppercase und case-/accent-insensitiv. ENTRY=sicherer allgemeiner Einstieg; FOLLOW_UP=Folgepfad zu einem bereits beobachteten Signal; TARGETED=gezielter Pfad mit bekanntem Ziel; SETUP=Setup-/Betriebspfad; SUPPORT=interner Unterstützungs-/Aufrufvertrag. Nur diese fünf Werte; andere ergeben INVALID_PARAMETER.';
+        PRINT N'@NurInstallierte bit, Default=0: NULL ist INVALID_PARAMETER; 0 zeigt alle passenden Katalogzeilen einschließlich optional nicht installierter Procedures, 1 beschränkt auf lokal im Schema monitor in sys.procedures vorhandene Procedures. Keine Prüfung von Rechten oder Featurefähigkeit.';
+        PRINT N'@MaxZeilen int, Default=12: NULL oder 0 bedeutet kein Ergebnislimit; 1 bis 100 begrenzt Treffer auf diese Zeilenzahl. Negative Werte und Werte über 100 ergeben INVALID_PARAMETER.';
+        PRINT N'@ResultSetArt varchar(16), Default=CONSOLE: nach Trim und Uppercase genau CONSOLE, RAW, TABLE oder NONE. CONSOLE rendert navigation; RAW liefert Status dann navigation; TABLE schreibt navigation ins Ziel; NONE unterdrückt Resultsets. NULL, leer und andere Werte ergeben INVALID_PARAMETER, ohne Rückfall auf CONSOLE. Ein ungültiger Ausgabewert liefert Status und navigation.';
+        PRINT N'@ResultTablesJson nvarchar(max), Default=NULL: Bei TABLE ist ein JSON-Objekt mit genau einem Schlüssel navigation und einem JSON-String als Wert erforderlich. Der String benennt eine vorhandene, leere lokale #Temp-Tabelle mit genau einer beliebigen Seed-Spalte. NULL, leer oder nur Leerzeichen ist bei TABLE ungültig; außerhalb TABLE darf nur NULL, leerer Text oder ein Text nur aus Leerzeichen stehen. Eine nichtleere Zuordnung außerhalb TABLE löst THROW 51011 aus. Zielprüfung mit Marker-DDL läuft vor Hilfe.';
+        PRINT N'@JsonErzeugen bit, Default=0: 1 erzeugt @Json mit meta und navigation aus derselben Materialisierung; 0 oder NULL deaktiviert JSON. Unabhängig von @ResultSetArt.';
+        PRINT N'@Json nvarchar(max), Default=NULL OUTPUT: optionale Bindung einer nvarchar(max)-Variablen mit OUTPUT, wenn JSON empfangen werden soll; Default NULL bedeutet keinen Eingabewert. Wird beim Eintritt auf NULL gesetzt. Bei @JsonErzeugen=1 enthält die Variable meta und navigation; bei @Hilfe=1 bleibt sie NULL.';
+        PRINT N'@PrintMeldungen bit, Default=1: nur 1 aktiviert die zusätzliche Severity-10-Fehlermeldung im CATCH; 0 oder NULL unterdrückt sie. Keine Wirkung auf Hilfe, Resultsets oder JSON.';
+        PRINT N'@Hilfe bit, Default=0: nur 1 druckt diese Hilfe und beendet vor Suche/Rendering; 0 oder NULL deaktiviert sie. TABLE-Preflight läuft vorher und kann bei ungültigem Ziel abbrechen.';
+        PRINT N'CONSOLE liefert navigation, bei leerer Menge mit verständlicher Leerzeile. RAW liefert zuerst Status und dann navigation; TABLE schreibt navigation; NONE unterdrückt Resultsets.';
+        PRINT N'Bei leerem RAW/TABLE-Ergebnis gibt es keine künstliche navigation-Zeile. JSON enthält meta und ein leeres navigation-Array; NONE beeinflusst JSON und Meldungen nicht.';
+        PRINT N'Beispiel Suche: EXEC [monitor].[USP_AnalysisNavigator] @Suchbegriff=N''Benutzer warten'', @ResultSetArt=''RAW'';';
+        PRINT N'Beispiel JSON: DECLARE @Json nvarchar(max); EXEC [monitor].[USP_AnalysisNavigator] @JsonErzeugen=1, @Json=@Json OUTPUT; SELECT @Json;';
+        PRINT N'Beispiel TABLE: CREATE TABLE #AnalysisNavigator_HelpExample (Seed bit NULL);';
+        PRINT N'DECLARE @Map nvarchar(max)=N''{"navigation":"#AnalysisNavigator_HelpExample"}''; EXEC [monitor].[USP_AnalysisNavigator] @ResultSetArt=''TABLE'', @ResultTablesJson=@Map; DROP TABLE #AnalysisNavigator_HelpExample;';
+        -- USAGE_SKILL_HELP_BEGIN monitor.USP_AnalysisNavigator
+        SELECT CONVERT(varchar(16),'1.0.0') AS [SkillFormatVersion],CONVERT(sysname,N'monitor') AS [SchemaName],CONVERT(sysname,N'USP_AnalysisNavigator') AS [ObjectName],CONVERT(nvarchar(max),N'---')
+            + NCHAR(10)
+            + N'skill_format_version: "1.0.0"'
+            + NCHAR(10)
+            + N'name: "monitor.USP_AnalysisNavigator"'
+            + NCHAR(10)
+            + N'schema_name: "monitor"'
+            + NCHAR(10)
+            + N'object_name: "USP_AnalysisNavigator"'
+            + NCHAR(10)
+            + N'object_type: "PROCEDURE"'
+            + NCHAR(10)
+            + N'database_role: "framework"'
+            + NCHAR(10)
+            + N'is_internal: false'
+            + NCHAR(10)
+            + N'description: "Findet priorisierte Analyse-Procedures nach Symptom, Ziel, Fachbegriff, Themenbereich, Scope oder Navigationsrolle."'
+            + NCHAR(10)
+            + N'source_path: "Code/01_Common/100_USP_AnalysisNavigator.sql"'
+            + NCHAR(10)
+            + N'---'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'# monitor.USP_AnalysisNavigator'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'## Zweck und Einsatz'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'Findet priorisierte Analyse-Procedures nach Symptom, Ziel, Fachbegriff, Themenbereich, Scope oder Navigationsrolle.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'## Voraussetzungen und Rechte'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'SQL Server 2019 oder neuer.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'monitor.VW_AnalysisCatalog, monitor.VW_AnalysisSearchTerm, monitor.VW_AnalysisRelation, monitor.VW_AnalyseClassCatalog, sys.schemas, sys.procedures.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'Nur lesender Zugriff auf Framework- und lokale Systemmetadaten.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'## Parameter und Eingabe'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'„SQL-Bindungspflicht“ bezeichnet ein bei der SQL-Aufrufbindung erforderliches Argument ohne Default. Fachliche Wertpflichten und zulässige NULL-Werte stehen im jeweiligen Einzelvertrag.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'| Parameter | SQL-Typ | SQL-Bindungspflicht | Default |'
+            + NCHAR(10)
+            + N'| --- | --- | --- | --- |'
+            + NCHAR(10)
+            + N'| @Suchbegriff | nvarchar(4000) | nein | NULL |'
+            + NCHAR(10)
+            + N'| @Bereich | varchar(40) | nein | NULL |'
+            + NCHAR(10)
+            + N'| @Scope | varchar(40) | nein | NULL |'
+            + NCHAR(10)
+            + N'| @Navigationsrolle | varchar(24) | nein | NULL |'
+            + NCHAR(10)
+            + N'| @NurInstallierte | bit | nein | 0 |'
+            + NCHAR(10)
+            + N'| @MaxZeilen | int | nein | 12 |'
+            + NCHAR(10)
+            + N'| @ResultSetArt | varchar(16) | nein | ''CONSOLE'' |'
+            + NCHAR(10)
+            + N'| @ResultTablesJson | nvarchar(max) | nein | NULL |'
+            + NCHAR(10)
+            + N'| @JsonErzeugen | bit | nein | 0 |'
+            + NCHAR(10)
+            + N'| @Json | nvarchar(max) | nein | NULL OUTPUT |'
+            + NCHAR(10)
+            + N'| @PrintMeldungen | bit | nein | 1 |'
+            + NCHAR(10)
+            + N'| @Hilfe | bit | nein | 0 |'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'**@Suchbegriff:** @Suchbegriff nvarchar(4000), Default=NULL: freier Unicode-Suchtext; NULL, leer oder nur Rand-Leerzeichen deaktiviert die Textsuche; ohne Bereichs-, Scope- und Rollenfilter erscheint die kuratierte Startliste, mit solchen Filtern die passende Katalogmenge. Getrimmt höchstens 400 Zeichen, sonst INVALID_PARAMETER. Suche case- und accent-insensitiv; technische Namenssuche entfernt [ ] und führendes monitor.; Tokens an Leerzeichen, unter 3 Zeichen/Stoppwörter entfallen, je Token max. 200 Zeichen.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'**@Bereich:** @Bereich varchar(40), Default=NULL: NULL/leer deaktiviert den Filter; sonst getrimmt, uppercase und case-/accent-insensitiv gegen PrimaryAreaCode. Nur diese Katalogcodes: NAVIGATION=Einstieg/Orientierung; FRAMEWORK=Framework/Zugriff; LIVE=akute Störung/laufende Requests sowie aktuelle Aktivität, Blocking und Ressourcen; OBJECT=Objekte/Indizes/Statistiken; PLAN=langsame Query/Ausführungsplan; QUERY_STORE=Query Store/Laufzeithistorie und Regressionen; EXTENDED_EVENTS=Extended Events/Forensik; OPERATIONS=Backup/Agent/HA-DR/Betrieb; SERVER=CPU/Memory/Worker, Serverzustand/Ressourcen, Server Health, Konfiguration und Sicherheit; SPECIAL_FEATURE=Konfiguration/Sicherheit/Spezialfeatures; SNAPSHOT=optionales Snapshot-/Baseline-Paket. Andere Werte ergeben INVALID_PARAMETER.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'**@Scope:** @Scope varchar(40), Default=NULL: NULL/leer deaktiviert den Filter; sonst getrimmt, uppercase und case-/accent-insensitiv gegen ScopeCode. Katalogcodes samt Einheit: DATABASE=eine Datenbank; EVENT_HISTORY=persistierte Ereignishistorie; EVENT_SESSION=Ereignissitzung; FRAMEWORK=Frameworkmetadaten; INFRASTRUCTURE=lokale Infrastruktur; MULTI_DATABASE=mehrere Datenbanken; OBJECT=bekanntes Objekt; PLAN_XML=Ausführungsplan-XML; QUERY=Query; SERVER=Instanz; SESSION_REQUEST=Session/Request; SNAPSHOT_TARGET=Snapshotziel. Andere Werte ergeben INVALID_PARAMETER.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'**@Navigationsrolle:** @Navigationsrolle varchar(24), Default=NULL: NULL/leer deaktiviert den Filter; sonst getrimmt, uppercase und case-/accent-insensitiv. ENTRY=sicherer allgemeiner Einstieg; FOLLOW_UP=Folgepfad zu einem bereits beobachteten Signal; TARGETED=gezielter Pfad mit bekanntem Ziel; SETUP=Setup-/Betriebspfad; SUPPORT=interner Unterstützungs-/Aufrufvertrag. Nur diese fünf Werte; andere ergeben INVALID_PARAMETER.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'**@NurInstallierte:** @NurInstallierte bit, Default=0: NULL ist INVALID_PARAMETER; 0 zeigt alle passenden Katalogzeilen einschließlich optional nicht installierter Procedures, 1 beschränkt auf lokal im Schema monitor in sys.procedures vorhandene Procedures. Keine Prüfung von Rechten oder Featurefähigkeit.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'**@MaxZeilen:** @MaxZeilen int, Default=12: NULL oder 0 bedeutet kein Ergebnislimit; 1 bis 100 begrenzt Treffer auf diese Zeilenzahl. Negative Werte und Werte über 100 ergeben INVALID_PARAMETER.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'**@ResultSetArt:** @ResultSetArt varchar(16), Default=CONSOLE: nach Trim und Uppercase genau CONSOLE, RAW, TABLE oder NONE. CONSOLE rendert navigation; RAW liefert Status dann navigation; TABLE schreibt navigation ins Ziel; NONE unterdrückt Resultsets. NULL, leer und andere Werte ergeben INVALID_PARAMETER, ohne Rückfall auf CONSOLE. Ein ungültiger Ausgabewert liefert Status und navigation.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'**@ResultTablesJson:** @ResultTablesJson nvarchar(max), Default=NULL: Bei TABLE ist ein JSON-Objekt mit genau einem Schlüssel navigation und einem JSON-String als Wert erforderlich. Der String benennt eine vorhandene, leere lokale #Temp-Tabelle mit genau einer beliebigen Seed-Spalte. NULL, leer oder nur Leerzeichen ist bei TABLE ungültig; außerhalb TABLE darf nur NULL, leerer Text oder ein Text nur aus Leerzeichen stehen. Eine nichtleere Zuordnung außerhalb TABLE löst THROW 51011 aus. Zielprüfung mit Marker-DDL läuft vor Hilfe.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'**@JsonErzeugen:** @JsonErzeugen bit, Default=0: 1 erzeugt @Json mit meta und navigation aus derselben Materialisierung; 0 oder NULL deaktiviert JSON. Unabhängig von @ResultSetArt.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'**@Json:** @Json nvarchar(max), Default=NULL OUTPUT: optionale Bindung einer nvarchar(max)-Variablen mit OUTPUT, wenn JSON empfangen werden soll; Default NULL bedeutet keinen Eingabewert. Wird beim Eintritt auf NULL gesetzt. Bei @JsonErzeugen=1 enthält die Variable meta und navigation; bei @Hilfe=1 bleibt sie NULL.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'**@PrintMeldungen:** @PrintMeldungen bit, Default=1: nur 1 aktiviert die zusätzliche Severity-10-Fehlermeldung im CATCH; 0 oder NULL unterdrückt sie. Keine Wirkung auf Hilfe, Resultsets oder JSON.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'**@Hilfe:** @Hilfe bit, Default=0: nur 1 druckt diese Hilfe und beendet vor Suche/Rendering; 0 oder NULL deaktiviert sie. TABLE-Preflight läuft vorher und kann bei ungültigem Ziel abbrechen.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'## Resultate und Ausgabe'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'RAW: Modulstatus und navigation. CONSOLE: navigation oder eine verständliche Leerzeile. TABLE: navigation. NONE: keine.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'| Resultmenge | RAW | TABLE | Felder laut Inventar |'
+            + NCHAR(10)
+            + N'| --- | --- | --- | --- |'
+            + NCHAR(10)
+            + N'| navigation | 1 | 1 | [Rank] int NOT NULL , [RelevanceScore] int NOT NULL , [ProcedureName] sysname NOT NULL , [DisplayName] nvarchar(160) NOT NULL , [NavigationRole] varchar(24) NOT NULL , [PrimaryAreaCode] varchar(40) NOT NULL , [PrimaryAreaName] nvarchar(160) NOT NULL , [ScopeCode] varchar(40) NOT NULL , [EvidenceType] varchar(40) NOT NULL , [CostRangeCode] varchar(32) NOT NULL , [RepresentativeAnalysisClass] varchar(64) NULL , [AnalysisLevel] varchar(16) NULL , [RequiresGroupGate] bit NULL , [WhyMatched] nvarchar(500) NOT NULL , [Purpose] nvarchar(1000) NOT NULL , [PrerequisiteSummary] nvarchar(1000) NOT NULL , [RequiresKnownTarget] bit NOT NULL , [RequiresHighImpactForSafeStart] bit NOT NULL , [HighImpactPathAvailable] bit NOT NULL , [PackageCode] varchar(32) NOT NULL , [IsInstalled] bit NOT NULL , [SafeCall] nvarchar(2000) NOT NULL , [NextProcedureName] sysname NULL , [RelationType] varchar(24) NULL , [NextStep] nvarchar(700) NULL , [RunbookPath] nvarchar(400) NULL , [Documentat'
+            + N'ionPath] nvarchar(400) NOT NULL |'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'Bei @Hilfe=1 kommt genau ein Resultset mit SkillFormatVersion, SchemaName, ObjectName und SkillMarkdown hinzu; bestehende PRINT-Hinweise bleiben erhalten.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'## Beispiel'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'```sql'
+            + NCHAR(10)
+            + N'EXEC [monitor].[USP_AnalysisNavigator] @Hilfe=1;'
+            + NCHAR(10)
+            + N'```'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'## Aufwand, Nebenwirkungen, Fehler und Grenzen'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'monitor.USP_AnalysisNavigator'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'Der Navigator zeigt passende Katalogeinträge. Er führt keinen Treffer und keine Analyse aus.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'Für bit-Parameter gelten 0 und 1 logisch; andere in bit konvertierbare Nicht-NULL-Werte werden durch T-SQL zu 1 konvertiert.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'Exakte Procedure-/Anzeigenamen und Phrasen wiegen stärker als Tokenüberschneidungen; Treffer werden nach Score, Rolle und Namen geordnet. Rollen geben nur einen kleinen Bonus. Ohne Filter gilt die kuratierte DefaultRank-Liste.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'CONSOLE liefert navigation, bei leerer Menge mit verständlicher Leerzeile. RAW liefert zuerst Status und dann navigation; TABLE schreibt navigation; NONE unterdrückt Resultsets.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'### Quellgebundene Detailbeschreibung'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'Der folgende Quellkopf bewahrt die zusätzlichen Implementierungsgrenzen für diesen Skill.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'```text'
+            + NCHAR(10)
+            + N'Objekt       : monitor.USP_AnalysisNavigator'
+            + NCHAR(10)
+            + N'Version      : 1.0.0'
+            + NCHAR(10)
+            + N'Stand        : 2026-07-21'
+            + NCHAR(10)
+            + N'Typ          : Stored Procedure'
+            + NCHAR(10)
+            + N'Zweck        : Findet priorisierte Analyse-Procedures nach Symptom, Ziel,'
+            + NCHAR(10)
+            + N'               Fachbegriff, Themenbereich, Scope oder Navigationsrolle.'
+            + NCHAR(10)
+            + N'SQL-Version  : SQL Server 2019 oder neuer.'
+            + NCHAR(10)
+            + N'Datenquellen : monitor.VW_AnalysisCatalog,'
+            + NCHAR(10)
+            + N'               monitor.VW_AnalysisSearchTerm,'
+            + NCHAR(10)
+            + N'               monitor.VW_AnalysisRelation,'
+            + NCHAR(10)
+            + N'               monitor.VW_AnalyseClassCatalog,'
+            + NCHAR(10)
+            + N'               sys.schemas, sys.procedures.'
+            + NCHAR(10)
+            + N'Sicherheit   : Führt keine gefundene Procedure aus. Liest keine produktiven'
+            + NCHAR(10)
+            + N'               DMVs, Benutzerkataloge, Querytexte, Pläne oder Ereignisdaten.'
+            + NCHAR(10)
+            + N'Suche        : Explizit case- und accent-insensitiv; unabhängig von der'
+            + NCHAR(10)
+            + N'               Datenbankcollation. Deutsch- und englischsprachige Begriffe.'
+            + NCHAR(10)
+            + N'Resultsets   : RAW: Modulstatus und navigation. CONSOLE: navigation oder eine'
+            + NCHAR(10)
+            + N'               verständliche Leerzeile. TABLE: navigation. NONE: keine.'
+            + NCHAR(10)
+            + N'JSON         : meta, navigation.'
+            + NCHAR(10)
+            + N'Berechtigung : Nur lesender Zugriff auf Framework- und lokale Systemmetadaten.'
+            + NCHAR(10)
+            + N'Eigenlast    : Gering; ausschließlich konstanter Katalog und lokale'
+            + NCHAR(10)
+            + N'               Installationsprüfung.'
+            + NCHAR(10)
+            + N'Locking      : LOCK_TIMEOUT 0; Systemkatalogzugriffe WITH (NOLOCK).'
+            + NCHAR(10)
+            + N'```'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'### Weitere bestehende Hilfehinweise'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'```text'
+            + NCHAR(10)
+            + N'monitor.USP_AnalysisNavigator'
+            + NCHAR(10)
+            + N'Der Navigator zeigt passende Katalogeinträge. Er führt keinen Treffer und keine Analyse aus.'
+            + NCHAR(10)
+            + N'Für bit-Parameter gelten 0 und 1 logisch; andere in bit konvertierbare Nicht-NULL-Werte werden durch T-SQL zu 1 konvertiert.'
+            + NCHAR(10)
+            + N'Exakte Procedure-/Anzeigenamen und Phrasen wiegen stärker als Tokenüberschneidungen; Treffer werden nach Score, Rolle und Namen geordnet. Rollen geben nur einen kleinen Bonus. Ohne Filter gilt die kuratierte DefaultRank-Liste.'
+            + NCHAR(10)
+            + N'CONSOLE liefert navigation, bei leerer Menge mit verständlicher Leerzeile. RAW liefert zuerst Status und dann navigation; TABLE schreibt navigation; NONE unterdrückt Resultsets.'
+            + NCHAR(10)
+            + N'Bei leerem RAW/TABLE-Ergebnis gibt es keine künstliche navigation-Zeile. JSON enthält meta und ein leeres navigation-Array; NONE beeinflusst JSON und Meldungen nicht.'
+            + NCHAR(10)
+            + N'Beispiel Suche: EXEC [monitor].[USP_AnalysisNavigator] @Suchbegriff=N''Benutzer warten'', @ResultSetArt=''RAW'';'
+            + NCHAR(10)
+            + N'Beispiel JSON: DECLARE @Json nvarchar(max); EXEC [monitor].[USP_AnalysisNavigator] @JsonErzeugen=1, @Json=@Json OUTPUT; SELECT @Json;'
+            + NCHAR(10)
+            + N'Beispiel TABLE: CREATE TABLE #AnalysisNavigator_HelpExample (Seed bit NULL);'
+            + NCHAR(10)
+            + N'DECLARE @Map nvarchar(max)=N''{"navigation":"#AnalysisNavigator_HelpExample"}''; EXEC [monitor].[USP_AnalysisNavigator] @ResultSetArt=''TABLE'', @ResultTablesJson=@Map; DROP TABLE #AnalysisNavigator_HelpExample;'
+            + NCHAR(10)
+            + N'```'
+            + NCHAR(10)
+            + NCHAR(10) AS [SkillMarkdown];
+        -- USAGE_SKILL_HELP_END monitor.USP_AnalysisNavigator
+        RETURN;
+    END
+
 
     SET @Json = NULL;
 
@@ -69,32 +491,7 @@ BEGIN
     IF @TableResultRequested = 1 OR @ConsoleResultRequested = 1
         SET @ResultSetArtNormalisiert = 'NONE';
 
-    IF @Hilfe = 1
-    BEGIN
-        PRINT N'monitor.USP_AnalysisNavigator';
-        PRINT N'Der Navigator zeigt passende Katalogeinträge. Er führt keinen Treffer und keine Analyse aus.';
-        PRINT N'Für bit-Parameter gelten 0 und 1 logisch; andere in bit konvertierbare Nicht-NULL-Werte werden durch T-SQL zu 1 konvertiert.';
-        PRINT N'@Suchbegriff nvarchar(4000), Default=NULL: freier Unicode-Suchtext; NULL, leer oder nur Rand-Leerzeichen deaktiviert die Textsuche; ohne Bereichs-, Scope- und Rollenfilter erscheint die kuratierte Startliste, mit solchen Filtern die passende Katalogmenge. Getrimmt höchstens 400 Zeichen, sonst INVALID_PARAMETER. Suche case- und accent-insensitiv; technische Namenssuche entfernt [ ] und führendes monitor.; Tokens an Leerzeichen, unter 3 Zeichen/Stoppwörter entfallen, je Token max. 200 Zeichen.';
-        PRINT N'Exakte Procedure-/Anzeigenamen und Phrasen wiegen stärker als Tokenüberschneidungen; Treffer werden nach Score, Rolle und Namen geordnet. Rollen geben nur einen kleinen Bonus. Ohne Filter gilt die kuratierte DefaultRank-Liste.';
-        PRINT N'@Bereich varchar(40), Default=NULL: NULL/leer deaktiviert den Filter; sonst getrimmt, uppercase und case-/accent-insensitiv gegen PrimaryAreaCode. Nur diese Katalogcodes: NAVIGATION=Einstieg/Orientierung; FRAMEWORK=Framework/Zugriff; LIVE=akute Störung/laufende Requests sowie aktuelle Aktivität, Blocking und Ressourcen; OBJECT=Objekte/Indizes/Statistiken; PLAN=langsame Query/Ausführungsplan; QUERY_STORE=Query Store/Laufzeithistorie und Regressionen; EXTENDED_EVENTS=Extended Events/Forensik; OPERATIONS=Backup/Agent/HA-DR/Betrieb; SERVER=CPU/Memory/Worker, Serverzustand/Ressourcen, Server Health, Konfiguration und Sicherheit; SPECIAL_FEATURE=Konfiguration/Sicherheit/Spezialfeatures; SNAPSHOT=optionales Snapshot-/Baseline-Paket. Andere Werte ergeben INVALID_PARAMETER.';
-        PRINT N'@Scope varchar(40), Default=NULL: NULL/leer deaktiviert den Filter; sonst getrimmt, uppercase und case-/accent-insensitiv gegen ScopeCode. Katalogcodes samt Einheit: DATABASE=eine Datenbank; EVENT_HISTORY=persistierte Ereignishistorie; EVENT_SESSION=Ereignissitzung; FRAMEWORK=Frameworkmetadaten; INFRASTRUCTURE=lokale Infrastruktur; MULTI_DATABASE=mehrere Datenbanken; OBJECT=bekanntes Objekt; PLAN_XML=Ausführungsplan-XML; QUERY=Query; SERVER=Instanz; SESSION_REQUEST=Session/Request; SNAPSHOT_TARGET=Snapshotziel. Andere Werte ergeben INVALID_PARAMETER.';
-        PRINT N'@Navigationsrolle varchar(24), Default=NULL: NULL/leer deaktiviert den Filter; sonst getrimmt, uppercase und case-/accent-insensitiv. ENTRY=sicherer allgemeiner Einstieg; FOLLOW_UP=Folgepfad zu einem bereits beobachteten Signal; TARGETED=gezielter Pfad mit bekanntem Ziel; SETUP=Setup-/Betriebspfad; SUPPORT=interner Unterstützungs-/Aufrufvertrag. Nur diese fünf Werte; andere ergeben INVALID_PARAMETER.';
-        PRINT N'@NurInstallierte bit, Default=0: NULL ist INVALID_PARAMETER; 0 zeigt alle passenden Katalogzeilen einschließlich optional nicht installierter Procedures, 1 beschränkt auf lokal im Schema monitor in sys.procedures vorhandene Procedures. Keine Prüfung von Rechten oder Featurefähigkeit.';
-        PRINT N'@MaxZeilen int, Default=12: NULL oder 0 bedeutet kein Ergebnislimit; 1 bis 100 begrenzt Treffer auf diese Zeilenzahl. Negative Werte und Werte über 100 ergeben INVALID_PARAMETER.';
-        PRINT N'@ResultSetArt varchar(16), Default=CONSOLE: nach Trim und Uppercase genau CONSOLE, RAW, TABLE oder NONE. CONSOLE rendert navigation; RAW liefert Status dann navigation; TABLE schreibt navigation ins Ziel; NONE unterdrückt Resultsets. NULL, leer und andere Werte ergeben INVALID_PARAMETER, ohne Rückfall auf CONSOLE. Ein ungültiger Ausgabewert liefert Status und navigation.';
-        PRINT N'@ResultTablesJson nvarchar(max), Default=NULL: Bei TABLE ist ein JSON-Objekt mit genau einem Schlüssel navigation und einem JSON-String als Wert erforderlich. Der String benennt eine vorhandene, leere lokale #Temp-Tabelle mit genau einer beliebigen Seed-Spalte. NULL, leer oder nur Leerzeichen ist bei TABLE ungültig; außerhalb TABLE darf nur NULL, leerer Text oder ein Text nur aus Leerzeichen stehen. Eine nichtleere Zuordnung außerhalb TABLE löst THROW 51011 aus. Zielprüfung mit Marker-DDL läuft vor Hilfe.';
-        PRINT N'@JsonErzeugen bit, Default=0: 1 erzeugt @Json mit meta und navigation aus derselben Materialisierung; 0 oder NULL deaktiviert JSON. Unabhängig von @ResultSetArt.';
-        PRINT N'@Json nvarchar(max), Default=NULL OUTPUT: optionale Bindung einer nvarchar(max)-Variablen mit OUTPUT, wenn JSON empfangen werden soll; Default NULL bedeutet keinen Eingabewert. Wird beim Eintritt auf NULL gesetzt. Bei @JsonErzeugen=1 enthält die Variable meta und navigation; bei @Hilfe=1 bleibt sie NULL.';
-        PRINT N'@PrintMeldungen bit, Default=1: nur 1 aktiviert die zusätzliche Severity-10-Fehlermeldung im CATCH; 0 oder NULL unterdrückt sie. Keine Wirkung auf Hilfe, Resultsets oder JSON.';
-        PRINT N'@Hilfe bit, Default=0: nur 1 druckt diese Hilfe und beendet vor Suche/Rendering; 0 oder NULL deaktiviert sie. TABLE-Preflight läuft vorher und kann bei ungültigem Ziel abbrechen.';
-        PRINT N'CONSOLE liefert navigation, bei leerer Menge mit verständlicher Leerzeile. RAW liefert zuerst Status und dann navigation; TABLE schreibt navigation; NONE unterdrückt Resultsets.';
-        PRINT N'Bei leerem RAW/TABLE-Ergebnis gibt es keine künstliche navigation-Zeile. JSON enthält meta und ein leeres navigation-Array; NONE beeinflusst JSON und Meldungen nicht.';
-        PRINT N'Beispiel Suche: EXEC [monitor].[USP_AnalysisNavigator] @Suchbegriff=N''Benutzer warten'', @ResultSetArt=''RAW'';';
-        PRINT N'Beispiel JSON: DECLARE @Json nvarchar(max); EXEC [monitor].[USP_AnalysisNavigator] @JsonErzeugen=1, @Json=@Json OUTPUT; SELECT @Json;';
-        PRINT N'Beispiel TABLE: CREATE TABLE #AnalysisNavigator_HelpExample (Seed bit NULL);';
-        PRINT N'DECLARE @Map nvarchar(max)=N''{"navigation":"#AnalysisNavigator_HelpExample"}''; EXEC [monitor].[USP_AnalysisNavigator] @ResultSetArt=''TABLE'', @ResultTablesJson=@Map; DROP TABLE #AnalysisNavigator_HelpExample;';
-        RETURN;
-    END;
+    ;
 
     DECLARE @CollectionTimeUtc datetime2(3) = SYSUTCDATETIME();
     DECLARE @StatusCode varchar(40) = 'AVAILABLE';

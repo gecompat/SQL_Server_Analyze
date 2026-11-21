@@ -31,6 +31,152 @@ Locking      : Systemkataloge READUNCOMMITTED/NOLOCK; kein OBJECT_ID-Aufruf für
                2.1.0 - Vorheriger Stand.
 ===============================================================================
 */
+-- USAGE_SKILL_BEGIN monitor.USP_ServerFeatureCapabilities 1.0.0
+-- ---
+-- skill_format_version: "1.0.0"
+-- name: "monitor.USP_ServerFeatureCapabilities"
+-- schema_name: "monitor"
+-- object_name: "USP_ServerFeatureCapabilities"
+-- object_type: "PROCEDURE"
+-- database_role: "framework"
+-- is_internal: false
+-- description: "Erkennt zusätzliche Diagnosefunktionen versionsadaptiv für eine explizite Datenbankliste oder alle zulässigen Datenbanken."
+-- source_path: "Code/09_VersionAdaptive/010_USP_ServerFeatureCapabilities.sql"
+-- ---
+-- 
+-- # monitor.USP_ServerFeatureCapabilities
+-- 
+-- ## Zweck und Einsatz
+-- 
+-- Erkennt zusätzliche Diagnosefunktionen versionsadaptiv für eine explizite Datenbankliste oder alle zulässigen Datenbanken.
+-- 
+-- ## Voraussetzungen und Rechte
+-- 
+-- Der Aufruf braucht EXECUTE auf [monitor].[USP_ServerFeatureCapabilities] im vorgesehenen Datenbankkontext. Die Procedure prüft `sys.dm_os_host_info` und ausgewählte Systemkataloge für Featureerkennung; sichtbare Katalogeinträge belegen keine OS-/Agent-/Provider-Ausführung.
+-- 
+-- ## Parameter und Eingabe
+-- 
+-- „SQL-Bindungspflicht“ bezeichnet ein bei der SQL-Aufrufbindung erforderliches Argument ohne Default. Fachliche Wertpflichten und zulässige NULL-Werte stehen im jeweiligen Einzelvertrag.
+-- 
+-- | Parameter | SQL-Typ | SQL-Bindungspflicht | Default |
+-- | --- | --- | --- | --- |
+-- | @DatabaseNames | nvarchar(max) | nein | NULL |
+-- | @SystemdatenbankenEinbeziehen | bit | nein | 0 |
+-- | @DatabaseNamePattern | nvarchar(4000) | nein | NULL |
+-- | @HighImpactConfirmed | bit | nein | 0 |
+-- | @MitSpezialindizes | bit | nein | 1 |
+-- | @MitQueryStoreReplicas | bit | nein | 1 |
+-- | @MitPlattformdetails | bit | nein | 1 |
+-- | @MaxZeilen | int | nein | 5000 |
+-- | @ResultSetArt | varchar(16) | nein | 'CONSOLE' |
+-- | @ResultTablesJson | nvarchar(max) | nein | NULL |
+-- | @JsonErzeugen | bit | nein | 0 |
+-- | @Json | nvarchar(max) | nein | NULL OUTPUT |
+-- | @PrintMeldungen | bit | nein | 1 |
+-- | @Hilfe | bit | nein | 0 |
+-- 
+-- **@DatabaseNames:** @DatabaseNames ist eine bracket-aware Pipe-Liste: | trennt außerhalb von [...], ]] maskiert ], Pipe innerhalb von [...] bleibt im Namen; nur einteilige SQL-Namen.
+-- 
+-- **@SystemdatenbankenEinbeziehen:** @SystemdatenbankenEinbeziehen (bit; Default: 0; ausgelassen = Default): Ausgelassen = 0. 0 schließt master, tempdb, model und msdb aus; 1 lässt Systemdatenbanken im Kandidatenscope zu. NULL wird vom Kandidatenhelfer als INVALID_PARAMETER abgelehnt. T-SQL konvertiert numerisch 0 zu 0 und jeden Nichtnullwert zu 1.
+-- 
+-- **@DatabaseNamePattern:** @DatabaseNamePattern (nvarchar(4000); Default: NULL; ausgelassen = Default): Ausgelassen = NULL. NULL lässt den Patternfilter aus; andernfalls alternativ zu @DatabaseNames. Äußere Leerzeichen werden entfernt; Präfixe werden ohne Beachtung der Groß-/Kleinschreibung erkannt: like: (SQL-LIKE), regex: (case-sensitive Regex, Flag c), regexi: (case-insensitive Regex, Flag i); ohne Präfix gilt SQL-LIKE. LIKE nutzt %, _ und SQL-Zeichenklassen [...] mit SQL_Latin1_General_CP1_CS_AS. Nach Präfixentfernung bleibt der Patterninhalt unverändert; leeres Pattern ist ungültig. Regex benötigt SQL Server 2025 und Compatibility Level 170 der Installationsdatenbank; Syntax und Treffer werden erst bei Ausführung bewertet.
+-- 
+-- **@HighImpactConfirmed:** @HighImpactConfirmed wird an die Klasse OBJECT_ANALYSIS_CURRENT übergeben; RequiresGroupGate=0. Die Prozedur bestätigt dadurch keine Berechtigung für Datenbankgruppen.
+-- 
+-- **@MitSpezialindizes:** @MitSpezialindizes (bit; Default: 1; ausgelassen = Default): Ausgelassen = 1. 1 erfasst die optionalen Vector-/JSON-Spezialindizes; 0 und NULL lassen diesen Zweig aus. T-SQL konvertiert numerisch 0 zu 0 und jeden Nichtnullwert zu 1.
+-- 
+-- **@MitQueryStoreReplicas:** @MitQueryStoreReplicas (bit; Default: 1; ausgelassen = Default): Ausgelassen = 1. 1 erfasst Query-Store-Replica-Metadaten; 0 und NULL lassen diesen Zweig aus. T-SQL konvertiert numerisch 0 zu 0 und jeden Nichtnullwert zu 1.
+-- 
+-- **@MitPlattformdetails:** @MitPlattformdetails (bit; Default: 1; ausgelassen = Default): Ausgelassen = 1. 1 ergänzt Linux-Host-DMV-Capabilities; 0 und NULL lassen diesen Zweig aus. T-SQL konvertiert numerisch 0 zu 0 und jeden Nichtnullwert zu 1.
+-- 
+-- **@MaxZeilen:** @MaxZeilen (int; Default: 5000; ausgelassen = Default): Ausgelassen = 5000. NULL oder 0 bedeutet unbegrenzt; ein positiver Wert begrenzt nach der Erhebung unabhängig je capabilities-, databaseFeatures- und specialIndexes-Export in deren dokumentierter Sortierung. Ein negativer Wert setzt INVALID_PARAMETER. Das Limit reduziert keine Katalogprobes und kürzt keine Warnungen.
+-- 
+-- **@ResultSetArt:** @ResultSetArt: CONSOLE=formatierte Ausgabe, RAW=technische Resultsets, TABLE=capabilities, NONE=keine fachlichen Resultsets.
+-- 
+-- **@ResultTablesJson:** @ResultTablesJson TABLE-JSON muss den Schlüssel capabilities exakt auf eine lokale #Temp-Zieltabelle abbilden. Ein leeres Einspalten-Dummyziel braucht keine Seedzeile. Der Preflight liegt vor Hilfe.
+-- 
+-- **@JsonErzeugen:** @JsonErzeugen (bit; Default: 0; ausgelassen = Default): Ausgelassen = 0. 1 erzeugt JSON unabhängig von ResultSetArt; 0 und NULL erzeugen kein JSON. T-SQL konvertiert numerisch 0 zu 0 und jeden Nichtnullwert zu 1.
+-- 
+-- **@Json:** @Json wird bei Eintritt auf NULL gesetzt. @JsonErzeugen=1 liefert JSON unabhängig vom ResultSetArt.
+-- 
+-- **@PrintMeldungen:** @PrintMeldungen (bit; Default: 1; ausgelassen = Default): Ausgelassen = 1. 1 gibt bei einem Status ungleich AVAILABLE die normale Statuswarnung aus; 0 und NULL unterdrücken diese Meldung. Die Hilfe-PRINT-Ausgabe wird dadurch nicht unterdrückt. T-SQL konvertiert numerisch 0 zu 0 und jeden Nichtnullwert zu 1.
+-- 
+-- **@Hilfe:** @Hilfe (bit; Default: 0; ausgelassen = Default): Ausgelassen = 0. Nur 1 druckt Hilfe und kehrt vor Auswahl, Katalogprobes und normaler Parameter-/Filtervalidierung zurück; 0 und NULL führen den normalen Ablauf aus. @Json wird davor auf NULL gesetzt. Der TABLE-Zielpreflight und die Ablehnung eines nichtleeren @ResultTablesJson außerhalb von TABLE liegen davor. T-SQL konvertiert numerisch 0 zu 0 und jeden Nichtnullwert zu 1.
+-- 
+-- ## Resultate und Ausgabe
+-- 
+-- RAW/CONSOLE/NONE sowie JSON mit benannten Arrays.
+-- 
+-- | Resultmenge | RAW | TABLE | Felder laut Inventar |
+-- | --- | --- | --- | --- |
+-- | capabilities | 1 | 1 | [ScopeName] nvarchar(128) NOT NULL , [FeatureName] nvarchar(128) NOT NULL , [AvailabilityStatus] varchar(40) NOT NULL , [LogicPath] nvarchar(256) NULL , [MinimumKnownMajorVersion] int NULL , [SourceObject] nvarchar(512) NULL , [Detail] nvarchar(2000) NULL , [RequiredPermission] nvarchar(512) NULL |
+-- 
+-- Bei @Hilfe=1 kommt genau ein Resultset mit SkillFormatVersion, SchemaName, ObjectName und SkillMarkdown hinzu; bestehende PRINT-Hinweise bleiben erhalten.
+-- 
+-- ## Beispiel
+-- 
+-- ```sql
+-- EXEC [monitor].[USP_ServerFeatureCapabilities] @DatabaseNames=N'[ExampleDatabase]', @ResultSetArt='CONSOLE', @JsonErzeugen=1;
+-- ```
+-- 
+-- ## Aufwand, Nebenwirkungen, Fehler und Grenzen
+-- 
+-- Feature-Capabilities sind sichtbare Versions-/Plattform-/Datenbankmetadaten und kein Healthcheck.
+-- 
+-- CONSOLE und RAW geben Aufrufstatus, capabilities, databaseFeatures, specialIndexes und warnings aus; JSON umfasst meta und diese Arrays. TABLE exportiert nur capabilities.
+-- 
+-- Das Featurelimit wirkt nach Sammlung separat auf capabilities, databaseFeatures und specialIndexes; es reduziert keine Katalogprobes. Warnungen bleiben ungekürzt.
+-- 
+-- Spezialindexdetail enthält Array-Suchoption, Pfadanzahl und Disabled-Status; konkrete SQL/JSON-Pfade und JSON-Dokumentwerte werden nicht gelesen.
+-- 
+-- CREATE TABLE #ServerFeatureCapabilities_HelpExample (Placeholder int NULL);
+-- 
+-- 
+-- ### Quellgebundene Detailbeschreibung
+-- 
+-- Der folgende Quellkopf bewahrt die zusätzlichen Implementierungsgrenzen für diesen Skill.
+-- 
+-- ```text
+-- Objekt       : monitor.USP_ServerFeatureCapabilities
+-- Version      : 3.2.1
+-- Stand        : 2026-10-27
+-- Typ          : Stored Procedure
+-- Zweck        : Erkennt zusätzliche Diagnosefunktionen versionsadaptiv für eine
+--                explizite Datenbankliste oder alle zulässigen Datenbanken.
+-- SQL-Version  : SQL Server 2019 oder neuer.
+-- Parameter    : @DatabaseNames, @DatabaseNamePattern,
+--                @SystemdatenbankenEinbeziehen,
+--                @MitSpezialindizes, @MitQueryStoreReplicas,
+--                @MitPlattformdetails, @MaxZeilen, @ResultSetArt,
+--                @JsonErzeugen, @Json OUTPUT, @PrintMeldungen, @Hilfe.
+-- Semantik     : bracket-aware Pipe-Liste; NULL/N''=alle. Pattern ist
+--                separat und mit exakter Liste gegenseitig exklusiv.
+-- Ausgabe      : RAW/CONSOLE/NONE sowie JSON mit benannten Arrays.
+-- Locking      : Systemkataloge READUNCOMMITTED/NOLOCK; kein OBJECT_ID-Aufruf für
+--                versionsabhängige Objekterkennung. Der vorherige LOCK_TIMEOUT
+--                wird wiederhergestellt.
+-- Änderungen   : 3.2.1 - Systemkataloge für Vector-Indizes und Query-Store-Replikas
+--                          über sys.all_views statt sys.views erkennen.
+--                3.2.0 - SQL25-002: JSON-Indizes mit Array-Option und
+--                          Pfadanzahl capability-adaptiv inventarisiert.
+--                3.1.0 - External-Runtime- und SQL-CLR-Quellen ergänzt.
+--                3.0.0 - @AlleDatenbanken entfernt; zentraler Datenbankvertrag,
+--                          Ausgabevertrag und katalogbasierte Featureerkennung.
+--                2.1.0 - Vorheriger Stand.
+-- ```
+-- 
+-- ### Weitere bestehende Hilfehinweise
+-- 
+-- ```text
+-- Feature-Capabilities sind sichtbare Versions-/Plattform-/Datenbankmetadaten und kein Healthcheck.
+-- CONSOLE und RAW geben Aufrufstatus, capabilities, databaseFeatures, specialIndexes und warnings aus; JSON umfasst meta und diese Arrays. TABLE exportiert nur capabilities.
+-- Das Featurelimit wirkt nach Sammlung separat auf capabilities, databaseFeatures und specialIndexes; es reduziert keine Katalogprobes. Warnungen bleiben ungekürzt.
+-- Spezialindexdetail enthält Array-Suchoption, Pfadanzahl und Disabled-Status; konkrete SQL/JSON-Pfade und JSON-Dokumentwerte werden nicht gelesen.
+-- CREATE TABLE #ServerFeatureCapabilities_HelpExample (Placeholder int NULL);
+-- DECLARE @FeatureJson nvarchar(max);
+-- ```
+-- 
+-- USAGE_SKILL_END monitor.USP_ServerFeatureCapabilities
 CREATE OR ALTER PROCEDURE [monitor].[USP_ServerFeatureCapabilities]
       @DatabaseNames                    nvarchar(max)  = NULL
     , @SystemdatenbankenEinbeziehen     bit            = 0
@@ -49,22 +195,10 @@ CREATE OR ALTER PROCEDURE [monitor].[USP_ServerFeatureCapabilities]
 AS
 BEGIN
     SET NOCOUNT ON;
-    SET @Json = NULL;
-    DECLARE @OriginalLockTimeout int=@@LOCK_TIMEOUT;
-    DECLARE @LockTimeoutSql nvarchar(64);
-
-    DECLARE @ResultSetArtNormalisiert varchar(16) = UPPER(LTRIM(RTRIM(COALESCE(@ResultSetArt, ''))));
-    DECLARE @TableResultRequested bit = CASE WHEN @ResultSetArtNormalisiert = 'TABLE' THEN 1 ELSE 0 END;
-    DECLARE @ConsoleResultRequested bit = CASE WHEN @ResultSetArtNormalisiert = 'CONSOLE' THEN 1 ELSE 0 END;
-    DECLARE @TableTarget sysname=NULL;
-    IF @TableResultRequested=0 AND NULLIF(LTRIM(RTRIM(COALESCE(@ResultTablesJson,N''))),N'') IS NOT NULL THROW 51011,N'@ResultTablesJson ist ausschließlich mit @ResultSetArt=TABLE zulässig.',1;
-    IF @TableResultRequested=1 EXEC [monitor].[InternalPrepareSingleResultTable] @ResultTablesJson=@ResultTablesJson,@ResultName=N'capabilities',@TargetTable=@TableTarget OUTPUT,@ThrowOnError=1;
-    IF @TableResultRequested = 1 OR @ConsoleResultRequested = 1 SET @ResultSetArtNormalisiert = 'NONE';
-    DECLARE @EffectiveMaxZeilen bigint = CASE WHEN @MaxZeilen IS NULL OR @MaxZeilen = 0 THEN CONVERT(bigint,9223372036854775807) WHEN @MaxZeilen > 0 THEN CONVERT(bigint,@MaxZeilen) ELSE CONVERT(bigint,0) END;
-    DECLARE @MonitorPrintMessage nvarchar(2048);
 
     IF @Hilfe = 1
     BEGIN
+        SET @Json=NULL;
         PRINT N'Feature-Capabilities sind sichtbare Versions-/Plattform-/Datenbankmetadaten und kein Healthcheck.';
         PRINT N'@DatabaseNames ist eine bracket-aware Pipe-Liste: | trennt außerhalb von [...], ]] maskiert ], Pipe innerhalb von [...] bleibt im Namen; nur einteilige SQL-Namen.';
         PRINT N'@ResultSetArt: CONSOLE=formatierte Ausgabe, RAW=technische Resultsets, TABLE=capabilities, NONE=keine fachlichen Resultsets.';
@@ -93,8 +227,275 @@ BEGIN
         PRINT N'@Json (nvarchar(max) OUTPUT; Default: NULL; ausgelassen = Default): Ausgelassen = NULL als OUTPUT-Parameter. Mit OUTPUT binden. Der Eingabewert wird beim Eintritt auf NULL gesetzt; bei @JsonErzeugen=1 enthält der Rückgabewert meta, capabilities, databaseFeatures, specialIndexes und warnings. Hilfe kehrt nach dem TABLE-Preflight ebenfalls mit NULL zurück.';
         PRINT N'@PrintMeldungen (bit; Default: 1; ausgelassen = Default): Ausgelassen = 1. 1 gibt bei einem Status ungleich AVAILABLE die normale Statuswarnung aus; 0 und NULL unterdrücken diese Meldung. Die Hilfe-PRINT-Ausgabe wird dadurch nicht unterdrückt. T-SQL konvertiert numerisch 0 zu 0 und jeden Nichtnullwert zu 1.';
         PRINT N'@Hilfe (bit; Default: 0; ausgelassen = Default): Ausgelassen = 0. Nur 1 druckt Hilfe und kehrt vor Auswahl, Katalogprobes und normaler Parameter-/Filtervalidierung zurück; 0 und NULL führen den normalen Ablauf aus. @Json wird davor auf NULL gesetzt. Der TABLE-Zielpreflight und die Ablehnung eines nichtleeren @ResultTablesJson außerhalb von TABLE liegen davor. T-SQL konvertiert numerisch 0 zu 0 und jeden Nichtnullwert zu 1.';
+        -- USAGE_SKILL_HELP_BEGIN monitor.USP_ServerFeatureCapabilities
+        SELECT CONVERT(varchar(16),'1.0.0') AS [SkillFormatVersion],CONVERT(sysname,N'monitor') AS [SchemaName],CONVERT(sysname,N'USP_ServerFeatureCapabilities') AS [ObjectName],CONVERT(nvarchar(max),N'---')
+            + NCHAR(10)
+            + N'skill_format_version: "1.0.0"'
+            + NCHAR(10)
+            + N'name: "monitor.USP_ServerFeatureCapabilities"'
+            + NCHAR(10)
+            + N'schema_name: "monitor"'
+            + NCHAR(10)
+            + N'object_name: "USP_ServerFeatureCapabilities"'
+            + NCHAR(10)
+            + N'object_type: "PROCEDURE"'
+            + NCHAR(10)
+            + N'database_role: "framework"'
+            + NCHAR(10)
+            + N'is_internal: false'
+            + NCHAR(10)
+            + N'description: "Erkennt zusätzliche Diagnosefunktionen versionsadaptiv für eine explizite Datenbankliste oder alle zulässigen Datenbanken."'
+            + NCHAR(10)
+            + N'source_path: "Code/09_VersionAdaptive/010_USP_ServerFeatureCapabilities.sql"'
+            + NCHAR(10)
+            + N'---'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'# monitor.USP_ServerFeatureCapabilities'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'## Zweck und Einsatz'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'Erkennt zusätzliche Diagnosefunktionen versionsadaptiv für eine explizite Datenbankliste oder alle zulässigen Datenbanken.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'## Voraussetzungen und Rechte'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'Der Aufruf braucht EXECUTE auf [monitor].[USP_ServerFeatureCapabilities] im vorgesehenen Datenbankkontext. Die Procedure prüft `sys.dm_os_host_info` und ausgewählte Systemkataloge für Featureerkennung; sichtbare Katalogeinträge belegen keine OS-/Agent-/Provider-Ausführung.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'## Parameter und Eingabe'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'„SQL-Bindungspflicht“ bezeichnet ein bei der SQL-Aufrufbindung erforderliches Argument ohne Default. Fachliche Wertpflichten und zulässige NULL-Werte stehen im jeweiligen Einzelvertrag.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'| Parameter | SQL-Typ | SQL-Bindungspflicht | Default |'
+            + NCHAR(10)
+            + N'| --- | --- | --- | --- |'
+            + NCHAR(10)
+            + N'| @DatabaseNames | nvarchar(max) | nein | NULL |'
+            + NCHAR(10)
+            + N'| @SystemdatenbankenEinbeziehen | bit | nein | 0 |'
+            + NCHAR(10)
+            + N'| @DatabaseNamePattern | nvarchar(4000) | nein | NULL |'
+            + NCHAR(10)
+            + N'| @HighImpactConfirmed | bit | nein | 0 |'
+            + NCHAR(10)
+            + N'| @MitSpezialindizes | bit | nein | 1 |'
+            + NCHAR(10)
+            + N'| @MitQueryStoreReplicas | bit | nein | 1 |'
+            + NCHAR(10)
+            + N'| @MitPlattformdetails | bit | nein | 1 |'
+            + NCHAR(10)
+            + N'| @MaxZeilen | int | nein | 5000 |'
+            + NCHAR(10)
+            + N'| @ResultSetArt | varchar(16) | nein | ''CONSOLE'' |'
+            + NCHAR(10)
+            + N'| @ResultTablesJson | nvarchar(max) | nein | NULL |'
+            + NCHAR(10)
+            + N'| @JsonErzeugen | bit | nein | 0 |'
+            + NCHAR(10)
+            + N'| @Json | nvarchar(max) | nein | NULL OUTPUT |'
+            + NCHAR(10)
+            + N'| @PrintMeldungen | bit | nein | 1 |'
+            + NCHAR(10)
+            + N'| @Hilfe | bit | nein | 0 |'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'**@DatabaseNames:** @DatabaseNames ist eine bracket-aware Pipe-Liste: | trennt außerhalb von [...], ]] maskiert ], Pipe innerhalb von [...] bleibt im Namen; nur einteilige SQL-Namen.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'**@SystemdatenbankenEinbeziehen:** @SystemdatenbankenEinbeziehen (bit; Default: 0; ausgelassen = Default): Ausgelassen = 0. 0 schließt master, tempdb, model und msdb aus; 1 lässt Systemdatenbanken im Kandidatenscope zu. NULL wird vom Kandidatenhelfer als INVALID_PARAMETER abgelehnt. T-SQL konvertiert numerisch 0 zu 0 und jeden Nichtnullwert zu 1.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'**@DatabaseNamePattern:** @DatabaseNamePattern (nvarchar(4000); Default: NULL; ausgelassen = Default): Ausgelassen = NULL. NULL lässt den Patternfilter aus; andernfalls alternativ zu @DatabaseNames. Äußere Leerzeichen werden entfernt; Präfixe werden ohne Beachtung der Groß-/Kleinschreibung erkannt: like: (SQL-LIKE), regex: (case-sensitive Regex, Flag c), regexi: (case-insensitive Regex, Flag i); ohne Präfix gilt SQL-LIKE. LIKE nutzt %, _ und SQL-Zeichenklassen [...] mit SQL_Latin1_General_CP1_CS_AS. Nach Präfixentfernung bleibt der Patterninhalt unverändert; leeres Pattern ist ungültig. Regex benötigt SQL Server 2025 und Compatibility Level 170 der Installationsdatenbank; Syntax und Treffer werden erst bei Ausführung bewertet.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'**@HighImpactConfirmed:** @HighImpactConfirmed wird an die Klasse OBJECT_ANALYSIS_CURRENT übergeben; RequiresGroupGate=0. Die Prozedur bestätigt dadurch keine Berechtigung für Datenbankgruppen.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'**@MitSpezialindizes:** @MitSpezialindizes (bit; Default: 1; ausgelassen = Default): Ausgelassen = 1. 1 erfasst die optionalen Vector-/JSON-Spezialindizes; 0 und NULL lassen diesen Zweig aus. T-SQL konvertiert numerisch 0 zu 0 und jeden Nichtnullwert zu 1.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'**@MitQueryStoreReplicas:** @MitQueryStoreReplicas (bit; Default: 1; ausgelassen = Default): Ausgelassen = 1. 1 erfasst Query-Store-Replica-Metadaten; 0 und NULL lassen diesen Zweig aus. T-SQL konvertiert numerisch 0 zu 0 und jeden Nichtnullwert zu 1.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'**@MitPlattformdetails:** @MitPlattformdetails (bit; Default: 1; ausgelassen = Default): Ausgelassen = 1. 1 ergänzt Linux-Host-DMV-Capabilities; 0 und NULL lassen diesen Zweig aus. T-SQL konvertiert numerisch 0 zu 0 und jeden Nichtnullwert zu 1.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'**@MaxZeilen:** @MaxZeilen (int; Default: 5000; ausgelassen = Default): Ausgelassen = 5000. NULL oder 0 bedeutet unbegrenzt; ein positiver Wert begrenzt nach der Erhebung unabhängig je capabilities-, databaseFeatures- und specialIndexes-Export in deren dokumentierter Sortierung. Ein negativer Wert setzt INVALID_PARAMETER. Das Limit reduziert keine Katalogprobes und kürzt keine Warnungen.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'**@ResultSetArt:** @ResultSetArt: CONSOLE=formatierte Ausgabe, RAW=technische Resultsets, TABLE=capabilities, NONE=keine fachlichen Resultsets.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'**@ResultTablesJson:** @ResultTablesJson TABLE-JSON muss den Schlüssel capabilities exakt auf eine lokale #Temp-Zieltabelle abbilden. Ein leeres Einspalten-Dummyziel braucht keine Seedzeile. Der Preflight liegt vor Hilfe.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'**@JsonErzeugen:** @JsonErzeugen (bit; Default: 0; ausgelassen = Default): Ausgelassen = 0. 1 erzeugt JSON unabhängig von ResultSetArt; 0 und NULL erzeugen kein JSON. T-SQL konvertiert numerisch 0 zu 0 und jeden Nichtnullwert zu 1.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'**@Json:** @Json wird bei Eintritt auf NULL gesetzt. @JsonErzeugen=1 liefert JSON unabhängig vom ResultSetArt.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'**@PrintMeldungen:** @PrintMeldungen (bit; Default: 1; ausgelassen = Default): Ausgelassen = 1. 1 gibt bei einem Status ungleich AVAILABLE die normale Statuswarnung aus; 0 und NULL unterdrücken diese Meldung. Die Hilfe-PRINT-Ausgabe wird dadurch nicht unterdrückt. T-SQL konvertiert numerisch 0 zu 0 und jeden Nichtnullwert zu 1.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'**@Hilfe:** @Hilfe (bit; Default: 0; ausgelassen = Default): Ausgelassen = 0. Nur 1 druckt Hilfe und kehrt vor Auswahl, Katalogprobes und normaler Parameter-/Filtervalidierung zurück; 0 und NULL führen den normalen Ablauf aus. @Json wird davor auf NULL gesetzt. Der TABLE-Zielpreflight und die Ablehnung eines nichtleeren @ResultTablesJson außerhalb von TABLE liegen davor. T-SQL konvertiert numerisch 0 zu 0 und jeden Nichtnullwert zu 1.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'## Resultate und Ausgabe'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'RAW/CONSOLE/NONE sowie JSON mit benannten Arrays.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'| Resultmenge | RAW | TABLE | Felder laut Inventar |'
+            + NCHAR(10)
+            + N'| --- | --- | --- | --- |'
+            + NCHAR(10)
+            + N'| capabilities | 1 | 1 | [ScopeName] nvarchar(128) NOT NULL , [FeatureName] nvarchar(128) NOT NULL , [AvailabilityStatus] varchar(40) NOT NULL , [LogicPath] nvarchar(256) NULL , [MinimumKnownMajorVersion] int NULL , [SourceObject] nvarchar(512) NULL , [Detail] nvarchar(2000) NULL , [RequiredPermission] nvarchar(512) NULL |'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'Bei @Hilfe=1 kommt genau ein Resultset mit SkillFormatVersion, SchemaName, ObjectName und SkillMarkdown hinzu; bestehende PRINT-Hinweise bleiben erhalten.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'## Beispiel'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'```sql'
+            + NCHAR(10)
+            + N'EXEC [monitor].[USP_ServerFeatureCapabilities] @DatabaseNames=N''[ExampleDatabase]'', @ResultSetArt=''CONSOLE'', @JsonErzeugen=1;'
+            + NCHAR(10)
+            + N'```'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'## Aufwand, Nebenwirkungen, Fehler und Grenzen'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'Feature-Capabilities sind sichtbare Versions-/Plattform-/Datenbankmetadaten und kein Healthcheck.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'CONSOLE und RAW geben Aufrufstatus, capabilities, databaseFeatures, specialIndexes und warnings aus; JSON umfasst meta und diese Arrays. TABLE exportiert nur capabilities.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'Das Featurelimit wirkt nach Sammlung separat auf capabilities, databaseFeatures und specialIndexes; es reduziert keine Katalogprobes. Warnungen bleiben ungekürzt.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'Spezialindexdetail enthält Array-Suchoption, Pfadanzahl und Disabled-Status; konkrete SQL/JSON-Pfade und JSON-Dokumentwerte werden nicht gelesen.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'C'
+            + N'REATE TABLE #ServerFeatureCapabilities_HelpExample (Placeholder int NULL);'
+            + NCHAR(10)
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'### Quellgebundene Detailbeschreibung'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'Der folgende Quellkopf bewahrt die zusätzlichen Implementierungsgrenzen für diesen Skill.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'```text'
+            + NCHAR(10)
+            + N'Objekt       : monitor.USP_ServerFeatureCapabilities'
+            + NCHAR(10)
+            + N'Version      : 3.2.1'
+            + NCHAR(10)
+            + N'Stand        : 2026-10-27'
+            + NCHAR(10)
+            + N'Typ          : Stored Procedure'
+            + NCHAR(10)
+            + N'Zweck        : Erkennt zusätzliche Diagnosefunktionen versionsadaptiv für eine'
+            + NCHAR(10)
+            + N'               explizite Datenbankliste oder alle zulässigen Datenbanken.'
+            + NCHAR(10)
+            + N'SQL-Version  : SQL Server 2019 oder neuer.'
+            + NCHAR(10)
+            + N'Parameter    : @DatabaseNames, @DatabaseNamePattern,'
+            + NCHAR(10)
+            + N'               @SystemdatenbankenEinbeziehen,'
+            + NCHAR(10)
+            + N'               @MitSpezialindizes, @MitQueryStoreReplicas,'
+            + NCHAR(10)
+            + N'               @MitPlattformdetails, @MaxZeilen, @ResultSetArt,'
+            + NCHAR(10)
+            + N'               @JsonErzeugen, @Json OUTPUT, @PrintMeldungen, @Hilfe.'
+            + NCHAR(10)
+            + N'Semantik     : bracket-aware Pipe-Liste; NULL/N''''=alle. Pattern ist'
+            + NCHAR(10)
+            + N'               separat und mit exakter Liste gegenseitig exklusiv.'
+            + NCHAR(10)
+            + N'Ausgabe      : RAW/CONSOLE/NONE sowie JSON mit benannten Arrays.'
+            + NCHAR(10)
+            + N'Locking      : Systemkataloge READUNCOMMITTED/NOLOCK; kein OBJECT_ID-Aufruf für'
+            + NCHAR(10)
+            + N'               versionsabhängige Objekterkennung. Der vorherige LOCK_TIMEOUT'
+            + NCHAR(10)
+            + N'               wird wiederhergestellt.'
+            + NCHAR(10)
+            + N'Änderungen   : 3.2.1 - Systemkataloge für Vector-Indizes und Query-Store-Replikas'
+            + NCHAR(10)
+            + N'                         über sys.all_views statt sys.views erkennen.'
+            + NCHAR(10)
+            + N'               3.2.0 - SQL25-002: JSON-Indizes mit Array-Option und'
+            + NCHAR(10)
+            + N'                         Pfadanzahl capability-adaptiv inventarisiert.'
+            + NCHAR(10)
+            + N'               3.1.0 - External-Runtime- und SQL-CLR-Quellen ergänzt.'
+            + NCHAR(10)
+            + N'               3.0.0 - @AlleDatenbanken entfernt; zentraler Datenbankvertrag,'
+            + NCHAR(10)
+            + N'                         Ausgabevertrag und katalogbasierte Featureerkennung.'
+            + NCHAR(10)
+            + N'               2.1.0 - Vorheriger Stand.'
+            + NCHAR(10)
+            + N'```'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'### Weitere bestehende Hilfehinweise'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'```text'
+            + NCHAR(10)
+            + N'Feature-Capabilities sind sichtbare Versions-/Plattform-/Datenbankmetadaten und kein Healthcheck.'
+            + NCHAR(10)
+            + N'CONSOLE und RAW geben Aufrufstatus, capabilities, databaseFeatures, specialIndexes und warnings aus; JSON umfasst meta und diese Arrays. TABLE exportiert nur capabilities.'
+            + NCHAR(10)
+            + N'Das Featurelimit wirkt nach Sammlung separat auf capabilities, databaseFeatures und specialIndexes; es reduziert keine Katalogprobes. Warnungen bleiben ungekürzt.'
+            + NCHAR(10)
+            + N'Spezialindexdetail enthält Array-Suchoption, Pfadanzahl und Disabled-Status; konkrete SQL/JSON-Pfade und JSON-Dokumentwerte werden nicht gelesen.'
+            + NCHAR(10)
+            + N'C'
+            + N'REATE TABLE #ServerFeatureCapabilities_HelpExample (Placeholder int NULL);'
+            + NCHAR(10)
+            + N'DECLARE @FeatureJson nvarchar(max);'
+            + NCHAR(10)
+            + N'```'
+            + NCHAR(10)
+            + NCHAR(10) AS [SkillMarkdown];
+        -- USAGE_SKILL_HELP_END monitor.USP_ServerFeatureCapabilities
         RETURN;
-    END;
+    END
+
+    SET @Json = NULL;
+    DECLARE @OriginalLockTimeout int=@@LOCK_TIMEOUT;
+    DECLARE @LockTimeoutSql nvarchar(64);
+
+    DECLARE @ResultSetArtNormalisiert varchar(16) = UPPER(LTRIM(RTRIM(COALESCE(@ResultSetArt, ''))));
+    DECLARE @TableResultRequested bit = CASE WHEN @ResultSetArtNormalisiert = 'TABLE' THEN 1 ELSE 0 END;
+    DECLARE @ConsoleResultRequested bit = CASE WHEN @ResultSetArtNormalisiert = 'CONSOLE' THEN 1 ELSE 0 END;
+    DECLARE @TableTarget sysname=NULL;
+    IF @TableResultRequested=0 AND NULLIF(LTRIM(RTRIM(COALESCE(@ResultTablesJson,N''))),N'') IS NOT NULL THROW 51011,N'@ResultTablesJson ist ausschließlich mit @ResultSetArt=TABLE zulässig.',1;
+    IF @TableResultRequested=1 EXEC [monitor].[InternalPrepareSingleResultTable] @ResultTablesJson=@ResultTablesJson,@ResultName=N'capabilities',@TargetTable=@TableTarget OUTPUT,@ThrowOnError=1;
+    IF @TableResultRequested = 1 OR @ConsoleResultRequested = 1 SET @ResultSetArtNormalisiert = 'NONE';
+    DECLARE @EffectiveMaxZeilen bigint = CASE WHEN @MaxZeilen IS NULL OR @MaxZeilen = 0 THEN CONVERT(bigint,9223372036854775807) WHEN @MaxZeilen > 0 THEN CONVERT(bigint,@MaxZeilen) ELSE CONVERT(bigint,0) END;
+    DECLARE @MonitorPrintMessage nvarchar(2048);
+
+    ;
 
     SET @LockTimeoutSql=N'SET LOCK_TIMEOUT 0;';
     EXEC [sys].[sp_executesql] @LockTimeoutSql;

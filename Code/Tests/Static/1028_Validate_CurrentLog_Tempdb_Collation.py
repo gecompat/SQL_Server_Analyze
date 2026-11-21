@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Validate literal CurrentLog fields/ABI and bounded shared cap."""
 from __future__ import annotations
+from UsageSkillSourceMask import strip_usage_skill_projections
 import argparse,re
 from pathlib import Path
 PROCEDURE_PATH=Path("Code/02_CurrentState/090_USP_CurrentLog.sql")
@@ -87,7 +88,7 @@ def findings(source):
   if source.count(token)!=count: errors.append('BOUNDARY:'+token)
  prepare=source.find('EXEC [monitor].[InternalPrepareSingleResultTable]')
  help_at=source.find('IF @Hilfe = 1');validation=source.find('IF @MaxZeilen < 0')
- if not 0<prepare<help_at<validation: errors.append('EARLY_TABLE_PREFLIGHT')
+ if not 0<help_at<prepare<validation: errors.append('EARLY_TABLE_PREFLIGHT')
  if '@ParentCurrentStateSnapshotId' in source or 'CREATE TABLE [#CurrentOverview_' in source: errors.append('NO_SNAPSHOT_OWNER')
  if 'ELSE CONVERT(bigint, 0) END;' not in source: errors.append('SAFE_NEGATIVE_LIMIT')
  if source.count(CAP)!=1: errors.append('EXACT_SHARED_CAP')
@@ -135,7 +136,7 @@ def self_test(source):
 
 def main():
  ap=argparse.ArgumentParser();ap.add_argument('--repository-root',type=Path,required=True);ap.add_argument('--self-test',action='store_true');a=ap.parse_args()
- source=(a.repository_root/PROCEDURE_PATH).read_text(encoding='utf-8-sig').replace('\r\n','\n')
+ source=strip_usage_skill_projections((a.repository_root/PROCEDURE_PATH).read_text(encoding='utf-8-sig').replace('\r\n','\n'))
  errors=findings(source)
  if errors:print('Current Log validation failed: '+', '.join(errors));return 1
  if a.self_test:print(f'Current Log genuine mutation self-test passed: {self_test(source)} mutations.')

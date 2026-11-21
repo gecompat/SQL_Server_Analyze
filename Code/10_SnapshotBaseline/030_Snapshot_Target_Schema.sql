@@ -147,7 +147,7 @@ BEGIN TRY
 IF @SnapshotSchemaOwnTransaction=1 BEGIN TRANSACTION;
 ELSE SAVE TRANSACTION SQLSA_SnapshotSchema2;
 -- SNAPSHOT_SCHEMA_PREFLIGHT_BEGIN
--- Derived model SHA256: 592c5cb6bc4f1d393f5e09737d3555dc0eb40bf9b6c27d07f6b3d3a5e8b800eb
+-- Derived model SHA256: 9a77ddbb272b62bfd50e2905684a6430e88e05f4aa8f7bc6e658ebd9deaf1725
 SET NOCOUNT ON; SET LOCK_TIMEOUT 10000;
 IF ISNULL(HAS_PERMS_BY_NAME(DB_NAME(),'DATABASE','CONTROL'),0)<>1 OR ISNULL(HAS_PERMS_BY_NAME(NULL,NULL,'VIEW ANY DEFINITION'),0)<>1 THROW 53901,N'Deployment requires CONTROL DATABASE and visible server metadata.',1;
 IF EXISTS(SELECT 1 FROM sys.triggers WHERE parent_class=0 AND is_disabled=0) OR EXISTS(SELECT 1 FROM sys.server_triggers WHERE is_disabled=0) THROW 53902,N'Active DDL triggers are unsupported.',1;
@@ -1122,6 +1122,7 @@ IF OBJECT_ID(N'[snapshot].[InternalCompleteWaitStatsCycle]') IS NOT NULL AND NOT
 IF OBJECT_ID(N'[snapshot].[InternalCompleteFileIOCycle]') IS NOT NULL AND NOT EXISTS(SELECT 1 FROM sys.objects WHERE object_id=OBJECT_ID(N'[snapshot].[InternalCompleteFileIOCycle]') AND type=N'P') THROW 53913,N'Module object type mismatch: [snapshot].[InternalCompleteFileIOCycle]',1;
 IF OBJECT_ID(N'[snapshot].[InternalFinalizeCollectionCycle]') IS NOT NULL AND NOT EXISTS(SELECT 1 FROM sys.objects WHERE object_id=OBJECT_ID(N'[snapshot].[InternalFinalizeCollectionCycle]') AND type=N'P') THROW 53913,N'Module object type mismatch: [snapshot].[InternalFinalizeCollectionCycle]',1;
 IF OBJECT_ID(N'[snapshot].[InternalPurgeExpiredData]') IS NOT NULL AND NOT EXISTS(SELECT 1 FROM sys.objects WHERE object_id=OBJECT_ID(N'[snapshot].[InternalPurgeExpiredData]') AND type=N'P') THROW 53913,N'Module object type mismatch: [snapshot].[InternalPurgeExpiredData]',1;
+IF OBJECT_ID(N'[monitor_metadata].[VW_ObjectUsageSkills]') IS NOT NULL AND NOT EXISTS(SELECT 1 FROM sys.objects WHERE object_id=OBJECT_ID(N'[monitor_metadata].[VW_ObjectUsageSkills]') AND type=N'V') THROW 53913,N'Module object type mismatch: [monitor_metadata].[VW_ObjectUsageSkills]',1;
 IF OBJECT_ID(N'[snapshot].[MetricDefinition]',N'U') IS NOT NULL EXEC sys.sp_executesql N'DECLARE @SnapshotWaitExpectedMetrics TABLE
 (
     [MetricCode] varchar(96) COLLATE DATABASE_DEFAULT NOT NULL PRIMARY KEY,
@@ -1153,7 +1154,7 @@ IF EXISTS
 )
     THROW 53760,N''Eine vorhandene Waitmetrik widerspricht dem Metrikvertrag.'',1;
 ';
-IF OBJECT_ID(N'[snapshot].[InternalCompleteWaitStatsCycle]',N'P') IS NOT NULL AND OBJECT_ID(N'[snapshot].[PackageVersion]',N'U') IS NOT NULL EXEC sys.sp_executesql N'IF NOT EXISTS(SELECT 1 FROM [snapshot].[PackageVersion] WHERE CONVERT(varbinary(max),PackageCode)=CONVERT(varbinary(max),''SC-023'') AND ((CONVERT(varbinary(max),PackageVersion) IN(CONVERT(varbinary(max),''1.2.0''),CONVERT(varbinary(max),''1.2.1'')) AND SchemaVersion=2) OR (CONVERT(varbinary(max),PackageVersion) IN(CONVERT(varbinary(max),''1.3.0''),CONVERT(varbinary(max),''1.3.1'')) AND SchemaVersion=3))) AND (OBJECT_DEFINITION(OBJECT_ID(N''[snapshot].[InternalCompleteWaitStatsCycle]'',N''P'')) IS NULL OR HASHBYTES(''SHA2_256'',CONVERT(varbinary(max),TRIM(NCHAR(9)+NCHAR(10)+NCHAR(13)+N'' '' FROM REPLACE(OBJECT_DEFINITION(OBJECT_ID(N''[snapshot].[InternalCompleteWaitStatsCycle]'',N''P'')),NCHAR(13)+NCHAR(10),NCHAR(10))))) NOT IN(0xca60a89fe5ecfd129fc10f60fb55f01f980f3e135c0c6b7c7c6cfa6df0b7ac57,0xe392b9581c55955b81674e468aa88eac444339585dfd787a682abf66b3a48c49,0xaeb295d67a15ce0fcf452404dde233729012e42340c138c8924f27447e1b8762,0x86272875a1bb5052072b6106d2845658c2fea26414820ef0f0c018a8b88c7c40)) THROW 53762,N''A noncanonical object occupies the new Wait helper name.'',1;';
+IF OBJECT_ID(N'[snapshot].[InternalCompleteWaitStatsCycle]',N'P') IS NOT NULL AND OBJECT_ID(N'[snapshot].[PackageVersion]',N'U') IS NOT NULL EXEC sys.sp_executesql N'IF NOT EXISTS(SELECT 1 FROM [snapshot].[PackageVersion] WHERE CONVERT(varbinary(max),PackageCode)=CONVERT(varbinary(max),''SC-023'') AND ((CONVERT(varbinary(max),PackageVersion) IN(CONVERT(varbinary(max),''1.2.0''),CONVERT(varbinary(max),''1.2.1'')) AND SchemaVersion=2) OR (CONVERT(varbinary(max),PackageVersion) IN(CONVERT(varbinary(max),''1.3.0''),CONVERT(varbinary(max),''1.3.1'')) AND SchemaVersion=3))) AND (OBJECT_DEFINITION(OBJECT_ID(N''[snapshot].[InternalCompleteWaitStatsCycle]'',N''P'')) IS NULL OR HASHBYTES(''SHA2_256'',CONVERT(varbinary(max),TRIM(NCHAR(9)+NCHAR(10)+NCHAR(13)+N'' '' FROM REPLACE(OBJECT_DEFINITION(OBJECT_ID(N''[snapshot].[InternalCompleteWaitStatsCycle]'',N''P'')),NCHAR(13)+NCHAR(10),NCHAR(10))))) NOT IN(0x3e9a3c2f7e953cbd0fba5bc9a5b4305e7a43a0e6d304831e7a090150a1f38bdc,0xe392b9581c55955b81674e468aa88eac444339585dfd787a682abf66b3a48c49,0xaeb295d67a15ce0fcf452404dde233729012e42340c138c8924f27447e1b8762,0x86272875a1bb5052072b6106d2845658c2fea26414820ef0f0c018a8b88c7c40)) THROW 53762,N''A noncanonical object occupies the new Wait helper name.'',1;';
 IF OBJECT_ID(N'[snapshot].[MetricDefinition]',N'U') IS NOT NULL EXEC sys.sp_executesql N'DECLARE @SnapshotFileIOExpectedMetrics TABLE
 ([MetricCode] varchar(96) COLLATE DATABASE_DEFAULT NOT NULL PRIMARY KEY,
  [ValueType] varchar(24) COLLATE DATABASE_DEFAULT NOT NULL,
@@ -1182,7 +1183,7 @@ IF EXISTS(SELECT 1 FROM [snapshot].[MetricDefinition] AS [d]
  OR CONVERT(varbinary(max),[d].[Unit])<>CONVERT(varbinary(max),[e].[Unit]) OR [d].[ContractVersion]<>1)
  THROW 53780,N''Eine vorhandene Datei-I/O-Metrik widerspricht dem Vertrag.'',1;
 ';
-IF OBJECT_ID(N'[snapshot].[InternalCompleteFileIOCycle]',N'P') IS NOT NULL AND OBJECT_ID(N'[snapshot].[PackageVersion]',N'U') IS NOT NULL EXEC sys.sp_executesql N'IF NOT EXISTS(SELECT 1 FROM [snapshot].[PackageVersion] WHERE CONVERT(varbinary(max),PackageCode)=CONVERT(varbinary(max),''SC-023'') AND CONVERT(varbinary(max),PackageVersion) IN(CONVERT(varbinary(max),''1.3.0''),CONVERT(varbinary(max),''1.3.1'')) AND SchemaVersion=3) AND (OBJECT_DEFINITION(OBJECT_ID(N''[snapshot].[InternalCompleteFileIOCycle]'',N''P'')) IS NULL OR HASHBYTES(''SHA2_256'',CONVERT(varbinary(max),TRIM(NCHAR(9)+NCHAR(10)+NCHAR(13)+N'' '' FROM REPLACE(OBJECT_DEFINITION(OBJECT_ID(N''[snapshot].[InternalCompleteFileIOCycle]'',N''P'')),NCHAR(13)+NCHAR(10),NCHAR(10))))) NOT IN(0xc0b46698578f0464cb75ee7ee9c97dc9b74dcea66e8015dec1f86e31c059de99,0x5a2846e5b919adb69eae95cc4869f5a43b4b69b0b7fe57192a0a0dc002cee592)) THROW 53762,N''A noncanonical object occupies the new Wait helper name.'',1;';
+IF OBJECT_ID(N'[snapshot].[InternalCompleteFileIOCycle]',N'P') IS NOT NULL AND OBJECT_ID(N'[snapshot].[PackageVersion]',N'U') IS NOT NULL EXEC sys.sp_executesql N'IF NOT EXISTS(SELECT 1 FROM [snapshot].[PackageVersion] WHERE CONVERT(varbinary(max),PackageCode)=CONVERT(varbinary(max),''SC-023'') AND CONVERT(varbinary(max),PackageVersion) IN(CONVERT(varbinary(max),''1.3.0''),CONVERT(varbinary(max),''1.3.1'')) AND SchemaVersion=3) AND (OBJECT_DEFINITION(OBJECT_ID(N''[snapshot].[InternalCompleteFileIOCycle]'',N''P'')) IS NULL OR HASHBYTES(''SHA2_256'',CONVERT(varbinary(max),TRIM(NCHAR(9)+NCHAR(10)+NCHAR(13)+N'' '' FROM REPLACE(OBJECT_DEFINITION(OBJECT_ID(N''[snapshot].[InternalCompleteFileIOCycle]'',N''P'')),NCHAR(13)+NCHAR(10),NCHAR(10))))) NOT IN(0xf0a72c86c95983631cf6cf32e7ff0aa3432991bc68268a6f20ed804dcb7aa207,0x5a2846e5b919adb69eae95cc4869f5a43b4b69b0b7fe57192a0a0dc002cee592)) THROW 53762,N''A noncanonical object occupies the new Wait helper name.'',1;';
 DROP TABLE #SnapshotTargetSchema_ConstraintMap,#SnapshotTargetSchema_KnownForeignKeys,[#SnapshotTargetSchema_Expected_1],[#SnapshotTargetSchema_Expected_2],[#SnapshotTargetSchema_Expected_3],[#SnapshotTargetSchema_Expected_4],[#SnapshotTargetSchema_Expected_5],[#SnapshotTargetSchema_Expected_6],[#SnapshotTargetSchema_Expected_7],[#SnapshotTargetSchema_Expected_8],[#SnapshotTargetSchema_Expected_9],[#SnapshotTargetSchema_Expected_10];
 SET LOCK_TIMEOUT 0;
 -- SNAPSHOT_SCHEMA_PREFLIGHT_END
@@ -1217,7 +1218,178 @@ IF NOT EXISTS
       AND [t].[name] = N'PackageVersion'
 )
 BEGIN
-    CREATE TABLE [snapshot].[PackageVersion]
+-- USAGE_SKILL_BEGIN snapshot.PackageVersion 1.0.0
+-- ---
+-- skill_format_version: "1.0.0"
+-- name: "snapshot.PackageVersion"
+-- schema_name: "snapshot"
+-- object_name: "PackageVersion"
+-- object_type: "TABLE"
+-- database_role: "snapshot_target"
+-- is_internal: false
+-- description: "Erstellt und aktualisiert das versionierte Basisschema des optionalen SC-023-Snapshot-/Baseline-Ziels in der aktuell verbundenen Datenbank."
+-- source_path: "Code/10_SnapshotBaseline/030_Snapshot_Target_Schema.sql"
+-- ---
+-- 
+-- # snapshot.PackageVersion
+-- 
+-- ## Zweck und Einsatz
+-- 
+-- Erstellt und aktualisiert das versionierte Basisschema des optionalen SC-023-Snapshot-/Baseline-Ziels in der aktuell verbundenen Datenbank. Das Schema speichert Erfassungsläufe, Status, Scopes, typisierte Messwerte und optionale Nutzdaten. Es startet weder Sammler noch Zeitpläne oder Retention-Purges.
+-- 
+-- ## Voraussetzungen und Rechte
+-- 
+-- Die Verbindung zeigt auf eine ONLINE befindliche, beschreibbare Nicht-Systemdatenbank. Das Skript erstellt nicht selbst das Ziel und verwendet ausschließlich den geprüften Verbindungskontext.
+-- 
+-- CONTROL DATABASE und VIEW ANY DEFINITION sind für die native Strukturprüfung erforderlich. Das Skript vergibt keine Rechte.
+-- 
+-- Lesender Einsatz erfordert SELECT auf [snapshot].[PackageVersion]; Installation und Aktualisierung benötigen die im Quellskript gezeigten DDL- und DML-Rechte.
+-- 
+-- ## Parameter und Eingabe
+-- 
+-- Keine Aufrufparameter.
+-- 
+-- ## Resultate und Ausgabe
+-- 
+-- Tabellenspalten und Constraints aus der eigenen CREATE-TABLE-Definition:
+-- 
+-- ```sql
+-- (
+--           [PackageCode] varchar(32) NOT NULL
+--         , [PackageVersion] varchar(16) NOT NULL
+--         , [SchemaVersion] int NOT NULL
+--         , [InstalledAtUtc] datetime2(3) NOT NULL
+--               CONSTRAINT [DF_snapshot_PackageVersion_InstalledAtUtc]
+--               DEFAULT (SYSUTCDATETIME())
+--         , [LastInstallerRunUtc] datetime2(3) NOT NULL
+--               CONSTRAINT [DF_snapshot_PackageVersion_LastInstallerRunUtc]
+--               DEFAULT (SYSUTCDATETIME())
+--         , CONSTRAINT [PK_snapshot_PackageVersion]
+--               PRIMARY KEY CLUSTERED ([PackageCode])
+--         , CONSTRAINT [CK_snapshot_PackageVersion_PackageCode]
+--               CHECK ([PackageCode] = 'SC-023')
+--         , CONSTRAINT [CK_snapshot_PackageVersion_SchemaVersion]
+--               CHECK ([SchemaVersion] > 0)
+--     )
+-- ```
+-- 
+-- 
+-- ## Beispiel
+-- 
+-- ```sql
+-- SELECT TOP (10) * FROM [snapshot].[PackageVersion];
+-- ```
+-- 
+-- ## Aufwand, Nebenwirkungen, Fehler und Grenzen
+-- 
+-- Das zugehörige Installationsskript enthält CREATE TABLE, INSERT, UPDATE, DELETE; ein lesendes SELECT führt diese Installationsschritte nicht aus. Constraints und NULL-Grenzen stehen in der Tabellendefinition.
+-- 
+-- ### Quellgebundene Detailbeschreibung
+-- 
+-- Der folgende Quellkopf bewahrt die zusätzlichen Implementierungsgrenzen für diesen Skill.
+-- 
+-- ```text
+-- Datei        : 030_Snapshot_Target_Schema.sql
+-- Version      : 1.2.2
+-- Stand        : 2026-10-26
+-- Zweck        : Erstellt und aktualisiert das versionierte Basisschema des
+--                optionalen SC-023-Snapshot-/Baseline-Ziels in der aktuell
+--                verbundenen Datenbank. Das Schema speichert Erfassungsläufe,
+--                Status, Scopes, typisierte Messwerte und optionale Nutzdaten.
+--                Es startet weder Sammler noch Zeitpläne oder Retention-Purges.
+-- 
+-- Tabellen     : PackageVersion kennzeichnet Paket- und Schemafassung sowie
+--                Erstinstallation und letzten Installationslauf. RetentionPolicy
+--                hält Aufbewahrungsfristen für Rohwerte, Nutzdaten und Rollups,
+--                Speicherbudget, Purge-Takt, Batchgröße und Budgetaktion.
+--                CollectorPolicy beschreibt Aktivierung, Intervall, Zeilenlimit,
+--                Nutzdatenerfassung und zugeordnete RetentionPolicy.
+--                CaptureRun protokolliert Sammler, Schedulerart, Start und Ende,
+--                Quelldatenbankname, SQL-Server-Startzeit, Reset-Epoche,
+--                Vertragsfassung, Status, Partialität, Fehler und Zeilenzähler.
+--                ModuleStatus hält je Lauf und Modul Zeitpunkt, Status, Partial-
+--                und Fehlerangaben sowie Evidenzgrenzen.
+--                Scope ordnet Messungen über Scope-Typ, optionalen Eltern-Scope,
+--                32-Byte-Schlüsselhash und JSON-Identität einem Erfassungsbereich
+--                zu. MetricDefinition beschreibt Metrikcode, Werttyp, Einheit,
+--                Vertragsfassung, Text, Framework-Default und Seedfassung.
+--                MetricSample verbindet Lauf, Scope und Metrik mit Messzeit,
+--                Reset-Epoche, genau einem typisierten Wert, Qualitätscode und
+--                Partialitätskennzeichen. PayloadSnapshot speichert optionale,
+--                Modulnutzdaten mit Format, Vertragsfassung, Hash
+--                und unkomprimierter Zeichenanzahl. PurgeRun protokolliert
+--                Aufräumlauf, Status, Batches, gelöschte Zeilen, Budgetmessung
+--                und Fehler.
+-- 
+-- Beziehungen  : Fremdschlüssel verbinden CollectorPolicy mit RetentionPolicy,
+--                CaptureRun mit CollectorPolicy, ModuleStatus und PayloadSnapshot
+--                mit CaptureRun sowie MetricSample mit CaptureRun, Scope und
+--                MetricDefinition. Scope kann auf einen Eltern-Scope verweisen.
+--                Primär- und eindeutige Schlüssel verhindern doppelte
+--                Policycodes, Modulstatus je Lauf/Modul sowie Messwerte je
+--                Lauf/Scope/Metrik. Ein gefilterter eindeutiger Index lässt
+--                höchstens eine RetentionPolicy als Framework-Default zu;
+--                Zeit- und Zuordnungsindizes unterstützen die im Schema
+--                vorgesehenen Lauf-, Messwert-, Nutzdaten- und Purgeabfragen.
+--                Die DDL definiert keine kaskadierenden Fremdschlüssel.
+-- 
+-- Werte        : UTC-Zeitfelder geben den jeweiligen Erfassungs-, Lauf- oder
+--                Änderungszeitpunkt an. NULL ist bei Endzeiten, optionalen
+--                Start-/Resetinformationen, Fehlerfeldern und alternativen
+--                Messwertspalten zulässig, soweit die DDL dies festlegt.
+--                NumericValue, BigintValue und StringValue sind Alternativen:
+--                MetricSample verlangt genau einen nicht-NULL-Wert. ValueType
+--                und Unit in MetricDefinition beschreiben dessen Interpretation;
+--                der Vertrag garantiert keine Umrechnung. ResetEpochId grenzt
+--                Zählerstände über eine Reset-Epoche ab. QualityCode, StatusCode
+--                und IsPartial erhalten Qualitäts-, Ablauf- und
+--                Vollständigkeitsangaben. ScopeIdentityJson muss JSON sein;
+--                ScopeKeyHash ist genau 32 Byte lang. PayloadHash ist ebenfalls
+--                32 Byte lang; PayloadFormat und CompressionType sind auf die
+--                im Schema genannten Werte beschränkt.
+-- 
+-- Migration    : Die native Vorprüfung akzeptiert nur erkannte Schemaformen.
+--                Für erkannte Legacy- und Schema-2-Stände erweitert sie die
+--                CollectorCode- und ScopeType-Prüfwerte um FILE_IO
+--                beziehungsweise FILE_IO_FILE. Unbekannte oder abweichende
+--                Strukturen werden nicht beliebig repariert oder überschrieben.
+--                Paketversion 1.2.2 / Schema 3 kennzeichnet Installationsmetadaten,
+--                nicht die Laufzeitqualifikation oder Freigabe des Pakets.
+-- 
+-- Seeds        : Neue DEFAULT-Retention-, PERFORMANCE_COUNTERS-Policy- und
+--                Performance-Counter-Metrikzeilen werden nur eingefügt, wenn
+--                ihr jeweiliger Schlüssel fehlt. Vorhandene solche Zeilen bleiben
+--                erhalten. PackageVersion wird für SC-023 angelegt oder auf
+--                Paketversion 1.2.2 und Schema 3 gesetzt; InstalledAtUtc bleibt
+--                bei einem vorhandenen Datensatz unverändert, während
+--                LastInstallerRunUtc aktualisiert wird.
+-- 
+-- Voraussetzung: Die Verbindung zeigt auf eine ONLINE befindliche, beschreibbare
+--                Nicht-Systemdatenbank. Das Skript erstellt nicht selbst das
+--                Ziel und verwendet ausschließlich den geprüften Verbindungskontext.
+-- Datenschutz  : Die Tabellen dürfen im autorisierten Betrieb vollständige reale
+--                Laufzeitevidenz einschließlich optionaler Payloads speichern.
+--                Dieses Installationsskript enthält nur generische Seeds und
+--                keine Laufzeitwerte oder Datenbanknamen.
+-- Transaktion  : Implizite Transaktionen müssen ausgeschaltet sein. Das Skript
+--                verwendet bei Bedarf eine eigene Transaktion, andernfalls einen
+--                Savepoint. Im Fehlerfall wird die eigene Transaktion bei
+--                XACT_STATE() ungleich 0 zurückgerollt; im Aufruferkontext nur
+--                bei XACT_STATE() = 1 bis zum Savepoint. Bei XACT_STATE() = -1
+--                kann dieser Savepoint-Rollback nicht erfolgen; ein allgemeiner
+--                Rollback der Aufrufertransaktion wird nicht zugesichert.
+--                Die gesetzten SET-Optionen gelten für die verbundene Sitzung;
+--                das Skript stellt deren vorherige Werte nicht wieder her.
+-- Locking      : Die privilegierte native Strukturvorprüfung verwendet
+--                LOCK_TIMEOUT 10000 und hält geprüfte Tabellen bis zum
+--                Transaktionsende. Die anschließende eigene DDL verwendet
+--                LOCK_TIMEOUT 0 und wartet nicht auf fremde Sch-M-Sperren.
+-- Rechte       : CONTROL DATABASE und VIEW ANY DEFINITION sind für die native
+--                Strukturprüfung erforderlich. Das Skript vergibt keine Rechte.
+-- ```
+-- 
+-- USAGE_SKILL_END snapshot.PackageVersion
+CREATE TABLE [snapshot].[PackageVersion]
     (
           [PackageCode] varchar(32) NOT NULL
         , [PackageVersion] varchar(16) NOT NULL
@@ -1247,7 +1419,196 @@ IF NOT EXISTS
       AND [t].[name] = N'RetentionPolicy'
 )
 BEGIN
-    CREATE TABLE [snapshot].[RetentionPolicy]
+-- USAGE_SKILL_BEGIN snapshot.RetentionPolicy 1.0.0
+-- ---
+-- skill_format_version: "1.0.0"
+-- name: "snapshot.RetentionPolicy"
+-- schema_name: "snapshot"
+-- object_name: "RetentionPolicy"
+-- object_type: "TABLE"
+-- database_role: "snapshot_target"
+-- is_internal: false
+-- description: "Erstellt und aktualisiert das versionierte Basisschema des optionalen SC-023-Snapshot-/Baseline-Ziels in der aktuell verbundenen Datenbank."
+-- source_path: "Code/10_SnapshotBaseline/030_Snapshot_Target_Schema.sql"
+-- ---
+-- 
+-- # snapshot.RetentionPolicy
+-- 
+-- ## Zweck und Einsatz
+-- 
+-- Erstellt und aktualisiert das versionierte Basisschema des optionalen SC-023-Snapshot-/Baseline-Ziels in der aktuell verbundenen Datenbank. Das Schema speichert Erfassungsläufe, Status, Scopes, typisierte Messwerte und optionale Nutzdaten. Es startet weder Sammler noch Zeitpläne oder Retention-Purges.
+-- 
+-- ## Voraussetzungen und Rechte
+-- 
+-- Die Verbindung zeigt auf eine ONLINE befindliche, beschreibbare Nicht-Systemdatenbank. Das Skript erstellt nicht selbst das Ziel und verwendet ausschließlich den geprüften Verbindungskontext.
+-- 
+-- CONTROL DATABASE und VIEW ANY DEFINITION sind für die native Strukturprüfung erforderlich. Das Skript vergibt keine Rechte.
+-- 
+-- Lesender Einsatz erfordert SELECT auf [snapshot].[RetentionPolicy]; Installation und Aktualisierung benötigen die im Quellskript gezeigten DDL- und DML-Rechte.
+-- 
+-- ## Parameter und Eingabe
+-- 
+-- Keine Aufrufparameter.
+-- 
+-- ## Resultate und Ausgabe
+-- 
+-- Tabellenspalten und Constraints aus der eigenen CREATE-TABLE-Definition:
+-- 
+-- ```sql
+-- (
+--           [RetentionPolicyCode] varchar(64) NOT NULL
+--         , [RawRetentionDays] smallint NOT NULL
+--         , [PayloadRetentionDays] smallint NOT NULL
+--         , [RollupRetentionDays] smallint NOT NULL
+--         , [SoftBudgetMB] bigint NOT NULL
+--         , [PurgeIntervalMinutes] int NOT NULL
+--         , [PurgeBatchRows] int NOT NULL
+--         , [BudgetAction] varchar(40) NOT NULL
+--         , [IsFrameworkDefault] bit NOT NULL
+--               CONSTRAINT [DF_snapshot_RetentionPolicy_IsFrameworkDefault]
+--               DEFAULT (0)
+--         , [SeedVersion] int NOT NULL
+--         , [LastUpdatedUtc] datetime2(3) NOT NULL
+--               CONSTRAINT [DF_snapshot_RetentionPolicy_LastUpdatedUtc]
+--               DEFAULT (SYSUTCDATETIME())
+--         , CONSTRAINT [PK_snapshot_RetentionPolicy]
+--               PRIMARY KEY CLUSTERED ([RetentionPolicyCode])
+--         , CONSTRAINT [CK_snapshot_RetentionPolicy_RawRetentionDays]
+--               CHECK ([RawRetentionDays] BETWEEN 1 AND 36500)
+--         , CONSTRAINT [CK_snapshot_RetentionPolicy_PayloadRetentionDays]
+--               CHECK ([PayloadRetentionDays] BETWEEN 1 AND 36500)
+--         , CONSTRAINT [CK_snapshot_RetentionPolicy_RollupRetentionDays]
+--               CHECK ([RollupRetentionDays] BETWEEN 1 AND 36500)
+--         , CONSTRAINT [CK_snapshot_RetentionPolicy_SoftBudgetMB]
+--               CHECK ([SoftBudgetMB] > 0)
+--         , CONSTRAINT [CK_snapshot_RetentionPolicy_PurgeIntervalMinutes]
+--               CHECK ([PurgeIntervalMinutes] BETWEEN 1 AND 10080)
+--         , CONSTRAINT [CK_snapshot_RetentionPolicy_PurgeBatchRows]
+--               CHECK ([PurgeBatchRows] BETWEEN 1 AND 100000)
+--         , CONSTRAINT [CK_snapshot_RetentionPolicy_BudgetAction]
+--               CHECK ([BudgetAction] = 'PURGE_EXPIRED_THEN_STOP')
+--         , CONSTRAINT [CK_snapshot_RetentionPolicy_SeedVersion]
+--               CHECK ([SeedVersion] > 0)
+--     )
+-- ```
+-- 
+-- 
+-- ## Beispiel
+-- 
+-- ```sql
+-- SELECT TOP (10) * FROM [snapshot].[RetentionPolicy];
+-- ```
+-- 
+-- ## Aufwand, Nebenwirkungen, Fehler und Grenzen
+-- 
+-- Das zugehörige Installationsskript enthält CREATE TABLE, INSERT, UPDATE, DELETE; ein lesendes SELECT führt diese Installationsschritte nicht aus. Constraints und NULL-Grenzen stehen in der Tabellendefinition.
+-- 
+-- ### Quellgebundene Detailbeschreibung
+-- 
+-- Der folgende Quellkopf bewahrt die zusätzlichen Implementierungsgrenzen für diesen Skill.
+-- 
+-- ```text
+-- Datei        : 030_Snapshot_Target_Schema.sql
+-- Version      : 1.2.2
+-- Stand        : 2026-10-26
+-- Zweck        : Erstellt und aktualisiert das versionierte Basisschema des
+--                optionalen SC-023-Snapshot-/Baseline-Ziels in der aktuell
+--                verbundenen Datenbank. Das Schema speichert Erfassungsläufe,
+--                Status, Scopes, typisierte Messwerte und optionale Nutzdaten.
+--                Es startet weder Sammler noch Zeitpläne oder Retention-Purges.
+-- 
+-- Tabellen     : PackageVersion kennzeichnet Paket- und Schemafassung sowie
+--                Erstinstallation und letzten Installationslauf. RetentionPolicy
+--                hält Aufbewahrungsfristen für Rohwerte, Nutzdaten und Rollups,
+--                Speicherbudget, Purge-Takt, Batchgröße und Budgetaktion.
+--                CollectorPolicy beschreibt Aktivierung, Intervall, Zeilenlimit,
+--                Nutzdatenerfassung und zugeordnete RetentionPolicy.
+--                CaptureRun protokolliert Sammler, Schedulerart, Start und Ende,
+--                Quelldatenbankname, SQL-Server-Startzeit, Reset-Epoche,
+--                Vertragsfassung, Status, Partialität, Fehler und Zeilenzähler.
+--                ModuleStatus hält je Lauf und Modul Zeitpunkt, Status, Partial-
+--                und Fehlerangaben sowie Evidenzgrenzen.
+--                Scope ordnet Messungen über Scope-Typ, optionalen Eltern-Scope,
+--                32-Byte-Schlüsselhash und JSON-Identität einem Erfassungsbereich
+--                zu. MetricDefinition beschreibt Metrikcode, Werttyp, Einheit,
+--                Vertragsfassung, Text, Framework-Default und Seedfassung.
+--                MetricSample verbindet Lauf, Scope und Metrik mit Messzeit,
+--                Reset-Epoche, genau einem typisierten Wert, Qualitätscode und
+--                Partialitätskennzeichen. PayloadSnapshot speichert optionale,
+--                Modulnutzdaten mit Format, Vertragsfassung, Hash
+--                und unkomprimierter Zeichenanzahl. PurgeRun protokolliert
+--                Aufräumlauf, Status, Batches, gelöschte Zeilen, Budgetmessung
+--                und Fehler.
+-- 
+-- Beziehungen  : Fremdschlüssel verbinden CollectorPolicy mit RetentionPolicy,
+--                CaptureRun mit CollectorPolicy, ModuleStatus und PayloadSnapshot
+--                mit CaptureRun sowie MetricSample mit CaptureRun, Scope und
+--                MetricDefinition. Scope kann auf einen Eltern-Scope verweisen.
+--                Primär- und eindeutige Schlüssel verhindern doppelte
+--                Policycodes, Modulstatus je Lauf/Modul sowie Messwerte je
+--                Lauf/Scope/Metrik. Ein gefilterter eindeutiger Index lässt
+--                höchstens eine RetentionPolicy als Framework-Default zu;
+--                Zeit- und Zuordnungsindizes unterstützen die im Schema
+--                vorgesehenen Lauf-, Messwert-, Nutzdaten- und Purgeabfragen.
+--                Die DDL definiert keine kaskadierenden Fremdschlüssel.
+-- 
+-- Werte        : UTC-Zeitfelder geben den jeweiligen Erfassungs-, Lauf- oder
+--                Änderungszeitpunkt an. NULL ist bei Endzeiten, optionalen
+--                Start-/Resetinformationen, Fehlerfeldern und alternativen
+--                Messwertspalten zulässig, soweit die DDL dies festlegt.
+--                NumericValue, BigintValue und StringValue sind Alternativen:
+--                MetricSample verlangt genau einen nicht-NULL-Wert. ValueType
+--                und Unit in MetricDefinition beschreiben dessen Interpretation;
+--                der Vertrag garantiert keine Umrechnung. ResetEpochId grenzt
+--                Zählerstände über eine Reset-Epoche ab. QualityCode, StatusCode
+--                und IsPartial erhalten Qualitäts-, Ablauf- und
+--                Vollständigkeitsangaben. ScopeIdentityJson muss JSON sein;
+--                ScopeKeyHash ist genau 32 Byte lang. PayloadHash ist ebenfalls
+--                32 Byte lang; PayloadFormat und CompressionType sind auf die
+--                im Schema genannten Werte beschränkt.
+-- 
+-- Migration    : Die native Vorprüfung akzeptiert nur erkannte Schemaformen.
+--                Für erkannte Legacy- und Schema-2-Stände erweitert sie die
+--                CollectorCode- und ScopeType-Prüfwerte um FILE_IO
+--                beziehungsweise FILE_IO_FILE. Unbekannte oder abweichende
+--                Strukturen werden nicht beliebig repariert oder überschrieben.
+--                Paketversion 1.2.2 / Schema 3 kennzeichnet Installationsmetadaten,
+--                nicht die Laufzeitqualifikation oder Freigabe des Pakets.
+-- 
+-- Seeds        : Neue DEFAULT-Retention-, PERFORMANCE_COUNTERS-Policy- und
+--                Performance-Counter-Metrikzeilen werden nur eingefügt, wenn
+--                ihr jeweiliger Schlüssel fehlt. Vorhandene solche Zeilen bleiben
+--                erhalten. PackageVersion wird für SC-023 angelegt oder auf
+--                Paketversion 1.2.2 und Schema 3 gesetzt; InstalledAtUtc bleibt
+--                bei einem vorhandenen Datensatz unverändert, während
+--                LastInstallerRunUtc aktualisiert wird.
+-- 
+-- Voraussetzung: Die Verbindung zeigt auf eine ONLINE befindliche, beschreibbare
+--                Nicht-Systemdatenbank. Das Skript erstellt nicht selbst das
+--                Ziel und verwendet ausschließlich den geprüften Verbindungskontext.
+-- Datenschutz  : Die Tabellen dürfen im autorisierten Betrieb vollständige reale
+--                Laufzeitevidenz einschließlich optionaler Payloads speichern.
+--                Dieses Installationsskript enthält nur generische Seeds und
+--                keine Laufzeitwerte oder Datenbanknamen.
+-- Transaktion  : Implizite Transaktionen müssen ausgeschaltet sein. Das Skript
+--                verwendet bei Bedarf eine eigene Transaktion, andernfalls einen
+--                Savepoint. Im Fehlerfall wird die eigene Transaktion bei
+--                XACT_STATE() ungleich 0 zurückgerollt; im Aufruferkontext nur
+--                bei XACT_STATE() = 1 bis zum Savepoint. Bei XACT_STATE() = -1
+--                kann dieser Savepoint-Rollback nicht erfolgen; ein allgemeiner
+--                Rollback der Aufrufertransaktion wird nicht zugesichert.
+--                Die gesetzten SET-Optionen gelten für die verbundene Sitzung;
+--                das Skript stellt deren vorherige Werte nicht wieder her.
+-- Locking      : Die privilegierte native Strukturvorprüfung verwendet
+--                LOCK_TIMEOUT 10000 und hält geprüfte Tabellen bis zum
+--                Transaktionsende. Die anschließende eigene DDL verwendet
+--                LOCK_TIMEOUT 0 und wartet nicht auf fremde Sch-M-Sperren.
+-- Rechte       : CONTROL DATABASE und VIEW ANY DEFINITION sind für die native
+--                Strukturprüfung erforderlich. Das Skript vergibt keine Rechte.
+-- ```
+-- 
+-- USAGE_SKILL_END snapshot.RetentionPolicy
+CREATE TABLE [snapshot].[RetentionPolicy]
     (
           [RetentionPolicyCode] varchar(64) NOT NULL
         , [RawRetentionDays] smallint NOT NULL
@@ -1295,7 +1656,190 @@ IF NOT EXISTS
       AND [t].[name] = N'CollectorPolicy'
 )
 BEGIN
-    CREATE TABLE [snapshot].[CollectorPolicy]
+-- USAGE_SKILL_BEGIN snapshot.CollectorPolicy 1.0.0
+-- ---
+-- skill_format_version: "1.0.0"
+-- name: "snapshot.CollectorPolicy"
+-- schema_name: "snapshot"
+-- object_name: "CollectorPolicy"
+-- object_type: "TABLE"
+-- database_role: "snapshot_target"
+-- is_internal: false
+-- description: "Erstellt und aktualisiert das versionierte Basisschema des optionalen SC-023-Snapshot-/Baseline-Ziels in der aktuell verbundenen Datenbank."
+-- source_path: "Code/10_SnapshotBaseline/030_Snapshot_Target_Schema.sql"
+-- ---
+-- 
+-- # snapshot.CollectorPolicy
+-- 
+-- ## Zweck und Einsatz
+-- 
+-- Erstellt und aktualisiert das versionierte Basisschema des optionalen SC-023-Snapshot-/Baseline-Ziels in der aktuell verbundenen Datenbank. Das Schema speichert Erfassungsläufe, Status, Scopes, typisierte Messwerte und optionale Nutzdaten. Es startet weder Sammler noch Zeitpläne oder Retention-Purges.
+-- 
+-- ## Voraussetzungen und Rechte
+-- 
+-- Die Verbindung zeigt auf eine ONLINE befindliche, beschreibbare Nicht-Systemdatenbank. Das Skript erstellt nicht selbst das Ziel und verwendet ausschließlich den geprüften Verbindungskontext.
+-- 
+-- CONTROL DATABASE und VIEW ANY DEFINITION sind für die native Strukturprüfung erforderlich. Das Skript vergibt keine Rechte.
+-- 
+-- Lesender Einsatz erfordert SELECT auf [snapshot].[CollectorPolicy]; Installation und Aktualisierung benötigen die im Quellskript gezeigten DDL- und DML-Rechte.
+-- 
+-- ## Parameter und Eingabe
+-- 
+-- Keine Aufrufparameter.
+-- 
+-- ## Resultate und Ausgabe
+-- 
+-- Tabellenspalten und Constraints aus der eigenen CREATE-TABLE-Definition:
+-- 
+-- ```sql
+-- (
+--           [CollectorCode] varchar(64) NOT NULL
+--         , [IsEnabled] bit NOT NULL
+--               CONSTRAINT [DF_snapshot_CollectorPolicy_IsEnabled] DEFAULT (1)
+--         , [CollectionIntervalSeconds] int NOT NULL
+--         , [MaxRows] int NOT NULL
+--         , [PayloadEnabled] bit NOT NULL
+--         , [RetentionPolicyCode] varchar(64) NOT NULL
+--         , [IsFrameworkDefault] bit NOT NULL
+--               CONSTRAINT [DF_snapshot_CollectorPolicy_IsFrameworkDefault]
+--               DEFAULT (0)
+--         , [SeedVersion] int NOT NULL
+--         , [LastUpdatedUtc] datetime2(3) NOT NULL
+--               CONSTRAINT [DF_snapshot_CollectorPolicy_LastUpdatedUtc]
+--               DEFAULT (SYSUTCDATETIME())
+--         , CONSTRAINT [PK_snapshot_CollectorPolicy]
+--               PRIMARY KEY CLUSTERED ([CollectorCode])
+--         , CONSTRAINT [FK_snapshot_CollectorPolicy_RetentionPolicy]
+--               FOREIGN KEY ([RetentionPolicyCode])
+--               REFERENCES [snapshot].[RetentionPolicy]([RetentionPolicyCode])
+--         , CONSTRAINT [CK_snapshot_CollectorPolicy_CollectorCode]
+--               CHECK ([CollectorCode] IN ('PERFORMANCE_COUNTERS','WAIT_STATS','FILE_IO'))
+--         , CONSTRAINT [CK_snapshot_CollectorPolicy_CollectionIntervalSeconds]
+--               CHECK ([CollectionIntervalSeconds] BETWEEN 1 AND 3600)
+--         , CONSTRAINT [CK_snapshot_CollectorPolicy_MaxRows]
+--               CHECK ([MaxRows] BETWEEN 1 AND 100000)
+--         , CONSTRAINT [CK_snapshot_CollectorPolicy_SeedVersion]
+--               CHECK ([SeedVersion] > 0)
+--     )
+-- ```
+-- 
+-- 
+-- ## Beispiel
+-- 
+-- ```sql
+-- SELECT TOP (10) * FROM [snapshot].[CollectorPolicy];
+-- ```
+-- 
+-- ## Aufwand, Nebenwirkungen, Fehler und Grenzen
+-- 
+-- Das zugehörige Installationsskript enthält CREATE TABLE, INSERT, UPDATE, DELETE; ein lesendes SELECT führt diese Installationsschritte nicht aus. Constraints und NULL-Grenzen stehen in der Tabellendefinition.
+-- 
+-- ### Quellgebundene Detailbeschreibung
+-- 
+-- Der folgende Quellkopf bewahrt die zusätzlichen Implementierungsgrenzen für diesen Skill.
+-- 
+-- ```text
+-- Datei        : 030_Snapshot_Target_Schema.sql
+-- Version      : 1.2.2
+-- Stand        : 2026-10-26
+-- Zweck        : Erstellt und aktualisiert das versionierte Basisschema des
+--                optionalen SC-023-Snapshot-/Baseline-Ziels in der aktuell
+--                verbundenen Datenbank. Das Schema speichert Erfassungsläufe,
+--                Status, Scopes, typisierte Messwerte und optionale Nutzdaten.
+--                Es startet weder Sammler noch Zeitpläne oder Retention-Purges.
+-- 
+-- Tabellen     : PackageVersion kennzeichnet Paket- und Schemafassung sowie
+--                Erstinstallation und letzten Installationslauf. RetentionPolicy
+--                hält Aufbewahrungsfristen für Rohwerte, Nutzdaten und Rollups,
+--                Speicherbudget, Purge-Takt, Batchgröße und Budgetaktion.
+--                CollectorPolicy beschreibt Aktivierung, Intervall, Zeilenlimit,
+--                Nutzdatenerfassung und zugeordnete RetentionPolicy.
+--                CaptureRun protokolliert Sammler, Schedulerart, Start und Ende,
+--                Quelldatenbankname, SQL-Server-Startzeit, Reset-Epoche,
+--                Vertragsfassung, Status, Partialität, Fehler und Zeilenzähler.
+--                ModuleStatus hält je Lauf und Modul Zeitpunkt, Status, Partial-
+--                und Fehlerangaben sowie Evidenzgrenzen.
+--                Scope ordnet Messungen über Scope-Typ, optionalen Eltern-Scope,
+--                32-Byte-Schlüsselhash und JSON-Identität einem Erfassungsbereich
+--                zu. MetricDefinition beschreibt Metrikcode, Werttyp, Einheit,
+--                Vertragsfassung, Text, Framework-Default und Seedfassung.
+--                MetricSample verbindet Lauf, Scope und Metrik mit Messzeit,
+--                Reset-Epoche, genau einem typisierten Wert, Qualitätscode und
+--                Partialitätskennzeichen. PayloadSnapshot speichert optionale,
+--                Modulnutzdaten mit Format, Vertragsfassung, Hash
+--                und unkomprimierter Zeichenanzahl. PurgeRun protokolliert
+--                Aufräumlauf, Status, Batches, gelöschte Zeilen, Budgetmessung
+--                und Fehler.
+-- 
+-- Beziehungen  : Fremdschlüssel verbinden CollectorPolicy mit RetentionPolicy,
+--                CaptureRun mit CollectorPolicy, ModuleStatus und PayloadSnapshot
+--                mit CaptureRun sowie MetricSample mit CaptureRun, Scope und
+--                MetricDefinition. Scope kann auf einen Eltern-Scope verweisen.
+--                Primär- und eindeutige Schlüssel verhindern doppelte
+--                Policycodes, Modulstatus je Lauf/Modul sowie Messwerte je
+--                Lauf/Scope/Metrik. Ein gefilterter eindeutiger Index lässt
+--                höchstens eine RetentionPolicy als Framework-Default zu;
+--                Zeit- und Zuordnungsindizes unterstützen die im Schema
+--                vorgesehenen Lauf-, Messwert-, Nutzdaten- und Purgeabfragen.
+--                Die DDL definiert keine kaskadierenden Fremdschlüssel.
+-- 
+-- Werte        : UTC-Zeitfelder geben den jeweiligen Erfassungs-, Lauf- oder
+--                Änderungszeitpunkt an. NULL ist bei Endzeiten, optionalen
+--                Start-/Resetinformationen, Fehlerfeldern und alternativen
+--                Messwertspalten zulässig, soweit die DDL dies festlegt.
+--                NumericValue, BigintValue und StringValue sind Alternativen:
+--                MetricSample verlangt genau einen nicht-NULL-Wert. ValueType
+--                und Unit in MetricDefinition beschreiben dessen Interpretation;
+--                der Vertrag garantiert keine Umrechnung. ResetEpochId grenzt
+--                Zählerstände über eine Reset-Epoche ab. QualityCode, StatusCode
+--                und IsPartial erhalten Qualitäts-, Ablauf- und
+--                Vollständigkeitsangaben. ScopeIdentityJson muss JSON sein;
+--                ScopeKeyHash ist genau 32 Byte lang. PayloadHash ist ebenfalls
+--                32 Byte lang; PayloadFormat und CompressionType sind auf die
+--                im Schema genannten Werte beschränkt.
+-- 
+-- Migration    : Die native Vorprüfung akzeptiert nur erkannte Schemaformen.
+--                Für erkannte Legacy- und Schema-2-Stände erweitert sie die
+--                CollectorCode- und ScopeType-Prüfwerte um FILE_IO
+--                beziehungsweise FILE_IO_FILE. Unbekannte oder abweichende
+--                Strukturen werden nicht beliebig repariert oder überschrieben.
+--                Paketversion 1.2.2 / Schema 3 kennzeichnet Installationsmetadaten,
+--                nicht die Laufzeitqualifikation oder Freigabe des Pakets.
+-- 
+-- Seeds        : Neue DEFAULT-Retention-, PERFORMANCE_COUNTERS-Policy- und
+--                Performance-Counter-Metrikzeilen werden nur eingefügt, wenn
+--                ihr jeweiliger Schlüssel fehlt. Vorhandene solche Zeilen bleiben
+--                erhalten. PackageVersion wird für SC-023 angelegt oder auf
+--                Paketversion 1.2.2 und Schema 3 gesetzt; InstalledAtUtc bleibt
+--                bei einem vorhandenen Datensatz unverändert, während
+--                LastInstallerRunUtc aktualisiert wird.
+-- 
+-- Voraussetzung: Die Verbindung zeigt auf eine ONLINE befindliche, beschreibbare
+--                Nicht-Systemdatenbank. Das Skript erstellt nicht selbst das
+--                Ziel und verwendet ausschließlich den geprüften Verbindungskontext.
+-- Datenschutz  : Die Tabellen dürfen im autorisierten Betrieb vollständige reale
+--                Laufzeitevidenz einschließlich optionaler Payloads speichern.
+--                Dieses Installationsskript enthält nur generische Seeds und
+--                keine Laufzeitwerte oder Datenbanknamen.
+-- Transaktion  : Implizite Transaktionen müssen ausgeschaltet sein. Das Skript
+--                verwendet bei Bedarf eine eigene Transaktion, andernfalls einen
+--                Savepoint. Im Fehlerfall wird die eigene Transaktion bei
+--                XACT_STATE() ungleich 0 zurückgerollt; im Aufruferkontext nur
+--                bei XACT_STATE() = 1 bis zum Savepoint. Bei XACT_STATE() = -1
+--                kann dieser Savepoint-Rollback nicht erfolgen; ein allgemeiner
+--                Rollback der Aufrufertransaktion wird nicht zugesichert.
+--                Die gesetzten SET-Optionen gelten für die verbundene Sitzung;
+--                das Skript stellt deren vorherige Werte nicht wieder her.
+-- Locking      : Die privilegierte native Strukturvorprüfung verwendet
+--                LOCK_TIMEOUT 10000 und hält geprüfte Tabellen bis zum
+--                Transaktionsende. Die anschließende eigene DDL verwendet
+--                LOCK_TIMEOUT 0 und wartet nicht auf fremde Sch-M-Sperren.
+-- Rechte       : CONTROL DATABASE und VIEW ANY DEFINITION sind für die native
+--                Strukturprüfung erforderlich. Das Skript vergibt keine Rechte.
+-- ```
+-- 
+-- USAGE_SKILL_END snapshot.CollectorPolicy
+CREATE TABLE [snapshot].[CollectorPolicy]
     (
           [CollectorCode] varchar(64) NOT NULL
         , [IsEnabled] bit NOT NULL
@@ -1337,7 +1881,196 @@ IF NOT EXISTS
       AND [t].[name] = N'CaptureRun'
 )
 BEGIN
-    CREATE TABLE [snapshot].[CaptureRun]
+-- USAGE_SKILL_BEGIN snapshot.CaptureRun 1.0.0
+-- ---
+-- skill_format_version: "1.0.0"
+-- name: "snapshot.CaptureRun"
+-- schema_name: "snapshot"
+-- object_name: "CaptureRun"
+-- object_type: "TABLE"
+-- database_role: "snapshot_target"
+-- is_internal: false
+-- description: "Erstellt und aktualisiert das versionierte Basisschema des optionalen SC-023-Snapshot-/Baseline-Ziels in der aktuell verbundenen Datenbank."
+-- source_path: "Code/10_SnapshotBaseline/030_Snapshot_Target_Schema.sql"
+-- ---
+-- 
+-- # snapshot.CaptureRun
+-- 
+-- ## Zweck und Einsatz
+-- 
+-- Erstellt und aktualisiert das versionierte Basisschema des optionalen SC-023-Snapshot-/Baseline-Ziels in der aktuell verbundenen Datenbank. Das Schema speichert Erfassungsläufe, Status, Scopes, typisierte Messwerte und optionale Nutzdaten. Es startet weder Sammler noch Zeitpläne oder Retention-Purges.
+-- 
+-- ## Voraussetzungen und Rechte
+-- 
+-- Die Verbindung zeigt auf eine ONLINE befindliche, beschreibbare Nicht-Systemdatenbank. Das Skript erstellt nicht selbst das Ziel und verwendet ausschließlich den geprüften Verbindungskontext.
+-- 
+-- CONTROL DATABASE und VIEW ANY DEFINITION sind für die native Strukturprüfung erforderlich. Das Skript vergibt keine Rechte.
+-- 
+-- Lesender Einsatz erfordert SELECT auf [snapshot].[CaptureRun]; Installation und Aktualisierung benötigen die im Quellskript gezeigten DDL- und DML-Rechte.
+-- 
+-- ## Parameter und Eingabe
+-- 
+-- Keine Aufrufparameter.
+-- 
+-- ## Resultate und Ausgabe
+-- 
+-- Tabellenspalten und Constraints aus der eigenen CREATE-TABLE-Definition:
+-- 
+-- ```sql
+-- (
+--           [CaptureRunId] bigint IDENTITY(1,1) NOT NULL
+--         , [CollectorCode] varchar(64) NOT NULL
+--         , [SchedulerType] varchar(16) NOT NULL
+--         , [StartedAtUtc] datetime2(3) NOT NULL
+--         , [EndedAtUtc] datetime2(3) NULL
+--         , [SourceDatabaseName] sysname NOT NULL
+--         , [SqlServerStartTimeUtc] datetime2(3) NULL
+--         , [ResetEpochId] uniqueidentifier NULL
+--         , [ContractVersion] int NOT NULL
+--         , [StatusCode] varchar(40) NOT NULL
+--         , [IsPartial] bit NOT NULL
+--               CONSTRAINT [DF_snapshot_CaptureRun_IsPartial] DEFAULT (0)
+--         , [ErrorNumber] int NULL
+--         , [ErrorMessage] nvarchar(2048) NULL
+--         , [MetricSampleCount] bigint NOT NULL
+--               CONSTRAINT [DF_snapshot_CaptureRun_MetricSampleCount] DEFAULT (0)
+--         , [PayloadCount] bigint NOT NULL
+--               CONSTRAINT [DF_snapshot_CaptureRun_PayloadCount] DEFAULT (0)
+--         , CONSTRAINT [PK_snapshot_CaptureRun]
+--               PRIMARY KEY CLUSTERED ([CaptureRunId])
+--         , CONSTRAINT [FK_snapshot_CaptureRun_CollectorPolicy]
+--               FOREIGN KEY ([CollectorCode])
+--               REFERENCES [snapshot].[CollectorPolicy]([CollectorCode])
+--         , CONSTRAINT [CK_snapshot_CaptureRun_SchedulerType]
+--               CHECK ([SchedulerType] IN ('MANUAL','EXTERNAL','SQL_AGENT'))
+--         , CONSTRAINT [CK_snapshot_CaptureRun_EndedAtUtc]
+--               CHECK ([EndedAtUtc] IS NULL OR [EndedAtUtc] >= [StartedAtUtc])
+--         , CONSTRAINT [CK_snapshot_CaptureRun_MetricSampleCount]
+--               CHECK ([MetricSampleCount] >= 0)
+--         , CONSTRAINT [CK_snapshot_CaptureRun_PayloadCount]
+--               CHECK ([PayloadCount] >= 0)
+--         , CONSTRAINT [CK_snapshot_CaptureRun_ContractVersion]
+--               CHECK ([ContractVersion] > 0)
+--     )
+-- ```
+-- 
+-- 
+-- ## Beispiel
+-- 
+-- ```sql
+-- SELECT TOP (10) * FROM [snapshot].[CaptureRun];
+-- ```
+-- 
+-- ## Aufwand, Nebenwirkungen, Fehler und Grenzen
+-- 
+-- Das zugehörige Installationsskript enthält CREATE TABLE, INSERT, UPDATE, DELETE; ein lesendes SELECT führt diese Installationsschritte nicht aus. Constraints und NULL-Grenzen stehen in der Tabellendefinition.
+-- 
+-- ### Quellgebundene Detailbeschreibung
+-- 
+-- Der folgende Quellkopf bewahrt die zusätzlichen Implementierungsgrenzen für diesen Skill.
+-- 
+-- ```text
+-- Datei        : 030_Snapshot_Target_Schema.sql
+-- Version      : 1.2.2
+-- Stand        : 2026-10-26
+-- Zweck        : Erstellt und aktualisiert das versionierte Basisschema des
+--                optionalen SC-023-Snapshot-/Baseline-Ziels in der aktuell
+--                verbundenen Datenbank. Das Schema speichert Erfassungsläufe,
+--                Status, Scopes, typisierte Messwerte und optionale Nutzdaten.
+--                Es startet weder Sammler noch Zeitpläne oder Retention-Purges.
+-- 
+-- Tabellen     : PackageVersion kennzeichnet Paket- und Schemafassung sowie
+--                Erstinstallation und letzten Installationslauf. RetentionPolicy
+--                hält Aufbewahrungsfristen für Rohwerte, Nutzdaten und Rollups,
+--                Speicherbudget, Purge-Takt, Batchgröße und Budgetaktion.
+--                CollectorPolicy beschreibt Aktivierung, Intervall, Zeilenlimit,
+--                Nutzdatenerfassung und zugeordnete RetentionPolicy.
+--                CaptureRun protokolliert Sammler, Schedulerart, Start und Ende,
+--                Quelldatenbankname, SQL-Server-Startzeit, Reset-Epoche,
+--                Vertragsfassung, Status, Partialität, Fehler und Zeilenzähler.
+--                ModuleStatus hält je Lauf und Modul Zeitpunkt, Status, Partial-
+--                und Fehlerangaben sowie Evidenzgrenzen.
+--                Scope ordnet Messungen über Scope-Typ, optionalen Eltern-Scope,
+--                32-Byte-Schlüsselhash und JSON-Identität einem Erfassungsbereich
+--                zu. MetricDefinition beschreibt Metrikcode, Werttyp, Einheit,
+--                Vertragsfassung, Text, Framework-Default und Seedfassung.
+--                MetricSample verbindet Lauf, Scope und Metrik mit Messzeit,
+--                Reset-Epoche, genau einem typisierten Wert, Qualitätscode und
+--                Partialitätskennzeichen. PayloadSnapshot speichert optionale,
+--                Modulnutzdaten mit Format, Vertragsfassung, Hash
+--                und unkomprimierter Zeichenanzahl. PurgeRun protokolliert
+--                Aufräumlauf, Status, Batches, gelöschte Zeilen, Budgetmessung
+--                und Fehler.
+-- 
+-- Beziehungen  : Fremdschlüssel verbinden CollectorPolicy mit RetentionPolicy,
+--                CaptureRun mit CollectorPolicy, ModuleStatus und PayloadSnapshot
+--                mit CaptureRun sowie MetricSample mit CaptureRun, Scope und
+--                MetricDefinition. Scope kann auf einen Eltern-Scope verweisen.
+--                Primär- und eindeutige Schlüssel verhindern doppelte
+--                Policycodes, Modulstatus je Lauf/Modul sowie Messwerte je
+--                Lauf/Scope/Metrik. Ein gefilterter eindeutiger Index lässt
+--                höchstens eine RetentionPolicy als Framework-Default zu;
+--                Zeit- und Zuordnungsindizes unterstützen die im Schema
+--                vorgesehenen Lauf-, Messwert-, Nutzdaten- und Purgeabfragen.
+--                Die DDL definiert keine kaskadierenden Fremdschlüssel.
+-- 
+-- Werte        : UTC-Zeitfelder geben den jeweiligen Erfassungs-, Lauf- oder
+--                Änderungszeitpunkt an. NULL ist bei Endzeiten, optionalen
+--                Start-/Resetinformationen, Fehlerfeldern und alternativen
+--                Messwertspalten zulässig, soweit die DDL dies festlegt.
+--                NumericValue, BigintValue und StringValue sind Alternativen:
+--                MetricSample verlangt genau einen nicht-NULL-Wert. ValueType
+--                und Unit in MetricDefinition beschreiben dessen Interpretation;
+--                der Vertrag garantiert keine Umrechnung. ResetEpochId grenzt
+--                Zählerstände über eine Reset-Epoche ab. QualityCode, StatusCode
+--                und IsPartial erhalten Qualitäts-, Ablauf- und
+--                Vollständigkeitsangaben. ScopeIdentityJson muss JSON sein;
+--                ScopeKeyHash ist genau 32 Byte lang. PayloadHash ist ebenfalls
+--                32 Byte lang; PayloadFormat und CompressionType sind auf die
+--                im Schema genannten Werte beschränkt.
+-- 
+-- Migration    : Die native Vorprüfung akzeptiert nur erkannte Schemaformen.
+--                Für erkannte Legacy- und Schema-2-Stände erweitert sie die
+--                CollectorCode- und ScopeType-Prüfwerte um FILE_IO
+--                beziehungsweise FILE_IO_FILE. Unbekannte oder abweichende
+--                Strukturen werden nicht beliebig repariert oder überschrieben.
+--                Paketversion 1.2.2 / Schema 3 kennzeichnet Installationsmetadaten,
+--                nicht die Laufzeitqualifikation oder Freigabe des Pakets.
+-- 
+-- Seeds        : Neue DEFAULT-Retention-, PERFORMANCE_COUNTERS-Policy- und
+--                Performance-Counter-Metrikzeilen werden nur eingefügt, wenn
+--                ihr jeweiliger Schlüssel fehlt. Vorhandene solche Zeilen bleiben
+--                erhalten. PackageVersion wird für SC-023 angelegt oder auf
+--                Paketversion 1.2.2 und Schema 3 gesetzt; InstalledAtUtc bleibt
+--                bei einem vorhandenen Datensatz unverändert, während
+--                LastInstallerRunUtc aktualisiert wird.
+-- 
+-- Voraussetzung: Die Verbindung zeigt auf eine ONLINE befindliche, beschreibbare
+--                Nicht-Systemdatenbank. Das Skript erstellt nicht selbst das
+--                Ziel und verwendet ausschließlich den geprüften Verbindungskontext.
+-- Datenschutz  : Die Tabellen dürfen im autorisierten Betrieb vollständige reale
+--                Laufzeitevidenz einschließlich optionaler Payloads speichern.
+--                Dieses Installationsskript enthält nur generische Seeds und
+--                keine Laufzeitwerte oder Datenbanknamen.
+-- Transaktion  : Implizite Transaktionen müssen ausgeschaltet sein. Das Skript
+--                verwendet bei Bedarf eine eigene Transaktion, andernfalls einen
+--                Savepoint. Im Fehlerfall wird die eigene Transaktion bei
+--                XACT_STATE() ungleich 0 zurückgerollt; im Aufruferkontext nur
+--                bei XACT_STATE() = 1 bis zum Savepoint. Bei XACT_STATE() = -1
+--                kann dieser Savepoint-Rollback nicht erfolgen; ein allgemeiner
+--                Rollback der Aufrufertransaktion wird nicht zugesichert.
+--                Die gesetzten SET-Optionen gelten für die verbundene Sitzung;
+--                das Skript stellt deren vorherige Werte nicht wieder her.
+-- Locking      : Die privilegierte native Strukturvorprüfung verwendet
+--                LOCK_TIMEOUT 10000 und hält geprüfte Tabellen bis zum
+--                Transaktionsende. Die anschließende eigene DDL verwendet
+--                LOCK_TIMEOUT 0 und wartet nicht auf fremde Sch-M-Sperren.
+-- Rechte       : CONTROL DATABASE und VIEW ANY DEFINITION sind für die native
+--                Strukturprüfung erforderlich. Das Skript vergibt keine Rechte.
+-- ```
+-- 
+-- USAGE_SKILL_END snapshot.CaptureRun
+CREATE TABLE [snapshot].[CaptureRun]
     (
           [CaptureRunId] bigint IDENTITY(1,1) NOT NULL
         , [CollectorCode] varchar(64) NOT NULL
@@ -1385,7 +2118,180 @@ IF NOT EXISTS
       AND [t].[name] = N'ModuleStatus'
 )
 BEGIN
-    CREATE TABLE [snapshot].[ModuleStatus]
+-- USAGE_SKILL_BEGIN snapshot.ModuleStatus 1.0.0
+-- ---
+-- skill_format_version: "1.0.0"
+-- name: "snapshot.ModuleStatus"
+-- schema_name: "snapshot"
+-- object_name: "ModuleStatus"
+-- object_type: "TABLE"
+-- database_role: "snapshot_target"
+-- is_internal: false
+-- description: "Erstellt und aktualisiert das versionierte Basisschema des optionalen SC-023-Snapshot-/Baseline-Ziels in der aktuell verbundenen Datenbank."
+-- source_path: "Code/10_SnapshotBaseline/030_Snapshot_Target_Schema.sql"
+-- ---
+-- 
+-- # snapshot.ModuleStatus
+-- 
+-- ## Zweck und Einsatz
+-- 
+-- Erstellt und aktualisiert das versionierte Basisschema des optionalen SC-023-Snapshot-/Baseline-Ziels in der aktuell verbundenen Datenbank. Das Schema speichert Erfassungsläufe, Status, Scopes, typisierte Messwerte und optionale Nutzdaten. Es startet weder Sammler noch Zeitpläne oder Retention-Purges.
+-- 
+-- ## Voraussetzungen und Rechte
+-- 
+-- Die Verbindung zeigt auf eine ONLINE befindliche, beschreibbare Nicht-Systemdatenbank. Das Skript erstellt nicht selbst das Ziel und verwendet ausschließlich den geprüften Verbindungskontext.
+-- 
+-- CONTROL DATABASE und VIEW ANY DEFINITION sind für die native Strukturprüfung erforderlich. Das Skript vergibt keine Rechte.
+-- 
+-- Lesender Einsatz erfordert SELECT auf [snapshot].[ModuleStatus]; Installation und Aktualisierung benötigen die im Quellskript gezeigten DDL- und DML-Rechte.
+-- 
+-- ## Parameter und Eingabe
+-- 
+-- Keine Aufrufparameter.
+-- 
+-- ## Resultate und Ausgabe
+-- 
+-- Tabellenspalten und Constraints aus der eigenen CREATE-TABLE-Definition:
+-- 
+-- ```sql
+-- (
+--           [ModuleStatusId] bigint IDENTITY(1,1) NOT NULL
+--         , [CaptureRunId] bigint NOT NULL
+--         , [ModuleName] sysname NOT NULL
+--         , [CollectionTimeUtc] datetime2(3) NOT NULL
+--         , [StatusCode] varchar(40) NOT NULL
+--         , [IsPartial] bit NOT NULL
+--               CONSTRAINT [DF_snapshot_ModuleStatus_IsPartial] DEFAULT (0)
+--         , [ErrorNumber] int NULL
+--         , [ErrorMessage] nvarchar(2048) NULL
+--         , [EvidenceLimit] nvarchar(1000) NULL
+--         , CONSTRAINT [PK_snapshot_ModuleStatus]
+--               PRIMARY KEY CLUSTERED ([ModuleStatusId])
+--         , CONSTRAINT [FK_snapshot_ModuleStatus_CaptureRun]
+--               FOREIGN KEY ([CaptureRunId])
+--               REFERENCES [snapshot].[CaptureRun]([CaptureRunId])
+--         , CONSTRAINT [UQ_snapshot_ModuleStatus_RunModule]
+--               UNIQUE ([CaptureRunId],[ModuleName])
+--     )
+-- ```
+-- 
+-- 
+-- ## Beispiel
+-- 
+-- ```sql
+-- SELECT TOP (10) * FROM [snapshot].[ModuleStatus];
+-- ```
+-- 
+-- ## Aufwand, Nebenwirkungen, Fehler und Grenzen
+-- 
+-- Das zugehörige Installationsskript enthält CREATE TABLE, INSERT, UPDATE, DELETE; ein lesendes SELECT führt diese Installationsschritte nicht aus. Constraints und NULL-Grenzen stehen in der Tabellendefinition.
+-- 
+-- ### Quellgebundene Detailbeschreibung
+-- 
+-- Der folgende Quellkopf bewahrt die zusätzlichen Implementierungsgrenzen für diesen Skill.
+-- 
+-- ```text
+-- Datei        : 030_Snapshot_Target_Schema.sql
+-- Version      : 1.2.2
+-- Stand        : 2026-10-26
+-- Zweck        : Erstellt und aktualisiert das versionierte Basisschema des
+--                optionalen SC-023-Snapshot-/Baseline-Ziels in der aktuell
+--                verbundenen Datenbank. Das Schema speichert Erfassungsläufe,
+--                Status, Scopes, typisierte Messwerte und optionale Nutzdaten.
+--                Es startet weder Sammler noch Zeitpläne oder Retention-Purges.
+-- 
+-- Tabellen     : PackageVersion kennzeichnet Paket- und Schemafassung sowie
+--                Erstinstallation und letzten Installationslauf. RetentionPolicy
+--                hält Aufbewahrungsfristen für Rohwerte, Nutzdaten und Rollups,
+--                Speicherbudget, Purge-Takt, Batchgröße und Budgetaktion.
+--                CollectorPolicy beschreibt Aktivierung, Intervall, Zeilenlimit,
+--                Nutzdatenerfassung und zugeordnete RetentionPolicy.
+--                CaptureRun protokolliert Sammler, Schedulerart, Start und Ende,
+--                Quelldatenbankname, SQL-Server-Startzeit, Reset-Epoche,
+--                Vertragsfassung, Status, Partialität, Fehler und Zeilenzähler.
+--                ModuleStatus hält je Lauf und Modul Zeitpunkt, Status, Partial-
+--                und Fehlerangaben sowie Evidenzgrenzen.
+--                Scope ordnet Messungen über Scope-Typ, optionalen Eltern-Scope,
+--                32-Byte-Schlüsselhash und JSON-Identität einem Erfassungsbereich
+--                zu. MetricDefinition beschreibt Metrikcode, Werttyp, Einheit,
+--                Vertragsfassung, Text, Framework-Default und Seedfassung.
+--                MetricSample verbindet Lauf, Scope und Metrik mit Messzeit,
+--                Reset-Epoche, genau einem typisierten Wert, Qualitätscode und
+--                Partialitätskennzeichen. PayloadSnapshot speichert optionale,
+--                Modulnutzdaten mit Format, Vertragsfassung, Hash
+--                und unkomprimierter Zeichenanzahl. PurgeRun protokolliert
+--                Aufräumlauf, Status, Batches, gelöschte Zeilen, Budgetmessung
+--                und Fehler.
+-- 
+-- Beziehungen  : Fremdschlüssel verbinden CollectorPolicy mit RetentionPolicy,
+--                CaptureRun mit CollectorPolicy, ModuleStatus und PayloadSnapshot
+--                mit CaptureRun sowie MetricSample mit CaptureRun, Scope und
+--                MetricDefinition. Scope kann auf einen Eltern-Scope verweisen.
+--                Primär- und eindeutige Schlüssel verhindern doppelte
+--                Policycodes, Modulstatus je Lauf/Modul sowie Messwerte je
+--                Lauf/Scope/Metrik. Ein gefilterter eindeutiger Index lässt
+--                höchstens eine RetentionPolicy als Framework-Default zu;
+--                Zeit- und Zuordnungsindizes unterstützen die im Schema
+--                vorgesehenen Lauf-, Messwert-, Nutzdaten- und Purgeabfragen.
+--                Die DDL definiert keine kaskadierenden Fremdschlüssel.
+-- 
+-- Werte        : UTC-Zeitfelder geben den jeweiligen Erfassungs-, Lauf- oder
+--                Änderungszeitpunkt an. NULL ist bei Endzeiten, optionalen
+--                Start-/Resetinformationen, Fehlerfeldern und alternativen
+--                Messwertspalten zulässig, soweit die DDL dies festlegt.
+--                NumericValue, BigintValue und StringValue sind Alternativen:
+--                MetricSample verlangt genau einen nicht-NULL-Wert. ValueType
+--                und Unit in MetricDefinition beschreiben dessen Interpretation;
+--                der Vertrag garantiert keine Umrechnung. ResetEpochId grenzt
+--                Zählerstände über eine Reset-Epoche ab. QualityCode, StatusCode
+--                und IsPartial erhalten Qualitäts-, Ablauf- und
+--                Vollständigkeitsangaben. ScopeIdentityJson muss JSON sein;
+--                ScopeKeyHash ist genau 32 Byte lang. PayloadHash ist ebenfalls
+--                32 Byte lang; PayloadFormat und CompressionType sind auf die
+--                im Schema genannten Werte beschränkt.
+-- 
+-- Migration    : Die native Vorprüfung akzeptiert nur erkannte Schemaformen.
+--                Für erkannte Legacy- und Schema-2-Stände erweitert sie die
+--                CollectorCode- und ScopeType-Prüfwerte um FILE_IO
+--                beziehungsweise FILE_IO_FILE. Unbekannte oder abweichende
+--                Strukturen werden nicht beliebig repariert oder überschrieben.
+--                Paketversion 1.2.2 / Schema 3 kennzeichnet Installationsmetadaten,
+--                nicht die Laufzeitqualifikation oder Freigabe des Pakets.
+-- 
+-- Seeds        : Neue DEFAULT-Retention-, PERFORMANCE_COUNTERS-Policy- und
+--                Performance-Counter-Metrikzeilen werden nur eingefügt, wenn
+--                ihr jeweiliger Schlüssel fehlt. Vorhandene solche Zeilen bleiben
+--                erhalten. PackageVersion wird für SC-023 angelegt oder auf
+--                Paketversion 1.2.2 und Schema 3 gesetzt; InstalledAtUtc bleibt
+--                bei einem vorhandenen Datensatz unverändert, während
+--                LastInstallerRunUtc aktualisiert wird.
+-- 
+-- Voraussetzung: Die Verbindung zeigt auf eine ONLINE befindliche, beschreibbare
+--                Nicht-Systemdatenbank. Das Skript erstellt nicht selbst das
+--                Ziel und verwendet ausschließlich den geprüften Verbindungskontext.
+-- Datenschutz  : Die Tabellen dürfen im autorisierten Betrieb vollständige reale
+--                Laufzeitevidenz einschließlich optionaler Payloads speichern.
+--                Dieses Installationsskript enthält nur generische Seeds und
+--                keine Laufzeitwerte oder Datenbanknamen.
+-- Transaktion  : Implizite Transaktionen müssen ausgeschaltet sein. Das Skript
+--                verwendet bei Bedarf eine eigene Transaktion, andernfalls einen
+--                Savepoint. Im Fehlerfall wird die eigene Transaktion bei
+--                XACT_STATE() ungleich 0 zurückgerollt; im Aufruferkontext nur
+--                bei XACT_STATE() = 1 bis zum Savepoint. Bei XACT_STATE() = -1
+--                kann dieser Savepoint-Rollback nicht erfolgen; ein allgemeiner
+--                Rollback der Aufrufertransaktion wird nicht zugesichert.
+--                Die gesetzten SET-Optionen gelten für die verbundene Sitzung;
+--                das Skript stellt deren vorherige Werte nicht wieder her.
+-- Locking      : Die privilegierte native Strukturvorprüfung verwendet
+--                LOCK_TIMEOUT 10000 und hält geprüfte Tabellen bis zum
+--                Transaktionsende. Die anschließende eigene DDL verwendet
+--                LOCK_TIMEOUT 0 und wartet nicht auf fremde Sch-M-Sperren.
+-- Rechte       : CONTROL DATABASE und VIEW ANY DEFINITION sind für die native
+--                Strukturprüfung erforderlich. Das Skript vergibt keine Rechte.
+-- ```
+-- 
+-- USAGE_SKILL_END snapshot.ModuleStatus
+CREATE TABLE [snapshot].[ModuleStatus]
     (
           [ModuleStatusId] bigint IDENTITY(1,1) NOT NULL
         , [CaptureRunId] bigint NOT NULL
@@ -1417,7 +2323,184 @@ IF NOT EXISTS
       AND [t].[name] = N'Scope'
 )
 BEGIN
-    CREATE TABLE [snapshot].[Scope]
+-- USAGE_SKILL_BEGIN snapshot.Scope 1.0.0
+-- ---
+-- skill_format_version: "1.0.0"
+-- name: "snapshot.Scope"
+-- schema_name: "snapshot"
+-- object_name: "Scope"
+-- object_type: "TABLE"
+-- database_role: "snapshot_target"
+-- is_internal: false
+-- description: "Erstellt und aktualisiert das versionierte Basisschema des optionalen SC-023-Snapshot-/Baseline-Ziels in der aktuell verbundenen Datenbank."
+-- source_path: "Code/10_SnapshotBaseline/030_Snapshot_Target_Schema.sql"
+-- ---
+-- 
+-- # snapshot.Scope
+-- 
+-- ## Zweck und Einsatz
+-- 
+-- Erstellt und aktualisiert das versionierte Basisschema des optionalen SC-023-Snapshot-/Baseline-Ziels in der aktuell verbundenen Datenbank. Das Schema speichert Erfassungsläufe, Status, Scopes, typisierte Messwerte und optionale Nutzdaten. Es startet weder Sammler noch Zeitpläne oder Retention-Purges.
+-- 
+-- ## Voraussetzungen und Rechte
+-- 
+-- Die Verbindung zeigt auf eine ONLINE befindliche, beschreibbare Nicht-Systemdatenbank. Das Skript erstellt nicht selbst das Ziel und verwendet ausschließlich den geprüften Verbindungskontext.
+-- 
+-- CONTROL DATABASE und VIEW ANY DEFINITION sind für die native Strukturprüfung erforderlich. Das Skript vergibt keine Rechte.
+-- 
+-- Lesender Einsatz erfordert SELECT auf [snapshot].[Scope]; Installation und Aktualisierung benötigen die im Quellskript gezeigten DDL- und DML-Rechte.
+-- 
+-- ## Parameter und Eingabe
+-- 
+-- Keine Aufrufparameter.
+-- 
+-- ## Resultate und Ausgabe
+-- 
+-- Tabellenspalten und Constraints aus der eigenen CREATE-TABLE-Definition:
+-- 
+-- ```sql
+-- (
+--           [ScopeId] bigint IDENTITY(1,1) NOT NULL
+--         , [ScopeType] varchar(40) NOT NULL
+--         , [ParentScopeId] bigint NULL
+--         , [ScopeKeyHash] varbinary(32) NOT NULL
+--         , [ScopeIdentityJson] nvarchar(max) NOT NULL
+--         , [CreatedAtUtc] datetime2(3) NOT NULL
+--               CONSTRAINT [DF_snapshot_Scope_CreatedAtUtc]
+--               DEFAULT (SYSUTCDATETIME())
+--         , CONSTRAINT [PK_snapshot_Scope]
+--               PRIMARY KEY CLUSTERED ([ScopeId])
+--         , CONSTRAINT [FK_snapshot_Scope_ParentScope]
+--               FOREIGN KEY ([ParentScopeId])
+--               REFERENCES [snapshot].[Scope]([ScopeId])
+--         , CONSTRAINT [UQ_snapshot_Scope_TypeKeyHash]
+--               UNIQUE ([ScopeType],[ScopeKeyHash])
+--         , CONSTRAINT [CK_snapshot_Scope_ScopeType]
+--               CHECK ([ScopeType] IN ('SERVER','PERFORMANCE_COUNTER','WAIT_TYPE','FILE_IO_FILE'))
+--         , CONSTRAINT [CK_snapshot_Scope_ScopeKeyHash]
+--               CHECK (DATALENGTH([ScopeKeyHash]) = 32)
+--         , CONSTRAINT [CK_snapshot_Scope_ScopeIdentityJson]
+--               CHECK (ISJSON([ScopeIdentityJson]) = 1)
+--     )
+-- ```
+-- 
+-- 
+-- ## Beispiel
+-- 
+-- ```sql
+-- SELECT TOP (10) * FROM [snapshot].[Scope];
+-- ```
+-- 
+-- ## Aufwand, Nebenwirkungen, Fehler und Grenzen
+-- 
+-- Das zugehörige Installationsskript enthält CREATE TABLE, INSERT, UPDATE, DELETE; ein lesendes SELECT führt diese Installationsschritte nicht aus. Constraints und NULL-Grenzen stehen in der Tabellendefinition.
+-- 
+-- ### Quellgebundene Detailbeschreibung
+-- 
+-- Der folgende Quellkopf bewahrt die zusätzlichen Implementierungsgrenzen für diesen Skill.
+-- 
+-- ```text
+-- Datei        : 030_Snapshot_Target_Schema.sql
+-- Version      : 1.2.2
+-- Stand        : 2026-10-26
+-- Zweck        : Erstellt und aktualisiert das versionierte Basisschema des
+--                optionalen SC-023-Snapshot-/Baseline-Ziels in der aktuell
+--                verbundenen Datenbank. Das Schema speichert Erfassungsläufe,
+--                Status, Scopes, typisierte Messwerte und optionale Nutzdaten.
+--                Es startet weder Sammler noch Zeitpläne oder Retention-Purges.
+-- 
+-- Tabellen     : PackageVersion kennzeichnet Paket- und Schemafassung sowie
+--                Erstinstallation und letzten Installationslauf. RetentionPolicy
+--                hält Aufbewahrungsfristen für Rohwerte, Nutzdaten und Rollups,
+--                Speicherbudget, Purge-Takt, Batchgröße und Budgetaktion.
+--                CollectorPolicy beschreibt Aktivierung, Intervall, Zeilenlimit,
+--                Nutzdatenerfassung und zugeordnete RetentionPolicy.
+--                CaptureRun protokolliert Sammler, Schedulerart, Start und Ende,
+--                Quelldatenbankname, SQL-Server-Startzeit, Reset-Epoche,
+--                Vertragsfassung, Status, Partialität, Fehler und Zeilenzähler.
+--                ModuleStatus hält je Lauf und Modul Zeitpunkt, Status, Partial-
+--                und Fehlerangaben sowie Evidenzgrenzen.
+--                Scope ordnet Messungen über Scope-Typ, optionalen Eltern-Scope,
+--                32-Byte-Schlüsselhash und JSON-Identität einem Erfassungsbereich
+--                zu. MetricDefinition beschreibt Metrikcode, Werttyp, Einheit,
+--                Vertragsfassung, Text, Framework-Default und Seedfassung.
+--                MetricSample verbindet Lauf, Scope und Metrik mit Messzeit,
+--                Reset-Epoche, genau einem typisierten Wert, Qualitätscode und
+--                Partialitätskennzeichen. PayloadSnapshot speichert optionale,
+--                Modulnutzdaten mit Format, Vertragsfassung, Hash
+--                und unkomprimierter Zeichenanzahl. PurgeRun protokolliert
+--                Aufräumlauf, Status, Batches, gelöschte Zeilen, Budgetmessung
+--                und Fehler.
+-- 
+-- Beziehungen  : Fremdschlüssel verbinden CollectorPolicy mit RetentionPolicy,
+--                CaptureRun mit CollectorPolicy, ModuleStatus und PayloadSnapshot
+--                mit CaptureRun sowie MetricSample mit CaptureRun, Scope und
+--                MetricDefinition. Scope kann auf einen Eltern-Scope verweisen.
+--                Primär- und eindeutige Schlüssel verhindern doppelte
+--                Policycodes, Modulstatus je Lauf/Modul sowie Messwerte je
+--                Lauf/Scope/Metrik. Ein gefilterter eindeutiger Index lässt
+--                höchstens eine RetentionPolicy als Framework-Default zu;
+--                Zeit- und Zuordnungsindizes unterstützen die im Schema
+--                vorgesehenen Lauf-, Messwert-, Nutzdaten- und Purgeabfragen.
+--                Die DDL definiert keine kaskadierenden Fremdschlüssel.
+-- 
+-- Werte        : UTC-Zeitfelder geben den jeweiligen Erfassungs-, Lauf- oder
+--                Änderungszeitpunkt an. NULL ist bei Endzeiten, optionalen
+--                Start-/Resetinformationen, Fehlerfeldern und alternativen
+--                Messwertspalten zulässig, soweit die DDL dies festlegt.
+--                NumericValue, BigintValue und StringValue sind Alternativen:
+--                MetricSample verlangt genau einen nicht-NULL-Wert. ValueType
+--                und Unit in MetricDefinition beschreiben dessen Interpretation;
+--                der Vertrag garantiert keine Umrechnung. ResetEpochId grenzt
+--                Zählerstände über eine Reset-Epoche ab. QualityCode, StatusCode
+--                und IsPartial erhalten Qualitäts-, Ablauf- und
+--                Vollständigkeitsangaben. ScopeIdentityJson muss JSON sein;
+--                ScopeKeyHash ist genau 32 Byte lang. PayloadHash ist ebenfalls
+--                32 Byte lang; PayloadFormat und CompressionType sind auf die
+--                im Schema genannten Werte beschränkt.
+-- 
+-- Migration    : Die native Vorprüfung akzeptiert nur erkannte Schemaformen.
+--                Für erkannte Legacy- und Schema-2-Stände erweitert sie die
+--                CollectorCode- und ScopeType-Prüfwerte um FILE_IO
+--                beziehungsweise FILE_IO_FILE. Unbekannte oder abweichende
+--                Strukturen werden nicht beliebig repariert oder überschrieben.
+--                Paketversion 1.2.2 / Schema 3 kennzeichnet Installationsmetadaten,
+--                nicht die Laufzeitqualifikation oder Freigabe des Pakets.
+-- 
+-- Seeds        : Neue DEFAULT-Retention-, PERFORMANCE_COUNTERS-Policy- und
+--                Performance-Counter-Metrikzeilen werden nur eingefügt, wenn
+--                ihr jeweiliger Schlüssel fehlt. Vorhandene solche Zeilen bleiben
+--                erhalten. PackageVersion wird für SC-023 angelegt oder auf
+--                Paketversion 1.2.2 und Schema 3 gesetzt; InstalledAtUtc bleibt
+--                bei einem vorhandenen Datensatz unverändert, während
+--                LastInstallerRunUtc aktualisiert wird.
+-- 
+-- Voraussetzung: Die Verbindung zeigt auf eine ONLINE befindliche, beschreibbare
+--                Nicht-Systemdatenbank. Das Skript erstellt nicht selbst das
+--                Ziel und verwendet ausschließlich den geprüften Verbindungskontext.
+-- Datenschutz  : Die Tabellen dürfen im autorisierten Betrieb vollständige reale
+--                Laufzeitevidenz einschließlich optionaler Payloads speichern.
+--                Dieses Installationsskript enthält nur generische Seeds und
+--                keine Laufzeitwerte oder Datenbanknamen.
+-- Transaktion  : Implizite Transaktionen müssen ausgeschaltet sein. Das Skript
+--                verwendet bei Bedarf eine eigene Transaktion, andernfalls einen
+--                Savepoint. Im Fehlerfall wird die eigene Transaktion bei
+--                XACT_STATE() ungleich 0 zurückgerollt; im Aufruferkontext nur
+--                bei XACT_STATE() = 1 bis zum Savepoint. Bei XACT_STATE() = -1
+--                kann dieser Savepoint-Rollback nicht erfolgen; ein allgemeiner
+--                Rollback der Aufrufertransaktion wird nicht zugesichert.
+--                Die gesetzten SET-Optionen gelten für die verbundene Sitzung;
+--                das Skript stellt deren vorherige Werte nicht wieder her.
+-- Locking      : Die privilegierte native Strukturvorprüfung verwendet
+--                LOCK_TIMEOUT 10000 und hält geprüfte Tabellen bis zum
+--                Transaktionsende. Die anschließende eigene DDL verwendet
+--                LOCK_TIMEOUT 0 und wartet nicht auf fremde Sch-M-Sperren.
+-- Rechte       : CONTROL DATABASE und VIEW ANY DEFINITION sind für die native
+--                Strukturprüfung erforderlich. Das Skript vergibt keine Rechte.
+-- ```
+-- 
+-- USAGE_SKILL_END snapshot.Scope
+CREATE TABLE [snapshot].[Scope]
     (
           [ScopeId] bigint IDENTITY(1,1) NOT NULL
         , [ScopeType] varchar(40) NOT NULL
@@ -1453,7 +2536,186 @@ IF NOT EXISTS
       AND [t].[name] = N'MetricDefinition'
 )
 BEGIN
-    CREATE TABLE [snapshot].[MetricDefinition]
+-- USAGE_SKILL_BEGIN snapshot.MetricDefinition 1.0.0
+-- ---
+-- skill_format_version: "1.0.0"
+-- name: "snapshot.MetricDefinition"
+-- schema_name: "snapshot"
+-- object_name: "MetricDefinition"
+-- object_type: "TABLE"
+-- database_role: "snapshot_target"
+-- is_internal: false
+-- description: "Erstellt und aktualisiert das versionierte Basisschema des optionalen SC-023-Snapshot-/Baseline-Ziels in der aktuell verbundenen Datenbank."
+-- source_path: "Code/10_SnapshotBaseline/030_Snapshot_Target_Schema.sql"
+-- ---
+-- 
+-- # snapshot.MetricDefinition
+-- 
+-- ## Zweck und Einsatz
+-- 
+-- Erstellt und aktualisiert das versionierte Basisschema des optionalen SC-023-Snapshot-/Baseline-Ziels in der aktuell verbundenen Datenbank. Das Schema speichert Erfassungsläufe, Status, Scopes, typisierte Messwerte und optionale Nutzdaten. Es startet weder Sammler noch Zeitpläne oder Retention-Purges.
+-- 
+-- ## Voraussetzungen und Rechte
+-- 
+-- Die Verbindung zeigt auf eine ONLINE befindliche, beschreibbare Nicht-Systemdatenbank. Das Skript erstellt nicht selbst das Ziel und verwendet ausschließlich den geprüften Verbindungskontext.
+-- 
+-- CONTROL DATABASE und VIEW ANY DEFINITION sind für die native Strukturprüfung erforderlich. Das Skript vergibt keine Rechte.
+-- 
+-- Lesender Einsatz erfordert SELECT auf [snapshot].[MetricDefinition]; Installation und Aktualisierung benötigen die im Quellskript gezeigten DDL- und DML-Rechte.
+-- 
+-- ## Parameter und Eingabe
+-- 
+-- Keine Aufrufparameter.
+-- 
+-- ## Resultate und Ausgabe
+-- 
+-- Tabellenspalten und Constraints aus der eigenen CREATE-TABLE-Definition:
+-- 
+-- ```sql
+-- (
+--           [MetricDefinitionId] bigint IDENTITY(1,1) NOT NULL
+--         , [MetricCode] varchar(96) NOT NULL
+--         , [ValueType] varchar(24) NOT NULL
+--         , [Unit] varchar(40) NOT NULL
+--         , [ContractVersion] int NOT NULL
+--         , [Description] nvarchar(1000) NOT NULL
+--         , [IsFrameworkDefault] bit NOT NULL
+--               CONSTRAINT [DF_snapshot_MetricDefinition_IsFrameworkDefault]
+--               DEFAULT (0)
+--         , [SeedVersion] int NOT NULL
+--         , [LastUpdatedUtc] datetime2(3) NOT NULL
+--               CONSTRAINT [DF_snapshot_MetricDefinition_LastUpdatedUtc]
+--               DEFAULT (SYSUTCDATETIME())
+--         , CONSTRAINT [PK_snapshot_MetricDefinition]
+--               PRIMARY KEY CLUSTERED ([MetricDefinitionId])
+--         , CONSTRAINT [UQ_snapshot_MetricDefinition_MetricCode]
+--               UNIQUE ([MetricCode])
+--         , CONSTRAINT [CK_snapshot_MetricDefinition_ValueType]
+--               CHECK ([ValueType] IN ('NUMERIC','BIGINT','STRING'))
+--         , CONSTRAINT [CK_snapshot_MetricDefinition_ContractVersion]
+--               CHECK ([ContractVersion] > 0)
+--         , CONSTRAINT [CK_snapshot_MetricDefinition_SeedVersion]
+--               CHECK ([SeedVersion] > 0)
+--     )
+-- ```
+-- 
+-- 
+-- ## Beispiel
+-- 
+-- ```sql
+-- SELECT TOP (10) * FROM [snapshot].[MetricDefinition];
+-- ```
+-- 
+-- ## Aufwand, Nebenwirkungen, Fehler und Grenzen
+-- 
+-- Das zugehörige Installationsskript enthält CREATE TABLE, INSERT, UPDATE, DELETE; ein lesendes SELECT führt diese Installationsschritte nicht aus. Constraints und NULL-Grenzen stehen in der Tabellendefinition.
+-- 
+-- ### Quellgebundene Detailbeschreibung
+-- 
+-- Der folgende Quellkopf bewahrt die zusätzlichen Implementierungsgrenzen für diesen Skill.
+-- 
+-- ```text
+-- Datei        : 030_Snapshot_Target_Schema.sql
+-- Version      : 1.2.2
+-- Stand        : 2026-10-26
+-- Zweck        : Erstellt und aktualisiert das versionierte Basisschema des
+--                optionalen SC-023-Snapshot-/Baseline-Ziels in der aktuell
+--                verbundenen Datenbank. Das Schema speichert Erfassungsläufe,
+--                Status, Scopes, typisierte Messwerte und optionale Nutzdaten.
+--                Es startet weder Sammler noch Zeitpläne oder Retention-Purges.
+-- 
+-- Tabellen     : PackageVersion kennzeichnet Paket- und Schemafassung sowie
+--                Erstinstallation und letzten Installationslauf. RetentionPolicy
+--                hält Aufbewahrungsfristen für Rohwerte, Nutzdaten und Rollups,
+--                Speicherbudget, Purge-Takt, Batchgröße und Budgetaktion.
+--                CollectorPolicy beschreibt Aktivierung, Intervall, Zeilenlimit,
+--                Nutzdatenerfassung und zugeordnete RetentionPolicy.
+--                CaptureRun protokolliert Sammler, Schedulerart, Start und Ende,
+--                Quelldatenbankname, SQL-Server-Startzeit, Reset-Epoche,
+--                Vertragsfassung, Status, Partialität, Fehler und Zeilenzähler.
+--                ModuleStatus hält je Lauf und Modul Zeitpunkt, Status, Partial-
+--                und Fehlerangaben sowie Evidenzgrenzen.
+--                Scope ordnet Messungen über Scope-Typ, optionalen Eltern-Scope,
+--                32-Byte-Schlüsselhash und JSON-Identität einem Erfassungsbereich
+--                zu. MetricDefinition beschreibt Metrikcode, Werttyp, Einheit,
+--                Vertragsfassung, Text, Framework-Default und Seedfassung.
+--                MetricSample verbindet Lauf, Scope und Metrik mit Messzeit,
+--                Reset-Epoche, genau einem typisierten Wert, Qualitätscode und
+--                Partialitätskennzeichen. PayloadSnapshot speichert optionale,
+--                Modulnutzdaten mit Format, Vertragsfassung, Hash
+--                und unkomprimierter Zeichenanzahl. PurgeRun protokolliert
+--                Aufräumlauf, Status, Batches, gelöschte Zeilen, Budgetmessung
+--                und Fehler.
+-- 
+-- Beziehungen  : Fremdschlüssel verbinden CollectorPolicy mit RetentionPolicy,
+--                CaptureRun mit CollectorPolicy, ModuleStatus und PayloadSnapshot
+--                mit CaptureRun sowie MetricSample mit CaptureRun, Scope und
+--                MetricDefinition. Scope kann auf einen Eltern-Scope verweisen.
+--                Primär- und eindeutige Schlüssel verhindern doppelte
+--                Policycodes, Modulstatus je Lauf/Modul sowie Messwerte je
+--                Lauf/Scope/Metrik. Ein gefilterter eindeutiger Index lässt
+--                höchstens eine RetentionPolicy als Framework-Default zu;
+--                Zeit- und Zuordnungsindizes unterstützen die im Schema
+--                vorgesehenen Lauf-, Messwert-, Nutzdaten- und Purgeabfragen.
+--                Die DDL definiert keine kaskadierenden Fremdschlüssel.
+-- 
+-- Werte        : UTC-Zeitfelder geben den jeweiligen Erfassungs-, Lauf- oder
+--                Änderungszeitpunkt an. NULL ist bei Endzeiten, optionalen
+--                Start-/Resetinformationen, Fehlerfeldern und alternativen
+--                Messwertspalten zulässig, soweit die DDL dies festlegt.
+--                NumericValue, BigintValue und StringValue sind Alternativen:
+--                MetricSample verlangt genau einen nicht-NULL-Wert. ValueType
+--                und Unit in MetricDefinition beschreiben dessen Interpretation;
+--                der Vertrag garantiert keine Umrechnung. ResetEpochId grenzt
+--                Zählerstände über eine Reset-Epoche ab. QualityCode, StatusCode
+--                und IsPartial erhalten Qualitäts-, Ablauf- und
+--                Vollständigkeitsangaben. ScopeIdentityJson muss JSON sein;
+--                ScopeKeyHash ist genau 32 Byte lang. PayloadHash ist ebenfalls
+--                32 Byte lang; PayloadFormat und CompressionType sind auf die
+--                im Schema genannten Werte beschränkt.
+-- 
+-- Migration    : Die native Vorprüfung akzeptiert nur erkannte Schemaformen.
+--                Für erkannte Legacy- und Schema-2-Stände erweitert sie die
+--                CollectorCode- und ScopeType-Prüfwerte um FILE_IO
+--                beziehungsweise FILE_IO_FILE. Unbekannte oder abweichende
+--                Strukturen werden nicht beliebig repariert oder überschrieben.
+--                Paketversion 1.2.2 / Schema 3 kennzeichnet Installationsmetadaten,
+--                nicht die Laufzeitqualifikation oder Freigabe des Pakets.
+-- 
+-- Seeds        : Neue DEFAULT-Retention-, PERFORMANCE_COUNTERS-Policy- und
+--                Performance-Counter-Metrikzeilen werden nur eingefügt, wenn
+--                ihr jeweiliger Schlüssel fehlt. Vorhandene solche Zeilen bleiben
+--                erhalten. PackageVersion wird für SC-023 angelegt oder auf
+--                Paketversion 1.2.2 und Schema 3 gesetzt; InstalledAtUtc bleibt
+--                bei einem vorhandenen Datensatz unverändert, während
+--                LastInstallerRunUtc aktualisiert wird.
+-- 
+-- Voraussetzung: Die Verbindung zeigt auf eine ONLINE befindliche, beschreibbare
+--                Nicht-Systemdatenbank. Das Skript erstellt nicht selbst das
+--                Ziel und verwendet ausschließlich den geprüften Verbindungskontext.
+-- Datenschutz  : Die Tabellen dürfen im autorisierten Betrieb vollständige reale
+--                Laufzeitevidenz einschließlich optionaler Payloads speichern.
+--                Dieses Installationsskript enthält nur generische Seeds und
+--                keine Laufzeitwerte oder Datenbanknamen.
+-- Transaktion  : Implizite Transaktionen müssen ausgeschaltet sein. Das Skript
+--                verwendet bei Bedarf eine eigene Transaktion, andernfalls einen
+--                Savepoint. Im Fehlerfall wird die eigene Transaktion bei
+--                XACT_STATE() ungleich 0 zurückgerollt; im Aufruferkontext nur
+--                bei XACT_STATE() = 1 bis zum Savepoint. Bei XACT_STATE() = -1
+--                kann dieser Savepoint-Rollback nicht erfolgen; ein allgemeiner
+--                Rollback der Aufrufertransaktion wird nicht zugesichert.
+--                Die gesetzten SET-Optionen gelten für die verbundene Sitzung;
+--                das Skript stellt deren vorherige Werte nicht wieder her.
+-- Locking      : Die privilegierte native Strukturvorprüfung verwendet
+--                LOCK_TIMEOUT 10000 und hält geprüfte Tabellen bis zum
+--                Transaktionsende. Die anschließende eigene DDL verwendet
+--                LOCK_TIMEOUT 0 und wartet nicht auf fremde Sch-M-Sperren.
+-- Rechte       : CONTROL DATABASE und VIEW ANY DEFINITION sind für die native
+--                Strukturprüfung erforderlich. Das Skript vergibt keine Rechte.
+-- ```
+-- 
+-- USAGE_SKILL_END snapshot.MetricDefinition
+CREATE TABLE [snapshot].[MetricDefinition]
     (
           [MetricDefinitionId] bigint IDENTITY(1,1) NOT NULL
         , [MetricCode] varchar(96) NOT NULL
@@ -1491,7 +2753,195 @@ IF NOT EXISTS
       AND [t].[name] = N'MetricSample'
 )
 BEGIN
-    CREATE TABLE [snapshot].[MetricSample]
+-- USAGE_SKILL_BEGIN snapshot.MetricSample 1.0.0
+-- ---
+-- skill_format_version: "1.0.0"
+-- name: "snapshot.MetricSample"
+-- schema_name: "snapshot"
+-- object_name: "MetricSample"
+-- object_type: "TABLE"
+-- database_role: "snapshot_target"
+-- is_internal: false
+-- description: "Erstellt und aktualisiert das versionierte Basisschema des optionalen SC-023-Snapshot-/Baseline-Ziels in der aktuell verbundenen Datenbank."
+-- source_path: "Code/10_SnapshotBaseline/030_Snapshot_Target_Schema.sql"
+-- ---
+-- 
+-- # snapshot.MetricSample
+-- 
+-- ## Zweck und Einsatz
+-- 
+-- Erstellt und aktualisiert das versionierte Basisschema des optionalen SC-023-Snapshot-/Baseline-Ziels in der aktuell verbundenen Datenbank. Das Schema speichert Erfassungsläufe, Status, Scopes, typisierte Messwerte und optionale Nutzdaten. Es startet weder Sammler noch Zeitpläne oder Retention-Purges.
+-- 
+-- ## Voraussetzungen und Rechte
+-- 
+-- Die Verbindung zeigt auf eine ONLINE befindliche, beschreibbare Nicht-Systemdatenbank. Das Skript erstellt nicht selbst das Ziel und verwendet ausschließlich den geprüften Verbindungskontext.
+-- 
+-- CONTROL DATABASE und VIEW ANY DEFINITION sind für die native Strukturprüfung erforderlich. Das Skript vergibt keine Rechte.
+-- 
+-- Lesender Einsatz erfordert SELECT auf [snapshot].[MetricSample]; Installation und Aktualisierung benötigen die im Quellskript gezeigten DDL- und DML-Rechte.
+-- 
+-- ## Parameter und Eingabe
+-- 
+-- Keine Aufrufparameter.
+-- 
+-- ## Resultate und Ausgabe
+-- 
+-- Tabellenspalten und Constraints aus der eigenen CREATE-TABLE-Definition:
+-- 
+-- ```sql
+-- (
+--           [MetricSampleId] bigint IDENTITY(1,1) NOT NULL
+--         , [CaptureRunId] bigint NOT NULL
+--         , [ScopeId] bigint NOT NULL
+--         , [MetricDefinitionId] bigint NOT NULL
+--         , [CollectedAtUtc] datetime2(3) NOT NULL
+--         , [ResetEpochId] uniqueidentifier NOT NULL
+--         , [NumericValue] decimal(38,6) NULL
+--         , [BigintValue] bigint NULL
+--         , [StringValue] nvarchar(4000) NULL
+--         , [QualityCode] varchar(80) NOT NULL
+--         , [IsPartial] bit NOT NULL
+--               CONSTRAINT [DF_snapshot_MetricSample_IsPartial] DEFAULT (0)
+--         , CONSTRAINT [PK_snapshot_MetricSample]
+--               PRIMARY KEY CLUSTERED ([MetricSampleId])
+--         , CONSTRAINT [FK_snapshot_MetricSample_CaptureRun]
+--               FOREIGN KEY ([CaptureRunId])
+--               REFERENCES [snapshot].[CaptureRun]([CaptureRunId])
+--         , CONSTRAINT [FK_snapshot_MetricSample_Scope]
+--               FOREIGN KEY ([ScopeId])
+--               REFERENCES [snapshot].[Scope]([ScopeId])
+--         , CONSTRAINT [FK_snapshot_MetricSample_MetricDefinition]
+--               FOREIGN KEY ([MetricDefinitionId])
+--               REFERENCES [snapshot].[MetricDefinition]([MetricDefinitionId])
+--         , CONSTRAINT [UQ_snapshot_MetricSample_RunScopeMetric]
+--               UNIQUE ([CaptureRunId],[ScopeId],[MetricDefinitionId])
+--         , CONSTRAINT [CK_snapshot_MetricSample_ExactlyOneValue]
+--               CHECK
+--               (
+--                   (CASE WHEN [NumericValue] IS NULL THEN 0 ELSE 1 END)
+--                 + (CASE WHEN [BigintValue] IS NULL THEN 0 ELSE 1 END)
+--                 + (CASE WHEN [StringValue] IS NULL THEN 0 ELSE 1 END) = 1
+--               )
+--     )
+-- ```
+-- 
+-- 
+-- ## Beispiel
+-- 
+-- ```sql
+-- SELECT TOP (10) * FROM [snapshot].[MetricSample];
+-- ```
+-- 
+-- ## Aufwand, Nebenwirkungen, Fehler und Grenzen
+-- 
+-- Das zugehörige Installationsskript enthält CREATE TABLE, INSERT, UPDATE, DELETE; ein lesendes SELECT führt diese Installationsschritte nicht aus. Constraints und NULL-Grenzen stehen in der Tabellendefinition.
+-- 
+-- ### Quellgebundene Detailbeschreibung
+-- 
+-- Der folgende Quellkopf bewahrt die zusätzlichen Implementierungsgrenzen für diesen Skill.
+-- 
+-- ```text
+-- Datei        : 030_Snapshot_Target_Schema.sql
+-- Version      : 1.2.2
+-- Stand        : 2026-10-26
+-- Zweck        : Erstellt und aktualisiert das versionierte Basisschema des
+--                optionalen SC-023-Snapshot-/Baseline-Ziels in der aktuell
+--                verbundenen Datenbank. Das Schema speichert Erfassungsläufe,
+--                Status, Scopes, typisierte Messwerte und optionale Nutzdaten.
+--                Es startet weder Sammler noch Zeitpläne oder Retention-Purges.
+-- 
+-- Tabellen     : PackageVersion kennzeichnet Paket- und Schemafassung sowie
+--                Erstinstallation und letzten Installationslauf. RetentionPolicy
+--                hält Aufbewahrungsfristen für Rohwerte, Nutzdaten und Rollups,
+--                Speicherbudget, Purge-Takt, Batchgröße und Budgetaktion.
+--                CollectorPolicy beschreibt Aktivierung, Intervall, Zeilenlimit,
+--                Nutzdatenerfassung und zugeordnete RetentionPolicy.
+--                CaptureRun protokolliert Sammler, Schedulerart, Start und Ende,
+--                Quelldatenbankname, SQL-Server-Startzeit, Reset-Epoche,
+--                Vertragsfassung, Status, Partialität, Fehler und Zeilenzähler.
+--                ModuleStatus hält je Lauf und Modul Zeitpunkt, Status, Partial-
+--                und Fehlerangaben sowie Evidenzgrenzen.
+--                Scope ordnet Messungen über Scope-Typ, optionalen Eltern-Scope,
+--                32-Byte-Schlüsselhash und JSON-Identität einem Erfassungsbereich
+--                zu. MetricDefinition beschreibt Metrikcode, Werttyp, Einheit,
+--                Vertragsfassung, Text, Framework-Default und Seedfassung.
+--                MetricSample verbindet Lauf, Scope und Metrik mit Messzeit,
+--                Reset-Epoche, genau einem typisierten Wert, Qualitätscode und
+--                Partialitätskennzeichen. PayloadSnapshot speichert optionale,
+--                Modulnutzdaten mit Format, Vertragsfassung, Hash
+--                und unkomprimierter Zeichenanzahl. PurgeRun protokolliert
+--                Aufräumlauf, Status, Batches, gelöschte Zeilen, Budgetmessung
+--                und Fehler.
+-- 
+-- Beziehungen  : Fremdschlüssel verbinden CollectorPolicy mit RetentionPolicy,
+--                CaptureRun mit CollectorPolicy, ModuleStatus und PayloadSnapshot
+--                mit CaptureRun sowie MetricSample mit CaptureRun, Scope und
+--                MetricDefinition. Scope kann auf einen Eltern-Scope verweisen.
+--                Primär- und eindeutige Schlüssel verhindern doppelte
+--                Policycodes, Modulstatus je Lauf/Modul sowie Messwerte je
+--                Lauf/Scope/Metrik. Ein gefilterter eindeutiger Index lässt
+--                höchstens eine RetentionPolicy als Framework-Default zu;
+--                Zeit- und Zuordnungsindizes unterstützen die im Schema
+--                vorgesehenen Lauf-, Messwert-, Nutzdaten- und Purgeabfragen.
+--                Die DDL definiert keine kaskadierenden Fremdschlüssel.
+-- 
+-- Werte        : UTC-Zeitfelder geben den jeweiligen Erfassungs-, Lauf- oder
+--                Änderungszeitpunkt an. NULL ist bei Endzeiten, optionalen
+--                Start-/Resetinformationen, Fehlerfeldern und alternativen
+--                Messwertspalten zulässig, soweit die DDL dies festlegt.
+--                NumericValue, BigintValue und StringValue sind Alternativen:
+--                MetricSample verlangt genau einen nicht-NULL-Wert. ValueType
+--                und Unit in MetricDefinition beschreiben dessen Interpretation;
+--                der Vertrag garantiert keine Umrechnung. ResetEpochId grenzt
+--                Zählerstände über eine Reset-Epoche ab. QualityCode, StatusCode
+--                und IsPartial erhalten Qualitäts-, Ablauf- und
+--                Vollständigkeitsangaben. ScopeIdentityJson muss JSON sein;
+--                ScopeKeyHash ist genau 32 Byte lang. PayloadHash ist ebenfalls
+--                32 Byte lang; PayloadFormat und CompressionType sind auf die
+--                im Schema genannten Werte beschränkt.
+-- 
+-- Migration    : Die native Vorprüfung akzeptiert nur erkannte Schemaformen.
+--                Für erkannte Legacy- und Schema-2-Stände erweitert sie die
+--                CollectorCode- und ScopeType-Prüfwerte um FILE_IO
+--                beziehungsweise FILE_IO_FILE. Unbekannte oder abweichende
+--                Strukturen werden nicht beliebig repariert oder überschrieben.
+--                Paketversion 1.2.2 / Schema 3 kennzeichnet Installationsmetadaten,
+--                nicht die Laufzeitqualifikation oder Freigabe des Pakets.
+-- 
+-- Seeds        : Neue DEFAULT-Retention-, PERFORMANCE_COUNTERS-Policy- und
+--                Performance-Counter-Metrikzeilen werden nur eingefügt, wenn
+--                ihr jeweiliger Schlüssel fehlt. Vorhandene solche Zeilen bleiben
+--                erhalten. PackageVersion wird für SC-023 angelegt oder auf
+--                Paketversion 1.2.2 und Schema 3 gesetzt; InstalledAtUtc bleibt
+--                bei einem vorhandenen Datensatz unverändert, während
+--                LastInstallerRunUtc aktualisiert wird.
+-- 
+-- Voraussetzung: Die Verbindung zeigt auf eine ONLINE befindliche, beschreibbare
+--                Nicht-Systemdatenbank. Das Skript erstellt nicht selbst das
+--                Ziel und verwendet ausschließlich den geprüften Verbindungskontext.
+-- Datenschutz  : Die Tabellen dürfen im autorisierten Betrieb vollständige reale
+--                Laufzeitevidenz einschließlich optionaler Payloads speichern.
+--                Dieses Installationsskript enthält nur generische Seeds und
+--                keine Laufzeitwerte oder Datenbanknamen.
+-- Transaktion  : Implizite Transaktionen müssen ausgeschaltet sein. Das Skript
+--                verwendet bei Bedarf eine eigene Transaktion, andernfalls einen
+--                Savepoint. Im Fehlerfall wird die eigene Transaktion bei
+--                XACT_STATE() ungleich 0 zurückgerollt; im Aufruferkontext nur
+--                bei XACT_STATE() = 1 bis zum Savepoint. Bei XACT_STATE() = -1
+--                kann dieser Savepoint-Rollback nicht erfolgen; ein allgemeiner
+--                Rollback der Aufrufertransaktion wird nicht zugesichert.
+--                Die gesetzten SET-Optionen gelten für die verbundene Sitzung;
+--                das Skript stellt deren vorherige Werte nicht wieder her.
+-- Locking      : Die privilegierte native Strukturvorprüfung verwendet
+--                LOCK_TIMEOUT 10000 und hält geprüfte Tabellen bis zum
+--                Transaktionsende. Die anschließende eigene DDL verwendet
+--                LOCK_TIMEOUT 0 und wartet nicht auf fremde Sch-M-Sperren.
+-- Rechte       : CONTROL DATABASE und VIEW ANY DEFINITION sind für die native
+--                Strukturprüfung erforderlich. Das Skript vergibt keine Rechte.
+-- ```
+-- 
+-- USAGE_SKILL_END snapshot.MetricSample
+CREATE TABLE [snapshot].[MetricSample]
     (
           [MetricSampleId] bigint IDENTITY(1,1) NOT NULL
         , [CaptureRunId] bigint NOT NULL
@@ -1538,7 +2988,188 @@ IF NOT EXISTS
       AND [t].[name] = N'PayloadSnapshot'
 )
 BEGIN
-    CREATE TABLE [snapshot].[PayloadSnapshot]
+-- USAGE_SKILL_BEGIN snapshot.PayloadSnapshot 1.0.0
+-- ---
+-- skill_format_version: "1.0.0"
+-- name: "snapshot.PayloadSnapshot"
+-- schema_name: "snapshot"
+-- object_name: "PayloadSnapshot"
+-- object_type: "TABLE"
+-- database_role: "snapshot_target"
+-- is_internal: false
+-- description: "Erstellt und aktualisiert das versionierte Basisschema des optionalen SC-023-Snapshot-/Baseline-Ziels in der aktuell verbundenen Datenbank."
+-- source_path: "Code/10_SnapshotBaseline/030_Snapshot_Target_Schema.sql"
+-- ---
+-- 
+-- # snapshot.PayloadSnapshot
+-- 
+-- ## Zweck und Einsatz
+-- 
+-- Erstellt und aktualisiert das versionierte Basisschema des optionalen SC-023-Snapshot-/Baseline-Ziels in der aktuell verbundenen Datenbank. Das Schema speichert Erfassungsläufe, Status, Scopes, typisierte Messwerte und optionale Nutzdaten. Es startet weder Sammler noch Zeitpläne oder Retention-Purges.
+-- 
+-- ## Voraussetzungen und Rechte
+-- 
+-- Die Verbindung zeigt auf eine ONLINE befindliche, beschreibbare Nicht-Systemdatenbank. Das Skript erstellt nicht selbst das Ziel und verwendet ausschließlich den geprüften Verbindungskontext.
+-- 
+-- CONTROL DATABASE und VIEW ANY DEFINITION sind für die native Strukturprüfung erforderlich. Das Skript vergibt keine Rechte.
+-- 
+-- Lesender Einsatz erfordert SELECT auf [snapshot].[PayloadSnapshot]; Installation und Aktualisierung benötigen die im Quellskript gezeigten DDL- und DML-Rechte.
+-- 
+-- ## Parameter und Eingabe
+-- 
+-- Keine Aufrufparameter.
+-- 
+-- ## Resultate und Ausgabe
+-- 
+-- Tabellenspalten und Constraints aus der eigenen CREATE-TABLE-Definition:
+-- 
+-- ```sql
+-- (
+--           [PayloadSnapshotId] bigint IDENTITY(1,1) NOT NULL
+--         , [CaptureRunId] bigint NOT NULL
+--         , [ModuleName] sysname NOT NULL
+--         , [CapturedAtUtc] datetime2(3) NOT NULL
+--         , [PayloadFormat] varchar(40) NOT NULL
+--         , [PayloadContractVersion] int NOT NULL
+--         , [CompressionType] varchar(16) NOT NULL
+--         , [PayloadHash] varbinary(32) NOT NULL
+--         , [Payload] varbinary(max) NOT NULL
+--         , [UncompressedCharacterCount] bigint NOT NULL
+--         , CONSTRAINT [PK_snapshot_PayloadSnapshot]
+--               PRIMARY KEY CLUSTERED ([PayloadSnapshotId])
+--         , CONSTRAINT [FK_snapshot_PayloadSnapshot_CaptureRun]
+--               FOREIGN KEY ([CaptureRunId])
+--               REFERENCES [snapshot].[CaptureRun]([CaptureRunId])
+--         , CONSTRAINT [CK_snapshot_PayloadSnapshot_PayloadFormat]
+--               CHECK ([PayloadFormat] IN ('JSON','TEXT','XML','SQL_TEXT','PLAN_XML','ERROR_CONTEXT','PATH'))
+--         , CONSTRAINT [CK_snapshot_PayloadSnapshot_PayloadContractVersion]
+--               CHECK ([PayloadContractVersion] > 0)
+--         , CONSTRAINT [CK_snapshot_PayloadSnapshot_CompressionType]
+--               CHECK ([CompressionType] IN ('NONE','GZIP'))
+--         , CONSTRAINT [CK_snapshot_PayloadSnapshot_PayloadHash]
+--               CHECK (DATALENGTH([PayloadHash]) = 32)
+--         , CONSTRAINT [CK_snapshot_PayloadSnapshot_UncompressedCharacterCount]
+--               CHECK ([UncompressedCharacterCount] >= 0)
+--     )
+-- ```
+-- 
+-- 
+-- ## Beispiel
+-- 
+-- ```sql
+-- SELECT TOP (10) * FROM [snapshot].[PayloadSnapshot];
+-- ```
+-- 
+-- ## Aufwand, Nebenwirkungen, Fehler und Grenzen
+-- 
+-- Das zugehörige Installationsskript enthält CREATE TABLE, INSERT, UPDATE, DELETE; ein lesendes SELECT führt diese Installationsschritte nicht aus. Constraints und NULL-Grenzen stehen in der Tabellendefinition.
+-- 
+-- ### Quellgebundene Detailbeschreibung
+-- 
+-- Der folgende Quellkopf bewahrt die zusätzlichen Implementierungsgrenzen für diesen Skill.
+-- 
+-- ```text
+-- Datei        : 030_Snapshot_Target_Schema.sql
+-- Version      : 1.2.2
+-- Stand        : 2026-10-26
+-- Zweck        : Erstellt und aktualisiert das versionierte Basisschema des
+--                optionalen SC-023-Snapshot-/Baseline-Ziels in der aktuell
+--                verbundenen Datenbank. Das Schema speichert Erfassungsläufe,
+--                Status, Scopes, typisierte Messwerte und optionale Nutzdaten.
+--                Es startet weder Sammler noch Zeitpläne oder Retention-Purges.
+-- 
+-- Tabellen     : PackageVersion kennzeichnet Paket- und Schemafassung sowie
+--                Erstinstallation und letzten Installationslauf. RetentionPolicy
+--                hält Aufbewahrungsfristen für Rohwerte, Nutzdaten und Rollups,
+--                Speicherbudget, Purge-Takt, Batchgröße und Budgetaktion.
+--                CollectorPolicy beschreibt Aktivierung, Intervall, Zeilenlimit,
+--                Nutzdatenerfassung und zugeordnete RetentionPolicy.
+--                CaptureRun protokolliert Sammler, Schedulerart, Start und Ende,
+--                Quelldatenbankname, SQL-Server-Startzeit, Reset-Epoche,
+--                Vertragsfassung, Status, Partialität, Fehler und Zeilenzähler.
+--                ModuleStatus hält je Lauf und Modul Zeitpunkt, Status, Partial-
+--                und Fehlerangaben sowie Evidenzgrenzen.
+--                Scope ordnet Messungen über Scope-Typ, optionalen Eltern-Scope,
+--                32-Byte-Schlüsselhash und JSON-Identität einem Erfassungsbereich
+--                zu. MetricDefinition beschreibt Metrikcode, Werttyp, Einheit,
+--                Vertragsfassung, Text, Framework-Default und Seedfassung.
+--                MetricSample verbindet Lauf, Scope und Metrik mit Messzeit,
+--                Reset-Epoche, genau einem typisierten Wert, Qualitätscode und
+--                Partialitätskennzeichen. PayloadSnapshot speichert optionale,
+--                Modulnutzdaten mit Format, Vertragsfassung, Hash
+--                und unkomprimierter Zeichenanzahl. PurgeRun protokolliert
+--                Aufräumlauf, Status, Batches, gelöschte Zeilen, Budgetmessung
+--                und Fehler.
+-- 
+-- Beziehungen  : Fremdschlüssel verbinden CollectorPolicy mit RetentionPolicy,
+--                CaptureRun mit CollectorPolicy, ModuleStatus und PayloadSnapshot
+--                mit CaptureRun sowie MetricSample mit CaptureRun, Scope und
+--                MetricDefinition. Scope kann auf einen Eltern-Scope verweisen.
+--                Primär- und eindeutige Schlüssel verhindern doppelte
+--                Policycodes, Modulstatus je Lauf/Modul sowie Messwerte je
+--                Lauf/Scope/Metrik. Ein gefilterter eindeutiger Index lässt
+--                höchstens eine RetentionPolicy als Framework-Default zu;
+--                Zeit- und Zuordnungsindizes unterstützen die im Schema
+--                vorgesehenen Lauf-, Messwert-, Nutzdaten- und Purgeabfragen.
+--                Die DDL definiert keine kaskadierenden Fremdschlüssel.
+-- 
+-- Werte        : UTC-Zeitfelder geben den jeweiligen Erfassungs-, Lauf- oder
+--                Änderungszeitpunkt an. NULL ist bei Endzeiten, optionalen
+--                Start-/Resetinformationen, Fehlerfeldern und alternativen
+--                Messwertspalten zulässig, soweit die DDL dies festlegt.
+--                NumericValue, BigintValue und StringValue sind Alternativen:
+--                MetricSample verlangt genau einen nicht-NULL-Wert. ValueType
+--                und Unit in MetricDefinition beschreiben dessen Interpretation;
+--                der Vertrag garantiert keine Umrechnung. ResetEpochId grenzt
+--                Zählerstände über eine Reset-Epoche ab. QualityCode, StatusCode
+--                und IsPartial erhalten Qualitäts-, Ablauf- und
+--                Vollständigkeitsangaben. ScopeIdentityJson muss JSON sein;
+--                ScopeKeyHash ist genau 32 Byte lang. PayloadHash ist ebenfalls
+--                32 Byte lang; PayloadFormat und CompressionType sind auf die
+--                im Schema genannten Werte beschränkt.
+-- 
+-- Migration    : Die native Vorprüfung akzeptiert nur erkannte Schemaformen.
+--                Für erkannte Legacy- und Schema-2-Stände erweitert sie die
+--                CollectorCode- und ScopeType-Prüfwerte um FILE_IO
+--                beziehungsweise FILE_IO_FILE. Unbekannte oder abweichende
+--                Strukturen werden nicht beliebig repariert oder überschrieben.
+--                Paketversion 1.2.2 / Schema 3 kennzeichnet Installationsmetadaten,
+--                nicht die Laufzeitqualifikation oder Freigabe des Pakets.
+-- 
+-- Seeds        : Neue DEFAULT-Retention-, PERFORMANCE_COUNTERS-Policy- und
+--                Performance-Counter-Metrikzeilen werden nur eingefügt, wenn
+--                ihr jeweiliger Schlüssel fehlt. Vorhandene solche Zeilen bleiben
+--                erhalten. PackageVersion wird für SC-023 angelegt oder auf
+--                Paketversion 1.2.2 und Schema 3 gesetzt; InstalledAtUtc bleibt
+--                bei einem vorhandenen Datensatz unverändert, während
+--                LastInstallerRunUtc aktualisiert wird.
+-- 
+-- Voraussetzung: Die Verbindung zeigt auf eine ONLINE befindliche, beschreibbare
+--                Nicht-Systemdatenbank. Das Skript erstellt nicht selbst das
+--                Ziel und verwendet ausschließlich den geprüften Verbindungskontext.
+-- Datenschutz  : Die Tabellen dürfen im autorisierten Betrieb vollständige reale
+--                Laufzeitevidenz einschließlich optionaler Payloads speichern.
+--                Dieses Installationsskript enthält nur generische Seeds und
+--                keine Laufzeitwerte oder Datenbanknamen.
+-- Transaktion  : Implizite Transaktionen müssen ausgeschaltet sein. Das Skript
+--                verwendet bei Bedarf eine eigene Transaktion, andernfalls einen
+--                Savepoint. Im Fehlerfall wird die eigene Transaktion bei
+--                XACT_STATE() ungleich 0 zurückgerollt; im Aufruferkontext nur
+--                bei XACT_STATE() = 1 bis zum Savepoint. Bei XACT_STATE() = -1
+--                kann dieser Savepoint-Rollback nicht erfolgen; ein allgemeiner
+--                Rollback der Aufrufertransaktion wird nicht zugesichert.
+--                Die gesetzten SET-Optionen gelten für die verbundene Sitzung;
+--                das Skript stellt deren vorherige Werte nicht wieder her.
+-- Locking      : Die privilegierte native Strukturvorprüfung verwendet
+--                LOCK_TIMEOUT 10000 und hält geprüfte Tabellen bis zum
+--                Transaktionsende. Die anschließende eigene DDL verwendet
+--                LOCK_TIMEOUT 0 und wartet nicht auf fremde Sch-M-Sperren.
+-- Rechte       : CONTROL DATABASE und VIEW ANY DEFINITION sind für die native
+--                Strukturprüfung erforderlich. Das Skript vergibt keine Rechte.
+-- ```
+-- 
+-- USAGE_SKILL_END snapshot.PayloadSnapshot
+CREATE TABLE [snapshot].[PayloadSnapshot]
     (
           [PayloadSnapshotId] bigint IDENTITY(1,1) NOT NULL
         , [CaptureRunId] bigint NOT NULL
@@ -1578,7 +3209,198 @@ IF NOT EXISTS
       AND [t].[name] = N'PurgeRun'
 )
 BEGIN
-    CREATE TABLE [snapshot].[PurgeRun]
+-- USAGE_SKILL_BEGIN snapshot.PurgeRun 1.0.0
+-- ---
+-- skill_format_version: "1.0.0"
+-- name: "snapshot.PurgeRun"
+-- schema_name: "snapshot"
+-- object_name: "PurgeRun"
+-- object_type: "TABLE"
+-- database_role: "snapshot_target"
+-- is_internal: false
+-- description: "Erstellt und aktualisiert das versionierte Basisschema des optionalen SC-023-Snapshot-/Baseline-Ziels in der aktuell verbundenen Datenbank."
+-- source_path: "Code/10_SnapshotBaseline/030_Snapshot_Target_Schema.sql"
+-- ---
+-- 
+-- # snapshot.PurgeRun
+-- 
+-- ## Zweck und Einsatz
+-- 
+-- Erstellt und aktualisiert das versionierte Basisschema des optionalen SC-023-Snapshot-/Baseline-Ziels in der aktuell verbundenen Datenbank. Das Schema speichert Erfassungsläufe, Status, Scopes, typisierte Messwerte und optionale Nutzdaten. Es startet weder Sammler noch Zeitpläne oder Retention-Purges.
+-- 
+-- ## Voraussetzungen und Rechte
+-- 
+-- Die Verbindung zeigt auf eine ONLINE befindliche, beschreibbare Nicht-Systemdatenbank. Das Skript erstellt nicht selbst das Ziel und verwendet ausschließlich den geprüften Verbindungskontext.
+-- 
+-- CONTROL DATABASE und VIEW ANY DEFINITION sind für die native Strukturprüfung erforderlich. Das Skript vergibt keine Rechte.
+-- 
+-- Lesender Einsatz erfordert SELECT auf [snapshot].[PurgeRun]; Installation und Aktualisierung benötigen die im Quellskript gezeigten DDL- und DML-Rechte.
+-- 
+-- ## Parameter und Eingabe
+-- 
+-- Keine Aufrufparameter.
+-- 
+-- ## Resultate und Ausgabe
+-- 
+-- Tabellenspalten und Constraints aus der eigenen CREATE-TABLE-Definition:
+-- 
+-- ```sql
+-- (
+--           [PurgeRunId] bigint IDENTITY(1,1) NOT NULL
+--         , [StartedAtUtc] datetime2(3) NOT NULL
+--         , [EndedAtUtc] datetime2(3) NULL
+--         , [StatusCode] varchar(40) NOT NULL
+--         , [BatchesExecuted] int NOT NULL
+--               CONSTRAINT [DF_snapshot_PurgeRun_BatchesExecuted] DEFAULT (0)
+--         , [MetricRowsDeleted] bigint NOT NULL
+--               CONSTRAINT [DF_snapshot_PurgeRun_MetricRowsDeleted] DEFAULT (0)
+--         , [PayloadRowsDeleted] bigint NOT NULL
+--               CONSTRAINT [DF_snapshot_PurgeRun_PayloadRowsDeleted] DEFAULT (0)
+--         , [ModuleRowsDeleted] bigint NOT NULL
+--               CONSTRAINT [DF_snapshot_PurgeRun_ModuleRowsDeleted] DEFAULT (0)
+--         , [CaptureRunsDeleted] bigint NOT NULL
+--               CONSTRAINT [DF_snapshot_PurgeRun_CaptureRunsDeleted] DEFAULT (0)
+--         , [ScopeRowsDeleted] bigint NOT NULL
+--               CONSTRAINT [DF_snapshot_PurgeRun_ScopeRowsDeleted] DEFAULT (0)
+--         , [UsedDataMbBefore] decimal(19,3) NULL
+--         , [UsedDataMbAfter] decimal(19,3) NULL
+--         , [SoftBudgetMb] bigint NOT NULL
+--         , [ErrorNumber] int NULL
+--         , [ErrorMessage] nvarchar(2048) NULL
+--         , CONSTRAINT [PK_snapshot_PurgeRun]
+--               PRIMARY KEY CLUSTERED ([PurgeRunId])
+--         , CONSTRAINT [CK_snapshot_PurgeRun_EndedAtUtc]
+--               CHECK ([EndedAtUtc] IS NULL OR [EndedAtUtc] >= [StartedAtUtc])
+--         , CONSTRAINT [CK_snapshot_PurgeRun_BatchesExecuted]
+--               CHECK ([BatchesExecuted] >= 0)
+--         , CONSTRAINT [CK_snapshot_PurgeRun_DeletedRows]
+--               CHECK ([MetricRowsDeleted] >= 0
+--                  AND [PayloadRowsDeleted] >= 0
+--                  AND [ModuleRowsDeleted] >= 0
+--                  AND [CaptureRunsDeleted] >= 0
+--                  AND [ScopeRowsDeleted] >= 0)
+--         , CONSTRAINT [CK_snapshot_PurgeRun_SoftBudgetMb]
+--               CHECK ([SoftBudgetMb] > 0)
+--     )
+-- ```
+-- 
+-- 
+-- ## Beispiel
+-- 
+-- ```sql
+-- SELECT TOP (10) * FROM [snapshot].[PurgeRun];
+-- ```
+-- 
+-- ## Aufwand, Nebenwirkungen, Fehler und Grenzen
+-- 
+-- Das zugehörige Installationsskript enthält CREATE TABLE, INSERT, UPDATE, DELETE; ein lesendes SELECT führt diese Installationsschritte nicht aus. Constraints und NULL-Grenzen stehen in der Tabellendefinition.
+-- 
+-- ### Quellgebundene Detailbeschreibung
+-- 
+-- Der folgende Quellkopf bewahrt die zusätzlichen Implementierungsgrenzen für diesen Skill.
+-- 
+-- ```text
+-- Datei        : 030_Snapshot_Target_Schema.sql
+-- Version      : 1.2.2
+-- Stand        : 2026-10-26
+-- Zweck        : Erstellt und aktualisiert das versionierte Basisschema des
+--                optionalen SC-023-Snapshot-/Baseline-Ziels in der aktuell
+--                verbundenen Datenbank. Das Schema speichert Erfassungsläufe,
+--                Status, Scopes, typisierte Messwerte und optionale Nutzdaten.
+--                Es startet weder Sammler noch Zeitpläne oder Retention-Purges.
+-- 
+-- Tabellen     : PackageVersion kennzeichnet Paket- und Schemafassung sowie
+--                Erstinstallation und letzten Installationslauf. RetentionPolicy
+--                hält Aufbewahrungsfristen für Rohwerte, Nutzdaten und Rollups,
+--                Speicherbudget, Purge-Takt, Batchgröße und Budgetaktion.
+--                CollectorPolicy beschreibt Aktivierung, Intervall, Zeilenlimit,
+--                Nutzdatenerfassung und zugeordnete RetentionPolicy.
+--                CaptureRun protokolliert Sammler, Schedulerart, Start und Ende,
+--                Quelldatenbankname, SQL-Server-Startzeit, Reset-Epoche,
+--                Vertragsfassung, Status, Partialität, Fehler und Zeilenzähler.
+--                ModuleStatus hält je Lauf und Modul Zeitpunkt, Status, Partial-
+--                und Fehlerangaben sowie Evidenzgrenzen.
+--                Scope ordnet Messungen über Scope-Typ, optionalen Eltern-Scope,
+--                32-Byte-Schlüsselhash und JSON-Identität einem Erfassungsbereich
+--                zu. MetricDefinition beschreibt Metrikcode, Werttyp, Einheit,
+--                Vertragsfassung, Text, Framework-Default und Seedfassung.
+--                MetricSample verbindet Lauf, Scope und Metrik mit Messzeit,
+--                Reset-Epoche, genau einem typisierten Wert, Qualitätscode und
+--                Partialitätskennzeichen. PayloadSnapshot speichert optionale,
+--                Modulnutzdaten mit Format, Vertragsfassung, Hash
+--                und unkomprimierter Zeichenanzahl. PurgeRun protokolliert
+--                Aufräumlauf, Status, Batches, gelöschte Zeilen, Budgetmessung
+--                und Fehler.
+-- 
+-- Beziehungen  : Fremdschlüssel verbinden CollectorPolicy mit RetentionPolicy,
+--                CaptureRun mit CollectorPolicy, ModuleStatus und PayloadSnapshot
+--                mit CaptureRun sowie MetricSample mit CaptureRun, Scope und
+--                MetricDefinition. Scope kann auf einen Eltern-Scope verweisen.
+--                Primär- und eindeutige Schlüssel verhindern doppelte
+--                Policycodes, Modulstatus je Lauf/Modul sowie Messwerte je
+--                Lauf/Scope/Metrik. Ein gefilterter eindeutiger Index lässt
+--                höchstens eine RetentionPolicy als Framework-Default zu;
+--                Zeit- und Zuordnungsindizes unterstützen die im Schema
+--                vorgesehenen Lauf-, Messwert-, Nutzdaten- und Purgeabfragen.
+--                Die DDL definiert keine kaskadierenden Fremdschlüssel.
+-- 
+-- Werte        : UTC-Zeitfelder geben den jeweiligen Erfassungs-, Lauf- oder
+--                Änderungszeitpunkt an. NULL ist bei Endzeiten, optionalen
+--                Start-/Resetinformationen, Fehlerfeldern und alternativen
+--                Messwertspalten zulässig, soweit die DDL dies festlegt.
+--                NumericValue, BigintValue und StringValue sind Alternativen:
+--                MetricSample verlangt genau einen nicht-NULL-Wert. ValueType
+--                und Unit in MetricDefinition beschreiben dessen Interpretation;
+--                der Vertrag garantiert keine Umrechnung. ResetEpochId grenzt
+--                Zählerstände über eine Reset-Epoche ab. QualityCode, StatusCode
+--                und IsPartial erhalten Qualitäts-, Ablauf- und
+--                Vollständigkeitsangaben. ScopeIdentityJson muss JSON sein;
+--                ScopeKeyHash ist genau 32 Byte lang. PayloadHash ist ebenfalls
+--                32 Byte lang; PayloadFormat und CompressionType sind auf die
+--                im Schema genannten Werte beschränkt.
+-- 
+-- Migration    : Die native Vorprüfung akzeptiert nur erkannte Schemaformen.
+--                Für erkannte Legacy- und Schema-2-Stände erweitert sie die
+--                CollectorCode- und ScopeType-Prüfwerte um FILE_IO
+--                beziehungsweise FILE_IO_FILE. Unbekannte oder abweichende
+--                Strukturen werden nicht beliebig repariert oder überschrieben.
+--                Paketversion 1.2.2 / Schema 3 kennzeichnet Installationsmetadaten,
+--                nicht die Laufzeitqualifikation oder Freigabe des Pakets.
+-- 
+-- Seeds        : Neue DEFAULT-Retention-, PERFORMANCE_COUNTERS-Policy- und
+--                Performance-Counter-Metrikzeilen werden nur eingefügt, wenn
+--                ihr jeweiliger Schlüssel fehlt. Vorhandene solche Zeilen bleiben
+--                erhalten. PackageVersion wird für SC-023 angelegt oder auf
+--                Paketversion 1.2.2 und Schema 3 gesetzt; InstalledAtUtc bleibt
+--                bei einem vorhandenen Datensatz unverändert, während
+--                LastInstallerRunUtc aktualisiert wird.
+-- 
+-- Voraussetzung: Die Verbindung zeigt auf eine ONLINE befindliche, beschreibbare
+--                Nicht-Systemdatenbank. Das Skript erstellt nicht selbst das
+--                Ziel und verwendet ausschließlich den geprüften Verbindungskontext.
+-- Datenschutz  : Die Tabellen dürfen im autorisierten Betrieb vollständige reale
+--                Laufzeitevidenz einschließlich optionaler Payloads speichern.
+--                Dieses Installationsskript enthält nur generische Seeds und
+--                keine Laufzeitwerte oder Datenbanknamen.
+-- Transaktion  : Implizite Transaktionen müssen ausgeschaltet sein. Das Skript
+--                verwendet bei Bedarf eine eigene Transaktion, andernfalls einen
+--                Savepoint. Im Fehlerfall wird die eigene Transaktion bei
+--                XACT_STATE() ungleich 0 zurückgerollt; im Aufruferkontext nur
+--                bei XACT_STATE() = 1 bis zum Savepoint. Bei XACT_STATE() = -1
+--                kann dieser Savepoint-Rollback nicht erfolgen; ein allgemeiner
+--                Rollback der Aufrufertransaktion wird nicht zugesichert.
+--                Die gesetzten SET-Optionen gelten für die verbundene Sitzung;
+--                das Skript stellt deren vorherige Werte nicht wieder her.
+-- Locking      : Die privilegierte native Strukturvorprüfung verwendet
+--                LOCK_TIMEOUT 10000 und hält geprüfte Tabellen bis zum
+--                Transaktionsende. Die anschließende eigene DDL verwendet
+--                LOCK_TIMEOUT 0 und wartet nicht auf fremde Sch-M-Sperren.
+-- Rechte       : CONTROL DATABASE und VIEW ANY DEFINITION sind für die native
+--                Strukturprüfung erforderlich. Das Skript vergibt keine Rechte.
+-- ```
+-- 
+-- USAGE_SKILL_END snapshot.PurgeRun
+CREATE TABLE [snapshot].[PurgeRun]
     (
           [PurgeRunId] bigint IDENTITY(1,1) NOT NULL
         , [StartedAtUtc] datetime2(3) NOT NULL

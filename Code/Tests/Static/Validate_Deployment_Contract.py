@@ -23,7 +23,7 @@ class DeploymentContract(unittest.TestCase):
         cls.sql, cls.info = generator.generate(ROOT, True)
 
     def test_source_closure_and_receipts(self):
-        self.assertEqual((211, 20, 7), tuple(self.info[k] for k in ('sources', 'tables', 'archives')))
+        self.assertEqual((215, 20, 7), tuple(self.info[k] for k in ('sources', 'tables', 'archives')))
         self.assertIn('NEWID()', self.sql)
         self.assertTrue("N''State_''" in self.sql)
         self.assertIn('AS [rowCount]', self.sql)
@@ -185,11 +185,11 @@ class DeploymentContract(unittest.TestCase):
 
     def test_snapshot_target_has_one_aborting_compilation_envelope(self):
         sql,info=generator.generate_snapshot_target(ROOT)
-        self.assertEqual(10,info['sources'])
+        self.assertEqual(12,info['sources'])
         self.assertEqual(1,len(generator.split_batches(sql)))
         self.assertLess(sql.index('IF @@TRANCOUNT<>0'),sql.index('SET XACT_ABORT ON;'))
         self.assertLess(sql.index('BEGIN TRANSACTION;'),sql.index('-- BEGIN SOURCE:'))
-        self.assertEqual(10,sql.count('-- BEGIN SOURCE:'))
+        self.assertEqual(12,sql.count('-- BEGIN SOURCE:'))
         for setting in ('LOCK_TIMEOUT 0','ANSI_NULLS ON','QUOTED_IDENTIFIER ON','ANSI_PADDING ON','ANSI_WARNINGS ON','ARITHABORT ON','CONCAT_NULL_YIELDS_NULL ON','NUMERIC_ROUNDABORT OFF'):
             self.assertLess(sql.index('SET '+setting+';'),sql.index('-- BEGIN SOURCE:'))
         self.assertIn("BEGIN EXEC sys.sp_executesql N'SET XACT_ABORT OFF; RAISERROR(",sql)

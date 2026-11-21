@@ -31,6 +31,146 @@ Locking      : LOCK_TIMEOUT 0; Systemkataloge READUNCOMMITTED.
                1.0.0 - Erstfassung Phase 6.
 ===============================================================================
 */
+-- USAGE_SKILL_BEGIN monitor.USP_DataCaptureStatus 1.0.0
+-- ---
+-- skill_format_version: "1.0.0"
+-- name: "monitor.USP_DataCaptureStatus"
+-- schema_name: "monitor"
+-- object_name: "USP_DataCaptureStatus"
+-- object_type: "PROCEDURE"
+-- database_role: "framework"
+-- is_internal: false
+-- description: "Inventarisiert CDC und Change Tracking für eine bracket-aware Datenbankliste oder alle zulässigen Datenbanken."
+-- source_path: "Code/07_Infrastructure/080_USP_DataCaptureStatus.sql"
+-- ---
+-- 
+-- # monitor.USP_DataCaptureStatus
+-- 
+-- ## Zweck und Einsatz
+-- 
+-- Inventarisiert CDC und Change Tracking für eine bracket-aware Datenbankliste oder alle zulässigen Datenbanken.
+-- 
+-- ## Voraussetzungen und Rechte
+-- 
+-- SQL Server 2019 oder neuer.
+-- 
+-- master.sys.databases, sys.change_tracking_databases, database-lokale sys.tables/sys.schemas/ sys.change_tracking_tables/cdc.change_tables, msdb CDC-Jobs.
+-- 
+-- Cross-Database wird über CROSS_DATABASE_DEEP geprüft.
+-- 
+-- ## Parameter und Eingabe
+-- 
+-- „SQL-Bindungspflicht“ bezeichnet ein bei der SQL-Aufrufbindung erforderliches Argument ohne Default. Fachliche Wertpflichten und zulässige NULL-Werte stehen im jeweiligen Einzelvertrag.
+-- 
+-- | Parameter | SQL-Typ | SQL-Bindungspflicht | Default |
+-- | --- | --- | --- | --- |
+-- | @DatabaseNames | nvarchar(max) | nein | NULL |
+-- | @SystemdatenbankenEinbeziehen | bit | nein | 0 |
+-- | @DatabaseNamePattern | nvarchar(4000) | nein | NULL |
+-- | @HighImpactConfirmed | bit | nein | 0 |
+-- | @MaxZeilen | int | nein | 10000 |
+-- | @ResultSetArt | varchar(16) | nein | 'CONSOLE' |
+-- | @ResultTablesJson | nvarchar(max) | nein | NULL |
+-- | @JsonErzeugen | bit | nein | 0 |
+-- | @Json | nvarchar(max) | nein | NULL OUTPUT |
+-- | @PrintMeldungen | bit | nein | 1 |
+-- | @Hilfe | bit | nein | 0 |
+-- 
+-- **@DatabaseNames:** @DatabaseNames nvarchar(max); Default: NULL. Default NULL. NULL oder Leer-/Whitespace-Eingabe bedeutet keine Einschränkung und alle zulässigen sichtbaren Online-Datenbanken. Nichtleere Pipe-Liste einteiliger SQL-Namen; | trennt außerhalb eckiger Klammern, ]] maskiert eine schließende Klammer; Elementränder werden getrimmt. Leere Segmente, ungültige Klammerung, Rohsegment über 4000 UTF-16-Codeeinheiten, Multipartname oder Name über 128 Zeichen sind INVALID_PARAMETER; Duplikate ebenfalls. Gültige, aber fehlende/offline/unzugängliche Namen werden Warnungen/Partial. Bei ausgelassenem Argument gilt der angegebene Default.
+-- 
+-- **@SystemdatenbankenEinbeziehen:** @SystemdatenbankenEinbeziehen bit; Default: 0. Default 0. 0 schließt master, tempdb, model und msdb aus; explizite Anforderung erzeugt SYSTEM_DATABASE_EXCLUDED. 1 lässt System-IDs bis 4 zu. NULL oder Werte außer 0/1 sind INVALID_PARAMETER. Bei ausgelassenem Argument gilt der angegebene Default.
+-- 
+-- **@DatabaseNamePattern:** @DatabaseNamePattern nvarchar(4000); Default: NULL. Default NULL. NULL heißt kein Pattern. Eingabe außen getrimmt; optionale Präfixe ohne Groß-/Kleinschreibung: like: (LIKE), regex: (case-sensitive Regex), regexi: (case-insensitive Regex); ohne Präfix gilt LIKE. Präfix wird entfernt, Rest nicht erneut getrimmt; leerer Inhalt ist ungültig. Exakte Liste und Pattern sind exklusiv. LIKE ist case-sensitive. Regex benötigt SQL Server 2025 und Compatibility Level 170 der Installationsdatenbank. Bei ausgelassenem Argument gilt der angegebene Default.
+-- 
+-- **@HighImpactConfirmed:** @HighImpactConfirmed bit; Default: 0. Der Kandidatenhelfer prüft HA_DR_CURRENT. Diese Klasse verlangt keine High-Impact-Bestätigung. 0 genügt für das Bestätigungsbit. Die aktuelle Zugriffspolicy wird weiterhin geprüft und kann DENIED_GROUP ergeben. Auch bei mehreren Datenbanken erfolgt kein zusätzlicher CROSS_DATABASE_DEEP-Check. NULL ergibt INVALID_PARAMETER. Bei ausgelassenem Argument gilt der angegebene Default.
+-- 
+-- **@MaxZeilen:** @MaxZeilen int; Default: 10000. Default 10000. NULL/0 unbegrenzt; negativ INVALID_PARAMETER, bevor Datenbankauswahl und Facherhebung beginnen (ein TABLE-Preflight kann vorher bereits erfolgt sein). Positive Grenze gilt global getrennt für databases, CDC-Tabellen, Change-Tracking-Tabellen und Jobs, nicht als Gesamtbudget. Auswahl wird nicht vorab begrenzt; lokal höchstens N+1 je Pfad pro Datenbank, danach globale TOP-N. Warnings bleiben ungekürzt. Datenbankausgabe nach DatabaseName sortiert. Bei ausgelassenem Argument gilt der angegebene Default.
+-- 
+-- **@ResultSetArt:** @ResultSetArt varchar(16); Default: 'CONSOLE'. Default CONSOLE. Außen getrimmt und großgeschrieben; erlaubt sind CONSOLE, RAW, TABLE, NONE. NULL, Leerwert und andere Werte ungültig. RAW liefert Modulstatus, databases, CDC-Tabellen, CT-Tabellen, Jobs und Warnings. CONSOLE wird intern vor der Ausgabe auf NONE normalisiert; der erreichbare Console-Helper gibt anschließend ausschließlich die databases-Ansicht aus, ohne separaten Modulstatus oder Warnings. TABLE schreibt nur databases; NONE keine normalen Resultsets. Bei ausgelassenem Argument gilt der angegebene Default.
+-- 
+-- **@ResultTablesJson:** @ResultTablesJson nvarchar(max); Default: NULL. Default NULL. Nur TABLE zulässig; sonst wird nichtleeres JSON mit 51011 abgewiesen. Einziges Resultat databases. Erwartet JSON-Objekt mit Resultnamen und Zielwert: bestehende leere lokale #Temp-Tabelle, keine ##Temp, kein #Monitor-Präfix, höchstens 116 Zeichen, genau eine Seed-Spalte und eindeutiger Name. Fehlende/ungültige Zuordnung wirft. Preflight vor HELP und Datenbankauswahl. Bei ausgelassenem Argument gilt der angegebene Default.
+-- 
+-- **@JsonErzeugen:** @JsonErzeugen bit; Default: 0. Default 0. 1 erzeugt zusätzlich unabhängig von ResultSetArt JSON mit meta, databases, cdcTables, changeTrackingTables, cdcJobs und warnings; 0 nicht. Warnungen bleiben ungekürzt. Bei ausgelassenem Argument gilt der angegebene Default.
+-- 
+-- **@Json:** @Json nvarchar(max) OUTPUT; Default: NULL. OUTPUT, Default NULL. Anfangs auf NULL gesetzt; bei JsonErzeugen=1 wird JSON mit Status/Partialität und fünf Arrays an gebundene nvarchar(max)-OUTPUT-Variable zurückgegeben. Binden Sie eine Variable des deklarierten Typs mit OUTPUT.
+-- 
+-- **@PrintMeldungen:** @PrintMeldungen bit; Default: 1. Default 1. Bei Status ungleich AVAILABLE zusätzliche Severity-10-Warnung; 0 unterdrückt sie. NULL wirkt nicht wie 1. Status-/Warning-Resultsets bleiben bestehen. Bei ausgelassenem Argument gilt der angegebene Default.
+-- 
+-- **@Hilfe:** @Hilfe bit; Default: 0. Default 0. 1 druckt kurze Eingabe-, Auswahl- und Ausgabehilfe und kehrt zurück; NULL wirkt wie 0. ResultTablesJson-Kombinationsprüfung und TABLE-Preflight laufen vor HELP. Bei ausgelassenem Argument gilt der angegebene Default.
+-- 
+-- ## Resultate und Ausgabe
+-- 
+-- RAW/CONSOLE/NONE; JSON mit meta, databases, cdcTables, changeTrackingTables, cdcJobs und warnings.
+-- 
+-- | Resultmenge | RAW | TABLE | Felder laut Inventar |
+-- | --- | --- | --- | --- |
+-- | databases | 1 | 1 | [DatabaseName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL , [StateDesc] nvarchar(60) NULL , [IsCdcEnabled] bit NULL , [IsChangeTrackingEnabled] bit NULL , [RetentionPeriod] bigint NULL , [RetentionPeriodUnitsDesc] nvarchar(60) NULL , [IsAutoCleanupOn] bit NULL , [CurrentCtVersion] bigint NULL , [StatusCode] varchar(40) NOT NULL , [ErrorMessage] nvarchar(2048) NULL |
+-- 
+-- Bei @Hilfe=1 kommt genau ein Resultset mit SkillFormatVersion, SchemaName, ObjectName und SkillMarkdown hinzu; bestehende PRINT-Hinweise bleiben erhalten.
+-- 
+-- ## Beispiel
+-- 
+-- ```sql
+-- EXEC [monitor].[USP_DataCaptureStatus] @Hilfe=1;
+-- ```
+-- 
+-- ## Aufwand, Nebenwirkungen, Fehler und Grenzen
+-- 
+-- monitor.USP_DataCaptureStatus
+-- 
+-- Beispiel 1: EXEC [monitor].[USP_DataCaptureStatus] @Hilfe=1;
+-- 
+-- Beispiel 2: EXEC [monitor].[USP_DataCaptureStatus] @DatabaseNames=N'[ExampleDatabase]', @MaxZeilen=100, @ResultSetArt='RAW';
+-- 
+-- Beispiel 3: DECLARE @CaptureJson nvarchar(max); EXEC [monitor].[USP_DataCaptureStatus] @DatabaseNames=N'[ExampleDatabase]', @MaxZeilen=100, @ResultSetArt='NONE', @JsonErzeugen=1, @Json=@CaptureJson OUTPUT; SELECT @CaptureJson AS [Json];
+-- 
+-- Beispiel 4: CREATE TABLE #DataCaptureStatus_HelpExample ([Seed] int NULL); BEGIN TRY EXEC [monitor].[USP_DataCaptureStatus] @DatabaseNames=N'[ExampleDatabase]', @MaxZeilen=100, @ResultSetArt='TABLE', @ResultTablesJson=N'{"databases":"#DataCaptureStatus_HelpExample"}'; SELECT * FROM #DataCaptureStatus_HelpExample; DROP TABLE #DataCaptureStatus_HelpExample; END TRY BEGIN CATCH DROP TABLE #DataCaptureStatus_HelpExample; THROW; END CATCH;
+-- 
+-- 
+-- ### Quellgebundene Detailbeschreibung
+-- 
+-- Der folgende Quellkopf bewahrt die zusätzlichen Implementierungsgrenzen für diesen Skill.
+-- 
+-- ```text
+-- Objekt       : monitor.USP_DataCaptureStatus
+-- Version      : 2.0.0
+-- Stand        : 2026-07-15
+-- Typ          : Stored Procedure
+-- Zweck        : Inventarisiert CDC und Change Tracking für eine bracket-aware
+--                Datenbankliste oder alle zulässigen Datenbanken.
+-- SQL-Version  : SQL Server 2019 oder neuer.
+-- Datenquellen : master.sys.databases, sys.change_tracking_databases,
+--                database-lokale sys.tables/sys.schemas/
+--                sys.change_tracking_tables/cdc.change_tables, msdb CDC-Jobs.
+-- Parameter    : @DatabaseNames, @DatabaseNamePattern,
+--                @SystemdatenbankenEinbeziehen, @HighImpactConfirmed,
+--                @MaxZeilen, @ResultSetArt, @ResultTablesJson,
+--                @JsonErzeugen, @Json OUTPUT, @PrintMeldungen, @Hilfe.
+-- Semantik     : @DatabaseNames=N'[Db1]|[Db2]'; NULL/leer/Whitespace=alle zulässigen
+--                Datenbanken. Exakte Liste und Pattern sind exklusiv. Die
+--                Datenbankauswahl wird nicht vorab begrenzt.
+-- Ausgabe      : RAW/CONSOLE/NONE; JSON mit meta, databases, cdcTables,
+--                changeTrackingTables, cdcJobs und warnings.
+-- Berechtigung : Cross-Database wird über CROSS_DATABASE_DEEP geprüft.
+-- Eigenlast    : Mittel; lokale Kandidaten werden je Datenbank auf N+1 begrenzt,
+--                anschließend erfolgt ein globales TOP je fachlichem Resultset.
+-- Locking      : LOCK_TIMEOUT 0; Systemkataloge READUNCOMMITTED.
+-- Änderungen   : 2.0.0 - @AlleDatenbanken entfernt; Listen-/Patternvertrag,
+--                          globale Mengenbegrenzung und Ausgabevertrag ergänzt.
+--                1.0.0 - Erstfassung Phase 6.
+-- ```
+-- 
+-- ### Weitere bestehende Hilfehinweise
+-- 
+-- ```text
+-- monitor.USP_DataCaptureStatus
+-- Beispiel 1: EXEC [monitor].[USP_DataCaptureStatus] @Hilfe=1;
+-- Beispiel 2: EXEC [monitor].[USP_DataCaptureStatus] @DatabaseNames=N'[ExampleDatabase]', @MaxZeilen=100, @ResultSetArt='RAW';
+-- Beispiel 3: DECLARE @CaptureJson nvarchar(max); EXEC [monitor].[USP_DataCaptureStatus] @DatabaseNames=N'[ExampleDatabase]', @MaxZeilen=100, @ResultSetArt='NONE', @JsonErzeugen=1, @Json=@CaptureJson OUTPUT; SELECT @CaptureJson AS [Json];
+-- Beispiel 4: CREATE TABLE #DataCaptureStatus_HelpExample ([Seed] int NULL); BEGIN TRY EXEC [monitor].[USP_DataCaptureStatus] @DatabaseNames=N'[ExampleDatabase]', @MaxZeilen=100, @ResultSetArt='TABLE', @ResultTablesJson=N'{"databases":"#DataCaptureStatus_HelpExample"}'; SELECT * FROM #DataCaptureStatus_HelpExample; DROP TABLE #DataCaptureStatus_HelpExample; END TRY BEGIN CATCH DROP TABLE #DataCaptureStatus_HelpExample; THROW; END CATCH;
+-- ```
+-- 
+-- USAGE_SKILL_END monitor.USP_DataCaptureStatus
 CREATE OR ALTER PROCEDURE [monitor].[USP_DataCaptureStatus]
       @DatabaseNames                    nvarchar(max)  = NULL
     , @SystemdatenbankenEinbeziehen     bit            = 0
@@ -46,22 +186,10 @@ CREATE OR ALTER PROCEDURE [monitor].[USP_DataCaptureStatus]
 AS
 BEGIN
     SET NOCOUNT ON;
-    SET @Json = NULL;
-    SET LOCK_TIMEOUT 0;
-
-    DECLARE @ResultSetArtNormalisiert varchar(16) = UPPER(LTRIM(RTRIM(COALESCE(@ResultSetArt, ''))));
-    DECLARE @TableResultRequested bit = CASE WHEN @ResultSetArtNormalisiert = 'TABLE' THEN 1 ELSE 0 END;
-    DECLARE @ConsoleResultRequested bit = CASE WHEN @ResultSetArtNormalisiert = 'CONSOLE' THEN 1 ELSE 0 END;
-    DECLARE @TableTarget sysname=NULL;
-    IF @TableResultRequested=0 AND NULLIF(LTRIM(RTRIM(COALESCE(@ResultTablesJson,N''))),N'') IS NOT NULL THROW 51011,N'@ResultTablesJson ist ausschließlich mit @ResultSetArt=TABLE zulässig.',1;
-    IF @TableResultRequested=1 EXEC [monitor].[InternalPrepareSingleResultTable] @ResultTablesJson=@ResultTablesJson,@ResultName=N'databases',@TargetTable=@TableTarget OUTPUT,@ThrowOnError=1;
-    IF @TableResultRequested = 1 OR @ConsoleResultRequested = 1 SET @ResultSetArtNormalisiert = 'NONE';
-    DECLARE @EffectiveMaxZeilen bigint = CASE WHEN @MaxZeilen IS NULL OR @MaxZeilen = 0 THEN CONVERT(bigint, 9223372036854775807) WHEN @MaxZeilen > 0 THEN CONVERT(bigint, @MaxZeilen) ELSE CONVERT(bigint, 0) END;
-    DECLARE @LocalCandidateRows bigint = CASE WHEN @MaxZeilen IS NULL OR @MaxZeilen = 0 THEN CONVERT(bigint, 9223372036854775807) WHEN @MaxZeilen BETWEEN 1 AND 2147483646 THEN CONVERT(bigint, @MaxZeilen) + 1 WHEN @MaxZeilen > 0 THEN CONVERT(bigint, @MaxZeilen) ELSE CONVERT(bigint, 0) END;
-    DECLARE @MonitorPrintMessage nvarchar(2048);
 
     IF @Hilfe = 1
     BEGIN
+        SET @Json=NULL;
         PRINT N'monitor.USP_DataCaptureStatus';
         PRINT N'@DatabaseNames nvarchar(max); Default: NULL. Default NULL. NULL oder Leer-/Whitespace-Eingabe bedeutet keine Einschränkung und alle zulässigen sichtbaren Online-Datenbanken. Nichtleere Pipe-Liste einteiliger SQL-Namen; | trennt außerhalb eckiger Klammern, ]] maskiert eine schließende Klammer; Elementränder werden getrimmt. Leere Segmente, ungültige Klammerung, Rohsegment über 4000 UTF-16-Codeeinheiten, Multipartname oder Name über 128 Zeichen sind INVALID_PARAMETER; Duplikate ebenfalls. Gültige, aber fehlende/offline/unzugängliche Namen werden Warnungen/Partial. Bei ausgelassenem Argument gilt der angegebene Default.';
         PRINT N'@SystemdatenbankenEinbeziehen bit; Default: 0. Default 0. 0 schließt master, tempdb, model und msdb aus; explizite Anforderung erzeugt SYSTEM_DATABASE_EXCLUDED. 1 lässt System-IDs bis 4 zu. NULL oder Werte außer 0/1 sind INVALID_PARAMETER. Bei ausgelassenem Argument gilt der angegebene Default.';
@@ -78,8 +206,262 @@ BEGIN
         PRINT N'Beispiel 2: EXEC [monitor].[USP_DataCaptureStatus] @DatabaseNames=N''[ExampleDatabase]'', @MaxZeilen=100, @ResultSetArt=''RAW'';';
         PRINT N'Beispiel 3: DECLARE @CaptureJson nvarchar(max); EXEC [monitor].[USP_DataCaptureStatus] @DatabaseNames=N''[ExampleDatabase]'', @MaxZeilen=100, @ResultSetArt=''NONE'', @JsonErzeugen=1, @Json=@CaptureJson OUTPUT; SELECT @CaptureJson AS [Json];';
         PRINT N'Beispiel 4: CREATE TABLE #DataCaptureStatus_HelpExample ([Seed] int NULL); BEGIN TRY EXEC [monitor].[USP_DataCaptureStatus] @DatabaseNames=N''[ExampleDatabase]'', @MaxZeilen=100, @ResultSetArt=''TABLE'', @ResultTablesJson=N''{"databases":"#DataCaptureStatus_HelpExample"}''; SELECT * FROM #DataCaptureStatus_HelpExample; DROP TABLE #DataCaptureStatus_HelpExample; END TRY BEGIN CATCH DROP TABLE #DataCaptureStatus_HelpExample; THROW; END CATCH;';
+        -- USAGE_SKILL_HELP_BEGIN monitor.USP_DataCaptureStatus
+        SELECT CONVERT(varchar(16),'1.0.0') AS [SkillFormatVersion],CONVERT(sysname,N'monitor') AS [SchemaName],CONVERT(sysname,N'USP_DataCaptureStatus') AS [ObjectName],CONVERT(nvarchar(max),N'---')
+            + NCHAR(10)
+            + N'skill_format_version: "1.0.0"'
+            + NCHAR(10)
+            + N'name: "monitor.USP_DataCaptureStatus"'
+            + NCHAR(10)
+            + N'schema_name: "monitor"'
+            + NCHAR(10)
+            + N'object_name: "USP_DataCaptureStatus"'
+            + NCHAR(10)
+            + N'object_type: "PROCEDURE"'
+            + NCHAR(10)
+            + N'database_role: "framework"'
+            + NCHAR(10)
+            + N'is_internal: false'
+            + NCHAR(10)
+            + N'description: "Inventarisiert CDC und Change Tracking für eine bracket-aware Datenbankliste oder alle zulässigen Datenbanken."'
+            + NCHAR(10)
+            + N'source_path: "Code/07_Infrastructure/080_USP_DataCaptureStatus.sql"'
+            + NCHAR(10)
+            + N'---'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'# monitor.USP_DataCaptureStatus'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'## Zweck und Einsatz'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'Inventarisiert CDC und Change Tracking für eine bracket-aware Datenbankliste oder alle zulässigen Datenbanken.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'## Voraussetzungen und Rechte'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'SQL Server 2019 oder neuer.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'master.sys.databases, sys.change_tracking_databases, database-lokale sys.tables/sys.schemas/ sys.change_tracking_tables/cdc.change_tables, msdb CDC-Jobs.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'Cross-Database wird über CROSS_DATABASE_DEEP geprüft.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'## Parameter und Eingabe'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'„SQL-Bindungspflicht“ bezeichnet ein bei der SQL-Aufrufbindung erforderliches Argument ohne Default. Fachliche Wertpflichten und zulässige NULL-Werte stehen im jeweiligen Einzelvertrag.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'| Parameter | SQL-Typ | SQL-Bindungspflicht | Default |'
+            + NCHAR(10)
+            + N'| --- | --- | --- | --- |'
+            + NCHAR(10)
+            + N'| @DatabaseNames | nvarchar(max) | nein | NULL |'
+            + NCHAR(10)
+            + N'| @SystemdatenbankenEinbeziehen | bit | nein | 0 |'
+            + NCHAR(10)
+            + N'| @DatabaseNamePattern | nvarchar(4000) | nein | NULL |'
+            + NCHAR(10)
+            + N'| @HighImpactConfirmed | bit | nein | 0 |'
+            + NCHAR(10)
+            + N'| @MaxZeilen | int | nein | 10000 |'
+            + NCHAR(10)
+            + N'| @ResultSetArt | varchar(16) | nein | ''CONSOLE'' |'
+            + NCHAR(10)
+            + N'| @ResultTablesJson | nvarchar(max) | nein | NULL |'
+            + NCHAR(10)
+            + N'| @JsonErzeugen | bit | nein | 0 |'
+            + NCHAR(10)
+            + N'| @Json | nvarchar(max) | nein | NULL OUTPUT |'
+            + NCHAR(10)
+            + N'| @PrintMeldungen | bit | nein | 1 |'
+            + NCHAR(10)
+            + N'| @Hilfe | bit | nein | 0 |'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'**@DatabaseNames:** @DatabaseNames nvarchar(max); Default: NULL. Default NULL. NULL oder Leer-/Whitespace-Eingabe bedeutet keine Einschränkung und alle zulässigen sichtbaren Online-Datenbanken. Nichtleere Pipe-Liste einteiliger SQL-Namen; | trennt außerhalb eckiger Klammern, ]] maskiert eine schließende Klammer; Elementränder werden getrimmt. Leere Segmente, ungültige Klammerung, Rohsegment über 4000 UTF-16-Codeeinheiten, Multipartname oder Name über 128 Zeichen sind INVALID_PARAMETER; Duplikate ebenfalls. Gültige, aber fehlende/offline/unzugängliche Namen werden Warnungen/Partial. Bei ausgelassenem Argument gilt der angegebene Default.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'**@SystemdatenbankenEinbeziehen:** @SystemdatenbankenEinbeziehen bit; Default: 0. Default 0. 0 schließt master, tempdb, model und msdb aus; explizite Anforderung erzeugt SYSTEM_DATABASE_EXCLUDED. 1 lässt System-IDs bis 4 zu. NULL oder Werte außer 0/1 sind INVALID_PARAMETER. Bei ausgelassenem Argument gilt der angegebene Default.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'**@DatabaseNamePattern:** @DatabaseNamePattern nvarchar(4000); Default: NULL. Default NULL. NULL heißt kein Pattern. Eingabe außen getrimmt; optionale Präfixe ohne Groß-/Kleinschreibung: like: (LIKE), regex: (case-sensitive Regex), regexi: (case-insensitive Regex); ohne Präfix gilt LIKE. Präfix wird entfernt, Rest nicht erneut getrimmt; leerer Inhalt ist ungültig. Exakte Liste und Pattern sind exklusiv. LIKE ist case-sensitive. Regex benötigt SQL Server 2025 und Compatibility Level 170 der Installationsdatenbank. Bei ausgelassenem Argument gilt der angegebene Default.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'**@HighImpactConfirmed:** @HighImpactConfirmed bit; Default: 0. Der Kandidatenhelfer prüft HA_DR_CURRENT. Diese Klasse verlangt keine High-Impact-Bestätigung. 0 genügt für das Bestätigungsbit. Die aktuelle Zugriffspolicy wird weiterhin geprüft und kann DENIED_GROUP ergeben. Auch bei mehreren Datenbanken erfolgt kein zusätzlicher CROSS_DATABASE_DEEP-Check. NULL ergibt INVALID_PARAMETER. Bei ausgelassenem Argument gilt der angegebene Default.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'**@MaxZeilen:** @MaxZeilen int; Default: 10000. Default 10000. NULL/0 unbegrenzt; negativ INVALID_PARAMETER, bevor Datenbankauswahl und Facherhebung beginnen (ein TABLE-Preflight kann vorher bereits erfolgt sein). Positive Grenze gilt global getrennt für databases, CDC-Tabellen, Change-Tracking-Tabellen und Jobs, nicht als Gesamtbudget. Auswahl wird nicht vorab begrenzt; lokal höchstens N+1 je Pfad pro Datenbank, danach globale TOP-N. Warnings bleiben ungekürzt. Datenbankausgabe nach DatabaseName sortiert. Bei ausgelassenem Argument gilt der angegebene Default.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'**@ResultSetArt:** @ResultSetArt varchar(16); Default: ''CONSOLE''. Default CONSOLE. Außen getrimmt und großgeschrieben; erlaubt sind CONSOLE, RAW, TABLE, NONE. NULL, Leerwert und andere Werte ungültig. RAW liefert Modulstatus, databases, CDC-Tabellen, CT-Tabellen, Jobs und Warnings. CONSOLE wird intern vor der Ausgabe auf NONE normalisiert; der erreichbare Console-Helper gibt anschließend ausschließlich die databases-Ansicht aus, ohne separaten Modulstatus oder Warnings. TABLE schreibt nur databases; NONE keine normalen Resultsets. Bei ausgelassenem Argument gilt der angegebene Default.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'**@ResultTablesJson:** @ResultTablesJson nvarchar(max); Default: NULL. Default NULL. Nur TABLE zulässig; sonst wird nichtleeres JSON mit 51011 abgewiesen. Einziges Resultat databases. Erwartet JSON-Objekt mit Resultnamen und Zielwert: bestehende leere lokale #Temp-Tabelle, keine ##Temp, kein #Monitor-Präfix, höchstens 116 Zeichen, genau eine Seed-Spalte und eindeutiger Name. Fehlende/ungültige Zuordnung wirft. Preflight vor HELP und Datenbankauswahl. Bei ausgelassenem Argument gilt der angegebene Default.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'**@JsonErzeugen:** @JsonErzeugen bit; Default: 0. Default 0. 1 erzeugt zusätzlich unabhängig von ResultSetArt JSON mit meta, databases, cdcTables, changeTrackingTables, cdcJobs und warnings; 0 nicht. Warnungen bleiben ungekürzt. Bei ausgelassenem Argument gilt der angegebene Default.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'**@Json:** @Json nvarchar(max) OUTPUT; Default: NULL. OUTPUT, Default NULL. Anfangs auf NULL gesetzt; bei JsonErzeugen=1 wird JSON mit Status/Partialität und fünf Arrays an gebundene nvarchar(max)-OUTPUT-Variable zurückgegeben. Binden Sie eine Variable des deklarierten Typs mit OUTPUT.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'**@PrintMeldungen:** @PrintMeldungen bit; Default: 1. Default 1. Bei Status ungleich AVAILABLE zusätzliche Severity-10-Warnung; 0 unterdrückt sie. NULL wirkt nicht wie 1. Status-/Warning-Resultsets bleiben bestehen. Bei ausgelassenem Argument gilt der angegebene Default.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'**@Hilfe:** @Hilfe bit; Default: 0. Default 0. 1 druckt kurze Eingabe-, Auswahl- und Ausgabehilfe und kehrt zurück; NULL wirkt wie 0. ResultTablesJson-Kombinationsprüfung und TABLE-Preflight laufen vor HELP. Bei ausgelassenem Argument gilt der angegebene Default.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'## Resultate und Ausgabe'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'RAW/CONSOLE/NONE; JSON mit meta, databases, cdcTables, changeTrackingTables, cdcJobs und warnings.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'| Resultmenge | RAW | TABLE | Felder laut Inventar |'
+            + NCHAR(10)
+            + N'| --- | --- | --- | --- |'
+            + NCHAR(10)
+            + N'| databases | 1 | 1 | [DatabaseName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL , [StateDesc] nvarchar(60) NULL , [IsCdcEnabled] bit NULL , [IsChangeTrackingEnabled] bit NULL , [RetentionPeriod] bigint NULL , [RetentionPeriodUnitsDesc] nvarchar(60) NULL , [IsAutoCleanupOn] bit NULL , [CurrentCtVersion] bigint NULL , [StatusCode] varchar(40) NOT NULL , [ErrorMessage] nvarchar(2048) NULL |'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'Bei @Hilfe=1 kommt genau ein Resultset mit SkillFormatVersion, SchemaName, ObjectName und SkillMarkdown hinzu; bestehende PRINT-Hinweise bleiben erhalten.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'## Beispiel'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'```sql'
+            + NCHAR(10)
+            + N'EXEC [monitor].[USP_DataCaptureStatus] @Hilfe=1;'
+            + NCHAR(10)
+            + N'```'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'## Aufwand, Nebenwirkungen, Fehler und Grenzen'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'monitor.USP_DataCaptureStatus'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'Beispiel 1: EXEC [monitor].[USP_DataCaptureStatus] @Hilfe=1;'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'Beispiel 2: EXEC [monitor].[USP_DataCaptureStatus] @DatabaseNames=N''[ExampleDatabase]'', @MaxZeilen=100, @ResultSetArt=''RAW'';'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'Beispiel 3: DECLARE @CaptureJson nvarchar(max); EXEC [monitor].[USP_DataCaptureStatus] @DatabaseNames=N''[ExampleDatabase]'', @MaxZeilen=100, @ResultSetArt=''NONE'', @JsonErzeugen=1, @Json=@CaptureJson OUTPUT; SELECT @CaptureJson AS [Json];'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'Beispiel 4: CREATE TABLE #DataCaptureStatus_HelpExample ([Seed] int NULL); BEGIN TRY EXEC [monitor].[USP_DataCaptureStatus] @DatabaseNames=N''[ExampleDatabase]'', @MaxZeilen=100, @ResultSetArt=''TABLE'', @ResultTablesJson=N''{"databases":"#DataCaptureStatus_HelpExample"}''; SELECT * FROM #DataCaptureStatus_HelpExample; DROP TABLE #DataCaptureStatus_HelpExample; END TRY BEGIN CATCH DROP TABLE #DataCaptureStatus_HelpExample; THROW; END CATCH;'
+            + NCHAR(10)
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'### Quellgebundene Detailbeschreibung'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'Der folgende Quellkopf bewahrt die zusätzlichen Implementierungsgrenzen für diesen Skill.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'```text'
+            + NCHAR(10)
+            + N'Objekt       : monitor.USP_DataCaptureStatus'
+            + NCHAR(10)
+            + N'Version      : 2.0.0'
+            + NCHAR(10)
+            + N'Stand        : 2026-07-15'
+            + NCHAR(10)
+            + N'Typ          : Stored Procedure'
+            + NCHAR(10)
+            + N'Zweck        : Inventarisiert CDC und Change Tracking für eine bracket-aware'
+            + NCHAR(10)
+            + N'               Datenbankliste oder alle zulässigen Datenbanken.'
+            + NCHAR(10)
+            + N'SQL-Version  : SQL Server 2019 oder neuer.'
+            + NCHAR(10)
+            + N'Datenquellen : master.sys.databases, sys.change_tracking_databases,'
+            + NCHAR(10)
+            + N'               database-lokale sys.tables/sys.schemas/'
+            + NCHAR(10)
+            + N'               sys.change_tracking_tables/cdc.change_tables, msdb CDC-Jobs.'
+            + NCHAR(10)
+            + N'Parameter    : @DatabaseNames, @DatabaseNamePattern,'
+            + NCHAR(10)
+            + N'               @SystemdatenbankenEinbeziehen, @HighImpactConfirmed,'
+            + NCHAR(10)
+            + N'               @MaxZeilen, @ResultSetArt, @ResultTablesJson,'
+            + NCHAR(10)
+            + N'               @JsonErzeugen, @Json OUTPUT, @PrintMeldungen, @Hilfe.'
+            + NCHAR(10)
+            + N'Semantik     : @DatabaseNames=N''[Db1]|[Db2]''; NULL/leer/Whitespace=alle zulässigen'
+            + NCHAR(10)
+            + N'               Datenbanken. Exakte Liste und Pattern sind exklusiv. Die'
+            + NCHAR(10)
+            + N'               Datenbankauswahl wird nicht vorab begrenzt.'
+            + NCHAR(10)
+            + N'Ausgabe      : RAW/CONSOLE/NONE; JSON mit meta, databases, cdcTables,'
+            + NCHAR(10)
+            + N'               changeTrackingTables, cdcJobs und warnings.'
+            + NCHAR(10)
+            + N'Berechtigung : Cross-Database wird über CROSS_DATABASE_DEEP geprüft.'
+            + NCHAR(10)
+            + N'Eigenlast    : Mittel; lokale Kandidaten werden je Datenbank auf N+1 begrenzt,'
+            + NCHAR(10)
+            + N'               anschließend erfolgt ein globales TOP je fachlichem Resultset.'
+            + NCHAR(10)
+            + N'Locking      : LOCK_TIMEOUT 0; Systemkataloge READUNCOMMITTED.'
+            + NCHAR(10)
+            + N'Änderungen   : 2.0.0 - @AlleDatenbanken entfernt; Listen-/Patternvertrag,'
+            + NCHAR(10)
+            + N'                         globale Mengenbegrenzung und Ausgabevertrag ergänzt.'
+            + NCHAR(10)
+            + N'               1.0.0 - Erstfassung Phase 6.'
+            + NCHAR(10)
+            + N'```'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'### Weitere bestehende Hilfehinweise'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'```text'
+            + NCHAR(10)
+            + N'monitor.USP_DataCaptureStatus'
+            + NCHAR(10)
+            + N'Beispiel 1: EXEC [monitor].[USP_DataCaptureStatus] @Hilfe=1;'
+            + NCHAR(10)
+            + N'Beispiel 2: EXEC [monitor].[USP_DataCaptureStatus] @DatabaseNames=N''[ExampleDatabase]'', @MaxZeilen=100, @ResultSetArt=''RAW'';'
+            + NCHAR(10)
+            + N'Beispiel 3: DECLARE @CaptureJson nvarchar(max); EXEC [monitor].[USP_DataCaptureStatus] @DatabaseNames=N''[ExampleDatabase]'', @MaxZeilen=100, @ResultSetArt=''NONE'', @JsonErzeugen=1, @Json=@CaptureJson OUTPUT; SELECT @CaptureJson AS [Json];'
+            + NCHAR(10)
+            + N'Beispiel 4: CREATE TABLE #DataCaptureStatus_HelpExample ([Seed] int NULL); BEGIN TRY EXEC [monitor].[USP_DataCaptureStatus] @DatabaseNames=N''[ExampleDatabase]'', @MaxZeilen=100, @ResultSetArt=''TABLE'', @ResultTablesJson=N''{"databases":"#DataCaptureStatus_HelpExample"}''; SELECT * FROM #DataCaptureStatus_HelpExample; DROP TABLE #DataCaptureStatus_HelpExample; END TRY BEGIN CATCH DROP TABLE #DataCaptureStatus_HelpExample; THROW; END CATCH;'
+            + NCHAR(10)
+            + N'```'
+            + NCHAR(10)
+            + NCHAR(10) AS [SkillMarkdown];
+        -- USAGE_SKILL_HELP_END monitor.USP_DataCaptureStatus
         RETURN;
-    END;
+    END
+
+    SET @Json = NULL;
+    SET LOCK_TIMEOUT 0;
+
+    DECLARE @ResultSetArtNormalisiert varchar(16) = UPPER(LTRIM(RTRIM(COALESCE(@ResultSetArt, ''))));
+    DECLARE @TableResultRequested bit = CASE WHEN @ResultSetArtNormalisiert = 'TABLE' THEN 1 ELSE 0 END;
+    DECLARE @ConsoleResultRequested bit = CASE WHEN @ResultSetArtNormalisiert = 'CONSOLE' THEN 1 ELSE 0 END;
+    DECLARE @TableTarget sysname=NULL;
+    IF @TableResultRequested=0 AND NULLIF(LTRIM(RTRIM(COALESCE(@ResultTablesJson,N''))),N'') IS NOT NULL THROW 51011,N'@ResultTablesJson ist ausschließlich mit @ResultSetArt=TABLE zulässig.',1;
+    IF @TableResultRequested=1 EXEC [monitor].[InternalPrepareSingleResultTable] @ResultTablesJson=@ResultTablesJson,@ResultName=N'databases',@TargetTable=@TableTarget OUTPUT,@ThrowOnError=1;
+    IF @TableResultRequested = 1 OR @ConsoleResultRequested = 1 SET @ResultSetArtNormalisiert = 'NONE';
+    DECLARE @EffectiveMaxZeilen bigint = CASE WHEN @MaxZeilen IS NULL OR @MaxZeilen = 0 THEN CONVERT(bigint, 9223372036854775807) WHEN @MaxZeilen > 0 THEN CONVERT(bigint, @MaxZeilen) ELSE CONVERT(bigint, 0) END;
+    DECLARE @LocalCandidateRows bigint = CASE WHEN @MaxZeilen IS NULL OR @MaxZeilen = 0 THEN CONVERT(bigint, 9223372036854775807) WHEN @MaxZeilen BETWEEN 1 AND 2147483646 THEN CONVERT(bigint, @MaxZeilen) + 1 WHEN @MaxZeilen > 0 THEN CONVERT(bigint, @MaxZeilen) ELSE CONVERT(bigint, 0) END;
+    DECLARE @MonitorPrintMessage nvarchar(2048);
+
+    ;
 
     DECLARE @CollectionTimeUtc datetime2(3) = SYSUTCDATETIME();
     DECLARE @StatusCode varchar(40) = 'AVAILABLE';

@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Validate literal CurrentTransactions fields, ABI, parent isolation and late cap."""
 from __future__ import annotations
+from UsageSkillSourceMask import strip_usage_skill_projections
 import argparse
 from pathlib import Path
 import re
@@ -160,7 +161,7 @@ def self_test(source:str)->tuple[int,bool]:
 
 def main()->int:
  p=argparse.ArgumentParser();p.add_argument('--repository-root',type=Path,default=Path('.'));p.add_argument('--self-test',action='store_true');a=p.parse_args()
- source=(a.repository_root/PROCEDURE_PATH).read_text(encoding='utf-8-sig')
+ source=strip_usage_skill_projections((a.repository_root/PROCEDURE_PATH).read_text(encoding='utf-8-sig'))
  if a.self_test:
   count,_=self_test(source);print(f'CurrentTransactions self-test passed: mutations={count}');return 0
  errors=findings(source)

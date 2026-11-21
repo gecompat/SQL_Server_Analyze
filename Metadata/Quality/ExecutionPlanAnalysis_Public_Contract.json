@@ -319,6 +319,7 @@
   ],
   "standaloneObjects": [
     "monitor schema",
+    "monitor_metadata schema",
     "VW_AnalyseClassCatalog",
     "VW_AnalyseAccessPolicy",
     "VW_AnalyseAccessCurrent",
@@ -339,6 +340,7 @@
     "InternalCollectExecutionPlanMetadata",
     "InternalAnalyzeExecutionPlan",
     "USP_CreateExecutionEvidenceJson",
-    "USP_ExecutionPlanAnalysis"
+    "USP_ExecutionPlanAnalysis",
+    "VW_ObjectUsageSkills"
   ]
 }

@@ -453,7 +453,7 @@ def load_sources(root: Path, snapshot: bool, check_snapshot_guard: bool=True) ->
                     if source.path==SNAPSHOT_SCHEMA_SOURCE and unstring(bt[pos])==SNAPSHOT_ADMISSION_ERROR:
                         continue
                     if [upper(t) for t in dynamic[:2]]==['CREATE','SCHEMA']:
-                        if len(dynamic)!=6 or ident(dynamic[2]) not in ('monitor','snapshot') or [upper(dynamic[3]),ident(dynamic[4]),dynamic[5].value]!=['AUTHORIZATION','dbo',';']:
+                        if len(dynamic)!=6 or ident(dynamic[2]) not in ('monitor','snapshot','monitor_metadata') or [upper(dynamic[3]),ident(dynamic[4]),dynamic[5].value]!=['AUTHORIZATION','dbo',';']:
                             raise BuildError('Unknown schema creation contract')
                     elif [upper(t) for t in dynamic[:2]]==['CREATE','TABLE']:
                         _,_,table_pos=qualified(dynamic,2)

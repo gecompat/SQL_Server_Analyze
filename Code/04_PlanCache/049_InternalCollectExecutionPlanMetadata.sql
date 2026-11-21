@@ -182,6 +182,293 @@ Fehler        : Wenn eine referenzierte Datenbank bei der Kandidatenermittlung
                Bereits geschriebene Zeilen werden nicht zurückgerollt.
 ===============================================================================
 */
+-- USAGE_SKILL_BEGIN monitor.InternalCollectExecutionPlanMetadata 1.0.0
+-- ---
+-- skill_format_version: "1.0.0"
+-- name: "monitor.InternalCollectExecutionPlanMetadata"
+-- schema_name: "monitor"
+-- object_name: "InternalCollectExecutionPlanMetadata"
+-- object_type: "INTERNAL_PROCEDURE"
+-- database_role: "framework"
+-- is_internal: true
+-- description: "Die Procedure ermittelt zu einem Ausführungsplan Objekt-, Index- und Statistikmetadaten der ausdrücklich bestätigten Quellumgebung."
+-- source_path: "Code/04_PlanCache/049_InternalCollectExecutionPlanMetadata.sql"
+-- ---
+-- 
+-- # monitor.InternalCollectExecutionPlanMetadata
+-- 
+-- ## Zweck und Einsatz
+-- 
+-- Die Procedure ermittelt zu einem Ausführungsplan Objekt-, Index- und Statistikmetadaten der ausdrücklich bestätigten Quellumgebung. Sie kann Histogrammschritte und Zusammenfassungen sowie Zuordnungen zu Planprädikaten sammeln.
+-- 
+-- ## Voraussetzungen und Rechte
+-- 
+-- Der Aufrufer legt die fünf Evidenz-Temp-Tabellen mit dem erwarteten Schema an. Je ein TOP (0)-SELECT prüft Existenz und Schemaauflösung, nicht das vollständige Schema oder die Berechtigungen. Die fünf Prüfungen erzeugen fünf leere Resultsets.
+-- 
+-- ## Parameter und Eingabe
+-- 
+-- „SQL-Bindungspflicht“ bezeichnet ein bei der SQL-Aufrufbindung erforderliches Argument ohne Default. Fachliche Wertpflichten und zulässige NULL-Werte stehen im jeweiligen Einzelvertrag.
+-- 
+-- | Parameter | SQL-Typ | SQL-Bindungspflicht | Default |
+-- | --- | --- | --- | --- |
+-- | @PlanXml | xml | ja | kein Default |
+-- | @StatistikEvidenzModus | varchar(16) | nein | 'USED' |
+-- | @HistogrammModus | varchar(16) | nein | 'NONE' |
+-- | @QuellumgebungBestaetigt | bit | nein | 0 |
+-- | @MitPredicateHistogramMap | bit | nein | 1 |
+-- | @MaxStatistiken | int | nein | 100 |
+-- | @MaxHistogrammSchritte | int | nein | 20000 |
+-- | @LockTimeoutMs | int | nein | 0 |
+-- | @HighImpactConfirmed | bit | nein | 0 |
+-- | @StatusCodeOut | varchar(40) OUTPUT | nein | NULL |
+-- | @IsPartialOut | bit OUTPUT | nein | NULL |
+-- | @ErrorNumberOut | int OUTPUT | nein | NULL |
+-- | @ErrorMessageOut | nvarchar(2048) OUTPUT | nein | NULL |
+-- | @Hilfe | bit | nein | 0 |
+-- 
+-- **@PlanXml:** @PlanXml xml, Default: keiner; obligatorisch. Eingabeform: einzelner XML-Ausführungsplan als XML-Wert oder gebundene XML-Variable; NULL ergibt INVALID_PARAMETER. Ein leeres, gültiges XML wird nicht ausdrücklich abgewiesen.
+-- 
+-- **@StatistikEvidenzModus:** @StatistikEvidenzModus varchar(16), Default: 'USED'. Eingabeform: ein einzelner Modus-Textwert, keine Liste. NULL wird zur Laufzeit zu USED; äußere Leerzeichen werden entfernt, Großschreibung angewendet. Endliche Werte: USED sammelt nur vom Plan als verwendet gemeldete Statistiken; RELEVANT ergänzt Statistiken, deren führende Spalte im Plan als SEEK, RESIDUAL, JOIN, ORDER_BY oder GROUP_BY vorkommt; OBJECT_ALL ergänzt alle Statistiken katalogauflösbarer Planobjekte. Leertext ist ungültig.
+-- 
+-- **@HistogrammModus:** @HistogrammModus varchar(16), Default: 'NONE'. Eingabeform: einzelner Modus-Textwert, keine Liste. NULL wird zur Laufzeit zu NONE; äußere Leerzeichen werden entfernt, Großschreibung angewendet. Endliche Werte: NONE sammelt im Hauptteil keine zusätzlichen Schritte; SUMMARY und STEPS sammeln Schritte und bilden Zusammenfassungen, wobei STEPS zusätzlich High-Impact-Bestätigung verlangt. Die Sammlung ist in beiden Modi gleich. Vorhandene Zeilen werden auch bei NONE zusammengefasst und können zugeordnet werden. Leertext oder nur Leerzeichen ist ungültig.
+-- 
+-- **@QuellumgebungBestaetigt:** @QuellumgebungBestaetigt bit, Default: 0. Eingabeform: einzelner SQL-bit- Wert oder Variable; leere Zeichenfolge ist keine vorgesehene Typform und wird vor Eintritt konvertiert. SQL-bit-Eingabe: 1 bestätigt die Quellumgebung; 0 oder NULL ergeben INVALID_PARAMETER. Ausgelassen bindet den Default 0 und ergibt ebenfalls INVALID_PARAMETER. Leerer Zeichenfolgeneingang wird vor Eintritt zu bit 0 konvertiert und wie fehlende Bestätigung abgelehnt.
+-- 
+-- **@MitPredicateHistogramMap:** @MitPredicateHistogramMap bit, Default: 1. Eingabeform: einzelner SQL-bit- Wert oder Variable; leere Zeichenfolge ist keine vorgesehene Typform und wird vor Eintritt konvertiert. SQL-bit-Eingabe: 1 ordnet extrahierte Planparameterwerte Histogrammschritten zu; 0 überspringt die Zuordnung. NULL ergibt INVALID_PARAMETER. Leerer Zeichenfolgeneingang wird vor Eintritt zu bit 0 konvertiert und überspringt die Zuordnung.
+-- 
+-- **@MaxStatistiken:** @MaxStatistiken int, Default: 100. Eingabeform: einzelner SQL-int-Wert oder Variable; leere Zeichenfolge ist keine vorgesehene Typform und wird vor Eintritt konvertiert. Ganze Zahl 1 bis 1000 einschließlich; NULL und Werte außerhalb ergeben INVALID_PARAMETER. Begrenzt die insgesamt ausgewählten Kandidaten nach Priorität PLAN_USED, RELEVANT_LEADING_COLUMN, danach übrige. RELEVANT/OBJECT_ALL- Kandidaten werden vor dem Limit aus dem Katalog gelesen; ein positives Limit verhindert diese anfängliche Abfrage nicht. Leerer Zeichenfolgeneingang wird vor Eintritt zu int 0 konvertiert und liegt außerhalb des gültigen Bereichs.
+-- 
+-- **@MaxHistogrammSchritte:** @MaxHistogrammSchritte int, Default: 20000. Eingabeform: einzelner SQL-int- Wert oder Variable; leere Zeichenfolge ist keine vorgesehene Typform und wird vor Eintritt konvertiert. Ganze Zahl 0 bis 200000 einschließlich; NULL und Werte außerhalb ergeben INVALID_PARAMETER. Begrenzt zusätzliche Schritte global anhand der bereits in der Aufrufer-Schritttabelle vorhandenen Zeilen; der Wert 0 fügt keine neuen Schritte ein. Bei erreichtem Limit werden keine weiteren eingefügt und vorhandene Zeilen nicht entfernt. Leerer Zeichenfolgeneingang wird vor Eintritt zu int 0 konvertiert und fügt keine neuen Schritte ein.
+-- 
+-- **@LockTimeoutMs:** @LockTimeoutMs int, Default: 0. Eingabeform: einzelner SQL-int-Wert oder Variable; leere Zeichenfolge ist keine vorgesehene Typform und wird vor Eintritt konvertiert. Ganze Zahl 0 bis 60000 Millisekunden; NULL und Werte außerhalb ergeben INVALID_PARAMETER. Steuert LOCK_TIMEOUT im Hauptteil nach frühen Prüfungen. Die Procedure setzt zuerst LOCK_TIMEOUT 0 und speichert den Wert erst danach; am Ende wird somit 0 statt des vorherigen Aufruferwerts wiederhergestellt. Leerer Zeichenfolgeneingang wird vor Eintritt zu int 0 konvertiert; 0 Millisekunden bedeutet kein Warten auf eine Sperre.
+-- 
+-- **@HighImpactConfirmed:** @HighImpactConfirmed bit, Default: 0. Eingabeform: einzelner SQL-bit-Wert oder Variable; leere Zeichenfolge ist keine vorgesehene Typform und wird vor Eintritt konvertiert. SQL-bit-Eingabe: 1 bestätigt den High-Impact-Pfad, 0 nicht. Für RELEVANT, OBJECT_ALL und STEPS führt 0 zu HIGH_IMPACT_CONFIRMATION_REQUIRED; SUMMARY allein verlangt die Bestätigung nicht. NULL ergibt vor den Temp-Tabellen- Prüfungen INVALID_PARAMETER. Die lokale Bestätigungsprüfung erfolgt vor dem optionalen Gate-Aufruf; dessen Ergebnisse können außerdem HIGH_IMPACT_CONFIRMATION_REQUIRED, INVALID_PARAMETER oder DENIED_GROUP sein. Bei SQL-bit-Konvertierung kann ein numerischer Nichtnullwert ungleich 0 zu 1 werden. Leerer Zeichenfolgeneingang wird vor Eintritt zu bit 0 konvertiert; für einen breiten Pfad fehlt damit die Bestätigung.
+-- 
+-- **@StatusCodeOut:** @StatusCodeOut varchar(40), Default: NULL OUTPUT. Eingabeform: einzelner varchar-Wert/Skalar oder OUTPUT-Variable. Eingehendes NULL und Leertext sind erlaubt, werden ignoriert. Eingehender Wert wird ignoriert und zuerst auf AVAILABLE gesetzt. Lokal mögliche Werte: AVAILABLE, INVALID_PARAMETER, INTERNAL_ERROR, HIGH_IMPACT_CONFIRMATION_REQUIRED, PARTIAL, LOCK_TIMEOUT und ERROR_HANDLED; Gate-Statuswerte werden weitergereicht. AVAILABLE bedeutet regulär beendet ohne gesetztes Teilfehlerflag, nicht vollständige Metadaten; INVALID_PARAMETER bedeutet lokal erkannter ungültiger Parameter oder ein entsprechendes Gate-Ergebnis; INTERNAL_ERROR bedeutet Fehler einer Temp-Tabellenprobe; HIGH_IMPACT_CONFIRMATION_REQUIRED bedeutet fehlende Bestätigung des breiten Pfads; PARTIAL bedeutet verzeichneten Teilfehler bei ansonsten regulärem Ende; LOCK_TIMEOUT bedeutet Fehler 1222 im äußeren Hauptteil-CATCH; ERROR_HANDLED bedeutet einen anderen Fehler in diesem CATCH; DENIED_GROUP bedeutet vom Gate nicht freigegebenen CATALOG_DEEP-Pfad. Das Gate kann INVALID_PARAMETER insbesondere bei NULL-Bestätigung oder ungültiger/unbekannter Analyseklasse liefern. Zum Empfangen passende Variable mit OUTPUT; ohne OUTPUT kann typgerechter Skalar übergeben und Ausgabe verworfen werden. Bei @Hilfe=1 bleibt ein mit OUTPUT gebundener Aufrufwert unverändert; die normale Initialisierung erfolgt nur im Fachpfad.
+-- 
+-- **@IsPartialOut:** @IsPartialOut bit, Default: NULL OUTPUT. Eingabeform: einzelner SQL-bit- Wert/Skalar oder OUTPUT-Variable; NULL ist erlaubt und wird ignoriert, leere Zeichenfolge ist keine vorgesehene Typform und wird vor Eintritt konvertiert. Eingehender Wert wird ignoriert, zuerst 0, bei Teil- oder Fehlerausgabe 1. Zum Empfangen passende Variable mit OUTPUT; ohne OUTPUT kann typgerechter Skalar übergeben und Ausgabe verworfen werden. Leerer Zeichenfolgeneingang wird vor Eintritt zu bit 0 konvertiert; der Eingang wird wie NULL ignoriert. Bei @Hilfe=1 bleibt ein mit OUTPUT gebundener Aufrufwert unverändert; die normale Initialisierung erfolgt nur im Fachpfad.
+-- 
+-- **@ErrorNumberOut:** @ErrorNumberOut int, Default: NULL OUTPUT. Eingabeform: einzelner SQL-int- Wert/Skalar oder OUTPUT-Variable; NULL ist erlaubt und wird ignoriert, leere Zeichenfolge ist keine vorgesehene Typform und wird vor Eintritt konvertiert. Eingehender Wert wird ignoriert, zunächst NULL. Bei abgefangenen Fehlern enthält er ERROR_NUMBER() im Hauptteil-CATCH oder der Temp-Probe; Einzelquellenfehler können PARTIAL bei weiter NULL liefern. Gewöhnliche Parameter- oder Gate-Statuswerte setzen ihn nicht neu. Zum Empfangen passende Variable mit OUTPUT; ohne OUTPUT kann typgerechter Skalar übergeben und Ausgabe verworfen werden. Leerer Zeichenfolgeneingang wird vor Eintritt zu int 0 konvertiert; der Eingang wird wie NULL ignoriert. Bei @Hilfe=1 bleibt ein mit OUTPUT gebundener Aufrufwert unverändert; die normale Initialisierung erfolgt nur im Fachpfad.
+-- 
+-- **@ErrorMessageOut:** @ErrorMessageOut nvarchar(2048), Default: NULL OUTPUT. Eingabeform: einzelner nvarchar-Wert/Skalar oder OUTPUT-Variable; NULL und Leertext sind erlaubt und werden ignoriert. Eingehender Wert wird ignoriert, zunächst NULL. Lokale Parameterfehler, Temp-Tabellenprobe, Gate-Rückgabe und Hauptteil-CATCH setzen die jeweilige Meldung. Bei AVAILABLE sowie PARTIAL durch Einzelquellenfehler kann er NULL bleiben; Details stehen dann im CollectionStatus. Zum Empfangen passende Variable mit OUTPUT; ohne OUTPUT kann typgerechter Skalar übergeben und Ausgabe verworfen werden. Bei SQL-bit-Konvertierungen kann ein numerischer Nichtnullwert ungleich 0 bereits zu 1 konvertiert sein. Wirkung       : Liest Planreferenzen sowie SQL-Server-Katalog- und Statistikmetadaten und schreibt in #CreateExecutionEvidenceJson_StatisticsCurrent, #CreateExecutionEvidenceJson_HistogramSteps, #CreateExecutionEvidenceJson_HistogramSummary, #CreateExecutionEvidenceJson_PredicateHistogramMappings und #CreateExecutionEvidenceJson_CollectionStatus. Diese Daten werden nicht als Resultsets ausgegeben. Histogrammrohwerte werden in lokalen Tabellen verarbeitet; Prädikatwerte liegen in einer internen Temp-Tabelle. Keine Zusage vollständiger Katalogerfassung, atomarer Änderungen oder einer über die tatsächlichen SQL-Server-Prüfungen hinausgehenden Berechtigungssicherheit. Grenzen      : SET LOCK_TIMEOUT 0 erfolgt vor allen Prüfungen und gilt innerhalb der Procedure auch auf frühen Rückgabepfaden. Die eigene Wiederherstellungsanweisung im Hauptteil verwendet den danach gespeicherten Wert 0, keine vor Eintritt gesicherte Kopie. Der optionale Gate-Aufruf und sein Katalogzugriff liegen vor dem Hauptteil-TRY; dort unerwartet weitergeworfene Fehler können ohne Umsetzung in die globalen Fehlerausgaben entweichen. Fehler        : Wenn eine referenzierte Datenbank bei der Kandidatenermittlung unzugänglich ist, wird dafür ein CollectionStatus-Eintrag geschrieben. Fehler in den Schleifen werden soweit abgefangen ebenfalls erfasst und markieren die Ausgabe als partiell. Fehler in der initialen Temp-Tabellenprobe setzen INTERNAL_ERROR und geben zurück. Gate-Ergebnisse INVALID_PARAMETER (ungültige Klasse oder Bestätigung), HIGH_IMPACT_CONFIRMATION_REQUIRED (Bestätigung fehlt) und DENIED_GROUP (Pfad nicht freigegeben) können durchgereicht werden; ErrorNumberOut kann dabei NULL bleiben. Der äußere CATCH des Hauptteils setzt LOCK_TIMEOUT bei Fehler 1222, sonst ERROR_HANDLED, samt Fehlernummer und -text. Bei einer späteren Datenbankprüfung ohne ELSE können inzwischen nicht erreichbare Datenbanken ohne eigenen Statusdatensatz bleiben. Bereits geschriebene Zeilen werden nicht zurückgerollt. Bei @Hilfe=1 bleibt ein mit OUTPUT gebundener Aufrufwert unverändert; die normale Initialisierung erfolgt nur im Fachpfad.
+-- 
+-- **@Hilfe:** bit, Default 0; 1 liefert vor Fachzugriff genau ein Usage-Skill-Resultset. Vorhandene reguläre PRINT-Meldungen bleiben dem normalen Fachpfad vorbehalten. Der Hilfezweig initialisiert OUTPUT-Parameter nicht; übergebene Werte bleiben unverändert. 0 und NULL folgen dem bisherigen normalen Prozedurpfad.
+-- 
+-- ## Resultate und Ausgabe
+-- 
+-- Die fünf TOP (0)-Probes der vom Aufrufer angelegten Evidenz-#Temp-Tabellen erzeugen fünf leere Schema-Resultsets. Daten werden in diese lokalen Tabellen geschrieben, darunter Objekt-/Index-/Statistikmetadaten, CollectionStatus und gegebenenfalls Histogramm- und Prädikatzuordnungen; diese Zeilen werden nicht als zusätzliche fachliche Resultsets ausgegeben. `@StatusCodeOut` (varchar(40) OUTPUT) beginnt mit AVAILABLE und kann lokal INVALID_PARAMETER, INTERNAL_ERROR, HIGH_IMPACT_CONFIRMATION_REQUIRED, PARTIAL, LOCK_TIMEOUT oder ERROR_HANDLED sowie weitergereichte Gate-Statuswerte enthalten. `@IsPartialOut` (bit OUTPUT) beginnt mit 0 und kennzeichnet Teil-/Fehlerausgabe mit 1. `@ErrorNumberOut` (int OUTPUT) und `@ErrorMessageOut` (nvarchar(2048) OUTPUT) beginnen NULL; Einzelquellenfehler können PARTIAL ohne Fehlernummer ergeben. Die fünf TOP (0)-Probes belegen keinen vollständigen Schema- oder Rechtevertrag.
+-- 
+-- Bei @Hilfe=1 kommt genau ein Resultset mit SkillFormatVersion, SchemaName, ObjectName und SkillMarkdown hinzu; bestehende PRINT-Hinweise bleiben erhalten.
+-- 
+-- 
+-- ## Beispiel
+-- 
+-- Der interne Helper ist kein selbstständiger Fachbericht. Der lesende Katalogaufruf zeigt den Vertrag, ohne den Helper auszuführen:
+-- 
+-- ```sql
+-- SELECT [SkillMarkdown]
+-- FROM [monitor_metadata].[VW_ObjectUsageSkills]
+-- WHERE [SchemaName]=N'monitor' AND [ObjectName]=N'InternalCollectExecutionPlanMetadata';
+-- ```
+-- 
+-- Der folgende Aufruf demonstriert ausschließlich den frühen Hilfezweig; die NULL-Pflichtwerte sind nicht für den normalen Fachpfad zulässig:
+-- 
+-- ```sql
+-- EXEC [monitor].[InternalCollectExecutionPlanMetadata] @PlanXml=NULL, @Hilfe=1;
+-- ```
+-- 
+-- ## Aufwand, Nebenwirkungen, Fehler und Grenzen
+-- 
+-- SET LOCK_TIMEOUT 0 erfolgt vor allen Prüfungen und gilt innerhalb der Procedure auch auf frühen Rückgabepfaden. Die eigene Wiederherstellungsanweisung im Hauptteil verwendet den danach gespeicherten Wert 0, keine vor Eintritt gesicherte Kopie. Der optionale Gate-Aufruf und sein Katalogzugriff liegen vor dem Hauptteil-TRY; dort unerwartet weitergeworfene Fehler können ohne Umsetzung in die globalen Fehlerausgaben entweichen.
+-- 
+-- Wenn eine referenzierte Datenbank bei der Kandidatenermittlung unzugänglich ist, wird dafür ein CollectionStatus-Eintrag geschrieben. Fehler in den Schleifen werden soweit abgefangen ebenfalls erfasst und markieren die Ausgabe als partiell. Fehler in der initialen Temp-Tabellenprobe setzen INTERNAL_ERROR und geben zurück. Gate-Ergebnisse INVALID_PARAMETER (ungültige Klasse oder Bestätigung), HIGH_IMPACT_CONFIRMATION_REQUIRED (Bestätigung fehlt) und DENIED_GROUP (Pfad nicht freigegeben) können durchgereicht werden; ErrorNumberOut kann dabei NULL bleiben. Der äußere CATCH des Hauptteils setzt LOCK_TIMEOUT bei Fehler 1222, sonst ERROR_HANDLED, samt Fehlernummer und -text. Bei einer späteren Datenbankprüfung ohne ELSE können inzwischen nicht erreichbare Datenbanken ohne eigenen Statusdatensatz bleiben. Bereits geschriebene Zeilen werden nicht zurückgerollt.
+-- 
+-- 
+-- ### Quellgebundene Detailbeschreibung
+-- 
+-- Der folgende Quellkopf bewahrt die zusätzlichen Implementierungsgrenzen für diesen Skill.
+-- 
+-- ```text
+-- Objekt       : monitor.InternalCollectExecutionPlanMetadata
+-- Version      : 1.0.0
+-- Stand        : 2026-07-21
+-- Typ          : Interne Stored Procedure
+-- Zweck        : Die Procedure ermittelt zu einem Ausführungsplan Objekt-,
+--                Index- und Statistikmetadaten der ausdrücklich bestätigten
+--                Quellumgebung. Sie kann Histogrammschritte und Zusammenfassungen
+--                sowie Zuordnungen zu Planprädikaten sammeln.
+-- Voraussetzung: Der Aufrufer legt die fünf Evidenz-Temp-Tabellen mit dem
+--                erwarteten Schema an. Je ein TOP (0)-SELECT prüft Existenz und
+--                Schemaauflösung, nicht das vollständige Schema oder die
+--                Berechtigungen. Die fünf Prüfungen erzeugen fünf
+--                leere Resultsets.
+-- Eingabe      :
+--   @PlanXml xml, Default: keiner; obligatorisch. Eingabeform: einzelner
+--                XML-Ausführungsplan als XML-Wert oder gebundene XML-Variable;
+--                NULL ergibt INVALID_PARAMETER. Ein leeres, gültiges XML wird
+--                nicht ausdrücklich abgewiesen.
+--   @StatistikEvidenzModus varchar(16), Default: 'USED'. Eingabeform: ein
+--                einzelner Modus-Textwert, keine Liste. NULL wird zur Laufzeit
+--                zu USED;
+--                äußere Leerzeichen werden entfernt, Großschreibung angewendet.
+--                Endliche Werte: USED sammelt nur vom Plan als verwendet
+--                gemeldete Statistiken; RELEVANT ergänzt Statistiken, deren
+--                führende Spalte im Plan als SEEK, RESIDUAL, JOIN, ORDER_BY oder
+--                GROUP_BY vorkommt; OBJECT_ALL ergänzt alle Statistiken
+--                katalogauflösbarer Planobjekte. Leertext ist ungültig.
+--   @HistogrammModus varchar(16), Default: 'NONE'. Eingabeform: einzelner
+--                Modus-Textwert, keine Liste. NULL wird zur Laufzeit zu NONE;
+--                äußere Leerzeichen werden entfernt, Großschreibung angewendet.
+--                Endliche Werte: NONE sammelt im Hauptteil keine zusätzlichen Schritte;
+--                SUMMARY und STEPS sammeln Schritte und bilden Zusammenfassungen,
+--                wobei STEPS zusätzlich High-Impact-Bestätigung verlangt. Die
+--                Sammlung ist in beiden Modi gleich. Vorhandene Zeilen werden
+--                auch bei NONE zusammengefasst und können zugeordnet werden.
+--                Leertext oder nur Leerzeichen ist ungültig.
+--   @QuellumgebungBestaetigt bit, Default: 0. Eingabeform: einzelner SQL-bit-
+--                Wert oder Variable; leere Zeichenfolge ist keine vorgesehene
+--                Typform und wird vor Eintritt konvertiert. SQL-bit-Eingabe: 1 bestätigt die
+--                Quellumgebung; 0 oder NULL ergeben INVALID_PARAMETER. Ausgelassen
+--                bindet den Default 0 und ergibt ebenfalls INVALID_PARAMETER.
+--                Leerer Zeichenfolgeneingang wird vor Eintritt zu bit 0 konvertiert und wie
+--                fehlende Bestätigung abgelehnt.
+--   @MitPredicateHistogramMap bit, Default: 1. Eingabeform: einzelner SQL-bit-
+--                Wert oder Variable; leere Zeichenfolge ist keine vorgesehene
+--                Typform und wird vor Eintritt konvertiert. SQL-bit-Eingabe: 1 ordnet
+--                extrahierte Planparameterwerte Histogrammschritten zu; 0
+--                überspringt die Zuordnung. NULL ergibt INVALID_PARAMETER.
+--                Leerer Zeichenfolgeneingang wird vor Eintritt zu bit 0 konvertiert und
+--                überspringt die Zuordnung.
+--   @MaxStatistiken int, Default: 100. Eingabeform: einzelner SQL-int-Wert oder
+--                Variable; leere Zeichenfolge ist keine vorgesehene Typform und
+--                wird vor Eintritt konvertiert. Ganze Zahl 1 bis 1000 einschließlich;
+--                NULL und Werte außerhalb ergeben INVALID_PARAMETER. Begrenzt
+--                die insgesamt ausgewählten Kandidaten nach Priorität PLAN_USED,
+--                RELEVANT_LEADING_COLUMN, danach übrige. RELEVANT/OBJECT_ALL-
+--                Kandidaten werden vor dem Limit aus dem Katalog gelesen; ein
+--                positives Limit verhindert diese anfängliche Abfrage nicht.
+--                Leerer Zeichenfolgeneingang wird vor Eintritt zu int 0 konvertiert und liegt
+--                außerhalb des gültigen Bereichs.
+--   @MaxHistogrammSchritte int, Default: 20000. Eingabeform: einzelner SQL-int-
+--                Wert oder Variable; leere Zeichenfolge ist keine vorgesehene
+--                Typform und wird vor Eintritt konvertiert. Ganze Zahl 0 bis 200000
+--                einschließlich; NULL und Werte außerhalb ergeben
+--                INVALID_PARAMETER. Begrenzt zusätzliche Schritte global anhand
+--                der bereits in der Aufrufer-Schritttabelle vorhandenen Zeilen;
+--                der Wert 0 fügt keine neuen Schritte ein.
+--                Bei erreichtem Limit werden keine weiteren eingefügt und
+--                vorhandene Zeilen nicht entfernt.
+--                Leerer Zeichenfolgeneingang wird vor Eintritt zu int 0 konvertiert und fügt
+--                keine neuen Schritte ein.
+--   @LockTimeoutMs int, Default: 0. Eingabeform: einzelner SQL-int-Wert oder
+--                Variable; leere Zeichenfolge ist keine vorgesehene Typform und
+--                wird vor Eintritt konvertiert. Ganze Zahl 0 bis 60000 Millisekunden;
+--                NULL und Werte außerhalb ergeben INVALID_PARAMETER. Steuert
+--                LOCK_TIMEOUT im Hauptteil nach frühen Prüfungen. Die Procedure
+--                setzt zuerst LOCK_TIMEOUT 0 und speichert den Wert erst danach;
+--                am Ende wird somit 0 statt des vorherigen Aufruferwerts
+--                wiederhergestellt.
+--                Leerer Zeichenfolgeneingang wird vor Eintritt zu int 0 konvertiert; 0
+--                Millisekunden bedeutet kein Warten auf eine Sperre.
+--   @HighImpactConfirmed bit, Default: 0. Eingabeform: einzelner SQL-bit-Wert
+--                oder Variable; leere Zeichenfolge ist keine vorgesehene Typform
+--                und wird vor Eintritt konvertiert. SQL-bit-Eingabe: 1 bestätigt den
+--                High-Impact-Pfad, 0 nicht. Für RELEVANT, OBJECT_ALL und STEPS
+--                führt 0 zu HIGH_IMPACT_CONFIRMATION_REQUIRED; SUMMARY allein
+--                verlangt die Bestätigung nicht. NULL ergibt vor den Temp-Tabellen-
+--                Prüfungen INVALID_PARAMETER. Die lokale Bestätigungsprüfung
+--                erfolgt vor dem optionalen Gate-Aufruf; dessen Ergebnisse können
+--                außerdem HIGH_IMPACT_CONFIRMATION_REQUIRED, INVALID_PARAMETER
+--                oder DENIED_GROUP sein. Bei SQL-bit-Konvertierung kann ein
+--                numerischer Nichtnullwert ungleich 0 zu 1 werden.
+--                Leerer Zeichenfolgeneingang wird vor Eintritt zu bit 0 konvertiert; für
+--                einen breiten Pfad fehlt damit die Bestätigung.
+--   @StatusCodeOut varchar(40), Default: NULL OUTPUT. Eingabeform: einzelner
+--                varchar-Wert/Skalar oder OUTPUT-Variable. Eingehendes NULL und
+--                Leertext sind erlaubt, werden ignoriert. Eingehender Wert wird
+--                ignoriert und zuerst auf AVAILABLE gesetzt. Lokal mögliche
+--                Werte: AVAILABLE, INVALID_PARAMETER, INTERNAL_ERROR,
+--                HIGH_IMPACT_CONFIRMATION_REQUIRED, PARTIAL, LOCK_TIMEOUT und
+--                ERROR_HANDLED; Gate-Statuswerte werden weitergereicht.
+--                AVAILABLE bedeutet regulär beendet ohne gesetztes Teilfehlerflag, nicht
+--                vollständige Metadaten; INVALID_PARAMETER bedeutet lokal erkannter
+--                ungültiger Parameter oder ein entsprechendes Gate-Ergebnis; INTERNAL_ERROR
+--                bedeutet Fehler einer Temp-Tabellenprobe; HIGH_IMPACT_CONFIRMATION_REQUIRED
+--                bedeutet fehlende Bestätigung des breiten Pfads; PARTIAL bedeutet
+--                verzeichneten Teilfehler bei ansonsten regulärem Ende; LOCK_TIMEOUT bedeutet
+--                Fehler 1222 im äußeren Hauptteil-CATCH; ERROR_HANDLED bedeutet einen anderen
+--                Fehler in diesem CATCH; DENIED_GROUP bedeutet vom Gate nicht freigegebenen
+--                CATALOG_DEEP-Pfad. Das Gate kann INVALID_PARAMETER insbesondere bei
+--                NULL-Bestätigung oder ungültiger/unbekannter Analyseklasse liefern. Zum Empfangen passende Variable mit OUTPUT;
+--                ohne OUTPUT kann typgerechter Skalar übergeben und Ausgabe
+--                verworfen werden.
+--   @IsPartialOut bit, Default: NULL OUTPUT. Eingabeform: einzelner SQL-bit-
+--                Wert/Skalar oder OUTPUT-Variable; NULL ist erlaubt und wird
+--                ignoriert, leere Zeichenfolge ist keine vorgesehene Typform und
+--                wird vor Eintritt konvertiert. Eingehender Wert wird ignoriert,
+--                zuerst 0, bei Teil- oder Fehlerausgabe 1. Zum Empfangen
+--                passende Variable mit OUTPUT; ohne OUTPUT kann typgerechter
+--                Skalar übergeben und Ausgabe verworfen werden.
+--                Leerer Zeichenfolgeneingang wird vor Eintritt zu bit 0 konvertiert; der
+--                Eingang wird wie NULL ignoriert.
+--   @ErrorNumberOut int, Default: NULL OUTPUT. Eingabeform: einzelner SQL-int-
+--                Wert/Skalar oder OUTPUT-Variable; NULL ist erlaubt und wird
+--                ignoriert, leere Zeichenfolge ist keine vorgesehene Typform und
+--                wird vor Eintritt konvertiert. Eingehender Wert wird ignoriert,
+--                zunächst NULL. Bei abgefangenen Fehlern enthält er
+--                ERROR_NUMBER() im Hauptteil-CATCH oder der Temp-Probe;
+--                Einzelquellenfehler können PARTIAL bei weiter NULL liefern.
+--                Gewöhnliche Parameter- oder Gate-Statuswerte setzen ihn nicht neu. Zum Empfangen passende Variable mit
+--                OUTPUT; ohne OUTPUT kann typgerechter Skalar übergeben und
+--                Ausgabe verworfen werden.
+--                Leerer Zeichenfolgeneingang wird vor Eintritt zu int 0 konvertiert; der
+--                Eingang wird wie NULL ignoriert.
+--   @ErrorMessageOut nvarchar(2048), Default: NULL OUTPUT. Eingabeform: einzelner
+--                nvarchar-Wert/Skalar oder OUTPUT-Variable; NULL und Leertext
+--                sind erlaubt und werden ignoriert. Eingehender Wert wird
+--                ignoriert, zunächst NULL. Lokale Parameterfehler, Temp-Tabellenprobe, Gate-Rückgabe und
+--                Hauptteil-CATCH setzen die jeweilige Meldung. Bei AVAILABLE sowie
+--                PARTIAL durch Einzelquellenfehler kann er NULL bleiben; Details
+--                stehen dann im CollectionStatus. Zum Empfangen passende Variable mit OUTPUT;
+--                ohne OUTPUT kann typgerechter Skalar übergeben und Ausgabe
+--                verworfen werden.
+--                Bei SQL-bit-Konvertierungen kann ein numerischer Nichtnullwert
+--                ungleich 0 bereits zu 1 konvertiert sein.
+-- Wirkung       : Liest Planreferenzen sowie SQL-Server-Katalog- und
+--                Statistikmetadaten und schreibt in
+--                #CreateExecutionEvidenceJson_StatisticsCurrent,
+--                #CreateExecutionEvidenceJson_HistogramSteps,
+--                #CreateExecutionEvidenceJson_HistogramSummary,
+--                #CreateExecutionEvidenceJson_PredicateHistogramMappings und
+--                #CreateExecutionEvidenceJson_CollectionStatus. Diese Daten
+--                werden nicht als Resultsets ausgegeben. Histogrammrohwerte
+--                werden in lokalen Tabellen verarbeitet; Prädikatwerte liegen
+--                in einer internen Temp-Tabelle. Keine Zusage vollständiger
+--                Katalogerfassung, atomarer Änderungen oder einer über die
+--                tatsächlichen SQL-Server-Prüfungen hinausgehenden
+--                Berechtigungssicherheit.
+-- Grenzen      : SET LOCK_TIMEOUT 0 erfolgt vor allen Prüfungen und gilt innerhalb der
+--                Procedure auch auf frühen Rückgabepfaden. Die eigene
+--                Wiederherstellungsanweisung im Hauptteil verwendet den danach gespeicherten
+--                Wert 0, keine vor Eintritt gesicherte Kopie. Der optionale Gate-Aufruf und
+--                sein Katalogzugriff liegen vor dem Hauptteil-TRY; dort unerwartet
+--                weitergeworfene Fehler können ohne Umsetzung in die globalen Fehlerausgaben
+--                entweichen.
+-- Fehler        : Wenn eine referenzierte Datenbank bei der Kandidatenermittlung
+--                unzugänglich ist, wird dafür ein CollectionStatus-Eintrag
+--                geschrieben. Fehler in den Schleifen werden soweit abgefangen
+--                ebenfalls erfasst und markieren die Ausgabe als partiell. Fehler in der initialen Temp-Tabellenprobe setzen
+--                INTERNAL_ERROR und geben zurück. Gate-Ergebnisse INVALID_PARAMETER (ungültige Klasse oder Bestätigung),
+--                HIGH_IMPACT_CONFIRMATION_REQUIRED (Bestätigung fehlt) und
+--                DENIED_GROUP (Pfad nicht freigegeben) können durchgereicht
+--                werden; ErrorNumberOut kann dabei NULL bleiben. Der äußere CATCH des Hauptteils setzt
+--                LOCK_TIMEOUT bei Fehler 1222, sonst ERROR_HANDLED, samt
+--                Fehlernummer und -text. Bei einer späteren Datenbankprüfung ohne ELSE können inzwischen nicht
+--                erreichbare Datenbanken ohne eigenen Statusdatensatz bleiben.
+--                Bereits geschriebene Zeilen werden nicht zurückgerollt.
+-- ```
+-- 
+-- USAGE_SKILL_END monitor.InternalCollectExecutionPlanMetadata
 CREATE OR ALTER PROCEDURE [monitor].[InternalCollectExecutionPlanMetadata]
       @PlanXml                      xml
     , @StatistikEvidenzModus        varchar(16)    = 'USED'
@@ -196,9 +483,551 @@ CREATE OR ALTER PROCEDURE [monitor].[InternalCollectExecutionPlanMetadata]
     , @IsPartialOut                 bit             = NULL OUTPUT
     , @ErrorNumberOut               int             = NULL OUTPUT
     , @ErrorMessageOut              nvarchar(2048)  = NULL OUTPUT
+    , @Hilfe bit = 0
 AS
 BEGIN
     SET NOCOUNT ON;
+    IF @Hilfe=1
+    BEGIN
+        -- USAGE_SKILL_HELP_BEGIN monitor.InternalCollectExecutionPlanMetadata
+        SELECT CONVERT(varchar(16),'1.0.0') AS [SkillFormatVersion],CONVERT(sysname,N'monitor') AS [SchemaName],CONVERT(sysname,N'InternalCollectExecutionPlanMetadata') AS [ObjectName],CONVERT(nvarchar(max),N'---')
+            + NCHAR(10)
+            + N'skill_format_version: "1.0.0"'
+            + NCHAR(10)
+            + N'name: "monitor.InternalCollectExecutionPlanMetadata"'
+            + NCHAR(10)
+            + N'schema_name: "monitor"'
+            + NCHAR(10)
+            + N'object_name: "InternalCollectExecutionPlanMetadata"'
+            + NCHAR(10)
+            + N'object_type: "INTERNAL_PROCEDURE"'
+            + NCHAR(10)
+            + N'database_role: "framework"'
+            + NCHAR(10)
+            + N'is_internal: true'
+            + NCHAR(10)
+            + N'description: "Die Procedure ermittelt zu einem Ausführungsplan Objekt-, Index- und Statistikmetadaten der ausdrücklich bestätigten Quellumgebung."'
+            + NCHAR(10)
+            + N'source_path: "Code/04_PlanCache/049_InternalCollectExecutionPlanMetadata.sql"'
+            + NCHAR(10)
+            + N'---'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'# monitor.InternalCollectExecutionPlanMetadata'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'## Zweck und Einsatz'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'Die Procedure ermittelt zu einem Ausführungsplan Objekt-, Index- und Statistikmetadaten der ausdrücklich bestätigten Quellumgebung. Sie kann Histogrammschritte und Zusammenfassungen sowie Zuordnungen zu Planprädikaten sammeln.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'## Voraussetzungen und Rechte'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'Der Aufrufer legt die fünf Evidenz-Temp-Tabellen mit dem erwarteten Schema an. Je ein TOP (0)-SELECT prüft Existenz und Schemaauflösung, nicht das vollständige Schema oder die Berechtigungen. Die fünf Prüfungen erzeugen fünf leere Resultsets.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'## Parameter und Eingabe'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'„SQL-Bindungspflicht“ bezeichnet ein bei der SQL-Aufrufbindung erforderliches Argument ohne Default. Fachliche Wertpflichten und zulässige NULL-Werte stehen im jeweiligen Einzelvertrag.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'| Parameter | SQL-Typ | SQL-Bindungspflicht | Default |'
+            + NCHAR(10)
+            + N'| --- | --- | --- | --- |'
+            + NCHAR(10)
+            + N'| @PlanXml | xml | ja | kein Default |'
+            + NCHAR(10)
+            + N'| @StatistikEvidenzModus | varchar(16) | nein | ''USED'' |'
+            + NCHAR(10)
+            + N'| @HistogrammModus | varchar(16) | nein | ''NONE'' |'
+            + NCHAR(10)
+            + N'| @QuellumgebungBestaetigt | bit | nein | 0 |'
+            + NCHAR(10)
+            + N'| @MitPredicateHistogramMap | bit | nein | 1 |'
+            + NCHAR(10)
+            + N'| @MaxStatistiken | int | nein | 100 |'
+            + NCHAR(10)
+            + N'| @MaxHistogrammSchritte | int | nein | 20000 |'
+            + NCHAR(10)
+            + N'| @LockTimeoutMs | int | nein | 0 |'
+            + NCHAR(10)
+            + N'| @HighImpactConfirmed | bit | nein | 0 |'
+            + NCHAR(10)
+            + N'| @StatusCodeOut | varchar(40) OUTPUT | nein | NULL |'
+            + NCHAR(10)
+            + N'| @IsPartialOut | bit OUTPUT | nein | NULL |'
+            + NCHAR(10)
+            + N'| @ErrorNumberOut | int OUTPUT | nein | NULL |'
+            + NCHAR(10)
+            + N'| @ErrorMessageOut | nvarchar(2048) OUTPUT | nein | NULL |'
+            + NCHAR(10)
+            + N'| @Hilfe | bit | nein | 0 |'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'**@PlanXml:** @PlanXml xml, Default: keiner; obligatorisch. Eingabeform: einzelner XML-Ausführungsplan als XML-Wert oder gebundene XML-Variable; NULL ergibt INVALID_PARAMETER. Ein leeres, gültiges XML wird nicht ausdrücklich abgewiesen.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'**@StatistikEvidenzModus:** @StatistikEvidenzModus varchar(16), Default: ''USED''. Eingabeform: ein einzelner Modus-Textwert, keine Liste. NULL wird zur Laufzeit zu USED; äußere Leerzeichen werden entfernt, Großschreibung angewendet. Endliche Werte: USED sammelt nur vom Plan als verwendet gemeldete Statistiken; RELEVANT ergänzt Statistiken, deren führende Spalte im Plan als SEEK, RESIDUAL, JOIN, ORDER_BY oder GROUP_BY vorkommt; OBJECT_ALL ergänzt alle Statistiken katalogauflösbarer Planobjekte. Leertext ist ungültig.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'**@HistogrammModus:** @HistogrammModus varchar(16), Default: ''NONE''. Eingabeform: einzelner Modus-Textwert, keine Liste. NULL wird zur Laufzeit zu NONE; äußere Leerzeichen werden entfernt, Großschreibung angewendet. Endliche Werte: NONE sammelt im Hauptteil keine zusätzlichen Schritte; SUMMARY und STEPS sammeln Schritte und bilden Zusammenfassungen, wobei STEPS zusätzlich High-Impact-Bestätigung verlangt. Die Sammlung ist in beiden Modi gleich. Vorhandene Zeilen werden auch bei NONE zusammengefasst und können zugeordnet werden. Leertext oder nur Leerzeichen ist ungültig.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'**@QuellumgebungBestaetigt:** @QuellumgebungBestaetigt bit, Default: 0. Eingabeform: einzelner SQL-bit- Wert oder Variable; leere Zeichenfolge ist keine vorgesehene Typform und wird vor Eintritt konvertiert. SQL-bit-Eingabe: 1 bestätigt die Quellumgebung; 0 oder NULL ergeben INVALID_PARAMETER. Ausgelassen bindet den Default 0 und ergibt ebenfalls INVALID_PARAMETER. Leerer Zeichenfolgeneingang wird vor Eintritt zu bit 0 konvertiert und wie fehlende Bestätigung abgelehnt.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'**@MitPredicateHistogramMap:** @MitPredicateHistogramMap bit, Default: 1. Eingabeform: einzelner SQL-bit- Wert oder Variable; leere Zeichenfolge ist keine vorgesehene Typform und wird vor Eintritt konvertiert. SQL-bit-Eingabe: 1 ordnet extrahierte Planparameterwerte Histogrammschritten zu; 0 überspringt die Zuordnung. NULL ergibt INVALID_PARAMETER. Leerer Zeichenfolgeneingang wird vor Eintritt zu bit 0 konvertiert und überspringt die Zuordnung.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'**@MaxStatistiken:** @MaxStatistiken int, Default: 100. Eingabeform: einzelner SQL-int-Wert oder Variable; leere Zeichenfolge ist keine vorgesehene Typform und wird vor Eintritt konvertiert. Ganze Zahl 1 bis 1000 einschließlich; NULL und Werte außerhalb ergeben INVALID_PARAMETER. Begrenzt die insgesamt ausgewählten Kandidaten nach Priorität PLAN_USED, RELEVANT_LEADING_COLUMN, danach übrige. RELEVANT/OBJECT_ALL- Kandidaten werden vor dem Limit aus dem Katalog gelesen; ein positives Limit verhindert diese anfängliche Abfrage nicht. Leerer Zeichenfolgeneingang wird vor Eintritt zu int 0 konvertiert und liegt außerhalb des gültigen Bereichs.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'**@MaxHistogrammSchritte:** @MaxHistogrammSchritte int, Default: 20000. Eingabeform: einzelner SQL-int- Wert oder Variable; leere Zeichenfolge ist keine vorgesehene Typform und wird vor Eintritt konvertiert. Ganze Zahl 0 bis 200000 einschließlich; NULL und Werte außerhalb ergeben INVALID_PARAMETER. Begrenzt zusätzliche Schritte global anhand der bereits in der Aufrufer-Schritttabelle vorhandenen Zeilen; der Wert 0 fügt keine neuen Schritte ein. Bei erreichtem Limit werden keine weiteren eingefügt und vorhandene Zeilen nicht entfernt. Leerer Zeichenfolgeneingang wird vor Eintritt zu int 0 konvertiert und fügt keine neuen Schritte ein.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'**@LockTimeoutMs:** @LockTimeoutMs int, Default: 0. Eingabeform: einzelner SQL-int-Wert oder Variable; leere Zeichenfolge ist keine vorgesehene Typform und wird vor Eintritt konvertiert. Ganze Zahl 0 bis 60000 Millisekunden; NULL und Werte außerhalb ergeben INVALID_PARAMETER. Steuert LOCK_TIMEOUT im Hauptteil nach frühen Prüfungen. Die Procedure setzt zuerst LOCK_TIMEOUT 0 und speichert den Wert erst danach; am Ende wird somit 0 statt des vorherigen Aufruferwerts wiederhergestellt. Leerer Zeichenfolgeneingang wird vor Eintritt zu int 0 konvertiert; 0 Millisekunden bedeutet kein Warten auf eine Sperre.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'**@HighImpactConfirmed:** @HighImpactConfirmed bit, Default: 0. Eingabeform: einzelner SQL-bit-Wert oder Variable; leere Zeichenfolge ist keine vorgesehene Typform und wird vor Eintritt konvertiert. SQL-bit-Eingabe: 1 bestätigt den High-Impact-Pfad, 0 nicht. Für RELEVANT, OBJECT_ALL und STEPS führt 0 zu HIGH_IMPACT_CONFIRMATION_REQUIRED; SUMMARY allein verlangt die Bestätigung nicht. NULL ergibt vor den Temp-Tabellen- Prüfungen INVALID_PARAMETER. Die lokale Bestätigungsprüfung erfolgt vor dem optionalen Gate-Aufruf; dessen Ergebnisse können außerdem HIGH_IMPACT_CONFIRMATION_REQUIRED, INVALID_PARAMETER oder DENIED_GROUP sein. Bei SQL-bit-Konvertierung kann ein numerischer Nichtnullwert ungleich 0 zu 1 werden. Leerer Zeichenfolgeneingang wird vor Eintritt zu bit 0 konvertiert; für einen breiten Pfad fehlt damit die Bestätigung.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'**@StatusCodeOut:** @StatusCodeOut varchar(40), Default: NULL OUTPUT. Eingabeform: einzelner varchar-Wert/Skalar oder OUTPUT-Variable. Eingehendes NULL und Leertext sind erlaubt, werden ignoriert. Eingehender Wert wird ignoriert und zuerst auf AVAILABLE gesetzt. Lokal mögliche Werte: AVAILABLE, INVALID_PARAMETER, INTERNAL_ERROR, HIGH_IMPACT_CONFIRMATION_REQUIRED, PARTIAL, LOCK_TIMEOUT und ERROR_HANDLED; Gate-Statuswerte werden weitergereicht. AVAILABLE bedeutet regulär beendet ohne gesetztes Teilfehlerflag, nicht vollständige Metadaten; INVALID_PARAMETER bedeutet lokal erkannter ungültiger Parameter oder ein entsprechendes Gate-Ergebnis; INTERNAL_ERROR bedeutet Fehler einer Temp-Tabellenprobe; HIGH_IMPACT_CONFIRMATION_REQUIRED bedeutet fehlende Bestätigung des breiten Pfads; PARTIAL bedeutet verzeichneten Teilfehler bei ansonsten regulärem Ende; LOCK_TIMEOUT bedeutet Fehler 1222 im äußeren Hauptteil-CATCH; ERROR_HANDLED bedeutet einen anderen Fehler in diesem CATCH; DENIED_GROUP bedeut'
+            + N'et vom Gate nicht freigegebenen CATALOG_DEEP-Pfad. Das Gate kann INVALID_PARAMETER insbesondere bei NULL-Bestätigung oder ungültiger/unbekannter Analyseklasse liefern. Zum Empfangen passende Variable mit OUTPUT; ohne OUTPUT kann typgerechter Skalar übergeben und Ausgabe verworfen werden. Bei @Hilfe=1 bleibt ein mit OUTPUT gebundener Aufrufwert unverändert; die normale Initialisierung erfolgt nur im Fachpfad.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'**@IsPartialOut:** @IsPartialOut bit, Default: NULL OUTPUT. Eingabeform: einzelner SQL-bit- Wert/Skalar oder OUTPUT-Variable; NULL ist erlaubt und wird ignoriert, leere Zeichenfolge ist keine vorgesehene Typform und wird vor Eintritt konvertiert. Eingehender Wert wird ignoriert, zuerst 0, bei Teil- oder Fehlerausgabe 1. Zum Empfangen passende Variable mit OUTPUT; ohne OUTPUT kann typgerechter Skalar übergeben und Ausgabe verworfen werden. Leerer Zeichenfolgeneingang wird vor Eintritt zu bit 0 konvertiert; der Eingang wird wie NULL ignoriert. Bei @Hilfe=1 bleibt ein mit OUTPUT gebundener Aufrufwert unverändert; die normale Initialisierung erfolgt nur im Fachpfad.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'**@ErrorNumberOut:** @ErrorNumberOut int, Default: NULL OUTPUT. Eingabeform: einzelner SQL-int- Wert/Skalar oder OUTPUT-Variable; NULL ist erlaubt und wird ignoriert, leere Zeichenfolge ist keine vorgesehene Typform und wird vor Eintritt konvertiert. Eingehender Wert wird ignoriert, zunächst NULL. Bei abgefangenen Fehlern enthält er ERROR_NUMBER() im Hauptteil-CATCH oder der Temp-Probe; Einzelquellenfehler können PARTIAL bei weiter NULL liefern. Gewöhnliche Parameter- oder Gate-Statuswerte setzen ihn nicht neu. Zum Empfangen passende Variable mit OUTPUT; ohne OUTPUT kann typgerechter Skalar übergeben und Ausgabe verworfen werden. Leerer Zeichenfolgeneingang wird vor Eintritt zu int 0 konvertiert; der Eingang wird wie NULL ignoriert. Bei @Hilfe=1 bleibt ein mit OUTPUT gebundener Aufrufwert unverändert; die normale Initialisierung erfolgt nur im Fachpfad.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'**@ErrorMessageOut:** @ErrorMessageOut nvarchar(2048), Default: NULL OUTPUT. Eingabeform: einzelner nvarchar-Wert/Skalar oder OUTPUT-Variable; NULL und Leertext sind erlaubt und werden ignoriert. Eingehender Wert wird ignoriert, zunächst NULL. Lokale Parameterfehler, Temp-Tabellenprobe, Gate-Rückgabe und Hauptteil-CATCH setzen die jeweilige Meldung. Bei AVAILABLE sowie PARTIAL durch Einzelquellenfehler kann er NULL bleiben; Details stehen dann im CollectionStatus. Zum Empfangen passende Variable mit OUTPUT; ohne OUTPUT kann typgerechter Skalar übergeben und Ausgabe verworfen werden. Bei SQL-bit-Konvertierungen kann ein numerischer Nichtnullwert ungleich 0 bereits zu 1 konvertiert sein. Wirkung       : Liest Planreferenzen sowie SQL-Server-Katalog- und Statistikmetadaten und schreibt in #CreateExecutionEvidenceJson_StatisticsCurrent, #CreateExecutionEvidenceJson_HistogramSteps, #CreateExecutionEvidenceJson_HistogramSummary, #CreateExecutionEvidenceJson_PredicateHistogramMappings und #Cr'
+            + N'eateExecutionEvidenceJson_CollectionStatus. Diese Daten werden nicht als Resultsets ausgegeben. Histogrammrohwerte werden in lokalen Tabellen verarbeitet; Prädikatwerte liegen in einer internen Temp-Tabelle. Keine Zusage vollständiger Katalogerfassung, atomarer Änderungen oder einer über die tatsächlichen SQL-Server-Prüfungen hinausgehenden Berechtigungssicherheit. Grenzen      : SET LOCK_TIMEOUT 0 erfolgt vor allen Prüfungen und gilt innerhalb der Procedure auch auf frühen Rückgabepfaden. Die eigene Wiederherstellungsanweisung im Hauptteil verwendet den danach gespeicherten Wert 0, keine vor Eintritt gesicherte Kopie. Der optionale Gate-Aufruf und sein Katalogzugriff liegen vor dem Hauptteil-TRY; dort unerwartet weitergeworfene Fehler können ohne Umsetzung in die globalen Fehlerausgaben entweichen. Fehler        : Wenn eine referenzierte Datenbank bei der Kandidatenermittlung unzugänglich ist, wird dafür ein CollectionStatus-Eintrag geschrieben. Fehler in den Schleifen werden soweit a'
+            + N'bgefangen ebenfalls erfasst und markieren die Ausgabe als partiell. Fehler in der initialen Temp-Tabellenprobe setzen INTERNAL_ERROR und geben zurück. Gate-Ergebnisse INVALID_PARAMETER (ungültige Klasse oder Bestätigung), HIGH_IMPACT_CONFIRMATION_REQUIRED (Bestätigung fehlt) und DENIED_GROUP (Pfad nicht freigegeben) können durchgereicht werden; ErrorNumberOut kann dabei NULL bleiben. Der äußere CATCH des Hauptteils setzt LOCK_TIMEOUT bei Fehler 1222, sonst ERROR_HANDLED, samt Fehlernummer und -text. Bei einer späteren Datenbankprüfung ohne ELSE können inzwischen nicht erreichbare Datenbanken ohne eigenen Statusdatensatz bleiben. Bereits geschriebene Zeilen werden nicht zurückgerollt. Bei @Hilfe=1 bleibt ein mit OUTPUT gebundener Aufrufwert unverändert; die normale Initialisierung erfolgt nur im Fachpfad.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'**@Hilfe:** bit, Default 0; 1 liefert vor Fachzugriff genau ein Usage-Skill-Resultset. Vorhandene reguläre PRINT-Meldungen bleiben dem normalen Fachpfad vorbehalten. Der Hilfezweig initialisiert OUTPUT-Parameter nicht; übergebene Werte bleiben unverändert. 0 und NULL folgen dem bisherigen normalen Prozedurpfad.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'## Resultate und Ausgabe'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'Die fünf TOP (0)-Probes der vom Aufrufer angelegten Evidenz-#Temp-Tabellen erzeugen fünf leere Schema-Resultsets. Daten werden in diese lokalen Tabellen geschrieben, darunter Objekt-/Index-/Statistikmetadaten, CollectionStatus und gegebenenfalls Histogramm- und Prädikatzuordnungen; diese Zeilen werden nicht als zusätzliche fachliche Resultsets ausgegeben. `@StatusCodeOut` (varchar(40) OUTPUT) beginnt mit AVAILABLE und kann lokal INVALID_PARAMETER, INTERNAL_ERROR, HIGH_IMPACT_CONFIRMATION_REQUIRED, PARTIAL, LOCK_TIMEOUT oder ERROR_HANDLED sowie weitergereichte Gate-Statuswerte enthalten. `@IsPartialOut` (bit OUTPUT) beginnt mit 0 und kennzeichnet Teil-/Fehlerausgabe mit 1. `@ErrorNumberOut` (int OUTPUT) und `@ErrorMessageOut` (nvarchar(2048) OUTPUT) beginnen NULL; Einzelquellenfehler können PARTIAL ohne Fehlernummer ergeben. Die fünf TOP (0)-Probes belegen keinen vollständigen Schema- oder Rechtevertrag.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'Bei @Hilfe=1 kommt genau ein Resultset mit SkillFormatVersion, SchemaName, ObjectName und SkillMarkdown hinzu; bestehende PRINT-Hinweise bleiben erhalten.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'## Beispiel'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'Der interne Helper ist kein selbstständiger Fachbericht. Der lesende Katalogaufruf zeigt den Vertrag, ohne den Helper auszuführen:'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'```sql'
+            + NCHAR(10)
+            + N'SELECT [SkillMarkdown]'
+            + NCHAR(10)
+            + N'FROM [monitor_metadata].[VW_ObjectUsageSkills]'
+            + NCHAR(10)
+            + N'WHERE [SchemaName]=N''monitor'' AND [ObjectName]=N''InternalCollectExecutionPlanMetadata'';'
+            + NCHAR(10)
+            + N'```'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'Der folgende Aufruf demonstriert ausschließlich den frühen Hilfezweig; die NULL-Pflichtwerte sind nicht für den normalen Fachpfad zulässig:'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'```sql'
+            + NCHAR(10)
+            + N'EXEC [monitor].[InternalCollectExecutionPlanMetadata] @PlanXml=NULL, @Hilfe=1;'
+            + NCHAR(10)
+            + N'```'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'## Aufwand, Nebenwirkungen, Fehler und Grenzen'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'SET LOCK_TIMEOUT 0 erfolgt vor allen Prüfungen und gilt innerhalb der Procedure auch auf frühen Rückgabepfaden. Die eigene Wiederherstellungsanweisung im Hauptteil verwendet den danach gespeicherten Wert 0, keine vor Eintritt gesicherte Kopie. Der optionale Gate-Aufruf und sein Katalogzugriff liegen vor dem Hauptteil-TRY; dort unerwartet weitergeworfene Fehler können ohne Umsetzung in die globalen Fehlerausgaben entweichen.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'Wenn eine referenzierte Datenbank bei der Kandidatenermittlung unzugänglich ist, wird dafür ein CollectionStatus-Eintrag geschrieben. Fehler in den Schleifen werden soweit abgefangen ebenfalls erfasst und markieren die Ausgabe als partiell. Fehler in der initialen Temp-Tabellenprobe setzen INTERNAL_ERROR und geben zurück. Gate-Ergebnisse INVALID_PARAMETER (ungültige Klasse oder Bestätigung), HIGH_IMPACT_CONFIRMATION_REQUIRED (Bestätigung fehlt) und DENIED_GROUP (Pfad nicht freigegeben) können durchgereicht werden; ErrorNumberOut kann dabei NULL bleiben. Der äußere CATCH des Hauptteils setzt LOCK_TIMEOUT bei Fehler 1222, sonst ERROR_HANDLED, samt Fehlernummer und -text. Bei einer späteren Datenbankprüfung ohne ELSE können inzwischen nicht erreichbare Datenbanken ohne eigenen Statusdatensatz bleiben. Bereits geschriebene Zeilen werden nicht zurückgerollt.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'### Quellgebundene Detailbeschreibung'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'Der folgende Quellkopf bewahrt die zusätzlichen Implementierungsgrenzen für diesen Skill.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'```text'
+            + NCHAR(10)
+            + N'Objekt       : monitor.InternalCollectExecutionPlanMetadata'
+            + NCHAR(10)
+            + N'Version      : 1.0.0'
+            + NCHAR(10)
+            + N'Stand        : 2026-07-21'
+            + NCHAR(10)
+            + N'Typ          : Interne Stored Procedure'
+            + NCHAR(10)
+            + N'Zweck        : Die Procedure ermittelt zu einem Ausführungsplan Objekt-,'
+            + NCHAR(10)
+            + N'               Index- und Statistikmetadaten der ausdrücklich bestätigten'
+            + NCHAR(10)
+            + N'               Quellumgebung. Sie kann Histogrammschritte und Zusammenfassungen'
+            + NCHAR(10)
+            + N'               sowie Zuordnungen zu Planprädikaten sammeln.'
+            + NCHAR(10)
+            + N'Voraussetzung: Der Aufrufer legt die fünf Evidenz-Temp-Tabellen mit dem'
+            + NCHAR(10)
+            + N'               erwarteten Schema an. Je ein TOP (0)-SELECT prüft Existenz und'
+            + NCHAR(10)
+            + N'               Schemaauflösung, nicht das vollständige Schema oder die'
+            + NCHAR(10)
+            + N'               Berechtigungen. Die fünf Prüfungen erzeugen fünf'
+            + NCHAR(10)
+            + N'               leere Resultsets.'
+            + NCHAR(10)
+            + N'Eingabe      :'
+            + NCHAR(10)
+            + N'  @PlanXml xml, Default: keiner; obligatorisch. Eingabeform: einzelner'
+            + NCHAR(10)
+            + N'               XML-Ausführungsplan als XML-Wert oder gebundene XML-Variable;'
+            + NCHAR(10)
+            + N'               NULL ergibt INVALID_PARAMETER. Ein leeres, gültiges XML wird'
+            + NCHAR(10)
+            + N'               nicht ausdrücklich abgewiesen.'
+            + NCHAR(10)
+            + N'  @StatistikEvidenzModus varchar(16), Default: ''USED''. Eingabeform: ein'
+            + NCHAR(10)
+            + N'               einzelner Modus-Textwert, keine Liste. NULL wird zur Laufzeit'
+            + NCHAR(10)
+            + N'               zu USED;'
+            + NCHAR(10)
+            + N'               äußere Leerzeichen werden entfernt, Großschreibung angewendet.'
+            + NCHAR(10)
+            + N'               Endliche Werte: USED sammelt nur vom Plan als verwendet'
+            + NCHAR(10)
+            + N'               gemeldete Statistiken; RELEVANT ergänzt Statistiken, deren'
+            + NCHAR(10)
+            + N'               führende Spalte im Plan als SEEK, RESIDUAL, JOIN, ORDER_BY oder'
+            + NCHAR(10)
+            + N'               GROUP_BY vorkommt; OBJECT_ALL ergänzt alle Statistiken'
+            + NCHAR(10)
+            + N'               katalogauflösbarer Planobjekte. Leertext ist ungültig.'
+            + NCHAR(10)
+            + N'  @HistogrammModus varchar(16), Default: ''NONE''. Eingabeform: einzelner'
+            + NCHAR(10)
+            + N'               Modus-Textwert, keine Liste. NULL wird zur Laufzeit zu NONE;'
+            + NCHAR(10)
+            + N'               äußere Leerzeichen werden entfernt, Großschreibung angewendet.'
+            + NCHAR(10)
+            + N'               Endliche Werte: NONE sammelt im Hauptteil keine zusätzlichen Schritte;'
+            + NCHAR(10)
+            + N'               SUMMARY und STEPS sammeln Schritte und bilden Zusammenfassungen,'
+            + NCHAR(10)
+            + N'               wobei STEPS zusätzlich High-Impact-Bestätigung verlangt. Die'
+            + NCHAR(10)
+            + N'               Sammlung ist in beiden Modi gleich. Vorhandene Zeilen werden'
+            + NCHAR(10)
+            + N'               auch bei NONE zusammengefasst und können zugeordnet werden.'
+            + NCHAR(10)
+            + N'               Leertext oder nur Leerzeichen ist ungültig.'
+            + NCHAR(10)
+            + N'  @QuellumgebungBestaetigt bit, Default: 0. Eingabeform: einzelner SQL-bit-'
+            + NCHAR(10)
+            + N'               Wert oder Variable; leere Zeichenfolge ist keine vorgesehene'
+            + NCHAR(10)
+            + N'               Typform und wird vor Eintritt konvertiert. SQL-bit-Eingabe: 1 bestätigt die'
+            + NCHAR(10)
+            + N'               Quellumgebung; 0 oder NULL ergeben INVALID_PARAMETER. Ausgelassen'
+            + NCHAR(10)
+            + N'               bindet den Default 0 und ergibt ebenfalls INVALID_PARAMETER.'
+            + NCHAR(10)
+            + N'               Leerer Zeichenfolgeneingang wird vor Eintritt zu bit 0 konvertiert und wie'
+            + NCHAR(10)
+            + N'               fehlende Bestätigung abgelehnt.'
+            + NCHAR(10)
+            + N'  @MitPredicateHistogramMap bit, Default: 1. Eingabeform: einzelner SQL-bit-'
+            + NCHAR(10)
+            + N'               Wert oder Variable; leere Zeichenfolge ist keine vorgesehene'
+            + NCHAR(10)
+            + N'               Typform und wird vor Eintritt konvertiert. SQL-bit-Eingabe: 1 ordnet'
+            + NCHAR(10)
+            + N'               extrahierte Planparameterwerte Histogrammschritten zu; 0'
+            + NCHAR(10)
+            + N'               überspringt die Zuordnung. NULL ergibt INVALID_PARAMETER.'
+            + NCHAR(10)
+            + N'               Leerer Zeichenfolgeneingang wird vor Eintritt zu bit 0 konvertiert und'
+            + NCHAR(10)
+            + N'               überspringt die Zuordnung.'
+            + NCHAR(10)
+            + N'  @MaxStatistiken int, Default: 100. Eingabeform: einzelner SQL-int-Wert oder'
+            + NCHAR(10)
+            + N'               Variable; leere Zeichenfolge ist keine vorgesehene Typform und'
+            + NCHAR(10)
+            + N'               wird vor Eintritt konvertiert. Ganze Zahl 1 bis 1000 einschließlich;'
+            + NCHAR(10)
+            + N'               NULL und Werte außerhalb ergeben INVALID_PARAMETER. Begrenzt'
+            + NCHAR(10)
+            + N'               die insgesamt ausgewählten Kandidaten nach Priorität PLAN_USED,'
+            + NCHAR(10)
+            + N'               RELEVANT_LEADING_COLUMN, danach übrige. RELEVANT/OBJECT_ALL-'
+            + NCHAR(10)
+            + N'               Kandidaten werden vor dem Limit aus dem Katalog gelesen; ein'
+            + NCHAR(10)
+            + N'               positives Limit verhindert diese anfängliche Abfrage nicht.'
+            + NCHAR(10)
+            + N'               Leerer Zeichenfolgeneingang wird vor Eintritt zu int 0 konvertiert und liegt'
+            + NCHAR(10)
+            + N'               außerhalb des gültigen Bereichs.'
+            + NCHAR(10)
+            + N'  @MaxHistogrammSchritte int, Default: 20000. Eingabeform: einzelner SQL-int-'
+            + NCHAR(10)
+            + N'               Wert oder Variable; leere Zeichenfolge ist keine vorgesehene'
+            + NCHAR(10)
+            + N'               Typform und wird vor Eintritt konvertiert. Ganze Zahl 0 bis 200000'
+            + NCHAR(10)
+            + N'               einschließlich; NULL und Werte außerhalb ergeben'
+            + NCHAR(10)
+            + N'               INVALID_PARAMETER. Begrenzt zusätzliche Schritte global anhand'
+            + NCHAR(10)
+            + N'               der bereits in der Aufrufer-Schritttabelle vorhandenen Zeilen;'
+            + NCHAR(10)
+            + N'               der Wert 0 fügt keine neuen Schritte ein.'
+            + NCHAR(10)
+            + N'               Bei erreichtem Limit werden keine weiteren eingefügt und'
+            + NCHAR(10)
+            + N'               vorhandene Zeilen nicht entfernt.'
+            + NCHAR(10)
+            + N'               Leerer Zeichenfolgeneingang wird vor Eintritt zu int 0 konvertiert und fügt'
+            + NCHAR(10)
+            + N'               keine neuen Schritte ein.'
+            + NCHAR(10)
+            + N'  @LockTimeoutMs int, Default: 0. Eingabeform: einzelner SQL-int-Wert oder'
+            + NCHAR(10)
+            + N'               Variable; leere Zeichenfolge ist keine vorgesehene Typform und'
+            + NCHAR(10)
+            + N'               wird vor Eintritt konvertiert. Ganze Zahl 0 bis 60000 Millisekunden;'
+            + NCHAR(10)
+            + N'               NULL und Werte außerhalb ergeben INVALID_PARAMETER. Steuert'
+            + NCHAR(10)
+            + N'               LOCK_TIMEOUT im Hauptteil nach frühen Prüfungen. Die Procedure'
+            + NCHAR(10)
+            + N'               setzt zuerst LOCK_TIMEOUT 0 und speichert den Wert erst danach;'
+            + NCHAR(10)
+            + N'               am Ende wird somit 0 statt des vorherigen Aufruferwerts'
+            + NCHAR(10)
+            + N'               wiederhergestellt.'
+            + NCHAR(10)
+            + N'               Leerer Zeichenfolgeneingang wird vor Eintritt zu int 0 konvertiert; 0'
+            + NCHAR(10)
+            + N'               Millisekunden bedeutet kein Warten auf eine Sperre.'
+            + NCHAR(10)
+            + N'  @HighImpactConfirmed bit, Default: 0. Eingabeform: einzelner SQL-bit-Wert'
+            + NCHAR(10)
+            + N'               oder Variable; leere Zeichenfolge ist keine vorgesehene Typform'
+            + NCHAR(10)
+            + N'               und wird vor Eintritt konvertiert. SQL-bit-Eingabe: 1 bestätigt den'
+            + NCHAR(10)
+            + N'               High-Impact-Pfad, 0 nicht. Für RELEVANT, OBJECT_ALL und STEPS'
+            + NCHAR(10)
+            + N'               führt 0 zu HIGH_IMPACT_CONFIRMATION_REQUIRED; SUMMARY allein'
+            + NCHAR(10)
+            + N'               verlangt die Bestätigung nicht. NULL ergibt vor den Temp-Tabellen-'
+            + NCHAR(10)
+            + N'               Prüfungen INVALID_PARAMETER. Die lokale Bestätigungsprüfung'
+            + NCHAR(10)
+            + N'               erfolgt vor dem optionalen Gate-Aufruf; dessen Ergebnisse können'
+            + NCHAR(10)
+            + N'               außerdem HIGH_IMPACT_CONFIRMATION_REQUIRED, INVALID_PARAMETER'
+            + NCHAR(10)
+            + N'               oder DENIED_GROUP sein. Bei SQL-bit-Konvertierung kann ein'
+            + NCHAR(10)
+            + N'               numerischer Nichtnullwert ungleich 0 zu 1 werden.'
+            + NCHAR(10)
+            + N'               Leerer Zeichenfolgeneingang wird vor Eintritt zu bit 0 konvertiert; für'
+            + NCHAR(10)
+            + N'               einen breiten Pfad fehlt damit die Bestätigung.'
+            + NCHAR(10)
+            + N'  @StatusCodeOut varchar(40), Default: NULL OUTPUT. Eingabeform: einzelner'
+            + NCHAR(10)
+            + N'               varchar-Wert/Skalar oder OUTPUT-Variable. Eingehendes NULL und'
+            + NCHAR(10)
+            + N'               Leertext sind erlaubt, werden ignoriert. Eingehender Wert wird'
+            + NCHAR(10)
+            + N'               ignoriert und zuerst auf AVAILABLE gesetzt. Lokal mögliche'
+            + NCHAR(10)
+            + N'               Werte: AVAILABLE, INVALID_PARAMETER, INTERNAL_ERROR,'
+            + NCHAR(10)
+            + N'               HIGH_IMPACT_CONFIRMATION_REQUIRED, PARTIAL, LOCK_TIMEOUT und'
+            + NCHAR(10)
+            + N'               ERROR_HANDLED; Gate-Statuswerte werden weitergereicht.'
+            + NCHAR(10)
+            + N'               AVAILABLE bedeutet regulär beendet ohne gesetztes Teilfehlerflag, nicht'
+            + NCHAR(10)
+            + N'               vollständige Metadaten; INVALID_PARAMETER bedeutet lokal erkannter'
+            + NCHAR(10)
+            + N'               ungültiger Parameter oder ein entsprechendes Gate-Ergebnis; INTERNAL_ERROR'
+            + NCHAR(10)
+            + N'               bedeutet Fehler einer Temp-Tabellenprobe; HIGH_IMPACT_CONFIRMATION_REQUIRED'
+            + NCHAR(10)
+            + N'               bedeutet fehlende Bestätigung des breiten Pfads; PARTIAL bedeutet'
+            + NCHAR(10)
+            + N'               verzeichneten Teilfehler bei ansonsten regulärem Ende; LOCK_TIMEOUT bedeutet'
+            + NCHAR(10)
+            + N'               Fehler 1222 im äußeren Hauptteil-CATCH; ERROR_HANDLED bedeutet einen anderen'
+            + NCHAR(10)
+            + N'               Fehler in diesem CATCH; DENIED_GROUP bedeutet vom Gate nicht freigegebenen'
+            + NCHAR(10)
+            + N'               CATALOG_DEEP-Pfad. Das Gate kann INVALID_PARAMETER insbesondere bei'
+            + NCHAR(10)
+            + N'               NULL-Bestätigung oder ungültiger/unbekannter Analyseklasse liefern. Zum Empfangen passende Variable mit OUTPUT;'
+            + NCHAR(10)
+            + N'               ohne OUTPUT kann typgerechter Skalar übergeben und Ausgabe'
+            + NCHAR(10)
+            + N'               verworfen werden.'
+            + NCHAR(10)
+            + N'  @IsPartialOut bit, Default: NULL OUTPUT. Eingabeform: einzelner SQL-bit-'
+            + NCHAR(10)
+            + N'               Wert/Skalar oder OUTPUT-Variable; NULL ist erlaubt und wird'
+            + NCHAR(10)
+            + N'               ignoriert, leere Zeichenfolge ist keine vorgesehene Typform und'
+            + NCHAR(10)
+            + N'               wird vor Eintritt konvertiert. Eingehender Wert wird ignoriert,'
+            + NCHAR(10)
+            + N'               zuerst 0, bei Teil- oder Fehlerausgabe 1. Zum Empfangen'
+            + NCHAR(10)
+            + N'               passende Variable mit OUTPUT; ohne OUTPUT kann typgerechter'
+            + NCHAR(10)
+            + N'               Skalar übergeben und Ausgabe verworfen werden.'
+            + NCHAR(10)
+            + N'               Leerer Zeichenfolgeneingang wird vor Eintritt zu bit 0 konvertiert; der'
+            + NCHAR(10)
+            + N'               Eingang wird wie NULL ignoriert.'
+            + NCHAR(10)
+            + N'  @ErrorNumberOut int, Default: NULL OUTPUT. Eingabeform: einzelner SQL-int-'
+            + NCHAR(10)
+            + N'               Wert/Skalar oder OUTPUT-Variable; NULL ist erlaubt und wird'
+            + NCHAR(10)
+            + N'               ignoriert, leere Zeichenfolge ist keine vorgesehene Typform und'
+            + NCHAR(10)
+            + N'               wird vor Eintritt konvertiert. Eingehender Wert wird ignoriert,'
+            + NCHAR(10)
+            + N'               zunächst NULL. Bei abgefangenen Fehlern enthält er'
+            + NCHAR(10)
+            + N'               ERROR_NUMBER() im Hauptteil-CATCH oder der Temp-Probe;'
+            + NCHAR(10)
+            + N'               Einzelquellenfehler können PARTIAL bei weiter NULL liefern.'
+            + NCHAR(10)
+            + N'               Gewöhnliche Parameter- oder Gate-Statuswerte setzen ihn nicht neu. Zum Empfangen passende Variable mit'
+            + NCHAR(10)
+            + N'               OUTPUT; ohne OUTPUT kann typgerechter Skalar übergeben und'
+            + NCHAR(10)
+            + N'               Ausgabe verworfen werden.'
+            + NCHAR(10)
+            + N'               Leerer Zeichenfolgeneingang wird vor Eintritt zu int 0 konvertiert; der'
+            + NCHAR(10)
+            + N'               Eingang wird wie NULL ignoriert.'
+            + NCHAR(10)
+            + N'  @ErrorMessageOut nvarchar(2048), Default: NULL OUTPUT. Eingabeform: einzelner'
+            + NCHAR(10)
+            + N'               nvarchar-Wert/Skalar oder OUTPUT-Variable; NULL und Leertext'
+            + NCHAR(10)
+            + N'               sind erlaubt und werden ignoriert. Eingehender Wert wird'
+            + NCHAR(10)
+            + N'               ignoriert, zunächst NULL. Lokale Parameterfehler, Temp-Tabellenprobe, Gate-Rückgabe und'
+            + NCHAR(10)
+            + N'               Hauptteil-CATCH setzen die jeweilige Meldung. Bei AVAILABLE sowie'
+            + NCHAR(10)
+            + N'               PARTIAL durch Einzelquellenfehler kann er NULL bleiben; Details'
+            + NCHAR(10)
+            + N'               stehen dann im CollectionStatus. Zum Empfangen passende Variable mit OUTPUT;'
+            + NCHAR(10)
+            + N'               ohne OUTPUT kann typgerechter Skalar übergeben und Ausgabe'
+            + NCHAR(10)
+            + N'               verworfen werden.'
+            + NCHAR(10)
+            + N'               Bei SQL-bit-Konvertierungen kann ein numerischer Nichtnullwert'
+            + NCHAR(10)
+            + N'               ungleich 0 bereits zu 1 konvertiert sein.'
+            + NCHAR(10)
+            + N'Wirkung       : Liest Planreferenzen sowie SQL-Server-Katalog- und'
+            + NCHAR(10)
+            + N'               Statistikmetadaten und schreibt in'
+            + NCHAR(10)
+            + N'               #CreateExecutionEvidenceJson_StatisticsCurrent,'
+            + NCHAR(10)
+            + N'               #CreateExecutionEvidenceJson_HistogramSteps,'
+            + NCHAR(10)
+            + N'               #CreateExecutionEvidenceJson_HistogramSummary,'
+            + NCHAR(10)
+            + N'               #CreateExecutionEvidenceJson_PredicateHistogramMappings und'
+            + NCHAR(10)
+            + N'               #CreateExecutionEvidenceJson_CollectionStatus. Diese Daten'
+            + NCHAR(10)
+            + N'               werden nicht als Resultsets ausgegeben. Histogrammrohwerte'
+            + NCHAR(10)
+            + N'               werden in lokalen Tabellen verarbeitet; Prädikatwerte liegen'
+            + NCHAR(10)
+            + N'               in einer internen Temp-Tabelle. Keine Zusage vollständiger'
+            + NCHAR(10)
+            + N'               Katalogerfassung, atomarer Änderungen oder einer über die'
+            + NCHAR(10)
+            + N'               tatsächlichen SQL-Server-Prüfungen hinausgehenden'
+            + NCHAR(10)
+            + N'               Berechtigungssicherheit.'
+            + NCHAR(10)
+            + N'Grenzen      : SET LOCK_TIMEOUT 0 erfolgt vor allen Prüfungen und gilt innerhalb der'
+            + NCHAR(10)
+            + N'               Procedure auch auf frühen Rückgabepfaden. Die eigene'
+            + NCHAR(10)
+            + N'               Wiederherstellungsanweisung im Hauptteil verwendet den danach gespeicherten'
+            + NCHAR(10)
+            + N'               Wert 0, keine vor Eintritt gesicherte Kopie. Der optionale Gate-Aufruf und'
+            + NCHAR(10)
+            + N'               sein Katalogzugriff liegen vor dem Hauptteil-TRY; dort unerwartet'
+            + NCHAR(10)
+            + N'               weitergeworfene Fehler können ohne Umsetzung in die globalen Fehlerausgaben'
+            + NCHAR(10)
+            + N'               entweichen.'
+            + NCHAR(10)
+            + N'Fehler        : Wenn eine referenzierte Datenbank bei der Kandidatenermittlung'
+            + NCHAR(10)
+            + N'               unzugänglich ist, wird dafür ein CollectionStatus-Eintrag'
+            + NCHAR(10)
+            + N'               geschrieben. Fehler in den Schleifen werden soweit abgefangen'
+            + NCHAR(10)
+            + N'               ebenfalls erfasst und markieren die Ausgabe als partiell. Fehler in der initialen Temp-Tabellenprobe setzen'
+            + NCHAR(10)
+            + N'               INTERNAL_ERROR und geben zurück. Gate-Ergebnisse INVALID_PARAMETER (ungültige Klasse oder Bestätigung),'
+            + NCHAR(10)
+            + N'               HIGH_IMPACT_CONFIRMATION_REQUIRED (Bestätigung fehlt) und'
+            + NCHAR(10)
+            + N'               DENIED_GROUP (Pfad nicht freigegeben) können durchgereicht'
+            + NCHAR(10)
+            + N'               werden; ErrorNumberOut kann dabei NULL bleiben. Der äußere CATCH des Hauptteils setzt'
+            + NCHAR(10)
+            + N'               LOCK_TIMEOUT bei Fehler 1222, sonst ERROR_HANDLED, samt'
+            + NCHAR(10)
+            + N'               Fehlernummer und -text. Bei einer späteren Datenbankprüfung ohne ELSE können inzwischen nicht'
+            + NCHAR(10)
+            + N'               erreichbare Datenbanken ohne eigenen Statusdatensatz bleiben.'
+            + NCHAR(10)
+            + N'               Bereits geschriebene Zeilen werden nicht zurückgerollt.'
+            + NCHAR(10)
+            + N'```'
+            + NCHAR(10)
+            + NCHAR(10) AS [SkillMarkdown];
+        -- USAGE_SKILL_HELP_END monitor.InternalCollectExecutionPlanMetadata
+        RETURN;
+    END;
+
     SET LOCK_TIMEOUT 0;
 
     SELECT

@@ -115,10 +115,18 @@ END CATCH;
 INSERT @ExecutedCases VALUES('MAINT-DENIED');
 
 /* Read-only safety remains a prerequisite for all four cases. */
-IF CHARINDEX(N'kill ',LOWER(@Definition))>0
+IF PATINDEX(N'%[^a-z0-9_]kill %',N' '+LOWER(@Definition COLLATE Latin1_General_100_BIN2))>0
    OR CHARINDEX(N'sp_start_job',LOWER(@Definition))>0
    OR CHARINDEX(N'sp_stop_job',LOWER(@Definition))>0
     THROW 56005,N'Maintenance-Read-only-Vertrag verletzt.',1;
+IF PATINDEX(N'%[^a-z0-9_]kill %',N' '+LOWER((@Definition+NCHAR(10)+N'KILL 42;') COLLATE Latin1_General_100_BIN2))=0
+    THROW 56007,N'Maintenance-Read-only-KILL-Mutation wurde nicht erkannt.',1;
+IF PATINDEX(N'%[^a-z0-9_]kill %',N' '+LOWER((N'KILL 42;'+NCHAR(10)+@Definition) COLLATE Latin1_General_100_BIN2))=0
+    THROW 56008,N'Maintenance-Read-only-KILL-Anfangsmutation wurde nicht erkannt.',1;
+IF PATINDEX(N'%[^a-z0-9_]kill %',N' '+LOWER(N'Skill erteilt keine Rechte.' COLLATE Latin1_General_100_BIN2))>0
+    THROW 56009,N'Maintenance-Read-only-Skill-Kontrolle falsch positiv.',1;
+IF PATINDEX(N'%[^a-z0-9_]kill %',N' '+LOWER(N'EXEC [sys].[sp_executesql] N''KILL 42'';' COLLATE Latin1_General_100_BIN2))=0
+    THROW 56010,N'Maintenance-Read-only-dynamische-KILL-Mutation wurde nicht erkannt.',1;
 
 IF (SELECT COUNT_BIG(*) FROM @ExecutedCases)<>4
     THROW 56006,N'Der P2-Maintenance-Vertrag hat nicht alle vier offenen Fälle ausgeführt.',1;

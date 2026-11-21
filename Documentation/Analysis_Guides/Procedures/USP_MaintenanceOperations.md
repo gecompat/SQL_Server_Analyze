@@ -46,7 +46,7 @@ Alle `Example*`-Werte im Aufruf sind synthetisch.
 | `@JsonErzeugen` | `bit` | `0` | 1 erzeugt JSON in Json unabhängig von der Ausgabeart. 0 und NULL erzeugen kein Dokument. |
 | `@Json` | `nvarchar(max) OUTPUT` | `NULL` | Ausgabeparameter. wird beim Eintritt auf NULL gesetzt und bei JSON-Erzeugung befüllt. Eingabewert wird ignoriert. Für den Empfang eine Variable des deklarierten Typs mit OUTPUT binden. |
 | `@PrintMeldungen` | `bit` | `1` | 1 aktiviert informative Statusmeldungen. 0 und NULL unterdrücken sie. |
-| `@Hilfe` | `bit` | `0` | 1 zeigt die Hilfe nach der TABLE-Vorprüfung und beendet vor dem Quellzugriff. 0 und NULL setzen die normale Verarbeitung fort. |
+| `@Hilfe` | `bit` | `0` | 1 zeigt die Hilfe vor der TABLE-Vorprüfung und beendet vor dem Quellzugriff. 0 und NULL setzen die normale Verarbeitung fort. Bei @Hilfe=1 kommt genau ein Skill-Resultset mit SkillFormatVersion, SchemaName, ObjectName und SkillMarkdown hinzu; bestehende PRINT-Hinweise bleiben erhalten. |
 | `@StatusCodeOut` | `varchar(40) OUTPUT` | `NULL` | Ausgabeparameter. Statuscode des Laufs, z.B. AVAILABLE/AVAILABLE_LIMITED/INVALID_PARAMETER. Eingabe ignoriert. Für den Empfang eine Variable des deklarierten Typs mit OUTPUT binden. |
 | `@IsPartialOut` | `bit OUTPUT` | `NULL` | Ausgabeparameter. 1 kennzeichnet unvollständige Evidenz, 0 vollständig im erreichbaren Scope. Eingabe ignoriert. Für den Empfang eine Variable des deklarierten Typs mit OUTPUT binden. |
 | `@ErrorNumberOut` | `int OUTPUT` | `NULL` | Ausgabeparameter für erfasste SQL-Fehlernummer. NULL wenn keiner erfasst wurde. Eingabe ignoriert. Für den Empfang eine Variable des deklarierten Typs mit OUTPUT binden. |

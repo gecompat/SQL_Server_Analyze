@@ -11,6 +11,7 @@ und die für PLAN-001 benötigten Plananalyseobjekte. Er installiert weder die
 */
 
 :r ../00_Setup/000_Preflight_und_Schema.sql
+:r ../00_Setup/004_MetadataSchema.sql
 :r ../01_Common/020_VW_AnalyseClassCatalog.sql
 :r ../01_Common/030_VW_AnalyseAccessPolicy.sql
 :r ../01_Common/040_VW_AnalyseAccessCurrent.sql
@@ -32,3 +33,4 @@ und die für PLAN-001 benötigten Plananalyseobjekte. Er installiert weder die
 :r ../04_PlanCache/051_InternalAnalyzeExecutionPlan.sql
 :r ../04_PlanCache/052_USP_CreateExecutionEvidenceJson.sql
 :r ../04_PlanCache/053_USP_ExecutionPlanAnalysis.sql
+:r ../00_Setup/005_VW_ObjectUsageSkills.sql

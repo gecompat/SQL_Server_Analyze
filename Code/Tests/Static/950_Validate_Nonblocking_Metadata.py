@@ -2,6 +2,7 @@
 """Validate nonblocking metadata access and collision-resistant temp names."""
 
 from __future__ import annotations
+from UsageSkillSourceMask import strip_usage_skill_projections as without_skill_examples
 
 import collections
 import importlib.util
@@ -230,6 +231,38 @@ def controlled_collision(name: str, owners: list[str], fixture_valid: bool) -> b
 
 
 def self_test() -> None:
+
+    valid = "-- USAGE_SKILL_BEGIN monitor.Example 1.0.0\nCREATE TABLE [#Example_Doc]([Id] int);\n-- USAGE_SKILL_END monitor.Example\n"
+    assert "CREATE TABLE [#Example_Doc]" not in without_skill_examples(valid)
+    assert "CREATE TABLE [#Example_Real]" in without_skill_examples("CREATE TABLE [#Example_Real]([Id] int);")
+    offset_fixture = (
+        "-- USAGE_SKILL_BEGIN monitor.Example 1.0.0\n"
+        "FROM [sys].[objects] AS [documentation];\n"
+        "-- USAGE_SKILL_END monitor.Example\n"
+        "SELECT 1 FROM [sys].[objects] WITH (NOLOCK);\n"
+    )
+    offset_mask = without_skill_examples(offset_fixture)
+    offset_source = list(SYS_SOURCE.finditer(offset_mask))
+    assert len(offset_mask) == len(offset_fixture) and len(offset_source) == 1
+    offset_tail = offset_fixture[offset_source[0].end():offset_source[0].end()+180]
+    assert metadata_source_allowed("Code/Other.sql", offset_source[0].group("source"), offset_tail)
+    missing_hint = offset_fixture.replace(" WITH (NOLOCK)", "")
+    missing_mask = without_skill_examples(missing_hint)
+    missing_source = list(SYS_SOURCE.finditer(missing_mask))
+    assert len(missing_source) == 1
+    missing_tail = missing_hint[missing_source[0].end():missing_source[0].end()+180]
+    assert not metadata_source_allowed("Code/Other.sql", missing_source[0].group("source"), missing_tail)
+    for malformed in (
+        valid.replace("END monitor.Example", "END monitor.Other"),
+        valid.replace("CREATE TABLE [#Example_Doc]", "-- USAGE_SKILL_HELP_BEGIN monitor.Other\n-- USAGE_SKILL_HELP_END monitor.Other"),
+        valid.replace("-- USAGE_SKILL_END monitor.Example", ""),
+    ):
+        try:
+            without_skill_examples(malformed)
+        except ValueError:
+            pass
+        else:
+            raise AssertionError("malformed Usage Skill markers were masked")
     path = "Code/10_SSIS/040_USP_SsisPackageModelAnalysis.sql"
     assert trusted_handover_source(path, "[sys].[extended_properties]", " WITH (READCOMMITTEDLOCK)")
     assert not trusted_handover_source("Code/Other.sql", "[sys].[extended_properties]", " WITH (READCOMMITTEDLOCK)")
@@ -389,16 +422,30 @@ for path in sorted(CODE.rglob("*.sql")):
             for issue in current_requests_temp_ddl_errors(text)
         )
 
+    scan_text = without_skill_examples(text)
+    if relative.as_posix() in (
+        "Code/00_Setup/005_VW_ObjectUsageSkills.sql",
+        "Code/10_SnapshotBaseline/012_VW_ObjectUsageSkills_Target.sql",
+    ):
+        # These Views contain constant Markdown literals, not executable DDL.
+        scan_text = re.sub(r"N?'(?:''|[^'])*'", lambda match: re.sub(r"[^\r\n]", " ", match.group()), scan_text, flags=re.DOTALL)
     if not is_test_source:
         for function_name in FORBIDDEN_METADATA_FUNCTIONS:
-            match = re.search(rf"\b{function_name}\s*\(", text, re.IGNORECASE)
-            if match:
+            for match in re.finditer(rf"\b{function_name}\s*\(", scan_text, re.IGNORECASE):
+                if (function_name == "SCHEMA_ID"
+                        and relative.as_posix() in (
+                            "Code/00_Setup/004_MetadataSchema.sql",
+                            "Code/10_SnapshotBaseline/011_MetadataSchema_Target.sql",
+                        )
+                        and scan_text[match.start():].startswith("SCHEMA_ID(N'monitor_metadata')")
+                        and scan_text.count("SCHEMA_ID(") == 1):
+                    continue
                 errors.append(
                     f"{relative}:{line_number(text, match.start())}: "
                     f"blockierende Metadatenfunktion {function_name} ist nicht zulässig"
                 )
 
-    for match in (() if is_test_source else re.finditer(r"\bDB_ID\s*\(\s*[^)\s]", text, re.IGNORECASE)):
+    for match in (() if is_test_source else re.finditer(r"\bDB_ID\s*\(\s*[^)\s]", scan_text, re.IGNORECASE)):
         errors.append(
             f"{relative}:{line_number(text, match.start())}: "
             "DB_ID(name) muss über master.sys.databases WITH (NOLOCK) ersetzt werden"
@@ -441,7 +488,7 @@ for path in sorted(CODE.rglob("*.sql")):
             )
 
     catalog_matches = [] if is_test_source else (
-        list(SYS_SOURCE.finditer(text)) + list(SYSTEM_DATABASE_SOURCE.finditer(text))
+        list(SYS_SOURCE.finditer(scan_text)) + list(SYSTEM_DATABASE_SOURCE.finditer(scan_text))
     )
     seen_offsets: set[int] = set()
     for match in sorted(catalog_matches, key=lambda item: item.start()):
@@ -456,7 +503,7 @@ for path in sorted(CODE.rglob("*.sql")):
             )
 
     expected_prefix = file_token(path)
-    for match in TEMP_CREATE.finditer(text):
+    for match in TEMP_CREATE.finditer(scan_text):
         name = match.group("name")
         owner_key = name.casefold()
         temp_owners[owner_key].append(str(relative))
