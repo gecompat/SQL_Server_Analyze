@@ -153,7 +153,8 @@ BEGIN
         DROP TABLE #SsisHandoverReceipt_CheckReference;
     END TRY
     BEGIN CATCH
-        IF OBJECT_ID(N'tempdb..#SsisHandoverReceipt_CheckReference') IS NOT NULL
+        -- The caller's rollback removes the reference if its transaction is doomed.
+        IF XACT_STATE() <> -1 AND OBJECT_ID(N'tempdb..#SsisHandoverReceipt_CheckReference') IS NOT NULL
             DROP TABLE #SsisHandoverReceipt_CheckReference;
         THROW;
     END CATCH;
