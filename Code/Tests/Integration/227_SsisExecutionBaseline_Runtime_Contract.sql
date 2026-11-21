@@ -13,9 +13,9 @@ SET @Models=(SELECT 'ssis-project-model-set' contract,'1.0.0' version,'p1' rootP
 -- Synthetische Captures mit unabhängig attestierten Kennungen. Die Medianoracles
 -- sind feste erwartete Werte; native SSISDB-Belege entstehen separat.
 DECLARE @Case int=0,@Run int,@N int,@C nvarchar(max),@M nvarchar(max),@Cohort nvarchar(max),@Candidate nvarchar(max),@CandidateId uniqueidentifier,
- @Json nvarchar(max),@Status varchar(40),@Reason nvarchar(2048),@Receipt nvarchar(3000),@Now datetime2(3)=SYSUTCDATETIME(),@Name sysname,@Handover uniqueidentifier,@Execution bigint,
+ @Json nvarchar(max),@Status varchar(40),@Reason nvarchar(2048),@Receipt nvarchar(3000),@Now datetime2(3)=SYSUTCDATETIME(),@Handover uniqueidentifier,@Execution bigint,
  @Duration int,@Limit int,@Abs bigint,@Pct decimal(9,4),@OriginalLock int=@@LOCK_TIMEOUT,@OriginalX bit=CASE WHEN @@OPTIONS&16384=16384 THEN 1 ELSE 0 END,@Message nvarchar(2048),@Path nvarchar(128),@i int;
-CREATE TABLE #SyntheticBaselineCaptures([Run] int NOT NULL PRIMARY KEY,[Models] nvarchar(max),[Capture] nvarchar(max),[Handover] uniqueidentifier,[Execution] bigint,[ReceiptName] sysname);
+CREATE TABLE #SyntheticBaselineCaptures([Run] int NOT NULL PRIMARY KEY,[Models] nvarchar(max),[Capture] nvarchar(max),[Handover] uniqueidentifier,[Execution] bigint);
 BEGIN TRY
  WHILE @Case<44
  BEGIN
@@ -54,10 +54,10 @@ BEGIN TRY
    IF @Case=30 AND @Run=1 SET @C=JSON_MODIFY(@C,'$.execution.sourceBindingSha256',REPLICATE('5',64));
    IF @Case=31 AND @Run=1 SET @C=JSON_MODIFY(@C,'$.archiveSha256',REPLICATE('9',64));
    SET @C=JSON_MODIFY(@C,'$.modelSetSha256',CONVERT(varchar(64),HASHBYTES('SHA2_256',CONVERT(varbinary(max),@M)),2));
-   SET @Name=N'SSIS_SCOPE_'+LOWER(CONVERT(nvarchar(36),@Handover));
+   
    SET @Receipt=(SELECT 'ssis-local-scope-handover' contract,'1.0.0' version,CONVERT(varchar(64),HASHBYTES('SHA2_256',CONVERT(varbinary(max),@M)),2) modelSetSha256,CONVERT(varchar(64),HASHBYTES('SHA2_256',CONVERT(varbinary(max),@C)),2) captureSha256,CONVERT(varchar(24),@Now,127)+'Z' issuedUtc,CONVERT(varchar(24),DATEADD(hour,1,@Now),127)+'Z' expiresUtc FOR JSON PATH,WITHOUT_ARRAY_WRAPPER);
-   EXEC sys.sp_addextendedproperty @name=@Name,@value=@Receipt,@level0type=N'SCHEMA',@level0name=N'monitor',@level1type=N'PROCEDURE',@level1name=N'USP_SsisPackageModelAnalysis';
-   INSERT #SyntheticBaselineCaptures VALUES(@Run,@M,@C,@Handover,@Execution,@Name);
+   INSERT [monitor].[SsisHandoverReceipt] ([ReceiptKind],[HandoverId],[ReceiptJson]) VALUES(3,@Handover,@Receipt);
+   INSERT #SyntheticBaselineCaptures VALUES(@Run,@M,@C,@Handover,@Execution);
    IF @Run=0 SELECT @Candidate=@C,@CandidateId=@Handover;
    SET @Run+=1;
   END;
@@ -101,8 +101,8 @@ BEGIN TRY
    IF @Case IN(26,27) AND NOT EXISTS(SELECT 1 FROM OPENJSON(@Json,'$.metricBaseline') WITH([MetricName] varchar(32),[DeltaPercent] decimal(38,6)) WHERE [MetricName]='FLOW_DURATION_MS' AND [DeltaPercent]=CASE WHEN @Case=26 THEN -33.333333 ELSE 67.647059 END) THROW 57941,N'BASELINE_PERCENT_ROUNDING',1;
    IF @Case=29 AND (NOT EXISTS(SELECT 1 FROM OPENJSON(@Json,'$.baselineFindings') WHERE JSON_VALUE([value],'$.RuleId')='SSIS_BASELINE_OBSERVED_ROWS_CHANGED') OR EXISTS(SELECT 1 FROM OPENJSON(@Json,'$.baselineFindings') WHERE JSON_VALUE([value],'$.RuleId')='SSIS_BASELINE_DURATION_THRESHOLD_EXCEEDED')) THROW 57941,N'BASELINE_VOLUME_CONTEXT',1;
   END;
-  DECLARE [cleanupCaptures] CURSOR LOCAL FAST_FORWARD FOR SELECT [ReceiptName] FROM #SyntheticBaselineCaptures;OPEN [cleanupCaptures];FETCH NEXT FROM [cleanupCaptures] INTO @Name;
-  WHILE @@FETCH_STATUS=0 BEGIN EXEC sys.sp_dropextendedproperty @name=@Name,@level0type=N'SCHEMA',@level0name=N'monitor',@level1type=N'PROCEDURE',@level1name=N'USP_SsisPackageModelAnalysis';FETCH NEXT FROM [cleanupCaptures] INTO @Name;END;CLOSE [cleanupCaptures];DEALLOCATE [cleanupCaptures];DELETE #SyntheticBaselineCaptures;
+  DELETE [r] FROM [monitor].[SsisHandoverReceipt] AS [r] INNER JOIN #SyntheticBaselineCaptures AS [c] ON [c].[Handover]=[r].[HandoverId] WHERE [r].[ReceiptKind]=3;
+  DELETE #SyntheticBaselineCaptures;
   SET @Case+=1;
  END;
  CREATE TABLE #SyntheticBaselineError([Seed] int);
@@ -115,7 +115,7 @@ BEGIN TRY
 END TRY
 BEGIN CATCH
  IF CURSOR_STATUS('local','cleanupCaptures')>=0 CLOSE [cleanupCaptures];IF CURSOR_STATUS('local','cleanupCaptures')>-3 DEALLOCATE [cleanupCaptures];
- DECLARE [failedCaptures] CURSOR LOCAL FAST_FORWARD FOR SELECT [ReceiptName] FROM #SyntheticBaselineCaptures;OPEN [failedCaptures];FETCH NEXT FROM [failedCaptures] INTO @Name;
- WHILE @@FETCH_STATUS=0 BEGIN EXEC sys.sp_dropextendedproperty @name=@Name,@level0type=N'SCHEMA',@level0name=N'monitor',@level1type=N'PROCEDURE',@level1name=N'USP_SsisPackageModelAnalysis';FETCH NEXT FROM [failedCaptures] INTO @Name;END;CLOSE [failedCaptures];DEALLOCATE [failedCaptures];THROW;
+  DELETE [r] FROM [monitor].[SsisHandoverReceipt] AS [r] INNER JOIN #SyntheticBaselineCaptures AS [c] ON [c].[Handover]=[r].[HandoverId] WHERE [r].[ReceiptKind]=3;
+  THROW;
 END CATCH;
 GO

@@ -10,8 +10,8 @@ DECLARE @Model nvarchar(max)=N'{"contract":"ssis-package-model","version":"1.0.0
 -- dies ist keine SSISDB-Liveabnahme oder Parserableitungsqualifikation.
 DECLARE @Bytes varbinary(max)=CONVERT(varbinary(max),N'SyntheticRuntimeDefinitionBytes');
 SET @Model=JSON_MODIFY(JSON_MODIFY(@Model,'$.source.packageSha256',LOWER(CONVERT(varchar(64),HASHBYTES('SHA2_256',@Bytes),2))),'$.source.byteLength',DATALENGTH(@Bytes));
-DECLARE @Id uniqueidentifier=NEWID(),@RunId uniqueidentifier=NEWID(),@ModelName sysname,@RunName sysname,@ModelReceipt nvarchar(3000),@RunReceipt nvarchar(3000),@ChangedReceipt nvarchar(3000),@Snapshot nvarchar(max),@Changed nvarchar(max),@Json nvarchar(max),@Status varchar(40),@Issued datetime2(3)=SYSUTCDATETIME(),@Execution bigint=9007199254740993,@ModelCreated bit=0,@RunCreated bit=0;
-SET @ModelName=N'SSIS_HANDOVER_'+LOWER(CONVERT(nvarchar(36),@Id));SET @RunName=N'SSIS_RUNTIME_'+LOWER(CONVERT(nvarchar(36),@RunId));
+DECLARE @Id uniqueidentifier=NEWID(),@RunId uniqueidentifier=NEWID(),@ModelReceipt nvarchar(3000),@RunReceipt nvarchar(3000),@ChangedReceipt nvarchar(3000),@Snapshot nvarchar(max),@Changed nvarchar(max),@Json nvarchar(max),@Status varchar(40),@Issued datetime2(3)=SYSUTCDATETIME(),@Execution bigint=9007199254740993,@ModelCreated bit=0,@RunCreated bit=0;
+
 SET @ModelReceipt=(SELECT 'ssis-local-handover' AS [contract],'1.0.0' AS [version],'QUALIFIED_HOST_SNAPSHOT' AS [method],CONVERT(varchar(64),HASHBYTES('SHA2_256',CONVERT(varbinary(max),@Model)),2) AS [modelSha256],JSON_VALUE(@Model,'$.source.packageSha256') AS [packageSha256],DATALENGTH(@Bytes) AS [byteLength],JSON_VALUE(@Model,'$.producer.buildSha256') AS [buildSha256],JSON_VALUE(@Model,'$.producer.sourceCommit') AS [sourceCommit],CONVERT(varchar(24),@Issued,127)+'Z' AS [issuedUtc],CONVERT(varchar(24),DATEADD(hour,1,@Issued),127)+'Z' AS [expiresUtc] FOR JSON PATH,WITHOUT_ARRAY_WRAPPER);
 SET @Snapshot=(SELECT 'ssis-execution-snapshot' AS [contract],'1.0.0' AS [version],'SSISDB_CURRENT_PROJECT_ROOT_SCOPE_V1' AS [method],CONVERT(varchar(64),HASHBYTES('SHA2_256',CONVERT(varbinary(max),@Model)),2) AS [modelSha256],JSON_VALUE(@Model,'$.source.packageSha256') AS [packageSha256],'document-order-v1' AS [identityProfile],
     JSON_QUERY((SELECT CONVERT(varchar(20),@Execution) AS [executionId],'17' AS [projectId],'91' AS [projectLsn],'33333333-3333-3333-3333-333333333333' AS [catalogDatabaseGuid],REPLICATE('4',64) AS [sourceBindingSha256],'SyntheticRoot.dtsx' AS [packageFileName],'2026-01-01T00:00:00+00:00' AS [executionCreatedUtc],7 AS [executionStatus],'2026-01-01T00:00:00+00:00' AS [startTime],'2026-01-01T00:00:01+00:00' AS [endTime],CONVERT(varchar(24),@Issued,127)+'Z' AS [snapshotStartedUtc],CONVERT(varchar(24),@Issued,127)+'Z' AS [snapshotCompletedUtc] FOR JSON PATH,WITHOUT_ARRAY_WRAPPER)) AS [execution],
@@ -31,8 +31,8 @@ SET @Leaf=JSON_MODIFY(JSON_MODIFY(JSON_MODIFY(@Leaf,'$.statisticsId','4'),'$.exe
 SET @Snapshot=JSON_MODIFY(@Snapshot,'append $.observations',JSON_QUERY(@Leaf));
 SET @RunReceipt=JSON_MODIFY(@RunReceipt,'$.snapshotSha256',CONVERT(varchar(64),HASHBYTES('SHA2_256',CONVERT(varbinary(max),@Snapshot)),2));
 BEGIN TRY
-    EXEC sys.sp_addextendedproperty @name=@ModelName,@value=@ModelReceipt,@level0type=N'SCHEMA',@level0name=N'monitor',@level1type=N'PROCEDURE',@level1name=N'USP_SsisPackageModelAnalysis';SET @ModelCreated=1;
-    EXEC sys.sp_addextendedproperty @name=@RunName,@value=@RunReceipt,@level0type=N'SCHEMA',@level0name=N'monitor',@level1type=N'PROCEDURE',@level1name=N'USP_SsisPackageModelAnalysis';SET @RunCreated=1;
+    INSERT [monitor].[SsisHandoverReceipt] ([ReceiptKind],[HandoverId],[ReceiptJson]) VALUES(1,@Id,@ModelReceipt);SET @ModelCreated=1;
+    INSERT [monitor].[SsisHandoverReceipt] ([ReceiptKind],[HandoverId],[ReceiptJson]) VALUES(2,@RunId,@RunReceipt);SET @RunCreated=1;
     DECLARE @Case int=0,@CaseCount int=28,@Limit int,@ExpectedMapped int,@ExpectedLeaf int,@ExpectedSummaryDuration bigint,@ExpectedCoverage varchar(32);
     WHILE @Case<@CaseCount
     BEGIN
@@ -71,7 +71,7 @@ BEGIN TRY
         IF @Case=26 SET @Changed=JSON_MODIFY(JSON_MODIFY(@Changed,'$.execution.loggingLevel',NULL),'$.execution."loggingLevel "',0);
         IF @Case=27 SET @Changed=JSON_MODIFY(JSON_MODIFY(@Changed,'$.identities.objects[1].iterationContainer','true'),'$.identities.objects[1]."iterationContainer "',CAST(1 AS bit));
         SET @ChangedReceipt=JSON_MODIFY(@RunReceipt,'$.snapshotSha256',CONVERT(varchar(64),HASHBYTES('SHA2_256',CONVERT(varbinary(max),@Changed)),2));
-        EXEC sys.sp_updateextendedproperty @name=@RunName,@value=@ChangedReceipt,@level0type=N'SCHEMA',@level0name=N'monitor',@level1type=N'PROCEDURE',@level1name=N'USP_SsisPackageModelAnalysis';
+        UPDATE [monitor].[SsisHandoverReceipt] SET [ReceiptJson]=@ChangedReceipt WHERE [ReceiptKind]=2 AND [HandoverId]=@RunId;
         EXEC monitor.USP_SsisPackageModelAnalysis @PackageModelJson=@Model,@PackageBytes=@Bytes,@LocalHandoverId=@Id,@IncludeExecutionCorrelation=1,@IncludeIterationCorrelation=1,@ExecutionId=@Execution,@ExecutionSnapshotJson=@Changed,@RuntimeHandoverId=@RunId,@MaxZeilen=@Limit,@ResultSetArt='NONE',@JsonErzeugen=1,@Json=@Json OUTPUT,@StatusCodeOut=@Status OUTPUT;
         IF @Case>=23
         BEGIN
@@ -92,18 +92,18 @@ BEGIN TRY
         IF @Case IN(21,22) AND NOT EXISTS(SELECT 1 FROM OPENJSON(@Json,'$.executionObjectSummary') WITH([NodeId] varchar(128) '$.ModelNodeId',[Failed] int '$.FailedCount',[Cancelled] int '$.CancelledCount') WHERE [NodeId]='exe2' AND (@Case=21 AND [Failed]=1 OR @Case=22 AND [Cancelled]=1)) THROW 57804,N'SSIS_ITERATION_RESULT_COUNTS_FAILED',1;
         SET @Case+=1;
     END;
-    EXEC sys.sp_updateextendedproperty @name=@RunName,@value=@RunReceipt,@level0type=N'SCHEMA',@level0name=N'monitor',@level1type=N'PROCEDURE',@level1name=N'USP_SsisPackageModelAnalysis';
+    UPDATE [monitor].[SsisHandoverReceipt] SET [ReceiptJson]=@RunReceipt WHERE [ReceiptKind]=2 AND [HandoverId]=@RunId;
     CREATE TABLE #SsisIterationContract_Summary([seed] int NULL);CREATE TABLE #SsisIterationContract_Coverage([seed] int NULL);
     EXEC monitor.USP_SsisPackageModelAnalysis @PackageModelJson=@Model,@PackageBytes=@Bytes,@LocalHandoverId=@Id,@IncludeExecutionCorrelation=1,@IncludeIterationCorrelation=1,@ExecutionId=@Execution,@ExecutionSnapshotJson=@Snapshot,@RuntimeHandoverId=@RunId,@ResultSetArt='TABLE',@ResultTablesJson=N'{"executionObjectSummary":"#SsisIterationContract_Summary","executionCoverage":"#SsisIterationContract_Coverage"}';
     IF (SELECT COUNT(*) FROM #SsisIterationContract_Summary)<>3 OR (SELECT COUNT(*) FROM #SsisIterationContract_Coverage)<>1 THROW 57805,N'SSIS_ITERATION_TABLE_OUTPUT_FAILED',1;
     EXEC monitor.USP_SsisPackageModelAnalysis @PackageModelJson=@Model,@IncludeIterationCorrelation=1,@ResultSetArt='NONE',@StatusCodeOut=@Status OUTPUT;
     IF @Status<>'INVALID_PARAMETER' THROW 57806,N'SSIS_ITERATION_OPT_IN_REQUIRES_CAPTURE',1;
-    EXEC sys.sp_dropextendedproperty @name=@RunName,@level0type=N'SCHEMA',@level0name=N'monitor',@level1type=N'PROCEDURE',@level1name=N'USP_SsisPackageModelAnalysis';SET @RunCreated=0;
-    EXEC sys.sp_dropextendedproperty @name=@ModelName,@level0type=N'SCHEMA',@level0name=N'monitor',@level1type=N'PROCEDURE',@level1name=N'USP_SsisPackageModelAnalysis';SET @ModelCreated=0;
+    DELETE [monitor].[SsisHandoverReceipt] WHERE [ReceiptKind]=2 AND [HandoverId]=@RunId;SET @RunCreated=0;
+    DELETE [monitor].[SsisHandoverReceipt] WHERE [ReceiptKind]=1 AND [HandoverId]=@Id;SET @ModelCreated=0;
 END TRY
 BEGIN CATCH
-    IF @RunCreated=1 EXEC sys.sp_dropextendedproperty @name=@RunName,@level0type=N'SCHEMA',@level0name=N'monitor',@level1type=N'PROCEDURE',@level1name=N'USP_SsisPackageModelAnalysis';
-    IF @ModelCreated=1 EXEC sys.sp_dropextendedproperty @name=@ModelName,@level0type=N'SCHEMA',@level0name=N'monitor',@level1type=N'PROCEDURE',@level1name=N'USP_SsisPackageModelAnalysis';
+    IF @RunCreated=1 DELETE [monitor].[SsisHandoverReceipt] WHERE [ReceiptKind]=2 AND [HandoverId]=@RunId;
+    IF @ModelCreated=1 DELETE [monitor].[SsisHandoverReceipt] WHERE [ReceiptKind]=1 AND [HandoverId]=@Id;
     THROW;
 END CATCH;
 PRINT N'SSIS_ITERATION_RECEIVER_PASS cases=30; synthetic role, ordinal segments, separate statistics, object-only durations, partial coverage and TABLE parity. Native SSISDB qualification is separate.';

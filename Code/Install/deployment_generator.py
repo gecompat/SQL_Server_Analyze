@@ -264,6 +264,62 @@ def table_definitions(sql: str, role: str, path: str) -> list[Table]:
     return result
 
 
+SSIS_RECEIPT_SOURCE = 'Code/10_SSIS/033_SsisHandoverReceipt.sql'
+SSIS_RECEIPT_PERMISSIONS = (
+    'DENY INSERT, DELETE ON OBJECT::[monitor].[SsisHandoverReceipt] TO [public]; '
+    'DENY UPDATE ([ReceiptKind], [HandoverId], [ReceiptJson]) ON OBJECT::[monitor].[SsisHandoverReceipt] TO [public];'
+)
+
+SSIS_RECEIPT_TX_BEGIN = """
+IF @ReceiptObjectType IS NULL
+BEGIN
+    DECLARE @ReceiptOwnTransaction bit = CASE WHEN @@TRANCOUNT = 0 THEN 1 ELSE 0 END;
+    DECLARE @ReceiptRestoreXactAbort bit = CASE WHEN @ReceiptOwnTransaction = 1 AND (@@OPTIONS & 16384) = 0 THEN 1 ELSE 0 END;
+    IF @ReceiptOwnTransaction = 0 SAVE TRANSACTION SQLSA_SsisReceiptDdl;
+    BEGIN TRY
+        IF @ReceiptRestoreXactAbort = 1 SET XACT_ABORT ON;
+        IF @ReceiptOwnTransaction = 1 BEGIN TRANSACTION;
+"""
+SSIS_RECEIPT_TX_END = """
+        IF @ReceiptOwnTransaction = 1 COMMIT TRANSACTION;
+        IF @ReceiptRestoreXactAbort = 1 SET XACT_ABORT OFF;
+    END TRY
+    BEGIN CATCH
+        IF @ReceiptOwnTransaction = 1 AND XACT_STATE() <> 0 ROLLBACK TRANSACTION;
+        ELSE IF @ReceiptOwnTransaction = 0 AND XACT_STATE() = 1 ROLLBACK TRANSACTION SQLSA_SsisReceiptDdl;
+        IF @ReceiptRestoreXactAbort = 1 SET XACT_ABORT OFF;
+        THROW;
+    END CATCH;
+"""
+
+
+def ssis_receipt_transaction_spans(text: str, path: str) -> list[tuple[int, int]]:
+    if path != SSIS_RECEIPT_SOURCE:
+        return []
+    spans = []
+    for boundary in (SSIS_RECEIPT_TX_BEGIN, SSIS_RECEIPT_TX_END):
+        boundary = boundary[1:]
+        if text.count(boundary) != 1:
+            raise BuildError('Changed SSIS receipt transaction ownership wrapper')
+        start = text.index(boundary)
+        tokens(text[:start])
+        spans.append((start, start + len(boundary)))
+    if not (spans[0][1] < spans[1][0]):
+        raise BuildError('Invalid SSIS receipt transaction wrapper order')
+    protected = tokens(text[spans[0][1]:spans[1][0]])
+    dcl = tokens("EXEC(N'" + SSIS_RECEIPT_PERMISSIONS + "');")
+    if [upper(token) for token in protected[:2]] != ['CREATE', 'TABLE']:
+        raise BuildError('SSIS receipt creation must begin the atomic block')
+    schema, name, columns = qualified(protected, 2)
+    if (schema, name) != ('monitor', 'SsisHandoverReceipt') or protected[columns].value != '(':
+        raise BuildError('Unknown table in SSIS receipt atomic block')
+    after_columns = matching(protected, columns) + 1
+    if [(t.kind, t.value) for t in protected[after_columns:]] != [(t.kind, t.value) for t in tokens(';') + dcl]:
+        raise BuildError('SSIS receipt permissions require exact constant EXEC syntax in the atomic block')
+    return spans
+
+
+
 def load_sources(root: Path, snapshot: bool, check_snapshot_guard: bool=True) -> tuple[list[Source], list[Table], str]:
     masters = [('FRAMEWORK', 'Install_All.sql')]
     if snapshot:
@@ -381,16 +437,17 @@ def load_sources(root: Path, snapshot: bool, check_snapshot_guard: bool=True) ->
             continue
         for batch in source.batches:
             bt = tokens(batch)
-            batch_tx_spans=snapshot_transaction_spans(batch,source.path,False)
+            batch_tx_spans=(snapshot_transaction_spans(batch,source.path,False)
+                            + ssis_receipt_transaction_spans(batch,source.path))
             if upper(bt[0]) not in ('SET','IF','DECLARE','CREATE','UPDATE','INSERT','DELETE'):
                 raise BuildError(f'Unknown deployment batch prefix: {source.path}')
             for i,token in enumerate(bt):
-                in_snapshot_wrapper=any(a<=token.start<b for a,b in batch_tx_spans)
-                if upper(token) in ('TRUNCATE','MERGE','GRANT','DENY','REVOKE','COMMIT','ROLLBACK','SAVE','DBCC','BACKUP','RESTORE','USE','BULK') and not in_snapshot_wrapper:
+                in_transaction_wrapper=any(a<=token.start<b for a,b in batch_tx_spans)
+                if upper(token) in ('TRUNCATE','MERGE','GRANT','DENY','REVOKE','COMMIT','ROLLBACK','SAVE','DBCC','BACKUP','RESTORE','USE','BULK') and not in_transaction_wrapper:
                     raise BuildError(f'Unsupported deployment operation in {source.path}: {token.value}')
                 if upper(token)=='INTO' and (i==0 or upper(bt[i-1])!='INSERT'):
                     raise BuildError(f'Unclassified SELECT/OUTPUT INTO in {source.path}')
-                if upper(token)=='BEGIN' and i+1<len(bt) and upper(bt[i+1]) in ('TRAN','TRANSACTION','DISTRIBUTED') and not in_snapshot_wrapper:
+                if upper(token)=='BEGIN' and i+1<len(bt) and upper(bt[i+1]) in ('TRAN','TRANSACTION','DISTRIBUTED') and not in_transaction_wrapper:
                     raise BuildError(f'Deployment source may not start a transaction: {source.path}')
                 if upper(token)=='INSERT':
                     pos=i+1+(upper(bt[i+1])=='INTO')
@@ -430,6 +487,8 @@ def load_sources(root: Path, snapshot: bool, check_snapshot_guard: bool=True) ->
                 if source.path=='Code/09_VersionAdaptive/005_Deprecated_Object_Cleanup.sql' and upper(token) in ('CREATE','ALTER','INSERT','UPDATE','DELETE','EXEC','EXECUTE'):
                     raise BuildError('Legacy cleanup contains an unclassified operation')
                 if upper(token)=='SET' and i+2<len(bt) and bt[i+1].kind=='plain' and not bt[i+1].value.startswith('@'):
+                    if source.path==SSIS_RECEIPT_SOURCE and in_transaction_wrapper:
+                        continue
                     validate_setting(bt[i+1],bt[i+2],source.path)
                 if upper(token) in ('EXEC','EXECUTE'):
                     pos=i+1
@@ -460,6 +519,12 @@ def load_sources(root: Path, snapshot: bool, check_snapshot_guard: bool=True) ->
                         if dynamic[table_pos].value!='(' or any(t.value!=';' for t in dynamic[matching(dynamic,table_pos)+1:]):
                             raise BuildError('A constant table EXEC may contain only its CREATE TABLE statement')
                         table_definitions(unstring(bt[pos]),source.role,source.path)
+                    elif source.path==SSIS_RECEIPT_SOURCE and unstring(bt[pos])==SSIS_RECEIPT_PERMISSIONS:
+                        expected = tokens("EXEC(N'" + SSIS_RECEIPT_PERMISSIONS + "');")
+                        actual = bt[i:i + len(expected)]
+                        if [(item.kind, item.value) for item in actual] != [(item.kind, item.value) for item in expected]:
+                            raise BuildError('SSIS receipt permissions require exact constant EXEC syntax')
+                        continue
                     elif upper(dynamic[0])=='IF':
                         if any(upper(t) in ('UPDATE','DELETE','INSERT','EXEC','EXECUTE','CREATE','ALTER','DROP','TRUNCATE','MERGE','GRANT','DENY','REVOKE','COMMIT','ROLLBACK','SAVE','SET','DBCC','BACKUP','RESTORE','USE','BULK','INTO','OPENROWSET','OPENQUERY','OPENDATASOURCE','TRAN','TRANSACTION','DISTRIBUTED') for t in dynamic):
                             raise BuildError('A source preflight string may only inspect and abort')

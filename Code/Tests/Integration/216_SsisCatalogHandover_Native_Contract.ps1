@@ -32,7 +32,7 @@ $security.AddAccessRule([Security.AccessControl.FileSystemAccessRule]::new($iden
 $scriptFile=Join-Path $directory 'own.sql';$receipt=Join-Path $directory 'ownership.private.json'
 $record=[ordered]@{RunId=$RunId.ToString();InstanceId=$InstanceId;OperationId=[guid]::NewGuid().ToString();FolderName='SyntheticCorrelation_'+[guid]::NewGuid().ToString('N');FolderId=0L;ProjectName='SyntheticProject_'+[guid]::NewGuid().ToString('N');ProjectId=0L;ProjectLsn=0L;ExecutionId=0L;DatabaseAttempted=$false;FolderAttempted=$false;ProjectAttempted=$false;Phase='PLANNED';Cleanup='PENDING';Operations=@()}
 $record.SourceBindings=[ordered]@{ProducerCommit=$ExpectedSourceCommit;ProducerSha256=$ExpectedBuildSha256;FixtureBuilderSha256=(Get-FileHash -LiteralPath $FixtureBuilderPath -Algorithm SHA256).Hash}
-foreach($relative in @('Code/10_SSIS/040_USP_SsisPackageModelAnalysis.sql','Code/Tools/Invoke-SsisCatalogHandover.ps1','Code/Tools/Invoke-SsisQualifiedHandover.ps1','Code/Tools/SsisHandoverSupport.psm1','Code/Tests/Integration/216_SsisCatalogHandover_Native_Contract.ps1')){$record.SourceBindings[$relative]=(Get-FileHash -LiteralPath (Join-Path $root $relative) -Algorithm SHA256).Hash}
+foreach($relative in @('Code/10_SSIS/033_SsisHandoverReceipt.sql','Code/10_SSIS/040_USP_SsisPackageModelAnalysis.sql','Code/10_SSIS/041_InternalManageSsisHandoverReceipt.sql','Code/Tools/Invoke-SsisCatalogHandover.ps1','Code/Tools/Invoke-SsisQualifiedHandover.ps1','Code/Tools/SsisHandoverSupport.psm1','Code/Tests/Integration/216_SsisCatalogHandover_Native_Contract.ps1')){$record.SourceBindings[$relative]=(Get-FileHash -LiteralPath (Join-Path $root $relative) -Algorithm SHA256).Hash}
 $database='SyntheticSsisNative_'+[guid]::NewGuid().ToString('N');$databaseCreated=$false;$counter=[pscustomobject]@{Value=0}
 $target=@{RunId=$RunId;InstanceId=$InstanceId;WindowsAuthentication=$true;Database='SSISDB';KeepConnection=$true;TimeoutSeconds=60}
 function Save-Record {[IO.File]::WriteAllText($receipt,($record|ConvertTo-Json -Depth 16),[Text.UTF8Encoding]::new($false))}
@@ -70,7 +70,7 @@ try {
     Save-Record;$connection.Open()
     $record.DatabaseAttempted=$true;Save-Record
     [void](Query "CREATE DATABASE [$database] COLLATE SQL_Latin1_General_CP1_CS_AS;");$databaseCreated=$true;$connection.ChangeDatabase($database);[void](Query 'CREATE SCHEMA monitor AUTHORIZATION dbo;')
-    foreach($relative in @('Code/01_Common/095_USP_InternalWriteResultTable.sql','Code/01_Common/096_USP_InternalPrepareResultTables.sql','Code/01_Common/098_USP_InternalEmitConsoleResult.sql','Code/10_SSIS/040_USP_SsisPackageModelAnalysis.sql')) {
+    foreach($relative in @('Code/01_Common/095_USP_InternalWriteResultTable.sql','Code/01_Common/096_USP_InternalPrepareResultTables.sql','Code/01_Common/098_USP_InternalEmitConsoleResult.sql','Code/10_SSIS/033_SsisHandoverReceipt.sql','Code/10_SSIS/040_USP_SsisPackageModelAnalysis.sql','Code/10_SSIS/041_InternalManageSsisHandoverReceipt.sql')) {
         $sql=[IO.File]::ReadAllText((Join-Path $root $relative)).Replace('USE [DeineDatenbank];',"USE [$database];")
         foreach($batch in [regex]::Split($sql,'(?im)^\s*GO\s*$')){if($batch.Trim()){[void](Query $batch)}}
     }

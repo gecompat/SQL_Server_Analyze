@@ -37,10 +37,63 @@ try {
     [void](Query "CREATE DATABASE [$database] COLLATE SQL_Latin1_General_CP1_CS_AS;");$created=$true
     $connection.ChangeDatabase($database);$source.ChangeDatabase($database);$contender.ChangeDatabase($database)
     [void](Query 'CREATE SCHEMA [monitor] AUTHORIZATION [dbo];');[void](Query 'CREATE SCHEMA [catalog] AUTHORIZATION [dbo];')
-    foreach($relative in @('Code/01_Common/095_USP_InternalWriteResultTable.sql','Code/01_Common/096_USP_InternalPrepareResultTables.sql','Code/01_Common/098_USP_InternalEmitConsoleResult.sql','Code/10_SSIS/040_USP_SsisPackageModelAnalysis.sql')) {
+    foreach($relative in @('Code/01_Common/095_USP_InternalWriteResultTable.sql','Code/01_Common/096_USP_InternalPrepareResultTables.sql','Code/01_Common/098_USP_InternalEmitConsoleResult.sql','Code/10_SSIS/033_SsisHandoverReceipt.sql','Code/10_SSIS/040_USP_SsisPackageModelAnalysis.sql','Code/10_SSIS/041_InternalManageSsisHandoverReceipt.sql')) {
         $sql=[IO.File]::ReadAllText((Join-Path $root $relative)).Replace('USE [DeineDatenbank];',"USE [$database];")
         foreach($batch in [regex]::Split($sql,'(?im)^\s*GO\s*$')){if($batch.Trim()){[void](Query $batch)}}
     }
+    $receiptDdl=[IO.File]::ReadAllText((Join-Path $root 'Code/10_SSIS/033_SsisHandoverReceipt.sql')).Replace('USE [DeineDatenbank];',"USE [$database];")
+    function Invoke-ReceiptInstaller {
+        foreach($batch in [regex]::Split($receiptDdl,'(?im)^\s*GO\s*$')){if($batch.Trim()){[void](Query $batch)}}
+    }
+    function Assert-ReceiptInstallerRejects([string]$Message) {
+        $rejected=$false
+        try {Invoke-ReceiptInstaller}
+        catch {
+            $failure=$_.Exception
+            while($failure -isnot [Data.SqlClient.SqlException] -and $failure.InnerException){$failure=$failure.InnerException}
+            if($failure -is [Data.SqlClient.SqlException]) {
+                $rejected=@($failure.Errors|Where-Object {$_.Number -eq 57400 -and $_.Message -ceq $Message}).Count -eq 1
+            }
+        }
+        Assert $rejected $Message
+    }
+    Invoke-ReceiptInstaller
+    [void](Query "ALTER TABLE monitor.SsisHandoverReceipt ADD SyntheticUnexpectedColumn int NULL;")
+    Assert-ReceiptInstallerRejects 'SSIS_HANDOVER_RECEIPT_COLUMN_MISMATCH'
+    Assert ((Query "SELECT COUNT(*) FROM sys.columns WHERE object_id=OBJECT_ID(N'monitor.SsisHandoverReceipt') AND name=N'SyntheticUnexpectedColumn';").Tables[0].Rows[0][0] -eq 1) 'RECEIPT_DRIFT_UNCHANGED'
+    [void](Query "ALTER TABLE monitor.SsisHandoverReceipt DROP COLUMN SyntheticUnexpectedColumn;")
+    [void](Query "ALTER TABLE monitor.SsisHandoverReceipt DROP CONSTRAINT PK_SsisHandoverReceipt; ALTER TABLE monitor.SsisHandoverReceipt ADD CONSTRAINT PK_SsisHandoverReceipt PRIMARY KEY CLUSTERED (ReceiptKind,HandoverId) WITH (IGNORE_DUP_KEY=ON);")
+    Assert-ReceiptInstallerRejects 'SSIS_HANDOVER_RECEIPT_KEY_MISMATCH'
+    Assert ((Query "SELECT ignore_dup_key FROM sys.indexes WHERE object_id=OBJECT_ID(N'monitor.SsisHandoverReceipt') AND name=N'PK_SsisHandoverReceipt';").Tables[0].Rows[0][0] -eq 1) 'RECEIPT_DUP_KEY_UNCHANGED'
+    [void](Query "ALTER TABLE monitor.SsisHandoverReceipt DROP CONSTRAINT PK_SsisHandoverReceipt; ALTER TABLE monitor.SsisHandoverReceipt ADD CONSTRAINT PK_SsisHandoverReceipt PRIMARY KEY CLUSTERED (ReceiptKind,HandoverId);")
+    Invoke-ReceiptInstaller
+
+    $protectedReceipt="INSERT monitor.SsisHandoverReceipt VALUES(1,'3A91B16A-3383-4410-A013-F03CD9E07C91',N'{}');"
+    [void](Query $protectedReceipt)
+    Invoke-ReceiptInstaller
+    Assert ((Query "SELECT COUNT(*) FROM monitor.SsisHandoverReceipt WHERE HandoverId='3A91B16A-3383-4410-A013-F03CD9E07C91' AND ReceiptJson=N'{}';").Tables[0].Rows[0][0] -eq 1) 'RECEIPT_PROTECTED_ROW_PRESERVED'
+    [void](Query "REVOKE UPDATE ([ReceiptJson]) ON OBJECT::[monitor].[SsisHandoverReceipt] FROM [public];")
+    Assert-ReceiptInstallerRejects 'SSIS_HANDOVER_RECEIPT_PERMISSIONS_MISMATCH'
+    [void](Query "DENY UPDATE ([ReceiptJson]) ON OBJECT::[monitor].[SsisHandoverReceipt] TO [public];")
+    Invoke-ReceiptInstaller
+    [void](Query "REVOKE UPDATE ([ReceiptKind], [HandoverId], [ReceiptJson]) ON OBJECT::[monitor].[SsisHandoverReceipt] FROM [public]; REVOKE INSERT, DELETE ON OBJECT::[monitor].[SsisHandoverReceipt] FROM [public];")
+    Assert-ReceiptInstallerRejects 'SSIS_HANDOVER_RECEIPT_PERMISSIONS_MISMATCH'
+    Assert ((Query "SELECT COUNT(*) FROM monitor.SsisHandoverReceipt WHERE HandoverId='3A91B16A-3383-4410-A013-F03CD9E07C91' AND ReceiptJson=N'{}';").Tables[0].Rows[0][0] -eq 1) 'RECEIPT_UNPROTECTED_ROW_UNCHANGED'
+    Assert ((Query "SELECT COUNT(*) FROM sys.database_permissions WHERE major_id=OBJECT_ID(N'monitor.SsisHandoverReceipt') AND grantee_principal_id=DATABASE_PRINCIPAL_ID(N'public');").Tables[0].Rows[0][0] -eq 0) 'RECEIPT_UNPROTECTED_TABLE_NOT_ADOPTED'
+    [void](Query "DROP TABLE monitor.SsisHandoverReceipt;")
+
+    [void](Query "CREATE TRIGGER SyntheticSsisDenyFailure ON DATABASE FOR DENY_DATABASE AS THROW 57400,N'SSIS_HANDOVER_TEST_DCL_FAILURE',1;")
+    try {
+        Assert-ReceiptInstallerRejects 'SSIS_HANDOVER_TEST_DCL_FAILURE'
+        Assert ((Query "SELECT CASE WHEN OBJECT_ID(N'monitor.SsisHandoverReceipt') IS NULL AND @@TRANCOUNT=0 THEN 1 ELSE 0 END;").Tables[0].Rows[0][0] -eq 1) 'RECEIPT_DCL_FAILURE_ROLLED_BACK'
+    } finally {[void](Query 'DROP TRIGGER SyntheticSsisDenyFailure ON DATABASE;')}
+    [void](Query 'BEGIN TRANSACTION;')
+    try {
+        Invoke-ReceiptInstaller
+        Assert ((Query "SELECT CASE WHEN OBJECT_ID(N'monitor.SsisHandoverReceipt') IS NOT NULL AND @@TRANCOUNT=1 AND XACT_STATE()=1 THEN 1 ELSE 0 END;").Tables[0].Rows[0][0] -eq 1) 'RECEIPT_AMBIENT_TRANSACTION_RETAINED'
+    } finally {[void](Query 'IF @@TRANCOUNT>0 ROLLBACK TRANSACTION;')}
+    Assert ((Query "SELECT CASE WHEN OBJECT_ID(N'monitor.SsisHandoverReceipt') IS NULL THEN 1 ELSE 0 END;").Tables[0].Rows[0][0] -eq 1) 'RECEIPT_AMBIENT_ROLLBACK_REMOVES_TABLE'
+    Invoke-ReceiptInstaller
     [void](Query @'
 CREATE TABLE catalog.folders(folder_id bigint PRIMARY KEY,name nvarchar(128));
 CREATE TABLE catalog.projects(project_id bigint PRIMARY KEY,folder_id bigint,name nvarchar(128),object_version_lsn bigint);
@@ -115,21 +168,21 @@ INSERT catalog.executable_statistics VALUES(1,9007199254740993,51,N'\SyntheticOb
         }
     } finally {$command.Dispose()}
     Import-Module (Join-Path $root 'Code/Tools/SsisHandoverSupport.psm1') -Force -Scope Local
-    $receiptCount=(Query "SELECT COUNT(*) FROM sys.extended_properties WITH(READCOMMITTEDLOCK) WHERE major_id=OBJECT_ID(N'monitor.USP_SsisPackageModelAnalysis');").Tables[0].Rows[0][0]
+    $receiptCount=(Query "SELECT COUNT(*) FROM [monitor].[SsisHandoverReceipt] WITH(READCOMMITTEDLOCK);").Tables[0].Rows[0][0]
     [void](Query 'BEGIN TRANSACTION;')
     try {
         $rejected=$false
         try {Register-SsisHandover -Connection $connection -ModelJson $handover.PackageModelJson -PackageBytes $handover.PackageBytes|Out-Null} catch {$rejected=$_.Exception.Message -ceq 'SSIS_HANDOVER_CALLER_TRANSACTION_NOT_ALLOWED'}
         Assert ($rejected -and (Query 'SELECT @@TRANCOUNT;').Tables[0].Rows[0][0] -eq 1) 'FOREIGN_CALLER_TRANSACTION_RETAINED'
     } finally {[void](Query 'IF @@TRANCOUNT>0 ROLLBACK;')}
-    [void](Query "CREATE TRIGGER SyntheticSsisRegistrationDelay ON DATABASE FOR CREATE_EXTENDED_PROPERTY AS BEGIN WAITFOR DELAY '00:00:04';END;")
+    [void](Query "CREATE TRIGGER [monitor].[SyntheticSsisRegistrationDelay] ON [monitor].[SsisHandoverReceipt] AFTER INSERT AS BEGIN WAITFOR DELAY '00:00:04';END;")
     try {
         $timedOut=$false
         try {Register-SsisHandover -Connection $connection -ModelJson $handover.PackageModelJson -PackageBytes $handover.PackageBytes -ExecutionSnapshotJson $handover.ExecutionSnapshotJson -CommandTimeoutSeconds 1|Out-Null}
         catch {$failure=$_.Exception;while($failure -isnot [Data.SqlClient.SqlException] -and $failure.InnerException){$failure=$failure.InnerException};$timedOut=$failure -is [Data.SqlClient.SqlException] -and $failure.Number -eq -2}
         Assert ($timedOut -and $connection.State -eq 'Open' -and (Query 'SELECT @@TRANCOUNT;').Tables[0].Rows[0][0] -eq 0) 'REGISTRATION_ATTENTION_ROLLBACK'
-        Assert ((Query "SELECT COUNT(*) FROM sys.extended_properties WITH(READCOMMITTEDLOCK) WHERE major_id=OBJECT_ID(N'monitor.USP_SsisPackageModelAnalysis');").Tables[0].Rows[0][0] -eq $receiptCount) 'NO_PARTIAL_REGISTRATION'
-    } finally {[void](Query 'DROP TRIGGER SyntheticSsisRegistrationDelay ON DATABASE;')}
+        Assert ((Query "SELECT COUNT(*) FROM [monitor].[SsisHandoverReceipt] WITH(READCOMMITTEDLOCK);").Tables[0].Rows[0][0] -eq $receiptCount) 'NO_PARTIAL_REGISTRATION'
+    } finally {[void](Query 'DROP TRIGGER [monitor].[SyntheticSsisRegistrationDelay];')}
     [void](Query 'UPDATE catalog.projects SET object_version_lsn=92;')
     $unbound=& (Join-Path $root 'Code/Tools/Invoke-SsisCatalogHandover.ps1') @arguments
     Assert ($unbound.Status -ceq 'RUNTIME_BINDING_UNPROVEN' -and $unbound.ReasonCode -ceq 'EXECUTION_PROJECT_VERSION_UNAVAILABLE') 'HISTORICAL_PROJECT_NOT_SUBSTITUTED'

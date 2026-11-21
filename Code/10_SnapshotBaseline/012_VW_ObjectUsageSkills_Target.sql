@@ -15,7 +15,7 @@
 -- 
 -- ## Zweck und Einsatz
 -- 
--- Die View stellt für die bekannte Frameworkrolle 193 Objekt-Skills plus diesen Self-Skill und für die Snapshot-Zielrolle 17 Objekt-Skills plus diesen Self-Skill bereit. Der Text stammt aus den versionierten Markdown-Dateien unter `Metadata/UsageSkills`; die View führt keine Objektinventur und keine Laufzeitprüfung aus. Die Self-Zeile trägt `DatabaseRole=both`, weil dieselbe kanonische Markdown-Datei in beiden Rollenprojektionen enthalten ist; alle anderen Zeilen nennen ihre jeweilige Datenbankrolle. Ein Eintrag sagt weder, dass das Objekt im aktuellen Datenbankzustand noch vorhanden ist, noch dass der Aufrufer seine Fachquellen lesen oder ausführen darf.
+-- Die View stellt für die bekannte Frameworkrolle 195 Objekt-Skills plus diesen Self-Skill und für die Snapshot-Zielrolle 17 Objekt-Skills plus diesen Self-Skill bereit. Der Text stammt aus den versionierten Markdown-Dateien unter `Metadata/UsageSkills`; die View führt keine Objektinventur und keine Laufzeitprüfung aus. Die Self-Zeile trägt `DatabaseRole=both`, weil dieselbe kanonische Markdown-Datei in beiden Rollenprojektionen enthalten ist; alle anderen Zeilen nennen ihre jeweilige Datenbankrolle. Ein Eintrag sagt weder, dass das Objekt im aktuellen Datenbankzustand noch vorhanden ist, noch dass der Aufrufer seine Fachquellen lesen oder ausführen darf.
 -- 
 -- ## Voraussetzungen und Rechte
 -- 
@@ -73,7 +73,7 @@ SELECT CONVERT(sysname,N'monitor_metadata') AS [SchemaName],CONVERT(sysname,N'VW
             + N'## Zweck und Einsatz'
             + NCHAR(10)
             + NCHAR(10)
-            + N'Die View stellt für die bekannte Frameworkrolle 193 Objekt-Skills plus diesen Self-Skill und für die Snapshot-Zielrolle 17 Objekt-Skills plus diesen Self-Skill bereit. Der Text stammt aus den versionierten Markdown-Dateien unter `Metadata/UsageSkills`; die View führt keine Objektinventur und keine Laufzeitprüfung aus. Die Self-Zeile trägt `DatabaseRole=both`, weil dieselbe kanonische Markdown-Datei in beiden Rollenprojektionen enthalten ist; alle anderen Zeilen nennen ihre jeweilige Datenbankrolle. Ein Eintrag sagt weder, dass das Objekt im aktuellen Datenbankzustand noch vorhanden ist, noch dass der Aufrufer seine Fachquellen lesen oder ausführen darf.'
+            + N'Die View stellt für die bekannte Frameworkrolle 195 Objekt-Skills plus diesen Self-Skill und für die Snapshot-Zielrolle 17 Objekt-Skills plus diesen Self-Skill bereit. Der Text stammt aus den versionierten Markdown-Dateien unter `Metadata/UsageSkills`; die View führt keine Objektinventur und keine Laufzeitprüfung aus. Die Self-Zeile trägt `DatabaseRole=both`, weil dieselbe kanonische Markdown-Datei in beiden Rollenprojektionen enthalten ist; alle anderen Zeilen nennen ihre jeweilige Datenbankrolle. Ein Eintrag sagt weder, dass das Objekt im aktuellen Datenbankzustand noch vorhanden ist, noch dass der Aufrufer seine Fachquellen lesen oder ausführen darf.'
             + NCHAR(10)
             + NCHAR(10)
             + N'## Voraussetzungen und Rechte'

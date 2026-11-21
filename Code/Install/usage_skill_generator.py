@@ -86,7 +86,7 @@ def load_skills(root: Path, check_snapshot_guard: bool = True) -> list[tuple[dic
         raise ValueError(f"Usage Skill Markdown count differs from inventory: {len(skills)} versus {len(rows)}")
     expected = {(r["ObjectName"], r["ObjectType"], r["SourcePath"]) for r in rows}
     actual = {(f["object_name"], f["object_type"], f["source_path"]) for f, _ in skills}
-    if len(expected) != 211 or len(actual) != 211 or expected != actual:
+    if len(expected) != 213 or len(actual) != 213 or expected != actual:
         raise ValueError("Usage Skill identities/types/source paths differ from Objects.csv")
     if sum(f["name"] == SELF for f, _ in skills) != 1:
         raise ValueError("Usage Skill self-description is missing or duplicated")
@@ -257,7 +257,7 @@ def help_projection(f: dict, md: str) -> str:
 def view_projection(skills: list[tuple[dict, str]], role: str) -> str:
     chosen = sorted(((f, md) for f, md in skills if f["database_role"] == role or f["name"] == SELF),
                     key=lambda pair: pair[0]["name"])
-    if len(chosen) != (194 if role == "framework" else 18):
+    if len(chosen) != (196 if role == "framework" else 18):
         raise ValueError("Usage Skill role closure count mismatch")
     self_skill = next((f, md) for f, md in chosen if f["name"] == SELF)
     rows = []
@@ -378,7 +378,7 @@ def main() -> int:
             failures.append(f"Usage Skill view projection mismatch: {path}")
     if failures:
         raise ValueError("; ".join(failures))
-    print("Usage Skill projections: 211 Markdown, 210 DDL comments, 155 Help branches, 194/18 role rows")
+    print("Usage Skill projections: 213 Markdown, 212 DDL comments, 156 Help branches, 196/18 role rows")
     return 0
 
 

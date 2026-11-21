@@ -68,7 +68,7 @@ try {
     Assert ($preflight.Tables.Count -eq 2) 'PREFLIGHT'
     [void](Query "CREATE DATABASE [$database] COLLATE SQL_Latin1_General_CP1_CS_AS;"); $created=$true
     $connection.ChangeDatabase($database); [void](Query 'CREATE SCHEMA [monitor] AUTHORIZATION [dbo];')
-    foreach($relative in @('Code/01_Common/095_USP_InternalWriteResultTable.sql','Code/01_Common/096_USP_InternalPrepareResultTables.sql','Code/01_Common/098_USP_InternalEmitConsoleResult.sql','Code/10_SSIS/010_USP_SsisPackageAnalysis.sql','Code/10_SSIS/034_InternalSsisScopePathMatch.sql','Code/10_SSIS/036_InternalSsisPipelineCorrelation.sql','Code/10_SSIS/035_InternalSsisExecutionScopes.sql','Code/10_SSIS/040_USP_SsisPackageModelAnalysis.sql')) {
+    foreach($relative in @('Code/01_Common/095_USP_InternalWriteResultTable.sql','Code/01_Common/096_USP_InternalPrepareResultTables.sql','Code/01_Common/098_USP_InternalEmitConsoleResult.sql','Code/10_SSIS/010_USP_SsisPackageAnalysis.sql','Code/10_SSIS/033_SsisHandoverReceipt.sql','Code/10_SSIS/034_InternalSsisScopePathMatch.sql','Code/10_SSIS/036_InternalSsisPipelineCorrelation.sql','Code/10_SSIS/035_InternalSsisExecutionScopes.sql','Code/10_SSIS/040_USP_SsisPackageModelAnalysis.sql','Code/10_SSIS/041_InternalManageSsisHandoverReceipt.sql')) {
         $source=[IO.File]::ReadAllText((Join-Path $repositoryRoot $relative)) -replace 'USE \[DeineDatenbank\];',"USE [$database];"
         foreach($batch in [regex]::Split($source,'(?im)^\s*GO\s*$')) {if($batch.Trim()){[void](Query $batch)}}
     }

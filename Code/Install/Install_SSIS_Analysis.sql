@@ -16,11 +16,13 @@ vorhandenen Loggingtabellen zur Installation. Datei- und ISPAC-Adapter bleiben a
 :r ../10_SSIS/010_USP_SsisPackageAnalysis.sql
 :r ../10_SSIS/020_USP_SsisLegacyLogAnalysis.sql
 :r ../10_SSIS/030_USP_SsisCatalogExecutionAnalysis.sql
+:r ../10_SSIS/033_SsisHandoverReceipt.sql
 :r ../10_SSIS/034_InternalSsisScopePathMatch.sql
 :r ../10_SSIS/036_InternalSsisPipelineCorrelation.sql
 :r ../10_SSIS/037_InternalSsisPipelineDiagnostics.sql
 :r ../10_SSIS/035_InternalSsisExecutionScopes.sql
 :r ../10_SSIS/040_USP_SsisPackageModelAnalysis.sql
+:r ../10_SSIS/041_InternalManageSsisHandoverReceipt.sql
 :r ../10_SSIS/045_InternalSsisExecutionMetrics.sql
 :r ../10_SSIS/050_USP_SsisExecutionComparison.sql
 :r ../10_SSIS/060_USP_SsisExecutionBaseline.sql

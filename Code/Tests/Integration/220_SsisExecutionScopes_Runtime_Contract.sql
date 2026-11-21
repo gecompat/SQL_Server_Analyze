@@ -7,8 +7,8 @@ DECLARE @Model nvarchar(max)=N'{"contract":"ssis-package-model","version":"1.0.0
 -- Synthetischer Empfängervertrag; keine Parser- oder native SSISDB-Qualifikation.
 DECLARE @Root nvarchar(max)=JSON_MODIFY(JSON_MODIFY(JSON_MODIFY(@Model,'$.nodes',JSON_QUERY(N'[{"id":"pkg1","kind":"PACKAGE","parentId":null,"name":"SyntheticRoot","attributes":{"protectionLevel":null}},{"id":"exe1","kind":"EXECUTABLE","parentId":"pkg1","name":"SyntheticCall","attributes":{"executableType":"STOCK:SEQUENCE","isDisabled":false,"isEventHandler":false}},{"id":"exe2","kind":"EXECUTABLE","parentId":"pkg1","name":"SyntheticLoop","attributes":{"executableType":"STOCK:SEQUENCE","isDisabled":false,"isEventHandler":false}},{"id":"exe3","kind":"EXECUTABLE","parentId":"exe2","name":"SyntheticCall","attributes":{"executableType":"STOCK:SEQUENCE","isDisabled":false,"isEventHandler":false}},{"id":"exe4","kind":"EXECUTABLE","parentId":"pkg1","name":"SyntheticHandler","attributes":{"executableType":"STOCK:SEQUENCE","isDisabled":false,"isEventHandler":true}},{"id":"exe5","kind":"EXECUTABLE","parentId":"exe4","name":"SyntheticBody","attributes":{"executableType":"STOCK:SEQUENCE","isDisabled":false,"isEventHandler":false}}]')),'$.edges',JSON_QUERY(N'[]')),'$.diagnostics',JSON_QUERY(N'[]'));
 DECLARE @Child nvarchar(max)=JSON_MODIFY(@Root,'$.nodes',JSON_QUERY(N'[{"id":"pkg1","kind":"PACKAGE","parentId":null,"name":"SyntheticChild","attributes":{"protectionLevel":null}},{"id":"exe1","kind":"EXECUTABLE","parentId":"pkg1","name":"SyntheticLeaf[9]","attributes":{"executableType":"STOCK:SEQUENCE","isDisabled":false,"isEventHandler":false}}]'));
-DECLARE @Models nvarchar(max),@Capture nvarchar(max),@Objects nvarchar(max),@Receipt nvarchar(3000),@Name sysname,@Id uniqueidentifier=NEWID(),@Now datetime2(3)=SYSUTCDATETIME(),@Json nvarchar(max),@Status varchar(40),@Created bit=0;
-SET @Name=N'SSIS_SCOPE_'+LOWER(CONVERT(nvarchar(36),@Id));
+DECLARE @Models nvarchar(max),@Capture nvarchar(max),@Objects nvarchar(max),@Receipt nvarchar(3000),@Id uniqueidentifier=NEWID(),@Now datetime2(3)=SYSUTCDATETIME(),@Json nvarchar(max),@Status varchar(40),@Created bit=0;
+
 SET @Models=(SELECT 'ssis-project-model-set' contract,'1.0.0' version,'p1' rootPackageKey,JSON_QUERY(N'[]') packages FOR JSON PATH,WITHOUT_ARRAY_WRAPPER);
 SET @Objects=(SELECT 'ssis-object-identities' contract,'1.2.0' version,'document-order-v1' identityProfile,JSON_VALUE(@Root,'$.source.packageSha256') packageSha256,JSON_QUERY(N'[{"nodeId":"pkg1","nodeKind":"PACKAGE","parentId":null,"dtsId":"11111111-1111-1111-1111-111111111111","packagePath":"\\Package","scopeKind":"PACKAGE","eventName":null,"callTarget":null,"steps":[],"profileStatus":"SUPPORTED"},{"nodeId":"exe1","nodeKind":"EXECUTABLE","parentId":"pkg1","dtsId":"22222222-2222-2222-2222-222222222222","packagePath":"\\Package\\SyntheticCall","scopeKind":"CALL","eventName":null,"callTarget":"SyntheticChild.dtsx","steps":[{"text":"\\SyntheticCall","counter":false}],"profileStatus":"SUPPORTED"},{"nodeId":"exe2","nodeKind":"EXECUTABLE","parentId":"pkg1","dtsId":"33333333-3333-3333-3333-333333333333","packagePath":"\\Package\\SyntheticLoop","scopeKind":"LOOP","eventName":null,"callTarget":null,"steps":[{"text":"\\SyntheticLoop","counter":false}],"profileStatus":"SUPPORTED"},{"nodeId":"exe3","nodeKind":"EXECUTABLE","parentId":"exe2","dtsId":"44444444-4444-4444-4444-444444444444","packagePath":"\\Package\\SyntheticLoop\\SyntheticCall","scopeKind":"CALL","eventName":null,"callTarget":"SyntheticChild.dtsx","steps":[{"text":"\\SyntheticLoop","counter":true},{"text":"\\SyntheticCall","counter":false}],"profileStatus":"SUPPORTED"},{"nodeId":"exe4","nodeKind":"EXECUTABLE","parentId":"pkg1","dtsId":"55555555-5555-5555-5555-555555555555","packagePath":"\\Package.EventHandlers[OnPreExecute]","scopeKind":"HANDLER","eventName":"OnPreExecute","callTarget":null,"steps":[{"text":"\\OnPreExecute","counter":false}],"profileStatus":"SUPPORTED"},{"nodeId":"exe5","nodeKind":"EXECUTABLE","parentId":"exe4","dtsId":"66666666-6666-6666-6666-666666666666","packagePath":"\\Package.EventHandlers[OnPreExecute]\\SyntheticBody","scopeKind":"EXECUTABLE","eventName":null,"callTarget":null,"steps":[{"text":"\\OnPreExecute","counter":false},{"text":"\\SyntheticBody","counter":false}],"profileStatus":"SUPPORTED"}]') objects FOR JSON PATH,WITHOUT_ARRAY_WRAPPER);
 SET @Models=JSON_MODIFY(@Models,'append $.packages',JSON_QUERY((SELECT 'p1' packageKey,'SyntheticRoot.dtsx' entryName,JSON_QUERY(@Root) model,JSON_QUERY(@Objects) identities FOR JSON PATH,WITHOUT_ARRAY_WRAPPER)));
@@ -59,8 +59,12 @@ BEGIN TRY
   IF @Case=32 BEGIN SET @Receipt=JSON_MODIFY(@Receipt,'strict $.issuedUtc',NULL);SET @Expected='SCOPE_BINDING_UNPROVEN';END;
   IF @Case=33 BEGIN SET @Receipt=JSON_MODIFY(@Receipt,'$.contract','ssis-local-scope-handover ');SET @Expected='SCOPE_BINDING_UNPROVEN';END;
   IF @Case=34 BEGIN SET @C=REPLACE(@C,N'"loggingLevel":3',N'"loggingLevel":3,"loggingLevel":3');SET @Expected='SCOPE_BINDING_UNPROVEN';END;
-  IF @Created=0 BEGIN EXEC sys.sp_addextendedproperty @name=@Name,@value=@Receipt,@level0type=N'SCHEMA',@level0name=N'monitor',@level1type=N'PROCEDURE',@level1name=N'USP_SsisPackageModelAnalysis';SET @Created=1;END;
-  ELSE EXEC sys.sp_updateextendedproperty @name=@Name,@value=@Receipt,@level0type=N'SCHEMA',@level0name=N'monitor',@level1type=N'PROCEDURE',@level1name=N'USP_SsisPackageModelAnalysis';
+  IF @Created=0
+  BEGIN
+   EXEC [monitor].[InternalManageSsisHandoverReceipt] @Action='REGISTER_SCOPE',@HandoverId=@Id,@ModelJson=@M,@CaptureJson=@C;
+   SET @Created=1;
+  END;
+  ELSE UPDATE [monitor].[SsisHandoverReceipt] SET [ReceiptJson]=@Receipt WHERE [ReceiptKind]=3 AND [HandoverId]=@Id;
   SET LOCK_TIMEOUT 1234;SET XACT_ABORT ON;
   EXEC monitor.USP_SsisPackageModelAnalysis @IncludeExecutionScopes=1,@ProjectModelsJson=@M,@ScopeSnapshotJson=@C,@ScopeHandoverId=@Id,@ExecutionId=9007199254740993,@MaxZeilen=@Limit,@ResultSetArt='NONE',@JsonErzeugen=1,@Json=@Json OUTPUT,@StatusCodeOut=@Status OUTPUT;
   IF @@LOCK_TIMEOUT<>1234 THROW 57901,N'SCOPE_CALLER_LOCK_TIMEOUT_CHANGED',1;
@@ -83,17 +87,18 @@ BEGIN TRY
  -- Letzten unveränderten Capture erneut korrekt attestieren.
  SET @C=JSON_MODIFY(@Capture,'$.modelSetSha256',CONVERT(varchar(64),HASHBYTES('SHA2_256',CONVERT(varbinary(max),@Models)),2));
  SET @Receipt=JSON_MODIFY(JSON_MODIFY(@Receipt,'$.contract','ssis-local-scope-handover'),'$.captureSha256',CONVERT(varchar(64),HASHBYTES('SHA2_256',CONVERT(varbinary(max),@C)),2));
- EXEC sys.sp_updateextendedproperty @name=@Name,@value=@Receipt,@level0type=N'SCHEMA',@level0name=N'monitor',@level1type=N'PROCEDURE',@level1name=N'USP_SsisPackageModelAnalysis';
+ UPDATE [monitor].[SsisHandoverReceipt] SET [ReceiptJson]=@Receipt WHERE [ReceiptKind]=3 AND [HandoverId]=@Id;
  EXEC monitor.USP_SsisPackageModelAnalysis @IncludeExecutionScopes=1,@ProjectModelsJson=@Models,@ScopeSnapshotJson=@C,@ScopeHandoverId=@Id,@ExecutionId=9007199254740993,@ResultSetArt='TABLE',@ResultTablesJson=N'{"scopeBinding":"#ScopeBinding","packageScopes":"#ScopePackages","packageInvocations":"#ScopeInvocations","scopeObservations":"#ScopeObservations","handlerActivity":"#ScopeHandlers","scopeObjectSummary":"#ScopeSummary","scopeCoverage":"#ScopeCoverage"}',@JsonErzeugen=1,@Json=@Json OUTPUT,@StatusCodeOut=@Status OUTPUT;
  IF @Status<>'SCOPE_CAPTURE_BOUND' THROW 57901,N'SCOPE_TABLE_BINDING_FAILED',1;
  EXEC sys.sp_executesql N'IF (SELECT COUNT(*) FROM #ScopeObservations)<>11 OR (SELECT COUNT(*) FROM #ScopeInvocations)<>3 OR (SELECT COUNT(*) FROM #ScopeHandlers)<>3 OR (SELECT COUNT(*) FROM #ScopePackages)<>2 OR (SELECT COUNT(*) FROM #ScopeSummary)<>8 THROW 57901,N''SCOPE_TABLE_ROW_COUNTS_DIFFER'',1;';
  IF (SELECT [IsMatch] FROM monitor.InternalSsisScopePathMatch(N'\Root',N'\Root\Loop[9223372036854775808]\Leaf',N'[{"text":"\\Loop","counter":true},{"text":"\\Leaf","counter":false}]'))<>0 OR (SELECT [IsMatch] FROM monitor.InternalSsisScopePathMatch(N'\Root',N'\Root\Loop[2]\Leaf[9]',N'[{"text":"\\Loop","counter":true},{"text":"\\Leaf[9]","counter":false}]'))<>1 THROW 57901,N'SCOPE_COUNTER_GRAMMAR',1;
  IF NOT EXISTS(SELECT 1 FROM monitor.InternalSsisScopePathMatch(N'\Synthetic😀',N'\Synthetic😀\Ä[9]',N'[{"text":"\\Ä[9]","counter":false}]') WHERE [IsMatch]=1) THROW 57901,N'SCOPE_UTF16_LITERAL_PATH_CHANGED',1;
- EXEC sys.sp_dropextendedproperty @name=@Name,@level0type=N'SCHEMA',@level0name=N'monitor',@level1type=N'PROCEDURE',@level1name=N'USP_SsisPackageModelAnalysis';SET @Created=0;
+ EXEC [monitor].[InternalManageSsisHandoverReceipt] @Action='REVOKE',@HandoverId=@Id,@ReceiptKind=3;
+ SET @Created=0;
  PRINT N'SSIS_SCOPE_RECEIVER_PASS cases=41; synthetic binding, scope identity, partiality and output contracts.';
 END TRY
 BEGIN CATCH
- IF @Created=1 EXEC sys.sp_dropextendedproperty @name=@Name,@level0type=N'SCHEMA',@level0name=N'monitor',@level1type=N'PROCEDURE',@level1name=N'USP_SsisPackageModelAnalysis';
+ IF @Created=1 DELETE [monitor].[SsisHandoverReceipt] WHERE [ReceiptKind]=3 AND [HandoverId]=@Id;
  THROW;
 END CATCH;
 GO

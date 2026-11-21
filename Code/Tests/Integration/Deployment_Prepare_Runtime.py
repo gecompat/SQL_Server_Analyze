@@ -3947,6 +3947,11 @@ def prepare(packaged_installer=None):
                  "DECLARE @Check nvarchar(max)=N'IF EXISTS(SELECT 1 FROM monitor_deployment.'+QUOTENAME(@Run)+N' WHERE Manifest<>N''[]'' OR FormatVersion<>1 OR DatabaseRole<>@Role OR SourceSha256<>@Digest) THROW 53803,N''Invalid fresh receipt.'',1;';\n"
                  f"EXEC sys.sp_executesql @Check,N'@Role varchar(16),@Digest binary(32)',@Role='{role}',@Digest=0x{info['digest']};\n")
         out.append('USE '+g.q(db)+';\nGO\n'+assert_no_deployment_property+check+'GO\nCREATE SCHEMA qa AUTHORIZATION dbo;\nGO\n')
+        if role == 'FRAMEWORK':
+            out.append("IF OBJECT_ID(N'monitor.SsisHandoverReceipt',N'U') IS NULL OR NOT EXISTS(SELECT 1 FROM sys.database_permissions "
+                       "WHERE class=1 AND major_id=OBJECT_ID(N'monitor.SsisHandoverReceipt') AND minor_id=0 "
+                       "AND grantee_principal_id=DATABASE_PRINCIPAL_ID(N'public') AND permission_name=N'INSERT' AND state='D') "
+                       "THROW 53803,N'Fresh deployment did not protect SSIS receipts.',1;\nGO\n")
     for role, db, file in [('FRAMEWORK',FRAMEWORK,'Deployment_Filled_Core.sql'), ('SNAPSHOT',TARGET,'Deployment_Filled_Target.sql')]:
         fixture = (ROOT/'Code/Tests/Integration'/file).read_text(encoding='utf-8-sig')
         out.append(fixture.replace('USE [DeineDatenbank];','USE '+g.q(db)+';',1))
@@ -3976,6 +3981,13 @@ def prepare(packaged_installer=None):
     out.append(negative(deployed,53903,'deployment schema with non-dbo owner'))
     out.append("ALTER AUTHORIZATION ON SCHEMA::[monitor_deployment] TO [dbo];\n"
                "DROP USER [DeploymentSchemaOtherOwner];\nGO\n")
+    out.append("REVOKE INSERT ON OBJECT::[monitor].[SsisHandoverReceipt] FROM [public];\nGO\n")
+    out.append(negative(deployed,57400,'unprotected SSIS receipt table'))
+    out.append("IF EXISTS(SELECT 1 FROM sys.database_permissions WHERE class=1 AND major_id=OBJECT_ID(N'monitor.SsisHandoverReceipt') "
+               "AND minor_id=0 AND grantee_principal_id=DATABASE_PRINCIPAL_ID(N'public') AND permission_name=N'INSERT') "
+               "OR NOT EXISTS(SELECT 1 FROM monitor.SsisHandoverReceipt WHERE HandoverId='D8DEBE09-B7DB-4013-ACDC-36B9423CFF01') "
+               "THROW 53806,N'Rejected deployment adopted or changed SSIS receipts.',1;\n"
+               "DENY INSERT ON OBJECT::[monitor].[SsisHandoverReceipt] TO [public];\nGO\n")
     out.append("ALTER TABLE monitor.WaitTypeCatalog ADD UnexpectedLocalColumn int NULL;\nGO\n")
     out.append(negative(deployed,53906,'extra column'))
     out.append("ALTER TABLE monitor.WaitTypeCatalog DROP COLUMN UnexpectedLocalColumn;\nGO\n")
@@ -4068,7 +4080,7 @@ def prepare(packaged_installer=None):
     # Observe only the Snapshot migration phase; keep the global ten-minute cap.
     out.append("GO\nDECLARE @CiSnapshotPhase nvarchar(400)=CONCAT(N'CI_CASE|DEPLOYMENT|SnapshotSchema|1|',\n    CONVERT(varchar(27),SYSUTCDATETIME(),126),N'Z|',@@SPID,N'|',@@LOCK_TIMEOUT,N'|generated');\nRAISERROR(N'%s',10,1,@CiSnapshotPhase) WITH NOWAIT;\nGO\n")
     out.append(snapshot_schema_cases(deployed,tables))
-    out.append("SELECT N'PASS' AS DeploymentRuntimeContract,N'Fresh, filled all20, binary archives, custom/legacy/policy/identity, Snapshot migration and preflight rejection' AS Scope;\nGO\n")
+    out.append("SELECT N'PASS' AS DeploymentRuntimeContract,N'Fresh, filled all21, binary archives, custom/legacy/policy/identity, Snapshot migration and preflight rejection' AS Scope;\nGO\n")
     return ''.join(out)
 
 

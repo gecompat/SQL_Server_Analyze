@@ -23,7 +23,7 @@ class DeploymentContract(unittest.TestCase):
         cls.sql, cls.info = generator.generate(ROOT, True)
 
     def test_source_closure_and_receipts(self):
-        self.assertEqual((215, 20, 7), tuple(self.info[k] for k in ('sources', 'tables', 'archives')))
+        self.assertEqual((217, 21, 7), tuple(self.info[k] for k in ('sources', 'tables', 'archives')))
         self.assertIn('NEWID()', self.sql)
         self.assertTrue("N''State_''" in self.sql)
         self.assertIn('AS [rowCount]', self.sql)
@@ -37,6 +37,29 @@ class DeploymentContract(unittest.TestCase):
         self.assertNotRegex(self.sql, r'SQL_Server_Analyze\.DeploymentFormat\b')
         self.assertIn('Deployment Run-ID collision.', self.sql)
         self.assertIn('Deployment State-ID collision.', self.sql)
+
+    def test_ssis_receipt_permissions_are_exact_and_source_bound(self):
+        path = generator.SSIS_RECEIPT_SOURCE
+        start = self.sql.index('-- BEGIN SOURCE: ' + path)
+        end = self.sql.index('-- END SOURCE: ' + path)
+        batch = self.sql[start:end]
+        create = "CREATE TABLE [monitor].[SsisHandoverReceipt]"
+        self.assertEqual(1, self.sql.count(create))
+        self.assertLess(batch.index("BEGIN TRANSACTION;"), batch.index(create))
+        self.assertLess(batch.index(create), batch.index(generator.SSIS_RECEIPT_PERMISSIONS))
+        self.assertLess(batch.index(generator.SSIS_RECEIPT_PERMISSIONS), batch.index("COMMIT TRANSACTION;"))
+        self.assertIn(generator.SSIS_RECEIPT_PERMISSIONS.replace("'", "''"), self.sql)
+        self.changed_source(path, 'TO [public]; DENY UPDATE', 'TO [dbo]; DENY UPDATE',
+                            expected_error_contains='SSIS receipt permissions require exact constant EXEC syntax')
+        call = "EXEC(N'" + generator.SSIS_RECEIPT_PERMISSIONS + "');"
+        self.changed_source(path, call, call[:-2] + " + N' SELECT 1;');",
+                            expected_error_contains='SSIS receipt permissions require exact constant EXEC syntax')
+        self.changed_source(path, call, call[:-1],
+                            expected_error_contains='SSIS receipt permissions require exact constant EXEC syntax')
+        self.changed_source('Code/04_PlanCache/041_PlanAnalysisProfile.sql',
+                            'CREATE TABLE [monitor].[PlanAnalysisProfile]',
+                            call + '\n    CREATE TABLE [monitor].[PlanAnalysisProfile]',
+                            expected_error_contains='Unknown dynamic source batch')
 
     def test_stored_module_header_matches_native_representation(self):
         source="/* CREATE OR ALTER stays in comments */\nCREATE OR ALTER PROCEDURE [snapshot].[ExampleProbe] AS SELECT N'CREATE OR ALTER';"

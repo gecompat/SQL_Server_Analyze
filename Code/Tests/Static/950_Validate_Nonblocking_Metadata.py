@@ -102,21 +102,12 @@ SNAPSHOT_PRODUCER = "Code/04_PlanCache/060_USP_PlanCacheAnalysis.sql"
 SNAPSHOT_FIXTURE = "Code/Tests/Common/181_QueryHashAnalysis_Collation_Runtime_Contract.sql"
 
 
-def trusted_handover_source(relative: str, source: str, tail: str) -> bool:
-    """Only the local trust decision requires committed metadata, never NOLOCK."""
-    return (
-        (relative.replace("\\", "/") == "Code/10_SSIS/040_USP_SsisPackageModelAnalysis.sql" and source.casefold() == "[sys].[extended_properties]"
-         or relative.replace("\\", "/") == "Code/10_SSIS/035_InternalSsisExecutionScopes.sql" and source.casefold() in {"[sys].[extended_properties]", "[sys].[procedures]", "[sys].[schemas]"})
-        and re.match(r"^\s+WITH\s*\(\s*READCOMMITTEDLOCK\s*\)", tail, re.IGNORECASE) is not None
-    )
+SSIS_RECEIPT_PERMISSION_SOURCE = "Code/10_SSIS/033_SsisHandoverReceipt.sql"
 
 
-def metadata_source_allowed(relative: str, source: str, tail: str) -> bool:
-    normalized = source.replace("[", "").replace("]", "").casefold()
-    protected = ((relative.replace("\\", "/") == "Code/10_SSIS/040_USP_SsisPackageModelAnalysis.sql" and normalized.split(".")[-2:] == ["sys", "extended_properties"])
-                 or (relative.replace("\\", "/") == "Code/10_SSIS/035_InternalSsisExecutionScopes.sql" and normalized.split(".")[-2:] in (["sys", "extended_properties"], ["sys", "procedures"], ["sys", "schemas"])))
-    if protected:
-        return trusted_handover_source(relative, source, tail)
+def metadata_source_allowed(tail: str, path: str = "", source: str = "") -> bool:
+    if path == SSIS_RECEIPT_PERMISSION_SOURCE and source == "sys.database_permissions":
+        return re.match(r"^\s+AS\s+\[dp\]\s+WITH\s*\(\s*READCOMMITTEDLOCK\s*\)", tail, re.IGNORECASE) is not None
     return re.match(r"^\s*\(", tail) is not None or NOLOCK_AFTER_SOURCE.match(tail) is not None
 
 
@@ -245,13 +236,13 @@ def self_test() -> None:
     offset_source = list(SYS_SOURCE.finditer(offset_mask))
     assert len(offset_mask) == len(offset_fixture) and len(offset_source) == 1
     offset_tail = offset_fixture[offset_source[0].end():offset_source[0].end()+180]
-    assert metadata_source_allowed("Code/Other.sql", offset_source[0].group("source"), offset_tail)
+    assert metadata_source_allowed(offset_tail)
     missing_hint = offset_fixture.replace(" WITH (NOLOCK)", "")
     missing_mask = without_skill_examples(missing_hint)
     missing_source = list(SYS_SOURCE.finditer(missing_mask))
     assert len(missing_source) == 1
     missing_tail = missing_hint[missing_source[0].end():missing_source[0].end()+180]
-    assert not metadata_source_allowed("Code/Other.sql", missing_source[0].group("source"), missing_tail)
+    assert not metadata_source_allowed(missing_tail)
     for malformed in (
         valid.replace("END monitor.Example", "END monitor.Other"),
         valid.replace("CREATE TABLE [#Example_Doc]", "-- USAGE_SKILL_HELP_BEGIN monitor.Other\n-- USAGE_SKILL_HELP_END monitor.Other"),
@@ -263,29 +254,12 @@ def self_test() -> None:
             pass
         else:
             raise AssertionError("malformed Usage Skill markers were masked")
-    path = "Code/10_SSIS/040_USP_SsisPackageModelAnalysis.sql"
-    assert trusted_handover_source(path, "[sys].[extended_properties]", " WITH (READCOMMITTEDLOCK)")
-    assert not trusted_handover_source("Code/Other.sql", "[sys].[extended_properties]", " WITH (READCOMMITTEDLOCK)")
-    assert not trusted_handover_source(path, "[sys].[objects]", " WITH (READCOMMITTEDLOCK)")
-    assert not trusted_handover_source(path, "[sys].[extended_properties]", " WITH (READUNCOMMITTED)")
-    assert not trusted_handover_source(path, "[sys].[extended_properties]", " WITH (READCOMMITTEDLOCK, NOLOCK)")
-    assert not trusted_handover_source(path, "[sys].[extended_properties]", "")
-    assert metadata_source_allowed(path, "[sys].[extended_properties]", " WITH (READCOMMITTEDLOCK)")
-    assert not metadata_source_allowed(path, "[sys].[extended_properties]", " WITH (NOLOCK)")
-    assert not metadata_source_allowed(path, "[sys].[extended_properties]", " (NOLOCK)")
-    assert not metadata_source_allowed(path, "sys.extended_properties", " WITH (NOLOCK)")
-    assert not metadata_source_allowed(path, "[Other].[sys].[extended_properties]", " WITH (NOLOCK)")
-    assert not metadata_source_allowed(path, "[sys].[extended_properties]", " WITH (READCOMMITTEDLOCK, NOLOCK)")
-    assert metadata_source_allowed("Code/Other.sql", "[sys].[extended_properties]", " WITH (NOLOCK)")
-    assert not metadata_source_allowed("Code/Other.sql", "[sys].[extended_properties]", " WITH (READCOMMITTEDLOCK)")
-    assert metadata_source_allowed(path, "[sys].[objects]", " WITH (NOLOCK)")
-    assert metadata_source_allowed(path, "[sys].[SomeFunction]", " (1)")
-    scope_path = "Code/10_SSIS/035_InternalSsisExecutionScopes.sql"
-    for catalog in ("extended_properties", "procedures", "schemas"):
-        assert metadata_source_allowed(scope_path, "[sys].["+catalog+"]", " WITH (READCOMMITTEDLOCK)")
-        assert not metadata_source_allowed(scope_path, "[sys].["+catalog+"]", " WITH (NOLOCK)")
-        assert not metadata_source_allowed(scope_path, "[sys].["+catalog+"]", " WITH (READCOMMITTEDLOCK, NOLOCK)")
-    assert not metadata_source_allowed(scope_path, "[sys].[objects]", " WITH (READCOMMITTEDLOCK)")
+    assert metadata_source_allowed(" WITH (NOLOCK)")
+    assert not metadata_source_allowed(" WITH (READCOMMITTEDLOCK)")
+    assert metadata_source_allowed(" (1)")
+    assert metadata_source_allowed(" AS [dp] WITH (READCOMMITTEDLOCK)", SSIS_RECEIPT_PERMISSION_SOURCE, "sys.database_permissions")
+    assert not metadata_source_allowed(" AS [dp] WITH (NOLOCK)", SSIS_RECEIPT_PERMISSION_SOURCE, "sys.database_permissions")
+    assert not metadata_source_allowed(" AS [dp] WITH (READCOMMITTEDLOCK)", "Code/Other.sql", "sys.database_permissions")
     source = (ROOT / SNAPSHOT_FIXTURE).read_text(encoding="utf-8-sig")
     assert not controlled_fixture_errors(source)
     guard = "IF OBJECT_ID(N'tempdb..#PlanCacheAnalysis_QueryStatsSnapshot') IS NOT NULL\n    THROW 58301,N'QUERY_HASH_FOREIGN_SNAPSHOT',1;"
@@ -496,7 +470,7 @@ for path in sorted(CODE.rglob("*.sql")):
             continue
         seen_offsets.add(match.start())
         tail = text[match.end() : match.end() + 180]
-        if not metadata_source_allowed(relative.as_posix(), match.group("source"), tail):
+        if not metadata_source_allowed(tail, relative.as_posix(), match.group('source').casefold()):
             errors.append(
                 f"{relative}:{line_number(text, match.start())}: "
                 f"Systemquelle {match.group('source')} ohne direktes WITH (NOLOCK)"
