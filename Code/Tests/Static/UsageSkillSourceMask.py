@@ -31,5 +31,5 @@ def strip_usage_skill_projections(source: str) -> str:
         raise ValueError("Incomplete Usage Skill projection")
     text = source
     for start, end in reversed(spans):
-        text = text[:start] + re.sub(r"[^\r\n]", " ", text[start:end]) + text[end:]
+        text = text[:start] + ("".join(re.findall(r"\r?\n", text[start:end])) or "\n") + text[end:]
     return text

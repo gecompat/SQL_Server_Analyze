@@ -464,6 +464,22 @@ def validate(source:str)->list[str]:
  return errors
 
 def self_test(source:str)->int:
+ sample=("SELECT 1;\n-- USAGE_SKILL_BEGIN monitor.Example\n"
+         "CREATE TABLE [documentation only]([Value] int);\n"
+         "-- USAGE_SKILL_END monitor.Example\nSELECT 2;\n")
+ if strip_usage_skill_projections(sample)!="SELECT 1;\n\n\n\nSELECT 2;\n":
+  raise AssertionError('Skill projection masking changed executable SQL or line boundaries')
+ second=("-- USAGE_SKILL_HELP_BEGIN monitor.Other\n"
+         "PRINT N'documentation';\n"
+         "-- USAGE_SKILL_HELP_END monitor.Other\nSELECT 3;\n")
+ if strip_usage_skill_projections(sample+second)!="SELECT 1;\n\n\n\nSELECT 2;\n\n\n\nSELECT 3;\n":
+  raise AssertionError('Multiple Skill projections changed following executable SQL')
+ for malformed in (sample.replace('USAGE_SKILL_END monitor.Example','USAGE_SKILL_END monitor.Other'),
+                   sample.replace('CREATE TABLE [documentation only]([Value] int);',
+                                  '-- USAGE_SKILL_BEGIN monitor.Nested')):
+  try:strip_usage_skill_projections(malformed)
+  except ValueError:pass
+  else:raise AssertionError('Malformed Skill projection marker was accepted')
  assert not validate(source),validate(source)
  mutations=[]
  for table,fields in TABLES.items():

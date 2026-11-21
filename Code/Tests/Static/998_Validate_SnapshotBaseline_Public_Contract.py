@@ -640,6 +640,7 @@ def validate_repository(repository_root: pathlib.Path) -> list[str]:
 
 def write_self_test_repository(root: pathlib.Path, bad: bool = False) -> None:
     (root / "Code/Install").mkdir(parents=True)
+    (root / "Code/00_Setup").mkdir(parents=True)
     (root / "Code/10_SnapshotBaseline").mkdir(parents=True)
     (root / PUBLIC_CONTRACT).parent.mkdir(parents=True)
 

@@ -319,6 +319,7 @@
   ],
   "standaloneObjects": [
     "monitor schema",
+    "monitor_metadata schema",
     "VW_AnalyseClassCatalog",
     "VW_AnalyseAccessPolicy",
     "VW_AnalyseAccessCurrent",
