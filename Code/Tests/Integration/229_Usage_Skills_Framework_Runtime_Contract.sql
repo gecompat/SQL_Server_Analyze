@@ -336,6 +336,8 @@ IF (SELECT COUNT_BIG(*) FROM [#UsageSkillActual])<>1
 -- Existing public Help paths reset the five OUTPUT receivers before returning.
 DECLARE @PublicJson nvarchar(max),@PublicStatus varchar(40),@PublicPartial bit,
         @PublicError int,@PublicMessage nvarchar(4000),@PublicName sysname;
+DECLARE @PublicCase int,@PublicJsonBad int,@PublicStatusBad int,@PublicPartialBad int,
+        @PublicErrorBad int,@PublicMessageBad int,@PublicRowsBad int,@PublicTextBad int;
 DECLARE [UsageSkillPublicSentinelCursor] CURSOR LOCAL FAST_FORWARD FOR
  SELECT [ObjectName] FROM (VALUES
     (N'USP_SsisLegacyLogAnalysis'),
@@ -370,22 +372,45 @@ BEGIN
              @IsPartialOut=@PublicPartial OUTPUT,@ErrorNumberOut=@PublicError OUTPUT,
              @ErrorMessageOut=@PublicMessage OUTPUT;
     END
-    IF @PublicJson IS NOT NULL OR @PublicStatus IS NOT NULL OR @PublicPartial IS NOT NULL
-       OR @PublicError IS NOT NULL OR @PublicMessage IS NOT NULL
-       OR (SELECT COUNT_BIG(*) FROM [#UsageSkillActual])<>1
-       OR NOT EXISTS
-       (
-         SELECT 1 FROM [#UsageSkillActual] AS [a]
-         JOIN [monitor_metadata].[VW_ObjectUsageSkills] AS [v]
-           ON [v].[SchemaName]=N'monitor' AND [v].[ObjectName]=@PublicName
-         WHERE [a].[SchemaName]=N'monitor' AND [a].[ObjectName]=@PublicName
-           AND [a].[SkillFormatVersion]='1.0.0'
-           AND [a].[SkillMarkdown] IS NOT NULL
-           AND DATALENGTH([a].[SkillMarkdown])=DATALENGTH([v].[SkillMarkdown])
-           AND HASHBYTES('SHA2_256',CONVERT(varbinary(max),[a].[SkillMarkdown]))
-              =HASHBYTES('SHA2_256',CONVERT(varbinary(max),[v].[SkillMarkdown]))
-       )
+    -- CurrentObjectPermissionAnalysis has always returned AVAILABLE/0 on
+    -- Help; the two SSIS Help paths reset all five OUTPUT receivers to NULL.
+    SELECT @PublicCase=CASE @PublicName
+               WHEN N'USP_CurrentObjectPermissionAnalysis' THEN 1
+               WHEN N'USP_SsisLegacyLogAnalysis' THEN 2
+               WHEN N'USP_SsisCatalogExecutionAnalysis' THEN 3 ELSE 0 END,
+           @PublicJsonBad=CASE WHEN @PublicJson IS NULL THEN 0 ELSE 1 END,
+           @PublicStatusBad=CASE
+               WHEN @PublicName=N'USP_CurrentObjectPermissionAnalysis'
+                   THEN CASE WHEN @PublicStatus IS NULL OR @PublicStatus<>'AVAILABLE' THEN 1 ELSE 0 END
+               ELSE CASE WHEN @PublicStatus IS NULL THEN 0 ELSE 1 END END,
+           @PublicPartialBad=CASE
+               WHEN @PublicName=N'USP_CurrentObjectPermissionAnalysis'
+                   THEN CASE WHEN @PublicPartial IS NULL OR @PublicPartial<>0 THEN 1 ELSE 0 END
+               ELSE CASE WHEN @PublicPartial IS NULL THEN 0 ELSE 1 END END,
+           @PublicErrorBad=CASE WHEN @PublicError IS NULL THEN 0 ELSE 1 END,
+           @PublicMessageBad=CASE WHEN @PublicMessage IS NULL THEN 0 ELSE 1 END,
+           @PublicRowsBad=CASE WHEN (SELECT COUNT_BIG(*) FROM [#UsageSkillActual])=1 THEN 0 ELSE 1 END,
+           @PublicTextBad=CASE WHEN EXISTS
+           (
+             SELECT 1 FROM [#UsageSkillActual] AS [a]
+             JOIN [monitor_metadata].[VW_ObjectUsageSkills] AS [v]
+               ON [v].[SchemaName]=N'monitor' AND [v].[ObjectName]=@PublicName
+             WHERE [a].[SchemaName]=N'monitor' AND [a].[ObjectName]=@PublicName
+               AND [a].[SkillFormatVersion]='1.0.0'
+               AND [a].[SkillMarkdown] IS NOT NULL
+               AND DATALENGTH([a].[SkillMarkdown])=DATALENGTH([v].[SkillMarkdown])
+               AND HASHBYTES('SHA2_256',CONVERT(varbinary(max),[a].[SkillMarkdown]))
+                  =HASHBYTES('SHA2_256',CONVERT(varbinary(max),[v].[SkillMarkdown]))
+           ) THEN 0 ELSE 1 END;
+    IF @PublicCase=0 OR @PublicJsonBad<>0 OR @PublicStatusBad<>0
+       OR @PublicPartialBad<>0 OR @PublicErrorBad<>0 OR @PublicMessageBad<>0
+       OR @PublicRowsBad<>0 OR @PublicTextBad<>0
+    BEGIN
+        RAISERROR(N'USAGE_SKILL_PUBLIC_HELP_OUTPUT case=%d json=%d status=%d partial=%d error=%d message=%d rows=%d text=%d',
+                  10,1,@PublicCase,@PublicJsonBad,@PublicStatusBad,@PublicPartialBad,
+                  @PublicErrorBad,@PublicMessageBad,@PublicRowsBad,@PublicTextBad) WITH NOWAIT;
         THROW 59016,N'USAGE_SKILL_PUBLIC_HELP_OUTPUT',1;
+    END;
     FETCH NEXT FROM [UsageSkillPublicSentinelCursor] INTO @PublicName;
 END;
 CLOSE [UsageSkillPublicSentinelCursor];DEALLOCATE [UsageSkillPublicSentinelCursor];
