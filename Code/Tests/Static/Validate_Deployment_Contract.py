@@ -31,6 +31,13 @@ class DeploymentContract(unittest.TestCase):
         self.assertTrue('parentColumnName' in self.sql)
         self.assertIn('FOR JSON PATH,INCLUDE_NULL_VALUES', self.sql)
 
+    def test_reserved_deployment_schema_uses_ownership_and_name_checks(self):
+        self.assertIn("principal_id=DATABASE_PRINCIPAL_ID(N''dbo'')) THROW 53903,N''Noncanonical deployment schema ownership.''", self.sql)
+        self.assertIn("CREATE SCHEMA [monitor_deployment] AUTHORIZATION [dbo];", self.sql)
+        self.assertNotRegex(self.sql, r'SQL_Server_Analyze\.DeploymentFormat\b')
+        self.assertIn('Deployment Run-ID collision.', self.sql)
+        self.assertIn('Deployment State-ID collision.', self.sql)
+
     def test_stored_module_header_matches_native_representation(self):
         source="/* CREATE OR ALTER stays in comments */\nCREATE OR ALTER PROCEDURE [snapshot].[ExampleProbe] AS SELECT N'CREATE OR ALTER';"
         expected="/* CREATE OR ALTER stays in comments */\nCREATE   PROCEDURE [snapshot].[ExampleProbe] AS SELECT N'CREATE OR ALTER';"

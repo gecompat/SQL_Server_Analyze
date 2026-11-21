@@ -732,7 +732,7 @@ def preflight(tables: list[Table], sources: list[Source], strict: bool=False) ->
     out = ["SET NOCOUNT ON; SET LOCK_TIMEOUT 10000;\n"
            "IF ISNULL(HAS_PERMS_BY_NAME(DB_NAME(),'DATABASE','CONTROL'),0)<>1 OR ISNULL(HAS_PERMS_BY_NAME(NULL,NULL,'VIEW ANY DEFINITION'),0)<>1 THROW 53901,N'Deployment requires CONTROL DATABASE and visible server metadata.',1;\n"
            "IF EXISTS(SELECT 1 FROM sys.triggers WHERE parent_class=0 AND is_disabled=0) OR EXISTS(SELECT 1 FROM sys.server_triggers WHERE is_disabled=0) THROW 53902,N'Active DDL triggers are unsupported.',1;\n"
-           "IF SCHEMA_ID(N'monitor_deployment') IS NOT NULL AND (NOT EXISTS(SELECT 1 FROM sys.schemas WHERE schema_id=SCHEMA_ID(N'monitor_deployment') AND principal_id=DATABASE_PRINCIPAL_ID(N'dbo')) OR NOT EXISTS(SELECT 1 FROM sys.extended_properties WHERE class=3 AND major_id=SCHEMA_ID(N'monitor_deployment') AND name=N'SQL_Server_Analyze.DeploymentFormat' AND CONVERT(nvarchar(30),value)=N'1')) THROW 53903,N'Unknown deployment schema ownership or format.',1;\n"
+           "IF SCHEMA_ID(N'monitor_deployment') IS NOT NULL AND NOT EXISTS(SELECT 1 FROM sys.schemas WHERE schema_id=SCHEMA_ID(N'monitor_deployment') AND principal_id=DATABASE_PRINCIPAL_ID(N'dbo')) THROW 53903,N'Noncanonical deployment schema ownership.',1;\n"
            "DECLARE @ObjectId int,@ExpectedId int,@LockCount bigint,@ConstraintSql nvarchar(max),@Prefix nvarchar(33);\n"
            "CREATE TABLE #SQLSA_ConstraintMap(CanonicalName sysname COLLATE DATABASE_DEFAULT NOT NULL,ParentColumn sysname COLLATE DATABASE_DEFAULT NULL,ConstraintType char(2) COLLATE DATABASE_DEFAULT NOT NULL,Definition nvarchar(max) COLLATE DATABASE_DEFAULT NULL,IsDisabled bit NOT NULL,IsNotTrusted bit NOT NULL,IsNotForReplication bit NOT NULL);\n"
            "CREATE TABLE #SQLSA_KnownForeignKeys(ParentSchema sysname COLLATE DATABASE_DEFAULT,ParentTable sysname COLLATE DATABASE_DEFAULT,ConstraintName sysname COLLATE DATABASE_DEFAULT);\n"]
@@ -876,7 +876,7 @@ def preflight(tables: list[Table], sources: list[Source], strict: bool=False) ->
 
 def archive(tables: list[Table],digest: str,role: str) -> str:
     out = ["SET NOCOUNT ON;\n"
-           "IF SCHEMA_ID(N'monitor_deployment') IS NULL BEGIN EXEC(N'CREATE SCHEMA [monitor_deployment] AUTHORIZATION [dbo];'); EXEC sys.sp_addextendedproperty @name=N'SQL_Server_Analyze.DeploymentFormat',@value=1,@level0type=N'SCHEMA',@level0name=N'monitor_deployment'; END;\n"
+           "IF SCHEMA_ID(N'monitor_deployment') IS NULL EXEC(N'CREATE SCHEMA [monitor_deployment] AUTHORIZATION [dbo];');\n"
            "DECLARE @RunName sysname=N'Run_'+REPLACE(CONVERT(varchar(36),@RunId),'-',''),@StateName sysname,@Sql nvarchar(max),@ColumnList nvarchar(max),@RowCount bigint,@Manifest nvarchar(max)=N'[]',@Entry nvarchar(max),@ObjectId int;\n"
            "IF OBJECT_ID(N'[monitor_deployment].'+QUOTENAME(@RunName)) IS NOT NULL THROW 53915,N'Deployment Run-ID collision.',1;\n"]
     for ordinal,table in enumerate(tables,1):

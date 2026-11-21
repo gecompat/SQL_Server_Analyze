@@ -132,11 +132,12 @@ Original-rowversion wird als `binary(8)` mit ihrer ursprünglichen
 Typkennzeichnung gesichert. JSON darf Schema- und Zuordnungsmetadaten
 beschreiben, ersetzt aber keine typgetreue Wertpersistenz.
 
-Die Hilfspersistenz verwendet in jedem gewählten Kontext das Schema
-`monitor_deployment` mit Eigentümer `dbo` und dem Formatmarker
-`SQL_Server_Analyze.DeploymentFormat=1`. Ein vorhandenes Schema ohne diesen
-Marker oder mit anderem Eigentümer wird vor Änderungen abgewiesen. Jeder
-Lauf erzeugt eine neue Run-ID über `NEWID()` und eigene Tabellen
+Die Hilfspersistenz verwendet in jedem gewählten Kontext das für SQL Server
+Analyze reservierte Schema `monitor_deployment` mit Eigentümer `dbo`. Das
+Deployment lehnt ein vorhandenes Schema mit anderem Eigentümer vor Änderungen
+ab. Das Schema kann ohne Extended Property erstellt und verwendet werden.
+Eine aus früheren Installationen vorhandene Format-Property bleibt erhalten.
+Jeder Lauf erzeugt eine neue Run-ID über `NEWID()` und eigene Tabellen
 `Run_<32-stellige Run-ID>` sowie `State_<32-stellige Run-ID>_<Objektordinal>`.
 Eine Namenskollision führt zum Abbruch; unbekannte Hilfstabellen werden nicht
 übernommen, verändert oder bereinigt.
