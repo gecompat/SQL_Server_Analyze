@@ -434,6 +434,47 @@ BEGIN TRY
        OR NOT EXISTS(SELECT 1 FROM OPENJSON(@Json,N'$.databaseContext') WITH([DatabaseId] int N'$.DatabaseId') WHERE [DatabaseId]=@IdA)
        OR EXISTS(SELECT 1 FROM OPENJSON(@Json,N'$.databaseContext') WITH([DatabaseId] int N'$.DatabaseId') WHERE [DatabaseId]<>@IdA)
         THROW 57190,N'Databaseprincipal exact-name consumer selection did not resolve only the requested numeric database identity.',1;
+    -- WI-0012: Ein anderer Principal, direkte Katalogrechte ohne Rollenauflösung.
+    CREATE TABLE [#ExampleDbPrincipal_Grantee]([Seed] int NULL);
+    DECLARE @ExpectedGranteeRows bigint=(SELECT COUNT_BIG(*) FROM [#ExampleDbPrincipal_Expected_permissions]
+                                         WHERE [DatabaseId]=@IdA AND [GranteePrincipalId]=@UserAId);
+    SET @Exact=QUOTENAME(@DbA);
+    EXEC @Return=[monitor].[USP_DatabasePrincipalAnalysis] @DatabaseNames=@Exact,
+        @PermissionGranteeName=@User,@MaxZeilen=0,@ResultSetArt='TABLE',
+        @ResultTablesJson=N'{"permissions":"#ExampleDbPrincipal_Grantee"}',
+        @JsonErzeugen=1,@Json=@Json OUTPUT,@PrintMeldungen=0;
+    IF @Return<>0 OR ISNULL(ISJSON(@Json),0)<>1
+       OR (SELECT COUNT_BIG(*) FROM [#ExampleDbPrincipal_Grantee])<>@ExpectedGranteeRows
+       OR EXISTS(SELECT * FROM [#ExampleDbPrincipal_Grantee]
+                 EXCEPT SELECT * FROM [#ExampleDbPrincipal_Expected_permissions]
+                        WHERE [DatabaseId]=@IdA AND [GranteePrincipalId]=@UserAId)
+       OR NOT EXISTS(SELECT 1 FROM [#ExampleDbPrincipal_Grantee] WHERE [PermissionState]='D' AND [PermissionName]=N'UPDATE')
+       OR (SELECT COUNT_BIG(*) FROM OPENJSON(@Json,N'$.permissions'))<>@ExpectedGranteeRows
+       OR NOT EXISTS(SELECT 1 FROM OPENJSON(@Json,N'$.roleMemberships')
+          WITH ([MemberPrincipalId] int N'$.MemberPrincipalId') WHERE [MemberPrincipalId]=@UserAId)
+       OR NOT EXISTS(SELECT 1 FROM OPENJSON(@Json,N'$.sourceStatus')
+          WITH ([SourceKey] varchar(64) N'$.SourceKey',[DatabaseId] int N'$.DatabaseId',
+                [ObservedRows] bigint N'$.ObservedRows',[ReturnedRows] bigint N'$.ReturnedRows')
+          WHERE [SourceKey]='DATABASE_PERMISSIONS' AND [DatabaseId]=@IdA
+            AND [ObservedRows]=@ExpectedGranteeRows AND [ReturnedRows]=@ExpectedGranteeRows)
+       OR ISNULL(JSON_QUERY(@Json,N'$.permissions'),N'')<>ISNULL(
+          (SELECT * FROM [#ExampleDbPrincipal_Grantee]
+           ORDER BY [DatabaseId],[GranteePrincipalId],[Class],[MajorId],[MinorId],[PermissionName],[PermissionState],[GrantorPrincipalId]
+           FOR JSON PATH,INCLUDE_NULL_VALUES),N'')
+        THROW 57195,N'Explicit grantee TABLE and JSON evidence differs from the native catalog.',1;
+
+    DECLARE @WrongGrantee nvarchar(max)=N'e'+SUBSTRING(@User,2,128),@LongGrantee nvarchar(max)=REPLICATE(N'a',129);
+    EXEC @Return=[monitor].[USP_DatabasePrincipalAnalysis] @DatabaseNames=@Exact,
+        @PermissionGranteeName=@WrongGrantee,@ResultSetArt='NONE',
+        @JsonErzeugen=1,@Json=@Json OUTPUT,@PrintMeldungen=0;
+    IF @Return<>0 OR ISNULL(JSON_QUERY(@Json,N'$.permissions'),N'')<>N'[]'
+        THROW 57196,N'Grantee-name case was not preserved.',1;
+    EXEC @Return=[monitor].[USP_DatabasePrincipalAnalysis] @DatabaseNames=@Exact,
+        @PermissionGranteeName=@LongGrantee,@ResultSetArt='NONE',
+        @StatusCodeOut=@Status OUTPUT,@PrintMeldungen=0;
+    IF @Return<>51011 OR ISNULL(@Status,'')<>'INVALID_PARAMETER'
+        THROW 57197,N'Overlong grantee name was not rejected.',1;
+
     DECLARE @WrongCaseName sysname=N'e'+SUBSTRING(@DbA,2,128);
     SET @Exact=QUOTENAME(@WrongCaseName);
     EXEC [monitor].[USP_DatabasePrincipalAnalysis] @DatabaseNames=@Exact,@ResultSetArt='NONE',
@@ -518,6 +559,7 @@ BEGIN TRY
     EXEC [sys].[sp_executesql] @Sql;
     SET @Inner=N'SELECT @Rows=COUNT_BIG(*) FROM '+QUOTENAME(@DbA)+N'.[sys].[database_permissions];';
     SET @ProbeError=NULL;
+    DECLARE @FilteredDatabaseList nvarchar(258)=QUOTENAME(@DbA);
     SET @Sql=N'EXECUTE AS LOGIN='+QUOTENAME(@RestrictedLogin,'''')+N';
         BEGIN TRY
             SET XACT_ABORT OFF;
@@ -540,12 +582,23 @@ BEGIN TRY
             IF (SELECT [Value] FROM [#ExampleDbPrincipal_RestrictedSentinel] WHERE [Id]=1)<>10
                 THROW 57143,N''Denied database source consumed caller rollback ownership.'',1;
             DROP TABLE [#ExampleDbPrincipal_RestrictedSentinel];
+
+            DECLARE @Filtered nvarchar(max);
+            EXEC [monitor].[USP_DatabasePrincipalAnalysis] @DatabaseNames=@FilteredDatabase,
+                @PermissionGranteeName=@Grantee,@ResultSetArt=''NONE'',
+                @JsonErzeugen=1,@Json=@Filtered OUTPUT,@PrintMeldungen=0;
+            IF ISNULL(JSON_QUERY(@Filtered,N''$.permissions''),N'''')<>N''[]''
+               OR NOT EXISTS(SELECT 1 FROM OPENJSON(@Filtered,N''$.sourceStatus'')
+                   WITH ([SourceKey] varchar(64) N''$.SourceKey'',[StatusCode] varchar(40) N''$.StatusCode'')
+                   WHERE [SourceKey]=''DATABASE_PERMISSIONS'' AND [StatusCode]=''DENIED_PERMISSION'')
+                THROW 57198,N''Filtered call did not preserve permission-source denial.'',1;
             REVERT;
         END TRY
         BEGIN CATCH IF @@TRANCOUNT>0 ROLLBACK TRANSACTION;REVERT;THROW;END CATCH;';
     EXEC [sys].[sp_executesql] @Sql,
-        N'@Probe nvarchar(max),@Names nvarchar(max),@ProbeError int OUTPUT,@Json nvarchar(max) OUTPUT,@Status varchar(40) OUTPUT',
-        @Probe=@Inner,@Names=@Exact,@ProbeError=@ProbeError OUTPUT,@Json=@Json OUTPUT,@Status=@Status OUTPUT;
+        N'@Probe nvarchar(max),@Names nvarchar(max),@FilteredDatabase nvarchar(258),@Grantee sysname,@ProbeError int OUTPUT,@Json nvarchar(max) OUTPUT,@Status varchar(40) OUTPUT',
+        @Probe=@Inner,@Names=@Exact,@FilteredDatabase=@FilteredDatabaseList,@Grantee=@User,
+        @ProbeError=@ProbeError OUTPUT,@Json=@Json OUTPUT,@Status=@Status OUTPUT;
     IF COALESCE(@Status COLLATE SQL_Latin1_General_CP1_CS_AS,'')<>'AVAILABLE_LIMITED'
        OR NOT EXISTS(SELECT 1 FROM OPENJSON(@Json,N'$.sourceStatus')
             WITH([DatabaseId] int N'$.DatabaseId',[SourceKey] varchar(64) N'$.SourceKey',[StatusCode] varchar(40) N'$.StatusCode',[ErrorNumber] int N'$.ErrorNumber')
