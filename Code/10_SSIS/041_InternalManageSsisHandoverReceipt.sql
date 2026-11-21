@@ -60,6 +60,14 @@ GO
 -- 
 -- Der Fachpfad erzeugt kein Resultset. Ein Modell- und ein optionaler Laufzeitbeleg werden atomar registriert. Ein Widerruf löscht die angegebene UUID der angegebenen Belegart, sofern sie vorhanden ist.
 -- 
+-- ## Beispiel
+-- 
+-- Mit `@Hilfe = 1` liest ein Aufrufer mit EXECUTE-Recht den Skill der internen Prozedur. Der Aufruf gibt genau eine Skillzeile zurück und schreibt oder widerruft keinen Beleg. Die Registrierung erfolgt über die qualifizierten SSIS-Übergabewerkzeuge.
+-- 
+-- ```sql
+-- EXEC [monitor].[InternalManageSsisHandoverReceipt] @Hilfe = 1;
+-- ```
+-- 
 -- ## Aufwand, Nebenwirkungen, Fehler und Grenzen
 -- 
 -- Die Prozedur setzt im Fachpfad `ROWCOUNT 0` und `LOCK_TIMEOUT 0` im lokalen Prozedurkontext. Die Registrierung eines Modells prüft Struktur und Originalbytes. Bei einer Scopeaufnahme prüft der qualifizierte Erfassungsworkflow die Einzelmodelle vor dem Aufruf. Er speichert die Aufnahme und den Paketsatz nicht in der Belegtabelle. Eine Belegkollision bricht die Registrierung ab.
@@ -175,6 +183,19 @@ BEGIN
             + NCHAR(10)
             + NCHAR(10)
             + N'Der Fachpfad erzeugt kein Resultset. Ein Modell- und ein optionaler Laufzeitbeleg werden atomar registriert. Ein Widerruf löscht die angegebene UUID der angegebenen Belegart, sofern sie vorhanden ist.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'## Beispiel'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'Mit `@Hilfe = 1` liest ein Aufrufer mit EXECUTE-Recht den Skill der internen Prozedur. Der Aufruf gibt genau eine Skillzeile zurück und schreibt oder widerruft keinen Beleg. Die Registrierung erfolgt über die qualifizierten SSIS-Übergabewerkzeuge.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'```sql'
+            + NCHAR(10)
+            + N'EXEC [monitor].[InternalManageSsisHandoverReceipt] @Hilfe = 1;'
+            + NCHAR(10)
+            + N'```'
             + NCHAR(10)
             + NCHAR(10)
             + N'## Aufwand, Nebenwirkungen, Fehler und Grenzen'

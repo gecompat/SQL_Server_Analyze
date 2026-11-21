@@ -136,8 +136,8 @@ IF DATALENGTH(@SyntheticUnicode)<>8222
  OR HASHBYTES('SHA2_256',CONVERT(varbinary(max),@SyntheticUnicode))<>0x95518a6a562daf2bd920daabbf829094f21fca296329e2eda12dbc26bc8164c5
     THROW 59021,N'USAGE_SKILL_UNICODE_TRANSPORT_CONTROL',1;
 
--- Independently pinned UTF-16LE length and SHA-256 of seven canonical Markdown files.
--- The five type pilots and the longest Skill catch shared View/Help truncation.
+-- Independently pinned UTF-16LE length and SHA-256 of eight canonical Markdown files.
+-- The five type pilots, the longest Skill and both receipt Skills catch shared projection drift.
 DECLARE @CanonicalPilot TABLE([ObjectName] sysname PRIMARY KEY,[ExpectedBytes] bigint NOT NULL,[ExpectedSha] varbinary(32) NOT NULL);
 INSERT @CanonicalPilot VALUES
 (N'USP_CurrentObjectPermissionAnalysis',CONVERT(bigint,25040),0xf6e301e616229a733b6f52ed27dd28ac3794e62e0e2e81e6fafab130df9bc297),
@@ -146,8 +146,9 @@ INSERT @CanonicalPilot VALUES
 (N'VW_ModuleStatusCatalog',CONVERT(bigint,7718),0x3cdf57076b7ec923c9424a743aca6238f45026bf112b0729d768240c9c22a8ae),
 (N'FrameworkVersion',CONVERT(bigint,10402),0xb914a32160354a59f3f08208bf2e157bc33810b583d2e00900678fa328511bd0),
 (N'USP_SsisPackageModelAnalysis',CONVERT(bigint,111392),0xa50ad055937b568f6c057bdae8d7be6a2bb8389fb41a752a4925ef5c40203468),
-(N'InternalManageSsisHandoverReceipt',CONVERT(bigint,9604),0xf8ead827a4552956e0a117999bc1d3ae408116808cec6b2c2a99912484a52d89);
-IF (SELECT COUNT_BIG(*) FROM @CanonicalPilot)<>7
+(N'InternalManageSsisHandoverReceipt',CONVERT(bigint,10278),0xd1df702d7aaba3d12e509042465aa7ea465237c6ec10ddbe16e6b2f28b847d1e),
+(N'SsisHandoverReceipt',CONVERT(bigint,5208),0x1afdae89210fffc9eea9a7d5c43c511a6b16042bcc8a84ac05be8522e14a31ed);
+IF (SELECT COUNT_BIG(*) FROM @CanonicalPilot)<>8
  OR EXISTS
  (
    SELECT 1 FROM @CanonicalPilot AS [p]
