@@ -3983,10 +3983,13 @@ def prepare(packaged_installer=None):
                "DROP USER [DeploymentSchemaOtherOwner];\nGO\n")
     out.append("REVOKE INSERT ON OBJECT::[monitor].[SsisHandoverReceipt] FROM [public];\nGO\n")
     out.append(negative(deployed,57400,'unprotected SSIS receipt table'))
+    receipt_index, receipt_table = next((i, table) for i, table in enumerate(tables, 1)
+                                        if table.role == 'FRAMEWORK' and table.name == 'SsisHandoverReceipt')
+    out.append(equal_rows(f'qa.Before_{receipt_index}', receipt_table.object_name, binary_columns(receipt_table),
+                          'SSIS receipts after rejected deployment'))
     out.append("IF EXISTS(SELECT 1 FROM sys.database_permissions WHERE class=1 AND major_id=OBJECT_ID(N'monitor.SsisHandoverReceipt') "
                "AND minor_id=0 AND grantee_principal_id=DATABASE_PRINCIPAL_ID(N'public') AND permission_name=N'INSERT') "
-               "OR NOT EXISTS(SELECT 1 FROM monitor.SsisHandoverReceipt WHERE HandoverId='D8DEBE09-B7DB-4013-ACDC-36B9423CFF01') "
-               "THROW 53806,N'Rejected deployment adopted or changed SSIS receipts.',1;\n"
+               "THROW 53806,N'Rejected deployment adopted the unprotected SSIS receipt table.',1;\n"
                "DENY INSERT ON OBJECT::[monitor].[SsisHandoverReceipt] TO [public];\nGO\n")
     out.append("ALTER TABLE monitor.WaitTypeCatalog ADD UnexpectedLocalColumn int NULL;\nGO\n")
     out.append(negative(deployed,53906,'extra column'))

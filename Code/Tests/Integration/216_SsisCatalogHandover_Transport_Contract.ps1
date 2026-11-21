@@ -68,17 +68,18 @@ try {
     [void](Query "ALTER TABLE monitor.SsisHandoverReceipt DROP CONSTRAINT PK_SsisHandoverReceipt; ALTER TABLE monitor.SsisHandoverReceipt ADD CONSTRAINT PK_SsisHandoverReceipt PRIMARY KEY CLUSTERED (ReceiptKind,HandoverId);")
     Invoke-ReceiptInstaller
 
-    $protectedReceipt="INSERT monitor.SsisHandoverReceipt VALUES(1,'3A91B16A-3383-4410-A013-F03CD9E07C91',N'{}');"
+    $receiptId=[guid]::NewGuid().ToString('D')
+    $protectedReceipt="INSERT monitor.SsisHandoverReceipt VALUES(1,'$receiptId',N'{}');"
     [void](Query $protectedReceipt)
     Invoke-ReceiptInstaller
-    Assert ((Query "SELECT COUNT(*) FROM monitor.SsisHandoverReceipt WHERE HandoverId='3A91B16A-3383-4410-A013-F03CD9E07C91' AND ReceiptJson=N'{}';").Tables[0].Rows[0][0] -eq 1) 'RECEIPT_PROTECTED_ROW_PRESERVED'
+    Assert ((Query "SELECT COUNT(*) FROM monitor.SsisHandoverReceipt WHERE HandoverId='$receiptId' AND ReceiptJson=N'{}';").Tables[0].Rows[0][0] -eq 1) 'RECEIPT_PROTECTED_ROW_PRESERVED'
     [void](Query "REVOKE UPDATE ([ReceiptJson]) ON OBJECT::[monitor].[SsisHandoverReceipt] FROM [public];")
     Assert-ReceiptInstallerRejects 'SSIS_HANDOVER_RECEIPT_PERMISSIONS_MISMATCH'
     [void](Query "DENY UPDATE ([ReceiptJson]) ON OBJECT::[monitor].[SsisHandoverReceipt] TO [public];")
     Invoke-ReceiptInstaller
     [void](Query "REVOKE UPDATE ([ReceiptKind], [HandoverId], [ReceiptJson]) ON OBJECT::[monitor].[SsisHandoverReceipt] FROM [public]; REVOKE INSERT, DELETE ON OBJECT::[monitor].[SsisHandoverReceipt] FROM [public];")
     Assert-ReceiptInstallerRejects 'SSIS_HANDOVER_RECEIPT_PERMISSIONS_MISMATCH'
-    Assert ((Query "SELECT COUNT(*) FROM monitor.SsisHandoverReceipt WHERE HandoverId='3A91B16A-3383-4410-A013-F03CD9E07C91' AND ReceiptJson=N'{}';").Tables[0].Rows[0][0] -eq 1) 'RECEIPT_UNPROTECTED_ROW_UNCHANGED'
+    Assert ((Query "SELECT COUNT(*) FROM monitor.SsisHandoverReceipt WHERE HandoverId='$receiptId' AND ReceiptJson=N'{}';").Tables[0].Rows[0][0] -eq 1) 'RECEIPT_UNPROTECTED_ROW_UNCHANGED'
     Assert ((Query "SELECT COUNT(*) FROM sys.database_permissions WHERE major_id=OBJECT_ID(N'monitor.SsisHandoverReceipt') AND grantee_principal_id=DATABASE_PRINCIPAL_ID(N'public');").Tables[0].Rows[0][0] -eq 0) 'RECEIPT_UNPROTECTED_TABLE_NOT_ADOPTED'
     [void](Query "DROP TABLE monitor.SsisHandoverReceipt;")
 

@@ -38,5 +38,5 @@ CAST(NULL AS datetime2(0)) ValidFromUtc,CAST(NULL AS datetime2(0)) ValidToUtc,CA
 GO
 
 INSERT [monitor].[SsisHandoverReceipt] ([ReceiptKind],[HandoverId],[ReceiptJson])
-VALUES (1,'D8DEBE09-B7DB-4013-ACDC-36B9423CFF01',N'{"fixture":"synthetic deployment preservation"}');
+VALUES (1,NEWID(),N'{"fixture":"synthetic deployment preservation"}');
 GO
