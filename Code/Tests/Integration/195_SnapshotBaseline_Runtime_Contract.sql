@@ -43,23 +43,24 @@ GO
 :r ../Tests/Integration/230_Usage_Skills_Target_Runtime_Contract.sql
 
 
+USE [SQLServerAnalyzeTest];
+GO
+
 -- Das eigene isolierte Target qualifiziert die vollständige alte und neue
 -- 1.3.1-Helfersignatur sowie vier unvollständige Hilfesignaturen. Die alten
 -- 1.2.1-/1.3.0-Routen bleiben zusätzlich in der Frozen-Release-Fixture gebunden.
-USE [SQLServerAnalyzeSnapshotTest];
-GO
-DECLARE @OwnDbId int=DB_ID(),@OwnDbName sysname=DB_NAME(),@OriginalCount int,
+DECLARE @UsageSkillFixtureSql nvarchar(max)=CONVERT(nvarchar(max),N'DECLARE @OwnDbId int=DB_ID(),@OwnDbName sysname=DB_NAME(),@OriginalCount int,
         @Case int,@Method int,@Definition nvarchar(max),@Executable nvarchar(max),
         @Mutated nvarchar(max),@RestoreSql nvarchar(max),@Name sysname,
-        @ObjectId int,@HelpLine nvarchar(80)=N'    , @Hilfe bit = 0'+NCHAR(10),
-        @AsLine nvarchar(20)=N'AS'+NCHAR(10)+N'BEGIN'+NCHAR(10),
-        @OldHeader nvarchar(40)=N'CREATE   PROCEDURE',
-        @NewHeader nvarchar(40)=N'CREATE OR ALTER PROCEDURE',
+        @ObjectId int,@HelpLine nvarchar(80)=N''    , @Hilfe bit = 0''+NCHAR(10),
+        @AsLine nvarchar(20)=N''AS''+NCHAR(10)+N''BEGIN''+NCHAR(10),
+        @OldHeader nvarchar(40)=N''CREATE   PROCEDURE'',
+        @NewHeader nvarchar(40)=N''CREATE OR ALTER PROCEDURE'',
         @AdmissionId int,@AdmissionDate datetime,@AdmissionStatus varchar(40),
         @AdmissionError int,@AdmissionMessage nvarchar(2048),@OriginalError int,
         @CleanupError int,@DiagnosticOriginal int,@DiagnosticCleanup int,
         @OriginalOptions int=@@OPTIONS,
-        @ScopedDdl nvarchar(max)=N'USE [SQLServerAnalyzeSnapshotTest]; SET ANSI_NULLS ON; SET QUOTED_IDENTIFIER ON; EXEC [sys].[sp_executesql] @InnerSql;';
+        @ScopedDdl nvarchar(max)=N''SET ANSI_NULLS ON; SET QUOTED_IDENTIFIER ON; EXEC [sys].[sp_executesql] @InnerSql;'';
 DECLARE @Originals TABLE
 (
       [Sequence] int NOT NULL PRIMARY KEY
@@ -72,30 +73,31 @@ DECLARE @Originals TABLE
     , [DefinitionHash] varbinary(32) NOT NULL
     , [IsDirty] bit NOT NULL DEFAULT 0
 );
-IF @OwnDbId IS NULL OR CONVERT(varbinary(max),@OwnDbName)<>CONVERT(varbinary(max),N'SQLServerAnalyzeSnapshotTest')
+IF @OwnDbId IS NULL OR CONVERT(varbinary(max),@OwnDbName)<>CONVERT(varbinary(max),N''SQLServerAnalyzeSnapshotTest'')
    OR @@TRANCOUNT<>0 OR (@@OPTIONS & 2)<>0
-       THROW 53800,N'SC023_HELP_PROFILE_OWN_CONTEXT_INVALID',1;
+       THROW 53800,N''SC023_HELP_PROFILE_OWN_CONTEXT_INVALID'',1;
 INSERT @Originals([Sequence],[MethodName],[ObjectId],[Definition],[StoredHeader],[HeaderPos],[RestoreSql],[DefinitionHash])
 SELECT [v].[Sequence],[v].[MethodName],[p].[object_id],[m].[definition],
        CASE WHEN [h].[OldPos]>0 THEN @OldHeader ELSE @NewHeader END,
-       CASE WHEN [h].[OldPos]>0 THEN [h].[OldPos] ELSE [h].[NewPos] END,
+       CASE WHEN [h].[OldPos]>0 THE')
+    + N'N [h].[OldPos] ELSE [h].[NewPos] END,
        CASE WHEN [h].[OldPos]>0
             THEN STUFF([m].[definition],[h].[OldPos],LEN(@OldHeader),@NewHeader)
             ELSE [m].[definition] END,
-       HASHBYTES('SHA2_256',CONVERT(varbinary(max),[m].[definition]))
+       HASHBYTES(''SHA2_256'',CONVERT(varbinary(max),[m].[definition]))
 FROM (VALUES
-    (1,N'InternalConfigureSnapshotPolicy'),
-    (2,N'InternalPrepareCollectionCycle'),
-    (3,N'InternalCompleteWaitStatsCycle'),
-    (4,N'InternalPurgeExpiredData')
+    (1,N''InternalConfigureSnapshotPolicy''),
+    (2,N''InternalPrepareCollectionCycle''),
+    (3,N''InternalCompleteWaitStatsCycle''),
+    (4,N''InternalPurgeExpiredData'')
 ) AS [v]([Sequence],[MethodName])
-JOIN [sys].[schemas] AS [s] ON [s].[name]=N'snapshot'
+JOIN [sys].[schemas] AS [s] ON [s].[name]=N''snapshot''
 JOIN [sys].[procedures] AS [p] ON [p].[schema_id]=[s].[schema_id] AND [p].[name]=[v].[MethodName]
 JOIN [sys].[sql_modules] AS [m] ON [m].[object_id]=[p].[object_id]
 CROSS APPLY
 (
-    SELECT CHARINDEX(@OldHeader+N' [snapshot].'+QUOTENAME([v].[MethodName]),[m].[definition]) AS [OldPos],
-           CHARINDEX(@NewHeader+N' [snapshot].'+QUOTENAME([v].[MethodName]),[m].[definition]) AS [NewPos]
+    SELECT CHARINDEX(@OldHeader+N'' [snapshot].''+QUOTENAME([v].[MethodName]),[m].[definition]) AS [OldPos],
+           CHARINDEX(@NewHeader+N'' [snapshot].''+QUOTENAME([v].[MethodName]),[m].[definition]) AS [NewPos]
 ) AS [h]
 WHERE [m].[uses_ansi_nulls]=1 AND [m].[uses_quoted_identifier]=1
   AND (([h].[OldPos]>0 AND [h].[NewPos]=0) OR ([h].[NewPos]>0 AND [h].[OldPos]=0));
@@ -104,34 +106,35 @@ IF @OriginalCount<>4 OR EXISTS
 (
     SELECT 1 FROM @Originals
     WHERE [HeaderPos]<1
-       OR SUBSTRING([Definition],[HeaderPos],LEN([StoredHeader]+N' [snapshot].'+QUOTENAME([MethodName])))
+       OR SUBSTRING([Definition],[HeaderPos],LEN([StoredHeader]+N'' [snapshot].''+QUOTENAME([MethodName])))
             COLLATE SQL_Latin1_General_CP1_CS_AS
-          <>[StoredHeader]+N' [snapshot].'+QUOTENAME([MethodName])
+          <>[StoredHeader]+N'' [snapshot].''+QUOTENAME([MethodName])
        OR ([HeaderPos]<>1 AND
-           SUBSTRING([Definition],[HeaderPos]-LEN(N'-- USAGE_SKILL_END snapshot.'+[MethodName]+NCHAR(10)),
-                     LEN(N'-- USAGE_SKILL_END snapshot.'+[MethodName]+NCHAR(10)))
+           SUBSTRING([Definition],[HeaderPos]-LEN(N''-- USAGE_SKILL_END snapshot.''+[MethodName]+NCHAR(10)),
+                     LEN(N''-- USAGE_SKILL_END snapshot.''+[MethodName]+NCHAR(10)))
               COLLATE SQL_Latin1_General_CP1_CS_AS
-           <>N'-- USAGE_SKILL_END snapshot.'+[MethodName]+NCHAR(10))
-       OR CHARINDEX(@OldHeader+N' [snapshot].'+QUOTENAME([MethodName]),
+           <>N''-- USAGE_SKILL_END snapshot.''+[MethodName]+NCHAR(10))
+       OR CHARINDEX(@OldHead'
+    + N'er+N'' [snapshot].''+QUOTENAME([MethodName]),
                      [Definition],[HeaderPos]+1)>0
-       OR CHARINDEX(@NewHeader+N' [snapshot].'+QUOTENAME([MethodName]),
+       OR CHARINDEX(@NewHeader+N'' [snapshot].''+QUOTENAME([MethodName]),
                      [Definition],[HeaderPos]+1)>0
        OR STUFF([RestoreSql],[HeaderPos],LEN(@NewHeader),[StoredHeader])
               COLLATE SQL_Latin1_General_CP1_CS_AS
           <>[Definition] COLLATE SQL_Latin1_General_CP1_CS_AS
        OR DATALENGTH(STUFF([RestoreSql],[HeaderPos],LEN(@NewHeader),[StoredHeader]))
           <>DATALENGTH([Definition])
-       OR LEN([Definition])-LEN(REPLACE([Definition],@HelpLine,N''))<>LEN(@HelpLine)
-       OR LEN([Definition])-LEN(REPLACE([Definition],@AsLine,N''))<>LEN(@AsLine)
+       OR LEN([Definition])-LEN(REPLACE([Definition],@HelpLine,N''''))<>LEN(@HelpLine)
+       OR LEN([Definition])-LEN(REPLACE([Definition],@AsLine,N''''))<>LEN(@AsLine)
 )
-    THROW 53801,N'SC023_HELP_PROFILE_ORIGINAL_BINDING_INVALID',1;
+    THROW 53801,N''SC023_HELP_PROFILE_ORIGINAL_BINDING_INVALID'',1;
 EXEC [SQLServerAnalyzeTest].[monitor].[InternalValidateSnapshotWaitTarget]
-     @TargetDatabaseName=N'SQLServerAnalyzeSnapshotTest',
+     @TargetDatabaseName=N''SQLServerAnalyzeSnapshotTest'',
      @TargetDatabaseIdOut=@AdmissionId OUTPUT,@TargetCreateDateOut=@AdmissionDate OUTPUT,
      @StatusCodeOut=@AdmissionStatus OUTPUT,@ErrorNumberOut=@AdmissionError OUTPUT,
      @ErrorMessageOut=@AdmissionMessage OUTPUT;
-IF COALESCE(@AdmissionStatus,'')<>'AVAILABLE' OR @AdmissionError IS NOT NULL OR COALESCE(@AdmissionId,-1)<>@OwnDbId
-    THROW 53802,N'SC023_HELP_PROFILE_NEW_POSITIVE_FAILED',1;
+IF COALESCE(@AdmissionStatus,'''')<>''AVAILABLE'' OR @AdmissionError IS NOT NULL OR COALESCE(@AdmissionId,-1)<>@OwnDbId
+    THROW 53802,N''SC023_HELP_PROFILE_NEW_POSITIVE_FAILED'',1;
 BEGIN TRY
     -- Alle vier alten Signaturen gemeinsam: kein gemischtes Profil.
     SET @Method=1;
@@ -139,42 +142,44 @@ BEGIN TRY
     BEGIN
         SELECT @Name=[MethodName],@ObjectId=[ObjectId],@Executable=[RestoreSql]
         FROM @Originals WHERE [Sequence]=@Method;
-        IF COALESCE(DB_ID(),-1)<>@OwnDbId OR COALESCE(OBJECT_ID(N'[snapshot].'+QUOTENAME(@Name),N'P'),-1)<>@ObjectId
-            THROW 53803,N'SC023_HELP_PROFILE_OWNERSHIP_CHANGED',1;
-        SET @Mutated=REPLACE(@Executable,@HelpLine,N'');
-        SET @Mutated=REPLACE(@Mutated,@AsLine,@AsLine+N'    DECLARE @Hilfe bit=0;'+NCHAR(10));
+        IF COALESCE(DB_ID(),-1)<>@OwnDbId OR COALESCE(OBJECT_ID(N''[snapshot].''+QUOTENAME(@Name),N''P''),-1)<>@ObjectId
+            THROW 53803,N''SC023_HELP_PROFILE_OWNERSHIP_CHANGED'',1;
+        SET @Mutated=REPLACE(@Executable,@HelpLine,N'''');
+        '
+    + N'SET @Mutated=REPLACE(@Mutated,@AsLine,@AsLine+N''    DECLARE @Hilfe bit=0;''+NCHAR(10));
         UPDATE @Originals SET [IsDirty]=1 WHERE [Sequence]=@Method;
-        EXEC [sys].[sp_executesql] @ScopedDdl,N'@InnerSql nvarchar(max)',@InnerSql=@Mutated;
+        EXEC [SQLServerAnalyzeSnapshotTest].[sys].[sp_executesql] @ScopedDdl,N''@InnerSql nvarchar(max)'',@InnerSql=@Mutated;
         SET @Method+=1;
     END;
     SELECT @AdmissionId=NULL,@AdmissionDate=NULL,@AdmissionStatus=NULL,
            @AdmissionError=NULL,@AdmissionMessage=NULL;
     EXEC [SQLServerAnalyzeTest].[monitor].[InternalValidateSnapshotWaitTarget]
-         @TargetDatabaseName=N'SQLServerAnalyzeSnapshotTest',
+         @TargetDatabaseName=N''SQLServerAnalyzeSnapshotTest'',
          @TargetDatabaseIdOut=@AdmissionId OUTPUT,@TargetCreateDateOut=@AdmissionDate OUTPUT,
          @StatusCodeOut=@AdmissionStatus OUTPUT,@ErrorNumberOut=@AdmissionError OUTPUT,
          @ErrorMessageOut=@AdmissionMessage OUTPUT;
-    IF COALESCE(@AdmissionStatus,'')<>'AVAILABLE' OR @AdmissionError IS NOT NULL OR COALESCE(@AdmissionId,-1)<>@OwnDbId
-        THROW 53804,N'SC023_HELP_PROFILE_OLD_POSITIVE_FAILED',1;
+    IF COALESCE(@AdmissionStatus,'''')<>''AVAILABLE'' OR @AdmissionError IS NOT NULL OR COALESCE(@AdmissionId,-1)<>@OwnDbId
+        THROW 53804,N''SC023_HELP_PROFILE_OLD_POSITIVE_FAILED'',1;
     SET @Method=4;
     WHILE @Method>=1
     BEGIN
         SELECT @Name=[MethodName],@ObjectId=[ObjectId],@RestoreSql=[RestoreSql]
         FROM @Originals WHERE [Sequence]=@Method;
-        IF COALESCE(DB_ID(),-1)<>@OwnDbId OR COALESCE(OBJECT_ID(N'[snapshot].'+QUOTENAME(@Name),N'P'),-1)<>@ObjectId
-            THROW 53803,N'SC023_HELP_PROFILE_OWNERSHIP_CHANGED',1;
-        EXEC [sys].[sp_executesql] @ScopedDdl,N'@InnerSql nvarchar(max)',@InnerSql=@RestoreSql;
+        IF COALESCE(DB_ID(),-1)<>@OwnDbId OR COALESCE(OBJECT_ID(N''[snapshot].''+QUOTENAME(@Name),N''P''),-1)<>@ObjectId
+            THROW 53803,N''SC023_HELP_PROFILE_OWNERSHIP_CHANGED'',1;
+        EXEC [SQLServerAnalyzeSnapshotTest].[sys].[sp_executesql] @ScopedDdl,N''@InnerSql nvarchar(max)'',@InnerSql=@RestoreSql;
         IF NOT EXISTS
         (
             SELECT 1 FROM [sys].[sql_modules] AS [m]
             WHERE [m].[object_id]=@ObjectId
               AND [m].[uses_ansi_nulls]=1 AND [m].[uses_quoted_identifier]=1
-              AND HASHBYTES('SHA2_256',CONVERT(varbinary(max),[m].[definition]))
-                  =(SELECT [DefinitionHash] FROM @Originals WHERE [Sequence]=@Method)
+              AND HASHBYTES(''SHA2_256'',CONVERT(varbinary(max),[m].[definition]))
+                  =(SE'
+    + N'LECT [DefinitionHash] FROM @Originals WHERE [Sequence]=@Method)
               AND DATALENGTH([m].[definition])
                   =(SELECT DATALENGTH([Definition]) FROM @Originals WHERE [Sequence]=@Method)
         )
-            THROW 53805,N'SC023_HELP_PROFILE_RESTORE_MISMATCH',1;
+            THROW 53805,N''SC023_HELP_PROFILE_RESTORE_MISMATCH'',1;
         UPDATE @Originals SET [IsDirty]=0 WHERE [Sequence]=@Method;
         SET @Method-=1;
     END;
@@ -185,45 +190,46 @@ BEGIN TRY
         SELECT @Name=[MethodName],@ObjectId=[ObjectId],@Executable=[RestoreSql],
                @RestoreSql=[RestoreSql]
         FROM @Originals WHERE [Sequence]=4;
-        IF COALESCE(DB_ID(),-1)<>@OwnDbId OR COALESCE(OBJECT_ID(N'[snapshot].'+QUOTENAME(@Name),N'P'),-1)<>@ObjectId
-            THROW 53803,N'SC023_HELP_PROFILE_OWNERSHIP_CHANGED',1;
+        IF COALESCE(DB_ID(),-1)<>@OwnDbId OR COALESCE(OBJECT_ID(N''[snapshot].''+QUOTENAME(@Name),N''P''),-1)<>@ObjectId
+            THROW 53803,N''SC023_HELP_PROFILE_OWNERSHIP_CHANGED'',1;
         SET @Mutated=CASE @Case
-            WHEN 1 THEN REPLACE(REPLACE(@Executable,@HelpLine,N''),
-                       @AsLine,@AsLine+N'    DECLARE @Hilfe bit=0;'+NCHAR(10))
-            WHEN 2 THEN REPLACE(@Executable,@HelpLine,N'    , @Hilfe int = 0'+NCHAR(10))
+            WHEN 1 THEN REPLACE(REPLACE(@Executable,@HelpLine,N''''),
+                       @AsLine,@AsLine+N''    DECLARE @Hilfe bit=0;''+NCHAR(10))
+            WHEN 2 THEN REPLACE(@Executable,@HelpLine,N''    , @Hilfe int = 0''+NCHAR(10))
             WHEN 3 THEN REPLACE(@Executable,
-                       N'    , @ExpectedTargetCreateDate datetime = NULL'+NCHAR(10)+@HelpLine,
-                       N'    , @Hilfe bit = 0'+NCHAR(10)
-                        +N'    , @ExpectedTargetCreateDate datetime = NULL'+NCHAR(10))
-            WHEN 4 THEN REPLACE(@Executable,@HelpLine,N'    , @Hilfe bit = 0 OUTPUT'+NCHAR(10))
+                       N''    , @ExpectedTargetCreateDate datetime = NULL''+NCHAR(10)+@HelpLine,
+                       N''    , @Hilfe bit = 0''+NCHAR(10)
+                        +N''    , @ExpectedTargetCreateDate datetime = NULL''+NCHAR(10))
+            WHEN 4 THEN REPLACE(@Executable,@HelpLine,N''    , @Hilfe bit = 0 OUTPUT''+NCHAR(10))
             END;
         IF @Mutated=@Executable
-            THROW 53806,N'SC023_HELP_PROFILE_MUTATION_MARKER_MISSING',1;
+            THROW 53806,N''SC023_HELP_PROFILE_MUTATION_MARKER_MISSING'',1;
         UPDATE @Originals SET [IsDirty]=1 WHERE [Sequence]=4;
-        EXEC [sys].[sp_executesql] @ScopedDdl,N'@InnerSql nvarchar(max)',@InnerSql=@Mutated;
+        EXEC [SQLServerAnalyzeSnapshotTest].[sys].[sp_executesql] @ScopedDdl,N''@InnerSql nvarchar(max)'',@InnerS'
+    + N'ql=@Mutated;
         SELECT @AdmissionId=NULL,@AdmissionDate=NULL,@AdmissionStatus=NULL,
                @AdmissionError=NULL,@AdmissionMessage=NULL;
         EXEC [SQLServerAnalyzeTest].[monitor].[InternalValidateSnapshotWaitTarget]
-             @TargetDatabaseName=N'SQLServerAnalyzeSnapshotTest',
+             @TargetDatabaseName=N''SQLServerAnalyzeSnapshotTest'',
              @TargetDatabaseIdOut=@AdmissionId OUTPUT,@TargetCreateDateOut=@AdmissionDate OUTPUT,
              @StatusCodeOut=@AdmissionStatus OUTPUT,@ErrorNumberOut=@AdmissionError OUTPUT,
              @ErrorMessageOut=@AdmissionMessage OUTPUT;
-        IF COALESCE(@AdmissionStatus,'')<>'TARGET_UNAVAILABLE' OR COALESCE(@AdmissionError,-1)<>53762
-            THROW 53807,N'SC023_HELP_PROFILE_NEGATIVE_NOT_REJECTED',1;
-        IF COALESCE(DB_ID(),-1)<>@OwnDbId OR COALESCE(OBJECT_ID(N'[snapshot].'+QUOTENAME(@Name),N'P'),-1)<>@ObjectId
-            THROW 53803,N'SC023_HELP_PROFILE_OWNERSHIP_CHANGED',1;
-        EXEC [sys].[sp_executesql] @ScopedDdl,N'@InnerSql nvarchar(max)',@InnerSql=@RestoreSql;
+        IF COALESCE(@AdmissionStatus,'''')<>''TARGET_UNAVAILABLE'' OR COALESCE(@AdmissionError,-1)<>53762
+            THROW 53807,N''SC023_HELP_PROFILE_NEGATIVE_NOT_REJECTED'',1;
+        IF COALESCE(DB_ID(),-1)<>@OwnDbId OR COALESCE(OBJECT_ID(N''[snapshot].''+QUOTENAME(@Name),N''P''),-1)<>@ObjectId
+            THROW 53803,N''SC023_HELP_PROFILE_OWNERSHIP_CHANGED'',1;
+        EXEC [SQLServerAnalyzeSnapshotTest].[sys].[sp_executesql] @ScopedDdl,N''@InnerSql nvarchar(max)'',@InnerSql=@RestoreSql;
         IF NOT EXISTS
         (
             SELECT 1 FROM [sys].[sql_modules] AS [m]
             WHERE [m].[object_id]=@ObjectId
               AND [m].[uses_ansi_nulls]=1 AND [m].[uses_quoted_identifier]=1
-              AND HASHBYTES('SHA2_256',CONVERT(varbinary(max),[m].[definition]))
+              AND HASHBYTES(''SHA2_256'',CONVERT(varbinary(max),[m].[definition]))
                   =(SELECT [DefinitionHash] FROM @Originals WHERE [Sequence]=4)
               AND DATALENGTH([m].[definition])
                   =(SELECT DATALENGTH([Definition]) FROM @Originals WHERE [Sequence]=4)
         )
-            THROW 53805,N'SC023_HELP_PROFILE_RESTORE_MISMATCH',1;
+            THROW 53805,N''SC023_HELP_PROFILE_RESTORE_MISMATCH'',1;
         UPDATE @Originals SET [IsDirty]=0 WHERE [Sequence]=4;
         SET @Case+=1;
     END;
@@ -232,26 +238,27 @@ BEGIN CATCH
     SET @OriginalError=ERROR_NUMBER();
     SET @Method=4;
     WHILE @Method>=1
-    BEGIN
+  '
+    + N'  BEGIN
         IF EXISTS(SELECT 1 FROM @Originals WHERE [Sequence]=@Method AND [IsDirty]=1)
         BEGIN
             SELECT @Name=[MethodName],@ObjectId=[ObjectId],@RestoreSql=[RestoreSql]
             FROM @Originals WHERE [Sequence]=@Method;
             BEGIN TRY
-                IF COALESCE(DB_ID(),-1)<>@OwnDbId OR COALESCE(OBJECT_ID(N'[snapshot].'+QUOTENAME(@Name),N'P'),-1)<>@ObjectId
-                    THROW 53803,N'SC023_HELP_PROFILE_OWNERSHIP_CHANGED',1;
-                EXEC [sys].[sp_executesql] @ScopedDdl,N'@InnerSql nvarchar(max)',@InnerSql=@RestoreSql;
+                IF COALESCE(DB_ID(),-1)<>@OwnDbId OR COALESCE(OBJECT_ID(N''[snapshot].''+QUOTENAME(@Name),N''P''),-1)<>@ObjectId
+                    THROW 53803,N''SC023_HELP_PROFILE_OWNERSHIP_CHANGED'',1;
+                EXEC [SQLServerAnalyzeSnapshotTest].[sys].[sp_executesql] @ScopedDdl,N''@InnerSql nvarchar(max)'',@InnerSql=@RestoreSql;
                 IF NOT EXISTS
                 (
                     SELECT 1 FROM [sys].[sql_modules] AS [m]
                     WHERE [m].[object_id]=@ObjectId
                       AND [m].[uses_ansi_nulls]=1 AND [m].[uses_quoted_identifier]=1
-                      AND HASHBYTES('SHA2_256',CONVERT(varbinary(max),[m].[definition]))
+                      AND HASHBYTES(''SHA2_256'',CONVERT(varbinary(max),[m].[definition]))
                           =(SELECT [DefinitionHash] FROM @Originals WHERE [Sequence]=@Method)
                       AND DATALENGTH([m].[definition])
                           =(SELECT DATALENGTH([Definition]) FROM @Originals WHERE [Sequence]=@Method)
                 )
-                    THROW 53805,N'SC023_HELP_PROFILE_RESTORE_MISMATCH',1;
+                    THROW 53805,N''SC023_HELP_PROFILE_RESTORE_MISMATCH'',1;
                 UPDATE @Originals SET [IsDirty]=0 WHERE [Sequence]=@Method;
             END TRY
             BEGIN CATCH
@@ -265,28 +272,29 @@ BEGIN CATCH
     IF @CleanupError IS NOT NULL
     BEGIN
         SELECT @DiagnosticOriginal=@OriginalError,@DiagnosticCleanup=@CleanupError;
-        RAISERROR(N'SC023_HELP_PROFILE_FAILURE original=%d cleanup=%d',16,1,
+        RAISERROR(N''SC023_HELP_PROFILE'
+    + N'_FAILURE original=%d cleanup=%d'',16,1,
                   @DiagnosticOriginal,@DiagnosticCleanup);
-        THROW 53808,N'SC023_HELP_PROFILE_RESTORE_FAILED',1;
+        THROW 53808,N''SC023_HELP_PROFILE_RESTORE_FAILED'',1;
     END;
     THROW;
 END CATCH;
 IF EXISTS(SELECT 1 FROM @Originals WHERE [IsDirty]=1)
-    THROW 53809,N'SC023_HELP_PROFILE_RESIDUAL_DIRTY',1;
+    THROW 53809,N''SC023_HELP_PROFILE_RESIDUAL_DIRTY'',1;
 IF @@OPTIONS<>@OriginalOptions
-    THROW 53811,N'SC023_HELP_PROFILE_CALLER_OPTIONS_CHANGED',1;
+    THROW 53811,N''SC023_HELP_PROFILE_CALLER_OPTIONS_CHANGED'',1;
 SELECT @AdmissionId=NULL,@AdmissionDate=NULL,@AdmissionStatus=NULL,
        @AdmissionError=NULL,@AdmissionMessage=NULL;
 EXEC [SQLServerAnalyzeTest].[monitor].[InternalValidateSnapshotWaitTarget]
-     @TargetDatabaseName=N'SQLServerAnalyzeSnapshotTest',
+     @TargetDatabaseName=N''SQLServerAnalyzeSnapshotTest'',
      @TargetDatabaseIdOut=@AdmissionId OUTPUT,@TargetCreateDateOut=@AdmissionDate OUTPUT,
      @StatusCodeOut=@AdmissionStatus OUTPUT,@ErrorNumberOut=@AdmissionError OUTPUT,
      @ErrorMessageOut=@AdmissionMessage OUTPUT;
-IF COALESCE(@AdmissionStatus,'')<>'AVAILABLE' OR @AdmissionError IS NOT NULL OR COALESCE(@AdmissionId,-1)<>@OwnDbId
-    THROW 53810,N'SC023_HELP_PROFILE_RESTORED_POSITIVE_FAILED',1;
-USE [SQLServerAnalyzeTest];
+IF COALESCE(@AdmissionStatus,'''')<>''AVAILABLE'' OR @AdmissionError IS NOT NULL OR COALESCE(@AdmissionId,-1)<>@OwnDbId
+    THROW 53810,N''SC023_HELP_PROFILE_RESTORED_POSITIVE_FAILED'',1;
+';
+EXEC [SQLServerAnalyzeSnapshotTest].[sys].[sp_executesql] @UsageSkillFixtureSql;
 GO
-
 DECLARE @Status varchar(40),@Partial bit,@Error int,@Message nvarchar(2048);
 EXEC [monitor].[USP_ConfigureSnapshotTarget]
      @TargetDatabaseName=N'SQLServerAnalyzeSnapshotTest',@IsEnabled=1,

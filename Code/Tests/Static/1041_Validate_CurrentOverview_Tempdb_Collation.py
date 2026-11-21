@@ -478,7 +478,7 @@ def self_test(s):
 
 def main():
     p=argparse.ArgumentParser();p.add_argument('--repository-root',type=Path,required=True);p.add_argument('--self-test',action='store_true');args=p.parse_args()
-    s=strip_usage_skill_projections((args.repository_root/SOURCE).read_text(encoding='utf-8'))
+    s=strip_usage_skill_projections((args.repository_root/SOURCE).read_text(encoding='utf-8'), compact=True)
     if args.self_test: print(f'CurrentOverview self-test PASS: {self_test(s)} real mutations');return
     errors=findings(s)
     if errors: raise SystemExit('\n'.join(errors))

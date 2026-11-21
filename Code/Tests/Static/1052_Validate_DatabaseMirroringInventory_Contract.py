@@ -338,7 +338,7 @@ def validate_contract(
             errors.append("native source is not directly bound with NOLOCK: " + source)
     if "ON [m].[database_id]=[d].[database_id]" not in body or "[c].[DatabaseId]" not in body:
         errors.append("database selection and native catalog rows must join by database_id")
-    body = strip_usage_skill_projections(body)
+    body = strip_usage_skill_projections(body, compact=True)
     for forbidden in ("mirroring_guid", "mirroring_partner_name", "mirroring_partner_instance",
                       "mirroring_witness_name", "mirroring_failover_lsn",
                       "mirroring_end_of_log_lsn", "mirroring_replication_lsn",
