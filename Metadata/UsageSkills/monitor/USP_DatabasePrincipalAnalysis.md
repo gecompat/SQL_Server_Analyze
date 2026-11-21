@@ -41,6 +41,7 @@ Ein direkter Aufruf erfordert EXECUTE auf [monitor].[USP_DatabasePrincipalAnalys
 | @IsPartialOut | bit | nein | NULL OUTPUT |
 | @ErrorNumberOut | int | nein | NULL OUTPUT |
 | @ErrorMessageOut | nvarchar(2048) | nein | NULL OUTPUT |
+| @PermissionGranteeName | nvarchar(max) | nein | NULL |
 
 **@DatabaseNames:** @DatabaseNames nvarchar(max); Default: NULL. NULL, N'' oder eine nur aus äußeren U+0020-Leerzeichen bestehende Eingabe schränken die Datenbankauswahl nicht ein. Andernfalls wird eine bracket-aware Pipe-Liste aus einzelnen Datenbanknamen erwartet; ein Pipe innerhalb eines geklammerten Namens ist Inhalt, und ]] maskiert dort eine schließende Klammer. Ungültige Elemente und doppelte gültige Namen führen zur Zurückweisung; Vorgesehen sind einteilige Namen. Der Parser übernimmt den letzten PARSENAME-Bestandteil, verlangt einen nichtleeren Wert bis 128 Zeichen und NULL für den zweiten Bestandteil; dritte und vierte Bestandteile werden nicht separat validiert. Ein rohes Listenelement ist auf 4.000 Zeichen begrenzt. Die exakten Namen werden case-sensitive verglichen. Nur eine aktive nichtleere Liste ist mit einem nicht-NULL-Pattern unvereinbar. Ohne beide Filter wählt die gemeinsame Kandidatenvorbereitung alle für den Caller sichtbaren, zugreifbaren Online-Datenbanken ohne Datenbanksnapshots; Systemdatenbanken hängen zusätzlich von @SystemdatenbankenEinbeziehen ab. Nicht verfügbare explizit angeforderte Namen erscheinen als Auswahlwarnungen; daraus wird Abwesenheit nicht sicher abgeleitet.
 
@@ -48,7 +49,7 @@ Ein direkter Aufruf erfordert EXECUTE auf [monitor].[USP_DatabasePrincipalAnalys
 
 **@DatabaseNamePattern:** @DatabaseNamePattern nvarchar(4000); Default: NULL. NULL bedeutet kein Patternfilter. Sonst werden äußere Leerzeichen entfernt und ein Präfix LIKE:, REGEX: oder REGEXI: ohne Beachtung der Großschreibung erkannt; ohne Präfix gilt LIKE. Der Inhalt nach einem Präfix wird nicht erneut getrimmt. Ein leerer oder nur aus Leerzeichen bestehender Wert sowie ein leeres Präfix-Ergebnis sind ungültig. Eine aktive nichtleere exakte Namensliste und ein nicht-NULL-Pattern sind unvereinbar. LIKE vergleicht case-sensitive. REGEX ist case-sensitive, REGEXI case-insensitive; Regexausführung verlangt SQL Server 2025 und Compatibility Level 170 der Installationsdatenbank. Der Parser prüft keine Regexsyntax; ein ungültiges Regexmuster kann daher erst bei der Ausführung fehlschlagen. Der LIKE-Inhalt ist ein SQL-Server-LIKE-Muster: % steht für beliebig viele Zeichen, _ für ein Zeichen, [...] für Zeichenklassen. Die Abfrage definiert keine eigene ESCAPE-Klausel. REGEX/REGEXI-Inhalt wird unverändert an REGEXP_LIKE mit Flag c beziehungsweise i übergeben; Parservalidierung ersetzt keine Regexsyntaxprüfung.
 
-**@MaxZeilen:** @MaxZeilen int; Default: 1000. NULL oder 0 bedeutet kein Ausgabelimit; ein negativer Wert ist ungültig. Ein positiver Wert begrenzt jeweils separat die fünf Fachmengen principals, roleMemberships, permissions, schemaOwners und loginBindings global über alle gewählten Datenbanken. Die Kürzung erfolgt nach der jeweiligen dokumentierten Sortierung; bei identischen Sortierschlüsseln ist keine zusätzliche Tie-Break-Garantie festgelegt. databaseContext, moduleStatus, sourceStatus und warnings werden nicht gekappt. Die vollständigen sichtbaren Quellmengen werden vor der Kürzung materialisiert; das Limit reduziert daher nicht die Kataloglesearbeit oder die zuvor gebildeten Namens- und SID-Zuordnungen. ObservedRows und ReturnedRows sowie IsLimited halten Quellmenge und Ausgabe auseinander.
+**@MaxZeilen:** @MaxZeilen int; Default: 1000. NULL oder 0 bedeutet kein Ausgabelimit; ein negativer Wert ist ungültig. Ein positiver Wert begrenzt jeweils separat die fünf Fachmengen principals, roleMemberships, permissions, schemaOwners und loginBindings global über alle gewählten Datenbanken. Die Kürzung erfolgt nach der jeweiligen dokumentierten Sortierung; bei identischen Sortierschlüsseln ist keine zusätzliche Tie-Break-Garantie festgelegt. databaseContext, moduleStatus, sourceStatus und warnings werden nicht gekappt. Die sichtbaren Quellmengen einschließlich der vorab gefilterten permissions werden vor der Kürzung materialisiert; das Limit reduziert daher nicht die Kataloglesearbeit oder die zuvor gebildeten Namens- und SID-Zuordnungen. ObservedRows und ReturnedRows sowie IsLimited halten Quellmenge und Ausgabe auseinander.
 
 **@LockTimeoutMs:** @LockTimeoutMs int; Default: 0. NULL, negative Werte und Werte über 60000 sind ungültig; 0 bis 60000 sind Millisekunden und der Vorgabewert 0 setzt NOWAIT für die dynamischen fachlichen Quellbatches. Ein positiver Wert erlaubt diesen Batches entsprechend viele Millisekunden auf eine Sperre zu warten. Bei eingehendem Caller-LOCK_TIMEOUT 0 verwendet die Procedure für eigene Temp-DDL-Statements bis zu 1000 ms je Statement; dies ist kein zusätzliches Quellzeitbudget. Am Ende wird der eingehende LOCK_TIMEOUT-Wert wiederhergestellt. Der Parameter ist keine Gesamtzeitgrenze für den Aufruf und begründet keine atomare Aufnahme.
 
@@ -72,6 +73,8 @@ Ein direkter Aufruf erfordert EXECUTE auf [monitor].[USP_DatabasePrincipalAnalys
 
 **@ErrorMessageOut:** @ErrorMessageOut nvarchar(2048) OUTPUT; Default: NULL. Bei Eintritt wird der Empfänger auf NULL gesetzt. Sie bleibt NULL, wenn kein Fehlertext ermittelt wurde. Bei ungültigen Parametern enthält sie die Validierungsdiagnose; bei regulärer Verarbeitung mit Quellenfehlern stammt sie aus dem ersten Fehler nach Datenbank-ID und SourceKey. Der äußere CATCH gibt die abgefangene Meldung auf höchstens 2048 Zeichen begrenzt zurück. Die OUTPUT-Diagnose ersetzt weder Statusprüfung noch RETURN-Code. Optionaler Empfänger: Zum Empfangen eine Variable des deklarierten Typs mit OUTPUT binden; andernfalls das Argument auslassen. Ein anfänglicher NULL- oder anderer Wert wird am Eintritt zurückgesetzt.
 
+**@PermissionGranteeName:** @PermissionGranteeName nvarchar(max). Default: NULL. NULL lässt alle sichtbaren expliziten Rechte in permissions zu. Sonst wird ein einzelner unveränderter Datenbankprincipalname mit höchstens 128 UTF-16-Codeeinheiten verglichen. Leere und nur aus U+0020-Leerzeichen bestehende Namen sind ungültig. Es gibt keine Liste, Mustersuche oder Entfernung von Begrenzungszeichen. Der Vergleich unterscheidet Großschreibung, Akzente und Leerzeichen. Die Auswahl wirkt vor @MaxZeilen, getrennt in jeder gewählten Datenbank. Die übrigen Ergebnismengen bleiben ungefiltert. Ein leerer Treffer beweist weder Abwesenheit noch fehlende Rechte. Rollenrechte und effektive Rechte werden für den gewählten Principal nicht aufgelöst.
+
 ## Resultate und Ausgabe
 
 | Resultmenge | RAW | TABLE | Felder laut Inventar |
@@ -92,6 +95,21 @@ Bei @Hilfe=1 kommt genau ein Resultset mit SkillFormatVersion, SchemaName, Objec
 
 ```sql
 EXEC [monitor].[USP_DatabasePrincipalAnalysis] @ResultSetArt='RAW', @MaxZeilen=100;
+```
+
+Ein Aufrufer mit sichtbaren Katalogmetadaten kann die direkt an einen anderen Datenbankprincipal vergebenen Rechte für eine ausgewählte Datenbank abrufen. `permissions` und der zugehörige Quellzähler beziehen sich dann auf diesen Namen. Die Rollen- und Principallisten behalten ihren bisherigen Scope.
+
+```sql
+DECLARE @Json nvarchar(max);
+
+EXEC [monitor].[USP_DatabasePrincipalAnalysis]
+    @DatabaseNames = N'ExampleDatabase',
+    @PermissionGranteeName = N'ExampleReader',
+    @ResultSetArt = 'NONE',
+    @JsonErzeugen = 1,
+    @Json = @Json OUTPUT;
+
+SELECT JSON_QUERY(@Json, N'$.permissions') AS [Permissions];
 ```
 
 ## Aufwand, Nebenwirkungen, Fehler und Grenzen

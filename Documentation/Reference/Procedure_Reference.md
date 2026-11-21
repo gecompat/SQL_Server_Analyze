@@ -2868,6 +2868,7 @@ Quelle: `Code/08_ServerHealth/270_USP_DatabasePrincipalAnalysis.sql`
     , @IsPartialOut bit = NULL OUTPUT
     , @ErrorNumberOut int = NULL OUTPUT
     , @ErrorMessageOut nvarchar(2048) = NULL OUTPUT
+    , @PermissionGranteeName nvarchar(max) = NULL
 ```
 
 ## `[monitor].[USP_RowLevelSecurityAndMaskingInventory]`
