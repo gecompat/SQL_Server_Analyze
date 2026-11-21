@@ -57,7 +57,9 @@ DECLARE @OwnDbId int=DB_ID(),@OwnDbName sysname=DB_NAME(),@OriginalCount int,
         @NewHeader nvarchar(40)=N'CREATE OR ALTER PROCEDURE',
         @AdmissionId int,@AdmissionDate datetime,@AdmissionStatus varchar(40),
         @AdmissionError int,@AdmissionMessage nvarchar(2048),@OriginalError int,
-        @CleanupError int,@DiagnosticOriginal int,@DiagnosticCleanup int;
+        @CleanupError int,@DiagnosticOriginal int,@DiagnosticCleanup int,
+        @OriginalOptions int=@@OPTIONS,
+        @ScopedDdl nvarchar(max)=N'USE [SQLServerAnalyzeSnapshotTest]; SET ANSI_NULLS ON; SET QUOTED_IDENTIFIER ON; EXEC [sys].[sp_executesql] @InnerSql;';
 DECLARE @Originals TABLE
 (
       [Sequence] int NOT NULL PRIMARY KEY
@@ -72,8 +74,7 @@ DECLARE @Originals TABLE
 );
 IF @OwnDbId IS NULL OR CONVERT(varbinary(max),@OwnDbName)<>CONVERT(varbinary(max),N'SQLServerAnalyzeSnapshotTest')
    OR @@TRANCOUNT<>0 OR (@@OPTIONS & 2)<>0
-   OR (@@OPTIONS & 32)<>32 OR (@@OPTIONS & 256)<>256
-    THROW 53800,N'SC023_HELP_PROFILE_OWN_CONTEXT_INVALID',1;
+       THROW 53800,N'SC023_HELP_PROFILE_OWN_CONTEXT_INVALID',1;
 INSERT @Originals([Sequence],[MethodName],[ObjectId],[Definition],[StoredHeader],[HeaderPos],[RestoreSql],[DefinitionHash])
 SELECT [v].[Sequence],[v].[MethodName],[p].[object_id],[m].[definition],
        CASE WHEN [h].[OldPos]>0 THEN @OldHeader ELSE @NewHeader END,
@@ -143,7 +144,7 @@ BEGIN TRY
         SET @Mutated=REPLACE(@Executable,@HelpLine,N'');
         SET @Mutated=REPLACE(@Mutated,@AsLine,@AsLine+N'    DECLARE @Hilfe bit=0;'+NCHAR(10));
         UPDATE @Originals SET [IsDirty]=1 WHERE [Sequence]=@Method;
-        EXEC [sys].[sp_executesql] @Mutated;
+        EXEC [sys].[sp_executesql] @ScopedDdl,N'@InnerSql nvarchar(max)',@InnerSql=@Mutated;
         SET @Method+=1;
     END;
     SELECT @AdmissionId=NULL,@AdmissionDate=NULL,@AdmissionStatus=NULL,
@@ -162,7 +163,7 @@ BEGIN TRY
         FROM @Originals WHERE [Sequence]=@Method;
         IF COALESCE(DB_ID(),-1)<>@OwnDbId OR COALESCE(OBJECT_ID(N'[snapshot].'+QUOTENAME(@Name),N'P'),-1)<>@ObjectId
             THROW 53803,N'SC023_HELP_PROFILE_OWNERSHIP_CHANGED',1;
-        EXEC [sys].[sp_executesql] @RestoreSql;
+        EXEC [sys].[sp_executesql] @ScopedDdl,N'@InnerSql nvarchar(max)',@InnerSql=@RestoreSql;
         IF NOT EXISTS
         (
             SELECT 1 FROM [sys].[sql_modules] AS [m]
@@ -199,7 +200,7 @@ BEGIN TRY
         IF @Mutated=@Executable
             THROW 53806,N'SC023_HELP_PROFILE_MUTATION_MARKER_MISSING',1;
         UPDATE @Originals SET [IsDirty]=1 WHERE [Sequence]=4;
-        EXEC [sys].[sp_executesql] @Mutated;
+        EXEC [sys].[sp_executesql] @ScopedDdl,N'@InnerSql nvarchar(max)',@InnerSql=@Mutated;
         SELECT @AdmissionId=NULL,@AdmissionDate=NULL,@AdmissionStatus=NULL,
                @AdmissionError=NULL,@AdmissionMessage=NULL;
         EXEC [SQLServerAnalyzeTest].[monitor].[InternalValidateSnapshotWaitTarget]
@@ -211,7 +212,7 @@ BEGIN TRY
             THROW 53807,N'SC023_HELP_PROFILE_NEGATIVE_NOT_REJECTED',1;
         IF COALESCE(DB_ID(),-1)<>@OwnDbId OR COALESCE(OBJECT_ID(N'[snapshot].'+QUOTENAME(@Name),N'P'),-1)<>@ObjectId
             THROW 53803,N'SC023_HELP_PROFILE_OWNERSHIP_CHANGED',1;
-        EXEC [sys].[sp_executesql] @RestoreSql;
+        EXEC [sys].[sp_executesql] @ScopedDdl,N'@InnerSql nvarchar(max)',@InnerSql=@RestoreSql;
         IF NOT EXISTS
         (
             SELECT 1 FROM [sys].[sql_modules] AS [m]
@@ -239,7 +240,7 @@ BEGIN CATCH
             BEGIN TRY
                 IF COALESCE(DB_ID(),-1)<>@OwnDbId OR COALESCE(OBJECT_ID(N'[snapshot].'+QUOTENAME(@Name),N'P'),-1)<>@ObjectId
                     THROW 53803,N'SC023_HELP_PROFILE_OWNERSHIP_CHANGED',1;
-                EXEC [sys].[sp_executesql] @RestoreSql;
+                EXEC [sys].[sp_executesql] @ScopedDdl,N'@InnerSql nvarchar(max)',@InnerSql=@RestoreSql;
                 IF NOT EXISTS
                 (
                     SELECT 1 FROM [sys].[sql_modules] AS [m]
@@ -259,6 +260,8 @@ BEGIN CATCH
         END;
         SET @Method-=1;
     END;
+    IF @@OPTIONS<>@OriginalOptions
+        SET @CleanupError=COALESCE(@CleanupError,53811);
     IF @CleanupError IS NOT NULL
     BEGIN
         SELECT @DiagnosticOriginal=@OriginalError,@DiagnosticCleanup=@CleanupError;
@@ -270,6 +273,8 @@ BEGIN CATCH
 END CATCH;
 IF EXISTS(SELECT 1 FROM @Originals WHERE [IsDirty]=1)
     THROW 53809,N'SC023_HELP_PROFILE_RESIDUAL_DIRTY',1;
+IF @@OPTIONS<>@OriginalOptions
+    THROW 53811,N'SC023_HELP_PROFILE_CALLER_OPTIONS_CHANGED',1;
 SELECT @AdmissionId=NULL,@AdmissionDate=NULL,@AdmissionStatus=NULL,
        @AdmissionError=NULL,@AdmissionMessage=NULL;
 EXEC [SQLServerAnalyzeTest].[monitor].[InternalValidateSnapshotWaitTarget]
