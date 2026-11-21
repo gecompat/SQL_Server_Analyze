@@ -128780,6 +128780,8 @@ Grenze       : Keine Quellaktionen; Meldungstexte bleiben Laufzeitausgaben.
 --
 -- Bei @Hilfe=1 kommt genau ein Resultset mit SkillFormatVersion, SchemaName, ObjectName und SkillMarkdown hinzu; bestehende PRINT-Hinweise bleiben erhalten.
 --
+-- OnProgress-Zeilen mit exakt übereinstimmendem Ereignisnamen erscheinen als LEGACY_PROGRESS_EVENT mit INFO, RUNTIME_OBSERVED und der ursprünglichen LogId in findings. Die Auswertung benötigt keinen Meldungstext. Sie bestimmt weder einen Fortschrittsprozentsatz noch eine Laufzeitprognose. Fehlende Zeilen belegen keinen Stillstand. Bei aktivierter Taskanalyse zählt die Loggingabdeckung diese Zeilen als bekannte sonstige Ereignisse.
+--
 -- ## Beispiel
 --
 -- ```sql
@@ -128886,6 +128888,7 @@ BEGIN
         PRINT N'@ResultSetArt varchar(16); Default: ''CONSOLE''. Auslassen: CONSOLE. Der Eingang wird zuerst in varchar(16) gespeichert, danach um äußere U+0020-Leerzeichen gekürzt und mit UPPER normalisiert; verglichen wird unter SQL_Latin1_General_CP1_CS_AS. Gültige Werte: CONSOLE (Übersicht), RAW (native Resultsets), TABLE (benannte Ausgabe), NONE (fachliche Grids unterdrücken). NULL, leer, nur U+0020 oder ein anderer normalisierter Wert ist ungültig. Vorherige Kürzung auf varchar(16) beachten; längere Eingabe ist nicht automatisch ungültig, wenn gespeicherter Wert einem Modus entspricht. Beim Auslassen gilt der deklarierte Default ''CONSOLE''.';
         PRINT N'@ResultTablesJson nvarchar(max); Default: NULL. Auslassen/NULL ist außerhalb TABLE gültig; dort ist auch leer oder nur U+0020-Leerzeichen erlaubt, nichtleerer Inhalt ungültig. In TABLE: gültiges nichtleeres JSON-Objekt von Resultsetnamen auf Zielnamen. Mindestens ein aktiver Schlüssel ist erforderlich; jede nichtleere Teilmenge der aktiven Basis- und Optionalnamen ist erlaubt; optionale Namen nur bei aktivem Opt-in. Vollständiger Preflight vor fachlichem Quellenzugriff. Ziele: vorhandene leere lokale #Temp-Tabellen mit genau einer Seed-Spalte beliebigen Namens und Typs ohne Seed-Zeile; keine ##Temp oder permanenten Tabellen. Unbekannte/inaktive Schlüssel, binär doppelte Schlüssel, case-insensitiv doppelte Ziele und unzulässige Ziele werden abgelehnt. Preflight wirft; OUTPUT ist nicht zugesichert. Zusätzlich gilt für rowFlowThroughput: @IncludeThroughputAnalysis=1 und zugleich @IncludeRowFlowAnalysis=1, weil beide Flags gemeinsam erforderlich sind. Beim Auslassen gilt der deklarierte Default NULL. Schlüssel werden binär einschließlich Groß-/Kleinschreibung verglichen. Zielnamen müssen Strings mit LEN höchstens 116 sein; #Monitor-Präfix ist case-insensitiv ausgeschlossen. Die Vorprüfung erfolgt nach Hilfe, vor der normalen Parameterprüfung; ein inaktiver optionaler Schlüssel ist auch dann ungültig, wenn die Tabelle existiert.';
         PRINT N'@ResultTablesJson erlaubte Schlüssel (1/3): moduleStatus = Modulstatus, Laufkennung, Quellnamen und Gesamtergebnis (immer); execution = beobachtete Ausführungskennzahlen (immer); timeline = Ereignisfolge mit optionalem Meldungstext (immer); errorChain = zeitlich geordnete Fehler-/Warnereignisse, keine Kausalitätskette (immer); iterations = konservative zeitliche Ereignispaare (immer); loggingQuality = Beobachtbarkeit und Grenzen der Logdaten (immer); findings = beobachtete oder abgeleitete Befunde (immer); sourceStatus = Status angeforderter Analyseschritte (immer); warnings = Warnungen und Begrenzungen (immer).';
+        PRINT N'OnProgress-Zeilen mit exakt übereinstimmendem Ereignisnamen erscheinen als LEGACY_PROGRESS_EVENT mit INFO, RUNTIME_OBSERVED und der ursprünglichen LogId in findings. Die Auswertung benötigt keinen Meldungstext. Sie bestimmt weder einen Fortschrittsprozentsatz noch eine Laufzeitprognose. Fehlende Zeilen belegen keinen Stillstand.';
         PRINT N'@ResultTablesJson erlaubte Schlüssel (2/3): taskDurations = beobachtete Tasklaufzeitaggregate (nur wenn @IncludeTaskAnalysis=1); taskLoggingCoverage = Loggingabdeckung je Task-Source-ID (nur wenn @IncludeTaskAnalysis=1); rowFlowEvents = einzelne OnPipelineRowsSent-Berichte (nur wenn @IncludeRowFlowAnalysis=1); rowFlow = abgeleiteter Zeilenfluss je Pfad (nur wenn @IncludeRowFlowAnalysis=1); componentPhaseEvents = einzelne PipelineComponentTime-Berichte (nur wenn @IncludeComponentPhaseAnalysis=1).';
         PRINT N'@ResultTablesJson erlaubte Schlüssel (3/3): componentPhaseTimes = abgeleitete Komponentenphasenzeiten (nur wenn @IncludeComponentPhaseAnalysis=1); lookupCacheEvents = einzelne Lookup-/Cacheprofile (nur wenn @IncludeLookupCacheAnalysis=1); rowsWrittenEvents = einzelne Schreibmengenberichte (nur wenn @IncludeRowsWrittenAnalysis=1); rowFlowThroughput = gemeldete Pfadübertragungen je EXECUTE-Intervall (nur wenn @IncludeThroughputAnalysis=1 und @IncludeRowFlowAnalysis=1); finalCommitEvents = einzelne Final-Commit-Berichte (nur wenn @IncludeFinalCommitAnalysis=1); pipelinePhaseBeginEvents = einzelne Phasenbeginnprofile (nur wenn @IncludePipelinePhaseBeginAnalysis=1).';
         PRINT N'@JsonErzeugen bit; Default: 0. Auslassen: 0. Format SQL bit (vor dem Prozedurkörper konvertiert: 0 bleibt 0, jeder von 0 verschiedene, SQL-bit-konvertierbare Zahlenwert wird 1). Werte: 0 erzeugt kein JSON, 1 befüllt @Json. NULL verhält sich wie 0. Beim Auslassen gilt der deklarierte Default 0.';
@@ -129162,6 +129165,9 @@ BEGIN
             + NCHAR(10)
             + NCHAR(10)
             + N'Bei @Hilfe=1 kommt genau ein Resultset mit SkillFormatVersion, SchemaName, ObjectName und SkillMarkdown hinzu; bestehende PRINT-Hinweise bleiben erhalten.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'OnProgress-Zeilen mit exakt übereinstimmendem Ereignisnamen erscheinen als LEGACY_PROGRESS_EVENT mit INFO, RUNTIME_OBSERVED und der ursprünglichen LogId in findings. Die Auswertung benötigt keinen Meldungstext. Sie bestimmt weder einen Fortschrittsprozentsatz noch eine Laufzeitprognose. Fehlende Zeilen belegen keinen Stillstand. Bei aktivierter Taskanalyse zählt die Loggingabdeckung diese Zeilen als bekannte sonstige Ereignisse.'
             + NCHAR(10)
             + NCHAR(10)
             + N'## Beispiel'
@@ -129976,7 +129982,7 @@ BEGIN
                           ('EVENT_NAME_MISSING','WARNING',(SELECT COUNT_BIG(*) FROM [#SsisLegacyLogAnalysis_Buffer] WHERE EventName IS NULL),N'Ein Ereignisname fehlt.',1),
                           ('EVENT_TIME_MISSING','WARNING',(SELECT COUNT_BIG(*) FROM [#SsisLegacyLogAnalysis_Buffer] WHERE EventTime IS NULL),N'Ein Ereigniszeitpunkt fehlt.',1),
                           ('NON_MONOTONIC_TIME','WARNING',(SELECT COUNT_BIG(*) FROM (SELECT EventTime,LAG(EventTime) OVER(ORDER BY LogId) AS PreviousTime FROM [#SsisLegacyLogAnalysis_Buffer]) AS b WHERE EventTime<PreviousTime),N'Zeitwerte sind gegenüber der protokollierten ID-Reihenfolge rückläufig.',1),
-                          ('UNKNOWN_EVENT_NAME','WARNING',(SELECT COUNT_BIG(*) FROM [#SsisLegacyLogAnalysis_Buffer] WHERE EventName NOT IN(N'OnError',N'OnTaskFailed',N'OnWarning',N'OnQueryCancel',N'OnPreValidate',N'OnPostValidate',N'OnPreExecute',N'OnPostExecute',N'PackageStart',N'PackageEnd')),N'Der gespeicherte Ereignisname besitzt hier keine eigene Interpretation.',1),
+                          ('UNKNOWN_EVENT_NAME','WARNING',(SELECT COUNT_BIG(*) FROM [#SsisLegacyLogAnalysis_Buffer] WHERE EventName NOT IN(N'OnError',N'OnTaskFailed',N'OnWarning',N'OnQueryCancel',N'OnPreValidate',N'OnPostValidate',N'OnPreExecute',N'OnPostExecute',N'PackageStart',N'PackageEnd') AND NOT (CONVERT(varbinary(256),EventName)=CONVERT(varbinary(256),N'OnProgress'))),N'Der gespeicherte Ereignisname besitzt hier keine eigene Interpretation.',1),
                           ('NO_ERROR_EVENTS_OBSERVED','INFO',CONVERT(bigint,NULL),N'Kein OnError beobachtet; kein Nachweis von Fehlerfreiheit.',CASE WHEN NOT EXISTS(SELECT 1 FROM [#SsisLegacyLogAnalysis_Buffer] WHERE EventName=N'OnError') THEN 1 ELSE 0 END),
                           ('ERROR_MESSAGE_MISSING','WARNING',(SELECT COUNT_BIG(*) FROM [#SsisLegacyLogAnalysis_Buffer] WHERE EventName IN(N'OnError',N'OnTaskFailed') AND (MessageText IS NULL OR DATALENGTH(MessageText)=0)),N'Ein eingeschlossener Fehlertext fehlt oder ist leer; die Ursache bleibt unbekannt.',CONVERT(int,@IncludeMessages))
                         ) AS v(Code,Severity,Affected,Detail,Enabled) WHERE v.Enabled=1 AND (v.Affected IS NULL OR v.Affected>0);
@@ -129984,10 +129990,20 @@ BEGIN
                     INSERT [#SsisLegacyLogAnalysis_LoggingQuality] VALUES(0,'CONSISTENT_SNAPSHOT_NOT_GUARANTEED','INFO',NULL,N'NOLOCK liefert keine transaktionskonsistente Momentaufnahme.');
                     ;WITH q AS(SELECT *,ROW_NUMBER() OVER(ORDER BY QualityCode) AS n FROM [#SsisLegacyLogAnalysis_LoggingQuality]) UPDATE q SET QualityOrdinal=CONVERT(int,n);
                     INSERT [#SsisLegacyLogAnalysis_Findings]
-                    SELECT 0,CASE EventName WHEN N'OnError' THEN 'LEGACY_ERROR_EVENT' WHEN N'OnTaskFailed' THEN 'LEGACY_TASK_FAILED_EVENT' ELSE 'LEGACY_CANCEL_REQUEST' END,
+                    SELECT 0,CASE
+                                   WHEN CONVERT(varbinary(256),EventName)=CONVERT(varbinary(256),N'OnProgress') THEN 'LEGACY_PROGRESS_EVENT'
+                                   WHEN EventName=N'OnError' THEN 'LEGACY_ERROR_EVENT'
+                                   WHEN EventName=N'OnTaskFailed' THEN 'LEGACY_TASK_FAILED_EVENT'
+                                   ELSE 'LEGACY_CANCEL_REQUEST'
+                               END,
                         CASE EventName WHEN N'OnError' THEN 'ERROR' WHEN N'OnTaskFailed' THEN 'WARNING' ELSE 'INFO' END,@ExecutionId,'RUNTIME_OBSERVED',N'Legacy event buffer',LogId,
-                        N'Das Ereignis ist im begrenzten Logpuffer beobachtet; Meldungstext und zeitliche Folge belegen keine technische Root Cause.'
-                    FROM [#SsisLegacyLogAnalysis_Buffer] WHERE EventName IN(N'OnError',N'OnTaskFailed',N'OnQueryCancel');
+                        CASE WHEN CONVERT(varbinary(256),EventName)=CONVERT(varbinary(256),N'OnProgress')
+                             THEN N'OnProgress im Logpuffer beobachtet. Kein Fortschrittsprozentsatz oder Laufzeitnachweis.'
+                             ELSE N'Das Ereignis ist im begrenzten Logpuffer beobachtet; Meldungstext und zeitliche Folge belegen keine technische Root Cause.'
+                        END
+                    FROM [#SsisLegacyLogAnalysis_Buffer]
+                    WHERE EventName IN(N'OnError',N'OnTaskFailed',N'OnQueryCancel')
+                       OR CONVERT(varbinary(256),EventName)=CONVERT(varbinary(256),N'OnProgress');
                     INSERT [#SsisLegacyLogAnalysis_Findings]
                     SELECT 0,QualityCode,Severity,@ExecutionId,'DERIVED',N'Legacy event buffer',NULL,Detail FROM [#SsisLegacyLogAnalysis_LoggingQuality] WHERE Severity='WARNING';
                     ;WITH f AS(SELECT *,ROW_NUMBER() OVER(ORDER BY CASE WHEN LogId IS NULL THEN 1 ELSE 0 END,LogId,FindingCode) AS n FROM [#SsisLegacyLogAnalysis_Findings]) UPDATE f SET FindingOrdinal=CONVERT(int,n);
@@ -130043,8 +130059,10 @@ BEGIN
                         SUM(CONVERT(bigint,CASE WHEN EventName=N'OnPostExecute' THEN 1 ELSE 0 END)) AS ExecuteEnds,
                         SUM(CONVERT(bigint,CASE WHEN EventName=N'OnPreValidate' THEN 1 ELSE 0 END)) AS ValidateStarts,
                         SUM(CONVERT(bigint,CASE WHEN EventName=N'OnPostValidate' THEN 1 ELSE 0 END)) AS ValidateEnds,
-                        SUM(CONVERT(bigint,CASE WHEN EventName IN(N'PackageStart',N'PackageEnd',N'OnError',N'OnTaskFailed',N'OnWarning',N'OnQueryCancel') THEN 1 ELSE 0 END)) AS KnownOther,
-                        SUM(CONVERT(bigint,CASE WHEN EventName NOT IN(N'OnPreExecute',N'OnPostExecute',N'OnPreValidate',N'OnPostValidate',N'PackageStart',N'PackageEnd',N'OnError',N'OnTaskFailed',N'OnWarning',N'OnQueryCancel') THEN 1 ELSE 0 END)) AS UnknownNames,
+                        SUM(CONVERT(bigint,CASE WHEN EventName IN(N'PackageStart',N'PackageEnd',N'OnError',N'OnTaskFailed',N'OnWarning',N'OnQueryCancel')
+                            OR CONVERT(varbinary(256),EventName)=CONVERT(varbinary(256),N'OnProgress') THEN 1 ELSE 0 END)) AS KnownOther,
+                        SUM(CONVERT(bigint,CASE WHEN EventName NOT IN(N'OnPreExecute',N'OnPostExecute',N'OnPreValidate',N'OnPostValidate',N'PackageStart',N'PackageEnd',N'OnError',N'OnTaskFailed',N'OnWarning',N'OnQueryCancel')
+                            AND NOT (CONVERT(varbinary(256),EventName)=CONVERT(varbinary(256),N'OnProgress')) THEN 1 ELSE 0 END)) AS UnknownNames,
                         SUM(CONVERT(bigint,CASE WHEN EventName IS NULL THEN 1 ELSE 0 END)) AS MissingNames,
                         SUM(CONVERT(bigint,CASE WHEN EventTime IS NULL THEN 1 ELSE 0 END)) AS MissingTimes
                     FROM [#SsisLegacyLogAnalysis_Buffer]
@@ -180933,6 +180951,9 @@ SELECT CONVERT(sysname,N'monitor') AS [SchemaName],CONVERT(sysname,N'USP_SsisLeg
             + NCHAR(10)
             + NCHAR(10)
             + N'Bei @Hilfe=1 kommt genau ein Resultset mit SkillFormatVersion, SchemaName, ObjectName und SkillMarkdown hinzu; bestehende PRINT-Hinweise bleiben erhalten.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'OnProgress-Zeilen mit exakt übereinstimmendem Ereignisnamen erscheinen als LEGACY_PROGRESS_EVENT mit INFO, RUNTIME_OBSERVED und der ursprünglichen LogId in findings. Die Auswertung benötigt keinen Meldungstext. Sie bestimmt weder einen Fortschrittsprozentsatz noch eine Laufzeitprognose. Fehlende Zeilen belegen keinen Stillstand. Bei aktivierter Taskanalyse zählt die Loggingabdeckung diese Zeilen als bekannte sonstige Ereignisse.'
             + NCHAR(10)
             + NCHAR(10)
             + N'## Beispiel'

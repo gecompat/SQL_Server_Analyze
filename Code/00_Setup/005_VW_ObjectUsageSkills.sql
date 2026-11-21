@@ -39259,6 +39259,9 @@ SELECT CONVERT(sysname,N'monitor') AS [SchemaName],CONVERT(sysname,N'USP_SsisLeg
             + N'Bei @Hilfe=1 kommt genau ein Resultset mit SkillFormatVersion, SchemaName, ObjectName und SkillMarkdown hinzu; bestehende PRINT-Hinweise bleiben erhalten.'
             + NCHAR(10)
             + NCHAR(10)
+            + N'OnProgress-Zeilen mit exakt übereinstimmendem Ereignisnamen erscheinen als LEGACY_PROGRESS_EVENT mit INFO, RUNTIME_OBSERVED und der ursprünglichen LogId in findings. Die Auswertung benötigt keinen Meldungstext. Sie bestimmt weder einen Fortschrittsprozentsatz noch eine Laufzeitprognose. Fehlende Zeilen belegen keinen Stillstand. Bei aktivierter Taskanalyse zählt die Loggingabdeckung diese Zeilen als bekannte sonstige Ereignisse.'
+            + NCHAR(10)
+            + NCHAR(10)
             + N'## Beispiel'
             + NCHAR(10)
             + NCHAR(10)

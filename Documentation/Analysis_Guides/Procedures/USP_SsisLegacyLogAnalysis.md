@@ -272,6 +272,8 @@ beobachtete Ereignisarten und konkrete Zuordnungsgrenzen. NULL-Source-IDs
 bleiben einzelne ursprüngliche Log-IDs. Namen sind keine Identität;
 ordinal verschiedene Namen einer ID setzen das Konfliktflag.
 
+OnProgress-Zeilen mit exakt übereinstimmendem Ereignisnamen erscheinen als LEGACY_PROGRESS_EVENT mit INFO, RUNTIME_OBSERVED und der ursprünglichen LogId in findings. Die Auswertung benötigt keinen Meldungstext. Sie bestimmt weder einen Fortschrittsprozentsatz noch eine Laufzeitprognose. Fehlende Zeilen belegen keinen Stillstand. Bei aktivierter Taskanalyse zählen sie in `KnownOtherEventCount`. [Microsoft-Dokumentation zum SSIS-Logging](https://learn.microsoft.com/en-us/sql/integration-services/performance/integration-services-ssis-logging)
+
 ## So lesen
 
 IncludeMessages=1 ist der Default für alle Ereignisarten. Dadurch bleiben auch
