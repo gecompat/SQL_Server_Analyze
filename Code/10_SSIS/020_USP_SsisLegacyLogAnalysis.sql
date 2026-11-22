@@ -165,7 +165,7 @@ Grenze       : Keine Quellaktionen; Meldungstexte bleiben Laufzeitausgaben.
 -- 
 -- Der exakt gespeicherte Ereignisname Diagnostic erzeugt einen INFO-Befund LEGACY_DIAGNOSTIC_EVENT mit RUNTIME_OBSERVED und der ursprünglichen LogId in findings. Der Befund wertet keinen Meldungstext aus. Der Ereignisname allein belegt keinen konkreten Provideraufruf oder dessen Dauer. Bei aktivierter Taskanalyse zählt das Ereignis in KnownOtherEventCount.
 -- 
--- Bei aktivierter Taskanalyse und Meldungstextaufnahme kann ein eindeutiges Diagnostic-Meldungspaar den INFO-Befund LEGACY_EXTERNAL_REQUEST_PAIR mit DERIVED auslösen. Die Erkennung gilt für die belegten englischen Profile IDBInitialize::Initialize, IDBCreateSession::CreateSession, IDBCreateCommand::CreateCommand, ICommandText::SetCommandText und IGetDataSource::GetDataSource mit DataCode 0 und dem gemeldeten Zusatz succeeded. Sie verlangt pro Methode genau eine passende Start- und Endmeldung derselben Ausführung und Quelle im nicht gekappten Puffer, eine aufsteigende LogId und nicht rückläufige Zeitstempel. Der Befund enthält die ursprüngliche Pre-LogId und nennt die Post-LogId. Er gibt weder den Meldungstext noch eine gemessene Aufrufdauer aus.
+-- Bei aktivierter Taskanalyse und Meldungstextaufnahme kann ein eindeutiges Diagnostic-Meldungspaar den INFO-Befund LEGACY_EXTERNAL_REQUEST_PAIR mit DERIVED auslösen. Die Erkennung gilt für die belegten englischen Profile IDBInitialize::Initialize, IDBCreateSession::CreateSession, IDBCreateCommand::CreateCommand, ICommandText::SetCommandText, IGetDataSource::GetDataSource und ICommandProperties::SetProperties mit DataCode 0 und dem gemeldeten Zusatz succeeded. Sie verlangt pro Methode genau eine passende Start- und Endmeldung derselben Ausführung und Quelle im nicht gekappten Puffer, eine aufsteigende LogId und nicht rückläufige Zeitstempel. Der Befund enthält die ursprüngliche Pre-LogId und nennt die Post-LogId. Er gibt weder den Meldungstext noch eine gemessene Aufrufdauer aus.
 -- 
 -- ## Beispiel
 -- 
@@ -567,7 +567,7 @@ BEGIN
             + N'Der exakt gespeicherte Ereignisname Diagnostic erzeugt einen INFO-Befund LEGACY_DIAGNOSTIC_EVENT mit RUNTIME_OBSERVED und der ursprünglichen LogId in findings. Der Befund wertet keinen Meldungstext aus. Der Ereignisname allein belegt keinen konkreten Provideraufruf oder dessen Dauer. Bei aktivierter Taskanalyse zählt das Ereignis in KnownOtherEventCount.'
             + NCHAR(10)
             + NCHAR(10)
-            + N'Bei aktivierter Taskanalyse und Meldungstextaufnahme kann ein eindeutiges Diagnostic-Meldungspaar den INFO-Befund LEGACY_EXTERNAL_REQUEST_PAIR mit DERIVED auslösen. Die Erkennung gilt für die belegten englischen Profile IDBInitialize::Initialize, IDBCreateSession::CreateSession, IDBCreateCommand::CreateCommand, ICommandText::SetCommandText und IGetDataSource::GetDataSource mit DataCode 0 und dem gemeldeten Zusatz succeeded. Sie verlangt pro Methode genau eine passende Start- und Endmeldung derselben Ausführung und Quelle im nicht gekappten Puffer, eine aufsteigende LogId und nicht rückläufige Zeitstempel. Der Befund enthält die ursprüngliche Pre-LogId und nennt die Post-LogId. Er gibt weder den Meldungstext noch eine gemessene Aufrufdauer aus.'
+            + N'Bei aktivierter Taskanalyse und Meldungstextaufnahme kann ein eindeutiges Diagnostic-Meldungspaar den INFO-Befund LEGACY_EXTERNAL_REQUEST_PAIR mit DERIVED auslösen. Die Erkennung gilt für die belegten englischen Profile IDBInitialize::Initialize, IDBCreateSession::CreateSession, IDBCreateCommand::CreateCommand, ICommandText::SetCommandText, IGetDataSource::GetDataSource und ICommandProperties::SetProperties mit DataCode 0 und dem gemeldeten Zusatz succeeded. Sie verlangt pro Methode genau eine passende Start- und Endmeldung derselben Ausführung und Quelle im nicht gekappten Puffer, eine aufsteigende LogId und nicht rückläufige Zeitstempel. Der Befund enthält die ursprüngliche Pre-LogId und nennt die Post-LogId. Er gibt weder den Meldungstext noch eine gemessene Aufrufdauer aus.'
             + NCHAR(10)
             + NCHAR(10)
             + N'## Beispiel'
@@ -1435,7 +1435,9 @@ BEGIN
                                 (N'IDBInitialize::Initialize',0,N'ExternalRequest_pre: The object is ready to make the following external request: ''IDBInitialize::Initialize''.'),
                                 (N'IDBInitialize::Initialize',1,N'ExternalRequest_post: ''IDBInitialize::Initialize succeeded''. The external request has completed.'),
                                 (N'IDBCreateSession::CreateSession',0,N'ExternalRequest_pre: The object is ready to make the following external request: ''IDBCreateSession::CreateSession''.'),
-                                (N'IDBCreateSession::CreateSession',1,N'ExternalRequest_post: ''IDBCreateSession::CreateSession succeeded''. The external request has completed.')
+                                (N'IDBCreateSession::CreateSession',1,N'ExternalRequest_post: ''IDBCreateSession::CreateSession succeeded''. The external request has completed.'),
+                                (N'ICommandProperties::SetProperties',0,N'ExternalRequest_pre: The object is ready to make the following external request: ''ICommandProperties::SetProperties''.'),
+                                (N'ICommandProperties::SetProperties',1,N'ExternalRequest_post: ''ICommandProperties::SetProperties succeeded''. The external request has completed.')
                             ) AS profile([Method],[Phase],[Text])
                             WHERE CONVERT(varbinary(256),b.[EventName])=CONVERT(varbinary(256),N'Diagnostic')
                               AND DATALENGTH(b.[EventName])=DATALENGTH(N'Diagnostic')
