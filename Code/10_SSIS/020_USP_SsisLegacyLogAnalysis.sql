@@ -159,6 +159,8 @@ Grenze       : Keine Quellaktionen; Meldungstexte bleiben Laufzeitausgaben.
 -- 
 -- Der exakt gespeicherte Ereignisname OnVariableValueChanged erzeugt einen INFO-Befund LEGACY_VARIABLE_CHANGE_EVENT mit RUNTIME_OBSERVED und der ursprünglichen LogId in findings. Die Auswertung leitet aus der Meldung weder Variablennamen noch alte oder neue Werte ab. Bei aktivierter Taskanalyse zählt das Ereignis in KnownOtherEventCount.
 -- 
+-- Der exakt gespeicherte Ereignisname OnExecStatusChanged erzeugt einen INFO-Befund LEGACY_EXEC_STATUS_CHANGE_EVENT mit RUNTIME_OBSERVED und der ursprünglichen LogId in findings. Der Ereignisname unterscheidet nicht zwischen Anhalten und Fortsetzen eines Tasks beim Debuggen. Der Befund wertet keinen Meldungstext aus. Bei aktivierter Taskanalyse zählt das Ereignis in KnownOtherEventCount.
+-- 
 -- ## Beispiel
 -- 
 -- ```sql
@@ -548,6 +550,9 @@ BEGIN
             + NCHAR(10)
             + NCHAR(10)
             + N'Der exakt gespeicherte Ereignisname OnVariableValueChanged erzeugt einen INFO-Befund LEGACY_VARIABLE_CHANGE_EVENT mit RUNTIME_OBSERVED und der ursprünglichen LogId in findings. Die Auswertung leitet aus der Meldung weder Variablennamen noch alte oder neue Werte ab. Bei aktivierter Taskanalyse zählt das Ereignis in KnownOtherEventCount.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'Der exakt gespeicherte Ereignisname OnExecStatusChanged erzeugt einen INFO-Befund LEGACY_EXEC_STATUS_CHANGE_EVENT mit RUNTIME_OBSERVED und der ursprünglichen LogId in findings. Der Ereignisname unterscheidet nicht zwischen Anhalten und Fortsetzen eines Tasks beim Debuggen. Der Befund wertet keinen Meldungstext aus. Bei aktivierter Taskanalyse zählt das Ereignis in KnownOtherEventCount.'
             + NCHAR(10)
             + NCHAR(10)
             + N'## Beispiel'
@@ -1362,7 +1367,7 @@ BEGIN
                           ('EVENT_NAME_MISSING','WARNING',(SELECT COUNT_BIG(*) FROM [#SsisLegacyLogAnalysis_Buffer] WHERE EventName IS NULL),N'Ein Ereignisname fehlt.',1),
                           ('EVENT_TIME_MISSING','WARNING',(SELECT COUNT_BIG(*) FROM [#SsisLegacyLogAnalysis_Buffer] WHERE EventTime IS NULL),N'Ein Ereigniszeitpunkt fehlt.',1),
                           ('NON_MONOTONIC_TIME','WARNING',(SELECT COUNT_BIG(*) FROM (SELECT EventTime,LAG(EventTime) OVER(ORDER BY LogId) AS PreviousTime FROM [#SsisLegacyLogAnalysis_Buffer]) AS b WHERE EventTime<PreviousTime),N'Zeitwerte sind gegenüber der protokollierten ID-Reihenfolge rückläufig.',1),
-                          ('UNKNOWN_EVENT_NAME','WARNING',(SELECT COUNT_BIG(*) FROM [#SsisLegacyLogAnalysis_Buffer] WHERE EventName NOT IN(N'OnError',N'OnTaskFailed',N'OnWarning',N'OnQueryCancel',N'OnPreValidate',N'OnPostValidate',N'OnPreExecute',N'OnPostExecute',N'PackageStart',N'PackageEnd') AND NOT (CONVERT(varbinary(256),EventName) IN(CONVERT(varbinary(256),N'OnProgress'),CONVERT(varbinary(256),N'OnVariableValueChanged')))),N'Der gespeicherte Ereignisname besitzt hier keine eigene Interpretation.',1),
+                          ('UNKNOWN_EVENT_NAME','WARNING',(SELECT COUNT_BIG(*) FROM [#SsisLegacyLogAnalysis_Buffer] WHERE EventName NOT IN(N'OnError',N'OnTaskFailed',N'OnWarning',N'OnQueryCancel',N'OnPreValidate',N'OnPostValidate',N'OnPreExecute',N'OnPostExecute',N'PackageStart',N'PackageEnd') AND NOT (CONVERT(varbinary(256),EventName) IN(CONVERT(varbinary(256),N'OnProgress'),CONVERT(varbinary(256),N'OnVariableValueChanged'),CONVERT(varbinary(256),N'OnExecStatusChanged')))),N'Der gespeicherte Ereignisname besitzt hier keine eigene Interpretation.',1),
                           ('NO_ERROR_EVENTS_OBSERVED','INFO',CONVERT(bigint,NULL),N'Kein OnError beobachtet; kein Nachweis von Fehlerfreiheit.',CASE WHEN NOT EXISTS(SELECT 1 FROM [#SsisLegacyLogAnalysis_Buffer] WHERE EventName=N'OnError') THEN 1 ELSE 0 END),
                           ('ERROR_MESSAGE_MISSING','WARNING',(SELECT COUNT_BIG(*) FROM [#SsisLegacyLogAnalysis_Buffer] WHERE EventName IN(N'OnError',N'OnTaskFailed') AND (MessageText IS NULL OR DATALENGTH(MessageText)=0)),N'Ein eingeschlossener Fehlertext fehlt oder ist leer; die Ursache bleibt unbekannt.',CONVERT(int,@IncludeMessages))
                         ) AS v(Code,Severity,Affected,Detail,Enabled) WHERE v.Enabled=1 AND (v.Affected IS NULL OR v.Affected>0);
@@ -1373,6 +1378,7 @@ BEGIN
                     SELECT 0,CASE
                                    WHEN CONVERT(varbinary(256),EventName)=CONVERT(varbinary(256),N'OnProgress') THEN 'LEGACY_PROGRESS_EVENT'
                                    WHEN CONVERT(varbinary(256),EventName)=CONVERT(varbinary(256),N'OnVariableValueChanged') THEN 'LEGACY_VARIABLE_CHANGE_EVENT'
+                                   WHEN CONVERT(varbinary(256),EventName)=CONVERT(varbinary(256),N'OnExecStatusChanged') THEN 'LEGACY_EXEC_STATUS_CHANGE_EVENT'
                                    WHEN EventName=N'OnError' THEN 'LEGACY_ERROR_EVENT'
                                    WHEN EventName=N'OnTaskFailed' THEN 'LEGACY_TASK_FAILED_EVENT'
                                    ELSE 'LEGACY_CANCEL_REQUEST'
@@ -1382,11 +1388,13 @@ BEGIN
                              THEN N'OnProgress im Logpuffer beobachtet. Kein Fortschrittsprozentsatz oder Laufzeitnachweis.'
                              WHEN CONVERT(varbinary(256),EventName)=CONVERT(varbinary(256),N'OnVariableValueChanged')
                              THEN N'OnVariableValueChanged im Logpuffer beobachtet. Variablenname und Werte werden nicht aus der Meldung abgeleitet.'
+                             WHEN CONVERT(varbinary(256),EventName)=CONVERT(varbinary(256),N'OnExecStatusChanged')
+                             THEN N'OnExecStatusChanged im Logpuffer beobachtet. Der Ereignisname unterscheidet nicht zwischen Anhalten und Fortsetzen beim Debuggen.'
                              ELSE N'Das Ereignis ist im begrenzten Logpuffer beobachtet; Meldungstext und zeitliche Folge belegen keine technische Root Cause.'
                         END
                     FROM [#SsisLegacyLogAnalysis_Buffer]
                     WHERE EventName IN(N'OnError',N'OnTaskFailed',N'OnQueryCancel')
-                       OR CONVERT(varbinary(256),EventName) IN(CONVERT(varbinary(256),N'OnProgress'),CONVERT(varbinary(256),N'OnVariableValueChanged'));
+                       OR CONVERT(varbinary(256),EventName) IN(CONVERT(varbinary(256),N'OnProgress'),CONVERT(varbinary(256),N'OnVariableValueChanged'),CONVERT(varbinary(256),N'OnExecStatusChanged'));
                     INSERT [#SsisLegacyLogAnalysis_Findings]
                     SELECT 0,QualityCode,Severity,@ExecutionId,'DERIVED',N'Legacy event buffer',NULL,Detail FROM [#SsisLegacyLogAnalysis_LoggingQuality] WHERE Severity='WARNING';
                     ;WITH f AS(SELECT *,ROW_NUMBER() OVER(ORDER BY CASE WHEN LogId IS NULL THEN 1 ELSE 0 END,LogId,FindingCode) AS n FROM [#SsisLegacyLogAnalysis_Findings]) UPDATE f SET FindingOrdinal=CONVERT(int,n);
@@ -1443,9 +1451,9 @@ BEGIN
                         SUM(CONVERT(bigint,CASE WHEN EventName=N'OnPreValidate' THEN 1 ELSE 0 END)) AS ValidateStarts,
                         SUM(CONVERT(bigint,CASE WHEN EventName=N'OnPostValidate' THEN 1 ELSE 0 END)) AS ValidateEnds,
                         SUM(CONVERT(bigint,CASE WHEN EventName IN(N'PackageStart',N'PackageEnd',N'OnError',N'OnTaskFailed',N'OnWarning',N'OnQueryCancel')
-                            OR CONVERT(varbinary(256),EventName) IN(CONVERT(varbinary(256),N'OnProgress'),CONVERT(varbinary(256),N'OnVariableValueChanged')) THEN 1 ELSE 0 END)) AS KnownOther,
+                            OR CONVERT(varbinary(256),EventName) IN(CONVERT(varbinary(256),N'OnProgress'),CONVERT(varbinary(256),N'OnVariableValueChanged'),CONVERT(varbinary(256),N'OnExecStatusChanged')) THEN 1 ELSE 0 END)) AS KnownOther,
                         SUM(CONVERT(bigint,CASE WHEN EventName NOT IN(N'OnPreExecute',N'OnPostExecute',N'OnPreValidate',N'OnPostValidate',N'PackageStart',N'PackageEnd',N'OnError',N'OnTaskFailed',N'OnWarning',N'OnQueryCancel')
-                            AND NOT (CONVERT(varbinary(256),EventName) IN(CONVERT(varbinary(256),N'OnProgress'),CONVERT(varbinary(256),N'OnVariableValueChanged'))) THEN 1 ELSE 0 END)) AS UnknownNames,
+                            AND NOT (CONVERT(varbinary(256),EventName) IN(CONVERT(varbinary(256),N'OnProgress'),CONVERT(varbinary(256),N'OnVariableValueChanged'),CONVERT(varbinary(256),N'OnExecStatusChanged'))) THEN 1 ELSE 0 END)) AS UnknownNames,
                         SUM(CONVERT(bigint,CASE WHEN EventName IS NULL THEN 1 ELSE 0 END)) AS MissingNames,
                         SUM(CONVERT(bigint,CASE WHEN EventTime IS NULL THEN 1 ELSE 0 END)) AS MissingTimes
                     FROM [#SsisLegacyLogAnalysis_Buffer]

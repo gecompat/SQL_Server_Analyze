@@ -276,6 +276,8 @@ OnProgress-Zeilen mit exakt übereinstimmendem Ereignisnamen erscheinen als LEGA
 
 Der exakt gespeicherte Ereignisname OnVariableValueChanged erzeugt einen INFO-Befund LEGACY_VARIABLE_CHANGE_EVENT mit RUNTIME_OBSERVED und der ursprünglichen LogId in findings. Die Auswertung leitet aus der Meldung weder Variablennamen noch alte oder neue Werte ab. Bei aktivierter Taskanalyse zählt das Ereignis in KnownOtherEventCount.
 
+Der exakt gespeicherte Ereignisname OnExecStatusChanged erzeugt einen INFO-Befund LEGACY_EXEC_STATUS_CHANGE_EVENT mit RUNTIME_OBSERVED und der ursprünglichen LogId in findings. Der Ereignisname unterscheidet nicht zwischen Anhalten und Fortsetzen eines Tasks beim Debuggen. Der Befund wertet keinen Meldungstext aus. Bei aktivierter Taskanalyse zählt das Ereignis in KnownOtherEventCount.
+
 ## So lesen
 
 IncludeMessages=1 ist der Default für alle Ereignisarten. Dadurch bleiben auch
