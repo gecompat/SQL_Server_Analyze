@@ -128790,7 +128790,7 @@ Grenze       : Keine Quellaktionen; Meldungstexte bleiben Laufzeitausgaben.
 --
 -- Der exakt gespeicherte Ereignisname Diagnostic erzeugt einen INFO-Befund LEGACY_DIAGNOSTIC_EVENT mit RUNTIME_OBSERVED und der ursprünglichen LogId in findings. Der Befund wertet keinen Meldungstext aus. Der Ereignisname allein belegt keinen konkreten Provideraufruf oder dessen Dauer. Bei aktivierter Taskanalyse zählt das Ereignis in KnownOtherEventCount.
 --
--- Bei aktivierter Taskanalyse und Meldungstextaufnahme kann ein eindeutiges Diagnostic-Meldungspaar den INFO-Befund LEGACY_EXTERNAL_REQUEST_PAIR mit DERIVED auslösen. Die Erkennung gilt für das belegte englische Profil IDBCreateCommand::CreateCommand mit DataCode 0 und dem gemeldeten Zusatz succeeded. Sie verlangt je genau eine passende Start- und Endmeldung derselben Ausführung und Quelle im nicht gekappten Puffer, eine aufsteigende LogId und nicht rückläufige Zeitstempel. Der Befund enthält die ursprüngliche Pre-LogId und nennt die Post-LogId. Er gibt weder den Meldungstext noch eine gemessene Aufrufdauer aus.
+-- Bei aktivierter Taskanalyse und Meldungstextaufnahme kann ein eindeutiges Diagnostic-Meldungspaar den INFO-Befund LEGACY_EXTERNAL_REQUEST_PAIR mit DERIVED auslösen. Die Erkennung gilt für die belegten englischen Profile IDBCreateCommand::CreateCommand und ICommandText::SetCommandText mit DataCode 0 und dem gemeldeten Zusatz succeeded. Sie verlangt pro Methode genau eine passende Start- und Endmeldung derselben Ausführung und Quelle im nicht gekappten Puffer, eine aufsteigende LogId und nicht rückläufige Zeitstempel. Der Befund enthält die ursprüngliche Pre-LogId und nennt die Post-LogId. Er gibt weder den Meldungstext noch eine gemessene Aufrufdauer aus.
 --
 -- ## Beispiel
 --
@@ -129192,7 +129192,7 @@ BEGIN
             + N'Der exakt gespeicherte Ereignisname Diagnostic erzeugt einen INFO-Befund LEGACY_DIAGNOSTIC_EVENT mit RUNTIME_OBSERVED und der ursprünglichen LogId in findings. Der Befund wertet keinen Meldungstext aus. Der Ereignisname allein belegt keinen konkreten Provideraufruf oder dessen Dauer. Bei aktivierter Taskanalyse zählt das Ereignis in KnownOtherEventCount.'
             + NCHAR(10)
             + NCHAR(10)
-            + N'Bei aktivierter Taskanalyse und Meldungstextaufnahme kann ein eindeutiges Diagnostic-Meldungspaar den INFO-Befund LEGACY_EXTERNAL_REQUEST_PAIR mit DERIVED auslösen. Die Erkennung gilt für das belegte englische Profil IDBCreateCommand::CreateCommand mit DataCode 0 und dem gemeldeten Zusatz succeeded. Sie verlangt je genau eine passende Start- und Endmeldung derselben Ausführung und Quelle im nicht gekappten Puffer, eine aufsteigende LogId und nicht rückläufige Zeitstempel. Der Befund enthält die ursprüngliche Pre-LogId und nennt die Post-LogId. Er gibt weder den Meldungstext noch eine gemessene Aufrufdauer aus.'
+            + N'Bei aktivierter Taskanalyse und Meldungstextaufnahme kann ein eindeutiges Diagnostic-Meldungspaar den INFO-Befund LEGACY_EXTERNAL_REQUEST_PAIR mit DERIVED auslösen. Die Erkennung gilt für die belegten englischen Profile IDBCreateCommand::CreateCommand und ICommandText::SetCommandText mit DataCode 0 und dem gemeldeten Zusatz succeeded. Sie verlangt pro Methode genau eine passende Start- und Endmeldung derselben Ausführung und Quelle im nicht gekappten Puffer, eine aufsteigende LogId und nicht rückläufige Zeitstempel. Der Befund enthält die ursprüngliche Pre-LogId und nennt die Post-LogId. Er gibt weder den Meldungstext noch eine gemessene Aufrufdauer aus.'
             + NCHAR(10)
             + NCHAR(10)
             + N'## Beispiel'
@@ -130046,13 +130046,16 @@ BEGIN
                     IF @IncludeTaskAnalysis=1 AND @IncludeMessages=1 AND @Truncated=0
                         AND SYSUTCDATETIME()<@Deadline
                     BEGIN
-                        DECLARE @ExternalRequestPre nvarchar(160)=N'ExternalRequest_pre: The object is ready to make the following external request: ''IDBCreateCommand::CreateCommand''.';
-                        DECLARE @ExternalRequestPost nvarchar(160)=N'ExternalRequest_post: ''IDBCreateCommand::CreateCommand succeeded''. The external request has completed.';
                         ;WITH ProfileRows AS
                         (
-                            SELECT b.[ExecutionId],b.[SourceId],b.[LogId],b.[EventTime],profile.[Phase]
+                            SELECT b.[ExecutionId],b.[SourceId],b.[LogId],b.[EventTime],profile.[Method],profile.[Phase]
                             FROM [#SsisLegacyLogAnalysis_Buffer] AS b
-                            CROSS JOIN (VALUES(0,@ExternalRequestPre),(1,@ExternalRequestPost)) AS profile([Phase],[Text])
+                            CROSS JOIN (VALUES
+                                (N'IDBCreateCommand::CreateCommand',0,N'ExternalRequest_pre: The object is ready to make the following external request: ''IDBCreateCommand::CreateCommand''.'),
+                                (N'IDBCreateCommand::CreateCommand',1,N'ExternalRequest_post: ''IDBCreateCommand::CreateCommand succeeded''. The external request has completed.'),
+                                (N'ICommandText::SetCommandText',0,N'ExternalRequest_pre: The object is ready to make the following external request: ''ICommandText::SetCommandText''.'),
+                                (N'ICommandText::SetCommandText',1,N'ExternalRequest_post: ''ICommandText::SetCommandText succeeded''. The external request has completed.')
+                            ) AS profile([Method],[Phase],[Text])
                             WHERE CONVERT(varbinary(256),b.[EventName])=CONVERT(varbinary(256),N'Diagnostic')
                               AND DATALENGTH(b.[EventName])=DATALENGTH(N'Diagnostic')
                               AND b.[DataCode]=0
@@ -130062,18 +130065,18 @@ BEGIN
                         ),
                         UniquePairs AS
                         (
-                            SELECT [ExecutionId],
+                            SELECT [ExecutionId],[Method],
                                 MIN(CASE WHEN [Phase]=0 THEN [LogId] END) AS [PreLogId],
                                 MIN(CASE WHEN [Phase]=1 THEN [LogId] END) AS [PostLogId],
                                 MIN(CASE WHEN [Phase]=0 THEN [EventTime] END) AS [PreTime],
                                 MIN(CASE WHEN [Phase]=1 THEN [EventTime] END) AS [PostTime]
                             FROM ProfileRows
-                            GROUP BY [ExecutionId],[SourceId]
+                            GROUP BY [ExecutionId],[SourceId],[Method]
                             HAVING COUNT_BIG(*)=2 AND MIN([Phase])=0 AND MAX([Phase])=1
                         )
                         INSERT [#SsisLegacyLogAnalysis_Findings]
                         SELECT 0,'LEGACY_EXTERNAL_REQUEST_PAIR','INFO',[ExecutionId],'DERIVED',N'Legacy event buffer',[PreLogId],
-                            CONCAT(N'IDBCreateCommand::CreateCommand als eindeutiges Meldungspaar beobachtet. Post-LogId: ',
+                            CONCAT([Method],N' als eindeutiges Meldungspaar beobachtet. Post-LogId: ',
                                 [PostLogId],N'. Die Meldungen belegen keine gemessene Aufrufdauer.')
                         FROM UniquePairs
                         WHERE [PreLogId]<[PostLogId] AND [PreTime]<=[PostTime];
@@ -181040,7 +181043,7 @@ SELECT CONVERT(sysname,N'monitor') AS [SchemaName],CONVERT(sysname,N'USP_SsisLeg
             + N'Der exakt gespeicherte Ereignisname Diagnostic erzeugt einen INFO-Befund LEGACY_DIAGNOSTIC_EVENT mit RUNTIME_OBSERVED und der ursprünglichen LogId in findings. Der Befund wertet keinen Meldungstext aus. Der Ereignisname allein belegt keinen konkreten Provideraufruf oder dessen Dauer. Bei aktivierter Taskanalyse zählt das Ereignis in KnownOtherEventCount.'
             + NCHAR(10)
             + NCHAR(10)
-            + N'Bei aktivierter Taskanalyse und Meldungstextaufnahme kann ein eindeutiges Diagnostic-Meldungspaar den INFO-Befund LEGACY_EXTERNAL_REQUEST_PAIR mit DERIVED auslösen. Die Erkennung gilt für das belegte englische Profil IDBCreateCommand::CreateCommand mit DataCode 0 und dem gemeldeten Zusatz succeeded. Sie verlangt je genau eine passende Start- und Endmeldung derselben Ausführung und Quelle im nicht gekappten Puffer, eine aufsteigende LogId und nicht rückläufige Zeitstempel. Der Befund enthält die ursprüngliche Pre-LogId und nennt die Post-LogId. Er gibt weder den Meldungstext noch eine gemessene Aufrufdauer aus.'
+            + N'Bei aktivierter Taskanalyse und Meldungstextaufnahme kann ein eindeutiges Diagnostic-Meldungspaar den INFO-Befund LEGACY_EXTERNAL_REQUEST_PAIR mit DERIVED auslösen. Die Erkennung gilt für die belegten englischen Profile IDBCreateCommand::CreateCommand und ICommandText::SetCommandText mit DataCode 0 und dem gemeldeten Zusatz succeeded. Sie verlangt pro Methode genau eine passende Start- und Endmeldung derselben Ausführung und Quelle im nicht gekappten Puffer, eine aufsteigende LogId und nicht rückläufige Zeitstempel. Der Befund enthält die ursprüngliche Pre-LogId und nennt die Post-LogId. Er gibt weder den Meldungstext noch eine gemessene Aufrufdauer aus.'
             + NCHAR(10)
             + NCHAR(10)
             + N'## Beispiel'
