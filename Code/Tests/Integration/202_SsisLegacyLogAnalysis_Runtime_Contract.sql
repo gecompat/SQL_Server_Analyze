@@ -586,6 +586,52 @@ IF COALESCE(ISJSON(@Json),0)<>1 OR COALESCE(@Status,'''')<>''AVAILABLE'' OR COAL
  OR EXISTS(SELECT 1 FROM OPENJSON(@Json,N''$.loggingQuality'')
      WITH ([QualityCode] varchar(64) N''$.QualityCode'') WHERE [QualityCode]=''UNKNOWN_EVENT_NAME'')
     THROW 56341,N''LEGACY_VARIABLE_CHANGE_ONLY_STATUS'',1;
+DELETE FROM [dbo].[ExampleSsisLegacy.Log]]Source] WHERE [executionid]=@Id AND [id] IN (111,112);
+
+-- SSIS-001: OnExecStatusChanged ohne Meldungstextinterpretation und ohne Fehlerklassifikation.
+INSERT [dbo].[ExampleSsisLegacy.Log]]Source] VALUES
+ (121,N''OnExecStatusChanged'',N''ExampleTask'',@Source,@Id,''20260101 00:00:01'',''20260102'',0,N''SyntheticExecStatusPayloadExample''),
+ (122,N''OnExecStatusChanged'',N''ExampleTask'',@Source,@Id,''20260101 00:00:02'',''20260102'',0,NULL),
+ (123,N''OnExecStatusChanged '',N''ExampleTask'',@Source,@Id,''20260101 00:00:03'',''20260102'',0,NULL),
+ (124,N''onexecstatuschanged'',N''ExampleTask'',@Source,@Id,''20260101 00:00:04'',''20260102'',0,NULL);
+CREATE TABLE [#ExampleSsisExecStatusFindings]([Seed] int NULL);
+SET @CiOrdinal+=1; SET @CiMarker=CONCAT(N''CI_CASE|202|C029|'',@CiOrdinal,N''|'',CONVERT(varchar(27),SYSUTCDATETIME(),126),N''Z|'',@@SPID,N''|'',@@LOCK_TIMEOUT,N''|-'' ); RAISERROR(N''%s'',10,1,@CiMarker) WITH NOWAIT;
+EXEC [monitor].[USP_SsisLegacyLogAnalysis] @LoggingDatabase=@Db,@LoggingTable=N''ExampleSsisLegacy.Log]Source'',
+    @ExecutionId=@Id,@MaxZeilen=20,@IncludeTaskAnalysis=1,@IncludeMessages=0,@IncludeTimeline=0,
+    @ResultSetArt=''TABLE'',@ResultTablesJson=N''{"findings":"#ExampleSsisExecStatusFindings"}'',
+    @JsonErzeugen=1,@Json=@Json OUTPUT,@StatusCodeOut=@Status OUTPUT,@IsPartialOut=@Partial OUTPUT,@ErrorNumberOut=@Error OUTPUT;
+SET @CiMarker=CONCAT(N''CI_AFTER|202|C029|'',@CiOrdinal,N''|'',CONVERT(varchar(27),SYSUTCDATETIME(),126),N''Z|'',@@SPID,N''|'',@@LOCK_TIMEOUT,N''|-'' ); RAISERROR(N''%s'',10,1,@CiMarker) WITH NOWAIT;
+IF COALESCE(ISJSON(@Json),0)<>1 OR @Error IS NOT NULL
+ OR COALESCE(@Status,'''')<>''AVAILABLE_LIMITED'' OR COALESCE(@Partial,0)<>1
+ OR (SELECT COUNT_BIG(*) FROM [#ExampleSsisExecStatusFindings] WHERE [FindingCode]=''LEGACY_EXEC_STATUS_CHANGE_EVENT'')<>2
+ OR (SELECT COUNT(DISTINCT [LogId]) FROM [#ExampleSsisExecStatusFindings]
+     WHERE [FindingCode]=''LEGACY_EXEC_STATUS_CHANGE_EVENT'' AND [Severity]=''INFO'' AND [EvidenceLevel]=''RUNTIME_OBSERVED''
+       AND [LogId] IN (121,122))<>2
+ OR COALESCE(JSON_QUERY(@Json,N''$.findings''),N'''')<>
+    (SELECT * FROM [#ExampleSsisExecStatusFindings] ORDER BY [FindingOrdinal] FOR JSON PATH,INCLUDE_NULL_VALUES)
+ OR COALESCE(JSON_QUERY(@Json,N''$.errorChain''),N'''')<>N''[]''
+ OR CHARINDEX(N''SyntheticExecStatusPayloadExample'',@Json)>0
+ OR NOT EXISTS(SELECT 1 FROM OPENJSON(@Json,N''$.loggingQuality'')
+    WITH ([QualityCode] varchar(64) N''$.QualityCode'',[AffectedRowCount] bigint N''$.AffectedRowCount'')
+    WHERE [QualityCode]=''UNKNOWN_EVENT_NAME'' AND [AffectedRowCount]=2)
+ OR NOT EXISTS(SELECT 1 FROM OPENJSON(@Json,N''$.taskLoggingCoverage'')
+    WITH ([KnownOtherEventCount] bigint N''$.KnownOtherEventCount'',[UnknownEventNameCount] bigint N''$.UnknownEventNameCount'')
+    WHERE [KnownOtherEventCount]=2 AND [UnknownEventNameCount]=2)
+    THROW 56342,N''LEGACY_EXEC_STATUS_CHANGE_EVENT_CONTRACT'',1;
+DELETE FROM [dbo].[ExampleSsisLegacy.Log]]Source] WHERE [executionid]=@Id AND [id] IN (123,124);
+SET @CiOrdinal+=1; SET @CiMarker=CONCAT(N''CI_CASE|202|C030|'',@CiOrdinal,N''|'',CONVERT(varchar(27),SYSUTCDATETIME(),126),N''Z|'',@@SPID,N''|'',@@LOCK_TIMEOUT,N''|-'' ); RAISERROR(N''%s'',10,1,@CiMarker) WITH NOWAIT;
+EXEC [monitor].[USP_SsisLegacyLogAnalysis] @LoggingDatabase=@Db,@LoggingTable=N''ExampleSsisLegacy.Log]Source'',
+    @ExecutionId=@Id,@MaxZeilen=20,@IncludeTaskAnalysis=1,@IncludeMessages=0,@IncludeTimeline=0,
+    @ResultSetArt=''NONE'',@JsonErzeugen=1,@Json=@Json OUTPUT,@StatusCodeOut=@Status OUTPUT,
+    @IsPartialOut=@Partial OUTPUT,@ErrorNumberOut=@Error OUTPUT;
+SET @CiMarker=CONCAT(N''CI_AFTER|202|C030|'',@CiOrdinal,N''|'',CONVERT(varchar(27),SYSUTCDATETIME(),126),N''Z|'',@@SPID,N''|'',@@LOCK_TIMEOUT,N''|-'' ); RAISERROR(N''%s'',10,1,@CiMarker) WITH NOWAIT;
+IF COALESCE(ISJSON(@Json),0)<>1 OR COALESCE(@Status,'''')<>''AVAILABLE'' OR COALESCE(@Partial,1)<>0
+ OR @Error IS NOT NULL
+ OR (SELECT COUNT_BIG(*) FROM OPENJSON(@Json,N''$.findings'')
+     WITH ([FindingCode] varchar(64) N''$.FindingCode'') WHERE [FindingCode]=''LEGACY_EXEC_STATUS_CHANGE_EVENT'')<>2
+ OR EXISTS(SELECT 1 FROM OPENJSON(@Json,N''$.loggingQuality'')
+     WITH ([QualityCode] varchar(64) N''$.QualityCode'') WHERE [QualityCode]=''UNKNOWN_EVENT_NAME'')
+    THROW 56343,N''LEGACY_EXEC_STATUS_CHANGE_ONLY_STATUS'',1;
 IF @@OPTIONS<>@CallerOptions OR @@LOCK_TIMEOUT<>137 OR @@TRANCOUNT<>@InitialTran
     THROW 56326,N''LEGACY_CALLER_STATE'',1;
 
