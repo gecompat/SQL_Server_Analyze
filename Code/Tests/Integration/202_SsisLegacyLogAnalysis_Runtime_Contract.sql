@@ -726,7 +726,7 @@ IF COALESCE(ISJSON(@Json),0)<>1 OR COALESCE(@Status,'''')<>''AVAILABLE'' OR COAL
     THROW 56347,N''LEGACY_DIAGNOSTIC_ONLY_STATUS'',1;
 -- SSIS-001: Ein quellgebundenes ExternalRequest-Paar und strikte Gegenproben.
 DELETE FROM [dbo].[ExampleSsisLegacy.Log]]Source] WHERE [executionid]=@Id AND [id] IN (141,142);
-DECLARE @PairOtherSource uniqueidentifier=NEWID(),@PairReverseSource uniqueidentifier=NEWID(),@PairVariantSource uniqueidentifier=NEWID();
+DECLARE @PairOtherSource uniqueidentifier=NEWID(),@PairReverseSource uniqueidentifier=NEWID(),@PairVariantSource uniqueidentifier=NEWID(),@PairMixedMethodSource uniqueidentifier=NEWID();
 INSERT [dbo].[ExampleSsisLegacy.Log]]Source] VALUES
  (151,N''Diagnostic'',N''ExampleTask'',@Source,@Id,''20260101 00:00:01'',''20260102'',0,N''ExternalRequest_pre: The object is ready to make the following external request: ''''IDBCreateCommand::CreateCommand''''.''),
  (152,N''Diagnostic'',N''ExampleTask'',@Source,@Id,''20260101 00:00:01'',''20260102'',0,N''ExternalRequest_post: ''''IDBCreateCommand::CreateCommand succeeded''''. The external request has completed.''),
@@ -737,7 +737,14 @@ INSERT [dbo].[ExampleSsisLegacy.Log]]Source] VALUES
  (157,N''Diagnostic'',N''ExampleTask'',@PairReverseSource,@Id,''20260101 00:00:06'',''20260102'',0,N''ExternalRequest_pre: The object is ready to make the following external request: ''''IDBCreateCommand::CreateCommand''''.''),
  (158,N''Diagnostic'',N''ExampleTask'',@PairVariantSource,@Id,''20260101 00:00:07'',''20260102'',0,N''ExternalRequest_pre: The object is ready to make the following external request: ''''IDBCreateCommand::CreateCommand''''.''),
  (159,N''Diagnostic'',N''ExampleTask'',@PairVariantSource,@Id,''20260101 00:00:08'',''20260102'',0,N''ExternalRequest_post: ''''IDBCreateCommand::CreateCommand succeeded''''. The external request has completed. ''),
- (160,N''Diagnostic'',N''ExampleTask'',@PairOtherSource,@Id,''20260101 00:00:09'',''20260102'',0,N''ExternalRequest_post unrelated SyntheticProviderPayloadExample'');
+ (160,N''Diagnostic'',N''ExampleTask'',@PairOtherSource,@Id,''20260101 00:00:09'',''20260102'',0,N''ExternalRequest_post unrelated SyntheticProviderPayloadExample''),
+ (161,N''Diagnostic'',N''ExampleTask'',@Source,@Id,''20260101 00:00:10'',''20260102'',0,N''ExternalRequest_pre: The object is ready to make the following external request: ''''ICommandText::SetCommandText''''.''),
+ (162,N''Diagnostic'',N''ExampleTask'',@Source,@Id,''20260101 00:00:10'',''20260102'',0,N''ExternalRequest_post: ''''ICommandText::SetCommandText succeeded''''. The external request has completed.''),
+ (163,N''Diagnostic'',N''ExampleTask'',@PairMixedMethodSource,@Id,''20260101 00:00:11'',''20260102'',0,N''ExternalRequest_pre: The object is ready to make the following external request: ''''IDBCreateCommand::CreateCommand''''.''),
+ (164,N''Diagnostic'',N''ExampleTask'',@PairMixedMethodSource,@Id,''20260101 00:00:12'',''20260102'',0,N''ExternalRequest_post: ''''ICommandText::SetCommandText succeeded''''. The external request has completed.''),
+ (165,N''Diagnostic'',N''ExampleTask'',@PairOtherSource,@Id,''20260101 00:00:13'',''20260102'',0,N''ExternalRequest_pre: The object is ready to make the following external request: ''''ICommandText::SetCommandText''''.''),
+ (166,N''Diagnostic'',N''ExampleTask'',@PairOtherSource,@Id,''20260101 00:00:14'',''20260102'',0,N''ExternalRequest_pre: The object is ready to make the following external request: ''''ICommandText::SetCommandText''''.''),
+ (167,N''Diagnostic'',N''ExampleTask'',@PairOtherSource,@Id,''20260101 00:00:15'',''20260102'',0,N''ExternalRequest_post: ''''ICommandText::SetCommandText succeeded''''. The external request has completed.'');
 CREATE TABLE [#ExampleSsisExternalRequestFindings]([Seed] int NULL);
 SET @CiOrdinal+=1; SET @CiMarker=CONCAT(N''CI_CASE|202|C035|'',@CiOrdinal,N''|'',CONVERT(varchar(27),SYSUTCDATETIME(),126),N''Z|'',@@SPID,N''|'',@@LOCK_TIMEOUT,N''|-''); RAISERROR(N''%s'',10,1,@CiMarker) WITH NOWAIT;
 EXEC [monitor].[USP_SsisLegacyLogAnalysis] @LoggingDatabase=@Db,@LoggingTable=N''ExampleSsisLegacy.Log]Source'',
@@ -746,10 +753,15 @@ EXEC [monitor].[USP_SsisLegacyLogAnalysis] @LoggingDatabase=@Db,@LoggingTable=N'
     @JsonErzeugen=1,@Json=@Json OUTPUT,@ErrorNumberOut=@Error OUTPUT;
 SET @CiMarker=CONCAT(N''CI_AFTER|202|C035|'',@CiOrdinal,N''|'',CONVERT(varchar(27),SYSUTCDATETIME(),126),N''Z|'',@@SPID,N''|'',@@LOCK_TIMEOUT,N''|-''); RAISERROR(N''%s'',10,1,@CiMarker) WITH NOWAIT;
 IF COALESCE(ISJSON(@Json),0)<>1 OR @Error IS NOT NULL
- OR (SELECT COUNT_BIG(*) FROM [#ExampleSsisExternalRequestFindings] WHERE [FindingCode]=''LEGACY_EXTERNAL_REQUEST_PAIR'')<>1
+ OR (SELECT COUNT_BIG(*) FROM [#ExampleSsisExternalRequestFindings] WHERE [FindingCode]=''LEGACY_EXTERNAL_REQUEST_PAIR'')<>2
  OR NOT EXISTS(SELECT 1 FROM [#ExampleSsisExternalRequestFindings]
       WHERE [FindingCode]=''LEGACY_EXTERNAL_REQUEST_PAIR'' AND [LogId]=151
-        AND [Severity]=''INFO'' AND [EvidenceLevel]=''DERIVED'' AND [Detail] LIKE N''%Post-LogId: 152.%'')
+        AND [Severity]=''INFO'' AND [EvidenceLevel]=''DERIVED''
+        AND [Detail] LIKE N''IDBCreateCommand::CreateCommand%Post-LogId: 152.%'')
+ OR NOT EXISTS(SELECT 1 FROM [#ExampleSsisExternalRequestFindings]
+      WHERE [FindingCode]=''LEGACY_EXTERNAL_REQUEST_PAIR'' AND [LogId]=161
+        AND [Severity]=''INFO'' AND [EvidenceLevel]=''DERIVED''
+        AND [Detail] LIKE N''ICommandText::SetCommandText%Post-LogId: 162.%'')
  OR COALESCE(JSON_QUERY(@Json,N''$.findings''),N'''')<>
     (SELECT * FROM [#ExampleSsisExternalRequestFindings] ORDER BY [FindingOrdinal] FOR JSON PATH,INCLUDE_NULL_VALUES)
  OR COALESCE(JSON_QUERY(@Json,N''$.errorChain''),N'''')<>N''[]''
