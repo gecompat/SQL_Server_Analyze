@@ -128735,7 +128735,7 @@ Grenze       : Keine Quellaktionen; Meldungstexte bleiben Laufzeitausgaben.
 --
 -- **@ErrorMessageOut:** @ErrorMessageOut nvarchar(4000) OUTPUT; Default: NULL. Auslassen: Default NULL. Eintritt setzt NULL. Normaler Pfad: erfasster Fehlertext, falls gesetzt, sonst NULL. Hilfe lässt NULL; SQL-Fehler/THROW können OUTPUT unerreichbar machen. Die Eingabe steuert den Aufruf nicht und wird beim Eintritt verworfen; nur für den Empfang eine Variable des deklarierten Typs mit OUTPUT binden. Beim Auslassen gilt der deklarierte Default NULL.
 --
--- **@IncludeTaskAnalysis:** @IncludeTaskAnalysis ergänzt beobachtete Laufzeiten und Loggingabdeckung: RAW 11 Mengen, SchemaVersion 2; keine Tasktyp-/Konfigurationsbestimmung. Diese Ableitung ist nicht vom Meldungstext abhängig.
+-- **@IncludeTaskAnalysis:** @IncludeTaskAnalysis ergänzt beobachtete Laufzeiten und Loggingabdeckung: RAW 11 Mengen, SchemaVersion 2; keine Tasktyp-/Konfigurationsbestimmung. Laufzeiten und Loggingabdeckung sind vom Meldungstext unabhängig. Der zusätzliche Befund LEGACY_EXTERNAL_REQUEST_PAIR setzt auch @IncludeMessages=1 voraus.
 --
 -- **@IncludeRowFlowAnalysis:** @IncludeRowFlowAnalysis ergänzt OnPipelineRowsSent-Pfade: SchemaVersion 3; RAW 11 Mengen oder mit Taskanalyse 13; keine Paketgesamtmenge.
 --
@@ -128789,6 +128789,8 @@ Grenze       : Keine Quellaktionen; Meldungstexte bleiben Laufzeitausgaben.
 -- Der exakt gespeicherte Ereignisname DiagnosticEx erzeugt einen INFO-Befund LEGACY_DIAGNOSTIC_EX_EVENT mit RUNTIME_OBSERVED und der ursprünglichen LogId in findings. Der Befund wertet keinen Meldungstext aus. Der Ereignisname allein belegt keine Spaltenzuordnung oder vollständige Meldung. Bei aktivierter Taskanalyse zählt das Ereignis in KnownOtherEventCount.
 --
 -- Der exakt gespeicherte Ereignisname Diagnostic erzeugt einen INFO-Befund LEGACY_DIAGNOSTIC_EVENT mit RUNTIME_OBSERVED und der ursprünglichen LogId in findings. Der Befund wertet keinen Meldungstext aus. Der Ereignisname allein belegt keinen konkreten Provideraufruf oder dessen Dauer. Bei aktivierter Taskanalyse zählt das Ereignis in KnownOtherEventCount.
+--
+-- Bei aktivierter Taskanalyse und Meldungstextaufnahme kann ein eindeutiges Diagnostic-Meldungspaar den INFO-Befund LEGACY_EXTERNAL_REQUEST_PAIR mit DERIVED auslösen. Die Erkennung gilt für das belegte englische Profil IDBCreateCommand::CreateCommand mit DataCode 0 und dem gemeldeten Zusatz succeeded. Sie verlangt je genau eine passende Start- und Endmeldung derselben Ausführung und Quelle im nicht gekappten Puffer, eine aufsteigende LogId und nicht rückläufige Zeitstempel. Der Befund enthält die ursprüngliche Pre-LogId und nennt die Post-LogId. Er gibt weder den Meldungstext noch eine gemessene Aufrufdauer aus.
 --
 -- ## Beispiel
 --
@@ -128873,7 +128875,7 @@ BEGIN
         PRINT N'Analysiert gespeicherte Legacy-Logereignisse für eine explizite Execution-GUID aus einer ausgewählten Datenbank und vorhandenen sysssislog-kompatiblen Tabelle. Standard ist dbo.sysssislog; keine implizite Datenbankwahl.';
         PRINT N'Alle Meldungstexte sind standardmäßig eingeschlossen. Zusätzliche Indizes sind keine Voraussetzung; ohne führenden executionid-Index kann ein Scan erfolgen. Die Procedure verändert weder Provider-Tabelle, Indizes noch Protokollierung.';
         PRINT N'RAW hat neun Basismengen; CONSOLE ist eine Übersicht; TABLE nutzt @ResultTablesJson; NONE unterdrückt fachliche Grids. JSON enthält optional denselben begrenzten Exportstand.';
-        PRINT N'@IncludeTaskAnalysis ergänzt beobachtete Laufzeiten und Loggingabdeckung: RAW 11 Mengen, SchemaVersion 2; keine Tasktyp-/Konfigurationsbestimmung. Diese Ableitung ist nicht vom Meldungstext abhängig.';
+        PRINT N'@IncludeTaskAnalysis ergänzt beobachtete Laufzeiten und Loggingabdeckung: RAW 11 Mengen, SchemaVersion 2; keine Tasktyp-/Konfigurationsbestimmung. Laufzeiten und Loggingabdeckung sind vom Meldungstext unabhängig. Der zusätzliche Befund LEGACY_EXTERNAL_REQUEST_PAIR setzt auch @IncludeMessages=1 voraus.';
         PRINT N'@IncludeRowFlowAnalysis ergänzt OnPipelineRowsSent-Pfade: SchemaVersion 3; RAW 11 Mengen oder mit Taskanalyse 13; keine Paketgesamtmenge.';
         PRINT N'@IncludeComponentPhaseAnalysis ergänzt PipelineComponentTime ProcessInput/PrimeOutput-Berichte: SchemaVersion 4 und zwei Mengen; keine CPU- oder exklusive Zeit.';
         PRINT N'@IncludeComponentLifecyclePhases=1 erfordert @IncludeComponentPhaseAnalysis=1 und ergänzt Validate/PreExecute/PostExecute mit getrennten VALIDATE-/EXECUTE-Kontexten (SchemaVersion 5).';
@@ -128907,7 +128909,7 @@ BEGIN
         PRINT N'@IsPartialOut bit OUTPUT; Default: NULL. Auslassen: Default NULL. Eintritt setzt NULL. Normaler Pfad: 0 bedeutet nicht als partiell markiert, 1 partiell/begrenzt oder ungültige Eingabe. Hilfe lässt NULL; SQL-Fehler/THROW können OUTPUT unerreichbar machen. Die Eingabe steuert den Aufruf nicht und wird beim Eintritt verworfen; nur für den Empfang eine Variable des deklarierten Typs mit OUTPUT binden. Beim Auslassen gilt der deklarierte Default NULL.';
         PRINT N'@ErrorNumberOut int OUTPUT; Default: NULL. Auslassen: Default NULL. Eintritt setzt NULL. Normaler Pfad: erfasste Fehlernummer, falls gesetzt, sonst NULL. Hilfe lässt NULL; SQL-Fehler/THROW können OUTPUT unerreichbar machen. Die Eingabe steuert den Aufruf nicht und wird beim Eintritt verworfen; nur für den Empfang eine Variable des deklarierten Typs mit OUTPUT binden. Beim Auslassen gilt der deklarierte Default NULL.';
         PRINT N'@ErrorMessageOut nvarchar(4000) OUTPUT; Default: NULL. Auslassen: Default NULL. Eintritt setzt NULL. Normaler Pfad: erfasster Fehlertext, falls gesetzt, sonst NULL. Hilfe lässt NULL; SQL-Fehler/THROW können OUTPUT unerreichbar machen. Die Eingabe steuert den Aufruf nicht und wird beim Eintritt verworfen; nur für den Empfang eine Variable des deklarierten Typs mit OUTPUT binden. Beim Auslassen gilt der deklarierte Default NULL.';
-        PRINT N'@IncludeTaskAnalysis bit; Default: 0. Auslassen: 0. Format SQL bit (vor dem Prozedurkörper konvertiert: 0 bleibt 0, jeder von 0 verschiedene, SQL-bit-konvertierbare Zahlenwert wird 1). Bei den Optionen gilt: 0 deaktiviert, 1 aktiviert beobachtete Tasklaufzeiten und Loggingabdeckung je Source-ID; NULL wird zu 0. Fügt taskDurations/taskLoggingCoverage hinzu. Keine Tasktyp-/Konfigurationsbestimmung. Keine Nachrichtenabhängigkeit für diesen Scope. Beim Auslassen gilt der deklarierte Default 0.';
+        PRINT N'@IncludeTaskAnalysis bit; Default: 0. Auslassen: 0. Format SQL bit (vor dem Prozedurkörper konvertiert: 0 bleibt 0, jeder von 0 verschiedene, SQL-bit-konvertierbare Zahlenwert wird 1). Bei den Optionen gilt: 0 deaktiviert, 1 aktiviert beobachtete Tasklaufzeiten und Loggingabdeckung je Source-ID; NULL wird zu 0. Fügt taskDurations/taskLoggingCoverage hinzu. Keine Tasktyp-/Konfigurationsbestimmung. Tasklaufzeiten und Loggingabdeckung benötigen keinen Meldungstext. Der Befund LEGACY_EXTERNAL_REQUEST_PAIR setzt auch @IncludeMessages=1 voraus. Beim Auslassen gilt der deklarierte Default 0.';
         PRINT N'@IncludeRowFlowAnalysis bit; Default: 0. Auslassen: 0. Format SQL bit (vor dem Prozedurkörper konvertiert: 0 bleibt 0, jeder von 0 verschiedene, SQL-bit-konvertierbare Zahlenwert wird 1). Bei den Optionen gilt: 0 deaktiviert, 1 aktiviert OnPipelineRowsSent-Pfade und Zeilenfluss; NULL wird zu 0. Fügt rowFlowEvents/rowFlow hinzu; keine Paketgesamtmenge. Nachrichten-Opt-out oder fehlende Voraussetzungen können den Scope nicht verfügbar oder partiell machen. Beim Auslassen gilt der deklarierte Default 0.';
         PRINT N'@IncludeComponentPhaseAnalysis bit; Default: 0. Auslassen: 0. Format SQL bit (vor dem Prozedurkörper konvertiert: 0 bleibt 0, jeder von 0 verschiedene, SQL-bit-konvertierbare Zahlenwert wird 1). Bei den Optionen gilt: 0 deaktiviert, 1 aktiviert PipelineComponentTime ProcessInput/PrimeOutput-Berichte; NULL wird zu 0. Fügt componentPhaseEvents/componentPhaseTimes hinzu; keine CPU- oder exklusive Zeit. Beim Auslassen gilt der deklarierte Default 0.';
         PRINT N'@IncludeComponentLifecyclePhases bit; Default: 0. Auslassen: 0. Format SQL bit (vor dem Prozedurkörper konvertiert: 0 bleibt 0, jeder von 0 verschiedene, SQL-bit-konvertierbare Zahlenwert wird 1). Bei den Optionen gilt: 0 deaktiviert, 1 aktiviert Validate/PreExecute/PostExecute-Berichte; NULL wird zu 0. Erfordert @IncludeComponentPhaseAnalysis=1, sonst INVALID_PARAMETER vor Quellenzugriff. Getrennte VALIDATE-/EXECUTE-Kontexte. Beim Auslassen gilt der deklarierte Default 0.';
@@ -129088,7 +129090,7 @@ BEGIN
             + N'**@ErrorMessageOut:** @ErrorMessageOut nvarchar(4000) OUTPUT; Default: NULL. Auslassen: Default NULL. Eintritt setzt NULL. Normaler Pfad: erfasster Fehlertext, falls gesetzt, sonst NULL. Hilfe lässt NULL; SQL-Fehler/THROW können OUTPUT unerreichbar machen. Die Eingabe steuert den Aufruf nicht und wird beim Eintritt verworfen; nur für den Empfang eine Variable des deklarierten Typs mit OUTPUT binden. Beim Auslassen gilt der deklarierte Default NULL.'
             + NCHAR(10)
             + NCHAR(10)
-            + N'**@IncludeTaskAnalysis:** @IncludeTaskAnalysis ergänzt beobachtete Laufzeiten und Loggingabdeckung: RAW 11 Mengen, SchemaVersion 2; keine Tasktyp-/Konfigurationsbestimmung. Diese Ableitung ist nicht vom Meldungstext abhängig.'
+            + N'**@IncludeTaskAnalysis:** @IncludeTaskAnalysis ergänzt beobachtete Laufzeiten und Loggingabdeckung: RAW 11 Mengen, SchemaVersion 2; keine Tasktyp-/Konfigurationsbestimmung. Laufzeiten und Loggingabdeckung sind vom Meldungstext unabhängig. Der zusätzliche Befund LEGACY_EXTERNAL_REQUEST_PAIR setzt auch @IncludeMessages=1 voraus.'
             + NCHAR(10)
             + NCHAR(10)
             + N'**@IncludeRowFlowAnalysis:** @IncludeRowFlowAnalysis ergänzt OnPipelineRowsSent-Pfade: SchemaVersion 3; RAW 11 Mengen oder mit Taskanalyse 13; keine Paketgesamtmenge.'
@@ -129188,6 +129190,9 @@ BEGIN
             + NCHAR(10)
             + NCHAR(10)
             + N'Der exakt gespeicherte Ereignisname Diagnostic erzeugt einen INFO-Befund LEGACY_DIAGNOSTIC_EVENT mit RUNTIME_OBSERVED und der ursprünglichen LogId in findings. Der Befund wertet keinen Meldungstext aus. Der Ereignisname allein belegt keinen konkreten Provideraufruf oder dessen Dauer. Bei aktivierter Taskanalyse zählt das Ereignis in KnownOtherEventCount.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'Bei aktivierter Taskanalyse und Meldungstextaufnahme kann ein eindeutiges Diagnostic-Meldungspaar den INFO-Befund LEGACY_EXTERNAL_REQUEST_PAIR mit DERIVED auslösen. Die Erkennung gilt für das belegte englische Profil IDBCreateCommand::CreateCommand mit DataCode 0 und dem gemeldeten Zusatz succeeded. Sie verlangt je genau eine passende Start- und Endmeldung derselben Ausführung und Quelle im nicht gekappten Puffer, eine aufsteigende LogId und nicht rückläufige Zeitstempel. Der Befund enthält die ursprüngliche Pre-LogId und nennt die Post-LogId. Er gibt weder den Meldungstext noch eine gemessene Aufrufdauer aus.'
             + NCHAR(10)
             + NCHAR(10)
             + N'## Beispiel'
@@ -130038,6 +130043,41 @@ BEGIN
                        OR CONVERT(varbinary(256),EventName) IN(CONVERT(varbinary(256),N'OnProgress'),CONVERT(varbinary(256),N'OnVariableValueChanged'),CONVERT(varbinary(256),N'OnExecStatusChanged'),CONVERT(varbinary(256),N'DiagnosticEx'),CONVERT(varbinary(256),N'Diagnostic'));
                     INSERT [#SsisLegacyLogAnalysis_Findings]
                     SELECT 0,QualityCode,Severity,@ExecutionId,'DERIVED',N'Legacy event buffer',NULL,Detail FROM [#SsisLegacyLogAnalysis_LoggingQuality] WHERE Severity='WARNING';
+                    IF @IncludeTaskAnalysis=1 AND @IncludeMessages=1 AND @Truncated=0
+                        AND SYSUTCDATETIME()<@Deadline
+                    BEGIN
+                        DECLARE @ExternalRequestPre nvarchar(160)=N'ExternalRequest_pre: The object is ready to make the following external request: ''IDBCreateCommand::CreateCommand''.';
+                        DECLARE @ExternalRequestPost nvarchar(160)=N'ExternalRequest_post: ''IDBCreateCommand::CreateCommand succeeded''. The external request has completed.';
+                        ;WITH ProfileRows AS
+                        (
+                            SELECT b.[ExecutionId],b.[SourceId],b.[LogId],b.[EventTime],profile.[Phase]
+                            FROM [#SsisLegacyLogAnalysis_Buffer] AS b
+                            CROSS JOIN (VALUES(0,@ExternalRequestPre),(1,@ExternalRequestPost)) AS profile([Phase],[Text])
+                            WHERE CONVERT(varbinary(256),b.[EventName])=CONVERT(varbinary(256),N'Diagnostic')
+                              AND DATALENGTH(b.[EventName])=DATALENGTH(N'Diagnostic')
+                              AND b.[DataCode]=0
+                              AND b.[SourceId]<>'00000000-0000-0000-0000-000000000000'
+                              AND DATALENGTH(b.[MessageText])=DATALENGTH(profile.[Text])
+                              AND CONVERT(varbinary(max),b.[MessageText])=CONVERT(varbinary(max),profile.[Text])
+                        ),
+                        UniquePairs AS
+                        (
+                            SELECT [ExecutionId],
+                                MIN(CASE WHEN [Phase]=0 THEN [LogId] END) AS [PreLogId],
+                                MIN(CASE WHEN [Phase]=1 THEN [LogId] END) AS [PostLogId],
+                                MIN(CASE WHEN [Phase]=0 THEN [EventTime] END) AS [PreTime],
+                                MIN(CASE WHEN [Phase]=1 THEN [EventTime] END) AS [PostTime]
+                            FROM ProfileRows
+                            GROUP BY [ExecutionId],[SourceId]
+                            HAVING COUNT_BIG(*)=2 AND MIN([Phase])=0 AND MAX([Phase])=1
+                        )
+                        INSERT [#SsisLegacyLogAnalysis_Findings]
+                        SELECT 0,'LEGACY_EXTERNAL_REQUEST_PAIR','INFO',[ExecutionId],'DERIVED',N'Legacy event buffer',[PreLogId],
+                            CONCAT(N'IDBCreateCommand::CreateCommand als eindeutiges Meldungspaar beobachtet. Post-LogId: ',
+                                [PostLogId],N'. Die Meldungen belegen keine gemessene Aufrufdauer.')
+                        FROM UniquePairs
+                        WHERE [PreLogId]<[PostLogId] AND [PreTime]<=[PostTime];
+                    END;
                     ;WITH f AS(SELECT *,ROW_NUMBER() OVER(ORDER BY CASE WHEN LogId IS NULL THEN 1 ELSE 0 END,LogId,FindingCode) AS n FROM [#SsisLegacyLogAnalysis_Findings]) UPDATE f SET FindingOrdinal=CONVERT(int,n);
                     DECLARE @DerivedPartial bit=CASE WHEN @Truncated=1 OR EXISTS(SELECT 1 FROM [#SsisLegacyLogAnalysis_LoggingQuality] WHERE Severity='WARNING') THEN 1 ELSE 0 END;
                     UPDATE [#SsisLegacyLogAnalysis_SourceStatus] SET [StatusCode]=CASE WHEN @DerivedPartial=1 THEN 'AVAILABLE_LIMITED' ELSE 'AVAILABLE' END,
@@ -180898,7 +180938,7 @@ SELECT CONVERT(sysname,N'monitor') AS [SchemaName],CONVERT(sysname,N'USP_SsisLeg
             + N'**@ErrorMessageOut:** @ErrorMessageOut nvarchar(4000) OUTPUT; Default: NULL. Auslassen: Default NULL. Eintritt setzt NULL. Normaler Pfad: erfasster Fehlertext, falls gesetzt, sonst NULL. Hilfe lässt NULL; SQL-Fehler/THROW können OUTPUT unerreichbar machen. Die Eingabe steuert den Aufruf nicht und wird beim Eintritt verworfen; nur für den Empfang eine Variable des deklarierten Typs mit OUTPUT binden. Beim Auslassen gilt der deklarierte Default NULL.'
             + NCHAR(10)
             + NCHAR(10)
-            + N'**@IncludeTaskAnalysis:** @IncludeTaskAnalysis ergänzt beobachtete Laufzeiten und Loggingabdeckung: RAW 11 Mengen, SchemaVersion 2; keine Tasktyp-/Konfigurationsbestimmung. Diese Ableitung ist nicht vom Meldungstext abhängig.'
+            + N'**@IncludeTaskAnalysis:** @IncludeTaskAnalysis ergänzt beobachtete Laufzeiten und Loggingabdeckung: RAW 11 Mengen, SchemaVersion 2; keine Tasktyp-/Konfigurationsbestimmung. Laufzeiten und Loggingabdeckung sind vom Meldungstext unabhängig. Der zusätzliche Befund LEGACY_EXTERNAL_REQUEST_PAIR setzt auch @IncludeMessages=1 voraus.'
             + NCHAR(10)
             + NCHAR(10)
             + N'**@IncludeRowFlowAnalysis:** @IncludeRowFlowAnalysis ergänzt OnPipelineRowsSent-Pfade: SchemaVersion 3; RAW 11 Mengen oder mit Taskanalyse 13; keine Paketgesamtmenge.'
@@ -180998,6 +181038,9 @@ SELECT CONVERT(sysname,N'monitor') AS [SchemaName],CONVERT(sysname,N'USP_SsisLeg
             + NCHAR(10)
             + NCHAR(10)
             + N'Der exakt gespeicherte Ereignisname Diagnostic erzeugt einen INFO-Befund LEGACY_DIAGNOSTIC_EVENT mit RUNTIME_OBSERVED und der ursprünglichen LogId in findings. Der Befund wertet keinen Meldungstext aus. Der Ereignisname allein belegt keinen konkreten Provideraufruf oder dessen Dauer. Bei aktivierter Taskanalyse zählt das Ereignis in KnownOtherEventCount.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'Bei aktivierter Taskanalyse und Meldungstextaufnahme kann ein eindeutiges Diagnostic-Meldungspaar den INFO-Befund LEGACY_EXTERNAL_REQUEST_PAIR mit DERIVED auslösen. Die Erkennung gilt für das belegte englische Profil IDBCreateCommand::CreateCommand mit DataCode 0 und dem gemeldeten Zusatz succeeded. Sie verlangt je genau eine passende Start- und Endmeldung derselben Ausführung und Quelle im nicht gekappten Puffer, eine aufsteigende LogId und nicht rückläufige Zeitstempel. Der Befund enthält die ursprüngliche Pre-LogId und nennt die Post-LogId. Er gibt weder den Meldungstext noch eine gemessene Aufrufdauer aus.'
             + NCHAR(10)
             + NCHAR(10)
             + N'## Beispiel'

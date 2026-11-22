@@ -53855,7 +53855,7 @@ SELECT CONVERT(sysname,N'monitor') AS [SchemaName],CONVERT(sysname,N'USP_SsisLeg
             + N'**@ErrorMessageOut:** @ErrorMessageOut nvarchar(4000) OUTPUT; Default: NULL. Auslassen: Default NULL. Eintritt setzt NULL. Normaler Pfad: erfasster Fehlertext, falls gesetzt, sonst NULL. Hilfe lässt NULL; SQL-Fehler/THROW können OUTPUT unerreichbar machen. Die Eingabe steuert den Aufruf nicht und wird beim Eintritt verworfen; nur für den Empfang eine Variable des deklarierten Typs mit OUTPUT binden. Beim Auslassen gilt der deklarierte Default NULL.'
             + NCHAR(10)
             + NCHAR(10)
-            + N'**@IncludeTaskAnalysis:** @IncludeTaskAnalysis ergänzt beobachtete Laufzeiten und Loggingabdeckung: RAW 11 Mengen, SchemaVersion 2; keine Tasktyp-/Konfigurationsbestimmung. Diese Ableitung ist nicht vom Meldungstext abhängig.'
+            + N'**@IncludeTaskAnalysis:** @IncludeTaskAnalysis ergänzt beobachtete Laufzeiten und Loggingabdeckung: RAW 11 Mengen, SchemaVersion 2; keine Tasktyp-/Konfigurationsbestimmung. Laufzeiten und Loggingabdeckung sind vom Meldungstext unabhängig. Der zusätzliche Befund LEGACY_EXTERNAL_REQUEST_PAIR setzt auch @IncludeMessages=1 voraus.'
             + NCHAR(10)
             + NCHAR(10)
             + N'**@IncludeRowFlowAnalysis:** @IncludeRowFlowAnalysis ergänzt OnPipelineRowsSent-Pfade: SchemaVersion 3; RAW 11 Mengen oder mit Taskanalyse 13; keine Paketgesamtmenge.'
@@ -53955,6 +53955,9 @@ SELECT CONVERT(sysname,N'monitor') AS [SchemaName],CONVERT(sysname,N'USP_SsisLeg
             + NCHAR(10)
             + NCHAR(10)
             + N'Der exakt gespeicherte Ereignisname Diagnostic erzeugt einen INFO-Befund LEGACY_DIAGNOSTIC_EVENT mit RUNTIME_OBSERVED und der ursprünglichen LogId in findings. Der Befund wertet keinen Meldungstext aus. Der Ereignisname allein belegt keinen konkreten Provideraufruf oder dessen Dauer. Bei aktivierter Taskanalyse zählt das Ereignis in KnownOtherEventCount.'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'Bei aktivierter Taskanalyse und Meldungstextaufnahme kann ein eindeutiges Diagnostic-Meldungspaar den INFO-Befund LEGACY_EXTERNAL_REQUEST_PAIR mit DERIVED auslösen. Die Erkennung gilt für das belegte englische Profil IDBCreateCommand::CreateCommand mit DataCode 0 und dem gemeldeten Zusatz succeeded. Sie verlangt je genau eine passende Start- und Endmeldung derselben Ausführung und Quelle im nicht gekappten Puffer, eine aufsteigende LogId und nicht rückläufige Zeitstempel. Der Befund enthält die ursprüngliche Pre-LogId und nennt die Post-LogId. Er gibt weder den Meldungstext noch eine gemessene Aufrufdauer aus.'
             + NCHAR(10)
             + NCHAR(10)
             + N'## Beispiel'
