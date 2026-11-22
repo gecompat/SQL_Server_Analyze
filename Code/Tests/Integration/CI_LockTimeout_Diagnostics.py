@@ -39,7 +39,10 @@ def marker(line):
     if not match:
         return None
     kind, suite, site, ordinal, utc, spid, timeout, variant = match.groups()
-    return dict(kind=kind, suite=suite, test_file=TEST_FILES.get(suite), site=site, ordinal=int(ordinal), utc=utc,
+    if suite == "PLAN_CACHE" and site not in PLAN_CACHE_TEST_FILES:
+        return None
+    test_file = PLAN_CACHE_TEST_FILES[site] if suite == "PLAN_CACHE" else TEST_FILES.get(suite)
+    return dict(kind=kind, suite=suite, test_file=test_file, site=site, ordinal=int(ordinal), utc=utc,
                 spid=int(spid), lock_timeout=int(timeout), variant=variant)
 
 
@@ -168,7 +171,13 @@ GO
 
 TEST_FILES = {p.name[:3]: "Code/Tests/Integration/"+p.name
               for p in Path(__file__).parent.glob("20[2-7]*.sql")}
-TEST_FILES["PLAN_CACHE"] = "Code/Tests/Run_Release_Gate.sql"
+PLAN_CACHE_TEST_FILES = {
+    "ReleaseGate": "Code/Tests/Run_Release_Gate.sql",
+    "Target120": "Code/Tests/PlanCache/120_ExecutionPlanAnalysis_Runtime_Contract.sql",
+    "Target123": "Code/Tests/PlanCache/123_DIAG005_Plan_Optimizer_Runtime_Contract.sql",
+    "Target127": "Code/Tests/PlanCache/127_ExecutionPlanAnalysis_Collation_Runtime_Contract.sql",
+    "Standalone193": "Code/Tests/Integration/193_ExecutionPlanAnalysis_Standalone_Runtime_Contract.sql",
+}
 TEST_FILES["DEPLOYMENT"] = "Code/Install/generated/Deployment_Runtime.generated.sql"
 
 
@@ -453,7 +462,8 @@ def run(args):
     log = Path(args.log)
     log.parent.mkdir(parents=True, exist_ok=True)
     env = dict(os.environ, SQLCMDPASSWORD=ephemeral_value)
-    command = ["docker", "exec", "--env", "SQLCMDPASSWORD", "--workdir", "/work/Code/Tests",
+    workdir = getattr(args, "workdir", "/work/Code/Tests")
+    command = ["docker", "exec", "--env", "SQLCMDPASSWORD", "--workdir", workdir,
                args.container, "stdbuf", "-o0", "-e0", args.sqlcmd,
                "-S", "localhost", "-U", "sa", "-C", "-b", "-r", "1"]
     # A completed BEGIN batch makes SQLCMD deliver the session marker before
@@ -548,6 +558,8 @@ def main():
     parser.add_argument("--container", default="sqlserver-analyze-impact-2025")
     parser.add_argument("--sqlcmd", required=True)
     parser.add_argument("--input", default="Run_Impact_Gate.sql")
+    parser.add_argument("--workdir", choices=("/work/Code/Tests", "/work/Code/Install"),
+                        default="/work/Code/Tests")
     parser.add_argument("--deployment", action="store_true",
                         help="observe generated deployment in the current SQLCMD session")
     parser.add_argument("--log", required=True)

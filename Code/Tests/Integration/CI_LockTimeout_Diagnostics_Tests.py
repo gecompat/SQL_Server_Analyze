@@ -72,6 +72,30 @@ class Contracts(unittest.TestCase):
             observer.feed(begin.replace("CI_BEGIN", "CI_END"))
             self.assertIsNone(observer.case)
 
+    def test_plan_cache_paths_and_standalone_markers(self):
+        root = Path(__file__).resolve().parents[1]
+        standalone = root / "Integration/193_ExecutionPlanAnalysis_Standalone_Runtime_Contract.sql"
+        source = standalone.read_text(encoding="utf-8-sig")
+        before, body = source.split("CI_BEGIN|PLAN_CACHE|Standalone193|0|", 1)
+        includes, after = body.split("CI_END|PLAN_CACHE|Standalone193|0|", 1)
+        emit_then_batch = "RAISERROR(N'%s',10,1,@CiPlanMarker) WITH NOWAIT;\nGO"
+        self.assertIn(emit_then_batch, includes)
+        self.assertIn(emit_then_batch, after)
+        self.assertNotIn(":r ", before + after)
+        self.assertIn(":r Install_ExecutionPlanAnalysis.sql", includes)
+        self.assertIn(":r ../Tests/PlanCache/120_ExecutionPlanAnalysis_Runtime_Contract.sql", includes)
+
+        paths = {
+            "Target120": "PlanCache/120_ExecutionPlanAnalysis_Runtime_Contract.sql",
+            "Target123": "PlanCache/123_DIAG005_Plan_Optimizer_Runtime_Contract.sql",
+            "Target127": "PlanCache/127_ExecutionPlanAnalysis_Collation_Runtime_Contract.sql",
+            "Standalone193": "Integration/193_ExecutionPlanAnalysis_Standalone_Runtime_Contract.sql",
+        }
+        for site, path in paths.items():
+            begin = f"CI_BEGIN|PLAN_CACHE|{site}|0|2000-01-01T00:00:00Z|51|5000|-"
+            self.assertEqual(ci.marker(begin)["test_file"], "Code/Tests/" + path)
+        self.assertIsNone(ci.marker(begin.replace("Standalone193", "Unknown")))
+
     def test_complete_resource_identity(self):
         base = dict(zip(ci.RESOURCE_FIELDS, ("KEY", "", 5, "(example)", 42, 0)))
         for field in ci.RESOURCE_FIELDS:
@@ -670,7 +694,11 @@ GO
 """)
         spid = int(next(row.split("|")[1] for row in rows if row.startswith("CI_HOLDER|")))
         # The holder is idle between batches and keeps its transaction and lock.
-        for name, timeout in (("positive", 2000), ("wrapped", 2000), ("immediate", 0), ("plan_cache", 2000), ("success", -1)):
+        plan_sites = {"plan_cache": "ReleaseGate", "plan_targeted": "Target127", "plan_standalone": "Standalone193"}
+        for name, timeout in (
+            ("positive", 2000), ("wrapped", 2000), ("immediate", 0), ("plan_cache", 2000),
+            ("plan_targeted", 2000), ("plan_standalone", 2000), ("success", -1),
+        ):
             if name == "success":
                 holder.query("ROLLBACK; RAISERROR(N'CI_SAMPLE_END',10,1) WITH NOWAIT;\nGO\n")
             read = "SELECT id FROM ##ExampleCiLockProbe;"
@@ -691,13 +719,13 @@ RAISERROR(N'%s',10,1,@m) WITH NOWAIT;
 WAITFOR DELAY '00:00:01';
 {read}
 """
-            if name == "plan_cache":
+            if name in plan_sites:
                 query = f"""USE tempdb; SET NOCOUNT ON;
 SET LOCK_TIMEOUT {timeout};
 DECLARE @m nvarchar(400)=CONCAT(N'CI_END|207|file|0|',CONVERT(varchar(27),SYSUTCDATETIME(),126),N'Z|',@@SPID,N'|',@@LOCK_TIMEOUT,N'|-');
 RAISERROR(N'%s',10,1,@m) WITH NOWAIT;
 GO
-DECLARE @m nvarchar(400)=CONCAT(N'CI_BEGIN|PLAN_CACHE|ReleaseGate|0|',CONVERT(varchar(27),SYSUTCDATETIME(),126),N'Z|',@@SPID,N'|',@@LOCK_TIMEOUT,N'|-');
+DECLARE @m nvarchar(400)=CONCAT(N'CI_BEGIN|PLAN_CACHE|{plan_sites[name]}|0|',CONVERT(varchar(27),SYSUTCDATETIME(),126),N'Z|',@@SPID,N'|',@@LOCK_TIMEOUT,N'|-');
 RAISERROR(N'%s',10,1,@m) WITH NOWAIT;
 GO
 WAITFOR DELAY '00:00:01';
@@ -720,13 +748,13 @@ WAITFOR DELAY '00:00:01';
             if name == 'wrapped':
                 assert 'TargetTable="##ExampleCiLockProbe"; SqlStep=TARGET_EMPTY_CHECK;' in (Path(args.artifacts)/'impact.log').read_text(), 'CI_PROBE_TABLE_CONTEXT'
             assert report["trigger"] == ("TABLE_EXPORT_LOCK_TIMEOUT" if name == "wrapped" else "SQL_ERROR_1222"), "CI_PROBE_TRIGGER"
-            if name == "plan_cache":
+            if name in plan_sites:
                 assert report["case"]["suite"] == "PLAN_CACHE", "CI_PROBE_PLAN_CACHE_SUITE"
-                assert report["case"]["kind"] == "BEGIN" and report["case"]["site"] == "ReleaseGate", "CI_PROBE_PLAN_CACHE_PHASE"
+                assert report["case"]["kind"] == "BEGIN" and report["case"]["site"] == plan_sites[name], "CI_PROBE_PLAN_CACHE_PHASE"
             else:
                 assert report["case"]["site"] == "Probe" and report["case"]["variant"] == name, "CI_PROBE_CASE"
             assert not report["errors"] and not report["log_incomplete"], "CI_PROBE_DIAGNOSTIC_FAILURE"
-            if name in ("positive", "wrapped", "plan_cache"):
+            if name in ("positive", "wrapped") or name in plan_sites:
                 assert report["status"] == "BLOCKER_OBSERVED", "CI_PROBE_BLOCKER_NOT_CAPTURED"
                 matches = []
                 for sample in report["samples"]:
@@ -769,7 +797,7 @@ GO
     assert sum(p.stat().st_size for p in root.rglob("*") if p.is_file()) < 1024*1024, "CI_PROBE_SIZE_LIMIT"
     (root/"qualification.json").write_text(json.dumps(dict(status="PASS", elapsed_seconds=elapsed,
         cases=list(evidence), cleanup="PASS", commit=os.environ.get("GITHUB_SHA")), indent=2), encoding="utf-8")
-    print("CI lock diagnostic qualification: PASS (positive, wrapped, immediate, plan cache, success, sleeping holder, resource identity, cleanup)")
+    print("CI lock diagnostic qualification: PASS (positive, wrapped, immediate, release/targeted/standalone plan cache, success, sleeping holder, resource identity, cleanup)")
 
 
 if __name__ == "__main__":
