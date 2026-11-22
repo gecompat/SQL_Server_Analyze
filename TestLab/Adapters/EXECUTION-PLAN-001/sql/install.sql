@@ -53951,6 +53951,9 @@ SELECT CONVERT(sysname,N'monitor') AS [SchemaName],CONVERT(sysname,N'USP_SsisLeg
             + N'Der exakt gespeicherte Ereignisname OnExecStatusChanged erzeugt einen INFO-Befund LEGACY_EXEC_STATUS_CHANGE_EVENT mit RUNTIME_OBSERVED und der ursprünglichen LogId in findings. Der Ereignisname unterscheidet nicht zwischen Anhalten und Fortsetzen eines Tasks beim Debuggen. Der Befund wertet keinen Meldungstext aus. Bei aktivierter Taskanalyse zählt das Ereignis in KnownOtherEventCount.'
             + NCHAR(10)
             + NCHAR(10)
+            + N'Der exakt gespeicherte Ereignisname DiagnosticEx erzeugt einen INFO-Befund LEGACY_DIAGNOSTIC_EX_EVENT mit RUNTIME_OBSERVED und der ursprünglichen LogId in findings. Der Befund wertet keinen Meldungstext aus. Der Ereignisname allein belegt keine Spaltenzuordnung oder vollständige Meldung. Bei aktivierter Taskanalyse zählt das Ereignis in KnownOtherEventCount.'
+            + NCHAR(10)
+            + NCHAR(10)
             + N'## Beispiel'
             + NCHAR(10)
             + NCHAR(10)
