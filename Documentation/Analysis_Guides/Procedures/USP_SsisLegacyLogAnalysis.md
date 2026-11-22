@@ -274,6 +274,8 @@ ordinal verschiedene Namen einer ID setzen das Konfliktflag.
 
 OnProgress-Zeilen mit exakt übereinstimmendem Ereignisnamen erscheinen als LEGACY_PROGRESS_EVENT mit INFO, RUNTIME_OBSERVED und der ursprünglichen LogId in findings. Die Auswertung benötigt keinen Meldungstext. Sie bestimmt weder einen Fortschrittsprozentsatz noch eine Laufzeitprognose. Fehlende Zeilen belegen keinen Stillstand. Bei aktivierter Taskanalyse zählen sie in `KnownOtherEventCount`. [Microsoft-Dokumentation zum SSIS-Logging](https://learn.microsoft.com/en-us/sql/integration-services/performance/integration-services-ssis-logging)
 
+Der exakt gespeicherte Ereignisname OnVariableValueChanged erzeugt einen INFO-Befund LEGACY_VARIABLE_CHANGE_EVENT mit RUNTIME_OBSERVED und der ursprünglichen LogId in findings. Die Auswertung leitet aus der Meldung weder Variablennamen noch alte oder neue Werte ab. Bei aktivierter Taskanalyse zählt das Ereignis in KnownOtherEventCount.
+
 ## So lesen
 
 IncludeMessages=1 ist der Default für alle Ereignisarten. Dadurch bleiben auch
