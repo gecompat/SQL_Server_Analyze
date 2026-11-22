@@ -280,6 +280,8 @@ Der exakt gespeicherte Ereignisname OnExecStatusChanged erzeugt einen INFO-Befun
 
 Der exakt gespeicherte Ereignisname DiagnosticEx erzeugt einen INFO-Befund LEGACY_DIAGNOSTIC_EX_EVENT mit RUNTIME_OBSERVED und der ursprünglichen LogId in findings. Der Befund wertet keinen Meldungstext aus. Der Ereignisname allein belegt keine Spaltenzuordnung oder vollständige Meldung. Bei aktivierter Taskanalyse zählt das Ereignis in KnownOtherEventCount.
 
+Der exakt gespeicherte Ereignisname Diagnostic erzeugt einen INFO-Befund LEGACY_DIAGNOSTIC_EVENT mit RUNTIME_OBSERVED und der ursprünglichen LogId in findings. Der Befund wertet keinen Meldungstext aus. Der Ereignisname allein belegt keinen konkreten Provideraufruf oder dessen Dauer. Bei aktivierter Taskanalyse zählt das Ereignis in KnownOtherEventCount.
+
 ## So lesen
 
 IncludeMessages=1 ist der Default für alle Ereignisarten. Dadurch bleiben auch
