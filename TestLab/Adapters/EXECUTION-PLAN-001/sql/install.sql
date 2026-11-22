@@ -53945,6 +53945,9 @@ SELECT CONVERT(sysname,N'monitor') AS [SchemaName],CONVERT(sysname,N'USP_SsisLeg
             + N'OnProgress-Zeilen mit exakt übereinstimmendem Ereignisnamen erscheinen als LEGACY_PROGRESS_EVENT mit INFO, RUNTIME_OBSERVED und der ursprünglichen LogId in findings. Die Auswertung benötigt keinen Meldungstext. Sie bestimmt weder einen Fortschrittsprozentsatz noch eine Laufzeitprognose. Fehlende Zeilen belegen keinen Stillstand. Bei aktivierter Taskanalyse zählt die Loggingabdeckung diese Zeilen als bekannte sonstige Ereignisse.'
             + NCHAR(10)
             + NCHAR(10)
+            + N'Der exakt gespeicherte Ereignisname OnVariableValueChanged erzeugt einen INFO-Befund LEGACY_VARIABLE_CHANGE_EVENT mit RUNTIME_OBSERVED und der ursprünglichen LogId in findings. Die Auswertung leitet aus der Meldung weder Variablennamen noch alte oder neue Werte ab. Bei aktivierter Taskanalyse zählt das Ereignis in KnownOtherEventCount.'
+            + NCHAR(10)
+            + NCHAR(10)
             + N'## Beispiel'
             + NCHAR(10)
             + NCHAR(10)
