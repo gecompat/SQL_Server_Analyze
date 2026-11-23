@@ -2,7 +2,7 @@
 [CmdletBinding()]
 param(
     [Parameter(Mandatory)][string]$LabRoot,
-    [Parameter(Mandatory)][ValidateSet('Java','Python')][string]$Language
+    [Parameter(Mandatory)][ValidateSet('Java','Python','R')][string]$Language
 )
 
 $ErrorActionPreference = 'Stop'
@@ -16,7 +16,8 @@ $runtimeId = 'sql-' + $Language.ToLowerInvariant()
 $variant = "${runtimeId}-2025-shared-user-v2"
 $profile = switch ($Language) {
     'Java'   { @{ ProbeId = 'java-data-roundtrip'; Fixture = 'Runtime001_JavaCatalog.sql'; Evidence = 'CATALOG_JSON_AND_FINDINGS_PARITY' } }
-    'Python' { @{ ProbeId = 'python-data-roundtrip'; Fixture = 'Runtime001_PythonCounters.sql'; Evidence = 'CUMULATIVE_COUNTERS_JSON' } }
+    'Python' { @{ ProbeId = 'python-data-roundtrip'; Fixture = 'Runtime001_MlCounters.sql'; Evidence = 'CUMULATIVE_COUNTERS_JSON' } }
+    'R'      { @{ ProbeId = 'r-data-roundtrip'; Fixture = 'Runtime001_MlCounters.sql'; Evidence = 'CUMULATIVE_COUNTERS_JSON' } }
 }
 $markerPrefix = 'RUNTIME001_' + $Language.ToUpperInvariant()
 $work = Join-Path $env:RUNNER_TEMP ('analyze-runtime-' + [guid]::NewGuid().ToString('N'))
@@ -139,8 +140,15 @@ GO
     }
     Write-Output "${markerPrefix}_NATIVE_ROUNDTRIP=PASS"
 
+    $fixturePath = Join-Path (Join-Path $PSScriptRoot 'Fixtures') $profile.Fixture
+    if ($Language -in @('Python','R')) {
+        $fixtureSource = [IO.File]::ReadAllText($fixturePath, $encoding)
+        $fixturePath = Join-Path $work 'ml-counters.sql'
+        # Language is restricted to the fixed SQL literals in the ValidateSet above.
+        [IO.File]::WriteAllText($fixturePath, "DECLARE @FixtureLanguage nvarchar(128)=N'$Language';`n" + $fixtureSource, $encoding)
+    }
     $result = Invoke-SqlServerLabScript -RunId $lab.RunId -InstanceId runtime -StateRoot $state `
-        -SaPassword $sqlCredential -Database ExampleAnalyzeRuntime -ScriptPath (Join-Path (Join-Path $PSScriptRoot 'Fixtures') $profile.Fixture) `
+        -SaPassword $sqlCredential -Database ExampleAnalyzeRuntime -ScriptPath $fixturePath `
         -KeepConnection -Confirm:$false
     if (-not $result.Success) { throw 'The Analyze external runtime evidence contract failed.' }
     Write-Output "${markerPrefix}_$($profile.Evidence)=PASS"

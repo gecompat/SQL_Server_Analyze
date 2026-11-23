@@ -6,7 +6,7 @@ on:
       - '.github/workflows/runtime001-external-languages.yml'
       - 'Lab/Validation/Invoke-NativeExternalRuntimeEvidence.ps1'
       - 'Lab/Validation/Fixtures/Runtime001_JavaCatalog.sql'
-      - 'Lab/Validation/Fixtures/Runtime001_PythonCounters.sql'
+      - 'Lab/Validation/Fixtures/Runtime001_MlCounters.sql'
       - 'Code/09_VersionAdaptive/090_USP_ExternalRuntimeAnalysis.sql'
   push:
     branches: [main]
@@ -14,7 +14,7 @@ on:
       - '.github/workflows/runtime001-external-languages.yml'
       - 'Lab/Validation/Invoke-NativeExternalRuntimeEvidence.ps1'
       - 'Lab/Validation/Fixtures/Runtime001_JavaCatalog.sql'
-      - 'Lab/Validation/Fixtures/Runtime001_PythonCounters.sql'
+      - 'Lab/Validation/Fixtures/Runtime001_MlCounters.sql'
       - 'Code/09_VersionAdaptive/090_USP_ExternalRuntimeAnalysis.sql'
 
 permissions:
@@ -26,7 +26,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        language: [Java, Python]
+        language: [Java, Python, R]
     if: github.repository == 'gecompat/SQL_Server_Analyze' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
     runs-on: ubuntu-24.04
     timeout-minutes: 44
