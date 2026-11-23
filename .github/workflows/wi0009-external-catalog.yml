@@ -25,7 +25,7 @@ jobs:
     timeout-minutes: 24
     env:
       ANALYZE_COMMIT: ${{ github.event.pull_request.head.sha || github.sha }}
-      LAB_COMMIT: e814dc82d336907aafc263428e34fe80e3487ea2
+      LAB_COMMIT: 72b3a978de21c9b066bdc1c96bb3f86f4ced1384
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
@@ -51,14 +51,18 @@ jobs:
           mapfile -t includes < <(sed -nE 's/^:r[[:blank:]]+([^[:space:]]+)[[:space:]]*$/\1/p' "$installer")
           (( ${#includes[@]} > 0 && ${#includes[@]} == $(grep -c '^:r[[:blank:]]' "$installer") ))
           {
+            printf '%s\n' "PRINT 'POLYBASE_CONSUMER_BATCH=000';" 'GO'
             printf '%s\n' 'CREATE DATABASE [ExampleAnalyzeProbe] COLLATE SQL_Latin1_General_CP1_CS_AS;' 'GO' \
               'ALTER DATABASE [ExampleAnalyzeProbe] SET COMPATIBILITY_LEVEL = 170;' 'GO'
-            for include in "${includes[@]}"; do
+            for index in "${!includes[@]}"; do
+              include="${includes[$index]}"
+              printf "PRINT 'POLYBASE_CONSUMER_BATCH=%03d';\nGO\n" "$((index + 1))"
               [[ "$include" =~ ^\.\./[A-Za-z0-9_]+/[A-Za-z0-9_]+\.sql$ ]]
               sed -e $'1s/^\xef\xbb\xbf//' -e 's/\r$//' -e 's/\[DeineDatenbank\]/[ExampleAnalyzeProbe]/g' \
                 "Code/Install/$include"
               printf '\nGO\n'
             done
+            printf '%s\n' "PRINT 'POLYBASE_CONSUMER_BATCH=999';" 'GO'
             sed 's/\[DeineDatenbank\]/[ExampleAnalyzeProbe]/g' Lab/Validation/Fixtures/WI0009_ExternalCatalog.sql
           } > "$work/wi0009-consumer.sql"
           timeout --signal=TERM --kill-after=60s 18m bash \
