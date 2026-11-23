@@ -380,6 +380,8 @@ PR #771 qualifiziert ein getrenntes Python-3.10-Profil auf SQL Server 2025 CU9 u
 
 PR #772 qualifiziert ein eigenes R-4.2.3-Profil unter Linux bei Compatibility Level 170. `rxSummary` liefert für `41` und `43` den Mittelwert `42` bei zwei gültigen Beobachtungen. Die kumulativen R-Zähler stimmen vor und nach dem Analyze-Aufruf mit der JSON-Ausgabe überein. Die Fixture weist den festen Aufruf und die Zählerparität getrennt nach. [Head](https://github.com/gecompat/SQL_Server_Analyze/actions/runs/45253582498) · [Main](https://github.com/gecompat/SQL_Server_Analyze/actions/runs/45254898824)
 
+PR #775 weist unter einem eingeschränkten Testlogin die teilweise Sichtbarkeit der Java-Runtime nach. Die Registrierung bleibt im JSON sichtbar. Beide Server-DMVs verweigern den Zugriff nativ mit Fehler `300`. Analyze weist beide Quellen als `DENIED_PERMISSION` und das Gesamtergebnis als `AVAILABLE_LIMITED` aus. Der Test prüft außerdem den unveränderten Lock-Timeout des Aufrufers und die Bereinigung der eigenen Principals. [Main-CI](https://github.com/gecompat/SQL_Server_Analyze/actions/runs/45275233180/attempts/2)
+
 ## 16. Primärquellen
 
 - [Microsoft: Language Extensions overview](https://learn.microsoft.com/en-us/sql/language-extensions/language-extensions-overview?view=sql-server-ver17)

@@ -1,5 +1,9 @@
 SET NOCOUNT ON;
 
+IF ISNULL(CONVERT(sysname,DATABASEPROPERTYEX(DB_NAME(),N'Collation')),N'') COLLATE Latin1_General_100_BIN2 <> N'SQL_Latin1_General_CP1_CS_AS'
+   OR ISNULL(CONVERT(sysname,DATABASEPROPERTYEX(N'ExampleExternalRuntimeProbe',N'Collation')),N'') COLLATE Latin1_General_100_BIN2 <> N'Latin1_General_100_CI_AI_SC'
+    THROW 56998,N'The Java catalog fixture requires distinct framework and probe database collations.',1;
+
 DECLARE @ProbeDatabase sysname=N'ExampleExternalRuntimeProbe';
 DECLARE @Json nvarchar(max), @Return int, @LockTimeoutBefore int=@@LOCK_TIMEOUT;
 DECLARE @ExternalScriptsBefore int=(
