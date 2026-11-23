@@ -1,7 +1,8 @@
 /*
 Zweck: Prüft die Katalogsicht von Analyze an einer eigenen registrierten SAFE-Assembly.
 Voraussetzungen: Die GitHub-CI bindet eine eigens erzeugte Assembly und eine
-isolierte Linux-Testinstanz. Die Fixture führt die registrierte Funktion nicht aus.
+isolierte Linux-Testinstanz. Auf die passive Katalogprüfung folgt der Aufruf
+der eigenen Funktion und ein Vergleich mit der geladenen Assembly.
 */
 USE [DeineDatenbank];
 GO
@@ -17,15 +18,32 @@ IF DB_NAME()<>N'SQLServerAnalyzeTest' OR @@TRANCOUNT<>0
 
 DECLARE @OwnedDb sysname=N'ExampleClrProbe_'+REPLACE(CONVERT(nvarchar(36),NEWID()),N'-',N'');
 DECLARE @OldDbId int=DB_ID(),@OldSpid int=@@SPID,@OldOptions int=@@OPTIONS,@OldTimeout int=@@LOCK_TIMEOUT;
-DECLARE @OwnedDbId int,@ClrBefore int,@StrictBefore int,@Sql nvarchar(max),@Hash varbinary(64)=HASHBYTES('SHA2_512',@Binary);
-DECLARE @OwnTrust bit=0,@Error int,@DbCleanupError int,@TrustCleanupError int;
+DECLARE @OwnedDbId int,@ClrBefore int,@StrictBefore int,@StrictConfiguredBefore int,@Sql nvarchar(max),@Hash varbinary(64)=HASHBYTES('SHA2_512',@Binary);
+DECLARE @OwnTrust bit=0,@ClrChangeAttempted bit=0,@ClrConfiguredBefore int;
+DECLARE @Error int,@ConfigCleanupError int,@DbCleanupError int,@TrustCleanupError int;
 DECLARE @AssemblyId int,@ClrName nvarchar(4000),@AssemblyClass sysname,@AssemblyMethod sysname;
 DECLARE @Json nvarchar(max),@Status varchar(40),@Partial bit,@Names nvarchar(max)=QUOTENAME(@OwnedDb);
-SELECT @ClrBefore=CONVERT(int,value_in_use) FROM sys.configurations WHERE name=N'clr enabled';
-SELECT @StrictBefore=CONVERT(int,value_in_use) FROM sys.configurations WHERE name=N'clr strict security';
-IF @ClrBefore IS NULL OR ISNULL(@StrictBefore,0)<>1 OR DB_ID(@OwnedDb) IS NOT NULL
+SELECT @ClrBefore=CONVERT(int,value_in_use),@ClrConfiguredBefore=CONVERT(int,value)
+FROM sys.configurations WHERE name=N'clr enabled';
+SELECT @StrictBefore=CONVERT(int,value_in_use),@StrictConfiguredBefore=CONVERT(int,value)
+FROM sys.configurations WHERE name=N'clr strict security';
+DECLARE @ConfigBefore TABLE
+    ([Id] int NOT NULL PRIMARY KEY,[Name] nvarchar(35),[Configured] int,[InUse] int,[IsDynamic] bit);
+INSERT @ConfigBefore
+SELECT configuration_id,name,CONVERT(int,value),CONVERT(int,value_in_use),is_dynamic FROM sys.configurations;
+
+IF @ClrBefore IS NULL OR ISNULL(@ClrConfiguredBefore,-1)<>@ClrBefore
+   OR ISNULL(@StrictBefore,0)<>1 OR ISNULL(@StrictConfiguredBefore,0)<>1 OR DB_ID(@OwnedDb) IS NOT NULL
    OR EXISTS(SELECT 1 FROM sys.trusted_assemblies WHERE [hash]=@Hash)
     THROW 56861,N'CLR fixture requires unused names and strict security',1;
+IF @ClrBefore=0 AND EXISTS
+(
+    SELECT 1 FROM @ConfigBefore
+    WHERE [IsDynamic]=1 AND [Configured]<>[InUse]
+      AND NOT ([Name]=N'max server memory (MB)' AND [Configured]=0 AND [InUse]=2147483647)
+      AND NOT ([Name]=N'min server memory (MB)' AND [Configured]=0 AND [InUse] IN(8,16))
+)
+    THROW 56873,N'CLR fixture will not apply other pending server configuration',1;
 
 BEGIN TRY
     SET @Sql=N'CREATE DATABASE '+QUOTENAME(@OwnedDb)+N';';
@@ -117,6 +135,55 @@ BEGIN TRY
             THROW 56868,N''CLR fixture findings TABLE and JSON differ'',1;',
         N'@J nvarchar(max)',@J=@Json;
     DROP TABLE [#WIClrProbe_Findings];
+
+    IF @ClrBefore=0
+    BEGIN
+        SET @ClrChangeAttempted=1;
+        EXEC sys.sp_configure N'clr enabled',1;
+        RECONFIGURE;
+    END;
+    IF COALESCE((SELECT CONVERT(int,value_in_use) FROM sys.configurations WHERE name=N'clr enabled'),-1)<>1
+        THROW 56873,N'CLR fixture could not activate its isolated runtime',1;
+
+    DECLARE @Value int,@LoadTime datetime,@AppDomainId int;
+    SET @Sql=N'SELECT @Result='+QUOTENAME(@OwnedDb)+N'.dbo.ExampleAnalyzeClrValue();';
+    EXEC sys.sp_executesql @Sql,N'@Result int OUTPUT',@Result=@Value OUTPUT;
+    IF ISNULL(@Value,-1)<>17
+        THROW 56874,N'CLR fixture managed runtime return mismatch',1;
+
+    SELECT TOP(1) @LoadTime=l.load_time,@AppDomainId=d.appdomain_id
+    FROM sys.dm_clr_loaded_assemblies AS l
+    INNER JOIN sys.dm_clr_appdomains AS d ON d.appdomain_address=l.appdomain_address
+    WHERE d.db_id=@OwnedDbId AND l.assembly_id=@AssemblyId
+    ORDER BY l.load_time DESC,d.appdomain_id;
+    IF @LoadTime IS NULL OR @AppDomainId IS NULL
+        THROW 56875,N'CLR fixture native loaded registration unavailable',1;
+
+    EXEC [monitor].[USP_ClrAnalysis] @DatabaseNames=@Names,@AssemblyNames=N'[ExampleAnalyzeClrProbe]',
+        @MitModulzuordnung=1,@MitBerechtigungsanalyse=0,@SampleSeconds=0,@ResultSetArt='NONE',
+        @JsonErzeugen=1,@Json=@Json OUTPUT,@PrintMeldungen=0,@StatusCodeOut=@Status OUTPUT,@IsPartialOut=@Partial OUTPUT;
+    IF @@TRANCOUNT<>0 OR DB_ID()<>@OldDbId OR @@SPID<>@OldSpid OR @@OPTIONS<>@OldOptions OR @@LOCK_TIMEOUT<>@OldTimeout
+        THROW 56876,N'CLR runtime fixture caller state changed',1;
+    IF COALESCE(ISJSON(@Json),0)<>1 OR ISNULL(@Status,'') NOT IN('AVAILABLE','AVAILABLE_LIMITED','AVAILABLE_WITH_FINDING')
+       OR @Partial IS NULL OR CHARINDEX(CONVERT(varchar(128),@Hash,2),@Json COLLATE Latin1_General_100_CI_AS)>0
+        THROW 56877,N'CLR runtime fixture Analyze status or hash exclusion mismatch',1;
+    IF NOT EXISTS(SELECT 1 FROM OPENJSON(@Json,N'$.loadedAssemblies') WITH
+        ([DatabaseId] int,[DatabaseName] sysname,[AssemblyId] int,[AssemblyName] sysname,
+         [AppDomainId] int,[LoadTime] datetime,[MappingStatus] varchar(40))
+        WHERE [DatabaseId]=@OwnedDbId AND [DatabaseName]=@OwnedDb AND [AssemblyId]=@AssemblyId
+          AND [AssemblyName]=N'ExampleAnalyzeClrProbe' AND [AppDomainId]=@AppDomainId
+          AND [LoadTime]=@LoadTime AND [MappingStatus]='CATALOG_MAPPED')
+       OR NOT EXISTS(SELECT 1 FROM OPENJSON(@Json,N'$.appDomains') WITH
+        ([DatabaseId] int,[DatabaseName] sysname,[AppDomainId] int)
+        WHERE [DatabaseId]=@OwnedDbId AND [DatabaseName]=@OwnedDb AND [AppDomainId]=@AppDomainId)
+       OR NOT EXISTS(SELECT 1 FROM OPENJSON(@Json,N'$.assemblies') WITH
+        ([DatabaseId] int,[AssemblyId] int,[IsLoaded] bit,[LastVisibleLoadTime] datetime)
+        WHERE [DatabaseId]=@OwnedDbId AND [AssemblyId]=@AssemblyId AND [IsLoaded]=1 AND [LastVisibleLoadTime]=@LoadTime)
+       OR (SELECT COUNT_BIG(*) FROM OPENJSON(@Json,N'$.sourceStatus') WITH
+        ([SourceCode] varchar(80),[StatusCode] varchar(40),[ErrorNumber] int)
+        WHERE [SourceCode] IN('CLR_APPDOMAINS','CLR_LOADED_ASSEMBLIES') AND [StatusCode]='AVAILABLE'
+          AND [ErrorNumber] IS NULL)<>2
+        THROW 56878,N'CLR fixture Analyze loaded mapping mismatch',1;
 END TRY
 BEGIN CATCH
     SET @Error=ERROR_NUMBER();
@@ -125,6 +192,17 @@ END CATCH;
 
 IF @Error IS NOT NULL
     PRINT CONCAT('WI_CLR_FIXTURE_SQL_ERROR=',@Error);
+
+BEGIN TRY
+    IF @ClrChangeAttempted=1
+    BEGIN
+        EXEC sys.sp_configure N'clr enabled',@ClrConfiguredBefore;
+        RECONFIGURE;
+    END;
+END TRY
+BEGIN CATCH
+    SET @ConfigCleanupError=ERROR_NUMBER();
+END CATCH;
 
 BEGIN TRY
     IF @OwnedDbId IS NOT NULL
@@ -151,10 +229,24 @@ BEGIN CATCH
     SET @TrustCleanupError=ERROR_NUMBER();
 END CATCH;
 
-IF @DbCleanupError IS NOT NULL OR @TrustCleanupError IS NOT NULL
+IF @ConfigCleanupError IS NOT NULL OR @DbCleanupError IS NOT NULL OR @TrustCleanupError IS NOT NULL
    OR DB_ID(@OwnedDb) IS NOT NULL OR EXISTS(SELECT 1 FROM sys.trusted_assemblies WHERE [hash]=@Hash)
    OR COALESCE((SELECT CONVERT(int,value_in_use) FROM sys.configurations WHERE name=N'clr enabled'),-1)<>@ClrBefore
+   OR COALESCE((SELECT CONVERT(int,value) FROM sys.configurations WHERE name=N'clr enabled'),-1)<>@ClrConfiguredBefore
    OR COALESCE((SELECT CONVERT(int,value_in_use) FROM sys.configurations WHERE name=N'clr strict security'),-1)<>@StrictBefore
+   OR COALESCE((SELECT CONVERT(int,value) FROM sys.configurations WHERE name=N'clr strict security'),-1)<>@StrictConfiguredBefore
+   OR EXISTS
+   (
+       SELECT [Id],[Configured],[InUse] FROM @ConfigBefore
+       EXCEPT
+       SELECT configuration_id,CONVERT(int,value),CONVERT(int,value_in_use) FROM sys.configurations
+   )
+   OR EXISTS
+   (
+       SELECT configuration_id,CONVERT(int,value),CONVERT(int,value_in_use) FROM sys.configurations
+       EXCEPT
+       SELECT [Id],[Configured],[InUse] FROM @ConfigBefore
+   )
     THROW 56871,N'CLR fixture owned cleanup or configuration mismatch',1;
 
 IF @Error IS NOT NULL
