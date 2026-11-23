@@ -49,7 +49,7 @@ try {
     $credentialText = $null
     $lab = New-SqlServerLab -Manifest $manifestPath -SaPassword $sqlCredential -StateRoot $state -NonInteractive
     $instance = @($lab.Instances)[0]
-    if ($lab.State -ne 'Running' -or $instance.Host -ne '127.0.0.1' -or
+    if ($lab.State -ne 'Running' -or $instance.Host -ne ([System.Net.IPAddress]::Loopback).ToString() -or
         $instance.ExternalRuntime.LaunchMode -ne 'sql2025-shared-user-v2' -or
         @($instance.ExternalRuntime.Receipts).Count -ne 1) {
         throw 'The owned Java Lab instance did not match the expected profile.'

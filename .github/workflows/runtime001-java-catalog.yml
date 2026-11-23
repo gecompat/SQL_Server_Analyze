@@ -60,4 +60,6 @@ jobs:
           fi
       - name: Run Java and verify Analyze against the native catalogs
         shell: pwsh
+        env:
+          TEMP: ${{ runner.temp }}
         run: ./Lab/Validation/Invoke-NativeJavaCatalog.ps1 -LabRoot ./.sql-server-lab
