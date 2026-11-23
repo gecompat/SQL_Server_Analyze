@@ -23607,6 +23607,9 @@ SELECT CONVERT(sysname,N'monitor') AS [SchemaName],CONVERT(sysname,N'USP_Externa
             + N'| warnings | 1 | 1 | [DatabaseName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL , [WarningCode] varchar(64) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL , [Detail] nvarchar(2000) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL |'
             + NCHAR(10)
             + NCHAR(10)
+            + N'`fileFormats.FormatTypeCode` enthält den nativen Formatwert, soweit er als `tinyint` darstellbar ist. Native Formatnamen wie `DELIMITEDTEXT` ergeben `NULL`. Die gelesene Formatzeile und ihre Tabellenreferenzen bleiben verfügbar.'
+            + NCHAR(10)
+            + NCHAR(10)
             + N'Bei @Hilfe=1 kommt genau ein Resultset mit SkillFormatVersion, SchemaName, ObjectName und SkillMarkdown hinzu; bestehende PRINT-Hinweise bleiben erhalten.'
             + NCHAR(10)
             + NCHAR(10)

@@ -70,6 +70,8 @@ Prüfen Sie zuerst moduleStatus, databaseStatus und sourceStatus, danach die Dat
 
 ## Eine Zeile bedeutet
 
+`fileFormats.FormatTypeCode` enthält den nativen Formatwert, soweit er als `tinyint` darstellbar ist. Native Formatnamen wie `DELIMITEDTEXT` ergeben `NULL`. Die gelesene Formatzeile und ihre Tabellenreferenzen bleiben verfügbar.
+
 Eine Quellen- oder Formatzeile beschreibt ein sichtbares lokales Katalogobjekt. Eine Tabellenzeile verbindet ausschließlich lokal sichtbare Kennungen. modelSummary zählt sichtbare Modelle ohne Modellidentitäten oder Inhalte.
 
 ## So lesen

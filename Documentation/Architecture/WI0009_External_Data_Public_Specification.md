@@ -42,6 +42,8 @@ RAW liefert die folgenden Mengen in dieser Reihenfolge; TABLE verwendet dieselbe
 | sourceStatus | DatabaseName sysname, SourceName sysname, SourceStatus varchar(40), ErrorNumber int NULL, ErrorMessage nvarchar(4000) NULL, CollectionTimeUtc datetime2(3) |
 | warnings | DatabaseName sysname NULL, WarningCode varchar(64), Detail nvarchar(2000) |
 
+`fileFormats.FormatTypeCode` enthält den nativen Formatwert, soweit er als `tinyint` darstellbar ist. Native Formatnamen wie `DELIMITEDTEXT` ergeben `NULL`. Die gelesene Formatzeile und ihre Tabellenreferenzen bleiben verfügbar.
+
 Textspalten, die im nativen Katalog NULL zulassen, bleiben NULL. Tabellenstatus, Counts und Quellenstatus beziehen sich auf die unlimitierte Sammlung; Detailarrays werden anschließend stabil nach Datenbank und nativer Kennung begrenzt. Zeilenlimits erzeugen keine Fehler und kein IsPartial. CONSOLE liefert eine formatierte fachliche Menge einschließlich einer verständlichen Leerzeile.
 
 ## Quellen, Fehler und Referenzen

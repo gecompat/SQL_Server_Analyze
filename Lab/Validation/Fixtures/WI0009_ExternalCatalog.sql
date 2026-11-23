@@ -14,9 +14,8 @@ DECLARE @FixtureDatabase sysname=N'ExamplePolyBaseProbe';
 DECLARE @FixtureObjectId int=OBJECT_ID(N'ExamplePolyBaseProbe.dbo.ExampleExternal');
 DECLARE @DataSourceId int,@FileFormatId int,@VisibleColumnCount bigint;
 DECLARE @DataSourceType tinyint,@DataSourceTypeDescription nvarchar(255),@FileFormatType tinyint;
-DECLARE @FileFormatTypeText nvarchar(256),@NativeFormatTypeId tinyint,@DataSourceTypePresent bit;
+DECLARE @FileFormatTypeText nvarchar(256);
 SELECT @DataSourceId=s.data_source_id,@DataSourceType=TRY_CONVERT(tinyint,s.[type]),@DataSourceTypeDescription=s.type_desc,
-    @DataSourceTypePresent=CASE WHEN s.[type] IS NULL THEN 0 ELSE 1 END,
     @FileFormatId=f.file_format_id,@FileFormatTypeText=CONVERT(nvarchar(256),f.format_type)
 FROM [ExamplePolyBaseProbe].sys.external_tables AS t
 INNER JOIN [ExamplePolyBaseProbe].sys.external_data_sources AS s
@@ -25,11 +24,11 @@ INNER JOIN [ExamplePolyBaseProbe].sys.external_file_formats AS f
     ON f.file_format_id=t.file_format_id AND f.name=N'ExampleCsv'
 WHERE t.object_id=@FixtureObjectId;
 SET @FileFormatType=TRY_CONVERT(tinyint,@FileFormatTypeText);
-SELECT @NativeFormatTypeId=system_type_id FROM [ExamplePolyBaseProbe].sys.columns
-WHERE object_id=OBJECT_ID(N'ExamplePolyBaseProbe.sys.external_file_formats') AND name=N'format_type';
 SELECT @VisibleColumnCount=COUNT_BIG(*)
 FROM [ExamplePolyBaseProbe].sys.columns WHERE object_id=@FixtureObjectId;
 IF @FixtureObjectId IS NULL OR @DataSourceId IS NULL OR @FileFormatId IS NULL OR @VisibleColumnCount<>2
+    OR @FileFormatTypeText IS NULL OR DATALENGTH(@FileFormatTypeText)<>DATALENGTH(N'DELIMITEDTEXT')
+    OR CONVERT(varbinary(512),@FileFormatTypeText)<>CONVERT(varbinary(512),N'DELIMITEDTEXT') OR @FileFormatType IS NOT NULL
     THROW 56991,N'WI-0009 native catalog oracle failed',1;
 
 CREATE TABLE [#WI0009_CatalogSources]([Seed] int NULL);
@@ -45,27 +44,6 @@ EXEC [monitor].[USP_ExternalDataAnalysis]
 
 IF @@TRANCOUNT<>0 OR DB_ID()<>@CallerDatabaseId OR @@LOCK_TIMEOUT<>@CallerLockTimeout OR @@OPTIONS<>@CallerOptions
     THROW 56992,N'WI-0009 caller state changed',1;
-DECLARE @DiagnosticJson nvarchar(max)=CASE WHEN ISJSON(@Json)=1 THEN @Json ELSE N'{}' END;
-IF DATALENGTH(@FileFormatTypeText)=DATALENGTH(N'DELIMITEDTEXT')
-    AND CONVERT(varbinary(512),@FileFormatTypeText)=CONVERT(varbinary(512),N'DELIMITEDTEXT')
-    AND @FileFormatType IS NULL AND EXISTS
-(
-    SELECT 1 FROM OPENJSON(@DiagnosticJson,N'$.sourceStatus') WITH
-        ([DatabaseName] sysname,[SourceName] sysname,[ErrorNumber] int)
-    WHERE [DatabaseName]=@FixtureDatabase AND [SourceName]=N'sys.external_file_formats' AND [ErrorNumber]=245
-)
-BEGIN
-    IF @NativeFormatTypeId=231
-        THROW 56998,N'WI-0009 nvarchar native format token reaches numeric product conversion',1;
-    THROW 56999,N'WI-0009 native format token reaches numeric product conversion',1;
-END;
-IF @DataSourceTypePresent=1 AND @DataSourceType IS NULL AND EXISTS
-(
-    SELECT 1 FROM OPENJSON(@DiagnosticJson,N'$.sourceStatus') WITH
-        ([DatabaseName] sysname,[SourceName] sysname,[ErrorNumber] int)
-    WHERE [DatabaseName]=@FixtureDatabase AND [SourceName]=N'sys.external_data_sources' AND [ErrorNumber]=245
-)
-    THROW 56989,N'WI-0009 native data source type reaches numeric product conversion',1;
 IF COALESCE(@Status,'')<>'AVAILABLE' OR COALESCE(CONVERT(int,@Partial),-1)<>0 OR COALESCE(ISJSON(@Json),0)<>1
     THROW 56993,N'WI-0009 module status mismatch',1;
 IF ISNULL(JSON_VALUE(@Json,N'$.meta.statusCode'),N'')<>N'AVAILABLE'
