@@ -477,6 +477,39 @@ BEGIN TRY
            FOR JSON PATH,INCLUDE_NULL_VALUES),N'')
         THROW 57195,N'Explicit grantee TABLE and JSON evidence differs from the native catalog.',1;
 
+    -- WI-0012: Der Rollenfilter bewahrt Objekt- und Spaltenzeilen aus dem nativen Berechtigungskatalog.
+    CREATE TABLE [#ExampleDbPrincipal_RoleGrant]([Seed] int NULL);
+    DECLARE @ExpectedRoleRows bigint=(SELECT COUNT_BIG(*) FROM [#ExampleDbPrincipal_Expected_permissions]
+                                      WHERE [DatabaseId]=@IdA AND [GranteePrincipalId]=@RoleAId);
+    IF (SELECT COUNT_BIG(*) FROM [#ExampleDbPrincipal_Expected_permissions]
+        WHERE [DatabaseId]=@IdA AND [GranteePrincipalId]=@RoleAId AND [Class]=1 AND [MajorId]=@ObjectAId
+          AND (([PermissionName]=N'SELECT' AND [MinorId]=0 AND [PermissionState]='G')
+            OR ([PermissionName]=N'SELECT' AND [MinorId]=2 AND [PermissionState]='R')
+            OR ([PermissionName]=N'VIEW DEFINITION' AND [MinorId]=0 AND [PermissionState]='W')))<>3
+        THROW 57201,N'Native role fixture lacks the expected object grant, column revoke or grant option.',1;
+
+    DECLARE @RoleDatabaseNames nvarchar(max)=QUOTENAME(@DbA);
+    SET @Json=NULL;
+    EXEC @Return=[monitor].[USP_DatabasePrincipalAnalysis] @DatabaseNames=@RoleDatabaseNames,
+        @PermissionGranteeName=@RoleA,@MaxZeilen=0,@ResultSetArt='TABLE',
+        @ResultTablesJson=N'{"permissions":"#ExampleDbPrincipal_RoleGrant"}',
+        @JsonErzeugen=1,@Json=@Json OUTPUT,@PrintMeldungen=0;
+
+    IF ISNULL(@Return,-1)<>0 OR ISNULL(ISJSON(@Json),0)<>1
+       OR (SELECT COUNT_BIG(*) FROM [#ExampleDbPrincipal_RoleGrant])<>@ExpectedRoleRows
+       OR EXISTS(SELECT * FROM [#ExampleDbPrincipal_RoleGrant]
+                 EXCEPT SELECT * FROM [#ExampleDbPrincipal_Expected_permissions]
+                        WHERE [DatabaseId]=@IdA AND [GranteePrincipalId]=@RoleAId)
+       OR EXISTS(SELECT * FROM [#ExampleDbPrincipal_Expected_permissions]
+                 WHERE [DatabaseId]=@IdA AND [GranteePrincipalId]=@RoleAId
+                 EXCEPT SELECT * FROM [#ExampleDbPrincipal_RoleGrant])
+       OR (SELECT COUNT_BIG(*) FROM OPENJSON(@Json,N'$.permissions'))<>@ExpectedRoleRows
+       OR ISNULL(JSON_QUERY(@Json,N'$.permissions'),N'')<>ISNULL(
+          (SELECT * FROM [#ExampleDbPrincipal_RoleGrant]
+           ORDER BY [DatabaseId],[GranteePrincipalId],[Class],[MajorId],[MinorId],[PermissionName],[PermissionState],[GrantorPrincipalId]
+           FOR JSON PATH,INCLUDE_NULL_VALUES),N'')
+        THROW 57202,N'Role filter TABLE and JSON evidence differs from native explicit permissions.',1;
+
     DECLARE @WrongGrantee nvarchar(max)=N'e'+SUBSTRING(@User,2,128),@LongGrantee nvarchar(max)=REPLICATE(N'a',129),
         @NativeWrongCaseMatches bigint;
     SET @Sql=N'SELECT @Matches=COUNT_BIG(*) FROM '+QUOTENAME(@DbB)+N'.[sys].[database_principals]
