@@ -458,12 +458,12 @@ jobs:
           template_path, binary_path, output_path = map(Path, sys.argv[1:])
           template = template_path.read_text(encoding='utf-8')
           binary = binary_path.read_bytes()
-          token = '__WI_CLR_PROBE_BYTES__'
-          if template.count(token) != 1 or not 0 < len(binary) <= 65536 or not binary.startswith(b'MZ'):
+          placeholder = '__WI_CLR_PROBE_BYTES__'
+          if template.count(placeholder) != 1 or not 0 < len(binary) <= 65536 or not binary.startswith(b'MZ'):
               raise SystemExit('Invalid synthetic CLR fixture assembly or template binding.')
           chunks = ['0x' + binary[offset:offset + 512].hex() for offset in range(0, len(binary), 512)]
           sql_bytes = 'CONVERT(varbinary(max),' + chunks[0] + ')' + ''.join('\n    + ' + chunk for chunk in chunks[1:])
-          request = template.replace(token, sql_bytes).replace('[DeineDatenbank]', '[SQLServerAnalyzeTest]')
+          request = template.replace(placeholder, sql_bytes).replace('[DeineDatenbank]', '[SQLServerAnalyzeTest]')
           if any(len(line.encode('utf-8')) > 2048 for line in request.splitlines()):
               raise SystemExit('CLR fixture SQL input over line limit.')
           output_path.write_text(request, encoding='utf-8')
@@ -472,6 +472,7 @@ jobs:
               sqlserver-analyze-impact-2025 "$SQLCMD_PATH" -S localhost -U sa -C -b -r1 -h -1 -W \
               <"$fixture" >"$work/sql-results" 2>"$work/sql-error"; then
             grep -E '^WI_CLR_FIXTURE_SQL_ERROR=[0-9]{1,6}$' "$work/sql-error" >&2 || true
+            grep -E '^WI_CLR_CATALOG_MISMATCH A_ROWS=[0-9]{1,6} A_MASK=(-1|[0-9]{1,2}) M_ROWS=[0-9]{1,6} M_MASK=(-1|[0-9]{1,2})$' "$work/sql-error" >&2 || true
             sed -nE 's/^Msg ([0-9]+),.*/WI_CLR_SQL_ERROR=\1/p' "$work/sql-error" | sort -u >&2
             exit 1
           fi

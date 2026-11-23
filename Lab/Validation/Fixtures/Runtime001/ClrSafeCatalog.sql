@@ -77,21 +77,37 @@ BEGIN TRY
           AND [AssemblyCount]=1 AND [HighPermissionAssemblyCount]=0 AND [ModuleCount]=1 AND [SourceFailureCount]=0)
         THROW 56866,N'CLR fixture Analyze database metadata mismatch',1;
 
-    IF (SELECT COUNT_BIG(*) FROM OPENJSON(@Json,N'$.assemblies'))<>1
-       OR (SELECT COUNT_BIG(*) FROM OPENJSON(@Json,N'$.assemblyModules'))<>1
-       OR NOT EXISTS(SELECT 1 FROM OPENJSON(@Json,N'$.assemblies') WITH
-            ([DatabaseId] int,[DatabaseName] sysname,[AssemblyId] int,[AssemblyName] sysname,[ClrName] nvarchar(4000),
-             [PermissionSetDesc] nvarchar(60),[TrustVerificationStatus] varchar(40),[OwnerName] sysname)
-            WHERE [DatabaseId]=@OwnedDbId AND [DatabaseName]=@OwnedDb AND [AssemblyId]=@AssemblyId
-              AND [AssemblyName]=N'ExampleAnalyzeClrProbe' AND [ClrName]=@ClrName AND [PermissionSetDesc]=N'SAFE_ACCESS'
-              AND [TrustVerificationStatus]='NOT_EVALUATED_BINARY_EXCLUDED' AND [OwnerName] IS NULL)
-       OR NOT EXISTS(SELECT 1 FROM OPENJSON(@Json,N'$.assemblyModules') WITH
-            ([DatabaseName] sysname,[SchemaName] sysname,[ObjectName] sysname,[ObjectType] char(2),[AssemblyName] sysname,
-             [AssemblyClass] sysname,[AssemblyMethod] sysname,[ExecuteAsPrincipal] sysname)
-            WHERE [DatabaseName]=@OwnedDb AND [SchemaName]=N'dbo' AND [ObjectName]=N'ExampleAnalyzeClrValue'
-              AND [ObjectType]='FS' AND [AssemblyName]=N'ExampleAnalyzeClrProbe'
-              AND [AssemblyClass]=@AssemblyClass AND [AssemblyMethod]=@AssemblyMethod AND [ExecuteAsPrincipal] IS NULL)
+    DECLARE @AssemblyMask int,@ModuleMask int,@AssemblyRows int,@ModuleRows int;
+    SELECT @AssemblyMask=
+          CASE WHEN [DatabaseId]=@OwnedDbId AND [DatabaseName]=@OwnedDb THEN 0 ELSE 1 END
+        + CASE WHEN [AssemblyId]=@AssemblyId AND [AssemblyName]=N'ExampleAnalyzeClrProbe' THEN 0 ELSE 2 END
+        + CASE WHEN [ClrName]=@ClrName THEN 0 ELSE 4 END
+        + CASE WHEN [PermissionSetDesc]=N'SAFE_ACCESS' THEN 0 ELSE 8 END
+        + CASE WHEN [TrustVerificationStatus]='NOT_EVALUATED_BINARY_EXCLUDED' THEN 0 ELSE 16 END
+        + CASE WHEN [OwnerName] IS NULL THEN 0 ELSE 32 END
+    FROM OPENJSON(@Json,N'$.assemblies') WITH
+        ([DatabaseId] int,[DatabaseName] sysname,[AssemblyId] int,[AssemblyName] sysname,[ClrName] nvarchar(4000),
+         [PermissionSetDesc] nvarchar(60),[TrustVerificationStatus] varchar(40),[OwnerName] sysname);
+    SELECT @AssemblyRows=COUNT_BIG(*) FROM OPENJSON(@Json,N'$.assemblies');
+
+    SELECT @ModuleMask=
+          CASE WHEN [DatabaseName]=@OwnedDb AND [SchemaName]=N'dbo' AND [ObjectName]=N'ExampleAnalyzeClrValue' THEN 0 ELSE 1 END
+        + CASE WHEN [ObjectType]='FS' THEN 0 ELSE 2 END
+        + CASE WHEN [AssemblyName]=N'ExampleAnalyzeClrProbe' THEN 0 ELSE 4 END
+        + CASE WHEN [AssemblyClass]=@AssemblyClass THEN 0 ELSE 8 END
+        + CASE WHEN [AssemblyMethod]=@AssemblyMethod THEN 0 ELSE 16 END
+        + CASE WHEN [ExecuteAsPrincipal] IS NULL THEN 0 ELSE 32 END
+    FROM OPENJSON(@Json,N'$.assemblyModules') WITH
+        ([DatabaseName] sysname,[SchemaName] sysname,[ObjectName] sysname,[ObjectType] char(2),[AssemblyName] sysname,
+         [AssemblyClass] sysname,[AssemblyMethod] sysname,[ExecuteAsPrincipal] sysname);
+    SELECT @ModuleRows=COUNT_BIG(*) FROM OPENJSON(@Json,N'$.assemblyModules');
+
+    IF @AssemblyRows<>1 OR @ModuleRows<>1 OR ISNULL(@AssemblyMask,-1)<>0 OR ISNULL(@ModuleMask,-1)<>0
+    BEGIN
+        PRINT CONCAT('WI_CLR_CATALOG_MISMATCH A_ROWS=',@AssemblyRows,' A_MASK=',ISNULL(@AssemblyMask,-1),
+            ' M_ROWS=',@ModuleRows,' M_MASK=',ISNULL(@ModuleMask,-1));
         THROW 56867,N'CLR fixture Analyze JSON catalog mismatch',1;
+    END;
 
     EXEC sys.sp_executesql N'
         DECLARE @F nvarchar(max)=(SELECT * FROM [#WIClrProbe_Findings]
