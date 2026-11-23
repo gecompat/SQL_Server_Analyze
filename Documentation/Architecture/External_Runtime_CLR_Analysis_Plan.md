@@ -382,6 +382,10 @@ PR #772 qualifiziert ein eigenes R-4.2.3-Profil unter Linux bei Compatibility Le
 
 PR #775 weist unter einem eingeschränkten Testlogin die teilweise Sichtbarkeit der Java-Runtime nach. Die Registrierung bleibt im JSON sichtbar. Beide Server-DMVs verweigern den Zugriff nativ mit Fehler `300`. Analyze weist beide Quellen als `DENIED_PERMISSION` und das Gesamtergebnis als `AVAILABLE_LIMITED` aus. Der Test prüft außerdem den unveränderten Lock-Timeout des Aufrufers und die Bereinigung der eigenen Principals. [Main-CI](https://github.com/gecompat/SQL_Server_Analyze/actions/runs/45275233180/attempts/2)
 
+PR #777 bestätigt den case-sensitiven Namensfilter bei unterschiedlichen Datenbank-Collations. Der native case-insensitive Vergleich findet die Java-Sprache und ihre zwei Libraries unter `java`. Analyze meldet für `[java]` in beiden erfolgreich gelesenen Katalogquellen jeweils null Zeilen. [Main-CI](https://github.com/gecompat/SQL_Server_Analyze/actions/runs/45282177071)
+
+Der Positivnachweis für aktive Python-Anfragen steht aus. In der gehosteten Linux-Fixture lief der Python-Worker bis zum Abschluss. `sys.dm_exec_requests` zeigte eine externe Request-ID für die SQL-Anfrage. Die Stichproben aus `sys.dm_external_script_requests` lieferten im selben Beobachtungsfenster keine Zeile. Der Test erreichte den Abgleich mit Analyze daher nicht. Dieser Befund gilt für das geprüfte Profil mit gemeinsamem Worker-Konto. Für die nächste Prüfung steht die Freigabe eines isolierten Remote-Ziels mit Launchpad und Worker-Isolation aus. [Diagnoselauf](https://github.com/gecompat/SQL_Server_Analyze/actions/runs/45260217506)
+
 ## 16. Primärquellen
 
 - [Microsoft: Language Extensions overview](https://learn.microsoft.com/en-us/sql/language-extensions/language-extensions-overview?view=sql-server-ver17)
