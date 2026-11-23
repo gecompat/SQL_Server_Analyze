@@ -41,7 +41,7 @@ try {
             network = @{ intent = 'nat'; exposure = 'host' }
             databases = @(@{
                 name = 'ExampleExternalRuntimeProbe'
-                collation = 'SQL_Latin1_General_CP1_CS_AS'
+                collation = $(if ($Language -eq 'Java') { 'Latin1_General_100_CI_AI_SC' } else { 'SQL_Latin1_General_CP1_CS_AS' })
                 options = @{ compatibility = 170 }
             })
             software = @(@{
