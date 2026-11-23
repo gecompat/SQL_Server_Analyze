@@ -134,7 +134,9 @@ IF @SampleSourceCount<>2 OR @DistinctSampleSources<>2 OR @SampleT1 IS NULL OR @S
 -- Only the R lab starts a separate owned worker for the positive-delta case.
 IF @FixtureLanguage=N'R'
 BEGIN
-    SET CONTEXT_INFO 0xA30F38DB7D7147CFB6E5813B2A5110FA;
+    -- Publish the actual sampler session to the separate connection in this owned lab.
+    CREATE TABLE [##ExampleRuntime001RCounterSampler]([SamplerSessionId] smallint NOT NULL);
+    INSERT [##ExampleRuntime001RCounterSampler]([SamplerSessionId]) VALUES (@@SPID);
     SET @Json=NULL;
     EXEC @Return=[monitor].[USP_ExternalRuntimeAnalysis]
          @DatabaseNames=N'[ExampleExternalRuntimeProbe]',@LanguageNames=@ObservedLanguage,
@@ -196,5 +198,7 @@ BEGIN
 
     IF @SampleSourceCount<>2 OR @DistinctSampleSources<>2 OR @SampleT1 IS NULL OR @SampleT2 IS NULL OR @SampleT2<=@SampleT1
         THROW 57027,N'The positive sample did not report two successful ordered measurement points.',1;
+
+    DROP TABLE [##ExampleRuntime001RCounterSampler];
 END;
 GO

@@ -1,12 +1,24 @@
 SET NOCOUNT ON;
 
--- This connection is in the same owned CI instance as the marked sampler.
--- WAITFOR in the sampled call starts after the T1 counters were read.
+-- The sampler publishes its session ID from the same owned CI instance.
+-- Its WAITFOR starts after the T1 counters were read.
 DECLARE @Deadline datetime2(7)=DATEADD(SECOND,60,SYSUTCDATETIME()),
-        @SamplerDatabaseId int=DB_ID(N'ExampleAnalyzeRuntime'),
+        @SamplerDatabaseId int=DB_ID(N'ExampleAnalyzeRuntime'),@SamplerSessionId smallint,
         @SeenSession int=0,@SeenRequest int=0,@SeenDatabase int=0,@SeenWait int=0;
 WHILE @SeenWait=0
 BEGIN
+    IF @SamplerSessionId IS NULL AND OBJECT_ID(N'tempdb..##ExampleRuntime001RCounterSampler',N'U') IS NOT NULL
+    BEGIN
+        BEGIN TRY
+            EXEC sys.sp_executesql
+                N'SELECT @SessionId=[SamplerSessionId] FROM [##ExampleRuntime001RCounterSampler];',
+                N'@SessionId smallint OUTPUT',@SessionId=@SamplerSessionId OUTPUT;
+        END TRY
+        BEGIN CATCH
+            IF ERROR_NUMBER()<>208 THROW;
+        END CATCH;
+    END;
+
     SELECT @SeenSession=CASE WHEN COUNT(*)>0 THEN 1 ELSE @SeenSession END,
            @SeenRequest=CASE WHEN MAX(CASE WHEN [r].[session_id] IS NOT NULL THEN 1 ELSE 0 END)=1
                              THEN 1 ELSE @SeenRequest END,
@@ -16,12 +28,12 @@ BEGIN
                                         THEN 1 ELSE 0 END)=1 THEN 1 ELSE @SeenWait END
     FROM sys.dm_exec_sessions AS [s]
     LEFT JOIN sys.dm_exec_requests AS [r] ON [s].[session_id]=[r].[session_id]
-    WHERE SUBSTRING([s].[context_info],1,16)=0xA30F38DB7D7147CFB6E5813B2A5110FA;
+    WHERE [s].[session_id]=@SamplerSessionId;
 
     IF @SeenWait=1 BREAK;
     IF SYSUTCDATETIME()>=@Deadline
     BEGIN
-        DECLARE @WindowError nvarchar(2048)=CONCAT(N'R sample window: session=',@SeenSession,
+        DECLARE @WindowError nvarchar(2048)=CONCAT(N'R sample window: published=',IIF(@SamplerSessionId IS NULL,0,1),N'; session=',@SeenSession,
             N'; request=',@SeenRequest,N'; database=',@SeenDatabase,N'; wait=',@SeenWait,N'.');
         THROW 57028,@WindowError,1;
     END;
