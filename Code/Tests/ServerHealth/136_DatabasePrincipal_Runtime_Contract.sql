@@ -90,7 +90,8 @@ BEGIN TRY
     OPEN [ExampleDbPrincipalArrangeDatabases];FETCH NEXT FROM [ExampleDbPrincipalArrangeDatabases] INTO @ArrangeName;
     WHILE @@FETCH_STATUS=0
     BEGIN
-        SET @Sql=N'CREATE DATABASE '+QUOTENAME(@ArrangeName)+N' COLLATE SQL_Latin1_General_CP1_CS_AS;';
+        SET @Sql=N'CREATE DATABASE '+QUOTENAME(@ArrangeName)+N' COLLATE '
+            +CASE WHEN @ArrangeName=@DbB THEN N'Latin1_General_100_CI_AS_SC' ELSE N'SQL_Latin1_General_CP1_CS_AS' END+N';';
         EXEC [master].[sys].[sp_executesql] @Sql;
         INSERT [#ExampleDbPrincipal_OwnDatabases]
             SELECT [d].[name],[d].[database_id],[r].[database_guid]
@@ -434,36 +435,56 @@ BEGIN TRY
        OR NOT EXISTS(SELECT 1 FROM OPENJSON(@Json,N'$.databaseContext') WITH([DatabaseId] int N'$.DatabaseId') WHERE [DatabaseId]=@IdA)
        OR EXISTS(SELECT 1 FROM OPENJSON(@Json,N'$.databaseContext') WITH([DatabaseId] int N'$.DatabaseId') WHERE [DatabaseId]<>@IdA)
         THROW 57190,N'Databaseprincipal exact-name consumer selection did not resolve only the requested numeric database identity.',1;
-    -- WI-0012: Ein anderer Principal, direkte Katalogrechte ohne Rollenauflösung.
+    -- WI-0012/COLL-001: Direkte Rechte desselben Grantees aus zwei unterschiedlich sortierten Quelldatenbanken.
     CREATE TABLE [#ExampleDbPrincipal_Grantee]([Seed] int NULL);
-    DECLARE @ExpectedGranteeRows bigint=(SELECT COUNT_BIG(*) FROM [#ExampleDbPrincipal_Expected_permissions]
-                                         WHERE [DatabaseId]=@IdA AND [GranteePrincipalId]=@UserAId);
-    SET @Exact=QUOTENAME(@DbA);
+    DECLARE @ExpectedGranteeRowsA bigint=(SELECT COUNT_BIG(*) FROM [#ExampleDbPrincipal_Expected_permissions]
+                                          WHERE [DatabaseId]=@IdA AND [GranteePrincipalId]=@UserAId),
+        @ExpectedGranteeRowsB bigint=(SELECT COUNT_BIG(*) FROM [#ExampleDbPrincipal_Expected_permissions]
+                                     WHERE [DatabaseId]=@IdB AND [GranteePrincipalId]=@UserBId);
+    IF @ExpectedGranteeRowsA=0 OR @ExpectedGranteeRowsB=0
+        THROW 57199,N'Explicit grantee fixture requires native permissions in both sources.',1;
+    SET @Exact=QUOTENAME(@DbA)+N'|'+QUOTENAME(@DbB);
     EXEC @Return=[monitor].[USP_DatabasePrincipalAnalysis] @DatabaseNames=@Exact,
         @PermissionGranteeName=@User,@MaxZeilen=0,@ResultSetArt='TABLE',
         @ResultTablesJson=N'{"permissions":"#ExampleDbPrincipal_Grantee"}',
         @JsonErzeugen=1,@Json=@Json OUTPUT,@PrintMeldungen=0;
     IF @Return<>0 OR ISNULL(ISJSON(@Json),0)<>1
-       OR (SELECT COUNT_BIG(*) FROM [#ExampleDbPrincipal_Grantee])<>@ExpectedGranteeRows
+       OR (SELECT COUNT_BIG(*) FROM [#ExampleDbPrincipal_Grantee])<>@ExpectedGranteeRowsA+@ExpectedGranteeRowsB
        OR EXISTS(SELECT * FROM [#ExampleDbPrincipal_Grantee]
                  EXCEPT SELECT * FROM [#ExampleDbPrincipal_Expected_permissions]
-                        WHERE [DatabaseId]=@IdA AND [GranteePrincipalId]=@UserAId)
-       OR NOT EXISTS(SELECT 1 FROM [#ExampleDbPrincipal_Grantee] WHERE [PermissionState]='D' AND [PermissionName]=N'UPDATE')
-       OR (SELECT COUNT_BIG(*) FROM OPENJSON(@Json,N'$.permissions'))<>@ExpectedGranteeRows
-       OR NOT EXISTS(SELECT 1 FROM OPENJSON(@Json,N'$.roleMemberships')
-          WITH ([MemberPrincipalId] int N'$.MemberPrincipalId') WHERE [MemberPrincipalId]=@UserAId)
-       OR NOT EXISTS(SELECT 1 FROM OPENJSON(@Json,N'$.sourceStatus')
+                        WHERE ([DatabaseId]=@IdA AND [GranteePrincipalId]=@UserAId)
+                           OR ([DatabaseId]=@IdB AND [GranteePrincipalId]=@UserBId))
+       OR EXISTS(SELECT * FROM [#ExampleDbPrincipal_Expected_permissions]
+                 WHERE ([DatabaseId]=@IdA AND [GranteePrincipalId]=@UserAId)
+                    OR ([DatabaseId]=@IdB AND [GranteePrincipalId]=@UserBId)
+                 EXCEPT SELECT * FROM [#ExampleDbPrincipal_Grantee])
+       OR (SELECT COUNT(DISTINCT [DatabaseId]) FROM [#ExampleDbPrincipal_Grantee]
+           WHERE [PermissionState]='D' AND [PermissionName]=N'UPDATE')<>2
+       OR (SELECT COUNT_BIG(*) FROM OPENJSON(@Json,N'$.permissions'))<>@ExpectedGranteeRowsA+@ExpectedGranteeRowsB
+       OR (SELECT COUNT(DISTINCT [DatabaseId]) FROM OPENJSON(@Json,N'$.roleMemberships')
+          WITH ([DatabaseId] int N'$.DatabaseId',[MemberPrincipalId] int N'$.MemberPrincipalId')
+          WHERE ([DatabaseId]=@IdA AND [MemberPrincipalId]=@UserAId)
+             OR ([DatabaseId]=@IdB AND [MemberPrincipalId]=@UserBId))<>2
+       OR (SELECT COUNT(DISTINCT s.[DatabaseId]) FROM OPENJSON(@Json,N'$.sourceStatus')
           WITH ([SourceKey] varchar(64) N'$.SourceKey',[DatabaseId] int N'$.DatabaseId',
-                [ObservedRows] bigint N'$.ObservedRows',[ReturnedRows] bigint N'$.ReturnedRows')
-          WHERE [SourceKey]='DATABASE_PERMISSIONS' AND [DatabaseId]=@IdA
-            AND [ObservedRows]=@ExpectedGranteeRows AND [ReturnedRows]=@ExpectedGranteeRows)
+                [ObservedRows] bigint N'$.ObservedRows',[ReturnedRows] bigint N'$.ReturnedRows') AS s
+          INNER JOIN (VALUES(@IdA,@ExpectedGranteeRowsA),(@IdB,@ExpectedGranteeRowsB)) AS e([DatabaseId],[RowCount])
+              ON s.[DatabaseId]=e.[DatabaseId] AND s.[ObservedRows]=e.[RowCount] AND s.[ReturnedRows]=e.[RowCount]
+          WHERE s.[SourceKey]='DATABASE_PERMISSIONS')<>2
        OR ISNULL(JSON_QUERY(@Json,N'$.permissions'),N'')<>ISNULL(
           (SELECT * FROM [#ExampleDbPrincipal_Grantee]
            ORDER BY [DatabaseId],[GranteePrincipalId],[Class],[MajorId],[MinorId],[PermissionName],[PermissionState],[GrantorPrincipalId]
            FOR JSON PATH,INCLUDE_NULL_VALUES),N'')
         THROW 57195,N'Explicit grantee TABLE and JSON evidence differs from the native catalog.',1;
 
-    DECLARE @WrongGrantee nvarchar(max)=N'e'+SUBSTRING(@User,2,128),@LongGrantee nvarchar(max)=REPLICATE(N'a',129);
+    DECLARE @WrongGrantee nvarchar(max)=N'e'+SUBSTRING(@User,2,128),@LongGrantee nvarchar(max)=REPLICATE(N'a',129),
+        @NativeWrongCaseMatches bigint;
+    SET @Sql=N'SELECT @Matches=COUNT_BIG(*) FROM '+QUOTENAME(@DbB)+N'.[sys].[database_principals]
+        WHERE [name]=@Name AND [principal_id]=@PrincipalId;';
+    EXEC [sys].[sp_executesql] @Sql,N'@Name nvarchar(max),@PrincipalId int,@Matches bigint OUTPUT',
+        @Name=@WrongGrantee,@PrincipalId=@UserBId,@Matches=@NativeWrongCaseMatches OUTPUT;
+    IF COALESCE(@NativeWrongCaseMatches,0)<>1
+        THROW 57200,N'Native case-insensitive database principal comparison did not match the wrong-case control.',1;
     EXEC @Return=[monitor].[USP_DatabasePrincipalAnalysis] @DatabaseNames=@Exact,
         @PermissionGranteeName=@WrongGrantee,@ResultSetArt='NONE',
         @JsonErzeugen=1,@Json=@Json OUTPUT,@PrintMeldungen=0;
