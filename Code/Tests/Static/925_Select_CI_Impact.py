@@ -28,8 +28,15 @@ DEFINITION_PATTERN = re.compile(
 
 IMPACT_SCRIPT = "Code/Tests/Static/925_Select_CI_Impact.py"
 OPS008_AGENT_HISTORY_FIXTURE = "TestLab/Scenarios/OPS-008/agent-history.sql"
-OPS008_AGENT_HISTORY_WORKFLOW = ".github/workflows/ci-functional-impact.yml"
+FUNCTIONAL_WORKFLOW = ".github/workflows/ci-functional-impact.yml"
 OPS008_AGENT_HISTORY_TEST = "ServerHealth/122_OPS008_Msdb_Health_Runtime_Contract.sql"
+RUNTIME001_CLR_FIXTURE_PATHS = {
+    "Lab/Validation/Fixtures/Runtime001/ClrSafeCatalog.sql",
+    "Lab/Validation/Fixtures/Runtime001/ExampleAnalyzeClrProbe.csproj",
+    "Lab/Validation/Fixtures/Runtime001/Marker.cs",
+}
+RUNTIME001_CLR_BASELINE_TEST = "Integration/198_Runtime001_External_Runtime_CLR_Runtime_Contract.sql"
+RUNTIME001_CLR_SOURCE = "Code/09_VersionAdaptive/100_USP_ClrAnalysis.sql"
 CORE_WORKFLOWS = {
     ".github/workflows/ci-functional-impact.yml",
     ".github/workflows/release-native-matrix.yml",
@@ -80,6 +87,7 @@ class Plan:
     regex_matrix: bool = False
     plan_standalone: bool = False
     ops008_agent_history: bool = False
+    runtime001_clr_catalog: bool = False
     snapshot_runtime: bool = False
     snapshot_concurrency: bool = False
     compatibility_matrix: bool = False
@@ -103,6 +111,7 @@ class Plan:
             "regex_matrix": self.regex_matrix,
             "plan_standalone": self.plan_standalone,
             "ops008_agent_history": self.ops008_agent_history,
+            "runtime001_clr_catalog": self.runtime001_clr_catalog,
             "snapshot_runtime": self.snapshot_runtime,
             "snapshot_concurrency": self.snapshot_concurrency,
             "compatibility_matrix": self.compatibility_matrix,
@@ -381,7 +390,16 @@ def plan_changes(
 ) -> Plan:
     plan = Plan(scope=scope)
     plan.ops008_agent_history = scope == "core" and any(
-        change.path in {OPS008_AGENT_HISTORY_FIXTURE, OPS008_AGENT_HISTORY_WORKFLOW}
+        change.path in {OPS008_AGENT_HISTORY_FIXTURE, FUNCTIONAL_WORKFLOW}
+        for change in changes
+    )
+    plan.runtime001_clr_catalog = scope == "core" and any(
+        change.path in RUNTIME001_CLR_FIXTURE_PATHS
+        or change.path in {IMPACT_SCRIPT, FUNCTIONAL_WORKFLOW}
+        or (
+            change.path == RUNTIME001_CLR_SOURCE
+            and normalize_executable_sql(change.old_text) != normalize_executable_sql(change.new_text)
+        )
         for change in changes
     )
     executable: list[Change] = []
@@ -402,16 +420,20 @@ def plan_changes(
     plan.compatibility_matrix = scope == "core" and any(
         requires_compatibility_matrix(change) for change in executable
     )
-    if not executable and not plan.ops008_agent_history:
-        plan.reasons.append("No executable SQL or runtime infrastructure changed.")
-        return plan
-
+    fixture_tests: set[str] = set()
     if plan.ops008_agent_history:
-        plan.run_runtime = True
+        fixture_tests.add(OPS008_AGENT_HISTORY_TEST)
         plan.reasons.append("The OPS-008 Agent history fixture requires its SQL Server 2025 runtime contract.")
-        if not executable:
-            plan.selected_tests = [OPS008_AGENT_HISTORY_TEST]
-            return plan
+    if plan.runtime001_clr_catalog:
+        fixture_tests.add(RUNTIME001_CLR_BASELINE_TEST)
+        plan.reasons.append("The Runtime-001 SAFE catalog fixture requires its SQL Server 2025 runtime contract.")
+    if not executable:
+        if fixture_tests:
+            plan.run_runtime = True
+            plan.selected_tests = sorted(fixture_tests)
+        else:
+            plan.reasons.append("No executable SQL or runtime infrastructure changed.")
+        return plan
 
     plan.run_runtime = True
     if any(force_full_path(change.path, scope) for change in executable):
@@ -462,9 +484,7 @@ def plan_changes(
                 pending.append(dependent)
     plan.affected_objects = sorted(affected)
 
-    selected = set(direct_tests)
-    if plan.ops008_agent_history:
-        selected.add(OPS008_AGENT_HISTORY_TEST)
+    selected = direct_tests | fixture_tests
     dependency_test_count = 0
     for path in test_sql_paths(repository_root, head_sha, scope):
         test_name = path.removeprefix("Code/Tests/")
@@ -533,6 +553,7 @@ def write_github_output(path: pathlib.Path, plan: Plan) -> None:
         "regex_matrix": str(plan.regex_matrix).lower(),
         "plan_standalone": str(plan.plan_standalone).lower(),
         "ops008_agent_history": str(plan.ops008_agent_history).lower(),
+        "runtime001_clr_catalog": str(plan.runtime001_clr_catalog).lower(),
         "snapshot_runtime": str(plan.snapshot_runtime).lower(),
         "snapshot_concurrency": str(plan.snapshot_concurrency).lower(),
         "compatibility_matrix": str(plan.compatibility_matrix).lower(),
@@ -773,6 +794,20 @@ def run_self_test() -> None:
         write_github_output(output_path, fixture_plan)
         assert "ops008_agent_history=true\n" in output_path.read_text(encoding="utf-8")
 
+        clr_fixture_plan = plan_changes(
+            root,
+            code_sha,
+            [Change("Lab/Validation/Fixtures/Runtime001/ClrSafeCatalog.sql", None, "synthetic fixture change")],
+            "core",
+        )
+        assert clr_fixture_plan.run_runtime and not clr_fixture_plan.full_suite
+        assert clr_fixture_plan.runtime001_clr_catalog and not clr_fixture_plan.ops008_agent_history
+        assert clr_fixture_plan.selected_tests == [RUNTIME001_CLR_BASELINE_TEST]
+        assert not clr_fixture_plan.compatibility_matrix
+        clr_output = root / "clr-catalog-output.txt"
+        write_github_output(clr_output, clr_fixture_plan)
+        assert "runtime001_clr_catalog=true\n" in clr_output.read_text(encoding="utf-8")
+
         unrelated_lab_fixture = plan_changes(
             root,
             code_sha,
@@ -785,7 +820,7 @@ def run_self_test() -> None:
         workflow_plan = plan_changes(
             root,
             code_sha,
-            [Change(OPS008_AGENT_HISTORY_WORKFLOW, None, "synthetic workflow change")],
+            [Change(FUNCTIONAL_WORKFLOW, None, "synthetic workflow change")],
             "core",
         )
         assert workflow_plan.run_runtime and workflow_plan.full_suite

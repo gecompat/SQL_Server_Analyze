@@ -367,6 +367,9 @@ Für eine vollständige Freigabe der aktivierten Features weiterhin erforderlich
 
 Der portable Integrationsvertrag prüft Installation, Status, JSON, TABLE, Routing, Capability, Read-only-Abgrenzung und Wiederherstellung von `LOCK_TIMEOUT`, ohne Features zu aktivieren. `NOT_EXECUTED` ist kein Laufzeitnachweis. Ein leerer oder synthetischer Test ersetzt keinen Laufzeitnachweis mit aktivem Feature auf der jeweiligen Zielplattform.
 
+
+Der begrenzte positive CLR-Katalogvertrag verwendet eine eigens gebaute SAFE-Assembly in der vorhandenen Linux-Testinstanz der SQL-Server-2025-CI. Die Fixture registriert eine eigene Assembly und eine darauf abgebildete Funktion in einer temporären Datenbank mit `TRUSTWORTHY OFF`. Die serverweite CLR-Konfiguration bleibt während der Prüfung erhalten. Der Vertrag vergleicht die nativen Assembly- und Modulmetadaten mit den Katalogarrays in JSON. Er prüft die Parität der gefundenen Befunde zwischen TABLE und JSON und entfernt die eigene Datenbank sowie den dafür registrierten Trust-Eintrag. Die Prüfung ruft die verwaltete Funktion nicht auf. Die übrigen Fälle der Abnahmematrix benötigen eigene Evidenz. [Microsoft-Dokumentation zu CREATE FUNCTION](https://learn.microsoft.com/en-us/sql/t-sql/statements/create-function-transact-sql)
+
 ## 16. Primärquellen
 
 - [Microsoft: Language Extensions overview](https://learn.microsoft.com/en-us/sql/language-extensions/language-extensions-overview?view=sql-server-ver17)
