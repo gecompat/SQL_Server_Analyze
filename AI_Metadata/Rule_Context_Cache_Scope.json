@@ -1516,6 +1516,16 @@
       "classification": "product-reference"
     },
     {
+      "source": "Documentation/Quality/CI_Test_Strategy.md",
+      "target": ".github/workflows/wi0009-external-catalog.yml",
+      "classification": "product-reference"
+    },
+    {
+      "source": "Documentation/Quality/CI_Test_Strategy.md",
+      "target": "Documentation/Architecture/WI0009_External_Data_Public_Specification.md",
+      "classification": "product-reference"
+    },
+    {
       "source": "AI_Metadata/Internal_Documentation/Quality/Next_Steps.md",
       "target": "Documentation/Architecture/SSIS_Package_and_Execution_Analysis_Plan.md",
       "classification": "product-reference"

@@ -1,0 +1,100 @@
+name: WI-0009 native external catalog
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - '.github/workflows/wi0009-external-catalog.yml'
+      - 'Lab/Validation/Fixtures/WI0009_ExternalCatalog.sql'
+      - 'Code/09_VersionAdaptive/110_USP_ExternalDataAnalysis.sql'
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/wi0009-external-catalog.yml'
+      - 'Lab/Validation/Fixtures/WI0009_ExternalCatalog.sql'
+      - 'Code/09_VersionAdaptive/110_USP_ExternalDataAnalysis.sql'
+
+permissions:
+  contents: read
+
+jobs:
+  external-catalog:
+    name: Analyze native S3 metadata with the store disconnected
+    if: github.repository == 'gecompat/SQL_Server_Analyze' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 24
+    env:
+      ANALYZE_COMMIT: ${{ github.event.pull_request.head.sha || github.sha }}
+      LAB_COMMIT: 72b3a978de21c9b066bdc1c96bb3f86f4ced1384
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          ref: ${{ env.ANALYZE_COMMIT }}
+          persist-credentials: false
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          repository: gecompat/SQL_Server_Lab
+          ref: ${{ env.LAB_COMMIT }}
+          persist-credentials: false
+          path: .sql-server-lab
+      - name: Bind Analyze and Lab revisions and run the isolated native catalog contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          umask 077
+          test "$(git rev-parse HEAD)" = "$ANALYZE_COMMIT"
+          test "$(git -C .sql-server-lab rev-parse HEAD)" = "$LAB_COMMIT"
+          printf 'WI0009_ANALYZE_COMMIT=%s\nWI0009_LAB_COMMIT=%s\n' "$ANALYZE_COMMIT" "$LAB_COMMIT"
+          work="$(mktemp -d "$RUNNER_TEMP/analyze-wi0009.XXXXXX")"
+          trap 'rm -f -- "$work/wi0009-canonical.sql" "$work/wi0009-consumer.sql"; rmdir -- "$work"' EXIT
+          installer='Code/Install/Install_All.sql'
+          mapfile -t includes < <(sed -nE 's/^:r[[:blank:]]+([^[:space:]]+)[[:space:]]*$/\1/p' "$installer")
+          (( ${#includes[@]} > 0 && ${#includes[@]} == $(grep -c '^:r[[:blank:]]' "$installer") ))
+          {
+            printf '%s\n' "PRINT 'POLYBASE_CONSUMER_BATCH=000';" 'GO'
+            printf '%s\n' 'CREATE DATABASE [ExampleAnalyzeProbe] COLLATE SQL_Latin1_General_CP1_CS_AS;' 'GO' \
+              'ALTER DATABASE [ExampleAnalyzeProbe] SET COMPATIBILITY_LEVEL = 170;' 'GO'
+            for index in "${!includes[@]}"; do
+              include="${includes[$index]}"
+              printf "PRINT 'POLYBASE_CONSUMER_BATCH=%03d';\nGO\n" "$((index + 1))"
+              [[ "$include" =~ ^\.\./[A-Za-z0-9_]+/[A-Za-z0-9_]+\.sql$ ]]
+              sed -e $'1s/^\xef\xbb\xbf//' -e 's/\r$//' -e 's/\[DeineDatenbank\]/[ExampleAnalyzeProbe]/g' \
+                "Code/Install/$include"
+              printf '\nGO\n'
+            done
+            printf '%s\n' "PRINT 'POLYBASE_CONSUMER_BATCH=999';" 'GO'
+            sed 's/\[DeineDatenbank\]/[ExampleAnalyzeProbe]/g' Lab/Validation/Fixtures/WI0009_ExternalCatalog.sql
+          } > "$work/wi0009-canonical.sql"
+          # ODBC stdin receives shorter comment lines. Keep executable SQL and the repository sources unchanged.
+          python3 - "$work/wi0009-canonical.sql" "$work/wi0009-consumer.sql" <<'PY'
+          from pathlib import Path
+          import sys
+
+          in_skill = False
+          wrapped = 0
+          with Path(sys.argv[1]).open(encoding='utf-8', newline='') as source, \
+                  Path(sys.argv[2]).open('w', encoding='utf-8', newline='') as output:
+              for line in source:
+                  if line.startswith('-- USAGE_SKILL_BEGIN '):
+                      if in_skill:
+                          raise SystemExit('Unexpected nested DDL Usage Skill marker.')
+                      in_skill = True
+                  elif line.startswith('-- USAGE_SKILL_END '):
+                      if not in_skill:
+                          raise SystemExit('Unexpected DDL Usage Skill closing marker.')
+                      in_skill = False
+                  if in_skill and not line.startswith('--'):
+                      raise SystemExit('Expected a DDL Usage Skill comment.')
+                  if in_skill and line.startswith('-- ') and len(line.encode('utf-8')) > 2048:
+                      comment = line[3:].removesuffix('\n')
+                      for offset in range(0, len(comment), 500):
+                          output.write('-- ' + comment[offset:offset + 500] + '\n')
+                      wrapped += 1
+                  else:
+                      output.write(line)
+          if in_skill:
+              raise SystemExit('Unclosed DDL Usage Skill marker.')
+          print(f'WI0009_WRAPPED_DDL_COMMENT_LINES={wrapped}')
+          PY
+          timeout --signal=TERM --kill-after=60s 18m bash \
+            .sql-server-lab/Tests/Integration/Invoke-PolyBaseS3Acceptance.sh --consumer-sql "$work/wi0009-consumer.sql"

@@ -89,6 +89,8 @@ Grenzen      : Keine Remote-, Location-, Credential-, Modellnamen- oder Payloadl
 -- | sourceStatus | 1 | 1 | [DatabaseName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL , [SourceName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL , [SourceStatus] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL , [ErrorNumber] int NULL , [ErrorMessage] nvarchar(4000) COLLATE SQL_Latin1_General_CP1_CS_AS NULL , [CollectionTimeUtc] datetime2(3) NOT NULL |
 -- | warnings | 1 | 1 | [DatabaseName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL , [WarningCode] varchar(64) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL , [Detail] nvarchar(2000) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL |
 -- 
+-- `fileFormats.FormatTypeCode` enthält den nativen Formatwert, soweit er als `tinyint` darstellbar ist. Native Formatnamen wie `DELIMITEDTEXT` ergeben `NULL`. Die gelesene Formatzeile und ihre Tabellenreferenzen bleiben verfügbar.
+-- 
 -- Bei @Hilfe=1 kommt genau ein Resultset mit SkillFormatVersion, SchemaName, ObjectName und SkillMarkdown hinzu; bestehende PRINT-Hinweise bleiben erhalten.
 -- 
 -- ## Beispiel
@@ -308,6 +310,9 @@ BEGIN
             + N'| warnings | 1 | 1 | [DatabaseName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL , [WarningCode] varchar(64) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL , [Detail] nvarchar(2000) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL |'
             + NCHAR(10)
             + NCHAR(10)
+            + N'`fileFormats.FormatTypeCode` enthält den nativen Formatwert, soweit er als `tinyint` darstellbar ist. Native Formatnamen wie `DELIMITEDTEXT` ergeben `NULL`. Die gelesene Formatzeile und ihre Tabellenreferenzen bleiben verfügbar.'
+            + NCHAR(10)
+            + NCHAR(10)
             + N'Bei @Hilfe=1 kommt genau ein Resultset mit SkillFormatVersion, SchemaName, ObjectName und SkillMarkdown hinzu; bestehende PRINT-Hinweise bleiben erhalten.'
             + NCHAR(10)
             + NCHAR(10)
@@ -501,7 +506,7 @@ BEGIN
                     BEGIN TRY
                         SET @Sql=CASE @Rank
                             WHEN 1 THEN N'INSERT [#ExternalDataAnalysis_dataSources] SELECT @pDb,[data_source_id],[name],[type],[type_desc] FROM '+QUOTENAME(@Db)+N'.[sys].[external_data_sources] WITH(NOLOCK); SET @pRows=@@ROWCOUNT;'
-                            WHEN 2 THEN N'INSERT [#ExternalDataAnalysis_fileFormats] SELECT @pDb,[file_format_id],[name],[format_type] FROM '+QUOTENAME(@Db)+N'.[sys].[external_file_formats] WITH(NOLOCK); SET @pRows=@@ROWCOUNT;'
+                            WHEN 2 THEN N'INSERT [#ExternalDataAnalysis_fileFormats] SELECT @pDb,[file_format_id],[name],TRY_CONVERT(tinyint,[format_type]) FROM '+QUOTENAME(@Db)+N'.[sys].[external_file_formats] WITH(NOLOCK); SET @pRows=@@ROWCOUNT;'
                             WHEN 3 THEN N'INSERT [#ExternalDataAnalysis_TableRows] SELECT @pDb,[object_id],[schema_id],[name],[data_source_id],[file_format_id] FROM '+QUOTENAME(@Db)+N'.[sys].[external_tables] WITH(NOLOCK); SET @pRows=@@ROWCOUNT;'
                             WHEN 4 THEN N'INSERT [#ExternalDataAnalysis_SchemaRows] SELECT @pDb,[schema_id],[name] FROM '+QUOTENAME(@Db)+N'.[sys].[schemas] WITH(NOLOCK) WHERE [schema_id] IN(SELECT [SchemaId] FROM [#ExternalDataAnalysis_TableRows] WHERE [DatabaseName]=@pDb); SET @pRows=@@ROWCOUNT;'
                             WHEN 5 THEN N'INSERT [#ExternalDataAnalysis_ColumnRows] SELECT @pDb,[object_id],COUNT_BIG(*) FROM '+QUOTENAME(@Db)+N'.[sys].[columns] WITH(NOLOCK) WHERE [object_id] IN(SELECT [ObjectId] FROM [#ExternalDataAnalysis_TableRows] WHERE [DatabaseName]=@pDb) GROUP BY [object_id]; SET @pRows=@@ROWCOUNT;'

@@ -42,6 +42,8 @@ RAW liefert die folgenden Mengen in dieser Reihenfolge; TABLE verwendet dieselbe
 | sourceStatus | DatabaseName sysname, SourceName sysname, SourceStatus varchar(40), ErrorNumber int NULL, ErrorMessage nvarchar(4000) NULL, CollectionTimeUtc datetime2(3) |
 | warnings | DatabaseName sysname NULL, WarningCode varchar(64), Detail nvarchar(2000) |
 
+`fileFormats.FormatTypeCode` enthält den nativen Formatwert, soweit er als `tinyint` darstellbar ist. Native Formatnamen wie `DELIMITEDTEXT` ergeben `NULL`. Die gelesene Formatzeile und ihre Tabellenreferenzen bleiben verfügbar.
+
 Textspalten, die im nativen Katalog NULL zulassen, bleiben NULL. Tabellenstatus, Counts und Quellenstatus beziehen sich auf die unlimitierte Sammlung; Detailarrays werden anschließend stabil nach Datenbank und nativer Kennung begrenzt. Zeilenlimits erzeugen keine Fehler und kein IsPartial. CONSOLE liefert eine formatierte fachliche Menge einschließlich einer verständlichen Leerzeile.
 
 ## Quellen, Fehler und Referenzen
@@ -75,7 +77,9 @@ Der Analyzer erhält TranCount, LOCK_TIMEOUT und XACT_ABORT des Callers. Er star
 
 WI-0007 muss vor Lieferung dieser Funktion integriert sein. Implementierung, Installer, Inventare und Referenzen werden gemeinsam aktualisiert. Der zunächst gewählte native Umfang bleibt endlich und wird vor Ausführung gebunden. SQL Server 2025 prüft positive eigene lokale Kataloge, leere Mengen, Filter, Limit, Physical-TABLE-/JSON-Parität und Callerrestaurierung. Compatibility Levels 150/160/170 und eine gezielte ältere Engine prüfen die tatsächlichen betroffenen Verträge. Private Fehlersimulationen werden ausdrücklich von echten Quellen- und Berechtigungsnachweisen getrennt.
 
-Positive Testobjekte dürfen ausschließlich in eigenen synthetischen Datenbanken entstehen. Keine Query einer externen Tabelle und keine Verbindung zum hinterlegten synthetischen Ort ist zulässig. Wenn eine notwendige DDL auf der vorhandenen öffentlichen Lab-Engine nicht ohne Installation oder Remoteaktion möglich ist, bleibt der positive Nachweis offen; keine neue Infrastruktur oder Featureinstallation wird stillschweigend gestartet. Ein erfolgreicher Katalogtest belegt keinen Remoteabruf.
+Positive Testobjekte entstehen ausschließlich in eigenen synthetischen Datenbanken. Für den positiven S3-Katalogfall erzeugt eine freigegebene Fixture in SQL Server 2025 eine native externe Tabelle, einen lokalen Datenquelleneintrag und ein Dateiformat. Die Fixture prüft den eigenen CSV-Inhalt in einem separaten Infrastrukturabschnitt und trennt den S3-Dienst vor dem Analyze-Aufruf vom Testnetz.
+
+Der Analyze-Vertrag liest die nativen Katalogzeilen als Vergleichsmenge und ruft `monitor.USP_ExternalDataAnalysis` für genau die Fixture-Datenbank auf. Er prüft native Kennungen, sichtbare Spaltenanzahl und Referenzstatus sowie die Parität der drei positiven TABLE- und JSON-Gruppen. Die Prüfung verwendet den kanonischen Framework-Installer, eine gebundene Lab-Version und die isolierte SQL-Engine der Fixture. Der Nachweis betrifft S3-CSV-Katalogmetadaten auf SQL Server 2025. Andere Provider, externe Modelle, Rechte unter eingeschränkten Principals und der Abruf von Nutzdaten durch Analyze liegen außerhalb dieses Vertrags. [Remote-Workflow](../../.github/workflows/wi0009-external-catalog.yml)
 
 ## Primärquellen
 
