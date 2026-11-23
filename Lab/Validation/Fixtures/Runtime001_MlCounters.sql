@@ -78,4 +78,9 @@ IF (SELECT COUNT_BIG(*) FROM OPENJSON(@Json,N'$.sourceStatus') WITH
     ([SourceCode] varchar(80),[StatusCode] varchar(40),[IsPartial] bit,[RowCount] bigint)
     WHERE [SourceCode]='EXECUTION_STATS_T1' AND [StatusCode]='AVAILABLE' AND [IsPartial]=0 AND [RowCount]=@ExpectedRows)<>1
     THROW 56982,N'Analyze did not report successful reading of the positive machine-learning counter source.',1;
+
+IF @FixtureLanguage=N'Python'
+    EXEC [ExampleExternalRuntimeProbe].[sys].[sp_executesql] N'
+        CREATE TABLE [dbo].[ExampleActiveRuntimeSignal]
+        ([Id] tinyint NOT NULL PRIMARY KEY,[SessionId] smallint NOT NULL,[Finished] bit NOT NULL);';
 GO
