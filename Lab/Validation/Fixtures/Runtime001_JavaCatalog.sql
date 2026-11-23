@@ -100,3 +100,120 @@ IF ISNULL(JSON_QUERY(@Json,N'$.findings'),N'') COLLATE Latin1_General_100_BIN2
    <> ISNULL(@TableFindings,N'[]') COLLATE Latin1_General_100_BIN2
     THROW 56976,N'Analyze Java findings differ between TABLE and JSON.',1;
 GO
+
+-- Die Katalogrechte der eigenen Probe-Datenbank lassen die Server-DMVs gesperrt.
+DECLARE @RestrictedName sysname=N'ExampleRuntimeLimited_'+REPLACE(CONVERT(nvarchar(36),NEWID()),N'-',N'');
+DECLARE @TransientCredential nvarchar(128)=N'Example!'+CONVERT(nvarchar(36),NEWID());
+DECLARE @Sql nvarchar(max),@Failure int=NULL,@Cleanup int=NULL,@Details nvarchar(2048);
+
+IF SUSER_ID(@RestrictedName) IS NOT NULL
+   OR EXISTS(SELECT 1 FROM sys.database_principals WHERE [name]=@RestrictedName)
+   OR EXISTS(SELECT 1 FROM [ExampleExternalRuntimeProbe].[sys].[database_principals] WHERE [name]=@RestrictedName)
+    THROW 56990,N'The dedicated restricted login unexpectedly exists.',1;
+
+BEGIN TRY
+    SET @Sql=N'CREATE LOGIN '+QUOTENAME(@RestrictedName)+N' WITH PASSWORD '+N'= '+QUOTENAME(@TransientCredential,'''')+N', CHECK_POLICY=OFF;';
+    EXEC sys.sp_executesql @Sql;
+    SET @TransientCredential=NULL;
+    SET @Sql=N'CREATE USER '+QUOTENAME(@RestrictedName)+N' FOR LOGIN '+QUOTENAME(@RestrictedName)+N';
+        GRANT EXECUTE ON [monitor].[USP_ExternalRuntimeAnalysis] TO '+QUOTENAME(@RestrictedName)+N';';
+    EXEC sys.sp_executesql @Sql;
+    SET @Sql=N'CREATE USER '+QUOTENAME(@RestrictedName)+N' FOR LOGIN '+QUOTENAME(@RestrictedName)+N';
+        GRANT VIEW DEFINITION TO '+QUOTENAME(@RestrictedName)+N';';
+    EXEC [ExampleExternalRuntimeProbe].[sys].[sp_executesql] @Sql;
+
+    SET @Sql=N'EXECUTE AS LOGIN='+QUOTENAME(@RestrictedName,'''')+N';
+        BEGIN TRY
+            DECLARE @Rows bigint,@RequestError int=NULL,@StatsError int=NULL,@Return int,
+                    @Json nvarchar(max),@Status varchar(40),@ModuleError int,@BeforeLock int=@@LOCK_TIMEOUT;
+            DECLARE @HasPerformancePermission int=HAS_PERMS_BY_NAME(NULL,NULL,''VIEW SERVER PERFORMANCE STATE'');
+            IF @HasPerformancePermission IS NULL
+                THROW 56997,N''The native server permission precheck was indeterminate.'',1;
+            IF @HasPerformancePermission<>0
+                THROW 56991,N''The owned login can read server performance state.'',1;
+            BEGIN TRY
+                EXEC sys.sp_executesql N''SELECT @Rows=COUNT_BIG(*) FROM sys.dm_external_script_requests;'',
+                    N''@Rows bigint OUTPUT'',@Rows=@Rows OUTPUT;
+            END TRY
+            BEGIN CATCH SET @RequestError=ERROR_NUMBER();END CATCH;
+            BEGIN TRY
+                EXEC sys.sp_executesql N''SELECT @Rows=COUNT_BIG(*) FROM sys.dm_external_script_execution_stats;'',
+                    N''@Rows bigint OUTPUT'',@Rows=@Rows OUTPUT;
+            END TRY
+            BEGIN CATCH SET @StatsError=ERROR_NUMBER();END CATCH;
+            IF ISNULL(@RequestError,0) NOT IN (229,297,300,371,916)
+               OR ISNULL(@StatsError,0) NOT IN (229,297,300,371,916)
+                THROW 56992,N''The native active-request and execution-stats permission denials were not established.'',1;
+
+            EXEC @Return=[monitor].[USP_ExternalRuntimeAnalysis]
+                @DatabaseNames=N''[ExampleExternalRuntimeProbe]'',@LanguageNames=N''Java'',
+                @MaxZeilen=0,@ResultSetArt=''NONE'',@PrintMeldungen=0,@JsonErzeugen=1,@Json=@Json OUTPUT,
+                @StatusCodeOut=@Status OUTPUT,@ErrorNumberOut=@ModuleError OUTPUT;
+            IF ISNULL(ISJSON(@Json),0)<>1 OR ISNULL(@Status,'''')<>''AVAILABLE_LIMITED''
+               OR @@LOCK_TIMEOUT<>@BeforeLock
+               OR ISNULL(JSON_QUERY(@Json,N''$.activeRequests''),N'''')<>N''[]''
+               OR ISNULL(JSON_QUERY(@Json,N''$.executionStats''),N'''')<>N''[]''
+               OR (SELECT COUNT(DISTINCT [SourceCode]) FROM OPENJSON(@Json,N''$.sourceStatus'')
+                   WITH ([SourceCode] varchar(80),[StatusCode] varchar(40),[IsPartial] bit,[RowCount] bigint,[ErrorNumber] int)
+                   WHERE [StatusCode]=''DENIED_PERMISSION'' AND [IsPartial]=1 AND [RowCount]=0
+                     AND (([SourceCode]=''ACTIVE_EXTERNAL_REQUESTS'' AND [ErrorNumber]=@RequestError)
+                       OR ([SourceCode]=''EXECUTION_STATS_T1'' AND [ErrorNumber]=@StatsError)))<>2
+            BEGIN
+                DECLARE @SafeJson nvarchar(max)=CASE WHEN ISJSON(@Json)=1 THEN @Json ELSE N''{}'' END;
+                DECLARE @AppliedRequests int,@AppliedStats int,@AppliedRequestError int,@AppliedStatsError int;
+                SELECT @AppliedRequests=SUM(CASE WHEN [SourceCode]=''ACTIVE_EXTERNAL_REQUESTS'' AND [StatusCode]=''DENIED_PERMISSION''
+                                            AND [IsPartial]=1 AND [RowCount]=0 THEN 1 ELSE 0 END),
+                       @AppliedStats=SUM(CASE WHEN [SourceCode]=''EXECUTION_STATS_T1'' AND [StatusCode]=''DENIED_PERMISSION''
+                                            AND [IsPartial]=1 AND [RowCount]=0 THEN 1 ELSE 0 END),
+                       @AppliedRequestError=MAX(CASE WHEN [SourceCode]=''ACTIVE_EXTERNAL_REQUESTS'' THEN [ErrorNumber] END),
+                       @AppliedStatsError=MAX(CASE WHEN [SourceCode]=''EXECUTION_STATS_T1'' THEN [ErrorNumber] END)
+                FROM OPENJSON(@SafeJson,N''$.sourceStatus'')
+                WITH ([SourceCode] varchar(80),[StatusCode] varchar(40),[IsPartial] bit,[RowCount] bigint,[ErrorNumber] int);
+                DECLARE @Details nvarchar(2048)=CONCAT(
+                    N''ret='',@Return,N''; moduleError='',@ModuleError,N''; json='',ISNULL(ISJSON(@Json),0),
+                    N''; limited='',IIF(@Status=''AVAILABLE_LIMITED'',1,0),N''; lock='',IIF(@@LOCK_TIMEOUT=@BeforeLock,1,0),
+                    N''; activeEmpty='',IIF(JSON_QUERY(@SafeJson,N''$.activeRequests'')=N''[]'',1,0),
+                    N''; statsEmpty='',IIF(JSON_QUERY(@SafeJson,N''$.executionStats'')=N''[]'',1,0),
+                    N''; nativeReq='',@RequestError,N''; nativeStats='',@StatsError,
+                    N''; reqDenied='',@AppliedRequests,N''; statsDenied='',@AppliedStats,
+                    N''; analyzeReq='',@AppliedRequestError,N''; analyzeStats='',@AppliedStatsError);
+                THROW 56993,@Details,1;
+            END;
+            IF (SELECT COUNT(*) FROM OPENJSON(@Json,N''$.languages'')
+                WITH ([DatabaseName] sysname,[LanguageName] sysname,[FileMetadataStatus] varchar(40))
+                WHERE [DatabaseName]=N''ExampleExternalRuntimeProbe'' AND [LanguageName]=N''Java''
+                  AND [FileMetadataStatus]=''NOT_REQUESTED'')<>1
+                THROW 56994,N''Visible Java registration was lost after the independent source denials.'',1;
+            REVERT;
+        END TRY
+        BEGIN CATCH REVERT;THROW;END CATCH;';
+    EXEC sys.sp_executesql @Sql;
+END TRY
+BEGIN CATCH
+    SET @Failure=ERROR_NUMBER();
+    IF @Failure=56993 SET @Details=ERROR_MESSAGE();
+END CATCH;
+
+BEGIN TRY
+    SET @Sql=N'DROP USER IF EXISTS '+QUOTENAME(@RestrictedName)+N';';
+    EXEC [ExampleExternalRuntimeProbe].[sys].[sp_executesql] @Sql;
+    EXEC sys.sp_executesql @Sql;
+    IF SUSER_ID(@RestrictedName) IS NOT NULL
+    BEGIN
+        SET @Sql=N'DROP LOGIN '+QUOTENAME(@RestrictedName)+N';';
+        EXEC sys.sp_executesql @Sql;
+    END;
+END TRY
+BEGIN CATCH SET @Cleanup=ERROR_NUMBER();END CATCH;
+
+IF SUSER_ID(@RestrictedName) IS NOT NULL
+   OR EXISTS(SELECT 1 FROM sys.database_principals WHERE [name]=@RestrictedName)
+   OR EXISTS(SELECT 1 FROM [ExampleExternalRuntimeProbe].[sys].[database_principals] WHERE [name]=@RestrictedName)
+    SET @Cleanup=ISNULL(@Cleanup,56996);
+
+IF @Failure IS NOT NULL OR @Cleanup IS NOT NULL
+BEGIN
+    DECLARE @FailureSummary nvarchar(2048)=CONCAT(N'Restricted external-runtime fixture failed. Test=',@Failure,N'; cleanup=',@Cleanup,N'; ',@Details);
+    THROW 56995,@FailureSummary,1;
+END;
+GO
