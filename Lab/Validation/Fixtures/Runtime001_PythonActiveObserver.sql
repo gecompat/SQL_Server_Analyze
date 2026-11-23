@@ -3,12 +3,23 @@ SET NOCOUNT ON;
 DECLARE @TargetDatabase sysname=N'ExampleExternalRuntimeProbe',@WorkerSession smallint,
         @ExternalRequest uniqueidentifier,@SqlRequest int,@Language nvarchar(128),@Parallelism int,
         @NativeRows int,@Json nvarchar(max),@Return int,@LockTimeoutBefore int=@@LOCK_TIMEOUT,
+        @SignalSeen bit=0,@WorkerRequestSeen bit=0,@WorkerGuidSeen bit=0,@PythonDmvSeen bit=0,
         @Deadline datetime2(3)=DATEADD(SECOND,35,SYSUTCDATETIME());
 
 WHILE @ExternalRequest IS NULL AND SYSUTCDATETIME()<@Deadline
 BEGIN
     SELECT @WorkerSession=[SessionId]
     FROM [ExampleExternalRuntimeProbe].[dbo].[ExampleActiveRuntimeSignal] WHERE [Id]=1 AND [Finished]=0;
+
+    IF @WorkerSession IS NOT NULL SET @SignalSeen=1;
+    IF EXISTS(SELECT 1 FROM sys.dm_exec_requests WHERE [session_id]=@WorkerSession)
+        SET @WorkerRequestSeen=1;
+    IF EXISTS(SELECT 1 FROM sys.dm_exec_requests
+              WHERE [session_id]=@WorkerSession AND [external_script_request_id] IS NOT NULL)
+        SET @WorkerGuidSeen=1;
+    IF EXISTS(SELECT 1 FROM sys.dm_external_script_requests
+              WHERE [language] COLLATE Latin1_General_100_CI_AS=N'Python')
+        SET @PythonDmvSeen=1;
 
     SELECT @ExternalRequest=e.[external_script_request_id],@SqlRequest=r.[request_id],
            @Language=e.[language],@Parallelism=e.[degree_of_parallelism]
@@ -21,7 +32,13 @@ BEGIN
 END;
 
 IF @ExternalRequest IS NULL OR @NativeRows<>1
-    THROW 56985,N'The observer did not resolve the owned active Python request.',1;
+BEGIN
+    DECLARE @ObservationFailure nvarchar(2048)=CONCAT(
+        N'The observer did not resolve the owned active Python request. signal=',@SignalSeen,
+        N'; workerRequest=',@WorkerRequestSeen,N'; workerGuid=',@WorkerGuidSeen,
+        N'; pythonDmv=',@PythonDmvSeen,N'; matches=',@NativeRows);
+    THROW 56985,@ObservationFailure,1;
+END;
 
 EXEC @Return=[monitor].[USP_ExternalRuntimeAnalysis]
      @DatabaseNames=@TargetDatabase,@LanguageNames=@Language,

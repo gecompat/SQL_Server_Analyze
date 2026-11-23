@@ -159,25 +159,45 @@ GO
         $worker = Start-ThreadJob -ScriptBlock {
             param($ModulePath, $RunId, $StateRoot, $Credential, $ScriptPath)
             $ErrorActionPreference = 'Stop'
+            Write-Output 'RUNTIME001_WORKER_THREAD_ENTERED'
             Import-Module $ModulePath
+            Write-Output 'RUNTIME001_WORKER_MODULE_IMPORTED'
             $result = Invoke-SqlServerLabScript -RunId $RunId -InstanceId runtime -StateRoot $StateRoot `
                 -SaPassword $Credential -Database ExampleExternalRuntimeProbe -ScriptPath $ScriptPath `
                 -KeepConnection -Confirm:$false
             if (-not $result.Success) { throw 'The owned Python worker did not finish.' }
+            Write-Output 'RUNTIME001_WORKER_SQL_FINISHED'
         } -ArgumentList @($labModulePath, $lab.RunId, $state, $sqlCredential, $workerPath)
+        $observed = $null
         try {
             $observed = Invoke-SqlServerLabScript -RunId $lab.RunId -InstanceId runtime -StateRoot $state `
                 -SaPassword $sqlCredential -Database ExampleAnalyzeRuntime -ScriptPath $observerPath `
                 -KeepConnection -Confirm:$false
             if (-not $observed.Success) { throw 'The active Python request contract failed.' }
             $null = Wait-Job -Job $worker -Timeout 10
-            $null = Receive-Job -Job $worker -ErrorAction Stop
             if ($worker.State -ne 'Completed') { throw 'The owned Python worker job did not complete.' }
-            Write-Output 'RUNTIME001_PYTHON_ACTIVE_REQUEST_AND_COMPLETION=PASS'
         } finally {
-            if ($worker.State -notin @('Completed','Failed','Stopped')) { Stop-Job -Job $worker }
+            $workerState = [string]$worker.State
+            if ($workerState -notin @('Completed','Failed','Stopped')) { Stop-Job -Job $worker }
+            $workerRecords = @(Receive-Job -Job $worker -ErrorAction Continue *>&1)
+            $workerErrorCount = @($workerRecords | Where-Object { $_ -is [System.Management.Automation.ErrorRecord] }).Count
+            if ($workerState -ne 'Completed' -or $workerErrorCount -gt 0 -or $null -eq $observed -or -not $observed.Success) {
+                $entered = [int]($workerRecords -ccontains 'RUNTIME001_WORKER_THREAD_ENTERED')
+                $imported = [int]($workerRecords -ccontains 'RUNTIME001_WORKER_MODULE_IMPORTED')
+                $sqlFinished = [int]($workerRecords -ccontains 'RUNTIME001_WORKER_SQL_FINISHED')
+                $sqlNumbers = @(
+                    foreach ($record in $workerRecords) {
+                        foreach ($match in [regex]::Matches([string]$record, '\bMsg ([0-9]{1,6}), Level\b')) {
+                            [int]$match.Groups[1].Value
+                        }
+                    }
+                ) | Sort-Object -Unique | Select-Object -First 4
+                Write-Output "RUNTIME001_PYTHON_WORKER_DIAGNOSTICS state=$workerState entered=$entered imported=$imported sqlFinished=$sqlFinished errors=$workerErrorCount sqlNumbers=$($sqlNumbers -join ',')"
+            }
             Remove-Job -Job $worker -Force
         }
+        if ($workerErrorCount -gt 0) { throw 'The owned Python worker reported an error.' }
+        Write-Output 'RUNTIME001_PYTHON_ACTIVE_REQUEST_AND_COMPLETION=PASS'
     }
 } catch {
     $failure = $_
