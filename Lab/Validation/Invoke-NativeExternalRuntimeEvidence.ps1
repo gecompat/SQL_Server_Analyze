@@ -183,7 +183,7 @@ GO
                 if ($workerState -ne 'Completed' -or $workerErrorCount -gt 0 -or $finished -ne 1 -or -not $result.Success) {
                     $workerFacts = foreach ($record in $workerRecords) {
                         foreach ($match in [regex]::Matches([string]$record,
-                            'Msg ([0-9]{1,6}), Level|R sample window: published=[01]; session=[01]; request=[01]; database=[01]; wait=[01]\.')) {
+                            'Msg ([0-9]{1,6}), Level|R sample window: phase=[12]; published=[01]; session=[01]; request=[01]; database=[01]; wait=[01]\.')) {
                             $match.Value
                         }
                     }
@@ -198,7 +198,10 @@ GO
         throw 'The owned R counter worker did not complete its native assertions.'
     }
     Write-Output "${markerPrefix}_$($profile.Evidence)=PASS"
-    if ($Language -eq 'R') { Write-Output "${markerPrefix}_POSITIVE_COUNTER_DELTA=PASS" }
+    if ($Language -eq 'R') {
+        Write-Output "${markerPrefix}_POSITIVE_COUNTER_DELTA=PASS"
+        Write-Output "${markerPrefix}_EXTERNAL_POOL_EPOCH_BOUNDARY=PASS"
+    }
 } catch {
     $failure = $_
 } finally {

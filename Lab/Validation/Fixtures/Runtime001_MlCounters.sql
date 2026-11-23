@@ -200,5 +200,74 @@ BEGIN
         THROW 57027,N'The positive sample did not report two successful ordered measurement points.',1;
 
     DROP TABLE [##ExampleRuntime001RCounterSampler];
+
+    -- Change only an owned pool on this disposable instance during a separate sample.
+    DECLARE @GovernorWasEnabled bit=(SELECT [is_enabled] FROM sys.resource_governor_configuration),
+            @PoolId int,@PoolVersion bigint,@PoolEpoch datetime,@CurrentPoolEpoch datetime;
+    IF @GovernorWasEnabled IS NULL
+       OR EXISTS(SELECT 1 FROM sys.resource_governor_external_resource_pools WHERE [name]=N'ExampleRuntime001Epoch')
+        THROW 57030,N'The external-pool epoch fixture requires an unused pool on the owned instance.',1;
+
+    CREATE EXTERNAL RESOURCE POOL [ExampleRuntime001Epoch] WITH (MAX_PROCESSES=2);
+    ALTER RESOURCE GOVERNOR RECONFIGURE;
+
+    SELECT @PoolId=[external_pool_id],@PoolVersion=[pool_version],@PoolEpoch=[statistics_start_time]
+    FROM sys.dm_resource_governor_external_resource_pools
+    WHERE [name]=N'ExampleRuntime001Epoch' AND [max_processes]=2;
+    IF @PoolId IS NULL OR @PoolVersion IS NULL OR @PoolEpoch IS NULL
+        THROW 57031,N'The owned external pool was not visible with its initial native configuration.',1;
+
+    CREATE TABLE [##ExampleRuntime001RPoolEpochSampler]([SamplerSessionId] smallint NOT NULL);
+    INSERT [##ExampleRuntime001RPoolEpochSampler]([SamplerSessionId]) VALUES (@@SPID);
+    SET @Json=NULL;
+    EXEC @Return=[monitor].[USP_ExternalRuntimeAnalysis]
+         @DatabaseNames=N'[ExampleExternalRuntimeProbe]',@LanguageNames=@ObservedLanguage,
+         @SampleSeconds=15,@MaxZeilen=0,@ResultSetArt='NONE',@PrintMeldungen=0,
+         @JsonErzeugen=1,@Json=@Json OUTPUT;
+
+    IF ISNULL(@Return,-1)<>0 OR ISNULL(ISJSON(@Json),0)<>1 OR @@LOCK_TIMEOUT<>@LockTimeoutBefore
+        THROW 57032,N'The external-pool sample did not preserve its output and caller lock timeout.',1;
+
+    SELECT @CurrentPoolEpoch=[statistics_start_time]
+    FROM sys.dm_resource_governor_external_resource_pools
+    WHERE [external_pool_id]=@PoolId AND [name]=N'ExampleRuntime001Epoch' AND [max_processes]=1
+      AND ([pool_version]<>@PoolVersion OR [statistics_start_time]<>@PoolEpoch);
+    IF @CurrentPoolEpoch IS NULL
+        THROW 57033,N'The owned external pool did not report a native version or statistics-epoch transition.',1;
+
+    IF (SELECT COUNT(*) FROM OPENJSON(@Json,N'$.externalPools') WITH ([ExternalPoolId] int)
+        WHERE [ExternalPoolId]=@PoolId)<>1
+       OR NOT EXISTS
+       (
+           SELECT 1 FROM OPENJSON(@Json,N'$.externalPools') WITH
+           (
+               [ExternalPoolId] int,[PoolName] nvarchar(128),[MaxProcesses] int,[StatisticsStartTime] datetime,
+               [SampleSeconds] decimal(19,6),[DeltaStatus] varchar(40),
+               [CpuKernelDelta] bigint,[CpuUserDelta] bigint,[ReadIoDelta] bigint,[WriteIoDelta] bigint
+           )
+           WHERE [ExternalPoolId]=@PoolId AND [PoolName]=N'ExampleRuntime001Epoch' AND [MaxProcesses]=1
+             AND [StatisticsStartTime]=@CurrentPoolEpoch AND [SampleSeconds]>0 AND [DeltaStatus]='RESET_BOUNDARY'
+             AND [CpuKernelDelta] IS NULL AND [CpuUserDelta] IS NULL AND [ReadIoDelta] IS NULL AND [WriteIoDelta] IS NULL
+       )
+        THROW 57034,N'The native epoch transition did not bind to a RESET_BOUNDARY with four suppressed deltas.',1;
+
+    SELECT @SampleT1=MAX(CASE WHEN [SourceCode]='EXTERNAL_POOLS_T1' THEN [ReadAtUtc] END),
+           @SampleT2=MAX(CASE WHEN [SourceCode]='EXTERNAL_POOLS_T2' THEN [ReadAtUtc] END),
+           @SampleSourceCount=COUNT(*),@DistinctSampleSources=COUNT(DISTINCT [SourceCode])
+    FROM OPENJSON(@Json,N'$.sourceStatus') WITH
+        ([SourceCode] varchar(80),[StatusCode] varchar(40),[IsPartial] bit,[RowCount] bigint,[ReadAtUtc] datetime2(3))
+    WHERE [SourceCode] IN ('EXTERNAL_POOLS_T1','EXTERNAL_POOLS_T2')
+      AND [StatusCode]='AVAILABLE' AND [IsPartial]=0 AND [RowCount]>=1;
+    IF @SampleSourceCount<>2 OR @DistinctSampleSources<>2 OR @SampleT1 IS NULL OR @SampleT2 IS NULL OR @SampleT2<=@SampleT1
+        THROW 57035,N'The external-pool transition did not have two successful ordered native reads.',1;
+
+    DROP TABLE [##ExampleRuntime001RPoolEpochSampler];
+    DROP EXTERNAL RESOURCE POOL [ExampleRuntime001Epoch];
+    ALTER RESOURCE GOVERNOR RECONFIGURE;
+    IF @GovernorWasEnabled=0 ALTER RESOURCE GOVERNOR DISABLE;
+    IF EXISTS(SELECT 1 FROM sys.resource_governor_external_resource_pools WHERE [name]=N'ExampleRuntime001Epoch')
+       OR EXISTS(SELECT 1 FROM sys.dm_resource_governor_external_resource_pools WHERE [name]=N'ExampleRuntime001Epoch')
+       OR NOT EXISTS(SELECT 1 FROM sys.resource_governor_configuration WHERE [is_enabled]=@GovernorWasEnabled)
+        THROW 57036,N'The owned pool or the original governor enabled state was not restored.',1;
 END;
 GO
