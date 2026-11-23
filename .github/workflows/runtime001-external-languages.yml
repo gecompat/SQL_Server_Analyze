@@ -7,6 +7,7 @@ on:
       - 'Lab/Validation/Invoke-NativeExternalRuntimeEvidence.ps1'
       - 'Lab/Validation/Fixtures/Runtime001_JavaCatalog.sql'
       - 'Lab/Validation/Fixtures/Runtime001_MlCounters.sql'
+      - 'Lab/Validation/Fixtures/Runtime001_RCounterWorker.sql'
       - 'Code/09_VersionAdaptive/090_USP_ExternalRuntimeAnalysis.sql'
   push:
     branches: [main]
@@ -15,6 +16,7 @@ on:
       - 'Lab/Validation/Invoke-NativeExternalRuntimeEvidence.ps1'
       - 'Lab/Validation/Fixtures/Runtime001_JavaCatalog.sql'
       - 'Lab/Validation/Fixtures/Runtime001_MlCounters.sql'
+      - 'Lab/Validation/Fixtures/Runtime001_RCounterWorker.sql'
       - 'Code/09_VersionAdaptive/090_USP_ExternalRuntimeAnalysis.sql'
 
 permissions:

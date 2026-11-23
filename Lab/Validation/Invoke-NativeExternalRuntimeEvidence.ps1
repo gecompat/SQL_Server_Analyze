@@ -147,11 +147,36 @@ GO
         # Language is restricted to the fixed SQL literals in the ValidateSet above.
         [IO.File]::WriteAllText($fixturePath, "DECLARE @FixtureLanguage nvarchar(128)=N'$Language';`n" + $fixtureSource, $encoding)
     }
-    $result = Invoke-SqlServerLabScript -RunId $lab.RunId -InstanceId runtime -StateRoot $state `
-        -SaPassword $sqlCredential -Database ExampleAnalyzeRuntime -ScriptPath $fixturePath `
-        -KeepConnection -Confirm:$false
-    if (-not $result.Success) { throw 'The Analyze external runtime evidence contract failed.' }
+    $counterWorker = $null
+    if ($Language -eq 'R') {
+        $workerPath = Join-Path $PSScriptRoot 'Fixtures/Runtime001_RCounterWorker.sql'
+        $counterWorker = Start-ThreadJob -ScriptBlock {
+            param($ModulePath, $RunId, $StateRoot, $Credential, $ScriptPath)
+            $ErrorActionPreference = 'Stop'
+            Import-Module $ModulePath
+            $workerResult = Invoke-SqlServerLabScript -RunId $RunId -InstanceId runtime -StateRoot $StateRoot `
+                -SaPassword $Credential -Database ExampleExternalRuntimeProbe -ScriptPath $ScriptPath `
+                -KeepConnection -Confirm:$false
+            if (-not $workerResult.Success) { throw 'The owned R counter worker did not finish.' }
+        } -ArgumentList @($labModulePath, $lab.RunId, $state, $sqlCredential, $workerPath)
+    }
+    try {
+        $result = Invoke-SqlServerLabScript -RunId $lab.RunId -InstanceId runtime -StateRoot $state `
+            -SaPassword $sqlCredential -Database ExampleAnalyzeRuntime -ScriptPath $fixturePath `
+            -KeepConnection -Confirm:$false
+        if (-not $result.Success) { throw 'The Analyze external runtime evidence contract failed.' }
+        if ($counterWorker) {
+            $null = Wait-Job -Job $counterWorker -Timeout 10
+            if ($counterWorker.State -ne 'Completed') { throw 'The owned R counter worker did not complete.' }
+            $null = Receive-Job -Job $counterWorker -ErrorAction Stop
+        }
+    } finally {
+        if ($counterWorker) {
+            Remove-Job -Job $counterWorker -Force
+        }
+    }
     Write-Output "${markerPrefix}_$($profile.Evidence)=PASS"
+    if ($Language -eq 'R') { Write-Output "${markerPrefix}_POSITIVE_COUNTER_DELTA=PASS" }
 } catch {
     $failure = $_
 } finally {
