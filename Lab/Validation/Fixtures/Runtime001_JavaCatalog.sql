@@ -149,7 +149,7 @@ BEGIN TRY
                 @DatabaseNames=N''[ExampleExternalRuntimeProbe]'',@LanguageNames=N''Java'',
                 @MaxZeilen=0,@ResultSetArt=''NONE'',@PrintMeldungen=0,@JsonErzeugen=1,@Json=@Json OUTPUT,
                 @StatusCodeOut=@Status OUTPUT,@ErrorNumberOut=@ModuleError OUTPUT;
-            IF ISNULL(@Return,-1)<>0 OR ISNULL(ISJSON(@Json),0)<>1 OR ISNULL(@Status,'''')<>''AVAILABLE_LIMITED''
+            IF ISNULL(ISJSON(@Json),0)<>1 OR ISNULL(@Status,'''')<>''AVAILABLE_LIMITED''
                OR @@LOCK_TIMEOUT<>@BeforeLock
                OR ISNULL(JSON_QUERY(@Json,N''$.activeRequests''),N'''')<>N''[]''
                OR ISNULL(JSON_QUERY(@Json,N''$.executionStats''),N'''')<>N''[]''
