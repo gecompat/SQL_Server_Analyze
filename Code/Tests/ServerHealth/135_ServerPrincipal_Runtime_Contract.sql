@@ -347,6 +347,84 @@ BEGIN TRY
        OR EXISTS(SELECT 1 FROM OPENJSON(@Json,N'$.principals') WITH([PrincipalId] int N'$.PrincipalId') WHERE [PrincipalId]=@IdA)
         THROW 57074,N'Serverprincipal restricted metadata visibility differs.',1;
 
+    IF NOT EXISTS(SELECT 1 FROM [sys].[server_permissions] WHERE grantee_principal_id=@RoleIdA
+                  AND permission_name=N'VIEW SERVER STATE' AND state='W')
+        THROW 57094,N'Owned hidden role does not have its expected explicit grant.',1;
+    SET @Sql=CONVERT(nvarchar(max),N'EXECUTE AS LOGIN=')+QUOTENAME(@LoginB,'''')+N';
+BEGIN TRY
+    IF SUSER_ID()<>@SelfId OR EXISTS(SELECT 1 FROM sys.server_principals WHERE principal_id=@HiddenRoleId)
+       OR EXISTS(SELECT 1 FROM sys.server_permissions WHERE grantee_principal_id=@HiddenRoleId)
+        THROW 57095,N''Restricted server-permission visibility fixture differs.'',1;
+
+    DECLARE @Native TABLE
+        ([Class] tinyint,[MajorId] int,[PermissionName] nvarchar(128) COLLATE SQL_Latin1_General_CP1_CS_AS,
+         [PermissionState] char(1) COLLATE SQL_Latin1_General_CP1_CS_AS,[GrantorPrincipalId] int);
+    INSERT @Native
+    SELECT [class],[major_id],[permission_name],[state],[grantor_principal_id]
+    FROM sys.server_permissions WHERE grantee_principal_id=@SelfId;
+    IF NOT EXISTS(SELECT 1 FROM @Native WHERE PermissionName=N''ALTER ANY LOGIN'' AND PermissionState=''D'')
+        THROW 57096,N''Restricted caller cannot observe its own synthetic DENY.'',1;
+
+    DECLARE @NativeRows bigint=(SELECT COUNT_BIG(*) FROM @Native),@ExpectedRows bigint,@Trial int=0,
+        @Result int,@Output nvarchar(max),@IsPartial bit,@RequestedName sysname,
+        @ExpectedId int,@CurrentDb int=DB_ID(),@CurrentSpid int=@@SPID,
+        @CurrentOptions int=@@OPTIONS,@CurrentTimeout int=@@LOCK_TIMEOUT,@CurrentTranCount int=@@TRANCOUNT;
+    DECLARE @Observed TABLE
+      ([GranteePrincipalId] int,[GranteeName] sysname,[Class] tinyint,[MajorId] int,
+       [PermissionName] nvarchar(128) COLLATE SQL_Latin1_General_CP1_CS_AS,
+       [PermissionState] char(1) COLLATE SQL_Latin1_General_CP1_CS_AS,[GrantorPrincipalId] int);
+    WHILE @Trial<2
+    BEGIN
+        SET @RequestedName=CASE @Trial WHEN 0 THEN @SelfName ELSE @HiddenRoleName END;
+        SET @ExpectedId=CASE @Trial WHEN 0 THEN @SelfId ELSE @HiddenRoleId END;
+        SET @ExpectedRows=CASE @Trial WHEN 0 THEN @NativeRows ELSE 0 END;
+        EXEC @Result=[monitor].[USP_ServerPrincipalAnalysis] @PermissionGranteeName=@RequestedName,
+            @MaxZeilen=0,@ResultSetArt=''NONE'',@JsonErzeugen=1,@Json=@Output OUTPUT,
+            @IsPartialOut=@IsPartial OUTPUT,@PrintMeldungen=0;
+
+        IF ISNULL(@Result,-1)<>0 OR COALESCE(ISJSON(@Output),0)<>1 OR COALESCE(@IsPartial,0)<>1
+           OR SUSER_ID()<>@SelfId OR DB_ID()<>@CurrentDb OR @@SPID<>@CurrentSpid
+           OR @@OPTIONS<>@CurrentOptions OR @@LOCK_TIMEOUT<>@CurrentTimeout OR @@TRANCOUNT<>@CurrentTranCount
+            THROW 57097,N''Restricted server grantee call changed status or caller state.'',1;
+
+        INSERT @Observed
+        SELECT [GranteePrincipalId],[GranteeName],[Class],[MajorId],[PermissionName],[PermissionState],[GrantorPrincipalId]
+        FROM OPENJSON(@Output,N''$.permissions'') WITH
+          ([GranteePrincipalId] int,[GranteeName] sysname,[Class] tinyint,[MajorId] int,
+           [PermissionName] nvarchar(128),[PermissionState] char(1),[GrantorPrincipalId] int);
+
+        IF ISNULL(LEFT(JSON_QUERY(@Output,N''$.permissions''),1),N'''')<>N''[''
+           OR (SELECT COUNT_BIG(*) FROM OPENJSON(@Output,N''$.permissions''))<>@ExpectedRows
+           OR (SELECT COUNT_BIG(*) FROM @Observed)<>@ExpectedRows
+           OR EXISTS(SELECT 1 FROM @Observed WHERE [GranteePrincipalId] IS NULL OR [GranteePrincipalId]<>@ExpectedId
+                      OR [GranteeName] IS NULL OR DATALENGTH([GranteeName])<>DATALENGTH(@RequestedName)
+                      OR CONVERT(varbinary(256),[GranteeName])<>CONVERT(varbinary(256),@RequestedName))
+           OR NOT EXISTS(SELECT 1 FROM OPENJSON(@Output,N''$.sourceStatus'') WITH
+                ([SourceKey] varchar(64),[StatusCode] varchar(40),[VisibilityScope] varchar(32),
+                 [ObservedRows] bigint,[ReturnedRows] bigint,[ErrorNumber] int)
+                WHERE [SourceKey]=''SERVER_PERMISSIONS'' AND [StatusCode]=''AVAILABLE_LIMITED'' AND [VisibilityScope]=''VISIBLE_ONLY''
+                    AND [ObservedRows]=@ExpectedRows AND [ReturnedRows]=@ExpectedRows AND [ErrorNumber] IS NULL)
+            THROW 57098,N''Restricted server grantee visibility or counts differ.'',1;
+        IF @Trial=0 AND
+            (EXISTS(SELECT [Class],[MajorId],[PermissionName],[PermissionState],[GrantorPrincipalId] FROM @Observed
+                     EXCEPT SELECT [Class],[MajorId],[PermissionName],[PermissionState],[GrantorPrincipalId] FROM @Native)
+             OR EXISTS(SELECT [Class],[MajorId],[PermissionName],[PermissionState],[GrantorPrincipalId] FROM @Native
+                     EXCEPT SELECT [Class],[MajorId],[PermissionName],[PermissionState],[GrantorPrincipalId] FROM @Observed))
+            THROW 57099,N''Restricted caller native server permissions differ.'',1;
+
+        DELETE FROM @Observed;
+        SET @Trial+=1;
+    END;
+    REVERT;
+END TRY
+BEGIN CATCH
+    REVERT;
+    THROW;
+END CATCH;
+';
+    EXEC [sys].[sp_executesql] @Sql,N'@SelfId int,@SelfName sysname,@HiddenRoleId int,@HiddenRoleName sysname',
+        @SelfId=@IdB,@SelfName=@LoginB,@HiddenRoleId=@RoleIdA,@HiddenRoleName=@RoleA;
+
     SET @Sql=N'CREATE USER '+QUOTENAME(@UserB)+N' FOR LOGIN '+QUOTENAME(@LoginB)+N';';
     EXEC [master].[sys].[sp_executesql] @Sql;SET @MadeMasterUser=1;
     SELECT @MasterUserIdB=[principal_id],@MasterUserSidB=[sid]
