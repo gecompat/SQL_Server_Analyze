@@ -152,6 +152,33 @@ GO
         -KeepConnection -Confirm:$false
     if (-not $result.Success) { throw 'The Analyze external runtime evidence contract failed.' }
     Write-Output "${markerPrefix}_$($profile.Evidence)=PASS"
+
+    if ($Language -eq 'Python') {
+        $workerPath = Join-Path $PSScriptRoot 'Fixtures/Runtime001_PythonActiveWorker.sql'
+        $observerPath = Join-Path $PSScriptRoot 'Fixtures/Runtime001_PythonActiveObserver.sql'
+        $worker = Start-ThreadJob -ScriptBlock {
+            param($ModulePath, $RunId, $StateRoot, $Credential, $ScriptPath)
+            $ErrorActionPreference = 'Stop'
+            Import-Module $ModulePath
+            $result = Invoke-SqlServerLabScript -RunId $RunId -InstanceId runtime -StateRoot $StateRoot `
+                -SaPassword $Credential -Database ExampleExternalRuntimeProbe -ScriptPath $ScriptPath `
+                -KeepConnection -Confirm:$false
+            if (-not $result.Success) { throw 'The owned Python worker did not finish.' }
+        } -ArgumentList @($labModulePath, $lab.RunId, $state, $sqlCredential, $workerPath)
+        try {
+            $observed = Invoke-SqlServerLabScript -RunId $lab.RunId -InstanceId runtime -StateRoot $state `
+                -SaPassword $sqlCredential -Database ExampleAnalyzeRuntime -ScriptPath $observerPath `
+                -KeepConnection -Confirm:$false
+            if (-not $observed.Success) { throw 'The active Python request contract failed.' }
+            $null = Wait-Job -Job $worker -Timeout 10
+            $null = Receive-Job -Job $worker -ErrorAction Stop
+            if ($worker.State -ne 'Completed') { throw 'The owned Python worker job did not complete.' }
+            Write-Output 'RUNTIME001_PYTHON_ACTIVE_REQUEST_AND_COMPLETION=PASS'
+        } finally {
+            if ($worker.State -notin @('Completed','Failed','Stopped')) { Stop-Job -Job $worker }
+            Remove-Job -Job $worker -Force
+        }
+    }
 } catch {
     $failure = $_
 } finally {
