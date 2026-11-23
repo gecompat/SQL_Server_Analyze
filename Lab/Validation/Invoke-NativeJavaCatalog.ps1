@@ -26,7 +26,7 @@ try {
             id = 'java'
             version = '2025'
             provider = 'docker'
-            profile = 'performance'
+            profile = 'standard'
             network = @{ intent = 'nat'; exposure = 'host' }
             databases = @(@{
                 name = 'ExampleExternalRuntimeProbe'
