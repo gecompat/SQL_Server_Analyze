@@ -86,3 +86,13 @@ Compatibility Levels 150, 160 und 170. Der Merge
 synchronisiert; der eigene Worktree ist archiviert und der eigene lokale
 und entfernte Branch sind abwesend. Das positive Feature-Gate bleibt
 `NOT_EXECUTED`; der Produktstatus bleibt `IMPLEMENTED_EXTERNAL_EVIDENCE_PENDING`.
+
+## Positiver nativer S3-Katalognachweis vom 23. November 2026
+
+Der bereitgestellte Lab-Pfad verwendet eine eigene SQL-Server-2025-CU9-Instanz und einen isolierten S3-Dienst. Er prüft zwei feste CSV-Zeilen und die Schreibverweigerung mit dem Leseschlüssel. Vor dem Analyze-Vertrag trennt die Fixture den S3-Dienst vom Testnetz. Die Bereinigung war in den gebundenen Läufen erfolgreich. [Lab Main](https://github.com/gecompat/SQL_Server_Lab/actions/runs/45168896727)
+
+Der native Fall belegt den symbolischen Formatwert `DELIMITEDTEXT`. Der vorherige Analyzer behandelte diesen Wert als Quelle mit Fehler 245. Nach der Korrektur enthält der vorhandene `FormatTypeCode` bei diesem Formatnamen `NULL`, während die Formatzeile und ihre sichtbare Tabellenreferenz in TABLE und JSON erhalten bleiben. [Diagnose](https://github.com/gecompat/SQL_Server_Analyze/actions/runs/45171679387)
+
+Der geprüfte Head `e708b00f9937e30354030e1bc20c603f1975b0de` und Main `2c8000d41ebb2ba645f860ced64e892cc4bbb63f` bestanden den positiven Katalogvergleich auf SQL Server 2025 CU9 bei Compatibility Level 170. Der Vertrag vergleicht die sichtbaren Quell- und Formatkennungen, die native Spaltenanzahl, Referenzstatus, Caller-Zustand und die drei positiven TABLE-/JSON-Gruppen. Der Nachweis betrifft diesen S3-CSV-Katalogfall. Andere Provider, eingeschränkte Principals, Modellnutzung und Datenabrufe durch Analyze liegen außerhalb des Vertrags. [Head](https://github.com/gecompat/SQL_Server_Analyze/actions/runs/45173672879) [Main](https://github.com/gecompat/SQL_Server_Analyze/actions/runs/45185667933)
+
+Der reguläre funktionale Head-Lauf bestand im einmaligen zweiten Versuch am selben Commit. Der erste Versuch meldete beim unveränderten SSIS-Vertrag 202/C018 SQL 51010 bei der Schemaanpassung der TABLE-Zieltabelle. Der Observer erfasste keinen Blocker. Der erste reguläre Main-Lauf bestand einschließlich Deployment, Release-Verträgen und Standalone-Prüfung. [Funktionaler Head](https://github.com/gecompat/SQL_Server_Analyze/actions/runs/45173672779) [Funktionaler Main](https://github.com/gecompat/SQL_Server_Analyze/actions/runs/45185668003)
