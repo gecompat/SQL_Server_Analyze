@@ -2012,6 +2012,7 @@ USP_ServerPrincipalAnalysis,StatusCodeOut,varchar(40),NULL OUTPUT
 USP_ServerPrincipalAnalysis,IsPartialOut,bit,NULL OUTPUT
 USP_ServerPrincipalAnalysis,ErrorNumberOut,int,NULL OUTPUT
 USP_ServerPrincipalAnalysis,ErrorMessageOut,nvarchar(2048),NULL OUTPUT
+USP_ServerPrincipalAnalysis,PermissionGranteeName,nvarchar(max),NULL
 USP_DatabasePrincipalAnalysis,DatabaseNames,nvarchar(max),NULL
 USP_DatabasePrincipalAnalysis,SystemdatenbankenEinbeziehen,bit,0
 USP_DatabasePrincipalAnalysis,DatabaseNamePattern,nvarchar(4000),NULL

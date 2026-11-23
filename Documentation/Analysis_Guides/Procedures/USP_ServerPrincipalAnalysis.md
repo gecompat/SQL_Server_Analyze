@@ -49,6 +49,13 @@ mit einem Quellenfehler gleichzusetzen.
 | `@IsPartialOut` | `bit OUTPUT` | `NULL` | OUTPUT; Eintritt NULL. Hilfe 0; Analyse, Validierung und äußerer Fehler 1. Jede Analyse bleibt partiell, auch wenn alle Quellen lesbar sind. Optionaler Empfänger: Zum Empfangen eine Variable des deklarierten Typs mit OUTPUT binden; andernfalls das Argument auslassen. Ein anfänglicher NULL- oder anderer Wert wird am Eintritt zurückgesetzt. |
 | `@ErrorNumberOut` | `int OUTPUT` | `NULL` | OUTPUT; Eintritt NULL. Validierung 51011; regulär Fehlernummer der alphabetisch ersten fehlerhaften SourceKey-Quelle, sonst NULL. Äußerer Fehler: TABLE-Fehlercode, sonst ERROR_NUMBER(). Quellenfehler allein ändern RETURN nicht. Optionaler Empfänger: Zum Empfangen eine Variable des deklarierten Typs mit OUTPUT binden; andernfalls das Argument auslassen. Ein anfänglicher NULL- oder anderer Wert wird am Eintritt zurückgesetzt. |
 | `@ErrorMessageOut` | `nvarchar(2048) OUTPUT` | `NULL` | OUTPUT; Eintritt NULL. Validierung: feste Meldung; regulär: Meldung der alphabetisch ersten fehlerhaften Quelle, sonst NULL; äußerer Fehler: ERROR_MESSAGE(). Hilfe lässt NULL. Optionaler Empfänger: Zum Empfangen eine Variable des deklarierten Typs mit OUTPUT binden; andernfalls das Argument auslassen. Ein anfänglicher NULL- oder anderer Wert wird am Eintritt zurückgesetzt. |
+| `@PermissionGranteeName` | `nvarchar(max)` | `NULL` | Der Default ist NULL und lässt alle sichtbaren expliziten Serverrechte in permissions zu. Ein gesetzter Wert enthält genau einen unveränderten Serverprincipalnamen mit höchstens 128 UTF-16-Codeeinheiten. Leertext und ausschließlich U+0020-Leerzeichen sind ungültig. Der Vergleich ist bytegenau einschließlich Großschreibung und Leerzeichen. Der Filter wirkt nur auf permissions vor @MaxZeilen. Er verwendet sichtbare Empfängernamen und löst keine Rollenrechte auf. |
+
+### Explizite Rechte eines sichtbaren Serverprincipals
+
+```sql
+EXEC [monitor].[USP_ServerPrincipalAnalysis] @PermissionGranteeName=N'ExampleLogin', @ResultSetArt='RAW';
+```
 
 ### RAW-Ausgabe
 
