@@ -724,7 +724,7 @@ IF COALESCE(ISJSON(@Json),0)<>1 OR COALESCE(@Status,'''')<>''AVAILABLE'' OR COAL
  OR EXISTS(SELECT 1 FROM OPENJSON(@Json,N''$.loggingQuality'')
      WITH ([QualityCode] varchar(64) N''$.QualityCode'') WHERE [QualityCode]=''UNKNOWN_EVENT_NAME'')
     THROW 56347,N''LEGACY_DIAGNOSTIC_ONLY_STATUS'',1;
--- SSIS-001: Acht quellgebundene ExternalRequest-Paare und strikte Gegenproben.
+-- SSIS-001: Neun quellgebundene ExternalRequest-Paare und strikte Gegenproben.
 DELETE FROM [dbo].[ExampleSsisLegacy.Log]]Source] WHERE [executionid]=@Id AND [id] IN (141,142);
 DECLARE @PairOtherSource uniqueidentifier=NEWID(),@PairReverseSource uniqueidentifier=NEWID(),@PairVariantSource uniqueidentifier=NEWID(),@PairMixedMethodSource uniqueidentifier=NEWID(),@PairConnectionSource uniqueidentifier=NEWID();
 INSERT [dbo].[ExampleSsisLegacy.Log]]Source] VALUES
@@ -764,7 +764,11 @@ INSERT [dbo].[ExampleSsisLegacy.Log]]Source] VALUES
  (184,N''Diagnostic'',N''ExampleTask'',@Source,@Id,''20260101 00:00:27'',''20260102'',0,N''ExternalRequest_pre: The object is ready to make the following external request: ''''ICommand::Execute''''.''),
  (185,N''Diagnostic'',N''ExampleTask'',@Source,@Id,''20260101 00:00:27'',''20260102'',0,N''ExternalRequest_post: ''''ICommand::Execute succeeded''''. The external request has completed.''),
  (186,N''Diagnostic'',N''ExampleTask'',@PairMixedMethodSource,@Id,''20260101 00:00:28'',''20260102'',0,N''ExternalRequest_pre: The object is ready to make the following external request: ''''ICommand::Execute''''.''),
- (187,N''Diagnostic'',N''ExampleTask'',@PairMixedMethodSource,@Id,''20260101 00:00:29'',''20260102'',1,N''ExternalRequest_post: ''''ICommand::Execute succeeded''''. The external request has completed.'');
+ (187,N''Diagnostic'',N''ExampleTask'',@PairMixedMethodSource,@Id,''20260101 00:00:29'',''20260102'',1,N''ExternalRequest_post: ''''ICommand::Execute succeeded''''. The external request has completed.''),
+ (188,N''Diagnostic'',N''ExampleConnection'',@PairConnectionSource,@Id,''20260101 00:00:30'',''20260102'',0,N''ExternalRequest_pre: The object is ready to make the following external request: ''''ITransactionJoin::JoinTransaction''''.''),
+ (189,N''Diagnostic'',N''ExampleConnection'',@PairConnectionSource,@Id,''20260101 00:00:30'',''20260102'',0,N''ExternalRequest_post: ''''ITransactionJoin::JoinTransaction succeeded''''. The external request has completed.''),
+ (190,N''Diagnostic'',N''ExampleTask'',@Source,@Id,''20260101 00:00:31'',''20260102'',0,N''ExternalRequest_pre: The object is ready to make the following external request: ''''ITransactionJoin::JoinTransaction''''.''),
+ (191,N''Diagnostic'',N''ExampleTask'',@Source,@Id,''20260101 00:00:32'',''20260102'',0,N''ExternalRequest_post: ''''ITransactionJoin::JoinTransaction finished''''. The external request has completed.'');
 CREATE TABLE [#ExampleSsisExternalRequestFindings]([Seed] int NULL);
 SET @CiOrdinal+=1; SET @CiMarker=CONCAT(N''CI_CASE|202|C035|'',@CiOrdinal,N''|'',CONVERT(varchar(27),SYSUTCDATETIME(),126),N''Z|'',@@SPID,N''|'',@@LOCK_TIMEOUT,N''|-''); RAISERROR(N''%s'',10,1,@CiMarker) WITH NOWAIT;
 EXEC [monitor].[USP_SsisLegacyLogAnalysis] @LoggingDatabase=@Db,@LoggingTable=N''ExampleSsisLegacy.Log]Source'',
@@ -773,7 +777,7 @@ EXEC [monitor].[USP_SsisLegacyLogAnalysis] @LoggingDatabase=@Db,@LoggingTable=N'
     @JsonErzeugen=1,@Json=@Json OUTPUT,@ErrorNumberOut=@Error OUTPUT;
 SET @CiMarker=CONCAT(N''CI_AFTER|202|C035|'',@CiOrdinal,N''|'',CONVERT(varchar(27),SYSUTCDATETIME(),126),N''Z|'',@@SPID,N''|'',@@LOCK_TIMEOUT,N''|-''); RAISERROR(N''%s'',10,1,@CiMarker) WITH NOWAIT;
 IF COALESCE(ISJSON(@Json),0)<>1 OR @Error IS NOT NULL
- OR (SELECT COUNT_BIG(*) FROM [#ExampleSsisExternalRequestFindings] WHERE [FindingCode]=''LEGACY_EXTERNAL_REQUEST_PAIR'')<>8
+ OR (SELECT COUNT_BIG(*) FROM [#ExampleSsisExternalRequestFindings] WHERE [FindingCode]=''LEGACY_EXTERNAL_REQUEST_PAIR'')<>9
  OR NOT EXISTS(SELECT 1 FROM [#ExampleSsisExternalRequestFindings]
       WHERE [FindingCode]=''LEGACY_EXTERNAL_REQUEST_PAIR'' AND [LogId]=151
         AND [Severity]=''INFO'' AND [EvidenceLevel]=''DERIVED''
@@ -806,6 +810,10 @@ IF COALESCE(ISJSON(@Json),0)<>1 OR @Error IS NOT NULL
       WHERE [FindingCode]=''LEGACY_EXTERNAL_REQUEST_PAIR'' AND [LogId]=184
         AND [Severity]=''INFO'' AND [EvidenceLevel]=''DERIVED''
         AND [Detail] LIKE N''ICommand::Execute%Post-LogId: 185.%'')
+ OR NOT EXISTS(SELECT 1 FROM [#ExampleSsisExternalRequestFindings]
+      WHERE [FindingCode]=''LEGACY_EXTERNAL_REQUEST_PAIR'' AND [LogId]=188
+        AND [Severity]=''INFO'' AND [EvidenceLevel]=''DERIVED''
+        AND [Detail] LIKE N''ITransactionJoin::JoinTransaction%Post-LogId: 189.%'')
  OR COALESCE(JSON_QUERY(@Json,N''$.findings''),N'''')<>
     (SELECT * FROM [#ExampleSsisExternalRequestFindings] ORDER BY [FindingOrdinal] FOR JSON PATH,INCLUDE_NULL_VALUES)
  OR COALESCE(JSON_QUERY(@Json,N''$.errorChain''),N'''')<>N''[]''
