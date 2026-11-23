@@ -13,6 +13,7 @@ on:
       - '.github/workflows/ci-functional-impact.yml'
       - 'Code/Tests/Static/925_Select_CI_Impact.py'
       - 'TestLab/Scenarios/OPS-008/agent-history.sql'
+      - 'Lab/Validation/Fixtures/Runtime001/**'
       - 'Code/Install/**/*.ps1'
       - 'Code/Install/**/*.py'
       - 'Code/Tests/Integration/Deployment_*.py'
@@ -25,6 +26,7 @@ on:
       - '.github/workflows/ci-functional-impact.yml'
       - 'Code/Tests/Static/925_Select_CI_Impact.py'
       - 'TestLab/Scenarios/OPS-008/agent-history.sql'
+      - 'Lab/Validation/Fixtures/Runtime001/**'
       - 'Code/Install/**/*.ps1'
       - 'Code/Install/**/*.py'
       - 'Code/Tests/Integration/Deployment_*.py'
@@ -57,6 +59,7 @@ jobs:
       regex_matrix: ${{ steps.select.outputs.regex_matrix }}
       plan_standalone: ${{ steps.select.outputs.plan_standalone }}
       ops008_agent_history: ${{ steps.select.outputs.ops008_agent_history }}
+      runtime001_clr_catalog: ${{ steps.select.outputs.runtime001_clr_catalog }}
       compatibility_matrix: ${{ steps.select.outputs.compatibility_matrix }}
       snapshot_required: ${{ steps.snapshot.outputs.run_runtime }}
       snapshot_runtime: ${{ steps.snapshot.outputs.snapshot_runtime }}
@@ -433,6 +436,48 @@ jobs:
             safe_report_failure "$fixture_log" FIXTURE
           fi
           echo 'OPS008_AGENT_HISTORY_NATIVE_PASS'
+
+      - name: Run the isolated Runtime-001 SAFE catalog fixture
+        if: needs.impact.outputs.runtime001_clr_catalog == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          umask 077
+          work="$(mktemp -d "$RUNNER_TEMP/example-clr-catalog.XXXXXX")"
+          fixture="$work/ClrSafeCatalog.sql"
+          trap 'rm -rf -- "$work"' EXIT
+          source_directory='Lab/Validation/Fixtures/Runtime001'
+          cp "$source_directory/ExampleAnalyzeClrProbe.csproj" "$source_directory/Marker.cs" "$work/"
+          project="$work/ExampleAnalyzeClrProbe.csproj"
+          dotnet restore "$project" --source https://api.nuget.org/v3/index.json
+          dotnet build "$project" --configuration Release --no-restore
+          python3 - "$source_directory/ClrSafeCatalog.sql" "$work/bin/Release/net48/ExampleAnalyzeClrProbe.dll" "$fixture" <<'PY'
+          from pathlib import Path
+          import sys
+
+          template_path, binary_path, output_path = map(Path, sys.argv[1:])
+          template = template_path.read_text(encoding='utf-8')
+          binary = binary_path.read_bytes()
+          placeholder = '__WI_CLR_PROBE_BYTES__'
+          if template.count(placeholder) != 1 or not 0 < len(binary) <= 65536 or not binary.startswith(b'MZ'):
+              raise SystemExit('Invalid synthetic CLR fixture assembly or template binding.')
+          chunks = ['0x' + binary[offset:offset + 512].hex() for offset in range(0, len(binary), 512)]
+          sql_bytes = 'CONVERT(varbinary(max),' + chunks[0] + ')' + ''.join('\n    + ' + chunk for chunk in chunks[1:])
+          request = template.replace(placeholder, sql_bytes).replace('[DeineDatenbank]', '[SQLServerAnalyzeTest]')
+          if any(len(line.encode('utf-8')) > 2048 for line in request.splitlines()):
+              raise SystemExit('CLR fixture SQL input over line limit.')
+          output_path.write_text(request, encoding='utf-8')
+          PY
+          if ! docker exec -i --env SQLCMDPASSWORD="$MSSQL_EPHEMERAL_CREDENTIAL" \
+              sqlserver-analyze-impact-2025 "$SQLCMD_PATH" -S localhost -U sa -C -b -r1 -h -1 -W \
+              <"$fixture" >"$work/sql-results" 2>"$work/sql-error"; then
+            grep -E '^WI_CLR_FIXTURE_SQL_ERROR=[0-9]{1,6}$' "$work/sql-error" >&2 || true
+            grep -E '^WI_CLR_CATALOG_MISMATCH A_ROWS=[0-9]{1,6} A_MASK=(-1|[0-9]{1,2}) M_ROWS=[0-9]{1,6} M_MASK=(-1|[0-9]{1,2})$' "$work/sql-error" >&2 || true
+            sed -nE 's/^Msg ([0-9]+),.*/WI_CLR_SQL_ERROR=\1/p' "$work/sql-error" | sort -u >&2
+            exit 1
+          fi
+          test "$(grep -Fxc 'WI_CLR_SAFE_REGISTRATION_CATALOG=PASS' "$work/sql-results")" = 1
+          printf '%s\n' 'WI_CLR_SAFE_REGISTRATION_CATALOG=PASS'
 
       - name: Qualify standalone Execution Plan contract
         if: needs.impact.outputs.plan_standalone == 'true'
