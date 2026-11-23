@@ -609,6 +609,62 @@ BEGIN TRY
     IF COALESCE(@Status COLLATE SQL_Latin1_General_CP1_CS_AS,'')<>'DATABASE_UNAVAILABLE' OR (SELECT COUNT(*) FROM OPENJSON(@Json,N'$.principals'))<>0
         THROW 57140,N'Databaseprincipal inaccessible target became a successful empty source.',1;
 
+    -- Der eingeschränkte Aufrufer sieht seine eigenen expliziten Rechte, aber keine Rechte der unsichtbaren Rolle.
+    SET @Inner=N'USE '+QUOTENAME(@DbA)+N';
+        DECLARE @Self int=USER_ID();
+        SELECT @NativeRows=COUNT_BIG(*) FROM sys.database_permissions WHERE [grantee_principal_id]=@Self;
+        IF NOT EXISTS(SELECT 1 FROM sys.database_permissions WHERE [grantee_principal_id]=@Self
+                      AND [class]=4 AND [type]=''VW'' AND [state]=''G'' AND [major_id]=USER_ID(@VisibleUser))
+           OR EXISTS(SELECT 1 FROM sys.database_principals WHERE [name]=@HiddenRole)
+           OR EXISTS(SELECT 1 FROM sys.database_permissions WHERE [grantee_principal_id]=@HiddenRoleId)
+            THROW 57203,N''Restricted native database grantee visibility differs.'',1;
+        SELECT @Native=(SELECT [grantee_principal_id] AS [GranteePrincipalId],[grantor_principal_id] AS [GrantorPrincipalId],
+                              [class] AS [Class],[major_id] AS [MajorId],[minor_id] AS [MinorId],
+                              [permission_name] AS [PermissionName],[state] AS [PermissionState]
+                       FROM sys.database_permissions WHERE [grantee_principal_id]=@Self
+                       ORDER BY [class],[major_id],[minor_id],[permission_name],[state],[grantor_principal_id]
+                       FOR JSON PATH,INCLUDE_NULL_VALUES);';
+    DECLARE @RestrictedSelection nvarchar(258)=QUOTENAME(@DbA);
+    SET @Sql=N'EXECUTE AS LOGIN='+QUOTENAME(@RestrictedLogin,'''')+N';
+        BEGIN TRY
+            DECLARE @Native nvarchar(max),@NativeRows bigint,@Result nvarchar(max),@Actual nvarchar(max),@Status varchar(40);
+            EXEC sys.sp_executesql @NativeProbe,
+                N''@Native nvarchar(max) OUTPUT,@NativeRows bigint OUTPUT,@VisibleUser sysname,@HiddenRole sysname,@HiddenRoleId int'',
+                @Native=@Native OUTPUT,@NativeRows=@NativeRows OUTPUT,@VisibleUser=@VisibleUser,
+                @HiddenRole=@HiddenRole,@HiddenRoleId=@HiddenRoleId;
+            EXEC [monitor].[USP_DatabasePrincipalAnalysis] @DatabaseNames=@Selection,@PermissionGranteeName=@SelfName,
+                @MaxZeilen=0,@ResultSetArt=''NONE'',@JsonErzeugen=1,@Json=@Result OUTPUT,@PrintMeldungen=0,@StatusCodeOut=@Status OUTPUT;
+            SELECT @Actual=(SELECT [GranteePrincipalId],[GrantorPrincipalId],[Class],[MajorId],[MinorId],[PermissionName],[PermissionState]
+                FROM OPENJSON(@Result,N''$.permissions'') WITH
+                    ([GranteePrincipalId] int,[GrantorPrincipalId] int,[Class] tinyint,[MajorId] int,[MinorId] int,
+                     [PermissionName] nvarchar(128),[PermissionState] char(1))
+                ORDER BY [Class],[MajorId],[MinorId],[PermissionName],[PermissionState],[GrantorPrincipalId]
+                FOR JSON PATH,INCLUDE_NULL_VALUES);
+            IF ISNULL(@Status,'''')<>''AVAILABLE_LIMITED'' OR ISNULL(ISJSON(@Result),0)<>1
+               OR COALESCE(@Actual,N''[]'') COLLATE Latin1_General_100_BIN2<>COALESCE(@Native,N''[]'') COLLATE Latin1_General_100_BIN2
+               OR (SELECT COUNT_BIG(*) FROM OPENJSON(@Result,N''$.permissions''))<>@NativeRows
+               OR (SELECT COUNT_BIG(*) FROM OPENJSON(@Result,N''$.sourceStatus'')
+                   WITH ([SourceKey] varchar(64),[StatusCode] varchar(40),[VisibilityScope] varchar(32),[ObservedRows] bigint,[ReturnedRows] bigint)
+                   WHERE [SourceKey]=''DATABASE_PERMISSIONS'' AND [StatusCode]=''AVAILABLE_LIMITED''
+                     AND [VisibilityScope]=''VISIBLE_ONLY'' AND [ObservedRows]=@NativeRows AND [ReturnedRows]=@NativeRows)<>1
+                THROW 57204,N''Filtered own database permissions differ from native visible catalog rows.'',1;
+            SET @Result=NULL;
+            EXEC [monitor].[USP_DatabasePrincipalAnalysis] @DatabaseNames=@Selection,@PermissionGranteeName=@HiddenRole,
+                @ResultSetArt=''NONE'',@JsonErzeugen=1,@Json=@Result OUTPUT,@PrintMeldungen=0,@StatusCodeOut=@Status OUTPUT;
+            IF ISNULL(@Status,'''')<>''AVAILABLE_LIMITED'' OR ISNULL(JSON_QUERY(@Result,N''$.permissions''),N'''')<>N''[]''
+               OR (SELECT COUNT_BIG(*) FROM OPENJSON(@Result,N''$.sourceStatus'')
+                   WITH ([SourceKey] varchar(64),[StatusCode] varchar(40),[VisibilityScope] varchar(32),[ObservedRows] bigint,[ReturnedRows] bigint)
+                   WHERE [SourceKey]=''DATABASE_PERMISSIONS'' AND [StatusCode]=''AVAILABLE_LIMITED''
+                     AND [VisibilityScope]=''VISIBLE_ONLY'' AND [ObservedRows]=0 AND [ReturnedRows]=0)<>1
+                THROW 57205,N''Filtered hidden database role did not preserve limited visibility.'',1;
+            REVERT;
+        END TRY
+        BEGIN CATCH REVERT;THROW;END CATCH;';
+    EXEC sys.sp_executesql @Sql,
+        N'@NativeProbe nvarchar(max),@Selection nvarchar(max),@SelfName sysname,@VisibleUser sysname,@HiddenRole sysname,@HiddenRoleId int',
+        @NativeProbe=@Inner,@Selection=@RestrictedSelection,@SelfName=@RestrictedUser,@VisibleUser=@User,
+        @HiddenRole=@RoleA,@HiddenRoleId=@RoleAId;
+
     SET @Sql=N'USE '+QUOTENAME(@DbA)+N'; DENY SELECT ON [sys].[database_permissions] TO '+QUOTENAME(@RestrictedUser)+N';';
     EXEC [sys].[sp_executesql] @Sql;
     SET @Inner=N'SELECT @Rows=COUNT_BIG(*) FROM '+QUOTENAME(@DbA)+N'.[sys].[database_permissions];';
