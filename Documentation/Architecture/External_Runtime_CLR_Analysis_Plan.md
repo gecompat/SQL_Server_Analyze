@@ -340,7 +340,7 @@ Ein Teil der Launchpad-/Runtime-Ereignisse entsteht außerhalb von `sqlservr.exe
 |---|---|---|
 | 0 | öffentliche Parameter, Resultsets, Statuscodes, Datenschutz, Packaging und Quellenprojektionen | umgesetzt und statisch abgesichert |
 | 1 | Analyseklassen, Capability-Zeilen und gemeinsame Counterinterpretation | umgesetzt; versionsharte Laufzeitkompilierung bleibt Teil des Release-Gates |
-| 2 | `USP_ExternalRuntimeAnalysis` | Current-State-Pfad umgesetzt. Java- und Python-Profile auf SQL Server 2025 CU9 unter Linux sind begrenzt abgenommen. Weitere Sprach-, Berechtigungs- und Plattformnachweise stehen aus. |
+| 2 | `USP_ExternalRuntimeAnalysis` | Current-State-Pfad umgesetzt. Java-, Python- und R-Profile auf SQL Server 2025 CU9 unter Linux sind begrenzt abgenommen. Weitere Laufzeit-, Berechtigungs- und Plattformnachweise stehen aus. |
 | 3 | `USP_ClrAnalysis` | Current-State-Pfad umgesetzt. SAFE-Registrierung und kontrollierte Laufzeitkorrelation sind auf SQL Server 2025 unter Linux abgenommen. Windows-Sicherheitsfälle bleiben externe Nachweise. |
 | 4 | Inventory-, Navigator-, Search-, Relation- und Installerintegration | umgesetzt und statisch abgesichert |
 | 5 | optionale Snapshot-Collector | nicht umgesetzt; bleibt getrennte zukünftige Erweiterung des Snapshotpakets |
@@ -377,6 +377,8 @@ Die gezielte Abnahme von PR #766 bestand auf Head und Main. Der Aufruf der eigen
 PR #770 qualifiziert ein Java-11-Profil auf Linux mit SQL Server 2025 CU9 und Compatibility Level 170. Die Lab-Quittung bindet den festen Java-Aufruf mit dem Wert `42` an die eigene Datenbank. Die Fixture vergleicht eine Sprachzeile und zwei Libraryzeilen mit den nativen Katalogen. Die Findings stimmen in TABLE und JSON überein. Der gemeinsame Worker und die erweiterten Container-Capabilities gelten für diesen kurzlebigen CI-Lauf. Die Abnahme deckt diesen Datenbank- und Laufzeitfall ab. Weitere Plattformen, Worker-Isolation und aktive Request-Erfassung stehen aus. [Head](https://github.com/gecompat/SQL_Server_Analyze/actions/runs/45245637618) · [Main](https://github.com/gecompat/SQL_Server_Analyze/actions/runs/45246939892)
 
 PR #771 qualifiziert ein getrenntes Python-3.10-Profil auf SQL Server 2025 CU9 unter Linux bei Compatibility Level 170. Die Lab-Quittung bindet den synthetischen Sprachaufruf mit dem Wert `42`. Die Fixture verlangt positive kumulative Python-Zähler in der nativen DMV und vergleicht sie vollständig mit den typisierten JSON-Werten von Analyze. Beide nativen Lesungen vor und nach Analyze stimmen überein. Ohne Sampling ist der Deltawert NULL und der Status `NOT_SAMPLED`. Der Gesamtnachweis umfasst die Zählerparität im kontrollierten Lab. Er ordnet den kumulativen Wert keinem einzelnen Aufruf zu. [Head](https://github.com/gecompat/SQL_Server_Analyze/actions/runs/45249199050) · [Main](https://github.com/gecompat/SQL_Server_Analyze/actions/runs/45251142159)
+
+PR #772 qualifiziert ein eigenes R-4.2.3-Profil unter Linux bei Compatibility Level 170. `rxSummary` liefert für `41` und `43` den Mittelwert `42` bei zwei gültigen Beobachtungen. Die kumulativen R-Zähler stimmen vor und nach dem Analyze-Aufruf mit der JSON-Ausgabe überein. Die Fixture weist den festen Aufruf und die Zählerparität getrennt nach. [Head](https://github.com/gecompat/SQL_Server_Analyze/actions/runs/45253582498) · [Main](https://github.com/gecompat/SQL_Server_Analyze/actions/runs/45254898824)
 
 ## 16. Primärquellen
 
