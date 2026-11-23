@@ -126,7 +126,10 @@ BEGIN TRY
         BEGIN TRY
             DECLARE @Rows bigint,@RequestError int=NULL,@StatsError int=NULL,@Return int,
                     @Json nvarchar(max),@Status varchar(40),@BeforeLock int=@@LOCK_TIMEOUT;
-            IF COALESCE(HAS_PERMS_BY_NAME(NULL,''SERVER'',''VIEW SERVER PERFORMANCE STATE''),1)<>0
+            DECLARE @HasPerformancePermission int=HAS_PERMS_BY_NAME(NULL,NULL,''VIEW SERVER PERFORMANCE STATE'');
+            IF @HasPerformancePermission IS NULL
+                THROW 56997,N''The native server permission precheck was indeterminate.'',1;
+            IF @HasPerformancePermission<>0
                 THROW 56991,N''The owned login can read server performance state.'',1;
             BEGIN TRY
                 EXEC sys.sp_executesql N''SELECT @Rows=COUNT_BIG(*) FROM sys.dm_external_script_requests;'',
