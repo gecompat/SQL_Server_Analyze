@@ -1,0 +1,63 @@
+name: RUNTIME-001 native Java catalog
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - '.github/workflows/runtime001-java-catalog.yml'
+      - 'Lab/Validation/Invoke-NativeJavaCatalog.ps1'
+      - 'Lab/Validation/Fixtures/Runtime001_JavaCatalog.sql'
+      - 'Code/09_VersionAdaptive/090_USP_ExternalRuntimeAnalysis.sql'
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/runtime001-java-catalog.yml'
+      - 'Lab/Validation/Invoke-NativeJavaCatalog.ps1'
+      - 'Lab/Validation/Fixtures/Runtime001_JavaCatalog.sql'
+      - 'Code/09_VersionAdaptive/090_USP_ExternalRuntimeAnalysis.sql'
+
+permissions:
+  contents: read
+
+jobs:
+  java-catalog:
+    name: Run the isolated SQL Server 2025 and Java catalog contract
+    if: github.repository == 'gecompat/SQL_Server_Analyze' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 44
+    env:
+      ANALYZE_COMMIT: ${{ github.event.pull_request.head.sha || github.sha }}
+      LAB_COMMIT: 4d12206be76c348a3431cb08fccefef1823b0cf7
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          ref: ${{ env.ANALYZE_COMMIT }}
+          persist-credentials: false
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          repository: gecompat/SQL_Server_Lab
+          ref: ${{ env.LAB_COMMIT }}
+          persist-credentials: false
+          path: .sql-server-lab
+      - name: Bind both revisions and install Microsoft sqlcmd on the disposable runner
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$ANALYZE_COMMIT"
+          test "$(git -C .sql-server-lab rev-parse HEAD)" = "$LAB_COMMIT"
+          printf 'RUNTIME001_ANALYZE_COMMIT=%s\nRUNTIME001_LAB_COMMIT=%s\n' "$ANALYZE_COMMIT" "$LAB_COMMIT"
+          if ! command -v sqlcmd >/dev/null && [[ ! -x /opt/mssql-tools18/bin/sqlcmd ]]; then
+            setup=$(mktemp -d "$RUNNER_TEMP/analyze-sqlcmd.XXXXXX")
+            trap 'rm -f -- "$setup/microsoft-prod.deb"; rmdir -- "$setup"' EXIT
+            curl --fail --silent --show-error --location --proto '=https' \
+              https://packages.microsoft.com/config/ubuntu/24.04/packages-microsoft-prod.deb \
+              --output "$setup/microsoft-prod.deb"
+            sudo dpkg -i "$setup/microsoft-prod.deb"
+            sudo apt-get update -q
+            sudo env ACCEPT_EULA=Y apt-get install -y -q mssql-tools18
+          fi
+          if [[ -x /opt/mssql-tools18/bin/sqlcmd ]]; then
+            printf '%s\n' /opt/mssql-tools18/bin >> "$GITHUB_PATH"
+          fi
+      - name: Run Java and verify Analyze against the native catalogs
+        shell: pwsh
+        run: ./Lab/Validation/Invoke-NativeJavaCatalog.ps1 -LabRoot ./.sql-server-lab

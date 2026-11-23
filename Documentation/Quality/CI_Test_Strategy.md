@@ -110,9 +110,12 @@ solange keine gesonderte Ursachenabnahme vorliegt.
 | `.github/workflows/documentation-validation.yml` | Statische Dokumentations-, Metadata- und Contract-Prüfungen | Impact-basiert ohne SQL Server |
 | `.github/workflows/ci-functional-impact.yml` | Funktionale Pull-Request-Prüfung | SQL Server 2025, impact-basiert; Compatibility-Level-Erweiterung bei klassifiziertem Risiko |
 | `.github/workflows/wi0009-external-catalog.yml` | Positiver nativer S3-Katalogvertrag | Ein GitHub-gehosteter SQL-Server-2025-Lauf je betroffenem PR-Head und Merge auf Main |
+| `.github/workflows/runtime001-java-catalog.yml` | Nativer Java-Aufruf und Katalogvergleich | Ein GitHub-gehosteter SQL-Server-2025-Lauf je betroffenem PR-Head und Merge auf Main |
 | `.github/workflows/release-native-matrix.yml` | Native Versionsprüfung | Ausschließlich manuell; einzelne Version oder Release-Candidate-Matrix |
 
 Der S3-Katalogvertrag startet bei Änderungen am zuständigen Workflow, an der positiven Fixture oder an `USP_ExternalDataAnalysis`. Der Job verwendet eine fest gebundene SQL_Server_Lab-Fixture und baut daraus einen einzelnen Testlauf mit einer temporären SQL-Server-2025-Instanz. Die Standard-CI prüft weiterhin die portable Katalog-Fixture und die bestehenden fachlichen Verträge. Der Zusatzlauf prüft die dort fehlenden positiven S3-Katalogobjekte. [Vertragsumfang](../Architecture/WI0009_External_Data_Public_Specification.md)
+
+Der Java-Katalogvertrag startet bei Änderungen am Workflow, an der zugehörigen Fixture oder an `USP_ExternalRuntimeAnalysis`. Er verwendet das fest gebundene Java-Profil von SQL Server Lab auf einem kurzlebigen GitHub-Runner. Das Profil erweitert die Container-Capabilities und nutzt ein gemeinsames Worker-Konto ohne Launchpad-Namespace-Isolation. Der Job wertet den festen synthetischen Java-Aufruf aus der Bereitstellung aus. Er vergleicht die registrierte Sprache und ihre Libraries mit der JSON-Ausgabe und prüft die Übereinstimmung der Findings in TABLE und JSON. Die Standard-CI behält den portablen Vertrag auf ihrem regulären SQL-Server-2025-Image. [Vertragsgrenzen](../Architecture/External_Runtime_CLR_Analysis_Plan.md)
 
 Gelöschte historische Workflows sind keine gültigen CI-Ziele und dürfen weder in Anweisungen noch im Impact-Selector als aktive Infrastruktur referenziert werden.
 
