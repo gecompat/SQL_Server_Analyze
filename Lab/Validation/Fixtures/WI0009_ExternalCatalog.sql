@@ -4,7 +4,7 @@ Voraussetzung: Die isolierte SQL_Server_Lab-Fixture hat die eigene externe Tabel
 angelegt und den S3-Dienst anschließend vom Testnetz getrennt.
 Die Prüfung liest ausschließlich Kataloge und die lokalen Analyze-Resultsets.
 */
-USE [ExampleAnalyzeProbe];
+USE [DeineDatenbank];
 GO
 SET NOCOUNT ON;
 IF @@TRANCOUNT<>0 OR DB_ID(N'ExamplePolyBaseProbe') IS NULL

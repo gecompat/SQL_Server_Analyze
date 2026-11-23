@@ -37,10 +37,6 @@ jobs:
           ref: ${{ env.LAB_COMMIT }}
           persist-credentials: false
           path: .sql-server-lab
-      - name: Build the canonical standalone SQL installer
-        shell: pwsh
-        run: |
-          ./Code/Install/Build-StandaloneInstaller.ps1 -OutputPath (Join-Path $env:RUNNER_TEMP 'wi0009-standalone.sql')
       - name: Bind Analyze and Lab revisions and run the isolated native catalog contract
         shell: bash
         run: |
@@ -50,13 +46,20 @@ jobs:
           test "$(git -C .sql-server-lab rev-parse HEAD)" = "$LAB_COMMIT"
           printf 'WI0009_ANALYZE_COMMIT=%s\nWI0009_LAB_COMMIT=%s\n' "$ANALYZE_COMMIT" "$LAB_COMMIT"
           work="$(mktemp -d "$RUNNER_TEMP/analyze-wi0009.XXXXXX")"
-          trap 'rm -f -- "$work/wi0009-consumer.sql" "$RUNNER_TEMP/wi0009-standalone.sql"; rmdir -- "$work"' EXIT
+          trap 'rm -f -- "$work/wi0009-consumer.sql"; rmdir -- "$work"' EXIT
+          installer='Code/Install/Install_All.sql'
+          mapfile -t includes < <(sed -nE 's/^:r[[:blank:]]+([^[:space:]]+)[[:space:]]*$/\1/p' "$installer")
+          (( ${#includes[@]} > 0 && ${#includes[@]} == $(grep -c '^:r[[:blank:]]' "$installer") ))
           {
-            printf '%s\n' 'CREATE DATABASE [ExampleAnalyzeProbe] COLLATE SQL_Latin1_General_CP1_CS_AS;' \
+            printf '%s\n' 'CREATE DATABASE [ExampleAnalyzeProbe] COLLATE SQL_Latin1_General_CP1_CS_AS;' 'GO' \
               'ALTER DATABASE [ExampleAnalyzeProbe] SET COMPATIBILITY_LEVEL = 170;' 'GO'
-            sed 's/\[DeineDatenbank\]/[ExampleAnalyzeProbe]/g' "$RUNNER_TEMP/wi0009-standalone.sql"
-            printf '\n'
-            cat Lab/Validation/Fixtures/WI0009_ExternalCatalog.sql
+            for include in "${includes[@]}"; do
+              [[ "$include" =~ ^\.\./[A-Za-z0-9_]+/[A-Za-z0-9_]+\.sql$ ]]
+              sed -e $'1s/^\xef\xbb\xbf//' -e 's/\r$//' -e 's/\[DeineDatenbank\]/[ExampleAnalyzeProbe]/g' \
+                "Code/Install/$include"
+              printf '\nGO\n'
+            done
+            sed 's/\[DeineDatenbank\]/[ExampleAnalyzeProbe]/g' Lab/Validation/Fixtures/WI0009_ExternalCatalog.sql
           } > "$work/wi0009-consumer.sql"
           timeout --signal=TERM --kill-after=60s 18m bash \
             .sql-server-lab/Tests/Integration/Invoke-PolyBaseS3Acceptance.sh --consumer-sql "$work/wi0009-consumer.sql"
