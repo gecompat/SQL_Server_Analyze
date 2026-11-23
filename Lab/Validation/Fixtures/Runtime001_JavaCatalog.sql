@@ -103,6 +103,28 @@ EXEC sys.sp_executesql N'SET @Rows=(SELECT * FROM [#ExampleJava_Findings]
 IF ISNULL(JSON_QUERY(@Json,N'$.findings'),N'') COLLATE Latin1_General_100_BIN2
    <> ISNULL(@TableFindings,N'[]') COLLATE Latin1_General_100_BIN2
     THROW 56976,N'Analyze Java findings differ between TABLE and JSON.',1;
+
+-- Die kollationsinsensitive Gegenprobe muss die kleingeschriebene Variante nativ finden.
+IF (SELECT COUNT(*) FROM [ExampleExternalRuntimeProbe].[sys].[external_languages]
+    WHERE [language] COLLATE Latin1_General_100_CI_AI_SC=N'java')<>1
+   OR (SELECT COUNT(*) FROM [ExampleExternalRuntimeProbe].[sys].[external_libraries]
+       WHERE [language] COLLATE Latin1_General_100_CI_AI_SC=N'java')<>2
+    THROW 57018,N'The case-insensitive native Java control did not establish its expected rows.',1;
+
+SET @Json=NULL;
+EXEC [monitor].[USP_ExternalRuntimeAnalysis]
+     @DatabaseNames=N'[ExampleExternalRuntimeProbe]',@LanguageNames=N'[java]',
+     @MaxZeilen=0,@ResultSetArt='NONE',@PrintMeldungen=0,
+     @JsonErzeugen=1,@Json=@Json OUTPUT;
+
+IF ISNULL(ISJSON(@Json),0)<>1 OR @@LOCK_TIMEOUT<>@LockTimeoutBefore
+   OR ISNULL(JSON_QUERY(@Json,N'$.languages'),N'')<>N'[]'
+   OR ISNULL(JSON_QUERY(@Json,N'$.libraries'),N'')<>N'[]'
+   OR (SELECT COUNT(DISTINCT [SourceCode]) FROM OPENJSON(@Json,N'$.sourceStatus')
+       WITH ([DatabaseName] sysname,[SourceCode] varchar(80),[StatusCode] varchar(40),[IsPartial] bit,[RowCount] bigint)
+       WHERE [DatabaseName]=@ProbeDatabase AND [SourceCode] IN ('EXTERNAL_LANGUAGES','EXTERNAL_LIBRARIES')
+         AND [StatusCode]='AVAILABLE' AND [IsPartial]=0 AND [RowCount]=0)<>2
+    THROW 57019,N'The bracketed Java filter did not preserve the case-sensitive empty result.',1;
 GO
 
 -- Die Katalogrechte der eigenen Probe-Datenbank lassen die Server-DMVs gesperrt.
