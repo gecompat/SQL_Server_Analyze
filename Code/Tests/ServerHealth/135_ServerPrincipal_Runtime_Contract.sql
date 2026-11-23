@@ -276,6 +276,60 @@ BEGIN TRY
         SET @Case+=1;
     END;
 
+    CREATE TABLE [#ExamplePrincipal_Grantee]([Seed] int NULL);
+    DECLARE @ExpectedGranteeRows bigint=(SELECT COUNT_BIG(*) FROM [sys].[server_permissions]
+                                         WHERE [grantee_principal_id]=@IdB),
+        @GranteeReturn int,@WrongGrantee nvarchar(max)=N'e'+SUBSTRING(@LoginB,2,128),
+        @InvalidGrantee nvarchar(max)=REPLICATE(N'a',129);
+    EXEC @GranteeReturn=[monitor].[USP_ServerPrincipalAnalysis] @PermissionGranteeName=@LoginB,
+        @MaxZeilen=0,@ResultSetArt='TABLE',@ResultTablesJson=N'{"permissions":"#ExamplePrincipal_Grantee"}',
+        @JsonErzeugen=1,@Json=@Json OUTPUT,@PrintMeldungen=0;
+    IF @GranteeReturn<>0 OR COALESCE(ISJSON(@Json),0)<>1 OR @ExpectedGranteeRows=0
+       OR (SELECT COUNT_BIG(*) FROM [#ExamplePrincipal_Grantee])<>@ExpectedGranteeRows
+       OR EXISTS(SELECT 1 FROM [#ExamplePrincipal_Grantee] WHERE [GranteePrincipalId]<>@IdB
+                  OR [GranteeName] IS NULL
+                  OR DATALENGTH([GranteeName])<>DATALENGTH(@LoginB)
+                  OR CONVERT(varbinary(256),[GranteeName])<>CONVERT(varbinary(256),@LoginB))
+       OR NOT EXISTS(SELECT 1 FROM [#ExamplePrincipal_Grantee]
+          WHERE [GranteePrincipalId]=@IdB AND [PermissionName]=N'ALTER ANY LOGIN' AND [PermissionState]='D')
+       OR EXISTS(SELECT [Class],[MajorId],[PermissionName],[PermissionState],[GrantorPrincipalId]
+                 FROM [#ExamplePrincipal_Grantee]
+                 EXCEPT SELECT [class],[major_id],[permission_name] COLLATE SQL_Latin1_General_CP1_CS_AS,
+                        [state] COLLATE SQL_Latin1_General_CP1_CS_AS,[grantor_principal_id]
+                 FROM [sys].[server_permissions] WHERE [grantee_principal_id]=@IdB)
+       OR EXISTS(SELECT [class],[major_id],[permission_name] COLLATE SQL_Latin1_General_CP1_CS_AS,
+                        [state] COLLATE SQL_Latin1_General_CP1_CS_AS,[grantor_principal_id]
+                 FROM [sys].[server_permissions] WHERE [grantee_principal_id]=@IdB
+                 EXCEPT SELECT [Class],[MajorId],[PermissionName],[PermissionState],[GrantorPrincipalId]
+                 FROM [#ExamplePrincipal_Grantee])
+       OR COALESCE(JSON_QUERY(@Json,N'$.permissions'),N'')<>
+           (SELECT * FROM [#ExamplePrincipal_Grantee]
+            ORDER BY [GranteePrincipalId],[Class],[MajorId],[PermissionName],[PermissionState],[GrantorPrincipalId]
+            FOR JSON PATH,INCLUDE_NULL_VALUES)
+       OR NOT EXISTS(SELECT 1 FROM OPENJSON(@Json,N'$.roleMemberships')
+           WITH ([MemberPrincipalId] int N'$.MemberPrincipalId',[RolePrincipalId] int N'$.RolePrincipalId')
+           WHERE [MemberPrincipalId]=@IdA AND [RolePrincipalId]=@RoleIdA)
+       OR NOT EXISTS(SELECT 1 FROM OPENJSON(@Json,N'$.sourceStatus')
+           WITH ([SourceKey] varchar(64) N'$.SourceKey',[ObservedRows] bigint N'$.ObservedRows',
+                 [ReturnedRows] bigint N'$.ReturnedRows')
+           WHERE [SourceKey]='SERVER_PERMISSIONS' AND [ObservedRows]=@ExpectedGranteeRows
+               AND [ReturnedRows]=@ExpectedGranteeRows)
+        THROW 57090,N'Explicit server grantee evidence differs from the visible native catalog.',1;
+
+    EXEC @GranteeReturn=[monitor].[USP_ServerPrincipalAnalysis] @PermissionGranteeName=@WrongGrantee,
+        @ResultSetArt='NONE',@JsonErzeugen=1,@Json=@Json OUTPUT,@PrintMeldungen=0;
+    IF @GranteeReturn<>0 OR COALESCE(JSON_QUERY(@Json,N'$.permissions'),N'')<>N'[]'
+        THROW 57091,N'Server grantee filter did not preserve case.',1;
+
+    EXEC @GranteeReturn=[monitor].[USP_ServerPrincipalAnalysis] @PermissionGranteeName=@InvalidGrantee,
+        @ResultSetArt='NONE',@StatusCodeOut=@Status OUTPUT,@PrintMeldungen=0;
+    IF @GranteeReturn<>51011 OR COALESCE(@Status,'')<>'INVALID_PARAMETER'
+        THROW 57092,N'Overlong server grantee name was not rejected.',1;
+    EXEC @GranteeReturn=[monitor].[USP_ServerPrincipalAnalysis] @PermissionGranteeName=N'   ',
+        @ResultSetArt='NONE',@StatusCodeOut=@Status OUTPUT,@PrintMeldungen=0;
+    IF @GranteeReturn<>51011 OR COALESCE(@Status,'')<>'INVALID_PARAMETER'
+        THROW 57093,N'Blank server grantee name was not rejected.',1;
+
     SET @Sql=N'EXECUTE AS LOGIN='+QUOTENAME(@LoginB,'''')+N';
         BEGIN TRY
             IF SUSER_ID()<>@ExpectedId THROW 57081,N''Restricted fixture context differs.'',1;

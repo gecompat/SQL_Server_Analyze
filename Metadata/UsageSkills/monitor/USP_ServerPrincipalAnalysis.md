@@ -38,6 +38,7 @@ Ein direkter Aufruf erfordert EXECUTE auf [monitor].[USP_ServerPrincipalAnalysis
 | @IsPartialOut | bit | nein | NULL OUTPUT |
 | @ErrorNumberOut | int | nein | NULL OUTPUT |
 | @ErrorMessageOut | nvarchar(2048) | nein | NULL OUTPUT |
+| @PermissionGranteeName | nvarchar(max) | nein | NULL |
 
 **@MaxZeilen:** @MaxZeilen begrenzt jedes der vier Fachresultsets; 0 oder NULL bedeutet unbegrenzt. @LockTimeoutMs erlaubt 0 bis 60000.
 
@@ -63,6 +64,8 @@ Ein direkter Aufruf erfordert EXECUTE auf [monitor].[USP_ServerPrincipalAnalysis
 
 **@ErrorMessageOut:** @ErrorMessageOut nvarchar(2048) OUTPUT; Default: NULL. OUTPUT; Eintritt NULL. Validierung: feste Meldung; regulär: Meldung der alphabetisch ersten fehlerhaften Quelle, sonst NULL; äußerer Fehler: ERROR_MESSAGE(). Hilfe lässt NULL. Optionaler Empfänger: Zum Empfangen eine Variable des deklarierten Typs mit OUTPUT binden; andernfalls das Argument auslassen. Ein anfänglicher NULL- oder anderer Wert wird am Eintritt zurückgesetzt.
 
+**@PermissionGranteeName:** @PermissionGranteeName nvarchar(max). Der Default ist NULL und lässt alle sichtbaren expliziten Serverrechte in permissions zu. Ein gesetzter Wert enthält genau einen unveränderten Serverprincipalnamen mit höchstens 128 UTF-16-Codeeinheiten. Leertext und ausschließlich U+0020-Leerzeichen sind ungültig. Der Vergleich ist bytegenau einschließlich Großschreibung und Leerzeichen. Der Filter wirkt nur auf permissions vor @MaxZeilen. Er verwendet sichtbare Empfängernamen und löst keine Rollenrechte auf.
+
 ## Resultate und Ausgabe
 
 | Resultmenge | RAW | TABLE | Felder laut Inventar |
@@ -81,6 +84,10 @@ Bei @Hilfe=1 kommt genau ein Resultset mit SkillFormatVersion, SchemaName, Objec
 
 ```sql
 EXEC [monitor].[USP_ServerPrincipalAnalysis] @ResultSetArt='RAW', @MaxZeilen=100;
+```
+
+```sql
+EXEC [monitor].[USP_ServerPrincipalAnalysis] @PermissionGranteeName=N'ExampleLogin', @ResultSetArt='RAW';
 ```
 
 ## Aufwand, Nebenwirkungen, Fehler und Grenzen

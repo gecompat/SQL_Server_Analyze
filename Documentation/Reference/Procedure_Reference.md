@@ -2846,6 +2846,7 @@ Quelle: `Code/08_ServerHealth/260_USP_ServerPrincipalAnalysis.sql`
     , @IsPartialOut bit = NULL OUTPUT
     , @ErrorNumberOut int = NULL OUTPUT
     , @ErrorMessageOut nvarchar(2048) = NULL OUTPUT
+    , @PermissionGranteeName nvarchar(max) = NULL
 ```
 
 ## `[monitor].[USP_DatabasePrincipalAnalysis]`

@@ -51407,6 +51407,8 @@ SELECT CONVERT(sysname,N'monitor') AS [SchemaName],CONVERT(sysname,N'USP_ServerP
             + NCHAR(10)
             + N'| @ErrorMessageOut | nvarchar(2048) | nein | NULL OUTPUT |'
             + NCHAR(10)
+            + N'| @PermissionGranteeName | nvarchar(max) | nein | NULL |'
+            + NCHAR(10)
             + NCHAR(10)
             + N'**@MaxZeilen:** @MaxZeilen begrenzt jedes der vier Fachresultsets; 0 oder NULL bedeutet unbegrenzt. @LockTimeoutMs erlaubt 0 bis 60000.'
             + NCHAR(10)
@@ -51444,6 +51446,9 @@ SELECT CONVERT(sysname,N'monitor') AS [SchemaName],CONVERT(sysname,N'USP_ServerP
             + N'**@ErrorMessageOut:** @ErrorMessageOut nvarchar(2048) OUTPUT; Default: NULL. OUTPUT; Eintritt NULL. Validierung: feste Meldung; regulär: Meldung der alphabetisch ersten fehlerhaften Quelle, sonst NULL; äußerer Fehler: ERROR_MESSAGE(). Hilfe lässt NULL. Optionaler Empfänger: Zum Empfangen eine Variable des deklarierten Typs mit OUTPUT binden; andernfalls das Argument auslassen. Ein anfänglicher NULL- oder anderer Wert wird am Eintritt zurückgesetzt.'
             + NCHAR(10)
             + NCHAR(10)
+            + N'**@PermissionGranteeName:** @PermissionGranteeName nvarchar(max). Der Default ist NULL und lässt alle sichtbaren expliziten Serverrechte in permissions zu. Ein gesetzter Wert enthält genau einen unveränderten Serverprincipalnamen mit höchstens 128 UTF-16-Codeeinheiten. Leertext und ausschließlich U+0020-Leerzeichen sind ungültig. Der Vergleich ist bytegenau einschließlich Großschreibung und Leerzeichen. Der Filter wirkt nur auf permissions vor @MaxZeilen. Er verwendet sichtbare Empfängernamen und löst keine Rollenrechte auf.'
+            + NCHAR(10)
+            + NCHAR(10)
             + N'## Resultate und Ausgabe'
             + NCHAR(10)
             + NCHAR(10)
@@ -51475,6 +51480,13 @@ SELECT CONVERT(sysname,N'monitor') AS [SchemaName],CONVERT(sysname,N'USP_ServerP
             + N'```sql'
             + NCHAR(10)
             + N'EXEC [monitor].[USP_ServerPrincipalAnalysis] @ResultSetArt=''RAW'', @MaxZeilen=100;'
+            + NCHAR(10)
+            + N'```'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'```sql'
+            + NCHAR(10)
+            + N'EXEC [monitor].[USP_ServerPrincipalAnalysis] @PermissionGranteeName=N''ExampleLogin'', @ResultSetArt=''RAW'';'
             + NCHAR(10)
             + N'```'
             + NCHAR(10)

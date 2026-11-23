@@ -103398,6 +103398,7 @@ Nebenwirkung : Verändert weder Principals noch Berechtigungen oder Nutzdaten.
 -- | @IsPartialOut | bit | nein | NULL OUTPUT |
 -- | @ErrorNumberOut | int | nein | NULL OUTPUT |
 -- | @ErrorMessageOut | nvarchar(2048) | nein | NULL OUTPUT |
+-- | @PermissionGranteeName | nvarchar(max) | nein | NULL |
 --
 -- **@MaxZeilen:** @MaxZeilen begrenzt jedes der vier Fachresultsets; 0 oder NULL bedeutet unbegrenzt. @LockTimeoutMs erlaubt 0 bis 60000.
 --
@@ -103423,6 +103424,8 @@ Nebenwirkung : Verändert weder Principals noch Berechtigungen oder Nutzdaten.
 --
 -- **@ErrorMessageOut:** @ErrorMessageOut nvarchar(2048) OUTPUT; Default: NULL. OUTPUT; Eintritt NULL. Validierung: feste Meldung; regulär: Meldung der alphabetisch ersten fehlerhaften Quelle, sonst NULL; äußerer Fehler: ERROR_MESSAGE(). Hilfe lässt NULL. Optionaler Empfänger: Zum Empfangen eine Variable des deklarierten Typs mit OUTPUT binden; andernfalls das Argument auslassen. Ein anfänglicher NULL- oder anderer Wert wird am Eintritt zurückgesetzt.
 --
+-- **@PermissionGranteeName:** @PermissionGranteeName nvarchar(max). Der Default ist NULL und lässt alle sichtbaren expliziten Serverrechte in permissions zu. Ein gesetzter Wert enthält genau einen unveränderten Serverprincipalnamen mit höchstens 128 UTF-16-Codeeinheiten. Leertext und ausschließlich U+0020-Leerzeichen sind ungültig. Der Vergleich ist bytegenau einschließlich Großschreibung und Leerzeichen. Der Filter wirkt nur auf permissions vor @MaxZeilen. Er verwendet sichtbare Empfängernamen und löst keine Rollenrechte auf.
+--
 -- ## Resultate und Ausgabe
 --
 -- | Resultmenge | RAW | TABLE | Felder laut Inventar |
@@ -103441,6 +103444,10 @@ Nebenwirkung : Verändert weder Principals noch Berechtigungen oder Nutzdaten.
 --
 -- ```sql
 -- EXEC [monitor].[USP_ServerPrincipalAnalysis] @ResultSetArt='RAW', @MaxZeilen=100;
+-- ```
+--
+-- ```sql
+-- EXEC [monitor].[USP_ServerPrincipalAnalysis] @PermissionGranteeName=N'ExampleLogin', @ResultSetArt='RAW';
 -- ```
 --
 -- ## Aufwand, Nebenwirkungen, Fehler und Grenzen
@@ -103509,6 +103516,7 @@ CREATE OR ALTER PROCEDURE [monitor].[USP_ServerPrincipalAnalysis]
     , @IsPartialOut bit = NULL OUTPUT
     , @ErrorNumberOut int = NULL OUTPUT
     , @ErrorMessageOut nvarchar(2048) = NULL OUTPUT
+    , @PermissionGranteeName nvarchar(max) = NULL
 AS
 BEGIN
     SET NOCOUNT ON;
@@ -103537,7 +103545,9 @@ BEGIN
         PRINT N'@IsPartialOut bit OUTPUT; Default: NULL. OUTPUT; Eintritt NULL. Hilfe 0; Analyse, Validierung und äußerer Fehler 1. Jede Analyse bleibt partiell, auch wenn alle Quellen lesbar sind. Optionaler Empfänger: Zum Empfangen eine Variable des deklarierten Typs mit OUTPUT binden; andernfalls das Argument auslassen. Ein anfänglicher NULL- oder anderer Wert wird am Eintritt zurückgesetzt.';
         PRINT N'@ErrorNumberOut int OUTPUT; Default: NULL. OUTPUT; Eintritt NULL. Validierung 51011; regulär Fehlernummer der alphabetisch ersten fehlerhaften SourceKey-Quelle, sonst NULL. Äußerer Fehler: TABLE-Fehlercode, sonst ERROR_NUMBER(). Quellenfehler allein ändern RETURN nicht. Optionaler Empfänger: Zum Empfangen eine Variable des deklarierten Typs mit OUTPUT binden; andernfalls das Argument auslassen. Ein anfänglicher NULL- oder anderer Wert wird am Eintritt zurückgesetzt.';
         PRINT N'@ErrorMessageOut nvarchar(2048) OUTPUT; Default: NULL. OUTPUT; Eintritt NULL. Validierung: feste Meldung; regulär: Meldung der alphabetisch ersten fehlerhaften Quelle, sonst NULL; äußerer Fehler: ERROR_MESSAGE(). Hilfe lässt NULL. Optionaler Empfänger: Zum Empfangen eine Variable des deklarierten Typs mit OUTPUT binden; andernfalls das Argument auslassen. Ein anfänglicher NULL- oder anderer Wert wird am Eintritt zurückgesetzt.';
+        PRINT N'@PermissionGranteeName nvarchar(max). Der Default ist NULL und lässt alle sichtbaren expliziten Serverrechte in permissions zu. Ein gesetzter Wert enthält genau einen unveränderten Serverprincipalnamen mit höchstens 128 UTF-16-Codeeinheiten. Leertext und ausschließlich U+0020-Leerzeichen sind ungültig. Der Vergleich ist bytegenau einschließlich Großschreibung und Leerzeichen. Der Filter wirkt nur auf permissions vor @MaxZeilen. Er verwendet sichtbare Empfängernamen und löst keine Rollenrechte auf.';
         PRINT N'EXEC [monitor].[USP_ServerPrincipalAnalysis] @ResultSetArt=''RAW'', @MaxZeilen=100;';
+        PRINT N'EXEC [monitor].[USP_ServerPrincipalAnalysis] @PermissionGranteeName=N''ExampleLogin'', @ResultSetArt=''RAW'';';
         PRINT N'DECLARE @Json nvarchar(max), @Status varchar(40), @Partial bit, @ErrorNumber int, @ErrorMessage nvarchar(2048), @ReturnCode int;
 EXEC @ReturnCode=[monitor].[USP_ServerPrincipalAnalysis]
       @ResultSetArt=''NONE'', @JsonErzeugen=1, @Json=@Json OUTPUT
@@ -103634,6 +103644,8 @@ END CATCH;';
             + NCHAR(10)
             + N'| @ErrorMessageOut | nvarchar(2048) | nein | NULL OUTPUT |'
             + NCHAR(10)
+            + N'| @PermissionGranteeName | nvarchar(max) | nein | NULL |'
+            + NCHAR(10)
             + NCHAR(10)
             + N'**@MaxZeilen:** @MaxZeilen begrenzt jedes der vier Fachresultsets; 0 oder NULL bedeutet unbegrenzt. @LockTimeoutMs erlaubt 0 bis 60000.'
             + NCHAR(10)
@@ -103671,6 +103683,9 @@ END CATCH;';
             + N'**@ErrorMessageOut:** @ErrorMessageOut nvarchar(2048) OUTPUT; Default: NULL. OUTPUT; Eintritt NULL. Validierung: feste Meldung; regulär: Meldung der alphabetisch ersten fehlerhaften Quelle, sonst NULL; äußerer Fehler: ERROR_MESSAGE(). Hilfe lässt NULL. Optionaler Empfänger: Zum Empfangen eine Variable des deklarierten Typs mit OUTPUT binden; andernfalls das Argument auslassen. Ein anfänglicher NULL- oder anderer Wert wird am Eintritt zurückgesetzt.'
             + NCHAR(10)
             + NCHAR(10)
+            + N'**@PermissionGranteeName:** @PermissionGranteeName nvarchar(max). Der Default ist NULL und lässt alle sichtbaren expliziten Serverrechte in permissions zu. Ein gesetzter Wert enthält genau einen unveränderten Serverprincipalnamen mit höchstens 128 UTF-16-Codeeinheiten. Leertext und ausschließlich U+0020-Leerzeichen sind ungültig. Der Vergleich ist bytegenau einschließlich Großschreibung und Leerzeichen. Der Filter wirkt nur auf permissions vor @MaxZeilen. Er verwendet sichtbare Empfängernamen und löst keine Rollenrechte auf.'
+            + NCHAR(10)
+            + NCHAR(10)
             + N'## Resultate und Ausgabe'
             + NCHAR(10)
             + NCHAR(10)
@@ -103702,6 +103717,13 @@ END CATCH;';
             + N'```sql'
             + NCHAR(10)
             + N'EXEC [monitor].[USP_ServerPrincipalAnalysis] @ResultSetArt=''RAW'', @MaxZeilen=100;'
+            + NCHAR(10)
+            + N'```'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'```sql'
+            + NCHAR(10)
+            + N'EXEC [monitor].[USP_ServerPrincipalAnalysis] @PermissionGranteeName=N''ExampleLogin'', @ResultSetArt=''RAW'';'
             + NCHAR(10)
             + N'```'
             + NCHAR(10)
@@ -103823,10 +103845,12 @@ END CATCH;';
     ;
     IF @Mode NOT IN ('CONSOLE','RAW','TABLE','NONE') OR @MaxZeilen<0
        OR @LockTimeoutMs IS NULL OR @LockTimeoutMs<0 OR @LockTimeoutMs>60000
+       OR (@PermissionGranteeName IS NOT NULL
+           AND (DATALENGTH(@PermissionGranteeName)>256 OR DATALENGTH(LTRIM(RTRIM(@PermissionGranteeName)))=0))
        OR (@Mode<>'TABLE' AND NULLIF(LTRIM(RTRIM(COALESCE(@ResultTablesJson,N''))),N'') IS NOT NULL)
     BEGIN
         SELECT @StatusCodeOut='INVALID_PARAMETER',@IsPartialOut=1,
-               @ErrorNumberOut=51011,@ErrorMessageOut=N'Ungültiger Ausgabe-, Limit-, Locktimeout- oder TABLE-Parameter.';
+               @ErrorNumberOut=51011,@ErrorMessageOut=N'Ungültiger Ausgabe-, Limit-, Locktimeout-, TABLE- oder Grantee-Parameter.';
         IF @PrintMeldungen=1 RAISERROR(N'%s',10,1,@ErrorMessageOut) WITH NOWAIT;
         RETURN 51011;
     END;
@@ -103962,8 +103986,12 @@ END CATCH;';
             SELECT [e].[grantee_principal_id],[p].[PrincipalName],[e].[grantor_principal_id],[g].[PrincipalName],[e].[class],[e].[class_desc],[e].[major_id],[e].[permission_name],[e].[state],[e].[state_desc]
             FROM [sys].[server_permissions] AS [e] WITH (NOLOCK)
             LEFT JOIN [#ServerPrincipalAnalysis_principals] AS [p] ON [p].[PrincipalId]=[e].[grantee_principal_id]
-            LEFT JOIN [#ServerPrincipalAnalysis_principals] AS [g] ON [g].[PrincipalId]=[e].[grantor_principal_id]; SET @Rows=@@ROWCOUNT;';
-            EXEC [sys].[sp_executesql] @SetLockSource,N'@Rows bigint OUTPUT',@Rows=@Observed OUTPUT;
+            LEFT JOIN [#ServerPrincipalAnalysis_principals] AS [g] ON [g].[PrincipalId]=[e].[grantor_principal_id]
+            WHERE @GranteeName IS NULL
+               OR (DATALENGTH([p].[PrincipalName])=DATALENGTH(@GranteeName)
+                  AND CONVERT(varbinary(256),[p].[PrincipalName])=CONVERT(varbinary(256),@GranteeName)); SET @Rows=@@ROWCOUNT;';
+            EXEC [sys].[sp_executesql] @SetLockSource,N'@GranteeName nvarchar(max),@Rows bigint OUTPUT',
+                @GranteeName=@PermissionGranteeName,@Rows=@Observed OUTPUT;
             INSERT [#ServerPrincipalAnalysis_sourceStatus] VALUES
                 ('SERVER_PERMISSIONS',@Started,SYSUTCDATETIME(),'AVAILABLE_LIMITED','VISIBLE_ONLY',@Observed,@Observed,0,NULL,NULL);
         END TRY
@@ -178508,6 +178536,8 @@ SELECT CONVERT(sysname,N'monitor') AS [SchemaName],CONVERT(sysname,N'USP_ServerP
             + NCHAR(10)
             + N'| @ErrorMessageOut | nvarchar(2048) | nein | NULL OUTPUT |'
             + NCHAR(10)
+            + N'| @PermissionGranteeName | nvarchar(max) | nein | NULL |'
+            + NCHAR(10)
             + NCHAR(10)
             + N'**@MaxZeilen:** @MaxZeilen begrenzt jedes der vier Fachresultsets; 0 oder NULL bedeutet unbegrenzt. @LockTimeoutMs erlaubt 0 bis 60000.'
             + NCHAR(10)
@@ -178545,6 +178575,9 @@ SELECT CONVERT(sysname,N'monitor') AS [SchemaName],CONVERT(sysname,N'USP_ServerP
             + N'**@ErrorMessageOut:** @ErrorMessageOut nvarchar(2048) OUTPUT; Default: NULL. OUTPUT; Eintritt NULL. Validierung: feste Meldung; regulär: Meldung der alphabetisch ersten fehlerhaften Quelle, sonst NULL; äußerer Fehler: ERROR_MESSAGE(). Hilfe lässt NULL. Optionaler Empfänger: Zum Empfangen eine Variable des deklarierten Typs mit OUTPUT binden; andernfalls das Argument auslassen. Ein anfänglicher NULL- oder anderer Wert wird am Eintritt zurückgesetzt.'
             + NCHAR(10)
             + NCHAR(10)
+            + N'**@PermissionGranteeName:** @PermissionGranteeName nvarchar(max). Der Default ist NULL und lässt alle sichtbaren expliziten Serverrechte in permissions zu. Ein gesetzter Wert enthält genau einen unveränderten Serverprincipalnamen mit höchstens 128 UTF-16-Codeeinheiten. Leertext und ausschließlich U+0020-Leerzeichen sind ungültig. Der Vergleich ist bytegenau einschließlich Großschreibung und Leerzeichen. Der Filter wirkt nur auf permissions vor @MaxZeilen. Er verwendet sichtbare Empfängernamen und löst keine Rollenrechte auf.'
+            + NCHAR(10)
+            + NCHAR(10)
             + N'## Resultate und Ausgabe'
             + NCHAR(10)
             + NCHAR(10)
@@ -178576,6 +178609,13 @@ SELECT CONVERT(sysname,N'monitor') AS [SchemaName],CONVERT(sysname,N'USP_ServerP
             + N'```sql'
             + NCHAR(10)
             + N'EXEC [monitor].[USP_ServerPrincipalAnalysis] @ResultSetArt=''RAW'', @MaxZeilen=100;'
+            + NCHAR(10)
+            + N'```'
+            + NCHAR(10)
+            + NCHAR(10)
+            + N'```sql'
+            + NCHAR(10)
+            + N'EXEC [monitor].[USP_ServerPrincipalAnalysis] @PermissionGranteeName=N''ExampleLogin'', @ResultSetArt=''RAW'';'
             + NCHAR(10)
             + N'```'
             + NCHAR(10)
