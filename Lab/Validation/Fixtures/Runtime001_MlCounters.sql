@@ -130,4 +130,75 @@ WHERE [SourceCode] IN ('EXECUTION_STATS_T1','EXECUTION_STATS_T2')
 
 IF @SampleSourceCount<>2 OR @DistinctSampleSources<>2 OR @SampleT1 IS NULL OR @SampleT2 IS NULL OR @SampleT2<=@SampleT1
     THROW 57023,N'The two successful runtime measurement points were not reported in order.',1;
+
+-- Only the R lab starts a separate owned worker for the positive-delta case.
+IF @FixtureLanguage=N'R'
+BEGIN
+    -- Publish the actual sampler session to the separate connection in this owned lab.
+    CREATE TABLE [##ExampleRuntime001RCounterSampler]([SamplerSessionId] smallint NOT NULL);
+    INSERT [##ExampleRuntime001RCounterSampler]([SamplerSessionId]) VALUES (@@SPID);
+    SET @Json=NULL;
+    EXEC @Return=[monitor].[USP_ExternalRuntimeAnalysis]
+         @DatabaseNames=N'[ExampleExternalRuntimeProbe]',@LanguageNames=@ObservedLanguage,
+         @SampleSeconds=15,@MaxZeilen=0,@ResultSetArt='NONE',@PrintMeldungen=0,
+         @JsonErzeugen=1,@Json=@Json OUTPUT;
+
+    IF ISNULL(@Return,-1)<>0 OR ISNULL(ISJSON(@Json),0)<>1 OR @@LOCK_TIMEOUT<>@LockTimeoutBefore
+        THROW 57024,N'The positive sample did not preserve its output and caller lock timeout.',1;
+
+    SELECT [language] COLLATE Latin1_General_100_BIN2 AS [LanguageName],
+           [counter_name] COLLATE Latin1_General_100_BIN2 AS [CounterName],
+           CONVERT(bigint,[counter_value]) AS [CounterValue]
+    INTO [#ExampleMlNativePositiveAfter]
+    FROM sys.dm_external_script_execution_stats
+    WHERE [language] COLLATE Latin1_General_100_CI_AS=@FixtureLanguage;
+
+    SELECT [a].[LanguageName],[a].[CounterName],[a].[CounterValue],
+           [a].[CounterValue]-[b].[CounterValue] AS [CounterDelta]
+    INTO [#ExampleMlExpectedPositiveDeltas]
+    FROM [#ExampleMlNativePositiveAfter] AS [a]
+    INNER JOIN [#ExampleMlNativeAfterSample] AS [b]
+      ON [a].[LanguageName]=[b].[LanguageName] AND [a].[CounterName]=[b].[CounterName];
+
+    DECLARE @AfterRows bigint=(SELECT COUNT_BIG(*) FROM [#ExampleMlNativePositiveAfter]),
+            @JoinedRows bigint=(SELECT COUNT_BIG(*) FROM [#ExampleMlExpectedPositiveDeltas]),
+            @NegativeRows bigint=(SELECT COUNT_BIG(*) FROM [#ExampleMlExpectedPositiveDeltas] WHERE [CounterDelta]<0),
+            @PositiveRows bigint=(SELECT COUNT_BIG(*) FROM [#ExampleMlExpectedPositiveDeltas] WHERE [CounterDelta]>0);
+    IF @AfterRows<>@ExpectedRows OR @JoinedRows<>@ExpectedRows OR @NegativeRows>0 OR @PositiveRows=0
+    BEGIN
+        DECLARE @SampleError nvarchar(2048)=CONCAT(N'Native R sample: before=',@ExpectedRows,N'; after=',@AfterRows,
+            N'; matched=',@JoinedRows,N'; negative=',@NegativeRows,N'; positive=',@PositiveRows,N'.');
+        THROW 57025,@SampleError,1;
+    END;
+
+    TRUNCATE TABLE [#ExampleMlJsonCounters];
+    INSERT [#ExampleMlJsonCounters]([LanguageName],[CounterName],[CounterValue],[CounterDelta],[DeltaStatus])
+    SELECT [LanguageName],[CounterName],[CounterValue],[CounterDelta],[DeltaStatus]
+    FROM OPENJSON(@Json,N'$.executionStats') WITH
+    (
+        [LanguageName] nvarchar(128),[CounterName] nvarchar(256),[CounterValue] bigint,
+        [CounterDelta] bigint,[DeltaStatus] varchar(40)
+    );
+
+    IF (SELECT COUNT_BIG(*) FROM [#ExampleMlJsonCounters])<>@ExpectedRows
+       OR EXISTS(SELECT [LanguageName],[CounterName],[CounterValue],[CounterDelta] FROM [#ExampleMlJsonCounters]
+                 EXCEPT SELECT * FROM [#ExampleMlExpectedPositiveDeltas])
+       OR EXISTS(SELECT * FROM [#ExampleMlExpectedPositiveDeltas]
+                 EXCEPT SELECT [LanguageName],[CounterName],[CounterValue],[CounterDelta] FROM [#ExampleMlJsonCounters])
+       OR EXISTS(SELECT 1 FROM [#ExampleMlJsonCounters] WHERE ISNULL([DeltaStatus],'')<>'DELTA_AVAILABLE')
+        THROW 57026,N'The positive sample did not match the independently read native R counters and deltas.',1;
+
+    SELECT @SampleT1=MAX(CASE WHEN [SourceCode]='EXECUTION_STATS_T1' THEN [ReadAtUtc] END),
+           @SampleT2=MAX(CASE WHEN [SourceCode]='EXECUTION_STATS_T2' THEN [ReadAtUtc] END),
+           @SampleSourceCount=COUNT(*),@DistinctSampleSources=COUNT(DISTINCT [SourceCode])
+    FROM OPENJSON(@Json,N'$.sourceStatus') WITH
+        ([SourceCode] varchar(80),[StatusCode] varchar(40),[IsPartial] bit,[RowCount] bigint,[ReadAtUtc] datetime2(3))
+    WHERE [SourceCode] IN ('EXECUTION_STATS_T1','EXECUTION_STATS_T2')
+      AND [StatusCode]='AVAILABLE' AND [IsPartial]=0 AND [RowCount]=@ExpectedRows;
+
+    IF @SampleSourceCount<>2 OR @DistinctSampleSources<>2 OR @SampleT1 IS NULL OR @SampleT2 IS NULL OR @SampleT2<=@SampleT1
+        THROW 57027,N'The positive sample did not report two successful ordered measurement points.',1;
+
+    DROP TABLE [##ExampleRuntime001RCounterSampler];
+END;
 GO
