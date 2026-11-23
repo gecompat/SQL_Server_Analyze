@@ -158,11 +158,16 @@ BEGIN
     INNER JOIN [#ExampleMlNativeAfterSample] AS [b]
       ON [a].[LanguageName]=[b].[LanguageName] AND [a].[CounterName]=[b].[CounterName];
 
-    IF (SELECT COUNT_BIG(*) FROM [#ExampleMlNativePositiveAfter])<>@ExpectedRows
-       OR (SELECT COUNT_BIG(*) FROM [#ExampleMlExpectedPositiveDeltas])<>@ExpectedRows
-       OR EXISTS(SELECT 1 FROM [#ExampleMlExpectedPositiveDeltas] WHERE [CounterDelta]<0)
-       OR NOT EXISTS(SELECT 1 FROM [#ExampleMlExpectedPositiveDeltas] WHERE [CounterDelta]>0)
-        THROW 57025,N'The owned R call did not establish a positive native delta over the unchanged counter keys.',1;
+    DECLARE @AfterRows bigint=(SELECT COUNT_BIG(*) FROM [#ExampleMlNativePositiveAfter]),
+            @JoinedRows bigint=(SELECT COUNT_BIG(*) FROM [#ExampleMlExpectedPositiveDeltas]),
+            @NegativeRows bigint=(SELECT COUNT_BIG(*) FROM [#ExampleMlExpectedPositiveDeltas] WHERE [CounterDelta]<0),
+            @PositiveRows bigint=(SELECT COUNT_BIG(*) FROM [#ExampleMlExpectedPositiveDeltas] WHERE [CounterDelta]>0);
+    IF @AfterRows<>@ExpectedRows OR @JoinedRows<>@ExpectedRows OR @NegativeRows>0 OR @PositiveRows=0
+    BEGIN
+        DECLARE @SampleError nvarchar(2048)=CONCAT(N'Native R sample: before=',@ExpectedRows,N'; after=',@AfterRows,
+            N'; matched=',@JoinedRows,N'; negative=',@NegativeRows,N'; positive=',@PositiveRows,N'.');
+        THROW 57025,@SampleError,1;
+    END;
 
     TRUNCATE TABLE [#ExampleMlJsonCounters];
     INSERT [#ExampleMlJsonCounters]([LanguageName],[CounterName],[CounterValue],[CounterDelta],[DeltaStatus])

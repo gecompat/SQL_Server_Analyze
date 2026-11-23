@@ -153,27 +153,49 @@ GO
         $counterWorker = Start-ThreadJob -ScriptBlock {
             param($ModulePath, $RunId, $StateRoot, $Credential, $ScriptPath)
             $ErrorActionPreference = 'Stop'
+            Write-Output 'RUNTIME001_R_COUNTER_WORKER_ENTERED'
             Import-Module $ModulePath
+            Write-Output 'RUNTIME001_R_COUNTER_WORKER_MODULE_IMPORTED'
             $workerResult = Invoke-SqlServerLabScript -RunId $RunId -InstanceId runtime -StateRoot $StateRoot `
-                -SaPassword $Credential -Database ExampleExternalRuntimeProbe -ScriptPath $ScriptPath `
+                -SaPassword $Credential -Database ExampleAnalyzeRuntime -ScriptPath $ScriptPath `
                 -KeepConnection -Confirm:$false
             if (-not $workerResult.Success) { throw 'The owned R counter worker did not finish.' }
+            Write-Output 'RUNTIME001_R_COUNTER_WORKER_SQL_FINISHED'
         } -ArgumentList @($labModulePath, $lab.RunId, $state, $sqlCredential, $workerPath)
     }
+    $result = $null
     try {
         $result = Invoke-SqlServerLabScript -RunId $lab.RunId -InstanceId runtime -StateRoot $state `
             -SaPassword $sqlCredential -Database ExampleAnalyzeRuntime -ScriptPath $fixturePath `
             -KeepConnection -Confirm:$false
         if (-not $result.Success) { throw 'The Analyze external runtime evidence contract failed.' }
-        if ($counterWorker) {
-            $null = Wait-Job -Job $counterWorker -Timeout 10
-            if ($counterWorker.State -ne 'Completed') { throw 'The owned R counter worker did not complete.' }
-            $null = Receive-Job -Job $counterWorker -ErrorAction Stop
-        }
     } finally {
         if ($counterWorker) {
-            Remove-Job -Job $counterWorker -Force
+            try {
+                $null = Wait-Job -Job $counterWorker -Timeout 65
+                $workerState = [string]$counterWorker.State
+                if ($workerState -notin @('Completed','Failed','Stopped')) { Stop-Job -Job $counterWorker }
+                $workerRecords = @(Receive-Job -Job $counterWorker -ErrorAction Continue *>&1)
+                $entered = [int]($workerRecords -ccontains 'RUNTIME001_R_COUNTER_WORKER_ENTERED')
+                $imported = [int]($workerRecords -ccontains 'RUNTIME001_R_COUNTER_WORKER_MODULE_IMPORTED')
+                $finished = [int]($workerRecords -ccontains 'RUNTIME001_R_COUNTER_WORKER_SQL_FINISHED')
+                $workerErrorCount = @($workerRecords | Where-Object { $_ -is [System.Management.Automation.ErrorRecord] }).Count
+                if ($workerState -ne 'Completed' -or $workerErrorCount -gt 0 -or $finished -ne 1 -or -not $result.Success) {
+                    $workerFacts = foreach ($record in $workerRecords) {
+                        foreach ($match in [regex]::Matches([string]$record,
+                            'Msg ([0-9]{1,6}), Level|R sample window: session=[01]; request=[01]; database=[01]; wait=[01]\.')) {
+                            $match.Value
+                        }
+                    }
+                    Write-Output "RUNTIME001_R_COUNTER_WORKER_DIAGNOSTICS state=$workerState entered=$entered imported=$imported finished=$finished errors=$workerErrorCount facts=$(@($workerFacts | Select-Object -Unique -First 8) -join ' | ')"
+                }
+            } finally {
+                Remove-Job -Job $counterWorker -Force
+            }
         }
+    }
+    if ($counterWorker -and ($workerState -ne 'Completed' -or $workerErrorCount -gt 0 -or $finished -ne 1)) {
+        throw 'The owned R counter worker did not complete its native assertions.'
     }
     Write-Output "${markerPrefix}_$($profile.Evidence)=PASS"
     if ($Language -eq 'R') { Write-Output "${markerPrefix}_POSITIVE_COUNTER_DELTA=PASS" }
