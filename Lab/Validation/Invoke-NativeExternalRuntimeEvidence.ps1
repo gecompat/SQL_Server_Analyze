@@ -1,15 +1,25 @@
 #Requires -Version 7.4
 [CmdletBinding()]
-param([Parameter(Mandatory)][string]$LabRoot)
+param(
+    [Parameter(Mandatory)][string]$LabRoot,
+    [Parameter(Mandatory)][ValidateSet('Java','Python')][string]$Language
+)
 
 $ErrorActionPreference = 'Stop'
 if (-not $IsLinux -or $env:GITHUB_ACTIONS -ne 'true' -or $env:RUNNER_ENVIRONMENT -ne 'github-hosted') {
-    throw 'The RUNTIME-001 Java fixture requires a disposable GitHub-hosted Linux runner.'
+    throw 'The RUNTIME-001 fixture requires a disposable GitHub-hosted Linux runner.'
 }
 
 $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot '../..')).Path
 $labModulePath = Join-Path (Resolve-Path -LiteralPath $LabRoot).Path 'SqlServerLab.psd1'
-$work = Join-Path $env:RUNNER_TEMP ('analyze-java-' + [guid]::NewGuid().ToString('N'))
+$runtimeId = 'sql-' + $Language.ToLowerInvariant()
+$variant = "${runtimeId}-2025-shared-user-v2"
+$profile = switch ($Language) {
+    'Java'   { @{ ProbeId = 'java-data-roundtrip'; Fixture = 'Runtime001_JavaCatalog.sql'; Evidence = 'CATALOG_JSON_AND_FINDINGS_PARITY' } }
+    'Python' { @{ ProbeId = 'python-data-roundtrip'; Fixture = 'Runtime001_PythonCounters.sql'; Evidence = 'CUMULATIVE_COUNTERS_JSON' } }
+}
+$markerPrefix = 'RUNTIME001_' + $Language.ToUpperInvariant()
+$work = Join-Path $env:RUNNER_TEMP ('analyze-runtime-' + [guid]::NewGuid().ToString('N'))
 $state = Join-Path $work 'state'
 $previousState = $env:SQL_SERVER_LAB_STATE
 $failure = $null
@@ -20,10 +30,10 @@ $env:SQL_SERVER_LAB_STATE = $state
 
 try {
     $manifest = @{
-        name = 'analyze-java-catalog'
+        name = 'analyze-external-runtime'
         automation = @{ mode = 'unattended' }
         instances = @(@{
-            id = 'java'
+            id = 'runtime'
             version = '2025'
             provider = 'docker'
             profile = 'standard'
@@ -34,8 +44,8 @@ try {
                 options = @{ compatibility = 170 }
             })
             software = @(@{
-                id = 'sql-java'
-                variant = 'sql-java-2025-shared-user-v2'
+                id = $runtimeId
+                variant = $variant
                 scope = 'sqlExternalRuntime'
                 optional = $false
             })
@@ -52,7 +62,7 @@ try {
     if ($lab.State -ne 'Running' -or $instance.Host -ne ([System.Net.IPAddress]::Loopback).ToString() -or
         $instance.ExternalRuntime.LaunchMode -ne 'sql2025-shared-user-v2' -or
         @($instance.ExternalRuntime.Receipts).Count -ne 1) {
-        throw 'The owned Java Lab instance did not match the expected profile.'
+        throw 'The owned Lab instance did not match the expected external runtime profile.'
     }
 
     $containerProfile = & docker inspect --format '{{.HostConfig.Privileged}}|{{.HostConfig.CgroupnsMode}}|{{range .Mounts}}{{.Destination}}|{{end}}' $instance.ContainerId
@@ -70,9 +80,9 @@ try {
         $writer.WriteLine(@'
 IF ISNULL(CONVERT(varchar(32),SERVERPROPERTY('ProductVersion')),'') <> '17.0.5005.3'
     THROW 56970,N'Unexpected SQL Server engine build.',1;
-CREATE DATABASE [ExampleAnalyzeJava] COLLATE SQL_Latin1_General_CP1_CS_AS;
+CREATE DATABASE [ExampleAnalyzeRuntime] COLLATE SQL_Latin1_General_CP1_CS_AS;
 GO
-ALTER DATABASE [ExampleAnalyzeJava] SET COMPATIBILITY_LEVEL = 170;
+ALTER DATABASE [ExampleAnalyzeRuntime] SET COMPATIBILITY_LEVEL = 170;
 GO
 '@)
         $includes = 0
@@ -80,7 +90,7 @@ GO
             if ($line -match '^:r[ \t]+(\.\./[A-Za-z0-9_]+/[A-Za-z0-9_]+\.sql)[ \t]*$') {
                 $includes++
                 $source = Get-Content -LiteralPath (Join-Path $installRoot $Matches[1]) -Raw -Encoding utf8
-                $writer.WriteLine($source.Replace('[DeineDatenbank]', '[ExampleAnalyzeJava]'))
+                $writer.WriteLine($source.Replace('[DeineDatenbank]', '[ExampleAnalyzeRuntime]'))
                 $writer.WriteLine('GO')
             } elseif ($line -eq ':ON ERROR EXIT') {
                 # Invoke-SqlServerLabScript stops on the first SQL error.
@@ -88,14 +98,14 @@ GO
             } elseif ($line -match '^\s*:') {
                 throw 'Unexpected SQLCMD directive in the canonical installer.'
             } else {
-                $writer.WriteLine($line.Replace('[DeineDatenbank]', '[ExampleAnalyzeJava]'))
+                $writer.WriteLine($line.Replace('[DeineDatenbank]', '[ExampleAnalyzeRuntime]'))
             }
         }
         if ($includes -eq 0) { throw 'The canonical installer contains no SQL includes.' }
     } finally {
         $writer.Dispose()
     }
-    $install = Invoke-SqlServerLabScript -RunId $lab.RunId -InstanceId java -StateRoot $state `
+    $install = Invoke-SqlServerLabScript -RunId $lab.RunId -InstanceId runtime -StateRoot $state `
         -SaPassword $sqlCredential -ScriptPath $installer -KeepConnection -Confirm:$false
     if (-not $install.Success) { throw 'The canonical Analyze installation failed.' }
 
@@ -103,7 +113,7 @@ GO
     if ([string]$lab.RunId -notmatch '^[A-Za-z0-9_-]+$') { throw 'Invalid owned Lab run identifier.' }
     $receiptPath = Join-Path (Join-Path (Join-Path $state 'runs') $lab.RunId) 'software-installation-receipts.json'
     $document = Get-Content -LiteralPath $receiptPath -Raw -Encoding utf8 | ConvertFrom-Json -Depth 50
-    $receiptInstances = @($document.instances | Where-Object { $_.instanceId -eq 'java' })
+    $receiptInstances = @($document.instances | Where-Object { $_.instanceId -eq 'runtime' })
     if ($document.contract.name -ne 'SqlServerLab.RunSoftwareInstallationReceipts' -or
         $document.contract.version -ne '1.0' -or $receiptInstances.Count -ne 1 -or
         @($receiptInstances[0].receipts).Count -ne 1) {
@@ -111,26 +121,29 @@ GO
     }
     $receipt = @($receiptInstances[0].receipts)[0]
     if ($receipt.Contract.Name -ne 'SqlServerLab.SoftwareInstallationReceipt' -or
-        $receipt.Contract.Version -ne '1.0' -or $receipt.SoftwareId -ne 'sql-java' -or
+        $receipt.Contract.Version -ne '1.0' -or $receipt.SoftwareId -ne $runtimeId -or
         $receipt.Status -ne 'EXTENSIONS_READY_RUN' -or [string]::IsNullOrEmpty($receipt.PlanKey) -or
         $receipt.PlanKey -cne $receiptSummary.PlanKey -or $receipt.VariantId -cne $receiptSummary.VariantId) {
         throw 'The private installation receipt did not bind to the owned instance summary.'
     }
-    $javaProbe = @($receipt.Postconditions | Where-Object { $_.Id -eq 'java-data-roundtrip' })
-    if ($receipt.VariantId -ne 'sql-java-2025-shared-user-v2' -or $javaProbe.Count -ne 1 -or
-        $javaProbe[0].Status -ne 'PASS' -or $javaProbe[0].Language -ne 'Java' -or
-        $javaProbe[0].Database -ne 'ExampleExternalRuntimeProbe' -or $javaProbe[0].Registration -ne 'CREATED' -or
-        $javaProbe[0].InputValue -ne 42 -or $javaProbe[0].OutputValue -ne 42 -or
-        $javaProbe[0].WorkerIdentity -ne 'mssql_launchpadd') {
-        throw 'The native provisioning receipt did not establish the owned Java round-trip.'
+    $probes = @($receipt.Postconditions | Where-Object { $_.Id -eq $profile.ProbeId })
+    if ($receipt.VariantId -ne $variant -or $probes.Count -ne 1 -or
+        $probes[0].Status -ne 'PASS' -or $probes[0].Language -ne $Language -or
+        $probes[0].InputValue -ne 42 -or $probes[0].OutputValue -ne 42 -or
+        $probes[0].WorkerIdentity -ne 'mssql_launchpadd') {
+        throw 'The native provisioning receipt did not establish the owned round-trip.'
     }
-    Write-Output 'RUNTIME001_JAVA_NATIVE_ROUNDTRIP=PASS'
+    if ($Language -eq 'Java' -and
+        ($probes[0].Database -ne 'ExampleExternalRuntimeProbe' -or $probes[0].Registration -ne 'CREATED')) {
+        throw 'The Java receipt did not establish a new registration in the owned database.'
+    }
+    Write-Output "${markerPrefix}_NATIVE_ROUNDTRIP=PASS"
 
-    $result = Invoke-SqlServerLabScript -RunId $lab.RunId -InstanceId java -StateRoot $state `
-        -SaPassword $sqlCredential -Database ExampleAnalyzeJava -ScriptPath (Join-Path $PSScriptRoot 'Fixtures/Runtime001_JavaCatalog.sql') `
+    $result = Invoke-SqlServerLabScript -RunId $lab.RunId -InstanceId runtime -StateRoot $state `
+        -SaPassword $sqlCredential -Database ExampleAnalyzeRuntime -ScriptPath (Join-Path (Join-Path $PSScriptRoot 'Fixtures') $profile.Fixture) `
         -KeepConnection -Confirm:$false
-    if (-not $result.Success) { throw 'The Analyze Java catalog contract failed.' }
-    Write-Output 'RUNTIME001_JAVA_CATALOG_JSON_AND_FINDINGS_PARITY=PASS'
+    if (-not $result.Success) { throw 'The Analyze external runtime evidence contract failed.' }
+    Write-Output "${markerPrefix}_$($profile.Evidence)=PASS"
 } catch {
     $failure = $_
 } finally {
@@ -147,6 +160,6 @@ GO
     $env:SQL_SERVER_LAB_STATE = $previousState
     if (-not $cleanupFailure) { Remove-Item -LiteralPath $work -Recurse -Force }
 }
-if ($cleanupFailure) { throw "RUNTIME001_JAVA_CLEANUP_FAILED: $cleanupFailure. Primary failure: $failure" }
+if ($cleanupFailure) { throw "RUNTIME001_EXTERNAL_RUNTIME_CLEANUP_FAILED: $cleanupFailure. Primary failure: $failure" }
 if ($failure) { throw $failure }
-Write-Output 'RUNTIME001_JAVA_OWNED_LAB_CLEANUP=PASS'
+Write-Output "${markerPrefix}_OWNED_LAB_CLEANUP=PASS"

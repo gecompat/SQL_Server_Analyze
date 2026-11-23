@@ -1,26 +1,32 @@
-name: RUNTIME-001 native Java catalog
+name: RUNTIME-001 native external languages
 on:
   pull_request:
     branches: [main]
     paths:
-      - '.github/workflows/runtime001-java-catalog.yml'
-      - 'Lab/Validation/Invoke-NativeJavaCatalog.ps1'
+      - '.github/workflows/runtime001-external-languages.yml'
+      - 'Lab/Validation/Invoke-NativeExternalRuntimeEvidence.ps1'
       - 'Lab/Validation/Fixtures/Runtime001_JavaCatalog.sql'
+      - 'Lab/Validation/Fixtures/Runtime001_PythonCounters.sql'
       - 'Code/09_VersionAdaptive/090_USP_ExternalRuntimeAnalysis.sql'
   push:
     branches: [main]
     paths:
-      - '.github/workflows/runtime001-java-catalog.yml'
-      - 'Lab/Validation/Invoke-NativeJavaCatalog.ps1'
+      - '.github/workflows/runtime001-external-languages.yml'
+      - 'Lab/Validation/Invoke-NativeExternalRuntimeEvidence.ps1'
       - 'Lab/Validation/Fixtures/Runtime001_JavaCatalog.sql'
+      - 'Lab/Validation/Fixtures/Runtime001_PythonCounters.sql'
       - 'Code/09_VersionAdaptive/090_USP_ExternalRuntimeAnalysis.sql'
 
 permissions:
   contents: read
 
 jobs:
-  java-catalog:
-    name: Run the isolated SQL Server 2025 and Java catalog contract
+  native-runtime:
+    name: SQL Server 2025 external runtime (${{ matrix.language }})
+    strategy:
+      fail-fast: false
+      matrix:
+        language: [Java, Python]
     if: github.repository == 'gecompat/SQL_Server_Analyze' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
     runs-on: ubuntu-24.04
     timeout-minutes: 44
@@ -58,8 +64,9 @@ jobs:
           if [[ -x /opt/mssql-tools18/bin/sqlcmd ]]; then
             printf '%s\n' /opt/mssql-tools18/bin >> "$GITHUB_PATH"
           fi
-      - name: Run Java and verify Analyze against the native catalogs
+      - name: Verify the runtime and Analyze evidence on the owned Lab
         shell: pwsh
         env:
           TEMP: ${{ runner.temp }}
-        run: ./Lab/Validation/Invoke-NativeJavaCatalog.ps1 -LabRoot ./.sql-server-lab
+          EVIDENCE_LANGUAGE: ${{ matrix.language }}
+        run: ./Lab/Validation/Invoke-NativeExternalRuntimeEvidence.ps1 -LabRoot ./.sql-server-lab -Language $env:EVIDENCE_LANGUAGE

@@ -1527,7 +1527,7 @@
     },
     {
       "source": "Documentation/Quality/CI_Test_Strategy.md",
-      "target": ".github/workflows/runtime001-java-catalog.yml",
+      "target": ".github/workflows/runtime001-external-languages.yml",
       "classification": "product-reference"
     },
     {
