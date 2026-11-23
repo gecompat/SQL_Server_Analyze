@@ -109,7 +109,10 @@ solange keine gesonderte Ursachenabnahme vorliegt.
 |---|---|---|
 | `.github/workflows/documentation-validation.yml` | Statische Dokumentations-, Metadata- und Contract-Prüfungen | Impact-basiert ohne SQL Server |
 | `.github/workflows/ci-functional-impact.yml` | Funktionale Pull-Request-Prüfung | SQL Server 2025, impact-basiert; Compatibility-Level-Erweiterung bei klassifiziertem Risiko |
+| `.github/workflows/wi0009-external-catalog.yml` | Positiver nativer S3-Katalogvertrag | Ein GitHub-gehosteter SQL-Server-2025-Lauf je betroffenem PR-Head und Merge auf Main |
 | `.github/workflows/release-native-matrix.yml` | Native Versionsprüfung | Ausschließlich manuell; einzelne Version oder Release-Candidate-Matrix |
+
+Der S3-Katalogvertrag startet bei Änderungen am zuständigen Workflow, an der positiven Fixture oder an `USP_ExternalDataAnalysis`. Der Job verwendet eine fest gebundene SQL_Server_Lab-Fixture und baut daraus einen einzelnen Testlauf mit einer temporären SQL-Server-2025-Instanz. Die Standard-CI prüft weiterhin die portable Katalog-Fixture und die bestehenden fachlichen Verträge. Der Zusatzlauf prüft die dort fehlenden positiven S3-Katalogobjekte. [Vertragsumfang](../Architecture/WI0009_External_Data_Public_Specification.md)
 
 Gelöschte historische Workflows sind keine gültigen CI-Ziele und dürfen weder in Anweisungen noch im Impact-Selector als aktive Infrastruktur referenziert werden.
 

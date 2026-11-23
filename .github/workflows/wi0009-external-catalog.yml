@@ -1,0 +1,62 @@
+name: WI-0009 native external catalog
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - '.github/workflows/wi0009-external-catalog.yml'
+      - 'Lab/Validation/Fixtures/WI0009_ExternalCatalog.sql'
+      - 'Code/09_VersionAdaptive/110_USP_ExternalDataAnalysis.sql'
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/wi0009-external-catalog.yml'
+      - 'Lab/Validation/Fixtures/WI0009_ExternalCatalog.sql'
+      - 'Code/09_VersionAdaptive/110_USP_ExternalDataAnalysis.sql'
+
+permissions:
+  contents: read
+
+jobs:
+  external-catalog:
+    name: Analyze native S3 metadata with the store disconnected
+    if: github.repository == 'gecompat/SQL_Server_Analyze' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 24
+    env:
+      ANALYZE_COMMIT: ${{ github.event.pull_request.head.sha || github.sha }}
+      LAB_COMMIT: e814dc82d336907aafc263428e34fe80e3487ea2
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          ref: ${{ env.ANALYZE_COMMIT }}
+          persist-credentials: false
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          repository: gecompat/SQL_Server_Lab
+          ref: ${{ env.LAB_COMMIT }}
+          persist-credentials: false
+          path: .sql-server-lab
+      - name: Build the canonical standalone SQL installer
+        shell: pwsh
+        run: |
+          ./Code/Install/Build-StandaloneInstaller.ps1 -OutputPath (Join-Path $env:RUNNER_TEMP 'wi0009-standalone.sql')
+      - name: Bind Analyze and Lab revisions and run the isolated native catalog contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          umask 077
+          test "$(git rev-parse HEAD)" = "$ANALYZE_COMMIT"
+          test "$(git -C .sql-server-lab rev-parse HEAD)" = "$LAB_COMMIT"
+          printf 'WI0009_ANALYZE_COMMIT=%s\nWI0009_LAB_COMMIT=%s\n' "$ANALYZE_COMMIT" "$LAB_COMMIT"
+          work="$(mktemp -d "$RUNNER_TEMP/analyze-wi0009.XXXXXX")"
+          trap 'rm -f -- "$work/wi0009-consumer.sql" "$RUNNER_TEMP/wi0009-standalone.sql"; rmdir -- "$work"' EXIT
+          {
+            printf '%s\n' 'CREATE DATABASE [ExampleAnalyzeProbe] COLLATE SQL_Latin1_General_CP1_CS_AS;' \
+              'ALTER DATABASE [ExampleAnalyzeProbe] SET COMPATIBILITY_LEVEL = 170;' 'GO'
+            sed 's/\[DeineDatenbank\]/[ExampleAnalyzeProbe]/g' "$RUNNER_TEMP/wi0009-standalone.sql"
+            printf '\n'
+            cat Lab/Validation/Fixtures/WI0009_ExternalCatalog.sql
+          } > "$work/wi0009-consumer.sql"
+          timeout --signal=TERM --kill-after=60s 18m bash \
+            .sql-server-lab/Tests/Integration/Invoke-PolyBaseS3Acceptance.sh --consumer-sql "$work/wi0009-consumer.sql"
