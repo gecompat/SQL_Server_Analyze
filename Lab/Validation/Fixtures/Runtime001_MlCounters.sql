@@ -78,4 +78,56 @@ IF (SELECT COUNT_BIG(*) FROM OPENJSON(@Json,N'$.sourceStatus') WITH
     ([SourceCode] varchar(80),[StatusCode] varchar(40),[IsPartial] bit,[RowCount] bigint)
     WHERE [SourceCode]='EXECUTION_STATS_T1' AND [StatusCode]='AVAILABLE' AND [IsPartial]=0 AND [RowCount]=@ExpectedRows)<>1
     THROW 56982,N'Analyze did not report successful reading of the positive machine-learning counter source.',1;
+
+-- Die eigene Instanz hat zwischen den beiden Messpunkten keine weitere Script-Ausführung.
+SET @Json=NULL;
+EXEC @Return=[monitor].[USP_ExternalRuntimeAnalysis]
+     @DatabaseNames=N'[ExampleExternalRuntimeProbe]',@LanguageNames=@ObservedLanguage,
+     @SampleSeconds=1,@MaxZeilen=0,@ResultSetArt='NONE',@PrintMeldungen=0,
+     @JsonErzeugen=1,@Json=@Json OUTPUT;
+
+IF ISNULL(@Return,-1)<>0 OR ISNULL(ISJSON(@Json),0)<>1 OR @@LOCK_TIMEOUT<>@LockTimeoutBefore
+    THROW 57020,N'The sampled runtime call did not preserve its output and caller state.',1;
+
+SELECT [language] COLLATE Latin1_General_100_BIN2 AS [LanguageName],
+       [counter_name] COLLATE Latin1_General_100_BIN2 AS [CounterName],
+       CONVERT(bigint,[counter_value]) AS [CounterValue]
+INTO [#ExampleMlNativeAfterSample]
+FROM sys.dm_external_script_execution_stats
+WHERE [language] COLLATE Latin1_General_100_CI_AS=@FixtureLanguage;
+
+IF (SELECT COUNT_BIG(*) FROM [#ExampleMlNativeAfterSample])<>@ExpectedRows
+   OR EXISTS(SELECT * FROM [#ExampleMlNativeAfterSample] EXCEPT SELECT * FROM [#ExampleMlNativeAfter])
+   OR EXISTS(SELECT * FROM [#ExampleMlNativeAfter] EXCEPT SELECT * FROM [#ExampleMlNativeAfterSample])
+    THROW 57021,N'The native counters changed across the owned sample window.',1;
+
+TRUNCATE TABLE [#ExampleMlJsonCounters];
+INSERT [#ExampleMlJsonCounters]([LanguageName],[CounterName],[CounterValue],[CounterDelta],[DeltaStatus])
+SELECT [LanguageName],[CounterName],[CounterValue],[CounterDelta],[DeltaStatus]
+FROM OPENJSON(@Json,N'$.executionStats') WITH
+(
+    [LanguageName] nvarchar(128),[CounterName] nvarchar(256),[CounterValue] bigint,
+    [CounterDelta] bigint,[DeltaStatus] varchar(40)
+);
+
+IF (SELECT COUNT_BIG(*) FROM [#ExampleMlJsonCounters])<>@ExpectedRows
+   OR EXISTS(SELECT [LanguageName],[CounterName],[CounterValue] FROM [#ExampleMlJsonCounters]
+             EXCEPT SELECT * FROM [#ExampleMlNativeAfterSample])
+   OR EXISTS(SELECT * FROM [#ExampleMlNativeAfterSample] EXCEPT
+             SELECT [LanguageName],[CounterName],[CounterValue] FROM [#ExampleMlJsonCounters])
+   OR EXISTS(SELECT 1 FROM [#ExampleMlJsonCounters]
+             WHERE ISNULL([CounterDelta],-1)<>0 OR ISNULL([DeltaStatus],'')<>'DELTA_AVAILABLE')
+    THROW 57022,N'Stable native counters did not yield the expected zero deltas.',1;
+
+DECLARE @SampleT1 datetime2(3),@SampleT2 datetime2(3),@SampleSourceCount int,@DistinctSampleSources int;
+SELECT @SampleT1=MAX(CASE WHEN [SourceCode]='EXECUTION_STATS_T1' THEN [ReadAtUtc] END),
+       @SampleT2=MAX(CASE WHEN [SourceCode]='EXECUTION_STATS_T2' THEN [ReadAtUtc] END),
+       @SampleSourceCount=COUNT(*),@DistinctSampleSources=COUNT(DISTINCT [SourceCode])
+FROM OPENJSON(@Json,N'$.sourceStatus') WITH
+    ([SourceCode] varchar(80),[StatusCode] varchar(40),[IsPartial] bit,[RowCount] bigint,[ReadAtUtc] datetime2(3))
+WHERE [SourceCode] IN ('EXECUTION_STATS_T1','EXECUTION_STATS_T2')
+  AND [StatusCode]='AVAILABLE' AND [IsPartial]=0 AND [RowCount]=@ExpectedRows;
+
+IF @SampleSourceCount<>2 OR @DistinctSampleSources<>2 OR @SampleT1 IS NULL OR @SampleT2 IS NULL OR @SampleT2<=@SampleT1
+    THROW 57023,N'The two successful runtime measurement points were not reported in order.',1;
 GO
