@@ -883,7 +883,7 @@ GO
     assert sum(p.stat().st_size for p in root.rglob("*") if p.is_file()) < 1024*1024, "CI_PROBE_SIZE_LIMIT"
     (root/"qualification.json").write_text(json.dumps(dict(status="PASS", elapsed_seconds=elapsed,
         cases=list(evidence), cleanup="PASS", commit=os.environ.get("GITHUB_SHA")), indent=2), encoding="utf-8")
-    print("CI lock diagnostic qualification: PASS (positive, wrapped, immediate, release/targeted/standalone plan cache, CurrentOverview, success, sleeping holder, resource identity, cleanup)")
+    print("CI lock diagnostic qualification: PASS (positive, wrapped, immediate, release/targeted/standalone plan cache, CurrentOverview, LinkedServer, success, sleeping holder, resource identity, cleanup)")
 
 
 if __name__ == "__main__":
