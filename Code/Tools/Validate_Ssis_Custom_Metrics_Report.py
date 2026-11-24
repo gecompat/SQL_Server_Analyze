@@ -259,10 +259,12 @@ def validate_document(document: Any) -> dict[str, Any]:
                 raise ReportError("CONFLICTING_DUPLICATE_SEQUENCE")
 
         sequences = sorted(by_sequence)
-        gaps = False
+        # Positive unique sequences start at 1. A short prefix proves a gap
+        # even when the report has no final watermark yet.
+        gaps = bool(sequences) and len(sequences) != sequences[-1]
         if completed:
             # Treat missing rows as coverage, not proof that the declared report is false.
-            gaps = expected is None or not sequences or sequences[0] != 1 or sequences[-1] != expected or len(sequences) != expected
+            gaps = gaps or expected is None or not sequences or sequences[-1] != expected
         elif expected is not None:
             raise ReportError("INCOMPLETE_SERIES_HAS_FINAL_WATERMARK")
         if definition["kind"] == "FINAL" and (not completed or set(by_sequence) != {1} or expected != 1):
