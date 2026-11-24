@@ -194,6 +194,56 @@ BEGIN
   EXEC @Ret=[monitor].[USP_CurrentObjectPermissionAnalysis] @DatabaseNames=@Names,@SchemaName=N'dbo',@ObjectName=N'NoSuchObject',@ResultSetArt='NONE',@JsonErzeugen=1,@Json=@Json OUTPUT,@PrintMeldungen=0;
   IF COALESCE(@Ret,-1)<>0 OR ISJSON(@Json)<>1 OR EXISTS(SELECT 1 FROM OPENJSON(@Json,N'$.sourceStatus') WITH([SourceKey] varchar(64),[StatusCode] varchar(40)) WHERE [SourceKey]='OBJECT_CURRENT_PERMISSIONS' AND [StatusCode] NOT IN ('EMPTY_UNPROVEN','ERROR_HANDLED')) THROW 63156,N'OBJECT_FIXTURE_UNPROVEN_MISSING',1;
 
+  -- Dieselbe Schreibvariante wird ausschließlich im Ziel mit CI-Collation aufgelöst.
+  SET @Sql=N'USE '+QUOTENAME(@DbA)+N';CREATE TABLE [dbo].[ExampleCaseProbe]([Value] int NOT NULL);GRANT SELECT ON OBJECT::[dbo].[ExampleCaseProbe] TO '+QUOTENAME(@DbUser)+N';'
+    +N'USE '+QUOTENAME(@DbB)+N';CREATE TABLE [dbo].[ExampleCaseProbe]([Value] int NOT NULL);GRANT SELECT ON OBJECT::[dbo].[ExampleCaseProbe] TO '+QUOTENAME(@DbUser)+N';';
+  EXEC [sys].[sp_executesql] @Sql;
+
+  DECLARE @CaseTarget sysname=N'[dbo].[examplecaseprobe]',@ExactTarget sysname=N'[dbo].[ExampleCaseProbe]',
+    @CaseObjectA int,@CaseObjectB int,@ExactObjectA int,@ExactObjectB int,@CaseNativeError int=NULL,@CaseNativeRows bigint;
+  DELETE FROM [#ExampleObject_Native];
+  DECLARE @CaseNativeSql nvarchar(max)=N';SELECT @ExactId=OBJECT_ID(@Exact,N''U''),@CaseId=OBJECT_ID(@Target,N''U'');
+   BEGIN TRY
+    INSERT [#ExampleObject_Native]
+    SELECT @Id,@Name,N''dbo'',N''examplecaseprobe'',[entity_name],[subentity_name],CONVERT(nvarchar(128),[permission_name])
+    FROM [sys].[fn_my_permissions](@Target,N''OBJECT'');
+   END TRY BEGIN CATCH SET @Err=ERROR_NUMBER();END CATCH;
+   USE '+QUOTENAME(@FrameworkDb)+N';REVERT;END TRY BEGIN CATCH USE '+QUOTENAME(@FrameworkDb)+N';REVERT;THROW;END CATCH;';
+  DECLARE @CaseNativeParams nvarchar(400)=N'@Id int,@Name sysname,@Exact sysname,@Target sysname,@ExactId int OUTPUT,@CaseId int OUTPUT,@Err int OUTPUT';
+  SET @Sql=N'EXECUTE AS LOGIN='+QUOTENAME(@Login,'''')+N';BEGIN TRY USE '+QUOTENAME(@DbA)+@CaseNativeSql;
+  EXEC [sys].[sp_executesql] @Sql,@CaseNativeParams,@Id=@DbAId,@Name=@DbA,@Exact=@ExactTarget,@Target=@CaseTarget,@ExactId=@ExactObjectA OUTPUT,@CaseId=@CaseObjectA OUTPUT,@Err=@CaseNativeError OUTPUT;
+  IF @ExactObjectA IS NULL OR @CaseObjectA IS NOT NULL OR @CaseNativeError IN (229,297,300,371,916,1222)
+    OR EXISTS(SELECT 1 FROM [#ExampleObject_Native]) THROW 63208,N'OBJECT_FIXTURE_CASE_SENSITIVE_NATIVE',1;
+
+  SET @ProbeError=NULL;
+  SET @Sql=N'EXECUTE AS LOGIN='+QUOTENAME(@Login,'''')+N';BEGIN TRY USE '+QUOTENAME(@DbB)+@CaseNativeSql;
+  EXEC [sys].[sp_executesql] @Sql,@CaseNativeParams,@Id=@DbBId,@Name=@DbB,@Exact=@ExactTarget,@Target=@CaseTarget,@ExactId=@ExactObjectB OUTPUT,@CaseId=@CaseObjectB OUTPUT,@Err=@ProbeError OUTPUT;
+  SELECT @CaseNativeRows=COUNT_BIG(*) FROM [#ExampleObject_Native];
+  IF @ExactObjectB IS NULL OR @CaseObjectB IS NULL OR @ExactObjectB<>@CaseObjectB OR @ProbeError IS NOT NULL
+    OR NOT EXISTS(SELECT 1 FROM [#ExampleObject_Native] WHERE [DatabaseId]=@DbBId AND [PermissionName]=N'SELECT')
+    THROW 63209,N'OBJECT_FIXTURE_CASE_INSENSITIVE_NATIVE',1;
+
+  SET @Sql=N'EXECUTE AS LOGIN='+QUOTENAME(@Login,'''')+N';BEGIN TRY EXEC @Rc=[monitor].[USP_CurrentObjectPermissionAnalysis] @DatabaseNames=@Names,@SchemaName=N''dbo'',@ObjectName=N''examplecaseprobe'',@ResultSetArt=''NONE'',@JsonErzeugen=1,@Json=@J OUTPUT,@PrintMeldungen=0,@StatusCodeOut=@St OUTPUT;REVERT;END TRY BEGIN CATCH REVERT;THROW;END CATCH;';
+  SET @Json=NULL;SET @Ret=NULL;SET @Status=NULL;
+  EXEC [sys].[sp_executesql] @Sql,N'@Names nvarchar(max),@Rc int OUTPUT,@J nvarchar(max) OUTPUT,@St varchar(40) OUTPUT',@Names=@Names,@Rc=@Ret OUTPUT,@J=@Json OUTPUT,@St=@Status OUTPUT;
+  IF COALESCE(@Ret,-1)<>0 OR COALESCE(@Status,'')<>'AVAILABLE_LIMITED' OR COALESCE(ISJSON(@Json),0)<>1
+    OR (SELECT COUNT_BIG(*) FROM OPENJSON(@Json,N'$.objectPermissions'))<>@CaseNativeRows
+    OR EXISTS(SELECT [DatabaseId],[RequestedSchemaName] COLLATE SQL_Latin1_General_CP1_CS_AS,[RequestedObjectName] COLLATE SQL_Latin1_General_CP1_CS_AS,[EntityName] COLLATE SQL_Latin1_General_CP1_CS_AS,[SubentityName] COLLATE SQL_Latin1_General_CP1_CS_AS,[PermissionName] COLLATE SQL_Latin1_General_CP1_CS_AS
+      FROM OPENJSON(@Json,N'$.objectPermissions') WITH([DatabaseId] int,[RequestedSchemaName] sysname,[RequestedObjectName] sysname,[EntityName] sysname,[SubentityName] sysname,[PermissionName] nvarchar(128))
+      EXCEPT SELECT [DatabaseId],[RequestedSchemaName],[RequestedObjectName],[EntityName],[SubentityName],[PermissionName] FROM [#ExampleObject_Native])
+    OR EXISTS(SELECT [DatabaseId],[RequestedSchemaName],[RequestedObjectName],[EntityName],[SubentityName],[PermissionName] FROM [#ExampleObject_Native]
+      EXCEPT SELECT [DatabaseId],[RequestedSchemaName] COLLATE SQL_Latin1_General_CP1_CS_AS,[RequestedObjectName] COLLATE SQL_Latin1_General_CP1_CS_AS,[EntityName] COLLATE SQL_Latin1_General_CP1_CS_AS,[SubentityName] COLLATE SQL_Latin1_General_CP1_CS_AS,[PermissionName] COLLATE SQL_Latin1_General_CP1_CS_AS
+      FROM OPENJSON(@Json,N'$.objectPermissions') WITH([DatabaseId] int,[RequestedSchemaName] sysname,[RequestedObjectName] sysname,[EntityName] sysname,[SubentityName] sysname,[PermissionName] nvarchar(128)))
+    THROW 63210,N'OBJECT_FIXTURE_CASE_PRODUCT_PARITY',1;
+  IF (SELECT COUNT(*) FROM OPENJSON(@Json,N'$.sourceStatus') WITH([SourceKey] varchar(64)) WHERE [SourceKey]='OBJECT_CURRENT_PERMISSIONS')<>2
+    OR NOT EXISTS(SELECT 1 FROM OPENJSON(@Json,N'$.sourceStatus') WITH([DatabaseId] int,[SourceKey] varchar(64),[StatusCode] varchar(40),[ObservedRows] bigint,[ErrorNumber] int)
+      WHERE [DatabaseId]=@DbAId AND [SourceKey]='OBJECT_CURRENT_PERMISSIONS' AND
+       ((@CaseNativeError IS NULL AND [StatusCode]='EMPTY_UNPROVEN' AND [ObservedRows]=0 AND [ErrorNumber] IS NULL)
+        OR (@CaseNativeError IS NOT NULL AND [StatusCode]='ERROR_HANDLED' AND [ObservedRows] IS NULL AND [ErrorNumber]=@CaseNativeError)))
+    OR NOT EXISTS(SELECT 1 FROM OPENJSON(@Json,N'$.sourceStatus') WITH([DatabaseId] int,[SourceKey] varchar(64),[StatusCode] varchar(40),[ObservedRows] bigint,[ErrorNumber] int)
+      WHERE [DatabaseId]=@DbBId AND [SourceKey]='OBJECT_CURRENT_PERMISSIONS' AND [StatusCode]='AVAILABLE_LIMITED' AND [ObservedRows]=@CaseNativeRows AND [ErrorNumber] IS NULL)
+    THROW 63211,N'OBJECT_FIXTURE_CASE_SOURCE_PARITY',1;
+
   -- Eigene Spaltenfreigabe: direkter nativer Callerbeweis und TABLE/JSON unter demselben Login.
   SET @Sql=N'USE '+QUOTENAME(@DbA)+N';CREATE TABLE [dbo].[ExampleColumnProbe]([Value] int NOT NULL,[OtherValue] int NULL);GRANT SELECT ([Value]) ON OBJECT::[dbo].[ExampleColumnProbe] TO '+QUOTENAME(@DbUser)+N';';
   EXEC [sys].[sp_executesql] @Sql;
