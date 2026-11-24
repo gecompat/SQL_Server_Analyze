@@ -2,6 +2,7 @@
 """Offline contracts and one bounded synthetic SQL lock qualification batch."""
 
 import argparse
+from contextlib import redirect_stdout
 import io
 import json
 import os
@@ -363,6 +364,51 @@ for line in sys.stdin:
             self.assertIn("OBSERVATION_FAILED", report["errors"])
             self.assertEqual(report["sqlcmd_exit_code"], 7)
             self.assertNotIn("SyntheticCredential", (Path(args.artifacts)/"impact.log").read_text())
+
+    def test_error_headers_survive_sanitized_log_cap(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory)
+            args = SimpleNamespace(container="synthetic", sqlcmd="synthetic", input="synthetic.sql",
+                                   log=str(path/"raw.log"), artifacts=str(path/"artifacts"), log_limit=0)
+            process = SimpleNamespace(
+                stdout=io.BytesIO(b"Msg 1222, Level 16, State 1\n"),
+                stderr=io.BytesIO(
+                    b"x"*8192 + b"Msg 999, Level 16, State 5, " + b"x"*8192 + b"\n"
+                    b"Msg 547, Level 16, State 3, Server SyntheticCredential\n"
+                    b"Unpublished error text\nMsg 50001, Level 11, State 5"
+                ),
+                wait=lambda: 7,
+            )
+            console = io.StringIO()
+            with patch.dict(os.environ, MSSQL_EPHEMERAL_CREDENTIAL="SyntheticCredential"), \
+                 patch.object(ci.subprocess, "Popen", return_value=process), \
+                 redirect_stdout(console):
+                self.assertEqual(ci.run(args), 7)
+            report = json.loads((path/"artifacts/diagnostics.json").read_text())
+            summary_output = console.getvalue().split("CI lock diagnostic summary: ", 1)[1]
+            summary = json.loads(summary_output.split("\nCI lock diagnostics:", 1)[0])
+            expected = [dict(number=547, severity=16, state=3),
+                        dict(number=50001, severity=11, state=5)]
+            for result in (report, summary):
+                self.assertEqual(result["status"], "NO_1222")
+                self.assertEqual(result["sql_error_headers"], expected)
+                self.assertFalse(result["sql_error_headers_truncated"])
+                self.assertEqual(result["sqlcmd_exit_code"], 7)
+            self.assertTrue(report["log_incomplete"])
+            self.assertEqual((path/"artifacts/impact.log").read_bytes(), b"")
+            self.assertNotIn("SyntheticCredential", console.getvalue())
+            self.assertNotIn("Unpublished error text", console.getvalue())
+
+    def test_error_header_history_is_bounded(self):
+        observer = ci.Observation(lambda: None)
+        for number in range(50000, 50000 + ci.SQL_ERROR_HEADER_LIMIT + 1):
+            observer.feed(f"Msg {number}, Level 16, State 1\n")
+        observer.feed("Msg 123456, Level 16, State 1")
+        observer.feed("Msg 50090, Level 16, State 1000")
+        self.assertEqual(len(observer.sql_error_headers), ci.SQL_ERROR_HEADER_LIMIT)
+        self.assertEqual(observer.sql_error_headers[0]["number"], 50001)
+        self.assertEqual(observer.sql_error_headers[-1]["number"], 50000 + ci.SQL_ERROR_HEADER_LIMIT)
+        self.assertTrue(observer.sql_error_headers_truncated)
 
     def test_live_message_arrives_before_process_exit(self):
         """Exercise pipe handling; this child does not emulate native ODBC timing."""
@@ -828,7 +874,9 @@ WAITFOR DELAY '00:00:01';
                 continue
             report = json.loads((Path(args.artifacts)/"diagnostics.json").read_text())
             assert code != 0 and report["sqlcmd_exit_code"] == code, "CI_PROBE_NATIVE_EXIT"
-            expected_error = "Msg 51010," if name == "wrapped" else "Msg 1222,"
+            expected_number = 51010 if name == "wrapped" else 1222
+            assert any(header["number"] == expected_number for header in report["sql_error_headers"]), "CI_PROBE_ERROR_HEADER"
+            expected_error = f"Msg {expected_number},"
             assert expected_error in (Path(args.artifacts)/"impact.log").read_text(), "CI_PROBE_NATIVE_TIMEOUT"
             if name == 'wrapped':
                 assert 'TargetTable="##ExampleCiLockProbe"; SqlStep=TARGET_EMPTY_CHECK;' in (Path(args.artifacts)/'impact.log').read_text(), 'CI_PROBE_TABLE_CONTEXT'
