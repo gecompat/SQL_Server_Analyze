@@ -1,6 +1,12 @@
 USE [DeineDatenbank];
 GO
 
+DECLARE @CiOverviewMarker nvarchar(400)=CONCAT(
+    N'CI_BEGIN|CURRENT_OVERVIEW|TempDb122|0|',CONVERT(varchar(27),SYSUTCDATETIME(),126),
+    N'Z|',@@SPID,N'|',@@LOCK_TIMEOUT,N'|-');
+RAISERROR(N'%s',10,1,@CiOverviewMarker) WITH NOWAIT;
+GO
+
 /*
 ===============================================================================
 Datei        : 122_SQL25_TempDB_Resource_Governance_Runtime_Contract.sql
@@ -598,4 +604,10 @@ SELECT
               THEN N'SQL25-003 capability-adaptive SQL-Server-2025-Schemagrenze bestanden.'
           ELSE N'SQL25-003 aktiver TempDB-Resource-Governance-Vertrag bestanden.'
       END [Detail];
+GO
+
+DECLARE @CiOverviewMarker nvarchar(400)=CONCAT(
+    N'CI_END|CURRENT_OVERVIEW|TempDb122|0|',CONVERT(varchar(27),SYSUTCDATETIME(),126),
+    N'Z|',@@SPID,N'|',@@LOCK_TIMEOUT,N'|-');
+RAISERROR(N'%s',10,1,@CiOverviewMarker) WITH NOWAIT;
 GO

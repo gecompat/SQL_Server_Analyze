@@ -1,6 +1,12 @@
 USE [DeineDatenbank];
 GO
 
+DECLARE @CiOverviewMarker nvarchar(400)=CONCAT(
+    N'CI_BEGIN|CURRENT_OVERVIEW|Snapshot199|0|',CONVERT(varchar(27),SYSUTCDATETIME(),126),
+    N'Z|',@@SPID,N'|',@@LOCK_TIMEOUT,N'|-');
+RAISERROR(N'%s',10,1,@CiOverviewMarker) WITH NOWAIT;
+GO
+
 /*
 ===============================================================================
 Datei        : 199_CurrentState_Snapshot_Runtime_Contract.sql
@@ -376,4 +382,10 @@ SELECT
     , @AllSourceCount AS [SnapshotSourceCount]
     , @SessionOnlyCase AS [SessionSourceCountCases]
     , N'Current-State-Primärsnapshot, Sessions-Quellenzähler und acht Consumer-Grenzen erfolgreich geprüft.' AS [Detail];
+GO
+
+DECLARE @CiOverviewMarker nvarchar(400)=CONCAT(
+    N'CI_END|CURRENT_OVERVIEW|Snapshot199|0|',CONVERT(varchar(27),SYSUTCDATETIME(),126),
+    N'Z|',@@SPID,N'|',@@LOCK_TIMEOUT,N'|-');
+RAISERROR(N'%s',10,1,@CiOverviewMarker) WITH NOWAIT;
 GO

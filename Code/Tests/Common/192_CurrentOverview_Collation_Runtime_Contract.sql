@@ -1,5 +1,11 @@
 USE [DeineDatenbank];
 GO
+
+DECLARE @CiOverviewMarker nvarchar(400)=CONCAT(
+    N'CI_BEGIN|CURRENT_OVERVIEW|Collation192|0|',CONVERT(varchar(27),SYSUTCDATETIME(),126),
+    N'Z|',@@SPID,N'|',@@LOCK_TIMEOUT,N'|-');
+RAISERROR(N'%s',10,1,@CiOverviewMarker) WITH NOWAIT;
+GO
 SET QUOTED_IDENTIFIER ON;
 SET ANSI_NULLS ON;
 GO
@@ -1035,4 +1041,10 @@ BEGIN
 END;
 DECLARE @RestoreSql nvarchar(100)=N'SET LOCK_TIMEOUT '+CONVERT(nvarchar(20),@OriginalLock)+N';';EXEC sys.sp_executesql @RestoreSql;
 SELECT 'PASS' ContractStatus,@Level FrameworkLevel,@Core CoreCases,@NativeCases NativeCases,@FixtureStatus PositiveFixtureStatus,@Consumers ConsumerCases,@Preflight PreflightCases,@NullMutations NullMutationRejections,17 ConditionalExports,540 ActiveLiteralFields;
+GO
+
+DECLARE @CiOverviewMarker nvarchar(400)=CONCAT(
+    N'CI_END|CURRENT_OVERVIEW|Collation192|0|',CONVERT(varchar(27),SYSUTCDATETIME(),126),
+    N'Z|',@@SPID,N'|',@@LOCK_TIMEOUT,N'|-');
+RAISERROR(N'%s',10,1,@CiOverviewMarker) WITH NOWAIT;
 GO
