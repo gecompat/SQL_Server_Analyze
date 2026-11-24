@@ -143,6 +143,7 @@ RAISERROR(N'RELEASE_GATE 27/34: Common',10,1) WITH NOWAIT;
 :r Common/090_Test_und_Abnahme_Phase1A.sql
 :r Common/122_PrepareDatabaseCandidates_Collation_Runtime_Contract.sql
 :r Common/123_InternalWriteResultTable_Collation_Runtime_Contract.sql
+:r Common/147_DataCapture_Collation_Runtime_Contract.sql
 
 RAISERROR(N'RELEASE_GATE 28/34: Current State',10,1) WITH NOWAIT;
 :r CurrentState/110_Test_und_Abnahme_Phase1B.sql

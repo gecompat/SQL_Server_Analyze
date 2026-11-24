@@ -18160,7 +18160,7 @@ SELECT CONVERT(sysname,N'monitor') AS [SchemaName],CONVERT(sysname,N'USP_DataCap
             + N'SQL Server 2019 oder neuer.'
             + NCHAR(10)
             + NCHAR(10)
-            + N'master.sys.databases, sys.change_tracking_databases, database-lokale sys.tables/sys.schemas/ sys.change_tracking_tables/cdc.change_tables, msdb CDC-Jobs.'
+            + N'master.sys.databases, sys.change_tracking_databases, database-lokale sys.tables/sys.schemas/sys.change_tracking_tables/cdc.change_tables sowie msdb.dbo.cdc_jobs, msdb.dbo.sysjobs und msdb.dbo.sysjobhistory. CDC-Jobs werden über registrierte Datenbank- und Job-IDs zugeordnet. Ist diese Quelle bei aktivem CDC nicht lesbar, bleibt der Datenbankstatus erhalten und CDC_JOBS kennzeichnet die Teilausgabe.'
             + NCHAR(10)
             + NCHAR(10)
             + N'Cross-Database wird über CROSS_DATABASE_DEEP geprüft.'

@@ -54,7 +54,7 @@ Locking      : LOCK_TIMEOUT 0; Systemkataloge READUNCOMMITTED.
 -- 
 -- SQL Server 2019 oder neuer.
 -- 
--- master.sys.databases, sys.change_tracking_databases, database-lokale sys.tables/sys.schemas/ sys.change_tracking_tables/cdc.change_tables, msdb CDC-Jobs.
+-- master.sys.databases, sys.change_tracking_databases, database-lokale sys.tables/sys.schemas/sys.change_tracking_tables/cdc.change_tables sowie msdb.dbo.cdc_jobs, msdb.dbo.sysjobs und msdb.dbo.sysjobhistory. CDC-Jobs werden über registrierte Datenbank- und Job-IDs zugeordnet. Ist diese Quelle bei aktivem CDC nicht lesbar, bleibt der Datenbankstatus erhalten und CDC_JOBS kennzeichnet die Teilausgabe.
 -- 
 -- Cross-Database wird über CROSS_DATABASE_DEEP geprüft.
 -- 
@@ -245,7 +245,7 @@ BEGIN
             + N'SQL Server 2019 oder neuer.'
             + NCHAR(10)
             + NCHAR(10)
-            + N'master.sys.databases, sys.change_tracking_databases, database-lokale sys.tables/sys.schemas/ sys.change_tracking_tables/cdc.change_tables, msdb CDC-Jobs.'
+            + N'master.sys.databases, sys.change_tracking_databases, database-lokale sys.tables/sys.schemas/sys.change_tracking_tables/cdc.change_tables sowie msdb.dbo.cdc_jobs, msdb.dbo.sysjobs und msdb.dbo.sysjobhistory. CDC-Jobs werden über registrierte Datenbank- und Job-IDs zugeordnet. Ist diese Quelle bei aktivem CDC nicht lesbar, bleibt der Datenbankstatus erhalten und CDC_JOBS kennzeichnet die Teilausgabe.'
             + NCHAR(10)
             + NCHAR(10)
             + N'Cross-Database wird über CROSS_DATABASE_DEEP geprüft.'
@@ -470,6 +470,7 @@ BEGIN
     DECLARE @ErrorMessage nvarchar(2048) = NULL;
     DECLARE @CrossDatabaseRequested bit = 0;
     DECLARE @Db sysname;
+    DECLARE @CdcDatabaseId int;
     DECLARE @Sql nvarchar(max);
 
     CREATE TABLE [#DataCaptureStatus_DatabaseCandidates]
@@ -586,6 +587,7 @@ BEGIN
 
         WHILE @@FETCH_STATUS = 0
         BEGIN
+            SET @CdcDatabaseId = NULL;
             BEGIN TRY
                 SET @Sql = N'USE ' + QUOTENAME(@Db) + N';
 INSERT [#DataCaptureStatus_Db]
@@ -655,32 +657,17 @@ INNER JOIN [sys].[tables] AS [t] WITH (NOLOCK)
   ON [t].[object_id] = [ct].[object_id]
 INNER JOIN [sys].[schemas] AS [s] WITH (NOLOCK)
   ON [s].[schema_id] = [t].[schema_id]
-ORDER BY [s].[name], [t].[name];';
+ORDER BY [s].[name], [t].[name];
+
+SELECT @CdcDbId = DB_ID()
+FROM [sys].[databases] WITH (NOLOCK)
+WHERE [database_id] = DB_ID() AND [is_cdc_enabled] = 1;';
 
                 EXEC [sys].[sp_executesql]
                       @Sql
-                    , N'@LocalRows bigint'
-                    , @LocalRows = @LocalCandidateRows;
-
-                INSERT [#DataCaptureStatus_Jobs]
-                SELECT TOP (@LocalCandidateRows)
-                      @Db
-                    , CASE WHEN [j].[name] LIKE N'cdc.' + @Db + N'_capture%' THEN N'CAPTURE' ELSE N'CLEANUP' END
-                    , [j].[name]
-                    , [j].[enabled]
-                    , [h].[run_status]
-                    , CASE WHEN [h].[run_date] > 0 THEN [msdb].[dbo].[agent_datetime]([h].[run_date], [h].[run_time]) END
-                    , [h].[message]
-                FROM [msdb].[dbo].[sysjobs] AS [j] WITH (NOLOCK)
-                OUTER APPLY
-                (
-                    SELECT TOP (1) [x].[run_status], [x].[run_date], [x].[run_time], [x].[message]
-                    FROM [msdb].[dbo].[sysjobhistory] AS [x] WITH (NOLOCK)
-                    WHERE [x].[job_id] = [j].[job_id] AND [x].[step_id] = 0
-                    ORDER BY [x].[instance_id] DESC
-                ) AS [h]
-                WHERE [j].[name] LIKE N'cdc.' + @Db + N'[_]%'
-                ORDER BY [j].[name];
+                    , N'@LocalRows bigint,@CdcDbId int OUTPUT'
+                    , @LocalRows = @LocalCandidateRows
+                    , @CdcDbId = @CdcDatabaseId OUTPUT;
             END TRY
             BEGIN CATCH
                 INSERT [#DataCaptureStatus_Db] VALUES(@Db, NULL, NULL, NULL, NULL, NULL, NULL, NULL,
@@ -688,6 +675,40 @@ ORDER BY [s].[name], [t].[name];';
                          WHEN ERROR_NUMBER() = 1222 THEN 'TIMEOUT' ELSE 'ERROR_HANDLED' END,
                     ERROR_MESSAGE());
                 INSERT [#DataCaptureStatus_Warnings] VALUES(@Db, 'DATABASE_CAPTURE',
+                    CASE WHEN ERROR_NUMBER() IN (229,262,297,300,371,916) THEN 'DENIED_PERMISSION'
+                         WHEN ERROR_NUMBER() = 1222 THEN 'TIMEOUT' ELSE 'ERROR_HANDLED' END,
+                    ERROR_NUMBER(), ERROR_MESSAGE());
+                SET @IsPartial = 1;
+            END CATCH;
+
+            IF @CdcDatabaseId IS NOT NULL
+            BEGIN TRY
+                SET @Sql = N'
+INSERT [#DataCaptureStatus_Jobs]
+SELECT TOP (@LocalRows)
+      @DatabaseName
+    , CASE [cdc].[job_type] WHEN N''capture'' THEN N''CAPTURE'' ELSE N''CLEANUP'' END
+    , [j].[name]
+    , [j].[enabled]
+    , [h].[run_status]
+    , CASE WHEN [h].[run_date] > 0 THEN [msdb].[dbo].[agent_datetime]([h].[run_date], [h].[run_time]) END
+    , [h].[message]
+FROM [msdb].[dbo].[cdc_jobs] AS [cdc] WITH (NOLOCK)
+INNER JOIN [msdb].[dbo].[sysjobs] AS [j] WITH (NOLOCK) ON [j].[job_id] = [cdc].[job_id]
+OUTER APPLY
+(
+    SELECT TOP (1) [x].[run_status], [x].[run_date], [x].[run_time], [x].[message]
+    FROM [msdb].[dbo].[sysjobhistory] AS [x] WITH (NOLOCK)
+    WHERE [x].[job_id] = [j].[job_id] AND [x].[step_id] = 0
+    ORDER BY [x].[instance_id] DESC
+) AS [h]
+WHERE [cdc].[database_id] = @DatabaseId AND [cdc].[job_type] IN (N''capture'', N''cleanup'')
+ORDER BY [j].[name];';
+                EXEC [sys].[sp_executesql] @Sql, N'@DatabaseId int,@DatabaseName sysname,@LocalRows bigint',
+                    @DatabaseId=@CdcDatabaseId,@DatabaseName=@Db,@LocalRows=@LocalCandidateRows;
+            END TRY
+            BEGIN CATCH
+                INSERT [#DataCaptureStatus_Warnings] VALUES(@Db, 'CDC_JOBS',
                     CASE WHEN ERROR_NUMBER() IN (229,262,297,300,371,916) THEN 'DENIED_PERMISSION'
                          WHEN ERROR_NUMBER() = 1222 THEN 'TIMEOUT' ELSE 'ERROR_HANDLED' END,
                     ERROR_NUMBER(), ERROR_MESSAGE());

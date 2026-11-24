@@ -94,7 +94,7 @@ Für `USP_DataCaptureStatus` gilt zusätzlich: **keine Zeile** bedeutet, dass im
 | Dimension | Aussage für diese Procedure |
 |---|---|
 | Kostenklasse | LOW–MEDIUM |
-| Standardpfad | Eine `ExampleDatabase`; CDC-Capture-Instances, Change-Tracking-Tabellen und zugeordnete CDC-Jobs werden als aktueller Konfigurations-/Statussnapshot gelesen. |
+| Standardpfad | Eine `ExampleDatabase`; CDC-Capture-Instances, Change-Tracking-Tabellen und per Datenbank-ID und Job-ID registrierte CDC-Jobs werden als aktueller Konfigurations- und Statussnapshot gelesen. |
 | Teuerster Pfad | Alle sichtbaren Datenbanken und unbegrenzte Ausgabe bei vielen erfassten Tabellen. Je CDC-Job wird nur die letzte Outcome-Historyzeile aufgelöst, kein frei wählbares Historyfenster. |
 | Haupttreiber | Zahl sichtbarer Datenbanken und aktivierter CDC-/Change-Tracking-Konfigurationen sowie zugehöriger lokaler CDC-Jobs und letzter Historyzeilen. Change-Tabelleninhalte und Replikationsbefehle werden in diesem Statuspfad nicht gelesen. |
 | Skalierung | Aufwand wächst mit Datenbanken, CDC-Instances, Change-Tracking-Tabellen und Jobs. Pro Datenbank werden lokal höchstens N+1 Kandidaten je fachlichem Pfad übernommen, anschließend global begrenzt. |
@@ -119,7 +119,7 @@ CDC liest Transaction Log asynchron in Change Tables und räumt per Cleanupjob a
 
 ### Datenkette
 
-`master.sys.databases`, `msdb.dbo.agent_datetime`, `msdb.dbo.sysjobhistory`, `msdb.dbo.sysjobs`, `sys.change_tracking_databases`, `sys.change_tracking_tables`, `sys.databases`, `sys.schemas`, `sys.sp_executesql`, `sys.tables`.
+`master.sys.databases`, `msdb.dbo.agent_datetime`, `msdb.dbo.cdc_jobs`, `msdb.dbo.sysjobhistory`, `msdb.dbo.sysjobs`, `sys.change_tracking_databases`, `sys.change_tracking_tables`, `sys.databases`, `sys.schemas`, `sys.sp_executesql`, `sys.tables`.
 
 ### Collation und Ausgabegrenzen
 
@@ -134,6 +134,8 @@ NULL sind unbegrenzt. Die Ausgabe ist kein atomarer Snapshot verschiedener
 Aufrufe und beweist keinen Consumerfortschritt.
 
 ### Source Select
+
+Bei aktiviertem CDC bindet die Prozedur lokale Agent-Jobs an die registrierte Datenbank-ID und Job-ID in `msdb.dbo.cdc_jobs`. Der registrierte Typ bestimmt `CAPTURE` oder `CLEANUP`. Jobnamen dienen der Ausgabe. Schlägt der Zugriff fehl, erscheint eine Warnung mit Quelle `CDC_JOBS`. Bereits gelesene Datenbank- und Change-Tracking-Evidenz bleibt erhalten.
 
 Der Basisstatus verbindet die Datenbankoption mit den Change-Tracking-Tabellen der ausgewählten Datenbank:
 
