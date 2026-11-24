@@ -126,6 +126,30 @@ class Contracts(unittest.TestCase):
                 observer.feed(begin.replace("CI_BEGIN", "CI_END"))
                 self.assertIsNone(observer.case)
 
+    def test_linked_server_marker_scope(self):
+        path = "Code/Tests/ServerHealth/120_OPS005_Linked_Server_Runtime_Contract.sql"
+        source = (Path(__file__).resolve().parents[3] / path).read_text(encoding="utf-8-sig")
+        site = "Ops005Native120"
+        before, body = source.split(f"CI_BEGIN|LINKED_SERVER|{site}|0|", 1)
+        calls, after = body.split(f"CI_END|LINKED_SERVER|{site}|0|", 1)
+        self.assertNotIn("USP_LinkedServerAnalysis", before + after)
+        self.assertRegex(calls, r"EXEC \[monitor\]\.\[USP_LinkedServerAnalysis\]")
+        emit = "RAISERROR(N'%s',10,1,@CiLinkedServerMarker) WITH NOWAIT;\nGO"
+        self.assertIn(emit, calls)
+        self.assertIn(emit, after)
+
+        begin = f"CI_BEGIN|LINKED_SERVER|{site}|0|2000-01-01T00:00:00Z|51|5000|-"
+        self.assertEqual(ci.marker(begin)["test_file"], path)
+        self.assertIsNone(ci.marker(begin.replace(site, "Unknown")))
+        observer = ci.Observation(lambda: None)
+        with patch.object(observer.thread, "start") as start:
+            observer.feed(begin)
+            start.assert_called_once()
+            observer.feed("Msg 1222, Level 16, State 47, Server synthetic")
+            self.assertEqual(observer.frozen["case"]["test_file"], path)
+            observer.feed(begin.replace("CI_BEGIN", "CI_END"))
+            self.assertIsNone(observer.case)
+
     def test_runtime_observation_budget_accumulates_only_marked_intervals(self):
         begin = "CI_BEGIN|CURRENT_OVERVIEW|Snapshot199|0|2000-01-01T00:00:00Z|51|5000|-"
         end = begin.replace("CI_BEGIN", "CI_END")
@@ -752,11 +776,12 @@ GO
             "plan_targeted": ("PLAN_CACHE", "Target127"),
             "plan_standalone": ("PLAN_CACHE", "Standalone193"),
             "current_overview": ("CURRENT_OVERVIEW", "Snapshot199"),
+            "linked_server": ("LINKED_SERVER", "Ops005Native120"),
         }
         for name, timeout in (
             ("positive", 2000), ("wrapped", 2000), ("immediate", 0), ("plan_cache", 2000),
             ("plan_targeted", 2000), ("plan_standalone", 2000),
-            ("current_overview", 2000), ("success", -1),
+            ("current_overview", 2000), ("linked_server", 2000), ("success", -1),
         ):
             if name == "success":
                 holder.query("ROLLBACK; RAISERROR(N'CI_SAMPLE_END',10,1) WITH NOWAIT;\nGO\n")
