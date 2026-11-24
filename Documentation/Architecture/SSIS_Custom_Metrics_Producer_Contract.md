@@ -292,7 +292,9 @@ unabhängig von der Reihenfolge der JSON-Properties; fehlende optionale Felder
 und explizite Standardwerte bleiben verschieden. Abweichende Inhalte
 derselben Sequenz und doppelte Definitionen oder Serienepochen sind ungültig.
 Wasserstände werden nie als Zahlenbereich expandiert: Lücken werden anhand der
-Anzahl und Grenzen beobachteter Sequenzen erkannt. Eine deklarierte
+Anzahl und Grenzen beobachteter Sequenzen erkannt. Eine Beobachtung oberhalb
+des deklarierten Abschlusswasserstands verletzt den Serienvertrag und wird
+mit `OBSERVATION_AFTER_FINAL_WATERMARK` abgewiesen. Eine deklarierte
 abgeschlossene Epoche mit fehlender Schlusssequenz bleibt als `SEQUENCE_GAP`
 in der Coverage sichtbar; daraus folgt keine Attestierung der
 Abschlussdeklaration.

@@ -267,6 +267,8 @@ def validate_document(document: Any) -> dict[str, Any]:
             raise ReportError("INCOMPLETE_SERIES_HAS_FINAL_WATERMARK")
         if definition["kind"] == "FINAL" and (not completed or set(by_sequence) != {1} or expected != 1):
             raise ReportError("FINAL_SERIES_CONSTRAINT")
+        if completed and expected is not None and sequences and sequences[-1] > expected:
+            raise ReportError("OBSERVATION_AFTER_FINAL_WATERMARK")
         if definition["kind"] == "CUMULATIVE" and not zero_known:
             coverage.append({"metricId": metric_id, "scopeId": scope_id, "epoch": epoch, "status": "RESET_UNKNOWN"})
         if gaps:
