@@ -261,13 +261,88 @@ BEGIN
     IF @SampleSourceCount<>2 OR @DistinctSampleSources<>2 OR @SampleT1 IS NULL OR @SampleT2 IS NULL OR @SampleT2<=@SampleT1
         THROW 57035,N'The external-pool transition did not have two successful ordered native reads.',1;
 
+    -- Use a nonmatching language and choose the boundary from the unbounded control.
+    DECLARE @FixtureOnlyPoolLimit int,@FixturePoolCount int,@AddedPoolCount int=0,
+            @PoolFixtureName sysname,@PoolFixtureDdl nvarchar(300),
+            @NoFixtureLanguage nvarchar(128)=N'[ExampleRuntime001NoSuchLanguage]';
+    SET @Json=NULL;
+    EXEC @Return=[monitor].[USP_ExternalRuntimeAnalysis]
+         @DatabaseNames=N'[ExampleAnalyzeRuntime]',@LanguageNames=@NoFixtureLanguage,
+         @NurProblematisch=1,@SampleSeconds=0,@MaxZeilen=0,@ResultSetArt='NONE',
+         @PrintMeldungen=0,@JsonErzeugen=1,@Json=@Json OUTPUT;
+    IF ISNULL(@Return,-1)<>0 OR ISNULL(ISJSON(@Json),0)<>1 OR @@LOCK_TIMEOUT<>@LockTimeoutBefore
+        THROW 57037,N'The unbounded pool-only control could not be read.',1;
+
+    SELECT @FixtureOnlyPoolLimit=MAX([Counts].[RowCount])
+    FROM (VALUES (1),( (SELECT COUNT(*) FROM OPENJSON(@Json,N'$.findings')) ),
+                   ( (SELECT COUNT(*) FROM OPENJSON(@Json,N'$.languages')) ),
+                   ( (SELECT COUNT(*) FROM OPENJSON(@Json,N'$.libraries')) ),
+                   ( (SELECT COUNT(*) FROM OPENJSON(@Json,N'$.activeRequests')) ),
+                   ( (SELECT COUNT(*) FROM OPENJSON(@Json,N'$.executionStats')) ),
+                   ( (SELECT COUNT(*) FROM OPENJSON(@Json,N'$.performanceCounters')) )) AS [Counts]([RowCount]);
+    SELECT @FixturePoolCount=COUNT(*) FROM sys.dm_resource_governor_external_resource_pools;
+    IF @FixturePoolCount<>(SELECT COUNT(*) FROM OPENJSON(@Json,N'$.externalPools'))
+       OR @FixtureOnlyPoolLimit>=64 OR @FixtureOnlyPoolLimit-@FixturePoolCount>=12
+        THROW 57038,N'The pool-only control did not provide a bounded native threshold.',1;
+
+    WHILE @FixturePoolCount+@AddedPoolCount<=@FixtureOnlyPoolLimit
+    BEGIN
+        SET @AddedPoolCount+=1;
+        SET @PoolFixtureName=CONCAT(N'ExampleRuntime001Limit',@AddedPoolCount);
+        IF EXISTS(SELECT 1 FROM sys.resource_governor_external_resource_pools WHERE [name]=@PoolFixtureName)
+            THROW 57039,N'The pool-only control encountered an existing fixture name.',1;
+        SET @PoolFixtureDdl=N'CREATE EXTERNAL RESOURCE POOL '+QUOTENAME(@PoolFixtureName)+N';';
+        EXEC sys.sp_executesql @PoolFixtureDdl;
+    END;
+    IF @AddedPoolCount>0 ALTER RESOURCE GOVERNOR RECONFIGURE;
+
+    -- Re-read all resultsets after provisioning so an unrelated resultset cannot explain the warning.
+    SET @Json=NULL;
+    EXEC @Return=[monitor].[USP_ExternalRuntimeAnalysis]
+         @DatabaseNames=N'[ExampleAnalyzeRuntime]',@LanguageNames=@NoFixtureLanguage,
+         @NurProblematisch=1,@SampleSeconds=0,@MaxZeilen=0,@ResultSetArt='NONE',
+         @PrintMeldungen=0,@JsonErzeugen=1,@Json=@Json OUTPUT;
+    IF ISNULL(@Return,-1)<>0 OR ISNULL(ISJSON(@Json),0)<>1 OR @@LOCK_TIMEOUT<>@LockTimeoutBefore
+       OR (SELECT COUNT(*) FROM OPENJSON(@Json,N'$.externalPools'))<>@FixturePoolCount+@AddedPoolCount
+       OR @FixturePoolCount+@AddedPoolCount<=@FixtureOnlyPoolLimit
+       OR (SELECT COUNT(*) FROM OPENJSON(@Json,N'$.findings'))>@FixtureOnlyPoolLimit
+       OR (SELECT COUNT(*) FROM OPENJSON(@Json,N'$.languages'))>@FixtureOnlyPoolLimit
+       OR (SELECT COUNT(*) FROM OPENJSON(@Json,N'$.libraries'))>@FixtureOnlyPoolLimit
+       OR (SELECT COUNT(*) FROM OPENJSON(@Json,N'$.activeRequests'))>@FixtureOnlyPoolLimit
+       OR (SELECT COUNT(*) FROM OPENJSON(@Json,N'$.executionStats'))>@FixtureOnlyPoolLimit
+       OR (SELECT COUNT(*) FROM OPENJSON(@Json,N'$.performanceCounters'))>@FixtureOnlyPoolLimit
+       OR EXISTS(SELECT 1 FROM OPENJSON(@Json,N'$.warnings') WITH ([WarningCode] varchar(64))
+                 WHERE [WarningCode]='RESULTSET_TRUNCATED')
+        THROW 57040,N'The unbounded control did not isolate truncation to the external-pool resultset.',1;
+
+    SET @Json=NULL;
+    EXEC @Return=[monitor].[USP_ExternalRuntimeAnalysis]
+         @DatabaseNames=N'[ExampleAnalyzeRuntime]',@LanguageNames=@NoFixtureLanguage,
+         @NurProblematisch=1,@SampleSeconds=0,@MaxZeilen=@FixtureOnlyPoolLimit,@ResultSetArt='NONE',
+         @PrintMeldungen=0,@JsonErzeugen=1,@Json=@Json OUTPUT;
+    IF ISNULL(@Return,-1)<>0 OR ISNULL(ISJSON(@Json),0)<>1 OR @@LOCK_TIMEOUT<>@LockTimeoutBefore
+       OR (SELECT COUNT(*) FROM OPENJSON(@Json,N'$.externalPools'))<>@FixtureOnlyPoolLimit
+       OR (SELECT COUNT(*) FROM OPENJSON(@Json,N'$.warnings') WITH ([WarningCode] varchar(64))
+           WHERE [WarningCode]='RESULTSET_TRUNCATED')<>1
+        THROW 57041,N'A pool-only truncation did not return exactly one warning.',1;
+
+    WHILE @AddedPoolCount>0
+    BEGIN
+        SET @PoolFixtureName=CONCAT(N'ExampleRuntime001Limit',@AddedPoolCount);
+        SET @PoolFixtureDdl=N'DROP EXTERNAL RESOURCE POOL '+QUOTENAME(@PoolFixtureName)+N';';
+        EXEC sys.sp_executesql @PoolFixtureDdl;
+        SET @AddedPoolCount-=1;
+    END;
+
     DROP TABLE [##ExampleRuntime001RPoolEpochSampler];
     DROP EXTERNAL RESOURCE POOL [ExampleRuntime001Epoch];
     ALTER RESOURCE GOVERNOR RECONFIGURE;
     IF @GovernorWasEnabled=0 ALTER RESOURCE GOVERNOR DISABLE;
     IF EXISTS(SELECT 1 FROM sys.resource_governor_external_resource_pools WHERE [name]=N'ExampleRuntime001Epoch')
        OR EXISTS(SELECT 1 FROM sys.dm_resource_governor_external_resource_pools WHERE [name]=N'ExampleRuntime001Epoch')
+       OR EXISTS(SELECT 1 FROM sys.resource_governor_external_resource_pools WHERE [name] LIKE N'ExampleRuntime001Limit%')
+       OR EXISTS(SELECT 1 FROM sys.dm_resource_governor_external_resource_pools WHERE [name] LIKE N'ExampleRuntime001Limit%')
        OR NOT EXISTS(SELECT 1 FROM sys.resource_governor_configuration WHERE [is_enabled]=@GovernorWasEnabled)
-        THROW 57036,N'The owned pool or the original governor enabled state was not restored.',1;
+        THROW 57036,N'The owned pools or the original governor enabled state were not restored.',1;
 END;
 GO

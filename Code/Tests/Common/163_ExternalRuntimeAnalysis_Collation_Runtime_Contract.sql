@@ -203,6 +203,7 @@ LOG ON (NAME=N''ExampleExternalRuntimeLowerLog'',FILENAME=N'''+REPLACE(@LogPath+
         SET @Truncated=CONVERT(bit,CASE WHEN @Limit>0 AND
             (CASE WHEN @Problems=1 THEN @ExpectedWarnCount ELSE @ExpectedFindingCount END>@SafeLimit
              OR (SELECT COUNT_BIG(*) FROM [#ExampleExternalRuntimeNativeLanguages])>@SafeLimit
+             OR (SELECT COUNT_BIG(*) FROM [#ExampleExternalRuntimeNativePools])>@SafeLimit
              OR (SELECT COUNT_BIG(*) FROM [#ExampleExternalRuntimeNativeStats])>@SafeLimit
              OR (SELECT COUNT_BIG(*) FROM [#ExampleExternalRuntimeNativeCounters])>@SafeLimit) THEN 1 ELSE 0 END);
         IF @OutputCount>@SafeLimit SET @OutputCount=@SafeLimit;
