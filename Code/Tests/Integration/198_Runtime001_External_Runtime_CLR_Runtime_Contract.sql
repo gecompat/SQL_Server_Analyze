@@ -214,3 +214,58 @@ IF @@LOCK_TIMEOUT<>@Runtime001EntryLockTimeout OR @@OPTIONS<>@Runtime001EntryOpt
    OR @@TRANCOUNT<>@Runtime001EntryTranCount
     THROW 51195,N'RUNTIME-001: Der Test hat Callerzustand verändert.',1;
 GO
+
+-- Führt ausschließlich den installierten Projektionsblock mit eigenen Messwerten aus.
+DECLARE @PoolProjectionDefinition nvarchar(max)=OBJECT_DEFINITION(OBJECT_ID(N'monitor.USP_ExternalRuntimeAnalysis'));
+DECLARE @PoolTablesStart int=CHARINDEX(N'CREATE TABLE [#ExternalRuntimeAnalysis_PoolSamples]',@PoolProjectionDefinition);
+DECLARE @PoolTablesEnd int=CHARINDEX(N'CREATE TABLE [#ExternalRuntimeAnalysis_ExecutionStatSamples]',@PoolProjectionDefinition);
+DECLARE @PoolProjectionStart int=CHARINDEX(N'INSERT [#ExternalRuntimeAnalysis_ExternalPools]',@PoolProjectionDefinition);
+DECLARE @PoolProjectionEnd int=CHARINDEX(N'INSERT [#ExternalRuntimeAnalysis_ExecutionStats]',@PoolProjectionDefinition);
+IF @PoolProjectionDefinition IS NULL OR @PoolTablesStart<=0 OR @PoolTablesEnd<=@PoolTablesStart
+   OR @PoolProjectionStart<=@PoolTablesEnd OR @PoolProjectionEnd<=@PoolProjectionStart
+    THROW 51196,N'Installed external pool projection anchors are unavailable.',1;
+IF OBJECT_ID(N'tempdb..#ExternalRuntimeAnalysis_PoolSamples') IS NOT NULL
+   OR OBJECT_ID(N'tempdb..#ExternalRuntimeAnalysis_ExternalPools') IS NOT NULL
+    THROW 51197,N'External pool projection test temp table name already exists.',1;
+
+DECLARE @PoolProjectionSql nvarchar(max)=
+    SUBSTRING(@PoolProjectionDefinition,@PoolTablesStart,@PoolTablesEnd-@PoolTablesStart)+N'
+INSERT [#ExternalRuntimeAnalysis_PoolSamples]
+    ([SamplePoint],[ReadAtUtc],[ExternalPoolId],[PoolName],[PoolVersion],[StatisticsStartTime],
+     [TotalCpuKernelMs],[TotalCpuUserMs],[ReadIoCount],[WriteIoCount])
+SELECT ''T1'',N''20260101'', [PoolId],N''ExamplePool'',1,N''20260101'',10,20,30,40
+FROM (VALUES (1),(2),(3),(4),(5),(6),(7),(8)) AS [ids]([PoolId]);
+INSERT [#ExternalRuntimeAnalysis_PoolSamples]
+    ([SamplePoint],[ReadAtUtc],[ExternalPoolId],[PoolName],[PoolVersion],[StatisticsStartTime],
+     [TotalCpuKernelMs],[TotalCpuUserMs],[ReadIoCount],[WriteIoCount])
+SELECT ''T2'',DATEADD(second,1,CONVERT(datetime2(3),N''20260101'')),[PoolId],N''ExamplePool'',
+       CASE WHEN [PoolId]=7 THEN 2 ELSE 1 END,
+       CASE WHEN [PoolId]=8 THEN CONVERT(datetime,N''20260102'') ELSE CONVERT(datetime,N''20260101'') END,
+       CASE WHEN [PoolId]=2 THEN 9 ELSE 13 END,
+       CASE WHEN [PoolId]=3 THEN 19 ELSE 24 END,
+       CASE WHEN [PoolId]=4 THEN 29 ELSE 35 END,
+       CASE WHEN [PoolId]=5 THEN 39 ELSE 46 END
+FROM (VALUES (1),(2),(3),(4),(5),(7),(8)) AS [ids]([PoolId]);'+
+    SUBSTRING(@PoolProjectionDefinition,@PoolProjectionStart,@PoolProjectionEnd-@PoolProjectionStart)+N'
+IF (SELECT COUNT(*) FROM [#ExternalRuntimeAnalysis_ExternalPools])<>8
+   OR (SELECT COUNT(DISTINCT [ExternalPoolId]) FROM [#ExternalRuntimeAnalysis_ExternalPools])<>8
+   OR NOT EXISTS
+      (SELECT 1 FROM [#ExternalRuntimeAnalysis_ExternalPools]
+       WHERE [ExternalPoolId]=1 AND [DeltaStatus]=''DELTA_AVAILABLE'' AND [SampleSeconds]=1
+             AND [CpuKernelDelta]=3 AND [CpuUserDelta]=4 AND [ReadIoDelta]=5 AND [WriteIoDelta]=6)
+   OR NOT EXISTS
+      (SELECT 1 FROM [#ExternalRuntimeAnalysis_ExternalPools]
+       WHERE [ExternalPoolId]=6 AND [DeltaStatus]=''T2_UNAVAILABLE'' AND [SampleSeconds] IS NULL
+             AND [CpuKernelDelta] IS NULL AND [CpuUserDelta] IS NULL AND [ReadIoDelta] IS NULL AND [WriteIoDelta] IS NULL)
+   OR EXISTS
+      (SELECT 1 FROM [#ExternalRuntimeAnalysis_ExternalPools]
+       WHERE [ExternalPoolId] IN(2,3,4,5,7,8)
+         AND ([DeltaStatus]<>''RESET_BOUNDARY'' OR [SampleSeconds]<>1 OR [SampleSeconds] IS NULL
+              OR [CpuKernelDelta] IS NOT NULL OR [CpuUserDelta] IS NOT NULL
+              OR [ReadIoDelta] IS NOT NULL OR [WriteIoDelta] IS NOT NULL))
+    THROW 51198,N''External pool reset boundary leaked a delta or changed the positive control.'',1;
+PRINT N''External pool projection: 8 synthetic sample-pair cases passed.'';
+';
+EXEC [sys].[sp_executesql] @PoolProjectionSql,N'@SampleSeconds tinyint,@HostPlatform nvarchar(60)',
+     @SampleSeconds=1,@HostPlatform=N'Linux';
+GO
