@@ -127,6 +127,20 @@ def self_test() -> None:
         "sequence": "2", "observedAtUtc": "2026-01-01T00:00:00Z", "status": "KNOWN", "value": "0", "final": True
     }], series_extra={"expectedFinalSequence": "2"})
     must_reject(bad_final_sequence, "FINAL_SERIES_CONSTRAINT")
+
+    final_observation = report(kind="FINAL")["series"][0]["observations"][0]
+    repeated_final = report(kind="FINAL", observations=[final_observation, dict(final_observation)])
+    assert any(item["status"] == "IDENTICAL_DUPLICATE"
+               for item in validator.parse_report(encoded(repeated_final))["coverage"])
+    for value in ("0", "1"):
+        multi_final = report(kind="FINAL", include_second_epoch=True)
+        multi_final["series"][1]["observations"] = [{**final_observation, "value": value}]
+        must_reject(multi_final, "FINAL_MULTIPLE_EPOCHS")
+    final_scopes = report(kind="FINAL")
+    final_scopes["scopes"].append({"id": "scope-b"})
+    final_scopes["series"].append({**final_scopes["series"][0], "scopeId": "scope-b"})
+    assert validator.parse_report(encoded(final_scopes))["valid"] is True
+
     multi = report(include_second_epoch=True)
     assert any(item["status"] == "MULTIPLE_EPOCHS" for item in validator.parse_report(encoded(multi))["coverage"])
     scopes = report(scope_id="scope-b")

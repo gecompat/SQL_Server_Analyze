@@ -287,8 +287,10 @@ def validate_document(document: Any) -> dict[str, Any]:
     epoch_sets: dict[tuple[str, str, str], set[str]] = {}
     for metric_id, version, scope_id, epoch in seen_series:
         epoch_sets.setdefault((metric_id, version, scope_id), set()).add(epoch)
-    for (metric_id, _version, scope_id), epochs in epoch_sets.items():
+    for (metric_id, version, scope_id), epochs in epoch_sets.items():
         if len(epochs) > 1:
+            if definition_map[(metric_id, version)]["kind"] == "FINAL":
+                raise ReportError("FINAL_MULTIPLE_EPOCHS")
             coverage.append({"metricId": metric_id, "scopeId": scope_id, "status": "MULTIPLE_EPOCHS"})
 
     return {

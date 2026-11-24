@@ -151,10 +151,10 @@ bestätigt.
 
 Eine Laufprojektion ist für jede Kennzahl- und Scopekombination nur zulässig,
 wenn im Lauf genau eine Epoche beobachtet wurde und diese sämtliche
-Abschluss-, Coverage- und Typbedingungen erfüllt. Bei mehreren beobachteten
-Epochen bleiben die Einzelbeobachtungen erhalten, aber der Consumer wählt
-keine Epoche aus, summiert oder kombiniert keine Epochen und erzeugt weder
-Lauf- noch Baselinewert. Das gilt auch, wenn eine Epoche vollständig und eine
+Abschluss-, Coverage- und Typbedingungen erfüllt. Bei `DELTA`, `CUMULATIVE`
+und `GAUGE` bleiben Einzelbeobachtungen aus mehreren Epochen erhalten. Der
+Consumer wählt keine Epoche aus, summiert oder kombiniert keine Epochen und
+erzeugt weder Lauf- noch Baselinewert. Das gilt auch, wenn eine Epoche vollständig und eine
 weitere unvollständig ist. Die Coverage nennt dafür ausdrücklich
 `MULTIPLE_EPOCHS`. Über Ausführungen hinweg müssen die opaken Epochenkennungen
 nicht übereinstimmen und werden nicht miteinander verglichen; jede Ausführung
@@ -277,6 +277,11 @@ kanonischen Dezimaltext, einen UTC-Zeitstempel mit `Z` und entweder
 `status: KNOWN` mit `value` oder `status: UNKNOWN` mit `reasonCode`. Ein
 unbekannter Wert darf keinen Zahlenwert tragen. `FINAL` verlangt genau eine
 bekannte Beobachtung mit `final: true`, Sequenz und Abschlusswasserstand `1`.
+Je Ausführung, Kennzahldefinition und Scope ist eine einzige `FINAL`-Epoche
+zulässig. Der Validator weist weitere Epochen mit `FINAL_MULTIPLE_EPOCHS`
+ab, auch wenn sie denselben Wert melden. Identische Wiederholungen der
+Beobachtung innerhalb derselben Epoche bleiben zulässig. Verschiedene
+Scopes können jeweils einen eigenen Abschluss melden.
 `packageNodeId` und `scopeId` sind deklarierte Bezeichner; der Validator löst
 sie weder gegen den Modellexport auf noch prüft er, ob ein Scope innerhalb des
 angegebenen Paketknotens liegt.
