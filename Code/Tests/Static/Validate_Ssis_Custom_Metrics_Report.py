@@ -161,15 +161,21 @@ def self_test() -> None:
     with tempfile.TemporaryDirectory(prefix="ssis-metrics-") as directory:
         report_path = Path(directory) / "synthetic-report.json"
         report_path.write_bytes(encoded(cli_input))
-        completed = subprocess.run(
-            [sys.executable, str(ROOT / "Code/Tools/Validate_Ssis_Custom_Metrics_Report.py"), str(report_path)],
-            capture_output=True,
-            text=True,
-            check=False,
-        )
-    assert completed.returncode == 1
-    assert completed.stderr == ""
-    assert json.loads(completed.stdout) == {"valid": False, "error": "OBSERVATION_ARRAY_REQUIRED"}
+        script_path = ROOT / "Code/Tools/Validate_Ssis_Custom_Metrics_Report.py"
+        for input_path, error in (
+            (report_path, "OBSERVATION_ARRAY_REQUIRED"),
+            (Path(directory) / "missing-report.json", "REPORT_READ_FAILED"),
+            (Path(directory), "REPORT_READ_FAILED"),
+        ):
+            completed = subprocess.run(
+                [sys.executable, str(script_path), str(input_path)],
+                capture_output=True,
+                text=True,
+                check=False,
+            )
+            assert completed.returncode == 1
+            assert completed.stderr == ""
+            assert json.loads(completed.stdout) == {"valid": False, "error": error}
 
 
 if __name__ == "__main__":

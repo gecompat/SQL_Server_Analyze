@@ -307,7 +307,10 @@ def main() -> int:
         with args.report.open("rb") as report_file:
             raw = report_file.read(MAX_INPUT_BYTES + 1)
         result = parse_report(raw)
-    except (OSError, ReportError) as exc:
+    except OSError:
+        print(json.dumps({"valid": False, "error": "REPORT_READ_FAILED"}, separators=(",", ":")))
+        return 1
+    except ReportError as exc:
         print(json.dumps({"valid": False, "error": str(exc)}, separators=(",", ":")))
         return 1
     print(json.dumps(result, separators=(",", ":"), ensure_ascii=True))
