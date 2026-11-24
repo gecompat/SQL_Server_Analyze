@@ -249,9 +249,10 @@ python Code/Tools/Validate_Ssis_Custom_Metrics_Report.py .\Bericht.json
 
 Exitcode `0` und `"valid": true` bestätigen nur das Profil. Bei einem
 Eingabefehler ist der Exitcode ungleich null; das JSON-Feld `error` enthält
-den begrenzten Fehlercode. Der Aufrufer prüft daraufhin die genannte
-Profileigenschaft oder korrigiert die Berichtsdatei. Keine dieser Ausgaben
-attestiert eine Producer- oder Capturebindung.
+den begrenzten Fehlercode. `REPORT_READ_FAILED` meldet, dass die Datei
+nicht geöffnet oder gelesen werden konnte. Bei einem Profilfehler verweist
+der Code auf die verletzte Regel. Keine dieser Ausgaben attestiert eine
+Producer- oder Capturebindung.
 
 Das geschlossene Dokument enthält genau die Wurzelfelder `profile`, `metricProducer`,
 `modelReference`, `execution`, `definitions`, `scopes` und `series`. `profile`
