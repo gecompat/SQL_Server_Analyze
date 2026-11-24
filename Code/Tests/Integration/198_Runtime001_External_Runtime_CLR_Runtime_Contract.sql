@@ -217,8 +217,8 @@ GO
 
 -- Führt ausschließlich den installierten Projektionsblock mit eigenen Messwerten aus.
 DECLARE @PoolProjectionDefinition nvarchar(max)=OBJECT_DEFINITION(OBJECT_ID(N'monitor.USP_ExternalRuntimeAnalysis'));
-DECLARE @PoolTablesStart int=CHARINDEX(N'CREATE TABLE [#ExternalRuntimeAnalysis_PoolSamples]',@PoolProjectionDefinition);
-DECLARE @PoolTablesEnd int=CHARINDEX(N'CREATE TABLE [#ExternalRuntimeAnalysis_ExecutionStatSamples]',@PoolProjectionDefinition);
+DECLARE @PoolTablesStart int=CHARINDEX(N'CREATE TABLE '+QUOTENAME(N'#ExternalRuntimeAnalysis_PoolSamples'),@PoolProjectionDefinition);
+DECLARE @PoolTablesEnd int=CHARINDEX(N'CREATE TABLE '+QUOTENAME(N'#ExternalRuntimeAnalysis_ExecutionStatSamples'),@PoolProjectionDefinition);
 DECLARE @PoolProjectionStart int=CHARINDEX(N'INSERT [#ExternalRuntimeAnalysis_ExternalPools]',@PoolProjectionDefinition);
 DECLARE @PoolProjectionEnd int=CHARINDEX(N'INSERT [#ExternalRuntimeAnalysis_ExecutionStats]',@PoolProjectionDefinition);
 IF @PoolProjectionDefinition IS NULL OR @PoolTablesStart<=0 OR @PoolTablesEnd<=@PoolTablesStart
