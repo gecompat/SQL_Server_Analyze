@@ -385,8 +385,8 @@ for line in sys.stdin:
                  redirect_stdout(console):
                 self.assertEqual(ci.run(args), 7)
             report = json.loads((path/"artifacts/diagnostics.json").read_text())
-            summary_line = console.getvalue().splitlines()[0]
-            summary = json.loads(summary_line.removeprefix("CI lock diagnostic summary: "))
+            summary_output = console.getvalue().split("CI lock diagnostic summary: ", 1)[1]
+            summary = json.loads(summary_output.split("\nCI lock diagnostics:", 1)[0])
             expected = [dict(number=547, severity=16, state=3),
                         dict(number=50001, severity=11, state=5)]
             for result in (report, summary):
