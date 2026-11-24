@@ -103,6 +103,7 @@ IF NOT EXISTS
 
 DECLARE @InputIndex int = 1, @QualifiedDatabaseList nvarchar(max), @FilterStatus varchar(40);
 DECLARE @FilterError nvarchar(2048), @FilterLockTimeout int = @@LOCK_TIMEOUT, @FilterTranCount int = @@TRANCOUNT;
+DECLARE @FilterCrossDatabaseRequested bit;
 WHILE @InputIndex <= 4
 BEGIN
     SELECT @QualifiedDatabaseList = [NameList] FROM @RestrictedNames WHERE [Id] = @InputIndex;
@@ -111,6 +112,7 @@ BEGIN
           @DatabaseNames = @QualifiedDatabaseList
         , @StatusCode = @FilterStatus OUTPUT
         , @ErrorMessage = @FilterError OUTPUT
+        , @CrossDatabaseRequested = @FilterCrossDatabaseRequested OUTPUT
         , @CandidateTable = N'#PrepareDatabaseCandidates_Runtime'
         , @WarningTable = N'#PrepareDatabaseCandidates_Warnings'
     WITH RESULT SETS NONE;
