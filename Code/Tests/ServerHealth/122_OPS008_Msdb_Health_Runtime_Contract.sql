@@ -276,7 +276,9 @@ BEGIN TRY
     EXEC [msdb].[sys].[sp_executesql]
         N'DENY SELECT ON OBJECT::[dbo].[syspolicy_policies] TO [ExampleOps008PbmDeniedUser];
           DENY SELECT ON OBJECT::[dbo].[syspolicy_conditions] TO [ExampleOps008PbmDeniedUser];
-          DENY SELECT ON OBJECT::[dbo].[syspolicy_policy_categories] TO [ExampleOps008PbmDeniedUser];';
+          DENY SELECT ON OBJECT::[dbo].[syspolicy_policy_categories] TO [ExampleOps008PbmDeniedUser];
+          DENY SELECT ON OBJECT::[dbo].[backupset] TO [ExampleOps008PbmDeniedUser];
+          DENY SELECT ON OBJECT::[dbo].[sysmail_allitems] TO [ExampleOps008PbmDeniedUser];';
     EXECUTE AS LOGIN=N'ExampleOps008PbmDeniedLogin';
     SET @PbmOwnImpersonated=1;
     SELECT @PbmVisible=COUNT_BIG(*) FROM [sys].[databases] WHERE [database_id]=4;
@@ -320,6 +322,37 @@ BEGIN TRY
     SET @PbmDeniedCount+=1;
     IF @PbmDeniedCount<>3
         THROW 54982,N'OPS-008 three owned-login PBM denials were not observed.',1;
+
+    IF (SELECT COUNT_BIG(*)
+        FROM [msdb].[sys].[objects] AS [o]
+        INNER JOIN [msdb].[sys].[schemas] AS [s] ON [s].[schema_id]=[o].[schema_id]
+        WHERE [s].[name] COLLATE SQL_Latin1_General_CP1_CS_AS=N'dbo'
+          AND [o].[name] COLLATE SQL_Latin1_General_CP1_CS_AS IN (N'backupset',N'sysmail_allitems')
+          AND [o].[type] COLLATE SQL_Latin1_General_CP1_CS_AS IN (N'U',N'V'))=2
+        THROW 54954,N'OPS-008 neither denied optional source is hidden from the catalog.',1;
+    SET @PbmDirectError=0;
+    BEGIN TRY
+        EXEC [sys].[sp_executesql]
+            N'SELECT @Count=COUNT_BIG(*) FROM [msdb].[dbo].[backupset];',
+            N'@Count bigint OUTPUT',@Count=@PbmDirectCount OUTPUT;
+    END TRY
+    BEGIN CATCH
+        SET @PbmDirectError=ERROR_NUMBER();
+    END CATCH;
+    IF @PbmDirectError<>229
+        THROW 54951,N'OPS-008 native backup history SELECT must fail with SQL 229.',1;
+    SET @PbmDirectError=0;
+    BEGIN TRY
+        EXEC [sys].[sp_executesql]
+            N'SELECT @Count=COUNT_BIG(*) FROM [msdb].[dbo].[sysmail_allitems];',
+            N'@Count bigint OUTPUT',@Count=@PbmDirectCount OUTPUT;
+    END TRY
+    BEGIN CATCH
+        SET @PbmDirectError=ERROR_NUMBER();
+    END CATCH;
+    IF @PbmDirectError<>229
+        THROW 54952,N'OPS-008 native Mail history SELECT must fail with SQL 229.',1;
+
     SET @Json=NULL; SET @Status=NULL; SET @Partial=NULL;
     EXEC [monitor].[USP_MsdbHealthAnalysis]
           @MaxZeilen=20,@ResultSetArt='NONE',@JsonErzeugen=1,
@@ -330,6 +363,19 @@ BEGIN TRY
     IF COALESCE(@Status,'')<>'AVAILABLE_LIMITED' OR COALESCE(@Partial,0)<>1
        OR COALESCE(ISJSON(@Json),0)<>1
         THROW 54987,N'OPS-008 owned-login PBM source-error module status is not limited and partial.',1;
+    IF (SELECT COUNT_BIG(DISTINCT [j].[Area]) FROM OPENJSON(@Json)
+        WITH ([Area] varchar(40),[SourceObject] nvarchar(256),[RowCount] bigint,
+              [OldestUtc] datetime2(3),[NewestUtc] datetime2(3),[SizeMb] decimal(19,2),
+              [StatusCode] varchar(40),[EvidenceLimit] nvarchar(1000)) AS [j]
+        WHERE (([j].[Area]='BACKUP_HISTORY' AND [j].[SourceObject]=N'msdb.dbo.backupset')
+               OR ([j].[Area]='DATABASE_MAIL' AND [j].[SourceObject]=N'msdb.dbo.sysmail_allitems'))
+          AND [j].[StatusCode]='SOURCE_UNAVAILABLE' AND [j].[EvidenceLimit] LIKE N'Fehler 229:%'
+          AND [j].[RowCount] IS NULL AND [j].[OldestUtc] IS NULL AND [j].[NewestUtc] IS NULL
+          AND [j].[SizeMb] IS NULL)<>2
+       OR (SELECT COUNT_BIG(*) FROM OPENJSON(@Json)
+           WITH ([Area] varchar(40)) AS [j]
+           WHERE [j].[Area] IN ('BACKUP_HISTORY','DATABASE_MAIL'))<>2
+        THROW 54953,N'OPS-008 denied optional history sources must be unavailable with unknown counts.',1;
     IF EXISTS
     (
         SELECT 1 FROM
