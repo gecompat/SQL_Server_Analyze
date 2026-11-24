@@ -284,6 +284,9 @@ class Observation:
         self.deployment_phase_seen = False
 
     def feed(self, line, *, line_start=True):
+        # Continuations belong to the previous physical line and cannot start an event.
+        if not line_start:
+            return
         item = marker(line)
         with self.lock:
             if item:
@@ -307,7 +310,7 @@ class Observation:
                     self.started = now
                     self.thread.start()
             error = re.match(r"^Msg (\d+), Level \d+, State \d+", line)
-            header = SQL_ERROR_HEADER.match(line) if line_start else None
+            header = SQL_ERROR_HEADER.match(line)
             if header:
                 if len(self.sql_error_headers) == SQL_ERROR_HEADER_LIMIT:
                     self.sql_error_headers_truncated = True
@@ -575,7 +578,7 @@ def run(args):
                         end = 8192
                     part, pending = pending[:end], pending[end:]
                     observer.feed(part.decode("utf-8", errors="replace"), line_start=line_start)
-                    # Bound long lines without treating a continuation as a new header.
+                    # Bound long lines while retaining whether each fragment starts a physical line.
                     line_start = part.endswith(b"\n")
         for reader in readers:
             reader.join(timeout=2)
