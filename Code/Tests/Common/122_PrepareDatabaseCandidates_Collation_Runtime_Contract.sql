@@ -84,6 +84,39 @@ IF (SELECT COUNT(*) FROM [tempdb].[sys].[columns] WITH (NOLOCK)
     THROW 55713,N''USP_PrepareDatabaseCandidates target schema count mismatch.'',1;
 ';
 
+-- Qualifizierte Namen dürfen auch bei ausgelassenem Schema nicht als lokale Datenbank gelten.
+DELETE FROM [#PrepareDatabaseCandidates_Runtime];
+DECLARE @FilterDb sysname = DB_NAME();
+DECLARE @RestrictedNames TABLE ([Id] int PRIMARY KEY, [NameList] nvarchar(max) NOT NULL);
+INSERT @RestrictedNames ([Id], [NameList]) VALUES
+    (1, N'ExampleSchema.' + QUOTENAME(@FilterDb)),
+    (2, N'ExampleDatabase..' + QUOTENAME(@FilterDb)),
+    (3, N'ExampleServer.ExampleDatabase..' + QUOTENAME(@FilterDb));
+
+DECLARE @InputIndex int = 1, @QualifiedDatabaseList nvarchar(max), @FilterStatus varchar(40);
+DECLARE @FilterError nvarchar(2048), @FilterLockTimeout int = @@LOCK_TIMEOUT, @FilterTranCount int = @@TRANCOUNT;
+WHILE @InputIndex <= 3
+BEGIN
+    SELECT @QualifiedDatabaseList = [NameList] FROM @RestrictedNames WHERE [Id] = @InputIndex;
+    SELECT @FilterStatus = NULL, @FilterError = NULL;
+    EXEC [monitor].[USP_PrepareDatabaseCandidates]
+          @DatabaseNames = @QualifiedDatabaseList
+        , @StatusCode = @FilterStatus OUTPUT
+        , @ErrorMessage = @FilterError OUTPUT
+        , @CandidateTable = N'#PrepareDatabaseCandidates_Runtime'
+        , @WarningTable = N'#PrepareDatabaseCandidates_Warnings'
+    WITH RESULT SETS NONE;
+    IF COALESCE(@FilterStatus, '') <> 'INVALID_PARAMETER' OR NULLIF(@FilterError, N'') IS NULL
+       OR EXISTS (SELECT 1 FROM [#PrepareDatabaseCandidates_Runtime])
+       OR EXISTS (SELECT 1 FROM [#PrepareDatabaseCandidates_Warnings])
+       OR @@LOCK_TIMEOUT <> @FilterLockTimeout OR @@TRANCOUNT <> @FilterTranCount
+    BEGIN
+        RAISERROR(N'Qualified database filter case %d violated the one-part name contract.', 10, 1, @InputIndex) WITH NOWAIT;
+        THROW 55718, N'PrepareDatabaseCandidates accepted or wrote output for a qualified database filter.', 1;
+    END;
+    SET @InputIndex += 1;
+END;
+
 -- Both public preparation helpers expose a side-effect-free help path.
 DECLARE @HelpEntryLockTimeout int=@@LOCK_TIMEOUT,@HelpEntryTranCount int=@@TRANCOUNT,@HelpEntryOptions int=@@OPTIONS;
 EXEC [sys].[sp_executesql] N'
