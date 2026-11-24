@@ -24,6 +24,8 @@ MAX_ROWS = 200
 MAX_BYTES = 50 * 1024 * 1024
 REPORT_BYTES = 5 * 1024 * 1024
 LOG_BYTES = 44 * 1024 * 1024
+SQL_ERROR_HEADER_LIMIT = 16
+SQL_ERROR_HEADER = re.compile(r"^Msg ([0-9]{1,5}), Level ([0-9]{1,2}), State ([0-9]{1,3})(?=,|\s|$)")
 MARKER = re.compile(
     r"CI_(BEGIN|CASE|AFTER|END)\|((?:20[2-7]|PLAN_CACHE|CURRENT_OVERVIEW|LINKED_SERVER|DEPLOYMENT))\|([A-Za-z0-9_]+)\|(\d+)\|"
     r"([\dT:.Z-]+)\|(\d+)\|(-?\d+)\|([^|\r\n]{0,180})$"
@@ -268,6 +270,8 @@ class Observation:
         self.samples = deque(maxlen=40)
         self.frozen = None
         self.table_error = None
+        self.sql_error_headers = deque(maxlen=SQL_ERROR_HEADER_LIMIT)
+        self.sql_error_headers_truncated = False
         self.errors = []
         self.details = []
         self.stop = threading.Event()
@@ -279,7 +283,7 @@ class Observation:
         self.deployment_session = None
         self.deployment_phase_seen = False
 
-    def feed(self, line):
+    def feed(self, line, *, line_start=True):
         item = marker(line)
         with self.lock:
             if item:
@@ -303,6 +307,12 @@ class Observation:
                     self.started = now
                     self.thread.start()
             error = re.match(r"^Msg (\d+), Level \d+, State \d+", line)
+            header = SQL_ERROR_HEADER.match(line) if line_start else None
+            if header:
+                if len(self.sql_error_headers) == SQL_ERROR_HEADER_LIMIT:
+                    self.sql_error_headers_truncated = True
+                number, severity, state = map(int, header.groups())
+                self.sql_error_headers.append(dict(number=number, severity=severity, state=state))
             if error:
                 self.table_error = {"case": self.case} if error[1] == "51010" else None
             pending_table = self.table_error
@@ -449,6 +459,8 @@ def diagnostic_summary(report, secret):
                    samples=[summary_sample] if summary_sample else [], errors=list(report.get("errors", [])),
                    sqlcmd_exit_code=report["sqlcmd_exit_code"], truncated=report.get("truncated", False),
                    observation_limit_seconds=report.get("observation_limit_seconds", MAX_SECONDS))
+    summary["sql_error_headers"] = report.get("sql_error_headers", [])
+    summary["sql_error_headers_truncated"] = report.get("sql_error_headers_truncated", False)
     if summary["status"] == "BLOCKER_OBSERVED" and not mandatory_rows:
         summary["status"] = "BLOCKER_NOT_CAPTURED"
         summary["truncated"] = True
@@ -538,6 +550,7 @@ def run(args):
         # Result rows never enter the marker parser. Each stream retains its own
         # decoder and secret tail, while the shared log size cap covers both.
         pending = b""
+        line_start = True
         decoders = {name: codecs.getincrementaldecoder("utf-8")(errors="replace")
                     for name in ("stdout", "stderr")}
         read_errors = input_errors
@@ -548,7 +561,7 @@ def run(args):
                 ended.add(name)
                 writer.write(decoders[name].decode(b"", final=True), final=True, stream=name)
                 if name == "stderr" and pending:
-                    observer.feed(pending.decode("utf-8", errors="replace"))
+                    observer.feed(pending.decode("utf-8", errors="replace"), line_start=line_start)
                 continue
             if isinstance(chunk, str):
                 read_errors.append(chunk)
@@ -561,13 +574,17 @@ def run(args):
                     if end == 0:
                         end = 8192
                     part, pending = pending[:end], pending[end:]
-                    observer.feed(part.decode("utf-8", errors="replace"))
+                    observer.feed(part.decode("utf-8", errors="replace"), line_start=line_start)
+                    # Bound long lines without treating a continuation as a new header.
+                    line_start = part.endswith(b"\n")
         for reader in readers:
             reader.join(timeout=2)
         code = process.wait()
     report = observer.finish()
     report["errors"].extend(read_errors)
     report.update(sqlcmd_exit_code=code, log_incomplete=writer.incomplete,
+                  sql_error_headers=list(observer.sql_error_headers),
+                  sql_error_headers_truncated=observer.sql_error_headers_truncated,
                   commit=os.environ.get("GITHUB_SHA"), run_id=os.environ.get("GITHUB_RUN_ID"),
                   attempt=os.environ.get("GITHUB_RUN_ATTEMPT"),
                   observation_limit_seconds=observer.max_seconds)
