@@ -20,14 +20,17 @@ IF EXISTS(SELECT 1 FROM [msdb].[dbo].[sysjobs] WHERE [name] IN (@MappedJobName,@
 IF DB_ID(@First) IS NOT NULL OR DB_ID(@Second) IS NOT NULL OR DB_ID(@Missing) IS NOT NULL
     THROW 55960,N'Die eigenen Change-Tracking-Fixturenamen sind nicht frei.',1;
 SET @CleanupReader=N'
+DECLARE @DropUser nvarchar(300)=N''DROP USER ''+QUOTENAME(@Name)+N'';'',
+        @DropLogin nvarchar(300)=N''DROP LOGIN ''+QUOTENAME(@Name)+N'';'';
 IF EXISTS (SELECT 1 FROM [sys].[database_principals] WHERE [name]=@Name AND [sid]=@Sid)
-    EXEC(N''DROP USER ''+QUOTENAME(@Name)+N'';'');
+    EXEC [sys].[sp_executesql] @DropUser;
 EXEC [msdb].[sys].[sp_executesql]
     N''IF EXISTS (SELECT 1 FROM [sys].[database_principals] WHERE [name]=@Name AND [sid]=@Sid)
-          EXEC(N''''DROP USER ''''+QUOTENAME(@Name)+N'''';'''');'',
-    N''@Name sysname,@Sid varbinary(85)'',@Name=@Name,@Sid=@Sid;
+          EXEC [sys].[sp_executesql] @DropUser;'',
+    N''@Name sysname,@Sid varbinary(85),@DropUser nvarchar(300)'',
+    @Name=@Name,@Sid=@Sid,@DropUser=@DropUser;
 IF SUSER_SID(@Name)=@Sid
-    EXEC(N''DROP LOGIN ''+QUOTENAME(@Name)+N'';'');';
+    EXEC [sys].[sp_executesql] @DropLogin;';
 SET @CleanupJobs=N'
 IF @Decoy IS NOT NULL AND EXISTS (SELECT 1 FROM [msdb].[dbo].[sysjobs] WHERE [job_id]=@Decoy AND [name]=@DecoyName)
     EXEC [msdb].[dbo].[sp_delete_job] @job_id=@Decoy;
