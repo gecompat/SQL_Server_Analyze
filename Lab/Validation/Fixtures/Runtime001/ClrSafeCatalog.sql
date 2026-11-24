@@ -184,6 +184,47 @@ BEGIN TRY
         WHERE [SourceCode] IN('CLR_APPDOMAINS','CLR_LOADED_ASSEMBLIES') AND [StatusCode]='AVAILABLE'
           AND [ErrorNumber] IS NULL)<>2
         THROW 56878,N'CLR fixture Analyze loaded mapping mismatch',1;
+
+    DECLARE @NativeMemoryRows int, @NativeCounterRows int;
+    SELECT @NativeMemoryRows=COUNT(DISTINCT [type])
+    FROM sys.dm_os_memory_clerks
+    WHERE [type] IN (N'MEMORYCLERK_SQLCLR',N'MEMORYCLERK_SQLCLRASSEMBLY');
+    SELECT @NativeCounterRows=COUNT(*)
+    FROM sys.dm_os_performance_counters
+    WHERE [object_name] LIKE N'%:CLR%';
+
+    EXEC [monitor].[USP_ClrAnalysis] @DatabaseNames=@Names,@AssemblyNames=N'[ExampleAnalyzeClrProbe]',
+        @MitModulzuordnung=0,@NurProblematisch=1,@SampleSeconds=0,@MaxZeilen=0,@ResultSetArt='NONE',
+        @JsonErzeugen=1,@Json=@Json OUTPUT,@PrintMeldungen=0;
+    IF COALESCE(ISJSON(@Json),0)<>1 OR @@TRANCOUNT<>0 OR DB_ID()<>@OldDbId OR @@SPID<>@OldSpid
+       OR @@OPTIONS<>@OldOptions OR @@LOCK_TIMEOUT<>@OldTimeout
+       OR (@NativeMemoryRows<=1 AND @NativeCounterRows<=1)
+       OR (SELECT COUNT(*) FROM OPENJSON(@Json,N'$.memory'))<>@NativeMemoryRows
+       OR (SELECT COUNT(*) FROM OPENJSON(@Json,N'$.performanceCounters'))<>@NativeCounterRows
+       OR EXISTS (SELECT 1 FROM OPENJSON(@Json,N'$.warnings') WITH ([WarningCode] varchar(120))
+                  WHERE [WarningCode]='RESULTSET_TRUNCATED')
+       OR EXISTS
+       (
+           SELECT [r].[key]
+           FROM OPENJSON(@Json) AS [r]
+           CROSS APPLY OPENJSON([r].[value]) AS [e]
+           WHERE [r].[key] IN (N'findings',N'assemblies',N'assemblyModules',N'assemblyDependencies',N'appDomains',
+                              N'loadedAssemblies',N'clrTasks',N'activeRequests')
+           GROUP BY [r].[key]
+           HAVING COUNT(*)>1
+       )
+        THROW 56879,N'CLR truncation fixture did not isolate memory or counter overflow above one row.',1;
+
+    EXEC [monitor].[USP_ClrAnalysis] @DatabaseNames=@Names,@AssemblyNames=N'[ExampleAnalyzeClrProbe]',
+        @MitModulzuordnung=0,@NurProblematisch=1,@SampleSeconds=0,@MaxZeilen=1,@ResultSetArt='NONE',
+        @JsonErzeugen=1,@Json=@Json OUTPUT,@PrintMeldungen=0;
+    IF COALESCE(ISJSON(@Json),0)<>1 OR @@TRANCOUNT<>0 OR DB_ID()<>@OldDbId OR @@SPID<>@OldSpid
+       OR @@OPTIONS<>@OldOptions OR @@LOCK_TIMEOUT<>@OldTimeout
+       OR (SELECT COUNT(*) FROM OPENJSON(@Json,N'$.memory'))<>CASE WHEN @NativeMemoryRows>0 THEN 1 ELSE 0 END
+       OR (SELECT COUNT(*) FROM OPENJSON(@Json,N'$.performanceCounters'))<>CASE WHEN @NativeCounterRows>0 THEN 1 ELSE 0 END
+       OR (SELECT COUNT(*) FROM OPENJSON(@Json,N'$.warnings') WITH ([WarningCode] varchar(120))
+           WHERE [WarningCode]='RESULTSET_TRUNCATED')<>1
+        THROW 56880,N'CLR fixture exceeded the memory or counter limit without exactly one warning.',1;
 END TRY
 BEGIN CATCH
     SET @Error=ERROR_NUMBER();
