@@ -25,7 +25,7 @@ DECLARE @OwnedUpper int=NULL,@OwnedLower int=NULL,@OriginalLockTimeout int=@@LOC
         @Json nvarchar(max),@Status varchar(40),@Partial bit,@ErrorNumber int,@ErrorMessage nvarchar(2048),
         @TableJson nvarchar(max),@Before datetime2(3),@After datetime2(3),
         @ClrConfigured int,@ClrInUse int,@StrictConfigured int,@StrictInUse int,@PoolingConfigured int,@PoolingInUse int,
-        @BaselineStatus varchar(40),@BaselinePartial bit;
+        @BaselineStatus varchar(40),@BaselinePartial bit,@ExpectedTruncation bit;
 IF @FrameworkLevel IS NULL OR @FrameworkLevel NOT IN(150,160,170)
     THROW 56801,N'CLR framework level is outside the contract.',1;
 IF @Major IS NULL OR @Major<15 THROW 56802,N'CLR needs a visible SQL Server 2019 or newer version.',1;
@@ -299,10 +299,18 @@ LOG ON (NAME=N''ExampleClrLowerLog'',FILENAME=N'''+REPLACE(@LogPath+N'ExampleClr
                    OR ([CounterType] IN(272696320,272696576,537003264,1073874176) AND ([MetricValue] IS NOT NULL OR [FindingCode]<>'SAMPLE_REQUIRED_FOR_DELTA_METRIC'))
                    OR ([CounterType] NOT IN(272696320,272696576,537003264,1073874176) AND ([MetricValue] IS NULL OR [MetricValue]<>CONVERT(decimal(38,6),[CounterValue]) OR [FindingCode]<>CASE WHEN [CounterType]=65792 THEN 'VALUE_AVAILABLE' ELSE 'COUNTER_TYPE_NOT_AUTOMATICALLY_INTERPRETED' END)))
             THROW 56816,N'CLR native counter identities/types/counts or independently expected Sample-0 interpretation failed.',1;
-        IF (SELECT COUNT_BIG(*) FROM OPENJSON(@Json,N'$.warnings'))<>1+CASE WHEN UPPER(COALESCE(@Host,N''))=N'LINUX' THEN 1 ELSE 0 END
+        -- Other limited groups are empty by the native no-execution and no-finding controls above.
+        SET @ExpectedTruncation=CASE WHEN @Invalid=0 AND @Limit>0 AND
+            ((SELECT COUNT_BIG(*) FROM [#ExampleClrNativeMemory])>@SafeLimit
+                OR (SELECT COUNT_BIG(*) FROM [#ExampleClrNativeCounters])>@SafeLimit)
+            THEN 1 ELSE 0 END;
+        IF (SELECT COUNT_BIG(*) FROM OPENJSON(@Json,N'$.warnings'))<>
+               1+@ExpectedTruncation+CASE WHEN UPPER(COALESCE(@Host,N''))=N'LINUX' THEN 1 ELSE 0 END
+           OR (SELECT COUNT_BIG(*) FROM OPENJSON(@Json,N'$.warnings') WITH([WarningCode] varchar(120))
+               WHERE [WarningCode]='RESULTSET_TRUNCATED')<>@ExpectedTruncation
            OR NOT EXISTS(SELECT 1 FROM OPENJSON(@Json,N'$.warnings') WITH([WarningCode] varchar(120) '$.WarningCode') WHERE [WarningCode]='ASSEMBLY_TRUST_HASH_EXCLUDED')
            OR (UPPER(COALESCE(@Host,N''))=N'LINUX' AND NOT EXISTS(SELECT 1 FROM OPENJSON(@Json,N'$.warnings') WITH([WarningCode] varchar(120) '$.WarningCode') WHERE [WarningCode]='LINUX_CLR_PLATFORM_LIMIT'))
-           OR EXISTS(SELECT 1 FROM OPENJSON(@Json,N'$.warnings') WITH([WarningCode] varchar(120) '$.WarningCode') WHERE [WarningCode] NOT IN('ASSEMBLY_TRUST_HASH_EXCLUDED','LINUX_CLR_PLATFORM_LIMIT'))
+           OR EXISTS(SELECT 1 FROM OPENJSON(@Json,N'$.warnings') WITH([WarningCode] varchar(120) '$.WarningCode') WHERE [WarningCode] NOT IN('ASSEMBLY_TRUST_HASH_EXCLUDED','LINUX_CLR_PLATFORM_LIMIT','RESULTSET_TRUNCATED'))
            OR (SELECT [compatibility_level] FROM [sys].[databases] WHERE [database_id]=DB_ID())<>@FrameworkLevel
            OR (SELECT [compatibility_level] FROM [sys].[databases] WHERE [database_id]=@OwnedUpper)<>@FrameworkLevel
            OR (SELECT [compatibility_level] FROM [sys].[databases] WHERE [database_id]=@OwnedLower)<>@FrameworkLevel
