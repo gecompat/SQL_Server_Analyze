@@ -25,15 +25,15 @@ Fehler       : EMPTY_LIST ist der Sonderfall der leeren Eingabe. Für Elemente
                prüft der gemeinsame Parser zuerst ITEM_TOO_LONG, danach
                EMPTY_ITEM und danach INVALID_BRACKET_SYNTAX. Seine Fehler
                haben Vorrang vor der nachfolgenden Namensprüfung.
-               Für dort gültige Elemente prüft diese Funktion Teil 1 auf NULL
-               (INVALID_SQL_NAME), danach Teil 2 auf einen Wert
-               (MULTIPART_NAME_NOT_ALLOWED) und danach LEN(Teil 1)>128
-               (SQL_NAME_TOO_LONG). Für IsValid=1 muss Teil 1 ungleich NULL
-               und Teil 2 gleich NULL sein; LEN(Teil 1) darf höchstens 128 ergeben.
-Grenzen      : Teile 3 und 4 werden nicht gesondert geprüft. Dies ist keine
-               allgemeine SQL-Bezeichnervalidierung und keine Prüfung von
-               Katalogexistenz oder Berechtigungen. Fehlerhafte Zeilen werden
-               ausgegeben und nicht durch die Funktion als Fehler geworfen.
+               Für dort gültige Elemente folgt INVALID_SQL_NAME bei fehlendem
+               Teil 1. Ein vorhandener Teil 2 oder ein Punkt außerhalb eines
+               einzelnen vollständig quotierten Namens ergibt
+               MULTIPART_NAME_NOT_ALLOWED, auch bei ausgelassenem Qualifizierer.
+               LEN(Teil 1)>128 ergibt SQL_NAME_TOO_LONG.
+Grenzen      : Punkte innerhalb genau eines vollständig quotierten Namens
+               bleiben zulässig. Die Funktion prüft weder die vollständige
+               Bezeichnergrammatik noch Katalogexistenz oder Berechtigungen.
+               Fehlerhafte Elemente werden als Zeilen ausgegeben.
                Eine physische Reihenfolge ist erst mit ORDER BY ItemOrdinal
                zugesichert. Die Funktion liest keine Kataloge und speichert nichts.
 Beispiel     : Der folgende Aufruf verwendet synthetische Namen:
@@ -90,9 +90,9 @@ Beispiel     : Der folgende Aufruf verwendet synthetische Namen:
 -- 
 -- ## Aufwand, Nebenwirkungen, Fehler und Grenzen
 -- 
--- EMPTY_LIST ist der Sonderfall der leeren Eingabe. Für Elemente prüft der gemeinsame Parser zuerst ITEM_TOO_LONG, danach EMPTY_ITEM und danach INVALID_BRACKET_SYNTAX. Seine Fehler haben Vorrang vor der nachfolgenden Namensprüfung. Für dort gültige Elemente prüft diese Funktion Teil 1 auf NULL (INVALID_SQL_NAME), danach Teil 2 auf einen Wert (MULTIPART_NAME_NOT_ALLOWED) und danach LEN(Teil 1)>128 (SQL_NAME_TOO_LONG). Für IsValid=1 muss Teil 1 ungleich NULL und Teil 2 gleich NULL sein; LEN(Teil 1) darf höchstens 128 ergeben.
+-- EMPTY_LIST ist der Sonderfall der leeren Eingabe. Für Elemente prüft der gemeinsame Parser zuerst ITEM_TOO_LONG, danach EMPTY_ITEM und danach INVALID_BRACKET_SYNTAX. Seine Fehler haben Vorrang. Für dort gültige Elemente folgt INVALID_SQL_NAME bei fehlendem Teil 1. Ein vorhandener Teil 2 oder ein Punkt außerhalb eines einzelnen vollständig quotierten Namens führt zu MULTIPART_NAME_NOT_ALLOWED. Das gilt auch für ausgelassene Qualifizierer. Die anschließende Längenprüfung von Teil 1 verwendet LEN und meldet SQL_NAME_TOO_LONG bei mehr als 128 Zeichen.
 -- 
--- Teile 3 und 4 werden nicht gesondert geprüft. Dies ist keine allgemeine SQL-Bezeichnervalidierung und keine Prüfung von Katalogexistenz oder Berechtigungen. Fehlerhafte Zeilen werden ausgegeben und nicht durch die Funktion als Fehler geworfen. Eine physische Reihenfolge ist erst mit ORDER BY ItemOrdinal zugesichert. Die Funktion liest keine Kataloge und speichert nichts.
+-- Ein Punkt innerhalb eines einzelnen mit eckigen Klammern oder doppelten Anführungszeichen quotierten Namens ist zulässig. Der Vergleich mit der quotierten Form des nativen Namens erfolgt bytegenau. Die Funktion prüft weder die vollständige SQL-Bezeichnergrammatik noch Katalogexistenz oder Berechtigungen. Sie gibt fehlerhafte Zeilen mit Fehlercode aus, liest keine Kataloge und schreibt keine Daten. Eine physische Reihenfolge erfordert ORDER BY ItemOrdinal.
 -- 
 -- USAGE_SKILL_END monitor.TVF_ParseSqlNameList
 CREATE OR ALTER FUNCTION [monitor].[TVF_ParseSqlNameList]
@@ -106,25 +106,31 @@ RETURN
     SELECT
           [l].[ItemOrdinal]
         , [l].[ItemText]
-        , [NameValue] = CONVERT(sysname, PARSENAME([l].[ItemText], 1))
+        , [NameValue] = CONVERT(sysname, [parsed].[NameValue])
         , [IsValid] = CONVERT(bit,
-              CASE WHEN [l].[IsValid] = 1
-                     AND PARSENAME([l].[ItemText], 1) IS NOT NULL
-                     AND PARSENAME([l].[ItemText], 2) IS NULL
-                     AND LEN(PARSENAME([l].[ItemText], 1)) <= 128
-                   THEN 1 ELSE 0 END)
-        , [ErrorCode] = CONVERT(varchar(40),
-              CASE WHEN [l].[IsValid] = 0 THEN [l].[ErrorCode]
-                   WHEN PARSENAME([l].[ItemText], 1) IS NULL THEN 'INVALID_SQL_NAME'
-                   WHEN PARSENAME([l].[ItemText], 2) IS NOT NULL THEN 'MULTIPART_NAME_NOT_ALLOWED'
-                   WHEN LEN(PARSENAME([l].[ItemText], 1)) > 128 THEN 'SQL_NAME_TOO_LONG'
-              END)
+              CASE WHEN [l].[IsValid] = 1 AND [checked].[ErrorCode] IS NULL THEN 1 ELSE 0 END)
+        , [ErrorCode] = CONVERT(varchar(40), [checked].[ErrorCode])
         , [ErrorMessage] = CONVERT(nvarchar(4000),
-              CASE WHEN [l].[IsValid] = 0 THEN [l].[ErrorMessage]
-                   WHEN PARSENAME([l].[ItemText], 1) IS NULL THEN N'Das Listenelement ist kein gültiger SQL-Name.'
-                   WHEN PARSENAME([l].[ItemText], 2) IS NOT NULL THEN N'Für diesen Parameter ist nur ein einteiliger SQL-Name zulässig.'
-                   WHEN LEN(PARSENAME([l].[ItemText], 1)) > 128 THEN N'Der SQL-Name überschreitet die sysname-Länge von 128 Zeichen.'
+              CASE [checked].[ErrorCode]
+                   WHEN 'INVALID_SQL_NAME' THEN N'Das Listenelement ist kein gültiger SQL-Name.'
+                   WHEN 'MULTIPART_NAME_NOT_ALLOWED' THEN N'Für diesen Parameter ist nur ein einteiliger SQL-Name zulässig.'
+                   WHEN 'SQL_NAME_TOO_LONG' THEN N'Der SQL-Name überschreitet die sysname-Länge von 128 Zeichen.'
+                   ELSE [l].[ErrorMessage]
               END)
     FROM [monitor].[TVF_ParsePipeList](@List) AS [l]
+    CROSS APPLY (VALUES (PARSENAME([l].[ItemText], 1), PARSENAME([l].[ItemText], 2),
+                         CONVERT(varbinary(8000), [l].[ItemText]))) AS [parsed]([NameValue], [Qualifier], [OriginalBytes])
+    CROSS APPLY (VALUES (
+        CASE WHEN [l].[IsValid] = 0 THEN [l].[ErrorCode]
+             WHEN [parsed].[NameValue] IS NULL THEN 'INVALID_SQL_NAME'
+             WHEN [parsed].[Qualifier] IS NOT NULL
+               OR (CHARINDEX(N'.', [l].[ItemText] COLLATE Latin1_General_100_BIN2) > 0
+                   AND [parsed].[OriginalBytes] NOT IN
+                      (CONVERT(varbinary(8000), QUOTENAME([parsed].[NameValue])),
+                       CONVERT(varbinary(8000), QUOTENAME([parsed].[NameValue], N'"'))))
+                 THEN 'MULTIPART_NAME_NOT_ALLOWED'
+             WHEN LEN([parsed].[NameValue]) > 128 THEN 'SQL_NAME_TOO_LONG'
+        END
+    )) AS [checked]([ErrorCode])
 );
 GO

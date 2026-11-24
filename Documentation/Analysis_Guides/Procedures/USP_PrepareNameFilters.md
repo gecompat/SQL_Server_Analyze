@@ -33,7 +33,7 @@ EXEC [monitor].[USP_PrepareNameFilters]
     , @Hilfe = 1;
 ```
 
-Listen trennen Elemente mit | nur außerhalb geklammerter Bezeichner; ]] maskiert darin eine schließende Klammer. Für Einzelnamen verlangt der Parser einen Wert aus PARSENAME(ItemText,1) und NULL aus PARSENAME(ItemText,2); Teile 3 und 4 werden nicht gesondert geprüft. Für vollständige Bezüge zerlegt PARSENAME die Bestandteile, verlangt einen Objektteil und bei vorhandenem Teil 3 auch einen Schemanamen; Teil 4 wird abgelehnt. Bei überlangen Bestandteilen ist kein bestimmter Fehlercode zugesichert. Diese strukturellen Prüfungen sind keine vollständige SQL-Bezeichnergrammatik und belegen weder Katalogexistenz noch Berechtigungen. Doppelte Werte innerhalb desselben Filtertyps sind unter SQL_Latin1_General_CP1_CS_AS ungültig.
+Listen trennen Elemente mit | nur außerhalb geklammerter Bezeichner; ]] maskiert darin eine schließende Klammer. Für Einzelnamen verlangt der Parser einen Wert aus PARSENAME(ItemText,1) und NULL aus PARSENAME(ItemText,2). Punkte außerhalb eines einzelnen quotierten Namens sind auch bei ausgelassenen Qualifizierern ungültig. Für vollständige Bezüge zerlegt PARSENAME die Bestandteile, verlangt einen Objektteil und bei vorhandenem Teil 3 auch einen Schemanamen; Teil 4 wird abgelehnt. Bei überlangen Bestandteilen ist kein bestimmter Fehlercode zugesichert. Diese strukturellen Prüfungen sind keine vollständige SQL-Bezeichnergrammatik und belegen weder Katalogexistenz noch Berechtigungen. Doppelte Werte innerhalb desselben Filtertyps sind unter SQL_Latin1_General_CP1_CS_AS ungültig.
 
 
 ### Normalen Aufruf prüfen
