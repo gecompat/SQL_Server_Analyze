@@ -13,6 +13,12 @@ GO
 USE [DeineDatenbank];
 GO
 
+DECLARE @CiLinkedServerMarker nvarchar(400)=CONCAT(
+    N'CI_BEGIN|LINKED_SERVER|Ops005Native120|0|',CONVERT(varchar(27),SYSUTCDATETIME(),126),N'Z|',
+    @@SPID,N'|',@@LOCK_TIMEOUT,N'|-');
+RAISERROR(N'%s',10,1,@CiLinkedServerMarker) WITH NOWAIT;
+GO
+
 /*
 ===============================================================================
 Datei        : 120_OPS005_Linked_Server_Runtime_Contract.sql
@@ -337,6 +343,12 @@ BEGIN CATCH
         THROW 54858, N'Der synthetic Benutzer ''ExampleOps005RestrictedUser'' ist nach Fehlern nicht bereinigt.', 1;
     THROW;
 END CATCH;
+GO
+
+DECLARE @CiLinkedServerMarker nvarchar(400)=CONCAT(
+    N'CI_END|LINKED_SERVER|Ops005Native120|0|',CONVERT(varchar(27),SYSUTCDATETIME(),126),N'Z|',
+    @@SPID,N'|',@@LOCK_TIMEOUT,N'|-');
+RAISERROR(N'%s',10,1,@CiLinkedServerMarker) WITH NOWAIT;
 GO
 USE [DeineDatenbank];
 GO
