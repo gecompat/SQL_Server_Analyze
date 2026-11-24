@@ -25,7 +25,7 @@ MAX_BYTES = 50 * 1024 * 1024
 REPORT_BYTES = 5 * 1024 * 1024
 LOG_BYTES = 44 * 1024 * 1024
 MARKER = re.compile(
-    r"CI_(BEGIN|CASE|AFTER|END)\|((?:20[2-7]|PLAN_CACHE|CURRENT_OVERVIEW|DEPLOYMENT))\|([A-Za-z0-9_]+)\|(\d+)\|"
+    r"CI_(BEGIN|CASE|AFTER|END)\|((?:20[2-7]|PLAN_CACHE|CURRENT_OVERVIEW|LINKED_SERVER|DEPLOYMENT))\|([A-Za-z0-9_]+)\|(\d+)\|"
     r"([\dT:.Z-]+)\|(\d+)\|(-?\d+)\|([^|\r\n]{0,180})$"
 )
 RESOURCE_FIELDS = (
@@ -187,7 +187,14 @@ CURRENT_OVERVIEW_TEST_FILES = {
     "TempDb122": "Code/Tests/Infrastructure/122_SQL25_TempDB_Resource_Governance_Runtime_Contract.sql",
     "Collation192": "Code/Tests/Common/192_CurrentOverview_Collation_Runtime_Contract.sql",
 }
-SCOPED_TEST_FILES = {"PLAN_CACHE": PLAN_CACHE_TEST_FILES, "CURRENT_OVERVIEW": CURRENT_OVERVIEW_TEST_FILES}
+LINKED_SERVER_TEST_FILES = {
+    "Ops005Native120": "Code/Tests/ServerHealth/120_OPS005_Linked_Server_Runtime_Contract.sql",
+}
+SCOPED_TEST_FILES = {
+    "PLAN_CACHE": PLAN_CACHE_TEST_FILES,
+    "CURRENT_OVERVIEW": CURRENT_OVERVIEW_TEST_FILES,
+    "LINKED_SERVER": LINKED_SERVER_TEST_FILES,
+}
 TEST_FILES["DEPLOYMENT"] = "Code/Install/generated/Deployment_Runtime.generated.sql"
 
 
