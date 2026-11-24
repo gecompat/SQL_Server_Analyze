@@ -25,7 +25,7 @@ MAX_BYTES = 50 * 1024 * 1024
 REPORT_BYTES = 5 * 1024 * 1024
 LOG_BYTES = 44 * 1024 * 1024
 MARKER = re.compile(
-    r"CI_(BEGIN|CASE|AFTER|END)\|((?:20[2-7]|PLAN_CACHE|DEPLOYMENT))\|([A-Za-z0-9_]+)\|(\d+)\|"
+    r"CI_(BEGIN|CASE|AFTER|END)\|((?:20[2-7]|PLAN_CACHE|CURRENT_OVERVIEW|DEPLOYMENT))\|([A-Za-z0-9_]+)\|(\d+)\|"
     r"([\dT:.Z-]+)\|(\d+)\|(-?\d+)\|([^|\r\n]{0,180})$"
 )
 RESOURCE_FIELDS = (
@@ -39,9 +39,12 @@ def marker(line):
     if not match:
         return None
     kind, suite, site, ordinal, utc, spid, timeout, variant = match.groups()
-    if suite == "PLAN_CACHE" and site not in PLAN_CACHE_TEST_FILES:
-        return None
-    test_file = PLAN_CACHE_TEST_FILES[site] if suite == "PLAN_CACHE" else TEST_FILES.get(suite)
+    if suite in SCOPED_TEST_FILES:
+        test_file = SCOPED_TEST_FILES[suite].get(site)
+        if test_file is None:
+            return None
+    else:
+        test_file = TEST_FILES.get(suite)
     return dict(kind=kind, suite=suite, test_file=test_file, site=site, ordinal=int(ordinal), utc=utc,
                 spid=int(spid), lock_timeout=int(timeout), variant=variant)
 
@@ -178,6 +181,13 @@ PLAN_CACHE_TEST_FILES = {
     "Target127": "Code/Tests/PlanCache/127_ExecutionPlanAnalysis_Collation_Runtime_Contract.sql",
     "Standalone193": "Code/Tests/Integration/193_ExecutionPlanAnalysis_Standalone_Runtime_Contract.sql",
 }
+CURRENT_OVERVIEW_TEST_FILES = {
+    "OutputPilot188": "Code/Tests/Integration/188_Framework_Output_Pilot_Runtime_Contract.sql",
+    "Snapshot199": "Code/Tests/Integration/199_CurrentState_Snapshot_Runtime_Contract.sql",
+    "TempDb122": "Code/Tests/Infrastructure/122_SQL25_TempDB_Resource_Governance_Runtime_Contract.sql",
+    "Collation192": "Code/Tests/Common/192_CurrentOverview_Collation_Runtime_Contract.sql",
+}
+SCOPED_TEST_FILES = {"PLAN_CACHE": PLAN_CACHE_TEST_FILES, "CURRENT_OVERVIEW": CURRENT_OVERVIEW_TEST_FILES}
 TEST_FILES["DEPLOYMENT"] = "Code/Install/generated/Deployment_Runtime.generated.sql"
 
 
@@ -257,6 +267,8 @@ class Observation:
         self.thread = threading.Thread(target=self._observe, daemon=True)
         self.lock = threading.Lock()
         self.started = None
+        self._active_since = None
+        self._active_seconds = 0.0
         self.deployment_session = None
         self.deployment_phase_seen = False
 
@@ -264,7 +276,14 @@ class Observation:
         item = marker(line)
         with self.lock:
             if item:
+                now = time.monotonic()
                 self.case = None if item["kind"] == "END" else item
+                if not self.deployment_expected:
+                    if self.case is not None and self._active_since is None:
+                        self._active_since = now
+                    elif self.case is None and self._active_since is not None:
+                        self._active_seconds += now - self._active_since
+                        self._active_since = None
                 if item["suite"] == "DEPLOYMENT" and item["kind"] == "BEGIN":
                     self.deployment_session = item["spid"]
                 deployment_phase = (item["suite"] == "DEPLOYMENT" and item["kind"] == "CASE"
@@ -274,7 +293,7 @@ class Observation:
                     self.deployment_phase_seen = True
                 if self.started is None and item["kind"] != "END" and (
                         item["suite"] != "DEPLOYMENT" or deployment_phase):
-                    self.started = time.monotonic()
+                    self.started = now
                     self.thread.start()
             error = re.match(r"^Msg (\d+), Level \d+, State \d+", line)
             if error:
@@ -296,17 +315,26 @@ class Observation:
                 self.frozen = {"case": case, "samples": samples,
                                "trigger": "TABLE_EXPORT_LOCK_TIMEOUT" if table_timeout else "SQL_ERROR_1222"}
 
+    def _elapsed_observation_seconds(self, tick):
+        if self.deployment_expected:
+            return tick - self.started
+        elapsed = self._active_seconds
+        if self._active_since is not None:
+            elapsed += max(0, tick - self._active_since)
+        return elapsed
+
     def _observe(self):
         connection = None
         try:
             connection = self.factory()
             while not self.stop.is_set():
                 tick = time.monotonic()
-                if tick - self.started >= self.max_seconds:
-                    self.errors.append("OBSERVATION_TIME_LIMIT")
-                    break
                 with self.lock:
                     case = self.case
+                    # Idle intervals between runtime fixtures do not consume sampling time.
+                    if self._elapsed_observation_seconds(tick) >= self.max_seconds:
+                        self.errors.append("OBSERVATION_TIME_LIMIT")
+                        break
                 if case:
                     lines = connection.query(sample_sql(case["spid"]))
                     if not lines or not lines[0].startswith("CI_SAMPLE_UTC|"):

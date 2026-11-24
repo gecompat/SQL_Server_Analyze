@@ -1,6 +1,12 @@
 USE [DeineDatenbank];
 GO
 
+DECLARE @CiOverviewMarker nvarchar(400)=CONCAT(
+    N'CI_BEGIN|CURRENT_OVERVIEW|OutputPilot188|0|',CONVERT(varchar(27),SYSUTCDATETIME(),126),
+    N'Z|',@@SPID,N'|',@@LOCK_TIMEOUT,N'|-');
+RAISERROR(N'%s',10,1,@CiOverviewMarker) WITH NOWAIT;
+GO
+
 /*
 ===============================================================================
 Datei        : 188_Framework_Output_Pilot_Runtime_Contract.sql
@@ -326,4 +332,10 @@ ORDER BY [TestName];
 
 IF EXISTS(SELECT 1 FROM [#FrameworkOutputPilotRuntimeContract_Failure])
     THROW 54800,N'Der Pilotvertrag für Datenbank-, CONSOLE- oder TABLE-Ausgabe ist verletzt.',1;
+GO
+
+DECLARE @CiOverviewMarker nvarchar(400)=CONCAT(
+    N'CI_END|CURRENT_OVERVIEW|OutputPilot188|0|',CONVERT(varchar(27),SYSUTCDATETIME(),126),
+    N'Z|',@@SPID,N'|',@@LOCK_TIMEOUT,N'|-');
+RAISERROR(N'%s',10,1,@CiOverviewMarker) WITH NOWAIT;
 GO
