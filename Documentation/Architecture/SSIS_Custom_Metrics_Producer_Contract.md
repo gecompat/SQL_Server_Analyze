@@ -301,8 +301,12 @@ Anzahl und Grenzen beobachteter Sequenzen erkannt. Eine Beobachtung oberhalb
 des deklarierten Abschlusswasserstands verletzt den Serienvertrag und wird
 mit `OBSERVATION_AFTER_FINAL_WATERMARK` abgewiesen. Eine deklarierte
 abgeschlossene Epoche mit fehlender Schlusssequenz bleibt als `SEQUENCE_GAP`
-in der Coverage sichtbar; daraus folgt keine Attestierung der
-Abschlussdeklaration.
+in der Coverage sichtbar. Daraus folgt keine Attestierung der
+Abschlussdeklaration. Für eine laufende Epoche meldet der Validator
+`INCOMPLETE`. Fehlende Sequenzen zwischen 1 und der höchsten beobachteten
+Sequenz ergeben zusätzlich `SEQUENCE_GAP`. Ohne Abschlusswasserstand lässt
+sich aus einer leeren oder lückenlos beobachteten Reihe kein fehlender Suffix
+ableiten.
 
 Ein erfolgreicher Bericht belegt ausschließlich, dass die begrenzte Eingabe
 die Regeln dieses Profils erfüllt. Ausgabe `captureBinding: UNVERIFIED`,

@@ -95,6 +95,20 @@ def self_test() -> None:
         {"sequence": "3", "observedAtUtc": "2026-01-01T00:00:02Z", "status": "KNOWN", "value": "1"},
     ]})
     assert any(item["status"] == "SEQUENCE_GAP" for item in validator.parse_report(encoded(gap))["coverage"])
+    for observed, expected_statuses in (
+        ([], {"INCOMPLETE"}),
+        (["2", "1"], {"INCOMPLETE"}),
+        (["2", "3"], {"INCOMPLETE", "SEQUENCE_GAP"}),
+        (["3", "1"], {"INCOMPLETE", "SEQUENCE_GAP"}),
+        ([maximum], {"INCOMPLETE", "SEQUENCE_GAP"}),
+    ):
+        open_report = report(
+            observations=[{**duplicate, "sequence": sequence} for sequence in observed],
+            series_extra={"completed": False, "expectedFinalSequence": None},
+        )
+        result = validator.parse_report(encoded(open_report))
+        assert result["valid"] is True
+        assert {item["status"] for item in result["coverage"]} == expected_statuses, observed
     missing_final = report(series_extra={"expectedFinalSequence": "3", "observations": [
         {"sequence": "1", "observedAtUtc": "2026-01-01T00:00:00Z", "status": "KNOWN", "value": "1"},
         {"sequence": "2", "observedAtUtc": "2026-01-01T00:00:01Z", "status": "KNOWN", "value": "1"},
