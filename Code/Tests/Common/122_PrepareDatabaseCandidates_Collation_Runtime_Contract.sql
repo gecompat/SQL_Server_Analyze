@@ -91,11 +91,19 @@ DECLARE @RestrictedNames TABLE ([Id] int PRIMARY KEY, [NameList] nvarchar(max) N
 INSERT @RestrictedNames ([Id], [NameList]) VALUES
     (1, N'ExampleSchema.' + QUOTENAME(@FilterDb)),
     (2, N'ExampleDatabase..' + QUOTENAME(@FilterDb)),
-    (3, N'ExampleServer.ExampleDatabase..' + QUOTENAME(@FilterDb));
+    (3, N'ExampleServer.ExampleDatabase..' + QUOTENAME(@FilterDb)),
+    (4, N'..' + QUOTENAME(@FilterDb));
+
+IF NOT EXISTS
+(
+    SELECT 1 FROM [monitor].[TVF_ParseSqlNameList](N'[Name.With.Dot]')
+    WHERE [IsValid] = 1 AND [NameValue] COLLATE SQL_Latin1_General_CP1_CS_AS = N'Name.With.Dot'
+)
+    THROW 55719, N'ParseSqlNameList rejected a single bracketed name containing a dot.', 1;
 
 DECLARE @InputIndex int = 1, @QualifiedDatabaseList nvarchar(max), @FilterStatus varchar(40);
 DECLARE @FilterError nvarchar(2048), @FilterLockTimeout int = @@LOCK_TIMEOUT, @FilterTranCount int = @@TRANCOUNT;
-WHILE @InputIndex <= 3
+WHILE @InputIndex <= 4
 BEGIN
     SELECT @QualifiedDatabaseList = [NameList] FROM @RestrictedNames WHERE [Id] = @InputIndex;
     SELECT @FilterStatus = NULL, @FilterError = NULL;
