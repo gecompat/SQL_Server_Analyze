@@ -120589,7 +120589,7 @@ BEGIN
 
     IF @StatusCode='AVAILABLE'
     BEGIN
-        DECLARE @DbName sysname,@CompatibilityLevel int,@Sql nvarchar(max),@Rows bigint,@HasCdcCatalog bit,@CdcCount bigint;
+        DECLARE @DbName sysname,@CompatibilityLevel int,@Sql nvarchar(max),@Rows bigint,@HasCdcCatalog bit,@CdcCount bigint,@TargetDbId int;
         DECLARE [DatabaseCursor] CURSOR LOCAL FAST_FORWARD FOR
             SELECT [DatabaseName],[CompatibilityLevel]
             FROM [#DataCaptureDeepAnalysis_DatabaseCandidates]
@@ -120631,11 +120631,13 @@ LEFT JOIN [sys].[change_tracking_databases] [ctd] WITH (NOLOCK)
   ON [ctd].[database_id]=[d].[database_id]
 WHERE [d].[database_id]=DB_ID();
 SELECT @pHasCdcCatalog=CONVERT(bit,CASE WHEN EXISTS(SELECT 1 FROM [sys].[tables] AS [t] WITH (NOLOCK) JOIN [sys].[schemas] AS [s] WITH (NOLOCK) ON [s].[schema_id]=[t].[schema_id] WHERE [s].[name] COLLATE SQL_Latin1_General_CP1_CS_AS=N''cdc'' AND [t].[name] COLLATE SQL_Latin1_General_CP1_CS_AS=N''change_tables'') THEN 1 ELSE 0 END);
-SET @pRows=@@ROWCOUNT;';
-                SELECT @Rows=0,@HasCdcCatalog=0;
+SET @pRows=@@ROWCOUNT;
+SET @pTargetDbId=DB_ID();';
+                SELECT @Rows=0,@HasCdcCatalog=0,@TargetDbId=NULL;
                 EXEC [sys].[sp_executesql] @Sql,
-                     N'@pDatabaseName sysname,@pHasCdcCatalog bit OUTPUT,@pRows bigint OUTPUT',
-                     @pDatabaseName=@DbName,@pHasCdcCatalog=@HasCdcCatalog OUTPUT,@pRows=@Rows OUTPUT;
+                     N'@pDatabaseName sysname,@pHasCdcCatalog bit OUTPUT,@pRows bigint OUTPUT,@pTargetDbId int OUTPUT',
+                     @pDatabaseName=@DbName,@pHasCdcCatalog=@HasCdcCatalog OUTPUT,@pRows=@Rows OUTPUT,
+                     @pTargetDbId=@TargetDbId OUTPUT;
                 INSERT [#DataCaptureDeepAnalysis_SourceStatus]
                 VALUES(@DbName,'DATA_CAPTURE_FEATURE_GATE','AVAILABLE',0,@Rows,N'Katalogsicht',NULL,NULL,
                        N'Zaehlt sichtbare Feature- und Katalogmetadaten; Nullzaehlungen beweisen bei eingeschraenkter Sichtbarkeit keine Abwesenheit.');
@@ -120797,34 +120799,29 @@ SET @pRows=@@ROWCOUNT;';
             BEGIN
                 BEGIN TRY
                     SET @Sql=N'SET LOCK_TIMEOUT '+CONVERT(nvarchar(11),@LockTimeoutMs)+N';
-SELECT @pRows=0;
-IF EXISTS(SELECT 1 FROM [msdb].[sys].[tables] AS [t] WITH (NOLOCK) JOIN [msdb].[sys].[schemas] AS [s] WITH (NOLOCK) ON [s].[schema_id]=[t].[schema_id] WHERE [s].[name] COLLATE SQL_Latin1_General_CP1_CS_AS=N''dbo'' AND [t].[name] COLLATE SQL_Latin1_General_CP1_CS_AS=N''cdc_jobs'')
-BEGIN
-    INSERT [#DataCaptureDeepAnalysis_CdcJob]
-    ([DatabaseName],[JobType],[IsEnabled],[LastRunOutcome],[LastRunTimeUtc],
-     [MaxTrans],[MaxScans],[IsContinuous],[PollingIntervalSeconds],[RetentionMinutes],
-     [DeleteThreshold],[AssessmentStatus],[EvidenceLimit])
-    SELECT @pDatabaseName,[cj].[job_type],[j].[enabled],[h].[run_status],
-           CASE WHEN [h].[run_date]>0 THEN [msdb].[dbo].[agent_datetime]([h].[run_date],[h].[run_time]) END,
-           [cj].[maxtrans],[cj].[maxscans],[cj].[continuous],[cj].[pollinginterval],
-           [cj].[retention],[cj].[threshold],''AVAILABLE'',
-           N''Jobkonfiguration und letzter Jobausgang sind keine lueckenlose Capture- oder Cleanup-Historie.''
-    FROM [msdb].[dbo].[cdc_jobs] [cj] WITH (NOLOCK)
-    LEFT JOIN [msdb].[dbo].[sysjobs] [j] WITH (NOLOCK) ON [j].[job_id]=[cj].[job_id]
-    OUTER APPLY
-    (
-        SELECT TOP(1) [x].[run_status],[x].[run_date],[x].[run_time]
-        FROM [msdb].[dbo].[sysjobhistory] [x] WITH (NOLOCK)
-        WHERE [x].[job_id]=[cj].[job_id] AND [x].[step_id]=0
-        ORDER BY [x].[instance_id] DESC
-    ) [h]
-    WHERE [cj].[database_id]=(SELECT [database_id] FROM [master].[sys].[databases] WITH (NOLOCK) WHERE [name] COLLATE SQL_Latin1_General_CP1_CS_AS=@pDatabaseName COLLATE SQL_Latin1_General_CP1_CS_AS);
-    SET @pRows=@@ROWCOUNT;
-END;
-';
+INSERT [#DataCaptureDeepAnalysis_CdcJob]
+([DatabaseName],[JobType],[IsEnabled],[LastRunOutcome],[LastRunTimeUtc],
+ [MaxTrans],[MaxScans],[IsContinuous],[PollingIntervalSeconds],[RetentionMinutes],
+ [DeleteThreshold],[AssessmentStatus],[EvidenceLimit])
+SELECT @pDatabaseName,[cj].[job_type],[j].[enabled],[h].[run_status],
+       CASE WHEN [h].[run_date]>0 THEN [msdb].[dbo].[agent_datetime]([h].[run_date],[h].[run_time]) END,
+       [cj].[maxtrans],[cj].[maxscans],[cj].[continuous],[cj].[pollinginterval],
+       [cj].[retention],[cj].[threshold],''AVAILABLE'',
+       N''Jobkonfiguration und letzter Jobausgang sind keine lueckenlose Capture- oder Cleanup-Historie.''
+FROM [msdb].[dbo].[cdc_jobs] [cj] WITH (NOLOCK)
+LEFT JOIN [msdb].[dbo].[sysjobs] [j] WITH (NOLOCK) ON [j].[job_id]=[cj].[job_id]
+OUTER APPLY
+(
+    SELECT TOP(1) [x].[run_status],[x].[run_date],[x].[run_time]
+    FROM [msdb].[dbo].[sysjobhistory] [x] WITH (NOLOCK)
+    WHERE [x].[job_id]=[cj].[job_id] AND [x].[step_id]=0
+    ORDER BY [x].[instance_id] DESC
+) [h]
+WHERE [cj].[database_id]=@pDatabaseId;
+SET @pRows=@@ROWCOUNT;';
                     SET @Rows=0;
-                    EXEC [sys].[sp_executesql] @Sql,N'@pDatabaseName sysname,@pRows bigint OUTPUT',
-                         @pDatabaseName=@DbName,@pRows=@Rows OUTPUT;
+                    EXEC [sys].[sp_executesql] @Sql,N'@pDatabaseName sysname,@pDatabaseId int,@pRows bigint OUTPUT',
+                         @pDatabaseName=@DbName,@pDatabaseId=@TargetDbId,@pRows=@Rows OUTPUT;
                     UPDATE [ci]
                     SET [CleanupRetentionMinutes]=[j].[RetentionMinutes]
                     FROM [#DataCaptureDeepAnalysis_CdcCaptureInstance] [ci]
@@ -120841,7 +120838,10 @@ END;
                 END TRY
                 BEGIN CATCH
                     INSERT [#DataCaptureDeepAnalysis_SourceStatus]
-                    VALUES(@DbName,'CDC_JOBS','ERROR_HANDLED',1,0,N'Lesesicht auf msdb CDC- und Agent-Metadaten',ERROR_NUMBER(),ERROR_MESSAGE(),
+                    VALUES(@DbName,'CDC_JOBS',
+                           CASE WHEN ERROR_NUMBER() IN (229,262,297,300,371,916) THEN 'DENIED_PERMISSION'
+                                WHEN ERROR_NUMBER()=1222 THEN 'TIMEOUT' ELSE 'ERROR_HANDLED' END,
+                           1,0,N'Lesesicht auf msdb CDC- und Agent-Metadaten',ERROR_NUMBER(),ERROR_MESSAGE(),
                            N'CDC-Jobevidenz fehlt; andere Quellen bleiben gueltig.');
                 END CATCH;
             END

@@ -10,11 +10,24 @@ DECLARE @First sysname=N'ExampleCaptureÄ',@Second sysname=N'ExampleCaptureÜ',@
 DECLARE @MappedJobName sysname=N'ExampleCaptureBoundCleanup',
         @DecoyJobName sysname=N'cdc.ExampleCaptureÄ_capture',
         @MappedJobId uniqueidentifier,@DecoyJobId uniqueidentifier,@DatabaseList nvarchar(258),
-        @CleanupJobs nvarchar(max);
+        @CleanupJobs nvarchar(max),@CleanupReader nvarchar(max),@ReaderSid varbinary(85),
+        @Reader sysname=N'ExampleCaptureReader',@ReaderValue nvarchar(100),@NativeError int;
+IF SUSER_ID(@Reader) IS NOT NULL OR USER_ID(@Reader) IS NOT NULL
+   OR EXISTS(SELECT 1 FROM [msdb].[sys].[database_principals] WHERE [name]=@Reader COLLATE SQL_Latin1_General_CP1_CS_AS)
+    THROW 55971,N'Die eigene CDC-Leseidentität ist nicht frei.',1;
 IF EXISTS(SELECT 1 FROM [msdb].[dbo].[sysjobs] WHERE [name] IN (@MappedJobName,@DecoyJobName))
     THROW 55966,N'Die eigenen CDC-Jobnamen sind nicht frei.',1;
 IF DB_ID(@First) IS NOT NULL OR DB_ID(@Second) IS NOT NULL OR DB_ID(@Missing) IS NOT NULL
     THROW 55960,N'Die eigenen Change-Tracking-Fixturenamen sind nicht frei.',1;
+SET @CleanupReader=N'
+IF EXISTS (SELECT 1 FROM [sys].[database_principals] WHERE [name]=@Name AND [sid]=@Sid)
+    EXEC(N''DROP USER ''+QUOTENAME(@Name)+N'';'');
+EXEC [msdb].[sys].[sp_executesql]
+    N''IF EXISTS (SELECT 1 FROM [sys].[database_principals] WHERE [name]=@Name AND [sid]=@Sid)
+          EXEC(N''''DROP USER ''''+QUOTENAME(@Name)+N'''';'''');'',
+    N''@Name sysname,@Sid varbinary(85)'',@Name=@Name,@Sid=@Sid;
+IF SUSER_SID(@Name)=@Sid
+    EXEC(N''DROP LOGIN ''+QUOTENAME(@Name)+N'';'');';
 SET @CleanupJobs=N'
 IF @Decoy IS NOT NULL AND EXISTS (SELECT 1 FROM [msdb].[dbo].[sysjobs] WHERE [job_id]=@Decoy AND [name]=@DecoyName)
     EXEC [msdb].[dbo].[sp_delete_job] @job_id=@Decoy;
@@ -154,6 +167,81 @@ JOIN [sys].[schemas] AS [s] ON [s].[schema_id]=[t].[schema_id];'; EXEC(@Sql);
               AND JSON_VALUE([value],N'$.JobName')=@MappedJobName
               AND JSON_VALUE([value],N'$.Enabled')=N'false')
         THROW 55969,N'Die CDC-Jobzuordnung stimmt nicht mit dem registrierten umbenannten Job überein.',1;
+
+    EXEC [monitor].[USP_DataCaptureDeepAnalysis] @DatabaseNames=@DatabaseList,@HighImpactConfirmed=1,
+        @ResultSetArt='NONE',@JsonErzeugen=1,@Json=@Json OUTPUT,@PrintMeldungen=0;
+    IF (SELECT COUNT_BIG(*) FROM OPENJSON(@Json,N'$.sourceStatus')
+        WHERE JSON_VALUE([value],N'$.SourceCode')=N'CDC_JOBS'
+          AND JSON_VALUE([value],N'$.StatusCode')=N'AVAILABLE')<>1
+       OR (SELECT COUNT_BIG(*) FROM OPENJSON(@Json,N'$.cdcJobs'))<>1
+       OR COALESCE(JSON_VALUE(@Json,N'$.cdcJobs[0].JobType'),N'')<>N'cleanup'
+        THROW 55972,N'Die Tiefenanalyse liefert den registrierten CDC-Job im berechtigten Kontext nicht.',1;
+
+    SET @ReaderValue=N'X!9q'+CONVERT(nvarchar(36),NEWID());
+    SET @Sql=N'CREATE LOGIN '+QUOTENAME(@Reader)+N' WITH PASSWORD '+N'= '+QUOTENAME(@ReaderValue,'''')+N';';
+    EXEC [sys].[sp_executesql] @Sql;
+    SET @ReaderSid=SUSER_SID(@Reader);
+    SET @Sql=N'CREATE USER '+QUOTENAME(@Reader)+N' FOR LOGIN '+QUOTENAME(@Reader)+N';
+        GRANT EXECUTE ON [monitor].[USP_DataCaptureDeepAnalysis] TO '+QUOTENAME(@Reader)+N';
+        USE '+QUOTENAME(@First)+N';
+        CREATE USER '+QUOTENAME(@Reader)+N' FOR LOGIN '+QUOTENAME(@Reader)+N';
+        GRANT VIEW DEFINITION TO '+QUOTENAME(@Reader)+N';
+        GRANT VIEW DATABASE STATE TO '+QUOTENAME(@Reader)+N';
+        USE [msdb];
+        CREATE USER '+QUOTENAME(@Reader)+N' FOR LOGIN '+QUOTENAME(@Reader)+N';
+        DENY SELECT ON [dbo].[cdc_jobs] TO '+QUOTENAME(@Reader)+N';';
+    EXEC [sys].[sp_executesql] @Sql;
+    SET @NativeError=NULL;
+    SET @Sql=N'EXECUTE AS LOGIN='+QUOTENAME(@Reader,'''')+N';
+    BEGIN TRY
+        IF EXISTS(SELECT 1 FROM [msdb].[sys].[tables] AS [t]
+            INNER JOIN [msdb].[sys].[schemas] AS [s] ON [s].[schema_id]=[t].[schema_id]
+            WHERE [s].[name]=N''dbo'' AND [t].[name]=N''cdc_jobs'')
+            THROW 55973,N''Die CDC-Quelle ist für den eingeschränkten Testaufrufer sichtbar.'',1;
+        BEGIN TRY
+            EXEC [sys].[sp_executesql] N''DECLARE @Count bigint; SELECT @Count=COUNT_BIG(*) FROM [msdb].[dbo].[cdc_jobs];'';
+        END TRY
+        BEGIN CATCH
+            SET @ReadError=ERROR_NUMBER();
+        END CATCH;
+        EXEC [monitor].[USP_DataCaptureDeepAnalysis] @DatabaseNames=@Names,@HighImpactConfirmed=1,
+            @ResultSetArt=''NONE'',@JsonErzeugen=1,@Json=@Payload OUTPUT,@PrintMeldungen=0;
+        REVERT;
+    END TRY
+    BEGIN CATCH
+        REVERT;
+        THROW;
+    END CATCH;';
+    EXEC [sys].[sp_executesql] @Sql,N'@Names nvarchar(258),@ReadError int OUTPUT,@Payload nvarchar(max) OUTPUT',
+        @Names=@DatabaseList,@ReadError=@NativeError OUTPUT,@Payload=@Json OUTPUT;
+    IF COALESCE(@NativeError,0)<>229
+       OR COALESCE(JSON_VALUE(@Json,N'$.meta.isPartial'),N'')<>N'true'
+       OR COALESCE(JSON_QUERY(@Json,N'$.cdcJobs'),N'')<>N'[]'
+       OR (SELECT COUNT_BIG(*) FROM OPENJSON(@Json,N'$.sourceStatus')
+           WHERE JSON_VALUE([value],N'$.SourceCode')=N'CDC_JOBS'
+             AND JSON_VALUE([value],N'$.StatusCode')=N'DENIED_PERMISSION'
+             AND JSON_VALUE([value],N'$.ErrorNumber')=N'229')<>1
+       OR (SELECT COUNT_BIG(*) FROM OPENJSON(@Json,N'$.sourceStatus')
+           WHERE JSON_VALUE([value],N'$.SourceCode')=N'CHANGE_TRACKING_TABLES'
+             AND JSON_VALUE([value],N'$.StatusCode')=N'AVAILABLE'
+             AND JSON_VALUE([value],N'$.RowCount')=N'2')<>1
+       OR (SELECT COUNT_BIG(*) FROM OPENJSON(@Json,N'$.changeTrackingTables'))<>2
+       OR NOT EXISTS(SELECT 1 FROM OPENJSON(@Json,N'$.changeTrackingTables')
+           WHERE JSON_VALUE([value],N'$.DatabaseName')=@First
+             AND JSON_VALUE([value],N'$.SchemaName')=N'ExampleCtSchemaÄ'
+             AND JSON_VALUE([value],N'$.TableName')=N'ExampleCtTableÄ'
+             AND JSON_VALUE([value],N'$.IsTrackColumnsUpdatedOn')=N'true')
+       OR NOT EXISTS(SELECT 1 FROM OPENJSON(@Json,N'$.changeTrackingTables')
+           WHERE JSON_VALUE([value],N'$.DatabaseName')=@First
+             AND JSON_VALUE([value],N'$.SchemaName')=N'ExampleCtSchemaÄ'
+             AND JSON_VALUE([value],N'$.TableName')=N'ExampleCtTableÜ'
+             AND JSON_VALUE([value],N'$.IsTrackColumnsUpdatedOn')=N'false')
+        THROW 55974,N'Die Tiefenanalyse muss verweigerte CDC-Jobdaten melden und zugängliche CT-Daten erhalten.',1;
+    EXEC [sys].[sp_executesql] @CleanupReader,N'@Name sysname,@Sid varbinary(85)',@Name=@Reader,@Sid=@ReaderSid;
+    IF SUSER_SID(@Reader) IS NOT NULL OR USER_ID(@Reader) IS NOT NULL
+       OR EXISTS(SELECT 1 FROM [msdb].[sys].[database_principals] WHERE [sid]=@ReaderSid)
+        THROW 55975,N'Die eigene CDC-Leseidentität wurde nicht entfernt.',1;
+
     EXEC [sys].[sp_executesql] @CleanupJobs,N'@DbId int,@DbName sysname,@Decoy uniqueidentifier,@DecoyName sysname',
         @DbId=@FirstId,@DbName=@First,@Decoy=@DecoyJobId,@DecoyName=@DecoyJobName;
     IF EXISTS(SELECT 1 FROM [msdb].[dbo].[sysjobs] WHERE [job_id] IN (@MappedJobId,@DecoyJobId))
@@ -161,6 +249,14 @@ JOIN [sys].[schemas] AS [s] ON [s].[schema_id]=[t].[schema_id];'; EXEC(@Sql);
     DROP TABLE [#ExampleCaptureNativeDb]; DROP TABLE [#ExampleCaptureNativeCt];
 END TRY
 BEGIN CATCH
+    BEGIN TRY
+        IF @ReaderSid IS NOT NULL
+            EXEC [sys].[sp_executesql] @CleanupReader,N'@Name sysname,@Sid varbinary(85)',@Name=@Reader,@Sid=@ReaderSid;
+    END TRY
+    BEGIN CATCH
+        PRINT CONCAT(N'CDC-Fixture: Leseidentität nicht entfernt. SQL-Fehler ',ERROR_NUMBER());
+    END CATCH;
+
     BEGIN TRY
         EXEC [sys].[sp_executesql] @CleanupJobs,N'@DbId int,@DbName sysname,@Decoy uniqueidentifier,@DecoyName sysname',
             @DbId=@FirstId,@DbName=@First,@Decoy=@DecoyJobId,@DecoyName=@DecoyJobName;
