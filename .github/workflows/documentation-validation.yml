@@ -1,75 +1,233 @@
-name: Qualify native one-part name parsing
+name: Documentation validation
 
 on:
+  pull_request:
+    paths:
+      - '.github/workflows/documentation-validation.yml'
+      - 'AGENTS.md'
+      - '.ai/**'
+      - 'README.md'
+      - 'AI_Metadata/**/*.md'
+      - 'Code/**/*.sql'
+      - 'Code/Install/*.ps1'
+      - 'Code/Install/*.py'
+      - 'Code/Tests/Integration/Deployment_*.py'
+      - 'Code/Tests/Static/**'
+      - 'Code/Tools/Rule_Context_Cache.py'
+      - 'Code/Tools/Linux_Cgroup_Values.py'
+      - 'Code/Tools/Linux_Cgroup_Metadata.py'
+      - 'Code/Tools/Linux_Cgroup_Native.py'
+      - 'Code/Tools/Linux_Cgroup_Reader.py'
+      - 'AI_Metadata/Rule_Context_Cache_Scope.json'
+      - 'Code/Tests/Integration/191_Standalone_Installer_Contract.ps1'
+      - 'Code/Tests/Integration/192_ExecutionPlanAnalysis_Installer_Contract.ps1'
+      - 'Code/Tests/Integration/194_SnapshotBaseline_Installer_Contract.ps1'
+      - 'Documentation/**/*.md'
+      - 'Metadata/**'
   push:
-    branches: ['codex/ops-installer-upload']
-    paths: ['.github/workflows/documentation-validation.yml']
+    branches:
+      - main
+    paths:
+      - '.github/workflows/documentation-validation.yml'
+      - 'AGENTS.md'
+      - '.ai/**'
+      - 'README.md'
+      - 'AI_Metadata/**/*.md'
+      - 'Code/**/*.sql'
+      - 'Code/Install/*.ps1'
+      - 'Code/Install/*.py'
+      - 'Code/Tests/Integration/Deployment_*.py'
+      - 'Code/Tests/Static/**'
+      - 'Code/Tools/Rule_Context_Cache.py'
+      - 'Code/Tools/Linux_Cgroup_Values.py'
+      - 'Code/Tools/Linux_Cgroup_Metadata.py'
+      - 'Code/Tools/Linux_Cgroup_Native.py'
+      - 'Code/Tools/Linux_Cgroup_Reader.py'
+      - 'AI_Metadata/Rule_Context_Cache_Scope.json'
+      - 'Code/Tests/Integration/191_Standalone_Installer_Contract.ps1'
+      - 'Code/Tests/Integration/192_ExecutionPlanAnalysis_Installer_Contract.ps1'
+      - 'Code/Tests/Integration/194_SnapshotBaseline_Installer_Contract.ps1'
+      - 'Documentation/**/*.md'
+      - 'Metadata/**'
+  workflow_dispatch:
 
-permissions: {}
+permissions:
+  contents: read
+  statuses: write
+
+concurrency:
+  group: documentation-validation-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
-  parser:
-    if: github.repository == 'gecompat/SQL_Server_Analyze' && github.ref == 'refs/heads/codex/ops-installer-upload' && github.event.before == '1cef3983762b3ef9af12c02d61f820e7287ab9a2' && github.run_attempt == '1'
+  validate:
+    name: Validate impacted documentation contracts
     runs-on: ubuntu-24.04
-    timeout-minutes: 7
-    permissions:
-      contents: read
+    timeout-minutes: 15
+
     steps:
-      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+      - name: Check out repository history
+        uses: actions/checkout@v6
         with:
-          ref: c06164ac9a1e53c0fb08e2e6f7b8a7244e3d7ad2
+          fetch-depth: 0
           persist-credentials: false
-      - name: Observe PARSENAME and current TVF on a disposable SQL Server
+          show-progress: false
+
+      - id: impact
+        name: Select impacted documentation checks
+        shell: bash
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before || '' }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: |
+          set -euo pipefail
+
+          changed_file="$RUNNER_TEMP/documentation-changed-files.txt"
+          if [ "${{ github.event_name }}" = 'workflow_dispatch' ] || \
+             [[ ! "$BASE_SHA" =~ ^[0-9a-f]{40}$ ]] || \
+             [[ "$BASE_SHA" =~ ^0{40}$ ]]; then
+            git ls-files > "$changed_file"
+            manual_full=true
+          else
+            git diff --name-only "$BASE_SHA" "$HEAD_SHA" > "$changed_file"
+            manual_full=false
+          fi
+
+          set_flag() {
+            local name="$1"
+            local pattern="$2"
+            local value=false
+            if grep -Eq "$pattern" "$changed_file"; then
+              value=true
+            fi
+            echo "$name=$value" >> "$GITHUB_OUTPUT"
+          }
+
+          set_flag docs '^(AGENTS\.md|README\.md|Documentation/.*\.md|AI_Metadata/(CONTINUATION_GUIDE|PROJECT_CONTEXT)\.md|AI_Metadata/Internal_Documentation/.*\.md|Metadata/Quality/CI_Test_Policy\.csv|Code/Tests/Static/915_Validate_Documentation_Style\.py|\.github/workflows/documentation-validation\.yml)$'
+          set_flag navigator '^(Code/01_Common/(020_VW_AnalyseClassCatalog|021_VW_AnalysisCatalog|022_VW_AnalysisSearchTerm|023_VW_AnalysisRelation|100_USP_AnalysisNavigator)\.sql|Code/Install/Install_(All|ExecutionPlanAnalysis)\.sql|Code/Tests/Static/905_Validate_Analysis_Navigator\.py|Metadata/Inventory/(Objects|Parameters|ResultSets)\.csv|Documentation/Analysis_Guides/Start_Here\.md|Documentation/Reference/Analysis_Navigator\.md|Documentation/Analysis_Guides/Procedures/USP_AnalysisNavigator\.md)$'
+          set_flag waits '^(Code/01_Common/07[45].*WaitType.*\.sql|Code/Tests/Static/940_Validate_Wait_Type_Catalog\.py|Documentation/Operations/Wait_Type_Catalog\.md|AI_Metadata/Internal_Documentation/Quality/Wait_Type_Curation\.md|Metadata/Quality/Wait_Type_Curation_Evidence\.json)$'
+          set_flag procedures '^(Code/.*\.sql|Documentation/Analysis_Guides/Procedures/.*\.md|Code/Tests/Static/900_Validate_Analysis_Documentation\.ps1)$'
+          set_flag installers '^(Code/Install/.*\.ps1|Code/Tests/Integration/(191_Standalone|192_ExecutionPlanAnalysis|194_SnapshotBaseline)_Installer_Contract\.ps1)$'
+          set_flag linux_reader '^(\.github/workflows/documentation-validation\.yml|Code/Tools/Linux_Cgroup_(Native|Reader|Values|Metadata)\.py|Code/Tests/Static/(Validate_Linux_Cgroup_(Reader|Values)|Invoke-StaticContractSuite)\.(py|ps1)|AI_Metadata/Internal_Documentation/Architecture/Linux_Cgroup_Resource_Boundary_Dossier\.md|Documentation/Analysis_Guides/Linux_Cgroup_Reader(_Contract)?\.md)$'
+
+          check_network=false
+          if grep -Fxq 'Code/Tests/Static/980_Validate_External_Documentation_Links.py' "$changed_file"; then
+            check_network=true
+          elif [ "$manual_full" = false ] && \
+               git diff --unified=0 "$BASE_SHA" "$HEAD_SHA" -- \
+                 | grep -E '^\+[^+].*https?://' >/dev/null; then
+            check_network=true
+          elif [ "$manual_full" = true ]; then
+            check_network=true
+          fi
+
+          echo "check_network=$check_network" >> "$GITHUB_OUTPUT"
+          echo "manual_full=$manual_full" >> "$GITHUB_OUTPUT"
+          echo "changed_files_path=$changed_file" >> "$GITHUB_OUTPUT"
+          suite_scope=Full
+          if [ "$manual_full" = false ] && [ -s "$changed_file" ] && \
+             ! grep -Ev '^(AGENTS\.md|\.ai/.*|AI_Metadata/CONTINUATION_GUIDE\.md|AI_Metadata/Rule_Context_Cache(_Scope\.json|\.md)|AI_Metadata/Internal_Documentation/Architecture/Foundation_[^/]+\.(md|json)|Code/Tools/Rule_Context_Cache\.py|Code/Tests/Static/Validate_Rule_Context_Cache\.py)$' "$changed_file"; then
+            suite_scope=FoundationGovernance
+          fi
+          echo "suite_scope=$suite_scope" >> "$GITHUB_OUTPUT"
+
+          {
+            echo '## Documentation validation impact'
+            echo ''
+            echo "- Documentation/style: $(grep -Eq '^(AGENTS\.md|README\.md|Documentation/.*\.md|AI_Metadata/(CONTINUATION_GUIDE|PROJECT_CONTEXT)\.md|AI_Metadata/Internal_Documentation/.*\.md|Metadata/Quality/CI_Test_Policy\.csv|Code/Tests/Static/915_Validate_Documentation_Style\.py|\.github/workflows/documentation-validation\.yml)$' "$changed_file" && echo true || echo false)"
+            echo "- Static contract scope: $suite_scope"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Run repository static contract suite
+        shell: pwsh
+        run: |
+          $logPath = Join-Path $env:RUNNER_TEMP 'analysis-documentation-validation.log'
+          & pwsh -NoLogo -NoProfile -File ./Code/Tests/Static/Invoke-StaticContractSuite.ps1 `
+              -Scope '${{ steps.impact.outputs.suite_scope }}' `
+              -SelfTestMode Changed `
+              -ChangedFilesPath '${{ steps.impact.outputs.changed_files_path }}' `
+              -ExcludePrivacy -ExcludeImpactSelector *>&1 |
+              Tee-Object -FilePath $logPath
+          exit $LASTEXITCODE
+
+      - name: Set up Python 3.11 for Linux cgroup reader contracts
+        if: steps.impact.outputs.linux_reader == 'true'
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
+        with:
+          python-version: '3.11'
+          architecture: x64
+          check-latest: false
+
+      - name: Run Linux cgroup parser and portable reader contracts
+        if: steps.impact.outputs.linux_reader == 'true'
         shell: bash
         run: |
           set -euo pipefail
-          test "$(git rev-parse HEAD)" = c06164ac9a1e53c0fb08e2e6f7b8a7244e3d7ad2
-          test "$(git hash-object Code/01_Common/078_TVF_ParsePipeList.sql)" = 9663eb1264d06932ce7dcdaadc51e2d806c027af
-          test "$(git hash-object Code/01_Common/080_TVF_ParseSqlNameList.sql)" = 31594f9b1c3cccf859beb356716532a5b8233db8
-          container=sqlserver-analyze-name-parser-probe
-          trap 'docker rm -f "$container" >/dev/null 2>&1 || true' EXIT
-          export MSSQL_SA_PASSWORD="Aa9_$(openssl rand -hex 24)"
-          echo "::add-mask::$MSSQL_SA_PASSWORD"
-          docker run --detach --name "$container" --network none \
-            --env ACCEPT_EULA=Y --env MSSQL_PID=Developer --env MSSQL_SA_PASSWORD \
-            --mount "type=bind,source=$PWD/Code/01_Common,target=/work,readonly" \
-            mcr.microsoft.com/mssql/server@sha256:05644dad1266ca3d445d1e8f6d2ebb9a6a03df9a39376e0f7b48917356dca9d9 >/dev/null
-          export SQLCMDPASSWORD="$MSSQL_SA_PASSWORD"
-          sql() {
-            docker exec -i --env SQLCMDPASSWORD "$container" \
-              /opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -C -b "$@"
+          python - <<'PY'
+          import platform
+          import sys
+          if sys.version_info[:2] != (3, 11) or platform.machine().lower() not in {'x86_64', 'amd64'}:
+              raise SystemExit('LINUX_CGROUP_RUNTIME_MISMATCH')
+          print('LINUX_CGROUP_RUNTIME_311_X64')
+          PY
+          python Code/Tests/Static/Validate_Linux_Cgroup_Values.py --repository-root . --self-test
+          python Code/Tests/Static/Validate_Linux_Cgroup_Reader.py --repository-root . --self-test
+
+      - name: Run required native Linux cgroup reader contracts
+        if: steps.impact.outputs.linux_reader == 'true'
+        shell: bash
+        run: python Code/Tests/Static/Validate_Linux_Cgroup_Reader.py --repository-root . --native
+
+      - name: Validate installer contracts
+        if: steps.impact.outputs.installers == 'true'
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          foreach ($contract in @(
+              './Code/Tests/Integration/191_Standalone_Installer_Contract.ps1',
+              './Code/Tests/Integration/192_ExecutionPlanAnalysis_Installer_Contract.ps1',
+              './Code/Tests/Integration/194_SnapshotBaseline_Installer_Contract.ps1'
+          )) {
+              & pwsh -NoLogo -NoProfile -File $contract
+              if ($LASTEXITCODE -ne 0) {
+                  throw "Installer contract failed: $contract"
+              }
           }
-          ready=0
-          for i in $(seq 1 60); do
-            if sql -Q 'SET NOCOUNT ON; SELECT 1;' >/dev/null 2>&1; then ready=1; break; fi
-            sleep 2
-          done
-          test "$ready" = 1
-          sql -Q 'CREATE DATABASE [DeineDatenbank] COLLATE SQL_Latin1_General_CP1_CS_AS; ALTER DATABASE [DeineDatenbank] SET COMPATIBILITY_LEVEL = 170;'
-          sql -d DeineDatenbank -Q 'CREATE SCHEMA [monitor];'
-          sql -i /work/078_TVF_ParsePipeList.sql
-          sql -i /work/080_TVF_ParseSqlNameList.sql
-          sql -d DeineDatenbank -h -1 -W -s '|' <<'SQL'
-          SET NOCOUNT ON;
-          DECLARE @cases TABLE ([Id] int PRIMARY KEY, [Input] nvarchar(4000));
-          INSERT @cases VALUES
-            (0,N'[DeineDatenbank]'),
-            (1,N'ExampleSchema.[DeineDatenbank]'),
-            (2,N'ExampleDatabase..[DeineDatenbank]'),
-            (3,N'ExampleServer.ExampleDatabase..[DeineDatenbank]'),
-            (4,N'[Name.With.Dot]'),
-            (5,N'..[DeineDatenbank]');
-          IF CONVERT(int, SERVERPROPERTY('ProductMajorVersion')) <> 17 THROW 50001,N'ENGINE_VERSION',1;
-          IF (SELECT COUNT(*) FROM @cases AS c CROSS APPLY monitor.TVF_ParseSqlNameList(c.[Input]) AS p) <> 6
-              THROW 50002,N'PARSER_ROW_COUNT',1;
-          IF (SELECT COUNT(*) FROM @cases AS c CROSS APPLY monitor.TVF_ParseSqlNameList(c.[Input]) AS p
-              WHERE c.[Id] IN (0,4) AND p.IsValid=1) <> 2 THROW 50003,N'PARSER_POSITIVE_CONTROL',1;
-          SELECT CONCAT('PARSER_BOUND|case=',c.[Id],
-              '|parts=',IIF(PARSENAME(c.[Input],1) IS NULL,0,1),
-                        IIF(PARSENAME(c.[Input],2) IS NULL,0,1),
-                        IIF(PARSENAME(c.[Input],3) IS NULL,0,1),
-                        IIF(PARSENAME(c.[Input],4) IS NULL,0,1),
-              '|valid=',CONVERT(int,p.IsValid),'|code=',COALESCE(p.ErrorCode,'NONE'))
-          FROM @cases AS c CROSS APPLY monitor.TVF_ParseSqlNameList(c.[Input]) AS p
-          ORDER BY c.[Id];
-          SQL
+
+      - name: Validate external documentation links
+        if: steps.impact.outputs.check_network == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 ./Code/Tests/Static/980_Validate_External_Documentation_Links.py \
+            --repository-root . \
+            --self-test \
+            --check-network
+
+      - name: Upload failed documentation log
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: analysis-documentation-validation-log
+          path: ${{ runner.temp }}/analysis-documentation-validation.log
+          if-no-files-found: ignore
+          retention-days: 1
+
+      - name: Publish documentation validation status
+        if: always()
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          JOB_STATUS: ${{ job.status }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          set -euo pipefail
+          state='success'
+          if [ "$JOB_STATUS" != 'success' ]; then
+            state='failure'
+          fi
+          gh api --method POST "repos/${GITHUB_REPOSITORY}/statuses/${GITHUB_SHA}" \
+            -f state="$state" \
+            -f target_url="$RUN_URL" \
+            -f description='Impact-selected documentation validation' \
+            -f context='documentation-validation' >/dev/null
