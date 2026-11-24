@@ -228,6 +228,16 @@ class Contracts(unittest.TestCase):
         self.assertEqual(report['status'], 'BLOCKER_OBSERVED')
         self.assertEqual(report['case'], case)
 
+    def test_stderr_continuations_do_not_change_case_or_trigger_wrapped_timeout(self):
+        observer = ci.Observation(lambda: None)
+        observer.feed(CASE, line_start=False)
+        self.assertIsNone(observer.case)
+        self.assertIsNone(observer.started)
+        observer.feed("Msg 51010, Level 16, State 1")
+        observer.feed("TABLE-Ausgabe fehlgeschlagen (LOCK_TIMEOUT): synthetic", line_start=False)
+        observer.feed("unrelated physical line")
+        self.assertEqual(observer.finish()["status"], "NO_1222")
+
     def test_table_timeout_context_is_retained_without_inventing_blocker(self):
         target = '#ExampleExport] "Ä%s\r\n\t'
         encoded_target = json.dumps(target, ensure_ascii=False).replace('%', r'\u0025')
@@ -373,7 +383,7 @@ for line in sys.stdin:
             process = SimpleNamespace(
                 stdout=io.BytesIO(b"Msg 1222, Level 16, State 1\n"),
                 stderr=io.BytesIO(
-                    b"x"*8192 + b"Msg 999, Level 16, State 5, " + b"x"*8192 + b"\n"
+                    b"x"*8192 + b"Msg 1222, Level 16, State 5, " + b"x"*8192 + b"\n"
                     b"Msg 547, Level 16, State 3, Server SyntheticCredential\n"
                     b"Unpublished error text\nMsg 50001, Level 11, State 5"
                 ),
