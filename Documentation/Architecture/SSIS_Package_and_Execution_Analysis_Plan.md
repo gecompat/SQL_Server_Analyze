@@ -2,7 +2,7 @@
 
 **Stand:** 17. Oktober 2026
 
-**Status:** `PARTIAL_PRODUCT_FUNCTION`; vertiefte Legacy-Interpretation im Backlog
+**Status:** `PARTIAL_PRODUCT_FUNCTION`
 
 **Zielversionen:** SQL Server 2019, 2022 und 2025
 
@@ -12,8 +12,24 @@ Vertragsumfang implementiert. Die folgenden nummerierten Zielabschnitte
 enthalten auch frühere Planung; der aktuelle Lieferumfang richtet sich nach
 dem [öffentlichen Vertrag](SSIS_001_Phase0_Public_Contract.md), den konkreten
 Lieferabschnitten am Dokumentende und dem Implementierungsstatus. Die
-[vertiefte Legacy-Loganalyse](#backlog-vertiefte-legacy-loganalyse-vom-16-oktober-2026)
-ist ausschließlich für spätere Entwicklung vorgemerkt.
+[priorisierte Legacy-Planung](#backlog-vertiefte-legacy-loganalyse-vom-16-oktober-2026)
+enthält den ursprünglichen Ausbauplan und die Kriterien für weitere Profile.
+
+Der aktuelle Legacy-Logkern erkennt neun belegte englische
+`ExternalRequest_pre`/`ExternalRequest_post`-Profile. Der öffentliche Vertrag
+nennt die unterstützten Methoden, die Opt-ins und die Grenzen der Paarbildung.
+Der [native Windows-Nachweis für JoinTransaction](https://github.com/gecompat/SQL_Server_Analyze/actions/runs/45141846651/job/137581503240)
+belegt die Meldungsform. Die [Main-Abnahme der Integration](https://github.com/gecompat/SQL_Server_Analyze/actions/runs/45147451849)
+und die [Main-Abnahme der Paarungsgrenzen](https://github.com/gecompat/SQL_Server_Analyze/actions/runs/45340103930)
+prüfen die Verarbeitung im SQL-Verbraucher. Dazu gehören die Abgrenzung nach
+Ausführung und Quelle, nicht rückläufige Zeitstempel und der Ausschluss
+der Null-GUID als Quell-ID. Weitere Providerprofile benötigen einen eigenen
+nativen Positivnachweis. Transaktionsbeitritt und Commit bleiben aus den
+Meldungspaaren unbelegt.
+
+Das [Offline-Profil für eigene Kennzahlen](SSIS_Custom_Metrics_Producer_Contract.md)
+prüft strukturierte Berichte. Für die Erfassung und Aggregation eigener
+Kennzahlen durch den SQL-Kern steht die Produktumsetzung aus.
 
 ## 1. Auftrag und Abgrenzung
 
