@@ -173,6 +173,8 @@ CDC Capture liest das Transaktionslog in Change Tables; Cleanup verschiebt `min_
 
 ### Source Select
 
+Bei aktivem CDC liest die Prozedur die Jobkonfiguration aus `msdb.dbo.cdc_jobs` anhand der im Zielkontext erfassten Datenbank-ID. Eine fehlgeschlagene Leseoperation ergibt einen partiellen Status für `CDC_JOBS`. Befunde zu fehlenden oder deaktivierten CDC-Jobs setzen eine erfolgreich gelesene Jobquelle voraus.
+
 Die Procedure besitzt getrennte Pfade für Change Tracking, CDC und Replication. Der folgende Katalogkern zeigt die Beziehung der Change-Tracking-Tabellen:
 
 ```sql
