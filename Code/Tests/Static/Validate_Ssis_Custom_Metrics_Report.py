@@ -100,6 +100,12 @@ def self_test() -> None:
         {"sequence": "2", "observedAtUtc": "2026-01-01T00:00:01Z", "status": "KNOWN", "value": "1"},
     ]})
     assert any(item["status"] == "SEQUENCE_GAP" for item in validator.parse_report(encoded(missing_final))["coverage"])
+    above_watermark = report(observations=[
+        {"sequence": "1", "observedAtUtc": "2026-01-01T00:00:00Z", "status": "KNOWN", "value": "0"},
+        {"sequence": "2", "observedAtUtc": "2026-01-01T00:00:01Z", "status": "KNOWN", "value": "1"},
+    ], series_extra={"expectedFinalSequence": "1"})
+    must_reject(above_watermark, "OBSERVATION_AFTER_FINAL_WATERMARK")
+
     huge_watermark = report(series_extra={"expectedFinalSequence": maximum})
     assert any(item["status"] == "SEQUENCE_GAP" for item in validator.parse_report(encoded(huge_watermark))["coverage"])
     unknown = report(observations=[{"sequence": "1", "observedAtUtc": "2026-01-01T00:00:00Z",
