@@ -20,7 +20,7 @@ Inventarisiert CDC und Change Tracking für eine bracket-aware Datenbankliste od
 
 SQL Server 2019 oder neuer.
 
-master.sys.databases, sys.change_tracking_databases, database-lokale sys.tables/sys.schemas/ sys.change_tracking_tables/cdc.change_tables, msdb CDC-Jobs.
+master.sys.databases, sys.change_tracking_databases, database-lokale sys.tables/sys.schemas/sys.change_tracking_tables/cdc.change_tables sowie msdb.dbo.cdc_jobs, msdb.dbo.sysjobs und msdb.dbo.sysjobhistory. CDC-Jobs werden über registrierte Datenbank- und Job-IDs zugeordnet. Ist diese Quelle bei aktivem CDC nicht lesbar, bleibt der Datenbankstatus erhalten und CDC_JOBS kennzeichnet die Teilausgabe.
 
 Cross-Database wird über CROSS_DATABASE_DEEP geprüft.
 

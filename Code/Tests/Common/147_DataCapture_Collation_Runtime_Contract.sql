@@ -1,14 +1,29 @@
 USE [DeineDatenbank];
 GO
 -- Dieser Vertrag verwendet ausschließlich zwei eigene Datenbanken im neuen lokalen Testcontainer.
--- Er liest CT-Metadaten; Change-Zeilen, CDC-Enablement und Jobausführung sind nicht Bestandteil des Tests.
+-- Er prüft CT-Metadaten und die Zuordnung registrierter CDC-Jobs. Er liest keine Change-Zeilen und startet keine Jobs.
 SET NOCOUNT ON;
 SET XACT_ABORT ON;
 DECLARE @First sysname=N'ExampleCaptureÄ',@Second sysname=N'ExampleCaptureÜ',@Missing sysname=N'ExampleCaptureMissing',
         @FirstCreated bit=0,@SecondCreated bit=0,@FirstId int,@SecondId int,@Db sysname,@Sql nvarchar(max),
         @Fixture tinyint=0,@Case tinyint=0,@Limit int,@Rows bigint,@CtRows bigint,@Names nvarchar(max),@Json nvarchar(max);
+DECLARE @MappedJobName sysname=N'ExampleCaptureBoundCleanup',
+        @DecoyJobName sysname=N'cdc.ExampleCaptureÄ_capture',
+        @MappedJobId uniqueidentifier,@DecoyJobId uniqueidentifier,@DatabaseList nvarchar(258),
+        @CleanupJobs nvarchar(max);
+IF EXISTS(SELECT 1 FROM [msdb].[dbo].[sysjobs] WHERE [name] IN (@MappedJobName,@DecoyJobName))
+    THROW 55966,N'Die eigenen CDC-Jobnamen sind nicht frei.',1;
 IF DB_ID(@First) IS NOT NULL OR DB_ID(@Second) IS NOT NULL OR DB_ID(@Missing) IS NOT NULL
     THROW 55960,N'Die eigenen Change-Tracking-Fixturenamen sind nicht frei.',1;
+SET @CleanupJobs=N'
+IF @Decoy IS NOT NULL AND EXISTS (SELECT 1 FROM [msdb].[dbo].[sysjobs] WHERE [job_id]=@Decoy AND [name]=@DecoyName)
+    EXEC [msdb].[dbo].[sp_delete_job] @job_id=@Decoy;
+IF @DbId IS NOT NULL AND DB_ID(@DbName)=@DbId
+   AND EXISTS (SELECT 1 FROM [master].[sys].[databases] WHERE [database_id]=@DbId AND [is_cdc_enabled]=1)
+BEGIN
+    DECLARE @Disable nvarchar(max)=N''USE ''+QUOTENAME(@DbName)+N''; EXEC [sys].[sp_cdc_disable_db];'';
+    EXEC [sys].[sp_executesql] @Disable;
+END;';
 CREATE TABLE [#ExampleCaptureNativeDb]
 (
  [DatabaseName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS,[StateDesc] nvarchar(60) COLLATE SQL_Latin1_General_CP1_CS_AS,
@@ -109,15 +124,68 @@ JOIN [sys].[schemas] AS [s] ON [s].[schema_id]=[t].[schema_id];'; EXEC(@Sql);
         DROP TABLE [#ExampleCaptureDb];
         SET @Case+=1;
     END;
+    SET @Sql=N'USE '+QUOTENAME(@First)+N';
+        EXEC [sys].[sp_cdc_enable_db];
+        EXEC [sys].[sp_cdc_add_job] @job_type=N''cleanup'',@start_job=0;';
+    EXEC [sys].[sp_executesql] @Sql;
+    SET @Sql=N'SELECT @JobId=[job_id] FROM [msdb].[dbo].[cdc_jobs]
+        WHERE [database_id]=@DatabaseId AND [job_type]=N''cleanup'';';
+    EXEC [sys].[sp_executesql] @Sql,N'@DatabaseId int,@JobId uniqueidentifier OUTPUT',
+        @DatabaseId=@FirstId,@JobId=@MappedJobId OUTPUT;
+    IF @MappedJobId IS NULL
+       OR NOT EXISTS(SELECT 1 FROM [msdb].[dbo].[sysjobs] WHERE [job_id]=@MappedJobId)
+        THROW 55967,N'Die native CDC-Zuordnung für den Bereinigungsjob fehlt.',1;
+    EXEC [msdb].[dbo].[sp_update_job] @job_id=@MappedJobId,@new_name=@MappedJobName,@enabled=0;
+    EXEC [msdb].[dbo].[sp_add_job] @job_name=@DecoyJobName,@enabled=0,@job_id=@DecoyJobId OUTPUT;
+    SET @Sql=N'IF @Decoy IS NULL OR EXISTS(SELECT 1 FROM [msdb].[dbo].[cdc_jobs] WHERE [job_id]=@Decoy)
+        THROW 55968,N''Der eigene Vergleichsjob darf keine CDC-Zuordnung besitzen.'',1;';
+    EXEC [sys].[sp_executesql] @Sql,N'@Decoy uniqueidentifier',@Decoy=@DecoyJobId;
+    SET @DatabaseList=QUOTENAME(@First);
+    SET @Json=NULL;
+    EXEC [monitor].[USP_DataCaptureStatus] @DatabaseNames=@DatabaseList,@MaxZeilen=0,@ResultSetArt='NONE',
+        @JsonErzeugen=1,@Json=@Json OUTPUT,@PrintMeldungen=0;
+    IF COALESCE(JSON_VALUE(@Json,N'$.meta.statusCode'),N'')<>N'AVAILABLE'
+       OR NOT EXISTS(SELECT 1 FROM OPENJSON(@Json,N'$.databases')
+            WHERE JSON_VALUE([value],N'$.IsCdcEnabled')=N'true')
+       OR (SELECT COUNT_BIG(*) FROM OPENJSON(@Json,N'$.cdcJobs'))<>1
+       OR NOT EXISTS(SELECT 1 FROM OPENJSON(@Json,N'$.cdcJobs')
+            WHERE JSON_VALUE([value],N'$.DatabaseName')=@First
+              AND JSON_VALUE([value],N'$.JobType')=N'CLEANUP'
+              AND JSON_VALUE([value],N'$.JobName')=@MappedJobName
+              AND JSON_VALUE([value],N'$.Enabled')=N'false')
+        THROW 55969,N'Die CDC-Jobzuordnung stimmt nicht mit dem registrierten umbenannten Job überein.',1;
+    EXEC [sys].[sp_executesql] @CleanupJobs,N'@DbId int,@DbName sysname,@Decoy uniqueidentifier,@DecoyName sysname',
+        @DbId=@FirstId,@DbName=@First,@Decoy=@DecoyJobId,@DecoyName=@DecoyJobName;
+    IF EXISTS(SELECT 1 FROM [msdb].[dbo].[sysjobs] WHERE [job_id] IN (@MappedJobId,@DecoyJobId))
+        THROW 55970,N'Die eigenen CDC-Jobs wurden nicht entfernt.',1;
     DROP TABLE [#ExampleCaptureNativeDb]; DROP TABLE [#ExampleCaptureNativeCt];
 END TRY
 BEGIN CATCH
-    IF @SecondCreated=1 AND DB_ID(@Second)=@SecondId BEGIN
-        SET @Sql=N'DROP DATABASE '+QUOTENAME(@Second)+N';'; EXEC(@Sql);
-    END;
-    IF @FirstCreated=1 AND DB_ID(@First)=@FirstId BEGIN
-        SET @Sql=N'DROP DATABASE '+QUOTENAME(@First)+N';'; EXEC(@Sql);
-    END;
+    BEGIN TRY
+        EXEC [sys].[sp_executesql] @CleanupJobs,N'@DbId int,@DbName sysname,@Decoy uniqueidentifier,@DecoyName sysname',
+            @DbId=@FirstId,@DbName=@First,@Decoy=@DecoyJobId,@DecoyName=@DecoyJobName;
+    END TRY
+    BEGIN CATCH
+        PRINT CONCAT(N'CDC-Fixture: Jobbereinigung fehlgeschlagen. SQL-Fehler ',ERROR_NUMBER());
+    END CATCH;
+
+    BEGIN TRY
+        IF @SecondCreated=1 AND DB_ID(@Second)=@SecondId BEGIN
+            SET @Sql=N'DROP DATABASE '+QUOTENAME(@Second)+N';'; EXEC(@Sql);
+        END;
+    END TRY
+    BEGIN CATCH
+        PRINT CONCAT(N'CDC-Fixture: Zweite Datenbank nicht entfernt. SQL-Fehler ',ERROR_NUMBER());
+    END CATCH;
+
+    BEGIN TRY
+        IF @FirstCreated=1 AND DB_ID(@First)=@FirstId BEGIN
+            SET @Sql=N'DROP DATABASE '+QUOTENAME(@First)+N';'; EXEC(@Sql);
+        END;
+    END TRY
+    BEGIN CATCH
+        PRINT CONCAT(N'CDC-Fixture: Erste Datenbank nicht entfernt. SQL-Fehler ',ERROR_NUMBER());
+    END CATCH;
     THROW;
 END CATCH;
 IF @SecondCreated=1 AND DB_ID(@Second)=@SecondId BEGIN
