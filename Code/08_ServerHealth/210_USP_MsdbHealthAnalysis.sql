@@ -87,7 +87,7 @@ GO
 -- 
 -- Die Auswertung zählt Quellzeilen und ermittelt Zeitgrenzen nur für datierte Historien; Agent-Historie und PBM-Katalogzählungen erhalten keine Zeitgrenzen. PBM-Zeilen liefern weder Identitäten noch Ausdrücke oder Policy-Evaluation. Sie belegt weder fachlich richtige Retention noch Restorefähigkeit, Jobausführung, Mailzustellung, freien Speicher, nötige Dateiverkleinerung oder PBM-Gesundheit. Große Aggregate können I/O verursachen. @MaxZeilen begrenzt die Ausgabe, nicht die Quellaggregation. Quellenfehler können partielle Evidenz ergeben.
 -- 
--- PBM_POLICIES, PBM_CONDITIONS und PBM_CATEGORIES lesen msdb.dbo.syspolicy_policies, syspolicy_conditions und syspolicy_policy_categories direkt. Sie liefern nur COUNT_BIG; OldestUtc, NewestUtc und SizeMb bleiben NULL. Die Views erfordern PolicyAdministratorRole in msdb; das Produkt vergibt keine Rolle. Ein Lesefehler liefert SOURCE_UNAVAILABLE mit unbekanntem RowCount statt UNSUPPORTED oder Nullbestand.
+-- Die Prozedur versucht jede fest benannte msdb-Quelle direkt zu lesen. Ein verweigerter Zugriff liefert SOURCE_UNAVAILABLE mit unbekanntem RowCount. Nur bei einer optionalen Historienquelle mit nativer Namensauflösung SQL 208 meldet sie UNSUPPORTED. PBM_POLICIES, PBM_CONDITIONS und PBM_CATEGORIES lesen die drei syspolicy-Views direkt und liefern nur COUNT_BIG. OldestUtc, NewestUtc und SizeMb bleiben für PBM NULL. Die Views erfordern PolicyAdministratorRole in msdb. Die Prozedur vergibt keine Rolle.
 -- 
 -- DECLARE @Json nvarchar(max); EXEC [monitor].[USP_MsdbHealthAnalysis] @ResultSetArt='NONE', @JsonErzeugen=1, @Json=@Json OUTPUT; SELECT @Json AS [Json];
 -- 
@@ -106,7 +106,7 @@ GO
 -- monitor.USP_MsdbHealthAnalysis
 -- Die Procedure inventarisiert msdb-Dateigröße, sichtbare Aggregate ausgewählter Backup-, Restore-, Agent-, Database-Mail- und Maintenance-Plan-Quellen sowie reine Zählwerte für PBM-Policies, -Conditions und -Categories. Es ändert oder löscht keine Daten.
 -- Die Auswertung zählt Quellzeilen und ermittelt Zeitgrenzen nur für datierte Historien; Agent-Historie und PBM-Katalogzählungen erhalten keine Zeitgrenzen. PBM-Zeilen liefern weder Identitäten noch Ausdrücke oder Policy-Evaluation. Sie belegt weder fachlich richtige Retention noch Restorefähigkeit, Jobausführung, Mailzustellung, freien Speicher, nötige Dateiverkleinerung oder PBM-Gesundheit. Große Aggregate können I/O verursachen. @MaxZeilen begrenzt die Ausgabe, nicht die Quellaggregation. Quellenfehler können partielle Evidenz ergeben.
--- PBM_POLICIES, PBM_CONDITIONS und PBM_CATEGORIES lesen msdb.dbo.syspolicy_policies, syspolicy_conditions und syspolicy_policy_categories direkt. Sie liefern nur COUNT_BIG; OldestUtc, NewestUtc und SizeMb bleiben NULL. Die Views erfordern PolicyAdministratorRole in msdb; das Produkt vergibt keine Rolle. Ein Lesefehler liefert SOURCE_UNAVAILABLE mit unbekanntem RowCount statt UNSUPPORTED oder Nullbestand.
+-- Die Prozedur versucht jede fest benannte msdb-Quelle direkt zu lesen. Ein verweigerter Zugriff liefert SOURCE_UNAVAILABLE mit unbekanntem RowCount. Nur bei einer optionalen Historienquelle mit nativer Namensauflösung SQL 208 meldet sie UNSUPPORTED. PBM_POLICIES, PBM_CONDITIONS und PBM_CATEGORIES lesen die drei syspolicy-Views direkt und liefern nur COUNT_BIG. OldestUtc, NewestUtc und SizeMb bleiben für PBM NULL. Die Views erfordern PolicyAdministratorRole in msdb. Die Prozedur vergibt keine Rolle.
 -- DECLARE @Json nvarchar(max); EXEC [monitor].[USP_MsdbHealthAnalysis] @ResultSetArt='NONE', @JsonErzeugen=1, @Json=@Json OUTPUT; SELECT @Json AS [Json];
 -- CREATE TABLE [#MsdbHealthAnalysis_HelpExample] ([Seed] int NULL);
 -- DECLARE @ResultTablesJson nvarchar(max)=N'{"msdbHealth":"#MsdbHealthAnalysis_HelpExample"}';
@@ -143,7 +143,7 @@ BEGIN
         PRINT N'monitor.USP_MsdbHealthAnalysis';
         PRINT N'Die Procedure inventarisiert msdb-Dateigröße, sichtbare Aggregate ausgewählter Backup-, Restore-, Agent-, Database-Mail- und Maintenance-Plan-Quellen sowie reine Zählwerte für PBM-Policies, -Conditions und -Categories. Es ändert oder löscht keine Daten.';
         PRINT N'Die Auswertung zählt Quellzeilen und ermittelt Zeitgrenzen nur für datierte Historien; Agent-Historie und PBM-Katalogzählungen erhalten keine Zeitgrenzen. PBM-Zeilen liefern weder Identitäten noch Ausdrücke oder Policy-Evaluation. Sie belegt weder fachlich richtige Retention noch Restorefähigkeit, Jobausführung, Mailzustellung, freien Speicher, nötige Dateiverkleinerung oder PBM-Gesundheit. Große Aggregate können I/O verursachen. @MaxZeilen begrenzt die Ausgabe, nicht die Quellaggregation. Quellenfehler können partielle Evidenz ergeben.';
-        PRINT N'PBM_POLICIES, PBM_CONDITIONS und PBM_CATEGORIES lesen msdb.dbo.syspolicy_policies, syspolicy_conditions und syspolicy_policy_categories direkt. Sie liefern nur COUNT_BIG; OldestUtc, NewestUtc und SizeMb bleiben NULL. Die Views erfordern PolicyAdministratorRole in msdb; das Produkt vergibt keine Rolle. Ein Lesefehler liefert SOURCE_UNAVAILABLE mit unbekanntem RowCount statt UNSUPPORTED oder Nullbestand.';
+        PRINT N'Die Prozedur versucht jede fest benannte msdb-Quelle direkt zu lesen. Ein verweigerter Zugriff liefert SOURCE_UNAVAILABLE mit unbekanntem RowCount. Nur bei einer optionalen Historienquelle mit nativer Namensauflösung SQL 208 meldet sie UNSUPPORTED. PBM_POLICIES, PBM_CONDITIONS und PBM_CATEGORIES lesen die drei syspolicy-Views direkt und liefern nur COUNT_BIG. OldestUtc, NewestUtc und SizeMb bleiben für PBM NULL. Die Views erfordern PolicyAdministratorRole in msdb. Die Prozedur vergibt keine Rolle.';
         PRINT N'@MaxZeilen int; Default: 2000. NULL wird vor der Validierung zu 0; 0 bedeutet unbegrenzt. Positive Werte behalten nach Area sortiert die ersten Zeilen. EvidenceRows wird vor dem Kürzen gezählt. Negative Werte ergeben INVALID_PARAMETER und verhindern Quellenaggregation.';
         PRINT N'@ResultSetArt varchar(16); Default: ''CONSOLE''. Wählt CONSOLE (beschriftete Fachansicht mit Leeranzeige), RAW (Status/Zählkopf und rohe Zeilen), TABLE (benannte Tabellenausgabe) oder NONE (keine Zeilenresultsets). Äußere Leerzeichen werden entfernt und Groß-/Kleinschreibung ignoriert. TABLE und CONSOLE werden intern im NONE-Pfad gerendert. Ungültige Werte sowie NULL/leer ergeben INVALID_PARAMETER.';
         PRINT N'@ResultTablesJson nvarchar(max); Default: NULL. Nur bei ResultSetArt=TABLE ausgewertetes JSON-Objekt mit genau einem Schlüssel msdbHealth und dem Zielnamen. Das Ziel muss eine bereits vorhandene, leere lokale #Temp-Tabelle mit genau einer Seed-/Platzhalterspalte sein. NULL/leer reicht im TABLE-Pfad nicht. Außerhalb TABLE wird nur ein nichtleerer Wert mit Fehler 51011 abgewiesen; NULL oder U+0020-Leerzeichen wird ignoriert. Preflight validiert das Ziel vor dem Schreiben. Der Schlüssel ist case-sensitiv. Zielnamen dürfen höchstens 116 Zeichen haben; globale ##Tabellen und das ohne Beachtung der Groß-/Kleinschreibung reservierte Präfix #Monitor sind unzulässig. Der Preflight prüft Form und leere Seed-Tabelle; erst der Writer ersetzt die Seed-Spalte durch das Ergebnisschema.';
@@ -317,7 +317,7 @@ END CATCH;';
             + N'Die Auswertung zählt Quellzeilen und ermittelt Zeitgrenzen nur für datierte Historien; Agent-Historie und PBM-Katalogzählungen erhalten keine Zeitgrenzen. PBM-Zeilen liefern weder Identitäten noch Ausdrücke oder Policy-Evaluation. Sie belegt weder fachlich richtige Retention noch Restorefähigkeit, Jobausführung, Mailzustellung, freien Speicher, nötige Dateiverkleinerung oder PBM-Gesundheit. Große Aggregate können I/O verursachen. @MaxZeilen begrenzt die Ausgabe, nicht die Quellaggregation. Quellenfehler können partielle Evidenz ergeben.'
             + NCHAR(10)
             + NCHAR(10)
-            + N'PBM_POLICIES, PBM_CONDITIONS und PBM_CATEGORIES lesen msdb.dbo.syspolicy_policies, syspolicy_conditions und syspolicy_policy_categories direkt. Sie liefern nur COUNT_BIG; OldestUtc, NewestUtc und SizeMb bleiben NULL. Die Views erfordern PolicyAdministratorRole in msdb; das Produkt vergibt keine Rolle. Ein Lesefehler liefert SOURCE_UNAVAILABLE mit unbekanntem RowCount statt UNSUPPORTED oder Nullbestand.'
+            + N'Die Prozedur versucht jede fest benannte msdb-Quelle direkt zu lesen. Ein verweigerter Zugriff liefert SOURCE_UNAVAILABLE mit unbekanntem RowCount. Nur bei einer optionalen Historienquelle mit nativer Namensauflösung SQL 208 meldet sie UNSUPPORTED. PBM_POLICIES, PBM_CONDITIONS und PBM_CATEGORIES lesen die drei syspolicy-Views direkt und liefern nur COUNT_BIG. OldestUtc, NewestUtc und SizeMb bleiben für PBM NULL. Die Views erfordern PolicyAdministratorRole in msdb. Die Prozedur vergibt keine Rolle.'
             + NCHAR(10)
             + NCHAR(10)
             + N'DECLARE @Json nvarchar(max); EXEC [monitor].[USP_MsdbHealthAnalysis] @ResultSetArt=''NONE'', @JsonErzeugen=1, @Json=@Json OUTPUT; SELECT @Json AS [Json];'
@@ -348,7 +348,7 @@ END CATCH;';
             + NCHAR(10)
             + N'Die Auswertung zählt Quellzeilen und ermittelt Zeitgrenzen nur für datierte Historien; Agent-Historie und PBM-Katalogzählungen erhalten keine Zeitgrenzen. PBM-Zeilen liefern weder Identitäten noch Ausdrücke oder Policy-Evaluation. Sie belegt weder fachlich richtige Retention noch Restorefähigkeit, Jobausführung, Mailzustellung, freien Speicher, nötige Dateiverkleinerung oder PBM-Gesundheit. Große Aggregate können I/O verursachen. @MaxZeilen begrenzt die Ausgabe, nicht die Quellaggregation. Quellenfehler können partielle Evidenz ergeben.'
             + NCHAR(10)
-            + N'PBM_POLICIES, PBM_CONDITIONS und PBM_CATEGORIES lesen msdb.dbo.syspolicy_policies, syspolicy_conditions und syspolicy_policy_categories direkt. Sie liefern nur COUNT_BIG; OldestUtc, NewestUtc und SizeMb bleiben NULL. Die Views erfordern PolicyAdministratorRole in msdb; das Produkt vergibt keine Rolle. Ein Lesefehler liefert SOURCE_UNAVAILABLE mit unbekanntem RowCount statt UNSUPPORTED oder Nullbestand.'
+            + N'Die Prozedur versucht jede fest benannte msdb-Quelle direkt zu lesen. Ein verweigerter Zugriff liefert SOURCE_UNAVAILABLE mit unbekanntem RowCount. Nur bei einer optionalen Historienquelle mit nativer Namensauflösung SQL 208 meldet sie UNSUPPORTED. PBM_POLICIES, PBM_CONDITIONS und PBM_CATEGORIES lesen die drei syspolicy-Views direkt und liefern nur COUNT_BIG. OldestUtc, NewestUtc und SizeMb bleiben für PBM NULL. Die Views erfordern PolicyAdministratorRole in msdb. Die Prozedur vergibt keine Rolle.'
             + NCHAR(10)
             + N'DECLARE @Json nvarchar(max); EXEC [monitor].[USP_MsdbHealthAnalysis] @ResultSetArt=''NONE'', @JsonErzeugen=1, @Json=@Json OUTPUT; SELECT @Json AS [Json];'
             + NCHAR(10)
@@ -422,46 +422,37 @@ END CATCH;';
           ('PBM_POLICIES','syspolicy_policies',NULL),
           ('PBM_CONDITIONS','syspolicy_conditions',NULL),
           ('PBM_CATEGORIES','syspolicy_policy_categories',NULL);
-        DECLARE @Area varchar(40),@Obj sysname,@Date sysname,@Sql nvarchar(max),@Source nvarchar(256);
+        DECLARE @Area varchar(40),@Obj sysname,@Date sysname,@Sql nvarchar(max),@Source nvarchar(256),
+                @IsPbm bit,@EvidenceLimit nvarchar(1000);
         DECLARE [d] CURSOR LOCAL FAST_FORWARD FOR SELECT [Area],[ObjectName],[DateColumn] FROM @Defs;
         OPEN [d]; FETCH NEXT FROM [d] INTO @Area,@Obj,@Date;
         WHILE @@FETCH_STATUS=0
         BEGIN
-            IF @Area IN('PBM_POLICIES','PBM_CONDITIONS','PBM_CATEGORIES')
-            BEGIN
-                BEGIN TRY
-                    SET @Source=N'msdb.dbo.'+@Obj;
-                    SET @Sql=N'INSERT [#MsdbHealthAnalysis_Health] SELECT @Area,@Source,COUNT_BIG(*),NULL,NULL,NULL,''AVAILABLE'',@EvidenceLimit FROM [msdb].[dbo].'+QUOTENAME(@Obj)+N' WITH (NOLOCK);';
-                    EXEC [sys].[sp_executesql] @Sql,
-                        N'@Area varchar(40),@Source nvarchar(256),@EvidenceLimit nvarchar(1000)',
-                        @Area,@Source,
-                        @EvidenceLimit=N'Caller-sichtbare PBM-Kataloganzahl; keine Policy-Auswertung, Retentions- oder Gesundheitsbewertung.';
-                END TRY BEGIN CATCH
-                    INSERT [#MsdbHealthAnalysis_Health]
-                    VALUES(@Area,N'msdb.dbo.'+@Obj,NULL,NULL,NULL,NULL,'SOURCE_UNAVAILABLE',
-                           CONCAT(N'Fehler ',ERROR_NUMBER(),N': ',LEFT(ERROR_MESSAGE(),800)));
-                    SET @Partial=1;
-                END CATCH;
-            END
-            ELSE IF NOT EXISTS
-            (
-                SELECT 1
-                FROM [msdb].[sys].[objects] AS [o] WITH (NOLOCK)
-                INNER JOIN [msdb].[sys].[schemas] AS [s] WITH (NOLOCK) ON [s].[schema_id]=[o].[schema_id]
-                WHERE [s].[name] COLLATE SQL_Latin1_General_CP1_CS_AS=N'dbo'
-                  AND [o].[name] COLLATE SQL_Latin1_General_CP1_CS_AS=@Obj COLLATE SQL_Latin1_General_CP1_CS_AS
-                  AND [o].[type] COLLATE SQL_Latin1_General_CP1_CS_AS IN (N'U', N'V')
-            )
-                INSERT [#MsdbHealthAnalysis_Health] VALUES(@Area,N'msdb.dbo.'+@Obj,NULL,NULL,NULL,NULL,'UNSUPPORTED',N'Quelle ist auf dieser Instanz nicht vorhanden.');
-            ELSE BEGIN TRY
-                SET @Source=N'msdb.dbo.'+@Obj;
+            SET @Source=N'msdb.dbo.'+@Obj;
+            SET @IsPbm=CASE WHEN @Area IN('PBM_POLICIES','PBM_CONDITIONS','PBM_CATEGORIES') THEN 1 ELSE 0 END;
+            SET @EvidenceLimit=CASE WHEN @IsPbm=1
+                THEN N'Caller-sichtbare PBM-Kataloganzahl; keine Policy-Auswertung, Retentions- oder Gesundheitsbewertung.'
+                ELSE N'Retentionbewertung ist kontextabhängig; es wird nichts gelöscht.' END;
+            BEGIN TRY
                 SET @Sql=N'INSERT [#MsdbHealthAnalysis_Health] SELECT @Area,@Source,COUNT_BIG(*),' +
                     CASE WHEN @Date IS NULL THEN N'NULL,NULL' ELSE N'MIN('+QUOTENAME(@Date)+N'),MAX('+QUOTENAME(@Date)+N')' END +
-                    N',NULL,''AVAILABLE'',N''Retentionbewertung ist kontextabhängig; es wird nichts gelöscht.'' FROM [msdb].[dbo].'+QUOTENAME(@Obj)+N' WITH (NOLOCK);';
-                EXEC [sys].[sp_executesql] @Sql,N'@Area varchar(40),@Source nvarchar(256)',@Area,@Source;
-            END TRY BEGIN CATCH
-                INSERT [#MsdbHealthAnalysis_Health] VALUES(@Area,N'msdb.dbo.'+@Obj,NULL,NULL,NULL,NULL,'SOURCE_UNAVAILABLE',CONCAT(N'Fehler ',ERROR_NUMBER(),N': ',LEFT(ERROR_MESSAGE(),800)));
-                SET @Partial=1;
+                    N',NULL,''AVAILABLE'',@EvidenceLimit FROM [msdb].[dbo].'+QUOTENAME(@Obj)+N' WITH (NOLOCK);';
+                EXEC [sys].[sp_executesql] @Sql,
+                    N'@Area varchar(40),@Source nvarchar(256),@EvidenceLimit nvarchar(1000)',
+                    @Area=@Area,@Source=@Source,@EvidenceLimit=@EvidenceLimit;
+            END TRY
+            BEGIN CATCH
+                IF @IsPbm=0 AND ERROR_NUMBER()=208
+                    INSERT [#MsdbHealthAnalysis_Health]
+                    VALUES(@Area,@Source,NULL,NULL,NULL,NULL,'UNSUPPORTED',
+                           N'Der direkte Quellenzugriff kann den Objektnamen nicht auflösen (SQL 208).');
+                ELSE
+                BEGIN
+                    INSERT [#MsdbHealthAnalysis_Health]
+                    VALUES(@Area,@Source,NULL,NULL,NULL,NULL,'SOURCE_UNAVAILABLE',
+                           CONCAT(N'Fehler ',ERROR_NUMBER(),N': ',LEFT(ERROR_MESSAGE(),800)));
+                    SET @Partial=1;
+                END;
             END CATCH;
             FETCH NEXT FROM [d] INTO @Area,@Obj,@Date;
         END; CLOSE [d]; DEALLOCATE [d];

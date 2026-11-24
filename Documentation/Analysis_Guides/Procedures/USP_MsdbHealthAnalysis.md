@@ -77,7 +77,7 @@ EXEC [monitor].[USP_MsdbHealthAnalysis] @Hilfe=1;
 
 ## Resultsets und Leserichtung
 
-CONSOLE zeigt `msdbHealth`. RAW liefert zuerst den Modulstatus und danach die Quellenzeilen. TABLE exportiert ausschließlich das benannte Resultset; JSON verwendet dieselbe lokale Materialisierung. Lesen Sie zuerst `Area`, `SourceObject` und `StatusCode`. Ordnen Sie Historienwerte und Dateigröße nur gegen die jeweils passende Betriebsregel ein. Die PBM-Areas `PBM_POLICIES`, `PBM_CONDITIONS` und `PBM_CATEGORIES` liefern ausschließlich `RowCount`; `OldestUtc`, `NewestUtc` und `SizeMb` bleiben NULL. Nicht vorhandene bisherige optionale Historienobjekte erscheinen als `UNSUPPORTED`, PBM-Lesefehler als `SOURCE_UNAVAILABLE` mit unbekanntem Count.
+CONSOLE zeigt `msdbHealth`. RAW liefert zuerst den Modulstatus und danach die Quellenzeilen. TABLE exportiert ausschließlich das benannte Resultset; JSON verwendet dieselbe lokale Materialisierung. Lesen Sie zuerst `Area`, `SourceObject` und `StatusCode`. Ordnen Sie Historienwerte und Dateigröße nur gegen die jeweils passende Betriebsregel ein. Die PBM-Areas `PBM_POLICIES`, `PBM_CONDITIONS` und `PBM_CATEGORIES` liefern ausschließlich `RowCount`; `OldestUtc`, `NewestUtc` und `SizeMb` bleiben NULL. Die Prozedur versucht jede benannte Quelle direkt zu lesen. Ein verweigerter Zugriff ergibt `SOURCE_UNAVAILABLE` und einen unbekannten `RowCount`. `UNSUPPORTED` kennzeichnet optionale Historienquellen, deren Name beim direkten Zugriff mit SQL-Fehler 208 nicht aufgelöst wird. Für die PBM-Quellen bleibt auch ein solcher Lesefehler `SOURCE_UNAVAILABLE`.
 
 `@MaxZeilen = NULL` und `0` liefern alle Quellenzeilen. Positive Werte begrenzen
 CONSOLE, RAW, TABLE und JSON auf denselben nach `Area` ausgewählten Bestand.
