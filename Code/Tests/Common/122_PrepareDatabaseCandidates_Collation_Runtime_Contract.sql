@@ -145,7 +145,13 @@ EXEC [monitor].[USP_PrepareDatabaseCandidates]
     , @CandidateTable=N''##invalid-global-target''
     , @WarningTable=N''not-a-temp-table''
     , @Hilfe=1
-WITH RESULT SETS NONE;
+WITH RESULT SETS
+((
+      [SkillFormatVersion] varchar(16)
+    , [SchemaName] nvarchar(128)
+    , [ObjectName] nvarchar(128)
+    , [SkillMarkdown] nvarchar(max)
+));
 IF ISNULL(@StatusCode,'''')<>''UNCHANGED_STATUS''
    OR ISNULL(@ErrorMessage,N'''')<>N''UNCHANGED_ERROR''
    OR ISNULL(@CrossDatabaseRequested,0)<>1
@@ -162,7 +168,13 @@ EXEC [monitor].[USP_PrepareNameFilters]
     , @ErrorMessage=@ErrorMessage OUTPUT
     , @FilterTable=N''##invalid-global-target''
     , @Hilfe=1
-WITH RESULT SETS NONE;
+WITH RESULT SETS
+((
+      [SkillFormatVersion] varchar(16)
+    , [SchemaName] nvarchar(128)
+    , [ObjectName] nvarchar(128)
+    , [SkillMarkdown] nvarchar(max)
+));
 IF ISNULL(@StatusCode,'''')<>''UNCHANGED_STATUS''
    OR ISNULL(@ErrorMessage,N'''')<>N''UNCHANGED_ERROR''
    OR @@OPTIONS<>@FilterEntryOptions
