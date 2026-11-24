@@ -150,6 +150,40 @@ INSERT [dbo].[ExampleOps006Compressed]([Id],[Payload]) VALUES (1,''SyntheticFeat
     IF @Status <> 'NOT_FOUND' OR COALESCE(ISJSON(@Json), 0) <> 1
         THROW 54863, N'Der fehlende Datenbankpfad ist verletzt.', 1;
 
+    -- Prüft einen Schreibweisenunterschied und den daraus resultierenden Teiltreffer.
+    DECLARE @CaseVariant sysname = N'exampleOps006Uncontained';
+    DECLARE @WrongCaseList nvarchar(max) = QUOTENAME(@CaseVariant);
+    DECLARE @MixedCaseList nvarchar(max) = QUOTENAME(@FeatureDatabase) + N'|' + @WrongCaseList;
+    IF (SELECT COUNT(*) FROM [sys].[databases]
+        WHERE [name] COLLATE Latin1_General_100_CI_AS = @CaseVariant COLLATE Latin1_General_100_CI_AS) <> 1
+       OR EXISTS(SELECT 1 FROM [sys].[databases]
+                 WHERE [name] COLLATE SQL_Latin1_General_CP1_CS_AS = @CaseVariant COLLATE SQL_Latin1_General_CP1_CS_AS)
+        THROW 54869, N'Die synthetischen Datenbanknamen belegen den Schreibweisenunterschied nicht.', 1;
+
+    SELECT @Json = NULL, @Status = NULL, @Partial = NULL;
+    EXEC [monitor].[USP_DatabasePortabilityAnalysis]
+          @DatabaseNames = @WrongCaseList, @ResultSetArt = 'NONE'
+        , @JsonErzeugen = 1, @Json = @Json OUTPUT, @PrintMeldungen = 0
+        , @StatusCodeOut = @Status OUTPUT, @IsPartialOut = @Partial OUTPUT;
+    IF COALESCE(@Status, '') <> 'NOT_FOUND' OR COALESCE(@Partial, 0) <> 1
+       OR COALESCE(@Json, N'') <> N'[]'
+        THROW 54870, N'Der Portabilitätsfilter akzeptiert eine abweichende Schreibweise.', 1;
+
+    SELECT @Json = NULL, @Status = NULL, @Partial = NULL;
+    EXEC [monitor].[USP_DatabasePortabilityAnalysis]
+          @DatabaseNames = @MixedCaseList, @ResultSetArt = 'NONE'
+        , @JsonErzeugen = 1, @Json = @Json OUTPUT, @PrintMeldungen = 0
+        , @StatusCodeOut = @Status OUTPUT, @IsPartialOut = @Partial OUTPUT;
+    IF COALESCE(@Status, '') <> 'AVAILABLE_LIMITED' OR COALESCE(@Partial, 0) <> 1
+       OR COALESCE(ISJSON(@Json), 0) <> 1
+       OR (SELECT COUNT_BIG(*) FROM OPENJSON(@Json)) <> (SELECT COUNT_BIG(*) FROM OPENJSON(@ZeroJson))
+       OR EXISTS(SELECT 1 FROM OPENJSON(@Json) WITH ([DatabaseName] sysname) AS [j]
+                 WHERE [j].[DatabaseName] IS NULL OR [j].[DatabaseName] COLLATE SQL_Latin1_General_CP1_CS_AS
+                       <> @FeatureDatabase COLLATE SQL_Latin1_General_CP1_CS_AS)
+       OR NOT EXISTS(SELECT 1 FROM OPENJSON(@Json) WITH ([EvidenceType] varchar(40)) AS [j]
+                     WHERE [j].[EvidenceType] = 'PERSISTED_SKU_FEATURE')
+        THROW 54871, N'Der gemischte Portabilitätsfilter liefert nicht ausschließlich Evidenz zum exakten Namen.', 1;
+
     DROP USER IF EXISTS [ExampleOps006RestrictedUser];
     CREATE USER [ExampleOps006RestrictedUser] WITHOUT LOGIN;
     GRANT EXECUTE ON [monitor].[USP_DatabasePortabilityAnalysis] TO [ExampleOps006RestrictedUser];
