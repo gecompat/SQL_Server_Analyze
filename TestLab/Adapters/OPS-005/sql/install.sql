@@ -123609,30 +123609,30 @@ WHERE 1=1 '+@StatsLanguagePredicate+N'; SET @pRows=@@ROWCOUNT;';
                COALESCE([b].[StatisticsStartTime],[a].[StatisticsStartTime]),COALESCE([b].[PeakMemoryKb],[a].[PeakMemoryKb]),
                COALESCE([b].[ActiveProcessesCount],[a].[ActiveProcessesCount]),
                CONVERT(decimal(19,6),CASE WHEN @SampleSeconds>0 THEN DATEDIFF_BIG(MICROSECOND,[a].[ReadAtUtc],[b].[ReadAtUtc])/1000000.0 END),
-               CASE WHEN [b].[ExternalPoolId] IS NOT NULL AND [a].[StatisticsStartTime]=[b].[StatisticsStartTime]
-                          AND [a].[PoolVersion]=[b].[PoolVersion] AND [b].[TotalCpuKernelMs]>=[a].[TotalCpuKernelMs]
-                    THEN [b].[TotalCpuKernelMs]-[a].[TotalCpuKernelMs] END,
-               CASE WHEN [b].[ExternalPoolId] IS NOT NULL AND [a].[StatisticsStartTime]=[b].[StatisticsStartTime]
-                          AND [a].[PoolVersion]=[b].[PoolVersion] AND [b].[TotalCpuUserMs]>=[a].[TotalCpuUserMs]
-                    THEN [b].[TotalCpuUserMs]-[a].[TotalCpuUserMs] END,
-               CASE WHEN [b].[ExternalPoolId] IS NOT NULL AND [a].[StatisticsStartTime]=[b].[StatisticsStartTime]
-                          AND [a].[PoolVersion]=[b].[PoolVersion] AND [b].[ReadIoCount]>=[a].[ReadIoCount]
-                    THEN [b].[ReadIoCount]-[a].[ReadIoCount] END,
-               CASE WHEN [b].[ExternalPoolId] IS NOT NULL AND [a].[StatisticsStartTime]=[b].[StatisticsStartTime]
-                          AND [a].[PoolVersion]=[b].[PoolVersion] AND [b].[WriteIoCount]>=[a].[WriteIoCount]
-                    THEN [b].[WriteIoCount]-[a].[WriteIoCount] END,
-               CASE WHEN @SampleSeconds=0 THEN 'NOT_SAMPLED'
-                    WHEN [b].[ExternalPoolId] IS NULL THEN 'T2_UNAVAILABLE'
-                    WHEN [a].[StatisticsStartTime]<>[b].[StatisticsStartTime] OR [a].[PoolVersion]<>[b].[PoolVersion] THEN 'RESET_BOUNDARY'
-                    WHEN [b].[TotalCpuKernelMs]<[a].[TotalCpuKernelMs] OR [b].[TotalCpuUserMs]<[a].[TotalCpuUserMs]
-                      OR [b].[ReadIoCount]<[a].[ReadIoCount] OR [b].[WriteIoCount]<[a].[WriteIoCount] THEN 'RESET_BOUNDARY'
-                    ELSE 'DELTA_AVAILABLE' END,
+               CASE WHEN [delta].[CanSubtract]=1 THEN [b].[TotalCpuKernelMs]-[a].[TotalCpuKernelMs] END,
+               CASE WHEN [delta].[CanSubtract]=1 THEN [b].[TotalCpuUserMs]-[a].[TotalCpuUserMs] END,
+               CASE WHEN [delta].[CanSubtract]=1 THEN [b].[ReadIoCount]-[a].[ReadIoCount] END,
+               CASE WHEN [delta].[CanSubtract]=1 THEN [b].[WriteIoCount]-[a].[WriteIoCount] END,
+               [continuity].[DeltaStatus],
                CASE WHEN UPPER(COALESCE(@HostPlatform,N''))='LINUX'
                     THEN N'Linux bezieht Poolwerte aus cgroups; die herstellerdokumentierte Einheitenabweichung ist vor plattformübergreifenden Vergleichen zu berücksichtigen.'
                     ELSE N'Kumulative Poolwerte gelten seit statistics_start_time; Deltas werden nur innerhalb derselben Resetepoche berechnet.' END
         FROM [#ExternalRuntimeAnalysis_PoolSamples] [a]
         LEFT JOIN [#ExternalRuntimeAnalysis_PoolSamples] [b]
           ON [b].[SamplePoint]='T2' AND [b].[ExternalPoolId]=[a].[ExternalPoolId]
+        CROSS APPLY (VALUES (
+            CASE WHEN @SampleSeconds=0 THEN 'NOT_SAMPLED'
+                 WHEN [b].[ExternalPoolId] IS NULL THEN 'T2_UNAVAILABLE'
+                 WHEN [a].[StatisticsStartTime]<>[b].[StatisticsStartTime] OR [a].[PoolVersion]<>[b].[PoolVersion]
+                   OR [b].[TotalCpuKernelMs]<[a].[TotalCpuKernelMs] OR [b].[TotalCpuUserMs]<[a].[TotalCpuUserMs]
+                   OR [b].[ReadIoCount]<[a].[ReadIoCount] OR [b].[WriteIoCount]<[a].[WriteIoCount] THEN 'RESET_BOUNDARY'
+                 ELSE 'DELTA_AVAILABLE' END
+        )) AS [continuity]([DeltaStatus])
+        CROSS APPLY (VALUES (
+            CASE WHEN [continuity].[DeltaStatus]='DELTA_AVAILABLE'
+                       AND [a].[StatisticsStartTime]=[b].[StatisticsStartTime]
+                       AND [a].[PoolVersion]=[b].[PoolVersion] THEN 1 ELSE 0 END
+        )) AS [delta]([CanSubtract])
         WHERE [a].[SamplePoint]='T1';
 
         INSERT [#ExternalRuntimeAnalysis_ExecutionStats]
