@@ -839,13 +839,27 @@ IF COALESCE(ISJSON(@Json),0)<>1 OR @Error IS NOT NULL
  OR EXISTS(SELECT 1 FROM OPENJSON(@Json,N''$.findings'')
      WITH ([FindingCode] varchar(64) N''$.FindingCode'') WHERE [FindingCode]=''LEGACY_EXTERNAL_REQUEST_PAIR'')
     THROW 56350,N''LEGACY_EXTERNAL_REQUEST_TASK_OFF'',1;
+-- Der gekappte Puffer enthält beide Meldungen des im Vollpuffer bestätigten JoinTransaction-Paars.
+DECLARE @PairProbeLimit int=(SELECT COUNT(*) FROM [dbo].[ExampleSsisLegacy.Log]]Source]
+                             WHERE [executionid]=@Id AND [id]<=189);
+IF @PairProbeLimit<2
+    THROW 56351,N''LEGACY_EXTERNAL_REQUEST_TRUNCATED_FIXTURE'',1;
 SET @CiOrdinal+=1; SET @CiMarker=CONCAT(N''CI_CASE|202|C038|'',@CiOrdinal,N''|'',CONVERT(varchar(27),SYSUTCDATETIME(),126),N''Z|'',@@SPID,N''|'',@@LOCK_TIMEOUT,N''|-''); RAISERROR(N''%s'',10,1,@CiMarker) WITH NOWAIT;
 EXEC [monitor].[USP_SsisLegacyLogAnalysis] @LoggingDatabase=@Db,@LoggingTable=N''ExampleSsisLegacy.Log]Source'',
-    @ExecutionId=@Id,@MaxZeilen=2,@IncludeTaskAnalysis=1,@IncludeMessages=1,@IncludeTimeline=0,
+    @ExecutionId=@Id,@MaxZeilen=@PairProbeLimit,@IncludeTaskAnalysis=1,@IncludeMessages=1,@IncludeTimeline=1,
     @ResultSetArt=''NONE'',
     @JsonErzeugen=1,@Json=@Json OUTPUT,@ErrorNumberOut=@Error OUTPUT;
 SET @CiMarker=CONCAT(N''CI_AFTER|202|C038|'',@CiOrdinal,N''|'',CONVERT(varchar(27),SYSUTCDATETIME(),126),N''Z|'',@@SPID,N''|'',@@LOCK_TIMEOUT,N''|-''); RAISERROR(N''%s'',10,1,@CiMarker) WITH NOWAIT;
 IF COALESCE(ISJSON(@Json),0)<>1 OR @Error IS NOT NULL
+ OR NOT EXISTS(SELECT 1 FROM OPENJSON(@Json,N''$.sourceStatus'')
+     WITH ([SourceOrdinal] int,[ObservedRowCount] bigint,[ReturnedRowCount] bigint,[IsTruncated] bit)
+     WHERE [SourceOrdinal]=3 AND [ObservedRowCount]=@PairProbeLimit+1
+       AND [ReturnedRowCount]=@PairProbeLimit AND [IsTruncated]=1)
+ OR NOT EXISTS(SELECT 1 FROM OPENJSON(@Json,N''$.timeline'')
+     WITH ([LogId] int) WHERE [LogId] IN (188,189)
+     HAVING COUNT_BIG(*)=2 AND COUNT_BIG(DISTINCT [LogId])=2)
+ OR EXISTS(SELECT 1 FROM OPENJSON(@Json,N''$.timeline'')
+     WITH ([LogId] int) WHERE [LogId]>189)
  OR EXISTS(SELECT 1 FROM OPENJSON(@Json,N''$.findings'')
      WITH ([FindingCode] varchar(64) N''$.FindingCode'') WHERE [FindingCode]=''LEGACY_EXTERNAL_REQUEST_PAIR'')
     THROW 56351,N''LEGACY_EXTERNAL_REQUEST_TRUNCATED'',1;
