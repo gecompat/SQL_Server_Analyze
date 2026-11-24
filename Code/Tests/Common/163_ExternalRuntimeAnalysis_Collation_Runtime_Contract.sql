@@ -402,6 +402,7 @@ SELECT ''T2'',DATEADD(second,1,CONVERT(datetime2(3),N''20260101'')),[PoolId],N''
 FROM (VALUES (1),(2),(3),(4),(5),(7),(8)) AS [ids]([PoolId]);'+
     SUBSTRING(@PoolProjectionDefinition,@PoolProjectionStart,@PoolProjectionEnd-@PoolProjectionStart)+N'
 IF (SELECT COUNT(*) FROM [#ExternalRuntimeAnalysis_ExternalPools])<>8
+   OR (SELECT COUNT(DISTINCT [ExternalPoolId]) FROM [#ExternalRuntimeAnalysis_ExternalPools])<>8
    OR NOT EXISTS
       (SELECT 1 FROM [#ExternalRuntimeAnalysis_ExternalPools]
        WHERE [ExternalPoolId]=1 AND [DeltaStatus]=''DELTA_AVAILABLE'' AND [SampleSeconds]=1
