@@ -87,7 +87,6 @@ LAB_EXAMPLES = {
 COLLATION_SLICES = {
     "Code/08_ServerHealth/220_USP_LinkedServerAnalysis.sql": 6,
     "Code/08_ServerHealth/200_USP_DatabasePortabilityAnalysis.sql": 10,
-    "Code/08_ServerHealth/210_USP_MsdbHealthAnalysis.sql": 8,
     "Code/02_CurrentState/110_USP_CurrentCursorAnalysis.sql": 3,
     "Code/08_ServerHealth/230_USP_SystemDatabaseObjectInventory.sql": 6,
     "Code/02_CurrentState/100_USP_CurrentOverview.sql": 15,
@@ -96,6 +95,33 @@ COLLATION_SLICES = {
 
 def missing_tokens(text: str, tokens: tuple[str, ...]) -> list[str]:
     return [token for token in tokens if token not in text]
+
+
+def missing_msdb_collation_columns(text: str) -> list[str]:
+    """Check the actual destinations rather than obsolete cross-catalog predicates."""
+    boundaries = (
+        ("CREATE TABLE [#MsdbHealthAnalysis_Health]",
+         ("[Area] varchar(40)", "[SourceObject] nvarchar(256)",
+          "[StatusCode] varchar(40)", "[EvidenceLimit] nvarchar(1000)")),
+        ("DECLARE @Defs TABLE",
+         ("[Area] varchar(40)", "[ObjectName] sysname", "[DateColumn] sysname")),
+    )
+    missing = []
+    for declaration, columns in boundaries:
+        _, _, remainder = text.partition("\n    " + declaration)
+        if not remainder:
+            # The definition table is scoped inside the collection branch.
+            _, _, remainder = text.partition("\n        " + declaration)
+        block, end, _ = remainder.partition(");")
+        if not end:
+            missing.append(declaration)
+            continue
+        missing.extend(
+            f"{declaration}: {column}"
+            for column in columns
+            if column + " COLLATE SQL_Latin1_General_CP1_CS_AS" not in block
+        )
+    return missing
 
 
 def validate_repository(root: Path) -> list[str]:
@@ -191,6 +217,12 @@ def validate_repository(root: Path) -> list[str]:
             errors.append(
                 f"collation boundary is not explicit enough: {relative_path}"
             )
+    msdb_path = "Code/08_ServerHealth/210_USP_MsdbHealthAnalysis.sql"
+    msdb_source = (root / msdb_path).read_text(encoding="utf-8-sig")
+    errors.extend(
+        f"collation boundary is not explicit enough: {msdb_path}: {column}"
+        for column in missing_msdb_collation_columns(msdb_source)
+    )
     table_output_contract = (
         root / "Code/Tests/Integration/187_Table_Output_Runtime_Contract.sql"
     ).read_text(encoding="utf-8-sig")
